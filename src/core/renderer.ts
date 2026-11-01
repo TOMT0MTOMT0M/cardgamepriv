@@ -86,9 +86,13 @@ export async function createRenderer(backend: Backend): Promise<WebGPURenderer> 
     powerPreference: 'high-performance',
   });
   await renderer.init();
+  DEFAULT_LIGHTING.set(renderer, renderer.lighting);
   applyRendererDefaults(renderer);
   return renderer;
 }
+
+/** Système d'éclairage d'origine (une expérience peut le remplacer, ex. ClusteredLighting en 026). */
+const DEFAULT_LIGHTING = new WeakMap<WebGPURenderer, WebGPURenderer['lighting']>();
 
 /** État par défaut restauré avant chaque expérience. */
 export function applyRendererDefaults(renderer: WebGPURenderer) {
@@ -98,6 +102,9 @@ export function applyRendererDefaults(renderer: WebGPURenderer) {
   renderer.setClearColor(0x121110, 1);
   renderer.autoClear = true;
   renderer.shadowMap.enabled = false;
+  renderer.shadowMap.transmitted = false;
+  const L = DEFAULT_LIGHTING.get(renderer);
+  if (L && renderer.lighting !== L) renderer.lighting = L;
 }
 
 export function backendName(renderer: WebGPURenderer): string {

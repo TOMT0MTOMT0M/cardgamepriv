@@ -235,4 +235,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Appuie et glisse pour gratter · tap = un coup de pièce · R = nouvelle pellicule',
     load: () => import('../experiments/023-scratch-reveal/index.ts'),
   },
+  {
+    id: '024-stained-glass',
+    title: 'Vitrail (lumière projetée)',
+    category: 'A',
+    tags: ['vitrail', 'ombres colorées', 'lumière'],
+    tech: ['castShadowNode + shadowMap.transmitted (ombres colorées)', 'Voronoï TSL avec point de cellule → verres', 'plomb : réseau + contour du sujet', 'verre dichroïque (thin-film)'],
+    blurb: 'L’illustration devient un vitrail serti de plomb ; le soleil passe derrière la carte et dépose ses couleurs sur la table.',
+    hint: 'Tap = nouveau lever de soleil · incline la carte pour déplacer la projection · drag pour la retourner',
+    load: () => import('../experiments/024-stained-glass/index.ts'),
+  },
 ];
