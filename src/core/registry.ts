@@ -145,4 +145,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Glisse sur l’illustration pour remuer · appuie pour déposer de l’encre · R = nouvelles gouttes',
     load: () => import('../experiments/014-ink-fluid/index.ts'),
   },
+  {
+    id: '015-particle-card',
+    title: 'Carte en particules',
+    category: 'A',
+    tags: ['particules', 'compute', 'ressort'],
+    tech: ['compute TSL (36k particules)', 'ressorts amortis GPU', 'vague de reconstruction', 'fondu vers la vraie carte'],
+    blurb: 'La face est faite de 36 000 particules : elles se défont (sable, vent, explosion, vortex selon le tier) puis se reconstruisent en vague.',
+    hint: 'Tap = défaire / reconstruire · le doigt repousse les particules pendant la reconstruction',
+    load: () => import('../experiments/015-particle-card/index.ts'),
+  },
 ];
