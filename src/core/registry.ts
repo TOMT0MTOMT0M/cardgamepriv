@@ -245,4 +245,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = nouveau lever de soleil · incline la carte pour déplacer la projection · drag pour la retourner',
     load: () => import('../experiments/024-stained-glass/index.ts'),
   },
+  {
+    id: '025-origami',
+    title: 'Enveloppe origami',
+    category: 'B',
+    tags: ['papier', 'pli', 'cire'],
+    tech: ['pli roulant (profil d’angle intégré, CPU)', 'boucle de la pointe pilotée par la vitesse', 'feuille unique : motif intérieur continu (attribut "sheet")', 'frontFacing : kraft dehors, impression selon la rareté dedans'],
+    blurb: 'Le booster est une enveloppe de papier scellée à la cire. Les rabats se déroulent comme du vrai papier ; une lueur traverse la feuille avant l’ouverture.',
+    hint: 'Tap = briser le sceau · tap à nouveau = refermer',
+    load: () => import('../experiments/025-origami/index.ts'),
+  },
 ];
