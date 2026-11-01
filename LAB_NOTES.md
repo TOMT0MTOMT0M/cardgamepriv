@@ -67,3 +67,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 006 | Escalade post-FX par tier | bloom émissif, flare anamorphique (highPassFn+rtt), CA, lensDirt, radialBlur, ralenti GSAP timeScale, secousse | `lensDirt` r187, `RenderPipeline` | ✅ | 0.9 | calibrage à l'oreille |
 | 007 | Carte de cristal | transmission, `dispersionNode`, atténuation par tier, gravure laser 42k sprites opaques, dépoli | dispersion/transmission node materials | ✅ | 0.6–0.7 | pas de verre derrière du verre |
 | 008 | Éclatement Voronoï + Rapier | Voronoï CPU densifié à l'impact, prismes, fissures émissives, Rapier convexHull, ralenti | `attribute()` custom | ✅ | 4.0 | coque plate |
+| 009 | Bursts compute à traînées | compute TSL, curl noise, ring buffer, rubans `Mesh.count`, 6 personnalités | compute + `instancedArray`, `Mesh.count` | ✅ | 0.7–1.6 | décalage K écritures |

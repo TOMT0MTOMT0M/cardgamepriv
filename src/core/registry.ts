@@ -85,4 +85,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap sur le paquet pour frapper à cet endroit · R pour recommencer',
     load: () => import('../experiments/008-shatter/index.ts'),
   },
+  {
+    id: '009-compute-bursts',
+    title: 'Bursts compute à traînées',
+    category: 'C',
+    tags: ['particules', 'compute', 'curl'],
+    tech: ['compute TSL (instancedArray)', 'curl noise (différences finies)', 'ring buffer de traînées', 'rubans instanciés (Mesh.count)'],
+    blurb: 'Chaque tier a sa personnalité de particules : poussière, bulles, anneau, vortex, fontaine, puis mythique qui dessine la carte avant d’exploser.',
+    hint: 'Tap = rejouer · compare les tiers avec 1–6',
+    load: () => import('../experiments/009-compute-bursts/index.ts'),
+  },
 ];
