@@ -55,4 +55,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap sur le paquet pour l’allumer à cet endroit · R pour recommencer',
     load: () => import('../experiments/005-burn-dissolve/index.ts'),
   },
+  {
+    id: '006-postfx-escalation',
+    title: 'Escalade post-FX par tier',
+    category: 'C',
+    tags: ['post', 'timing', 'comparatif'],
+    tech: ['bloom', 'flare anamorphique (highPassFn + rtt)', 'chromaticAberration', 'lensDirt r187', 'radialBlur', 'GSAP timeScale (ralenti)'],
+    blurb: 'Le même retournement, six habillages : chaque tier ajoute une couche (bloom, aberration, flare, ralenti, secousse, étalonnage, inversion).',
+    hint: 'Tap = rejouer · 1–6 pour changer de tier à chaud · « cycle auto » dans le panneau',
+    load: () => import('../experiments/006-postfx-escalation/index.ts'),
+  },
 ];
