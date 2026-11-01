@@ -115,4 +115,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = rejouer · torsion et rayon dans le panneau',
     load: () => import('../experiments/011-vortex/index.ts'),
   },
+  {
+    id: '012-raymarch-holo',
+    title: 'Hologramme raymarché',
+    category: 'A',
+    tags: ['SDF', 'raymarching', 'volume'],
+    tech: ['Fn + Loop + Break (TSL)', 'SDF smin / tores / octaèdre', 'normales tétraédriques', 'halo volumique'],
+    blurb: 'La fenêtre est un projecteur : un gyroscope d’anneaux et une gemme qui respire flottent dans le volume de la carte, raymarchés en TSL.',
+    hint: 'Incline pour tourner autour de l’objet · le nombre d’anneaux et les lunes suivent la rareté',
+    load: () => import('../experiments/012-raymarch-holo/index.ts'),
+  },
 ];

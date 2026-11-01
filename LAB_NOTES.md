@@ -70,3 +70,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 009 | Bursts compute à traînées | compute TSL, curl noise, ring buffer, rubans `Mesh.count`, 6 personnalités | compute + `instancedArray`, `Mesh.count` | ✅ | 0.7–1.6 | décalage K écritures |
 | 010 | Carte-fenêtre (diorama) | portail `pass()` en screenUV, diorama low-poly solidaire, heure du jour par tier, vitre clearcoat | `fog()+rangeFogFactor()`, pass-as-texture | ✅ | 1.1–1.9 | passe plein écran |
 | 011 | Vortex | distorsion écran (rotation gaussienne + pincement), CA par canal, horizon, grille de points, spirale | `RenderPipeline` + `sample()` | ✅ | 4.1–5.1 | déforme aussi la carte |
+| 012 | Hologramme raymarché | raymarching TSL Loop/Break, SDF tores+octaèdre smin, halo volumique, scanlines, irisation | `Loop`/`Break` dans `Fn` | ✅ | 2.4 | coût ∝ surface de fenêtre |
