@@ -65,4 +65,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = rejouer · 1–6 pour changer de tier à chaud · « cycle auto » dans le panneau',
     load: () => import('../experiments/006-postfx-escalation/index.ts'),
   },
+  {
+    id: '007-crystal-card',
+    title: 'Carte de cristal',
+    category: 'A',
+    tags: ['verre', 'transmission', 'dispersion'],
+    tech: ['transmission + dispersionNode', 'attenuationColor par tier', 'gravure laser (Sprite instancié)', 'iridescence (opale)'],
+    blurb: 'Un bloc de verre : le sujet est gravé dans la masse en micro-fractures, le texte dépoli en surface, la dispersion irise les arêtes.',
+    hint: 'Incline pour voir la réfraction des barres de lumière · la teinte du verre suit la rareté',
+    load: () => import('../experiments/007-crystal-card/index.ts'),
+  },
 ];
