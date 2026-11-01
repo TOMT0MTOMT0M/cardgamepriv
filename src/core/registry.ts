@@ -255,4 +255,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = briser le sceau · tap à nouveau = refermer',
     load: () => import('../experiments/025-origami/index.ts'),
   },
+  {
+    id: '026-fireflies',
+    title: 'Lucioles (synchronisation)',
+    category: 'C',
+    tags: ['lumières', 'rythme', 'suspense'],
+    tech: ['ClusteredLighting — Forward+ (r185) : jusqu’à 480 PointLights', 'oscillateurs de Kuramoto (synchronisation)', 'herbes instanciées, balancement TSL', 'bloom sur HDR'],
+    blurb: 'La nuit, des lucioles entourent une carte de dos. Plus elle est rare, plus leurs clignotements se synchronisent ; à l’unisson, le grand éclair la retourne.',
+    hint: 'Regarde le rythme, pas la couleur · tap = recommencer · "vraies lumières" dans le panneau',
+    load: () => import('../experiments/026-fireflies/index.ts'),
+  },
 ];
