@@ -80,3 +80,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 019 | Collection 3D | BatchedMesh 540 instances / 1 draw, DataArrayTexture, LUT par instance, raycast par instance, filtre par rareté | BatchedMesh WebGPU (fusion r187), `batchIndirectIndex` | ✅ | 2.4–2.8 | pas de mipmaps (scintillement) |
 | 020 | Duel (face à face) | flux d'énergie fBm opposés, point de choc qui hésite, étincelles, gagnant/perdant | — | ✅ | 1.5 | ruban plat |
 | 021 | Lenticulaire | sélection de vue par angle + effet loupe, diaphonie, nervures normal + clearcoatNormal | `clearcoatNormalNode` | ✅ | 4.7 | vues = palettes |
+| 022 | Taille-douce (billet) | gravure au trait ∝ valeur, hachures, loupe UV, micro-texte, encre OVI/métallique, relief d'encre | — | ✅ | 3.3 | aliasing des traits fins |

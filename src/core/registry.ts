@@ -215,4 +215,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Incline lentement de gauche à droite · densité des lentilles dans le panneau',
     load: () => import('../experiments/021-lenticular/index.ts'),
   },
+  {
+    id: '022-intaglio',
+    title: 'Taille-douce (billet)',
+    category: 'A',
+    tags: ['gravure', 'guilloché', 'loupe'],
+    tech: ['gravure au trait (épaisseur ∝ valeur)', 'hachures croisées', 'encre optiquement variable', 'loupe UV au pointeur', 'micro-texte'],
+    blurb: 'La carte devient un billet : illustration gravée en lignes ondulées, encre en relief, papier fibré, micro-texte — et une loupe pour l’examiner.',
+    hint: 'Promène la loupe (pointeur) · cherche le micro-texte autour de la fenêtre · incline pour l’encre variable (mythique)',
+    load: () => import('../experiments/022-intaglio/index.ts'),
+  },
 ];
