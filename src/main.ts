@@ -359,6 +359,7 @@ function frame() {
 
 // ─────────────────────────────────────────── démarrage
 async function boot() {
+  if (new URLSearchParams(location.search).has('clean')) document.body.classList.add('clean');
   renderer = await createRenderer(backend);
   const canvas = renderer.domElement;
   canvas.className = 'gl';
@@ -388,6 +389,7 @@ async function boot() {
     else if (e.key === 'ArrowLeft') go(-1);
     else if (e.key === 'p' || e.key === 'P') captureRequested = true;
     else if (/^[1-6]$/.test(e.key)) setRarity(RARITIES[+e.key - 1].id);
+    else if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('clean');
   });
   renderer.setAnimationLoop(frame);
   await load(currentId());

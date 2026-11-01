@@ -32,6 +32,8 @@ const PRESETS: Record<EnvKind, { top: string; bottom: string; boxes: Box[] }> = 
       { pos: [3.6, 0.6, 1.5], size: [0.5, 4.5], color: '#e9f0ff', intensity: 4 },
       { pos: [0, -2.4, 3.2], size: [5, 0.8], color: '#ffe3c2', intensity: 0.9 },
       { pos: [1.2, 3.8, -3], size: [2.2, 0.4], color: '#ffffff', intensity: 3 },
+      // grand réflecteur frontal (derrière la caméra) : les foils vus de face restent lisibles
+      { pos: [0.4, 0.6, 5.2], size: [4.2, 2.6], color: '#fff8f0', intensity: 0.75 },
     ],
   },
   warm: {
@@ -41,6 +43,7 @@ const PRESETS: Record<EnvKind, { top: string; bottom: string; boxes: Box[] }> = 
       { pos: [-2.6, 2.6, 3.2], size: [2.4, 2.4], color: '#ffc58a', intensity: 6 },
       { pos: [3.4, 1.2, 0.4], size: [0.4, 4], color: '#ffe9cc', intensity: 3 },
       { pos: [0, -3, 2], size: [4, 1], color: '#ff9a5a', intensity: 0.6 },
+      { pos: [0.3, 0.4, 5.2], size: [4, 2.6], color: '#ffe8d0', intensity: 0.6 },
     ],
   },
   night: {

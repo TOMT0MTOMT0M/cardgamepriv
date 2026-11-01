@@ -40,7 +40,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function startServer() {
   if (args.url) return null;
-  const p = spawn(process.execPath, [require.resolve('vite/bin/vite.js', { paths: [path.resolve(__dirname, '..')] }), 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', cwd: path.resolve(__dirname, '..') });
+  const p = spawn(process.execPath, [path.resolve(__dirname, '../node_modules/vite/bin/vite.js'), 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', cwd: path.resolve(__dirname, '..') });
   for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch(BASE);
@@ -108,6 +108,7 @@ async function startServer() {
         });
         const q = new URLSearchParams({ backend });
         if (args.rarity) q.set('rarity', args.rarity);
+        if (args.clean) q.set('clean', '1');
         const t0 = Date.now();
         await page.goto(`${BASE}?${q}#/exp/${id}`);
         try {
@@ -129,7 +130,7 @@ async function startServer() {
           await sleep(Math.max(0, t - last));
           last = t;
           const f = path.join(outDir, `${id}${args.rarity ? '-' + args.rarity : ''}${backend === 'webgl' ? '-gl' : ''}-${t}.png`);
-          await page.screenshot({ path: f });
+          await page.screenshot({ path: f, timeout: 180000 });
           files.push(path.basename(f));
         }
         const fps = await page.evaluate(() => (window.__lab ? window.__lab.fps : 0)).catch(() => 0);

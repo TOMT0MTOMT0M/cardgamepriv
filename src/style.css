@@ -92,3 +92,7 @@ select.btn { padding: 4px 6px; }
   .lil-gui.autoPlace { top: 92px !important; right: 8px !important; --width: 230px; max-height: 50dvh !important; }
   .stats-host { display: none; }
 }
+
+/* mode présentation : H ou ?clean */
+body.clean #app { grid-template-columns: 1fr; }
+body.clean .sidebar, body.clean .toolbar, body.clean .info, body.clean .fb, body.clean .lil-gui { display: none !important; }

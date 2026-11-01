@@ -104,3 +104,16 @@ export const saturate3 = (c: N, k: N | number): N => mix(vec3(luminance(c)), c, 
 
 /** Lumière douce type "softbox" (pour les reflets calculés à la main). */
 export const softSpec = (r: N, l: N, power: number): N => max(dot(r, l), 0).pow(power);
+
+/**
+ * Normale tangente depuis une hauteur procédurale (différences finies dans l'espace `p`).
+ * À brancher via `normalMap(encodeNormal(n))` — marche sans attribut tangent (repère par dérivées).
+ */
+export function normalFromHeight(h: (p: N) => N, p: N, eps: number, strength: N | number): N {
+  const h0 = h(p);
+  const hx = h(p.add(vec2(eps, 0)));
+  const hy = h(p.add(vec2(0, eps)));
+  return vec3(h0.sub(hx).mul(strength).div(eps), h0.sub(hy).mul(strength).div(eps), 1).normalize();
+}
+
+export const encodeNormal = (n: N): N => n.mul(0.5).add(0.5);

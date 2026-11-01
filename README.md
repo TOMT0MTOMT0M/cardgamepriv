@@ -12,6 +12,7 @@ npm run build        # tsc strict + vite build
 
 - Sidebar : expériences groupées par catégorie (A rendu · B ouverture · C rareté · D bonus). `←` / `→` pour naviguer.
 - Barre d'outils : **Replay** (`R`), **rareté** (`1`…`6`), **WebGPU ⇄ WebGL2**, **DPR**, preset **📱 Mobile**, **capture PNG** (`P`), gyroscope (mobile), son.
+- `H` : masquer toute l'interface (mode présentation).
 - 👍 / 👎 + note par expérience (localStorage) → **Export JSON** pour me faire ton retour.
 
 Détails, tableau de bord et choix techniques : [`LAB_NOTES.md`](./LAB_NOTES.md). Chaque expérience a son `NOTES.md`.
