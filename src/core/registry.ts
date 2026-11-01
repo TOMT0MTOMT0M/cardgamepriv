@@ -95,4 +95,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = rejouer · compare les tiers avec 1–6',
     load: () => import('../experiments/009-compute-bursts/index.ts'),
   },
+  {
+    id: '010-portal-diorama',
+    title: 'Carte-fenêtre (diorama)',
+    category: 'A',
+    tags: ['portail', 'parallaxe', 'diorama'],
+    tech: ['pass(scene) en screenUV (portail)', 'fog + rangeFogFactor', 'terrain positionNode fBm', 'sprites instanciés (nuages, oiseaux)'],
+    blurb: 'La fenêtre d’illustration est un vrai portail : un monde low-poly vit derrière la vitre, avec une parallaxe exacte. La rareté change l’heure du jour.',
+    hint: 'Incline pour regarder dans la fenêtre · mythique = nuit et aurore',
+    load: () => import('../experiments/010-portal-diorama/index.ts'),
+  },
 ];
