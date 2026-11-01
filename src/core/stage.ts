@@ -52,7 +52,15 @@ export function createStage(ctx: LabContext, o: StageOptions = {}) {
   };
   fit(ctx.width, ctx.height);
   ctx.bag.scene(scene);
-  return { scene, camera, fit };
+  /** Pré-compile les pipelines (compileAsync parallèle, r187) : pas d'à-coup à la première frame. */
+  const compile = async () => {
+    try {
+      await ctx.renderer.compileAsync(scene, camera);
+    } catch (e) {
+      console.warn('[stage] compileAsync', e);
+    }
+  };
+  return { scene, camera, fit, compile };
 }
 
 /** Carte standard complète (face calquée + dos + tranche). */

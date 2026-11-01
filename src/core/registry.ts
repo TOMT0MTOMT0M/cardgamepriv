@@ -35,4 +35,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Attends… puis tap pour ouvrir · change la rareté (1–6) pour comparer les rythmes',
     load: () => import('../experiments/003-rarity-leak/index.ts'),
   },
+  {
+    id: '004-emboss-foil',
+    title: 'Gaufrage & dorure brossée',
+    category: 'A',
+    tags: ['emboss', 'anisotropie', 'papier'],
+    tech: ['anisotropyNode', 'normal map Sobel (CPU)', 'clearcoat sélectif', 'sheen'],
+    blurb: 'Une carte d’imprimeur : papier coton, dorure à chaud brossée, gaufrage biseauté, vernis sélectif. La lampe rasante fait vivre le relief.',
+    hint: 'Incline lentement · le métal change avec la rareté (de la gaufrure à sec au chrome noir)',
+    load: () => import('../experiments/004-emboss-foil/index.ts'),
+  },
 ];

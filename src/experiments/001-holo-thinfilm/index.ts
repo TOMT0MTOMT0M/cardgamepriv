@@ -150,6 +150,7 @@ export default function create(): Experiment {
 
       card = createCardMesh(m, createBackMaterial(back), createEdgeMaterial());
       scene.add(card);
+      await stage.compile();
       this.replay!();
 
       const g = c.gui;

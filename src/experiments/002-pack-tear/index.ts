@@ -215,6 +215,7 @@ export default function create(): Experiment {
       root.add(cardRig);
       camBase = stage.camera.position.clone();
       c.bag.scene(stage.scene);
+      await stage.compile();
 
       c.bag.fn(() => {
         tl?.kill();
