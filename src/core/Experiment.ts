@@ -8,10 +8,10 @@ import type { Sfx } from './audio';
 export type Category = 'A' | 'B' | 'C' | 'D';
 
 export const CATEGORY_LABELS: Record<Category, string> = {
-  A: 'A · Rendu de carte',
+  A: 'A · Visualisation de la carte',
   B: 'B · Ouverture de pack',
   C: 'C · Rareté',
-  D: 'D · Bonus',
+  D: 'D · Designs de cartes',
 };
 
 export interface ExperimentMeta {

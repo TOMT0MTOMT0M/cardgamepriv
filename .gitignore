@@ -4,3 +4,7 @@ shots
 *.log
 .DS_Store
 .lab-sync
+.env.local
+.env.*.local
+.wrangler
+_hors-site/

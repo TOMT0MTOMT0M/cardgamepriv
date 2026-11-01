@@ -1,0 +1,309 @@
+import type { CardData } from '../../cardData';
+import type { Rarity } from '../../rarity';
+import type { Universe, UniverseId } from '../../universes';
+import { rng } from '../../ease';
+import { type Ctx, alpha, grainTile, linear, mix } from '../canvas';
+import { BASE_H, BASE_W } from '../subjects';
+
+export const W = BASE_W;
+export const H = BASE_H;
+export const TAU = Math.PI * 2;
+export const FONT_TITLE = '"Fraunces Variable", "Fraunces", Georgia, serif';
+export const FONT_MONO = '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace';
+export const FONT_SANS = '"Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif';
+
+export interface DesignCtx {
+  card: CardData;
+  rar: Rarity;
+  uni: Universe;
+  tier: number;
+  /** nombre d'étoiles = tier + 1 (1 ★ commune … 6 ★ mythique) */
+  stars: number;
+}
+
+/**
+ * Un design de carte : comment l'illustration est cadrée et ce qui est peint par-dessus.
+ * Contrat des masques (opaques, composite 'lighter') : R = foil, G = relief,
+ * B = index d'étoile ((k+1)·32/255) → les étoiles peuvent s'allumer une par une.
+ */
+export interface CardDesign {
+  id: string;
+  title: string;
+  /** l'illustration (composée pour la fenêtre historique) est agrandie de `k` et son point `from` posé sur `to` */
+  art: { k: number; from?: [number, number]; to: [number, number] };
+  paint(f: Ctx, m: Ctx, d: DesignCtx): void;
+}
+
+/** Couleur des étoiles par tier (pierre, vert-de-gris, cobalt, grenat, or, nacre). */
+export const STAR_COLORS = ['#9a9387', '#7fae84', '#5b8bd6', '#c43b58', '#e2a93b', '#f1ece2'];
+
+export function starColor(tier: number) {
+  return STAR_COLORS[Math.max(0, Math.min(5, tier))];
+}
+
+// ───────────────────────────────────────────── texte
+
+export function spaced(g: Ctx, text: string, x: number, y: number, spacing: number, align: 'left' | 'center' | 'right' = 'left') {
+  const chars = [...text];
+  const total = chars.reduce((a, c) => a + g.measureText(c).width + spacing, -spacing);
+  let cx = align === 'right' ? x - total : align === 'center' ? x - total / 2 : x;
+  const prev = g.textAlign;
+  g.textAlign = 'left';
+  for (const c of chars) {
+    g.fillText(c, cx, y);
+    cx += g.measureText(c).width + spacing;
+  }
+  g.textAlign = prev;
+  return total;
+}
+
+/** Choisit la taille de police (≤ size) pour que le texte tienne dans maxW. `font` contient « {s} ». */
+export function fitFont(g: Ctx, text: string, font: string, size: number, maxW: number, min = 18) {
+  let s = size;
+  g.font = font.replace('{s}', String(s));
+  while (s > min && g.measureText(text).width > maxW) {
+    s -= 1;
+    g.font = font.replace('{s}', String(s));
+  }
+  return s;
+}
+
+/** Texte le long d'un arc (centre cx,cy). `bottom` : lu de gauche à droite sous le centre. */
+export function arcText(g: Ctx, text: string, cx: number, cy: number, r: number, mid: number, spacing: number, bottom = false) {
+  const chars = [...text];
+  const widths = chars.map((c) => g.measureText(c).width + spacing);
+  const total = widths.reduce((a, b) => a + b, -spacing);
+  let a = mid + (bottom ? 1 : -1) * (total / r) / 2;
+  g.save();
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  chars.forEach((c, i) => {
+    const w = widths[i];
+    const aa = a + (bottom ? -1 : 1) * (w - spacing) / 2 / r;
+    g.save();
+    g.translate(cx + Math.cos(aa) * r, cy + Math.sin(aa) * r);
+    g.rotate(aa + (bottom ? -Math.PI / 2 : Math.PI / 2));
+    g.fillText(c, 0, 0);
+    g.restore();
+    a += (bottom ? -1 : 1) * w / r;
+  });
+  g.restore();
+}
+
+// ───────────────────────────────────────────── surfaces
+
+/** Papier : léger dégradé + marbrure floutée. */
+export function paper(f: Ctx, base: string, seed: number, k = 1) {
+  f.fillStyle = linear(f, 0, 0, W, H, [[0, mix(base, '#fff', 0.1)], [1, mix(base, '#000', 0.07)]]);
+  f.fillRect(0, 0, W, H);
+  const r = rng(seed * 7 + 3);
+  f.save();
+  f.filter = 'blur(18px)';
+  f.globalAlpha = 0.035 * k;
+  for (let i = 0; i < 26; i++) {
+    f.fillStyle = i % 2 ? '#000' : '#fff';
+    f.beginPath();
+    f.ellipse(r() * W, r() * H, 50 + r() * 140, 20 + r() * 50, r() * 3, 0, TAU);
+    f.fill();
+  }
+  f.restore();
+}
+
+/** Grain + poussières, seulement sur ce qui est déjà peint (jamais sur l'illustration). */
+export function grainAtop(f: Ctx, seed: number, amount = 0.09, dust = 60) {
+  f.save();
+  f.globalCompositeOperation = 'source-atop';
+  f.globalAlpha = amount;
+  const p = f.createPattern(grainTile(), 'repeat');
+  if (p) {
+    f.fillStyle = p;
+    f.fillRect(0, 0, W, H);
+  }
+  f.globalAlpha = 1;
+  const r = rng(seed * 31 + 7);
+  for (let i = 0; i < dust; i++) {
+    f.fillStyle = r() > 0.5 ? 'rgba(255,250,240,0.3)' : 'rgba(20,15,10,0.25)';
+    f.beginPath();
+    f.arc(r() * W, r() * H, 0.5 + r() * 1.3, 0, TAU);
+    f.fill();
+  }
+  f.restore();
+}
+
+/** Découpe la fenêtre d'illustration (alpha 0). */
+export function cut(f: Ctx, path: (g: Ctx) => void) {
+  f.save();
+  f.globalCompositeOperation = 'destination-out';
+  f.beginPath();
+  path(f);
+  f.fill();
+  f.restore();
+}
+
+export function rrect(g: Ctx, x: number, y: number, w: number, h: number, r: number | [number, number, number, number]) {
+  g.roundRect(x, y, w, h, r);
+}
+
+// ───────────────────────────────────────────── étoiles de rareté
+
+export type StarShape = 'star' | 'square' | 'sparkle' | 'dot';
+
+function shapePath(g: Ctx, shape: StarShape, x: number, y: number, r: number) {
+  g.beginPath();
+  if (shape === 'square') {
+    g.rect(x - r, y - r, 2 * r, 2 * r);
+    return;
+  }
+  if (shape === 'dot') {
+    g.arc(x, y, r, 0, TAU);
+    return;
+  }
+  const pts = shape === 'sparkle' ? 4 : 5;
+  const inner = shape === 'sparkle' ? 0.28 : 0.46;
+  for (let i = 0; i <= pts * 2; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / pts;
+    const rr = i % 2 ? r * inner : r;
+    if (i === 0) g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    else g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  g.closePath();
+}
+
+export interface StarStyle {
+  r: number;
+  shape?: StarShape;
+  fill?: string;
+  stroke?: string | null;
+  lineWidth?: number;
+  /** foil sur les étoiles à partir de ce tier (défaut 2) */
+  foilFrom?: number;
+  glow?: boolean;
+}
+
+/** Étoiles à des positions données. Peint la couleur, le foil, le relief et l'index d'allumage. */
+export function starsAt(f: Ctx, m: Ctx, d: DesignCtx, pts: Array<[number, number]>, st: StarStyle) {
+  const shape = st.shape ?? 'star';
+  const col = st.fill ?? starColor(d.tier);
+  pts.forEach(([x, y], k) => {
+    if (st.glow && d.tier >= 3) {
+      f.save();
+      f.shadowColor = alpha(col, 0.8);
+      f.shadowBlur = st.r * 1.2;
+      f.fillStyle = col;
+      shapePath(f, shape, x, y, st.r);
+      f.fill();
+      f.restore();
+    }
+    f.fillStyle = col;
+    shapePath(f, shape, x, y, st.r);
+    f.fill();
+    if (st.stroke) {
+      f.strokeStyle = st.stroke;
+      f.lineWidth = st.lineWidth ?? 1.4;
+      f.stroke();
+    }
+    // masques (le canvas des masques est en 'lighter')
+    if (d.tier >= (st.foilFrom ?? 2)) {
+      m.fillStyle = 'rgb(255,0,0)';
+      shapePath(m, shape, x, y, st.r + 1);
+      m.fill();
+    }
+    m.fillStyle = 'rgb(0,200,0)';
+    shapePath(m, shape, x, y, st.r * 0.9);
+    m.fill();
+    m.fillStyle = `rgb(0,0,${(k + 1) * 32})`;
+    shapePath(m, shape, x, y, st.r + 1.5);
+    m.fill();
+  });
+}
+
+/** Rangée d'étoiles (horizontale ou verticale). */
+export function starRow(f: Ctx, m: Ctx, d: DesignCtx, x: number, y: number, gap: number, align: 'left' | 'center' | 'right', st: StarStyle, vertical = false) {
+  const n = d.stars;
+  const span = (n - 1) * gap;
+  const start = align === 'left' ? 0 : align === 'center' ? -span / 2 : -span;
+  const pts: Array<[number, number]> = [];
+  for (let k = 0; k < n; k++) pts.push(vertical ? [x, y + start + k * gap] : [x + start + k * gap, y]);
+  starsAt(f, m, d, pts, st);
+}
+
+// ───────────────────────────────────────────── emblèmes d'univers
+
+/** Emblème de l'univers (trait), centré, taille `s` (≈ diamètre). */
+export function glyph(g: Ctx, id: UniverseId, x: number, y: number, s: number, color: string, lw = 2) {
+  g.save();
+  g.translate(x, y);
+  g.scale(s / 40, s / 40);
+  g.strokeStyle = color;
+  g.fillStyle = color;
+  g.lineWidth = (lw * 40) / s;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.beginPath();
+  switch (id) {
+    case 'cendre': // flamme
+      g.moveTo(0, 18);
+      g.bezierCurveTo(-16, 16, -16, 0, -6, -8);
+      g.bezierCurveTo(-4, -2, -2, 0, 0, 2);
+      g.bezierCurveTo(-2, -8, 2, -14, 4, -19);
+      g.bezierCurveTo(16, -6, 18, 14, 0, 18);
+      g.stroke();
+      g.beginPath();
+      g.arc(1, 9, 4, 0, TAU);
+      g.fill();
+      break;
+    case 'marees': // trois vagues
+      for (let i = -1; i <= 1; i++) {
+        const yy = i * 10;
+        g.moveTo(-18, yy);
+        g.bezierCurveTo(-12, yy - 7, -6, yy - 7, 0, yy);
+        g.bezierCurveTo(6, yy + 7, 12, yy + 7, 18, yy);
+      }
+      g.stroke();
+      break;
+    case 'lune': // croissant
+      g.arc(0, 0, 17, 0.25 * Math.PI, 1.75 * Math.PI, false);
+      g.arc(7, 0, 13, 1.62 * Math.PI, 0.38 * Math.PI, true);
+      g.closePath();
+      g.fill();
+      break;
+    case 'monts': // deux sommets
+      g.moveTo(-19, 14);
+      g.lineTo(-6, -10);
+      g.lineTo(1, 2);
+      g.lineTo(8, -16);
+      g.lineTo(19, 14);
+      g.closePath();
+      g.stroke();
+      g.beginPath();
+      g.moveTo(4, -8);
+      g.lineTo(8, -16);
+      g.lineTo(12, -8);
+      g.stroke();
+      break;
+    case 'ronces': // tige à épines + feuille
+      g.moveTo(0, 19);
+      g.bezierCurveTo(-4, 6, 4, -6, 0, -19);
+      for (const [yy, sd] of [[10, -1], [0, 1], [-10, -1]] as const) {
+        g.moveTo(sd * 1.5, yy);
+        g.lineTo(sd * 8, yy - 4);
+      }
+      g.stroke();
+      g.beginPath();
+      g.ellipse(7, -12, 7, 3.5, -0.6, 0, TAU);
+      g.fill();
+      break;
+    case 'abime': // puits : cercles concentriques
+      g.arc(0, 0, 18, 0, TAU);
+      g.moveTo(11, 0);
+      g.arc(0, 0, 11, 0, TAU);
+      g.stroke();
+      g.beginPath();
+      g.arc(0, 0, 4, 0, TAU);
+      g.fill();
+      break;
+  }
+  g.restore();
+}
+
+export const num3 = (n: number) => String(n).padStart(3, '0');

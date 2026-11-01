@@ -23,6 +23,8 @@ import {
   type DprMode,
 } from './core/renderer';
 import { exportFeedback, loadFeedback, setFeedback } from './core/feedback';
+import { mountNetHud } from './core/net/hud';
+import { net } from './core/net/client';
 
 // ─────────────────────────────────────────── DOM
 const app = document.getElementById('app')!;
@@ -164,13 +166,14 @@ const statsHost = h('div', 'stats-host desk');
 const backendLabel = h('span', 'btn desk', '');
 backendLabel.style.pointerEvents = 'none';
 toolbar.append(menuBtn, replayBtn, rarBox, backendBtn, dprSel, mobileBtn, capBtn, gyroBtn, sndBtn, h('span', 'spacer'), backendLabel, statsHost);
+mountNetHud(toolbar, stage);
 
 function syncRarityButtons() {
   rarButtons.forEach((b, i) => b.classList.toggle('on', RARITIES[i].id === rarityId));
 }
 
 // ─────────────────────────────────────────── feedback
-fb.innerHTML = `<div class="row"><button class="btn vote up" title="J'aime">👍</button><button class="btn vote down" title="Bof">👎</button><button class="btn exp" title="Exporter tous les retours">Export JSON</button><span class="count"></span></div><textarea placeholder="Note pour Claude…"></textarea>`;
+fb.innerHTML = `<div class="row"><button class="btn vote up" title="J'aime">👍</button><button class="btn vote down" title="Bof">👎</button><button class="btn exp" title="Exporter tous les retours">Export JSON</button><span class="count"></span></div><textarea placeholder="Ton avis…"></textarea>`;
 const upB = fb.querySelector('.up') as HTMLButtonElement;
 const downB = fb.querySelector('.down') as HTMLButtonElement;
 const noteT = fb.querySelector('textarea') as HTMLTextAreaElement;
@@ -416,6 +419,7 @@ async function boot() {
     tap: (x = 0, y = 0) => (input as unknown as { taps: Set<(x: number, y: number, e: unknown) => void> }).taps.forEach((f) => f(x, y, {})),
     memory: () => ({ ...renderer.info.memory }),
     info: () => ({ render: { ...renderer.info.render }, memory: { ...renderer.info.memory } }),
+    net,
   };
 }
 

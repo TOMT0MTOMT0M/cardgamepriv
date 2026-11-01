@@ -9,6 +9,31 @@ export interface FeedbackEntry {
 }
 
 const KEY = 'cardlab.feedback.v1';
+const NAME_KEY = 'cardlab.tester';
+
+/** Prénom du testeur : demandé au premier export, mémorisé, inclus dans le JSON et le nom du fichier. */
+function testerName(): string {
+  let name = '';
+  try {
+    name = localStorage.getItem(NAME_KEY) || '';
+  } catch {
+    /* stockage indisponible */
+  }
+  if (!name) {
+    try {
+      name = (window.prompt('Ton prénom (pour que Tom sache de qui viennent ces retours) :') || '').trim();
+    } catch {
+      /* prompt bloqué */
+    }
+    name = name.slice(0, 40) || 'anonyme';
+    try {
+      localStorage.setItem(NAME_KEY, name);
+    } catch {
+      /* tant pis */
+    }
+  }
+  return name;
+}
 
 export function loadFeedback(): Record<string, FeedbackEntry> {
   try {
@@ -36,7 +61,9 @@ export function setFeedback(id: string, patch: Partial<FeedbackEntry>) {
 
 export function exportFeedback(metas: ExperimentMeta[], extra: Record<string, unknown>) {
   const all = loadFeedback();
+  const tester = testerName();
   const payload = {
+    tester,
     exportedAt: new Date().toISOString(),
     ...extra,
     summary: {
@@ -55,7 +82,8 @@ export function exportFeedback(metas: ExperimentMeta[], extra: Record<string, un
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `cardlab-feedback-${new Date().toISOString().slice(0, 10)}.json`;
+  const slug = tester.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'anonyme';
+  a.download = `cardlab-retours-${slug}-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();

@@ -30,7 +30,7 @@ import { hashCell, saturate3, thinFilm, voronoi, type N } from './tsl';
  * Matériau holo réutilisable (version condensée de 001) : couche mince spectrale, grain de foil,
  * paillettes, masques par tier. `strength` est un uniform → on peut faire "apparaître" le foil.
  */
-export function createHoloMaterial(art: CardArt, tier: number, opts: { pattern?: 'cracked' | 'nebula' | 'linear' } = {}) {
+export function createHoloMaterial(art: CardArt, tier: number, opts: { pattern?: 'cracked' | 'nebula' | 'linear'; aoFromFrame?: boolean } = {}) {
   const U = {
     strength: uniform(0.75),
     thickness: uniform(420),
@@ -40,7 +40,7 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: { pattern?:
     lightDir: uniform(new Vector3(-0.5, 0.7, 0.6).normalize()),
     extraEmissive: uniform(0),
   };
-  const L = cardLayers(art, { bg: 0.03, subject: 0.014, fg: -0.003 });
+  const L = cardLayers(art, { bg: 0.03, subject: 0.014, fg: -0.003 }, undefined, { aoFromFrame: opts.aoFromFrame });
   const winFoil = L.window.mul(L.subject.a.oneMinus()).mul(tier >= 3 ? 1 : 0);
   const subjFoil = L.window.mul(L.subject.a).mul(L.fx.g).mul(tier >= 5 ? 0.8 : 0);
   const foil = clamp(L.masks.r.mul(L.window.oneMinus()).add(winFoil).add(subjFoil), 0, 1);

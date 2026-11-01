@@ -22,7 +22,7 @@ import {
 import { CARD } from './cardModel';
 import type { N } from './tsl';
 import type { CardArt, BackArt } from './art';
-import { WIN, BASE_W, BASE_H } from './art';
+import { FRAME_WIN as WIN, BASE_W, BASE_H } from './art';
 
 
 
@@ -38,7 +38,7 @@ export const WINDOW_UV = {
   cy: 1 - (WIN.y + WIN.h / 2) / BASE_H,
   hx: WIN.w / 2 / BASE_W,
   hy: WIN.h / 2 / BASE_H,
-  r: (14 / BASE_W) * CARD.w,
+  r: (WIN.r / BASE_W) * CARD.w,
 };
 
 /** SDF de la fenêtre (unités objet, négatif à l'intérieur). */
@@ -77,7 +77,12 @@ export interface CardLayers {
  * Composite des calques avec parallaxe réelle : chaque calque est échantillonné
  * là où le rayon de vue le croise à sa profondeur sous la surface.
  */
-export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, uvNode: N = uv()): CardLayers {
+export interface LayerOptions {
+  /** ombre du bord de fenêtre déduite de l'alpha du cadre (toutes formes de fenêtre) plutôt que du SDF rectangulaire */
+  aoFromFrame?: boolean;
+}
+
+export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, uvNode: N = uv(), opts: LayerOptions = {}): CardLayers {
   const V = viewDirObject();
   const k = V.xy.div(max(V.z, 0.22)).mul(vec2(1 / CARD.w, 1 / CARD.h));
   const uvAt = (d: number | N) => uvNode.sub(k.mul(d));
@@ -88,8 +93,15 @@ export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, u
   const masks = texture(art.masks, uvNode);
   const fx = texture(art.fx, uvAt(depths.subject));
   // ombre du bord de fenêtre projetée sur le fond (plus profond = plus d'ombre visible)
-  const sd = windowSDF(uvAt(depths.bg * 0.6));
-  const ao = mix(float(0.45), float(1), smoothstep(float(0.0), float(0.035), sd.negate()));
+  let ao: N;
+  if (opts.aoFromFrame) {
+    // le cadre flouté (mip) vu à la profondeur du fond = ombre portée du bord, quelle que soit sa forme
+    const edge = texture(art.frame, uvAt(depths.bg * 0.6)).level(float(4)).a;
+    ao = mix(float(1), float(0.5), smoothstep(float(0.05), float(0.6), edge));
+  } else {
+    const sd = windowSDF(uvAt(depths.bg * 0.6));
+    ao = mix(float(0.45), float(1), smoothstep(float(0.0), float(0.035), sd.negate()));
+  }
   let col: N = bg.rgb.mul(ao);
   col = mix(col, sj.rgb.mul(mix(float(0.7), float(1), ao)), sj.a);
   col = mix(col, fg.rgb, fg.a);

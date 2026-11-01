@@ -7,12 +7,16 @@ import type { CardData } from '../cardData';
 import { rarity as getRarity, type RarityId } from '../rarity';
 import { rng } from '../ease';
 import { makeCanvas, type Ctx } from './canvas';
-import { BASE_H, BASE_W, SUBJECTS, finishLayer } from './subjects';
-import { paintFrame, FONT_MONO, FONT_TITLE } from './frame';
+import { BASE_H, BASE_W, SUBJECTS, WIN, finishLayer } from './subjects';
+import { FONT_MONO, FONT_TITLE } from './designs/common';
+import { design as resolveDesign, CLASSIC_WIN, type CardDesign } from './designs';
+import { universe } from '../universes';
 import { paintBack, DEFAULT_BACK, type BackStyle } from './back';
 
 export { WIN, BASE_W, BASE_H } from './subjects';
-export { LAYOUT } from './frame';
+/** Fenêtre d'illustration du gabarit par défaut (« Classique »), coordonnées 768×1072. */
+export const FRAME_WIN = CLASSIC_WIN;
+export { DESIGNS, DESIGN_BY_ID, DEFAULT_DESIGN, starColor, glyph, type CardDesign } from './designs';
 
 let fontsReady: Promise<void> | null = null;
 export function ensureFonts(): Promise<void> {
@@ -20,6 +24,7 @@ export function ensureFonts(): Promise<void> {
     fontsReady = Promise.all([
       document.fonts.load(`600 44px ${FONT_TITLE}`),
       document.fonts.load(`italic 400 27px ${FONT_TITLE}`),
+      document.fonts.load(`italic 500 40px ${FONT_TITLE}`),
       document.fonts.load(`500 19px ${FONT_MONO}`),
       document.fonts.load(`400 14px ${FONT_MONO}`),
     ]).then(() => undefined, () => undefined);
@@ -52,6 +57,8 @@ export interface ArtOptions {
   scale?: number;
   /** ne produire que la texture aplatie */
   flatOnly?: boolean;
+  /** maquette de carte (défaut : « Classique ») */
+  design?: string | CardDesign;
   anisotropy?: number;
 }
 
@@ -65,6 +72,32 @@ function tex(c: HTMLCanvasElement, color: boolean, aniso: number): Texture {
 
 function prep(g: Ctx, s: number) {
   g.setTransform(s, 0, 0, s, 0, 0);
+}
+
+/**
+ * Recadre les calques d'illustration pour un design : la composition (pensée pour la fenêtre historique `WIN`)
+ * est agrandie de `k` autour de `from` et posée sur `to`. Les calques couvrent toute la carte, rien n'est perdu.
+ */
+function reframe(layers: Array<{ c: HTMLCanvasElement; g: Ctx }>, art: CardDesign['art'], s: number, W: number, H: number) {
+  const from = art.from ?? [WIN.x + WIN.w / 2, WIN.y + WIN.h / 2];
+  const [tx, ty] = art.to;
+  if (art.k === 1 && from[0] === tx && from[1] === ty) return;
+  const tmp = makeCanvas(W, H);
+  layers.forEach(({ c, g }, i) => {
+    tmp.g.setTransform(1, 0, 0, 1, 0, 0);
+    tmp.g.clearRect(0, 0, W, H);
+    tmp.g.drawImage(c, 0, 0);
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, W, H);
+    if (i === 3) {
+      g.fillStyle = '#000';
+      g.fillRect(0, 0, W, H);
+    }
+    g.setTransform(art.k, 0, 0, art.k, (tx - from[0] * art.k) * s, (ty - from[1] * art.k) * s);
+    g.drawImage(tmp.c, 0, 0);
+    g.restore();
+  });
 }
 
 /** Génère les calques d'une carte (≈ 30–60 ms à pleine résolution). */
@@ -82,9 +115,16 @@ export function generateCardArt(card: CardData, rarityId: RarityId, o: ArtOption
   fx.g.fillRect(0, 0, BASE_W, BASE_H);
 
   SUBJECTS[card.subject]({ bg: bg.g, subj: subj.g, fg: fg.g, fx: fx.g, pal: card.palette, r, seed: card.seed });
+  const dz = resolveDesign(o.design);
+  reframe([bg, subj, fg, fx], dz.art, s, W, H);
   finishLayer(bg.g, card.seed, 0.14);
   finishLayer(subj.g, card.seed + 1, 0.1);
-  paintFrame(card, rar, frame.g, masks.g);
+  masks.g.fillStyle = '#000';
+  masks.g.fillRect(0, 0, BASE_W, BASE_H);
+  masks.g.globalCompositeOperation = 'lighter';
+  frame.g.textBaseline = 'alphabetic';
+  dz.paint(frame.g, masks.g, { card, rar, uni: universe(card.universe), tier: rar.tier, stars: rar.tier + 1 });
+  masks.g.globalCompositeOperation = 'source-over';
 
   const flat = makeCanvas(W, H);
   flat.g.drawImage(bg.c, 0, 0);

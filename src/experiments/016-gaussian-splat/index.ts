@@ -5,7 +5,7 @@ import { createGaussianSplatGeometry, writeCovariance } from 'three/addons/utils
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
-import { cardArtFor, WIN, BASE_W, BASE_H } from '../../core/art';
+import { cardArtFor, FRAME_WIN as WIN, BASE_W, BASE_H } from '../../core/art';
 import { cardForRarity } from '../../core/cardData';
 import { rarity, type Rarity } from '../../core/rarity';
 import { createBackMaterial, createEdgeMaterial, windowSDF } from '../../core/cardMaterial';

@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "vite",
     "dev:mobile": "vite --host --mode https",
+    "convex:dev": "convex dev",
+    "convex:deploy": "convex deploy",
     "build": "tsc --noEmit && vite build",
+    "cf:deploy": "npm run build && npx wrangler pages deploy dist --project-name=cardgamepriv",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "verify": "node scripts/verify.cjs"
@@ -14,6 +17,7 @@
     "@dimforge/rapier3d-compat": "^0.21.0",
     "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
+    "convex": "^1.30.0",
     "gsap": "^3.15.0",
     "lil-gui": "^0.21.0",
     "stats-gl": "^4.2.3",

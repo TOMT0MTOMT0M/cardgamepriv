@@ -95,4 +95,33 @@ select.btn { padding: 4px 6px; }
 
 /* mode présentation : H ou ?clean */
 body.clean #app { grid-template-columns: 1fr; }
-body.clean .sidebar, body.clean .toolbar, body.clean .info, body.clean .fb, body.clean .lil-gui { display: none !important; }
+body.clean .sidebar, body.clean .toolbar, body.clean .info, body.clean .fb, body.clean .lil-gui, body.clean .net-popover { display: none !important; }
+
+/* ── Convex + Discord Online HUD */
+.net-hud { display: flex; gap: 6px; align-items: center; }
+.net-pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; }
+.net-pill.discord-btn { border-color: #5865f2; background: rgba(88, 101, 242, 0.22); color: #fff; }
+.net-pill.discord-btn:hover { background: rgba(88, 101, 242, 0.36); }
+.net-pill.offline { color: var(--muted); }
+.net-ava { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; }
+.net-pack { color: var(--accent); font-weight: 600; }
+.net-online { color: var(--up); }
+.net-err { border-color: var(--down); color: #ffb4ae; font-size: 11px; }
+
+.net-popover { position: absolute; top: 48px; right: 14px; width: 320px; max-height: calc(100dvh - 110px); overflow-y: auto; background: rgba(26, 25, 23, 0.96); border: 1px solid var(--line); border-radius: 8px; padding: 12px; z-index: 15; backdrop-filter: blur(10px); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55); }
+.net-popover.hidden { display: none; }
+.net-pop-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.net-pop-body p, .net-pop-body ol { margin: 6px 0; padding-left: 18px; color: #cfc8bb; font-size: 12px; }
+.net-pop-body code { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+.net-hint { margin-top: 8px; font: 11px var(--mono); color: var(--muted); }
+.net-sec-title { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 6px; }
+.net-friends-list, .net-feed-list { display: flex; flex-direction: column; gap: 5px; max-height: 150px; overflow-y: auto; }
+.net-friend { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 4px; border-radius: 4px; background: var(--panel-2); }
+.net-friend .dot { width: 7px; height: 7px; border-radius: 50%; background: #555; }
+.net-friend .dot.on { background: var(--up); box-shadow: 0 0 6px var(--up); }
+.net-friend .name { font-weight: 500; }
+.net-friend .meta { margin-left: auto; font: 10px var(--mono); color: var(--muted); }
+.net-feed-item { font-size: 11px; padding: 5px 6px; border-radius: 4px; background: var(--panel-2); border-left: 2px solid var(--accent); display: flex; flex-direction: column; gap: 3px; }
+.net-rar { font: 10px var(--mono); border: 1px solid; border-radius: 3px; padding: 0 4px; align-self: flex-start; }
+.net-empty { font: 11px var(--mono); color: var(--muted); padding: 4px 0; }
+.net-pop-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font: 11px var(--mono); color: var(--muted); }

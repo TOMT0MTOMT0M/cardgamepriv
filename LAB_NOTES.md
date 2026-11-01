@@ -28,9 +28,9 @@ Le texte des cartes est rendu en Canvas 2D dans les calques (net, gratuit, et se
 
 **Exploitées dans le lab** : `RenderPipeline` + MRT (003, 005, 006, 009…), storage textures en ping-pong (014) et en
 **lecture-écriture** (023), `compileAsync()` (toutes via `stage.compile()`), `GaussianSplat` (016), `fog()+rangeFogFactor()` (010),
-`bumpMap(…, normalNode)` (001, 002), `lensDirt()` (006), `BatchedMesh` (019), compute TSL (009, 014, 015).
-**Non exploitées (et pourquoi)** : FSR1/TAAU (pistes pour 010 en mobile), Forward+/clustered et `SunLight`+CSM (pas de scènes
-à nombreuses lumières/ombres ici), `LightProbeGrid` / brouillard volumétrique (hors sujet carte), `BitonicSort` (pas de tri de particules
+`bumpMap(…, normalNode)` (001, 002), `lensDirt()` (006), `BatchedMesh` (019), compute TSL (009, 014, 015),
+**ombres colorées** `castShadowNode` + `shadowMap.transmitted` (024), **Forward+ / `ClusteredLighting`** r185 (026, jusqu'à 480 PointLights).
+**Non exploitées (et pourquoi)** : FSR1/TAAU (pistes pour 010 en mobile), `SunLight`+CSM (pas de grande scène extérieure), `LightProbeGrid` / brouillard volumétrique (hors sujet carte), `BitonicSort` (pas de tri de particules
 nécessaire en additif).
 
 ## Architecture
@@ -101,10 +101,42 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 014 | Encre fluide (suminagashi) | fluide compute (advection, Jacobi, projection), encre multiplicative, film brillant, relief de densité | storage textures r/w r183 | ✅ | 3.2 | pas de MacCormack |
 | 015 | Carte en particules | 36k particules compute, dispersion par tier, ressorts GPU, vague, fondu vers la carte | `If().Else()` compute, uniform mat4 | ✅ | 4.4 | sprites face caméra |
 | 016 | Sculpture en gaussian splats | sujet 2D gonflé (chamfer → dôme), gaussiennes orientées, pop-up scale.z, paillettes | `GaussianSplat` r186 | ✅ | 1.4–2.0 | sujets fins = relief faible |
-| 017 | Carton, vernis & usure | pliage cylindrique 2 axes + normales exactes, ressort sous-amorti, vernis sélectif, usure SDF/fBm, pli permanent | `transformNormalToView` | ✅ | 0.7–1.3 | pliage cylindrique seulement |
 | 018 | Mythique « L'Éclipse » | combine 001/003/005/006/009/011 : battements, fausse pause, feu spectral, lentille au ralenti, convergence, onde de choc, inversion, foil qui s'éveille | chaîne TSL complète | ✅ (logique tracée) | 1.1–1.4 | à juger sur vrai GPU |
-| 019 | Collection 3D | BatchedMesh 540 instances / 1 draw, DataArrayTexture, LUT par instance, raycast par instance, filtre par rareté | BatchedMesh WebGPU (fusion r187), `batchIndirectIndex` | ✅ | 2.4–2.8 | pas de mipmaps (scintillement) |
-| 020 | Duel (face à face) | flux d'énergie fBm opposés, point de choc qui hésite, étincelles, gagnant/perdant | — | ✅ | 1.5 | ruban plat |
+| 019 | Collection 3D (→ A) | BatchedMesh 540 instances / 1 draw, DataArrayTexture, LUT par instance, raycast par instance, filtre par rareté | BatchedMesh WebGPU (fusion r187), `batchIndirectIndex` | ✅ | 2.4–2.8 | pas de mipmaps (scintillement) |
 | 021 | Lenticulaire | sélection de vue par angle + effet loupe, diaphonie, nervures normal + clearcoatNormal | `clearcoatNormalNode` | ✅ | 4.7 | vues = palettes |
 | 022 | Taille-douce (billet) | gravure au trait ∝ valeur, hachures, loupe UV, micro-texte, encre OVI/métallique, relief d'encre | — | ✅ | 3.3 | aliasing des traits fins |
 | 023 | Grattage | storage texture read-write, tampon segment, bord déchiqueté, couverture CPU, écaillage final | storage textures r/w (r183) | ✅ | 2.2 | pas de copeaux |
+| 024 | Vitrail (lumière projetée) | Voronoï TSL avec point de cellule → verres, plomb (réseau + contour du sujet), verre dichroïque, lumière transmise émissive | `castShadowNode` + `shadowMap.transmitted` | ✅ | 0.5–1.0 | la carte ne doit pas recevoir d'ombre ; pas de rayons volumétriques |
+| 025 | Enveloppe origami | pli roulant intégré (CPU), boucle de pointe ∝ vitesse, mémoire du pli, feuille unique (attribut `sheet`), `frontFacing`, sceau pré-rompu, lueur à travers le papier | — (TSL + attributs custom) | ✅ | 0.6–0.8 | pas d'épaisseur ni de collision entre rabats ; pas d'ombres |
+| 026 | Lucioles (synchronisation) | oscillateurs de Kuramoto, éclats brefs, 2 200 brins d'herbe instanciés, son au battement collectif, `?ff=` pour les captures | `ClusteredLighting` (Forward+, r185) | ✅ | 0.2–0.6 | timing du climax stochastique (5–9 s) ; chemin WebGL2 à mesurer |
+
+## Format des cartes (depuis le 1er nov.)
+- Jeu **100 % collection** : plus de coût, puissance, garde ni texte d'ambiance. Une carte affiche **son nom, son univers
+  et sa rareté en étoiles** (1 ★ commune → 6 ★ mythique), plus les couleurs et effets du tier.
+- Couleur des étoiles : pierre `#9a9387`, vert-de-gris `#7fae84`, cobalt `#5b8bd6`, grenat `#c43b58`, or `#e2a93b`, nacre `#f1ece2`.
+- **Univers** (inventés, `src/core/universes.ts`) : Royaume de Cendre, Archipel des Marées, Cour de la Lune Pâle,
+  Les Monts Muets, Forêt des Ronces, Le Grand Abîme — chacun a un emblème dessiné (flamme, vagues, croissant, sommets,
+  ronce, puits). Les 12 cartes y sont réparties via `universe` dans `cardData.ts` (`epithet`/`element` gardés pour le catalogue serveur).
+- Le gabarit par défaut de toutes les expériences est le design **Classique** ; les 10 designs sont dans `src/core/art/designs/`
+  et se choisissent par `generateCardArt(card, rarity, { design: 'art-deco' })`.
+- Retirées (hors sujet pour un jeu de collection) : **017** carton & usure (abîmer une carte de collection = anti-dopamine),
+  **020** duel, **027** main de cartes (jouer sur un tapis). Récupérables dans l'historique git.
+
+## Coexistence avec l'infrastructure (Convex / Discord / Cloudflare)
+L'infra est montée en parallèle dans le même dossier (`convex/`, `src/core/net/`, `wrangler.jsonc`, `public/_headers`, `.env*`).
+Le lab n'écrit plus que **ses propres fichiers** (`src/experiments/0xx/`, `LAB_NOTES.md`, et `registry.ts` après vérification) ;
+jamais `package.json`, `main.ts`, `style.css`, `tsconfig.json`. `.env.local` et `.wrangler` sont dans `.gitignore`.
+Pour brancher une ouverture sur le serveur : `net.preparePack()` avant l'animation (la rareté pilote 003/013/018/025),
+`net.revealPack()` au payoff (voir `INFRASTRUCTURE.md`).
+
+## Résumé (10 lignes)
+**Mes 3 préférées**
+1. **026 Lucioles** — la rareté devient un *rythme* : on sent l'essaim se mettre d'accord avant de voir quoi que ce soit.
+2. **024 Vitrail** — la carte existe par la lumière qu'elle jette sur la table ; simple, physique, lisible à tous les tiers.
+3. **025 Origami** — le plaisir tactile d'ouvrir une lettre ; l'intérieur imprimé annonce la rareté avant la carte.
+Côté designs : **Art déco**, **Carte céleste** (la rareté *est* une constellation) et **Pleine illustration**.
+
+**Les 3 à pousser techniquement**
+1. **019 Collection 3D** — c'est le cœur d'un jeu de collection : classeur par univers, cartes manquantes en creux, zoom vers la vitrine des designs.
+2. **018 Mythique** — la séquence la plus riche, calibrée sans vrai GPU : budget mobile, timings, passes post.
+3. **014 Encre fluide** — la simulation compute la plus prometteuse (MacCormack, vorticité, résolution adaptative mobile).
