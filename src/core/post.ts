@@ -1,5 +1,5 @@
-import { RenderPipeline, type Camera, type Scene } from 'three/webgpu';
-import { emissive, mrt, output, pass, vec4 } from 'three/tsl';
+import { MirroredRepeatWrapping, RenderPipeline, type Camera, type Scene } from 'three/webgpu';
+import { Fn, Loop, emissive, float, int, luminance, mix, mrt, output, pass, rtt, smoothstep, uv, vec2, vec4, viewportSize } from 'three/tsl';
 import type { LabContext } from './Experiment';
 import type { N } from './tsl';
 
@@ -36,4 +36,26 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
       pipeline.render();
     },
   };
+}
+
+/**
+ * Flare anamorphique : un BloomNode à ¼ de résolution dont le passe-haut est remplacé par un flou horizontal
+ * (même principe que l'exemple officiel `webgpu_postprocessing_anamorphic`).
+ */
+export function anamorphicFlare(src: N, bloomFactory: (n: N) => N, samples = 48, spread = 6): N {
+  const fl = bloomFactory(src) as N;
+  fl.setResolutionScale(0.25);
+  fl.highPassFn = Fn(({ input, threshold, smoothWidth }: { input: N; threshold: N; smoothWidth: N }) => {
+    const a = smoothstep(threshold, threshold.add(smoothWidth), luminance(input.rgb));
+    const bright = rtt(mix(vec4(0), input, a), null, null, { wrapS: MirroredRepeatWrapping, wrapT: MirroredRepeatWrapping });
+    const total = vec4(0).toVar();
+    const half = samples / 2;
+    const inv = vec2(1.0).div(viewportSize);
+    Loop({ start: int(-half), end: int(half), type: 'int', condition: '<' }, ({ i }: { i: N }) => {
+      const soft = float(i).abs().div(half).oneMinus().pow(2);
+      total.addAssign(bright.sample(vec2(uv().x.add(inv.x.mul(float(i)).mul(spread)), uv().y)).mul(soft));
+    });
+    return total.div(samples / 3);
+  });
+  return fl;
 }

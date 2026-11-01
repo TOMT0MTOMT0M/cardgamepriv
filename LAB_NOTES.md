@@ -76,3 +76,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 015 | Carte en particules | 36k particules compute, dispersion par tier, ressorts GPU, vague, fondu vers la carte | `If().Else()` compute, uniform mat4 | ✅ | 4.4 | sprites face caméra |
 | 016 | Sculpture en gaussian splats | sujet 2D gonflé (chamfer → dôme), gaussiennes orientées, pop-up scale.z, paillettes | `GaussianSplat` r186 | ✅ | 1.4–2.0 | sujets fins = relief faible |
 | 017 | Carton, vernis & usure | pliage cylindrique 2 axes + normales exactes, ressort sous-amorti, vernis sélectif, usure SDF/fBm, pli permanent | `transformNormalToView` | ✅ | 0.7–1.3 | pliage cylindrique seulement |
+| 018 | Mythique « L'Éclipse » | combine 001/003/005/006/009/011 : battements, fausse pause, feu spectral, lentille au ralenti, convergence, onde de choc, inversion, foil qui s'éveille | chaîne TSL complète | ✅ (logique tracée) | 1.1–1.4 | à juger sur vrai GPU |

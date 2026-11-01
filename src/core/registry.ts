@@ -175,4 +175,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Glisse pour plier (horizontal / vertical) · force trop… et le pli reste · usure dans le panneau',
     load: () => import('../experiments/017-cardboard/index.ts'),
   },
+  {
+    id: '018-mythic',
+    title: 'Mythique — « L’Éclipse »',
+    category: 'C',
+    tags: ['séquence', 'combinaison', 'climax'],
+    tech: ['fuite de lumière + combustion spectrale', 'lentille + horizon + onde de choc (post)', 'convergence de particules', 'flare, CA, inversion', 'foil spectral (core/holo)'],
+    blurb: 'La séquence la plus ambitieuse : battements, fausse pause, combustion spectrale, éclipse au ralenti, particules qui dessinent la carte, onde de choc, puis le foil s’éveille.',
+    hint: 'Tap = rejouer · baisse la rareté pour voir quelles étapes disparaissent',
+    load: () => import('../experiments/018-mythic/index.ts'),
+  },
 ];
