@@ -165,4 +165,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Incline pour voir le volume · tap = rejouer le pop-up · relief dans le panneau',
     load: () => import('../experiments/016-gaussian-splat/index.ts'),
   },
+  {
+    id: '017-cardboard',
+    title: 'Carton, vernis & usure',
+    category: 'A',
+    tags: ['déformation', 'vernis', 'patine'],
+    tech: ['pliage cylindrique (positionNode + normales exactes)', 'ressort sous-amorti', 'vernis sélectif (clearcoat)', 'usure procédurale (SDF bord + fBm)'],
+    blurb: 'On plie la carte entre les doigts : elle revient en vibrant, les reflets du vernis courent dans la courbure. Les communes ont vécu, les rares sont mint.',
+    hint: 'Glisse pour plier (horizontal / vertical) · force trop… et le pli reste · usure dans le panneau',
+    load: () => import('../experiments/017-cardboard/index.ts'),
+  },
 ];

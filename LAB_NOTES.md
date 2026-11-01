@@ -75,3 +75,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 014 | Encre fluide (suminagashi) | fluide compute (advection, Jacobi, projection), encre multiplicative, film brillant, relief de densité | storage textures r/w r183 | ✅ | 3.2 | pas de MacCormack |
 | 015 | Carte en particules | 36k particules compute, dispersion par tier, ressorts GPU, vague, fondu vers la carte | `If().Else()` compute, uniform mat4 | ✅ | 4.4 | sprites face caméra |
 | 016 | Sculpture en gaussian splats | sujet 2D gonflé (chamfer → dôme), gaussiennes orientées, pop-up scale.z, paillettes | `GaussianSplat` r186 | ✅ | 1.4–2.0 | sujets fins = relief faible |
+| 017 | Carton, vernis & usure | pliage cylindrique 2 axes + normales exactes, ressort sous-amorti, vernis sélectif, usure SDF/fBm, pli permanent | `transformNormalToView` | ✅ | 0.7–1.3 | pliage cylindrique seulement |
