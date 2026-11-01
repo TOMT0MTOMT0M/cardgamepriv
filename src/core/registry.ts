@@ -25,4 +25,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Glisse vers la droite sur le paquet pour déchirer · tap = déchirure auto · R pour recommencer',
     load: () => import('../experiments/002-pack-tear/index.ts'),
   },
+  {
+    id: '003-rarity-leak',
+    title: 'Fuite de lumière (indice de rareté)',
+    category: 'C',
+    tags: ['suspense', 'lumière', 'post'],
+    tech: ['RenderPipeline + MRT emissive', 'bloom', 'radialBlur', 'Sprite instancié (poussière)'],
+    blurb: 'La lumière vit dans le paquet fermé : elle fuit par les soudures, traverse l’impression, s’étale sur la table. Le rythme dit la rareté.',
+    hint: 'Attends… puis tap pour ouvrir · change la rareté (1–6) pour comparer les rythmes',
+    load: () => import('../experiments/003-rarity-leak/index.ts'),
+  },
 ];

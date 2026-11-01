@@ -2,6 +2,7 @@ import './style.css';
 import { Timer, type WebGPURenderer } from 'three/webgpu';
 import GUI from 'lil-gui';
 import Stats from 'stats-gl';
+import gsap from 'gsap';
 import { registry } from './core/registry';
 import { CATEGORY_LABELS, type Category, type Experiment, type LabContext, type Quality, type RegistryEntry } from './core/Experiment';
 import { Bag } from './core/bag';
@@ -66,6 +67,8 @@ const backend = preferredBackend();
 let renderer!: WebGPURenderer;
 let input!: Input;
 const sfx = new Sfx();
+// temps réel strict : les timelines ne ralentissent pas quand le framerate chute
+gsap.ticker.lagSmoothing(0);
 const timer = new Timer();
 timer.connect(document);
 let current: { entry: RegistryEntry; exp: Experiment; ctx: LabContext; ready: boolean } | null = null;

@@ -214,9 +214,10 @@ export function paintFrame(card: CardData, rar: Rarity, frame: Ctx, masks: Ctx) 
   } else {
     frame.font = `500 15px ${FONT_MONO}`;
     frame.fillStyle = alpha(ink, 0.65);
-    frame.textAlign = 'center';
-    spaced(frame, 'SANS COMBAT', BASE_W / 2 - 60, statsY + 30, 3);
-    frame.textAlign = 'left';
+    spaced(frame, 'SANS COMBAT', 70, statsY + 8, 3);
+    frame.font = `italic 400 24px ${FONT_TITLE}`;
+    frame.fillStyle = alpha(ink, 0.55);
+    frame.fillText('Effet permanent', 70, statsY + 52);
   }
   // médaillon de rareté
   const medal = (g: Ctx, fill: boolean) => {
