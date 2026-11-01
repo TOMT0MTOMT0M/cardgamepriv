@@ -185,4 +185,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = rejouer · baisse la rareté pour voir quelles étapes disparaissent',
     load: () => import('../experiments/018-mythic/index.ts'),
   },
+  {
+    id: '019-binder',
+    title: 'Collection 3D (BatchedMesh)',
+    category: 'D',
+    tags: ['collection', 'instancing', 'perf'],
+    tech: ['BatchedMesh (1 draw call, fusion r187)', 'DataArrayTexture (une couche par carte)', 'données d’instance via batchColor', 'raycast par instance'],
+    blurb: 'Six cents cartes sur la paroi d’une salle circulaire, en un seul draw call. La rareté choisie ressort, les autres s’effacent.',
+    hint: 'Glisse pour faire tourner la salle · survole pour soulever une carte · 1–6 pour filtrer par rareté',
+    load: () => import('../experiments/019-binder/index.ts'),
+  },
 ];
