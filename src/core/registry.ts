@@ -125,4 +125,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Incline pour tourner autour de l’objet · le nombre d’anneaux et les lunes suivent la rareté',
     load: () => import('../experiments/012-raymarch-holo/index.ts'),
   },
+  {
+    id: '013-fan-flip',
+    title: 'Éventail & retournements',
+    category: 'B',
+    tags: ['chorégraphie', 'timing', 'caméra'],
+    tech: ['timelines GSAP + timeScale', 'DepthOfField (mise au point suivie)', 'bloom émissif', 'ressorts analytiques'],
+    blurb: 'Les cartes sortent et s’ouvrent en éventail. Chaque retournement a le timing de sa rareté ; la dernière hésite, puis se retourne au ralenti.',
+    hint: 'Tap = retourner la suivante (ou laisse l’auto) · R pour redistribuer',
+    load: () => import('../experiments/013-fan-flip/index.ts'),
+  },
 ];
