@@ -155,4 +155,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = défaire / reconstruire · le doigt repousse les particules pendant la reconstruction',
     load: () => import('../experiments/015-particle-card/index.ts'),
   },
+  {
+    id: '016-gaussian-splat',
+    title: 'Sculpture en gaussian splats',
+    category: 'A',
+    tags: ['splat', 'pop-up', 'volume'],
+    tech: ['GaussianSplat (addon r186)', 'gonflage par distance au contour', 'covariances orientées', 'aura & paillettes'],
+    blurb: 'Le sujet 2D est « gonflé » en sculpture 3D de dizaines de milliers de gaussiennes qui sort de la carte comme un livre pop-up.',
+    hint: 'Incline pour voir le volume · tap = rejouer le pop-up · relief dans le panneau',
+    load: () => import('../experiments/016-gaussian-splat/index.ts'),
+  },
 ];
