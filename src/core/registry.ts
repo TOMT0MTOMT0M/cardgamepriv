@@ -105,4 +105,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Incline pour regarder dans la fenêtre · mythique = nuit et aurore',
     load: () => import('../experiments/010-portal-diorama/index.ts'),
   },
+  {
+    id: '011-vortex',
+    title: 'Vortex',
+    category: 'B',
+    tags: ['distorsion', 'écran', 'aspiration'],
+    tech: ['distorsion screen-space (RenderPipeline)', 'aberration par canal', 'horizon + liseré', 'spirale GSAP'],
+    blurb: 'Un tourbillon s’ouvre dans l’image : le paquet y est aspiré, le cœur bat à la couleur du tier, puis tout est recraché — la bonne carte en dernier.',
+    hint: 'Tap = rejouer · torsion et rayon dans le panneau',
+    load: () => import('../experiments/011-vortex/index.ts'),
+  },
 ];
