@@ -81,3 +81,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 020 | Duel (face à face) | flux d'énergie fBm opposés, point de choc qui hésite, étincelles, gagnant/perdant | — | ✅ | 1.5 | ruban plat |
 | 021 | Lenticulaire | sélection de vue par angle + effet loupe, diaphonie, nervures normal + clearcoatNormal | `clearcoatNormalNode` | ✅ | 4.7 | vues = palettes |
 | 022 | Taille-douce (billet) | gravure au trait ∝ valeur, hachures, loupe UV, micro-texte, encre OVI/métallique, relief d'encre | — | ✅ | 3.3 | aliasing des traits fins |
+| 023 | Grattage | storage texture read-write, tampon segment, bord déchiqueté, couverture CPU, écaillage final | storage textures r/w (r183) | ✅ | 2.2 | pas de copeaux |

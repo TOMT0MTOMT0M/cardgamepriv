@@ -225,4 +225,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Promène la loupe (pointeur) · cherche le micro-texte autour de la fenêtre · incline pour l’encre variable (mythique)',
     load: () => import('../experiments/022-intaglio/index.ts'),
   },
+  {
+    id: '023-scratch-reveal',
+    title: 'Grattage',
+    category: 'B',
+    tags: ['grattage', 'storage texture', 'geste'],
+    tech: ['storage texture read-write (r183, r32float)', 'tampon compute le long du geste', 'bord déchiqueté', 'écaillage final par bruit'],
+    blurb: 'La carte arrive sous une pellicule argentée : on gratte du doigt, la rareté apparaît par morceaux ; passé 60 %, le reste s’écaille tout seul.',
+    hint: 'Appuie et glisse pour gratter · tap = un coup de pièce · R = nouvelle pellicule',
+    load: () => import('../experiments/023-scratch-reveal/index.ts'),
+  },
 ];
