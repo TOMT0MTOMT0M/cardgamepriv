@@ -75,4 +75,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Incline pour voir la réfraction des barres de lumière · la teinte du verre suit la rareté',
     load: () => import('../experiments/007-crystal-card/index.ts'),
   },
+  {
+    id: '008-shatter',
+    title: 'Éclatement (Voronoï + Rapier)',
+    category: 'B',
+    tags: ['fracture', 'physique', 'impact'],
+    tech: ['Voronoï CPU (demi-plans)', 'Rapier convexHull', 'fissures émissives (attribut edge)', 'étincelles sans état'],
+    blurb: 'On frappe la coque : des fissures lumineuses courent depuis l’impact, puis elle éclate en cellules plus fines près du coup.',
+    hint: 'Tap sur le paquet pour frapper à cet endroit · R pour recommencer',
+    load: () => import('../experiments/008-shatter/index.ts'),
+  },
 ];

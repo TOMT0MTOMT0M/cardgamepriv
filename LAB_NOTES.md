@@ -66,3 +66,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 005 | Combustion | champ fBm partagé, particules sans état, brume de chaleur post, braises | `TextureNode.sample()` sur passe | ✅ | 0.3–0.6 | fBm par particule coûteux |
 | 006 | Escalade post-FX par tier | bloom émissif, flare anamorphique (highPassFn+rtt), CA, lensDirt, radialBlur, ralenti GSAP timeScale, secousse | `lensDirt` r187, `RenderPipeline` | ✅ | 0.9 | calibrage à l'oreille |
 | 007 | Carte de cristal | transmission, `dispersionNode`, atténuation par tier, gravure laser 42k sprites opaques, dépoli | dispersion/transmission node materials | ✅ | 0.6–0.7 | pas de verre derrière du verre |
+| 008 | Éclatement Voronoï + Rapier | Voronoï CPU densifié à l'impact, prismes, fissures émissives, Rapier convexHull, ralenti | `attribute()` custom | ✅ | 4.0 | coque plate |
