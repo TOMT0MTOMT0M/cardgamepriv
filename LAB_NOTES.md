@@ -24,7 +24,14 @@ Le texte des cartes est rendu en Canvas 2D dans les calques (net, gratuit, et se
 - r186 : `GaussianSplat` natif (PLY/SPZ), matériau rétroréfléchissant, `LightProbeGrid`, brouillard volumétrique TSL.
 - r187 : `bumpMap(tex, scale, normalNode)`, `compileAsync()` parallèle, `getTextureGradient()`, `BatchedMesh` qui fusionne les draws consécutifs,
   `NodeMaterialInstance` (ex-`ProxyNodeMaterial`), `three/tsl` tree-shakeable, `lensDirt()`, `BitonicSort` en une passe,
-  disposal de tous les buffer attributes, iridescence `thicknessRange` physique.
+  disposal de tous les buffer attributes, épaisseur min/max d'iridescence et BRDF diffuse EON sur `MeshPhysicalMaterial`.
+
+**Exploitées dans le lab** : `RenderPipeline` + MRT (003, 005, 006, 009…), storage textures en ping-pong (014) et en
+**lecture-écriture** (023), `compileAsync()` (toutes via `stage.compile()`), `GaussianSplat` (016), `fog()+rangeFogFactor()` (010),
+`bumpMap(…, normalNode)` (001, 002), `lensDirt()` (006), `BatchedMesh` (019), compute TSL (009, 014, 015).
+**Non exploitées (et pourquoi)** : FSR1/TAAU (pistes pour 010 en mobile), Forward+/clustered et `SunLight`+CSM (pas de scènes
+à nombreuses lumières/ombres ici), `LightProbeGrid` / brouillard volumétrique (hors sujet carte), `BitonicSort` (pas de tri de particules
+nécessaire en additif).
 
 ## Architecture
 ```
@@ -48,6 +55,25 @@ src/core/
 ```
 Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame` (cadre + texte, fenêtre transparente),
 `masks` (R foil · G relief · B émissif), `fx` (R émissif sujet · G foil sujet · B relief sujet) + `flat` (aplatie).
+
+## Conventions transverses
+- **Timing** : rien de linéaire. Courbes maison (`EASE.glide/heave/breathe/settle/snap`), ressorts analytiques (`springCurve`)
+  et numériques (`Spring`, sous-pas fixes), timelines GSAP en **temps réel** (`lagSmoothing(0)`) avec ralentis par `timeScale`.
+- **Palette** : chaque expérience a son fond (dégradé radial sombre chaud + grain anti-banding) ; teintes de rareté
+  pensées hors du violet/cyan générique (pierre, vert-de-gris, cobalt, grenat, ambre, nacre).
+- **Rareté** : le sélecteur reconstruit l'expérience (ou la met à jour à chaud via `setRarity` : 006, 019).
+- **Son** : `core/audio.ts` (bouton 🔈) — tout est synthétisé (clics filtrés, souffles, déchirures granuleuses, impacts,
+  risers, cloches inharmoniques, nappes) et déclenché par les timelines : c'est le bonus « sound design » de la liste D,
+  intégré à toutes les expériences plutôt qu'isolé.
+- **Libération** : chaque expérience vit dans un `Bag` vidé au changement (géométries, matériaux, textures, passes, timelines, listeners).
+
+## Mobile & performances
+- Preset **📱 Mobile** (auto sur écran tactile) : DPR ≤ 1.5, particules réduites (−55 à −65 %), moins d'itérations (fluide),
+  grilles plus grossières (015, 016), moins de pas de raymarching (012).
+- `npm run dev:mobile` sert en **HTTPS** sur le réseau local : indispensable pour WebGPU et le gyroscope sur téléphone
+  (bouton 🧭 pour autoriser l'accès sur iOS). Le gyroscope recentre lentement la carte (on peut la tenir naturellement).
+- Expériences a priori les plus lourdes sur mobile : 005 (fBm par particule), 007 (transmission + 42k sprites → 14k),
+  012 (raymarching plein écran), 014 (fluide), 018 (chaîne post complète). À mesurer chez toi.
 
 ## Vérification
 - `npm run build` (tsc strict + vite) après chaque expérience.
