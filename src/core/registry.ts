@@ -205,4 +205,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = rejouer le duel (visuel seulement, la puissance décide)',
     load: () => import('../experiments/020-duel/index.ts'),
   },
+  {
+    id: '021-lenticular',
+    title: 'Lenticulaire',
+    category: 'A',
+    tags: ['lenticulaire', 'angle', 'vues'],
+    tech: ['sélection de vue par angle + effet loupe', 'diaphonie entre vues', 'nervures (normal + clearcoatNormal)'],
+    blurb: 'Une feuille de lentilles sur une image entrelacée : en inclinant, la même carte passe de l’aube à la nuit. Plus de vues pour les hauts tiers.',
+    hint: 'Incline lentement de gauche à droite · densité des lentilles dans le panneau',
+    load: () => import('../experiments/021-lenticular/index.ts'),
+  },
 ];
