@@ -1,0 +1,30 @@
+{
+  "name": "card-lab",
+  "version": "0.1.0",
+  "description": "Card Lab — expérimentations 3D WebGPU (cartes, ouverture de packs, rareté)",
+  "scripts": {
+    "dev": "vite",
+    "dev:mobile": "vite --host --mode https",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "verify": "node scripts/verify.cjs"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "gsap": "^3.15.0",
+    "lil-gui": "^0.21.0",
+    "stats-gl": "^4.2.3",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  },
+  "private": true,
+  "type": "module"
+}
