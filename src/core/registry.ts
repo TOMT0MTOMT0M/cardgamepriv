@@ -45,4 +45,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Incline lentement · le métal change avec la rareté (de la gaufrure à sec au chrome noir)',
     load: () => import('../experiments/004-emboss-foil/index.ts'),
   },
+  {
+    id: '005-burn-dissolve',
+    title: 'Combustion',
+    category: 'B',
+    tags: ['dissolve', 'braise', 'cendres'],
+    tech: ['maskNode + champ fBm', 'Sprites sans état (libération analytique)', 'brume de chaleur (post)', 'bloom émissif'],
+    blurb: 'Le paquet brûle depuis le point touché ; chaque escarbille se détache exactement quand le front l’atteint. La carte reste intacte.',
+    hint: 'Tap sur le paquet pour l’allumer à cet endroit · R pour recommencer',
+    load: () => import('../experiments/005-burn-dissolve/index.ts'),
+  },
 ];

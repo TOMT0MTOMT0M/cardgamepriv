@@ -24,8 +24,9 @@ try {
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
-    const [k, v] = a.replace(/^--/, '').split('=');
-    return [k, v ?? 'true'];
+    const raw = a.replace(/^--/, '');
+    const i = raw.indexOf('=');
+    return i < 0 ? [raw, 'true'] : [raw.slice(0, i), raw.slice(i + 1)];
   }),
 );
 const PORT = +(args.port || 4179);
@@ -107,6 +108,7 @@ async function startServer() {
           else if (m.type() === 'warning') warnings.push(m.text());
         });
         const q = new URLSearchParams({ backend });
+        if (args.query) for (const [k, v] of new URLSearchParams(args.query)) q.set(k, v);
         if (args.rarity) q.set('rarity', args.rarity);
         if (args.clean) q.set('clean', '1');
         const t0 = Date.now();

@@ -60,3 +60,8 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | id | titre | techniques | nouveauté three.js | état | fps (SwiftShader 1180×780) | limites connues |
 |---|---|---|---|---|---|---|
 | 001 | Holo thin-film | thin-film spectral 12λ, voronoï TSL, micro-facettes, paillettes | `bumpMap(normalNode)` r187, iridescence native (comparatif) | ✅ WebGPU + WebGL2 | 1.7–3.5 | scintillement du grain à petite taille |
+| 002 | Déchirure du booster | maskNode bord dentelé, pelage `positionNode`, stick-slip, lambeaux instanciés, froissé cuit | `bumpMap(normalNode)` r187 | ✅ | 0.9–6 | bande sans collision ; froissé statique |
+| 003 | Fuite de lumière | émissif soudures/translucidité, halo SDF sur table, poussière Sprite instanciée, MRT + bloom + radialBlur | `RenderPipeline` + MRT, `Sprite.count` | ✅ | 0.6–0.7 | halo non ombré |
+| 004 | Gaufrage & dorure brossée | normal map Sobel générée CPU, `anisotropyNode` 3 brossages, clearcoat sélectif, sheen | `compileAsync()` parallèle r187 | ✅ | 2.9–3 | biseau pixellisé en très gros plan |
+| 005 | Combustion | champ fBm partagé, particules sans état, brume de chaleur post, braises | `TextureNode.sample()` sur passe | ✅ | 0.3–0.6 | fBm par particule coûteux |
+
