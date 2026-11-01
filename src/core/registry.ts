@@ -195,4 +195,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Glisse pour faire tourner la salle · survole pour soulever une carte · 1–6 pour filtrer par rareté',
     load: () => import('../experiments/019-binder/index.ts'),
   },
+  {
+    id: '020-duel',
+    title: 'Duel (face à face)',
+    category: 'D',
+    tags: ['duel', 'énergie', 'mise en scène'],
+    tech: ['flux d’énergie (ruban + fBm qui coule)', 'point de choc animé', 'étincelles sans état', 'bloom émissif'],
+    blurb: 'Deux cartes de part et d’autre de la table se lèvent, prennent leur élan ; leurs flux se percutent et le point de choc glisse vers la plus faible.',
+    hint: 'Tap = rejouer le duel (visuel seulement, la puissance décide)',
+    load: () => import('../experiments/020-duel/index.ts'),
+  },
 ];

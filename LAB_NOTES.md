@@ -78,3 +78,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 017 | Carton, vernis & usure | pliage cylindrique 2 axes + normales exactes, ressort sous-amorti, vernis sélectif, usure SDF/fBm, pli permanent | `transformNormalToView` | ✅ | 0.7–1.3 | pliage cylindrique seulement |
 | 018 | Mythique « L'Éclipse » | combine 001/003/005/006/009/011 : battements, fausse pause, feu spectral, lentille au ralenti, convergence, onde de choc, inversion, foil qui s'éveille | chaîne TSL complète | ✅ (logique tracée) | 1.1–1.4 | à juger sur vrai GPU |
 | 019 | Collection 3D | BatchedMesh 540 instances / 1 draw, DataArrayTexture, LUT par instance, raycast par instance, filtre par rareté | BatchedMesh WebGPU (fusion r187), `batchIndirectIndex` | ✅ | 2.4–2.8 | pas de mipmaps (scintillement) |
+| 020 | Duel (face à face) | flux d'énergie fBm opposés, point de choc qui hésite, étincelles, gagnant/perdant | — | ✅ | 1.5 | ruban plat |
