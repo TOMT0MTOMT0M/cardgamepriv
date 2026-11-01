@@ -72,3 +72,4 @@ Chaque carte = 6 textures : `bg`, `subject`, `fg` (calques de parallaxe), `frame
 | 011 | Vortex | distorsion écran (rotation gaussienne + pincement), CA par canal, horizon, grille de points, spirale | `RenderPipeline` + `sample()` | ✅ | 4.1–5.1 | déforme aussi la carte |
 | 012 | Hologramme raymarché | raymarching TSL Loop/Break, SDF tores+octaèdre smin, halo volumique, scanlines, irisation | `Loop`/`Break` dans `Fn` | ✅ | 2.4 | coût ∝ surface de fenêtre |
 | 013 | Éventail & retournements | timelines par rareté, ressorts analytiques, caméra + DOF suivi, ralenti | `dof()` + `getViewZNode()` | ✅ | 0.5 | pas d'ombres entre cartes |
+| 014 | Encre fluide (suminagashi) | fluide compute (advection, Jacobi, projection), encre multiplicative, film brillant, relief de densité | storage textures r/w r183 | ✅ | 3.2 | pas de MacCormack |

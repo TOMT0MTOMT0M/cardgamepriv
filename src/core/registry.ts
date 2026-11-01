@@ -135,4 +135,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Tap = retourner la suivante (ou laisse l’auto) · R pour redistribuer',
     load: () => import('../experiments/013-fan-flip/index.ts'),
   },
+  {
+    id: '014-ink-fluid',
+    title: 'Encre fluide (suminagashi)',
+    category: 'A',
+    tags: ['fluide', 'compute', 'storage texture'],
+    tech: ['StorageTexture ping-pong (r183)', 'advection semi-lagrangienne', 'Jacobi + projection', 'normal de densité'],
+    blurb: 'Un fluide incompressible simulé en compute : des encres marbrées flottent sur l’illustration et se laissent remuer au doigt.',
+    hint: 'Glisse sur l’illustration pour remuer · appuie pour déposer de l’encre · R = nouvelles gouttes',
+    load: () => import('../experiments/014-ink-fluid/index.ts'),
+  },
 ];
