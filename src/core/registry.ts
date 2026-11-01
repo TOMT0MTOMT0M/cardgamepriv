@@ -265,4 +265,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Regarde le rythme, pas la couleur · tap = recommencer · "vraies lumières" dans le panneau',
     load: () => import('../experiments/026-fireflies/index.ts'),
   },
+  {
+    id: '027-hand',
+    title: 'Main de cartes (sensation)',
+    category: 'D',
+    tags: ['main', 'interaction', 'game feel'],
+    tech: ['ressorts par axe (Spring) sur 7 cartes', 'inclinaison pilotée par la vitesse du geste', 'ombres de contact SDF (flou ∝ hauteur)', 'impact : anneau, secousse, son'],
+    blurb: 'Une main en éventail qu’on a envie de manipuler : survol qui soulève et écarte, glisser incliné par la vitesse, réordonner, poser sur le tapis avec un vrai poids.',
+    hint: 'Survole · glisse une carte vers le tapis pour la jouer · tap = inspecter · tap sur une carte posée = la reprendre',
+    load: () => import('../experiments/027-hand/index.ts'),
+  },
 ];
