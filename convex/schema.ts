@@ -62,6 +62,11 @@ export default defineSchema({
     streak: v.optional(v.object({ count: v.number(), day: v.string(), rewardedAt: v.number() })),
     /** pochettes de sous-thème choisies à la main (vue Albums) : sous-thème → carte épinglée */
     covers: v.optional(v.record(v.string(), v.string())),
+    /** cosmétiques du profil (src/core/cosmetics.ts) : bannière, cadre d'avatar, titre, badges — tout se débloque en jouant */
+    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())) })),
+    /** compteurs (classement, déblocages) */
+    totalTrades: v.optional(v.number()),
+    totalContracts: v.optional(v.number()),
   })
     .index('by_discordId', ['discordId'])
     .index('by_lastSeenAt', ['lastSeenAt']),
@@ -229,5 +234,7 @@ export default defineSchema({
     mintNumber: v.optional(v.number()),
     message: v.string(),
     createdAt: v.number(),
-  }).index('by_createdAt', ['createdAt']),
+  })
+    .index('by_createdAt', ['createdAt'])
+    .index('by_userId', ['userId', 'createdAt']),
 });

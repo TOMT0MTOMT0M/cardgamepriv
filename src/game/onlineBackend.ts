@@ -152,6 +152,15 @@ export function createOnlineBackend(): GameBackend {
     async setBio(bio) {
       await net.setBio(bio);
     },
+    async setCosmetics(choice) {
+      return await net.setCosmetics(choice);
+    },
+    async leaderboard() {
+      return (await net.leaderboard()).map((r) => ({ ...r, id: r.id as string }));
+    },
+    async activity(userId) {
+      return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
+    },
     async signContract(rarity, items) {
       return await net.signContract(rarity, items);
     },

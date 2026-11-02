@@ -74,7 +74,7 @@ export const sign = mutation({
       });
     }
 
-    await ctx.db.patch(user._id, { lastSeenAt: now, statusText: 'Vient de signer un contrat' });
+    await ctx.db.patch(user._id, { lastSeenAt: now, statusText: 'Vient de signer un contrat', totalContracts: (user.totalContracts ?? 0) + 1 });
     await bumpMissions(ctx, user, { type: 'contract' });
     if (RARITY_TIER[target] >= RARITY_TIER.epic) {
       await ctx.db.insert('activityFeed', {

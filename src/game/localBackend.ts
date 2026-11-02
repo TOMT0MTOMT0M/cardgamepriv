@@ -6,7 +6,9 @@ import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
 import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
 import { pityAfter, pityForces } from '../core/pity';
-import { STREAK_REWARD, claimStreak as claimStreakState, touchStreak, type StreakState } from '../core/streak';
+import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak, type StreakState } from '../core/streak';
+import { bestCard, cleanCosmetics, statsFrom, type CosmeticChoice } from '../core/cosmetics';
+import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
 
 /**
@@ -53,6 +55,11 @@ interface Saved {
   streak?: StreakState;
   binders?: Binder[];
   covers?: Record<string, string>;
+  cosmetics?: CosmeticChoice;
+  trades_done?: number;
+  contracts_done?: number;
+  /** fil d'activité perso (gros drops, échanges, contrats) */
+  activity?: Array<{ id: string; kind: string; message: string; cardId?: string; cardName?: string; rarity?: RarityId; mintNumber?: number; createdAt: number }>;
 }
 
 function add(inv: Inv, cardId: string, rarity: RarityId, n: number, mint = 999) {
@@ -155,10 +162,14 @@ export function createLocalBackend(): GameBackend {
     listeners.forEach((fn) => fn(state));
   }
 
-  const feed = (kind: string, message: string, rarity?: RarityId) => {
+  const feed = (kind: string, message: string, rarity?: RarityId, card?: { id: string; name: string; mint?: number }) => {
     save.feed.unshift({ id: `f${save.seq++}`, kind, message, rarity, createdAt: Date.now() });
     save.feed.length = Math.min(save.feed.length, 30);
+    (save.activity ??= []).unshift({ id: `a${save.seq++}`, kind, message, rarity, cardId: card?.id, cardName: card?.name, mintNumber: card?.mint, createdAt: Date.now() });
+    save.activity.length = Math.min(save.activity.length, 60);
   };
+  const myStats = () => statsFrom(Object.values(save.inv), { packsOpened: save.opened, tradesDone: save.trades_done ?? 0, contractsSigned: save.contracts_done ?? 0, streak: save.streak?.count ?? 0 });
+  const botStats = (b: Bot, i: number) => statsFrom(Object.values(b.inv), { packsOpened: 30 + i * 12, tradesDone: 3 - i, contractsSigned: i, streak: [12, 3, 0][i] ?? 0 });
 
   /** Un robot propose parfois un échange : un de ses doublons qui te manque contre un des tiens qui lui manque. */
   function maybeBotOffer() {
@@ -275,9 +286,10 @@ export function createLocalBackend(): GameBackend {
         if (BIG_PULL_RARITIES.includes(c.rarity)) bigPull({ id: 'me', name: 'Toi' }, { id: c.cardId, name: c.cardName }, c.rarity, c.mintNumber);
         if (RANK[c.rarity] >= RANK.epic) {
           feed(
-            c.rarity === 'secret' ? 'secret_pull' : 'pull',
+            c.rarity === 'secret' ? 'secret_pull' : c.rarity === 'mythic' ? 'mythic_pull' : 'pull',
             c.rarity === 'secret' ? `✷ Tu as tiré une CARTE SECRÈTE : ${c.cardName} !` : `Tu as obtenu ${c.cardName} [${rarityOf(c.rarity).label} #${c.mintNumber}] !`,
             c.rarity,
+            { id: c.cardId, name: c.cardName, mint: c.mintNumber },
           );
         }
       }
@@ -316,6 +328,7 @@ export function createLocalBackend(): GameBackend {
           cur.status = 'accepted';
           offered.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
           requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
+          save.trades_done = (save.trades_done ?? 0) + 1;
           feed('trade', `${bot.name} a accepté ton échange !`);
         } else {
           cur.status = 'declined';
@@ -333,6 +346,7 @@ export function createLocalBackend(): GameBackend {
         if (!t.offered.every((it) => (bot.inv[cardKey(it)]?.count ?? 0) >= it.count)) throw new Error(`${bot.name} n’a plus les cartes proposées.`);
         t.offered.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
         t.requested.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
+        save.trades_done = (save.trades_done ?? 0) + 1;
         feed('trade', `Échange conclu avec ${bot.name} !`);
         bump({ type: 'trade' });
       }
@@ -370,6 +384,7 @@ export function createLocalBackend(): GameBackend {
           cur.status = 'accepted';
           offered.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
           requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
+          save.trades_done = (save.trades_done ?? 0) + 1;
           feed('trade', `${bot.name} a accepté ta contre-proposition !`);
         } else {
           cur.status = 'declined';
@@ -421,10 +436,22 @@ export function createLocalBackend(): GameBackend {
     },
     async profile(userId) {
       await delay(60);
-      if (userId === 'me') return { id: 'me', name: 'Toi', bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null };
+      const themesOf = (inv: Inv) => {
+        const ids = new Set(Object.values(inv).map((c) => c.cardId));
+        return GAME_THEMES.map((t) => ({ id: t.id, have: t.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: t.cards.length }));
+      };
+      if (userId === 'me') {
+        const st = myStats();
+        const top = bestCard(Object.values(save.inv));
+        return { id: 'me', name: 'Toi', bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv) };
+      }
       const i = save.bots.findIndex((b) => b.id === userId);
       if (i < 0) return null;
-      return { id: userId, name: save.bots[i].name, bio: ['Je collectionne les brillantes ✨', 'Toujours partant pour un échange', ''][i] || undefined, showcase: [], packsOpened: 30 };
+      const b = save.bots[i];
+      const st = botStats(b, i);
+      const top = bestCard(Object.values(b.inv));
+      const cos: CosmeticChoice[] = [{ banner: 'night', frame: 'bronze', title: 'opener', badges: ['first', 'trade'] }, { banner: 'forest', frame: 'none', title: 'rookie', badges: ['first'] }, { banner: 'plum', frame: 'none', badges: [] }];
+      return { id: userId, name: b.name, bio: ['Je collectionne les brillantes ✨', 'Toujours partant pour un échange', ''][i] || undefined, showcase: [], packsOpened: 30 + i * 12, cosmetics: cleanCosmetics(cos[i] ?? {}, st), stats: st, streakDay: ((st.streak - 1) % 7) + 1, bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(b.inv) };
     },
     async setShowcase(cards) {
       if (cards.length > 6) throw new Error('6 cartes au maximum dans la vitrine.');
@@ -435,6 +462,22 @@ export function createLocalBackend(): GameBackend {
     async setBio(bio) {
       save.bio = bio.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined;
       sync();
+    },
+    async setCosmetics(choice) {
+      save.cosmetics = cleanCosmetics(choice, myStats());
+      sync();
+      return save.cosmetics;
+    },
+    async leaderboard() {
+      const row = (id: string, name: string, st: ReturnType<typeof myStats>, cosmetics: CosmeticChoice) => ({ id, name, cosmetics: cleanCosmetics(cosmetics, st), uniques: st.uniques, total: st.total, pct: st.total ? (st.uniques / st.total) * 100 : 0, mythics: st.mythics, secrets: st.secrets, packsOpened: st.packsOpened, tradesDone: st.tradesDone, streak: st.streak });
+      return [row('me', 'Toi', myStats(), save.cosmetics ?? {}), ...save.bots.map((b, i) => row(b.id, b.name, botStats(b, i), {}))];
+    },
+    async activity(userId) {
+      if (userId === 'me') return (save.activity ?? []).slice(0, 40);
+      const b = save.bots.find((x) => x.id === userId);
+      if (!b) return [];
+      // les robots : leurs gros tirages de la vitrine
+      return (save.bigPulls ?? []).filter((p) => p.userId === userId).map((p) => ({ id: p.id, kind: p.rarity === 'secret' ? 'secret_pull' : p.rarity === 'mythic' ? 'mythic_pull' : 'pull', message: `${p.userName} a obtenu ${p.cardName} [${rarityOf(p.rarity).label} #${p.mintNumber ?? 1}] !`, cardId: p.cardId, cardName: p.cardName, rarity: p.rarity, mintNumber: p.mintNumber, createdAt: p.createdAt }));
     },
     async toggleWish(cardId) {
       const list = save.wishlist ?? [];
@@ -521,7 +564,8 @@ export function createLocalBackend(): GameBackend {
       const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
       add(save.inv, card.id, target, 1, mint);
       bump({ type: 'contract' });
-      if (RANK[target] >= RANK.epic) feed('contract', `Toi : contrat signé, ${card.name} [${rarityOf(target).label} #${mint}] !`, target);
+      save.contracts_done = (save.contracts_done ?? 0) + 1;
+      feed('contract', `Contrat signé : ${card.name} [${rarityOf(target).label} #${mint}] !`, target, { id: card.id, name: card.name, mint });
       sync();
       return { cardId: card.id, cardName: card.name, rarity: target, mintNumber: mint, isNew: !ownedIds.has(card.id) };
     },

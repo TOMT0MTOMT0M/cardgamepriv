@@ -422,6 +422,17 @@ class GameNetClient {
   public async setBio(bio: string) {
     return await this.client!.mutation(api.profiles.setBio, { sessionToken: this.requireToken(), bio });
   }
+  public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[] }) {
+    return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...c });
+  }
+  public async leaderboard() {
+    if (!this.client) return [];
+    return await this.client.query(api.profiles.leaderboard, {});
+  }
+  public async activity(userId: Id<'users'>) {
+    if (!this.client) return [];
+    return await this.client.query(api.profiles.activity, { userId, limit: 40 });
+  }
   /** Envies : marque / retire une carte. */
   public async toggleWish(cardId: string) {
     return await this.client!.mutation(api.users.toggleWish, { sessionToken: this.requireToken(), cardId });

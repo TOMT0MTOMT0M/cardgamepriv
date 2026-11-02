@@ -254,6 +254,8 @@ export const respond = mutation({
     }
 
     await ctx.db.patch(trade._id, { status: 'accepted', resolvedAt: now });
+    await ctx.db.patch(user._id, { totalTrades: (user.totalTrades ?? 0) + 1 });
+    await ctx.db.patch(fromUser._id, { totalTrades: (fromUser.totalTrades ?? 0) + 1 });
     await bumpMissions(ctx, user, { type: 'trade' });
     await ctx.db.insert('activityFeed', {
       userId: user._id,

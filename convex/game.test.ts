@@ -504,3 +504,39 @@ describe('retours du 3 nov. : verrouillage, contre-proposition, historique', () 
     expect(await t.query(api.trades.wishlistOf, { userId: alice.userId })).toEqual([]);
   });
 });
+
+describe('retours du 3 nov. : profil, cosmétiques, classement, activité', () => {
+  test('cosmétiques : seulement du débloqué, le reste est ignoré sans erreur', async () => {
+    const { t, alice } = await setup();
+    // 0 booster ouvert : cadre « bronze » (50 boosters) verrouillé, bannière « night » libre, badge « first » verrouillé
+    const kept = await t.mutation(api.profiles.setCosmetics, { sessionToken: alice.token, banner: 'night', frame: 'bronze', title: 'rookie', badges: ['first', 'nope'] });
+    expect(kept).toEqual({ banner: 'night', frame: undefined, title: 'rookie', badges: [] });
+    const p = await t.query(api.profiles.profile, { userId: alice.userId });
+    expect(p?.cosmetics?.banner).toBe('night');
+    expect(p?.stats?.packsOpened).toBe(0);
+    // après un booster : « first » se débloque
+    const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
+    await t.mutation(api.packs.revealPack, { sessionToken: alice.token, packId: pack._id });
+    const kept2 = await t.mutation(api.profiles.setCosmetics, { sessionToken: alice.token, badges: ['first'] });
+    expect(kept2.badges).toEqual(['first']);
+  });
+
+  test('classement : une ligne par joueur, boosters et complétion', async () => {
+    const { t, alice, bob } = await setup();
+    const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
+    await t.mutation(api.packs.revealPack, { sessionToken: alice.token, packId: pack._id });
+    const rows = await t.query(api.profiles.leaderboard, {});
+    expect(rows.map((r) => r.name).sort()).toEqual(['alice', 'bob']);
+    const a = rows.find((r) => r.id === alice.userId)!;
+    expect(a.packsOpened).toBe(1);
+    expect(a.uniques).toBeGreaterThan(0);
+    expect(rows.find((r) => r.id === bob.userId)!.uniques).toBe(0);
+  });
+
+  test('activité : les gros drops et contrats d’un joueur, pas ceux des autres', async () => {
+    const { t, alice, bob } = await setup();
+    await t.run((ctx) => ctx.db.insert('activityFeed', { userId: alice.userId, displayName: 'alice', kind: 'mythic_pull', message: 'alice a obtenu X', createdAt: 1 }));
+    await t.run((ctx) => ctx.db.insert('activityFeed', { userId: bob.userId, displayName: 'bob', kind: 'pull', message: 'bob a obtenu Y', createdAt: 2 }));
+    expect((await t.query(api.profiles.activity, { userId: alice.userId })).map((a) => a.message)).toEqual(['alice a obtenu X']);
+  });
+});

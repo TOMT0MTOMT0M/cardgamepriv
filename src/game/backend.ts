@@ -3,6 +3,7 @@ import type { PackRequest } from '../core/packRoll';
 import { applyRegen, type RegenState } from '../core/packRegen';
 import type { MissionsState } from '../core/missions';
 import type { StreakState } from '../core/streak';
+import type { CosmeticChoice, PlayerStats } from '../core/cosmetics';
 
 /** Une ligne de collection : (carte, rareté) → nombre d'exemplaires. */
 export interface PlayerCard {
@@ -157,7 +158,7 @@ export interface GameState {
   covers: Record<string, string>;
 }
 
-/** Profil public (vitrine, devise, statistiques de base). */
+/** Profil public (vitrine, devise, cosmétiques, statistiques enrichies). */
 export interface Profile {
   id: string;
   name: string;
@@ -169,6 +170,41 @@ export interface Profile {
   joinedAt?: number;
   /** classeur épinglé (visible des potes) */
   pinnedBinder?: { id: string; name: string; cards: Array<{ cardId: string; rarity: RarityId }>; coverCardId?: string } | null;
+  /** bannière, cadre, titre, badges (déjà filtrés : seulement du débloqué) */
+  cosmetics?: CosmeticChoice;
+  stats?: PlayerStats;
+  /** jour de la série dans le cycle (1..7) */
+  streakDay?: number;
+  bestDrop?: { cardId: string; rarity: RarityId; mintNumber: number } | null;
+  themes?: Array<{ id: string; have: number; total: number }>;
+}
+
+/** Ligne du classement entre nous. */
+export interface LeaderRow {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  cosmetics: CosmeticChoice;
+  uniques: number;
+  total: number;
+  pct: number;
+  mythics: number;
+  secrets: number;
+  packsOpened: number;
+  tradesDone: number;
+  streak: number;
+}
+
+/** Entrée du fil d'activité d'un joueur. */
+export interface ActivityItem {
+  id: string;
+  kind: string;
+  message: string;
+  cardId?: string;
+  cardName?: string;
+  rarity?: RarityId;
+  mintNumber?: number;
+  createdAt: number;
 }
 
 export interface GameBackend {
@@ -197,6 +233,12 @@ export interface GameBackend {
   profile(userId: string): Promise<Profile | null>;
   setShowcase(cards: Array<{ cardId: string; rarity: RarityId }>): Promise<void>;
   setBio(bio: string): Promise<void>;
+  /** Cosmétiques du profil (seulement du débloqué : le serveur filtre) ; renvoie le choix retenu. */
+  setCosmetics(choice: CosmeticChoice): Promise<CosmeticChoice>;
+  /** Classement entre nous. */
+  leaderboard(): Promise<LeaderRow[]>;
+  /** Fil d'activité d'un joueur. */
+  activity(userId: string): Promise<ActivityItem[]>;
   /** Contrat : brûle des doublons d'une étoile contre une carte de l'étoile au-dessus. */
   signContract(rarity: RarityId, items: Array<{ cardId: string; count: number }>): Promise<ContractResult>;
   /** Envies : marque / retire une carte (state.wishlist suit). */
