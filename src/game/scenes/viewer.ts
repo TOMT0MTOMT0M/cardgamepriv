@@ -1,4 +1,4 @@
-import { AdditiveBlending, Color, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, type Material } from 'three/webgpu';
+import { AdditiveBlending, Color, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, Vector3, type Material } from 'three/webgpu';
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
@@ -22,6 +22,8 @@ import { isWonderCard, createWonderCardInstance, preloadWonderModel, type Wonder
 export interface ViewerScene extends Experiment {
   /** `dir` : on passe à la carte suivante (1) ou précédente (-1) → courte rotation latérale au lieu du grand tour */
   show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1 }): Promise<void>;
+  /** Vrai si le point (NDC −1..1) est sur la carte : un toucher ailleurs ferme la visionneuse (« clic hors zone »). */
+  hits(ndcX: number, ndcY: number): boolean;
 }
 
 export function createViewerScene(): ViewerScene {
@@ -54,6 +56,19 @@ export function createViewerScene(): ViewerScene {
     document.body.classList.toggle('viewer-zoomed', zoomT > 1.04);
   };
 
+  const corner = new Vector3();
+  function hits(nx: number, ny: number): boolean {
+    if (!mesh) return false;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      corner.set((cx * 0.63) / 2, (cy * 0.88) / 2, 0).applyMatrix4(mesh.matrixWorld).project(stage.camera);
+      x0 = Math.min(x0, corner.x); y0 = Math.min(y0, corner.y); x1 = Math.max(x1, corner.x); y1 = Math.max(y1, corner.y);
+    }
+    // une marge : on ferme seulement en touchant franchement à côté
+    const m = 0.08;
+    return nx >= x0 - m && nx <= x1 + m && ny >= y0 - m && ny <= y1 + m;
+  }
+
   function clear() {
     if (wonderInstance) {
       wonderInstance.dispose();
@@ -69,6 +84,7 @@ export function createViewerScene(): ViewerScene {
   }
 
   return {
+    hits,
     async show(cardId, rarityId, opts) {
       const my = ++token;
       setZoom(1); // nouvelle carte : on repart sans zoom

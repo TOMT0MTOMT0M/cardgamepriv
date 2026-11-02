@@ -8,6 +8,7 @@ import { createTradesView } from './views/trades';
 import { createContractsView } from './views/contracts';
 import { createProfileView } from './views/profile';
 import { createMissions, MISSION_ICON } from './views/missions';
+import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
 import { createLocalBackend } from './localBackend';
 import { createOnlineBackend, onlineConfigured } from './onlineBackend';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
@@ -132,7 +133,7 @@ function renderMe() {
     meEl.innerHTML = `${demo}${snd}${s.mode === 'online' ? `<button class="btn-primary login">Connexion Discord</button>` : ''}${s.authError ? `<span class="err">${esc(s.authError)}</span>` : ''}`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `${demo}<a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour">${MISSION_ICON}<b class="msn-n" hidden></b></button>${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button>`;
+    meEl.innerHTML = `${demo}<a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour">${MISSION_ICON}<b class="msn-n" hidden></b></button><button class="icon st-btn" title="Série de connexion" aria-label="Série de connexion">${STREAK_ICON}<b class="st-n"></b></button><button class="icon pt-btn" title="Pity 6★ : boosters avant un 6★ garanti" aria-label="Pity 6★">${PITY_ICON}<b class="pt-n"></b></button>${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button>`;
     tickPacks();
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
@@ -146,7 +147,10 @@ function renderMe() {
   });
   meEl.querySelector('.user')?.addEventListener('click', () => (location.hash = '#/profil'));
   meEl.querySelector('.msn-btn')?.addEventListener('click', () => missions?.toggle());
+  meEl.querySelector('.st-btn')?.addEventListener('click', () => status?.toggle('streak'));
+  meEl.querySelector('.pt-btn')?.addEventListener('click', () => status?.toggle('pity'));
   syncMissionBadge();
+  syncStatus();
   const n = s.trades.incoming.length;
   const badgeChanged = tradeBadge.hidden !== (n === 0) || tradeBadge.textContent !== String(n);
   tradeBadge.hidden = n === 0;
@@ -170,6 +174,22 @@ function syncMissionBadge() {
   meEl.querySelector('.msn-btn')?.classList.toggle('ready', n > 0);
 }
 backend.onChange(syncMissionBadge);
+/** Série de connexion + pity (status.ts) ; créés une fois la 3D prête (sons). */
+let status: ReturnType<typeof createStatus> | null = null;
+function syncStatus() {
+  const st = meEl.querySelector<HTMLElement>('.st-btn');
+  const pt = meEl.querySelector<HTMLElement>('.pt-btn');
+  if (!st || !pt || !status) return;
+  const sk = status.streak();
+  st.querySelector('.st-n')!.textContent = `${sk.day}/7`;
+  st.classList.toggle('ready', sk.claimable);
+  st.title = sk.claimable ? 'Série de 7 jours : récompense à réclamer !' : `Série de connexion · jour ${sk.day}/7`;
+  const left = status.pityLeft();
+  pt.querySelector('.pt-n')!.textContent = String(left);
+  pt.classList.toggle('ready', left === 0);
+  pt.title = left === 0 ? 'Ton prochain booster contient un 6★ sûr !' : `Pity 6★ : encore ${left} booster${left > 1 ? 's' : ''} avant un 6★ garanti`;
+}
+backend.onChange(syncStatus);
 /** N'écrit dans le DOM que si le texte change (le compteur tourne chaque seconde). */
 const setText = (e: Element, t: string) => {
   if (e.textContent !== t) e.textContent = t;
@@ -267,7 +287,9 @@ async function boot() {
     void backend.logout().then(() => (location.hash = '#/'));
   });
   missions = createMissions(backend, shell);
+  status = createStatus(backend, shell);
   syncMissionBadge();
+  syncStatus();
   const views: Record<string, { el: HTMLElement; enter(sub?: string): void; leave(): void }> = { '': shop, collection: coll, contrats: contracts, echanges: trades, profil: profile };
   let current = '';
 

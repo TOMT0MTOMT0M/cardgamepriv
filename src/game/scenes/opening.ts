@@ -128,6 +128,10 @@ export interface OpeningEvents {
   onLast?(): void;
   /** la dernière carte est SECRÈTE : le jeu passe la main à la séquence « Un de nous » */
   onSecret?(card: PackCard): void;
+  /** une MYTHIQUE (6★) : séquence plein écran dédiée (pause dramatique, burst, étoiles une à une) — démarre */
+  onMythic?(card: PackCard): void;
+  /** fin de la séquence mythique : la scène attend un toucher (ou appelle onDone si c'était la dernière carte, après le toucher) */
+  onMythicShown?(card: PackCard, last: boolean): void;
   /** toutes les cartes sont révélées (éventail) */
   onDone?(): void;
   /** une carte de l'éventail final a été touchée (le jeu l'ouvre en grand dans la visionneuse) */
@@ -146,21 +150,28 @@ export interface OpeningScene extends Experiment {
   /** Révéler / avancer (même effet qu'un tap). */
   advance(): void;
   /**
+   * Éventail final : rectangle écran (px CSS) de chaque carte, dans l'ordre de l'éventail (de la moins rare à la plus
+   * rare), pour poser des badges DOM dessus (NOUVELLE / DOUBLON) ; null tant que l'éventail n'est pas là.
+   */
+  fanRects(): Array<{ card: PackCard; x: number; y: number; w: number; h: number }> | null;
+  /**
    * Pilotage automatique (ouvertures ×5 / ×10, « passer jusqu'aux 4★ ») :
    * - `burn` : l'emballage se brûle tout seul, sans maintenir ;
    * - `minRank` : les cartes de rang inférieur se retournent et filent dans la rangée en accéléré, sans toucher ;
    *   la scène s'arrête (attend un toucher) sur chaque carte de rang ≥ minRank. 0 = désactivé.
+   * - `reveal` (« Tout révéler ») : toutes les cartes se retournent toutes seules, à vitesse normale pour celles de
+   *   rang ≥ minRank ; une mythique garde sa séquence plein écran et attend le toucher final.
    */
-  setAuto(o: { burn?: boolean; minRank?: number }): void;
+  setAuto(o: { burn?: boolean; minRank?: number; reveal?: boolean }): void;
   /** Vitrine : le booster lui-même a été touché (le jeu l'ouvre, comme le bouton « Ouvrir »). */
   onBoosterTap: (() => void) | null;
   /**
-   * Décale l'image de `px` pixels vers la droite (glissement doux) : sur ordinateur, le booster se centre dans l'espace
-   * laissé libre par le panneau de la boutique ; 0 = centre de l'écran (ouverture, téléphone).
+   * Décale l'image de `px` pixels vers la droite et `py` vers le bas (glissement doux) : sur ordinateur, le booster se
+   * centre dans l'espace laissé libre par la fiche du booster ; 0 = centre de l'écran (ouverture, téléphone).
    */
-  setFocusOffset(px: number): void;
-  /** Miniature (image) de la face d'un booster, pour la liste de la boutique ; null si pas encore générée. */
-  packThumb(key: string): string | null;
+  setFocusOffset(px: number, py?: number): void;
+  /** Miniature (image) de la face d'un booster, pour la boutique ; `size` = largeur demandée (px) ; null si pas encore générée. */
+  packThumb(key: string, size?: number): string | null;
   /** Vitrine : booster pas encore disponible (« bientôt ») → légèrement désaturé et moins éclairé. */
   setBoosterSoon(on: boolean): void;
   /** Vitrine : un coup de doigt horizontal sur le booster (le jeu passe au booster voisin). */
@@ -169,7 +180,8 @@ export interface OpeningScene extends Experiment {
   debug(): unknown;
 }
 
-type Phase = 'display' | 'sealed' | 'opened' | 'busy' | 'shown' | 'done';
+/** `mythicHold` : la 6★ est révélée plein écran, la scène attend un toucher avant l'éventail */
+type Phase = 'display' | 'sealed' | 'opened' | 'busy' | 'shown' | 'mythicHold' | 'done';
 
 /** Réglage « réduire les animations » du téléphone / de l'ordinateur : pas de flash négatif, secousses atténuées. */
 const CALM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -229,7 +241,7 @@ export function createOpeningScene(): OpeningScene {
   let holding = false;
   let hold = 0;
   /** pilotage automatique (voir setAuto) */
-  const auto = { burn: false, minRank: 0 };
+  const auto = { burn: false, minRank: 0, reveal: false };
   /** la carte courante doit-elle défiler en accéléré ? */
   const fastCard = (si: number | undefined) => auto.minRank > 0 && si !== undefined && !!slots[si] && slots[si].rr.rank < auto.minRank;
   let rumbleAt = 0;
@@ -282,6 +294,8 @@ export function createOpeningScene(): OpeningScene {
   /** décalage horizontal de l'image (px CSS) : cible et valeur lissée */
   let focusT = 0;
   let focusCur = 0;
+  let focusTY = 0;
+  let focusCurY = 0;
   let focusKey = '';
 
   // ── déchirure (Bebou Pack, World Pack)
@@ -646,6 +660,8 @@ export function createOpeningScene(): OpeningScene {
       return;
     }
     slots = built;
+    // teasing au dos : la tranche d'une légendaire (dorée) ou d'une mythique luit déjà, carte face cachée
+    for (const sl of slots) if (sl.rr.tier >= 4 && !sl.rr.secret) sl.U.rim.value = sl.rr.tier >= 5 ? 0.3 : 0.2;
     // révélation de la moins rare à la plus rare (la secrète est toujours la dernière)
     order = slots.map((_, i) => i).sort((a, b) => RANK[slots[a].data.rarity] - RANK[slots[b].data.rarity] || a - b);
     order.forEach((si, k) => {
@@ -779,8 +795,20 @@ export function createOpeningScene(): OpeningScene {
   function ignite(s: Slot, at: number) {
     const n = Math.min(6, s.rr.rank + 1);
     const tier = s.rr.tier;
-    const gap = 0.1 + tier * 0.018;
-    for (let k = 0; k < n; k++) tl!.to(s.U.lit, { value: k + 1, duration: 0.12, ease: 'power2.out', onStart: () => ctx.sfx.tick(1 + k * 0.14, 0.07 + tier * 0.015) }, at + k * gap);
+    const mythic = tier >= 5 && !s.rr.secret;
+    // mythique : les 6 étoiles s'allument une à une, lentement, chacune avec son carillon (et un petit choc)
+    const gap = mythic ? 0.34 : 0.1 + tier * 0.018;
+    for (let k = 0; k < n; k++)
+      tl!.to(s.U.lit, {
+        value: k + 1, duration: mythic ? 0.2 : 0.12, ease: 'power2.out',
+        onStart: () => {
+          if (mythic) {
+            ctx.sfx.chime(Math.min(5, 1 + k), 0.09 + k * 0.02, 392 * Math.pow(2, k / 12));
+            shake.impulse((6 + k * 3) * (CALM ? 0.25 : 1));
+            haptics.pulse(20 + k * 8);
+          } else ctx.sfx.tick(1 + k * 0.14, 0.07 + tier * 0.015);
+        },
+      }, at + k * gap);
     return at + n * gap;
   }
 
@@ -797,6 +825,7 @@ export function createOpeningScene(): OpeningScene {
     phase = 'busy';
     const rr = s.rr;
     const T = rr.tier;
+    const mythic = T >= 5; // (la secrète est partie vers onSecret juste au-dessus)
     curTier = T;
     const sfx = ctx.sfx;
     kill();
@@ -805,8 +834,18 @@ export function createOpeningScene(): OpeningScene {
     U.colA.value.set(rr.hex);
     U.colB.value.set(rr.accentHex);
     // 1. suspense (rare et mieux) : liseré, halo derrière, tremblement, montée
-    const sus = T >= 2 ? Math.min(2.2, rr.suspense * 0.6) : 0.05;
-    if (T >= 2) {
+    //    MYTHIQUE : plein écran — pause dramatique, écran assombri, la carte seule au centre, un peu plus grande
+    const sus = mythic ? (CALM ? 1.6 : 2.6) : T >= 2 ? Math.min(2.2, rr.suspense * 0.6) : 0.05;
+    if (mythic) {
+      events.onMythic?.(s.data);
+      tl.to(S, { dark: 0.72, glow: 0.12, duration: 0.5, ease: EASE.glide }, 0)
+        .to(s.U.rim, { value: 2.2, duration: sus, ease: 'power2.in' }, 0)
+        .to(S, { trem: 0.42, duration: sus, ease: 'power3.in' }, 0.3)
+        .to(s.p, { z: 0.14, s: 1.12, duration: sus, ease: EASE.breathe }, 0);
+      tl.call(() => sfx.heartbeat(0.5, 40), [], 0.2);
+      tl.call(() => sfx.rumble(sus, 0.35), [], 0.35);
+      tl.call(() => sfx.riser(sus * 0.8, 5, 0.22), [], sus * 0.25);
+    } else if (T >= 2) {
       tl.to(s.U.rim, { value: 0.6 + T * 0.35, duration: sus, ease: 'power1.in' }, 0)
         .to(S, { glow: 0.25 + T * 0.18, trem: 0.15 + T * 0.12, dark: T >= 4 ? 0.35 : 0.12, duration: sus, ease: 'power2.in' }, 0)
         .to(s.p, { z: 0.06, s: 1.04, duration: sus, ease: EASE.breathe }, 0);
@@ -827,8 +866,8 @@ export function createOpeningScene(): OpeningScene {
       shake2.impulse(-(3 + rr.shake * 24) * (CALM ? 0.25 : 1));
       if (T >= 2) {
         U.origin.value.set(0, 0, 0.1);
-        // gerbe dosée (retour testeurs : « il en faut moins ») : de ~250 (rare) à 2 200 (mythique)
-        U.count.value = Math.min(rr.particles * 0.18, ctx.quality === 'mobile' ? 1100 : 2200);
+        // gerbe dosée (retour testeurs : « il en faut moins ») : de ~250 (rare) à 2 200 (mythique) ; burst prismatique ×1,6 pour la 6★
+        U.count.value = Math.min(rr.particles * (mythic ? 0.3 : 0.18), (ctx.quality === 'mobile' ? 1100 : 2200) * (mythic ? 1.6 : 1));
         S.bt = 0;
       }
       haptics.pulse(T >= 5 ? [60, 40, 140, 40, 220] : T >= 4 ? [50, 30, 90] : T >= 3 ? 40 : T >= 2 ? 18 : 9);
@@ -836,7 +875,7 @@ export function createOpeningScene(): OpeningScene {
     }, [], pay);
     tl.to(s.U.rim, { value: 0, duration: 0.6 }, pay)
       .to(S, { flash: (0.35 + T * 0.16) * (CALM ? 0.4 : 1), ca: T >= 3 && !CALM ? 0.35 + (T - 3) * 0.3 : 0, glow: T >= 2 ? 0.8 + T * 0.25 : 0.15, trem: 0, duration: 0.05 }, pay)
-      .to(S, { flash: 0, ca: 0, dark: 0, duration: 1.3, ease: EASE.glide }, pay + 0.08)
+      .to(S, { flash: 0, ca: 0, dark: mythic ? 0.5 : 0, duration: 1.3, ease: EASE.glide }, pay + 0.08)
       .to(S, { glow: T >= 2 ? 0.2 + T * 0.06 : 0, duration: 2.2, ease: EASE.glide }, pay + 0.1)
       .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
       .to(s.U.flash, { value: 1, duration: 0.06 }, pay)
@@ -854,9 +893,23 @@ export function createOpeningScene(): OpeningScene {
       main.call(() => void gsap.to(main, { timeScale: rr.slowmo + 0.2, duration: 0.15 }), [], pay - 0.05);
       main.call(() => void gsap.to(main, { timeScale: 1, duration: 0.9, ease: 'power2.in' }), [], pay + 0.3);
     }
-    const end = ignite(s, pay + 0.15);
+    // burst prismatique : les couleurs de la gerbe tournent (arc-en-ciel) pendant la montée des étoiles
+    if (mythic && !CALM) {
+      const hue = { h: 0 };
+      tl.to(hue, { h: 1, duration: 2.6, ease: 'none', onUpdate: () => {
+        U.colA.value.setHSL(hue.h % 1, 0.85, 0.62);
+        U.colB.value.setHSL((hue.h + 0.33) % 1, 0.85, 0.75);
+      } }, pay);
+    }
+    const end = ignite(s, pay + (mythic ? 0.5 : 0.15));
     const fast = fastCard(si);
     tl.call(() => {
+      if (mythic) {
+        // plein écran : on attend un toucher (puis l'éventail si c'était la dernière carte)
+        phase = last ? 'mythicHold' : 'shown';
+        events.onMythicShown?.(s.data, last);
+        return;
+      }
       phase = last ? 'busy' : 'shown';
       if (last) finish(fast ? 0.35 : 1.1);
     }, [], Math.max(end, pay + 0.45));
@@ -897,10 +950,10 @@ export function createOpeningScene(): OpeningScene {
   function fanLayout() {
     const { halfH, halfW } = view();
     const portrait = halfW < halfH;
-    const top = halfH * (portrait ? 0.76 : 0.86), bottom = -halfH + 2 * halfH * (portrait ? 0.32 : 0.44);
+    const top = halfH * (portrait ? 0.76 : 0.84), bottom = -halfH + 2 * halfH * (portrait ? 0.32 : 0.36);
     const n = order.length;
     const wk = portrait ? 0.92 : 0.9;
-    const sc = Math.min(0.56, ((top - bottom) * 0.92) / CARD_H, (2 * halfW * wk) / (CARD_W * (1 + (n - 1) * 0.62)));
+    const sc = Math.min(0.6, ((top - bottom) * 0.92) / CARD_H, (2 * halfW * wk) / (CARD_W * (1 + (n - 1) * 0.62)));
     const gap = Math.min(0.42, (2 * halfW * wk - CARD_W * sc * 1.08) / Math.max(1, n - 1));
     const cy = (top + bottom) / 2;
     return order.map((_, k) => {
@@ -943,11 +996,13 @@ export function createOpeningScene(): OpeningScene {
     fanFlip = true;
     const rr = s.rr;
     const T = rr.tier;
+    const mythic = T >= 5;
     curTier = T;
     focusSlot = si;
     const sfx = ctx.sfx;
     kill();
-    const lay = fanLayout()[cursor];
+    // mythique : la carte quitte l'éventail pour le centre de l'écran, en grand (plein écran)
+    const lay = mythic ? { x: 0, y: 0.02, z: 0.3, s: Math.min(1.05, fanLayout()[cursor].s * 1.9), rz: 0 } : fanLayout()[cursor];
     tl = gsap.timeline();
     // la carte précédente reprend sa place dans l'éventail
     if (cursor > 0) {
@@ -958,9 +1013,17 @@ export function createOpeningScene(): OpeningScene {
     U.glowColor.value.set(T === 0 ? '#e8e2d6' : rr.hex);
     U.colA.value.set(rr.hex);
     U.colB.value.set(rr.accentHex);
-    const sus = T >= 2 ? Math.min(0.9, rr.suspense * 0.28) : 0;
-    tl.to(s.p, { x: lay.x, y: lay.y, z: lay.z + 0.14, s: lay.s * 1.14, rz: lay.rz * 0.3, duration: 0.12 + sus, ease: EASE.breathe, onStart: () => sfx.tick(0.8 + T * 0.1, 0.12) }, 0);
-    if (T >= 2) {
+    const sus = mythic ? (CALM ? 1.4 : 2.4) : T >= 2 ? Math.min(0.9, rr.suspense * 0.28) : 0;
+    tl.to(s.p, { x: lay.x, y: lay.y, z: lay.z + 0.14, s: lay.s * 1.14, rz: lay.rz * 0.3, duration: mythic ? 0.7 : 0.12 + sus, ease: mythic ? EASE.glide : EASE.breathe, onStart: () => sfx.tick(0.8 + T * 0.1, 0.12) }, 0);
+    if (mythic) {
+      events.onMythic?.(s.data);
+      tl.to(S, { dark: 0.72, glow: 0.12, duration: 0.5, ease: EASE.glide }, 0)
+        .to(s.U.rim, { value: 2.2, duration: sus, ease: 'power2.in' }, 0)
+        .to(S, { trem: 0.4, duration: sus, ease: 'power3.in' }, 0.3);
+      tl.call(() => sfx.heartbeat(0.5, 40), [], 0.2);
+      tl.call(() => sfx.rumble(sus, 0.35), [], 0.35);
+      tl.call(() => sfx.riser(sus * 0.8, 5, 0.22), [], sus * 0.25);
+    } else if (T >= 2) {
       tl.to(s.U.rim, { value: 0.6 + T * 0.35, duration: sus + 0.1, ease: 'power1.in' }, 0).to(S, { glow: 0.2 + T * 0.15, trem: T >= 3 ? 0.1 + T * 0.07 : 0, dark: T >= 4 ? 0.3 : 0.1, duration: sus + 0.1, ease: 'power2.in' }, 0);
       if (T >= 3) tl.call(() => sfx.riser(sus + 0.2, T, 0.16), [], 0);
     }
@@ -976,7 +1039,7 @@ export function createOpeningScene(): OpeningScene {
       shake.impulse((3 + rr.shake * 26) * (CALM ? 0.25 : 1));
       if (T >= 2) {
         U.origin.value.set(s.p.x, s.p.y, s.p.z + 0.1);
-        U.count.value = Math.min(rr.particles * 0.14, ctx.quality === 'mobile' ? 900 : 1800);
+        U.count.value = Math.min(rr.particles * (mythic ? 0.3 : 0.14), (ctx.quality === 'mobile' ? 900 : 1800) * (mythic ? 1.6 : 1));
         S.bt = 0;
       }
       haptics.pulse(T >= 5 ? [60, 40, 140] : T >= 4 ? [50, 30, 90] : T >= 3 ? 35 : T >= 2 ? 16 : 8);
@@ -984,7 +1047,7 @@ export function createOpeningScene(): OpeningScene {
     }, [], pay);
     tl.to(s.U.rim, { value: 0, duration: 0.5 }, pay)
       .to(S, { flash: (0.3 + T * 0.14) * (CALM ? 0.4 : 1), ca: T >= 3 && !CALM ? 0.3 + (T - 3) * 0.25 : 0, glow: T >= 2 ? 0.6 + T * 0.2 : 0.1, trem: 0, duration: 0.05 }, pay)
-      .to(S, { flash: 0, ca: 0, dark: 0, duration: 1.0, ease: EASE.glide }, pay + 0.08)
+      .to(S, { flash: 0, ca: 0, dark: mythic ? 0.5 : 0, duration: 1.0, ease: EASE.glide }, pay + 0.08)
       .to(S, { glow: 0, duration: 1.6, ease: EASE.glide }, pay + 0.1)
       .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
       .to(s.U.flash, { value: 1, duration: 0.05 }, pay)
@@ -1000,19 +1063,33 @@ export function createOpeningScene(): OpeningScene {
       main.call(() => void gsap.to(main, { timeScale: rr.slowmo + 0.25, duration: 0.12 }), [], pay - 0.05);
       main.call(() => void gsap.to(main, { timeScale: 1, duration: 0.7, ease: 'power2.in' }), [], pay + 0.25);
     }
-    // étoiles en rafale (plus serrées qu'en mode pile)
+    if (mythic && !CALM) {
+      const hue = { h: 0 };
+      tl.to(hue, { h: 1, duration: 2.6, ease: 'none', onUpdate: () => {
+        U.colA.value.setHSL(hue.h % 1, 0.85, 0.62);
+        U.colB.value.setHSL((hue.h + 0.33) % 1, 0.85, 0.75);
+      } }, pay);
+    }
+    // étoiles en rafale (plus serrées qu'en mode pile) ; mythique : une à une, avec leurs carillons (ignite)
     const n = Math.min(6, rr.rank + 1);
-    for (let k = 0; k < n; k++) tl.to(s.U.lit, { value: k + 1, duration: 0.08, ease: 'power2.out', onStart: () => sfx.tick(1 + k * 0.14, 0.05 + T * 0.012) }, pay + 0.05 + k * 0.06);
+    let starsEnd = pay + 0.05 + n * 0.06;
+    if (mythic) starsEnd = ignite(s, pay + 0.5);
+    else for (let k = 0; k < n; k++) tl.to(s.U.lit, { value: k + 1, duration: 0.08, ease: 'power2.out', onStart: () => sfx.tick(1 + k * 0.14, 0.05 + T * 0.012) }, pay + 0.05 + k * 0.06);
     const fast = fastCard(si);
     tl.call(() => {
       fanFlip = false;
       s.U.lit.value = 6;
       cursor++;
+      if (mythic) {
+        phase = last ? 'mythicHold' : 'opened';
+        events.onMythicShown?.(s.data, last);
+        return;
+      }
       if (last) {
         phase = 'busy';
         finish(fast ? 0.3 : 0.9);
       } else phase = 'opened';
-    }, [], Math.max(pay + 0.05 + n * 0.06, pay + 0.3));
+    }, [], Math.max(starsEnd, pay + 0.3));
     if (fast) tl.timeScale(3.5);
   }
 
@@ -1022,13 +1099,14 @@ export function createOpeningScene(): OpeningScene {
     // téléphone (portrait) : l'en-tête est sur deux lignes, le récap est plus court (≈ 30 % du bas) → l'éventail se
     // centre dans l'espace vraiment libre et prend presque toute la largeur
     const portrait = halfW < halfH;
-    const top = halfH * (portrait ? 0.76 : 0.86), bottom = -halfH + 2 * halfH * (portrait ? 0.32 : 0.44);
+    // (récap compact en bas : une ligne résumé + 3 boutons ≈ 150 px → l'éventail prend plus de place qu'avant)
+    const top = halfH * (portrait ? 0.76 : 0.82), bottom = -halfH + 2 * halfH * (portrait ? 0.24 : 0.2);
     const n = order.length;
     // taille : limitée par la hauteur libre ET par la largeur (téléphone en portrait : les 5 cartes, qui se
     // chevauchent d'environ 40 %, doivent tenir sans déborder des bords de l'écran)
     const wk = portrait ? 0.92 : 0.9;
-    const sc = Math.min(0.56, ((top - bottom) * 0.92) / CARD_H, (2 * halfW * wk) / (CARD_W * (1 + (n - 1) * 0.62)));
-    const gap = Math.min(0.42, (2 * halfW * wk - CARD_W * sc * 1.08) / Math.max(1, n - 1));
+    const sc = Math.min(0.72, ((top - bottom) * 0.9) / CARD_H, (2 * halfW * wk) / (CARD_W * (1 + (n - 1) * 0.62)));
+    const gap = Math.min(0.52, (2 * halfW * wk - CARD_W * sc * 1.08) / Math.max(1, n - 1));
     const cy = (top + bottom) / 2;
     const tl2 = sideline(gsap.timeline({ delay }));
     tl2.call(() => ctx.sfx.whoosh(0.45, 0.07), [], 0);
@@ -1048,6 +1126,12 @@ export function createOpeningScene(): OpeningScene {
   }
 
   function advance() {
+    if (phase === 'mythicHold') {
+      // la 6★ plein écran a été admirée : place à l'éventail
+      phase = 'busy';
+      finish(0.25);
+      return;
+    }
     if (phase === 'sealed') {
       // déchirure : un toucher la fait toute seule (World Pack : d'un coup sec)
       if (style !== 'burn') startAutoTear(style === 'fan' ? 0.42 : 1.05);
@@ -1109,22 +1193,40 @@ export function createOpeningScene(): OpeningScene {
     setAuto(o) {
       if (o.burn !== undefined) auto.burn = o.burn;
       if (o.minRank !== undefined) auto.minRank = o.minRank;
+      if (o.reveal !== undefined) auto.reveal = o.reveal;
       // carte en cours de révélation sous le nouveau seuil : on accélère tout de suite
       if (auto.minRank > 0 && phase === 'busy' && tl && fastCard(order[cursor]) && tl.timeScale() < 3) tl.timeScale(3.5);
     },
     onBoosterTap: null,
-    setFocusOffset(px) {
+    setFocusOffset(px, py = 0) {
       focusT = px;
+      focusTY = py;
     },
     onBoosterSwipe: null,
+    fanRects() {
+      if (phase !== 'done' || !slots.length) return null;
+      const out: Array<{ card: PackCard; x: number; y: number; w: number; h: number }> = [];
+      const w = ctx.width, hh = ctx.height;
+      for (const si of order) {
+        const sl = slots[si];
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          proj.set((cx * CARD_W) / 2, (cy * CARD_H) / 2, 0).applyMatrix4(sl.mesh.matrixWorld).project(stage.camera);
+          const px = (proj.x * 0.5 + 0.5) * w, py = (0.5 - proj.y * 0.5) * hh; // (le décalage de vue est déjà dans la projection)
+          x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py);
+        }
+        out.push({ card: sl.data, x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+      }
+      return out;
+    },
     setBoosterSoon(on) {
       soonT = on ? 1 : 0;
     },
-    packThumb(k) {
+    packThumb(k, size) {
       const src = arts.get(k)?.front.image as HTMLCanvasElement | undefined;
       if (!src?.width) return null;
       // (téléphone, écran ×3 : la vignette de 26 px CSS en demande ~84 → 96 au lieu de 64, sinon floue)
-      const tw = ctx?.quality === 'mobile' ? 96 : 64;
+      const tw = Math.min(src.width, size ?? (ctx?.quality === 'mobile' ? 96 : 64));
       const w = tw, h = Math.round((tw * src.height) / src.width);
       const c = document.createElement('canvas');
       c.width = w;
@@ -1479,11 +1581,12 @@ export function createOpeningScene(): OpeningScene {
       }
       if (shreds) shreds.visible = style !== 'burn';
       // défilement accéléré : retourne / range tout seul les cartes sous le seuil ; s'arrête sur les belles
-      if (auto.minRank > 0) {
-        if (phase === 'opened' && fastCard(order[cursor])) {
+      if (auto.minRank > 0 || auto.reveal) {
+        const cur = order[cursor];
+        if (phase === 'opened' && (auto.reveal || fastCard(cur))) {
           if (style === 'fan') revealFan();
           else revealCurrent();
-        } else if (phase === 'shown' && fastCard(order[cursor])) nextCard();
+        } else if (phase === 'shown' && (fastCard(cur) || (auto.reveal && !!slots[cur] && slots[cur].rr.rank < 5))) nextCard();
       }
       shake.update(dt);
       shake2.update(dt);
@@ -1630,11 +1733,13 @@ export function createOpeningScene(): OpeningScene {
       // décalage de l'image (vitrine sur ordinateur) : fenêtre de vue décalée, rayons et effets suivent tout seuls
       focusCur += (focusT - focusCur) * (1 - Math.exp(-dt * 6));
       if (Math.abs(focusCur - focusT) < 0.3) focusCur = focusT;
-      const fk = `${focusCur.toFixed(1)}|${ctx.width}|${ctx.height}`;
+      focusCurY += (focusTY - focusCurY) * (1 - Math.exp(-dt * 6));
+      if (Math.abs(focusCurY - focusTY) < 0.3) focusCurY = focusTY;
+      const fk = `${focusCur.toFixed(1)}|${focusCurY.toFixed(1)}|${ctx.width}|${ctx.height}`;
       if (fk !== focusKey) {
         focusKey = fk;
-        if (Math.abs(focusCur) < 0.5) stage.camera.clearViewOffset();
-        else stage.camera.setViewOffset(ctx.width, ctx.height, -focusCur, 0, ctx.width, ctx.height);
+        if (Math.abs(focusCur) < 0.5 && Math.abs(focusCurY) < 0.5) stage.camera.clearViewOffset();
+        else stage.camera.setViewOffset(ctx.width, ctx.height, -focusCur, -focusCurY, ctx.width, ctx.height);
       }
       stage.scene.updateMatrixWorld();
       // effets plein écran (onde de choc, aberration) : centrés sur la carte retournée de l'éventail, sinon sur la scène
@@ -1651,9 +1756,10 @@ export function createOpeningScene(): OpeningScene {
     dispose() {},
   };
   function layout(w: number, h: number) {
+    // vitrine : la rangée des pochettes occupe le bas de l'écran → le booster remonte (plus encore en portrait)
     const portrait = w / h < 0.8;
-    L.dispY = portrait ? 0.2 : 0;
-    L.dispS = portrait ? 0.78 : 1;
+    L.dispY = portrait ? 0.26 : 0.1;
+    L.dispS = portrait ? 0.56 : 0.56;
   }
   return api;
 }

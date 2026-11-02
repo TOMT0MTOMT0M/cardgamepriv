@@ -18,6 +18,7 @@ export function createOnlineBackend(): GameBackend {
     sealed: null,
     trades: { incoming: [], outgoing: [] },
     missions: null,
+    wishlist: [],
   };
 
   const toSealed = (p: NonNullable<NetState['sealedPack']>): SealedPack => ({
@@ -51,8 +52,11 @@ export function createOnlineBackend(): GameBackend {
           packStored: n.user.packStored ?? n.user.packBalance,
           packRegenAt: n.user.packRegenAt ?? Date.now(),
           totalPacksOpened: n.user.totalPacksOpened,
+          pityCount: n.user.pityCount ?? 0,
+          streak: n.user.streak ?? undefined,
         }
       : null;
+    state.wishlist = n.user?.wishlist ?? [];
     state.collection = n.collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));
     state.friends = n.friends
       .filter((f) => f._id !== n.user?._id)
@@ -135,6 +139,14 @@ export function createOnlineBackend(): GameBackend {
     },
     async signContract(rarity, items) {
       return await net.signContract(rarity, items);
+    },
+    async toggleWish(cardId) {
+      // réponse immédiate (la souscription `me` confirme juste après)
+      state.wishlist = await net.toggleWish(cardId);
+      listeners.forEach((fn) => fn(state));
+    },
+    async claimStreak() {
+      return (await net.claimStreak()).reward;
     },
   };
 }

@@ -2,6 +2,7 @@ import type { RarityId } from '../core/rarity';
 import type { PackRequest } from '../core/packRoll';
 import { applyRegen, type RegenState } from '../core/packRegen';
 import type { MissionsState } from '../core/missions';
+import type { StreakState } from '../core/streak';
 
 /** Une ligne de collection : (carte, rareté) → nombre d'exemplaires. */
 export interface PlayerCard {
@@ -93,6 +94,10 @@ export interface Me {
   packStored: number;
   packRegenAt: number;
   totalPacksOpened: number;
+  /** pity 6★ : boosters d'affilée sans Mythique (src/core/pity.ts) */
+  pityCount: number;
+  /** série de connexion (src/core/streak.ts) — telle qu'enregistrée côté serveur */
+  streak?: StreakState;
 }
 
 /** Réserve de boosters à l'instant présent (le compte à rebours de l'en-tête l'appelle chaque seconde). */
@@ -114,6 +119,8 @@ export interface GameState {
   trades: { incoming: TradeView[]; outgoing: TradeView[] };
   /** missions du jour (null : pas connecté) ; `resetAt` = prochain tirage */
   missions: (MissionsState & { resetAt: number }) | null;
+  /** « envies » : ids de cartes marquées (ordre d'ajout) */
+  wishlist: string[];
 }
 
 /** Profil public (vitrine, devise, statistiques de base). */
@@ -150,6 +157,10 @@ export interface GameBackend {
   setBio(bio: string): Promise<void>;
   /** Contrat : brûle des doublons d'une étoile contre une carte de l'étoile au-dessus. */
   signContract(rarity: RarityId, items: Array<{ cardId: string; count: number }>): Promise<ContractResult>;
+  /** Envies : marque / retire une carte (state.wishlist suit). */
+  toggleWish(cardId: string): Promise<void>;
+  /** Récompense de la série de connexion (jour 7) : boosters gagnés. */
+  claimStreak(): Promise<number>;
 }
 
 export interface ContractResult {

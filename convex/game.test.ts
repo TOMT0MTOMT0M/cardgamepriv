@@ -52,7 +52,7 @@ describe('boosters', () => {
       expect(pack.packKind).toBe('theme');
       expect(pack.themeId).toBe('gaming');
       expect(pack.cards).toHaveLength(5);
-      expect(pack.cards.every((c) => c.themeId === 'gaming' && ((c.subthemeId === 'pokemon' && c.cardId.startsWith('pkm-')) || (c.subthemeId === 'valorant' && c.cardId.startsWith('val-')) || (c.subthemeId === 'lol' && c.cardId.startsWith('lol-')) || (c.subthemeId === 'cs' && c.cardId.startsWith('cs-')) || (!!c.subthemeId?.startsWith('jv-') && c.cardId.startsWith(`${c.subthemeId}-`))))).toBe(true);
+      expect(pack.cards.every((c) => c.themeId === 'gaming' && ((!!c.subthemeId?.startsWith('pkm-') && c.cardId.startsWith('pkm-')) || (!!c.subthemeId?.startsWith('val-') && c.cardId.startsWith('val-')) || (!!c.subthemeId?.startsWith('lol-') && c.cardId.startsWith('lol-')) || (!!c.subthemeId?.startsWith('cs-') && c.cardId.startsWith('cs-')) || (!!c.subthemeId?.startsWith('jv-') && c.cardId.startsWith(`${c.subthemeId}-`))))).toBe(true);
       expect(pack.cards.some((c) => c.rarity === 'secret')).toBe(false);
       expect(['rare', 'epic', 'legendary', 'mythic']).toContain(pack.cards[4].rarity);
       await t.mutation(api.packs.revealPack, { sessionToken: alice.token, packId: pack._id });
@@ -296,7 +296,7 @@ describe('contrats (façon CS:GO)', () => {
         await ctx.db.insert('inventory', { userId, cardId, rarity, count: n, bestMintNumber: 1, foilSeed: 1, firstPulledAt: 0, lastPulledAt: 0 });
     });
   }
-  const commons = (k: number) => CATALOG_CARDS.filter((c) => c.subthemeId === 'pokemon' && c.baseRarity === 'common').slice(0, k).map((c) => c.id);
+  const commons = (k: number) => CATALOG_CARDS.filter((c) => c.subthemeId === 'pkm-kanto' && c.baseRarity === 'common').slice(0, k).map((c) => c.id);
 
   test('10 doublons 1★ → une 2★ nouvelle, les doublons brûlés, jamais le dernier exemplaire', async () => {
     const { t, alice } = await setup();
@@ -305,7 +305,7 @@ describe('contrats (façon CS:GO)', () => {
     const res = await t.mutation(api.contracts.sign, { sessionToken: alice.token, rarity: 'common', items: ids.map((cardId) => ({ cardId, count: 2 })) });
     expect(res.rarity).toBe('uncommon');
     expect(res.isNew).toBe(true);
-    expect(res.subthemeId).toBe('pokemon');
+    expect(res.subthemeId).toBe('pkm-kanto'); // contrat 100 % Kanto → une carte Kanto
     const inv = await t.query(api.inventory.myCollection, { sessionToken: alice.token });
     for (const id of ids) expect(inv.find((c) => c.cardId === id)?.count).toBe(1);
     expect(inv.some((c) => c.cardId === res.cardId && c.rarity === 'uncommon')).toBe(true);
@@ -398,5 +398,60 @@ describe('missions en ligne', () => {
     expect(p?.showcase).toHaveLength(3);
     expect(p?.bio).toBe('salut tout le monde');
     await expect(t.mutation(api.profiles.setShowcase, { sessionToken: bob.token, cards: inv.slice(0, 1).map((c) => ({ cardId: c.cardId, rarity: c.rarity })) })).rejects.toThrow();
+  });
+});
+
+describe('retours du 3 nov. : pity, envies, série de connexion', () => {
+  test('pity 6★ : 199 boosters secs → le suivant contient une Mythique, puis le compteur repart à zéro', async () => {
+    const { t, alice } = await setup();
+    await t.run(async (ctx) => ctx.db.patch(alice.userId, { pityCount: 199 }));
+    const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
+    expect(pack.cards.some((c) => c.rarity === 'mythic' || c.rarity === 'secret')).toBe(true);
+    expect((await t.query(api.users.me, { sessionToken: alice.token }))?.pityCount).toBe(0);
+  });
+
+  test('pity 6★ : un booster sans Mythique fait avancer le compteur', async () => {
+    const { t, alice } = await setup();
+    // tirage le moins favorable (1 - ε) : aucune mythique dans les emplacements
+    let n = 0;
+    const real = crypto.getRandomValues.bind(crypto);
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation(<T extends ArrayBufferView | null>(arr: T): T => {
+      if (arr instanceof Uint32Array) {
+        arr[0] = n++ === 0 ? 0xfffffff0 : 0x7fffffff; // plan (pas de Bébou), puis étoiles au milieu des poids (communes / rares)
+        return arr;
+      }
+      return real(arr as never) as T;
+    });
+    const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
+    expect(pack.cards.some((c) => c.rarity === 'mythic')).toBe(false);
+    expect((await t.query(api.users.me, { sessionToken: alice.token }))?.pityCount).toBe(1);
+  });
+
+  test('envies : marquer / retirer une carte, carte inconnue refusée', async () => {
+    const { t, alice } = await setup();
+    const id = CATALOG_CARDS[0].id;
+    expect(await t.mutation(api.users.toggleWish, { sessionToken: alice.token, cardId: id })).toEqual([id]);
+    expect((await t.query(api.users.me, { sessionToken: alice.token }))?.wishlist).toEqual([id]);
+    expect(await t.mutation(api.users.toggleWish, { sessionToken: alice.token, cardId: id })).toEqual([]);
+    await expect(t.mutation(api.users.toggleWish, { sessionToken: alice.token, cardId: 'nope' })).rejects.toThrow();
+  });
+
+  test('série de connexion : le battement compte le jour, la récompense du 7e jour ajoute 5 boosters', async () => {
+    const { t, alice } = await setup();
+    await t.mutation(api.users.heartbeat, { sessionToken: alice.token });
+    let me = await t.query(api.users.me, { sessionToken: alice.token });
+    expect(me?.streak?.count).toBe(1);
+    expect(me?.streakClaimable).toBe(false);
+    await expect(t.mutation(api.users.claimStreak, { sessionToken: alice.token })).rejects.toThrow();
+    // 7 jours d'affilée (le 7e = aujourd'hui)
+    await t.run(async (ctx) => ctx.db.patch(alice.userId, { streak: { count: 7, day: me!.streak!.day, rewardedAt: 0 } }));
+    me = await t.query(api.users.me, { sessionToken: alice.token });
+    expect(me?.streakClaimable).toBe(true);
+    const r = await t.mutation(api.users.claimStreak, { sessionToken: alice.token });
+    expect(r.reward).toBe(5);
+    me = await t.query(api.users.me, { sessionToken: alice.token });
+    expect(me?.packBalance).toBe(10);
+    expect(me?.streakClaimable).toBe(false);
+    await expect(t.mutation(api.users.claimStreak, { sessionToken: alice.token })).rejects.toThrow();
   });
 });

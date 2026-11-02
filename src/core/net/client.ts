@@ -3,6 +3,7 @@ import { api } from '../../../convex/_generated/api';
 import type { Doc, Id } from '../../../convex/_generated/dataModel';
 import type { RarityId } from '../rarity';
 import type { MissionsState } from '../missions';
+import type { StreakState } from '../streak';
 
 const LS_SESSION_TOKEN = 'cardlab.session_token';
 
@@ -22,6 +23,13 @@ export interface MeProfile {
   nextPackAt?: number | null;
   uniqueCards: number;
   totalCards: number;
+  /** pity 6★ (src/core/pity.ts) */
+  pityCount?: number;
+  /** envies (ids de cartes) */
+  wishlist?: string[];
+  /** série de connexion (src/core/streak.ts) */
+  streak?: StreakState | null;
+  streakClaimable?: boolean;
 }
 
 export interface FriendPresence {
@@ -235,11 +243,16 @@ class GameNetClient {
 
   private startHeartbeat() {
     if (this.heartbeatTimer !== null) clearInterval(this.heartbeatTimer);
-    this.heartbeatTimer = window.setInterval(() => {
+    const beat = () => {
       if (this.client && this.sessionToken && document.visibilityState === 'visible') {
         void this.client.mutation(api.users.heartbeat, { sessionToken: this.sessionToken }).catch(() => {});
       }
-    }, 35_000);
+    };
+    // tout de suite (la série de connexion compte la visite du jour), puis toutes les 35 s
+    beat();
+    this.heartbeatTimer = window.setInterval(beat, 35_000);
+    // retour sur l'onglet après minuit : la série avance sans attendre le prochain battement
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && beat());
   }
 
   public onChange(fn: Listener): () => void {
@@ -381,6 +394,14 @@ class GameNetClient {
   }
   public async setBio(bio: string) {
     return await this.client!.mutation(api.profiles.setBio, { sessionToken: this.requireToken(), bio });
+  }
+  /** Envies : marque / retire une carte. */
+  public async toggleWish(cardId: string) {
+    return await this.client!.mutation(api.users.toggleWish, { sessionToken: this.requireToken(), cardId });
+  }
+  /** Récompense de la série de connexion (jour 7). */
+  public async claimStreak() {
+    return await this.client!.mutation(api.users.claimStreak, { sessionToken: this.requireToken() });
   }
 
   /** Retours du labo → serveur (une ligne par navigateur, mise à jour à chaque envoi). */

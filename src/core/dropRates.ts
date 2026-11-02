@@ -56,6 +56,17 @@ export function rollStar(weights: Record<StarRarityId, number>, rand: () => numb
 }
 
 /**
+ * Part de chaque étoile parmi les cartes TIRÉES (en %, total 100) : (4 × emplacement normal + 1 × garanti) / 5.
+ * C'est ce qu'affichent les barres « chance par carte » de la fiche booster — les vrais taux du tirage pondéré,
+ * pas la part des cartes du catalogue.
+ */
+export function slotShare(slots = 4): Record<StarRarityId, number> {
+  const out = {} as Record<StarRarityId, number>;
+  for (const r of STAR_RARITIES) out[r] = (slots * SLOT_WEIGHTS[r] + GUARANTEED_WEIGHTS[r]) / (slots + 1);
+  return out;
+}
+
+/**
  * Probabilités par booster de 5 cartes (pour la doc et les tests) : chance d'avoir au moins une carte de
  * cette étoile OU MIEUX dans le booster.
  */

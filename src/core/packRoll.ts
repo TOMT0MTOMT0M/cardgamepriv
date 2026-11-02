@@ -21,6 +21,8 @@ export interface PackRequest {
   kind: PackKind;
   /** requis pour `kind: 'theme'` */
   themeId?: string;
+  /** pity (src/core/pity.ts) : l'emplacement garanti devient une Mythique, sauf si une Secrète l'a déjà pris */
+  forceMythic?: boolean;
 }
 
 const poolCache = new Map<string, Map<StarRarityId, CatalogEntry[]>>();
@@ -74,8 +76,9 @@ export function rollPack(req: PackRequest, rand: () => number = Math.random): Ro
       out.push({ card: secretCard, rarity: 'secret' });
       continue;
     }
-    const weights = slot === plan.size - 1 ? GUARANTEED_WEIGHTS : SLOT_WEIGHTS;
-    let star = rollStar(weights, rand);
+    const last = slot === plan.size - 1;
+    const weights = last ? GUARANTEED_WEIGHTS : SLOT_WEIGHTS;
+    let star: StarRarityId = last && req.forceMythic && pool.get('mythic')?.length ? 'mythic' : rollStar(weights, rand);
     // thème sans carte de cette étoile (petit thème) : on descend, puis on remonte, jusqu'à trouver
     if (!pool.get(star)?.length) {
       const order: StarRarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];

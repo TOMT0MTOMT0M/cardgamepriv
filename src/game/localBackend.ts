@@ -5,6 +5,8 @@ import { contractProblem, contractTarget, rollContract } from '../core/contracts
 import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
 import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
+import { pityAfter, pityForces } from '../core/pity';
+import { STREAK_REWARD, claimStreak as claimStreakState, touchStreak, type StreakState } from '../core/streak';
 import { BIG_PULL_RARITIES, cardKey, type BigPull, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeItem, type TradeView } from './backend';
 
 /**
@@ -12,6 +14,7 @@ import { BIG_PULL_RARITIES, cardKey, type BigPull, type Friend, type GameBackend
  * Sert quand Convex n'est pas configuré, ou avec `?demo` : jouer, tester l'ouverture, la collection et les échanges
  * sans compte. Les « amis » sont des robots clairement étiquetés, qui acceptent les échanges raisonnables.
  * `?secret` : le prochain bébou pack contient forcément un Bébou (pour tester la séquence secrète).
+ * `?pity` : le prochain booster est celui de la pity (6★ sûr) · `?streak=7` : série de connexion à 7 jours (récompense à réclamer).
  */
 const LS = 'bebou.demo.v1';
 const RANK: Record<RarityId, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
@@ -42,6 +45,10 @@ interface Saved {
   missions?: MissionsState;
   showcase?: Array<{ cardId: string; rarity: RarityId }>;
   bio?: string;
+  /** pity 6★ (src/core/pity.ts) */
+  pity?: number;
+  wishlist?: string[];
+  streak?: StreakState;
 }
 
 function add(inv: Inv, cardId: string, rarity: RarityId, n: number, mint = 999) {
@@ -80,6 +87,17 @@ export function createLocalBackend(): GameBackend {
     save = freshSave();
   }
   let forceSecret = new URLSearchParams(location.search).has('secret');
+  if (new URLSearchParams(location.search).has('pity')) save.pity = 199;
+  {
+    const n = Number(new URLSearchParams(location.search).get('streak'));
+    if (n > 0) save.streak = { count: n, day: '2000-01-01', rewardedAt: 0 };
+  }
+  // série de connexion : la visite du jour compte (jour sauté : retour à 1)
+  {
+    const t = touchStreak(save.streak && save.streak.day !== '2000-01-01' ? save.streak : undefined, Date.now());
+    if (save.streak?.day === '2000-01-01') save.streak = { ...save.streak, day: t!.day };
+    else if (t) save.streak = t;
+  }
   const listeners = new Set<(s: GameState) => void>();
   const state: GameState = {
     mode: 'demo',
@@ -93,6 +111,7 @@ export function createLocalBackend(): GameBackend {
     sealed: null,
     trades: { incoming: [], outgoing: [] },
     missions: null,
+    wishlist: [],
   };
 
   function persist() {
@@ -112,7 +131,10 @@ export function createLocalBackend(): GameBackend {
       packStored: save.packBalance,
       packRegenAt: save.regenAt ?? now,
       totalPacksOpened: save.opened,
+      pityCount: save.pity ?? 0,
+      streak: save.streak,
     };
+    state.wishlist = save.wishlist ?? [];
     state.collection = Object.values(save.inv);
     state.friends = save.bots.map<Friend>((b, i) => ({ id: b.id, name: b.name, online: i !== 2, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30, bot: true }));
     state.feed = save.feed.slice(0, 20);
@@ -217,6 +239,7 @@ export function createLocalBackend(): GameBackend {
       save.packBalance = regen.balance - 1;
       save.regenAt = regen.regenAt;
       let rand: () => number = Math.random;
+      req = { ...req, forceMythic: pityForces(save.pity ?? 0) };
       if (forceSecret && req.kind === 'bebou') {
         forceSecret = false;
         let first = true;
@@ -231,6 +254,7 @@ export function createLocalBackend(): GameBackend {
         return { cardId: card.id, cardName: card.name, rarity: rarity as RarityId, mintNumber: mint, isNew, themeId: card.themeId };
       });
       const maxRarity = cards.reduce<RarityId>((m, c) => (RANK[c.rarity] > RANK[m] ? c.rarity : m), 'common');
+      save.pity = pityAfter(save.pity ?? 0, cards.map((c) => c.rarity));
       save.sealed = { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards };
       sync();
       return save.sealed;
@@ -342,6 +366,19 @@ export function createLocalBackend(): GameBackend {
     async setBio(bio) {
       save.bio = bio.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined;
       sync();
+    },
+    async toggleWish(cardId) {
+      const list = save.wishlist ?? [];
+      save.wishlist = list.includes(cardId) ? list.filter((id) => id !== cardId) : [...list, cardId];
+      sync();
+    },
+    async claimStreak() {
+      const r = claimStreakState(save.streak);
+      if (typeof r === 'string') throw new Error(r);
+      save.streak = r;
+      grant(STREAK_REWARD);
+      sync();
+      return STREAK_REWARD;
     },
     async signContract(rarity, items) {
       await delay(150);

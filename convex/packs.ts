@@ -7,6 +7,7 @@ import { isValidPackRequest, rollPack, type PackRequest } from '../src/core/pack
 import { artPath, bebouOddsLabel, catalogEntry, hasArt, subthemeById, themeById, BEBOU_PACK } from '../src/core/sets/themes';
 import { applyRegen, fmtCountdown } from '../src/core/packRegen';
 import { bumpMissions } from './missions';
+import { pityAfter, pityForces } from '../src/core/pity';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -65,6 +66,9 @@ export const preparePack = mutation({
 
     // anciens identifiants (« pokemon ») ramenés à leur thème (« gaming »)
     const req: PackRequest = { kind: packKind ?? 'bebou', themeId: packKind === 'theme' ? themeById(themeId ?? '')?.id ?? themeId : undefined };
+    // pity : 200 boosters secs → celui-ci contient une Mythique (src/core/pity.ts)
+    const pity = user.pityCount ?? 0;
+    req.forceMythic = pityForces(pity);
     if (!isValidPackRequest(req)) {
       throw new ConvexError('Ce booster n’existe pas.');
     }
@@ -143,6 +147,8 @@ export const preparePack = mutation({
         subthemeId: card.subthemeId,
       });
     }
+
+    await ctx.db.patch(user._id, { pityCount: pityAfter(pity, rolledCards.map((c) => c.rarity)) });
 
     const packId = await ctx.db.insert('packOpens', {
       userId: user._id,

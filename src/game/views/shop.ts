@@ -1,14 +1,14 @@
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
-import { PACK_CAP, PACK_REGEN_MS, fmtCountdown } from '../../core/packRegen';
+import { fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import { openStyleOf, type OpeningScene } from '../scenes/opening';
 import type { ViewerScene } from '../scenes/viewer';
 import type { PackRequest } from '../../core/packRoll';
-import { BEBOU_PACK, THEMES, bebouOddsLabel, catalogEntry, subthemeById, subthemeViews, themeById, themeOpen, themeTagline, type SubthemeView } from '../../core/sets/themes';
+import { BEBOU_PACK, THEMES, catalogEntry, numberingSize, subthemeById, themeById } from '../../core/sets/themes';
 import { cardById } from '../../core/cardData';
 import { rarity } from '../../core/rarity';
-import { packOdds } from '../../core/dropRates';
-import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
+import { cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
+import { createPackSheet, shopPacks } from './packSheet';
 import { preloadArt } from '../preload';
 import { isTouch } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
@@ -29,67 +29,25 @@ const HINT = {
 const HI_RANK = 3;
 /** indication affichée tant que le booster est fermé (dépend de sa mise en scène : brûler, déchirer, toucher) */
 let sealedHint = HINT.hold;
-const QTYS = [1, 5, 10] as const;
 
 /**
- * Boutique + ouverture. La scène 3D (booster au centre) est partagée : choisir un booster le fait tourner sur lui-même,
- * « Ouvrir » tire le pack côté serveur puis l'ouverture se joue dans la même scène, sans chargement.
+ * Boutique + ouverture. Accueil : le fil « Gros tirages » en haut, le booster choisi en 3D au centre, la rangée des 5
+ * pochettes en bas. Toucher une pochette ouvre sa FICHE (packSheet.ts : chances, pity, cartes, envies, Ouvrir) ; l'ouverture
+ * se joue ensuite dans la même scène 3D, sans chargement.
  */
 export interface ShopView {
   el: HTMLElement;
-  enter(): void;
+  enter(sub?: string): void;
   leave(): void;
   /** vrai pendant une ouverture (la navigation est alors bloquée) */
   busy(): boolean;
 }
 
-interface Booster {
-  key: string;
-  req: PackRequest;
-  name: string;
-  tagline: string;
-  desc: string;
-  accent: string;
-  /** thème sans cartes pour l'instant : visible, pas encore ouvrable */
-  soon?: boolean;
-}
-
-function boosters(): Booster[] {
-  // le bébou pack (pack de base, tous les thèmes) en tête, puis les 4 boosters thématiques
-  const list: Booster[] = [
-    {
-      key: 'bebou',
-      req: { kind: 'bebou' },
-      name: BEBOU_PACK.label,
-      tagline: BEBOU_PACK.tagline,
-      desc: 'Toutes les cartes des 4 thèmes. Le seul pack où peut tomber une des 8 cartes secrètes.',
-      accent: BEBOU_PACK.style.foil,
-    },
-  ];
-  for (const t of THEMES) {
-    // un groupe de sous-thèmes n'en fait qu'une ligne (« Jeux vidéo (177 familles) », « Animaux (6 sous-thèmes) »)
-    const views = subthemeViews(t);
-    const lbl = (v: SubthemeView) => (v.group ? `${v.label} (${v.subs.length} ${v.subs[0]?.group?.unit ?? 'sous-thèmes'})` : v.label);
-    const live = views.filter((v) => v.cards.length).map(lbl);
-    const soon = views.filter((v) => !v.cards.length).map(lbl);
-    list.push({
-      key: t.id,
-      req: { kind: 'theme', themeId: t.id },
-      name: `${t.label} Pack`,
-      tagline: themeTagline(t),
-      desc: live.length ? `${live.join(', ')}${soon.length ? ` · bientôt : ${soon.join(', ')}` : ''}` : soon.join(', '),
-      accent: t.style.accent,
-      soon: !themeOpen(t),
-    });
-  }
-  return list;
-}
-
-const keyOf = (p: SealedPack) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? THEMES[0].id);
+const keyOf = (p: SealedPack) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? 'gaming');
 
 export function createShopView(backend: GameBackend, shell: Shell, opening: OpeningScene, go: (route: string) => void, getViewer: () => Promise<ViewerScene>): ShopView {
   const el = h('section', 'view shop');
-  const list = boosters();
+  const list = shopPacks();
   let selected = (() => {
     try {
       return localStorage.getItem('bebou.booster') ?? 'bebou';
@@ -97,37 +55,22 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       return 'bebou';
     }
   })();
-  if (!list.some((b) => b.key === selected)) selected = list[0].key;
+  if (!list.some((b) => b.key === selected)) selected = 'bebou';
   let mode: 'pick' | 'opening' | 'summary' = 'pick';
   let pack: SealedPack | null = null;
-  /** nombre de boosters à ouvrir d'affilée (×1, ×5, ×10), mémorisé */
-  let qty = (() => {
-    try {
-      const n = Number(localStorage.getItem('bebou.qty'));
-      return (QTYS as readonly number[]).includes(n) ? n : 1;
-    } catch {
-      return 1;
-    }
-  })();
   /**
    * Ouverture en série : boosters déjà ouverts (et crédités) + celui en cours. Chaque booster n'est crédité côté
    * serveur qu'une fois montré (pas d'annonce avant que le joueur ait vu sa carte) ; « Tout passer » tire et crédite
    * le reste d'un coup.
    */
-  let batch: { req: PackRequest; total: number; done: SealedPack[]; current: SealedPack | null; hi: boolean; skipping: boolean } | null = null;
+  let batch: { req: PackRequest; total: number; done: SealedPack[]; current: SealedPack | null; hi: boolean; all: boolean; skipping: boolean } | null = null;
   let secretExp: { replay?(): void } | null = null;
 
   el.innerHTML = `
-    <div class="shop-side">
-      <div class="shop-title"><span class="kicker">BOUTIQUE</span><h2>Choisis ton booster</h2></div>
-      <div class="boosters"></div>
-      <div class="odds"></div>
-    </div>
-    <div class="shop-main">
-      <div class="sealed-banner" hidden></div>
-      <div class="qty" role="radiogroup" aria-label="Nombre de boosters">${QTYS.map((n) => `<button data-n="${n}" role="radio">×${n}</button>`).join('')}</div>
-      <button class="open-btn">OUVRIR</button>
-      <div class="open-sub"></div>
+    <div class="shop-home">
+      <div class="shop-title"><span class="kicker">BOUTIQUE</span><h2>Choisis ton booster</h2><p class="shop-hint"></p></div>
+      <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary">Ouvrir</button></div>
+      <div class="packs-row" role="listbox" aria-label="Boosters"></div>
     </div>
     <div class="hud" hidden>
       <div class="hud-count"></div>
@@ -135,17 +78,19 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       <div class="hud-bottom">
         <div class="card-info" hidden></div>
         <div class="hud-hint"><span class="ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" pathLength="100"/><circle class="p" cx="18" cy="18" r="15.5" pathLength="100"/></svg></span><span class="txt"></span></div>
-        <div class="hud-skip"><button class="skip-hi" title="Les cartes de moins de 4 étoiles défilent toutes seules">⏭ 4★ et +</button><button class="skip-all">Tout passer</button></div>
+        <div class="hud-skip"><button class="skip-hi" title="Les cartes de moins de 4 étoiles défilent toutes seules">⏭ 4★ et +</button><button class="skip-reveal" title="Les cartes se retournent toutes seules (une 6★ garde son plein écran)">Tout révéler</button><button class="skip-all" title="Créditer sans regarder">Tout passer</button></div>
       </div>
+      <div class="mythic-veil" hidden><div class="mv-kicker">✺ MYTHIQUE ✺</div><div class="mv-stars">★★★★★★</div><div class="mv-name"></div><div class="mv-hint"></div></div>
     </div>
+    <div class="sum-bg" hidden><div class="sum-rays"></div><div class="sum-parts"></div></div>
+    <div class="fan-badges" hidden></div>
     <div class="summary" hidden></div>
     <div class="secret-continue" hidden><button class="btn-primary">Continuer</button></div>
     <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
-  const boostersEl = el.querySelector<HTMLElement>('.boosters')!;
-  const oddsEl = el.querySelector<HTMLElement>('.odds')!;
-  const openBtn = el.querySelector<HTMLButtonElement>('.open-btn')!;
-  const openSub = el.querySelector<HTMLElement>('.open-sub')!;
-  const banner = el.querySelector<HTMLElement>('.sealed-banner')!;
+  const home = el.querySelector<HTMLElement>('.shop-home')!;
+  const rowEl = el.querySelector<HTMLElement>('.packs-row')!;
+  const hintEl = el.querySelector<HTMLElement>('.shop-hint')!;
+  const banner = el.querySelector<HTMLElement>('.home-banner')!;
   const hud = el.querySelector<HTMLElement>('.hud')!;
   const hint = el.querySelector<HTMLElement>('.hud-hint')!;
   const hintTxt = hint.querySelector<HTMLElement>('.txt')!;
@@ -154,42 +99,66 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const info = el.querySelector<HTMLElement>('.card-info')!;
   const summary = el.querySelector<HTMLElement>('.summary')!;
   const secretContinue = el.querySelector<HTMLElement>('.secret-continue')!;
-  // gros tirages de tout le groupe (vitrine seulement) ; une carte touchée s'ouvre dans la visionneuse
+  // gros tirages de tout le groupe, en haut de l'accueil ; une carte touchée s'ouvre dans la visionneuse
   const big = createBigPulls(backend, (card) => void viewCard(card));
-  el.append(big.el);
-  const qtyEl = el.querySelector<HTMLElement>('.qty')!;
+  home.prepend(big.el);
   const skipEl = el.querySelector<HTMLElement>('.hud-skip')!;
   const skipHi = skipEl.querySelector<HTMLButtonElement>('.skip-hi')!;
+  const skipReveal = skipEl.querySelector<HTMLButtonElement>('.skip-reveal')!;
   const skipAll = skipEl.querySelector<HTMLButtonElement>('.skip-all')!;
+  const mythicVeil = el.querySelector<HTMLElement>('.mythic-veil')!;
+  const sumBg = el.querySelector<HTMLElement>('.sum-bg')!;
+  const fanBadges = el.querySelector<HTMLElement>('.fan-badges')!;
+  hintEl.textContent = TOUCH ? 'Touche une pochette pour voir ce qu’elle contient' : 'Clique sur une pochette pour voir ce qu’elle contient · ← → pour changer';
 
-  // ── quantité (×1 / ×5 / ×10)
-  qtyEl.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-n]');
-    if (!b || b.disabled || mode !== 'pick') return;
-    qty = Number(b.dataset.n);
-    try {
-      localStorage.setItem('bebou.qty', String(qty));
-    } catch {
-      /* ignore */
-    }
-    haptics.pulse(6);
-    syncState();
+  // ── fiche du booster (overlay)
+  // visuels des pochettes (face du vrai booster, rendue par la scène) : capturés une fois, dès qu'ils existent
+  const thumbs = new Map<string, string>();
+  const sheet = createPackSheet(backend, shell, list, {
+    thumb: (k, size) => thumbs.get(k) ?? opening.packThumb(k, size),
+    onSelect: (k) => select(k, { scroll: true }),
+    viewCard: (c) => void viewCard(c),
+    async onOpen(p, total) {
+      if (mode !== 'pick') return;
+      const got = await backend.preparePack(p.req);
+      pack = got;
+      batch = { req: p.req, total, done: [], current: got, hi: batch?.hi ?? false, all: false, skipping: false };
+      sheet.close();
+      start(got);
+    },
   });
+  el.append(sheet.el);
 
-  // ── choix du booster
+  // ── les 5 pochettes
   for (const b of list) {
-    const btn = h('button', `booster${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}`, `<span class="dot" style="background:${b.accent}"></span><span class="bn">${esc(b.name)}</span><span class="bt"><span>${b.tagline.split(' · ').map((p) => `<span>${esc(p)}</span>`).join('')}</span></span><span class="bd">${esc(b.desc)}</span>`);
+    const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}`, `
+      <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">BIENTÔT</span>' : ''}</span>
+      <span class="sl-name">${esc(b.name)}</span>
+      <span class="sl-desc">${esc(b.desc)}</span>
+      <span class="sl-prog"><i></i></span>`);
     btn.dataset.key = b.key;
-    btn.addEventListener('click', () => select(b.key));
-    boostersEl.append(btn);
+    btn.setAttribute('role', 'option');
+    btn.addEventListener('click', () => {
+      haptics.pulse(6);
+      sheet.open(b.key);
+    });
+    rowEl.append(btn);
   }
-  const o = packOdds();
-  oddsEl.innerHTML = `<div class="odds-t">Dans chaque booster de 5 cartes</div>
-    <div>${starsHtml('rare')} garantie</div>
-    <div>${starsHtml('epic')} ou mieux · 1 sur ${(1 / o.epic).toFixed(1).replace('.', ',')}</div>
-    <div>${starsHtml('legendary')} ou mieux · 1 sur ${Math.round(1 / o.legendary)}</div>
-    <div>${starsHtml('mythic')} · 1 sur ${Math.round(1 / o.mythic)}</div>
-    <div class="odds-secret" title="Une chance sur le nombre total de cartes du jeu : elle devient plus rare à chaque nouvelle carte ajoutée.">✷ carte secrète · ${bebouOddsLabel()} · Bebou Pack seulement</div>`;
+  const sleeveOf = (k: string) => rowEl.querySelector<HTMLElement>(`.sleeve[data-key="${k}"]`);
+  function paintSleeves() {
+    for (const b of list) {
+      const art = sleeveOf(b.key)?.querySelector<HTMLElement>('.sl-art');
+      if (!art || art.querySelector('img')) continue;
+      const src = opening.packThumb(b.key, 360);
+      if (!src) continue;
+      thumbs.set(b.key, src);
+      const img = h('img');
+      img.src = src;
+      img.alt = '';
+      img.decoding = 'async';
+      art.querySelector('.sl-ph')?.replaceWith(img);
+    }
+  }
 
   function select(k: string, o: { dir?: 1 | -1; scroll?: boolean } = {}) {
     if (mode !== 'pick') return;
@@ -203,23 +172,26 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     } catch {
       /* ignore */
     }
-    boostersEl.querySelectorAll<HTMLElement>('.booster').forEach((b) => b.classList.toggle('on', b.dataset.key === k));
-    // téléphone : le booster choisi revient au centre du carrousel
-    if (o.scroll !== false) boostersEl.querySelector<HTMLElement>(`.booster[data-key="${k}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    rowEl.querySelectorAll<HTMLElement>('.sleeve').forEach((b) => {
+      b.classList.toggle('on', b.dataset.key === k);
+      b.setAttribute('aria-selected', String(b.dataset.key === k));
+    });
+    // téléphone : la pochette choisie revient au centre du carrousel
+    if (o.scroll !== false) sleeveOf(k)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     opening.setBooster(k, true, dir);
     opening.setBoosterSoon(!!list.find((b) => b.key === k)?.soon);
     syncState();
   }
 
-  // téléphone : faire défiler le carrousel au doigt choisit le booster qui s'arrête au centre (comme un vrai carrousel)
+  // téléphone : faire défiler le carrousel au doigt choisit la pochette qui s'arrête au centre
   let scrollT = 0;
   const pickCentered = () => {
-    if (mode !== 'pick' || boostersEl.scrollWidth <= boostersEl.clientWidth + 4 || backend.state.sealed) return;
-    const r = boostersEl.getBoundingClientRect();
+    if (mode !== 'pick' || rowEl.scrollWidth <= rowEl.clientWidth + 4 || backend.state.sealed) return;
+    const r = rowEl.getBoundingClientRect();
     const mid = r.left + r.width / 2;
     let best: HTMLElement | null = null;
     let bd = Infinity;
-    for (const b of boostersEl.querySelectorAll<HTMLElement>('.booster')) {
+    for (const b of rowEl.querySelectorAll<HTMLElement>('.sleeve')) {
       const br = b.getBoundingClientRect();
       const d = Math.abs(br.left + br.width / 2 - mid);
       if (d < bd) (bd = d), (best = b);
@@ -227,68 +199,40 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const k = best?.dataset.key;
     if (k && k !== selected) select(k, { scroll: false });
   };
-  boostersEl.addEventListener('scroll', () => {
+  rowEl.addEventListener('scroll', () => {
     clearTimeout(scrollT);
     scrollT = window.setTimeout(pickCentered, 140);
   }, { passive: true });
 
-  /** quantité réellement ouvrable maintenant (la réserve a pu baisser depuis le choix) */
-  function effQty(): number {
-    const s = backend.state;
-    if (s.sealed) return 1;
-    const bal = s.user ? liveRegen(s.user).balance : 0;
-    return qty > 1 && bal < qty ? ([...QTYS].reverse().find((n) => n <= Math.max(1, bal)) ?? 1) : qty;
-  }
-
-  // ── état (solde, booster scellé, connexion)
+  // ── état (booster scellé pas encore ouvert : bandeau + bouton direct)
   function syncState() {
     const s = backend.state;
-    const u = s.user;
     if (mode !== 'pick') return;
-    const needLogin = s.mode === 'online' && !u;
-    const soon = !s.sealed && list.find((b) => b.key === selected)?.soon;
-    if (soon) {
-      openBtn.textContent = 'BIENTÔT';
-      openBtn.disabled = true;
-      openSub.textContent = 'Ses cartes arrivent bientôt · en attendant, le Bebou Pack contient tout';
-    } else if (needLogin) {
-      openBtn.textContent = 'SE CONNECTER';
-      openBtn.disabled = false;
-      openSub.textContent = 'Connexion avec Discord · accès réservé au groupe';
-    } else if (s.sealed) {
-      openBtn.textContent = 'OUVRIR';
-      openBtn.disabled = false;
-      openSub.textContent = '';
-    } else if (u && liveRegen(u).balance <= 0) {
-      const r = liveRegen(u);
-      openBtn.textContent = 'EN RECHARGE';
-      openBtn.disabled = true;
-      openSub.textContent = `Le prochain arrive dans ${fmtCountdown((r.nextAt ?? Date.now()) - Date.now())} · 1 toutes les ${PACK_REGEN_MS / 60000} min`;
-    } else {
-      const n = u ? liveRegen(u).balance : 0;
-      openBtn.textContent = effQty() > 1 ? `OUVRIR ×${effQty()}` : 'OUVRIR';
-      openBtn.disabled = !u;
-      openSub.textContent = u ? `${n} booster${n > 1 ? 's' : ''} en réserve${n <= PACK_CAP ? ` · ${PACK_CAP} max` : ''}` : '';
-    }
-    // ×5 / ×10 : seulement si la réserve suffit (un booster déjà tiré s'ouvre seul)
-    const bal = u ? liveRegen(u).balance : 0;
-    qtyEl.hidden = !!soon || needLogin || !!s.sealed;
-    for (const b of qtyEl.querySelectorAll<HTMLButtonElement>('button')) {
-      const n = Number(b.dataset.n);
-      b.disabled = n > 1 && bal < n;
-      b.classList.toggle('on', n === effQty());
-      b.setAttribute('aria-checked', String(n === effQty()));
-    }
     if (s.sealed) {
       const t = themeById(s.sealed.themeId ?? '');
       const name = s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster';
       banner.hidden = false;
-      banner.textContent = `Tu as un ${name} déjà tiré, pas encore ouvert : c’est lui qu’on ouvre.`;
+      banner.querySelector('span')!.textContent = `Tu as un ${name} déjà tiré, pas encore ouvert.`;
       if (keyOf(s.sealed) !== selected) select(keyOf(s.sealed));
     } else banner.hidden = true;
+    sheet.sync();
   }
   backend.onChange(syncState);
-  // sous chaque booster, un filet discret : la part de ses cartes déjà dans ta collection
+  banner.querySelector('button')!.addEventListener('click', async () => {
+    shell.requestGyro();
+    const sp = backend.state.sealed;
+    if (!sp || mode !== 'pick') return;
+    const p = list.find((b) => b.key === keyOf(sp)) ?? list[2];
+    try {
+      const got = await backend.preparePack(p.req);
+      pack = got;
+      batch = { req: p.req, total: 1, done: [], current: got, hi: false, all: false, skipping: false };
+      start(got);
+    } catch (e) {
+      toast(errMsg(e), 'err');
+    }
+  });
+  // sous chaque pochette, un filet : la part de ses cartes déjà dans ta collection
   let progSig = '';
   backend.onChange((st) => {
     const sig = collectionSig(st);
@@ -296,32 +240,25 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     progSig = sig;
     const mine = new Set(st.collection.map((c) => c.cardId));
     for (const b of list) {
-      const btn = boostersEl.querySelector<HTMLElement>(`.booster[data-key="${b.key}"]`);
-      const cards = b.key === 'bebou' ? THEMES.flatMap((t) => t.cards) : themeById(b.key)?.cards ?? [];
-      if (!btn || !cards.length) continue;
-      const have = cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0);
-      btn.style.setProperty('--pct', `${(have / cards.length) * 100}%`);
+      const btn = sleeveOf(b.key);
+      if (!btn || !b.cards.length) continue;
+      const have = b.cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0);
+      btn.style.setProperty('--pct', `${(have / b.cards.length) * 100}%`);
       btn.classList.add('has-prog');
-      btn.title = `${fmtN(have)} / ${fmtN(cards.length)} cartes déjà dans ta collection`;
+      btn.title = `${fmtN(have)} / ${fmtN(b.cards.length)} cartes déjà dans ta collection`;
     }
   });
-  // recharge (1 booster / 5 min) : l'en-tête prévient quand un booster arrive ; compte à rebours quand la réserve est vide
-  window.addEventListener('bebou:packs', syncState);
-  setInterval(() => {
-    const u = backend.state.user;
-    if (el.isConnected && u && !backend.state.sealed && liveRegen(u).balance <= 0) syncState();
-  }, 1000);
 
   // glisser le doigt sur le booster en 3D : vers la gauche = booster suivant, vers la droite = précédent
   opening.onBoosterSwipe = (dir) => {
-    if (mode !== 'pick' || !el.isConnected || backend.state.sealed) return;
+    if (mode !== 'pick' || !el.isConnected || backend.state.sealed || sheet.isOpen()) return;
     const i = list.findIndex((b) => b.key === selected);
     const d = (dir > 0 ? -1 : 1) as 1 | -1;
     select(list[(i + d + list.length) % list.length].key, { dir: d });
   };
-  // toucher le booster en 3D = « Ouvrir » (si c'est possible à cet instant)
+  // toucher le booster en 3D = sa fiche
   opening.onBoosterTap = () => {
-    if (mode === 'pick' && el.isConnected && !openBtn.disabled) openBtn.click();
+    if (mode === 'pick' && el.isConnected && !sheet.isOpen()) sheet.open(selected);
   };
   // clavier, au récap : Entrée = « Encore un »
   window.addEventListener('keydown', (e) => {
@@ -329,46 +266,30 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (/^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test((e.target as HTMLElement)?.tagName ?? '')) return;
     summary.querySelector<HTMLButtonElement>('.again')?.click();
   });
-  // clavier : ↑ ↓ (ou ← →) pour passer d'un booster à l'autre
+  // clavier : ← → pour passer d'une pochette à l'autre, Entrée = sa fiche
   window.addEventListener('keydown', (e) => {
-    if (mode !== 'pick' || !el.isConnected || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (mode !== 'pick' || !el.isConnected || e.altKey || e.ctrlKey || e.metaKey || sheet.isOpen()) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target as HTMLElement)?.tagName ?? '')) return;
-    const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+    if (e.key === 'Enter' && !/^(BUTTON|A)$/.test((e.target as HTMLElement)?.tagName ?? '')) return sheet.open(selected);
+    const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
     if (!d || backend.state.sealed) return;
     e.preventDefault();
     const i = list.findIndex((b) => b.key === selected);
     select(list[(i + d + list.length) % list.length].key, { dir: d as 1 | -1 });
   });
 
-  // ── ouverture
-  openBtn.addEventListener('click', async () => {
-    shell.requestGyro(); // iPhone : en première ligne du clic, avant tout await
-    haptics.pulse(10);
-    const s = backend.state;
-    if (s.mode === 'online' && !s.user) return backend.login();
-    if (mode !== 'pick') return;
-    openBtn.disabled = true;
-    const b = list.find((x) => x.key === selected)!;
-    const total = effQty();
-    try {
-      pack = await busyButton(openBtn, backend.preparePack(b.req));
-    } catch (e) {
-      toast(errMsg(e), 'err');
-      syncState();
-      return;
-    }
-    batch = { req: b.req, total, done: [], current: pack, hi: batch?.hi ?? false, skipping: false };
-    start(pack);
-  });
-
   // ── passer : jusqu'aux 4★ et + (bascule, garde son état d'un booster à l'autre de la série) / tout
   function applyAuto() {
     const hi = !!batch?.hi;
-    skipHi.classList.toggle('on', hi);
-    skipHi.setAttribute('aria-pressed', String(hi));
-    // série : à partir du 2e booster l'emballage se brûle tout seul ; « 4★ et + » : dès le premier
-    const burn = hi || (!!batch && batch.done.length > 0);
-    opening.setAuto({ burn, minRank: hi ? HI_RANK : 0 });
+    const all = !!batch?.all;
+    skipHi.classList.toggle('on', hi && !all);
+    skipHi.setAttribute('aria-pressed', String(hi && !all));
+    skipReveal.classList.toggle('on', all);
+    skipReveal.disabled = all;
+    // série : à partir du 2e booster l'emballage se brûle tout seul ; « 4★ et + » / « Tout révéler » : dès le premier
+    const burn = hi || all || (!!batch && batch.done.length > 0);
+    // « Tout révéler » : tout défile tout seul SAUF une mythique (rang 5) ou une secrète (6), qui gardent leur plein écran
+    opening.setAuto({ burn, minRank: all ? 5 : hi ? HI_RANK : 0, reveal: all });
     if (opening.phase === 'sealed') hintTxt.textContent = burn ? 'Ouverture…' : sealedHint;
   }
   skipHi.addEventListener('click', () => {
@@ -377,6 +298,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     haptics.pulse(8);
     applyAuto();
   });
+  skipReveal.addEventListener('click', () => {
+    if (!batch || mode !== 'opening' || batch.all) return;
+    batch.all = true;
+    haptics.pulse(8);
+    applyAuto();
+    // emballage déjà ouvert et carte en attente : on enchaîne tout de suite
+    if (opening.phase === 'opened' || opening.phase === 'shown') opening.advance();
+  });
   skipAll.addEventListener('click', () => void skipEverything());
 
   /** « Tout passer » : crédite le booster en cours, tire + crédite le reste de la série, puis le récap. */
@@ -384,7 +313,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (!batch || batch.skipping || mode !== 'opening') return;
     batch.skipping = true;
     skipAll.disabled = skipHi.disabled = true;
-    opening.setAuto({ burn: false, minRank: 0 });
+    opening.setAuto({ burn: false, minRank: 0, reveal: false });
     hint.hidden = false;
     hint.classList.remove('hold');
     info.classList.remove('in');
@@ -414,29 +343,25 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   }
 
   /**
-   * Ordinateur : le booster (et le bouton « Ouvrir ») se centrent dans l'espace à droite du panneau de la boutique ;
-   * pendant l'ouverture, au récap et sur téléphone : centre de l'écran.
+   * Vitrine : le booster 3D se centre dans l'espace libre. Fiche ouverte sur ordinateur (panneau à droite) : il glisse
+   * vers la gauche ; pendant l'ouverture, au récap et sur téléphone : centre de l'écran.
    */
-  const sideEl = el.querySelector<HTMLElement>('.shop-side')!;
   function placeFocus() {
-    const desk = window.innerWidth > 860 && mode === 'pick';
-    // centre de l'espace libre entre le panneau des boosters (à gauche) et la colonne « Gros tirages » (à droite, ≥ 1180 px)
     let px = 0;
-    if (desk) {
-      const l = sideEl.getBoundingClientRect().right;
-      const bp = big.el.getBoundingClientRect();
-      const r = !big.el.hidden && window.innerWidth >= 1180 && bp.width > 0 ? bp.left : window.innerWidth;
-      px = Math.round((l + r) / 2 - window.innerWidth / 2);
+    if (mode === 'pick' && sheet.isOpen() && window.innerWidth > 860) {
+      const sw = Math.min(460, window.innerWidth * 0.42);
+      px = -Math.round(sw / 2);
     }
-    opening.setFocusOffset(px);
+    opening.setFocusOffset(px, 0);
     el.style.setProperty('--focus-x', `${px}px`);
   }
   window.addEventListener('resize', placeFocus);
+  new MutationObserver(placeFocus).observe(sheet.el, { attributes: true, attributeFilter: ['class', 'hidden'] });
 
   function setMode(m: typeof mode) {
     mode = m;
     el.dataset.mode = m;
-    big.setVisible(m === 'pick'); // avant placeFocus : la colonne compte dans le centrage
+    big.setVisible(m === 'pick');
     placeFocus();
     hud.hidden = m !== 'opening';
     summary.hidden = m !== 'summary';
@@ -460,6 +385,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const series = batch && batch.total > 1 ? `BOOSTER ${batch.done.length + 1}/${batch.total} · ` : '';
     skipEl.hidden = false;
     skipAll.disabled = skipHi.disabled = false;
+    if (batch) batch.all = false;
+    mythicVeil.hidden = true;
     applyAuto();
     // série (2e booster et suivants) ou « 4★ et + » : l'emballage brûle tout seul
     if (batch && (batch.hi || batch.done.length > 0)) hintTxt.textContent = 'Ouverture…';
@@ -477,17 +404,36 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         setCount(`${series}1 / ${p.cards.length}`);
       },
       onCard(i, card, total) {
-        hint.hidden = i < total - 1 ? false : true;
-        hintTxt.textContent = i < total - 1 ? HINT.next : '';
         setCount(`${series}${i + 1} / ${total}`);
         shown = i;
+        // mythique : la séquence plein écran (mythic-veil) tient lieu de fiche et d'indication
+        if (rarity(card.rarity).rank === 5) return;
+        hint.hidden = i < total - 1 ? false : true;
+        hintTxt.textContent = i < total - 1 ? HINT.next : '';
         showInfo(card);
       },
       onNext() {
         // la carte montrée file dans la rangée : son panneau s'efface, la suivante attend face cachée
         info.classList.remove('in');
+        mythicVeil.hidden = true;
+        skipEl.hidden = false;
         hintTxt.textContent = HINT.reveal;
         setCount(`${series}${Math.min(p.cards.length, shown + 2)} / ${p.cards.length}`);
+      },
+      onMythic(card) {
+        // 6★ PLEIN ÉCRAN : tout s'efface, pause dramatique, puis la carte, ses étoiles une à une
+        info.hidden = true;
+        info.classList.remove('in');
+        hint.hidden = true;
+        skipEl.hidden = true;
+        mythicVeil.hidden = false;
+        mythicVeil.classList.remove('shown');
+        mythicVeil.querySelector<HTMLElement>('.mv-name')!.textContent = card.cardName;
+        mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = '';
+      },
+      onMythicShown(_card, last) {
+        mythicVeil.classList.add('shown');
+        mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = last ? (TOUCH ? 'Touche pour continuer' : 'Clique pour continuer') : HINT.next;
       },
       onLast() {
         info.classList.remove('in');
@@ -499,10 +445,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         hud.hidden = true;
         // la séquence « Un de nous » ne se passe pas : on coupe le défilement pour la suite de la série
         if (batch) batch.hi = false;
-        opening.setAuto({ burn: false, minRank: 0 });
+        opening.setAuto({ burn: false, minRank: 0, reveal: false });
         void runSecret();
       },
       onDone() {
+        mythicVeil.hidden = true;
         void done(p);
       },
       onPick(card) {
@@ -606,74 +553,186 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     showSummary();
   }
 
-  /** Récapitulatif : un booster (5 cartes, de la moins rare à la plus rare) ou une série (meilleures d'abord). */
+  /** Compteur de collection du booster : « World : 143/924 » (thème), « Collection : 1 234/13 888 » (Bebou Pack). */
+  function collectionCounter(req: PackRequest): { label: string; have: number; total: number } {
+    const mine = new Set(backend.state.collection.map((c) => c.cardId));
+    const t = req.kind === 'theme' ? themeById(req.themeId ?? '') : undefined;
+    const cards = t ? t.cards : THEMES.flatMap((x) => x.cards);
+    return { label: t ? t.label : 'Collection', have: cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: cards.length };
+  }
+
+  /** Fond du récap selon le meilleur drop : lueur radiale de la couleur de la rareté, rayons et particules aux couleurs du pack. */
+  function paintSummaryBg(best: PackCard, req: PackRequest) {
+    const rr = rarity(best.rarity);
+    const accent = req.kind === 'bebou' ? BEBOU_PACK.style.accent : themeById(req.themeId ?? '')?.style.accent ?? rr.hex;
+    sumBg.className = `sum-bg r-${best.rarity}`;
+    sumBg.style.setProperty('--rc', rr.secret ? '#e8927c' : rr.hex);
+    sumBg.style.setProperty('--ra', rr.accentHex);
+    sumBg.style.setProperty('--pa', accent);
+    // intensité croissante avec la rareté (commune : presque rien)
+    sumBg.style.setProperty('--k', String([0.08, 0.16, 0.3, 0.5, 0.75, 1, 1][Math.min(6, rr.rank)]));
+    const parts = sumBg.querySelector<HTMLElement>('.sum-parts')!;
+    parts.replaceChildren();
+    const n = rr.rank >= 4 ? 22 : rr.rank >= 2 ? 12 : 0;
+    for (let i = 0; i < n; i++) {
+      const sp = h('i');
+      sp.style.setProperty('--x', `${(Math.random() * 100).toFixed(1)}%`);
+      sp.style.setProperty('--d', `${(4 + Math.random() * 6).toFixed(2)}s`);
+      sp.style.setProperty('--dl', `${(-Math.random() * 8).toFixed(2)}s`);
+      sp.style.setProperty('--s', `${(2 + Math.random() * 4).toFixed(1)}px`);
+      parts.append(sp);
+    }
+    sumBg.hidden = false;
+  }
+
+  /** Badges NOUVELLE / DOUBLON ×n posés sur les cartes de l'éventail 3D (suivent les cartes à chaque image). */
+  let badgeRaf = 0;
+  function showFanBadges(cards: PackCard[]) {
+    cancelAnimationFrame(badgeRaf);
+    fanBadges.replaceChildren();
+    fanBadges.hidden = false;
+    const byKey = new Map<string, HTMLElement>();
+    const counts = new Map<string, number>();
+    for (const c of backend.state.collection) counts.set(`${c.cardId}:${c.rarity}`, (counts.get(`${c.cardId}:${c.rarity}`) ?? 0) + c.count);
+    for (const c of cards) {
+      const k = `${c.cardId}:${c.rarity}:${c.mintNumber}`;
+      const n = counts.get(`${c.cardId}:${c.rarity}`) ?? 0;
+      const b = h('span', `fb ${c.isNew ? 'fb-new' : 'fb-dup'}`, c.isNew ? 'NOUVELLE' : `DOUBLON${n > 1 ? ` ×${n}` : ''}`);
+      b.style.opacity = '0';
+      fanBadges.append(b);
+      byKey.set(k, b);
+    }
+    const tick = () => {
+      if (fanBadges.hidden) return;
+      const rects = opening.fanRects();
+      if (rects) {
+        for (const r of rects) {
+          const b = byKey.get(`${r.card.cardId}:${r.card.rarity}:${r.card.mintNumber}`);
+          if (!b) continue;
+          b.style.transform = `translate(${Math.round(r.x + r.w / 2)}px, ${Math.round(r.y + 6)}px) translateX(-50%)`;
+          b.style.opacity = '1';
+        }
+      }
+      badgeRaf = requestAnimationFrame(tick);
+    };
+    badgeRaf = requestAnimationFrame(tick);
+  }
+  function hideFanBadges() {
+    cancelAnimationFrame(badgeRaf);
+    fanBadges.hidden = true;
+  }
+
+  /** Récapitulatif : ligne résumé compacte (nouvelles · doublons · meilleure carte · compteur) + 3 boutons ; les cartes restent dans l'éventail 3D. */
   function showSummary() {
     const packs = batch?.done.length ? batch.done : pack ? [pack] : [];
     const multi = packs.length > 1;
     const all = packs.flatMap((x) => x.cards);
-    const p = { cards: all };
+    const req: PackRequest = batch?.req ?? (pack?.packKind === 'bebou' ? { kind: 'bebou' } : { kind: 'theme', themeId: pack?.themeId });
     skipEl.hidden = true;
+    mythicVeil.hidden = true;
     setMode('summary');
     const u = backend.state.user;
-    // même ordre que l'éventail 3D : de la moins rare à la plus rare
     const rank = (c: PackCard) => rarity(c.rarity).rank;
-    const sorted = p.cards.map((c, i) => ({ c, i })).sort((a, b) => (multi ? rank(b.c) - rank(a.c) : rank(a.c) - rank(b.c)) || a.i - b.i).map((x) => x.c);
-    const fresh = p.cards.filter((c) => c.isNew).length;
-    const hiN = p.cards.filter((c) => rarity(c.rarity).rank >= HI_RANK).length;
+    const sorted = all.map((c, i) => ({ c, i })).sort((a, b) => rank(b.c) - rank(a.c) || a.i - b.i).map((x) => x.c);
+    const best = sorted[0];
+    const fresh = all.filter((c) => c.isNew).length;
+    const dups = all.length - fresh;
+    const hiN = all.filter((c) => rank(c) >= HI_RANK).length;
+    const cc = collectionCounter(req);
+    const br = best ? rarity(best.rarity) : null;
     summary.classList.toggle('multi', multi);
     const again = u ? Math.min(liveRegen(u).balance, packs.length) : 0;
-    summary.innerHTML = `<div class="sum-title">${multi ? `${packs.length} boosters · ${p.cards.length} cartes${hiN ? ` · <b>${hiN} carte${hiN > 1 ? 's' : ''} 4★ et +</b>` : ''}<br>` : ''}Ton tirage${fresh ? ` · <b>${fresh === p.cards.length ? 'que des nouvelles\u00a0!' : `${fresh} nouvelle${fresh > 1 ? 's' : ''}`}</b>` : ' · que des doublons, <a class="p-link to-ct" href="#/contrats">direction les contrats</a>'}</div><div class="sum-cards"></div>
+    summary.innerHTML = `
+      <div class="sum-line">
+        ${multi ? `<span class="sum-k"><b>${packs.length}</b> boosters${hiN ? ` · <b>${hiN}</b> 4★ et +` : ''}</span>` : ''}
+        <span class="sum-k${fresh ? ' hi' : ''}"><b>${fresh}</b> nouvelle${fresh > 1 ? 's' : ''}</span>
+        <span class="sum-k"><b>${dups}</b> doublon${dups > 1 ? 's' : ''}</span>
+        ${best && br ? `<span class="sum-best r-${best.rarity}" style="--rc:${br.hex};--ra:${br.accentHex}">meilleure ${starsHtml(best.rarity)} <b>${esc(best.cardName)}</b></span>` : ''}
+        <span class="sum-coll" title="${esc(cc.label)} : cartes uniques dans ta collection">${esc(cc.label)} : <b>${fmtN(cc.have)}</b>/${fmtN(cc.total)}</span>
+      </div>
+      ${multi ? '<div class="sum-cards"></div>' : ''}
       <div class="sum-actions">
         ${u && liveRegen(u).balance > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? `Encore ×${again}` : 'Encore un'} (${liveRegen(u).balance})</button>` : u ? `<span class="muted next-pack">prochain booster dans ${fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now())}</span>` : ''}
-        <button class="btn-ghost coll">Ma collection</button>
+        <button class="btn-ghost coll">${fresh ? 'Voir mes nouvelles' : dups === all.length ? 'Contrats' : 'Ma collection'}</button>
         <button class="btn-ghost back">Boutique</button>
       </div>`;
-    const cards = summary.querySelector<HTMLElement>('.sum-cards')!;
-    for (const [k, c] of sorted.entries()) {
-      const tile = cardTile(c.cardId, c.rarity, { mini: true, label: c.isNew ? 'NOUVELLE' : undefined });
-      tile.style.setProperty('--i', String(k)); // arrivée en cascade
-      tile.addEventListener('click', () => void viewCard(c));
-      cards.append(tile);
-    }
-    summary.querySelector('.again')?.addEventListener('click', (e) => {
+    if (best) paintSummaryBg(best, req);
+    if (multi) {
+      const cards = summary.querySelector<HTMLElement>('.sum-cards')!;
+      for (const [k, c] of sorted.entries()) {
+        const tile = cardTile(c.cardId, c.rarity, { mini: true, label: c.isNew ? 'NOUVELLE' : undefined });
+        tile.style.setProperty('--i', String(k)); // arrivée en cascade
+        tile.addEventListener('click', () => void viewCard(c));
+        cards.append(tile);
+      }
+      hideFanBadges();
+    } else showFanBadges(all);
+    summary.querySelector('.again')?.addEventListener('click', async (e) => {
+      shell.requestGyro();
       const n = Number((e.currentTarget as HTMLElement).dataset.n) || 1;
-      if (n !== qty) qty = n; // même quantité que la série qui vient de finir (ou ce que la réserve permet)
+      const p = list.find((b) => b.key === (req.kind === 'bebou' ? 'bebou' : themeById(req.themeId ?? '')?.id)) ?? list[2];
+      const hi = batch?.hi ?? false;
       back();
-      setTimeout(() => openBtn.click(), 650);
+      await new Promise((r) => setTimeout(r, 650));
+      if (mode !== 'pick') return;
+      try {
+        const got = await backend.preparePack(p.req);
+        pack = got;
+        batch = { req: p.req, total: Math.max(1, n), done: [], current: got, hi, all: false, skipping: false };
+        start(got);
+      } catch (err) {
+        toast(errMsg(err), 'err');
+      }
     });
-    // « Ma collection » : directement les nouvelles cartes de ce tirage (filtre « Nouvelles »)
-    summary.querySelector('.coll')!.addEventListener('click', () => (back(), go(fresh ? 'collection/nouvelles' : 'collection')));
+    // « Voir mes nouvelles » : directement les nouvelles cartes de ce tirage (filtre « Nouvelles ») ; que des doublons : les contrats
+    summary.querySelector('.coll')!.addEventListener('click', () => (back(), go(fresh ? 'collection/nouvelles' : dups === all.length ? 'contrats' : 'collection')));
     summary.querySelector('.back')!.addEventListener('click', back);
   }
 
   // ── carte en grand (éventail final ou miniature du récap) dans la visionneuse 3D
   const viewerUi = el.querySelector<HTMLElement>('.shop-viewer')!;
   let viewing = false;
+  let viewedAt = 0;
+  let viewerRef: ViewerScene | null = null;
+  // zoom overlay : un toucher à côté de la carte la referme (comme la croix et Échap) — pas celui qui vient de l'ouvrir
+  shell.input.onTap((x, y) => {
+    if (!viewing || !viewerRef || performance.now() - viewedAt < 450 || !el.isConnected) return;
+    if (!viewerRef.hits(x, y)) closeViewer();
+  });
   async function viewCard(card: PackCard) {
     shell.requestGyro();
     if (!viewing) pushLayer(closeViewer); // « retour » du téléphone = fermer la carte, pas quitter la boutique
     viewing = true;
+    viewedAt = performance.now();
     const rr = rarity(card.rarity);
     const e = catalogEntry(card.cardId);
     const st = e ? subthemeById(e.subthemeId) : null;
     const vi = viewerUi.querySelector<HTMLElement>('.v-info')!;
     vi.className = `v-info r-${card.rarity}`;
     vi.style.setProperty('--ra', rr.accentHex);
-    vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div><div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${st.cards.length} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
+    vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div><div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
     viewerUi.hidden = false;
     summary.hidden = true;
+    fanBadges.hidden = true;
+    sumBg.classList.add('veiled');
     big.setVisible(false);
+    document.body.classList.add('card-open');
     const viewer = await getViewer();
+    viewerRef = viewer;
     if (!viewing) return;
     shell.show('viewer');
     void viewer.show(card.cardId, card.rarity);
   }
+  /** Retour à l'éventail, intact (la scène d'ouverture n'a pas bougé pendant le zoom). */
   function closeViewer() {
     if (!viewing) return;
     popLayer();
     viewing = false;
     viewerUi.hidden = true;
+    document.body.classList.remove('card-open');
     summary.hidden = mode !== 'summary';
+    sumBg.classList.remove('veiled');
+    if (mode === 'summary' && !summary.classList.contains('multi')) fanBadges.hidden = false;
     big.setVisible(mode === 'pick');
     shell.show('opening');
   }
@@ -682,9 +741,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
 
   function back() {
     closeViewer();
+    hideFanBadges();
+    sumBg.hidden = true;
+    mythicVeil.hidden = true;
     pack = null;
     batch = null;
-    opening.setAuto({ burn: false, minRank: 0 });
+    opening.setAuto({ burn: false, minRank: 0, reveal: false });
     opening.reset();
     setMode('pick');
     syncState();
@@ -693,26 +755,20 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   setMode('pick');
   return {
     el,
-    enter() {
-      // la pastille de couleur de chaque booster devient une miniature du vrai booster (une fois)
-      for (const btn of boostersEl.querySelectorAll<HTMLElement>('.booster')) {
-        const dot = btn.querySelector<HTMLElement>('.dot');
-        const src = dot && opening.packThumb(btn.dataset.key!);
-        if (!dot || !src) continue;
-        const img = h('img', 'bthumb');
-        img.src = src;
-        img.alt = '';
-        img.style.setProperty('--acc', dot.style.background);
-        dot.replaceWith(img);
-      }
+    enter(sub) {
+      paintSleeves();
       shell.setDimmed(false);
       shell.show('opening');
-      requestAnimationFrame(placeFocus); // le panneau est en place (mise en page faite)
-      select(selected);
-      boostersEl.querySelectorAll<HTMLElement>('.booster').forEach((b) => b.classList.toggle('on', b.dataset.key === selected));
+      requestAnimationFrame(placeFocus);
+      select(selected, { scroll: false });
+      // téléphone (carrousel) : la pochette choisie au centre, sans animation
+      requestAnimationFrame(() => sleeveOf(selected)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'instant' as ScrollBehavior }));
       syncState();
+      // lien direct vers une fiche (missions « Go », #/boutique/bebou)
+      if (sub && list.some((b) => b.key === sub)) sheet.open(sub);
     },
     leave() {
+      sheet.close();
       if (mode === 'summary') back();
     },
     busy: () => mode === 'opening',

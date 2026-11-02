@@ -54,6 +54,12 @@ export default defineSchema({
     showcase: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator }))),
     /** petite devise affichée sur le profil */
     bio: v.optional(v.string()),
+    /** pity 6★ : boosters d'affilée sans Mythique (src/core/pity.ts) — absent = 0 */
+    pityCount: v.optional(v.number()),
+    /** « envies » : ids de cartes marquées (fiche booster, échanges) */
+    wishlist: v.optional(v.array(v.string())),
+    /** série de connexion (src/core/streak.ts) */
+    streak: v.optional(v.object({ count: v.number(), day: v.string(), rewardedAt: v.number() })),
   })
     .index('by_discordId', ['discordId'])
     .index('by_lastSeenAt', ['lastSeenAt']),
