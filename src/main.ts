@@ -22,7 +22,7 @@ import {
   setPreferredBackend,
   type DprMode,
 } from './core/renderer';
-import { exportFeedback, loadFeedback, setFeedback } from './core/feedback';
+import { exportFeedback, feedbackSynced, loadFeedback, pushFeedback, setFeedback } from './core/feedback';
 import { mountNetHud } from './core/net/hud';
 import { net } from './core/net/client';
 
@@ -109,6 +109,14 @@ function markActive() {
   list.querySelectorAll('.item').forEach((el) => el.classList.toggle('active', (el as HTMLElement).dataset.id === current?.entry.id));
 }
 
+/** Téléphone : le panneau des réglages se place sous la barre d'outils (qui tient sur 2 ou 3 lignes selon l'écran). */
+function placeGui() {
+  if (!gui) return;
+  const el = gui.domElement;
+  if (window.innerWidth > 760) return void el.style.removeProperty('top');
+  el.style.setProperty('top', `${Math.round(toolbar.getBoundingClientRect().bottom - stage.getBoundingClientRect().top + 8)}px`, 'important');
+}
+
 // ─────────────────────────────────────────── toolbar
 const btn = (label: string, title: string, onClick: () => void, cls = '') => {
   const b = h('button', `btn ${cls}`, label) as HTMLButtonElement;
@@ -165,7 +173,30 @@ const sndBtn = btn('🔈', 'Son (Web Audio généré)', async () => {
 const statsHost = h('div', 'stats-host desk');
 const backendLabel = h('span', 'btn desk', '');
 backendLabel.style.pointerEvents = 'none';
-toolbar.append(menuBtn, replayBtn, rarBox, backendBtn, dprSel, mobileBtn, capBtn, gyroBtn, sndBtn, h('span', 'spacer'), backendLabel, statsHost);
+// téléphone : masquer le panneau d'infos (bas gauche) et la pile de boutons (haut gauche) pour voir la scène en entier
+const LS_MIN = 'cardlab.mobileMin';
+const minBtn = btn('', 'Masquer / afficher les panneaux', () => setMin(!document.body.classList.contains('mobile-min')), 'min-btn');
+function setMin(on: boolean) {
+  document.body.classList.toggle('mobile-min', on);
+  minBtn.textContent = on ? '▸ Infos' : '◂ Masquer';
+  if (on) gui?.close();
+  try {
+    localStorage.setItem(LS_MIN, on ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+}
+setMin((() => {
+  try {
+    return localStorage.getItem(LS_MIN) === '1';
+  } catch {
+    return false;
+  }
+})());
+const gameLink = h('a', 'btn', '▶ Le jeu') as HTMLAnchorElement;
+gameLink.href = './jeu/';
+gameLink.title = 'La page de jeu : boutique, ouverture, collection, échanges';
+toolbar.append(menuBtn, minBtn, replayBtn, gameLink, rarBox, backendBtn, dprSel, mobileBtn, capBtn, gyroBtn, sndBtn, h('span', 'spacer'), backendLabel, statsHost);
 mountNetHud(toolbar, stage);
 
 function syncRarityButtons() {
@@ -173,7 +204,7 @@ function syncRarityButtons() {
 }
 
 // ─────────────────────────────────────────── feedback
-fb.innerHTML = `<div class="row"><button class="btn vote up" title="J'aime">👍</button><button class="btn vote down" title="Bof">👎</button><button class="btn exp" title="Exporter tous les retours">Export JSON</button><span class="count"></span></div><textarea placeholder="Ton avis…"></textarea>`;
+fb.innerHTML = `<div class="row"><button class="btn vote up" title="J'aime">👍</button><button class="btn vote down" title="Bof">👎</button><button class="btn exp" title="Exporter tous les retours dans un fichier">Export JSON</button><button class="btn push" title="Envoyer tous tes retours à Tom (en ligne). Ensuite, chaque modification part toute seule.">☁ Envoyer</button><span class="count"></span></div><textarea placeholder="Ton avis…"></textarea><div class="sync"></div>`;
 const upB = fb.querySelector('.up') as HTMLButtonElement;
 const downB = fb.querySelector('.down') as HTMLButtonElement;
 const noteT = fb.querySelector('textarea') as HTMLTextAreaElement;
@@ -196,6 +227,7 @@ const vote = (v: 1 | -1) => {
   setFeedback(current.entry.id, { vote: prev === v ? 0 : v });
   syncFeedback();
   renderList();
+  autoPush();
 };
 upB.addEventListener('click', () => vote(1));
 downB.addEventListener('click', () => vote(-1));
@@ -207,18 +239,65 @@ noteT.addEventListener('input', () => {
     if (id) setFeedback(id, { note: noteT.value });
     renderList();
     syncFeedback();
+    autoPush();
   }, 350);
 });
 noteT.addEventListener('keydown', (e) => e.stopPropagation());
+// ── envoi en ligne des retours (serveur Convex) : bouton, puis synchro automatique après chaque modification
+const pushB = fb.querySelector('.push') as HTMLButtonElement;
+const syncS = fb.querySelector('.sync') as HTMLElement;
+let pushTimer = 0;
+async function pushNow(manual: boolean) {
+  if (!net.state.configured) {
+    syncS.textContent = 'serveur non configuré : utilise Export JSON';
+    return;
+  }
+  pushB.disabled = true;
+  syncS.textContent = 'envoi…';
+  try {
+    const r = await pushFeedback(
+      registry,
+      { backend: backendName(renderer), userAgent: navigator.userAgent, quality, dpr: renderer.getPixelRatio() },
+      (a) => net.pushLabFeedback(a),
+      net.state.user?.displayName ?? '',
+    );
+    syncS.textContent = `✓ envoyé à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} (${r.kept} retour${r.kept > 1 ? 's' : ''})`;
+    syncS.className = 'sync ok';
+    pushB.textContent = '☁ Envoyé';
+  } catch (e) {
+    syncS.textContent = `échec de l’envoi${manual ? ' : ' + ((e as Error)?.message ?? e) : ', nouvel essai à la prochaine modification'}`;
+    syncS.className = 'sync err';
+  } finally {
+    pushB.disabled = false;
+  }
+}
+pushB.addEventListener('click', () => void pushNow(true));
+/** Après le premier envoi, chaque vote / note repart tout seul (3 s après la dernière frappe). */
+function autoPush() {
+  if (!feedbackSynced()) return;
+  clearTimeout(pushTimer);
+  syncS.textContent = 'modifié…';
+  syncS.className = 'sync';
+  pushTimer = window.setTimeout(() => void pushNow(false), 3000);
+}
+if (feedbackSynced()) {
+  pushB.textContent = '☁ Envoyé';
+  syncS.textContent = 'synchronisé automatiquement';
+}
 fb.querySelector('.exp')!.addEventListener('click', () =>
   exportFeedback(registry, { backend: backendName(renderer), userAgent: navigator.userAgent, quality, dpr: renderer.getPixelRatio() }),
 );
 
 // ─────────────────────────────────────────── cycle de vie des expériences
 function currentId(): string {
+  const q = new URLSearchParams(location.search).get('exp');
+  if (q) {
+    const found = registry.find((e) => e.id === q || e.id.startsWith(q));
+    if (found) return found.id;
+  }
   const m = location.hash.match(/#\/exp\/([\w-]+)/);
   const id = m?.[1];
-  return registry.find((e) => e.id === id)?.id ?? registry[0].id;
+  return registry.find((e) => e.id === id || (id && e.id.startsWith(id)))?.id ?? registry[0].id;
 }
 
 function size() {
@@ -254,7 +333,11 @@ function teardown() {
 
 async function load(id: string) {
   const token = ++loadToken;
-  const entry = registry.find((e) => e.id === id)!;
+  const entry = registry.find((e) => e.id === id);
+  if (!entry) return;
+  if (location.hash !== `#/exp/${entry.id}`) {
+    history.replaceState(null, '', `#/exp/${entry.id}`);
+  }
   teardown();
   input.reset();
   applyRendererDefaults(renderer);
@@ -288,6 +371,11 @@ async function load(id: string) {
     if (token !== loadToken) return;
     current.ready = true;
     if (isTouch()) gui.close();
+    // expérience sans réglage : pas de dossier « Empty » ni de panneau vide
+    const hasCtl = ctx.gui.controllersRecursive().length > 0;
+    if (!hasCtl) ctx.gui.hide();
+    gui.domElement.style.display = hasCtl ? '' : 'none';
+    placeGui();
     loading.style.display = 'none';
   } catch (err) {
     console.error('[lab] setup failed', err);
@@ -385,6 +473,7 @@ async function boot() {
   }
   resize();
   new ResizeObserver(resize).observe(stage);
+  new ResizeObserver(placeGui).observe(toolbar);
   syncRarityButtons();
   renderList();
   window.addEventListener('hashchange', () => void load(currentId()));
@@ -394,7 +483,7 @@ async function boot() {
     else if (e.key === 'ArrowRight') go(1);
     else if (e.key === 'ArrowLeft') go(-1);
     else if (e.key === 'p' || e.key === 'P') captureRequested = true;
-    else if (/^[1-6]$/.test(e.key)) setRarity(RARITIES[+e.key - 1].id);
+    else if (/^[1-9]$/.test(e.key) && RARITIES[+e.key - 1]) setRarity(RARITIES[+e.key - 1].id);
     else if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('clean');
   });
   renderer.setAnimationLoop(frame);

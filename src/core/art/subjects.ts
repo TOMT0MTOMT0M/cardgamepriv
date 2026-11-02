@@ -1062,7 +1062,8 @@ function stag(t: PaintTarget) {
   fg.restore();
 }
 
-export const SUBJECTS: Record<SubjectKind, (t: PaintTarget) => void> = {
+/** Sujets procéduraux. Le sujet `image` (illustration bitmap) est peint par art/imageSubject.ts. */
+export const SUBJECTS: Record<Exclude<SubjectKind, 'image' | 'jvtitle'>, (t: PaintTarget) => void> = {
   monolith,
   moth,
   sigil,

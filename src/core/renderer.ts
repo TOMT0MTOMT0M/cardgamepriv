@@ -61,7 +61,7 @@ export function preferredQuality(): 'high' | 'mobile' {
   return isTouch() ? 'mobile' : 'high';
 }
 
-/** DPR effectif, plafonné (2 max sur desktop, 1.5 en preset mobile). */
+/** DPR effectif, plafonné (2 max sur desktop, 1.5 en preset mobile — le jeu, lui, monte à 2 : voir game/shell.ts). */
 export function resolveDpr(mode: DprMode, quality: 'high' | 'mobile'): number {
   const d = window.devicePixelRatio || 1;
   switch (mode) {
@@ -70,7 +70,7 @@ export function resolveDpr(mode: DprMode, quality: 'high' | 'mobile'): number {
     case '1.5':
       return Math.min(d, 1.5);
     case '2':
-      return Math.min(d, 2);
+      return Math.min(d, quality === 'mobile' ? 1.5 : 2);
     case 'native':
       return d;
     default:
@@ -78,11 +78,12 @@ export function resolveDpr(mode: DprMode, quality: 'high' | 'mobile'): number {
   }
 }
 
-export async function createRenderer(backend: Backend): Promise<WebGPURenderer> {
+export async function createRenderer(backend: Backend, opts: { mobile?: boolean } = {}): Promise<WebGPURenderer> {
   const renderer = new WebGPURenderer({
     antialias: true,
     forceWebGL: backend === 'webgl',
-    trackTimestamp: true,
+    // requêtes de temps GPU à chaque passe : inutiles dans le jeu sur téléphone (et souvent non supportées) → coupées
+    trackTimestamp: !opts.mobile,
     powerPreference: 'high-performance',
   });
   await renderer.init();
@@ -110,4 +111,15 @@ export function applyRendererDefaults(renderer: WebGPURenderer) {
 export function backendName(renderer: WebGPURenderer): string {
   const b = renderer.backend as unknown as { isWebGPUBackend?: boolean };
   return b.isWebGPUBackend ? 'WebGPU' : 'WebGL2';
+}
+
+/**
+ * Mobile : résolution des calques d'une carte (1 = 768 px de large) calée sur sa taille réelle à l'écran, au lieu d'un
+ * facteur fixe trop bas (0,62 → texte et illustration flous à ×2). `screenFrac` = part de la largeur d'écran occupée
+ * par la carte au plus grand. Bornée : la mémoire des canvas est limitée sur iPhone.
+ */
+export function mobileArtScale(cssWidth: number, cssHeight: number, screenFrac: number, max = 0.85): number {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const px = Math.min(cssWidth, cssHeight * 0.72) * screenFrac * dpr;
+  return Math.round(Math.min(max, Math.max(0.6, px / 768)) * 20) / 20;
 }

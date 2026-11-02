@@ -11,7 +11,12 @@
     "cf:deploy": "npm run build && npx wrangler pages deploy dist --project-name=cardgamepriv",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
-    "verify": "node scripts/verify.cjs"
+    "verify": "node scripts/verify.cjs",
+    "test:rolls": "esbuild scripts/test-rolls.mts --bundle --platform=node --format=esm --outfile=.cache/test-rolls.mjs --log-level=warning && node .cache/test-rolls.mjs",
+    "test:server": "vitest run",
+    "thumbs": "node scripts/make-thumbs.mjs",
+    "feedback": "node scripts/pull-feedback.mjs",
+    "r2:sync": "node scripts/r2-sync.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",
@@ -24,10 +29,15 @@
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
+    "@edge-runtime/vm": "^5.0.0",
     "@types/three": "^0.187.0",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "convex-test": "^0.0.66",
+    "sharp": "^0.35.5",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "private": true,
   "type": "module"

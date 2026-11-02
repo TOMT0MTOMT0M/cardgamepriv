@@ -1,10 +1,45 @@
 import { alpha, mix } from '../canvas';
-import { SET_CODE, SET_SIZE } from '../../cardData';
+import { setInfo } from '../../cardData';
 import { type CardDesign, FONT_MONO, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, starColor, starRow } from './common';
 import type { Ctx } from '../canvas';
+import { COUNTRY_NAMES, countryOf, drawFlag, type CountryCode } from '../flags';
 
 /** Fenêtre du gabarit par défaut (coordonnées 768×1072) — sert aussi à `WINDOW_UV` / `windowSDF`. */
 export const CLASSIC_WIN = { x: 46, y: 116, w: 676, h: 778, r: 14 };
+
+/**
+ * Fond « drapeau » : le drapeau en pleine carte, une trame de toile, un vignettage et deux bandeaux assombris (nom en
+ * haut, pays en bas) pour que le texte clair reste lisible sur le blanc des drapeaux.
+ */
+function flagBackground(f: Ctx, code: CountryCode, seed: number) {
+  drawFlag(f, code, 0, 0, W, H, 'rgba(0,0,0,0)', 0);
+  f.save();
+  // trame de toile
+  f.globalAlpha = 0.05;
+  f.fillStyle = '#000';
+  for (let y = 0; y < H; y += 6) f.fillRect(0, y, W, 2);
+  for (let x = 0; x < W; x += 6) f.fillRect(x, 0, 2, H);
+  f.globalAlpha = 1;
+  // bandeaux de lecture
+  const top = f.createLinearGradient(0, 0, 0, 150);
+  top.addColorStop(0, 'rgba(10,8,6,0.62)');
+  top.addColorStop(1, 'rgba(10,8,6,0.18)');
+  f.fillStyle = top;
+  f.fillRect(0, 0, W, 150);
+  const bot = f.createLinearGradient(0, 880, 0, H);
+  bot.addColorStop(0, 'rgba(10,8,6,0.2)');
+  bot.addColorStop(1, 'rgba(10,8,6,0.66)');
+  f.fillStyle = bot;
+  f.fillRect(0, 880, W, H - 880);
+  // vignettage
+  const v = f.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, 'rgba(0,0,0,0.35)');
+  f.fillStyle = v;
+  f.fillRect(0, 0, W, H);
+  f.restore();
+  void seed;
+}
 
 function corner(g: Ctx, x: number, y: number, sx: number, sy: number, s: number) {
   g.save();
@@ -34,10 +69,13 @@ export const classic: CardDesign = {
   paint(f, m, d) {
     const { card, uni, tier } = d;
     const pal = card.palette;
-    const ink = pal.ink;
+    // Merveilles du monde : toute la carte (hors fenêtre du diorama) est le drapeau du pays, plaqué en fond
+    const country = countryOf(card.id);
+    const ink = country ? '#fbf4e6' : pal.ink;
     const M = 30;
     const Wn = CLASSIC_WIN;
-    paper(f, pal.paper, card.seed);
+    if (country) flagBackground(f, country, card.seed);
+    else paper(f, pal.paper, card.seed);
     // liseré de rareté sur le pourtour
     f.save();
     f.strokeStyle = alpha(starColor(tier), 0.35 + tier * 0.1);
@@ -83,22 +121,44 @@ export const classic: CardDesign = {
     win(f, 6);
     f.stroke();
     f.restore();
-    // nom
+    // nom (sur drapeau : ombre portée pour rester lisible sur toutes les couleurs)
+    if (country) {
+      f.save();
+      f.shadowColor = 'rgba(0,0,0,0.75)';
+      f.shadowBlur = 8;
+      f.shadowOffsetY = 1.5;
+    }
     f.fillStyle = ink;
     f.textBaseline = 'alphabetic';
     const nameFont = `600 {s}px ${FONT_TITLE}`;
     const ns = fitFont(f, card.name, nameFont, 44, 520 - d.stars * 6);
     f.fillText(card.name, 62, 88);
+    if (country) f.restore();
     // étoiles
     starRow(f, m, d, W - 64, 72, 30, 'right', { r: 12.5, stroke: alpha(ink, 0.7), lineWidth: 1.2, glow: true });
-    // univers
-    glyph(f, uni.id, 86, 968, 30, mix(uni.hex, ink, 0.35), 2.2);
-    f.font = `500 21px ${FONT_MONO}`;
-    f.fillStyle = alpha(ink, 0.85);
-    spaced(f, uni.name.toUpperCase(), 118, 976, 2.6);
+    // univers — Merveilles du monde : le pays (le drapeau est le fond de la carte)
+    if (country) {
+      f.save();
+      f.shadowColor = 'rgba(0,0,0,0.8)';
+      f.shadowBlur = 6;
+      // le fond ne montre que les bords du drapeau : l'écusson complet (emblème compris) reste dans le bandeau
+      drawFlag(f, country, 62, 949, 58, 38, 'rgba(255,248,236,0.85)');
+      f.font = `600 23px ${FONT_MONO}`;
+      f.fillStyle = ink;
+      spaced(f, COUNTRY_NAMES[country].toUpperCase(), 136, 966, 3);
+      f.font = `400 13px ${FONT_MONO}`;
+      f.fillStyle = alpha(ink, 0.8);
+      spaced(f, uni.name.toUpperCase(), 136, 990, 2.2);
+      f.restore();
+    } else {
+      glyph(f, uni.id, 86, 968, 30, mix(uni.hex, ink, 0.35), 2.2);
+      f.font = `500 21px ${FONT_MONO}`;
+      f.fillStyle = alpha(ink, 0.85);
+      spaced(f, uni.name.toUpperCase(), 118, 976, 2.6);
+    }
     f.font = `400 14px ${FONT_MONO}`;
     f.fillStyle = alpha(ink, 0.55);
-    spaced(f, `${SET_CODE} · ${num3(card.num)}/${SET_SIZE}`, W - 66, 1024, 2, 'right');
+    spaced(f, `${setInfo(card).code} · ${num3(card.num)}/${setInfo(card).size}`, W - 66, 1024, 2, 'right');
     grainAtop(f, card.seed);
 
     // masques — R foil
@@ -113,7 +173,7 @@ export const classic: CardDesign = {
       m.beginPath();
       win(m, 4);
       m.stroke();
-      glyph(m, uni.id, 86, 968, 30, 'rgb(255,0,0)', 3);
+      if (!country) glyph(m, uni.id, 86, 968, 30, 'rgb(255,0,0)', 3);
     }
     if (tier >= 4) {
       m.save();
@@ -132,7 +192,12 @@ export const classic: CardDesign = {
     m.beginPath();
     win(m, 2);
     m.stroke();
-    glyph(m, uni.id, 86, 968, 30, 'rgb(0,255,0)', 3);
+    if (country) {
+      // trame du drapeau imprimé : relief très léger (toile)
+      m.globalAlpha = 0.18;
+      for (let y = 0; y < H; y += 6) m.fillRect(0, y, W, 2);
+      m.globalAlpha = 1;
+    } else glyph(m, uni.id, 86, 968, 30, 'rgb(0,255,0)', 3);
     m.restore();
     void TAU;
   },

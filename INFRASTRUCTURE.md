@@ -87,3 +87,22 @@ const sealed = await net.preparePack();
 await net.revealPack(sealed.packId);
 // -> Credits cards to inventory (019-binder) and broadcasts Rare+/Mythic pulls to friends!
 ```
+
+---
+
+## 5. Images du jeu sur Cloudflare R2 (au-delà de 20 000 fichiers)
+
+Cloudflare Pages limite un site à 20 000 fichiers (gratuit). Les images (`public/art`, ~17 000 fichiers) vont donc dans
+le bucket R2 **`cardgamepriv-art`** ; le site garde les mêmes adresses `/art/...`, servies par `functions/art/[[path]].js`
+(binding `ART`). En local (`npm run dev`), rien ne change : Vite sert `public/art`.
+
+Mise en place (une fois) :
+1. Tableau de bord Cloudflare → **R2** → activer R2, puis **Créer un bucket** `cardgamepriv-art`.
+2. R2 → **Gérer les jetons d'API R2** → créer un jeton **Lecture et écriture d'objets**, limité à ce bucket.
+3. Dans `.env.local` (jamais publié) : `R2_ACCOUNT_ID=…`, `R2_ACCESS_KEY_ID=…`, `R2_SECRET_ACCESS_KEY=…`.
+4. Double-clic sur **`activer-r2.cmd`** : envoie toutes les images, puis branche le bucket sur le site (`wrangler.jsonc`).
+5. Ensuite **`deployer.cmd`** fait tout : il envoie seulement les images nouvelles/modifiées (`scripts/r2-sync.mjs`)
+   et retire `dist/art` du site avant la mise en ligne.
+
+Quotas gratuits : R2 10 Go, 10 M lectures/mois, sortie gratuite ; Pages Functions 100 000 requêtes/jour (chaque image
+non encore en cache dans le navigateur = 1 requête ; les navigateurs gardent les images une semaine).

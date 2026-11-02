@@ -1,4 +1,6 @@
 import { v, type Infer } from 'convex/values';
+import { ALL_THEMES, catalogEntry, type CatalogEntry } from '../src/core/sets/themes';
+import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS } from '../src/core/dropRates';
 
 export const rarityValidator = v.union(
   v.literal('common'),
@@ -7,9 +9,13 @@ export const rarityValidator = v.union(
   v.literal('epic'),
   v.literal('legendary'),
   v.literal('mythic'),
+  v.literal('secret'),
 );
 
 export type RarityId = Infer<typeof rarityValidator>;
+
+/** Sorte de booster : celui d'un thème, ou le bébou pack (tous les thèmes, seul pack à Bébous). */
+export const packKindValidator = v.union(v.literal('theme'), v.literal('bebou'));
 
 export const RARITY_TIER: Record<RarityId, number> = {
   common: 0,
@@ -18,6 +24,7 @@ export const RARITY_TIER: Record<RarityId, number> = {
   epic: 3,
   legendary: 4,
   mythic: 5,
+  secret: 6,
 };
 
 export const RARITY_LABEL: Record<RarityId, string> = {
@@ -27,71 +34,34 @@ export const RARITY_LABEL: Record<RarityId, string> = {
   epic: 'Épique',
   legendary: 'Légendaire',
   mythic: 'Mythique',
+  secret: 'Secrète',
 };
 
 /**
- * Drop weights matching src/core/rarity.ts.
- * Used server-side so players cannot manipulate drop rates on the client.
+ * Poids de tirage (source unique : src/core/dropRates.ts, partagée avec le client).
+ * La secrète n'est JAMAIS tirée carte par carte : elle a son propre tirage par pack (src/core/packRules.ts).
  */
-export const DROP_WEIGHTS: Record<RarityId, number> = {
-  common: 60,
-  uncommon: 25,
-  rare: 10,
-  epic: 3.8,
-  legendary: 1.0,
-  mythic: 0.2,
-};
-
-/** Guaranteed minimum uncommon+ slot weights (5th card in every 5-card booster) */
-export const GUARANTEED_SLOT_WEIGHTS: Record<RarityId, number> = {
-  common: 0,
-  uncommon: 62,
-  rare: 25,
-  epic: 9.5,
-  legendary: 2.8,
-  mythic: 0.7,
-};
+export const DROP_WEIGHTS: Record<RarityId, number> = { ...SLOT_WEIGHTS, secret: 0 };
+export const GUARANTEED_SLOT_WEIGHTS: Record<RarityId, number> = { ...GUARANTEED_WEIGHTS, secret: 0 };
 
 export interface CatalogCard {
   id: string;
   num: number;
   name: string;
-  epithet: string;
-  element: string;
+  /** thème (gaming, pop, sport, monde, bebous) */
+  themeId: string;
+  /** sous-thème (pokemon, lol, mcu…) */
+  subthemeId: string;
   baseRarity: RarityId;
 }
 
-/**
- * Canonical card pool synced with src/core/cardData.ts (zero Three.js dependency for Convex runtime).
- */
-export const CATALOG_CARDS: CatalogCard[] = [
-  { id: 'pierre-levee', num: 3, name: 'Pierre Levée', epithet: 'Lieu', element: 'Pierre', baseRarity: 'common' },
-  { id: 'veilleur-cendre', num: 7, name: 'Veilleur de Cendre', epithet: 'Gardien', element: 'Cendre', baseRarity: 'rare' },
-  { id: 'phalene-albatre', num: 12, name: 'Phalène d’Albâtre', epithet: 'Esprit', element: 'Lune', baseRarity: 'uncommon' },
-  { id: 'lierre-sourd', num: 15, name: 'Lierre Sourd', epithet: 'Plante', element: 'Ronce', baseRarity: 'common' },
-  { id: 'sigille-marees', num: 23, name: 'Sigille des Marées', epithet: 'Rituel', element: 'Marée', baseRarity: 'epic' },
-  { id: 'tour-muette', num: 31, name: 'La Tour Muette', epithet: 'Lieu', element: 'Pierre', baseRarity: 'legendary' },
-  { id: 'serpent-givre', num: 44, name: 'Serpent de Givre', epithet: 'Bête', element: 'Givre', baseRarity: 'epic' },
-  { id: 'floraison-noire', num: 52, name: 'Floraison Noire', epithet: 'Maléfice', element: 'Ronce', baseRarity: 'rare' },
-  { id: 'oeil-du-puits', num: 66, name: 'Œil du Puits', epithet: 'Oracle', element: 'Abîme', baseRarity: 'mythic' },
-  { id: 'cerf-orage', num: 78, name: 'Cerf d’Orage', epithet: 'Bête', element: 'Orage', baseRarity: 'legendary' },
-  { id: 'phare-noye', num: 88, name: 'Phare Noyé', epithet: 'Lieu', element: 'Marée', baseRarity: 'uncommon' },
-  { id: 'mue-de-lune', num: 99, name: 'Mue de Lune', epithet: 'Esprit', element: 'Lune', baseRarity: 'mythic' },
-];
+const toCatalog = (e: CatalogEntry): CatalogCard => ({ id: e.id, num: e.num, name: e.name, themeId: e.themeId, subthemeId: e.subthemeId, baseRarity: e.rarity });
 
-export function rollRarityFromWeights(weights: Record<RarityId, number>, rand: () => number = Math.random): RarityId {
-  const entries = Object.entries(weights) as [RarityId, number][];
-  const total = entries.reduce((sum, [, w]) => sum + w, 0);
-  let x = rand() * total;
-  for (const [rarity, weight] of entries) {
-    x -= weight;
-    if (x <= 0) return rarity;
-  }
-  return 'common';
-}
+/** Toutes les cartes de tous les thèmes, Bébous compris (source : src/core/sets/themes.ts). */
+export const CATALOG_CARDS: CatalogCard[] = ALL_THEMES.flatMap((t) => t.cards.map(toCatalog));
 
-export function pickCardForRarity(rarity: RarityId, rand: () => number = Math.random): CatalogCard {
-  const matching = CATALOG_CARDS.filter((c) => c.baseRarity === rarity);
-  const pool = matching.length > 0 ? matching : CATALOG_CARDS;
-  return pool[Math.floor(rand() * pool.length)];
+/** Carte du catalogue par id (null si inconnue : anciennes cartes du lab encore en inventaire, ids changés…). */
+export function catalogCard(id: string): CatalogCard | null {
+  const e = catalogEntry(id);
+  return e ? toCatalog(e) : null;
 }

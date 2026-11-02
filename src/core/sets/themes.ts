@@ -1,0 +1,312 @@
+/**
+ * Registre des THÈMES — données pures, sans three.js : partagé par le client (boutique, collection, échanges) et par
+ * convex/ (catalogue du serveur). Une seule source de vérité pour « quelles cartes existent, dans quel booster ».
+ *
+ * Organisation (décision du groupe, 1er nov.) :
+ *  - 4 THÈMES = 4 boosters : Gaming Pack · Pop Culture Pack · Sport Pack · World Pack (noms officiels, 2 nov.) ;
+ *  - chaque thème regroupe des SOUS-THÈMES (Pokémon, MCU, foot…). Une carte a donc 2 tags : son thème + son sous-thème ;
+ *  - les étoiles 1★→6★ sont réparties PAR SOUS-THÈME (le côté données trie chaque sous-thème séparément) ;
+ *  - 5e pack spécial, le Bebou Pack = le pack de base : TOUTES les cartes des 4 thèmes, et le SEUL endroit où tombent les
+ *    8 cartes secrètes Bébous. Chance PAR PACK = 1 / nombre total de cartes du jeu (règle du 2 nov. : 10 000 cartes →
+ *    1 sur 10 000), recalculée toute seule à chaque ajout de cartes (`BEBOU_SECRET_CHANCE`, tirage à part dans packRules.ts) ;
+ *  - une seule édition par sous-thème : pour ajouter des cartes on les ajoute au sous-thème existant (ids stables !).
+ *
+ * Ajouter un sous-thème (ex. Champions LoL dans GAMING) :
+ *  1. `src/core/sets/<sous-thème>.ts` au même format que pokemon151.ts (zéro import, `[num, slug, nom, rareté]`) ;
+ *  2. ses illustrations dans `public/art/<sous-thème>/`, puis `npm run thumbs` (miniatures WebP) ;
+ *  3. remplir `cards` (et `artDir`, `code`) de son entrée dans `SUBTHEMES` ci-dessous. Le booster du thème, le bébou
+ *     pack, la collection, les échanges et le serveur suivent seuls.
+ */
+import { POKEMON_151, POKEMON_151_INFO, pokemonCardId, pokemonFile } from './pokemon151';
+import { BEBOUS, BEBOUS_INFO, bebouCardId, bebouFile } from './bebous';
+import { VALORANT, VALORANT_INFO, valorantCardId, valorantFile } from './valorant';
+import { LOL, LOL_INFO, lolCardId, lolFile } from './lol';
+import { CS, CS_INFO, csCardId, csFile } from './cs';
+import { JV, JV_FAMILIES, JV_INFO } from './jeuxvideo';
+import { MONDE, MONDE_GROUPS, MONDE_SUBS } from './monde';
+
+export type CatalogRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'secret';
+export type ThemeId = 'gaming' | 'pop' | 'sport' | 'monde' | 'bebous';
+
+export interface CatalogEntry {
+  /** identifiant stable (inventaire, mints, échanges) — ne JAMAIS le changer une fois des cartes tombées */
+  id: string;
+  /** thème (1 des 4, ou 'bebous') */
+  themeId: ThemeId;
+  /** sous-thème (pokemon, lol, mcu, foot…) */
+  subthemeId: string;
+  /** numéro dans le sous-thème (1..taille) */
+  num: number;
+  /** nom affiché (FR quand il existe) */
+  name: string;
+  rarity: CatalogRarity;
+  /** fichier d'illustration, relatif à `SubTheme.artDir` ('' = pas d'illustration : design typographique) */
+  file: string;
+  /** Jeux vidéo : jaquette, personnage ou objet (cadrage de l'illustration, design de secours) */
+  kind?: 'cover' | 'character' | 'object';
+  /** Jeux vidéo : année de sortie (0 / absent = inconnue) */
+  year?: number;
+  /** Jeux vidéo / Monde V2 : 'c' image pleine (cadrée bord à bord) · 'i' artwork détouré · '' aucune */
+  art?: '' | 'c' | 'i';
+  /** dossier de l'illustration s'il diffère de celui du sous-thème (cartes de la V1 du World Pack) */
+  dir?: string;
+  /** Monde V2 : type affiché sur le design typographique (« Mammifère », « Capitale / Métropole »…) */
+  label?: string;
+}
+
+export interface SubTheme {
+  id: string;
+  label: string;
+  themeId: ThemeId;
+  /** code court (ligne de collection « PKM · 025/1025 ») */
+  code: string;
+  /** dossier des illustrations (relatif à la racine du site, sans / initial) */
+  artDir: string;
+  /** cartes — vide tant que les données du sous-thème ne sont pas arrivées (« bientôt ») */
+  cards: CatalogEntry[];
+  /**
+   * Regroupement d'affichage : les 177 familles « Jeux vidéo » sont chacune un vrai sous-thème (contrats, filtres,
+   * code de carte), mais la boutique, la mention du booster, les onglets de collection et les missions les montrent
+   * comme UN ensemble (« Jeux vidéo · 177 familles »).
+   */
+  group?: { id: string; label: string; unit?: string };
+}
+
+export interface BoosterStyle {
+  ground: string;
+  ground2: string;
+  ink: string;
+  foil: string;
+  accent: string;
+}
+
+export interface ThemeInfo {
+  id: ThemeId;
+  label: string;
+  /** nom imprimé sur le booster */
+  booster: string;
+  style: BoosterStyle;
+  subthemes: SubTheme[];
+  /** toutes les cartes du thème (sous-thèmes à la suite) */
+  cards: CatalogEntry[];
+  /** thème secret (Bébous) : hors boutique, uniquement dans le bébou pack */
+  secret?: true;
+}
+
+const sub = (themeId: ThemeId, id: string, label: string, code = '', artDir = '', cards: CatalogEntry[] = []): SubTheme => ({ id, label, themeId, code, artDir, cards });
+
+// ───────────────────────────────────────────── sous-thèmes (ceux sans cartes s'affichent « bientôt »)
+const pokemon = sub(
+  'gaming', 'pokemon', 'Pokémon', POKEMON_151_INFO.code, POKEMON_151_INFO.artDir,
+  POKEMON_151.map((e) => ({ id: pokemonCardId(e), themeId: 'gaming', subthemeId: 'pokemon', num: e.dex, name: e.name, rarity: e.rarity, file: pokemonFile(e) })),
+);
+
+const valorant = sub(
+  'gaming', 'valorant', 'Valorant', VALORANT_INFO.code, VALORANT_INFO.artDir,
+  VALORANT.map((e) => ({ id: valorantCardId(e), themeId: 'gaming', subthemeId: 'valorant', num: e.num, name: e.name, rarity: e.rarity, file: valorantFile(e) })),
+);
+
+const lol = sub(
+  'gaming', 'lol', LOL_INFO.label, LOL_INFO.code, LOL_INFO.artDir,
+  LOL.map((e) => ({ id: lolCardId(e), themeId: 'gaming', subthemeId: 'lol', num: e.num, name: e.name, rarity: e.rarity, file: lolFile(e) })),
+);
+
+const cs = sub(
+  'gaming', 'cs', CS_INFO.label, CS_INFO.code, CS_INFO.artDir,
+  CS.map((e) => ({ id: csCardId(e), themeId: 'gaming', subthemeId: 'cs', num: e.num, name: e.name, rarity: e.rarity, file: csFile(e) })),
+);
+
+/** Jeux vidéo : 1 famille (Mario, Tekken, Palworld…) = 1 sous-thème (décision du 2 nov.), regroupées à l'affichage. */
+const JV_GROUP = { id: 'jeux-video', label: JV_INFO.label, unit: 'familles' };
+const jeuxVideo: SubTheme[] = JV_FAMILIES.map((f) => ({
+  ...sub(
+    'gaming', f.id, f.label, f.code, JV_INFO.artDir,
+    JV.filter((e) => e.family === f.id).map((e) => ({ id: e.id, themeId: 'gaming', subthemeId: f.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, kind: e.kind, year: e.year, art: e.art })),
+  ),
+  group: JV_GROUP,
+}));
+
+// ── WORLD PACK V2 (5 236 cartes) : 34 sous-thèmes ; les 924 cartes de la V1 gardent leur id et leur illustration.
+// Affichage : 14 Merveilles · Ardèche · et 4 groupes (Lieux & pays, Animaux, Nourriture, Voitures) qui reprennent les ids
+// des anciens sous-thèmes (« lieux »…) : liens et missions d'avant continuent de marcher.
+const monde: SubTheme[] = MONDE_SUBS.map((s) => ({
+  ...sub(
+    'monde', s.id, s.label, s.code, 'art/monde',
+    MONDE.filter((e) => e.sub === s.id).map((e) => ({ id: e.id, themeId: 'monde', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, dir: e.dir, art: e.art, label: e.label })),
+  ),
+  ...(s.group ? { group: { id: s.group, label: MONDE_GROUPS[s.group] } } : {}),
+}));
+
+export const SUBTHEMES: SubTheme[] = [
+  // GAMING
+  pokemon,
+  valorant,
+  sub('gaming', 'yugioh', 'Yu-Gi-Oh'),
+  lol,
+  cs,
+  ...jeuxVideo,
+  // POP CULTURE
+  sub('pop', 'films', 'Films'),
+  sub('pop', 'series', 'Séries'),
+  sub('pop', 'anime', 'Mangas / Anime'),
+  sub('pop', 'marvel', 'Marvel (MCU)'),
+  sub('pop', 'musique', 'Musique'),
+  sub('pop', 'youtubeurs', 'Youtubeurs'),
+  // SPORT
+  sub('sport', 'sport', 'Sport'),
+  sub('sport', 'esport', 'Esport'),
+  // WORLD (id « monde » conservé : identifiant stable)
+  ...monde,
+];
+
+const bebousSub = sub(
+  'bebous', 'bebous', 'Les Bébous', 'BÉB', BEBOUS_INFO.artDir,
+  BEBOUS.map((e) => ({ id: bebouCardId(e), themeId: 'bebous', subthemeId: 'bebous', num: e.num, name: e.nickname, rarity: 'secret', file: bebouFile(e) })),
+);
+
+function theme(id: ThemeId, label: string, booster: string, style: BoosterStyle, subs: SubTheme[], secret?: true): ThemeInfo {
+  return { id, label, booster, style, subthemes: subs, cards: subs.flatMap((s) => s.cards), ...(secret ? { secret } : {}) };
+}
+const subsOf = (id: ThemeId) => SUBTHEMES.filter((s) => s.themeId === id);
+
+/** Les 4 thèmes = les 4 boosters thématiques de la boutique, dans l'ordre d'affichage. */
+export const THEMES: ThemeInfo[] = [
+  theme('gaming', 'Gaming', 'GAMING PACK', { ground: '#120f17', ground2: '#3b1630', ink: '#f6ecff', foil: '#c9a3ff', accent: '#e8432f' }, subsOf('gaming')),
+  theme('pop', 'Pop Culture', 'POP CULTURE PACK', { ground: '#16100c', ground2: '#5a2a12', ink: '#fff1df', foil: '#f2c46d', accent: '#ff7a3d' }, subsOf('pop')),
+  theme('sport', 'Sport', 'SPORT PACK', { ground: '#0c1412', ground2: '#123f2f', ink: '#e9fff4', foil: '#9fe0b8', accent: '#3fbf7f' }, subsOf('sport')),
+  theme('monde', 'World', 'WORLD PACK', { ground: '#0c1118', ground2: '#16314a', ink: '#eaf4ff', foil: '#a9c7e8', accent: '#4c9be0' }, subsOf('monde')),
+];
+
+/** Le thème secret (8 cartes Bébous) : hors boutique, uniquement dans le bébou pack. */
+export const BEBOU_THEME: ThemeInfo = theme('bebous', 'Les Bébous', 'LES BÉBOUS', { ground: '#120607', ground2: '#3d1714', ink: '#ffe4d8', foil: '#e8927c', accent: '#f2c46d' }, [bebousSub], true);
+
+/** Tous les thèmes, Bébous compris (collection, recherche par id). */
+export const ALL_THEMES: ThemeInfo[] = [...THEMES, BEBOU_THEME];
+
+/**
+ * Nombre total de cartes du jeu (les 4 thèmes + les 8 Bébous). Grandit tout seul quand un sous-thème reçoit ses cartes.
+ */
+export const GAME_CARD_COUNT = ALL_THEMES.reduce((a, t) => a + t.cards.length, 0);
+
+/**
+ * Chance qu'un Bebou Pack contienne une carte Bébou : 1 / nombre total de cartes du jeu (règle du groupe, 2 nov.).
+ * Exemple : 2 028 cartes → 1 sur 2 028 ; 10 000 cartes → 1 sur 10 000. Recalculée à chaque build, rien à régler.
+ */
+export const BEBOU_SECRET_CHANCE = GAME_CARD_COUNT > 0 ? 1 / GAME_CARD_COUNT : 0;
+
+/**
+ * Chance qu'un World Pack contienne une Merveille du Monde secrète (les 14 merveilles du monde en 3D diorama).
+ * 1 sur le nombre de cartes du thème Monde.
+ */
+export const WORLD_SECRET_CHANCE = 1 / Math.max(1, THEMES.find((t) => t.id === 'monde')?.cards.length ?? 924);
+
+/**
+ * Mention de booster en segments « A · B · C » : les espaces DANS un segment sont insécables, la ligne ne se coupe
+ * qu'entre deux segments (« LES 4 THÈMES · / 1 CHANCE SUR 2 028 », jamais « … · 1 / CHANCE SUR … »).
+ */
+export const taglineOf = (parts: string[]) => parts.map((p) => p.replace(/ /g, '\u00a0')).join(' · ');
+
+/** 2028 → « 2 028 » (sans Intl : le même code tourne côté serveur Convex). */
+export const fmtCount = (n: number, sep = '\u00a0') => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+
+/** « 1 sur 2 028 ». */
+export const bebouOddsLabel = () => `1 sur ${fmtCount(GAME_CARD_COUNT)}`;
+
+/** Le Bebou Pack : le pack de base, toutes les cartes des 4 thèmes + la chance de Bébou. */
+export const BEBOU_PACK = {
+  id: 'bebou',
+  label: 'Bebou Pack',
+  booster: 'BEBOU PACK',
+  tagline: taglineOf(['LES 4 THÈMES', `1 CHANCE SUR ${fmtCount(GAME_CARD_COUNT, ' ')}`]),
+  style: { ground: '#140d0c', ground2: '#2e1a24', ink: '#ffeede', foil: '#e8927c', accent: '#f2c46d' } as BoosterStyle,
+} as const;
+
+const BY_ID = new Map<string, CatalogEntry>();
+for (const t of ALL_THEMES) for (const c of t.cards) BY_ID.set(c.id, c);
+const THEME_BY_ID = new Map<string, ThemeInfo>(ALL_THEMES.map((t) => [t.id, t]));
+const SUB_BY_ID = new Map<string, SubTheme>([...SUBTHEMES, bebousSub].map((s) => [s.id, s]));
+/** Anciens identifiants de booster (avant les 4 thèmes) encore présents dans des packs déjà tirés. */
+const LEGACY_THEME: Record<string, ThemeId> = { pokemon: 'gaming' };
+
+export function catalogEntry(id: string): CatalogEntry | undefined {
+  return BY_ID.get(id);
+}
+
+export function themeById(id: string): ThemeInfo | undefined {
+  return THEME_BY_ID.get(id) ?? THEME_BY_ID.get(LEGACY_THEME[id] ?? '');
+}
+
+export function subthemeById(id: string): SubTheme | undefined {
+  return SUB_BY_ID.get(id);
+}
+
+/** Un thème a-t-il des cartes ? (sinon son booster est affiché « bientôt » et ne peut pas être ouvert) */
+export const themeOpen = (t: ThemeInfo) => t.cards.length > 0;
+
+/** Nombre total de cartes des 4 thèmes (hors Bébous). */
+export const PUBLIC_CARD_COUNT = THEMES.reduce((a, t) => a + t.cards.length, 0);
+
+/** Un sous-thème tel qu'affiché : seul, ou un groupe (« Jeux vidéo ») qui réunit plusieurs sous-thèmes. */
+export interface SubthemeView {
+  /** id du sous-thème, ou `group:<id>` pour un groupe */
+  id: string;
+  label: string;
+  subs: SubTheme[];
+  cards: CatalogEntry[];
+  group: boolean;
+}
+
+/** Sous-thèmes d'un thème pour l'affichage (ordre conservé) : ceux d'un même groupe n'en font qu'un. */
+export function subthemeViews(t: ThemeInfo): SubthemeView[] {
+  const out: SubthemeView[] = [];
+  const groups = new Map<string, SubthemeView>();
+  for (const s of t.subthemes) {
+    if (!s.group) {
+      out.push({ id: s.id, label: s.label, subs: [s], cards: s.cards, group: false });
+      continue;
+    }
+    let g = groups.get(s.group.id);
+    if (!g) {
+      g = { id: `group:${s.group.id}`, label: s.group.label, subs: [], cards: [], group: true };
+      groups.set(s.group.id, g);
+      out.push(g);
+    }
+    g.subs.push(s);
+    g.cards = g.cards.concat(s.cards);
+  }
+  return out;
+}
+
+/** Une carte (par son sous-thème) appartient-elle à une sélection : un sous-thème, ou un groupe (`group:<id>`) ? */
+export function inSubthemeScope(scope: string, subthemeId: string): boolean {
+  if (scope === subthemeId) return true;
+  const g = subthemeById(subthemeId)?.group?.id;
+  // (« lieux », « animaux »… : anciens sous-thèmes du World Pack devenus des groupes — missions et liens d'avant)
+  return !!g && (scope === `group:${g}` || scope === g);
+}
+
+/** Libellé d'une sélection (sous-thème ou groupe). */
+export function scopeLabel(scope: string): string {
+  const g = scope.startsWith('group:') ? scope.slice(6) : scope;
+  return subthemeById(scope)?.label ?? SUBTHEMES.find((s) => s.group?.id === g)?.group?.label ?? '';
+}
+
+/** Mention du bas du booster : nombre de cartes et sous-thèmes disponibles, ou « bientôt ». */
+export function themeTagline(t: ThemeInfo): string {
+  const live = subthemeViews(t).filter((s) => s.cards.length);
+  if (!live.length) return taglineOf([`${t.subthemes.length} SOUS-THÈMES`, 'EN PRÉPARATION']);
+  return taglineOf([`${fmtCount(t.cards.length, ' ')} CARTES`, ...live.map((s) => s.label.toUpperCase())]);
+}
+
+/** La carte a-t-elle une illustration ? (sinon : design typographique, cf. art/jvTitle.ts) */
+export const hasArt = (e: CatalogEntry) => e.file !== '';
+
+/** Illustration pleine définition (chemin relatif à la racine du site). */
+export function artPath(e: CatalogEntry): string {
+  return `${e.dir ?? subthemeById(e.subthemeId)!.artDir}/${e.file}`;
+}
+
+/** Miniature WebP (grilles de collection, échanges) — générée par scripts/make-thumbs.mjs. */
+export function thumbPath(e: CatalogEntry): string {
+  return `${e.dir ?? subthemeById(e.subthemeId)!.artDir}/thumbs/${e.file.replace(/\.(png|jpe?g)$/i, '.webp')}`;
+}

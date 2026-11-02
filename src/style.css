@@ -65,18 +65,25 @@ select.btn { padding: 4px 6px; }
 .info .hint { margin-top: 6px; font: 11px var(--mono); color: var(--accent); }
 
 .fb { position: absolute; right: 14px; bottom: 14px; width: 260px; background: rgba(26, 25, 23, 0.9); border: 1px solid var(--line); border-radius: 8px; padding: 8px; z-index: 6; backdrop-filter: blur(6px); }
-.fb .row { display: flex; gap: 6px; align-items: center; }
+.fb .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .fb textarea { width: 100%; margin-top: 6px; min-height: 52px; resize: vertical; background: #141311; border: 1px solid var(--line); border-radius: 5px; padding: 6px; }
 .fb .vote.on.up { border-color: var(--up); background: rgba(127, 176, 122, 0.18); }
 .fb .vote.on.down { border-color: var(--down); background: rgba(200, 96, 90, 0.18); }
 .fb .count { color: var(--muted); font: 11px var(--mono); margin-left: auto; }
-.fb.collapsed textarea, .fb.collapsed .exp { display: none; }
+.fb.collapsed textarea, .fb.collapsed .exp, .fb.collapsed .push, .fb.collapsed .sync { display: none; }
+.fb .sync { margin-top: 4px; font: 10px var(--mono); color: var(--muted); min-height: 12px; }
+.fb .sync.ok { color: var(--up); }
+.fb .sync.err { color: var(--down); }
 
 .loading, .error { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; font: 12px var(--mono); color: var(--muted); z-index: 3; }
+/* pendant le chargement, l'image de l'expérience précédente s'efface */
+.loading { background: rgba(18, 17, 16, 0.6); backdrop-filter: blur(5px); letter-spacing: 0.2em; text-transform: uppercase; animation: lab-load 1.4s ease-in-out infinite alternate; }
+@keyframes lab-load { from { color: var(--muted); } to { color: var(--text); } }
 .error { color: #f1b0a8; white-space: pre-wrap; padding: 40px; text-align: left; pointer-events: auto; }
 
 .lil-gui.autoPlace { top: 64px !important; right: 10px !important; z-index: 6; --width: 270px; max-height: calc(100dvh - 240px) !important; }
 
+.min-btn { display: none; }
 .menu-btn { display: none; }
 
 @media (max-width: 760px) {
@@ -91,6 +98,10 @@ select.btn { padding: 4px 6px; }
   .fb { right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); left: 8px; width: auto; }
   .lil-gui.autoPlace { top: 92px !important; right: 8px !important; --width: 230px; max-height: 50dvh !important; }
   .stats-host { display: none; }
+  .min-btn { display: inline-block; }
+  body.mobile-min .info, body.mobile-min .lil-gui.autoPlace { display: none !important; }
+  body.mobile-min .toolbar > :not(.menu-btn):not(.min-btn) { display: none !important; }
+  body.mobile-min .fb { opacity: 0.85; }
 }
 
 /* mode présentation : H ou ?clean */
@@ -125,3 +136,22 @@ body.clean .sidebar, body.clean .toolbar, body.clean .info, body.clean .fb, body
 .net-rar { font: 10px var(--mono); border: 1px solid; border-radius: 3px; padding: 0 4px; align-self: flex-start; }
 .net-empty { font: 11px var(--mono); color: var(--muted); padding: 4px 0; }
 .net-pop-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font: 11px var(--mono); color: var(--muted); }
+
+/* ── finitions (toucher, clavier, défilement) */
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.stage { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.stage textarea, .stage input { -webkit-user-select: text; user-select: text; }
+button { touch-action: manipulation; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.list, .net-popover, .net-friends-list, .net-feed-list { scrollbar-width: thin; scrollbar-color: #3a3631 transparent; }
+.item { transition: background-color 0.15s, border-color 0.15s; }
+.btn { transition: border-color 0.15s, background-color 0.15s, transform 0.12s; }
+.btn:not(:disabled):active { transform: scale(0.96); }
+/* iPhone : un champ en dessous de 16 px fait zoomer toute la page au toucher */
+@media (pointer: coarse) {
+  .fb textarea { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

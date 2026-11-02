@@ -1,0 +1,1659 @@
+import {
+  AdditiveBlending,
+  ClampToEdgeWrapping,
+  Color,
+  DataTexture,
+  DataUtils,
+  DirectionalLight,
+  HalfFloatType,
+  LinearFilter,
+  RedFormat,
+  RenderPipeline,
+  DoubleSide,
+  Group,
+  InstancedMesh,
+  Mesh,
+  Object3D,
+  MeshBasicNodeMaterial,
+  MeshPhysicalNodeMaterial,
+  NormalBlending,
+  PlaneGeometry,
+  Raycaster,
+  Quaternion,
+  Sprite,
+  SpriteNodeMaterial,
+  Vector2,
+  Vector3,
+  type Material,
+  type Texture,
+} from 'three/webgpu';
+import {
+  abs,
+  bumpMap,
+  clamp as tclamp,
+  floor,
+  fract,
+  frontFacing,
+  color,
+  cos,
+  exp,
+  float,
+  hash,
+  instanceIndex,
+  length,
+  min,
+  mix,
+  mx_fractal_noise_float,
+  normalLocal,
+  normalMap,
+  positionLocal,
+  screenSize,
+  screenUV,
+  select,
+  sin,
+  smoothstep,
+  step,
+  texture,
+  time,
+  uniform,
+  uv,
+  vec2,
+  vec3,
+  vec4,
+  luminance,
+  max,
+} from 'three/tsl';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberrationNode.js';
+import gsap from 'gsap';
+import type { Experiment, LabContext } from '../../core/Experiment';
+import { createStage } from '../../core/stage';
+import { mobileArtScale } from '../../core/renderer';
+import { anamorphicFlare, createPipeline } from '../../core/post';
+import { createPackGeometry, generatePackArt, PACK, TEAR_V, type PackArt, type PackStyle } from '../../core/pack';
+import { ensureCardImages, ensureFonts, generateCardArt, type CardArt } from '../../core/art';
+import { LAB_CARDS, cardById, type CardData } from '../../core/cardData';
+import { rarity, type Rarity, type RarityId } from '../../core/rarity';
+import type { createHoloMaterial } from '../../core/holo';
+import { buildEdge, buildFace, gameCardArt, themedBacks } from './cardFace';
+import { haptics } from '../../core/haptics';
+import { createCardGeometry } from '../../core/cardModel';
+import { EASE, Spring } from '../../core/ease';
+import { encodeNormal, type N } from '../../core/tsl';
+import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
+import type { PackCard, SealedPack } from '../backend';
+
+/**
+ * Scène d'OUVERTURE du jeu — aussi la vitrine de la boutique : le booster qu'on regarde est celui qu'on ouvre.
+ *
+ *  display  : le booster flotte, s'incline sous le doigt ; changer de booster = un tour sur lui-même.
+ *  sealed   : le pack est tiré (serveur) ; on MAINTIENT le doigt pour brûler l'emballage depuis le centre. Par les
+ *             trous, on aperçoit déjà le dos des cartes. La braise et la fuite de lumière prennent la couleur de la
+ *             meilleure carte (indice de rareté)… sauf pour une carte secrète, qui doit passer pour une commune.
+ *  opened   : la pile de 5 cartes ; chaque tap révèle la suivante, de la moins rare à la plus rare.
+ *             Rare et mieux : suspense (halo, liseré, tremblement, montée) d'autant plus long que la carte est rare,
+ *             retournement, éclair, étoiles qui s'allument une à une, gerbe de particules, foil qui s'éveille ;
+ *             légendaire et mythique : ralenti, aberration, flare.
+ *             Avant la dernière carte, les cartes révélées s'écartent : toute l'attention sur elle.
+ *  done     : les 5 cartes en éventail (récapitulatif).
+ *
+ * Préchargement : à la mise en place, les shaders de toutes les raretés sont compilés (cartes factices) ; dès que le
+ * pack est tiré, ses 5 cartes sont générées et compilées pendant que le joueur brûle l'emballage.
+ */
+/**
+ * Mise en scène de l'ouverture, PAR BOOSTER (demande de Tom, 2 nov.) :
+ *  - `burn` (Gaming, et les thèmes sans style dédié) : maintenir pour brûler l'emballage, pile révélée carte par carte ;
+ *  - `tear` (Bebou Pack, labo 002) : on DÉCHIRE le haut du booster en glissant le doigt (ou un toucher = déchirure
+ *    auto). Vraie bande 3D qui se décolle et s'enroule, bord dentelé, plastique qui blanchit, lambeaux ; les cartes sont
+ *    DANS le booster (pile serrée, plus petite que le coussin : rien ne traverse l'emballage) et en sortent par le haut ;
+ *  - `fan` (World Pack, labo 013, version rapide) : un toucher arrache le haut, les cartes s'ouvrent en éventail faces
+ *    cachées, chaque toucher retourne la suivante (de la moins rare à la plus rare), sans attendre.
+ */
+export type OpenStyle = 'burn' | 'tear' | 'fan';
+export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId'>): OpenStyle {
+  if (p.packKind === 'bebou') return 'tear';
+  return themeById(p.themeId ?? '')?.id === 'monde' ? 'fan' : 'burn';
+}
+
+export interface OpeningEvents {
+  /** le joueur doit maintenir pour ouvrir */
+  onHold?(progress: number): void;
+  /** emballage ouvert, pile prête */
+  onOpened?(): void;
+  /** une carte vient d'être retournée (index dans l'ordre de révélation) */
+  onCard?(i: number, card: PackCard, total: number): void;
+  /** la carte montrée part dans la rangée ; la suivante attend face cachée */
+  onNext?(): void;
+  /** prochaine carte = la dernière (les autres s'écartent) */
+  onLast?(): void;
+  /** la dernière carte est SECRÈTE : le jeu passe la main à la séquence « Un de nous » */
+  onSecret?(card: PackCard): void;
+  /** toutes les cartes sont révélées (éventail) */
+  onDone?(): void;
+  /** une carte de l'éventail final a été touchée (le jeu l'ouvre en grand dans la visionneuse) */
+  onPick?(card: PackCard): void;
+}
+
+export interface OpeningScene extends Experiment {
+  /** Booster affiché (id de thème ou 'bebou'). */
+  setBooster(key: string, animate?: boolean, dir?: 1 | -1): void;
+  /** Lance l'ouverture d'un pack tiré. Les cartes sont préparées (images, textures, shaders) pendant que le joueur brûle l'emballage. */
+  open(pack: SealedPack, ev: OpeningEvents): void;
+  /** Après la séquence secrète : affiche directement l'éventail, la carte secrète face visible. */
+  finishAfterSecret(): void;
+  /** Retour à la vitrine (libère les cartes du pack). */
+  reset(): void;
+  /** Révéler / avancer (même effet qu'un tap). */
+  advance(): void;
+  /**
+   * Pilotage automatique (ouvertures ×5 / ×10, « passer jusqu'aux 4★ ») :
+   * - `burn` : l'emballage se brûle tout seul, sans maintenir ;
+   * - `minRank` : les cartes de rang inférieur se retournent et filent dans la rangée en accéléré, sans toucher ;
+   *   la scène s'arrête (attend un toucher) sur chaque carte de rang ≥ minRank. 0 = désactivé.
+   */
+  setAuto(o: { burn?: boolean; minRank?: number }): void;
+  /** Vitrine : le booster lui-même a été touché (le jeu l'ouvre, comme le bouton « Ouvrir »). */
+  onBoosterTap: (() => void) | null;
+  /**
+   * Décale l'image de `px` pixels vers la droite (glissement doux) : sur ordinateur, le booster se centre dans l'espace
+   * laissé libre par le panneau de la boutique ; 0 = centre de l'écran (ouverture, téléphone).
+   */
+  setFocusOffset(px: number): void;
+  /** Miniature (image) de la face d'un booster, pour la liste de la boutique ; null si pas encore générée. */
+  packThumb(key: string): string | null;
+  /** Vitrine : booster pas encore disponible (« bientôt ») → légèrement désaturé et moins éclairé. */
+  setBoosterSoon(on: boolean): void;
+  /** Vitrine : un coup de doigt horizontal sur le booster (le jeu passe au booster voisin). */
+  onBoosterSwipe: ((dir: 1 | -1) => void) | null;
+  readonly phase: Phase;
+  debug(): unknown;
+}
+
+type Phase = 'display' | 'sealed' | 'opened' | 'busy' | 'shown' | 'done';
+
+/** Réglage « réduire les animations » du téléphone / de l'ordinateur : pas de flash négatif, secousses atténuées. */
+const CALM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const CARD_W = 0.63;
+const CARD_H = 0.88;
+/**
+ * Écart entre deux cartes empilées. Une carte fait 0,007 d'épaisseur (CARD.t) : en dessous de ça elles s'interpénètrent
+ * (c'était 0,002–0,004 → coins qui traversent la carte de devant, surtout avec les petites rotations rz de la pile).
+ */
+const STACK_DZ = 0.011;
+const RANK: Record<RarityId, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
+
+interface Slot {
+  data: PackCard;
+  cd: CardData;
+  rr: Rarity;
+  art: CardArt;
+  mesh: Mesh;
+  mats: Material[];
+  holoU: ReturnType<typeof createHoloMaterial>['uniforms'];
+  U: { lit: ReturnType<typeof uniform>; flash: ReturnType<typeof uniform>; rim: ReturnType<typeof uniform> };
+  /** pose animée */
+  p: { x: number; y: number; z: number; s: number; flip: number; rz: number; holo: number };
+  /** survol à la souris sur l'éventail final (0..1, lissé) */
+  hov: number;
+}
+
+/** Styles des boosters (un par thème + le bébou pack), tirés du registre des thèmes. */
+function boosterStyles(): Record<string, PackStyle> {
+  const out: Record<string, PackStyle> = {};
+  // mentions au dos des boosters du jeu (celles du labo parlent d'illustrations procédurales)
+  const backLines = ['5 cartes, dont une rare ou mieux.', 'Ne convient pas aux dragons de moins de trois ans.', 'Fabriqué entre nous. Avec soin.'];
+  for (const t of THEMES) out[t.id] = { name: t.label, ...t.style, title: t.booster, series: `S É R I E   I  ·  ${t.label.toUpperCase()}`, tagline: themeTagline(t), backLines };
+  out.bebou = { name: 'Bébou', ...BEBOU_PACK.style, title: BEBOU_PACK.booster, series: 'P A C K   D E   B A S E', tagline: BEBOU_PACK.tagline, backLines: [...backLines.slice(0, 2), 'Une carte secrète s’y cache peut-être.'] };
+  return out;
+}
+
+export function createOpeningScene(): OpeningScene {
+  let ctx: LabContext;
+  let stage: ReturnType<typeof createStage>;
+  let post: { render(): void };
+  let key: DirectionalLight;
+  const rig = new Group();
+  const packRig = new Group();
+  const cardsRig = new Group();
+  let phase: Phase = 'display';
+  let events: OpeningEvents = {};
+  let pack: SealedPack | null = null;
+  let slots: Slot[] = [];
+  let order: number[] = [];
+  let cursor = 0;
+  let prepared: Promise<void> | null = null;
+  let tl: gsap.core.Timeline | null = null;
+  /** timelines secondaires (sortie des cartes vers la rangée…) : jamais coupées par un tap, seulement au reset */
+  const side = new Set<gsap.core.Timeline>();
+  let spinTl: gsap.core.Timeline | null = null;
+  let holding = false;
+  let hold = 0;
+  /** pilotage automatique (voir setAuto) */
+  const auto = { burn: false, minRank: 0 };
+  /** la carte courante doit-elle défiler en accéléré ? */
+  const fastCard = (si: number | undefined) => auto.minRank > 0 && si !== undefined && !!slots[si] && slots[si].rr.rank < auto.minRank;
+  let rumbleAt = 0;
+  /** 003 — temps écoulé depuis que le booster tiré est posé (pulsations de rareté) */
+  let sealedT = -1;
+  let leakTier = 0;
+  const leakHex = new Color('#ffffff');
+  const leakHue = { h: 0, s: 0, l: 0 };
+  let pulseDone = -1;
+  let boosterKey: string = THEMES[0].id;
+  const arts = new Map<string, PackArt>();
+  let packNodes: Record<string, { value: Texture }> = {};
+  let cardGeo: ReturnType<typeof createCardGeometry>;
+  let backMat: Material;
+  let backs: ReturnType<typeof themedBacks>;
+  let backArtScale = 0.6;
+  let artScale = 0.85;
+  const shake = new Spring(0, 260, 9);
+  const shake2 = new Spring(0, 300, 10);
+  let camBase = 3;
+  const proj = new Vector3();
+  const followPos = new Vector3();
+  const tmpQ = new Quaternion();
+  const packQ = new Quaternion();
+  /** profondeur du booster pendant l'ouverture (la pile reste à cette distance derrière lui) */
+  const PACK_OPEN_Z = 0.12;
+  const warm: Material[] = [];
+  /** amplitude d'inclinaison de la pile (lissée) et respiration de la pile en attente */
+  let tiltAmp = 0;
+  /** couleur d'accent de chaque booster (halo de la vitrine) */
+  const accents = new Map<string, Color>();
+  let breathe = 0;
+  /** carte de l'éventail sous la souris (-1 : aucune) */
+  let hovered = -1;
+  const ray = new Raycaster();
+  const ndc = new Vector2();
+  let packMeshRef: Mesh | null = null;
+  /** gerbe de particules (cachée sur téléphone quand elle est éteinte : 1 100 sprites transparents dessinés pour rien) */
+  let partsRef: Sprite | null = null;
+  let packLift = 0;
+  const lastNdc = new Vector2(9, 9);
+  let fanTick = 0;
+  /** booster sous la souris (vitrine) */
+  let packHover = false;
+  /** tier de la carte en cours de révélation (un toucher impatient n'accélère que les communes → épiques) */
+  let curTier = 0;
+  /** vitrine en portrait : le booster remonte et rétrécit pour laisser la place au choix des boosters en bas */
+  const L = { dispY: 0, dispS: 1 };
+  let dispK = 1;
+  /** décalage horizontal de l'image (px CSS) : cible et valeur lissée */
+  let focusT = 0;
+  let focusCur = 0;
+  let focusKey = '';
+
+  // ── déchirure (Bebou Pack, World Pack)
+  let style: OpenStyle = 'burn';
+  let packMeshMain: Mesh | null = null;
+  let tearBody: Mesh | null = null;
+  let tearStrip: Mesh | null = null;
+  let shreds: InstancedMesh | null = null;
+  const tearNodes: Array<Record<'front' | 'back' | 'masks', { value: Texture }>> = [];
+  const TP = uniform(0); // progression de la déchirure (0..1.08)
+  const TFLY = uniform(0); // envol de la bande arrachée
+  const fly = { t: 0 };
+  let tearTarget = 0;
+  let tearProgress = 0;
+  let autoTear: gsap.core.Tween | null = null;
+  const tearShake = new Spring(0, 420, 16);
+  /** position de la pile dans le booster qu'elle suit (burn : 12 cm derrière ; déchirure : DEDANS) */
+  let followZ = -PACK_OPEN_Z;
+  /** éventail : la carte en cours de retournement (centre des effets plein écran) */
+  let focusSlot = -1;
+  let fanFlip = false;
+  const yTear = (TEAR_V - 0.5) * PACK.h;
+  const NSH = 110;
+  const sh = Array.from({ length: NSH }, () => ({ p: new Vector3(), v: new Vector3(), r: new Vector3(), w: new Vector3(), life: 0, s: 1 }));
+  let shI = 0;
+  const tmpO = new Object3D();
+
+  // pose du booster et état global (animés par gsap)
+  // follow : 1 = la pile de cartes est DANS le booster et suit exactement sa pose (sinon on la voit glisser derrière
+  // les trous de la brûlure quand on incline le booster — retour testeurs sur 005), 0 = pile libre au centre
+  const B = { y: 0, z: 0, spin: 0, s: 1, burn: -0.25, leak: 0, show: 1, follow: 0 };
+  const S = { flash: 0, ca: 0, dark: 0, push: 0, glow: 0, trem: 0, bt: 99, flare: 0, shock: 0, invert: 0 };
+  const U = {
+    burn: uniform(-0.25),
+    leak: uniform(0),
+    ember: uniform(new Color('#e8e2d6')),
+    flash: uniform(0),
+    ca: uniform(0),
+    dark: uniform(0),
+    glow: uniform(0),
+    glowColor: uniform(new Color('#ffffff')),
+    bt: uniform(99),
+    count: uniform(0),
+    colA: uniform(new Color('#ffffff')),
+    colB: uniform(new Color('#ffffff')),
+    origin: uniform(new Vector3()),
+    center: uniform(new Vector2(0.5, 0.5)),
+    flare: uniform(0),
+    shock: uniform(0),
+    invert: uniform(0),
+    soon: uniform(0),
+    /** poussières lumineuses de la vitrine (0 pendant l'ouverture) */
+    dust: uniform(0),
+  };
+  let soonT = 0;
+
+  // ───────────────────────────────────────────── booster
+  /**
+   * Mobile : le bruit fractal de la brûlure (4 octaves de Perlin 3D évaluées pour CHAQUE pixel du booster, à chaque
+   * image, même en vitrine) est cuit une fois dans une petite texture flottante 16 bits — même allure, coût d'une
+   * lecture de texture. Coordonnées = position locale (pas les UV) : les trous de la face et du dos restent alignés.
+   */
+  function bakedBurnNoise(): DataTexture {
+    const W = 256, H = Math.round((256 * PACK.h) / PACK.w);
+    const perm = new Uint8Array(512);
+    {
+      const p = Array.from({ length: 256 }, (_, i) => i);
+      let a = 0x9e3779b9;
+      for (let i = 255; i > 0; i--) {
+        a = (Math.imul(a ^ (a >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) >>> 0;
+        const j = a % (i + 1);
+        [p[i], p[j]] = [p[j], p[i]];
+      }
+      for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+    }
+    const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+    const grad = (h: number, x: number, y: number) => {
+      const g = h & 7;
+      const u = g < 4 ? x : y, v = g < 4 ? y : x;
+      return ((g & 1) ? -u : u) + ((g & 2) ? -2 * v : 2 * v);
+    };
+    const perlin = (x: number, y: number) => {
+      const xi = Math.floor(x), yi = Math.floor(y);
+      const xf = x - xi, yf = y - yi;
+      const X = xi & 255, Y = yi & 255;
+      const u = fade(xf), v = fade(yf);
+      const aa = perm[perm[X] + Y], ab = perm[perm[X] + Y + 1], ba = perm[perm[X + 1] + Y], bb = perm[perm[X + 1] + Y + 1];
+      const x1 = grad(aa, xf, yf) + (grad(ba, xf - 1, yf) - grad(aa, xf, yf)) * u;
+      const x2 = grad(ab, xf, yf - 1) + (grad(bb, xf - 1, yf - 1) - grad(ab, xf, yf - 1)) * u;
+      return (x1 + (x2 - x1) * v) * 0.5; // ≈ [-1, 1], comme le Perlin de MaterialX
+    };
+    const data = new Uint16Array(W * H);
+    for (let j = 0; j < H; j++)
+      for (let i = 0; i < W; i++) {
+        // même domaine que l'original : pp × 4, pp = position locale du booster
+        const x = ((i + 0.5) / W - 0.5) * PACK.w * 4, y = ((j + 0.5) / H - 0.5) * PACK.h * 4;
+        let v = 0, amp = 1, f = 1;
+        for (let o = 0; o < 4; o++) {
+          v += perlin(x * f + o * 17.31, y * f + o * 9.73) * amp;
+          f *= 2;
+          amp *= 0.5;
+        }
+        data[j * W + i] = DataUtils.toHalfFloat(v);
+      }
+    const t = new DataTexture(data, W, H, RedFormat, HalfFloatType);
+    t.magFilter = t.minFilter = LinearFilter;
+    t.wrapS = t.wrapT = ClampToEdgeWrapping;
+    t.generateMipmaps = false;
+    t.needsUpdate = true;
+    return t;
+  }
+
+  function buildPackMaterials(art: PackArt) {
+    const uvn = uv();
+    const front = texture(art.front, uvn);
+    const back = texture(art.back, uvn);
+    const masks = texture(art.masks, uvn);
+    const crF = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
+    const crB = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
+    packNodes = { front, back, masks, crF, crB } as unknown as Record<string, { value: Texture }>;
+    const pp = positionLocal.xy;
+    const fbm =
+      ctx.quality === 'mobile'
+        ? texture(ctx.bag.add(bakedBurnNoise()), pp.div(vec2(PACK.w, PACK.h)).add(0.5)).r
+        : mx_fractal_noise_float(vec3(pp.mul(4), 0.4), 4);
+    const field = length(pp.mul(vec2(1, 0.8))).add(fbm.mul(0.2));
+    const burnFront = field.sub(U.burn);
+    const make = (col: N, cr: N, side: 0 | 1) => {
+      const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
+      const foil = side === 0 ? masks.r : smoothstep(0.5, 0.6, masks.g.add(masks.r));
+      const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
+      // booster « bientôt » : couleurs en partie éteintes (uniforme : aucun recompilage quand on change de booster)
+      const base = mix(col.rgb, vec3(luminance(col.rgb)).mul(0.82), U.soon.mul(0.7));
+      m.colorNode = mix(base, color('#0d0907'), smoothstep(0.06, 0.004, burnFront));
+      m.metalnessNode = mix(float(0.15), float(0.95), foil);
+      m.roughnessNode = mix(float(0.36), float(0.2), foil);
+      m.normalNode = bumpMap(cr.r, float(1.4), normalMap(encodeNormal(ridges)));
+      m.clearcoatNode = float(0.6);
+      m.clearcoatRoughnessNode = float(0.12);
+      m.maskNode = burnFront.greaterThan(0);
+      const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(0.3)).mul(step(-0.2, U.burn));
+      // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte
+      const seam = masks.b.mul(1.4).add(masks.g.mul(0.35));
+      m.emissiveNode = (U.ember as unknown as N).mul(ember.add(seam.add(leakPrint(col, pp)).mul(U.leak)));
+      m.positionNode = positionLocal.add(normalLocal.mul(smoothstep(0.05, 0.0, burnFront).mul(0.03)));
+      return m;
+    };
+    return [make(front, crF, 0), make(back, crB, 1)];
+  }
+
+  function applyBoosterArt(k: string) {
+    const a = arts.get(k);
+    if (!a) return;
+    packNodes.front.value = a.front;
+    packNodes.back.value = a.back;
+    packNodes.masks.value = a.masks;
+  }
+
+  /**
+   * 003 — lumière qui traverse l'impression claire du booster (les encres sombres la bloquent, le logo s'allume) :
+   * luminance² × chute depuis le centre × léger scintillement.
+   */
+  const leakPrint = (col: N, p: N): N => {
+    const lum = luminance(col.rgb);
+    const fall = exp(length(p.mul(vec2(1.2, 0.9))).mul(-2.6));
+    const flick = sin(time.mul(7.3).add(p.y.mul(9))).mul(0.08).add(0.92);
+    // soudures latérales et lignes de scellage : la lumière s'échappe par les bords du sachet
+    const u = uv();
+    const d = min(min(u.x, u.x.oneMinus()), min(u.y, u.y.oneMinus()).mul(1.6));
+    const rim = exp(d.mul(-38)).mul(1.6);
+    return lum.mul(lum).mul(fall).mul(flick).mul(2.4).add(rim);
+  };
+
+  /**
+   * Bord de déchirure, en coordonnée horizontale GÉOMÉTRIQUE (pas l'UV : au dos les UV sont en miroir, la face et le
+   * dos ne se déchiraient pas au même endroit) : grandes ondulations + dents de scie aléatoires (interpolation
+   * linéaire de hauteurs tirées au hasard tous les ~5 mm) = plastique qui casse par à-coups.
+   */
+  const tearEdge = (ug: N): N => {
+    const f = ug.mul(150);
+    const i0 = floor(f);
+    const teeth = mix(hash(i0), hash(i0.add(1)), fract(f)).sub(0.5).mul(0.0075);
+    const wave = sin(ug.mul(23)).mul(0.004).add(sin(ug.mul(61).add(1.3)).mul(0.0025));
+    return float(TEAR_V).add(teeth).add(wave);
+  };
+
+  function buildTearMaterials(art: PackArt, part: 'body' | 'strip') {
+    const uvn = uv();
+    const front = texture(art.front, uvn);
+    const back = texture(art.back, uvn);
+    const masks = texture(art.masks, uvn);
+    tearNodes.push({ front, back, masks } as unknown as Record<'front' | 'back' | 'masks', { value: Texture }>);
+    const crF = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
+    const crB = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
+    const ug = positionLocal.x.div(PACK.w).add(0.5);
+    const v = uvn.y;
+    const edge = tearEdge(ug);
+    const tornCol = smoothstep(0.0, 0.012, TP.sub(ug));
+    // plastique étiré : blanchit le long de la coupe, plus large juste derrière le front de déchirure
+    const front0 = smoothstep(0.12, 0.0, TP.sub(ug)).mul(tornCol);
+    const whiten = smoothstep(float(0.006).add(front0.mul(0.012)), 0.0, abs(v.sub(edge))).mul(tornCol);
+    const make = (col: N, cr: N, side: 0 | 1) => {
+      const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
+      const foil = side === 0 ? masks.r : smoothstep(0.5, 0.6, masks.g.add(masks.r));
+      const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
+      const silver = color(0.6, 0.6, 0.58);
+      m.colorNode = mix(select(frontFacing, col.rgb, silver), color(0.94, 0.93, 0.91), whiten.mul(0.85));
+      m.metalnessNode = select(frontFacing, mix(float(0.15), float(0.95), foil), float(1)).mul(whiten.oneMinus());
+      m.roughnessNode = select(frontFacing, mix(float(0.36), float(0.2), foil), float(0.3));
+      m.normalNode = bumpMap(cr.r, float(1.4), normalMap(encodeNormal(ridges)));
+      m.clearcoatNode = float(0.6);
+      m.clearcoatRoughnessNode = float(0.12);
+      // fuite de lumière (003) : soudures + impression claire, de la couleur de la meilleure carte
+      m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)).mul(whiten.oneMinus());
+      if (part === 'body') m.maskNode = v.lessThan(edge);
+      else {
+        m.maskNode = v.greaterThanEqual(edge);
+        // la bande se décolle colonne par colonne derrière le front, s'enroule vers nous (plus fort vers le haut) et
+        // se soulève près du front (on la tire), puis s'envole
+        const behind = TP.sub(ug).max(0);
+        const t = tclamp(behind.div(0.24), 0, 1);
+        const dy = positionLocal.y.sub(yTear);
+        const k = dy.div(PACK.h / 2 - yTear).clamp(0, 1);
+        const a = t.pow(1.2).mul(1.9).mul(k.mul(0.7).add(0.45)).add(TFLY.mul(1.6));
+        const lift = t.mul(behind).mul(PACK.w * 0.16);
+        const y2 = float(yTear).add(dy.mul(cos(a))).sub(positionLocal.z.mul(sin(a))).add(lift);
+        const z2 = positionLocal.z.mul(cos(a)).add(dy.mul(sin(a)));
+        m.positionNode = vec3(positionLocal.x.sub(t.mul(0.012)), y2, z2);
+      }
+      return m;
+    };
+    return [make(front, crF, 0), make(back, crB, 1)];
+  }
+
+  function applyTearArt(k: string) {
+    const a = arts.get(k);
+    if (!a) return;
+    for (const n of tearNodes) {
+      n.front.value = a.front;
+      n.back.value = a.back;
+      n.masks.value = a.masks;
+    }
+  }
+
+  function spawnShreds(u: number, n: number) {
+    for (let k = 0; k < n; k++) {
+      const q = sh[shI++ % NSH];
+      q.p.set((u - 0.5) * PACK.w + (Math.random() - 0.5) * 0.02, yTear + (Math.random() - 0.5) * 0.01, PACK.bulge * 0.5 * (Math.random() > 0.5 ? 1 : -1));
+      q.v.set(-0.1 + Math.random() * 0.45, 0.25 + Math.random() * 0.5, 0.15 + Math.random() * 0.5);
+      q.r.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      q.w.set((Math.random() - 0.5) * 22, (Math.random() - 0.5) * 22, (Math.random() - 0.5) * 22);
+      q.life = 1.2 + Math.random() * 0.8;
+      q.s = 0.4 + Math.random() * 1.1;
+    }
+  }
+
+  function setTearProgress(p: number) {
+    const before = tearProgress;
+    tearProgress = p;
+    TP.value = p;
+    const d = p - before;
+    if (d > 0.001) {
+      spawnShreds(Math.min(1, p), 2 + Math.floor(d * 40));
+      tearShake.impulse(2.4 + d * 30);
+      ctx.sfx.tear(0.05 + d * 1.1, 0.22 + Math.min(0.15, d));
+      haptics.pulse(5 + Math.round(d * 60));
+    }
+    events.onHold?.(Math.min(1, p));
+    if (p >= 1 && phase === 'sealed') onTorn();
+  }
+
+  function startAutoTear(duration: number) {
+    if (phase !== 'sealed' || autoTear) return;
+    const o = { v: tearTarget };
+    autoTear = gsap.to(o, { v: 1.08, duration, ease: EASE.breathe, onUpdate: () => (tearTarget = Math.max(tearTarget, o.v)) });
+  }
+
+  /** Booster déchiré : la bande s'envole, la pile sort par le haut, le booster tombe ; puis pile (Bebou) ou éventail (World). */
+  function onTorn() {
+    phase = 'busy';
+    holding = false;
+    autoTear?.kill();
+    autoTear = null;
+    shake.impulse(5);
+    haptics.pulse(24);
+    void (prepared ?? Promise.resolve()).then(() => {
+      if (!pack) return;
+      kill();
+      const fan = style === 'fan';
+      const sp = fan ? 0.62 : 1;
+      const n = order.length;
+      tl = gsap.timeline();
+      // sortie du booster vide sur une timeline à part : un toucher (révélation suivante, défilement auto des séries)
+      // coupe la timeline principale et laissait le paquet vide planté DEVANT les cartes. Il recule aussi derrière elles.
+      const out = sideline(gsap.timeline());
+      out.to(fly, { t: 1, duration: 0.75 * sp, ease: EASE.glide, onStart: () => ctx.sfx.whoosh(0.45, 0.22) }, 0)
+        .to(B, { follow: 0, duration: 0.3 * sp, ease: EASE.glide }, 0.75 * sp)
+        .to(B, { z: -0.6, duration: 0.6 * sp, ease: EASE.glide }, 1.3 * sp)
+        .to(B, { y: -2.6, duration: 0.85 * sp, ease: EASE.heave }, 1.05 * sp);
+      // la pile glisse hors du booster, la carte de devant un rien en premier
+      order.forEach((si, k) => {
+        tl!.to(slots[si].p, { y: 1.0, duration: 0.8 * sp, ease: EASE.glide, onStart: k === n - 1 ? () => ctx.sfx.whoosh(0.7, 0.14, true) : undefined }, (0.25 + (n - 1 - k) * 0.035) * sp);
+      });
+      tl.to(S, { push: 0, duration: 0.8, ease: EASE.glide }, 0.9 * sp);
+      if (fan) dealFan(tl, 1.0 * sp);
+      else {
+        tl.call(() => {
+          const c = sideline(gsap.timeline());
+          order.forEach((si, k) => c.to(slots[si].p, { y: 0, z: -STACK_DZ * (n - 1 - k), s: 1, rz: (k - 2) * 0.012, duration: 0.65, ease: EASE.settle }, k * 0.03));
+        }, [], 1.2);
+        tl.call(() => {
+          phase = 'opened';
+          events.onOpened?.();
+        }, [], 1.5);
+      }
+    });
+  }
+
+  // ───────────────────────────────────────────── cartes
+  async function buildSlot(data: PackCard): Promise<Slot> {
+    const cd = cardById(data.cardId);
+    await ensureCardImages([cd]);
+    const rr = rarity(data.rarity);
+    const art = gameCardArt(cd, data.rarity, artScale);
+    const face = buildFace(art, rr.tier, !!cd.photo);
+    face.holo.uniforms.strength.value = 0.1;
+    const { edge, rim } = buildEdge(rr.secret ? '#e8e2d6' : rr.hex);
+    const mesh = new Mesh(cardGeo, [face.holo.material, backs.forCard(data.cardId), edge]);
+    mesh.frustumCulled = false;
+    return {
+      data, cd, rr, art, mesh,
+      mats: [face.holo.material, edge],
+      holoU: face.holo.uniforms,
+      U: { lit: face.lit, flash: face.flash, rim },
+      p: { x: 0, y: 0, z: -0.03, s: 1, flip: Math.PI, rz: 0, holo: 0 },
+      hov: 0,
+    };
+  }
+
+  function disposeSlots() {
+    for (const s of slots) {
+      cardsRig.remove(s.mesh);
+      s.mats.forEach((m) => m.dispose());
+      s.art.dispose();
+    }
+    slots = [];
+  }
+
+  /** Prépare les 5 cartes (images → calques → matériaux) puis compile leurs shaders, sans bloquer l'animation. */
+  async function prepare(p: SealedPack) {
+    const built: Slot[] = [];
+    for (const c of p.cards) {
+      const sl = await buildSlot(c);
+      built.push(sl);
+      // mobile : textures envoyées au GPU carte par carte (sinon les 30 calques + mipmaps partent tous dans la même
+      // image, au moment où la pile apparaît derrière les trous → à-coup) ; l'aplat inutilisé n'est jamais envoyé
+      if (ctx.quality === 'mobile') for (const t of [sl.art.bg, sl.art.subject, sl.art.fg, sl.art.frame, sl.art.masks, sl.art.fx]) ctx.renderer.initTexture(t);
+      await new Promise((r) => requestAnimationFrame(() => r(null))); // une carte par frame : pas d'à-coup pendant la brûlure
+    }
+    if (pack !== p) {
+      built.forEach((s) => (s.mats.forEach((m) => m.dispose()), s.art.dispose()));
+      return;
+    }
+    slots = built;
+    // révélation de la moins rare à la plus rare (la secrète est toujours la dernière)
+    order = slots.map((_, i) => i).sort((a, b) => RANK[slots[a].data.rarity] - RANK[slots[b].data.rarity] || a - b);
+    order.forEach((si, k) => {
+      const s = slots[si];
+      if (style === 'burn') Object.assign(s.p, { x: 0, y: 0, z: -0.03 - (order.length - 1 - k) * STACK_DZ, s: 0.97, flip: Math.PI, rz: (k - 2) * 0.012, holo: 0 });
+      // DANS le booster : pile serrée (≈ l'épaisseur des cartes) centrée dans le coussin, un peu plus petite que lui,
+      // sans rotation (coins loin des soudures) → aucune carte ne traverse l'emballage, même en l'inclinant
+      else Object.assign(s.p, { x: 0, y: -0.03, z: (k - (order.length - 1) / 2) * 0.0072, s: 0.92, flip: Math.PI, rz: 0, holo: 0 });
+      cardsRig.add(s.mesh);
+    });
+    await stage.compile();
+  }
+
+  // ───────────────────────────────────────────── séquences
+  function kill() {
+    tl?.kill();
+    tl = null;
+  }
+  function killAll() {
+    kill();
+    side.forEach((t) => t.kill());
+    side.clear();
+  }
+  function sideline(t: gsap.core.Timeline) {
+    side.add(t);
+    t.eventCallback('onComplete', () => side.delete(t));
+    return t;
+  }
+
+  /** Pose d'inclinaison seule (souris / gyroscope), sans la rotation libre du glisser. */
+  function tiltPose(maxTilt: number) {
+    return { x: -ctx.input.tiltY * maxTilt, y: ctx.input.tiltX * maxTilt };
+  }
+
+  /** Demi-largeur / demi-hauteur visibles dans le plan des cartes (pour placer rangée et éventail sur tout écran). */
+  function view() {
+    const cam = stage.camera;
+    const halfH = Math.tan((cam.fov * Math.PI) / 360) * camBase;
+    return { halfH, halfW: halfH * cam.aspect };
+  }
+
+  function setBooster(k: string, animate = true, dir: 1 | -1 = 1) {
+    if (!arts.has(k) || phase !== 'display') return;
+    if (k === boosterKey) return;
+    boosterKey = k;
+    if (!animate) {
+      applyBoosterArt(k);
+      return;
+    }
+    // timeline à part : ne coupe pas l'entrée du booster (reset) si on change de booster pendant qu'il arrive
+    spinTl?.kill();
+    const sp = (spinTl = sideline(gsap.timeline()));
+    // booster suivant (dir 1) : la face part vers la gauche, comme un carrousel qu'on pousse ; précédent : vers la droite
+    sp.to(B, { spin: -Math.PI * dir, duration: 0.32, ease: EASE.heave, onStart: () => ctx.sfx.whoosh(0.3, 0.12) })
+      .call(() => applyBoosterArt(k))
+      .to(B, { spin: -Math.PI * 2 * dir, duration: 0.7, ease: 'back.out(1.6)' })
+      .call(() => (B.spin = 0));
+  }
+
+  function open(p: SealedPack, ev: OpeningEvents) {
+    killAll();
+    disposeSlots();
+    pack = p;
+    events = ev;
+    cursor = 0;
+    curTier = 0;
+    hold = 0;
+    holding = false;
+    const k = p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? THEMES[0].id;
+    if (arts.has(k)) {
+      boosterKey = k;
+      applyBoosterArt(k);
+    }
+    style = openStyleOf(p);
+    const tearing = style !== 'burn';
+    followZ = tearing ? 0 : -PACK_OPEN_Z;
+    tearTarget = tearProgress = 0;
+    TP.value = 0;
+    fly.t = 0;
+    focusSlot = -1;
+    fanFlip = false;
+    autoTear?.kill();
+    autoTear = null;
+    if (tearing) applyTearArt(k);
+    if (packMeshMain) packMeshMain.visible = !tearing;
+    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = tearing;
+    // indice de rareté : couleur de la meilleure carte… une secrète se fait passer pour une commune
+    const best = rarity(p.maxRarity);
+    const hint = best.secret ? rarity('common') : best;
+    U.ember.value.set(hint.tier === 0 ? '#e8e2d6' : hint.accentHex);
+    B.leak = 0;
+    B.follow = 1;
+    sealedT = 0;
+    pulseDone = -1;
+    leakTier = hint.tier;
+    leakHex.set(hint.tier === 0 ? '#e8e2d6' : hint.hex);
+    phase = 'sealed';
+    prepared = prepare(p);
+    tl = gsap.timeline();
+    // déchirure : le booster reste au plan des cartes (z 0) → quand la pile le quitte (follow → 0) elle ne recule pas à travers lui
+    tl.to(B, { z: style === 'burn' ? PACK_OPEN_Z : 0, y: 0, spin: Math.abs(B.spin) > Math.PI ? Math.sign(B.spin) * Math.PI * 2 : 0, s: 1, duration: 0.6, ease: EASE.glide });
+    tl.to(S, { push: 0.08, duration: 0.6, ease: EASE.glide }, 0);
+  }
+
+  /** Fin de la brûlure : la pile monte au centre. */
+  function onBurnt() {
+    phase = 'busy';
+    holding = false;
+    ctx.sfx.whoosh(0.6, 0.18, true);
+    shake.impulse(8);
+    haptics.pulse(28);
+    void (prepared ?? Promise.resolve()).then(() => {
+      if (!pack) return;
+      kill();
+      tl = gsap.timeline();
+      tl.to(B, { burn: 1.2, duration: 0.25 })
+        .to(B, { follow: 0, duration: 0.6, ease: EASE.glide }, 0)
+        .to(S, { push: 0, duration: 0.8, ease: EASE.glide }, 0)
+        .call(() => {
+          phase = 'opened';
+          events.onOpened?.();
+        }, [], 0.25);
+      order.forEach((si, k) => {
+        const s = slots[si];
+        tl!.to(s.p, { z: -STACK_DZ * (order.length - 1 - k), s: 1, duration: 0.7, ease: EASE.glide }, 0.05);
+      });
+    });
+  }
+
+  /** Une étoile par « tick », puis récompense. */
+  function ignite(s: Slot, at: number) {
+    const n = Math.min(6, s.rr.rank + 1);
+    const tier = s.rr.tier;
+    const gap = 0.1 + tier * 0.018;
+    for (let k = 0; k < n; k++) tl!.to(s.U.lit, { value: k + 1, duration: 0.12, ease: 'power2.out', onStart: () => ctx.sfx.tick(1 + k * 0.14, 0.07 + tier * 0.015) }, at + k * gap);
+    return at + n * gap;
+  }
+
+  function revealCurrent() {
+    const si = order[cursor];
+    const s = slots[si];
+    const last = cursor === order.length - 1;
+    if (last && s.rr.secret) {
+      // la séquence « Un de nous » prend le relais : la carte attend face cachée au centre, comme dans 039
+      phase = 'busy';
+      events.onSecret?.(s.data);
+      return;
+    }
+    phase = 'busy';
+    const rr = s.rr;
+    const T = rr.tier;
+    curTier = T;
+    const sfx = ctx.sfx;
+    kill();
+    tl = gsap.timeline();
+    U.glowColor.value.set(T === 0 ? '#e8e2d6' : rr.hex);
+    U.colA.value.set(rr.hex);
+    U.colB.value.set(rr.accentHex);
+    // 1. suspense (rare et mieux) : liseré, halo derrière, tremblement, montée
+    const sus = T >= 2 ? Math.min(2.2, rr.suspense * 0.6) : 0.05;
+    if (T >= 2) {
+      tl.to(s.U.rim, { value: 0.6 + T * 0.35, duration: sus, ease: 'power1.in' }, 0)
+        .to(S, { glow: 0.25 + T * 0.18, trem: 0.15 + T * 0.12, dark: T >= 4 ? 0.35 : 0.12, duration: sus, ease: 'power2.in' }, 0)
+        .to(s.p, { z: 0.06, s: 1.04, duration: sus, ease: EASE.breathe }, 0);
+      if (T >= 3) tl.call(() => sfx.riser(sus + 0.2, T, 0.18), [], 0);
+      else tl.call(() => sfx.whoosh(sus, 0.08, true), [], 0);
+    }
+    // 2. retournement (ralenti pour légendaire et mieux)
+    const flipDur = T >= 4 ? 0.9 : T >= 2 ? 0.55 : 0.42;
+    tl.to(s.p, { flip: 0, duration: flipDur, ease: T >= 4 ? 'expo.out' : EASE.snap, onStart: () => sfx.whoosh(0.28, 0.2) }, sus);
+    const pay = sus + flipDur * (T >= 4 ? 0.25 : 0.5);
+    // 3. payoff
+    tl.call(() => {
+      sfx.thump(0.3 + T * 0.09);
+      sfx.chime(Math.max(1, T), 0.12 + T * 0.03);
+      if (T >= 4) sfx.shimmer(T, 2.8, 0.1);
+      if (T >= 5) sfx.choir(4, 0.1);
+      shake.impulse((4 + rr.shake * 34) * (CALM ? 0.25 : 1));
+      shake2.impulse(-(3 + rr.shake * 24) * (CALM ? 0.25 : 1));
+      if (T >= 2) {
+        U.origin.value.set(0, 0, 0.1);
+        // gerbe dosée (retour testeurs : « il en faut moins ») : de ~250 (rare) à 2 200 (mythique)
+        U.count.value = Math.min(rr.particles * 0.18, ctx.quality === 'mobile' ? 1100 : 2200);
+        S.bt = 0;
+      }
+      haptics.pulse(T >= 5 ? [60, 40, 140, 40, 220] : T >= 4 ? [50, 30, 90] : T >= 3 ? 40 : T >= 2 ? 18 : 9);
+      events.onCard?.(cursor, s.data, order.length);
+    }, [], pay);
+    tl.to(s.U.rim, { value: 0, duration: 0.6 }, pay)
+      .to(S, { flash: (0.35 + T * 0.16) * (CALM ? 0.4 : 1), ca: T >= 3 && !CALM ? 0.35 + (T - 3) * 0.3 : 0, glow: T >= 2 ? 0.8 + T * 0.25 : 0.15, trem: 0, duration: 0.05 }, pay)
+      .to(S, { flash: 0, ca: 0, dark: 0, duration: 1.3, ease: EASE.glide }, pay + 0.08)
+      .to(S, { glow: T >= 2 ? 0.2 + T * 0.06 : 0, duration: 2.2, ease: EASE.glide }, pay + 0.1)
+      .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
+      .to(s.U.flash, { value: 1, duration: 0.06 }, pay)
+      .to(s.U.flash, { value: 0, duration: 1.4, ease: EASE.glide }, pay + 0.06)
+      .to(s.p, { z: 0.08, s: 1.06, duration: 0.5, ease: 'back.out(2)' }, pay)
+      .to(s.p, { holo: 1, duration: 1.4, ease: EASE.glide }, pay + 0.1);
+    if (T >= 4) {
+      // payoff « événement » (018) : flare, onde de choc ; mythique : inversion éclair de 30 ms
+      tl.to(S, { flare: T >= 5 ? 0.85 : 0.45, duration: 0.05, ease: 'none' }, pay)
+        .to(S, { flare: 0, duration: 1.6, ease: EASE.glide }, pay + 0.1)
+        .fromTo(S, { shock: 0 }, { shock: 1, duration: T >= 5 ? 1.3 : 1.0, ease: 'power2.out', immediateRender: false }, pay);
+      if (T >= 5 && !CALM) tl.to(S, { invert: 1, duration: 0.03 }, pay).to(S, { invert: 0, duration: 0.22, ease: 'power2.out' }, pay + 0.08);
+      // ralenti au moment du payoff, puis retour au temps réel
+      const main = tl;
+      main.call(() => void gsap.to(main, { timeScale: rr.slowmo + 0.2, duration: 0.15 }), [], pay - 0.05);
+      main.call(() => void gsap.to(main, { timeScale: 1, duration: 0.9, ease: 'power2.in' }), [], pay + 0.3);
+    }
+    const end = ignite(s, pay + 0.15);
+    const fast = fastCard(si);
+    tl.call(() => {
+      phase = last ? 'busy' : 'shown';
+      if (last) finish(fast ? 0.35 : 1.1);
+    }, [], Math.max(end, pay + 0.45));
+    // passage en accéléré (carte sous le seuil) : toute la séquence ×3,5
+    if (fast) tl.timeScale(3.5);
+  }
+
+  /** La carte montrée part dans la rangée du bas ; la suivante avance. */
+  function nextCard() {
+    phase = 'busy';
+    kill();
+    const { halfH, halfW } = view();
+    const rs = 0.36;
+    const gap = Math.min(0.36, (2 * halfW * 0.92 - CARD_W * rs) / 3);
+    const rowY = -halfH + (CARD_H * rs) / 2 + 0.06;
+    const move = sideline(gsap.timeline());
+    const s = slots[order[cursor]];
+    const j = cursor;
+    move.to(s.p, { x: (j - 1.5) * gap, y: rowY, z: 0.02 + j * 0.008, s: rs, rz: (j - 1.5) * -0.05, duration: 0.55, ease: EASE.glide, onStart: () => ctx.sfx.whoosh(0.25, 0.1) }, 0)
+      .to(S, { glow: 0, duration: 0.4 }, 0)
+      .set(s.U.lit, { value: 6 }, 0)
+      .to(s.p, { holo: 1, duration: 0.4 }, 0);
+    cursor++;
+    const nxt = slots[order[cursor]];
+    move.to(nxt.p, { z: 0, s: 1, rz: 0, duration: 0.45, ease: EASE.glide }, 0.1);
+    if (cursor < order.length - 1) events.onNext?.();
+    if (cursor === order.length - 1) {
+      // la dernière : les autres s'écartent, la lumière baisse un peu, silence
+      move.call(() => events.onLast?.(), [], 0.2);
+      for (let k = 0; k < cursor; k++) move.to(slots[order[k]].p, { y: -halfH - 0.8, duration: 0.7, ease: EASE.heave }, 0.45 + k * 0.04);
+      move.to(S, { dark: 0.22, duration: 0.8, ease: EASE.glide }, 0.45);
+    }
+    move.call(() => (phase = 'opened'), [], 0.55);
+    if (fastCard(order[cursor - 1])) move.timeScale(2.2);
+  }
+
+  /** Places de l'éventail (récapitulatif, et révélation du World Pack) : au-dessus du panneau du bas. */
+  function fanLayout() {
+    const { halfH, halfW } = view();
+    const portrait = halfW < halfH;
+    const top = halfH * (portrait ? 0.76 : 0.86), bottom = -halfH + 2 * halfH * (portrait ? 0.32 : 0.44);
+    const n = order.length;
+    const wk = portrait ? 0.92 : 0.9;
+    const sc = Math.min(0.56, ((top - bottom) * 0.92) / CARD_H, (2 * halfW * wk) / (CARD_W * (1 + (n - 1) * 0.62)));
+    const gap = Math.min(0.42, (2 * halfW * wk - CARD_W * sc * 1.08) / Math.max(1, n - 1));
+    const cy = (top + bottom) / 2;
+    return order.map((_, k) => {
+      const c = k - (n - 1) / 2;
+      return { x: c * gap, y: cy - c * c * 0.02, z: 0.01 * k, s: sc, rz: -c * 0.07 };
+    });
+  }
+
+  /** World Pack : les cartes sortent du booster et s'ouvrent en éventail, faces cachées. */
+  function dealFan(t: gsap.core.Timeline, at: number) {
+    // timeline à part : le défilement auto (×10, « 4★ et + ») et les touchers coupent la timeline principale, ce qui
+    // figeait les dernières cartes en plein vol (en haut de l'écran, coupées). Le retournement n'est permis qu'une fois
+    // toutes les cartes posées.
+    t.call(() => {
+      const lay = fanLayout();
+      const d = sideline(gsap.timeline());
+      order.forEach((si, k) => {
+        d.to(slots[si].p, { ...lay[k], duration: 0.5, ease: EASE.settle, onStart: () => ctx.sfx.whoosh(0.22, 0.07) }, k * 0.06);
+      });
+      d.call(() => {
+        if (phase !== 'busy' || style !== 'fan' || cursor !== 0) return;
+        phase = 'opened';
+        events.onOpened?.();
+      }, [], (order.length - 1) * 0.06 + 0.42);
+    }, [], at);
+  }
+
+  /** World Pack : retourne la carte suivante de l'éventail (rapide ; un toucher pendant le retournement le termine). */
+  function revealFan() {
+    const si = order[cursor];
+    const s = slots[si];
+    const last = cursor === order.length - 1;
+    if (last && s.rr.secret) {
+      phase = 'busy';
+      events.onSecret?.(s.data);
+      return;
+    }
+    if (cursor > 0) (last ? events.onLast : events.onNext)?.();
+    phase = 'busy';
+    fanFlip = true;
+    const rr = s.rr;
+    const T = rr.tier;
+    curTier = T;
+    focusSlot = si;
+    const sfx = ctx.sfx;
+    kill();
+    const lay = fanLayout()[cursor];
+    tl = gsap.timeline();
+    // la carte précédente reprend sa place dans l'éventail
+    if (cursor > 0) {
+      const pv = slots[order[cursor - 1]];
+      const pl = fanLayout()[cursor - 1];
+      tl.to(pv.p, { x: pl.x, y: pl.y, z: pl.z, s: pl.s, rz: pl.rz, duration: 0.3, ease: EASE.glide }, 0);
+    }
+    U.glowColor.value.set(T === 0 ? '#e8e2d6' : rr.hex);
+    U.colA.value.set(rr.hex);
+    U.colB.value.set(rr.accentHex);
+    const sus = T >= 2 ? Math.min(0.9, rr.suspense * 0.28) : 0;
+    tl.to(s.p, { x: lay.x, y: lay.y, z: lay.z + 0.14, s: lay.s * 1.14, rz: lay.rz * 0.3, duration: 0.12 + sus, ease: EASE.breathe, onStart: () => sfx.tick(0.8 + T * 0.1, 0.12) }, 0);
+    if (T >= 2) {
+      tl.to(s.U.rim, { value: 0.6 + T * 0.35, duration: sus + 0.1, ease: 'power1.in' }, 0).to(S, { glow: 0.2 + T * 0.15, trem: T >= 3 ? 0.1 + T * 0.07 : 0, dark: T >= 4 ? 0.3 : 0.1, duration: sus + 0.1, ease: 'power2.in' }, 0);
+      if (T >= 3) tl.call(() => sfx.riser(sus + 0.2, T, 0.16), [], 0);
+    }
+    const flipDur = T >= 4 ? 0.6 : T >= 2 ? 0.36 : 0.26;
+    const fa = 0.1 + sus;
+    tl.to(s.p, { flip: 0, duration: flipDur, ease: T >= 2 ? 'back.out(1.7)' : EASE.snap, onStart: () => sfx.whoosh(0.22, 0.18) }, fa);
+    const pay = fa + flipDur * 0.5;
+    tl.call(() => {
+      sfx.thump(0.25 + T * 0.08);
+      sfx.chime(Math.max(1, T), 0.1 + T * 0.03);
+      if (T >= 4) sfx.shimmer(T, 2.4, 0.1);
+      if (T >= 5) sfx.choir(4, 0.1);
+      shake.impulse((3 + rr.shake * 26) * (CALM ? 0.25 : 1));
+      if (T >= 2) {
+        U.origin.value.set(s.p.x, s.p.y, s.p.z + 0.1);
+        U.count.value = Math.min(rr.particles * 0.14, ctx.quality === 'mobile' ? 900 : 1800);
+        S.bt = 0;
+      }
+      haptics.pulse(T >= 5 ? [60, 40, 140] : T >= 4 ? [50, 30, 90] : T >= 3 ? 35 : T >= 2 ? 16 : 8);
+      events.onCard?.(cursor, s.data, order.length);
+    }, [], pay);
+    tl.to(s.U.rim, { value: 0, duration: 0.5 }, pay)
+      .to(S, { flash: (0.3 + T * 0.14) * (CALM ? 0.4 : 1), ca: T >= 3 && !CALM ? 0.3 + (T - 3) * 0.25 : 0, glow: T >= 2 ? 0.6 + T * 0.2 : 0.1, trem: 0, duration: 0.05 }, pay)
+      .to(S, { flash: 0, ca: 0, dark: 0, duration: 1.0, ease: EASE.glide }, pay + 0.08)
+      .to(S, { glow: 0, duration: 1.6, ease: EASE.glide }, pay + 0.1)
+      .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
+      .to(s.U.flash, { value: 1, duration: 0.05 }, pay)
+      .to(s.U.flash, { value: 0, duration: 1.1, ease: EASE.glide }, pay + 0.05)
+      .to(s.p, { z: lay.z + 0.05, s: lay.s * 1.06, rz: lay.rz, duration: 0.45, ease: EASE.settle }, pay + 0.05)
+      .to(s.p, { holo: 1, duration: 1.1, ease: EASE.glide }, pay + 0.1);
+    if (T >= 4) {
+      tl.to(S, { flare: T >= 5 ? 0.8 : 0.42, duration: 0.05, ease: 'none' }, pay)
+        .to(S, { flare: 0, duration: 1.4, ease: EASE.glide }, pay + 0.1)
+        .fromTo(S, { shock: 0 }, { shock: 1, duration: T >= 5 ? 1.2 : 0.9, ease: 'power2.out', immediateRender: false }, pay);
+      if (T >= 5 && !CALM) tl.to(S, { invert: 1, duration: 0.03 }, pay).to(S, { invert: 0, duration: 0.2, ease: 'power2.out' }, pay + 0.08);
+      const main = tl;
+      main.call(() => void gsap.to(main, { timeScale: rr.slowmo + 0.25, duration: 0.12 }), [], pay - 0.05);
+      main.call(() => void gsap.to(main, { timeScale: 1, duration: 0.7, ease: 'power2.in' }), [], pay + 0.25);
+    }
+    // étoiles en rafale (plus serrées qu'en mode pile)
+    const n = Math.min(6, rr.rank + 1);
+    for (let k = 0; k < n; k++) tl.to(s.U.lit, { value: k + 1, duration: 0.08, ease: 'power2.out', onStart: () => sfx.tick(1 + k * 0.14, 0.05 + T * 0.012) }, pay + 0.05 + k * 0.06);
+    const fast = fastCard(si);
+    tl.call(() => {
+      fanFlip = false;
+      s.U.lit.value = 6;
+      cursor++;
+      if (last) {
+        phase = 'busy';
+        finish(fast ? 0.3 : 0.9);
+      } else phase = 'opened';
+    }, [], Math.max(pay + 0.05 + n * 0.06, pay + 0.3));
+    if (fast) tl.timeScale(3.5);
+  }
+
+  /** Éventail final, au-dessus du panneau récapitulatif (qui occupe ~42 % du bas de l'écran). */
+  function finish(delay: number) {
+    const { halfH, halfW } = view();
+    // téléphone (portrait) : l'en-tête est sur deux lignes, le récap est plus court (≈ 30 % du bas) → l'éventail se
+    // centre dans l'espace vraiment libre et prend presque toute la largeur
+    const portrait = halfW < halfH;
+    const top = halfH * (portrait ? 0.76 : 0.86), bottom = -halfH + 2 * halfH * (portrait ? 0.32 : 0.44);
+    const n = order.length;
+    // taille : limitée par la hauteur libre ET par la largeur (téléphone en portrait : les 5 cartes, qui se
+    // chevauchent d'environ 40 %, doivent tenir sans déborder des bords de l'écran)
+    const wk = portrait ? 0.92 : 0.9;
+    const sc = Math.min(0.56, ((top - bottom) * 0.92) / CARD_H, (2 * halfW * wk) / (CARD_W * (1 + (n - 1) * 0.62)));
+    const gap = Math.min(0.42, (2 * halfW * wk - CARD_W * sc * 1.08) / Math.max(1, n - 1));
+    const cy = (top + bottom) / 2;
+    const tl2 = sideline(gsap.timeline({ delay }));
+    tl2.call(() => ctx.sfx.whoosh(0.45, 0.07), [], 0);
+    order.forEach((si, k) => {
+      const s = slots[si];
+      const c = k - (n - 1) / 2;
+      tl2.to(s.p, { x: c * gap, y: cy - c * c * 0.02, z: 0.01 * k, s: sc, rz: -c * 0.07, flip: 0, holo: 1, duration: 0.9, ease: EASE.glide }, k * 0.05);
+      tl2.set(s.U.lit, { value: 6 }, 0);
+      // chaque carte « se pose » dans l'éventail : un petit tic de plus en plus aigu
+      tl2.call(() => ctx.sfx.tick(1.05 + k * 0.09, 0.035), [], 0.55 + k * 0.06);
+    });
+    tl2.to(S, { dark: 0, glow: 0, push: 0, duration: 0.8 }, 0);
+    tl2.call(() => {
+      phase = 'done';
+      events.onDone?.();
+    }, [], 0.5);
+  }
+
+  function advance() {
+    if (phase === 'sealed') {
+      // déchirure : un toucher la fait toute seule (World Pack : d'un coup sec)
+      if (style !== 'burn') startAutoTear(style === 'fan' ? 0.42 : 1.05);
+      return;
+    }
+    if (phase === 'opened') {
+      if (style === 'fan') revealFan();
+      else revealCurrent();
+    } else if (phase === 'shown') nextCard();
+    // éventail : toucher pendant un retournement = on le termine et on passe à la suivante (sauf légendaire / mythique)
+    else if (phase === 'busy' && fanFlip && tl && curTier < 4) {
+      tl.progress(1);
+      if ((phase as Phase) === 'opened') revealFan();
+    }
+    // toucher pendant une révélation : on l'accélère (jamais une légendaire ou une mythique : leur suspense est sacré)
+    else if (phase === 'busy' && tl && curTier < 4 && tl.timeScale() < 2) tl.timeScale(2.2);
+  }
+
+  function reset() {
+    killAll();
+    pack = null;
+    prepared = null;
+    disposeSlots();
+    Object.assign(S, { flash: 0, ca: 0, dark: 0, push: 0, glow: 0, trem: 0, bt: 99, flare: 0, shock: 0, invert: 0 });
+    Object.assign(B, { y: -0.4, z: 0, spin: 0, s: 0.9, burn: -0.25, leak: 0, show: 1, follow: 0 });
+    holding = false;
+    hold = 0;
+    phase = 'display';
+    style = 'burn';
+    followZ = -PACK_OPEN_Z;
+    autoTear?.kill();
+    autoTear = null;
+    tearTarget = tearProgress = 0;
+    TP.value = 0;
+    fly.t = 0;
+    focusSlot = -1;
+    fanFlip = false;
+    sh.forEach((q) => (q.life = 0));
+    if (packMeshMain) packMeshMain.visible = true;
+    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = false;
+    applyBoosterArt(boosterKey);
+    tl = gsap.timeline();
+    tl.to(B, { y: 0, s: 1, duration: 0.8, ease: 'back.out(1.4)' });
+  }
+
+  // ───────────────────────────────────────────── API
+  const api: OpeningScene = {
+    get phase() {
+      return phase;
+    },
+    /** diagnostic (tests) : état de la pile */
+    debug() {
+      return { style, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), tier: leakTier }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3) })) };
+    },
+    setBooster,
+    open,
+    reset,
+    advance,
+    setAuto(o) {
+      if (o.burn !== undefined) auto.burn = o.burn;
+      if (o.minRank !== undefined) auto.minRank = o.minRank;
+      // carte en cours de révélation sous le nouveau seuil : on accélère tout de suite
+      if (auto.minRank > 0 && phase === 'busy' && tl && fastCard(order[cursor]) && tl.timeScale() < 3) tl.timeScale(3.5);
+    },
+    onBoosterTap: null,
+    setFocusOffset(px) {
+      focusT = px;
+    },
+    onBoosterSwipe: null,
+    setBoosterSoon(on) {
+      soonT = on ? 1 : 0;
+    },
+    packThumb(k) {
+      const src = arts.get(k)?.front.image as HTMLCanvasElement | undefined;
+      if (!src?.width) return null;
+      // (téléphone, écran ×3 : la vignette de 26 px CSS en demande ~84 → 96 au lieu de 64, sinon floue)
+      const tw = ctx?.quality === 'mobile' ? 96 : 64;
+      const w = tw, h = Math.round((tw * src.height) / src.width);
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const g = c.getContext('2d')!;
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(src, 0, 0, w, h);
+      return c.toDataURL('image/png');
+    },
+    finishAfterSecret() {
+      killAll();
+      // les cartes déjà révélées reviennent ; la secrète est face visible (la séquence 039 vient de la montrer)
+      const s = slots[order[order.length - 1]];
+      Object.assign(s.p, { flip: 0, z: 0, s: 1, holo: 1 });
+      s.U.lit.value = 6;
+      S.dark = 0;
+      finish(0.05);
+    },
+
+    async setup(c) {
+      ctx = c;
+      const mobile = c.quality === 'mobile';
+      // mobile : calques à la taille réelle de la carte à l'écran (×2) — avant, 0,62 / 0,45 fixes → flou, texte baveux
+      artScale = mobile ? mobileArtScale(c.width, c.height, 0.7) : 0.85;
+      backArtScale = mobile ? artScale : 0.6;
+      stage = createStage(c, { bg: ['#1b1715', '#050404'], env: 'studio', envIntensity: 0.9, fill: 0.62, frameW: PACK.w, frameH: PACK.h });
+      key = new DirectionalLight(0xfff2e6, 1.2);
+      key.position.set(-1, 2, 3);
+      stage.scene.add(key, rig);
+      rig.add(packRig, cardsRig);
+      camBase = stage.camera.position.z;
+      layout(c.width, c.height);
+      await ensureFonts();
+
+      // boosters : un visuel par thème + le bébou pack, générés une fois
+      const styles = boosterStyles();
+      for (const [k, st] of Object.entries(styles)) accents.set(k, new Color(st.accent));
+      for (const [k, st] of Object.entries(styles)) arts.set(k, c.bag.add(await generatePackArt(st)));
+      const packGeo = c.bag.add(createPackGeometry(48, 72));
+      const packMesh = new Mesh(packGeo, buildPackMaterials(arts.get(boosterKey)!));
+      packMeshRef = packMeshMain = packMesh;
+      (packMesh.material as Material[]).forEach((m) => c.bag.add(m));
+      packRig.add(packMesh);
+      // booster déchirable (Bebou / World) : même maillage, deux passes (corps sous le bord dentelé, bande au-dessus)
+      // — plus de colonnes que le booster de vitrine pour un bord net et un enroulement lisse
+      const tearGeo = c.bag.add(createPackGeometry(96, 80));
+      tearBody = new Mesh(tearGeo, buildTearMaterials(arts.get(boosterKey)!, 'body'));
+      tearStrip = new Mesh(tearGeo, buildTearMaterials(arts.get(boosterKey)!, 'strip'));
+      for (const m of [tearBody, tearStrip]) {
+        (m.material as Material[]).forEach((x) => c.bag.add(x));
+        m.frustumCulled = false;
+        packRig.add(m);
+      }
+      const shredMat = new MeshPhysicalNodeMaterial({ side: DoubleSide });
+      shredMat.colorNode = mix(color('#e9e3da'), U.ember as unknown as N, 0.25);
+      shredMat.metalnessNode = float(0.8);
+      shredMat.roughnessNode = float(0.3);
+      shreds = new InstancedMesh(c.bag.add(new PlaneGeometry(0.014, 0.006)), c.bag.add(shredMat), NSH);
+      shreds.frustumCulled = false;
+      packRig.add(shreds);
+
+      cardGeo = c.bag.add(createCardGeometry());
+      backs = themedBacks(c.bag, backArtScale);
+      backMat = backs.fallback;
+
+      // halo derrière la carte (suspense, rareté)
+      const glowMat = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+      const gd = length(uv().sub(0.5).mul(2));
+      glowMat.colorNode = vec4((U.glowColor as unknown as N).mul(smoothstep(1, 0, gd).pow(2.2).mul(U.glow)), 1);
+      const glow = new Mesh(c.bag.add(new PlaneGeometry(2.6, 2.6)), c.bag.add(glowMat));
+      glow.position.z = -0.18;
+      rig.add(glow);
+
+      // gerbe de particules (confettis + étincelles), balistique analytique sans état
+      const i = instanceIndex;
+      const h1 = hash(i), h2 = hash(i.add(11)), h3 = hash(i.add(23)), h4 = hash(i.add(37)), h5 = hash(i.add(53));
+      const pm = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: NormalBlending });
+      const tt = U.bt;
+      const dir = vec3(h1.sub(0.5).mul(1.4), h2.sub(0.5).mul(1.2).add(0.15), h3.sub(0.5).mul(0.6).add(0.1)).normalize();
+      const speed = h4.mul(1.8).add(0.45);
+      const drag = 2.2;
+      const travel = float(1).sub(exp(tt.mul(-drag))).div(drag);
+      pm.positionNode = (U.origin as unknown as N)
+        .add(dir.mul(speed.mul(travel)))
+        .add(vec3(sin(tt.mul(2.3).add(h5.mul(6.28))).mul(0.05).mul(min(tt, 1)), tt.mul(tt).mul(-0.04), 0));
+      const life = h5.mul(2.6).add(1.8);
+      const alive = float(i).lessThan(U.count);
+      const vis = smoothstep(0.0, 0.03, tt).mul(smoothstep(life, life.mul(0.5), tt)).mul(select(alive, float(1), float(0)));
+      const isSpark = h2.greaterThan(0.55);
+      const flipK = abs(cos(tt.mul(h3.mul(9).add(4)).add(h1.mul(6.28)))).mul(0.85).add(0.15);
+      const q = uv().sub(0.5);
+      const rect = smoothstep(0.5, 0.42, abs(q.x)).mul(smoothstep(0.5, 0.42, abs(q.y)));
+      const spark = smoothstep(0.5, 0.0, length(q)).pow(2);
+      const cc: N = mix(U.colA as unknown as N, U.colB as unknown as N, step(0.5, h3));
+      const sparkCol: N = (U.colB as unknown as N).mul(2.4);
+      pm.colorNode = vec4(select(isSpark, sparkCol, cc.mul(flipK.mul(0.6).add(0.4))) as N, select(isSpark, spark, rect).mul(vis));
+      pm.rotationNode = tt.mul(h4.mul(8).sub(4)).add(h1.mul(6.28));
+      pm.scaleNode = select(isSpark, vec2(h1.mul(0.011).add(0.005)), vec2(h1.mul(0.011).add(0.012), h1.mul(0.011).add(0.012).mul(0.45).mul(flipK)));
+      const parts = (partsRef = new Sprite(c.bag.add(pm)));
+      parts.count = mobile ? 1100 : 2200;
+      parts.frustumCulled = false;
+      rig.add(parts);
+
+      // vitrine : quelques poussières lumineuses flottent lentement derrière le booster (l'air « vit »), très discrètes,
+      // sans état (tout dépend du temps) ; elles s'effacent dès qu'on ouvre
+      const dmat = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+      const di = instanceIndex;
+      const r1 = hash(di.add(101)), r2 = hash(di.add(202)), r3 = hash(di.add(303)), r4 = hash(di.add(404));
+      const dy = r2.add(time.mul(r4.mul(0.012).add(0.005))).fract().mul(2.6).sub(1.3);
+      const dx = r1.mul(2.8).sub(1.4).add(sin(time.mul(r3.mul(0.35).add(0.12)).add(r1.mul(6.28))).mul(0.06));
+      dmat.positionNode = vec3(dx, dy, r3.mul(0.65).sub(0.78));
+      const twinkle = sin(time.mul(r4.mul(1.8).add(0.5)).add(r2.mul(6.28))).mul(0.5).add(0.5);
+      const mote = smoothstep(0.5, 0.0, length(uv().sub(0.5))).pow(2.2);
+      // fondu en haut et en bas (pas de point qui « apparaît » d'un coup en recommençant sa montée)
+      const edge = smoothstep(1.3, 1.0, abs(dy));
+      dmat.colorNode = vec4(color('#ffd6ad'), mote.mul(twinkle.mul(0.55).add(0.15)).mul(edge).mul(U.dust));
+      dmat.scaleNode = vec2(r1.mul(0.011).add(0.005));
+      const dust = new Sprite(c.bag.add(dmat));
+      dust.count = mobile ? 36 : 64;
+      dust.frustumCulled = false;
+      stage.scene.add(dust);
+
+      // post : bloom sur l'émissif, éclair, aberration, assombrissement
+      const pl = createPipeline(c, stage.scene, stage.camera, { emissive: true });
+      const bl = pl.own(bloom(pl.emissive!, 0.35, 0.5, 0.0)) as unknown as N;
+      const blStrength = (bl as unknown as { strength: { value: number } }).strength;
+      const aspect = screenSize.x.div(screenSize.y);
+      const d0 = screenUV.sub(U.center).mul(vec2(aspect, 1));
+      // onde de choc : un anneau qui part de la carte et déforme l'image en passant (légendaire et mieux)
+      const r0 = length(d0);
+      const Rs = U.shock.mul(0.95);
+      // éteint tant que le choc n'est pas lancé (sinon l'anneau de rayon 0 marquerait le centre en permanence)
+      const sring = exp(abs(r0.sub(Rs)).div(0.028).negate()).mul(U.shock.oneMinus()).mul(step(0.001, U.shock));
+      const warped = U.center.add(d0.sub(d0.div(max(r0, 1e-4)).mul(sring.mul(0.03))).div(vec2(aspect, 1)));
+      const tint = U.glowColor as unknown as N;
+      const vig = smoothstep(1.2, 0.3, screenUV.sub(0.5).length().mul(1.6));
+      let col: N;
+      if (!mobile) {
+        // flare anamorphique (légendaire et mieux), comme 018
+        const fl = pl.own(anamorphicFlare(pl.emissive!, (n) => bloom(n, 1, 0, 0.12) as unknown as N)) as unknown as N;
+        col = pl.color.sample(warped).rgb.add(bl.rgb).add(fl.rgb.mul(tint).mul(U.flare)).add(tint.mul(sring.mul(0.3)));
+        col = (chromaticAberration(vec4(col, 1), U.ca, U.center, float(1.06)) as unknown as N).rgb;
+      } else {
+        /*
+         * Téléphone : même image, deux chaînes de passes en moins.
+         *  - le flare anamorphique (2e bloom complet + flou de 48 lectures, recalculés à chaque image même éteint)
+         *    devient une traînée horizontale analytique qui passe par la carte, de la couleur de la rareté ;
+         *  - l'aberration chromatique (qui recopiait toute l'image dans une texture de plus, plein écran) lit
+         *    directement l'image de la scène, canal par canal (même formule que ChromaticAberrationNode).
+         */
+        const off = warped.sub(U.center);
+        const ab = U.ca.mul(off.length()).mul(0.01);
+        const k = U.ca.mul(1.06 * 0.02);
+        const rUV = U.center.add(off.mul(k.add(1).add(ab)));
+        const bUV = U.center.add(off.mul(float(1).sub(k).sub(ab)));
+        const base = vec3(pl.color.sample(rUV).r, pl.color.sample(warped).g, pl.color.sample(bUV).b);
+        const dy = abs(screenUV.y.sub(U.center.y));
+        const dx = abs(screenUV.x.sub(U.center.x)).mul(aspect);
+        const streak = exp(dy.div(0.0035).negate()).mul(0.9).add(exp(dy.div(0.03).negate()).mul(0.22)).mul(exp(dx.mul(-1.5)));
+        col = base.add(bl.rgb).add(tint.mul(streak.mul(U.flare).mul(1.6))).add(tint.mul(sring.mul(0.3)));
+      }
+      // inversion éclair (30 ms, mythique seulement)
+      col = mix(col, vec3(luminance(col)).oneMinus().mul(vec3(1, 0.9, 0.85)), U.invert);
+      col = col.add(color('#fff4e6').mul(U.flash.mul(0.25)));
+      col = col.mul(mix(float(0.8), float(1), vig)).mul(float(1).sub(U.dark.mul(0.6).mul(smoothstep(0.1, 0.6, length(d0)))));
+      pl.output = vec4(col, 1);
+      /**
+       * Téléphone, vitrine : le booster seul n'émet aucune lumière (pas de braise, pas de fuite) → bloom, choc, éclair
+       * et aberration y valent 0. Une 2e sortie (même passe de scène, mêmes pipelines GPU) se contente de l'image et
+       * du vignettage : la prévisualisation des boosters ne paie plus la chaîne de post-traitement.
+       */
+      let lite: RenderPipeline | null = null;
+      if (mobile) {
+        lite = new RenderPipeline(c.renderer);
+        lite.outputNode = vec4(pl.color.rgb.mul(mix(float(0.8), float(1), vig)), 1);
+        const lp = lite;
+        c.bag.fn(() => lp.dispose());
+      }
+      post = {
+        render: () => {
+          if (lite && phase === 'display') return lite.render();
+          blStrength.value = 0.28 + S.flash * 1.2 + S.glow * 0.25;
+          pl.render();
+        },
+      };
+
+      // préchauffage des shaders : une carte factice par rareté (+ variante photo des Bébous), même graphe que les vraies
+      const dummyArt = c.bag.add(generateCardArt(LAB_CARDS[0], 'common', { scale: 0.25 }));
+      const dummies: Mesh[] = [];
+      for (let t = 0; t <= 6; t++) {
+        const tier = Math.min(5, t);
+        const face = buildFace(dummyArt, tier, t === 6);
+        const { edge } = buildEdge('#ffffff');
+        warm.push(face.holo.material, edge);
+        const m = new Mesh(cardGeo, [face.holo.material, backMat, edge]);
+        m.position.set((t - 3) * 0.1, 0, -0.4);
+        dummies.push(m);
+        stage.scene.add(m);
+      }
+      await stage.compile();
+      if (mobile) {
+        // compileAsync prépare les pipelines SANS les cibles réelles (MRT émissif, MSAA) : sur téléphone, créer ces
+        // variantes en pleine révélation coûte des centaines de ms (à-coup à la 1re carte de chaque rareté). Une image
+        // rendue par les deux sorties, sous l'écran de chargement, les crée toutes maintenant.
+        const ph = phase;
+        phase = 'sealed';
+        post.render();
+        phase = 'display';
+        post.render();
+        phase = ph;
+      }
+      // retirées de la scène mais gardées en vie : leurs pipelines restent en cache pour les vraies cartes
+      dummies.forEach((m) => stage.scene.remove(m));
+      // déchirure : compilée avec le reste (visible pendant le préchauffage), cachée ensuite
+      tearBody.visible = tearStrip.visible = false;
+      c.bag.fn(() => warm.forEach((m) => m.dispose()));
+
+      // maintenir pour ouvrir (souris, doigt, espace) ; déchirure : le glisser horizontal est suivi ici, au pixel près
+      let tearX: number | null = null;
+      const down = (e: Event) => {
+        if (phase !== 'sealed') return;
+        holding = true;
+        tearX = (e as PointerEvent).clientX ?? null;
+        e.preventDefault?.();
+      };
+      const up = () => ((holding = false), (tearX = null));
+      const move = (e: PointerEvent) => {
+        if (tearX === null || phase !== 'sealed' || style === 'burn') return;
+        const dx = e.clientX - tearX;
+        tearX = e.clientX;
+        if (dx > 0) tearTarget = Math.min(1.08, tearTarget + dx / ((cv.clientWidth || 800) * 0.5));
+      };
+      const cv = c.canvas;
+      cv.addEventListener('pointerdown', down);
+      // déchirure : le geste peut commencer sur un calque d'interface transparent posé sur la scène (indication,
+      // compteur…) → on l'écoute aussi au niveau de la fenêtre, sauf sur un vrai contrôle
+      const downAny = (e: PointerEvent) => {
+        if (style === 'burn' || phase !== 'sealed' || e.target === cv) return;
+        if ((e.target as HTMLElement | null)?.closest?.('button, a, input, select, textarea')) return;
+        down(e);
+      };
+      window.addEventListener('pointerdown', downAny, true);
+      c.bag.fn(() => window.removeEventListener('pointerdown', downAny, true));
+      // (fenêtre, pas le canvas : la capture du pointeur est prise par l'élément d'entrée commun)
+      window.addEventListener('pointermove', move);
+      c.bag.fn(() => window.removeEventListener('pointermove', move));
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up);
+      const typing = (e: KeyboardEvent) => /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test((e.target as HTMLElement)?.tagName ?? '');
+      const kd = (e: KeyboardEvent) => {
+        if (e.repeat || typing(e) || ctx.overlay.hidden) return;
+        if (e.key === ' ' || e.key === 'Enter') {
+          if (phase === 'sealed') holding = true;
+          else advance();
+        }
+      };
+      const ku = (e: KeyboardEvent) => (e.key === ' ' || e.key === 'Enter') && (holding = false);
+      window.addEventListener('keydown', kd);
+      window.addEventListener('keyup', ku);
+      c.bag.fn(() => {
+        cv.removeEventListener('pointerdown', down);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
+        window.removeEventListener('keydown', kd);
+        window.removeEventListener('keyup', ku);
+        killAll();
+        disposeSlots();
+      });
+      // tap : avancer ; sur l'éventail final, la carte touchée s'ouvre en grand
+      c.bag.fn(
+        c.input.onTap((x, y) => {
+          if (ctx.overlay.hidden) return; // une autre scène est affichée (visionneuse…) : ce tap n'est pas pour nous
+          if (phase === 'display') {
+            // toucher le booster = l'ouvrir
+            ray.setFromCamera(new Vector2(x, y), stage.camera);
+            if (packMeshRef && ray.intersectObject(packMeshRef, false).length) api.onBoosterTap?.();
+            return;
+          }
+          if (phase !== 'done') return advance();
+          ray.setFromCamera(new Vector2(x, y), stage.camera);
+          const hit = ray.intersectObjects(slots.map((s) => s.mesh), false)[0];
+          const s = hit && slots.find((x) => x.mesh === hit.object);
+          if (s) events.onPick?.(s.data);
+        }),
+      );
+      // vitrine : glisser le doigt sur le booster = booster voisin (comme le carrousel)
+      c.bag.fn(
+        c.input.onSwipe((dir) => {
+          if (phase === 'display' && !ctx.overlay.hidden) api.onBoosterSwipe?.(dir);
+        }),
+      );
+      reset();
+    },
+
+    update(dt, t) {
+      // pas de rotation au glisser dans cette scène : glisser en brûlant le booster (geste naturel au doigt) faisait
+      // tourner la pile par demi-tours et montrait de dos… la face des cartes encore cachées. Inclinaison seule.
+      ctx.input.spinEnabled = false;
+      // brûlure tenue au doigt : avance quand on maintient, recule doucement sinon
+      if (phase === 'sealed' && style === 'burn') {
+        const before = hold;
+        hold = holding || auto.burn ? Math.min(1, hold + dt * (auto.burn ? 1.4 : 0.62)) : Math.max(0, hold - dt * 0.3);
+        B.burn = -0.25 + hold * 1.2;
+        // (la fuite de lumière 003 est calculée plus bas, pour tous les styles : elle ne fait que monter en brûlant)
+        B.leak = Math.max(B.leak, hold * (0.4 + leakTier * 0.3));
+        S.trem = hold * 0.35;
+        if (holding && t > rumbleAt) {
+          rumbleAt = t + 0.28;
+          ctx.sfx.rumble(0.35, 0.05 + hold * 0.12);
+          shake.impulse(1 + hold * 4);
+          if (hold > 0.15) haptics.pulse(6 + Math.round(hold * 10)); // le doigt « sent » l'emballage céder
+        }
+        if (hold !== before) events.onHold?.(hold);
+        if (hold >= 1) onBurnt();
+      }
+      // déchirure : le doigt qui glisse vers la droite tire la bande (maintenir sans bouger = elle avance doucement) ;
+      // stick-slip : elle accroche puis cède par paquets (résistance plus forte au premier accroc)
+      if (phase === 'sealed' && style !== 'burn') {
+        if (auto.burn) startAutoTear(style === 'fan' ? 0.42 : 0.9);
+        // maintenir sans glisser : la bande avance doucement toute seule (clavier, appui long)
+        if (holding && !ctx.input.dragging) tearTarget = Math.min(1.08, tearTarget + dt * 0.45);
+        const gap = tearTarget - tearProgress;
+        const threshold = tearProgress < 0.02 ? 0.06 : 0.045 * (0.5 + Math.random());
+        if (gap > threshold) setTearProgress(Math.min(tearTarget, tearProgress + gap * (0.7 + Math.random() * 0.3)));
+        const tension = tearProgress < 0.02 ? Math.min(1, Math.max(0, gap) / 0.06) : 0;
+        S.trem = tension * 0.2;
+      }
+      tearShake.update(dt);
+      TFLY.value = fly.t;
+      if (tearStrip) {
+        tearStrip.position.set(fly.t * 0.9, fly.t * 0.6, fly.t * 0.5);
+        tearStrip.rotation.z = -fly.t * 0.9;
+        tearStrip.visible = style !== 'burn' && fly.t < 0.999;
+      }
+      if (shreds && style !== 'burn') {
+        for (let i = 0; i < NSH; i++) {
+          const q = sh[i];
+          if (q.life > 0) {
+            q.life -= dt;
+            q.v.y -= 1.6 * dt;
+            q.v.multiplyScalar(Math.exp(-1.8 * dt));
+            q.p.addScaledVector(q.v, dt);
+            q.r.addScaledVector(q.w, dt);
+            tmpO.position.copy(q.p);
+            tmpO.rotation.set(q.r.x, q.r.y, q.r.z);
+            tmpO.scale.setScalar(q.s * Math.min(1, q.life * 2));
+          } else tmpO.scale.setScalar(0);
+          tmpO.updateMatrix();
+          shreds.setMatrixAt(i, tmpO.matrix);
+        }
+        shreds.instanceMatrix.needsUpdate = true;
+      }
+      if (shreds) shreds.visible = style !== 'burn';
+      // défilement accéléré : retourne / range tout seul les cartes sous le seuil ; s'arrête sur les belles
+      if (auto.minRank > 0) {
+        if (phase === 'opened' && fastCard(order[cursor])) {
+          if (style === 'fan') revealFan();
+          else revealCurrent();
+        } else if (phase === 'shown' && fastCard(order[cursor])) nextCard();
+      }
+      shake.update(dt);
+      shake2.update(dt);
+      // ── 003 : dès que le booster tiré est posé, sa lumière fuit — rythme et couleur = la meilleure carte du paquet.
+      // n = tier+1 pulsations de plus en plus rapprochées (fausse pause avant la dernière dès Épique), puis il respire.
+      if (phase === 'sealed' && sealedT >= 0) {
+        sealedT += dt;
+        const T = leakTier;
+        const amp = [0.35, 0.55, 0.85, 1.15, 1.5, 1.95][T] ?? 0.8;
+        const t0 = 0.65; // le booster finit de se poser
+        let env = 0;
+        let at = t0;
+        let last = 0;
+        for (let i = 0; i <= T; i++) {
+          if (i === T && T >= 3) at += 0.9; // fausse pause
+          const d = sealedT - at;
+          if (d >= 0) env = Math.max(env, (i === T ? 1.3 : 1) * Math.min(1, d / 0.09) * Math.exp(-d * 6));
+          if (d >= 0) last = i;
+          at += 0.55 * Math.pow(0.8, i);
+        }
+        if (sealedT >= at - 0.2) env = Math.max(env, 0.55 + 0.25 * Math.sin((sealedT - at) * (1.6 + T * 0.7)));
+        // un « battement » par pulsation : son + vibration (à partir de Rare)
+        if (last > pulseDone && sealedT >= t0) {
+          pulseDone = last;
+          if (T >= 2) {
+            ctx.sfx.heartbeat(0.12 + T * 0.05);
+            haptics.pulse(6 + T * 4);
+          }
+        }
+        const lk = env * amp;
+        if (style === 'burn') B.leak = Math.max(lk, hold * (0.4 + T * 0.3));
+        else B.leak = lk;
+        // halo derrière le booster et léger tremblement pour les hauts tiers
+        S.glow = Math.max(S.glow * 0.9, lk * 0.6);
+        U.glowColor.value.lerp(leakHex, 1 - Math.exp(-dt * 6));
+        if (T >= 4 && !holding) S.trem = Math.max(S.trem, lk * 0.12 * (T - 3));
+        // mythique : la teinte dérive dans le spectre
+        if (T >= 5) {
+          (U.ember.value as Color).getHSL(leakHue);
+          (U.ember.value as Color).setHSL((leakHue.h + dt * 0.08) % 1, Math.max(0.6, leakHue.s), 0.72);
+        }
+      } else if (phase !== 'sealed') sealedT = -1;
+      U.burn.value = B.burn;
+      U.leak.value = B.leak;
+      U.flash.value = S.flash;
+      U.ca.value = S.ca;
+      U.dark.value = S.dark;
+      // vitrine : un halo discret, de la couleur du booster, l'éclaire par derrière (il ne flotte plus dans le noir)
+      if (phase === 'display') {
+        const acc = accents.get(boosterKey);
+        if (acc) U.glowColor.value.lerp(acc, 1 - Math.exp(-dt * 3));
+      }
+      U.soon.value += (soonT * dispK - U.soon.value) * (1 - Math.exp(-dt * 5));
+      U.dust.value = dispK * (1 - U.soon.value * 0.5);
+      U.glow.value = S.glow + dispK * (0.085 + Math.sin(t * 0.8) * 0.015) * (1 - U.soon.value * 0.6);
+      U.bt.value = S.bt;
+      // (vie max d'une particule ≈ 4,4 s : au-delà, plus rien de visible)
+      if (partsRef && ctx.quality === 'mobile') partsRef.visible = S.bt < 4.6 && (U.count.value as number) > 0;
+      U.flare.value = S.flare;
+      U.shock.value = S.shock;
+      U.invert.value = S.invert;
+      key.intensity = 1.2 * (1 - S.dark * 0.6) + S.flash * 1.5;
+
+      packRig.visible = B.burn < 0.94 && B.y > -2.4;
+      const display = phase === 'display';
+      dispK += ((display ? 1 : 0) - dispK) * (1 - Math.exp(-dt * 5));
+      const pose = tiltPose(display ? 0.3 : 0.12);
+      packRig.position.set(0, B.y + L.dispY * dispK + (display ? Math.sin(t * 1.1) * 0.012 : 0), B.z);
+      packRig.rotation.set(pose.x + (display ? Math.sin(t * 0.6) * 0.04 : 0), B.spin + pose.y + (display ? Math.sin(t * 0.4) * 0.12 : 0), tearShake.value * 0.004 - S.trem * 0.06 * (style === 'burn' ? 0 : 1));
+      packRig.scale.setScalar(B.s * (1 + (L.dispS - 1) * dispK) * (1 + packLift * 0.025));
+
+      // éventail final, à la souris : la carte survolée se soulève (curseur « main »), petit tic au passage
+      const mouseOver = phase === 'done' && ctx.input.inside && !ctx.input.down && !ctx.input.gyroEnabled && !ctx.overlay.hidden;
+      let hov = mouseOver ? hovered : -1;
+      // lancer de rayon quand la souris bouge (et de temps en temps : les cartes finissent de se placer)
+      if (mouseOver && (ctx.input.ndcX !== ndc.x || ctx.input.ndcY !== ndc.y || ++fanTick % 8 === 0)) {
+        ndc.set(ctx.input.ndcX, ctx.input.ndcY);
+        ray.setFromCamera(ndc, stage.camera);
+        const hit = ray.intersectObjects(slots.map((s) => s.mesh), false)[0];
+        hov = hit ? slots.findIndex((s) => s.mesh === hit.object) : -1;
+      }
+      if (hov !== hovered) {
+        if (hov >= 0) ctx.sfx.tick(1.7, 0.035);
+        hovered = hov;
+      }
+      const kh = 1 - Math.exp(-dt * 14);
+      const tr = S.trem;
+      slots.forEach((s, i) => {
+        const p = s.p;
+        s.hov += ((i === hovered ? 1 : 0) - s.hov) * kh;
+        const hv = s.hov;
+        // retournement : en pivotant sur son axe, la moitié de la carte passerait DERRIÈRE sa position de repos et
+        // traverserait la pile. On l'avance donc de sa demi-largeur × |sin(angle)| (+ une épaisseur) : le bord qui
+        // recule s'arrête pile au plan de repos. L'échelle compense la perspective → même taille apparente, pas de « pop ».
+        const swing = Math.abs(Math.sin(p.flip));
+        const lift = swing > 1e-4 ? swing * ((CARD_W / 2) * p.s + 0.008) : 0;
+        const depth = Math.max(0.2, stage.camera.position.z - p.z - rig.position.z);
+        const persp = lift > 0 ? Math.max(0.5, (depth - lift) / depth) : 1;
+        s.mesh.position.set(p.x, p.y + hv * 0.035, p.z + lift + hv * 0.09);
+        s.mesh.rotation.set(Math.sin(t * 53) * 0.008 * tr, p.flip, p.rz * (1 - hv * 0.7) + Math.sin(t * 41) * 0.01 * tr);
+        s.mesh.scale.setScalar(p.s * persp * (1 + hv * 0.06));
+        s.holoU.strength.value = 0.1 + p.holo * 0.65 + hv * 0.15;
+      });
+      // vitrine, à la souris : le booster survolé se signale (curseur main, léger soulèvement)
+      if (phase === 'display' && ctx.input.inside && !ctx.input.down && !ctx.input.gyroEnabled && !ctx.overlay.hidden && packMeshRef && api.onBoosterTap) {
+        // lancer de rayon seulement quand la souris bouge (le booster a ~14 000 triangles)
+        if (ctx.input.ndcX !== lastNdc.x || ctx.input.ndcY !== lastNdc.y) {
+          lastNdc.set(ctx.input.ndcX, ctx.input.ndcY);
+          ray.setFromCamera(lastNdc, stage.camera);
+          packHover = ray.intersectObject(packMeshRef, false).length > 0;
+        }
+      } else {
+        packHover = false;
+        lastNdc.set(9, 9);
+      }
+      packLift += ((packHover ? 1 : 0) - packLift) * (1 - Math.exp(-dt * 10));
+      // curseur : maintenir sur le booster scellé, toucher pour révéler, main sur une carte de l'éventail
+      const cur = phase === 'sealed' ? (holding ? 'grabbing' : 'grab') : phase === 'opened' || phase === 'shown' ? 'pointer' : (phase === 'done' && hovered >= 0) || packHover ? 'pointer' : '';
+      if (!ctx.overlay.hidden && ctx.canvas.style.cursor !== cur) ctx.canvas.style.cursor = cur;
+      // la pile qui attend un toucher respire un peu et suit le pointeur (elle invite à jouer) ; la carte montrée et
+      // l'éventail s'inclinent davantage
+      // (amplitude lissée : pas d'à-coup quand on passe d'une phase à l'autre)
+      const ampTarget = phase === 'shown' || phase === 'done' ? 0.22 : phase === 'opened' ? 0.1 : 0;
+      tiltAmp += (ampTarget - tiltAmp) * (1 - Math.exp(-dt * 6));
+      breathe += ((phase === 'opened' ? 1 : 0) - breathe) * (1 - Math.exp(-dt * 4));
+      const tilt = tiltPose(tiltAmp);
+      tilt.x += Math.sin(t * 1.3) * 0.02 * breathe;
+      // pile « dans » le booster : même pivot et même inclinaison que lui, 12 cm derrière (comme à l'ouverture)
+      const f = B.follow;
+      tmpQ.setFromEuler(cardsRig.rotation.set(tilt.x, tilt.y, 0));
+      if (f > 0) {
+        packQ.setFromEuler(packRig.rotation);
+        followPos.set(0, 0, followZ).applyQuaternion(packQ).add(packRig.position);
+        tmpQ.slerp(packQ, f);
+        cardsRig.quaternion.copy(tmpQ);
+        cardsRig.position.copy(followPos).multiplyScalar(f);
+        cardsRig.scale.setScalar(1 + (packRig.scale.x - 1) * f);
+      } else {
+        cardsRig.position.set(0, 0, 0);
+        cardsRig.scale.setScalar(1);
+      }
+      rig.position.set(shake.value * 0.004 + Math.sin(t * 61) * 0.002 * tr, shake2.value * 0.004 + Math.sin(t * 47) * 0.002 * tr, 0);
+      stage.camera.position.z = camBase * (1 - S.push);
+      // décalage de l'image (vitrine sur ordinateur) : fenêtre de vue décalée, rayons et effets suivent tout seuls
+      focusCur += (focusT - focusCur) * (1 - Math.exp(-dt * 6));
+      if (Math.abs(focusCur - focusT) < 0.3) focusCur = focusT;
+      const fk = `${focusCur.toFixed(1)}|${ctx.width}|${ctx.height}`;
+      if (fk !== focusKey) {
+        focusKey = fk;
+        if (Math.abs(focusCur) < 0.5) stage.camera.clearViewOffset();
+        else stage.camera.setViewOffset(ctx.width, ctx.height, -focusCur, 0, ctx.width, ctx.height);
+      }
+      stage.scene.updateMatrixWorld();
+      // effets plein écran (onde de choc, aberration) : centrés sur la carte retournée de l'éventail, sinon sur la scène
+      if (style === 'fan' && focusSlot >= 0 && slots[focusSlot]) proj.copy(slots[focusSlot].mesh.position).applyMatrix4(cardsRig.matrixWorld).project(stage.camera);
+      else proj.set(0, 0, 0).applyMatrix4(rig.matrixWorld).project(stage.camera);
+      U.center.value.set(proj.x * 0.5 + 0.5, 0.5 - proj.y * 0.5);
+      post.render();
+    },
+    resize(w, h) {
+      stage.fit(w, h);
+      camBase = stage.camera.position.z;
+      layout(w, h);
+    },
+    dispose() {},
+  };
+  function layout(w: number, h: number) {
+    const portrait = w / h < 0.8;
+    L.dispY = portrait ? 0.2 : 0;
+    L.dispS = portrait ? 0.78 : 1;
+  }
+  return api;
+}

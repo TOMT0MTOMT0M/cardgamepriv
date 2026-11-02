@@ -3,8 +3,8 @@ import { clamp, color, float, floor, step, uniform } from 'three/tsl';
 import gsap from 'gsap';
 import type { Experiment, LabContext } from './Experiment';
 import { createStage } from './stage';
-import { ensureFonts, generateBackArt, generateCardArt, starColor, type CardArt } from './art';
-import { CARDS, cardForRarity } from './cardData';
+import { ensureCardImages, ensureFonts, generateBackArt, generateCardArt, starColor, type CardArt } from './art';
+import { CARDS, CARD_SETS, activeSet, cardForRarity, setActiveSet, type CardSetId } from './cardData';
 import { rarity } from './rarity';
 import { createHoloMaterial } from './holo';
 import { createCardMesh } from './cardModel';
@@ -27,7 +27,7 @@ export function designShowcase(designId: string): Experiment {
   const rig = new Group();
   const U = { lit: uniform(0), flash: uniform(0) };
   const st = { spin: Math.PI, z: -0.5, sc: 0.9, rise: -0.12 };
-  const params = { auto: false };
+  const params = { auto: false, set: activeSet().id as CardSetId };
   let tier = 0;
   let index = 0;
   let busy = false;
@@ -90,13 +90,16 @@ export function designShowcase(designId: string): Experiment {
     busy = true;
     autoCall?.kill();
     index = (index + 1) % CARDS.length;
-    U.lit.value = 0;
-    tl = gsap.timeline();
-    tl.to(st, { spin: Math.PI, sc: 0.96, duration: 0.34, ease: EASE.heave, onStart: () => ctx.sfx.whoosh(0.3, 0.07) })
-      .call(() => swapTo(index))
-      .to(st, { spin: Math.PI * 2, sc: 1, duration: 0.85, ease: springCurve(0.55, 12) })
-      .call(() => (st.spin = 0));
-    ignite(0.75);
+    const nextCard = CARDS[index];
+    void ensureCardImages([nextCard]).then(() => {
+      U.lit.value = 0;
+      tl = gsap.timeline();
+      tl.to(st, { spin: Math.PI, sc: 0.96, duration: 0.34, ease: EASE.heave, onStart: () => ctx.sfx.whoosh(0.3, 0.07) })
+        .call(() => swapTo(index))
+        .to(st, { spin: Math.PI * 2, sc: 1, duration: 0.85, ease: springCurve(0.55, 12) })
+        .call(() => (st.spin = 0));
+      ignite(0.75);
+    });
   }
 
   return {
@@ -130,6 +133,19 @@ export function designShowcase(designId: string): Experiment {
       c.bag.fn(c.input.onTap(() => next()));
       c.gui.add({ next }, 'next').name('carte suivante (tap)');
       c.gui.add(params, 'auto').name('diaporama').onChange((v: boolean) => (v ? !busy && next() : autoCall?.kill()));
+      const sets = Object.fromEntries(Object.values(CARD_SETS).map((s) => [s.label, s.id]));
+      c.gui
+        .add(params, 'set', sets)
+        .name('set (toutes les expériences)')
+        .onChange(async (id: CardSetId) => {
+          setActiveSet(id, true);
+          await ensureFonts();
+          tl?.kill();
+          autoCall?.kill();
+          index = -1;
+          busy = false;
+          next();
+        });
       intro();
     },
     replay() {

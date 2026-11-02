@@ -2,5 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "cardgamepriv",
   "compatibility_date": "2026-11-01",
-  "pages_build_output_dir": "dist"
+  "pages_build_output_dir": "dist",
+  // images du jeu (public/art) servies depuis R2 par functions/art/[[path]].js — scripts/r2-sync.mjs les envoie
+  "r2_buckets": [{ "binding": "ART", "bucket_name": "cardgamepriv-art" }]
 }

@@ -302,8 +302,107 @@ export function glyph(g: Ctx, id: UniverseId, x: number, y: number, s: number, c
       g.arc(0, 0, 4, 0, TAU);
       g.fill();
       break;
+    case 'pokemon': // éclat à quatre branches + point (emblème neutre, pas de logo)
+      g.moveTo(0, -19);
+      g.quadraticCurveTo(2.5, -2.5, 19, 0);
+      g.quadraticCurveTo(2.5, 2.5, 0, 19);
+      g.quadraticCurveTo(-2.5, 2.5, -19, 0);
+      g.quadraticCurveTo(-2.5, -2.5, 0, -19);
+      g.closePath();
+      g.fill();
+      g.beginPath();
+      g.arc(11, -11, 3, 0, TAU);
+      g.fill();
+      break;
+    case 'valorant': // viseur (emblème neutre, pas de logo)
+      g.arc(0, 0, 13, 0, TAU);
+      g.moveTo(0, -19);
+      g.lineTo(0, -7);
+      g.moveTo(0, 7);
+      g.lineTo(0, 19);
+      g.moveTo(-19, 0);
+      g.lineTo(-7, 0);
+      g.moveTo(7, 0);
+      g.lineTo(19, 0);
+      g.stroke();
+      g.beginPath();
+      g.arc(0, 0, 2.6, 0, TAU);
+      g.fill();
+      break;
+    case 'bebous': // étoile à huit branches dans un anneau : une branche par membre du groupe
+      g.arc(0, 0, 19, 0, TAU);
+      g.stroke();
+      g.beginPath();
+      eightStar(g, 0, 0, 14, 5.2);
+      g.fill();
+      break;
+    case 'lol': // hexagone « hextech » + losange (emblème neutre, pas de logo)
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + (i / 6) * TAU;
+        if (i) g.lineTo(Math.cos(a) * 19, Math.sin(a) * 19);
+        else g.moveTo(Math.cos(a) * 19, Math.sin(a) * 19);
+      }
+      g.closePath();
+      g.stroke();
+      g.beginPath();
+      g.moveTo(0, -10);
+      g.lineTo(7, 0);
+      g.lineTo(0, 10);
+      g.lineTo(-7, 0);
+      g.closePath();
+      g.fill();
+      break;
+    case 'cs': // deux lames croisées (emblème neutre, pas de logo)
+      g.moveTo(-15, 15);
+      g.lineTo(13, -13);
+      g.moveTo(15, 15);
+      g.lineTo(-13, -13);
+      g.moveTo(-14, 6);
+      g.lineTo(-6, 14);
+      g.moveTo(14, 6);
+      g.lineTo(6, 14);
+      g.stroke();
+      break;
+    case 'monde': // globe terrestre (méridiens + équateur)
+      g.arc(0, 0, 18, 0, TAU);
+      g.moveTo(-18, 0);
+      g.lineTo(18, 0);
+      g.moveTo(0, -18);
+      g.ellipse(0, 0, 9, 18, 0, 0, TAU);
+      g.stroke();
+      break;
+    case 'jv': // manette (croix directionnelle + deux boutons)
+      g.roundRect(-19, -10, 38, 21, 10);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(-11, 0);
+      g.lineTo(-3, 0);
+      g.moveTo(-7, -4);
+      g.lineTo(-7, 4);
+      g.stroke();
+      g.beginPath();
+      g.arc(7, -2, 2.4, 0, TAU);
+      g.moveTo(14.4, 3);
+      g.arc(12, 3, 2.4, 0, TAU);
+      g.fill();
+      break;
+    default:
+      g.arc(0, 0, 16, 0, TAU);
+      g.stroke();
+      break;
   }
   g.restore();
 }
 
 export const num3 = (n: number) => String(n).padStart(3, '0');
+
+/** Tracé (sans beginPath) d'une étoile à 8 branches : rayon extérieur `r`, intérieur `ri`. */
+export function eightStar(g: Ctx, x: number, y: number, r: number, ri: number) {
+  for (let i = 0; i <= 16; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 8;
+    const rr = i % 2 ? ri : r;
+    if (i === 0) g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    else g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  g.closePath();
+}

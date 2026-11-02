@@ -15,6 +15,14 @@ export interface PackStyle {
   ink: string;
   foil: string;
   accent: string;
+  /** nom imprimé (défaut « Card Lab ») — le jeu y met le nom du booster (« POKEMON », « BÉBOU PACK ») */
+  title?: string;
+  /** ligne sous le titre (défaut « SÉRIE I · <name> ») */
+  series?: string;
+  /** mention du bas (défaut « 5 CARTES · DONT 1 RARE OU MIEUX ») */
+  tagline?: string;
+  /** petites lignes imprimées au dos (défaut : les mentions du labo) */
+  backLines?: string[];
 }
 
 export const PACK_STYLES: Record<string, PackStyle> = {
@@ -71,6 +79,17 @@ export function createPackGeometry(segX = 36, segY = 56): BufferGeometry {
 }
 
 const PW = 640, PH = Math.round((640 * PACK.h) / PACK.w);
+
+/** Police du titre réduite jusqu'à tenir dans `maxW` (« BÉBOU PACK » est plus long que « Card Lab »). */
+function fitFont(g: Ctx, text: string, weight: number, size: number, maxW: number, family: string): string {
+  let px = size;
+  g.font = `${weight} ${px}px ${family}`;
+  while (px > 28 && g.measureText(text).width > maxW) {
+    px -= 2;
+    g.font = `${weight} ${px}px ${family}`;
+  }
+  return g.font;
+}
 
 function crimpBands(g: Ctx, col: string) {
   const ch = (PACK.crimp / PACK.h) * PH;
@@ -145,15 +164,17 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   }
   g.restore();
   // titre
+  const title = style.title ?? 'Card Lab';
+  const titleFont = fitFont(g, title, 600, 78, PW - 90, FONT_TITLE);
   g.fillStyle = style.ink;
   g.textAlign = 'center';
-  g.font = `600 78px ${FONT_TITLE}`;
-  g.fillText('Card Lab', cx, PH * 0.74);
+  g.font = titleFont;
+  g.fillText(title, cx, PH * 0.74);
   g.font = `500 20px ${FONT_MONO}`;
   g.fillStyle = alpha(style.ink, 0.75);
-  g.fillText(`S É R I E   I  ·  ${style.name.toUpperCase()}`, cx, PH * 0.78);
+  g.fillText(style.series ?? `S É R I E   I  ·  ${style.name.toUpperCase()}`, cx, PH * 0.78);
   g.font = `400 16px ${FONT_MONO}`;
-  g.fillText('5 CARTES · DONT 1 RARE OU MIEUX', cx, PH * 0.84);
+  g.fillText(style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', cx, PH * 0.84);
   // ligne de déchirure
   const ch = (PACK.crimp / PACK.h) * PH;
   const tearY = PH - ch - 40;
@@ -184,7 +205,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   b.fillStyle = alpha(style.ink, 0.8);
   b.textAlign = 'center';
   b.font = `400 15px ${FONT_MONO}`;
-  ['Ne convient pas aux dragons de moins de trois ans.', 'Illustrations entièrement procédurales.', 'Fabriqué dans un laboratoire. Avec soin.'].forEach((l, i) =>
+  (style.backLines ?? ['Ne convient pas aux dragons de moins de trois ans.', 'Illustrations entièrement procédurales.', 'Fabriqué dans un laboratoire. Avec soin.']).forEach((l, i) =>
     b.fillText(l, PW / 2, PH * 0.7 + i * 26),
   );
   for (let i = 0; i < 46; i++) b.fillRect(PW / 2 - 120 + i * 5.3, PH * 0.82, i % 3 ? 2 : 3.5, 60);
@@ -212,9 +233,9 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   m.beginPath();
   m.arc(cx, cy, 140, 0, Math.PI * 2);
   m.stroke();
-  m.font = `600 78px ${FONT_TITLE}`;
+  m.font = titleFont;
   m.textAlign = 'center';
-  m.fillText('Card Lab', cx, PH * 0.74);
+  m.fillText(title, cx, PH * 0.74);
   m.fillStyle = 'rgb(0,255,0)';
   for (const y0 of [0, PH - ch]) for (let x = 0; x < PW; x += 6) m.fillRect(x, y0, 3, ch);
   m.fillStyle = 'rgb(0,0,255)';

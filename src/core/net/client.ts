@@ -2,6 +2,7 @@ import { ConvexClient } from 'convex/browser';
 import { api } from '../../../convex/_generated/api';
 import type { Doc, Id } from '../../../convex/_generated/dataModel';
 import type { RarityId } from '../rarity';
+import type { MissionsState } from '../missions';
 
 const LS_SESSION_TOKEN = 'cardlab.session_token';
 
@@ -15,6 +16,10 @@ export interface MeProfile {
   totalPacksOpened: number;
   canClaimDaily: boolean;
   nextDailyClaimAt: number;
+  /** recharge des boosters (src/core/packRegen.ts) : réserve stockée + départ du minuteur */
+  packStored?: number;
+  packRegenAt?: number;
+  nextPackAt?: number | null;
   uniqueCards: number;
   totalCards: number;
 }
@@ -30,6 +35,19 @@ export interface FriendPresence {
   lastSeenAt: number;
 }
 
+export interface TradeItem {
+  cardId: string;
+  rarity: RarityId;
+  count: number;
+}
+
+export type TradeDoc = Doc<'trades'> & { fromName: string; toName: string };
+
+export interface PackRequestArgs {
+  packKind: 'theme' | 'bebou';
+  themeId?: string;
+}
+
 export interface NetState {
   configured: boolean;
   connected: boolean;
@@ -39,6 +57,11 @@ export interface NetState {
   collection: Doc<'inventory'>[];
   sealedPack: Doc<'packOpens'> | null;
   feed: Doc<'activityFeed'>[];
+  /** gros tirages (Légendaire+) ; `null` = requête pas encore déployée sur le serveur → on les tire du fil */
+  bigPulls: Doc<'activityFeed'>[] | null;
+  trades: { incoming: TradeDoc[]; outgoing: TradeDoc[] };
+  /** missions du jour (+ instant du prochain tirage) */
+  missions: (MissionsState & { resetAt: number }) | null;
 }
 
 type Listener = (state: NetState) => void;
@@ -64,6 +87,9 @@ class GameNetClient {
     collection: [],
     sealedPack: null,
     feed: [],
+    bigPulls: null,
+    trades: { incoming: [], outgoing: [] },
+    missions: null,
   };
 
   constructor() {
@@ -165,12 +191,45 @@ class GameNetClient {
       }),
     );
 
-    // 5. Global real-time pull & trade feed
+    // 5. Échanges en attente (reçus / envoyés)
+    this.unsubscribers.push(
+      this.client.onUpdate(api.trades.myTrades, tokenArg, (trades) => {
+        this.state.trades = (trades as NetState['trades']) ?? { incoming: [], outgoing: [] };
+        this.emit();
+      }),
+    );
+
+    // 6 bis. Missions du jour
+    if (this.sessionToken)
+      this.unsubscribers.push(
+        this.client.onUpdate(api.missions.mine, tokenArg, (m) => {
+          this.state.missions = (m as NetState['missions']) ?? null;
+          this.emit();
+        }),
+      );
+
+    // 6. Global real-time pull & trade feed
     this.unsubscribers.push(
       this.client.onUpdate(api.feed.recent, { limit: 20 }, (feed) => {
         this.state.feed = feed ?? [];
         this.emit();
       }),
+    );
+
+    // 7. Gros tirages (page d'accueil). Serveur pas encore redéployé → erreur → repli sur le fil ci-dessus.
+    this.unsubscribers.push(
+      this.client.onUpdate(
+        api.feed.bigPulls,
+        { limit: 30 },
+        (rows) => {
+          this.state.bigPulls = rows ?? [];
+          this.emit();
+        },
+        () => {
+          this.state.bigPulls = null;
+          this.emit();
+        },
+      ),
     );
   }
 
@@ -202,7 +261,8 @@ class GameNetClient {
       alert('Configure d’abord VITE_CONVEX_URL dans ton fichier .env.local');
       return;
     }
-    const returnTo = window.location.origin;
+    // retour sur la page d'où l'on vient (le labo à la racine, ou le jeu dans /jeu/)
+    const returnTo = window.location.origin + window.location.pathname;
     window.location.href = `${siteUrl}/auth/discord?returnTo=${encodeURIComponent(returnTo)}`;
   }
 
@@ -229,31 +289,32 @@ class GameNetClient {
    * Pre-rolls a 5-card booster on the server BEFORE the 3D tear animation begins.
    * If a sealed pack is already cached in `state.sealedPack`, returns it in 0ms.
    */
-  public async preparePack(): Promise<{
+  public async preparePack(req?: PackRequestArgs): Promise<{
     packId: Id<'packOpens'>;
     maxRarity: RarityId;
     cards: Doc<'packOpens'>['cards'];
+    packKind: 'theme' | 'bebou';
+    themeId?: string;
   }> {
-    if (this.state.sealedPack) {
-      return {
-        packId: this.state.sealedPack._id,
-        maxRarity: this.state.sealedPack.maxRarity,
-        cards: this.state.sealedPack.cards,
-      };
-    }
+    const shape = (p: Doc<'packOpens'>) => ({
+      packId: p._id,
+      maxRarity: p.maxRarity,
+      cards: p.cards,
+      packKind: p.packKind ?? ('bebou' as const),
+      themeId: p.themeId,
+    });
+    // un pack scellé non ouvert est rendu tel quel (anti-reroll côté serveur aussi)
+    if (this.state.sealedPack) return shape(this.state.sealedPack);
     if (!this.client || !this.sessionToken) {
       throw new Error('Non connecté');
     }
     const pack = await this.client.mutation(api.packs.preparePack, {
       sessionToken: this.sessionToken,
+      ...(req ?? {}),
     });
     this.state.sealedPack = pack;
     this.emit();
-    return {
-      packId: pack._id,
-      maxRarity: pack.maxRarity,
-      cards: pack.cards,
-    };
+    return shape(pack);
   }
 
   /**
@@ -270,6 +331,71 @@ class GameNetClient {
     this.state.sealedPack = null;
     this.emit();
     return revealed;
+  }
+
+  // ─────────────────────────────── échanges
+  private requireToken(): string {
+    if (!this.client || !this.sessionToken) throw new Error('Non connecté');
+    return this.sessionToken;
+  }
+
+  /** Collection d'un ami (pour composer un échange). */
+  public async userCollection(userId: Id<'users'>): Promise<Doc<'inventory'>[]> {
+    if (!this.client) return [];
+    return await this.client.query(api.inventory.userCollection, { userId });
+  }
+
+  /** Contrat façon CS:GO : brûle des doublons d'une étoile contre une carte de l'étoile au-dessus (src/core/contracts.ts). */
+  public async signContract(rarity: RarityId, items: Array<{ cardId: string; count: number }>) {
+    return await this.client!.mutation(api.contracts.sign, { sessionToken: this.requireToken(), rarity, items });
+  }
+
+  public async proposeTrade(toUserId: Id<'users'>, offered: TradeItem[], requested: TradeItem[], note?: string) {
+    return await this.client!.mutation(api.trades.propose, { sessionToken: this.requireToken(), toUserId, offered, requested, note });
+  }
+
+  public async respondTrade(tradeId: Id<'trades'>, accept: boolean) {
+    return await this.client!.mutation(api.trades.respond, { sessionToken: this.requireToken(), tradeId, accept });
+  }
+
+  public async cancelTrade(tradeId: Id<'trades'>) {
+    return await this.client!.mutation(api.trades.cancel, { sessionToken: this.requireToken(), tradeId });
+  }
+
+  // ─────────────────────────────── missions & profils
+  public async claimMission(missionId: string) {
+    return await this.client!.mutation(api.missions.claim, { sessionToken: this.requireToken(), missionId });
+  }
+  public async claimMissionBonus() {
+    return await this.client!.mutation(api.missions.claimBonus, { sessionToken: this.requireToken() });
+  }
+  public async rerollMission(missionId: string) {
+    return await this.client!.mutation(api.missions.reroll, { sessionToken: this.requireToken(), missionId });
+  }
+  public async profile(userId: Id<'users'>) {
+    if (!this.client) return null;
+    return await this.client.query(api.profiles.profile, { userId });
+  }
+  public async setShowcase(cards: Array<{ cardId: string; rarity: RarityId }>) {
+    return await this.client!.mutation(api.profiles.setShowcase, { sessionToken: this.requireToken(), cards });
+  }
+  public async setBio(bio: string) {
+    return await this.client!.mutation(api.profiles.setBio, { sessionToken: this.requireToken(), bio });
+  }
+
+  /** Retours du labo → serveur (une ligne par navigateur, mise à jour à chaque envoi). */
+  public async pushLabFeedback(args: {
+    clientId: string;
+    tester: string;
+    entries: Array<{ id: string; title: string; category: string; vote: number; note: string; updatedAt?: string | null }>;
+    meta: { backend?: string; userAgent?: string; quality?: string; dpr?: number };
+  }) {
+    if (!this.client) throw new Error('Serveur non configuré (VITE_CONVEX_URL)');
+    return await this.client.mutation(api.labFeedback.submit, { ...args, sessionToken: this.sessionToken ?? undefined });
+  }
+
+  public get loggedIn(): boolean {
+    return !!this.sessionToken && !!this.state.user;
   }
 }
 

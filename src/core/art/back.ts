@@ -8,6 +8,8 @@ export interface BackStyle {
   ground: string;
   line: string;
   accent: string;
+  /** mention du bas (défaut « B É B O U ») — le jeu y met le thème de la carte */
+  label?: string;
 }
 
 export const DEFAULT_BACK: BackStyle = { ground: '#17130f', line: '#c9a86a', accent: '#efe3c4' };
@@ -25,7 +27,7 @@ function guilloche(g: Ctx, cx: number, cy: number, R: number, r: number, d: numb
 }
 
 /**
- * Dos de carte commun : rosace guillochée, trame, monogramme.
+ * Dos de carte commun : rosace guillochée, trame, monogramme « B » (le Bébou game) dans un médaillon rond.
  * Masques : R = foil (lignes), G = relief, B = émissif (cœur).
  */
 export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = DEFAULT_BACK) {
@@ -92,28 +94,27 @@ export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = DEFAULT_BACK
   lines(back, 1, alpha(style.line, 0.85));
   back.restore();
 
-  // cœur : monogramme
+  // cœur : médaillon rond + « B »
   const core = (g: Ctx, fill: string) => {
     g.fillStyle = fill;
     g.beginPath();
-    for (let i = 0; i <= 12; i++) {
-      const a = (i / 12) * TAU - Math.PI / 2;
-      const rr = i % 2 ? 40 : 74;
-      if (i === 0) g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
-      else g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
-    }
-    g.closePath();
+    g.arc(cx, cy, 78, 0, TAU);
     g.fill();
   };
   core(back, style.line);
+  back.strokeStyle = alpha(style.ground, 0.75);
+  back.lineWidth = 2.5;
+  back.beginPath();
+  back.arc(cx, cy, 66, 0, TAU);
+  back.stroke();
   back.fillStyle = style.ground;
-  back.font = `700 50px ${FONT_TITLE}`;
+  back.font = `700 92px ${FONT_TITLE}`;
   back.textAlign = 'center';
   back.textBaseline = 'middle';
-  back.fillText('L', cx, cy + 3);
+  back.fillText('B', cx + 2, cy + 6);
   back.font = `500 16px ${FONT_MONO}`;
-  back.fillStyle = alpha(style.accent, 0.7);
-  back.fillText('C A R D   L A B', cx, BASE_H - 60);
+  back.fillStyle = alpha(style.accent, 0.75);
+  back.fillText(style.label ?? 'B É B O U', cx, BASE_H - 60);
   back.fillText('· MMXXVI ·', cx, 62);
   back.textAlign = 'left';
   back.textBaseline = 'alphabetic';

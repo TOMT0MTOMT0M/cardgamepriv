@@ -248,4 +248,101 @@ export class Sfx {
     this.noise(t, dur).connect(f).connect(g);
     this.out(g, 0.3);
   }
+
+  /** Battement de cœur (« lub-dub ») : deux coups sourds, le second plus doux. */
+  heartbeat(vol = 0.5, low = 40) {
+    if (!this.ok) return;
+    const c = this.ctx!, t0 = c.currentTime;
+    for (const [dt, k] of [[0, 1], [0.17, 0.62]] as const) {
+      const t = t0 + dt;
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(low * 1.9, t);
+      o.frequency.exponentialRampToValueAtTime(low, t + 0.12);
+      const g = c.createGain();
+      this.env(g, t, 0.006, vol * k, 0.32);
+      o.connect(g);
+      o.start(t);
+      o.stop(t + 0.45);
+      const f = c.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 180;
+      const ng = c.createGain();
+      this.env(ng, t, 0.003, vol * k * 0.5, 0.12);
+      this.noise(t, 0.2).connect(f).connect(ng);
+      this.out(g, 0.15);
+      this.out(ng, 0.1);
+    }
+  }
+
+  /** Arrêt de bande : tout s'effondre vers le grave (la fausse ouverture « déraille »). */
+  tapeStop(vol = 0.35, dur = 0.45) {
+    if (!this.ok) return;
+    const c = this.ctx!, t = c.currentTime;
+    const o = c.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(520, t);
+    o.frequency.exponentialRampToValueAtTime(28, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(3000, t);
+    f.frequency.exponentialRampToValueAtTime(60, t + dur);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(vol * 0.6, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    this.noise(t, dur).connect(f).connect(ng);
+    this.out(g, 0.2);
+    this.out(ng, 0.2);
+  }
+
+  /** Chœur synthétique (« aah » : scies désaccordées → formants), accord majeur 9 qui s'ouvre. */
+  choir(dur = 4.5, vol = 0.14, base = 220) {
+    if (!this.ok) return;
+    const c = this.ctx!, t = c.currentTime;
+    const f1 = c.createBiquadFilter();
+    f1.type = 'bandpass';
+    f1.frequency.value = 800;
+    f1.Q.value = 3;
+    const f2 = c.createBiquadFilter();
+    f2.type = 'bandpass';
+    f2.frequency.value = 1150;
+    f2.Q.value = 4;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.7);
+    g.gain.setValueAtTime(vol, t + dur * 0.55);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    f1.connect(g);
+    f2.connect(g);
+    const lfo = c.createOscillator();
+    lfo.frequency.value = 5.2;
+    const lg = c.createGain();
+    lg.gain.value = 7;
+    lfo.connect(lg);
+    lfo.start(t);
+    lfo.stop(t + dur + 0.1);
+    [0, 4, 7, 11, 14, 19].forEach((n, i) => {
+      for (const det of [-9, 0, 8]) {
+        const o = c.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = base * Math.pow(2, n / 12);
+        o.detune.value = det + (Math.random() - 0.5) * 4;
+        lg.connect(o.detune);
+        const og = c.createGain();
+        og.gain.value = 0.22 / (1 + i * 0.25);
+        o.connect(og);
+        og.connect(f1);
+        og.connect(f2);
+        o.start(t + i * 0.05);
+        o.stop(t + dur + 0.1);
+      }
+    });
+    this.out(g, 0.9);
+  }
 }

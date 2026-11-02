@@ -8,3 +8,14 @@ shots
 .env.*.local
 .wrangler
 _hors-site/
+.cache
+.feedback-key
+feedback/
+
+# gros / temporaire (images sur R2, archives de sync)
+public/art/
+!public/art/*/manifest.json
+.sync/
+_to_delete/
+.pc-*.txt
+__pycache__/

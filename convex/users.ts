@@ -1,9 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { getUserByToken, requireUser } from './auth';
-
-const DAILY_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 2 boosters every 12h
-const DAILY_PACK_REWARD = 2;
+import { PACK_CAP, PACK_REGEN_MS, applyRegen } from '../src/core/packRegen';
 const ONLINE_WINDOW_MS = 90 * 1000; // 90s heartbeat window
 
 export const me = query({
@@ -13,8 +11,9 @@ export const me = query({
     if (!user) return null;
 
     const now = Date.now();
-    const nextDailyClaimAt = user.lastDailyClaimAt + DAILY_COOLDOWN_MS;
-    const canClaimDaily = now >= nextDailyClaimAt;
+    // recharge : 1 booster / 5 min, 15 max (calcul paresseux, rien n'est écrit ici ; le client refait le calcul chaque seconde)
+    const packRegenAt = user.packRegenAt ?? user.lastSeenAt;
+    const regen = applyRegen(user.packBalance, packRegenAt, now);
 
     const myCards = await ctx.db
       .query('inventory')
@@ -30,10 +29,17 @@ export const me = query({
       username: user.username,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
-      packBalance: user.packBalance,
+      packBalance: regen.balance,
+      /** réserve stockée + départ de la recharge : le client recalcule avec applyRegen() */
+      packStored: user.packBalance,
+      packRegenAt,
+      packCap: PACK_CAP,
+      packRegenMs: PACK_REGEN_MS,
+      nextPackAt: regen.nextAt,
       totalPacksOpened: user.totalPacksOpened,
-      canClaimDaily,
-      nextDailyClaimAt,
+      /** ancien « +2 toutes les 12 h » : remplacé par la recharge (gardé pour le HUD du labo) */
+      canClaimDaily: false,
+      nextDailyClaimAt: regen.nextAt ?? now,
       uniqueCards,
       totalCards,
     };
@@ -63,27 +69,8 @@ export const friends = query({
 export const claimDailyBooster = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
-    const user = await requireUser(ctx, sessionToken);
-    const now = Date.now();
-    const nextClaimAt = user.lastDailyClaimAt + DAILY_COOLDOWN_MS;
-
-    if (now < nextClaimAt) {
-      const minsLeft = Math.ceil((nextClaimAt - now) / 60000);
-      throw new ConvexError(`Prochain booster gratuit dans ${minsLeft} min.`);
-    }
-
-    const newBalance = user.packBalance + DAILY_PACK_REWARD;
-    await ctx.db.patch(user._id, {
-      packBalance: newBalance,
-      lastDailyClaimAt: now,
-      lastSeenAt: now,
-    });
-
-    return {
-      added: DAILY_PACK_REWARD,
-      packBalance: newBalance,
-      nextDailyClaimAt: now + DAILY_COOLDOWN_MS,
-    };
+    await requireUser(ctx, sessionToken);
+    throw new ConvexError(`Les boosters se rechargent tout seuls : 1 toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP}.`);
   },
 });
 
@@ -97,6 +84,8 @@ export const heartbeat = mutation({
     if (!user) return { ok: false };
     await ctx.db.patch(user._id, {
       lastSeenAt: Date.now(),
+      // comptes d'avant la recharge : on fige le départ du minuteur (sinon il glisserait avec lastSeenAt)
+      ...(user.packRegenAt === undefined ? { packRegenAt: user.lastSeenAt } : {}),
       ...(statusText !== undefined ? { statusText } : {}),
     });
     return { ok: true };

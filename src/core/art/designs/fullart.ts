@@ -1,5 +1,5 @@
 import { alpha, linear, mix } from '../canvas';
-import { SET_CODE } from '../../cardData';
+import { setInfo } from '../../cardData';
 import { type CardDesign, FONT_MONO, FONT_TITLE, H, W, fitFont, glyph, grainAtop, num3, paper, spaced, starColor, starRow } from './common';
 
 /**
@@ -30,12 +30,31 @@ export const fullArt: CardDesign = {
       f.stroke();
     }
     starRow(f, m, d, 52, 66, 32, 'left', { r: 13, fill: tier < 2 ? '#f3efe6' : starColor(tier), stroke: alpha('#000', 0.35), glow: true });
-    // univers
-    const ucol = mix(uni.hex, '#fff', 0.6);
-    glyph(f, uni.id, 64, 894, 24, ucol, 2.2);
-    f.font = `500 19px ${FONT_MONO}`;
+    // numéro dans la collection, bien lisible en haut à droite (retour des testeurs : « on voit trop petit le numéro »)
+    const si = setInfo(card);
+    f.save();
+    f.shadowColor = 'rgba(0,0,0,0.6)';
+    f.shadowBlur = 8;
+    f.textAlign = 'right';
+    f.font = `600 30px ${FONT_MONO}`;
+    f.fillStyle = '#f7f2e8';
+    const total = ` / ${si.size}`;
+    f.fillText(num3(card.num), W - 52 - f.measureText(total).width * 0.72, 74);
+    f.font = `500 21px ${FONT_MONO}`;
+    f.fillStyle = alpha('#f7f2e8', 0.7);
+    f.fillText(total, W - 52, 74);
+    f.restore();
+    f.textAlign = 'left';
+    // sous-thème (« POKÉMON ») en grand au-dessus du nom
+    const ucol = mix(uni.hex, '#fff', 0.55);
+    f.save();
+    f.shadowColor = 'rgba(0,0,0,0.55)';
+    f.shadowBlur = 8;
+    glyph(f, uni.id, 66, 886, 34, ucol, 2.6);
+    f.font = `600 28px ${FONT_MONO}`;
     f.fillStyle = ucol;
-    spaced(f, uni.name.toUpperCase(), 90, 901, 2.8);
+    spaced(f, uni.short.toUpperCase(), 100, 896, 4);
+    f.restore();
     // nom
     f.save();
     f.shadowColor = 'rgba(0,0,0,0.55)';
@@ -45,9 +64,9 @@ export const fullArt: CardDesign = {
     const ns = fitFont(f, card.name, nameFont, 60, W - 96);
     f.fillText(card.name, 46, 978);
     f.restore();
-    f.font = `400 14px ${FONT_MONO}`;
-    f.fillStyle = alpha('#f7f2e8', 0.55);
-    spaced(f, `${SET_CODE} ${num3(card.num)}`, W - 48, 1036, 2, 'right');
+    f.font = `400 15px ${FONT_MONO}`;
+    f.fillStyle = alpha('#f7f2e8', 0.6);
+    spaced(f, `${si.code} ${num3(card.num)}/${si.size}`, W - 48, 1036, 2, 'right');
 
     m.strokeStyle = m.fillStyle = 'rgb(255,0,0)';
     if (tier >= 2) {

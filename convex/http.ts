@@ -4,6 +4,17 @@ import { internal } from './_generated/api';
 
 const http = httpRouter();
 
+/** Ajoute `#hash` à l'URL de retour, qu'elle désigne la racine du site ou une page (`/jeu/`). */
+function withHash(returnTo: string, hash: string): string {
+  try {
+    const u = new URL(returnTo);
+    u.hash = hash;
+    return u.toString();
+  } catch {
+    return `${returnTo.replace(/\/$/, '')}/#${hash}`;
+  }
+}
+
 function isAllowedReturnOrigin(urlStr: string): boolean {
   try {
     const u = new URL(urlStr);
@@ -83,7 +94,7 @@ http.route({
     }
 
     if (!code) {
-      return Response.redirect(`${returnTo}/#auth_error=missing_code`, 302);
+      return Response.redirect(withHash(returnTo, `auth_error=missing_code`), 302);
     }
 
     const clientId = process.env.DISCORD_CLIENT_ID;
@@ -110,7 +121,7 @@ http.route({
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
       console.error('[discord-auth] token exchange failed:', errText);
-      return Response.redirect(`${returnTo}/#auth_error=token_exchange_failed`, 302);
+      return Response.redirect(withHash(returnTo, `auth_error=token_exchange_failed`), 302);
     }
 
     const tokenData = (await tokenRes.json()) as { access_token: string };
@@ -121,7 +132,7 @@ http.route({
     });
 
     if (!userRes.ok) {
-      return Response.redirect(`${returnTo}/#auth_error=user_fetch_failed`, 302);
+      return Response.redirect(withHash(returnTo, `auth_error=user_fetch_failed`), 302);
     }
 
     const discordUser = (await userRes.json()) as {
@@ -138,11 +149,11 @@ http.route({
         headers: { Authorization: `Bearer ${tokenData.access_token}` },
       });
       if (!guildsRes.ok) {
-        return Response.redirect(`${returnTo}/#auth_error=guild_check_failed`, 302);
+        return Response.redirect(withHash(returnTo, `auth_error=guild_check_failed`), 302);
       }
       const guilds = (await guildsRes.json()) as Array<{ id: string }>;
       if (!guilds.some((g) => g.id === requiredGuildId)) {
-        return Response.redirect(`${returnTo}/#auth_error=not_in_discord_server`, 302);
+        return Response.redirect(withHash(returnTo, `auth_error=not_in_discord_server`), 302);
       }
     }
 
@@ -158,13 +169,56 @@ http.route({
         avatarUrl,
       });
 
-      const base = returnTo.replace(/\/$/, '');
-      return Response.redirect(`${base}/#auth_token=${encodeURIComponent(token)}`, 302);
+      return Response.redirect(withHash(returnTo, `auth_token=${encodeURIComponent(token)}`), 302);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'unauthorized';
-      const base = returnTo.replace(/\/$/, '');
-      return Response.redirect(`${base}/#auth_error=${encodeURIComponent(msg)}`, 302);
+      return Response.redirect(withHash(returnTo, `auth_error=${encodeURIComponent(msg)}`), 302);
     }
+  }),
+});
+
+/**
+ * Export des retours du labo, pour Tom / Claude : GET /lab/feedback?key=<FEEDBACK_READ_KEY>
+ * (clé dans l'environnement Convex, posée par deployer.cmd depuis le fichier local .feedback-key).
+ * Réponse : les retours bruts par testeur + un regroupement par expérience (votes, notes).
+ */
+http.route({
+  path: '/lab/feedback',
+  method: 'GET',
+  handler: httpAction(async (ctx, request) => {
+    const expected = process.env.FEEDBACK_READ_KEY;
+    if (!expected) return new Response('FEEDBACK_READ_KEY non configurée', { status: 503 });
+    const key = new URL(request.url).searchParams.get('key') ?? '';
+    if (key !== expected) return new Response('clé invalide', { status: 401 });
+    const rows = await ctx.runQuery(internal.labFeedback.all, {});
+    const byExp = new Map<string, { id: string; title: string; category: string; up: string[]; down: string[]; notes: Array<{ tester: string; vote: number; note: string; at: string | null | undefined }> }>();
+    for (const r of rows) {
+      const who = r.discordName && r.discordName !== r.tester ? `${r.tester} (${r.discordName})` : r.tester;
+      for (const e of r.entries) {
+        const x = byExp.get(e.id) ?? { id: e.id, title: e.title, category: e.category, up: [], down: [], notes: [] };
+        if (e.vote > 0) x.up.push(who);
+        if (e.vote < 0) x.down.push(who);
+        if (e.note.trim()) x.notes.push({ tester: who, vote: e.vote, note: e.note, at: e.updatedAt });
+        byExp.set(e.id, x);
+      }
+    }
+    const experiments = [...byExp.values()].sort((a, b) => a.id.localeCompare(b.id));
+    const body = {
+      exportedAt: new Date().toISOString(),
+      testers: rows.map((r) => ({
+        tester: r.tester,
+        discordName: r.discordName,
+        updatedAt: new Date(r.updatedAt).toISOString(),
+        sends: r.sends,
+        meta: r.meta,
+        entries: r.entries,
+      })),
+      experiments,
+    };
+    return new Response(JSON.stringify(body, null, 2), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
   }),
 });
 

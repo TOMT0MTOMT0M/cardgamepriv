@@ -249,7 +249,7 @@ export default function create(): Experiment {
       if (params.cycle && cycleTimer > 0) {
         cycleTimer -= dt;
         if (cycleTimer <= 0) {
-          const next = RARITIES[(rar.tier + 1) % RARITIES.length].id;
+          const next = RARITIES[(RARITIES.findIndex((r) => r.id === rar.id) + 1) % RARITIES.length].id;
           window.dispatchEvent(new KeyboardEvent('keydown', { key: String(RARITIES.findIndex((r) => r.id === next) + 1) }));
         }
       }

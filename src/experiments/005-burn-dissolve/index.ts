@@ -247,7 +247,8 @@ export default function create(): Experiment {
       rig.rotation.set(pose.x * 0.6, pose.y * 0.6, 0);
       // la carte s'avance une fois libérée
       cardRig.position.set(0, Math.sin(t * 1.1) * 0.004 * reveal.k, reveal.k * 0.12);
-      cardRig.rotation.set(pose.x * (0.4 + reveal.k * 0.6), pose.y * (0.4 + reveal.k * 0.6), 0);
+      // tant qu'elle est dans le booster, la carte suit exactement son inclinaison (sinon elle glisse derrière les trous)
+      cardRig.rotation.set(pose.x * (0.6 + reveal.k * 0.4), pose.y * (0.6 + reveal.k * 0.4), 0);
       const burnt = Math.max(0, Math.min(1, B.value / maxF));
       // la carte tiédit sous les flammes puis refroidit en s'avançant
       cardHeat.value = burning ? burnt * 0.5 : done ? Math.max(0, 1 - reveal.k) * 0.5 : 0;

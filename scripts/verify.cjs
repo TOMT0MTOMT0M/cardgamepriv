@@ -5,7 +5,7 @@
  *   npm run build && node scripts/verify.cjs            (Windows/macOS : GPU réel)
  *   npm run build && xvfb-run -a node scripts/verify.cjs --sw   (Linux sans GPU)
  *   options : [--ids=001-holo-thinfilm,002-…] [--backend=webgl]
- *        [--shots=1500,4000] [--tap=1200] [--rarity=legendary] [--size=1280x800] [--leak=3]
+ *        [--shots=1500,4000] [--tap=1200] [--rarity=legendary] [--size=1280x800] [--leak=3] [--set=pokemon151|lab]
  *
  * - lance `vite preview` (dist/) sur un port libre
  * - pour chaque expérience : charge, attend `__lab.ready`, capture aux instants demandés,
@@ -64,9 +64,14 @@ async function startServer() {
     const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
     // découverte des ids
     const probe = await ctx.newPage();
-    await probe.goto(`${BASE}?backend=${backend}`);
+    await probe.goto(`${BASE}?backend=${backend}${args.set ? '&set=' + args.set : ''}`);
     await probe.waitForFunction(() => window.__lab && window.__lab.ready, null, { timeout: 120000 });
     const all = await probe.evaluate(() => window.__lab.ids());
+    const r = await probe.evaluate(() => (window.__cardImages ? window.__cardImages.report() : null));
+    if (r) {
+      console.log(`illustrations du set : ${r.ok}/${r.total} (détourées ${r.keyed}, basse résolution ${r.lowRes}) en ${r.ms}ms`);
+      for (const f of r.failed) console.log(`  ✗ ${f.url} — ${f.error}`);
+    }
     const backendName = await probe.evaluate(() => window.__lab.backend());
     await probe.close();
     const ids = args.ids ? args.ids.split(',').map((s) => all.find((x) => x.startsWith(s)) || s) : all;
@@ -77,7 +82,7 @@ async function startServer() {
       const errors = [];
       page.on('pageerror', (e) => errors.push(String(e)));
       page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-      await page.goto(`${BASE}?backend=${backend}#/exp/${ids[0]}`);
+      await page.goto(`${BASE}?backend=${backend}${args.set ? '&set=' + args.set : ''}#/exp/${ids[0]}`);
       await page.waitForFunction(() => window.__lab && window.__lab.ready, null, { timeout: 120000 });
       const snaps = [];
       for (let c = 0; c < +args.leak; c++) {
@@ -110,6 +115,7 @@ async function startServer() {
         const q = new URLSearchParams({ backend });
         if (args.query) for (const [k, v] of new URLSearchParams(args.query)) q.set(k, v);
         if (args.rarity) q.set('rarity', args.rarity);
+        if (args.set) q.set('set', args.set);
         if (args.clean) q.set('clean', '1');
         const t0 = Date.now();
         await page.goto(`${BASE}?${q}#/exp/${id}`);

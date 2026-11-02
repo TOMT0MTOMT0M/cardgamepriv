@@ -1,0 +1,366 @@
+import { rollPack, type PackRequest } from '../core/packRoll';
+import { rng } from '../core/ease';
+import { applyRegen, fmtCountdown } from '../core/packRegen';
+import { contractProblem, contractTarget, rollContract } from '../core/contracts';
+import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
+import { rarity as rarityOf, type RarityId } from '../core/rarity';
+import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
+import { BIG_PULL_RARITIES, cardKey, type BigPull, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeItem, type TradeView } from './backend';
+
+/**
+ * Mode DÉMO (hors-ligne) : même interface que le serveur, tout est stocké dans ce navigateur (localStorage).
+ * Sert quand Convex n'est pas configuré, ou avec `?demo` : jouer, tester l'ouverture, la collection et les échanges
+ * sans compte. Les « amis » sont des robots clairement étiquetés, qui acceptent les échanges raisonnables.
+ * `?secret` : le prochain bébou pack contient forcément un Bébou (pour tester la séquence secrète).
+ */
+const LS = 'bebou.demo.v1';
+const RANK: Record<RarityId, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
+
+interface Inv {
+  [key: string]: PlayerCard;
+}
+interface Bot {
+  id: string;
+  name: string;
+  inv: Inv;
+}
+interface Saved {
+  packBalance: number;
+  lastDaily: number;
+  /** départ du minuteur de recharge (absent sur les anciennes sauvegardes) */
+  regenAt?: number;
+  opened: number;
+  inv: Inv;
+  mints: Record<string, number>;
+  sealed: SealedPack | null;
+  feed: GameState['feed'];
+  /** gros tirages (les miens + ceux des robots) */
+  bigPulls?: BigPull[];
+  bots: Bot[];
+  trades: Array<TradeView & { status: 'pending' | 'done' }>;
+  seq: number;
+  missions?: MissionsState;
+  showcase?: Array<{ cardId: string; rarity: RarityId }>;
+  bio?: string;
+}
+
+function add(inv: Inv, cardId: string, rarity: RarityId, n: number, mint = 999) {
+  const k = cardKey({ cardId, rarity });
+  const row = inv[k];
+  if (row) {
+    row.count += n;
+    row.bestMintNumber = Math.min(row.bestMintNumber, mint);
+  } else inv[k] = { cardId, rarity, count: n, bestMintNumber: mint };
+}
+function remove(inv: Inv, it: TradeItem): boolean {
+  const k = cardKey(it);
+  const row = inv[k];
+  if (!row || row.count < it.count) return false;
+  row.count -= it.count;
+  if (row.count <= 0) delete inv[k];
+  return true;
+}
+
+function freshSave(): Saved {
+  // trois amis robots, chacun avec ~30 boosters ouverts (tirage déterministe)
+  const bots: Bot[] = ['Léa', 'Malo', 'Inès'].map((n, i) => {
+    const r = rng(9000 + i * 77);
+    const inv: Inv = {};
+    for (let p = 0; p < 30; p++) for (const s of rollPack({ kind: 'bebou' }, r)) if (s.rarity !== 'secret') add(inv, s.card.id, s.rarity, 1, 50 + p);
+    return { id: `bot-${i}`, name: `${n} (robot)`, inv };
+  });
+  return { packBalance: 12, regenAt: Date.now(), lastDaily: 0, opened: 0, inv: {}, mints: {}, sealed: null, feed: [], bots, trades: [], seq: 1 };
+}
+
+export function createLocalBackend(): GameBackend {
+  let save: Saved;
+  try {
+    save = JSON.parse(localStorage.getItem(LS) ?? 'null') ?? freshSave();
+  } catch {
+    save = freshSave();
+  }
+  let forceSecret = new URLSearchParams(location.search).has('secret');
+  const listeners = new Set<(s: GameState) => void>();
+  const state: GameState = {
+    mode: 'demo',
+    ready: true,
+    user: null,
+    authError: null,
+    collection: [],
+    friends: [],
+    feed: [],
+    bigPulls: [],
+    sealed: null,
+    trades: { incoming: [], outgoing: [] },
+    missions: null,
+  };
+
+  function persist() {
+    try {
+      localStorage.setItem(LS, JSON.stringify(save));
+    } catch {
+      /* stockage plein ou bloqué : la démo continue en mémoire */
+    }
+  }
+
+  function sync() {
+    const now = Date.now();
+    state.user = {
+      id: 'me',
+      name: 'Toi',
+      packBalance: applyRegen(save.packBalance, save.regenAt ?? now, now).balance,
+      packStored: save.packBalance,
+      packRegenAt: save.regenAt ?? now,
+      totalPacksOpened: save.opened,
+    };
+    state.collection = Object.values(save.inv);
+    state.friends = save.bots.map<Friend>((b, i) => ({ id: b.id, name: b.name, online: i !== 2, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30, bot: true }));
+    state.feed = save.feed.slice(0, 20);
+    state.bigPulls = (save.bigPulls ?? []).slice(0, 30);
+    state.sealed = save.sealed;
+    const pending = save.trades.filter((t) => t.status === 'pending');
+    state.trades = { incoming: pending.filter((t) => t.toId === 'me'), outgoing: pending.filter((t) => t.fromId === 'me') };
+    state.missions = { ...currentMissions(save.missions, 'me', now), resetAt: nextMissionReset(now) };
+    persist();
+    listeners.forEach((fn) => fn(state));
+  }
+
+  const feed = (kind: string, message: string, rarity?: RarityId) => {
+    save.feed.unshift({ id: `f${save.seq++}`, kind, message, rarity, createdAt: Date.now() });
+    save.feed.length = Math.min(save.feed.length, 30);
+  };
+
+  /** Un robot propose parfois un échange : un de ses doublons qui te manque contre un des tiens qui lui manque. */
+  function maybeBotOffer() {
+    if (state.trades.incoming.length || Math.random() > 0.45) return;
+    const bot = save.bots[Math.floor(Math.random() * save.bots.length)];
+    const mineDup = Object.values(save.inv).filter((c) => c.count >= 2 && c.rarity !== 'secret' && !bot.inv[cardKey(c)]);
+    const theirDup = Object.values(bot.inv).filter((c) => c.count >= 2 && !save.inv[cardKey(c)] && Math.abs(RANK[c.rarity] - RANK[mineDup[0]?.rarity ?? 'common']) <= 1);
+    if (!mineDup.length || !theirDup.length) return;
+    const give = theirDup[Math.floor(Math.random() * theirDup.length)];
+    const want = mineDup.find((c) => Math.abs(RANK[c.rarity] - RANK[give.rarity]) <= 1) ?? mineDup[0];
+    save.trades.push({
+      id: `t${save.seq++}`, fromId: bot.id, toId: 'me', fromName: bot.name, toName: 'Toi',
+      offered: [{ cardId: give.cardId, rarity: give.rarity, count: 1 }],
+      requested: [{ cardId: want.cardId, rarity: want.rarity, count: 1 }],
+      note: 'doublon contre doublon ?', createdAt: Date.now(), status: 'pending',
+    });
+  }
+
+  const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const bump = (ev: MissionEvent) => {
+    const { state: m, changed } = applyMissionEvent(currentMissions(save.missions, 'me', Date.now()), ev);
+    if (changed) save.missions = m;
+  };
+  const grant = (n: number) => {
+    const now = Date.now();
+    const r = applyRegen(save.packBalance, save.regenAt ?? now, now);
+    save.packBalance = r.balance + n;
+    save.regenAt = r.regenAt;
+  };
+  // ── gros tirages du mode démo : les robots ouvrent aussi des boosters (une belle carte de temps en temps)
+  const bigPull = (who: { id: string; name: string }, card: { id: string; name: string }, r: RarityId, mint: number, at = Date.now()) => {
+    (save.bigPulls ??= []).unshift({ id: `bp${save.seq++}`, userId: who.id, userName: who.name, cardId: card.id, cardName: card.name, rarity: r, mintNumber: mint, createdAt: at, mine: who.id === 'me' });
+    save.bigPulls.sort((a, b) => b.createdAt - a.createdAt);
+    save.bigPulls.length = Math.min(save.bigPulls.length, 40);
+  };
+  /** une belle carte (Légendaire ou Mythique) comme un robot pourrait la tirer */
+  const botLuck = () => {
+    for (let i = 0; i < 400; i++) {
+      const hit = rollPack({ kind: 'bebou' }).find((c) => c.rarity === 'legendary' || c.rarity === 'mythic');
+      if (hit) return hit;
+    }
+    return null;
+  };
+  if (!save.bigPulls?.length) {
+    // première visite : quelques tirages des dernières heures, pour que la vitrine ne soit pas vide
+    const now = Date.now();
+    for (let i = 0; i < 9; i++) {
+      const hit = botLuck();
+      const bot = save.bots[i % save.bots.length];
+      if (hit) bigPull(bot, hit.card, hit.rarity as RarityId, 2 + Math.floor(Math.random() * 40), now - (i * 17 + Math.random() * 15) * 60_000);
+    }
+  }
+  setInterval(() => {
+    if (document.visibilityState !== 'visible' || Math.random() > 0.35) return;
+    const hit = botLuck();
+    if (!hit) return;
+    bigPull(save.bots[Math.floor(Math.random() * save.bots.length)], hit.card, hit.rarity as RarityId, 2 + Math.floor(Math.random() * 60));
+    sync();
+  }, 75_000);
+  // changement de jour pendant que la page est ouverte : nouvelles missions
+  setInterval(() => {
+    if (state.missions && Date.now() >= state.missions.resetAt) sync();
+  }, 30_000);
+  sync();
+
+  return {
+    state,
+    onChange(fn) {
+      listeners.add(fn);
+      fn(state);
+      return () => listeners.delete(fn);
+    },
+    login() {
+      /* rien à faire en démo */
+    },
+    async logout() {
+      save = freshSave();
+      sync();
+    },
+    async preparePack(req: PackRequest) {
+      await delay(120); // latence réseau simulée
+      if (save.sealed) return save.sealed;
+      const now = Date.now();
+      const regen = applyRegen(save.packBalance, save.regenAt ?? now, now);
+      if (regen.balance <= 0) throw new Error(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
+      save.packBalance = regen.balance - 1;
+      save.regenAt = regen.regenAt;
+      let rand: () => number = Math.random;
+      if (forceSecret && req.kind === 'bebou') {
+        forceSecret = false;
+        let first = true;
+        rand = () => (first ? ((first = false), 0) : Math.random());
+      }
+      const seen = new Set<string>();
+      const cards = rollPack(req, rand).map(({ card, rarity }) => {
+        const k = cardKey({ cardId: card.id, rarity });
+        const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
+        const isNew = !save.inv[k] && !seen.has(k);
+        seen.add(k);
+        return { cardId: card.id, cardName: card.name, rarity: rarity as RarityId, mintNumber: mint, isNew, themeId: card.themeId };
+      });
+      const maxRarity = cards.reduce<RarityId>((m, c) => (RANK[c.rarity] > RANK[m] ? c.rarity : m), 'common');
+      save.sealed = { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards };
+      sync();
+      return save.sealed;
+    },
+    async revealPack(id) {
+      const p = save.sealed;
+      if (!p || p.id !== id) return;
+      for (const c of p.cards) {
+        add(save.inv, c.cardId, c.rarity, 1, c.mintNumber);
+        if (BIG_PULL_RARITIES.includes(c.rarity)) bigPull({ id: 'me', name: 'Toi' }, { id: c.cardId, name: c.cardName }, c.rarity, c.mintNumber);
+        if (RANK[c.rarity] >= RANK.epic) {
+          feed(
+            c.rarity === 'secret' ? 'secret_pull' : 'pull',
+            c.rarity === 'secret' ? `✷ Tu as tiré une CARTE SECRÈTE : ${c.cardName} !` : `Tu as obtenu ${c.cardName} [${rarityOf(c.rarity).label} #${c.mintNumber}] !`,
+            c.rarity,
+          );
+        }
+      }
+      save.opened++;
+      save.sealed = null;
+      bump({ type: 'pack', packKey: p.packKind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: p.cards });
+      maybeBotOffer();
+      sync();
+    },
+    async friendCollection(friendId) {
+      await delay(80);
+      return Object.values(save.bots.find((b) => b.id === friendId)?.inv ?? {});
+    },
+    async proposeTrade(toId, offered, requested, note) {
+      const bot = save.bots.find((b) => b.id === toId);
+      if (!bot) throw new Error('Joueur introuvable.');
+      if (!offered.length && !requested.length) throw new Error('Échange vide.');
+      for (const it of offered) if ((save.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`Tu n’as pas assez de ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
+      for (const it of requested) if ((bot.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${bot.name} n’a pas ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
+      const t = { id: `t${save.seq++}`, fromId: 'me', toId, fromName: 'Toi', toName: bot.name, offered, requested, note, createdAt: Date.now(), status: 'pending' as const };
+      save.trades.push(t);
+      bump({ type: 'trade' });
+      sync();
+      // le robot répond au bout de 2 s : il accepte si l'échange est à peu près équilibré en étoiles
+      setTimeout(() => {
+        const cur = save.trades.find((x) => x.id === t.id);
+        if (!cur || cur.status !== 'pending') return;
+        const value = (l: TradeItem[]) => l.reduce((a, it) => a + it.count * Math.pow(2.2, RANK[it.rarity]), 0);
+        const fair = value(offered) >= value(requested) * 0.8;
+        cur.status = 'done';
+        if (fair && offered.every((it) => (save.inv[cardKey(it)]?.count ?? 0) >= it.count) && requested.every((it) => (bot.inv[cardKey(it)]?.count ?? 0) >= it.count)) {
+          offered.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
+          requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
+          feed('trade', `${bot.name} a accepté ton échange !`);
+        } else feed('trade', `${bot.name} a refusé ton échange (pas assez équilibré).`);
+        sync();
+      }, 2000);
+    },
+    async respondTrade(id, accept) {
+      const t = save.trades.find((x) => x.id === id && x.status === 'pending');
+      if (!t) throw new Error('Échange introuvable ou déjà traité.');
+      const bot = save.bots.find((b) => b.id === t.fromId)!;
+      if (accept) {
+        if (!t.requested.every((it) => (save.inv[cardKey(it)]?.count ?? 0) >= it.count)) throw new Error('Tu n’as plus les cartes demandées.');
+        if (!t.offered.every((it) => (bot.inv[cardKey(it)]?.count ?? 0) >= it.count)) throw new Error(`${bot.name} n’a plus les cartes proposées.`);
+        t.offered.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
+        t.requested.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
+        feed('trade', `Échange conclu avec ${bot.name} !`);
+        bump({ type: 'trade' });
+      }
+      t.status = 'done';
+      sync();
+    },
+    async cancelTrade(id) {
+      const t = save.trades.find((x) => x.id === id && x.status === 'pending' && x.fromId === 'me');
+      if (t) t.status = 'done';
+      sync();
+    },
+    async claimMission(id) {
+      const r = claimMission(currentMissions(save.missions, 'me', Date.now()), id);
+      if (typeof r === 'string') throw new Error(r);
+      save.missions = r.state;
+      grant(r.reward);
+      sync();
+      return r.reward;
+    },
+    async claimMissionBonus() {
+      const r = claimMissionBonus(currentMissions(save.missions, 'me', Date.now()));
+      if (typeof r === 'string') throw new Error(r);
+      save.missions = r.state;
+      grant(r.reward);
+      sync();
+      return r.reward;
+    },
+    async rerollMission(id) {
+      const r = rerollMission(currentMissions(save.missions, 'me', Date.now()), id, 'me');
+      if (typeof r === 'string') throw new Error(r);
+      save.missions = r;
+      sync();
+    },
+    async profile(userId) {
+      await delay(60);
+      if (userId === 'me') return { id: 'me', name: 'Toi', bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened };
+      const i = save.bots.findIndex((b) => b.id === userId);
+      if (i < 0) return null;
+      return { id: userId, name: save.bots[i].name, bio: ['Je collectionne les brillantes ✨', 'Toujours partant pour un échange', ''][i] || undefined, showcase: [], packsOpened: 30 };
+    },
+    async setShowcase(cards) {
+      if (cards.length > 6) throw new Error('6 cartes au maximum dans la vitrine.');
+      for (const c of cards) if (!save.inv[cardKey(c)]) throw new Error(`Tu n’as pas ${catalogEntry(c.cardId)?.name ?? 'cette carte'}.`);
+      save.showcase = cards;
+      sync();
+    },
+    async setBio(bio) {
+      save.bio = bio.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined;
+      sync();
+    },
+    async signContract(rarity, items) {
+      await delay(150);
+      const target = contractTarget(rarity) as RarityId | null;
+      const problem = contractProblem(rarity, items, (id) => Math.max(0, (save.inv[cardKey({ cardId: id, rarity })]?.count ?? 0) - 1));
+      if (!target || problem) throw new Error(problem ?? 'Contrat invalide.');
+      for (const it of items) remove(save.inv, { cardId: it.cardId, rarity, count: it.count });
+      const ownedIds = new Set(Object.values(save.inv).map((c) => c.cardId));
+      const card = rollContract(rarity, items, (id) => ownedIds.has(id));
+      const k = cardKey({ cardId: card.id, rarity: target });
+      const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
+      add(save.inv, card.id, target, 1, mint);
+      bump({ type: 'contract' });
+      if (RANK[target] >= RANK.epic) feed('contract', `Toi : contrat signé, ${card.name} [${rarityOf(target).label} #${mint}] !`, target);
+      sync();
+      return { cardId: card.id, cardName: card.name, rarity: target, mintNumber: mint, isNew: !ownedIds.has(card.id) };
+    },
+  };
+}
+
+/** Nom affiché d'un booster (pour les messages). */
+export const boosterLabel = (req: PackRequest) => (req.kind === 'bebou' ? BEBOU_PACK.booster : themeById(req.themeId ?? '')?.booster ?? '?');

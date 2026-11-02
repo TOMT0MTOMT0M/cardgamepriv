@@ -9,7 +9,12 @@ import type { N } from './tsl';
  */
 export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, opts: { emissive?: boolean; samples?: number } = {}) {
   const pipeline = new RenderPipeline(ctx.renderer);
-  const scenePass = pass(scene, camera, opts.samples != null ? { samples: opts.samples } : undefined);
+  const passOpts: Record<string, unknown> = {};
+  if (opts.samples != null) passOpts.samples = opts.samples;
+  // téléphone (GPU à tuiles) : les échantillons MSAA sont résolus sur la puce puis jetés au lieu d'être écrits en
+  // mémoire (×4 de bande passante par cible, ×2 cibles avec l'émissif) — c'était le premier poste de coût
+  if (ctx.quality === 'mobile') passOpts.storeMultisampledColorBuffer = false;
+  const scenePass = pass(scene, camera, Object.keys(passOpts).length ? passOpts : undefined);
   if (opts.emissive) scenePass.setMRT(mrt({ output, emissive: vec4(emissive, output.a) }));
   const color = scenePass.getTextureNode('output');
   const emis = opts.emissive ? scenePass.getTextureNode('emissive') : null;

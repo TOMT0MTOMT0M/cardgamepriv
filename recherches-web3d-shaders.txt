@@ -1,0 +1,770 @@
+================================================================================
+DOSSIER DE RECHERCHE EXHAUSTIF (INTÉGRAL) — WEB 3D, THREE.JS WEBGPU (r170 → r187),
+TSL, SHADERS DE CARTES TCG, POST-PROCESSING, PHYSIQUE GPU & AUDIT CODEBASE
+Projet : c:\Users\Tom\Desktop\cardgamepriv
+Destinataire : Claude / Équipe Dev
+================================================================================
+
+TABLE DES MATIÈRES
+------------------
+1. RAPPORT AGENT #1 : Releases Three.js (r170 → r187+), Forums Discourse & Nouveautés WebGPU / TSL
+2. RAPPORT AGENT #2 : Shaders de Cartes TCG (Balatro, Pokémon TCG Pocket, Marvel Snap, Gwent) & Optique
+3. RAPPORT AGENT #3 : Post-Processing WebGPU, Shaders Procéduraux & VFX d'Ouverture de Booster (r187)
+4. RAPPORT AGENT #4 : Physique GPU, Compute Shaders TSL, Déchirure XPBD, Card Peel, 3DGS & BatchedMesh 1025
+5. RAPPORT AGENT #5 : Audit Complet de `cardgamepriv` (`src/core/`, `src/game/`, `src/experiments/`), Audio FM, Gyro/Haptique iOS & Feuille de Route P0–P3
+
+================================================================================
+# 1. RAPPORT AGENT #1 : Releases Three.js (r170 → r187+), Forums Discourse & Nouveautés WebGPU / TSL
+================================================================================
+
+Ce rapport synthétise les recherches web (notes de version officielles Three.js r170 à r187, discussions Discourse, PRs de `mrdoob/three.js` et de **Sunag / Everton Araujo** créateur de TSL) ainsi que l'inspection intégrale du code source de **Three.js `0.187.0` (r187)** installé dans `c:/Users/Tom/Desktop/cardgamepriv/node_modules/three/package.json`.
+
+## 1.1. Chronologie Technique des Releases Three.js (r170 → r187 / 2025–2026)
+
+### r170 à r178 : Consolidation de `three/webgpu` et `three/tsl`
+- **Séparation claire des points d'entrée** dans `node_modules/three/package.json` :
+  - `import * as THREE from 'three/webgpu'` (`src/Three.WebGPU.js`) expose `WebGPURenderer`, tous les `*NodeMaterial`, `RenderPipeline`, `DirectRenderPipeline`, `StorageTexture`, `Storage3DTexture`, `StorageArrayTexture`, `StorageBufferAttribute`, `StorageInstancedBufferAttribute`, `IndirectStorageBufferAttribute`, `ReadbackBuffer`, `BundleGroup`, etc.
+  - `import { ... } from 'three/tsl'` (`src/Three.TSL.js` / `src/nodes/TSL.js`) expose l'intégralité du langage de shading orienté graphe de nœuds.
+- **Fallback automatique WebGL 2** intégré à `WebGPURenderer` (`WebGPUBackend` + `WebGLBackend`), compilant le même graphe TSL en **WGSL** ou **GLSL ES 3.0**.
+- **Parité complète des matériaux Node** : `MeshPhysicalNodeMaterial` (dispersion, iridescence, sheen, transmission, anisotropy, clearcoat), `SpriteNodeMaterial`, `PointsNodeMaterial`, `Line2NodeMaterial`, `VolumeNodeMaterial`.
+
+### r179 à r182 : Stabilisation de l'API TSL & Rendu Synchrone
+- **Fin de `renderAsync()` (déprécié en r181)** : Le pattern canonique moderne consiste à initialiser le renderer une seule fois via `await renderer.init()`, puis à appeler **`renderer.render(scene, camera)`** ou **`renderPipeline.render()`** de manière **100 % synchrone** dans `renderer.setAnimationLoop()`.
+- **Renommages & Dépréciations TSL critiques** :
+  - `.label('name')` → déprécié au profit de **`.setName('name')`** (`src/nodes/tsl/TSLBase.js`).
+  - `cache(node)` → déprécié en r181 au profit de **`isolate(node)`** (`src/nodes/core/IsolateNode.js`).
+  - `passNode.setResolution(scale)` → déprécié en r182 au profit de **`passNode.setResolutionScale(scale)`** (`src/nodes/display/PassNode.js`).
+  - `instanceIndex` pour les compute shaders → déprécié en r179 au profit de **`globalId`** (`globalId.x`, `globalId.xy`, `globalId.xyz`) ou **`computeIndex`** (`src/nodes/tsl/TSLBase.js`).
+
+### r183 : `RenderPipeline`, `DirectRenderPipeline`, `Timer` & `BatchedMesh` RGBA
+- **`PostProcessing` renommé en `RenderPipeline`** (`src/renderers/common/RenderPipeline.js`).
+- **Nouveau `DirectRenderPipeline`** (`src/renderers/common/DirectRenderPipeline.js`) : Alternative ultra-légère à `RenderPipeline` qui injecte le graphe de post-traitement (tone mapping, color grading, effets écran sans voisinage) **directement dans le fragment shader des matériaux** via `renderer.outputNode`, évitant la création d'un RenderTarget intermédiaire et d'un fullscreen quad !
+- **`THREE.Clock` déprécié** au profit de `THREE.Timer`.
+- **`BatchedMesh`** (`src/objects/BatchedMesh.js`) : Support de l'**opacité par instance** (`setColorAt(id, color, alpha)`) via une texture interne `RGBAFormat`, et support du mode `wireframe`.
+- **Ombres** : Ajout de `shadow.biasNode` pour contrôler dynamiquement le shadow bias en TSL.
+
+### r184 : Upscalers Temporels/Spatiaux (`TAAU` / `FSR1`) & `WebGLNodesHandler`
+- **Upscaling natif TSL** :
+  - **`FSR1Node`** (`examples/jsm/tsl/display/FSR1Node.js`) : AMD FidelityFX Super Resolution 1.0 (EASU 12-tap + RCAS).
+  - **`TAAUNode`** (`examples/jsm/tsl/display/TAAUNode.js`) : Temporal Anti-Aliasing Upscaler avec Halton jittering, variance clipping YCoCg, et filtre Blackman-Harris.
+- **`BatchedMesh` WebGPU** : Suppression de `multiDraw` sur WebGPU au profit de **`_VisibilityChanged` + fusion des plages d'indices contiguës (`mergedDraw`)**.
+
+### r185 : Remplacement de `TiledLighting` par `ClusteredLighting` (Forward+ 3D) & WebXR
+- **`TiledLighting` supprimé et remplacé par `ClusteredLighting` (`examples/jsm/lighting/ClusteredLighting.js`) et `ClusteredLightsNode` (`examples/jsm/tsl/lighting/ClusteredLightsNode.js`)** :
+  - Découpe le frustum en **clusters 3D** ($X \times Y \times Z$ avec distribution logarithmique en profondeur `zNear`/`zFar`), évalué par un **Compute Shader** GPU + une `DataArrayTexture` d'indices compactés.
+- **Séparation `positionLocal` vs `positionGeometry`** : Dans `material.positionNode`, `positionLocal` contient la position déjà transformée par le morphing/skinning/batching, tandis que `positionGeometry` est l'attribut brut du buffer.
+
+### r186 : 3D Gaussian Splatting Natif, `SunLight` (CSM), `compileComputeAsync` & PBR EON
+- **`GaussianSplat` (`examples/jsm/objects/GaussianSplat.js`) & `CountingSort` (`examples/jsm/gpgpu/CountingSort.js`)** : Implémentation officielle 100 % GPU (Compute Shaders TSL + Radix/Counting Sort en 4 passes 8-bit avec `workgroupArray` atomiques + évaluation des Harmoniques Sphériques degré 1 à 3 en compute).
+- **`SunLight` (`examples/jsm/lights/SunLight.js`)** : Lumière directionnelle à **Cascaded Shadow Maps (CSM)** natives en TSL (`SunLightNode`).
+- **`renderer.compileComputeAsync(computeNode)`** : Pré-compilation asynchrone non-bloquante des compute shaders avant le premier dispatch.
+- **Nouveau modèle PBR `BRDF_EON` (`src/nodes/functions/BSDF/BRDF_EON.js`)** (Energy-preserving Oren-Nayar diffuse).
+- **Suppressions en r186** : `PCFSoftShadowMap` supprimé (`PCFShadowMap` est désormais adouci nativement par interpolation bilinéaire matérielle), `viewportResolution` remplacé par `screenSize`, `rangeFog` remplacé par `rangeFogFactor`.
+
+### r187 (`0.187.0` — Version installée dans le projet) : Les Grandes Nouveautés
+1. **`CompileScheduler` coopératif anti-stutter dans `src/renderers/common/Renderer.js`** :
+   - Lors de `renderer.compileAsync(scene, camera)`, au lieu de saturer le driver GPU avec tous les shaders d'un coup, le nouveau `CompileScheduler` limite les pipelines en vol à **`_maxCompilingPipelines = 16`** et rend la main au thread principal toutes les **`_compileYieldInterval = 8ms`** (`requestAnimationFrame` + `setTimeout(0)`).
+2. **`NodeMaterialInstance` (`src/materials/nodes/NodeMaterialInstance.js`)** :
+   - Permet de créer des instances légères d'un `NodeMaterial` maître qui **partagent exactement le même programme shader compilé** (`customProgramCacheKey()` basé sur `nodeMaterial.uuid`), tout en surchargeant des uniformes/textures ou `userData` par instance via `materialReference(name, type)`.
+3. **`DynamicLighting` (`examples/jsm/lighting/DynamicLighting.js`) & `DynamicLightsNode` (`examples/jsm/tsl/lighting/DynamicLightsNode.js`)** :
+   - Regroupe les lumières analytiques (`DirectionalLight`, `PointLight`, `SpotLight`, `HemisphereLight`) dans des tableaux d'uniformes (`uniformArray`) parcourus par une boucle `Loop` GPU. **Ajouter ou supprimer des lumières à la volée ne déclenche AUCUNE recompilation de shader !**
+4. **`OITPassNode` (`oitPass`, `examples/jsm/tsl/display/OITPassNode.js`)** :
+   - **Order-Independent Transparency** (Weighted Blended OIT de McGuire & Bavoil) utilisant un MRT (`accum` RGBA16F + `revealage` R8) et partageant le depth buffer de la passe opaque.
+5. **`StandardDrawingPipeline` (`src/renderers/common/StandardDrawingPipeline.js`)** (`renderer.drawingPipeline`).
+6. **Subgroup / Wave Intrinsics dans TSL (`src/nodes/gpgpu/SubgroupFunctionNode.js`)** & **Packed 4x8 Integer Dot Product (`src/nodes/math/Packed4x8IntegerNode.js`)** :
+   - `subgroupAdd`, `subgroupExclusiveAdd`, `subgroupBallot`, `subgroupElect`, `subgroupBroadcast`, `subgroupShuffleXor`, `quadSwapX/Y/Diagonal`, `pack4xU8`, `unpack4xU8`, `dot4U8Packed`.
+7. **Coercition implicite des nombres JS (`isWeak`) et `select()` vectoriel par composante (`bvec2`/`bvec3`/`bvec4`)**.
+
+## 1.2. Exemples de Code r187 : `NodeMaterialInstance`, `struct()`, `workgroupArray` Atomique & `DynamicLighting`
+
+```js
+import { MeshPhysicalNodeMaterial, NodeMaterialInstance } from 'three/webgpu';
+import {
+  materialReference, struct, instancedArray, texture, uv,
+  Fn, workgroupArray, workgroupBarrier, localId, globalId, atomicAdd, atomicStore, uint
+} from 'three/tsl';
+import { DynamicLighting } from 'three/addons/lighting/DynamicLighting.js';
+
+// 1. Éclairage dynamique sans aucune recompilation shader (jusqu'à 16 lumières dynamiques)
+renderer.lighting = new DynamicLighting({ maxLights: 16 });
+
+// 2. Structure WGSL/GLSL typée dans un Storage Buffer :
+const CardStateStruct = struct({
+  position: 'vec3',
+  manaCost: 'uint',
+  rotation: 'vec4',
+  foilIntensity: 'float'
+}, 'CardState');
+const cardBuffer = instancedArray(128, CardStateStruct);
+
+// 3. Matériau Maître unique + NodeMaterialInstance (0 compilation shader par carte) :
+const masterCardMaterial = new MeshPhysicalNodeMaterial();
+const cardArtTex = materialReference('artworkMap', 'texture');
+const foilIntensity = materialReference('foilIntensity', 'float');
+const manaGlowColor = materialReference('glowColor', 'color');
+
+masterCardMaterial.colorNode = texture(cardArtTex, uv());
+masterCardMaterial.emissiveNode = manaGlowColor.mul(foilIntensity);
+
+const cardMat1 = new NodeMaterialInstance(masterCardMaterial);
+cardMat1.artworkMap = dragonTexture;
+cardMat1.foilIntensity = 0.85;
+cardMat1.glowColor = new THREE.Color(0xff4400);
+
+// 4. Compute Shader avec mémoire partagée L1 atomique (workgroupArray) :
+const localHistogram = workgroupArray('uint', 256).toAtomic();
+const computePass = Fn(() => {
+  atomicStore(localHistogram.element(localId.x), uint(0));
+  workgroupBarrier();
+  const bin = globalId.x.bitAnd(uint(255));
+  atomicAdd(localHistogram.element(bin), uint(1));
+  workgroupBarrier();
+})().computeKernel([256, 1, 1]);
+```
+
+
+================================================================================
+# 2. RAPPORT AGENT #2 : Shaders de Cartes TCG (Balatro, Pokémon TCG Pocket, Marvel Snap, Gwent) & Optique
+================================================================================
+
+## 2.1. Reverse-Engineering des Pipelines de Référence
+
+### A. *Balatro* (LocalThunk — LÖVE2D / GLSL)
+Chaque édition de carte (`foil.fs`, `holo.fs`, `polychrome.fs`, `negative.fs`, `gold_seal.fs`, `vortex.fs`) est un fragment shader procédural qui n'utilise **aucune texture de bruit lourde**, mais des distorsions trigonométriques itératives pilotées par l'inclinaison de la carte (`hovering` / `tilt_angle`) et le temps :
+- **Distorsion de champ implicite (*Domain Warping* trigonométrique)** :
+  $$\mathbf{p}_{k+1} = \mathbf{p}_k + \alpha \begin{pmatrix} \sin(\omega_k p_{k,y} + t + \theta_{\text{tilt},x}) \\ \cos(\omega_k p_{k,x} - t + \theta_{\text{tilt},y}) \end{pmatrix}$$
+- **Polychrome (`polychrome.fs`)** : Convertit le texel de base en espace **HSL**, puis fait tourner la teinte ($H$) selon la phase du champ déformé et l'angle d'inclinaison :
+  $$H_{\text{out}} = \text{fract}\big(H_{\text{in}} + 0.35 \sin(\mathbf{u} \cdot \mathbf{k} + t) + \Delta_{\text{tilt}}\big)$$
+  tout en poussant la saturation $S \to \min(1.0, S \times 1.3)$ et en ajoutant un reflet spéculaire irisé.
+- **Negative (`negative.fs`)** : Inversion dans l'espace HSL avec rotation de phase suivie d'un ancrage colorimétrique sarcelle sombre :
+  1. Conversion $\text{RGB} \to \text{HSL}(H, S, L)$.
+  2. Inversion de la luminosité : $L' = 1.0 - L$.
+  3. Symétrie + décalage de teinte : $H' = \text{fract}(-H + 0.2)$.
+  4. Conversion $\text{HSL}(H', S, L') \to \text{RGB}'$, puis addition d'un vecteur d'ambiance signature `(79, 99, 103) / 255`.
+
+### B. *Pokémon TCG Pocket* & `pokemon-cards-css` (Simon Goellner)
+- **Cartes Immersives & Parallaxe Multi-Plans (Stencil Windowing)** : 3 à 5 plans 3D (ou couches UV décalées en $Z < 0$) s'échelonnent en profondeur : ciel/fond ($z = -0.15$), décor moyen ($z = -0.08$), sujet principal ($z = -0.02$), effets d'avant-plan ($z = +0.02$).
+- **Etched Foil (Gravure Texturée / Empreinte Digitale des cartes SAR)** : Micro-relief de lignes topographiques ou concentriques autour du personnage. La lumière glisse le long de ces sillons par réflexion anisotrope (Kajiya-Kay).
+- **Glitter / Paillettes Cellulaires (Gold Star / Shiny)** : Pavage de Voronoï microscopique où chaque cellule possède une normale aléatoire fixe. Quand la carte tourne, les cellules dont la normale s'aligne avec le demi-vecteur $\mathbf{H} = \text{normalize}(\mathbf{L} + \mathbf{V})$ s'allument violemment puis s'éteignent en quelques degrés de rotation.
+
+### C. *Marvel Snap* (Frame Break 3D + Ombre Portée sur la Bordure)
+- Dès le palier *Frame Break*, la couche du sujet principal détouré (`subjectAlpha`) **ignore le masque de rognage de la fenêtre**, subit un léger grandissement ($\text{scale} \approx 1.06$) et une élévation virtuelle $\Delta z > 0$, et surtout **projette une ombre portée douce (`dropShadow`) directement sur la bordure métallique de la carte** en décalant l'alpha du sujet dans la direction opposée à la lumière :
+  $$S_{\text{border}}(\mathbf{u}) = 1.0 - \alpha_{\text{shadow}} \cdot \text{smoothstep}\big(0.0, 1.0, \text{Tex}_{\text{subject}}(\mathbf{u} - \gamma \mathbf{L}_{xy}).a\big)$$
+
+### D. *Gwent* & *Hearthstone* (Dual-Phase Flowmap Distortion)
+- Pour animer le feu, l'eau, la fumée ou l'aura énergétique sans étirement infini de texture, un vecteur de flux 2D $\mathbf{F}(\mathbf{u})$ déforme les UVs sur deux phases décalées d'un demi-cycle :
+  $$\phi_0 = \text{fract}(t), \quad \phi_1 = \text{fract}(t + 0.5), \quad w = 2.0 \,|\,0.5 - \phi_0\,|$$
+  $$\mathbf{C}_{\text{flow}} = \text{mix}\big(\text{Tex}(\mathbf{u} - \mathbf{F}(\mathbf{u})\phi_0),\; \text{Tex}(\mathbf{u} - \mathbf{F}(\mathbf{u})\phi_1),\; w\big)$$
+
+## 2.2. Module Shader GLSL Complet & Fonctions TSL (`three/tsl`)
+
+```glsl
+// ============================================================================
+// MASTER TCG SHADER — GLSL FRAGMENT MODULE (Diffraction, Thin-Film, Voronoï,
+// Balatro Polychrome/Negative, Etched Foil, POM 2.5D & Frame Break Shadow)
+// ============================================================================
+precision highp float;
+
+varying vec2 vUv;
+varying vec3 vWorldNormal;
+varying vec3 vWorldPosition;
+varying vec3 vTangent;
+varying vec3 vBitangent;
+
+uniform float uTime;
+uniform vec2  uTilt;          // Inclinaison normalisée [-1, 1] (souris / gyroscope)
+uniform float uRarityTier;    // 0.0 (Commune) -> 6.0 (Secrète Bébou)
+
+uniform sampler2D uBaseArtTex;
+uniform sampler2D uSubjectTex;
+uniform sampler2D uDepthMap;  // R: Depth, G: FoilMask, B: InsideWindowMask
+uniform sampler2D uFrameTex;
+
+vec2 hash22(vec2 p) {
+    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+    return fract(sin(p) * 43758.5453123);
+}
+
+vec4 voronoiGlitter(vec2 uv, float scale) {
+    vec2 p = uv * scale;
+    vec2 n = floor(p);
+    vec2 f = fract(p);
+    float f1 = 8.0;
+    float f2 = 8.0;
+    vec2 bestCell = vec2(0.0);
+    for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+            vec2 g = vec2(float(i), float(j));
+            vec2 o = hash22(n + g);
+            vec2 r = g + o - f;
+            float d = dot(r, r);
+            if (d < f1) { f2 = f1; f1 = d; bestCell = n + g; }
+            else if (d < f2) { f2 = d; }
+        }
+    }
+    vec2 cid = hash22(bestCell);
+    return vec4(sqrt(f1), sqrt(f2), cid.x, cid.y);
+}
+
+vec3 bump3y(vec3 x, vec3 yoffset) {
+    vec3 y = vec3(1.0) - x * x;
+    return clamp(y - yoffset, 0.0, 1.0);
+}
+
+vec3 spectralZucconi6(float x) {
+    x = fract(x);
+    const vec3 c1 = vec3(3.54585104, 2.93225262, 2.41593945);
+    const vec3 x1 = vec3(0.69549072, 0.49228336, 0.27699880);
+    const vec3 y1 = vec3(0.02312639, 0.15225084, 0.52607955);
+    const vec3 c2 = vec3(3.90307140, 3.21182957, 3.96587128);
+    const vec3 x2 = vec3(0.11748627, 0.86755042, 0.66077860);
+    const vec3 y2 = vec3(0.84897130, 0.88445281, 0.73949448);
+    return bump3y(c1 * (x - x1), y1) + bump3y(c2 * (x - x2), y2);
+}
+
+vec3 thinFilmIridescence(float cosThetaV, float dNanometers, float iorFilm) {
+    float sinThetaT2 = (1.0 - cosThetaV * cosThetaV) / (iorFilm * iorFilm);
+    float cosThetaT = sqrt(max(0.0, 1.0 - sinThetaT2));
+    float opd = 2.0 * iorFilm * dNanometers * cosThetaT;
+    vec3 lambdas = vec3(650.0, 510.0, 440.0);
+    return 0.5 + 0.5 * cos(6.2831853 * opd / lambdas + vec3(0.0, 0.5, 1.0));
+}
+
+vec3 applyBalatroPolychrome(vec3 rgb, vec2 uv, vec2 tilt, float time) {
+    vec2 p = uv * 4.0;
+    for (int i = 0; i < 3; i++) {
+        p += 0.35 * vec2(
+            sin(p.y * 2.2 + time * 1.1 + tilt.x * 3.0),
+            cos(p.x * 2.2 - time * 0.9 + tilt.y * 3.0)
+        );
+    }
+    float wave = 0.5 + 0.5 * sin(p.x + p.y);
+    vec3 polySpectrum = spectralZucconi6(wave + dot(tilt, vec2(0.4, 0.4)));
+    return mix(rgb, rgb * (0.65 + 0.95 * polySpectrum) + polySpectrum * 0.22, 0.65);
+}
+
+vec2 computeEtchedGradient(vec2 uv, vec2 focalCenter) {
+    vec2 d = uv - focalCenter;
+    float r = length(d) + 1e-4;
+    float angle = atan(d.y, d.x);
+    float freq = 140.0;
+    float phase = r * freq + 3.5 * sin(angle * 6.0 + r * 20.0);
+    float dPhaseDr = freq * cos(phase);
+    return (d / r) * dPhaseDr * 0.008;
+}
+```
+
+### Équivalent en Three.js TSL (`three/tsl`) :
+```javascript
+import {
+  Fn, uniform, uv, vec2, vec3, vec4, float,
+  sin, cos, abs, fract, floor, dot, length, sqrt, pow,
+  min, max, clamp, mix, step, smoothstep, normalize
+} from 'three/tsl';
+
+export const spectralZucconi6TSL = Fn(([x_in]) => {
+  const x = fract(x_in);
+  const c1 = vec3(3.54585104, 2.93225262, 2.41593945);
+  const x1 = vec3(0.69549072, 0.49228336, 0.27699880);
+  const y1 = vec3(0.02312639, 0.15225084, 0.52607955);
+  const c2 = vec3(3.90307140, 3.21182957, 3.96587128);
+  const x2 = vec3(0.11748627, 0.86755042, 0.66077860);
+  const y2 = vec3(0.84897130, 0.88445281, 0.73949448);
+
+  const d1 = c1.mul(x.sub(x1));
+  const d2 = c2.mul(x.sub(x2));
+  const b1 = clamp(vec3(1.0).sub(d1.mul(d1)).sub(y1), 0.0, 1.0);
+  const b2 = clamp(vec3(1.0).sub(d2.mul(d2)).sub(y2), 0.0, 1.0);
+  return b1.add(b2);
+});
+
+export const cellularSparkleTSL = Fn(([uvNode, normalNode, viewDirNode, lightDirNode, densityScale]) => {
+  const scaledUv = uvNode.mul(densityScale);
+  const cellCoord = floor(scaledUv);
+  const localUv = fract(scaledUv).sub(0.5);
+
+  const h1 = fract(sin(dot(cellCoord, vec2(127.1, 311.7))).mul(43758.5453));
+  const h2 = fract(sin(dot(cellCoord, vec2(269.5, 183.3))).mul(43758.5453));
+  const h3 = fract(sin(dot(cellCoord, vec2(419.2, 371.9))).mul(43758.5453));
+
+  const distToCenter = length(localUv.sub(vec2(h1, h2).sub(0.5).mul(0.5)));
+  const flakeShape = smoothstep(0.42, 0.25, distToCenter);
+  const sparsityMask = step(0.6, h3);
+
+  const flakeNormal = normalize(normalNode.add(vec3(h1.sub(0.5), h2.sub(0.5), 0.0).mul(0.65)));
+  const halfVec = normalize(viewDirNode.add(lightDirNode));
+  const specFlash = pow(max(dot(flakeNormal, halfVec), 0.0), 400.0);
+
+  const prismColor = spectralZucconi6TSL(h1.add(dot(halfVec, vec3(1.0, 0.5, 0.0)).mul(2.0)));
+  return prismColor.mul(specFlash).mul(flakeShape).mul(sparsityMask).mul(10.0);
+});
+
+export const balatroPolychromeTSL = Fn(([baseColor, uvNode, tiltUniform, timeUniform]) => {
+  const p0 = uvNode.mul(4.5);
+  const p1 = p0.add(vec2(
+    sin(p0.y.mul(2.0).add(timeUniform).add(tiltUniform.x.mul(3.0))),
+    cos(p0.x.mul(2.0).sub(timeUniform).add(tiltUniform.y.mul(3.0)))
+  ).mul(0.4));
+  const p2 = p1.add(vec2(
+    sin(p1.y.mul(3.1).sub(timeUniform.mul(0.7))),
+    cos(p1.x.mul(3.1).add(timeUniform.mul(0.7)))
+  ).mul(0.3));
+
+  const phase = sin(p2.x.add(p2.y)).mul(0.5).add(0.5);
+  const polyRGB = spectralZucconi6TSL(phase.add(tiltUniform.x.mul(0.5)));
+  return mix(baseColor, baseColor.mul(polyRGB.add(0.5)).add(polyRGB.mul(0.25)), 0.65);
+});
+```
+
+
+================================================================================
+# 3. RAPPORT AGENT #3 : Post-Processing WebGPU, Shaders Procéduraux & VFX d'Ouverture de Booster (Three.js r187 TSL)
+================================================================================
+
+## 3.1. Configuration maître du `MRT` (Single-Pass G-Buffer) dans Three.js r187
+
+```javascript
+import * as THREE from 'three/webgpu';
+import {
+  pass, mrt, output, emissive, normalView, velocity,
+  metalness, roughness, diffuseColor, specularColorBlended,
+  renderOutput, float, vec2, vec3, vec4, uniform, screenUV
+} from 'three/tsl';
+
+const renderPipeline = new THREE.RenderPipeline(renderer);
+const scenePass = pass(scene, camera);
+
+scenePass.setMRT(mrt({
+  output: output,                                 // RGBA16Float : Beauty éclairée
+  emissive: emissive,                             // RGBA16Float : Canal émissif pur (Bloom sélectif & Godrays 2D)
+  normal: normalView,                             // RG16Float / RGBA8 : Normales en espace vue
+  velocity: velocity,                             // RG16Float : Vecteurs de mouvement (TAAU, TRAA, MotionBlur)
+  metalrough: vec2(metalness, roughness),         // RG8 : Pour SSR / RecurrentDenoise
+  diffuse: diffuseColor,                          // RGBA8 : Albedo pur pour SSGI / SSR
+  specular: specularColorBlended                  // RGBA8 : F0 spéculaire
+}));
+
+const beautyTex   = scenePass.getTextureNode('output');
+const emissiveTex = scenePass.getTextureNode('emissive');
+const normalTex   = scenePass.getTextureNode('normal');
+const velocityTex = scenePass.getTextureNode('velocity');
+const depthTex    = scenePass.getTextureNode('depth');
+const viewZNode   = scenePass.getViewZNode();
+```
+
+## 3.2. Rayons Volumétriques (`GodraysNode` vs `radialBlur`)
+
+### Approche A : `GodraysNode` + `BilateralBlurNode` + `depthAwareBlend` (Raymarching 3D ShadowMap)
+```javascript
+import { godrays } from 'three/addons/tsl/display/GodraysNode.js';
+import { bilateralBlur } from 'three/addons/tsl/display/BilateralBlurNode.js';
+import { depthAwareBlend } from 'three/addons/tsl/display/depthAwareBlend.js';
+
+const boosterCoreLight = new THREE.PointLight(0xffaa00, 15, 10);
+boosterCoreLight.castShadow = true;
+boosterCoreLight.shadow.mapSize.set(1024, 1024);
+scene.add(boosterCoreLight);
+
+const godraysPass = godrays(depthTex, camera, boosterCoreLight);
+godraysPass.resolutionScale = 0.5;
+godraysPass.raymarchSteps.value = 48;
+godraysPass.density.value = 0.85;
+godraysPass.maxDensity.value = 0.65;
+godraysPass.distanceAttenuation.value = 2.0;
+
+const blurredGodrays = bilateralBlur(godraysPass, null, 4, 0.1);
+const rarityRayColor = uniform(new THREE.Color(0xffd700));
+const beautyWithGodrays = depthAwareBlend(beautyTex, blurredGodrays, depthTex, camera, {
+  blendColor: rarityRayColor,
+  edgeRadius: 2,
+  edgeStrength: 2
+});
+```
+
+### Approche B : `radialBlur` sur le canal `emissive` MRT (Ultra-Rapide Mobile, 0 Shadow Map)
+```javascript
+import { radialBlur } from 'three/addons/tsl/display/radialBlur.js';
+
+const packCenterScreenUV = uniform(new THREE.Vector2(0.5, 0.5));
+const fastGodrays = radialBlur(emissiveTex, {
+  center: packCenterScreenUV,
+  weight: float(0.85),
+  decay: float(0.96),
+  count: 32,
+  exposure: float(3.5),
+  premultipliedAlpha: false
+});
+```
+
+## 3.3. Onde de Choc Réfractive (Shockwave), Bloom Sélectif Multi-Mip & Streak Anamorphique
+
+```javascript
+import { Fn, vec2, vec3, vec4, float, length, normalize, smoothstep, sin, uniform, viewportResolution } from 'three/tsl';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { lensflare } from 'three/addons/tsl/display/LensflareNode.js';
+import { gaussianBlur } from 'three/addons/tsl/display/GaussianBlurNode.js';
+
+export const shockCenter   = uniform(new THREE.Vector2(0.5, 0.5));
+export const shockRadius   = uniform(0.0);
+export const shockWidth    = uniform(0.12);
+export const shockStrength = uniform(0.06);
+export const shockChroma   = uniform(0.015);
+
+export const applyShockwave = Fn(([inputTexNode, uv]) => {
+  const aspect = viewportResolution.x.div(viewportResolution.y);
+  const delta = uv.sub(shockCenter);
+  const dist = length(vec2(delta.x.mul(aspect), delta.y));
+  const dir = normalize(delta.add(vec2(1e-6)));
+
+  const diff = dist.sub(shockRadius);
+  const mask = smoothstep(shockWidth.negate(), float(0.0), diff)
+    .mul(float(1.0).sub(smoothstep(float(0.0), shockWidth, diff)));
+  const wave = sin(diff.div(shockWidth).mul(3.14159265)).mul(mask).mul(shockStrength);
+
+  const r = inputTexNode.sample(uv.add(dir.mul(wave.add(mask.mul(shockChroma))))).r;
+  const g = inputTexNode.sample(uv.add(dir.mul(wave))).g;
+  const b = inputTexNode.sample(uv.add(dir.mul(wave.sub(mask.mul(shockChroma))))).b;
+  const a = inputTexNode.sample(uv.add(dir.mul(wave))).a;
+  return vec4(r, g, b, a);
+});
+
+// Bloom sélectif sur emissiveTex + Streak Anamorphique Horizontal cinéma :
+const selectiveBloom = bloom(emissiveTex, 1.4, 0.65, 0.0);
+selectiveBloom.setResolutionScale(0.5);
+
+const anamorphicStreak = gaussianBlur(emissiveTex, vec2(8.0, 0.05), 6, { resolutionScale: 0.25 })
+  .mul(vec4(0.4, 0.8, 1.0, 1.0))
+  .mul(1.2);
+```
+
+## 3.4. Distinction `SSSNode.js` (Contact Shadows) vs Vrai Subsurface Scattering (Translucidité)
+
+- `three/examples/jsm/tsl/display/SSSNode.js` (`sss(depthNode, camera, mainLight)`) = **Screen-Space Contact Shadows** (ombres de contact micro-détaillées sur le relief et sous la pile de cartes).
+- Vrai **Subsurface Scattering (rétro-éclairage à travers le papier ou la cire)** en TSL :
+```javascript
+export const fastSubsurfaceScattering = Fn(([lightPosWorld, lightColor, sssColor, thicknessVal, distortion, power, scale]) => {
+  const L = normalize(lightPosWorld.sub(positionWorld));
+  const V = normalize(cameraPosition.sub(positionWorld));
+  const N = normalWorld;
+  const H = normalize(L.add(N.mul(distortion)));
+  const VdotH = pow(clamp(dot(V, H.negate()), 0.0, 1.0), power).mul(scale);
+  return lightColor.mul(sssColor).mul(VdotH).mul(thicknessVal);
+});
+```
+
+## 3.5. Shaders Procéduraux d'Arrière-Plan & d'Aura en TSL Pur (Feu, Caustiques, Foudre SDF, Portail)
+
+```javascript
+import { Fn, vec2, vec3, vec4, float, uv, time, atan, abs, length, sin, cos, pow, min, max, smoothstep, mix, mx_fractal_noise_float, voronoi2d } from 'three/tsl';
+
+// 1. Aura Élémentaire Feu / Plasma (FBM Domain Warping)
+export const firePlasmaAuraNode = Fn(() => {
+  const centeredUV = uv().sub(0.5).mul(2.0);
+  const dist = length(centeredUV);
+  const p = vec3(centeredUV.x.mul(2.5), centeredUV.y.mul(2.5).sub(time.mul(1.8)), time.mul(0.4));
+  const qx = mx_fractal_noise_float(p, 4, 2.0, 0.5);
+  const qy = mx_fractal_noise_float(p.add(vec3(5.2, 1.3, 2.8)), 4, 2.0, 0.5);
+  const rPos = p.add(vec3(qx, qy, 0.0).mul(1.6)).add(vec3(1.7, 9.2, time.mul(0.6)));
+  const f = mx_fractal_noise_float(rPos, 4, 2.0, 0.5).mul(0.5).add(0.5);
+  const radialMask = smoothstep(1.1, 0.2, dist);
+  const intensity = f.mul(f).mul(2.2).mul(radialMask);
+  const color = mix(vec3(0.15, 0.01, 0.0), vec3(0.95, 0.22, 0.02), smoothstep(0.1, 0.5, intensity))
+    .add(vec3(1.0, 0.85, 0.35).mul(smoothstep(0.55, 1.0, intensity)));
+  return vec4(color.mul(intensity), radialMask.mul(smoothstep(0.05, 0.4, intensity)));
+});
+
+// 2. Eau / Caustiques Abyssales (Double Interférence voronoi2d)
+export const waterCausticsNode = Fn(() => {
+  const st = uv().mul(6.0);
+  const v1 = voronoi2d(st.add(vec2(time.mul(0.15), time.mul(0.1))), time.mul(1.2));
+  const v2 = voronoi2d(st.mul(1.35).sub(vec2(time.mul(0.12), time.mul(-0.08))), time.mul(1.5));
+  const causticPattern = pow(min(v1.x, v2.x), float(2.8)).mul(3.5);
+  return vec4(vec3(0.01, 0.12, 0.28).add(vec3(0.25, 0.85, 1.0).mul(causticPattern)), float(1.0));
+});
+
+// 3. Électricité & Éclairs SDF Procéduraux (Arcs de Foudre)
+export const sdfLightningAuraNode = Fn(() => {
+  const p = uv().sub(0.5).mul(2.0);
+  const baseRingSDF = length(p).sub(0.65);
+  const bolt1Dist = abs(baseRingSDF.add(mx_fractal_noise_float(vec3(p.mul(4.5), time.mul(8.0)), 4, 2.2, 0.5).mul(0.18)));
+  const bolt2Dist = abs(baseRingSDF.add(mx_fractal_noise_float(vec3(p.mul(7.0).add(3.1), time.mul(-11.0)), 4, 2.2, 0.5).mul(0.12)));
+  const glow1 = float(0.008).div(max(bolt1Dist, float(0.001)));
+  const glow2 = float(0.004).div(max(bolt2Dist, float(0.001)));
+  const totalGlow = glow1.add(glow2);
+  return vec4(vec3(0.35, 0.65, 1.0).mul(totalGlow).add(vec3(1.0).mul(glow1.mul(0.35))), max(totalGlow, float(1.0)));
+});
+
+// 4. Portail Dimensionnel SDF Torus + Tourbillon
+export const dimensionalPortalNode = Fn(() => {
+  const p = uv().sub(0.5).mul(2.0);
+  const r = length(p);
+  const angle = atan(p.y, p.x);
+  const twistedAngle = angle.add(float(1.8).div(r.add(0.15))).sub(time.mul(2.5));
+  const spiralUV = vec3(cos(twistedAngle).mul(r.mul(3.0)), sin(twistedAngle).mul(r.mul(3.0)), time.mul(0.8));
+  const vortexNoise = mx_fractal_noise_float(spiralUV, 5, 2.0, 0.5).mul(0.5).add(0.5);
+  const portalRim = float(0.04).div(abs(r.sub(0.55)).add(0.02));
+  const eventHorizon = smoothstep(0.18, 0.52, r);
+  const color = mix(vec3(0.04, 0.0, 0.12), vec3(0.55, 0.1, 0.95), vortexNoise.mul(eventHorizon))
+    .add(vec3(0.1, 0.95, 1.0).mul(portalRim.mul(vortexNoise)));
+  return vec4(color, smoothstep(1.0, 0.45, r));
+});
+```
+
+
+================================================================================
+# 4. RAPPORT AGENT #4 : Physique GPU, Compute Shaders TSL, Déchirure XPBD, Card Peel, 3DGS & BatchedMesh 1025
+================================================================================
+
+## 4.1. Simulation de Film Plastique / Aluminium & Déchirure de Booster (XPBD / Verlet en TSL)
+
+```javascript
+import * as THREE from 'three/webgpu';
+import {
+  Fn, instancedArray, instanceIndex, uniform, float, vec3, vec4,
+  If, length
+} from 'three/tsl';
+
+const GRID_W = 64;
+const GRID_H = 96;
+const NUM_VERTS = GRID_W * GRID_H;
+
+const posArray = instancedArray(NUM_VERTS, 'vec4');
+const prevPosArray = instancedArray(NUM_VERTS, 'vec4');
+// x: lien droit actif (1 ou 0), y: lien bas actif (1 ou 0), z: cisaillement, w: seuil de rupture local
+const constraintState = instancedArray(NUM_VERTS, 'vec4');
+
+const uFingerPos = uniform(new THREE.Vector3());
+const uFingerDelta = uniform(new THREE.Vector3());
+const uGrabRadius = uniform(0.35);
+const uRestDist = uniform(0.05);
+
+// PASSE 1 : Intégration de Verlet + Interaction du doigt
+const integrateBoosterCompute = Fn(() => {
+  const idx = instanceIndex;
+  const pData = posArray.element(idx).toVar();
+  const prevData = prevPosArray.element(idx).toVar();
+  const invMass = pData.w;
+
+  If(invMass.greaterThan(0.0), () => {
+    const pos = pData.xyz.toVar();
+    const prev = prevData.xyz.toVar();
+    const vel = pos.sub(prev).mul(0.985);
+    prevPosArray.element(idx).assign(vec4(pos, prevData.w));
+
+    const distToFinger = length(pos.sub(uFingerPos));
+    If(distToFinger.lessThan(uGrabRadius), () => {
+      const influence = float(1.0).sub(distToFinger.div(uGrabRadius)).pow(2.0);
+      pos.addAssign(uFingerDelta.mul(influence));
+    });
+
+    pos.addAssign(vel);
+    posArray.element(idx).assign(vec4(pos, invMass));
+  });
+})().compute(NUM_VERTS, [64]);
+
+// PASSE 2 : Relaxation des contraintes de distance XPBD & Déchirure sur la ligne d'encoche
+const solveConstraintsAndTearCompute = Fn(() => {
+  const idx = instanceIndex;
+  const x = idx.mod(GRID_W);
+  const y = idx.div(GRID_W);
+
+  const pA = posArray.element(idx).toVar();
+  const state = constraintState.element(idx).toVar();
+  const tearLimit = state.w; // 1.18 sur la ligne de découpe (y == 14), 3.5 ailleurs
+
+  If(x.lessThan(GRID_W - 1).and(state.x.greaterThan(0.5)), () => {
+    const rightIdx = idx.add(1);
+    const pB = posArray.element(rightIdx).toVar();
+    const delta = pB.xyz.sub(pA.xyz);
+    const dist = length(delta).max(1e-5);
+    const stretch = dist.div(uRestDist);
+
+    If(stretch.greaterThan(tearLimit), () => {
+      state.x.assign(0.0);
+    }).Else(() => {
+      const diff = dist.sub(uRestDist).div(dist).mul(0.45);
+      If(pA.w.greaterThan(0.0), () => { pA.xyz.addAssign(delta.mul(diff)); });
+    });
+  });
+
+  If(y.lessThan(GRID_H - 1).and(state.y.greaterThan(0.5)), () => {
+    const downIdx = idx.add(GRID_W);
+    const pB = posArray.element(downIdx).toVar();
+    const delta = pB.xyz.sub(pA.xyz);
+    const dist = length(delta).max(1e-5);
+    const stretch = dist.div(uRestDist);
+
+    If(stretch.greaterThan(tearLimit), () => {
+      state.y.assign(0.0);
+    }).Else(() => {
+      const diff = dist.sub(uRestDist).div(dist).mul(0.45);
+      If(pA.w.greaterThan(0.0), () => { pA.xyz.addAssign(delta.mul(diff)); });
+    });
+  });
+
+  posArray.element(idx).assign(pA);
+  constraintState.element(idx).assign(state);
+})().compute(NUM_VERTS, [64]);
+```
+
+## 4.2. Déformation Physique de Carte : Card Peeling / Corner Bend ("Sweat Reveal") en TSL
+
+```javascript
+import * as THREE from 'three/webgpu';
+import {
+  Fn, uniform, vec2, vec3, float, positionLocal, normalLocal, uv,
+  frontFacing, dot, sin, cos, smoothstep, select, If, PI
+} from 'three/tsl';
+
+const uFoldPoint  = uniform(new THREE.Vector2(0.65, -0.95));
+const uFoldDir    = uniform(new THREE.Vector2(0.707, -0.707));
+const uCurlRadius = uniform(0.24);
+
+const computeCardPeel = Fn(() => {
+  const pos = positionLocal.toVar();
+  const norm = normalLocal.toVar();
+  const relPos = pos.xy.sub(uFoldPoint);
+  const d = dot(relPos, uFoldDir);
+  const R = uCurlRadius;
+  const halfCircumference = PI.mul(R);
+
+  If(d.greaterThan(0.0), () => {
+    const baseXY = pos.xy.sub(uFoldDir.mul(d));
+    If(d.lessThanEqual(halfCircumference), () => {
+      const theta = d.div(R);
+      const sinT = sin(theta);
+      const cosT = cos(theta);
+      const newXY = baseXY.add(uFoldDir.mul(R.mul(sinT)));
+      const newZ = R.mul(float(1.0).sub(cosT));
+      pos.assign(vec3(newXY.x, newXY.y, newZ));
+      norm.assign(vec3(uFoldDir.x.negate().mul(sinT), uFoldDir.y.negate().mul(sinT), cosT));
+    }).Else(() => {
+      const overhang = d.sub(halfCircumference);
+      const sag = overhang.pow(2.0).mul(0.08);
+      const newXY = baseXY.sub(uFoldDir.mul(overhang));
+      const newZ = R.mul(2.0).sub(sag);
+      pos.assign(vec3(newXY.x, newXY.y, newZ));
+      norm.assign(vec3(0.0, 0.0, -1.0));
+    });
+  });
+  return { pos, norm, d };
+});
+```
+
+## 4.3. Rendu des 1 025 Pokémon en 1 Seul Draw Call (`BatchedMesh` Multi-LOD + `CompressedArrayTexture` KTX2)
+
+- **Problème VRAM** : 1 025 textures RGBA8 non compressées en $1024 \times 1428 \approx \mathbf{8.0 \text{ Go de VRAM}}$ (crash sur mobile).
+- **Solution** :
+  - On packe **16 cartes ($4 \times 4$ grille d'atlas)** par couche de $1024 \times 1424$ dans une `CompressedArrayTexture` KTX2 (BC7/ASTC/ETC2) : $\lceil 1025 / 16 \rceil = \mathbf{65\text{ couches}}$ seulement (< limite WebGPU mobile de 256 couches) = **~62 Mo de VRAM au total**.
+  - On combine avec un unique `THREE.BatchedMesh` enregistrant 3 géométries de LOD (`LOD0` $24 \times 32$, `LOD1` $4 \times 6$, `LOD2` $1 \times 1$) : **1 seul Draw Call pour les 1 025 Pokémon**.
+
+
+================================================================================
+# 5. RAPPORT AGENT #5 : Audit Complet de `cardgamepriv`, Audio Procédural, Gyroscope/Haptique & Feuille de Route P0–P3
+================================================================================
+
+## 5.1. Découvertes Critiques lors de l'Audit (`src/core/`, `src/game/`, `src/experiments/`)
+
+### A. Le Gyroscope Mobile est codé dans `src/core/input.ts`, mais JAMAIS appelé dans `src/game/` !
+- `Input.enableGyro()` (`src/core/input.ts#L124-L137`) détecte `typeof DeviceOrientationEvent.requestPermission === 'function'` (iOS 13+), gère `screen.orientation.angle` et applique un filtre passe-bas d'auto-calibration (`gyroBase`).
+- Dans le Labo (`src/main.ts#L153-L158`), un bouton `🧭 Gyro` appelle `input.enableGyro()`.
+- **MAIS dans le vrai jeu (`src/game/main.ts` et `src/game/shell.ts`), `input.enableGyro()` n'est JAMAIS appelé nulle part !** Sur mobile, `input.gyroEnabled` reste donc `false` en permanence dans `/jeu/`.
+- **Fix P0.1** :
+  1. Sur Android (sans `requestPermission`), appeler `void input.enableGyro()` dès le premier `pointerdown` (`unlock`) dans `src/game/shell.ts#L63-L67`.
+  2. Sur iOS 13+ (`typeof DeviceOrientationEvent.requestPermission === 'function'`), appeler `void shell.input.enableGyro()` **en première ligne synchrone** du `click` sur `.open-btn` dans `src/game/views/shop.ts#L178` et sur `.tile.owned` dans `src/game/views/collection.ts#L195` (**avant** tout `await` réseau, sinon Safari invalide le *Transient User Activation*).
+
+### B. Retour Haptique iPhone (iOS Safari 17.4+ / iOS 18) : `src/core/haptics.ts`
+- `navigator.vibrate` n'existe pas sur iOS Safari. Depuis Safari 17.4 / iOS 18, un `<input type="checkbox" switch>` caché dont on clique le `<label for="...">` associé déclenche nativement le **Taptic Engine** d'iOS :
+
+```ts
+// src/core/haptics.ts
+class Haptics {
+  private label: HTMLLabelElement | null = null;
+  private timers: number[] = [];
+
+  private ensureIOSNode() {
+    if (this.label || typeof document === 'undefined') return;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;top:-99px;left:-99px;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden';
+    const inp = document.createElement('input');
+    inp.type = 'checkbox';
+    inp.id = 'bebou-haptic-switch';
+    inp.setAttribute('switch', '');
+    const lbl = document.createElement('label');
+    lbl.htmlFor = 'bebou-haptic-switch';
+    wrap.append(inp, lbl);
+    document.body.append(wrap);
+    this.label = lbl;
+  }
+
+  pulse(pattern: number | number[] = 25) {
+    this.timers.forEach((id) => clearTimeout(id));
+    this.timers = [];
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(pattern);
+        return;
+      }
+      this.ensureIOSNode();
+      if (!this.label) return;
+      if (typeof pattern === 'number') {
+        this.label.click();
+      } else {
+        let t = 0;
+        for (let i = 0; i < pattern.length; i += 2) {
+          const delay = t;
+          this.timers.push(window.setTimeout(() => this.label?.click(), delay));
+          t += pattern[i] + (pattern[i + 1] ?? 0);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+}
+export const haptics = new Haptics();
+```
+
+### C. Comparatif Exhaustif : Laboratoire (`src/experiments/`) vs Jeu en Ligne (`src/game/`)
+
+| ID & Expérience Labo | Statut dans `src/game/` | Écart / Ce qui manque dans `/jeu/` |
+| :--- | :--- | :--- |
+| `001-holo-thinfilm` | Branché (Partiel) via `core/holo.ts` | Le motif `'radial'` (présent dans `001` pour le tier 3 Épique) a été omis dans `core/holo.ts` (qui met `'linear'` jusqu'au tier 3). |
+| `002-pack-tear` | Non branché | Le booster du jeu affiche `✂ DÉCHIRER ICI` (`pack.ts`), mais `opening.ts` utilise uniquement la combustion (`005`). |
+| `003-rarity-leak` | Branché (Partiel) dans `opening.ts` | `opening.ts` illumine `masks.b` et `masks.g` pendant le maintien, mais sans les battements rythmiques pré-ouverture ni le `radialBlur`. |
+| `004-emboss-foil` | Non branché | `cardFace.ts` n'utilise ni `anisotropyNode` sur les dorures du cadre, ni `sheenNode` sur le papier mat, ni vernis sélectif sur le sujet. |
+| `005-burn-dissolve` | Branché dans `opening.ts` | Combustion du maillage branchée, mais sans les escarbilles ni la brume de chaleur post-FX. |
+| `006-postfx-escalation` | Branché (Partiel) dans `opening.ts` | `opening.ts` a Bloom + CA + Flash + Vignette, mais **n'a ni `anamorphicFlare`, ni `lensDirt`, ni `radialBlur`, ni inversion** pour les tiers 4–5 ! |
+| `007-crystal-card` | Non branché | Aucune variante « Cristal » (`transmission` + `dispersionNode`). |
+| `008-shatter` | Non branché | Coque Voronoï + physique Rapier qui se fissure et éclate aux taps. |
+| `009-compute-bursts` | Non branché | `opening.ts` utilise des `Sprite` analytiques sans état (sans curl noise ni rubans de traînées ni convergence Mythique). |
+| `015-particle-card` | Non branché | 36k particules compute à ressorts : parfait pour animer un **Échange conclu** dans `trades.ts` ! |
+| `018-mythic` (« L'Éclipse ») | **Non branché !** | **Plus grand écart du jeu** : une Mythique (tier 5) dans `opening.ts` n'a ni fausse pause, ni lentille d'éclipse, ni onde de choc, ni convergence de particules, ni flare anamorphique, ni inversion 30ms ! |
+| `019-binder` | Non branché | Salle cylindrique 3D en 1 seul draw call (`BatchedMesh` + `DataArrayTexture`). Idéal pour un mode « Salle des Trophées 3D » dans `collection.ts`. |
+| `022-intaglio` | Non branché | La loupe UV / zoom d'inspection manque dans `viewer.ts`. |
+| `023-scratch-reveal` | Non branché | Pellicule argentée à gratter en `StorageTexture` compute : idéal pour réclamer les boosters gratuits toutes les 12h (`claimDaily`). |
+| `028` à `037-design-*` | **1 seule branchée (`classic` + `bebou`) !** | `generateCardArt` (`src/core/art/index.ts#L151`) utilise toujours `DEFAULT_DESIGN` (`classic`). Les **9 autres gabarits** (`fullArt`, `cartouche`, `artDeco`, `passePartout`, `arche`, `medaillon`, `suisse`, `estampe`, `celeste`) pourtant déjà codés dans `src/core/art/designs/` ne sont jamais vus dans `/jeu/` ! |
+| `039-bebou-secret` | **100 % Branché** dans `shop.ts` | Séquence « Un de nous » parfaitement intégrée pour la 5e carte secrète d'un Bébou Pack. |
+
+## 5.2. Feuille de Route d'Intégration Priorisée pour Claude (P0 → P3)
+
+1. **Priorité P0 (Quick Wins sans coût GPU)** :
+   - **P0.1** : Appeler `input.enableGyro()` dans `src/game/shell.ts`, `shop.ts` et `collection.ts`.
+   - **P0.2** : Ajouter `src/core/haptics.ts` et remplacer les appels `navigator.vibrate` dans `opening.ts` et `039-bebou-secret`.
+   - **P0.3** : Dans `generateCardArt` (`src/core/art/index.ts`) et `buildFace` (`src/game/scenes/cardFace.ts`), utiliser le gabarit **`fullArt`** pour les cartes **Mythiques (tier 5 / 6★)** et **`artDeco` / `cartouche`** pour les **Légendaires (tier 4 / 5★)** avec `aoFromFrame: true`.
+
+2. **Priorité P1 (Sublimation Visuelle `opening.ts`, `cardFace.ts`, `viewer.ts`)** :
+   - **P1.1** : Brancher `anamorphicFlare` (déjà dans `src/core/post.ts`), l'onde de choc annulaire (`U.shock`) et l'inversion fugitive de 30 ms (`U.invert`) de `018-mythic` dans `src/game/scenes/opening.ts` pour les tiers 4 et 5.
+   - **P1.2** : Dans `src/core/holo.ts`, rétablir le motif `'radial'` pour le tier 3 (Épique), ajouter `sheenNode` sur le papier mat et `clearcoatNode` sélectif sur le sujet (`004-emboss-foil`).
+   - **P1.3** : Dans `src/game/scenes/viewer.ts`, brancher `createPipeline(..., { emissive: true })` + `bloom` (actuellement absent de la visionneuse !), ajouter le Pinch-to-Zoom / molette (`st.z`), et permettre de cliquer sur les 5 cartes de l'éventail final (`phase === 'done'` dans `opening.ts`).
+
+3. **Priorité P2 (Sound Design Procédural 2.0 dans `src/core/audio.ts`)** :
+   - Ajouter `StereoPannerNode` dans `Sfx.out(node, wet, pan)` pour balayer l'allumage des étoiles et l'éventail en stéréo.
+   - Ajouter `crinkle()` (froissement Mylar/Foil par double bandpass `3200 Hz` / `6400 Hz`) et `cardSlide()` (frottement papier-sur-papier).
+   - Enrichir `chime(tier)` avec un modulateur FM (`ratio = Math.SQRT2`) et `shimmer(tier)` avec des voicings modaux évolutifs par tier (Majeur `add9` → Lydien `Maj9#11`).
+
+4. **Priorité P3 (Nouvelles Mécaniques Tactiles & Scènes 3D)** :
+   - Ouverture hybride du booster dans `opening.ts` : glissement horizontal en haut du paquet = déchirure `002-pack-tear` ; maintien au centre = combustion `005-burn-dissolve`.
+   - Geste *Corner Peek* au maintien sur une carte de dos dans la pile avant de relâcher.
+   - Bouton « 🏛️ Salle 3D » dans `collection.ts` montant `019-binder` (`BatchedMesh` en 1 draw call).
+================================================================================

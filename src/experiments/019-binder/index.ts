@@ -17,7 +17,7 @@ import {
 import { abs, batchIndirectIndex, color, float, int, ivec2, mix, normalGeometry, round, select, smoothstep, texture, uniform, uv, vec3 } from 'three/tsl';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
-import { ensureFonts, generateBackArt, generateCardArt } from '../../core/art';
+import { ensureCardImages, ensureFonts, generateBackArt, generateCardArt } from '../../core/art';
 import { CARDS } from '../../core/cardData';
 import { RARITIES, rarity } from '../../core/rarity';
 import { createCardGeometry, CARD } from '../../core/cardModel';
@@ -75,9 +75,11 @@ export default function create(): Experiment {
       key.position.set(0, 2, 1);
       stage.scene.add(key);
 
-      // ── texture array : 12 faces + 1 dos, 256×358
-      await ensureFonts();
-      const W = 256, H = 358, L = CARDS.length + 1;
+      // ── texture array : une couche par carte (plafonné à 151 pour la limite WebGPU maxTextureArrayLayers=256) + 1 dos
+      const BINDER_POOL = CARDS.slice(0, 151);
+      await Promise.all([ensureFonts(), ensureCardImages(BINDER_POOL)]);
+      const W = BINDER_POOL.length > 48 ? (c.quality === 'mobile' ? 144 : 192) : 256, H = Math.round(W * 1.4), L = BINDER_POOL.length + 1;
+      const artScale = Math.min(0.5, (W / 768) * 1.25);
       const data = new Uint8Array(W * H * 4 * L);
       const cv = document.createElement('canvas');
       cv.width = W;
@@ -90,14 +92,14 @@ export default function create(): Experiment {
         // retournement vertical (une DataArrayTexture n'applique pas flipY)
         for (let y = 0; y < H; y++) data.set(d.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), layer * W * H * 4 + y * W * 4);
       };
-      CARDS.forEach((cd, k) => {
-        const art = generateCardArt(cd, cd.rarity, { scale: 0.5, flatOnly: true });
+      BINDER_POOL.forEach((cd, k) => {
+        const art = generateCardArt(cd, cd.rarity, { scale: artScale, flatOnly: true });
         putLayer((art.canvases as Record<string, HTMLCanvasElement>).flat, k);
         art.dispose();
       });
-      const back = generateBackArt(undefined, 0.5);
+      const back = generateBackArt(undefined, artScale);
       const bc = (back.color as unknown as { image: HTMLCanvasElement }).image;
-      putLayer(bc, CARDS.length);
+      putLayer(bc, BINDER_POOL.length);
       back.dispose();
       const arr = c.bag.add(new DataArrayTexture(data, W, H, L));
       arr.colorSpace = SRGBColorSpace;
@@ -117,7 +119,7 @@ export default function create(): Experiment {
       const layer = round(rec.r);
       const tierI = round(rec.g);
       const front = texture(arr, uv()).depth(layer) as unknown as N;
-      const backT = texture(arr, uv()).depth(float(CARDS.length)) as unknown as N;
+      const backT = texture(arr, uv()).depth(float(BINDER_POOL.length)) as unknown as N;
       const nz = normalGeometry.z;
       const isFront = nz.greaterThan(0.5), isBack = nz.lessThan(-0.5);
       const edge = color('#e6dfd0');
@@ -144,12 +146,12 @@ export default function create(): Experiment {
         // collection aléatoire, pondérée comme un vrai tirage
         const roll = r();
         const tier = roll < 0.55 ? 0 : roll < 0.8 ? 1 : roll < 0.92 ? 2 : roll < 0.975 ? 3 : roll < 0.995 ? 4 : 5;
-        const pool = CARDS.map((cd, k) => ({ cd, k })).filter((o) => rarity(o.cd.rarity).tier === tier);
-        const pick = pool.length ? pool[Math.floor(r() * pool.length)].k : Math.floor(r() * CARDS.length);
+        const pool = BINDER_POOL.map((cd, k) => ({ cd, k })).filter((o) => rarity(o.cd.rarity).tier === tier);
+        const pick = pool.length ? pool[Math.floor(r() * pool.length)].k : Math.floor(r() * BINDER_POOL.length);
         lutData[id * 4] = pick;
-        lutData[id * 4 + 1] = rarity(CARDS[pick].rarity).tier;
+        lutData[id * 4 + 1] = rarity(BINDER_POOL[pick].rarity).tier;
         ids.push(id);
-        meta.push({ angle: (col / COLS) * Math.PI * 2 + (row % 2) * (Math.PI / COLS), y: (row - (ROWS - 1) / 2) * (CARD.h + 0.1), rar: rarity(CARDS[pick].rarity).tier, layer: pick });
+        meta.push({ angle: (col / COLS) * Math.PI * 2 + (row % 2) * (Math.PI / COLS), y: (row - (ROWS - 1) / 2) * (CARD.h + 0.1), rar: rarity(BINDER_POOL[pick].rarity).tier, layer: pick });
         lift.push(new Spring(0, 120, 14));
       }
       lut.needsUpdate = true;

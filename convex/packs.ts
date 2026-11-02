@@ -2,18 +2,11 @@ import { v, ConvexError } from 'convex/values';
 import { internalAction, mutation, query } from './_generated/server';
 import { internal } from './_generated/api';
 import { getUserByToken, requireUser } from './auth';
-import {
-  DROP_WEIGHTS,
-  GUARANTEED_SLOT_WEIGHTS,
-  RARITY_LABEL,
-  RARITY_TIER,
-  pickCardForRarity,
-  rarityValidator,
-  rollRarityFromWeights,
-  type RarityId,
-} from './cardsCatalog';
-
-const CARDS_PER_BOOSTER = 5;
+import { RARITY_LABEL, RARITY_TIER, packKindValidator, rarityValidator, type RarityId } from './cardsCatalog';
+import { isValidPackRequest, rollPack, type PackRequest } from '../src/core/packRoll';
+import { artPath, bebouOddsLabel, catalogEntry, hasArt, subthemeById, themeById, BEBOU_PACK } from '../src/core/sets/themes';
+import { applyRegen, fmtCountdown } from '../src/core/packRegen';
+import { bumpMissions } from './missions';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -52,8 +45,13 @@ export const getSealedPack = query({
  *   and returns the sealed pack to the client so all 3D shaders run with 0 network wait.
  */
 export const preparePack = mutation({
-  args: { sessionToken: v.string() },
-  handler: async (ctx, { sessionToken }) => {
+  args: {
+    sessionToken: v.string(),
+    /** 'theme' = booster d'un des 4 thèmes (themeId : gaming | pop | sport | monde) · 'bebou' = bébou pack. Absent = bébou pack. */
+    packKind: v.optional(packKindValidator),
+    themeId: v.optional(v.string()),
+  },
+  handler: async (ctx, { sessionToken, packKind, themeId }) => {
     const user = await requireUser(ctx, sessionToken);
 
     const existingSealed = await ctx.db
@@ -65,15 +63,24 @@ export const preparePack = mutation({
       return existingSealed;
     }
 
-    if (user.packBalance <= 0) {
-      throw new ConvexError('Plus de boosters disponibles ! Réclame ton booster quotidien.');
+    // anciens identifiants (« pokemon ») ramenés à leur thème (« gaming »)
+    const req: PackRequest = { kind: packKind ?? 'bebou', themeId: packKind === 'theme' ? themeById(themeId ?? '')?.id ?? themeId : undefined };
+    if (!isValidPackRequest(req)) {
+      throw new ConvexError('Ce booster n’existe pas.');
     }
 
+    // recharge accumulée depuis la dernière fois (1 booster / 5 min, 15 max), puis on dépense
     const now = Date.now();
+    const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now);
+    if (regen.balance <= 0) {
+      throw new ConvexError(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
+    }
+
     await ctx.db.patch(user._id, {
-      packBalance: user.packBalance - 1,
+      packBalance: regen.balance - 1,
+      packRegenAt: regen.regenAt,
       lastSeenAt: now,
-      statusText: 'Ouvre un booster…',
+      statusText: `Ouvre un ${req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
     });
 
     const rolledCards: Array<{
@@ -83,16 +90,15 @@ export const preparePack = mutation({
       foilSeed: number;
       mintNumber: number;
       isNew: boolean;
+      themeId: string;
+      subthemeId: string;
     }> = [];
 
     let maxRarity: RarityId = 'common';
     const seenInThisPack = new Set<string>();
 
-    for (let slot = 0; slot < CARDS_PER_BOOSTER; slot++) {
-      const weights = slot === CARDS_PER_BOOSTER - 1 ? GUARANTEED_SLOT_WEIGHTS : DROP_WEIGHTS;
-      const rarity = rollRarityFromWeights(weights, secureRandomFloat);
-      const card = pickCardForRarity(rarity, secureRandomFloat);
-
+    // tirage partagé avec le client (étoiles, pool du booster, 0,1 % de Bébou par bébou pack)
+    for (const { card, rarity } of rollPack(req, secureRandomFloat)) {
       if (RARITY_TIER[rarity] > RARITY_TIER[maxRarity]) {
         maxRarity = rarity;
       }
@@ -133,6 +139,8 @@ export const preparePack = mutation({
         foilSeed: secureRandomSeed(),
         mintNumber,
         isNew,
+        themeId: card.themeId,
+        subthemeId: card.subthemeId,
       });
     }
 
@@ -142,6 +150,8 @@ export const preparePack = mutation({
       maxRarity,
       cards: rolledCards,
       createdAt: now,
+      packKind: req.kind,
+      themeId: req.themeId,
     });
 
     return (await ctx.db.get(packId))!;
@@ -210,18 +220,21 @@ export const revealPack = mutation({
         });
       }
 
-      // Broadcast Epic / Legendary / Mythic (or #1 serial) pulls to the live feed
+      // Fil en direct : épique et mieux, ou n°1 d'une rare et mieux (pas tous les n°1 : au début, chaque carte en a un)
       const tier = RARITY_TIER[c.rarity];
-      if (tier >= RARITY_TIER.epic || c.mintNumber === 1) {
-        const isMythic = c.rarity === 'mythic';
+      if (tier >= RARITY_TIER.epic || (c.mintNumber === 1 && tier >= RARITY_TIER.rare)) {
         const label = RARITY_LABEL[c.rarity];
-        const msg = `${user.displayName} a obtenu ${c.cardName} [${label} #${c.mintNumber}] !`;
+        const kind = c.rarity === 'secret' ? 'secret_pull' : c.rarity === 'mythic' ? 'mythic_pull' : 'pull';
+        const msg =
+          c.rarity === 'secret'
+            ? `✷ ${user.displayName} a tiré une CARTE SECRÈTE : ${c.cardName} ! (${bebouOddsLabel().replace(/^1 /, '1 chance ')})`
+            : `${user.displayName} a obtenu ${c.cardName} [${label} #${c.mintNumber}] !`;
 
         await ctx.db.insert('activityFeed', {
           userId: user._id,
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
-          kind: isMythic ? 'mythic_pull' : 'pull',
+          kind,
           cardId: c.cardId,
           cardName: c.cardName,
           rarity: c.rarity,
@@ -230,42 +243,108 @@ export const revealPack = mutation({
           createdAt: now,
         });
 
-        // Optional Discord channel alert for Legendary / Mythic / #1 Mint
-        if (tier >= RARITY_TIER.legendary || c.mintNumber === 1) {
+        // Discord : uniquement avant-dernier tier (Mythique 6★) et dernier tier (Secrète Bébou ✷)
+        if (tier >= RARITY_TIER.mythic) {
           await ctx.scheduler.runAfter(0, internal.packs.notifyDiscordPull, {
             displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+            cardId: c.cardId,
             cardName: c.cardName,
             rarity: c.rarity,
             mintNumber: c.mintNumber,
+            isNew: c.isNew,
           });
         }
       }
     }
 
+    // missions du jour (ouvrir, raretés, nouvelles cartes, doublons…)
+    await bumpMissions(ctx, user, {
+      type: 'pack',
+      packKey: pack.packKind === 'theme' && pack.themeId ? pack.themeId : 'bebou',
+      cards: pack.cards.map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: c.isNew })),
+    });
+
     return (await ctx.db.get(pack._id))!;
   },
 });
 
+const PUBLIC_SITE_URL = 'https://main.cardgamepriv.pages.dev';
+
 export const notifyDiscordPull = internalAction({
   args: {
     displayName: v.string(),
+    avatarUrl: v.optional(v.string()),
+    cardId: v.string(),
     cardName: v.string(),
     rarity: rarityValidator,
     mintNumber: v.number(),
+    isNew: v.optional(v.boolean()),
   },
-  handler: async (_ctx, { displayName, cardName, rarity, mintNumber }) => {
+  handler: async (_ctx, { displayName, avatarUrl, cardId, cardName, rarity, mintNumber, isNew }) => {
     const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
     if (!webhookUrl) return;
 
-    const label = RARITY_LABEL[rarity];
-    const emoji = rarity === 'mythic' ? '✺' : rarity === 'legendary' ? '❂' : '✸';
+    const entry = catalogEntry(cardId);
+    const theme = entry ? themeById(entry.themeId) : undefined;
+    const subtheme = entry ? subthemeById(entry.subthemeId) : undefined;
+    // (carte Jeux vidéo sans illustration : pas de vignette dans le message Discord)
+    const imageUrl = entry && hasArt(entry) ? `${PUBLIC_SITE_URL}/${artPath(entry)}` : undefined;
+    const isSecret = rarity === 'secret';
+    const isMerveille = isSecret && entry?.subthemeId === 'merveilles';
+
+    const embed = {
+      color: isSecret ? (isMerveille ? 0xf5a623 : 0xe8927c) : 0xf1ece2,
+      author: {
+        name: displayName,
+        ...(avatarUrl ? { icon_url: avatarUrl } : {}),
+      },
+      title: isSecret
+        ? (isMerveille ? `✷ MERVEILLE DU MONDE — ${cardName}` : `✷ CARTE SECRÈTE — ${cardName}`)
+        : `✺ TIRAGE MYTHIQUE (6★) — ${cardName}`,
+      description: isSecret
+        ? (isMerveille
+            ? `**${displayName}** vient de découvrir la Merveille du Monde secrète **${cardName}** (3D Diorama) !`
+            : `**${displayName}** vient de tirer la carte secrète **${cardName}** — *un de nous* (${bebouOddsLabel().replace(/^1 /, '1 chance ')}) !`)
+        : `**${displayName}** vient de faire tomber **${cardName}** en **Mythique (★★★★★★)** !`,
+      fields: [
+        {
+          name: 'Série (Mint)',
+          value: `**#${mintNumber}**`,
+          inline: true,
+        },
+        {
+          name: 'Rareté',
+          value: isSecret ? (isMerveille ? '✷ Secrète (Merveille du Monde)' : '✷ Secrète (Les Bébous)') : `✺ ${RARITY_LABEL[rarity]} (6★)`,
+          inline: true,
+        },
+        ...(theme && entry
+          ? [
+              {
+                name: 'Collection',
+                value: `${subtheme && subtheme.id !== theme.id ? `${subtheme.label} · ${theme.label}` : theme.label} · #${String(entry.num).padStart(3, '0')}${isNew ? ' (✨ Nouvelle !)' : ''}`,
+                inline: true,
+              },
+            ]
+          : []),
+      ],
+      ...(imageUrl ? { thumbnail: { url: imageUrl } } : {}),
+      timestamp: new Date().toISOString(),
+    };
+
+    const payload = {
+      username: 'Bébou Drop Bot 🃏',
+      content: isSecret
+        ? `✷✷✷ **ALERTE CARTE SECRÈTE !** **${displayName}** a tiré **${cardName}** (#${mintNumber}) !`
+        : `✺ **DROP MYTHIQUE 6★ !** **${displayName}** a tiré **${cardName}** (#${mintNumber}) !`,
+      embeds: [embed],
+    };
+
     try {
       await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: `${emoji} **${displayName}** vient de tirer **${cardName}** en **${label}** (Série **#${mintNumber}**) !`,
-        }),
+        body: JSON.stringify(payload),
       });
     } catch (e) {
       console.warn('[discord-webhook] failed:', e);

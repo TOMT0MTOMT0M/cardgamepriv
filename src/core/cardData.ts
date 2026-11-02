@@ -1,7 +1,17 @@
 import type { RarityId } from './rarity';
+import { siteUrl } from './siteRoot';
 import type { UniverseId } from './universes';
+import { POKEMON_151, POKEMON_151_INFO, pokemonCardId, pokemonFile } from './sets/pokemon151';
+import { BEBOUS, BEBOUS_INFO, bebouCardId, bebouFile } from './sets/bebous';
+import { VALORANT, VALORANT_INFO, valorantCardId, valorantFile } from './sets/valorant';
+import { LOL, LOL_INFO, lolCardId, lolFile, lolIsChampion } from './sets/lol';
+import { CS, CS_INFO, csCardId, csFile } from './sets/cs';
+import { artPath, catalogEntry, hasArt, subthemeById } from './sets/themes';
 
-export type SubjectKind = 'monolith' | 'moth' | 'sigil' | 'tower' | 'serpent' | 'bloom' | 'eye' | 'stag';
+/** `image` = illustration bitmap (champ `image`), les autres sont peints procéduralement (art/subjects.ts). */
+export type SubjectKind = 'monolith' | 'moth' | 'sigil' | 'tower' | 'serpent' | 'bloom' | 'eye' | 'stag' | 'image' | 'jvtitle';
+
+export type CardSetId = 'lab' | 'pokemon151' | 'valorant' | 'lol' | 'cs' | 'bebous';
 
 export interface CardPalette {
   /** papier / carton du cadre */
@@ -32,10 +42,27 @@ export interface CardData {
   seed: number;
   /** Rareté "naturelle" de la carte (le sélecteur du shell peut la surcharger). */
   rarity: RarityId;
+  /** Set d'appartenance (défaut : 'lab'). */
+  set?: CardSetId;
+  /** URL de l'illustration quand `subject === 'image'` (chargée/détourée par art/images.ts). */
+  image?: string;
+  /** Photo réelle (thème Bébous) : jamais détourée automatiquement, cadrée en portrait. */
+  photo?: boolean;
+  /** Échelle de l'illustration dans la fenêtre (défaut 1) : les armes Valorant, larges, sont un peu réduites. */
+  fit?: number;
+  /** Illustration « scène » déjà au format portrait (splash LoL) : elle remplit toute la carte, jamais détourée. */
+  cover?: boolean;
+  /** Nom d'univers affiché à la place de celui de `universe` (Jeux vidéo : la famille, « MARIO », « TEKKEN »…) */
+  uniName?: string;
+  /** Jeux vidéo : jaquette / personnage / objet, et année (design typographique des cartes sans illustration) */
+  jvKind?: string;
+  /** Monde V2 : type affiché sur le design typographique (« Mammifère »…) */
+  typeLabel?: string;
+  year?: number;
 }
 
-/** Données fictives. Aucun personnage existant : tout est inventé et dessiné procéduralement. */
-export const CARDS: CardData[] = [
+/** Set de démonstration du lab : données fictives, tout est inventé et dessiné procéduralement. */
+export const LAB_CARDS: CardData[] = [
   {
     id: 'veilleur-cendre', num: 7, name: 'Veilleur de Cendre', epithet: 'Gardien', element: 'Cendre', universe: 'cendre',
     subject: 'monolith', seed: 1307, rarity: 'rare',
@@ -101,12 +128,217 @@ export const CARDS: CardData[] = [
 export const SET_CODE = 'LAB';
 export const SET_SIZE = 120;
 
+/**
+ * Palette neutre de départ des cartes illustrées : la vraie palette est extraite des pixels
+ * de l'illustration au chargement (art/images.ts) et remplace celle-ci à la génération.
+ */
+export const IMAGE_PALETTE: CardPalette = { paper: '#ebe5d6', ink: '#1f1d1a', sky: '#2b3140', haze: '#7d8494', body: '#d9d2c2', glow: '#fff1c8' };
+
+/** Set « Pokémon 151 » : 151 cartes illustrées (public/art/pokemon-151). */
+export const POKEMON_CARDS: CardData[] = POKEMON_151.map((e) => ({
+  id: pokemonCardId(e),
+  num: e.dex,
+  name: e.name,
+  epithet: 'Pokémon',
+  element: '',
+  universe: 'pokemon',
+  subject: 'image',
+  seed: 1000 + e.dex * 97,
+  rarity: e.rarity,
+  palette: IMAGE_PALETTE,
+  set: 'pokemon151',
+  image: siteUrl(`${POKEMON_151_INFO.artDir}/${pokemonFile(e)}`),
+}));
+
+/** Sous-thème « Valorant » : 995 cartes (agents en pied, skins d'armes et couteaux), public/art/valorant. */
+export const VALORANT_CARDS: CardData[] = VALORANT.map((e) => ({
+  id: valorantCardId(e),
+  num: e.num,
+  name: e.name,
+  epithet: e.kind === 'agent' ? 'Agent' : e.kind === 'knife' ? 'Couteau' : 'Skin',
+  element: e.weapon,
+  universe: 'valorant',
+  subject: 'image',
+  seed: 3000 + e.num * 89,
+  rarity: e.rarity,
+  palette: IMAGE_PALETTE,
+  set: 'valorant',
+  fit: e.kind === 'agent' ? 1 : 0.72,
+  image: siteUrl(`${VALORANT_INFO.artDir}/${valorantFile(e)}`),
+}));
+
+/** Sous-thème « League of Legends » : 2 120 cartes (champions + skins), splash recadré qui remplit la carte. */
+export const LOL_CARDS: CardData[] = LOL.map((e) => ({
+  id: lolCardId(e),
+  num: e.num,
+  name: e.name,
+  epithet: lolIsChampion(e) ? 'Champion' : 'Skin',
+  element: e.champion,
+  universe: 'lol',
+  subject: 'image',
+  seed: 12000 + e.num * 61,
+  rarity: e.rarity,
+  palette: IMAGE_PALETTE,
+  set: 'lol',
+  cover: true,
+  image: siteUrl(`${LOL_INFO.artDir}/${lolFile(e)}`),
+}));
+
+/** Sous-thème « Skins CS » : 1 107 cartes (armes, couteaux, gants, stickers), objets détourés comme Valorant. */
+export const CS_CARDS: CardData[] = CS.map((e) => ({
+  id: csCardId(e),
+  num: e.num,
+  name: e.name,
+  epithet: e.kind === 'knife' ? 'Couteau' : e.kind === 'gloves' ? 'Gants' : e.kind === 'sticker' ? 'Sticker' : 'Skin',
+  element: e.weapon,
+  universe: 'cs',
+  subject: 'image',
+  seed: 16000 + e.num * 53,
+  rarity: e.rarity,
+  palette: IMAGE_PALETTE,
+  set: 'cs',
+  fit: e.kind === 'weapon' || e.kind === 'knife' ? 0.74 : 0.86,
+  image: siteUrl(`${CS_INFO.artDir}/${csFile(e)}`),
+}));
+
+/** Thème SECRET « Les Bébous » : 8 cartes, une par membre (surnom + photo), toutes en rareté secrète. */
+export const BEBOU_CARDS: CardData[] = BEBOUS.map((e) => ({
+  id: bebouCardId(e),
+  num: e.num,
+  name: e.nickname,
+  epithet: 'Bébou',
+  element: '',
+  universe: 'bebous',
+  subject: 'image',
+  seed: 7000 + e.num * 131,
+  rarity: 'secret',
+  palette: IMAGE_PALETTE,
+  set: 'bebous',
+  image: siteUrl(`${BEBOUS_INFO.artDir}/${bebouFile(e)}`),
+  photo: true,
+}));
+
+export interface CardSet {
+  id: CardSetId;
+  label: string;
+  /** code imprimé sur la carte (« PKM · 025/151 ») */
+  code: string;
+  size: number;
+  cards: CardData[];
+}
+
+export const CARD_SETS: Record<CardSetId, CardSet> = {
+  pokemon151: { id: 'pokemon151', label: POKEMON_151_INFO.label, code: POKEMON_151_INFO.code, size: POKEMON_151_INFO.size, cards: POKEMON_CARDS },
+  valorant: { id: 'valorant', label: VALORANT_INFO.label, code: VALORANT_INFO.code, size: VALORANT_INFO.size, cards: VALORANT_CARDS },
+  lol: { id: 'lol', label: LOL_INFO.label, code: LOL_INFO.code, size: LOL_INFO.size, cards: LOL_CARDS },
+  cs: { id: 'cs', label: CS_INFO.label, code: CS_INFO.code, size: CS_INFO.size, cards: CS_CARDS },
+  lab: { id: 'lab', label: 'Lab (procédural)', code: SET_CODE, size: SET_SIZE, cards: LAB_CARDS },
+  bebous: { id: 'bebous', label: BEBOUS_INFO.label, code: BEBOUS_INFO.code, size: BEBOUS_INFO.size, cards: BEBOU_CARDS },
+};
+
+export const DEFAULT_SET: CardSetId = 'pokemon151';
+
+export function isCardSetId(s: string | null | undefined): s is CardSetId {
+  return !!s && s in CARD_SETS;
+}
+
+const LS_SET = 'cardlab.set';
+
+/** Set au démarrage : `?set=lab|pokemon151`, sinon dernier choix (localStorage), sinon `DEFAULT_SET`. */
+function initialSet(): CardSetId {
+  try {
+    const q = new URLSearchParams(location.search).get('set');
+    if (isCardSetId(q)) return q;
+    const v = localStorage.getItem(LS_SET);
+    if (isCardSetId(v)) return v;
+  } catch {
+    /* hors navigateur / stockage bloqué */
+  }
+  return DEFAULT_SET;
+}
+
+/**
+ * Pool de cartes actif. Tableau « vivant » : `setActiveSet` remplace son contenu sur place,
+ * donc toutes les expériences qui importent `CARDS` suivent le set choisi (sans toucher au shell).
+ */
+export const CARDS: CardData[] = [];
+let activeId: CardSetId = DEFAULT_SET;
+
+/** Change le set actif (et le mémorise si `remember`). Les expériences chargées ensuite l'utilisent. */
+export function setActiveSet(id: CardSetId, remember = false) {
+  activeId = id;
+  CARDS.splice(0, CARDS.length, ...CARD_SETS[id].cards);
+  if (remember)
+    try {
+      localStorage.setItem(LS_SET, id);
+    } catch {
+      /* ignore */
+    }
+}
+setActiveSet(initialSet());
+
+export function activeSet(): CardSet {
+  return CARD_SETS[activeId];
+}
+
+/** Code + taille du set d'une carte (pour la ligne « PKM · 025/151 » des gabarits). */
+export function setInfo(card: CardData): { code: string; size: number } {
+  const s = CARD_SETS[card.set as CardSetId];
+  if (s) return { code: s.code, size: s.size };
+  const sub = subthemeById(card.set ?? '');
+  if (sub) return { code: sub.code || 'WLD', size: sub.cards.length };
+  return { code: SET_CODE, size: SET_SIZE };
+}
+
+const ALL_CARDS: CardData[] = Object.values(CARD_SETS).flatMap((s) => s.cards);
+const CARD_BY_ID = new Map(ALL_CARDS.map((c) => [c.id, c]));
+
+const hashId = (s: string) => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return (h >>> 0) % 100000;
+};
+
+/** Recherche dans tous les sets (catalogue complet, thèmes, lab). */
 export function cardById(id: string): CardData {
-  return CARDS.find((c) => c.id === id) ?? CARDS[0];
+  const existing = CARD_BY_ID.get(id);
+  if (existing) return existing;
+  const e = catalogEntry(id);
+  if (e) {
+    const cd: CardData = {
+      id: e.id,
+      num: e.num,
+      name: e.name,
+      epithet: subthemeById(e.subthemeId)?.label ?? '',
+      element: '',
+      universe: 'monde' as any,
+      subject: 'image',
+      seed: 10000 + e.num * 37,
+      rarity: e.rarity,
+      palette: IMAGE_PALETTE,
+      set: e.subthemeId as any,
+      image: siteUrl(artPath(e)),
+      fit: 1,
+    };
+    if (e.art !== undefined) {
+      // Jeux vidéo / Monde V2 : le sous-thème tient lieu d'univers (« MARIO », « MAMMIFÈRES ») ; image pleine (jaquette,
+      // photo) = bord à bord ; artwork = détouré ; rien de trouvé à la récolte = design typographique (art/jvTitle.ts)
+      const fam = subthemeById(e.subthemeId)?.label ?? '';
+      Object.assign(cd, { universe: e.kind ? 'jv' : 'monde', uniName: fam, jvKind: e.kind, typeLabel: e.label || undefined, year: e.year || undefined, seed: 20000 + hashId(e.id) });
+      if (!hasArt(e)) Object.assign(cd, { subject: 'jvtitle', image: undefined });
+      else if (e.art === 'c') cd.cover = true;
+      else cd.fit = 0.92;
+    }
+    CARD_BY_ID.set(id, cd);
+    return cd;
+  }
+  return CARDS[0];
 }
 
 /** Carte "vitrine" pour une rareté donnée (la plus représentative). */
 export function cardForRarity(r: RarityId, offset = 0): CardData {
+  // la rareté secrète n'existe que dans le thème Bébous (qui ne tombe que dans le « bébou pack », cf. packRules.ts)
+  if (r === 'secret') return BEBOU_CARDS[offset % BEBOU_CARDS.length];
   const list = CARDS.filter((c) => c.rarity === r);
   const pool = list.length ? list : CARDS;
   return pool[offset % pool.length];

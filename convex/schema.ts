@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
-import { rarityValidator } from './cardsCatalog';
+import { packKindValidator, rarityValidator } from './cardsCatalog';
 
 export const rolledCardValidator = v.object({
   cardId: v.string(),
@@ -9,6 +9,27 @@ export const rolledCardValidator = v.object({
   foilSeed: v.number(),
   mintNumber: v.number(),
   isNew: v.boolean(),
+  /** thème de la carte (absent sur les packs ouverts avant les boosters par thème) */
+  themeId: v.optional(v.string()),
+  /** sous-thème de la carte (pokemon, lol, mcu…) */
+  subthemeId: v.optional(v.string()),
+});
+
+export const missionsValidator = v.object({
+  day: v.string(),
+  rerolled: v.boolean(),
+  bonusClaimed: v.boolean(),
+  list: v.array(
+    v.object({
+      id: v.string(),
+      kind: v.string(),
+      param: v.optional(v.string()),
+      target: v.number(),
+      progress: v.number(),
+      reward: v.number(),
+      claimed: v.boolean(),
+    }),
+  ),
 });
 
 export default defineSchema({
@@ -22,9 +43,17 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     packBalance: v.number(),
     lastDailyClaimAt: v.number(),
+    /** départ du booster en cours de recharge (1 toutes les 5 min, 15 max — src/core/packRegen.ts). Absent = lastSeenAt. */
+    packRegenAt: v.optional(v.number()),
     totalPacksOpened: v.number(),
     lastSeenAt: v.number(),
     statusText: v.optional(v.string()),
+    /** missions du jour (src/core/missions.ts) — absent tant que le joueur n'a pas progressé aujourd'hui */
+    missions: v.optional(missionsValidator),
+    /** vitrine du profil : jusqu'à 6 cartes choisies (vide = ses meilleures cartes, automatiquement) */
+    showcase: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator }))),
+    /** petite devise affichée sur le profil */
+    bio: v.optional(v.string()),
   })
     .index('by_discordId', ['discordId'])
     .index('by_lastSeenAt', ['lastSeenAt']),
@@ -52,6 +81,10 @@ export default defineSchema({
     status: v.union(v.literal('sealed'), v.literal('revealed')),
     maxRarity: rarityValidator,
     cards: v.array(rolledCardValidator),
+    /** booster d'un thème ou bébou pack (absent = ancien pack, traité comme un bébou pack) */
+    packKind: v.optional(packKindValidator),
+    /** thème du booster (packKind 'theme') */
+    themeId: v.optional(v.string()),
     createdAt: v.number(),
     revealedAt: v.optional(v.number()),
   })
@@ -110,11 +143,43 @@ export default defineSchema({
       v.literal('declined'),
       v.literal('cancelled'),
     ),
+    /** petit mot joint à la proposition */
+    note: v.optional(v.string()),
     createdAt: v.number(),
     resolvedAt: v.optional(v.number()),
   })
     .index('by_toUser_status', ['toUserId', 'status'])
     .index('by_fromUser_status', ['fromUserId', 'status']),
+
+  /**
+   * Retours des testeurs du labo (une ligne par navigateur, mise à jour à chaque envoi). Cf. convex/labFeedback.ts.
+   */
+  labFeedback: defineTable({
+    clientId: v.string(),
+    tester: v.string(),
+    discordName: v.optional(v.string()),
+    entries: v.array(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        category: v.string(),
+        vote: v.number(),
+        note: v.string(),
+        updatedAt: v.optional(v.union(v.string(), v.null())),
+      }),
+    ),
+    meta: v.object({
+      backend: v.optional(v.string()),
+      userAgent: v.optional(v.string()),
+      quality: v.optional(v.string()),
+      dpr: v.optional(v.number()),
+    }),
+    sends: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_clientId', ['clientId'])
+    .index('by_updatedAt', ['updatedAt']),
 
   /**
    * Real-time global activity feed (Rare+ pulls, Mythics, trades, new friends).
@@ -126,8 +191,10 @@ export default defineSchema({
     kind: v.union(
       v.literal('pull'),
       v.literal('mythic_pull'),
+      v.literal('secret_pull'),
       v.literal('trade'),
       v.literal('joined'),
+      v.literal('contract'),
     ),
     cardId: v.optional(v.string()),
     cardName: v.optional(v.string()),

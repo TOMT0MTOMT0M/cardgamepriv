@@ -8,12 +8,17 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as cardsCatalog from "../cardsCatalog.js";
+import type * as contracts from "../contracts.js";
 import type * as feed from "../feed.js";
 import type * as http from "../http.js";
 import type * as inventory from "../inventory.js";
+import type * as labFeedback from "../labFeedback.js";
+import type * as missions from "../missions.js";
 import type * as packs from "../packs.js";
+import type * as profiles from "../profiles.js";
 import type * as trades from "../trades.js";
 import type * as users from "../users.js";
 
@@ -24,12 +29,17 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   auth: typeof auth;
   cardsCatalog: typeof cardsCatalog;
+  contracts: typeof contracts;
   feed: typeof feed;
   http: typeof http;
   inventory: typeof inventory;
+  labFeedback: typeof labFeedback;
+  missions: typeof missions;
   packs: typeof packs;
+  profiles: typeof profiles;
   trades: typeof trades;
   users: typeof users;
 }>;

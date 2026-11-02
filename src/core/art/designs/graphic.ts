@@ -1,6 +1,6 @@
 import { alpha, linear, mix } from '../canvas';
 import type { Ctx } from '../canvas';
-import { SET_CODE, SET_SIZE } from '../../cardData';
+import { setInfo } from '../../cardData';
 import { rng } from '../../ease';
 import { type CardDesign, FONT_MONO, FONT_SANS, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, starColor, starRow, starsAt } from './common';
 
@@ -46,7 +46,7 @@ export const suisse: CardDesign = {
     f.fillText(uni.name, 48, 968);
     f.font = `400 13px ${FONT_MONO}`;
     f.fillStyle = alpha(ink, 0.55);
-    spaced(f, `${SET_CODE} ${num3(card.num)}/${SET_SIZE}`, 48, 1022, 1.5);
+    spaced(f, `${setInfo(card).code} ${num3(card.num)}/${setInfo(card).size}`, 48, 1022, 1.5);
     f.fillStyle = tier >= 3 ? accent : ink;
     f.font = `200 118px ${FONT_SANS}`;
     f.textAlign = 'right';
@@ -254,7 +254,7 @@ export const celeste: CardDesign = {
     f.textAlign = 'left';
     f.font = `400 12px ${FONT_MONO}`;
     f.fillStyle = alpha(pale, 0.45);
-    spaced(f, `${SET_CODE} · ${num3(card.num)}`, 384, 1046, 2, 'center');
+    spaced(f, `${setInfo(card).code} · ${num3(card.num)}`, 384, 1046, 2, 'center');
     glyph(f, uni.id, 384, 66, 26, alpha(pale, 0.8), 1.6);
 
     if (tier >= 2) {

@@ -1,6 +1,6 @@
 import { alpha, linear, mix, radial } from '../canvas';
 import type { Ctx } from '../canvas';
-import { SET_CODE } from '../../cardData';
+import { setInfo } from '../../cardData';
 import { rng } from '../../ease';
 import { type CardDesign, FONT_MONO, FONT_TITLE, H, TAU, W, arcText, cut, fitFont, glyph, grainAtop, num3, paper, spaced, starColor, starRow } from './common';
 
@@ -69,7 +69,7 @@ export const passePartout: CardDesign = {
     });
     f.font = `400 13px ${FONT_MONO}`;
     f.fillStyle = alpha(ink, 0.45);
-    spaced(f, `N° ${num3(card.num)} — ${SET_CODE}`, 384, 1032, 2, 'center');
+    spaced(f, `N° ${num3(card.num)} — ${setInfo(card).code}`, 384, 1032, 2, 'center');
     grainAtop(f, card.seed, 0.06, 40);
 
     if (gold) bevel(m, [R(1), R(1), R(1), R(1)]);
@@ -416,7 +416,7 @@ export const medaillon: CardDesign = {
     starRow(f, m, d, cx, 982, 30, 'center', { r: 12, fill: tier < 2 ? gold : starColor(tier), stroke: alpha('#000', 0.4), glow: true });
     f.font = `400 13px ${FONT_MONO}`;
     f.fillStyle = alpha(gold, 0.6);
-    spaced(f, `${SET_CODE} ${num3(card.num)}`, cx, 1036, 2, 'center');
+    spaced(f, `${setInfo(card).code} ${num3(card.num)}`, cx, 1036, 2, 'center');
     grainAtop(f, card.seed, 0.07, 40);
 
     const fo = tier === 0 ? 0.5 : 1;

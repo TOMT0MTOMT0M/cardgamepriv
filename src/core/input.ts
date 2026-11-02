@@ -1,6 +1,8 @@
 import { Spring, clamp } from './ease';
 
 type TapHandler = (x: number, y: number, e: PointerEvent) => void;
+/** glissement horizontal rapide : -1 vers la gauche, 1 vers la droite (x, y : point de départ en NDC) */
+type SwipeHandler = (dir: 1 | -1, x: number, y: number) => void;
 
 /**
  * Entrées communes : tilt souris avec inertie (ressorts), drag/rotation avec élan
@@ -34,6 +36,8 @@ export class Input {
   private gyroAt = 0;
 
   private taps = new Set<TapHandler>();
+  private swipes = new Set<SwipeHandler>();
+  private downNdc = { x: 0, y: 0 };
   private downAt = { x: 0, y: 0, t: 0 };
   private last = { x: 0, y: 0 };
   private yawVel = 0;
@@ -54,6 +58,7 @@ export class Input {
       this.move(e);
       this.down = true;
       this.downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
+      this.downNdc = { x: this.ndcX, y: this.ndcY };
       this.last = { x: e.clientX, y: e.clientY };
       this.yawVel = 0;
       this.pitchVel = 0;
@@ -72,6 +77,9 @@ export class Input {
       this.dragging = false;
       if (!wasDrag && Math.hypot(dx, dy) < 8 && performance.now() - this.downAt.t < 600) {
         this.taps.forEach((h) => h(this.ndcX, this.ndcY, e));
+      } else if (wasDrag && Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.6 && performance.now() - this.downAt.t < 650) {
+        // geste « carrousel » : un coup de doigt franc, surtout horizontal
+        this.swipes.forEach((h) => h(dx > 0 ? 1 : -1, this.downNdc.x, this.downNdc.y));
       }
       if (e.pointerType !== 'mouse') this.inside = false;
     };
@@ -139,6 +147,11 @@ export class Input {
   onTap(h: TapHandler): () => void {
     this.taps.add(h);
     return () => this.taps.delete(h);
+  }
+
+  onSwipe(h: SwipeHandler): () => void {
+    this.swipes.add(h);
+    return () => this.swipes.delete(h);
   }
 
   /** À appeler une fois par frame par le shell. */

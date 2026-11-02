@@ -80,6 +80,7 @@ export const upsertDiscordUser = internalMutation({
         avatarUrl: args.avatarUrl,
         packBalance: STARTER_PACKS,
         lastDailyClaimAt: 0,
+        packRegenAt: now,
         totalPacksOpened: 0,
         lastSeenAt: now,
         statusText: 'Vient de rejoindre le club',
@@ -101,6 +102,7 @@ export const upsertDiscordUser = internalMutation({
         displayName: args.displayName,
         avatarUrl: args.avatarUrl,
         lastSeenAt: now,
+        ...(user.packRegenAt === undefined ? { packRegenAt: user.lastSeenAt } : {}),
       });
     }
 
