@@ -7,7 +7,7 @@ import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
 import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, touchStreak, type StreakState } from '../core/streak';
-import { BIG_PULL_RARITIES, cardKey, type BigPull, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeItem, type TradeView } from './backend';
+import { BIG_PULL_RARITIES, cardKey, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeItem, type TradeView } from './backend';
 
 /**
  * Mode DÉMO (hors-ligne) : même interface que le serveur, tout est stocké dans ce navigateur (localStorage).
@@ -49,6 +49,8 @@ interface Saved {
   pity?: number;
   wishlist?: string[];
   streak?: StreakState;
+  binders?: Binder[];
+  covers?: Record<string, string>;
 }
 
 function add(inv: Inv, cardId: string, rarity: RarityId, n: number, mint = 999) {
@@ -57,7 +59,7 @@ function add(inv: Inv, cardId: string, rarity: RarityId, n: number, mint = 999) 
   if (row) {
     row.count += n;
     row.bestMintNumber = Math.min(row.bestMintNumber, mint);
-  } else inv[k] = { cardId, rarity, count: n, bestMintNumber: mint };
+  } else inv[k] = { cardId, rarity, count: n, bestMintNumber: mint, firstPulledAt: Date.now() };
 }
 function remove(inv: Inv, it: TradeItem): boolean {
   const k = cardKey(it);
@@ -112,6 +114,8 @@ export function createLocalBackend(): GameBackend {
     trades: { incoming: [], outgoing: [] },
     missions: null,
     wishlist: [],
+    binders: [],
+    covers: {},
   };
 
   function persist() {
@@ -135,6 +139,8 @@ export function createLocalBackend(): GameBackend {
       streak: save.streak,
     };
     state.wishlist = save.wishlist ?? [];
+    state.binders = [...(save.binders ?? [])].sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
+    state.covers = save.covers ?? {};
     state.collection = Object.values(save.inv);
     state.friends = save.bots.map<Friend>((b, i) => ({ id: b.id, name: b.name, online: i !== 2, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30, bot: true }));
     state.feed = save.feed.slice(0, 20);
@@ -352,7 +358,7 @@ export function createLocalBackend(): GameBackend {
     },
     async profile(userId) {
       await delay(60);
-      if (userId === 'me') return { id: 'me', name: 'Toi', bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened };
+      if (userId === 'me') return { id: 'me', name: 'Toi', bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null };
       const i = save.bots.findIndex((b) => b.id === userId);
       if (i < 0) return null;
       return { id: userId, name: save.bots[i].name, bio: ['Je collectionne les brillantes ✨', 'Toujours partant pour un échange', ''][i] || undefined, showcase: [], packsOpened: 30 };
@@ -379,6 +385,66 @@ export function createLocalBackend(): GameBackend {
       grant(STREAK_REWARD);
       sync();
       return STREAK_REWARD;
+    },
+    async setSubthemeCover(subthemeId, cardId) {
+      const covers = { ...(save.covers ?? {}) };
+      if (cardId) {
+        const e = catalogEntry(cardId);
+        if (!e || !save.inv[cardKey({ cardId, rarity: e.rarity as RarityId })]) throw new Error(`Tu n’as pas ${e?.name ?? 'cette carte'}.`);
+        covers[subthemeId] = cardId;
+      } else delete covers[subthemeId];
+      save.covers = covers;
+      sync();
+    },
+    async createBinder(name, cards) {
+      const n = name.replace(/\s+/g, ' ').trim().slice(0, 32);
+      if (!n) throw new Error('Donne un nom à ton classeur.');
+      const b: Binder = { id: `b${save.seq++}`, name: n, cards: cards ?? [], pinned: false, createdAt: Date.now() };
+      (save.binders ??= []).push(b);
+      sync();
+      return b.id;
+    },
+    async renameBinder(id, name) {
+      const b = (save.binders ?? []).find((x) => x.id === id);
+      if (!b) throw new Error('Classeur introuvable.');
+      b.name = name.replace(/\s+/g, ' ').trim().slice(0, 32) || b.name;
+      sync();
+    },
+    async deleteBinder(id) {
+      save.binders = (save.binders ?? []).filter((x) => x.id !== id);
+      sync();
+    },
+    async setBinderCards(id, cards) {
+      const b = (save.binders ?? []).find((x) => x.id === id);
+      if (!b) throw new Error('Classeur introuvable.');
+      for (const c of cards) if (!save.inv[cardKey(c)]) throw new Error(`Tu n’as pas ${catalogEntry(c.cardId)?.name ?? 'cette carte'}.`);
+      b.cards = cards;
+      if (b.coverCardId && !cards.some((c) => c.cardId === b.coverCardId)) b.coverCardId = undefined;
+      sync();
+    },
+    async toggleBinderCard(id, card) {
+      const b = (save.binders ?? []).find((x) => x.id === id);
+      if (!b) throw new Error('Classeur introuvable.');
+      const k = cardKey(card);
+      const has = b.cards.some((c) => cardKey(c) === k);
+      if (has) b.cards = b.cards.filter((c) => cardKey(c) !== k);
+      else {
+        if (!save.inv[k]) throw new Error(`Tu n’as pas ${catalogEntry(card.cardId)?.name ?? 'cette carte'}.`);
+        b.cards = [...b.cards, card];
+      }
+      if (b.coverCardId && !b.cards.some((c) => c.cardId === b.coverCardId)) b.coverCardId = undefined;
+      sync();
+      return !has;
+    },
+    async setBinderCover(id, cardId) {
+      const b = (save.binders ?? []).find((x) => x.id === id);
+      if (!b) throw new Error('Classeur introuvable.');
+      b.coverCardId = cardId;
+      sync();
+    },
+    async pinBinder(id, on) {
+      for (const b of save.binders ?? []) b.pinned = b.id === id ? on : false;
+      sync();
     },
     async signContract(rarity, items) {
       await delay(150);

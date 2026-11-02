@@ -60,6 +60,8 @@ export default defineSchema({
     wishlist: v.optional(v.array(v.string())),
     /** série de connexion (src/core/streak.ts) */
     streak: v.optional(v.object({ count: v.number(), day: v.string(), rewardedAt: v.number() })),
+    /** pochettes de sous-thème choisies à la main (vue Albums) : sous-thème → carte épinglée */
+    covers: v.optional(v.record(v.string(), v.string())),
   })
     .index('by_discordId', ['discordId'])
     .index('by_lastSeenAt', ['lastSeenAt']),
@@ -122,6 +124,20 @@ export default defineSchema({
     rarity: rarityValidator,
     lastMintNumber: v.number(),
   }).index('by_card_rarity', ['cardId', 'rarity']),
+
+  /**
+   * Classeurs perso : nommés librement, une carte peut être dans plusieurs, ordre manuel, couverture choisie,
+   * un seul épinglé (affiché sur le profil, visible des potes).
+   */
+  binders: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    cards: v.array(v.object({ cardId: v.string(), rarity: rarityValidator })),
+    coverCardId: v.optional(v.string()),
+    pinned: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_user', ['userId']),
 
   /**
    * Peer-to-peer card trades between friends.

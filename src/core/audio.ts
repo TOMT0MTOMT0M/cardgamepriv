@@ -4,6 +4,8 @@
  */
 export class Sfx {
   enabled = false;
+  /** volume général 0..1 (curseur de l'en-tête) ; 0,7 = le niveau d'origine */
+  volume = 1;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private verbSend: GainNode | null = null;
@@ -16,7 +18,7 @@ export class Sfx {
       comp.threshold.value = -14;
       comp.ratio.value = 4;
       const master = ctx.createGain();
-      master.gain.value = 0.7;
+      master.gain.value = 0.7 * this.volume;
       master.connect(comp).connect(ctx.destination);
       const verb = ctx.createConvolver();
       verb.buffer = this.impulse(ctx, 2.4, 2.8);
@@ -39,6 +41,12 @@ export class Sfx {
   disable() {
     this.enabled = false;
     void this.ctx?.suspend();
+  }
+
+  /** Volume général (0..1), appliqué tout de suite si le son tourne. */
+  setVolume(v: number) {
+    this.volume = Math.max(0, Math.min(1, v));
+    if (this.master && this.ctx) this.master.gain.setTargetAtTime(0.7 * this.volume, this.ctx.currentTime, 0.03);
   }
 
   private impulse(ctx: AudioContext, seconds: number, decay: number) {

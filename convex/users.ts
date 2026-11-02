@@ -53,7 +53,27 @@ export const me = query({
       /** série de connexion (src/core/streak.ts) — telle qu'enregistrée ; le client affiche aussi « aujourd'hui » via touchStreak */
       streak: user.streak ?? null,
       streakClaimable: streakClaimable(user.streak),
+      /** pochettes de sous-thème épinglées (vue Albums) */
+      covers: user.covers ?? {},
     };
+  },
+});
+
+/** Pochette d'un sous-thème (vue Albums) : la carte de son choix (même une 1★), ou rien = automatique. */
+export const setSubthemeCover = mutation({
+  args: { sessionToken: v.string(), subthemeId: v.string(), cardId: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken, subthemeId, cardId }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const covers = { ...(user.covers ?? {}) };
+    if (cardId) {
+      const e = catalogEntry(cardId);
+      if (!e) throw new ConvexError('Carte inconnue.');
+      const inv = await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', user._id).eq('cardId', cardId).eq('rarity', e.rarity)).unique();
+      if (!inv || inv.count < 1) throw new ConvexError(`Tu n’as pas ${e.name}.`);
+      covers[subthemeId] = cardId;
+    } else delete covers[subthemeId];
+    await ctx.db.patch(user._id, { covers });
+    return covers;
   },
 });
 

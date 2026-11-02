@@ -63,6 +63,8 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   let soundPref = true;
   try {
     soundPref = localStorage.getItem('bebou.sound') !== '0';
+    const v = Number(localStorage.getItem('bebou.volume'));
+    if (Number.isFinite(v) && localStorage.getItem('bebou.volume') !== null) sfx.setVolume(v);
   } catch {
     /* ignore */
   }
@@ -228,6 +230,14 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   };
 
   // sons : préférence mémorisée, bascule depuis l'en-tête
+  (shell as Shell & { setVolume(v: number): void }).setVolume = (v: number) => {
+    sfx.setVolume(v);
+    try {
+      localStorage.setItem('bebou.volume', String(sfx.volume));
+    } catch {
+      /* ignore */
+    }
+  };
   (shell as Shell & { setSound(on: boolean): void }).setSound = (on: boolean) => {
     soundPref = on;
     try {
@@ -240,6 +250,16 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   };
   return shell;
 }
+
+/** Volume mémorisé (0..1). */
+export const soundVolume = (): number => {
+  try {
+    const v = Number(localStorage.getItem('bebou.volume'));
+    return localStorage.getItem('bebou.volume') !== null && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+  } catch {
+    return 1;
+  }
+};
 
 export const soundOn = (): boolean => {
   try {

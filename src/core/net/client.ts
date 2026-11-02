@@ -30,6 +30,8 @@ export interface MeProfile {
   /** série de connexion (src/core/streak.ts) */
   streak?: StreakState | null;
   streakClaimable?: boolean;
+  /** pochettes de sous-thème épinglées (vue Albums) */
+  covers?: Record<string, string>;
 }
 
 export interface FriendPresence {
@@ -70,6 +72,8 @@ export interface NetState {
   trades: { incoming: TradeDoc[]; outgoing: TradeDoc[] };
   /** missions du jour (+ instant du prochain tirage) */
   missions: (MissionsState & { resetAt: number }) | null;
+  /** classeurs perso */
+  binders: Doc<'binders'>[];
 }
 
 type Listener = (state: NetState) => void;
@@ -98,6 +102,7 @@ class GameNetClient {
     bigPulls: null,
     trades: { incoming: [], outgoing: [] },
     missions: null,
+    binders: [],
   };
 
   constructor() {
@@ -212,6 +217,15 @@ class GameNetClient {
       this.unsubscribers.push(
         this.client.onUpdate(api.missions.mine, tokenArg, (m) => {
           this.state.missions = (m as NetState['missions']) ?? null;
+          this.emit();
+        }),
+      );
+
+    // 6 ter. Classeurs perso
+    if (this.sessionToken)
+      this.unsubscribers.push(
+        this.client.onUpdate(api.binders.mine, tokenArg, (b) => {
+          this.state.binders = b ?? [];
           this.emit();
         }),
       );
@@ -402,6 +416,32 @@ class GameNetClient {
   /** Récompense de la série de connexion (jour 7). */
   public async claimStreak() {
     return await this.client!.mutation(api.users.claimStreak, { sessionToken: this.requireToken() });
+  }
+  /** Pochette d'un sous-thème (vue Albums). */
+  public async setSubthemeCover(subthemeId: string, cardId?: string) {
+    return await this.client!.mutation(api.users.setSubthemeCover, { sessionToken: this.requireToken(), subthemeId, cardId });
+  }
+  // ─────────────────────────────── classeurs
+  public async createBinder(name: string, cards?: Array<{ cardId: string; rarity: RarityId }>) {
+    return await this.client!.mutation(api.binders.create, { sessionToken: this.requireToken(), name, cards });
+  }
+  public async renameBinder(binderId: Id<'binders'>, name: string) {
+    return await this.client!.mutation(api.binders.rename, { sessionToken: this.requireToken(), binderId, name });
+  }
+  public async deleteBinder(binderId: Id<'binders'>) {
+    return await this.client!.mutation(api.binders.remove, { sessionToken: this.requireToken(), binderId });
+  }
+  public async setBinderCards(binderId: Id<'binders'>, cards: Array<{ cardId: string; rarity: RarityId }>) {
+    return await this.client!.mutation(api.binders.setCards, { sessionToken: this.requireToken(), binderId, cards });
+  }
+  public async toggleBinderCard(binderId: Id<'binders'>, card: { cardId: string; rarity: RarityId }) {
+    return await this.client!.mutation(api.binders.toggleCard, { sessionToken: this.requireToken(), binderId, card });
+  }
+  public async setBinderCover(binderId: Id<'binders'>, cardId?: string) {
+    return await this.client!.mutation(api.binders.setCover, { sessionToken: this.requireToken(), binderId, cardId });
+  }
+  public async pinBinder(binderId: Id<'binders'>, on: boolean) {
+    return await this.client!.mutation(api.binders.pin, { sessionToken: this.requireToken(), binderId, on });
   }
 
   /** Retours du labo → serveur (une ligne par navigateur, mise à jour à chaque envoi). */

@@ -2,6 +2,7 @@ import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
+import { pinnedOf } from './binders';
 
 /** Profil public d'un joueur : vitrine, devise, statistiques. La collection détaillée reste dans inventory.userCollection. */
 export const profile = query({
@@ -9,6 +10,7 @@ export const profile = query({
   handler: async (ctx, { userId }) => {
     const u = await ctx.db.get(userId);
     if (!u) return null;
+    const pinned = await pinnedOf(ctx, userId);
     return {
       id: u._id,
       name: u.displayName,
@@ -18,6 +20,8 @@ export const profile = query({
       packsOpened: u.totalPacksOpened,
       joinedAt: u._creationTime,
       lastSeenAt: u.lastSeenAt,
+      /** classeur épinglé (visible des potes) */
+      pinnedBinder: pinned ? { id: pinned._id, name: pinned.name, cards: pinned.cards, coverCardId: pinned.coverCardId } : null,
     };
   },
 });

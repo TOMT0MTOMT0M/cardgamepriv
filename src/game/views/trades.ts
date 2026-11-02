@@ -233,6 +233,18 @@ export function createTradesView(backend: GameBackend, shell: Shell): TradesView
     el.querySelector<HTMLElement>('.fname')!.textContent = f.name;
     // en attendant sa collection : des cartes fantômes qui scintillent (la mise en page ne saute pas à l'arrivée)
     gGet.innerHTML = gGive.innerHTML = '<div class="tile mini skel"></div>'.repeat(5);
+    // « Proposer en échange » depuis la fiche d'une carte (collection) : elle est déjà dans « Je donne »
+    const pre = sessionStorage.getItem('bebou.tradeGive');
+    if (pre) {
+      sessionStorage.removeItem('bebou.tradeGive');
+      const [cardId, r] = pre.split(':');
+      const mine = backend.state.collection.find((c) => c.cardId === cardId && c.rarity === r);
+      if (mine) {
+        give.push({ cardId: mine.cardId, rarity: mine.rarity, count: 1 });
+        maxOf.set(`give:${cardKey(mine)}`, mine.count);
+        setSide('give', false);
+      }
+    }
     const my = ++loading;
     try {
       // les cartes inconnues du catalogue (anciennes cartes du labo encore en base) ne s'échangent pas

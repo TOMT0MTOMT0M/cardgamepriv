@@ -10,6 +10,18 @@ export interface PlayerCard {
   rarity: RarityId;
   count: number;
   bestMintNumber: number;
+  /** date d'obtention du premier exemplaire (absent : ancienne sauvegarde) */
+  firstPulledAt?: number;
+}
+
+/** Classeur perso : cartes dans l'ordre choisi, couverture, épinglé sur le profil. */
+export interface Binder {
+  id: string;
+  name: string;
+  cards: Array<{ cardId: string; rarity: RarityId }>;
+  coverCardId?: string;
+  pinned: boolean;
+  createdAt: number;
 }
 
 export interface PackCard {
@@ -121,6 +133,10 @@ export interface GameState {
   missions: (MissionsState & { resetAt: number }) | null;
   /** « envies » : ids de cartes marquées (ordre d'ajout) */
   wishlist: string[];
+  /** classeurs perso (épinglé en premier) */
+  binders: Binder[];
+  /** pochettes de sous-thème épinglées (vue Albums) : sous-thème → carte */
+  covers: Record<string, string>;
 }
 
 /** Profil public (vitrine, devise, statistiques de base). */
@@ -133,6 +149,8 @@ export interface Profile {
   showcase: Array<{ cardId: string; rarity: RarityId }>;
   packsOpened: number;
   joinedAt?: number;
+  /** classeur épinglé (visible des potes) */
+  pinnedBinder?: { id: string; name: string; cards: Array<{ cardId: string; rarity: RarityId }>; coverCardId?: string } | null;
 }
 
 export interface GameBackend {
@@ -161,6 +179,17 @@ export interface GameBackend {
   toggleWish(cardId: string): Promise<void>;
   /** Récompense de la série de connexion (jour 7) : boosters gagnés. */
   claimStreak(): Promise<number>;
+  /** Pochette d'un sous-thème (vue Albums) : une carte possédée, ou rien = automatique. */
+  setSubthemeCover(subthemeId: string, cardId?: string): Promise<void>;
+  // classeurs perso
+  createBinder(name: string, cards?: Array<{ cardId: string; rarity: RarityId }>): Promise<string>;
+  renameBinder(id: string, name: string): Promise<void>;
+  deleteBinder(id: string): Promise<void>;
+  setBinderCards(id: string, cards: Array<{ cardId: string; rarity: RarityId }>): Promise<void>;
+  /** ajoute, ou retire si déjà dedans ; renvoie vrai si ajoutée */
+  toggleBinderCard(id: string, card: { cardId: string; rarity: RarityId }): Promise<boolean>;
+  setBinderCover(id: string, cardId?: string): Promise<void>;
+  pinBinder(id: string, on: boolean): Promise<void>;
 }
 
 export interface ContractResult {

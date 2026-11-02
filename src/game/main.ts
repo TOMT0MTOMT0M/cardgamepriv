@@ -1,5 +1,5 @@
 import './style.css';
-import { createShell, soundOn, type Shell } from './shell';
+import { createShell, soundOn, soundVolume, type Shell } from './shell';
 import { createOpeningScene } from './scenes/opening';
 import { createViewerScene, type ViewerScene } from './scenes/viewer';
 import { createShopView } from './views/shop';
@@ -120,6 +120,7 @@ const PACK_ICON = `<svg class="p-ico" viewBox="0 0 16 20" aria-hidden="true" fil
 
 let meSig = '';
 let lastIncoming = -1;
+let volT = 0;
 function renderMe() {
   const s = backend.state;
   const u = s.user;
@@ -128,7 +129,8 @@ function renderMe() {
   if (sig === meSig) return;
   meSig = sig;
   const demo = s.mode === 'demo' ? `<span class="demo" title="Pas de serveur configuré (ou ?demo) : la collection est stockée dans ce navigateur, les amis sont des robots.">démo hors-ligne</span>` : '';
-  const snd = `<button class="icon snd${soundOn() ? '' : ' off'}" title="${soundOn() ? 'Couper le son' : 'Activer le son'}" aria-label="Son" aria-pressed="${soundOn()}">${SND_ICON}</button>`;
+  // son : le bouton coupe / remet, le curseur à côté règle le volume (il se déplie au survol ou au toucher du bouton)
+  const snd = `<span class="snd-wrap"><button class="icon snd${soundOn() ? '' : ' off'}" title="${soundOn() ? 'Couper le son' : 'Activer le son'}" aria-label="Son" aria-pressed="${soundOn()}">${SND_ICON}</button><span class="vol-pop"><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b></span></span>`;
   if (!u) {
     meEl.innerHTML = `${demo}${snd}${s.mode === 'online' ? `<button class="btn-primary login">Connexion Discord</button>` : ''}${s.authError ? `<span class="err">${esc(s.authError)}</span>` : ''}`;
   } else {
@@ -144,7 +146,26 @@ function renderMe() {
     b.classList.toggle('off', !on); // les ondes s'effacent, la croix apparaît (et l'inverse)
     b.title = on ? 'Couper le son' : 'Activer le son';
     b.setAttribute('aria-pressed', String(on));
+    // téléphone : un toucher ouvre aussi le curseur un instant
+    const w = b.closest<HTMLElement>('.snd-wrap');
+    w?.classList.add('open');
+    clearTimeout(volT);
+    volT = window.setTimeout(() => w?.classList.remove('open'), 2600);
   });
+  const vol = meEl.querySelector<HTMLInputElement>('.vol');
+  vol?.style.setProperty('--v', vol.value);
+  vol?.addEventListener('input', () => {
+    vol.style.setProperty('--v', vol.value);
+    const v = Number(vol.value) / 100;
+    (shell as Shell & { setVolume(v: number): void }).setVolume(v);
+    meEl.querySelector('.vol-n')!.textContent = String(Math.round(v * 100));
+    const b = meEl.querySelector<HTMLElement>('.snd')!;
+    // volume remonté alors que le son était coupé : on le remet
+    if (v > 0 && !soundOn()) b.click();
+    clearTimeout(volT);
+    volT = window.setTimeout(() => b.closest('.snd-wrap')?.classList.remove('open'), 2600);
+  });
+  vol?.addEventListener('change', () => shell?.sfx.tick(1.2, 0.08));
   meEl.querySelector('.user')?.addEventListener('click', () => (location.hash = '#/profil'));
   meEl.querySelector('.msn-btn')?.addEventListener('click', () => missions?.toggle());
   meEl.querySelector('.st-btn')?.addEventListener('click', () => status?.toggle('streak'));

@@ -37,6 +37,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
           <div class="grid mini pf-pick-grid"></div>
         </div>
       </div>
+      <div class="pf-sec pf-binder-sec" hidden><div class="pf-sec-t"><h2 class="pf-binder-t">Classeur</h2><span class="pf-auto">· épinglé</span><span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs" hidden>Mes classeurs</a></span></div><div class="grid mini pf-binder"></div></div>
       <div class="pf-sec"><div class="pf-sec-t"><h2>Raretés</h2></div><div class="pf-rar"></div></div>
       <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>Les autres</h2></div><div class="pf-friends"></div></div>
     </div>
@@ -272,10 +273,31 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       .join('');
   }
 
+  /** classeur épinglé (le mien : depuis l'état ; un ami : depuis son profil), visible des potes */
+  function renderBinder() {
+    const sec = el.querySelector<HTMLElement>('.pf-binder-sec')!;
+    const b = isMe() ? backend.state.binders.find((x) => x.pinned) ?? null : prof?.pinnedBinder ?? null;
+    sec.hidden = !b;
+    el.querySelector<HTMLElement>('.pf-binder-go')!.hidden = !isMe();
+    if (!b) return;
+    el.querySelector<HTMLElement>('.pf-binder-t')!.textContent = b.name;
+    const g = el.querySelector<HTMLElement>('.pf-binder')!;
+    g.replaceChildren();
+    const have = new Map(ownedOf().map((c) => [`${c.cardId}:${c.rarity}`, c]));
+    for (const c of b.cards.slice(0, 24)) {
+      const row = have.get(`${c.cardId}:${c.rarity}`);
+      const t = cardTile(c.cardId, c.rarity, { owned: !!row, count: row?.count });
+      if (row) t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+      g.append(t);
+    }
+    if (b.cards.length > 24) g.append(h('div', 'muted', `+ ${b.cards.length - 24} autres`));
+  }
+
   function renderAll() {
     renderHead();
     renderStats();
     renderCase();
+    renderBinder();
     renderRarities();
     renderFriends();
   }

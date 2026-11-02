@@ -19,6 +19,8 @@ export function createOnlineBackend(): GameBackend {
     trades: { incoming: [], outgoing: [] },
     missions: null,
     wishlist: [],
+    binders: [],
+    covers: {},
   };
 
   const toSealed = (p: NonNullable<NetState['sealedPack']>): SealedPack => ({
@@ -57,7 +59,9 @@ export function createOnlineBackend(): GameBackend {
         }
       : null;
     state.wishlist = n.user?.wishlist ?? [];
-    state.collection = n.collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));
+    state.collection = n.collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber, firstPulledAt: c.firstPulledAt }));
+    state.covers = n.user?.covers ?? {};
+    state.binders = (n.binders ?? []).map((b) => ({ id: b._id, name: b.name, cards: b.cards, coverCardId: b.coverCardId, pinned: b.pinned, createdAt: b.createdAt }));
     state.friends = n.friends
       .filter((f) => f._id !== n.user?._id)
       .map((f) => ({ id: f._id, name: f.displayName, avatarUrl: f.avatarUrl, online: f.online, status: f.statusText, packsOpened: f.totalPacksOpened }));
@@ -129,7 +133,7 @@ export function createOnlineBackend(): GameBackend {
     },
     async profile(userId) {
       const p = await net.profile(userId as Id<'users'>);
-      return p ? { ...p, id: p.id } : null;
+      return p ? { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null } : null;
     },
     async setShowcase(cards) {
       await net.setShowcase(cards);
@@ -147,6 +151,31 @@ export function createOnlineBackend(): GameBackend {
     },
     async claimStreak() {
       return (await net.claimStreak()).reward;
+    },
+    async setSubthemeCover(subthemeId, cardId) {
+      state.covers = await net.setSubthemeCover(subthemeId, cardId);
+      listeners.forEach((fn) => fn(state));
+    },
+    async createBinder(name, cards) {
+      return await net.createBinder(name, cards);
+    },
+    async renameBinder(id, name) {
+      await net.renameBinder(id as Id<'binders'>, name);
+    },
+    async deleteBinder(id) {
+      await net.deleteBinder(id as Id<'binders'>);
+    },
+    async setBinderCards(id, cards) {
+      await net.setBinderCards(id as Id<'binders'>, cards);
+    },
+    async toggleBinderCard(id, card) {
+      return (await net.toggleBinderCard(id as Id<'binders'>, card)).added;
+    },
+    async setBinderCover(id, cardId) {
+      await net.setBinderCover(id as Id<'binders'>, cardId);
+    },
+    async pinBinder(id, on) {
+      await net.pinBinder(id as Id<'binders'>, on);
     },
   };
 }

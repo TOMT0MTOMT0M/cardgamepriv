@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as binders from "../binders.js";
 import type * as cardsCatalog from "../cardsCatalog.js";
 import type * as contracts from "../contracts.js";
 import type * as feed from "../feed.js";
@@ -31,6 +32,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
+  binders: typeof binders;
   cardsCatalog: typeof cardsCatalog;
   contracts: typeof contracts;
   feed: typeof feed;

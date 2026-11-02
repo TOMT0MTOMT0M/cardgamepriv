@@ -1,6 +1,7 @@
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import { MISSION_BONUS, missionLabel, missionsReady, type Mission } from '../../core/missions';
+import { SUBTHEMES, subthemeById } from '../../core/sets/themes';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
 
 /**
@@ -14,6 +15,26 @@ const fmtLeft = (ms: number) => {
   const m = Math.max(1, Math.round(ms / 60000));
   return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
 };
+
+/** Où aller pour avancer cette mission (bouton « Go ») : boutique (bonne fiche), contrats, échanges. */
+function missionLink(m: Mission): { href: string; label: string } {
+  switch (m.kind) {
+    case 'openPack':
+      return { href: `#/boutique/${m.param ?? 'bebou'}`, label: 'Go' };
+    case 'subtheme': {
+      const id = (m.param ?? '').replace(/^group:/, '');
+      const st = subthemeById(id) ?? SUBTHEMES.find((x) => x.group?.id === id);
+      return { href: `#/boutique/${st?.themeId ?? 'bebou'}`, label: 'Go' };
+    }
+    case 'contract':
+    case 'dups':
+      return { href: '#/contrats', label: 'Go' };
+    case 'trade':
+      return { href: '#/echanges', label: 'Go' };
+    default:
+      return { href: '#/boutique/bebou', label: 'Go' };
+  }
+}
 
 export function createMissions(backend: GameBackend, shell: Shell) {
   const pop = h('div', 'missions-pop');
@@ -30,7 +51,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
       <div class="msn-bar"><i style="width:${((m.progress / m.target) * 100).toFixed(1)}%"></i></div>
       <div class="msn-bot"><span class="msn-p">${m.claimed ? 'réclamée ✓' : `${m.progress} / ${m.target}`}</span>
       ${!m.claimed && done ? `<button class="btn-primary msn-claim">Réclamer</button>` : ''}
-      ${!m.claimed && !done && !rerolled ? `<button class="msn-re" title="Changer cette mission (1 fois par jour)">changer</button>` : ''}</div>`;
+      ${!m.claimed && !done ? `<span class="msn-acts">${!rerolled ? `<button class="msn-re" title="Changer cette mission (1 fois par jour)">changer</button>` : ''}<a class="msn-go" href="${missionLink(m).href}" title="Aller là où ça se passe">${missionLink(m).label} →</a></span>` : ''}</div>`;
     const claim = r.querySelector<HTMLButtonElement>('.msn-claim');
     claim?.addEventListener('click', async () => {
       try {
@@ -41,6 +62,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
         toast(errMsg(e), 'err');
       }
     });
+    r.querySelector('.msn-go')?.addEventListener('click', () => toggle(false));
     const re = r.querySelector<HTMLButtonElement>('.msn-re');
     re?.addEventListener('click', async () => {
       try {
