@@ -164,9 +164,14 @@ export default defineSchema({
       v.literal('accepted'),
       v.literal('declined'),
       v.literal('cancelled'),
+      /** contre-proposé : remplacé par un nouvel échange (`counteredBy`) envoyé par le destinataire */
+      v.literal('countered'),
     ),
     /** petit mot joint à la proposition */
     note: v.optional(v.string()),
+    /** contre-proposition : l'échange qu'elle remplace */
+    counterOf: v.optional(v.id('trades')),
+    counteredBy: v.optional(v.id('trades')),
     createdAt: v.number(),
     resolvedAt: v.optional(v.number()),
   })

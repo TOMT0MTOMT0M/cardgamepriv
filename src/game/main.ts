@@ -302,7 +302,7 @@ async function boot() {
 
   const shop = createShopView(backend, shell, opening, (r) => (location.hash = `#/${r}`), getViewer);
   const coll = createCollectionView(backend, shell, getViewer);
-  const trades = createTradesView(backend, shell);
+  const trades = createTradesView(backend, shell, getViewer);
   const contracts = createContractsView(backend, shell, getViewer);
   const profile = createProfileView(backend, shell, getViewer, () => {
     void backend.logout().then(() => (location.hash = '#/'));

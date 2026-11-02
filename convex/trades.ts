@@ -37,6 +37,57 @@ async function ownedCount(ctx: QueryCtx, userId: Id<'users'>, it: TradeItem): Pr
 
 const nameOf = async (ctx: QueryCtx, id: Id<'users'>) => (await ctx.db.get(id))?.displayName ?? '?';
 
+/**
+ * VERROUILLAGE (retours du 3 nov.) : une carte engagée dans une proposition EN ATTENTE (celles que j'offre) ne peut ni
+ * être brûlée en contrat, ni être reproposée ailleurs tant que l'autre n'a pas répondu. cardId:rarity → exemplaires engagés.
+ */
+export async function lockedCards(ctx: QueryCtx, userId: Id<'users'>, except?: Id<'trades'>): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const outgoing = await ctx.db.query('trades').withIndex('by_fromUser_status', (q) => q.eq('fromUserId', userId).eq('status', 'pending')).collect();
+  for (const t of outgoing) {
+    if (except && t._id === except) continue;
+    for (const it of t.offered) out.set(`${it.cardId}:${it.rarity}`, (out.get(`${it.cardId}:${it.rarity}`) ?? 0) + it.count);
+  }
+  return out;
+}
+
+/** Vérifie que `offered` est possédé ET libre (pas déjà engagé dans un autre échange en attente). */
+async function checkOffered(ctx: QueryCtx, userId: Id<'users'>, offered: TradeItem[], except?: Id<'trades'>) {
+  const locked = await lockedCards(ctx, userId, except);
+  for (const item of offered) {
+    const have = await ownedCount(ctx, userId, item);
+    const name = catalogCard(item.cardId)?.name ?? item.cardId;
+    if (have < item.count) throw new ConvexError(`Tu ne possèdes pas assez d’exemplaires de ${name}.`);
+    const busy = locked.get(`${item.cardId}:${item.rarity}`) ?? 0;
+    if (have - busy < item.count) throw new ConvexError(`${name} est déjà engagée dans un autre échange en attente.`);
+  }
+}
+
+const SETTLED = ['accepted', 'declined', 'cancelled', 'countered'] as const;
+
+/** Historique : mes échanges terminés (acceptés, refusés, annulés, contre-proposés), les plus récents d'abord. */
+export const history = query({
+  args: { sessionToken: v.optional(v.string()), limit: v.optional(v.number()) },
+  handler: async (ctx, { sessionToken, limit }) => {
+    const user = await getUserByToken(ctx, sessionToken);
+    if (!user) return [];
+    const max = Math.min(limit ?? 30, 100);
+    const all = [];
+    for (const st of SETTLED) {
+      all.push(...(await ctx.db.query('trades').withIndex('by_toUser_status', (q) => q.eq('toUserId', user._id).eq('status', st)).order('desc').take(max)));
+      all.push(...(await ctx.db.query('trades').withIndex('by_fromUser_status', (q) => q.eq('fromUserId', user._id).eq('status', st)).order('desc').take(max)));
+    }
+    all.sort((a, b) => (b.resolvedAt ?? b.createdAt) - (a.resolvedAt ?? a.createdAt));
+    return Promise.all(all.slice(0, max).map(async (t) => ({ ...t, fromName: await nameOf(ctx, t.fromUserId), toName: await nameOf(ctx, t.toUserId) })));
+  },
+});
+
+/** Envies d'un ami (badges « il la cherche » dans les échanges). */
+export const wishlistOf = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, { userId }) => (await ctx.db.get(userId))?.wishlist ?? [],
+});
+
 export const myTrades = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
@@ -79,11 +130,7 @@ export const propose = mutation({
     checkItems(offered, 'proposée');
     checkItems(requested, 'demandée');
 
-    for (const item of offered) {
-      if ((await ownedCount(ctx, user._id, item)) < item.count) {
-        throw new ConvexError(`Tu ne possèdes pas assez d’exemplaires de ${catalogCard(item.cardId)?.name ?? item.cardId}.`);
-      }
-    }
+    await checkOffered(ctx, user._id, offered);
     for (const item of requested) {
       if ((await ownedCount(ctx, toUserId, item)) < item.count) {
         throw new ConvexError(`${target.displayName} n’a pas (ou plus) ${catalogCard(item.cardId)?.name ?? item.cardId}.`);
@@ -218,6 +265,49 @@ export const respond = mutation({
     });
 
     return { status: 'accepted' as const };
+  },
+});
+
+/**
+ * CONTRE-PROPOSITION : le destinataire modifie l'échange reçu (retire / ajoute des cartes) et le renvoie. L'original
+ * passe en `countered`, un nouvel échange part dans l'autre sens : `offered` = ce que je donne, `requested` = ce que je demande.
+ */
+export const counter = mutation({
+  args: {
+    sessionToken: v.string(),
+    tradeId: v.id('trades'),
+    offered: v.array(tradeItemValidator),
+    requested: v.array(tradeItemValidator),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, { sessionToken, tradeId, offered, requested, note }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const trade = await ctx.db.get(tradeId);
+    if (!trade || trade.status !== 'pending') throw new ConvexError('Échange introuvable ou déjà traité.');
+    if (trade.toUserId !== user._id) throw new ConvexError('Seul le destinataire peut contre-proposer.');
+    if (!offered.length && !requested.length) throw new ConvexError('Échange vide.');
+    checkItems(offered, 'proposée');
+    checkItems(requested, 'demandée');
+    const other = await ctx.db.get(trade.fromUserId);
+    if (!other) throw new ConvexError('Joueur introuvable.');
+    await checkOffered(ctx, user._id, offered);
+    for (const item of requested) {
+      if ((await ownedCount(ctx, other._id, item)) < item.count) throw new ConvexError(`${other.displayName} n’a pas (ou plus) ${catalogCard(item.cardId)?.name ?? item.cardId}.`);
+    }
+    const now = Date.now();
+    const id = await ctx.db.insert('trades', {
+      fromUserId: user._id,
+      toUserId: other._id,
+      offered,
+      requested,
+      status: 'pending',
+      createdAt: now,
+      note: note?.slice(0, 140) || undefined,
+      counterOf: trade._id,
+    });
+    await ctx.db.patch(trade._id, { status: 'countered', resolvedAt: now, counteredBy: id });
+    await bumpMissions(ctx, user, { type: 'trade' });
+    return id;
   },
 });
 

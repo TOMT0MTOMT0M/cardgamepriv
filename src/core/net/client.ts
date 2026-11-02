@@ -388,6 +388,19 @@ class GameNetClient {
   public async cancelTrade(tradeId: Id<'trades'>) {
     return await this.client!.mutation(api.trades.cancel, { sessionToken: this.requireToken(), tradeId });
   }
+  /** Contre-proposition : modifie l'échange reçu et le renvoie. */
+  public async counterTrade(tradeId: Id<'trades'>, offered: TradeItem[], requested: TradeItem[], note?: string) {
+    return await this.client!.mutation(api.trades.counter, { sessionToken: this.requireToken(), tradeId, offered, requested, note });
+  }
+  public async tradeHistory(limit = 30): Promise<TradeDoc[]> {
+    if (!this.client || !this.sessionToken) return [];
+    return (await this.client.query(api.trades.history, { sessionToken: this.sessionToken, limit })) as TradeDoc[];
+  }
+  /** Envies d'un ami (badges croisés des échanges). */
+  public async wishlistOf(userId: Id<'users'>): Promise<string[]> {
+    if (!this.client) return [];
+    return await this.client.query(api.trades.wishlistOf, { userId });
+  }
 
   // ─────────────────────────────── missions & profils
   public async claimMission(missionId: string) {

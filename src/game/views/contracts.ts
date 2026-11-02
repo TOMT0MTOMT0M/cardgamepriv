@@ -1,4 +1,4 @@
-import { collectionSig, type GameBackend, type PlayerCard } from '../backend';
+import { cardKey, collectionSig, lockedCards, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { CONTRACT_COST, autoFill, contractOdds, contractTarget, type ContractItem } from '../../core/contracts';
@@ -6,14 +6,17 @@ import { STAR_RARITIES, type StarRarityId } from '../../core/dropRates';
 import { rarity, type RarityId } from '../../core/rarity';
 import { catalogEntry } from '../../core/sets/themes';
 import { haptics } from '../../core/haptics';
-import { paintedCard, realCardUrl } from '../cardImages';
-import { createRecycleScene, type RecycleScene } from '../scenes/recycle';
+import { paintedCard } from '../cardImages';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 
 /**
  * CONTRATS (façon CS:GO) : on choisit une étoile, on remplit le contrat avec ses doublons (10 / 20 / 50 cartes),
- * on voit d'où viendra la carte (au prorata des sous-thèmes brûlés), on signe : les cartes brûlent, puis la nouvelle
- * carte se révèle en grand dans la visionneuse 3D. Règles : src/core/contracts.ts.
+ * on voit d'où viendra la carte (au prorata des sous-thèmes brûlés), on signe : les cartes BRÛLENT dans leurs cases
+ * (retours du 3 nov. : combustion, braises, flammes), puis la carte obtenue émerge des flammes — mini-révélation dans
+ * la visionneuse 3D, fond dynamique si elle est 5★ / 6★. Règles : src/core/contracts.ts.
+ *
+ * Protections : « Remplir automatiquement » laisse de côté les cartes en envies, dans un classeur, en pochette ou
+ * engagées dans un échange en attente (celles-là ne sont pas brûlables du tout : verrou côté serveur aussi).
  */
 export interface ContractsView {
   el: HTMLElement;
@@ -34,28 +37,6 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   const countOf = (id: string) => seq.reduce((a, x) => a + (x === id ? 1 : 0), 0);
   let busy = false;
   let open = false;
-  /** scène 3D du recyclage (pioche puis dispersion), montée en fond à la première visite de la page */
-  let recycleP: Promise<RecycleScene> | null = null;
-  const getRecycle = () => (recycleP ??= shell.mount('recycle', createRecycleScene()));
-  /** Images 2D des cartes brûlées (déjà peintes pour la plupart : elles étaient dans la grille). */
-  async function cardImages(ids: string[], r: string): Promise<Map<string, HTMLImageElement | null>> {
-    const out = new Map<string, HTMLImageElement | null>();
-    await Promise.all(
-      [...new Set(ids)].map(async (id) => {
-        const url = await realCardUrl(id, r);
-        if (!url) return out.set(id, null);
-        const im = new Image();
-        im.src = url;
-        try {
-          await im.decode();
-          out.set(id, im);
-        } catch {
-          out.set(id, null);
-        }
-      }),
-    );
-    return out;
-  }
   el.innerHTML = `
     <div class="ct-wrap">
       <header class="ct-head">
@@ -79,6 +60,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       <div class="grid mini ct-dups"></div>
       <div class="empty" hidden></div>
     </div>
+    <div class="ct-flames" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="sum-bg ct-bg" hidden><div class="sum-rays"></div><div class="sum-parts"></div></div>
     <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
   const tiersEl = el.querySelector<HTMLElement>('.ct-tiers')!;
   const titleEl = el.querySelector<HTMLElement>('.ct-title')!;
@@ -93,12 +76,28 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   const clearBtn = el.querySelector<HTMLButtonElement>('.clear')!;
   const viewerUi = el.querySelector<HTMLElement>('.viewer-ui')!;
   const vInfo = el.querySelector<HTMLElement>('.v-info')!;
+  const flamesEl = el.querySelector<HTMLElement>('.ct-flames')!;
+  const bgEl = el.querySelector<HTMLElement>('.ct-bg')!;
 
-  /** doublons disponibles (exemplaires au-delà du premier) d'une étoile */
-  function dups(r: string): Array<PlayerCard & { spare: number }> {
+  /** Pourquoi une carte est protégée du remplissage automatique (envie, classeur, pochette) — vide si rien. */
+  function protection(cardId: string): string[] {
+    const st = backend.state;
+    const out: string[] = [];
+    if (st.wishlist.includes(cardId)) out.push('envie');
+    if (st.binders.some((b) => b.cards.some((c) => c.cardId === cardId))) out.push('classeur');
+    if (Object.values(st.covers).includes(cardId) || st.binders.some((b) => b.coverCardId === cardId)) out.push('pochette');
+    return out;
+  }
+  /** doublons disponibles (exemplaires au-delà du premier, moins ceux engagés dans un échange en attente) d'une étoile */
+  function dups(r: string): Array<PlayerCard & { spare: number; locked: number; protect: string[] }> {
+    const locked = lockedCards(backend.state);
     return backend.state.collection
       .filter((c) => c.rarity === r && c.count > 1 && catalogEntry(c.cardId))
-      .map((c) => ({ ...c, spare: c.count - 1 }))
+      .map((c) => {
+        const lk = locked.get(cardKey(c)) ?? 0;
+        return { ...c, spare: Math.max(0, c.count - 1 - lk), locked: lk, protect: protection(c.cardId) };
+      })
+      .filter((c) => c.spare > 0 || c.locked > 0)
       .sort((a, b) => b.spare - a.spare || catalogEntry(a.cardId)!.num - catalogEntry(b.cardId)!.num);
   }
   const items = (): ContractItem[] => {
@@ -115,9 +114,10 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       const have = dups(r).reduce((a, c) => a + c.spare, 0);
       const need = CONTRACT_COST[r]!;
       const to = contractTarget(r)!;
+      const possible = Math.floor(have / need);
       const b = h('button', `ct-tier${r === tier ? ' on' : ''}${have >= need ? ' ready' : ''}`,
         `<span class="ct-tr"><b style="color:${rarity(r).hex}">${stars(r)}</b> → <b style="color:${rarity(to).hex}">${stars(to)}</b></span>
-         <span class="ct-tc">${need} cartes</span><span class="ct-th">${plural(have, 'doublon')}</span>`);
+         <span class="ct-tc">${need} cartes</span><span class="ct-th">${plural(have, 'doublon')}</span><span class="ct-tp${possible ? ' ok' : ''}">${possible ? `${possible} contrat${possible > 1 ? 's' : ''} possible${possible > 1 ? 's' : ''}` : 'pas encore'}</span>`);
       b.style.setProperty('--rc', rarity(to).hex);
       b.addEventListener('click', () => {
         if (busy || tier === r) return;
@@ -214,7 +214,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     clearBtn.disabled = busy || n === 0;
     signBtn.classList.toggle('ready', !busy && n === cost());
     fillEl.classList.toggle('done', n === cost());
-    signBtn.textContent = n === cost() ? 'Signer le contrat' : `Encore ${cost() - n} carte${cost() - n > 1 ? 's' : ''}`;
+    signBtn.textContent = 'Signer le contrat';
+    signBtn.title = n === cost() ? '' : `Encore ${cost() - n} carte${cost() - n > 1 ? 's' : ''} à choisir`;
   }
 
   function renderDups() {
@@ -228,9 +229,12 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       const t = cardTile(c.cardId, tier, { mini: true });
       t.classList.add('ct-dup');
       t.insertAdjacentHTML('beforeend', `<span class="count"></span>`);
+      // protégée (envie, classeur, pochette) : laissée de côté par le remplissage automatique, mais brûlable à la main
+      if (c.protect.length) t.insertAdjacentHTML('beforeend', `<span class="ct-prot" title="Protégée du remplissage automatique : ${esc(c.protect.join(', '))}">${c.protect.includes('envie') ? '♥' : c.protect.includes('pochette') ? '⌂' : '▤'}</span>`);
+      if (c.locked) t.insertAdjacentHTML('beforeend', `<span class="ct-lock" title="${c.locked} exemplaire${c.locked > 1 ? 's' : ''} engagé${c.locked > 1 ? 's' : ''} dans un échange en attente">🔒</span>`);
       t.addEventListener('click', () => {
         if (busy) return;
-        if (c.spare - countOf(c.cardId) <= 0) return toast('Tu gardes toujours un exemplaire de chaque carte.', 'info');
+        if (c.spare - countOf(c.cardId) <= 0) return toast(c.locked ? 'Engagée dans un échange en attente : attends la réponse.' : 'Tu gardes toujours un exemplaire de chaque carte.', 'info');
         if (total() >= cost()) return toast('Le contrat est plein : signe-le, ou retire une carte.', 'info');
         seq.push(c.cardId);
         popAt = seq.length - 1;
@@ -276,11 +280,16 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
 
   el.querySelector('.auto')!.addEventListener('click', () => {
     if (busy) return;
-    seq = autoFill(tier, dups(tier).map((c) => ({ cardId: c.cardId, spare: c.spare }))).flatMap((it) => Array.from({ length: it.count }, () => it.cardId));
+    const all = dups(tier);
+    const free = all.filter((c) => !c.protect.length);
+    seq = autoFill(tier, free.map((c) => ({ cardId: c.cardId, spare: c.spare }))).flatMap((it) => Array.from({ length: it.count }, () => it.cardId));
     popAt = -1;
     if (seq.length) shell.sfx.whoosh(0.3, 0.06);
     if (seq.length === cost()) shell.sfx.chime(2, 0.06);
-    if (total() < cost()) toast(`Pas assez de doublons ${stars(tier)} (${total()} sur ${cost()}).`, 'info');
+    if (total() < cost()) {
+      const skipped = all.length - free.length;
+      toast(`Pas assez de doublons ${stars(tier)} libres (${total()} sur ${cost()})${skipped ? ` · ${skipped} carte${skipped > 1 ? 's' : ''} protégée${skipped > 1 ? 's' : ''} laissée${skipped > 1 ? 's' : ''} de côté (envies, classeurs, pochettes)` : ''}.`, 'info');
+    }
     renderSheet();
     syncDups();
   });
@@ -299,32 +308,18 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     busy = true;
     renderSheet();
     const viewerP = getViewer();
-    const recP = getRecycle();
     const from = tier;
-    const burned = [...seq];
-    // les images des cartes brûlées se préparent pendant que le serveur répond
-    const imgsP = cardImages(burned, from);
     try {
       const res = await busyButton(signBtn, backend.signContract(from, items()));
-      // les cases du contrat s'envolent en 3D : leur position à l'écran est le point de départ de chaque carte
-      const rects = [...slotsEl.querySelectorAll<HTMLElement>('.ct-slot')].map((s) => s.getBoundingClientRect());
       haptics.pulse([30, 40, 30]);
-      shell.sfx.whoosh(0.4, 0.1);
       try {
-        const [rec, images] = await Promise.all([recP, imgsP]);
-        // la page s'efface, la 3D revient au premier plan : les cartes se rassemblent en pioche, puis se défont
-        el.classList.add('recycling');
-        document.body.classList.add('card-open');
-        shell.setDimmed(false);
-        shell.show('recycle');
-        await rec.play({ cards: burned, images, from, to: res.rarity, rects });
+        await burnSlots(res.rarity);
       } catch (e) {
         // la cérémonie ne doit jamais bloquer le contrat (déjà signé côté serveur) : on passe à la carte
-        console.error('[contrats] recyclage', e);
+        console.error('[contrats] combustion', e);
       }
       seq = [];
       popAt = -1;
-      el.classList.remove('recycling');
       if (!el.isConnected) {
         // on a quitté la page pendant la cérémonie : la carte est dans la collection, on le dit simplement
         toast(`Contrat signé : ${res.cardName} rejoint ta collection`, 'ok');
@@ -334,6 +329,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       const rr = rarity(res.rarity);
       pushLayer(closeViewer); // « retour » du téléphone = fermer la carte
       open = true;
+      document.body.classList.add('card-open');
       el.classList.add('viewing');
       viewerUi.hidden = false;
       vInfo.className = `v-info r-${res.rarity}`;
@@ -342,6 +338,25 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
         <div class="ci-meta">${starsHtml(res.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div>
         <div class="ci-sub">n°${fmtN(res.mintNumber)}\u00a0imprimé · contre ${CONTRACT_COST[from]} doublons ${stars(from)}</div>`;
       haptics.pulse(rr.tier >= 4 ? [50, 30, 90] : 40);
+      // fond dynamique (5★ / 6★ obtenue) : lueur radiale de la rareté, rayons, particules de braise
+      if (rr.rank >= 4) {
+        bgEl.className = `sum-bg ct-bg r-${res.rarity}`;
+        bgEl.style.setProperty('--rc', rr.hex);
+        bgEl.style.setProperty('--ra', rr.accentHex);
+        bgEl.style.setProperty('--pa', '#ff9a3c');
+        bgEl.style.setProperty('--k', rr.rank >= 5 ? '1' : '0.75');
+        const parts = bgEl.querySelector<HTMLElement>('.sum-parts')!;
+        parts.replaceChildren();
+        for (let i = 0; i < 22; i++) {
+          const sp = h('i');
+          sp.style.setProperty('--x', `${(Math.random() * 100).toFixed(1)}%`);
+          sp.style.setProperty('--d', `${(4 + Math.random() * 6).toFixed(2)}s`);
+          sp.style.setProperty('--dl', `${(-Math.random() * 8).toFixed(2)}s`);
+          sp.style.setProperty('--s', `${(2 + Math.random() * 4).toFixed(1)}px`);
+          parts.append(sp);
+        }
+        bgEl.hidden = false;
+      }
       shell.setDimmed(false);
       shell.show('viewer');
       void viewer.show(res.cardId, res.rarity);
@@ -349,15 +364,57 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       toast(errMsg(err), 'err');
     } finally {
       busy = false;
+      flamesEl.hidden = true;
+      el.classList.remove('burning');
       if (!open) {
         // (échec réseau, ou toute autre interruption) : la page revient telle quelle
-        el.classList.remove('recycling');
         document.body.classList.remove('card-open');
-        if (shell.active() === 'recycle') (shell.show(null), shell.setDimmed(true));
         render();
       }
     }
   });
+
+  /**
+   * COMBUSTION : chaque case du contrat se consume (le feu part d'un point au hasard et ronge la carte, bord incandescent,
+   * braises qui montent), en cascade ; puis les flammes se lèvent au centre — la carte obtenue en émergera (visionneuse).
+   */
+  async function burnSlots(to: RarityId): Promise<void> {
+    const slots = [...slotsEl.querySelectorAll<HTMLElement>('.ct-slot.full')];
+    el.classList.add('burning');
+    el.style.setProperty('--fire', rarity(to).hex);
+    shell.sfx.rumble(1.4, 0.18);
+    const step = Math.min(0.09, 1.3 / Math.max(1, slots.length));
+    slots.forEach((slot, i) => {
+      setTimeout(() => {
+        slot.style.setProperty('--bx', `${(20 + Math.random() * 60).toFixed(0)}%`);
+        slot.style.setProperty('--by', `${(20 + Math.random() * 60).toFixed(0)}%`);
+        slot.classList.add('burn');
+        for (let k = 0; k < 5; k++) {
+          const em = h('i', 'ember');
+          em.style.setProperty('--ex', `${(10 + Math.random() * 80).toFixed(0)}%`);
+          em.style.setProperty('--ed', `${(0.9 + Math.random() * 0.9).toFixed(2)}s`);
+          em.style.setProperty('--el', `${(Math.random() * 0.6).toFixed(2)}s`);
+          slot.append(em);
+        }
+        if (i % 2 === 0) shell.sfx.tick(0.6 + Math.random() * 0.3, 0.05);
+        if (i % 4 === 0) haptics.pulse(8);
+      }, i * step * 1000);
+    });
+    const burnEnd = slots.length * step * 1000 + 1100;
+    await new Promise((r) => setTimeout(r, burnEnd));
+    // les flammes se lèvent : la nouvelle carte arrive
+    flamesEl.hidden = false;
+    flamesEl.style.setProperty('--fire', rarity(to).hex);
+    shell.sfx.whoosh(0.7, 0.2, true);
+    shell.sfx.crack(0.2);
+    haptics.pulse([20, 30, 60]);
+    await new Promise((r) => setTimeout(r, 900));
+    // la fiche se vide pendant que les flammes couvrent tout
+    for (const slot of slots) {
+      slot.classList.remove('burn');
+      slot.querySelectorAll('.ember').forEach((x) => x.remove());
+    }
+  }
 
   function closeViewer() {
     if (!open) return;
@@ -366,6 +423,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     document.body.classList.remove('card-open');
     el.classList.remove('viewing');
     viewerUi.hidden = true;
+    bgEl.hidden = true;
     shell.show(null);
     shell.setDimmed(true);
     render();
@@ -375,7 +433,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
 
   let sig = '';
   backend.onChange((st) => {
-    const now = collectionSig(st);
+    const now = `${collectionSig(st)}|${st.wishlist.length}|${st.binders.map((b) => b.cards.length + (b.coverCardId ?? '')).join(',')}|${st.trades.outgoing.map((t) => t.id).join(',')}`;
     if (now === sig) return;
     sig = now;
     if (!el.isConnected || open || busy) return;
@@ -393,8 +451,6 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   return {
     el,
     enter() {
-      // la scène du recyclage se prépare en fond (shaders), bien avant la première signature
-      setTimeout(() => void getRecycle(), 600);
       shell.show(null);
       shell.setDimmed(true);
       // première étoile où un contrat est possible, sinon la plus basse

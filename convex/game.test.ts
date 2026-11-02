@@ -455,3 +455,52 @@ describe('retours du 3 nov. : pity, envies, série de connexion', () => {
     await expect(t.mutation(api.users.claimStreak, { sessionToken: alice.token })).rejects.toThrow();
   });
 });
+
+describe('retours du 3 nov. : verrouillage, contre-proposition, historique', () => {
+  const give = (t: Awaited<ReturnType<typeof setup>>['t'], userId: Id<'users'>, cardId: string, count: number) =>
+    t.run((ctx) => ctx.db.insert('inventory', { userId, cardId, rarity: 'common', count, bestMintNumber: 3, foilSeed: 1, firstPulledAt: 0, lastPulledAt: 0 }));
+
+  test('une carte engagée dans un échange en attente ne se repropose pas et ne se brûle pas', async () => {
+    const { t, alice, bob } = await setup();
+    await give(t, alice.userId, 'pkm-bulbizarre', 2);
+    await give(t, bob.userId, 'pkm-salameche', 1);
+    await t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [{ cardId: 'pkm-bulbizarre', rarity: 'common', count: 1 }], requested: [] });
+    // le 2e exemplaire est libre, pas un 3e
+    await expect(t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [{ cardId: 'pkm-bulbizarre', rarity: 'common', count: 2 }], requested: [] })).rejects.toThrow(/engagée/);
+    // contrat : 10 doublons 1★ nécessaires, dont le seul doublon libre est engagé → refusé
+    const dups = Array.from({ length: 10 }, (_, i) => `pkm-dup${i}`);
+    await Promise.all(dups.map((id) => give(t, alice.userId, id, 2)));
+    // (ids inconnus du catalogue : on teste seulement la carte engagée)
+    await expect(t.mutation(api.contracts.sign, { sessionToken: alice.token, rarity: 'common', items: [{ cardId: 'pkm-bulbizarre', count: 1 }, ...dups.slice(0, 9).map((id) => ({ cardId: id, count: 1 }))] })).rejects.toThrow();
+  });
+
+  test('contre-proposition : l’original passe en « countered », un nouvel échange part dans l’autre sens', async () => {
+    const { t, alice, bob } = await setup();
+    await give(t, alice.userId, 'pkm-bulbizarre', 3);
+    await give(t, bob.userId, 'pkm-salameche', 2);
+    const id = await t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [{ cardId: 'pkm-bulbizarre', rarity: 'common', count: 1 }], requested: [{ cardId: 'pkm-salameche', rarity: 'common', count: 1 }] });
+    // bob contre-propose : il donne 1 salameche, demande 2 bulbizarre
+    const cid = await t.mutation(api.trades.counter, { sessionToken: bob.token, tradeId: id, offered: [{ cardId: 'pkm-salameche', rarity: 'common', count: 1 }], requested: [{ cardId: 'pkm-bulbizarre', rarity: 'common', count: 2 }], note: 'deux pour une ?' });
+    const forAlice = await t.query(api.trades.myTrades, { sessionToken: alice.token });
+    expect(forAlice.outgoing).toHaveLength(0);
+    expect(forAlice.incoming).toHaveLength(1);
+    expect(forAlice.incoming[0]._id).toBe(cid);
+    expect(forAlice.incoming[0].counterOf).toBe(id);
+    expect(forAlice.incoming[0].note).toBe('deux pour une ?');
+    // alice seule ne peut pas contre-proposer son propre échange ; bob ne peut pas contre-proposer deux fois
+    await expect(t.mutation(api.trades.counter, { sessionToken: bob.token, tradeId: id, offered: [], requested: [{ cardId: 'pkm-bulbizarre', rarity: 'common', count: 1 }] })).rejects.toThrow();
+    // alice accepte la contre-proposition
+    await t.mutation(api.trades.respond, { sessionToken: alice.token, tradeId: cid, accept: true });
+    const hist = await t.query(api.trades.history, { sessionToken: alice.token });
+    expect(hist.map((h) => h.status).sort()).toEqual(['accepted', 'countered']);
+    expect(hist[0].fromName).toBeDefined();
+  });
+
+  test('envies d’un ami', async () => {
+    const { t, alice, bob } = await setup();
+    const id = CATALOG_CARDS[0].id;
+    await t.mutation(api.users.toggleWish, { sessionToken: bob.token, cardId: id });
+    expect(await t.query(api.trades.wishlistOf, { userId: bob.userId })).toEqual([id]);
+    expect(await t.query(api.trades.wishlistOf, { userId: alice.userId })).toEqual([]);
+  });
+});

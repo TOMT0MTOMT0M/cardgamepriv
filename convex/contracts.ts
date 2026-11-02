@@ -5,6 +5,7 @@ import { requireUser } from './auth';
 import { RARITY_LABEL, RARITY_TIER, rarityValidator, type RarityId } from './cardsCatalog';
 import { CONTRACT_COST, contractProblem, contractTarget, rollContract } from '../src/core/contracts';
 import type { StarRarityId } from '../src/core/dropRates';
+import { lockedCards } from './trades';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -32,7 +33,9 @@ export const sign = mutation({
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .collect();
     const row = (cardId: string, r: RarityId) => inv.find((c) => c.cardId === cardId && c.rarity === r);
-    const problem = contractProblem(rarity, items, (id) => Math.max(0, (row(id, rarity)?.count ?? 0) - 1));
+    // une carte engagée dans un échange en attente n'est pas brûlable (verrouillage, retours du 3 nov.)
+    const locked = await lockedCards(ctx, user._id);
+    const problem = contractProblem(rarity, items, (id) => Math.max(0, (row(id, rarity)?.count ?? 0) - 1 - (locked.get(`${id}:${rarity}`) ?? 0)));
     if (problem) throw new ConvexError(problem);
 
     const now = Date.now();

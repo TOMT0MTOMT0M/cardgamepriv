@@ -7,7 +7,7 @@ import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
 import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, touchStreak, type StreakState } from '../core/streak';
-import { BIG_PULL_RARITIES, cardKey, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeItem, type TradeView } from './backend';
+import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
 
 /**
  * Mode DÉMO (hors-ligne) : même interface que le serveur, tout est stocké dans ce navigateur (localStorage).
@@ -40,7 +40,9 @@ interface Saved {
   /** gros tirages (les miens + ceux des robots) */
   bigPulls?: BigPull[];
   bots: Bot[];
-  trades: Array<TradeView & { status: 'pending' | 'done' }>;
+  trades: Array<TradeView & { status: 'pending' | 'done' | 'accepted' | 'declined' | 'cancelled' | 'countered'; resolvedAt?: number }>;
+  /** envies des robots (badges « il la cherche ») */
+  botWish?: Record<string, string[]>;
   seq: number;
   missions?: MissionsState;
   showcase?: Array<{ cardId: string; rarity: RarityId }>;
@@ -293,7 +295,11 @@ export function createLocalBackend(): GameBackend {
       const bot = save.bots.find((b) => b.id === toId);
       if (!bot) throw new Error('Joueur introuvable.');
       if (!offered.length && !requested.length) throw new Error('Échange vide.');
-      for (const it of offered) if ((save.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`Tu n’as pas assez de ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
+      const locked = lockedCards(state);
+      for (const it of offered) {
+        if ((save.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`Tu n’as pas assez de ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
+        if ((save.inv[cardKey(it)]?.count ?? 0) - (locked.get(cardKey(it)) ?? 0) < it.count) throw new Error(`${catalogEntry(it.cardId)?.name ?? it.cardId} est déjà engagée dans un autre échange en attente.`);
+      }
       for (const it of requested) if ((bot.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${bot.name} n’a pas ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
       const t = { id: `t${save.seq++}`, fromId: 'me', toId, fromName: 'Toi', toName: bot.name, offered, requested, note, createdAt: Date.now(), status: 'pending' as const };
       save.trades.push(t);
@@ -305,12 +311,16 @@ export function createLocalBackend(): GameBackend {
         if (!cur || cur.status !== 'pending') return;
         const value = (l: TradeItem[]) => l.reduce((a, it) => a + it.count * Math.pow(2.2, RANK[it.rarity]), 0);
         const fair = value(offered) >= value(requested) * 0.8;
-        cur.status = 'done';
+        cur.resolvedAt = Date.now();
         if (fair && offered.every((it) => (save.inv[cardKey(it)]?.count ?? 0) >= it.count) && requested.every((it) => (bot.inv[cardKey(it)]?.count ?? 0) >= it.count)) {
+          cur.status = 'accepted';
           offered.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
           requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
           feed('trade', `${bot.name} a accepté ton échange !`);
-        } else feed('trade', `${bot.name} a refusé ton échange (pas assez équilibré).`);
+        } else {
+          cur.status = 'declined';
+          feed('trade', `${bot.name} a refusé ton échange (pas assez équilibré).`);
+        }
         sync();
       }, 2000);
     },
@@ -326,13 +336,66 @@ export function createLocalBackend(): GameBackend {
         feed('trade', `Échange conclu avec ${bot.name} !`);
         bump({ type: 'trade' });
       }
-      t.status = 'done';
+      t.status = accept ? 'accepted' : 'declined';
+      t.resolvedAt = Date.now();
       sync();
     },
     async cancelTrade(id) {
       const t = save.trades.find((x) => x.id === id && x.status === 'pending' && x.fromId === 'me');
-      if (t) t.status = 'done';
+      if (t) ((t.status = 'cancelled'), (t.resolvedAt = Date.now()));
       sync();
+    },
+    async counterTrade(id, offered, requested, note) {
+      const t = save.trades.find((x) => x.id === id && x.status === 'pending' && x.toId === 'me');
+      if (!t) throw new Error('Échange introuvable ou déjà traité.');
+      const bot = save.bots.find((b) => b.id === t.fromId)!;
+      if (!offered.length && !requested.length) throw new Error('Échange vide.');
+      const locked = lockedCards(state);
+      for (const it of offered) if ((save.inv[cardKey(it)]?.count ?? 0) - (locked.get(cardKey(it)) ?? 0) < it.count) throw new Error(`Tu n’as pas (ou plus) ${catalogEntry(it.cardId)?.name ?? it.cardId} de libre.`);
+      for (const it of requested) if ((bot.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${bot.name} n’a pas ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
+      t.status = 'countered';
+      t.resolvedAt = Date.now();
+      const nt = { id: `t${save.seq++}`, fromId: 'me', toId: bot.id, fromName: 'Toi', toName: bot.name, offered, requested, note, createdAt: Date.now(), status: 'pending' as const, counterOf: t.id };
+      save.trades.push(nt);
+      bump({ type: 'trade' });
+      sync();
+      // le robot répond à la contre-proposition comme à une proposition
+      setTimeout(() => {
+        const cur = save.trades.find((x) => x.id === nt.id);
+        if (!cur || cur.status !== 'pending') return;
+        const value = (l: TradeItem[]) => l.reduce((a, it) => a + it.count * Math.pow(2.2, RANK[it.rarity]), 0);
+        const fair = value(offered) >= value(requested) * 0.8;
+        cur.resolvedAt = Date.now();
+        if (fair && offered.every((it) => (save.inv[cardKey(it)]?.count ?? 0) >= it.count) && requested.every((it) => (bot.inv[cardKey(it)]?.count ?? 0) >= it.count)) {
+          cur.status = 'accepted';
+          offered.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
+          requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
+          feed('trade', `${bot.name} a accepté ta contre-proposition !`);
+        } else {
+          cur.status = 'declined';
+          feed('trade', `${bot.name} a refusé ta contre-proposition.`);
+        }
+        sync();
+      }, 2500);
+    },
+    async tradeHistory() {
+      return save.trades
+        .filter((t) => t.status !== 'pending' && t.status !== 'done')
+        .map((t): TradeHistoryItem => ({ ...t, status: t.status as TradeHistoryItem['status'], resolvedAt: t.resolvedAt ?? t.createdAt }))
+        .sort((a, b) => b.resolvedAt - a.resolvedAt)
+        .slice(0, 30);
+    },
+    async friendWishlist(friendId) {
+      // un robot « cherche » quelques-unes de mes cartes qu'il n'a pas (stable d'une visite à l'autre)
+      const bot = save.bots.find((b) => b.id === friendId);
+      if (!bot) return [];
+      save.botWish ??= {};
+      if (!save.botWish[friendId]) {
+        const r = rng(4242 + friendId.length * 7 + Number(friendId.slice(-1)));
+        save.botWish[friendId] = Object.values(save.inv).filter((c) => !bot.inv[cardKey(c)] && r() < 0.35).slice(0, 12).map((c) => c.cardId);
+        persist();
+      }
+      return save.botWish[friendId];
     },
     async claimMission(id) {
       const r = claimMission(currentMissions(save.missions, 'me', Date.now()), id);

@@ -1,6 +1,6 @@
 import { net, type NetState } from '../core/net/client';
 import type { Id } from '../../convex/_generated/dataModel';
-import { BIG_PULL_RARITIES, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeView } from './backend';
+import { BIG_PULL_RARITIES, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
 
 /** Le vrai serveur : Convex (temps réel) + Discord, via le client partagé avec le labo (core/net/client.ts). */
@@ -40,6 +40,7 @@ export function createOnlineBackend(): GameBackend {
     requested: t.requested,
     note: t.note,
     createdAt: t.createdAt,
+    counterOf: t.counterOf,
   });
 
   net.onChange((n) => {
@@ -121,6 +122,16 @@ export function createOnlineBackend(): GameBackend {
     },
     async cancelTrade(id) {
       await net.cancelTrade(id as Id<'trades'>);
+    },
+    async counterTrade(id, offered, requested, note) {
+      await net.counterTrade(id as Id<'trades'>, offered, requested, note);
+    },
+    async tradeHistory() {
+      const rows = await net.tradeHistory(30);
+      return rows.filter((t) => t.status !== 'pending').map((t): TradeHistoryItem => ({ ...toTrade(t), status: t.status as TradeHistoryItem['status'], resolvedAt: t.resolvedAt ?? t.createdAt }));
+    },
+    async friendWishlist(friendId) {
+      return await net.wishlistOf(friendId as Id<'users'>);
     },
     async claimMission(id) {
       return (await net.claimMission(id)).reward;

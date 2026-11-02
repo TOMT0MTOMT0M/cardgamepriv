@@ -94,6 +94,24 @@ export interface TradeView {
   requested: TradeItem[];
   note?: string;
   createdAt: number;
+  /** contre-proposition d'un échange précédent */
+  counterOf?: string;
+}
+
+/** Échange terminé (historique). */
+export interface TradeHistoryItem extends TradeView {
+  status: 'accepted' | 'declined' | 'cancelled' | 'countered';
+  resolvedAt: number;
+}
+
+/**
+ * Cartes engagées dans mes propositions en attente (cardId:rarity → exemplaires) : ni brûlables en contrat, ni
+ * reproposables ailleurs tant que l'autre n'a pas répondu.
+ */
+export function lockedCards(s: GameState): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const t of s.trades.outgoing) for (const it of t.offered) out.set(cardKey(it), (out.get(cardKey(it)) ?? 0) + it.count);
+  return out;
 }
 
 export interface Me {
@@ -166,6 +184,12 @@ export interface GameBackend {
   proposeTrade(toId: string, offered: TradeItem[], requested: TradeItem[], note?: string): Promise<void>;
   respondTrade(id: string, accept: boolean): Promise<void>;
   cancelTrade(id: string): Promise<void>;
+  /** Contre-proposition : modifie un échange reçu (ce que je donne / ce que je demande) et le renvoie. */
+  counterTrade(id: string, offered: TradeItem[], requested: TradeItem[], note?: string): Promise<void>;
+  /** Échanges terminés, les plus récents d'abord. */
+  tradeHistory(): Promise<TradeHistoryItem[]>;
+  /** Envies d'un ami (ids de cartes). */
+  friendWishlist(friendId: string): Promise<string[]>;
   claimMission(id: string): Promise<number>;
   claimMissionBonus(): Promise<number>;
   rerollMission(id: string): Promise<void>;
