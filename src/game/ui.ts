@@ -81,7 +81,6 @@ export function cardTile(cardId: string, r: RarityId, o: { count?: number; owned
     // au clavier : Tab pour aller de carte en carte, Entrée pour l'ouvrir en grand
     t.tabIndex = 0;
     t.setAttribute('role', 'button');
-    if (rr.tier >= 4) t.style.setProperty('--sd', `${(Math.random() * 7).toFixed(2)}s`); // éclats désynchronisés
     t.dataset.real = `${cardId}|${r}`;
     observeRealCard(t);
   }

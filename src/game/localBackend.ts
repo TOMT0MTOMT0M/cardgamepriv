@@ -7,16 +7,31 @@ import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
 import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak, type StreakState } from '../core/streak';
-import { bestCard, cleanCosmetics, statsFrom, type CosmeticChoice, type PlayerStats } from '../core/cosmetics';
+import { PROFILE_MEDIA_DEMO_MAX, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type CosmeticChoice, type PlayerStats } from '../core/cosmetics';
+
+/** démo : photo / bannière importées (data URL), une clé par sorte — hors de la sauvegarde principale (lot P, live 02) */
+const DEMO_MEDIA_LS = 'bebou.demo.media';
+function demoMedia(): { avatarMedia?: string; bannerMedia?: string } {
+  try {
+    return { avatarMedia: localStorage.getItem(`${DEMO_MEDIA_LS}.avatar`) ?? undefined, bannerMedia: localStorage.getItem(`${DEMO_MEDIA_LS}.banner`) ?? undefined };
+  } catch {
+    return {};
+  }
+}
 import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon, type EconState } from '../core/economy';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
+import { BOARD_HOURS, BOARD_MAX_ITEMS, BOARD_MAX_OPEN, listingLive, type BoardState, type ListingOfferView, type ListingView } from './backend';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
 
 /** Plafonds des classeurs : les mêmes que le serveur (convex/binders.ts, recopiés : importer ce fichier tirerait le serveur Convex dans le jeu). */
 const BINDER_MAX = 30;
 const BINDER_CARDS_MAX = 500;
 const BINDER_NAME_MAX = 32;
+/** Amis : mêmes plafonds que le serveur (convex/friends.ts, recopiés pour la même raison) */
+const DEMO_MAX_PENDING = 15;
+const DEMO_DECLINE_COOLDOWN = 24 * 60 * 60 * 1000;
+const foldName = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 
 /**
  * Mode DÉMO (hors-ligne) : même interface que le serveur, tout est stocké dans ce navigateur (localStorage).
@@ -69,7 +84,16 @@ interface Saved {
   eco?: LocalEcoSave;
   /** fil d'activité perso (gros drops, échanges, contrats) */
   activity?: Array<{ id: string; kind: string; message: string; cardId?: string; cardName?: string; rarity?: RarityId; mintNumber?: number; createdAt: number }>;
+  /** AMIS (lot A2) : liens avec les robots (`from` / `to` : 'me' ou id de robot) */
+  friendships?: Array<{ id: string; from: string; to: string; status: 'pending' | 'accepted' | 'declined'; createdAt: number; respondedAt?: number }>;
+  /** un robot t'a déjà envoyé sa demande d'ami (une seule fois par partie de démo) */
+  botAsked?: boolean;
+  /** TABLEAU D'OFFRES (lot T) : annonces (les miennes + celles des robots) et offres */
+  listings?: DemoListing[];
+  listingOffers?: DemoOffer[];
 }
+type DemoListing = Omit<ListingView, 'offerCount' | 'offers' | 'myOffer'>;
+type DemoOffer = ListingOfferView & { listingUserId: string };
 
 function add(inv: Inv, cardId: string, rarity: RarityId, n: number, mint = 999) {
   const k = cardKey({ cardId, rarity });
@@ -134,6 +158,8 @@ export function createLocalBackend(): GameBackend {
     wishlist: [],
     binders: [],
     covers: {},
+    social: { ready: true, friends: [], incoming: [], outgoing: [] },
+    board: { mine: [], offers: [] },
   };
 
   /**
@@ -184,8 +210,11 @@ export function createLocalBackend(): GameBackend {
     const pending = save.trades.filter((t) => t.status === 'pending');
     state.trades = { incoming: pending.filter((t) => t.toId === 'me'), outgoing: pending.filter((t) => t.fromId === 'me') };
     state.missions = { ...currentMissions(save.missions, 'me', now), resetAt: nextMissionReset(now) };
+    state.social = demoSocial(now);
+    state.board = boardSync(now);
     persist();
     listeners.forEach((fn) => fn(state));
+    boardWatchers.forEach((fn) => fn(boardOpen()));
   }
 
   const feed = (kind: string, message: string, rarity?: RarityId, card?: { id: string; name: string; mint?: number }) => {
@@ -200,6 +229,44 @@ export function createLocalBackend(): GameBackend {
     return ACHIEVEMENTS.reduce((n, x) => n + (achievementDone(x, a) ? 1 : 0), 0);
   };
   const myEcon = (): EconState => save.eco?.econ ?? emptyEcon();
+  /**
+   * AMIS du mode démo (lot A2) : Léa et Malo « en ligne », Inès vue il y a 3 h ; leur dernière activité = leur dernier
+   * gros tirage. Inès t'envoie une demande ~8 s après ta première visite de la démo (une seule fois).
+   */
+  const demoSocial = (now: number): GameState['social'] => {
+    const botOf = (id: string) => save.bots.findIndex((b) => b.id === id);
+    const out: GameState['social'] = { ready: true, friends: [], incoming: [], outgoing: [] };
+    for (const l of save.friendships ?? []) {
+      if (l.status === 'declined') continue;
+      const other = l.from === 'me' ? l.to : l.from;
+      const i = botOf(other);
+      if (i < 0) continue;
+      const b = save.bots[i];
+      if (l.status === 'pending') {
+        (l.from === 'me' ? out.outgoing : out.incoming).push({ id: l.id, userId: b.id, name: b.name, createdAt: l.createdAt });
+        continue;
+      }
+      const last = (save.bigPulls ?? []).find((p) => p.userId === b.id);
+      out.friends.push({
+        id: l.id, userId: b.id, name: b.name, bot: true, since: l.respondedAt ?? l.createdAt,
+        lastSeenAt: i === 2 ? now - 3 * 3600_000 : now, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30 + i * 12,
+        lastActivity: last ? { kind: last.rarity === 'mythic' ? 'mythic_pull' : 'pull', message: `${b.name} a obtenu ${last.cardName} [${rarityOf(last.rarity).label} #${last.mintNumber ?? 1}] !`, createdAt: last.createdAt } : null,
+      });
+    }
+    out.friends.sort((a, b) => b.lastSeenAt - a.lastSeenAt);
+    out.incoming.sort((a, b) => b.createdAt - a.createdAt);
+    out.outgoing.sort((a, b) => b.createdAt - a.createdAt);
+    return out;
+  };
+  if (!save.botAsked)
+    setTimeout(() => {
+      const ines = save.bots[2];
+      if (save.botAsked || !ines) return;
+      save.botAsked = true;
+      const links = (save.friendships ??= []);
+      if (!links.some((l) => l.from === ines.id || l.to === ines.id)) links.push({ id: `fr${save.seq++}`, from: ines.id, to: 'me', status: 'pending', createdAt: Date.now() });
+      sync();
+    }, 8000);
   const botStats = (b: Bot, i: number) => statsFrom(Object.values(b.inv), { packsOpened: 30 + i * 12, tradesDone: 3 - i, contractsSigned: i, streak: [12, 3, 0][i] ?? 0 });
 
   /** Un robot propose parfois un échange : un de ses doublons qui te manque contre un des tiens qui lui manque. */
@@ -218,6 +285,138 @@ export function createLocalBackend(): GameBackend {
       note: 'doublon contre doublon ?', createdAt: Date.now(), status: 'pending',
     });
   }
+
+  // ───────────── TABLEAU D'OFFRES du mode démo (lot T — mêmes règles que convex/listings.ts) : les robots publient des
+  // annonces, font des offres sur les tiennes (2 à 12 s après), répondent aux tiennes (acceptent dès 0,8× la valeur,
+  // sinon contre-offre avec moins de cartes, sinon refus) et à tes contre-offres.
+  const boardWatchers = new Set<(l: ListingView[]) => void>();
+  const L = () => (save.listings ??= []);
+  const O = () => (save.listingOffers ??= []);
+  const ACTIVE_OFFER = (o: DemoOffer) => o.status === 'pending' || o.status === 'countered';
+  const invOf = (id: string) => (id === 'me' ? save.inv : save.bots.find((b) => b.id === id)?.inv);
+  const userName = (id: string) => (id === 'me' ? 'Toi' : (save.bots.find((b) => b.id === id)?.name ?? '?'));
+  const cardName = (id: string) => catalogEntry(id)?.name ?? id;
+  const listingOfferView = (o: DemoOffer): ListingOfferView => ({ ...o });
+  const viewOf = (l: DemoListing): ListingView => {
+    const offers = O().filter((o) => o.listingId === l.id);
+    const active = offers.filter(ACTIVE_OFFER);
+    return {
+      ...l,
+      offerCount: active.length,
+      offers: l.userId === 'me' ? (l.status === 'open' ? active : offers.filter((o) => o.status === 'accepted')).map(listingOfferView) : undefined,
+      myOffer: active.find((o) => o.fromId === 'me') ?? null,
+    };
+  };
+  /** cartes que je peux encore engager (hors l'offre `except`, qu'on remplace / conclut) */
+  const myFree = (it: TradeItem, except?: DemoOffer) => (save.inv[cardKey(it)]?.count ?? 0) - (lockedCards(state).get(cardKey(it)) ?? 0) + (except?.offered.find((x) => cardKey(x) === cardKey(it))?.count ?? 0);
+  const checkMine = (items: TradeItem[], except?: DemoOffer) => {
+    for (const it of items) {
+      if ((save.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`Tu ne possèdes pas assez d’exemplaires de ${cardName(it.cardId)}.`);
+      if (myFree(it, except) < it.count) throw new Error(`${cardName(it.cardId)} est déjà engagée dans un échange, une annonce ou une offre en cours.`);
+    }
+  };
+  const checkList = (items: TradeItem[], what: string, allowEmpty = false) => {
+    if (!allowEmpty && !items.length) throw new Error(`Choisis au moins une carte (${what}).`);
+    if (items.length > BOARD_MAX_ITEMS) throw new Error(`${BOARD_MAX_ITEMS} cartes différentes au maximum (${what}).`);
+  };
+  function closeOffersOf(l: DemoListing, now: number, keep?: string) {
+    for (const o of O()) if (o.listingId === l.id && ACTIVE_OFFER(o) && o.id !== keep) ((o.status = 'closed'), (o.resolvedAt = now));
+  }
+  function boardSync(now: number): BoardState {
+    for (const l of L()) if (l.status === 'open' && l.expiresAt <= now) ((l.status = 'expired'), (l.resolvedAt = now), closeOffersOf(l, now));
+    // on oublie ce qui est fini depuis plus de 3 jours
+    save.listings = L().filter((l) => l.status === 'open' || (l.resolvedAt ?? now) > now - 72 * 3600_000);
+    save.listingOffers = O().filter((o) => ACTIVE_OFFER(o) || (o.resolvedAt ?? now) > now - 72 * 3600_000);
+    const recent = now - 48 * 3600_000;
+    return {
+      mine: L().filter((l) => l.userId === 'me' && (l.status === 'open' || (l.resolvedAt ?? now) >= recent)).map(viewOf).sort((a, b) => b.createdAt - a.createdAt),
+      offers: O()
+        .filter((o) => o.fromId === 'me' && (ACTIVE_OFFER(o) || (o.resolvedAt ?? now) >= recent))
+        .map((o) => ({ ...listingOfferView(o), listing: L().find((l) => l.id === o.listingId) ? viewOf(L().find((l) => l.id === o.listingId)!) : null }))
+        .sort((a, b) => (b.resolvedAt ?? b.createdAt) - (a.resolvedAt ?? a.createdAt)),
+    };
+  }
+  const boardOpen = () => {
+    const now = Date.now();
+    return L().filter((l) => listingLive(l, now)).sort((a, b) => b.createdAt - a.createdAt).map(viewOf);
+  };
+  /** l'échange lui-même : tout ou rien (vérifié avant de bouger quoi que ce soit) */
+  function boardConclude(l: DemoListing, o: DemoOffer, give: TradeItem[], want: TradeItem[]) {
+    const a = invOf(l.userId), b = invOf(o.fromId);
+    if (!a || !b) throw new Error('Joueur introuvable.');
+    for (const it of give) if ((a[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${userName(l.userId)} n’a plus ${cardName(it.cardId)}.`);
+    for (const it of want) if ((b[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${userName(o.fromId)} n’a plus ${cardName(it.cardId)}.`);
+    if (o.fromId === 'me') checkMine(want, o);
+    const now = Date.now();
+    give.forEach((it) => (remove(a, it), add(b, it.cardId, it.rarity, it.count)));
+    want.forEach((it) => (remove(b, it), add(a, it.cardId, it.rarity, it.count)));
+    o.status = 'accepted';
+    o.resolvedAt = now;
+    l.status = 'closed';
+    l.resolvedAt = now;
+    closeOffersOf(l, now, o.id);
+    save.trades.push({ id: `t${save.seq++}`, fromId: l.userId, toId: o.fromId, fromName: userName(l.userId), toName: userName(o.fromId), offered: give, requested: want, note: 'Tableau d’offres', createdAt: o.createdAt, status: 'accepted', resolvedAt: now });
+    save.trades_done = (save.trades_done ?? 0) + 1;
+    eco.hooks.onTrade();
+    bump({ type: 'trade' });
+    const other = l.userId === 'me' ? o.fromId : l.userId;
+    feed('trade', `Échange conclu avec ${userName(other)} sur le tableau d’offres !`);
+  }
+  /** un robot compose une offre d'environ `target` en valeur avec ses cartes (de préférence celles qui me manquent) */
+  function botCards(bot: Bot, target: number): TradeItem[] {
+    const pool = Object.values(bot.inv)
+      .filter((c) => c.rarity !== 'secret')
+      .sort((x, y) => Number(!!save.inv[cardKey(x)]) - Number(!!save.inv[cardKey(y)]) || Math.random() - 0.5);
+    const out: TradeItem[] = [];
+    let v = 0;
+    for (const c of [...pool].sort((x, y) => cardsValue([{ rarity: y.rarity, count: 1 }]) - cardsValue([{ rarity: x.rarity, count: 1 }]))) {
+      const cv = cardsValue([{ rarity: c.rarity, count: 1 }]);
+      if (v + cv > target * 1.2 || out.length >= 4) continue;
+      out.push({ cardId: c.cardId, rarity: c.rarity, count: 1 });
+      v += cv;
+      if (v >= target * 0.85) break;
+    }
+    return out;
+  }
+  function botOfferOn(l: DemoListing) {
+    if (!listingLive(l)) return;
+    const busy = new Set(O().filter((o) => o.listingId === l.id && ACTIVE_OFFER(o)).map((o) => o.fromId));
+    const free = save.bots.filter((b) => !busy.has(b.id));
+    const bot = free[Math.floor(Math.random() * free.length)];
+    if (!bot) return;
+    const offered = botCards(bot, cardsValue(l.items) * (0.6 + Math.random() * 0.7));
+    if (!offered.length) return;
+    const notes = ['ça te va ?', 'je peux monter un peu', 'échange rapide ?', undefined];
+    O().push({ id: `lo${save.seq++}`, listingId: l.id, listingUserId: l.userId, fromId: bot.id, fromName: bot.name, offered, note: notes[Math.floor(Math.random() * notes.length)], status: 'pending', createdAt: Date.now() });
+    sync();
+  }
+  function botPostListing(at = Date.now()) {
+    const open = L().filter((l) => l.userId !== 'me' && listingLive(l));
+    if (open.length >= 4) return;
+    const bot = save.bots[Math.floor(Math.random() * save.bots.length)];
+    // ses doublons d'abord (un robot a ~150 cartes pour des milliers au catalogue : peu de doublons)
+    const dups = Object.values(bot.inv).filter((c) => c.rarity !== 'secret').sort((a, b) => Number(b.count >= 2) - Number(a.count >= 2) || Math.random() - 0.5);
+    if (!dups.length) return;
+    const items = dups.slice(0, 1 + Math.floor(Math.random() * 2)).map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: 1 }));
+    // il cherche des cartes que tu as en double (ou n'importe lesquelles qui lui manquent)
+    const mineDups = Object.values(save.inv).filter((c) => !bot.inv[cardKey(c)] && c.rarity !== 'secret');
+    const wanted = mineDups.sort((a, b) => Number(b.count >= 2) - Number(a.count >= 2) || Math.random() - 0.5).slice(0, Math.floor(Math.random() * 3)).map((c) => ({ cardId: c.cardId, rarity: c.rarity }));
+    const hours = BOARD_HOURS[Math.floor(Math.random() * BOARD_HOURS.length)];
+    const notes = ['doublons à échanger', 'je complète mon classeur', 'faites vos offres !', undefined];
+    L().push({ id: `ls${save.seq++}`, userId: bot.id, userName: bot.name, items, wanted, note: notes[Math.floor(Math.random() * notes.length)], status: 'open', createdAt: at, expiresAt: at + hours * 3600_000 });
+  }
+  if (!L().some((l) => l.userId !== 'me')) {
+    const now = Date.now();
+    for (let i = 0; i < 3; i++) botPostListing(now - (i * 47 + 12) * 60_000);
+  }
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    if (Math.random() < 0.3) botPostListing();
+    // de temps en temps, un robot de plus s'intéresse à une de mes annonces
+    const mine = L().filter((l) => l.userId === 'me' && listingLive(l));
+    if (mine.length && Math.random() < 0.25) botOfferOn(mine[Math.floor(Math.random() * mine.length)]);
+    sync();
+  }, 90_000);
 
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const bump = (ev: MissionEvent) => {
@@ -326,6 +525,12 @@ export function createLocalBackend(): GameBackend {
     },
     async logout() {
       save = freshSave();
+      for (const k of ['avatar', 'banner'])
+        try {
+          localStorage.removeItem(`${DEMO_MEDIA_LS}.${k}`);
+        } catch {
+          /* stockage bloqué */
+        }
       sync();
     },
     async preparePack(req: PackRequest) {
@@ -527,7 +732,7 @@ export function createLocalBackend(): GameBackend {
       if (userId === 'me') {
         const st = myStats();
         const top = bestCard(Object.values(save.inv));
-        return { id: 'me', name: 'Toi', bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: ACHIEVEMENTS.length } };
+        return { id: 'me', name: 'Toi', ...demoMedia(), bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: ACHIEVEMENTS.length } };
       }
       const i = save.bots.findIndex((b) => b.id === userId);
       if (i < 0) return null;
@@ -551,6 +756,33 @@ export function createLocalBackend(): GameBackend {
       save.cosmetics = cleanCosmetics(choice, myStats());
       sync();
       return save.cosmetics;
+    },
+    // photo / bannière importées (retours live 02) : data URL dans une clé à part du localStorage (pas dans la sauvegarde
+    // écrite à chaque action), limite plus basse qu'en ligne ; stockage plein ou bloqué → refus clair
+    async setProfileMedia(kind, file) {
+      const key = `${DEMO_MEDIA_LS}.${kind}`;
+      if (!file) {
+        try {
+          localStorage.removeItem(key);
+        } catch {
+          /* stockage bloqué */
+        }
+        return undefined;
+      }
+      const bad = profileMediaProblem(file.size, file.type, PROFILE_MEDIA_DEMO_MAX);
+      if (bad) throw new Error(`${bad}${file.size > PROFILE_MEDIA_DEMO_MAX ? ' (démo ; 2 Mo en ligne)' : ''}`);
+      const url = await new Promise<string>((ok, ko) => {
+        const r = new FileReader();
+        r.onload = () => ok(String(r.result));
+        r.onerror = () => ko(new Error('Lecture du fichier impossible.'));
+        r.readAsDataURL(file);
+      });
+      try {
+        localStorage.setItem(key, url);
+      } catch {
+        throw new Error('Plus de place dans ce navigateur pour ce fichier (démo) : essaie une image plus légère.');
+      }
+      return url;
     },
     async leaderboard() {
       const row = (id: string, name: string, st: ReturnType<typeof myStats>, cosmetics: CosmeticChoice) => ({ id, name, cosmetics: cleanCosmetics(cosmetics, st), uniques: st.uniques, total: st.total, pct: st.total ? (st.uniques / st.total) * 100 : 0, mythics: st.mythics, secrets: st.secrets, packsOpened: st.packsOpened, tradesDone: st.tradesDone, streak: st.streak, achievements: doneCount(st, id === 'me' ? myEcon() : emptyEcon()) });
@@ -640,10 +872,206 @@ export function createLocalBackend(): GameBackend {
       for (const b of save.binders ?? []) b.pinned = b.id === id ? on : false;
       sync();
     },
+    // ── amis (lot A2) : mêmes règles que le serveur (convex/friends.ts) ; les robots acceptent au bout de ~3 s
+    async requestFriend(to) {
+      await delay(120);
+      let bot: Bot | undefined;
+      if (to.userId) {
+        if (to.userId === 'me') throw new Error('C’est toi ! Choisis quelqu’un d’autre.');
+        bot = save.bots.find((b) => b.id === to.userId);
+        if (!bot) throw new Error('Joueur introuvable.');
+      } else {
+        const want = foldName(to.name ?? '');
+        if (!want) throw new Error('Écris le pseudo exact de ton ami.');
+        if (want === 'toi') throw new Error('C’est toi ! Choisis quelqu’un d’autre.');
+        // « Léa » ou « Léa (robot) »
+        bot = save.bots.find((b) => foldName(b.name) === want || foldName(b.name.replace(/\s*\(robot\)$/, '')) === want);
+        if (!bot) throw new Error(`Personne ne s’appelle « ${(to.name ?? '').trim()} » ici. En démo : Léa, Malo ou Inès.`);
+      }
+      const now = Date.now();
+      const links = (save.friendships ??= []);
+      const link = links.find((l) => (l.from === 'me' && l.to === bot!.id) || (l.from === bot!.id && l.to === 'me'));
+      if (link?.status === 'accepted') throw new Error(`${bot.name} est déjà ton ami.`);
+      if (link?.status === 'pending') {
+        if (link.from === 'me') throw new Error(`Demande déjà envoyée à ${bot.name}.`);
+        link.status = 'accepted';
+        link.respondedAt = now;
+        sync();
+        return { status: 'accepted', name: bot.name };
+      }
+      if (link?.status === 'declined' && link.from === 'me' && now - (link.respondedAt ?? link.createdAt) < DEMO_DECLINE_COOLDOWN) throw new Error(`${bot.name} a décliné ta demande il y a peu : réessaie demain.`);
+      if (links.filter((l) => l.from === 'me' && l.status === 'pending').length >= DEMO_MAX_PENDING) throw new Error(`${DEMO_MAX_PENDING} demandes en attente au maximum : attends des réponses (ou annules-en).`);
+      const id = link?.id ?? `fr${save.seq++}`;
+      if (link) Object.assign(link, { from: 'me', to: bot.id, status: 'pending', createdAt: now, respondedAt: undefined });
+      else links.push({ id, from: 'me', to: bot.id, status: 'pending', createdAt: now });
+      sync();
+      // le robot accepte au bout de ~3 s
+      setTimeout(() => {
+        const cur = (save.friendships ?? []).find((l) => l.id === id);
+        if (!cur || cur.status !== 'pending' || cur.from !== 'me') return;
+        cur.status = 'accepted';
+        cur.respondedAt = Date.now();
+        sync(); // (main.ts annonce « X a accepté ta demande d'ami »)
+      }, 3000);
+      return { status: 'pending', name: bot.name };
+    },
+    async acceptFriend(id) {
+      const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'pending' && x.to === 'me');
+      if (!l) throw new Error('Demande introuvable (déjà traitée ?).');
+      l.status = 'accepted';
+      l.respondedAt = Date.now();
+      sync();
+    },
+    async declineFriend(id) {
+      const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'pending' && x.to === 'me');
+      if (!l) throw new Error('Demande introuvable (déjà traitée ?).');
+      l.status = 'declined';
+      l.respondedAt = Date.now();
+      sync();
+    },
+    async cancelFriend(id) {
+      const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'pending' && x.from === 'me');
+      if (!l) throw new Error('Demande introuvable (déjà traitée ?).');
+      save.friendships = (save.friendships ?? []).filter((x) => x !== l);
+      sync();
+    },
+    async removeFriend(id) {
+      const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'accepted');
+      if (!l) throw new Error('Vous n’êtes pas (ou plus) amis.');
+      save.friendships = (save.friendships ?? []).filter((x) => x !== l);
+      sync();
+    },
+    // ── tableau d'offres (lot T) : mêmes règles que convex/listings.ts
+    watchBoard(cb) {
+      boardWatchers.add(cb);
+      cb(boardOpen());
+      return () => boardWatchers.delete(cb);
+    },
+    async createListing(items, wanted, note, hours) {
+      await delay(120);
+      if (!(BOARD_HOURS as readonly number[]).includes(hours)) throw new Error('Durée invalide (24 ou 48 h).');
+      checkList(items, 'proposées');
+      if (L().filter((l) => l.userId === 'me' && listingLive(l)).length >= BOARD_MAX_OPEN) throw new Error(`${BOARD_MAX_OPEN} annonces ouvertes au maximum : retires-en une d’abord.`);
+      checkMine(items);
+      const now = Date.now();
+      const l: DemoListing = { id: `ls${save.seq++}`, userId: 'me', userName: 'Toi', items, wanted, note: note?.trim().slice(0, 140) || undefined, status: 'open', createdAt: now, expiresAt: now + hours * 3600_000 };
+      L().push(l);
+      sync();
+      // les robots s'y intéressent (pas tous, pas tout de suite)
+      setTimeout(() => botOfferOn(l), 2500 + Math.random() * 3000);
+      if (Math.random() < 0.6) setTimeout(() => botOfferOn(l), 9000 + Math.random() * 5000);
+    },
+    async cancelListing(id) {
+      const l = L().find((x) => x.id === id && x.userId === 'me' && x.status === 'open');
+      if (!l) throw new Error('Annonce introuvable ou déjà terminée.');
+      l.status = 'cancelled';
+      l.resolvedAt = Date.now();
+      closeOffersOf(l, l.resolvedAt);
+      sync();
+    },
+    async makeOffer(listingId, offered, note) {
+      await delay(120);
+      const l = L().find((x) => x.id === listingId);
+      if (!l || !listingLive(l)) throw new Error(l?.status === 'open' ? 'Cette annonce a expiré.' : 'Annonce introuvable ou déjà terminée.');
+      if (l.userId === 'me') throw new Error('C’est ton annonce : tu ne peux pas y faire d’offre.');
+      checkList(offered, 'offertes');
+      const prev = O().find((o) => o.listingId === l.id && o.fromId === 'me' && ACTIVE_OFFER(o));
+      checkMine(offered, prev);
+      const now = Date.now();
+      if (prev) ((prev.status = 'withdrawn'), (prev.resolvedAt = now));
+      const o: DemoOffer = { id: `lo${save.seq++}`, listingId: l.id, listingUserId: l.userId, fromId: 'me', fromName: 'Toi', offered, note: note?.trim().slice(0, 140) || undefined, status: 'pending', createdAt: now };
+      O().push(o);
+      sync();
+      // le robot répond : accepte dès 0,8× la valeur, sinon contre-offre (moins de cartes de son annonce), sinon refus
+      setTimeout(() => {
+        if (o.status !== 'pending' || !listingLive(l)) return;
+        const mine = cardsValue(offered), theirs = cardsValue(l.items);
+        try {
+          if (mine >= theirs * 0.8) {
+            boardConclude(l, o, l.items, offered);
+            feed('trade', `${l.userName} a accepté ton offre !`);
+          } else {
+            const give: TradeItem[] = [];
+            for (const it of [...l.items].sort((a, b) => cardsValue([a]) - cardsValue([b]))) if (cardsValue([...give, it]) <= mine * 1.25) give.push(it);
+            if (give.length && give.length < l.items.length) {
+              o.status = 'countered';
+              o.counter = { give, want: offered, note: 'je te donne seulement ça pour ton offre', at: Date.now() };
+            } else ((o.status = 'declined'), (o.resolvedAt = Date.now()), feed('trade', `${l.userName} a refusé ton offre (pas assez équilibrée).`));
+          }
+        } catch {
+          ((o.status = 'declined'), (o.resolvedAt = Date.now()));
+        }
+        sync();
+      }, 2500);
+    },
+    async withdrawOffer(id) {
+      const o = O().find((x) => x.id === id && x.fromId === 'me' && ACTIVE_OFFER(x));
+      if (!o) throw new Error('Offre introuvable ou déjà traitée.');
+      ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()));
+      sync();
+    },
+    async acceptOffer(id) {
+      await delay(120);
+      const o = O().find((x) => x.id === id && x.listingUserId === 'me' && x.status === 'pending');
+      if (!o) throw new Error('Offre introuvable ou déjà traitée.');
+      const l = L().find((x) => x.id === o.listingId);
+      if (!l || !listingLive(l)) throw new Error('Cette annonce a expiré.');
+      boardConclude(l, o, l.items, o.offered);
+      sync();
+    },
+    async declineOffer(id) {
+      const o = O().find((x) => x.id === id && x.listingUserId === 'me' && ACTIVE_OFFER(x));
+      if (!o) throw new Error('Offre introuvable ou déjà traitée.');
+      ((o.status = 'declined'), (o.resolvedAt = Date.now()));
+      sync();
+    },
+    async counterOffer(id, give, want, note) {
+      await delay(120);
+      const o = O().find((x) => x.id === id && x.listingUserId === 'me' && ACTIVE_OFFER(x));
+      if (!o) throw new Error('Offre introuvable ou déjà traitée.');
+      const l = L().find((x) => x.id === o.listingId);
+      if (!l || !listingLive(l)) throw new Error('Cette annonce a expiré.');
+      checkList(give, 'données');
+      checkList(want, 'demandées', true);
+      for (const it of give) if ((l.items.find((x) => cardKey(x) === cardKey(it))?.count ?? 0) < it.count) throw new Error(`${cardName(it.cardId)} ne fait pas partie de ton annonce : une contre-offre ne donne que des cartes de l’annonce.`);
+      const inv = invOf(o.fromId) ?? {};
+      for (const it of want) if ((inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${o.fromName} n’a pas (ou plus) ${cardName(it.cardId)}.`);
+      o.status = 'countered';
+      o.counter = { give, want, note: note?.trim().slice(0, 140) || undefined, at: Date.now() };
+      sync();
+      // le robot accepte la contre-offre si elle reste à peu près équilibrée pour lui
+      setTimeout(() => {
+        if (o.status !== 'countered' || !listingLive(l)) return;
+        if (cardsValue(give) >= cardsValue(want) * 0.8) {
+          try {
+            boardConclude(l, o, give, want);
+            feed('trade', `${o.fromName} a accepté ta contre-offre !`);
+          } catch {
+            ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()));
+          }
+        } else ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()), feed('trade', `${o.fromName} a refusé ta contre-offre.`));
+        sync();
+      }, 2500);
+    },
+    async respondCounter(id, accept) {
+      await delay(120);
+      const o = O().find((x) => x.id === id && x.fromId === 'me' && x.status === 'countered' && x.counter);
+      if (!o) throw new Error('Contre-offre introuvable ou déjà traitée.');
+      if (!accept) {
+        ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()));
+        return sync();
+      }
+      const l = L().find((x) => x.id === o.listingId);
+      if (!l || !listingLive(l)) throw new Error('Cette annonce a expiré.');
+      boardConclude(l, o, o.counter!.give, o.counter!.want);
+      sync();
+    },
     async signContract(rarity, items) {
       await delay(150);
       const target = contractTarget(rarity) as RarityId | null;
-      const problem = contractProblem(rarity, items, (id) => Math.max(0, (save.inv[cardKey({ cardId: id, rarity })]?.count ?? 0) - 1));
+      // (verrouillage, comme le serveur : une carte engagée — échange en attente, annonce, offre — ne se brûle pas)
+      const locked = lockedCards(state);
+      const problem = contractProblem(rarity, items, (id) => Math.max(0, (save.inv[cardKey({ cardId: id, rarity })]?.count ?? 0) - 1 - (locked.get(cardKey({ cardId: id, rarity })) ?? 0)));
       if (!target || problem) throw new Error(problem ?? 'Contrat invalide.');
       for (const it of items) remove(save.inv, { cardId: it.cardId, rarity, count: it.count });
       const ownedIds = new Set(Object.values(save.inv).map((c) => c.cardId));

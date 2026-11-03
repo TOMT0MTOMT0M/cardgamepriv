@@ -21,6 +21,8 @@ import {
   bumpMap,
   sin,
   length,
+  abs,
+  min,
   fwidth,
   mx_noise_float,
   hash,
@@ -49,6 +51,41 @@ export interface HoloOptions {
   lite?: boolean;
 }
 
+/**
+ * Plafonds d'effet partagés par TOUTES les faces holo (retours live 02, §7 : « on ne reconnaît plus le design ni les
+ * couleurs d'origine »). L'effet est porté par le cadre, le liseré, une bande de bordure et les paillettes ; sur
+ * l'illustration (fenêtre du cadre : fond + sujet) le foil ne remplace jamais plus de `image` de la couleur d'origine
+ * (avant : jusqu'à 70 % en visionneuse, 90 % à l'ouverture, sur tout le fond dès épique). Uniforms uniques → changer
+ * une valeur agit sur toutes les cartes sans recompiler. `setHoloReduced` (option « Effets réduits ») les baisse.
+ */
+export const HOLO_LIMITS = {
+  full: { image: 0.2, border: 1, glint: 1 },
+  reduced: { image: 0.08, border: 0.55, glint: 0.4 },
+} as const;
+export const holoFx = {
+  /** part maximale de couleur remplacée par le foil sur l'illustration (0..1) */
+  image: uniform(HOLO_LIMITS.full.image),
+  /** intensité du foil du cadre / de la bordure (0..1) */
+  border: uniform(HOLO_LIMITS.full.border),
+  /** intensité des paillettes et des éclats émissifs (0..1) */
+  glint: uniform(HOLO_LIMITS.full.glint),
+};
+let holoReduced = false;
+/** Option « Effets réduits » (core/fxPref.ts) : plafonds abaissés pour toutes les faces holo, à chaud. */
+export function setHoloReduced(on: boolean) {
+  holoReduced = on;
+  const L = on ? HOLO_LIMITS.reduced : HOLO_LIMITS.full;
+  holoFx.image.value = L.image;
+  holoFx.border.value = L.border;
+  holoFx.glint.value = L.glint;
+}
+export const isHoloReduced = () => holoReduced;
+
+/** Foil de la bande de bordure (bord de la carte → liseré intérieur) par palier visuel : rien pour une commune. */
+const BORDER_FOIL = [0, 0.35, 0.6, 0.85, 1, 1];
+/** Largeur de la bande de bordure (unités carte : 0.02 ≈ 2 mm, juste au-delà du liseré du gabarit Pleine illustration). */
+const BORDER_W = 0.02;
+
 export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions = {}) {
   const U = {
     strength: uniform(0.75),
@@ -62,7 +99,15 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const L = cardLayers(art, { bg: 0.03, subject: 0.014, fg: -0.003 }, undefined, { aoFromFrame: opts.aoFromFrame });
   const winFoil = L.window.mul(L.subject.a.oneMinus()).mul(opts.windowFoil ?? (tier >= 3 ? 1 : 0));
   const subjFoil = L.window.mul(L.subject.a).mul(L.fx.g).mul(opts.subjectFoil ?? (tier >= 5 ? 0.8 : 0));
-  const foil = clamp(L.masks.r.mul(L.window.oneMinus()).add(winFoil).add(subjFoil), 0, 1);
+  // ── zones : cadre (opaque) + bande de bordure = effet plein ; illustration = effet plafonné (holoFx.image)
+  const cuv = uv().sub(0.5).mul(vec2(CARD.w, CARD.h));
+  const cq = abs(cuv).sub(vec2(CARD.w / 2 - CARD.r, CARD.h / 2 - CARD.r));
+  const edgeDist = length(max(cq, 0)).add(min(max(cq.x, cq.y), 0)).sub(CARD.r).negate(); // 0 au bord, > 0 vers l'intérieur
+  const rim = smoothstep(float(BORDER_W), float(BORDER_W * 0.55), edgeDist).mul(BORDER_FOIL[Math.min(5, Math.max(0, tier))]);
+  const frameFoil = clamp(L.masks.r.mul(L.window.oneMinus()).add(rim), 0, 1).mul(holoFx.border);
+  const inner = rim.oneMinus();
+  const imageFoil = clamp(winFoil.add(subjFoil), 0, 1).mul(inner);
+  const foil = clamp(frameFoil.add(imageFoil.mul(holoFx.image)), 0, 1);
   // ── micro-relief du foil : bruit continu (plus de cellules carrées), effacé quand il devient plus petit qu'un pixel
   const fuv = uv().mul(vec2(CARD.w, CARD.h)); // unités carte (1 = 10 cm)
   const P = fuv.mul(170); // grain ≈ 0.6 mm
@@ -101,17 +146,24 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const d = U.thickness.add(pat.sub(0.5).mul(U.amplitude)).add(h3.mul(9)).add(dot(V.xy, vec2(0.7, 0.7)).mul(U.diffraction).mul(900));
   const cosI = max(dot(nTS, V), 0.05);
   const film = saturate3(lite ? thinFilmLUT(d, cosI) : thinFilm(d, cosI, 1.45, 0.95), 1.05);
-  const metal = foil.mul(smoothstep(0.04, 0.5, luminance(L.color))).mul(mix(float(0.55), float(1), L.window)).mul(U.strength);
+  const lumGate = smoothstep(0.04, 0.5, luminance(L.color));
+  // cadre / bordure : comme avant (bordure visible même sur un bord sombre d'illustration)
+  const metalFrame = frameFoil.mul(mix(lumGate, float(1), rim.mul(0.6))).mul(mix(float(0.55), float(1), L.window)).mul(U.strength);
+  // illustration : jamais plus de holoFx.image de la couleur d'origine remplacée, quelle que soit la force du holo
+  // (sujet — personnage, visage — encore plus préservé que le fond : 60 % du plafond)
+  const metalImage = min(winFoil.mul(inner).mul(lumGate).mul(U.strength), holoFx.image).add(min(subjFoil.mul(inner).mul(lumGate).mul(U.strength), holoFx.image.mul(0.6)));
+  const metal = max(metalFrame, metalImage);
   const foilCol = mix(vec3(0.92), film, 0.85).mul(mix(vec3(1), pow(L.color, vec3(0.5)), 0.55)).mul(1.15);
   const m = new MeshPhysicalNodeMaterial();
   m.colorNode = mix(L.color, foilCol, metal);
-  m.metalnessNode = metal;
+  // métal au tiers sur l'illustration : un reflet par-dessus l'image, pas une image assombrie qui reflète le studio
+  m.metalnessNode = max(metalFrame, metalImage.mul(0.35));
   m.roughnessNode = mix(mix(float(0.6), float(0.34), L.window), float(0.22).add(h1.mul(0.06)), metal);
   m.normalNode = bumpMap(L.masks.g, float(0.6), normalMap(vec4(nTS.mul(0.5).add(0.5), 1).xyz));
   m.clearcoatNode = float(0.35);
   m.clearcoatRoughnessNode = float(0.18);
   const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
-  const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint);
+  const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
   m.emissiveNode = film.mul(glint).mul(3.5).add(L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5)).add(film.mul(foil).mul(U.extraEmissive));
   return { material: m, layers: L, uniforms: U, film, foil };
 }

@@ -71,11 +71,6 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 .gm-game span { color: var(--ink-2); font-size: 14px; line-height: 1.45; }
 .gm-glyph { position: absolute; right: 16px; top: 8px; font: 400 64px/1 var(--title); font-style: normal; color: var(--gc); opacity: 0.22; }
 .gm-live { margin-top: auto; font: 500 11px var(--mono); font-style: normal; color: var(--gc); }
-.gm-mini { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); text-decoration: none; color: var(--ink); }
-a.gm-mini:hover { border-color: var(--line-2); }
-.gm-mini span { color: var(--ink-2); font-size: 13px; }
-.gm-wk { font: 400 11px var(--mono); color: var(--ink-2) !important; }
-.gm-wk.claimed { color: var(--ok) !important; text-decoration: line-through; }
 .gm-hub .gm-rules { grid-column: 1 / -1; }
 @media (max-width: 860px) { .gm-hub { grid-template-columns: 1fr; } .gm-game { min-height: 0; } }
 
@@ -282,3 +277,40 @@ a.gm-mini:hover { border-color: var(--line-2); }
 /* GAMES pas encore ouvert (retours live n°1) : page d'attente */
 .gm-soon { min-height: 50vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
 .gm-soon b { font: 500 46px/1 var(--title); font-style: italic; color: var(--rose-l); }
+
+/* ==== RETOURS LIVE 02 — lot P (espace Jeux nettoyé, forge dans la collection, portefeuille) ==== */
+/* accueil : les trois jeux seulement (forge, succès, primes, missions de la semaine sont sortis) */
+@media (min-width: 861px) { .gm-hub .gm-game { min-height: 240px; } }
+@media (max-width: 860px) {
+  .gm-hub { gap: 10px; }
+  .gm-game { padding: 18px 16px 14px; }
+  .gm-game b { font-size: 19px; }
+  .gm-glyph { font-size: 52px; }
+}
+@media (min-width: 861px) and (max-width: 1100px) { .gm-game span { font-size: 13px; } }
+/* forge, onglet de la collection (views/forge.ts) */
+.forge-host[hidden] { display: none; }
+.forge-host { max-width: 1200px; margin: 0 auto; }
+.collection .gm-forge { gap: 10px; }
+.collection .gm-forge > .gm-ph b { font: 500 24px var(--title); font-style: italic; }
+.fg-rate { font: 400 11px var(--mono); }
+.gm-fgrid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.collection .gm-ffoot { padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+.gm-ffoot .btn-primary { flex: none; min-height: 40px; }
+@media (max-width: 600px) {
+  /* sélections rapides sur UNE rangée qui défile (6 puces empilées = 280 px avant la première carte) */
+  .collection .gm-quick { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; scroll-padding-inline: 12px; }
+  .collection .gm-quick::-webkit-scrollbar { display: none; }
+  .collection .gm-quick > * { flex: none; }
+  .collection .fg-rate { display: none; }
+  .gm-fgrid { grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; }
+  .collection .gm-forge { padding: 12px; border-radius: 14px; }
+  .collection .gm-forge > .gm-ph { gap: 4px 10px; }
+  .collection .gm-forge > .gm-ph b { font-size: 21px; }
+  .collection .gm-forge > .gm-ph .muted { font-size: 11px; line-height: 1.4; }
+  .gm-ffoot { font-size: 12.5px; }
+}
+/* portefeuille : « tout » déplie l'historique des pièces sur place */
+button.w-link { border: 0; background: none; padding: 0; cursor: pointer; }
+@media (pointer: coarse) { button.w-link { min-height: 32px; padding: 0 6px; } }
+/* ==== fin lot P ==== */

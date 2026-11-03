@@ -43,12 +43,26 @@ const nameOf = async (ctx: QueryCtx, id: Id<'users'>) => (await ctx.db.get(id))?
  * VERROUILLAGE (retours du 3 nov.) : une carte engagée dans une proposition EN ATTENTE (celles que j'offre) ne peut ni
  * être brûlée en contrat, ni être reproposée ailleurs tant que l'autre n'a pas répondu. cardId:rarity → exemplaires engagés.
  */
-export async function lockedCards(ctx: QueryCtx, userId: Id<'users'>, except?: Id<'trades'>): Promise<Map<string, number>> {
+export async function lockedCards(ctx: QueryCtx, userId: Id<'users'>, except?: Id<'trades'>, exceptOffer?: Id<'listingOffers'>): Promise<Map<string, number>> {
   const out = new Map<string, number>();
+  const lock = (it: TradeItem) => out.set(`${it.cardId}:${it.rarity}`, (out.get(`${it.cardId}:${it.rarity}`) ?? 0) + it.count);
   const outgoing = await ctx.db.query('trades').withIndex('by_fromUser_status', (q) => q.eq('fromUserId', userId).eq('status', 'pending')).collect();
   for (const t of outgoing) {
     if (except && t._id === except) continue;
-    for (const it of t.offered) out.set(`${it.cardId}:${it.rarity}`, (out.get(`${it.cardId}:${it.rarity}`) ?? 0) + it.count);
+    t.offered.forEach(lock);
+  }
+  // TABLEAU D'OFFRES (retours live 02, convex/listings.ts) : cartes de mes annonces ouvertes et de mes offres en cours
+  // (une annonce dont l'heure est passée ne verrouille plus rien, même avant que la tâche planifiée ne la ferme)
+  const now = Date.now();
+  const mine = await ctx.db.query('listings').withIndex('by_user_status', (q) => q.eq('userId', userId).eq('status', 'open')).collect();
+  for (const l of mine) if (l.expiresAt > now) l.items.forEach(lock);
+  for (const st of ['pending', 'countered'] as const) {
+    const offers = await ctx.db.query('listingOffers').withIndex('by_from_status', (q) => q.eq('fromUserId', userId).eq('status', st)).collect();
+    for (const o of offers) {
+      if (exceptOffer && o._id === exceptOffer) continue;
+      const l = await ctx.db.get(o.listingId);
+      if (l && l.status === 'open' && l.expiresAt > now) o.offered.forEach(lock);
+    }
   }
   return out;
 }
@@ -61,7 +75,7 @@ async function checkOffered(ctx: QueryCtx, userId: Id<'users'>, offered: TradeIt
     const name = catalogCard(item.cardId)?.name ?? item.cardId;
     if (have < item.count) throw new ConvexError(`Tu ne possèdes pas assez d’exemplaires de ${name}.`);
     const busy = locked.get(`${item.cardId}:${item.rarity}`) ?? 0;
-    if (have - busy < item.count) throw new ConvexError(`${name} est déjà engagée dans un autre échange en attente.`);
+    if (have - busy < item.count) throw new ConvexError(`${name} est déjà engagée dans un autre échange en attente ou une annonce.`);
   }
 }
 
@@ -176,6 +190,15 @@ export const respond = mutation({
 
     const fromUser = await ctx.db.get(trade.fromUserId);
     if (!fromUser) throw new ConvexError('Joueur expéditeur introuvable.');
+    // verrouillage (retours live 02) : je ne peux pas donner une carte engagée dans MON annonce ou MON offre en cours
+    {
+      const mineLocked = await lockedCards(ctx, user._id);
+      for (const item of trade.requested) {
+        const busy = mineLocked.get(`${item.cardId}:${item.rarity}`) ?? 0;
+        if (busy && (await ownedCount(ctx, user._id, item)) - busy < item.count)
+          throw new ConvexError(`${catalogCard(item.cardId)?.name ?? item.cardId} est engagée dans une de tes annonces ou offres en cours : retire-la d’abord.`);
+      }
+    }
 
     // Verify and transfer offered cards (fromUser -> user)
     for (const item of trade.offered) {

@@ -179,3 +179,21 @@ export const bannerOf = (id?: string) => find(BANNERS, id) ?? BANNERS[0];
 export const frameOf = (id?: string) => find(FRAMES, id) ?? FRAMES[0];
 export const titleOf = (id?: string) => find(TITLES, id);
 export const badgeOf = (id: string) => find(BADGES, id);
+
+/**
+ * Photo de profil / bannière IMPORTÉES par le joueur (retours live 02) : un GIF animé (lu en boucle, muet ; image fixe
+ * en « mouvements réduits ») ou une image fixe. Poids maximal et formats : les mêmes au serveur (convex/profiles.ts) et
+ * au client. Démo : plus bas (le fichier tient dans le localStorage du navigateur).
+ */
+export type ProfileMediaKind = 'avatar' | 'banner';
+export const PROFILE_MEDIA_MAX = 2 * 1024 * 1024;
+export const PROFILE_MEDIA_DEMO_MAX = 700 * 1024;
+export const PROFILE_MEDIA_TYPES = ['image/gif', 'image/png', 'image/jpeg', 'image/webp'];
+/** « 2,4 Mo » */
+export const fmtMo = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`;
+/** Motif de refus (vide = accepté) : le même texte au client (avant l'envoi) et au serveur. */
+export function profileMediaProblem(size: number, type: string | undefined, max = PROFILE_MEDIA_MAX): string {
+  if (!PROFILE_MEDIA_TYPES.includes(type ?? '')) return 'Format refusé : GIF, PNG, JPEG ou WebP seulement.';
+  if (size > max) return `Fichier trop lourd (${fmtMo(size)}) : ${max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`} au maximum.`;
+  return '';
+}

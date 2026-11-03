@@ -1,17 +1,22 @@
 import type { ActivityItem, GameBackend, PlayerCard, Profile } from '../backend';
 import { createLeaderboard } from './leaderboard';
+import { friendBtn } from './friends';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { BADGES, BANNERS, FRAMES, TITLES, badgeOf, bannerOf, frameOf, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats } from '../../core/cosmetics';
+import { BADGES, BANNERS, FRAMES, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
+import { guarded, isPending } from './safety';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 
 /**
  * PROFIL (refonte complète, retours du 3 nov.) — le mien (avatar de l'en-tête) ou celui d'un ami.
- *  - Grande bannière personnalisable, avatar rond + cadre, pseudo + titre + badges + devise.
+ *  - Bannière personnalisable (basse : retours live 02), avatar rond + cadre, pseudo + titre + badges + devise en
+ *    en-tête COMPACT posé dessus ; photo et bannière en GIF importables (« Personnaliser »).
+ *  - La vitrine (12 cartes) tient EN ENTIER au premier écran (téléphone : 4 × 3, ordinateur : 2 rangées de 6) ;
+ *    les chiffres clés viennent après.
  *  - Onglets : TABLEAU (la VITRINE en premier — 12 cartes, 2 rangées de 6 —, puis les stats : succès X/Y, complétion,
  *    6★, série de connexion, complétion par thème, raretés) · COLLECTION (classeur épinglé) · ACTIVITÉ (gros drops,
  *    échanges, contrats) · CLASSEMENT (composant partagé avec la page #/classement).
@@ -32,6 +37,28 @@ const best = (a: PlayerCard, b: PlayerCard) => RANK[b.rarity] - RANK[a.rarity] |
  *  retirer le nombre de `plural()` par regex cassait dès 1 000, à cause de l'espace insécable des milliers) */
 const word = (n: number, one: string, many = `${one}s`) => (n > 1 ? many : one);
 const fmtDate = (t: number) => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+/** « nov. 2026 » (en-tête compact) */
+const fmtMonth = (t: number) => new Date(t).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+/**
+ * Photo / bannière importées (GIF, retours live 02) : un <img> — le GIF se lit tout seul, en boucle, sans son. En
+ * « mouvements réduits » : une image FIXE, la 1re image peinte dans un <canvas> (affichable même si le fichier vient
+ * d'un autre domaine : on ne relit jamais ses pixels).
+ */
+const lessMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const mediaHtml = (url: string) =>
+  lessMotion.matches ? `<canvas class="pf-media pf-still" data-src="${esc(url)}" aria-hidden="true"></canvas>` : `<img class="pf-media" src="${esc(url)}" alt="" decoding="async">`;
+function hydrateStills(root: HTMLElement) {
+  root.querySelectorAll<HTMLCanvasElement>('canvas.pf-still[data-src]').forEach((c) => {
+    const im = new Image();
+    im.onload = () => {
+      c.width = im.naturalWidth;
+      c.height = im.naturalHeight;
+      c.getContext('2d')?.drawImage(im, 0, 0);
+    };
+    im.src = c.dataset.src!;
+    delete c.dataset.src;
+  });
+}
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
   if (s < 60) return 'à l’instant';
@@ -53,11 +80,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         <button role="tab" data-t="tableau" class="on">Tableau</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">Activité</button><button role="tab" data-t="classement">Classement</button>
       </div>
       <div class="pf-pane p-tableau">
-        <div class="pf-keys"></div>
         <div class="pf-sec pf-case-sec">
           <div class="pf-sec-t"><h2>Vitrine</h2><span class="pf-auto"></span><span class="pf-tools"></span></div>
-          <div class="pf-case"></div>
-          <button class="btn-ghost pf-case-more" hidden>Voir les 12 cartes</button>
+          <div class="pf-case all"></div>
           <div class="pf-picker" hidden>
             <div class="pf-pick-t"><span>Choisis une carte pour la case <b class="pf-slot-n">1</b></span><input class="search pf-search" type="search" placeholder="Chercher…" autocomplete="off" spellcheck="false" aria-label="Chercher une de mes cartes"></div>
             <div class="starf pf-pick-stars" aria-label="Filtrer par étoiles"></div>
@@ -65,6 +90,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
             <div class="muted pf-pick-more" hidden></div>
           </div>
         </div>
+        <div class="pf-keys"></div>
         <div class="pf-stats"></div>
         <div class="pf-sec"><div class="pf-sec-t"><h2>Raretés</h2></div><div class="pf-rar"></div></div>
       </div>
@@ -74,7 +100,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       </div>
       <div class="pf-pane p-activite" hidden><div class="pf-activity"></div></div>
       <div class="pf-pane p-classement" hidden></div>
-      <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>Les autres</h2></div><div class="pf-friends"></div></div>
+      <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>Les autres</h2><span class="pf-tools"><a class="btn-ghost pf-amis-go" href="#/amis">Mes amis</a></span></div><div class="pf-friends"></div></div>
       <div class="pf-sec pf-account" hidden><div class="pf-sec-t"><h2>Compte</h2></div><div class="pf-account-b"></div></div>
     </div>
     <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
@@ -84,7 +110,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const cosm = q('.pf-cosm');
   const stats = q('.pf-stats');
   const keysEl = q('.pf-keys');
-  const caseMore = q<HTMLButtonElement>('.pf-case-more');
   const account = q('.pf-account');
   const caseEl = q('.pf-case');
   const autoEl = q('.pf-case-sec .pf-auto');
@@ -115,6 +140,10 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   let cosmDraft: CosmeticChoice = {};
 
   const isMe = () => !who || who === backend.state.user?.id;
+  /** avatar : la photo importée (GIF) d'abord, sinon l'avatar Discord, sinon l'initiale */
+  const avaHtml = (name: string) =>
+    prof?.avatarMedia ? mediaHtml(prof.avatarMedia) : prof?.avatarUrl ? `<img src="${esc(prof.avatarUrl)}" alt="">` : `<span>${esc(name.slice(0, 1) || '?')}</span>`;
+  lessMotion.addEventListener('change', () => el.isConnected && renderHead());
   const ownedOf = () => (isMe() ? backend.state.collection : cards).filter((c) => catalogEntry(c.cardId));
   /** stats affichées : celles du serveur, sinon (mon profil, avant la réponse) calculées localement */
   const statsOf = (): PlayerStats =>
@@ -161,22 +190,33 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const title = titleOf(cos.title);
     banner.style.background = bn.css ?? '';
     banner.dataset.banner = bn.id;
+    // bannière importée (GIF ou image, retours live 02) : par-dessus la bannière cosmétique, sous le dégradé
+    const bUrl = prof?.bannerMedia ?? '';
+    const bm = banner.querySelector<HTMLElement>('.pf-bn-media');
+    if ((bm?.dataset.url ?? '') !== bUrl || (bm && bm.dataset.still !== String(lessMotion.matches))) {
+      bm?.remove();
+      if (bUrl) {
+        banner.insertAdjacentHTML('afterbegin', `<div class="pf-bn-media" data-url="${esc(bUrl)}" data-still="${lessMotion.matches}">${mediaHtml(bUrl)}</div>`);
+        hydrateStills(banner);
+      }
+    }
+    banner.classList.toggle('has-media', !!bUrl);
     const bb = q<HTMLButtonElement>('.pf-banner-btn');
     bb.hidden = !me;
     const fresh = me && !cosmOpen ? newCosmetics().size : 0;
     bb.innerHTML = cosmOpen ? 'Fermer' : `Personnaliser${fresh ? ` <i class="pf-new">${fresh} nouveau${fresh > 1 ? 'x' : ''}</i>` : ''}`;
-    const ava = prof?.avatarUrl ? `<img src="${esc(prof.avatarUrl)}" alt="">` : `<span>${esc(name.slice(0, 1) || '?')}</span>`;
+    const ava = avaHtml(name);
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
+    // en-tête compact (retours live 02) : pseudo, puis titre + badges sur UNE ligne, puis devise · « depuis » sur une ligne
     head.innerHTML = `<div class="pf-ava-wrap frame-${fr.id}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ava">${ava}</div>${fr.id !== 'none' ? `<span class="pf-frame-l">${esc(fr.label)}</span>` : ''}</div>
       <div class="pf-id">
         <div class="pf-eyebrow">${me ? 'Mon profil' : 'Profil'}</div>
         <h1>${esc(name)}</h1>
-        ${title ? `<div class="pf-title">${esc(title.label)}</div>` : ''}
-        ${badges.length ? `<div class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}">${b.glyph ?? '●'} <i>${esc(b.label)}</i></span>`).join('')}</div>` : ''}
-        <div class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore de devise.</i>' : ''}</div>
-        ${prof?.joinedAt ? `<div class="pf-since">Joue depuis le ${fmtDate(prof.joinedAt)}</div>` : ''}
+        ${title || badges.length ? `<div class="pf-tline">${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${b.glyph ?? '●'} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
+        <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore de devise.</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="Joue depuis le ${fmtDate(prof.joinedAt)}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier ma devise">✎ Devise</button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier ma devise">✎ Devise</button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
+    hydrateStills(head);
     head.querySelector('.pf-bio-edit')?.addEventListener('click', editBio);
     // action de compte (déconnexion / remise à zéro de la démo) : en bas de page, plus sous le pseudo (audit UX3-16)
     account.hidden = !me;
@@ -273,6 +313,47 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   /** état enregistré à l'ouverture du panneau (pour le point « modifications non enregistrées ») */
   let cosmSaved = '';
   const cosmKey = (c: CosmeticChoice) => JSON.stringify([c.banner ?? BANNERS[0].id, c.frame ?? 'none', c.title ?? '', c.badges ?? []]);
+  /**
+   * Photo de profil / bannière À TOI (retours live 02) : GIF animé (ou image) importé, ≤ 2 Mo (démo : 700 Ko),
+   * enregistré tout de suite (indépendant d'« Enregistrer » : ce n'est pas un cosmétique à débloquer). Sans fichier :
+   * l'avatar Discord et la bannière choisie ci-dessous.
+   */
+  function mediaBlock() {
+    const max = backend.state.mode === 'demo' ? PROFILE_MEDIA_DEMO_MAX : PROFILE_MEDIA_MAX;
+    const row = (kind: ProfileMediaKind, label: string, has: boolean) =>
+      `<div class="cs-md-row"><span class="cs-md-l">${label}${has ? ' <b>✓ importée</b>' : ''}</span><button class="btn-ghost cs-md-b" data-media="${kind}"${isPending(`media-${kind}`) ? ' disabled' : ''}>${has ? 'Remplacer' : 'Importer un GIF'}</button>${has ? `<button class="btn-ghost cs-md-x" data-media="${kind}" data-rm="1"${isPending(`media-${kind}`) ? ' disabled' : ''} aria-label="Retirer ${kind === 'avatar' ? 'la photo' : 'la bannière'} importée">Retirer</button>` : ''}</div>`;
+    return `<div class="cs-media"><div class="cs-t">Photo et bannière à toi <small>GIF animé (ou PNG, JPEG, WebP) · ${max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`} max · enregistré tout de suite · ${lessMotion.matches ? 'image fixe : « mouvements réduits » est activé' : 'lu en boucle, sans son'}</small></div>${row('avatar', 'Photo de profil', !!prof?.avatarMedia)}${row('banner', 'Bannière', !!prof?.bannerMedia)}</div>`;
+  }
+  function mediaAction(btn: HTMLButtonElement) {
+    const kind = btn.dataset.media as ProfileMediaKind;
+    const field = kind === 'avatar' ? 'avatarMedia' : 'bannerMedia';
+    const send = (file: File | null) =>
+      void guarded(`media-${kind}`, btn, async () => {
+        try {
+          const url = await busyButton(btn, backend.setProfileMedia(kind, file));
+          prof = prof ? { ...prof, [field]: url } : prof;
+          toast(file ? (kind === 'avatar' ? 'Photo de profil enregistrée' : 'Bannière enregistrée') : kind === 'avatar' ? 'Photo retirée : ton avatar Discord revient' : 'Bannière importée retirée', 'ok');
+          shell.sfx.chime(2, 0.06);
+        } catch (e) {
+          toast(errMsg(e), 'err');
+        }
+        renderHead();
+        if (cosmOpen) renderCosm();
+      });
+    if (btn.dataset.rm) return send(null);
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = PROFILE_MEDIA_TYPES.join(',');
+    inp.addEventListener('change', () => {
+      const f = inp.files?.[0];
+      if (!f) return;
+      // refus clair AVANT l'envoi (le serveur revérifie)
+      const bad = profileMediaProblem(f.size, f.type, backend.state.mode === 'demo' ? PROFILE_MEDIA_DEMO_MAX : PROFILE_MEDIA_MAX);
+      if (bad) return void toast(bad, 'err');
+      send(f);
+    });
+    inp.click();
+  }
   function renderCosm() {
     const st = statsOf();
     const achS = achievementStats(st, emptyEcon());
@@ -304,15 +385,18 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const fr = frameOf(cosmDraft.frame);
     const title = titleOf(cosmDraft.title);
     const badges = (cosmDraft.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
-    const ava = prof?.avatarUrl ? `<img src="${esc(prof.avatarUrl)}" alt="">` : `<span>${esc(name.slice(0, 1) || '?')}</span>`;
+    const ava = avaHtml(name);
     const dirty = cosmKey(cosmDraft) !== cosmSaved;
     const summary = [bn.label, fr.id !== 'none' ? `Cadre ${fr.label}` : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
     cosm.innerHTML =
       `<div class="cs-head"><b>Personnaliser mon profil</b><span class="muted">Tout se débloque en jouant — rien ne s’achète.</span></div>` +
-      `<div class="cs-preview" aria-label="Aperçu"><div class="cs-pv-bn" style="background:${bn.css ?? ''}"></div><div class="pf-ava-wrap frame-${fr.id}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ava">${ava}</div></div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
+      `<div class="cs-preview" aria-label="Aperçu"><div class="cs-pv-bn" style="background:${bn.css ?? ''}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div><div class="pf-ava-wrap frame-${fr.id}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ava">${ava}</div></div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
+      mediaBlock() +
       `<div class="seg cs-tabs" role="tablist" aria-label="Que personnaliser">${TABS.map((t) => `<button role="tab" data-tab="${t.id}" class="${t.id === cosmTab ? 'on' : ''}" aria-selected="${t.id === cosmTab}">${t.label} <em>${t.okSet.size}/${t.items.length}</em>${[...cosmNew].some((k) => k.startsWith(`${t.id}:`)) ? '<i class="pf-new-dot" aria-label="nouveau"></i>' : ''}</button>`).join('')}</div>` +
       `<div class="cs-group"><div class="cs-t">${tabDef.label} <small>${tabDef.hint} · ${okSet.size}/${tabDef.items.length} débloqué${okSet.size > 1 ? 's' : ''}</small></div><div class="cs-list">${list}</div></div>` +
       `<div class="cs-order"></div><div class="cs-actions"><span class="cs-sum">${dirty ? '<i class="cs-dirty" aria-hidden="true"></i>' : ''}<span>${esc(summary)}${dirty ? ' · <b>non enregistré</b>' : ''}</span></span><button class="btn-ghost cs-cancel">Annuler</button><button class="btn-primary cs-save"${dirty ? '' : ' disabled'}>Enregistrer</button></div>`;
+    hydrateStills(cosm);
+    cosm.querySelectorAll<HTMLButtonElement>('[data-media]').forEach((b) => b.addEventListener('click', () => mediaAction(b)));
     cosm.querySelectorAll<HTMLButtonElement>('.cs-tabs button').forEach((b) =>
       b.addEventListener('click', () => {
         cosmTab = b.dataset.tab as CosmTab;
@@ -409,7 +493,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const pct = (st.uniques / Math.max(1, st.total || PUBLIC_CARD_COUNT)) * 100;
     const sd = prof?.streakDay ?? ((st.streak - 1) % STREAK_CYCLE) + 1;
     const cell = (v: string, l: string, cls = '') => `<div class="pf-stat ${cls}"><b>${v}</b><span>${l}</span></div>`;
-    // les 3 chiffres clés AVANT la vitrine (complétion, 6★, succès), le détail après (audit UX3-16)
+    // les 3 chiffres clés (complétion, 6★, succès) juste APRÈS la vitrine (retours live 02 : la vitrine d'abord), puis le détail
     keysEl.innerHTML =
       cell(fmtPct(pct), `${fmtN(st.uniques)} / ${fmtN(st.total || PUBLIC_CARD_COUNT)} cartes uniques`, 'big') +
       cell(`✺ ${fmtN(st.mythics)}`, `${word(st.mythics, 'carte')} 6★`, 'mythic');
@@ -464,9 +548,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     tools.innerHTML = me ? (editing ? `<button class="btn-ghost pf-cancel">Annuler</button><button class="btn-primary pf-save">Enregistrer</button>` : `<button class="btn-ghost pf-edit">Choisir mes cartes</button>`) : '';
     caseEl.innerHTML = '';
     caseEl.classList.toggle('editing', editing);
-    // téléphone : 6 cases (2 rangées) puis « Voir les 12 » (CSS sous 760 px), toutes en édition
-    caseEl.classList.toggle('all', editing || caseAll);
-    caseMore.hidden = editing || caseAll || list.filter(Boolean).length <= 6;
+    // retours live 02 : les 12 cases toujours (plus de « Voir les 12 » au téléphone), au premier écran
     for (let i = 0; i < SLOTS; i++) {
       const c = list[i];
       const wrap = h('div', `pf-slot${editing && i === slot ? ' sel' : ''}`);
@@ -515,11 +597,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       }
     });
   }
-  let caseAll = false;
-  caseMore.addEventListener('click', () => {
-    caseAll = true;
-    renderCase();
-  });
   function stopEditing() {
     editing = false;
     picker.hidden = true;

@@ -3,12 +3,14 @@ import type { Shell } from '../shell';
 import type { EcoSnapshot } from '../eco';
 import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_TOTAL, achievementReward, calendarReward, fmtCoins } from '../../core/economy';
 import { GAMES_OPEN } from '../../core/games';
-import { CLOSE_X, busyButton, errMsg, esc, h, keepFocus, loginPrompt, panelHidden, panelShown, toast } from '../ui';
+import { CLOSE_X, busyButton, errMsg, esc, fmtN, h, keepFocus, loginPrompt, panelHidden, panelShown, toast } from '../ui';
+import { forgeCount } from './forge';
 import '../games.css';
 
 /**
  * PORTEFEUILLE : pastille de pièces dans l'en-tête (+N qui s'envole à chaque gain) et son panneau — calendrier de
- * connexion (30 jours), primes de complétion et succès à encaisser, derniers mouvements.
+ * connexion (30 jours), primes de complétion et succès à encaisser, lien vers la forge (collection), mouvements
+ * (« tout » déplie l'historique complet ici : il n'est plus dans l'espace Jeux).
  */
 export const COIN_ICON = `<svg class="coin-ico" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="url(#cg)" stroke="#7a5212" stroke-width="1.1"/><circle cx="10" cy="10" r="5.4" fill="none" stroke="#fff3c4" stroke-opacity=".55" stroke-width=".9"/><path d="M10 6.6v6.8M8 8.2c0-.9.9-1.5 2-1.5s2 .5 2 1.3c0 1.9-4 1-4 2.9 0 .8.9 1.4 2 1.4s2-.6 2-1.5" fill="none" stroke="#5a3a08" stroke-width="1.15" stroke-linecap="round"/><defs><radialGradient id="cg" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ffe7a1"/><stop offset=".55" stop-color="#f2c46d"/><stop offset="1" stop-color="#b47a1e"/></radialGradient></defs></svg>`;
 export const coinsHtml = (n: number, cls = '') => `<span class="coins-v ${cls}">${COIN_ICON}<b>${fmtCoins(n)}</b></span>`;
@@ -23,6 +25,7 @@ export function createWallet(backend: GameBackend, shell: Shell) {
   document.body.append(veil, pop);
   let on = false;
   let hist: Awaited<ReturnType<GameBackend['eco']['coinHistory']>> | null = null;
+  let histAll = false;
 
   function calendarHtml(s: EcoSnapshot) {
     const c = s.calendar;
@@ -52,18 +55,23 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     const achTotal = ach.reduce((a, x) => a + achievementReward(x), 0);
     // GAMES pas encore ouvert (retours live n°1) : pas de liens vers l'espace Jeux, sauf pour les admins
     const games = GAMES_OPEN || s.isAdmin;
+    // la forge n'est plus dans l'espace Jeux (retours live 02) : elle est dans la collection, ouverte en même temps
+    // que les jeux (admins seulement d'ici là, comme avant)
+    const forgeN = forgeCount(backend.state);
     pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b>${games ? '<a href="#/jeux" class="w-link">Espace Jeux →</a>' : ''}${CLOSE_X}</div>
       <div class="w-bal">${coinsHtml(s.coins, 'big')}<span class="muted">pièces 100 % virtuelles · jamais échangeables contre des cartes</span></div>
       ${calendarHtml(s)}
       <div class="w-sec"><div class="w-h"><b>À encaisser</b></div>
         <div class="w-row"><span>Complétion${s.completions.length ? ` · ${esc(s.completions.slice(0, 2).map((c) => c.label).join(', '))}${s.completions.length > 2 ? '…' : ''}` : ' : 5 pièces × cartes de chaque album bouclé'}</span>${s.completions.length ? `<button class="btn-primary w-comp">+${fmtCoins(compTotal)}</button>` : '<span class="muted">rien</span>'}</div>
         <div class="w-row"><span>Succès${ach.length ? ` · ${esc(ach.slice(0, 2).map((a) => a.label).join(', '))}${ach.length > 2 ? '…' : ''}` : ` : ${s.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus`}</span>${ach.length ? `<button class="btn-primary w-ach">+${fmtCoins(achTotal)}</button>` : '<a class="w-link" href="#/succes">voir</a>'}</div>
-        ${games ? '<div class="w-row"><span>Doublons à brûler</span><a class="w-link" href="#/jeux/forge">la forge →</a></div>' : ''}
+        ${games ? `<div class="w-row"><span>Doublons à brûler${forgeN ? ` · ${fmtN(forgeN)}` : ''}</span><a class="w-link" href="#/collection/forge">la forge →</a></div>` : ''}
       </div>
-      <div class="w-sec"><div class="w-h"><b>Derniers mouvements</b>${games ? '<a class="w-link" href="#/jeux/historique">tout</a>' : ''}</div><div class="w-hist">${
-        hist ? (hist.length ? hist.slice(0, 7).map((t) => `<div class="w-tx"><span>${esc(t.label)}</span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">Aucun mouvement pour l’instant.</div>') : '<div class="muted">…</div>'
+      <div class="w-sec"><div class="w-h"><b>Derniers mouvements</b>${hist && hist.length > 7 ? `<button class="w-link w-all" aria-expanded="${histAll}">${histAll ? 'moins' : 'tout'}</button>` : ''}</div><div class="w-hist">${
+        hist ? (hist.length ? hist.slice(0, histAll ? hist.length : 7).map((t) => `<div class="w-tx"><span>${esc(t.label)}</span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">Aucun mouvement pour l’instant.</div>') : '<div class="muted">…</div>'
       }</div></div>`;
     pop.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => toggle(false)));
+    // tout l'historique des pièces ici (il était dans l'espace Jeux, qui ne garde que les jeux)
+    pop.querySelector('.w-all')?.addEventListener('click', () => ((histAll = !histAll), render()));
     const bind = (sel: string, fn: () => Promise<string>) => {
       const b = pop.querySelector<HTMLButtonElement>(sel);
       b?.addEventListener('click', async () => {

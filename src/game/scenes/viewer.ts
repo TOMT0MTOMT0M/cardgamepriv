@@ -13,6 +13,7 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, springCurve } from '../../core/ease';
 import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
+import { isHoloReduced } from '../../core/holo';
 import type { WonderVisualInstance } from '../../core/wonderDiorama';
 
 /**
@@ -234,7 +235,7 @@ export function createViewerScene(): ViewerScene {
       bloomStrength = (bl as unknown as { strength: { value: number } }).strength;
       pl.output = vec4((pl.color as N).rgb.add(bl.rgb), 1);
       render = () => {
-        if (bloomStrength && face) bloomStrength.value = 0.3 + (face.flash.value as number) * 0.9;
+        if (bloomStrength && face) bloomStrength.value = (isHoloReduced() ? 0.2 : 0.3) + (face.flash.value as number) * (isHoloReduced() ? 0.45 : 0.9);
         pl.render();
       };
       // pipelines compilés pour la VRAIE cible (MRT émissif, MSAA, HalfFloat) et non pour le canvas : plus d'à-coup
@@ -262,7 +263,9 @@ export function createViewerScene(): ViewerScene {
     },
     update(dt, t) {
       halo.color.value.lerp(haloColor, 1 - Math.exp(-dt * 5));
-      halo.k.value = haloT.k * (1 + haloT.pulse * Math.sin(t * 1.6) * 0.18);
+      // « Effets réduits » (core/fxPref.ts) : halo plus faible et immobile
+      const red = isHoloReduced();
+      halo.k.value = haloT.k * (red ? 0.45 : 1 + haloT.pulse * Math.sin(t * 1.6) * 0.18);
       ctx.input.spinEnabled = true; // ici on fait tourner la carte en la glissant (l'ouverture, elle, le coupe)
       // curseur « main » : on attrape la carte pour la faire tourner ; l'indication s'efface après le premier tour
       const cur = ctx.input.dragging ? 'grabbing' : 'grab';

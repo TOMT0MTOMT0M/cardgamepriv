@@ -2,7 +2,7 @@ import type { GameBackend } from '../backend';
 import { liveRegen } from '../backend';
 import type { Shell } from '../shell';
 import type { AbuseAlertView, DuelSideView, DuelView, RoyaleView, RouletteView } from '../eco';
-import { ACHIEVEMENTS, CARD_STARS, CARD_VALUE, burnable, cardsValue, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
+import { CARD_STARS, CARD_VALUE, cardsValue, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
 import {
   DUEL_MAX_PACKS,
   GAMES_OPEN,
@@ -20,27 +20,28 @@ import {
   type PackChoice,
   type Stake,
 } from '../../core/games';
-import { weeklyLabel } from '../../core/weekly';
 import { rarity, starCount, type RarityId } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fmtDelay, h, plural, toast } from '../ui';
-import { cardKey, lockedCards } from '../backend';
 import { pickCards } from './picker';
-import { PROTECT_LEGEND, confirmTap, guarded, isPending, protectIcons, protection } from './safety';
+import { confirmTap, guarded, isPending } from './safety';
 import { COIN_ICON, coinsHtml } from './wallet';
 import { catalogEntry } from '../../core/sets/themes';
 import '../games.css';
 
 /**
- * ESPACE JEUX (#/jeux) : 1v1 Pack Battle, Pack Battle Royale, Roulette à cartes — plus la forge (doublons → pièces),
- * les succès, l'historique et le panneau admin (alertes anti-abus). Règles : src/core/games.ts.
- * Pages : #/jeux · #/jeux/duel[/id] · #/jeux/royale[/id] · #/jeux/roulette · #/jeux/forge · #/jeux/primes ·
- * #/jeux/historique · #/jeux/admin. (#/jeux/succes renvoie vers la page Succès, #/succes : une seule page de succès.)
+ * ESPACE JEUX (#/jeux) : les vrais jeux seulement — 1v1 Pack Battle, Pack Battle Royale, Roulette à cartes —, avec
+ * l'historique de MES PARTIES et le panneau admin (alertes anti-abus). Règles : src/core/games.ts.
+ * Pages : #/jeux · #/jeux/duel[/id] · #/jeux/royale[/id] · #/jeux/roulette · #/jeux/historique · #/jeux/admin.
+ * Retours live 02 (nettoyage) : ce qui n'est pas un jeu est sorti — la forge est dans la collection (#/collection/forge),
+ * les succès ET les primes de complétion dans la page Succès (#/succes, #/succes/primes), les missions de la semaine
+ * dans le panneau des missions, l'historique des pièces dans le portefeuille. Les anciennes adresses (#/jeux/forge,
+ * #/jeux/primes, #/jeux/succes) sont redirigées par main.ts (et ici, en secours).
  *
  * Garde-fous (audit 03/11) : chaque bouton qui envoie une mutation passe par `guarded` (pas de double envoi), et ce qui
  * engage des cartes ou des pièces demande un second toucher (`confirmTap`) avec l'enjeu affiché.
  */
 
-type Sub = '' | 'duel' | 'royale' | 'roulette' | 'forge' | 'primes' | 'historique' | 'admin';
+type Sub = '' | 'duel' | 'royale' | 'roulette' | 'historique' | 'admin';
 
 const starsTxt = (r: RarityId) => (r === 'secret' ? '✷' : '★'.repeat(starCount(r)));
 const ava = (name: string, url?: string) => (url ? `<img class="gm-ava" src="${esc(url)}" alt="">` : `<span class="gm-ava">${esc(name.slice(0, 1))}</span>`);
@@ -98,8 +99,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   // ───────────────────────────── en-tête : solde + onglets
   function renderHead() {
     const s = snap();
-    // (plus de sous-onglet « Succès » : la page Succès de la navigation est la seule ; les primes de complétion restent ici)
-    const tabs: Array<[Sub, string]> = [['', 'Jeux'], ['duel', 'Pack Battle'], ['royale', 'Battle Royale'], ['roulette', 'Roulette'], ['forge', 'Forge'], ['primes', 'Primes'], ['historique', 'Historique']];
+    // les trois jeux (+ l'accueil et l'historique de mes parties) ; forge, succès, primes, missions : ailleurs (retours live 02)
+    const tabs: Array<[Sub, string]> = [['', 'Jeux'], ['duel', 'Pack Battle'], ['royale', 'Battle Royale'], ['roulette', 'Roulette'], ['historique', 'Mes parties']];
     if (s?.isAdmin) tabs.push(['admin', 'Admin']);
     head.innerHTML = `<div class="gm-title"><b>Espace Jeux</b>${s ? coinsHtml(s.coins, 'big') : ''}</div>
       <nav class="seg gm-tabs">${tabs.map(([k, l]) => `<button data-k="${k}" class="${k === sub ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
@@ -109,8 +110,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     if (!el.isConnected) return;
     if (open() !== wasOpen) return draw();
     renderHead();
-    // (pas pendant une forge en cours : le bouton redessiné pourrait repartir)
-    if (sub === 'primes' || (sub === 'forge' && !isPending('forge'))) draw();
   });
 
   // ═════════════════════════════ accueil
@@ -119,10 +118,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       <a class="gm-game duel" href="#/jeux/duel"><i class="gm-glyph">⚔</i><b>1v1 Pack Battle</b><span>Misez le même nombre de boosters (+ un pot annexe). Ouverture côte à côte : le plus haut total d'étoiles rafle TOUTES les cartes.</span><em class="gm-live" data-live="duel">…</em></a>
       <a class="gm-game royale" href="#/jeux/royale"><i class="gm-glyph">♛</i><b>Pack Battle Royale</b><span>3 à 8 joueurs, 1 booster chacun. Le meilleur total d'étoiles remporte tout le pot.</span><em class="gm-live" data-live="royale">…</em></a>
       <a class="gm-game roulette" href="#/jeux/roulette"><i class="gm-glyph">◎</i><b>Roulette à cartes</b><span>100 numéros, 1 numéro = 100 pièces de valeur. Un tirage par jour à 21 h : le numéro qui sort rafle tout le pot.</span><em class="gm-live" data-live="roulette">…</em></a>
-      <a class="gm-mini" href="#/jeux/forge"><b>La forge</b><span>Brûle tes doublons contre des pièces (1★ = 5 … 6★ = 1 000).</span></a>
-      <a class="gm-mini" href="#/succes"><b>Succès</b><span>${snap() ? `${snap()!.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus` : 'Paliers 50 / 150 / 500 / 2 000 pièces'}</span></a>
-      <a class="gm-mini" href="#/jeux/primes"><b>Primes de complétion</b><span>${snap()?.completions.length ? `${plural(snap()!.completions.length, 'prime')} à encaisser` : '5 pièces × cartes de chaque album bouclé'}</span></a>
-      <div class="gm-mini gm-week"></div>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
     const live = (k: string, t: string) => {
@@ -141,11 +136,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         live('roulette', r.round ? `pot ${COIN_ICON}${fmtCoins(r.round.pot.value)} · ${r.round.bets.reduce((a, b) => a + b.numbers.length, 0)}/100 numéros · tirage dans ${fmtDelay(r.nextDrawAt - Date.now())}` : 'prochain tirage à 21 h');
       }),
     );
-    const s = snap();
-    const wk = body.querySelector<HTMLElement>('.gm-week')!;
-    if (s) {
-      wk.innerHTML = `<b>Missions de la semaine</b>${s.weekly.list.map((m) => `<span class="gm-wk${m.claimed ? ' claimed' : ''}">${esc(weeklyLabel(m))} · ${m.progress}/${m.target} · +${m.reward}</span>`).join('')}<span class="muted">dans le panneau des missions (cible en haut)</span>`;
-    } else wk.hidden = true;
   }
 
   // ═════════════════════════════ éditeur de mise (boosters + pot annexe)
@@ -730,135 +720,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     }
   }
 
-  // ═════════════════════════════ Forge (doublons → pièces)
-  const forgeSel = new Map<string, StakeItem>();
-  /** dernière sélection rapide (« Tous les 4★ ») : on peut l'annuler d'un toucher */
-  let forgeUndo: Map<string, StakeItem> | null = null;
-  function forge() {
-    const locked = lockedCards(backend.state);
-    const dups = backend.state.collection
-      .filter((c) => burnable(c.rarity))
-      .map((c) => ({ ...c, spare: c.count - 1 - (locked.get(cardKey(c)) ?? 0), protect: protection(backend.state, c.cardId) }))
-      .filter((c) => c.spare > 0 && cardName(c.cardId) !== c.cardId)
-      .sort((a, b) => CARD_VALUE[a.rarity] - CARD_VALUE[b.rarity] || b.spare - a.spare);
-    for (const [k, v] of forgeSel) {
-      const d = dups.find((x) => cardKey(x) === k);
-      if (!d) forgeSel.delete(k);
-      else v.count = Math.min(v.count, d.spare);
-    }
-    const total = cardsValue([...forgeSel.values()]);
-    const n = [...forgeSel.values()].reduce((a, c) => a + c.count, 0);
-    const rars = (['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as RarityId[]).filter((r) => dups.some((d) => d.rarity === r));
-    // sélection rapide : comme le remplissage auto des contrats, elle laisse de côté les cartes protégées (UX4-06)
-    const quick = (r: RarityId) => dups.filter((d) => d.rarity === r && !d.protect.length);
-    const quickProt = (r: RarityId) => dups.filter((d) => d.rarity === r && d.protect.length).length;
-    const quickOn = (r: RarityId) => quick(r).length > 0 && quick(r).every((d) => forgeSel.get(cardKey(d))?.count === d.spare);
-    const anyProt = dups.some((d) => d.protect.length);
-    body.innerHTML = `<div class="gm-panel gm-forge"><div class="gm-ph"><b>La forge</b><span class="muted">${plural(dups.reduce((a, d) => a + d.spare, 0), 'doublon libre', 'doublons libres')} · on garde toujours 1 exemplaire · les secrètes ne se brûlent jamais</span></div>
-      <div class="gm-quick">${rars.map((r) => {
-        const q = quick(r);
-        const np = quickProt(r);
-        return `<button class="chip${quickOn(r) ? ' on' : ''}" data-q="${r}" style="--rc:${rarity(r).hex}"${q.length ? '' : ' disabled'} aria-pressed="${quickOn(r)}">Tous les ${starsTxt(r)} (${q.reduce((a, d) => a + d.spare, 0)} · ${fmtCoins(q.reduce((a, d) => a + d.spare * CARD_VALUE[r], 0))})${np ? ` <small>· ${np} protégée${np > 1 ? 's' : ''} laissée${np > 1 ? 's' : ''}</small>` : ''}</button>`;
-      }).join('')}<button class="btn-ghost sm gm-none"${n ? '' : ' disabled'}>Rien</button>${forgeUndo ? '<button class="linkish gm-undo">Annuler la sélection rapide</button>' : ''}</div>
-      ${anyProt ? `<div class="gm-legend-p muted">${esc(PROTECT_LEGEND)}</div>` : ''}
-      <div class="gm-fgrid"></div>
-      <div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')}${n ? ` (${cardsSummary([...forgeSel.values()])})` : ''} → ${coinsHtml(total)}` : '<span class="muted">Touche des doublons pour les mettre au feu (touche encore pour en ajouter un exemplaire).</span>'}</span><button class="btn-primary gm-burn"${n && !isPending('forge') ? '' : ' disabled'}>Brûler${n ? ` · +${fmtCoins(total)}` : ''}</button></div></div>`;
-    const grid = body.querySelector<HTMLElement>('.gm-fgrid')!;
-    if (!dups.length) grid.innerHTML = '<div class="muted">Aucun doublon à brûler pour l’instant. <a href="#/">Ouvre des boosters →</a></div>';
-    for (const d of dups.slice(0, 400)) {
-      const k = cardKey(d);
-      const inSel = forgeSel.get(k)?.count ?? 0;
-      // ×N = exemplaires brûlables (avant : le total possédé, alors qu'on en garde toujours un)
-      const t = cardTile(d.cardId, d.rarity, { mini: true, count: d.spare, label: inSel ? `🔥 ${inSel}/${d.spare}` : `+${CARD_VALUE[d.rarity]}` });
-      t.title = `${cardName(d.cardId)} · ${plural(d.spare, 'exemplaire brûlable', 'exemplaires brûlables')}${d.protect.length ? ` · protégée (${d.protect.join(', ')})` : ''}`;
-      if (d.protect.length) t.insertAdjacentHTML('beforeend', `<span class="ct-prot gm-prot" aria-label="Protégée : ${esc(d.protect.join(', '))}">${protectIcons(d.protect)}</span>`);
-      t.classList.toggle('burning', inSel > 0);
-      t.addEventListener('click', () => {
-        if (isPending('forge')) return;
-        const cur = forgeSel.get(k)?.count ?? 0;
-        if (cur >= d.spare) forgeSel.delete(k);
-        else forgeSel.set(k, { cardId: d.cardId, rarity: d.rarity, count: cur + 1 });
-        forgeUndo = null;
-        forge();
-      });
-      grid.append(t);
-    }
-    body.querySelectorAll<HTMLElement>('[data-q]').forEach((b) =>
-      b.addEventListener('click', () => {
-        if (isPending('forge')) return;
-        const r = b.dataset.q as RarityId;
-        forgeUndo = new Map([...forgeSel].map(([k, v]) => [k, { ...v }]));
-        // deuxième toucher sur la même puce : on la retire (sélection rapide annulable)
-        if (quickOn(r)) for (const d of quick(r)) forgeSel.delete(cardKey(d));
-        else for (const d of quick(r)) forgeSel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: d.spare });
-        forge();
-      }),
-    );
-    body.querySelector('.gm-none')?.addEventListener('click', () => {
-      if (isPending('forge')) return;
-      forgeUndo = new Map([...forgeSel].map(([k, v]) => [k, { ...v }]));
-      forgeSel.clear();
-      forge();
-    });
-    body.querySelector('.gm-undo')?.addEventListener('click', () => {
-      if (!forgeUndo || isPending('forge')) return;
-      forgeSel.clear();
-      for (const [k, v] of forgeUndo) forgeSel.set(k, v);
-      forgeUndo = null;
-      forge();
-    });
-    const burnBtn = body.querySelector<HTMLButtonElement>('.gm-burn')!;
-    burnBtn.addEventListener('click', () => {
-      // second toucher dès une 5★ (300) ou 30 cartes, avec le détail par étoile ; désarmé tout seul après 3 s
-      if ((total >= 300 || n >= 30) && !confirmTap(burnBtn, `Brûler ${plural(n, 'carte')} (${cardsSummary([...forgeSel.values()])}) ?`)) return;
-      // la sélection est copiée puis vidée AVANT l'envoi : un 2ᵉ envoi ne pourrait plus rien brûler deux fois
-      const items = [...forgeSel.values()].map((v) => ({ ...v }));
-      const before = new Map(forgeSel);
-      forgeSel.clear();
-      forgeUndo = null;
-      void guarded('forge', burnBtn, async () => {
-        try {
-          const r = await busyButton(burnBtn, backend.eco.burn(items));
-          grid.classList.add('flash');
-          sfx('chime');
-          toast(`${plural(r.count, 'doublon')} brûlé${r.count > 1 ? 's' : ''} : +${fmtCoins(r.coins)} pièces !`, 'ok');
-          setTimeout(() => sub === 'forge' && el.isConnected && forge(), 400);
-        } catch (err) {
-          for (const [k, v] of before) forgeSel.set(k, v);
-          toast(errMsg(err), 'err');
-          forge();
-        }
-      }, { keepOnSuccess: true });
-    });
-  }
-
-  // ═════════════════════════════ Primes de complétion (les succès ont leur page : #/succes)
-  function primes() {
-    const s = snap();
-    if (!s) return void (body.innerHTML = '<div class="muted">Connecte-toi pour voir tes primes.</div>');
-    body.innerHTML = `<div class="gm-panel"><div class="gm-ph"><b>Primes de complétion</b>${s.completions.length ? `<button class="btn-primary gm-comp"${isPending('claim') ? ' disabled' : ''}>Encaisser · +${fmtCoins(s.completions.reduce((a, c) => a + c.reward, 0))}</button>` : ''}</div>
-      <div class="muted">5 pièces × nombre de cartes de chaque ensemble bouclé : album (famille de 30 cartes = 150), groupe d'albums (Pokémon 1 025 = 5 125), thème entier. ${s.econ.completions.length ? `${plural(s.econ.completions.length, 'prime déjà encaissée', 'primes déjà encaissées')}.` : ''}</div>
-      ${s.completions.length ? `<div class="gm-comp-list">${s.completions.map((c) => `<span class="gm-mc">${esc(c.label)} · ${c.size} cartes · +${fmtCoins(c.reward)}</span>`).join('')}</div>` : '<div class="muted">Rien à encaisser pour l’instant : boucle un album dans ta <a href="#/collection">collection</a>.</div>'}</div>
-      <div class="gm-panel"><div class="gm-ph"><b>Succès · ${s.econ.achievements.length}/${ACHIEVEMENTS.length}</b><a class="btn-ghost sm" href="#/succes">Voir les succès →</a></div></div>`;
-    body.querySelector<HTMLElement>('.gm-comp')?.addEventListener('click', (e) => {
-      const btn = e.currentTarget as HTMLElement;
-      void guarded('claim', btn, async () => {
-        try {
-          const r = await busyButton(btn, backend.eco.claimCompletions());
-          sfx('big');
-          toast(`Complétion : +${fmtCoins(r.coins)} pièces !`, 'ok');
-        } catch (err) {
-          toast(errMsg(err), 'err');
-        }
-      }, { keepOnSuccess: true });
-    });
-  }
-
   // ═════════════════════════════ Historique
   async function historyPage() {
-    body.innerHTML = '<div class="gm-cols"><div class="gm-panel"><div class="gm-ph"><b>Mes parties</b></div><div class="gm-list gm-hg">…</div></div><div class="gm-panel"><div class="gm-ph"><b>Mes pièces</b></div><div class="gm-list gm-hc">…</div></div></div>';
+    // (l'historique des pièces n'est pas un jeu : il est dans le portefeuille, retours live 02)
+    body.innerHTML = '<div class="gm-panel"><div class="gm-ph"><b>Mes parties</b><span class="muted">Pack Battle et Battle Royale terminés · les mouvements de pièces sont dans le portefeuille</span></div><div class="gm-list gm-hg">…</div></div>';
     try {
-      const [g, tx] = await Promise.all([backend.eco.gameHistory(), backend.eco.coinHistory()]);
+      const g = await backend.eco.gameHistory();
       const uid = myId();
       const rows = [
         ...g.duels.map((d) => ({ at: d.resolvedAt ?? d.createdAt, href: `#/jeux/duel/${d.id}`, html: (() => {
@@ -874,7 +741,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         })() })),
       ].sort((a, b) => b.at - a.at);
       body.querySelector<HTMLElement>('.gm-hg')!.innerHTML = rows.length ? rows.map((r) => `<a class="gm-item" href="${r.href}"><span class="gm-it">${r.html}</span><span class="gm-it-r muted">${new Date(r.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a>`).join('') : '<div class="muted">Aucune partie terminée.</div>';
-      body.querySelector<HTMLElement>('.gm-hc')!.innerHTML = tx.length ? tx.map((t) => `<div class="w-tx"><span>${esc(t.label)} <small class="muted">${new Date(t.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">Aucun mouvement.</div>';
     } catch (e) {
       body.querySelector<HTMLElement>('.gm-hg')!.textContent = errMsg(e);
     }
@@ -932,33 +798,23 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     if (sub === 'duel') arg ? duelRoom(arg) : duelLobby();
     else if (sub === 'royale') arg ? royaleRoom(arg) : royaleLobby();
     else if (sub === 'roulette') roulettePage();
-    else if (sub === 'forge') forge();
-    else if (sub === 'primes') primes();
     else if (sub === 'historique') void historyPage();
     else if (sub === 'admin') void admin();
     else hub();
   }
 
-  let collSig = '';
-  backend.onChange((s) => {
-    if (!el.isConnected || sub !== 'forge') return;
-    const sig = JSON.stringify(s.collection.map((c) => [c.cardId, c.rarity, c.count]).length) + s.collection.reduce((a, c) => a + c.count, 0);
-    if (sig !== collSig) {
-      collSig = sig;
-      forge();
-    }
-  });
-
   return {
     el,
     enter() {
       const parts = location.hash.replace(/^#\/?/, '').split('/');
-      // une seule page Succès (UX1-05) : l'ancien sous-onglet renvoie vers elle (les primes restent ici, #/jeux/primes)
-      if (parts[1] === 'succes') return void location.replace('#/succes');
+      // anciennes adresses (secours : main.ts les redirige déjà) — la forge est dans la collection, succès et primes
+      // de complétion dans la page Succès (retours live 02)
+      const moved: Record<string, string> = { succes: '#/succes', forge: '#/collection/forge', primes: '#/succes/primes' };
+      if (moved[parts[1] ?? '']) return void location.replace(moved[parts[1]]);
       // page 100 % DOM : la vitrine 3D ne tourne pas dessous (PERF1-06, comme collection / contrats / classement)
       shell.show(null);
       shell.setDimmed(true);
-      sub = (['duel', 'royale', 'roulette', 'forge', 'primes', 'historique', 'admin'].includes(parts[1] ?? '') ? parts[1] : '') as Sub;
+      sub = (['duel', 'royale', 'roulette', 'historique', 'admin'].includes(parts[1] ?? '') ? parts[1] : '') as Sub;
       arg = parts[2] ?? '';
       draw();
     },

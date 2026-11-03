@@ -4,6 +4,10 @@ import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
 import { catalogEntry, hasArt, numberingSize, subthemeById, thumbPath } from '../core/sets/themes';
 import { siteUrl } from '../core/siteRoot';
+import { bindFxReduced } from '../core/fxPref';
+
+// option « Effets réduits » : classe `fx-reduced` sur <body> pour les vignettes (style.css, lot K)
+bindFxReduced();
 
 /**
  * Vraies cartes en 2D pour les grilles (collection, récap d'ouverture, échanges) : le MÊME gabarit que la carte 3D

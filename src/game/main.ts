@@ -8,10 +8,12 @@ import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
 import { COIN_ICON, createWallet } from './views/wallet';
 import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
+import { boardAttention } from './backend';
 import { PACK_CAP, PACK_REGEN_MS, fmtCountdown } from '../core/packRegen';
 import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, panelShown, syncPanelTriggers, toast } from './ui';
 import { preloadOwned } from './preload';
 import { haptics } from '../core/haptics';
+import { fxReduced, setFxReduced } from '../core/fxPref';
 
 /**
  * LE JEU (page /jeu/) : boutique + ouverture 3D, collection, échanges.
@@ -87,8 +89,7 @@ top.innerHTML = `
     <a href="#/" data-r="">Boutique</a>
     <a href="#/collection" data-r="collection">Collection</a>
     <a href="#/contrats" data-r="contrats">Contrats</a>
-    <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>
-    <a href="#/jeux" data-r="jeux">Jeux</a>
+    <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>    <a href="#/jeux" data-r="jeux">Jeux</a>
     <a href="#/classement" data-r="classement">Classement</a>
     <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
     <i class="nav-pill" aria-hidden="true"></i>
@@ -207,6 +208,7 @@ const PACK_ICON = `<svg class="p-ico" viewBox="0 0 16 20" aria-hidden="true" fil
 
 let meSig = '';
 let lastIncoming = -1;
+let lastBoard = -1;
 let lastAuthError: string | null = null;
 /** panneau du volume ouvert (survit au rafraîchissement de l'en-tête) ; c'est un panneau comme les autres (ui.ts) */
 let volOpen = false;
@@ -234,6 +236,8 @@ const fmtCoinsShort = (n: number) => {
  */
 const HAPTIC_UI = matchMedia('(pointer: coarse)').matches;
 const hapBtn = () => `<button class="vol-hap" role="switch" aria-checked="${haptics.enabled}">Vibrations<i aria-hidden="true">${haptics.enabled ? 'oui' : 'non'}</i></button>`;
+/** Interrupteur « Effets réduits » (retours live 02 §7, core/fxPref.ts) : holo / reflets / halos des cartes encore plus discrets, partout (PC et téléphone). */
+const fxBtn = () => `<button class="vol-hap vol-fx" role="switch" aria-checked="${fxReduced()}" title="Holo, reflets et halos des cartes plus discrets">Effets réduits<i aria-hidden="true">${fxReduced() ? 'oui' : 'non'}</i></button>`;
 const DEMO_TXT = 'Mode démo : pas de serveur, ta collection est stockée dans ce navigateur et les amis sont des robots.';
 // clic n'importe où ailleurs, ou Échap : le panneau du volume se ferme
 document.addEventListener('click', () => volOpen && setVolOpen(false));
@@ -245,14 +249,14 @@ function renderMe() {
   // erreur de connexion (code Discord traduit, session expirée) : un message visible aussi sur téléphone
   if (s.authError && s.authError !== lastAuthError) toast(s.authError, 'err');
   lastAuthError = s.authError;
-  const sig = JSON.stringify([s.mode, s.ready, u?.id, u?.name, u?.avatarUrl, u?.packStored, u?.packRegenAt, s.trades.incoming.length]);
+  const sig = JSON.stringify([s.mode, s.ready, u?.id, u?.name, u?.avatarUrl, u?.packStored, u?.packRegenAt, s.trades.incoming.length, boardAttention(s)]);
   if (sig === meSig) return;
   meSig = sig;
   // démo : un petit « démo » reste visible au téléphone ; le toucher explique (le `title` n'existe pas au doigt)
   const demo = s.mode === 'demo' ? `<button class="demo" title="${DEMO_TXT}" aria-label="${DEMO_TXT}"><span class="d-l">démo hors-ligne</span><span class="d-s">démo</span></button>` : '';
   // son (correctif retours live n°1) : l'icône ouvre / ferme le panneau du volume (curseur + couper / activer) ; un clic
   // ailleurs ou Échap le ferme aussi. Plus d'ouverture au survol : c'est ce qui l'empêchait de se refermer.
-  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="Son et volume" aria-label="Son et volume" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? 'Couper' : 'Activer'}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}</span></span>`;
+  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="Son et volume" aria-label="Son et volume" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? 'Couper' : 'Activer'}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}${fxBtn()}</span></span>`;
   // deux groupes : l'état du joueur (réserve, pièces, missions, série, pity) et l'identité (démo, son, profil). Sur
   // ordinateur ils se suivent sur une ligne ; au téléphone (`.me { display: contents }`) l'identité monte à côté du logo
   // et l'état prend toute la 2e rangée (style.css, lot A)
@@ -262,7 +266,7 @@ function renderMe() {
     meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, calendrier, primes" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b></button><button class="icon st-btn" title="Série de connexion" aria-label="Série de connexion" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b></button><button class="icon pt-btn" title="Pity 6★ : boosters avant un 6★ garanti" aria-label="Pity 6★" aria-controls="pop-status" data-which="pity" aria-expanded="false">${PITY_ICON}<b class="pt-n" aria-hidden="true" hidden></b></button></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button></div>`;
+    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, calendrier, primes" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b></button><button class="icon st-btn" title="Série de connexion" aria-label="Série de connexion" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b></button><button class="icon pt-btn" title="Pity 6★ : boosters avant un 6★ garanti" aria-label="Pity 6★" aria-controls="pop-status" data-which="pity" aria-expanded="false">${PITY_ICON}<b class="pt-n" aria-hidden="true" hidden></b></button></div><div class="me-id">${demo}${snd}<a class="icon fr-link" href="#/amis" title="Amis" aria-label="Amis">${FRIENDS_ICON}<b class="fr-n" hidden></b></a><button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button></div>`;
     tickPacks();
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
@@ -290,6 +294,12 @@ function renderMe() {
     b.querySelector('i')!.textContent = haptics.enabled ? 'oui' : 'non';
     haptics.pulse(18); // (allumées : on les sent tout de suite ; coupées : rien)
   });
+  meEl.querySelector('.vol-fx')?.addEventListener('click', (e) => {
+    const b = e.currentTarget as HTMLElement;
+    setFxReduced(!fxReduced()); // → matériaux holo (uniforms) + classe fx-reduced du <body> (vignettes)
+    b.setAttribute('aria-checked', String(fxReduced()));
+    b.querySelector('i')!.textContent = fxReduced() ? 'oui' : 'non';
+  });
   const vol = meEl.querySelector<HTMLInputElement>('.vol');
   vol?.style.setProperty('--v', vol.value);
   vol?.addEventListener('input', () => {
@@ -310,18 +320,23 @@ function renderMe() {
   syncMissionBadge();
   syncStatus();
   syncCoins();
+  syncFriendLink();
   syncPanelTriggers();
-  const n = s.trades.incoming.length;
+  // + le tableau d'offres (lot T) : offres reçues sur mes annonces, contre-offres reçues sur mes offres
+  const nb = boardAttention(s);
+  const n = s.trades.incoming.length + nb;
+  if (lastBoard >= 0 && nb > lastBoard && currentRoute !== 'echanges') toast('Du nouveau sur le tableau d’offres (offre ou contre-offre) → Échanges', 'info');
+  lastBoard = nb;
   const badgeChanged = tradeBadge.hidden !== (n === 0) || tradeBadge.textContent !== String(n);
   tradeBadge.hidden = n === 0;
   tradeBadge.textContent = String(n);
   if (badgeChanged) placePill(false);
   // un ami vient de proposer un échange (et on n'est pas déjà sur la page des échanges) : petit message
-  if (lastIncoming >= 0 && n > lastIncoming && currentRoute !== 'echanges') {
+  if (lastIncoming >= 0 && n - nb > lastIncoming && currentRoute !== 'echanges') {
     const t = s.trades.incoming[s.trades.incoming.length - 1];
     toast(`${t?.fromName ?? 'Un ami'} te propose un échange → Échanges`, 'info');
   }
-  lastIncoming = n;
+  lastIncoming = n - nb;
 }
 /** Missions du jour (panneau sous la cible de l'en-tête) ; créées une fois la 3D prête (sons). */
 let missions: ReturnType<typeof createMissions> | null = null;
@@ -336,6 +351,36 @@ function syncMissionBadge() {
   btn?.setAttribute('aria-label', n ? `Missions : ${n} à réclamer` : 'Missions du jour');
 }
 backend.onChange(syncMissionBadge);
+/**
+ * AMIS (retours live 02, lot A2) : icône « Amis » dans l'en-tête, à côté de l'avatar (pas un 8e onglet : la nav
+ * débordait déjà à 1280 px et aurait débordé à 1440), pastille du nombre de demandes reçues ; petit message quand une
+ * demande arrive ou qu'un joueur accepte la mienne (sauf si on est déjà sur la page Amis).
+ */
+const FRIENDS_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.2" r="3.3" fill="currentColor" fill-opacity=".16"/><path d="M2.8 19.2c.6-3.4 3.1-5.4 6.2-5.4s5.6 2 6.2 5.4"/><circle cx="16.6" cy="9" r="2.6"/><path d="M16.4 13.9c2.6 0 4.4 1.7 4.9 4.6"/></svg>`;
+function syncFriendLink() {
+  const a = meEl.querySelector<HTMLElement>('.fr-link');
+  const so = backend.state.social;
+  if (!a) return;
+  const n = so.ready ? so.incoming.length : 0;
+  const b = a.querySelector<HTMLElement>('.fr-n')!;
+  if (b.hidden !== (n === 0)) b.hidden = n === 0;
+  if (b.textContent !== String(n)) b.textContent = String(n);
+  const label = n ? `Amis : ${n} demande${n > 1 ? 's' : ''} d’ami reçue${n > 1 ? 's' : ''}` : 'Amis';
+  if (a.getAttribute('aria-label') !== label) (a.setAttribute('aria-label', label), (a.title = label));
+  a.classList.toggle('ready', n > 0);
+}
+let friendSeen: { inc: Set<string>; out: Map<string, string>; friends: Set<string> } | null = null;
+backend.onChange((st) => {
+  const so = st.social;
+  if (!so.ready) return;
+  syncFriendLink();
+  const prev = friendSeen;
+  friendSeen = { inc: new Set(so.incoming.map((r) => r.id)), out: new Map(so.outgoing.map((r) => [r.userId, r.name])), friends: new Set(so.friends.map((f) => f.userId)) };
+  if (!prev || currentRoute === 'amis') return;
+  const fresh = so.incoming.find((r) => !prev.inc.has(r.id));
+  if (fresh) toast(`${fresh.name} te demande en ami → Amis`, 'info');
+  for (const [userId, name] of prev.out) if (friendSeen.friends.has(userId) && !prev.friends.has(userId)) toast(`${name} a accepté ta demande d’ami !`, 'ok');
+});
 /** pastille sur l'onglet SUCCÈS : succès atteints à encaisser */
 const achBadge = top.querySelector<HTMLElement>('.ach-badge')!;
 backend.eco.onChange((snap) => {
@@ -413,6 +458,8 @@ function tickPacks() {
   // au-dessus du plafond (cadeau, ancien solde) : « 40 » tout court, pas « 40/15 »
   el.classList.toggle('over', r.balance > PACK_CAP);
   el.classList.toggle('full', r.nextAt === null);
+  // (retours live 02, lot G) état « régénération en cours » distinct de « réserve pleine » (pilule violet/bleu, CSS)
+  el.classList.toggle('regen', r.nextAt !== null);
   el.classList.toggle('empty', r.balance <= 0);
   setText(el.querySelector<HTMLElement>('.p-next')!, r.nextAt === null ? 'réserve pleine' : `+1 dans ${fmtCountdown(r.nextAt - now)}`);
   const fill = el.querySelector<HTMLElement>('.p-bar > i')!;
@@ -482,6 +529,7 @@ const TITLES: Record<string, string> = {
   collection: 'Bébou — collection',
   contrats: 'Bébou — contrats',
   echanges: 'Bébou — échanges',
+  amis: 'Bébou — amis',
   profil: 'Bébou — profil',
   jeux: 'Bébou — jeux',
   classement: 'Bébou — classement',
@@ -502,6 +550,7 @@ interface View {
 const PAGE_MODULES = {
   collection: () => import('./views/collection'),
   echanges: () => import('./views/trades'),
+  amis: () => import('./views/friends'),
   contrats: () => import('./views/contracts'),
   profil: () => import('./views/profile'),
   jeux: () => import('./views/games'),
@@ -562,6 +611,7 @@ async function boot() {
   const makePage: { [K in PageKey]: (m: Awaited<ReturnType<(typeof PAGE_MODULES)[K]>>) => View } = {
     collection: (m) => m.createCollectionView(backend, shell, getViewer),
     echanges: (m) => m.createTradesView(backend, shell, getViewer),
+    amis: (m) => m.createFriendsView(backend, shell),
     contrats: (m) => m.createContractsView(backend, shell, getViewer),
     profil: (m) =>
       m.createProfileView(backend, shell, getViewer, () => {
@@ -594,6 +644,10 @@ async function boot() {
 
   function route() {
     const [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/');
+    // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
+    // primes de complétion dans la page Succès
+    const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : undefined;
+    if (moved) return void location.replace(moved);
     const key = r in views || isPage(r) ? r : '';
     if (shop.busy() && key !== '') {
       // pas de fuite au milieu d'une ouverture : le pack est déjà tiré, on le finit

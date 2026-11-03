@@ -9,5 +9,7 @@ import { internal } from './_generated/api';
 const crons = cronJobs();
 
 crons.interval('roulette : tirage quotidien', { minutes: 10 }, internal.games.rouletteTick, {});
+// tableau d'offres (retours live 02) : annonces arrivées à 24 / 48 h → expirées, offres closes (la lecture filtre déjà)
+crons.interval('annonces : expiration', { minutes: 15 }, internal.listings.expireTick, {});
 
 export default crons;

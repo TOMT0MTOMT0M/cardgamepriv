@@ -5,7 +5,8 @@ import { DEFAULT_BACK, type BackStyle } from '../../core/art/back';
 import type { CardData } from '../../core/cardData';
 import type { RarityId } from '../../core/rarity';
 import { catalogEntry, themeById } from '../../core/sets/themes';
-import { createHoloMaterial } from '../../core/holo';
+import { createHoloMaterial, holoFx, setHoloReduced } from '../../core/holo';
+import { bindFxReduced, onFxReducedChange } from '../../core/fxPref';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import type { N } from '../../core/tsl';
 
@@ -17,6 +18,9 @@ import type { N } from '../../core/tsl';
  */
 /** Qualité des faces (posée par le shell) : téléphone → variante « lite » du holo, même aspect, ≈ −40 % d'ALU par pixel. */
 let faceLite = false;
+// option « Effets réduits » (core/fxPref.ts) : plafonds du holo de toutes les faces du jeu, à chaud, PC comme téléphone
+bindFxReduced();
+onFxReducedChange(setHoloReduced);
 export function setFaceQuality(q: 'high' | 'mobile') {
   faceLite = q === 'mobile';
 }
@@ -29,7 +33,7 @@ export function buildFace(art: CardArt, tier: number, photo: boolean) {
   const idx = floor(b.mul(255 / 32).add(0.5)).sub(1);
   const on = clamp(lit.sub(idx), 0, 1).mul(step(0.06, b));
   const glow = on.mul(float(0.3 + tier * 0.2).add(flash.mul(0.8 + tier * 0.4)));
-  holo.material.emissiveNode = (holo.material.emissiveNode as N).add(color(starColor(tier)).mul(glow)).add(holo.film.mul(holo.foil).mul(flash).mul(0.5));
+  holo.material.emissiveNode = (holo.material.emissiveNode as N).add(color(starColor(tier)).mul(glow)).add(holo.film.mul(holo.foil).mul(flash).mul(0.5).mul(holoFx.glint));
   return { holo, lit, flash };
 }
 

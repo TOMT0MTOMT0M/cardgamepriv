@@ -92,7 +92,26 @@ export interface NetState {
   missions: (MissionsState & { resetAt: number }) | null;
   /** classeurs perso */
   binders: Doc<'binders'>[];
+  /** TABLEAU D'OFFRES (lot T, convex/listings.ts) : mes annonces et mes offres (verrouillage, pastille) */
+  board: BoardMine;
+  /** AMIS (lot A2, convex/friends.ts) : `null` tant que rien n'est arrivé (ou pas connecté) */
+  social: FriendsMine | null;
 }
+
+/** Réponse de `listings.mine` (tableau d'offres : mes annonces + mes offres). */
+export type BoardMine = (typeof api.listings.mine)['_returnType'];
+
+/** Réponse de `friends.mine` (amis acceptés + demandes reçues / envoyées). */
+export type FriendsMine = NonNullable<(typeof api.friends.mine)['_returnType']>;
+/** Amis sans `lastSeenAt` des amis (change à chaque battement) : seulement en ligne / hors ligne, pour décider d'émettre. */
+const socialSig = (s: FriendsMine | null) =>
+  !s
+    ? ''
+    : JSON.stringify([
+        s.incoming.map((r) => [r.friendshipId, r.name, r.avatarUrl ?? '']),
+        s.outgoing.map((r) => [r.friendshipId, r.name, r.avatarUrl ?? '']),
+        s.friends.map((f) => [f.friendshipId, f.name, f.avatarUrl ?? '', f.statusText ?? '', f.packsOpened, Date.now() - f.lastSeenAt < 90_000, f.lastActivity?.createdAt ?? 0]),
+      ]);
 
 type Listener = (state: NetState) => void;
 
@@ -119,6 +138,7 @@ class GameNetClient {
   /** ce qui compte pour l'affichage dans `user` / `friends` (comparé avant d'émettre) */
   private userSig = '';
   private friendsSig = '';
+  private socialSig = '';
 
   public state: NetState = {
     configured: false,
@@ -134,6 +154,8 @@ class GameNetClient {
     trades: { incoming: [], outgoing: [] },
     missions: null,
     binders: [],
+    social: null,
+    board: { listings: [], offers: [] },
   };
 
   constructor() {
@@ -313,6 +335,30 @@ class GameNetClient {
         }),
       );
 
+    // 6 quater. Amis (lot A2) : battement de cœur d'un ami = `lastSeenAt` gardé à jour SANS émettre (la page Amis relit
+    // l'état toutes les 30 s) ; on n'émet que si une demande, un ami ou un statut en ligne / hors ligne change
+    this.state.social = null;
+    this.socialSig = '';
+    if (this.sessionToken)
+      this.unsubscribers.push(
+        this.client.onUpdate(
+          api.friends.mine,
+          tokenArg,
+          (s) => {
+            this.state.social = s ?? null;
+            const sig = socialSig(this.state.social);
+            if (sig === this.socialSig && sig) return;
+            this.socialSig = sig;
+            this.emit();
+          },
+          () => {
+            // (serveur pas encore redéployé : liste vide, rien de cassé)
+            this.state.social = { friends: [], incoming: [], outgoing: [] };
+            this.emit();
+          },
+        ),
+      );
+
     // 6 ter. Classeurs perso
     if (this.sessionToken)
       this.unsubscribers.push(
@@ -320,6 +366,20 @@ class GameNetClient {
           this.state.binders = b ?? [];
           this.emit();
         }),
+      );
+
+    // 6 quater. Tableau d'offres : mes annonces et mes offres (serveur pas encore redéployé → erreur → rien)
+    if (this.sessionToken)
+      this.unsubscribers.push(
+        this.client.onUpdate(
+          api.listings.mine,
+          tokenArg,
+          (b) => {
+            this.state.board = b ?? { listings: [], offers: [] };
+            this.emit();
+          },
+          () => {},
+        ),
       );
 
     // 6. Global real-time pull & trade feed
@@ -523,6 +583,20 @@ class GameNetClient {
   public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[] }) {
     return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...c });
   }
+  /** Photo / bannière importées (GIF, retours live 02) : envoi au stockage Convex puis enregistrement ; `null` = retirer. */
+  public async setProfileMedia(kind: 'avatar' | 'banner', file: Blob | null): Promise<string | undefined> {
+    const sessionToken = this.requireToken();
+    let storageId: Id<'_storage'> | undefined;
+    if (file) {
+      const url = await this.client!.mutation(api.profiles.generateMediaUploadUrl, { sessionToken });
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
+      if (!res.ok) throw new Error('L’envoi du fichier a échoué : réessaie.');
+      storageId = ((await res.json()) as { storageId: Id<'_storage'> }).storageId;
+    }
+    const r = await this.client!.mutation(api.profiles.setProfileMedia, { sessionToken, kind, storageId });
+    if (r.error) throw new Error(r.error);
+    return r.url;
+  }
   public async leaderboard() {
     if (!this.client) return [];
     return await this.client.query(api.profiles.leaderboard, {});
@@ -561,6 +635,13 @@ class GameNetClient {
   }
   public async setBinderCover(binderId: Id<'binders'>, cardId?: string) {
     return await this.client!.mutation(api.binders.setCover, { sessionToken: this.requireToken(), binderId, cardId });
+  }
+  // ─────────────────────────────── amis (lot A2)
+  public async requestFriend(to: { userId?: Id<'users'>; name?: string }) {
+    return await this.client!.mutation(api.friends.request, { sessionToken: this.requireToken(), ...to });
+  }
+  public async friendAction(kind: 'accept' | 'decline' | 'cancel' | 'remove', friendshipId: Id<'friendships'>) {
+    return await this.client!.mutation(api.friends[kind], { sessionToken: this.requireToken(), friendshipId });
   }
   public async pinBinder(binderId: Id<'binders'>, on: boolean) {
     return await this.client!.mutation(api.binders.pin, { sessionToken: this.requireToken(), binderId, on });

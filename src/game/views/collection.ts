@@ -1,4 +1,4 @@
-import { collectionSig, type Binder, type GameBackend, type PlayerCard } from '../backend';
+import { cardKey, collectionSig, lockedCards, type Binder, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { ALL_THEMES, BEBOU_PACK, SUBTHEMES, catalogEntry, numberingSize, subthemeById, themeById, type CatalogEntry, type SubTheme, type ThemeInfo } from '../../core/sets/themes';
@@ -6,6 +6,8 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, loadSeen, loginPrompt, navigate, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
+import { createForge, forgeCount } from './forge';
+import { GAMES_OPEN } from '../../core/games';
 
 /**
  * COLLECTION (refonte, retours du 3 nov. + retours live n°1)
@@ -21,6 +23,8 @@ import { haptics } from '../../core/haptics';
  *  - Carte focus (visionneuse 3D) : + Envie, + Classeur, Proposer en échange, Définir comme pochette, date d'obtention.
  *  - CLASSEURS perso : nommés librement, une carte dans plusieurs, couverture, ordre manuel (glisser-déposer),
  *    un classeur épinglé sur le profil.
+ *  - FORGE (retours live 02 : sortie de l'espace Jeux) : onglet à côté de « Classeurs », avec le nombre de doublons
+ *    brûlables ; #/collection/forge (views/forge.ts).
  */
 export interface CollectionView {
   el: HTMLElement;
@@ -32,7 +36,7 @@ type Filter = 'all' | 'owned' | 'missing' | 'dups' | 'fresh';
 type Sort = 'num' | 'stars' | 'recent';
 /** « En cours » (défaut, audit UX3-04) : les albums commencés d'abord, puis complets, puis à 0 % */
 type AlbumSort = 'progress' | 'completion' | 'group' | 'alpha';
-type Mode = 'cards' | 'albums' | 'grid' | 'binders' | 'binder';
+type Mode = 'cards' | 'albums' | 'grid' | 'binders' | 'binder' | 'forge';
 /** vue Cartes : tri (retours live n°1) */
 type CardSort = 'rarity' | 'date' | 'alpha' | 'album';
 const STAR_ORDER: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
@@ -118,7 +122,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
 
   el.innerHTML = `
     <div class="coll-head">
-      <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="Vue de la collection"><button role="tab" data-v="cards">Cartes</button><button role="tab" data-v="albums">Albums</button><button role="tab" data-v="binders">Classeurs</button></div></div>
+      <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="Vue de la collection"><button role="tab" data-v="cards">Cartes</button><button role="tab" data-v="albums">Albums</button><button role="tab" data-v="binders">Classeurs</button><button role="tab" data-v="forge">Forge</button></div></div>
       <div class="tabs"></div>
       <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-name"></span></div>
       <div class="progress"></div>
@@ -147,6 +151,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     </div>
     <div class="f-active" role="status" hidden></div>
     <div class="binders-view" hidden></div>
+    <div class="forge-host" hidden></div>
     <div class="grid"></div>
     <div class="pager" hidden></div>
     <div class="empty" hidden></div>
@@ -170,6 +175,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   // la recherche de la GRILLE (le premier `.search` du DOM est celui des albums : audit UX3-01)
   const search = q<HTMLInputElement>('.filters .search');
   const bindersView = q('.binders-view');
+  const forgeHost = q('.forge-host');
+  const forge = createForge(backend, shell);
+  forgeHost.append(forge.el);
   const viewerUi = q('.viewer-ui');
   const vInfo = q('.v-info');
   const vActions = q('.v-actions');
@@ -231,7 +239,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     });
   }
   window.addEventListener('keydown', (e) => {
-    if (e.key !== '/' || !el.isConnected || open || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key !== '/' || !el.isConnected || open || mode === 'forge' || e.ctrlKey || e.metaKey || e.altKey) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target as HTMLElement)?.tagName ?? '')) return;
     e.preventDefault();
     const inp = mode === 'albums' ? alSearch : mode === 'cards' ? q<HTMLInputElement>('.cb-search') : search;
@@ -300,7 +308,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       else if (v === 'albums') {
         if (theme.secret) theme = ALL_THEMES[0];
         goAlbums();
-      } else goBinders();
+      } else if (v === 'forge') goForge();
+      else goBinders();
       shell.sfx.tick(1.2, 0.04);
     }),
   );
@@ -407,6 +416,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     render();
     toTop();
   }
+  /** la forge suit l'ouverture de l'espace Jeux (GAMES_OPEN) : admins (et démo) seulement d'ici là, comme avant */
+  const forgeOpen = () => GAMES_OPEN || !!backend.eco.snapshot?.isAdmin;
+  function goForge() {
+    if (!forgeOpen()) return goCards();
+    mode = 'forge';
+    subId = null;
+    render();
+    toTop();
+  }
   function goBinder(id: string) {
     mode = 'binder';
     binderId = id;
@@ -436,16 +454,23 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       tabs.append(b);
     }
     tabs.hidden = !(mode === 'albums' || mode === 'grid');
-    const v = mode === 'cards' ? 'cards' : mode === 'binders' || mode === 'binder' ? 'binders' : 'albums';
+    const v = mode === 'cards' ? 'cards' : mode === 'forge' ? 'forge' : mode === 'binders' || mode === 'binder' ? 'binders' : 'albums';
+    const nForge = forgeCount(backend.state);
     el.querySelectorAll<HTMLButtonElement>('.coll-views button').forEach((b) => {
       b.classList.toggle('on', b.dataset.v === v);
       b.setAttribute('aria-selected', String(b.dataset.v === v));
       if (b.dataset.v === 'binders') b.innerHTML = `Classeurs${backend.state.binders.length ? ` <em>${fmtN(backend.state.binders.length)}</em>` : ''}`;
+      // compteur de doublons brûlables (1 exemplaire gardé, secrètes et exemplaires engagés exclus)
+      if (b.dataset.v === 'forge') {
+        b.hidden = !forgeOpen();
+        b.innerHTML = `Forge${nForge ? ` <em>${fmtN(nForge)}</em>` : ''}`;
+        b.setAttribute('aria-label', nForge ? `Forge : ${fmtN(nForge)} doublon${nForge > 1 ? 's' : ''} brûlable${nForge > 1 ? 's' : ''}` : 'Forge');
+      }
     });
   }
 
   function renderProgress(mine: Map<string, PlayerCard>) {
-    if (mode === 'binders' || mode === 'binder') {
+    if (mode === 'binders' || mode === 'binder' || mode === 'forge') {
       progress.hidden = true;
       return;
     }
@@ -1246,6 +1271,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     empty.hidden = true;
     fActive.hidden = true;
     bindersView.hidden = !inBinders;
+    forgeHost.hidden = mode !== 'forge';
     crumb.hidden = !((inGrid && !theme.secret) || mode === 'binder');
     if (inGrid && !theme.secret) {
       q('.crumb-back').textContent = `‹ Albums ${theme.label}`;
@@ -1265,6 +1291,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     else if (inAlbums) renderAlbums(mine);
     else if (inGrid) renderGrid(mine);
     else if (mode === 'binders') renderBinders(mine);
+    else if (mode === 'forge') forge.render();
     else renderBinder(mine);
   }
 
@@ -1303,10 +1330,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const st = e ? subthemeById(e.subthemeId) : null;
     const isCover = !!st && backend.state.covers[st.id] === b.id;
     const inBinders = backend.state.binders.filter((x) => x.cards.some((c) => c.cardId === b.id && c.rarity === b.r)).length;
+    // tableau d'offres (lot T) : pas pour une carte déjà engagée (🔒) ni pour le dernier exemplaire
+    const row = backend.state.collection.find((c) => c.cardId === b.id && c.rarity === b.r);
+    const canBoard = !!row && row.count > 1 && !(lockedCards(backend.state).get(cardKey(row)) ?? 0);
     vActions.innerHTML = `
       <button class="va va-wish${wish ? ' on' : ''}" title="${wish ? 'Retirer de mes envies' : 'Je veux cette carte (envies)'}" aria-pressed="${wish}">♥ <span>${wish ? 'Envie ✓' : 'Envie'}</span></button>
       <button class="va va-binder${inBinders ? ' on' : ''}" title="Ranger dans un classeur" aria-label="Ranger dans un classeur${inBinders ? ` (déjà dans ${inBinders})` : ''}">▤ <span>${inBinders ? `Classeur ×${inBinders}` : '+ Classeur'}</span></button>
       <button class="va va-trade" title="Proposer cette carte dans un échange">⇄ <span>Échanger</span></button>
+      ${canBoard ? '<button class="va va-board" title="Publier une annonce sur le tableau d’offres avec cette carte">▦ <span>Proposer sur le tableau</span></button>' : ''}
       ${st && !e?.themeId.startsWith('bebous') ? `<button class="va va-cover${isCover ? ' on' : ''}" title="${isCover ? 'Ne plus utiliser comme couverture' : `En faire la couverture de l’album ${esc(st.label)}`}" aria-label="${isCover ? `Couverture de l’album ${esc(st.label)} : retirer` : `En faire la couverture de l’album ${esc(st.label)}`}" aria-pressed="${isCover}">📌 <span>${isCover ? 'Couverture ✓' : 'Couverture'}</span></button>` : ''}
       ${have?.firstPulledAt ? `<span class="va-date">obtenue le ${fmtDate(have.firstPulledAt)}</span>` : ''}`;
     vActions.querySelector('.va-wish')!.addEventListener('click', async () => {
@@ -1324,6 +1355,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       // ferme la visionneuse (couche) puis va aux échanges, sans entrée d'historique fantôme (API lot A)
       navigate('#/echanges');
       toast('Choisis un ami : la carte sera dans ta proposition', 'info');
+    });
+    vActions.querySelector('.va-board')?.addEventListener('click', () => {
+      try {
+        sessionStorage.setItem('bebou.boardGive', `${b.id}:${b.r}`);
+      } catch {
+        /* stockage bloqué : le tableau s'ouvre sans la carte */
+      }
+      navigate('#/echanges/tableau');
     });
     vActions.querySelector('.va-cover')?.addEventListener('click', async () => {
       if (!st) return;
@@ -1455,7 +1494,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   window.addEventListener('pagehide', () => el.isConnected && saveSeen());
   let sig = '';
   backend.onChange((st) => {
-    const now = `${collectionSig(st)}|${st.wishlist.length}|${JSON.stringify(st.binders)}|${JSON.stringify(st.covers)}`;
+    // (+ exemplaires engagés : la forge et son compteur en dépendent)
+    const now = `${collectionSig(st)}|${st.wishlist.length}|${JSON.stringify(st.binders)}|${JSON.stringify(st.covers)}|${JSON.stringify([...lockedCards(st)])}|${st.ready}`;
     if (now === sig) return;
     sig = now;
     if (el.isConnected && !open) render();
@@ -1478,6 +1518,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         page = 0;
       }
       if (sub === 'classeurs') goBinders();
+      else if (sub === 'forge' && forgeOpen()) {
+        mode = 'forge';
+        subId = null;
+      }
       else if (sub === 'albums') {
         if (theme.secret) theme = ALL_THEMES[0];
         mode = 'albums';

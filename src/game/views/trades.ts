@@ -8,6 +8,7 @@ import { preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 import { ABUSE, cardsValue, fmtCoins } from '../../core/economy';
 import { confirmTap } from './safety';
+import { createBoard } from './board';
 
 /**
  * ÉCHANGES de cartes entre nous (n'importe quelle carte, doublon ou non) — refonte retours du 3 nov.
@@ -23,7 +24,7 @@ import { confirmTap } from './safety';
  */
 export interface TradesView {
   el: HTMLElement;
-  enter(): void;
+  enter(sub?: string): void;
   leave(): void;
 }
 
@@ -87,6 +88,10 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   };
 
   el.innerHTML = `
+    <div class="tr-tabs" role="tablist" aria-label="Échanges">
+      <button role="tab" data-v="direct" class="on" aria-selected="true">Échanges directs<b class="badge tt-in" hidden></b></button>
+      <button role="tab" data-v="board" aria-selected="false">Tableau d’offres<b class="badge tt-board" hidden></b></button>
+    </div>
     <div class="tr-col left">
       <h3>En cours</h3><div class="pending"></div>
       <h3>Échanger avec…</h3><div class="friends"></div>
@@ -158,6 +163,47 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   const matchesEl = q('.matches');
   const matchList = q('.match-list');
   const viewerUi = q('.viewer-ui');
+
+  // ── TABLEAU D'OFFRES (retours live 02, lot T — views/board.ts) : 2e onglet de la page, ouvert à tous les joueurs
+  const board = createBoard(backend, { fairness, gaugeHtml, ago, chime: () => shell.sfx.chime(3, 0.08) });
+  el.append(board.el);
+  const tabBtns = [...el.querySelectorAll<HTMLButtonElement>('.tr-tabs button')];
+  let onBoard = false;
+  function setView(v: 'direct' | 'board') {
+    const b = v === 'board';
+    if (b === onBoard && el.classList.contains('on-board') === b) return;
+    onBoard = b;
+    el.classList.toggle('on-board', b);
+    tabBtns.forEach((x) => {
+      const on = x.dataset.v === v;
+      x.classList.toggle('on', on);
+      x.setAttribute('aria-selected', String(on));
+    });
+    // l'adresse suit (retour du téléphone, lien partagé) sans recharger la page
+    const want = b ? '#/echanges/tableau' : '#/echanges';
+    if (location.hash !== want) window.history.replaceState(window.history.state, '', want);
+    if (b) {
+      if (open) closeViewer();
+      setTrayOpen(false);
+      board.enter();
+    } else {
+      board.leave();
+      renderPending();
+      renderFriends();
+      renderHistory();
+    }
+    el.scrollTo({ top: 0 });
+  }
+  tabBtns.forEach((x) => x.addEventListener('click', () => setView(x.dataset.v as 'direct' | 'board')));
+  const syncTabBadges = () => {
+    const bIn = q('.tt-in'), bBd = q('.tt-board');
+    const ni = backend.state.trades.incoming.length, nb = board.attention();
+    bIn.hidden = !ni;
+    bIn.textContent = String(ni);
+    bBd.hidden = !nb;
+    bBd.textContent = String(nb);
+  };
+  backend.onChange(() => el.isConnected && syncTabBadges());
   const vInfo = q('.v-info');
   const vActions = q('.v-actions');
 
@@ -811,9 +857,15 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
 
   return {
     el,
-    enter() {
+    enter(sub?: string) {
       shell.show(null);
       shell.setDimmed(true);
+      syncTabBadges();
+      // « #/echanges/tableau » (ou « Proposer sur le tableau » depuis une carte) : l'onglet du tableau d'offres
+      const toBoard = sub === 'tableau' || !!sessionStorage.getItem('bebou.boardGive');
+      onBoard = !toBoard; // (force la mise à jour)
+      setView(toBoard ? 'board' : 'direct');
+      if (toBoard) return;
       pendSig = friendSig = '';
       renderPending();
       renderFriends();
@@ -829,6 +881,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     leave() {
       if (open) closeViewer();
       setTrayOpen(false);
+      board.leave();
     },
   };
 }

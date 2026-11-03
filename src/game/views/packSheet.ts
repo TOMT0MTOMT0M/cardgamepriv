@@ -42,9 +42,9 @@ export function shopPacks(): SheetPack[] {
     const t = themeById(id)!;
     return { key: t.id, req: { kind: 'theme', themeId: t.id }, name: `${t.label} Pack`, tagline: t.booster, desc, accent: t.style.accent, soon: !themeOpen(t), cards: t.cards };
   };
+  // (retours live 02) le Bebou Pack en PREMIER : en haut de la liste verticale (ordinateur), premier du carrousel
+  // (téléphone, où il reste sélectionné par défaut)
   return [
-    theme('gaming', 'Jeux vidéo'),
-    theme('pop', 'Musique, cinéma, internet'),
     {
       key: 'bebou',
       req: { kind: 'bebou' },
@@ -54,6 +54,8 @@ export function shopPacks(): SheetPack[] {
       accent: BEBOU_PACK.style.accent,
       cards: [...THEMES.flatMap((t) => t.cards), ...BEBOU_THEME.cards],
     },
+    theme('gaming', 'Jeux vidéo'),
+    theme('pop', 'Musique, cinéma, internet'),
     theme('sport', 'Tous les sports'),
     theme('monde', 'La vie, tout simplement'),
   ];

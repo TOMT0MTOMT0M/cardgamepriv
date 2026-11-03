@@ -87,6 +87,9 @@ export default defineSchema({
     covers: v.optional(v.record(v.string(), v.string())),
     /** cosmétiques du profil (src/core/cosmetics.ts) : bannière, cadre d'avatar, titre, badges — tout se débloque en jouant */
     cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())) })),
+    /** photo de profil / bannière importées par le joueur (GIF animé ou image, ≤ 2 Mo, convex/profiles.ts) — sinon l'avatar Discord */
+    avatarMedia: v.optional(v.id('_storage')),
+    bannerMedia: v.optional(v.id('_storage')),
     /** compteurs (classement, déblocages) */
     totalTrades: v.optional(v.number()),
     totalContracts: v.optional(v.number()),
@@ -103,6 +106,17 @@ export default defineSchema({
   })
     .index('by_discordId', ['discordId'])
     .index('by_lastSeenAt', ['lastSeenAt']),
+
+  /**
+   * Fichiers importés pour le profil (photo / bannière, convex/profiles.ts) : à qui appartient chaque fichier stocké —
+   * un joueur ne peut ni afficher ni faire supprimer le fichier d'un autre en recopiant son identifiant.
+   */
+  profileMedia: defineTable({
+    storageId: v.id('_storage'),
+    userId: v.id('users'),
+    kind: v.union(v.literal('avatar'), v.literal('banner')),
+    createdAt: v.number(),
+  }).index('by_storage', ['storageId']),
 
   /**
    * Lightweight session tokens issued by Convex Discord OAuth callback.
@@ -212,6 +226,8 @@ export default defineSchema({
     /** contre-proposition : l'échange qu'elle remplace */
     counterOf: v.optional(v.id('trades')),
     counteredBy: v.optional(v.id('trades')),
+    /** conclu depuis le TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : l'annonce d'origine */
+    listingId: v.optional(v.id('listings')),
     createdAt: v.number(),
     resolvedAt: v.optional(v.number()),
   })
@@ -383,4 +399,65 @@ export default defineSchema({
     byUserId: v.id('users'),
     at: v.number(),
   }).index('by_key', ['key']),
+
+  /** AMIS (retours live 02, lot A2 — convex/friends.ts) : demande `pending` → `accepted` ; `declined` = anti-relance 24 h. */
+  friendships: defineTable({
+    requesterId: v.id('users'),
+    addresseeId: v.id('users'),
+    status: v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined')),
+    createdAt: v.number(),
+    /** acceptée / refusée le… */
+    respondedAt: v.optional(v.number()),
+  })
+    .index('by_requester', ['requesterId', 'status'])
+    .index('by_addressee', ['addresseeId', 'status'])
+    .index('by_pair', ['requesterId', 'addresseeId']),
+
+  /**
+   * TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : une ANNONCE = des cartes proposées (verrouillées
+   * tant qu'elle est ouverte) + des cartes recherchées (indicatives) ; ouverte à TOUS les joueurs ; expire après 24/48 h.
+   */
+  listings: defineTable({
+    userId: v.id('users'),
+    items: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })),
+    wanted: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator }))),
+    note: v.optional(v.string()),
+    /** `open` (tant que expiresAt n'est pas passé) · `closed` (offre acceptée) · `cancelled` · `expired` */
+    status: v.union(v.literal('open'), v.literal('closed'), v.literal('cancelled'), v.literal('expired')),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    acceptedOfferId: v.optional(v.id('listingOffers')),
+  })
+    .index('by_status_expires', ['status', 'expiresAt'])
+    .index('by_user_status', ['userId', 'status']),
+
+  /**
+   * Offre d'un joueur sur une annonce : les cartes qu'il donne (verrouillées tant que l'offre est en cours) contre les
+   * cartes de l'annonce. `countered` : l'auteur a répondu par une contre-offre (`counter`), à l'offrant de trancher.
+   */
+  listingOffers: defineTable({
+    listingId: v.id('listings'),
+    /** auteur de l'annonce (pastille « nouvelle offre ») */
+    listingUserId: v.id('users'),
+    fromUserId: v.id('users'),
+    offered: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })),
+    note: v.optional(v.string()),
+    status: v.union(v.literal('pending'), v.literal('countered'), v.literal('accepted'), v.literal('declined'), v.literal('withdrawn'), v.literal('closed')),
+    counter: v.optional(
+      v.object({
+        /** ce que l'auteur donne (une partie des cartes de l'annonce) */
+        give: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })),
+        /** ce que l'auteur demande à l'offrant */
+        want: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })),
+        note: v.optional(v.string()),
+        at: v.number(),
+      }),
+    ),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index('by_listing', ['listingId', 'status'])
+    .index('by_from_status', ['fromUserId', 'status'])
+    .index('by_listingUser_status', ['listingUserId', 'status']),
 });

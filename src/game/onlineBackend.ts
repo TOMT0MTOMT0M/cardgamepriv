@@ -3,6 +3,10 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { BIG_PULL_RARITIES, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
 import { createOnlineEco } from './ecoOnline';
+import type { Social } from './backend';
+import type { BoardState, ListingOfferView, ListingView } from './backend';
+import { api } from '../../convex/_generated/api';
+import type { Doc } from '../../convex/_generated/dataModel';
 
 /** Le vrai serveur : Convex (temps réel) + Discord, via le client partagé avec le labo (core/net/client.ts). */
 export function createOnlineBackend(): GameBackend {
@@ -22,6 +26,12 @@ export function createOnlineBackend(): GameBackend {
     wishlist: [],
     binders: [],
     covers: {},
+    // AMIS (lot A2) : relu à chaque accès (mémorisé par réponse du serveur) — les battements de cœur des amis mettent
+    // `lastSeenAt` à jour sans réveiller tout le jeu (client.ts), la page Amis le relit toutes les 30 s
+    get social(): Social {
+      return socialOf(net.state.social, net.state.connected);
+    },
+    board: { mine: [], offers: [] },
   };
 
   const toSealed = (p: NonNullable<NetState['sealedPack']>): SealedPack => ({
@@ -103,6 +113,8 @@ export function createOnlineBackend(): GameBackend {
     }
     if (changed('sealed', n.sealedPack)) state.sealed = n.sealedPack ? toSealed(n.sealedPack) : null;
     if (changed('trades', n.trades)) state.trades = { incoming: n.trades.incoming.map(toTrade), outgoing: n.trades.outgoing.map(toTrade) };
+    // tableau d'offres (lot T) : refait seulement quand la réponse du serveur change
+    if (n.board !== boardSrc) state.board = boardOf((boardSrc = n.board));
     state.missions = n.missions;
     listeners.forEach((fn) => fn(state));
   });
@@ -175,6 +187,9 @@ export function createOnlineBackend(): GameBackend {
     async setCosmetics(choice) {
       return await net.setCosmetics(choice);
     },
+    async setProfileMedia(kind, file) {
+      return await net.setProfileMedia(kind, file);
+    },
     async leaderboard() {
       return (await net.leaderboard()).map((r) => ({ ...r, id: r.id as string }));
     },
@@ -217,7 +232,111 @@ export function createOnlineBackend(): GameBackend {
     async pinBinder(id, on) {
       await net.pinBinder(id as Id<'binders'>, on);
     },
+    // amis (lot A2)
+    async requestFriend(to) {
+      return await net.requestFriend({ userId: to.userId as Id<'users'> | undefined, name: to.name });
+    },
+    async acceptFriend(id) {
+      await net.friendAction('accept', id as Id<'friendships'>);
+    },
+    async declineFriend(id) {
+      await net.friendAction('decline', id as Id<'friendships'>);
+    },
+    async cancelFriend(id) {
+      await net.friendAction('cancel', id as Id<'friendships'>);
+    },
+    async removeFriend(id) {
+      await net.friendAction('remove', id as Id<'friendships'>);
+    },
+    // tableau d'offres (lot T, convex/listings.ts)
+    watchBoard: (cb) => net.watch(api.listings.open, {}, (rows) => cb((rows ?? []).map((l) => listingOf(l))), true, () => cb([])),
+    async createListing(items, wanted, note, hours) {
+      await net.call(api.listings.create, { items, wanted, note, hours });
+    },
+    async cancelListing(id) {
+      await net.call(api.listings.cancel, { listingId: id as Id<'listings'> });
+    },
+    async makeOffer(listingId, offered, note) {
+      await net.call(api.listings.offer, { listingId: listingId as Id<'listings'>, offered, note });
+    },
+    async withdrawOffer(id) {
+      await net.call(api.listings.withdrawOffer, { offerId: id as Id<'listingOffers'> });
+    },
+    async acceptOffer(id) {
+      await net.call(api.listings.accept, { offerId: id as Id<'listingOffers'> });
+    },
+    async declineOffer(id) {
+      await net.call(api.listings.decline, { offerId: id as Id<'listingOffers'> });
+    },
+    async counterOffer(id, give, want, note) {
+      await net.call(api.listings.counter, { offerId: id as Id<'listingOffers'>, give, want, note });
+    },
+    async respondCounter(id, accept) {
+      await net.call(api.listings.respondCounter, { offerId: id as Id<'listingOffers'>, accept });
+    },
   };
+}
+
+/** Tableau d'offres (lot T) : documents du serveur → vues du jeu. */
+let boardSrc: NetState['board'] | undefined;
+type OfferDoc = Doc<'listingOffers'> & { fromName: string };
+const offerOf = (o: OfferDoc): ListingOfferView => ({
+  id: o._id,
+  listingId: o.listingId,
+  fromId: o.fromUserId,
+  fromName: o.fromName,
+  offered: o.offered,
+  note: o.note,
+  status: o.status,
+  counter: o.counter,
+  createdAt: o.createdAt,
+  resolvedAt: o.resolvedAt,
+});
+function listingOf(l: Doc<'listings'> & { userName: string; avatarUrl?: string; offerCount?: number; offers?: OfferDoc[]; myOffer?: Doc<'listingOffers'> | null }): ListingView {
+  return {
+    id: l._id,
+    userId: l.userId,
+    userName: l.userName,
+    avatarUrl: l.avatarUrl,
+    items: l.items,
+    wanted: l.wanted ?? [],
+    note: l.note,
+    status: l.status,
+    createdAt: l.createdAt,
+    expiresAt: l.expiresAt,
+    resolvedAt: l.resolvedAt,
+    offerCount: l.offerCount ?? (l.offers ?? []).filter((o) => o.status === 'pending' || o.status === 'countered').length,
+    offers: l.offers?.map(offerOf),
+    myOffer: l.myOffer ? offerOf({ ...l.myOffer, fromName: '' }) : null,
+  };
+}
+function boardOf(b: NetState['board']): BoardState {
+  return {
+    mine: b.listings.map((l) => listingOf(l)),
+    offers: b.offers.map((o) => ({ ...offerOf(o), listing: o.listing ? listingOf(o.listing) : null })),
+  };
+}
+
+/** Amis (lot A2) : réponse du serveur → GameState.social, mémorisé par réponse (même tableau tant qu'elle ne change pas). */
+let socialSrc: NetState['social'] | undefined;
+let socialMemo: Social = { ready: false, friends: [], incoming: [], outgoing: [] };
+function socialOf(s: NetState['social'], connected: boolean): Social {
+  if (!s) {
+    // pas connecté (aucun abonnement) : « prêt » dès que le serveur répond, avec des listes vides
+    const ready = connected && !net.loggedIn;
+    if (socialSrc === null && socialMemo.ready === ready) return socialMemo;
+    socialSrc = null;
+    return (socialMemo = { ready, friends: [], incoming: [], outgoing: [] });
+  }
+  if (s === socialSrc) return socialMemo;
+  socialSrc = s;
+  const req = (r: (typeof s.incoming)[number]) => ({ id: r.friendshipId, userId: r.userId, name: r.name, avatarUrl: r.avatarUrl, createdAt: r.createdAt });
+  return (socialMemo = {
+    ready: true,
+    incoming: s.incoming.map(req),
+    outgoing: s.outgoing.map(req),
+    friends: s.friends.map((f) => ({ id: f.friendshipId, userId: f.userId, name: f.name, avatarUrl: f.avatarUrl, since: f.since, lastSeenAt: f.lastSeenAt, status: f.statusText, packsOpened: f.packsOpened, lastActivity: f.lastActivity })),
+  });
 }
 
 /** Vrai si le serveur Convex est configuré (`VITE_CONVEX_URL` dans .env.local). */

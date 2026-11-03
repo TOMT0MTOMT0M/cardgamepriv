@@ -2,6 +2,7 @@ import type { GameBackend, LeaderRow } from '../backend';
 import type { Shell } from '../shell';
 import { frameOf, titleOf } from '../../core/cosmetics';
 import { errMsg, esc, fmtN, fmtPct, h, plural, toast } from '../ui';
+import { friendBtn } from './friends';
 
 /**
  * CLASSEMENT entre nous — composant partagé par la page #/classement (onglet de la navigation) et l'onglet Classement
@@ -75,7 +76,15 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       const a = h('a', `lb-pd p${i + 1}${r.id === me ? ' is-me' : ''}`);
       a.href = `#/profil/${encodeURIComponent(r.id)}`;
       a.innerHTML = `<span class="lb-pd-rank">${i === 0 && b.crown ? '👑' : ['🥇', '🥈', '🥉'][i]}</span>${ava(r)}<b>${esc(r.name)}</b>${r.id === me ? '<span class="lb-you">toi</span>' : '<span class="lb-you none">&nbsp;</span>'}<span class="lb-pd-v">${b.unit(r)}</span>`;
-      row.append(a);
+      // bouton ami (lot A2) sous la place du podium, hors du lien
+      const pfb = friendBtn(backend, r.id, r.name, 'row');
+      if (!pfb) row.append(a);
+      else {
+        const cell = h('div', 'lb-pd-cell');
+        cell.append(a);
+        cell.insertAdjacentHTML('beforeend', pfb);
+        row.append(cell);
+      }
     }
     podiumEl.append(row);
     // la liste reprend APRÈS le podium (les 3 premiers n'y sont plus répétés : audit UX3-17)
@@ -85,7 +94,15 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       line.href = `#/profil/${encodeURIComponent(r.id)}`;
       const t = titleOf(r.cosmetics.title);
       line.innerHTML = `<span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small>${esc(t.label)}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
-      listEl.append(line);
+      // bouton ami (lot A2) à côté de la ligne — pas dedans : un bouton dans un lien n'est ni valide ni accessible
+      const fb = friendBtn(backend, r.id, r.name, 'row');
+      if (!fb) listEl.append(line);
+      else {
+        const wrap = h('div', 'lb-line');
+        wrap.append(line);
+        wrap.insertAdjacentHTML('beforeend', fb);
+        listEl.append(wrap);
+      }
     }
     if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">👑 Le classement roi : la complétion globale de la collection.</div>');
   }

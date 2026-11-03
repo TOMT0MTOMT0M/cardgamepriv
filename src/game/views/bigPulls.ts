@@ -5,7 +5,7 @@ import { esc, h, thumbUrl } from '../ui';
 
 /**
  * « Gros tirages » : les Légendaires, Mythiques et Secrètes tirées par tout le groupe AUJOURD'HUI, en direct, sur la
- * page d'accueil (boutique). Ordinateur : colonne de droite, fil VERTICAL ; téléphone : bandeau horizontal en haut.
+ * page d'accueil (boutique). Ordinateur et téléphone en portrait : colonne de gauche, fil VERTICAL en éventail.
  *
  * Retours live n°1 :
  * - le fil DÉFILE TOUT SEUL, en continu et en boucle (contenu doublé, aucun à-coup), et se met en PAUSE au survol de
@@ -15,6 +15,13 @@ import { esc, h, thumbUrl } from '../ui';
  *   « il y a X min » sur sa propre ligne.
  * - Une carte qui arrive pendant qu'on regarde entre avec un éclat de sa couleur ; une 6★ et une Secrète ont leur
  *   animation à elles (liseré arc-en-ciel qui tourne, halo rose qui bat). Les Bébous secrets sont montrés tels quels.
+ *
+ * Retours du 03/11 (soir) — téléphone en portrait : le bandeau du haut prenait trop de place → COLONNE VERTICALE à
+ * gauche (sous l'en-tête, jusqu'au bouton Ouvrir), qui défile toute seule ; au doigt (haut / bas) le tirage qui passe
+ * au centre sort de 30 % vers la droite, les autres s'inclinent en léger ÉVENTAIL centré (`fan()`).
+ *
+ * Retours live 02 : même chose sur ORDINATEUR — la colonne des gros tirages passe à GAUCHE (les packs à droite), en
+ * éventail, défilement auto (pause au survol), tirages plus grands (pseudo + nom de la carte lisibles).
  */
 export interface BigPullsWidget {
   el: HTMLElement;
@@ -25,6 +32,15 @@ export interface BigPullsWidget {
 const DAY = 86_400_000;
 /** vitesse du défilement automatique (px / s) */
 const SPEED = 24;
+/**
+ * Colonne verticale en éventail : téléphone en portrait (style.css, « retours 03/11 soir ») et, depuis les retours live 02,
+ * ORDINATEUR aussi (colonne de gauche, tirages plus grands : style.css, bloc lot G). Téléphone en paysage : fil masqué.
+ */
+const FAN_MQ = '(max-width: 860px) and (orientation: portrait), (min-width: 861px)';
+/** sortie du tirage centré (fraction de sa largeur), inclinaison max (degrés) et réduction aux bords */
+const FAN_POP = 0.3;
+const FAN_TILT = 7;
+const FAN_SHRINK = 0.12;
 
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
@@ -100,6 +116,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
       return item(p, fresh);
     });
     list.replaceChildren(...items);
+    fanLast = NaN;
     empty.hidden = pulls.length > 0;
     first = false;
     pos = 0;
@@ -136,7 +153,49 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     const kids = list.children as HTMLCollectionOf<HTMLElement>;
     const n = kids.length / 2;
     period = clones && n >= 1 ? (vertical ? kids[n].offsetTop - kids[0].offsetTop : kids[n].offsetLeft - kids[0].offsetLeft) : 0;
+    // éventail : positions mesurées une fois (offsetTop ignore les transformations), relues seulement au rendu
+    fanOn = vertical && fanMq.matches;
+    el.classList.toggle('bp-fan', fanOn);
+    fanMid = [];
+    fanLast = NaN;
+    for (const k of kids) {
+      if (!fanOn) k.style.transform = k.style.opacity = '';
+      else fanMid.push(k.offsetTop + k.offsetHeight / 2);
+    }
+    fan();
   }
+
+  // ── éventail (téléphone) : chaque image, selon la distance au centre de la colonne
+  const fanMq = matchMedia(FAN_MQ);
+  let fanOn = false;
+  let fanMid: number[] = [];
+  let fanLast = NaN;
+  function fan() {
+    if (!fanOn) return;
+    const top = list.scrollTop;
+    if (top === fanLast) return;
+    fanLast = top;
+    const half = Math.max(1, list.clientHeight / 2);
+    const kids = list.children as HTMLCollectionOf<HTMLElement>;
+    for (let i = 0; i < kids.length && i < fanMid.length; i++) {
+      const d = Math.max(-1.6, Math.min(1.6, (fanMid[i] - top - half) / half));
+      const a = Math.min(1, Math.abs(d));
+      const k = Math.max(0, 1 - a * 1.25);
+      const pop = k * k * (3 - 2 * k);
+      kids[i].style.transform = `translate3d(${(pop * FAN_POP * 100).toFixed(1)}%,0,0) rotate(${(d * FAN_TILT).toFixed(2)}deg) scale(${(1 - a * FAN_SHRINK).toFixed(3)})`;
+      kids[i].style.opacity = (1 - a * 0.45).toFixed(2);
+    }
+  }
+  fanMq.addEventListener?.('change', () => {
+    sig = '';
+    render();
+  });
+  // au doigt : l'éventail suit le défilement (une mise à jour par image)
+  let fanRaf = 0;
+  list.addEventListener('scroll', () => {
+    if (!fanOn || fanRaf) return;
+    fanRaf = requestAnimationFrame(() => ((fanRaf = 0), fan()));
+  }, { passive: true });
   // taille du fil changée (affichage, rotation, colonne ↔ bandeau) : on le reconstruit (doublé ou non)
   let box = '';
   new ResizeObserver(() => {
@@ -192,6 +251,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     if (pos >= period) pos -= period;
     else if (pos < 0) pos += period;
     setScroll(pos);
+    fan();
   }
   document.addEventListener('visibilitychange', wake);
   // au bout de la copie à la main : on reboucle aussi

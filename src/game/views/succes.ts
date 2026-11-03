@@ -4,15 +4,18 @@ import { ACHIEVEMENTS, ACHIEVEMENT_TIERS, achievementDone, achievementReward, fm
 import { cosmeticsOf } from '../../core/cosmetics';
 import { COIN_ICON } from './wallet';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
+import { guarded, isPending } from './safety';
 
 /**
  * SUCCÈS (#/succes, onglet de la navigation — retours live n°1) : les 36 succès de l'espace Jeux (src/core/economy.ts),
  * avec leur progression, leur prime en pièces (paliers 50 / 150 / 500 / 2 000) et les COSMÉTIQUES qu'ils débloquent
  * (bannières, cadres, titres, badges du profil : tout se débloque via les succès, rien ne s'achète).
+ * + les PRIMES DE COMPLÉTION (retours live 02 : sorties de l'espace Jeux, ce n'est pas un jeu) — #/succes/primes y mène
+ * (#/jeux/primes redirige ici) ; elles restent aussi encaissables depuis le portefeuille.
  */
 export interface SuccesView {
   el: HTMLElement;
-  enter(): void;
+  enter(sub?: string): void;
   leave(): void;
 }
 
@@ -33,12 +36,14 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
         <button class="btn-primary sc-claim" hidden></button>
       </div>
       <div class="sc-recap" role="status" hidden></div>
+      <section class="sc-primes" id="primes" aria-label="Primes de complétion"></section>
       <div class="sc-grid"></div>
     </div>`;
   const score = el.querySelector<HTMLElement>('.sc-score')!;
   const grid = el.querySelector<HTMLElement>('.sc-grid')!;
   const claimBtn = el.querySelector<HTMLButtonElement>('.sc-claim')!;
   const recap = el.querySelector<HTMLElement>('.sc-recap')!;
+  const primesEl = el.querySelector<HTMLElement>('.sc-primes')!;
   let filter: Filter = 'all';
 
   el.querySelectorAll<HTMLButtonElement>('.sc-filters button').forEach((b) =>
@@ -79,7 +84,32 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     return c;
   }
 
+  /** Primes de complétion : 5 pièces × cartes de chaque ensemble bouclé (album, groupe d'albums, thème). */
+  function renderPrimes() {
+    const s = backend.eco.snapshot;
+    primesEl.hidden = !s;
+    if (!s) return;
+    const total = s.completions.reduce((a, c) => a + c.reward, 0);
+    const done = s.econ.completions.length;
+    primesEl.classList.toggle('ready', s.completions.length > 0);
+    primesEl.innerHTML = `<div class="sc-pr-h"><b>Primes de complétion</b><span class="muted">5 pièces × cartes de chaque album, groupe ou thème bouclé${done ? ` · ${plural(done, 'prime déjà encaissée', 'primes déjà encaissées')}` : ''}</span>${s.completions.length ? `<button class="btn-primary sc-pr-claim"${isPending('claim') ? ' disabled' : ''}>Encaisser · +${fmtCoins(total)} ${COIN_ICON}</button>` : ''}</div>
+      ${s.completions.length ? `<div class="sc-pr-list">${s.completions.map((c) => `<span class="sc-pr">${esc(c.label)} · ${c.size} cartes · <b>+${fmtCoins(c.reward)}</b></span>`).join('')}</div>` : '<div class="muted sc-pr-none">Rien à encaisser pour l’instant : boucle un album dans ta <a href="#/collection/albums">collection</a> (famille de 30 cartes = 150 pièces).</div>'}`;
+    primesEl.querySelector<HTMLElement>('.sc-pr-claim')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget as HTMLElement;
+      void guarded('claim', btn, async () => {
+        try {
+          const r = await busyButton(btn, backend.eco.claimCompletions());
+          shell.sfx.chime(6, 0.12);
+          toast(`Complétion : +${fmtCoins(r.coins)} pièces (${r.sets.map((x) => x.label).join(', ')})`, 'ok');
+        } catch (err) {
+          toast(errMsg(err), 'err');
+        }
+      }, { keepOnSuccess: true });
+    });
+  }
+
   function render() {
+    renderPrimes();
     const s = backend.eco.snapshot;
     if (!s) {
       score.innerHTML = '';
@@ -112,11 +142,13 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
 
   return {
     el,
-    enter() {
+    enter(sub?: string) {
       shell.show(null);
       shell.setDimmed(true);
       el.scrollTo({ top: 0 });
       render();
+      // #/succes/primes (ancien #/jeux/primes) : droit aux primes de complétion
+      if (sub === 'primes') requestAnimationFrame(() => primesEl.scrollIntoView({ block: 'start' }));
     },
     leave() {},
   };

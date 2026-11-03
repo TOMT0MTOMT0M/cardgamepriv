@@ -54,6 +54,52 @@ export interface Friend {
   bot?: boolean;
 }
 
+/**
+ * AMIS (retours live 02, lot A2) : vrai lien d'amitié, à part de `friends` (= TOUS les joueurs, pour les échanges).
+ * `id` = id de la demande / du lien (accepter, refuser, annuler, retirer) ; `userId` = le joueur.
+ */
+export interface FriendRequest {
+  id: string;
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  createdAt: number;
+}
+export interface FriendLink {
+  id: string;
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  /** amis depuis le… */
+  since: number;
+  /** dernier battement de cœur : « en ligne » si < ONLINE_MS (voir `isOnline`) */
+  lastSeenAt: number;
+  status?: string;
+  packsOpened: number;
+  lastActivity?: { kind: string; message: string; createdAt: number } | null;
+  bot?: boolean;
+}
+export interface Social {
+  /** premières données reçues (en ligne : abonnement Convex) */
+  ready: boolean;
+  friends: FriendLink[];
+  incoming: FriendRequest[];
+  outgoing: FriendRequest[];
+}
+/** même fenêtre que le serveur (convex/users.ts) */
+export const ONLINE_MS = 90 * 1000;
+export const isOnline = (f: { lastSeenAt: number }, now = Date.now()) => now - f.lastSeenAt < ONLINE_MS;
+/** Où j'en suis avec ce joueur : ami, demande envoyée / reçue, rien. */
+export function friendState(s: Social, userId: string): { kind: 'friend'; link: FriendLink } | { kind: 'out' | 'in'; req: FriendRequest } | { kind: 'none' } {
+  const link = s.friends.find((f) => f.userId === userId);
+  if (link) return { kind: 'friend', link };
+  const o = s.outgoing.find((r) => r.userId === userId);
+  if (o) return { kind: 'out', req: o };
+  const i = s.incoming.find((r) => r.userId === userId);
+  if (i) return { kind: 'in', req: i };
+  return { kind: 'none' };
+}
+
 export interface FeedItem {
   id: string;
   kind: string;
@@ -112,8 +158,68 @@ export interface TradeHistoryItem extends TradeView {
  */
 export function lockedCards(s: GameState): Map<string, number> {
   const out = new Map<string, number>();
-  for (const t of s.trades.outgoing) for (const it of t.offered) out.set(cardKey(it), (out.get(cardKey(it)) ?? 0) + it.count);
+  const lock = (it: TradeItem) => out.set(cardKey(it), (out.get(cardKey(it)) ?? 0) + it.count);
+  for (const t of s.trades.outgoing) t.offered.forEach(lock);
+  // TABLEAU D'OFFRES (retours live 02, lot T) : cartes de mes annonces ouvertes et de mes offres en cours
+  const now = Date.now();
+  for (const l of s.board.mine) if (listingLive(l, now)) l.items.forEach(lock);
+  for (const o of s.board.offers) if ((o.status === 'pending' || o.status === 'countered') && o.listing && listingLive(o.listing, now)) o.offered.forEach(lock);
   return out;
+}
+
+// ─────────────────────────────── TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts)
+
+/** Offre faite sur une annonce : les cartes de l'offrant contre celles de l'annonce (ou une contre-offre de l'auteur). */
+export interface ListingOfferView {
+  id: string;
+  listingId: string;
+  fromId: string;
+  fromName: string;
+  offered: TradeItem[];
+  note?: string;
+  status: 'pending' | 'countered' | 'accepted' | 'declined' | 'withdrawn' | 'closed';
+  /** contre-offre de l'auteur : `give` = ce qu'il donne (de l'annonce), `want` = ce qu'il demande à l'offrant */
+  counter?: { give: TradeItem[]; want: TradeItem[]; note?: string; at: number };
+  createdAt: number;
+  resolvedAt?: number;
+}
+/** Annonce : cartes proposées (verrouillées tant qu'elle est ouverte), cartes recherchées (indicatives), petit mot. */
+export interface ListingView {
+  id: string;
+  userId: string;
+  userName: string;
+  avatarUrl?: string;
+  items: TradeItem[];
+  wanted: Array<{ cardId: string; rarity: RarityId }>;
+  note?: string;
+  status: 'open' | 'closed' | 'cancelled' | 'expired';
+  createdAt: number;
+  expiresAt: number;
+  resolvedAt?: number;
+  /** offres en cours (tableau) */
+  offerCount: number;
+  /** mes annonces : les offres reçues (en cours ; l'offre acceptée si close) */
+  offers?: ListingOfferView[];
+  /** tableau : mon offre en cours sur cette annonce */
+  myOffer?: ListingOfferView | null;
+}
+/** Mes annonces (ouvertes + terminées depuis < 48 h) et mes offres (en cours + terminées depuis < 48 h). */
+export interface BoardState {
+  mine: ListingView[];
+  offers: Array<ListingOfferView & { listing: ListingView | null }>;
+}
+export const BOARD_HOURS = [24, 48] as const;
+/** mêmes plafonds que le serveur (convex/listings.ts) */
+export const BOARD_MAX_OPEN = 5;
+export const BOARD_MAX_ITEMS = 12;
+export const listingLive = (l: Pick<ListingView, 'status' | 'expiresAt'>, now = Date.now()) => l.status === 'open' && l.expiresAt > now;
+/** À traiter sur le tableau (pastille) : offres reçues sur mes annonces ouvertes + contre-offres reçues sur mes offres. */
+export function boardAttention(s: GameState): number {
+  const now = Date.now();
+  let n = 0;
+  for (const l of s.board.mine) if (listingLive(l, now)) n += (l.offers ?? []).filter((o) => o.status === 'pending').length;
+  for (const o of s.board.offers) if (o.status === 'countered' && o.listing && listingLive(o.listing, now)) n++;
+  return n;
 }
 
 export interface Me {
@@ -157,6 +263,10 @@ export interface GameState {
   binders: Binder[];
   /** pochettes de sous-thème épinglées (vue Albums) : sous-thème → carte */
   covers: Record<string, string>;
+  /** AMIS (lot A2) : amis acceptés, demandes reçues / envoyées */
+  social: Social;
+  /** TABLEAU D'OFFRES (lot T) : mes annonces et mes offres */
+  board: BoardState;
 }
 
 /** Profil public (vitrine, devise, cosmétiques, statistiques enrichies). */
@@ -164,6 +274,9 @@ export interface Profile {
   id: string;
   name: string;
   avatarUrl?: string;
+  /** photo / bannière importées par le joueur (GIF animé ou image ; URL ou data URL en démo) — prioritaires sur l'avatar Discord et la bannière cosmétique */
+  avatarMedia?: string;
+  bannerMedia?: string;
   bio?: string;
   /** cartes choisies pour la vitrine (vide = les meilleures, automatiquement) */
   showcase: Array<{ cardId: string; rarity: RarityId }>;
@@ -242,6 +355,8 @@ export interface GameBackend {
   setBio(bio: string): Promise<void>;
   /** Cosmétiques du profil (seulement du débloqué : le serveur filtre) ; renvoie le choix retenu. */
   setCosmetics(choice: CosmeticChoice): Promise<CosmeticChoice>;
+  /** Photo de profil / bannière importées (GIF ≤ 2 Mo ; démo ≤ 700 Ko) ; `null` = retirer. Renvoie l'adresse à afficher. Refus : Error au message clair. */
+  setProfileMedia(kind: 'avatar' | 'banner', file: Blob | null): Promise<string | undefined>;
   /** Classement entre nous. */
   leaderboard(): Promise<LeaderRow[]>;
   /** Fil d'activité d'un joueur. */
@@ -263,6 +378,26 @@ export interface GameBackend {
   toggleBinderCard(id: string, card: { cardId: string; rarity: RarityId }): Promise<boolean>;
   setBinderCover(id: string, cardId?: string): Promise<void>;
   pinBinder(id: string, on: boolean): Promise<void>;
+  // amis (lot A2) — les échanges restent ouverts à tous
+  /** Demande en ami (par id, ou par pseudo exact) ; `accepted` s'il m'avait déjà demandé. */
+  requestFriend(to: { userId?: string; name?: string }): Promise<{ status: 'pending' | 'accepted'; name: string }>;
+  acceptFriend(id: string): Promise<void>;
+  declineFriend(id: string): Promise<void>;
+  cancelFriend(id: string): Promise<void>;
+  removeFriend(id: string): Promise<void>;
+  // tableau d'offres (lot T) — ouvert à tous les joueurs
+  /** Annonces ouvertes de tout le monde (temps réel) ; renvoie de quoi se désabonner. */
+  watchBoard(cb: (listings: ListingView[]) => void): () => void;
+  createListing(items: TradeItem[], wanted: Array<{ cardId: string; rarity: RarityId }>, note: string | undefined, hours: number): Promise<void>;
+  cancelListing(id: string): Promise<void>;
+  /** Faire (ou refaire : remplace la précédente) une offre sur l'annonce d'un autre. */
+  makeOffer(listingId: string, offered: TradeItem[], note?: string): Promise<void>;
+  withdrawOffer(id: string): Promise<void>;
+  acceptOffer(id: string): Promise<void>;
+  declineOffer(id: string): Promise<void>;
+  counterOffer(id: string, give: TradeItem[], want: TradeItem[], note?: string): Promise<void>;
+  /** L'offrant répond à la contre-offre de l'auteur. */
+  respondCounter(id: string, accept: boolean): Promise<void>;
 }
 
 export interface ContractResult {

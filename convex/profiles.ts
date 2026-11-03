@@ -4,7 +4,7 @@ import type { Doc } from './_generated/dataModel';
 import { requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
 import { pinnedOf } from './binders';
-import { bestCard, cleanCosmetics, statsFrom, type PlayerStats } from '../src/core/cosmetics';
+import { bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type PlayerStats } from '../src/core/cosmetics';
 import { streakDay, touchStreak } from '../src/core/streak';
 import { THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
@@ -38,6 +38,9 @@ export const profile = query({
       id: u._id,
       name: u.displayName,
       avatarUrl: u.avatarUrl,
+      /** photo / bannière importées (GIF ou image) — absentes : avatar Discord, bannière cosmétique */
+      avatarMedia: (u.avatarMedia && (await ctx.storage.getUrl(u.avatarMedia))) || undefined,
+      bannerMedia: (u.bannerMedia && (await ctx.storage.getUrl(u.bannerMedia))) || undefined,
       bio: u.bio,
       showcase: u.showcase ?? [],
       packsOpened: u.totalPacksOpened,
@@ -139,5 +142,46 @@ export const setCosmetics = mutation({
     const clean = cleanCosmetics({ banner, frame, title, badges }, stats);
     await ctx.db.patch(user._id, { cosmetics: clean });
     return clean;
+  },
+});
+
+/**
+ * PHOTO DE PROFIL / BANNIÈRE IMPORTÉES (retours live 02) : le client demande une adresse d'envoi, y POSTe le fichier
+ * (GIF animé ou image ≤ 2 Mo), puis l'enregistre avec `setProfileMedia`. Fichier refusé (trop lourd, mauvais format) :
+ * il est supprimé du stockage et la réponse `{ error }` dit pourquoi (pas d'exception : elle annulerait la suppression). L'ancien fichier est supprimé quand on le remplace ou le retire.
+ */
+export const generateMediaUploadUrl = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    await requireUser(ctx, sessionToken);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const setProfileMedia = mutation({
+  args: { sessionToken: v.string(), kind: v.union(v.literal('avatar'), v.literal('banner')), storageId: v.optional(v.id('_storage')) },
+  handler: async (ctx, { sessionToken, kind, storageId }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const field = kind === 'avatar' ? 'avatarMedia' : 'bannerMedia';
+    const old = user[field];
+    if (storageId && storageId !== old) {
+      const meta = await ctx.db.system.get(storageId);
+      if (!meta) throw new ConvexError('Fichier introuvable : renvoie-le.');
+      const owner = await ctx.db.query('profileMedia').withIndex('by_storage', (q) => q.eq('storageId', storageId)).unique();
+      if (owner && owner.userId !== user._id) throw new ConvexError('Ce fichier ne t’appartient pas.');
+      const bad = profileMediaProblem(meta.size, meta.contentType);
+      if (bad) {
+        if (!owner) await ctx.storage.delete(storageId);
+        return { error: bad };
+      }
+      if (!owner) await ctx.db.insert('profileMedia', { storageId, userId: user._id, kind, createdAt: Date.now() });
+    }
+    await ctx.db.patch(user._id, { [field]: storageId });
+    if (old && old !== storageId) {
+      const row = await ctx.db.query('profileMedia').withIndex('by_storage', (q) => q.eq('storageId', old)).unique();
+      if (row) await ctx.db.delete(row._id);
+      if (await ctx.db.system.get(old)) await ctx.storage.delete(old);
+    }
+    return { url: storageId ? ((await ctx.storage.getUrl(storageId)) ?? undefined) : undefined, error: undefined as string | undefined };
   },
 });

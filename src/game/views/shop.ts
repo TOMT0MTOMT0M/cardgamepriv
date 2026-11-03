@@ -144,7 +144,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       <div class="hud-bottom">
         <div class="card-info" hidden></div>
         <div class="hud-hint"><span class="ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" pathLength="100"/><circle class="p" cx="18" cy="18" r="15.5" pathLength="100"/></svg></span><span class="txt"></span></div>
-        <div class="hud-skip"><button class="skip-hi" title="Les cartes de moins de 4 étoiles défilent toutes seules">⏭ 4★ et +</button><button class="skip-reveal" title="Les cartes se retournent toutes seules (une 6★ garde son plein écran)">Tout révéler</button><button class="skip-all" title="Créditer sans regarder">Tout passer</button></div>
+        <div class="hud-skip"><button class="skip-hi" title="Les cartes de moins de 4 étoiles défilent toutes seules">⏭ 4★ et +</button><button class="skip-reveal" title="Les cartes se retournent toutes seules (une 6★ garde son plein écran)">Tout révéler</button><button class="skip-all" title="Aller directement au récap (tout est crédité)">Tout passer</button></div>
       </div>
       <div class="mythic-veil" hidden><div class="mv-kicker">✺ MYTHIQUE ✺</div><div class="mv-stars">★★★★★★</div><div class="mv-name"></div><div class="mv-hint"></div></div>
     </div>
@@ -368,7 +368,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const sp = backend.state.sealed;
     // (audit UX2-20) double toucher pendant la latence de preparePack : un seul départ
     if (!sp || mode !== 'pick' || bannerBtn.disabled) return;
-    const p = list.find((b) => b.key === keyOf(sp)) ?? list[2];
+    const p = list.find((b) => b.key === keyOf(sp)) ?? list.find((b) => b.key === 'bebou') ?? list[0];
     bannerBtn.disabled = true;
     try {
       const got = await busyButton(bannerBtn, backend.preparePack(p.req));
@@ -460,40 +460,42 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (batch.all && (opening.phase === 'opened' || opening.phase === 'shown')) opening.advance();
   });
   /**
-   * (audit UX2-11) « Tout passer » crédite sans montrer et ne se rattrape pas : confirmation légère en deux temps
-   * (premier toucher → « Sûr ? », second dans les 2,5 s), et il est séparé de « Tout révéler » (voir le CSS du lot B).
+   * « Tout passer » (retours live 02) : un seul toucher, direct au récap (la confirmation « Sûr ? » de l'audit UX2-11 est
+   * retirée : la spec le demande, et rien n'est perdu — tout est crédité et montré au récap). Il reste séparé de
+   * « Tout révéler » (voir le CSS du lot B).
    */
-  let skipArmT = 0;
   const disarmSkip = () => {
-    clearTimeout(skipArmT);
     skipAll.classList.remove('armed');
     skipAll.textContent = 'Tout passer';
   };
   skipAll.addEventListener('click', () => {
     if (!batch || batch.skipping || mode !== 'opening') return;
-    if (!skipAll.classList.contains('armed')) {
-      const left = batch.total - batch.done.length;
-      skipAll.classList.add('armed');
-      skipAll.textContent = left > 1 ? `Sûr ? ${left} boosters` : 'Sûr ?';
-      haptics.pulse(8);
-      clearTimeout(skipArmT);
-      skipArmT = window.setTimeout(disarmSkip, 2500);
-      return;
-    }
     disarmSkip();
     void skipEverything();
   });
 
-  /** « Tout passer » : crédite le booster en cours, tire + crédite le reste de la série, puis le récap. */
+  /**
+   * « Tout passer » : (retours live 02) on saute DIRECTEMENT au récap — l'ouverture en cours s'arrête tout de suite
+   * (plus de cartes qui finissent de défiler derrière) ; le récap affiche « Enregistrement… n / N » le temps de créditer
+   * le booster en cours et de tirer + créditer le reste de la série, puis les cartes (miniatures).
+   */
   async function skipEverything() {
     if (!batch || batch.skipping || mode !== 'opening') return;
     batch.skipping = true;
     skipAll.disabled = skipHi.disabled = true;
     opening.setAuto({ burn: false, minRank: 0, reveal: false });
-    hint.hidden = false;
-    hint.classList.remove('hold');
     info.classList.remove('in');
     const b = batch;
+    opening.reset();
+    skipEl.hidden = true;
+    mythicVeil.hidden = true;
+    hideFanBadges();
+    sumBg.hidden = true;
+    setMode('summary');
+    summary.classList.remove('multi', 'pending');
+    summary.innerHTML = `<div class="sum-line sum-wait" role="status"><span class="sum-k">Enregistrement des cartes… <b class="sw-n">${Math.min(b.total, b.done.length + 1)}</b> / ${b.total}</span></div>`;
+    const waitN = summary.querySelector<HTMLElement>('.sw-n');
+    syncSummaryInset();
     try {
       // (audit UX2-05) un crédit déjà en route (fin du booster montré) est ATTENDU : sinon preparePack renverrait le même
       // booster encore scellé, crédité et compté deux fois. Tout échec arrête la série, rien n'est compté en trop.
@@ -504,7 +506,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         ok = await credit(b, cur);
       }
       while (ok && b.done.length < b.total) {
-        hintTxt.textContent = `Ouverture… ${b.done.length + 1} / ${b.total}`;
+        if (waitN) waitN.textContent = String(b.done.length + 1);
         const p = await backend.preparePack(b.req);
         // garde : le serveur rend un booster déjà compté (scellé non crédité) → on s'arrête
         if (b.done.some((d) => d.id === p.id)) break;
@@ -520,9 +522,18 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       secretExp = null;
     }
     secretContinue.hidden = true;
-    opening.reset();
     showSummary();
   }
+
+  /** (retours live 02) hauteur réelle du récap → l'éventail 3D final se pose au-dessus, jamais dessous. */
+  function syncSummaryInset() {
+    requestAnimationFrame(() => {
+      if (mode !== 'summary' || summary.hidden) return opening.setSummaryInset(0);
+      const bottom = parseFloat(getComputedStyle(summary).bottom) || 0;
+      opening.setSummaryInset(summary.offsetHeight + bottom);
+    });
+  }
+  window.addEventListener('resize', () => mode === 'summary' && syncSummaryInset());
 
   /**
    * Vitrine : le booster 3D se centre dans l'espace libre entre les colonnes (ordinateur : liste des packs à gauche,
@@ -533,9 +544,18 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     let px = 0;
     const W = window.innerWidth;
     if (mode === 'pick' && W > 860) {
-      const l = leftCol.getBoundingClientRect().right;
-      const r = sheet.isOpen() ? W - 12 - Math.min(460, W * 0.42) : rightCol.getBoundingClientRect().left || W;
+      // (retours live 02) ordinateur : gros tirages à GAUCHE, liste des packs à DROITE (CSS lot G) ; la fiche du pack
+      // s'ouvre côté gauche (par-dessus les gros tirages), la liste reste visible et cliquable
+      const a = rightCol.getBoundingClientRect(), b = leftCol.getBoundingClientRect();
+      const [lc, rc] = a.left <= b.left ? [a, b] : [b, a];
+      let l = lc.width ? lc.right : 0;
+      const r = rc.width ? rc.left : W;
+      if (sheet.isOpen()) l = Math.max(l, 12 + Math.min(460, W * 0.42));
       px = Math.round((Math.max(0, l) + r) / 2 - W / 2);
+    } else if (mode === 'pick' && !big.el.hidden && matchMedia('(max-width: 860px) and (orientation: portrait)').matches) {
+      // téléphone (retours 03/11 soir) : la colonne des gros tirages est à gauche → le booster glisse un peu à droite
+      const r = big.el.getBoundingClientRect().right;
+      if (r > 0 && r < W / 2) px = Math.round(r * 0.42);
     }
     opening.setFocusOffset(px, 0);
     el.style.setProperty('--focus-x', `${px}px`);
@@ -777,11 +797,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     sumBg.style.setProperty('--rc', rr.secret ? '#e8927c' : rr.hex);
     sumBg.style.setProperty('--ra', rr.accentHex);
     sumBg.style.setProperty('--pa', accent);
-    // intensité croissante avec la rareté (commune : presque rien)
-    sumBg.style.setProperty('--k', String([0.08, 0.16, 0.3, 0.5, 0.75, 1, 1][Math.min(6, rr.rank)]));
+    // intensité croissante avec la rareté (commune : presque rien) — (retours live 02) réduite d'environ moitié : le
+    // halo ne doit pas noyer l'éventail ni les couleurs des cartes
+    sumBg.style.setProperty('--k', String([0.04, 0.08, 0.15, 0.24, 0.36, 0.48, 0.48][Math.min(6, rr.rank)]));
     const parts = sumBg.querySelector<HTMLElement>('.sum-parts')!;
     parts.replaceChildren();
-    const n = rr.rank >= 4 ? 22 : rr.rank >= 2 ? 12 : 0;
+    const n = rr.rank >= 4 ? 12 : rr.rank >= 2 ? 6 : 0;
     for (let i = 0; i < n; i++) {
       const sp = h('i');
       sp.style.setProperty('--x', `${(Math.random() * 100).toFixed(1)}%`);
@@ -875,6 +896,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         <button class="btn-ghost back">Boutique</button>
       </div>`;
     if (best) paintSummaryBg(best, req);
+    syncSummaryInset();
     const retry = summary.querySelector<HTMLButtonElement>('.retry');
     retry?.addEventListener('click', async () => {
       const b = batch;
@@ -902,7 +924,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       btn.disabled = true; // double toucher : un seul départ
       shell.requestGyro();
       const n = Number(btn.dataset.n) || 1;
-      const p = list.find((b) => b.key === (req.kind === 'bebou' ? 'bebou' : themeById(req.themeId ?? '')?.id)) ?? list[2];
+      const p = list.find((b) => b.key === (req.kind === 'bebou' ? 'bebou' : themeById(req.themeId ?? '')?.id)) ?? list.find((b) => b.key === 'bebou') ?? list[0];
       const hi = batch?.hi ?? false;
       const all = batch?.all ?? false; // (audit UX2-02) « Tout révéler » suit, comme « 4★ et + »
       back();
