@@ -1,18 +1,20 @@
-import type { ActivityItem, GameBackend, LeaderRow, PlayerCard, Profile } from '../backend';
+import type { ActivityItem, GameBackend, PlayerCard, Profile } from '../backend';
+import { createLeaderboard } from './leaderboard';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { BADGES, BANNERS, FRAMES, TITLES, badgeOf, bannerOf, frameOf, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats } from '../../core/cosmetics';
+import { ACHIEVEMENTS, achievementDone } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 
 /**
  * PROFIL (refonte complète, retours du 3 nov.) — le mien (avatar de l'en-tête) ou celui d'un ami.
  *  - Grande bannière personnalisable, avatar rond + cadre, pseudo + titre + badges + devise.
- *  - Onglets : TABLEAU (stats enrichies : complétion, 6★, plus gros drop, série de connexion, complétion par thème,
- *    raretés) · COLLECTION (vitrine choisie à la main + classeur épinglé) · ACTIVITÉ (gros drops, échanges, contrats) ·
- *    CLASSEMENT (entre nous : complétion, 6★ & secrets, boosters, échanges, série — podium + liste).
+ *  - Onglets : TABLEAU (la VITRINE en premier — 12 cartes, 2 rangées de 6 —, puis les stats : succès X/Y, complétion,
+ *    6★, série de connexion, complétion par thème, raretés) · COLLECTION (classeur épinglé) · ACTIVITÉ (gros drops,
+ *    échanges, contrats) · CLASSEMENT (composant partagé avec la page #/classement).
  *  - Cosmétiques (bannières, cadres, titres, badges) : tout se débloque en jouant (src/core/cosmetics.ts), rien ne s'achète.
  */
 export interface ProfileView {
@@ -21,7 +23,8 @@ export interface ProfileView {
   leave(): void;
 }
 
-const SLOTS = 6;
+/** vitrine : 2 rangées de 6 (retours live n°1) */
+const SLOTS = 12;
 const RANK: Record<RarityId, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 const STARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
 const best = (a: PlayerCard, b: PlayerCard) => RANK[b.rarity] - RANK[a.rarity] || a.bestMintNumber - b.bestMintNumber || (catalogEntry(a.cardId)?.num ?? 0) - (catalogEntry(b.cardId)?.num ?? 0);
@@ -35,14 +38,6 @@ const ago = (t: number) => {
   return d === 1 ? 'hier' : `il y a ${d} j`;
 };
 type Tab = 'tableau' | 'collection' | 'activite' | 'classement';
-type Board = 'pct' | 'mythic' | 'packs' | 'trades' | 'streak';
-const BOARDS: Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; crown?: boolean }> = [
-  { id: 'pct', label: 'Complétion', crown: true, value: (r) => r.pct, unit: (r) => `${fmtPct(r.pct)} · ${fmtN(r.uniques)} cartes` },
-  { id: 'mythic', label: '6★ & secrets', value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${r.mythics} × 6★${r.secrets ? ` · ✷ ${r.secrets}` : ''}` },
-  { id: 'packs', label: 'Boosters', value: (r) => r.packsOpened, unit: (r) => plural(r.packsOpened, 'booster') },
-  { id: 'trades', label: 'Échanges', value: (r) => r.tradesDone, unit: (r) => plural(r.tradesDone, 'échange', 'échanges') },
-  { id: 'streak', label: 'Série', value: (r) => r.streak, unit: (r) => plural(r.streak, 'jour') },
-];
 
 export function createProfileView(backend: GameBackend, shell: Shell, getViewer: () => Promise<ViewerScene>, logout: () => void): ProfileView {
   const el = h('section', 'view profile');
@@ -55,11 +50,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         <button role="tab" data-t="tableau" class="on">Tableau</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">Activité</button><button role="tab" data-t="classement">Classement</button>
       </div>
       <div class="pf-pane p-tableau">
-        <div class="pf-stats"></div>
-        <div class="pf-sec"><div class="pf-sec-t"><h2>Raretés</h2></div><div class="pf-rar"></div></div>
-      </div>
-      <div class="pf-pane p-collection" hidden>
-        <div class="pf-sec">
+        <div class="pf-sec pf-case-sec">
           <div class="pf-sec-t"><h2>Vitrine</h2><span class="pf-auto"></span><span class="pf-tools"></span></div>
           <div class="pf-case"></div>
           <div class="pf-picker" hidden>
@@ -67,14 +58,15 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
             <div class="grid mini pf-pick-grid"></div>
           </div>
         </div>
+        <div class="pf-stats"></div>
+        <div class="pf-sec"><div class="pf-sec-t"><h2>Raretés</h2></div><div class="pf-rar"></div></div>
+      </div>
+      <div class="pf-pane p-collection" hidden>
         <div class="pf-sec pf-binder-sec" hidden><div class="pf-sec-t"><h2 class="pf-binder-t">Classeur</h2><span class="pf-auto">· épinglé</span><span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs" hidden>Mes classeurs</a></span></div><div class="grid mini pf-binder"></div></div>
+        <div class="pf-nobinder muted" hidden></div>
       </div>
       <div class="pf-pane p-activite" hidden><div class="pf-activity"></div></div>
-      <div class="pf-pane p-classement" hidden>
-        <div class="seg pf-boards">${BOARDS.map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.crown ? '👑 ' : ''}${b.label}</button>`).join('')}</div>
-        <div class="pf-podium"></div>
-        <div class="pf-board"></div>
-      </div>
+      <div class="pf-pane p-classement" hidden></div>
       <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>Les autres</h2></div><div class="pf-friends"></div></div>
     </div>
     <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
@@ -84,16 +76,16 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const cosm = q('.pf-cosm');
   const stats = q('.pf-stats');
   const caseEl = q('.pf-case');
-  const autoEl = q('.p-collection .pf-auto');
-  const tools = q('.p-collection .pf-tools');
+  const autoEl = q('.pf-case-sec .pf-auto');
+  const tools = q('.pf-case-sec .pf-tools');
   const picker = q('.pf-picker');
   const pickGrid = q('.pf-pick-grid');
   const pickSearch = q<HTMLInputElement>('.pf-search');
   const rarEl = q('.pf-rar');
   const friendsEl = q('.pf-friends');
   const activityEl = q('.pf-activity');
-  const podiumEl = q('.pf-podium');
-  const boardEl = q('.pf-board');
+  const leaderboard = createLeaderboard(backend, shell);
+  q('.p-classement').append(leaderboard.el);
   const viewerUi = q('.viewer-ui');
   const vInfo = q('.v-info');
 
@@ -106,8 +98,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   let token = 0;
   let open = false;
   let tab: Tab = 'tableau';
-  let board: Board = 'pct';
-  let leader: LeaderRow[] | null = null;
+  let leaderLoaded = false;
   let activity: ActivityItem[] | null = null;
   let cosmOpen = false;
   let cosmDraft: CosmeticChoice = {};
@@ -124,7 +115,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       tab = b.dataset.t as Tab;
       syncTabs();
       if (tab === 'activite' && !activity) void loadActivity();
-      if (tab === 'classement' && !leader) void loadLeaderboard();
+      if (tab === 'classement' && !leaderLoaded) ((leaderLoaded = true), void leaderboard.load());
     }),
   );
   function syncTabs() {
@@ -135,15 +126,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     });
     for (const t of ['tableau', 'collection', 'activite', 'classement'] as Tab[]) q(`.p-${t}`).hidden = t !== tab;
   }
-  el.querySelectorAll<HTMLButtonElement>('.pf-boards button').forEach((b) =>
-    b.addEventListener('click', () => {
-      board = b.dataset.b as Board;
-      el.querySelectorAll<HTMLButtonElement>('.pf-boards button').forEach((x) => x.classList.toggle('on', x === b));
-      renderBoard();
-    }),
-  );
-
-  /** vitrine affichée : celle choisie (cartes encore possédées), sinon les 6 meilleures */
+  /** vitrine affichée : celle choisie (cartes encore possédées), sinon les 12 meilleures */
   function showcase(): { list: Array<{ cardId: string; rarity: RarityId }>; auto: boolean } {
     const mine = ownedOf();
     const has = new Set(mine.map((c) => `${c.cardId}:${c.rarity}`));
@@ -302,7 +285,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const st = statsOf();
     const total = mine.reduce((a, c) => a + c.count, 0);
     const dups = mine.reduce((a, c) => a + Math.max(0, c.count - 1), 0);
-    const top = prof?.bestDrop ? { cardId: prof.bestDrop.cardId, rarity: prof.bestDrop.rarity, bestMintNumber: prof.bestDrop.mintNumber } : [...mine].sort(best)[0];
     const pct = (st.uniques / Math.max(1, st.total || PUBLIC_CARD_COUNT)) * 100;
     const sd = prof?.streakDay ?? ((st.streak - 1) % STREAK_CYCLE) + 1;
     const cell = (v: string, l: string, cls = '') => `<div class="pf-stat ${cls}"><b>${v}</b><span>${l}</span></div>`;
@@ -317,16 +299,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       cell(fmtN(total), 'cartes en tout') +
       cell(fmtN(dups), plural(dups, 'doublon').replace(/^\S+\s/, '')) +
       cell(fmtN(st.fullSubthemes), `album${st.fullSubthemes > 1 ? 's' : ''} à 100 %`);
-    // plus gros drop : la carte elle-même
-    if (top) {
-      const e = catalogEntry(top.cardId);
-      const dropEl = h('div', `pf-stat pf-drop r-${top.rarity}`);
-      dropEl.style.setProperty('--rc', rarity(top.rarity).hex);
-      dropEl.innerHTML = `<div class="pf-drop-c"></div><div><b>${starsHtml(top.rarity)}</b><span>plus gros drop · <i>${esc(e?.name ?? top.cardId)}</i>${top.bestMintNumber ? ` · n°${fmtN(top.bestMintNumber)}` : ''}</span></div>`;
-      const t = cardTile(top.cardId, top.rarity, { mini: true });
-      t.addEventListener('click', () => void openCard(top.cardId, top.rarity));
-      dropEl.querySelector('.pf-drop-c')!.append(t);
-      stats.append(dropEl);
+    // succès débloqués (les 36 de l'espace Jeux) — remplace le « plus gros drop » (retours live n°1)
+    const ach = prof?.achievements ?? (isMe() && backend.eco.snapshot ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, backend.eco.snapshot!.achievements.stats)).length, total: ACHIEVEMENTS.length } : null);
+    if (ach) {
+      const sc = h('a', 'pf-stat pf-ach');
+      sc.href = '#/succes';
+      sc.innerHTML = `<b>🏅 ${ach.done}<small>/${ach.total}</small></b><span>succès débloqués${isMe() ? ' · voir' : ''}</span><i class="pf-ach-bar"><i style="width:${((ach.done / ach.total) * 100).toFixed(1)}%"></i></i>`;
+      if (!isMe()) sc.removeAttribute('href');
+      stats.prepend(sc);
     }
     // complétion par thème
     const ids = new Set(mine.filter((c) => c.rarity !== 'secret').map((c) => c.cardId));
@@ -454,6 +434,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const b = isMe() ? backend.state.binders.find((x) => x.pinned) ?? null : prof?.pinnedBinder ?? null;
     sec.hidden = !b;
     q('.pf-binder-go').hidden = !isMe();
+    const nob = q('.pf-nobinder');
+    nob.hidden = !!b;
+    nob.innerHTML = isMe() ? 'Pas de classeur épinglé. Crée un classeur dans <a class="p-link" href="#/collection/classeurs">ta collection</a> et épingle-le : il s’affichera ici, visible des potes.' : 'Pas de classeur épinglé.';
     if (!b) return;
     q('.pf-binder-t').textContent = b.name;
     const g = q('.pf-binder');
@@ -496,43 +479,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     }
   }
 
-  // ── CLASSEMENT
-  async function loadLeaderboard() {
-    podiumEl.innerHTML = '<div class="muted">Chargement…</div>';
-    try {
-      leader = await backend.leaderboard();
-    } catch (e) {
-      leader = [];
-      toast(errMsg(e), 'err');
-    }
-    renderBoard();
-  }
-  function renderBoard() {
-    if (tab !== 'classement') return;
-    const b = BOARDS.find((x) => x.id === board)!;
-    const rows = [...(leader ?? [])].sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, 'fr'));
-    const me = backend.state.user?.id;
-    podiumEl.replaceChildren();
-    boardEl.replaceChildren();
-    if (!rows.length) return;
-    const ava = (r: LeaderRow) => `<span class="pd-ava frame-${frameOf(r.cosmetics.frame).id}" style="--frame:${frameOf(r.cosmetics.frame).css ?? 'transparent'}">${r.avatarUrl ? `<img src="${esc(r.avatarUrl)}" alt="">` : `<span>${esc(r.name.slice(0, 1))}</span>`}</span>`;
-    const top3 = rows.slice(0, 3);
-    const order = [1, 0, 2].filter((i) => top3[i]);
-    podiumEl.innerHTML = `<div class="pd-row">${order
-      .map((i) => {
-        const r = top3[i];
-        return `<a class="pd p${i + 1}${r.id === me ? ' me' : ''}" href="#/profil/${encodeURIComponent(r.id)}"><span class="pd-rank">${i === 0 && b.crown ? '👑' : ['🥇', '🥈', '🥉'][i]}</span>${ava(r)}<b>${esc(r.name)}${r.id === me ? ' <i>(toi)</i>' : ''}</b><span class="pd-v">${b.unit(r)}</span></a>`;
-      })
-      .join('')}</div>`;
-    for (const [i, r] of rows.entries()) {
-      const row = h('a', `pf-lb${r.id === me ? ' me' : ''}`);
-      row.href = `#/profil/${encodeURIComponent(r.id)}`;
-      row.innerHTML = `<span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name">${esc(r.name)}${titleOf(r.cosmetics.title) ? `<small>${esc(titleOf(r.cosmetics.title)!.label)}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
-      boardEl.append(row);
-    }
-    if (b.id === 'pct') boardEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">👑 Le classement roi : la complétion globale de la collection.</div>');
-  }
-
   function renderFriends() {
     const me = backend.state.user;
     const list = [...(me && who && who !== me.id ? [{ id: me.id, name: `${me.name} (moi)`, online: true, packsOpened: me.totalPacksOpened, avatarUrl: me.avatarUrl }] : []), ...backend.state.friends.filter((f) => f.id !== who)];
@@ -551,7 +497,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     renderFriends();
     syncTabs();
     renderActivity();
-    renderBoard();
   }
 
   async function load(id: string) {
@@ -562,7 +507,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     cosm.hidden = true;
     picker.hidden = true;
     activity = null;
-    leader = null;
+    leaderLoaded = false;
     const me = backend.state.user;
     prof = isMe() && me ? { id: me.id, name: me.name, avatarUrl: me.avatarUrl, showcase: [], packsOpened: me.totalPacksOpened } : null;
     cards = [];
@@ -580,7 +525,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     el.classList.remove('loading');
     renderAll();
     if (tab === 'activite') void loadActivity();
-    if (tab === 'classement') void loadLeaderboard();
+    if (tab === 'classement') ((leaderLoaded = true), void leaderboard.load());
   }
 
   // ── une carte en grand

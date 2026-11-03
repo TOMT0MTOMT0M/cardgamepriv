@@ -173,3 +173,9 @@ export const potOdds = (covered: number) => covered / ROULETTE_NUMBERS;
 
 /** Nom d'une carte du catalogue (repli : son id). */
 export const cardName = (id: string) => catalogEntry(id)?.name ?? id;
+
+/**
+ * Espace Jeux ouvert à tous ? (retours live n°1 : l'onglet GAMES reste une page « bientôt » pour l'instant ; seuls les
+ * admins — et la démo hors-ligne — y ont déjà accès). Passer à true le jour de l'ouverture.
+ */
+export const GAMES_OPEN = false;

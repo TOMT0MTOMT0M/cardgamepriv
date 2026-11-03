@@ -31,8 +31,10 @@ const HI_RANK = 3;
 let sealedHint = HINT.hold;
 
 /**
- * Boutique + ouverture. Accueil : le fil « Gros tirages » en haut, le booster choisi en 3D au centre, la rangée des 5
- * pochettes en bas. Toucher une pochette ouvre sa FICHE (packSheet.ts : chances, pity, cartes, envies, Ouvrir) ; l'ouverture
+ * Boutique + ouverture. Accueil (retours live n°1) — ordinateur, 3 colonnes : à gauche la liste verticale compacte des
+ * packs (BIENTÔT pour ceux pas encore sortis), au centre le GROS booster 3D interactif (inclinaison à la souris, glisser
+ * pour changer), à droite le fil vertical des gros tirages qui défile tout seul. Téléphone : le fil en haut, le booster
+ * au centre, la rangée des pochettes en bas. Toucher une pochette la met au centre ET ouvre sa FICHE (packSheet.ts : chances, pity, cartes, envies, Ouvrir) ; l'ouverture
  * se joue ensuite dans la même scène 3D, sans chargement.
  */
 export interface ShopView {
@@ -68,9 +70,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
 
   el.innerHTML = `
     <div class="shop-home">
-      <div class="shop-title"><span class="kicker">BOUTIQUE</span><h2>Choisis ton booster</h2><p class="shop-hint"></p></div>
+      <div class="shop-left">
+        <div class="shop-title"><span class="kicker">BOUTIQUE</span><h2>Choisis ton booster</h2><p class="shop-hint"></p></div>
+        <div class="packs-row" role="listbox" aria-label="Boosters"></div>
+      </div>
       <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary">Ouvrir</button></div>
-      <div class="packs-row" role="listbox" aria-label="Boosters"></div>
+      <div class="shop-right"></div>
     </div>
     <div class="hud" hidden>
       <div class="hud-count"></div>
@@ -87,7 +92,6 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     <div class="summary" hidden></div>
     <div class="secret-continue" hidden><button class="btn-primary">Continuer</button></div>
     <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
-  const home = el.querySelector<HTMLElement>('.shop-home')!;
   const rowEl = el.querySelector<HTMLElement>('.packs-row')!;
   const hintEl = el.querySelector<HTMLElement>('.shop-hint')!;
   const banner = el.querySelector<HTMLElement>('.home-banner')!;
@@ -101,7 +105,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const secretContinue = el.querySelector<HTMLElement>('.secret-continue')!;
   // gros tirages de tout le groupe, en haut de l'accueil ; une carte touchée s'ouvre dans la visionneuse
   const big = createBigPulls(backend, (card) => void viewCard(card));
-  home.prepend(big.el);
+  el.querySelector('.shop-right')!.append(big.el);
+  const leftCol = el.querySelector<HTMLElement>('.shop-left')!;
+  const rightCol = el.querySelector<HTMLElement>('.shop-right')!;
   const skipEl = el.querySelector<HTMLElement>('.hud-skip')!;
   const skipHi = skipEl.querySelector<HTMLButtonElement>('.skip-hi')!;
   const skipReveal = skipEl.querySelector<HTMLButtonElement>('.skip-reveal')!;
@@ -109,7 +115,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const mythicVeil = el.querySelector<HTMLElement>('.mythic-veil')!;
   const sumBg = el.querySelector<HTMLElement>('.sum-bg')!;
   const fanBadges = el.querySelector<HTMLElement>('.fan-badges')!;
-  hintEl.textContent = TOUCH ? 'Touche une pochette pour voir ce qu’elle contient' : 'Clique sur une pochette pour voir ce qu’elle contient · ← → pour changer';
+  hintEl.textContent = TOUCH ? 'Touche une pochette pour voir ce qu’elle contient' : 'Clique sur un pack pour voir ce qu’il contient · ↑ ↓ pour changer';
 
   // ── fiche du booster (overlay)
   // visuels des pochettes (face du vrai booster, rendue par la scène) : capturés une fois, dès qu'ils existent
@@ -271,7 +277,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (mode !== 'pick' || !el.isConnected || e.altKey || e.ctrlKey || e.metaKey || sheet.isOpen()) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target as HTMLElement)?.tagName ?? '')) return;
     if (e.key === 'Enter' && !/^(BUTTON|A)$/.test((e.target as HTMLElement)?.tagName ?? '')) return sheet.open(selected);
-    const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    const d = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
     if (!d || backend.state.sealed) return;
     e.preventDefault();
     const i = list.findIndex((b) => b.key === selected);
@@ -343,14 +349,17 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   }
 
   /**
-   * Vitrine : le booster 3D se centre dans l'espace libre. Fiche ouverte sur ordinateur (panneau à droite) : il glisse
-   * vers la gauche ; pendant l'ouverture, au récap et sur téléphone : centre de l'écran.
+   * Vitrine : le booster 3D se centre dans l'espace libre entre les colonnes (ordinateur : liste des packs à gauche,
+   * gros tirages à droite — ou la fiche du pack quand elle est ouverte) ; pendant l'ouverture, au récap et sur
+   * téléphone : centre de l'écran.
    */
   function placeFocus() {
     let px = 0;
-    if (mode === 'pick' && sheet.isOpen() && window.innerWidth > 860) {
-      const sw = Math.min(460, window.innerWidth * 0.42);
-      px = -Math.round(sw / 2);
+    const W = window.innerWidth;
+    if (mode === 'pick' && W > 860) {
+      const l = leftCol.getBoundingClientRect().right;
+      const r = sheet.isOpen() ? W - 12 - Math.min(460, W * 0.42) : rightCol.getBoundingClientRect().left || W;
+      px = Math.round((Math.max(0, l) + r) / 2 - W / 2);
     }
     opening.setFocusOffset(px, 0);
     el.style.setProperty('--focus-x', `${px}px`);

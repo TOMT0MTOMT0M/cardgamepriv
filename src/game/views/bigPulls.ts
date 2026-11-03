@@ -4,19 +4,27 @@ import { rarity } from '../../core/rarity';
 import { esc, h, thumbUrl } from '../ui';
 
 /**
- * « Gros tirages » : les dernières Légendaires, Mythiques et Secrètes tirées par tout le groupe, en direct, en HAUT de
- * la page d'accueil (boutique) : un fil horizontal (carte + pseudo + « il y a X min »).
+ * « Gros tirages » : les Légendaires, Mythiques et Secrètes tirées par tout le groupe AUJOURD'HUI, en direct, sur la
+ * page d'accueil (boutique). Ordinateur : colonne de droite, fil VERTICAL ; téléphone : bandeau horizontal en haut.
  *
- * - Une carte qui arrive pendant qu'on regarde entre en glissant, avec un éclat de sa couleur ; une Mythique (6★) et
- *   une Secrète ont leur animation à elles (liseré arc-en-ciel qui tourne, halo rose qui bat).
- * - Les Bébous secrets sont montrés tels quels (décision du groupe, 3 nov.) : plus de carte masquée.
- * - Toucher une carte l'ouvre en grand (visionneuse 3D), toucher un joueur ouvre son profil.
+ * Retours live n°1 :
+ * - le fil DÉFILE TOUT SEUL, en continu et en boucle (contenu doublé, aucun à-coup), et se met en PAUSE au survol de
+ *   la souris (ou quand on le fait défiler à la main / au doigt) ;
+ * - toucher un tirage = la carte en grand (visionneuse, fermeture croix / clic hors de la carte / Échap) ;
+ * - item revu : carte plus grande, pseudo COMPLET (il passe à la ligne au lieu d'être coupé), nom de la carte,
+ *   « il y a X min » sur sa propre ligne.
+ * - Une carte qui arrive pendant qu'on regarde entre avec un éclat de sa couleur ; une 6★ et une Secrète ont leur
+ *   animation à elles (liseré arc-en-ciel qui tourne, halo rose qui bat). Les Bébous secrets sont montrés tels quels.
  */
 export interface BigPullsWidget {
   el: HTMLElement;
   /** visible seulement sur la vitrine (pas pendant une ouverture) */
   setVisible(on: boolean): void;
 }
+
+const DAY = 86_400_000;
+/** vitesse du défilement automatique (px / s) */
+const SPEED = 24;
 
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
@@ -31,72 +39,164 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   const el = h('aside', 'bigpulls');
   el.setAttribute('aria-label', 'Gros tirages en direct');
   el.innerHTML = `
-    <div class="bp-head"><span class="bp-kicker"><span class="bp-live"></span>EN DIRECT</span><h3>Gros tirages</h3><span class="bp-sub">5★ et + du groupe</span></div>
+    <div class="bp-head"><span class="bp-kicker"><span class="bp-live"></span>EN DIRECT</span><h3>Gros tirages</h3><span class="bp-sub">5★ et + du groupe · aujourd’hui</span></div>
     <div class="bp-list" role="list"></div>
     <div class="bp-empty" hidden>Personne n’a encore tiré de Légendaire… à toi de jouer.</div>`;
   const list = el.querySelector<HTMLElement>('.bp-list')!;
   const empty = el.querySelector<HTMLElement>('.bp-empty')!;
-  // molette verticale sur le fil = défilement horizontal (ordinateur)
-  list.addEventListener('wheel', (e) => {
-    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || list.scrollWidth <= list.clientWidth) return;
-    e.preventDefault();
-    list.scrollLeft += e.deltaY;
-  }, { passive: false });
+  const sub = el.querySelector<HTMLElement>('.bp-sub')!;
+  const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const seen = new Set<string>();
   let first = true;
   let sig = '';
 
-  function item(p: BigPull, fresh: boolean): HTMLElement {
+  function item(p: BigPull, fresh: boolean, clone = false): HTMLElement {
     const rr = rarity(p.rarity);
     const e = catalogEntry(p.cardId);
     const it = h('div', `bp-item r-${p.rarity}${fresh ? ' bp-new' : ''}`);
     it.setAttribute('role', 'listitem');
+    if (clone) it.setAttribute('aria-hidden', 'true');
     it.style.setProperty('--rc', rr.hex);
     it.style.setProperty('--ra', rr.accentHex);
     const name = p.cardName || e?.name || p.cardId;
     const art = !e ? `<span class="bp-q">?</span>` : `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(e)}">`;
     const ava = p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<span>${esc((p.userName || '?').slice(0, 1).toUpperCase())}</span>`;
     it.innerHTML = `
-      <button class="bp-card" title="${esc(`${name} · ${rr.label}${p.mintNumber ? ` · n°${p.mintNumber}` : ''}`)}">
+      <button class="bp-card"${clone ? ' tabindex="-1"' : ''} title="${esc(`${name} · ${rr.label}${p.mintNumber ? ` · n°${p.mintNumber}` : ''}`)}" aria-label="${esc(`Voir ${name} en grand`)}">
         <span class="bp-art">${art}</span>
         <span class="bp-badge">${rr.secret ? '✷ SECRÈTE' : rr.id === 'mythic' ? '✺ 6★' : esc(rr.label)}</span>
-        <span class="bp-name">${esc(name)}</span>
       </button>
-      <a class="bp-who" href="#/profil/${encodeURIComponent(p.userId)}"><span class="bp-ava">${ava}</span><span class="bp-user">${esc(p.mine ? `${p.userName} (moi)` : p.userName)}</span></a>
-      <div class="bp-time" data-t="${p.createdAt}">${ago(p.createdAt)}</div>`;
-    it.querySelector('.bp-card')!.addEventListener('click', () => view({ cardId: p.cardId, cardName: name, rarity: p.rarity, mintNumber: p.mintNumber ?? 0, isNew: false }));
+      <div class="bp-info">
+        <a class="bp-who" href="#/profil/${encodeURIComponent(p.userId)}"${clone ? ' tabindex="-1"' : ''}><span class="bp-ava">${ava}</span><span class="bp-user">${esc(p.userName || '?')}${p.mine ? ' <em>(moi)</em>' : ''}</span></a>
+        <span class="bp-name">${esc(name)}</span>
+        <span class="bp-time" data-t="${p.createdAt}">${ago(p.createdAt)}</span>
+      </div>`;
+    // tout le tirage est cliquable (sauf le pseudo, qui mène au profil) : la carte en grand
+    it.addEventListener('click', (ev) => {
+      if ((ev.target as HTMLElement).closest('a')) return;
+      if (dragged) return;
+      view({ cardId: p.cardId, cardName: name, rarity: p.rarity, mintNumber: p.mintNumber ?? 0, isNew: false });
+    });
     return it;
   }
 
+  /** les gros tirages du jour ; s'il n'y en a encore aucun aujourd'hui, les derniers en date */
+  function shown(): BigPull[] {
+    const all = backend.state.bigPulls;
+    const today = all.filter((p) => Date.now() - p.createdAt < DAY);
+    sub.textContent = today.length || !all.length ? '5★ et + du groupe · aujourd’hui' : '5★ et + du groupe · les derniers';
+    return today.length ? today : all;
+  }
+
   function render() {
-    const pulls = backend.state.bigPulls;
+    const pulls = shown();
     const s = pulls.map((p) => p.id).join(',');
     if (s === sig) return;
     sig = s;
-    list.replaceChildren(
-      ...pulls.map((p) => {
-        const fresh = !first && !seen.has(p.id);
-        seen.add(p.id);
-        return item(p, fresh);
-      }),
-    );
+    const items = pulls.map((p) => {
+      const fresh = !first && !seen.has(p.id);
+      seen.add(p.id);
+      return item(p, fresh);
+    });
+    list.replaceChildren(...items);
     empty.hidden = pulls.length > 0;
-    // nouvelle belle carte pendant qu'on regarde : le fil revient au début (elle entre en glissant)
-    if (!first && pulls.length) list.scrollTo({ left: 0, behavior: 'smooth' });
     first = false;
+    pos = 0;
+    setScroll(0);
+    // la boucle : le fil est doublé dès qu'il déborde (la copie prend le relais sans à-coup)
+    requestAnimationFrame(() => {
+      clones = false;
+      if (!reduced && pulls.length > 1 && overflow() > 4) {
+        list.append(...pulls.map((p) => item(p, false, true)));
+        clones = true;
+      }
+      measure();
+    });
   }
+
+  // ── défilement automatique, continu, en boucle
+  let pos = 0;
+  let period = 0;
+  let clones = false;
+  let vertical = false;
+  let hover = false;
+  let holdUntil = 0;
+  let dragged = false;
+  let last = 0;
+  const overflow = () => (vertical ? list.scrollHeight - list.clientHeight : list.scrollWidth - list.clientWidth);
+  const getScroll = () => (vertical ? list.scrollTop : list.scrollLeft);
+  const setScroll = (v: number) => (vertical ? (list.scrollTop = v) : (list.scrollLeft = v));
+  function measure() {
+    vertical = getComputedStyle(list).flexDirection === 'column';
+    const kids = list.children as HTMLCollectionOf<HTMLElement>;
+    const n = kids.length / 2;
+    period = clones && n >= 1 ? (vertical ? kids[n].offsetTop - kids[0].offsetTop : kids[n].offsetLeft - kids[0].offsetLeft) : 0;
+  }
+  // taille du fil changée (affichage, rotation, colonne ↔ bandeau) : on le reconstruit (doublé ou non)
+  let box = '';
+  new ResizeObserver(() => {
+    const b = `${list.clientWidth}x${list.clientHeight}`;
+    if (b === box || !list.clientWidth) return;
+    box = b;
+    sig = '';
+    render();
+  }).observe(list);
+  list.addEventListener('mouseenter', () => (hover = true));
+  list.addEventListener('mouseleave', () => (hover = false));
+  // à la main (molette, doigt) : le défilement automatique laisse la main quelques secondes
+  const hold = () => (holdUntil = performance.now() + 2500);
+  list.addEventListener('wheel', (e) => {
+    hold();
+    // ordinateur, fil horizontal : la molette verticale le fait défiler
+    if (vertical || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || list.scrollWidth <= list.clientWidth) return;
+    e.preventDefault();
+    list.scrollLeft += e.deltaY;
+  }, { passive: false });
+  list.addEventListener('touchstart', hold, { passive: true });
+  list.addEventListener('touchmove', () => ((dragged = true), hold()), { passive: true });
+  list.addEventListener('touchend', () => setTimeout(() => (dragged = false), 60), { passive: true });
+
+  function tick(t: number) {
+    requestAnimationFrame(tick);
+    const dt = last ? Math.min(0.1, (t - last) / 1000) : 0;
+    last = t;
+    if (reduced || !clones || period <= 0 || el.hidden || !el.isConnected || document.hidden) return;
+    const cur = getScroll();
+    // l'utilisateur a bougé le fil : on repart de là où il l'a laissé
+    if (Math.abs(cur - pos) > 2) pos = cur;
+    if (hover || t < holdUntil) return;
+    pos += SPEED * dt;
+    if (pos >= period) pos -= period;
+    else if (pos < 0) pos += period;
+    setScroll(pos);
+  }
+  requestAnimationFrame(tick);
+  // au bout de la copie à la main : on reboucle aussi
+  list.addEventListener('scroll', () => {
+    if (!clones || period <= 0) return;
+    const cur = getScroll();
+    if (cur >= period + 1) setScroll((pos = cur - period));
+  }, { passive: true });
+
   backend.onChange(render);
-  // « il y a 3 min » : remis à jour toutes les 30 s
+  // « il y a 3 min » : remis à jour toutes les 30 s (et les tirages de plus d'un jour quittent le fil)
   setInterval(() => {
     if (!el.isConnected) return;
     for (const t of el.querySelectorAll<HTMLElement>('.bp-time')) t.textContent = ago(Number(t.dataset.t));
+    render();
   }, 30_000);
 
   return {
     el,
     setVisible(on) {
+      const was = el.hidden;
       el.hidden = !on;
+      // de retour sur la vitrine : la mise en page a pu changer (rotation, redimensionnement)
+      if (on && was) {
+        sig = '';
+        requestAnimationFrame(render);
+      }
     },
   };
 }

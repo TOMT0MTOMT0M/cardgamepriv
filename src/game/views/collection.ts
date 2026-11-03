@@ -1,15 +1,17 @@
 import { collectionSig, type Binder, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
-import { ALL_THEMES, BEBOU_PACK, SUBTHEMES, catalogEntry, numberingSize, subthemeById, themeById, type CatalogEntry, type SubTheme, type ThemeInfo } from '../../core/sets/themes';
+import { ALL_THEMES, BEBOU_PACK, catalogEntry, numberingSize, subthemeById, themeById, type CatalogEntry, type SubTheme, type ThemeInfo } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, loadSeen, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 
 /**
- * COLLECTION (refonte, retours du 3 nov.)
- *  - Onglets du haut : les 4 thèmes + Les Bébous + Classeurs.
+ * COLLECTION (refonte, retours du 3 nov. + retours live n°1)
+ *  - Bascule en haut : CARTES (vue par défaut : toutes mes cartes, les plus rares en haut ; tri rareté / date /
+ *    A→Z / par album, filtres étoile + thème + recherche) · ALBUMS · CLASSEURS.
+ *  - Vue Albums : onglets des 4 thèmes + Les Bébous.
  *  - Un thème s'ouvre sur sa vue ALBUMS : mosaïque de pochettes de sous-thèmes (visuel + nom + barre de progression),
  *    recherche, tri (complétion / groupe / alphabétique) — ça tient 400+ sous-thèmes. Pochette hybride : la carte
  *    épinglée à la main (« Définir comme pochette »), sinon la meilleure carte possédée, sinon l'icône du sous-thème.
@@ -29,7 +31,9 @@ export interface CollectionView {
 type Filter = 'all' | 'owned' | 'missing' | 'dups' | 'fresh';
 type Sort = 'num' | 'stars' | 'recent';
 type AlbumSort = 'completion' | 'group' | 'alpha';
-type Mode = 'albums' | 'grid' | 'binders' | 'binder';
+type Mode = 'cards' | 'albums' | 'grid' | 'binders' | 'binder';
+/** vue Cartes : tri (retours live n°1) */
+type CardSort = 'rarity' | 'date' | 'alpha' | 'album';
 const STAR_ORDER: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
 const RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 const PAGE = 60;
@@ -46,7 +50,12 @@ function hueOf(id: string): number {
 export function createCollectionView(backend: GameBackend, shell: Shell, getViewer: () => Promise<ViewerScene>): CollectionView {
   const el = h('section', 'view collection');
   let theme: ThemeInfo = ALL_THEMES[0];
-  let mode: Mode = 'albums';
+  let mode: Mode = 'cards';
+  /** vue Cartes (toutes mes cartes) : tri, filtres étoile / thème / recherche */
+  let cSort: CardSort = 'rarity';
+  let cStar: RarityId | null = null;
+  let cTheme = '';
+  let cQuery = '';
   /** album (sous-thème) ouvert */
   let subId: string | null = null;
   /** classeur ouvert */
@@ -90,6 +99,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
 
   el.innerHTML = `
     <div class="coll-head">
+      <div class="coll-switch"><div class="seg coll-views" role="tablist"><button data-v="cards">Cartes</button><button data-v="albums">Albums</button><button data-v="binders">Classeurs</button></div></div>
       <div class="tabs"></div>
       <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-name"></span></div>
       <div class="progress"></div>
@@ -109,6 +119,12 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       <div class="starf"></div>
       <div class="seg sortf" aria-label="Tri"><button data-s="num">N°</button><button data-s="stars">Étoiles</button><button data-s="recent">Récentes</button></div>
       <input class="search" type="search" placeholder="Rechercher…" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Rechercher une carte (nom ou numéro)" />
+    </div>
+    <div class="cards-bar" hidden>
+      <div class="seg cb-theme" aria-label="Thème"></div>
+      <div class="starf cb-stars"></div>
+      <div class="seg cb-sort" aria-label="Tri"><button data-s="rarity">Rareté</button><button data-s="date">Date</button><button data-s="alpha">A → Z</button><button data-s="album">Par album</button></div>
+      <input class="search cb-search" type="search" placeholder="Rechercher…" autocomplete="off" spellcheck="false" aria-label="Rechercher une carte">
     </div>
     <div class="binders-view" hidden></div>
     <div class="grid"></div>
@@ -194,7 +210,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (e.key !== '/' || !el.isConnected || open || e.ctrlKey || e.metaKey || e.altKey) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target as HTMLElement)?.tagName ?? '')) return;
     e.preventDefault();
-    const inp = mode === 'albums' ? alSearch : search;
+    const inp = mode === 'albums' ? alSearch : mode === 'cards' ? q<HTMLInputElement>('.cb-search') : search;
     inp.focus();
     inp.select();
   });
@@ -229,6 +245,52 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (mode === 'binder') return goBinders();
     goAlbums();
   });
+
+  // ── bascule Cartes / Albums / Classeurs + barre de la vue Cartes
+  const cardsBar = q('.cards-bar');
+  el.querySelectorAll<HTMLButtonElement>('.coll-views button').forEach((b) =>
+    b.addEventListener('click', () => {
+      const v = b.dataset.v!;
+      if (v === 'cards') goCards();
+      else if (v === 'albums') {
+        if (theme.secret) theme = ALL_THEMES[0];
+        goAlbums();
+      } else goBinders();
+      shell.sfx.tick(1.2, 0.04);
+    }),
+  );
+  {
+    const tb = q('.cb-theme');
+    for (const [id, label] of [['', 'Tout'], ...ALL_THEMES.filter((t) => t.cards.length).map((t) => [t.id, t.label])] as Array<[string, string]>) {
+      const b = h('button', '', esc(label));
+      b.dataset.t = id;
+      b.addEventListener('click', () => ((cTheme = id), (page = 0), render()));
+      tb.append(b);
+    }
+    const sb = q('.cb-stars');
+    for (const r of [...STAR_ORDER, 'secret'] as RarityId[]) {
+      const b = h('button', 'chip', r === 'secret' ? '✷' : `${rarity(r).rank + 1}★`);
+      b.title = rarity(r).label;
+      b.style.setProperty('--rc', rarity(r).hex);
+      b.dataset.r = r;
+      b.addEventListener('click', () => ((cStar = cStar === r ? null : r), (page = 0), render()));
+      sb.append(b);
+    }
+    el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => b.addEventListener('click', () => ((cSort = b.dataset.s as CardSort), (page = 0), render())));
+    const inp = q<HTMLInputElement>('.cb-search');
+    let t = 0;
+    inp.addEventListener('input', () => {
+      clearTimeout(t);
+      t = window.setTimeout(() => ((cQuery = fold(inp.value.trim())), (page = 0), render()), 120);
+    });
+    inp.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      if (inp.value) ((inp.value = ''), inp.dispatchEvent(new Event('input')));
+      else inp.blur();
+    });
+  }
+  const THEME_ORDER = new Map(ALL_THEMES.map((t, i) => [t.id, i]));
 
   // ── données
   /** id → ligne de collection (une carte a une seule rareté : celle de son thème) */
@@ -266,6 +328,13 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }
 
   // ── navigation
+  function goCards() {
+    mode = 'cards';
+    subId = null;
+    page = 0;
+    render();
+    toTop();
+  }
   function goAlbums() {
     mode = 'albums';
     subId = null;
@@ -314,10 +383,12 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       });
       tabs.append(b);
     }
-    const nb = backend.state.binders.length;
-    const bb = h('button', `tab binders-tab${mode === 'binders' || mode === 'binder' ? ' on' : ''}`, `Classeurs <span>${nb ? fmtN(nb) : '+'}</span>`);
-    bb.addEventListener('click', goBinders);
-    tabs.append(bb);
+    tabs.hidden = !(mode === 'albums' || mode === 'grid');
+    const v = mode === 'cards' ? 'cards' : mode === 'binders' || mode === 'binder' ? 'binders' : 'albums';
+    el.querySelectorAll<HTMLButtonElement>('.coll-views button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.v === v);
+      if (b.dataset.v === 'binders') b.innerHTML = `Classeurs${backend.state.binders.length ? ` <em>${fmtN(backend.state.binders.length)}</em>` : ''}`;
+    });
   }
 
   function renderProgress(mine: Map<string, PlayerCard>) {
@@ -326,14 +397,16 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       return;
     }
     progress.hidden = false;
-    const cards = scope();
-    const st = subId ? subthemeById(subId) : null;
-    const label = st ? st.label : theme.label;
+    const inCards = mode === 'cards';
+    const ct = inCards && cTheme ? ALL_THEMES.find((t) => t.id === cTheme) : null;
+    const cards = inCards ? (ct ? ct.cards : ALL_THEMES.filter((t) => !t.secret).flatMap((t) => t.cards)) : scope();
+    const st = !inCards && subId ? subthemeById(subId) : null;
+    const label = inCards ? (ct ? ct.label : 'au total') : st ? st.label : theme.label;
     const total = cards.length;
     const have = cards.filter((c) => mine.has(c.id)).length;
     const dups = cards.reduce((a, c) => a + Math.max(0, (mine.get(c.id)?.count ?? 0) - 1), 0);
     const pct = total ? (have / total) * 100 : 0;
-    const per = theme.secret
+    const per = (inCards ? ct?.secret : theme.secret)
       ? ''
       : STAR_ORDER.map((r) => {
           const cs = cards.filter((c) => c.rarity === r);
@@ -341,7 +414,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
           const full = cs.length > 0 && n === cs.length;
           return `<div class="ps${full ? ' done' : ''}" style="--rc:${rarity(r).hex}" title="${rarity(r).label}${full ? ' · toutes trouvées !' : ''}"><b>${rarity(r).rank + 1}★</b><span class="bar"><i data-w="${cs.length ? (n / cs.length) * 100 : 0}"></i></span><em>${fmtN(n)}/${fmtN(cs.length)}${full ? ' ✓' : ''}</em></div>`;
         }).join('');
-    const albumsN = subId ? 0 : theme.subthemes.filter((s) => s.cards.length).length;
+    const albumsN = inCards || subId ? 0 : theme.subthemes.filter((s) => s.cards.length).length;
     progress.innerHTML = `
       <div class="p-main"><div class="p-pct${total && have === total ? ' full' : ''}">${fmtPct(pct).replace(/ %$/, '')}<small> %</small></div>
         <div class="p-txt"><b>${fmtN(have)}</b> / ${fmtN(total)} cartes uniques ${esc(label)}${albumsN ? ` · ${plural(albumsN, 'album')}` : ''}<br><span>${mine.size === 0 ? 'ta collection est vide : <a class="p-link" href="#/">ouvre ton premier booster</a>' : dups ? `${plural(dups, 'doublon')} · <a class="p-link" href="#/contrats">à brûler en contrat</a> ou à échanger` : total && have === total ? 'sélection complète !' : 'pas encore de doublon'}</span></div></div>
@@ -459,6 +532,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let shownList: CatalogEntry[] = [];
   let lastKey = '';
   function renderGrid(mine: Map<string, PlayerCard>) {
+    grid.classList.remove('by-album');
     const fb = q<HTMLButtonElement>('.f-fresh');
     fb.hidden = fresh.size === 0;
     fb.textContent = `Nouvelles (${fmtN(fresh.size)})`;
@@ -501,6 +575,68 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
                 ? 'Pas de nouvelle carte dans cette sélection : regarde dans les autres albums.'
                 : 'Aucune carte ne correspond.');
   }
+  /** VUE CARTES (défaut, retours live n°1) : toutes mes cartes, les plus rares en haut ; tri, étoile, thème, recherche. */
+  function renderCards(mine: Map<string, PlayerCard>) {
+    q('.cb-theme').querySelectorAll<HTMLButtonElement>('button').forEach((b) => b.classList.toggle('on', b.dataset.t === cTheme));
+    q('.cb-stars').querySelectorAll<HTMLElement>('.chip').forEach((b) => b.classList.toggle('on', b.dataset.r === cStar));
+    el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => b.classList.toggle('on', b.dataset.s === cSort));
+    let list: CatalogEntry[] = [];
+    for (const id of mine.keys()) {
+      const e = catalogEntry(id);
+      if (!e) continue;
+      if (cTheme && e.themeId !== cTheme) continue;
+      if (cStar && e.rarity !== cStar) continue;
+      if (cQuery && !folded(e).includes(cQuery) && !fold(subthemeById(e.subthemeId)?.label ?? '').includes(cQuery)) continue;
+      list.push(e);
+    }
+    const date = (e: CatalogEntry) => mine.get(e.id)?.firstPulledAt ?? 0;
+    const subLabel = (e: CatalogEntry) => subthemeById(e.subthemeId)?.label ?? '';
+    if (cSort === 'rarity') list.sort((a, b) => RANK[b.rarity] - RANK[a.rarity] || date(b) - date(a) || a.name.localeCompare(b.name, 'fr'));
+    else if (cSort === 'date') list.sort((a, b) => date(b) - date(a) || RANK[b.rarity] - RANK[a.rarity]);
+    else if (cSort === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    else list.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), 'fr') || a.num - b.num);
+    const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${page}`;
+    if (key !== lastKey) {
+      if (lastKey) {
+        grid.classList.remove('swap');
+        void grid.offsetWidth;
+        grid.classList.add('swap');
+      }
+      lastKey = key;
+    }
+    const pages = Math.max(1, Math.ceil(list.length / PAGE));
+    if (page >= pages) page = pages - 1;
+    const frag = document.createDocumentFragment();
+    const tile = (e: CatalogEntry) => cardTile(e.id, e.rarity, { owned: true, count: mine.get(e.id)!.count, fresh: fresh.has(e.id) });
+    const slice = list.slice(page * PAGE, (page + 1) * PAGE);
+    if (cSort === 'album') {
+      // tri par album : un bloc par album (titre au-dessus de ses cartes) ; les petits albums se rangent côte à côte
+      const cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+      grid.classList.add('by-album');
+      for (let i = 0; i < slice.length; ) {
+        let j = i;
+        while (j < slice.length && slice[j].subthemeId === slice[i].subthemeId) j++;
+        const n = j - i;
+        const blk = h('div', 'cards-alb');
+        blk.style.setProperty('--n', String(Math.min(n, cols)));
+        const e0 = slice[i];
+        blk.append(h('h4', 'cards-sub', `<span>${esc(subLabel(e0))}</span><small>${esc(themeById(e0.themeId)?.label ?? '')} · ${n}</small>`));
+        for (const e of slice.slice(i, j)) blk.append(tile(e));
+        frag.append(blk);
+        i = j;
+      }
+    } else {
+      grid.classList.remove('by-album');
+      for (const e of slice) frag.append(tile(e));
+    }
+    grid.replaceChildren(frag);
+    shownList = list;
+    preloadThumbs(list.slice(page * PAGE, (page + 1) * PAGE));
+    renderPager(pages, list.length);
+    empty.hidden = list.length > 0;
+    empty.innerHTML = fr(mine.size === 0 ? 'Ta collection est vide : <a href="#/">ouvre ton premier booster</a> !' : 'Aucune carte ne correspond aux filtres.');
+  }
+
   function renderPager(pages: number, total: number) {
     pager.hidden = pages <= 1;
     if (pages <= 1) return;
@@ -704,13 +840,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   function render() {
     const mine = owned();
     renderTabs(mine);
+    const inCards = mode === 'cards';
     const inAlbums = mode === 'albums';
     const inGrid = mode === 'grid';
     const inBinders = mode === 'binders' || mode === 'binder';
     albums.hidden = !inAlbums;
     filtersEl.hidden = !inGrid;
-    grid.hidden = !inGrid;
-    pager.hidden = !inGrid;
+    cardsBar.hidden = !inCards;
+    grid.hidden = !(inGrid || inCards);
+    pager.hidden = !(inGrid || inCards);
     empty.hidden = true;
     bindersView.hidden = !inBinders;
     crumb.hidden = !((inGrid && !theme.secret) || mode === 'binder');
@@ -726,7 +864,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       if (on && row.scrollWidth > row.clientWidth) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.clientWidth) / 2;
     }
     renderProgress(mine);
-    if (inAlbums) renderAlbums(mine);
+    if (inCards) renderCards(mine);
+    else if (inAlbums) renderAlbums(mine);
     else if (inGrid) renderGrid(mine);
     else if (mode === 'binders') renderBinders(mine);
     else renderBinder(mine);
@@ -917,22 +1056,26 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       const seen = loadSeen();
       fresh = seen ? new Set([...mine.keys()].filter((id) => !seen.has(id))) : new Set();
       if (!seen) saveSeen();
+      // arrivée sans lien précis : la vue CARTES, triée par rareté (retours live n°1)
+      if (!sub) {
+        mode = 'cards';
+        cSort = 'rarity';
+        page = 0;
+      }
       if (sub === 'classeurs') goBinders();
+      else if (sub === 'albums') {
+        if (theme.secret) theme = ALL_THEMES[0];
+        mode = 'albums';
+      }
       else if (sub && sub !== 'nouvelles') {
-        // lien direct : un sous-thème (#/collection/pkm-kanto), un groupe (#/collection/pokemon → ses albums) ou un thème (#/collection/monde)
+        // lien direct : un sous-thème (#/collection/pokemon) ou un thème (#/collection/monde)
         const st = subthemeById(sub);
-        const grp = !st ? SUBTHEMES.find((x) => x.group?.id === sub.replace(/^group:/, '')) : undefined;
-        const t = ALL_THEMES.find((x) => x.id === (st?.themeId ?? grp?.themeId ?? sub));
+        const t = ALL_THEMES.find((x) => x.id === (st?.themeId ?? sub));
         if (t) theme = t;
         if (st && st.themeId !== 'bebous') {
           mode = 'grid';
           subId = st.id;
           page = 0;
-        } else if (grp) {
-          mode = 'albums';
-          subId = null;
-          alSearch.value = grp.group!.label;
-          albumQuery = fold(grp.group!.label);
         } else if (t) {
           mode = t.secret ? 'grid' : 'albums';
           subId = null;

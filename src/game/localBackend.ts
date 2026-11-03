@@ -7,7 +7,8 @@ import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
 import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak, type StreakState } from '../core/streak';
-import { bestCard, cleanCosmetics, statsFrom, type CosmeticChoice } from '../core/cosmetics';
+import { bestCard, cleanCosmetics, statsFrom, type CosmeticChoice, type PlayerStats } from '../core/cosmetics';
+import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon, type EconState } from '../core/economy';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
@@ -172,6 +173,11 @@ export function createLocalBackend(): GameBackend {
     save.activity.length = Math.min(save.activity.length, 60);
   };
   const myStats = () => statsFrom(Object.values(save.inv), { packsOpened: save.opened, tradesDone: save.trades_done ?? 0, contractsSigned: save.contracts_done ?? 0, streak: save.streak?.count ?? 0 });
+  const doneCount = (st: PlayerStats, e: EconState) => {
+    const a = achievementStats(st, e);
+    return ACHIEVEMENTS.reduce((n, x) => n + (achievementDone(x, a) ? 1 : 0), 0);
+  };
+  const myEcon = (): EconState => save.eco?.econ ?? emptyEcon();
   const botStats = (b: Bot, i: number) => statsFrom(Object.values(b.inv), { packsOpened: 30 + i * 12, tradesDone: 3 - i, contractsSigned: i, streak: [12, 3, 0][i] ?? 0 });
 
   /** Un robot propose parfois un échange : un de ses doublons qui te manque contre un des tiens qui lui manque. */
@@ -499,7 +505,7 @@ export function createLocalBackend(): GameBackend {
       if (userId === 'me') {
         const st = myStats();
         const top = bestCard(Object.values(save.inv));
-        return { id: 'me', name: 'Toi', bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv) };
+        return { id: 'me', name: 'Toi', bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: ACHIEVEMENTS.length } };
       }
       const i = save.bots.findIndex((b) => b.id === userId);
       if (i < 0) return null;
@@ -507,10 +513,10 @@ export function createLocalBackend(): GameBackend {
       const st = botStats(b, i);
       const top = bestCard(Object.values(b.inv));
       const cos: CosmeticChoice[] = [{ banner: 'night', frame: 'bronze', title: 'opener', badges: ['first', 'trade'] }, { banner: 'forest', frame: 'none', title: 'rookie', badges: ['first'] }, { banner: 'plum', frame: 'none', badges: [] }];
-      return { id: userId, name: b.name, bio: ['Je collectionne les brillantes ✨', 'Toujours partant pour un échange', ''][i] || undefined, showcase: [], packsOpened: 30 + i * 12, cosmetics: cleanCosmetics(cos[i] ?? {}, st), stats: st, streakDay: ((st.streak - 1) % 7) + 1, bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(b.inv) };
+      return { id: userId, name: b.name, bio: ['Je collectionne les brillantes ✨', 'Toujours partant pour un échange', ''][i] || undefined, showcase: [], packsOpened: 30 + i * 12, cosmetics: cleanCosmetics(cos[i] ?? {}, st), stats: st, streakDay: ((st.streak - 1) % 7) + 1, bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(b.inv), achievements: { done: doneCount(st, emptyEcon()), total: ACHIEVEMENTS.length } };
     },
     async setShowcase(cards) {
-      if (cards.length > 6) throw new Error('6 cartes au maximum dans la vitrine.');
+      if (cards.length > 12) throw new Error('12 cartes au maximum dans la vitrine.');
       for (const c of cards) if (!save.inv[cardKey(c)]) throw new Error(`Tu n’as pas ${catalogEntry(c.cardId)?.name ?? 'cette carte'}.`);
       save.showcase = cards;
       sync();
@@ -525,7 +531,7 @@ export function createLocalBackend(): GameBackend {
       return save.cosmetics;
     },
     async leaderboard() {
-      const row = (id: string, name: string, st: ReturnType<typeof myStats>, cosmetics: CosmeticChoice) => ({ id, name, cosmetics: cleanCosmetics(cosmetics, st), uniques: st.uniques, total: st.total, pct: st.total ? (st.uniques / st.total) * 100 : 0, mythics: st.mythics, secrets: st.secrets, packsOpened: st.packsOpened, tradesDone: st.tradesDone, streak: st.streak });
+      const row = (id: string, name: string, st: ReturnType<typeof myStats>, cosmetics: CosmeticChoice) => ({ id, name, cosmetics: cleanCosmetics(cosmetics, st), uniques: st.uniques, total: st.total, pct: st.total ? (st.uniques / st.total) * 100 : 0, mythics: st.mythics, secrets: st.secrets, packsOpened: st.packsOpened, tradesDone: st.tradesDone, streak: st.streak, achievements: doneCount(st, id === 'me' ? myEcon() : emptyEcon()) });
       return [row('me', 'Toi', myStats(), save.cosmetics ?? {}), ...save.bots.map((b, i) => row(b.id, b.name, botStats(b, i), {}))];
     },
     async activity(userId) {

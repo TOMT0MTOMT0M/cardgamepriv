@@ -1756,10 +1756,12 @@ export function createOpeningScene(): OpeningScene {
     dispose() {},
   };
   function layout(w: number, h: number) {
-    // vitrine : la rangée des pochettes occupe le bas de l'écran → le booster remonte (plus encore en portrait)
+    // vitrine. Ordinateur (retours live n°1) : 3 colonnes, plus de rangée en bas → le GROS booster, centré, comme
+    // avant. Téléphone / écran étroit : la rangée des pochettes occupe le bas → le booster remonte (plus en portrait).
     const portrait = w / h < 0.8;
-    L.dispY = portrait ? 0.26 : 0.1;
-    L.dispS = portrait ? 0.56 : 0.56;
+    const wide = !portrait && typeof window !== 'undefined' && window.innerWidth > 860;
+    L.dispY = wide ? 0.02 : portrait ? 0.26 : 0.1;
+    L.dispS = wide ? 0.84 : 0.56;
   }
   return api;
 }

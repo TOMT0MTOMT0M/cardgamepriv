@@ -5,6 +5,7 @@ import type { AbuseAlertView, DuelSideView, DuelView, RoyaleView, RouletteView }
 import { ACHIEVEMENTS, ACHIEVEMENT_TIERS, CARD_STARS, CARD_VALUE, achievementReward, burnable, cardsValue, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
 import {
   DUEL_MAX_PACKS,
+  GAMES_OPEN,
   MIN_NUMBERS,
   NUMBER_COST,
   ROULETTE_NUMBERS,
@@ -57,6 +58,13 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   };
   const myId = () => (backend.state.mode === 'demo' ? 'me' : backend.state.user?.id ?? '');
   const snap = () => backend.eco.snapshot;
+  /**
+   * Retours live n°1 : l'onglet GAMES reste une page d'attente (« bientôt ») pour tout le monde ; seuls les admins
+   * (et la démo hors-ligne) voient déjà l'espace Jeux complet, pour le tester avant l'ouverture.
+   * Ouvrir les jeux à tous : passer GAMES_OPEN à true.
+   */
+  const open = () => GAMES_OPEN || !!snap()?.isAdmin;
+  let wasOpen = false;
   const packsLeft = () => (backend.state.user ? liveRegen(backend.state.user).balance : 0);
   const sfx = (k: 'tick' | 'chime' | 'big') => {
     try {
@@ -79,6 +87,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   }
   backend.eco.onChange(() => {
     if (!el.isConnected) return;
+    if (open() !== wasOpen) return draw();
     renderHead();
     if (sub === 'succes' || sub === 'forge') draw();
   });
@@ -90,7 +99,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       <a class="gm-game royale" href="#/jeux/royale"><i class="gm-glyph">♛</i><b>Pack Battle Royale</b><span>3 à 8 joueurs, 1 booster chacun. Le meilleur total d'étoiles remporte tout le pot.</span><em class="gm-live" data-live="royale">…</em></a>
       <a class="gm-game roulette" href="#/jeux/roulette"><i class="gm-glyph">◎</i><b>Roulette à cartes</b><span>100 numéros, 1 numéro = 100 pièces de valeur. Un tirage par jour à 21 h : le numéro qui sort rafle tout le pot.</span><em class="gm-live" data-live="roulette">…</em></a>
       <a class="gm-mini" href="#/jeux/forge"><b>La forge</b><span>Brûle tes doublons contre des pièces (1★ = 5 … 6★ = 1 000).</span></a>
-      <a class="gm-mini" href="#/jeux/succes"><b>Succès</b><span>${snap() ? `${snap()!.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus` : 'Paliers 50 / 150 / 500 / 2 000 pièces'}</span></a>
+      <a class="gm-mini" href="#/succes"><b>Succès</b><span>${snap() ? `${snap()!.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus` : 'Paliers 50 / 150 / 500 / 2 000 pièces'}</span></a>
       <div class="gm-mini gm-week"></div>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
@@ -763,8 +772,15 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   }
 
   // ═════════════════════════════ routeur
+  function soon() {
+    head.innerHTML = '';
+    body.innerHTML = `<div class="gm-soon"><span class="kicker">GAMES</span><b>Bientôt</b><p class="muted">Les jeux entre nous arrivent ici. Patience…</p></div>`;
+  }
+
   function draw() {
     cleanup();
+    wasOpen = open();
+    if (!wasOpen) return soon();
     renderHead();
     if (!backend.state.user && backend.state.mode === 'online') {
       body.innerHTML = '<div class="gm-panel"><b>Connecte-toi avec Discord pour jouer.</b></div>';

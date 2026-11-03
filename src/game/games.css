@@ -244,3 +244,7 @@ a.gm-mini:hover { border-color: var(--line-2); }
 .pk-v { margin-right: auto; display: inline-flex; gap: 5px; align-items: center; font: 500 13px var(--mono); color: var(--ink-2); }
 .pk-v b { color: var(--gold); }
 .gm-fgrid > .muted, .gm-pot > .muted, .pk-grid > .muted { grid-column: 1 / -1; }
+
+/* GAMES pas encore ouvert (retours live n°1) : page d'attente */
+.gm-soon { min-height: 50vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.gm-soon b { font: 500 46px/1 var(--title); font-style: italic; color: var(--rose-l); }

@@ -7,6 +7,8 @@ import { pinnedOf } from './binders';
 import { bestCard, cleanCosmetics, statsFrom, type PlayerStats } from '../src/core/cosmetics';
 import { streakDay, touchStreak } from '../src/core/streak';
 import { THEMES } from '../src/core/sets/themes';
+import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
+import { econOf } from './econLib';
 
 /**
  * PROFIL (refonte retours du 3 nov.) : identité + cosmétiques (bannière, cadre, titre, badges — débloqués en jouant),
@@ -49,9 +51,17 @@ export const profile = query({
       bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null,
       /** complétion par thème */
       themes: THEMES.map((t) => ({ id: t.id, have: t.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: t.cards.length })),
+      /** succès atteints (les 36 de l'espace Jeux, stats du profil + compteurs de l'économie) */
+      achievements: { done: achievementsDone(stats, u), total: ACHIEVEMENTS.length },
     };
   },
 });
+
+/** Nombre de succès atteints (réclamés ou non). */
+function achievementsDone(stats: PlayerStats, u: Doc<'users'>): number {
+  const st = achievementStats(stats, econOf(u));
+  return ACHIEVEMENTS.reduce((a, x) => a + (achievementDone(x, st) ? 1 : 0), 0);
+}
 
 /** Fil d'activité d'un joueur (gros drops, échanges conclus, contrats signés), visible des potes. */
 export const activity = query({
@@ -82,13 +92,15 @@ export const leaderboard = query({
         packsOpened: stats.packsOpened,
         tradesDone: stats.tradesDone,
         streak: stats.streak,
+        achievements: achievementsDone(stats, u),
       });
     }
     return rows;
   },
 });
 
-const MAX_SHOWCASE = 6;
+/** vitrine : 2 rangées de 6 (retours live n°1) */
+const MAX_SHOWCASE = 12;
 
 export const setShowcase = mutation({
   args: { sessionToken: v.string(), cards: v.array(v.object({ cardId: v.string(), rarity: rarityValidator })) },

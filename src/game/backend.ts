@@ -178,6 +178,8 @@ export interface Profile {
   streakDay?: number;
   bestDrop?: { cardId: string; rarity: RarityId; mintNumber: number } | null;
   themes?: Array<{ id: string; have: number; total: number }>;
+  /** succès atteints / total */
+  achievements?: { done: number; total: number };
 }
 
 /** Ligne du classement entre nous. */
@@ -194,6 +196,8 @@ export interface LeaderRow {
   packsOpened: number;
   tradesDone: number;
   streak: number;
+  /** succès atteints */
+  achievements?: number;
 }
 
 /** Entrée du fil d'activité d'un joueur. */

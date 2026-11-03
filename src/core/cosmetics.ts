@@ -2,11 +2,10 @@
  * COSMÉTIQUES DU PROFIL — données pures, partagées serveur (convex/profiles.ts) / client / démo.
  *
  * Règle du groupe (3 nov.) : tout se débloque EN JOUANT, rien ne s'achète. Bannières, cadres d'avatar, titres et badges
- * ont chacun une condition sur les statistiques du joueur. Le vrai système de succès (défis, historique des déblocages,
- * notifications) est une phase à part : les conditions ci-dessous en sont la première brique — elles sont calculées
- * à la volée à partir des stats, sans rien stocker.
+ * sont des récompenses de SUCCÈS (les 36 de src/core/economy.ts) — calculées à la volée sur les stats, rien à stocker.
  */
 import { PUBLIC_CARD_COUNT, SUBTHEMES, catalogEntry } from './sets/themes';
+import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from './economy';
 
 export interface PlayerStats {
   packsOpened: number;
@@ -28,8 +27,10 @@ export interface PlayerStats {
 export interface Cosmetic {
   id: string;
   label: string;
-  /** comment on l'obtient (affiché quand c'est verrouillé) */
+  /** comment on l'obtient (affiché quand c'est verrouillé) : le succès qui le débloque */
   how: string;
+  /** succès qui le débloque (src/core/economy.ts, ACHIEVEMENTS) ; absent = disponible d'office */
+  need?: string;
   unlock: (s: PlayerStats) => boolean;
   /** bannière : dégradé CSS · cadre : couleurs ; le reste est dessiné côté client */
   css?: string;
@@ -37,62 +38,82 @@ export interface Cosmetic {
   glyph?: string;
 }
 
-const free = () => true;
+/**
+ * Retours live n°1 (03/11) : « tout cosmétique se débloque via les succès ». Chaque cosmétique pointe vers un des
+ * 36 succès de l'espace Jeux (src/core/economy.ts) — uniquement ceux calculés sur les stats du profil, pour que le
+ * serveur puisse vérifier un choix sans les compteurs de l'économie.
+ */
+const ach = (id: string) => ACHIEVEMENTS.find((a) => a.id === id)!;
+const fromStats = (s: PlayerStats) => achievementStats(s, emptyEcon());
+type Partial0 = Omit<Cosmetic, 'how' | 'unlock'>;
+function C(c: Partial0): Cosmetic {
+  if (!c.need) return { ...c, how: '', unlock: () => true };
+  const a = ach(c.need);
+  if (!a) throw new Error(`succès inconnu : ${c.need}`);
+  return { ...c, how: `Succès « ${a.label} » : ${a.how}`, unlock: (s) => achievementDone(a, fromStats(s)) };
+}
 
 /** Bannières (fond du haut du profil). */
 export const BANNERS: Cosmetic[] = [
-  { id: 'ember', label: 'Braise', how: '', unlock: free, css: 'linear-gradient(120deg, #2a1410, #5a2a22 45%, #1a0d0b)' },
-  { id: 'night', label: 'Nuit', how: '', unlock: free, css: 'linear-gradient(120deg, #0c1118, #16314a 50%, #0a0f16)' },
-  { id: 'forest', label: 'Forêt', how: '', unlock: free, css: 'linear-gradient(120deg, #0c1412, #123f2f 50%, #0a1210)' },
-  { id: 'plum', label: 'Prune', how: '', unlock: free, css: 'linear-gradient(120deg, #120f17, #3b1630 50%, #0e0b12)' },
-  { id: 'sand', label: 'Sable', how: '', unlock: free, css: 'linear-gradient(120deg, #16100c, #5a3a12 50%, #120d09)' },
-  { id: 'gold', label: 'Or', how: 'Ouvre 250 boosters', unlock: (s) => s.packsOpened >= 250, css: 'linear-gradient(120deg, #2a1d06, #7a5a1a 45%, #d9982a 70%, #2a1d06)' },
-  { id: 'prism', label: 'Prisme', how: 'Possède une carte 6★', unlock: (s) => s.mythics >= 1, css: 'linear-gradient(120deg, #ff6b9a22, #ffd36b33, #6bffb833, #6bc8ff33, #c86bff33), linear-gradient(120deg, #1a1420, #2a2433)' },
-  { id: 'secret', label: 'Un de nous', how: 'Tire une carte secrète Bébou', unlock: (s) => s.secrets >= 1, css: 'radial-gradient(ellipse at 30% 50%, #e8927c55, transparent 60%), linear-gradient(120deg, #2a0f0e, #4a1f1a 50%, #120607)' },
+  C({ id: 'ember', label: 'Braise', css: 'linear-gradient(120deg, #2a1410, #5a2a22 45%, #1a0d0b)' }),
+  C({ id: 'night', label: 'Nuit', css: 'linear-gradient(120deg, #0c1118, #16314a 50%, #0a0f16)' }),
+  C({ id: 'forest', label: 'Forêt', css: 'linear-gradient(120deg, #0c1412, #123f2f 50%, #0a1210)' }),
+  C({ id: 'plum', label: 'Prune', css: 'linear-gradient(120deg, #120f17, #3b1630 50%, #0e0b12)' }),
+  C({ id: 'sand', label: 'Sable', css: 'linear-gradient(120deg, #16100c, #5a3a12 50%, #120d09)' }),
+  C({ id: 'gold', label: 'Or', need: 'packs-500', css: 'linear-gradient(120deg, #2a1d06, #7a5a1a 45%, #d9982a 70%, #2a1d06)' }),
+  C({ id: 'prism', label: 'Prisme', need: 'myth-1', css: 'linear-gradient(120deg, #ff6b9a22, #ffd36b33, #6bffb833, #6bc8ff33, #c86bff33), linear-gradient(120deg, #1a1420, #2a2433)' }),
+  C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: 'radial-gradient(ellipse at 30% 50%, #e8927c55, transparent 60%), linear-gradient(120deg, #2a0f0e, #4a1f1a 50%, #120607)' }),
 ];
 
 /** Cadres d'avatar. */
 export const FRAMES: Cosmetic[] = [
-  { id: 'none', label: 'Aucun', how: '', unlock: free, css: 'transparent' },
-  { id: 'bronze', label: 'Bronze', how: 'Ouvre 50 boosters', unlock: (s) => s.packsOpened >= 50, css: 'linear-gradient(135deg, #b87333, #e0a070, #8a5020)' },
-  { id: 'silver', label: 'Argent', how: 'Ouvre 250 boosters', unlock: (s) => s.packsOpened >= 250, css: 'linear-gradient(135deg, #9aa3ad, #e8edf2, #6e7883)' },
-  { id: 'gold', label: 'Or', how: 'Ouvre 1 000 boosters', unlock: (s) => s.packsOpened >= 1000, css: 'linear-gradient(135deg, #d9982a, #ffe0a0, #a06a10)' },
-  { id: 'collector', label: 'Collectionneur', how: 'Complète un sous-thème à 100 %', unlock: (s) => s.fullSubthemes >= 1, css: 'linear-gradient(135deg, #4c7cc2, #b4cdf2, #2a4a80)' },
-  { id: 'mythic', label: 'Mythique', how: 'Possède une carte 6★', unlock: (s) => s.mythics >= 1, css: 'conic-gradient(from 0deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a)' },
-  { id: 'secret', label: 'Un de nous', how: 'Tire une carte secrète Bébou', unlock: (s) => s.secrets >= 1, css: 'linear-gradient(135deg, #e8927c, #ffe4d8, #b05040)' },
-  { id: 'trader', label: 'Négociant', how: 'Conclus 10 échanges', unlock: (s) => s.tradesDone >= 10, css: 'linear-gradient(135deg, #6f9a74, #c4dcb8, #3a5a40)' },
-  { id: 'flame', label: 'Flamme', how: 'Série de connexion de 7 jours', unlock: (s) => s.streak >= 7, css: 'linear-gradient(135deg, #ff7a2a, #ffd36b, #c03010)' },
+  C({ id: 'none', label: 'Aucun', css: 'transparent' }),
+  C({ id: 'bronze', label: 'Bronze', need: 'packs-100', css: 'linear-gradient(135deg, #b87333, #e0a070, #8a5020)' }),
+  C({ id: 'silver', label: 'Argent', need: 'packs-500', css: 'linear-gradient(135deg, #9aa3ad, #e8edf2, #6e7883)' }),
+  C({ id: 'gold', label: 'Or', need: 'packs-2000', css: 'linear-gradient(135deg, #d9982a, #ffe0a0, #a06a10)' }),
+  C({ id: 'collector', label: 'Collectionneur', need: 'full-1', css: 'linear-gradient(135deg, #4c7cc2, #b4cdf2, #2a4a80)' }),
+  C({ id: 'mythic', label: 'Mythique', need: 'myth-1', css: 'conic-gradient(from 0deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a)' }),
+  C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: 'linear-gradient(135deg, #e8927c, #ffe4d8, #b05040)' }),
+  C({ id: 'trader', label: 'Négociant', need: 'trade-10', css: 'linear-gradient(135deg, #6f9a74, #c4dcb8, #3a5a40)' }),
+  C({ id: 'flame', label: 'Flamme', need: 'streak-7', css: 'linear-gradient(135deg, #ff7a2a, #ffd36b, #c03010)' }),
 ];
 
 /** Titres (sous le pseudo). */
 export const TITLES: Cosmetic[] = [
-  { id: 'rookie', label: 'Bébou débutant', how: '', unlock: free },
-  { id: 'opener', label: 'Ouvreur compulsif', how: 'Ouvre 100 boosters', unlock: (s) => s.packsOpened >= 100 },
-  { id: 'opener2', label: 'Déchireur de boosters', how: 'Ouvre 1 000 boosters', unlock: (s) => s.packsOpened >= 1000 },
-  { id: 'collector', label: 'Collectionneur', how: 'Complète un sous-thème à 100 %', unlock: (s) => s.fullSubthemes >= 1 },
-  { id: 'archivist', label: 'Archiviste', how: 'Complète 10 sous-thèmes à 100 %', unlock: (s) => s.fullSubthemes >= 10 },
-  { id: 'legend', label: 'Chasseur de légendes', how: 'Possède 10 cartes 5★', unlock: (s) => s.legendaries >= 10 },
-  { id: 'mythic', label: 'Touché par la foudre', how: 'Possède une carte 6★', unlock: (s) => s.mythics >= 1 },
-  { id: 'secret', label: 'Un de nous', how: 'Tire une carte secrète Bébou', unlock: (s) => s.secrets >= 1 },
-  { id: 'trader', label: 'Négociant', how: 'Conclus 5 échanges', unlock: (s) => s.tradesDone >= 5 },
-  { id: 'pyro', label: 'Pyromane', how: 'Signe 10 contrats', unlock: (s) => s.contractsSigned >= 10 },
-  { id: 'loyal', label: 'Fidèle au poste', how: 'Série de connexion de 7 jours', unlock: (s) => s.streak >= 7 },
-  { id: 'king', label: 'Roi de la collection', how: 'Possède 1 000 cartes uniques', unlock: (s) => s.uniques >= 1000 },
+  C({ id: 'rookie', label: 'Bébou débutant' }),
+  C({ id: 'opener', label: 'Ouvreur compulsif', need: 'packs-100' }),
+  C({ id: 'opener2', label: 'Déchireur de boosters', need: 'packs-2000' }),
+  C({ id: 'collector', label: 'Collectionneur', need: 'full-1' }),
+  C({ id: 'archivist', label: 'Archiviste', need: 'full-10' }),
+  C({ id: 'legend', label: 'Chasseur de légendes', need: 'leg-5' }),
+  C({ id: 'mythic', label: 'Touché par la foudre', need: 'myth-1' }),
+  C({ id: 'secret', label: 'Un de nous', need: 'secret-1' }),
+  C({ id: 'trader', label: 'Négociant', need: 'trade-10' }),
+  C({ id: 'pyro', label: 'Pyromane', need: 'contract-10' }),
+  C({ id: 'loyal', label: 'Fidèle au poste', need: 'streak-7' }),
+  C({ id: 'king', label: 'Roi de la collection', need: 'uniq-2000' }),
 ];
 
 /** Badges (petites médailles sous le pseudo, plusieurs à la fois, ordonnables). */
 export const BADGES: Cosmetic[] = [
-  { id: 'first', label: 'Premier booster', how: 'Ouvre ton premier booster', unlock: (s) => s.packsOpened >= 1, glyph: '🎴' },
-  { id: 'p100', label: '100 boosters', how: 'Ouvre 100 boosters', unlock: (s) => s.packsOpened >= 100, glyph: '💯' },
-  { id: 'p1000', label: '1 000 boosters', how: 'Ouvre 1 000 boosters', unlock: (s) => s.packsOpened >= 1000, glyph: '🏆' },
-  { id: 'full', label: 'Album complet', how: 'Complète un sous-thème à 100 %', unlock: (s) => s.fullSubthemes >= 1, glyph: '📗' },
-  { id: 'mythic', label: '6★', how: 'Possède une carte 6★', unlock: (s) => s.mythics >= 1, glyph: '✺' },
-  { id: 'secret', label: 'Bébou secret', how: 'Tire une carte secrète', unlock: (s) => s.secrets >= 1, glyph: '✷' },
-  { id: 'trade', label: 'Échangeur', how: 'Conclus un échange', unlock: (s) => s.tradesDone >= 1, glyph: '⇄' },
-  { id: 'contract', label: 'Contrat signé', how: 'Signe un contrat', unlock: (s) => s.contractsSigned >= 1, glyph: '🔥' },
-  { id: 'streak', label: '7 jours', how: 'Série de connexion de 7 jours', unlock: (s) => s.streak >= 7, glyph: '🔥7' },
-  { id: 'half', label: 'À mi-chemin', how: 'Possède la moitié des cartes du jeu', unlock: (s) => s.total > 0 && s.uniques * 2 >= s.total, glyph: '½' },
+  C({ id: 'first', label: '10 boosters', need: 'packs-10', glyph: '🎴' }),
+  C({ id: 'p100', label: '100 boosters', need: 'packs-100', glyph: '💯' }),
+  C({ id: 'p1000', label: '2 000 boosters', need: 'packs-2000', glyph: '🏆' }),
+  C({ id: 'full', label: 'Album complet', need: 'full-1', glyph: '📗' }),
+  C({ id: 'mythic', label: '6★', need: 'myth-1', glyph: '✺' }),
+  C({ id: 'secret', label: 'Bébou secret', need: 'secret-1', glyph: '✷' }),
+  C({ id: 'trade', label: 'Échangeur', need: 'trade-1', glyph: '⇄' }),
+  C({ id: 'contract', label: 'Contrat signé', need: 'contract-1', glyph: '🔥' }),
+  C({ id: 'streak', label: '7 jours', need: 'streak-7', glyph: '🔥7' }),
+  C({ id: 'half', label: '5 000 cartes', need: 'uniq-5000', glyph: '📚' }),
 ];
+
+/** Cosmétiques débloqués par un succès (page Succès : « récompenses »). */
+export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge'; c: Cosmetic }> {
+  const out: Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge'; c: Cosmetic }> = [];
+  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
+  return out;
+}
 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(

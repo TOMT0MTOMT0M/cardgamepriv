@@ -10,6 +10,8 @@ import { createProfileView } from './views/profile';
 import { createMissions, MISSION_ICON } from './views/missions';
 import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
 import { createGamesView } from './views/games';
+import { createRankingView } from './views/ranking';
+import { createSuccesView } from './views/succes';
 import { COIN_ICON, createWallet } from './views/wallet';
 import { fmtCoins } from '../core/economy';
 import { createLocalBackend } from './localBackend';
@@ -69,7 +71,9 @@ top.innerHTML = `
     <a href="#/collection" data-r="collection">Collection</a>
     <a href="#/contrats" data-r="contrats">Contrats</a>
     <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>
-    <a href="#/jeux" data-r="jeux">Jeux</a>
+    <a href="#/jeux" data-r="jeux">Games</a>
+    <a href="#/classement" data-r="classement">Classement</a>
+    <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
     <i class="nav-pill" aria-hidden="true"></i>
   </nav>
   <div class="me"></div>`;
@@ -124,7 +128,17 @@ const PACK_ICON = `<svg class="p-ico" viewBox="0 0 16 20" aria-hidden="true" fil
 
 let meSig = '';
 let lastIncoming = -1;
-let volT = 0;
+/** panneau du volume ouvert (survit au rafraîchissement de l'en-tête) */
+let volOpen = false;
+function setVolOpen(on: boolean) {
+  volOpen = on;
+  const w = meEl.querySelector<HTMLElement>('.snd-wrap');
+  w?.classList.toggle('open', on);
+  w?.querySelector('.snd')?.setAttribute('aria-expanded', String(on));
+}
+// clic n'importe où ailleurs, ou Échap : le panneau du volume se ferme
+document.addEventListener('click', () => volOpen && setVolOpen(false));
+window.addEventListener('keydown', (e) => e.key === 'Escape' && volOpen && setVolOpen(false));
 function renderMe() {
   const s = backend.state;
   const u = s.user;
@@ -133,8 +147,9 @@ function renderMe() {
   if (sig === meSig) return;
   meSig = sig;
   const demo = s.mode === 'demo' ? `<span class="demo" title="Pas de serveur configuré (ou ?demo) : la collection est stockée dans ce navigateur, les amis sont des robots.">démo hors-ligne</span>` : '';
-  // son : le bouton coupe / remet, le curseur à côté règle le volume (il se déplie au survol ou au toucher du bouton)
-  const snd = `<span class="snd-wrap"><button class="icon snd${soundOn() ? '' : ' off'}" title="${soundOn() ? 'Couper le son' : 'Activer le son'}" aria-label="Son" aria-pressed="${soundOn()}">${SND_ICON}</button><span class="vol-pop"><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b></span></span>`;
+  // son (correctif retours live n°1) : l'icône ouvre / ferme le panneau du volume (curseur + couper / activer) ; un clic
+  // ailleurs ou Échap le ferme aussi. Plus d'ouverture au survol : c'est ce qui l'empêchait de se refermer.
+  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="Son et volume" aria-label="Son et volume" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" role="dialog" aria-label="Volume"><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? 'Couper' : 'Activer'}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b></span></span>`;
   if (!u) {
     meEl.innerHTML = `${demo}${snd}${s.mode === 'online' ? `<button class="btn-primary login">Connexion Discord</button>` : ''}${s.authError ? `<span class="err">${esc(s.authError)}</span>` : ''}`;
   } else {
@@ -143,19 +158,22 @@ function renderMe() {
     tickPacks();
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
-  meEl.querySelector('.snd')?.addEventListener('click', (e) => {
-    const on = !soundOn();
-    (shell as Shell & { setSound(on: boolean): void }).setSound(on);
-    const b = e.currentTarget as HTMLElement;
-    b.classList.toggle('off', !on); // les ondes s'effacent, la croix apparaît (et l'inverse)
-    b.title = on ? 'Couper le son' : 'Activer le son';
-    b.setAttribute('aria-pressed', String(on));
-    // téléphone : un toucher ouvre aussi le curseur un instant
-    const w = b.closest<HTMLElement>('.snd-wrap');
-    w?.classList.add('open');
-    clearTimeout(volT);
-    volT = window.setTimeout(() => w?.classList.remove('open'), 2600);
+  const sndWrap = meEl.querySelector<HTMLElement>('.snd-wrap');
+  const sndBtn = meEl.querySelector<HTMLElement>('.snd');
+  sndBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setVolOpen(!volOpen);
   });
+  const setSoundOn = (on: boolean) => {
+    (shell as Shell & { setSound(on: boolean): void }).setSound(on);
+    sndBtn?.classList.toggle('off', !on); // les ondes s'effacent, la croix apparaît (et l'inverse)
+    const m = meEl.querySelector<HTMLButtonElement>('.vol-mute');
+    if (m) {
+      m.textContent = on ? 'Couper' : 'Activer';
+      m.setAttribute('aria-pressed', String(!on));
+    }
+  };
+  meEl.querySelector('.vol-mute')?.addEventListener('click', () => setSoundOn(!soundOn()));
   const vol = meEl.querySelector<HTMLInputElement>('.vol');
   vol?.style.setProperty('--v', vol.value);
   vol?.addEventListener('input', () => {
@@ -163,12 +181,10 @@ function renderMe() {
     const v = Number(vol.value) / 100;
     (shell as Shell & { setVolume(v: number): void }).setVolume(v);
     meEl.querySelector('.vol-n')!.textContent = String(Math.round(v * 100));
-    const b = meEl.querySelector<HTMLElement>('.snd')!;
     // volume remonté alors que le son était coupé : on le remet
-    if (v > 0 && !soundOn()) b.click();
-    clearTimeout(volT);
-    volT = window.setTimeout(() => b.closest('.snd-wrap')?.classList.remove('open'), 2600);
+    if (v > 0 && !soundOn()) setSoundOn(true);
   });
+  sndWrap?.addEventListener('click', (e) => e.stopPropagation());
   vol?.addEventListener('change', () => shell?.sfx.tick(1.2, 0.08));
   meEl.querySelector('.user')?.addEventListener('click', () => (location.hash = '#/profil'));
   meEl.querySelector('.msn-btn')?.addEventListener('click', () => missions?.toggle());
@@ -201,6 +217,15 @@ function syncMissionBadge() {
   meEl.querySelector('.msn-btn')?.classList.toggle('ready', n > 0);
 }
 backend.onChange(syncMissionBadge);
+/** pastille sur l'onglet SUCCÈS : succès atteints à encaisser */
+const achBadge = top.querySelector<HTMLElement>('.ach-badge')!;
+backend.eco.onChange((snap) => {
+  const n = snap?.achievements.claimable.length ?? 0;
+  const was = achBadge.hidden ? 0 : Number(achBadge.textContent);
+  achBadge.hidden = n === 0;
+  achBadge.textContent = String(n);
+  if (n !== was) placePill(false);
+});
 backend.eco.onChange(() => syncMissionBadge());
 /** Portefeuille (pièces) : solde dans l'en-tête, « +N » qui s'envole à chaque gain, pastille s'il y a quelque chose à prendre. */
 let wallet: ReturnType<typeof createWallet> | null = null;
@@ -315,7 +340,9 @@ const TITLES: Record<string, string> = {
   contrats: 'Bébou — contrats',
   echanges: 'Bébou — échanges',
   profil: 'Bébou — profil',
-  jeux: 'Bébou — jeux',
+  jeux: 'Bébou — games',
+  classement: 'Bébou — classement',
+  succes: 'Bébou — succès',
 };
 
 async function boot() {
@@ -347,7 +374,9 @@ async function boot() {
   status = createStatus(backend, shell);
   syncMissionBadge();
   syncStatus();
-  const views: Record<string, { el: HTMLElement; enter(sub?: string): void; leave(): void }> = { '': shop, collection: coll, contrats: contracts, echanges: trades, profil: profile, jeux: games };
+  const ranking = createRankingView(backend, shell);
+  const succes = createSuccesView(backend, shell);
+  const views: Record<string, { el: HTMLElement; enter(sub?: string): void; leave(): void }> = { '': shop, collection: coll, contrats: contracts, echanges: trades, profil: profile, jeux: games, classement: ranking, succes };
   let current = '';
 
   function route() {
@@ -380,6 +409,8 @@ async function boot() {
       else a.removeAttribute('aria-current');
     });
     placePill(changed);
+    // nav qui défile (téléphone, 7 onglets) : l'onglet actif reste visible
+    top.querySelector<HTMLElement>('nav a.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     meEl.querySelector('.user')?.classList.toggle('on', key === 'profil');
     views[key].enter(sub);
     updateFresh(true); // on vient (peut-être) de quitter la collection : ce qu'on y a vu est vu

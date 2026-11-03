@@ -523,11 +523,17 @@ describe('retours du 3 nov. : profil, cosmétiques, classement, activité', () =
     const p = await t.query(api.profiles.profile, { userId: alice.userId });
     expect(p?.cosmetics?.banner).toBe('night');
     expect(p?.stats?.packsOpened).toBe(0);
-    // après un booster : « first » se débloque
+    // « first » = le succès « Premiers pas » (10 boosters, retours live n°1 : tout cosmétique vient d'un succès)
     const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
     await t.mutation(api.packs.revealPack, { sessionToken: alice.token, packId: pack._id });
+    expect((await t.mutation(api.profiles.setCosmetics, { sessionToken: alice.token, badges: ['first'] })).badges).toEqual([]);
+    await t.run((ctx) => ctx.db.patch(alice.userId, { totalPacksOpened: 10 }));
     const kept2 = await t.mutation(api.profiles.setCosmetics, { sessionToken: alice.token, badges: ['first'] });
     expect(kept2.badges).toEqual(['first']);
+    // le profil compte les succès débloqués (X / Y)
+    const p2 = await t.query(api.profiles.profile, { userId: alice.userId });
+    expect(p2?.achievements?.done).toBeGreaterThanOrEqual(1);
+    expect(p2?.achievements?.total).toBeGreaterThan(30);
   });
 
   test('classement : une ligne par joueur, boosters et complétion', async () => {

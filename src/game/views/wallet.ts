@@ -2,6 +2,7 @@ import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import type { EcoSnapshot } from '../eco';
 import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_TOTAL, achievementReward, calendarReward, fmtCoins } from '../../core/economy';
+import { GAMES_OPEN } from '../../core/games';
 import { busyButton, errMsg, esc, h, toast } from '../ui';
 import '../games.css';
 
@@ -44,15 +45,17 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     const compTotal = s.completions.reduce((a, c) => a + c.reward, 0);
     const ach = s.achievements.claimable.map((id) => ACHIEVEMENTS.find((a) => a.id === id)!).filter(Boolean);
     const achTotal = ach.reduce((a, x) => a + achievementReward(x), 0);
-    pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b><a href="#/jeux" class="w-link">Espace Jeux →</a></div>
+    // GAMES pas encore ouvert (retours live n°1) : pas de liens vers l'espace Jeux, sauf pour les admins
+    const games = GAMES_OPEN || s.isAdmin;
+    pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b>${games ? '<a href="#/jeux" class="w-link">Espace Jeux →</a>' : ''}</div>
       <div class="w-bal">${coinsHtml(s.coins, 'big')}<span class="muted">pièces 100 % virtuelles · jamais échangeables contre des cartes</span></div>
       ${calendarHtml(s)}
       <div class="w-sec"><div class="w-h"><b>À encaisser</b></div>
         <div class="w-row"><span>Complétion${s.completions.length ? ` · ${esc(s.completions.slice(0, 2).map((c) => c.label).join(', '))}${s.completions.length > 2 ? '…' : ''}` : ' : 5 pièces × cartes de chaque album bouclé'}</span>${s.completions.length ? `<button class="btn-primary w-comp">+${fmtCoins(compTotal)}</button>` : '<span class="muted">rien</span>'}</div>
-        <div class="w-row"><span>Succès${ach.length ? ` · ${esc(ach.slice(0, 2).map((a) => a.label).join(', '))}${ach.length > 2 ? '…' : ''}` : ` : ${s.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus`}</span>${ach.length ? `<button class="btn-primary w-ach">+${fmtCoins(achTotal)}</button>` : '<a class="w-link" href="#/jeux/succes">voir</a>'}</div>
-        <div class="w-row"><span>Doublons à brûler</span><a class="w-link" href="#/jeux/forge">la forge →</a></div>
+        <div class="w-row"><span>Succès${ach.length ? ` · ${esc(ach.slice(0, 2).map((a) => a.label).join(', '))}${ach.length > 2 ? '…' : ''}` : ` : ${s.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus`}</span>${ach.length ? `<button class="btn-primary w-ach">+${fmtCoins(achTotal)}</button>` : '<a class="w-link" href="#/succes">voir</a>'}</div>
+        ${games ? '<div class="w-row"><span>Doublons à brûler</span><a class="w-link" href="#/jeux/forge">la forge →</a></div>' : ''}
       </div>
-      <div class="w-sec"><div class="w-h"><b>Derniers mouvements</b><a class="w-link" href="#/jeux/historique">tout</a></div><div class="w-hist">${
+      <div class="w-sec"><div class="w-h"><b>Derniers mouvements</b>${games ? '<a class="w-link" href="#/jeux/historique">tout</a>' : ''}</div><div class="w-hist">${
         hist ? (hist.length ? hist.slice(0, 7).map((t) => `<div class="w-tx"><span>${esc(t.label)}</span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">Aucun mouvement pour l’instant.</div>') : '<div class="muted">…</div>'
       }</div></div>`;
     pop.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => toggle(false)));
