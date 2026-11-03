@@ -103,9 +103,30 @@ export default defineSchema({
     isAdmin: v.optional(v.boolean()),
     /** appareils vus (id tiré au hasard et gardé dans le navigateur) : signal « deux comptes sur le même appareil » */
     devices: v.optional(v.array(v.string())),
+    /** PARRAINAGE (retours live 02, §10 — convex/referrals.ts) : mon code d'invitation (lien `?ref=CODE`) */
+    refCode: v.optional(v.string()),
+    /** mon parrain (le joueur dont j'ai suivi le lien) */
+    referredBy: v.optional(v.id('users')),
+    referredAt: v.optional(v.number()),
+    /** appareil depuis lequel j'ai rejoint via le lien (alerte admin si c'est celui du parrain) */
+    referredDevice: v.optional(v.string()),
+    /** le parrain a reçu ses 10 boosters (mes 10 premiers boosters ouverts) */
+    referralPaid: v.optional(v.boolean()),
   })
     .index('by_discordId', ['discordId'])
-    .index('by_lastSeenAt', ['lastSeenAt']),
+    .index('by_lastSeenAt', ['lastSeenAt'])
+    .index('by_refCode', ['refCode'])
+    .index('by_referredBy', ['referredBy']),
+
+  /** Clics sur les liens d'invitation : un par appareil et par code (le compteur « X personnes ont cliqué »). */
+  referralClicks: defineTable({
+    code: v.string(),
+    referrerId: v.id('users'),
+    device: v.string(),
+    at: v.number(),
+  })
+    .index('by_code_device', ['code', 'device'])
+    .index('by_referrer', ['referrerId']),
 
   /**
    * Fichiers importés pour le profil (photo / bannière, convex/profiles.ts) : à qui appartient chaque fichier stocké —
@@ -354,11 +375,14 @@ export default defineSchema({
   }).index('by_status', ['status', 'createdAt']),
 
   /**
-   * ROULETTE À CARTES : un tirage par jour (21 h, heure de Paris). `day` = jour du tirage. Le pot (pièces + cartes)
+   * ROULETTE À CARTES : deux tirages par jour (10 h et 20 h, heure de Paris ; avant : un à 21 h). Le pot (pièces + cartes)
    * reste gelé jusqu'à ce qu'un numéro joué sorte ; sinon il passe au tirage suivant.
    */
   rouletteRounds: defineTable({
+    /** étiquette du tirage (« 2026-11-04 · 10 h » ; ancien format : « 2026-11-04 », tirage unique de 21 h) */
     day: v.string(),
+    /** instant du tirage (retours live 02 : 10 h et 20 h) — absent sur les anciens tirages de 21 h (100 numéros) */
+    drawAt: v.optional(v.number()),
     status: v.union(v.literal('open'), v.literal('drawn')),
     /** report des tirages précédents sans gagnant */
     carriedCoins: v.number(),

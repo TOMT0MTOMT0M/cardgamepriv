@@ -3,9 +3,15 @@ import type { Shell } from '../shell';
 import { STREAK_CYCLE, STREAK_REWARD, streakClaimable, streakDay, touchStreak } from '../../core/streak';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
 import { CLOSE_X, busyButton, errMsg, fmtN, h, keepFocus, loginPrompt, panelHidden, panelShown, plural, toast } from '../ui';
+import { fmtCoins } from '../../core/economy';
+import { calendarHtml } from './wallet';
 
 /**
- * ICÔNES DE STATUT de l'en-tête (à côté de la réserve et des missions) :
+ * ICÔNES DE STATUT de l'en-tête (à côté de la réserve et des missions).
+ * Retours live 02 (§11) : la FLAMME ouvre le panneau « CONNEXION », qui regroupe la série de 7 jours ET le calendrier
+ * mensuel (30 jours, avant dans le portefeuille) ; le pity n'est plus une icône à toucher mais un compteur « X/200 »
+ * affiché en permanence dans l'en-tête (le panneau pity reste joignable par le code, plus par l'en-tête).
+ * Avant :
  *  - SÉRIE DE CONNEXION : flamme + « 3/7 » ; chaque jour de visite avance la série, le 7e jour une récompense en
  *    boosters est à réclamer (pastille + flamme qui bat). Panneau : les 7 jours, où on en est, le bouton Réclamer.
  *  - PITY 6★ : « 142 » boosters avant un 6★ garanti. Panneau : la jauge et l'explication (200 boosters secs max).
@@ -31,19 +37,31 @@ export function createStatus(backend: GameBackend, shell: Shell) {
   function renderStreak() {
     const u = backend.state.user;
     const s = streakNow();
-    pop.setAttribute('aria-label', 'Série de connexion');
+    pop.setAttribute('aria-label', 'Connexion : série et calendrier');
     if (!u || !s) {
-      pop.innerHTML = `<div class="msn-head"><b>Série de connexion</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi chaque jour : au 7e, une récompense.')}`;
+      pop.innerHTML = `<div class="msn-head"><b>Connexion</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi chaque jour : au 7e, une récompense.')}`;
       return;
     }
+    const eco = backend.eco.snapshot;
     const day = streakDay(s);
     const claimable = streakClaimable(s);
     const dots = Array.from({ length: STREAK_CYCLE }, (_, i) => `<span class="st-d${i < day ? ' on' : ''}${i === day - 1 ? ' now' : ''}${i === STREAK_CYCLE - 1 ? ' gift' : ''}"><i>${i + 1}</i></span>`).join('');
-    pop.innerHTML = `<div class="msn-head"><b>Série de connexion</b><span>${plural(s.count, 'jour')} d’affilée</span>${CLOSE_X}</div>
+    pop.innerHTML = `<div class="msn-head"><b>Connexion</b><span>${plural(s.count, 'jour')} d’affilée</span>${CLOSE_X}</div>
+      <div class="w-sec"><div class="w-h"><b>Série · 7 jours</b><span>+${STREAK_REWARD} boosters au 7e</span></div>
       <div class="st-days">${dots}</div>
       <div class="st-txt">${claimable ? `<b>Jour 7 atteint !</b> Ta récompense t’attend.` : day === STREAK_CYCLE ? 'Récompense réclamée ✓ · la série continue demain' : `Jour <b>${day}</b> sur ${STREAK_CYCLE} · reviens demain pour continuer`}</div>
-      <div class="msn-bonus${claimable ? ' ready' : ''}">${claimable ? `<span>+${STREAK_REWARD} boosters</span><button class="btn-primary st-claim">Réclamer</button>` : `<span>+${STREAK_REWARD} boosters au 7e jour</span>`}</div>
-      <div class="msn-foot">Un jour sauté remet la série à zéro.</div>`;
+      ${claimable ? `<div class="msn-bonus ready"><span>+${STREAK_REWARD} boosters</span><button class="btn-primary st-claim">Réclamer</button></div>` : ''}</div>
+      ${eco ? calendarHtml(eco) : ''}
+      <div class="msn-foot">Un jour sauté remet la série et le calendrier à zéro.</div>`;
+    pop.querySelector<HTMLButtonElement>('.w-cal')?.addEventListener('click', async (e) => {
+      try {
+        const r = await busyButton(e.currentTarget as HTMLElement, backend.eco.claimCalendar());
+        shell.sfx.chime(4, 0.09);
+        toast(`Jour ${r.day} : +${fmtCoins(r.coins)} pièces${r.packs ? ' et 1 booster offert' : ''} !`, 'ok');
+      } catch (err) {
+        toast(errMsg(err), 'err');
+      }
+    });
     pop.querySelector<HTMLButtonElement>('.st-claim')?.addEventListener('click', async (e) => {
       try {
         const n = await busyButton(e.currentTarget as HTMLElement, backend.claimStreak());
@@ -95,14 +113,18 @@ export function createStatus(backend: GameBackend, shell: Shell) {
   veil.addEventListener('click', (e) => (e.preventDefault(), e.stopPropagation(), close()));
   window.addEventListener('keydown', (e) => e.key === 'Escape' && on && toggle(on, false));
   backend.onChange(() => render());
+  backend.eco.onChange(() => render());
 
   return {
     toggle,
     /** « 3/7 » · récompense à réclamer */
     streak: () => {
       const s = streakNow();
-      return { day: streakDay(s), claimable: streakClaimable(s) };
+      const cal = backend.eco.snapshot?.calendar;
+      return { day: streakDay(s), claimable: streakClaimable(s), calendar: !!cal && !cal.claimed };
     },
+    /** boosters d'affilée sans 6★ (le compteur « X/200 » de l'en-tête) */
+    pityCount: () => backend.state.user?.pityCount ?? 0,
     pityLeft: () => (backend.state.user ? pityLeft(backend.state.user.pityCount) : PITY_LIMIT - 1),
   };
 }

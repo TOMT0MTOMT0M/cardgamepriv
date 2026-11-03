@@ -11,6 +11,7 @@ import { missionDay } from '../src/core/missions';
 import { statsFrom } from '../src/core/cosmetics';
 import {
   CARD_VALUE,
+  achievementPacks,
   achievementReward,
   achievementStats,
   burnProblem,
@@ -170,11 +171,43 @@ export const claimAchievements = mutation({
     const list = claimableAchievements(await achStats(ctx, u), econ.achievements);
     if (!list.length) throw new ConvexError('Aucun succès à réclamer.');
     const total = list.reduce((a, x) => a + achievementReward(x), 0);
+    const packs = list.reduce((a, x) => a + achievementPacks(x), 0);
     await addCoins(ctx, u._id, total, 'achievement', list.length === 1 ? `Succès — ${list[0].label}` : `${list.length} succès`, {
       earned: true,
       econ: { achievements: [...econ.achievements, ...list.map((a) => a.id)] },
     });
+    // récompense mixte (retours live 02, §8) : les boosters des paliers moyens et durs
+    if (packs) {
+      const now = Date.now();
+      const fresh = (await ctx.db.get(u._id))!;
+      const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now);
+      await ctx.db.patch(u._id, { packBalance: regen.balance + packs, packRegenAt: regen.regenAt });
+    }
     // les pièces gagnées peuvent débloquer « Tirelire » : il sera réclamable au prochain passage
-    return { coins: total, ids: list.map((a) => a.id) };
+    return { coins: total, packs, ids: list.map((a) => a.id) };
+  },
+});
+
+/**
+ * SUCCÈS — comparaison entre amis (retours live 02, §9) : moi + mes amis (amitiés acceptées), avec les compteurs des
+ * succès à paliers, pour savoir qui est le plus avancé sur chaque mécanique.
+ */
+export const friendsAchievements = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken }) => {
+    const me = await getUserByToken(ctx, sessionToken);
+    if (!me) return null;
+    const [outA, inA] = await Promise.all([
+      ctx.db.query('friendships').withIndex('by_requester', (q) => q.eq('requesterId', me._id).eq('status', 'accepted')).collect(),
+      ctx.db.query('friendships').withIndex('by_addressee', (q) => q.eq('addresseeId', me._id).eq('status', 'accepted')).collect(),
+    ]);
+    const ids = [me._id, ...outA.map((f) => f.addresseeId), ...inA.map((f) => f.requesterId)];
+    const out = [];
+    for (const id of [...new Set(ids)].slice(0, 40)) {
+      const u = await ctx.db.get(id);
+      if (!u) continue;
+      out.push({ userId: u._id as string, name: u.displayName, avatarUrl: u.avatarUrl, me: u._id === me._id, stats: await achStats(ctx, u) });
+    }
+    return out;
   },
 });

@@ -2,16 +2,19 @@ import type { GameBackend } from '../backend';
 import { liveRegen } from '../backend';
 import type { Shell } from '../shell';
 import type { AbuseAlertView, DuelSideView, DuelView, RoyaleView, RouletteView } from '../eco';
-import { CARD_STARS, CARD_VALUE, cardsValue, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
+import { CARD_STARS, CARD_VALUE, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
 import {
   DUEL_MAX_PACKS,
   GAMES_OPEN,
-  MIN_NUMBERS,
-  NUMBER_COST,
+  MAX_NUMBERS,
+  ROULETTE_HOURS,
+  ROULETTE_PRICES,
+  matchPrice,
+  priceLabel,
+  type RoulettePrice,
   ROULETTE_NUMBERS,
   ROYALE_MAX,
   ROYALE_MIN,
-  coinsNeeded,
   duelProblem,
   packChoiceLabel,
   packChoices,
@@ -117,7 +120,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     body.innerHTML = `<div class="gm-hub">
       <a class="gm-game duel" href="#/jeux/duel"><i class="gm-glyph">⚔</i><b>1v1 Pack Battle</b><span>Misez le même nombre de boosters (+ un pot annexe). Ouverture côte à côte : le plus haut total d'étoiles rafle TOUTES les cartes.</span><em class="gm-live" data-live="duel">…</em></a>
       <a class="gm-game royale" href="#/jeux/royale"><i class="gm-glyph">♛</i><b>Pack Battle Royale</b><span>3 à 8 joueurs, 1 booster chacun. Le meilleur total d'étoiles remporte tout le pot.</span><em class="gm-live" data-live="royale">…</em></a>
-      <a class="gm-game roulette" href="#/jeux/roulette"><i class="gm-glyph">◎</i><b>Roulette à cartes</b><span>100 numéros, 1 numéro = 100 pièces de valeur. Un tirage par jour à 21 h : le numéro qui sort rafle tout le pot.</span><em class="gm-live" data-live="roulette">…</em></a>
+      <a class="gm-game roulette" href="#/jeux/roulette"><i class="gm-glyph">◎</i><b>Roulette à cartes</b><span>36 numéros, 1 à 3 par tirage, en pièces ou en cartes 4★-6★. Tirages à 10 h et 20 h : le numéro qui sort rafle tout le pot.</span><em class="gm-live" data-live="roulette">…</em></a>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
     const live = (k: string, t: string) => {
@@ -133,7 +136,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       }),
       backend.eco.watchRoulette((r) => {
         if (!r) return;
-        live('roulette', r.round ? `pot ${COIN_ICON}${fmtCoins(r.round.pot.value)} · ${r.round.bets.reduce((a, b) => a + b.numbers.length, 0)}/100 numéros · tirage dans ${fmtDelay(r.nextDrawAt - Date.now())}` : 'prochain tirage à 21 h');
+        live('roulette', r.round ? `pot ${COIN_ICON}${fmtCoins(r.round.pot.value)} · ${r.round.bets.reduce((a, b) => a + b.numbers.length, 0)}/${ROULETTE_NUMBERS} numéros · tirage dans ${fmtDelay(r.nextDrawAt - Date.now())}` : 'tirages à 10 h et 20 h');
       }),
     );
   }
@@ -578,11 +581,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
 
   // ═════════════════════════════ Roulette
   function roulettePage() {
-    body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>La roue</b><span class="gm-cd"></span></div><div class="gm-wheel"></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>Le pot</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>Derniers tirages</b></div><div class="gm-past"></div></div>
-      <div class="gm-rules muted">1 numéro = ${NUMBER_COST} pièces de valeur (pièces et/ou cartes), ${MIN_NUMBERS} numéros minimum (1 × 5★ = 300 = 3 numéros · 1 × 6★ = 10 numéros). Un tirage par jour à 21 h : le joueur dont le numéro sort remporte tout le pot. Sinon, tout reste pour le tirage suivant. Le site ajoute chaque jour une carte 5★ ou 6★.</div>`;
+    body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>La roue · ${ROULETTE_NUMBERS} numéros</b><span class="gm-cd"></span></div><div class="gm-wheel r36"></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>Le pot</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>Derniers tirages</b></div><div class="gm-past"></div></div>
+      <div class="gm-rules muted">Choisis 1, 2 ou 3 numéros par tirage. <b>1 numéro</b> = 10 cartes 4★ ou 300 pièces · <b>2 numéros</b> = 1 carte 5★ ou 600 pièces · <b>3 numéros</b> = 2 cartes 5★, 1 carte 6★ ou 900 pièces (les cartes 1★ à 3★ ne se misent pas). Deux tirages par jour, à ${ROULETTE_HOURS.map((x) => `${x} h`).join(' et ')} : le numéro exact remporte tout le pot. Sinon, tout reste pour le tirage suivant, et le site ajoute une carte 5★ ou 6★ à chaque tirage.</div>`;
     const wheel = body.querySelector<HTMLElement>('.gm-wheel')!;
     const sel = new Set<number>();
     let stakeCards: StakeItem[] = [];
+    let pay = 0; // façon de payer choisie (index dans la grille du nombre de numéros)
     let cur: RouletteView | null = null;
     let lastPast = '';
     const cells: HTMLElement[] = [];
@@ -591,61 +595,84 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       c.dataset.n = String(n);
       c.addEventListener('click', () => {
         if (c.classList.contains('taken') || c.classList.contains('mine')) return;
+        if (cur?.round?.bets.some((b) => b.userId === cur?.me)) return void toast('Tu as déjà misé pour ce tirage.', 'info');
         if (sel.has(n)) sel.delete(n);
+        else if (sel.size >= MAX_NUMBERS) return void toast(`${MAX_NUMBERS} numéros au plus par tirage.`, 'info');
         else sel.add(n);
         c.classList.toggle('sel', sel.has(n));
+        pay = 0;
+        stakeCards = [];
         drawBet();
       });
       cells.push(c);
       wheel.append(c);
     }
     const colors = ['#e8927c', '#7fb58a', '#6bb3e0', '#c79be8', '#e0c46b', '#e07a9b', '#8fd0c4', '#d39a6b'];
+    const stakeOf = (p: RoulettePrice | undefined) => (p?.kind === 'coins' ? { coins: p.coins, cards: [] } : { coins: 0, cards: stakeCards });
     const drawBet = () => {
       const bet = body.querySelector<HTMLElement>('.gm-bet');
       if (!bet) return; // (page quittée pendant l'envoi)
       const r = cur?.round;
       const mine = r?.bets.find((b) => b.userId === cur?.me);
-      const n = sel.size;
-      const need = n * NUMBER_COST;
-      const coins = coinsNeeded(n, stakeCards);
-      const cv = cardsValue(stakeCards);
+      const slot = r ? r.day : '';
+      if (mine) {
+        bet.innerHTML = `<div class="gm-ph"><b>Ta mise</b><span class="muted">${esc(slot)}</span></div>
+          <div>Tes numéros : <b>${mine.numbers.join(', ')}</b></div>
+          <div class="gm-ed-v">${mine.coins ? coinsHtml(mine.coins) : ''}${mine.cards.length ? ` ${cardsSummary(mine.cards)}` : ''} au pot</div>
+          <div class="muted">Une mise par tirage. Rendez-vous au prochain tirage (${ROULETTE_HOURS.map((x) => `${x} h`).join(' / ')}).</div>
+          ${backend.eco.demoDraw ? '<button class="btn-ghost sm gm-draw">Tirer maintenant (démo)</button>' : ''}`;
+        bindDraw(bet);
+        return;
+      }
+      const n = sel.size as 0 | 1 | 2 | 3;
+      const opts = n ? ROULETTE_PRICES[n] : [];
+      if (pay >= opts.length) pay = 0;
+      const p = opts[pay];
+      const stake = stakeOf(p);
       const bal = snap()?.coins ?? 0;
-      // (le serveur refuse sous le minimum : on ne laisse pas partir une mise qui échouera)
-      const short = n ? Math.max(0, MIN_NUMBERS - (mine?.numbers.length ?? 0) - n) : 0;
-      const broke = coins > bal;
-      bet.innerHTML = `<div class="gm-ph"><b>Miser</b>${mine ? `<span class="muted">tes numéros : ${mine.numbers.join(', ')}</span>` : ''}</div>
-        <div>${n ? `${plural(n, 'numéro')} choisi${n > 1 ? 's' : ''} : <b>${[...sel].sort((a, b) => a - b).join(', ')}</b>` : '<span class="muted">Touche des numéros libres sur la roue.</span>'}</div>
-        <div class="gm-ed-row"><span>Cartes</span><button class="btn-ghost sm gm-pick">${stakeCards.length ? `${plural(stakeCards.reduce((a, c) => a + c.count, 0), 'carte')} · ${fmtCoins(cv)}` : 'Ajouter des cartes…'}</button></div>
-        <div class="gm-ed-v">Il faut ${fmtCoins(need)} de valeur → ${cv ? `${fmtCoins(cv)} en cartes + ` : ''}<b>${COIN_ICON}${fmtCoins(coins)}</b> pièces${cv > need && n ? ` <span class="warn">(tes cartes valent ${fmtCoins(cv - need)} de plus : prends ${Math.floor((cv - need) / NUMBER_COST)} numéro(s) de plus, sinon le surplus part au pot)</span>` : ''}</div>
-        ${n ? `<div class="gm-ed-v">Solde : ${coinsHtml(bal)} → après la mise : ${coinsHtml(Math.max(0, bal - coins))}${stakeCards.length ? ` · et tes ${plural(stakeCards.reduce((a, c) => a + c.count, 0), 'carte')} (${cardsSummary(stakeCards)}) partent au pot` : ''}</div>` : ''}
-        ${short ? `<div class="gm-warn">Minimum ${MIN_NUMBERS} numéros par tirage : encore ${plural(short, 'numéro')} à choisir.</div>` : ''}
-        ${broke ? `<div class="gm-warn">Il te manque ${fmtCoins(coins - bal)} pièces.</div>` : ''}
-        <button class="btn-primary gm-place"${!n || short || broke || isPending('bet') ? ' disabled' : ''}>Miser ${n ? `${plural(n, 'numéro')} · −${fmtCoins(coins)}` : ''}</button>
-        <div class="muted">Pas d'annulation après la mise : tout reste au pot jusqu'au tirage de 21 h (reporté si personne ne gagne).</div>
+      const picked = stakeCards.reduce((a, c) => a + c.count, 0);
+      const ok = !!n && !!matchPrice(n, stake) && (p?.kind !== 'coins' || p.coins <= bal);
+      bet.innerHTML = `<div class="gm-ph"><b>Miser</b>${slot ? `<span class="muted">tirage de ${esc(slot)}</span>` : ''}</div>
+        <div>${n ? `${plural(n, 'numéro')} : <b>${[...sel].sort((a, b) => a - b).join(', ')}</b>` : `<span class="muted">Touche 1 à ${MAX_NUMBERS} numéros libres sur la roue.</span>`}</div>
+        ${n ? `<div class="seg gm-pay" role="radiogroup" aria-label="Payer avec">${opts.map((o, i) => `<button role="radio" data-i="${i}" aria-checked="${i === pay}" class="${i === pay ? 'on' : ''}">${o.kind === 'coins' ? `${COIN_ICON}${fmtCoins(o.coins)}` : esc(priceLabel(o))}</button>`).join('')}</div>` : ''}
+        ${p?.kind === 'cards' ? `<div class="gm-ed-row"><span>${esc(priceLabel(p))}</span><button class="btn-ghost sm gm-pick">${picked ? `${picked}/${p.count} choisie${picked > 1 ? 's' : ''} · changer` : 'Choisir les cartes…'}</button></div>${picked && picked !== p.count ? `<div class="gm-warn">Il faut exactement ${p.count} carte${p.count > 1 ? 's' : ''} ${starsTxt(p.rarity)} (tu en as choisi ${picked}).</div>` : ''}` : ''}
+        ${p?.kind === 'coins' ? `<div class="gm-ed-v">Solde : ${coinsHtml(bal)} → après la mise : ${coinsHtml(Math.max(0, bal - p.coins))}</div>${p.coins > bal ? `<div class="gm-warn">Il te manque ${fmtCoins(p.coins - bal)} pièces.</div>` : ''}` : ''}
+        <button class="btn-primary gm-place"${!ok || isPending('bet') ? ' disabled' : ''}>Miser${n ? ` ${plural(n, 'numéro')}` : ''}</button>
+        <div class="muted">Pas d'annulation après la mise : tout reste au pot jusqu'au tirage (reporté si personne ne gagne).</div>
         ${backend.eco.demoDraw ? '<button class="btn-ghost sm gm-draw">Tirer maintenant (démo)</button>' : ''}`;
-      bet.querySelector('.gm-pick')!.addEventListener('click', async () => {
-        const res = await pickCards(backend, stakeCards, { title: 'Cartes misées à la roulette', hint: '1 numéro = 100 de valeur · 5★ = 300 · 6★ = 1 000 · secrète = 5 000.' });
+      bet.querySelectorAll<HTMLElement>('.gm-pay [data-i]').forEach((b) =>
+        b.addEventListener('click', () => {
+          pay = Number(b.dataset.i);
+          stakeCards = [];
+          drawBet();
+        }),
+      );
+      bet.querySelector('.gm-pick')?.addEventListener('click', async () => {
+        if (p?.kind !== 'cards') return;
+        const res = await pickCards(backend, stakeCards, { title: `Roulette : ${priceLabel(p)}`, hint: `Choisis exactement ${p.count} carte${p.count > 1 ? 's' : ''} ${starsTxt(p.rarity)}.`, onlyRarity: p.rarity });
         if (res) stakeCards = res;
         drawBet();
       });
       bet.querySelector<HTMLElement>('.gm-place')?.addEventListener('click', (e) => {
         const btn = e.currentTarget as HTMLElement;
         // second toucher, avec ce qui part : pas d'annulation possible avant le tirage
-        if (!confirmTap(btn, `Confirmer ? −${fmtCoins(coins)} pièces${stakeCards.length ? ` + ${cardsSummary(stakeCards)}` : ''}`)) return;
+        if (!confirmTap(btn, `Confirmer ? ${p?.kind === 'coins' ? `−${fmtCoins(p.coins)} pièces` : cardsSummary(stakeCards)}`)) return;
         const nums = [...sel];
-        const cards = stakeCards;
         void guarded('bet', btn, async () => {
           try {
-            await busyButton(btn, backend.eco.placeBet(nums, { coins, cards }));
+            await busyButton(btn, backend.eco.placeBet(nums, stake));
             sfx('chime');
-            toast(`Misé ! ${plural(nums.length, 'numéro')} pour le tirage de 21 h.`, 'ok');
-            nums.forEach((x) => sel.delete(x));
+            toast(`Misé ! ${plural(nums.length, 'numéro')} pour le tirage de ${slot}.`, 'ok');
+            sel.clear();
             stakeCards = [];
           } catch (err) {
             toast(errMsg(err), 'err');
           }
         }).then(drawBet); // (redessiné par l'abonnement pendant l'envoi : le bouton reste désactivé, cf. isPending)
       });
+      bindDraw(bet);
+    };
+    function bindDraw(bet: HTMLElement) {
       bet.querySelector<HTMLElement>('.gm-draw')?.addEventListener('click', (e) => {
         const btn = e.currentTarget as HTMLElement;
         void guarded('draw', btn, async () => {
@@ -656,7 +683,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           }
         });
       });
-    };
+    }
     const tick = () => {
       const cd = body.querySelector<HTMLElement>('.gm-cd');
       if (cd && cur) cd.textContent = `tirage dans ${fmtDelay(Math.max(0, cur.nextDrawAt - Date.now()))}`;
@@ -680,7 +707,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           c.title = o ? `${n} · ${o.name}` : `${n} · libre`;
         }
         const covered = owner.size;
-        body.querySelector<HTMLElement>('.gm-legend')!.innerHTML = round ? `${round.bets.map((b, i) => `<span class="gm-lg" style="--pc:${colors[i % colors.length]}">${esc(b.name)} · ${b.numbers.length}</span>`).join('')} · ${covered}/100 numéros couverts → ${Math.round(potOdds(covered) * 100)} % de chances que le pot tombe ce soir` : '';
+        body.querySelector<HTMLElement>('.gm-legend')!.innerHTML = round ? `${round.bets.map((b, i) => `<span class="gm-lg" style="--pc:${colors[i % colors.length]}">${esc(b.name)} · ${b.numbers.length}</span>`).join('')} · ${covered}/${ROULETTE_NUMBERS} numéros couverts → ${Math.round(potOdds(covered) * 100)} % de chances que le pot tombe au prochain tirage` : '';
         body.querySelector<HTMLElement>('.gm-potv')!.innerHTML = round ? `${coinsHtml(round.pot.coins)} + ${plural(round.pot.cards.reduce((a, c) => a + c.count, 0), 'carte')} = <b>${fmtCoins(round.pot.value)}</b> de valeur` : '';
         const pot = body.querySelector<HTMLElement>('.gm-pot')!;
         pot.replaceChildren();
@@ -702,11 +729,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     );
     // la bille parcourt la roue, ralentit, et s'arrête sur le numéro sorti
     async function spin(number: number, winner?: string) {
-      let i = Math.floor(Math.random() * 100);
+      let i = Math.floor(Math.random() * ROULETTE_NUMBERS);
       let d = 30;
       while (d < 260) {
         cells.forEach((c) => c.classList.remove('ball'));
-        cells[i % 100].classList.add('ball');
+        cells[i % ROULETTE_NUMBERS].classList.add('ball');
         sfx('tick');
         await wait(d);
         i++;

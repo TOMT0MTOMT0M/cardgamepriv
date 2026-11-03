@@ -26,6 +26,7 @@ import {
   fwidth,
   mx_noise_float,
   hash,
+  color,
 } from 'three/tsl';
 import type { CardArt } from './art';
 import { cardLayers } from './cardMaterial';
@@ -81,8 +82,16 @@ export function setHoloReduced(on: boolean) {
 }
 export const isHoloReduced = () => holoReduced;
 
-/** Foil de la bande de bordure (bord de la carte → liseré intérieur) par palier visuel : rien pour une commune. */
-const BORDER_FOIL = [0, 0.35, 0.6, 0.85, 1, 1];
+/**
+ * Bande de bordure (bord de la carte → liseré intérieur) : présente à TOUS les paliers (retours live 02, §12 : code
+ * couleur des raretés, la commune aussi a sa bordure).
+ */
+const BORDER_FOIL = [1, 1, 1, 1, 1, 1];
+/**
+ * Code couleur des raretés (retours live 02, §12) pour la bordure et le cadre : 1★ GRIS · 2★ VERT · 3★ BLEU · 4★ ROUGE
+ * · 5★ DORÉ (teintes de src/core/rarity.ts) ; 6★ (et secrète) : ARC-EN-CIEL — la couche mince irisée, réservée à elles.
+ */
+const RIM_HEX = ['#a39d91', '#6f9a74', '#4c7cc2', '#c23a52', '#e0a63a'];
 /** Largeur de la bande de bordure (unités carte : 0.02 ≈ 2 mm, juste au-delà du liseré du gabarit Pleine illustration). */
 const BORDER_W = 0.02;
 
@@ -154,16 +163,21 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const metalImage = min(winFoil.mul(inner).mul(lumGate).mul(U.strength), holoFx.image).add(min(subjFoil.mul(inner).mul(lumGate).mul(U.strength), holoFx.image.mul(0.6)));
   const metal = max(metalFrame, metalImage);
   const foilCol = mix(vec3(0.92), film, 0.85).mul(mix(vec3(1), pow(L.color, vec3(0.5)), 0.55)).mul(1.15);
+  // cadre + bordure : couleur de la rareté (reflet métallique dans sa teinte) ; arc-en-ciel irisé pour 6★ / secrète
+  const rainbow = tier >= 5;
+  const frameCol = rainbow ? foilCol : color(RIM_HEX[Math.max(0, tier)]).mul(luminance(film).mul(0.5).add(0.72));
+  // la bordure reste lisible même quand le holo est au plus bas (carte encore « éteinte » pendant l'ouverture)
+  const frameMix = max(metalFrame, rim.mul(0.92).mul(holoFx.border.mul(0.4).add(0.6)));
   const m = new MeshPhysicalNodeMaterial();
-  m.colorNode = mix(L.color, foilCol, metal);
+  m.colorNode = mix(mix(L.color, foilCol, metalImage), frameCol, frameMix);
   // métal au tiers sur l'illustration : un reflet par-dessus l'image, pas une image assombrie qui reflète le studio
-  m.metalnessNode = max(metalFrame, metalImage.mul(0.35));
+  m.metalnessNode = max(frameMix.mul(rainbow ? 1 : 0.75), metalImage.mul(0.35));
   m.roughnessNode = mix(mix(float(0.6), float(0.34), L.window), float(0.22).add(h1.mul(0.06)), metal);
   m.normalNode = bumpMap(L.masks.g, float(0.6), normalMap(vec4(nTS.mul(0.5).add(0.5), 1).xyz));
   m.clearcoatNode = float(0.35);
   m.clearcoatRoughnessNode = float(0.18);
   const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
   const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
-  m.emissiveNode = film.mul(glint).mul(3.5).add(L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5)).add(film.mul(foil).mul(U.extraEmissive));
+  m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5)).add(film.mul(foil).mul(U.extraEmissive));
   return { material: m, layers: L, uniforms: U, film, foil };
 }

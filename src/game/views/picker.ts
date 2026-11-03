@@ -13,12 +13,12 @@ const RARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'my
  * échange en attente) ; une mise peut inclure le dernier exemplaire (c'est un pari : elle peut revenir).
  * `onlyDups` : ne proposer que les doublons (la forge).
  */
-export function pickCards(backend: GameBackend, current: StakeItem[], o: { title: string; hint?: string; onlyDups?: boolean } = { title: 'Choisis tes cartes' }): Promise<StakeItem[] | null> {
+export function pickCards(backend: GameBackend, current: StakeItem[], o: { title: string; hint?: string; onlyDups?: boolean; onlyRarity?: RarityId } = { title: 'Choisis tes cartes' }): Promise<StakeItem[] | null> {
   return new Promise((resolve) => {
     const picked = new Map<string, StakeItem>(current.map((c) => [cardKey(c), { ...c }]));
     const locked = lockedCards(backend.state);
     const free = (c: { cardId: string; rarity: RarityId; count: number }) => c.count - (locked.get(cardKey(c)) ?? 0) - (o.onlyDups ? 1 : 0);
-    const rows = backend.state.collection.filter((c) => catalogEntry(c.cardId) && free(c) > 0);
+    const rows = backend.state.collection.filter((c) => catalogEntry(c.cardId) && free(c) > 0 && (!o.onlyRarity || c.rarity === o.onlyRarity));
     let q = '';
     let rf: RarityId | '' = '';
     const veil = h('div', 'gm-modal-veil');

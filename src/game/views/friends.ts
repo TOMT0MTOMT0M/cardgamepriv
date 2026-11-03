@@ -2,6 +2,7 @@ import { friendState, isOnline, type FriendLink, type FriendRequest, type GameBa
 import type { Shell } from '../shell';
 import { busyButton, errMsg, esc, h, loginPrompt, navigate, plural, toast } from '../ui';
 import { confirmTap, guarded } from './safety';
+import { REFERRAL, referralLink } from '../../core/referral';
 
 /**
  * AMIS (#/amis — retours live 02, point 8, lot A2) : demander quelqu'un en ami par son pseudo exact (ou depuis son
@@ -113,6 +114,13 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       <div class="am-login" hidden></div>
       <div class="am-grid">
         <aside class="am-side">
+          <section class="am-card am-ref" aria-labelledby="am-ref-t">
+            <h2 id="am-ref-t">Parrainage</h2>
+            <p class="muted am-ref-rules">Invite tes potes avec ton lien : ils reçoivent <b>${REFERRAL.packs} boosters</b> en arrivant, et toi <b>${REFERRAL.packs} boosters</b> quand ils ont ouvert leurs ${REFERRAL.packsToPay} premiers.</p>
+            <div class="am-ref-link"><input class="search am-ref-in" type="text" readonly aria-label="Mon lien d’invitation" value="…"><button class="btn-primary am-ref-copy" type="button" disabled>Copier</button></div>
+            <p class="am-ref-stats muted"></p>
+            <div class="am-list am-ref-list"></div>
+          </section>
           <form class="am-card am-add" autocomplete="off">
             <h2 id="am-add-t">Ajouter un ami</h2>
             <div class="am-add-row">
@@ -247,8 +255,47 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     outSec.hidden = !s.outgoing.length;
   }
 
+  // ── parrainage (retours live 02, §10)
+  const refIn = q<HTMLInputElement>('.am-ref-in');
+  const refCopy = q<HTMLButtonElement>('.am-ref-copy');
+  const refStats = q('.am-ref-stats');
+  const refList = q('.am-ref-list');
+  let refAt = 0;
+  async function loadReferral() {
+    if (!backend.state.user || Date.now() - refAt < 20_000) return;
+    refAt = Date.now();
+    try {
+      const r = await backend.referral();
+      const link = referralLink(location.origin, r.code);
+      refIn.value = link;
+      refCopy.disabled = false;
+      refStats.innerHTML = `<b>${plural(r.clicks, 'personne a cliqué', 'personnes ont cliqué')}</b> sur ton lien · ${plural(r.referrals.length, 'filleul')}`;
+      refList.replaceChildren(
+        ...r.referrals.map((k) => {
+          const row = h('div', 'am-row am-ref-row');
+          row.innerHTML = `<a class="am-who" href="${profileHref(k.userId)}">${ava(k)}<span class="am-txt"><b>${esc(k.name)}</b><small>${k.paid ? `✓ tu as reçu tes ${REFERRAL.packs} boosters` : `${Math.min(k.packsOpened, REFERRAL.packsToPay)}/${REFERRAL.packsToPay} boosters ouverts`}</small></span></a>`;
+          return row;
+        }),
+      );
+    } catch (e) {
+      refAt = 0;
+      refStats.textContent = errMsg(e);
+    }
+  }
+  refIn.addEventListener('focus', () => refIn.select());
+  refCopy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(refIn.value);
+      toast('Lien copié : envoie-le à tes potes !', 'ok');
+    } catch {
+      refIn.focus();
+      refIn.select();
+      toast('Sélectionné : copie-le (Ctrl+C).', 'info');
+    }
+  });
+
   let tick = 0;
-  backend.onChange(() => el.isConnected && render());
+  backend.onChange(() => el.isConnected && (render(), void loadReferral()));
   return {
     el,
     enter() {
@@ -256,6 +303,8 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       shell.setDimmed(true);
       el.scrollTo({ top: 0 });
       render(true);
+      refAt = 0;
+      void loadReferral();
       // « en ligne » / « vu il y a… » : relus toutes les 30 s (les battements de cœur des amis n'émettent pas)
       clearInterval(tick);
       tick = window.setInterval(() => document.hidden || render(), 30_000);

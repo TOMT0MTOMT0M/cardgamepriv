@@ -10,7 +10,7 @@ import schema from './schema';
 import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS } from './cardsCatalog';
 import { CARD_VALUE, calendarReward, CALENDAR_MONTH_TOTAL } from '../src/core/economy';
-import { nextRouletteDraw, parisHour, potsBalanced, royaleResult, rouletteDrawDay } from '../src/core/games';
+import { betProblem, nextRouletteDraw, parisHour, potsBalanced, royaleResult, rouletteSlot } from '../src/core/games';
 
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
 
@@ -52,12 +52,34 @@ describe('règles pures', () => {
     expect(potsBalanced({ coins: 0, cards: [] }, { coins: 0, cards: [] })).toBe(true);
   });
 
-  test('roulette : tirage à 21 h, heure de Paris (heure d’hiver et d’été)', () => {
+  test('roulette : tirages à 10 h et 20 h, heure de Paris (heure d’hiver et d’été)', () => {
     expect(parisHour(Date.UTC(2026, 10, 3, 0, 30))).toBe(1); // hiver : UTC+1
     expect(parisHour(Date.UTC(2026, 6, 3, 0, 30))).toBe(2); // été : UTC+2
-    expect(new Date(nextRouletteDraw(Date.UTC(2026, 10, 3, 9, 0))).toISOString()).toBe('2026-11-03T20:00:00.000Z');
-    expect(new Date(nextRouletteDraw(Date.UTC(2026, 6, 3, 9, 0))).toISOString()).toBe('2026-07-03T19:00:00.000Z');
-    expect(rouletteDrawDay(Date.UTC(2026, 10, 3, 20, 30))).toBe('2026-11-04'); // après 21 h : tirage du lendemain
+    // hiver : 10 h Paris = 9 h UTC, 20 h Paris = 19 h UTC
+    expect(new Date(nextRouletteDraw(Date.UTC(2026, 10, 3, 7, 0))).toISOString()).toBe('2026-11-03T09:00:00.000Z');
+    expect(new Date(nextRouletteDraw(Date.UTC(2026, 10, 3, 9, 30))).toISOString()).toBe('2026-11-03T19:00:00.000Z');
+    expect(new Date(nextRouletteDraw(Date.UTC(2026, 10, 3, 19, 30))).toISOString()).toBe('2026-11-04T09:00:00.000Z');
+    // été : 10 h Paris = 8 h UTC
+    expect(new Date(nextRouletteDraw(Date.UTC(2026, 6, 3, 6, 0))).toISOString()).toBe('2026-07-03T08:00:00.000Z');
+    expect(rouletteSlot(Date.UTC(2026, 10, 4, 9, 0))).toBe('2026-11-04 · 10 h');
+  });
+
+  test('roulette : grille tarifaire (36 numéros, 1 à 3, pièces ou cartes 4★-6★)', () => {
+    const none = new Set<number>();
+    const card = (rarity: string, count: number) => ({ coins: 0, cards: [{ cardId: 'x', rarity: rarity as never, count }] });
+    expect(betProblem([1], { coins: 300, cards: [] }, none, 0)).toBeNull();
+    expect(betProblem([1], card('epic', 10), none, 0)).toBeNull();
+    expect(betProblem([1, 2], card('legendary', 1), none, 0)).toBeNull();
+    expect(betProblem([1, 2], { coins: 600, cards: [] }, none, 0)).toBeNull();
+    expect(betProblem([1, 2, 3], card('legendary', 2), none, 0)).toBeNull();
+    expect(betProblem([1, 2, 3], card('mythic', 1), none, 0)).toBeNull();
+    expect(betProblem([1, 2, 3], { coins: 900, cards: [] }, none, 0)).toBeNull();
+    expect(betProblem([1], { coins: 200, cards: [] }, none, 0)).toMatch(/300 pièces/);
+    expect(betProblem([1], card('rare', 10), none, 0)).toMatch(/4★, 5★ et 6★/);
+    expect(betProblem([1, 2, 3, 4], { coins: 1200, cards: [] }, none, 0)).toMatch(/3 numéros au plus/);
+    expect(betProblem([37], { coins: 300, cards: [] }, none, 0)).toMatch(/1 à 36/);
+    expect(betProblem([5], { coins: 300, cards: [] }, new Set([5]), 0)).toMatch(/déjà pris/);
+    expect(betProblem([6], { coins: 300, cards: [] }, none, 1)).toMatch(/déjà misé/);
   });
 
   test('battle royale : ex æquo → cartes partagées au hasard entre eux seulement', () => {
@@ -184,33 +206,54 @@ describe('Battle Royale', () => {
 });
 
 describe('Roulette', () => {
-  test('3 numéros minimum ; le pot reste si personne ne gagne ; tout au gagnant sinon', async () => {
+  test('1 mise par tirage ; le pot reste si personne ne gagne ; tout au gagnant sinon', async () => {
     const { t, u } = await setup();
     await t.mutation(internal.games.rouletteTick, {});
-    await expect(t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [1, 2], stake: { coins: 200, cards: [] } })).rejects.toThrow(/minimale/);
-    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [1, 2, 3], stake: { coins: 300, cards: [] } });
-    await expect(t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [3, 4, 5], stake: { coins: 300, cards: [] } })).rejects.toThrow(/déjà pris/);
+    await expect(t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [1, 2], stake: { coins: 300, cards: [] } })).rejects.toThrow(/600 pièces/);
+    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [1], stake: { coins: 300, cards: [] } });
+    await expect(t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [2], stake: { coins: 300, cards: [] } })).rejects.toThrow(/déjà misé/);
+    await expect(t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [1, 4], stake: { coins: 600, cards: [] } })).rejects.toThrow(/déjà pris/);
     const leg = CATALOG_CARDS.find((c) => c.baseRarity === 'legendary')!;
     await give(t, u.bob.userId, leg.id, 'legendary', 1);
-    // 1 × 5★ = 300 = 3 numéros (le dernier exemplaire peut être misé)
-    await t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [10, 11, 12], stake: { coins: 0, cards: [{ cardId: leg.id, rarity: 'legendary', count: 1 }] } });
+    // 2 numéros = 1 carte 5★ (le dernier exemplaire peut être misé)
+    await t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [10, 11], stake: { coins: 0, cards: [{ cardId: leg.id, rarity: 'legendary', count: 1 }] } });
     expect(await coins(t, u.alice.userId)).toBe(700);
-    // personne n'a le 50 → report du pot
-    await t.mutation(internal.games.forceDraw, { number: 50 });
+    // personne n'a le 30 → report du pot, et une nouvelle carte offerte par le site
+    await t.mutation(internal.games.forceDraw, { number: 30 });
     let r = (await t.query(api.games.roulette, {}))!;
     expect(r.round!.carriedCoins).toBe(300);
     expect(r.round!.carriedCards.length).toBe(2); // la 5★ de Bob + la carte offerte du 1er tirage
-    expect(r.round!.houseCards).toHaveLength(1); // nouvelle carte offerte
+    expect(r.round!.houseCards).toHaveLength(1);
     // Alice joue le 7 et gagne tout
-    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [7, 8, 9], stake: { coins: 300, cards: [] } });
+    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [7, 8], stake: { coins: 600, cards: [] } });
     await t.mutation(internal.games.forceDraw, { number: 7 });
-    expect(await coins(t, u.alice.userId)).toBe(1000); // 1000 − 300 − 300 + 600
+    expect(await coins(t, u.alice.userId)).toBe(1000); // 1000 − 300 − 600 + 900
     const a = await inv(t, u.alice.userId);
     expect(a.some((c) => c.cardId === leg.id)).toBe(true);
     expect(a.reduce((s, c) => s + c.count, 0)).toBe(3);
     r = (await t.query(api.games.roulette, {}))!;
     expect(r.round!.carriedCoins).toBe(0);
     expect(r.past[0].result?.winnerName).toBe('alice');
+  });
+
+  test('ancienne manche (21 h, 100 numéros) : mises remboursées, pot conservé', async () => {
+    const { t, u } = await setup();
+    const leg = CATALOG_CARDS.find((c) => c.baseRarity === 'legendary')!;
+    await t.run(async (ctx) => {
+      await ctx.db.insert('rouletteRounds', {
+        day: '2026-11-03', status: 'open', carriedCoins: 500, carriedCards: [],
+        houseCards: [{ cardId: leg.id, cardName: leg.name, rarity: 'legendary', mintNumber: 1, foilSeed: 1 }],
+        bets: [{ userId: u.alice.userId, name: 'alice', numbers: [50, 60, 70], coins: 300, cards: [], createdAt: 0 }],
+      });
+      await ctx.db.patch(u.alice.userId, { coins: 700 });
+    });
+    await t.mutation(internal.games.rouletteTick, {});
+    expect(await coins(t, u.alice.userId)).toBe(1000);
+    const r = (await t.query(api.games.roulette, {}))!;
+    expect(r.round!.drawAt).toBeGreaterThan(Date.now());
+    expect(r.round!.carriedCoins).toBe(500);
+    expect(r.round!.carriedCards.some((c) => c.cardId === leg.id)).toBe(true);
+    expect(r.round!.bets).toHaveLength(0);
   });
 });
 

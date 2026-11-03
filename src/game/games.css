@@ -314,3 +314,13 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 button.w-link { border: 0; background: none; padding: 0; cursor: pointer; }
 @media (pointer: coarse) { button.w-link { min-height: 32px; padding: 0 6px; } }
 /* ==== fin lot P ==== */
+
+/* roulette 36 numéros (retours live 02, §7) : 9 colonnes × 4 rangées, plus grandes ; choix du paiement */
+.gm-wheel.r36 { grid-template-columns: repeat(9, 1fr); gap: 6px; }
+.gm-wheel.r36 .gm-num { min-height: 44px; font-size: 15px; }
+.gm-pay { flex-wrap: wrap; }
+.gm-pay button { display: inline-flex; align-items: center; gap: 5px; }
+.gm-pay button .coin-ico { width: 14px; height: 14px; }
+@media (max-width: 860px) {
+  .gm-wheel.r36 { grid-template-columns: repeat(6, 1fr); }
+}

@@ -46,6 +46,7 @@ export function createOnlineEco(): EcoBackend {
     burn: (items) => net.call(api.economy.burn, { items }),
     claimCompletions: () => net.call(api.economy.claimCompletions, {}),
     claimAchievements: () => net.call(api.economy.claimAchievements, {}),
+    friendsAchievements: async () => (await net.ask(api.economy.friendsAchievements, {})) ?? [],
     coinHistory: async () => (await net.ask(api.economy.history, { limit: 60 })).map((t) => ({ id: t._id, amount: t.amount, reason: t.reason, label: t.label, createdAt: t.createdAt })),
     watchLobby: (cb) => net.watch(api.games.lobby, {}, (l) => cb(l ? { duels: l.duels.map(duel), royales: l.royales.map(royale), me: l.me } : null)),
     watchDuel: (id, cb) => net.watch(api.games.duel, { duelId: id as Id<'duels'> }, (d) => cb(d ? duel(d) : null), false),

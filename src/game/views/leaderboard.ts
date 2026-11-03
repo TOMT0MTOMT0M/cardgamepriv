@@ -10,6 +10,8 @@ import { friendBtn } from './friends';
  * Podium (2e – 1er – 3e) + liste complète ; ma ligne est surlignée SANS changer la taille ni l'alignement (correctif
  * retours live n°1 : la classe `me` héritait du style de l'en-tête — marge auto, flex — et décalait podium et ligne).
  */
+/** case vide sous une place du podium (même hauteur que le bouton « + Ami ») */
+const SLOT = '<span class="lb-pd-slot" aria-hidden="true"></span>';
 type Board = 'pct' | 'mythic' | 'packs' | 'trades' | 'streak';
 const BOARDS: Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; crown?: boolean }> = [
   { id: 'pct', label: 'Complétion', crown: true, value: (r) => r.pct, unit: (r) => `${fmtPct(r.pct)} · ${fmtN(r.uniques)} cartes` },
@@ -70,21 +72,22 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     for (const i of [1, 0, 2]) {
       const r = sorted[i];
       if (!r) {
-        row.append(h('div', `lb-pd p${i + 1} empty`, `<span class="lb-pd-rank">${['🥇', '🥈', '🥉'][i]}</span><span class="lb-ava"><span>—</span></span><b>—</b><span class="lb-pd-v">&nbsp;</span>`));
+        const cell = h('div', 'lb-pd-cell');
+        cell.append(h('div', `lb-pd p${i + 1} empty`, `<span class="lb-pd-rank">${['🥇', '🥈', '🥉'][i]}</span><span class="lb-ava"><span>—</span></span><b>—</b><span class="lb-you none">&nbsp;</span><span class="lb-pd-v">&nbsp;</span>`));
+        cell.insertAdjacentHTML('beforeend', SLOT);
+        row.append(cell);
         continue;
       }
       const a = h('a', `lb-pd p${i + 1}${r.id === me ? ' is-me' : ''}`);
       a.href = `#/profil/${encodeURIComponent(r.id)}`;
       a.innerHTML = `<span class="lb-pd-rank">${i === 0 && b.crown ? '👑' : ['🥇', '🥈', '🥉'][i]}</span>${ava(r)}<b>${esc(r.name)}</b>${r.id === me ? '<span class="lb-you">toi</span>' : '<span class="lb-you none">&nbsp;</span>'}<span class="lb-pd-v">${b.unit(r)}</span>`;
       // bouton ami (lot A2) sous la place du podium, hors du lien
-      const pfb = friendBtn(backend, r.id, r.name, 'row');
-      if (!pfb) row.append(a);
-      else {
-        const cell = h('div', 'lb-pd-cell');
-        cell.append(a);
-        cell.insertAdjacentHTML('beforeend', pfb);
-        row.append(cell);
-      }
+      // retours live 02 (bug 3) : TOUTES les places ont la même case sous la carte — le bouton « + Ami » ou, pour moi
+      // (on ne s'ajoute pas soi-même) / hors connexion, un emplacement vide de même hauteur → podium toujours aligné
+      const cell = h('div', 'lb-pd-cell');
+      cell.append(a);
+      cell.insertAdjacentHTML('beforeend', friendBtn(backend, r.id, r.name, 'row') || SLOT);
+      row.append(cell);
     }
     podiumEl.append(row);
     // la liste reprend APRÈS le podium (les 3 premiers n'y sont plus répétés : audit UX3-17)

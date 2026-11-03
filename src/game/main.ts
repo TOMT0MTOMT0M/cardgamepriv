@@ -5,6 +5,7 @@ import type { ViewerScene } from './scenes/viewer';
 import { createShopView } from './views/shop';
 import { createMissions, MISSION_ICON } from './views/missions';
 import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
+import { PITY_LIMIT } from '../core/pity';
 import { COIN_ICON, createWallet } from './views/wallet';
 import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
@@ -82,6 +83,50 @@ const backend: GameBackend = await backendP.catch((e: unknown) => {
   throw e;
 });
 
+/**
+ * PARRAINAGE (retours live 02, §10) : arrivée par un lien `?ref=CODE` → le clic est compté (une fois par appareil),
+ * le code est gardé jusqu'à la connexion ; une fois connecté (compte neuf), on devient filleul : 10 boosters offerts.
+ */
+const REF_KEY = 'bebou.ref';
+{
+  const url = new URL(location.href);
+  const code = (url.searchParams.get('ref') ?? '').toLowerCase();
+  if (/^[a-z0-9]{6,12}$/.test(code)) {
+    try {
+      localStorage.setItem(REF_KEY, code);
+    } catch {
+      /* stockage indisponible : le clic compte quand même */
+    }
+    void backend.referralClick(code).catch(() => {});
+    url.searchParams.delete('ref');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+  }
+}
+let refBusy = false;
+backend.onChange((st) => {
+  if (refBusy || !st.user) return;
+  let code: string | null = null;
+  try {
+    code = localStorage.getItem(REF_KEY);
+  } catch {
+    return;
+  }
+  if (!code) return;
+  refBusy = true;
+  void backend
+    .referralClaim(code)
+    .then((r) => {
+      try {
+        localStorage.removeItem(REF_KEY);
+      } catch {
+        /* rien */
+      }
+      if (r.status === 'ok') toast(`Bienvenue ! ${r.referrer ?? 'Ton parrain'} t’a invité : +${r.packs ?? 10} boosters offerts 🎁`, 'ok');
+    })
+    .catch(() => {})
+    .finally(() => (refBusy = false));
+});
+
 top.innerHTML = `
   <button class="skip">Aller au contenu</button>
   <a class="logo" href="#/">BÉBOU<span>cartes</span></a>
@@ -92,6 +137,7 @@ top.innerHTML = `
     <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>    <a href="#/jeux" data-r="jeux">Jeux</a>
     <a href="#/classement" data-r="classement">Classement</a>
     <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
+    <a href="#/amis" data-r="amis">Amis<b class="badge am-badge" hidden></b></a>
     <i class="nav-pill" aria-hidden="true"></i>
     <button class="nav-more" tabindex="-1" aria-hidden="true">›</button>
   </nav>
@@ -266,7 +312,7 @@ function renderMe() {
     meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, calendrier, primes" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b></button><button class="icon st-btn" title="Série de connexion" aria-label="Série de connexion" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b></button><button class="icon pt-btn" title="Pity 6★ : boosters avant un 6★ garanti" aria-label="Pity 6★" aria-controls="pop-status" data-which="pity" aria-expanded="false">${PITY_ICON}<b class="pt-n" aria-hidden="true" hidden></b></button></div><div class="me-id">${demo}${snd}<a class="icon fr-link" href="#/amis" title="Amis" aria-label="Amis">${FRIENDS_ICON}<b class="fr-n" hidden></b></a><button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button></div>`;
+    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button></div>`;
     tickPacks();
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
@@ -316,7 +362,6 @@ function renderMe() {
   meEl.querySelector('.msn-btn')?.addEventListener('click', () => missions?.toggle());
   meEl.querySelector('.coin-btn')?.addEventListener('click', () => wallet?.toggle());
   meEl.querySelector('.st-btn')?.addEventListener('click', () => status?.toggle('streak'));
-  meEl.querySelector('.pt-btn')?.addEventListener('click', () => status?.toggle('pity'));
   syncMissionBadge();
   syncStatus();
   syncCoins();
@@ -352,22 +397,23 @@ function syncMissionBadge() {
 }
 backend.onChange(syncMissionBadge);
 /**
- * AMIS (retours live 02, lot A2) : icône « Amis » dans l'en-tête, à côté de l'avatar (pas un 8e onglet : la nav
- * débordait déjà à 1280 px et aurait débordé à 1440), pastille du nombre de demandes reçues ; petit message quand une
+ * AMIS : onglet de la navigation (récap retours live 02, §10 : « nouvel onglet AMIS » — liste d'amis + parrainage),
+ * pastille du nombre de demandes reçues ; petit message quand une
  * demande arrive ou qu'un joueur accepte la mienne (sauf si on est déjà sur la page Amis).
  */
-const FRIENDS_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.2" r="3.3" fill="currentColor" fill-opacity=".16"/><path d="M2.8 19.2c.6-3.4 3.1-5.4 6.2-5.4s5.6 2 6.2 5.4"/><circle cx="16.6" cy="9" r="2.6"/><path d="M16.4 13.9c2.6 0 4.4 1.7 4.9 4.6"/></svg>`;
 function syncFriendLink() {
-  const a = meEl.querySelector<HTMLElement>('.fr-link');
+  // (retours live 02, §10) AMIS est désormais un ONGLET de la navigation (amis + parrainage) : la pastille y est
+  const a = top.querySelector<HTMLElement>('nav a[data-r="amis"]');
   const so = backend.state.social;
   if (!a) return;
   const n = so.ready ? so.incoming.length : 0;
-  const b = a.querySelector<HTMLElement>('.fr-n')!;
+  const b = a.querySelector<HTMLElement>('.am-badge')!;
   if (b.hidden !== (n === 0)) b.hidden = n === 0;
   if (b.textContent !== String(n)) b.textContent = String(n);
   const label = n ? `Amis : ${n} demande${n > 1 ? 's' : ''} d’ami reçue${n > 1 ? 's' : ''}` : 'Amis';
   if (a.getAttribute('aria-label') !== label) (a.setAttribute('aria-label', label), (a.title = label));
   a.classList.toggle('ready', n > 0);
+  placePill(false);
 }
 let friendSeen: { inc: Set<string>; out: Map<string, string>; friends: Set<string> } | null = null;
 backend.onChange((st) => {
@@ -423,24 +469,25 @@ backend.eco.onChange(syncCoins);
 let status: ReturnType<typeof createStatus> | null = null;
 function syncStatus() {
   const st = meEl.querySelector<HTMLElement>('.st-btn');
-  const pt = meEl.querySelector<HTMLElement>('.pt-btn');
+  const pt = meEl.querySelector<HTMLElement>('.pt-cnt');
   if (!st || !pt || !status) return;
   const sk = status.streak();
   st.querySelector('.st-n')!.textContent = `${sk.day}/7`;
-  st.classList.toggle('ready', sk.claimable);
-  st.title = sk.claimable ? 'Série de 7 jours : récompense à réclamer !' : `Série de connexion · jour ${sk.day}/7`;
-  st.setAttribute('aria-label', sk.claimable ? 'Série de connexion : récompense du 7e jour à réclamer' : `Série de connexion : jour ${sk.day} sur 7`);
-  // pity (UX2-13) : un « 199 » nu se lit comme un score ; le chiffre n'apparaît qu'à l'approche du seuil (≤ 20), en or,
-  // le libellé (lecteur d'écran, survol) et le panneau disent toujours ce qu'il compte
+  // flamme = panneau CONNEXION (retours live 02, §11) : elle bat s'il y a la série OU le cadeau du calendrier à prendre
+  const ready = sk.claimable || sk.calendar;
+  st.classList.toggle('ready', ready);
+  st.title = sk.claimable ? 'Série de 7 jours : récompense à réclamer !' : sk.calendar ? 'Connexion : cadeau du jour à prendre !' : `Connexion · série jour ${sk.day}/7 · calendrier`;
+  st.setAttribute('aria-label', st.title);
+  // pity (retours live 02, §11) : compteur « X/200 » toujours visible, sans clic
+  const n = status.pityCount();
   const left = status.pityLeft();
-  const n = pt.querySelector<HTMLElement>('.pt-n')!;
-  n.textContent = left <= 20 ? String(left) : '';
-  n.hidden = left > 20;
+  pt.querySelector('.pt-n')!.textContent = `${n}/${PITY_LIMIT}`;
   pt.classList.toggle('near', left <= 20 && left > 0);
   pt.classList.toggle('ready', left === 0);
-  pt.title = left === 0 ? 'Ton prochain booster contient un 6★ sûr !' : `Pity 6★ : encore ${left} booster${left > 1 ? 's' : ''} avant un 6★ garanti`;
+  pt.title = left === 0 ? 'Pity 6★ : ton prochain booster contient un 6★ sûr !' : `Pity 6★ : ${n} booster${n > 1 ? 's' : ''} sans 6★ · au ${PITY_LIMIT}e, un 6★ garanti (remis à zéro au premier 6★)`;
   pt.setAttribute('aria-label', pt.title);
 }
+backend.eco.onChange(syncStatus);
 backend.onChange(syncStatus);
 /** N'écrit dans le DOM que si le texte change (le compteur tourne chaque seconde). */
 const setText = (e: Element, t: string) => {

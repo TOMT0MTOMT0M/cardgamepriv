@@ -1,6 +1,7 @@
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
-import { ACHIEVEMENTS, ACHIEVEMENT_TIERS, achievementDone, achievementReward, fmtCoins, type Achievement } from '../../core/economy';
+import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, type AchievementLadder, type AchievementStats } from '../../core/economy';
+import type { FriendAch } from '../eco';
 import { cosmeticsOf } from '../../core/cosmetics';
 import { COIN_ICON } from './wallet';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
@@ -10,6 +11,9 @@ import { guarded, isPending } from './safety';
  * SUCCÈS (#/succes, onglet de la navigation — retours live n°1) : les 36 succès de l'espace Jeux (src/core/economy.ts),
  * avec leur progression, leur prime en pièces (paliers 50 / 150 / 500 / 2 000) et les COSMÉTIQUES qu'ils débloquent
  * (bannières, cadres, titres, badges du profil : tout se débloque via les succès, rien ne s'achète).
+ * Retours live 02 (§8, §9) : SUCCÈS À PALIERS — une carte par mécanique (« Ouvrir des boosters » : 10 → 100 → 500 →
+ * 2 000), chaque palier avec sa récompense mixte (pièces + boosters, cosmétiques aux gros seuils) — et la bascule
+ * « AMIS » : pour chaque mécanique, qui est le premier / le plus avancé parmi mes amis.
  * + les PRIMES DE COMPLÉTION (retours live 02 : sorties de l'espace Jeux, ce n'est pas un jeu) — #/succes/primes y mène
  * (#/jeux/primes redirige ici) ; elles restent aussi encaissables depuis le portefeuille.
  */
@@ -20,7 +24,6 @@ export interface SuccesView {
 }
 
 type Filter = 'all' | 'ready' | 'got' | 'todo';
-const TIER_LABEL = ['Facile', 'Moyen', 'Difficile', 'Légendaire'];
 
 export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView {
   const el = h('section', 'view succes');
@@ -32,6 +35,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
         <div class="sc-score"></div>
       </header>
       <div class="sc-bar">
+        <div class="seg sc-who" aria-label="Voir"><button data-w="me" class="on" aria-pressed="true">Moi</button><button data-w="friends" aria-pressed="false">Amis</button></div>
         <div class="seg sc-filters" aria-label="Filtrer les succès"><button data-f="all" class="on" aria-pressed="true">Tous</button><button data-f="ready" aria-pressed="false">À encaisser</button><button data-f="got" aria-pressed="false">Obtenus</button><button data-f="todo" aria-pressed="false">En cours</button></div>
         <button class="btn-primary sc-claim" hidden></button>
       </div>
@@ -45,6 +49,29 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
   const recap = el.querySelector<HTMLElement>('.sc-recap')!;
   const primesEl = el.querySelector<HTMLElement>('.sc-primes')!;
   let filter: Filter = 'all';
+  /** bascule Moi / Amis (retours live 02, §9) */
+  let who: 'me' | 'friends' = 'me';
+  let friends: FriendAch[] | null = null;
+  let friendsAt = 0;
+  el.querySelectorAll<HTMLButtonElement>('.sc-who button').forEach((b) =>
+    b.addEventListener('click', () => {
+      who = b.dataset.w as 'me' | 'friends';
+      el.querySelectorAll<HTMLButtonElement>('.sc-who button').forEach((x) => (x.classList.toggle('on', x === b), x.setAttribute('aria-pressed', String(x === b))));
+      if (who === 'friends') void loadFriends();
+      render();
+    }),
+  );
+  async function loadFriends() {
+    if (friends && Date.now() - friendsAt < 30_000) return;
+    try {
+      friends = await backend.eco.friendsAchievements();
+      friendsAt = Date.now();
+    } catch (e) {
+      friends = [];
+      toast(errMsg(e), 'err');
+    }
+    if (el.isConnected) render();
+  }
 
   el.querySelectorAll<HTMLButtonElement>('.sc-filters button').forEach((b) =>
     b.addEventListener('click', () => {
@@ -59,10 +86,10 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     try {
       const r = await busyButton(claimBtn, backend.eco.claimAchievements());
       shell.sfx.chime(4, 0.1);
-      toast(`Succès : +${fmtCoins(r.coins)} pièces !`, 'ok');
+      toast(`Succès : +${fmtCoins(r.coins)} pièces${r.packs ? ` et ${plural(r.packs, 'booster')}` : ''} !`, 'ok');
       const cos = ACHIEVEMENTS.filter((a) => before.has(a.id)).flatMap((a) => cosmeticsOf(a.id));
       recap.hidden = false;
-      recap.innerHTML = `<b>+${fmtCoins(r.coins)} ${COIN_ICON}</b>${cos.length ? `<span>Débloqué pour ton profil : ${cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${c.kind} « ${esc(c.c.label)} »`).join(', ')}</span><a class="btn-primary sc-equip" href="#/profil">Équiper →</a>` : '<span>Pièces ajoutées à ta bourse.</span>'}<button class="sc-recap-x" aria-label="Fermer">✕</button>`;
+      recap.innerHTML = `<b>+${fmtCoins(r.coins)} ${COIN_ICON}${r.packs ? ` · +${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>Débloqué pour ton profil : ${cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${c.kind} « ${esc(c.c.label)} »`).join(', ')}</span><a class="btn-primary sc-equip" href="#/profil">Équiper →</a>` : '<span>Pièces ajoutées à ta bourse.</span>'}<button class="sc-recap-x" aria-label="Fermer">✕</button>`;
       recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem('bebou.openCosm', '1'));
       recap.querySelector('.sc-recap-x')!.addEventListener('click', () => (recap.hidden = true));
     } catch (e) {
@@ -70,17 +97,56 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     }
   });
 
-  function card(a: Achievement, cur: number, got: boolean, ready: boolean): HTMLElement {
-    const c = h('div', `sc-c t${a.tier}${got ? ' got' : ready ? ' ready' : ''}`);
-    const rewards = cosmeticsOf(a.id);
-    const pct = Math.min(1, cur / a.target);
+  const rewardHtml = (a: { tier: 1 | 2 | 3 | 4 }) => {
+    const packs = achievementPacks(a as never);
+    return `<span class="sc-coins">${COIN_ICON}${fmtCoins(ACHIEVEMENT_TIERS[a.tier - 1])}${packs ? ` <span class="sc-pk">+${plural(packs, 'booster')}</span>` : ''}</span>`;
+  };
+  const cosHtml = (id: string, ok: boolean) =>
+    cosmeticsOf(id)
+      .map((r) => `<span class="sc-cos${ok ? ' ok' : ''} k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Bannière' || r.kind === 'Cadre' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}</span>`)
+      .join('');
+
+  /** Une mécanique = un succès à paliers : niveau atteint, prochain seuil, et la liste des paliers avec leur récompense. */
+  function ladderCard(l: AchievementLadder, st: AchievementStats, claimed: Set<string>, claimable: Set<string>): HTMLElement {
+    const cur = st[l.stat] ?? 0;
+    const lvl = ladderLevel(l, st);
+    const next = l.steps[lvl];
+    const prevT = lvl ? l.steps[lvl - 1].target : 0;
+    const ready = l.steps.some((a) => claimable.has(a.id));
+    const all = lvl === l.steps.length;
+    const c = h('div', `sc-c sc-ladder${all ? ' got' : ready ? ' ready' : ''}`);
+    const pct = next ? Math.min(1, (cur - prevT) / Math.max(1, next.target - prevT)) : 1;
     c.innerHTML = `
-      <div class="sc-top"><span class="sc-tier">${TIER_LABEL[a.tier - 1]}</span><span class="sc-coins">${COIN_ICON}${fmtCoins(achievementReward(a))}</span></div>
-      <b class="sc-name">${got ? '✓ ' : ''}${esc(a.label)}</b>
-      <span class="sc-how">${esc(a.how)}</span>
+      <div class="sc-top"><span class="sc-tier">Palier ${lvl}/${l.steps.length}</span>${next ? rewardHtml(next) : '<span class="sc-n">tous les paliers ✓</span>'}</div>
+      <b class="sc-name">${all ? '✓ ' : ''}${esc(l.label)}</b>
+      <span class="sc-how">${next ? `Prochain : ${esc(next.label)} — ${esc(next.how)}` : `Dernier palier : ${esc(l.steps[l.steps.length - 1].label)}`}</span>
       <i class="sc-pb"><i style="width:${(pct * 100).toFixed(1)}%"></i></i>
-      <em class="sc-n">${got ? 'obtenu' : ready ? `atteint · prime à encaisser${rewards.length ? ' (cosmétique déjà débloqué)' : ''}` : `${fmtCoins(Math.min(cur, a.target))} / ${fmtCoins(a.target)}`}</em>
-      ${rewards.length ? `<div class="sc-rw">${rewards.map((r) => `<span class="sc-cos${got || ready ? ' ok' : ''} k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Bannière' || r.kind === 'Cadre' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}${got || ready ? ' <b>✓ débloqué</b>' : ''}</span>`).join('')}</div>` : ''}`;
+      <em class="sc-n">${ready ? 'palier atteint · prime à encaisser' : next ? `${fmtCoins(Math.min(cur, next.target))} / ${fmtCoins(next.target)}` : `${fmtCoins(cur)}`}</em>
+      <ol class="sc-steps">${l.steps
+        .map((a) => {
+          const got = claimed.has(a.id);
+          const rd = claimable.has(a.id);
+          const cos = cosHtml(a.id, got || rd);
+          return `<li class="${got ? 'got' : rd ? 'ready' : achievementDone(a, st) ? 'ready' : ''}"><span class="sc-st-t">${got ? '✓' : rd ? '★' : '○'} ${fmtCoins(a.target)}</span><span class="sc-st-l">${esc(a.label)}</span>${rewardHtml(a)}${cos ? `<div class="sc-rw">${cos}</div>` : ''}</li>`;
+        })
+        .join('')}</ol>`;
+    return c;
+  }
+
+  /** Bascule « Amis » : par mécanique, le classement de mes amis (et moi), le plus avancé en tête. */
+  function friendsCard(l: AchievementLadder, list: FriendAch[]): HTMLElement {
+    const rows = [...list].sort((a, b) => (b.stats[l.stat] ?? 0) - (a.stats[l.stat] ?? 0) || a.name.localeCompare(b.name, 'fr'));
+    const c = h('div', 'sc-c sc-ladder sc-fr');
+    const top = rows[0];
+    c.innerHTML = `<div class="sc-top"><span class="sc-tier">${l.steps.length} paliers</span>${top && (top.stats[l.stat] ?? 0) > 0 ? `<span class="sc-lead">👑 ${esc(top.me ? 'Toi' : top.name)}</span>` : ''}</div>
+      <b class="sc-name">${esc(l.label)}</b>
+      <ol class="sc-frl">${rows
+        .map((f, i) => {
+          const v = f.stats[l.stat] ?? 0;
+          const lv = ladderLevel(l, f.stats);
+          return `<li class="${f.me ? 'me' : ''}"><span class="sc-fr-i">${i + 1}</span><span class="sc-fr-n">${esc(f.me ? 'Toi' : f.name)}</span><span class="sc-fr-l">palier ${lv}/${l.steps.length}</span><b>${fmtCoins(v)}</b></li>`;
+        })
+        .join('')}</ol>`;
     return c;
   }
 
@@ -122,19 +188,37 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const done = ACHIEVEMENTS.filter((a) => achievementDone(a, s.achievements.stats)).length;
     const pending = ACHIEVEMENTS.filter((a) => claimable.has(a.id));
     const total = pending.reduce((n, a) => n + achievementReward(a), 0);
-    score.innerHTML = `<div class="sc-big"><b>${done}</b><span>/ ${ACHIEVEMENTS.length}</span></div><div class="muted">succès débloqués</div><i class="sc-pb big"><i style="width:${((done / ACHIEVEMENTS.length) * 100).toFixed(1)}%"></i></i>`;
+    const packsN = pending.reduce((n, a) => n + achievementPacks(a), 0);
+    score.innerHTML = `<div class="sc-big"><b>${done}</b><span>/ ${ACHIEVEMENTS.length}</span></div><div class="muted">paliers de succès débloqués</div><i class="sc-pb big"><i style="width:${((done / ACHIEVEMENTS.length) * 100).toFixed(1)}%"></i></i>`;
     claimBtn.hidden = !pending.length;
-    claimBtn.innerHTML = `Encaisser ${plural(pending.length, 'succès', 'succès')} · +${fmtCoins(total)} ${COIN_ICON}`;
-    const list = ACHIEVEMENTS.filter((a) => {
-      const got = claimed.has(a.id);
-      const ready = claimable.has(a.id);
-      return filter === 'all' || (filter === 'got' && got) || (filter === 'ready' && ready) || (filter === 'todo' && !got && !ready);
+    claimBtn.innerHTML = `Encaisser ${plural(pending.length, 'palier', 'paliers')} · +${fmtCoins(total)} ${COIN_ICON}${packsN ? ` + ${plural(packsN, 'booster')}` : ''}`;
+    if (who === 'friends') {
+      if (!friends) {
+        grid.innerHTML = '<div class="muted">Chargement des succès de tes amis…</div>';
+        return;
+      }
+      if (friends.length <= 1) {
+        grid.innerHTML = '<div class="muted">Ajoute des amis (onglet <a href="#/amis">Amis</a>) pour comparer vos succès.</div>';
+        return;
+      }
+      grid.replaceChildren(...ACHIEVEMENT_LADDERS.map((l) => friendsCard(l, friends!)));
+      return;
+    }
+    const st = s.achievements.stats;
+    const list = ACHIEVEMENT_LADDERS.filter((l) => {
+      const ready = l.steps.some((a) => claimable.has(a.id));
+      const all = l.steps.every((a) => claimed.has(a.id));
+      const some = l.steps.some((a) => claimed.has(a.id));
+      return filter === 'all' || (filter === 'got' && some) || (filter === 'ready' && ready) || (filter === 'todo' && !all);
     });
-    // à encaisser d'abord, puis en cours (les plus avancés en premier), puis obtenus
-    const rank = (a: Achievement) => (claimable.has(a.id) ? 0 : claimed.has(a.id) ? 2 : 1);
-    const prog = (a: Achievement) => Math.min(1, (s.achievements.stats[a.stat] ?? 0) / a.target);
-    list.sort((a, b) => rank(a) - rank(b) || prog(b) - prog(a) || a.tier - b.tier);
-    grid.replaceChildren(...list.map((a) => card(a, s.achievements.stats[a.stat] ?? 0, claimed.has(a.id), claimable.has(a.id))));
+    // à encaisser d'abord, puis en cours (les plus avancés vers le prochain palier), puis terminés
+    const rank = (l: AchievementLadder) => (l.steps.some((a) => claimable.has(a.id)) ? 0 : l.steps.every((a) => claimed.has(a.id)) ? 2 : 1);
+    const prog = (l: AchievementLadder) => {
+      const nx = l.steps[ladderLevel(l, st)];
+      return nx ? Math.min(1, (st[l.stat] ?? 0) / nx.target) : 1;
+    };
+    list.sort((a, b) => rank(a) - rank(b) || prog(b) - prog(a));
+    grid.replaceChildren(...list.map((l) => ladderCard(l, st, claimed, claimable)));
     if (!list.length) grid.innerHTML = `<div class="muted">${filter === 'ready' ? 'Rien à encaisser pour l’instant.' : filter === 'got' ? 'Pas encore de succès obtenu : ouvre des boosters !' : 'Tout est fait. Chapeau.'}</div>`;
   }
   backend.eco.onChange(() => el.isConnected && render());

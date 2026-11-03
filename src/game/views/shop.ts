@@ -406,9 +406,28 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const d = (dir > 0 ? -1 : 1) as 1 | -1;
     select(list[(i + d + list.length) % list.length].key, { dir: d });
   };
-  // toucher le booster en 3D = sa fiche
-  opening.onBoosterTap = () => {
-    if (mode === 'pick' && el.isConnected && !sheet.isOpen()) sheet.open(selected);
+  // toucher le booster en 3D (retours live 02, bug 4) = l'écran de pré-ouverture (« glisse pour déchirer… ») : on ouvre
+  // UN booster du pack choisi, comme « Ouvrir ×1 ». Pack pas encore sorti, réserve vide, pas connecté : sa fiche.
+  let tapBusy = false;
+  opening.onBoosterTap = async () => {
+    if (mode !== 'pick' || !el.isConnected || sheet.isOpen() || tapBusy) return;
+    const p = list.find((b) => b.key === selected);
+    const s = backend.state;
+    const bal = s.user ? liveRegen(s.user).balance : 0;
+    if (!p || p.soon || s.sealed || bal <= 0) return void setTimeout(() => mode === 'pick' && !sheet.isOpen() && sheet.open(selected), 0);
+    tapBusy = true;
+    haptics.pulse(8);
+    try {
+      const got = await backend.preparePack(p.req);
+      if (mode !== 'pick') return;
+      pack = got;
+      batch = newBatch(p.req, 1, got, batch?.hi ?? false, false);
+      start(got);
+    } catch (err) {
+      toast(errMsg(err), 'err');
+    } finally {
+      tapBusy = false;
+    }
   };
   // clavier, au récap : Entrée = « Encore un »
   window.addEventListener('keydown', (e) => {

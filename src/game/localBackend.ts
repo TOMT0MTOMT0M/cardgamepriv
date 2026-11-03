@@ -873,6 +873,16 @@ export function createLocalBackend(): GameBackend {
       sync();
     },
     // ── amis (lot A2) : mêmes règles que le serveur (convex/friends.ts) ; les robots acceptent au bout de ~3 s
+    // parrainage (démo) : un lien de démonstration, deux filleuls robots
+    async referral() {
+      await delay(80);
+      const bots = save.bots.slice(0, 2);
+      return { code: 'demo1234', clicks: 5, referrals: bots.map((b, i) => ({ userId: b.id, name: b.name, packsOpened: i ? 4 : 12, paid: !i, at: Date.now() - (i + 1) * 86_400_000 })) };
+    },
+    async referralClick() {},
+    async referralClaim() {
+      return { status: 'invalid' as const };
+    },
     async requestFriend(to) {
       await delay(120);
       let bot: Bot | undefined;

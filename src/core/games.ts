@@ -6,7 +6,8 @@
  *     cartes tirées par les deux + les side pots). Égalité parfaite → PUSH : chacun récupère ses cartes et sa mise.
  *  2. PACK BATTLE ROYALE : 3 à 8 joueurs, 1 booster chacun. Le plus haut total remporte toutes les cartes ; ex æquo en
  *     tête → les cartes sont distribuées au hasard entre eux.
- *  3. ROULETTE À CARTES : roue de 100 numéros ; 1 numéro = 100 pièces de valeur (pièces et/ou cartes), 3 numéros minimum.
+ *  3. ROULETTE À CARTES : 36 numéros, 1 à 3 numéros par tirage, mises en pièces ou en cartes 4★-6★ (grille fixe),
+ *     tirages à 10 h et 20 h (retours live 02).
  *     1 tirage par jour : le joueur dont le numéro sort remporte tout le pot ; sinon tout reste pour le tirage suivant.
  *     Le site ajoute chaque jour une carte 5★ ou 6★ au pot.
  *
@@ -14,7 +15,7 @@
  */
 import type { RarityId } from './rarity';
 import { THEMES, catalogEntry, themeOpen, BEBOU_PACK, type CatalogEntry } from './sets/themes';
-import { cardsValue, starsOf, stakeValue, type StakeItem } from './economy';
+import { starsOf, stakeValue, type StakeItem } from './economy';
 import { missionDay } from './missions';
 
 /** Un booster misé : le bébou pack ou celui d'un thème ouvert. */
@@ -103,39 +104,67 @@ export function royaleResult(packs: GameCard[][], rand: () => number): { stars: 
 }
 
 // ───────────────────────────────────────────── Roulette à cartes
+/*
+ * Retours live 02 (§7) — REPARAMÉTRAGE COMPLET (remplace la roue de 100 numéros) :
+ *  - 36 numéros (1 à 36), on ne parie que sur des numéros ;
+ *  - chaque joueur mise 1, 2 ou 3 numéros par tirage (une mise par tirage, 3 numéros au plus) ;
+ *  - mises : cartes 4★ / 5★ / 6★ OU pièces, UNIQUEMENT (1★ à 3★ : refusées), selon la grille :
+ *      1 numéro  = 10 cartes 4★ · ou 300 pièces
+ *      2 numéros = 1 carte 5★   · ou 600 pièces
+ *      3 numéros = 2 cartes 5★  · ou 1 carte 6★ · ou 900 pièces
+ *  - 2 tirages par jour, 10 h et 20 h (heure de Paris) ;
+ *  - pot commun (mises + report) conservé tant que personne ne gagne ; le site ajoute 1 carte 5★/6★ à CHAQUE tirage ;
+ *  - le numéro exact sorti remporte tout le pot.
+ */
+export const ROULETTE_NUMBERS = 36;
+/** numéros au plus par joueur et par tirage */
+export const MAX_NUMBERS = 3;
+/** heures des tirages (heure de Paris) */
+export const ROULETTE_HOURS = [10, 20] as const;
 
-export const ROULETTE_NUMBERS = 100;
-/** 1 numéro = 100 pièces de valeur */
-export const NUMBER_COST = 100;
-export const MIN_NUMBERS = 3;
-/** heure du tirage quotidien (heure de Paris) */
-export const ROULETTE_HOUR = 21;
+export type RoulettePrice = { kind: 'coins'; coins: number } | { kind: 'cards'; rarity: RarityId; count: number };
+/** Grille tarifaire : 1, 2 ou 3 numéros → les façons de payer (une seule par mise). */
+export const ROULETTE_PRICES: Record<1 | 2 | 3, RoulettePrice[]> = {
+  1: [{ kind: 'cards', rarity: 'epic', count: 10 }, { kind: 'coins', coins: 300 }],
+  2: [{ kind: 'cards', rarity: 'legendary', count: 1 }, { kind: 'coins', coins: 600 }],
+  3: [{ kind: 'cards', rarity: 'legendary', count: 2 }, { kind: 'cards', rarity: 'mythic', count: 1 }, { kind: 'coins', coins: 900 }],
+};
+/** raretés acceptées en mise */
+export const ROULETTE_CARD_RARITIES: RarityId[] = ['epic', 'legendary', 'mythic'];
+const STARS_TXT: Record<string, string> = { epic: '4★', legendary: '5★', mythic: '6★' };
+export const priceLabel = (p: RoulettePrice) => (p.kind === 'coins' ? `${p.coins} pièces` : `${p.count} carte${p.count > 1 ? 's' : ''} ${STARS_TXT[p.rarity]}`);
 
-/** Problème d'un pari (null : valable). `taken` = numéros déjà pris par les autres joueurs de ce tirage. */
-export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, mine: number): string | null {
-  if (numbers.length + mine < MIN_NUMBERS) return `Participation minimale : ${MIN_NUMBERS} numéros (${MIN_NUMBERS * NUMBER_COST} pièces de valeur).`;
+/** La façon de payer qui correspond exactement à une mise (null : la mise ne colle à aucune ligne de la grille). */
+export function matchPrice(n: number, stake: Stake): RoulettePrice | null {
+  const opts = ROULETTE_PRICES[n as 1 | 2 | 3];
+  if (!opts) return null;
+  const cardsN = stake.cards.reduce((a, c) => a + c.count, 0);
+  for (const p of opts) {
+    if (p.kind === 'coins' && stake.coins === p.coins && cardsN === 0) return p;
+    if (p.kind === 'cards' && stake.coins === 0 && cardsN === p.count && stake.cards.every((c) => c.rarity === p.rarity)) return p;
+  }
+  return null;
+}
+
+/** Problème d'un pari (null : valable). `taken` = numéros déjà pris par les autres joueurs ; `already` : j'ai déjà misé. */
+export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, already: number): string | null {
+  if (already) return 'Tu as déjà misé pour ce tirage (1 mise par tirage, 3 numéros au plus).';
   if (!numbers.length) return 'Choisis au moins un numéro.';
+  if (numbers.length > MAX_NUMBERS) return `${MAX_NUMBERS} numéros au plus par tirage.`;
   const seen = new Set<number>();
   for (const n of numbers) {
-    if (!Number.isInteger(n) || n < 1 || n > ROULETTE_NUMBERS) return 'Numéro invalide (1 à 100).';
+    if (!Number.isInteger(n) || n < 1 || n > ROULETTE_NUMBERS) return `Numéro invalide (1 à ${ROULETTE_NUMBERS}).`;
     if (seen.has(n)) return 'Même numéro deux fois.';
     if (taken.has(n)) return `Le numéro ${n} est déjà pris.`;
     seen.add(n);
   }
   if (stake.coins < 0 || !Number.isInteger(stake.coins)) return 'Montant invalide.';
-  const need = numbers.length * NUMBER_COST;
-  const v = stakeValue(stake);
-  if (v < need) return `Il faut ${need} pièces de valeur pour ${numbers.length} numéro${numbers.length > 1 ? 's' : ''} (tu en mets ${v}).`;
+  if (stake.cards.some((c) => !ROULETTE_CARD_RARITIES.includes(c.rarity as RarityId))) return 'Seules les cartes 4★, 5★ et 6★ se misent à la roulette.';
+  if (!matchPrice(numbers.length, stake)) {
+    const opts = ROULETTE_PRICES[numbers.length as 1 | 2 | 3].map(priceLabel).join(' ou ');
+    return `${numbers.length} numéro${numbers.length > 1 ? 's' : ''} = ${opts}.`;
+  }
   return null;
-}
-
-/** Pièces à ajouter aux cartes pour couvrir `n` numéros. */
-export const coinsNeeded = (n: number, cards: StakeItem[]) => Math.max(0, n * NUMBER_COST - cardsValue(cards));
-
-/** Jour de tirage (heure de Paris) auquel appartient un instant : après 21 h, c'est le tirage du lendemain. */
-export function rouletteDrawDay(now: number): string {
-  const h = parisHour(now);
-  return h >= ROULETTE_HOUR ? missionDay(now + 4 * 3600_000) : missionDay(now);
 }
 
 /** Heure (0..23) à Paris. */
@@ -151,14 +180,22 @@ export function parisHour(now: number): number {
   }
 }
 
-/** Prochain tirage (instant), recherché à la minute près. */
+/** Prochain tirage (instant, 10 h ou 20 h à Paris), recherché à la minute près. */
 export function nextRouletteDraw(now: number): number {
-  let t = Math.ceil(now / 60_000) * 60_000;
-  for (let i = 0; i < 26 * 60; i++, t += 60_000) if (parisHour(t) === ROULETTE_HOUR && parisHour(t - 60_000) !== ROULETTE_HOUR) return t;
-  return now + 24 * 3600_000;
+  let t = Math.ceil((now + 1) / 60_000) * 60_000;
+  for (let i = 0; i < 26 * 60; i++, t += 60_000) {
+    const h = parisHour(t);
+    if ((ROULETTE_HOURS as readonly number[]).includes(h) && parisHour(t - 60_000) !== h) return t;
+  }
+  return now + 12 * 3600_000;
 }
 
-/** Numéro gagnant (1..100). */
+/** Étiquette d'un tirage : « 2026-11-04 · 10 h ». */
+export function rouletteSlot(drawAt: number): string {
+  return `${missionDay(drawAt)} · ${parisHour(drawAt)} h`;
+}
+
+/** Numéro gagnant (1..36). */
 export const drawNumber = (rand: () => number) => 1 + Math.floor(rand() * ROULETTE_NUMBERS);
 
 let HOUSE_POOL: CatalogEntry[] | null = null;
@@ -168,7 +205,7 @@ export function houseCard(rand: () => number): CatalogEntry {
   return HOUSE_POOL[Math.floor(rand() * HOUSE_POOL.length)];
 }
 
-/** Probabilité que le pot tombe ce soir (numéros couverts / 100). */
+/** Probabilité que le pot tombe au prochain tirage (numéros couverts / 36). */
 export const potOdds = (covered: number) => covered / ROULETTE_NUMBERS;
 
 /** Nom d'une carte du catalogue (repli : son id). */
@@ -178,4 +215,4 @@ export const cardName = (id: string) => catalogEntry(id)?.name ?? id;
  * Espace Jeux ouvert à tous ? (retours live n°1 : l'onglet GAMES reste une page « bientôt » pour l'instant ; seuls les
  * admins — et la démo hors-ligne — y ont déjà accès). Passer à true le jour de l'ouverture.
  */
-export const GAMES_OPEN = false;
+export const GAMES_OPEN = true;

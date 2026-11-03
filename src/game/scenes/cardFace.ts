@@ -1,4 +1,4 @@
-import { clamp, color, float, floor, sin, step, time, uniform } from 'three/tsl';
+import { clamp, color, cos, float, floor, positionLocal, sin, step, time, uniform, vec3 } from 'three/tsl';
 import type { Material } from 'three/webgpu';
 import { generateBackArt, generateCardArt, generateCardArtAsync, starColor, type ArtOptions, type CardArt } from '../../core/art';
 import { DEFAULT_BACK, type BackStyle } from '../../core/art/back';
@@ -38,10 +38,15 @@ export function buildFace(art: CardArt, tier: number, photo: boolean) {
 }
 
 /** Tranche de carte avec liseré lumineux (suspense) de la couleur de la rareté. */
-export function buildEdge(hex: string) {
+export function buildEdge(hex: string | 'rainbow') {
   const rim = uniform(0);
   const edge = createEdgeMaterial();
-  edge.emissiveNode = color(hex).mul(rim.mul(sin(time.mul(7)).mul(0.25).add(1.75)));
+  // 6★ (retours live 02, §12) : tranche ARC-EN-CIEL — la teinte tourne le long du bord et dans le temps
+  const tint =
+    hex === 'rainbow'
+      ? cos(vec3(0, 2.094, 4.189).add(positionLocal.x.mul(9).add(positionLocal.y.mul(6)).add(time.mul(2.2)))).mul(0.5).add(0.55)
+      : color(hex);
+  edge.emissiveNode = tint.mul(rim.mul(sin(time.mul(7)).mul(0.25).add(1.75)));
   return { edge, rim };
 }
 

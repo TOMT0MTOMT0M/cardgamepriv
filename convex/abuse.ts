@@ -17,7 +17,7 @@ import { ABUSE, cardsValue } from '../src/core/economy';
 export interface AbuseAlert {
   /** clé stable (pour marquer « vu ») */
   key: string;
-  kind: 'flow' | 'trades' | 'newAccount' | 'device';
+  kind: 'flow' | 'trades' | 'newAccount' | 'device' | 'referral';
   title: string;
   detail: string;
   value: number;
@@ -123,6 +123,24 @@ export const alerts = query({
         detail: `Appareil ${d.slice(0, 8)}… (un navigateur partagé, ou un double compte).`,
         value: ids.length,
         users: ids,
+      });
+    }
+
+    // 5. parrainage (retours live 02, §10) : filleul inscrit depuis un appareil de son parrain → signalé, pas bloqué
+    const byId = new Map(users.map((u) => [u._id as string, u]));
+    for (const u of users) {
+      if (!u.referredBy) continue;
+      const parent = byId.get(u.referredBy as string);
+      if (!parent) continue;
+      const shared = [u.referredDevice, ...(u.devices ?? [])].filter((d): d is string => !!d && (parent.devices ?? []).includes(d));
+      if (!shared.length) continue;
+      out.push({
+        key: `referral:${parent._id}>${u._id}`,
+        kind: 'referral',
+        title: `Parrainage : ${nm(u._id)} filleul de ${nm(parent._id)} depuis le même appareil`,
+        detail: `Appareil ${shared[0].slice(0, 8)}… — ${u.referralPaid ? `les 10 boosters du parrain ont été versés` : `parrain pas encore payé (${u.totalPacksOpened}/10 boosters ouverts)`}. Signalé seulement, rien n'est bloqué.`,
+        value: 10,
+        users: [parent._id, u._id],
       });
     }
 

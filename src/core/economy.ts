@@ -214,6 +214,46 @@ export const ACHIEVEMENTS: Achievement[] = [
 ];
 
 export const achievementReward = (a: Achievement) => ACHIEVEMENT_TIERS[a.tier - 1];
+/**
+ * Retours live 02 (§8) : récompense MIXTE selon la difficulté du palier — pièces + BOOSTERS (jamais de cartes
+ * directes) ; titres, badges et cadres arrivent aux gros seuils (src/core/cosmetics.ts, champ `need`).
+ */
+export const ACHIEVEMENT_PACKS = [0, 1, 3, 5] as const;
+export const achievementPacks = (a: Achievement) => ACHIEVEMENT_PACKS[a.tier - 1];
+
+/**
+ * SUCCÈS À PALIERS (retours live 02, §8) : les succès de même mécanique (« ouvrir des boosters » : 10 → 100 → 500 →
+ * 2 000…) forment UN succès à paliers. Les paliers gardent leurs ids (déjà encaissés, cosmétiques qui en dépendent).
+ */
+export interface AchievementLadder {
+  stat: keyof AchievementStats;
+  label: string;
+  /** paliers, du plus facile au plus dur */
+  steps: Achievement[];
+}
+const LADDER_LABEL: Record<keyof AchievementStats, string> = {
+  packsOpened: 'Ouvrir des boosters',
+  uniques: 'Cartes différentes',
+  legendaries: 'Cartes 5★',
+  mythics: 'Cartes 6★',
+  secrets: 'Carte secrète',
+  fullSubthemes: 'Albums complétés',
+  tradesDone: 'Échanges conclus',
+  contractsSigned: 'Contrats signés',
+  streak: 'Série de connexion',
+  gamesPlayed: 'Parties jouées',
+  gamesWon: 'Batailles gagnées',
+  rouletteWins: 'Roulette',
+  burned: 'Doublons brûlés',
+  coinsEarned: 'Pièces gagnées',
+};
+export const ACHIEVEMENT_LADDERS: AchievementLadder[] = (() => {
+  const m = new Map<keyof AchievementStats, Achievement[]>();
+  for (const a of ACHIEVEMENTS) m.set(a.stat, [...(m.get(a.stat) ?? []), a]);
+  return [...m].map(([stat, steps]) => ({ stat, label: LADDER_LABEL[stat], steps: steps.sort((x, y) => x.target - y.target) }));
+})();
+/** Paliers atteints d'une échelle (0 = aucun). */
+export const ladderLevel = (l: AchievementLadder, s: AchievementStats) => l.steps.filter((a) => achievementDone(a, s)).length;
 export const achievementDone = (a: Achievement, s: AchievementStats) => (s[a.stat] ?? 0) >= a.target;
 
 /** Succès atteints pas encore réclamés. */

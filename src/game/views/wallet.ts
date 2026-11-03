@@ -8,12 +8,28 @@ import { forgeCount } from './forge';
 import '../games.css';
 
 /**
- * PORTEFEUILLE : pastille de pièces dans l'en-tête (+N qui s'envole à chaque gain) et son panneau — calendrier de
- * connexion (30 jours), primes de complétion et succès à encaisser, lien vers la forge (collection), mouvements
+ * PORTEFEUILLE : pastille de pièces dans l'en-tête (+N qui s'envole à chaque gain) et son panneau — primes de complétion et succès à encaisser, lien vers la forge (collection), mouvements
  * (« tout » déplie l'historique complet ici : il n'est plus dans l'espace Jeux).
  */
 export const COIN_ICON = `<svg class="coin-ico" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="url(#cg)" stroke="#7a5212" stroke-width="1.1"/><circle cx="10" cy="10" r="5.4" fill="none" stroke="#fff3c4" stroke-opacity=".55" stroke-width=".9"/><path d="M10 6.6v6.8M8 8.2c0-.9.9-1.5 2-1.5s2 .5 2 1.3c0 1.9-4 1-4 2.9 0 .8.9 1.4 2 1.4s2-.6 2-1.5" fill="none" stroke="#5a3a08" stroke-width="1.15" stroke-linecap="round"/><defs><radialGradient id="cg" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#ffe7a1"/><stop offset=".55" stop-color="#f2c46d"/><stop offset="1" stop-color="#b47a1e"/></radialGradient></defs></svg>`;
 export const coinsHtml = (n: number, cls = '') => `<span class="coins-v ${cls}">${COIN_ICON}<b>${fmtCoins(n)}</b></span>`;
+
+/**
+ * Calendrier de connexion (30 jours) — affiché dans le panneau CONNEXION de la flamme (retours live 02, §11 : calendrier
+ * et série de 7 jours au même endroit). Le bouton `.w-cal` prend le cadeau du jour.
+ */
+export function calendarHtml(s: EcoSnapshot) {
+  const c = s.calendar;
+  let cells = '';
+  for (let d = 1; d <= CALENDAR_DAYS; d++) {
+    const r = calendarReward(d);
+    const st = d < c.day ? 'past' : d === c.day ? (c.claimed ? 'today taken' : 'today') : 'next';
+    cells += `<i class="cal-d ${st}${CALENDAR_DOUBLE.includes(d) ? ' x2' : ''}${d === CALENDAR_DAYS ? ' big' : ''}" title="Jour ${d} : ${fmtCoins(r.coins)} pièces${r.packs ? ' + 1 booster' : ''}${CALENDAR_DOUBLE.includes(d) ? ' (×2)' : ''}">${d === CALENDAR_DAYS ? '★' : d}</i>`;
+  }
+  return `<div class="w-sec"><div class="w-h"><b>Calendrier · jour ${c.day}/${CALENDAR_DAYS}</b><span>mois parfait ≈ ${fmtCoins(CALENDAR_MONTH_TOTAL)} + 1 booster</span></div>
+    <div class="cal">${cells}</div>
+    ${c.claimed ? `<div class="muted">Cadeau du jour pris ✓ — demain : ${fmtCoins(calendarReward(Math.min(CALENDAR_DAYS, c.day + 1)).coins)} pièces. Un jour manqué = retour au jour 1.</div>` : `<button class="btn-primary w-cal">Prendre le cadeau · +${fmtCoins(c.reward.coins)}${c.reward.packs ? ' + 1 booster' : ''}</button>`}</div>`;
+}
 
 export function createWallet(backend: GameBackend, shell: Shell) {
   const pop = h('div', 'missions-pop wallet-pop');
@@ -26,19 +42,6 @@ export function createWallet(backend: GameBackend, shell: Shell) {
   let on = false;
   let hist: Awaited<ReturnType<GameBackend['eco']['coinHistory']>> | null = null;
   let histAll = false;
-
-  function calendarHtml(s: EcoSnapshot) {
-    const c = s.calendar;
-    let cells = '';
-    for (let d = 1; d <= CALENDAR_DAYS; d++) {
-      const r = calendarReward(d);
-      const st = d < c.day ? 'past' : d === c.day ? (c.claimed ? 'today taken' : 'today') : 'next';
-      cells += `<i class="cal-d ${st}${CALENDAR_DOUBLE.includes(d) ? ' x2' : ''}${d === CALENDAR_DAYS ? ' big' : ''}" title="Jour ${d} : ${fmtCoins(r.coins)} pièces${r.packs ? ' + 1 booster' : ''}${CALENDAR_DOUBLE.includes(d) ? ' (×2)' : ''}">${d === CALENDAR_DAYS ? '★' : d}</i>`;
-    }
-    return `<div class="w-sec"><div class="w-h"><b>Calendrier · jour ${c.day}/${CALENDAR_DAYS}</b><span>mois parfait ≈ ${fmtCoins(CALENDAR_MONTH_TOTAL)} + 1 booster</span></div>
-      <div class="cal">${cells}</div>
-      ${c.claimed ? `<div class="muted">Cadeau du jour pris ✓ — demain : ${fmtCoins(calendarReward(Math.min(CALENDAR_DAYS, c.day + 1)).coins)} pièces. Un jour manqué = retour au jour 1.</div>` : `<button class="btn-primary w-cal">Prendre le cadeau · +${fmtCoins(c.reward.coins)}${c.reward.packs ? ' + 1 booster' : ''}</button>`}</div>`;
-  }
 
   function render() {
     if (on) keepFocus(pop, draw);
@@ -60,7 +63,6 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     const forgeN = forgeCount(backend.state);
     pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b>${games ? '<a href="#/jeux" class="w-link">Espace Jeux →</a>' : ''}${CLOSE_X}</div>
       <div class="w-bal">${coinsHtml(s.coins, 'big')}<span class="muted">pièces 100 % virtuelles · jamais échangeables contre des cartes</span></div>
-      ${calendarHtml(s)}
       <div class="w-sec"><div class="w-h"><b>À encaisser</b></div>
         <div class="w-row"><span>Complétion${s.completions.length ? ` · ${esc(s.completions.slice(0, 2).map((c) => c.label).join(', '))}${s.completions.length > 2 ? '…' : ''}` : ' : 5 pièces × cartes de chaque album bouclé'}</span>${s.completions.length ? `<button class="btn-primary w-comp">+${fmtCoins(compTotal)}</button>` : '<span class="muted">rien</span>'}</div>
         <div class="w-row"><span>Succès${ach.length ? ` · ${esc(ach.slice(0, 2).map((a) => a.label).join(', '))}${ach.length > 2 ? '…' : ''}` : ` : ${s.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus`}</span>${ach.length ? `<button class="btn-primary w-ach">+${fmtCoins(achTotal)}</button>` : '<a class="w-link" href="#/succes">voir</a>'}</div>
@@ -85,10 +87,6 @@ export function createWallet(backend: GameBackend, shell: Shell) {
         }
       });
     };
-    bind('.w-cal', async () => {
-      const r = await backend.eco.claimCalendar();
-      return `Jour ${r.day} : +${fmtCoins(r.coins)} pièces${r.packs ? ' et 1 booster offert' : ''} !`;
-    });
     bind('.w-comp', async () => {
       const r = await backend.eco.claimCompletions();
       return `Complétion : +${fmtCoins(r.coins)} pièces (${r.sets.map((x) => x.label).join(', ')})`;
@@ -140,7 +138,7 @@ export function createWallet(backend: GameBackend, shell: Shell) {
   /** pastille : quelque chose à prendre (calendrier, primes, succès) */
   const ready = () => {
     const s = backend.eco.snapshot;
-    return s ? Number(!s.calendar.claimed) + s.completions.length + s.achievements.claimable.length : 0;
+    return s ? s.completions.length + s.achievements.claimable.length : 0;
   };
   return { toggle, ready };
 }

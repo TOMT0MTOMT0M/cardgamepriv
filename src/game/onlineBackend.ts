@@ -1,4 +1,4 @@
-import { net, type NetState } from '../core/net/client';
+import { deviceId, net, type NetState } from '../core/net/client';
 import type { Id } from '../../convex/_generated/dataModel';
 import { BIG_PULL_RARITIES, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
@@ -233,6 +233,16 @@ export function createOnlineBackend(): GameBackend {
       await net.pinBinder(id as Id<'binders'>, on);
     },
     // amis (lot A2)
+    async referral() {
+      return await net.call(api.referrals.mine, {});
+    },
+    async referralClick(code) {
+      const device = deviceId();
+      if (device) await net.publicCall(api.referrals.click, { code, device });
+    },
+    async referralClaim(code) {
+      return await net.call(api.referrals.claim, { code, device: deviceId() });
+    },
     async requestFriend(to) {
       return await net.requestFriend({ userId: to.userId as Id<'users'> | undefined, name: to.name });
     },

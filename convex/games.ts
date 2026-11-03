@@ -22,7 +22,7 @@ import {
   houseCard,
   nextRouletteDraw,
   packChoiceLabel,
-  rouletteDrawDay,
+  rouletteSlot,
   royaleResult,
   validPackChoice,
   type GameCard,
@@ -358,10 +358,11 @@ async function resolveRoyale(ctx: MutationCtx, r: Doc<'royales'>) {
 
 // ═════════════════════════════════════════════ ROULETTE À CARTES
 
-/** Instant du tirage d'un jour (21 h, heure de Paris). */
-function drawInstant(day: string) {
-  const [y, m, d] = day.split('-').map(Number);
-  return nextRouletteDraw(Date.UTC(y, m - 1, d, 10));
+/** Instant du tirage d'une manche (10 h / 20 h ; ancien format sans `drawAt` : 21 h du jour indiqué). */
+function drawInstant(r: Doc<'rouletteRounds'>) {
+  if (r.drawAt) return r.drawAt;
+  const [y, m, d] = r.day.split('-').map(Number);
+  return Date.UTC(y, m - 1, d, 20); // 21 h à Paris (heure d'hiver) : seulement pour l'ancienne manche à rembourser
 }
 
 async function openRound(ctx: QueryCtx) {
@@ -373,7 +374,8 @@ async function newRound(ctx: MutationCtx, carriedCoins: number, carriedCards: Do
   const c = houseCard(secureRandom);
   const rarity = c.rarity as RarityId;
   const card = { cardId: c.id, cardName: c.name, rarity, mintNumber: await mint(ctx, c.id, rarity), foilSeed: Math.floor(secureRandom() * 900000) + 100000 };
-  const id = await ctx.db.insert('rouletteRounds', { day: rouletteDrawDay(now), status: 'open', carriedCoins, carriedCards, houseCards: [card], bets: [] });
+  const drawAt = nextRouletteDraw(now);
+  const id = await ctx.db.insert('rouletteRounds', { day: rouletteSlot(drawAt), drawAt, status: 'open', carriedCoins, carriedCards, houseCards: [card], bets: [] });
   return (await ctx.db.get(id))!;
 }
 
@@ -398,29 +400,24 @@ export const placeBet = mutation({
     const u = await requireUser(ctx, sessionToken);
     const r = await ensureRound(ctx);
     const now = Date.now();
-    if (now >= drawInstant(r.day)) throw new ConvexError('Le tirage est en cours : réessaie dans une minute.');
-    const taken = new Set(r.bets.filter((b) => b.userId !== u._id).flatMap((b) => b.numbers));
+    if (!r.drawAt) throw new ConvexError('La roulette change de règles : réessaie dans quelques minutes.');
+    if (now >= drawInstant(r)) throw new ConvexError('Le tirage est en cours : réessaie dans une minute.');
+    const taken = new Set(r.bets.flatMap((b) => b.numbers));
     const mine = r.bets.find((b) => b.userId === u._id);
-    const problem = betProblem(numbers, stake, new Set([...taken, ...(mine?.numbers ?? [])]), mine?.numbers.length ?? 0);
+    const problem = betProblem(numbers, stake, taken, mine ? 1 : 0);
     if (problem) throw new ConvexError(problem);
     if (stake.coins) await addCoins(ctx, u._id, -stake.coins, 'roulette', `Roulette — ${numbers.length} numéro${numbers.length > 1 ? 's' : ''}`);
     const cards = await takeCards(ctx, u._id, stake.cards);
-    const bets = r.bets.filter((b) => b.userId !== u._id);
-    const merged = mine
-      ? { ...mine, numbers: [...mine.numbers, ...numbers].sort((x, y) => x - y), coins: mine.coins + stake.coins, cards: [...mine.cards, ...cards] }
-      : { userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, createdAt: now };
-    bets.push(merged);
-    await ctx.db.patch(r._id, { bets });
-    if (!mine) {
-      await patchEcon(ctx, u._id, (e) => ({ ...e, gamesPlayed: e.gamesPlayed + 1 }));
-      await bumpWeekly(ctx, u._id, { type: 'game', won: false });
-    }
+    const merged = { userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, createdAt: now };
+    await ctx.db.patch(r._id, { bets: [...r.bets, merged] });
+    await patchEcon(ctx, u._id, (e) => ({ ...e, gamesPlayed: e.gamesPlayed + 1 }));
+    await bumpWeekly(ctx, u._id, { type: 'game', won: false });
     await ctx.db.patch(u._id, { lastSeenAt: now, statusText: 'A misé à la roulette' });
     return { numbers: merged.numbers };
   },
 });
 
-/** Tirage quotidien (crons.ts, toutes les 10 minutes : tire dès que 21 h est passé). */
+/** Tirages (crons.ts, toutes les 5 minutes : tire dès que 10 h / 20 h est passé). */
 export const rouletteTick = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -430,10 +427,26 @@ export const rouletteTick = internalMutation({
       await newRound(ctx, 0, [], now);
       return;
     }
-    if (now < drawInstant(r.day)) return;
+    // ancienne manche (100 numéros, 21 h) : mises remboursées, le pot (report + carte offerte) passe à la nouvelle roue
+    if (!r.drawAt) {
+      await retireLegacyRound(ctx, r, now);
+      return;
+    }
+    if (now < drawInstant(r)) return;
     await drawRound(ctx, r, now);
   },
 });
+
+/** Passage aux nouvelles règles (retours live 02) : chaque joueur récupère sa mise, le pot accumulé est conservé. */
+async function retireLegacyRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number) {
+  for (const b of r.bets) {
+    if (b.coins) await addCoins(ctx, b.userId, b.coins, 'roulette', 'Roulette — mise remboursée (nouvelles règles : 36 numéros, 10 h et 20 h)');
+    if (b.cards.length) await giveCards(ctx, b.userId, b.cards);
+  }
+  const house = r.houseCards.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: 1, mintNumber: c.mintNumber }));
+  await ctx.db.patch(r._id, { status: 'drawn', drawnAt: now, result: { number: 0, potValue: 0 } });
+  await newRound(ctx, r.carriedCoins, [...r.carriedCards, ...house], now);
+}
 
 /** Admin / tests : force le tirage en cours. */
 export const forceDraw = internalMutation({
@@ -441,6 +454,7 @@ export const forceDraw = internalMutation({
   handler: async (ctx, { number }) => {
     const r = await openRound(ctx);
     if (!r) return null;
+    if (!r.drawAt) return await retireLegacyRound(ctx, r, Date.now());
     return await drawRound(ctx, r, Date.now(), number);
   },
 });
@@ -515,10 +529,10 @@ export const roulette = query({
     const past = await ctx.db.query('rouletteRounds').withIndex('by_status', (q) => q.eq('status', 'drawn')).order('desc').take(10);
     const now = Date.now();
     return {
-      round: r ? { ...r, pot: potOf(r), drawAt: drawInstant(r.day) } : null,
-      nextDrawAt: r ? drawInstant(r.day) : nextRouletteDraw(now),
+      round: r ? { ...r, pot: potOf(r), drawAt: drawInstant(r) } : null,
+      nextDrawAt: r ? drawInstant(r) : nextRouletteDraw(now),
       me: u?._id ?? null,
-      past: past.map((p) => ({ _id: p._id, day: p.day, result: p.result, drawnAt: p.drawnAt, bets: p.bets.map((b) => ({ userId: b.userId, name: b.name, numbers: b.numbers })) })),
+      past: past.filter((p) => p.result?.number).map((p) => ({ _id: p._id, day: p.day, result: p.result, drawnAt: p.drawnAt, bets: p.bets.map((b) => ({ userId: b.userId, name: b.name, numbers: b.numbers })) })),
     };
   },
 });

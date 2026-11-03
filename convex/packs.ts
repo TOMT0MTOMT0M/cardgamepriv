@@ -1,3 +1,4 @@
+import { payReferrer } from './referrals';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, mutation, query } from './_generated/server';
 import { internal } from './_generated/api';
@@ -202,6 +203,8 @@ export const revealPack = mutation({
       lastSeenAt: now,
       statusText: 'Contemple son tirage',
     });
+    // parrainage (retours live 02, §10) : au 10e booster du filleul, 10 boosters pour son parrain
+    await payReferrer(ctx, user._id);
 
     for (const c of pack.cards) {
       const existing = await ctx.db

@@ -2061,6 +2061,9 @@ body[data-route='amis'] .me .icon.fr-link { color: var(--ink); box-shadow: 0 0 0
 .fr-btn.armed { color: #f3c3bb; border-color: rgba(224, 103, 90, 0.7); background: rgba(90, 24, 18, 0.5); }
 .lb-pd-cell { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .lb-pd-cell > .fr-row { align-self: center; width: 100%; max-width: 150px; }
+/* retours live 02 (bug 3) : la case sous chaque place est toujours là (bouton, bouton pas encore prêt, ou vide) */
+.lb-pd-cell > .lb-pd-slot { display: block; min-height: 40px; }
+.lb-pd-cell > .fr-row[hidden] { display: block; visibility: hidden; }
 .lb-line { display: flex; align-items: center; gap: 6px; }
 .lb-line > .lb-row { flex: 1; min-width: 0; }
 .fr-row { flex: none; min-width: 76px; min-height: 40px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line-2); background: rgba(255, 236, 214, 0.04); font: 500 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; transition: border-color 0.2s, background-color 0.2s; }
@@ -2414,3 +2417,64 @@ button.ob-w { min-height: 36px; }
   .me .p-next { display: none; }
   .topbar nav a { padding: 8px 7px; letter-spacing: 0.04em; }
 }
+
+/* ───────────── CODE COULEUR DES RARETÉS (retours live 02, §12) — partout :
+   1★ GRIS · 2★ VERT · 3★ BLEU · 4★ ROUGE · 5★ DORÉ · 6★ ARC-EN-CIEL (réservé aux 6★ ; la secrète garde son or rose).
+   Bordure pleine de la couleur de la rareté sur toutes les tuiles possédées (la commune aussi) ; l'irisé ne vit plus
+   que sur les 6★. */
+.tile.owned { border: 1.5px solid var(--rc); }
+.tile.owned.real-on.r-epic, .tile.owned.real-on.r-legendary { border-color: var(--rc); background: linear-gradient(160deg, color-mix(in srgb, var(--rc) 28%, #1b1613), #110e0c 70%); }
+.tile.owned.r-legendary { box-shadow: 0 0 0 0.5px color-mix(in srgb, #ffe0a0 50%, transparent) inset; }
+.tile.owned.r-mythic, .tile.owned.real-on.r-mythic { border-color: transparent; background: linear-gradient(160deg, #26201c, #110e0c 70%) padding-box, conic-gradient(from 200deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a) border-box; }
+.tile.owned.r-secret { border-color: var(--rc); }
+body.fx-reduced .tile.owned.real-on.r-epic, body.fx-reduced .tile.owned.real-on.r-legendary { border-color: var(--rc); }
+body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
+/* gros tirages : 5★ = doré plein (plus d'irisé), 6★ = arc-en-ciel (inchangé) */
+.bp-item.r-legendary .bp-card { border-color: var(--rc); }
+
+/* ───────────── pity « X/200 » toujours visible dans l'en-tête (retours live 02, §11) — un compteur, pas un bouton */
+.me .pt-cnt { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); font: 600 11px var(--mono); white-space: nowrap; cursor: default; }
+.me .pt-cnt svg { width: 15px; height: 15px; }
+.me .pt-cnt .pt-n { position: static; padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+.me .pt-cnt.near, .me .pt-cnt.ready { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+.me .pt-cnt.ready { box-shadow: 0 0 12px rgba(242, 196, 109, 0.45); }
+.status-pop .w-sec + .w-sec { margin-top: 12px; }
+@media (max-width: 860px) {
+  .me .pt-cnt { padding: 2px 7px 2px 5px; font-size: 10px; gap: 3px; }
+  .me .pt-cnt svg { width: 13px; height: 13px; }
+}
+.status-pop { max-height: calc(100dvh - var(--top) - env(safe-area-inset-top) - 24px); overflow-y: auto; overscroll-behavior: contain; }
+
+/* ───────────── succès à paliers + bascule Amis (retours live 02, §8 §9) */
+.sc-who button { min-width: 64px; }
+.sc-bar { gap: 10px; }
+.sc-ladder { gap: 7px; }
+.sc-pk { font: 600 10px var(--mono); color: var(--ink-2); margin-left: 2px; }
+.sc-steps, .sc-frl { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 8px; }
+.sc-steps li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 12px; color: var(--ink-3); padding: 4px 0; border-bottom: 1px dashed rgba(255, 236, 214, 0.06); }
+.sc-steps li:last-child { border-bottom: 0; }
+.sc-steps li .sc-rw { flex: 1 0 100%; margin: 2px 0 0; }
+.sc-steps li .sc-coins { margin-left: auto; }
+.sc-steps li.got { color: var(--ok); }
+.sc-steps li.ready { color: var(--gold); }
+.sc-st-t { font: 600 11px var(--mono); white-space: nowrap; }
+.sc-st-l { flex: 1 1 auto; min-width: 0; color: var(--ink-2); }
+.sc-st-t { flex: none; min-width: 52px; }
+.sc-steps li .sc-coins { font-size: 10px; }
+.sc-lead { font: 600 11px var(--mono); color: var(--gold); }
+.sc-frl li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; font-size: 13px; }
+.sc-frl li.me { background: rgba(232, 146, 124, 0.1); box-shadow: inset 0 0 0 1px var(--rose); }
+.sc-frl li:first-child .sc-fr-i { color: var(--gold); }
+.sc-fr-i { font: 600 12px var(--mono); color: var(--ink-3); text-align: center; }
+.sc-fr-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-fr-l { font: 500 10px var(--mono); color: var(--ink-3); white-space: nowrap; }
+.sc-frl b { font: 600 12px var(--mono); }
+
+/* ───────────── parrainage (retours live 02, §10) — carte en tête de la colonne Amis */
+.am-ref { border-color: color-mix(in srgb, var(--gold) 40%, var(--line)); background: radial-gradient(circle at 100% 0%, rgba(242, 196, 109, 0.1), transparent 60%), var(--panel, rgba(255, 236, 214, 0.02)); }
+.am-ref-rules b { color: var(--gold); }
+.am-ref-link { display: flex; gap: 8px; }
+.am-ref-in { flex: 1 1 auto; min-width: 0; font: 500 12px var(--mono); }
+.am-ref-stats { margin: 6px 0 0; }
+.am-ref-stats b { color: var(--ink); }
+.am-ref-row small { color: var(--ink-3); }

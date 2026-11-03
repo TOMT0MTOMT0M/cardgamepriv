@@ -108,6 +108,14 @@ export interface AbuseAlertView {
   note?: string;
 }
 
+export interface FriendAch {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  me: boolean;
+  stats: AchievementStats;
+}
+
 export interface EcoBackend {
   readonly snapshot: EcoSnapshot | null;
   onChange(fn: (s: EcoSnapshot | null) => void): () => void;
@@ -115,8 +123,10 @@ export interface EcoBackend {
   claimWeekly(id: string): Promise<number>;
   burn(items: StakeItem[]): Promise<{ coins: number; count: number }>;
   claimCompletions(): Promise<{ coins: number; sets: Array<{ id: string; label: string; reward: number }> }>;
-  claimAchievements(): Promise<{ coins: number; ids: string[] }>;
+  claimAchievements(): Promise<{ coins: number; packs: number; ids: string[] }>;
   coinHistory(): Promise<CoinTx[]>;
+  /** succès : moi + mes amis, compteurs des succès à paliers (retours live 02, §9) */
+  friendsAchievements(): Promise<FriendAch[]>;
   // jeux
   watchLobby(cb: (l: LobbyView | null) => void): () => void;
   watchDuel(id: string, cb: (d: DuelView | null) => void): () => void;

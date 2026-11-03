@@ -264,6 +264,9 @@ function boosterStyles(): Record<string, PackStyle> {
   return out;
 }
 
+/** lueur de la tranche face cachée, par rang (commune → secrète) : le teasing du code couleur des raretés */
+const TEASE = [0.22, 0.26, 0.3, 0.36, 0.45, 0.6, 0.6];
+
 export function createOpeningScene(): OpeningScene {
   let ctx: LabContext;
   let stage: ReturnType<typeof createStage>;
@@ -748,7 +751,8 @@ export function createOpeningScene(): OpeningScene {
     const back = backs.forCard(data.cardId);
     const face = buildFace(art, rr.tier, !!cd.photo);
     face.holo.uniforms.strength.value = 0.1;
-    const { edge, rim } = buildEdge(rr.secret ? '#e8e2d6' : rr.hex);
+    // code couleur des raretés (retours live 02, §12) : 1★ gris … 5★ doré, 6★ arc-en-ciel ; secrète : son or rose
+    const { edge, rim } = buildEdge(rr.secret ? rr.hex : rr.id === 'mythic' ? 'rainbow' : rr.id === 'epic' ? '#c23a52' : rr.id === 'legendary' ? '#e0a63a' : rr.hex);
     const mesh = new Mesh(cardGeo, [face.holo.material, back, edge]);
     mesh.frustumCulled = false;
     return {
@@ -802,9 +806,10 @@ export function createOpeningScene(): OpeningScene {
       return;
     }
     slots = built;
-    // (retours live 02, anti-spoil) plus de teasing au dos : la tranche d'une légendaire / mythique ne luit plus face
-    // cachée — toutes les tranches restent éteintes jusqu'à la révélation de LEUR carte
-    for (const sl of slots) sl.U.rim.value = 0;
+    // TEASING (retours live 02, §12 — remplace l'anti-spoil) : face cachée, la tranche de chaque carte luit déjà doucement
+    // dans la couleur de sa rareté (1★ gris · 2★ vert · 3★ bleu · 4★ rouge · 5★ doré · 6★ arc-en-ciel), un peu plus
+    // fort à mesure que la rareté monte ; la révélation fait ensuite son éclat habituel
+    for (const sl of slots) sl.U.rim.value = TEASE[Math.min(6, sl.rr.rank)];
     // révélation de la moins rare à la plus rare (la secrète est toujours la dernière)
     order = slots.map((_, i) => i).sort((a, b) => RANK[slots[a].data.rarity] - RANK[slots[b].data.rarity] || a - b);
     order.forEach((si, k) => {

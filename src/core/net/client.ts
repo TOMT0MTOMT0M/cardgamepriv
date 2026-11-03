@@ -668,6 +668,12 @@ class GameNetClient {
     return await this.client!.mutation(fn, { ...args, sessionToken: this.requireToken() } as F['_args']);
   }
 
+  /** Mutation publique (sans session) : clic sur un lien d'invitation. */
+  public async publicCall<F extends FunctionReference<'mutation'>>(fn: F, args: F['_args']): Promise<F['_returnType']> {
+    if (!this.client) throw new Error('Serveur non configuré');
+    return await this.client.mutation(fn, args);
+  }
+
   /** Lecture ponctuelle (jeton ajouté s'il y en a un). */
   public async ask<F extends FunctionReference<'query'>>(fn: F, args: Omit<F['_args'], 'sessionToken'>, withToken = true): Promise<F['_returnType']> {
     if (!this.client) throw new Error('Serveur non configuré');
@@ -683,7 +689,7 @@ class GameNetClient {
 }
 
 /** Id d'appareil (tiré une fois, gardé dans le navigateur) : signal anti-abus « deux comptes sur le même appareil ». */
-function deviceId(): string | undefined {
+export function deviceId(): string | undefined {
   try {
     let id = localStorage.getItem('bebou.device');
     if (!id) {

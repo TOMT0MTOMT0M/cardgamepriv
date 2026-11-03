@@ -5,6 +5,7 @@ import { missionDay } from '../core/missions';
 import { touchStreak, type StreakState } from '../core/streak';
 import {
   CARD_VALUE,
+  achievementPacks,
   achievementReward,
   achievementStats,
   burnProblem,
@@ -28,6 +29,8 @@ import {
   duelWinner,
   houseCard,
   nextRouletteDraw,
+  rouletteSlot,
+  ROULETTE_NUMBERS,
   packChoiceLabel,
   royaleResult,
   validPackChoice,
@@ -40,7 +43,7 @@ import type { CoinTx, DuelView, EcoBackend, EcoSnapshot, LobbyView, PotCard, Roy
 /**
  * Économie + espace Jeux du MODE DÉMO : tout dans ce navigateur, avec les amis robots comme adversaires
  * (ils rejoignent les duels avec une mise équivalente, remplissent les Battle Royales, misent à la roulette).
- * Un bouton « Tirer maintenant » lance la roulette sans attendre 21 h.
+ * Un bouton « Tirer maintenant » lance la roulette sans attendre 10 h / 20 h.
  */
 
 export interface LocalEcoSave {
@@ -216,7 +219,7 @@ export function createLocalEco(host: LocalEcoHost) {
     const now = Date.now();
     const round: NonNullable<RouletteView['round']> = {
       id: id('rr'),
-      day: missionDay(now),
+      day: rouletteSlot(nextRouletteDraw(now)),
       carriedCoins,
       carriedCards,
       houseCards: [{ cardId: c.id, cardName: c.name, rarity: c.rarity as RarityId, mintNumber: 1 + Math.floor(Math.random() * 40), foilSeed: 1 }],
@@ -228,13 +231,13 @@ export function createLocalEco(host: LocalEcoHost) {
     const taken = new Set<number>();
     for (const b of host.bots()) {
       if (Math.random() < 0.25) continue;
-      const n = 3 + Math.floor(Math.random() * 6);
+      const n = 1 + Math.floor(Math.random() * 3);
       const nums: number[] = [];
       while (nums.length < n) {
-        const x = 1 + Math.floor(Math.random() * 100);
+        const x = 1 + Math.floor(Math.random() * ROULETTE_NUMBERS);
         if (!taken.has(x)) (taken.add(x), nums.push(x));
       }
-      round.bets.push({ userId: b.id, name: b.name, numbers: nums.sort((x, y) => x - y), coins: n * 100, cards: [] });
+      round.bets.push({ userId: b.id, name: b.name, numbers: nums.sort((x, y) => x - y), coins: n * 300, cards: [] });
     }
     potOf(round);
     d().round = round;
@@ -265,7 +268,7 @@ export function createLocalEco(host: LocalEcoHost) {
     d().past.length = Math.min(d().past.length, 10);
     newRound(bet ? 0 : r.pot.coins, bet ? [] : r.pot.cards);
   }
-  // tirage automatique si la page est ouverte à 21 h
+  // tirage automatique si la page est ouverte à 10 h / 20 h
   setInterval(() => {
     const r = d().round;
     if (r && Date.now() >= r.drawAt) {
@@ -349,11 +352,19 @@ export function createLocalEco(host: LocalEcoHost) {
         const list = claimableAchievements(achievementStats(host.stats(), d().econ), d().econ.achievements);
         if (!list.length) throw new Error('Aucun succès à réclamer.');
         const total = list.reduce((a, x) => a + achievementReward(x), 0);
+        const packs = list.reduce((a, x) => a + achievementPacks(x), 0);
         d().econ.achievements.push(...list.map((a) => a.id));
         coins(total, 'achievement', list.length === 1 ? `Succès — ${list[0].label}` : `${list.length} succès`, true);
-        return { coins: total, ids: list.map((a) => a.id) };
+        if (packs) host.grantPacks(packs);
+        return { coins: total, packs, ids: list.map((a) => a.id) };
       }),
     coinHistory: async () => structuredClone(d().tx),
+    // démo : les robots ont des compteurs inventés (stables), pour voir la comparaison entre amis
+    friendsAchievements: async () => {
+      const me = achievementStats(host.stats(), d().econ);
+      const bot = (seed: number) => Object.fromEntries(Object.entries(me).map(([k, v], i) => [k, Math.max(0, Math.round((v + 3) * (0.4 + ((seed * 7 + i * 13) % 17) / 10)))])) as unknown as typeof me;
+      return [{ userId: ME, name: 'Toi', me: true, stats: me }, ...host.bots().map((b, i) => ({ userId: b.id, name: b.name, me: false, stats: bot(i + 1) }))];
+    },
 
     watchLobby: (cb) => watch<LobbyView>(() => ({ duels: d().duels.filter((x) => x.status === 'open'), royales: d().royales.filter((x) => x.status === 'open'), me: ME }), cb),
     watchDuel: (did, cb) => watch(() => d().duels.find((x) => x.id === did) ?? null, cb),
@@ -448,16 +459,13 @@ export function createLocalEco(host: LocalEcoHost) {
         const r = round();
         const mine = r.bets.find((b) => b.userId === ME);
         const taken = new Set(r.bets.flatMap((b) => b.numbers));
-        const p = betProblem(numbers, stake, taken, mine?.numbers.length ?? 0);
+        const p = betProblem(numbers, stake, taken, mine ? 1 : 0);
         if (p) throw new Error(p);
         checkStake(stake);
         const cards = takeStake(stake);
-        if (mine) Object.assign(mine, { numbers: [...mine.numbers, ...numbers].sort((x, y) => x - y), coins: mine.coins + stake.coins, cards: [...mine.cards, ...cards] });
-        else {
-          r.bets.push({ userId: ME, name: 'Toi', numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards });
-          d().econ.gamesPlayed++;
-          weekly({ type: 'game', won: false });
-        }
+        r.bets.push({ userId: ME, name: 'Toi', numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards });
+        d().econ.gamesPlayed++;
+        weekly({ type: 'game', won: false });
         potOf(r);
       }),
     alerts: async () => [

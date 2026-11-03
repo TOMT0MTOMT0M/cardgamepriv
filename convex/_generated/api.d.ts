@@ -24,9 +24,11 @@ import type * as http from "../http.js";
 import type * as inventory from "../inventory.js";
 import type * as labFeedback from "../labFeedback.js";
 import type * as listings from "../listings.js";
+import type * as migrations from "../migrations.js";
 import type * as missions from "../missions.js";
 import type * as packs from "../packs.js";
 import type * as profiles from "../profiles.js";
+import type * as referrals from "../referrals.js";
 import type * as trades from "../trades.js";
 import type * as users from "../users.js";
 
@@ -53,9 +55,11 @@ declare const fullApi: ApiFromModules<{
   inventory: typeof inventory;
   labFeedback: typeof labFeedback;
   listings: typeof listings;
+  migrations: typeof migrations;
   missions: typeof missions;
   packs: typeof packs;
   profiles: typeof profiles;
+  referrals: typeof referrals;
   trades: typeof trades;
   users: typeof users;
 }>;

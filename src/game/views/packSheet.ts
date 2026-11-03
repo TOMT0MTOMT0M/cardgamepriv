@@ -492,10 +492,12 @@ export function createPackSheet(
   setInterval(() => !document.hidden && opened && backend.state.user && !backend.state.sealed && liveRegen(backend.state.user).balance <= 0 && sync(), 1000);
 
   // ── ouvrir / fermer
+  let openedAt = 0;
   function open(key: string) {
     const p = packs.find((x) => x.key === key);
     if (!p) return;
     if (!opened) {
+      openedAt = performance.now();
       pushLayer(close);
       el.hidden = false;
       opened = true;
@@ -535,7 +537,8 @@ export function createPackSheet(
     else if (!e.shiftKey && document.activeElement === last) (e.preventDefault(), first.focus());
   });
   q('.ps-close').addEventListener('click', close);
-  q('.ps-backdrop').addEventListener('click', close);
+  // (retours live 02, bug 4) le clic qui vient d'ouvrir la fiche (toucher du booster 3D) ne la referme pas aussitôt
+  q('.ps-backdrop').addEventListener('click', () => performance.now() - openedAt > 400 && close());
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !opened) return;
     if (cardsOpen) hideCards();

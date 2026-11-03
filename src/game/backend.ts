@@ -325,6 +325,13 @@ export interface ActivityItem {
   createdAt: number;
 }
 
+/** Parrainage : mon code, les clics sur mon lien, mes filleuls (boosters ouverts sur 10, parrain payé ?). */
+export interface ReferralInfo {
+  code: string;
+  clicks: number;
+  referrals: Array<{ userId: string; name: string; avatarUrl?: string; packsOpened: number; paid: boolean; at: number }>;
+}
+
 export interface GameBackend {
   readonly state: GameState;
   /** pièces, sources de pièces et espace Jeux (eco.ts) */
@@ -385,6 +392,13 @@ export interface GameBackend {
   declineFriend(id: string): Promise<void>;
   cancelFriend(id: string): Promise<void>;
   removeFriend(id: string): Promise<void>;
+  // parrainage (retours live 02, §10)
+  /** mon lien d'invitation (créé à la première demande), clics, filleuls */
+  referral(): Promise<ReferralInfo>;
+  /** un lien `?ref=` a été ouvert sur cet appareil (compté une fois par appareil) */
+  referralClick(code: string): Promise<void>;
+  /** je suis arrivé par ce lien : je deviens filleul (10 boosters), si mon compte est neuf */
+  referralClaim(code: string): Promise<{ status: 'ok' | 'already' | 'invalid' | 'self' | 'tooLate'; packs?: number; referrer?: string }>;
   // tableau d'offres (lot T) — ouvert à tous les joueurs
   /** Annonces ouvertes de tout le monde (temps réel) ; renvoie de quoi se désabonner. */
   watchBoard(cb: (listings: ListingView[]) => void): () => void;

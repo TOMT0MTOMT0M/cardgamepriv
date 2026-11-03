@@ -16,7 +16,8 @@ import '../games.css';
  *  - on garde toujours 1 exemplaire, les secrètes ne se brûlent jamais ;
  *  - les exemplaires ENGAGÉS (🔒 : échange en attente, annonce du tableau d'offres… tout ce que `lockedCards` compte)
  *    ne sont pas brûlables ;
- *  - ♥ envie · ▤ classeur · ⌂ pochette : laissées de côté par les sélections rapides (brûlables à la main) ;
+ *  - ♥ envie · ▤ classeur · ⌂ pochette : EXCLUES de la forge (retours live 02, §13 : mêmes protections que les
+ *    contrats — on retire la carte de sa liste d'envies / de son classeur / de sa pochette pour pouvoir la brûler) ;
  *  - sélection rapide annulable, anti double-envoi (`guarded`), second toucher dès 300 pièces ou 30 cartes.
  */
 
@@ -27,7 +28,7 @@ const cardsSummary = (l: Array<{ rarity: RarityId; count: number }>) => {
   for (const c of l) m.set(c.rarity, (m.get(c.rarity) ?? 0) + c.count);
   return [...m].sort((a, b) => CARD_VALUE[a[0]] - CARD_VALUE[b[0]]).map(([r, n]) => `${n}×${starsTxt(r)}`).join(' + ');
 };
-const LEGEND = '♥ envie · ▤ classeur · ⌂ pochette : gardées hors des sélections rapides (brûlables à la main) · 🔒 exemplaires engagés (échange en attente, annonce) : pas brûlables';
+const LEGEND = 'Protégées, jamais brûlées : le dernier exemplaire de chaque carte, les secrètes, ♥ envies, ▤ classeurs, ⌂ pochettes et 🔒 exemplaires engagés (échange en attente, annonce)';
 
 export interface ForgeDup {
   cardId: string;
@@ -49,7 +50,7 @@ export function forgeDups(st: GameState): ForgeDup[] {
       const lk = locked.get(cardKey(c)) ?? 0;
       return { cardId: c.cardId, rarity: c.rarity, count: c.count, locked: lk, spare: c.count - 1 - lk, protect: protection(st, c.cardId) };
     })
-    .filter((c) => c.spare > 0)
+    .filter((c) => c.spare > 0 && !c.protect.length)
     .sort((a, b) => CARD_VALUE[a.rarity] - CARD_VALUE[b.rarity] || b.spare - a.spare);
 }
 
@@ -57,7 +58,7 @@ export function forgeDups(st: GameState): ForgeDup[] {
 export function forgeCount(st: GameState): number {
   const locked = lockedCards(st);
   let n = 0;
-  for (const c of st.collection) if (burnable(c.rarity)) n += Math.max(0, c.count - 1 - (locked.get(cardKey(c)) ?? 0));
+  for (const c of st.collection) if (burnable(c.rarity) && !protection(st, c.cardId).length) n += Math.max(0, c.count - 1 - (locked.get(cardKey(c)) ?? 0));
   return n;
 }
 
