@@ -2,7 +2,7 @@ import { ensureCardFonts, generateCardArt } from '../core/art';
 import { loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
-import { catalogEntry, hasArt, subthemeById, thumbPath } from '../core/sets/themes';
+import { catalogEntry, hasArt, numberingSize, subthemeById, thumbPath } from '../core/sets/themes';
 import { siteUrl } from '../core/siteRoot';
 
 /**
@@ -19,7 +19,7 @@ const SCALE = 0.36; // 276 × 386 px : net dans une tuile de ~130 px en DPR 2–
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
-const CACHE = 'bebou-cartes-v1';
+const CACHE = 'bebou-cartes-v2'; // v2 : sous-thèmes Gaming imprimés sur la carte (« KANTO », « PISTOLETS », « STAR GUARDIAN »)
 const done = new Map<string, string>();
 const waiting = new Map<string, Set<HTMLElement>>();
 const queue: string[] = [];
@@ -50,7 +50,8 @@ function cacheUrl(key: string): string | null {
   const [id] = key.split('|');
   const e = catalogEntry(id);
   if (!e) return null;
-  const size = subthemeById(e.subthemeId)?.cards.length ?? 0;
+  const st = subthemeById(e.subthemeId);
+  const size = st ? numberingSize(st) : 0;
   return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${SCALE}`)}`;
 }
 async function fromCache(key: string): Promise<string | null> {

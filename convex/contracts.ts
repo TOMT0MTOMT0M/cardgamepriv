@@ -1,5 +1,6 @@
 import { v, ConvexError } from 'convex/values';
 import { bumpMissions } from './missions';
+import { bumpWeekly } from './econLib';
 import { mutation } from './_generated/server';
 import { requireUser } from './auth';
 import { RARITY_LABEL, RARITY_TIER, rarityValidator, type RarityId } from './cardsCatalog';
@@ -76,6 +77,7 @@ export const sign = mutation({
 
     await ctx.db.patch(user._id, { lastSeenAt: now, statusText: 'Vient de signer un contrat', totalContracts: (user.totalContracts ?? 0) + 1 });
     await bumpMissions(ctx, user, { type: 'contract' });
+    await bumpWeekly(ctx, user._id, { type: 'contract' });
     if (RARITY_TIER[target] >= RARITY_TIER.epic) {
       await ctx.db.insert('activityFeed', {
         userId: user._id,

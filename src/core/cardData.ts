@@ -1,11 +1,12 @@
 import type { RarityId } from './rarity';
 import { siteUrl } from './siteRoot';
 import type { UniverseId } from './universes';
-import { POKEMON_151, POKEMON_151_INFO, pokemonCardId, pokemonFile } from './sets/pokemon151';
+import { POKEMON_151, POKEMON_151_INFO, pokemonCardId, pokemonFile, pokemonGen } from './sets/pokemon151';
 import { BEBOUS, BEBOUS_INFO, bebouCardId, bebouFile } from './sets/bebous';
-import { VALORANT, VALORANT_INFO, valorantCardId, valorantFile } from './sets/valorant';
+import { VALORANT, VALORANT_INFO, valorantCardId, valorantClass, valorantFile } from './sets/valorant';
 import { LOL, LOL_INFO, lolCardId, lolFile, lolIsChampion } from './sets/lol';
-import { CS, CS_INFO, csCardId, csFile } from './sets/cs';
+import { lolLine } from './sets/lolLines';
+import { CS, CS_INFO, csCardId, csClass, csFile } from './sets/cs';
 import { artPath, catalogEntry, hasArt, subthemeById } from './sets/themes';
 
 /** `image` = illustration bitmap (champ `image`), les autres sont peints procéduralement (art/subjects.ts). */
@@ -52,7 +53,7 @@ export interface CardData {
   fit?: number;
   /** Illustration « scène » déjà au format portrait (splash LoL) : elle remplit toute la carte, jamais détourée. */
   cover?: boolean;
-  /** Nom d'univers affiché à la place de celui de `universe` (Jeux vidéo : la famille, « MARIO », « TEKKEN »…) */
+  /** Nom d'univers affiché à la place de celui de `universe` : le sous-thème (« MARIO », « KANTO », « PISTOLETS »…) */
   uniName?: string;
   /** Jeux vidéo : jaquette / personnage / objet, et année (design typographique des cartes sans illustration) */
   jvKind?: string;
@@ -142,6 +143,7 @@ export const POKEMON_CARDS: CardData[] = POKEMON_151.map((e) => ({
   epithet: 'Pokémon',
   element: '',
   universe: 'pokemon',
+  uniName: pokemonGen(e).label,
   subject: 'image',
   seed: 1000 + e.dex * 97,
   rarity: e.rarity,
@@ -158,6 +160,7 @@ export const VALORANT_CARDS: CardData[] = VALORANT.map((e) => ({
   epithet: e.kind === 'agent' ? 'Agent' : e.kind === 'knife' ? 'Couteau' : 'Skin',
   element: e.weapon,
   universe: 'valorant',
+  uniName: valorantClass(e).label,
   subject: 'image',
   seed: 3000 + e.num * 89,
   rarity: e.rarity,
@@ -175,6 +178,7 @@ export const LOL_CARDS: CardData[] = LOL.map((e) => ({
   epithet: lolIsChampion(e) ? 'Champion' : 'Skin',
   element: e.champion,
   universe: 'lol',
+  uniName: lolLine(e).label,
   subject: 'image',
   seed: 12000 + e.num * 61,
   rarity: e.rarity,
@@ -192,6 +196,7 @@ export const CS_CARDS: CardData[] = CS.map((e) => ({
   epithet: e.kind === 'knife' ? 'Couteau' : e.kind === 'gloves' ? 'Gants' : e.kind === 'sticker' ? 'Sticker' : 'Skin',
   element: e.weapon,
   universe: 'cs',
+  uniName: csClass(e).label,
   subject: 'image',
   seed: 16000 + e.num * 53,
   rarity: e.rarity,
@@ -286,7 +291,8 @@ export function setInfo(card: CardData): { code: string; size: number } {
   const s = CARD_SETS[card.set as CardSetId];
   if (s) return { code: s.code, size: s.size };
   const sub = subthemeById(card.set ?? '');
-  if (sub) return { code: sub.code || 'WLD', size: sub.cards.length };
+  // dénominateur du sous-thème, ou celui du groupe entier quand les n° sont globaux (Sport : « 0149 / 7708 »)
+  if (sub) return { code: sub.code || 'WLD', size: sub.size ?? sub.cards.length };
   return { code: SET_CODE, size: SET_SIZE };
 }
 
@@ -321,10 +327,10 @@ export function cardById(id: string): CardData {
       fit: 1,
     };
     if (e.art !== undefined) {
-      // Jeux vidéo / Monde V2 : le sous-thème tient lieu d'univers (« MARIO », « MAMMIFÈRES ») ; image pleine (jaquette,
+      // Jeux vidéo / Monde V2 / Sport : le sous-thème tient lieu d'univers (« MARIO », « MAMMIFÈRES ») ; image pleine (jaquette,
       // photo) = bord à bord ; artwork = détouré ; rien de trouvé à la récolte = design typographique (art/jvTitle.ts)
       const fam = subthemeById(e.subthemeId)?.label ?? '';
-      Object.assign(cd, { universe: e.kind ? 'jv' : 'monde', uniName: fam, jvKind: e.kind, typeLabel: e.label || undefined, year: e.year || undefined, seed: 20000 + hashId(e.id) });
+      Object.assign(cd, { universe: e.kind ? 'jv' : e.themeId === 'sport' ? 'sport' : 'monde', uniName: fam, jvKind: e.kind, typeLabel: e.label || undefined, year: e.year || undefined, seed: 20000 + hashId(e.id) });
       if (!hasArt(e)) Object.assign(cd, { subject: 'jvtitle', image: undefined });
       else if (e.art === 'c') cd.cover = true;
       else cd.fit = 0.92;

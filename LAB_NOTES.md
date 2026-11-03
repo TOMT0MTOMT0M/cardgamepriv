@@ -658,3 +658,51 @@ Uniquement quand `quality === 'mobile'` (écran tactile) : l'ordinateur ne chang
   (`WORLD_SECRET_CHANCE` calculé). Bébou : 1 sur 13 888.
 - Images : URL du fichier (Wikimedia, GBIF) puis Wikipédia ; homonymes écartés (Chihuahua → chien, Phoenix → groupe…).
   4 875 / 5 237 avec image (`public/art/monde`, envoyées dans R2 au prochain déploiement). Le reste : design typographique.
+
+## Rattrapage des illustrations manquantes (scripts/scrap-manquantes.py)
+- Ne retente que les cartes sans image (marque « s2 » dans les journaux de récolte), puis `gen` des deux scripts.
+- Sources : abréviations développées (GTA, FNAF, MGS, NFS…) + Steam/Wikipédia avec titre EXACT ; Wikidata → page Wikipédia anglaise
+  (personnages et jeux de la bonne franchise, d'après la description) ; fortnite-api.com ; Liquipedia (Rainbow Six, ≥ 2,1 s entre requêtes) ;
+  World Pack : Wikidata P18/P154 avec description cohérente avec le sous-thème (homonymes écartés : Serengeti race de chat, Murray ville de l'Utah…).
+- wiki.gg répond 401 aux robots : non utilisé. Summoners War (icônes 100 px) et Palworld (wiki.gg) restent en design typographique.
+- Résultat : Jeux vidéo 2 201 → 2 486 cartes illustrées ; World Pack 4 875 → 5 023.
+
+## Correctif sous-thèmes GAMING (3 nov.)
+- Pokémon → 9 régions (d'après le n° de Pokédex), Valorant → 8 catégories, CS → 8 catégories : comptes identiques au correctif.
+  Vrais sous-thèmes regroupés à l'affichage (`split()` dans themes.ts), le groupe reprend l'ancien id (pokemon, valorant, cs).
+- Ids, étoiles, numéros, illustrations inchangés. Le sous-thème est imprimé en grand sur la carte (`uniName`) ; cache des
+  rendus de cartes passé en v2. Numéro affiché « 152/1025 » : `numberingSize()` (dénominateur du groupe).
+- LoL : 5 lanes (champions) + 133 lignes de skins + « Classiques & uniques » = 139 sous-thèmes, lus dans la colonne K de
+  Tri-etoiles-lol-skins.xlsx par scripts/make-lol-lines.py → src/core/sets/lolLines.ts (séparé de lol.ts).
+
+## Espace Jeux & économie V1 (spec du 3 nov.)
+- Logique partagée : `src/core/economy.ts` (table de valeur 5/15/40/100/300/1000, secrète 5000 non brûlable ; calendrier
+  30 j ; fourchettes d'ouverture ; complétion 5 × cartes ; 36 succès 50/150/500/2000 ; seuils anti-abus),
+  `src/core/games.ts` (Pack Battle ±5 %, Royale 3-8, Roulette 100 numéros / 21 h Paris), `src/core/weekly.ts`
+  (missions de la semaine ~200 ; pièces des missions du jour en plus des boosters).
+- Serveur : `convex/economy.ts`, `convex/games.ts` (tout se tranche au verrouillage, en une mutation), `convex/abuse.ts`
+  (alertes, jamais de blocage), `convex/crons.ts` (roulette toutes les 10 min, tire dès 21 h), `convex/econLib.ts`.
+  Pièces d'ouverture tirées avec le booster (`packOpens.coins`) et créditées au dévoilement.
+- Admin : `npx convex run admin:setAdmin '{"name":"tom"}'` · pièces de test : `admin:grantCoins`.
+- Client : onglet JEUX (`views/games.ts`), pastille de pièces + portefeuille (`views/wallet.ts`), sélecteur de cartes
+  (`views/picker.ts`), missions de la semaine dans le panneau des missions. Démo : robots adversaires (`ecoLocal.ts`).
+- Décisions de Tom : série de 7 jours (+5 boosters) GARDÉE en plus du calendrier ; missions = boosters + pièces ;
+  succès en version simple.
+
+## SPORT PACK — thème Sport & Esport (SPEC-THEME-SPORT v5.1, 3 nov.)
+- Source : `Tri-etoiles-sport.xlsx` (feuille « Tri étoiles », « Étoiles finales ») → `scripts/make-sport.py gen` →
+  `src/core/sets/sport.ts` (données pures, réécrit en entier à chaque `gen` : import en REMPLACEMENT).
+- 7 708 cartes, 114 sous-thèmes (vrais sous-thèmes, libellé imprimé en grand sur la carte), regroupés à l'affichage en 10 :
+  Football · Esport · Sports collectifs · Raquettes · Combat · Sports mécaniques · Olympiques & athlétisme · Glisse & montagne ·
+  Précision & stratégie · Coulisses & légendes. Le groupe « esport » reprend l'id de l'ancien sous-thème vide.
+- Étoiles 1→6 = common→mythic (2 384 / 1 828 / 1 589 / 874 / 715 / 318, quotas de la spec). Pas de secrète en Sport.
+- Ids `spt-<nom>` figés dans `scripts/data/sport-ids.json` (clé nom + type ; un retypage garde l'id). Numéro = « N° » de
+  l'Excel sur 7 708 (`size: SPORT_SIZE`, `setInfo()` respecte maintenant `sub.size`).
+- Type affiché sur le design typographique : Athlète, Club, Joueur esport, Stade… (`label`).
+- Images (public/art/sport, ~600 Mo, + thumbs WebP) : 7 093 / 7 708.
+  `harvest` : URL de l'Excel (Commons résolu par lots via l'API → miniature 960 px ; Special:FilePath est limité à ~2 req/s,
+  429) ; logos non libres cherchés sur Wikipédia fr/en ; Liquipedia ≥ 1 s entre requêtes. `wikifill` : fichiers supprimés
+  de Commons → image de la page Wikipédia au nom exact, gardée si la description Wikidata parle de sport.
+  `fix` : corrections à la main (OVERRIDES : Uzi → le joueur et pas le pistolet, zen, David Beckham, Mario Lemieux, Argentine).
+  615 cartes sans image fiable → design typographique (placeholder standard).
+- Après une nouvelle version de l'Excel : `gen`, `harvest --retry`, `wikifill`, `fix`, `gen`, puis `node scripts/r2-sync.mjs`.

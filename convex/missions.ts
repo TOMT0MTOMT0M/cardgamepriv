@@ -3,6 +3,8 @@ import { mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
 import { applyRegen } from '../src/core/packRegen';
+import { dailyMissionCoins } from '../src/core/weekly';
+import { addCoins } from './econLib';
 import {
   applyMissionEvent,
   claimMission,
@@ -51,7 +53,11 @@ export const claim = mutation({
     const r = claimMission(stateOf(user, Date.now()), missionId);
     if (typeof r === 'string') throw new ConvexError(r);
     await grant(ctx, user, r.reward, r.state);
-    return { reward: r.reward };
+    // spec économie : les missions du jour rapportent aussi des pièces (boosters + pièces, décision du 3 nov.)
+    const m = r.state.list.find((x) => x.id === missionId)!;
+    const coins = dailyMissionCoins(m);
+    await addCoins(ctx, user._id, coins, 'mission', 'Mission du jour', { earned: true });
+    return { reward: r.reward, coins };
   },
 });
 

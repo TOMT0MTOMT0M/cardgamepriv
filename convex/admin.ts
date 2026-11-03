@@ -3,6 +3,7 @@ import { internalMutation, type MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS, type RarityId } from './cardsCatalog';
 import { applyRegen } from '../src/core/packRegen';
+import { addCoins } from './econLib';
 
 /**
  * OUTILS DE TEST (admin) — fonctions INTERNES : impossibles à appeler depuis le site, seulement depuis la ligne de
@@ -124,5 +125,32 @@ export const grantTestCards = internalMutation({
       await ctx.db.patch(user._id, { packBalance, packRegenAt: now });
     }
     return { joueur: `${user.displayName} (@${user.username})`, cartes: summary, extras, boosters: packBalance };
+  },
+});
+
+/**
+ * Donne (ou retire) l'accès au panneau admin (alertes anti-abus de l'espace Jeux).
+ *   npx convex run admin:setAdmin '{"name":"tom"}'
+ *   npx convex run admin:setAdmin '{"name":"tom","on":false}'
+ */
+export const setAdmin = internalMutation({
+  args: { name: v.string(), on: v.optional(v.boolean()) },
+  handler: async (ctx, { name, on }) => {
+    const user = await findUser(ctx, name);
+    await ctx.db.patch(user._id, { isAdmin: on ?? true });
+    return `${user.displayName} (@${user.username}) : admin ${on === false ? 'retiré' : 'activé'}`;
+  },
+});
+
+/**
+ * Ajuste les pièces d'un joueur (test, correction après une alerte). Journalisé (« admin »).
+ *   npx convex run admin:grantCoins '{"name":"tom","amount":5000}'
+ */
+export const grantCoins = internalMutation({
+  args: { name: v.string(), amount: v.number(), label: v.optional(v.string()) },
+  handler: async (ctx, { name, amount, label }) => {
+    const user = await findUser(ctx, name);
+    const coins = await addCoins(ctx, user._id, amount, 'admin', label ?? 'Ajustement admin');
+    return { joueur: user.displayName, pièces: coins };
   },
 });

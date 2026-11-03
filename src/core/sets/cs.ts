@@ -1153,3 +1153,34 @@ export const csCardId = (e: CsEntry) => `cs-${e.id}`;
 
 /** Nom du fichier d'illustration (relatif à `CS_INFO.artDir`). */
 export const csFile = (e: CsEntry) => `${e.id}.webp`;
+
+/**
+ * Sous-thèmes d'affichage (correctif du 3 nov.) : la CLASSE d'arme / d'objet. Le libellé est imprimé en grand sur la
+ * carte (« FUSILS D'ASSAUT ») ; ids, étoiles et numéros inchangés. Ordre = celui des numéros (armes, couteaux, gants, stickers).
+ */
+export const CS_CLASSES = [
+  { id: 'cs-pistolets', label: 'Pistolets' },
+  { id: 'cs-mitraillettes', label: 'Mitraillettes' },
+  { id: 'cs-fusils', label: 'Fusils d’assaut' },
+  { id: 'cs-snipers', label: 'Snipers' },
+  { id: 'cs-lourdes', label: 'Fusils à pompe & lourdes' },
+  { id: 'cs-couteaux', label: 'Couteaux ★' },
+  { id: 'cs-gants', label: 'Gants ★' },
+  { id: 'cs-stickers', label: 'Stickers' },
+] as const;
+
+const CS_WEAPON_CLASS: Record<string, string> = {
+  'Glock-18': 'cs-pistolets', 'USP-S': 'cs-pistolets', P2000: 'cs-pistolets', P250: 'cs-pistolets', 'Five-SeveN': 'cs-pistolets', 'Tec-9': 'cs-pistolets',
+  'CZ75-Auto': 'cs-pistolets', 'Dual Berettas': 'cs-pistolets', 'Desert Eagle': 'cs-pistolets', 'R8 Revolver': 'cs-pistolets',
+  'MAC-10': 'cs-mitraillettes', MP9: 'cs-mitraillettes', MP7: 'cs-mitraillettes', 'MP5-SD': 'cs-mitraillettes', 'UMP-45': 'cs-mitraillettes', P90: 'cs-mitraillettes', 'PP-Bizon': 'cs-mitraillettes',
+  'AK-47': 'cs-fusils', M4A4: 'cs-fusils', 'M4A1-S': 'cs-fusils', FAMAS: 'cs-fusils', 'Galil AR': 'cs-fusils', AUG: 'cs-fusils', 'SG 553': 'cs-fusils',
+  AWP: 'cs-snipers', 'SSG 08': 'cs-snipers', 'SCAR-20': 'cs-snipers', G3SG1: 'cs-snipers',
+  Nova: 'cs-lourdes', XM1014: 'cs-lourdes', 'MAG-7': 'cs-lourdes', 'Sawed-Off': 'cs-lourdes', M249: 'cs-lourdes', Negev: 'cs-lourdes',
+};
+
+export function csClass(e: CsEntry): (typeof CS_CLASSES)[number] {
+  const id = e.kind === 'knife' ? 'cs-couteaux' : e.kind === 'gloves' ? 'cs-gants' : e.kind === 'sticker' ? 'cs-stickers' : CS_WEAPON_CLASS[e.weapon];
+  const c = CS_CLASSES.find((x) => x.id === id);
+  if (!c) throw new Error(`CS : arme sans classe « ${e.weapon} » (${e.name})`);
+  return c;
+}

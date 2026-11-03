@@ -75,12 +75,21 @@ describe('boosters', () => {
     expect(pack.themeId).toBe('gaming');
   });
 
-  test('thème encore sans cartes (Pop Culture, Sport) : refusé, rien débité', async () => {
+  test('thème encore sans cartes (Pop Culture) : refusé, rien débité', async () => {
     const { t, alice } = await setup();
-    for (const themeId of ['pop', 'sport']) {
+    for (const themeId of ['pop']) {
       await expect(t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'theme', themeId })).rejects.toThrow();
     }
     expect((await t.query(api.users.me, { sessionToken: alice.token }))?.packBalance).toBe(5);
+  });
+
+  test('Sport Pack : 5 cartes Sport & Esport (SPEC v5.1), une rare minimum', async () => {
+    const { t, alice } = await setup();
+    const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'theme', themeId: 'sport' });
+    expect(pack.themeId).toBe('sport');
+    expect(pack.cards).toHaveLength(5);
+    expect(pack.cards.every((c) => c.themeId === 'sport' && c.cardId.startsWith('spt-'))).toBe(true);
+    expect(['rare', 'epic', 'legendary', 'mythic']).toContain(pack.cards[4].rarity);
   });
 
   test('World Pack : 5 cartes du Monde (Ardèche, Lieux, Animaux, Nourriture, Voitures, Merveilles), une rare minimum', async () => {

@@ -2,6 +2,7 @@ import { net, type NetState } from '../core/net/client';
 import type { Id } from '../../convex/_generated/dataModel';
 import { BIG_PULL_RARITIES, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
+import { createOnlineEco } from './ecoOnline';
 
 /** Le vrai serveur : Convex (temps réel) + Discord, via le client partagé avec le labo (core/net/client.ts). */
 export function createOnlineBackend(): GameBackend {
@@ -90,6 +91,7 @@ export function createOnlineBackend(): GameBackend {
 
   return {
     state,
+    eco: createOnlineEco(),
     onChange(fn) {
       listeners.add(fn);
       fn(state);

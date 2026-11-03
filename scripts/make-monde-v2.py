@@ -6,6 +6,13 @@ Source : Tri-etoiles-monde_2.xlsx (feuille « Tri des étoiles », colonne « É
   python scripts/make-monde-v2.py gen     Tri-etoiles-monde_2.xlsx
   python scripts/make-monde-v2.py harvest Tri-etoiles-monde_2.xlsx [--budget 170] [--retry]
 
+PATCHS (liste PATCHES, appliqués dans l'ordre par-dessus le tri de base, à chaque gen / harvest) :
+  Patch-monde-V7.xlsx — boissons énergisantes : (1) INSERT des cartes de « Nouvelles cartes » (N° 5237 → 5342, sous-thèmes
+  Monster et Red Bull, groupe Nourriture) ; (2) UPDATE complet des « Rebrands » (N° 4264 Red Bull → Red Bull Original 6★,
+  4418 Monster Energy → Monster Original Green 6★ : MÊME id de carte, nouveau nom / sous-thème / étoiles / image) ;
+  (3) resynchronisation des étoiles de chaque N° 1 → 5236 (« Étoiles à jour »). Contrôles : 5 342 cartes,
+  1652/1267/1101/606/496/220, Monster = 60, Red Bull = 48.
+
 Identifiants STABLES : les 924 cartes de la V1 (déjà tombées chez les joueurs) gardent leur id (geo-…, zoo-…, miam-…,
 auto-…, ard-…, mrv-…) et leur illustration (public/art/<ancien dossier>/). La correspondance est figée la première fois
 dans scripts/data/monde-ids.json ; les relances la réutilisent (une carte ne change jamais d'id).
@@ -37,13 +44,17 @@ GROUPS = {
                                "Villes d'Amérique du Sud", "Villes d'Europe", 'Monuments & patrimoine', 'Sites naturels', 'Mers, fleuves & lacs',
                                'Montagnes & volcans', "Parcs d'attractions"]),
     'animaux': ('Animaux', ['Mammifères', 'Vie marine', 'Oiseaux', 'Insectes & arachnides', 'Reptiles & amphibiens', 'Dinosaures & préhistoire']),
-    'nourriture': ('Nourriture', ['Plats français', 'Snacks, marques & fast food', 'Plats du monde', 'Desserts & pâtisseries', 'Boissons', 'Fromages', 'Chefs']),
+    'nourriture': ('Nourriture', ['Plats français', 'Snacks, marques & fast food', 'Plats du monde', 'Desserts & pâtisseries', 'Boissons', 'Monster', 'Red Bull',
+                                   'Fromages', 'Chefs']),
     'voitures': ('Voitures', ['Modèles iconiques', 'Voitures françaises', 'Supercars & hypercars', 'Sportives japonaises', 'Muscle cars']),
 }
 ALONE = {'Les 14 Merveilles': 'merveilles', 'Ardèche': 'ardeche'}
 # renommages V1 → V2 que la ressemblance des noms ne suffit pas à retrouver
 ALIASES = {'Acropole d’Athènes (Parthénon)': 'Acropole & Parthénon'}
 SUB_GROUP = {s: g for g, (_, subs) in GROUPS.items() for s in subs}
+# patchs du tri, appliqués dans l'ordre (fichiers à la racine du projet)
+PATCHES = ['Patch-monde-V7.xlsx']
+PATCH_CHECK = {'Patch-monde-V7.xlsx': {'count': 5342, 'stars': {1: 1652, 2: 1267, 3: 1101, 4: 606, 5: 496, 6: 220}, 'subs': {'Monster': 60, 'Red Bull': 48}}}
 OLD = {'lieux': ('geo', 'lieux'), 'animaux': ('zoo', 'animaux'), 'nourriture': ('miam', 'nourriture'), 'voitures': ('auto', 'voitures'),
        'ardeche': ('ard', 'ardeche'), 'merveilles': ('mrv', 'merveilles')}
 PREFIX = {'lieux': 'geo', 'animaux': 'zoo', 'nourriture': 'miam', 'voitures': 'auto', 'ardeche': 'ard', 'merveilles': 'mrv'}
@@ -91,13 +102,57 @@ def read_v2(xlsx):
     for r in list(ws.iter_rows(values_only=True))[2:]:
         if not r or not r[1]:
             continue
-        sub = str(r[2]).strip()
-        grp = ALONE.get(sub) or SUB_GROUP.get(sub)
-        assert grp, f'sous-thème inconnu : {sub}'
-        rows.append({'name': str(r[1]).strip(), 'sub': sub, 'group': grp, 'type': str(r[3] or '').strip(), 'cat': str(r[4] or '').strip(),
-                     'region': str(r[5] or '').strip(), 'stars': int(r[7]), 'url': str(r[8] or '').strip()})
+        rows.append(row_of(r))
     assert len(rows) == 5236, f'{len(rows)} lignes (5 236 attendues)'
-    return rows
+    assert [r['n'] for r in rows] == list(range(1, 5237)), 'colonne N° : 1 → 5236 attendu'
+    return apply_patches(rows)
+
+
+def row_of(r):
+    sub = str(r[2]).strip()
+    grp = ALONE.get(sub) or SUB_GROUP.get(sub)
+    assert grp, f'sous-thème inconnu : {sub}'
+    return {'n': int(r[0]), 'name': str(r[1]).strip(), 'sub': sub, 'group': grp, 'type': str(r[3] or '').strip(), 'cat': str(r[4] or '').strip(),
+            'region': str(r[5] or '').strip(), 'stars': int(r[7]), 'url': str(r[8] or '').strip()}
+
+
+def patch_rows(ws):
+    """Lignes d'une feuille de patch (sous l'en-tête « N° »)."""
+    out, head = [], False
+    for r in ws.iter_rows(values_only=True):
+        if not head:
+            head = bool(r) and r[0] == 'N°'
+            continue
+        if r and isinstance(r[0], (int, float)):
+            out.append(r)
+    return out
+
+
+def apply_patches(rows):
+    """Patchs du tri, par opérations (jamais de ré-import complet) : INSERT, UPDATE complet (rebrand), resync des étoiles."""
+    by_n = {r['n']: r for r in rows}
+    for name in PATCHES:
+        wb = openpyxl.load_workbook(os.path.join(ROOT, name), read_only=True, data_only=True)
+        sheet = lambda start: wb[next(s for s in wb.sheetnames if s.startswith(start))]
+        for r in patch_rows(sheet('Nouvelles cartes')):  # OP 1 — INSERT
+            row = row_of(r)
+            assert row['n'] not in by_n, f"{name} : N° {row['n']} existe déjà"
+            by_n[row['n']] = row
+        for r in patch_rows(sheet('Rebrands')):  # OP 2 — UPDATE complet (même carte, même id)
+            row, old = row_of(r), by_n[int(r[0])]
+            row['was'], row['was_url'] = f"{old['sub']}|{old['name']}", old.get('was_url', old['url'])
+            by_n[row['n']] = row
+        for n, e in patch_rows(sheet('Étoiles')):  # OP 3 — resync des étoiles (idempotent)
+            by_n[int(n)]['stars'] = int(e)
+        chk = PATCH_CHECK.get(name)
+        if chk:
+            cur = list(by_n.values())
+            assert len(cur) == chk['count'], f"{name} : {len(cur)} cartes ({chk['count']} attendues)"
+            st = collections.Counter(r['stars'] for r in cur)
+            assert dict(st) == chk['stars'], f'{name} : étoiles {dict(sorted(st.items()))}'
+            for sub, n in chk['subs'].items():
+                assert sum(1 for r in cur if r['sub'] == sub) == n, f'{name} : sous-thème {sub}'
+    return [by_n[n] for n in sorted(by_n)]
 
 
 def sub_id(sub):
@@ -159,12 +214,35 @@ def build(xlsx, verbose=False):
         if verbose:
             print(f'correspondance V1 → V2 figée ({len(v1)} cartes V1) :')
             print('\n'.join(report) or '  (toutes retrouvées à l’identique)')
+    # patchs : un rebrand garde l'id de la carte (des joueurs l'ont peut-être) ; une image nouvelle sera récoltée
+    changed = False
+    for r in rows:
+        if r.get('was') and key(r) not in ids and r['was'] in ids:
+            meta = ids.pop(r['was'])
+            if r['url'] and r['url'] != r['was_url']:
+                meta = {**meta, 'dir': 'art/monde', 'file': '', 'reimage': True}
+            ids[key(r)] = meta
+            changed = True
+    used = {v['id'] for v in ids.values()}
+    for r in rows:  # cartes insérées par un patch
+        if key(r) not in ids:
+            base = f"{PREFIX[r['group']]}-{slug(r['name'])}"
+            cid, n = base, 2
+            while cid in used:
+                cid, n = f'{base}-{n}', n + 1
+            used.add(cid)
+            ids[key(r)] = {'id': cid, 'dir': 'art/monde', 'file': ''}
+            changed = True
+    if changed:
+        with open(IDS, 'w', encoding='utf-8') as f:
+            json.dump(ids, f, ensure_ascii=False, indent=0, sort_keys=True)
     cards, nums = [], collections.Counter()
     for r in rows:
         meta = ids[key(r)]
         nums[r['sub']] += 1
         cards.append({**r, 'subId': sub_id(r['sub']), 'num': nums[r['sub']], 'id': meta['id'], 'dir': meta['dir'],
-                      'file': meta['file'] or f"{sub_id(r['sub'])}--{meta['id'].split('-', 1)[1]}", 'v1': meta['dir'] != 'art/monde'})
+                      'file': meta['file'] or f"{sub_id(r['sub'])}--{meta['id'].split('-', 1)[1]}", 'v1': meta['dir'] != 'art/monde',
+                      'reimage': bool(meta.get('reimage'))})
     # cartes V1 absentes de la V2 : gardées (jamais d'inventaire orphelin), dans leur sous-thème d'origine ou le 1er du groupe
     kept = [v for k, v in ids.items() if k.startswith('__v1__|')]
     for v in kept:
@@ -317,6 +395,9 @@ def harvest(xlsx, budget, retry):
     os.makedirs(THUMBS, exist_ok=True)
     cards, _ = build(xlsx, verbose=True)
     log = load_log()
+    for c in cards:  # rebrand avec une nouvelle image : l'image V1 notée au journal ne vaut plus
+        if c.get('reimage') and log.get(c['id'], {}).get('src') == 'v1':
+            del log[c['id']]
     for c in cards:  # cartes V1 : on garde leur image, on note seulement son type
         if c['v1'] and c['id'] not in log:
             log[c['id']] = {'file': c['file'], 'art': v1_art(c), 'src': 'v1'}

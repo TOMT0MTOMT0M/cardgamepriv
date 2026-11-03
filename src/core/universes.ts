@@ -2,7 +2,7 @@
  * Univers d'origine des cartes (les six premiers sont inventés pour le lab ; `pokemon` = set Pokémon 151). Chaque carte affiche son nom et celui de son univers —
  * pas de statistiques, pas de texte d'ambiance. La rareté se lit en étoiles, couleurs et effets.
  */
-export type UniverseId = 'cendre' | 'marees' | 'lune' | 'monts' | 'ronces' | 'abime' | 'pokemon' | 'valorant' | 'lol' | 'cs' | 'bebous' | 'monde' | 'jv';
+export type UniverseId = 'cendre' | 'marees' | 'lune' | 'monts' | 'ronces' | 'abime' | 'pokemon' | 'valorant' | 'lol' | 'cs' | 'bebous' | 'monde' | 'jv' | 'sport';
 
 export interface Universe {
   id: UniverseId;
@@ -27,6 +27,7 @@ export const UNIVERSES: Record<UniverseId, Universe> = {
   bebous: { id: 'bebous', name: 'Les Bébous', short: 'Bébous', hex: '#e8927c' },
   monde: { id: 'monde', name: 'Monde Réel', short: 'Monde', hex: '#4c9be0' },
   jv: { id: 'jv', name: 'Jeux vidéo', short: 'Jeux vidéo', hex: '#a77bff' },
+  sport: { id: 'sport', name: 'Sport & Esport', short: 'Sport', hex: '#3fbf7f' },
 };
 
 export function universe(id: UniverseId): Universe {

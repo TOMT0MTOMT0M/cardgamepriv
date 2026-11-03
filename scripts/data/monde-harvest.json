@@ -183,6 +183,7 @@
 "auto-abarth-124-spider": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646385
 },
@@ -193,9 +194,10 @@
 "t": 1793646041
 },
 "auto-abarth-595": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "modeles-iconiques--abarth-595.jpg",
+"s2": 1,
+"src": "wikidata:Q2614496:P18",
 "t": 1793646164
 },
 "auto-aixam-voiture-sans-permis": {
@@ -487,9 +489,10 @@
 "src": "v1"
 },
 "auto-audi-sport-quattro-s1": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "modeles-iconiques--audi-sport-quattro-s1.jpg",
+"s2": 1,
+"src": "wikidata:Q1934633:P18",
 "t": 1793645477
 },
 "auto-audi-tt": {
@@ -1059,9 +1062,10 @@
 "t": 1793646093
 },
 "auto-ds-7-crossback": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "voitures-francaises--ds-7-crossback.jpg",
+"s2": 1,
+"src": "wikidata:Q28836003:P18",
 "t": 1793645946
 },
 "auto-ds-9": {
@@ -1129,9 +1133,10 @@
 "t": 1793645671
 },
 "auto-ferrari-dino-246": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "modeles-iconiques--ferrari-dino-246.jpg",
+"s2": 1,
+"src": "wikidata:Q10352191:P18",
 "t": 1793645672
 },
 "auto-ferrari-enzo": {
@@ -1326,14 +1331,16 @@
 "t": 1793646427
 },
 "auto-ford-f-150": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "modeles-iconiques--ford-f-150.jpg",
+"s2": 1,
+"src": "wikidata:Q1146685:P18",
 "t": 1793645478
 },
 "auto-ford-falcon-xb-gt-mad-max": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645678
 },
@@ -1455,9 +1462,10 @@
 "t": 1793645809
 },
 "auto-honda-integra-type-r": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "sportives-japonaises--honda-integra-type-r.jpg",
+"s2": 1,
+"src": "wikidata:Q16065211:P18",
 "t": 1793645590
 },
 "auto-honda-jazz": {
@@ -1984,9 +1992,10 @@
 "t": 1793645577
 },
 "auto-mercedes-benz-190-e-2-5-16": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "modeles-iconiques--mercedes-benz-190-e-2-5-16.jpg",
+"s2": 1,
+"src": "wikidata:Q56344918:P18",
 "t": 1793646266
 },
 "auto-mercedes-benz-190-sl": {
@@ -2091,6 +2100,7 @@
 "auto-mini-cooper-s-jcw": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646281
 },
@@ -2160,9 +2170,10 @@
 "t": 1793645813
 },
 "auto-nissan-240z-fairlady": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "modeles-iconiques--nissan-240z-fairlady.jpg",
+"s2": 1,
+"src": "wikidata:Q2575681:P18",
 "t": 1793645738
 },
 "auto-nissan-300zx": {
@@ -2239,6 +2250,7 @@
 "auto-nissan-pulsar-gti-r": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645919
 },
@@ -2406,9 +2418,10 @@
 "src": "v1"
 },
 "auto-peugeot-205-rallye": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "voitures-francaises--peugeot-205-rallye.jpg",
+"s2": 1,
+"src": "wikidata:Q215218:P18",
 "t": 1793645948
 },
 "auto-peugeot-205-turbo-16-groupe-b": {
@@ -2989,6 +3002,7 @@
 "auto-renault-megane-e-tech": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646022
 },
@@ -3136,9 +3150,10 @@
 "t": 1793646521
 },
 "auto-seat-panda": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "modeles-iconiques--seat-panda.jpg",
+"s2": 1,
+"src": "wikidata:Q579710:P18",
 "t": 1793645877
 },
 "auto-shelby-cobra-427": {
@@ -3621,15 +3636,17 @@
 "t": 1793646559
 },
 "auto-zastava-yugo": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "modeles-iconiques--zastava-yugo.jpg",
+"s2": 1,
+"src": "wikidata:Q15781:P18",
 "t": 1793645776
 },
 "geo-aba": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-afrique--aba.jpg",
+"s2": 1,
+"src": "wikidata:Q202162:P18",
 "t": 1793646204
 },
 "geo-abbaye-de-westminster": {
@@ -3670,6 +3687,7 @@
 "geo-abu-ghurayb": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646352
 },
@@ -3783,6 +3801,7 @@
 "geo-aihara": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646480
 },
@@ -3807,25 +3826,29 @@
 "geo-al-ain-city": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646389
 },
 "geo-al-hudaydah": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--al-hudaydah.jpg",
+"s2": 1,
+"src": "wikidata:Q270041:P18",
 "t": 1793646465
 },
 "geo-al-mansurah": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Al Mansurah (Riyadh)",
-"file": "",
-"src": "",
+"file": "villes-d-afrique--al-mansurah.jpg",
+"s2": 1,
+"src": "wikidata:Q223587:P18",
 "t": 1793646579
 },
 "geo-al-mawsil-al-jadidah": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645946
 },
@@ -3929,9 +3952,10 @@
 "src": "v1"
 },
 "geo-andijon": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--andijon.jpg",
+"s2": 1,
+"src": "wikidata:Q487656:P18",
 "t": 1793646459
 },
 "geo-andorre-la-vieille": {
@@ -3976,9 +4000,10 @@
 "t": 1793646412
 },
 "geo-ansan-si": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--ansan-si.jpg",
+"s2": 1,
+"src": "wikidata:Q42117:P18",
 "t": 1793646578
 },
 "geo-anshan": {
@@ -4066,6 +4091,7 @@
 "geo-arifwala": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646387
 },
@@ -4247,6 +4273,7 @@
 "geo-bao-an": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645809
 },
@@ -4455,6 +4482,7 @@
 "geo-bhayandar": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646411
 },
@@ -4671,9 +4699,10 @@
 "t": 1793645985
 },
 "geo-bucheon-si": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--bucheon-si.jpg",
+"s2": 1,
+"src": "wikidata:Q42099:P18",
 "t": 1793646388
 },
 "geo-buckingham-palace": {
@@ -4690,6 +4719,7 @@
 "geo-budta": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646146
 },
@@ -4784,13 +4814,15 @@
 "geo-calumbo": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646544
 },
 "geo-camama": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-afrique--camama.jpg",
+"s2": 1,
+"src": "wikidata:Q9675019:P18",
 "t": 1793646524
 },
 "geo-camayenne": {
@@ -5002,6 +5034,7 @@
 "geo-changning": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646502
 },
@@ -5112,9 +5145,10 @@
 "t": 1793645655
 },
 "geo-chateau-de-schonbrunn": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "monuments-patrimoine--chateau-de-schonbrunn.jpg",
+"s2": 1,
+"src": "wikidata:Q131330:P18",
 "t": 1793645656
 },
 "geo-chateau-de-vaux-le-vicomte": {
@@ -5147,9 +5181,10 @@
 "t": 1793645439
 },
 "geo-chattogram": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--chattogram.jpg",
+"s2": 1,
+"src": "wikidata:Q376749:P18",
 "t": 1793645816
 },
 "geo-chaussee-des-geants": {
@@ -5185,6 +5220,7 @@
 "geo-chengtangcun": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646020
 },
@@ -5201,9 +5237,10 @@
 "t": 1793646539
 },
 "geo-cheongju-si": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--cheongju-si.jpg",
+"s2": 1,
+"src": "wikidata:Q42147:P18",
 "t": 1793646387
 },
 "geo-chiba": {
@@ -5224,10 +5261,11 @@
 "t": 1793646583
 },
 "geo-chihuahua": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Chihuahua (chien)",
-"file": "",
-"src": "",
+"file": "villes-d-amerique-du-nord--chihuahua.jpg",
+"s2": 1,
+"src": "wikidata:Q2475171:P18",
 "t": 1793646333
 },
 "geo-chisinau": {
@@ -5257,6 +5295,7 @@
 "geo-chunian": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646575
 },
@@ -5334,9 +5373,10 @@
 "t": 1793646228
 },
 "geo-cixi": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--cixi.jpg",
+"s2": 1,
+"src": "wikidata:Q706161:P18",
 "t": 1793646080
 },
 "geo-cn-tower-toronto": {
@@ -5465,10 +5505,11 @@
 "t": 1793646431
 },
 "geo-cuenca": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Cuenca (Espagne)",
-"file": "",
-"src": "",
+"file": "villes-d-amerique-du-sud--cuenca.jpg",
+"s2": 1,
+"src": "wikidata:Q15098:P18",
 "t": 1793646562
 },
 "geo-cuiaba": {
@@ -5627,15 +5668,17 @@
 "t": 1793646478
 },
 "geo-departement-d-eure-et-loir": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-d-eure-et-loir.jpg",
+"s2": 1,
+"src": "wikidata:Q3377:P18",
 "t": 1793645679
 },
 "geo-departement-d-ille-et-vilaine": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-d-ille-et-vilaine.jpg",
+"s2": 1,
+"src": "wikidata:Q12549:P18",
 "t": 1793645534
 },
 "geo-departement-d-indre-et-loire": {
@@ -5645,15 +5688,17 @@
 "t": 1793645678
 },
 "geo-departement-de-l-ain": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-l-ain.jpg",
+"s2": 1,
+"src": "wikidata:Q3083:P18",
 "t": 1793645692
 },
 "geo-departement-de-l-aisne": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-l-aisne.jpg",
+"s2": 1,
+"src": "wikidata:Q3093:P18",
 "t": 1793645692
 },
 "geo-departement-de-l-allier": {
@@ -5663,15 +5708,17 @@
 "t": 1793645680
 },
 "geo-departement-de-l-ariege": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-l-ariege.jpg",
+"s2": 1,
+"src": "wikidata:Q3184:P18",
 "t": 1793645693
 },
 "geo-departement-de-l-aube": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-l-aube.jpg",
+"s2": 1,
+"src": "wikidata:Q1047537:P18",
 "t": 1793645692
 },
 "geo-departement-de-l-aude": {
@@ -5723,9 +5770,10 @@
 "t": 1793645693
 },
 "geo-departement-de-l-orne": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-l-orne.jpg",
+"s2": 1,
+"src": "wikidata:Q12679:P18",
 "t": 1793645695
 },
 "geo-departement-de-l-yonne": {
@@ -5735,9 +5783,10 @@
 "t": 1793645694
 },
 "geo-departement-de-la-charente": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-charente.jpg",
+"s2": 1,
+"src": "wikidata:Q3266:P18",
 "t": 1793645695
 },
 "geo-departement-de-la-charente-maritime": {
@@ -5771,9 +5820,10 @@
 "t": 1793645694
 },
 "geo-departement-de-la-dordogne": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-dordogne.jpg",
+"s2": 1,
+"src": "wikidata:Q3357:P18",
 "t": 1793645536
 },
 "geo-departement-de-la-drome": {
@@ -5825,9 +5875,10 @@
 "t": 1793645696
 },
 "geo-departement-de-la-haute-saone": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-haute-saone.jpg",
+"s2": 1,
+"src": "wikidata:Q12730:P18",
 "t": 1793645697
 },
 "geo-departement-de-la-haute-savoie": {
@@ -5843,9 +5894,10 @@
 "t": 1793645696
 },
 "geo-departement-de-la-loire": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-loire.jpg",
+"s2": 1,
+"src": "wikidata:Q12569:P18",
 "t": 1793645697
 },
 "geo-departement-de-la-loire-atlantique": {
@@ -5879,15 +5931,17 @@
 "t": 1793645697
 },
 "geo-departement-de-la-mayenne": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-mayenne.jpg",
+"s2": 1,
+"src": "wikidata:Q213513:P18",
 "t": 1793645698
 },
 "geo-departement-de-la-meuse": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-meuse.jpg",
+"s2": 1,
+"src": "wikidata:Q12631:P18",
 "t": 1793645698
 },
 "geo-departement-de-la-moselle": {
@@ -5909,33 +5963,38 @@
 "t": 1793645679
 },
 "geo-departement-de-la-sarthe": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-sarthe.jpg",
+"s2": 1,
+"src": "wikidata:Q12740:P18",
 "t": 1793645699
 },
 "geo-departement-de-la-savoie": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-savoie.jpg",
+"s2": 1,
+"src": "wikidata:Q12745:P18",
 "t": 1793645537
 },
 "geo-departement-de-la-seine-maritime": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-seine-maritime.jpg",
+"s2": 1,
+"src": "wikidata:Q12758:P18",
 "t": 1793645538
 },
 "geo-departement-de-la-seine-saint-denis": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-seine-saint-denis.jpg",
+"s2": 1,
+"src": "wikidata:Q12761:P18",
 "t": 1793645537
 },
 "geo-departement-de-la-somme": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-somme.jpg",
+"s2": 1,
+"src": "wikidata:Q12770:P18",
 "t": 1793645699
 },
 "geo-departement-de-la-vendee": {
@@ -5945,9 +6004,10 @@
 "t": 1793645536
 },
 "geo-departement-de-la-vienne": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-la-vienne.jpg",
+"s2": 1,
+"src": "wikidata:Q26849:P18",
 "t": 1793645699
 },
 "geo-departement-de-loir-et-cher": {
@@ -5957,9 +6017,10 @@
 "t": 1793645678
 },
 "geo-departement-de-lot-et-garonne": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-lot-et-garonne.jpg",
+"s2": 1,
+"src": "wikidata:Q12578:P18",
 "t": 1793645679
 },
 "geo-departement-de-mayotte": {
@@ -5969,9 +6030,10 @@
 "t": 1793645679
 },
 "geo-departement-de-meurthe-et-moselle": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-de-meurthe-et-moselle.jpg",
+"s2": 1,
+"src": "wikidata:Q12626:P18",
 "t": 1793645680
 },
 "geo-departement-de-paris": {
@@ -5983,6 +6045,7 @@
 "geo-departement-de-saone-et-loire": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645680
 },
@@ -6011,9 +6074,10 @@
 "t": 1793645536
 },
 "geo-departement-des-ardennes": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-des-ardennes.jpg",
+"s2": 1,
+"src": "wikidata:Q3164:P18",
 "t": 1793645700
 },
 "geo-departement-des-bouches-du-rhone": {
@@ -6035,9 +6099,10 @@
 "t": 1793645699
 },
 "geo-departement-des-hautes-alpes": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-des-hautes-alpes.jpg",
+"s2": 1,
+"src": "wikidata:Q3125:P18",
 "t": 1793645700
 },
 "geo-departement-des-hautes-pyrenees": {
@@ -6047,15 +6112,17 @@
 "t": 1793645699
 },
 "geo-departement-des-hauts-de-seine": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-des-hauts-de-seine.jpg",
+"s2": 1,
+"src": "wikidata:Q12543:P18",
 "t": 1793645712
 },
 "geo-departement-des-landes": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-des-landes.jpg",
+"s2": 1,
+"src": "wikidata:Q24695:P18",
 "t": 1793645712
 },
 "geo-departement-des-pyrenees-atlantiques": {
@@ -6113,9 +6180,10 @@
 "t": 1793645715
 },
 "geo-departement-du-finistere": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-du-finistere.jpg",
+"s2": 1,
+"src": "wikidata:Q3389:P18",
 "t": 1793645538
 },
 "geo-departement-du-gard": {
@@ -6131,9 +6199,10 @@
 "t": 1793645713
 },
 "geo-departement-du-haut-rhin": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-du-haut-rhin.jpg",
+"s2": 1,
+"src": "wikidata:Q12722:P18",
 "t": 1793645715
 },
 "geo-departement-du-jura": {
@@ -6149,21 +6218,24 @@
 "t": 1793645713
 },
 "geo-departement-du-lot": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-du-lot.jpg",
+"s2": 1,
+"src": "wikidata:Q12576:P18",
 "t": 1793645714
 },
 "geo-departement-du-maine-et-loire": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-du-maine-et-loire.jpg",
+"s2": 1,
+"src": "wikidata:Q12584:P18",
 "t": 1793645715
 },
 "geo-departement-du-morbihan": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "departements--departement-du-morbihan.jpg",
+"s2": 1,
+"src": "wikidata:Q12642:P18",
 "t": 1793645539
 },
 "geo-departement-du-nord": {
@@ -6378,6 +6450,7 @@
 "geo-dombivali": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646162
 },
@@ -6396,6 +6469,7 @@
 "geo-dongcun": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646539
 },
@@ -6451,10 +6525,11 @@
 "t": 1793645440
 },
 "geo-duque-de-caxias": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Duque de Caxias (Santa Maria)",
-"file": "",
-"src": "",
+"file": "villes-d-amerique-du-sud--duque-de-caxias.jpg",
+"s2": 1,
+"src": "wikidata:Q193021:P18",
 "t": 1793646384
 },
 "geo-durban": {
@@ -6489,6 +6564,7 @@
 "geo-edogawe": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646501
 },
@@ -6578,6 +6654,7 @@
 "geo-evaton": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646480
 },
@@ -6590,6 +6667,7 @@
 "geo-ezhou": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646523
 },
@@ -6631,6 +6709,7 @@
 "geo-fengxiang": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646206
 },
@@ -6713,6 +6792,7 @@
 "art": "",
 "dropped": "wiki:Frankfurt Am Main (A-1412)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646556
 },
@@ -6919,9 +6999,10 @@
 "t": 1793645592
 },
 "geo-goyang-si": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--goyang-si.jpg",
+"s2": 1,
+"src": "wikidata:Q42061:P18",
 "t": 1793646229
 },
 "geo-gqeberha": {
@@ -6968,6 +7049,7 @@
 "geo-grand-torii-d-itsukushima": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645440
 },
@@ -6985,6 +7067,7 @@
 "geo-grande-mosquee-sheikh-zayed": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645440
 },
@@ -7001,9 +7084,10 @@
 "t": 1793646112
 },
 "geo-guadalupe": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-amerique-du-nord--guadalupe.jpg",
+"s2": 1,
+"src": "wikidata:Q695504:P18",
 "t": 1793646522
 },
 "geo-guangan": {
@@ -7015,6 +7099,7 @@
 "geo-guankou": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646112
 },
@@ -7079,9 +7164,10 @@
 "t": 1793646522
 },
 "geo-gurugram": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--gurugram.jpg",
+"s2": 1,
+"src": "wikidata:Q238508:P18",
 "t": 1793646366
 },
 "geo-gustavo-adolfo-madero": {
@@ -7260,6 +7346,7 @@
 "geo-hlaingthaya": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646517
 },
@@ -7272,6 +7359,7 @@
 "geo-hobbiton-comte": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645441
 },
@@ -7284,6 +7372,7 @@
 "geo-hoji-ya-henda": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646559
 },
@@ -7301,12 +7390,14 @@
 "geo-honcho": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646558
 },
 "geo-hondlon": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646429
 },
@@ -7322,9 +7413,10 @@
 "t": 1793646185
 },
 "geo-hongkou": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--hongkou.jpg",
+"s2": 1,
+"src": "wikidata:Q661364:P18",
 "t": 1793646518
 },
 "geo-honiara": {
@@ -7390,6 +7482,7 @@
 "geo-hubballi": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646331
 },
@@ -7418,9 +7511,10 @@
 "t": 1793646262
 },
 "geo-hwaseong-si": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--hwaseong-si.jpg",
+"s2": 1,
+"src": "wikidata:Q42160:P18",
 "t": 1793646559
 },
 "geo-hyderabad": {
@@ -7591,6 +7685,7 @@
 "geo-jajmau": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646543
 },
@@ -7607,9 +7702,10 @@
 "t": 1793646370
 },
 "geo-jambi-city": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--jambi-city.jpg",
+"s2": 1,
+"src": "wikidata:Q7578:P18",
 "t": 1793646562
 },
 "geo-jamshedpur": {
@@ -7642,9 +7738,10 @@
 "src": "v1"
 },
 "geo-jiading": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--jiading.jpg",
+"s2": 1,
+"src": "wikidata:Q426868:P18",
 "t": 1793645985
 },
 "geo-jiangmen": {
@@ -7662,6 +7759,7 @@
 "geo-jiaojiang": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646407
 },
@@ -7704,6 +7802,7 @@
 "geo-jingan": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646332
 },
@@ -7848,6 +7947,7 @@
 "geo-kampung-baru-subang": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646406
 },
@@ -7860,6 +7960,7 @@
 "geo-kanayannur": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646388
 },
@@ -7936,9 +8037,10 @@
 "t": 1793646163
 },
 "geo-kennedy": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-amerique-du-sud--kennedy.jpg",
+"s2": 1,
+"src": "wikidata:Q605317:P18",
 "t": 1793646311
 },
 "geo-kermanshah": {
@@ -7992,6 +8094,7 @@
 "geo-kikolo": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646466
 },
@@ -8061,10 +8164,11 @@
 "t": 1793646563
 },
 "geo-koln": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Köln (1928)",
-"file": "",
-"src": "",
+"file": "villes-d-europe--koln.jpg",
+"s2": 1,
+"src": "wikidata:Q365:P18",
 "t": 1793646260
 },
 "geo-kolwezi": {
@@ -8313,6 +8417,7 @@
 "geo-lagon-bleu-d-islande": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645595
 },
@@ -8410,9 +8515,10 @@
 "t": 1793645722
 },
 "geo-leon-de-los-aldama": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-amerique-du-nord--leon-de-los-aldama.jpg",
+"s2": 1,
+"src": "wikidata:Q189128:P18",
 "t": 1793646056
 },
 "geo-leshan": {
@@ -8422,9 +8528,10 @@
 "t": 1793646540
 },
 "geo-lettres-hollywood": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "monuments-patrimoine--lettres-hollywood.jpg",
+"s2": 1,
+"src": "wikidata:Q180376:P18",
 "t": 1793645420
 },
 "geo-lhasa": {
@@ -8464,9 +8571,10 @@
 "t": 1793646389
 },
 "geo-likasi": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-afrique--likasi.jpg",
+"s2": 1,
+"src": "wikidata:Q18780:P18",
 "t": 1793646564
 },
 "geo-lilongwe": {
@@ -8617,9 +8725,10 @@
 "t": 1793646144
 },
 "geo-luohu-district": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--luohu-district.jpg",
+"s2": 1,
+"src": "wikidata:Q1001376:P18",
 "t": 1793646206
 },
 "geo-luoyang": {
@@ -8682,15 +8791,17 @@
 "t": 1793645834
 },
 "geo-madinah": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--madinah.jpg",
+"s2": 1,
+"src": "wikidata:Q35484:P18",
 "t": 1793646143
 },
 "geo-madinat-an-nasr": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-afrique--madinat-an-nasr.jpg",
+"s2": 1,
+"src": "wikidata:Q1309979:P18",
 "t": 1793646524
 },
 "geo-madras": {
@@ -8741,9 +8852,10 @@
 "t": 1793646077
 },
 "geo-makkah": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--makkah.jpg",
+"s2": 1,
+"src": "wikidata:Q5806:P18",
 "t": 1793646057
 },
 "geo-malabo": {
@@ -8773,6 +8885,7 @@
 "geo-malingao": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646209
 },
@@ -8837,9 +8950,10 @@
 "t": 1793646020
 },
 "geo-maracana": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "monuments-patrimoine--maracana.jpg",
+"s2": 1,
+"src": "wikidata:Q2712903:P18",
 "t": 1793645444
 },
 "geo-marina-bay-sands": {
@@ -9068,10 +9182,11 @@
 "t": 1793645743
 },
 "geo-merida": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Mérida (Espagne)",
-"file": "",
-"src": "",
+"file": "villes-d-amerique-du-nord--merida.jpg",
+"s2": 1,
+"src": "wikidata:Q165204:P18",
 "t": 1793646180
 },
 "geo-meteores": {
@@ -9122,6 +9237,7 @@
 "geo-minhang": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645879
 },
@@ -9236,9 +9352,10 @@
 "t": 1793645596
 },
 "geo-mont-roraima": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "sites-naturels--mont-roraima.jpg",
+"s2": 1,
+"src": "wikidata:Q4777:P18",
 "t": 1793645597
 },
 "geo-mont-rushmore": {
@@ -9260,6 +9377,7 @@
 "geo-mont-toubkal": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645734
 },
@@ -9365,6 +9483,7 @@
 "geo-mulenvos": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646367
 },
@@ -9400,6 +9519,7 @@
 "geo-murray": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645835
 },
@@ -9433,9 +9553,10 @@
 "t": 1793646224
 },
 "geo-mysuru": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--mysuru.jpg",
+"s2": 1,
+"src": "wikidata:Q10086:P18",
 "t": 1793646334
 },
 "geo-n-djamena": {
@@ -9492,9 +9613,10 @@
 "t": 1793645998
 },
 "geo-nanhai": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--nanhai.jpg",
+"s2": 1,
+"src": "wikidata:Q1023893:P18",
 "t": 1793645848
 },
 "geo-nankin": {
@@ -9551,10 +9673,11 @@
 "t": 1793646641
 },
 "geo-natal": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Natal (Afrique)",
-"file": "",
-"src": "",
+"file": "villes-d-amerique-du-sud--natal.jpg",
+"s2": 1,
+"src": "wikidata:Q3183010:P18",
 "t": 1793646354
 },
 "geo-naucalpan-de-juarez": {
@@ -9570,9 +9693,10 @@
 "t": 1793645897
 },
 "geo-nay-pyi-taw": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--nay-pyi-taw.jpg",
+"s2": 1,
+"src": "wikidata:Q37400:P18",
 "t": 1793646333
 },
 "geo-naypyidaw": {
@@ -9601,6 +9725,7 @@
 "geo-new-south-memphis": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646559
 },
@@ -9713,6 +9838,7 @@
 "geo-nowrangapur": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646177
 },
@@ -9860,6 +9986,7 @@
 "geo-osogbo": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646560
 },
@@ -9888,10 +10015,11 @@
 "t": 1793645783
 },
 "geo-oyo": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Oyo (république du Congo)",
-"file": "",
-"src": "",
+"file": "villes-d-afrique--oyo.jpg",
+"s2": 1,
+"src": "wikidata:Q1023703:P18",
 "t": 1793646463
 },
 "geo-padang": {
@@ -9939,6 +10067,7 @@
 "geo-palais-royal-de-bangkok": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645476
 },
@@ -9993,13 +10122,15 @@
 "geo-panshan": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646577
 },
 "geo-pantheon-de-paris": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "monuments-patrimoine--pantheon-de-paris.jpg",
+"s2": 1,
+"src": "wikidata:Q188856:P18",
 "t": 1793645478
 },
 "geo-pantheon-de-rome": {
@@ -10021,16 +10152,18 @@
 "t": 1793646643
 },
 "geo-parana": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Paraná (state)",
-"file": "",
-"src": "",
+"file": "mers-fleuves-lacs--parana.jpg",
+"s2": 1,
+"src": "wikidata:Q127892:P18",
 "t": 1793645835
 },
 "geo-paranaque-city": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--paranaque-city.jpg",
+"s2": 1,
+"src": "wikidata:Q17182:P18",
 "t": 1793646499
 },
 "geo-parc-asterix": {
@@ -10064,9 +10197,10 @@
 "t": 1793645477
 },
 "geo-parc-kruger": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "sites-naturels--parc-kruger.jpg",
+"s2": 1,
+"src": "wikidata:Q24451:P18",
 "t": 1793645610
 },
 "geo-parc-national-de-yellowstone": {
@@ -10086,9 +10220,10 @@
 "t": 1793645478
 },
 "geo-pasig-city": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--pasig-city.jpg",
+"s2": 1,
+"src": "wikidata:Q1624:P18",
 "t": 1793646386
 },
 "geo-patna": {
@@ -11160,10 +11295,11 @@
 "t": 1793646056
 },
 "geo-phoenix": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Phoenix (groupe)",
-"file": "",
-"src": "",
+"file": "villes-d-amerique-du-nord--phoenix.jpg",
+"s2": 1,
+"src": "wikidata:Q16556:P18",
 "t": 1793646038
 },
 "geo-pietermaritzburg": {
@@ -11327,10 +11463,11 @@
 "t": 1793645942
 },
 "geo-port-louis": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Port-Louis (Morbihan)",
-"file": "",
-"src": "",
+"file": "capitales--port-louis.jpg",
+"s2": 1,
+"src": "wikidata:Q128223:P18",
 "t": 1793646663
 },
 "geo-port-moresby": {
@@ -11354,6 +11491,7 @@
 "geo-portaventura": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645612
 },
@@ -11467,6 +11605,7 @@
 "geo-putuo": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646164
 },
@@ -11501,9 +11640,10 @@
 "t": 1793645854
 },
 "geo-pyramides-de-meroe": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "monuments-patrimoine--pyramides-de-meroe.jpg",
+"s2": 1,
+"src": "wikidata:Q456939:P18",
 "t": 1793645674
 },
 "geo-pyrenees": {
@@ -11519,14 +11659,16 @@
 "t": 1793645676
 },
 "geo-qingpu": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--qingpu.jpg",
+"s2": 1,
+"src": "wikidata:Q662548:P18",
 "t": 1793646147
 },
 "geo-qingshan": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646484
 },
@@ -11656,21 +11798,24 @@
 "t": 1793645809
 },
 "geo-rangpur": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Rangpur (fruit)",
-"file": "",
-"src": "",
+"file": "villes-d-asie-d-oceanie--rangpur.jpg",
+"s2": 1,
+"src": "wikidata:Q2344570:P18",
 "t": 1793646246
 },
 "geo-ras-bayrut": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646161
 },
 "geo-rasapudipalem": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646023
 },
@@ -11689,6 +11834,7 @@
 "geo-registan-de-samarcande": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645555
 },
@@ -11760,6 +11906,7 @@
 "art": "",
 "dropped": "wiki:Rohini (actress)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646385
 },
@@ -11840,9 +11987,10 @@
 "t": 1793645926
 },
 "geo-saint-georges": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "capitales--saint-georges.jpg",
+"s2": 1,
+"src": "wikidata:Q143227:P18",
 "t": 1793646669
 },
 "geo-saint-jacques-de-compostelle": {
@@ -11903,10 +12051,11 @@
 "t": 1793646313
 },
 "geo-salem": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Salem (Massachusetts)",
-"file": "",
-"src": "",
+"file": "villes-d-asie-d-oceanie--salem.jpg",
+"s2": 1,
+"src": "wikidata:Q43919:P18",
 "t": 1793646335
 },
 "geo-saltillo": {
@@ -12135,9 +12284,10 @@
 "t": 1793646225
 },
 "geo-seongnam-si": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--seongnam-si.jpg",
+"s2": 1,
+"src": "wikidata:Q42108:P18",
 "t": 1793646335
 },
 "geo-seoul": {
@@ -12155,6 +12305,7 @@
 "art": "",
 "dropped": "wiki:Serengeti (chat)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645612
 },
@@ -12165,9 +12316,10 @@
 "t": 1793646332
 },
 "geo-sevilla": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-europe--sevilla.jpg",
+"s2": 1,
+"src": "wikidata:Q386388:P18",
 "t": 1793646518
 },
 "geo-shah-alam": {
@@ -12256,6 +12408,7 @@
 "geo-shivaji-nagar": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646279
 },
@@ -12284,9 +12437,10 @@
 "t": 1793646280
 },
 "geo-shubra-al-khaymah": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-afrique--shubra-al-khaymah.jpg",
+"s2": 1,
+"src": "wikidata:Q269960:P18",
 "t": 1793646163
 },
 "geo-shymkent": {
@@ -12327,6 +12481,7 @@
 "geo-situbondo": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646519
 },
@@ -12373,9 +12528,10 @@
 "t": 1793646244
 },
 "geo-songjiang": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--songjiang.jpg",
+"s2": 1,
+"src": "wikidata:Q662380:P18",
 "t": 1793645982
 },
 "geo-sorocaba": {
@@ -12490,6 +12646,7 @@
 "geo-sultanah": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646330
 },
@@ -12692,6 +12849,7 @@
 "geo-temple-d-or-d-amritsar": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645481
 },
@@ -12711,6 +12869,7 @@
 "art": "",
 "dropped": "wiki:Teni (chanteuse)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646245
 },
@@ -12822,9 +12981,10 @@
 "t": 1793646316
 },
 "geo-tlalnepantla": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-amerique-du-nord--tlalnepantla.jpg",
+"s2": 1,
+"src": "wikidata:Q20656314:P18",
 "t": 1793646542
 },
 "geo-tlaquepaque": {
@@ -13030,9 +13190,10 @@
 "t": 1793646040
 },
 "geo-valenzuela": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--valenzuela.jpg",
+"s2": 1,
+"src": "wikidata:Q586705:P18",
 "t": 1793646481
 },
 "geo-vallee-de-la-lune-atacama": {
@@ -13086,10 +13247,11 @@
 "t": 1793645496
 },
 "geo-viana": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Viana (Navarre)",
-"file": "",
-"src": "",
+"file": "villes-d-afrique--viana.jpg",
+"s2": 1,
+"src": "wikidata:Q907241:P18",
 "t": 1793646373
 },
 "geo-victoria": {
@@ -13118,6 +13280,7 @@
 "geo-vieux-pont-de-mostar": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645496
 },
@@ -13149,6 +13312,7 @@
 "art": "",
 "dropped": "wiki:Vira (danse)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646177
 },
@@ -13197,13 +13361,15 @@
 "geo-wanxian": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646384
 },
 "geo-wanzhou": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--wanzhou.jpg",
+"s2": 1,
+"src": "wikidata:Q713825:P18",
 "t": 1793646059
 },
 "geo-warangal": {
@@ -13284,9 +13450,10 @@
 "t": 1793646522
 },
 "geo-wuchang": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--wuchang.jpg",
+"s2": 1,
+"src": "wikidata:Q769855:P18",
 "t": 1793646225
 },
 "geo-wuchuan": {
@@ -13392,9 +13559,10 @@
 "t": 1793646096
 },
 "geo-xinyi": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--xinyi.jpg",
+"s2": 1,
+"src": "wikidata:Q1023896:P18",
 "t": 1793646263
 },
 "geo-xinyu": {
@@ -13418,6 +13586,7 @@
 "geo-xuhui": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646223
 },
@@ -13454,6 +13623,7 @@
 "geo-yangpu": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646178
 },
@@ -13524,9 +13694,10 @@
 "t": 1793645869
 },
 "geo-yishui": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "villes-d-asie-d-oceanie--yishui.jpg",
+"s2": 1,
+"src": "wikidata:Q1198349:P18",
 "t": 1793646266
 },
 "geo-yiwu": {
@@ -13706,6 +13877,7 @@
 "geo-zhu-cheng-city": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646279
 },
@@ -13841,12 +14013,14 @@
 "miam-americain-steak-hache": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646388
 },
 "miam-amora-moutarde": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645504
 },
@@ -13904,9 +14078,10 @@
 "t": 1793646391
 },
 "miam-arroz-con-leche": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "desserts-patisseries--arroz-con-leche.jpg",
+"s2": 1,
+"src": "wikidata:Q19029:P18",
 "t": 1793646334
 },
 "miam-asado": {
@@ -14035,6 +14210,7 @@
 "miam-belin-triangolini": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645520
 },
@@ -14047,6 +14223,7 @@
 "miam-benenuts": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645892
 },
@@ -14170,9 +14347,10 @@
 "src": "v1"
 },
 "miam-bounty": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "snacks-marques-fast-food--bounty.jpg",
+"s2": 1,
+"src": "wikidata:Q895167:P18",
 "t": 1793645422
 },
 "miam-bourek": {
@@ -14281,9 +14459,10 @@
 "t": 1793645659
 },
 "miam-buffalo-grill": {
-"art": "",
-"file": "",
-"src": "",
+"art": "i",
+"file": "snacks-marques-fast-food--buffalo-grill.png",
+"s2": 1,
+"src": "wikidata:Q944655:P154",
 "t": 1793646369
 },
 "miam-buffalo-wings": {
@@ -14499,9 +14678,10 @@
 "t": 1793646409
 },
 "miam-chaufa": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "plats-du-monde--chaufa.jpg",
+"s2": 1,
+"src": "wikidata:Q4796280:P18",
 "t": 1793646115
 },
 "miam-chausson-aux-pommes": {
@@ -14572,9 +14752,10 @@
 "src": "v1"
 },
 "miam-choucroute-de-la-mer": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "plats-du-monde--choucroute-de-la-mer.jpg",
+"s2": 1,
+"src": "wikidata:Q124151552:P18",
 "t": 1793646117
 },
 "miam-choucroute-garnie": {
@@ -14636,6 +14817,7 @@
 "miam-cocktail-belin": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645893
 },
@@ -14660,6 +14842,7 @@
 "miam-compote-andros": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645541
 },
@@ -14698,6 +14881,7 @@
 "miam-cordon-bleu-marque": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645895
 },
@@ -14768,12 +14952,14 @@
 "miam-crac": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645896
 },
 "miam-cracotte": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645897
 },
@@ -14814,12 +15000,14 @@
 "miam-crisps": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645898
 },
 "miam-croco-haribo": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645553
 },
@@ -14848,6 +15036,7 @@
 "miam-croquetas": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645740
 },
@@ -14860,13 +15049,15 @@
 "miam-croustillant-de-poisson": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645542
 },
 "miam-croziflette": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "plats-francais--croziflette.jpg",
+"s2": 1,
+"src": "wikidata:Q3005490:P18",
 "t": 1793645816
 },
 "miam-crunch": {
@@ -14891,6 +15082,7 @@
 "art": "",
 "dropped": "wiki:Curly (cheval)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645556
 },
@@ -14938,6 +15130,7 @@
 "miam-danonino": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645556
 },
@@ -14996,6 +15189,7 @@
 "miam-dragibus": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645423
 },
@@ -15007,6 +15201,7 @@
 "miam-eclair-au-cafe": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646077
 },
@@ -15060,6 +15255,7 @@
 "art": "",
 "dropped": "wiki:Entremont (oppidum)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645911
 },
@@ -15101,6 +15297,7 @@
 "miam-extreme": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645558
 },
@@ -15160,6 +15357,7 @@
 "miam-feuillete-aux-escargots": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646385
 },
@@ -15178,6 +15376,7 @@
 "miam-findus-poisson-pane": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645558
 },
@@ -15189,6 +15388,7 @@
 "miam-fitness-cereales": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645911
 },
@@ -15316,6 +15516,7 @@
 "miam-frisk": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645916
 },
@@ -15333,6 +15534,7 @@
 "miam-full-english-breakfast": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645745
 },
@@ -15367,6 +15569,7 @@
 "miam-garlic-butter-snails": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646242
 },
@@ -15495,6 +15698,7 @@
 "miam-gratin-de-crozets": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646242
 },
@@ -15596,9 +15800,10 @@
 "t": 1793646428
 },
 "miam-heinz-ketchup": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "snacks-marques-fast-food--heinz-ketchup.jpg",
+"s2": 1,
+"src": "wikidata:Q5700891:P18",
 "t": 1793645423
 },
 "miam-helene-darroze": {
@@ -15685,6 +15890,54 @@
 "src": "wiki:Jamón ibérico",
 "t": 1793645762
 },
+"miam-java-monster-dubai-chocolate": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670296
+},
+"miam-java-monster-irish-blend": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670296
+},
+"miam-java-monster-irish-creme": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670296
+},
+"miam-java-monster-kona-blend": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670297
+},
+"miam-java-monster-loca-moca": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670295
+},
+"miam-java-monster-mean-bean": {
+"art": "c",
+"file": "monster--java-monster-mean-bean.jpg",
+"src": "url",
+"t": 1793670295
+},
+"miam-java-monster-salted-caramel": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670296
+},
+"miam-java-monster-vanilla-light": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670296
+},
 "miam-jean-francois-piege": {
 "art": "c",
 "file": "chefs--jean-francois-piege.jpg",
@@ -15694,6 +15947,7 @@
 "miam-jerk-chicken": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645761
 },
@@ -15718,8 +15972,75 @@
 "miam-juan-arbelaez": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646575
+},
+"miam-juice-monster-aussie-style-lemonade": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670294
+},
+"miam-juice-monster-bad-apple": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670295
+},
+"miam-juice-monster-khaotic": {
+"art": "i",
+"file": "monster--juice-monster-khaotic.png",
+"src": "url",
+"t": 1793670294
+},
+"miam-juice-monster-mango-loco": {
+"art": "c",
+"file": "monster--juice-monster-mango-loco.jpg",
+"src": "url",
+"t": 1793670294
+},
+"miam-juice-monster-monarch": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670294
+},
+"miam-juice-monster-pacific-punch": {
+"art": "c",
+"file": "monster--juice-monster-pacific-punch.jpg",
+"src": "url",
+"t": 1793670294
+},
+"miam-juice-monster-papillon": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670294
+},
+"miam-juice-monster-pipeline-punch": {
+"art": "i",
+"file": "monster--juice-monster-pipeline-punch.png",
+"src": "url",
+"t": 1793670294
+},
+"miam-juice-monster-rio-punch": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670295
+},
+"miam-juice-monster-viking-berry": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670295
+},
+"miam-juice-monster-voodoo-grape": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670295
 },
 "miam-jus-d-orange": {
 "art": "c",
@@ -15764,31 +16085,36 @@
 "miam-kinder-country": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645573
 },
 "miam-kinder-delice": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645574
 },
 "miam-kinder-maxi": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645574
 },
 "miam-kinder-pingui": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645575
 },
 "miam-kinder-schokolade": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "snacks-marques-fast-food--kinder-schokolade.jpg",
+"s2": 1,
+"src": "wikidata:Q1059233:P18",
 "t": 1793645575
 },
 "miam-kinder-surprise": {
@@ -15851,6 +16177,7 @@
 "miam-kub-or": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645576
 },
@@ -15868,6 +16195,7 @@
 "miam-la-vosgienne": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645918
 },
@@ -15886,6 +16214,7 @@
 "miam-lardons-herta": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645921
 },
@@ -15909,6 +16238,7 @@
 "miam-liegeois": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645591
 },
@@ -15933,6 +16263,7 @@
 "miam-lion-cereales": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645591
 },
@@ -16019,6 +16350,7 @@
 "miam-madeleine-saint-michel": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645921
 },
@@ -16035,10 +16367,11 @@
 "t": 1793645593
 },
 "miam-magnum": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Magnum (série télévisée, 1980)",
-"file": "",
-"src": "",
+"file": "snacks-marques-fast-food--magnum.jpg",
+"s2": 1,
+"src": "wikidata:Q660801:P18",
 "t": 1793645436
 },
 "miam-magret-de-canard": {
@@ -16056,6 +16389,7 @@
 "art": "",
 "dropped": "wiki:Maki (singer)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645499
 },
@@ -16127,6 +16461,7 @@
 "miam-mayonnaise-hellmann-s": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645594
 },
@@ -16197,9 +16532,10 @@
 "t": 1793645596
 },
 "miam-milkybar": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "snacks-marques-fast-food--milkybar.jpg",
+"s2": 1,
+"src": "wikidata:Q3757419:P18",
 "t": 1793645926
 },
 "miam-mille-feuille": {
@@ -16243,21 +16579,179 @@
 "t": 1793645847
 },
 "miam-mon-cheri": {
+"art": "c",
+"file": "snacks-marques-fast-food--mon-cheri.jpg",
+"s2": 1,
+"src": "wikidata:Q1588515:P18",
+"t": 1793645609
+},
+"miam-monster-assault": {
 "art": "",
 "file": "",
 "src": "",
-"t": 1793645609
+"t": 1793670290
+},
+"miam-monster-electric-blue": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670291
 },
 "miam-monster-energy": {
 "art": "i",
-"file": "071-monster-energy.png",
-"src": "v1"
+"file": "monster--monster-energy.png",
+"src": "url",
+"t": 1793670290
+},
+"miam-monster-full-throttle": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670291
+},
+"miam-monster-import": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670290
+},
+"miam-monster-juiced-ripper": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670294
+},
+"miam-monster-lo-carb": {
+"art": "c",
+"file": "monster--monster-lo-carb.jpg",
+"src": "url",
+"t": 1793670290
+},
+"miam-monster-mule-ginger-brew": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670290
 },
 "miam-monster-munch": {
 "art": "c",
 "file": "snacks-marques-fast-food--monster-munch.jpg",
 "src": "wiki:Monster Munch",
 "t": 1793645610
+},
+"miam-monster-nitro-super-dry": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670298
+},
+"miam-monster-strawberry-shot": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670291
+},
+"miam-monster-super-cola": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670290
+},
+"miam-monster-ultra-black": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670293
+},
+"miam-monster-ultra-blue": {
+"art": "c",
+"file": "monster--monster-ultra-blue.jpg",
+"src": "url",
+"t": 1793670291
+},
+"miam-monster-ultra-fantasy-ruby-red": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670293
+},
+"miam-monster-ultra-fiesta-mango": {
+"art": "i",
+"file": "monster--monster-ultra-fiesta-mango.png",
+"src": "url",
+"t": 1793670293
+},
+"miam-monster-ultra-gold": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670292
+},
+"miam-monster-ultra-paradise": {
+"art": "i",
+"file": "monster--monster-ultra-paradise.png",
+"src": "url",
+"t": 1793670292
+},
+"miam-monster-ultra-peachy-keen": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670292
+},
+"miam-monster-ultra-red": {
+"art": "i",
+"file": "monster--monster-ultra-red.png",
+"src": "url",
+"t": 1793670291
+},
+"miam-monster-ultra-rosa": {
+"art": "i",
+"file": "monster--monster-ultra-rosa.png",
+"src": "url",
+"t": 1793670293
+},
+"miam-monster-ultra-strawberry-dreams": {
+"art": "i",
+"file": "monster--monster-ultra-strawberry-dreams.png",
+"src": "url",
+"t": 1793670292
+},
+"miam-monster-ultra-sunrise": {
+"art": "c",
+"file": "monster--monster-ultra-sunrise.jpg",
+"src": "url",
+"t": 1793670292
+},
+"miam-monster-ultra-vice-guava": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670293
+},
+"miam-monster-ultra-violet": {
+"art": "i",
+"file": "monster--monster-ultra-violet.png",
+"src": "url",
+"t": 1793670292
+},
+"miam-monster-ultra-watermelon": {
+"art": "i",
+"file": "monster--monster-ultra-watermelon.png",
+"src": "url",
+"t": 1793670293
+},
+"miam-monster-ultra-zero-white-monster": {
+"art": "i",
+"file": "monster--monster-ultra-zero-white-monster.png",
+"src": "url",
+"t": 1793670291
+},
+"miam-monster-zero-sugar": {
+"art": "c",
+"file": "monster--monster-zero-sugar.jpg",
+"src": "url",
+"t": 1793670290
 },
 "miam-mont-d-or-chaud-au-four": {
 "art": "c",
@@ -16342,6 +16836,7 @@
 "miam-navarin-d-agneau": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646260
 },
@@ -16354,6 +16849,7 @@
 "miam-nems": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645499
 },
@@ -16371,6 +16867,7 @@
 "miam-nestle-galak": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645928
 },
@@ -16405,9 +16902,10 @@
 "t": 1793645808
 },
 "miam-nuoc-mam": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "snacks-marques-fast-food--nuoc-mam.jpg",
+"s2": 1,
+"src": "wikidata:Q545985:P18",
 "t": 1793645928
 },
 "miam-o-tacos": {
@@ -16500,6 +16998,7 @@
 "art": "",
 "dropped": "wiki:Ovo (spectacle)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646505
 },
@@ -16666,12 +17165,14 @@
 "miam-pates-au-pesto": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645481
 },
 "miam-pates-bolognaise": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645419
 },
@@ -16720,6 +17221,7 @@
 "miam-pepito": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645617
 },
@@ -16750,6 +17252,7 @@
 "miam-petit-sale-aux-lentilles": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645852
 },
@@ -16766,9 +17269,10 @@
 "t": 1793646501
 },
 "miam-philly-cheesesteak": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "snacks-marques-fast-food--philly-cheesesteak.jpg",
+"s2": 1,
+"src": "wikidata:Q1068892:P18",
 "t": 1793646185
 },
 "miam-pho": {
@@ -16783,9 +17287,10 @@
 "src": "v1"
 },
 "miam-picon-biere": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "boissons--picon-biere.jpg",
+"s2": 1,
+"src": "wikidata:Q1756360:P18",
 "t": 1793646447
 },
 "miam-piece-montee": {
@@ -16891,6 +17396,7 @@
 "miam-pokemon-cards": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645946
 },
@@ -16999,6 +17505,7 @@
 "miam-pretzel-sucre": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646353
 },
@@ -17043,6 +17550,7 @@
 "miam-push-up": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645947
 },
@@ -17129,6 +17637,30 @@
 "src": "url",
 "t": 1793646057
 },
+"miam-rehab-monster-green-tea": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670297
+},
+"miam-rehab-monster-peach-tea": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670297
+},
+"miam-rehab-monster-tea-lemonade": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670297
+},
+"miam-rehab-monster-wild-berry-tea": {
+"art": "",
+"file": "",
+"src": "",
+"t": 1793670297
+},
 "miam-religieuse-au-chocolat": {
 "art": "c",
 "file": "desserts-patisseries--religieuse-au-chocolat.jpg",
@@ -17150,6 +17682,7 @@
 "miam-ribs-barbecue": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645482
 },
@@ -17178,6 +17711,7 @@
 "miam-rillons": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646264
 },
@@ -17247,6 +17781,7 @@
 "miam-saint-moret": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646482
 },
@@ -17351,6 +17886,7 @@
 "miam-schtroumpfs-haribo": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645654
 },
@@ -17369,6 +17905,7 @@
 "miam-semoule-au-lait": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645978
 },
@@ -17542,10 +18079,11 @@
 "t": 1793646061
 },
 "miam-subway": {
-"art": "",
+"art": "c",
 "dropped": "wiki:Subway (film)",
-"file": "",
-"src": "",
+"file": "snacks-marques-fast-food--subway.jpg",
+"s2": 1,
+"src": "wikidata:Q244457:P18",
 "t": 1793646387
 },
 "miam-sundae": {
@@ -17642,6 +18180,7 @@
 "miam-tartare-de-boeuf": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646095
 },
@@ -17698,6 +18237,7 @@
 "miam-tartine-de-nutella": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645455
 },
@@ -17717,6 +18257,7 @@
 "art": "",
 "dropped": "wiki:Tender (wagon)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646186
 },
@@ -17741,6 +18282,7 @@
 "miam-tetes-brulees": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645657
 },
@@ -17810,6 +18352,7 @@
 "miam-tresor-cereales": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645657
 },
@@ -17869,6 +18412,7 @@
 "miam-uncle-ben-s-ben-s": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645659
 },
@@ -17881,6 +18425,7 @@
 "miam-vacherin-glace": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646366
 },
@@ -17899,6 +18444,7 @@
 "art": "",
 "dropped": "wiki:Vico (Corse-du-Sud)",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645983
 },
@@ -17977,6 +18523,7 @@
 "miam-yop": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646211
 },
@@ -18073,9 +18620,10 @@
 "t": 1793646498
 },
 "zoo-ablephare-de-kitaibel": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--ablephare-de-kitaibel.jpg",
+"s2": 1,
+"src": "wikidata:Q931333:P18",
 "t": 1793646637
 },
 "zoo-ablette": {
@@ -18147,6 +18695,7 @@
 "zoo-adenomere-des-herbes": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646636
 },
@@ -18255,6 +18804,7 @@
 "zoo-agyneta-commune": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646518
 },
@@ -18344,6 +18894,7 @@
 "zoo-aiguillat-gros-yeux": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646646
 },
@@ -18409,6 +18960,7 @@
 "zoo-algyroide-a-gorge-bleue": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646637
 },
@@ -18420,12 +18972,14 @@
 "zoo-allobate-brun-l": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646649
 },
 "zoo-allobate-cliquetant": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646642
 },
@@ -18462,6 +19016,7 @@
 "zoo-alose-feinte-du-rhone": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646659
 },
@@ -18527,6 +19082,7 @@
 "zoo-amazophrynelle-menue": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646635
 },
@@ -18631,9 +19187,10 @@
 "t": 1793646646
 },
 "zoo-ange-de-mer-kasuzame": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--ange-de-mer-kasuzame.jpg",
+"s2": 1,
+"src": "wikidata:Q28832:P18",
 "t": 1793646662
 },
 "zoo-ange-royal": {
@@ -18645,6 +19202,7 @@
 "zoo-angelot": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645926
 },
@@ -18692,6 +19250,7 @@
 "zoo-anolis-a-fanon-bleu": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646640
 },
@@ -18740,6 +19299,7 @@
 "zoo-anomaloglosse-des-guyanes": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645922
 },
@@ -18770,6 +19330,7 @@
 "zoo-antennaire-peint": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646646
 },
@@ -18875,9 +19436,10 @@
 "t": 1793646000
 },
 "zoo-arctocephale-d-afrique-du-sud": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "mammiferes--arctocephale-d-afrique-du-sud.jpg",
+"s2": 1,
+"src": "wikidata:Q466597:P18",
 "t": 1793646504
 },
 "zoo-arctocephale-de-kerguelen": {
@@ -19049,9 +19611,10 @@
 "t": 1793645874
 },
 "zoo-atherine-bresilienne": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--atherine-bresilienne.jpg",
+"s2": 1,
+"src": "wikidata:Q2544376:P18",
 "t": 1793646639
 },
 "zoo-atipa": {
@@ -19742,6 +20305,7 @@
 "zoo-blanquette": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646648
 },
@@ -19789,6 +20353,7 @@
 "zoo-boeuf-domestique": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646185
 },
@@ -19866,6 +20431,7 @@
 "zoo-bothrops-atroce": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646619
 },
@@ -19878,6 +20444,7 @@
 "zoo-bouquet-cannelle": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646635
 },
@@ -19890,6 +20457,7 @@
 "zoo-bouquet-couac": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646618
 },
@@ -20065,9 +20633,10 @@
 "src": "v1"
 },
 "zoo-brochet-de-mer": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--brochet-de-mer.jpg",
+"s2": 1,
+"src": "wikidata:Q74411:P18",
 "t": 1793645832
 },
 "zoo-bruant-chingolo": {
@@ -20722,6 +21291,7 @@
 "zoo-causus-macule": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646639
 },
@@ -20752,12 +21322,14 @@
 "zoo-cercosaure-aux-cent-yeux": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646646
 },
 "zoo-cercosaure-ocelle": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646647
 },
@@ -20785,9 +21357,10 @@
 "src": "v1"
 },
 "zoo-cerf-mulet": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "mammiferes--cerf-mulet.jpg",
+"s2": 1,
+"src": "wikidata:Q338831:P18",
 "t": 1793645590
 },
 "zoo-cerf-sambar": {
@@ -20874,12 +21447,14 @@
 "zoo-chasseresse-des-savanes": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645896
 },
 "zoo-chasseur-a-flanc-bleu": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646645
 },
@@ -20967,6 +21542,7 @@
 "zoo-chat-rochier": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646543
 },
@@ -20979,6 +21555,7 @@
 "zoo-chatogekko-amazonien-le": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646625
 },
@@ -21331,6 +21908,7 @@
 "zoo-clelia-obscure": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646644
 },
@@ -21379,6 +21957,7 @@
 "zoo-cobra-des-forets": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646642
 },
@@ -21719,6 +22298,7 @@
 "zoo-couleuvre-a-tete-noire": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645894
 },
@@ -21761,6 +22341,7 @@
 "zoo-couleuvre-cobelle-la": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645897
 },
@@ -21789,9 +22370,10 @@
 "t": 1793645896
 },
 "zoo-couleuvre-faux-corail-la": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--couleuvre-faux-corail-la.jpg",
+"s2": 1,
+"src": "wikidata:Q1257513:P18",
 "t": 1793645910
 },
 "zoo-couleuvre-fleche": {
@@ -21815,13 +22397,15 @@
 "zoo-couleuvre-miliaire-la": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645893
 },
 "zoo-couleuvre-royale-la": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--couleuvre-royale-la.jpg",
+"s2": 1,
+"src": "wikidata:Q2705218:P18",
 "t": 1793645891
 },
 "zoo-couleuvre-tessellee": {
@@ -21933,6 +22517,7 @@
 "zoo-crabe-de-terre-commun": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645873
 },
@@ -21957,6 +22542,7 @@
 "zoo-crabe-fantome-atlantique": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645854
 },
@@ -22050,6 +22636,7 @@
 "zoo-crapaud-de-la-cote-du-golfe": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645836
 },
@@ -22062,6 +22649,7 @@
 "zoo-crapaud-de-savane": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645909
 },
@@ -22325,9 +22913,10 @@
 "t": 1793645677
 },
 "zoo-daman-de-rocher": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "mammiferes--daman-de-rocher.jpg",
+"s2": 1,
+"src": "wikidata:Q323847:P18",
 "t": 1793645659
 },
 "zoo-damier-de-la-succise": {
@@ -22476,6 +23065,7 @@
 "zoo-desmognathe-a-museau-epate-du-nord": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646627
 },
@@ -22540,6 +23130,7 @@
 "zoo-dipsade-de-catesby-la": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646637
 },
@@ -22614,6 +23205,7 @@
 "zoo-dunnart-a-face-rayee": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646598
 },
@@ -22798,6 +23390,7 @@
 "zoo-el": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646556
 },
@@ -22889,14 +23482,16 @@
 "t": 1793646626
 },
 "zoo-emydocephale-annele": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--emydocephale-annele.jpg",
+"s2": 1,
+"src": "wikidata:Q2715108:P18",
 "t": 1793646640
 },
 "zoo-encornet-outre-de-reinhardt": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646650
 },
@@ -22993,6 +23588,7 @@
 "zoo-eremias-variable": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646644
 },
@@ -23104,6 +23700,7 @@
 "zoo-etrille-pelagique-l": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646617
 },
@@ -23455,6 +24052,7 @@
 "zoo-gardon-italien": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646645
 },
@@ -24375,6 +24973,7 @@
 "zoo-gymnophthalme-d-underwood": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646646
 },
@@ -24640,9 +25239,10 @@
 "t": 1793646331
 },
 "zoo-holbiche-malaise": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--holbiche-malaise.jpg",
+"s2": 1,
+"src": "wikidata:Q2124250:P18",
 "t": 1793646651
 },
 "zoo-holbiche-ventrue": {
@@ -24845,15 +25445,17 @@
 "t": 1793646648
 },
 "zoo-kinixys-de-home": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--kinixys-de-home.jpg",
+"s2": 1,
+"src": "wikidata:Q301423:P18",
 "t": 1793646650
 },
 "zoo-kinixys-rongee": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--kinixys-rongee.jpg",
+"s2": 1,
+"src": "wikidata:Q302898:P18",
 "t": 1793646650
 },
 "zoo-kinkajou-singe-de-nuit": {
@@ -24881,6 +25483,7 @@
 "zoo-krill-atlantique": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646605
 },
@@ -25542,18 +26145,21 @@
 "zoo-leptodactyle-a-levres-blanches": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646624
 },
 "zoo-leptodactyle-a-long-museau": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646649
 },
 "zoo-leptodactyle-de-knudsen": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646643
 },
@@ -25566,6 +26172,7 @@
 "zoo-leptodactyle-du-chaco-le": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646624
 },
@@ -25602,6 +26209,7 @@
 "zoo-lezard-a-dos-verdatre": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645892
 },
@@ -25805,9 +26413,10 @@
 "t": 1793645943
 },
 "zoo-liopleurodon": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "dinosaures-prehistoire--liopleurodon.jpg",
+"s2": 1,
+"src": "wikidata:Q287975:P18",
 "t": 1793646018
 },
 "zoo-lippu-rondeau": {
@@ -25871,9 +26480,10 @@
 "t": 1793646203
 },
 "zoo-loir-des-greniers": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "mammiferes--loir-des-greniers.jpg",
+"s2": 1,
+"src": "wikidata:Q465786:P18",
 "t": 1793645850
 },
 "zoo-loir-gris": {
@@ -25883,9 +26493,10 @@
 "t": 1793645837
 },
 "zoo-loir-muscardin": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "mammiferes--loir-muscardin.jpg",
+"s2": 1,
+"src": "wikidata:Q207148:P18",
 "t": 1793645827
 },
 "zoo-loquette-d-europe": {
@@ -26006,6 +26617,7 @@
 "zoo-mabuya-a-deux-lignes": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646644
 },
@@ -26018,6 +26630,7 @@
 "zoo-macaque-de-buffon": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646519
 },
@@ -26064,6 +26677,7 @@
 "zoo-macropode-a-rostre-tenu": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646625
 },
@@ -26094,6 +26708,7 @@
 "zoo-mako-a-longues-nageoires": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646648
 },
@@ -26306,6 +26921,7 @@
 "zoo-melomys-de-burton": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646603
 },
@@ -26609,9 +27225,10 @@
 "t": 1793645783
 },
 "zoo-moustique-pointu-facheux-allemand": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "insectes-arachnides--moustique-pointu-facheux-allemand.jpg",
+"s2": 1,
+"src": "wikidata:Q144273:P18",
 "t": 1793645782
 },
 "zoo-moustique-tigre": {
@@ -26698,6 +27315,7 @@
 "zoo-murin-argente": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646584
 },
@@ -26940,12 +27558,14 @@
 "zoo-ocypode-cetatophthalme-le": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646624
 },
 "zoo-odontaspide-feroce": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646671
 },
@@ -26997,9 +27617,10 @@
 "t": 1793645746
 },
 "zoo-oiseau-elephant": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "dinosaures-prehistoire--oiseau-elephant.jpg",
+"s2": 1,
+"src": "wikidata:Q2638301:P18",
 "t": 1793646020
 },
 "zoo-okapi": {
@@ -27022,6 +27643,7 @@
 "zoo-onychomys-boreal": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646542
 },
@@ -27170,9 +27792,10 @@
 "src": "v1"
 },
 "zoo-ours-des-cavernes": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "dinosaures-prehistoire--ours-des-cavernes.jpg",
+"s2": 1,
+"src": "wikidata:Q188851:P18",
 "t": 1793645945
 },
 "zoo-ours-noir-d-amerique": {
@@ -27496,6 +28119,7 @@
 "zoo-pastenague-eventail": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646643
 },
@@ -27544,6 +28168,7 @@
 "zoo-peleque-sabre": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646644
 },
@@ -27567,6 +28192,7 @@
 "zoo-pelodyte-iberique": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646638
 },
@@ -27621,6 +28247,7 @@
 "zoo-peromyscus-a-oreilles-noires": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646602
 },
@@ -27733,9 +28360,10 @@
 "t": 1793646078
 },
 "zoo-petit-diable": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--petit-diable.jpg",
+"s2": 1,
+"src": "wikidata:Q5015132:P18",
 "t": 1793646663
 },
 "zoo-petit-gravelot": {
@@ -27861,6 +28489,7 @@
 "zoo-phalanger-canin": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646557
 },
@@ -27932,6 +28561,7 @@
 "zoo-pholque-de-pluche": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646556
 },
@@ -27997,6 +28627,7 @@
 "zoo-phyllomeduse-carenee": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645895
 },
@@ -28009,6 +28640,7 @@
 "zoo-physaleme-fer-a-cheval": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646644
 },
@@ -28226,6 +28858,7 @@
 "zoo-plature-couleuvrin": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646637
 },
@@ -28312,9 +28945,10 @@
 "src": "v1"
 },
 "zoo-poisson-guitare-chola": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--poisson-guitare-chola.jpg",
+"s2": 1,
+"src": "wikidata:Q25403689:P18",
 "t": 1793646648
 },
 "zoo-poisson-lune-mola-mola": {
@@ -28442,6 +29076,7 @@
 "zoo-praomys-de-jackson": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646561
 },
@@ -28639,9 +29274,10 @@
 "src": "v1"
 },
 "zoo-raie-papillon-glabre": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--raie-papillon-glabre.jpg",
+"s2": 1,
+"src": "wikidata:Q3017002:P18",
 "t": 1793645908
 },
 "zoo-raie-radiee": {
@@ -28680,20 +29316,23 @@
 "src": "v1"
 },
 "zoo-rainette-camuse": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--rainette-camuse.jpg",
+"s2": 1,
+"src": "wikidata:Q2706798:P18",
 "t": 1793645923
 },
 "zoo-rainette-cendree-la": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645892
 },
 "zoo-rainette-de-boeseman": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645918
 },
@@ -28921,19 +29560,22 @@
 "zoo-requin-a-joues-blanches": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646650
 },
 "zoo-requin-a-museau-pointu": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646625
 },
 "zoo-requin-a-tache-noir": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--requin-a-tache-noir.jpg",
+"s2": 1,
+"src": "wikidata:Q1930228:P18",
 "t": 1793646663
 },
 "zoo-requin-aiguille-bresilien": {
@@ -29013,9 +29655,10 @@
 "t": 1793645657
 },
 "zoo-requin-nerveux": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--requin-nerveux.jpg",
+"s2": 1,
+"src": "wikidata:Q1978204:P18",
 "t": 1793646646
 },
 "zoo-requin-pointe-blanche": {
@@ -29068,6 +29711,7 @@
 "zoo-rhinolophe-a-grande-feuille": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646605
 },
@@ -29161,9 +29805,10 @@
 "t": 1793646160
 },
 "zoo-roussette-a-taches-jaunes": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--roussette-a-taches-jaunes.jpg",
+"s2": 1,
+"src": "wikidata:Q2625946:P18",
 "t": 1793646662
 },
 "zoo-roussette-maille": {
@@ -29477,13 +30122,15 @@
 "zoo-sphenorhynque-lacte": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646641
 },
 "zoo-spinosaure": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "dinosaures-prehistoire--spinosaure.jpg",
+"s2": 1,
+"src": "wikidata:Q130966:P18",
 "t": 1793645740
 },
 "zoo-squale-chagrin-a-longue-dorsale": {
@@ -29877,6 +30524,7 @@
 "zoo-tomodon-raye": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646645
 },
@@ -29893,9 +30541,10 @@
 "t": 1793646642
 },
 "zoo-tortue-a-tete-jaune": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--tortue-a-tete-jaune.jpg",
+"s2": 1,
+"src": "wikidata:Q846001:P18",
 "t": 1793645925
 },
 "zoo-tortue-alligator-la": {
@@ -29913,6 +30562,7 @@
 "zoo-tortue-charbonniere": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793645889
 },
@@ -30033,6 +30683,7 @@
 "zoo-trionyx-du-nil": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646643
 },
@@ -30207,9 +30858,10 @@
 "t": 1793646413
 },
 "zoo-vairon-du-languedoc": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "vie-marine--vairon-du-languedoc.jpg",
+"s2": 1,
+"src": "wikidata:Q3756788:P18",
 "t": 1793646646
 },
 "zoo-vallonie-costulee": {
@@ -30255,9 +30907,10 @@
 "t": 1793646112
 },
 "zoo-varan-des-steppes-d-afrique-orientale": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--varan-des-steppes-d-afrique-orientale.jpg",
+"s2": 1,
+"src": "wikidata:Q935868:P18",
 "t": 1793646636
 },
 "zoo-varan-du-bengale": {
@@ -30275,6 +30928,7 @@
 "zoo-varan-du-kimberley": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646639
 },
@@ -30291,9 +30945,10 @@
 "t": 1793646525
 },
 "zoo-varan-nebuleux": {
-"art": "",
-"file": "",
-"src": "",
+"art": "c",
+"file": "reptiles-amphibiens--varan-nebuleux.jpg",
+"s2": 1,
+"src": "wikidata:Q2714853:P18",
 "t": 1793646622
 },
 "zoo-vautour-moine": {
@@ -30462,6 +31117,7 @@
 "zoo-xenodon-petits-carreaux": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646640
 },
@@ -30474,6 +31130,7 @@
 "zoo-zapode-de-i-ouest": {
 "art": "",
 "file": "",
+"s2": 1,
 "src": "",
 "t": 1793646604
 },

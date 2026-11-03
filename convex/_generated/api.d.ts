@@ -8,12 +8,17 @@
  * @module
  */
 
+import type * as abuse from "../abuse.js";
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as binders from "../binders.js";
 import type * as cardsCatalog from "../cardsCatalog.js";
 import type * as contracts from "../contracts.js";
+import type * as crons from "../crons.js";
+import type * as econLib from "../econLib.js";
+import type * as economy from "../economy.js";
 import type * as feed from "../feed.js";
+import type * as games from "../games.js";
 import type * as http from "../http.js";
 import type * as inventory from "../inventory.js";
 import type * as labFeedback from "../labFeedback.js";
@@ -30,12 +35,17 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  abuse: typeof abuse;
   admin: typeof admin;
   auth: typeof auth;
   binders: typeof binders;
   cardsCatalog: typeof cardsCatalog;
   contracts: typeof contracts;
+  crons: typeof crons;
+  econLib: typeof econLib;
+  economy: typeof economy;
   feed: typeof feed;
+  games: typeof games;
   http: typeof http;
   inventory: typeof inventory;
   labFeedback: typeof labFeedback;

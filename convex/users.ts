@@ -138,14 +138,18 @@ export const heartbeat = mutation({
   args: {
     sessionToken: v.string(),
     statusText: v.optional(v.string()),
+    /** id d'appareil tiré au hasard et gardé dans le navigateur (anti-abus : comptes multiples) */
+    deviceId: v.optional(v.string()),
   },
-  handler: async (ctx, { sessionToken, statusText }) => {
+  handler: async (ctx, { sessionToken, statusText, deviceId }) => {
     const user = await getUserByToken(ctx, sessionToken);
     if (!user) return { ok: false };
     const now = Date.now();
     // série de connexion : premier battement de la journée → +1 jour (ou retour à 1)
     const streak = touchStreak(user.streak, now);
+    const dev = deviceId && /^[a-z0-9-]{8,64}$/i.test(deviceId) && !(user.devices ?? []).includes(deviceId) ? [...(user.devices ?? []), deviceId].slice(-8) : null;
     await ctx.db.patch(user._id, {
+      ...(dev ? { devices: dev } : {}),
       lastSeenAt: now,
       ...(streak ? { streak } : {}),
       // comptes d'avant la recharge : on fige le départ du minuteur (sinon il glisserait avec lastSeenAt)

@@ -1,0 +1,180 @@
+import { v, ConvexError } from 'convex/values';
+import { mutation, query, type QueryCtx } from './_generated/server';
+import type { Doc } from './_generated/dataModel';
+import { getUserByToken, requireUser } from './auth';
+import { rarityValidator, type RarityId } from './cardsCatalog';
+import { lockedCards } from './trades';
+import { addCoins, bumpWeekly, coinsOf, econOf } from './econLib';
+import { applyRegen } from '../src/core/packRegen';
+import { touchStreak } from '../src/core/streak';
+import { missionDay } from '../src/core/missions';
+import { statsFrom } from '../src/core/cosmetics';
+import {
+  CARD_VALUE,
+  achievementReward,
+  achievementStats,
+  burnProblem,
+  calendarDay,
+  calendarReward,
+  claimableAchievements,
+  claimableCompletions,
+  type StakeItem,
+} from '../src/core/economy';
+import { claimWeekly as claimWeeklyState, cleanWeekly, currentWeekly, nextWeekReset, type WeeklyState } from '../src/core/weekly';
+
+/**
+ * ÉCONOMIE — portefeuille et sources de pièces (spec du 3 nov., src/core/economy.ts) :
+ * calendrier de connexion, missions de la semaine, brûlage de doublons, primes de complétion, succès.
+ * (Pièces des missions du jour : convex/missions.ts · pièces des boosters : convex/packs.ts · jeux : convex/games.ts.)
+ */
+
+async function collectionOf(ctx: QueryCtx, u: Doc<'users'>) {
+  return await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
+}
+
+async function achStats(ctx: QueryCtx, u: Doc<'users'>, inv?: Doc<'inventory'>[]) {
+  const coll = inv ?? (await collectionOf(ctx, u));
+  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0 });
+  return achievementStats(p, econOf(u));
+}
+
+/** Calendrier du jour : position, cadeau, déjà pris ? (la série d'aujourd'hui est calculée comme au heartbeat) */
+function calendarOf(u: Doc<'users'>, now: number) {
+  const streak = touchStreak(u.streak, now) ?? u.streak;
+  const day = calendarDay(streak?.count ?? 1);
+  const today = missionDay(now);
+  return { day, today, claimed: econOf(u).calendarDay === today, reward: calendarReward(day) };
+}
+
+/** Tout ce que l'interface affiche de l'économie (portefeuille, calendrier, missions de la semaine, primes en attente). */
+export const state = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await getUserByToken(ctx, sessionToken);
+    if (!u) return null;
+    const now = Date.now();
+    const inv = await collectionOf(ctx, u);
+    const econ = econOf(u);
+    const owned = new Set(inv.map((c) => c.cardId));
+    const stats = await achStats(ctx, u, inv);
+    return {
+      coins: coinsOf(u),
+      econ,
+      calendar: calendarOf(u, now),
+      weekly: { ...currentWeekly(u.weekly as WeeklyState | undefined, u._id, now), resetAt: nextWeekReset(now) },
+      completions: claimableCompletions(owned, econ.completions).map((s) => ({ id: s.id, label: s.label, kind: s.kind, size: s.cards.length, reward: s.reward })),
+      achievements: { stats, claimable: claimableAchievements(stats, econ.achievements).map((a) => a.id) },
+      isAdmin: !!u.isAdmin,
+    };
+  },
+});
+
+/** Journal des pièces (les plus récentes d'abord). */
+export const history = query({
+  args: { sessionToken: v.optional(v.string()), limit: v.optional(v.number()) },
+  handler: async (ctx, { sessionToken, limit }) => {
+    const u = await getUserByToken(ctx, sessionToken);
+    if (!u) return [];
+    return await ctx.db
+      .query('coinTx')
+      .withIndex('by_user', (q) => q.eq('userId', u._id))
+      .order('desc')
+      .take(Math.min(limit ?? 50, 200));
+  },
+});
+
+/** Cadeau du calendrier (1 fois par jour). Jour 30 : 1 000 pièces + 1 booster. */
+export const claimCalendar = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await requireUser(ctx, sessionToken);
+    const now = Date.now();
+    const cal = calendarOf(u, now);
+    if (cal.claimed) throw new ConvexError('Cadeau du jour déjà pris : reviens demain.');
+    const streak = touchStreak(u.streak, now);
+    if (streak) await ctx.db.patch(u._id, { streak });
+    await addCoins(ctx, u._id, cal.reward.coins, 'calendar', `Calendrier — jour ${cal.day}`, { earned: true, econ: { calendarDay: cal.today } });
+    if (cal.reward.packs) {
+      const fresh = (await ctx.db.get(u._id))!;
+      const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now);
+      await ctx.db.patch(u._id, { packBalance: regen.balance + cal.reward.packs, packRegenAt: regen.regenAt });
+    }
+    return { day: cal.day, ...cal.reward };
+  },
+});
+
+/** Mission de la semaine terminée → pièces. */
+export const claimWeekly = mutation({
+  args: { sessionToken: v.string(), missionId: v.string() },
+  handler: async (ctx, { sessionToken, missionId }) => {
+    const u = await requireUser(ctx, sessionToken);
+    const r = claimWeeklyState(currentWeekly(u.weekly as WeeklyState | undefined, u._id, Date.now()), missionId);
+    if (typeof r === 'string') throw new ConvexError(r);
+    await ctx.db.patch(u._id, { weekly: cleanWeekly(r.state) });
+    await addCoins(ctx, u._id, r.reward, 'weekly', 'Mission de la semaine', { earned: true });
+    return { reward: r.reward };
+  },
+});
+
+/** Brûlage de doublons contre des pièces (table de valeur). Jamais le dernier exemplaire, jamais une secrète. */
+export const burn = mutation({
+  args: { sessionToken: v.string(), items: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })) },
+  handler: async (ctx, { sessionToken, items }) => {
+    const u = await requireUser(ctx, sessionToken);
+    if (items.length > 200) throw new ConvexError('Trop de cartes d’un coup.');
+    const inv = await collectionOf(ctx, u);
+    const row = (it: StakeItem) => inv.find((c) => c.cardId === it.cardId && c.rarity === it.rarity);
+    const locked = await lockedCards(ctx, u._id);
+    const problem = burnProblem(items as StakeItem[], (it) => Math.max(0, (row(it)?.count ?? 0) - 1 - (locked.get(`${it.cardId}:${it.rarity}`) ?? 0)));
+    if (problem) throw new ConvexError(problem);
+    let coins = 0;
+    let n = 0;
+    for (const it of items) {
+      const r = row(it as StakeItem)!;
+      await ctx.db.patch(r._id, { count: r.count - it.count });
+      coins += CARD_VALUE[it.rarity as RarityId] * it.count;
+      n += it.count;
+    }
+    const econ = econOf(u);
+    await addCoins(ctx, u._id, coins, 'burn', `Brûlage de ${n} doublon${n > 1 ? 's' : ''}`, { earned: true, econ: { burned: econ.burned + n } });
+    await bumpWeekly(ctx, u._id, { type: 'burn', count: n });
+    await ctx.db.patch(u._id, { lastSeenAt: Date.now(), statusText: 'Fait chauffer la forge à doublons' });
+    return { coins, count: n };
+  },
+});
+
+/** Primes de complétion : 5 pièces × cartes de chaque album / groupe / thème complété (toutes celles en attente). */
+export const claimCompletions = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await requireUser(ctx, sessionToken);
+    const inv = await collectionOf(ctx, u);
+    const econ = econOf(u);
+    const sets = claimableCompletions(new Set(inv.map((c) => c.cardId)), econ.completions);
+    if (!sets.length) throw new ConvexError('Aucune prime de complétion en attente.');
+    const total = sets.reduce((a, s) => a + s.reward, 0);
+    await addCoins(ctx, u._id, total, 'completion', sets.length === 1 ? `Complétion — ${sets[0].label}` : `Complétion — ${sets.length} ensembles`, {
+      earned: true,
+      econ: { completions: [...econ.completions, ...sets.map((s) => s.id)] },
+    });
+    return { coins: total, sets: sets.map((s) => ({ id: s.id, label: s.label, reward: s.reward })) };
+  },
+});
+
+/** Succès atteints → pièces (tous ceux en attente). */
+export const claimAchievements = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await requireUser(ctx, sessionToken);
+    const econ = econOf(u);
+    const list = claimableAchievements(await achStats(ctx, u), econ.achievements);
+    if (!list.length) throw new ConvexError('Aucun succès à réclamer.');
+    const total = list.reduce((a, x) => a + achievementReward(x), 0);
+    await addCoins(ctx, u._id, total, 'achievement', list.length === 1 ? `Succès — ${list[0].label}` : `${list.length} succès`, {
+      earned: true,
+      econ: { achievements: [...econ.achievements, ...list.map((a) => a.id)] },
+    });
+    // les pièces gagnées peuvent débloquer « Tirelire » : il sera réclamable au prochain passage
+    return { coins: total, ids: list.map((a) => a.id) };
+  },
+});

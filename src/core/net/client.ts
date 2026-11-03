@@ -1,4 +1,5 @@
 import { ConvexClient } from 'convex/browser';
+import type { FunctionReference } from 'convex/server';
 import { api } from '../../../convex/_generated/api';
 import type { Doc, Id } from '../../../convex/_generated/dataModel';
 import type { RarityId } from '../rarity';
@@ -259,7 +260,7 @@ class GameNetClient {
     if (this.heartbeatTimer !== null) clearInterval(this.heartbeatTimer);
     const beat = () => {
       if (this.client && this.sessionToken && document.visibilityState === 'visible') {
-        void this.client.mutation(api.users.heartbeat, { sessionToken: this.sessionToken }).catch(() => {});
+        void this.client.mutation(api.users.heartbeat, { sessionToken: this.sessionToken, deviceId: deviceId() }).catch(() => {});
       }
     };
     // tout de suite (la série de connexion compte la visite du jour), puis toutes les 35 s
@@ -481,6 +482,39 @@ class GameNetClient {
 
   public get loggedIn(): boolean {
     return !!this.sessionToken && !!this.state.user;
+  }
+
+  // ─────────────────────────────── accès génériques (économie, jeux : src/game/ecoOnline.ts)
+  /** Mutation avec le jeton de session ajouté. */
+  public async call<F extends FunctionReference<'mutation'>>(fn: F, args: Omit<F['_args'], 'sessionToken'>): Promise<F['_returnType']> {
+    return await this.client!.mutation(fn, { ...args, sessionToken: this.requireToken() } as F['_args']);
+  }
+
+  /** Lecture ponctuelle (jeton ajouté s'il y en a un). */
+  public async ask<F extends FunctionReference<'query'>>(fn: F, args: Omit<F['_args'], 'sessionToken'>, withToken = true): Promise<F['_returnType']> {
+    if (!this.client) throw new Error('Serveur non configuré');
+    return await this.client.query(fn, (withToken && this.sessionToken ? { ...args, sessionToken: this.sessionToken } : args) as F['_args']);
+  }
+
+  /** Abonnement temps réel ; renvoie de quoi se désabonner. */
+  public watch<F extends FunctionReference<'query'>>(fn: F, args: Omit<F['_args'], 'sessionToken'>, cb: (v: F['_returnType']) => void, withToken = true, onError?: (e: Error) => void): () => void {
+    if (!this.client) return () => {};
+    const a = (withToken && this.sessionToken ? { ...args, sessionToken: this.sessionToken } : args) as F['_args'];
+    return this.client.onUpdate(fn, a, cb, onError);
+  }
+}
+
+/** Id d'appareil (tiré une fois, gardé dans le navigateur) : signal anti-abus « deux comptes sur le même appareil ». */
+function deviceId(): string | undefined {
+  try {
+    let id = localStorage.getItem('bebou.device');
+    if (!id) {
+      id = (crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`).toLowerCase();
+      localStorage.setItem('bebou.device', id);
+    }
+    return id;
+  } catch {
+    return undefined;
   }
 }
 

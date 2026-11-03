@@ -17,13 +17,15 @@
  *  3. remplir `cards` (et `artDir`, `code`) de son entrée dans `SUBTHEMES` ci-dessous. Le booster du thème, le bébou
  *     pack, la collection, les échanges et le serveur suivent seuls.
  */
-import { POKEMON_151, POKEMON_151_INFO, pokemonCardId, pokemonFile } from './pokemon151';
+import { POKEMON_151, POKEMON_151_INFO, POKEMON_GENS, pokemonCardId, pokemonFile, pokemonGen } from './pokemon151';
 import { BEBOUS, BEBOUS_INFO, bebouCardId, bebouFile } from './bebous';
-import { VALORANT, VALORANT_INFO, valorantCardId, valorantFile } from './valorant';
+import { VALORANT, VALORANT_CLASSES, VALORANT_INFO, valorantCardId, valorantClass, valorantFile } from './valorant';
 import { LOL, LOL_INFO, lolCardId, lolFile } from './lol';
-import { CS, CS_INFO, csCardId, csFile } from './cs';
+import { LOL_LINES, lolLine } from './lolLines';
+import { CS, CS_CLASSES, CS_INFO, csCardId, csClass, csFile } from './cs';
 import { JV, JV_FAMILIES, JV_INFO } from './jeuxvideo';
 import { MONDE, MONDE_GROUPS, MONDE_SUBS } from './monde';
+import { SPORT, SPORT_GROUPS, SPORT_SIZE, SPORT_SUBS, type SportEntry } from './sport';
 
 export type CatalogRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'secret';
 export type ThemeId = 'gaming' | 'pop' | 'sport' | 'monde' | 'bebous';
@@ -70,6 +72,11 @@ export interface SubTheme {
    * comme UN ensemble (« Jeux vidéo · 177 familles »).
    */
   group?: { id: string; label: string; unit?: string };
+  /**
+   * Dénominateur du numéro affiché (« 152/1025 ») quand les numéros sont ceux du groupe entier (Pokémon : n° de Pokédex ;
+   * Valorant, CS) et non propres au sous-thème. Absent : nombre de cartes du sous-thème.
+   */
+  size?: number;
 }
 
 export interface BoosterStyle {
@@ -96,24 +103,48 @@ export interface ThemeInfo {
 const sub = (themeId: ThemeId, id: string, label: string, code = '', artDir = '', cards: CatalogEntry[] = []): SubTheme => ({ id, label, themeId, code, artDir, cards });
 
 // ───────────────────────────────────────────── sous-thèmes (ceux sans cartes s'affichent « bientôt »)
-const pokemon = sub(
-  'gaming', 'pokemon', 'Pokémon', POKEMON_151_INFO.code, POKEMON_151_INFO.artDir,
-  POKEMON_151.map((e) => ({ id: pokemonCardId(e), themeId: 'gaming', subthemeId: 'pokemon', num: e.dex, name: e.name, rarity: e.rarity, file: pokemonFile(e) })),
+/**
+ * Découpe un gros sous-thème en sous-thèmes d'affichage (correctif du 3 nov., même traitement que le World Pack) :
+ * Pokémon par génération, Valorant et CS par classe d'arme, LoL par lane / ligne de skins. Chacun est un vrai sous-thème (contrats, filtres, libellé
+ * imprimé en grand sur la carte) ; le groupe reprend l'ancien id (« pokemon », « cs »…) : liens et missions d'avant
+ * continuent de marcher. Ids de carte, étoiles, numéros et illustrations : inchangés.
+ */
+function split<T>(
+  group: { id: string; label: string; unit: string },
+  info: { code: string; artDir: string },
+  parts: ReadonlyArray<{ id: string; label: string }>,
+  entries: T[],
+  partOf: (e: T) => { id: string },
+  entry: (e: T, subthemeId: string) => Omit<CatalogEntry, 'themeId' | 'subthemeId'>,
+): SubTheme[] {
+  return parts
+    .map((p) => ({
+      ...sub('gaming', p.id, p.label, info.code, info.artDir, entries.filter((e) => partOf(e).id === p.id).map((e) => ({ ...entry(e, p.id), themeId: 'gaming' as const, subthemeId: p.id }))),
+      group,
+      size: entries.length,
+    }))
+    .filter((s) => s.cards.length);
+}
+
+const pokemon = split(
+  { id: 'pokemon', label: 'Pokémon', unit: 'régions' }, POKEMON_151_INFO, POKEMON_GENS, POKEMON_151, pokemonGen,
+  (e) => ({ id: pokemonCardId(e), num: e.dex, name: e.name, rarity: e.rarity, file: pokemonFile(e) }),
 );
 
-const valorant = sub(
-  'gaming', 'valorant', 'Valorant', VALORANT_INFO.code, VALORANT_INFO.artDir,
-  VALORANT.map((e) => ({ id: valorantCardId(e), themeId: 'gaming', subthemeId: 'valorant', num: e.num, name: e.name, rarity: e.rarity, file: valorantFile(e) })),
+const valorant = split(
+  { id: 'valorant', label: 'Valorant', unit: 'catégories' }, VALORANT_INFO, VALORANT_CLASSES, VALORANT, valorantClass,
+  (e) => ({ id: valorantCardId(e), num: e.num, name: e.name, rarity: e.rarity, file: valorantFile(e) }),
 );
 
-const lol = sub(
-  'gaming', 'lol', LOL_INFO.label, LOL_INFO.code, LOL_INFO.artDir,
-  LOL.map((e) => ({ id: lolCardId(e), themeId: 'gaming', subthemeId: 'lol', num: e.num, name: e.name, rarity: e.rarity, file: lolFile(e) })),
+// LoL : la lane pour les 173 champions, la ligne de skins (Star Guardian, K/DA…) pour les skins (lolLines.ts, généré)
+const lol = split(
+  { id: 'lol', label: LOL_INFO.label, unit: 'lanes & lignes' }, LOL_INFO, LOL_LINES, LOL, lolLine,
+  (e) => ({ id: lolCardId(e), num: e.num, name: e.name, rarity: e.rarity, file: lolFile(e) }),
 );
 
-const cs = sub(
-  'gaming', 'cs', CS_INFO.label, CS_INFO.code, CS_INFO.artDir,
-  CS.map((e) => ({ id: csCardId(e), themeId: 'gaming', subthemeId: 'cs', num: e.num, name: e.name, rarity: e.rarity, file: csFile(e) })),
+const cs = split(
+  { id: 'cs', label: CS_INFO.label, unit: 'catégories' }, CS_INFO, CS_CLASSES, CS, csClass,
+  (e) => ({ id: csCardId(e), num: e.num, name: e.name, rarity: e.rarity, file: csFile(e) }),
 );
 
 /** Jeux vidéo : 1 famille (Mario, Tekken, Palworld…) = 1 sous-thème (décision du 2 nov.), regroupées à l'affichage. */
@@ -137,13 +168,27 @@ const monde: SubTheme[] = MONDE_SUBS.map((s) => ({
   ...(s.group ? { group: { id: s.group, label: MONDE_GROUPS[s.group] } } : {}),
 }));
 
+// ── SPORT PACK (7 708 cartes, SPEC-THEME-SPORT v5.1) : 114 sous-thèmes (« Football — Premier League », « Esport — LoL »…,
+// imprimés en grand sur la carte), regroupés à l'affichage en 10 (Football, Esport, Sports collectifs…). Le groupe « esport »
+// reprend l'id de l'ancien sous-thème vide. Numéro = n° de l'Excel, sur 7 708 (« 0123/7708 »). GÉNÉRÉ : scripts/make-sport.py.
+const sportBySub = new Map<string, SportEntry[]>();
+for (const e of SPORT) (sportBySub.get(e.sub) ?? sportBySub.set(e.sub, []).get(e.sub)!).push(e);
+const sport: SubTheme[] = SPORT_SUBS.map((s) => ({
+  ...sub(
+    'sport', s.id, s.label, s.code, 'art/sport',
+    (sportBySub.get(s.id) ?? []).map((e) => ({ id: e.id, themeId: 'sport', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, art: e.art, label: e.label })),
+  ),
+  group: { id: s.group, label: SPORT_GROUPS[s.group] },
+  size: SPORT_SIZE,
+}));
+
 export const SUBTHEMES: SubTheme[] = [
   // GAMING
-  pokemon,
-  valorant,
+  ...pokemon,
+  ...valorant,
   sub('gaming', 'yugioh', 'Yu-Gi-Oh'),
-  lol,
-  cs,
+  ...lol,
+  ...cs,
   ...jeuxVideo,
   // POP CULTURE
   sub('pop', 'films', 'Films'),
@@ -152,9 +197,8 @@ export const SUBTHEMES: SubTheme[] = [
   sub('pop', 'marvel', 'Marvel (MCU)'),
   sub('pop', 'musique', 'Musique'),
   sub('pop', 'youtubeurs', 'Youtubeurs'),
-  // SPORT
-  sub('sport', 'sport', 'Sport'),
-  sub('sport', 'esport', 'Esport'),
+  // SPORT (sport + esport, un seul booster)
+  ...sport,
   // WORLD (id « monde » conservé : identifiant stable)
   ...monde,
 ];
@@ -297,6 +341,9 @@ export function themeTagline(t: ThemeInfo): string {
   if (!live.length) return taglineOf([`${t.subthemes.length} SOUS-THÈMES`, 'EN PRÉPARATION']);
   return taglineOf([`${fmtCount(t.cards.length, ' ')} CARTES`, ...live.map((s) => s.label.toUpperCase())]);
 }
+
+/** Dénominateur du numéro d'une carte de ce sous-thème (« 025/151 », « 152/1025 »). */
+export const numberingSize = (st: SubTheme) => st.size ?? st.cards.length;
 
 /** La carte a-t-elle une illustration ? (sinon : design typographique, cf. art/jvTitle.ts) */
 export const hasArt = (e: CatalogEntry) => e.file !== '';

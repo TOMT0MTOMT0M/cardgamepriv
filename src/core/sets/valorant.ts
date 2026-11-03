@@ -1042,3 +1042,34 @@ export const valorantCardId = (e: ValorantEntry) => `val-${e.uuid}`;
 
 /** Nom du fichier d'illustration (relatif à `VALORANT_INFO.artDir`). */
 export const valorantFile = (e: ValorantEntry) => `${e.uuid}.png`;
+
+/**
+ * Sous-thèmes d'affichage (correctif du 3 nov.) : la CLASSE d'arme, ou « Agents ». Le libellé est imprimé en grand sur
+ * la carte (« PISTOLETS ») ; ids, étoiles et numéros inchangés. Ordre = celui du menu d'achat du jeu.
+ */
+export const VALORANT_CLASSES = [
+  { id: 'val-agents', label: 'Agents' },
+  { id: 'val-pistolets', label: 'Pistolets' },
+  { id: 'val-mitraillettes', label: 'Mitraillettes' },
+  { id: 'val-pompes', label: 'Fusils à pompe' },
+  { id: 'val-fusils', label: 'Fusils' },
+  { id: 'val-snipers', label: 'Snipers' },
+  { id: 'val-mitrailleuses', label: 'Mitrailleuses' },
+  { id: 'val-couteaux', label: 'Couteaux' },
+] as const;
+
+const VAL_WEAPON_CLASS: Record<string, string> = {
+  Classic: 'val-pistolets', Shorty: 'val-pistolets', Frenzy: 'val-pistolets', Ghost: 'val-pistolets', Sheriff: 'val-pistolets', Bandit: 'val-pistolets',
+  Stinger: 'val-mitraillettes', Spectre: 'val-mitraillettes',
+  Bucky: 'val-pompes', Judge: 'val-pompes',
+  Bulldog: 'val-fusils', Guardian: 'val-fusils', Phantom: 'val-fusils', Vandal: 'val-fusils',
+  Marshal: 'val-snipers', Outlaw: 'val-snipers', Operator: 'val-snipers',
+  Ares: 'val-mitrailleuses', Odin: 'val-mitrailleuses',
+};
+
+export function valorantClass(e: ValorantEntry): (typeof VALORANT_CLASSES)[number] {
+  const id = e.kind === 'agent' ? 'val-agents' : e.kind === 'knife' ? 'val-couteaux' : VAL_WEAPON_CLASS[e.weapon];
+  const c = VALORANT_CLASSES.find((x) => x.id === id);
+  if (!c) throw new Error(`Valorant : arme sans classe « ${e.weapon} » (${e.name})`);
+  return c;
+}

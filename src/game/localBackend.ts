@@ -9,6 +9,7 @@ import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak, type StreakState } from '../core/streak';
 import { bestCard, cleanCosmetics, statsFrom, type CosmeticChoice } from '../core/cosmetics';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
+import { createLocalEco, type LocalEcoSave } from './ecoLocal';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
 
 /**
@@ -58,6 +59,8 @@ interface Saved {
   cosmetics?: CosmeticChoice;
   trades_done?: number;
   contracts_done?: number;
+  /** pièces, compteurs de l'économie, parties de l'espace Jeux (ecoLocal.ts) */
+  eco?: LocalEcoSave;
   /** fil d'activité perso (gros drops, échanges, contrats) */
   activity?: Array<{ id: string; kind: string; message: string; cardId?: string; cardName?: string; rarity?: RarityId; mintNumber?: number; createdAt: number }>;
 }
@@ -235,8 +238,56 @@ export function createLocalBackend(): GameBackend {
   }, 30_000);
   sync();
 
+  // ── économie + espace Jeux (démo) : pièces, calendrier, brûlage, complétions, succès, jeux contre les robots
+  const eco = createLocalEco({
+    data: () => save.eco,
+    setData: (x) => (save.eco = x),
+    owned: (cardId, r) => {
+      const have = save.inv[cardKey({ cardId, rarity: r })]?.count ?? 0;
+      return { have, free: Math.max(0, have - (lockedCards(state).get(cardKey({ cardId, rarity: r })) ?? 0)) };
+    },
+    addCard: (owner, cardId, r, n, mint) => {
+      if (owner === 'me') add(save.inv, cardId, r, n, mint);
+      else {
+        const bot = save.bots.find((b) => b.id === owner);
+        if (bot) add(bot.inv, cardId, r, n, mint);
+      }
+    },
+    removeCard: (cardId, r, n) => remove(save.inv, { cardId, rarity: r, count: n }),
+    packsAvailable: () => applyRegen(save.packBalance, save.regenAt ?? Date.now(), Date.now()).balance,
+    debitPacks: (n) => {
+      const now = Date.now();
+      const rg = applyRegen(save.packBalance, save.regenAt ?? now, now);
+      save.packBalance = rg.balance - n;
+      save.regenAt = rg.regenAt;
+    },
+    grantPacks: (n) => grant(n),
+    roll: (choice, who) => {
+      const mine = who === 'me';
+      const req: PackRequest = { kind: choice.kind, themeId: choice.themeId, ...(mine ? { forceMythic: pityForces(save.pity ?? 0) } : {}) };
+      const cards = rollPack(req).map(({ card, rarity }) => {
+        const k = cardKey({ cardId: card.id, rarity });
+        const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
+        return { cardId: card.id, cardName: card.name, rarity: rarity as RarityId, mintNumber: mint, foilSeed: 1 };
+      });
+      if (mine) {
+        save.pity = pityAfter(save.pity ?? 0, cards.map((c) => c.rarity));
+        save.opened++;
+      }
+      return cards;
+    },
+    stats: myStats,
+    ownedIds: () => Object.values(save.inv).map((c) => c.cardId),
+    streak: () => save.streak,
+    setStreak: (st) => (save.streak = st),
+    bots: () => save.bots.map((b) => ({ id: b.id, name: b.name })),
+    feed: (message) => feed('game', message),
+    changed: () => sync(),
+  });
+
   return {
     state,
+    eco: eco.backend,
     onChange(fn) {
       listeners.add(fn);
       fn(state);
@@ -296,6 +347,7 @@ export function createLocalBackend(): GameBackend {
       save.opened++;
       save.sealed = null;
       bump({ type: 'pack', packKey: p.packKind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: p.cards });
+      eco.hooks.onPack(p.packKind, p.packKind === 'theme' && p.themeId ? themeById(p.themeId)?.label ?? 'booster' : BEBOU_PACK.label, p.cards);
       maybeBotOffer();
       sync();
     },
@@ -329,6 +381,7 @@ export function createLocalBackend(): GameBackend {
           offered.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
           requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
           save.trades_done = (save.trades_done ?? 0) + 1;
+          eco.hooks.onTrade();
           feed('trade', `${bot.name} a accepté ton échange !`);
         } else {
           cur.status = 'declined';
@@ -347,6 +400,7 @@ export function createLocalBackend(): GameBackend {
         t.offered.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
         t.requested.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
         save.trades_done = (save.trades_done ?? 0) + 1;
+          eco.hooks.onTrade();
         feed('trade', `Échange conclu avec ${bot.name} !`);
         bump({ type: 'trade' });
       }
@@ -385,6 +439,7 @@ export function createLocalBackend(): GameBackend {
           offered.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
           requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
           save.trades_done = (save.trades_done ?? 0) + 1;
+          eco.hooks.onTrade();
           feed('trade', `${bot.name} a accepté ta contre-proposition !`);
         } else {
           cur.status = 'declined';
@@ -417,6 +472,7 @@ export function createLocalBackend(): GameBackend {
       if (typeof r === 'string') throw new Error(r);
       save.missions = r.state;
       grant(r.reward);
+      eco.hooks.onMission(r.state.list.find((m) => m.id === id)!);
       sync();
       return r.reward;
     },
@@ -564,6 +620,7 @@ export function createLocalBackend(): GameBackend {
       const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
       add(save.inv, card.id, target, 1, mint);
       bump({ type: 'contract' });
+      eco.hooks.onContract();
       save.contracts_done = (save.contracts_done ?? 0) + 1;
       feed('contract', `Contrat signé : ${card.name} [${rarityOf(target).label} #${mint}] !`, target, { id: card.id, name: card.name, mint });
       sync();

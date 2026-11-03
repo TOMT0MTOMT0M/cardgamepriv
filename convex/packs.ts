@@ -8,6 +8,8 @@ import { artPath, bebouOddsLabel, catalogEntry, hasArt, subthemeById, themeById,
 import { applyRegen, fmtCountdown } from '../src/core/packRegen';
 import { bumpMissions } from './missions';
 import { pityAfter, pityForces } from '../src/core/pity';
+import { rollPackCoins } from '../src/core/economy';
+import { addCoins, bumpWeekly } from './econLib';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -158,6 +160,8 @@ export const preparePack = mutation({
       createdAt: now,
       packKind: req.kind,
       themeId: req.themeId,
+      // pièces d'ouverture (spec économie) : tirées ici avec le booster, créditées au dévoilement
+      coins: rollPackCoins(req.kind, secureRandomFloat),
     });
 
     return (await ctx.db.get(packId))!;
@@ -263,6 +267,10 @@ export const revealPack = mutation({
         }
       }
     }
+
+    // pièces d'ouverture + missions de la semaine (src/core/economy.ts, src/core/weekly.ts)
+    if (pack.coins) await addCoins(ctx, user._id, pack.coins, 'pack', `Ouverture — ${pack.packKind === 'theme' && pack.themeId ? themeById(pack.themeId)?.label ?? 'booster' : BEBOU_PACK.label}`, { earned: true });
+    await bumpWeekly(ctx, user._id, { type: 'pack', cards: pack.cards.map((c) => ({ rarity: c.rarity, isNew: c.isNew })) });
 
     // missions du jour (ouvrir, raretés, nouvelles cartes, doublons…)
     await bumpMissions(ctx, user, {

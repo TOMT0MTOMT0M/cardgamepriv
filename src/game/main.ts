@@ -9,6 +9,9 @@ import { createContractsView } from './views/contracts';
 import { createProfileView } from './views/profile';
 import { createMissions, MISSION_ICON } from './views/missions';
 import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
+import { createGamesView } from './views/games';
+import { COIN_ICON, createWallet } from './views/wallet';
+import { fmtCoins } from '../core/economy';
 import { createLocalBackend } from './localBackend';
 import { createOnlineBackend, onlineConfigured } from './onlineBackend';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
@@ -66,6 +69,7 @@ top.innerHTML = `
     <a href="#/collection" data-r="collection">Collection</a>
     <a href="#/contrats" data-r="contrats">Contrats</a>
     <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>
+    <a href="#/jeux" data-r="jeux">Jeux</a>
     <i class="nav-pill" aria-hidden="true"></i>
   </nav>
   <div class="me"></div>`;
@@ -135,7 +139,7 @@ function renderMe() {
     meEl.innerHTML = `${demo}${snd}${s.mode === 'online' ? `<button class="btn-primary login">Connexion Discord</button>` : ''}${s.authError ? `<span class="err">${esc(s.authError)}</span>` : ''}`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `${demo}<a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour">${MISSION_ICON}<b class="msn-n" hidden></b></button><button class="icon st-btn" title="Série de connexion" aria-label="Série de connexion">${STREAK_ICON}<b class="st-n"></b></button><button class="icon pt-btn" title="Pity 6★ : boosters avant un 6★ garanti" aria-label="Pity 6★">${PITY_ICON}<b class="pt-n"></b></button>${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button>`;
+    meEl.innerHTML = `${demo}<a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, calendrier, primes" aria-label="Portefeuille">${COIN_ICON}<b>${fmtCoins(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour">${MISSION_ICON}<b class="msn-n" hidden></b></button><button class="icon st-btn" title="Série de connexion" aria-label="Série de connexion">${STREAK_ICON}<b class="st-n"></b></button><button class="icon pt-btn" title="Pity 6★ : boosters avant un 6★ garanti" aria-label="Pity 6★">${PITY_ICON}<b class="pt-n"></b></button>${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button>`;
     tickPacks();
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
@@ -168,10 +172,12 @@ function renderMe() {
   vol?.addEventListener('change', () => shell?.sfx.tick(1.2, 0.08));
   meEl.querySelector('.user')?.addEventListener('click', () => (location.hash = '#/profil'));
   meEl.querySelector('.msn-btn')?.addEventListener('click', () => missions?.toggle());
+  meEl.querySelector('.coin-btn')?.addEventListener('click', () => wallet?.toggle());
   meEl.querySelector('.st-btn')?.addEventListener('click', () => status?.toggle('streak'));
   meEl.querySelector('.pt-btn')?.addEventListener('click', () => status?.toggle('pity'));
   syncMissionBadge();
   syncStatus();
+  syncCoins();
   const n = s.trades.incoming.length;
   const badgeChanged = tradeBadge.hidden !== (n === 0) || tradeBadge.textContent !== String(n);
   tradeBadge.hidden = n === 0;
@@ -195,6 +201,33 @@ function syncMissionBadge() {
   meEl.querySelector('.msn-btn')?.classList.toggle('ready', n > 0);
 }
 backend.onChange(syncMissionBadge);
+backend.eco.onChange(() => syncMissionBadge());
+/** Portefeuille (pièces) : solde dans l'en-tête, « +N » qui s'envole à chaque gain, pastille s'il y a quelque chose à prendre. */
+let wallet: ReturnType<typeof createWallet> | null = null;
+let lastCoins = -1;
+function syncCoins() {
+  const b = meEl.querySelector<HTMLElement>('.coin-btn');
+  const snap = backend.eco.snapshot;
+  if (!b || !snap) return;
+  setText(b.querySelector('b')!, fmtCoins(snap.coins));
+  const ready = wallet?.ready() ?? 0;
+  b.querySelector<HTMLElement>('.w-dot')!.hidden = ready === 0;
+  b.title = ready ? 'Portefeuille : quelque chose à prendre (calendrier, primes, succès) !' : 'Portefeuille : pièces, calendrier, primes';
+  if (lastCoins >= 0 && snap.coins !== lastCoins && document.visibilityState === 'visible') {
+    const d = snap.coins - lastCoins;
+    const r = b.getBoundingClientRect();
+    const fly = h('div', `coin-fly${d < 0 ? ' neg' : ''}`, `${d > 0 ? '+' : '−'}${fmtCoins(Math.abs(d))}`);
+    fly.style.left = `${r.left + r.width / 2 - 20}px`;
+    fly.style.top = `${r.bottom + 4}px`;
+    document.body.append(fly);
+    setTimeout(() => fly.remove(), 1400);
+    b.classList.remove('bump');
+    void b.offsetWidth;
+    b.classList.add('bump');
+  }
+  lastCoins = snap.coins;
+}
+backend.eco.onChange(syncCoins);
 /** Série de connexion + pity (status.ts) ; créés une fois la 3D prête (sons). */
 let status: ReturnType<typeof createStatus> | null = null;
 function syncStatus() {
@@ -282,6 +315,7 @@ const TITLES: Record<string, string> = {
   contrats: 'Bébou — contrats',
   echanges: 'Bébou — échanges',
   profil: 'Bébou — profil',
+  jeux: 'Bébou — jeux',
 };
 
 async function boot() {
@@ -308,10 +342,12 @@ async function boot() {
     void backend.logout().then(() => (location.hash = '#/'));
   });
   missions = createMissions(backend, shell);
+  wallet = createWallet(backend, shell);
+  const games = createGamesView(backend, shell);
   status = createStatus(backend, shell);
   syncMissionBadge();
   syncStatus();
-  const views: Record<string, { el: HTMLElement; enter(sub?: string): void; leave(): void }> = { '': shop, collection: coll, contrats: contracts, echanges: trades, profil: profile };
+  const views: Record<string, { el: HTMLElement; enter(sub?: string): void; leave(): void }> = { '': shop, collection: coll, contrats: contracts, echanges: trades, profil: profile, jeux: games };
   let current = '';
 
   function route() {

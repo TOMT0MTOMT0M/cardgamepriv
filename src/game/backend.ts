@@ -4,6 +4,7 @@ import { applyRegen, type RegenState } from '../core/packRegen';
 import type { MissionsState } from '../core/missions';
 import type { StreakState } from '../core/streak';
 import type { CosmeticChoice, PlayerStats } from '../core/cosmetics';
+import type { EcoBackend } from './eco';
 
 /** Une ligne de collection : (carte, rareté) → nombre d'exemplaires. */
 export interface PlayerCard {
@@ -209,6 +210,8 @@ export interface ActivityItem {
 
 export interface GameBackend {
   readonly state: GameState;
+  /** pièces, sources de pièces et espace Jeux (eco.ts) */
+  readonly eco: EcoBackend;
   onChange(fn: (s: GameState) => void): () => void;
   login(): void;
   logout(): Promise<void>;

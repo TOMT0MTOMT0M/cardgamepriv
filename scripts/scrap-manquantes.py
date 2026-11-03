@@ -63,16 +63,31 @@ def expansions(c):
     return list(dict.fromkeys(out))
 
 
+def bare(t):
+    return norm(re.sub(r'\(.*?\)', ' ', t))
+
+
+def strict_ok(src, name):
+    """Wikipédia doit renvoyer EXACTEMENT ce titre (sinon « GTA III » prenait la page de GTA VI : titres trop proches)."""
+    if not src.startswith('wiki:'):
+        return True
+    return bare(src[5:]) == bare(name)
+
+
 def jaquette(c):
-    for name in expansions(c)[1:] or []:
+    for name in expansions(c)[1:]:
         c2 = {**c, 'name': name}
         for fn in (JV.steam, JV.wikipedia):
             try:
                 res = fn(c2)
             except Exception:
                 res = None
-            if res:
+            if res and strict_ok(res[1], name):
                 return res[0], f'{res[1]}~{name}'
+    for name in expansions(c):
+        res = wd_game({**c, 'name': name})
+        if res:
+            return res
     return None
 
 
@@ -142,8 +157,8 @@ def best_file(api, title, slow=False):
 
 
 def franchise_page(c):
-    api = LIQUI.get(c['fam']) or JV.wiki_api(c['fam'])
-    if not api:
+    api = LIQUI.get(c['fam']) or (None if 'wiki.gg' in (JV.WIKIS.get(c['fam']) or 'wiki.gg') else JV.wiki_api(c['fam']))
+    if not api:  # wiki.gg répond « Not authorized » (401) aux robots : on ne l'utilise pas
         return None
     slow = 'liquipedia' in api
     name = c['name']
@@ -151,15 +166,103 @@ def franchise_page(c):
     m = re.match(r'^(.*?)\s*\((.*?)\)\s*$', name)
     if m:
         cands.append(m.group(1))
-    for t in cands:
+    cands += [x.strip() for x in re.sub(r'\(.*?\)', '', name).split('/') if '/' in name]
+    en = wd_en_label(c)
+    if en:
+        cands.append(en)
+    for t in dict.fromkeys(cands):
         res = best_file(api, t, slow)
         if res:
             return res
     return None
 
 
-# ───────────────────────────────────────────── World Pack : Wikidata
+# ───────────────────────────────────────────── Jeux vidéo : Wikidata → page Wikipédia anglaise (image d'infobox)
 WD = 'https://www.wikidata.org/w/api.php'
+GAMEDESC = ('video game', 'jeu vidéo', 'jeu video', 'videogame', 'mobile game', 'jeu mobile')
+CHARDESC = ('character', 'personnage', 'mascot', 'mascotte', 'protagonist', 'antagonist', 'boss', 'creature', 'créature')
+_wd_cache = {}
+
+
+def fam_tokens(fam):
+    f = re.sub(r'\(.*?\)', ' ', fam)
+    if 'divers' in f or 'autres' in f.lower() or 'classiques' in f.lower():
+        return []
+    return [t for t in norm(f).split() if len(t) >= 4 and t not in ('jeux', 'persos', 'online', 'mobile', 'casual', 'royale', 'battle')]
+
+
+def wd_hits(c, want):
+    """Entités Wikidata dont le libellé (fr ou en) est le nom de la carte et dont la description colle (jeu / personnage
+    de la bonne franchise). Renvoie [(qid, label)]."""
+    key = (c['id'], c['name'], want)
+    if key in _wd_cache:
+        return _wd_cache[key]
+    names = [c['name'], re.sub(r'\(.*?\)', '', c['name']).strip()] + [x.strip() for x in re.sub(r'\(.*?\)', '', c['name']).split('/') if '/' in c['name']]
+    toks = fam_tokens(c['fam'])
+    out = []
+    for name in dict.fromkeys(n for n in names if n):
+        for lang in ('fr', 'en'):
+            d = get(WD, {'action': 'wbsearchentities', 'search': name, 'language': lang, 'uselang': 'en', 'type': 'item', 'limit': 7, 'format': 'json'})
+            for hit in (d or {}).get('search', []):
+                label = (hit.get('match') or {}).get('text') or hit.get('label') or ''
+                if bare(label) != bare(name) and not (want == 'char' and bare(name) in bare(label).split()[:1]):
+                    continue
+                desc = (hit.get('description') or '').lower()
+                if not any(w in desc for w in (GAMEDESC if want == 'game' else CHARDESC)):
+                    continue
+                if want == 'char' and toks and not any(t in norm(desc) for t in toks):
+                    continue
+                if want == 'char' and not toks and not any(w in desc for w in GAMEDESC):
+                    continue
+                out.append((hit['id'], hit.get('label') or label))
+            if out:
+                break
+        if out:
+            break
+    _wd_cache[key] = out
+    return out
+
+
+def wd_en_label(c):
+    h = wd_hits(c, 'char' if c['type'] != 'Jaquette' else 'game')
+    return h[0][1] if h else None
+
+
+def wd_image(qid):
+    e = get(WD, {'action': 'wbgetentities', 'ids': qid, 'props': 'sitelinks|claims', 'sitefilter': 'enwiki', 'format': 'json'})
+    ent = ((e or {}).get('entities', {}).get(qid, {}) or {})
+    en = (ent.get('sitelinks', {}).get('enwiki') or {}).get('title')
+    if en:
+        img = JV.wiki_image(JV.WIKI, en)
+        if img and not re.search(r'logo|wordmark', img[0], re.I):
+            b = get(img[0], binary=True, tries=3)
+            if b and len(b) > 3000:
+                return b, f'wikidata:{qid}:enwiki:{en}'
+    v = (ent.get('claims', {}).get('P18') or [{}])[0].get('mainsnak', {}).get('datavalue', {}).get('value')
+    if v:
+        b = get('https://commons.wikimedia.org/wiki/Special:FilePath/' + v.replace(' ', '_') + '?width=900', binary=True, tries=3)
+        if b and len(b) > 3000:
+            return b, f'wikidata:{qid}:P18'
+    return None
+
+
+def wd_game(c):
+    for qid, _ in wd_hits(c, 'game')[:2]:
+        res = wd_image(qid)
+        if res:
+            return res
+    return None
+
+
+def wd_char(c):
+    for qid, _ in wd_hits(c, 'char')[:2]:
+        res = wd_image(qid)
+        if res:
+            return res
+    return None
+
+
+# ───────────────────────────────────────────── World Pack : Wikidata
 DESC = {
     'villes': ('ville', 'city', 'commune', 'municip', 'capitale', 'capital', 'métropole', 'prefecture', 'préfecture', 'district', 'town', 'agglom', 'chef-lieu'),
     'animaux': ('espèce', 'species', 'taxon', 'genre', 'famille', 'sous-espèce', 'animal', 'dinosaure', 'race'),
@@ -172,7 +275,16 @@ DESC = {
 
 
 NOT_PLACE = ('film', 'album', 'chanson', 'single', 'groupe de musique', 'jeu vidéo', 'roman', 'série télévisée', 'épisode', 'personnage', 'homonymie',
-             'nom de famille', 'prénom', 'footballeur', 'acteur', 'actrice', 'chanteur', 'navire', 'astéroïde')
+             'nom de famille', 'prénom', 'footballeur', 'acteur', 'actrice', 'chanteur', 'navire', 'astéroïde', 'race de', 'station', 'métro', 'gare ',
+             'école', 'écoles')
+# sous-thèmes sans mot-clé de type : la description doit au moins dire ce que c'est (Serengeti ≠ race de chat, Murray ≠ ville de l'Utah)
+SUBDESC = {
+    'Mers, fleuves & lacs': ('fleuve', 'rivière', 'lac', 'mer ', 'mer.', 'océan', 'golfe', 'baie', 'détroit', "cours d'eau", 'river', 'lake', 'sea', 'estuaire', 'lagune'),
+    'Montagnes & volcans': ('montagne', 'mont', 'volcan', 'sommet', 'massif', 'chaîne', 'pic', 'mountain', 'volcano', 'peak'),
+    'Sites naturels': ('parc', 'montagne', 'désert', 'île', 'chute', 'cascade', 'canyon', 'forêt', 'grotte', 'plage', 'récif', 'glacier', 'lac', 'vallée',
+                       'plateau', 'falaise', 'réserve', 'site', 'formation', 'écorégion', 'archipel', 'delta', 'volcan', 'gorge', 'mont', 'savane', 'région',
+                       'baie', 'geyser', 'rocher', 'massif', 'dune', 'cratère', 'fjord', 'atoll', 'lagon', 'marais', 'zone humide', 'péninsule', 'cap '),
+}
 
 
 def wd_kind(c):
@@ -198,6 +310,8 @@ def wikidata(c):
             if kind and not any(w in desc for w in DESC[kind]):
                 continue
             if not desc or any(w in desc for w in NOT_PLACE):
+                continue
+            if c['sub'] in SUBDESC and not any(w in desc + ' ' for w in SUBDESC[c['sub']]):
                 continue
             e = get(WD, {'action': 'wbgetentities', 'ids': hit['id'], 'props': 'claims', 'format': 'json'})
             claims = ((e or {}).get('entities', {}).get(hit['id'], {}) or {}).get('claims', {})
@@ -230,13 +344,19 @@ def run(budget, only):
                 todo.append(('mo', c))
     print(f'{len(todo)} cartes sans image à retenter', flush=True)
 
+    def flush():  # n'écrit que le journal traité (deux lancements --only jv / --only monde en parallèle)
+        if only in (None, 'jv'):
+            JV.write_log(jv_log)
+        if only in (None, 'monde'):
+            MO.write_log(mo_log)
+
     def one(kind, c):
         if kind == 'mo':
             fns = (wikidata,)
             mod = MO
         else:
             mod = JV
-            fns = (jaquette,) if c['type'] == 'Jaquette' else ((fortnite,) if c['fam'] == 'Fortnite' else ()) + (franchise_page,)
+            fns = (jaquette,) if c['type'] == 'Jaquette' else ((fortnite,) if c['fam'] == 'Fortnite' else ()) + (franchise_page, wd_char)
         for fn in fns:
             try:
                 res = fn(c)
@@ -272,12 +392,10 @@ def run(budget, only):
                     h.update(res)
                     found += 1
                 done += 1
-                if done % 40 == 0:
-                    JV.write_log(jv_log)
-                    MO.write_log(mo_log)
+                if done % 20 == 0:
+                    flush()
                 submit()
-    JV.write_log(jv_log)
-    MO.write_log(mo_log)
+    flush()
     left = sum(1 for k, c in todo if not ((mo_log if k == 'mo' else jv_log).get(c['id'], {}).get('s2')))
     print(f'+{done} retentées en {time.time() - t0:.0f} s · {found} images trouvées · reste {left}', flush=True)
 

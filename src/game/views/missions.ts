@@ -3,6 +3,9 @@ import type { Shell } from '../shell';
 import { MISSION_BONUS, missionLabel, missionsReady, type Mission } from '../../core/missions';
 import { SUBTHEMES, subthemeById } from '../../core/sets/themes';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
+import { dailyMissionCoins, weeklyLabel, weeklyReady, type WeeklyMission } from '../../core/weekly';
+import { fmtCoins } from '../../core/economy';
+import { COIN_ICON } from './wallet';
 
 /**
  * MISSIONS DU JOUR : bouton dans l'en-tête (pastille = missions à réclamer) qui ouvre un panneau.
@@ -47,7 +50,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
   function row(m: Mission, rerolled: boolean) {
     const done = m.progress >= m.target;
     const r = h('div', `msn${done ? ' done' : ''}${m.claimed ? ' claimed' : ''}`);
-    r.innerHTML = `<div class="msn-top"><span class="msn-t">${esc(missionLabel(m))}</span><span class="msn-rw" title="Récompense">+${m.reward}<svg viewBox="0 0 16 20" width="10" height="12" aria-hidden="true"><path d="M3 4h10v12H3z" fill="currentColor"/></svg></span></div>
+    r.innerHTML = `<div class="msn-top"><span class="msn-t">${esc(missionLabel(m))}</span><span class="msn-rw" title="Récompense">+${m.reward}<svg viewBox="0 0 16 20" width="10" height="12" aria-hidden="true"><path d="M3 4h10v12H3z" fill="currentColor"/></svg><span class="msn-coins">+${dailyMissionCoins(m)}${COIN_ICON}</span></span></div>
       <div class="msn-bar"><i style="width:${((m.progress / m.target) * 100).toFixed(1)}%"></i></div>
       <div class="msn-bot"><span class="msn-p">${m.claimed ? 'réclamée ✓' : `${m.progress} / ${m.target}`}</span>
       ${!m.claimed && done ? `<button class="btn-primary msn-claim">Réclamer</button>` : ''}
@@ -57,7 +60,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
       try {
         const n = await busyButton(claim, backend.claimMission(m.id));
         shell.sfx.chime(3, 0.08);
-        toast(`+${plural(n, 'booster')} dans ta réserve !`, 'ok');
+        toast(`+${plural(n, 'booster')} dans ta réserve et +${dailyMissionCoins(m)} pièces !`, 'ok');
       } catch (e) {
         toast(errMsg(e), 'err');
       }
@@ -103,6 +106,31 @@ export function createMissions(backend: GameBackend, shell: Shell) {
     });
     pop.append(bonus);
     if (!s.rerolled && !allClaimed) pop.insertAdjacentHTML('beforeend', '<div class="msn-foot">Une mission ne te plaît pas ? Tu peux en changer une par jour.</div>');
+    // missions de la semaine (spec économie) : ~200 pièces chacune
+    const w = backend.eco.snapshot?.weekly;
+    if (w) {
+      pop.insertAdjacentHTML('beforeend', `<div class="msn-head msn-week"><b>Cette semaine</b><span>nouvelles dans ${fmtLeft(w.resetAt - Date.now())}</span></div>`);
+      for (const m of w.list) pop.append(weekRow(m));
+    }
+  }
+
+  function weekRow(m: WeeklyMission) {
+    const done = m.progress >= m.target;
+    const r = h('div', `msn${done ? ' done' : ''}${m.claimed ? ' claimed' : ''}`);
+    r.innerHTML = `<div class="msn-top"><span class="msn-t">${esc(weeklyLabel(m))}</span><span class="msn-rw" title="Récompense"><span class="msn-coins">+${fmtCoins(m.reward)}${COIN_ICON}</span></span></div>
+      <div class="msn-bar"><i style="width:${((m.progress / m.target) * 100).toFixed(1)}%"></i></div>
+      <div class="msn-bot"><span class="msn-p">${m.claimed ? 'réclamée ✓' : `${m.progress} / ${m.target}`}</span>${!m.claimed && done ? '<button class="btn-primary msn-claim">Réclamer</button>' : ''}</div>`;
+    const b = r.querySelector<HTMLButtonElement>('.msn-claim');
+    b?.addEventListener('click', async () => {
+      try {
+        const n = await busyButton(b, backend.eco.claimWeekly(m.id));
+        shell.sfx.chime(4, 0.09);
+        toast(`Mission de la semaine : +${fmtCoins(n)} pièces !`, 'ok');
+      } catch (e) {
+        toast(errMsg(e), 'err');
+      }
+    });
+    return r;
   }
 
   function toggle(force?: boolean) {
@@ -136,6 +164,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
   });
 
   /** nombre à afficher sur le bouton */
-  const ready = () => missionsReady(backend.state.missions);
+  const ready = () => missionsReady(backend.state.missions) + weeklyReady(backend.eco.snapshot?.weekly);
+  backend.eco.onChange(() => render());
   return { toggle, ready };
 }

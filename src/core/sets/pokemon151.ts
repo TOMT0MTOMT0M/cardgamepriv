@@ -1057,3 +1057,21 @@ export const pokemonCardId = (e: SetEntry) => `pkm-${e.slug}`;
 
 /** Nom du fichier d'illustration (relatif à `POKEMON_151_INFO.artDir`). */
 export const pokemonFile = (e: SetEntry) => `${String(e.dex).padStart(3, '0')}-${e.slug}.png`;
+
+/**
+ * Sous-thèmes d'affichage (correctif du 3 nov.) : la GÉNÉRATION, d'après le n° de Pokédex. Le libellé est imprimé en
+ * grand sur la carte (« KANTO ») ; ids de carte, étoiles et numéros inchangés.
+ */
+export const POKEMON_GENS = [
+  { id: 'pkm-kanto', label: 'Kanto', last: 151 },
+  { id: 'pkm-johto', label: 'Johto', last: 251 },
+  { id: 'pkm-hoenn', label: 'Hoenn', last: 386 },
+  { id: 'pkm-sinnoh', label: 'Sinnoh', last: 493 },
+  { id: 'pkm-unys', label: 'Unys', last: 649 },
+  { id: 'pkm-kalos', label: 'Kalos', last: 721 },
+  { id: 'pkm-alola', label: 'Alola', last: 809 },
+  { id: 'pkm-galar', label: 'Galar', last: 905 },
+  { id: 'pkm-paldea', label: 'Paldea', last: 1025 },
+] as const;
+
+export const pokemonGen = (e: SetEntry) => POKEMON_GENS.find((g) => e.dex <= g.last) ?? POKEMON_GENS[POKEMON_GENS.length - 1];

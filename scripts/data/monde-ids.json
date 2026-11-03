@@ -9694,6 +9694,307 @@
 "file": "",
 "id": "auto-skoda-superb"
 },
+"Monster|Java Monster Dubai Chocolate": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-java-monster-dubai-chocolate"
+},
+"Monster|Java Monster Irish Blend": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-java-monster-irish-blend"
+},
+"Monster|Java Monster Irish Crème": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-java-monster-irish-creme"
+},
+"Monster|Java Monster Kona Blend": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-java-monster-kona-blend"
+},
+"Monster|Java Monster Loca Moca": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-java-monster-loca-moca"
+},
+"Monster|Java Monster Mean Bean": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-java-monster-mean-bean"
+},
+"Monster|Java Monster Salted Caramel": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-java-monster-salted-caramel"
+},
+"Monster|Java Monster Vanilla Light": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-java-monster-vanilla-light"
+},
+"Monster|Juice Monster Aussie Style Lemonade": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-aussie-style-lemonade"
+},
+"Monster|Juice Monster Bad Apple": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-bad-apple"
+},
+"Monster|Juice Monster Khaotic": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-khaotic"
+},
+"Monster|Juice Monster Mango Loco": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-mango-loco"
+},
+"Monster|Juice Monster Monarch": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-monarch"
+},
+"Monster|Juice Monster Pacific Punch": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-pacific-punch"
+},
+"Monster|Juice Monster Papillon": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-papillon"
+},
+"Monster|Juice Monster Pipeline Punch": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-pipeline-punch"
+},
+"Monster|Juice Monster Rio Punch": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-rio-punch"
+},
+"Monster|Juice Monster Viking Berry": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-viking-berry"
+},
+"Monster|Juice Monster Voodoo Grape": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-juice-monster-voodoo-grape"
+},
+"Monster|Monster Assault": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-assault"
+},
+"Monster|Monster Electric Blue": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-electric-blue"
+},
+"Monster|Monster Full Throttle": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-full-throttle"
+},
+"Monster|Monster Hydro Blue Ice": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-hydro-blue-ice"
+},
+"Monster|Monster Hydro Mean Green": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-hydro-mean-green"
+},
+"Monster|Monster Import": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-import"
+},
+"Monster|Monster Juiced Ripper": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-juiced-ripper"
+},
+"Monster|Monster LH44 Zero Sugar": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-lh44-zero-sugar"
+},
+"Monster|Monster Lando Norris (melon yuzu)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-lando-norris-melon-yuzu"
+},
+"Monster|Monster Lewis Hamilton LH44": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-lewis-hamilton-lh44"
+},
+"Monster|Monster Lo-Carb": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-lo-carb"
+},
+"Monster|Monster Mule Ginger Brew": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-mule-ginger-brew"
+},
+"Monster|Monster Nitro Cosmic Peach": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-nitro-cosmic-peach"
+},
+"Monster|Monster Nitro Super Dry": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-nitro-super-dry"
+},
+"Monster|Monster Original Green": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-energy",
+"reimage": true
+},
+"Monster|Monster Reserve Orange Dreamsicle": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-reserve-orange-dreamsicle"
+},
+"Monster|Monster Reserve Watermelon": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-reserve-watermelon"
+},
+"Monster|Monster Reserve White Pineapple": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-reserve-white-pineapple"
+},
+"Monster|Monster Strawberry Shot": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-strawberry-shot"
+},
+"Monster|Monster Super Cola": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-super-cola"
+},
+"Monster|Monster The Doctor (VR46 Valentino Rossi)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-the-doctor-vr46-valentino-rossi"
+},
+"Monster|Monster Ultra Black": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-black"
+},
+"Monster|Monster Ultra Blue": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-blue"
+},
+"Monster|Monster Ultra Fantasy Ruby Red": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-fantasy-ruby-red"
+},
+"Monster|Monster Ultra Fiesta Mango": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-fiesta-mango"
+},
+"Monster|Monster Ultra Gold": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-gold"
+},
+"Monster|Monster Ultra Paradise": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-paradise"
+},
+"Monster|Monster Ultra Peachy Keen": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-peachy-keen"
+},
+"Monster|Monster Ultra Red": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-red"
+},
+"Monster|Monster Ultra Rosá": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-rosa"
+},
+"Monster|Monster Ultra Strawberry Dreams": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-strawberry-dreams"
+},
+"Monster|Monster Ultra Sunrise": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-sunrise"
+},
+"Monster|Monster Ultra Vice Guava": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-vice-guava"
+},
+"Monster|Monster Ultra Violet": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-violet"
+},
+"Monster|Monster Ultra Watermelon": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-watermelon"
+},
+"Monster|Monster Ultra Zero « White Monster »": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-ultra-zero-white-monster"
+},
+"Monster|Monster Zero Sugar": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-monster-zero-sugar"
+},
+"Monster|Rehab Monster Green Tea": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-rehab-monster-green-tea"
+},
+"Monster|Rehab Monster Peach Tea": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-rehab-monster-peach-tea"
+},
+"Monster|Rehab Monster Tea + Lemonade": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-rehab-monster-tea-lemonade"
+},
+"Monster|Rehab Monster Wild Berry Tea": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-rehab-monster-wild-berry-tea"
+},
 "Montagnes & volcans|Aconcagua": {
 "dir": "art/monde",
 "file": "",
@@ -15179,11 +15480,6 @@
 "file": "047-mille-feuille.png",
 "id": "miam-mille-feuille"
 },
-"Plats français|Monster Energy": {
-"dir": "art/nourriture",
-"file": "071-monster-energy.png",
-"id": "miam-monster-energy"
-},
 "Plats français|Mont d’Or chaud au four": {
 "dir": "art/nourriture",
 "file": "044-mont-d-or-chaud-au-four.png",
@@ -15389,11 +15685,6 @@
 "file": "042-reblochon-de-savoie.png",
 "id": "miam-reblochon-de-savoie"
 },
-"Plats français|Red Bull": {
-"dir": "art/nourriture",
-"file": "070-red-bull.png",
-"id": "miam-red-bull"
-},
 "Plats français|Ricard (Pastis 51)": {
 "dir": "art/nourriture",
 "file": "027-ricard-pastis-51.png",
@@ -15583,6 +15874,246 @@
 "dir": "art/nourriture",
 "file": "155-oeuf-a-la-coque-mouillettes.png",
 "id": "miam-oeuf-a-la-coque-mouillettes"
+},
+"Red Bull|Krating Daeng": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-krating-daeng"
+},
+"Red Bull|Red Bull Amber Edition (fraise-abricot)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-amber-edition-fraise-abricot"
+},
+"Red Bull|Red Bull Apple Edition (pomme Fuji-gingembre)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-apple-edition-pomme-fuji-gingembre"
+},
+"Red Bull|Red Bull Blue Edition (myrtille)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-blue-edition-myrtille"
+},
+"Red Bull|Red Bull Coconut Edition (coco-myrtille)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-coconut-edition-coco-myrtille"
+},
+"Red Bull|Red Bull Energy Shot": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-energy-shot"
+},
+"Red Bull|Red Bull Extra": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-extra"
+},
+"Red Bull|Red Bull Green Edition (curuba-fleur de sureau)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-green-edition-curuba-fleur-de-sureau"
+},
+"Red Bull|Red Bull Green Edition (fruit du dragon)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-green-edition-fruit-du-dragon"
+},
+"Red Bull|Red Bull Green Edition (kiwi-pomme)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-green-edition-kiwi-pomme"
+},
+"Red Bull|Red Bull Iced Edition (vanille-myrtille glacée)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-iced-edition-vanille-myrtille-glacee"
+},
+"Red Bull|Red Bull Iced Edition Sugarfree": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-iced-edition-sugarfree"
+},
+"Red Bull|Red Bull Lime Edition": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-lime-edition"
+},
+"Red Bull|Red Bull Orange Edition (mandarine)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-orange-edition-mandarine"
+},
+"Red Bull|Red Bull Original": {
+"dir": "art/nourriture",
+"file": "070-red-bull.png",
+"id": "miam-red-bull"
+},
+"Red Bull|Red Bull Passion Fruit": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-passion-fruit"
+},
+"Red Bull|Red Bull Peach Edition (pêche blanche)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-peach-edition-peche-blanche"
+},
+"Red Bull|Red Bull Peach Edition (pêche-nectarine)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-peach-edition-peche-nectarine"
+},
+"Red Bull|Red Bull Peach Edition Sugarfree": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-peach-edition-sugarfree"
+},
+"Red Bull|Red Bull Pink Edition (fruits sauvages)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-pink-edition-fruits-sauvages"
+},
+"Red Bull|Red Bull Pink Edition Sugarfree": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-pink-edition-sugarfree"
+},
+"Red Bull|Red Bull Plus": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-plus"
+},
+"Red Bull|Red Bull Purple Edition (açaï)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-purple-edition-acai"
+},
+"Red Bull|Red Bull Red Edition (canneberge)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-red-edition-canneberge"
+},
+"Red Bull|Red Bull Red Edition (pastèque)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-red-edition-pasteque"
+},
+"Red Bull|Red Bull Sea Blue Edition (juneberry)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-sea-blue-edition-juneberry"
+},
+"Red Bull|Red Bull Sea Blue Edition Sugarfree": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-sea-blue-edition-sugarfree"
+},
+"Red Bull|Red Bull Silver Edition (citron vert)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-silver-edition-citron-vert"
+},
+"Red Bull|Red Bull Simply Cola": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-simply-cola"
+},
+"Red Bull|Red Bull Spring Edition 2025 (pamplemousse-fleur)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-spring-edition-2025-pamplemousse-fleur"
+},
+"Red Bull|Red Bull Spring Edition 2026 (cerise sakura)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-spring-edition-2026-cerise-sakura"
+},
+"Red Bull|Red Bull Sugarfree": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-sugarfree"
+},
+"Red Bull|Red Bull Sugarfree Amber Edition (fraise-abricot)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-sugarfree-amber-edition-fraise-abricot"
+},
+"Red Bull|Red Bull Sugarfree Red Edition (pastèque)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-sugarfree-red-edition-pasteque"
+},
+"Red Bull|Red Bull Sugarfree Shot": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-sugarfree-shot"
+},
+"Red Bull|Red Bull Summer Edition 2026 (sudachi-citron vert)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-summer-edition-2026-sudachi-citron-vert"
+},
+"Red Bull|Red Bull Summer Edition Beach Breeze": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-summer-edition-beach-breeze"
+},
+"Red Bull|Red Bull Summer Edition Grapefruit Twist": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-summer-edition-grapefruit-twist"
+},
+"Red Bull|Red Bull Total Zero": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-total-zero"
+},
+"Red Bull|Red Bull Winter Edition 2026 (pistache-fruits rouges)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-winter-edition-2026-pistache-fruits-rouges"
+},
+"Red Bull|Red Bull Winter Edition Arctic Berry": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-winter-edition-arctic-berry"
+},
+"Red Bull|Red Bull Winter Edition Fig Apple (figue-pomme)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-winter-edition-fig-apple-figue-pomme"
+},
+"Red Bull|Red Bull Winter Edition Holiday Spice": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-winter-edition-holiday-spice"
+},
+"Red Bull|Red Bull Winter Edition Pear Cinnamon (poire-cannelle)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-winter-edition-pear-cinnamon-poire-cannelle"
+},
+"Red Bull|Red Bull Winter Edition Plum Twist (prune-cannelle)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-winter-edition-plum-twist-prune-cannelle"
+},
+"Red Bull|Red Bull Winter Edition Pomegranate (grenade)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-winter-edition-pomegranate-grenade"
+},
+"Red Bull|Red Bull Yellow Edition (tropical)": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-yellow-edition-tropical"
+},
+"Red Bull|Red Bull Zero": {
+"dir": "art/monde",
+"file": "",
+"id": "miam-red-bull-zero"
 },
 "Reptiles & amphibiens|Ablephare de Kitaibel": {
 "dir": "art/monde",
