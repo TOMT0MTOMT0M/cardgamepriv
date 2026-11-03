@@ -706,3 +706,15 @@ Uniquement quand `quality === 'mobile'` (écran tactile) : l'ordinateur ne chang
   `fix` : corrections à la main (OVERRIDES : Uzi → le joueur et pas le pistolet, zen, David Beckham, Mario Lemieux, Argentine).
   615 cartes sans image fiable → design typographique (placeholder standard).
 - Après une nouvelle version de l'Excel : `gen`, `harvest --retry`, `wikifill`, `fix`, `gen`, puis `node scripts/r2-sync.mjs`.
+
+## Patch WORLD PACK V7 — boissons énergisantes (3 nov.)
+- `Patch-monde-V7.xlsx` (racine) appliqué par `scripts/make-monde-v2.py` à chaque gen / harvest (liste `PATCHES`), par-dessus
+  Tri-etoiles-monde_2.xlsx : (1) INSERT des 106 cartes N° 5237→5342 ; (2) rebrands N° 4264 et 4418 ; (3) resync des étoiles
+  N° 1→5236 (43 changent). Le script refuse de générer si les contrôles échouent (5 342, 1652/1267/1101/606/496/220,
+  Monster 60, Red Bull 48).
+- Nouveaux sous-thèmes « Monster » (MON) et « Red Bull » (REB), groupe Nourriture. Ids `miam-…` pour les nouvelles cartes.
+- Rebrands : MÊME id (`miam-red-bull` → Red Bull Original 6★, `miam-monster-energy` → Monster Original Green 6★) — des joueurs
+  ont peut-être déjà ces cartes. Red Bull garde son image V1 (même photo) ; Monster prend la canette verte de l'Excel.
+- Les numéros de « Plats français » situés après ces deux cartes reculent d'un ou deux (affichage seulement ; ids inchangés).
+- Images : 30 des 108 cartes Monster / Red Bull (toutes celles qui ont une URL) ; 78 cartes 1★-3★ sans URL → design typographique.
+- En jeu : 5 343 cartes = 5 342 du tri + « Citroën C15 des Cévennes » (carte V1 gardée, absente du tri).
