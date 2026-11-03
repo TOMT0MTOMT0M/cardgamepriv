@@ -75,7 +75,7 @@ import { ensureCardImages, ensureFonts, generateCardArt, type CardArt } from '..
 import { LAB_CARDS, cardById, type CardData } from '../../core/cardData';
 import { rarity, type Rarity, type RarityId } from '../../core/rarity';
 import type { createHoloMaterial } from '../../core/holo';
-import { buildEdge, buildFace, gameCardArt, themedBacks } from './cardFace';
+import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
 import { haptics } from '../../core/haptics';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
@@ -170,8 +170,19 @@ export interface OpeningScene extends Experiment {
    * centre dans l'espace laissé libre par la fiche du booster ; 0 = centre de l'écran (ouverture, téléphone).
    */
   setFocusOffset(px: number, py?: number): void;
-  /** Miniature (image) de la face d'un booster, pour la boutique ; `size` = largeur demandée (px) ; null si pas encore générée. */
+  /**
+   * Miniature (URL d'image) de la face d'un booster, pour la boutique ; `size` = largeur demandée (px). null si elle
+   * n'est pas encore prête : elle est alors encodée en tâche de fond (WebP asynchrone, mise en cache) et `onThumb(key)`
+   * prévient quand elle l'est (audit PERF2-18 / PERF1-15).
+   */
   packThumb(key: string, size?: number): string | null;
+  /** une miniature de booster (ou le visuel du booster lui-même) vient d'être prête */
+  onThumb: ((key: string) => void) | null;
+  /**
+   * Interface posée sur la scène (px CSS) : hauteur prise en haut (en-tête, compteur) et en bas (panneau de la carte,
+   * indication, boutons ; 0 si le panneau est sur le côté). La carte montrée se place dans l'espace libre (UX2-06).
+   */
+  setInsets(top: number, bottom: number): void;
   /** Vitrine : booster pas encore disponible (« bientôt ») → légèrement désaturé et moins éclairé. */
   setBoosterSoon(on: boolean): void;
   /** Vitrine : un coup de doigt horizontal sur le booster (le jeu passe au booster voisin). */
@@ -192,6 +203,11 @@ const CARD_H = 0.88;
  * (c'était 0,002–0,004 → coins qui traversent la carte de devant, surtout avec les petites rotations rz de la pile).
  */
 const STACK_DZ = 0.011;
+/**
+ * « Tout révéler » : une 6★ joue toute sa séquence (pause dramatique comprise), puis reste admirée ce temps-là avant que
+ * la suite reparte seule (au lieu d'attendre un toucher). En manuel, rien ne change : elle attend le toucher.
+ */
+const MYTHIC_ADMIRE_MS = 1600;
 const RANK: Record<RarityId, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 
 interface Slot {
@@ -223,6 +239,8 @@ export function createOpeningScene(): OpeningScene {
   let ctx: LabContext;
   let stage: ReturnType<typeof createStage>;
   let post: { render(): void };
+  /** compile les pipelines de la scène pour la cible réelle de la passe (voir setup) ; repli : stage.compile() */
+  let compileReal: () => Promise<void> = () => stage.compile();
   let key: DirectionalLight;
   const rig = new Group();
   const packRig = new Group();
@@ -244,6 +262,30 @@ export function createOpeningScene(): OpeningScene {
   const auto = { burn: false, minRank: 0, reveal: false };
   /** la carte courante doit-elle défiler en accéléré ? */
   const fastCard = (si: number | undefined) => auto.minRank > 0 && si !== undefined && !!slots[si] && slots[si].rr.rank < auto.minRank;
+  /**
+   * Vitesse d'une carte en défilement auto (audit UX2-02 / UX2-04) : ×3,5 sous le seuil, sauf une légendaire (5★,
+   * accélérée seulement par « Tout révéler ») qui passe à ×2 : son ralenti reste visible, sans annuler l'accéléré.
+   */
+  const fastSpeed = (si: number | undefined) => (!fastCard(si) ? 1 : slots[si!].rr.rank >= 4 ? 2 : 3.5);
+  /** mode auto « rapide » (« Tout révéler », « 4★ et + ») : ouvertures d'emballage raccourcies (la série manuelle garde son rythme) */
+  const autoQuick = () => auto.reveal || auto.minRank > 0;
+  /**
+   * (audit UX2-01) toucher reçu pendant une transition (carte qui file dans la rangée, emballage qui s'ouvre) : au lieu
+   * d'être avalé, il est mis de côté et rejoué dès que la scène attend de nouveau un toucher.
+   */
+  let queued = false;
+  const flushQueued = () => {
+    if (!queued) return;
+    queued = false;
+    advance();
+  };
+  /** vitesse de base de la carte en cours (le ralenti des 5★/6★ s'y rapporte) et instant du payoff dans sa timeline */
+  let curBase = 1;
+  let curPay = 0;
+  /** « Tout révéler » : une 6★ montrée reste admirée jusqu'à cet instant (performance.now), puis la suite repart seule */
+  let autoHoldUntil = 0;
+  /** zone libre de l'écran (px CSS) laissée par l'interface : en haut (en-tête, compteur), en bas (panneau de la carte) */
+  const insets = { top: 96, bottom: 200 };
   let rumbleAt = 0;
   /** 003 — temps écoulé depuis que le booster tiré est posé (pulsations de rareté) */
   let sealedT = -1;
@@ -253,6 +295,14 @@ export function createOpeningScene(): OpeningScene {
   let pulseDone = -1;
   let boosterKey: string = THEMES[0].id;
   const arts = new Map<string, PackArt>();
+  /** miniatures des boosters encodées (clé « booster|largeur » → URL blob ; '' = en cours) */
+  const thumbCache = new Map<string, string>();
+  /** booster demandé dont le visuel n'est pas encore généré (appliqué dès qu'il l'est) */
+  let wantKey: string | null = null;
+  let wantDir: 1 | -1 = 1;
+  /** génère en tâche de fond les visuels des boosters pas encore prêts (lancé à la fin de setup) */
+  let startArts: () => Promise<void> = async () => {};
+  const packKeyOf = (p: Pick<SealedPack, 'packKind' | 'themeId'>) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? THEMES[0].id);
   let packNodes: Record<string, { value: Texture }> = {};
   let cardGeo: ReturnType<typeof createCardGeometry>;
   let backMat: Material;
@@ -281,6 +331,16 @@ export function createOpeningScene(): OpeningScene {
   let packMeshRef: Mesh | null = null;
   /** gerbe de particules (cachée sur téléphone quand elle est éteinte : 1 100 sprites transparents dessinés pour rien) */
   let partsRef: Sprite | null = null;
+  /** halo plein écran (additif) : caché quand il est éteint, et en vitrine sur téléphone (audit PERF1-11) */
+  let glowRef: Mesh | null = null;
+  /** lambeaux : matrices à remettre à zéro une dernière fois */
+  let shredsDirty = true;
+  /** dernière impulsion haptique de la brûlure (s) / progression de la déchirure à la dernière impulsion */
+  let hapticAt = 0;
+  let hapticTear = 0;
+  /** vitrine au repos sur téléphone : une image sur deux (audit PERF1-07) */
+  let calmSkip = 0;
+  const lastTilt = new Vector2();
   let packLift = 0;
   const lastNdc = new Vector2(9, 9);
   let fanTick = 0;
@@ -296,7 +356,7 @@ export function createOpeningScene(): OpeningScene {
   let focusCur = 0;
   let focusTY = 0;
   let focusCurY = 0;
-  let focusKey = '';
+  const focusKey = { x: NaN, y: NaN, w: 0, h: 0 };
 
   // ── déchirure (Bebou Pack, World Pack)
   let style: OpenStyle = 'burn';
@@ -561,7 +621,11 @@ export function createOpeningScene(): OpeningScene {
       spawnShreds(Math.min(1, p), 2 + Math.floor(d * 40));
       tearShake.impulse(2.4 + d * 30);
       ctx.sfx.tear(0.05 + d * 1.1, 0.22 + Math.min(0.15, d));
-      haptics.pulse(5 + Math.round(d * 60));
+      // une impulsion par tranche de 0,08 de progression au plus (audit UX2-14 : c'était une par à-coup, 10 à 20 par booster)
+      if (p - hapticTear >= 0.08 || p >= 1) {
+        hapticTear = p;
+        haptics.pulse(5 + Math.round(d * 60));
+      }
     }
     events.onHold?.(Math.min(1, p));
     if (p >= 1 && phase === 'sealed') onTorn();
@@ -600,30 +664,43 @@ export function createOpeningScene(): OpeningScene {
         tl!.to(slots[si].p, { y: 1.0, duration: 0.8 * sp, ease: EASE.glide, onStart: k === n - 1 ? () => ctx.sfx.whoosh(0.7, 0.14, true) : undefined }, (0.25 + (n - 1 - k) * 0.035) * sp);
       });
       tl.to(S, { push: 0, duration: 0.8, ease: EASE.glide }, 0.9 * sp);
-      if (fan) dealFan(tl, 1.0 * sp);
+      // (audit UX2-04) mode auto rapide : toute la sortie du booster ×1,6 (les trois timelines ensemble, rien ne se croise)
+      const qk = autoQuick() ? 1.6 : 1;
+      if (fan) dealFan(tl, 1.0 * sp, qk);
       else {
         tl.call(() => {
           const c = sideline(gsap.timeline());
           order.forEach((si, k) => c.to(slots[si].p, { y: 0, z: -STACK_DZ * (n - 1 - k), s: 1, rz: (k - 2) * 0.012, duration: 0.65, ease: EASE.settle }, k * 0.03));
+          c.timeScale(qk);
         }, [], 1.2);
         tl.call(() => {
           phase = 'opened';
           events.onOpened?.();
+          flushQueued();
         }, [], 1.5);
       }
+      tl.timeScale(qk);
+      out.timeScale(qk);
     });
   }
 
   // ───────────────────────────────────────────── cartes
+  /** une image (rendre la main au navigateur entre deux étapes lourdes) */
+  const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
   async function buildSlot(data: PackCard): Promise<Slot> {
     const cd = cardById(data.cardId);
     await ensureCardImages([cd]);
     const rr = rarity(data.rarity);
-    const art = gameCardArt(cd, data.rarity, artScale);
+    // (audit PERF1-04) téléphone : calques peints en 4 étapes (gameCardArtAsync, lot E), puis dos et graphes de nœuds
+    // chacun dans sa propre image
+    const mobile = ctx.quality === 'mobile';
+    const art = mobile ? await gameCardArtAsync(cd, data.rarity, artScale) : gameCardArt(cd, data.rarity, artScale);
+    if (mobile) await nextFrame();
+    const back = backs.forCard(data.cardId);
     const face = buildFace(art, rr.tier, !!cd.photo);
     face.holo.uniforms.strength.value = 0.1;
     const { edge, rim } = buildEdge(rr.secret ? '#e8e2d6' : rr.hex);
-    const mesh = new Mesh(cardGeo, [face.holo.material, backs.forCard(data.cardId), edge]);
+    const mesh = new Mesh(cardGeo, [face.holo.material, back, edge]);
     mesh.frustumCulled = false;
     return {
       data, cd, rr, art, mesh,
@@ -647,13 +724,29 @@ export function createOpeningScene(): OpeningScene {
   /** Prépare les 5 cartes (images → calques → matériaux) puis compile leurs shaders, sans bloquer l'animation. */
   async function prepare(p: SealedPack) {
     const built: Slot[] = [];
+    // dos des thèmes du pack peints d'abord, chacun dans son image (pas dans celle d'une carte, PERF1-04.3)
+    if (ctx.quality === 'mobile') {
+      for (const c of p.cards) {
+        backs.forCard(c.cardId);
+        await nextFrame();
+        if (pack !== p) return;
+      }
+    }
     for (const c of p.cards) {
       const sl = await buildSlot(c);
       built.push(sl);
       // mobile : textures envoyées au GPU carte par carte (sinon les 30 calques + mipmaps partent tous dans la même
       // image, au moment où la pile apparaît derrière les trous → à-coup) ; l'aplat inutilisé n'est jamais envoyé
-      if (ctx.quality === 'mobile') for (const t of [sl.art.bg, sl.art.subject, sl.art.fg, sl.art.frame, sl.art.masks, sl.art.fx]) ctx.renderer.initTexture(t);
-      await new Promise((r) => requestAnimationFrame(() => r(null))); // une carte par frame : pas d'à-coup pendant la brûlure
+      // (audit PERF1-04) deux textures par image au plus : l'envoi + les mipmaps de 6 calques ne tombent plus dans la même image
+      if (ctx.quality === 'mobile') {
+        const tex = [sl.art.bg, sl.art.subject, sl.art.fg, sl.art.frame, sl.art.masks, sl.art.fx];
+        for (let i = 0; i < tex.length; i++) {
+          ctx.renderer.initTexture(tex[i]);
+          if (i % 2 === 1 && i < tex.length - 1) await nextFrame();
+        }
+      }
+      await nextFrame(); // une carte par frame : pas d'à-coup pendant la brûlure
+      if (pack !== p) break; // booster abandonné (reset) : inutile de continuer
     }
     if (pack !== p) {
       built.forEach((s) => (s.mats.forEach((m) => m.dispose()), s.art.dispose()));
@@ -672,7 +765,8 @@ export function createOpeningScene(): OpeningScene {
       else Object.assign(s.p, { x: 0, y: -0.03, z: (k - (order.length - 1) / 2) * 0.0072, s: 0.92, flip: Math.PI, rz: 0, holo: 0 });
       cardsRig.add(s.mesh);
     });
-    await stage.compile();
+    // (audit PERF1-03) pipelines des 5 vraies cartes compilés pour la VRAIE cible (passe MRT + MSAA), en asynchrone
+    await compileReal();
   }
 
   // ───────────────────────────────────────────── séquences
@@ -704,8 +798,15 @@ export function createOpeningScene(): OpeningScene {
   }
 
   function setBooster(k: string, animate = true, dir: 1 | -1 = 1) {
-    if (!arts.has(k) || phase !== 'display') return;
-    if (k === boosterKey) return;
+    if (phase !== 'display') return;
+    if (k === boosterKey) return void (wantKey = null);
+    if (!arts.has(k)) {
+      // visuel pas encore généré (tâche de fond) : il sera posé dès qu'il le sera
+      wantKey = k;
+      wantDir = dir;
+      return;
+    }
+    wantKey = null;
     boosterKey = k;
     if (!animate) {
       applyBoosterArt(k);
@@ -728,17 +829,21 @@ export function createOpeningScene(): OpeningScene {
     events = ev;
     cursor = 0;
     curTier = 0;
+    queued = false;
+    curBase = 1;
+    autoHoldUntil = 0;
     hold = 0;
     holding = false;
-    const k = p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? THEMES[0].id;
+    const k = packKeyOf(p);
     if (arts.has(k)) {
       boosterKey = k;
       applyBoosterArt(k);
-    }
+    } else wantKey = k; // (posé par startArts dès qu'il est prêt)
     style = openStyleOf(p);
     const tearing = style !== 'burn';
     followZ = tearing ? 0 : -PACK_OPEN_Z;
     tearTarget = tearProgress = 0;
+    hapticTear = 0;
     TP.value = 0;
     fly.t = 0;
     focusSlot = -1;
@@ -783,6 +888,7 @@ export function createOpeningScene(): OpeningScene {
         .call(() => {
           phase = 'opened';
           events.onOpened?.();
+          flushQueued();
         }, [], 0.25);
       order.forEach((si, k) => {
         const s = slots[si];
@@ -836,12 +942,14 @@ export function createOpeningScene(): OpeningScene {
     // 1. suspense (rare et mieux) : liseré, halo derrière, tremblement, montée
     //    MYTHIQUE : plein écran — pause dramatique, écran assombri, la carte seule au centre, un peu plus grande
     const sus = mythic ? (CALM ? 1.6 : 2.6) : T >= 2 ? Math.min(2.2, rr.suspense * 0.6) : 0.05;
+    // (audit UX2-06) écran court : la carte montrée remonte / rétrécit juste assez pour ne pas passer sous le panneau
+    const pose = payPose(1.06);
     if (mythic) {
       events.onMythic?.(s.data);
       tl.to(S, { dark: 0.72, glow: 0.12, duration: 0.5, ease: EASE.glide }, 0)
         .to(s.U.rim, { value: 2.2, duration: sus, ease: 'power2.in' }, 0)
         .to(S, { trem: 0.42, duration: sus, ease: 'power3.in' }, 0.3)
-        .to(s.p, { z: 0.14, s: 1.12, duration: sus, ease: EASE.breathe }, 0);
+        .to(s.p, { y: pose.y, z: 0.14, s: 1.12 * pose.k, duration: sus, ease: EASE.breathe }, 0);
       tl.call(() => sfx.heartbeat(0.5, 40), [], 0.2);
       tl.call(() => sfx.rumble(sus, 0.35), [], 0.35);
       tl.call(() => sfx.riser(sus * 0.8, 5, 0.22), [], sus * 0.25);
@@ -880,18 +988,22 @@ export function createOpeningScene(): OpeningScene {
       .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
       .to(s.U.flash, { value: 1, duration: 0.06 }, pay)
       .to(s.U.flash, { value: 0, duration: 1.4, ease: EASE.glide }, pay + 0.06)
-      .to(s.p, { z: 0.08, s: 1.06, duration: 0.5, ease: 'back.out(2)' }, pay)
+      .to(s.p, { y: pose.y, z: 0.08, s: 1.06 * pose.k, duration: 0.5, ease: 'back.out(2)' }, pay)
       .to(s.p, { holo: 1, duration: 1.4, ease: EASE.glide }, pay + 0.1);
+    // vitesse de la carte (défilement auto) : le ralenti s'y rapporte au lieu de la ramener à ×1 (audit UX2-04)
+    const speed = fastSpeed(si);
+    curBase = speed;
+    curPay = pay;
     if (T >= 4) {
       // payoff « événement » (018) : flare, onde de choc ; mythique : inversion éclair de 30 ms
       tl.to(S, { flare: T >= 5 ? 0.85 : 0.45, duration: 0.05, ease: 'none' }, pay)
         .to(S, { flare: 0, duration: 1.6, ease: EASE.glide }, pay + 0.1)
         .fromTo(S, { shock: 0 }, { shock: 1, duration: T >= 5 ? 1.3 : 1.0, ease: 'power2.out', immediateRender: false }, pay);
       if (T >= 5 && !CALM) tl.to(S, { invert: 1, duration: 0.03 }, pay).to(S, { invert: 0, duration: 0.22, ease: 'power2.out' }, pay + 0.08);
-      // ralenti au moment du payoff, puis retour au temps réel
+      // ralenti au moment du payoff, puis retour à la vitesse de base (×1, ou l'accéléré demandé)
       const main = tl;
-      main.call(() => void gsap.to(main, { timeScale: rr.slowmo + 0.2, duration: 0.15 }), [], pay - 0.05);
-      main.call(() => void gsap.to(main, { timeScale: 1, duration: 0.9, ease: 'power2.in' }), [], pay + 0.3);
+      main.call(() => void gsap.to(main, { timeScale: (rr.slowmo + 0.2) * curBase, duration: 0.15 }), [], pay - 0.05);
+      main.call(() => void gsap.to(main, { timeScale: curBase, duration: 0.9, ease: 'power2.in' }), [], pay + 0.3);
     }
     // burst prismatique : les couleurs de la gerbe tournent (arc-en-ciel) pendant la montée des étoiles
     if (mythic && !CALM) {
@@ -902,33 +1014,52 @@ export function createOpeningScene(): OpeningScene {
       } }, pay);
     }
     const end = ignite(s, pay + (mythic ? 0.5 : 0.15));
-    const fast = fastCard(si);
+    const fast = speed > 1;
     tl.call(() => {
       if (mythic) {
-        // plein écran : on attend un toucher (puis l'éventail si c'était la dernière carte)
+        // plein écran : on attend un toucher (puis l'éventail si c'était la dernière carte) ; « Tout révéler » : la
+        // séquence entière est jouée, puis elle repart seule après un temps d'admiration (voir update)
         phase = last ? 'mythicHold' : 'shown';
+        autoHoldUntil = performance.now() + MYTHIC_ADMIRE_MS;
         events.onMythicShown?.(s.data, last);
         return;
       }
       phase = last ? 'busy' : 'shown';
       if (last) finish(fast ? 0.35 : 1.1);
+      else flushQueued();
     }, [], Math.max(end, pay + 0.45));
-    // passage en accéléré (carte sous le seuil) : toute la séquence ×3,5
-    if (fast) tl.timeScale(3.5);
+    // passage en accéléré (carte sous le seuil) : toute la séquence ×3,5 (légendaire : ×2)
+    if (fast) tl.timeScale(speed);
+  }
+
+  /**
+   * Pose de la carte montrée (payoff) : centrée, sauf si son bas passerait sous le panneau de la carte (360×740…) — elle
+   * remonte alors juste assez, et rétrécit si l'espace libre entre l'en-tête et le panneau ne suffit pas. Ordinateur et
+   * grands téléphones : inchangé (y 0, ×1).
+   */
+  function payPose(s0: number): { y: number; k: number } {
+    const H = ctx.height;
+    if (!H) return { y: 0, k: 1 };
+    const { halfH } = view();
+    const pxU = H / (2 * halfH);
+    const half = (CARD_H / 2) * s0 * 1.04 * pxU; // ×1,04 : la carte est avancée vers la caméra
+    const freeTop = insets.top;
+    const freeBot = H - insets.bottom - 6;
+    if (H / 2 + half <= freeBot) return { y: 0, k: 1 };
+    const k = Math.max(0.7, Math.min(1, ((freeBot - freeTop) * 0.98) / (2 * half)));
+    const cy = Math.max(freeTop + half * k, Math.min(H / 2, freeBot - half * k));
+    return { y: (H / 2 - cy) / pxU, k };
   }
 
   /** La carte montrée part dans la rangée du bas ; la suivante avance. */
   function nextCard() {
     phase = 'busy';
     kill();
-    const { halfH, halfW } = view();
-    const rs = 0.36;
-    const gap = Math.min(0.36, (2 * halfW * 0.92 - CARD_W * rs) / 3);
-    const rowY = -halfH + (CARD_H * rs) / 2 + 0.06;
+    const { halfH } = view();
     const move = sideline(gsap.timeline());
     const s = slots[order[cursor]];
     const j = cursor;
-    move.to(s.p, { x: (j - 1.5) * gap, y: rowY, z: 0.02 + j * 0.008, s: rs, rz: (j - 1.5) * -0.05, duration: 0.55, ease: EASE.glide, onStart: () => ctx.sfx.whoosh(0.25, 0.1) }, 0)
+    move.to(s.p, { ...rowPlace(j), duration: 0.55, ease: EASE.glide, onStart: () => ctx.sfx.whoosh(0.25, 0.1) }, 0)
       .to(S, { glow: 0, duration: 0.4 }, 0)
       .set(s.U.lit, { value: 6 }, 0)
       .to(s.p, { holo: 1, duration: 0.4 }, 0);
@@ -942,8 +1073,23 @@ export function createOpeningScene(): OpeningScene {
       for (let k = 0; k < cursor; k++) move.to(slots[order[k]].p, { y: -halfH - 0.8, duration: 0.7, ease: EASE.heave }, 0.45 + k * 0.04);
       move.to(S, { dark: 0.22, duration: 0.8, ease: EASE.glide }, 0.45);
     }
-    move.call(() => (phase = 'opened'), [], 0.55);
+    // (audit UX2-01) commune / peu commune : la main revient à 0,3 s (l'animation continue à côté) ; un toucher reçu
+    // pendant le passage dans la rangée est rejoué ici au lieu d'être perdu
+    const quick = s.rr.rank < 2 && cursor < order.length - 1;
+    move.call(() => {
+      phase = 'opened';
+      flushQueued();
+    }, [], quick ? 0.3 : 0.55);
     if (fastCard(order[cursor - 1])) move.timeScale(2.2);
+  }
+
+  /** Place de la j-ième carte dans la rangée du bas (style pile). */
+  function rowPlace(j: number) {
+    const { halfH, halfW } = view();
+    const rs = 0.36;
+    const gap = Math.min(0.36, (2 * halfW * 0.92 - CARD_W * rs) / 3);
+    const rowY = -halfH + (CARD_H * rs) / 2 + 0.06;
+    return { x: (j - 1.5) * gap, y: rowY, z: 0.02 + j * 0.008, s: rs, rz: (j - 1.5) * -0.05 };
   }
 
   /** Places de l'éventail (récapitulatif, et révélation du World Pack) : au-dessus du panneau du bas. */
@@ -963,7 +1109,7 @@ export function createOpeningScene(): OpeningScene {
   }
 
   /** World Pack : les cartes sortent du booster et s'ouvrent en éventail, faces cachées. */
-  function dealFan(t: gsap.core.Timeline, at: number) {
+  function dealFan(t: gsap.core.Timeline, at: number, speed = 1) {
     // timeline à part : le défilement auto (×10, « 4★ et + ») et les touchers coupent la timeline principale, ce qui
     // figeait les dernières cartes en plein vol (en haut de l'écran, coupées). Le retournement n'est permis qu'une fois
     // toutes les cartes posées.
@@ -977,7 +1123,9 @@ export function createOpeningScene(): OpeningScene {
         if (phase !== 'busy' || style !== 'fan' || cursor !== 0) return;
         phase = 'opened';
         events.onOpened?.();
+        flushQueued();
       }, [], (order.length - 1) * 0.06 + 0.42);
+      d.timeScale(speed);
     }, [], at);
   }
 
@@ -1031,6 +1179,9 @@ export function createOpeningScene(): OpeningScene {
     const fa = 0.1 + sus;
     tl.to(s.p, { flip: 0, duration: flipDur, ease: T >= 2 ? 'back.out(1.7)' : EASE.snap, onStart: () => sfx.whoosh(0.22, 0.18) }, fa);
     const pay = fa + flipDur * 0.5;
+    const speed = fastSpeed(si);
+    curBase = speed;
+    curPay = pay;
     tl.call(() => {
       sfx.thump(0.25 + T * 0.08);
       sfx.chime(Math.max(1, T), 0.1 + T * 0.03);
@@ -1060,8 +1211,8 @@ export function createOpeningScene(): OpeningScene {
         .fromTo(S, { shock: 0 }, { shock: 1, duration: T >= 5 ? 1.2 : 0.9, ease: 'power2.out', immediateRender: false }, pay);
       if (T >= 5 && !CALM) tl.to(S, { invert: 1, duration: 0.03 }, pay).to(S, { invert: 0, duration: 0.2, ease: 'power2.out' }, pay + 0.08);
       const main = tl;
-      main.call(() => void gsap.to(main, { timeScale: rr.slowmo + 0.25, duration: 0.12 }), [], pay - 0.05);
-      main.call(() => void gsap.to(main, { timeScale: 1, duration: 0.7, ease: 'power2.in' }), [], pay + 0.25);
+      main.call(() => void gsap.to(main, { timeScale: (rr.slowmo + 0.25) * curBase, duration: 0.12 }), [], pay - 0.05);
+      main.call(() => void gsap.to(main, { timeScale: curBase, duration: 0.7, ease: 'power2.in' }), [], pay + 0.25);
     }
     if (mythic && !CALM) {
       const hue = { h: 0 };
@@ -1075,32 +1226,39 @@ export function createOpeningScene(): OpeningScene {
     let starsEnd = pay + 0.05 + n * 0.06;
     if (mythic) starsEnd = ignite(s, pay + 0.5);
     else for (let k = 0; k < n; k++) tl.to(s.U.lit, { value: k + 1, duration: 0.08, ease: 'power2.out', onStart: () => sfx.tick(1 + k * 0.14, 0.05 + T * 0.012) }, pay + 0.05 + k * 0.06);
-    const fast = fastCard(si);
+    const fast = speed > 1;
     tl.call(() => {
       fanFlip = false;
       s.U.lit.value = 6;
       cursor++;
       if (mythic) {
         phase = last ? 'mythicHold' : 'opened';
+        autoHoldUntil = performance.now() + MYTHIC_ADMIRE_MS;
         events.onMythicShown?.(s.data, last);
         return;
       }
       if (last) {
         phase = 'busy';
         finish(fast ? 0.3 : 0.9);
-      } else phase = 'opened';
+      } else {
+        phase = 'opened';
+        flushQueued();
+      }
     }, [], Math.max(starsEnd, pay + 0.3));
-    if (fast) tl.timeScale(3.5);
+    if (fast) tl.timeScale(speed);
   }
 
   /** Éventail final, au-dessus du panneau récapitulatif (qui occupe ~42 % du bas de l'écran). */
-  function finish(delay: number) {
+  /** Places de l'éventail final (dans l'ordre de révélation) — recalculées aussi à la rotation de l'écran (UX2-12). */
+  function finalPlaces() {
     const { halfH, halfW } = view();
     // téléphone (portrait) : l'en-tête est sur deux lignes, le récap est plus court (≈ 30 % du bas) → l'éventail se
     // centre dans l'espace vraiment libre et prend presque toute la largeur
     const portrait = halfW < halfH;
+    // téléphone en paysage (hauteur < 500 px) : le récap prend une plus grande part de la hauteur
+    const shortLand = !portrait && ctx.height > 0 && ctx.height < 500;
     // (récap compact en bas : une ligne résumé + 3 boutons ≈ 150 px → l'éventail prend plus de place qu'avant)
-    const top = halfH * (portrait ? 0.76 : 0.82), bottom = -halfH + 2 * halfH * (portrait ? 0.24 : 0.2);
+    const top = halfH * (portrait ? 0.76 : 0.82), bottom = -halfH + 2 * halfH * (portrait ? 0.24 : shortLand ? 0.36 : 0.2);
     const n = order.length;
     // taille : limitée par la hauteur libre ET par la largeur (téléphone en portrait : les 5 cartes, qui se
     // chevauchent d'environ 40 %, doivent tenir sans déborder des bords de l'écran)
@@ -1108,12 +1266,23 @@ export function createOpeningScene(): OpeningScene {
     const sc = Math.min(0.72, ((top - bottom) * 0.9) / CARD_H, (2 * halfW * wk) / (CARD_W * (1 + (n - 1) * 0.62)));
     const gap = Math.min(0.52, (2 * halfW * wk - CARD_W * sc * 1.08) / Math.max(1, n - 1));
     const cy = (top + bottom) / 2;
+    // (audit UX2-18) la meilleure carte (révélée en dernier) prend la place d'honneur, au CENTRE et devant ; les moins
+    // rares vont sur les bords (positions de gauche à droite : 2e, 4e, 5e, 3e, 1re révélées)
+    const POS5 = [4, 0, 3, 1, 2];
+    return order.map((_, k) => {
+      const c = (n === 5 ? POS5[k] : k) - (n - 1) / 2;
+      return { x: c * gap, y: cy - c * c * 0.02, z: 0.03 - Math.abs(c) * 0.01, s: sc, rz: -c * 0.07 };
+    });
+  }
+
+  function finish(delay: number) {
+    queued = false;
+    const places = finalPlaces();
     const tl2 = sideline(gsap.timeline({ delay }));
     tl2.call(() => ctx.sfx.whoosh(0.45, 0.07), [], 0);
     order.forEach((si, k) => {
       const s = slots[si];
-      const c = k - (n - 1) / 2;
-      tl2.to(s.p, { x: c * gap, y: cy - c * c * 0.02, z: 0.01 * k, s: sc, rz: -c * 0.07, flip: 0, holo: 1, duration: 0.9, ease: EASE.glide }, k * 0.05);
+      tl2.to(s.p, { ...places[k], flip: 0, holo: 1, duration: 0.9, ease: EASE.glide }, k * 0.05);
       tl2.set(s.U.lit, { value: 6 }, 0);
       // chaque carte « se pose » dans l'éventail : un petit tic de plus en plus aigu
       tl2.call(() => ctx.sfx.tick(1.05 + k * 0.09, 0.035), [], 0.55 + k * 0.06);
@@ -1146,8 +1315,21 @@ export function createOpeningScene(): OpeningScene {
       tl.progress(1);
       if ((phase as Phase) === 'opened') revealFan();
     }
+    // (audit UX2-16) légendaire / mythique : le suspense reste sacré, mais un toucher APRÈS le retournement accélère
+    // la fin (étoiles, flare) : ×1,6 pour une 5★, ×2,5 pour une 6★
+    else if (phase === 'busy' && tl && curTier >= 4 && tl.time() > curPay) {
+      const boost = curTier >= 5 ? 2.5 : 1.6;
+      if (curBase < boost) {
+        curBase = boost;
+        gsap.killTweensOf(tl);
+        tl.timeScale(boost);
+      }
+    }
     // toucher pendant une révélation : on l'accélère (jamais une légendaire ou une mythique : leur suspense est sacré)
     else if (phase === 'busy' && tl && curTier < 4 && tl.timeScale() < 2) tl.timeScale(2.2);
+    // (audit UX2-01) transition sans timeline principale (carte qui file dans la rangée), ou toucher de plus pendant une
+    // commune déjà accélérée : le toucher est gardé et rejoué dès que la scène attend de nouveau
+    else if (phase === 'busy' && (!tl || (curTier < 2 && !fanFlip))) queued = true;
   }
 
   function reset() {
@@ -1161,6 +1343,8 @@ export function createOpeningScene(): OpeningScene {
     hold = 0;
     phase = 'display';
     style = 'burn';
+    queued = false;
+    curBase = 1;
     followZ = -PACK_OPEN_Z;
     autoTear?.kill();
     autoTear = null;
@@ -1170,6 +1354,7 @@ export function createOpeningScene(): OpeningScene {
     focusSlot = -1;
     fanFlip = false;
     sh.forEach((q) => (q.life = 0));
+    shredsDirty = true;
     if (packMeshMain) packMeshMain.visible = true;
     if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = false;
     applyBoosterArt(boosterKey);
@@ -1184,7 +1369,7 @@ export function createOpeningScene(): OpeningScene {
     },
     /** diagnostic (tests) : état de la pile */
     debug() {
-      return { style, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), tier: leakTier }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3) })) };
+      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), tier: leakTier }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3) })) };
     },
     setBooster,
     open,
@@ -1195,8 +1380,17 @@ export function createOpeningScene(): OpeningScene {
       if (o.minRank !== undefined) auto.minRank = o.minRank;
       if (o.reveal !== undefined) auto.reveal = o.reveal;
       // carte en cours de révélation sous le nouveau seuil : on accélère tout de suite
-      if (auto.minRank > 0 && phase === 'busy' && tl && fastCard(order[cursor]) && tl.timeScale() < 3) tl.timeScale(3.5);
+      const sp = fastSpeed(order[cursor]);
+      if (sp > 1 && phase === 'busy' && tl && tl.timeScale() < sp) {
+        curBase = sp;
+        tl.timeScale(sp);
+      }
     },
+    setInsets(top, bottom) {
+      insets.top = Math.max(0, top);
+      insets.bottom = Math.max(0, bottom);
+    },
+    onThumb: null,
     onBoosterTap: null,
     setFocusOffset(px, py = 0) {
       focusT = px;
@@ -1227,6 +1421,10 @@ export function createOpeningScene(): OpeningScene {
       if (!src?.width) return null;
       // (téléphone, écran ×3 : la vignette de 26 px CSS en demande ~84 → 96 au lieu de 64, sinon floue)
       const tw = Math.min(src.width, size ?? (ctx?.quality === 'mobile' ? 96 : 64));
+      const ck = `${k}|${tw}`;
+      const hit = thumbCache.get(ck);
+      if (hit !== undefined) return hit || null; // (chaîne vide = encodage en cours)
+      thumbCache.set(ck, '');
       const w = tw, h = Math.round((tw * src.height) / src.width);
       const c = document.createElement('canvas');
       c.width = w;
@@ -1234,7 +1432,14 @@ export function createOpeningScene(): OpeningScene {
       const g = c.getContext('2d')!;
       g.imageSmoothingQuality = 'high';
       g.drawImage(src, 0, 0, w, h);
-      return c.toDataURL('image/png');
+      // (audit PERF2-18) encodage asynchrone hors du thread principal, WebP (≈ 5× plus léger ; PNG si non pris en charge),
+      // une seule fois par booster et par taille
+      c.toBlob((b) => {
+        if (!b) return void thumbCache.delete(ck);
+        thumbCache.set(ck, URL.createObjectURL(b));
+        api.onThumb?.(k);
+      }, 'image/webp', 0.85);
+      return null;
     },
     finishAfterSecret() {
       killAll();
@@ -1264,7 +1469,38 @@ export function createOpeningScene(): OpeningScene {
       // boosters : un visuel par thème + le bébou pack, générés une fois
       const styles = boosterStyles();
       for (const [k, st] of Object.entries(styles)) accents.set(k, new Color(st.accent));
-      for (const [k, st] of Object.entries(styles)) arts.set(k, c.bag.add(await generatePackArt(st)));
+      // (audit PERF1-15) seul le booster affiché d'abord (le dernier choisi) est généré sous l'écran de chargement ; les
+      // autres suivent en tâche de fond, un par image, une fois la vitrine affichée (setBooster / open les attendent)
+      try {
+        const last = localStorage.getItem('bebou.booster');
+        if (last && styles[last]) boosterKey = last;
+      } catch {
+        /* ignore */
+      }
+      arts.set(boosterKey, c.bag.add(await generatePackArt(styles[boosterKey])));
+      startArts = async () => {
+        await nextFrame();
+        await nextFrame();
+        for (;;) {
+          // le booster demandé (choisi ou en cours d'ouverture) passe devant les autres
+          const k = wantKey && !arts.has(wantKey) && styles[wantKey] ? wantKey : Object.keys(styles).find((x) => !arts.has(x));
+          if (!k) break;
+          arts.set(k, c.bag.add(await generatePackArt(styles[k])));
+          api.onThumb?.(k);
+          if (wantKey === k) {
+            wantKey = null;
+            if (phase === 'display') setBooster(k, true, wantDir);
+            else if (pack && packKeyOf(pack) === k) {
+              // booster ouvert avant que son visuel ne soit prêt : on le pose dès qu'il l'est
+              boosterKey = k;
+              applyBoosterArt(k);
+              if (style !== 'burn') applyTearArt(k);
+            }
+          }
+          await nextFrame();
+        }
+      };
+      c.bag.fn(() => thumbCache.forEach((u) => u && URL.revokeObjectURL(u)));
       const packGeo = c.bag.add(createPackGeometry(48, 72));
       const packMesh = new Mesh(packGeo, buildPackMaterials(arts.get(boosterKey)!));
       packMeshRef = packMeshMain = packMesh;
@@ -1296,7 +1532,7 @@ export function createOpeningScene(): OpeningScene {
       const glowMat = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
       const gd = length(uv().sub(0.5).mul(2));
       glowMat.colorNode = vec4((U.glowColor as unknown as N).mul(smoothstep(1, 0, gd).pow(2.2).mul(U.glow)), 1);
-      const glow = new Mesh(c.bag.add(new PlaneGeometry(2.6, 2.6)), c.bag.add(glowMat));
+      const glow = (glowRef = new Mesh(c.bag.add(new PlaneGeometry(2.6, 2.6)), c.bag.add(glowMat)));
       glow.position.z = -0.18;
       rig.add(glow);
 
@@ -1351,8 +1587,14 @@ export function createOpeningScene(): OpeningScene {
 
       // post : bloom sur l'émissif, éclair, aberration, assombrissement
       const pl = createPipeline(c, stage.scene, stage.camera, { emissive: true });
+      // (audit PERF1-03) compilation des cartes du pack pour la cible RÉELLE de la passe (MRT émissif + MSAA), par la
+      // version sûre du lot E (post.ts : la cible du moteur est rendue à chaque pause de la compilation — sinon une
+      // image rendue pendant l'attente partait dans la cible de la passe et l'écran restait figé)
+      compileReal = () => pl.compile();
       const bl = pl.own(bloom(pl.emissive!, 0.35, 0.5, 0.0)) as unknown as N;
       const blStrength = (bl as unknown as { strength: { value: number } }).strength;
+      // (audit PERF1-12, suggéré par le lot E) téléphone : bloom au ¼ de résolution (émissif épars, halo un peu plus doux)
+      if (mobile) (bl as unknown as { setResolutionScale?(s: number): void }).setResolutionScale?.(0.25);
       const aspect = screenSize.x.div(screenSize.y);
       const d0 = screenUV.sub(U.center).mul(vec2(aspect, 1));
       // onde de choc : un anneau qui part de la carte et déforme l'image en passant (légendaire et mieux)
@@ -1519,6 +1761,10 @@ export function createOpeningScene(): OpeningScene {
         }),
       );
       reset();
+      // (audit PERF1-17) update() met à jour les matrices à la main avant chaque rendu (rayons, centre des effets) :
+      // le rendu n'a plus à le refaire une 2e fois par image
+      stage.scene.matrixWorldAutoUpdate = false;
+      void startArts().catch((e) => console.warn('[opening] boosters', e));
     },
 
     update(dt, t) {
@@ -1528,7 +1774,8 @@ export function createOpeningScene(): OpeningScene {
       // brûlure tenue au doigt : avance quand on maintient, recule doucement sinon
       if (phase === 'sealed' && style === 'burn') {
         const before = hold;
-        hold = holding || auto.burn ? Math.min(1, hold + dt * (auto.burn ? 1.4 : 0.62)) : Math.max(0, hold - dt * 0.3);
+        // (audit UX2-04) brûlure auto : ×1,4 en série manuelle, ×2,4 en « Tout révéler » / « 4★ et + »
+        hold = holding || auto.burn ? Math.min(1, hold + dt * (auto.burn ? (autoQuick() ? 2.4 : 1.4) : 0.62)) : Math.max(0, hold - dt * 0.3);
         B.burn = -0.25 + hold * 1.2;
         // (la fuite de lumière 003 est calculée plus bas, pour tous les styles : elle ne fait que monter en brûlant)
         B.leak = Math.max(B.leak, hold * (0.4 + leakTier * 0.3));
@@ -1537,7 +1784,11 @@ export function createOpeningScene(): OpeningScene {
           rumbleAt = t + 0.28;
           ctx.sfx.rumble(0.35, 0.05 + hold * 0.12);
           shake.impulse(1 + hold * 4);
-          if (hold > 0.15) haptics.pulse(6 + Math.round(hold * 10)); // le doigt « sent » l'emballage céder
+          // le doigt « sent » l'emballage céder — une impulsion toutes les 0,45 s au plus (audit UX2-14)
+          if (hold > 0.15 && t > hapticAt) {
+            hapticAt = t + 0.45;
+            haptics.pulse(6 + Math.round(hold * 10));
+          }
         }
         if (hold !== before) events.onHold?.(hold);
         if (hold >= 1) onBurnt();
@@ -1561,7 +1812,11 @@ export function createOpeningScene(): OpeningScene {
         tearStrip.rotation.z = -fly.t * 0.9;
         tearStrip.visible = style !== 'burn' && fly.t < 0.999;
       }
-      if (shreds && style !== 'burn') {
+      // (audit PERF1-17) lambeaux : plus d'écriture des 110 matrices ni d'envoi au GPU quand tous sont retombés
+      let alive = false;
+      if (shreds && style !== 'burn') for (let i = 0; i < NSH && !alive; i++) alive = sh[i].life > 0;
+      if (shreds && style !== 'burn' && (alive || shredsDirty)) {
+        shredsDirty = alive;
         for (let i = 0; i < NSH; i++) {
           const q = sh[i];
           if (q.life > 0) {
@@ -1583,10 +1838,13 @@ export function createOpeningScene(): OpeningScene {
       // défilement accéléré : retourne / range tout seul les cartes sous le seuil ; s'arrête sur les belles
       if (auto.minRank > 0 || auto.reveal) {
         const cur = order[cursor];
-        if (phase === 'opened' && (auto.reveal || fastCard(cur))) {
+        // « Tout révéler » : une 6★ montrée reste admirée MYTHIC_ADMIRE_MS, puis la suite repart seule (pas de toucher requis)
+        const admired = performance.now() >= autoHoldUntil;
+        if (phase === 'opened' && ((auto.reveal && admired) || fastCard(cur))) {
           if (style === 'fan') revealFan();
           else revealCurrent();
-        } else if (phase === 'shown' && (fastCard(cur) || (auto.reveal && !!slots[cur] && slots[cur].rr.rank < 5))) nextCard();
+        } else if (phase === 'shown' && (fastCard(cur) || (auto.reveal && !!slots[cur] && (slots[cur].rr.rank < 5 || admired)))) nextCard();
+        else if (phase === 'mythicHold' && auto.reveal && admired) advance();
       }
       shake.update(dt);
       shake2.update(dt);
@@ -1642,6 +1900,7 @@ export function createOpeningScene(): OpeningScene {
       U.soon.value += (soonT * dispK - U.soon.value) * (1 - Math.exp(-dt * 5));
       U.dust.value = dispK * (1 - U.soon.value * 0.5);
       U.glow.value = S.glow + dispK * (0.085 + Math.sin(t * 0.8) * 0.015) * (1 - U.soon.value * 0.6);
+      if (glowRef) glowRef.visible = (U.glow.value as number) > 0.003 && !(ctx.quality === 'mobile' && phase === 'display');
       U.bt.value = S.bt;
       // (vie max d'une particule ≈ 4,4 s : au-delà, plus rien de visible)
       if (partsRef && ctx.quality === 'mobile') partsRef.visible = S.bt < 4.6 && (U.count.value as number) > 0;
@@ -1735,9 +1994,9 @@ export function createOpeningScene(): OpeningScene {
       if (Math.abs(focusCur - focusT) < 0.3) focusCur = focusT;
       focusCurY += (focusTY - focusCurY) * (1 - Math.exp(-dt * 6));
       if (Math.abs(focusCurY - focusTY) < 0.3) focusCurY = focusTY;
-      const fk = `${focusCur.toFixed(1)}|${focusCurY.toFixed(1)}|${ctx.width}|${ctx.height}`;
-      if (fk !== focusKey) {
-        focusKey = fk;
+      // (audit PERF1-17) clé numérique au lieu d'une chaîne reconstruite à chaque image
+      if (focusCur !== focusKey.x || focusCurY !== focusKey.y || ctx.width !== focusKey.w || ctx.height !== focusKey.h) {
+        Object.assign(focusKey, { x: focusCur, y: focusCurY, w: ctx.width, h: ctx.height });
         if (Math.abs(focusCur) < 0.5 && Math.abs(focusCurY) < 0.5) stage.camera.clearViewOffset();
         else stage.camera.setViewOffset(ctx.width, ctx.height, -focusCur, -focusCurY, ctx.width, ctx.height);
       }
@@ -1746,12 +2005,37 @@ export function createOpeningScene(): OpeningScene {
       if (style === 'fan' && focusSlot >= 0 && slots[focusSlot]) proj.copy(slots[focusSlot].mesh.position).applyMatrix4(cardsRig.matrixWorld).project(stage.camera);
       else proj.set(0, 0, 0).applyMatrix4(rig.matrixWorld).project(stage.camera);
       U.center.value.set(proj.x * 0.5 + 0.5, 0.5 - proj.y * 0.5);
-      post.render();
+      /*
+       * (audit PERF1-07) Téléphone, vitrine au repos (le booster ne fait que flotter, personne ne le touche, rien ne
+       * tourne ni ne glisse) : une image sur deux — 30 i/s, l'animation garde son temps réel. Le moindre mouvement
+       * (doigt, gyroscope, changement de booster, décalage) repasse aussitôt à 60 i/s.
+       */
+      const tx = ctx.input.tiltX, ty = ctx.input.tiltY;
+      const tiltMoving = Math.abs(tx - lastTilt.x) + Math.abs(ty - lastTilt.y) > 0.004;
+      lastTilt.set(tx, ty);
+      const calm = ctx.quality === 'mobile' && phase === 'display' && !ctx.input.down && !tiltMoving && !spinTl?.isActive() && !tl?.isActive() && Math.abs(dispK - 1) < 0.01 && Math.abs(focusCur - focusT) < 0.5 && packLift < 0.01;
+      if (!calm) calmSkip = 0;
+      if (!calm || (calmSkip++ & 1) === 0) post.render();
     },
     resize(w, h) {
       stage.fit(w, h);
       camBase = stage.camera.position.z;
       layout(w, h);
+      // (audit UX2-12) rotation / redimensionnement pendant l'ouverture : éventail final, éventail du World Pack et
+      // rangée du bas reprennent leurs places pour le nouvel écran (au lieu de rester sur l'ancienne mise en page)
+      if (!slots.length || !order.length) return;
+      const re = sideline(gsap.timeline());
+      if (phase === 'done') {
+        const places = finalPlaces();
+        order.forEach((si, k) => re.to(slots[si].p, { ...places[k], duration: 0.3, ease: EASE.glide }, 0));
+      } else if (style === 'fan' && (phase === 'opened' || phase === 'mythicHold')) {
+        const lay = fanLayout();
+        order.forEach((si, k) => k !== cursor - 1 || phase === 'opened' ? re.to(slots[si].p, { ...lay[k], duration: 0.3, ease: EASE.glide }, 0) : null);
+      } else if (style === 'burn' || style === 'tear') {
+        // cartes déjà rangées (pas pendant le retrait final : elles sortent de l'écran)
+        const lastUp = cursor === order.length - 1;
+        if (!lastUp && (phase === 'opened' || phase === 'shown')) for (let j = 0; j < cursor; j++) re.to(slots[order[j]].p, { ...rowPlace(j), duration: 0.3, ease: EASE.glide }, 0);
+      }
     },
     dispose() {},
   };
@@ -1760,8 +2044,12 @@ export function createOpeningScene(): OpeningScene {
     // avant. Téléphone / écran étroit : la rangée des pochettes occupe le bas → le booster remonte (plus en portrait).
     const portrait = w / h < 0.8;
     const wide = !portrait && typeof window !== 'undefined' && window.innerWidth > 860;
-    L.dispY = wide ? 0.02 : portrait ? 0.26 : 0.1;
-    L.dispS = wide ? 0.84 : 0.56;
+    // téléphone en paysage (844×390…) : pochettes compactes en bas (CSS lot B) → booster un peu plus haut et plus petit
+    const shortLand = !portrait && !wide && h > 0 && h < 500;
+    // portrait court (360×740) : un peu plus haut et plus petit, le bouton « Ouvrir » de l'accueil passe sous le booster
+    const shortPortrait = portrait && h > 0 && h < 780;
+    L.dispY = wide ? 0.02 : portrait ? (shortPortrait ? 0.3 : 0.26) : shortLand ? 0.3 : 0.1;
+    L.dispS = wide ? 0.84 : shortLand ? 0.46 : shortPortrait ? 0.5 : 0.56;
   }
   return api;
 }

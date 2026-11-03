@@ -7,13 +7,34 @@ import { createPipeline } from '../../core/post';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { length, smoothstep, uniform, uv, vec4 } from 'three/tsl';
 import type { N } from '../../core/tsl';
-import { ensureCardImages, ensureFonts, generateCardArt, type CardArt } from '../../core/art';
+import { ensureCardImages, ensureFonts, generateCardArt, nextFrame, type CardArt } from '../../core/art';
 import { LAB_CARDS, cardById } from '../../core/cardData';
 import { rarity, type RarityId } from '../../core/rarity';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, springCurve } from '../../core/ease';
-import { buildEdge, buildFace, gameCardArt, themedBacks } from './cardFace';
-import { isWonderCard, createWonderCardInstance, preloadWonderModel, type WonderVisualInstance } from '../../core/wonderDiorama';
+import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
+import type { WonderVisualInstance } from '../../core/wonderDiorama';
+
+/**
+ * Diorama des 14 Merveilles (GLTFLoader, meshopt, environnement : ~100 Ko) chargé à la première Merveille ouverte
+ * (audit PERF2-05) : la visionneuse est préparée à chaque session, les Merveilles sont des cartes secrètes rarissimes.
+ */
+let wonderMod: Promise<typeof import('../../core/wonderDiorama')> | null = null;
+let wonderLimit = 0;
+const loadWonder = () => {
+  if (!wonderMod) {
+    wonderMod = Promise.all([import('../../core/wonderDiorama'), import('../../core/wonderModels')]).then(([d, m]) => {
+      // téléphone : 2 Merveilles gardées assemblées au plus (celle affichée et la précédente) — leurs textures WebP
+      // décodées pèsent jusqu'à ~21 Mo chacune et n'étaient jamais libérées
+      if (wonderLimit) m.setWonderModelLimit(wonderLimit);
+      return d;
+    });
+    wonderMod.catch(() => (wonderMod = null)); // (réseau : on réessaiera à la prochaine Merveille)
+  }
+  return wonderMod;
+};
+/** Même test que `isWonderCard` (core/wonderDiorama.ts), sans charger le module. */
+const isWonderCard = (cardId: string) => cardId.startsWith('mrv-');
 
 /**
  * Visionneuse de la collection : la carte en grand, en vrai 3D (holo, parallaxe), inclinable au doigt / à la souris,
@@ -42,6 +63,7 @@ export function createViewerScene(): ViewerScene {
   let token = 0;
   const st = { spin: Math.PI, s: 0.85, z: -0.3, x: 0 };
   let render: () => void = () => undefined;
+  let pipe: ReturnType<typeof createPipeline> | null = null;
   let bloomStrength: { value: number } | null = null;
   /** halo derrière la carte, de la couleur de sa rareté (plus présent et « vivant » pour légendaire et mieux) */
   const halo = { color: uniform(new Color('#e8e2d6')), k: uniform(0) };
@@ -89,19 +111,43 @@ export function createViewerScene(): ViewerScene {
       const my = ++token;
       setZoom(1); // nouvelle carte : on repart sans zoom
       const cd = cardById(cardId);
-      await Promise.all([ensureCardImages([cd]), isWonderCard(cardId) ? preloadWonderModel(cardId) : null]);
+      const mobile = ctx.quality === 'mobile';
+      // nouvelle ouverture : rien de l'ancienne carte ne s'affiche le temps de préparer la nouvelle
+      if (!opts?.dir) {
+        rig.visible = false;
+        haloT.k = 0;
+      }
+      // Merveille : on n'attend plus le modèle 3D (≈ 1–2 Mo) — le diorama montre le monument procédural puis le
+      // remplace dès que le modèle arrive (avant : visionneuse figée le temps du téléchargement en 4G)
+      const wonder = isWonderCard(cardId) ? loadWonder() : null;
+      void wonder?.then((w) => w.preloadWonderModel(cardId), () => undefined);
+      await ensureCardImages([cd]);
+      if (my !== token) return;
+      // (le module du diorama arrive en parallèle des illustrations ; en cas d'échec réseau, la carte s'affiche sans)
+      const W = wonder ? await wonder.catch(() => null) : null;
       if (my !== token) return;
       const rr = rarity(rarityId);
       // mobile : calques à la taille réelle de la carte à l'écran (×2), au lieu d'un 0,7 fixe
-      const nextArt = gameCardArt(cd, rarityId, ctx.quality === 'mobile' ? mobileArtScale(ctx.width, ctx.height, 0.8, 0.95) : 1);
+      const scale = mobile ? mobileArtScale(ctx.width, ctx.height, 0.8, 0.95) : 1;
+      let nextArt: CardArt;
+      if (mobile) {
+        // téléphone : calques peints en 4 étapes (plus de pic de 20–80 ms), puis envoyés au GPU AVANT le tour d'entrée
+        // (avant : 6 textures + mipmaps dans la 1re image du tour → à-coup) ; les toiles sont vidées aussitôt (release)
+        nextArt = await gameCardArtAsync(cd, rarityId, scale);
+        if (my !== token) return nextArt.dispose();
+        for (const t of [nextArt.bg, nextArt.subject, nextArt.fg, nextArt.frame, nextArt.masks, nextArt.fx]) ctx.renderer.initTexture(t);
+        await nextFrame();
+        if (my !== token) return nextArt.dispose();
+      } else nextArt = gameCardArt(cd, rarityId, scale);
       clear();
+      rig.visible = true;
       art = nextArt;
       face = buildFace(art, rr.tier, !!cd.photo);
       face.holo.uniforms.strength.value = 0.7;
 
-      if (isWonderCard(cardId)) {
+      if (W) {
         const { edge } = buildEdge('#ffd27a');
-        wonderInstance = createWonderCardInstance(
+        wonderInstance = W.createWonderCardInstance(
           cardId,
           art,
           backs.forCard(cardId),
@@ -161,6 +207,7 @@ export function createViewerScene(): ViewerScene {
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);
       await ensureFonts();
+      if (c.quality === 'mobile') wonderLimit = 2; // (posé au chargement du diorama, cf. loadWonder)
       geo = c.bag.add(createCardGeometry());
       backs = themedBacks(c.bag, 0.6);
       backMat = backs.fallback;
@@ -179,15 +226,20 @@ export function createViewerScene(): ViewerScene {
       haloMesh.position.set(0, 0.05, -0.32);
       stage.scene.add(haloMesh);
       // bloom sur l'émissif : les étoiles, les paillettes et le foil brillent vraiment (comme à l'ouverture)
-      const pl = createPipeline(c, stage.scene, stage.camera, { emissive: true });
+      const pl = (pipe = createPipeline(c, stage.scene, stage.camera, { emissive: true }));
       const bl = pl.own(bloom(pl.emissive!, 0.3, 0.45, 0.0)) as unknown as N;
+      // téléphone : bloom au ¼ de la résolution (au lieu de ½) — l'émissif est épars (étoiles, paillettes) : halo un
+      // peu plus doux, −75 % de pixels de bloom en permanence dans la visionneuse
+      if (c.quality === 'mobile') (bl as unknown as { setResolutionScale(s: number): void }).setResolutionScale(0.25);
       bloomStrength = (bl as unknown as { strength: { value: number } }).strength;
       pl.output = vec4((pl.color as N).rgb.add(bl.rgb), 1);
       render = () => {
         if (bloomStrength && face) bloomStrength.value = 0.3 + (face.flash.value as number) * 0.9;
         pl.render();
       };
-      await stage.compile();
+      // pipelines compilés pour la VRAIE cible (MRT émissif, MSAA, HalfFloat) et non pour le canvas : plus d'à-coup
+      // de plusieurs centaines de ms au premier zoom de carte (la face holo pèse ≈ 470 nœuds)
+      await pl.compile();
       c.bag.fn(() => (tl?.kill(), clear()));
       // inspecter une carte de près : molette (ordinateur) ou deux touchers rapides (téléphone, souris)
       const wheel = (e: WheelEvent) => {
@@ -230,6 +282,10 @@ export function createViewerScene(): ViewerScene {
     resize(w, h) {
       stage.fit(w, h);
     },
+    /** Téléphone, visionneuse fermée (appelé par le shell) : ses cibles plein écran (~100 Mo) sont rendues au GPU. */
+    suspend() {
+      pipe?.releaseTargets();
+    },
     dispose() {},
-  };
+  } as ViewerScene;
 }

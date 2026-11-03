@@ -152,8 +152,17 @@ export const POKEMON_CARDS: CardData[] = POKEMON_151.map((e) => ({
   image: siteUrl(`${POKEMON_151_INFO.artDir}/${pokemonFile(e)}`),
 }));
 
+/**
+ * Valorant, LoL et CS (4 222 cartes du labo, `CARD_SETS`) : construits à la première demande et plus au chargement
+ * (audit PERF2-01) — le jeu ne s'en sert que pour les cartes de ces sous-thèmes réellement affichées (`cardById`).
+ */
+const lazy = <T>(build: () => T): (() => T) => {
+  let v: T | undefined;
+  return () => (v ??= build());
+};
+
 /** Sous-thème « Valorant » : 995 cartes (agents en pied, skins d'armes et couteaux), public/art/valorant. */
-export const VALORANT_CARDS: CardData[] = VALORANT.map((e) => ({
+export const valorantCards = lazy((): CardData[] => VALORANT.map((e) => ({
   id: valorantCardId(e),
   num: e.num,
   name: e.name,
@@ -168,10 +177,10 @@ export const VALORANT_CARDS: CardData[] = VALORANT.map((e) => ({
   set: 'valorant',
   fit: e.kind === 'agent' ? 1 : 0.72,
   image: siteUrl(`${VALORANT_INFO.artDir}/${valorantFile(e)}`),
-}));
+})));
 
 /** Sous-thème « League of Legends » : 2 120 cartes (champions + skins), splash recadré qui remplit la carte. */
-export const LOL_CARDS: CardData[] = LOL.map((e) => ({
+export const lolCards = lazy((): CardData[] => LOL.map((e) => ({
   id: lolCardId(e),
   num: e.num,
   name: e.name,
@@ -186,10 +195,10 @@ export const LOL_CARDS: CardData[] = LOL.map((e) => ({
   set: 'lol',
   cover: true,
   image: siteUrl(`${LOL_INFO.artDir}/${lolFile(e)}`),
-}));
+})));
 
 /** Sous-thème « Skins CS » : 1 107 cartes (armes, couteaux, gants, stickers), objets détourés comme Valorant. */
-export const CS_CARDS: CardData[] = CS.map((e) => ({
+export const csCards = lazy((): CardData[] => CS.map((e) => ({
   id: csCardId(e),
   num: e.num,
   name: e.name,
@@ -204,7 +213,7 @@ export const CS_CARDS: CardData[] = CS.map((e) => ({
   set: 'cs',
   fit: e.kind === 'weapon' || e.kind === 'knife' ? 0.74 : 0.86,
   image: siteUrl(`${CS_INFO.artDir}/${csFile(e)}`),
-}));
+})));
 
 /** Thème SECRET « Les Bébous » : 8 cartes, une par membre (surnom + photo), toutes en rareté secrète. */
 export const BEBOU_CARDS: CardData[] = BEBOUS.map((e) => ({
@@ -234,9 +243,10 @@ export interface CardSet {
 
 export const CARD_SETS: Record<CardSetId, CardSet> = {
   pokemon151: { id: 'pokemon151', label: POKEMON_151_INFO.label, code: POKEMON_151_INFO.code, size: POKEMON_151_INFO.size, cards: POKEMON_CARDS },
-  valorant: { id: 'valorant', label: VALORANT_INFO.label, code: VALORANT_INFO.code, size: VALORANT_INFO.size, cards: VALORANT_CARDS },
-  lol: { id: 'lol', label: LOL_INFO.label, code: LOL_INFO.code, size: LOL_INFO.size, cards: LOL_CARDS },
-  cs: { id: 'cs', label: CS_INFO.label, code: CS_INFO.code, size: CS_INFO.size, cards: CS_CARDS },
+  // (`cards` : accesseur, construit au premier accès)
+  valorant: { id: 'valorant', label: VALORANT_INFO.label, code: VALORANT_INFO.code, size: VALORANT_INFO.size, get cards() { return valorantCards(); } },
+  lol: { id: 'lol', label: LOL_INFO.label, code: LOL_INFO.code, size: LOL_INFO.size, get cards() { return lolCards(); } },
+  cs: { id: 'cs', label: CS_INFO.label, code: CS_INFO.code, size: CS_INFO.size, get cards() { return csCards(); } },
   lab: { id: 'lab', label: 'Lab (procédural)', code: SET_CODE, size: SET_SIZE, cards: LAB_CARDS },
   bebous: { id: 'bebous', label: BEBOUS_INFO.label, code: BEBOUS_INFO.code, size: BEBOUS_INFO.size, cards: BEBOU_CARDS },
 };
@@ -296,8 +306,23 @@ export function setInfo(card: CardData): { code: string; size: number } {
   return { code: SET_CODE, size: SET_SIZE };
 }
 
-const ALL_CARDS: CardData[] = Object.values(CARD_SETS).flatMap((s) => s.cards);
-const CARD_BY_ID = new Map(ALL_CARDS.map((c) => [c.id, c]));
+/**
+ * Cartes connues par id. Les sets construits au chargement (Pokémon, lab, Bébous) y sont tout de suite ; Valorant, LoL
+ * et CS y entrent à la première carte demandée de leur sous-thème (`indexSet`), puis les cartes du catalogue au fil
+ * des demandes. Ordre de priorité inchangé : une carte d'un set du labo l'emporte sur sa version « catalogue ».
+ */
+const CARD_BY_ID = new Map<string, CardData>();
+const LAZY_SETS: CardSetId[] = ['valorant', 'lol', 'cs'];
+const indexed = new Set<CardSetId>();
+function indexSet(id: CardSetId) {
+  if (indexed.has(id)) return;
+  indexed.add(id);
+  for (const c of CARD_SETS[id].cards) CARD_BY_ID.set(c.id, c);
+}
+// (les ids ne se recoupent pas d'un set à l'autre : préfixes propres à chaque set)
+for (const id of Object.keys(CARD_SETS) as CardSetId[]) if (!LAZY_SETS.includes(id)) indexSet(id);
+/** Groupe du catalogue (`SubTheme.group.id`) → set du labo qui a sa propre version de la carte. */
+const SET_OF_GROUP: Partial<Record<string, CardSetId>> = { valorant: 'valorant', lol: 'lol', cs: 'cs' };
 
 const hashId = (s: string) => {
   let h = 2166136261;
@@ -310,6 +335,14 @@ export function cardById(id: string): CardData {
   const existing = CARD_BY_ID.get(id);
   if (existing) return existing;
   const e = catalogEntry(id);
+  // carte d'un set du labo pas encore construit : son set (ou, id inconnu du catalogue, tous les sets restants)
+  const lazySet = e ? SET_OF_GROUP[subthemeById(e.subthemeId)?.group?.id ?? ''] : undefined;
+  if (lazySet || (!e && indexed.size < Object.keys(CARD_SETS).length)) {
+    if (lazySet) indexSet(lazySet);
+    else LAZY_SETS.forEach(indexSet);
+    const found = CARD_BY_ID.get(id);
+    if (found) return found;
+  }
   if (e) {
     const cd: CardData = {
       id: e.id,

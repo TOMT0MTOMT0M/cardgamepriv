@@ -1,4 +1,4 @@
-import { type Ctx, alpha, linear, radial } from './canvas';
+import { type Ctx, alpha, ctx2d, linear, radial, releaseCanvas } from './canvas';
 import { BASE_H, BASE_W, type PaintTarget } from './subjects';
 import type { CardImage } from './images';
 
@@ -130,7 +130,7 @@ export function paintPortraitSubject(t: PaintTarget, im: CardImage | null) {
       const c = document.createElement('canvas');
       c.width = cw;
       c.height = ch;
-      const g = c.getContext('2d')!;
+      const g = ctx2d(c);
       g.drawImage(im.canvas, 0, 0);
       g.globalCompositeOperation = 'source-in';
       g.fillStyle = col;
@@ -140,9 +140,13 @@ export function paintPortraitSubject(t: PaintTarget, im: CardImage | null) {
     fx.save();
     fx.globalCompositeOperation = 'lighter';
     fx.filter = `blur(${6 * px}px)`;
-    fx.drawImage(sil('rgb(0,0,170)'), x, y, w, h);
+    const sb = sil('rgb(0,0,170)');
+    fx.drawImage(sb, x, y, w, h);
+    releaseCanvas(sb); // toiles temporaires : mémoire rendue tout de suite (iOS)
     fx.filter = 'none';
-    fx.drawImage(sil('rgb(0,90,0)'), x, y, w, h);
+    const sg = sil('rgb(0,90,0)');
+    fx.drawImage(sg, x, y, w, h);
+    releaseCanvas(sg);
     fx.restore();
   }
 

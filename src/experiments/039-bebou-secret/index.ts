@@ -56,7 +56,8 @@ import { createHoloMaterial } from '../../core/holo';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import { createCardMesh, CARD } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
-import { rot2, voronoi, type N } from '../../core/tsl';
+import { fbmTexel, rot2, voronoi, type N } from '../../core/tsl';
+import { mobileArtScale } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
 import { bebouOddsLabel } from '../../core/sets/themes';
 
@@ -128,6 +129,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
   let ownedMats: Material[] = [];
   let swapping: Promise<void> | null = null;
   let warm = 0;
+  let haloRef: Sprite | null = null;
   const shake = new Spring(0, 240, 8);
   const shake2 = new Spring(0, 280, 9);
 
@@ -178,10 +180,18 @@ export default function create(opts: SecretOptions = {}): Experiment {
   // ─────────────────────────────────────────── carte (art + matériaux), échangeable sans recompiler la scène
   async function buildCard(cd: CardData, rid: RarityId) {
     const list: Array<{ dispose(): void }> = [];
-    const { art, back } = await cardArtFor(cd, rid, { add: <T extends { dispose(): void }>(o: T) => (list.push(o), o) });
+    const mobile = ctx.quality === 'mobile';
+    // téléphone : calques à la taille réelle de la carte à l'écran (comme l'ouverture) au lieu de 768×1072, sans aplat,
+    // toiles vidées dès l'envoi au GPU (≈ −20 Mo GPU et −25 Mo de canvas au pic mémoire du jeu)
+    const { art, back } = await cardArtFor(
+      cd,
+      rid,
+      { add: <T extends { dispose(): void }>(o: T) => (list.push(o), o) },
+      mobile ? { scale: mobileArtScale(ctx.width, ctx.height, 0.7), noFlat: true, release: true } : undefined,
+    );
     const rr = rarity(rid);
     // photo d'un ami : le foil reste sur le cadre, le sceau et le surnom ; à peine un voile sur la photo
-    const holo = createHoloMaterial(art, rr.tier, cd.photo ? { windowFoil: 0.1, subjectFoil: 0.15 } : {});
+    const holo = createHoloMaterial(art, rr.tier, { ...(cd.photo ? { windowFoil: 0.1, subjectFoil: 0.15 } : {}), lite: mobile });
     const backMat = createBackMaterial(back);
     // fissures de lumière : arêtes de Voronoï (deux échelles) révélées depuis le centre, intensité = battement
     const p = uv().sub(0.5).mul(vec2(CARD.w, CARD.h));
@@ -189,7 +199,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
     const v2 = voronoi(p.mul(70).add(3.1), float(0.9)) as N;
     const l1 = smoothstep(0.075, 0.0, v1.y.sub(v1.x));
     const l2 = smoothstep(0.05, 0.0, v2.y.sub(v2.x)).mul(0.55);
-    const dist = length(p.mul(vec2(1.15, 0.9))).add(mx_fractal_noise_float(vec3(p.mul(9), 2.3), 3).mul(0.07));
+    const dist = length(p.mul(vec2(1.15, 0.9))).add((mobile ? fbmTexel(p.mul(9), 3) : mx_fractal_noise_float(vec3(p.mul(9), 2.3), 3)).mul(0.07));
     const R = U.crack.mul(0.62);
     const front = smoothstep(R, R.sub(0.05), dist);
     const fine = smoothstep(R.sub(0.06), R.sub(0.14), dist);
@@ -495,7 +505,8 @@ export default function create(opts: SecretOptions = {}): Experiment {
       const pArt = c.bag.add(await generatePackArt(PACK_STYLES.bone));
       const mats = createPackMaterials(pArt);
       const pp = positionLocal.xy;
-      const field = length(pp.mul(vec2(1, 0.8))).add(mx_fractal_noise_float(vec3(pp.mul(4), 0.4), 4).mul(0.2));
+      // téléphone : bruit de brûlure lu dans le bruit cuit (4 lectures) au lieu de 4 octaves de Perlin 3D par pixel
+      const field = length(pp.mul(vec2(1, 0.8))).add((c.quality === 'mobile' ? fbmTexel(pp.mul(4), 4) : mx_fractal_noise_float(vec3(pp.mul(4), 0.4), 4)).mul(0.2));
       const burnFront = field.sub(U.burn);
       for (const m of mats) {
         m.side = DoubleSide;
@@ -528,7 +539,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
       const hc = mix(tint, color(ROSE_LIGHT), h5);
       hm.colorNode = vec4(hc.mul(1.5), disc.mul(twinkle).mul(smoothstep(0.0, 0.25, U.gather)));
       hm.scaleNode = h2.mul(0.008).add(0.003);
-      const halo = new Sprite(hm);
+      const halo = (haloRef = new Sprite(hm));
       halo.count = mobile ? 2200 : 6000;
       halo.frustumCulled = false;
       rig.add(halo);
@@ -568,7 +579,9 @@ export default function create(opts: SecretOptions = {}): Experiment {
       post = createPipeline(c, stage.scene, stage.camera, { emissive: true });
       const bl = post.own(bloom(post.emissive!, 0.35, 0.5, 0.0)) as unknown as N;
       bloomRef = bl;
-      const fl = post.own(anamorphicFlare(post.emissive!, (n) => bloom(n, 1, 0, 0.12) as unknown as N));
+      // téléphone : pas de flare anamorphique (2e bloom complet + flou de 48 lectures, recalculés à chaque image même
+      // éteints) — remplacé plus bas par une traînée analytique, comme l'ouverture
+      const fl = mobile ? null : post.own(anamorphicFlare(post.emissive!, (n) => bloom(n, 1, 0, 0.12) as unknown as N));
       const aspect = screenSize.x.div(screenSize.y);
       // glitch : tranches horizontales décalées pendant le blocage
       const slice = floor(screenUV.y.mul(36));
@@ -579,23 +592,48 @@ export default function create(opts: SecretOptions = {}): Experiment {
       const Rs = U.shock.mul(0.95);
       const sring = exp(abs(r.sub(Rs)).div(0.028).negate()).mul(U.shock.oneMinus());
       const warped = U.center.add(d0.sub(d0.normalize().mul(sring.mul(0.03))).div(vec2(aspect, 1)));
-      const sceneCol = post.color.sample(warped).rgb;
       const emis = post.emissive!.sample(warped).rgb;
-      const split = vec3(post.color.sample(warped.add(vec2(U.glitch.mul(0.012), 0))).r, sceneCol.g, post.color.sample(warped.sub(vec2(U.glitch.mul(0.012), 0))).b);
-      let col: N = mix(sceneCol, split, U.glitch);
+      let col: N;
+      if (!mobile) {
+        const sceneCol = post.color.sample(warped).rgb;
+        const split = vec3(post.color.sample(warped.add(vec2(U.glitch.mul(0.012), 0))).r, sceneCol.g, post.color.sample(warped.sub(vec2(U.glitch.mul(0.012), 0))).b);
+        col = mix(sceneCol, split, U.glitch);
+      } else {
+        /*
+         * Téléphone : même image, sans la copie plein écran de l'aberration chromatique — elle est lue directement dans
+         * l'image de la scène, canal par canal (même formule que ChromaticAberrationNode, comme l'ouverture), et le
+         * décalage du glitch s'y ajoute (3 lectures en tout, comme avant le glitch seul).
+         */
+        const off = warped.sub(U.center);
+        const ab = U.ca.mul(off.length()).mul(0.01);
+        const k = U.ca.mul(1.08 * 0.02);
+        const gl = vec2(U.glitch.mul(U.glitch).mul(0.012), 0);
+        const rUV = U.center.add(off.mul(k.add(1).add(ab))).add(gl);
+        const bUV = U.center.add(off.mul(float(1).sub(k).sub(ab))).sub(gl);
+        col = vec3(post.color.sample(rUV).r, post.color.sample(warped).g, post.color.sample(bUV).b);
+      }
       // désaturation du monde : seule la lumière émise garde sa couleur
       const base = max(col.sub(emis), 0);
       const grey = vec3(luminance(base)).mul(vec3(1.0, 0.9, 0.88)).mul(0.55);
       col = mix(base, grey, U.mono).add(emis);
-      col = col.add(bl.rgb).add(fl.rgb.mul(tint).mul(U.flare)).add(tint.mul(sring.mul(0.3)));
-      col = (chromaticAberration(vec4(col, 1), U.ca, U.center, float(1.08)) as unknown as N).rgb;
+      if (fl) {
+        col = col.add(bl.rgb).add((fl as N).rgb.mul(tint).mul(U.flare)).add(tint.mul(sring.mul(0.3)));
+        col = (chromaticAberration(vec4(col, 1), U.ca, U.center, float(1.08)) as unknown as N).rgb;
+      } else {
+        // traînée horizontale analytique qui passe par la carte (au lieu du flare anamorphique)
+        const dy = abs(screenUV.y.sub(U.center.y));
+        const dx = abs(screenUV.x.sub(U.center.x)).mul(aspect);
+        const streak = exp(dy.div(0.0035).negate()).mul(0.9).add(exp(dy.div(0.03).negate()).mul(0.22)).mul(exp(dx.mul(-1.5)));
+        col = col.add(bl.rgb).add(tint.mul(streak.mul(U.flare).mul(1.6))).add(tint.mul(sring.mul(0.3)));
+      }
       col = mix(col, vec3(luminance(col)).oneMinus().mul(vec3(1, 0.85, 0.8)), U.invert);
       col = col.add(color(ROSE_LIGHT).mul(U.flash.mul(0.22)));
       const vig = smoothstep(1.2, 0.3, screenUV.sub(0.5).length().mul(1.6));
       col = col.mul(mix(float(0.78), float(1), vig)).mul(float(1).sub(U.dark.mul(0.6).mul(smoothstep(0.08, 0.55, r))));
       post.output = vec4(col, 1);
 
-      await stage.compile();
+      // pipelines compilés pour la vraie cible (MRT émissif, MSAA) : pas d'à-coup sur la carte secrète
+      await post.compile();
       c.bag.fn(() => {
         tl?.kill();
         extras.forEach((a) => a.kill());
@@ -628,6 +666,8 @@ export default function create(opts: SecretOptions = {}): Experiment {
       }
       (bloomRef as unknown as { strength: { value: number } }).strength.value = 0.3 + S.flash * 1.4 + S.pulse * 0.5 + S.rim * 0.4;
       packRig.visible = S.burn < 0.94;
+      // halo de poussière invisible (rassemblement à 0) : ses milliers de sprites additifs ne sont pas rasterisés
+      if (haloRef) haloRef.visible = S.gather > 0.001;
       // tant que la carte n'est pas révélée, pas de rotation au glisser (elle montrerait le visage avant l'heure)
       ctx.input.spinEnabled = revealed;
       const pose = revealed ? ctx.input.pose(S.holo > 0.2 ? 0.35 : 0.1) : { x: -ctx.input.tiltY * 0.1, y: ctx.input.tiltX * 0.1 };

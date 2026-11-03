@@ -1,7 +1,16 @@
 /**
- * Sound design 100 % synthétisé (Web Audio). Coupé par défaut ; activé par le bouton 🔈 du shell.
+ * Sound design 100 % synthétisé (Web Audio). Muet tant que `enable()` n'a pas été appelé (le navigateur exige un geste) :
+ * dans le jeu, le shell l'appelle au premier toucher sauf si le joueur a coupé le son (bouton 🔈, `bebou.sound` = '0') ;
+ * coupé, le contexte audio est suspendu.
  * Chaque son est court, filtré, et passe par une petite réverb générée : pas de "bip" nu.
+ *
+ * Batterie : le contexte audio (réverbe à convolution + compresseur, qui tournent en continu sur le thread audio même
+ * sans aucun son) est mis en veille après quelques secondes de silence et dès que l'onglet est caché ; il se réveille
+ * tout seul au son suivant (~10 ms).
  */
+/** Silence avant la mise en veille : plus long que le plus long son (chœur 5,2 s) + la queue de réverbe. */
+const IDLE_MS = 9000;
+
 export class Sfx {
   enabled = false;
   /** volume général 0..1 (curseur de l'en-tête) ; 0,7 = le niveau d'origine */
@@ -10,6 +19,43 @@ export class Sfx {
   private master: GainNode | null = null;
   private verbSend: GainNode | null = null;
   private noiseBuf: AudioBuffer | null = null;
+  /** vrai quand c'est NOUS qui avons suspendu le contexte (silence, onglet caché) : le son suivant le réveille */
+  private napping = false;
+  private idleT = 0;
+
+  constructor() {
+    if (typeof document !== 'undefined')
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) this.nap();
+      });
+  }
+
+  /** Met le contexte en veille (s'il tourne). */
+  private nap() {
+    clearTimeout(this.idleT);
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    this.napping = true;
+    void this.ctx.suspend();
+  }
+
+  /**
+   * Avant chaque son : réarme la veille et réveille le contexte si c'est nous qui l'avions mis en veille. Vrai si le
+   * contexte tourne (ou repart à l'instant : le son, programmé maintenant, sort à la reprise, quelques ms plus tard).
+   * Un contexte suspendu pour une autre raison (lecture auto refusée, appel téléphonique) reste muet, comme avant.
+   */
+  private wake(): boolean {
+    if (!this.ctx) return false;
+    clearTimeout(this.idleT);
+    this.idleT = window.setTimeout(() => this.nap(), IDLE_MS);
+    if (this.ctx.state === 'running') return true;
+    if (this.napping && this.ctx.state !== 'closed') {
+      this.napping = false;
+      this.waking = this.ctx.resume().finally(() => (this.waking = null));
+      return true;
+    }
+    return !!this.waking;
+  }
+  private waking: Promise<void> | null = null;
 
   async enable(): Promise<void> {
     if (!this.ctx) {
@@ -21,7 +67,10 @@ export class Sfx {
       master.gain.value = 0.7 * this.volume;
       master.connect(comp).connect(ctx.destination);
       const verb = ctx.createConvolver();
-      verb.buffer = this.impulse(ctx, 2.4, 2.8);
+      // téléphone : réponse impulsionnelle tronquée à 1,8 s (même courbe de décroissance, la fin coupée est à −33 dB)
+      // → création ~25 % moins chère au premier toucher et convolution plus légère
+      const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+      verb.buffer = this.impulse(ctx, 2.4, 2.8, touch ? 1.8 : 2.4);
       const send = ctx.createGain();
       send.gain.value = 0.28;
       send.connect(verb).connect(master);
@@ -34,12 +83,16 @@ export class Sfx {
       this.verbSend = send;
       this.noiseBuf = nb;
     }
+    this.napping = false;
     await this.ctx.resume();
     this.enabled = true;
+    if (this.ctx.state === 'running') this.wake(); // veille armée dès l'activation (aucun son → suspendu au bout de 9 s)
   }
 
   disable() {
     this.enabled = false;
+    this.napping = false;
+    clearTimeout(this.idleT);
     void this.ctx?.suspend();
   }
 
@@ -49,18 +102,24 @@ export class Sfx {
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(0.7 * this.volume, this.ctx.currentTime, 0.03);
   }
 
-  private impulse(ctx: AudioContext, seconds: number, decay: number) {
-    const len = Math.floor(ctx.sampleRate * seconds);
+  /** `keep` (s) : durée réellement générée (≤ seconds), la courbe restant celle d'une réponse de `seconds`. */
+  private impulse(ctx: AudioContext, seconds: number, decay: number, keep = seconds) {
+    const total = Math.floor(ctx.sampleRate * seconds);
+    const len = Math.min(total, Math.floor(ctx.sampleRate * keep));
+    const fadeN = len < total ? Math.floor(ctx.sampleRate * 0.1) : 0; // fondu de 0,1 s si tronquée
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let c = 0; c < 2; c++) {
       const d = buf.getChannelData(c);
-      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      for (let i = 0; i < len; i++) {
+        const f = fadeN && i > len - fadeN ? (len - i) / fadeN : 1;
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / total, decay) * f;
+      }
     }
     return buf;
   }
 
   private get ok() {
-    return this.enabled && !!this.ctx && this.ctx.state === 'running';
+    return this.enabled && this.wake();
   }
 
   private out(g: AudioNode, wet = 0.5) {

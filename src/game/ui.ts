@@ -141,66 +141,319 @@ document.addEventListener(
 document.addEventListener('scroll', () => (tiltRect = null), { capture: true, passive: true });
 
 /**
- * Couche plein écran (visionneuse d'une carte) : le geste ou le bouton « retour » du téléphone la ferme, au lieu de
- * quitter la page. `pushLayer` à l'ouverture, `popLayer` quand on ferme soi-même (✕, Échap).
+ * COUCHES (visionneuse d'une carte, fiche d'un booster, panneaux de l'en-tête, sélecteur…) : le geste ou le bouton
+ * « retour » du téléphone ferme la couche du dessus, au lieu de quitter la page. C'est une PILE : fiche → grille des
+ * cartes → retour = grille fermée, retour = fiche fermée. `pushLayer` à l'ouverture, `popLayer` quand on ferme soi-même
+ * (✕, Échap, clic à côté) — idéalement avec la même fonction, `popLayer(close)`, dès que deux couches s'empilent.
+ *
+ * Une entrée d'historique par couche ({ bebouLayer: profondeur }). Les retours en arrière qu'on lance nous-mêmes sont
+ * faits UN PAR UN (deux `history.back()` dans la même tâche ne reculent que d'un cran sur certains navigateurs) ; une
+ * couche ouverte pendant qu'un retour est en route attend son arrivée pour créer son entrée.
  */
-let layerClose: (() => void) | null = null;
-export function pushLayer(close: () => void) {
-  if (layerClose) return void (layerClose = close); // déjà une entrée d'historique : on la réutilise
-  layerClose = close;
-  history.pushState({ bebouLayer: true }, '');
+type Layer = { close: () => void };
+const layers: Layer[] = [];
+/** profondeur de l'entrée d'historique courante (0 = page normale) */
+const histDepth = () => {
+  const s = (history.state as { bebouLayer?: number | boolean } | null)?.bebouLayer;
+  return typeof s === 'number' ? s : s ? 1 : 0;
+};
+// page rechargée sur une entrée de couche : on l'oublie (reculer depuis là rechargerait l'ancienne page)
+if (histDepth()) history.replaceState({ ...(history.state as object), bebouLayer: 0 }, '');
+/** un `history.back()` lancé par nous, pas encore arrivé */
+let travelling = false;
+let travelTimer = 0;
+/** couches du dessus dont l'entrée d'historique reste à créer (ouvertes pendant un retour en route) */
+let pendingPush = 0;
+/** couche en train de se fermer par « retour » ou `closeLayers` : son propre `popLayer()` ne fait rien */
+let closing: Layer | null = null;
+const whenSettled: Array<() => void> = [];
+
+function travel() {
+  travelling = true;
+  clearTimeout(travelTimer);
+  // filet : un retour qui n'arrive jamais ne bloque pas les couches suivantes
+  travelTimer = window.setTimeout(() => {
+    travelling = false;
+    reconcile();
+  }, 1000);
+  history.back();
 }
-export function popLayer() {
-  if (!layerClose) return;
-  layerClose = null;
-  // seulement si on est encore sur l'entrée de la couche (pas après un changement de page)
-  if ((history.state as { bebouLayer?: boolean } | null)?.bebouLayer) history.back();
+/** Met l'historique d'accord avec la pile : recule s'il y a trop d'entrées, crée celles qui manquent. */
+function reconcile() {
+  if (travelling) return;
+  if (histDepth() > layers.length - pendingPush) return travel();
+  for (; pendingPush > 0; pendingPush--) history.pushState({ bebouLayer: histDepth() + 1 }, '');
+  for (const f of whenSettled.splice(0)) f();
+}
+function closeSilently(l: Layer) {
+  const prev = closing;
+  closing = l;
+  try {
+    l.close();
+  } finally {
+    closing = prev;
+  }
+}
+export function pushLayer(close: () => void) {
+  if (layers.some((l) => l.close === close)) return; // déjà ouverte
+  layers.push({ close });
+  if (travelling) pendingPush++;
+  else history.pushState({ bebouLayer: histDepth() + 1 }, '');
+}
+/** On ferme soi-même. Avec `close` : cette couche-là ; sans : celle du dessus (ancien comportement). */
+export function popLayer(close?: () => void) {
+  if (closing && (!close || close === closing.close)) return; // déjà dépilée (retour du téléphone)
+  const i = close ? layers.findIndex((l) => l.close === close) : layers.length - 1;
+  if (i < 0) return;
+  if (i >= layers.length - pendingPush) pendingPush--; // son entrée n'existait pas encore
+  layers.splice(i, 1);
+  // ne recule que si on est encore sur les entrées des couches (pas après un changement de page)
+  reconcile();
+}
+/** Ferme toutes les couches ouvertes (changement de page, lien touché dans une couche). */
+export function closeLayers() {
+  while (layers.length) closeSilently(layers.pop()!);
+  pendingPush = 0;
+  reconcile();
+}
+export const layerCount = () => layers.length;
+/** Aller à une page : les couches ouvertes se ferment d'abord (historique propre : pas d'entrée fantôme). */
+export function navigate(hash: string) {
+  if (!layers.length && !travelling) return void (location.hash = hash);
+  closeLayers();
+  if (travelling) whenSettled.push(() => (location.hash = hash));
+  else location.hash = hash;
 }
 window.addEventListener('popstate', () => {
-  const c = layerClose;
-  layerClose = null;
-  c?.();
+  if (travelling) {
+    // c'est notre propre retour qui arrive
+    travelling = false;
+    clearTimeout(travelTimer);
+    return reconcile();
+  }
+  // « retour » du téléphone ou du navigateur : on ferme les couches au-dessus de l'entrée où l'on arrive
+  const a = histDepth();
+  pendingPush = 0;
+  while (layers.length > a) closeSilently(layers.pop()!);
+  // entrée d'une couche déjà fermée (fantôme) : on la saute
+  reconcile();
 });
+// lien touché pendant qu'une couche est ouverte : on ferme d'abord, on navigue ensuite (UX1-18)
+document.addEventListener('click', (e) => {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (!layers.length && !travelling) return;
+  const a = (e.target as Element | null)?.closest?.<HTMLAnchorElement>('a[href^="#"]');
+  if (!a || a.target) return;
+  e.preventDefault();
+  navigate(a.getAttribute('href')!);
+});
+
+/**
+ * PANNEAUX DE L'EN-TÊTE (missions, portefeuille, série / pity, volume) : un seul ouvert à la fois, « retour » les ferme
+ * (couche), le focus entre dans le panneau à l'ouverture et revient au bouton qui l'a ouvert. Fermés, ils sont `inert`
+ * (ni focus ni lecteur d'écran). Le déclencheur porte `aria-controls="<id du panneau>"` (et `data-which` si un même
+ * panneau a plusieurs contenus) : son `aria-expanded` suit.
+ */
+/** bouton ✕ des panneaux de l'en-tête (missions, portefeuille, série / pity) */
+export const CLOSE_X = '<button class="icon pop-x" aria-label="Fermer">✕</button>';
+const openPanels = new Map<() => void, { pop: HTMLElement; opener: HTMLElement | null }>();
+export function panelShown(pop: HTMLElement, close: () => void) {
+  for (const c of [...openPanels.keys()]) if (c !== close) c();
+  const f = document.activeElement as HTMLElement | null;
+  // (même panneau rouvert par un autre bouton — série → pity — : le focus reviendra à ce dernier)
+  const opener = f && f !== document.body && !pop.contains(f) ? f : (openPanels.get(close)?.opener ?? null);
+  openPanels.set(close, { pop, opener });
+  pop.inert = false;
+  pushLayer(close);
+  syncPanelTriggers();
+  requestAnimationFrame(() => {
+    if (openPanels.has(close) && !pop.contains(document.activeElement)) pop.querySelector<HTMLElement>('.pop-x, button, [href], input')?.focus({ preventScroll: true });
+  });
+}
+export function panelHidden(pop: HTMLElement, close: () => void) {
+  pop.inert = true;
+  const o = openPanels.get(close);
+  openPanels.delete(close);
+  popLayer(close);
+  syncPanelTriggers();
+  if (!o) return;
+  // le focus était dans le panneau (ou perdu) : il revient au bouton (refait entre-temps par l'en-tête ? on le retrouve)
+  const a = document.activeElement;
+  if (a && a !== document.body && !pop.contains(a)) return;
+  const back = o.opener?.isConnected ? o.opener : pop.id ? document.querySelector<HTMLElement>(`[aria-controls="${pop.id}"]`) : null;
+  back?.focus({ preventScroll: true });
+}
+/**
+ * Message « pas connecté » (UX1-15) : en ligne, tant que le serveur n'a pas répondu, « Connexion au serveur… » (et non
+ * « connecte-toi », qui fait croire qu'on a été déconnecté) ; ensuite, le texte + un vrai bouton (classe `login-cta`,
+ * à brancher sur `backend.login()`). En démo : le texte seul.
+ */
+export function loginPrompt(b: { state: { mode: string; ready: boolean } }, text: string): string {
+  if (b.state.mode === 'online' && !b.state.ready) return '<div class="muted login-wait">Connexion au serveur…</div>';
+  return `<div class="muted">${esc(text)}</div>${b.state.mode === 'online' ? '<button class="btn-primary login-cta">Connexion Discord</button>' : ''}`;
+}
+
+/** Un panneau se redessine (données qui changent) : le focus clavier qui y était n'est pas perdu. */
+export function keepFocus(root: HTMLElement, redraw: () => void) {
+  const a = document.activeElement as HTMLElement | null;
+  const cls = a && a !== root && root.contains(a) ? [...a.classList].map((c) => `.${CSS.escape(c)}`).join('') : null;
+  redraw();
+  if (cls !== null && !root.contains(document.activeElement)) (root.querySelector<HTMLElement>(cls || 'button') ?? root.querySelector<HTMLElement>('.pop-x'))?.focus({ preventScroll: true });
+}
+/** Ferme tous les panneaux de l'en-tête (changement de page). */
+export const closePanels = () => [...openPanels.keys()].forEach((c) => c());
+/** `aria-expanded` des boutons de l'en-tête (à rappeler quand l'en-tête est refait). */
+export function syncPanelTriggers() {
+  document.querySelectorAll<HTMLElement>('[aria-controls]').forEach((b) => {
+    const pop = document.getElementById(b.getAttribute('aria-controls')!);
+    if (!pop || !pop.matches('.missions-pop, .status-pop, .vol-pop')) return;
+    // (le panneau du volume est refait avec l'en-tête : on le reconnaît à son id)
+    const open = [...openPanels.values()].some((o) => o.pop === pop || o.pop.id === pop.id) &&(!b.dataset.which || b.dataset.which === pop.dataset.which);
+    b.setAttribute('aria-expanded', String(open));
+  });
+}
 
 /**
  * Bouton qui attend le serveur : une petite roue n'apparaît que si l'attente dépasse ~¼ s (pas de clignotement quand
  * la réponse est immédiate, mais jamais l'impression que le clic n'a rien fait sur un réseau lent).
+ * Pendant l'attente le bouton est désactivé (`disabled` + `aria-busy`) : un double toucher ne relance pas la mutation
+ * (audit UX4-01 : forge, roulette, duels, encaissements).
+ *
+ * Délai limite (`timeoutMs`, 15 s par défaut, 0 = aucun) : la roue s'arrête et un toast dit que le serveur ne répond pas.
+ * La promesse d'origine n'est PAS rejetée : le client Convex garde la mutation en file et la rejouera à la reconnexion ;
+ * rejeter ferait croire à un échec et inviterait à recliquer (= une 2e mutation en file, donc double brûlure / double
+ * mise). Le bouton redevient touchable, mais tant que la 1re demande n'a pas abouti un toucher ne fait qu'afficher
+ * « encore en route » (il ne relance rien). Quand la réponse arrive enfin, l'appelant continue normalement.
  */
-export async function busyButton<T>(btn: HTMLElement, p: Promise<T>): Promise<T> {
+export async function busyButton<T>(btn: HTMLElement, p: Promise<T>, o: { timeoutMs?: number } = {}): Promise<T> {
+  // déjà en attente (appel imbriqué sur le même bouton) : on n'y touche pas
+  if (btn.dataset.busy) return p;
+  btn.dataset.busy = '1';
+  const b = btn as HTMLButtonElement;
+  const canDisable = 'disabled' in b;
+  const was = canDisable ? b.disabled : false;
+  if (canDisable) b.disabled = true;
+  else btn.setAttribute('aria-disabled', 'true');
+  btn.setAttribute('aria-busy', 'true');
   const t = setTimeout(() => btn.classList.add('loading'), 240);
+  let swallow: ((e: Event) => void) | null = null;
+  const limit = o.timeoutMs ?? 15000;
+  const slow = limit
+    ? setTimeout(() => {
+        if (!btn.isConnected) return;
+        btn.classList.remove('loading');
+        btn.removeAttribute('aria-busy');
+        if (canDisable) b.disabled = was;
+        swallow = (e) => {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          toast('Ta demande est encore en route : elle partira dès que le serveur répond.', 'info');
+        };
+        btn.addEventListener('click', swallow, true);
+        toast('Le serveur ne répond pas… Ta demande partira dès que la connexion revient : inutile de recliquer.', 'err');
+      }, limit)
+    : 0;
   try {
     return await p;
   } finally {
     clearTimeout(t);
+    clearTimeout(slow);
+    if (swallow) btn.removeEventListener('click', swallow, true);
     btn.classList.remove('loading');
+    if (canDisable) b.disabled = was;
+    else btn.removeAttribute('aria-disabled');
+    btn.removeAttribute('aria-busy');
+    delete btn.dataset.busy;
   }
 }
 
+/**
+ * Petits messages en haut de l'écran, UN À LA FOIS dans une file (le suivant attend que le précédent ait été lu, au
+ * lieu de l'écraser) ; reste plus longtemps s'il est long, se ferme d'un toucher. Les erreurs passent devant et sont
+ * annoncées tout de suite (`role="alert"`), le reste poliment (`role="status"`).
+ */
+type Toast = { msg: string; kind: 'ok' | 'err' | 'info' };
+const toastQ: Toast[] = [];
+let toastCur: (Toast & { el: HTMLElement; at: number }) | null = null;
 let toastTimer = 0;
-/** Petit message en haut de l'écran ; reste plus longtemps s'il est long, se ferme d'un toucher. */
-export function toast(msg: string, kind: 'ok' | 'err' | 'info' = 'info') {
-  let el = document.querySelector<HTMLElement>('.toast');
+const toastEls: Partial<Record<'status' | 'alert', HTMLElement>> = {};
+const toastLife = (msg: string) => Math.min(6500, 2400 + msg.length * 40);
+function toastEl(alert: boolean) {
+  const k = alert ? 'alert' : 'status';
+  let el = toastEls[k];
   if (!el) {
-    el = h('div', 'toast');
-    el.setAttribute('role', 'status');
-    el.setAttribute('aria-live', 'polite');
-    el.addEventListener('click', () => el!.classList.remove('on'));
+    el = toastEls[k] = h('div', 'toast');
+    el.setAttribute('role', k);
+    if (!alert) el.setAttribute('aria-live', 'polite');
+    el.addEventListener('click', hideToast);
     document.body.append(el);
   }
-  msg = fr(msg);
-  const again = el.classList.contains('on') && el.textContent === msg;
-  el.className = `toast ${kind} on${again ? ' nudge' : ''}`;
-  el.textContent = msg;
+  return el;
+}
+function hideToast() {
+  if (!toastCur) return;
   clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => el!.classList.remove('on'), Math.min(6500, 2400 + msg.length * 40));
+  toastCur.el.classList.remove('on');
+  toastCur = null;
+  // le temps du fondu, puis le suivant
+  toastTimer = window.setTimeout(nextToast, toastQ.length ? 260 : 0);
+}
+function nextToast() {
+  const t = toastQ.shift();
+  if (!t) return;
+  const el = toastEl(t.kind === 'err');
+  el.className = `toast ${t.kind} on`;
+  el.textContent = t.msg;
+  toastCur = { ...t, el, at: performance.now() };
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(hideToast, toastLife(t.msg));
+}
+export function toast(msg: string, kind: 'ok' | 'err' | 'info' = 'info') {
+  msg = fr(msg);
+  // le même message est déjà affiché : petite secousse, et il reste un peu plus
+  if (toastCur && toastCur.msg === msg) {
+    const el = toastCur.el;
+    el.classList.remove('nudge');
+    void el.offsetWidth;
+    el.classList.add('nudge');
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(hideToast, toastLife(msg));
+    return;
+  }
+  if (toastQ.some((t) => t.msg === msg)) return;
+  // une erreur passe devant les messages en attente
+  if (kind === 'err') toastQ.unshift({ msg, kind });
+  else toastQ.push({ msg, kind });
+  if (toastQ.length > 4) toastQ.splice(4); // pas d'accumulation : on garde les plus importants
+  if (!toastCur) {
+    if (!toastTimer || toastQ.length === 1) nextToast();
+    return;
+  }
+  // un message attend : celui affiché se ferme plus tôt, mais après au moins ~1,6 s de lecture (une erreur : 0,8 s)
+  const minRead = kind === 'err' ? 800 : 1600;
+  const left = Math.max(0, minRead - (performance.now() - toastCur.at));
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(hideToast, left);
 }
 
+/**
+ * Message d'erreur lisible. Les erreurs voulues du serveur (ConvexError) passent telles quelles ; une erreur technique
+ * brute (« [CONVEX M(packs:preparePack)] [Request ID: …] Server Error ») devient une phrase, la cause va en console.
+ */
 export const errMsg = (e: unknown) => {
-  const m = (e as { data?: string; message?: string })?.data ?? (e as Error)?.message ?? String(e);
-  return String(m).replace(/^.*ConvexError:\s*/, '').replace(/^Uncaught Error:\s*/, '');
+  const m = String((e as { data?: string; message?: string })?.data ?? (e as Error)?.message ?? String(e));
+  if (/ConvexError:/.test(m)) return m.replace(/^[\s\S]*ConvexError:\s*/, '').replace(/\s*at [\s\S]*$/, '').trim();
+  if (/\[CONVEX |\[Request ID|Server Error|Uncaught \w*Error/.test(m)) {
+    console.warn(e);
+    return 'Le serveur a refusé l’action, réessaie dans un instant.';
+  }
+  if (/Failed to fetch|NetworkError|WebSocket/i.test(m)) return 'Connexion au serveur impossible, réessaie dans un instant.';
+  return m.replace(/^Uncaught Error:\s*/, '');
 };
 
+/** « 12 min », « 3 h 05 », « 5 j 11 h » (au-delà de 48 h : personne ne lit « 131 h 48 »). */
 export function fmtDelay(ms: number): string {
   const m = Math.max(1, Math.ceil(ms / 60000));
+  if (m >= 2880) return `${Math.floor(m / 1440)} j ${Math.floor((m % 1440) / 60)} h`;
   return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
 }

@@ -81,7 +81,7 @@ canvas.gl.dim { opacity: 0.22; filter: blur(6px) saturate(0.7); }
 .nav-pill.on { opacity: 1; }
 .topbar nav .badge { display: inline-block; margin-left: 6px; vertical-align: 1px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--rose); color: #1a0d0a; font: 600 10px/16px var(--mono); letter-spacing: 0; text-align: center; animation: badge-in 0.45s cubic-bezier(0.34, 1.8, 0.6, 1); }
 @keyframes badge-in { from { transform: scale(0); } }
-.topbar nav .badge.fresh-badge { background: var(--gold); color: #241604; box-shadow: 0 0 10px rgba(242, 196, 109, 0.45); }
+.topbar nav .badge.fresh-badge, .topbar nav .badge.ach-badge { background: var(--gold); color: #241604; box-shadow: 0 0 10px rgba(242, 196, 109, 0.45); }
 .me { margin-left: auto; display: flex; align-items: center; gap: 10px; font: 500 12px var(--mono); white-space: nowrap; }
 .me .packs { position: relative; display: flex; align-items: center; gap: 7px; padding: 4px 10px 6px; border: 1px solid var(--line); border-radius: 999px; background: rgba(20, 15, 13, 0.6); color: inherit; text-decoration: none; transition: border-color 0.2s, background-color 0.2s; }
 .me .packs:hover { border-color: rgba(255, 236, 214, 0.24); background: rgba(30, 22, 19, 0.75); }
@@ -102,7 +102,7 @@ canvas.gl.dim { opacity: 0.22; filter: blur(6px) saturate(0.7); }
 .me .packs .p-txt { display: flex; flex-direction: column; line-height: 1.05; }
 .me .packs .p-n { color: var(--ink-3); font-size: 11px; }
 .me .packs b { font-size: 15px; color: var(--gold); }
-.me .packs .p-next { font-size: 9.5px; letter-spacing: 0.06em; color: var(--ink-3); }
+.me .packs .p-next { font-size: 10px; letter-spacing: 0.06em; color: var(--ink-3); }
 .me .packs .p-bar { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 2px; border-radius: 2px; background: rgba(255, 236, 214, 0.08); overflow: hidden; }
 .me .packs .p-bar > i { display: block; width: 100%; height: 100%; background: var(--gold); transform-origin: left center; transform: scaleX(0); transition: transform 0.9s linear; }
 .me .packs.full { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
@@ -116,7 +116,7 @@ canvas.gl.dim { opacity: 0.22; filter: blur(6px) saturate(0.7); }
 .me .packs.gain { animation: pack-gain 0.6s cubic-bezier(0.2, 1.6, 0.4, 1); }
 @keyframes pack-gain { 0% { transform: scale(1); } 40% { transform: scale(1.12); box-shadow: 0 0 18px -2px var(--gold); } 100% { transform: scale(1); } }
 .me .demo { padding: 3px 8px; border: 1px dashed var(--line-2); border-radius: 999px; color: var(--ink-3); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
-.me .err { color: var(--err); max-width: 220px; }
+.me .conn { padding: 0 6px; color: var(--ink-3); font-size: 11px; letter-spacing: 0.08em; animation: dot-pulse 1.6s ease-in-out infinite; }
 .me .icon { background: none; border: 0; font-size: 16px; padding: 4px; border-radius: 50%; transition: background-color 0.2s, transform 0.15s; }
 .me .icon:hover { background: rgba(255, 236, 214, 0.06); }
 .me .icon:active { transform: scale(0.9); }
@@ -127,8 +127,11 @@ canvas.gl.dim { opacity: 0.22; filter: blur(6px) saturate(0.7); }
 .me .user.on { box-shadow: 0 0 0 2px var(--rose); }
 .user-menu { position: fixed; top: calc(var(--top) + env(safe-area-inset-top) + 6px); right: 12px; z-index: 25; min-width: 230px; max-width: calc(100vw - 24px); padding: 14px; border-radius: 14px; background: var(--panel-solid); border: 1px solid var(--line-2); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; gap: 4px; opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top right; pointer-events: none; transition: opacity 0.2s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 .user-menu.on { opacity: 1; transform: none; pointer-events: auto; }
-.um-veil { position: fixed; inset: 0; z-index: 24; display: none; }
-.um-veil.on { display: block; }
+/* voile des panneaux de l'en-tête : SOUS l'en-tête (on peut passer d'un panneau à l'autre d'un seul toucher), assombri
+   (on voit qu'un toucher à côté ferme) ; pas de flou (au-dessus de la 3D, il coûterait une passe par image) */
+.um-veil { position: fixed; inset: 0; z-index: 19; display: none; background: rgba(5, 4, 3, 0.45); }
+.um-veil.on { display: block; animation: veil-in 0.2s ease-out; }
+@keyframes veil-in { from { opacity: 0; } }
 .um-name { font: 500 17px var(--title); font-style: italic; }
 .um-sub { font: 400 11px/1.5 var(--mono); color: var(--ink-3); margin-bottom: 8px; }
 .um-out.danger { border-color: rgba(224, 103, 90, 0.7); color: #f3c3bb; }
@@ -491,7 +494,7 @@ body.card-open .views { pointer-events: none; }
 .its .it i { font-style: normal; font: 500 10px var(--mono); color: var(--rc); }
 .its .it.none { border-style: dashed; color: var(--ink-3); --rc: #555; }
 .tnote { font-style: italic; color: var(--ink-2); }
-.trade .act { display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin-top: 4px; }
+.trade .act { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
 .friends { display: flex; flex-direction: column; gap: 4px; }
 .friend { display: grid; grid-template-columns: 10px 1fr; column-gap: 10px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 236, 214, 0.03); transition: border-color 0.2s, background-color 0.2s; }
 .friend:not(.on):hover { border-color: rgba(255, 236, 214, 0.22); background: rgba(255, 236, 214, 0.05); }
@@ -561,7 +564,8 @@ body.card-open .views { pointer-events: none; }
 
 /* écrans moyens (tablette, petit portable) : l'en-tête ne déborde pas */
 @media (max-width: 1100px) {
-  .logo span, .me .demo { display: none; }
+  .logo span, .me .demo .d-l { display: none; }
+  .me .demo .d-s { display: inline; }
   .topbar nav a { padding: 8px 10px; letter-spacing: 0.08em; }
 }
 /* ───────────── téléphone */
@@ -570,9 +574,9 @@ body.card-open .views { pointer-events: none; }
   .logo span { display: none; }
   .topbar nav { margin-left: 0; gap: 0; }
   .topbar nav a { padding: 8px 8px; font-size: 10px; letter-spacing: 0.06em; }
-  .me { gap: 6px; }
-  .me .demo { display: none; }
-  .me .next { display: none; }
+  .me, .me-st, .me-id { gap: 6px; }
+  /* le compte à rebours reste dans la fiche du booster ; la barre de la pilule montre la recharge (UX1-12) */
+  .me .p-next { display: none; }
   .open-btn { min-width: 200px; padding: 15px 26px; }
   .card-info { bottom: calc(70px + env(safe-area-inset-bottom)); }
   .ci-name { font-size: 21px; }
@@ -624,20 +628,24 @@ body.card-open .views { pointer-events: none; }
   .tb-chev { color: var(--ink-3); transition: transform 0.25s; }
   .tray.open .tb-chev { transform: rotate(180deg); }
   .tray-bar .send { width: auto; flex: 0 0 auto; padding: 12px 16px; }
-  .tray-body { display: none; max-height: min(58vh, 460px); overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 12px; }
+  .tray-body { display: none; max-height: min(58vh, 460px); max-height: min(58dvh, 460px); overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 12px; }
   .tray.open .tray-body { display: flex; }
   .tray.bump { animation: tray-bump 0.35s cubic-bezier(0.34, 1.6, 0.6, 1); }
   @keyframes tray-bump { 40% { transform: translateY(-4px); } }
 }
-/* téléphone : en-tête sur deux lignes (logo + réserve de boosters en haut, les 4 onglets dessous) */
+/* téléphone : en-tête sur trois rangées de cibles de 40 px — logo + (démo, son, profil) ; réserve, pièces, missions,
+   série, pity ; les onglets (qui défilent, avec l'indicateur « › »). Hauteur NON figée : main.ts la mesure et la publie
+   dans --top (la valeur ci-dessous n'est que l'estimation avant la 1re mesure). */
 @media (max-width: 600px) {
-  :root { --top: 92px; }
-  .topbar { flex-wrap: wrap; align-content: center; row-gap: 2px; column-gap: 8px; }
+  :root { --top: 130px; }
+  .topbar { height: auto; flex-wrap: wrap; align-content: center; row-gap: 2px; column-gap: 8px; padding-top: calc(env(safe-area-inset-top) + 4px); padding-bottom: 2px; }
   .logo { order: 0; font-size: 18px; }
-  .me { order: 1; }
-  .topbar nav { order: 2; width: 100%; justify-content: flex-start; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
-  .topbar nav a { font-size: 10px; padding: 7px 9px; letter-spacing: 0.06em; }
-  .me .user img, .me .ava { width: 26px; height: 26px; }
+  .me { display: contents; }
+  .me-id { order: 1; margin-left: auto; gap: 4px; }
+  .me-st { order: 2; width: 100%; }
+  .me-st .msn-btn { margin-left: auto; }
+  .topbar nav { order: 3; width: 100%; justify-content: flex-start; }
+  .topbar nav a { font-size: 11px; padding: 0 10px; letter-spacing: 0.06em; }
   .me .packs { padding: 3px 9px 5px; }
   .filters { padding: 0; margin-bottom: 14px; }
   /* récap : « Encore un » sur toute la largeur, les deux autres côte à côte (au lieu de lignes de largeurs inégales) */
@@ -646,7 +654,7 @@ body.card-open .views { pointer-events: none; }
   .sum-title { letter-spacing: 0.22em; }
 }
 @media (max-width: 380px) {
-  .topbar nav a { font-size: 9px; padding: 7px 5px; letter-spacing: 0.02em; }
+  /* (plus de texte à 9 px : les onglets gardent 11 px et défilent) */
   .me .packs .p-ico { display: none; }
 }
 
@@ -680,7 +688,7 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .me .icon.msn-btn:hover, .me .icon.msn-btn.ready { color: var(--gold); }
 .me .icon.msn-btn.ready svg { animation: msn-wiggle 2.8s ease-in-out infinite; }
 @keyframes msn-wiggle { 0%, 86%, 100% { transform: none; } 90% { transform: rotate(-12deg) scale(1.08); } 95% { transform: rotate(10deg) scale(1.08); } }
-.msn-n { position: absolute; top: -2px; right: -3px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px; background: var(--gold); color: #241604; font: 700 9.5px/15px var(--mono); text-align: center; box-shadow: 0 0 10px rgba(242, 196, 109, 0.5); animation: badge-in 0.45s cubic-bezier(0.34, 1.8, 0.6, 1); }
+.msn-n { position: absolute; top: -2px; right: -3px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px; background: var(--gold); color: #241604; font: 700 10px/15px var(--mono); text-align: center; box-shadow: 0 0 10px rgba(242, 196, 109, 0.5); animation: badge-in 0.45s cubic-bezier(0.34, 1.8, 0.6, 1); }
 .missions-pop { position: fixed; top: calc(var(--top) + env(safe-area-inset-top) + 6px); right: 12px; z-index: 25; width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - var(--top) - 30px); overflow-y: auto; padding: 14px; border-radius: 16px; background: var(--panel-solid); border: 1px solid var(--line-2); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; gap: 9px; opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top right; pointer-events: none; transition: opacity 0.2s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 .missions-pop.on { opacity: 1; transform: none; pointer-events: auto; }
 .msn-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -967,13 +975,15 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 /* ───────────── icônes de statut (série de connexion, pity) */
 .me .icon.st-btn, .me .icon.pt-btn { position: relative; display: grid; place-items: center; color: var(--ink-2); padding-right: 6px; }
 .me .st-btn:hover, .me .pt-btn:hover { color: var(--ink); }
-.me .st-n, .me .pt-n { position: absolute; bottom: -3px; right: -4px; padding: 0 4px; border-radius: 7px; background: #2a2320; border: 1px solid var(--line-2); color: var(--ink-2); font: 600 8.5px/13px var(--mono); letter-spacing: 0; white-space: nowrap; }
+.me .st-n, .me .pt-n { position: absolute; bottom: -3px; right: -4px; padding: 0 4px; border-radius: 7px; background: #2a2320; border: 1px solid var(--line-2); color: var(--ink-2); font: 600 10px/14px var(--mono); letter-spacing: 0; white-space: nowrap; }
 .me .st-btn.ready { color: var(--gold); }
 .me .st-btn.ready .fl { animation: st-flicker 1.6s ease-in-out infinite; }
 .me .st-btn.ready .st-n { background: var(--gold); color: #241604; border-color: var(--gold); box-shadow: 0 0 10px rgba(242, 196, 109, 0.5); }
 @keyframes st-flicker { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.08) translateY(-1px); } }
-.me .pt-btn.ready { color: #fff; }
-.me .pt-btn.ready .pt-n { background: #fff; color: #241604; border-color: #fff; box-shadow: 0 0 12px rgba(255, 255, 255, 0.6); }
+/* pastilles : doré = récompense à prendre / à saisir (UX1-19) ; le pity proche du seuil passe aussi en or */
+.me .pt-btn.ready, .me .pt-btn.near { color: var(--gold); }
+.me .pt-btn.ready .pt-n, .me .pt-btn.near .pt-n { background: var(--gold); color: #241604; border-color: var(--gold); }
+.me .pt-btn.ready .pt-n { box-shadow: 0 0 12px rgba(242, 196, 109, 0.6); }
 .me .pt-btn.ready svg { animation: msn-wiggle 2.8s ease-in-out infinite; }
 .status-pop { position: fixed; top: calc(var(--top) + env(safe-area-inset-top) + 6px); right: 12px; z-index: 25; width: min(340px, calc(100vw - 24px)); padding: 14px; border-radius: 16px; background: var(--panel-solid); border: 1px solid var(--line-2); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; gap: 10px; opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top right; pointer-events: none; transition: opacity 0.2s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 .status-pop.on { opacity: 1; transform: none; pointer-events: auto; }
@@ -1084,6 +1094,8 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .bp-new { margin-top: 4px; }
 /* classeurs */
 .binders-view { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+/* UX3-06 : dans un élément flex, `margin: 0 auto` (.collection .grid) coupait l'étirement → 4e colonne hors écran */
+.binders-view > .grid { width: 100%; margin: 0; min-width: 0; }
 .bd-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .bd-head h2 { margin: 4px 0 4px; font: 500 28px/1.1 var(--title); font-style: italic; display: flex; align-items: center; gap: 10px; }
 .bd-head .muted { max-width: 520px; }
@@ -1100,7 +1112,8 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .bd-name { margin-top: 4px; font: 500 15px/1.15 var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bd-n { font: 400 10.5px var(--mono); color: var(--ink-3); }
 .bd-hint { font: 400 11px var(--mono); color: var(--ink-3); text-align: center; }
-.bd-cards.editing .tile { cursor: grab; touch-action: none; }
+.bd-cards.editing .tile { cursor: grab; touch-action: pan-y; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.bd-cards.editing .tile img { -webkit-user-drag: none; }
 .bd-cards.editing .tile.bd-dragging { opacity: 0.25; }
 .bd-cards.editing .tile.bd-over { outline: 2px solid var(--rose); outline-offset: 2px; transform: scale(1.04); }
 .bd-tools { position: absolute; top: 5px; right: 5px; z-index: 3; display: flex; gap: 4px; }
@@ -1122,9 +1135,9 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 
 
 /* ───────────── contrats : compteur de contrats possibles, protections, combustion dans les cases, flammes */
-.ct-tier .ct-tp { margin-top: 2px; padding: 2px 7px; border-radius: 999px; border: 1px dashed var(--line-2); font: 600 9.5px var(--mono); letter-spacing: 0.06em; color: var(--ink-3); }
+.ct-tier .ct-tp { margin-top: 2px; padding: 2px 7px; border-radius: 999px; border: 1px dashed var(--line-2); font: 600 9.5px var(--mono); letter-spacing: 0.06em; color: var(--ink-3); white-space: nowrap; }
 .ct-tier .ct-tp.ok { border-style: solid; border-color: var(--gold); color: var(--gold); background: rgba(242, 196, 109, 0.1); }
-.ct-prot { position: absolute; top: 5px; left: 5px; z-index: 3; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgba(10, 8, 7, 0.85); border: 1px solid var(--rose); color: var(--rose-l); font-size: 10px; }
+.ct-prot { position: absolute; top: 5px; left: 5px; z-index: 3; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 999px; display: grid; place-items: center; background: rgba(10, 8, 7, 0.85); border: 1px solid var(--rose); color: var(--rose-l); font-size: 10px; letter-spacing: 0.08em; }
 .ct-lock { position: absolute; bottom: 22px; right: 5px; z-index: 3; font-size: 11px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
 .ct-slot { position: relative; overflow: hidden; }
 /* la carte se consume : le feu part d'un point (--bx/--by) et ronge l'image ; bord incandescent, charbon derrière */
@@ -1165,7 +1178,7 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .tr-tog input { width: 12px; height: 12px; margin: 0; }
 .trades .tile { cursor: zoom-in; }
 .trades .tile.locked { opacity: 0.55; }
-.tr-plus { position: absolute; right: 4px; bottom: 22px; z-index: 3; width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--rose); color: #1d0b07; font: 700 16px/1 var(--mono); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); transition: transform 0.15s; }
+.tr-plus { position: absolute; right: 4px; bottom: 22px; z-index: 3; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--rose); color: #1d0b07; font: 700 16px/1 var(--mono); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); transition: transform 0.15s; }
 .tr-plus:hover { transform: scale(1.12); }
 .trades .tile.picked .tr-plus { background: var(--gold); }
 .tr-lock { position: absolute; top: 5px; right: 5px; z-index: 3; font-size: 11px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
@@ -1534,3 +1547,404 @@ a.pf-ach:hover { border-color: var(--gold); }
   .shop > .ps-root > * { pointer-events: auto; }
   .ps-backdrop { left: calc(var(--lw) + 16px); }
 }
+
+/* ==== AUDIT 03/11 — lot A (shell, en-tête, panneaux, toasts, focus) ==== */
+/* UX5-01 : le zoom n'est plus bloqué ; le double-tap ne zoome pas par accident (le pincer reste possible) */
+html { touch-action: manipulation; }
+/* UX5-08 : champs et curseur de volume avec un anneau de focus visible (plusieurs règles le retiraient) */
+input:not([type='range']):not([type='checkbox']):focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--rose); outline-offset: 1px; }
+.vol:focus-visible { outline: 2px solid var(--rose); outline-offset: 4px; }
+/* UX4-01 : bouton qui attend le serveur (busyButton) — désactivé sans s'effacer ; roue des boutons sans dégradé */
+button[aria-busy='true']:disabled { opacity: 1; cursor: progress; }
+button.loading:not(.btn-primary):not(.open-btn) { opacity: 0.6; cursor: progress; }
+
+/* UX5-14 : lien d'évitement, visible seulement au clavier */
+.skip { position: absolute; left: max(8px, env(safe-area-inset-left)); top: calc(env(safe-area-inset-top) + 6px); z-index: 30; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--rose); background: var(--panel-solid); font: 500 12px var(--mono); transform: translateY(-300%); }
+.skip:focus { transform: none; }
+.safe-probe { position: fixed; top: 0; left: 0; width: 0; height: env(safe-area-inset-top); visibility: hidden; pointer-events: none; }
+.views:focus { outline: none; }
+
+/* en-tête : deux groupes dans .me (état du joueur / identité) ; une seule ligne sur ordinateur */
+.me-st, .me-id { display: flex; align-items: center; gap: 10px; }
+.me-st:empty { display: none; }
+/* UX1-16 : la puce « démo » reste visible (courte) au téléphone ; un toucher explique */
+.me .demo { position: relative; background: none; font: 500 10px var(--mono); cursor: help; }
+@media (min-width: 1101px) { .me .demo .d-s { display: none; } }
+.me .demo::after { content: ''; position: absolute; inset: -6px -2px; }
+/* UX5-15 : encoche en paysage */
+.topbar { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+.missions-pop, .status-pop { right: max(12px, env(safe-area-inset-right)); }
+@media (max-width: 860px) {
+  .topbar { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  .status-pop { right: max(8px, env(safe-area-inset-right)); }
+}
+/* UX1-02 / UX5-02 / UX5-03 : au doigt, cibles de 40 px (icônes, avatar, onglets) — le dessin ne change pas */
+@media (max-width: 860px), (pointer: coarse) {
+  .me .icon, .me .icon.msn-btn, .me .icon.st-btn, .me .icon.pt-btn, .me .icon.snd { width: 40px; height: 40px; padding: 0; display: grid; place-items: center; }
+  .me .user { width: 40px; height: 40px; display: grid; place-items: center; }
+  .me .user img, .me .ava { width: 32px; height: 32px; }
+  .me .packs { min-height: 40px; }
+  .topbar nav a { min-height: 40px; display: inline-flex; align-items: center; }
+  .me .msn-n { top: 3px; right: 1px; }
+  .me .st-n, .me .pt-n { bottom: 3px; right: 0; }
+  .vol-mute { min-height: 36px; }
+}
+/* UX1-01 : vrai indicateur de défilement de la nav (« › » qui fait défiler) au lieu d'un simple fondu */
+.nav-more { display: none; position: sticky; right: 0; z-index: 2; flex: none; width: 30px; margin-left: 2px; padding: 0 0 0 8px; border: 0; background: linear-gradient(90deg, transparent, var(--bg) 55%); color: var(--ink-2); font: 400 20px/1 var(--title); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.topbar nav.of .nav-more { display: block; }
+.topbar nav.more-r .nav-more { opacity: 1; pointer-events: auto; }
+.topbar nav.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 22px); mask-image: linear-gradient(90deg, transparent, #000 22px); }
+
+/* UX1-11 / UX5-05 : panneaux de l'en-tête — fermés = vraiment cachés (ni focus, ni lecteur d'écran), bouton ✕ */
+.missions-pop, .status-pop { visibility: hidden; transition: opacity 0.2s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.25s; }
+.missions-pop.on, .status-pop.on { visibility: visible; transition-delay: 0s; }
+.vol-pop { visibility: hidden; transition: opacity 0.2s, transform 0.25s, visibility 0s linear 0.25s; }
+.snd-wrap.open .vol-pop { visibility: visible; transition-delay: 0s; }
+.msn-head > :nth-child(2) { margin-left: auto; }
+.msn-head .pop-x { flex: none; align-self: center; width: 40px; height: 40px; margin: -10px -8px -10px 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--ink-2); font-size: 16px; }
+.msn-head .pop-x:hover { color: var(--ink); background: rgba(255, 236, 214, 0.06); }
+.missions-pop .login-cta, .status-pop .login-cta { align-self: flex-start; }
+
+/* UX1-10 / UX5-20 : toasts en file ; fermés = cachés ; plus sous le bandeau « pas de réseau / serveur injoignable » */
+.toast { visibility: hidden; transition: opacity 0.25s, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.35s; }
+.toast.on { visibility: visible; transition-delay: 0s; }
+body.offline .toast, body.server-down .toast { top: calc(var(--top) + env(safe-area-inset-top) + 52px); }
+/* UX1-03 : même bandeau quand le serveur ne répond pas (réseau OK) */
+.offline-pill { visibility: hidden; transition: opacity 0.3s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.4s; }
+body.offline .offline-pill, body.server-down .offline-pill { opacity: 1; transform: translate(-50%, 0); visibility: visible; transition-delay: 0s; }
+
+/* UX1-09 : étape longue du chargement — un reflet parcourt la barre (on voit que ça avance) */
+.l-bar { position: relative; }
+.l-bar.busy::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255, 217, 201, 0.7), transparent); animation: l-sweep 1.3s ease-in-out infinite; }
+@keyframes l-sweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+/* UX1-08 : échec de la 3D — Recharger / Forcer WebGL */
+.l-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; }
+.l-acts .btn-primary, .l-acts .btn-ghost { min-height: 40px; display: inline-flex; align-items: center; color: inherit; text-decoration: none; letter-spacing: 0.1em; }
+.l-acts .btn-primary { color: #200d08; }
+/* ==== fin lot A ==== */
+
+/* ==== AUDIT 03/11 — lot B (boutique, fiche booster, ouverture, gros tirages) ==== */
+/* fiche booster, grille paginée (PERF2-03) : « Voir N de plus » au pied de chaque section, note de plafond */
+.pc-more { display: block; margin: 0 12px 14px; width: calc(100% - 24px); min-height: 44px; padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--line-2); background: rgba(255, 236, 214, 0.03); color: var(--ink-2); font: 600 11.5px var(--mono); letter-spacing: 0.06em; }
+.pc-more:hover { color: var(--ink); border-color: var(--ink-3); }
+.pc-cap { padding: 2px 4px 4px; font: 400 11px/1.5 var(--mono); color: var(--ink-3); }
+/* fiche : chances par booster (UX2-17) */
+.ps-per-pack { margin-top: 2px; font: 400 11px/1.5 var(--mono); color: var(--ink-2); }
+.ps-per-pack b { color: var(--ink); font-weight: 600; }
+/* récap : booster pas encore crédité (UX2-05), libellé de rareté de la meilleure carte (UX2-15) */
+.sum-warn { margin: 0 0 10px; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(226, 81, 63, 0.55); background: rgba(226, 81, 63, 0.12); color: var(--ink); font: 400 12px/1.45 var(--mono); text-align: center; }
+.sum-best .stars { font-size: 12px; }
+.sum-best .sum-rl { font: 600 11px var(--mono); font-style: normal; color: var(--ra); letter-spacing: 0.04em; }
+.sum-actions .again small { display: block; margin-top: 2px; font: 400 10px var(--mono); letter-spacing: 0.06em; text-transform: none; opacity: 0.75; }
+.sum-actions .btn-ghost { min-height: 44px; white-space: nowrap; }
+/* « Révélation auto ✓ » : bascule active (dorée), touchable pour la couper (UX2-02) */
+.hud-skip .skip-reveal.on { background: linear-gradient(180deg, #ffe2a3, #e0a93e); color: #241604; border: 0; box-shadow: 0 10px 30px -10px rgba(242, 196, 109, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+/* « Tout passer » : confirmation en deux temps (UX2-11) */
+.hud-skip .skip-all.armed { color: #ffd9cf; border-color: #e2513f; background: rgba(90, 24, 18, 0.85); }
+/* cibles tactiles ≥ 44 px (UX2-11) ; « Tout passer » écarté de « Tout révéler » */
+.qty button { min-height: 44px; min-width: 60px; }
+.ps-close { width: 44px; height: 44px; top: 8px; right: 8px; }
+.hud-skip button { min-height: 44px; }
+.hud-bottom .hud-skip { flex-wrap: wrap; row-gap: 8px; }
+.hud-bottom .hud-skip .skip-all { margin-left: 14px; }
+/* indication : une seule ligne lisible (UX2-08) */
+.hud-hint { font-size: 12px; letter-spacing: 0.14em; }
+.hud-hint .txt { white-space: nowrap; max-width: calc(100vw - 80px); overflow: hidden; text-overflow: ellipsis; }
+/* aide au premier geste (UX2-08) : un doigt fantôme au-dessus du booster */
+.coach { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 2; pointer-events: none; }
+.coach i { position: absolute; left: -18px; top: -18px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 236, 214, 0.28); border: 2px solid rgba(255, 236, 214, 0.9); box-shadow: 0 0 24px rgba(232, 146, 124, 0.7); opacity: 0; }
+.coach.c-hold i { animation: coach-hold 1.7s ease-in-out 0.6s 2 both; }
+.coach.c-tear i { top: calc(-18px - 21vh); animation: coach-tear 1.5s cubic-bezier(0.45, 0, 0.3, 1) 0.6s 2 both; }
+.coach.c-fan i { animation: coach-tap 0.9s ease-out 0.6s 3 both; }
+@keyframes coach-hold { 0% { opacity: 0; transform: scale(1.4); } 15% { opacity: 1; transform: scale(1); } 70% { opacity: 1; transform: scale(0.82); box-shadow: 0 0 0 18px rgba(232, 146, 124, 0.25), 0 0 30px rgba(232, 146, 124, 0.8); } 100% { opacity: 0; transform: scale(0.82); } }
+@keyframes coach-tear { 0% { opacity: 0; transform: translateX(-90px); } 15% { opacity: 1; transform: translateX(-90px); } 80% { opacity: 1; transform: translateX(90px); } 100% { opacity: 0; transform: translateX(90px); } }
+@keyframes coach-tap { 0% { opacity: 0; transform: scale(1.5); } 30% { opacity: 1; transform: scale(0.9); } 100% { opacity: 0; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .coach i { animation: none !important; opacity: 0.8; } }
+/* accueil téléphone : bouton « Ouvrir » sous le booster (UX1-13) ; bandeau « déjà tiré » dans le flux, juste au-dessus
+   des pochettes au lieu d'être posé dessus (UX2-10) */
+.home-cta { display: none; }
+@media (max-width: 860px) {
+  .home-cta { display: flex; flex-direction: column; align-items: center; gap: 4px; order: 1; margin: auto auto 4px; pointer-events: auto; }
+  .home-cta .btn-primary { display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 44px; padding: 8px 22px; }
+  .home-cta .hc-s { font: 400 9.5px var(--mono); letter-spacing: 0.08em; text-transform: none; opacity: 0.75; }
+  .home-cta .hc-s:empty { display: none; }
+  .hc-tip { margin: 0; max-width: calc(100vw - 48px); font: 400 11px/1.4 var(--mono); color: var(--ink-2); text-align: center; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
+  .home-banner { position: static; order: 1; align-self: center; transform: none; margin: auto auto 6px; flex-direction: row; gap: 10px; padding: 6px 8px 6px 12px; font-size: 12px; text-align: left; }
+  .home-banner .btn-primary { flex: none; min-height: 40px; }
+  .packs-row { order: 2; }
+}
+/* tactile : plus de flou d'arrière-plan recalculé à chaque image au-dessus de la 3D (PERF2-07) */
+@media (pointer: coarse) {
+  .bp-item, .qty, .hud-skip button { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .bp-item { background: rgba(16, 13, 12, 0.9); }
+  .qty { background: rgba(16, 13, 12, 0.92); }
+  .hud-skip .skip-all { background: rgba(14, 11, 10, 0.9); }
+}
+/* téléphone en portrait court (360×740) : panneau de la carte compacté (UX2-06) */
+@media (max-height: 760px) and (max-width: 420px) {
+  .card-info { padding: 8px 14px 10px; }
+  .ci-name { font-size: 20px; }
+  .ci-sub { display: none; }
+  .hud-bottom { gap: 8px; }
+}
+/* téléphone en paysage (844×390) : boutique, fiche, ouverture et récap tiennent dans la hauteur (UX5-06, UX2-06) */
+@media (max-height: 500px) and (orientation: landscape) and (max-width: 860px) {
+  .shop-home .bigpulls { display: none; }
+  .packs-row { gap: 8px; padding: 4px calc(50% - 48px) 2px; }
+  .sleeve { width: 92px; padding: 4px 4px 6px; }
+  .sleeve.special { width: 104px; }
+  .sleeve.special::before { top: 4px; padding: 1px 5px; font-size: 6.5px; letter-spacing: 0.1em; }
+  .sl-name, .sleeve.special .sl-name { font-size: 12px; margin-top: 2px; }
+  .sl-desc { display: none; }
+  .home-cta { margin-bottom: 2px; }
+  .home-cta .btn-primary { min-height: 40px; padding: 6px 18px; }
+  .home-cta .hc-s { display: none; }
+  .hc-tip { display: none; }
+  .pack-sheet { top: calc(var(--top) + env(safe-area-inset-top) + 6px); bottom: max(8px, env(safe-area-inset-bottom)); left: auto; right: max(8px, env(safe-area-inset-right)); width: min(440px, 60vw); max-height: none; border-radius: 18px; transform: translateX(40px); }
+  .ps-scroll { padding: 12px 12px 6px; gap: 10px; }
+  .ps-head { grid-template-columns: 48px 1fr; }
+  .ps-thumb { width: 48px; }
+  .ps-name { font-size: 19px; }
+  .ps-open { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px 10px; padding: 8px 12px max(8px, env(safe-area-inset-bottom)); }
+  .ps-open .open-btn { min-width: 150px; padding: 11px 20px; }
+  .ps-open .open-sub { flex-basis: 100%; text-align: center; }
+  .hud-bottom { left: auto; right: max(12px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); width: min(300px, 36vw); padding: 0; gap: 8px; }
+  .hud-bottom .card-info { min-width: 0; width: 100%; padding: 8px 12px 10px; }
+  .hud-bottom .ci-name { font-size: 18px; }
+  .hud-bottom .ci-sub { display: none; }
+  .hud-bottom .hud-skip .skip-all { margin-left: 0; }
+  .hud-skip button { padding: 10px 12px; font-size: 10px; letter-spacing: 0.06em; }
+  .summary { bottom: max(8px, env(safe-area-inset-bottom)); padding: 8px 12px 10px; }
+  .summary .sum-actions { display: flex; margin-top: 8px; }
+  .summary.multi .sum-cards { max-height: 26vh; }
+  .mythic-veil { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .mv-name { font-size: 22px; }
+}
+/* ==== fin lot B ==== */
+
+/* ==== AUDIT 03/11 — lot C (collection, classeurs, profil, succès, classement) ==== */
+/* UX3-02 : bandeau « Filtres actifs : … · Réinitialiser » (filtres mémorisés d'une visite à l'autre) */
+.f-active { max-width: 1200px; margin: 0 auto 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 6px 6px 14px; border-radius: 999px; border: 1px solid rgba(242, 196, 109, 0.35); background: rgba(242, 196, 109, 0.07); font: 400 11.5px var(--mono); color: var(--ink-2); }
+.f-active[hidden] { display: none; }
+.f-active b { color: var(--gold); font-weight: 600; }
+.f-reset { margin-left: auto; min-height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(255, 236, 214, 0.05); font: 500 11px var(--mono); color: var(--ink); }
+.f-reset:hover { border-color: var(--gold); color: var(--gold); }
+.empty .f-reset { display: block; margin: 14px auto 0; min-height: 40px; }
+/* UX3-07 : réorganiser un classeur au doigt — poignée ⠿ (seule zone qui bloque le défilement), appui long sur la carte */
+.bd-tools .bd-grip { position: relative; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line-2); background: rgba(10, 8, 7, 0.85); color: var(--ink-2); font-size: 13px; line-height: 1; display: grid; place-items: center; cursor: grab; touch-action: none; }
+.bd-cards.editing .tile.bd-press { transform: scale(0.96); transition: transform 0.3s; }
+.bd-cards.dragging .tile { transition: transform 0.15s; }
+.bd-tools button { position: relative; }
+@media (pointer: coarse) {
+  /* UX5-04 : outils du classeur — 30 px visibles, zone de toucher de 40 px ; poignée à gauche, 📌 et ✕ à droite */
+  .bd-tools { top: 4px; left: 4px; right: 4px; gap: 3px; justify-content: flex-end; }
+  .bd-tools button, .bd-tools .bd-grip { width: 30px; height: 30px; font-size: 13px; }
+  .bd-tools .bd-grip { margin-right: auto; font-size: 15px; }
+  .bd-tools button::after, .bd-tools .bd-grip::after { content: ''; position: absolute; inset: -5px; }
+}
+/* UX3-08 : personnalisation du profil — aperçu collant, un onglet par famille, barre d'actions collante, verrouillés lisibles */
+.cs-preview { position: sticky; top: calc(var(--top) + env(safe-area-inset-top) + 6px); z-index: 4; display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 10px 14px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line-2); background: var(--panel-solid); box-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.95); }
+.cs-pv-bn { position: absolute; inset: 0; opacity: 0.95; }
+.cs-pv-bn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11, 9, 8, 0.15), rgba(11, 9, 8, 0.7)); }
+.cs-preview .pf-ava-wrap { z-index: 1; }
+.cs-preview .pf-ava-wrap .pf-ava { width: 52px; height: 52px; border-width: 3px; font-size: 20px; }
+.cs-preview .pf-ava-wrap.frame-mythic::before { top: -3px; width: 58px; height: 58px; margin-left: -29px; }
+.cs-pv-id { position: relative; z-index: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.cs-pv-id b { font: 500 18px/1.1 var(--title); font-style: italic; color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-pv-id .pf-title { margin: 0; }
+.cs-pv-badges { display: flex; gap: 4px; font-size: 14px; }
+.cs-pv-badges i { font-style: normal; }
+.cs-tabs { align-self: flex-start; }
+.cs-tabs button { padding: 9px 14px; }
+.cs-tabs button em { font-style: normal; color: var(--ink-3); margin-left: 3px; }
+.cs.locked { opacity: 1; }
+.cs.locked .cs-sw, .cs.locked .cs-ring, .cs.locked .cs-g, .cs.locked b { opacity: 0.45; }
+.cs.locked small { font-size: 10.5px; color: var(--ink-2); max-width: 170px; }
+.cs.locked small em { display: block; margin-top: 2px; font-style: normal; color: var(--gold); font-variant-numeric: tabular-nums; }
+.pf-cosm .cs-actions { position: sticky; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 4; align-items: center; flex-wrap: wrap; padding: 10px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--panel-solid); box-shadow: 0 -10px 30px -12px #000; }
+.cs-sum { flex: 1 1 160px; min-width: 0; display: flex; align-items: center; gap: 8px; font: 400 10.5px/1.35 var(--mono); color: var(--ink-3); }
+.cs-sum b { color: var(--gold); font-weight: 600; }
+.cs-dirty { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.cs-actions .cs-save:disabled { opacity: 0.5; }
+/* UX3-11 : pagination — « 1–60 sur 6 584 » ouvre « aller à la page », la grille ne remonte plus sous l'en-tête */
+.collection .grid { scroll-margin-top: calc(var(--top) + env(safe-area-inset-top) + 12px); }
+button.pg-info { border: 0; background: none; padding: 8px 6px; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
+button.pg-info:hover { color: var(--ink); }
+.pg-go { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; font: 400 11px var(--mono); color: var(--ink-2); }
+.pg-go input { width: 64px; height: 36px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--line-2); background: rgba(255, 236, 214, 0.05); color: var(--ink); font: 600 13px var(--mono); text-align: center; }
+/* UX3-12 / UX5-04 : cibles au doigt dans mes écrans (≥ 40 px), rangées qui débordent signalées par un fondu */
+@media (pointer: coarse) {
+  .pg { min-width: 44px; height: 44px; }
+  .pg-go input { height: 44px; font-size: 16px; }
+  .collection .chip, .collection .seg button, .succes .seg button, .lb-boards button { min-height: 40px; }
+  .collection .chip { padding-inline: 11px; }
+  .collection .seg, .succes .seg, .lb-boards { align-items: stretch; }
+  .pf-tabs button { min-height: 40px; }
+  .cs-ord button { min-width: 36px; min-height: 36px; }
+  .pf-x { width: 32px; height: 32px; }
+  .pf-x::after { content: ''; position: absolute; inset: -5px; }
+}
+.collection .seg.ovf, .lb-boards.ovf, .pf-tabs.ovf { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+/* UX5-16 : segment actif lisible autrement que par la couleur de fond */
+.collection .seg:not(.coll-views) button.on:not(.f-fresh), .succes .seg button.on, .lb-boards button.on { background: rgba(255, 236, 214, 0.16); }
+.collection .seg button.on, .succes .seg button.on, .lb-boards button.on { box-shadow: inset 0 -2px 0 var(--rose); }
+/* UX3-18 : cosmétiques débloqués — récap après encaissement, « ✓ débloqué », pastilles « nouveau » */
+.sc-recap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--gold); background: rgba(242, 196, 109, 0.08); font-size: 13px; color: var(--ink-2); animation: view-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.sc-recap[hidden] { display: none; }
+.sc-recap > b { display: inline-flex; align-items: center; gap: 5px; font: 600 16px var(--mono); color: var(--gold); }
+.sc-recap > b svg { width: 15px; height: 15px; }
+.sc-recap > span { flex: 1 1 220px; }
+.sc-recap .sc-equip { text-decoration: none; }
+.sc-recap-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-2); background: none; color: var(--ink-2); }
+.sc-cos.ok b { font-weight: 600; color: var(--ok); margin-left: 2px; }
+.pf-new { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--gold); color: #241604; font: 700 9px var(--mono); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; }
+.pf-new-dot { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 50%; background: var(--gold); vertical-align: middle; }
+.cs.new { position: relative; border-color: var(--gold); }
+.cs.new::after { content: 'nouveau'; position: absolute; top: -7px; right: 6px; padding: 0 6px; border-radius: 999px; background: var(--gold); color: #241604; font: 700 8px/14px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+/* UX3-20 : sélecteur de vitrine — filtre étoiles, troncature annoncée */
+.pf-pick-stars { flex-wrap: wrap; margin: 0 0 10px; }
+.pf-pick-stars .chip:not(.on) { color: var(--rt, var(--rc)); }
+.pf-pick-more { margin-top: 8px; font-size: 11px; text-align: center; }
+.pf-pick-more[hidden] { display: none; }
+@media (pointer: coarse) { .pf-pick-stars .chip { min-height: 40px; padding-inline: 11px; } }
+/* UX3-15 : nom de classeur en ligne (au lieu de prompt()), plafonds affichés */
+.bd-name-f { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.bd-name-f input { flex: 1 1 180px; min-width: 0; max-width: 340px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(255, 236, 214, 0.05); color: var(--ink); font: 500 15px var(--title); outline: none; }
+.bd-name-f input:focus { border-color: var(--rose); }
+.bd-name-n { font: 400 10px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.binder-pick .bd-name-f input { flex-basis: 100%; max-width: none; }
+.bd-limit { color: var(--gold); font-weight: 500; }
+.bp-row.full { opacity: 0.55; cursor: not-allowed; }
+@media (pointer: coarse) { .bd-name-f input { font-size: 16px; } }
+/* UX5-09 : texte de rareté lisible (Épique / Rare éclaircis via --rt, la teinte --rc des cartes ne change pas) */
+.collection .chip:not(.on), .ps b { color: var(--rt, var(--rc)); }
+/* UX3-13 : tuiles de la collection — étoiles plus grandes, « nouvelle » = liseré doré (le point se confondait avec
+   les étoiles imprimées) */
+.collection .tile .meta .stars { font-size: 9.5px; }
+.collection .tile.fresh { outline: 2px solid var(--gold); outline-offset: -1px; }
+.collection .tile.fresh::before { width: 7px; height: 7px; }
+/* UX5-04 : ♥ (envie) — zone de toucher de 42 px au doigt sans changer le visuel (collection et fiche booster) */
+@media (pointer: coarse) {
+  .wish-btn { width: 30px; height: 30px; font-size: 13px; }
+  .wish-btn::after { content: ''; position: absolute; inset: -6px; }
+}
+/* UX3-16 : profil — 3 chiffres clés avant la vitrine, vitrine à 6 cases sur téléphone, compte en bas de page */
+.pf-keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pf-keys:empty { display: none; }
+.pf-case-more[hidden], .pf-account[hidden] { display: none; }
+.pf-case-more { align-self: center; }
+.pf-account-b { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pf-account-b .muted { font-size: 12px; }
+.pf-account .danger { border-color: var(--err); color: var(--err); }
+@media (min-width: 761px) { .pf-case-more { display: none; } }
+@media (max-width: 760px) {
+  .pf-case:not(.all) > .pf-slot:nth-child(n + 7) { display: none; }
+  .pf-keys { gap: 6px; }
+  .pf-keys .pf-stat { padding: 10px; }
+  .pf-keys .pf-stat b { font-size: 20px; }
+  .pf-keys .pf-stat.big b { font-size: 24px; }
+  .pf-keys .pf-stat span { font-size: 9.5px; }
+}
+/* UX3-03 : recherche globale — les cartes pas encore trouvées, sous les miennes */
+.grid .cards-sub.cards-cat { margin-top: 22px; padding-top: 14px; border-top: 1px dashed var(--line-2); color: var(--ink-2); font-style: italic; flex-wrap: wrap; }
+.grid .cards-sub.cards-cat-sub { margin-top: 8px; font-size: 14px; color: var(--ink-2); }
+/* UX3-04 / UX3-19 : mosaïque d'albums — noms sur 2 lignes, rendu paresseux, groupes repliables, compacte au téléphone */
+.album { content-visibility: auto; contain-intrinsic-size: auto 230px; }
+.al-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.al-more { grid-column: 1 / -1; height: 1px; }
+.al-grid.grouped { display: flex; flex-direction: column; gap: 10px; }
+.al-sec { border: 1px solid var(--line); border-radius: 16px; background: rgba(255, 236, 214, 0.02); }
+.al-sec > summary { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-height: 44px; padding: 12px 16px; cursor: pointer; list-style: none; }
+.al-sec > summary::-webkit-details-marker { display: none; }
+.al-sec > summary::before { content: '▸'; color: var(--ink-3); transition: transform 0.2s; }
+.al-sec[open] > summary::before { transform: rotate(90deg); }
+.al-sec > summary b { font: 500 16px var(--title); color: var(--ink); }
+.al-sec > summary span { font: 400 10.5px var(--mono); color: var(--ink-3); }
+.al-sec > .al-inner { padding: 0 10px 12px; }
+@media (max-width: 600px) {
+  /* téléphone : 2 colonnes de lignes compactes (pochette 38 px + nom sur 2 lignes + barre) ≈ 64 px par album au lieu de 223 */
+  .al-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .album { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-content: center; align-items: center; column-gap: 8px; row-gap: 2px; padding: 6px 8px 6px 6px; border-radius: 12px; contain-intrinsic-size: auto 66px; }
+  .album .al-cover { grid-row: 1 / 4; width: 38px; border-radius: 6px; }
+  .album .al-cover img { width: 94%; height: 94%; }
+  .album .al-ph { font-size: 11px; letter-spacing: 0.02em; }
+  .album .al-pin { top: 1px; right: 1px; font-size: 9px; }
+  .album .al-soon { padding: 1px 3px; font-size: 6px; letter-spacing: 0.08em; border-width: 1px; }
+  .album .al-name { margin-top: 0; font-size: 12.5px; line-height: 1.15; }
+  .album .al-grp { display: none; }
+  .album .al-n { font-size: 9.5px; }
+  .album .al-bar { grid-column: 2; margin: 0; }
+  .al-sec > summary { padding: 10px 12px; }
+  .al-sec > .al-inner { padding: 0 6px 8px; }
+}
+/* ==== fin lot C ==== */
+
+/* ==== AUDIT 03/11 — lot D (contrats, échanges) ==== */
+/* contrats : récapitulatif avant de signer, bouton armé (second toucher), légende des protections, annuler un retrait */
+.ct-recap { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); padding: 8px 12px; border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--ct-c, #888) 50%, var(--line-2)); }
+.ct-recap b { color: var(--ink); }
+.ct-actions .sign.armed { background: linear-gradient(180deg, #f2c46d, #d99a3c); color: #241604; animation: none; box-shadow: 0 0 0 3px rgba(242, 196, 109, 0.3), 0 12px 30px -10px rgba(242, 196, 109, 0.9); }
+.ct-legend { font: 400 11px var(--mono); line-height: 1.5; color: var(--ink-3); margin-top: -8px; }
+.ct-odds .linkish, .ct-undo { color: var(--rose); text-decoration: underline; }
+.ct-skip { color: var(--gold); letter-spacing: 0.08em; animation: ct-skip 1.2s ease-in-out infinite alternate; }
+@keyframes ct-skip { from { opacity: 0.55; } }
+/* la pastille « ×N » (exemplaires mis au contrat / à l'échange) ne passe plus sous l'icône ♥ ▤ ⌂ / « tu la cherches » */
+.ct-dup .badge, .trades .tile .badge { top: auto; bottom: 22px; left: 5px; }
+.contracts .empty a { color: var(--rose); }
+@media (max-width: 600px) {
+  /* cases ≥ 40 px : 2 rangées de 5 pour un contrat de 10, 7 colonnes pour 20 et 50 */
+  .ct-slots.n10 { grid-template-columns: repeat(5, 1fr); }
+  .ct-slots.n20, .ct-slots.n50 { grid-template-columns: repeat(7, 1fr); }
+}
+@media (hover: none) {
+  /* au doigt, pas de survol : une petite croix montre qu'une case pleine se retire d'un toucher */
+  .ct-slot.full:not(.burn)::after { content: '✕'; position: absolute; top: 2px; right: 3px; z-index: 2; font: 700 10px/1 var(--mono); color: rgba(255, 236, 214, 0.75); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); pointer-events: none; }
+}
+/* échanges : bouton armé (second toucher), échange reçu (jauge, dernier exemplaire, ancienneté, Refuser en retrait) */
+.trades .armed { background: linear-gradient(180deg, #f2c46d, #d99a3c) !important; color: #241604 !important; border-color: transparent !important; text-decoration: none; padding: 7px 12px; border-radius: 999px; }
+.trade .when { font: 400 10px var(--mono); color: var(--ink-3); }
+.trade .gauge { margin-top: 4px; }
+.trade .act .no { margin-right: auto; font-size: 12px; color: var(--ink-3); min-height: 36px; }
+.trade .act .no:hover { color: var(--err); }
+.its .it .last, .ti .ti-last { font: 700 9px var(--mono); font-style: normal; letter-spacing: 0.04em; color: var(--err); text-transform: uppercase; }
+.wb.last { top: auto; bottom: 22px; left: 5px; background: rgba(10, 8, 7, 0.88); color: var(--err); border: 1px solid var(--err); }
+.trades .tile.picked .wb.last { bottom: 40px; } /* (au-dessus de la pastille « ×N ») */
+.fair .last-w, .fair.last-w { display: block; margin-top: 3px; }
+/* contre-proposition : ce qui change par rapport à la proposition d'origine */
+.ti.added { box-shadow: inset 3px 0 0 var(--ok); }
+.ti.changed { box-shadow: inset 3px 0 0 var(--gold); }
+.ti.removed { opacity: 0.55; text-decoration: line-through; }
+.ti .ti-diff { font: 500 9px var(--mono); font-style: normal; color: var(--ink-3); text-decoration: none; }
+/* titre des grilles : filtres actifs en clair + « tout afficher » */
+.pk h4 small { font: 400 10px var(--mono); font-style: normal; color: var(--ink-3); }
+.pk h4 .tr-all { font: 500 11px var(--mono); font-style: normal; margin-left: 6px; }
+/* cibles au doigt ≥ 40 px (UX4-15, UX5-04) : la zone de toucher grandit, pas le dessin */
+@media (pointer: coarse) {
+  .tr-plus::before { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
+  .ti button { min-width: 36px; min-height: 36px; }
+  .trades .tr-tog { min-height: 40px; }
+  .trades .tr-stars .chip { min-height: 40px; min-width: 40px; }
+  .trades .note { font-size: 16px; }
+}
+/* ==== fin lot D ==== */
+
+/* ==== AUDIT 03/11 — lot E (visionneuse, rendu 3D) ==== */
+/* ==== fin lot E ==== */
+
+/* ==== AUDIT 03/11 — lot F (chargement à la demande, réglages de l'en-tête) ==== */
+/* page pas encore téléchargée (1re visite, réseau lent) : un petit état au lieu d'un écran vide (main.ts, PERF2-05) */
+.view-wait { display: grid; place-items: center; pointer-events: auto; }
+.view-wait .vw-box { display: grid; justify-items: center; gap: 12px; max-width: min(360px, 86vw); text-align: center; font: 500 11px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+.view-wait.failed .vw-box { text-transform: none; letter-spacing: 0.02em; font-size: 13px; line-height: 1.6; color: var(--ink-2); }
+.view-wait .vw-spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--rose); animation: spin 0.9s linear infinite; }
+.view-wait .vw-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.view-wait .vw-acts button { min-height: 40px; }
+/* (module déjà préchargé : la page arrive en quelques ms → l'état n'apparaît qu'après 150 ms, pas de clignotement) */
+.view-wait .vw-box { animation: vw-in 0.25s ease 0.15s both; }
+@keyframes vw-in { from { opacity: 0; } }
+/* interrupteur « Vibrations » du panneau du son (au doigt seulement, main.ts, UX2-14) : 2e rangée du panneau */
+.vol-pop:has(.vol-hap) { flex-wrap: wrap; width: 264px; max-width: calc(100vw - 24px); border-radius: 18px; row-gap: 6px; }
+.vol-hap { flex: 1 0 100%; display: flex; align-items: center; justify-content: space-between; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: none; color: var(--ink-2); font: 600 10px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.vol-hap i { font-style: normal; color: var(--ink-3); }
+.vol-hap[aria-checked='true'] i { color: var(--rose); }
+/* ==== fin lot F ==== */

@@ -1,4 +1,4 @@
-import { ensureCardFonts, generateCardArt } from '../core/art';
+import { ensureCardFonts, generateCardArt, releaseCardImage } from '../core/art';
 import { loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
@@ -20,7 +20,31 @@ const SCALE = 0.36; // 276 × 386 px : net dans une tuile de ~130 px en DPR 2–
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
 const CACHE = 'bebou-cartes-v2'; // v2 : sous-thèmes Gaming imprimés sur la carte (« KANTO », « PISTOLETS », « STAR GUARDIAN »)
+/**
+ * Cartes déjà peintes : clé → URL `blob:` (≈ 15–25 Ko chacune). Cache BORNÉ (audit PERF1-01) : au-delà de DONE_MAX,
+ * les plus anciennes non affichées sont oubliées (URL révoquée) ; elles reviennent du Cache Storage si on y repasse.
+ */
 const done = new Map<string, string>();
+const DONE_MAX = matchMedia('(pointer: coarse)').matches ? 240 : 600;
+/** lu = remis en fin de file (le plus récent) */
+function recall(key: string): string | undefined {
+  const url = done.get(key);
+  if (url !== undefined) (done.delete(key), done.set(key, url));
+  return url;
+}
+function remember(key: string, url: string) {
+  done.delete(key);
+  done.set(key, url);
+  if (done.size <= DONE_MAX) return;
+  // URLs encore affichées (tuiles, cases des contrats…) : on les garde (une URL révoquée ne se recharge plus)
+  const shown = new Set([...document.querySelectorAll<HTMLImageElement>('img[src^="blob:"]')].map((i) => i.getAttribute('src')));
+  for (const [k, u] of done) {
+    if (done.size <= DONE_MAX) break;
+    if (shown.has(u)) continue;
+    done.delete(k);
+    URL.revokeObjectURL(u);
+  }
+}
 const waiting = new Map<string, Set<HTMLElement>>();
 const queue: string[] = [];
 let workers = 0;
@@ -76,6 +100,8 @@ async function toCache(key: string, blob: Blob) {
   }
 }
 
+/** peintures en cours par miniature source (on ne la libère que quand plus personne ne s'en sert) */
+const painting = new Map<string, number>();
 async function paint(key: string): Promise<string | null> {
   const [id, rarity] = key.split('|') as [string, RarityId];
   const e = catalogEntry(id);
@@ -83,12 +109,33 @@ async function paint(key: string): Promise<string | null> {
   const cd = cardById(id);
   // (carte Jeux vidéo sans illustration : rien à télécharger, le design typographique est peint directement)
   const thumb = hasArt(e) ? siteUrl(thumbPath(e)) : undefined;
+  if (thumb) painting.set(thumb, (painting.get(thumb) ?? 0) + 1);
+  try {
+    return await paintWith(key, id, rarity, cd, thumb);
+  } finally {
+    if (thumb) {
+      const n = (painting.get(thumb) ?? 1) - 1;
+      if (n > 0) painting.set(thumb, n);
+      else {
+        painting.delete(thumb);
+        // la carte 2D est faite (blob) : la toile de la miniature détourée est rendue tout de suite (lot E, PERF1-01)
+        releaseCardImage(thumb);
+      }
+    }
+  }
+}
+async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnType<typeof cardById>, thumb: string | undefined): Promise<string | null> {
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre
   await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, { key: !(cd.photo || cd.cover) }).catch(() => undefined) : undefined]);
   await new Promise<void>((r) => idle(() => r()));
   const art = generateCardArt(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, ...(cd.set === 'bebous' ? {} : { design: 'full-art' }) });
   const blob = await new Promise<Blob | null>((r) => art.canvases.flat.toBlob(r, 'image/webp', 0.86));
   art.dispose();
+  // la mémoire d'un canvas n'est rendue qu'au ramasse-miettes… sauf si on le vide (iOS plafonne le total : PERF1-01)
+  for (const c of Object.values(art.canvases)) {
+    c.width = 0;
+    c.height = 0;
+  }
   if (!blob) return null;
   void toCache(key, blob);
   return URL.createObjectURL(blob);
@@ -124,15 +171,16 @@ async function work() {
       waiting.delete(key);
       // tuiles sorties du DOM entre-temps (on a changé d'onglet) : inutile de peindre
       const alive = [...(tiles ?? [])].filter((t) => t.isConnected);
-      if (done.has(key)) {
-        alive.forEach((t) => apply(t, done.get(key)!));
+      const hit = recall(key);
+      if (hit) {
+        alive.forEach((t) => apply(t, hit));
         continue;
       }
       if (!alive.length) continue;
       try {
         const url = (await fromCache(key)) ?? (await paint(key));
         if (url) {
-          done.set(key, url);
+          remember(key, url);
           // des tuiles ont pu demander la même carte pendant ce temps
           for (const t of [...alive, ...(waiting.get(key) ?? [])]) if (t.isConnected) apply(t, url);
           waiting.delete(key);
@@ -149,7 +197,7 @@ async function work() {
 function want(tile: HTMLElement) {
   const key = tile.dataset.real;
   if (!key) return;
-  const url = done.get(key);
+  const url = recall(key);
   if (url) return apply(tile, url, true);
   let set = waiting.get(key);
   if (!set) {
@@ -166,11 +214,11 @@ function want(tile: HTMLElement) {
  */
 export async function realCardUrl(cardId: string, rarity: string): Promise<string | null> {
   const key = `${cardId}|${rarity}`;
-  const hit = done.get(key);
+  const hit = recall(key);
   if (hit) return hit;
   try {
     const url = (await fromCache(key)) ?? (await paint(key));
-    if (url) done.set(key, url);
+    if (url) remember(key, url);
     return url;
   } catch {
     return null;
@@ -178,13 +226,14 @@ export async function realCardUrl(cardId: string, rarity: string): Promise<strin
 }
 
 /** Vraie carte déjà peinte (en mémoire), ou null : pour des vignettes qui n'attendent pas (cases des contrats…). */
-export const paintedCard = (cardId: string, rarity: string): string | null => done.get(`${cardId}|${rarity}`) ?? null;
+export const paintedCard = (cardId: string, rarity: string): string | null => recall(`${cardId}|${rarity}`) ?? null;
 
 let io: IntersectionObserver | null = null;
 /** Demande la vraie carte d'une tuile dès qu'elle approche de l'écran. */
 export function observeRealCard(tile: HTMLElement) {
   const key = tile.dataset.real;
-  if (key && done.has(key)) return apply(tile, done.get(key)!, true);
+  const hit = key ? recall(key) : undefined;
+  if (hit) return apply(tile, hit, true);
   io ??= new IntersectionObserver(
     (entries) => {
       for (const en of entries) {

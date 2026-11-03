@@ -8,10 +8,15 @@ import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, ne
 import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak, type StreakState } from '../core/streak';
 import { bestCard, cleanCosmetics, statsFrom, type CosmeticChoice, type PlayerStats } from '../core/cosmetics';
-import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon, type EconState } from '../core/economy';
+import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon, type EconState } from '../core/economy';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
+
+/** Plafonds des classeurs : les mêmes que le serveur (convex/binders.ts, recopiés : importer ce fichier tirerait le serveur Convex dans le jeu). */
+const BINDER_MAX = 30;
+const BINDER_CARDS_MAX = 500;
+const BINDER_NAME_MAX = 32;
 
 /**
  * Mode DÉMO (hors-ligne) : même interface que le serveur, tout est stocké dans ce navigateur (localStorage).
@@ -131,13 +136,30 @@ export function createLocalBackend(): GameBackend {
     covers: {},
   };
 
-  function persist() {
+  /**
+   * Sauvegarde (audit PERF2-17) : plus un `JSON.stringify` de toute la partie (65 → 160 Ko) à CHAQUE action, mais une
+   * écriture regroupée 400 ms après la dernière, et tout de suite quand on quitte / cache la page (`pagehide`,
+   * onglet caché : iOS peut tuer un onglet en arrière-plan sans prévenir).
+   */
+  let dirty = false;
+  let flushT = 0;
+  function flush() {
+    clearTimeout(flushT);
+    flushT = 0;
+    if (!dirty) return;
+    dirty = false;
     try {
       localStorage.setItem(LS, JSON.stringify(save));
     } catch {
       /* stockage plein ou bloqué : la démo continue en mémoire */
     }
   }
+  function persist() {
+    dirty = true;
+    if (!flushT) flushT = window.setTimeout(flush, 400);
+  }
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => document.hidden && flush());
 
   function sync() {
     const now = Date.now();
@@ -379,7 +401,7 @@ export function createLocalBackend(): GameBackend {
       setTimeout(() => {
         const cur = save.trades.find((x) => x.id === t.id);
         if (!cur || cur.status !== 'pending') return;
-        const value = (l: TradeItem[]) => l.reduce((a, it) => a + it.count * Math.pow(2.2, RANK[it.rarity]), 0);
+        const value = (l: TradeItem[]) => cardsValue(l); // même table que la jauge des échanges (1★ 5 … 6★ 1 000)
         const fair = value(offered) >= value(requested) * 0.8;
         cur.resolvedAt = Date.now();
         if (fair && offered.every((it) => (save.inv[cardKey(it)]?.count ?? 0) >= it.count) && requested.every((it) => (bot.inv[cardKey(it)]?.count ?? 0) >= it.count)) {
@@ -437,7 +459,7 @@ export function createLocalBackend(): GameBackend {
       setTimeout(() => {
         const cur = save.trades.find((x) => x.id === nt.id);
         if (!cur || cur.status !== 'pending') return;
-        const value = (l: TradeItem[]) => l.reduce((a, it) => a + it.count * Math.pow(2.2, RANK[it.rarity]), 0);
+        const value = (l: TradeItem[]) => cardsValue(l); // même table que la jauge des échanges (1★ 5 … 6★ 1 000)
         const fair = value(offered) >= value(requested) * 0.8;
         cur.resolvedAt = Date.now();
         if (fair && offered.every((it) => (save.inv[cardKey(it)]?.count ?? 0) >= it.count) && requested.every((it) => (bot.inv[cardKey(it)]?.count ?? 0) >= it.count)) {
@@ -565,8 +587,10 @@ export function createLocalBackend(): GameBackend {
       sync();
     },
     async createBinder(name, cards) {
-      const n = name.replace(/\s+/g, ' ').trim().slice(0, 32);
+      const n = name.replace(/\s+/g, ' ').trim().slice(0, BINDER_NAME_MAX);
       if (!n) throw new Error('Donne un nom à ton classeur.');
+      if ((save.binders ?? []).length >= BINDER_MAX) throw new Error(`${BINDER_MAX} classeurs au maximum.`);
+      if ((cards ?? []).length > BINDER_CARDS_MAX) throw new Error(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
       const b: Binder = { id: `b${save.seq++}`, name: n, cards: cards ?? [], pinned: false, createdAt: Date.now() };
       (save.binders ??= []).push(b);
       sync();
@@ -575,7 +599,7 @@ export function createLocalBackend(): GameBackend {
     async renameBinder(id, name) {
       const b = (save.binders ?? []).find((x) => x.id === id);
       if (!b) throw new Error('Classeur introuvable.');
-      b.name = name.replace(/\s+/g, ' ').trim().slice(0, 32) || b.name;
+      b.name = name.replace(/\s+/g, ' ').trim().slice(0, BINDER_NAME_MAX) || b.name;
       sync();
     },
     async deleteBinder(id) {
@@ -585,6 +609,7 @@ export function createLocalBackend(): GameBackend {
     async setBinderCards(id, cards) {
       const b = (save.binders ?? []).find((x) => x.id === id);
       if (!b) throw new Error('Classeur introuvable.');
+      if (cards.length > BINDER_CARDS_MAX) throw new Error(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
       for (const c of cards) if (!save.inv[cardKey(c)]) throw new Error(`Tu n’as pas ${catalogEntry(c.cardId)?.name ?? 'cette carte'}.`);
       b.cards = cards;
       if (b.coverCardId && !cards.some((c) => c.cardId === b.coverCardId)) b.coverCardId = undefined;
@@ -598,6 +623,7 @@ export function createLocalBackend(): GameBackend {
       if (has) b.cards = b.cards.filter((c) => cardKey(c) !== k);
       else {
         if (!save.inv[k]) throw new Error(`Tu n’as pas ${catalogEntry(card.cardId)?.name ?? 'cette carte'}.`);
+        if (b.cards.length >= BINDER_CARDS_MAX) throw new Error(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
         b.cards = [...b.cards, card];
       }
       if (b.coverCardId && !b.cards.some((c) => c.cardId === b.coverCardId)) b.coverCardId = undefined;

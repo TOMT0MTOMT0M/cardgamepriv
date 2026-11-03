@@ -145,10 +145,57 @@ export function wonderModelIfReady(cardId: string): Group | null {
   return ready.get(cardId) ?? null;
 }
 
+/**
+ * Mémoire : nombre de merveilles gardées assemblées (défaut : toutes — labo). Le jeu sur téléphone en garde 2 (celle
+ * affichée et la précédente) : au-delà, la plus ancienne rend ses géométries et textures (une texture WebP 2048²
+ * décodée = 21 Mo avec ses mipmaps) et sera re-téléchargée (cache HTTP) si on la revoit.
+ */
+let modelLimit = Infinity;
+/** cartes dans l'ordre d'utilisation (la dernière = la plus récente) */
+const order: string[] = [];
+export function setWonderModelLimit(n: number): void {
+  modelLimit = Math.max(1, n);
+  trimModels();
+}
+function touch(cardId: string) {
+  const i = order.indexOf(cardId);
+  if (i >= 0) order.splice(i, 1);
+  order.push(cardId);
+}
+function trimModels() {
+  while (ready.size > modelLimit) {
+    const newest = order[order.length - 1];
+    const filesOf = (id: string) => WONDER_MODELS[id]?.parts.map((q) => q.file).filter((f): f is string => !!f) ?? [];
+    // la plus ancienne gardée, hors la plus récente, dont aucun fichier ne sert à une autre merveille encore en cache
+    const victim = order.find((id) => {
+      if (id === newest || !ready.has(id)) return false;
+      const others = new Set(order.filter((o) => o !== id && cache.has(o)).flatMap(filesOf));
+      return !filesOf(id).some((f) => others.has(f));
+    });
+    if (!victim) return;
+    const root = ready.get(victim)!;
+    ready.delete(victim);
+    cache.delete(victim);
+    order.splice(order.indexOf(victim), 1);
+    for (const f of filesOf(victim)) files.delete(f); // matériaux recolorés : on repartira du fichier
+    const mats = new Set<Material>();
+    root.traverse((o) => {
+      const m = o as Mesh;
+      if (m.geometry && !(o as Sprite).isSprite) m.geometry.dispose(); // (géométrie des sprites : partagée par three)
+      if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x !== STONE && mats.add(x));
+    });
+    for (const m of mats) {
+      for (const v of Object.values(m)) if (v && (v as { isTexture?: boolean }).isTexture) (v as { dispose(): void }).dispose();
+      m.dispose();
+    }
+  }
+}
+
 /** Charge (une fois) et assemble le modèle d'une merveille. `null` si absent ou en échec (→ monument procédural). */
 export function preloadWonderModel(cardId: string): Promise<Group | null> {
   const spec = WONDER_MODELS[cardId];
   if (!spec) return Promise.resolve(null);
+  touch(cardId);
   let p = cache.get(cardId);
   if (!p) {
     p = Promise.all(
@@ -163,6 +210,7 @@ export function preloadWonderModel(cardId: string): Promise<Group | null> {
           o.frustumCulled = false;
         });
         ready.set(cardId, root);
+        trimModels();
         return root;
       })
       .catch((e) => {

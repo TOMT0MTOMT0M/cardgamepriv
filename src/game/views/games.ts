@@ -2,7 +2,7 @@ import type { GameBackend } from '../backend';
 import { liveRegen } from '../backend';
 import type { Shell } from '../shell';
 import type { AbuseAlertView, DuelSideView, DuelView, RoyaleView, RouletteView } from '../eco';
-import { ACHIEVEMENTS, ACHIEVEMENT_TIERS, CARD_STARS, CARD_VALUE, achievementReward, burnable, cardsValue, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
+import { ACHIEVEMENTS, CARD_STARS, CARD_VALUE, burnable, cardsValue, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
 import {
   DUEL_MAX_PACKS,
   GAMES_OPEN,
@@ -25,6 +25,7 @@ import { rarity, starCount, type RarityId } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fmtDelay, h, plural, toast } from '../ui';
 import { cardKey, lockedCards } from '../backend';
 import { pickCards } from './picker';
+import { PROTECT_LEGEND, confirmTap, guarded, isPending, protectIcons, protection } from './safety';
 import { COIN_ICON, coinsHtml } from './wallet';
 import { catalogEntry } from '../../core/sets/themes';
 import '../games.css';
@@ -32,17 +33,35 @@ import '../games.css';
 /**
  * ESPACE JEUX (#/jeux) : 1v1 Pack Battle, Pack Battle Royale, Roulette à cartes — plus la forge (doublons → pièces),
  * les succès, l'historique et le panneau admin (alertes anti-abus). Règles : src/core/games.ts.
- * Pages : #/jeux · #/jeux/duel[/id] · #/jeux/royale[/id] · #/jeux/roulette · #/jeux/forge · #/jeux/succes ·
- * #/jeux/historique · #/jeux/admin.
+ * Pages : #/jeux · #/jeux/duel[/id] · #/jeux/royale[/id] · #/jeux/roulette · #/jeux/forge · #/jeux/primes ·
+ * #/jeux/historique · #/jeux/admin. (#/jeux/succes renvoie vers la page Succès, #/succes : une seule page de succès.)
+ *
+ * Garde-fous (audit 03/11) : chaque bouton qui envoie une mutation passe par `guarded` (pas de double envoi), et ce qui
+ * engage des cartes ou des pièces demande un second toucher (`confirmTap`) avec l'enjeu affiché.
  */
 
-type Sub = '' | 'duel' | 'royale' | 'roulette' | 'forge' | 'succes' | 'historique' | 'admin';
+type Sub = '' | 'duel' | 'royale' | 'roulette' | 'forge' | 'primes' | 'historique' | 'admin';
 
 const starsTxt = (r: RarityId) => (r === 'secret' ? '✷' : '★'.repeat(starCount(r)));
 const ava = (name: string, url?: string) => (url ? `<img class="gm-ava" src="${esc(url)}" alt="">` : `<span class="gm-ava">${esc(name.slice(0, 1))}</span>`);
 const packChip = (p: PackChoice, i?: number) => `<span class="gm-pack ${p.kind === 'bebou' ? 'bebou' : `t-${p.themeId}`}"${i !== undefined ? ` data-i="${i}"` : ''}>${esc(packChoiceLabel(p).replace(' Pack', ''))}</span>`;
-const stakeLine = (s: Stake) => (s.coins || s.cards.length ? `${s.coins ? coinsHtml(s.coins) : ''}${s.cards.length ? ` <span class="gm-cards-n">${plural(s.cards.reduce((a, c) => a + c.count, 0), 'carte')}</span>` : ''} <span class="muted">= ${fmtCoins(stakeValue(s))}</span>` : '<span class="muted">pas de side pot</span>');
+const stakeLine = (s: Stake) => (s.coins || s.cards.length ? `${s.coins ? coinsHtml(s.coins) : ''}${s.cards.length ? ` <span class="gm-cards-n">${plural(s.cards.reduce((a, c) => a + c.count, 0), 'carte')}</span>` : ''} <span class="muted">= ${fmtCoins(stakeValue(s))}</span>` : '<span class="muted">pas de pot annexe</span>');
+/** « 2 cartes 4★ + 1 carte 5★ » : ce qu'on engage, par étoile */
+const cardsSummary = (l: Array<{ rarity: RarityId; count: number }>) => {
+  const m = new Map<RarityId, number>();
+  for (const c of l) m.set(c.rarity, (m.get(c.rarity) ?? 0) + c.count);
+  return [...m].sort((a, b) => CARD_VALUE[a[0]] - CARD_VALUE[b[0]]).map(([r, n]) => `${n}×${starsTxt(r)}`).join(' + ');
+};
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Ce qu'on risque dans un Pack Battle, à côté du bouton (et plus seulement dans les règles en bas de page). */
+const riskLine = (st: { packs: PackChoice[]; stake: Stake }) => {
+  const n = st.packs.length;
+  const v = stakeValue(st.stake);
+  return `<b>Enjeu</b> : ${plural(n, 'booster')}${v ? ` + ${fmtCoins(v)} de pot annexe${st.stake.cards.length ? ` (dont ${cardsSummary(st.stake.cards)})` : ''}` : ''}
+    · <span class="plus">si tu gagnes : les ${n * 10} cartes ouvertes${v ? ` + les deux pots annexes` : ''}</span>
+    · <span class="minus">si tu perds : tes ${n * 5} cartes${v ? ' et ton pot annexe' : ''} partent en face</span>
+    · égalité : tout est rendu`;
+};
 
 export function createGamesView(backend: GameBackend, shell: Shell) {
   const el = h('section', 'view games');
@@ -79,7 +98,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   // ───────────────────────────── en-tête : solde + onglets
   function renderHead() {
     const s = snap();
-    const tabs: Array<[Sub, string]> = [['', 'Jeux'], ['duel', 'Pack Battle'], ['royale', 'Battle Royale'], ['roulette', 'Roulette'], ['forge', 'Forge'], ['succes', 'Succès'], ['historique', 'Historique']];
+    // (plus de sous-onglet « Succès » : la page Succès de la navigation est la seule ; les primes de complétion restent ici)
+    const tabs: Array<[Sub, string]> = [['', 'Jeux'], ['duel', 'Pack Battle'], ['royale', 'Battle Royale'], ['roulette', 'Roulette'], ['forge', 'Forge'], ['primes', 'Primes'], ['historique', 'Historique']];
     if (s?.isAdmin) tabs.push(['admin', 'Admin']);
     head.innerHTML = `<div class="gm-title"><b>Espace Jeux</b>${s ? coinsHtml(s.coins, 'big') : ''}</div>
       <nav class="seg gm-tabs">${tabs.map(([k, l]) => `<button data-k="${k}" class="${k === sub ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
@@ -89,17 +109,19 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     if (!el.isConnected) return;
     if (open() !== wasOpen) return draw();
     renderHead();
-    if (sub === 'succes' || sub === 'forge') draw();
+    // (pas pendant une forge en cours : le bouton redessiné pourrait repartir)
+    if (sub === 'primes' || (sub === 'forge' && !isPending('forge'))) draw();
   });
 
   // ═════════════════════════════ accueil
   function hub() {
     body.innerHTML = `<div class="gm-hub">
-      <a class="gm-game duel" href="#/jeux/duel"><i class="gm-glyph">⚔</i><b>1v1 Pack Battle</b><span>Misez le même nombre de boosters (+ un side pot). Ouverture côte à côte : le plus haut total d'étoiles rafle TOUTES les cartes.</span><em class="gm-live" data-live="duel">…</em></a>
+      <a class="gm-game duel" href="#/jeux/duel"><i class="gm-glyph">⚔</i><b>1v1 Pack Battle</b><span>Misez le même nombre de boosters (+ un pot annexe). Ouverture côte à côte : le plus haut total d'étoiles rafle TOUTES les cartes.</span><em class="gm-live" data-live="duel">…</em></a>
       <a class="gm-game royale" href="#/jeux/royale"><i class="gm-glyph">♛</i><b>Pack Battle Royale</b><span>3 à 8 joueurs, 1 booster chacun. Le meilleur total d'étoiles remporte tout le pot.</span><em class="gm-live" data-live="royale">…</em></a>
       <a class="gm-game roulette" href="#/jeux/roulette"><i class="gm-glyph">◎</i><b>Roulette à cartes</b><span>100 numéros, 1 numéro = 100 pièces de valeur. Un tirage par jour à 21 h : le numéro qui sort rafle tout le pot.</span><em class="gm-live" data-live="roulette">…</em></a>
       <a class="gm-mini" href="#/jeux/forge"><b>La forge</b><span>Brûle tes doublons contre des pièces (1★ = 5 … 6★ = 1 000).</span></a>
       <a class="gm-mini" href="#/succes"><b>Succès</b><span>${snap() ? `${snap()!.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus` : 'Paliers 50 / 150 / 500 / 2 000 pièces'}</span></a>
+      <a class="gm-mini" href="#/jeux/primes"><b>Primes de complétion</b><span>${snap()?.completions.length ? `${plural(snap()!.completions.length, 'prime')} à encaisser` : '5 pièces × cartes de chaque album bouclé'}</span></a>
       <div class="gm-mini gm-week"></div>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
@@ -126,19 +148,25 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     } else wk.hidden = true;
   }
 
-  // ═════════════════════════════ éditeur de mise (boosters + side pot)
-  function stakeEditor(host: HTMLElement, init: { packs: PackChoice[]; stake: Stake }, o: { fixedCount?: number; title: string; target?: number }) {
+  // ═════════════════════════════ éditeur de mise (boosters + pot annexe)
+  function stakeEditor(host: HTMLElement, init: { packs: PackChoice[]; stake: Stake }, o: { fixedCount?: number; title: string; target?: number; onChange?: () => void }) {
     const st = { packs: init.packs.map((p) => ({ ...p })), stake: { coins: init.stake.coins, cards: init.stake.cards.map((c) => ({ ...c })) } };
     const choices = packChoices();
-    const render = () => {
+    const balance = () => snap()?.coins ?? 0;
+    let ready = false;
+    const valueLine = () => {
       const v = stakeValue(st.stake);
+      return `Valeur du pot annexe : <b>${fmtCoins(v)}</b>${o.target !== undefined ? ` <span class="${Math.abs(v - o.target) <= 0.05 * Math.max(v, o.target) ? 'ok' : 'warn'}">(en face : ${fmtCoins(o.target)}, ±5 %)</span>` : ''} <span class="muted">· solde : ${fmtCoins(balance())}</span>`;
+    };
+    const render = () => {
       host.innerHTML = `<div class="gm-ed"><div class="gm-ed-h">${esc(o.title)}</div>
-        <div class="gm-ed-row"><span>Boosters</span><span class="gm-packs">${st.packs.map((p, i) => packChip(p, i)).join('')}</span>${o.fixedCount ? '' : `<span class="gm-step"><button class="btn-ghost sm" data-a="-">−</button><button class="btn-ghost sm" data-a="+">+</button></span>`}</div>
+        <div class="gm-ed-row"><span>Boosters</span><span class="gm-packs">${st.packs.map((p, i) => packChip(p, i)).join('')}</span>${o.fixedCount ? '' : `<span class="gm-step"><button class="btn-ghost sm" data-a="-" aria-label="Un booster de moins">−</button><button class="btn-ghost sm" data-a="+" aria-label="Un booster de plus">+</button></span>`}</div>
         <div class="muted">Touche un booster pour changer sa sorte · réserve : ${packsLeft()} booster${packsLeft() > 1 ? 's' : ''}</div>
-        <div class="gm-ed-row"><span>Side pot</span><label class="gm-coin-in">${COIN_ICON}<input type="number" min="0" step="10" value="${st.stake.coins}" inputmode="numeric"></label><button class="btn-ghost sm gm-pick">Cartes${st.stake.cards.length ? ` (${st.stake.cards.reduce((a, c) => a + c.count, 0)})` : ''}…</button></div>
-        <div class="gm-ed-v">Valeur du side pot : <b>${fmtCoins(v)}</b>${o.target !== undefined ? ` <span class="${Math.abs(v - o.target) <= 0.05 * Math.max(v, o.target) ? 'ok' : 'warn'}">(en face : ${fmtCoins(o.target)}, ±5 %)</span>` : ''}</div>
+        <div class="gm-ed-row"><span>Pot annexe</span><label class="gm-coin-in">${COIN_ICON}<input type="number" min="0" max="${balance()}" step="10" value="${st.stake.coins}" inputmode="numeric" aria-label="Pièces du pot annexe"></label><button class="btn-ghost sm gm-pick">Cartes${st.stake.cards.length ? ` (${st.stake.cards.reduce((a, c) => a + c.count, 0)})` : ''}…</button></div>
+        <div class="gm-ed-v">${valueLine()}</div>
         ${st.stake.cards.length ? `<div class="gm-mini-cards">${st.stake.cards.map((c) => `<span class="gm-mc r-${c.rarity}" style="--rc:${rarity(c.rarity).hex}">${starsTxt(c.rarity)} ${esc(cardName(c.cardId))}${c.count > 1 ? ` ×${c.count}` : ''}</span>`).join('')}</div>` : ''}
       </div>`;
+      if (ready) o.onChange?.(); // (pas au tout premier rendu : l'appelant n'a pas encore la mise)
       host.querySelectorAll<HTMLElement>('.gm-pack[data-i]').forEach((b) =>
         b.addEventListener('click', () => {
           const i = Number(b.dataset.i);
@@ -155,42 +183,61 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         if (st.packs.length > 1) st.packs.pop();
         render();
       });
-      host.querySelector<HTMLInputElement>('.gm-coin-in input')!.addEventListener('change', (e) => {
-        st.stake.coins = Math.max(0, Math.floor(Number((e.target as HTMLInputElement).value) || 0));
+      const coinIn = host.querySelector<HTMLInputElement>('.gm-coin-in input')!;
+      // borné par le solde (l'erreur n'arrivait qu'au serveur) ; la valeur suit la frappe, sans tout redessiner
+      const readCoins = () => Math.min(balance(), Math.max(0, Math.floor(Number(coinIn.value) || 0)));
+      coinIn.addEventListener('input', () => {
+        st.stake.coins = readCoins();
+        host.querySelector<HTMLElement>('.gm-ed-v')!.innerHTML = valueLine();
+        o.onChange?.();
+      });
+      coinIn.addEventListener('change', () => {
+        st.stake.coins = readCoins();
+        // la frappe a déjà tout mis à jour : on ne redessine que si la valeur a dû être corrigée (sinon le bouton
+        // touché juste après — « Je valide… » — serait remplacé sous le doigt)
+        if (String(st.stake.coins) === coinIn.value) return;
+        if (Number(coinIn.value) > balance()) toast(`Tu as ${fmtCoins(balance())} pièces : la mise est ramenée à ton solde.`, 'info');
         // (redessiner pendant l'événement « change » d'un champ qui perd le focus casse le DOM : on attend la fin)
         setTimeout(render, 0);
       });
       host.querySelector('.gm-pick')!.addEventListener('click', async () => {
-        const r = await pickCards(backend, st.stake.cards, { title: 'Cartes du side pot', hint: 'Valeur : 1★ 5 · 2★ 15 · 3★ 40 · 4★ 100 · 5★ 300 · 6★ 1 000 · secrète 5 000.' });
+        const r = await pickCards(backend, st.stake.cards, { title: 'Cartes du pot annexe', hint: 'Valeur : 1★ 5 · 2★ 15 · 3★ 40 · 4★ 100 · 5★ 300 · 6★ 1 000 · secrète 5 000.' });
         if (r) st.stake.cards = r;
         render();
       });
     };
     render();
+    ready = true;
     return st;
   }
 
   // ═════════════════════════════ 1v1 Pack Battle
   function duelLobby() {
     body.innerHTML = `<div class="gm-cols"><div class="gm-panel gm-create"></div><div class="gm-panel"><div class="gm-ph"><b>Duels ouverts</b></div><div class="gm-list"></div></div></div>
-      <div class="gm-rules muted">Le créateur choisit N boosters (+ un side pot facultatif) ; l'adversaire mise le même nombre de boosters (sortes libres) et un side pot de même valeur à ±5 %. Les deux valident → verrouillage ferme, ouverture côte à côte. Plus haut total d'étoiles → toutes les cartes tirées des deux côtés + les side pots. Égalité parfaite → chacun récupère tout.</div>`;
+      <div class="gm-rules muted">Le créateur choisit N boosters (+ un pot annexe facultatif) ; l'adversaire mise le même nombre de boosters (sortes libres) et un pot annexe de même valeur à ±5 %. Les deux valident → verrouillage ferme, ouverture côte à côte. Plus haut total d'étoiles → toutes les cartes tirées des deux côtés + les pots annexes. Égalité parfaite → chacun récupère tout.</div>`;
     const cr = body.querySelector<HTMLElement>('.gm-create')!;
     const edHost = h('div');
     const friends = backend.state.friends;
     cr.innerHTML = `<div class="gm-ph"><b>Créer un duel</b></div>`;
     cr.append(edHost);
-    const st = stakeEditor(edHost, { packs: [{ kind: 'bebou' }], stake: { coins: 0, cards: [] } }, { title: 'Ta mise' });
+    const risk = h('div', 'gm-risk');
+    const st = stakeEditor(edHost, { packs: [{ kind: 'bebou' }], stake: { coins: 0, cards: [] } }, { title: 'Ta mise', onChange: () => (risk.innerHTML = riskLine(st)) });
+    risk.innerHTML = riskLine(st);
     const foot = h('div', 'gm-ed-foot');
     foot.innerHTML = `<label>Adversaire <select class="gm-opp"><option value="">ouvert à tous</option>${friends.map((f) => `<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('')}</select></label><button class="btn-primary gm-go">Créer le duel</button>`;
-    cr.append(foot);
-    foot.querySelector<HTMLButtonElement>('.gm-go')!.addEventListener('click', async (e) => {
-      try {
-        const id = await busyButton(e.currentTarget as HTMLElement, backend.eco.createDuel(st.packs, st.stake, foot.querySelector<HTMLSelectElement>('.gm-opp')!.value || undefined));
-        sfx('chime');
-        location.hash = `#/jeux/duel/${id}`;
-      } catch (err) {
-        toast(errMsg(err), 'err');
-      }
+    cr.append(risk, foot);
+    foot.querySelector<HTMLButtonElement>('.gm-go')!.addEventListener('click', (e) => {
+      const btn = e.currentTarget as HTMLElement;
+      // (rien n'est débité à la création : la mise ne part qu'à la double validation — pas de second toucher ici)
+      void guarded('duel-create', btn, async () => {
+        try {
+          const id = await busyButton(btn, backend.eco.createDuel(st.packs, st.stake, foot.querySelector<HTMLSelectElement>('.gm-opp')!.value || undefined));
+          sfx('chime');
+          location.hash = `#/jeux/duel/${id}`;
+        } catch (err) {
+          toast(errMsg(err), 'err');
+        }
+      });
     });
     const list = body.querySelector<HTMLElement>('.gm-list')!;
     unsubs.push(
@@ -238,7 +285,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     const uid = myId();
     const mine = d.sides.findIndex((s) => s.userId === uid);
     const canJoin = mine < 0 && d.sides.length < 2 && (!d.invitedId || d.invitedId === uid);
-    const problem = duelProblem({ packs: d.sides[0].packs, stake: d.sides[0].stake }, d.sides[1] ? { packs: d.sides[1].packs, stake: d.sides[1].stake } : null);
     room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle · ${plural(d.sides[0].packs.length, 'booster')} chacun</b></div><div class="gm-vs"></div><div class="gm-ed-host"></div><div class="gm-actions"></div>`;
     const vs = room.querySelector<HTMLElement>('.gm-vs')!;
     const side = (s: DuelSideView | undefined, i: number) => {
@@ -254,37 +300,70 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     const other = mine >= 0 ? d.sides[1 - mine] : d.sides[0];
     if (mine >= 0 || canJoin) {
       const base = editing ?? (mine >= 0 ? { packs: d.sides[mine].packs, stake: d.sides[mine].stake } : { packs: d.sides[0].packs.map(() => ({ kind: 'bebou' as const })), stake: { coins: Math.min(snap()?.coins ?? 0, stakeValue(d.sides[0].stake)), cards: [] } });
-      const st = stakeEditor(edHost, base, { title: mine >= 0 ? 'Ta mise (la modifier remet les validations à zéro)' : 'Ta mise pour rejoindre', fixedCount: mine === 0 ? undefined : d.sides[0].packs.length, target: other ? stakeValue(other.stake) : undefined });
+      const risk = h('div', 'gm-risk');
+      const st = stakeEditor(edHost, base, { title: mine >= 0 ? 'Ta mise (la modifier remet les validations à zéro)' : 'Ta mise pour rejoindre', fixedCount: mine === 0 ? undefined : d.sides[0].packs.length, target: other ? stakeValue(other.stake) : undefined, onChange: () => (setEditing(st), renderActs()) });
       edHost.addEventListener('click', () => setEditing(st), { capture: true });
       edHost.addEventListener('change', () => setEditing(st), { capture: true });
-      acts.innerHTML = `${mine >= 0 ? '<button class="btn-ghost gm-save">Enregistrer ma mise</button>' : ''}${canJoin ? '<button class="btn-primary gm-join">Rejoindre le duel</button>' : ''}${mine >= 0 && d.sides.length === 2 && !d.sides[mine].ready ? `<button class="btn-primary gm-ready"${problem ? ' disabled' : ''}>Valider le pot</button>` : ''}${mine >= 0 ? `<button class="btn-ghost danger gm-leave">${mine === 0 ? 'Annuler le duel' : 'Quitter'}</button>` : ''}${problem && d.sides.length === 2 ? `<div class="gm-warn">${esc(problem)}</div>` : ''}${mine >= 0 && d.sides[mine].ready && !d.sides[1 - mine]?.ready ? '<div class="muted">En attente de la validation d’en face… une fois les deux validés, plus de retour en arrière.</div>' : ''}`;
-      const save = async (btn: HTMLElement) => {
-        try {
-          await busyButton(btn, backend.eco.setDuelSide(d.id, st.packs, st.stake));
-          setEditing(null);
-          sfx('tick');
-        } catch (err) {
-          toast(errMsg(err), 'err');
-        }
-      };
-      acts.querySelector<HTMLElement>('.gm-save')?.addEventListener('click', (e) => save(e.currentTarget as HTMLElement));
-      acts.querySelector<HTMLElement>('.gm-join')?.addEventListener('click', (e) => save(e.currentTarget as HTMLElement));
-      acts.querySelector<HTMLElement>('.gm-ready')?.addEventListener('click', async (e) => {
-        try {
-          const r = await busyButton(e.currentTarget as HTMLElement, backend.eco.readyDuel(d.id));
-          if (!r.locked) toast('Validé ! En attente de l’adversaire.', 'info');
-        } catch (err) {
-          toast(errMsg(err), 'err');
-        }
-      });
-      acts.querySelector<HTMLElement>('.gm-leave')?.addEventListener('click', async (e) => {
-        try {
-          await busyButton(e.currentTarget as HTMLElement, backend.eco.leaveDuel(d.id));
-          location.hash = '#/jeux/duel';
-        } catch (err) {
-          toast(errMsg(err), 'err');
-        }
-      });
+      acts.before(risk);
+      /** mise affichée ≠ mise enregistrée sur le serveur (UX4-04) */
+      const dirty = () => mine >= 0 && JSON.stringify([st.packs, st.stake]) !== JSON.stringify([d.sides[mine].packs, d.sides[mine].stake]);
+      // les actions (et l'avertissement ±5 %) suivent la mise affichée, pas celle du serveur
+      function renderActs() {
+        // (celui qui rejoint : sa mise affichée prend la place n° 2)
+        const live = (i: number) => (i === mine || (canJoin && i === 1) ? { packs: st.packs, stake: st.stake } : d.sides[i] ? { packs: d.sides[i].packs, stake: d.sides[i].stake } : null);
+        const problem = duelProblem(live(0)!, live(1));
+        const ch = dirty();
+        const meReady = mine >= 0 && d.sides[mine].ready && !ch;
+        const otherReady = !!other?.ready;
+        const canReady = mine >= 0 && d.sides.length === 2 && !meReady;
+        risk.innerHTML = riskLine(st);
+        acts.innerHTML = `${mine >= 0 ? `<button class="btn-ghost gm-save"${ch && !isPending('duel') ? '' : ' disabled'}>Enregistrer ma mise</button>` : ''}${canJoin ? `<button class="btn-primary gm-join"${isPending('duel') ? ' disabled' : ''}>Rejoindre le duel</button>` : ''}${canReady ? `<button class="btn-primary gm-ready"${problem || isPending('duel') ? ' disabled' : ''}>${ch ? 'Enregistrer et valider ma mise' : otherReady ? 'Je valide : on ouvre !' : 'Je valide ma mise'}</button>` : ''}${mine >= 0 ? `<button class="btn-ghost danger gm-leave">${mine === 0 ? 'Annuler le duel' : 'Quitter'}</button>` : ''}${ch ? '<div class="gm-warn">Mise modifiée : elle n’est pas encore enregistrée (la valider l’enregistre d’abord).</div>' : ''}${problem && (d.sides.length === 2 || canJoin) ? `<div class="gm-warn">${esc(problem)}</div>` : ''}${meReady && !otherReady ? '<div class="muted">En attente de la validation d’en face… une fois les deux validés, plus de retour en arrière.</div>' : ''}`;
+        const save = (btn: HTMLElement) =>
+          guarded('duel', btn, async () => {
+            try {
+              await busyButton(btn, backend.eco.setDuelSide(d.id, st.packs, st.stake));
+              setEditing(null);
+              sfx('tick');
+            } catch (err) {
+              toast(errMsg(err), 'err');
+            }
+          });
+        acts.querySelector<HTMLElement>('.gm-save')?.addEventListener('click', (e) => void save(e.currentTarget as HTMLElement));
+        acts.querySelector<HTMLElement>('.gm-join')?.addEventListener('click', (e) => {
+          const btn = e.currentTarget as HTMLElement;
+          if (confirmTap(btn, `Confirmer ? ${plural(st.packs.length, 'booster')}${stakeValue(st.stake) ? ` + ${fmtCoins(stakeValue(st.stake))}` : ''} en jeu`)) void save(btn);
+        });
+        acts.querySelector<HTMLElement>('.gm-ready')?.addEventListener('click', (e) => {
+          const btn = e.currentTarget as HTMLElement;
+          // second toucher : c'est ici que la mise devient ferme (« plus de retour en arrière »)
+          if (!confirmTap(btn, `Confirmer ? ${plural(st.packs.length, 'booster')}${stakeValue(st.stake) ? ` + ${fmtCoins(stakeValue(st.stake))}` : ''} verrouillés`)) return;
+          void guarded('duel', btn, async () => {
+            try {
+              // la mise affichée d'abord (sinon on validerait l'ancienne, celle du serveur)
+              if (dirty()) {
+                await busyButton(btn, backend.eco.setDuelSide(d.id, st.packs, st.stake));
+                setEditing(null);
+              }
+              const r = await busyButton(btn, backend.eco.readyDuel(d.id));
+              if (!r.locked) toast('Validé ! En attente de l’adversaire.', 'info');
+            } catch (err) {
+              toast(errMsg(err), 'err');
+            }
+          });
+        });
+        acts.querySelector<HTMLElement>('.gm-leave')?.addEventListener('click', (e) => {
+          const btn = e.currentTarget as HTMLElement;
+          void guarded('duel-leave', btn, async () => {
+            try {
+              await busyButton(btn, backend.eco.leaveDuel(d.id));
+              location.hash = '#/jeux/duel';
+            } catch (err) {
+              toast(errMsg(err), 'err');
+            }
+          });
+        });
+      }
+      renderActs();
     } else acts.innerHTML = `<div class="muted">${d.invitedId ? 'Ce duel est réservé à un autre joueur.' : 'Ce duel a déjà ses deux joueurs : tu peux regarder le résultat ici.'}</div>`;
   }
 
@@ -334,14 +413,23 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     swapReplay(room, () => void playDuel(room, d, true));
     const v = room.querySelector<HTMLElement>('.gm-verdict')!;
     if (res.winner === undefined) {
-      v.innerHTML = `<b>Égalité parfaite : ${res.stars[0]}★ partout.</b> PUSH — chacun récupère ses cartes et sa mise.`;
+      v.innerHTML = `<b>Égalité parfaite : ${res.stars[0]}★ partout.</b> Égalité : chacun récupère ses cartes et sa mise.`;
       bat.classList.add('push');
     } else {
       const w = d.sides[res.winner];
       const iWon = w.userId === myId();
       cols[res.winner].el.classList.add('win');
       cols[1 - res.winner].el.classList.add('lose');
-      v.innerHTML = `<b>${iWon ? 'Tu remportes tout !' : `${esc(w.name)} remporte tout.`}</b> ${res.stars[res.winner]}★ contre ${res.stars[1 - res.winner]}★ — ${n * 2} cartes${stakeValue(d.sides[0].stake) + stakeValue(d.sides[1].stake) ? ` et ${fmtCoins(stakeValue(d.sides[0].stake) + stakeValue(d.sides[1].stake))} de side pot` : ''} pour ${iWon ? 'toi' : esc(w.name)}.`;
+      const pots = stakeValue(d.sides[0].stake) + stakeValue(d.sides[1].stake);
+      v.innerHTML = `<b>${iWon ? 'Tu remportes tout !' : `${esc(w.name)} remporte tout.`}</b> ${res.stars[res.winner]}★ contre ${res.stars[1 - res.winner]}★ — ${n * 2} cartes${pots ? ` et ${fmtCoins(pots)} de pots annexes` : ''} pour ${iWon ? 'toi' : esc(w.name)}.`;
+      // bilan personnel (UX4-22) : ce que JE gagne ou perds, pas seulement le verdict
+      const k = d.sides.findIndex((x) => x.userId === myId());
+      if (k >= 0) {
+        const myPot = stakeValue(d.sides[k].stake);
+        v.insertAdjacentHTML('beforeend', iWon
+          ? `<div class="gm-me plus">Tu gagnes ${plural(n * 2, 'carte')}${pots - myPot ? ` + ${fmtCoins(pots - myPot)} de pot annexe` : ''}. <a href="#/collection">Voir mes nouvelles cartes →</a></div>`
+          : `<div class="gm-me minus">Tu perds les ${plural(n, 'carte')} de tes boosters${myPot ? ` et ${fmtCoins(myPot)} de pot annexe` : ''}.</div>`);
+      }
       if (animate) sfx(iWon ? 'big' : 'tick');
     }
   }
@@ -373,13 +461,16 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     const drawNew = () => {
       nw.innerHTML = `<div class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</div><button class="btn-primary gm-r-go">Créer avec ce booster</button><div class="muted">Réserve : ${packsLeft()} booster${packsLeft() > 1 ? 's' : ''} (débité au lancement).</div>`;
       nw.querySelectorAll<HTMLElement>('[data-i]').forEach((b) => b.addEventListener('click', () => ((pick = packChoices()[Number(b.dataset.i)]), drawNew())));
-      nw.querySelector<HTMLElement>('.gm-r-go')!.addEventListener('click', async (e) => {
-        try {
-          const id = await busyButton(e.currentTarget as HTMLElement, backend.eco.createRoyale(pick));
-          location.hash = `#/jeux/royale/${id}`;
-        } catch (err) {
-          toast(errMsg(err), 'err');
-        }
+      nw.querySelector<HTMLElement>('.gm-r-go')!.addEventListener('click', (e) => {
+        const btn = e.currentTarget as HTMLElement;
+        void guarded('royale-create', btn, async () => {
+          try {
+            const id = await busyButton(btn, backend.eco.createRoyale(pick));
+            location.hash = `#/jeux/royale/${id}`;
+          } catch (err) {
+            toast(errMsg(err), 'err');
+          }
+        });
       });
     };
     drawNew();
@@ -422,25 +513,30 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           <div class="gm-actions"></div>`;
         const acts = room.querySelector<HTMLElement>('.gm-actions')!;
         const packBar = () => `<span class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</span>`;
-        acts.innerHTML = `${!inIt && r.players.length < ROYALE_MAX ? `${packBar()}<button class="btn-primary gm-rj">Rejoindre</button>` : ''}${r.creatorId === uid ? `<button class="btn-primary gm-rs"${r.players.length < ROYALE_MIN ? ' disabled' : ''}>Lancer (${r.players.length} joueurs)</button>` : ''}${inIt ? `<button class="btn-ghost danger gm-rl">${r.creatorId === uid ? 'Annuler la partie' : 'Quitter'}</button>` : ''}${r.players.length < ROYALE_MIN ? `<div class="muted">Encore ${ROYALE_MIN - r.players.length} joueur${ROYALE_MIN - r.players.length > 1 ? 's' : ''} pour pouvoir lancer.</div>` : ''}`;
+        const busyR = isPending('royale');
+        acts.innerHTML = `${inIt || r.players.length < ROYALE_MAX ? `<div class="gm-risk"><b>Enjeu</b> : 1 booster chacun · <span class="plus">si tu gagnes : toutes les cartes ouvertes (5 par joueur)</span> · <span class="minus">sinon : les 5 cartes de ton booster partent au gagnant</span></div>` : ''}${!inIt && r.players.length < ROYALE_MAX ? `${packBar()}<button class="btn-primary gm-rj"${busyR ? ' disabled' : ''}>Rejoindre</button>` : ''}${r.creatorId === uid ? `<button class="btn-primary gm-rs"${r.players.length < ROYALE_MIN || busyR ? ' disabled' : ''}>Lancer (${r.players.length} joueurs)</button>` : ''}${inIt ? `<button class="btn-ghost danger gm-rl">${r.creatorId === uid ? 'Annuler la partie' : 'Quitter'}</button>` : ''}${r.players.length < ROYALE_MIN ? `<div class="muted">Encore ${ROYALE_MIN - r.players.length} joueur${ROYALE_MIN - r.players.length > 1 ? 's' : ''} pour pouvoir lancer.</div>` : ''}`;
         acts.querySelectorAll<HTMLElement>('[data-i]').forEach((b) =>
           b.addEventListener('click', () => {
             pick = packChoices()[Number(b.dataset.i)];
             acts.querySelectorAll('.gm-pack-b').forEach((x) => x.classList.toggle('on', x === b));
           }),
         );
-        const run = (sel: string, fn: () => Promise<unknown>, after?: () => void) =>
-          acts.querySelector<HTMLElement>(sel)?.addEventListener('click', async (e) => {
-            try {
-              await busyButton(e.currentTarget as HTMLElement, fn());
-              after?.();
-            } catch (err) {
-              toast(errMsg(err), 'err');
-            }
+        const run = (sel: string, fn: () => Promise<unknown>, o: { after?: () => void; confirm?: string } = {}) =>
+          acts.querySelector<HTMLElement>(sel)?.addEventListener('click', (e) => {
+            const btn = e.currentTarget as HTMLElement;
+            if (o.confirm && !confirmTap(btn, o.confirm)) return;
+            void guarded('royale', btn, async () => {
+              try {
+                await busyButton(btn, fn());
+                o.after?.();
+              } catch (err) {
+                toast(errMsg(err), 'err');
+              }
+            });
           });
-        run('.gm-rj', () => backend.eco.joinRoyale(r.id, pick));
-        run('.gm-rs', () => backend.eco.startRoyale(r.id));
-        run('.gm-rl', () => backend.eco.leaveRoyale(r.id), () => (location.hash = '#/jeux/royale'));
+        run('.gm-rj', () => backend.eco.joinRoyale(r.id, pick), { confirm: 'Confirmer ? 1 booster en jeu' });
+        run('.gm-rs', () => backend.eco.startRoyale(r.id), { confirm: `Confirmer ? On ouvre à ${r.players.length}` });
+        run('.gm-rl', () => backend.eco.leaveRoyale(r.id), { after: () => (location.hash = '#/jeux/royale') });
       }),
     );
   }
@@ -515,43 +611,60 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     }
     const colors = ['#e8927c', '#7fb58a', '#6bb3e0', '#c79be8', '#e0c46b', '#e07a9b', '#8fd0c4', '#d39a6b'];
     const drawBet = () => {
-      const bet = body.querySelector<HTMLElement>('.gm-bet')!;
+      const bet = body.querySelector<HTMLElement>('.gm-bet');
+      if (!bet) return; // (page quittée pendant l'envoi)
       const r = cur?.round;
       const mine = r?.bets.find((b) => b.userId === cur?.me);
       const n = sel.size;
       const need = n * NUMBER_COST;
       const coins = coinsNeeded(n, stakeCards);
       const cv = cardsValue(stakeCards);
+      const bal = snap()?.coins ?? 0;
+      // (le serveur refuse sous le minimum : on ne laisse pas partir une mise qui échouera)
+      const short = n ? Math.max(0, MIN_NUMBERS - (mine?.numbers.length ?? 0) - n) : 0;
+      const broke = coins > bal;
       bet.innerHTML = `<div class="gm-ph"><b>Miser</b>${mine ? `<span class="muted">tes numéros : ${mine.numbers.join(', ')}</span>` : ''}</div>
         <div>${n ? `${plural(n, 'numéro')} choisi${n > 1 ? 's' : ''} : <b>${[...sel].sort((a, b) => a - b).join(', ')}</b>` : '<span class="muted">Touche des numéros libres sur la roue.</span>'}</div>
         <div class="gm-ed-row"><span>Cartes</span><button class="btn-ghost sm gm-pick">${stakeCards.length ? `${plural(stakeCards.reduce((a, c) => a + c.count, 0), 'carte')} · ${fmtCoins(cv)}` : 'Ajouter des cartes…'}</button></div>
         <div class="gm-ed-v">Il faut ${fmtCoins(need)} de valeur → ${cv ? `${fmtCoins(cv)} en cartes + ` : ''}<b>${COIN_ICON}${fmtCoins(coins)}</b> pièces${cv > need && n ? ` <span class="warn">(tes cartes valent ${fmtCoins(cv - need)} de plus : prends ${Math.floor((cv - need) / NUMBER_COST)} numéro(s) de plus, sinon le surplus part au pot)</span>` : ''}</div>
-        ${(mine?.numbers.length ?? 0) + n < MIN_NUMBERS && n ? `<div class="gm-warn">Minimum ${MIN_NUMBERS} numéros par tirage.</div>` : ''}
-        <button class="btn-primary gm-place"${!n ? ' disabled' : ''}>Miser ${n ? plural(n, 'numéro') : ''}</button>
+        ${n ? `<div class="gm-ed-v">Solde : ${coinsHtml(bal)} → après la mise : ${coinsHtml(Math.max(0, bal - coins))}${stakeCards.length ? ` · et tes ${plural(stakeCards.reduce((a, c) => a + c.count, 0), 'carte')} (${cardsSummary(stakeCards)}) partent au pot` : ''}</div>` : ''}
+        ${short ? `<div class="gm-warn">Minimum ${MIN_NUMBERS} numéros par tirage : encore ${plural(short, 'numéro')} à choisir.</div>` : ''}
+        ${broke ? `<div class="gm-warn">Il te manque ${fmtCoins(coins - bal)} pièces.</div>` : ''}
+        <button class="btn-primary gm-place"${!n || short || broke || isPending('bet') ? ' disabled' : ''}>Miser ${n ? `${plural(n, 'numéro')} · −${fmtCoins(coins)}` : ''}</button>
+        <div class="muted">Pas d'annulation après la mise : tout reste au pot jusqu'au tirage de 21 h (reporté si personne ne gagne).</div>
         ${backend.eco.demoDraw ? '<button class="btn-ghost sm gm-draw">Tirer maintenant (démo)</button>' : ''}`;
       bet.querySelector('.gm-pick')!.addEventListener('click', async () => {
         const res = await pickCards(backend, stakeCards, { title: 'Cartes misées à la roulette', hint: '1 numéro = 100 de valeur · 5★ = 300 · 6★ = 1 000 · secrète = 5 000.' });
         if (res) stakeCards = res;
         drawBet();
       });
-      bet.querySelector<HTMLElement>('.gm-place')?.addEventListener('click', async (e) => {
-        try {
-          await busyButton(e.currentTarget as HTMLElement, backend.eco.placeBet([...sel], { coins, cards: stakeCards }));
-          sfx('chime');
-          toast(`Misé ! ${plural(sel.size, 'numéro')} pour le tirage de 21 h.`, 'ok');
-          sel.clear();
-          stakeCards = [];
-          drawBet();
-        } catch (err) {
-          toast(errMsg(err), 'err');
-        }
+      bet.querySelector<HTMLElement>('.gm-place')?.addEventListener('click', (e) => {
+        const btn = e.currentTarget as HTMLElement;
+        // second toucher, avec ce qui part : pas d'annulation possible avant le tirage
+        if (!confirmTap(btn, `Confirmer ? −${fmtCoins(coins)} pièces${stakeCards.length ? ` + ${cardsSummary(stakeCards)}` : ''}`)) return;
+        const nums = [...sel];
+        const cards = stakeCards;
+        void guarded('bet', btn, async () => {
+          try {
+            await busyButton(btn, backend.eco.placeBet(nums, { coins, cards }));
+            sfx('chime');
+            toast(`Misé ! ${plural(nums.length, 'numéro')} pour le tirage de 21 h.`, 'ok');
+            nums.forEach((x) => sel.delete(x));
+            stakeCards = [];
+          } catch (err) {
+            toast(errMsg(err), 'err');
+          }
+        }).then(drawBet); // (redessiné par l'abonnement pendant l'envoi : le bouton reste désactivé, cf. isPending)
       });
-      bet.querySelector<HTMLElement>('.gm-draw')?.addEventListener('click', async (e) => {
-        try {
-          await busyButton(e.currentTarget as HTMLElement, backend.eco.demoDraw!());
-        } catch (err) {
-          toast(errMsg(err), 'err');
-        }
+      bet.querySelector<HTMLElement>('.gm-draw')?.addEventListener('click', (e) => {
+        const btn = e.currentTarget as HTMLElement;
+        void guarded('draw', btn, async () => {
+          try {
+            await busyButton(btn, backend.eco.demoDraw!());
+          } catch (err) {
+            toast(errMsg(err), 'err');
+          }
+        });
       });
     };
     const tick = () => {
@@ -619,11 +732,13 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
 
   // ═════════════════════════════ Forge (doublons → pièces)
   const forgeSel = new Map<string, StakeItem>();
+  /** dernière sélection rapide (« Tous les 4★ ») : on peut l'annuler d'un toucher */
+  let forgeUndo: Map<string, StakeItem> | null = null;
   function forge() {
     const locked = lockedCards(backend.state);
     const dups = backend.state.collection
       .filter((c) => burnable(c.rarity))
-      .map((c) => ({ ...c, spare: c.count - 1 - (locked.get(cardKey(c)) ?? 0) }))
+      .map((c) => ({ ...c, spare: c.count - 1 - (locked.get(cardKey(c)) ?? 0), protect: protection(backend.state, c.cardId) }))
       .filter((c) => c.spare > 0 && cardName(c.cardId) !== c.cardId)
       .sort((a, b) => CARD_VALUE[a.rarity] - CARD_VALUE[b.rarity] || b.spare - a.spare);
     for (const [k, v] of forgeSel) {
@@ -634,81 +749,109 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     const total = cardsValue([...forgeSel.values()]);
     const n = [...forgeSel.values()].reduce((a, c) => a + c.count, 0);
     const rars = (['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as RarityId[]).filter((r) => dups.some((d) => d.rarity === r));
+    // sélection rapide : comme le remplissage auto des contrats, elle laisse de côté les cartes protégées (UX4-06)
+    const quick = (r: RarityId) => dups.filter((d) => d.rarity === r && !d.protect.length);
+    const quickProt = (r: RarityId) => dups.filter((d) => d.rarity === r && d.protect.length).length;
+    const quickOn = (r: RarityId) => quick(r).length > 0 && quick(r).every((d) => forgeSel.get(cardKey(d))?.count === d.spare);
+    const anyProt = dups.some((d) => d.protect.length);
     body.innerHTML = `<div class="gm-panel gm-forge"><div class="gm-ph"><b>La forge</b><span class="muted">${plural(dups.reduce((a, d) => a + d.spare, 0), 'doublon libre', 'doublons libres')} · on garde toujours 1 exemplaire · les secrètes ne se brûlent jamais</span></div>
-      <div class="gm-quick">${rars.map((r) => `<button class="chip" data-q="${r}" style="--rc:${rarity(r).hex}">Tous les ${starsTxt(r)} (${dups.filter((d) => d.rarity === r).reduce((a, d) => a + d.spare, 0)} · ${fmtCoins(dups.filter((d) => d.rarity === r).reduce((a, d) => a + d.spare * CARD_VALUE[r], 0))})</button>`).join('')}<button class="btn-ghost sm gm-none">Rien</button></div>
+      <div class="gm-quick">${rars.map((r) => {
+        const q = quick(r);
+        const np = quickProt(r);
+        return `<button class="chip${quickOn(r) ? ' on' : ''}" data-q="${r}" style="--rc:${rarity(r).hex}"${q.length ? '' : ' disabled'} aria-pressed="${quickOn(r)}">Tous les ${starsTxt(r)} (${q.reduce((a, d) => a + d.spare, 0)} · ${fmtCoins(q.reduce((a, d) => a + d.spare * CARD_VALUE[r], 0))})${np ? ` <small>· ${np} protégée${np > 1 ? 's' : ''} laissée${np > 1 ? 's' : ''}</small>` : ''}</button>`;
+      }).join('')}<button class="btn-ghost sm gm-none"${n ? '' : ' disabled'}>Rien</button>${forgeUndo ? '<button class="linkish gm-undo">Annuler la sélection rapide</button>' : ''}</div>
+      ${anyProt ? `<div class="gm-legend-p muted">${esc(PROTECT_LEGEND)}</div>` : ''}
       <div class="gm-fgrid"></div>
-      <div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')} → ${coinsHtml(total)}` : '<span class="muted">Touche des doublons pour les mettre au feu (touche encore pour en ajouter un exemplaire).</span>'}</span><button class="btn-primary gm-burn"${n ? '' : ' disabled'}>Brûler${n ? ` · +${fmtCoins(total)}` : ''}</button></div></div>`;
+      <div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')}${n ? ` (${cardsSummary([...forgeSel.values()])})` : ''} → ${coinsHtml(total)}` : '<span class="muted">Touche des doublons pour les mettre au feu (touche encore pour en ajouter un exemplaire).</span>'}</span><button class="btn-primary gm-burn"${n && !isPending('forge') ? '' : ' disabled'}>Brûler${n ? ` · +${fmtCoins(total)}` : ''}</button></div></div>`;
     const grid = body.querySelector<HTMLElement>('.gm-fgrid')!;
-    if (!dups.length) grid.innerHTML = '<div class="muted">Aucun doublon à brûler pour l’instant.</div>';
+    if (!dups.length) grid.innerHTML = '<div class="muted">Aucun doublon à brûler pour l’instant. <a href="#/">Ouvre des boosters →</a></div>';
     for (const d of dups.slice(0, 400)) {
       const k = cardKey(d);
       const inSel = forgeSel.get(k)?.count ?? 0;
-      const t = cardTile(d.cardId, d.rarity, { mini: true, count: d.spare + 1, label: inSel ? `🔥 ${inSel}` : `+${CARD_VALUE[d.rarity]}` });
+      // ×N = exemplaires brûlables (avant : le total possédé, alors qu'on en garde toujours un)
+      const t = cardTile(d.cardId, d.rarity, { mini: true, count: d.spare, label: inSel ? `🔥 ${inSel}/${d.spare}` : `+${CARD_VALUE[d.rarity]}` });
+      t.title = `${cardName(d.cardId)} · ${plural(d.spare, 'exemplaire brûlable', 'exemplaires brûlables')}${d.protect.length ? ` · protégée (${d.protect.join(', ')})` : ''}`;
+      if (d.protect.length) t.insertAdjacentHTML('beforeend', `<span class="ct-prot gm-prot" aria-label="Protégée : ${esc(d.protect.join(', '))}">${protectIcons(d.protect)}</span>`);
       t.classList.toggle('burning', inSel > 0);
       t.addEventListener('click', () => {
+        if (isPending('forge')) return;
         const cur = forgeSel.get(k)?.count ?? 0;
         if (cur >= d.spare) forgeSel.delete(k);
         else forgeSel.set(k, { cardId: d.cardId, rarity: d.rarity, count: cur + 1 });
+        forgeUndo = null;
         forge();
       });
       grid.append(t);
     }
     body.querySelectorAll<HTMLElement>('[data-q]').forEach((b) =>
       b.addEventListener('click', () => {
-        for (const d of dups) if (d.rarity === b.dataset.q) forgeSel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: d.spare });
+        if (isPending('forge')) return;
+        const r = b.dataset.q as RarityId;
+        forgeUndo = new Map([...forgeSel].map(([k, v]) => [k, { ...v }]));
+        // deuxième toucher sur la même puce : on la retire (sélection rapide annulable)
+        if (quickOn(r)) for (const d of quick(r)) forgeSel.delete(cardKey(d));
+        else for (const d of quick(r)) forgeSel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: d.spare });
         forge();
       }),
     );
-    body.querySelector('.gm-none')?.addEventListener('click', () => (forgeSel.clear(), forge()));
+    body.querySelector('.gm-none')?.addEventListener('click', () => {
+      if (isPending('forge')) return;
+      forgeUndo = new Map([...forgeSel].map(([k, v]) => [k, { ...v }]));
+      forgeSel.clear();
+      forge();
+    });
+    body.querySelector('.gm-undo')?.addEventListener('click', () => {
+      if (!forgeUndo || isPending('forge')) return;
+      forgeSel.clear();
+      for (const [k, v] of forgeUndo) forgeSel.set(k, v);
+      forgeUndo = null;
+      forge();
+    });
     const burnBtn = body.querySelector<HTMLButtonElement>('.gm-burn')!;
-    let armed = false;
-    burnBtn.addEventListener('click', async () => {
-      if (!armed && (total >= 1000 || n >= 30)) {
-        armed = true;
-        burnBtn.textContent = `Sûr ? ${plural(n, 'carte')} au feu`;
-        return;
-      }
-      try {
-        const r = await busyButton(burnBtn, backend.eco.burn([...forgeSel.values()]));
-        forgeSel.clear();
-        grid.classList.add('flash');
-        sfx('chime');
-        toast(`${plural(r.count, 'doublon')} brûlé${r.count > 1 ? 's' : ''} : +${fmtCoins(r.coins)} pièces !`, 'ok');
-        setTimeout(forge, 400);
-      } catch (err) {
-        toast(errMsg(err), 'err');
-      }
+    burnBtn.addEventListener('click', () => {
+      // second toucher dès une 5★ (300) ou 30 cartes, avec le détail par étoile ; désarmé tout seul après 3 s
+      if ((total >= 300 || n >= 30) && !confirmTap(burnBtn, `Brûler ${plural(n, 'carte')} (${cardsSummary([...forgeSel.values()])}) ?`)) return;
+      // la sélection est copiée puis vidée AVANT l'envoi : un 2ᵉ envoi ne pourrait plus rien brûler deux fois
+      const items = [...forgeSel.values()].map((v) => ({ ...v }));
+      const before = new Map(forgeSel);
+      forgeSel.clear();
+      forgeUndo = null;
+      void guarded('forge', burnBtn, async () => {
+        try {
+          const r = await busyButton(burnBtn, backend.eco.burn(items));
+          grid.classList.add('flash');
+          sfx('chime');
+          toast(`${plural(r.count, 'doublon')} brûlé${r.count > 1 ? 's' : ''} : +${fmtCoins(r.coins)} pièces !`, 'ok');
+          setTimeout(() => sub === 'forge' && el.isConnected && forge(), 400);
+        } catch (err) {
+          for (const [k, v] of before) forgeSel.set(k, v);
+          toast(errMsg(err), 'err');
+          forge();
+        }
+      }, { keepOnSuccess: true });
     });
   }
 
-  // ═════════════════════════════ Succès + complétions
-  function achievements() {
+  // ═════════════════════════════ Primes de complétion (les succès ont leur page : #/succes)
+  function primes() {
     const s = snap();
-    if (!s) return void (body.innerHTML = '<div class="muted">Connecte-toi pour voir tes succès.</div>');
-    const claimable = new Set(s.achievements.claimable);
-    const pending = ACHIEVEMENTS.filter((a) => claimable.has(a.id));
-    const total = pending.reduce((a, x) => a + achievementReward(x), 0);
-    body.innerHTML = `<div class="gm-panel"><div class="gm-ph"><b>Succès · ${s.econ.achievements.length}/${ACHIEVEMENTS.length}</b>${pending.length ? `<button class="btn-primary gm-ach">Encaisser ${plural(pending.length, 'succès', 'succès')} · +${fmtCoins(total)}</button>` : ''}</div>
-      <div class="gm-ach-grid">${ACHIEVEMENTS.map((a) => {
-        const cur = Math.min(a.target, s.achievements.stats[a.stat] ?? 0);
-        const got = s.econ.achievements.includes(a.id);
-        return `<div class="gm-ach-c t${a.tier}${got ? ' got' : claimable.has(a.id) ? ' ready' : ''}"><b>${esc(a.label)}</b><span>${esc(a.how)}</span><i class="gm-bar"><i style="width:${((cur / a.target) * 100).toFixed(1)}%"></i></i><em>${got ? 'obtenu ✓' : `${fmtCoins(cur)} / ${fmtCoins(a.target)}`} · ${COIN_ICON}${ACHIEVEMENT_TIERS[a.tier - 1]}</em></div>`;
-      }).join('')}</div></div>
-      <div class="gm-panel"><div class="gm-ph"><b>Primes de complétion</b>${s.completions.length ? `<button class="btn-primary gm-comp">Encaisser · +${fmtCoins(s.completions.reduce((a, c) => a + c.reward, 0))}</button>` : ''}</div>
+    if (!s) return void (body.innerHTML = '<div class="muted">Connecte-toi pour voir tes primes.</div>');
+    body.innerHTML = `<div class="gm-panel"><div class="gm-ph"><b>Primes de complétion</b>${s.completions.length ? `<button class="btn-primary gm-comp"${isPending('claim') ? ' disabled' : ''}>Encaisser · +${fmtCoins(s.completions.reduce((a, c) => a + c.reward, 0))}</button>` : ''}</div>
       <div class="muted">5 pièces × nombre de cartes de chaque ensemble bouclé : album (famille de 30 cartes = 150), groupe d'albums (Pokémon 1 025 = 5 125), thème entier. ${s.econ.completions.length ? `${plural(s.econ.completions.length, 'prime déjà encaissée', 'primes déjà encaissées')}.` : ''}</div>
-      ${s.completions.length ? `<div class="gm-comp-list">${s.completions.map((c) => `<span class="gm-mc">${esc(c.label)} · ${c.size} cartes · +${fmtCoins(c.reward)}</span>`).join('')}</div>` : ''}</div>`;
-    const bind = (sel: string, fn: () => Promise<{ coins: number }>, what: string) =>
-      body.querySelector<HTMLElement>(sel)?.addEventListener('click', async (e) => {
+      ${s.completions.length ? `<div class="gm-comp-list">${s.completions.map((c) => `<span class="gm-mc">${esc(c.label)} · ${c.size} cartes · +${fmtCoins(c.reward)}</span>`).join('')}</div>` : '<div class="muted">Rien à encaisser pour l’instant : boucle un album dans ta <a href="#/collection">collection</a>.</div>'}</div>
+      <div class="gm-panel"><div class="gm-ph"><b>Succès · ${s.econ.achievements.length}/${ACHIEVEMENTS.length}</b><a class="btn-ghost sm" href="#/succes">Voir les succès →</a></div></div>`;
+    body.querySelector<HTMLElement>('.gm-comp')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget as HTMLElement;
+      void guarded('claim', btn, async () => {
         try {
-          const r = await busyButton(e.currentTarget as HTMLElement, fn());
+          const r = await busyButton(btn, backend.eco.claimCompletions());
           sfx('big');
-          toast(`${what} : +${fmtCoins(r.coins)} pièces !`, 'ok');
+          toast(`Complétion : +${fmtCoins(r.coins)} pièces !`, 'ok');
         } catch (err) {
           toast(errMsg(err), 'err');
         }
-      });
-    bind('.gm-ach', () => backend.eco.claimAchievements(), 'Succès');
-    bind('.gm-comp', () => backend.eco.claimCompletions(), 'Complétion');
+      }, { keepOnSuccess: true });
+    });
   }
 
   // ═════════════════════════════ Historique
@@ -721,7 +864,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         ...g.duels.map((d) => ({ at: d.resolvedAt ?? d.createdAt, href: `#/jeux/duel/${d.id}`, html: (() => {
           const k = d.sides.findIndex((s) => s.userId === uid);
           const res = d.result!;
-          const out = res.winner === undefined ? 'égalité (push)' : res.winner === k ? '<b class="plus">victoire</b>' : '<b class="minus">défaite</b>';
+          const out = res.winner === undefined ? 'égalité' : res.winner === k ? '<b class="plus">victoire</b>' : '<b class="minus">défaite</b>';
           return `⚔ Pack Battle contre ${esc(d.sides[1 - Math.max(0, k)]?.name ?? '?')} · ${res.stars[Math.max(0, k)]}★ / ${res.stars[1 - Math.max(0, k)]}★ · ${out}`;
         })() })),
         ...g.royales.map((r) => ({ at: r.resolvedAt ?? r.createdAt, href: `#/jeux/royale/${r.id}`, html: (() => {
@@ -731,7 +874,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         })() })),
       ].sort((a, b) => b.at - a.at);
       body.querySelector<HTMLElement>('.gm-hg')!.innerHTML = rows.length ? rows.map((r) => `<a class="gm-item" href="${r.href}"><span class="gm-it">${r.html}</span><span class="gm-it-r muted">${new Date(r.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a>`).join('') : '<div class="muted">Aucune partie terminée.</div>';
-      body.querySelector<HTMLElement>('.gm-hc')!.innerHTML = tx.length ? tx.map((t) => `<div class="w-tx"><span>${esc(t.label)}</span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">Aucun mouvement.</div>';
+      body.querySelector<HTMLElement>('.gm-hc')!.innerHTML = tx.length ? tx.map((t) => `<div class="w-tx"><span>${esc(t.label)} <small class="muted">${new Date(t.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">Aucun mouvement.</div>';
     } catch (e) {
       body.querySelector<HTMLElement>('.gm-hg')!.textContent = errMsg(e);
     }
@@ -790,7 +933,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     else if (sub === 'royale') arg ? royaleRoom(arg) : royaleLobby();
     else if (sub === 'roulette') roulettePage();
     else if (sub === 'forge') forge();
-    else if (sub === 'succes') achievements();
+    else if (sub === 'primes') primes();
     else if (sub === 'historique') void historyPage();
     else if (sub === 'admin') void admin();
     else hub();
@@ -810,7 +953,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     el,
     enter() {
       const parts = location.hash.replace(/^#\/?/, '').split('/');
-      sub = (['duel', 'royale', 'roulette', 'forge', 'succes', 'historique', 'admin'].includes(parts[1] ?? '') ? parts[1] : '') as Sub;
+      // une seule page Succès (UX1-05) : l'ancien sous-onglet renvoie vers elle (les primes restent ici, #/jeux/primes)
+      if (parts[1] === 'succes') return void location.replace('#/succes');
+      // page 100 % DOM : la vitrine 3D ne tourne pas dessous (PERF1-06, comme collection / contrats / classement)
+      shell.show(null);
+      shell.setDimmed(true);
+      sub = (['duel', 'royale', 'roulette', 'forge', 'primes', 'historique', 'admin'].includes(parts[1] ?? '') ? parts[1] : '') as Sub;
       arg = parts[2] ?? '';
       draw();
     },

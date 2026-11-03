@@ -1,6 +1,6 @@
 import { clamp, color, float, floor, sin, step, time, uniform } from 'three/tsl';
 import type { Material } from 'three/webgpu';
-import { generateBackArt, generateCardArt, starColor, type CardArt } from '../../core/art';
+import { generateBackArt, generateCardArt, generateCardArtAsync, starColor, type ArtOptions, type CardArt } from '../../core/art';
 import { DEFAULT_BACK, type BackStyle } from '../../core/art/back';
 import type { CardData } from '../../core/cardData';
 import type { RarityId } from '../../core/rarity';
@@ -15,8 +15,14 @@ import type { N } from '../../core/tsl';
  * compilés une fois (préchauffage) et réutilisés partout.
  * `photo` : carte Bébou (photo d'un ami) → le foil reste sur le cadre, pas sur le visage.
  */
+/** Qualité des faces (posée par le shell) : téléphone → variante « lite » du holo, même aspect, ≈ −40 % d'ALU par pixel. */
+let faceLite = false;
+export function setFaceQuality(q: 'high' | 'mobile') {
+  faceLite = q === 'mobile';
+}
+
 export function buildFace(art: CardArt, tier: number, photo: boolean) {
-  const holo = createHoloMaterial(art, tier, photo ? { windowFoil: 0.1, subjectFoil: 0.15 } : {});
+  const holo = createHoloMaterial(art, tier, { ...(photo ? { windowFoil: 0.1, subjectFoil: 0.15 } : {}), lite: faceLite });
   const lit = uniform(0);
   const flash = uniform(0);
   const b = holo.layers.masks.b;
@@ -41,10 +47,26 @@ export function buildEdge(hex: string) {
  * gabarit dédié (sceau des huit).
  */
 export function gameCardArt(cd: CardData, rarityId: RarityId, scale: number): CardArt {
+  return generateCardArt(cd, rarityId, gameArtOptions(cd, scale));
+}
+
+/** Même chose en 4 étapes (on rend la main entre chacune) : pour générer une carte pendant une animation. */
+export function gameCardArtAsync(cd: CardData, rarityId: RarityId, scale: number): Promise<CardArt> {
+  return generateCardArtAsync(cd, rarityId, gameArtOptions(cd, scale));
+}
+
+/**
+ * Options des calques du jeu. Mémoire (iOS plafonne le total des canvas) : pas d'aplat (jamais envoyé), et chaque
+ * toile est vidée dès que sa texture est sur le GPU (`release`) — avant, 7 toiles (≈ 11 Mo à 0,7) restaient en vie
+ * par carte jusqu'au ramasse-miettes.
+ */
+function gameArtOptions(cd: CardData, scale: number): ArtOptions {
   // Merveilles du monde : gabarit classique — sa fenêtre est le portail du diorama 3D (WINDOW_UV) et son bandeau
   // porte le drapeau du pays
-  if (cd.id.startsWith('mrv-')) return generateCardArt(cd, rarityId, { scale, design: 'classic' });
-  return generateCardArt(cd, rarityId, cd.set === 'bebous' ? { scale } : { scale, design: 'full-art' });
+  // (téléphone : anisotropie 4 au lieu de 8 — cartes vues presque de face)
+  const base: ArtOptions = { scale, noFlat: true, release: true, ...(faceLite ? { anisotropy: 4 } : {}) };
+  if (cd.id.startsWith('mrv-')) return { ...base, design: 'classic' };
+  return cd.set === 'bebous' ? base : { ...base, design: 'full-art' };
 }
 
 /**
@@ -54,7 +76,7 @@ export function gameCardArt(cd: CardData, rarityId: RarityId, scale: number): Ca
 export function themedBacks(bag: { add<T extends { dispose(): void }>(o: T): T }, scale: number) {
   const cache = new Map<string, Material>();
   const make = (key: string, style: BackStyle) => {
-    const m = bag.add(createBackMaterial(bag.add(generateBackArt(style, scale))));
+    const m = bag.add(createBackMaterial(bag.add(generateBackArt(style, scale, true))));
     cache.set(key, m);
     return m;
   };

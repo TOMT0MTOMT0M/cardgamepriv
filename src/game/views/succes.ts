@@ -29,28 +29,37 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
         <div class="sc-score"></div>
       </header>
       <div class="sc-bar">
-        <div class="seg sc-filters"><button data-f="all" class="on">Tous</button><button data-f="ready">À encaisser</button><button data-f="got">Obtenus</button><button data-f="todo">En cours</button></div>
+        <div class="seg sc-filters" aria-label="Filtrer les succès"><button data-f="all" class="on" aria-pressed="true">Tous</button><button data-f="ready" aria-pressed="false">À encaisser</button><button data-f="got" aria-pressed="false">Obtenus</button><button data-f="todo" aria-pressed="false">En cours</button></div>
         <button class="btn-primary sc-claim" hidden></button>
       </div>
+      <div class="sc-recap" role="status" hidden></div>
       <div class="sc-grid"></div>
     </div>`;
   const score = el.querySelector<HTMLElement>('.sc-score')!;
   const grid = el.querySelector<HTMLElement>('.sc-grid')!;
   const claimBtn = el.querySelector<HTMLButtonElement>('.sc-claim')!;
+  const recap = el.querySelector<HTMLElement>('.sc-recap')!;
   let filter: Filter = 'all';
 
   el.querySelectorAll<HTMLButtonElement>('.sc-filters button').forEach((b) =>
     b.addEventListener('click', () => {
       filter = b.dataset.f as Filter;
-      el.querySelectorAll<HTMLButtonElement>('.sc-filters button').forEach((x) => x.classList.toggle('on', x === b));
+      el.querySelectorAll<HTMLButtonElement>('.sc-filters button').forEach((x) => (x.classList.toggle('on', x === b), x.setAttribute('aria-pressed', String(x === b))));
       render();
     }),
   );
   claimBtn.addEventListener('click', async () => {
+    // succès encaissés à l'instant : pour annoncer les cosmétiques qu'ils ont débloqués (audit UX3-18)
+    const before = new Set(backend.eco.snapshot?.achievements.claimable ?? []);
     try {
       const r = await busyButton(claimBtn, backend.eco.claimAchievements());
       shell.sfx.chime(4, 0.1);
       toast(`Succès : +${fmtCoins(r.coins)} pièces !`, 'ok');
+      const cos = ACHIEVEMENTS.filter((a) => before.has(a.id)).flatMap((a) => cosmeticsOf(a.id));
+      recap.hidden = false;
+      recap.innerHTML = `<b>+${fmtCoins(r.coins)} ${COIN_ICON}</b>${cos.length ? `<span>Débloqué pour ton profil : ${cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${c.kind} « ${esc(c.c.label)} »`).join(', ')}</span><a class="btn-primary sc-equip" href="#/profil">Équiper →</a>` : '<span>Pièces ajoutées à ta bourse.</span>'}<button class="sc-recap-x" aria-label="Fermer">✕</button>`;
+      recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem('bebou.openCosm', '1'));
+      recap.querySelector('.sc-recap-x')!.addEventListener('click', () => (recap.hidden = true));
     } catch (e) {
       toast(errMsg(e), 'err');
     }
@@ -65,8 +74,8 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       <b class="sc-name">${got ? '✓ ' : ''}${esc(a.label)}</b>
       <span class="sc-how">${esc(a.how)}</span>
       <i class="sc-pb"><i style="width:${(pct * 100).toFixed(1)}%"></i></i>
-      <em class="sc-n">${got ? 'obtenu' : ready ? 'atteint · à encaisser' : `${fmtCoins(Math.min(cur, a.target))} / ${fmtCoins(a.target)}`}</em>
-      ${rewards.length ? `<div class="sc-rw">${rewards.map((r) => `<span class="sc-cos k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Bannière' || r.kind === 'Cadre' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}</span>`).join('')}</div>` : ''}`;
+      <em class="sc-n">${got ? 'obtenu' : ready ? `atteint · prime à encaisser${rewards.length ? ' (cosmétique déjà débloqué)' : ''}` : `${fmtCoins(Math.min(cur, a.target))} / ${fmtCoins(a.target)}`}</em>
+      ${rewards.length ? `<div class="sc-rw">${rewards.map((r) => `<span class="sc-cos${got || ready ? ' ok' : ''} k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Bannière' || r.kind === 'Cadre' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}${got || ready ? ' <b>✓ débloqué</b>' : ''}</span>`).join('')}</div>` : ''}`;
     return c;
   }
 

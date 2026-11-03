@@ -66,7 +66,7 @@ export function duelProblem(a: { packs: PackChoice[]; stake: Stake }, b: { packs
   if (b.packs.length !== a.packs.length) return `Il faut miser le même nombre de boosters (${a.packs.length}).`;
   if (!b.packs.every(validPackChoice)) return 'Booster inconnu.';
   if (!potsBalanced(a.stake, b.stake)) {
-    return `Les side pots doivent avoir la même valeur à ±5 % (${stakeValue(a.stake)} contre ${stakeValue(b.stake)}).`;
+    return `Les pots annexes doivent avoir la même valeur à ±5 % (${stakeValue(a.stake)} contre ${stakeValue(b.stake)}).`;
   }
   return null;
 }

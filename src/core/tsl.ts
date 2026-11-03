@@ -2,7 +2,8 @@
  * Petits outils TSL partagés : hash 2D, voronoï avec identifiant de cellule,
  * interférence de couche mince spectrale, rotation 2D, courbes.
  */
-import { Fn, Loop, cos, dot, float, floor, fract, hash, length, min, mix, sin, vec2, vec3, sqrt, max, clamp, luminance } from 'three/tsl';
+import { Fn, Loop, cos, dot, float, floor, fract, hash, length, min, mix, sin, vec2, vec3, sqrt, max, clamp, luminance, texture } from 'three/tsl';
+import { ClampToEdgeWrapping, DataTexture, DataUtils, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, RGBAFormat, RepeatWrapping, UnsignedByteType } from 'three/webgpu';
 
 /**
  * Les typings TSL de @types/three sont paramétrés par type de composante (Node<'vec3'>…) :
@@ -117,3 +118,116 @@ export function normalFromHeight(h: (p: N) => N, p: N, eps: number, strength: N 
 }
 
 export const encodeNormal = (n: N): N => n.mul(0.5).add(0.5);
+
+// ───────────────────────────────────────────── tables cuites (variante « lite » des faces, téléphone)
+/** Plage d'épaisseur couverte par la table de couche mince (nm) : la face holo reste dans [0, ~1 050]. */
+export const FILM_LUT_MAX = 1600;
+let filmLut: DataTexture | null = null;
+/**
+ * `thinFilm(d, cosI, 1.45, 0.95)` précalculée : 512 épaisseurs × 16 incidences (RGBA 16 bits). Une lecture au lieu de
+ * 12 cosinus par pixel ; même formule, même pondération spectrale → même couleur (interpolation bilinéaire, ≥ 45
+ * texels par frange). L'épaisseur négative donne la même couleur (cosinus pair) : on lit |d|.
+ */
+export function filmLUT(): DataTexture {
+  if (filmLut) return filmLut;
+  const W = 512, H = 16, ior = 1.45, contrast = 0.95;
+  const data = new Uint16Array(W * H * 4);
+  for (let j = 0; j < H; j++) {
+    const cosI = 0.05 + (j / (H - 1)) * 0.95;
+    const sinT2 = (1 - cosI * cosI) / (ior * ior);
+    const cosT = Math.sqrt(Math.max(1 - sinT2, 0));
+    for (let i = 0; i < W; i++) {
+      const d = (i / (W - 1)) * FILM_LUT_MAX;
+      const opd = d * ior * cosT * 2;
+      let r = 0, g = 0, b = 0;
+      for (const s of SPECTRUM) {
+        const k = 0.5 + Math.cos(opd * ((2 * Math.PI) / s.l) + Math.PI) * 0.5 * contrast;
+        r += s.w[0] * k;
+        g += s.w[1] * k;
+        b += s.w[2] * k;
+      }
+      const o = (j * W + i) * 4;
+      data[o] = DataUtils.toHalfFloat(Math.min(1.5, Math.max(0, r)));
+      data[o + 1] = DataUtils.toHalfFloat(Math.min(1.5, Math.max(0, g)));
+      data[o + 2] = DataUtils.toHalfFloat(Math.min(1.5, Math.max(0, b)));
+      data[o + 3] = DataUtils.toHalfFloat(1);
+    }
+  }
+  const t = new DataTexture(data, W, H, RGBAFormat, HalfFloatType);
+  t.magFilter = t.minFilter = LinearFilter;
+  t.wrapS = t.wrapT = ClampToEdgeWrapping;
+  t.generateMipmaps = false;
+  t.needsUpdate = true;
+  return (filmLut = t);
+}
+
+/** Lecture de la table : équivalent de `thinFilm(d, cosI, 1.45, 0.95)`. */
+export const thinFilmLUT = (thicknessNm: N, cosI: N): N =>
+  // (coordonnées ramenées aux centres des texels : texel i ↔ épaisseur i / 511 × MAX, incidence j ↔ 0,05 + j / 15 × 0,95)
+  texture(filmLUT(), vec2(thicknessNm.abs().div(FILM_LUT_MAX).mul(511 / 512).add(0.5 / 512), cosI.sub(0.05).div(0.95).mul(15 / 16).add(0.5 / 16))).rgb;
+
+/** Période (en unités de bruit) de la texture de bruit répétable. */
+export const NOISE_PERIOD = 64;
+let noiseTex: DataTexture | null = null;
+/**
+ * Bruit de gradient 2D **répétable** (période 64 cellules, 8 texels par cellule), 3 tirages indépendants en R, G, B
+ * (≈ [-1, 1] codé sur [0, 1]). Remplace `mx_noise_float` (Perlin 3D, ~50 instructions) par une lecture de texture.
+ * Lire avec `noiseTexel(p)` : p en unités de bruit, comme l'argument de `mx_noise_float`.
+ */
+export function noiseTexture(): DataTexture {
+  if (noiseTex) return noiseTex;
+  const P = NOISE_PERIOD, RES = 8, W = P * RES;
+  const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+  const data = new Uint8Array(W * W * 4);
+  for (let ch = 0; ch < 3; ch++) {
+    // gradients pseudo-aléatoires par sommet du réseau (périodiques)
+    const gx = new Float32Array(P * P), gy = new Float32Array(P * P);
+    let a = 0x9e3779b9 ^ (ch * 0x85ebca6b);
+    for (let i = 0; i < P * P; i++) {
+      a = (Math.imul(a ^ (a >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) >>> 0;
+      const ang = (a / 4294967296) * Math.PI * 2;
+      gx[i] = Math.cos(ang);
+      gy[i] = Math.sin(ang);
+    }
+    const dotG = (ix: number, iy: number, x: number, y: number) => {
+      const k = ((iy % P) * P + (ix % P)) | 0;
+      return gx[k] * x + gy[k] * y;
+    };
+    for (let j = 0; j < W; j++)
+      for (let i = 0; i < W; i++) {
+        const x = (i + 0.5) / RES, y = (j + 0.5) / RES;
+        const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+        const u = fade(xf), v = fade(yf);
+        const n00 = dotG(xi, yi, xf, yf), n10 = dotG(xi + 1, yi, xf - 1, yf);
+        const n01 = dotG(xi, yi + 1, xf, yf - 1), n11 = dotG(xi + 1, yi + 1, xf - 1, yf - 1);
+        const n = (n00 + (n10 - n00) * u + (n01 - n00 + (n00 - n10 - n01 + n11) * u) * v) * 1.4; // ≈ [-1, 1]
+        data[(j * W + i) * 4 + ch] = Math.round(Math.min(1, Math.max(0, n * 0.5 + 0.5)) * 255);
+      }
+  }
+  for (let i = 3; i < data.length; i += 4) data[i] = 255;
+  const t = new DataTexture(data, W, W, RGBAFormat, UnsignedByteType);
+  t.wrapS = t.wrapT = RepeatWrapping;
+  t.magFilter = LinearFilter;
+  t.minFilter = LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.needsUpdate = true;
+  return (noiseTex = t);
+}
+
+/** Bruit cuit en `p` (unités de bruit) → vec3 de 3 tirages indépendants dans ≈ [-1, 1]. */
+export const noiseTexel = (p: N): N => texture(noiseTexture(), p.div(NOISE_PERIOD)).rgb.mul(2).sub(1);
+
+/**
+ * Équivalent cuit de `mx_fractal_noise_float(vec3(p, z), octaves)` (lacunarité 2, atténuation 0,5, sans normalisation) :
+ * une lecture du bruit répétable par octave au lieu d'un Perlin 3D. Décalage par octave → octaves décorrélées.
+ */
+export const fbmTexel = (p: N, octaves: number): N => {
+  let v: N = float(0);
+  let amp = 1, f = 1;
+  for (let o = 0; o < octaves; o++) {
+    v = v.add((noiseTexel(p.mul(f).add(vec2(o * 17.31, o * 9.73))) as N).x.mul(amp));
+    f *= 2;
+    amp *= 0.5;
+  }
+  return v;
+};

@@ -44,47 +44,65 @@ export function createOnlineBackend(): GameBackend {
     counterOf: t.counterOf,
   });
 
+  /**
+   * Chaque partie de l'état n'est refaite que si sa source a changé (Convex remplace le tableau d'un abonnement quand
+   * il change) : un changement de fil ou d'échanges ne recopie plus toute la collection, et `state.collection` garde
+   * la même référence → `collectionSig` (mémorisé par tableau, backend.ts) n'est pas recalculé (audit PERF2-08).
+   */
+  let src: Partial<Record<'user' | 'collection' | 'binders' | 'friends' | 'feed' | 'bigPulls' | 'sealed' | 'trades', unknown>> = {};
+  const changed = (k: keyof typeof src, v: unknown) => (src[k] === v ? false : ((src[k] = v), true));
   net.onChange((n) => {
+    // `ready` : le serveur a répondu au moins une fois (avant : « connexion… », pas « Connexion Discord »)
     state.ready = n.connected;
     state.authError = n.authError;
-    state.user = n.user
-      ? {
-          id: n.user._id,
-          name: n.user.displayName,
-          avatarUrl: n.user.avatarUrl,
-          packBalance: n.user.packBalance,
-          packStored: n.user.packStored ?? n.user.packBalance,
-          packRegenAt: n.user.packRegenAt ?? Date.now(),
-          totalPacksOpened: n.user.totalPacksOpened,
-          pityCount: n.user.pityCount ?? 0,
-          streak: n.user.streak ?? undefined,
-        }
-      : null;
-    state.wishlist = n.user?.wishlist ?? [];
-    state.collection = n.collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber, firstPulledAt: c.firstPulledAt }));
-    state.covers = n.user?.covers ?? {};
-    state.binders = (n.binders ?? []).map((b) => ({ id: b._id, name: b.name, cards: b.cards, coverCardId: b.coverCardId, pinned: b.pinned, createdAt: b.createdAt }));
-    state.friends = n.friends
-      .filter((f) => f._id !== n.user?._id)
-      .map((f) => ({ id: f._id, name: f.displayName, avatarUrl: f.avatarUrl, online: f.online, status: f.statusText, packsOpened: f.totalPacksOpened }));
-    state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, rarity: f.rarity, createdAt: f.createdAt }));
-    const rows = n.bigPulls ?? n.feed.filter((f) => f.cardId && f.rarity && BIG_PULL_RARITIES.includes(f.rarity));
-    state.bigPulls = rows.map(
-      (f): BigPull => ({
-        id: f._id,
-        userId: f.userId,
-        userName: f.displayName,
-        avatarUrl: f.avatarUrl,
-        cardId: f.cardId!,
-        cardName: f.cardName ?? '',
-        rarity: f.rarity!,
-        mintNumber: f.mintNumber,
-        createdAt: f.createdAt,
-        mine: !!n.user && f.userId === n.user._id,
-      }),
-    );
-    state.sealed = n.sealedPack ? toSealed(n.sealedPack) : null;
-    state.trades = { incoming: n.trades.incoming.map(toTrade), outgoing: n.trades.outgoing.map(toTrade) };
+    const userChanged = changed('user', n.user);
+    if (userChanged) {
+      state.user = n.user
+        ? {
+            id: n.user._id,
+            name: n.user.displayName,
+            avatarUrl: n.user.avatarUrl,
+            packBalance: n.user.packBalance,
+            packStored: n.user.packStored ?? n.user.packBalance,
+            packRegenAt: n.user.packRegenAt ?? Date.now(),
+            totalPacksOpened: n.user.totalPacksOpened,
+            pityCount: n.user.pityCount ?? 0,
+            streak: n.user.streak ?? undefined,
+          }
+        : null;
+      state.wishlist = n.user?.wishlist ?? [];
+      state.covers = n.user?.covers ?? {};
+    }
+    if (changed('collection', n.collection))
+      state.collection = n.collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber, firstPulledAt: c.firstPulledAt }));
+    if (changed('binders', n.binders))
+      state.binders = (n.binders ?? []).map((b) => ({ id: b._id, name: b.name, cards: b.cards, coverCardId: b.coverCardId, pinned: b.pinned, createdAt: b.createdAt }));
+    // (les amis dépendent aussi de l'utilisateur : on se retire de la liste)
+    if (changed('friends', n.friends) || userChanged)
+      state.friends = n.friends
+        .filter((f) => f._id !== n.user?._id)
+        .map((f) => ({ id: f._id, name: f.displayName, avatarUrl: f.avatarUrl, online: f.online, status: f.statusText, packsOpened: f.totalPacksOpened }));
+    const feedChanged = changed('feed', n.feed);
+    if (feedChanged) state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, rarity: f.rarity, createdAt: f.createdAt }));
+    if (changed('bigPulls', n.bigPulls) || (n.bigPulls === null && feedChanged) || userChanged) {
+      const rows = n.bigPulls ?? n.feed.filter((f) => f.cardId && f.rarity && BIG_PULL_RARITIES.includes(f.rarity));
+      state.bigPulls = rows.map(
+        (f): BigPull => ({
+          id: f._id,
+          userId: f.userId,
+          userName: f.displayName,
+          avatarUrl: f.avatarUrl,
+          cardId: f.cardId!,
+          cardName: f.cardName ?? '',
+          rarity: f.rarity!,
+          mintNumber: f.mintNumber,
+          createdAt: f.createdAt,
+          mine: !!n.user && f.userId === n.user._id,
+        }),
+      );
+    }
+    if (changed('sealed', n.sealedPack)) state.sealed = n.sealedPack ? toSealed(n.sealedPack) : null;
+    if (changed('trades', n.trades)) state.trades = { incoming: n.trades.incoming.map(toTrade), outgoing: n.trades.outgoing.map(toTrade) };
     state.missions = n.missions;
     listeners.forEach((fn) => fn(state));
   });
@@ -204,3 +222,5 @@ export function createOnlineBackend(): GameBackend {
 
 /** Vrai si le serveur Convex est configuré (`VITE_CONVEX_URL` dans .env.local). */
 export const onlineConfigured = () => net.state.configured;
+/** Serveur injoignable (pas de réponse depuis ~8 s) : à distinguer d'un joueur déconnecté (bandeau de l'en-tête). */
+export const serverDown = () => net.state.serverDown;

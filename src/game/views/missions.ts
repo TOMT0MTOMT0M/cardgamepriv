@@ -2,7 +2,7 @@ import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import { MISSION_BONUS, missionLabel, missionsReady, type Mission } from '../../core/missions';
 import { SUBTHEMES, subthemeById } from '../../core/sets/themes';
-import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
+import { CLOSE_X, busyButton, errMsg, esc, fmtDelay, h, keepFocus, loginPrompt, panelHidden, panelShown, plural, toast } from '../ui';
 import { dailyMissionCoins, weeklyLabel, weeklyReady, type WeeklyMission } from '../../core/weekly';
 import { fmtCoins } from '../../core/economy';
 import { COIN_ICON } from './wallet';
@@ -13,11 +13,6 @@ import { COIN_ICON } from './wallet';
  * Une fois par jour, on peut changer une mission. Un petit message prévient quand une mission est terminée.
  */
 export const MISSION_ICON = `<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><path d="M17.6 6.4 21 3M18.4 3.4 21 3l-.4 2.6"/></svg>`;
-
-const fmtLeft = (ms: number) => {
-  const m = Math.max(1, Math.round(ms / 60000));
-  return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
-};
 
 /** Où aller pour avancer cette mission (bouton « Go ») : boutique (bonne fiche), contrats, échanges. */
 function missionLink(m: Mission): { href: string; label: string } {
@@ -43,6 +38,8 @@ export function createMissions(backend: GameBackend, shell: Shell) {
   const pop = h('div', 'missions-pop');
   pop.setAttribute('role', 'dialog');
   pop.setAttribute('aria-label', 'Missions du jour');
+  pop.id = 'pop-missions';
+  pop.inert = true; // fermé : ni focus ni lecteur d'écran
   const veil = h('div', 'um-veil');
   document.body.append(veil, pop);
   let on = false;
@@ -79,15 +76,18 @@ export function createMissions(backend: GameBackend, shell: Shell) {
   }
 
   function render() {
+    if (on) keepFocus(pop, draw);
+  }
+  function draw() {
     const s = backend.state.missions;
     if (!on) return;
     pop.innerHTML = '';
     if (!s) {
-      pop.innerHTML = '<div class="msn-head"><b>Missions du jour</b></div><div class="muted">Connecte-toi pour recevoir tes missions.</div>';
+      pop.innerHTML = `<div class="msn-head"><b>Missions du jour</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi pour recevoir tes missions.')}`;
       return;
     }
     const allClaimed = s.list.every((m) => m.claimed);
-    pop.insertAdjacentHTML('beforeend', `<div class="msn-head"><b>Missions du jour</b><span>nouvelles dans ${fmtLeft(s.resetAt - Date.now())}</span></div>`);
+    pop.insertAdjacentHTML('beforeend', `<div class="msn-head"><b>Missions du jour</b><span>nouvelles dans ${fmtDelay(s.resetAt - Date.now())}</span>${CLOSE_X}</div>`);
     for (const m of s.list) pop.append(row(m, s.rerolled));
     const bonus = h('div', `msn-bonus${allClaimed ? ' ready' : ''}${s.bonusClaimed ? ' claimed' : ''}`);
     bonus.innerHTML = s.bonusClaimed
@@ -109,7 +109,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
     // missions de la semaine (spec économie) : ~200 pièces chacune
     const w = backend.eco.snapshot?.weekly;
     if (w) {
-      pop.insertAdjacentHTML('beforeend', `<div class="msn-head msn-week"><b>Cette semaine</b><span>nouvelles dans ${fmtLeft(w.resetAt - Date.now())}</span></div>`);
+      pop.insertAdjacentHTML('beforeend', `<div class="msn-head msn-week"><b>Cette semaine</b><span>nouvelles dans ${fmtDelay(w.resetAt - Date.now())}</span></div>`);
       for (const m of w.list) pop.append(weekRow(m));
     }
   }
@@ -133,12 +133,24 @@ export function createMissions(backend: GameBackend, shell: Shell) {
     return r;
   }
 
+  const close = () => toggle(false);
   function toggle(force?: boolean) {
-    on = force ?? !on;
+    const next = force ?? !on;
+    if (next === on) return;
+    on = next;
     pop.classList.toggle('on', on);
     veil.classList.toggle('on', on);
-    if (on) render();
+    if (on) {
+      render();
+      panelShown(pop, close); // « retour » le ferme, un seul panneau à la fois, focus dedans
+    } else panelHidden(pop, close);
   }
+  // ✕ (refait à chaque rendu : un seul écouteur sur le panneau)
+  pop.addEventListener('click', (e) => {
+    const t = e.target as Element;
+    if (t.closest('.pop-x')) toggle(false);
+    else if (t.closest('.login-cta')) backend.login();
+  });
   veil.addEventListener('click', (e) => (e.preventDefault(), e.stopPropagation(), toggle(false)));
   window.addEventListener('keydown', (e) => e.key === 'Escape' && on && toggle(false));
 
@@ -148,7 +160,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
   let lastSig = '';
   backend.onChange((st) => {
     const s = st.missions;
-    const sig = s ? JSON.stringify([s.day, s.rerolled, s.bonusClaimed, s.list.map((m) => [m.id, m.progress, m.claimed])]) : '';
+    const sig = s ? JSON.stringify([s.day, s.rerolled, s.bonusClaimed, s.list.map((m) => [m.id, m.progress, m.claimed])]) : `none:${st.ready}`;
     if (sig === lastSig) return;
     lastSig = sig;
     if (s) {

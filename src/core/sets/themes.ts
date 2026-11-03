@@ -102,6 +102,21 @@ export interface ThemeInfo {
 
 const sub = (themeId: ThemeId, id: string, label: string, code = '', artDir = '', cards: CatalogEntry[] = []): SubTheme => ({ id, label, themeId, code, artDir, cards });
 
+/**
+ * Range les entrées par clé en UNE passe (ordre d'origine conservé dans chaque paquet). Avant (audit PERF2-14) : un
+ * `filter` de tout le catalogue par sous-thème, ≈ 1 million d'itérations au démarrage (177 familles × 3 396 jeux…).
+ */
+function groupBy<T>(entries: readonly T[], key: (e: T) => string): Map<string, T[]> {
+  const out = new Map<string, T[]>();
+  for (const e of entries) {
+    const k = key(e);
+    const list = out.get(k);
+    if (list) list.push(e);
+    else out.set(k, [e]);
+  }
+  return out;
+}
+
 // ───────────────────────────────────────────── sous-thèmes (ceux sans cartes s'affichent « bientôt »)
 /**
  * Découpe un gros sous-thème en sous-thèmes d'affichage (correctif du 3 nov., même traitement que le World Pack) :
@@ -117,9 +132,10 @@ function split<T>(
   partOf: (e: T) => { id: string },
   entry: (e: T, subthemeId: string) => Omit<CatalogEntry, 'themeId' | 'subthemeId'>,
 ): SubTheme[] {
+  const byPart = groupBy(entries, (e) => partOf(e).id);
   return parts
     .map((p) => ({
-      ...sub('gaming', p.id, p.label, info.code, info.artDir, entries.filter((e) => partOf(e).id === p.id).map((e) => ({ ...entry(e, p.id), themeId: 'gaming' as const, subthemeId: p.id }))),
+      ...sub('gaming', p.id, p.label, info.code, info.artDir, (byPart.get(p.id) ?? []).map((e) => ({ ...entry(e, p.id), themeId: 'gaming' as const, subthemeId: p.id }))),
       group,
       size: entries.length,
     }))
@@ -149,10 +165,11 @@ const cs = split(
 
 /** Jeux vidéo : 1 famille (Mario, Tekken, Palworld…) = 1 sous-thème (décision du 2 nov.), regroupées à l'affichage. */
 const JV_GROUP = { id: 'jeux-video', label: JV_INFO.label, unit: 'familles' };
+const jvByFamily = groupBy(JV, (e) => e.family);
 const jeuxVideo: SubTheme[] = JV_FAMILIES.map((f) => ({
   ...sub(
     'gaming', f.id, f.label, f.code, JV_INFO.artDir,
-    JV.filter((e) => e.family === f.id).map((e) => ({ id: e.id, themeId: 'gaming', subthemeId: f.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, kind: e.kind, year: e.year, art: e.art })),
+    (jvByFamily.get(f.id) ?? []).map((e) => ({ id: e.id, themeId: 'gaming', subthemeId: f.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, kind: e.kind, year: e.year, art: e.art })),
   ),
   group: JV_GROUP,
 }));
@@ -160,10 +177,11 @@ const jeuxVideo: SubTheme[] = JV_FAMILIES.map((f) => ({
 // ── WORLD PACK V2 (5 236 cartes) : 34 sous-thèmes ; les 924 cartes de la V1 gardent leur id et leur illustration.
 // Affichage : 14 Merveilles · Ardèche · et 4 groupes (Lieux & pays, Animaux, Nourriture, Voitures) qui reprennent les ids
 // des anciens sous-thèmes (« lieux »…) : liens et missions d'avant continuent de marcher.
+const mondeBySub = groupBy(MONDE, (e) => e.sub);
 const monde: SubTheme[] = MONDE_SUBS.map((s) => ({
   ...sub(
     'monde', s.id, s.label, s.code, 'art/monde',
-    MONDE.filter((e) => e.sub === s.id).map((e) => ({ id: e.id, themeId: 'monde', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, dir: e.dir, art: e.art, label: e.label })),
+    (mondeBySub.get(s.id) ?? []).map((e) => ({ id: e.id, themeId: 'monde', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, dir: e.dir, art: e.art, label: e.label })),
   ),
   ...(s.group ? { group: { id: s.group, label: MONDE_GROUPS[s.group] } } : {}),
 }));
@@ -171,8 +189,7 @@ const monde: SubTheme[] = MONDE_SUBS.map((s) => ({
 // ── SPORT PACK (7 708 cartes, SPEC-THEME-SPORT v5.1) : 114 sous-thèmes (« Football — Premier League », « Esport — LoL »…,
 // imprimés en grand sur la carte), regroupés à l'affichage en 10 (Football, Esport, Sports collectifs…). Le groupe « esport »
 // reprend l'id de l'ancien sous-thème vide. Numéro = n° de l'Excel, sur 7 708 (« 0123/7708 »). GÉNÉRÉ : scripts/make-sport.py.
-const sportBySub = new Map<string, SportEntry[]>();
-for (const e of SPORT) (sportBySub.get(e.sub) ?? sportBySub.set(e.sub, []).get(e.sub)!).push(e);
+const sportBySub: Map<string, SportEntry[]> = groupBy(SPORT, (e) => e.sub);
 const sport: SubTheme[] = SPORT_SUBS.map((s) => ({
   ...sub(
     'sport', s.id, s.label, s.code, 'art/sport',
@@ -300,8 +317,19 @@ export interface SubthemeView {
   group: boolean;
 }
 
-/** Sous-thèmes d'un thème pour l'affichage (ordre conservé) : ceux d'un même groupe n'en font qu'un. */
+const VIEWS = new WeakMap<ThemeInfo, SubthemeView[]>();
+
+/**
+ * Sous-thèmes d'un thème pour l'affichage (ordre conservé) : ceux d'un même groupe n'en font qu'un. Calculé une fois
+ * par thème (les catalogues ne changent pas en cours de route) ; chaque appel reçoit sa propre liste (copie).
+ */
 export function subthemeViews(t: ThemeInfo): SubthemeView[] {
+  let views = VIEWS.get(t);
+  if (!views) VIEWS.set(t, (views = buildViews(t)));
+  return views.slice();
+}
+
+function buildViews(t: ThemeInfo): SubthemeView[] {
   const out: SubthemeView[] = [];
   const groups = new Map<string, SubthemeView>();
   for (const s of t.subthemes) {
@@ -316,7 +344,7 @@ export function subthemeViews(t: ThemeInfo): SubthemeView[] {
       out.push(g);
     }
     g.subs.push(s);
-    g.cards = g.cards.concat(s.cards);
+    for (const c of s.cards) g.cards.push(c); // (avant : `concat` à chaque famille → quadratique sur les 177 familles JV)
   }
   return out;
 }

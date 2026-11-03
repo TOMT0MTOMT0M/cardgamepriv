@@ -1,5 +1,5 @@
 import { Timer, type WebGPURenderer } from 'three/webgpu';
-import GUI from 'lil-gui';
+import type GUI from 'lil-gui';
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../core/Experiment';
 import { Bag } from '../core/bag';
@@ -7,6 +7,8 @@ import { Input } from '../core/input';
 import { Sfx } from '../core/audio';
 import { applyRendererDefaults, backendName, createRenderer, isTouch, preferredBackend, preferredQuality, resolveDpr } from '../core/renderer';
 import type { RarityId } from '../core/rarity';
+import { configureArt } from '../core/art';
+import { setFaceQuality } from './scenes/cardFace';
 
 /**
  * Hôte 3D du jeu : UN renderer WebGPU plein écran derrière l'interface, et des scènes (même contrat que les expériences
@@ -45,13 +47,22 @@ export interface Shell {
 export async function createShell(host: HTMLElement, overlayHost: HTMLElement): Promise<Shell> {
   const quality = preferredQuality();
   const mobile = quality === 'mobile';
+  /*
+   * Mémoire des calques (iOS plafonne la mémoire TOTALE des canvas : au-delà, plus aucune carte ne se peint) :
+   * aucune illustration préchargée au démarrage (chaque scène charge celles de SES cartes — plus de ~40 PNG ni de
+   * photo de Bébou d'office), cache des illustrations borné en octets, sources plafonnées à la taille affichée.
+   */
+  configureArt({ preloadImages: false, imageBytes: mobile ? 40e6 : 160e6, maxImageSide: mobile ? 1024 : 1600, keepSilhouettes: !mobile });
+  setFaceQuality(quality);
   const renderer = await createRenderer(preferredBackend(), { mobile });
   const canvas = renderer.domElement;
   canvas.className = 'gl';
   host.append(canvas);
   const input = new Input(canvas);
   const sfx = new Sfx();
-  const gui = new GUI({ autoPlace: false }); // les scènes du labo ajoutent leurs réglages : ici, jamais affichés
+  // les scènes du labo ajoutent leurs réglages (lil-gui) : dans le jeu, jamais affichés → un bouchon qui accepte tout
+  // (chaînage .add().name().onChange()…) au lieu d'embarquer lil-gui et un panneau DOM caché par scène
+  const gui = guiStub();
   gsap.ticker.lagSmoothing(0);
   const timer = new Timer();
   timer.connect(document);
@@ -59,10 +70,11 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   let current: string | null = null;
   let dimmed = false;
 
-  // son : activé au premier geste (le navigateur l'exige), coupé si le joueur l'a coupé
+  // son : actif par défaut, démarré au premier geste (le navigateur l'exige) ; coupé si le joueur l'a coupé (bouton 🔈,
+  // mémorisé `bebou.sound` = '0'). Coupé ou onglet caché, le contexte audio est en veille (audio.ts) : 0 CPU audio.
   let soundPref = true;
   try {
-    soundPref = localStorage.getItem('bebou.sound') !== '0';
+    soundPref = soundOn();
     const v = Number(localStorage.getItem('bebou.volume'));
     if (Number.isFinite(v) && localStorage.getItem('bebou.volume') !== null) sfx.setVolume(v);
   } catch {
@@ -114,6 +126,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   window.addEventListener('resize', resize);
 
   renderer.setAnimationLoop(() => {
+    if (document.hidden) return; // onglet caché : rien (certains navigateurs servent encore quelques images)
     timer.update();
     const dt = Math.min(timer.getDelta(), 1 / 20);
     const t = timer.getElapsed();
@@ -193,7 +206,19 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     show(key) {
       if (key === current) return;
       resetPerf(); // une nouvelle scène compile : on remesure
-      if (current) scenes.get(current)!.overlay.hidden = true;
+      if (current) {
+        const prev = scenes.get(current)!;
+        prev.overlay.hidden = true;
+        // téléphone : la scène quittée rend ses cibles plein écran (recréées à son prochain affichage, mêmes formats
+        // → mêmes pipelines) — sinon chaque scène déjà vue garde ~100 Mo de GPU
+        if (mobile) {
+          try {
+            (prev.exp as Experiment & { suspend?(): void }).suspend?.();
+          } catch (e) {
+            console.warn('[jeu] suspend', current, e);
+          }
+        }
+      }
       canvas.style.cursor = ''; // chaque scène remet le sien
       current = key;
       if (key) {
@@ -261,6 +286,7 @@ export const soundVolume = (): number => {
   }
 };
 
+/** Son activé ? Oui, sauf si le joueur l'a coupé lui-même (`bebou.sound` = '0'). */
 export const soundOn = (): boolean => {
   try {
     return localStorage.getItem('bebou.sound') !== '0';
@@ -268,3 +294,13 @@ export const soundOn = (): boolean => {
     return true;
   }
 };
+
+/** Remplaçant de lil-gui : toute propriété est une fonction qui renvoie le bouchon (chaînage illimité). */
+function guiStub(): GUI {
+  const stub: unknown = new Proxy(function () {}, {
+    get: (_t, k) => (k === Symbol.toPrimitive ? () => '' : k === 'then' ? undefined : stub),
+    apply: () => stub,
+    set: () => true,
+  });
+  return stub as GUI;
+}

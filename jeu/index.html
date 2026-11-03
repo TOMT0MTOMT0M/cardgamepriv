@@ -2,7 +2,9 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <!-- zoom autorisé (accessibilité) ; le double-tap ne zoome pas : touch-action: manipulation (style.css) ;
+         Android Chrome : le clavier réduit la page (le volet d'échange et ses champs restent visibles, UX5-18) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#0b0908" />
     <meta name="color-scheme" content="dark" />
     <title>Bébou — cartes</title>
@@ -22,6 +24,10 @@
     <link rel="apple-touch-icon" href="../icons/icon-180.png" />
     <link rel="manifest" href="../manifest.webmanifest" />
     <meta name="apple-mobile-web-app-title" content="Bébou" />
+    <!-- ajouté à l'écran d'accueil : plein écran (plus de barre d'URL ni de geste « page précédente » de Safari) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   </head>
   <body>
     <!-- écran de chargement visible dès la première image, pendant que le jeu (3D) se télécharge ; main.ts le reprend -->

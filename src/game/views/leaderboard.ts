@@ -12,7 +12,7 @@ import { errMsg, esc, fmtN, fmtPct, h, plural, toast } from '../ui';
 type Board = 'pct' | 'mythic' | 'packs' | 'trades' | 'streak';
 const BOARDS: Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; crown?: boolean }> = [
   { id: 'pct', label: 'Complétion', crown: true, value: (r) => r.pct, unit: (r) => `${fmtPct(r.pct)} · ${fmtN(r.uniques)} cartes` },
-  { id: 'mythic', label: '6★ & secrets', value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${r.mythics} × 6★${r.secrets ? ` · ✷ ${r.secrets}` : ''}` },
+  { id: 'mythic', label: '6★ & secrets', value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${fmtN(r.mythics)} × 6★${r.secrets ? ` · ✷ ${fmtN(r.secrets)}` : ''}` },
   { id: 'packs', label: 'Boosters', value: (r) => r.packsOpened, unit: (r) => plural(r.packsOpened, 'booster') },
   { id: 'trades', label: 'Échanges', value: (r) => r.tradesDone, unit: (r) => plural(r.tradesDone, 'échange', 'échanges') },
   { id: 'streak', label: 'Série', value: (r) => r.streak, unit: (r) => plural(r.streak, 'jour') },
@@ -35,10 +35,16 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
   let board: Board = 'pct';
   let rows: LeaderRow[] | null = null;
 
+  // catégories qui débordent (« Échanges », « Série » cachés à 360 px) : fondu au bord droit (audit UX3-12)
+  const boardsRow = el.querySelector<HTMLElement>('.lb-boards')!;
+  const markOvf = () => boardsRow.classList.toggle('ovf', boardsRow.scrollLeft + boardsRow.clientWidth < boardsRow.scrollWidth - 4);
+  boardsRow.addEventListener('scroll', markOvf, { passive: true });
+  el.querySelectorAll<HTMLButtonElement>('.lb-boards button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.b === 'pct')));
   el.querySelectorAll<HTMLButtonElement>('.lb-boards button').forEach((b) =>
     b.addEventListener('click', () => {
       board = b.dataset.b as Board;
-      el.querySelectorAll<HTMLButtonElement>('.lb-boards button').forEach((x) => x.classList.toggle('on', x === b));
+      el.querySelectorAll<HTMLButtonElement>('.lb-boards button').forEach((x) => (x.classList.toggle('on', x === b), x.setAttribute('aria-pressed', String(x === b))));
+      b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
       shell?.sfx.tick(1.2, 0.04);
       render();
     }),
@@ -50,6 +56,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
   };
 
   function render() {
+    requestAnimationFrame(markOvf);
     const b = BOARDS.find((x) => x.id === board)!;
     const sorted = [...(rows ?? [])].sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, 'fr'));
     const me = backend.state.user?.id;
@@ -71,11 +78,13 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       row.append(a);
     }
     podiumEl.append(row);
+    // la liste reprend APRÈS le podium (les 3 premiers n'y sont plus répétés : audit UX3-17)
     for (const [i, r] of sorted.entries()) {
+      if (i < 3) continue;
       const line = h('a', `lb-row${r.id === me ? ' is-me' : ''}${i < 3 ? ` top${i + 1}` : ''}`);
       line.href = `#/profil/${encodeURIComponent(r.id)}`;
       const t = titleOf(r.cosmetics.title);
-      line.innerHTML = `<span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${r.id === me ? ' <i>(toi)</i>' : ''}</span>${t ? `<small>${esc(t.label)}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
+      line.innerHTML = `<span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small>${esc(t.label)}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
       listEl.append(line);
     }
     if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">👑 Le classement roi : la complétion globale de la collection.</div>');

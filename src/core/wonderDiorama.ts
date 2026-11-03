@@ -78,6 +78,7 @@ export function preloadWonderModel(cardId: string): Promise<unknown> {
   return Promise.all([preloadModel(cardId), preloadEnv(cardId)]);
 }
 import type { N } from './tsl';
+import { compilePassAsync } from './post';
 
 /** Vérifie si une carte fait partie des 14 Merveilles du Monde (Secrets du World Pack). */
 export function isWonderCard(cardId: string): boolean {
@@ -791,7 +792,13 @@ export function createWonderCardInstance(
   dioRoot.traverse((o) => (o.frustumCulled = false));
 
   // 2. Portail dans la fenêtre (vitre clearcoat, ombre intérieure du cadre)
-  const portalPass = pass(dioScene, camera);
+  // téléphone : échantillons MSAA résolus sur la puce puis jetés (couleur ET profondeur) au lieu d'être écrits en mémoire
+  // à chaque image — l'anticrénelage du monument est conservé (rien ne relit ces cibles)
+  const portalPass = pass(
+    dioScene,
+    camera,
+    quality === 'mobile' ? { storeMultisampledColorBuffer: false, storeMultisampledDepthBuffer: false, storeMultisampledStencilBuffer: false, resolveDepthBuffer: false, resolveStencilBuffer: false } : undefined,
+  );
   if (quality === 'mobile') portalPass.setResolutionScale(0.8);
   const portal = portalPass.context({ getUV: () => screenUV }) as unknown as N;
   const fr = texture(art.frame);
@@ -808,6 +815,9 @@ export function createWonderCardInstance(
   frontMat.clearcoatRoughnessNode = float(0.02);
 
   const cardMesh = new Mesh(cardGeometry, [frontMat, backMaterial, edgeMaterial]);
+  // pipelines du monde (sol, crête, ciel, monument) compilés tout de suite pour la vraie cible de la passe portail, en
+  // tâche de fond, au lieu de la 1re image du diorama
+  if (renderer && 'compileAsync' in renderer) void compilePassAsync(renderer as never, portalPass);
 
   let depth = depthScale;
   const M = new Matrix4();

@@ -275,11 +275,16 @@ export interface ContractResult {
 
 export const cardKey = (c: { cardId: string; rarity: string }) => `${c.cardId}:${c.rarity}`;
 
+const SIGS = new WeakMap<readonly PlayerCard[], string>();
 /**
  * Empreinte de la collection : les vues ne se redessinent que si elle change (en ligne, le serveur pousse aussi les
  * présences des amis, le fil… : sans ce garde-fou, la grille entière serait refaite à chaque petite mise à jour).
+ * Mémorisée par tableau (audit PERF2-08) : les deux backends remplacent `state.collection` quand la collection change,
+ * et seulement dans ce cas — elle n'est plus recalculée 4 à 5 fois sur toute la collection à chaque mise à jour.
  */
 export function collectionSig(s: GameState): string {
+  const hit = SIGS.get(s.collection);
+  if (hit !== undefined) return hit;
   let n = 0;
   let h = 0;
   for (const c of s.collection) {
@@ -287,5 +292,7 @@ export function collectionSig(s: GameState): string {
     const k = `${c.cardId}:${c.rarity}:${c.count}`;
     for (let i = 0; i < k.length; i++) h = (Math.imul(h, 31) + k.charCodeAt(i)) | 0;
   }
-  return `${s.collection.length}/${n}/${h}`;
+  const sig = `${s.collection.length}/${n}/${h}`;
+  SIGS.set(s.collection, sig);
+  return sig;
 }

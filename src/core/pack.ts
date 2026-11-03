@@ -241,7 +241,29 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   m.fillStyle = 'rgb(0,0,255)';
   m.fillRect(0, PH - tearY - 2, PW, 4);
 
-  // froissé : grands plis + froissé fin, cuit une fois (bien moins cher qu'un bruit par pixel)
+  const C = crinkleCanvas();
+
+  // téléphone : anisotropie 4 (le booster est vu presque de face) — moitié moins de lectures par pixel filtré
+  const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
+  const tex = (c: HTMLCanvasElement, color: boolean) => {
+    const t = new CanvasTexture(c);
+    t.colorSpace = color ? SRGBColorSpace : NoColorSpace;
+    t.anisotropy = aniso;
+    return t;
+  };
+  const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false);
+  crinkle.wrapS = crinkle.wrapT = 1000; // RepeatWrapping
+  return { front, back, masks, crinkle, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
+}
+
+let crinkleShared: { c: HTMLCanvasElement } | null = null;
+/**
+ * Froissé : grands plis + froissé fin, cuit une fois (bien moins cher qu'un bruit par pixel). Graine fixe → identique
+ * pour tous les boosters : une seule toile partagée (avant : une par booster, 1 Mo et 90 ellipses floutées chacune).
+ * Chaque booster garde sa propre texture (libérée avec lui ; une texture jamais affichée n'est jamais envoyée au GPU).
+ */
+function crinkleCanvas(): { c: HTMLCanvasElement } {
+  if (crinkleShared && crinkleShared.c.width > 0) return crinkleShared;
   const C = makeCanvas(512, 512);
   {
     const cg = C.g;
@@ -278,16 +300,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
     cg.filter = 'none';
     applyGrain(cg, 512, 512, 0.25, 4, 0);
   }
-
-  const tex = (c: HTMLCanvasElement, color: boolean) => {
-    const t = new CanvasTexture(c);
-    t.colorSpace = color ? SRGBColorSpace : NoColorSpace;
-    t.anisotropy = 8;
-    return t;
-  };
-  const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false);
-  crinkle.wrapS = crinkle.wrapT = 1000; // RepeatWrapping
-  return { front, back, masks, crinkle, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
+  return (crinkleShared = C);
 }
 
 /** Matériau de booster : plastique métallisé froissé, soudures crantées. */

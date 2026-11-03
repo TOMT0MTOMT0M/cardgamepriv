@@ -1,4 +1,5 @@
 import type { CardData, CardPalette } from '../cardData';
+import { ctx2d, onCanvasPressure, releaseCanvas } from './canvas';
 
 /**
  * Illustrations bitmap des cartes (`subject: 'image'`).
@@ -42,12 +43,72 @@ export interface ImageReport {
 }
 
 const pending = new Map<string, Promise<CardImage>>();
+/** Illustrations prêtes, de la plus ancienne à la plus récemment utilisée (ordre d'insertion de la Map = LRU). */
 const ready = new Map<string, CardImage>();
 const errors = new Map<string, string>();
 
+/**
+ * Bornes mémoire (réglées par le jeu, cf. `configureArt`) : le labo garde tout (planche 038 = tout le set) ;
+ * le jeu borne le cache en octets (chaque illustration = sa toile, + 2 silhouettes de même taille si on les garde :
+ * tout était gardé à vie avant) et la taille traitée.
+ */
+export const imageLimits = { bytes: Infinity, maxSide: 2048, keepSilhouettes: true };
+/** Toujours gardées, quel que soit le budget : les plus récentes (les 5 cartes d'un pack + la visionneuse). */
+const MIN_KEEP = 6;
+const releasers = new Set<(c: HTMLCanvasElement) => void>();
+
+export function setImageLimits(o: { bytes?: number; maxSide?: number; keepSilhouettes?: boolean }): void {
+  if (o.bytes != null) imageLimits.bytes = Math.max(4e6, o.bytes);
+  if (o.maxSide != null) imageLimits.maxSide = Math.max(256, o.maxSide);
+  if (o.keepSilhouettes != null) imageLimits.keepSilhouettes = o.keepSilhouettes;
+  trimImageCache();
+}
+
+/** Appelé à l'éviction d'une illustration (les silhouettes de imageSubject.ts s'y libèrent). */
+export function onImageEvicted(fn: (c: HTMLCanvasElement) => void): void {
+  releasers.add(fn);
+}
+
+const cost = (im: CardImage) => im.canvas.width * im.canvas.height * 4 * (imageLimits.keepSilhouettes ? 3 : 1);
+
+/**
+ * Retire les illustrations les moins récemment utilisées tant que le cache dépasse le budget (`keep` = nombre maximal
+ * d'entrées, 0 = tout vider en cas de manque de mémoire). Leurs toiles sont vidées tout de suite.
+ */
+export function trimImageCache(keep = Infinity): void {
+  let total = 0;
+  for (const im of ready.values()) total += cost(im);
+  while (ready.size > 0 && (ready.size > keep || (total > imageLimits.bytes && ready.size > MIN_KEEP))) {
+    const [url, im] = ready.entries().next().value as [string, CardImage];
+    total -= cost(im);
+    ready.delete(url);
+    pending.delete(url); // on pourra la recharger (le navigateur la garde en cache HTTP)
+    releasers.forEach((fn) => fn(im.canvas));
+    releaseCanvas(im.canvas);
+  }
+}
+/** Oublie une illustration dont on n'a plus besoin (miniature déjà peinte et mise en cache) : toile rendue tout de suite. */
+export function releaseCardImage(url: string): void {
+  const im = ready.get(url);
+  if (!im) return;
+  ready.delete(url);
+  pending.delete(url);
+  releasers.forEach((fn) => fn(im.canvas));
+  releaseCanvas(im.canvas);
+}
+
+// mémoire des canvas saturée (iOS) : on ne garde que la plus récente (celle qu'on est peut-être en train de peindre)
+onCanvasPressure(() => trimImageCache(1));
+
 /** Image prête (ou null si pas encore chargée / en échec). */
 export function cardImage(url: string | undefined): CardImage | null {
-  return url ? (ready.get(url) ?? null) : null;
+  if (!url) return null;
+  const im = ready.get(url);
+  if (!im) return null;
+  // utilisée : passe en tête du LRU
+  ready.delete(url);
+  ready.set(url, im);
+  return im;
 }
 
 export interface LoadOptions {
@@ -75,6 +136,7 @@ export function loadCardImage(url: string, opts: LoadOptions = {}): Promise<Card
       }
       const out = processImage(url, img, opts.key ?? true);
       ready.set(url, out);
+      trimImageCache();
       errors.delete(url);
       return out;
     })();
@@ -142,12 +204,20 @@ const WHITE = 248;
 const EDGE_LO = 170;
 
 function processImage(url: string, img: HTMLImageElement, allowKey = true): CardImage {
-  const w = img.naturalWidth, h = img.naturalHeight;
+  const nw = img.naturalWidth, nh = img.naturalHeight;
+  // plafond : la carte n'affiche jamais plus de ~1 000 px d'illustration → inutile de détourer / analyser une photo de
+  // 2 000 px en JS sur le thread principal (sources de 960 px : inchangées)
+  const k = Math.min(1, imageLimits.maxSide / Math.max(nw, nh));
+  const w = Math.max(1, Math.round(nw * k)), h = Math.max(1, Math.round(nh * k));
   const src = document.createElement('canvas');
   src.width = w;
   src.height = h;
-  const g = src.getContext('2d', { willReadFrequently: true })!;
-  g.drawImage(img, 0, 0);
+  const g = ctx2d(src, { willReadFrequently: true });
+  if (k < 1) {
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, 0, 0, w, h);
+  } else g.drawImage(img, 0, 0);
   const id = g.getImageData(0, 0, w, h);
   const d = id.data;
 
@@ -181,17 +251,18 @@ function processImage(url: string, img: HTMLImageElement, allowKey = true): Card
   const canvas = document.createElement('canvas');
   canvas.width = cw;
   canvas.height = ch;
-  canvas.getContext('2d')!.drawImage(src, x0, y0, cw, ch, 0, 0, cw, ch);
+  ctx2d(canvas).drawImage(src, x0, y0, cw, ch, 0, 0, cw, ch);
+  releaseCanvas(src); // toile de travail (getImageData) : sa mémoire est rendue tout de suite
 
   const { hue, chroma, body } = dominant(d, w, h);
   return {
     url,
     canvas,
-    srcW: w,
-    srcH: h,
+    srcW: nw,
+    srcH: nh,
     keyed,
     keyedRatio: removed / (w * h),
-    lowRes: Math.max(w, h) < 256,
+    lowRes: Math.max(nw, nh) < 256,
     opaque: clear / (w * h) < 0.01,
     hue,
     chroma,

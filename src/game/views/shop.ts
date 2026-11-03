@@ -7,7 +7,7 @@ import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, THEMES, catalogEntry, numberingSize, subthemeById, themeById } from '../../core/sets/themes';
 import { cardById } from '../../core/cardData';
 import { rarity } from '../../core/rarity';
-import { cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
+import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { createPackSheet, shopPacks } from './packSheet';
 import { preloadArt } from '../preload';
 import { isTouch } from '../../core/renderer';
@@ -45,6 +45,23 @@ export interface ShopView {
   busy(): boolean;
 }
 
+/**
+ * Ouverture en série : boosters déjà ouverts ET crédités (`done`) + celui en cours. `revealing` : crédit en cours
+ * (« Tout passer » l'attend au lieu de re-tirer le même booster scellé) ; `pending` : booster montré mais pas crédité
+ * (réseau) — il reste scellé côté serveur, la série s'arrête là.
+ */
+interface Batch {
+  req: PackRequest;
+  total: number;
+  done: SealedPack[];
+  current: SealedPack | null;
+  hi: boolean;
+  all: boolean;
+  skipping: boolean;
+  revealing: Promise<boolean> | null;
+  pending: { pack: SealedPack; err: unknown } | null;
+}
+
 const keyOf = (p: SealedPack) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? 'gaming');
 
 export function createShopView(backend: GameBackend, shell: Shell, opening: OpeningScene, go: (route: string) => void, getViewer: () => Promise<ViewerScene>): ShopView {
@@ -65,8 +82,50 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    * serveur qu'une fois montré (pas d'annonce avant que le joueur ait vu sa carte) ; « Tout passer » tire et crédite
    * le reste d'un coup.
    */
-  let batch: { req: PackRequest; total: number; done: SealedPack[]; current: SealedPack | null; hi: boolean; all: boolean; skipping: boolean } | null = null;
+  let batch: Batch | null = null;
   let secretExp: { replay?(): void } | null = null;
+  const newBatch = (req: PackRequest, total: number, current: SealedPack, hi: boolean, all: boolean): Batch => ({ req, total, done: [], current, hi, all, skipping: false, revealing: null, pending: null });
+
+  /**
+   * Crédite un booster montré (audit UX2-05) : `revealPack` réessayé (0,5 / 1,5 / 4 s, ou dès le retour du réseau), le
+   * serveur étant idempotent (un booster déjà révélé est simplement renvoyé). Succès : le booster rejoint `b.done` (une
+   * seule fois, même si deux appels se croisent). Échec définitif : il reste SCELLÉ côté serveur (on le retrouvera tel
+   * quel à la boutique) → `b.pending`, la série s'arrête, et surtout il n'est jamais compté dans le récap.
+   */
+  function credit(b: Batch, p: SealedPack): Promise<boolean> {
+    if (b.done.some((d) => d.id === p.id)) return Promise.resolve(true);
+    const run = (async () => {
+      const waits = [500, 1500, 4000];
+      for (let i = 0; ; i++) {
+        try {
+          await backend.revealPack(p.id);
+          if (!b.done.some((d) => d.id === p.id)) b.done.push(p);
+          if (b.pending?.pack.id === p.id) b.pending = null;
+          return true;
+        } catch (e) {
+          if (i >= waits.length) {
+            b.pending = { pack: p, err: e };
+            return false;
+          }
+          if (i === 0 && mode === 'opening') {
+            hint.hidden = false;
+            hintTxt.textContent = 'Enregistrement des cartes…';
+          }
+          await new Promise<void>((r) => {
+            const done = () => (clearTimeout(t), window.removeEventListener('online', done), r());
+            const t = window.setTimeout(done, waits[i]);
+            window.addEventListener('online', done);
+          });
+        }
+      }
+    })();
+    b.revealing = run;
+    void run.finally(() => b.revealing === run && (b.revealing = null));
+    return run;
+  }
+  /** Message exact quand un booster n'a pas pu être crédité (il n'est PAS perdu : il reste scellé, à rouvrir). */
+  const pendingMsg = (e: unknown) =>
+    `${typeof navigator !== 'undefined' && navigator.onLine === false ? 'Pas de réseau' : `Enregistrement impossible (${errMsg(e)})`} : ce booster n’est pas encore crédité. Tu le retrouveras tel quel à la boutique (bouton Ouvrir).`;
 
   el.innerHTML = `
     <div class="shop-home">
@@ -75,10 +134,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         <div class="packs-row" role="listbox" aria-label="Boosters"></div>
       </div>
       <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary">Ouvrir</button></div>
+      <div class="home-cta" hidden><button class="btn-primary"><span class="hc-t">Ouvrir</span><small class="hc-s"></small></button><p class="hc-tip"></p></div>
       <div class="shop-right"></div>
     </div>
     <div class="hud" hidden>
       <div class="hud-count"></div>
+      <div class="coach" hidden aria-hidden="true"><i></i></div>
       <!-- bas de l'écran : fiche de la carte, indication, boutons — empilés, ils ne peuvent plus se chevaucher -->
       <div class="hud-bottom">
         <div class="card-info" hidden></div>
@@ -116,6 +177,72 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const sumBg = el.querySelector<HTMLElement>('.sum-bg')!;
   const fanBadges = el.querySelector<HTMLElement>('.fan-badges')!;
   hintEl.textContent = TOUCH ? 'Touche une pochette pour voir ce qu’elle contient' : 'Clique sur un pack pour voir ce qu’il contient · ↑ ↓ pour changer';
+  const hudBottom = el.querySelector<HTMLElement>('.hud-bottom')!;
+  const coach = el.querySelector<HTMLElement>('.coach')!;
+  const cta = el.querySelector<HTMLElement>('.home-cta')!;
+  const ctaBtn = cta.querySelector<HTMLButtonElement>('button')!;
+
+  /**
+   * (audit UX2-06) Zone libre pour la carte montrée : hauteur de l'en-tête + compteur en haut, et du panneau du bas
+   * (fiche de la carte, indication, boutons). Paysage (panneau sur le côté, CSS lot B) : rien en bas.
+   */
+  let infoH = 116;
+  function syncInsets() {
+    if (mode !== 'opening') return;
+    const W = window.innerWidth, H = window.innerHeight;
+    const hb = hudBottom.getBoundingClientRect();
+    const side = hb.width > 0 && hb.left > W * 0.4;
+    const top = Math.max(count.getBoundingClientRect().bottom, 60) + 8;
+    const bottom = side ? 0 : H - hb.top + (info.hidden ? infoH + 12 : 0);
+    opening.setInsets(top, bottom);
+  }
+  window.addEventListener('resize', () => requestAnimationFrame(syncInsets));
+
+  /**
+   * (audit UX1-13) Accueil téléphone : un vrai bouton « Ouvrir » sous le booster (il ouvre la fiche du booster choisi),
+   * et tant qu'aucun booster n'a jamais été ouvert, une phrase qui dit quoi faire.
+   */
+  function syncCta() {
+    const s = backend.state;
+    const u = s.user;
+    const show = mode === 'pick' && !s.sealed && !(s.mode === 'online' && !u);
+    cta.hidden = !show;
+    if (!show) return;
+    const b = list.find((x) => x.key === selected);
+    const bal = u ? liveRegen(u).balance : 0;
+    cta.querySelector('.hc-t')!.textContent = b?.soon ? `Voir le ${b.name}` : bal > 0 ? `Ouvrir le ${b?.name ?? 'booster'}` : `Voir le ${b?.name ?? 'booster'}`;
+    // premier booster jamais ouvert : la 2e ligne du bouton le dit (une phrase de plus ne tient pas sous le booster en 360×740)
+    const first = !!u && u.totalPacksOpened === 0 && bal > 0 && !b?.soon;
+    cta.querySelector('.hc-s')!.textContent = b?.soon ? 'bientôt' : first ? `ton premier booster t’attend · ${bal} en réserve` : bal > 0 ? `${bal} en réserve` : 'réserve vide · en recharge';
+    cta.querySelector<HTMLElement>('.hc-tip')!.hidden = true;
+  }
+  ctaBtn.addEventListener('click', () => {
+    haptics.pulse(6);
+    if (mode === 'pick' && !sheet.isOpen()) sheet.open(selected);
+  });
+
+  /**
+   * (audit UX2-08) Aide au premier usage du geste d'ouverture, une fois par mise en scène (maintenir / glisser /
+   * toucher) : un doigt fantôme montre le geste au-dessus du booster, et disparaît au premier contact. Mémorisée.
+   */
+  const coachKey = (st: string) => `bebou.coach.${st}`;
+  function coachSeen(st: string): boolean {
+    try {
+      return localStorage.getItem(coachKey(st)) === '1';
+    } catch {
+      return true; // stockage indisponible : on ne harcèle pas à chaque booster
+    }
+  }
+  function coachDone(st: string) {
+    coach.hidden = true;
+    try {
+      localStorage.setItem(coachKey(st), '1');
+    } catch {
+      /* ignore */
+    }
+  }
+  const hideCoach = () => (coach.hidden = true);
+  window.addEventListener('pointerdown', hideCoach, { passive: true });
 
   // ── fiche du booster (overlay)
   // visuels des pochettes (face du vrai booster, rendue par la scène) : capturés une fois, dès qu'ils existent
@@ -128,7 +255,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       if (mode !== 'pick') return;
       const got = await backend.preparePack(p.req);
       pack = got;
-      batch = { req: p.req, total, done: [], current: got, hi: batch?.hi ?? false, all: false, skipping: false };
+      batch = newBatch(p.req, total, got, batch?.hi ?? false, false);
       sheet.close();
       start(got);
     },
@@ -166,6 +293,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
   }
 
+  // vignettes encodées en tâche de fond (WebP asynchrone, PERF2-18) : posées dès qu'elles sont prêtes
+  opening.onThumb = () => paintSleeves();
+
   function select(k: string, o: { dir?: 1 | -1; scroll?: boolean } = {}) {
     if (mode !== 'pick') return;
     // sens de rotation du booster : vers la droite si on avance dans la liste, vers la gauche si on recule
@@ -184,6 +314,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     });
     // téléphone : la pochette choisie revient au centre du carrousel
     if (o.scroll !== false) sleeveOf(k)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    // (audit UX2-09) booster déjà tiré d'un autre type : la scène 3D le garde (plus d'aller-retour du booster derrière la fiche)
+    const sp = backend.state.sealed;
+    if (sp && keyOf(sp) !== k) {
+      sheet.sync();
+      syncCta();
+      return;
+    }
     opening.setBooster(k, true, dir);
     opening.setBoosterSoon(!!list.find((b) => b.key === k)?.soon);
     syncState();
@@ -222,20 +359,27 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       if (keyOf(s.sealed) !== selected) select(keyOf(s.sealed));
     } else banner.hidden = true;
     sheet.sync();
+    syncCta();
   }
   backend.onChange(syncState);
-  banner.querySelector('button')!.addEventListener('click', async () => {
+  const bannerBtn = banner.querySelector<HTMLButtonElement>('button')!;
+  bannerBtn.addEventListener('click', async () => {
     shell.requestGyro();
     const sp = backend.state.sealed;
-    if (!sp || mode !== 'pick') return;
+    // (audit UX2-20) double toucher pendant la latence de preparePack : un seul départ
+    if (!sp || mode !== 'pick' || bannerBtn.disabled) return;
     const p = list.find((b) => b.key === keyOf(sp)) ?? list[2];
+    bannerBtn.disabled = true;
     try {
-      const got = await backend.preparePack(p.req);
+      const got = await busyButton(bannerBtn, backend.preparePack(p.req));
+      if (mode !== 'pick') return;
       pack = got;
-      batch = { req: p.req, total: 1, done: [], current: got, hi: false, all: false, skipping: false };
+      batch = newBatch(p.req, 1, got, false, false);
       start(got);
     } catch (e) {
       toast(errMsg(e), 'err');
+    } finally {
+      bannerBtn.disabled = false;
     }
   });
   // sous chaque pochette, un filet : la part de ses cartes déjà dans ta collection
@@ -291,10 +435,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     skipHi.classList.toggle('on', hi && !all);
     skipHi.setAttribute('aria-pressed', String(hi && !all));
     skipReveal.classList.toggle('on', all);
-    skipReveal.disabled = all;
+    skipReveal.setAttribute('aria-pressed', String(all));
+    // (audit UX2-02) une fois actif, le bouton reste cliquable pour couper la révélation auto (au lieu d'être grisé)
+    skipReveal.textContent = all ? 'Révélation auto ✓' : 'Tout révéler';
     // série : à partir du 2e booster l'emballage se brûle tout seul ; « 4★ et + » / « Tout révéler » : dès le premier
     const burn = hi || all || (!!batch && batch.done.length > 0);
     // « Tout révéler » : tout défile tout seul SAUF une mythique (rang 5) ou une secrète (6), qui gardent leur plein écran
+    // (une légendaire défile à vitesse modérée, ralenti compris : voir fastSpeed dans opening.ts)
     opening.setAuto({ burn, minRank: all ? 5 : hi ? HI_RANK : 0, reveal: all });
     if (opening.phase === 'sealed') hintTxt.textContent = burn ? 'Ouverture…' : sealedHint;
   }
@@ -305,14 +452,37 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     applyAuto();
   });
   skipReveal.addEventListener('click', () => {
-    if (!batch || mode !== 'opening' || batch.all) return;
-    batch.all = true;
+    if (!batch || mode !== 'opening') return;
+    batch.all = !batch.all;
     haptics.pulse(8);
     applyAuto();
     // emballage déjà ouvert et carte en attente : on enchaîne tout de suite
-    if (opening.phase === 'opened' || opening.phase === 'shown') opening.advance();
+    if (batch.all && (opening.phase === 'opened' || opening.phase === 'shown')) opening.advance();
   });
-  skipAll.addEventListener('click', () => void skipEverything());
+  /**
+   * (audit UX2-11) « Tout passer » crédite sans montrer et ne se rattrape pas : confirmation légère en deux temps
+   * (premier toucher → « Sûr ? », second dans les 2,5 s), et il est séparé de « Tout révéler » (voir le CSS du lot B).
+   */
+  let skipArmT = 0;
+  const disarmSkip = () => {
+    clearTimeout(skipArmT);
+    skipAll.classList.remove('armed');
+    skipAll.textContent = 'Tout passer';
+  };
+  skipAll.addEventListener('click', () => {
+    if (!batch || batch.skipping || mode !== 'opening') return;
+    if (!skipAll.classList.contains('armed')) {
+      const left = batch.total - batch.done.length;
+      skipAll.classList.add('armed');
+      skipAll.textContent = left > 1 ? `Sûr ? ${left} boosters` : 'Sûr ?';
+      haptics.pulse(8);
+      clearTimeout(skipArmT);
+      skipArmT = window.setTimeout(disarmSkip, 2500);
+      return;
+    }
+    disarmSkip();
+    void skipEverything();
+  });
 
   /** « Tout passer » : crédite le booster en cours, tire + crédite le reste de la série, puis le récap. */
   async function skipEverything() {
@@ -323,21 +493,27 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     hint.hidden = false;
     hint.classList.remove('hold');
     info.classList.remove('in');
+    const b = batch;
     try {
-      if (batch.current) {
-        await backend.revealPack(batch.current.id);
-        batch.done.push(batch.current);
-        batch.current = null;
+      // (audit UX2-05) un crédit déjà en route (fin du booster montré) est ATTENDU : sinon preparePack renverrait le même
+      // booster encore scellé, crédité et compté deux fois. Tout échec arrête la série, rien n'est compté en trop.
+      let ok = b.revealing ? await b.revealing : true;
+      if (ok && b.current) {
+        const cur = b.current;
+        b.current = null;
+        ok = await credit(b, cur);
       }
-      while (batch.done.length < batch.total) {
-        hintTxt.textContent = `Ouverture… ${batch.done.length + 1} / ${batch.total}`;
-        const p = await backend.preparePack(batch.req);
-        await backend.revealPack(p.id);
-        batch.done.push(p);
+      while (ok && b.done.length < b.total) {
+        hintTxt.textContent = `Ouverture… ${b.done.length + 1} / ${b.total}`;
+        const p = await backend.preparePack(b.req);
+        // garde : le serveur rend un booster déjà compté (scellé non crédité) → on s'arrête
+        if (b.done.some((d) => d.id === p.id)) break;
+        ok = await credit(b, p);
       }
     } catch (e) {
       toast(errMsg(e), 'err');
     }
+    if (b.pending) toast(pendingMsg(b.pending.err), 'err');
     if (secretExp) {
       shell.show('opening');
       shell.unmount('secret');
@@ -374,6 +550,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     placeFocus();
     hud.hidden = m !== 'opening';
     summary.hidden = m !== 'summary';
+    if (m !== 'pick') cta.hidden = true;
+    else syncCta();
     document.body.classList.toggle('opening', m === 'opening');
   }
 
@@ -390,15 +568,24 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     sealedHint = st === 'tear' ? HINT.tear : st === 'fan' ? HINT.tap : HINT.hold;
     hintTxt.textContent = sealedHint;
     ring.style.strokeDashoffset = '100';
+    // aide au premier geste (UX2-08) : seulement en ouverture manuelle, tant que ce geste n'a jamais réussi
+    const coachSt = st === 'burn' ? 'hold' : st;
+    const autoOpen = !!batch && (batch.hi || batch.all || batch.done.length > 0);
+    const coachOn = !autoOpen && !coachSeen(coachSt);
+    coach.className = `coach c-${coachSt}`;
+    coach.hidden = !coachOn;
+    requestAnimationFrame(syncInsets);
     let shown = 0; // index (ordre de révélation) de la dernière carte retournée
     const series = batch && batch.total > 1 ? `BOOSTER ${batch.done.length + 1}/${batch.total} · ` : '';
     skipEl.hidden = false;
     skipAll.disabled = skipHi.disabled = false;
-    if (batch) batch.all = false;
+    disarmSkip();
+    // (audit UX2-02) « Tout révéler » n'est plus remis à zéro à chaque booster : il vaut pour toute la série (comme
+    // « 4★ et + ») ; seuls back() (retour boutique) et la séquence secrète le coupent
     mythicVeil.hidden = true;
     applyAuto();
     // série (2e booster et suivants) ou « 4★ et + » : l'emballage brûle tout seul
-    if (batch && (batch.hi || batch.done.length > 0)) hintTxt.textContent = 'Ouverture…';
+    if (batch && (batch.hi || batch.all || batch.done.length > 0)) hintTxt.textContent = 'Ouverture…';
     if (series) setCount(series.replace(/ · $/, ''));
     void preloadArt(p.cards.map((c) => c.cardId)); // en parallèle de la scène : images prêtes au plus tôt
     const secret = p.cards.find((c) => rarity(c.rarity).secret);
@@ -408,6 +595,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         ring.style.strokeDashoffset = String(100 - v * 100);
       },
       onOpened() {
+        if (coachOn) coachDone(coachSt);
+        else coach.hidden = true;
         hint.classList.remove('hold');
         hintTxt.textContent = HINT.reveal;
         setCount(`${series}1 / ${p.cards.length}`);
@@ -453,7 +642,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       onSecret() {
         hud.hidden = true;
         // la séquence « Un de nous » ne se passe pas : on coupe le défilement pour la suite de la série
-        if (batch) batch.hi = false;
+        if (batch) batch.hi = batch.all = false;
         opening.setAuto({ burn: false, minRank: 0, reveal: false });
         void runSecret();
       },
@@ -495,6 +684,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       <div class="ci-sub">${subt ? esc(subt.label) : ''}${theme && !theme.secret ? ` · ${esc(theme.label)}` : ''} · n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
     void info.offsetWidth;
     info.classList.add('in');
+    // hauteur réelle du panneau : la carte suivante se placera au-dessus (UX2-06)
+    requestAnimationFrame(() => {
+      if (!info.hidden && info.offsetHeight) infoH = info.offsetHeight;
+      syncInsets();
+    });
   }
 
   /** Scène secrète (039) montée en fond dès que le pack est tiré : shaders compilés avant même la déchirure. */
@@ -528,39 +722,44 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   });
 
   async function done(p: SealedPack) {
-    if (batch?.skipping) return;
-    try {
-      await backend.revealPack(p.id);
-    } catch (e) {
-      toast(`Cartes pas encore enregistrées : ${errMsg(e)} — elles le seront à la prochaine ouverture.`, 'err');
+    const b = batch ?? (batch = newBatch(openingReq(p), 1, p, false, false));
+    if (b.skipping) return;
+    if (b.current?.id === p.id) b.current = null;
+    const ok = await credit(b, p);
+    if (batch !== b || b.skipping) return; // « Tout passer » a pris la main (il attend ce crédit et fait le récap)
+    if (!ok) {
+      // (audit UX2-05) message exact, série arrêtée : le récap ne compte que ce qui est vraiment crédité
+      toast(pendingMsg(b.pending?.err), 'err');
+      return showSummary();
     }
-    if (batch) {
-      batch.done.push(p);
-      batch.current = null;
-      // série : booster suivant, sans repasser par la boutique (l'éventail reste un instant, puis le booster revient)
-      if (batch.done.length < batch.total) {
-        const b = batch;
-        let next: SealedPack;
-        try {
-          next = await backend.preparePack(b.req);
-        } catch (e) {
-          toast(errMsg(e), 'err');
-          return showSummary();
-        }
-        if (batch !== b || b.skipping) return;
-        b.current = next;
-        pack = next;
-        await new Promise((r) => setTimeout(r, b.hi ? 350 : 900));
-        if (batch !== b || b.skipping) return;
-        opening.reset();
-        await new Promise((r) => setTimeout(r, 650));
-        if (batch !== b || b.skipping) return;
-        start(next);
-        return;
+    // série : booster suivant, sans repasser par la boutique (l'éventail reste un instant, puis le booster revient)
+    if (b.done.length < b.total) {
+      let next: SealedPack;
+      try {
+        next = await backend.preparePack(b.req);
+      } catch (e) {
+        toast(errMsg(e), 'err');
+        return showSummary();
       }
+      if (batch !== b || b.skipping) return;
+      // garde : jamais rejouer un booster déjà montré et compté
+      if (b.done.some((d) => d.id === next.id)) return showSummary();
+      b.current = next;
+      pack = next;
+      // (audit UX2-04) mode auto (« Tout révéler » / « 4★ et + ») : temps morts réduits ; manuel : rythme d'origine
+      const fast = b.hi || b.all;
+      await new Promise((r) => setTimeout(r, fast ? 250 : 900));
+      if (batch !== b || b.skipping) return;
+      opening.reset();
+      // (en auto, l'entrée du booster de vitrine chevauche l'ouverture suivante : open() reprend la pose en cours)
+      await new Promise((r) => setTimeout(r, fast ? 120 : 650));
+      if (batch !== b || b.skipping) return;
+      start(next);
+      return;
     }
     showSummary();
   }
+  const openingReq = (p: SealedPack): PackRequest => (p.packKind === 'bebou' ? { kind: 'bebou' } : { kind: 'theme', themeId: p.themeId });
 
   /** Compteur de collection du booster : « World : 143/924 » (thème), « Collection : 1 234/13 888 » (Bebou Pack). */
   function collectionCounter(req: PackRequest): { label: string; have: number; total: number } {
@@ -618,7 +817,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         for (const r of rects) {
           const b = byKey.get(`${r.card.cardId}:${r.card.rarity}:${r.card.mintNumber}`);
           if (!b) continue;
-          b.style.transform = `translate(${Math.round(r.x + r.w / 2)}px, ${Math.round(r.y + 6)}px) translateX(-50%)`;
+          // (audit UX2-18) à cheval sur le bord BAS de la carte : le haut (numéro, étoiles) reste visible
+          b.style.transform = `translate(${Math.round(r.x + r.w / 2)}px, ${Math.round(r.y + r.h - 10)}px) translateX(-50%)`;
           b.style.opacity = '1';
         }
       }
@@ -633,10 +833,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
 
   /** Récapitulatif : ligne résumé compacte (nouvelles · doublons · meilleure carte · compteur) + 3 boutons ; les cartes restent dans l'éventail 3D. */
   function showSummary() {
-    const packs = batch?.done.length ? batch.done : pack ? [pack] : [];
+    // (audit UX2-05) seuls les boosters vraiment crédités comptent ; un booster montré mais pas crédité (réseau) est
+    // signalé à part, avec « Réessayer » à la place de « Encore un » (qui rouvrirait le même booster scellé)
+    const pend = batch?.pending?.pack ?? null;
+    const credited = batch ? batch.done : pack ? [pack] : [];
+    const packs = credited.length ? credited : pend ? [pend] : [];
     const multi = packs.length > 1;
+    // (audit UX2-03) « Tout passer » sur un ×1 : l'éventail 3D n'existe plus (reset) → la grille de miniatures le remplace
+    const grid = multi || (opening.phase !== 'done' && packs.length > 0);
     const all = packs.flatMap((x) => x.cards);
-    const req: PackRequest = batch?.req ?? (pack?.packKind === 'bebou' ? { kind: 'bebou' } : { kind: 'theme', themeId: pack?.themeId });
+    const req: PackRequest = batch?.req ?? (pack ? openingReq(pack) : { kind: 'bebou' });
     skipEl.hidden = true;
     mythicVeil.hidden = true;
     setMode('summary');
@@ -649,24 +855,38 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const hiN = all.filter((c) => rank(c) >= HI_RANK).length;
     const cc = collectionCounter(req);
     const br = best ? rarity(best.rarity) : null;
-    summary.classList.toggle('multi', multi);
+    summary.classList.toggle('multi', grid);
+    summary.classList.toggle('pending', !!pend);
     const again = u ? Math.min(liveRegen(u).balance, packs.length) : 0;
+    const bal = u ? liveRegen(u).balance : 0;
     summary.innerHTML = `
+      ${pend ? `<div class="sum-warn" role="alert">${credited.length ? `Le booster ${credited.length + 1}/${batch?.total ?? 1} n’est pas encore crédité` : 'Ce booster n’est pas encore crédité'} : il reste tel quel à la boutique (bouton Ouvrir), rien n’est perdu.</div>` : ''}
       <div class="sum-line">
         ${multi ? `<span class="sum-k"><b>${packs.length}</b> boosters${hiN ? ` · <b>${hiN}</b> 4★ et +` : ''}</span>` : ''}
         <span class="sum-k${fresh ? ' hi' : ''}"><b>${fresh}</b> nouvelle${fresh > 1 ? 's' : ''}</span>
         <span class="sum-k"><b>${dups}</b> doublon${dups > 1 ? 's' : ''}</span>
-        ${best && br ? `<span class="sum-best r-${best.rarity}" style="--rc:${br.hex};--ra:${br.accentHex}">meilleure ${starsHtml(best.rarity)} <b>${esc(best.cardName)}</b></span>` : ''}
+        ${best && br ? `<span class="sum-best r-${best.rarity}" style="--rc:${br.hex};--ra:${br.accentHex}">meilleure ${starsHtml(best.rarity)} <i class="sum-rl">${br.secret ? 'secrète' : `${br.rank + 1}★`}</i> <b>${esc(best.cardName)}</b></span>` : ''}
         <span class="sum-coll" title="${esc(cc.label)} : cartes uniques dans ta collection">${esc(cc.label)} : <b>${fmtN(cc.have)}</b>/${fmtN(cc.total)}</span>
       </div>
-      ${multi ? '<div class="sum-cards"></div>' : ''}
+      ${grid ? '<div class="sum-cards"></div>' : ''}
       <div class="sum-actions">
-        ${u && liveRegen(u).balance > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? `Encore ×${again}` : 'Encore un'} (${liveRegen(u).balance})</button>` : u ? `<span class="muted next-pack">prochain booster dans ${fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now())}</span>` : ''}
-        <button class="btn-ghost coll">${fresh ? 'Voir mes nouvelles' : dups === all.length ? 'Contrats' : 'Ma collection'}</button>
+        ${pend ? '<button class="btn-primary retry">Réessayer l’enregistrement</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? `Encore ×${again}` : 'Encore un'}<small>${bal} en réserve</small></button>` : u ? `<span class="muted next-pack">prochain booster dans ${fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now())}</span>` : ''}
+        <button class="btn-ghost coll">${fresh ? 'Mes nouvelles' : dups === all.length ? 'Contrats' : 'Ma collection'}</button>
         <button class="btn-ghost back">Boutique</button>
       </div>`;
     if (best) paintSummaryBg(best, req);
-    if (multi) {
+    const retry = summary.querySelector<HTMLButtonElement>('.retry');
+    retry?.addEventListener('click', async () => {
+      const b = batch;
+      if (!b?.pending || retry.disabled) return;
+      retry.disabled = true;
+      const ok = await busyButton(retry, credit(b, b.pending.pack));
+      if (batch !== b || mode !== 'summary') return;
+      if (ok) toast('Booster crédité.', 'ok');
+      else toast(pendingMsg(b.pending?.err), 'err');
+      showSummary();
+    });
+    if (grid) {
       const cards = summary.querySelector<HTMLElement>('.sum-cards')!;
       for (const [k, c] of sorted.entries()) {
         const tile = cardTile(c.cardId, c.rarity, { mini: true, label: c.isNew ? 'NOUVELLE' : undefined });
@@ -677,17 +897,22 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       hideFanBadges();
     } else showFanBadges(all);
     summary.querySelector('.again')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      if (btn.disabled) return;
+      btn.disabled = true; // double toucher : un seul départ
       shell.requestGyro();
-      const n = Number((e.currentTarget as HTMLElement).dataset.n) || 1;
+      const n = Number(btn.dataset.n) || 1;
       const p = list.find((b) => b.key === (req.kind === 'bebou' ? 'bebou' : themeById(req.themeId ?? '')?.id)) ?? list[2];
       const hi = batch?.hi ?? false;
+      const all = batch?.all ?? false; // (audit UX2-02) « Tout révéler » suit, comme « 4★ et + »
       back();
       await new Promise((r) => setTimeout(r, 650));
       if (mode !== 'pick') return;
       try {
         const got = await backend.preparePack(p.req);
+        if (mode !== 'pick') return;
         pack = got;
-        batch = { req: p.req, total: Math.max(1, n), done: [], current: got, hi, all: false, skipping: false };
+        batch = newBatch(p.req, Math.max(1, n), got, hi, all);
         start(got);
       } catch (err) {
         toast(errMsg(err), 'err');
@@ -735,7 +960,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   /** Retour à l'éventail, intact (la scène d'ouverture n'a pas bougé pendant le zoom). */
   function closeViewer() {
     if (!viewing) return;
-    popLayer();
+    popLayer(closeViewer);
     viewing = false;
     viewerUi.hidden = true;
     document.body.classList.remove('card-open');

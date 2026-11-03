@@ -6,6 +6,8 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fold, h, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 import { preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
+import { ABUSE, cardsValue, fmtCoins } from '../../core/economy';
+import { confirmTap } from './safety';
 
 /**
  * ÉCHANGES de cartes entre nous (n'importe quelle carte, doublon ou non) — refonte retours du 3 nov.
@@ -28,7 +30,27 @@ export interface TradesView {
 type Side = 'get' | 'give';
 const RANK: Record<RarityId, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 const STARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
-const value = (l: TradeItem[]) => l.reduce((a, it) => a + it.count * Math.pow(2.2, RANK[it.rarity]), 0);
+/** valeur d'un côté : la même table que la forge, les mises et l'anti-abus (1★ 5 … 6★ 1 000), plus des « puissances de 2,2 » (UX4-13) */
+const value = (l: TradeItem[]) => cardsValue(l);
+/** Équilibre d'un échange vu de MON côté (ce que je donne, ce que je reçois) — composeur ET échanges reçus. */
+function fairness(give: TradeItem[], get: TradeItem[]): { cls: '' | 'ok' | 'info' | 'warn'; txt: string } {
+  const vg = value(give), vr = value(get);
+  if (!give.length && !get.length) return { cls: '', txt: '' };
+  if (vr === 0) return { cls: 'ok', txt: 'Cadeau : tu ne demandes rien.' };
+  if (vg === 0) return { cls: 'info', txt: 'Tu ne donnes rien : à lui de voir.' };
+  if (vg >= vr * 0.8 && vg <= vr * 1.25) return { cls: 'ok', txt: 'Échange équilibré.' };
+  // (seuils de l'alerte anti-abus : 3 contre 1 en valeur)
+  if (vg * ABUSE.tradeRatio < vr) return { cls: 'warn', txt: 'Très déséquilibré en ta faveur : il risque de refuser.' };
+  if (vg > vr * ABUSE.tradeRatio) return { cls: 'warn', txt: 'Très déséquilibré : tu donnes beaucoup plus que tu ne reçois.' };
+  if (vg < vr) return { cls: 'info', txt: 'Tu demandes un peu plus que tu ne donnes.' };
+  return { cls: 'info', txt: 'Tu donnes un peu plus que tu ne reçois.' };
+}
+/** mini-jauge (part de chaque côté en valeur) + « tu donnes 4★+5★ (≈ 400) contre 2★ (≈ 15) » */
+function gaugeHtml(give: TradeItem[], get: TradeItem[], cls: string) {
+  const vg = value(give), vr = value(get);
+  const tot = vg + vr || 1;
+  return `<div class="gauge ${cls}"><div class="gauge-bar"><i class="g-give" style="width:${((vg / tot) * 100).toFixed(1)}%"></i><i class="g-get" style="width:${((vr / tot) * 100).toFixed(1)}%"></i></div><div class="gauge-txt">tu donnes <b>${esc(starsSummary(give))}</b> (≈ ${fmtCoins(vg)}) contre <b>${esc(starsSummary(get))}</b> (≈ ${fmtCoins(vr)})</div></div>`;
+}
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
   if (s < 3600) return `il y a ${Math.max(1, Math.floor(s / 60))} min`;
@@ -54,6 +76,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   let lastAdded = '';
   let side: Side = 'get';
   let giveHinted = false;
+  let lastHinted = false;
   /** contre-proposition en cours (échange reçu qu'on modifie) */
   let countering: TradeView | null = null;
   const phone = () => matchMedia('(max-width: 860px)').matches;
@@ -96,7 +119,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         <h3 class="tray-t">Proposition</h3>
         <div class="tray-sec"><h4>Tu reçois</h4><div class="tray-list l-get"></div></div>
         <div class="tray-sec"><h4>Tu donnes</h4><div class="tray-list l-give"></div></div>
-        <div class="gauge" hidden><div class="gauge-bar"><i class="g-give"></i><i class="g-get"></i></div><div class="gauge-txt"></div></div>
+        <div class="gauge" hidden></div>
         <div class="fair"></div>
         <input class="note" maxlength="140" placeholder="Un petit mot ? (optionnel)">
       </div>
@@ -119,7 +142,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   const lGet = q('.l-get');
   const lGive = q('.l-give');
   const fair = q('.fair');
-  const gauge = q('.gauge');
+  let gauge = q('.tray .gauge');
   const sendBtn = q<HTMLButtonElement>('.send');
   const counterCancel = q<HTMLButtonElement>('.counter-cancel');
   const note = q<HTMLInputElement>('.note');
@@ -189,8 +212,31 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     trayToggle.setAttribute('aria-expanded', String(open));
   };
   trayToggle.addEventListener('click', () => setTrayOpen(!tray.classList.contains('open')));
-  q('.tr-back').addEventListener('click', () => leaveFriend());
+  /** une proposition est en cours de composition (ou une contre-proposition) : on prévient avant de la perdre (UX4-14) */
+  const hasWork = () => !!countering || give.length > 0 || get.length > 0;
+  let backArmedAt = 0;
+  const askLeave = () => {
+    if (!hasWork() || Date.now() - backArmedAt < 3000) return true;
+    backArmedAt = Date.now();
+    toast(countering ? 'Contre-proposition en cours : encore une fois pour l’abandonner.' : 'Proposition en cours : encore une fois pour l’abandonner.', 'info');
+    return false;
+  };
+  q('.tr-back').addEventListener('click', () => askLeave() && leaveFriend());
+  /**
+   * Téléphone : le composeur est une COUCHE (UX1-04) — « retour » ramène à la liste d'amis au lieu de quitter les
+   * Échanges. Proposition en cours : le premier « retour » prévient (et remet la couche), le second abandonne.
+   */
+  function composerBack() {
+    // seulement le geste « retour » : quand toutes les couches se ferment (changement de page, lien touché), la
+    // proposition est gardée pour quand on revient (comme avant)
+    if ((window.event as Event | undefined)?.type !== 'popstate' || !location.hash.startsWith('#/echanges')) return;
+    // (remise APRÈS le traitement du retour : pendant, la pile la refermerait aussitôt)
+    if (!askLeave()) return void setTimeout(() => friend && pushLayer(composerBack), 0);
+    leaveFriend();
+  }
   function leaveFriend() {
+    popLayer(composerBack);
+    backArmedAt = 0;
     friend = null;
     countering = null;
     loading++;
@@ -203,6 +249,24 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     renderPending();
     el.scrollTo({ top: 0 });
   }
+
+  // ── clavier virtuel (UX5-18) : iOS ne réduit pas la fenêtre de mise en page ; le volet fixé en bas (et son champ
+  // « Un petit mot ? ») remonte au-dessus du clavier tant que le champ a le focus
+  const vv = window.visualViewport;
+  const liftTray = () => {
+    if (!vv || !phone()) return;
+    tray.style.bottom = `${Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop))}px`;
+  };
+  note.addEventListener('focus', () => {
+    vv?.addEventListener('resize', liftTray);
+    vv?.addEventListener('scroll', liftTray);
+    liftTray();
+  });
+  note.addEventListener('blur', () => {
+    vv?.removeEventListener('resize', liftTray);
+    vv?.removeEventListener('scroll', liftTray);
+    tray.style.bottom = '';
+  });
 
   // ── grilles construites au fil du défilement
   const FIRST = 60, CHUNK = 60;
@@ -227,6 +291,8 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     if (sd === 'give' && wishTheirs) tile.insertAdjacentHTML('beforeend', `<span class="wb theirs" title="Dans ses envies">♥ ${friend?.name.split(' ')[0] ?? 'il'} la cherche</span>`);
     if (sd === 'give' && free < c.count) tile.insertAdjacentHTML('beforeend', `<span class="tr-lock" title="${c.count - free} déjà engagé${c.count - free > 1 ? 's' : ''} dans un échange en attente">🔒</span>`);
     tile.classList.toggle('locked', sd === 'give' && free <= 0);
+    // ton seul exemplaire : visible sur la tuile (en bas, ne recouvre ni « ×N » ni les envies)
+    if (sd === 'give' && c.count === 1) tile.insertAdjacentHTML('beforeend', '<span class="wb last">dernier</span>');
     // « + » du coin : ajout direct ; le reste de la tuile ouvre le zoom
     const plus = h('button', 'tr-plus', '+');
     plus.title = sd === 'get' ? `Demander ${name(c.cardId)}` : `Proposer ${name(c.cardId)}${c.count === 1 ? ' (ton seul exemplaire)' : ''}`;
@@ -235,6 +301,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       if (sd === 'give' && free <= 0) return toast('Déjà engagée dans un échange en attente : attends la réponse.', 'info');
       add(sd, c, free);
     });
+    plus.setAttribute('aria-label', plus.title);
     tile.append(plus);
     tile.addEventListener('click', () => void zoom(c, sd, free));
     return tile;
@@ -259,13 +326,13 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   el.addEventListener('scroll', () => growMore(), { passive: true });
 
   // ── échanges en cours + historique
-  function itemsHtml(items: TradeItem[]) {
+  function itemsHtml(items: TradeItem[], lasts: TradeItem[] = []) {
     return items.length
       ? items
           .map((it) => {
             const e = catalogEntry(it.cardId);
             const img = e && it.rarity !== 'secret' ? `<img alt="" loading="lazy" src="${thumbUrl(e)}">` : '';
-            return `<span class="it" style="--rc:${rarity(it.rarity).hex}">${img}${it.count > 1 ? `${it.count}× ` : ''}${esc(name(it.cardId))} <i>${rarity(it.rarity).rank + 1}★</i></span>`;
+            return `<span class="it" style="--rc:${rarity(it.rarity).hex}">${img}${it.count > 1 ? `${it.count}× ` : ''}${esc(name(it.cardId))} <i>${rarity(it.rarity).rank + 1}★</i>${lasts.includes(it) ? ' <b class="last">dernier exemplaire</b>' : ''}</span>`;
           })
           .join('')
       : '<span class="it none">rien</span>';
@@ -273,14 +340,24 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   function renderPending() {
     const { incoming, outgoing } = backend.state.trades;
     pendingEl.innerHTML = '';
-    if (!incoming.length && !outgoing.length) pendingEl.innerHTML = '<div class="muted">Aucun échange en attente.</div>';
+    if (!incoming.length && !outgoing.length) pendingEl.innerHTML = `<div class="muted">Aucun échange en attente. ${backend.state.friends.length ? 'Choisis un ami ci-dessous : on te montre ce que vous pouvez échanger.' : ''}</div>`;
+    const owned = mine();
     const row = (t: TradeView, dir: 'in' | 'out') => {
       const r = h('div', `trade ${dir}${countering?.id === t.id ? ' countering' : ''}`);
       const tag = t.counterOf ? '<span class="ctr-tag">contre-proposition</span>' : '';
-      r.innerHTML = dir === 'in'
-        ? `<div class="who"><b>${esc(t.fromName)}</b> te propose ${tag}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}<div class="act"><button class="btn-primary ok">Accepter</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-ghost no">Refuser</button></div>`
-        : `<div class="who">À <b>${esc(t.toName)}</b> · tu donnes ${tag}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested)}</div><div class="act"><span class="muted">en attente…</span><button class="btn-ghost cancel">Annuler</button></div>`;
+      const when = `<span class="when">${ago(t.createdAt)}</span>`;
+      if (dir === 'in') {
+        // vu de mon côté : je donne ce qu'il demande, je reçois ce qu'il offre — même jauge que dans le composeur (UX4-03)
+        const f = fairness(t.requested, t.offered);
+        const lasts = t.requested.filter((it) => {
+          const have = owned.get(cardKey(it))?.count ?? 0;
+          return have > 0 && have <= it.count;
+        });
+        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> te propose ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">Tu donnerais ton dernier exemplaire de ${lasts.map((it) => esc(name(it.cardId))).join(', ')}.</div>` : ''}<div class="act"><button class="linkish no">Refuser</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-primary ok">Accepter</button></div>`;
+      } else r.innerHTML = `<div class="who">À <b>${esc(t.toName)}</b> · tu donnes ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested)}</div><div class="act"><span class="muted">en attente…</span><button class="btn-ghost cancel">Annuler</button></div>`;
       const act = async (fn: () => Promise<void>, ok: string) => {
+        if (r.dataset.busy) return; // (anti double-toucher : les boutons sont aussi désactivés)
+        r.dataset.busy = '1';
         r.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = true));
         try {
           await fn();
@@ -289,10 +366,19 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         } catch (e) {
           toast(errMsg(e), 'err');
           r.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = false));
+        } finally {
+          delete r.dataset.busy;
         }
       };
-      r.querySelector('.ok')?.addEventListener('click', () => act(async () => (await backend.respondTrade(t.id, true), shell.sfx.chime(3, 0.08)), 'Échange conclu ! Les cartes sont dans ta collection.'));
-      r.querySelector('.no')?.addEventListener('click', () => act(() => backend.respondTrade(t.id, false), 'Échange refusé.'));
+      // irréversibles : second toucher (« Confirmer ? »), la jauge et l'avertissement sont juste au-dessus
+      r.querySelector<HTMLElement>('.ok')?.addEventListener('click', (e) => {
+        if (!confirmTap(e.currentTarget as HTMLElement, 'Confirmer l’échange ?')) return;
+        void act(async () => (await backend.respondTrade(t.id, true), shell.sfx.chime(3, 0.08)), 'Échange conclu ! Les cartes sont dans ta collection.');
+      });
+      r.querySelector<HTMLElement>('.no')?.addEventListener('click', (e) => {
+        if (!confirmTap(e.currentTarget as HTMLElement, 'Refuser ?')) return;
+        void act(() => backend.respondTrade(t.id, false), 'Échange refusé.');
+      });
       r.querySelector('.cancel')?.addEventListener('click', () => act(() => backend.cancelTrade(t.id), 'Proposition annulée.'));
       r.querySelector('.ctr')?.addEventListener('click', () => void startCounter(t));
       pendingEl.append(r);
@@ -335,7 +421,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
 
   function renderFriends() {
     const fs = backend.state.friends;
-    friendsEl.innerHTML = fs.length ? '' : `<div class="muted">${backend.state.mode === 'online' ? 'Personne d’autre n’est encore inscrit.' : '—'}</div>`;
+    friendsEl.innerHTML = fs.length ? '' : `<div class="muted">${backend.state.mode === 'online' ? 'Personne d’autre n’est encore inscrit : invite tes potes sur le serveur Discord, ils apparaîtront ici.' : 'Pas d’ami pour l’instant.'}</div>`;
     for (const f of fs) {
       const b = h('button', `friend${friend?.id === f.id ? ' on' : ''}`, `<span class="dot${f.online ? ' on' : ''}"></span><span class="fn">${esc(f.name)}</span>${f.status ? `<span class="fs">${esc(f.status)}</span>` : ''}`);
       b.addEventListener('click', () => void pick(f));
@@ -358,6 +444,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     work.hidden = false;
     tray.hidden = false;
     el.classList.add('composing');
+    if (phone()) pushLayer(composerBack);
     setTrayOpen(false);
     if (changed && !keep) setSide('get', false);
     if (phone()) el.scrollTo({ top: 0 });
@@ -408,8 +495,13 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     await pick(f, true);
     for (const it of get) maxOf.set(`get:${cardKey(it)}`, theirs.find((x) => cardKey(x) === cardKey(it))?.count ?? it.count);
     renderTray();
-    setTrayOpen(true);
-    toast('Modifie la proposition (retire, ajoute), puis renvoie-la.', 'info');
+    // téléphone : le volet ne s'ouvre pas tout seul (il cachait la grille) — un rebond suffit à le montrer
+    if (phone()) {
+      tray.classList.remove('bump');
+      void tray.offsetWidth;
+      tray.classList.add('bump');
+    } else setTrayOpen(true);
+    toast('Contre-proposition : ✕ dans le volet pour retirer, + sur une carte des grilles pour ajouter, puis renvoie-la.', 'info');
   }
   function syncCounterUi() {
     const on = !!countering;
@@ -418,7 +510,8 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     q('.tray-t').textContent = on ? `Contre-proposition à ${countering!.fromName}` : 'Proposition';
     sendBtn.textContent = on ? 'Renvoyer la contre-proposition' : 'Proposer l’échange';
   }
-  counterCancel.addEventListener('click', () => {
+  counterCancel.addEventListener('click', (e) => {
+    if (!confirmTap(e.currentTarget as HTMLElement, 'Abandonner la contre-proposition ?')) return;
     countering = null;
     give = [];
     get = [];
@@ -480,20 +573,33 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       if (f.q && !fold(e.name).includes(f.q) && String(e.num) !== f.q && !fold(subthemeById(e.subthemeId)?.label ?? '').includes(f.q)) return false;
       return true;
     };
+    // une recherche passe outre les deux filtres (on cherche UNE carte précise, UX4-11)
+    const dupsOn = f.dups && !f.q, missOn = f.onlyMissing && !f.q;
     const list =
       sd === 'get'
-        ? theirs.filter((c) => (!f.onlyMissing || !m.has(cardKey(c))) && (!f.dups || c.count >= 2) && match(c)).sort(sort)
-        : [...m.values()].filter((c) => (!f.onlyMissing || !t.has(cardKey(c))) && (!f.dups || c.count >= 2) && match(c)).sort((a, b) => Number(freeCount(b) > 0) - Number(freeCount(a) > 0) || sort(a, b));
+        ? theirs.filter((c) => (!missOn || !m.has(cardKey(c))) && (!dupsOn || c.count >= 2) && match(c)).sort(sort)
+        : [...m.values()].filter((c) => (!missOn || !t.has(cardKey(c))) && (!dupsOn || c.count >= 2) && match(c)).sort((a, b) => Number(freeCount(b) > 0) - Number(freeCount(a) > 0) || sort(a, b));
     const fname = friend?.name ?? 'ton ami';
-    q('.t-get').textContent = f.onlyMissing ? `Ses cartes qui te manquent — touche pour voir, + pour demander` : `Toutes les cartes de ${fname} — touche pour voir, + pour demander`;
-    q('.t-give').textContent = f.onlyMissing ? `Tes cartes qui lui manquent — touche pour voir, + pour donner` : `Toutes tes cartes — touche pour voir, + pour donner`;
+    // le titre dit TOUS les filtres actifs, avec « tout afficher » toujours là
+    const titleOf = () => {
+      const base = sd === 'get' ? `${dupsOn ? 'Ses doublons' : `Les cartes de ${fname}`}${missOn ? ' qui te manquent' : ''}` : `${dupsOn ? 'Tes doublons' : 'Tes cartes'}${missOn ? ' qui lui manquent' : ''}`;
+      return `${esc(base)} <small>— touche pour voir, + pour ${sd === 'get' ? 'demander' : 'donner'}</small>${f.q && (f.dups || f.onlyMissing) ? ' <small class="tr-ign">(filtres ignorés pendant la recherche)</small>' : ''}${!f.q && (f.dups || f.onlyMissing) ? ' <button class="linkish tr-all">tout afficher</button>' : ''}`;
+    };
+    const tEl = q(sd === 'get' ? '.t-get' : '.t-give');
+    tEl.innerHTML = titleOf();
+    tEl.querySelector('.tr-all')?.addEventListener('click', () => {
+      f.onlyMissing = false;
+      f.dups = false;
+      syncFilterUi();
+      renderPicks(sd);
+    });
     q(sd === 'get' ? '.n-get' : '.n-give').textContent = String(list.length);
     const grid = gridOf(sd);
     lists[sd] = list;
     shown[sd] = 0;
     grid.innerHTML = '';
     if (!list.length) {
-      grid.innerHTML = `<div class="muted">${f.q || f.star || f.pack ? 'Aucune carte ne correspond aux filtres.' : sd === 'get' ? 'Rien de nouveau chez lui pour toi.' : 'Rien qui lui manque.'}${f.onlyMissing || f.dups ? ' <button class="linkish see-all">Voir toutes les cartes</button>' : ''}</div>`;
+      grid.innerHTML = `<div class="muted">${f.q || f.star || f.pack ? 'Aucune carte ne correspond aux filtres.' : sd === 'get' ? 'Rien de nouveau chez lui pour toi.' : 'Rien qui lui manque.'}${missOn || dupsOn ? ' <button class="linkish see-all">Voir toutes les cartes</button>' : ''}</div>`;
       grid.querySelector('.see-all')?.addEventListener('click', () => {
         f.onlyMissing = false;
         f.dups = false;
@@ -521,6 +627,10 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     } else {
       if (list.length >= 12) return toast('12 cartes différentes au maximum par côté.', 'info');
       list.push({ cardId: c.cardId, rarity: c.rarity, count: 1 });
+      if (sd === 'give' && c.count === 1 && !lastHinted) {
+        lastHinted = true;
+        toast(`${name(c.cardId)} : c’est ton seul exemplaire. Si l’échange passe, elle sort de ta collection.`, 'info');
+      }
     }
     lastAdded = `${sd}:${k}`;
     shell.sfx.tick(1.4, 0.05);
@@ -539,11 +649,19 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   }
 
   function renderTray() {
+    const owned = mine();
+    /** contre-proposition : la proposition d'origine (vue de mon côté), pour marquer ce qui change (UX4-14) */
+    const orig = countering ? { give: countering.requested, get: countering.offered } : null;
+    const origCount = (sd: Side, it: TradeItem) => (orig ? (orig[sd].find((x) => cardKey(x) === cardKey(it))?.count ?? 0) : 0);
     const fill = (box: HTMLElement, list: TradeItem[], sd: Side) => {
-      box.innerHTML = list.length ? '' : '<div class="muted">touche + sur une carte pour l’ajouter</div>';
+      box.innerHTML = list.length ? '' : `<div class="muted">${sd === 'get' ? 'touche + sur une de ses cartes (onglet « Je demande »)' : 'touche + sur une de tes cartes (onglet « Je donne »)'}</div>`;
       for (const it of list) {
         const e = catalogEntry(it.cardId);
-        const r = h('div', 'ti', `<span class="sw" style="background:${rarity(it.rarity).hex}"></span>${e ? `<img class="tth" alt="" src="${thumbUrl(e)}">` : ''}<span class="tn">${esc(name(it.cardId))}</span><span class="tc">×${it.count}</span>${(maxOf.get(`${sd}:${cardKey(it)}`) ?? 1) > it.count ? '<button class="plus" aria-label="Un exemplaire de plus">+</button>' : ''}<button class="minus" aria-label="Retirer une carte">✕</button>`);
+        const have = sd === 'give' ? (owned.get(cardKey(it))?.count ?? 0) : 0;
+        const last = sd === 'give' && have > 0 && it.count >= have;
+        const was = origCount(sd, it);
+        const diff = orig ? (was === 0 ? ' added' : was !== it.count ? ' changed' : '') : '';
+        const r = h('div', `ti${diff}${last ? ' last' : ''}`, `<span class="sw" style="background:${rarity(it.rarity).hex}"></span>${e ? `<img class="tth" alt="" src="${thumbUrl(e)}">` : ''}<span class="tn">${esc(name(it.cardId))}${last ? ' <i class="ti-last">ton dernier</i>' : ''}${diff === ' added' ? ' <i class="ti-diff">ajoutée</i>' : diff === ' changed' ? ` <i class="ti-diff">avant ×${was}</i>` : ''}</span><span class="tc">×${it.count}</span>${(maxOf.get(`${sd}:${cardKey(it)}`) ?? 1) > it.count ? '<button class="plus" aria-label="Un exemplaire de plus">+</button>' : ''}<button class="minus" aria-label="Retirer une carte">✕</button>`);
         if (lastAdded === `${sd}:${cardKey(it)}`) r.classList.add('new');
         r.querySelector('.minus')!.addEventListener('click', () => {
           it.count--;
@@ -556,36 +674,33 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         });
         box.append(r);
       }
+      // ce qui était dans la proposition d'origine et n'y est plus : barré
+      if (orig) for (const it of orig[sd]) if (!list.some((x) => cardKey(x) === cardKey(it))) box.insertAdjacentHTML('beforeend', `<div class="ti removed"><span class="sw" style="background:${rarity(it.rarity).hex}"></span><span></span><span class="tn">${esc(name(it.cardId))} <i class="ti-diff">retirée</i></span><span class="tc">×${it.count}</span></div>`);
     };
     fill(lGet, get, 'get');
     fill(lGive, give, 'give');
     markPicks();
-    const vg = value(give), vr = value(get);
-    fair.className = 'fair';
+    const f = fairness(give, get);
+    // dernier exemplaire donné : dit en clair (UX4-12), pas seulement dans une infobulle
+    const lasts = give.filter((it) => {
+      const have = owned.get(cardKey(it))?.count ?? 0;
+      return have > 0 && it.count >= have;
+    });
+    fair.className = `fair ${f.cls}`;
+    fair.innerHTML = `${esc(f.txt)}${lasts.length ? `<span class="fair warn last-w">Tu donnes ton dernier exemplaire de ${lasts.map((it) => esc(name(it.cardId))).join(', ')} : elle sortira de ta collection.</span>` : ''}`;
     gauge.hidden = !give.length && !get.length;
-    if (!give.length && !get.length) fair.textContent = '';
-    else if (vr === 0) (fair.textContent = 'Cadeau : tu ne demandes rien.'), fair.classList.add('ok');
-    else if (vg === 0) (fair.textContent = 'Tu ne donnes rien : à lui de voir.'), fair.classList.add('info');
-    else if (vg >= vr * 0.8 && vg <= vr * 1.25) (fair.textContent = 'Échange équilibré.'), fair.classList.add('ok');
-    else if (vg < vr * 0.33) (fair.textContent = 'Très déséquilibré en ta faveur : il risque de refuser.'), fair.classList.add('warn');
-    else if (vg > vr * 3) (fair.textContent = 'Très déséquilibré : tu donnes beaucoup plus que tu ne reçois.'), fair.classList.add('warn');
-    else if (vg < vr) (fair.textContent = 'Tu demandes un peu plus que tu ne donnes.'), fair.classList.add('info');
-    else (fair.textContent = 'Tu donnes un peu plus que tu ne reçois.'), fair.classList.add('info');
-    // jauge : part de chaque côté dans la valeur totale (en étoiles), avec le résumé « tu donnes 4★+5★ contre 2★ »
-    if (!gauge.hidden) {
-      const tot = vg + vr || 1;
-      gauge.querySelector<HTMLElement>('.g-give')!.style.width = `${((vg / tot) * 100).toFixed(1)}%`;
-      gauge.querySelector<HTMLElement>('.g-get')!.style.width = `${((vr / tot) * 100).toFixed(1)}%`;
-      gauge.querySelector<HTMLElement>('.gauge-txt')!.innerHTML = `tu donnes <b>${esc(starsSummary(give))}</b> contre <b>${esc(starsSummary(get))}</b>`;
-      gauge.className = `gauge ${fair.classList.contains('warn') ? 'warn' : fair.classList.contains('ok') ? 'ok' : ''}`;
-    }
-    sendBtn.disabled = !friend || (!give.length && !get.length);
+    if (!gauge.hidden) gauge.outerHTML = gaugeHtml(give, get, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '');
+    gauge = q('.tray .gauge');
+    const unchanged = !!orig && sameItems(orig.give, give) && sameItems(orig.get, get);
+    sendBtn.disabled = sending || !friend || (!give.length && !get.length) || unchanged;
+    if (countering) sendBtn.textContent = unchanged ? 'Rien n’a changé' : 'Renvoyer la contre-proposition';
     const n = (l: TradeItem[]) => l.reduce((a, it) => a + it.count, 0);
     const ng = n(get), nd = n(give);
-    traySum.innerHTML = !ng && !nd ? '<span class="muted">Touche + sur des cartes pour composer l’échange</span>' : `<b>${ng}</b> reçue${ng > 1 ? 's' : ''} · <b>${nd}</b> donnée${nd > 1 ? 's' : ''}${fair.textContent ? ` <span class="${fair.className}">· ${esc(fair.textContent.replace(/\.$/, ''))}</span>` : ''}`;
+    traySum.innerHTML = !ng && !nd ? '<span class="muted">Touche + sur des cartes pour composer l’échange</span>' : `<b>${ng}</b> reçue${ng > 1 ? 's' : ''} · <b>${nd}</b> donnée${nd > 1 ? 's' : ''}${f.txt ? ` <span class="fair ${f.cls}">· ${esc(f.txt.replace(/\.$/, ''))}</span>` : ''}${lasts.length ? ' <span class="fair warn">· dernier exemplaire</span>' : ''}`;
     q('.p-get').textContent = ng ? `${ng} choisie${ng > 1 ? 's' : ''}` : '';
     q('.p-give').textContent = nd ? `${nd} choisie${nd > 1 ? 's' : ''}` : '';
   }
+  const sameItems = (a: TradeItem[], b: TradeItem[]) => a.length === b.length && a.every((x) => b.some((y) => cardKey(y) === cardKey(x) && y.count === x.count));
 
   function markPicks() {
     for (const [grid, list] of [[gGet, get], [gGive, give]] as const) {
@@ -602,8 +717,11 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     }
   }
 
+  /** envoi en cours : renderTray (un « + » touché pendant l'attente) ne réactive pas le bouton (UX4-01) */
+  let sending = false;
   sendBtn.addEventListener('click', async () => {
-    if (!friend) return;
+    if (!friend || sending) return;
+    sending = true;
     sendBtn.disabled = true;
     try {
       if (countering) {
@@ -624,6 +742,8 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       void loadHistory();
     } catch (e) {
       toast(errMsg(e), 'err');
+    } finally {
+      sending = false;
       renderTray();
     }
   });
@@ -659,7 +779,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   }
   function closeViewer() {
     if (!open) return;
-    popLayer();
+    popLayer(closeViewer);
     open = false;
     document.body.classList.remove('card-open');
     el.classList.remove('viewing');

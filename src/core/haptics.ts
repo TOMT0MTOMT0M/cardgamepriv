@@ -7,9 +7,36 @@
  *    rien sur un appareil, c'est silencieux (aucune erreur).
  *  - Ailleurs : rien.
  */
+/** réglage « Vibrations » (navigateur) : '0' = coupées ; absent = actives (audit UX2-14) */
+const PREF = 'bebou.haptics';
+
 class Haptics {
   private label: HTMLLabelElement | null = null;
   private timers: number[] = [];
+  private on = (() => {
+    try {
+      return localStorage.getItem(PREF) !== '0';
+    } catch {
+      return true;
+    }
+  })();
+
+  /** vibrations actives ? (indépendant du son : on peut jouer en silence complet) */
+  get enabled(): boolean {
+    return this.on;
+  }
+  set enabled(v: boolean) {
+    this.on = v;
+    if (!v) {
+      this.timers.forEach((id) => clearTimeout(id));
+      this.timers = [];
+    }
+    try {
+      localStorage.setItem(PREF, v ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }
 
   private iosNode(): HTMLLabelElement | null {
     if (this.label || typeof document === 'undefined') return this.label;
@@ -31,6 +58,7 @@ class Haptics {
 
   /** `pattern` : durée (ms) ou motif [vibre, pause, vibre, …] comme navigator.vibrate. */
   pulse(pattern: number | number[] = 25) {
+    if (!this.on) return;
     this.timers.forEach((id) => clearTimeout(id));
     this.timers = [];
     try {

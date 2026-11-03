@@ -5,7 +5,7 @@ import type { ViewerScene } from '../scenes/viewer';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { BADGES, BANNERS, FRAMES, TITLES, badgeOf, bannerOf, frameOf, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats } from '../../core/cosmetics';
-import { ACHIEVEMENTS, achievementDone } from '../../core/economy';
+import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 
@@ -28,6 +28,9 @@ const SLOTS = 12;
 const RANK: Record<RarityId, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 const STARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
 const best = (a: PlayerCard, b: PlayerCard) => RANK[b.rarity] - RANK[a.rarity] || a.bestMintNumber - b.bestMintNumber || (catalogEntry(a.cardId)?.num ?? 0) - (catalogEntry(b.cardId)?.num ?? 0);
+/** le mot seul, accordé (« doublon » / « doublons ») : le nombre est affiché à part, formaté par fmtN (audit UX3-05 :
+ *  retirer le nombre de `plural()` par regex cassait dès 1 000, à cause de l'espace insécable des milliers) */
+const word = (n: number, one: string, many = `${one}s`) => (n > 1 ? many : one);
 const fmtDate = (t: number) => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
@@ -50,12 +53,16 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         <button role="tab" data-t="tableau" class="on">Tableau</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">Activité</button><button role="tab" data-t="classement">Classement</button>
       </div>
       <div class="pf-pane p-tableau">
+        <div class="pf-keys"></div>
         <div class="pf-sec pf-case-sec">
           <div class="pf-sec-t"><h2>Vitrine</h2><span class="pf-auto"></span><span class="pf-tools"></span></div>
           <div class="pf-case"></div>
+          <button class="btn-ghost pf-case-more" hidden>Voir les 12 cartes</button>
           <div class="pf-picker" hidden>
-            <div class="pf-pick-t"><span>Choisis une carte pour la case <b class="pf-slot-n">1</b></span><input class="search pf-search" type="search" placeholder="Chercher…" autocomplete="off" spellcheck="false"></div>
+            <div class="pf-pick-t"><span>Choisis une carte pour la case <b class="pf-slot-n">1</b></span><input class="search pf-search" type="search" placeholder="Chercher…" autocomplete="off" spellcheck="false" aria-label="Chercher une de mes cartes"></div>
+            <div class="starf pf-pick-stars" aria-label="Filtrer par étoiles"></div>
             <div class="grid mini pf-pick-grid"></div>
+            <div class="muted pf-pick-more" hidden></div>
           </div>
         </div>
         <div class="pf-stats"></div>
@@ -68,6 +75,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       <div class="pf-pane p-activite" hidden><div class="pf-activity"></div></div>
       <div class="pf-pane p-classement" hidden></div>
       <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>Les autres</h2></div><div class="pf-friends"></div></div>
+      <div class="pf-sec pf-account" hidden><div class="pf-sec-t"><h2>Compte</h2></div><div class="pf-account-b"></div></div>
     </div>
     <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
   const q = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
@@ -75,6 +83,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const head = q('.pf-head');
   const cosm = q('.pf-cosm');
   const stats = q('.pf-stats');
+  const keysEl = q('.pf-keys');
+  const caseMore = q<HTMLButtonElement>('.pf-case-more');
+  const account = q('.pf-account');
   const caseEl = q('.pf-case');
   const autoEl = q('.pf-case-sec .pf-auto');
   const tools = q('.pf-case-sec .pf-tools');
@@ -125,7 +136,12 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       b.setAttribute('aria-selected', String(on));
     });
     for (const t of ['tableau', 'collection', 'activite', 'classement'] as Tab[]) q(`.p-${t}`).hidden = t !== tab;
+    requestAnimationFrame(markTabsOvf);
   }
+  // onglets qui débordent à 360 px (« CLASSEMENT » coupé) : fondu au bord droit tant qu'il reste à voir (audit UX3-12)
+  const tabsRow = q('.pf-tabs');
+  const markTabsOvf = () => tabsRow.classList.toggle('ovf', tabsRow.scrollLeft + tabsRow.clientWidth < tabsRow.scrollWidth - 4);
+  tabsRow.addEventListener('scroll', markTabsOvf, { passive: true });
   /** vitrine affichée : celle choisie (cartes encore possédées), sinon les 12 meilleures */
   function showcase(): { list: Array<{ cardId: string; rarity: RarityId }>; auto: boolean } {
     const mine = ownedOf();
@@ -147,7 +163,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     banner.dataset.banner = bn.id;
     const bb = q<HTMLButtonElement>('.pf-banner-btn');
     bb.hidden = !me;
-    bb.textContent = cosmOpen ? 'Fermer' : 'Personnaliser';
+    const fresh = me && !cosmOpen ? newCosmetics().size : 0;
+    bb.innerHTML = cosmOpen ? 'Fermer' : `Personnaliser${fresh ? ` <i class="pf-new">${fresh} nouveau${fresh > 1 ? 'x' : ''}</i>` : ''}`;
     const ava = prof?.avatarUrl ? `<img src="${esc(prof.avatarUrl)}" alt="">` : `<span>${esc(name.slice(0, 1) || '?')}</span>`;
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     head.innerHTML = `<div class="pf-ava-wrap frame-${fr.id}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ava">${ava}</div>${fr.id !== 'none' ? `<span class="pf-frame-l">${esc(fr.label)}</span>` : ''}</div>
@@ -159,56 +176,160 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         <div class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore de devise.</i>' : ''}</div>
         ${prof?.joinedAt ? `<div class="pf-since">Joue depuis le ${fmtDate(prof.joinedAt)}</div>` : ''}
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit">Devise</button><button class="btn-ghost pf-out">${backend.state.mode === 'demo' ? 'Remettre la démo à zéro' : 'Se déconnecter'}</button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier ma devise">✎ Devise</button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>`}</div>`;
     head.querySelector('.pf-bio-edit')?.addEventListener('click', editBio);
-    const out = head.querySelector<HTMLButtonElement>('.pf-out');
-    let armed = false;
+    // action de compte (déconnexion / remise à zéro de la démo) : en bas de page, plus sous le pseudo (audit UX3-16)
+    account.hidden = !me;
+    const accB = q('.pf-account-b');
+    const outLabel = backend.state.mode === 'demo' ? 'Remettre la démo à zéro' : 'Se déconnecter';
+    accB.innerHTML = me ? `<button class="btn-ghost pf-out">${outLabel}</button><span class="muted">${backend.state.mode === 'demo' ? 'Efface toute la collection de démo de ce navigateur.' : 'Tu pourras te reconnecter quand tu veux : ta collection reste sur le serveur.'}</span>` : '';
+    const out = accB.querySelector<HTMLButtonElement>('.pf-out');
+    let armed = 0;
     out?.addEventListener('click', () => {
       if (!armed) {
-        armed = true;
         out.textContent = backend.state.mode === 'demo' ? 'Sûr ? Tout est effacé' : 'Sûr ? Se déconnecter';
         out.classList.add('danger');
+        // la confirmation se désarme seule au bout de 4 s
+        armed = window.setTimeout(() => {
+          armed = 0;
+          out.textContent = outLabel;
+          out.classList.remove('danger');
+        }, 4000);
         return;
       }
+      clearTimeout(armed);
       logout();
     });
     head.querySelector('.pf-trade')?.addEventListener('click', () => sessionStorage.setItem('bebou.tradeWith', who));
   }
-  q('.pf-banner-btn').addEventListener('click', () => {
-    cosmOpen = !cosmOpen;
-    if (cosmOpen) cosmDraft = { ...(prof?.cosmetics ?? {}), badges: [...(prof?.cosmetics?.badges ?? [])] };
-    cosm.hidden = !cosmOpen;
+  /**
+   * Cosmétiques débloqués depuis la dernière ouverture du panneau (pastille « nouveau » : audit UX3-18). Clés
+   * `famille:id` (« gold » existe en bannière ET en cadre). Première visite : tout ce qui est déjà débloqué est « vu ».
+   */
+  const COSM_SEEN = 'bebou.cosm.seen';
+  let cosmNew = new Set<string>();
+  const unlockedKeys = () => {
+    const st = statsOf();
+    return [
+      ...unlockedIds(BANNERS, st).map((id) => `banner:${id}`),
+      ...unlockedIds(FRAMES, st).map((id) => `frame:${id}`),
+      ...unlockedIds(TITLES, st).map((id) => `title:${id}`),
+      ...unlockedIds(BADGES, st).map((id) => `badge:${id}`),
+    ];
+  };
+  function newCosmetics(): Set<string> {
+    const all = unlockedKeys();
+    try {
+      const raw = localStorage.getItem(COSM_SEEN);
+      if (!raw) {
+        // pas de stats serveur encore (profil en chargement) : on n'initialise pas sur des stats partielles
+        if (prof?.stats) localStorage.setItem(COSM_SEEN, JSON.stringify(all));
+        return new Set();
+      }
+      const seen = new Set(JSON.parse(raw) as string[]);
+      return new Set(all.filter((k) => !seen.has(k)));
+    } catch {
+      return new Set();
+    }
+  }
+  const markCosmSeen = () => {
+    try {
+      localStorage.setItem(COSM_SEEN, JSON.stringify(unlockedKeys()));
+    } catch {
+      /* stockage bloqué */
+    }
+  };
+  const openCosm = () => {
+    cosmOpen = true;
+    cosmNew = newCosmetics();
+    markCosmSeen();
+    cosmDraft = { ...(prof?.cosmetics ?? {}), badges: [...(prof?.cosmetics?.badges ?? [])] };
+    cosmSaved = cosmKey(cosmDraft);
+    // l'onglet du premier nouveau cosmétique s'ouvre directement
+    const first = [...cosmNew][0]?.split(':')[0] as CosmTab | undefined;
+    if (first) cosmTab = first;
+    cosm.hidden = false;
     renderHead();
-    if (cosmOpen) renderCosm();
+    renderCosm();
+  };
+  q('.pf-banner-btn').addEventListener('click', () => {
+    if (!cosmOpen) return openCosm();
+    // « Fermer » sans enregistrer : comme Annuler (l'aperçu ne doit pas faire croire que c'est enregistré)
+    const dirty = cosmKey(cosmDraft) !== cosmSaved;
+    cosmOpen = false;
+    cosm.hidden = true;
+    if (dirty) void load(who);
+    else renderHead();
   });
 
-  /** Panneau de personnalisation : bannières, cadres, titres, badges (verrouillé = grisé avec la condition). */
+  /**
+   * Panneau de personnalisation : bannières, cadres, titres, badges (verrouillé = grisé avec la condition).
+   * Audit UX3-08 : un onglet par famille (au lieu de 4 groupes empilés sur 2 400 px), aperçu collant en haut du panneau,
+   * barre « Annuler / Enregistrer » collante en bas avec un résumé et un point « non enregistré », débloqués d'abord,
+   * condition des verrouillés lisible avec la progression (« 180/500 »).
+   */
+  type CosmTab = 'banner' | 'frame' | 'title' | 'badge';
+  let cosmTab: CosmTab = 'banner';
+  /** état enregistré à l'ouverture du panneau (pour le point « modifications non enregistrées ») */
+  let cosmSaved = '';
+  const cosmKey = (c: CosmeticChoice) => JSON.stringify([c.banner ?? BANNERS[0].id, c.frame ?? 'none', c.title ?? '', c.badges ?? []]);
   function renderCosm() {
     const st = statsOf();
+    const achS = achievementStats(st, emptyEcon());
     const ok = { banner: new Set(unlockedIds(BANNERS, st)), frame: new Set(unlockedIds(FRAMES, st)), title: new Set(unlockedIds(TITLES, st)), badge: new Set(unlockedIds(BADGES, st)) };
-    const group = (label: string, hint: string, items: Cosmetic[], okSet: Set<string>, cls: string, sel: (c: Cosmetic) => boolean) =>
-      `<div class="cs-group"><div class="cs-t">${label} <small>${hint} · ${okSet.size}/${items.length} débloqué${okSet.size > 1 ? 's' : ''}</small></div><div class="cs-list">${items
-        .map((c) => `<button class="cs ${cls}${sel(c) ? ' on' : ''}${okSet.has(c.id) ? '' : ' locked'}" data-id="${esc(c.id)}" title="${esc(okSet.has(c.id) ? c.label : `${c.label} · ${c.how}`)}" ${okSet.has(c.id) ? '' : 'aria-disabled="true"'}>${
-          cls === 'cs-banner' ? `<span class="cs-sw" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring" style="--frame:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
-        }${okSet.has(c.id) ? '' : `<small>🔒 ${esc(c.how)}</small>`}</button>`)
-        .join('')}</div></div>`;
+    /** « 🔒 Succès « … » : ouvre 500 boosters · 180/500 » */
+    const lockLine = (c: Cosmetic) => {
+      const a = c.need ? ACHIEVEMENTS.find((x) => x.id === c.need) : undefined;
+      const cur = a ? Math.min(achS[a.stat] ?? 0, a.target) : 0;
+      return `🔒 ${esc(c.how)}${a ? ` <em>${fmtN(cur)}/${fmtN(a.target)}</em>` : ''}`;
+    };
+    const TABS: Array<{ id: CosmTab; label: string; hint: string; items: Cosmetic[]; okSet: Set<string>; cls: string; sel: (c: Cosmetic) => boolean }> = [
+      { id: 'banner', label: 'Bannière', hint: 'le fond du haut', items: BANNERS, okSet: ok.banner, cls: 'cs-banner', sel: (c) => (cosmDraft.banner ?? BANNERS[0].id) === c.id },
+      { id: 'frame', label: 'Cadre', hint: 'autour de ta photo', items: FRAMES, okSet: ok.frame, cls: 'cs-frame', sel: (c) => (cosmDraft.frame ?? 'none') === c.id },
+      { id: 'title', label: 'Titre', hint: 'sous ton pseudo (touche encore pour l’enlever)', items: TITLES, okSet: ok.title, cls: 'cs-title', sel: (c) => cosmDraft.title === c.id },
+      { id: 'badge', label: 'Badges', hint: 'jusqu’à 5, dans l’ordre où tu les choisis', items: BADGES, okSet: ok.badge, cls: 'cs-badge', sel: (c) => (cosmDraft.badges ?? []).includes(c.id) },
+    ];
+    const tabDef = TABS.find((t) => t.id === cosmTab)!;
+    // débloqués d'abord (l'ordre du catalogue est gardé à l'intérieur de chaque moitié)
+    const items = [...tabDef.items].sort((a, b) => Number(tabDef.okSet.has(b.id)) - Number(tabDef.okSet.has(a.id)));
+    const { okSet, cls, sel } = tabDef;
+    const list = items
+      .map((c) => `<button class="cs ${cls}${sel(c) ? ' on' : ''}${okSet.has(c.id) ? '' : ' locked'}${cosmNew.has(`${cosmTab}:${c.id}`) ? ' new' : ''}" data-id="${esc(c.id)}" title="${esc(okSet.has(c.id) ? c.label : `${c.label} · ${c.how}`)}" aria-pressed="${sel(c)}" ${okSet.has(c.id) ? '' : 'aria-disabled="true"'}>${
+        cls === 'cs-banner' ? `<span class="cs-sw" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring" style="--frame:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
+      }${okSet.has(c.id) ? '' : `<small>${lockLine(c)}</small>`}</button>`)
+      .join('');
+    // aperçu (collant) : bannière, avatar + cadre, pseudo, titre, badges
+    const name = prof?.name ?? backend.state.user?.name ?? '';
+    const bn = bannerOf(cosmDraft.banner);
+    const fr = frameOf(cosmDraft.frame);
+    const title = titleOf(cosmDraft.title);
+    const badges = (cosmDraft.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
+    const ava = prof?.avatarUrl ? `<img src="${esc(prof.avatarUrl)}" alt="">` : `<span>${esc(name.slice(0, 1) || '?')}</span>`;
+    const dirty = cosmKey(cosmDraft) !== cosmSaved;
+    const summary = [bn.label, fr.id !== 'none' ? `Cadre ${fr.label}` : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
     cosm.innerHTML =
       `<div class="cs-head"><b>Personnaliser mon profil</b><span class="muted">Tout se débloque en jouant — rien ne s’achète.</span></div>` +
-      group('Bannière', 'le fond du haut', BANNERS, ok.banner, 'cs-banner', (c) => (cosmDraft.banner ?? BANNERS[0].id) === c.id) +
-      group('Cadre d’avatar', 'autour de ta photo', FRAMES, ok.frame, 'cs-frame', (c) => (cosmDraft.frame ?? 'none') === c.id) +
-      group('Titre', 'sous ton pseudo', TITLES, ok.title, 'cs-title', (c) => cosmDraft.title === c.id) +
-      group('Badges', 'jusqu’à 5, dans l’ordre où tu les choisis', BADGES, ok.badge, 'cs-badge', (c) => (cosmDraft.badges ?? []).includes(c.id)) +
-      `<div class="cs-order"></div><div class="cs-actions"><button class="btn-ghost cs-cancel">Annuler</button><button class="btn-primary cs-save">Enregistrer</button></div>`;
+      `<div class="cs-preview" aria-label="Aperçu"><div class="cs-pv-bn" style="background:${bn.css ?? ''}"></div><div class="pf-ava-wrap frame-${fr.id}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ava">${ava}</div></div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
+      `<div class="seg cs-tabs" role="tablist" aria-label="Que personnaliser">${TABS.map((t) => `<button role="tab" data-tab="${t.id}" class="${t.id === cosmTab ? 'on' : ''}" aria-selected="${t.id === cosmTab}">${t.label} <em>${t.okSet.size}/${t.items.length}</em>${[...cosmNew].some((k) => k.startsWith(`${t.id}:`)) ? '<i class="pf-new-dot" aria-label="nouveau"></i>' : ''}</button>`).join('')}</div>` +
+      `<div class="cs-group"><div class="cs-t">${tabDef.label} <small>${tabDef.hint} · ${okSet.size}/${tabDef.items.length} débloqué${okSet.size > 1 ? 's' : ''}</small></div><div class="cs-list">${list}</div></div>` +
+      `<div class="cs-order"></div><div class="cs-actions"><span class="cs-sum">${dirty ? '<i class="cs-dirty" aria-hidden="true"></i>' : ''}<span>${esc(summary)}${dirty ? ' · <b>non enregistré</b>' : ''}</span></span><button class="btn-ghost cs-cancel">Annuler</button><button class="btn-primary cs-save"${dirty ? '' : ' disabled'}>Enregistrer</button></div>`;
+    cosm.querySelectorAll<HTMLButtonElement>('.cs-tabs button').forEach((b) =>
+      b.addEventListener('click', () => {
+        cosmTab = b.dataset.tab as CosmTab;
+        shell.sfx.tick(1.2, 0.04);
+        renderCosm();
+      }),
+    );
     const renderOrder = () => {
       const o = cosm.querySelector<HTMLElement>('.cs-order')!;
       const list = cosmDraft.badges ?? [];
-      o.innerHTML = list.length ? `<span class="cs-t">Ordre des badges</span>${list.map((id, i) => `<span class="cs-ord">${badgeOf(id)?.glyph ?? '●'} ${esc(badgeOf(id)?.label ?? id)}<button data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Avant">◀</button><button data-mv="1" data-i="${i}" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Après">▶</button></span>`).join('')}` : '';
+      o.innerHTML = cosmTab === 'badge' && list.length ? `<span class="cs-t">Ordre des badges</span>${list.map((id, i) => `<span class="cs-ord">${badgeOf(id)?.glyph ?? '●'} ${esc(badgeOf(id)?.label ?? id)}<button data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Avant">◀</button><button data-mv="1" data-i="${i}" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Après">▶</button></span>`).join('')}` : '';
       o.querySelectorAll<HTMLButtonElement>('button[data-mv]').forEach((b) =>
         b.addEventListener('click', () => {
           const i = Number(b.dataset.i), d = Number(b.dataset.mv);
           const l = cosmDraft.badges!;
           [l[i], l[i + d]] = [l[i + d], l[i]];
-          renderOrder();
+          renderCosm();
         }),
       );
     };
@@ -288,16 +409,18 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const pct = (st.uniques / Math.max(1, st.total || PUBLIC_CARD_COUNT)) * 100;
     const sd = prof?.streakDay ?? ((st.streak - 1) % STREAK_CYCLE) + 1;
     const cell = (v: string, l: string, cls = '') => `<div class="pf-stat ${cls}"><b>${v}</b><span>${l}</span></div>`;
-    stats.innerHTML =
+    // les 3 chiffres clés AVANT la vitrine (complétion, 6★, succès), le détail après (audit UX3-16)
+    keysEl.innerHTML =
       cell(fmtPct(pct), `${fmtN(st.uniques)} / ${fmtN(st.total || PUBLIC_CARD_COUNT)} cartes uniques`, 'big') +
+      cell(`✺ ${fmtN(st.mythics)}`, `${word(st.mythics, 'carte')} 6★`, 'mythic');
+    stats.innerHTML =
       cell(fmtN(st.packsOpened), 'boosters ouverts') +
-      cell(`✺ ${fmtN(st.mythics)}`, `carte${st.mythics > 1 ? 's' : ''} 6★`, 'mythic') +
-      (st.secrets ? cell(`✷ ${st.secrets}`, plural(st.secrets, 'secrète').replace(/^\S+\s/, ''), 'secret') : '') +
+      (st.secrets ? cell(`✷ ${fmtN(st.secrets)}`, word(st.secrets, 'secrète'), 'secret') : '') +
       cell(st.streak ? `🔥 ${fmtN(st.streak)}` : '—', st.streak ? `jour${st.streak > 1 ? 's' : ''} d’affilée · ${Math.max(1, sd)}/${STREAK_CYCLE}` : 'série de connexion', 'streak') +
-      cell(fmtN(st.tradesDone), plural(st.tradesDone, 'échange conclu', 'échanges conclus').replace(/^\S+\s/, '')) +
-      cell(fmtN(st.contractsSigned), plural(st.contractsSigned, 'contrat signé', 'contrats signés').replace(/^\S+\s/, '')) +
+      cell(fmtN(st.tradesDone), word(st.tradesDone, 'échange conclu', 'échanges conclus')) +
+      cell(fmtN(st.contractsSigned), word(st.contractsSigned, 'contrat signé', 'contrats signés')) +
       cell(fmtN(total), 'cartes en tout') +
-      cell(fmtN(dups), plural(dups, 'doublon').replace(/^\S+\s/, '')) +
+      cell(fmtN(dups), word(dups, 'doublon')) +
       cell(fmtN(st.fullSubthemes), `album${st.fullSubthemes > 1 ? 's' : ''} à 100 %`);
     // succès débloqués (les 36 de l'espace Jeux) — remplace le « plus gros drop » (retours live n°1)
     const ach = prof?.achievements ?? (isMe() && backend.eco.snapshot ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, backend.eco.snapshot!.achievements.stats)).length, total: ACHIEVEMENTS.length } : null);
@@ -306,7 +429,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       sc.href = '#/succes';
       sc.innerHTML = `<b>🏅 ${ach.done}<small>/${ach.total}</small></b><span>succès débloqués${isMe() ? ' · voir' : ''}</span><i class="pf-ach-bar"><i style="width:${((ach.done / ach.total) * 100).toFixed(1)}%"></i></i>`;
       if (!isMe()) sc.removeAttribute('href');
-      stats.prepend(sc);
+      keysEl.append(sc);
     }
     // complétion par thème
     const ids = new Set(mine.filter((c) => c.rarity !== 'secret').map((c) => c.cardId));
@@ -341,6 +464,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     tools.innerHTML = me ? (editing ? `<button class="btn-ghost pf-cancel">Annuler</button><button class="btn-primary pf-save">Enregistrer</button>` : `<button class="btn-ghost pf-edit">Choisir mes cartes</button>`) : '';
     caseEl.innerHTML = '';
     caseEl.classList.toggle('editing', editing);
+    // téléphone : 6 cases (2 rangées) puis « Voir les 12 » (CSS sous 760 px), toutes en édition
+    caseEl.classList.toggle('all', editing || caseAll);
+    caseMore.hidden = editing || caseAll || list.filter(Boolean).length <= 6;
     for (let i = 0; i < SLOTS; i++) {
       const c = list[i];
       const wrap = h('div', `pf-slot${editing && i === slot ? ' sel' : ''}`);
@@ -389,6 +515,11 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       }
     });
   }
+  let caseAll = false;
+  caseMore.addEventListener('click', () => {
+    caseAll = true;
+    renderCase();
+  });
   function stopEditing() {
     editing = false;
     picker.hidden = true;
@@ -405,7 +536,12 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     q('.pf-slot-n').textContent = String(slot + 1);
     const qq = fold(pickSearch.value.trim());
     const used = new Set(draft.filter(Boolean).map((c) => `${c!.cardId}:${c!.rarity}`));
-    const list = [...ownedOf()].sort(best).filter((c) => !qq || fold(catalogEntry(c.cardId)?.name ?? '').includes(qq)).slice(0, 240);
+    pickStarsEl.querySelectorAll<HTMLElement>('.chip').forEach((b) => (b.classList.toggle('on', b.dataset.r === pickStar), b.setAttribute('aria-pressed', String(b.dataset.r === pickStar))));
+    const all = [...ownedOf()].sort(best).filter((c) => (!pickStar || c.rarity === pickStar) && (!qq || fold(catalogEntry(c.cardId)?.name ?? '').includes(qq)));
+    const list = all.slice(0, PICK_CAP);
+    // liste tronquée : on le dit (audit UX3-20)
+    pickMore.hidden = all.length <= PICK_CAP;
+    pickMore.textContent = `${fmtN(PICK_CAP)} sur ${fmtN(all.length)} · affine ta recherche ou filtre par étoiles`;
     pickGrid.replaceChildren(
       ...list.map((c) => {
         const t = cardTile(c.cardId, c.rarity, { mini: true, count: c.count });
@@ -423,6 +559,21 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       }),
     );
     if (!list.length) pickGrid.innerHTML = '<div class="muted">Aucune carte.</div>';
+  }
+  const PICK_CAP = 240;
+  const pickStarsEl = q('.pf-pick-stars');
+  const pickMore = q('.pf-pick-more');
+  let pickStar: RarityId | null = null;
+  for (const r of [...STARS, 'secret'] as RarityId[]) {
+    const b = h('button', 'chip', r === 'secret' ? '✷' : `${rarity(r).rank + 1}★`);
+    b.dataset.r = r;
+    b.title = rarity(r).label;
+    b.style.setProperty('--rc', rarity(r).hex);
+    // texte lisible pour Rare / Épique (UX5-09), la teinte de la carte ne change pas
+    b.style.setProperty('--rt', r === 'epic' ? '#e0607a' : r === 'rare' ? '#6f9be0' : rarity(r).hex);
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => ((pickStar = pickStar === r ? null : r), renderPicker()));
+    pickStarsEl.append(b);
   }
   let searchT = 0;
   pickSearch.addEventListener('input', () => {
@@ -448,7 +599,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       if (row) t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
       g.append(t);
     }
-    if (b.cards.length > 24) g.append(h('div', 'muted', `+ ${b.cards.length - 24} autres`));
+    if (b.cards.length > 24) g.append(h('div', 'muted', `+ ${fmtN(b.cards.length - 24)} autres`));
   }
 
   // ── ACTIVITÉ
@@ -467,7 +618,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const list = activity ?? [];
     activityEl.replaceChildren();
     if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? 'Rien pour l’instant : tes gros tirages (5★ et +), échanges conclus et contrats signés apparaîtront ici.' : 'Rien à montrer pour l’instant.'}</div>`);
-    const ICON: Record<string, string> = { pull: '✦', mythic_pull: '✺', secret_pull: '✷', trade: '⇄', contract: '🔥', joined: '👋', achievement: '🏅' };
+    const ICON: Record<string, string> = { pull: '✦', mythic_pull: '✺', secret_pull: '✷', trade: '⇄', contract: '⚖', joined: '👋', achievement: '🏅' };
     for (const a of list) {
       const e = a.cardId ? catalogEntry(a.cardId) : undefined;
       const rr = a.rarity ? rarity(a.rarity) : null;
@@ -524,13 +675,27 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (my !== token) return;
     el.classList.remove('loading');
     renderAll();
+    // « Équiper → » depuis les succès : le panneau de personnalisation s'ouvre tout de suite
+    if (isMe() && sessionStorage.getItem('bebou.openCosm')) {
+      sessionStorage.removeItem('bebou.openCosm');
+      openCosm();
+      cosm.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
     if (tab === 'activite') void loadActivity();
     if (tab === 'classement') ((leaderLoaded = true), void leaderboard.load());
   }
 
-  // ── une carte en grand
+  // ── une carte en grand ; un toucher à côté la referme (audit UX3-09, même règle que la boutique)
+  let viewerRef: ViewerScene | null = null;
+  let openedAt = 0;
+  shell.input.onTap((x, y) => {
+    if (!open || !viewerRef || performance.now() - openedAt < 450 || !el.isConnected) return;
+    if (!viewerRef.hits(x, y)) closeViewer();
+  });
   async function openCard(cardId: string, r: RarityId) {
     const viewer = await getViewer();
+    viewerRef = viewer;
+    openedAt = performance.now();
     const e = catalogEntry(cardId);
     const rr = rarity(r);
     const row = ownedOf().find((c) => c.cardId === cardId && c.rarity === r);
@@ -577,10 +742,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       el.scrollTo({ top: 0 });
       const parts = (sub ?? '').split('/');
       const id = parts[0] ? decodeURIComponent(parts[0]) : '';
-      // #/profil/classement : directement le classement
+      // #/profil/classement : la page dédiée #/classement (même composant, sans l'en-tête du profil devant : UX3-17)
       if (id === 'classement') {
-        tab = 'classement';
-        void load('');
+        location.replace('#/classement');
         return;
       }
       void load(id);

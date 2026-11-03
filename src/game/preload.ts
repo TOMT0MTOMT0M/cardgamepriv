@@ -5,8 +5,8 @@ import { thumbUrl } from './ui';
 
 /**
  * Préchargement des images.
- *  - Miniatures (grilles) : WebP de ~12 Ko, chargées par lots en tâche de fond quand le navigateur est inactif, en
- *    commençant par les cartes que le joueur possède → la collection s'affiche pleine, sans trous.
+ *  - Miniatures (grilles) : WebP de ~12 Ko, chargées par lots en tâche de fond quand le navigateur est inactif : la
+ *    première page de la collection (les plus rares possédées), puis la page affichée par la grille — pas plus.
  *  - Illustrations pleine définition (3D) : celles des 5 cartes d'un pack sont chargées dès que le pack est tiré,
  *    pendant que le joueur brûle l'emballage (cf. scenes/opening.ts), puis gardées en cache (détourage + palette).
  * Le cache HTTP (public/_headers) fait le reste aux visites suivantes.
@@ -53,18 +53,44 @@ export function preloadThumbs(entries: Iterable<CatalogEntry | undefined>, prior
   void pump();
 }
 
-/** Miniatures des cartes possédées (y compris Bébous possédés), en priorité. */
+/** ordre de la vue « Cartes » (la plus rare en haut) : c'est elle qui s'ouvre en premier dans la collection */
+const RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
+/** au plus une page de la vue Cartes (collection.ts : 60 par page) */
+const OWNED_CAP = 60;
+/** économie de données activée, ou réseau 2G : on ne précharge rien d'avance (le chargement paresseux suffit) */
+function saveData(): boolean {
+  const c = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  return !!c?.saveData || /2g/.test(c?.effectiveType ?? '');
+}
+
+/**
+ * Miniatures des cartes possédées, en priorité — mais seulement ce qui sera affiché bientôt (audit PERF2-04) : la
+ * première page de la vue « Cartes » (les 60 plus rares, Bébous possédés compris), pas toute la collection à chaque
+ * session (556 cartes ≈ 6,7 Mo ; 3 000 ≈ 36 Mo sur forfait mobile). Les pages suivantes sont demandées par la grille
+ * elle-même (`preloadThumbs(page, true)`) et le reste par `loading="lazy"`.
+ */
 export function preloadOwned(cardIds: Iterable<string>) {
-  const list: CatalogEntry[] = [];
+  if (saveData()) return;
+  const seen = new Set<string>();
+  const all: CatalogEntry[] = [];
   for (const id of cardIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
     const e = catalogEntry(id);
-    if (!e) continue;
+    if (e) all.push(e);
+  }
+  all.sort((a, b) => (RANK[b.rarity] ?? 0) - (RANK[a.rarity] ?? 0));
+  const list: CatalogEntry[] = [];
+  const secrets: string[] = [];
+  for (const e of all.slice(0, OWNED_CAP)) {
     if (e.rarity === 'secret') {
+      // Bébou POSSÉDÉ : preloadThumbs les ignore (secrets non possédés), on l'ajoute à la main
       const u = thumbUrl(e);
-      if (!done.has(u)) (done.add(u), queue.unshift(u));
+      if (!done.has(u)) (done.add(u), secrets.push(u));
     } else list.push(e);
   }
   preloadThumbs(list, true);
+  if (secrets.length) (queue.unshift(...secrets), void pump());
 }
 
 /** Illustrations pleine définition des cartes d'un pack (avant même que le joueur ait fini d'ouvrir). */

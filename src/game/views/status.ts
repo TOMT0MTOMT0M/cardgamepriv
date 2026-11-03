@@ -2,7 +2,7 @@ import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import { STREAK_CYCLE, STREAK_REWARD, streakClaimable, streakDay, touchStreak } from '../../core/streak';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
-import { busyButton, errMsg, fmtN, h, plural, toast } from '../ui';
+import { CLOSE_X, busyButton, errMsg, fmtN, h, keepFocus, loginPrompt, panelHidden, panelShown, plural, toast } from '../ui';
 
 /**
  * ICÔNES DE STATUT de l'en-tête (à côté de la réserve et des missions) :
@@ -16,6 +16,8 @@ export const PITY_ICON = `<svg viewBox="0 0 24 24" width="19" height="19" aria-h
 export function createStatus(backend: GameBackend, shell: Shell) {
   const pop = h('div', 'status-pop');
   pop.setAttribute('role', 'dialog');
+  pop.id = 'pop-status';
+  pop.inert = true; // fermé : ni focus ni lecteur d'écran
   const veil = h('div', 'um-veil');
   document.body.append(veil, pop);
   let on: 'streak' | 'pity' | null = null;
@@ -31,13 +33,13 @@ export function createStatus(backend: GameBackend, shell: Shell) {
     const s = streakNow();
     pop.setAttribute('aria-label', 'Série de connexion');
     if (!u || !s) {
-      pop.innerHTML = '<div class="msn-head"><b>Série de connexion</b></div><div class="muted">Connecte-toi chaque jour : au 7e, une récompense.</div>';
+      pop.innerHTML = `<div class="msn-head"><b>Série de connexion</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi chaque jour : au 7e, une récompense.')}`;
       return;
     }
     const day = streakDay(s);
     const claimable = streakClaimable(s);
     const dots = Array.from({ length: STREAK_CYCLE }, (_, i) => `<span class="st-d${i < day ? ' on' : ''}${i === day - 1 ? ' now' : ''}${i === STREAK_CYCLE - 1 ? ' gift' : ''}"><i>${i + 1}</i></span>`).join('');
-    pop.innerHTML = `<div class="msn-head"><b>Série de connexion</b><span>${plural(s.count, 'jour')} d’affilée</span></div>
+    pop.innerHTML = `<div class="msn-head"><b>Série de connexion</b><span>${plural(s.count, 'jour')} d’affilée</span>${CLOSE_X}</div>
       <div class="st-days">${dots}</div>
       <div class="st-txt">${claimable ? `<b>Jour 7 atteint !</b> Ta récompense t’attend.` : day === STREAK_CYCLE ? 'Récompense réclamée ✓ · la série continue demain' : `Jour <b>${day}</b> sur ${STREAK_CYCLE} · reviens demain pour continuer`}</div>
       <div class="msn-bonus${claimable ? ' ready' : ''}">${claimable ? `<span>+${STREAK_REWARD} boosters</span><button class="btn-primary st-claim">Réclamer</button>` : `<span>+${STREAK_REWARD} boosters au 7e jour</span>`}</div>
@@ -58,27 +60,41 @@ export function createStatus(backend: GameBackend, shell: Shell) {
     const u = backend.state.user;
     pop.setAttribute('aria-label', 'Pity 6★');
     if (!u) {
-      pop.innerHTML = '<div class="msn-head"><b>Pity 6★</b></div><div class="muted">Connecte-toi pour suivre ton compteur.</div>';
+      pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi pour suivre ton compteur.')}`;
       return;
     }
     const left = pityLeft(u.pityCount);
     const pct = ((PITY_LIMIT - 1 - left) / (PITY_LIMIT - 1)) * 100;
-    pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b><span>${fmtN(u.pityCount)} booster${u.pityCount > 1 ? 's' : ''} sans 6★</span></div>
+    pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b><span>${fmtN(u.pityCount)} booster${u.pityCount > 1 ? 's' : ''} sans 6★</span>${CLOSE_X}</div>
       <div class="msn-bar"><i style="width:${pct.toFixed(1)}%"></i></div>
       <div class="st-txt">${left === 0 ? '<b>Ton prochain booster contient un 6★ sûr !</b>' : `Encore <b>${fmtN(left)}</b> booster${left > 1 ? 's' : ''} sans 6★ et le suivant en contient un, <b>garanti</b>.`}</div>
       <div class="msn-foot">${PITY_LIMIT} boosters d’affilée sans Mythique : le ${PITY_LIMIT}e en a une. Le compteur repart à zéro dès qu’un 6★ tombe, tous boosters confondus.</div>`;
   }
 
+  const render = () => on && keepFocus(pop, on === 'streak' ? renderStreak : renderPity);
+  const close = () => on && toggle(on, false);
   function toggle(which: 'streak' | 'pity', force?: boolean) {
     const open = force ?? on !== which;
+    const was = on;
     on = open ? which : null;
     pop.classList.toggle('on', open);
     veil.classList.toggle('on', open);
-    if (open) (which === 'streak' ? renderStreak : renderPity)();
+    if (open) {
+      pop.dataset.which = which;
+      (which === 'streak' ? renderStreak : renderPity)();
+      panelShown(pop, close); // « retour » le ferme, un seul panneau à la fois
+      // série → pity : même panneau, même couche ; le focus repasse sur le ✕
+      if (was) pop.querySelector<HTMLElement>('.pop-x')?.focus({ preventScroll: true });
+    } else if (was) panelHidden(pop, close);
   }
-  veil.addEventListener('click', (e) => (e.preventDefault(), e.stopPropagation(), on && toggle(on, false)));
+  pop.addEventListener('click', (e) => {
+    const t = e.target as Element;
+    if (t.closest('.pop-x')) close();
+    else if (t.closest('.login-cta')) backend.login();
+  });
+  veil.addEventListener('click', (e) => (e.preventDefault(), e.stopPropagation(), close()));
   window.addEventListener('keydown', (e) => e.key === 'Escape' && on && toggle(on, false));
-  backend.onChange(() => on && (on === 'streak' ? renderStreak : renderPity)());
+  backend.onChange(() => render());
 
   return {
     toggle,

@@ -8,6 +8,7 @@ import { catalogEntry } from '../../core/sets/themes';
 import { haptics } from '../../core/haptics';
 import { paintedCard } from '../cardImages';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
+import { PROTECT_LEGEND, protectIcons, protection as protectionOf } from './safety';
 
 /**
  * CONTRATS (façon CS:GO) : on choisit une étoile, on remplit le contrat avec ses doublons (10 / 20 / 50 cartes),
@@ -50,6 +51,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
         <div class="ct-sheet-top"><div class="ct-title"></div><div class="ct-fill"></div></div>
         <div class="ct-slots"></div>
         <div class="ct-odds"></div>
+        <div class="ct-recap" hidden></div>
         <div class="ct-actions">
           <button class="ghost auto">Remplir automatiquement</button>
           <button class="ghost clear">Vider</button>
@@ -57,6 +59,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
         </div>
       </div>
       <div class="ct-pick-t">Tes doublons <span></span></div>
+      <div class="ct-legend" hidden>${esc(PROTECT_LEGEND)}</div>
       <div class="grid mini ct-dups"></div>
       <div class="empty" hidden></div>
     </div>
@@ -71,6 +74,19 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   const dupsEl = el.querySelector<HTMLElement>('.ct-dups')!;
   const pickT = el.querySelector<HTMLElement>('.ct-pick-t span')!;
   const empty = el.querySelector<HTMLElement>('.empty')!;
+  const recapEl = el.querySelector<HTMLElement>('.ct-recap')!;
+  const legendEl = el.querySelector<HTMLElement>('.ct-legend')!;
+  /** dernier retrait d'une case (toucher par erreur en faisant défiler) : « Annuler » pendant 4 s */
+  let undo: { id: string; i: number; t: number } | null = null;
+  /** signature armée (second toucher) : contrat de 4★+ ou de plus de 10 cartes (UX4-02) */
+  let armed: { sig: string; at: number } | null = null;
+  let armT = 0;
+  const sheetSig = () => `${tier}|${seq.join(',')}`;
+  const needsConfirm = () => cost() > 10 || rarity(tier).rank >= 3;
+  /** combustion : un toucher la passe (après ~0,8 s) */
+  let skipBurn = false;
+  /** cartes protégées déjà signalées (toast une seule fois) */
+  const protHinted = new Set<string>();
   const signBtn = el.querySelector<HTMLButtonElement>('.sign')!;
   const autoBtn = el.querySelector<HTMLButtonElement>('.auto')!;
   const clearBtn = el.querySelector<HTMLButtonElement>('.clear')!;
@@ -79,15 +95,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   const flamesEl = el.querySelector<HTMLElement>('.ct-flames')!;
   const bgEl = el.querySelector<HTMLElement>('.ct-bg')!;
 
-  /** Pourquoi une carte est protégée du remplissage automatique (envie, classeur, pochette) — vide si rien. */
-  function protection(cardId: string): string[] {
-    const st = backend.state;
-    const out: string[] = [];
-    if (st.wishlist.includes(cardId)) out.push('envie');
-    if (st.binders.some((b) => b.cards.some((c) => c.cardId === cardId))) out.push('classeur');
-    if (Object.values(st.covers).includes(cardId) || st.binders.some((b) => b.coverCardId === cardId)) out.push('pochette');
-    return out;
-  }
+  /** Pourquoi une carte est protégée du remplissage automatique (envie, classeur, pochette) — vide si rien (partagé avec la forge). */
+  const protection = (cardId: string) => protectionOf(backend.state, cardId);
   /** doublons disponibles (exemplaires au-delà du premier, moins ceux engagés dans un échange en attente) d'une étoile */
   function dups(r: string): Array<PlayerCard & { spare: number; locked: number; protect: string[] }> {
     const locked = lockedCards(backend.state);
@@ -106,23 +115,34 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     return [...m].map(([cardId, count]) => ({ cardId, count }));
   };
   const total = () => seq.length;
+  /** contrats possibles d'une étoile : avec les doublons libres (remplissage auto) et en plus avec les protégés */
+  function possibleOf(r: StarRarityId) {
+    const all = dups(r);
+    const need = CONTRACT_COST[r]!;
+    const have = all.reduce((a, c) => a + c.spare, 0);
+    const free = all.filter((c) => !c.protect.length).reduce((a, c) => a + c.spare, 0);
+    const possible = Math.floor(free / need);
+    return { have, possible, extra: Math.floor(have / need) - possible };
+  }
   const cost = () => CONTRACT_COST[tier]!;
 
   function renderTiers() {
     tiersEl.innerHTML = '';
     for (const r of TIERS) {
-      const have = dups(r).reduce((a, c) => a + c.spare, 0);
+      const { have, possible, extra } = possibleOf(r);
       const need = CONTRACT_COST[r]!;
       const to = contractTarget(r)!;
-      const possible = Math.floor(have / need);
+      // « possible » = ce que le remplissage auto peut vraiment faire (cartes protégées à part, UX4-07) ; libellé court (UX4-18)
       const b = h('button', `ct-tier${r === tier ? ' on' : ''}${have >= need ? ' ready' : ''}`,
         `<span class="ct-tr"><b style="color:${rarity(r).hex}">${stars(r)}</b> → <b style="color:${rarity(to).hex}">${stars(to)}</b></span>
-         <span class="ct-tc">${need} cartes</span><span class="ct-th">${plural(have, 'doublon')}</span><span class="ct-tp${possible ? ' ok' : ''}">${possible ? `${possible} contrat${possible > 1 ? 's' : ''} possible${possible > 1 ? 's' : ''}` : 'pas encore'}</span>`);
+         <span class="ct-tc">${need} cartes</span><span class="ct-th">${plural(have, 'doublon')}</span><span class="ct-tp${possible ? ' ok' : ''}">${possible ? `×${possible} possible${possible > 1 ? 's' : ''}` : extra ? `×${extra} à la main` : 'pas encore'}</span>`);
+      b.title = `${possible ? plural(possible, 'contrat possible', 'contrats possibles') : 'Aucun contrat en remplissage auto'}${extra ? ` · +${extra} en ajoutant à la main tes cartes protégées (envies, classeurs, pochettes)` : ''}`;
       b.style.setProperty('--rc', rarity(to).hex);
       b.addEventListener('click', () => {
         if (busy || tier === r) return;
         tier = r;
         seq = [];
+        undo = null;
         shell.sfx.tick(1.2, 0.05);
         render();
       });
@@ -154,6 +174,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     el.style.setProperty('--ct-c', rarity(to).hex);
     // une case par carte à brûler : la carte choisie (dans l'ordre d'ajout), ou vide. Les cases sont mises à jour sur
     // place (pas reconstruites) : aucune vignette ne clignote quand on ajoute ou retire une carte.
+    slotsEl.className = `ct-slots n${cost()}`; // téléphone : moins de colonnes, cases ≥ 40 px (UX4-10)
     if (slotsEl.children.length !== cost()) {
       slotsEl.replaceChildren(
         ...Array.from({ length: cost() }, (_, i) => {
@@ -163,6 +184,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
             const id = seq[i];
             seq.splice(i, 1);
             popAt = -1;
+            undo = { id, i, t: Date.now() };
+            window.setTimeout(() => undo && Date.now() - undo.t >= 4000 && ((undo = null), renderSheet()), 4100);
             shell.sfx.tick(0.8, 0.05);
             renderSheet();
             syncDup(id);
@@ -201,7 +224,10 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     const spareTotal = [...spareOf.values()].reduce((a, b) => a + b, 0);
     // pas assez de doublons pour ce contrat : on le dit tout de suite, plutôt que de laisser chercher
     const short = cost() - spareTotal;
-    oddsEl.innerHTML = n
+    if (undo && (seq.length >= cost() || Date.now() - undo.t > 4000)) undo = null;
+    oddsEl.innerHTML = undo
+      ? `${esc(catalogEntry(undo.id)?.name ?? '')} retirée du contrat · <button class="linkish ct-undo">Annuler</button>`
+      : n
       ? `Carte reçue : ${starsHtml(to)} · ${oddsText(odds)}`
       : short > 0
         ? spareTotal
@@ -214,9 +240,27 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     clearBtn.disabled = busy || n === 0;
     signBtn.classList.toggle('ready', !busy && n === cost());
     fillEl.classList.toggle('done', n === cost());
-    signBtn.textContent = 'Signer le contrat';
+    // second toucher : armé tant que le contrat ne change pas (3 s)
+    if (armed && (armed.sig !== sheetSig() || n !== cost() || busy)) (armed = null), clearTimeout(armT);
+    signBtn.classList.toggle('armed', !!armed);
+    signBtn.textContent = armed ? `Confirmer : brûler ${cost()} cartes ${stars(tier)} ?` : 'Signer le contrat';
     signBtn.title = n === cost() ? '' : `Encore ${cost() - n} carte${cost() - n > 1 ? 's' : ''} à choisir`;
+    // récapitulatif de ce qui part au feu, lisible (les cases font ~30 px au téléphone)
+    recapEl.hidden = n !== cost() || busy;
+    if (!recapEl.hidden) {
+      const list = items().sort((a, b) => b.count - a.count);
+      const names = list.map((it) => `${it.count}× ${esc(catalogEntry(it.cardId)?.name ?? it.cardId)}`);
+      recapEl.innerHTML = `<b>Tu brûles :</b> ${names.slice(0, 8).join(', ')}${names.length > 8 ? ` et ${names.length - 8} autres` : ''} · tu gardes 1 exemplaire de chacune.`;
+    }
   }
+  oddsEl.addEventListener('click', (e) => {
+    if (!(e.target as HTMLElement).closest('.ct-undo') || !undo || busy) return;
+    const u = undo;
+    undo = null;
+    if (seq.length < cost() && (spareOf.get(u.id) ?? 0) > countOf(u.id)) seq.splice(Math.min(u.i, seq.length), 0, u.id);
+    renderSheet();
+    syncDup(u.id);
+  });
 
   function renderDups() {
     const list = dups(tier);
@@ -230,12 +274,18 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       t.classList.add('ct-dup');
       t.insertAdjacentHTML('beforeend', `<span class="count"></span>`);
       // protégée (envie, classeur, pochette) : laissée de côté par le remplissage automatique, mais brûlable à la main
-      if (c.protect.length) t.insertAdjacentHTML('beforeend', `<span class="ct-prot" title="Protégée du remplissage automatique : ${esc(c.protect.join(', '))}">${c.protect.includes('envie') ? '♥' : c.protect.includes('pochette') ? '⌂' : '▤'}</span>`);
+      if (c.protect.length) t.insertAdjacentHTML('beforeend', `<span class="ct-prot" title="Protégée du remplissage automatique : ${esc(c.protect.join(', '))}" aria-label="Protégée : ${esc(c.protect.join(', '))}">${protectIcons(c.protect)}</span>`);
       if (c.locked) t.insertAdjacentHTML('beforeend', `<span class="ct-lock" title="${c.locked} exemplaire${c.locked > 1 ? 's' : ''} engagé${c.locked > 1 ? 's' : ''} dans un échange en attente">🔒</span>`);
       t.addEventListener('click', () => {
         if (busy) return;
         if (c.spare - countOf(c.cardId) <= 0) return toast(c.locked ? 'Engagée dans un échange en attente : attends la réponse.' : 'Tu gardes toujours un exemplaire de chaque carte.', 'info');
         if (total() >= cost()) return toast('Le contrat est plein : signe-le, ou retire une carte.', 'info');
+        // au doigt, pas de survol : on explique la protection la première fois qu'on brûle une telle carte
+        if (c.protect.length && !protHinted.has(c.cardId)) {
+          protHinted.add(c.cardId);
+          toast(`Protégée (${c.protect.join(', ')}) : ajoutée quand même.`, 'info');
+        }
+        undo = null;
         seq.push(c.cardId);
         popAt = seq.length - 1;
         // la note monte à mesure que le contrat se remplit ; petit carillon quand il est complet
@@ -249,7 +299,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     dupsEl.replaceChildren(frag);
     for (const c of list) syncDup(c.cardId);
     empty.hidden = list.length > 0;
-    empty.textContent = `Pas encore de doublons ${stars(tier)} : ouvre des boosters, ils arrivent vite.`;
+    legendEl.hidden = !list.some((c) => c.protect.length || c.locked);
+    empty.innerHTML = `Pas encore de doublons ${stars(tier)} : <a href="#/">ouvre des boosters →</a>, ils arrivent vite.`;
   }
 
   /** doublons disponibles de chaque carte de la grille affichée */
@@ -284,6 +335,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     const free = all.filter((c) => !c.protect.length);
     seq = autoFill(tier, free.map((c) => ({ cardId: c.cardId, spare: c.spare }))).flatMap((it) => Array.from({ length: it.count }, () => it.cardId));
     popAt = -1;
+    undo = null;
     if (seq.length) shell.sfx.whoosh(0.3, 0.06);
     if (seq.length === cost()) shell.sfx.chime(2, 0.06);
     if (total() < cost()) {
@@ -297,6 +349,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     if (busy || !seq.length) return;
     seq = [];
     popAt = -1;
+    undo = null;
     shell.sfx.tick(0.7, 0.05);
     renderSheet();
     syncDups();
@@ -305,6 +358,19 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   signBtn.addEventListener('click', async () => {
     if (busy || total() !== cost()) return;
     shell.requestGyro(); // iPhone : en première ligne du clic
+    if (needsConfirm()) {
+      if (!armed) {
+        armed = { sig: sheetSig(), at: Date.now() };
+        clearTimeout(armT);
+        armT = window.setTimeout(() => ((armed = null), renderSheet()), 3000);
+        haptics.pulse(10);
+        renderSheet();
+        return;
+      }
+      if (Date.now() - armed.at < 400) return; // double-toucher : ce n'est pas une confirmation
+    }
+    armed = null;
+    clearTimeout(armT);
     busy = true;
     renderSheet();
     const viewerP = getViewer();
@@ -384,8 +450,24 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     el.style.setProperty('--fire', rarity(to).hex);
     shell.sfx.rumble(1.4, 0.18);
     const step = Math.min(0.09, 1.3 / Math.max(1, slots.length));
+    // « touche pour passer » (UX4-09) : la cérémonie se raccourcit dès ~0,8 s
+    skipBurn = false;
+    const t0 = performance.now();
+    const onSkip = () => {
+      if (performance.now() - t0 > 800) skipBurn = true;
+    };
+    el.addEventListener('pointerdown', onSkip);
+    const prevOdds = oddsEl.innerHTML;
+    window.setTimeout(() => el.classList.contains('burning') && (oddsEl.innerHTML = '<span class="ct-skip">touche l’écran pour passer</span>'), 800);
+    const waitOrSkip = (ms: number) =>
+      new Promise<void>((res) => {
+        const end = performance.now() + ms;
+        const tick = () => (skipBurn || performance.now() >= end ? res() : void setTimeout(tick, 50));
+        tick();
+      });
+    const timers: number[] = [];
     slots.forEach((slot, i) => {
-      setTimeout(() => {
+      timers.push(window.setTimeout(() => {
         slot.style.setProperty('--bx', `${(20 + Math.random() * 60).toFixed(0)}%`);
         slot.style.setProperty('--by', `${(20 + Math.random() * 60).toFixed(0)}%`);
         slot.classList.add('burn');
@@ -398,17 +480,20 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
         }
         if (i % 2 === 0) shell.sfx.tick(0.6 + Math.random() * 0.3, 0.05);
         if (i % 4 === 0) haptics.pulse(8);
-      }, i * step * 1000);
+      }, i * step * 1000));
     });
     const burnEnd = slots.length * step * 1000 + 1100;
-    await new Promise((r) => setTimeout(r, burnEnd));
+    await waitOrSkip(burnEnd);
+    timers.forEach(clearTimeout); // passé : les cases pas encore allumées ne s'allumeront plus après coup
     // les flammes se lèvent : la nouvelle carte arrive
     flamesEl.hidden = false;
     flamesEl.style.setProperty('--fire', rarity(to).hex);
     shell.sfx.whoosh(0.7, 0.2, true);
     shell.sfx.crack(0.2);
     haptics.pulse([20, 30, 60]);
-    await new Promise((r) => setTimeout(r, 900));
+    await (skipBurn ? new Promise((r) => setTimeout(r, 350)) : waitOrSkip(900)); // (passé : un éclair de flammes quand même)
+    el.removeEventListener('pointerdown', onSkip);
+    oddsEl.innerHTML = prevOdds;
     // la fiche se vide pendant que les flammes couvrent tout
     for (const slot of slots) {
       slot.classList.remove('burn');
@@ -418,7 +503,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
 
   function closeViewer() {
     if (!open) return;
-    popLayer();
+    popLayer(closeViewer);
     open = false;
     document.body.classList.remove('card-open');
     el.classList.remove('viewing');
@@ -454,7 +539,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       shell.show(null);
       shell.setDimmed(true);
       // première étoile où un contrat est possible, sinon la plus basse
-      if (!seq.length) tier = TIERS.find((r) => dups(r).reduce((a, c) => a + c.spare, 0) >= CONTRACT_COST[r]!) ?? tier;
+      if (!seq.length) tier = TIERS.find((r) => possibleOf(r).possible > 0) ?? TIERS.find((r) => possibleOf(r).extra > 0) ?? tier;
       render();
     },
     leave() {

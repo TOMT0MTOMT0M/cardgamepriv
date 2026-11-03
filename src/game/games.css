@@ -17,13 +17,16 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 .coin-btn { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 11px; border-radius: 999px; border: 1px solid rgba(242, 196, 109, 0.32); background: rgba(242, 196, 109, 0.08); font: 600 12px var(--mono); color: var(--gold); position: relative; transition: background-color 0.2s, border-color 0.2s; }
 .coin-btn:hover { background: rgba(242, 196, 109, 0.14); border-color: rgba(242, 196, 109, 0.55); }
 .coin-btn .coin-ico { width: 17px; height: 17px; }
-.coin-btn .w-dot { position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--rose); box-shadow: 0 0 0 2px var(--bg), 0 0 10px var(--rose); }
+/* « quelque chose à prendre » : doré, comme les autres récompenses de l'en-tête (UX1-19) */
+.coin-btn .w-dot { position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--bg), 0 0 10px var(--gold); }
 .coin-btn.bump { animation: coin-bump 0.5s cubic-bezier(0.34, 1.6, 0.6, 1); }
 @keyframes coin-bump { 40% { transform: scale(1.14); } }
 .coin-fly { position: fixed; z-index: 60; pointer-events: none; font: 700 14px var(--mono); color: var(--gold); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 14px rgba(242, 196, 109, 0.6); animation: coin-fly 1.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .coin-fly.neg { color: var(--err); }
 @keyframes coin-fly { from { opacity: 0; transform: translateY(6px) scale(0.8); } 15% { opacity: 1; transform: translateY(0) scale(1.1); } to { opacity: 0; transform: translateY(26px); } }
-@media (max-width: 700px) { .coin-btn b { max-width: 54px; overflow: hidden; text-overflow: ellipsis; } }
+/* (solde court dans l'en-tête, « 12,3 k » : plus de troncature « 12 3… ») ; au doigt, une cible de 40 px de haut */
+.coin-btn b { white-space: nowrap; }
+@media (max-width: 860px), (pointer: coarse) { .coin-btn { height: 40px; } }
 
 /* panneau portefeuille */
 .wallet-pop { width: min(380px, calc(100vw - 24px)); }
@@ -245,6 +248,37 @@ a.gm-mini:hover { border-color: var(--line-2); }
 .pk-v b { color: var(--gold); }
 .gm-fgrid > .muted, .gm-pot > .muted, .pk-grid > .muted { grid-column: 1 / -1; }
 
+/* ==== AUDIT 03/11 — lot D (espace Jeux) ==== */
+/* enjeu affiché à côté des boutons (UX4-05) */
+.gm-risk { font-size: 12.5px; line-height: 1.55; color: var(--ink-2); padding: 8px 12px; border-radius: 12px; border: 1px dashed var(--line-2); background: rgba(255, 236, 214, 0.02); }
+.gm-risk b { color: var(--ink); }
+/* bouton armé (second toucher) : il change de couleur pour qu'on voie qu'il attend une confirmation */
+.games .armed { background: linear-gradient(180deg, #f2c46d, #d99a3c) !important; color: #241604 !important; box-shadow: 0 0 0 2px rgba(242, 196, 109, 0.35), 0 10px 26px -10px rgba(242, 196, 109, 0.9); animation: gm-armed 0.9s ease-in-out infinite alternate; }
+@keyframes gm-armed { to { box-shadow: 0 0 0 4px rgba(242, 196, 109, 0.18), 0 10px 26px -10px rgba(242, 196, 109, 0.9); } }
+@media (prefers-reduced-motion: reduce) { .games .armed { animation: none; } }
+/* forge : protections visibles et légende, puce « Tous les X★ » active, petit texte des puces */
+.gm-forge .gm-prot { width: auto; min-width: 20px; padding: 0 4px; border-radius: 999px; letter-spacing: 0.08em; }
+.gm-forge .tile .badge { top: auto; bottom: 22px; left: 5px; }
+.gm-quick .chip.on { border-color: var(--rc, var(--rose)); background: color-mix(in srgb, var(--rc, var(--rose)) 18%, transparent); color: var(--ink); }
+.gm-quick .chip small { font-size: 0.85em; color: var(--ink-3); }
+.gm-quick .chip:disabled { opacity: 0.45; }
+.gm-legend-p { font: 400 11px var(--mono); line-height: 1.5; }
+/* bilan personnel en fin de duel (UX4-22) */
+.gm-me { margin-top: 6px; font-size: 14px; }
+.gm-me a { color: var(--rose); }
+/* téléphone : numéros de roulette ≥ 40 px (la grille passe de 10 colonnes à ce qui tient), champs en 16 px (pas de zoom iOS) */
+@media (max-width: 600px) {
+  .games { padding-left: 16px; padding-right: 16px; }
+  .gm-panel:has(.gm-wheel) { padding: 10px; }
+  .gm-wheel { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px; }
+  .gm-num { min-height: 40px; font-size: 13px; }
+  .gm-step .btn-ghost.sm, .gm-ed-row .btn-ghost.sm { min-height: 40px; min-width: 40px; }
+}
+@media (pointer: coarse) {
+  .gm-coin-in input, .pk-q, .gm-ed-foot select { font-size: 16px; }
+  .gm-quick .chip { min-height: 40px; }
+}
+/* ==== fin lot D (espace Jeux) ==== */
 /* GAMES pas encore ouvert (retours live n°1) : page d'attente */
 .gm-soon { min-height: 50vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
 .gm-soon b { font: 500 46px/1 var(--title); font-style: italic; color: var(--rose-l); }

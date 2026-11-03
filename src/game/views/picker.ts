@@ -23,6 +23,11 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
     let rf: RarityId | '' = '';
     const veil = h('div', 'gm-modal-veil');
     const box = h('div', 'gm-modal picker');
+    // vraie fenêtre de dialogue : annoncée comme telle, Échap la ferme, le focus y entre et revient au bouton d'origine
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', o.title);
+    const opener = document.activeElement as HTMLElement | null;
     box.innerHTML = `<div class="pk-head"><b>${esc(o.title)}</b><button class="icon pk-x" aria-label="Fermer">✕</button></div>
       ${o.hint ? `<div class="muted">${esc(o.hint)}</div>` : ''}
       <div class="pk-tools"><input type="search" class="pk-q" placeholder="Chercher une carte…"><div class="pk-r"></div></div>
@@ -86,12 +91,24 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
       }
       box.querySelector('.pk-v')!.innerHTML = `${COIN_ICON}<b>${fmtCoins(cardsValue(items))}</b> de valeur`;
     }
+    let done = false;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      close(null);
+    };
+    const layer = () => close(null);
     const close = (v: StakeItem[] | null) => {
-      popLayer();
+      if (done) return;
+      done = true;
+      popLayer(layer);
+      window.removeEventListener('keydown', onKey, true);
       veil.remove();
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
       resolve(v);
     };
-    pushLayer(() => close(null));
+    pushLayer(layer);
+    window.addEventListener('keydown', onKey, true);
     box.querySelector('.pk-x')!.addEventListener('click', () => close(null));
     veil.addEventListener('click', (e) => e.target === veil && close(null));
     box.querySelector('.pk-clear')!.addEventListener('click', () => {
@@ -102,5 +119,17 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
     box.querySelector('.pk-ok')!.addEventListener('click', () => close([...picked.values()].filter((p) => p.count > 0)));
     drawGrid();
     drawSel();
+    // au doigt, pas de clavier qui surgit : le focus va sur ✕ ; à la souris / au clavier, sur la recherche
+    const first = matchMedia('(pointer: coarse)').matches ? box.querySelector<HTMLElement>('.pk-x') : box.querySelector<HTMLElement>('.pk-q');
+    requestAnimationFrame(() => first?.focus({ preventScroll: true }));
+    // Tab reste dans la fenêtre
+    box.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      const f = [...box.querySelectorAll<HTMLElement>('button, input, [tabindex="0"]')].filter((x) => !(x as HTMLButtonElement).disabled && x.offsetParent !== null);
+      if (!f.length) return;
+      const [a, z] = [f[0], f[f.length - 1]];
+      if (e.shiftKey && document.activeElement === a) (e.preventDefault(), z.focus());
+      else if (!e.shiftKey && document.activeElement === z) (e.preventDefault(), a.focus());
+    });
   });
 }

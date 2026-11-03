@@ -6,8 +6,65 @@ export function makeCanvas(w: number, h: number): { c: HTMLCanvasElement; g: Ctx
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
-  const g = c.getContext('2d', { willReadFrequently: false })!;
+  const g = ctx2d(c, { willReadFrequently: false });
   return { c, g };
+}
+
+// ───────────────────────────────────────────── mémoire des canvas (iOS)
+/**
+ * Safari iOS plafonne la mémoire TOTALE des canvas : au-delà, `getContext('2d')` renvoie null (avant : TypeError →
+ * ouverture bloquée). Les caches (illustrations, silhouettes) s'inscrivent ici pour être vidés en cas de manque.
+ */
+const pressureHandlers = new Set<() => void>();
+export function onCanvasPressure(fn: () => void): void {
+  pressureHandlers.add(fn);
+}
+
+/** Libère la mémoire d'un canvas tout de suite (iOS ne la rend qu'avec une taille nulle, pas au ramasse-miettes). */
+export function releaseCanvas(c: HTMLCanvasElement | null | undefined): void {
+  if (!c) return;
+  c.width = 0;
+  c.height = 0;
+}
+
+/**
+ * Contexte 2D garanti : si le navigateur le refuse (mémoire des canvas épuisée), on vide les caches et on réessaie ;
+ * en dernier recours, la toile est réduite à 1×1 (visuel de secours uni) puis, si même cela échoue, un contexte
+ * factice qui ignore tout. Jamais d'exception : la carte s'affiche, au pire sans détail.
+ */
+export function ctx2d(c: HTMLCanvasElement, opts?: CanvasRenderingContext2DSettings): Ctx {
+  let g = c.getContext('2d', opts);
+  if (g) return g;
+  console.warn(`[art] mémoire des canvas saturée (${c.width}×${c.height}) : caches vidés`);
+  pressureHandlers.forEach((fn) => {
+    try {
+      fn();
+    } catch {
+      /* ignore */
+    }
+  });
+  g = c.getContext('2d', opts);
+  if (g) return g;
+  // un canvas dont le contexte a échoué ne peut plus en donner : on repart d'une toile neuve, minuscule
+  const tiny = document.createElement('canvas');
+  tiny.width = tiny.height = 1;
+  g = tiny.getContext('2d', opts);
+  if (g) {
+    c.width = c.height = 1;
+    // les dessins vont sur la toile 1×1 ; `c` (vide) reste la cible des textures → couleur unie de secours
+    return g;
+  }
+  return deadCtx();
+}
+
+/** Contexte factice : toutes les méthodes existent et ne font rien (renvoient lui-même ou 0). */
+function deadCtx(): Ctx {
+  const fn: unknown = new Proxy(function () {}, {
+    get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : fn),
+    apply: () => fn,
+    set: () => true,
+  });
+  return fn as Ctx;
 }
 
 let grainCanvas: HTMLCanvasElement | null = null;

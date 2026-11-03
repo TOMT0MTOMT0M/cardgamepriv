@@ -92,7 +92,7 @@ export async function takeCards(ctx: MutationCtx, userId: Id<'users'>, items: Ar
 export async function checkStake(ctx: QueryCtx, u: Doc<'users'>, stake: { coins: number; cards: Array<{ cardId: string; rarity: RarityId; count: number }> }) {
   if (!Number.isInteger(stake.coins) || stake.coins < 0) throw new ConvexError('Montant invalide.');
   if (stake.coins > coinsOf(u)) throw new ConvexError(`${u.displayName} n’a pas assez de pièces pour sa mise.`);
-  if (stake.cards.length > 12) throw new ConvexError('12 cartes différentes au maximum dans un side pot.');
+  if (stake.cards.length > 12) throw new ConvexError('12 cartes différentes au maximum dans un pot annexe.');
   const locked = await lockedCards(ctx, u._id);
   const seen = new Set<string>();
   for (const it of stake.cards) {

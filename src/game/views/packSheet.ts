@@ -4,7 +4,7 @@ import type { Shell } from '../shell';
 import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { STAR_RARITIES, slotShare } from '../../core/dropRates';
+import { STAR_RARITIES, packOdds, slotShare } from '../../core/dropRates';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { haptics } from '../../core/haptics';
@@ -85,7 +85,7 @@ export function createPackSheet(
       <div class="ps-scroll">
         <div class="ps-head"><div class="ps-thumb"></div><div class="ps-titles"><span class="kicker">BOOSTER</span><h2 class="ps-name"></h2><p class="ps-desc"></p></div></div>
         <div class="ps-facts"></div>
-        <div class="ps-block ps-odds"><div class="ps-bt">Chances par carte <small>· les vrais taux du tirage</small></div><div class="ps-bars"></div></div>
+        <div class="ps-block ps-odds"><div class="ps-bt">Chances par carte <small>· les vrais taux du tirage</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
         <div class="ps-block ps-secret" hidden></div>
         <div class="ps-block ps-pity"></div>
         <div class="ps-block ps-wish"></div>
@@ -138,6 +138,8 @@ export function createPackSheet(
   })();
   let opened = false;
   let cardsOpen = false;
+  /** booster déjà tiré (d'un autre type que la fiche affichée) : c'est lui que « Ouvrir » ouvre */
+  let sealedTarget: SheetPack | null = null;
 
   const ownedIds = () => new Set(backend.state.collection.map((c) => c.cardId));
   const ownedCount = () => {
@@ -154,6 +156,15 @@ export function createPackSheet(
       const rr = rarity(r as RarityId);
       return `<div class="ps-bar r-${r}" style="--rc:${rr.hex};--ra:${rr.accentHex}"><span class="ps-bl">${starsHtml(r as RarityId)}</span><span class="ps-bb"><i style="width:${((share[r] / max) * 100).toFixed(1)}%"></i></span><span class="ps-bp">${fmtPct(share[r])}</span><span class="ps-bn">${STAR_LABEL[r]}</span></div>`;
     }).join('');
+    // (audit UX2-17) le joueur raisonne en boosters : « 6★ : 1 booster sur 40 » (chance d'au moins une carte de ce rang ou mieux)
+    const odds = packOdds();
+    const one = (r: string) => {
+      const p = odds[r as keyof typeof odds];
+      const n = p > 0 ? 1 / p : Infinity;
+      return n < 1.05 ? 'presque toujours' : `1 sur ${n < 10 ? n.toFixed(1).replace('.', ',').replace(',0', '') : fmtN(n)}`;
+    };
+    const lab: Array<[string, string]> = [['epic', '4★ et +'], ['legendary', '5★ et +'], ['mythic', '6★']];
+    el.querySelector<HTMLElement>('.ps-per-pack')!.innerHTML = `<b>Par booster</b> · ${lab.filter(([r]) => r in odds).map(([r, l]) => `${l}\u00a0: <b>${one(r)}</b>`).join(' · ')}`;
   }
 
   /** quantité réellement ouvrable maintenant */
@@ -181,7 +192,9 @@ export function createPackSheet(
     const s = backend.state;
     const u = s.user;
     const needLogin = s.mode === 'online' && !u;
-    const sealedOther = s.sealed && (s.sealed.packKind === 'bebou' ? 'bebou' : themeById(s.sealed.themeId ?? '')?.id) !== current.key;
+    const sealedKey = s.sealed ? (s.sealed.packKind === 'bebou' ? 'bebou' : themeById(s.sealed.themeId ?? '')?.id) : null;
+    const sealedOther = !!s.sealed && sealedKey !== current.key;
+    sealedTarget = sealedOther ? packs.find((x) => x.key === sealedKey) ?? null : null;
     if (current.soon) {
       openBtn.textContent = 'BIENTÔT';
       openBtn.disabled = true;
@@ -191,8 +204,9 @@ export function createPackSheet(
       openBtn.disabled = false;
       openSub.textContent = 'Connexion avec Discord · accès réservé au groupe';
     } else if (sealedOther) {
-      openBtn.textContent = 'OUVRIR';
-      openBtn.disabled = true;
+      // (audit UX2-09) un autre booster est déjà tiré : on propose de l'ouvrir lui, au lieu d'un bouton grisé sans issue
+      openBtn.textContent = sealedTarget ? `OUVRIR MON ${sealedTarget.name.toUpperCase()}` : 'OUVRIR';
+      openBtn.disabled = !sealedTarget;
       openSub.textContent = '';
     } else if (s.sealed) {
       openBtn.textContent = 'OUVRIR';
@@ -220,7 +234,7 @@ export function createPackSheet(
     if (sealedOther && s.sealed) {
       const t = themeById(s.sealed.themeId ?? '');
       banner.hidden = false;
-      banner.textContent = `Tu as un ${s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster'} déjà tiré, pas encore ouvert : ouvre-le d’abord.`;
+      banner.textContent = `Tu as un ${s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster'} déjà tiré, pas encore ouvert : ouvre-le d’abord (bouton ci-dessous).`;
     } else banner.hidden = true;
     // pity (compteur du joueur, tous boosters confondus)
     const left = u ? pityLeft(u.pityCount) : PITY_LIMIT - 1;
@@ -275,6 +289,17 @@ export function createPackSheet(
     sheet.dataset.pack = p.key;
     const src = o.thumb(p.key, 360);
     thumbEl.innerHTML = src ? `<img src="${src}" alt="">` : '';
+    // (vignette encore en cours d'encodage, asynchrone : on la pose dès qu'elle est là)
+    if (!src) {
+      let tries = 0;
+      const retry = () => {
+        if (current !== p || !opened || thumbEl.querySelector('img')) return;
+        const s2 = o.thumb(p.key, 360);
+        if (s2) thumbEl.innerHTML = `<img src="${s2}" alt="">`;
+        else if (++tries < 8) setTimeout(retry, 250);
+      };
+      setTimeout(retry, 120);
+    }
     nameEl.textContent = p.name;
     descEl.textContent = p.desc;
     const t = p.key !== 'bebou' ? themeById(p.key) : null;
@@ -299,53 +324,112 @@ export function createPackSheet(
     if (filter === 'wish' && !wish.has(c.id)) return false;
     return !needle || fold(c.name).includes(needle);
   }
+  /**
+   * (audit PERF2-03) La grille ne construit plus jamais des dizaines de milliers de tuiles : chaque section se peint par
+   * pages de SECTION_PAGE (« Voir N de plus »), seules les premières sections sont dépliées d'office (budget de
+   * AUTO_OPEN tuiles, recherche et filtres compris), la recherche demande 2 lettres, et un seul écouteur délégué sur
+   * la liste remplace les écouteurs par tuile (cœur, carte possédée, dépliage, « voir plus »).
+   */
+  const SECTION_PAGE = 60;
+  const AUTO_OPEN = 120;
+  /** contexte du dernier rendu (les écouteurs délégués en ont besoin) */
+  let rOwned = new Map<string, number>();
+  let rWish = new Set<string>();
+  const secLists = new WeakMap<HTMLElement, CatalogEntry[]>();
   function tileFor(c: CatalogEntry, owned: Map<string, number>, wish: Set<string>): HTMLElement {
     const n = owned.get(c.id) ?? 0;
     const t = cardTile(c.id, c.rarity, { owned: n > 0, count: n });
-    if (n > 0) t.addEventListener('click', () => o.viewCard({ cardId: c.id, cardName: c.name, rarity: c.rarity, mintNumber: backend.state.collection.find((x) => x.cardId === c.id)?.bestMintNumber ?? 0, isNew: false }));
-    else if (c.rarity !== 'secret') {
+    if (n <= 0 && c.rarity !== 'secret') {
       const b = h('button', `wish-btn${wish.has(c.id) ? ' on' : ''}`, '♥');
       b.title = wish.has(c.id) ? 'Retirer de mes envies' : 'Ajouter à mes envies';
       b.setAttribute('aria-pressed', String(wish.has(c.id)));
-      b.addEventListener('click', (e) => {
-        e.stopPropagation();
-        haptics.pulse(8);
-        b.classList.toggle('on');
-        void backend.toggleWish(c.id).catch((err) => (b.classList.toggle('on'), toast(errMsg(err), 'err')));
-      });
       t.append(b);
     }
     return t;
   }
-  function renderCards() {
+  /** peint la page suivante d'une section (ou la première) et met à jour son bouton « voir plus » */
+  function paintSection(sec: HTMLElement) {
+    const list = secLists.get(sec);
+    const grid = sec.querySelector<HTMLElement>('.pc-grid');
+    if (!list || !grid) return;
+    const start = grid.childElementCount;
+    const frag = document.createDocumentFragment();
+    for (const c of list.slice(start, start + SECTION_PAGE)) frag.append(tileFor(c, rOwned, rWish));
+    grid.append(frag);
+    const left = list.length - grid.childElementCount;
+    let more = sec.querySelector<HTMLButtonElement>('.pc-more');
+    if (left > 0) {
+      if (!more) sec.append((more = h('button', 'pc-more')));
+      more.textContent = `Voir ${fmtN(Math.min(SECTION_PAGE, left))} de plus · ${fmtN(left)} restante${left > 1 ? 's' : ''}`;
+    } else more?.remove();
+  }
+  pcList.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    const more = t.closest<HTMLElement>('.pc-more');
+    if (more) {
+      const sec = more.closest<HTMLElement>('.pc-sec');
+      if (sec) paintSection(sec);
+      return;
+    }
+    const wb = t.closest<HTMLButtonElement>('.wish-btn');
+    if (wb) {
+      e.stopPropagation();
+      const id = wb.closest<HTMLElement>('.tile')?.dataset.card;
+      if (!id) return;
+      haptics.pulse(8);
+      wb.classList.toggle('on');
+      wb.setAttribute('aria-pressed', String(wb.classList.contains('on')));
+      void backend.toggleWish(id).catch((err) => (wb.classList.toggle('on'), toast(errMsg(err), 'err')));
+      return;
+    }
+    const tile = t.closest<HTMLElement>('.tile.owned');
+    const id = tile?.dataset.card;
+    const c = id ? catalogEntry(id) : null;
+    if (c) o.viewCard({ cardId: c.id, cardName: c.name, rarity: c.rarity, mintNumber: backend.state.collection.find((x) => x.cardId === c.id)?.bestMintNumber ?? 0, isNew: false });
+  });
+  // dépliage d'une section : 'toggle' ne remonte pas, on l'écoute en capture
+  pcList.addEventListener('toggle', (e) => {
+    const sec = e.target as HTMLDetailsElement;
+    if (sec.classList?.contains('pc-sec') && sec.open && !sec.querySelector('.pc-grid')?.childElementCount) paintSection(sec);
+  }, true);
+  function renderCards(keep = false) {
     if (!current) return;
     const owned = ownedCount();
     const ownedSet = new Set(owned.keys());
     const wish = new Set(backend.state.wishlist);
-    const needle = fold(search.trim());
+    rOwned = owned;
+    rWish = wish;
+    // recherche : 2 lettres au moins (« a » dépliait 16 747 cartes)
+    const raw = fold(search.trim());
+    const needle = raw.length >= 2 ? raw : '';
+    // re-rendu « vivant » (collection changée) : on garde les sections ouvertes et la position de défilement
+    const wasOpen = keep ? new Set([...pcList.querySelectorAll<HTMLDetailsElement>('.pc-sec[open]')].map((d) => d.dataset.id ?? '')) : null;
+    const scroll = pcList.scrollTop;
     pcList.replaceChildren();
     let shown = 0;
+    let budget = AUTO_OPEN;
+    let capped = 0;
+    const narrow = !!needle || filter !== 'all';
     for (const v of sectionsOf(current)) {
       const list = v.cards.filter((c) => matches(c, ownedSet, wish, needle));
       if (!list.length) continue;
       const have = v.cards.reduce((a, c) => a + (owned.has(c.id) ? 1 : 0), 0);
       const sec = h('details', 'pc-sec');
-      // recherche ou filtre : tout ouvert ; sinon replié (6 000 cartes : on n'affiche que ce qu'on regarde)
-      sec.open = !!needle || filter !== 'all' || v.cards.length <= 40;
-      sec.innerHTML = `<summary><span class="pc-sl">${esc(v.label)}</span><span class="pc-sn">${fmtN(have)} / ${fmtN(v.cards.length)}</span><span class="pc-sp"><i style="width:${((have / v.cards.length) * 100).toFixed(1)}%"></i></span><span class="pc-sc">${needle || filter !== 'all' ? plural(list.length, 'carte') : ''}</span></summary><div class="pc-grid"></div>`;
-      const grid = sec.querySelector<HTMLElement>('.pc-grid')!;
-      const paint = () => {
-        if (grid.childElementCount) return;
-        const frag = document.createDocumentFragment();
-        for (const c of list) frag.append(tileFor(c, owned, wish));
-        grid.append(frag);
-      };
-      if (sec.open) paint();
-      sec.addEventListener('toggle', () => sec.open && paint());
+      sec.dataset.id = v.id;
+      secLists.set(sec, list);
+      // recherche ou filtre : dépliées dans la limite du budget ; sinon les petites sections seulement
+      const want = wasOpen ? wasOpen.has(v.id) : narrow || v.cards.length <= 40;
+      sec.open = want && (!!wasOpen || budget > 0);
+      if (want && !sec.open) capped += list.length;
+      if (sec.open) budget -= Math.min(list.length, SECTION_PAGE);
+      sec.innerHTML = `<summary><span class="pc-sl">${esc(v.label)}</span><span class="pc-sn">${fmtN(have)} / ${fmtN(v.cards.length)}</span><span class="pc-sp"><i style="width:${((have / v.cards.length) * 100).toFixed(1)}%"></i></span><span class="pc-sc">${narrow ? plural(list.length, 'carte') : ''}</span></summary><div class="pc-grid"></div>`;
       pcList.append(sec);
+      if (sec.open) paintSection(sec);
       shown += list.length;
     }
     if (!shown) pcList.append(h('div', 'pc-empty', filter === 'wish' ? 'Aucune envie dans ce booster pour l’instant.' : filter === 'missing' ? 'Tu as toutes les cartes de cette sélection !' : 'Aucune carte ne correspond.'));
+    else if (narrow && capped) pcList.prepend(h('div', 'pc-cap', `${plural(shown, 'résultat')} · les premières sections sont dépliées, touche une section pour voir la suite${needle ? ' (ou affine la recherche)' : ''}`));
+    if (keep) pcList.scrollTop = scroll;
     q('.pc-sub').textContent = `${fmtN(current.cards.length)} cartes · ${fmtN(current.cards.filter((c) => owned.has(c.id)).length)} possédées`;
   }
   function showCards(f: typeof filter = 'all') {
@@ -354,13 +438,22 @@ export function createPackSheet(
     pcFilters.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.f === f));
     q('.pc-name').textContent = current.name;
     cardsLayer.hidden = false;
+    // (audit UX1-24) la grille est une couche à part dans la pile (lot A) : « retour » et Échap la ferment, elle seule
+    if (!cardsOpen) {
+      pushLayer(hideCards);
+      requestAnimationFrame(() => q<HTMLButtonElement>('.pc-back').focus({ preventScroll: true }));
+    }
     cardsOpen = true;
     renderCards();
     pcList.scrollTop = 0;
   }
   function hideCards() {
+    if (!cardsOpen) return;
+    const inside = cardsLayer.contains(document.activeElement);
     cardsLayer.hidden = true;
     cardsOpen = false;
+    popLayer(hideCards);
+    if (inside && opened) cardsBtn.focus({ preventScroll: true });
     pcList.replaceChildren();
   }
   cardsBtn.addEventListener('click', () => showCards('all'));
@@ -379,16 +472,22 @@ export function createPackSheet(
   });
   // la collection change (ouverture, échange) pendant que la grille est ouverte : coeurs et couleurs suivent
   let liveSig = '';
+  let liveColl = '';
   backend.onChange((s) => {
     if (!opened) return;
-    const sig = `${collectionSig(s)}|${s.wishlist.join(',')}`;
+    const cs = collectionSig(s);
+    const sig = `${cs}|${s.wishlist.join(',')}`;
     if (sig === liveSig) return;
     liveSig = sig;
+    rWish = new Set(s.wishlist);
     sync();
-    if (cardsOpen) renderCards();
+    // (un cœur touché est déjà basculé dans la grille : seule une collection changée la re-dessine)
+    if (cardsOpen && (cs !== liveColl || filter === 'wish')) renderCards(true);
+    liveColl = cs;
   });
   window.addEventListener('bebou:packs', sync);
-  setInterval(() => opened && backend.state.user && !backend.state.sealed && liveRegen(backend.state.user).balance <= 0 && sync(), 1000);
+  // minuteur « EN RECHARGE » : seulement fiche ouverte, onglet visible, réserve vide (audit PERF2-16)
+  setInterval(() => !document.hidden && opened && backend.state.user && !backend.state.sealed && liveRegen(backend.state.user).balance <= 0 && sync(), 1000);
 
   // ── ouvrir / fermer
   function open(key: string) {
@@ -399,7 +498,13 @@ export function createPackSheet(
       el.hidden = false;
       opened = true;
       document.body.classList.add('sheet-open');
-      requestAnimationFrame(() => el.classList.add('in'));
+      // (audit UX5-07) le focus entre dans la fiche, et reviendra à l'élément d'origine (pochette…) à la fermeture
+      const a = document.activeElement as HTMLElement | null;
+      returnFocus = a && a !== document.body ? a : null;
+      requestAnimationFrame(() => {
+        el.classList.add('in');
+        q<HTMLButtonElement>('.ps-close').focus({ preventScroll: true });
+      });
     }
     fill(p);
     q('.ps-scroll').scrollTop = 0;
@@ -408,12 +513,25 @@ export function createPackSheet(
   function close() {
     if (!opened) return;
     if (cardsOpen) hideCards();
-    popLayer();
+    popLayer(close);
     opened = false;
     document.body.classList.remove('sheet-open');
     el.classList.remove('in');
     setTimeout(() => !opened && (el.hidden = true), 320);
+    if (returnFocus?.isConnected && el.contains(document.activeElement)) returnFocus.focus({ preventScroll: true });
+    returnFocus = null;
   }
+  let returnFocus: HTMLElement | null = null;
+  // (audit UX5-07) Tab reste dans la couche du dessus (grille des cartes, sinon fiche) tant qu'elle est ouverte
+  el.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || !opened) return;
+    const box = cardsOpen ? cardsLayer : sheet;
+    const f = [...box.querySelectorAll<HTMLElement>('button:not([disabled]), input, [tabindex="0"], a[href]')].filter((x) => x.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) (e.preventDefault(), last.focus());
+    else if (!e.shiftKey && document.activeElement === last) (e.preventDefault(), first.focus());
+  });
   q('.ps-close').addEventListener('click', close);
   q('.ps-backdrop').addEventListener('click', close);
   window.addEventListener('keydown', (e) => {
@@ -427,8 +545,8 @@ export function createPackSheet(
     const s = backend.state;
     if (s.mode === 'online' && !s.user) return backend.login();
     if (!current || openBtn.disabled) return;
-    const p = current;
-    const n = effQty();
+    const p = sealedTarget ?? current;
+    const n = sealedTarget ? 1 : effQty();
     openBtn.disabled = true;
     try {
       await busyButton(openBtn, o.onOpen(p, n));

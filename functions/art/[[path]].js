@@ -24,8 +24,12 @@ export async function onRequest({ request, env, params, waitUntil }) {
   const headers = new Headers();
   obj.writeHttpMetadata(headers);
   headers.set('etag', obj.httpEtag);
-  // une image ne change quasiment jamais : le navigateur la garde une semaine (puis la revalide en douce)
-  headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=2592000');
+  // Les images sont remplacées « même nom » (pas d'adresse versionnée) : on ne peut pas les déclarer immuables. Le
+  // navigateur les garde une semaine, puis les revalide en douce (requête conditionnelle → 304 si inchangée).
+  // Adresse versionnée (`?v=<empreinte du fichier>`, cf. audit PERF2-11 — pas encore produite par le jeu) : immuable,
+  // plus jamais revalidée ; une nouvelle version de l'image = une nouvelle adresse.
+  const versioned = new URL(request.url).searchParams.has('v');
+  headers.set('Cache-Control', versioned ? 'public, max-age=31536000, immutable' : 'public, max-age=604800, stale-while-revalidate=2592000');
   if (!('body' in obj) || !obj.body) return new Response(null, { status: 304, headers });
   const res = new Response(request.method === 'HEAD' ? null : obj.body, { headers });
   if (request.method === 'GET') waitUntil(cache.put(request, res.clone()));

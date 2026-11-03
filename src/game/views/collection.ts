@@ -1,9 +1,9 @@
 import { collectionSig, type Binder, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
-import { ALL_THEMES, BEBOU_PACK, catalogEntry, numberingSize, subthemeById, themeById, type CatalogEntry, type SubTheme, type ThemeInfo } from '../../core/sets/themes';
+import { ALL_THEMES, BEBOU_PACK, SUBTHEMES, catalogEntry, numberingSize, subthemeById, themeById, type CatalogEntry, type SubTheme, type ThemeInfo } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, loadSeen, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
+import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, loadSeen, loginPrompt, navigate, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 
@@ -30,14 +30,32 @@ export interface CollectionView {
 
 type Filter = 'all' | 'owned' | 'missing' | 'dups' | 'fresh';
 type Sort = 'num' | 'stars' | 'recent';
-type AlbumSort = 'completion' | 'group' | 'alpha';
+/** « En cours » (défaut, audit UX3-04) : les albums commencés d'abord, puis complets, puis à 0 % */
+type AlbumSort = 'progress' | 'completion' | 'group' | 'alpha';
 type Mode = 'cards' | 'albums' | 'grid' | 'binders' | 'binder';
 /** vue Cartes : tri (retours live n°1) */
 type CardSort = 'rarity' | 'date' | 'alpha' | 'album';
 const STAR_ORDER: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
 const RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 const PAGE = 60;
+/** plafonds des classeurs : les mêmes que le serveur (convex/binders.ts : BINDER_MAX, BINDER_CARDS_MAX, cleanName) */
+const BINDER_MAX = 30;
+const BINDER_CARDS_MAX = 500;
+const BINDER_NAME_MAX = 32;
 const PREFS = 'bebou.coll.v2';
+/** libellés des filtres (bandeau « Filtres actifs » et états vides composés, audit UX3-02) */
+const FILTER_LABEL: Record<Filter, string> = { all: 'Toutes', owned: 'Possédées', missing: 'Manquantes', dups: 'Doublons', fresh: 'Nouvelles' };
+/** pose l'état « actif » d'un bouton de filtre / segment : visuel (.on) + lecteur d'écran (aria-pressed), audit UX5-16 */
+/**
+ * Couleur de TEXTE d'une rareté (puces, progression) : Rare et Épique sont trop sombres en texte sur fond sombre
+ * (3,2:1 pour Épique) → une variante plus claire ≥ 4,5:1, sans toucher la teinte des cartes 3D (audit UX5-09).
+ */
+const RC_TEXT: Partial<Record<RarityId, string>> = { rare: '#6f9be0', epic: '#e0607a' };
+const rcText = (r: RarityId) => RC_TEXT[r] ?? rarity(r).hex;
+const setOn = (b: HTMLElement, on: boolean) => {
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', String(on));
+};
 
 const fmtDate = (t: number) => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 /** teinte stable par sous-thème (barres de progression « colorées par sous-thème ») */
@@ -64,7 +82,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let filter: Filter = 'all';
   let star: RarityId | null = null;
   let sort: Sort = 'num';
-  let albumSort: AlbumSort = 'completion';
+  let albumSort: AlbumSort = 'progress';
   let query = '';
   let albumQuery = '';
   let page = 0;
@@ -72,17 +90,18 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let growBars = false;
   // préférences persistantes (filtres, tris)
   try {
-    const p = JSON.parse(localStorage.getItem(PREFS) ?? '{}') as Partial<{ filter: Filter; star: RarityId | null; sort: Sort; albumSort: AlbumSort }>;
+    // (`albumSort2` : l'ancien `albumSort` valait presque toujours « completion », enregistré par défaut ; on repart sur « En cours »)
+    const p = JSON.parse(localStorage.getItem(PREFS) ?? '{}') as Partial<{ filter: Filter; star: RarityId | null; sort: Sort; albumSort2: AlbumSort }>;
     if (p.filter && p.filter !== 'fresh') filter = p.filter;
     if (p.star && STAR_ORDER.includes(p.star)) star = p.star;
     if (p.sort) sort = p.sort;
-    if (p.albumSort) albumSort = p.albumSort;
+    if (p.albumSort2 && ['progress', 'completion', 'group', 'alpha'].includes(p.albumSort2)) albumSort = p.albumSort2;
   } catch {
     /* ignore */
   }
   const savePrefs = () => {
     try {
-      localStorage.setItem(PREFS, JSON.stringify({ filter: filter === 'fresh' ? 'all' : filter, star, sort, albumSort }));
+      localStorage.setItem(PREFS, JSON.stringify({ filter: filter === 'fresh' ? 'all' : filter, star, sort, albumSort2: albumSort }));
     } catch {
       /* ignore */
     }
@@ -99,7 +118,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
 
   el.innerHTML = `
     <div class="coll-head">
-      <div class="coll-switch"><div class="seg coll-views" role="tablist"><button data-v="cards">Cartes</button><button data-v="albums">Albums</button><button data-v="binders">Classeurs</button></div></div>
+      <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="Vue de la collection"><button role="tab" data-v="cards">Cartes</button><button role="tab" data-v="albums">Albums</button><button role="tab" data-v="binders">Classeurs</button></div></div>
       <div class="tabs"></div>
       <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-name"></span></div>
       <div class="progress"></div>
@@ -107,7 +126,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     <div class="albums" hidden>
       <div class="al-bar">
         <input class="search al-search" type="search" placeholder="Chercher un album…" autocomplete="off" spellcheck="false" aria-label="Chercher un album">
-        <div class="seg al-sort"><button data-s="completion">Complétion</button><button data-s="group">Par groupe</button><button data-s="alpha">A → Z</button></div>
+        <div class="seg al-sort" aria-label="Tri des albums"><button data-s="progress">En cours</button><button data-s="completion">Complétion</button><button data-s="group">Par groupe</button><button data-s="alpha">A → Z</button></div>
         <span class="al-count"></span>
       </div>
       <div class="al-grid"></div>
@@ -118,14 +137,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       </div>
       <div class="starf"></div>
       <div class="seg sortf" aria-label="Tri"><button data-s="num">N°</button><button data-s="stars">Étoiles</button><button data-s="recent">Récentes</button></div>
-      <input class="search" type="search" placeholder="Rechercher…" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Rechercher une carte (nom ou numéro)" />
+      <input class="search" type="search" placeholder="Nom ou n° (ex. 25)" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Rechercher une carte (nom ou numéro)" />
     </div>
     <div class="cards-bar" hidden>
       <div class="seg cb-theme" aria-label="Thème"></div>
       <div class="starf cb-stars"></div>
       <div class="seg cb-sort" aria-label="Tri"><button data-s="rarity">Rareté</button><button data-s="date">Date</button><button data-s="alpha">A → Z</button><button data-s="album">Par album</button></div>
-      <input class="search cb-search" type="search" placeholder="Rechercher…" autocomplete="off" spellcheck="false" aria-label="Rechercher une carte">
+      <input class="search cb-search" type="search" placeholder="Nom, album ou n° (toutes les cartes)" autocomplete="off" spellcheck="false" aria-label="Rechercher une carte (nom, album ou numéro), possédée ou non">
     </div>
+    <div class="f-active" role="status" hidden></div>
     <div class="binders-view" hidden></div>
     <div class="grid"></div>
     <div class="pager" hidden></div>
@@ -147,7 +167,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   const pager = q('.pager');
   const empty = q('.empty');
   const starf = q('.starf');
-  const search = q<HTMLInputElement>('.search');
+  // la recherche de la GRILLE (le premier `.search` du DOM est celui des albums : audit UX3-01)
+  const search = q<HTMLInputElement>('.filters .search');
   const bindersView = q('.binders-view');
   const viewerUi = q('.viewer-ui');
   const vInfo = q('.v-info');
@@ -155,6 +176,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   const binderPick = q('.binder-pick');
   const headEl = q('.coll-head');
   const toTopBtn = q<HTMLButtonElement>('.to-top');
+  const fActive = q('.f-active');
 
   // ── filtres / tris
   el.querySelectorAll<HTMLButtonElement>('.filters .seg:not(.sortf) button').forEach((b) =>
@@ -186,7 +208,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   for (const r of STAR_ORDER) {
     const b = h('button', 'chip', String(rarity(r).rank + 1) + '★');
     b.title = rarity(r).label;
+    b.setAttribute('aria-label', `${rarity(r).rank + 1} étoiles (${rarity(r).label})`);
     b.style.setProperty('--rc', rarity(r).hex);
+    b.style.setProperty('--rt', rcText(r));
     b.addEventListener('click', () => {
       star = star === r ? null : r;
       page = 0;
@@ -214,7 +238,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     inp.focus();
     inp.select();
   });
+  // un minuteur par champ (partagé, les deux écouteurs s'annulaient l'un l'autre)
   let qTimer = 0;
+  let aTimer = 0;
   search.addEventListener('input', () => {
     clearTimeout(qTimer);
     qTimer = window.setTimeout(() => {
@@ -224,8 +250,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     }, 120);
   });
   alSearch.addEventListener('input', () => {
-    clearTimeout(qTimer);
-    qTimer = window.setTimeout(() => {
+    clearTimeout(aTimer);
+    aTimer = window.setTimeout(() => {
       albumQuery = fold(alSearch.value.trim());
       render();
     }, 120);
@@ -245,6 +271,25 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (mode === 'binder') return goBinders();
     goAlbums();
   });
+
+  /**
+   * Segments qui débordent (thèmes de la vue Cartes à 360 px…) : l'élément actif est centré et un fondu au bord droit
+   * dit qu'on peut faire défiler (audit UX3-12).
+   */
+  const segRows = [...el.querySelectorAll<HTMLElement>('.seg:not(.coll-views)')];
+  const markOvf = (row: HTMLElement) => row.classList.toggle('ovf', row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
+  function fitRows() {
+    for (const row of segRows) {
+      if (!row.offsetParent) continue; // masqué
+      const on = row.querySelector<HTMLElement>('.on');
+      if (on && row.scrollWidth > row.clientWidth) {
+        const r = row.getBoundingClientRect(), o = on.getBoundingClientRect();
+        row.scrollLeft += o.left - r.left - (r.width - o.width) / 2;
+      }
+      markOvf(row);
+    }
+  }
+  for (const row of segRows) row.addEventListener('scroll', () => markOvf(row), { passive: true });
 
   // ── bascule Cartes / Albums / Classeurs + barre de la vue Cartes
   const cardsBar = q('.cards-bar');
@@ -271,7 +316,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     for (const r of [...STAR_ORDER, 'secret'] as RarityId[]) {
       const b = h('button', 'chip', r === 'secret' ? '✷' : `${rarity(r).rank + 1}★`);
       b.title = rarity(r).label;
+      b.setAttribute('aria-label', r === 'secret' ? 'Secrètes (Bébous)' : `${rarity(r).rank + 1} étoiles (${rarity(r).label})`);
       b.style.setProperty('--rc', rarity(r).hex);
+      b.style.setProperty('--rt', rcText(r));
       b.dataset.r = r;
       b.addEventListener('click', () => ((cStar = cStar === r ? null : r), (page = 0), render()));
       sb.append(b);
@@ -292,6 +339,11 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }
   const THEME_ORDER = new Map(ALL_THEMES.map((t, i) => [t.id, i]));
 
+  /** en ligne sans session prête (connexion en cours, ou pas connecté) : on n'affiche pas « collection vide » */
+  const signedOut = () => backend.state.mode === 'online' && (!backend.state.ready || !backend.state.user);
+  el.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('.login-cta')) backend.login();
+  });
   // ── données
   /** id → ligne de collection (une carte a une seule rareté : celle de son thème) */
   function owned(): Map<string, PlayerCard> {
@@ -387,6 +439,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const v = mode === 'cards' ? 'cards' : mode === 'binders' || mode === 'binder' ? 'binders' : 'albums';
     el.querySelectorAll<HTMLButtonElement>('.coll-views button').forEach((b) => {
       b.classList.toggle('on', b.dataset.v === v);
+      b.setAttribute('aria-selected', String(b.dataset.v === v));
       if (b.dataset.v === 'binders') b.innerHTML = `Classeurs${backend.state.binders.length ? ` <em>${fmtN(backend.state.binders.length)}</em>` : ''}`;
     });
   }
@@ -412,12 +465,12 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
           const cs = cards.filter((c) => c.rarity === r);
           const n = cs.filter((c) => mine.has(c.id)).length;
           const full = cs.length > 0 && n === cs.length;
-          return `<div class="ps${full ? ' done' : ''}" style="--rc:${rarity(r).hex}" title="${rarity(r).label}${full ? ' · toutes trouvées !' : ''}"><b>${rarity(r).rank + 1}★</b><span class="bar"><i data-w="${cs.length ? (n / cs.length) * 100 : 0}"></i></span><em>${fmtN(n)}/${fmtN(cs.length)}${full ? ' ✓' : ''}</em></div>`;
+          return `<div class="ps${full ? ' done' : ''}" style="--rc:${rarity(r).hex};--rt:${rcText(r)}" title="${rarity(r).label}${full ? ' · toutes trouvées !' : ''}"><b>${rarity(r).rank + 1}★</b><span class="bar"><i data-w="${cs.length ? (n / cs.length) * 100 : 0}"></i></span><em>${fmtN(n)}/${fmtN(cs.length)}${full ? ' ✓' : ''}</em></div>`;
         }).join('');
     const albumsN = inCards || subId ? 0 : theme.subthemes.filter((s) => s.cards.length).length;
     progress.innerHTML = `
       <div class="p-main"><div class="p-pct${total && have === total ? ' full' : ''}">${fmtPct(pct).replace(/ %$/, '')}<small> %</small></div>
-        <div class="p-txt"><b>${fmtN(have)}</b> / ${fmtN(total)} cartes uniques ${esc(label)}${albumsN ? ` · ${plural(albumsN, 'album')}` : ''}<br><span>${mine.size === 0 ? 'ta collection est vide : <a class="p-link" href="#/">ouvre ton premier booster</a>' : dups ? `${plural(dups, 'doublon')} · <a class="p-link" href="#/contrats">à brûler en contrat</a> ou à échanger` : total && have === total ? 'sélection complète !' : 'pas encore de doublon'}</span></div></div>
+        <div class="p-txt"><b>${fmtN(have)}</b> / ${fmtN(total)} cartes uniques ${esc(label)}${albumsN ? ` · ${plural(albumsN, 'album')}` : ''}<br><span>${mine.size === 0 && signedOut() ? (backend.state.ready ? 'pas connecté' : 'connexion au serveur…') : mine.size === 0 ? 'ta collection est vide : <a class="p-link" href="#/">ouvre ton premier booster</a>' : dups ? `${plural(dups, 'doublon')} · <a class="p-link" href="#/contrats">à brûler en contrat</a> ou à échanger` : total && have === total ? 'sélection complète !' : 'pas encore de doublon'}</span></div></div>
       <div class="p-bar"><i data-w="${pct}"></i></div>
       <div class="p-stars">${per}</div>`;
     const bars = [...progress.querySelectorAll<HTMLElement>('[data-w]')];
@@ -446,48 +499,150 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }
 
   // ── vue ALBUMS
-  function renderAlbums(mine: Map<string, PlayerCard>) {
-    el.querySelectorAll<HTMLButtonElement>('.al-sort button').forEach((b) => b.classList.toggle('on', b.dataset.s === albumSort));
-    let subs = theme.subthemes.filter((s) => !albumQuery || fold(s.label).includes(albumQuery) || (s.group && fold(s.group.label).includes(albumQuery)));
-    const stat = (s: SubTheme) => {
-      const have = s.cards.filter((c) => mine.has(c.id)).length;
-      return { have, total: s.cards.length, pct: s.cards.length ? have / s.cards.length : -1 };
+  // Rendu par lots (48 pochettes, la suite au défilement), un seul écouteur délégué, stats et pochettes mémorisées par
+  // état de la collection, et pas de reconstruction si rien n'a changé (audit PERF2-09 / UX3-19). En « Par groupe »,
+  // chaque groupe est repliable et n'est construit qu'à l'ouverture.
+  const ALBUM_BATCH = 48;
+  let albumKey = '';
+  let albumMemoSig = '';
+  let coverMemoSig = '';
+  const statMemo = new Map<string, { have: number; total: number; pct: number }>();
+  const coverMemo = new Map<string, { entry: CatalogEntry; manual: boolean } | null>();
+  /** groupes ouverts (mode « Par groupe »), par thème ; null = pas encore choisi (le 1er groupe commencé s'ouvre) */
+  const openGroups = new Map<string, Set<string>>();
+  let albumIo: IntersectionObserver | null = null;
+  const albumStat = (s: SubTheme, mine: Map<string, PlayerCard>) => {
+    let st = statMemo.get(s.id);
+    if (!st) {
+      let have = 0;
+      for (const c of s.cards) if (mine.has(c.id)) have++;
+      statMemo.set(s.id, (st = { have, total: s.cards.length, pct: s.cards.length ? have / s.cards.length : -1 }));
+    }
+    return st;
+  };
+  const albumCover = (s: SubTheme, mine: Map<string, PlayerCard>) => {
+    if (!coverMemo.has(s.id)) coverMemo.set(s.id, coverOf(s, mine));
+    return coverMemo.get(s.id)!;
+  };
+  function albumTile(s: SubTheme, mine: Map<string, PlayerCard>, showGrp: boolean): HTMLElement {
+    const st = albumStat(s, mine);
+    const soon = !s.cards.length;
+    const cover = soon ? null : albumCover(s, mine);
+    const a = h('button', `album${soon ? ' soon' : ''}${st.total && st.have === st.total ? ' full' : ''}`);
+    a.dataset.sub = s.id;
+    a.style.setProperty('--h', String(hueOf(s.id)));
+    a.innerHTML = `
+        <span class="al-cover">${cover ? `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(cover.entry)}">` : `<span class="al-ph">${esc((s.code || s.label).slice(0, 3).toUpperCase())}</span>`}${cover?.manual ? '<span class="al-pin" title="Couverture choisie par toi">📌</span>' : ''}${soon ? '<span class="al-soon">BIENTÔT</span>' : ''}</span>
+        <span class="al-name">${esc(s.label)}</span>
+        ${s.group && showGrp ? `<span class="al-grp">${esc(s.group.label)}</span>` : ''}
+        <span class="al-n">${soon ? 'en préparation' : `${fmtN(st.have)} / ${fmtN(st.total)}`}</span>
+        <span class="al-bar"><i style="width:${Math.max(0, st.pct) * 100}%"></i></span>`;
+    a.disabled = soon;
+    a.title = soon ? `${s.label} · bientôt` : `${s.label} · ${fmtN(st.have)} / ${fmtN(st.total)} cartes`;
+    return a;
+  }
+  /** remplit `box` avec `list`, par lots : les suivants arrivent quand la sentinelle approche de l'écran */
+  function fillAlbums(box: HTMLElement, list: SubTheme[], mine: Map<string, PlayerCard>, showGrp: boolean) {
+    let n = 0;
+    const more = () => {
+      box.querySelector(':scope > .al-more')?.remove();
+      const frag = document.createDocumentFragment();
+      for (const s of list.slice(n, n + ALBUM_BATCH)) frag.append(albumTile(s, mine, showGrp));
+      n += ALBUM_BATCH;
+      box.append(frag);
+      if (n < list.length) {
+        const sentinel = h('div', 'al-more');
+        (sentinel as HTMLElement & { _more?: () => void })._more = more;
+        box.append(sentinel);
+        albumIo ??= new IntersectionObserver(
+          (entries) => {
+            for (const en of entries) {
+              if (!en.isIntersecting) continue;
+              albumIo!.unobserve(en.target);
+              (en.target as HTMLElement & { _more?: () => void })._more?.();
+            }
+          },
+          { root: el, rootMargin: '900px 0px' },
+        );
+        albumIo.observe(sentinel);
+      }
     };
-    const stats = new Map(subs.map((s) => [s.id, stat(s)]));
+    more();
+  }
+  alGrid.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest<HTMLButtonElement>('.album');
+    if (a && !a.disabled && a.dataset.sub) goGrid(a.dataset.sub);
+  });
+  function renderAlbums(mine: Map<string, PlayerCard>) {
+    el.querySelectorAll<HTMLButtonElement>('.al-sort button').forEach((b) => setOn(b, b.dataset.s === albumSort));
+    const sig = collectionSig(backend.state);
+    const cSig = JSON.stringify(backend.state.covers);
+    if (sig !== albumMemoSig) ((albumMemoSig = sig), statMemo.clear(), coverMemo.clear());
+    if (cSig !== coverMemoSig) ((coverMemoSig = cSig), coverMemo.clear());
+    const opened = openGroups.get(theme.id);
+    const key = `${theme.id}|${albumSort}|${albumQuery}|${sig}|${cSig}|${opened ? [...opened].join(',') : '-'}`;
+    // rien n'a changé (une envie, un retour de la visionneuse…) : on garde la mosaïque telle quelle
+    if (key === albumKey && alGrid.childElementCount) return;
+    albumKey = key;
+    let subs = theme.subthemes.filter((s) => !albumQuery || fold(s.label).includes(albumQuery) || (s.group && fold(s.group.label).includes(albumQuery)));
+    const st = (s: SubTheme) => albumStat(s, mine);
     const grpLabel = (s: SubTheme) => s.group?.label ?? '';
-    if (albumSort === 'completion') subs = [...subs].sort((a, b) => stats.get(b.id)!.pct - stats.get(a.id)!.pct || stats.get(b.id)!.have - stats.get(a.id)!.have || a.label.localeCompare(b.label, 'fr'));
+    // « En cours » : commencés (le plus de cartes d'abord), puis complets (les gros d'abord), puis à 0 %, puis « bientôt »
+    const stage = (s: SubTheme) => {
+      const x = st(s);
+      return !x.total ? 3 : x.have === 0 ? 2 : x.have === x.total ? 1 : 0;
+    };
+    if (albumSort === 'progress') subs = [...subs].sort((a, b) => stage(a) - stage(b) || (stage(a) === 0 ? st(b).have - st(a).have || st(b).pct - st(a).pct : stage(a) === 1 ? st(b).total - st(a).total : 0) || a.label.localeCompare(b.label, 'fr'));
+    else if (albumSort === 'completion') subs = [...subs].sort((a, b) => st(b).pct - st(a).pct || st(b).have - st(a).have || a.label.localeCompare(b.label, 'fr'));
     else if (albumSort === 'alpha') subs = [...subs].sort((a, b) => a.label.localeCompare(b.label, 'fr'));
     else subs = [...subs].sort((a, b) => grpLabel(a).localeCompare(grpLabel(b), 'fr') || a.label.localeCompare(b.label, 'fr'));
     q('.al-count').textContent = `${plural(subs.filter((s) => s.cards.length).length, 'album')}`;
+    albumIo?.disconnect();
     alGrid.replaceChildren();
-    let lastGroup: string | null = null;
-    const frag = document.createDocumentFragment();
-    for (const s of subs) {
-      if (albumSort === 'group') {
-        const g = grpLabel(s) || 'Sous-thèmes';
-        if (g !== lastGroup) {
-          lastGroup = g;
-          frag.append(h('h4', 'al-group', esc(g)));
-        }
-      }
-      const st = stats.get(s.id)!;
-      const soon = !s.cards.length;
-      const cover = soon ? null : coverOf(s, mine);
-      const a = h('button', `album${soon ? ' soon' : ''}${st.total && st.have === st.total ? ' full' : ''}`);
-      a.style.setProperty('--h', String(hueOf(s.id)));
-      a.innerHTML = `
-        <span class="al-cover">${cover ? `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(cover.entry)}">` : `<span class="al-ph">${esc((s.code || s.label).slice(0, 3).toUpperCase())}</span>`}${cover?.manual ? '<span class="al-pin" title="Pochette choisie par toi">📌</span>' : ''}${soon ? '<span class="al-soon">BIENTÔT</span>' : ''}</span>
-        <span class="al-name">${esc(s.label)}</span>
-        ${s.group && albumSort !== 'group' ? `<span class="al-grp">${esc(s.group.label)}</span>` : ''}
-        <span class="al-n">${soon ? 'en préparation' : `${fmtN(st.have)} / ${fmtN(st.total)}`}</span>
-        <span class="al-bar"><i style="width:${Math.max(0, st.pct) * 100}%"></i></span>`;
-      a.disabled = soon;
-      a.title = soon ? `${s.label} · bientôt` : `${s.label} · ${fmtN(st.have)} / ${fmtN(st.total)} cartes`;
-      if (!soon) a.addEventListener('click', () => goGrid(s.id));
-      frag.append(a);
+    alGrid.classList.toggle('grouped', albumSort === 'group');
+    if (!subs.length) {
+      alGrid.append(h('div', 'empty', albumQuery ? `Aucun album ne correspond à « ${esc(alSearch.value.trim())} ».` : 'Aucun album.'));
+      return;
     }
-    alGrid.append(frag);
-    if (!subs.length) alGrid.append(h('div', 'empty', albumQuery ? `Aucun album ne correspond à « ${esc(alSearch.value.trim())} ».` : 'Aucun album.'));
+    // le nom du groupe sur chaque pochette n'aide que s'il y a plusieurs groupes à l'écran
+    const showGrp = albumSort !== 'group' && new Set(subs.map(grpLabel)).size > 2;
+    if (albumSort !== 'group') return fillAlbums(alGrid, subs, mine, showGrp);
+    // « Par groupe » : un bloc repliable par groupe, construit à l'ouverture
+    const groups = new Map<string, SubTheme[]>();
+    for (const s of subs) {
+      const g = grpLabel(s) || 'Sous-thèmes';
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g)!.push(s);
+    }
+    let openSet = opened;
+    if (!openSet) {
+      const first = [...groups].find(([, l]) => l.some((s) => st(s).have > 0))?.[0] ?? [...groups.keys()][0];
+      openSet = new Set(groups.size <= 2 ? groups.keys() : [first]);
+      openGroups.set(theme.id, openSet);
+      albumKey = `${theme.id}|${albumSort}|${albumQuery}|${sig}|${cSig}|${[...openSet].join(',')}`;
+    }
+    for (const [g, list] of groups) {
+      const have = list.reduce((n, s) => n + st(s).have, 0);
+      const total = list.reduce((n, s) => n + st(s).total, 0);
+      const started = list.filter((s) => st(s).have > 0).length;
+      const d = document.createElement('details');
+      d.className = 'al-sec';
+      // une recherche ouvre tous les groupes trouvés
+      d.open = !!albumQuery || openSet.has(g);
+      d.innerHTML = `<summary><b>${esc(g)}</b><span>${fmtN(started)}/${plural(list.length, 'album')} commencé${started > 1 ? 's' : ''} · ${fmtN(have)}/${fmtN(total)} cartes · ${fmtPct(total ? (have / total) * 100 : 0)}</span></summary>`;
+      const inner = h('div', 'al-grid al-inner');
+      d.append(inner);
+      const build = () => {
+        if (!inner.childElementCount) fillAlbums(inner, list, mine, false);
+      };
+      if (d.open) build();
+      d.addEventListener('toggle', () => {
+        if (d.open) (openSet!.add(g), build());
+        else openSet!.delete(g);
+        albumKey = `${theme.id}|${albumSort}|${albumQuery}|${sig}|${cSig}|${[...openSet!].join(',')}`;
+      });
+      alGrid.append(d);
+    }
   }
 
   // ── GRILLE
@@ -537,10 +692,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     fb.hidden = fresh.size === 0;
     fb.textContent = `Nouvelles (${fmtN(fresh.size)})`;
     if (filter === 'fresh' && !fresh.size) filter = 'all';
-    el.querySelectorAll<HTMLButtonElement>('.filters .seg:not(.sortf) button').forEach((b) => b.classList.toggle('on', b.dataset.f === filter));
-    el.querySelectorAll<HTMLButtonElement>('.sortf button').forEach((b) => b.classList.toggle('on', b.dataset.s === sort));
+    el.querySelectorAll<HTMLButtonElement>('.filters .seg:not(.sortf) button').forEach((b) => setOn(b, b.dataset.f === filter));
+    el.querySelectorAll<HTMLButtonElement>('.sortf button').forEach((b) => setOn(b, b.dataset.s === sort));
     starf.hidden = !!theme.secret;
-    starf.querySelectorAll<HTMLElement>('.chip').forEach((b) => b.classList.toggle('on', b.dataset.r === star));
+    starf.querySelectorAll<HTMLElement>('.chip').forEach((b) => setOn(b, b.dataset.r === star));
     const list = sortList(scope().filter((e) => matches(e, mine)), mine);
     const key = `${theme.id}|${subId}|${filter}|${star}|${sort}|${query}|${page}`;
     if (key !== lastKey) {
@@ -558,35 +713,107 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     for (const e of list.slice(page * PAGE, (page + 1) * PAGE)) frag.append(tileFor(e, mine, wish));
     grid.replaceChildren(frag);
     shownList = list;
-    preloadThumbs(list.slice(page * PAGE, (page + 1) * PAGE));
+    preloadThumbs(list.slice(page * PAGE, (page + 1) * PAGE), true); // la page affichée passe devant (PERF2-04)
     renderPager(pages, list.length);
+    const active = activeFilters();
+    renderActive(active);
     empty.hidden = list.length > 0;
+    // état vide JUSTE quand plusieurs filtres se cumulent (« Manquantes + 5★ » ≠ « tu les as toutes »), audit UX3-02
+    const alone = active.length === 1;
     empty.innerHTML = fr(!theme.cards.length
       ? `Ce thème arrive bientôt : ${esc(theme.subthemes.map((s) => s.label).join(', '))}.`
-      : query
-        ? `Aucune carte ne correspond à « ${esc(search.value.trim())} ».`
-        : filter === 'dups'
-          ? 'Pas encore de doublon ici : ils arrivent vite en ouvrant des boosters.'
-          : filter === 'owned'
-            ? 'Aucune carte ici pour l’instant. <a href="#/">Ouvre un booster</a> !'
-            : filter === 'missing'
-              ? 'Tu les as toutes. Chapeau.'
-              : filter === 'fresh'
-                ? 'Pas de nouvelle carte dans cette sélection : regarde dans les autres albums.'
-                : 'Aucune carte ne correspond.');
+      : alone && filter === 'dups'
+        ? 'Pas encore de doublon ici : ils arrivent vite en ouvrant des boosters.'
+        : alone && filter === 'owned'
+          ? 'Aucune carte ici pour l’instant. <a href="#/">Ouvre un booster</a> !'
+          : alone && filter === 'missing'
+            ? 'Tu les as toutes. Chapeau.'
+            : alone && filter === 'fresh'
+              ? 'Pas de nouvelle carte dans cette sélection : regarde dans les autres albums.'
+              : active.length
+                ? `Aucune carte pour ${esc(active.join(' + '))}.`
+                : 'Aucune carte ici.') + (active.length && theme.cards.length ? ' <button class="btn-ghost f-reset">Réinitialiser les filtres</button>' : '');
+  }
+  /** filtres actifs (différents du défaut) de la vue courante, en clair : « Manquantes », « 5★ », « « pika » » */
+  function activeFilters(): string[] {
+    const starL = (r: RarityId | null) => (r ? (r === 'secret' ? '✷ secrètes' : `${rarity(r).rank + 1}★`) : '');
+    if (mode === 'cards') {
+      const v = q<HTMLInputElement>('.cb-search').value.trim();
+      return [cTheme && (ALL_THEMES.find((t) => t.id === cTheme)?.label ?? ''), starL(cStar), cQuery && `« ${v} »`].filter((x): x is string => !!x);
+    }
+    return [filter !== 'all' ? FILTER_LABEL[filter] : '', starL(star), query ? `« ${search.value.trim()} »` : ''].filter((x) => !!x);
+  }
+  /** bandeau « Filtres actifs : … · Réinitialiser » (les filtres de la grille sont mémorisés d'une visite à l'autre) */
+  function renderActive(active: string[]) {
+    fActive.hidden = !active.length;
+    if (active.length) fActive.innerHTML = `<span>Filtres actifs : <b>${esc(active.join(' · '))}</b></span><button class="f-reset">Réinitialiser</button>`;
+  }
+  /** remet les filtres de la vue courante à zéro (les tris, eux, restent) */
+  function resetFilters() {
+    if (mode === 'cards') {
+      cTheme = '';
+      cStar = null;
+      cQuery = '';
+      q<HTMLInputElement>('.cb-search').value = '';
+    } else {
+      if (filter === 'fresh') fresh.clear();
+      filter = 'all';
+      star = null;
+      query = '';
+      search.value = '';
+      savePrefs();
+    }
+    page = 0;
+    shell.sfx.tick(1.1, 0.04);
+    render();
+  }
+  el.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('.f-reset')) resetFilters();
+  });
+  /** recherche de la vue Cartes : nom, nom d'album, ou numéro (« 25 », « 025 ») */
+  const subFold = new Map<string, string>();
+  const subFolded = (id: string) => {
+    let f = subFold.get(id);
+    if (f === undefined) subFold.set(id, (f = fold(subthemeById(id)?.label ?? '')));
+    return f;
+  };
+  const cardHit = (e: CatalogEntry) =>
+    folded(e).includes(cQuery) || (/^\d+$/.test(cQuery) && String(e.num) === cQuery.replace(/^0+/, '')) || subFolded(e.subthemeId).includes(cQuery);
+  /** cartes du catalogue (hors Bébous secrets), pour la recherche globale des cartes pas encore trouvées */
+  let catalogAll: CatalogEntry[] | null = null;
+  const CATALOG_CAP = 60;
+  /**
+   * Recherche globale (audit UX3-03) : sous les cartes possédées, celles du catalogue qui correspondent mais qu'on n'a pas
+   * encore (grisées, ♥ pour les suivre), avec le nom de leur album en intertitre, plafonnées à 60.
+   */
+  function catalogMatches(mine: Map<string, PlayerCard>): { list: CatalogEntry[]; more: number } {
+    catalogAll ??= ALL_THEMES.filter((t) => !t.secret).flatMap((t) => t.cards).filter((e) => e.rarity !== 'secret');
+    const out: CatalogEntry[] = [];
+    let more = 0;
+    for (const e of catalogAll) {
+      if (mine.has(e.id)) continue;
+      if (cTheme && e.themeId !== cTheme) continue;
+      if (cStar && e.rarity !== cStar) continue;
+      if (!cardHit(e)) continue;
+      if (out.length < CATALOG_CAP) out.push(e);
+      else more++;
+    }
+    const subLabel = (e: CatalogEntry) => subthemeById(e.subthemeId)?.label ?? '';
+    out.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), 'fr') || a.num - b.num);
+    return { list: out, more };
   }
   /** VUE CARTES (défaut, retours live n°1) : toutes mes cartes, les plus rares en haut ; tri, étoile, thème, recherche. */
   function renderCards(mine: Map<string, PlayerCard>) {
-    q('.cb-theme').querySelectorAll<HTMLButtonElement>('button').forEach((b) => b.classList.toggle('on', b.dataset.t === cTheme));
-    q('.cb-stars').querySelectorAll<HTMLElement>('.chip').forEach((b) => b.classList.toggle('on', b.dataset.r === cStar));
-    el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => b.classList.toggle('on', b.dataset.s === cSort));
+    q('.cb-theme').querySelectorAll<HTMLButtonElement>('button').forEach((b) => setOn(b, b.dataset.t === cTheme));
+    q('.cb-stars').querySelectorAll<HTMLElement>('.chip').forEach((b) => setOn(b, b.dataset.r === cStar));
+    el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => setOn(b, b.dataset.s === cSort));
     let list: CatalogEntry[] = [];
     for (const id of mine.keys()) {
       const e = catalogEntry(id);
       if (!e) continue;
       if (cTheme && e.themeId !== cTheme) continue;
       if (cStar && e.rarity !== cStar) continue;
-      if (cQuery && !folded(e).includes(cQuery) && !fold(subthemeById(e.subthemeId)?.label ?? '').includes(cQuery)) continue;
+      if (cQuery && !cardHit(e)) continue;
       list.push(e);
     }
     const date = (e: CatalogEntry) => mine.get(e.id)?.firstPulledAt ?? 0;
@@ -629,12 +856,35 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       grid.classList.remove('by-album');
       for (const e of slice) frag.append(tile(e));
     }
+    // recherche (2 lettres ou un numéro) : les cartes pas encore trouvées, sous la dernière page des miennes
+    const searching = cQuery.length >= 2 || /^\d+$/.test(cQuery);
+    const cat = searching && page >= pages - 1 ? catalogMatches(mine) : null;
+    if (cat?.list.length) {
+      const wish = new Set(backend.state.wishlist);
+      frag.append(h('h4', 'cards-sub cards-cat', `Dans le catalogue · pas encore trouvées<small>${cat.more ? `${fmtN(CATALOG_CAP)} premières sur ${fmtN(CATALOG_CAP + cat.more)} · affine ta recherche` : plural(cat.list.length, 'carte')}</small>`));
+      let lastCat = '';
+      for (const e of cat.list) {
+        if (e.subthemeId !== lastCat) {
+          lastCat = e.subthemeId;
+          frag.append(h('h4', 'cards-sub cards-cat-sub', `${esc(subLabel(e))}<small>${esc(themeById(e.themeId)?.label ?? '')}</small>`));
+        }
+        frag.append(tileFor(e, mine, wish));
+      }
+    }
     grid.replaceChildren(frag);
     shownList = list;
-    preloadThumbs(list.slice(page * PAGE, (page + 1) * PAGE));
+    preloadThumbs(list.slice(page * PAGE, (page + 1) * PAGE), true); // la page affichée passe devant (PERF2-04)
     renderPager(pages, list.length);
-    empty.hidden = list.length > 0;
-    empty.innerHTML = fr(mine.size === 0 ? 'Ta collection est vide : <a href="#/">ouvre ton premier booster</a> !' : 'Aucune carte ne correspond aux filtres.');
+    const active = activeFilters();
+    renderActive(active);
+    empty.hidden = list.length > 0 || !!cat?.list.length;
+    // en ligne, pas encore connecté au serveur ou pas de joueur : ce n'est pas une collection vide (UX1-15)
+    if (mine.size === 0 && signedOut()) {
+      empty.hidden = false;
+      empty.innerHTML = loginPrompt(backend, 'Connecte-toi avec Discord pour retrouver ta collection.');
+      return;
+    }
+    empty.innerHTML = fr(mine.size === 0 ? 'Ta collection est vide : <a href="#/">ouvre ton premier booster</a> !' : active.length ? `Aucune de tes cartes pour ${esc(active.join(' + '))}.` : 'Aucune carte ne correspond aux filtres.') + (mine.size && active.length ? ' <button class="btn-ghost f-reset">Réinitialiser les filtres</button>' : '');
   }
 
   function renderPager(pages: number, total: number) {
@@ -662,7 +912,27 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       last = p;
     }
     pager.append(btn('›', page + 1, ' pg-arrow'));
-    pager.append(h('span', 'pg-info', `${fmtN(page * PAGE + 1)}–${fmtN(Math.min(total, (page + 1) * PAGE))} sur ${fmtN(total)}`));
+    // « 61–120 sur 6 584 » : touché, il devient un champ « aller à la page » (110 pages au pouce, audit UX3-11)
+    const info = h('button', 'pg-info', `${fmtN(page * PAGE + 1)}–${fmtN(Math.min(total, (page + 1) * PAGE))} sur ${fmtN(total)}`);
+    info.title = 'Aller à la page…';
+    info.setAttribute('aria-label', `Page ${page + 1} sur ${pages} : aller à une autre page`);
+    info.addEventListener('click', () => {
+      const f = h('form', 'pg-go', `<label>Page <input type="number" inputmode="numeric" min="1" max="${pages}" value="${page + 1}" aria-label="Numéro de page"> / ${fmtN(pages)}</label><button class="pg">OK</button>`);
+      const inp = f.querySelector('input')!;
+      f.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const p = Math.min(pages, Math.max(1, Math.round(Number(inp.value) || 1))) - 1;
+        if (p === page) return renderPager(pages, total);
+        page = p;
+        render();
+        grid.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+      inp.addEventListener('keydown', (e) => e.key === 'Escape' && (e.stopPropagation(), renderPager(pages, total)));
+      info.replaceWith(f);
+      inp.focus();
+      inp.select();
+    });
+    pager.append(info);
   }
 
   // ── CLASSEURS
@@ -673,8 +943,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   function renderBinders(mine: Map<string, PlayerCard>) {
     bindersView.replaceChildren();
     const list = backend.state.binders;
-    const head = h('div', 'bd-head', `<div><span class="kicker">CLASSEURS PERSO</span><h2>Tes classeurs</h2><p class="muted">Range tes cartes comme tu veux : une carte peut être dans plusieurs classeurs. Le classeur épinglé s’affiche sur ton profil.</p></div><button class="btn-primary bd-new">+ Nouveau classeur</button>`);
-    head.querySelector('.bd-new')!.addEventListener('click', () => void newBinder());
+    const full = list.length >= BINDER_MAX;
+    const head = h('div', 'bd-head', `<div><span class="kicker">CLASSEURS PERSO · ${fmtN(list.length)}/${BINDER_MAX}</span><h2>Tes classeurs</h2><p class="muted">Range tes cartes comme tu veux : une carte peut être dans plusieurs classeurs (${BINDER_CARDS_MAX} cartes max. chacun). Le classeur épinglé s’affiche sur ton profil.</p></div><button class="btn-primary bd-new"${full ? ` disabled title="${BINDER_MAX} classeurs au maximum : supprimes-en un pour en créer un autre"` : ''}>+ Nouveau classeur</button>`);
+    if (full) head.querySelector('.muted')!.insertAdjacentHTML('beforeend', ` <b class="bd-limit">${BINDER_MAX} classeurs au maximum : supprimes-en un pour en créer un autre.</b>`);
+    head.querySelector('.bd-new')!.addEventListener('click', (e) => void newBinder(undefined, e.currentTarget as HTMLElement));
     bindersView.append(head);
     if (!list.length) {
       bindersView.append(h('div', 'empty', 'Pas encore de classeur. Crée-en un, puis ajoute des cartes depuis leur fiche (« + Classeur »).'));
@@ -684,14 +956,55 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     for (const b of list) {
       const cover = binderCover(b, mine);
       const c = h('button', `bd-card${b.pinned ? ' pinned' : ''}`);
-      c.innerHTML = `<span class="bd-cover">${cover ? `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(cover)}">` : '<span class="al-ph">✦</span>'}${b.pinned ? '<span class="bd-pin" title="Épinglé sur ton profil">★ profil</span>' : ''}</span><span class="bd-name">${esc(b.name)}</span><span class="bd-n">${plural(b.cards.length, 'carte')}</span>`;
+      c.innerHTML = `<span class="bd-cover">${cover ? `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(cover)}">` : '<span class="al-ph">✦</span>'}${b.pinned ? '<span class="bd-pin" title="Épinglé sur ton profil">📌 profil</span>' : ''}</span><span class="bd-name">${esc(b.name)}</span><span class="bd-n">${plural(b.cards.length, 'carte')}</span>`;
       c.addEventListener('click', () => goBinder(b.id));
       g.append(c);
     }
     bindersView.append(g);
   }
-  async function newBinder(cards?: Array<{ cardId: string; rarity: RarityId }>): Promise<string | null> {
-    const name = prompt('Nom du classeur (ex. « Rois », « Shinies ») :')?.trim();
+  /**
+   * Petit champ de nom en ligne (à la place de `prompt()`, qui coupe l'ambiance sur iOS et cache la limite : audit UX3-15).
+   * Posé juste après `anchor` ; résout le nom (nettoyé, ≤ 32 caractères) ou null (Annuler, Échap).
+   */
+  function askName(anchor: HTMLElement, initial = '', placeholder = 'ex. « Rois », « Shinies »'): Promise<string | null> {
+    anchor.parentElement?.querySelector(':scope > .bd-name-f')?.remove();
+    return new Promise((res) => {
+      const f = h('form', 'bd-name-f', `<input maxlength="${BINDER_NAME_MAX}" enterkeyhint="done" autocomplete="off" spellcheck="false" aria-label="Nom du classeur" placeholder="${esc(placeholder)}"><span class="bd-name-n" aria-hidden="true"></span><button class="btn-primary">OK</button><button type="button" class="btn-ghost bd-name-x">Annuler</button>`);
+      const inp = f.querySelector('input')!;
+      const n = f.querySelector<HTMLElement>('.bd-name-n')!;
+      inp.value = initial;
+      const count = () => (n.textContent = `${inp.value.length}/${BINDER_NAME_MAX}`);
+      count();
+      inp.addEventListener('input', count);
+      let settled = false;
+      const done = (v: string | null) => {
+        if (settled) return;
+        settled = true;
+        f.remove();
+        res(v);
+      };
+      f.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const v = inp.value.replace(/\s+/g, ' ').trim().slice(0, BINDER_NAME_MAX);
+        done(v || null);
+      });
+      f.querySelector('.bd-name-x')!.addEventListener('click', () => done(null));
+      inp.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        e.stopPropagation();
+        done(null);
+      });
+      anchor.insertAdjacentElement('afterend', f);
+      inp.focus();
+      inp.select();
+    });
+  }
+  async function newBinder(cards?: Array<{ cardId: string; rarity: RarityId }>, anchor?: HTMLElement): Promise<string | null> {
+    if (backend.state.binders.length >= BINDER_MAX) {
+      toast(`${BINDER_MAX} classeurs au maximum : supprimes-en un pour en créer un autre.`, 'info');
+      return null;
+    }
+    const name = anchor ? await askName(anchor) : prompt('Nom du classeur (ex. « Rois », « Shinies ») :')?.trim().slice(0, BINDER_NAME_MAX);
     if (!name) return null;
     try {
       const id = await backend.createBinder(name, cards);
@@ -708,10 +1021,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     bindersView.replaceChildren();
     if (!b) return goBinders();
     const head = h('div', 'bd-head bd-one');
-    head.innerHTML = `<div><span class="kicker">CLASSEUR${b.pinned ? ' · ÉPINGLÉ SUR TON PROFIL' : ''}</span><h2 class="bd-title">${esc(b.name)}<button class="bd-rename" title="Renommer" aria-label="Renommer">✎</button></h2><p class="muted">${plural(b.cards.length, 'carte')}${b.coverCardId ? ` · couverture : ${esc(catalogEntry(b.coverCardId)?.name ?? '')}` : ' · couverture automatique (la première carte)'}</p></div>
-      <div class="bd-actions"><button class="btn-ghost bd-pinb">${b.pinned ? '★ Désépingler' : '☆ Épingler sur le profil'}</button><button class="btn-ghost bd-edit">${binderEdit ? 'Terminer' : 'Réorganiser'}</button><button class="btn-ghost danger bd-del">Supprimer</button></div>`;
+    head.innerHTML = `<div><span class="kicker">CLASSEUR${b.pinned ? ' · ÉPINGLÉ SUR TON PROFIL' : ''}</span><h2 class="bd-title">${esc(b.name)}<button class="bd-rename" title="Renommer" aria-label="Renommer">✎</button></h2><p class="muted">${fmtN(b.cards.length)}/${BINDER_CARDS_MAX} cartes${b.coverCardId ? ` · couverture : ${esc(catalogEntry(b.coverCardId)?.name ?? '')}` : ' · couverture automatique (la première carte)'}</p></div>
+      <div class="bd-actions"><button class="btn-ghost bd-pinb" aria-pressed="${b.pinned}">${b.pinned ? '📌 Retirer de mon profil' : '📌 Épingler sur mon profil'}</button><button class="btn-ghost bd-edit">${binderEdit ? 'Terminer' : 'Réorganiser'}</button><button class="btn-ghost danger bd-del">Supprimer</button></div>`;
     head.querySelector('.bd-rename')!.addEventListener('click', async () => {
-      const name = prompt('Nouveau nom :', b.name)?.trim();
+      const name = await askName(head.querySelector<HTMLElement>('.bd-title')!, b.name, 'Nouveau nom');
       if (!name || name === b.name) return;
       try {
         await backend.renameBinder(b.id, name);
@@ -731,8 +1044,19 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       binderEdit = !binderEdit;
       render();
     });
-    head.querySelector('.bd-del')!.addEventListener('click', async () => {
-      if (!confirm(`Supprimer le classeur « ${b.name} » ? Les cartes restent dans ta collection.`)) return;
+    // suppression : double toucher (« Sûr ? »), désarmé seul au bout de 4 s — plus de confirm() natif
+    const del = head.querySelector<HTMLButtonElement>('.bd-del')!;
+    let armed = 0;
+    del.addEventListener('click', async () => {
+      if (!armed) {
+        del.textContent = 'Sûr ? Les cartes restent dans ta collection';
+        armed = window.setTimeout(() => {
+          armed = 0;
+          del.textContent = 'Supprimer';
+        }, 4000);
+        return;
+      }
+      clearTimeout(armed);
       try {
         await backend.deleteBinder(b.id);
         goBinders();
@@ -745,14 +1069,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       bindersView.append(h('div', 'empty', 'Classeur vide : ouvre une carte de ta collection et touche « + Classeur ».'));
       return;
     }
-    if (binderEdit) bindersView.append(h('div', 'bd-hint', 'Glisse les cartes pour les réordonner · ✕ retire du classeur · ⌂ en fait la couverture'));
+    if (binderEdit) bindersView.append(h('div', 'bd-hint', matchMedia('(pointer: coarse)').matches ? 'Appui long sur une carte (ou sa poignée ⠿) puis glisse pour la déplacer · ✕ retire du classeur · 📌 en fait la couverture' : 'Glisse les cartes pour les réordonner · ✕ retire du classeur · 📌 en fait la couverture'));
     const g = h('div', `grid bd-cards${binderEdit ? ' editing' : ''}`);
     b.cards.forEach((c, i) => {
       const have = mine.get(c.cardId);
       const t = cardTile(c.cardId, c.rarity, { owned: !!have, count: have?.count });
       t.dataset.i = String(i);
       if (binderEdit) {
-        const tools = h('span', 'bd-tools', `<button class="bd-cov${b.coverCardId === c.cardId ? ' on' : ''}" title="Couverture du classeur">⌂</button><button class="bd-rm" title="Retirer du classeur">✕</button>`);
+        const tools = h('span', 'bd-tools', `<span class="bd-grip" title="Glisser pour déplacer" aria-hidden="true">⠿</span><button class="bd-cov${b.coverCardId === c.cardId ? ' on' : ''}" title="${b.coverCardId === c.cardId ? 'Couverture du classeur (retirer)' : 'En faire la couverture du classeur'}" aria-label="${b.coverCardId === c.cardId ? 'Ne plus utiliser comme couverture' : 'En faire la couverture du classeur'}" aria-pressed="${b.coverCardId === c.cardId}">📌</button><button class="bd-rm" title="Retirer du classeur" aria-label="Retirer du classeur">✕</button>`);
         tools.querySelector('.bd-cov')!.addEventListener('click', async (ev) => {
           ev.stopPropagation();
           try {
@@ -776,31 +1100,83 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     bindersView.append(g);
     if (binderEdit) sortable(g, b);
   }
-  /** glisser-déposer (souris et doigt) : la carte attrapée suit le pointeur, les autres s'écartent, on relâche = nouvel ordre. */
+  /**
+   * glisser-déposer (souris et doigt) : la carte attrapée suit le pointeur, les autres s'écartent, on relâche = nouvel ordre.
+   * Au doigt (audit UX3-07) : la grille DÉFILE normalement ; on attrape une carte par un appui long (300 ms sans bouger)
+   * ou tout de suite par sa poignée ⠿ (seule zone en `touch-action: none`). Près du haut / du bas de l'écran pendant
+   * un glisser, la liste défile toute seule (déplacer une carte de la place 3 à la place 80).
+   */
   function sortable(g: HTMLElement, b: Binder) {
-    let drag: { el: HTMLElement; from: number; ghost: HTMLElement; ox: number; oy: number } | null = null;
+    let drag: { el: HTMLElement; from: number; ghost: HTMLElement; ox: number; oy: number; id: number } | null = null;
     let over = -1;
-    g.addEventListener('pointerdown', (e) => {
-      const t = (e.target as HTMLElement).closest<HTMLElement>('.tile');
-      if (!t || (e.target as HTMLElement).closest('button')) return;
-      e.preventDefault();
+    let press: { t: HTMLElement; x: number; y: number; id: number; timer: number } | null = null;
+    let last: { x: number; y: number } | null = null;
+    let edgeRaf = 0;
+    const cancelPress = () => {
+      if (!press) return;
+      clearTimeout(press.timer);
+      press.t.classList.remove('bd-press');
+      press = null;
+    };
+    const start = (t: HTMLElement, e: { clientX: number; clientY: number; pointerId: number }) => {
       const r = t.getBoundingClientRect();
       const ghost = t.cloneNode(true) as HTMLElement;
       ghost.className += ' bd-ghost';
       ghost.style.width = `${r.width}px`;
       ghost.style.height = `${r.height}px`;
       document.body.append(ghost);
-      drag = { el: t, from: Number(t.dataset.i), ghost, ox: e.clientX - r.left, oy: e.clientY - r.top };
+      drag = { el: t, from: Number(t.dataset.i), ghost, ox: e.clientX - r.left, oy: e.clientY - r.top, id: e.pointerId };
       t.classList.add('bd-dragging');
-      g.setPointerCapture(e.pointerId);
+      g.classList.add('dragging');
+      try {
+        g.setPointerCapture(e.pointerId);
+      } catch {
+        /* le doigt a déjà été relâché */
+      }
       move(e);
       haptics.pulse(8);
+    };
+    g.addEventListener('pointerdown', (e) => {
+      const target = e.target as HTMLElement;
+      const t = target.closest<HTMLElement>('.tile');
+      if (!t || drag) return;
+      const grip = !!target.closest('.bd-grip');
+      if (!grip && target.closest('button')) return;
+      // souris, ou poignée : on attrape tout de suite
+      if (e.pointerType === 'mouse' || grip) {
+        e.preventDefault();
+        return start(t, e);
+      }
+      // doigt / stylet : appui long, le défilement reste libre tant qu'il n'a pas abouti
+      cancelPress();
+      const p = { clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId };
+      t.classList.add('bd-press');
+      press = { t, x: e.clientX, y: e.clientY, id: e.pointerId, timer: window.setTimeout(() => {
+        if (!press) return;
+        const pt = press.t;
+        cancelPress();
+        start(pt, last ? { clientX: last.x, clientY: last.y, pointerId: p.pointerId } : p);
+      }, 300) };
+      last = null;
     });
-    const move = (e: PointerEvent) => {
+    // pendant un glisser au doigt, le navigateur ne doit plus faire défiler la page (écouteur non passif)
+    g.addEventListener('touchmove', (e) => drag && e.cancelable && e.preventDefault(), { passive: false });
+    g.addEventListener('contextmenu', (e) => e.preventDefault());
+    const edge = () => {
+      edgeRaf = 0;
+      if (!drag || !last) return;
+      const zone = 80;
+      const dy = last.y < zone ? -1 : last.y > innerHeight - zone ? 1 : 0;
+      if (!dy) return;
+      const k = dy < 0 ? (zone - last.y) / zone : (last.y - (innerHeight - zone)) / zone;
+      el.scrollBy(0, dy * Math.ceil(4 + 14 * Math.min(1, k)));
+      hover(last.x, last.y);
+      edgeRaf = requestAnimationFrame(edge);
+    };
+    const hover = (x: number, y: number) => {
       if (!drag) return;
-      drag.ghost.style.transform = `translate(${e.clientX - drag.ox}px, ${e.clientY - drag.oy}px)`;
       drag.ghost.hidden = true;
-      const under = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('.bd-cards .tile');
+      const under = document.elementFromPoint(x, y)?.closest<HTMLElement>('.bd-cards .tile');
       drag.ghost.hidden = false;
       const i = under ? Number(under.dataset.i) : -1;
       if (i !== over) {
@@ -808,24 +1184,42 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         g.querySelectorAll<HTMLElement>('.tile').forEach((x) => x.classList.toggle('bd-over', Number(x.dataset.i) === i && i !== drag!.from));
       }
     };
+    const move = (e: { clientX: number; clientY: number; pointerId: number }) => {
+      if (press && e.pointerId === press.id) {
+        last = { x: e.clientX, y: e.clientY };
+        // le doigt bouge avant la fin de l'appui long : c'est un défilement, pas une prise
+        if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8) cancelPress();
+        return;
+      }
+      if (!drag) return;
+      last = { x: e.clientX, y: e.clientY };
+      drag.ghost.style.transform = `translate(${e.clientX - drag.ox}px, ${e.clientY - drag.oy}px)`;
+      hover(e.clientX, e.clientY);
+      if (!edgeRaf) edgeRaf = requestAnimationFrame(edge);
+    };
     g.addEventListener('pointermove', move);
     const end = async (e: PointerEvent) => {
+      if (press && e.pointerId === press.id) cancelPress();
       if (!drag) return;
       const d = drag;
       drag = null;
+      cancelAnimationFrame(edgeRaf);
+      edgeRaf = 0;
       d.ghost.remove();
       d.el.classList.remove('bd-dragging');
+      g.classList.remove('dragging');
       g.querySelectorAll('.bd-over').forEach((x) => x.classList.remove('bd-over'));
       try {
         g.releasePointerCapture(e.pointerId);
       } catch {
         /* ignore */
       }
-      if (over < 0 || over === d.from) return;
+      const to = over;
+      over = -1;
+      if (e.type === 'pointercancel' || to < 0 || to === d.from) return;
       const cards = [...b.cards];
       const [it] = cards.splice(d.from, 1);
-      cards.splice(over, 0, it);
-      over = -1;
+      cards.splice(to, 0, it);
       try {
         await backend.setBinderCards(b.id, cards);
         shell.sfx.tick(1.1, 0.04);
@@ -850,6 +1244,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     grid.hidden = !(inGrid || inCards);
     pager.hidden = !(inGrid || inCards);
     empty.hidden = true;
+    fActive.hidden = true;
     bindersView.hidden = !inBinders;
     crumb.hidden = !((inGrid && !theme.secret) || mode === 'binder');
     if (inGrid && !theme.secret) {
@@ -857,12 +1252,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       q('.crumb-name').textContent = subId ? (subthemeById(subId)?.label ?? '') : `Tout ${theme.label}`;
     } else if (mode === 'binder') {
       q('.crumb-back').textContent = '‹ Classeurs';
-      q('.crumb-name').textContent = backend.state.binders.find((x) => x.id === binderId)?.name ?? '';
+      // le nom est déjà le grand titre du classeur : pas de doublon dans le fil d'Ariane (audit UX3-15)
+      q('.crumb-name').textContent = '';
     }
     for (const row of [tabs]) {
       const on = row.querySelector<HTMLElement>('.on');
       if (on && row.scrollWidth > row.clientWidth) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.clientWidth) / 2;
     }
+    requestAnimationFrame(fitRows);
     renderProgress(mine);
     if (inCards) renderCards(mine);
     else if (inAlbums) renderAlbums(mine);
@@ -907,10 +1304,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const isCover = !!st && backend.state.covers[st.id] === b.id;
     const inBinders = backend.state.binders.filter((x) => x.cards.some((c) => c.cardId === b.id && c.rarity === b.r)).length;
     vActions.innerHTML = `
-      <button class="va va-wish${wish ? ' on' : ''}" title="${wish ? 'Retirer de mes envies' : 'Je veux cette carte (envies)'}">♥ <span>${wish ? 'Envie ✓' : 'Envie'}</span></button>
-      <button class="va va-binder${inBinders ? ' on' : ''}" title="Ranger dans un classeur">▤ <span>${inBinders ? `Classeur ×${inBinders}` : '+ Classeur'}</span></button>
+      <button class="va va-wish${wish ? ' on' : ''}" title="${wish ? 'Retirer de mes envies' : 'Je veux cette carte (envies)'}" aria-pressed="${wish}">♥ <span>${wish ? 'Envie ✓' : 'Envie'}</span></button>
+      <button class="va va-binder${inBinders ? ' on' : ''}" title="Ranger dans un classeur" aria-label="Ranger dans un classeur${inBinders ? ` (déjà dans ${inBinders})` : ''}">▤ <span>${inBinders ? `Classeur ×${inBinders}` : '+ Classeur'}</span></button>
       <button class="va va-trade" title="Proposer cette carte dans un échange">⇄ <span>Échanger</span></button>
-      ${st && !e?.themeId.startsWith('bebous') ? `<button class="va va-cover${isCover ? ' on' : ''}" title="${isCover ? 'Ne plus utiliser comme pochette' : `En faire la pochette de l’album ${esc(st.label)}`}">⌂ <span>${isCover ? 'Pochette ✓' : 'Pochette'}</span></button>` : ''}
+      ${st && !e?.themeId.startsWith('bebous') ? `<button class="va va-cover${isCover ? ' on' : ''}" title="${isCover ? 'Ne plus utiliser comme couverture' : `En faire la couverture de l’album ${esc(st.label)}`}" aria-label="${isCover ? `Couverture de l’album ${esc(st.label)} : retirer` : `En faire la couverture de l’album ${esc(st.label)}`}" aria-pressed="${isCover}">📌 <span>${isCover ? 'Couverture ✓' : 'Couverture'}</span></button>` : ''}
       ${have?.firstPulledAt ? `<span class="va-date">obtenue le ${fmtDate(have.firstPulledAt)}</span>` : ''}`;
     vActions.querySelector('.va-wish')!.addEventListener('click', async () => {
       haptics.pulse(8);
@@ -924,15 +1321,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     vActions.querySelector('.va-binder')!.addEventListener('click', () => showBinderPick(b));
     vActions.querySelector('.va-trade')!.addEventListener('click', () => {
       sessionStorage.setItem('bebou.tradeGive', `${b.id}:${b.r}`);
-      closeViewer();
-      location.hash = '#/echanges';
+      // ferme la visionneuse (couche) puis va aux échanges, sans entrée d'historique fantôme (API lot A)
+      navigate('#/echanges');
       toast('Choisis un ami : la carte sera dans ta proposition', 'info');
     });
     vActions.querySelector('.va-cover')?.addEventListener('click', async () => {
       if (!st) return;
       try {
         await backend.setSubthemeCover(st.id, isCover ? undefined : b.id);
-        toast(isCover ? `Pochette ${st.label} : automatique` : `${e?.name} est la pochette de l’album ${st.label}`, 'ok');
+        toast(isCover ? `Couverture de l’album ${st.label} : automatique` : `${e?.name} est la couverture de l’album ${st.label}`, 'ok');
         renderActions(b);
       } catch (err) {
         toast(errMsg(err), 'err');
@@ -943,8 +1340,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const list = backend.state.binders;
     binderPick.hidden = false;
     binderPick.innerHTML = `<div class="bp-h"><b>Ranger dans…</b><button class="bp-x" aria-label="Fermer">✕</button></div>
-      ${list.map((x) => `<label class="bp-row"><input type="checkbox" data-id="${esc(x.id)}" ${x.cards.some((c) => c.cardId === b.id && c.rarity === b.r) ? 'checked' : ''}><span>${esc(x.name)}</span><em>${x.cards.length}</em></label>`).join('')}
-      <button class="btn-ghost bp-new">+ Nouveau classeur avec cette carte</button>`;
+      ${list
+        .map((x) => {
+          const inIt = x.cards.some((c) => c.cardId === b.id && c.rarity === b.r);
+          const full = !inIt && x.cards.length >= BINDER_CARDS_MAX;
+          return `<label class="bp-row${full ? ' full' : ''}"${full ? ` title="Classeur plein (${BINDER_CARDS_MAX} cartes)"` : ''}><input type="checkbox" data-id="${esc(x.id)}" ${inIt ? 'checked' : ''}${full ? ' disabled' : ''}><span>${esc(x.name)}</span><em>${full ? 'plein · ' : ''}${fmtN(x.cards.length)}/${BINDER_CARDS_MAX}</em></label>`;
+        })
+        .join('')}
+      <button class="btn-ghost bp-new"${list.length >= BINDER_MAX ? ` disabled title="${BINDER_MAX} classeurs au maximum"` : ''}>${list.length >= BINDER_MAX ? `${BINDER_MAX} classeurs au maximum` : '+ Nouveau classeur avec cette carte'}</button>`;
     binderPick.querySelector('.bp-x')!.addEventListener('click', () => (binderPick.hidden = true));
     binderPick.querySelectorAll<HTMLInputElement>('input').forEach((inp) =>
       inp.addEventListener('change', async () => {
@@ -958,8 +1361,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         }
       }),
     );
-    binderPick.querySelector('.bp-new')!.addEventListener('click', async () => {
-      const id = await newBinder([{ cardId: b.id, rarity: b.r }]);
+    binderPick.querySelector('.bp-new')!.addEventListener('click', async (e) => {
+      const id = await newBinder([{ cardId: b.id, rarity: b.r }], e.currentTarget as HTMLElement);
       if (id) {
         renderActions(b);
         showBinderPick(b);
@@ -967,10 +1370,21 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     });
   }
 
+  // un toucher à côté de la carte la referme (comme la croix, Échap et le retour) — pas celui qui vient de l'ouvrir
+  // (même règle que la boutique, audit UX3-09) ; si le choix de classeur est ouvert, ce toucher le ferme d'abord
+  let viewerRef: ViewerScene | null = null;
+  let openedAt = 0;
+  shell.input.onTap((x, y) => {
+    if (!open || !viewerRef || performance.now() - openedAt < 450 || !el.isConnected) return;
+    if (viewerRef.hits(x, y)) return;
+    if (!binderPick.hidden) binderPick.hidden = true;
+    else closeViewer();
+  });
   async function openCard(i: number, dir: 0 | 1 | -1 = 0) {
     const b = browse[i];
     if (!b) return;
     at = i;
+    openedAt = performance.now();
     const e = catalogEntry(b.id);
     const have = owned().get(b.id);
     const st = e ? subthemeById(e.subthemeId) : null;
@@ -995,6 +1409,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       : 'glisse pour tourner · touche deux fois pour zoomer';
     navPos.textContent = browse.length > 1 ? `${fmtN(i + 1)} / ${fmtN(browse.length)}` : '';
     const viewer = await getViewer();
+    viewerRef = viewer;
     if (!open || at !== i) return;
     shell.setDimmed(false);
     shell.show('viewer');
@@ -1069,17 +1484,36 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       }
       else if (sub && sub !== 'nouvelles') {
         // lien direct : un sous-thème (#/collection/pokemon) ou un thème (#/collection/monde)
+        // … ou un GROUPE d'albums (#/collection/pokemon = Kanto, Johto… : audit UX3-10)
         const st = subthemeById(sub);
-        const t = ALL_THEMES.find((x) => x.id === (st?.themeId ?? sub));
+        const grp = st ? undefined : SUBTHEMES.find((s) => s.group?.id === sub);
+        const t = ALL_THEMES.find((x) => x.id === (st?.themeId ?? grp?.themeId ?? sub)) ?? themeById(sub);
         if (t) theme = t;
         if (st && st.themeId !== 'bebous') {
           mode = 'grid';
           subId = st.id;
           page = 0;
+        } else if (grp?.group && t && !t.secret) {
+          // la mosaïque du thème, filtrée sur le groupe
+          mode = 'albums';
+          subId = null;
+          alSearch.value = grp.group.label;
+          albumQuery = fold(grp.group.label);
         } else if (t) {
           mode = t.secret ? 'grid' : 'albums';
           subId = null;
+        } else {
+          // lien inconnu : la vue Cartes, et une adresse propre
+          mode = 'cards';
+          page = 0;
+          history.replaceState(null, '', '#/collection');
         }
+      } else if (sub === 'nouvelles' && !fresh.size) {
+        // « Voir mes nouvelles » alors qu'elles ont déjà été vues : on le dit, au lieu de rester sur l'ancienne vue
+        mode = 'cards';
+        page = 0;
+        history.replaceState(null, '', '#/collection');
+        toast('Pas de nouvelle carte depuis ta dernière visite', 'info');
       } else if (sub === 'nouvelles' && fresh.size) {
         // « Voir mes nouvelles » depuis le récap : la grille du sous-thème de la première, filtre « Nouvelles »
         saveSeen();

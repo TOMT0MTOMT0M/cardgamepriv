@@ -1,6 +1,6 @@
-import { type Ctx, alpha, linear, mix, radial } from './canvas';
+import { type Ctx, alpha, ctx2d, linear, mix, radial, releaseCanvas } from './canvas';
 import { BASE_H, BASE_W, WIN, type PaintTarget } from './subjects';
-import type { CardImage } from './images';
+import { imageLimits, onImageEvicted, type CardImage } from './images';
 
 const TAU = Math.PI * 2;
 const CX = WIN.x + WIN.w / 2;
@@ -20,23 +20,39 @@ const FULL_VIEW = (() => {
 })();
 
 const silCache = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>();
-/** Silhouette unie de l'illustration (même taille que sa toile), mise en cache. */
+// illustration retirée du cache (LRU de images.ts) : ses silhouettes partent avec elle, mémoire rendue tout de suite
+onImageEvicted((c) => {
+  silCache.get(c)?.forEach((s) => releaseCanvas(s));
+  silCache.delete(c);
+});
+/**
+ * Silhouette unie de l'illustration (même taille que sa toile). Gardée en cache dans le labo ; dans le jeu
+ * (`imageLimits.keepSilhouettes = false`), créée pour la peinture puis libérée (`done`) : 2 toiles de moins par
+ * illustration gardée.
+ */
 function silhouette(im: CardImage, color: string): HTMLCanvasElement {
   let m = silCache.get(im.canvas);
-  if (!m) silCache.set(im.canvas, (m = new Map()));
-  let c = m.get(color);
+  let c = m?.get(color);
   if (!c) {
     c = document.createElement('canvas');
     c.width = im.canvas.width;
     c.height = im.canvas.height;
-    const g = c.getContext('2d')!;
+    const g = ctx2d(c);
     g.drawImage(im.canvas, 0, 0);
     g.globalCompositeOperation = 'source-in';
     g.fillStyle = color;
     g.fillRect(0, 0, c.width, c.height);
-    m.set(color, c);
+    if (imageLimits.keepSilhouettes) {
+      if (!m) silCache.set(im.canvas, (m = new Map()));
+      m.set(color, c);
+    }
   }
   return c;
+}
+/** Fin d'usage d'une silhouette : libérée si elle n'est pas en cache. */
+function done(im: CardImage, c: HTMLCanvasElement) {
+  const m = silCache.get(im.canvas);
+  if (!m || ![...m.values()].includes(c)) releaseCanvas(c);
 }
 
 /** Emplacement du sujet dans la fenêtre d'illustration (coordonnées carte 768×1072). `fit` : échelle du sujet (1 = défaut). */
@@ -154,9 +170,13 @@ export function paintImageSubject(t: PaintTarget, im: CardImage | null, fit = 1)
   fx.save();
   fx.globalCompositeOperation = 'lighter';
   fx.filter = `blur(${5 * px}px)`;
-  fx.drawImage(silhouette(im, 'rgb(0,0,170)'), p.x, p.y, p.w, p.h);
+  const sb = silhouette(im, 'rgb(0,0,170)');
+  fx.drawImage(sb, p.x, p.y, p.w, p.h);
+  done(im, sb);
   fx.filter = 'none';
-  fx.drawImage(silhouette(im, 'rgb(0,110,0)'), p.x, p.y, p.w, p.h);
+  const sg = silhouette(im, 'rgb(0,110,0)');
+  fx.drawImage(sg, p.x, p.y, p.w, p.h);
+  done(im, sg);
   fx.restore();
 
   // ── premier plan : quelques éclats autour du sujet
@@ -215,7 +235,7 @@ export function paintCoverSubject(t: PaintTarget, im: CardImage | null) {
     const tmp = document.createElement('canvas');
     tmp.width = Math.max(1, Math.round(w * px));
     tmp.height = Math.max(1, Math.round(h * px));
-    const g = tmp.getContext('2d')!;
+    const g = ctx2d(tmp);
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = 'high';
     g.drawImage(im.canvas, 0, 0, tmp.width, tmp.height);
@@ -228,6 +248,7 @@ export function paintCoverSubject(t: PaintTarget, im: CardImage | null) {
     g.fillStyle = fade;
     g.fillRect(0, 0, tmp.width, tmp.height);
     bg.drawImage(tmp, FULL_VIEW.x, y, w, h);
+    releaseCanvas(tmp);
   }
   bg.restore();
   // vignettage doux (le nom en bas et les étoiles en haut restent lisibles)

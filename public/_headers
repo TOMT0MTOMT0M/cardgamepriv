@@ -1,5 +1,7 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# /art/* : servi par functions/art/[[path]].js (R2), qui pose lui-même Cache-Control (1 semaine + revalidation en
+# douce). Cette règle ne vaut que pour le repli sur les fichiers du site : même politique, pour ne pas en avoir deux.
 /art/*
-  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000

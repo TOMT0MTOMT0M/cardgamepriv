@@ -3,7 +3,7 @@ import type { Shell } from '../shell';
 import type { EcoSnapshot } from '../eco';
 import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_TOTAL, achievementReward, calendarReward, fmtCoins } from '../../core/economy';
 import { GAMES_OPEN } from '../../core/games';
-import { busyButton, errMsg, esc, h, toast } from '../ui';
+import { CLOSE_X, busyButton, errMsg, esc, h, keepFocus, loginPrompt, panelHidden, panelShown, toast } from '../ui';
 import '../games.css';
 
 /**
@@ -17,6 +17,8 @@ export function createWallet(backend: GameBackend, shell: Shell) {
   const pop = h('div', 'missions-pop wallet-pop');
   pop.setAttribute('role', 'dialog');
   pop.setAttribute('aria-label', 'Portefeuille');
+  pop.id = 'pop-wallet';
+  pop.inert = true; // fermé : ni focus ni lecteur d'écran
   const veil = h('div', 'um-veil');
   document.body.append(veil, pop);
   let on = false;
@@ -36,10 +38,13 @@ export function createWallet(backend: GameBackend, shell: Shell) {
   }
 
   function render() {
+    if (on) keepFocus(pop, draw);
+  }
+  function draw() {
     if (!on) return;
     const s = backend.eco.snapshot;
     if (!s) {
-      pop.innerHTML = '<div class="msn-head"><b>Portefeuille</b></div><div class="muted">Connecte-toi pour gagner des pièces.</div>';
+      pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi pour gagner des pièces.')}`;
       return;
     }
     const compTotal = s.completions.reduce((a, c) => a + c.reward, 0);
@@ -47,7 +52,7 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     const achTotal = ach.reduce((a, x) => a + achievementReward(x), 0);
     // GAMES pas encore ouvert (retours live n°1) : pas de liens vers l'espace Jeux, sauf pour les admins
     const games = GAMES_OPEN || s.isAdmin;
-    pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b>${games ? '<a href="#/jeux" class="w-link">Espace Jeux →</a>' : ''}</div>
+    pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b>${games ? '<a href="#/jeux" class="w-link">Espace Jeux →</a>' : ''}${CLOSE_X}</div>
       <div class="w-bal">${coinsHtml(s.coins, 'big')}<span class="muted">pièces 100 % virtuelles · jamais échangeables contre des cartes</span></div>
       ${calendarHtml(s)}
       <div class="w-sec"><div class="w-h"><b>À encaisser</b></div>
@@ -95,18 +100,34 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     render();
   }
 
+  const close = () => toggle(false);
   function toggle(force?: boolean) {
-    on = force ?? !on;
+    const next = force ?? !on;
+    if (next === on) return;
+    on = next;
     pop.classList.toggle('on', on);
     veil.classList.toggle('on', on);
     if (on) {
       render();
+      panelShown(pop, close); // « retour » le ferme, un seul panneau à la fois, focus dedans
       void loadHist();
-    }
+    } else panelHidden(pop, close);
   }
+  pop.addEventListener('click', (e) => {
+    const t = e.target as Element;
+    if (t.closest('.pop-x')) toggle(false);
+    else if (t.closest('.login-cta')) backend.login();
+  });
   veil.addEventListener('click', (e) => (e.preventDefault(), e.stopPropagation(), toggle(false)));
   window.addEventListener('keydown', (e) => e.key === 'Escape' && on && toggle(false));
   backend.eco.onChange(() => render());
+  // « connexion au serveur… » → réponse du serveur : le panneau ouvert se met à jour
+  let wasReady = backend.state.ready;
+  backend.onChange((st) => {
+    if (st.ready === wasReady) return;
+    wasReady = st.ready;
+    render();
+  });
 
   /** pastille : quelque chose à prendre (calendrier, primes, succès) */
   const ready = () => {

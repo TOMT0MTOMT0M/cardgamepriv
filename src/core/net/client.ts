@@ -7,6 +7,20 @@ import type { MissionsState } from '../missions';
 import type { StreakState } from '../streak';
 
 const LS_SESSION_TOKEN = 'cardlab.session_token';
+/** page (hash compris) d'où l'on part se connecter : le serveur écrase le hash au retour de Discord */
+const SS_RETURN_HASH = 'bebou.returnHash';
+/** pas de première réponse du serveur au bout de… (ou WebSocket coupé depuis…) : « serveur injoignable » */
+const SERVER_DOWN_MS = 8000;
+
+/** Codes d'erreur du retour Discord (convex/http.ts) → phrases. */
+const AUTH_ERRORS: Record<string, string> = {
+  not_in_discord_server: 'Ton compte Discord n’est pas sur le serveur des potes : demande une invitation, puis reconnecte-toi.',
+  token_exchange_failed: 'Discord n’a pas confirmé la connexion. Réessaie.',
+  user_fetch_failed: 'Discord n’a pas répondu. Réessaie dans un instant.',
+  guild_check_failed: 'Impossible de vérifier ton serveur Discord. Réessaie.',
+  missing_code: 'Connexion annulée.',
+};
+export const SESSION_EXPIRED = 'Ta session a expiré : reconnecte-toi avec Discord.';
 
 export interface MeProfile {
   _id: Id<'users'>;
@@ -61,7 +75,10 @@ export interface PackRequestArgs {
 
 export interface NetState {
   configured: boolean;
+  /** vrai dès la première réponse du serveur (profil) */
   connected: boolean;
+  /** aucune réponse depuis SERVER_DOWN_MS (démarrage) ou WebSocket coupé depuis autant : bandeau « serveur injoignable » */
+  serverDown: boolean;
   authError: string | null;
   user: MeProfile | null;
   friends: FriendPresence[];
@@ -79,6 +96,15 @@ export interface NetState {
 
 type Listener = (state: NetState) => void;
 
+/** Profil sans les champs qui changent à chaque battement de cœur sans rien changer à l'écran. */
+const userSig = (u: MeProfile | null) => (u ? JSON.stringify({ ...u, nextDailyClaimAt: 0 }) : '');
+/** Amis sans `lastSeenAt` (change à chaque battement) ni l'ordre qui en découle. */
+const friendsSig = (fs: FriendPresence[]) =>
+  fs
+    .map((f) => JSON.stringify([f._id, f.displayName, f.username, f.avatarUrl ?? '', f.totalPacksOpened, f.online, f.statusText ?? '']))
+    .sort()
+    .join('|');
+
 /**
  * Singleton reactive WebSocket client for Convex (`convex/browser`).
  * Keeps collection, friend presence, live pull feed, and pre-rolled ("sealed")
@@ -90,10 +116,14 @@ class GameNetClient {
   private unsubscribers: Array<() => void> = [];
   private heartbeatTimer: number | null = null;
   private listeners = new Set<Listener>();
+  /** ce qui compte pour l'affichage dans `user` / `friends` (comparé avant d'émettre) */
+  private userSig = '';
+  private friendsSig = '';
 
   public state: NetState = {
     configured: false,
     connected: false,
+    serverDown: false,
     authError: null,
     user: null,
     friends: [],
@@ -119,6 +149,37 @@ class GameNetClient {
     this.client = new ConvexClient(convexUrl);
     this.setupSubscriptions();
     this.startHeartbeat();
+    this.watchConnection();
+  }
+
+  private downTimer: number | null = null;
+  /**
+   * Serveur injoignable ≠ joueur déconnecté : sans première réponse au bout de 8 s, ou si le WebSocket reste coupé
+   * 8 s, `serverDown` passe à vrai (bandeau dans le jeu) ; il retombe à la reconnexion.
+   */
+  private watchConnection() {
+    const arm = () => {
+      if (this.downTimer !== null || this.state.serverDown) return;
+      this.downTimer = window.setTimeout(() => {
+        this.downTimer = null;
+        this.state.serverDown = true;
+        this.emit();
+      }, SERVER_DOWN_MS);
+    };
+    arm(); // on attend la première réponse
+    const c = this.client as ConvexClient & { subscribeToConnectionState?: (cb: (s: { isWebSocketConnected: boolean }) => void) => () => void };
+    c.subscribeToConnectionState?.((cs) => {
+      if (!cs.isWebSocketConnected) arm();
+      else if (this.state.connected) this.serverUp();
+    });
+  }
+  private serverUp() {
+    if (this.downTimer !== null) clearTimeout(this.downTimer);
+    this.downTimer = null;
+    if (this.state.serverDown) {
+      this.state.serverDown = false;
+      this.emit();
+    }
   }
 
   private get convexSiteUrl(): string | null {
@@ -153,15 +214,25 @@ class GameNetClient {
    */
   private captureHashAuth() {
     const hash = window.location.hash;
+    if (!hash.startsWith('#auth_token=') && !hash.startsWith('#auth_error=')) return;
+    // retour sur la page d'où l'on était parti (« #/echanges »…), gardée avant de partir chez Discord
+    let back = '';
+    try {
+      back = sessionStorage.getItem(SS_RETURN_HASH) ?? '';
+      sessionStorage.removeItem(SS_RETURN_HASH);
+    } catch {
+      /* ignore */
+    }
+    if (!/^#\/[\w/-]*$/.test(back)) back = '';
     if (hash.startsWith('#auth_token=')) {
       const token = decodeURIComponent(hash.slice('#auth_token='.length));
       this.saveStoredToken(token);
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-    } else if (hash.startsWith('#auth_error=')) {
+    } else {
       const err = decodeURIComponent(hash.slice('#auth_error='.length));
-      this.state.authError = err;
-      history.replaceState(null, '', window.location.pathname + window.location.search);
+      // code technique → phrase (le code inconnu reste visible entre parenthèses, pour nous aider)
+      this.state.authError = AUTH_ERRORS[err] ?? `Connexion impossible (${err.slice(0, 60)}). Réessaie.`;
     }
+    history.replaceState(null, '', window.location.pathname + window.location.search + back);
   }
 
   private setupSubscriptions() {
@@ -170,14 +241,29 @@ class GameNetClient {
     for (const unsub of this.unsubscribers) unsub();
     this.unsubscribers = [];
 
-    const tokenArg = this.sessionToken ? { sessionToken: this.sessionToken } : {};
+    const tokenArg: { sessionToken?: string } = this.sessionToken ? { sessionToken: this.sessionToken } : {};
 
     // 1. Current user profile & pack balance
     this.unsubscribers.push(
       this.client.onUpdate(api.users.me, tokenArg, (me) => {
+        const first = !this.state.connected;
         this.state.connected = true;
+        this.serverUp();
+        // jeton gardé mais le serveur ne le reconnaît plus (session de 30 jours expirée, déconnexion ailleurs) :
+        // on l'oublie, on le dit, et on se réabonne sans lui
+        let expired = false;
+        if (!me && tokenArg.sessionToken && this.sessionToken === tokenArg.sessionToken) {
+          expired = true;
+          this.saveStoredToken(null);
+          this.state.authError = SESSION_EXPIRED;
+          queueMicrotask(() => this.setupSubscriptions());
+        }
+        const before = this.userSig;
         this.state.user = me ?? null;
-        this.emit();
+        this.userSig = userSig(this.state.user);
+        // (propre battement de cœur : le document utilisateur change, `nextDailyClaimAt` = maintenant quand la réserve est
+        // pleine, mais rien de ce qu'on affiche → état tenu à jour sans réveiller tout le jeu, audit PERF2-08)
+        if (first || expired || this.userSig !== before) this.emit();
       }),
     );
 
@@ -201,6 +287,11 @@ class GameNetClient {
     this.unsubscribers.push(
       this.client.onUpdate(api.users.friends, {}, (friends) => {
         this.state.friends = friends ?? [];
+        // battement de cœur d'un ami (toutes les 35 s chacun) : seuls `lastSeenAt` et l'ordre bougent → pas d'émission
+        // (avant : tout l'état du jeu remappé et les signatures de collection recalculées ~toutes les 2 s à 20 amis)
+        const sig = friendsSig(this.state.friends);
+        if (sig === this.friendsSig) return;
+        this.friendsSig = sig;
         this.emit();
       }),
     );
@@ -289,8 +380,14 @@ class GameNetClient {
       alert('Configure d’abord VITE_CONVEX_URL dans ton fichier .env.local');
       return;
     }
-    // retour sur la page d'où l'on vient (le labo à la racine, ou le jeu dans /jeu/)
-    const returnTo = window.location.origin + window.location.pathname;
+    // retour sur la page d'où l'on vient (le labo à la racine, ou le jeu dans /jeu/) ; le serveur remplace le hash,
+    // on garde donc la page du jeu (« #/echanges ») de côté pour la retrouver au retour (captureHashAuth)
+    const returnTo = window.location.origin + window.location.pathname + window.location.search;
+    try {
+      if (window.location.hash.startsWith('#/')) sessionStorage.setItem(SS_RETURN_HASH, window.location.hash);
+    } catch {
+      /* ignore */
+    }
     window.location.href = `${siteUrl}/auth/discord?returnTo=${encodeURIComponent(returnTo)}`;
   }
 
