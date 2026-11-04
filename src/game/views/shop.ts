@@ -7,6 +7,10 @@ import type { ViewerScene } from '../scenes/viewer';
 import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, THEMES, catalogEntry, numberingSize, subthemeById, themeById } from '../../core/sets/themes';
 import { cardById } from '../../core/cardData';
+import { POKEMON_151, pokemonCardId } from '../../core/sets/pokemon151';
+import { POKEMON_MYTHIC_TYPE } from '../../core/sets/pokemonTypes';
+import { siteUrl } from '../../core/siteRoot';
+import { gbcTransition, type GbcTransition } from '../scenes/gbcTransition';
 import { rarity } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { createPackSheet, shopPacks } from './packSheet';
@@ -28,6 +32,11 @@ const HINT = {
 
 /** Seuil de « Passer jusqu'aux 4★ » : rang 3 = Épique (★★★★), puis Légendaire, Mythique, Secrète. */
 const HI_RANK = 3;
+/** musique de la rencontre sauvage (fournie par Tom) : boucle de 31,35 s à partir de 20 s, après une première écoute depuis le début */
+const WILD_MUSIC = siteUrl('audio/pokemon-wild-battle.mp3');
+const WILD_LOOP = { loopStart: 20, loopEnd: 51.3475 };
+/** carte dont la révélation est la rencontre sauvage (Pokémon 6★) */
+const isWild = (c: PackCard) => c.rarity === 'mythic' && c.cardId.startsWith('pkm-');
 /** « 62,4 % » (chiffres à la française) */
 const fmtPct = (x: number) => `${(Math.round(x * 1000) / 10).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 /** indication affichée tant que le booster est fermé (dépend de sa mise en scène : brûler, déchirer, toucher) */
@@ -157,6 +166,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     <div class="fan-badges" hidden></div>
     <div class="summary" hidden></div>
     <div class="secret-continue" hidden><button class="btn-primary">Continuer</button></div>
+    <div class="secret-continue wild-continue" hidden><button class="btn-primary">Continuer</button></div>
     <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
   const rowEl = el.querySelector<HTMLElement>('.packs-row')!;
   const hintEl = el.querySelector<HTMLElement>('.shop-hint')!;
@@ -168,7 +178,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const count = el.querySelector<HTMLElement>('.hud-count')!;
   const info = el.querySelector<HTMLElement>('.card-info')!;
   const summary = el.querySelector<HTMLElement>('.summary')!;
-  const secretContinue = el.querySelector<HTMLElement>('.secret-continue')!;
+  const secretContinue = el.querySelector<HTMLElement>('.secret-continue:not(.wild-continue)')!;
+  const wildContinue = el.querySelector<HTMLElement>('.wild-continue')!;
   // gros tirages de tout le groupe, en haut de l'accueil ; une carte touchée s'ouvre dans la visionneuse
   const big = createBigPulls(backend, (card) => void viewCard(card));
   el.querySelector('.shop-right')!.append(big.el);
@@ -924,6 +935,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       shell.unmount('secret');
       secretExp = null;
     }
+    endWild();
     secretContinue.hidden = true;
     showSummary();
   }
@@ -999,6 +1011,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     void preloadArt(p.cards.map((c) => c.cardId)); // en parallèle de la scène : images prêtes au plus tôt
     const secret = p.cards.find((c) => rarity(c.rarity).secret);
     if (secret) void prepareSecret(secret);
+    // Pokémon 6★ : musique décodée et module chargé pendant que le joueur ouvre le booster
+    if (p.cards.some(isWild)) {
+      void shell.sfx.loadMusic(WILD_MUSIC);
+      void import('../../experiments/041-pokemon-wild/index');
+    }
     opening.open(p, {
       onHold(v) {
         ring.style.strokeDashoffset = String(100 - v * 100);
@@ -1052,6 +1069,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         hintTxt.textContent = HINT.last;
         setCount(`${series}${p.cards.length} / ${p.cards.length}`);
       },
+      onPokemon(card) {
+        void runWild(card);
+      },
       onSecret() {
         hud.hidden = true;
         // la séquence « Un de nous » ne se passe pas : on coupe le défilement pour la suite de la série
@@ -1103,6 +1123,60 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       syncInsets();
     });
   }
+
+  // ─────────────────────────────────────────── Pokémon 6★ : « rencontre sauvage » (041)
+  let wildOn = false;
+  let wildTr: GbcTransition | null = null;
+  /**
+   * Transition de combat Game Boy Color (par-dessus l'ouverture) + musique en boucle dès le premier clignotement ; la
+   * scène 041 se monte derrière le rideau noir (la transition couvre sa compilation), puis le rideau se lève.
+   */
+  async function runWild(card: PackCard) {
+    wildOn = true;
+    hud.hidden = true;
+    info.classList.remove('in');
+    const tr = (wildTr = gbcTransition());
+    void shell.sfx.playMusic(WILD_MUSIC, { ...WILD_LOOP, vol: 0.55, fade: 0.04 });
+    haptics.pulse([30, 60, 30, 60, 30]);
+    try {
+      const cd = cardById(card.cardId);
+      const dex = POKEMON_151.find((e) => pokemonCardId(e) === card.cardId)?.dex ?? 0;
+      const mod = await import('../../experiments/041-pokemon-wild/index');
+      if (!wildOn) return;
+      const exp = mod.default({ card: cd, type: POKEMON_MYTHIC_TYPE[dex] ?? 'plante', onRevealed: () => (wildContinue.hidden = !wildOn) });
+      // montage APRÈS le noir complet : la compilation (et le changement d'éclairage Forward+) ne fige jamais la
+      // transition ; l'écran reste noir le temps qu'il faut, la musique tourne déjà
+      await tr.covered;
+      if (!wildOn) return;
+      await shell.mount('wild', exp, 'mythic');
+      if (!wildOn) return;
+      shell.show('wild');
+      exp.replay?.();
+      void tr.reveal();
+    } catch (e) {
+      console.error('[jeu] rencontre sauvage', e);
+      endWild();
+      opening.resumeAfterScene();
+    }
+  }
+  /** fin de la rencontre (Continuer, Tout passer, erreur) : musique en fondu, retour à l'ouverture */
+  function endWild() {
+    if (!wildOn) return;
+    wildOn = false;
+    wildContinue.hidden = true;
+    wildTr?.destroy();
+    wildTr = null;
+    shell.sfx.stopMusic(0.8);
+    if (shell.has('wild')) {
+      shell.show('opening');
+      shell.unmount('wild');
+    }
+    hud.hidden = false;
+  }
+  wildContinue.querySelector('button')!.addEventListener('click', () => {
+    endWild();
+    opening.resumeAfterScene();
+  });
 
   /** Scène secrète (039) montée en fond dès que le pack est tiré : shaders compilés avant même la déchirure. */
   async function prepareSecret(card: PackCard) {

@@ -132,6 +132,11 @@ export interface OpeningEvents {
   onLast?(): void;
   /** la dernière carte est SECRÈTE : le jeu passe la main à la séquence « Un de nous » */
   onSecret?(card: PackCard): void;
+  /**
+   * POKÉMON 6★ : le jeu passe la main à la « rencontre sauvage » (041 : transition Game Boy Color, musique en boucle,
+   * scène selon le type) ; il rappelle `resumeAfterScene()` quand le joueur continue.
+   */
+  onPokemon?(card: PackCard): void;
   /** une MYTHIQUE (6★) : séquence plein écran dédiée (pause dramatique, burst, étoiles une à une) — démarre */
   onMythic?(card: PackCard): void;
   /** fin de la séquence mythique : la scène attend un toucher (ou appelle onDone si c'était la dernière carte, après le toucher) */
@@ -149,6 +154,8 @@ export interface OpeningScene extends Experiment {
   open(pack: SealedPack, ev: OpeningEvents): void;
   /** Après la séquence secrète : affiche directement l'éventail, la carte secrète face visible. */
   finishAfterSecret(): void;
+  /** Après une scène dédiée (rencontre Pokémon) : la carte en cours est montrée face visible, la suite reprend. */
+  resumeAfterScene(): void;
   /** Retour à la vitrine (libère les cartes du pack). */
   reset(): void;
   /** Révéler / avancer (même effet qu'un tap). */
@@ -257,6 +264,8 @@ function halfAt(ease: (t: number) => number): number {
   }
   return hi;
 }
+/** un Pokémon 6★ : sa révélation est la « rencontre sauvage » (expérience 041) */
+const wildPokemon = (s: { data: PackCard }) => s.data.rarity === 'mythic' && s.data.cardId.startsWith('pkm-');
 const RANK: Record<RarityId, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 
 interface Slot {
@@ -1041,6 +1050,11 @@ export function createOpeningScene(): OpeningScene {
       events.onSecret?.(s.data);
       return;
     }
+    if (wildPokemon(s) && events.onPokemon) {
+      phase = 'busy';
+      events.onPokemon(s.data);
+      return;
+    }
     phase = 'busy';
     const rr = s.rr;
     const T = rr.tier;
@@ -1352,6 +1366,12 @@ export function createOpeningScene(): OpeningScene {
     if (last && s.rr.secret) {
       phase = 'busy';
       events.onSecret?.(s.data);
+      return;
+    }
+    if (wildPokemon(s) && events.onPokemon) {
+      if (cursor > 0) (last ? events.onLast : events.onNext)?.();
+      phase = 'busy';
+      events.onPokemon(s.data);
       return;
     }
     if (cursor > 0) (last ? events.onLast : events.onNext)?.();
@@ -1746,6 +1766,34 @@ export function createOpeningScene(): OpeningScene {
         api.onThumb?.(k);
       }, 'image/webp', 0.85);
       return null;
+    },
+    resumeAfterScene() {
+      killAll();
+      const si = order[cursor];
+      const s = slots[si];
+      if (!s) return;
+      const last = cursor === order.length - 1;
+      Object.assign(s.p, { flip: 0, holo: 1, z: 0.08 });
+      s.U.lit.value = 6;
+      s.U.rim.value = 0;
+      S.dark = 0;
+      S.glow = 0.3;
+      revealed = true;
+      curTier = s.rr.tier;
+      events.onCard?.(cursor, s.data, order.length);
+      if (last) {
+        phase = 'busy';
+        finish(0.05);
+      } else if (style === 'fan') {
+        // éventail : la carte reprend sa place, la suivante attend un toucher
+        Object.assign(s.p, fanLayout()[cursor]);
+        cursor++;
+        phase = 'opened';
+      } else {
+        const pose = payPose(1.06);
+        Object.assign(s.p, { y: pose.y, s: 1.06 * pose.k });
+        phase = 'shown';
+      }
     },
     finishAfterSecret() {
       killAll();

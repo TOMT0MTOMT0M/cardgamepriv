@@ -375,4 +375,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Choisis la merveille dans le panneau · incline / fais tourner la carte : l’horizon reste toujours là · `?wonder=9&tilt=0.6,0.9` pour une pose fixe',
     load: () => import('../experiments/040-wonder-diorama-splat/index.ts'),
   },
+  {
+    id: '041-pokemon-wild',
+    title: 'Pokémon 6★ — rencontre sauvage',
+    category: 'C',
+    tags: ['Pokémon', '6★', 'Game Boy Color', 'musique', 'lucioles'],
+    tech: ['transition de combat GBC (calque DOM 20×18 tuiles, spirale, 30 i/s)', 'Kuramoto (026) + décor par type', 'ClusteredLighting (Forward+)', 'musique en boucle Web Audio (loopStart / loopEnd)'],
+    blurb: 'Un Pokémon 6★ ne se retourne pas comme les autres : l’écran clignote comme sur Game Boy, la musique de combat démarre, et l’essaim de son type se synchronise jusqu’à l’éclair.',
+    hint: 'Active le son 🔈 · ?type=feu, eau, electrik, psy, spectre, tenebres, dragon, fee, combat, acier, normal, poison, insecte, roche, sol, vol, glace, plante · tap = rejouer',
+    load: () => import('../experiments/041-pokemon-wild/index.ts'),
+  },
 ];

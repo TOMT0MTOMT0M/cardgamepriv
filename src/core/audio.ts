@@ -158,6 +158,7 @@ export class Sfx {
   }
 
   disable() {
+    this.stopMusic(0.05);
     this.enabled = false;
     this.napping = false;
     clearTimeout(this.idleT);
@@ -204,6 +205,71 @@ export class Sfx {
     set(this.buses.ambience, 0.32);
     set(this.buses.ui, 0.5);
     set(this.buses.feedback, 0.5);
+  }
+
+  // ─────────────────────────────────────────── musique (fichier) : bus à part, en boucle
+  private music: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+  private musicBufs = new Map<string, Promise<AudioBuffer | null>>();
+  /** charge et décode une musique (mise en cache) ; null si indisponible (pas de son, réseau, format) */
+  loadMusic(url: string): Promise<AudioBuffer | null> {
+    let p = this.musicBufs.get(url);
+    if (!p) {
+      p = (async () => {
+        try {
+          const r = await fetch(url);
+          if (!r.ok) return null;
+          const data = await r.arrayBuffer();
+          // décodage possible avant l'activation du son : contexte hors ligne si le vrai n'existe pas encore
+          const c: BaseAudioContext = this.ctx ?? new OfflineAudioContext(1, 1, 44100);
+          return await c.decodeAudioData(data);
+        } catch {
+          return null;
+        }
+      })();
+      this.musicBufs.set(url, p);
+    }
+    return p;
+  }
+  /**
+   * Joue une musique en BOUCLE (de `loopStart` à `loopEnd` après une première lecture depuis le début), fondu d'entrée
+   * `fade` s, volume `vol` (relatif au volume général). Les autres sons restent par-dessus (pas de ducking).
+   */
+  async playMusic(url: string, o: { loopStart?: number; loopEnd?: number; vol?: number; fade?: number } = {}) {
+    const buf = await this.loadMusic(url);
+    if (!buf || !this.ok) return;
+    this.stopMusic(0.05);
+    const c = this.ctx!, t = c.currentTime;
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    if (o.loopStart !== undefined && o.loopEnd !== undefined && o.loopEnd > o.loopStart && o.loopEnd <= buf.duration) {
+      src.loopStart = o.loopStart;
+      src.loopEnd = o.loopEnd;
+    }
+    const gain = c.createGain();
+    const vol = o.vol ?? 0.5;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(vol, t + Math.max(0.02, o.fade ?? 0.05));
+    src.connect(gain).connect(this.master!);
+    src.start(t);
+    this.music = { src, gain };
+    // tant que la musique joue, le contexte ne se met pas en veille
+    const keep = window.setInterval(() => (this.music?.src === src ? this.wake() : clearInterval(keep)), 4000);
+  }
+  /** Arrête la musique en cours (fondu `fade` s). */
+  stopMusic(fade = 0.6) {
+    const m = this.music;
+    if (!m || !this.ctx) return;
+    this.music = null;
+    const t = this.ctx.currentTime;
+    m.gain.gain.cancelScheduledValues(t);
+    m.gain.gain.setValueAtTime(Math.max(0.0001, m.gain.gain.value), t);
+    m.gain.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.02, fade));
+    try {
+      m.src.stop(t + fade + 0.05);
+    } catch {
+      /* déjà arrêtée */
+    }
   }
 
   /** Volume général (0..1), appliqué tout de suite si le son tourne. */
