@@ -95,3 +95,132 @@ export function dragonPose(o: { t: number; rear: number; wing: number; flap: num
   for (let k = 1; k <= 7; k++) p['TAIL_0' + k] = [Math.sin(t * 1.1 - k * 0.5) * 0.03 * life, Math.sin(t * 0.9 - k * 0.55) * 0.09 * life, 0];
   return p;
 }
+
+/**
+ * Animation automatique pour les autres squelettes (modèles Cross Duel, Duel Links… : noms d'os variés, posés en T,
+ * sans animation). Les rôles sont reconnus au NOM (suffixes numériques d'export retirés : « Neck_087 » → « neck ») :
+ * bras, avant-bras, colonne, cou, tête, mâchoire, ailes, queue — et le côté à la POSITION (x > 0 = gauche du modèle,
+ * qui regarde +Z). Trois gabarits :
+ *  - humanoïde (magiciens, Exodia, Obelisk) : bras baissés, souffle, tête qui vit ;
+ *  - dragon (cou à l'horizontale, queue) : cou dressé, tête vers l'avant, ailes qui battent, queue qui ondule ;
+ *  - serpent (colonne longue à l'horizontale, comme Slifer) : le corps se dresse en S, cou et tête vers l'avant.
+ */
+type Role = 'arm' | 'forearm' | 'spine' | 'neck' | 'head' | 'jaw' | 'wing' | 'tail';
+const ROLES: Array<[Role, RegExp]> = [
+  ['forearm', /^(l|r|left|right)_?forearm\d*$/],
+  ['arm', /^(l|r|left|right)_?(upper)?arm\d*$/],
+  ['spine', /^spine\d*$/],
+  ['neck', /^neck\d*$/],
+  ['head', /^head\d*$/],
+  ['jaw', /^(jaw|mouth|snakemouth)\d*$/],
+  ['wing', /^(l|r|left|right)_?wing0?1?$/],
+  ['tail', /^tail\d*$/],
+];
+const roleOf = (raw: string): Role | null => {
+  const n = raw.toLowerCase().replace(/_\d{2,4}$/, '');
+  for (const [r, re] of ROLES) if (re.test(n)) return r;
+  return null;
+};
+
+export interface AutoPose {
+  kind: 'humanoid' | 'dragon' | 'serpent';
+  /** rise 0..1 : déploiement (invocation) ; mouth 0..1 ; life 0..1 (souffle, balancements) */
+  apply(o: { t: number; rise: number; mouth: number; life: number }): void;
+}
+
+export function createAutoPose(root: Object3D): AutoPose | null {
+  root.updateMatrixWorld(true);
+  const pq = new Quaternion();
+  interface J extends Joint { role: Role; side: number; order: number; z: number; y: number }
+  const joints: J[] = [];
+  const byRole = new Map<Role, J[]>();
+  root.traverse((o) => {
+    if (!(o as unknown as { isBone?: boolean }).isBone) return;
+    const name = String((o.userData as { rig?: string }).rig ?? o.name);
+    const role = roleOf(name);
+    if (!role) return;
+    if (o.parent) o.parent.getWorldQuaternion(pq);
+    else pq.identity();
+    const inv = pq.clone().invert();
+    const ax = (x: number, y: number, z: number) => new Vector3(x, y, z).applyQuaternion(inv).normalize();
+    const w = o.getWorldPosition(new Vector3());
+    const num = Number((name.toLowerCase().replace(/_\d{2,4}$/, '').match(/(\d+)$/) ?? [, '0'])[1]);
+    const j: J = { o, rest: o.quaternion.clone(), X: ax(1, 0, 0), Y: ax(0, 1, 0), Z: ax(0, 0, 1), role, side: Math.sign(w.x) || 1, order: num, z: w.z, y: w.y };
+    joints.push(j);
+    if (!byRole.has(role)) byRole.set(role, []);
+    byRole.get(role)!.push(j);
+  });
+  const has = (r: Role) => (byRole.get(r)?.length ?? 0) > 0;
+  if (!joints.length) return null;
+  const span = (r: Role, k: 'z' | 'y') => {
+    const v = byRole.get(r)?.map((j) => j[k]) ?? [];
+    return v.length ? Math.max(...v) - Math.min(...v) : 0;
+  };
+  // (mesures relatives : l'échelle des modèles va de 0,05 à 20 unités) cou qui s'étire vers l'avant plutôt que vers le
+  // haut + une queue : bête à l'horizontale ; colonne bien plus longue que le cou : serpent
+  const horizNeck = has('tail') && span('neck', 'z') > span('neck', 'y');
+  const kind: AutoPose['kind'] = horizNeck && span('spine', 'z') > span('neck', 'z') * 1.5 ? 'serpent' : horizNeck ? 'dragon' : 'humanoid';
+  // rang de chaque os dans sa chaîne (du corps vers l'extrémité)
+  for (const r of ['spine', 'neck', 'tail'] as Role[]) byRole.get(r)?.sort((a, b) => a.order - b.order);
+  const tmp = new Quaternion(), acc = new Quaternion();
+  const set = (j: J, x: number, y: number, z: number) => {
+    acc.identity();
+    if (y) acc.multiply(tmp.setFromAxisAngle(j.Y, y));
+    if (x) acc.multiply(tmp.setFromAxisAngle(j.X, x));
+    if (z) acc.multiply(tmp.setFromAxisAngle(j.Z, z));
+    j.o.quaternion.copy(acc).multiply(j.rest);
+  };
+  return {
+    kind,
+    apply({ t, rise, mouth, life }) {
+      const br = Math.sin(t * 1.6) * life;
+      for (const j of joints) {
+        const k = j.side;
+        switch (j.role) {
+          case 'arm': {
+            // bras en T → le long du corps (un peu écartés), léger balancement
+            const down = kind === 'humanoid' ? 1.15 : 0.9;
+            set(j, Math.sin(t * 1.1 + k) * 0.04 * life, 0, -k * (down + Math.sin(t * 1.3 + k) * 0.03 * life));
+            break;
+          }
+          case 'forearm':
+            set(j, 0, -k * 0.25, -k * 0.1);
+            break;
+          case 'spine': {
+            const list = byRole.get('spine')!;
+            const i = list.indexOf(j);
+            if (kind === 'serpent') {
+              // le corps se dresse : de plus en plus vers l'avant de la colonne
+              const f = (i + 1) / list.length;
+              set(j, -0.24 * f * rise + Math.sin(t * 1.2 - i * 0.6) * 0.025 * life, Math.sin(t * 0.8 - i * 0.5) * 0.05 * life, 0);
+            } else set(j, br * 0.015 - (kind === 'dragon' && i === list.length - 1 ? 0.12 * rise : 0), 0, 0);
+            break;
+          }
+          case 'neck': {
+            const list = byRole.get('neck')!;
+            const n = list.length;
+            const up = kind === 'dragon' ? -0.85 : kind === 'serpent' ? 0.12 : 0;
+            set(j, (up * rise) / n + Math.sin(t * 1.3) * 0.02 * life, (Math.sin(t * 0.7) * 0.06 * life) / n, 0);
+            break;
+          }
+          case 'head':
+            set(j, (kind === 'dragon' ? 0.55 : kind === 'serpent' ? 0.35 : 0) * rise + Math.sin(t * 1.3 + 0.6) * 0.03 * life, Math.sin(t * 0.7 + 0.4) * 0.06 * life, 0);
+            break;
+          case 'jaw':
+            set(j, 0.4 * mouth, 0, 0);
+            break;
+          case 'wing':
+            // ailes : repliées au départ, s'ouvrent à l'invocation, puis battent doucement
+            set(j, 0, 0, k * ((rise - 1) * 0.5 + 0.18 * rise + Math.sin(t * 1.8) * 0.08 * life));
+            break;
+          case 'tail': {
+            const list = byRole.get('tail')!;
+            const i = list.indexOf(j);
+            set(j, Math.sin(t * 1.1 - i * 0.5) * 0.03 * life, Math.sin(t * 0.9 - i * 0.55) * 0.08 * life, 0);
+            break;
+          }
+        }
+      }
+    },
+  };
+}

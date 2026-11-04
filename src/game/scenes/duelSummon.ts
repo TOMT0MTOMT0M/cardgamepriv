@@ -77,7 +77,7 @@ import { haptics } from '../../core/haptics';
 import { fxReduced } from '../../core/fxPref';
 import { siteUrl } from '../../core/siteRoot';
 import type { DuelMonster } from './duelMonsters';
-import { createRig, dragonPose, isWingedRig, type Rig } from './duelRig';
+import { createAutoPose, createRig, dragonPose, isWingedRig, type AutoPose, type Rig } from './duelRig';
 
 /**
  * Invocation — la cinématique des 6★ Yu-Gi-Oh (pack Pop Culture), jouée à la place de la séquence mythique habituelle.
@@ -160,6 +160,8 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
   let wide = tall;
   /** squelette de dragon ailé animé à la main (modèles sans animation) */
   let rig: Rig | null = null;
+  /** autres squelettes sans animation : pose et vie automatiques (bras baissés, cou dressé, ailes, queue…) */
+  let auto: AutoPose | null = null;
   const shake = new Spring(0, 240, 9);
   const camPos = new Vector3();
   const camLook = new Vector3();
@@ -437,6 +439,10 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
         const head = r.rest('HEAD'), waist = r.rest('WAIST') ?? r.rest('SPINE1');
         if (head && waist && head.z < waist.z) (gltf.scene as unknown as Object3D).rotation.y = Math.PI;
         r.apply(dragonPose({ t: 0, rear: 1, wing: 0.6, flap: 0, mouth: 0, life: 0 }));
+      } else if (!gltf.animations.length) {
+        auto = createAutoPose(model);
+        auto?.apply({ t: 0, rise: 1, mouth: 0, life: 0 });
+        if (auto) console.info(`[duel] ${M.file} : animation automatique (${auto.kind})`);
       }
       model.updateMatrixWorld(true);
       const box = new Box3().setFromObject(model, true);
@@ -494,7 +500,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
           .add(base.mul(rv).mul(0.12))
           .add(emis0.mul(rv).mul(1.6))
           // une fois matérialisé, un liseré de lumière (couleur de la carte) garde l'aura de l'invocation
-          .add((U.accent as unknown as N).mul(fres.mul(rv).mul(0.45)));
+          .add((U.accent as unknown as N).mul(fres.mul(rv).mul(0.22)));
         m.opacityNode = clamp(mix(scan.mul(0.3).add(0.4).add(fres.mul(0.4)).mul(flicker).mul(U.glow), float(1), rv), 0, 1).mul(vis).mul(cut);
         m.alphaTest = 0.01;
         ctx.bag.add(m);
@@ -636,7 +642,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       hintEl.classList.add('on');
     }, [], shownAt);
     t.to(S, { flash: 0.1 * k, duration: 0.05 }, shownAt).to(S, { flash: 0, duration: 0.6, ease: EASE.glide }, shownAt + 0.05);
-    t.call(() => end(), [], shownAt + 3.2);
+    // (retour de Tom) l'invocation ne se termine JAMAIS toute seule : le joueur part quand il veut (toucher, Passer, Échap)
   }
 
   /** Premier toucher : saute directement à la créature matérialisée. Second : fin. */
@@ -644,7 +650,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     if (!started || ended) return;
     if (!revealed && tl) {
       // la matérialisation se termine tout de suite (la musique continue)
-      tl.seek(tl.duration() - 3.2, true);
+      tl.seek(tl.duration(), true);
       Object.assign(S, { rear: 1, wing: 0.6, mouth: 0.1, life: 1 });
       Object.assign(S, { tilt: 1, drop: 1, cam: 1, low: 1, flip: 0, lift: 0, hover: 0, field: 1, wave: 1, rise: 1, tex: 1, glow: 1, beam: 0.12, glitch: 0, motes: 1, trans: 1, push: 1 });
       revealed = true;
@@ -769,6 +775,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       mixer?.update(dt);
       S.ground = Math.min(1, S.cam * 1.6);
       if (rig) rig.apply(dragonPose({ t, rear: S.rear, wing: S.wing, flap: Math.sin(t * 1.8) * 0.08 * S.life * (calm ? 0.4 : 1), mouth: S.mouth, life: S.life }));
+      else if (auto) auto.apply({ t, rise: Math.min(1, Math.max(0, (S.rear - 0.15) / 0.85)), mouth: S.mouth, life: S.life * (calm ? 0.4 : 1) });
       for (const k of Object.keys(U) as Array<keyof typeof U>) {
         if (k === 'accent' || k === 'center') continue;
         (U[k] as { value: number }).value = S[k as keyof typeof S] as number;
@@ -776,7 +783,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       (bloomRef as unknown as { strength: { value: number } }).strength.value = 0.4 + S.beam * 0.2 + S.flash * 0.6 + S.glow * (1 - S.tex) * 0.22;
       key.intensity = 0.5 + S.tex * 1.3 + S.flash;
       // (un modèle 3D métallique vit de ses reflets : environnement plus présent une fois matérialisé)
-      stage.scene.environmentIntensity = 0.25 + S.tex * (rig ? 0.85 : 0.35);
+      stage.scene.environmentIntensity = 0.25 + S.tex * (rig || auto ? 0.85 : 0.35);
 
       // carte : survol au départ → bascule → posée (arc) → retournement (soulevée à mi-course)
       const a = S.drop;
@@ -799,7 +806,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       // (téléphone : un dragon aux ailes déployées est plus large que haut — on accepte de rogner le bout des ailes)
       const fw = portrait ? Math.min(wide, H * 1.25) : wide;
       // modèle 3D : vu d'en bas, sa tête dépasse vite du cadre (perspective) → un peu plus de recul et de marge en haut
-      const m3 = rig ? 1.16 : 1;
+      const m3 = auto?.kind === 'serpent' ? 1.35 : rig || auto?.kind === 'dragon' ? 1.16 : auto ? 0.95 : 1;
       const fitDist = m3 * Math.max((H * (portrait ? 0.7 : 0.6)) / tanH, (fw * (portrait ? 0.46 : 0.62)) / (tanH * aspect));
       const sm = (x: number) => x * x * (3 - 2 * x);
       const e1 = sm(S.cam);
@@ -814,7 +821,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       camLook.set(0, Y0 + (0.02 - Y0) * e1, LAND.z * e1 - 0.15 * e1);
       // temps 2 → 3
       camPos.lerp(proj.set(-off + Math.sin(orbit + pose.y) * R, 0.3 + S.push * 0.04 - pose.x * 0.2, LAND.z + Math.cos(orbit + pose.y) * R), e2);
-      camLook.lerp(proj.set(-off, H * (portrait ? 0.42 : 0.5) * (rig ? 1.1 : 1) * (0.8 + 0.2 * S.rise), LAND.z - 0.12), e2);
+      camLook.lerp(proj.set(-off, H * (portrait ? 0.42 : 0.5) * (rig || auto ? 1.1 : 1) * (0.8 + 0.2 * S.rise), LAND.z - 0.12), e2);
       const fov = 30 + (fov1 - 30) * e1;
       const sx = shake.value * 0.0035;
       stage.camera.position.set(camPos.x + sx, camPos.y + shake.value * 0.002, camPos.z);
