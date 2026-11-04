@@ -2262,7 +2262,12 @@ body.fx-reduced .mv-kicker { animation: none; }
   .sleeve:active { transform: translateX(-2px) scale(0.99); }
   .pack-sheet { left: 12px; right: auto; transform: translateX(-40px); }
   .ps-root.in .pack-sheet { transform: none; }
-  .ps-backdrop { left: 0; right: calc(var(--lw) + 16px); }
+  /* (retours de Tom, 4 nov.) ordinateur : aucun voile derrière la fiche — il s'arrêtait au bord de la liste des packs et
+     dessinait une délimitation ; il reste transparent, seulement pour fermer la fiche d'un clic à côté */
+  .ps-backdrop { left: 0; right: calc(var(--lw) + 16px); background: transparent; }
+  /* fiche du pack : défilement sans barre visible (molette / pavé tactile), le fondu du bas suffit */
+  .ps-scroll { scrollbar-width: none; }
+  .ps-scroll::-webkit-scrollbar { display: none; }
   .shop-right .bp-list { align-items: flex-start; padding: 16px 0 30px 6px; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(180deg, transparent, #000 26px, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(180deg, transparent, #000 26px, #000 calc(100% - 44px), transparent); }
   .shop-right .bp-item { width: 74%; grid-template-columns: 76px minmax(0, 1fr); transform-origin: 0% 50%; will-change: transform, opacity; }
   .shop-right .bp-card { width: 76px; }

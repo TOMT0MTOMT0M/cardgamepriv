@@ -172,8 +172,6 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   // gros tirages de tout le groupe, en haut de l'accueil ; une carte touchée s'ouvre dans la visionneuse
   const big = createBigPulls(backend, (card) => void viewCard(card));
   el.querySelector('.shop-right')!.append(big.el);
-  const leftCol = el.querySelector<HTMLElement>('.shop-left')!;
-  const rightCol = el.querySelector<HTMLElement>('.shop-right')!;
   const skipEl = el.querySelector<HTMLElement>('.hud-skip')!;
   const skipHi = skipEl.querySelector<HTMLButtonElement>('.skip-hi')!;
   const skipReveal = skipEl.querySelector<HTMLButtonElement>('.skip-reveal')!;
@@ -941,25 +939,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   window.addEventListener('resize', () => mode === 'summary' && syncSummaryInset());
 
   /**
-   * Vitrine : le booster 3D se centre dans l'espace libre entre les colonnes (ordinateur : liste des packs à gauche,
-   * gros tirages à droite — ou la fiche du pack quand elle est ouverte) ; pendant l'ouverture, au récap et sur
-   * téléphone : centre de l'écran.
+   * Vitrine : le booster 3D reste au centre de l'écran, partout (ordinateur et téléphone, fiche du pack ouverte ou
+   * non, ouverture, récap).
    */
   function placeFocus() {
-    let px = 0;
-    const W = window.innerWidth;
-    if (mode === 'pick' && W > 860) {
-      // (retours live 02) ordinateur : gros tirages à GAUCHE, liste des packs à DROITE (CSS lot G) ; la fiche du pack
-      // s'ouvre côté gauche (par-dessus les gros tirages), la liste reste visible et cliquable
-      const a = rightCol.getBoundingClientRect(), b = leftCol.getBoundingClientRect();
-      const [lc, rc] = a.left <= b.left ? [a, b] : [b, a];
-      let l = lc.width ? lc.right : 0;
-      const r = rc.width ? rc.left : W;
-      if (sheet.isOpen()) l = Math.max(l, 12 + Math.min(460, W * 0.42));
-      px = Math.round((Math.max(0, l) + r) / 2 - W / 2);
-    }
-    // téléphone : le booster au centre parfait (retours de Tom, 4 nov.) — la colonne des gros tirages est « enfoncée »
-    // dans le bord gauche et ne s'avance qu'au toucher (bigPulls.ts)
+    // (retours de Tom, 4 nov.) le booster est TOUJOURS au centre de l'écran, sur ordinateur comme sur téléphone, fiche
+    // du pack ouverte ou non (avant : il se décalait dans l'espace libre entre les colonnes)
+    const px = 0;
     opening.setFocusOffset(px, 0);
     el.style.setProperty('--focus-x', `${px}px`);
   }
