@@ -645,7 +645,7 @@ if default_sheet.title in wb.sheetnames and len(wb.sheetnames) > 1:
 
 # Sauvegarder dans les emplacements cibles
 out_paths = [
-    os.path.join(ROOT, "Tri-etoiles-monde.xlsx"),
+    os.path.join(ROOT, "donnees", "tri-etoiles", "Tri-etoiles-monde.xlsx"),
     os.path.expanduser("~/Desktop/Tri-etoiles-monde.xlsx"),
     os.path.expanduser("~/Downloads/Tri-etoiles-monde.xlsx")
 ]

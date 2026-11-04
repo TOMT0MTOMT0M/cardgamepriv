@@ -1,8 +1,9 @@
 @echo off
 rem Espace Jeux : envoie les fonctions Convex, fait de Tom un admin (panneau anti-abus) et lui donne 5 000 pieces de test.
-rem Double-clic pour lancer. Journal : activer-jeux-admin.log (meme dossier).
-cd /d "%~dp0"
-set LOG=%~dp0activer-jeux-admin.log
+rem Double-clic pour lancer. Journal : logs\activer-jeux-admin.log.
+cd /d "%~dp0.."
+if not exist logs mkdir logs
+set LOG=%~dp0..\logs\activer-jeux-admin.log
 echo === %date% %time% === > "%LOG%"
 echo [1/3] envoi des fonctions Convex...
 call npx convex dev --once >> "%LOG%" 2>&1 || goto :err
@@ -20,6 +21,6 @@ exit /b 0
 echo === ECHEC (code %errorlevel%) === >> "%LOG%"
 type "%LOG%"
 echo.
-echo ECHEC : voir activer-jeux-admin.log
+echo ECHEC : voir logs\activer-jeux-admin.log
 pause
 exit /b 1

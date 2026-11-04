@@ -105,7 +105,7 @@ if (failed) process.exit(1);
 
 // on ne retire les images du site que si le bucket est branché dessus (sinon /art/* serait vide en ligne)
 const bound = existsSync('wrangler.jsonc') && readFileSync('wrangler.jsonc', 'utf8').includes('"r2_buckets"');
-if (dist && !bound) console.log('Bucket pas encore branché sur le site (lance activer-r2.cmd) : images gardées dans le site.');
+if (dist && !bound) console.log('Bucket pas encore branché sur le site (lance lanceurs\\activer-r2.cmd) : images gardées dans le site.');
 if (dist && bound && existsSync('dist/art')) {
   rmSync('dist/art', { recursive: true, force: true });
   console.log('dist/art retiré du site : les images sont servies depuis R2 (functions/art).');

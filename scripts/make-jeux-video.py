@@ -2,8 +2,8 @@
 Sous-thème(s) « JEUX VIDÉO » du thème GAMING : 3 396 cartes, 177 familles (1 famille = 1 sous-thème).
 Source : Tri-etoiles-jeux-video.xlsx (feuille « Tri étoiles », colonne « Étoiles » = rareté VALIDÉE, à ne pas retoucher).
 
-  python scripts/make-jeux-video.py harvest Tri-etoiles-jeux-video.xlsx [--budget 170] [--only famille] [--retry]
-  python scripts/make-jeux-video.py gen     Tri-etoiles-jeux-video.xlsx
+  python scripts/make-jeux-video.py harvest donnees/tri-etoiles/Tri-etoiles-jeux-video.xlsx [--budget 170] [--only famille] [--retry]
+  python scripts/make-jeux-video.py gen     donnees/tri-etoiles/Tri-etoiles-jeux-video.xlsx
 
 harvest : cherche une illustration par carte, télécharge une fois dans public/art/jv/ (jamais de hotlink), fait la
   miniature WebP (public/art/jv/thumbs/), et note la source dans scripts/data/jv-harvest.json (reprend là où il s'est

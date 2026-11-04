@@ -1,8 +1,9 @@
 @echo off
 rem Mise en ligne complete : dependances, serveur Convex (deploiement de dev, celui du site), build, images R2, Cloudflare Pages.
-rem Double-clic pour lancer. Journal : deployer.log (meme dossier).
-cd /d "%~dp0"
-set LOG=%~dp0deployer.log
+rem Double-clic pour lancer. Journal : logs\deployer.log.
+cd /d "%~dp0.."
+if not exist logs mkdir logs
+set LOG=%~dp0..\logs\deployer.log
 echo === %date% %time% === > "%LOG%"
 echo [1/5] npm install...
 echo [1/5] npm install >> "%LOG%"
@@ -35,6 +36,6 @@ exit /b 0
 :err
 echo === ECHEC (code %errorlevel%) === >> "%LOG%"
 echo.
-echo ECHEC : voir deployer.log
+echo ECHEC : voir logs\deployer.log
 pause
 exit /b 1

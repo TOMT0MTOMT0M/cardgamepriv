@@ -3,19 +3,19 @@ dist
 shots
 *.log
 .DS_Store
-.lab-sync
 .env.local
 .env.*.local
 .wrangler
-_hors-site/
 .cache
 .feedback-key
 feedback/
+__pycache__/
 
-# gros / temporaire (images sur R2, archives de sync)
+# hors git : journaux des lanceurs, archives locales, sauvegardes .zip
+logs/
+archives/
+sauvegardes/
+
+# images sur R2 (seuls les manifestes restent dans git)
 public/art/
 !public/art/*/manifest.json
-.sync/
-_to_delete/
-.pc-*.txt
-__pycache__/

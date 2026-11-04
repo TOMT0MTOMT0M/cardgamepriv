@@ -4,9 +4,9 @@ SPORT PACK (thème « sport ») : 7 708 cartes (sport + esport), 114 sous-thème
 Glisse & montagne · Précision & stratégie · Coulisses & légendes).
 Source : Tri-etoiles-sport.xlsx (SPEC-THEME-SPORT v5.1, feuille « Tri étoiles », colonne « Étoiles finales »).
 
-  python scripts/make-sport.py gen     Tri-etoiles-sport.xlsx
-  python scripts/make-sport.py harvest Tri-etoiles-sport.xlsx [--budget 150] [--retry] [--threads 8]
-  python scripts/make-sport.py wikifill Tri-etoiles-sport.xlsx      (secours : page Wikipédia au nom exact, vérifiée par Wikidata)
+  python scripts/make-sport.py gen     donnees/tri-etoiles/Tri-etoiles-sport.xlsx
+  python scripts/make-sport.py harvest donnees/tri-etoiles/Tri-etoiles-sport.xlsx [--budget 150] [--retry] [--threads 8]
+  python scripts/make-sport.py wikifill donnees/tri-etoiles/Tri-etoiles-sport.xlsx      (secours : page Wikipédia au nom exact, vérifiée par Wikidata)
 
 Import en REMPLACEMENT : le fichier src/core/sets/sport.ts est réécrit en entier à chaque « gen ».
 Identifiants STABLES « spt-<nom> » : figés la première fois dans scripts/data/sport-ids.json (clé = nom + type), réutilisés
@@ -507,7 +507,7 @@ def wikifill(xlsx, budget):
 
 # ───────────────────────────────────────────── corrections à la main (relecture des 6★)
 # Image de l'Excel fausse (homonyme DBpedia : « Uzi » → le pistolet-mitrailleur, « David Beckham » → une rue…) ou absente :
-# on prend l'image principale de cette page Wikipédia. Relancer : python scripts/make-sport.py fix Tri-etoiles-sport.xlsx
+# on prend l'image principale de cette page Wikipédia. Relancer : python scripts/make-sport.py fix donnees/tri-etoiles/Tri-etoiles-sport.xlsx
 OVERRIDES = {
     'Uzi': ('en', 'Uzi (gamer)'),
     'zen': ('fr', 'Zen (joueur)'),

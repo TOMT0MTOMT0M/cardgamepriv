@@ -4,8 +4,8 @@ POP CULTURE PACK (thème « pop ») : 17 471 cartes (personnages, acteurs, musiq
 Dessins animés · Musique · Acteurs & actrices · YouTube.
 Source : Tri-etoiles-popculture.xlsx (SPEC-THEME-POP-CULTURE v5, feuille « Tri étoiles », colonne « Étoiles finales »).
 
-  python scripts/make-pop.py gen     Tri-etoiles-popculture.xlsx
-  python scripts/make-pop.py harvest Tri-etoiles-popculture.xlsx [--budget 3000] [--retry] [--threads 8]
+  python scripts/make-pop.py gen     donnees/tri-etoiles/Tri-etoiles-popculture.xlsx
+  python scripts/make-pop.py harvest donnees/tri-etoiles/Tri-etoiles-popculture.xlsx [--budget 3000] [--retry] [--threads 8]
 
 Import en REMPLACEMENT : src/core/sets/popculture.ts est réécrit en entier à chaque « gen ».
 Identifiants STABLES « pop-<nom> » : figés la première fois dans scripts/data/pop-ids.json (clé = nom + type), réutilisés

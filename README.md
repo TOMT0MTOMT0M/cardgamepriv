@@ -11,7 +11,7 @@ npm run build        # tsc strict + vite build
 ```
 
 **Le jeu** (boutique, ouverture, collection, échanges) : http://localhost:5173/jeu/ — sans serveur configuré (ou avec
-`?demo`), il tourne en mode démo hors-ligne avec des amis robots. Détails : section « LE JEU » de `LAB_NOTES.md`.
+`?demo`), il tourne en mode démo hors-ligne avec des amis robots. Détails : section « LE JEU » de `docs/LAB_NOTES.md`.
 
 ```bash
 npm run test:server  # tests du serveur Convex (base simulée en mémoire)
@@ -26,11 +26,33 @@ npx convex dev       # pousse les fonctions et le schéma du serveur
 - `H` : masquer toute l'interface (mode présentation).
 - 👍 / 👎 + note par expérience (localStorage) → **☁ Envoyer** les met en ligne (ensuite chaque modification part seule), ou **Export JSON** pour un fichier.
 
-Détails, tableau de bord et choix techniques : [`LAB_NOTES.md`](./LAB_NOTES.md). Chaque expérience a son `NOTES.md`.
+Détails, tableau de bord et choix techniques : [`docs/LAB_NOTES.md`](./docs/LAB_NOTES.md). Chaque expérience a son `NOTES.md`.
 
-**Mise en ligne** (Windows) : double-clic sur `deployer.cmd` → `npm install`, serveur Convex (`npx convex dev --once`,
-le déploiement utilisé par le site), build, Cloudflare Pages (cardgamepriv.pages.dev). Journal : `deployer.log`.
+**Mise en ligne** (Windows) : double-clic sur `lanceurs/mettre-en-ligne-prod.cmd` (site principal) ou `lanceurs/deployer.cmd`
+→ `npm install`, serveur Convex (`npx convex dev --once`, le déploiement utilisé par le site), build, images sur R2,
+Cloudflare Pages (cardgamepriv.pages.dev). Journaux : `logs/`.
 Le jeu : https://cardgamepriv.pages.dev/jeu/ · le labo : https://cardgamepriv.pages.dev/
+
+## Organisation du dossier
+```
+src/            code du site : src/game/ = le jeu (/jeu/), src/core/ = moteur 3D + catalogues (src/core/sets/), src/experiments/ = le labo
+convex/         serveur (fonctions, schéma, tests)
+functions/      Cloudflare Pages Functions (images servies depuis R2)
+public/         fichiers statiques (public/art/ = illustrations, envoyées sur R2, hors git)
+jeu/            page HTML du jeu · index.html = page du labo
+scripts/        génération des catalogues (make-*.py), récolte d'images, miniatures, R2, vérifications
+  scripts/data/   journaux de récolte et ids stables des cartes (à garder)
+donnees/        sources des catalogues
+  tri-etoiles/    Excel « Tri étoiles » validés (un par thème) — ex. python scripts/make-pop.py gen donnees/tri-etoiles/Tri-etoiles-popculture.xlsx
+  patchs/         patchs appliqués par-dessus un tri (Patch-monde-V7.xlsx)
+  suivi/          exports de suivi (cartes sans image…)
+docs/           LAB_NOTES.md (journal technique), INFRASTRUCTURE.md, specs/, labo/, recherches/
+lanceurs/       .cmd Windows à double-cliquer (mise en ligne, R2, admin jeux, cartes de test)
+logs/           journaux des lanceurs (hors git)
+feedback/       retours du labo récupérés (npm run feedback, hors git)
+archives/       anciens rapports et fichiers d'origine (audit du 03/11, Pokémon 151 d'origine) — hors git
+sauvegardes/    sauvegardes .zip du projet (hors git)
+```
 
 ## Vérification automatique
 ```bash

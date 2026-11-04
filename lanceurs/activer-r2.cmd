@@ -1,8 +1,9 @@
 @echo off
 rem A LANCER UNE FOIS (apres avoir active R2 et mis le jeton dans .env.local) : cree le bucket, y envoie toutes les
-rem images (public/art), puis branche le bucket sur le site (wrangler.jsonc). Ensuite deployer.cmd s'occupe de tout.
-cd /d "%~dp0"
-set LOG=%~dp0activer-r2.log
+rem images (public/art), puis branche le bucket sur le site (wrangler.jsonc). Ensuite lanceurs\deployer.cmd s'occupe de tout.
+cd /d "%~dp0.."
+if not exist logs mkdir logs
+set LOG=%~dp0..\logs\activer-r2.log
 echo === %date% %time% === > "%LOG%"
 echo [1/3] bucket R2 cardgamepriv-art...
 call npm install --no-audit --no-fund >> "%LOG%" 2>&1 || goto :err
@@ -14,13 +15,13 @@ call node scripts/r2-bind.mjs >> "%LOG%" 2>&1 || goto :err
 echo === OK === >> "%LOG%"
 type "%LOG%"
 echo.
-echo R2 PRET. Lance deployer.cmd pour mettre le site en ligne sans les images.
+echo R2 PRET. Lance lanceurs\deployer.cmd pour mettre le site en ligne sans les images.
 pause
 exit /b 0
 :err
 echo === ECHEC (code %errorlevel%) === >> "%LOG%"
 type "%LOG%"
 echo.
-echo ECHEC : voir activer-r2.log
+echo ECHEC : voir logs\activer-r2.log
 pause
 exit /b 1

@@ -1,7 +1,7 @@
 """
 Sous-thèmes d'affichage de « League of Legends » (correctif du 3 nov.) → src/core/sets/lolLines.ts
 
-  python scripts/make-lol-lines.py Tri-etoiles-lol-skins.xlsx
+  python scripts/make-lol-lines.py donnees/tri-etoiles/Tri-etoiles-lol-skins.xlsx
 
 Lit la colonne « Sous-thème » (K) de la feuille « Tri étoiles » : la lane éditoriale pour les 173 champions
 (Top / Jungle / Mid / ADC / Support), la ligne de skins pour les 1 947 skins (Star Guardian, K/DA…, « Classiques &
@@ -73,4 +73,4 @@ export const lolLine = (e: {{ num: number }}) => LOL_LINES[BY_NUM[e.num - 1]];
 
 
 if __name__ == '__main__':
-    main(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'Tri-etoiles-lol-skins.xlsx'))
+    main(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'donnees', 'tri-etoiles', 'Tri-etoiles-lol-skins.xlsx'))

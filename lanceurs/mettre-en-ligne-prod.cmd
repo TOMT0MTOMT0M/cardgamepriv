@@ -1,9 +1,10 @@
 @echo off
 rem Mise en ligne complete : dependances, serveur Convex (deploiement de dev, celui du site), build, images R2, Cloudflare Pages.
 rem Version SITE PRINCIPAL : publie sur la branche de production (master) quelle que soit la branche git ouverte.
-rem Double-clic pour lancer. Journal : deployer-prod.log (meme dossier).
-cd /d "%~dp0"
-set LOG=%~dp0deployer-prod.log
+rem Double-clic pour lancer. Journal : logs\deployer-prod.log.
+cd /d "%~dp0.."
+if not exist logs mkdir logs
+set LOG=%~dp0..\logs\deployer-prod.log
 echo === %date% %time% === > "%LOG%"
 echo [1/5] npm install...
 echo [1/5] npm install >> "%LOG%"
@@ -36,6 +37,6 @@ exit /b 0
 :err
 echo === ECHEC (code %errorlevel%) === >> "%LOG%"
 echo.
-echo ECHEC : voir deployer-prod.log
+echo ECHEC : voir logs\deployer-prod.log
 pause
 exit /b 1

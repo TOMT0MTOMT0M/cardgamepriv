@@ -13,7 +13,7 @@ Ce script remplace ces images par une PHOTO de l'animal :
   python scripts/fix-animal-photos.py [--budget 150] [--all]
     --budget : secondes de travail max par lancement (relancer jusqu'à « reste 0 ») ;
     --all    : retraite aussi les animaux déjà corrigés.
-Puis : python scripts/make-monde-v2.py gen Tri-etoiles-monde_2.xlsx (le site lit le journal) — fait automatiquement en fin
+Puis : python scripts/make-monde-v2.py gen donnees/tri-etoiles/Tri-etoiles-monde_2.xlsx (le site lit le journal) — fait automatiquement en fin
 de traitement — et la mise en ligne envoie les nouvelles images sur R2 (scripts/r2-sync.mjs).
 
 Journal : scripts/data/monde-harvest.json (champ src = « photo:wikidata:Q…:P18 », « photo:inat:… » ou « photo:none »).
@@ -25,7 +25,7 @@ spec = importlib.util.spec_from_file_location('mm', os.path.join(ROOT, 'scripts'
 mm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mm)
 
-XLSX = os.path.join(ROOT, 'Tri-etoiles-monde_2.xlsx')
+XLSX = os.path.join(ROOT, 'donnees', 'tri-etoiles', 'Tri-etoiles-monde_2.xlsx')
 WD = 'https://www.wikidata.org/w/api.php'
 INAT = 'https://api.inaturalist.org/v1/taxa'
 # hôtes de figures d'articles (cartes, planches, crânes…) : jamais gardés pour un animal

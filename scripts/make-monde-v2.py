@@ -3,8 +3,8 @@ WORLD PACK V2 (thème « monde ») : 5 236 cartes, 34 sous-thèmes regroupés à
 (Les 14 Merveilles · Ardèche · Lieux & pays · Animaux · Nourriture · Voitures).
 Source : Tri-etoiles-monde_2.xlsx (feuille « Tri des étoiles », colonne « Étoiles finales (VALIDÉ) »).
 
-  python scripts/make-monde-v2.py gen     Tri-etoiles-monde_2.xlsx
-  python scripts/make-monde-v2.py harvest Tri-etoiles-monde_2.xlsx [--budget 170] [--retry]
+  python scripts/make-monde-v2.py gen     donnees/tri-etoiles/Tri-etoiles-monde_2.xlsx
+  python scripts/make-monde-v2.py harvest donnees/tri-etoiles/Tri-etoiles-monde_2.xlsx [--budget 170] [--retry]
 
 PATCHS (liste PATCHES, appliqués dans l'ordre par-dessus le tri de base, à chaque gen / harvest) :
   Patch-monde-V7.xlsx — boissons énergisantes : (1) INSERT des cartes de « Nouvelles cartes » (N° 5237 → 5342, sous-thèmes
@@ -132,7 +132,7 @@ def apply_patches(rows):
     """Patchs du tri, par opérations (jamais de ré-import complet) : INSERT, UPDATE complet (rebrand), resync des étoiles."""
     by_n = {r['n']: r for r in rows}
     for name in PATCHES:
-        wb = openpyxl.load_workbook(os.path.join(ROOT, name), read_only=True, data_only=True)
+        wb = openpyxl.load_workbook(os.path.join(ROOT, 'donnees', 'patchs', name), read_only=True, data_only=True)
         sheet = lambda start: wb[next(s for s in wb.sheetnames if s.startswith(start))]
         for r in patch_rows(sheet('Nouvelles cartes')):  # OP 1 — INSERT
             row = row_of(r)

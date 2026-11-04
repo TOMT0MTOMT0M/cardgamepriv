@@ -5,7 +5,7 @@ Rattrapage des illustrations MANQUANTES (Jeux vidéo + World Pack V2) avec des s
 
 Ne touche qu'aux cartes encore sans image dans scripts/data/jv-harvest.json et scripts/data/monde-harvest.json
 (même dossier, même nommage, même miniature que les scripts de récolte) ; une carte tentée n'est pas retentée (« s2 »).
-Puis : python scripts/make-jeux-video.py gen Tri-etoiles-jeux-video.xlsx && python scripts/make-monde-v2.py gen Tri-etoiles-monde_2.xlsx
+Puis : python scripts/make-jeux-video.py gen donnees/tri-etoiles/Tri-etoiles-jeux-video.xlsx && python scripts/make-monde-v2.py gen donnees/tri-etoiles/Tri-etoiles-monde_2.xlsx
 
 Sources (toutes acceptent le téléchargement automatique avec un User-Agent identifié ; aucune n'est contournée) :
   - jaquettes : abréviations développées (GTA → Grand Theft Auto, FNAF → Five Nights at Freddy's, MGS, FF, LOTR…),
@@ -328,8 +328,8 @@ def wikidata(c):
 # ───────────────────────────────────────────── boucle
 def run(budget, only):
     t0 = time.time()
-    jv_cards, _ = JV.read_rows(os.path.join(ROOT, 'Tri-etoiles-jeux-video.xlsx'))
-    mo_cards, _ = MO.build(os.path.join(ROOT, 'Tri-etoiles-monde_2.xlsx'))
+    jv_cards, _ = JV.read_rows(os.path.join(ROOT, 'donnees', 'tri-etoiles', 'Tri-etoiles-jeux-video.xlsx'))
+    mo_cards, _ = MO.build(os.path.join(ROOT, 'donnees', 'tri-etoiles', 'Tri-etoiles-monde_2.xlsx'))
     jv_log, mo_log = JV.load_log(), MO.load_log()
     todo = []
     if only in (None, 'jv'):

@@ -1,8 +1,9 @@
 @echo off
 rem Cartes de test pour Tom : envoie les fonctions Convex (dont admin.ts) puis donne les cartes.
-rem Double-clic pour lancer. Journal : donner-cartes-test.log (meme dossier).
-cd /d "%~dp0"
-set LOG=%~dp0donner-cartes-test.log
+rem Double-clic pour lancer. Journal : logs\donner-cartes-test.log.
+cd /d "%~dp0.."
+if not exist logs mkdir logs
+set LOG=%~dp0..\logs\donner-cartes-test.log
 echo === %date% %time% === > "%LOG%"
 echo [1/2] envoi des fonctions Convex...
 call npx convex dev --once >> "%LOG%" 2>&1 || goto :err
@@ -18,6 +19,6 @@ exit /b 0
 echo === ECHEC (code %errorlevel%) === >> "%LOG%"
 type "%LOG%"
 echo.
-echo ECHEC : voir donner-cartes-test.log
+echo ECHEC : voir logs\donner-cartes-test.log
 pause
 exit /b 1

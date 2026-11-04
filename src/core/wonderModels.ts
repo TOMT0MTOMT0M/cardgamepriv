@@ -2,7 +2,7 @@
  * Modèles 3D des 14 Merveilles (GLB dans public/models/merveilles/, crédits : CREDITS.md à côté).
  *
  * Les fichiers sont pré-normalisés hors ligne (base à y = 0, centrés en xz, largeur ou hauteur = 1, simplifiés,
- * textures WebP, compression meshopt) : voir « Modèles des Merveilles » dans LAB_NOTES.md.
+ * textures WebP, compression meshopt) : voir « Modèles des Merveilles » dans docs/LAB_NOTES.md.
  *
  * - Une merveille = une ou plusieurs **pièces** (ex. Zeus : la statue devant son temple), chacune mise à l'échelle,
  *   tournée et placée en unités diorama ; options : socle de pierre, colline rocheuse, torche, recoloration.

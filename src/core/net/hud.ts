@@ -44,7 +44,7 @@ export function mountNetHud(toolbar: HTMLElement, stage: HTMLElement) {
             <li>Ajoute <code>DISCORD_CLIENT_ID</code> et <code>DISCORD_CLIENT_SECRET</code> dans Convex</li>
             <li>Recharge la page : le bouton <b>Connexion Discord</b> s'activera automatiquement.</li>
           </ol>
-          <div class="net-hint">Voir <code>INFRASTRUCTURE.md</code> pour le guide complet.</div>
+          <div class="net-hint">Voir <code>docs/INFRASTRUCTURE.md</code> pour le guide complet.</div>
         </div>
       `;
       popover.querySelector('.net-close')?.addEventListener('click', togglePopover);
