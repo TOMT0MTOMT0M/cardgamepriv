@@ -32,6 +32,35 @@
   <body>
     <!-- écran de chargement visible dès la première image, pendant que le jeu (3D) se télécharge ; main.ts le reprend -->
     <div id="app"><div class="loader"><div class="l-logo">BÉBOU</div><div class="l-bar"><i style="width: 5%"></i></div><div class="l-txt">chargement…</div><div class="l-tip"></div></div></div>
+    <script>
+      // Barre de chargement « vivante » (retours de Tom, 4 nov. : sur téléphone elle restait figée). Animée par le
+      // compositeur (transform, Web Animations) : elle avance même quand le téléchargement / l'analyse du jeu occupe
+      // tout le processeur. Elle file vers un plafond qui monte à chaque vraie étape (main.ts → __bootBar.step), sans
+      // jamais reculer ; « c'est prêt » = elle se remplit d'un coup.
+      (function () {
+        var el = document.querySelector('.l-bar i');
+        if (!el || !el.animate) return;
+        el.style.cssText = 'width:100%;transition:none;transform-origin:0 50%;transform:scaleX(.04)';
+        var anim = null;
+        function cur() {
+          var m = getComputedStyle(el).transform.match(/matrix\(([^,]+)/);
+          return m ? parseFloat(m[1]) : 0.04;
+        }
+        function go(from, to, ms, ease) {
+          if (anim) anim.cancel();
+          anim = el.animate([{ transform: 'scaleX(' + from + ')' }, { transform: 'scaleX(' + to + ')' }], { duration: ms, easing: ease || 'cubic-bezier(.12,.72,.24,1)', fill: 'forwards' });
+        }
+        go(0.04, 0.45, 9000);
+        window.__bootBar = {
+          step: function (pct) {
+            var c = cur();
+            if (pct >= 100) return go(c, 1, 260, 'ease-out');
+            var s = pct < 35 ? [0.58, 9000] : pct < 85 ? [0.93, 12000] : [0.98, 2500];
+            go(Math.max(c, pct / 100), Math.max(c, s[0]), s[1]);
+          },
+        };
+      })();
+    </script>
     <script type="module" src="/src/game/main.ts"></script>
   </body>
 </html>

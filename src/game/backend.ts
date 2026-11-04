@@ -341,6 +341,10 @@ export interface GameBackend {
   logout(): Promise<void>;
   /** Tire (ou rend, s'il y en a un non ouvert) un booster scellé. */
   preparePack(req: PackRequest): Promise<SealedPack>;
+  /** ouverture en série : `count` boosters scellés d'un coup (les déjà scellés d'abord ; moins si la réserve manque) */
+  preparePacks(req: PackRequest, count: number): Promise<SealedPack[]>;
+  /** « Tout passer » : crédite plusieurs boosters montrés en un seul appel ; renvoie les ids crédités */
+  revealPacks(ids: string[]): Promise<string[]>;
   /** Fin de l'ouverture : crédite la collection, annonce les belles cartes. */
   revealPack(id: string): Promise<void>;
   friendCollection(friendId: string): Promise<PlayerCard[]>;

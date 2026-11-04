@@ -72,6 +72,8 @@ interface Batch {
   skipping: boolean;
   revealing: Promise<boolean> | null;
   pending: { pack: SealedPack; err: unknown } | null;
+  /** boosters suivants de la série, déjà scellés côté serveur (preparePacks) : cartes connues, préparées à l'avance */
+  queue: SealedPack[];
 }
 
 const keyOf = (p: SealedPack) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? 'gaming');
@@ -96,7 +98,20 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    */
   let batch: Batch | null = null;
   let secretExp: { replay?(): void } | null = null;
-  const newBatch = (req: PackRequest, total: number, current: SealedPack, hi: boolean, all: boolean): Batch => ({ req, total, done: [], current, hi, all, skipping: false, revealing: null, pending: null });
+  const newBatch = (req: PackRequest, total: number, current: SealedPack, hi: boolean, all: boolean): Batch => ({ req, total, done: [], current, hi, all, skipping: false, revealing: null, pending: null, queue: [] });
+  /**
+   * Départ d'une série (retours de Tom, 4 nov. : « plusieurs boosters d'un coup = temps d'attente ») : TOUS les
+   * boosters scellés en un seul appel ; le suivant est préparé (cartes construites) pendant qu'on regarde le courant.
+   */
+  async function beginSeries(req: PackRequest, n: number, hi: boolean, all: boolean): Promise<SealedPack> {
+    const packs = n > 1 ? await backend.preparePacks(req, n) : [await backend.preparePack(req)];
+    const got = packs[0];
+    pack = got;
+    batch = newBatch(req, packs.length, got, hi, all);
+    batch.queue = packs.slice(1);
+    if (packs.length < n) toast(`Réserve : ${packs.length} booster${packs.length > 1 ? 's' : ''} sur ${n} ouverts.`, 'info');
+    return got;
+  }
 
   /**
    * Crédite un booster montré (audit UX2-05) : `revealPack` réessayé (0,5 / 1,5 / 4 s, ou dès le retour du réseau), le
@@ -314,9 +329,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     viewCard: (c) => void viewCard(c),
     async onOpen(p, total) {
       if (mode !== 'pick') return;
-      const got = await backend.preparePack(p.req);
-      pack = got;
-      batch = newBatch(p.req, total, got, batch?.hi ?? false, false);
+      const got = await beginSeries(p.req, total, batch?.hi ?? false, false);
       sheet.close();
       start(got);
     },
@@ -914,7 +927,19 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       // (audit UX2-05) un crédit déjà en route (fin du booster montré) est ATTENDU : sinon preparePack renverrait le même
       // booster encore scellé, crédité et compté deux fois. Tout échec arrête la série, rien n'est compté en trop.
       let ok = b.revealing ? await b.revealing : true;
-      if (ok && b.current) {
+      // série préparée d'avance : le booster en cours et tous les suivants crédités en UN SEUL appel
+      const rest = ok ? [...(b.current ? [b.current] : []), ...b.queue].filter((p) => !b.done.some((d) => d.id === p.id)) : [];
+      if (rest.length > 1) {
+        b.current = null;
+        b.queue = [];
+        try {
+          const ids = new Set(await backend.revealPacks(rest.map((p) => p.id)));
+          for (const p of rest) if (ids.has(p.id) && !b.done.some((d) => d.id === p.id)) b.done.push(p);
+        } catch {
+          // réseau : un par un, avec les nouvelles tentatives habituelles
+          for (const p of rest) if (ok) ok = await credit(b, p);
+        }
+      } else if (ok && b.current) {
         const cur = b.current;
         b.current = null;
         ok = await credit(b, cur);
@@ -1021,6 +1046,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         ring.style.strokeDashoffset = String(100 - v * 100);
       },
       onOpened() {
+        // série : le booster suivant se prépare (cartes construites) pendant qu'on regarde celui-ci
+        if (batch?.queue[0]) opening.preload(batch.queue[0]);
         if (coachOn) coachDone(coachSt);
         else coach.hidden = true;
         hint.classList.remove('hold');
@@ -1223,7 +1250,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (b.done.length < b.total) {
       let next: SealedPack;
       try {
-        next = await backend.preparePack(b.req);
+        // série : le suivant est déjà scellé (et ses cartes préparées) → aucun appel réseau ici
+        next = b.queue.shift() ?? (await backend.preparePack(b.req));
       } catch (e) {
         toast(errMsg(e), 'err');
         return showSummary();
@@ -1235,11 +1263,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       pack = next;
       // (audit UX2-04) mode auto (« Tout révéler » / « 4★ et + ») : temps morts réduits ; manuel : rythme d'origine
       const fast = b.hi || b.all;
-      await new Promise((r) => setTimeout(r, fast ? 250 : 900));
+      await new Promise((r) => setTimeout(r, fast ? 120 : 380));
       if (batch !== b || b.skipping) return;
       opening.reset();
       // (en auto, l'entrée du booster de vitrine chevauche l'ouverture suivante : open() reprend la pose en cours)
-      await new Promise((r) => setTimeout(r, fast ? 120 : 650));
+      await new Promise((r) => setTimeout(r, fast ? 60 : 220));
       if (batch !== b || b.skipping) return;
       start(next);
       return;
@@ -1399,13 +1427,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       const hi = batch?.hi ?? false;
       const all = batch?.all ?? false; // (audit UX2-02) « Tout révéler » suit, comme « 4★ et + »
       back();
-      await new Promise((r) => setTimeout(r, 650));
-      if (mode !== 'pick') return;
       try {
-        const got = await backend.preparePack(p.req);
+        // la série se scelle PENDANT le retour du booster à la vitrine (avant : 650 ms d'attente, puis l'appel réseau)
+        const [got] = await Promise.all([beginSeries(p.req, Math.max(1, n), hi, all), new Promise((r) => setTimeout(r, 320))]);
         if (mode !== 'pick') return;
-        pack = got;
-        batch = newBatch(p.req, Math.max(1, n), got, hi, all);
         start(got);
       } catch (err) {
         toast(errMsg(err), 'err');

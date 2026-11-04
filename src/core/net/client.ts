@@ -502,6 +502,26 @@ class GameNetClient {
     return shape(pack);
   }
 
+  /** Série (retours de Tom, 4 nov.) : toute la série scellée en un appel (boosters déjà scellés d'abord). */
+  public async preparePacks(req: PackRequestArgs | undefined, count: number): Promise<Doc<'packOpens'>[]> {
+    if (!this.client || !this.sessionToken) throw new Error('Non connecté');
+    const packs = await this.client.mutation(api.packs.preparePacks, { sessionToken: this.sessionToken, ...(req ?? {}), count });
+    if (packs[0]) {
+      this.state.sealedPack = packs[0];
+      this.emit();
+    }
+    return packs;
+  }
+
+  /** « Tout passer » : plusieurs boosters crédités en un seul appel. */
+  public async revealPacks(packIds: Id<'packOpens'>[]): Promise<string[]> {
+    if (!this.client || !this.sessionToken) throw new Error('Non connecté');
+    const done = await this.client.mutation(api.packs.revealPacks, { sessionToken: this.sessionToken, packIds });
+    this.state.sealedPack = null;
+    this.emit();
+    return done;
+  }
+
   /**
    * Confirms the reveal at the end of the 3D pack opening animation,
    * crediting cards to the binder and broadcasting Rare+/Mythic pulls to friends.

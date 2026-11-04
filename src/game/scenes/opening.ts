@@ -152,6 +152,8 @@ export interface OpeningScene extends Experiment {
   setBooster(key: string, animate?: boolean, dir?: 1 | -1): void;
   /** Lance l'ouverture d'un pack tiré. Les cartes sont préparées (images, textures, shaders) pendant que le joueur brûle l'emballage. */
   open(pack: SealedPack, ev: OpeningEvents): void;
+  /** Prépare à l'avance les cartes d'un booster qui sera ouvert ensuite (série) : son ouverture sera instantanée. */
+  preload(pack: SealedPack): void;
   /** Après la séquence secrète : affiche directement l'éventail, la carte secrète face visible. */
   finishAfterSecret(): void;
   /** Après une scène dédiée (rencontre Pokémon) : la carte en cours est montrée face visible, la suite reprend. */
@@ -829,15 +831,28 @@ export function createOpeningScene(): OpeningScene {
     slots = [];
   }
 
-  /** Prépare les 5 cartes (images → calques → matériaux) puis compile leurs shaders, sans bloquer l'animation. */
-  async function prepare(p: SealedPack) {
+  /**
+   * Cartes d'un booster PRÉPARÉES À L'AVANCE (retours de Tom, 4 nov. : « en série, on dirait qu'il y a un chargement
+   * des cartes ») : pendant qu'on regarde un booster, le suivant de la série est déjà construit (images, calques,
+   * matériaux) ; à son ouverture, `prepare` le reprend tel quel → plus d'attente entre deux boosters.
+   */
+  const preloaded = new Map<string, { pr: Promise<Slot[] | null>; tok: { on: boolean } }>();
+  function dropPreloaded() {
+    for (const [id, { pr, tok }] of preloaded) {
+      preloaded.delete(id);
+      tok.on = false; // construction en cours : elle s'arrête et libère ce qu'elle a fait
+      void pr.then((b) => b?.forEach((s) => (s.mats.forEach((m) => m.dispose()), s.art.dispose())), () => undefined);
+    }
+  }
+  /** Construit les 5 cartes d'un booster (sans les poser) ; null si `alive()` devient faux en route. */
+  async function buildAll(p: SealedPack, alive: () => boolean): Promise<Slot[] | null> {
     const built: Slot[] = [];
     // dos des thèmes du pack peints d'abord, chacun dans son image (pas dans celle d'une carte, PERF1-04.3)
     if (ctx.quality === 'mobile') {
       for (const c of p.cards) {
         backs.forCard(c.cardId);
         await nextFrame();
-        if (pack !== p) return;
+        if (!alive()) return null;
       }
     }
     for (const c of p.cards) {
@@ -854,10 +869,25 @@ export function createOpeningScene(): OpeningScene {
         }
       }
       await nextFrame(); // une carte par frame : pas d'à-coup pendant la brûlure
-      if (pack !== p) break; // booster abandonné (reset) : inutile de continuer
+      if (!alive()) break; // booster abandonné (reset) : inutile de continuer
     }
-    if (pack !== p) {
+    if (!alive()) {
       built.forEach((s) => (s.mats.forEach((m) => m.dispose()), s.art.dispose()));
+      return null;
+    }
+    return built;
+  }
+
+  /** Prépare les 5 cartes (images → calques → matériaux) puis compile leurs shaders, sans bloquer l'animation. */
+  async function prepare(p: SealedPack) {
+    // déjà construites en avance (booster suivant d'une série) : reprises telles quelles
+    const pre = preloaded.get(p.id)?.pr;
+    preloaded.delete(p.id);
+    dropPreloaded();
+    let built = pre ? await pre.catch(() => null) : null;
+    if (!built && pack === p) built = await buildAll(p, () => pack === p);
+    if (pack !== p || !built) {
+      built?.forEach((s) => (s.mats.forEach((m) => m.dispose()), s.art.dispose()));
       return;
     }
     slots = built;
@@ -1676,6 +1706,13 @@ export function createOpeningScene(): OpeningScene {
     },
     setBooster,
     open,
+    preload(p: SealedPack) {
+      if (preloaded.has(p.id) || preloaded.size >= 2 || !p.cards.length || p.id === pack?.id) return;
+      const tok = { on: true };
+      const pr = buildAll(p, () => tok.on);
+      preloaded.set(p.id, { pr, tok });
+      pr.catch(() => preloaded.get(p.id)?.pr === pr && preloaded.delete(p.id));
+    },
     reset,
     advance,
     setAuto(o) {

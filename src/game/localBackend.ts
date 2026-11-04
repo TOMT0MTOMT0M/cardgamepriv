@@ -60,6 +60,8 @@ interface Saved {
   inv: Inv;
   mints: Record<string, number>;
   sealed: SealedPack | null;
+  /** série : boosters scellés suivants (preparePacks) */
+  queue?: SealedPack[];
   feed: GameState['feed'];
   /** gros tirages (les miens + ceux des robots) */
   bigPulls?: BigPull[];
@@ -512,6 +514,33 @@ export function createLocalBackend(): GameBackend {
     changed: () => sync(),
   });
 
+  /** Scelle un booster (débite la réserve, tire les cartes, n° d'impression, pity) — préparation simple ou en série. */
+  function rollSealed(req: PackRequest): SealedPack {
+    const now = Date.now();
+    const regen = applyRegen(save.packBalance, save.regenAt ?? now, now);
+    if (regen.balance <= 0) throw new Error(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
+    save.packBalance = regen.balance - 1;
+    save.regenAt = regen.regenAt;
+    let rand: () => number = Math.random;
+    req = { ...req, forceMythic: pityForces(save.pity ?? 0) };
+    if (forceSecret && req.kind === 'bebou') {
+      forceSecret = false;
+      let first = true;
+      rand = () => (first ? ((first = false), 0) : Math.random());
+    }
+    const seen = new Set<string>();
+    const cards = rollPack(req, rand).map(({ card, rarity }) => {
+      const k = cardKey({ cardId: card.id, rarity });
+      const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
+      const isNew = !save.inv[k] && !seen.has(k);
+      seen.add(k);
+      return { cardId: card.id, cardName: card.name, rarity: rarity as RarityId, mintNumber: mint, isNew, themeId: card.themeId };
+    });
+    const maxRarity = cards.reduce<RarityId>((m, c) => (RANK[c.rarity] > RANK[m] ? c.rarity : m), 'common');
+    save.pity = pityAfter(save.pity ?? 0, cards.map((c) => c.rarity));
+    return { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards };
+  }
+
   return {
     state,
     eco: eco.backend,
@@ -536,33 +565,42 @@ export function createLocalBackend(): GameBackend {
     async preparePack(req: PackRequest) {
       await delay(120); // latence réseau simulée
       if (save.sealed) return save.sealed;
-      const now = Date.now();
-      const regen = applyRegen(save.packBalance, save.regenAt ?? now, now);
-      if (regen.balance <= 0) throw new Error(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
-      save.packBalance = regen.balance - 1;
-      save.regenAt = regen.regenAt;
-      let rand: () => number = Math.random;
-      req = { ...req, forceMythic: pityForces(save.pity ?? 0) };
-      if (forceSecret && req.kind === 'bebou') {
-        forceSecret = false;
-        let first = true;
-        rand = () => (first ? ((first = false), 0) : Math.random());
-      }
-      const seen = new Set<string>();
-      const cards = rollPack(req, rand).map(({ card, rarity }) => {
-        const k = cardKey({ cardId: card.id, rarity });
-        const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
-        const isNew = !save.inv[k] && !seen.has(k);
-        seen.add(k);
-        return { cardId: card.id, cardName: card.name, rarity: rarity as RarityId, mintNumber: mint, isNew, themeId: card.themeId };
-      });
-      const maxRarity = cards.reduce<RarityId>((m, c) => (RANK[c.rarity] > RANK[m] ? c.rarity : m), 'common');
-      save.pity = pityAfter(save.pity ?? 0, cards.map((c) => c.rarity));
-      save.sealed = { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards };
+      save.sealed = rollSealed(req);
       sync();
       return save.sealed;
     },
+    // série (retours de Tom, 4 nov.) : toute la série scellée d'un coup ; les suivants attendent dans `save.queue`
+    async preparePacks(req: PackRequest, count: number) {
+      await delay(120);
+      const out: SealedPack[] = [];
+      if (!save.sealed) save.sealed = rollSealed(req);
+      out.push(save.sealed, ...(save.queue ?? []));
+      save.queue ??= [];
+      while (out.length < Math.max(1, Math.min(10, count))) {
+        try {
+          const p = rollSealed(req);
+          save.queue.push(p);
+          out.push(p);
+        } catch (e) {
+          if (!out.length) throw e;
+          break;
+        }
+      }
+      sync();
+      return out.slice(0, Math.max(1, count));
+    },
+    async revealPacks(ids: string[]) {
+      for (const id of ids) await this.revealPack(id);
+      return ids;
+    },
     async revealPack(id) {
+      // série : le booster demandé peut attendre dans la file (« Tout passer ») → il passe devant
+      const qi = save.queue?.findIndex((q) => q.id === id) ?? -1;
+      if (qi >= 0 && save.sealed?.id !== id) {
+        const [q] = save.queue!.splice(qi, 1);
+        if (save.sealed) save.queue!.unshift(save.sealed);
+        save.sealed = q;
+      }
       const p = save.sealed;
       if (!p || p.id !== id) return;
       for (const c of p.cards) {
@@ -578,7 +616,8 @@ export function createLocalBackend(): GameBackend {
         }
       }
       save.opened++;
-      save.sealed = null;
+      // série : le booster scellé suivant prend la place
+      save.sealed = save.queue?.shift() ?? null;
       bump({ type: 'pack', packKey: p.packKind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: p.cards });
       eco.hooks.onPack(p.packKind, p.packKind === 'theme' && p.themeId ? themeById(p.themeId)?.label ?? 'booster' : BEBOU_PACK.label, p.cards);
       maybeBotOffer();

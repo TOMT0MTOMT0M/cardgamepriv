@@ -142,6 +142,19 @@ export function createOnlineBackend(): GameBackend {
     async revealPack(id) {
       await net.revealPack(id as Id<'packOpens'>);
     },
+    async preparePacks(req, count) {
+      const packs = await net.preparePacks({ packKind: req.kind, themeId: req.themeId }, count);
+      return packs.map((p) => ({
+        id: p._id,
+        packKind: p.packKind ?? 'bebou',
+        themeId: p.themeId,
+        maxRarity: p.maxRarity,
+        cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
+      }));
+    },
+    async revealPacks(ids) {
+      return await net.revealPacks(ids as Id<'packOpens'>[]);
+    },
     async friendCollection(friendId) {
       const rows = await net.userCollection(friendId as Id<'users'>);
       return rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));

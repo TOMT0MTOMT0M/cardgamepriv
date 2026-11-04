@@ -715,7 +715,10 @@ async function boot() {
   const bar = loader.querySelector<HTMLElement>('.l-bar i')!;
   // étapes longues (démarrage de la 3D, compilation des shaders) : la barre ne reste pas figée, un reflet la parcourt
   const step = (pct: number, txt: string, busy = false) => {
-    bar.style.width = `${pct}%`;
+    // barre animée en continu par jeu/index.html (__bootBar) : on ne lui donne que les vraies étapes
+    const fake = (window as unknown as { __bootBar?: { step(p: number): void } }).__bootBar;
+    if (fake) fake.step(pct);
+    else bar.style.width = `${pct}%`;
     bar.parentElement!.classList.toggle('busy', busy);
     loader.querySelector<HTMLElement>('.l-txt')!.textContent = txt;
   };
