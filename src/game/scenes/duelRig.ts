@@ -105,13 +105,15 @@ export function dragonPose(o: { t: number; rear: number; wing: number; flap: num
  *  - dragon (cou à l'horizontale, queue) : cou dressé, tête vers l'avant, ailes qui battent, queue qui ondule ;
  *  - serpent (colonne longue à l'horizontale, comme Slifer) : le corps se dresse en S, cou et tête vers l'avant.
  */
-type Role = 'arm' | 'forearm' | 'hand' | 'shoulder' | 'hips' | 'upleg' | 'spine' | 'neck' | 'head' | 'jaw' | 'wing' | 'tail';
+type Role = 'arm' | 'forearm' | 'hand' | 'shoulder' | 'hips' | 'upleg' | 'leg' | 'foot' | 'spine' | 'neck' | 'head' | 'jaw' | 'wing' | 'tail';
 const ROLES: Array<[Role, RegExp]> = [
   ['forearm', /^(l|r|left|right)_?forearm\d*$/],
   ['arm', /^(l|r|left|right)_?(upper)?arm\d*$/],
   ['hand', /^(l|r|left|right)_?hand\d*$/],
   ['shoulder', /^(l|r|left|right)_?shoulder\d*$/],
   ['upleg', /^(l|r|left|right)_?(upleg|upreg|thigh|upperleg)\d*$/],
+  ['leg', /^(l|r|left|right)_?(leg|reg|calf|lowerleg)\d*$/],
+  ['foot', /^(l|r|left|right)_?foot\d*$/],
   ['hips', /^hips\d*$/],
   ['spine', /^spine\d*$/],
   ['neck', /^neck\d*$/],
@@ -212,6 +214,8 @@ export function createAutoPose(root: Object3D, tune: PoseTune = {}): AutoPose | 
           case 'shoulder':
           case 'hips':
           case 'upleg':
+          case 'leg':
+          case 'foot':
             b = base(j, [0, 0, 0]);
             if (b[0] || b[1] || b[2]) set(j, b[0] * rise, b[1] * rise, b[2] * rise);
             break;
