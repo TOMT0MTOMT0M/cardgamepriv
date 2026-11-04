@@ -1,3 +1,4 @@
+import { cameraScale, createWheel3D, type Wheel3D, type WheelItem3D } from './packWheel3d';
 import {
   AdditiveBlending,
   ClampToEdgeWrapping,
@@ -195,6 +196,17 @@ export interface OpeningScene extends Experiment {
   setBoosterSoon(on: boolean): void;
   /** Vitrine : un coup de doigt horizontal sur le booster (le jeu passe au booster voisin). */
   onBoosterSwipe: ((dir: 1 | -1) => void) | null;
+  /**
+   * Roue des boosters en 3D (téléphone) : pose de chaque pochette (px CSS, repère de `wheelView`), null = cachée.
+   * Voir packWheel3d.ts.
+   */
+  setWheel(items: WheelItem3D[] | null): void;
+  /** perspective (px CSS) et point de fuite (px CSS) de la caméra, pour caler la roue HTML dessus ; null = pas de roue 3D */
+  wheelView(): { P: number; ox: number; oy: number } | null;
+  /** rectangle écran (px CSS) du booster de la vitrine ; null hors vitrine */
+  boosterRect(): { x: number; y: number; w: number; h: number } | null;
+  /** vitrine : le booster se soulève un instant, comme au survol de la souris sur ordinateur (« touche-moi ») */
+  hintPulse(): void;
   readonly phase: Phase;
   debug(): unknown;
 }
@@ -416,6 +428,13 @@ export function createOpeningScene(): OpeningScene {
   let fanTick = 0;
   /** booster sous la souris (vitrine) */
   let packHover = false;
+  /** vitrine (téléphone) : soulèvement « touche-moi » jusqu'à cet instant (s, horloge de la scène) */
+  let hintLiftUntil = 0;
+  let sceneT = 0;
+  /** roue des boosters en 3D (téléphone) et dernière pose reçue */
+  let wheel3d: Wheel3D | null = null;
+  let wheelItems: WheelItem3D[] | null = null;
+  let wheelDirty = false;
   /** tier de la carte en cours de révélation (un toucher impatient n'accélère que les communes → épiques) */
   let curTier = 0;
   /** vitrine en portrait : le booster remonte et rétrécit pour laisser la place au choix des boosters en bas */
@@ -1674,6 +1693,28 @@ export function createOpeningScene(): OpeningScene {
       focusTY = py;
     },
     onBoosterSwipe: null,
+    setWheel(items) {
+      wheelItems = items;
+      wheelDirty = true;
+    },
+    wheelView() {
+      if (!wheel3d || !ctx) return null;
+      return { P: cameraScale(stage.camera, ctx.height).P, ox: ctx.width / 2 + focusCur, oy: ctx.height / 2 + focusCurY };
+    },
+    boosterRect() {
+      if (phase !== 'display' || !packMeshRef || !ctx) return null;
+      packMeshRef.updateWorldMatrix(true, false);
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        proj.set((cx * PACK.w) / 2, (cy * PACK.h) / 2, 0).applyMatrix4(packMeshRef.matrixWorld).project(stage.camera);
+        const px = (proj.x * 0.5 + 0.5) * ctx.width, py = (0.5 - proj.y * 0.5) * ctx.height;
+        x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py);
+      }
+      return { x: Math.round(x0), y: Math.round(y0), w: Math.round(x1 - x0), h: Math.round(y1 - y0) };
+    },
+    hintPulse() {
+      hintLiftUntil = sceneT + 0.55;
+    },
     fanRects() {
       if (phase !== 'done' || !slots.length) return null;
       return order.map((si) => ({ card: slots[si].data, ...screenRect(slots[si]) }));
@@ -1934,7 +1975,15 @@ export function createOpeningScene(): OpeningScene {
         dummies.push(m);
         stage.scene.add(m);
       }
+      // roue des boosters en 3D (téléphone) : matériaux créés maintenant pour être compilés avec le reste
+      if (mobile) {
+        wheel3d = createWheel3D(stage.scene, (k) => arts.get(k));
+        wheel3d.warm([boosterKey]);
+        const w3 = wheel3d;
+        c.bag.fn(() => w3.dispose());
+      }
       await stage.compile();
+      wheel3d?.hide();
       if (mobile) {
         // compileAsync prépare les pipelines SANS les cibles réelles (MRT émissif, MSAA) : sur téléphone, créer ces
         // variantes en pleine révélation coûte des centaines de ms (à-coup à la 1re carte de chaque rareté). Une image
@@ -2039,6 +2088,7 @@ export function createOpeningScene(): OpeningScene {
     },
 
     update(dt, t) {
+      sceneT = t;
       // pas de rotation au glisser dans cette scène : glisser en brûlant le booster (geste naturel au doigt) faisait
       // tourner la pile par demi-tours et montrait de dos… la face des cartes encore cachées. Inclinaison seule.
       ctx.input.spinEnabled = false;
@@ -2217,7 +2267,7 @@ export function createOpeningScene(): OpeningScene {
         packHover = false;
         lastNdc.set(9, 9);
       }
-      packLift += ((packHover ? 1 : 0) - packLift) * (1 - Math.exp(-dt * 10));
+      packLift += ((packHover || (phase === 'display' && sceneT < hintLiftUntil) ? 1 : 0) - packLift) * (1 - Math.exp(-dt * (packHover ? 10 : 7)));
       // curseur : maintenir sur le booster scellé, toucher pour révéler, main sur une carte de l'éventail
       const cur = phase === 'sealed' ? (holding ? 'grabbing' : 'grab') : phase === 'opened' || phase === 'shown' ? 'pointer' : (phase === 'done' && hovered >= 0) || packHover ? 'pointer' : '';
       if (!ctx.overlay.hidden && ctx.canvas.style.cursor !== cur) ctx.canvas.style.cursor = cur;
@@ -2271,8 +2321,14 @@ export function createOpeningScene(): OpeningScene {
       const tiltMoving = Math.abs(tx - lastTilt.x) + Math.abs(ty - lastTilt.y) > 0.004;
       lastTilt.set(tx, ty);
       const calm = ctx.quality === 'mobile' && phase === 'display' && !ctx.input.down && !tiltMoving && !spinTl?.isActive() && !tl?.isActive() && Math.abs(dispK - 1) < 0.01 && Math.abs(focusCur - focusT) < 0.5 && packLift < 0.01;
-      if (!calm) calmSkip = 0;
-      if (!calm || (calmSkip++ & 1) === 0) post.render();
+      // roue des boosters (téléphone) : posée juste avant le rendu ; une roue qui tourne = pas d'image sautée
+      if (wheel3d) {
+        if (phase === 'display' && wheelItems && !ctx.overlay.hidden) wheel3d.set(wheelItems, cameraScale(stage.camera, ctx.height).k);
+        else wheel3d.hide();
+      }
+      if (!calm || wheelDirty) calmSkip = 0;
+      if (!calm || wheelDirty || (calmSkip++ & 1) === 0) post.render();
+      wheelDirty = false;
     },
     resize(w, h) {
       stage.fit(w, h);
@@ -2305,7 +2361,8 @@ export function createOpeningScene(): OpeningScene {
     const shortLand = !portrait && !wide && h > 0 && h < 500;
     // portrait court (360×740) : un peu plus haut et plus petit, le bouton « Ouvrir » de l'accueil passe sous le booster
     const shortPortrait = portrait && h > 0 && h < 780;
-    L.dispY = wide ? 0.02 : portrait ? (shortPortrait ? 0.3 : 0.26) : shortLand ? 0.3 : 0.1;
+    // (téléphone, 4 nov. : plus de bouton « Ouvrir » sous le booster → il redescend un peu)
+    L.dispY = wide ? 0.02 : portrait ? (shortPortrait ? 0.25 : 0.2) : shortLand ? 0.3 : 0.1;
     L.dispS = wide ? 0.84 : shortLand ? 0.46 : shortPortrait ? 0.5 : 0.56;
   }
   return api;

@@ -93,7 +93,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     // tout le tirage est cliquable (sauf le pseudo, qui mène au profil) : la carte en grand
     it.addEventListener('click', (ev) => {
       if ((ev.target as HTMLElement).closest('a')) return;
-      if (dragged) return;
+      if (dragged || swallowed()) return;
       view({ cardId: p.cardId, cardName: name, rarity: p.rarity, mintNumber: p.mintNumber ?? 0, isNew: false });
     });
     return it;
@@ -225,7 +225,48 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     list.scrollLeft += e.deltaY;
   }, { passive: false });
   list.addEventListener('touchstart', hold, { passive: true });
-  list.addEventListener('touchmove', () => ((dragged = true), hold()), { passive: true });
+  list.addEventListener('touchmove', () => ((dragged = true), hold(), recessed.matches && wakeUp()), { passive: true });
+
+  /**
+   * TÉLÉPHONE EN PORTRAIT (retours de Tom, 4 nov.) : la colonne est « enfoncée » dans le bord gauche, en transparence
+   * (le booster 3D est au centre parfait). Le doigt posé dessus — pour toucher ou pour faire défiler — la fait avancer :
+   * elle grandit vers la droite et redevient nette ; elle se renfonce 3,5 s après le dernier contact. Le premier toucher
+   * d'une colonne enfoncée ne fait que la réveiller (pas de carte ouverte par erreur sur une colonne à peine visible).
+   */
+  const recessed = matchMedia('(max-width: 860px) and (orientation: portrait)');
+  let awakeT = 0;
+  let swallow = false;
+  const wakeUp = () => {
+    el.classList.add('bp-awake');
+    clearTimeout(awakeT);
+    awakeT = window.setTimeout(() => el.classList.remove('bp-awake'), 3500);
+  };
+  function swallowed() {
+    const v = swallow;
+    swallow = false;
+    return v;
+  }
+  el.addEventListener(
+    'pointerdown',
+    () => {
+      if (!recessed.matches) return;
+      swallow = !el.classList.contains('bp-awake');
+      wakeUp();
+    },
+    { capture: true, passive: true },
+  );
+  el.addEventListener('pointerup', () => recessed.matches && wakeUp(), { capture: true, passive: true });
+  // (le pseudo mène au profil : lui aussi attend que la colonne soit réveillée)
+  el.addEventListener(
+    'click',
+    (e) => {
+      if (!swallow || !(e.target as HTMLElement).closest('a')) return;
+      swallow = false;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    true,
+  );
   list.addEventListener('touchend', () => setTimeout(() => (dragged = false), 60), { passive: true });
 
   /**

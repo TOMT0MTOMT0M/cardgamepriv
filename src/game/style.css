@@ -2545,10 +2545,10 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
 .sl-shade, .sl-shine, .wheel-dial { display: none; }
 @media (max-width: 860px) {
   /* LA ROUE 3D (shop.ts) : les pochettes sont posées sur un cylindre par la physique en JavaScript ; ici, la scène */
-  .packs-row.wheel { --sw: clamp(96px, 29vw, 128px); position: relative; display: block; flex: none; width: 100%; height: calc(var(--sw) * 1.9); margin: 0; padding: 0; overflow: visible; scroll-snap-type: none; perspective: 860px; perspective-origin: 50% 42%; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; cursor: grab; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%); }
+  .packs-row.wheel { --sw: clamp(96px, 29vw, 128px); position: relative; display: block; flex: none; width: 100%; height: calc(var(--sw) * 1.9); margin: 0; padding: 0; overflow: visible; scroll-snap-type: none; perspective: 860px; perspective-origin: 50% 42%; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; cursor: grab; }
   .packs-row.wheel.held { cursor: grabbing; }
   /* lumière au sol sous la pochette du milieu, de sa couleur */
-  .packs-row.wheel::before { content: ''; position: absolute; left: 50%; top: calc(var(--sw) * 1.24); width: calc(var(--sw) * 2.3); height: calc(var(--sw) * 0.5); transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--wacc, var(--rose)) 38%, transparent), transparent); opacity: 0.75; pointer-events: none; transition: background 0.5s; }
+  .packs-row.wheel::before { content: ''; position: absolute; left: 50%; top: calc(var(--sw) * 1.24); width: calc(var(--sw) * 2.3); height: calc(var(--sw) * 0.5); transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--wacc, var(--rose)) 30%, transparent), transparent); opacity: 0.6; pointer-events: none; transition: background 0.5s; }
   .packs-row.wheel .sleeve, .packs-row.wheel .sleeve.special { position: absolute; left: 50%; top: 14px; width: var(--sw); min-width: 0; max-width: none; margin: 0 0 0 calc(var(--sw) / -2); padding: 0; display: block; border: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; overflow: visible; transition: none; transform-origin: 50% 50%; will-change: transform, opacity; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
   .packs-row.wheel .sleeve::before, .packs-row.wheel .sleeve.special::before { display: none; }
   .packs-row.wheel .sl-name, .packs-row.wheel .sl-desc, .packs-row.wheel .sl-prog { display: none; }
@@ -2570,8 +2570,27 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
   .packs-row.wheel .wheel-dial { display: block; position: absolute; left: 0; right: 0; bottom: 2px; height: 12px; overflow: hidden; pointer-events: none; }
   .wheel-dial i { position: absolute; top: 0; bottom: 0; will-change: transform; background: repeating-linear-gradient(90deg, rgba(255, 236, 214, 0.42) 0 1px, transparent 1px var(--px)) 0 0 / 100% 100% repeat-x, repeating-linear-gradient(90deg, rgba(255, 236, 214, 0.16) 0 1px, transparent 1px calc(var(--px) / 4)) 0 100% / 100% 45% repeat-x; }
   .wheel-dial::after { content: ''; position: absolute; left: 50%; top: -1px; bottom: 0; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--wacc, var(--rose)); box-shadow: 0 0 8px var(--wacc, var(--rose)); transition: background 0.4s; }
-  /* le bouton Ouvrir au-dessus de la roue : de l'air, plus de chevauchement */
-  .home-cta { margin-bottom: 14px; }
+  /* boosters en 3D (packWheel3d.ts) : la roue HTML reste en place, invisible, pour les touchers ; le halo est dans la scène */
+  .packs-row.wheel.gl .sl-art { box-shadow: none; -webkit-box-reflect: none; }
+  .packs-row.wheel.gl .sl-art img, .packs-row.wheel.gl .sl-ph, .packs-row.wheel.gl .sl-shade, .packs-row.wheel.gl .sl-shine { opacity: 0 !important; }
+  .packs-row.wheel.gl .sleeve.mid .sl-art { box-shadow: none; }
+  /* plus de bouton « Ouvrir » sur téléphone : on touche le booster (ou une pochette pour sa fiche) */
+  .home-cta { display: none !important; }
+  /* l'indication sous le booster : discrète, posée par shop.ts (placeHint) sous le booster 3D */
+  .tap-hint { position: fixed; left: 0; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 0; pointer-events: none; font: 400 10.5px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); opacity: 0.62; white-space: nowrap; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); transition: opacity var(--dur-standard); }
+  .tap-hint[hidden] { display: none; }
+  .tap-hint.idle { opacity: 0.45; }
+  .tap-hint.idle .th-dot { display: none; }
+  /* un petit doigt qui tapote : un point, et son onde */
+  .th-dot { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--rose-l); box-shadow: 0 0 8px var(--rose); }
+  .th-dot::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 1px solid var(--rose-l); opacity: 0; animation: th-ping 2.6s var(--ease-sortie) infinite; }
+  @keyframes th-ping { 0% { transform: scale(0.4); opacity: 0.9; } 55%, 100% { transform: scale(1.6); opacity: 0; } }
+  /* l'onde de toucher au centre du booster, de temps en temps (avec le soulèvement du booster) */
+  .tap-ghost { position: fixed; left: 0; top: 0; z-index: 3; width: 0; height: 0; pointer-events: none; }
+  .tap-ghost[hidden] { display: none; }
+  .tap-ghost i { position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid rgba(255, 236, 214, 0.75); background: radial-gradient(closest-side, rgba(255, 236, 214, 0.28), transparent); opacity: 0; }
+  .tap-ghost.go i { animation: tap-ghost 1.1s var(--ease-sortie) both; }
+  @keyframes tap-ghost { 0% { transform: scale(0.55); opacity: 0; } 18% { transform: scale(0.7); opacity: 0.85; } 100% { transform: scale(1.7); opacity: 0; } }
   /* gros tirages : plus de surtitre */
   .shop-home .bp-kicker { display: none; }
 }
@@ -2606,5 +2625,19 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
   .me .user { width: 36px; height: 36px; }
   .me .user img, .me .ava { width: 34px; height: 34px; }
   .me-id { margin-left: 10px; }
+}
+/* gros tirages (téléphone en portrait) : colonne « enfoncée » dans le bord gauche, en transparence ; au toucher ou au
+   défilement elle avance, grandit vers la droite et redevient nette (bigPulls.ts, .bp-awake) — le booster est au centre */
+@media (max-width: 860px) and (orientation: portrait) {
+  .shop-home .bigpulls { position: relative; z-index: 2; }
+  .shop-home .bigpulls .bp-list, .shop-home .bigpulls .bp-head { transform-origin: 0% 50%; transition: transform var(--dur-emphatique) var(--ease-entree), opacity var(--dur-standard) var(--ease-standard); }
+  .shop-home .bigpulls .bp-list { transform: perspective(520px) rotateY(26deg) scale(0.82); opacity: 0.4; }
+  .shop-home .bigpulls .bp-head { transform: scale(0.9); opacity: 0.5; }
+  .shop-home .bigpulls.bp-awake .bp-list { transform: perspective(520px) rotateY(0deg) scale(1.2); opacity: 1; }
+  .shop-home .bigpulls.bp-awake .bp-head { transform: none; opacity: 1; }
+}
+@media (max-width: 860px) and (orientation: portrait) and (prefers-reduced-motion: reduce) {
+  .shop-home .bigpulls .bp-list { transform: scale(0.86); }
+  .shop-home .bigpulls.bp-awake .bp-list { transform: scale(1.12); }
 }
 /* ==== fin boutique téléphone ==== */

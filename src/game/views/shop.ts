@@ -2,6 +2,7 @@ import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedP
 import { fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import { openStyleOf, type OpeningScene } from '../scenes/opening';
+import type { WheelItem3D } from '../scenes/packWheel3d';
 import type { ViewerScene } from '../scenes/viewer';
 import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, THEMES, catalogEntry, numberingSize, subthemeById, themeById } from '../../core/sets/themes';
@@ -136,6 +137,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         <div class="packs-row" role="listbox" aria-label="Boosters"></div>
       </div>
       <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary">Ouvrir</button></div>
+      <div class="tap-hint" hidden aria-hidden="true"><i class="th-dot"></i><span class="th-t"></span></div>
+      <div class="tap-ghost" hidden aria-hidden="true"><i></i></div>
       <div class="home-cta" hidden><button class="btn-primary"><span class="hc-t">Ouvrir</span><small class="hc-s"></small></button><p class="hc-tip"></p></div>
       <div class="shop-right"></div>
     </div>
@@ -183,6 +186,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const coach = el.querySelector<HTMLElement>('.coach')!;
   const cta = el.querySelector<HTMLElement>('.home-cta')!;
   const ctaBtn = cta.querySelector<HTMLButtonElement>('button')!;
+  const tapHint = el.querySelector<HTMLElement>('.tap-hint')!;
+  const tapGhost = el.querySelector<HTMLElement>('.tap-ghost')!;
 
   /**
    * (audit UX2-06) Zone libre pour la carte montrée : hauteur de l'en-tête + compteur en haut, et du panneau du bas
@@ -217,7 +222,52 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const first = !!u && u.totalPacksOpened === 0 && bal > 0 && !b?.soon;
     cta.querySelector('.hc-s')!.textContent = b?.soon ? 'bientôt' : first ? `ton premier booster t’attend · ${bal} en réserve` : bal > 0 ? `${bal} en réserve` : 'réserve vide · en recharge';
     cta.querySelector<HTMLElement>('.hc-tip')!.hidden = true;
+    syncHint();
   }
+
+  /**
+   * TÉLÉPHONE (retours de Tom, 4 nov.) : plus de bouton « Ouvrir » sous le booster. Comme sur ordinateur (le booster se
+   * soulève au survol), on montre qu'il se touche : une ligne discrète sous le booster, et toutes les ~5 s, tant que
+   * personne ne touche l'écran, le booster se soulève un instant avec une onde de toucher en son centre. La fiche
+   * (contenu, ×5 / ×10) s'ouvre en touchant une pochette de la roue.
+   */
+  let lastTouch = 0;
+  window.addEventListener('pointerdown', () => (lastTouch = performance.now()), { passive: true, capture: true });
+  const hintOn = () => {
+    const s = backend.state;
+    return WHEEL.matches && mode === 'pick' && el.isConnected && !viewing && !sheet.isOpen() && !s.sealed && !(s.mode === 'online' && !s.user);
+  };
+  function syncHint() {
+    const on = hintOn();
+    tapHint.hidden = !on;
+    if (!on) return void (tapGhost.hidden = true);
+    const s = backend.state;
+    const b = list.find((x) => x.key === selected);
+    const bal = s.user ? liveRegen(s.user).balance : 0;
+    tapHint.classList.toggle('idle', !!b?.soon || bal <= 0);
+    tapHint.querySelector('.th-t')!.textContent = b?.soon ? 'bientôt disponible' : bal > 0 ? 'touche le booster pour l’ouvrir' : 'réserve vide · en recharge';
+    placeHint();
+  }
+  function placeHint() {
+    if (tapHint.hidden) return;
+    const r = opening.boosterRect();
+    if (!r || r.w < 20) return;
+    const cx = r.x + r.w / 2;
+    tapHint.style.transform = `translate3d(${cx.toFixed(0)}px, ${(r.y + r.h + 10).toFixed(0)}px, 0) translateX(-50%)`;
+    tapGhost.style.transform = `translate3d(${cx.toFixed(0)}px, ${(r.y + r.h * 0.5).toFixed(0)}px, 0)`;
+  }
+  window.addEventListener('resize', () => requestAnimationFrame(placeHint));
+  setInterval(() => {
+    if (!hintOn() || document.hidden || tapHint.classList.contains('idle')) return;
+    placeHint();
+    if (performance.now() - lastTouch < 6000 || REDUCED.matches) return;
+    // l'onde de toucher + le booster qui se soulève (le même geste que le survol sur ordinateur)
+    tapGhost.hidden = false;
+    tapGhost.classList.remove('go');
+    void tapGhost.offsetWidth;
+    tapGhost.classList.add('go');
+    opening.hintPulse();
+  }, 5200);
   ctaBtn.addEventListener('click', () => {
     haptics.pulse(6);
     if (mode === 'pick' && !sheet.isOpen()) sheet.open(selected);
@@ -372,13 +422,21 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const ZETA = () => (REDUCED.matches ? 1 : 0.74);
   /** géométrie : largeur d'une pochette, écart entre deux pochettes au repos (= px de doigt par cran), rayon du cylindre */
   const STEP = (34 * Math.PI) / 180;
-  const geo = { w: 0, gap: 0, R: 0, W: 0 };
+  const geo = { w: 0, h: 0, st: 0, gap: 0, R: 0, W: 0, left: 0, top: 0, zMul: 1 };
+  /**
+   * Boosters en 3D (scène de l'ouverture, packWheel3d.ts) : la roue HTML devient invisible (zone de toucher) et prend la
+   * perspective de la caméra ; les profondeurs sont multipliées par P / 860 pour garder exactement le même relief
+   * qu'avec la perspective de 860 px d'origine.
+   */
+  let view3d: { P: number; ox: number; oy: number } | null = null;
   let wheelOn = false;
   let raf = 0;
   let lastT = 0;
   let detent = Math.round(pos);
   let lastClick = 0;
   let committed: number | null = null;
+  /** fiche à ouvrir quand la pochette touchée sur le côté sera arrivée au milieu */
+  let sheetOnSettle: string | null = null;
 
   function measure() {
     const w = sleeves[0]?.offsetWidth ?? 0;
@@ -386,6 +444,21 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     geo.gap = w * 1.13;
     geo.R = geo.gap / Math.sin(STEP);
     geo.W = rowEl.clientWidth;
+    geo.h = sleeves[0]?.offsetHeight ?? 0;
+    geo.st = sleeves[0]?.offsetTop ?? 0;
+    const rr = rowEl.getBoundingClientRect();
+    geo.left = rr.left;
+    geo.top = rr.top;
+    view3d = opening.wheelView();
+    rowEl.classList.toggle('gl', !!view3d);
+    if (view3d) {
+      geo.zMul = view3d.P / 860;
+      rowEl.style.perspective = `${view3d.P.toFixed(1)}px`;
+      rowEl.style.perspectiveOrigin = `${(view3d.ox - rr.left).toFixed(1)}px ${(view3d.oy - rr.top).toFixed(1)}px`;
+    } else {
+      geo.zMul = 1;
+      rowEl.style.perspective = rowEl.style.perspectiveOrigin = '';
+    }
     // cadran : un grand trait par cran, trois petits entre deux, le milieu sur un grand trait
     if (geo.gap > 0) {
       const M = Math.ceil(geo.W / 2 / geo.gap) + 2;
@@ -402,16 +475,33 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     // vite : la roue s'écarte un peu et les pochettes s'inclinent dans le sens du mouvement
     const spread = REDUCED.matches ? 1 : 1 + Math.min(0.16, sp * 0.011);
     const lean = REDUCED.matches ? 0 : Math.max(-7, Math.min(7, -vel * 0.45));
+    const items: WheelItem3D[] | null = view3d ? [] : null;
     for (let i = 0; i < N; i++) {
       const b = sleeves[i];
       const d = near(i - pos);
       const a = Math.abs(d);
       const th = Math.max(-1.5, Math.min(1.5, d * STEP * spread));
       const x = Math.sin(th) * geo.R;
-      const z = (Math.cos(th) - 1) * geo.R;
+      const z = (Math.cos(th) - 1) * geo.R * geo.zMul;
       const lift = -9 * Math.max(0, 1 - a) ** 2; // la pochette du milieu se soulève
-      b.style.transform = `translate3d(${x.toFixed(2)}px,${lift.toFixed(2)}px,${z.toFixed(2)}px) rotateY(${((th * 180) / Math.PI).toFixed(2)}deg) rotateZ(${(lean * Math.max(0, 1 - a * 0.5)).toFixed(2)}deg)`;
-      b.style.opacity = a <= 1.55 ? '1' : Math.max(0, 1 - (a - 1.55) / 0.75).toFixed(3);
+      const rz = lean * Math.max(0, 1 - a * 0.5);
+      const op = a <= 1.55 ? 1 : Math.max(0, 1 - (a - 1.55) / 0.75);
+      b.style.transform = `translate3d(${x.toFixed(2)}px,${lift.toFixed(2)}px,${z.toFixed(2)}px) rotateY(${((th * 180) / Math.PI).toFixed(2)}deg) rotateZ(${rz.toFixed(2)}deg)`;
+      b.style.opacity = op === 1 ? '1' : op.toFixed(3);
+      // même pose pour le booster 3D (repère : point de fuite de la caméra, px CSS)
+      if (items && view3d)
+        items.push({
+          key: list[i].key,
+          x: geo.left + geo.W / 2 + x - view3d.ox,
+          y: geo.top + geo.st + geo.h / 2 + lift - view3d.oy,
+          z,
+          rotY: th,
+          rotZ: (rz * Math.PI) / 180,
+          size: geo.w,
+          dim: 1 - op * (1 - Math.min(0.5, a * 0.3)),
+          glow: Math.max(0, 1 - a * 1.6),
+          accent: list[i].accent,
+        });
       b.style.zIndex = String(20 - Math.round(a * 4));
       b.style.setProperty('--shade', Math.min(0.78, a * 0.42).toFixed(3));
       // le reflet glisse sur la pochette à mesure qu'elle tourne (de droite à gauche quand elle passe au milieu)
@@ -419,6 +509,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       // (seulement pendant que la pochette tourne : à l'arrêt, au milieu, pas de bande figée)
       b.style.setProperty('--shine-a', (Math.min(1, a * 3.2 + sp * 0.08) * Math.max(0, 1 - a * 1.05)).toFixed(3));
     }
+    if (items) opening.setWheel(items);
     // cadran : défile avec la roue (motif périodique : un décalage modulo un cran suffit)
     const frac = pos - Math.floor(pos);
     dialStrip.style.transform = `translate3d(${(-frac * geo.gap).toFixed(2)}px,0,0)`;
@@ -463,6 +554,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       }
       // presque arrivée : le booster 3D change déjà (la roue finit sa course pendant ce temps)
       if (committed !== target && Math.abs(pos - target) < 0.14 && Math.abs(vel) < 4) commit(target);
+      // arrivée : la fiche demandée par un toucher sur le côté s'ouvre dès que la pochette est presque au milieu
+      if (sheetOnSettle && Math.abs(pos - target) < 0.08 && Math.abs(vel) < 1.5) {
+        const k = sheetOnSettle;
+        sheetOnSettle = null;
+        if (list[mod(Math.round(target))]?.key === k && mode === 'pick' && !sheet.isOpen()) sheet.open(k);
+      }
       if (Math.abs(pos - target) < 0.0015 && Math.abs(vel) < 0.02) {
         pos = mod(target);
         detent = Math.round(pos);
@@ -514,6 +611,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   rowEl.addEventListener('pointerdown', (e) => {
     if (!wheelOn || drag || mode !== 'pick' || e.button > 0) return;
     const caught = target !== null && Math.abs(vel) > 0.6; // roue lancée : on l'attrape
+    sheetOnSettle = null;
     target = null;
     vel = 0;
     drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, raw0: unfeel(pos), t0: performance.now(), moved: false, caught, samples: [[performance.now(), pos]] };
@@ -560,8 +658,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         return;
       }
       if (i >= 0) {
+        // sur le côté : elle vient au milieu, puis sa fiche s'ouvre (le bouton « Ouvrir » n'existe plus sur téléphone)
         haptics.pulse(4);
-        return spinToIndex(i);
+        spinToIndex(i);
+        sheetOnSettle = list[i].key;
+        return;
       }
     }
     vel = Math.max(-28, Math.min(28, vel));
@@ -856,16 +957,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       const r = rc.width ? rc.left : W;
       if (sheet.isOpen()) l = Math.max(l, 12 + Math.min(460, W * 0.42));
       px = Math.round((Math.max(0, l) + r) / 2 - W / 2);
-    } else if (mode === 'pick' && !big.el.hidden && matchMedia('(max-width: 860px) and (orientation: portrait)').matches) {
-      // téléphone (retours 03/11 soir) : la colonne des gros tirages est à gauche → le booster glisse un peu à droite
-      const r = big.el.getBoundingClientRect().right;
-      if (r > 0 && r < W / 2) px = Math.round(r * 0.42);
     }
+    // téléphone : le booster au centre parfait (retours de Tom, 4 nov.) — la colonne des gros tirages est « enfoncée »
+    // dans le bord gauche et ne s'avance qu'au toucher (bigPulls.ts)
     opening.setFocusOffset(px, 0);
     el.style.setProperty('--focus-x', `${px}px`);
   }
   window.addEventListener('resize', placeFocus);
-  new MutationObserver(placeFocus).observe(sheet.el, { attributes: true, attributeFilter: ['class', 'hidden'] });
+  new MutationObserver(() => (placeFocus(), syncHint())).observe(sheet.el, { attributes: true, attributeFilter: ['class', 'hidden'] });
 
   function setMode(m: typeof mode) {
     mode = m;
@@ -1286,6 +1385,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     big.setVisible(false);
     el.classList.add('viewing');
     document.body.classList.add('card-open');
+    syncHint();
     const viewer = await getViewer();
     viewerRef = viewer;
     if (!viewing) return;
@@ -1305,6 +1405,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (mode === 'summary' && !summary.classList.contains('multi')) fanBadges.hidden = false;
     big.setVisible(mode === 'pick');
     shell.show('opening');
+    syncHint();
   }
   viewerUi.querySelector('.close')!.addEventListener('click', closeViewer);
   window.addEventListener('keydown', (e) => e.key === 'Escape' && closeViewer());
