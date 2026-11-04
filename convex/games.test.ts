@@ -183,9 +183,23 @@ describe('1v1 Pack Battle', () => {
     const id = await t.mutation(api.games.createDuel, { sessionToken: u.alice.token, packs: pk, stake: { coins: 0, cards: [] } });
     await t.mutation(api.games.setDuelSide, { sessionToken: u.bob.token, duelId: id, packs: pk, stake: { coins: 0, cards: [] } });
     await t.mutation(api.games.readyDuel, { sessionToken: u.alice.token, duelId: id });
-    await t.mutation(api.games.setDuelSide, { sessionToken: u.bob.token, duelId: id, packs: pk, stake: { coins: 0, cards: [] } });
+    await t.mutation(api.games.setDuelSide, { sessionToken: u.bob.token, duelId: id, packs: [{ kind: 'theme', themeId: 'gaming' }], stake: { coins: 0, cards: [] } });
     const d = (await t.query(api.games.duel, { duelId: id }))!;
     expect(d.sides.every((s) => !s.ready)).toBe(true);
+  });
+
+  test('renvoyer la MÊME mise ne retire pas la validation d’en face (sinon les deux s’annulent à tour de rôle)', async () => {
+    const { t, u } = await setup();
+    const pk = [{ kind: 'bebou' as const }, { kind: 'bebou' as const }];
+    const id = await t.mutation(api.games.createDuel, { sessionToken: u.alice.token, packs: pk, stake: { coins: 0, cards: [] } });
+    await t.mutation(api.games.setDuelSide, { sessionToken: u.bob.token, duelId: id, packs: pk, stake: { coins: 0, cards: [] } });
+    expect((await t.mutation(api.games.readyDuel, { sessionToken: u.bob.token, duelId: id })).locked).toBe(false);
+    // « Enregistrer et valider » côté Alice avec une mise identique (forme différente : themeId absent/undefined)
+    await t.mutation(api.games.setDuelSide, { sessionToken: u.alice.token, duelId: id, packs: [{ kind: 'bebou', themeId: undefined }, { kind: 'bebou' }], stake: { coins: 0, cards: [] } });
+    const mid = (await t.query(api.games.duel, { duelId: id }))!;
+    expect(mid.sides.find((s) => s.userId === u.bob.userId)!.ready).toBe(true);
+    expect((await t.mutation(api.games.readyDuel, { sessionToken: u.alice.token, duelId: id })).locked).toBe(true);
+    expect((await t.query(api.games.duel, { duelId: id }))!.status).toBe('done');
   });
 });
 

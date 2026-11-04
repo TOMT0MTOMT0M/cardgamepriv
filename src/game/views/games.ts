@@ -274,6 +274,14 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     );
   }
 
+  /** empreinte d'une mise, indépendante de la forme des objets */
+  const sideKey = (packs: PackChoice[], stake: Stake) =>
+    [
+      packs.map((p) => (p.kind === 'theme' ? `t:${p.themeId}` : 'b')).join(','),
+      Math.round(stake.coins),
+      stake.cards.map((c) => `${c.cardId}:${c.rarity}:${c.count}`).sort().join(','),
+    ].join('|');
+
   function openDuelRoom(room: HTMLElement, d: DuelView, editing: { packs: PackChoice[]; stake: Stake } | null, setEditing: (e: { packs: PackChoice[]; stake: Stake } | null) => void) {
     const uid = myId();
     const mine = d.sides.findIndex((s) => s.userId === uid);
@@ -299,7 +307,10 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       edHost.addEventListener('change', () => setEditing(st), { capture: true });
       acts.before(risk);
       /** mise affichée ≠ mise enregistrée sur le serveur (UX4-04) */
-      const dirty = () => mine >= 0 && JSON.stringify([st.packs, st.stake]) !== JSON.stringify([d.sides[mine].packs, d.sides[mine].stake]);
+      // comparaison du CONTENU (sorte des boosters, pièces, cartes) : une simple différence de forme (ordre des clés,
+      // champ en plus sur un booster) faisait croire à une modification, et « Enregistrer et valider » remettait alors à
+      // zéro la validation d'en face — les deux joueurs s'annulaient à tour de rôle
+      const dirty = () => mine >= 0 && sideKey(st.packs, st.stake) !== sideKey(d.sides[mine].packs, d.sides[mine].stake);
       // les actions (et l'avertissement ±5 %) suivent la mise affichée, pas celle du serveur
       function renderActs() {
         // (celui qui rejoint : sa mise affichée prend la place n° 2)

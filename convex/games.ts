@@ -144,12 +144,23 @@ async function openDuel(ctx: QueryCtx, id: Id<'duels'>) {
   return d;
 }
 
+/** empreinte d'une mise (sorte des boosters, pièces, cartes), indépendante de la forme des objets */
+const sideKey = (packs: PackChoice[], stake: Stake) =>
+  [
+    packs.map((p) => (p.kind === 'theme' ? `t:${p.themeId}` : 'b')).join(','),
+    Math.round(stake.coins),
+    stake.cards.map((c) => `${c.cardId}:${c.rarity}:${c.count}`).sort().join(','),
+  ].join('|');
+
 /** Rejoindre (ou modifier sa mise) : chaque changement remet les deux validations à zéro. */
 export const setDuelSide = mutation({
   args: { sessionToken: v.string(), duelId: v.id('duels'), packs: vPacks, stake: stakeValidator },
   handler: async (ctx, { sessionToken, duelId, packs, stake }) => {
     const u = await requireUser(ctx, sessionToken);
     const d = await openDuel(ctx, duelId);
+    // mise identique à celle enregistrée : rien ne change, les validations (la sienne et celle d'en face) restent
+    const had = d.sides.find((s) => s.userId === u._id);
+    if (had && sideKey(had.packs, stakeOf(had)) === sideKey(packs, stake)) return;
     if (!packs.length || packs.length > DUEL_MAX_PACKS || !packs.every(validPackChoice)) throw new ConvexError(`Mise de 1 à ${DUEL_MAX_PACKS} boosters.`);
     await checkStake(ctx, u, stake);
     if (packsNow(u, Date.now()).balance < packs.length) throw new ConvexError(`Tu n’as pas ${packs.length} boosters en réserve.`);
