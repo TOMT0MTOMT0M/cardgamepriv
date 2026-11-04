@@ -75,11 +75,18 @@ describe('boosters', () => {
     expect(pack.themeId).toBe('gaming');
   });
 
-  test('thème encore sans cartes (Pop Culture) : refusé, rien débité', async () => {
+  test('Pop Culture Pack : 5 cartes Pop Culture (SPEC v5), une rare minimum', async () => {
     const { t, alice } = await setup();
-    for (const themeId of ['pop']) {
-      await expect(t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'theme', themeId })).rejects.toThrow();
-    }
+    const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'theme', themeId: 'pop' });
+    expect(pack.themeId).toBe('pop');
+    expect(pack.cards).toHaveLength(5);
+    expect(pack.cards.every((c) => c.themeId === 'pop' && c.cardId.startsWith('pop-'))).toBe(true);
+    expect(['rare', 'epic', 'legendary', 'mythic']).toContain(pack.cards[4].rarity);
+  });
+
+  test('thème inconnu : refusé, rien débité', async () => {
+    const { t, alice } = await setup();
+    await expect(t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'theme', themeId: 'nope' as never })).rejects.toThrow();
     expect((await t.query(api.users.me, { sessionToken: alice.token }))?.packBalance).toBe(5);
   });
 

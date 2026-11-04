@@ -55,7 +55,7 @@ export function shopPacks(): SheetPack[] {
       cards: [...THEMES.flatMap((t) => t.cards), ...BEBOU_THEME.cards],
     },
     theme('gaming', 'Jeux vidéo'),
-    theme('pop', 'Musique, cinéma, internet'),
+    theme('pop', 'Mangas, films, séries, musique'),
     theme('sport', 'Tous les sports'),
     theme('monde', 'La vie, tout simplement'),
   ];

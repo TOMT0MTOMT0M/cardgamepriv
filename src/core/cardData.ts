@@ -360,10 +360,10 @@ export function cardById(id: string): CardData {
       fit: 1,
     };
     if (e.art !== undefined) {
-      // Jeux vidéo / Monde V2 / Sport : le sous-thème tient lieu d'univers (« MARIO », « MAMMIFÈRES ») ; image pleine (jaquette,
+      // Jeux vidéo / Monde V2 / Sport / Pop Culture : le sous-thème tient lieu d'univers (« MARIO », « MAMMIFÈRES ») ; image pleine (jaquette,
       // photo) = bord à bord ; artwork = détouré ; rien de trouvé à la récolte = design typographique (art/jvTitle.ts)
       const fam = subthemeById(e.subthemeId)?.label ?? '';
-      Object.assign(cd, { universe: e.kind ? 'jv' : e.themeId === 'sport' ? 'sport' : 'monde', uniName: fam, jvKind: e.kind, typeLabel: e.label || undefined, year: e.year || undefined, seed: 20000 + hashId(e.id) });
+      Object.assign(cd, { universe: e.kind ? 'jv' : e.themeId === 'sport' ? 'sport' : e.themeId === 'pop' ? 'pop' : 'monde', uniName: fam, jvKind: e.kind, typeLabel: e.label || undefined, year: e.year || undefined, seed: 20000 + hashId(e.id) });
       if (!hasArt(e)) Object.assign(cd, { subject: 'jvtitle', image: undefined });
       else if (e.art === 'c') cd.cover = true;
       else cd.fit = 0.92;

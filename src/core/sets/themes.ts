@@ -26,6 +26,7 @@ import { CS, CS_CLASSES, CS_INFO, csCardId, csClass, csFile } from './cs';
 import { JV, JV_FAMILIES, JV_INFO } from './jeuxvideo';
 import { MONDE, MONDE_GROUPS, MONDE_SUBS } from './monde';
 import { SPORT, SPORT_GROUPS, SPORT_SIZE, SPORT_SUBS, type SportEntry } from './sport';
+import { POP, POP_GROUPS, POP_SIZE, POP_SUBS, type PopEntry } from './popculture';
 
 export type CatalogRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'secret';
 export type ThemeId = 'gaming' | 'pop' | 'sport' | 'monde' | 'bebous';
@@ -199,21 +200,31 @@ const sport: SubTheme[] = SPORT_SUBS.map((s) => ({
   size: SPORT_SIZE,
 }));
 
+// ── POP CULTURE PACK (17 471 cartes, SPEC-THEME-POP-CULTURE v5) : 856 sous-thèmes (franchises, œuvres ou pools :
+// « Naruto », « Star Wars », « Caméra Café », « Musique FR »…, imprimés en grand sur la carte), regroupés à l'affichage en
+// 7 blocs (Mangas & anime, Films, Séries TV, Dessins animés, Musique, Acteurs & actrices, YouTube). Les groupes reprennent
+// les ids des anciens sous-thèmes vides (films, series, anime, musique, youtubeurs ; « Marvel MCU » garde « marvel »).
+// Yu-Gi-Oh est une licence d'anime du bloc Mangas & anime (l'ancien sous-thème vide du Gaming est retiré).
+// Numéro = n° de l'Excel, sur 17 471. GÉNÉRÉ : scripts/make-pop.py.
+const popBySub: Map<string, PopEntry[]> = groupBy(POP, (e) => e.sub);
+const popCulture: SubTheme[] = POP_SUBS.map((s) => ({
+  ...sub(
+    'pop', s.id, s.label, s.code, 'art/pop',
+    (popBySub.get(s.id) ?? []).map((e) => ({ id: e.id, themeId: 'pop', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, art: e.art, label: e.label })),
+  ),
+  group: { id: s.group, label: POP_GROUPS[s.group] },
+  size: POP_SIZE,
+}));
+
 export const SUBTHEMES: SubTheme[] = [
   // GAMING
   ...pokemon,
   ...valorant,
-  sub('gaming', 'yugioh', 'Yu-Gi-Oh'),
   ...lol,
   ...cs,
   ...jeuxVideo,
   // POP CULTURE
-  sub('pop', 'films', 'Films'),
-  sub('pop', 'series', 'Séries'),
-  sub('pop', 'anime', 'Mangas / Anime'),
-  sub('pop', 'marvel', 'Marvel (MCU)'),
-  sub('pop', 'musique', 'Musique'),
-  sub('pop', 'youtubeurs', 'Youtubeurs'),
+  ...popCulture,
   // SPORT (sport + esport, un seul booster)
   ...sport,
   // WORLD (id « monde » conservé : identifiant stable)
