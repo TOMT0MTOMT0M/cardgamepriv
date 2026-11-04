@@ -152,6 +152,8 @@ export default function create(o?: WildOptions): WildExperiment {
   let transitioning = false;
   let dialogDone = false;
   let activating: Promise<void> | null = null;
+  /** éclairage Forward+ de la scène (le shell remet l'éclairage par défaut à chaque changement de scène : voir update) */
+  let clustered: ClusteredLighting | null = null;
   let startedAt = 0;
   let revealed = false;
   let elapsed = 0;
@@ -380,7 +382,7 @@ export default function create(o?: WildOptions): WildExperiment {
       activating = (async () => {
         // vraies lumières par particule (Forward+) — rendu au système d'éclairage d'avant au démontage
         const prevLighting = ctx.renderer.lighting;
-        const lighting = new ClusteredLighting(1024, 32, 24, 64);
+        const lighting = (clustered = new ClusteredLighting(1024, 32, 24, 64));
         ctx.renderer.lighting = lighting;
         ctx.bag.fn(() => {
           ctx.renderer.lighting = prevLighting;
@@ -404,6 +406,10 @@ export default function create(o?: WildOptions): WildExperiment {
     },
     update(dtFrame, t) {
       if (!active) return;
+      // CRASH du 4 nov. : shell.show() remet l'éclairage par défaut (applyRendererDefaults) → les ~480 PointLights
+      // passaient dans un seul shader « forward » (compilation géante → navigateur figé / GPU perdu, écran noir).
+      // On réimpose le Forward+ avant chaque rendu (simple comparaison, les pipelines compilés avec lui restent valides).
+      if (clustered && ctx.renderer.lighting !== clustered) ctx.renderer.lighting = clustered;
       if (!running) {
         post.render();
         return;
