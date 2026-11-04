@@ -1,4 +1,4 @@
-import { Quaternion, Vector3, type Object3D } from 'three/webgpu';
+import { Box3, Matrix4, Quaternion, Vector3, type Object3D } from 'three/webgpu';
 
 /**
  * Animation PROCÉDURALE d'un squelette de monstre « façon Konami » (os nommés WAIST, SPINE1-3, NECK, OPTION_00/01 (cou),
@@ -97,13 +97,21 @@ export function dragonPose(o: { t: number; rear: number; wing: number; flap: num
 }
 
 /**
- * Animation automatique pour les autres squelettes (modèles Cross Duel, Duel Links… : noms d'os variés, posés en T,
- * sans animation). Les rôles sont reconnus au NOM (suffixes numériques d'export retirés : « Neck_087 » → « neck ») :
- * bras, avant-bras, colonne, cou, tête, mâchoire, ailes, queue — et le côté à la POSITION (x > 0 = gauche du modèle,
- * qui regarde +Z). Trois gabarits :
- *  - humanoïde (magiciens, Exodia, Obelisk) : bras baissés, souffle, tête qui vit ;
- *  - dragon (cou à l'horizontale, queue) : cou dressé, tête vers l'avant, ailes qui battent, queue qui ondule ;
- *  - serpent (colonne longue à l'horizontale, comme Slifer) : le corps se dresse en S, cou et tête vers l'avant.
+ * Animation automatique pour les autres squelettes (modèles Cross Duel, Duel Links, Sketchfab : noms d'os variés, posés
+ * en T, sans animation). Les rôles sont reconnus au NOM (suffixes d'export retirés : « Neck_087 » → « neck »), le côté au
+ * préfixe (L_/left…) sinon à la position (x > 0 = gauche du modèle, qui regarde +Z).
+ *
+ * Méthode (voir le rapport « poses procédurales ») :
+ *  - les MEMBRES (bras, avant-bras, main, cuisse, jambe, pied) sont posés en DIRECTION ABSOLUE dans le repère du modèle
+ *    (+X = sa gauche, +Y = haut, +Z = devant) : le résultat ne dépend pas du repos (T-pose, A-pose, bras pendants) ;
+ *  - coude et genou : le plan de flexion est IMPOSÉ (le segment supérieur est tourné pour que sa charnière de repos
+ *    tombe dans le plan bras/avant-bras visé) — ils plient toujours du bon côté, jamais à l'envers ;
+ *  - le côté droit est le miroir du gauche (direction (−x, y, z) ; rotation (x, −y, −z) ; roulis −r), sauf réglage `.R` ;
+ *  - clavicule : suit 25 % de l'élévation du bras au-dessus de l'horizontale ;
+ *  - colonne, cou, queue : rotations autour des axes du MONDE, réparties sur les os de la chaîne ;
+ *  - tout autre os (doigts d'aile, jupe, capuche…) se règle par un morceau de son nom (`rot: { elbowwing: […] }`).
+ * Un modèle extrait d'un jeu a souvent un squelette PAR MAILLAGE (mêmes noms) : la pose est calculée sur le premier et
+ * recopiée sur les doublons.
  */
 type Role = 'arm' | 'forearm' | 'hand' | 'shoulder' | 'hips' | 'upleg' | 'leg' | 'foot' | 'spine' | 'neck' | 'head' | 'jaw' | 'wing' | 'tail';
 const ROLES: Array<[Role, RegExp]> = [
@@ -118,149 +126,333 @@ const ROLES: Array<[Role, RegExp]> = [
   ['spine', /^spine\d*$/],
   ['neck', /^neck\d*$/],
   ['head', /^head\d*$/],
-  ['jaw', /^(jaw|mouth|snakemouth)\d*$/],
+  ['jaw', /^(jaw|mouth|snakemouth|chin|downchin)\d*$/],
   ['wing', /^(l|r|left|right)_?wing0?1?$/],
   ['tail', /^tail\d*$/],
 ];
-const roleOf = (raw: string): Role | null => {
-  const n = raw.toLowerCase().replace(/_\d{2,4}$/, '');
+const clean = (raw: string) => raw.toLowerCase().replace(/_\d{2,4}$/, '');
+export const roleOf = (raw: string): Role | null => {
+  const n = clean(raw);
   for (const [r, re] of ROLES) if (re.test(n)) return r;
   return null;
 };
+/** nom sans côté ni suffixe : « L_ElbowRoll01 » → « elbowroll01 », « leftElbowWing_070 » → « elbowwing » */
+const bare = (raw: string) => clean(raw).replace(/^(left|right|l_|r_)/, '');
 
+type V3 = [number, number, number];
+type Limb = 'arm' | 'forearm' | 'hand' | 'upleg' | 'leg' | 'foot';
+type Sided<K extends string> = K | `${K}.L` | `${K}.R`;
 /**
- * Pose propre à un modèle (duelMonsters.ts → `pose`) : rotations autour des axes du MONDE (radians, [x, y, z]), par rôle
- * et par côté — `arm.L` / `arm.R` (L = gauche DU MODÈLE, x > 0), ou `arm` pour les deux en miroir (y et z inversés à
- * droite). Elles REMPLACENT la pose par défaut du gabarit ; le souffle et les balancements s'y ajoutent. Les chaînes
- * (colonne, cou, queue) répartissent la rotation sur leurs os.
+ * Pose propre à un modèle (duelMonsters.ts → `pose`), côté GAUCHE du modèle (le droit en miroir sauf clé `.R`) :
+ *  - `dir`  : direction visée de chaque membre (vecteur, normalisé ici), repère du modèle (+X sa gauche, +Y haut, +Z devant) ;
+ *  - `roll` : torsion du membre autour de son axe une fois orienté (radians) ;
+ *  - `rot`  : rotations autour des axes du MONDE [x, y, z] (radians ; x+ = pencher en avant / baisser, y+ = tourner vers
+ *    sa gauche, z+ = incliner vers sa droite… pour le côté gauche), par rôle (`spine`, `neck`, `head`, `hips`, `tail`,
+ *    `wing`, `shoulder`, `jaw`) ou par morceau de nom d'os (`elbowwing`, `skirt`…). Chaînes : réparties sur leurs os.
  */
-export type PoseTune = Partial<Record<`${Role}` | `${Role}.L` | `${Role}.R`, [number, number, number]>>;
+export interface PoseSpec {
+  dir?: Partial<Record<Sided<Limb>, V3>>;
+  roll?: Partial<Record<Sided<Limb>, number>>;
+  rot?: Record<string, V3>;
+}
+/** @deprecated ancien format */
+export type PoseTune = PoseSpec;
 
 export interface AutoPose {
   kind: 'humanoid' | 'dragon' | 'serpent';
   /** rise 0..1 : déploiement (invocation) ; mouth 0..1 ; life 0..1 (souffle, balancements) */
   apply(o: { t: number; rise: number; mouth: number; life: number }): void;
+  debug?(): unknown;
 }
 
-export function createAutoPose(root: Object3D, tune: PoseTune = {}): AutoPose | null {
+interface B {
+  o: Object3D;
+  name: string;
+  bare: string;
+  role: Role | null;
+  side: number;
+  depth: number;
+  rest: Quaternion;
+  /** direction de l'os (vers son enfant de chaîne), dans son repère local */
+  axis: Vector3 | null;
+  /** charnière de repos (coude / genou), repère local */
+  hinge: Vector3 | null;
+  order: number;
+  dups: Object3D[];
+}
+
+const CHAIN_CHILD: Partial<Record<Role, Role[]>> = {
+  arm: ['forearm'],
+  forearm: ['hand'],
+  upleg: ['leg'],
+  leg: ['foot'],
+};
+
+export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | null {
   root.updateMatrixWorld(true);
-  const pq = new Quaternion();
-  interface J extends Joint { role: Role; side: number; order: number; z: number; y: number }
-  const joints: J[] = [];
-  const byRole = new Map<Role, J[]>();
+  const rootInv = root.getWorldQuaternion(new Quaternion()).invert();
+  const rootM = root.matrixWorld.clone().invert();
+  const byName = new Map<string, B>();
+  const list: B[] = [];
+  const posOf = (o: Object3D) => o.getWorldPosition(new Vector3()).applyMatrix4(rootM);
+  const qOf = (o: Object3D) => rootInv.clone().multiply(o.getWorldQuaternion(new Quaternion()));
   root.traverse((o) => {
     if (!(o as unknown as { isBone?: boolean }).isBone) return;
     const name = String((o.userData as { rig?: string }).rig ?? o.name);
-    const role = roleOf(name);
-    if (!role) return;
-    if (o.parent) o.parent.getWorldQuaternion(pq);
-    else pq.identity();
-    const inv = pq.clone().invert();
-    const ax = (x: number, y: number, z: number) => new Vector3(x, y, z).applyQuaternion(inv).normalize();
-    const w = o.getWorldPosition(new Vector3());
-    const num = Number((name.toLowerCase().replace(/_\d{2,4}$/, '').match(/(\d+)$/) ?? [, '0'])[1]);
+    const had = byName.get(name);
+    if (had) {
+      // doublon IMBRIQUÉ sous l'os (nœud de pivot d'un export FBX, transformation nulle) : il suit déjà son parent,
+      // le tourner aussi doublerait la rotation → on le laisse au repos. Doublon PARALLÈLE (squelette par maillage) : copié.
+      let nested = false;
+      for (let q = o.parent; q && q !== root; q = q.parent) if (q === had.o) nested = true;
+      if (!nested) had.dups.push(o);
+      return;
+    }
     const lower = name.toLowerCase();
-    const side = /^(l|left)[_a-z]/.test(lower) ? 1 : /^(r|right)[_a-z]/.test(lower) ? -1 : Math.sign(w.x) || 1;
-    const j: J = { o, rest: o.quaternion.clone(), X: ax(1, 0, 0), Y: ax(0, 1, 0), Z: ax(0, 0, 1), role, side, order: num, z: w.z, y: w.y };
-    joints.push(j);
-    if (!byRole.has(role)) byRole.set(role, []);
-    byRole.get(role)!.push(j);
+    const w = posOf(o);
+    let depth = 0;
+    for (let q = o.parent; q && q !== root; q = q.parent) depth++;
+    const role = roleOf(name);
+    const b: B = {
+      o, name, bare: bare(name), role, depth,
+      side: /^(l_|left)/.test(lower) || /^l[A-Z]/.test(name) ? 1 : /^(r_|right)/.test(lower) || /^r[A-Z]/.test(name) ? -1 : Math.sign(w.x) || 1,
+      rest: o.quaternion.clone(), axis: null, hinge: null,
+      order: Number((clean(name).match(/(\d+)$/) ?? [, '0'])[1]), dups: [],
+    };
+    byName.set(name, b);
+    list.push(b);
   });
-  const has = (r: Role) => (byRole.get(r)?.length ?? 0) > 0;
-  if (!joints.length) return null;
+  if (!list.length) return null;
+  // centre du modèle : le côté « à la position » se juge par rapport au milieu des hanches/colonne, pas à x = 0
+  const mids = list.filter((b) => b.role === 'spine' || b.role === 'hips' || b.role === 'neck').map((b) => posOf(b.o).x);
+  // taille : étendue des os (pas de Box3 « précise » ici : elle touche aux matrices de skinning avant le 1er rendu)
+  const bb = new Box3();
+  for (const b of list) bb.expandByPoint(posOf(b.o));
+  const size = Math.max(1e-6, ...bb.getSize(new Vector3()).toArray());
+  const cx = mids.length ? mids.reduce((a, v) => a + v, 0) / mids.length : 0;
+  for (const b of list) {
+    const lower = b.name.toLowerCase();
+    if (/^(l_|left|r_|right)/.test(lower) || /^[lr][A-Z]/.test(b.name)) continue;
+    // os du plan de symétrie : pas de miroir (côté +1)
+    const dx = posOf(b.o).x - cx;
+    b.side = Math.abs(dx) < size * 0.01 ? 1 : Math.sign(dx);
+  }
+  const by = (r: Role) => list.filter((b) => b.role === r);
+  const has = (r: Role) => by(r).length > 0;
   const span = (r: Role, k: 'z' | 'y') => {
-    const v = byRole.get(r)?.map((j) => j[k]) ?? [];
+    const v = by(r).map((b) => posOf(b.o)[k]);
     return v.length ? Math.max(...v) - Math.min(...v) : 0;
   };
-  // (mesures relatives : l'échelle des modèles va de 0,05 à 20 unités) cou qui s'étire vers l'avant plutôt que vers le
-  // haut + une queue : bête à l'horizontale ; colonne bien plus longue que le cou : serpent
   const horizNeck = has('tail') && span('neck', 'z') > span('neck', 'y');
   const kind: AutoPose['kind'] = horizNeck && span('spine', 'z') > span('neck', 'z') * 1.5 ? 'serpent' : horizNeck ? 'dragon' : 'humanoid';
-  for (const r of ['spine', 'neck', 'tail'] as Role[]) byRole.get(r)?.sort((a, b) => a.order - b.order);
-  const tmp = new Quaternion(), acc = new Quaternion();
-  const set = (j: J, x: number, y: number, z: number) => {
-    acc.identity();
-    if (y) acc.multiply(tmp.setFromAxisAngle(j.Y, y));
-    if (x) acc.multiply(tmp.setFromAxisAngle(j.X, x));
-    if (z) acc.multiply(tmp.setFromAxisAngle(j.Z, z));
-    j.o.quaternion.copy(acc).multiply(j.rest);
+
+  // axes des membres : vers l'os enfant de chaîne (même côté) ; main / pied : vers le descendant le plus éloigné
+  const descendants = (o: Object3D) => {
+    const out: Object3D[] = [];
+    o.traverse((c) => { if (c !== o && (c as unknown as { isBone?: boolean }).isBone) out.push(c); });
+    return out;
   };
-  /** pose réglée pour ce rôle / ce côté, sinon `def` (déjà orientée côté gauche : miroir appliqué ici) */
-  const base = (j: J, def: [number, number, number]): [number, number, number] => {
-    const sideKey = `${j.role}.${j.side > 0 ? 'L' : 'R'}` as keyof PoseTune;
-    const own = tune[sideKey];
-    if (own) return own;
-    const both = tune[j.role as keyof PoseTune] ?? def;
-    return j.side > 0 ? both : [both[0], -both[1], -both[2]];
+  for (const b of list) {
+    if (!b.role || !['arm', 'forearm', 'hand', 'upleg', 'leg', 'foot'].includes(b.role)) continue;
+    const p0 = posOf(b.o);
+    const want = CHAIN_CHILD[b.role];
+    let tip: Vector3 | null = null;
+    const ds = descendants(b.o);
+    if (want) {
+      const c = ds.find((d) => roleOf(String((d.userData as { rig?: string }).rig ?? d.name)) === want[0]);
+      if (c) tip = posOf(c);
+    } else {
+      // main / pied : descendant le plus loin (hors arme), limité aux 3 premiers niveaux
+      let best = 0;
+      for (const d of ds) {
+        const n = String((d.userData as { rig?: string }).rig ?? d.name).toLowerCase();
+        if (/weapon|chain|armor|armour/.test(n)) continue;
+        const p = posOf(d);
+        const l = p.distanceTo(p0);
+        if (l > best) { best = l; tip = p; }
+      }
+    }
+    if (!tip || tip.distanceTo(p0) < 1e-6) continue;
+    const dirM = tip.clone().sub(p0).normalize();
+    const q = qOf(b.o);
+    const qi = q.clone().invert();
+    b.axis = dirM.clone().applyQuaternion(qi);
+    // charnière : coude = flexion vers l'avant, genou = vers l'arrière (repère du modèle)
+    if (b.role === 'arm' || b.role === 'upleg') {
+      const flex = new Vector3(0, 0, b.role === 'arm' ? 1 : -1);
+      const h = dirM.clone().cross(flex);
+      if (h.lengthSq() < 1e-4) h.set(b.side, 0, 0).cross(dirM); // os déjà dans l'axe avant/arrière
+      b.hinge = h.normalize().applyQuaternion(qi);
+    }
+  }
+
+  const sideKey = <K extends string>(b: B, k: K) => `${k}.${b.side > 0 ? 'L' : 'R'}`;
+  const dirFor = (b: B): Vector3 | null => {
+    const d = spec.dir as Record<string, V3> | undefined;
+    if (!d || !b.role) return null;
+    const own = d[sideKey(b, b.role)];
+    if (own) return new Vector3(...own).normalize();
+    const both = d[b.role];
+    if (!both) return null;
+    return new Vector3(b.side > 0 ? both[0] : -both[0], both[1], both[2]).normalize();
   };
-  const chainN = (r: Role) => byRole.get(r)?.length ?? 1;
+  const rollFor = (b: B): number => {
+    const r = spec.roll as Record<string, number> | undefined;
+    if (!r || !b.role) return 0;
+    const own = r[sideKey(b, b.role)];
+    if (own !== undefined) return own;
+    const both = r[b.role] ?? 0;
+    return b.side > 0 ? both : -both;
+  };
+  const rotKeys = Object.keys(spec.rot ?? {});
+  const rotFor = (b: B): V3 | null => {
+    const r = spec.rot;
+    if (!r) return null;
+    const pick = (k: string): V3 | null => {
+      const own = r[`${k}.${b.side > 0 ? 'L' : 'R'}`];
+      if (own) return own;
+      const both = r[k];
+      if (!both) return null;
+      return b.side > 0 ? both : [both[0], -both[1], -both[2]];
+    };
+    if (b.role) {
+      const v = pick(b.role);
+      if (v) return v;
+    }
+    // morceau de nom (le plus long qui correspond)
+    let best: string | null = null;
+    for (const k0 of rotKeys) {
+      const k = k0.replace(/\.(L|R)$/, '');
+      if (ROLE_NAMES.has(k)) continue;
+      // nom exact, chiffres de fin tolérés : « joint » → joint3…joint7, « wing03 » ≠ « fourthwing03 »
+      if (new RegExp(`^${k.toLowerCase()}\\d*$`).test(b.bare) && (!best || k.length > best.length)) best = k;
+    }
+    return best ? pick(best) : null;
+  };
+  const chainLen = (r: Role) => Math.max(1, by(r).length);
+
+  // ordre de traitement : parents d'abord
+  const sorted = [...list].sort((a, b) => a.depth - b.depth);
+  const posed = new Map<B, Quaternion>();
+  const cache = new Map<Object3D, Quaternion>();
+  /** orientation courante dans le repère du modèle (à partir des quaternions locaux) */
+  const rq = (o: Object3D | null): Quaternion => {
+    if (!o || o === root) return new Quaternion();
+    const c = cache.get(o);
+    if (c) return c;
+    const q = rq(o.parent).clone().multiply(o.quaternion).normalize();
+    cache.set(o, q);
+    return q;
+  };
+  const tq = new Quaternion(), tq2 = new Quaternion(), tv = new Vector3(), tv2 = new Vector3();
+  const AX = new Vector3(1, 0, 0), AY = new Vector3(0, 1, 0), AZ = new Vector3(0, 0, 1);
+  const worldRot = (x: number, y: number, z: number) => {
+    const q = new Quaternion();
+    if (y) q.multiply(tq.setFromAxisAngle(AY, y));
+    if (x) q.multiply(tq.setFromAxisAngle(AX, x));
+    if (z) q.multiply(tq.setFromAxisAngle(AZ, z));
+    return q;
+  };
+  /** applique une rotation (repère du modèle) à l'os, autour de son orientation COURANTE */
+  const turn = (b: B, D: Quaternion) => {
+    const pq = rq(b.o.parent);
+    const cur = pq.clone().multiply(b.o.quaternion);
+    const next = D.clone().normalize().multiply(cur).normalize();
+    b.o.quaternion.copy(pq.clone().invert().multiply(next).normalize());
+    cache.clear();
+  };
+  /** cadre orthonormé (a, b, a×b) → quaternion */
+  const frame = (a: Vector3, h: Vector3) => {
+    const x = a.clone().normalize();
+    const y = h.clone().sub(x.clone().multiplyScalar(h.dot(x))).normalize();
+    const z = x.clone().cross(y);
+    const m = new Matrix4().makeBasis(x, y, z);
+    return new Quaternion().setFromRotationMatrix(m);
+  };
+  // directions visées (avec souffle), pour lire le plan de flexion depuis le segment supérieur
+  const lowerOf = (b: B) => list.find((c) => c.role === CHAIN_CHILD[b.role!]![0] && c.side === b.side);
+
+  const pose = (t: number, mouth: number, life: number) => {
+    for (const b of list) b.o.quaternion.copy(b.rest);
+    cache.clear();
+    const br = Math.sin(t * 1.6) * life;
+    for (const b of sorted) {
+      const k = b.side;
+      // 1) rotations autour des axes du monde (rôles + noms)
+      let r = rotFor(b);
+      const life3: V3 = [0, 0, 0];
+      switch (b.role) {
+        case 'spine': life3[0] = br * 0.012; break;
+        case 'neck': life3[0] = Math.sin(t * 1.3) * 0.015 * life; life3[1] = Math.sin(t * 0.7) * 0.04 * life; break;
+        case 'head': life3[0] = Math.sin(t * 1.3 + 0.6) * 0.025 * life; life3[1] = Math.sin(t * 0.7 + 0.4) * 0.05 * life; break;
+        case 'tail': life3[1] = Math.sin(t * 0.9 - b.order * 0.55) * 0.05 * life; break;
+        case 'wing': life3[2] = -k * Math.sin(t * 1.8) * 0.06 * life; break;
+        case 'jaw': r = [(r?.[0] ?? 0) + 0.4 * mouth, r?.[1] ?? 0, r?.[2] ?? 0]; break;
+      }
+      if (r || life3[0] || life3[1] || life3[2]) {
+        const n = b.role === 'spine' || b.role === 'neck' || b.role === 'tail' ? chainLen(b.role) : 1;
+        const v = r ?? [0, 0, 0];
+        turn(b, worldRot(v[0] / n + life3[0], v[1] / n + life3[1], v[2] / n + life3[2]));
+      }
+      // 2) clavicule : suit l'élévation du bras
+      if (b.role === 'shoulder') {
+        const arm = list.find((c) => c.role === 'arm' && c.side === k);
+        const ad = arm && dirFor(arm);
+        if (ad && ad.y > 0) turn(b, tq2.setFromAxisAngle(AZ, k * Math.asin(Math.min(1, ad.y)) * 0.25).clone());
+      }
+      // 3) membres en direction absolue
+      const target = dirFor(b);
+      if (target && b.axis) {
+        if (b.role === 'arm' || b.role === 'forearm' || b.role === 'upleg' || b.role === 'leg') {
+          // petit balancement de vie sur les bras
+          if (b.role === 'arm') target.add(tv2.set(0, 0, Math.sin(t * 1.1 + k) * 0.03 * life)).normalize();
+        }
+        const cur = rq(b.o.parent).clone().multiply(b.o.quaternion);
+        const curDir = b.axis.clone().applyQuaternion(cur);
+        let D: Quaternion;
+        const low = (b.role === 'arm' || b.role === 'upleg') && b.hinge ? lowerOf(b) : undefined;
+        const lowT = low ? dirFor(low) : null;
+        const plane = lowT ? target.clone().cross(lowT) : null;
+        if (plane && plane.lengthSq() > 0.004 && b.hinge) {
+          // plan de flexion imposé : charnière courante → normale du plan (segment, segment suivant)
+          const curH = b.hinge.clone().applyQuaternion(cur);
+          const from = frame(curDir, curH);
+          const to = frame(target, plane.normalize());
+          D = to.multiply(from.invert());
+        } else {
+          D = new Quaternion().setFromUnitVectors(curDir, target);
+        }
+        const roll = rollFor(b);
+        if (roll) D.premultiply(tq2.setFromAxisAngle(target, roll));
+        turn(b, D);
+      } else if (b.role && b.axis && rollFor(b)) {
+        const cur = rq(b.o.parent).clone().multiply(b.o.quaternion);
+        turn(b, new Quaternion().setFromAxisAngle(b.axis.clone().applyQuaternion(cur).normalize(), rollFor(b)));
+      }
+    }
+    for (const b of list) posed.set(b, b.o.quaternion.clone());
+  };
+  void tv;
   return {
     kind,
+    debug() {
+      cache.clear();
+      return list.filter((b) => b.axis || Number.isNaN(b.o.quaternion.x)).map((b) => {
+        const cur = rq(b.o.parent).clone().multiply(b.o.quaternion);
+        const d = b.axis ? b.axis.clone().applyQuaternion(cur) : null;
+        const tg = dirFor(b);
+        return { n: b.name, side: b.side, nan: Number.isNaN(b.o.quaternion.x), act: d?.toArray().map((x) => +x.toFixed(2)), want: tg?.toArray().map((x) => +x.toFixed(2)) };
+      });
+    },
     apply({ t, rise, mouth, life }) {
-      const br = Math.sin(t * 1.6) * life;
-      for (const j of joints) {
-        const k = j.side;
-        let b: [number, number, number];
-        switch (j.role) {
-          case 'arm':
-            b = base(j, [0, 0, -(kind === 'humanoid' ? 1.15 : 0.9)]);
-            set(j, b[0] + Math.sin(t * 1.1 + k) * 0.04 * life, b[1], b[2] - k * Math.sin(t * 1.3 + k) * 0.03 * life);
-            break;
-          case 'forearm':
-            b = base(j, [0, -0.25, -0.1]);
-            set(j, b[0], b[1], b[2]);
-            break;
-          case 'hand':
-          case 'shoulder':
-          case 'hips':
-          case 'upleg':
-          case 'leg':
-          case 'foot':
-            b = base(j, [0, 0, 0]);
-            if (b[0] || b[1] || b[2]) set(j, b[0] * rise, b[1] * rise, b[2] * rise);
-            break;
-          case 'spine': {
-            const list = byRole.get('spine')!;
-            const i = list.indexOf(j);
-            const n = list.length;
-            if (kind === 'serpent' && !tune.spine) {
-              const f = (i + 1) / n;
-              set(j, -0.24 * f * rise + Math.sin(t * 1.2 - i * 0.6) * 0.025 * life, Math.sin(t * 0.8 - i * 0.5) * 0.05 * life, 0);
-            } else {
-              b = base(j, [kind === 'dragon' && i === n - 1 ? -0.12 : 0, 0, 0]);
-              const f = tune.spine ? 1 / n : 1;
-              set(j, b[0] * f * rise + br * 0.015, b[1] * f * rise, b[2] * f * rise);
-            }
-            break;
-          }
-          case 'neck': {
-            const n = chainN('neck');
-            b = base(j, [kind === 'dragon' ? -0.85 : kind === 'serpent' ? 0.12 : 0, 0, 0]);
-            set(j, (b[0] * rise) / n + Math.sin(t * 1.3) * 0.02 * life, (b[1] * rise) / n + (Math.sin(t * 0.7) * 0.06 * life) / n, (b[2] * rise) / n);
-            break;
-          }
-          case 'head':
-            b = base(j, [kind === 'dragon' ? 0.55 : kind === 'serpent' ? 0.35 : 0, 0, 0]);
-            set(j, b[0] * rise + Math.sin(t * 1.3 + 0.6) * 0.03 * life, b[1] * rise + Math.sin(t * 0.7 + 0.4) * 0.06 * life, b[2] * rise);
-            break;
-          case 'jaw':
-            set(j, 0.4 * mouth, 0, 0);
-            break;
-          case 'wing':
-            // ailes : repliées au départ, s'ouvrent à l'invocation, puis battent doucement
-            b = base(j, [0, 0, 0.18]);
-            set(j, b[0] * rise, b[1] * rise, k * (b[2] * k * rise + (rise - 1) * 0.5 + Math.sin(t * 1.8) * 0.08 * life));
-            break;
-          case 'tail': {
-            const list = byRole.get('tail')!;
-            const i = list.indexOf(j);
-            b = base(j, [0, 0, 0]);
-            const n = list.length;
-            set(j, (b[0] * rise) / n + Math.sin(t * 1.1 - i * 0.5) * 0.03 * life, (b[1] * rise) / n + Math.sin(t * 0.9 - i * 0.55) * 0.08 * life, 0);
-            break;
-          }
-        }
+      pose(t, mouth, life);
+      for (const b of list) {
+        const q = posed.get(b)!;
+        if (rise < 1) q.copy(b.rest.clone().slerp(q, Math.max(0, rise)));
+        b.o.quaternion.copy(q);
+        for (const d of b.dups) d.quaternion.copy(q);
       }
     },
   };
 }
+const ROLE_NAMES = new Set(ROLES.map(([r]) => r as string));
