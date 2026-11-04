@@ -3,7 +3,7 @@ import '@fontsource-variable/fraunces/opsz.css';
 import '@fontsource-variable/fraunces/wght-italic.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
-import { CARDS, IMAGE_PALETTE, cardForRarity, type CardData } from '../cardData';
+import { CARDS, IMAGE_PALETTE, cardForRarity, isSecretPhotoSet, type CardData } from '../cardData';
 import { RARITIES, rarity as getRarity, starCount, type RarityId } from '../rarity';
 import { rng } from '../ease';
 import { makeCanvas, releaseCanvas, type Ctx } from './canvas';
@@ -212,7 +212,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   const r = rng(card.seed);
   const release = !!o.release;
   // les cartes Bébous ont leur propre gabarit (sceau des huit), sauf si une expérience impose un design
-  const dz = o.design ? resolveDesign(o.design) : card.set === 'bebous' ? bebou : resolveDesign();
+  const dz = o.design ? resolveDesign(o.design) : isSecretPhotoSet(card.set) ? bebou : resolveDesign();
 
   const bg = makeCanvas(W, H), subj = makeCanvas(W, H), fg = makeCanvas(W, H), fx = makeCanvas(W, H);
   const frame = makeCanvas(W, H), masks = makeCanvas(W, H);

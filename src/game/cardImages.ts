@@ -1,6 +1,6 @@
 import { ensureCardFonts, generateCardArt, releaseCardImage } from '../core/art';
 import { loadCardImage } from '../core/art/images';
-import { cardById } from '../core/cardData';
+import { cardById, isSecretPhotoSet } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
 import { catalogEntry, hasArt, numberingSize, subthemeById, thumbPath } from '../core/sets/themes';
 import { siteUrl } from '../core/siteRoot';
@@ -136,7 +136,7 @@ async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnTy
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre
   await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, { key: !(cd.photo || cd.cover) }).catch(() => undefined) : undefined]);
   await new Promise<void>((r) => idle(() => r()));
-  const art = generateCardArt(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, ...(cd.set === 'bebous' ? {} : { design: 'full-art' }) });
+  const art = generateCardArt(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, ...(isSecretPhotoSet(cd.set) ? {} : { design: 'full-art' }) });
   const blob = await new Promise<Blob | null>((r) => art.canvases.flat.toBlob(r, 'image/webp', 0.86));
   art.dispose();
   // la mémoire d'un canvas n'est rendue qu'au ramasse-miettes… sauf si on le vide (iOS plafonne le total : PERF1-01)

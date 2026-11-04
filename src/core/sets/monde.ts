@@ -127,7 +127,7 @@ const RAW: Array<[number, string, string, keyof typeof R, number, string, '' | '
   [1, "ard-myrtilles-sauvages-au-peigne", "Myrtilles sauvages au peigne", 'l', 5, "033-myrtilles-sauvages-au-peigne.png", "c", "Gastronomie ardéchoise"],
   [1, "ard-sanglier-des-cevennes", "Sanglier des Cévennes", 'l', 5, "034-sanglier-des-cevennes.png", "c", "Culture & Private Joke"],
   [1, "ard-canoe-bidon-jaune-dans-les-gorges", "Canoë & Bidon Jaune dans les Gorges", 'l', 5, "035-canoe-bidon-jaune-dans-les-gorges.png", "i", "Site naturel d’exception"],
-  [1, "ard-citroen-c15-des-cevennes", "Citroën C15 des Cévennes", 'm', 5, "005-citroen-c15-des-cevennes.png", "c", ""],
+  [1, "ard-citroen-c15-des-cevennes", "Citroën C15 des Cévennes", 'm', 5, "005-citroen-c15-des-cevennes-v2.jpg", "c", ""],
   [2, "geo-pays-etats-unis", "Pays : États-Unis", 'm', 1, "142-pays-etats-unis.png", "c", "Pays souverain"],
   [2, "geo-pays-turquie", "Pays : Turquie", 'm', 1, "140-pays-turquie.png", "c", "Pays souverain"],
   [2, "geo-pays-russie", "Pays : Russie", 'm', 1, "143-pays-russie.png", "c", "Pays souverain"],

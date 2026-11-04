@@ -101,7 +101,7 @@ export const bebou: CardDesign = {
     f.restore();
     f.font = `500 16px ${FONT_MONO}`;
     f.fillStyle = alpha(C.light, 0.8);
-    spaced(f, `LES BÉBOUS · ${String(card.num).padStart(2, '0')}/${String(size).padStart(2, '0')}`, W / 2, 1018, 4, 'center');
+    spaced(f, `${card.set === 'kcdq' ? 'KCDQ' : 'LES BÉBOUS'} · ${String(card.num).padStart(2, '0')}/${String(size).padStart(2, '0')}`, W / 2, 1018, 4, 'center');
     grainAtop(f, card.seed, 0.07, 24);
 
     // ── masques (composite 'lighter')

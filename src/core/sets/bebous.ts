@@ -43,3 +43,30 @@ export const bebouCardId = (e: BebouEntry) => `bebou-${e.slug.replace(/^bebou-/,
 
 /** Nom du fichier photo (relatif à `BEBOUS_INFO.artDir`). */
 export const bebouFile = (e: BebouEntry) => `${e.slug}.png`;
+
+// ═══════════════════════════════════════════════════════════════════ KCDQ
+/**
+ * Cartes spéciales « KCDQ » — à la Bébou : une photo, un prénom, rareté SECRÈTE, même gabarit (sceau, filet or rose),
+ * mêmes règles de tirage (uniquement dans le bébou pack, avec les Bébous). Album à part dans la collection.
+ *
+ * Ajouter une carte : une ligne [num, slug, nom, fichier] ci-dessous + la photo dans public/art/kcdq/ (et sa miniature
+ * WebP dans public/art/kcdq/thumbs/, ≤ 256 px). Le `slug` est l'identifiant stable : ne plus le changer ensuite.
+ * Photo classique (fond opaque) → pleine carte ; format portrait 3:4 (ex. 1200×1600), sujet au centre.
+ */
+export const KCDQ_INFO = { id: 'kcdq', label: 'KCDQ (secret)', code: 'KCDQ', artDir: 'art/kcdq' } as const;
+
+export interface KcdqEntry {
+  num: number;
+  slug: string;
+  name: string;
+  file: string;
+}
+
+const KCDQ_RAW: Array<[number, string, string, string]> = [
+  [1, 'enzo', 'Enzo', 'kcdq-enzo.jpg'],
+];
+
+export const KCDQ: KcdqEntry[] = KCDQ_RAW.map(([num, slug, name, file]) => ({ num, slug, name, file }));
+
+/** Identifiant de carte stable. */
+export const kcdqCardId = (e: KcdqEntry) => `kcdq-${e.slug}`;

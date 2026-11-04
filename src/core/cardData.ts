@@ -2,7 +2,7 @@ import type { RarityId } from './rarity';
 import { siteUrl } from './siteRoot';
 import type { UniverseId } from './universes';
 import { POKEMON_151, POKEMON_151_INFO, pokemonCardId, pokemonFile, pokemonGen } from './sets/pokemon151';
-import { BEBOUS, BEBOUS_INFO, bebouCardId, bebouFile } from './sets/bebous';
+import { BEBOUS, BEBOUS_INFO, KCDQ, KCDQ_INFO, bebouCardId, bebouFile, kcdqCardId } from './sets/bebous';
 import { VALORANT, VALORANT_INFO, valorantCardId, valorantClass, valorantFile } from './sets/valorant';
 import { LOL, LOL_INFO, lolCardId, lolFile, lolIsChampion } from './sets/lol';
 import { lolLine } from './sets/lolLines';
@@ -12,7 +12,7 @@ import { artPath, catalogEntry, hasArt, subthemeById } from './sets/themes';
 /** `image` = illustration bitmap (champ `image`), les autres sont peints procéduralement (art/subjects.ts). */
 export type SubjectKind = 'monolith' | 'moth' | 'sigil' | 'tower' | 'serpent' | 'bloom' | 'eye' | 'stag' | 'image' | 'jvtitle';
 
-export type CardSetId = 'lab' | 'pokemon151' | 'valorant' | 'lol' | 'cs' | 'bebous';
+export type CardSetId = 'lab' | 'pokemon151' | 'valorant' | 'lol' | 'cs' | 'bebous' | 'kcdq';
 
 export interface CardPalette {
   /** papier / carton du cadre */
@@ -232,6 +232,26 @@ export const BEBOU_CARDS: CardData[] = BEBOUS.map((e) => ({
   photo: true,
 }));
 
+/** Cartes spéciales KCDQ : comme les Bébous (photo, rareté secrète, gabarit « bebou »), code « KCDQ ». */
+export const KCDQ_CARDS: CardData[] = KCDQ.map((e) => ({
+  id: kcdqCardId(e),
+  num: e.num,
+  name: e.name,
+  epithet: 'KCDQ',
+  element: '',
+  universe: 'bebous',
+  subject: 'image',
+  seed: 9000 + e.num * 131,
+  rarity: 'secret',
+  palette: IMAGE_PALETTE,
+  set: 'kcdq',
+  image: siteUrl(`${KCDQ_INFO.artDir}/${e.file}`),
+  photo: true,
+}));
+
+/** Sets au gabarit « bebou » (cartes secrètes du groupe). */
+export const isSecretPhotoSet = (set: string | undefined) => set === 'bebous' || set === 'kcdq';
+
 export interface CardSet {
   id: CardSetId;
   label: string;
@@ -249,6 +269,7 @@ export const CARD_SETS: Record<CardSetId, CardSet> = {
   cs: { id: 'cs', label: CS_INFO.label, code: CS_INFO.code, size: CS_INFO.size, get cards() { return csCards(); } },
   lab: { id: 'lab', label: 'Lab (procédural)', code: SET_CODE, size: SET_SIZE, cards: LAB_CARDS },
   bebous: { id: 'bebous', label: BEBOUS_INFO.label, code: BEBOUS_INFO.code, size: BEBOUS_INFO.size, cards: BEBOU_CARDS },
+  kcdq: { id: 'kcdq', label: KCDQ_INFO.label, code: KCDQ_INFO.code, size: KCDQ.length, cards: KCDQ_CARDS },
 };
 
 export const DEFAULT_SET: CardSetId = 'pokemon151';

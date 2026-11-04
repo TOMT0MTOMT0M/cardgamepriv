@@ -18,7 +18,7 @@
  *     pack, la collection, les échanges et le serveur suivent seuls.
  */
 import { POKEMON_151, POKEMON_151_INFO, POKEMON_GENS, pokemonCardId, pokemonFile, pokemonGen } from './pokemon151';
-import { BEBOUS, BEBOUS_INFO, bebouCardId, bebouFile } from './bebous';
+import { BEBOUS, BEBOUS_INFO, KCDQ, KCDQ_INFO, bebouCardId, bebouFile, kcdqCardId } from './bebous';
 import { VALORANT, VALORANT_CLASSES, VALORANT_INFO, valorantCardId, valorantClass, valorantFile } from './valorant';
 import { LOL, LOL_INFO, lolCardId, lolFile } from './lol';
 import { LOL_LINES, lolLine } from './lolLines';
@@ -236,6 +236,12 @@ const bebousSub = sub(
   BEBOUS.map((e) => ({ id: bebouCardId(e), themeId: 'bebous', subthemeId: 'bebous', num: e.num, name: e.nickname, rarity: 'secret', file: bebouFile(e) })),
 );
 
+// KCDQ : cartes spéciales « à la Bébou » (secrètes, bébou pack uniquement), leur propre album
+const kcdqSub = sub(
+  'bebous', KCDQ_INFO.id, 'KCDQ', KCDQ_INFO.code, KCDQ_INFO.artDir,
+  KCDQ.map((e) => ({ id: kcdqCardId(e), themeId: 'bebous', subthemeId: KCDQ_INFO.id, num: e.num, name: e.name, rarity: 'secret', file: e.file })),
+);
+
 function theme(id: ThemeId, label: string, booster: string, style: BoosterStyle, subs: SubTheme[], secret?: true): ThemeInfo {
   return { id, label, booster, style, subthemes: subs, cards: subs.flatMap((s) => s.cards), ...(secret ? { secret } : {}) };
 }
@@ -250,8 +256,8 @@ export const THEMES: ThemeInfo[] = [
   theme('monde', 'World', 'WORLD PACK', { ground: '#0c1118', ground2: '#16314a', ink: '#eaf4ff', foil: '#a9c7e8', accent: '#4c9be0' }, subsOf('monde')),
 ];
 
-/** Le thème secret (8 cartes Bébous) : hors boutique, uniquement dans le bébou pack. */
-export const BEBOU_THEME: ThemeInfo = theme('bebous', 'Les Bébous', 'LES BÉBOUS', { ground: '#120607', ground2: '#3d1714', ink: '#ffe4d8', foil: '#e8927c', accent: '#f2c46d' }, [bebousSub], true);
+/** Le thème secret (les 8 Bébous + les cartes KCDQ) : hors boutique, uniquement dans le bébou pack. */
+export const BEBOU_THEME: ThemeInfo = theme('bebous', 'Les Bébous', 'LES BÉBOUS', { ground: '#120607', ground2: '#3d1714', ink: '#ffe4d8', foil: '#e8927c', accent: '#f2c46d' }, [bebousSub, kcdqSub], true);
 
 /** Tous les thèmes, Bébous compris (collection, recherche par id). */
 export const ALL_THEMES: ThemeInfo[] = [...THEMES, BEBOU_THEME];

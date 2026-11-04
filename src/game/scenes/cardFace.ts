@@ -2,7 +2,7 @@ import { clamp, color, cos, float, floor, mix, positionLocal, sin, step, time, u
 import type { Material } from 'three/webgpu';
 import { generateBackArt, generateCardArt, generateCardArtAsync, starColor, type ArtOptions, type CardArt } from '../../core/art';
 import { DEFAULT_BACK, type BackStyle } from '../../core/art/back';
-import type { CardData } from '../../core/cardData';
+import { isSecretPhotoSet, type CardData } from '../../core/cardData';
 import type { RarityId } from '../../core/rarity';
 import { catalogEntry, themeById } from '../../core/sets/themes';
 import { createHoloMaterial, holoFx, setHoloReduced } from '../../core/holo';
@@ -82,7 +82,7 @@ function gameArtOptions(cd: CardData, scale: number): ArtOptions {
   // (téléphone : anisotropie 4 au lieu de 8 — cartes vues presque de face)
   const base: ArtOptions = { scale, noFlat: true, release: true, ...(faceLite ? { anisotropy: 4 } : {}) };
   if (cd.id.startsWith('mrv-')) return { ...base, design: 'classic' };
-  return cd.set === 'bebous' ? base : { ...base, design: 'full-art' };
+  return isSecretPhotoSet(cd.set) ? base : { ...base, design: 'full-art' };
 }
 
 /**

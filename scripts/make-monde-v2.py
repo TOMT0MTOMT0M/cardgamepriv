@@ -57,8 +57,10 @@ PATCHES = ['Patch-monde-V7.xlsx']
 PATCH_CHECK = {'Patch-monde-V7.xlsx': {'count': 5342, 'stars': {1: 1652, 2: 1267, 3: 1101, 4: 606, 5: 496, 6: 220}, 'subs': {'Monster': 60, 'Red Bull': 48}}}
 OLD = {'lieux': ('geo', 'lieux'), 'animaux': ('zoo', 'animaux'), 'nourriture': ('miam', 'nourriture'), 'voitures': ('auto', 'voitures'),
        'ardeche': ('ard', 'ardeche'), 'merveilles': ('mrv', 'merveilles')}
+# illustrations V1 remplacées (nouveau nom : le cache des cartes peintes, indexé par le fichier, est ainsi renouvelé)
+FILE_OVERRIDE = {'ard-citroen-c15-des-cevennes': '005-citroen-c15-des-cevennes-v2.jpg'}  # photo du vrai C15 (04/11)
 PREFIX = {'lieux': 'geo', 'animaux': 'zoo', 'nourriture': 'miam', 'voitures': 'auto', 'ardeche': 'ard', 'merveilles': 'mrv'}
-TAKEN_SUB_IDS = {'pokemon', 'valorant', 'yugioh', 'lol', 'cs', 'films', 'series', 'anime', 'marvel', 'musique', 'youtubeurs', 'sport', 'esport', 'bebous',
+TAKEN_SUB_IDS = {'pokemon', 'valorant', 'yugioh', 'lol', 'cs', 'films', 'series', 'anime', 'marvel', 'musique', 'youtubeurs', 'sport', 'esport', 'bebous', 'kcdq',
                  'lieux', 'animaux', 'nourriture', 'voitures'}
 
 
@@ -91,7 +93,8 @@ def read_v1():
                 if not m:
                     continue
                 num, sl, nm = int(m.group(1)), m.group(3), m.group(5).replace("\\'", "'").replace('\\"', '"')
-                out.append({'group': grp, 'id': f'{prefix}-{sl}', 'name': nm, 'dir': f'art/{name}', 'file': f'{num:03d}-{sl}.png', 'r': m.group(6)})
+                cid = f'{prefix}-{sl}'
+                out.append({'group': grp, 'id': cid, 'name': nm, 'dir': f'art/{name}', 'file': FILE_OVERRIDE.get(cid, f'{num:03d}-{sl}.png'), 'r': m.group(6)})
     return out
 
 
