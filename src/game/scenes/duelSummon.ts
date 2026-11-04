@@ -514,6 +514,9 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
         const mesh = o as Mesh;
         if (!mesh.isMesh) return;
         mesh.frustumCulled = false;
+        // pièces à masquer (Blue-Eyes : les globes oculaires, qui ressortaient de la gueule une fois le cou dressé)
+        const mn = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material)?.name ?? '';
+        if (M.hide?.test(mn) || M.hide?.test(mesh.name)) mesh.visible = false;
         const old = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as GlbMat[];
         const mats = old.map(convert);
         mesh.material = mats.length === 1 ? mats[0] : mats;
@@ -551,7 +554,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
 
   // ───────────────────────────────────────────── texte
   function showTitle() {
-    const name = opts.card.name;
+    const name = M.fr ?? opts.card.name; // nom français de la carte (retour de Tom)
     let i = 0;
     const letters = name.toUpperCase().split(' ').map((w) => `<b>${[...w].map((ch) => `<span style="transition-delay:${(0.25 + i++ * 0.035).toFixed(3)}s">${ch.replace(/[&<>"]/g, '')}</span>`).join('')}</b>`).join(' ');
     textEl.innerHTML = `<div class="dz-kicker">invocation · 6★ mythique</div><div class="dz-name">${letters}</div><div class="dz-sub">${(opts.card.uniName ?? 'Yu-Gi-Oh').replace(/[&<>"]/g, '')}</div>`;
@@ -841,8 +844,12 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       camPos.set(0, Y0 + (0.78 - Y0) * e1 + Math.sin(Math.PI * S.cam) * 0.15, D0 + (LAND.z + d1 - D0) * e1);
       camLook.set(0, Y0 + (0.02 - Y0) * e1, LAND.z * e1 - 0.15 * e1);
       // temps 2 → 3
-      camPos.lerp(proj.set(-off + Math.sin(orbit + pose.y) * R, 0.3 + S.push * 0.04 - pose.x * 0.2, LAND.z + Math.cos(orbit + pose.y) * R), e2);
-      camLook.lerp(proj.set(-off, H * (portrait ? 0.42 : 0.5) * (rig || auto ? 1.1 : 1) * (0.8 + 0.2 * S.rise), LAND.z - 0.12), e2);
+      // (retour de Tom) vue PAR-DESSUS : même inclinaison que l'ancienne contre-plongée, inversée — la caméra est aussi
+      // haut au-dessus du point visé qu'elle était en dessous (le terrain se voit, le monstre domine toujours le cadre)
+      const lookY = H * (portrait ? 0.42 : 0.5) * (rig || auto ? 1.1 : 1) * (0.8 + 0.2 * S.rise);
+      const lowY = 0.3 + S.push * 0.04;
+      camPos.lerp(proj.set(-off + Math.sin(orbit + pose.y) * R, 2 * lookY - lowY + pose.x * 0.2, LAND.z + Math.cos(orbit + pose.y) * R), e2);
+      camLook.lerp(proj.set(-off, lookY, LAND.z - 0.12), e2);
       const fov = 30 + (fov1 - 30) * e1;
       const sx = shake.value * 0.0035;
       stage.camera.position.set(camPos.x + sx, camPos.y + shake.value * 0.002, camPos.z);
