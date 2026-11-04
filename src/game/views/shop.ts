@@ -312,8 +312,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       b.classList.toggle('on', b.dataset.key === k);
       b.setAttribute('aria-selected', String(b.dataset.key === k));
     });
-    // téléphone : la pochette choisie revient au centre du carrousel
-    if (o.scroll !== false) sleeveOf(k)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    // téléphone : la pochette choisie revient en tête du carrousel (rangée calée à gauche, retours de Tom du 4 nov.)
+    if (o.scroll !== false) sleeveOf(k)?.scrollIntoView({ block: 'nearest', inline: 'start', behavior: 'smooth' });
     // (audit UX2-09) booster déjà tiré d'un autre type : la scène 3D le garde (plus d'aller-retour du booster derrière la fiche)
     const sp = backend.state.sealed;
     if (sp && keyOf(sp) !== k) {
@@ -330,13 +330,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   let scrollT = 0;
   const pickCentered = () => {
     if (mode !== 'pick' || rowEl.scrollWidth <= rowEl.clientWidth + 4 || backend.state.sealed) return;
+    // (rangée calée à gauche : la pochette choisie est celle qui s'arrête contre le bord, là où s'aimante le défilement)
     const r = rowEl.getBoundingClientRect();
-    const mid = r.left + r.width / 2;
+    const edge = r.left + (parseFloat(getComputedStyle(rowEl).scrollPaddingLeft) || 0);
     let best: HTMLElement | null = null;
     let bd = Infinity;
     for (const b of rowEl.querySelectorAll<HTMLElement>('.sleeve')) {
       const br = b.getBoundingClientRect();
-      const d = Math.abs(br.left + br.width / 2 - mid);
+      const d = Math.abs(br.left - edge);
       if (d < bd) (bd = d), (best = b);
     }
     const k = best?.dataset.key;
@@ -1036,8 +1037,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       shell.show('opening');
       requestAnimationFrame(placeFocus);
       select(selected, { scroll: false });
-      // téléphone (carrousel) : la pochette choisie au centre, sans animation
-      requestAnimationFrame(() => sleeveOf(selected)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'instant' as ScrollBehavior }));
+      // téléphone (carrousel) : la pochette choisie en tête de rangée, sans animation
+      requestAnimationFrame(() => sleeveOf(selected)?.scrollIntoView({ block: 'nearest', inline: 'start', behavior: 'instant' as ScrollBehavior }));
       syncState();
       // lien direct vers une fiche (missions « Go », #/boutique/bebou)
       if (sub && list.some((b) => b.key === sub)) sheet.open(sub);

@@ -2478,3 +2478,52 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
 .am-ref-stats { margin: 6px 0 0; }
 .am-ref-stats b { color: var(--ink); }
 .am-ref-row small { color: var(--ink-3); }
+
+/* ==== EN-TÊTE TÉLÉPHONE SUR UNE LIGNE + MENU DU PROFIL (retours de Tom, 4 nov.) ====
+   Plus de logo : réserve, pièces, pity et avatar sur la même rangée ; missions, connexion et son dans le menu qui
+   s'ouvre en touchant l'avatar (main.ts, layoutMenu). Sur ordinateur, rien ne change (menu caché, labels cachés). */
+.me-menu, .mm-l, .me .u-dot { display: none; }
+@media (max-width: 600px) {
+  :root { --top: 96px; }
+  .logo { display: none; }
+  .me-st { order: 1; width: auto; flex: 1 1 auto; min-width: 0; gap: 6px; }
+  .me-st .msn-btn { margin-left: 0; }
+  .me-id { order: 2; margin-left: 0; position: relative; }
+  .me .pt-cnt { margin-left: auto; }
+  .me .user { position: relative; }
+  .me .u-dot { display: block; position: absolute; top: 3px; right: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--bg), 0 0 10px var(--gold); }
+  .me .u-dot[hidden] { display: none; }
+  .me .user[aria-expanded='true'] { box-shadow: 0 0 0 2px var(--rose); border-radius: 50%; }
+
+  /* le menu */
+  .me-menu { display: flex; flex-direction: column; gap: 4px; position: fixed; z-index: 26; top: calc(var(--top) + env(safe-area-inset-top) - 40px); right: max(8px, env(safe-area-inset-right)); width: min(300px, calc(100vw - 16px)); padding: 10px; border-radius: 18px; background: var(--panel-solid); border: 1px solid var(--line-2); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.95); opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top right; visibility: hidden; pointer-events: none; transition: opacity 0.2s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.25s; }
+  .me-menu.on { opacity: 1; transform: none; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+  .mm-prof { display: flex; align-items: center; gap: 10px; padding: 6px 8px 10px; margin-bottom: 2px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+  .mm-prof img, .mm-prof .ava { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex: none; display: grid; place-items: center; }
+  .mm-prof span { display: flex; flex-direction: column; min-width: 0; }
+  .mm-prof b { font: 600 15px var(--title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mm-prof em { font: 400 11px var(--mono); font-style: normal; color: var(--ink-3); }
+  /* missions / connexion : une rangée « icône + libellé + pastille » */
+  .me-menu .icon.msn-btn, .me-menu .icon.st-btn { position: relative; width: 100%; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 12px; border: 0; background: rgba(255, 236, 214, 0.03); color: var(--ink); text-align: left; }
+  .me-menu .icon.msn-btn:active, .me-menu .icon.st-btn:active { background: rgba(255, 236, 214, 0.08); }
+  .me-menu .mm-l { display: inline; font: 500 14px var(--title); }
+  .me-menu .msn-n, .me-menu .st-n { position: static; margin-left: auto; order: 3; }
+  .me-menu .icon.ready { color: var(--gold); }
+  /* son : le réglage est affiché directement (plus de bouton haut-parleur) */
+  .me-menu .snd-wrap { display: block; padding-top: 6px; margin-top: 2px; border-top: 1px solid var(--line); }
+  .me-menu .snd-wrap .snd { display: none; }
+  .me-menu .vol-pop { position: static; visibility: visible; opacity: 1; transform: none; pointer-events: auto; flex-wrap: wrap; width: auto; margin: 0; box-shadow: none; border: 0; border-radius: 0; background: none; padding: 4px 2px 2px; }
+  .me-menu .vol-pop .vol { flex: 1 1 120px; }
+  .me-menu .vol-pop::before { content: 'Son'; display: block; width: 100%; margin: 0 0 6px 10px; font: 500 11px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .me-menu .demo { align-self: flex-start; margin: 4px 0 0 8px; }
+}
+
+/* téléphone : la rangée des pochettes commence contre le bord gauche (plus de vide noir avant le Bebou Pack) */
+@media (max-width: 860px) {
+  .packs-row { padding-left: 14px; padding-right: calc(100% - 14px - 150px); scroll-padding-left: 14px; }
+  .packs-row .sleeve { scroll-snap-align: start; }
+}
+@media (max-height: 500px) and (orientation: landscape) and (max-width: 860px) {
+  .packs-row { padding-left: 12px; padding-right: calc(100% - 12px - 104px); scroll-padding-left: 12px; }
+}
+/* ==== fin en-tête téléphone ==== */

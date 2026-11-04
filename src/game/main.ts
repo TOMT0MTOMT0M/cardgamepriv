@@ -288,6 +288,74 @@ const DEMO_TXT = 'Mode démo : pas de serveur, ta collection est stockée dans c
 // clic n'importe où ailleurs, ou Échap : le panneau du volume se ferme
 document.addEventListener('click', () => volOpen && setVolOpen(false));
 window.addEventListener('keydown', (e) => e.key === 'Escape' && volOpen && setVolOpen(false));
+/**
+ * MENU DU PROFIL (téléphone, ≤ 600 px — retours de Tom du 4 nov.) : l'en-tête tient sur UNE ligne (réserve, pièces,
+ * pity, avatar) ; missions, connexion et son passent dans un menu qui s'ouvre en touchant l'avatar. Les vrais boutons
+ * sont déplacés dans le menu (mêmes écouteurs, mêmes pastilles) ; une pastille sur l'avatar signale qu'il y a
+ * quelque chose à réclamer dedans.
+ */
+const phoneHead = matchMedia('(max-width: 600px)');
+let menuOpen = false;
+const closeMenu = () => setMenuOpen(false);
+function setMenuOpen(on: boolean) {
+  const menu = meEl.querySelector<HTMLElement>('.me-menu');
+  if (on && !phoneHead.matches) on = false;
+  if (on === menuOpen && (!menu || menu.classList.contains('on') === on)) return;
+  menuOpen = on;
+  meEl.querySelector('.user')?.setAttribute('aria-expanded', String(on));
+  if (!menu) return;
+  menu.classList.toggle('on', on);
+  const vol = menu.querySelector<HTMLElement>('.vol-pop');
+  if (on) {
+    panelShown(menu, closeMenu);
+    if (vol) vol.inert = false; // (le réglage du son est affiché directement dans le menu)
+  } else {
+    panelHidden(menu, closeMenu);
+    if (vol) vol.inert = !volOpen;
+  }
+}
+/** Place missions, connexion et son dans le menu (téléphone) ou les remet dans l'en-tête (ordinateur). */
+function layoutMenu() {
+  const menu = meEl.querySelector<HTMLElement>('.me-menu');
+  if (!menu) return;
+  const st = meEl.querySelector<HTMLElement>('.me-st')!;
+  const id = meEl.querySelector<HTMLElement>('.me-id')!;
+  const items = ['.msn-btn', '.st-btn', '.snd-wrap', '.demo'].map((q) => meEl.querySelector<HTMLElement>(q)).filter((x): x is HTMLElement => !!x);
+  if (phoneHead.matches) {
+    for (const x of items) menu.append(x);
+  } else {
+    const pity = st.querySelector('.pt-cnt');
+    // (seulement ce qui est dans le menu ; ordre d'origine : missions, série · démo, son, avatar)
+    for (const x of items) {
+      if (x.parentElement !== menu) continue;
+      if (x.matches('.msn-btn, .st-btn')) st.insertBefore(x, pity);
+      else id.insertBefore(x, x.matches('.demo') ? (id.querySelector('.snd-wrap') ?? id.querySelector('.user')) : id.querySelector('.user'));
+    }
+    if (menuOpen) setMenuOpen(false);
+  }
+  // en-tête refait pendant que le menu était ouvert : il le reste
+  if (menuOpen && phoneHead.matches) {
+    menu.classList.add('on');
+    menu.inert = false;
+    const vol = menu.querySelector<HTMLElement>('.vol-pop');
+    if (vol) vol.inert = false;
+    meEl.querySelector('.user')?.setAttribute('aria-expanded', 'true');
+  }
+  syncMenuDot();
+}
+/** Pastille de l'avatar (téléphone) : missions à réclamer, série ou cadeau du jour. */
+function syncMenuDot() {
+  const d = meEl.querySelector<HTMLElement>('.u-dot');
+  if (!d) return;
+  const n = (missions?.ready() ?? 0) + (status ? Number(status.streak().claimable || status.streak().calendar) : 0);
+  d.hidden = !phoneHead.matches || n === 0;
+}
+phoneHead.addEventListener('change', () => layoutMenu());
+document.addEventListener('click', (e) => {
+  if (!menuOpen) return;
+  const t = e.target as Node;
+  if (!meEl.querySelector('.me-menu')?.contains(t) && !meEl.querySelector('.user')?.contains(t)) setMenuOpen(false);
+});
 function renderMe() {
   const s = backend.state;
   const u = s.user;
@@ -312,7 +380,7 @@ function renderMe() {
     meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil">${ava}</button></div>`;
+    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a></div></div>`;
     tickPacks();
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
@@ -358,7 +426,14 @@ function renderMe() {
   });
   sndWrap?.addEventListener('click', (e) => e.stopPropagation());
   vol?.addEventListener('change', () => shell?.sfx.tick(1.2, 0.08));
-  meEl.querySelector('.user')?.addEventListener('click', () => navigate('#/profil'));
+  // téléphone : l'avatar ouvre un menu (profil, missions, connexion, son) ; ordinateur : il mène au profil, comme avant
+  meEl.querySelector('.user')?.addEventListener('click', (e) => {
+    if (!phoneHead.matches) return navigate('#/profil');
+    e.stopPropagation();
+    setMenuOpen(!menuOpen);
+  });
+  meEl.querySelector('.mm-prof')?.addEventListener('click', () => setMenuOpen(false));
+  layoutMenu();
   meEl.querySelector('.msn-btn')?.addEventListener('click', () => missions?.toggle());
   meEl.querySelector('.coin-btn')?.addEventListener('click', () => wallet?.toggle());
   meEl.querySelector('.st-btn')?.addEventListener('click', () => status?.toggle('streak'));
@@ -394,6 +469,7 @@ function syncMissionBadge() {
   const btn = meEl.querySelector<HTMLElement>('.msn-btn');
   btn?.classList.toggle('ready', n > 0);
   btn?.setAttribute('aria-label', n ? `Missions : ${n} à réclamer` : 'Missions du jour');
+  syncMenuDot();
 }
 backend.onChange(syncMissionBadge);
 /**
@@ -478,6 +554,7 @@ function syncStatus() {
   st.classList.toggle('ready', ready);
   st.title = sk.claimable ? 'Série de 7 jours : récompense à réclamer !' : sk.calendar ? 'Connexion : cadeau du jour à prendre !' : `Connexion · série jour ${sk.day}/7 · calendrier`;
   st.setAttribute('aria-label', st.title);
+  syncMenuDot();
   // pity (retours live 02, §11) : compteur « X/200 » toujours visible, sans clic
   const n = status.pityCount();
   const left = status.pityLeft();
