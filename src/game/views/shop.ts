@@ -263,33 +263,67 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   el.append(sheet.el);
 
   // ── les 5 pochettes
-  for (const b of list) {
-    const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}`, `
+  /**
+   * TÉLÉPHONE : une ROUE (retours de Tom, 4 nov.) — seulement les visuels des boosters, sans cadre ni texte, la pochette
+   * choisie est celle du MILIEU. Défilement natif (fluide, au doigt) aimanté cran par cran (scroll-snap), avec un petit
+   * « clic » (vibration + tic) à chaque cran ; la courbure (rotation, échelle, fondu) suit le défilement sur le fil du
+   * compositeur (animations liées au défilement, CSS) — repli en JavaScript sur les navigateurs qui ne les ont pas.
+   * La roue tourne sans fin : 5 exemplaires de la rangée, et l'on revient discrètement à celui du milieu à l'arrêt.
+   * Sur ordinateur, seule la rangée du milieu est affichée (liste verticale, inchangée).
+   */
+  const WHEEL = matchMedia('(max-width: 860px)');
+  const COPIES = 5;
+  const MID = 2;
+  for (let c = 0; c < COPIES; c++)
+    for (const b of list) {
+      const clone = c !== MID;
+      const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}${clone ? ' clone' : ''}`, `
       <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">BIENTÔT</span>' : ''}</span>
       <span class="sl-name">${esc(b.name)}</span>
       <span class="sl-desc">${esc(b.desc)}</span>
       <span class="sl-prog"><i></i></span>`);
-    btn.dataset.key = b.key;
-    btn.setAttribute('role', 'option');
-    btn.addEventListener('click', () => {
-      haptics.pulse(6);
-      sheet.open(b.key);
-    });
-    rowEl.append(btn);
-  }
-  const sleeveOf = (k: string) => rowEl.querySelector<HTMLElement>(`.sleeve[data-key="${k}"]`);
+      btn.dataset.key = b.key;
+      btn.dataset.copy = String(c);
+      btn.setAttribute('role', 'option');
+      btn.setAttribute('aria-label', b.name);
+      if (clone) {
+        btn.setAttribute('aria-hidden', 'true');
+        btn.tabIndex = -1;
+      }
+      btn.addEventListener('click', () => {
+        haptics.pulse(6);
+        // roue : une pochette sur le côté vient d'abord au milieu ; celle du milieu ouvre sa fiche
+        if (WHEEL.matches && wheelIndexOf(btn) !== wheelCenter()) return void spinTo(btn);
+        sheet.open(b.key);
+      });
+      rowEl.append(btn);
+    }
+  const allSleeves = () => [...rowEl.querySelectorAll<HTMLElement>('.sleeve')];
+  /** La pochette d'un booster : sur la roue, l'exemplaire le plus proche du milieu ; sinon celle de la rangée du milieu. */
+  const sleeveOf = (k: string) => {
+    if (!WHEEL.matches) return rowEl.querySelector<HTMLElement>(`.sleeve:not(.clone)[data-key="${k}"]`);
+    const mid = rowEl.scrollLeft + rowEl.clientWidth / 2;
+    let best: HTMLElement | null = null;
+    let bd = Infinity;
+    for (const b of rowEl.querySelectorAll<HTMLElement>(`.sleeve[data-key="${k}"]`)) {
+      const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid);
+      if (d < bd) (bd = d), (best = b);
+    }
+    return best;
+  };
   function paintSleeves() {
     for (const b of list) {
-      const art = sleeveOf(b.key)?.querySelector<HTMLElement>('.sl-art');
-      if (!art || art.querySelector('img')) continue;
       const src = opening.packThumb(b.key, 360);
       if (!src) continue;
       thumbs.set(b.key, src);
-      const img = h('img');
-      img.src = src;
-      img.alt = '';
-      img.decoding = 'async';
-      art.querySelector('.sl-ph')?.replaceWith(img);
+      for (const art of rowEl.querySelectorAll<HTMLElement>(`.sleeve[data-key="${b.key}"] .sl-art`)) {
+        if (art.querySelector('img')) continue;
+        const img = h('img');
+        img.src = src;
+        img.alt = '';
+        img.decoding = 'async';
+        art.querySelector('.sl-ph')?.replaceWith(img);
+      }
     }
   }
 
@@ -312,8 +346,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       b.classList.toggle('on', b.dataset.key === k);
       b.setAttribute('aria-selected', String(b.dataset.key === k));
     });
-    // téléphone : la pochette choisie revient en tête du carrousel (rangée calée à gauche, retours de Tom du 4 nov.)
-    if (o.scroll !== false) sleeveOf(k)?.scrollIntoView({ block: 'nearest', inline: 'start', behavior: 'smooth' });
+    // téléphone : la pochette choisie vient au milieu de la roue (l'exemplaire le plus proche : la roue tourne d'un cran)
+    if (o.scroll !== false && WHEEL.matches) {
+      const t = sleeveOf(k);
+      if (t) spinTo(t);
+    }
     // (audit UX2-09) booster déjà tiré d'un autre type : la scène 3D le garde (plus d'aller-retour du booster derrière la fiche)
     const sp = backend.state.sealed;
     if (sp && keyOf(sp) !== k) {
@@ -326,27 +363,104 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     syncState();
   }
 
-  // téléphone : faire défiler le carrousel au doigt choisit la pochette qui s'arrête au centre
-  let scrollT = 0;
-  const pickCentered = () => {
-    if (mode !== 'pick' || rowEl.scrollWidth <= rowEl.clientWidth + 4 || backend.state.sealed) return;
-    // (rangée calée à gauche : la pochette choisie est celle qui s'arrête contre le bord, là où s'aimante le défilement)
-    const r = rowEl.getBoundingClientRect();
-    const edge = r.left + (parseFloat(getComputedStyle(rowEl).scrollPaddingLeft) || 0);
-    let best: HTMLElement | null = null;
+  // ── la roue (téléphone) : crans, roue sans fin, courbure
+  /** centres des pochettes (en px dans la rangée), recalculés quand la mise en page change */
+  let centers: number[] = [];
+  let setW = 0;
+  const measure = () => {
+    const els = allSleeves();
+    centers = els.map((b) => b.offsetLeft + b.offsetWidth / 2);
+    setW = els.length > list.length ? centers[list.length] - centers[0] : 0;
+  };
+  const wheelCenter = () => {
+    const mid = rowEl.scrollLeft + rowEl.clientWidth / 2;
+    let best = 0;
     let bd = Infinity;
-    for (const b of rowEl.querySelectorAll<HTMLElement>('.sleeve')) {
-      const br = b.getBoundingClientRect();
-      const d = Math.abs(br.left - edge);
-      if (d < bd) (bd = d), (best = b);
+    for (let i = 0; i < centers.length; i++) {
+      const d = Math.abs(centers[i] - mid);
+      if (d < bd) (bd = d), (best = i);
     }
-    const k = best?.dataset.key;
-    if (k && k !== selected) select(k, { scroll: false });
+    return best;
+  };
+  const wheelIndexOf = (b: HTMLElement) => allSleeves().indexOf(b);
+  function spinTo(b: HTMLElement, behavior: ScrollBehavior = 'smooth') {
+    if (!centers.length) measure();
+    const i = wheelIndexOf(b);
+    if (i < 0) return;
+    rowEl.scrollTo({ left: centers[i] - rowEl.clientWidth / 2, behavior });
+  }
+  // courbure en JavaScript, seulement si le navigateur n'a pas les animations liées au défilement (CSS)
+  const CSS_WHEEL = typeof CSS !== 'undefined' && CSS.supports('animation-timeline: view()');
+  function curveJs() {
+    if (CSS_WHEEL || !WHEEL.matches) return;
+    const mid = rowEl.scrollLeft + rowEl.clientWidth / 2;
+    const els = allSleeves();
+    for (let i = 0; i < els.length; i++) {
+      const d = Math.max(-2.6, Math.min(2.6, (centers[i] - mid) / (els[i].offsetWidth || 100)));
+      const a = Math.abs(d);
+      els[i].style.transform = `perspective(700px) translateX(${(-d * a * 9).toFixed(1)}px) rotateY(${(d * 26).toFixed(1)}deg) scale(${(1 - Math.min(a, 2.6) * 0.15).toFixed(3)})`;
+      els[i].style.opacity = String(Math.max(0, 1 - a * 0.3).toFixed(2));
+    }
+  }
+  let lastIdx = -1;
+  let raf = 0;
+  let settleT = 0;
+  const onWheelFrame = () => {
+    raf = 0;
+    curveJs();
+    const i = wheelCenter();
+    if (i === lastIdx) return;
+    const first = lastIdx < 0;
+    lastIdx = i;
+    const els = allSleeves();
+    els.forEach((b, j) => b.classList.toggle('mid', j === i));
+    // un cran : petit clic sous le doigt
+    if (!first && el.isConnected && mode === 'pick') {
+      haptics.pulse(4);
+      try {
+        shell.sfx.tick(1.7, 0.025);
+      } catch {
+        /* son pas encore prêt */
+      }
+    }
+  };
+  /** Arrêt de la roue : la pochette du milieu devient le booster choisi ; on revient discrètement à la rangée du milieu. */
+  const settle = () => {
+    if (!WHEEL.matches || !centers.length) return;
+    const i = wheelCenter();
+    const els = allSleeves();
+    const b = els[i];
+    if (!b) return;
+    const copy = Number(b.dataset.copy);
+    if (copy !== MID && setW) {
+      rowEl.scrollLeft += (MID - copy) * setW;
+      lastIdx = i + (MID - copy) * list.length;
+      els.forEach((x, j) => x.classList.toggle('mid', j === lastIdx));
+    }
+    const k = b.dataset.key!;
+    if (mode === 'pick' && !backend.state.sealed && k !== selected) select(k, { scroll: false });
   };
   rowEl.addEventListener('scroll', () => {
-    clearTimeout(scrollT);
-    scrollT = window.setTimeout(pickCentered, 140);
+    if (!WHEEL.matches) return;
+    if (!raf) raf = requestAnimationFrame(onWheelFrame);
+    clearTimeout(settleT);
+    settleT = window.setTimeout(settle, 160);
   }, { passive: true });
+  rowEl.addEventListener('scrollend', () => {
+    clearTimeout(settleT);
+    settle();
+  });
+  const relayout = () => {
+    measure();
+    if (WHEEL.matches) {
+      // (à l'arrivée : l'exemplaire de la rangée du milieu — il y a des copies de part et d'autre)
+      const t = rowEl.querySelector<HTMLElement>(`.sleeve:not(.clone)[data-key="${selected}"]`);
+      if (t) spinTo(t, 'instant' as ScrollBehavior);
+    } else allSleeves().forEach((b) => ((b.style.transform = ''), (b.style.opacity = '')));
+    onWheelFrame();
+  };
+  new ResizeObserver(() => requestAnimationFrame(relayout)).observe(rowEl);
+  WHEEL.addEventListener('change', relayout);
 
   // ── état (booster scellé pas encore ouvert : bandeau + bouton direct)
   function syncState() {
@@ -391,12 +505,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     progSig = sig;
     const mine = new Set(st.collection.map((c) => c.cardId));
     for (const b of list) {
-      const btn = sleeveOf(b.key);
-      if (!btn || !b.cards.length) continue;
+      if (!b.cards.length) continue;
       const have = b.cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0);
-      btn.style.setProperty('--pct', `${(have / b.cards.length) * 100}%`);
-      btn.classList.add('has-prog');
-      btn.title = `${fmtN(have)} / ${fmtN(b.cards.length)} cartes déjà dans ta collection`;
+      for (const btn of rowEl.querySelectorAll<HTMLElement>(`.sleeve[data-key="${b.key}"]`)) {
+        btn.style.setProperty('--pct', `${(have / b.cards.length) * 100}%`);
+        btn.classList.add('has-prog');
+        btn.title = `${fmtN(have)} / ${fmtN(b.cards.length)} cartes déjà dans ta collection`;
+      }
     }
   });
 
@@ -992,6 +1107,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     fanBadges.hidden = true;
     sumBg.classList.add('veiled');
     big.setVisible(false);
+    el.classList.add('viewing');
     document.body.classList.add('card-open');
     const viewer = await getViewer();
     viewerRef = viewer;
@@ -1005,6 +1121,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     popLayer(closeViewer);
     viewing = false;
     viewerUi.hidden = true;
+    el.classList.remove('viewing');
     document.body.classList.remove('card-open');
     summary.hidden = mode !== 'summary';
     sumBg.classList.remove('veiled');
@@ -1037,8 +1154,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       shell.show('opening');
       requestAnimationFrame(placeFocus);
       select(selected, { scroll: false });
-      // téléphone (carrousel) : la pochette choisie en tête de rangée, sans animation
-      requestAnimationFrame(() => sleeveOf(selected)?.scrollIntoView({ block: 'nearest', inline: 'start', behavior: 'instant' as ScrollBehavior }));
+      // téléphone (roue) : la pochette choisie au milieu, sans animation
+      requestAnimationFrame(relayout);
       syncState();
       // lien direct vers une fiche (missions « Go », #/boutique/bebou)
       if (sub && list.some((b) => b.key === sub)) sheet.open(sub);

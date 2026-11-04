@@ -125,6 +125,55 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   resize();
   window.addEventListener('resize', resize);
 
+  /**
+   * RETOUR DE VEILLE (retours de Tom, 4 nov.) : téléphone verrouillé puis déverrouillé, le système peut retirer le GPU à
+   * la page (WebGPU « device lost », WebGL « context lost ») — la 3D reste alors vide : plus de booster, plus de carte.
+   * three.js ne sait pas tout reconstruire : on recharge la page dès qu'elle est de nouveau visible (même page, même
+   * onglet ; un booster tiré mais pas ouvert est rendu tel quel par le serveur). Garde-fou : pas deux rechargements en
+   * moins de 20 s (sinon on prévient au lieu de boucler).
+   */
+  let gpuLost = false;
+  const recoverGpu = (why: string) => {
+    if (gpuLost) return;
+    gpuLost = true;
+    console.warn(`[jeu] 3D perdue (${why}) : rechargement au retour`);
+    const go = () => {
+      let last = 0;
+      try {
+        last = Number(sessionStorage.getItem('bebou.gpuReload') ?? 0);
+        sessionStorage.setItem('bebou.gpuReload', String(Date.now()));
+      } catch {
+        /* ignore */
+      }
+      if (Date.now() - last < 20_000) {
+        document.body.classList.add('gpu-lost');
+        return;
+      }
+      location.reload();
+    };
+    if (!document.hidden) go();
+    else {
+      const once = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', once);
+        go();
+      };
+      document.addEventListener('visibilitychange', once);
+    }
+  };
+  (renderer as unknown as { onDeviceLost: (info: { message?: string }) => void }).onDeviceLost = (info) => recoverGpu(info?.message || 'device lost');
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    recoverGpu('webgl context lost');
+  });
+  // retour sur l'onglet : tailles et mesures de cadence repartent de zéro (une veille fausse la mesure des images/s)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    resetPerf();
+    resize();
+  });
+
+  let updErrors = 0;
   renderer.setAnimationLoop(() => {
     if (document.hidden) return; // onglet caché : rien (certains navigateurs servent encore quelques images)
     timer.update();
@@ -164,9 +213,14 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     }
     try {
       m.exp.update(dt, t);
+      updErrors = 0;
     } catch (e) {
       console.error('[jeu] update', current, e);
-      m.ready = false;
+      // (avant : la scène s'arrêtait pour de bon à la 1re erreur — après une veille, le booster ne revenait jamais)
+      if (++updErrors >= 3) {
+        m.ready = false;
+        recoverGpu('erreurs de rendu répétées');
+      }
     }
   });
 

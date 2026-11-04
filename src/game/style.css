@@ -2518,12 +2518,65 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
   .me-menu .demo { align-self: flex-start; margin: 4px 0 0 8px; }
 }
 
-/* téléphone : la rangée des pochettes commence contre le bord gauche (plus de vide noir avant le Bebou Pack) */
-@media (max-width: 860px) {
-  .packs-row { padding-left: 14px; padding-right: calc(100% - 14px - 150px); scroll-padding-left: 14px; }
-  .packs-row .sleeve { scroll-snap-align: start; }
-}
-@media (max-height: 500px) and (orientation: landscape) and (max-width: 860px) {
-  .packs-row { padding-left: 12px; padding-right: calc(100% - 12px - 104px); scroll-padding-left: 12px; }
-}
 /* ==== fin en-tête téléphone ==== */
+
+/* ==== BOUTIQUE TÉLÉPHONE : ROUE DES BOOSTERS + ÉPURE (retours de Tom, 4 nov.) ==== */
+/* ordinateur : seule la rangée du milieu (les copies servent à la roue sans fin du téléphone) */
+@media (min-width: 861px) { .packs-row .sleeve.clone { display: none; } }
+@media (max-width: 860px) {
+  /* la roue : défilement natif aimanté cran par cran, pochette choisie au milieu */
+  .packs-row { position: relative; justify-content: flex-start; gap: 0; padding: 8px 0 6px; scroll-snap-type: x mandatory; scroll-padding: 0; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); }
+  /* rien que le visuel du booster : ni cadre, ni texte, ni badge */
+  .packs-row .sleeve, .packs-row .sleeve.special { flex: 0 0 auto; width: 30vw; max-width: 132px; min-width: 96px; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; overflow: visible; scroll-snap-align: center; transform-origin: 50% 60%; will-change: transform, opacity; }
+  .packs-row .sleeve::before, .packs-row .sleeve.special::before { display: none; }
+  .packs-row .sl-name, .packs-row .sl-desc, .packs-row .sl-prog { display: none; }
+  .packs-row .sl-art { overflow: visible; border-radius: 0; }
+  .packs-row .sl-art img, .packs-row .sl-ph { width: 88%; transform: none; border-radius: 6px; box-shadow: 0 16px 26px -14px rgba(0, 0, 0, 0.95); transition: filter 0.3s, box-shadow 0.3s; }
+  .packs-row .sleeve:hover .sl-art img, .packs-row .sleeve.on .sl-art img { transform: none; }
+  /* la pochette du milieu : un halo de sa couleur */
+  .packs-row .sleeve.mid .sl-art img { box-shadow: 0 18px 30px -14px rgba(0, 0, 0, 0.95), 0 0 34px -6px var(--acc, var(--rose)); }
+  .packs-row .sleeve.on, .packs-row .sleeve.special.on { border: 0; background: none; box-shadow: none; }
+  .packs-row .sleeve:active { transform: none; }
+  .packs-row .sleeve .sl-seal { font-size: 8px; }
+  /* la courbure suit le défilement, sur le compositeur (Chrome / Android, Safari récent) — repli JS sinon (shop.ts) */
+  @supports (animation-timeline: view()) {
+    .packs-row .sleeve { animation: wheel-curve linear both; animation-timeline: view(inline); }
+  }
+  /* gros tirages : plus de surtitre */
+  .shop-home .bp-kicker { display: none; }
+}
+@keyframes wheel-curve {
+  0% { transform: perspective(700px) translateX(-34px) rotateY(58deg) scale(0.6); opacity: 0; }
+  14% { transform: perspective(700px) translateX(-16px) rotateY(44deg) scale(0.68); opacity: 0.4; }
+  31% { transform: perspective(700px) translateX(-6px) rotateY(26deg) scale(0.84); opacity: 0.75; }
+  50% { transform: perspective(700px) translateX(0) rotateY(0deg) scale(1); opacity: 1; }
+  69% { transform: perspective(700px) translateX(6px) rotateY(-26deg) scale(0.84); opacity: 0.75; }
+  86% { transform: perspective(700px) translateX(16px) rotateY(-44deg) scale(0.68); opacity: 0.4; }
+  100% { transform: perspective(700px) translateX(34px) rotateY(-58deg) scale(0.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) and (max-width: 860px) {
+  .packs-row .sleeve { animation: none; }
+}
+/* carte des gros tirages ouverte en grand : le bouton Ouvrir et la roue s'effacent (plus de superposition) */
+.shop.viewing .shop-home { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.2s, visibility 0s linear 0.2s; }
+.shop .shop-home { transition: opacity 0.25s; }
+/* 3D perdue deux fois de suite (retour de veille) : un message plutôt qu'une boucle de rechargements */
+body.gpu-lost::after { content: 'La 3D s’est arrêtée pendant la veille : recharge la page.'; position: fixed; left: 50%; top: 45%; z-index: 80; transform: translateX(-50%); padding: 12px 18px; border-radius: 14px; background: var(--panel-solid); border: 1px solid var(--line-2); font: 500 13px var(--mono); color: var(--ink); text-align: center; max-width: calc(100vw - 40px); }
+
+/* en-tête téléphone épuré : pilules de même hauteur, vraies marges entre elles */
+@media (max-width: 600px) {
+  .topbar { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); padding-top: calc(env(safe-area-inset-top) + 8px); row-gap: 6px; }
+  .me-st { gap: 10px; }
+  .me .packs, .me .coin-btn { height: 36px; min-height: 36px; padding: 0 12px; gap: 6px; border-radius: 999px; }
+  .me .packs .p-txt { flex-direction: row; align-items: baseline; gap: 6px; }
+  .me .packs .p-next { display: none; }
+  .me .packs b { font-size: 14px; }
+  .me .packs .p-bar { left: 12px; right: 12px; bottom: 4px; }
+  .me .coin-btn { font-size: 13px; }
+  .me .coin-btn .coin-ico { width: 16px; height: 16px; }
+  .me .pt-cnt { height: 30px; padding: 0 9px 0 7px; }
+  .me .user { width: 36px; height: 36px; }
+  .me .user img, .me .ava { width: 34px; height: 34px; }
+  .me-id { margin-left: 10px; }
+}
+/* ==== fin boutique téléphone ==== */

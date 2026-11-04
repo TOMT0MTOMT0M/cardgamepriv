@@ -53,9 +53,9 @@ const ago = (t: number) => {
 
 export function createBigPulls(backend: GameBackend, view: (card: PackCard) => void): BigPullsWidget {
   const el = h('aside', 'bigpulls');
-  el.setAttribute('aria-label', 'Gros tirages en direct');
+  el.setAttribute('aria-label', 'Gros tirages');
   el.innerHTML = `
-    <div class="bp-head"><span class="bp-kicker"><span class="bp-live"></span>EN DIRECT</span><h3>Gros tirages</h3><span class="bp-sub">5★ et + du groupe · aujourd’hui</span></div>
+    <div class="bp-head"><h3>Gros tirages</h3><span class="bp-sub">5★ et + du groupe · aujourd’hui</span></div>
     <div class="bp-list" role="list"></div>
     <div class="bp-empty" hidden>Personne n’a encore tiré de Légendaire… à toi de jouer.</div>`;
   const list = el.querySelector<HTMLElement>('.bp-list')!;
