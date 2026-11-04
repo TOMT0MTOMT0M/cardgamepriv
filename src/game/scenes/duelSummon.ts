@@ -192,7 +192,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     const q = uv().sub(0.5).mul(vec2(CARD.w, CARD.h)); // mm/100, centré
     // dos de duel (original) : nuit profonde, cadre de bronze, rosace guillochée, couronne de six étoiles, gemme
     const r = length(q);
-    const th = atan(q.y, q.x);
+    const th = atan(q.y, q.x.add(1e-5)); // (jamais atan(0, 0) : indéfini sur certains GPU)
     const aq = abs(q);
     const frameD = min(float(CARD.w / 2).sub(aq.x), float(CARD.h / 2).sub(aq.y)); // distance au bord
     const frame = smoothstep(0.046, 0.04, frameD).mul(smoothstep(0.004, 0.008, frameD));
@@ -241,7 +241,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     backMat.metalnessNode = mix(backMat.metalnessNode as N, metal, done);
     backMat.roughnessNode = mix(float(0.5), rough, done);
     backMat.emissiveNode = color('#ff9a3c').mul(edge.mul(3))
-      .add(color(HOLO).mul(edge.pow(4).mul(4)))
+      .add(color(HOLO).mul(clamp(edge, 0, 1).pow(4).mul(4)))
       .add(glowN.mul(done));
     const edgeMat = createEdgeMaterial('#d8b27a', '#2a1c10');
     const card = createCardMesh(holo.material, backMat, edgeMat);
@@ -258,7 +258,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     const m = new MeshStandardNodeMaterial();
     const p = positionWorld.xz.sub(vec2(LAND.x, LAND.z));
     const r = length(p);
-    const th = atan(p.y, p.x);
+    const th = atan(p.y, p.x.add(1e-5));
     const line = (d: N, w: number) => smoothstep(w, 0.0, abs(d));
     // anneaux, graduations, hexagones, zone de carte
     const ringA = line(r.sub(0.78), 0.006).add(line(r.sub(0.82), 0.003));
@@ -306,7 +306,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     const v = uv();
     const streak = hash(floor(v.x.mul(90))).mul(0.7).add(0.3);
     const flow = sin(v.y.mul(18).sub(time.mul(5)).add(hash(floor(v.x.mul(90))).mul(40))).mul(0.5).add(0.5);
-    const a = v.y.oneMinus().pow(1.6).mul(streak).mul(flow.mul(0.6).add(0.4)).mul(U.beam).mul(0.32);
+    const a = clamp(v.y.oneMinus(), 0, 1).pow(1.6).mul(streak).mul(flow.mul(0.6).add(0.4)).mul(U.beam).mul(0.32);
     bm.colorNode = vec3(0);
     (bm as unknown as { emissiveNode: N }).emissiveNode = mix(color(HOLO), U.accent as unknown as N, 0.3).mul(a.mul(1.5));
     bm.opacityNode = a;
@@ -321,7 +321,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     // poussière lumineuse : monte lentement du terrain autour de la carte
     const mm = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
     const ang = h1.mul(6.2832);
-    const rad = h2.sqrt().mul(2.8).add(0.15);
+    const rad = max(h2, 0).sqrt().mul(2.8).add(0.15);
     const life = fract(h3.add(time.mul(h4.mul(0.1).add(0.04))));
     mm.positionNode = vec3(cos(ang).mul(rad).add(LAND.x), life.mul(2.8), sin(ang).mul(rad).add(LAND.z).sub(0.2));
     const disc = smoothstep(0.5, 0.0, length(uv().sub(0.5)));
@@ -356,7 +356,9 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     const rv = smoothstep(U.tex.mul(1.04), U.tex.mul(1.04).sub(0.025), y);
     const band = exp(abs(y.sub(U.tex.mul(1.04))).div(0.008).negate()).mul(step(0.001, U.tex)).mul(step(U.tex, 0.995));
     // balayage : lignes fines qui défilent vers le haut + scintillement (glitchs en salves)
-    const scan = sin(y.mul(H * 90).sub(time.mul(9))).mul(0.5).add(0.5).pow(2.5);
+    // (ÉCRAN NOIR sur téléphone, 4 nov.) pow(x, y) d'un x NÉGATIF = NaN en GLSL / WGSL ; un sinus de GPU mobile peut sortir
+    // un rien de [−1, 1] → une valeur NaN dans l'émissif, que le bloom étale sur TOUT l'écran en une image. Bases bornées.
+    const scan = clamp(sin(y.mul(H * 90).sub(time.mul(9))).mul(0.5).add(0.5), 0, 1).pow(2.5);
     const burst = step(0.86, hash(floor(time.mul(13)))).mul(U.glitch);
     const flicker = float(0.88).add(sin(time.mul(57)).mul(0.06)).sub(burst.mul(0.45));
     return { vis, rv, band, scan, flicker, burst };
@@ -484,7 +486,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
           ? (om.emissiveMap ? texture(om.emissiveMap, uv()).rgb : vec3(1)).mul(color(om.emissive)).mul(om.emissiveIntensity ?? 1)
           : vec3(0);
         const { vis, rv, band, scan, flicker } = phaseMasks(y);
-        const fres = float(1).sub(abs(normalView.dot(positionViewDirection.normalize()))).pow(2);
+        const fres = clamp(float(1).sub(abs(normalView.normalize().dot(positionViewDirection.normalize()))), 0, 1).pow(2);
         const lum = luminance(base);
         const holoCol = mix(color(HOLO_DEEP), color(HOLO), lum).mul(lum.add(0.3)).mul(scan.mul(0.5).add(0.6)).add(color('#d8f6ff').mul(fres.mul(1.4)));
         m.colorNode = base.mul(rv);

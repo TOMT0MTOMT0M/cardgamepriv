@@ -60,7 +60,7 @@ export function installDiag(shell: Shell) {
     ].join('\n').slice(0, 1990);
     void net
       .pushLabFeedback({
-        clientId: `diag-${(localStorage.getItem('bebou.device') ?? 'x').slice(0, 40)}`,
+        clientId: `diag-${scene}-${(localStorage.getItem('bebou.device') ?? 'x').slice(0, 30)}`, // une ligne par scène (sinon elles s'écrasent)
         tester: 'diag',
         entries: [{ id: `diag-${scene}`, title: `Diagnostic ${scene}`, category: 'D', vote: 0, note, updatedAt: new Date().toISOString() }],
         meta: { backend: be, userAgent: navigator.userAgent, quality: shell.quality, dpr: devicePixelRatio },
