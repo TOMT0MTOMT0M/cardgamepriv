@@ -113,13 +113,24 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   }
   const needsGyroPermission = () =>
     typeof (window.DeviceOrientationEvent as unknown as { requestPermission?: unknown } | undefined)?.requestPermission === 'function';
+  /*
+   * (Firefox Android, 4 nov. : aucun son) un toucher ne compte comme « activation » qu'à sa FIN (pointerup / touchend),
+   * pas au pointerdown — Chrome est plus tolérant. On écoute donc tous les gestes, et on ne se retire qu'une fois le
+   * contexte audio réellement démarré.
+   */
+  const UNLOCK = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'] as const;
   const unlock = () => {
-    if (soundPref && !sfx.enabled) void sfx.enable();
+    if (soundPref) {
+      if (!sfx.enabled) void sfx.enable();
+      else sfx.unblock();
+    }
     // Android & co : le gyroscope s'active sans autorisation, dès le premier toucher
     if (isTouch() && !needsGyroPermission() && !input.gyroEnabled) void input.enableGyro();
-    window.removeEventListener('pointerdown', unlock);
+    if (!soundPref || (sfx.enabled && !sfx.blocked)) UNLOCK.forEach((ev) => window.removeEventListener(ev, unlock, true));
   };
-  window.addEventListener('pointerdown', unlock);
+  UNLOCK.forEach((ev) => window.addEventListener(ev, unlock, { capture: true, passive: true }));
+  // son réactivé plus tard, contexte bloqué entre-temps (veille du navigateur…) : chaque geste le relance
+  for (const ev of ['pointerup', 'touchend', 'click'] as const) window.addEventListener(ev, () => sfx.blocked && sfx.unblock(), { capture: true, passive: true });
 
   const size = () => ({ w: Math.max(1, window.innerWidth), h: Math.max(1, window.innerHeight) });
   /**

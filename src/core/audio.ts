@@ -152,9 +152,23 @@ export class Sfx {
       master.gain.setTargetAtTime(0.7 * this.volume, ctx.currentTime + 0.5, 10);
     }
     this.napping = false;
-    await this.ctx.resume();
+    // (Firefox Android, 4 nov.) resume() appelé SYNCHRONEMENT dans le geste, puis on n'attend pas indéfiniment : hors
+    // « activation » valable, Firefox laisse la promesse en suspens — avant, `enabled` ne passait jamais à vrai et le jeu
+    // restait muet pour toute la session. Le contexte reste suspendu jusqu'au prochain geste (voir unlock / wake).
+    const resumed = this.ctx.resume().catch(() => {});
     this.enabled = true;
+    await Promise.race([resumed, new Promise((r) => setTimeout(r, 300))]);
     if (this.ctx.state === 'running') this.wake(); // veille armée dès l'activation (aucun son → suspendu au bout de 9 s)
+  }
+
+  /** Vrai si le son est voulu mais que le navigateur n'a pas encore laissé démarrer le contexte audio. */
+  get blocked(): boolean {
+    return this.enabled && !!this.ctx && this.ctx.state !== 'running' && !this.napping;
+  }
+
+  /** À appeler dans un geste (toucher, clic, touche) : relance un contexte que le navigateur avait bloqué. */
+  unblock() {
+    if (this.ctx && this.ctx.state === 'suspended' && !this.napping) void this.ctx.resume().catch(() => {});
   }
 
   disable() {

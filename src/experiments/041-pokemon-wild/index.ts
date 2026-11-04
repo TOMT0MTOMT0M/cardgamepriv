@@ -113,7 +113,8 @@ interface Fly {
   phi: number;
   w: number;
   seed: [number, number, number, number];
-  light: PointLight;
+  /** téléphone : une luciole sur 4 seulement porte une vraie lumière (voir setup) */
+  light: PointLight | null;
   b: number;
 }
 
@@ -154,6 +155,7 @@ export default function create(o?: WildOptions): WildExperiment {
   let activating: Promise<void> | null = null;
   /** éclairage Forward+ de la scène (le shell remet l'éclairage par défaut à chaque changement de scène : voir update) */
   let clustered: ClusteredLighting | null = null;
+  let lightGain = 1;
   let startedAt = 0;
   let revealed = false;
   let elapsed = 0;
@@ -330,7 +332,7 @@ export default function create(o?: WildOptions): WildExperiment {
 
       // ── particules : corps instanciés (HDR → bloom) + une PointLight chacune
       const n = mobile ? 240 : 480;
-      const body = new SphereGeometry(0.0045, 8, 6);
+      const body = new SphereGeometry(0.0045, mobile ? 6 : 8, mobile ? 4 : 6);
       colAttr = new InstancedBufferAttribute(new Float32Array(n * 3), 3);
       colAttr.setUsage(DynamicDrawUsage);
       const fm = new MeshBasicNodeMaterial();
@@ -340,9 +342,12 @@ export default function create(o?: WildOptions): WildExperiment {
       bodies.frustumCulled = false;
       stage.scene.add(bodies);
       const r = rng(11);
+      // (perf téléphone) 240 PointLights en Forward+ = le premier poste de la scène : une luciole sur 4 porte la lumière
+      // (60 au lieu de 240), plus forte d'autant ; les corps lumineux (bloom) restent tous là
+      lightGain = mobile ? 2.6 : 1;
       for (let i = 0; i < n; i++) {
-        const light = new PointLight(baseCol, 0, 0.65, 2);
-        stage.scene.add(light);
+        const light = !mobile || i % 4 === 0 ? new PointLight(baseCol, 0, mobile ? 0.8 : 0.65, 2) : null;
+        if (light) stage.scene.add(light);
         flies.push({ p: new Vector3(), v: new Vector3(), phi: r() * TWO_PI, w: TWO_PI * (0.85 + r() * 0.3), seed: [r() * 10, r() * 10, r() * 10, 0.6 + r() * 0.8], light, b: 0 });
       }
 
@@ -505,12 +510,14 @@ export default function create(o?: WildOptions): WildExperiment {
       // après la révélation : la couleur du type part en vague spectrale (mythique) autour de l'essaim
       tmpC.copy(baseCol);
       if (st.hue > 0) tmpC.offsetHSL(((Math.atan2(d.z, d.x) / TWO_PI + t * 0.08) % 1) * st.hue, 0, 0);
-      f.light.color.copy(tmpC);
-      f.light.intensity = f.b * 0.24;
+      if (f.light) {
+        f.light.color.copy(tmpC);
+        f.light.intensity = f.b * 0.24 * lightGain;
+        f.light.position.copy(f.p);
+      }
       colAttr.setXYZ(i, tmpC.r * f.b * 6, tmpC.g * f.b * 6, tmpC.b * f.b * 6);
       m4.makeTranslation(f.p.x, f.p.y, f.p.z);
       bodies.setMatrixAt(i, m4);
-      f.light.position.copy(f.p);
     });
     if (last) {
       colAttr.needsUpdate = true;

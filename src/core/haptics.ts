@@ -104,8 +104,11 @@ class Haptics {
         }
         // segments « vibre » ≥ 12 ms (sous ~10 ms, beaucoup de vibrateurs ne font rien)
         const steps = (typeof pattern === 'number' ? [pattern] : pattern).map((v, i) => (i % 2 === 0 ? Math.max(12, v) : v));
+        // (Firefox Android exige un geste EN COURS) refusée hors geste : rejouée au prochain toucher s'il arrive vite,
+        // comme sur iPhone — jamais en boucle (gesture() appelle pulse() avec inGesture vrai)
         const okv = navigator.vibrate(steps);
-        this.why = okv ? '' : 'refusée (aucun toucher encore reçu, ou navigateur intégré)';
+        if (!okv && !this.inGesture) this.pending = { pattern, at: performance.now() };
+        this.why = okv ? '' : 'refusée (geste requis par le navigateur, ou navigateur intégré)';
         return;
       }
       if (this.support !== 'ios') {

@@ -123,7 +123,7 @@ async function exists(url: string, type: RegExp): Promise<boolean> {
 function loadTex(url: string, srgb: boolean): Promise<Texture> {
   return new TextureLoader().loadAsync(url).then((t) => {
     if (srgb) t.colorSpace = SRGBColorSpace;
-    t.anisotropy = 4;
+    t.anisotropy = matchMedia('(pointer: coarse)').matches ? 1 : 4;
     return t;
   });
 }
@@ -328,7 +328,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     mm.colorNode = vec4(mc.mul(1.4), disc.mul(sin(life.mul(Math.PI))).mul(U.motes).mul(0.8));
     mm.scaleNode = h2.mul(0.012).add(0.005);
     const motes = new Sprite(mm);
-    motes.count = mobile ? 450 : 1300;
+    motes.count = mobile ? 300 : 1300;
     motes.frustumCulled = false;
     ctx.bag.add(mm);
     stage.scene.add(motes);
@@ -342,7 +342,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     sm.colorNode = vec4(mix(color('#ffffff'), U.accent as unknown as N, h2).mul(2.2), disc.mul(k.oneMinus()).mul(on));
     sm.scaleNode = h2.mul(0.01).add(0.004).mul(k.oneMinus().mul(0.6).add(0.4));
     const sparks = new Sprite(sm);
-    sparks.count = mobile ? 260 : 700;
+    sparks.count = mobile ? 160 : 700;
     sparks.frustumCulled = false;
     ctx.bag.add(sm);
     monsterRig.add(sparks);
