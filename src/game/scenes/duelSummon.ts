@@ -443,7 +443,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
         if (head && waist && head.z < waist.z) (gltf.scene as unknown as Object3D).rotation.y = Math.PI;
         r.apply(dragonPose({ t: 0, rear: 1, wing: 0.6, flap: 0, mouth: 0, life: 0 }));
       } else if (!gltf.animations.length) {
-        auto = createAutoPose(model);
+        auto = createAutoPose(model, M.pose);
         auto?.apply({ t: 0, rise: 1, mouth: 0, life: 0 });
         if (auto) console.info(`[duel] ${M.file} : animation automatique (${auto.kind})`);
       }
@@ -830,7 +830,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       // (téléphone : un dragon aux ailes déployées est plus large que haut — on accepte de rogner le bout des ailes)
       const fw = portrait ? Math.min(wide, H * 1.25) : wide;
       // modèle 3D : vu d'en bas, sa tête dépasse vite du cadre (perspective) → un peu plus de recul et de marge en haut
-      const m3 = auto?.kind === 'serpent' ? 1.35 : rig || auto?.kind === 'dragon' ? 1.16 : auto ? 0.95 : 1;
+      const m3 = auto?.kind === 'serpent' ? 1.35 : rig || auto?.kind === 'dragon' ? 1.16 : auto ? 1.22 : 1;
       const fitDist = m3 * Math.max((H * (portrait ? 0.7 : 0.6)) / tanH, (fw * (portrait ? 0.46 : 0.62)) / (tanH * aspect));
       const sm = (x: number) => x * x * (3 - 2 * x);
       const e1 = sm(S.cam);

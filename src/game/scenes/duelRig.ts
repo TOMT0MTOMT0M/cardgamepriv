@@ -105,10 +105,14 @@ export function dragonPose(o: { t: number; rear: number; wing: number; flap: num
  *  - dragon (cou à l'horizontale, queue) : cou dressé, tête vers l'avant, ailes qui battent, queue qui ondule ;
  *  - serpent (colonne longue à l'horizontale, comme Slifer) : le corps se dresse en S, cou et tête vers l'avant.
  */
-type Role = 'arm' | 'forearm' | 'spine' | 'neck' | 'head' | 'jaw' | 'wing' | 'tail';
+type Role = 'arm' | 'forearm' | 'hand' | 'shoulder' | 'hips' | 'upleg' | 'spine' | 'neck' | 'head' | 'jaw' | 'wing' | 'tail';
 const ROLES: Array<[Role, RegExp]> = [
   ['forearm', /^(l|r|left|right)_?forearm\d*$/],
   ['arm', /^(l|r|left|right)_?(upper)?arm\d*$/],
+  ['hand', /^(l|r|left|right)_?hand\d*$/],
+  ['shoulder', /^(l|r|left|right)_?shoulder\d*$/],
+  ['upleg', /^(l|r|left|right)_?(upleg|upreg|thigh|upperleg)\d*$/],
+  ['hips', /^hips\d*$/],
   ['spine', /^spine\d*$/],
   ['neck', /^neck\d*$/],
   ['head', /^head\d*$/],
@@ -122,13 +126,21 @@ const roleOf = (raw: string): Role | null => {
   return null;
 };
 
+/**
+ * Pose propre à un modèle (duelMonsters.ts → `pose`) : rotations autour des axes du MONDE (radians, [x, y, z]), par rôle
+ * et par côté — `arm.L` / `arm.R` (L = gauche DU MODÈLE, x > 0), ou `arm` pour les deux en miroir (y et z inversés à
+ * droite). Elles REMPLACENT la pose par défaut du gabarit ; le souffle et les balancements s'y ajoutent. Les chaînes
+ * (colonne, cou, queue) répartissent la rotation sur leurs os.
+ */
+export type PoseTune = Partial<Record<`${Role}` | `${Role}.L` | `${Role}.R`, [number, number, number]>>;
+
 export interface AutoPose {
   kind: 'humanoid' | 'dragon' | 'serpent';
   /** rise 0..1 : déploiement (invocation) ; mouth 0..1 ; life 0..1 (souffle, balancements) */
   apply(o: { t: number; rise: number; mouth: number; life: number }): void;
 }
 
-export function createAutoPose(root: Object3D): AutoPose | null {
+export function createAutoPose(root: Object3D, tune: PoseTune = {}): AutoPose | null {
   root.updateMatrixWorld(true);
   const pq = new Quaternion();
   interface J extends Joint { role: Role; side: number; order: number; z: number; y: number }
@@ -145,7 +157,9 @@ export function createAutoPose(root: Object3D): AutoPose | null {
     const ax = (x: number, y: number, z: number) => new Vector3(x, y, z).applyQuaternion(inv).normalize();
     const w = o.getWorldPosition(new Vector3());
     const num = Number((name.toLowerCase().replace(/_\d{2,4}$/, '').match(/(\d+)$/) ?? [, '0'])[1]);
-    const j: J = { o, rest: o.quaternion.clone(), X: ax(1, 0, 0), Y: ax(0, 1, 0), Z: ax(0, 0, 1), role, side: Math.sign(w.x) || 1, order: num, z: w.z, y: w.y };
+    const lower = name.toLowerCase();
+    const side = /^(l|left)[_a-z]/.test(lower) ? 1 : /^(r|right)[_a-z]/.test(lower) ? -1 : Math.sign(w.x) || 1;
+    const j: J = { o, rest: o.quaternion.clone(), X: ax(1, 0, 0), Y: ax(0, 1, 0), Z: ax(0, 0, 1), role, side, order: num, z: w.z, y: w.y };
     joints.push(j);
     if (!byRole.has(role)) byRole.set(role, []);
     byRole.get(role)!.push(j);
@@ -160,7 +174,6 @@ export function createAutoPose(root: Object3D): AutoPose | null {
   // haut + une queue : bête à l'horizontale ; colonne bien plus longue que le cou : serpent
   const horizNeck = has('tail') && span('neck', 'z') > span('neck', 'y');
   const kind: AutoPose['kind'] = horizNeck && span('spine', 'z') > span('neck', 'z') * 1.5 ? 'serpent' : horizNeck ? 'dragon' : 'humanoid';
-  // rang de chaque os dans sa chaîne (du corps vers l'extrémité)
   for (const r of ['spine', 'neck', 'tail'] as Role[]) byRole.get(r)?.sort((a, b) => a.order - b.order);
   const tmp = new Quaternion(), acc = new Quaternion();
   const set = (j: J, x: number, y: number, z: number) => {
@@ -170,53 +183,76 @@ export function createAutoPose(root: Object3D): AutoPose | null {
     if (z) acc.multiply(tmp.setFromAxisAngle(j.Z, z));
     j.o.quaternion.copy(acc).multiply(j.rest);
   };
+  /** pose réglée pour ce rôle / ce côté, sinon `def` (déjà orientée côté gauche : miroir appliqué ici) */
+  const base = (j: J, def: [number, number, number]): [number, number, number] => {
+    const sideKey = `${j.role}.${j.side > 0 ? 'L' : 'R'}` as keyof PoseTune;
+    const own = tune[sideKey];
+    if (own) return own;
+    const both = tune[j.role as keyof PoseTune] ?? def;
+    return j.side > 0 ? both : [both[0], -both[1], -both[2]];
+  };
+  const chainN = (r: Role) => byRole.get(r)?.length ?? 1;
   return {
     kind,
     apply({ t, rise, mouth, life }) {
       const br = Math.sin(t * 1.6) * life;
       for (const j of joints) {
         const k = j.side;
+        let b: [number, number, number];
         switch (j.role) {
-          case 'arm': {
-            // bras en T → le long du corps (un peu écartés), léger balancement
-            const down = kind === 'humanoid' ? 1.15 : 0.9;
-            set(j, Math.sin(t * 1.1 + k) * 0.04 * life, 0, -k * (down + Math.sin(t * 1.3 + k) * 0.03 * life));
+          case 'arm':
+            b = base(j, [0, 0, -(kind === 'humanoid' ? 1.15 : 0.9)]);
+            set(j, b[0] + Math.sin(t * 1.1 + k) * 0.04 * life, b[1], b[2] - k * Math.sin(t * 1.3 + k) * 0.03 * life);
             break;
-          }
           case 'forearm':
-            set(j, 0, -k * 0.25, -k * 0.1);
+            b = base(j, [0, -0.25, -0.1]);
+            set(j, b[0], b[1], b[2]);
+            break;
+          case 'hand':
+          case 'shoulder':
+          case 'hips':
+          case 'upleg':
+            b = base(j, [0, 0, 0]);
+            if (b[0] || b[1] || b[2]) set(j, b[0] * rise, b[1] * rise, b[2] * rise);
             break;
           case 'spine': {
             const list = byRole.get('spine')!;
             const i = list.indexOf(j);
-            if (kind === 'serpent') {
-              // le corps se dresse : de plus en plus vers l'avant de la colonne
-              const f = (i + 1) / list.length;
+            const n = list.length;
+            if (kind === 'serpent' && !tune.spine) {
+              const f = (i + 1) / n;
               set(j, -0.24 * f * rise + Math.sin(t * 1.2 - i * 0.6) * 0.025 * life, Math.sin(t * 0.8 - i * 0.5) * 0.05 * life, 0);
-            } else set(j, br * 0.015 - (kind === 'dragon' && i === list.length - 1 ? 0.12 * rise : 0), 0, 0);
+            } else {
+              b = base(j, [kind === 'dragon' && i === n - 1 ? -0.12 : 0, 0, 0]);
+              const f = tune.spine ? 1 / n : 1;
+              set(j, b[0] * f * rise + br * 0.015, b[1] * f * rise, b[2] * f * rise);
+            }
             break;
           }
           case 'neck': {
-            const list = byRole.get('neck')!;
-            const n = list.length;
-            const up = kind === 'dragon' ? -0.85 : kind === 'serpent' ? 0.12 : 0;
-            set(j, (up * rise) / n + Math.sin(t * 1.3) * 0.02 * life, (Math.sin(t * 0.7) * 0.06 * life) / n, 0);
+            const n = chainN('neck');
+            b = base(j, [kind === 'dragon' ? -0.85 : kind === 'serpent' ? 0.12 : 0, 0, 0]);
+            set(j, (b[0] * rise) / n + Math.sin(t * 1.3) * 0.02 * life, (b[1] * rise) / n + (Math.sin(t * 0.7) * 0.06 * life) / n, (b[2] * rise) / n);
             break;
           }
           case 'head':
-            set(j, (kind === 'dragon' ? 0.55 : kind === 'serpent' ? 0.35 : 0) * rise + Math.sin(t * 1.3 + 0.6) * 0.03 * life, Math.sin(t * 0.7 + 0.4) * 0.06 * life, 0);
+            b = base(j, [kind === 'dragon' ? 0.55 : kind === 'serpent' ? 0.35 : 0, 0, 0]);
+            set(j, b[0] * rise + Math.sin(t * 1.3 + 0.6) * 0.03 * life, b[1] * rise + Math.sin(t * 0.7 + 0.4) * 0.06 * life, b[2] * rise);
             break;
           case 'jaw':
             set(j, 0.4 * mouth, 0, 0);
             break;
           case 'wing':
             // ailes : repliées au départ, s'ouvrent à l'invocation, puis battent doucement
-            set(j, 0, 0, k * ((rise - 1) * 0.5 + 0.18 * rise + Math.sin(t * 1.8) * 0.08 * life));
+            b = base(j, [0, 0, 0.18]);
+            set(j, b[0] * rise, b[1] * rise, k * (b[2] * k * rise + (rise - 1) * 0.5 + Math.sin(t * 1.8) * 0.08 * life));
             break;
           case 'tail': {
             const list = byRole.get('tail')!;
             const i = list.indexOf(j);
-            set(j, Math.sin(t * 1.1 - i * 0.5) * 0.03 * life, Math.sin(t * 0.9 - i * 0.55) * 0.08 * life, 0);
+            b = base(j, [0, 0, 0]);
+            const n = list.length;
+            set(j, (b[0] * rise) / n + Math.sin(t * 1.1 - i * 0.5) * 0.03 * life, (b[1] * rise) / n + Math.sin(t * 0.9 - i * 0.55) * 0.08 * life, 0);
             break;
           }
         }
