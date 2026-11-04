@@ -33,16 +33,23 @@ export const DUEL_MONSTERS: Record<string, DuelMonster> = {
   'pop-red-eyes-black-dragon': { file: 'red-eyes-black-dragon', cry: 'darkDragon', tall: 2.0, accent: '#ff4d3d', fr: 'Dragon Noir aux Yeux Rouges', pose: {
       rot: {
         spine: [-0.75, 0, 0], neck: [-0.35, 0, 0], head: [0.95, 0, 0], jaw: [0.25, 0, 0], tail: [0.35, 0.5, 0],
-        wing: [0, 0.2, 0.4], wing03: [0, -1.0, 0], fifthwing01: [0, -0.8, 0], sixthwing01: [0, -0.6, 0],
+        // ailes : écartées vers l'extérieur (lacet −) et inclinées vers l'extérieur (roulis −) — sinon elles se croisent dans le dos
+        wing: [0, -0.4, -0.45], wing03: [0, -0.3, -0.3], fifthwing01: [0, -0.3, -0.2], sixthwing01: [0, -0.2, -0.1],
       },
       dir: { arm: [0.75, -0.25, 0.6], forearm: [0.35, 0.15, 0.92], upleg: [0.18, -0.6, 0.78], leg: [0.08, -0.72, -0.69], foot: [0.05, -0.25, 0.97] },
     } },
   'pop-slifer-the-sky-dragon': { file: 'slifer-the-sky-dragon', cry: 'skyDragon', tall: 2.2, accent: '#ff3b47', fr: 'Slifer le Dragon Céleste', pose: {
-      rot: { spine: [-1.1, 0, 0], neck: [0.2, 0, 0], head: [0.55, 0, 0], joint: [0.12, 0.25, 0], tail: [-0.6, -1.4, 0], wing: [0, 0.2, -0.35] },
-      dir: { arm: [0.25, -0.35, 0.9], forearm: [0.2, 0.1, 0.97] },
+      // buste dressé ; le segment qui porte les pattes reste à l'horizontale (level) et la queue s'enroule en spirale
+      // derrière lui (curl : chaque segment se plie par rapport au précédent) — boucle verticale comme dans l'anime
+      level: { hip: 1 },
+      curl: ['tail', 'joint'],
+      rot: { spine: [-1.1, 0, 0], neck: [0.2, 0, 0], head: [0.55, 0, 0], joint: [0.05, 0.3, 0], tail: [4.5, 2.2, 0.5], wing: [0, 0.2, -0.35] },
+      // pattes arrière en direction fixe (sinon l'enroulement les emporte) : cuisse en avant, jarret en arrière, pied à plat
+      dir: { arm: [0.25, -0.35, 0.9], forearm: [0.2, 0.1, 0.97], upleg: [0.12, -0.85, 0.5], leg: [0.05, -0.85, -0.5], foot: [0.05, 0.3, 0.95] },
     } },
   'pop-obelisk-the-tormentor': { file: 'obelisk-the-tormentor', cry: 'giant', tall: 2.4, accent: '#5aa8ff', fr: 'Obélisk le Tourmenteur', pose: {
-      rot: { spine: [0.28, 0, 0], neck: [-0.2, 0, 0], head: [-0.1, 0, 0] },
+      // ailes en V derrière les épaules (sprite ROD)
+      rot: { spine: [0.28, 0, 0], neck: [-0.2, 0, 0], head: [-0.1, 0, 0], wing: [0, -0.45, -0.35] },
       dir: {
         'arm.L': [0.27, -0.95, 0.12], 'forearm.L': [0.16, -0.94, 0.3], 'arm.R': [-0.22, -0.96, 0.17], 'forearm.R': [-0.1, -0.9, 0.42],
         upleg: [0.18, -0.98, 0.06], leg: [0.12, -0.98, -0.12],

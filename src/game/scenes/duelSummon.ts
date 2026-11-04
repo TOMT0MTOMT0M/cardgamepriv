@@ -454,7 +454,12 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       // à l'échelle sur la silhouette : la hauteur prévue, sans dépasser 1,8 × cette hauteur en envergure
       const k = Math.min(tall / h, (tall * 1.8) / w);
       model.scale.setScalar(k);
-      model.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
+      // centré sur ses appuis (pieds) plutôt que sur la boîte : un bâton, une aile ou une queue ne décalent pas le modèle
+      // hors de la carte ; serpent : centre de la boîte
+      const foot = auto && auto.kind !== 'serpent' ? auto.anchor() : null;
+      const cx = foot ? foot.x : (box.min.x + box.max.x) / 2;
+      const cz = foot ? foot.z : (box.min.z + box.max.z) / 2;
+      model.position.set(-cx * k, -box.min.y * k, -cz * k);
       H = h * k;
       wide = w * k;
       const y = positionWorld.y.div(H);

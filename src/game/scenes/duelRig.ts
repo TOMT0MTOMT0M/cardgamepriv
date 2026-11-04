@@ -127,7 +127,7 @@ const ROLES: Array<[Role, RegExp]> = [
   ['neck', /^neck\d*$/],
   ['head', /^head\d*$/],
   ['jaw', /^(jaw|mouth|snakemouth|chin|downchin)\d*$/],
-  ['wing', /^(l|r|left|right)_?wing0?1?$/],
+  ['wing', /^(l|r|left|right)_?wing(01)?$/],
   ['tail', /^tail\d*$/],
 ];
 const clean = (raw: string) => raw.toLowerCase().replace(/_\d{2,4}$/, '');
@@ -151,6 +151,17 @@ type Sided<K extends string> = K | `${K}.L` | `${K}.R`;
  *    `wing`, `shoulder`, `jaw`) ou par morceau de nom d'os (`elbowwing`, `skirt`…). Chaînes : réparties sur leurs os.
  */
 export interface PoseSpec {
+  /**
+   * os (morceau de nom) remis À L'HORIZONTALE après les rotations de leurs parents, en gardant leur cap (0..1 = part) :
+   * le segment qui porte les pattes reste droit sous elles même quand le corps s'enroule. Les membres qui en dépendent
+   * (cuisses, jambes, pieds) suivent ce cap : leur `dir` est exprimée dans son repère.
+   */
+  level?: Record<string, number>;
+  /**
+   * clés de `rot` (rôle ou nom) appliquées dans le repère COURANT du parent plutôt que celui du modèle : chaque segment
+   * se plie de la même façon par rapport au précédent → vraie spirale (queue, corps de serpent qui s'enroule)
+   */
+  curl?: string[];
   dir?: Partial<Record<Sided<Limb>, V3>>;
   roll?: Partial<Record<Sided<Limb>, number>>;
   rot?: Record<string, V3>;
@@ -162,6 +173,8 @@ export interface AutoPose {
   kind: 'humanoid' | 'dragon' | 'serpent';
   /** rise 0..1 : déploiement (invocation) ; mouth 0..1 ; life 0..1 (souffle, balancements) */
   apply(o: { t: number; rise: number; mouth: number; life: number }): void;
+  /** point d'appui (milieu des pieds, sinon du bassin) dans le repère du modèle — pour centrer sur la carte */
+  anchor(): Vector3 | null;
   debug?(): unknown;
 }
 
@@ -173,10 +186,14 @@ interface B {
   side: number;
   depth: number;
   rest: Quaternion;
+  /** orientation de repos dans le repère du modèle */
+  restM: Quaternion;
   /** direction de l'os (vers son enfant de chaîne), dans son repère local */
   axis: Vector3 | null;
   /** charnière de repos (coude / genou), repère local */
   hinge: Vector3 | null;
+  /** pied : dessus de repos, repère local */
+  up?: Vector3;
   order: number;
   dups: Object3D[];
 }
@@ -216,7 +233,7 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
     const b: B = {
       o, name, bare: bare(name), role, depth,
       side: /^(l_|left)/.test(lower) || /^l[A-Z]/.test(name) ? 1 : /^(r_|right)/.test(lower) || /^r[A-Z]/.test(name) ? -1 : Math.sign(w.x) || 1,
-      rest: o.quaternion.clone(), axis: null, hinge: null,
+      rest: o.quaternion.clone(), restM: qOf(o).normalize(), axis: null, hinge: null,
       order: Number((clean(name).match(/(\d+)$/) ?? [, '0'])[1]), dups: [],
     };
     byName.set(name, b);
@@ -278,6 +295,8 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
     const qi = q.clone().invert();
     b.axis = dirM.clone().applyQuaternion(qi);
     // charnière : coude = flexion vers l'avant, genou = vers l'arrière (repère du modèle)
+    // pied : le « dessus » de repos (haut du modèle) — pour garder la plante à plat quel que soit le corps
+    if (b.role === 'foot') b.up = new Vector3(0, 1, 0).applyQuaternion(qi);
     if (b.role === 'arm' || b.role === 'upleg') {
       const flex = new Vector3(0, 0, b.role === 'arm' ? 1 : -1);
       const h = dirM.clone().cross(flex);
@@ -330,6 +349,25 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
     return best ? pick(best) : null;
   };
   const chainLen = (r: Role) => Math.max(1, by(r).length);
+  const curlKeys = spec.curl ?? [];
+  const curlFor = (b: B) => curlKeys.some((k) => (b.role && k === b.role) || new RegExp(`^${k.toLowerCase()}\\d*$`).test(b.bare));
+  const levelKeys = Object.keys(spec.level ?? {});
+  const levelFor = (b: B): number => {
+    let best: string | null = null;
+    for (const k of levelKeys) if (new RegExp(`^${k.toLowerCase()}\\d*$`).test(b.bare) && (!best || k.length > best.length)) best = k;
+    return best ? spec.level![best] : 0;
+  };
+  const byObj = new Map<Object3D, B>(list.map((b) => [b.o, b]));
+  /** cap (lacet) des os remis à l'horizontale, pour l'appliquer aux membres qui en dépendent */
+  const heading = new Map<B, Quaternion>();
+  const headingOf = (b: B): Quaternion | null => {
+    for (let o = b.o.parent; o && o !== root; o = o.parent) {
+      const a = byObj.get(o);
+      const h = a && heading.get(a);
+      if (h) return h;
+    }
+    return null;
+  };
 
   // ordre de traitement : parents d'abord
   const sorted = [...list].sort((a, b) => a.depth - b.depth);
@@ -375,6 +413,7 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
   const pose = (t: number, mouth: number, life: number) => {
     for (const b of list) b.o.quaternion.copy(b.rest);
     cache.clear();
+    heading.clear();
     const br = Math.sin(t * 1.6) * life;
     for (const b of sorted) {
       const k = b.side;
@@ -392,7 +431,27 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
       if (r || life3[0] || life3[1] || life3[2]) {
         const n = b.role === 'spine' || b.role === 'neck' || b.role === 'tail' ? chainLen(b.role) : 1;
         const v = r ?? [0, 0, 0];
-        turn(b, worldRot(v[0] / n + life3[0], v[1] / n + life3[1], v[2] / n + life3[2]));
+        const D = worldRot(v[0] / n + life3[0], v[1] / n + life3[1], v[2] / n + life3[2]);
+        const pb = curlFor(b) && b.o.parent ? byObj.get(b.o.parent) : undefined;
+        if (pb) {
+          // repère du parent tel qu'il est tourné maintenant : D' = Δp · D · Δp⁻¹
+          const dp = rq(pb.o).clone().multiply(pb.restM.clone().invert()).normalize();
+          D.premultiply(dp).multiply(dp.clone().invert());
+        }
+        turn(b, D);
+      }
+      // 1b) remise à l'horizontale (cap conservé)
+      const lv = levelFor(b);
+      if (lv > 0) {
+        const cur = rq(b.o.parent).clone().multiply(b.o.quaternion).normalize();
+        const f = new Vector3(0, 0, 1).applyQuaternion(b.restM.clone().invert()).applyQuaternion(cur);
+        f.y = 0;
+        const yaw = f.lengthSq() > 1e-6 ? Math.atan2(f.x, f.z) : 0;
+        const H = new Quaternion().setFromAxisAngle(AY, yaw);
+        const target = H.clone().multiply(b.restM);
+        const next = cur.clone().slerp(target, Math.min(1, lv));
+        turn(b, next.multiply(cur.clone().invert()));
+        heading.set(b, H);
       }
       // 2) clavicule : suit l'élévation du bras
       if (b.role === 'shoulder') {
@@ -402,6 +461,8 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
       }
       // 3) membres en direction absolue
       const target = dirFor(b);
+      const hd = target ? headingOf(b) : null;
+      if (target && hd) target.applyQuaternion(hd);
       if (target && b.axis) {
         if (b.role === 'arm' || b.role === 'forearm' || b.role === 'upleg' || b.role === 'leg') {
           // petit balancement de vie sur les bras
@@ -412,12 +473,18 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
         let D: Quaternion;
         const low = (b.role === 'arm' || b.role === 'upleg') && b.hinge ? lowerOf(b) : undefined;
         const lowT = low ? dirFor(low) : null;
+        if (lowT && hd) lowT.applyQuaternion(hd);
         const plane = lowT ? target.clone().cross(lowT) : null;
         if (plane && plane.lengthSq() > 0.004 && b.hinge) {
           // plan de flexion imposé : charnière courante → normale du plan (segment, segment suivant)
           const curH = b.hinge.clone().applyQuaternion(cur);
           const from = frame(curDir, curH);
           const to = frame(target, plane.normalize());
+          D = to.multiply(from.invert());
+        } else if (b.up) {
+          // pied à plat : axe → cible, dessus → le plus près possible du haut du modèle
+          const from = frame(curDir, b.up.clone().applyQuaternion(cur));
+          const to = frame(target, AY.clone());
           D = to.multiply(from.invert());
         } else {
           D = new Quaternion().setFromUnitVectors(curDir, target);
@@ -435,6 +502,14 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
   void tv;
   return {
     kind,
+    anchor() {
+      const feet = by('foot');
+      // repère PROPRE de la racine (indépendant de l'échelle / position qu'on lui donne ensuite)
+      root.updateMatrixWorld(true);
+      const pts = (feet.length ? feet : by('hips').length ? by('hips') : by('spine').slice(0, 1)).map((b) => root.worldToLocal(b.o.getWorldPosition(new Vector3())));
+      if (!pts.length) return null;
+      return pts.reduce((a, v) => a.add(v), new Vector3()).multiplyScalar(1 / pts.length);
+    },
     debug() {
       cache.clear();
       return list.filter((b) => b.axis || Number.isNaN(b.o.quaternion.x)).map((b) => {
