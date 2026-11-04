@@ -11,6 +11,8 @@ import { POKEMON_151, pokemonCardId } from '../../core/sets/pokemon151';
 import { POKEMON_MYTHIC_TYPE } from '../../core/sets/pokemonTypes';
 import { siteUrl } from '../../core/siteRoot';
 import { gbcTransition, type GbcTransition } from '../scenes/gbcTransition';
+import { markWildSeen } from '../wildEncounter';
+import type { WildExperiment } from '../../experiments/041-pokemon-wild/index';
 import { rarity } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { createPackSheet, shopPacks } from './packSheet';
@@ -18,6 +20,7 @@ import { preloadArt } from '../preload';
 import { isTouch } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
 import { createBigPulls } from './bigPulls';
+import { duelMonster } from '../scenes/duelMonsters';
 
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
 const TOUCH = isTouch();
@@ -98,6 +101,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    */
   let batch: Batch | null = null;
   let secretExp: { replay?(): void } | null = null;
+  /** cinématique d'invocation (6★ Yu-Gi-Oh) préparée pour ce booster : carte concernée + scène montée */
+  let duel: { cardId: string; exp: { replay?(): void } | null } | null = null;
   const newBatch = (req: PackRequest, total: number, current: SealedPack, hi: boolean, all: boolean): Batch => ({ req, total, done: [], current, hi, all, skipping: false, revealing: null, pending: null, queue: [] });
   /**
    * Départ d'une série (retours de Tom, 4 nov. : « plusieurs boosters d'un coup = temps d'attente ») : TOUS les
@@ -335,6 +340,19 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     },
   });
   el.append(sheet.el);
+  // crochet de test (Playwright, dev seulement) : ouvre directement un booster de la liste (`__shop.open('pop')`)
+  if (import.meta.env.DEV)
+    (window as unknown as { __shop: unknown }).__shop = {
+      async open(key: string) {
+        const p = list.find((x) => x.key === key);
+        if (!p || mode !== 'pick') return false;
+        const got = await backend.preparePack(p.req);
+        pack = got;
+        batch = newBatch(p.req, 1, got, false, false);
+        start(got);
+        return true;
+      },
+    };
 
   // ── les 5 pochettes
   /**
@@ -960,6 +978,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       shell.unmount('secret');
       secretExp = null;
     }
+    dropDuel();
     endWild();
     secretContinue.hidden = true;
     showSummary();
@@ -1036,11 +1055,17 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     void preloadArt(p.cards.map((c) => c.cardId)); // en parallèle de la scène : images prêtes au plus tôt
     const secret = p.cards.find((c) => rarity(c.rarity).secret);
     if (secret) void prepareSecret(secret);
-    // Pokémon 6★ : musique décodée et module chargé pendant que le joueur ouvre le booster
-    if (p.cards.some(isWild)) {
+    dropDuel();
+    const duelCard = p.cards.find((c) => rarity(c.rarity).rank === 5 && duelMonster(c.cardId));
+    if (duelCard) void prepareDuel(duelCard);
+    // Pokémon 6★ : musique décodée et scène montée (carte, décor) pendant que le joueur ouvre le booster
+    // (plusieurs Pokémon 6★ dans le même booster : chacun aura sa rencontre ; la 1re est préparée maintenant, les
+    // suivantes à la fin de la précédente — ou, au pire, pendant le noir de leur propre transition)
+    wildQueue = p.cards.filter(isWild);
+    if (wildQueue.length) {
       void shell.sfx.loadMusic(WILD_MUSIC);
-      void import('../../experiments/041-pokemon-wild/index');
-    }
+      prepareWild(wildQueue[0]);
+    } else dropWild();
     opening.open(p, {
       onHold(v) {
         ring.style.strokeDashoffset = String(100 - v * 100);
@@ -1106,6 +1131,18 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         opening.setAuto({ burn: false, minRank: 0, reveal: false });
         void runSecret();
       },
+      onCinematic(card) {
+        // la scène d'invocation n'est pas prête (téléphone lent) : séquence mythique habituelle, rien n'attend
+        if (!duel || duel.cardId !== card.cardId || !duel.exp || !shell.has('duel')) return false;
+        hud.hidden = true;
+        info.hidden = true;
+        info.classList.remove('in');
+        mythicVeil.hidden = true;
+        document.body.classList.add('duel-on');
+        shell.show('duel');
+        duel.exp.replay?.();
+        return true;
+      },
       onDone() {
         mythicVeil.hidden = true;
         void done(p);
@@ -1154,28 +1191,62 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   // ─────────────────────────────────────────── Pokémon 6★ : « rencontre sauvage » (041)
   let wildOn = false;
   let wildTr: GbcTransition | null = null;
+  /** Pokémon 6★ du booster en cours pas encore rencontrés */
+  let wildQueue: PackCard[] = [];
+  /** scène montée à l'avance pour le Pokémon 6★ du booster en cours (carte, décor, matériaux) */
+  let wildPrep: { cardId: string; exp: Promise<WildExperiment | null> } | null = null;
+  function prepareWild(card: PackCard) {
+    if (wildPrep?.cardId === card.cardId) return;
+    dropWild();
+    const me: { cardId: string; exp: Promise<WildExperiment | null> } = { cardId: card.cardId, exp: Promise.resolve(null) };
+    me.exp = (async () => {
+      try {
+        const mod = await import('../../experiments/041-pokemon-wild/index');
+        if (wildPrep !== me) return null;
+        const dex = POKEMON_151.find((e) => pokemonCardId(e) === card.cardId)?.dex ?? 0;
+        const exp = mod.default({ card: cardById(card.cardId), type: POKEMON_MYTHIC_TYPE[dex] ?? 'plante', onRevealed: () => (wildContinue.hidden = !wildOn) });
+        await shell.mount('wild', exp, 'mythic');
+        // booster abandonné pendant le montage : on démonte
+        if (wildPrep !== me) {
+          if (!wildOn) shell.unmount('wild');
+          return null;
+        }
+        return exp;
+      } catch (e) {
+        console.error('[jeu] rencontre sauvage (préparation)', e);
+        return null;
+      }
+    })();
+    wildPrep = me;
+  }
+  /** la scène préparée ne servira pas (autre booster, retour boutique) */
+  function dropWild() {
+    if (wildOn || !wildPrep) return;
+    wildPrep = null;
+    if (shell.has('wild')) shell.unmount('wild');
+  }
   /**
-   * Transition de combat Game Boy Color (par-dessus l'ouverture) + musique en boucle dès le premier clignotement ; la
-   * scène 041 se monte derrière le rideau noir (la transition couvre sa compilation), puis le rideau se lève.
+   * Transition de combat Game Boy Color (par-dessus l'ouverture, dès le toucher) + musique dès le premier clignotement.
+   * La scène 041 est déjà montée (préparée à l'ouverture du booster) ; au noir complet seulement, elle passe en
+   * éclairage Forward+ et compile — ce changement global ne se voit donc jamais et ne fige pas la transition.
    */
   async function runWild(card: PackCard) {
+    if (wildOn) return;
     wildOn = true;
+    markWildSeen(card.cardId); // le récap qui suit ne la rejoue pas dans la visionneuse
+    const qi = wildQueue.findIndex((c) => c.cardId === card.cardId);
+    if (qi >= 0) wildQueue.splice(qi, 1);
     hud.hidden = true;
     info.classList.remove('in');
     const tr = (wildTr = gbcTransition());
     void shell.sfx.playMusic(WILD_MUSIC, { ...WILD_LOOP, vol: 0.55, fade: 0.04 });
     haptics.pulse([30, 60, 30, 60, 30]);
     try {
-      const cd = cardById(card.cardId);
-      const dex = POKEMON_151.find((e) => pokemonCardId(e) === card.cardId)?.dex ?? 0;
-      const mod = await import('../../experiments/041-pokemon-wild/index');
+      if (wildPrep?.cardId !== card.cardId) prepareWild(card);
+      const [exp] = await Promise.all([wildPrep!.exp, tr.covered]);
       if (!wildOn) return;
-      const exp = mod.default({ card: cd, type: POKEMON_MYTHIC_TYPE[dex] ?? 'plante', onRevealed: () => (wildContinue.hidden = !wildOn) });
-      // montage APRÈS le noir complet : la compilation (et le changement d'éclairage Forward+) ne fige jamais la
-      // transition ; l'écran reste noir le temps qu'il faut, la musique tourne déjà
-      await tr.covered;
-      if (!wildOn) return;
-      await shell.mount('wild', exp, 'mythic');
+      if (!exp) throw new Error('scène indisponible');
+      await exp.activate();
       if (!wildOn) return;
       shell.show('wild');
       exp.replay?.();
@@ -1190,6 +1261,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   function endWild() {
     if (!wildOn) return;
     wildOn = false;
+    wildPrep = null;
     wildContinue.hidden = true;
     wildTr?.destroy();
     wildTr = null;
@@ -1203,6 +1275,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   wildContinue.querySelector('button')!.addEventListener('click', () => {
     endWild();
     opening.resumeAfterScene();
+    // un autre Pokémon 6★ attend dans ce booster : sa scène se prépare pendant que le joueur regarde la suite
+    if (wildQueue.length) prepareWild(wildQueue[0]);
   });
 
   /** Scène secrète (039) montée en fond dès que le pack est tiré : shaders compilés avant même la déchirure. */
@@ -1218,6 +1292,41 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     });
     secretExp = exp;
     await shell.mount('secret', exp, 'secret');
+  }
+
+  /** Cinématique d'invocation (6★ Yu-Gi-Oh) montée en fond dès que le pack est tiré, comme la scène secrète. */
+  async function prepareDuel(card: PackCard) {
+    const monster = duelMonster(card.cardId)!;
+    const d = (duel = { cardId: card.cardId, exp: null as { replay?(): void } | null });
+    try {
+      const mod = await import('../scenes/duelSummon');
+      if (duel !== d) return;
+      const exp = mod.default({
+        card: cardById(card.cardId),
+        monster,
+        onDone: () => {
+          if (duel !== d) return;
+          shell.show('opening');
+          dropDuel();
+          hud.hidden = mode !== 'opening';
+          opening.resumeAfterCinematic();
+        },
+      });
+      await shell.mount('duel', exp, 'mythic');
+      if (duel !== d) return shell.unmount('duel');
+      d.exp = exp;
+    } catch (e) {
+      console.warn('[jeu] invocation indisponible', e);
+      if (duel === d) dropDuel();
+    }
+  }
+
+  function dropDuel() {
+    document.body.classList.remove('duel-on');
+    if (!duel) return;
+    duel = null;
+    if (shell.active() === 'duel') shell.show('opening');
+    shell.unmount('duel');
   }
 
   async function runSecret() {
@@ -1504,6 +1613,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     batch = null;
     opening.setAuto({ burn: false, minRank: 0, reveal: false });
     opening.reset();
+    endWild();
+    dropWild();
+    dropDuel();
     setMode('pick');
     syncState();
   }

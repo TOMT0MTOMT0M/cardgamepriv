@@ -137,6 +137,11 @@ export interface OpeningEvents {
    * scène selon le type) ; il rappelle `resumeAfterScene()` quand le joueur continue.
    */
   onPokemon?(card: PackCard): void;
+  /**
+   * Une 6★ qui a sa propre cinématique (Yu-Gi-Oh : invocation sur le terrain) va être retournée : vrai = le jeu prend la
+   * main (la carte attend face cachée), puis rappelle `resumeAfterCinematic()` ; faux = séquence mythique habituelle.
+   */
+  onCinematic?(card: PackCard, last: boolean): boolean;
   /** une MYTHIQUE (6★) : séquence plein écran dédiée (pause dramatique, burst, étoiles une à une) — démarre */
   onMythic?(card: PackCard): void;
   /** fin de la séquence mythique : la scène attend un toucher (ou appelle onDone si c'était la dernière carte, après le toucher) */
@@ -158,6 +163,8 @@ export interface OpeningScene extends Experiment {
   finishAfterSecret(): void;
   /** Après une scène dédiée (rencontre Pokémon) : la carte en cours est montrée face visible, la suite reprend. */
   resumeAfterScene(): void;
+  /** Après une cinématique de 6★ (onCinematic) : la carte est montrée face visible, plein écran, comme à la fin de la séquence mythique. */
+  resumeAfterCinematic(): void;
   /** Retour à la vitrine (libère les cartes du pack). */
   reset(): void;
   /** Révéler / avancer (même effet qu'un tap). */
@@ -221,7 +228,8 @@ export interface OpeningScene extends Experiment {
 }
 
 /** `mythicHold` : la 6★ est révélée plein écran, la scène attend un toucher avant l'éventail */
-type Phase = 'display' | 'sealed' | 'opened' | 'busy' | 'shown' | 'mythicHold' | 'done';
+/** `scene` : une scène dédiée (rencontre Pokémon) a la main — l'ouverture ignore tout toucher jusqu'à resumeAfterScene() */
+type Phase = 'display' | 'sealed' | 'opened' | 'busy' | 'shown' | 'mythicHold' | 'done' | 'scene';
 
 /** Réglage « réduire les animations » du téléphone / de l'ordinateur : pas de flash négatif, secousses atténuées. */
 const CALM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1081,9 +1089,16 @@ export function createOpeningScene(): OpeningScene {
       return;
     }
     if (wildPokemon(s) && events.onPokemon) {
-      phase = 'busy';
+      phase = 'scene';
+      queued = false;
       events.onPokemon(s.data);
       return;
+    }
+    // 6★ avec sa propre cinématique (Yu-Gi-Oh) : la scène d'invocation prend le relais, la carte attend face cachée
+    if (s.rr.tier >= 5 && !s.rr.secret && events.onCinematic) {
+      phase = 'scene';
+      queued = false;
+      if (events.onCinematic(s.data, last)) return;
     }
     phase = 'busy';
     const rr = s.rr;
@@ -1306,10 +1321,15 @@ export function createOpeningScene(): OpeningScene {
     const quick = s.rr.rank < 2 && cursor < order.length - 1;
     move.call(() => {
       phase = 'opened';
-      if (chain && !(auto.minRank > 0 || auto.reveal)) {
+      // la suivante est un Pokémon 6★ : pas d'enchaînement — sa rencontre se déclenche sur SON toucher (la transition
+      // ne part jamais toute seule pendant que la carte précédente vole encore vers la rangée)
+      if (chain && !(auto.minRank > 0 || auto.reveal) && !wildPokemon(slots[order[cursor]])) {
         queued = false;
         revealCurrent();
-      } else flushQueued();
+      } else {
+        if (wildPokemon(slots[order[cursor]])) queued = false; // un toucher « en trop » ne lance pas la rencontre
+        flushQueued();
+      }
     }, [], quick ? 0.3 : 0.55);
     if (fastCard(order[cursor - 1])) move.timeScale(2.2);
   }
@@ -1400,7 +1420,8 @@ export function createOpeningScene(): OpeningScene {
     }
     if (wildPokemon(s) && events.onPokemon) {
       if (cursor > 0) (last ? events.onLast : events.onNext)?.();
-      phase = 'busy';
+      phase = 'scene';
+      queued = false;
       events.onPokemon(s.data);
       return;
     }
@@ -1603,6 +1624,7 @@ export function createOpeningScene(): OpeningScene {
   }
 
   function advance() {
+    if (phase === 'scene') return; // la rencontre Pokémon a la main : aucun toucher ne passe à travers
     autoWait = false;
     if (phase === 'mythicHold') {
       // la 6★ plein écran a été admirée : place à l'éventail
@@ -1805,7 +1827,9 @@ export function createOpeningScene(): OpeningScene {
       return null;
     },
     resumeAfterScene() {
+      if (phase !== 'scene') return;
       killAll();
+      queued = false;
       const si = order[cursor];
       const s = slots[si];
       if (!s) return;
@@ -1831,6 +1855,40 @@ export function createOpeningScene(): OpeningScene {
         Object.assign(s.p, { y: pose.y, s: 1.06 * pose.k });
         phase = 'shown';
       }
+    },
+    resumeAfterCinematic() {
+      if (phase !== 'scene' || !order.length) return;
+      killAll();
+      const si = order[cursor];
+      const s = slots[si];
+      if (!s) return;
+      const rr = s.rr;
+      const last = cursor === order.length - 1;
+      const pose = payPose(1.12);
+      // retour de la cinématique : la carte est déjà face visible, à sa pose de payoff ; le flash de sortie s'éteint ici
+      Object.assign(s.p, { flip: 0, y: pose.y, z: 0.08, s: 1.06 * pose.k, holo: 1 });
+      s.U.rim.value = 0;
+      s.U.tease.value = 1;
+      revealed = true;
+      curTier = rr.tier;
+      curBase = 1;
+      queued = false;
+      U.glowColor.value.set(rr.hex);
+      U.colA.value.set(rr.hex);
+      U.colB.value.set(rr.accentHex);
+      Object.assign(S, { dark: 0.5, glow: 0.5, trem: 0, flash: 0.9, ca: 0, flare: 0 });
+      ctx.sfx.transpose = 2;
+      phase = 'busy';
+      events.onMythic?.(s.data);
+      events.onCard?.(cursor, s.data, order.length);
+      const main = (tl = gsap.timeline());
+      main.to(S, { flash: 0, duration: 0.9, ease: EASE.glide }, 0);
+      const end = ignite(s, 0.35);
+      main.call(() => {
+        phase = last ? 'mythicHold' : 'shown';
+        autoHoldUntil = performance.now() + MYTHIC_ADMIRE_MS;
+        events.onMythicShown?.(s.data, last);
+      }, [], end);
     },
     finishAfterSecret() {
       killAll();

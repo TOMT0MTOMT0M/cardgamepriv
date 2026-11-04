@@ -3,6 +3,7 @@ import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
 import { contractProblem, contractTarget, rollContract } from '../core/contracts';
 import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
+import { POKEMON_151, pokemonCardId } from '../core/sets/pokemon151';
 import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
 import { pityAfter, pityForces } from '../core/pity';
@@ -133,6 +134,10 @@ export function createLocalBackend(): GameBackend {
     save = freshSave();
   }
   let forceSecret = new URLSearchParams(location.search).has('secret');
+  // démo : `?force=pop-blue-eyes-white-dragon` → la 3e carte du prochain booster de ce thème est cette carte, en 6★ (captures)
+  let forceCard = new URLSearchParams(location.search).get('force');
+  /** démo, test de la rencontre sauvage : `?wild=2` → les 2 dernières cartes du prochain booster sont des Pokémon 6★ */
+  let forceWild = Math.min(5, Math.max(0, Number(new URLSearchParams(location.search).get('wild')) || 0));
   if (new URLSearchParams(location.search).has('pity')) save.pity = 199;
   {
     const n = Number(new URLSearchParams(location.search).get('streak'));
@@ -536,6 +541,22 @@ export function createLocalBackend(): GameBackend {
       seen.add(k);
       return { cardId: card.id, cardName: card.name, rarity: rarity as RarityId, mintNumber: mint, isNew, themeId: card.themeId };
     });
+    if (forceWild > 0) {
+      const pool = POKEMON_151.filter((e) => e.rarity === 'mythic');
+      for (let k = 0; k < forceWild; k++) {
+        const e = pool[Math.floor(Math.random() * pool.length)];
+        const id = pokemonCardId(e);
+        const ce = catalogEntry(id);
+        if (!ce) continue;
+        cards[cards.length - 1 - k] = { cardId: id, cardName: e.name, rarity: 'mythic', mintNumber: 1, isNew: true, themeId: ce.themeId };
+      }
+      forceWild = 0;
+    }
+    const forced = forceCard ? catalogEntry(forceCard) : null;
+    if (forced && cards.length && cards.some((c) => c.themeId === forced.themeId)) {
+      forceCard = null;
+      cards[Math.min(2, cards.length - 1)] = { cardId: forced.id, cardName: forced.name, rarity: 'mythic', mintNumber: 1, isNew: true, themeId: forced.themeId };
+    }
     const maxRarity = cards.reduce<RarityId>((m, c) => (RANK[c.rarity] > RANK[m] ? c.rarity : m), 'common');
     save.pity = pityAfter(save.pity ?? 0, cards.map((c) => c.rarity));
     return { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards };

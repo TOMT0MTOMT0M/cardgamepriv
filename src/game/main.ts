@@ -2,6 +2,7 @@ import './style.css';
 import { createShell, soundOn, soundVolume, type Shell } from './shell';
 import { createOpeningScene } from './scenes/opening';
 import type { ViewerScene } from './scenes/viewer';
+import { withWildEncounter } from './wildEncounter';
 import { createShopView } from './views/shop';
 import { createMissions, MISSION_ICON } from './views/missions';
 import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
@@ -739,7 +740,8 @@ async function boot() {
     if (!viewerP) {
       const mod = viewerModP ?? import('./scenes/viewer');
       viewerModP = null;
-      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene()));
+      // Pokémon 6★ : la visionneuse (collection, gros tirages, échanges…) rejoue la rencontre sauvage (wildEncounter.ts)
+      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withWildEncounter(shell, v));
       viewerP.catch(() => (viewerP = null)); // (échec : nouvel essai au prochain appel, si le navigateur ne garde pas l'échec)
     }
     return viewerP;

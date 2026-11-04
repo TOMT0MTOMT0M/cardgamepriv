@@ -117,7 +117,13 @@ interface Fly {
   b: number;
 }
 
-export default function create(o?: WildOptions): Experiment {
+/** scène montée à l'avance (pendant l'ouverture du booster) ; `activate()` la rend prête à s'afficher */
+export interface WildExperiment extends Experiment {
+  /** passe le moteur en éclairage Forward+ et compile la scène (à faire écran noir : ça change l'éclairage global) */
+  activate(): Promise<void>;
+}
+
+export default function create(o?: WildOptions): WildExperiment {
   // labo (sans options) : Mewtwo, type choisi par ?type=feu|eau|… (le jeu passe la vraie carte et son type)
   const lab = !o;
   const qType = (typeof location !== 'undefined' ? new URLSearchParams(location.search).get('type') : null) as PokemonType | null;
@@ -136,11 +142,16 @@ export default function create(o?: WildOptions): Experiment {
    *  (directionnelle : hors du Forward+, elle ne prend aucune place dans les grappes de lumières des particules) */
   const cardLight = new DirectionalLight(0xfff4e8, 0);
   const lit = { k: 0 };
-  const C = new Vector3(0, -0.06, 0);
+  /** centre de la carte : sa base reste à 8 cm au-dessus du sol (-0,5) même inclinée et soulevée par la charnière */
+  const C = new Vector3(0, 0.03, 0);
   const st = { K: 0, gather: 0, burst: 0, flip: Math.PI, hue: 0, spread: 0, fade: 0 };
   let tl: gsap.core.Timeline | null = null;
   let rtl: gsap.core.Timeline | null = null;
   let running = false;
+  let active = false;
+  let transitioning = false;
+  let dialogDone = false;
+  let activating: Promise<void> | null = null;
   let startedAt = 0;
   let revealed = false;
   let elapsed = 0;
@@ -166,6 +177,7 @@ export default function create(o?: WildOptions): Experiment {
     revealed = false;
     elapsed = 0;
     box.classList.remove('on');
+    dialogDone = false;
     Object.assign(st, { K: 0, gather: 0, burst: 0, flip: Math.PI, hue: 0, spread: 0, fade: 0 });
     lit.k = 0;
     if (face) face.lit.value = 0;
@@ -180,8 +192,8 @@ export default function create(o?: WildOptions): Experiment {
     // l'écran sort du noir de la transition, puis l'essaim approche et se met d'accord
     tl.to(st, { fade: 1, duration: 0.6, ease: EASE.glide }, 0)
       .to(veinU, { value: 1, duration: 2.4, ease: EASE.breathe }, 0.2)
-      .to(st, { gather: 1, duration: 3.2, ease: EASE.breathe }, 0.4)
-      .to(st, { K: K_MYTHIC, duration: 4, ease: EASE.heave }, 0.8);
+      .to(st, { gather: 1, duration: 2.4, ease: EASE.breathe }, 0.3)
+      .to(st, { K: K_MYTHIC, duration: 2.8, ease: EASE.heave }, 0.5);
   }
 
   function reveal() {
@@ -208,7 +220,7 @@ export default function create(o?: WildOptions): Experiment {
       if (face) face.lit.value = k + 1;
       sfx.note(5 + k, 0.08, 0.9);
     }, [], 1.1 + k * 0.16);
-    r.call(() => dialog(), [], 2.2);
+    r.call(() => dialog(), [], 1.95);
   }
 
   /** boîte de dialogue de la console, texte tapé lettre par lettre (avec le petit bip) */
@@ -223,28 +235,21 @@ export default function create(o?: WildOptions): Experiment {
       i++;
       txt.textContent = full.slice(0, i);
       if (i % 2 === 0) ctx.sfx.tick(1.8, 0.03);
-      if (i < full.length) window.setTimeout(tick, 32);
+      if (i < full.length) window.setTimeout(tick, 28);
       else {
         box.querySelector<HTMLElement>('.gbc-s')!.textContent = `Type ${TYPE_LABEL[opts.type] ?? ''} · ★★★★★★ MYTHIQUE`;
+        dialogDone = true;
         opts.onRevealed?.();
       }
     };
     window.setTimeout(tick, 120);
   }
 
-  const this_: Experiment = {
+  const this_: WildExperiment = {
     async setup(c) {
       ctx = c;
       const mobile = c.quality === 'mobile';
       stage = createStage(c, { bg: T.bg, env: 'night', envIntensity: 0.12, fov: 32 });
-      // vraies lumières par particule (Forward+) — rendu au système d'éclairage d'avant au démontage
-      const prevLighting = c.renderer.lighting;
-      const lighting = new ClusteredLighting(1024, 32, 24, 64);
-      c.renderer.lighting = lighting;
-      c.bag.fn(() => {
-        c.renderer.lighting = prevLighting;
-        lighting.dispose();
-      });
       moon = new DirectionalLight(new Color(T.moon), T.moonI);
       moon.position.set(1.2, 1.6, 1.4);
       stage.scene.add(moon);
@@ -355,26 +360,50 @@ export default function create(o?: WildOptions): Experiment {
       bloomNode = post.own(bloom(post.color, 0.5, 0.5, 0.85));
       post.output = (post.color as N).add(bloomNode).mul(fadeU);
       place(c.width, c.height);
-      await stage.compile();
       // toucher pendant la synchronisation : l'essaim s'accorde plus vite (jamais pour sauter la révélation)
+      // toucher : jamais avant que la scène soit sortie du noir ni pendant la transition (sinon il « déclenche » des
+      // choses invisibles) ; pendant la synchronisation, il accélère l'accord de l'essaim
       c.bag.fn(c.input.onTap(() => {
-        if (running && !revealed) st.K = Math.max(st.K, K_MYTHIC) * 1.3;
-        else if (lab && revealed) this_.replay?.();
+        if (!active || transitioning) return;
+        if (running && !revealed && st.fade > 0.9) st.K = Math.max(st.K, K_MYTHIC) * 1.3;
+        else if (lab && revealed && dialogDone) this_.replay?.();
       }));
       if (lab) c.bag.fn(() => ctx.sfx.stopMusic(0.3));
-      if (lab) this_.replay?.();
+      if (lab) {
+        await this_.activate();
+        this_.replay?.();
+      }
       c.bag.fn(() => (tl?.kill(), rtl?.kill(), (running = false)));
+    },
+    activate() {
+      if (activating) return activating;
+      activating = (async () => {
+        // vraies lumières par particule (Forward+) — rendu au système d'éclairage d'avant au démontage
+        const prevLighting = ctx.renderer.lighting;
+        const lighting = new ClusteredLighting(1024, 32, 24, 64);
+        ctx.renderer.lighting = lighting;
+        ctx.bag.fn(() => {
+          ctx.renderer.lighting = prevLighting;
+          lighting.dispose();
+        });
+        await stage.compile();
+        active = true;
+      })();
+      return activating;
     },
     replay() {
       if (!lab) return start();
+      if (transitioning) return; // labo : jamais deux transitions l'une sur l'autre
       // labo : la séquence complète à chaque toucher — transition GBC, musique en boucle, puis la scène
+      transitioning = true;
       const tr = gbcTransition();
       void ctx.sfx.playMusic(siteUrl('audio/pokemon-wild-battle.mp3'), { loopStart: 20, loopEnd: 51.3475, vol: 0.55, fade: 0.04 });
       running = false;
       st.fade = 0;
-      void tr.covered.then(() => (start(), tr.reveal()));
+      void tr.covered.then(() => (start(), tr.reveal().then(() => (transitioning = false))));
     },
     update(dtFrame, t) {
+      if (!active) return;
       if (!running) {
         post.render();
         return;
@@ -434,7 +463,7 @@ export default function create(o?: WildOptions): Experiment {
     lastPsi = psi;
     if (!revealed && st.K > K_MYTHIC * 0.85 && R > 0.9) reveal();
     // garde-fou en temps RÉEL (un téléphone lent simule moins vite) : la révélation ne dépasse jamais ~9 s
-    if (!revealed && performance.now() - startedAt > 9000) reveal();
+    if (!revealed && performance.now() - startedAt > 6500) reveal();
 
     const rT = 0.95 - 0.45 * Math.min(1, st.gather) * (0.4 + 0.6 * R) + st.spread * 0.35 - (st.gather > 1 ? (st.gather - 1) * 0.6 : 0);
     const free = 1 - Math.min(1, st.gather) * 0.75;
@@ -489,7 +518,7 @@ export default function create(o?: WildOptions): Experiment {
     const c = stage.camera;
     c.aspect = a;
     c.position.set(0, 0.18 * k, 2.75 * k);
-    c.lookAt(0, -0.14, 0);
+    c.lookAt(0, -0.06, 0);
     c.updateProjectionMatrix();
   }
 }

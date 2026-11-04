@@ -16,7 +16,8 @@
     "test:server": "vitest run",
     "thumbs": "node scripts/make-thumbs.mjs",
     "feedback": "node scripts/pull-feedback.mjs",
-    "r2:sync": "node scripts/r2-sync.mjs"
+    "r2:sync": "node scripts/r2-sync.mjs",
+    "convert:yugioh": "node scripts/import_faithful_model.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

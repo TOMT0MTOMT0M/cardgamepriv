@@ -2646,3 +2646,11 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
   .shop-home .bigpulls.bp-awake .bp-list { transform: scale(1.12); }
 }
 /* ==== fin boutique téléphone ==== */
+
+/* ==== invocation Yu-Gi-Oh (6★) ==== */
+/* la cinématique est plein écran : l'en-tête s'efface entièrement (et ne capte plus les touchers) */
+body.duel-on .topbar { opacity: 0; pointer-events: none; transition: opacity .5s; }
+/* ==== fin invocation ==== */
+
+/* Pokémon 6★ : rencontre sauvage jouée depuis la visionneuse (wildEncounter.ts) — l'interface s'efface */
+body.wild-on .viewer-ui, body.wild-on .topbar { visibility: hidden; }

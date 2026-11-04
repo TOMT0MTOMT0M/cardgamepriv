@@ -385,4 +385,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Active le son 🔈 · ?type=feu, eau, electrik, psy, spectre, tenebres, dragon, fee, combat, acier, normal, poison, insecte, roche, sol, vol, glace, plante · tap = rejouer',
     load: () => import('../experiments/041-pokemon-wild/index.ts'),
   },
+  {
+    id: '042-duel-summon',
+    title: 'Invocation — 6★ Yu-Gi-Oh',
+    category: 'B',
+    tags: ['hologramme', 'Yu-Gi-Oh', 'caméra', 'mythique'],
+    tech: ['détourage + relief IA hors ligne (rembg, Depth Anything V2)', 'maillage déplacé 2.5D (parallaxe, souffle)', 'matérialisation bas → haut (masque + ligne émissive)', 'terrain procédural TSL (onde d’allumage)', 'glTF animé facultatif (garde-fou qualité)', 'cuivres / taiko / cris synthétisés'],
+    blurb: 'La carte devient carte de duel, se pose sur le terrain, la caméra plonge à hauteur de genou : le monstre s’élève en hologramme, crie, puis se matérialise du bas vers le haut.',
+    hint: 'Active le son 🔈 · tap = matérialisation immédiate, puis fin · `?carte=pop-dark-magician` (10 cartes) · `?speed=0.25`',
+    load: () => import('../experiments/042-duel-summon/index.ts'),
+  },
 ];

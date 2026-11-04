@@ -735,4 +735,366 @@ export class Sfx {
     });
     this.out(g, 0.9, 'event');
   }
+
+  // ─────────────────────────────── invocation Yu-Gi-Oh (6★, scènes/duelSummon) — motifs ORIGINAUX, rien de la série
+
+  /** cuivre synthétique : 3 scies désaccordées, filtre qui s'ouvre à l'attaque (le « blat » d'un cuivre), `at` absolu */
+  private brass(at: number, hz: number, dur: number, vol: number) {
+    const c = this.ctx!;
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass';
+    f.Q.value = 2.2;
+    f.frequency.setValueAtTime(hz * 1.3, at);
+    f.frequency.exponentialRampToValueAtTime(Math.min(9000, hz * 10), at + 0.045);
+    f.frequency.exponentialRampToValueAtTime(Math.min(6000, hz * 3.4), at + 0.4);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.018);
+    g.gain.exponentialRampToValueAtTime(vol * 0.5, at + 0.22);
+    g.gain.setValueAtTime(vol * 0.5, at + Math.max(0.23, dur - 0.18));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    f.connect(g);
+    for (const det of [-12, 0, 10]) {
+      const o = c.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = hz;
+      o.detune.value = det;
+      o.connect(f);
+      o.start(at);
+      o.stop(at + dur + 0.05);
+    }
+    this.out(g, 0.5, 'event');
+  }
+
+  /** tambour (taiko) : corps grave qui chute + peau (bruit) + couche saturée 150–500 Hz pour le haut-parleur du téléphone */
+  private taiko(at: number, vol: number, low = 52) {
+    const c = this.ctx!;
+    this.transient(at, vol * 0.4, 2400, 'event');
+    const o = c.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(low * 2.4, at);
+    o.frequency.exponentialRampToValueAtTime(low, at + 0.22);
+    const g = c.createGain();
+    this.env(g, at, 0.005, vol, 0.75);
+    o.connect(g);
+    o.start(at);
+    o.stop(at + 0.85);
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 150;
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 520;
+    const hg = c.createGain();
+    this.env(hg, at, 0.005, vol * 0.5, 0.4);
+    g.connect(this.shaper!).connect(hp).connect(lp).connect(hg);
+    const nf = c.createBiquadFilter();
+    nf.type = 'bandpass';
+    nf.frequency.value = 700;
+    nf.Q.value = 0.8;
+    const ng = c.createGain();
+    this.env(ng, at, 0.002, vol * 0.35, 0.18);
+    this.noise(at, 0.25).connect(nf).connect(ng);
+    this.out(g, 0.25, 'event');
+    this.out(hg, 0.15, 'event');
+    this.out(ng, 0.3, 'event');
+  }
+
+  /**
+   * « L'heure du duel » (motif original) : aspiration de cymbale inversée, puis TA — TA — TAAM : deux accents de cuivres en
+   * ré mineur, le troisième s'ouvre en si bémol majeur (6e napolitaine… héroïque) sur un taiko et une sous-basse qui tombe.
+   * Les premières harmoniques des cuivres passent sur un téléphone ; ≈ 2,9 s.
+   */
+  duelSting(vol = 0.5) {
+    if (!this.ok || !this.voice(3.2)) return;
+    const c = this.ctx!, t = c.currentTime;
+    const pre = 0.55;
+    // cymbale inversée (bruit aigu qui gonfle jusqu'au premier coup)
+    const hf = c.createBiquadFilter();
+    hf.type = 'highpass';
+    hf.frequency.setValueAtTime(2500, t);
+    hf.frequency.exponentialRampToValueAtTime(7000, t + pre);
+    const hg = c.createGain();
+    hg.gain.setValueAtTime(0.0001, t);
+    hg.gain.exponentialRampToValueAtTime(vol * 0.28, t + pre - 0.01);
+    hg.gain.linearRampToValueAtTime(0.0001, t + pre + 0.01);
+    this.noise(t, pre + 0.05).connect(hf).connect(hg);
+    this.out(hg, 0.6, 'event');
+    const dm = [146.83, 220, 293.66, 349.23, 440];
+    const bb = [116.54, 233.08, 293.66, 349.23, 466.16, 587.33];
+    const hits: Array<[number, number[], number, number]> = [
+      [pre, dm, 0.24, 0.72],
+      [pre + 0.29, dm, 0.24, 0.72],
+      [pre + 0.6, bb, 2.1, 1],
+    ];
+    for (const [dt, chord, dur, k] of hits) {
+      chord.forEach((hz, i) => this.brass(t + dt, hz, dur, (vol * 0.1 * k) / (1 + i * 0.12)));
+      this.taiko(t + dt, vol * 0.75 * k, k > 0.9 ? 40 : 56);
+    }
+    // TAAM : sous-basse qui tombe + crash (bruit large qui s'éteint)
+    const at = t + pre + 0.6;
+    const sub = c.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(74, at);
+    sub.frequency.exponentialRampToValueAtTime(36, at + 1.6);
+    const sg = c.createGain();
+    this.env(sg, at, 0.01, vol * 0.55, 1.7);
+    sub.connect(sg);
+    sub.start(at);
+    sub.stop(at + 1.8);
+    this.out(sg, 0.1, 'event');
+    const cf = c.createBiquadFilter();
+    cf.type = 'highpass';
+    cf.frequency.value = 3200;
+    const cg = c.createGain();
+    this.env(cg, at, 0.003, vol * 0.22, 1.9);
+    this.noise(at, 2).connect(cf).connect(cg);
+    this.out(cg, 0.7, 'event');
+  }
+
+  /** Bourdonnement du projecteur d'hologramme : scie à 55 Hz dans un filtre qui balaie, crépitements, `dur` s. */
+  holoHum(dur = 2.4, vol = 0.18) {
+    if (!this.ok || !this.voice(dur)) return;
+    const c = this.ctx!, t = c.currentTime;
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 5;
+    f.frequency.setValueAtTime(260, t);
+    f.frequency.exponentialRampToValueAtTime(2400, t + dur * 0.45);
+    f.frequency.exponentialRampToValueAtTime(700, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.25);
+    g.gain.setValueAtTime(vol, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    f.connect(g);
+    for (const [hz, type] of [[55, 'sawtooth'], [110.4, 'square']] as const) {
+      const o = c.createOscillator();
+      o.type = type;
+      o.frequency.value = hz;
+      o.connect(f);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+    // crépitements : quelques clics de bruit aléatoires
+    for (let i = 0; i < 9; i++) this.transient(t + Math.random() * dur * 0.8, vol * (0.25 + Math.random() * 0.35), 3800 + Math.random() * 2500, 'event');
+    this.out(g, 0.4, 'event');
+  }
+
+  /** Balayage de matérialisation (bas → haut) : sinus qui monte + souffle filtré qui le suit. */
+  scanSweep(dur = 1.6, vol = 0.14) {
+    if (!this.ok || !this.voice(dur)) return;
+    const c = this.ctx!, t = c.currentTime;
+    const o = c.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(scaleHz(0, this.transpose) / 2, t);
+    o.frequency.exponentialRampToValueAtTime(scaleHz(10, this.transpose), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.1);
+    g.gain.setValueAtTime(vol * 0.5, t + dur * 0.8);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 4;
+    f.frequency.setValueAtTime(400, t);
+    f.frequency.exponentialRampToValueAtTime(6000, t + dur);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(vol, t + dur * 0.9);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.08);
+    this.noise(t, dur + 0.1).connect(f).connect(ng);
+    this.out(g, 0.5, 'event');
+    this.out(ng, 0.4, 'event');
+  }
+
+  /**
+   * Cri de créature, synthétisé (jamais un enregistrement) : source riche (scies + carré) dont la hauteur monte puis
+   * s'effondre, grognement (modulation d'amplitude), formants de gueule, souffle rauque, saturation.
+   * dragon : cri perçant · darkDragon : plus grave et sale · skyDragon : aigu + tonnerre · giant : grondement de colosse ;
+   * mage / fairy : pas de cri — magie (éclat FM + arpège / clochettes) ; duelist : accord de cuivres héroïque.
+   */
+  creature(kind: CreatureKind, vol = 0.5) {
+    if (!this.ok) return;
+    const c = this.ctx!, t = c.currentTime;
+    if (kind === 'mage' || kind === 'fairy') {
+      if (!this.voice(2.4)) return;
+      // éclat magique : sinus modulé en fréquence qui monte (FM), puis arpège / clochettes dans la gamme
+      const car = c.createOscillator();
+      const mod = c.createOscillator();
+      const mg = c.createGain();
+      car.type = 'sine';
+      car.frequency.setValueAtTime(kind === 'fairy' ? 520 : 260, t);
+      car.frequency.exponentialRampToValueAtTime(kind === 'fairy' ? 2100 : 1300, t + 0.7);
+      mod.frequency.value = kind === 'fairy' ? 37 : 23;
+      mg.gain.setValueAtTime(0, t);
+      mg.gain.linearRampToValueAtTime(kind === 'fairy' ? 420 : 640, t + 0.5);
+      mod.connect(mg).connect(car.frequency);
+      const g = c.createGain();
+      this.env(g, t, 0.08, vol * 0.22, 1.1);
+      car.connect(g);
+      car.start(t);
+      mod.start(t);
+      car.stop(t + 1.3);
+      mod.stop(t + 1.3);
+      this.out(g, 0.7, 'event');
+      if (kind === 'fairy') for (let k = 0; k < 7; k++) this.chime(3, vol * 0.08, scaleHz(5 + k, this.transpose), 0.25 + k * 0.07);
+      else this.arp(6, vol * 0.12, 0.08, 0, 0.9);
+      this.choir(2.2, vol * 0.14, kind === 'fairy' ? 330 : 196);
+      return;
+    }
+    if (kind === 'duelist') {
+      if (!this.voice(2.4)) return;
+      const major = [196, 293.66, 392, 493.88, 587.33];
+      major.forEach((hz, i) => this.brass(t + i * 0.012, hz * Math.pow(2, this.transpose / 12), 2.2, (vol * 0.1) / (1 + i * 0.15)));
+      this.taiko(t, vol * 0.6, 48);
+      return;
+    }
+    const P = {
+      dragon: { f0: 230, f1: 360, f2: 120, dur: 1.9, form: [720, 1550, 2700], growl: 36, screech: 1 },
+      darkDragon: { f0: 150, f1: 250, f2: 78, dur: 2.1, form: [540, 1180, 2350], growl: 28, screech: 0.45 },
+      skyDragon: { f0: 270, f1: 430, f2: 150, dur: 2.0, form: [820, 1750, 3050], growl: 42, screech: 1.2 },
+      giant: { f0: 72, f1: 112, f2: 44, dur: 2.7, form: [320, 760, 1850], growl: 21, screech: 0 },
+    }[kind];
+    if (!this.voice(P.dur)) return;
+    const d = P.dur;
+    const src = c.createGain();
+    src.gain.value = 1;
+    const oscs: OscillatorNode[] = [];
+    for (const [type, k, det] of [['sawtooth', 1, -14], ['sawtooth', 1, 12], ['square', 0.5, 0]] as const) {
+      const o = c.createOscillator();
+      o.type = type;
+      o.detune.value = det;
+      o.frequency.setValueAtTime(P.f0 * k * vary(0.03), t);
+      o.frequency.exponentialRampToValueAtTime(P.f1 * k, t + d * 0.32);
+      o.frequency.setValueAtTime(P.f1 * k, t + d * 0.5);
+      o.frequency.exponentialRampToValueAtTime(P.f2 * k, t + d);
+      o.connect(src);
+      oscs.push(o);
+    }
+    // grognement : modulation d'amplitude rapide (la gorge qui vibre) + petit vibrato
+    const am = c.createGain();
+    am.gain.value = 0.55;
+    const lfo = c.createOscillator();
+    lfo.type = 'triangle';
+    lfo.frequency.setValueAtTime(P.growl, t);
+    lfo.frequency.linearRampToValueAtTime(P.growl * 1.3, t + d);
+    const lg = c.createGain();
+    lg.gain.value = 0.45;
+    lfo.connect(lg).connect(am.gain);
+    src.connect(am);
+    const vib = c.createOscillator();
+    vib.frequency.value = 6.5;
+    const vg = c.createGain();
+    vg.gain.value = 18;
+    vib.connect(vg);
+    oscs.forEach((o) => vg.connect(o.detune));
+    // saturation puis formants (gueule) en parallèle
+    const pre = c.createGain();
+    pre.gain.value = 0.6;
+    am.connect(pre).connect(this.shaper!);
+    const env = c.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.12);
+    env.gain.setValueAtTime(vol * 0.5, t + d * 0.55);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    P.form.forEach((hz, i) => {
+      const bp = c.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 5;
+      bp.frequency.setValueAtTime(hz * 0.85, t);
+      bp.frequency.exponentialRampToValueAtTime(hz * 1.15, t + d * 0.35);
+      bp.frequency.exponentialRampToValueAtTime(hz * 0.8, t + d);
+      const fg = c.createGain();
+      fg.gain.value = [1, 0.6, 0.32][i];
+      this.shaper!.connect(bp).connect(fg).connect(env);
+    });
+    // souffle rauque (bruit dans les mêmes formants)
+    const nf = c.createBiquadFilter();
+    nf.type = 'bandpass';
+    nf.frequency.value = P.form[1];
+    nf.Q.value = 1.2;
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(vol * 0.3, t + 0.15);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    this.noise(t, d).connect(nf).connect(ng);
+    // cri perçant (dragons) : harmonique aiguë au sommet de la courbe
+    if (P.screech > 0) {
+      const s = c.createOscillator();
+      s.type = 'sawtooth';
+      s.frequency.setValueAtTime(P.f1 * 4, t + d * 0.18);
+      s.frequency.exponentialRampToValueAtTime(P.f1 * 5.2, t + d * 0.38);
+      s.frequency.exponentialRampToValueAtTime(P.f1 * 3, t + d * 0.8);
+      const sf = c.createBiquadFilter();
+      sf.type = 'bandpass';
+      sf.frequency.value = P.form[2] * 1.1;
+      sf.Q.value = 3;
+      const sg = c.createGain();
+      sg.gain.setValueAtTime(0.0001, t + d * 0.18);
+      sg.gain.exponentialRampToValueAtTime(vol * 0.12 * P.screech, t + d * 0.32);
+      sg.gain.exponentialRampToValueAtTime(0.0001, t + d * 0.82);
+      s.connect(sf).connect(sg);
+      vg.connect(s.detune);
+      s.start(t + d * 0.18);
+      s.stop(t + d * 0.85);
+      this.out(sg, 0.6, 'event');
+    }
+    for (const o of [...oscs, lfo, vib]) {
+      o.start(t);
+      o.stop(t + d + 0.05);
+    }
+    this.out(env, 0.55, 'event');
+    this.out(ng, 0.5, 'event');
+    if (kind === 'giant') this.rumble(d, vol * 0.5);
+    if (kind === 'skyDragon') this.crack(vol * 0.5);
+  }
+
+  /** Fichiers son facultatifs (déposés par le joueur dans public/fx/yugioh/sfx) : décodés une fois, null s'ils n'existent pas. */
+  private samples = new Map<string, Promise<AudioBuffer | null>>();
+  loadSample(url: string): Promise<AudioBuffer | null> {
+    let p = this.samples.get(url);
+    if (!p) {
+      p = fetch(url)
+        .then(async (r) => {
+          if (!r.ok || !/^audio\//.test(r.headers.get('content-type') ?? 'audio/')) return null;
+          // décodage hors du contexte de lecture (il peut ne pas encore exister : premier toucher pas encore fait)
+          const off = new OfflineAudioContext(2, 1, 44100);
+          return await off.decodeAudioData(await r.arrayBuffer());
+        })
+        .catch(() => null);
+      this.samples.set(url, p);
+    }
+    return p;
+  }
+  /** Joue un fichier décodé ; `fade(s)` l'éteint en douceur (fin de séquence, passage). */
+  playSample(buf: AudioBuffer, vol = 0.8, wet = 0.08): { fade(s?: number): void } | null {
+    if (!this.ok || !this.voice(buf.duration)) return null;
+    const c = this.ctx!;
+    const s = c.createBufferSource();
+    s.buffer = buf;
+    const g = c.createGain();
+    g.gain.value = vol;
+    s.connect(g);
+    s.start();
+    this.out(g, wet, 'event');
+    return {
+      fade: (d = 0.8) => {
+        const t = c.currentTime;
+        g.gain.cancelScheduledValues(t);
+        g.gain.setValueAtTime(g.gain.value, t);
+        g.gain.linearRampToValueAtTime(0.0001, t + d);
+        try {
+          s.stop(t + d + 0.05);
+        } catch {
+          /* déjà arrêté */
+        }
+      },
+    };
+  }
 }
+
+export type CreatureKind = 'dragon' | 'darkDragon' | 'skyDragon' | 'giant' | 'mage' | 'fairy' | 'duelist';
