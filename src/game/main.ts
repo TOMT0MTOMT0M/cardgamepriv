@@ -11,10 +11,13 @@ import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
 import { boardAttention } from './backend';
 import { PACK_CAP, PACK_REGEN_MS, fmtCountdown } from '../core/packRegen';
-import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, panelShown, syncPanelTriggers, toast } from './ui';
+import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, panelShown, setToastSound, syncPanelTriggers, toast } from './ui';
 import { preloadOwned } from './preload';
-import { haptics } from '../core/haptics';
+import { bindHapticGestures, haptics } from '../core/haptics';
+bindHapticGestures();
 import { fxReduced, setFxReduced } from '../core/fxPref';
+import { bindMotionVars } from '../core/motion';
+bindMotionVars();
 
 /**
  * LE JEU (page /jeu/) : boutique + ouverture 3D, collection, échanges.
@@ -281,7 +284,8 @@ const fmtCoinsShort = (n: number) => {
  * branché sur `haptics.enabled` (core/haptics.ts, mémorisé `bebou.haptics`) — indépendant du son.
  */
 const HAPTIC_UI = matchMedia('(pointer: coarse)').matches;
-const hapBtn = () => `<button class="vol-hap" role="switch" aria-checked="${haptics.enabled}">Vibrations<i aria-hidden="true">${haptics.enabled ? 'oui' : 'non'}</i></button>`;
+const HAP_NOTE = haptics.support === 'ios' ? ' · iPhone : au toucher seulement' : haptics.support === 'none' ? ' · indisponibles ici' : '';
+const hapBtn = () => `<button class="vol-hap" role="switch" aria-checked="${haptics.enabled}" title="Toucher pour tester${haptics.support === 'ios' ? ' (iPhone : le navigateur ne vibre que pendant un toucher, jamais pendant une animation)' : ''}">Vibrations<small>${HAP_NOTE}</small><i aria-hidden="true">${haptics.enabled ? 'oui' : 'non'}</i></button>`;
 /** Interrupteur « Effets réduits » (retours live 02 §7, core/fxPref.ts) : holo / reflets / halos des cartes encore plus discrets, partout (PC et téléphone). */
 const fxBtn = () => `<button class="vol-hap vol-fx" role="switch" aria-checked="${fxReduced()}" title="Holo, reflets et halos des cartes plus discrets">Effets réduits<i aria-hidden="true">${fxReduced() ? 'oui' : 'non'}</i></button>`;
 const DEMO_TXT = 'Mode démo : pas de serveur, ta collection est stockée dans ce navigateur et les amis sont des robots.';
@@ -409,7 +413,8 @@ function renderMe() {
     haptics.enabled = !haptics.enabled;
     b.setAttribute('aria-checked', String(haptics.enabled));
     b.querySelector('i')!.textContent = haptics.enabled ? 'oui' : 'non';
-    haptics.pulse(18); // (allumées : on les sent tout de suite ; coupées : rien)
+    haptics.pulse([40, 60, 40]); // (allumées : on les sent tout de suite ; coupées : rien)
+    if (haptics.enabled && haptics.why) toast(`Vibrations : ${haptics.why}.`, 'info');
   });
   meEl.querySelector('.vol-fx')?.addEventListener('click', (e) => {
     const b = e.currentTarget as HTMLElement;
@@ -541,6 +546,12 @@ function syncCoins() {
     b.classList.remove('bump');
     void b.offsetWidth;
     b.classList.add('bump');
+    // gain : tics de pièces dont la hauteur monte dans la gamme (3 à 8 selon le montant), puis un « ting » final
+    if (d > 0 && shell) {
+      const n = Math.min(8, 3 + Math.floor(Math.log10(Math.max(1, d))));
+      for (let i = 0; i < n; i++) setTimeout(() => shell.sfx.coin(i, 0.07), i * 55);
+      setTimeout(() => shell.sfx.note(10, 0.08, 0.5), n * 55 + 60);
+    }
   }
   lastCoins = snap.coins;
 }
@@ -713,6 +724,7 @@ async function boot() {
   const viewerMod = import('./scenes/viewer');
   viewerMod.catch(() => undefined); // (échec : getViewer() réessaie)
   shell = await shellP;
+  setToastSound((kind) => (kind === 'err' ? shell.sfx.decline(0.07) : kind === 'ok' ? shell.sfx.note(5, 0.05, 0.4) : shell.sfx.note(2, 0.04, 0.35)));
   step(35, 'impression des boosters…', true);
   // scène d'ouverture = vitrine de la boutique : montée (et ses shaders compilés pour toutes les raretés) avant tout
   const opening = await shell.mount('opening', createOpeningScene());

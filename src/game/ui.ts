@@ -376,7 +376,8 @@ const toastQ: Toast[] = [];
 let toastCur: (Toast & { el: HTMLElement; at: number }) | null = null;
 let toastTimer = 0;
 const toastEls: Partial<Record<'status' | 'alert', HTMLElement>> = {};
-const toastLife = (msg: string) => Math.min(6500, 2400 + msg.length * 40);
+/** affichage 4 à 6 s selon la longueur (réf. motion : toasts) */
+const toastLife = (msg: string) => Math.min(6000, 4000 + msg.length * 25);
 function toastEl(alert: boolean) {
   const k = alert ? 'alert' : 'status';
   let el = toastEls[k];
@@ -397,11 +398,17 @@ function hideToast() {
   // le temps du fondu, puis le suivant
   toastTimer = window.setTimeout(nextToast, toastQ.length ? 260 : 0);
 }
+/** son des toasts (branché par main.ts : information = une note douce, erreur = deux notes descendantes, jamais de buzzer) */
+export let toastSound: ((kind: 'ok' | 'err' | 'info') => void) | null = null;
+export function setToastSound(f: typeof toastSound) {
+  toastSound = f;
+}
 function nextToast() {
   const t = toastQ.shift();
   if (!t) return;
   const el = toastEl(t.kind === 'err');
   el.className = `toast ${t.kind} on`;
+  toastSound?.(t.kind);
   el.textContent = t.msg;
   toastCur = { ...t, el, at: performance.now() };
   clearTimeout(toastTimer);

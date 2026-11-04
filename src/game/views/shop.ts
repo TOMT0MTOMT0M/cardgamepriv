@@ -27,6 +27,8 @@ const HINT = {
 
 /** Seuil de « Passer jusqu'aux 4★ » : rang 3 = Épique (★★★★), puis Légendaire, Mythique, Secrète. */
 const HI_RANK = 3;
+/** « 62,4 % » (chiffres à la française) */
+const fmtPct = (x: number) => `${(Math.round(x * 1000) / 10).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 /** indication affichée tant que le booster est fermé (dépend de sa mise en scène : brûler, déchirer, toucher) */
 let sealedHint = HINT.hold;
 
@@ -926,8 +928,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       onCard(i, card, total) {
         setCount(`${series}${i + 1} / ${total}`);
         shown = i;
-        // mythique : la séquence plein écran (mythic-veil) tient lieu de fiche et d'indication
-        if (rarity(card.rarity).rank === 5) return;
+        // mythique : la séquence plein écran (mythic-veil) tient lieu de fiche et d'indication ; le titre « MYTHIQUE »
+        // n'arrive qu'après l'impact (réf. motion §7.2 : titre à +1,2 s)
+        if (rarity(card.rarity).rank === 5) {
+          mythicVeil.classList.add('hit');
+          return;
+        }
         hint.hidden = i < total - 1 ? false : true;
         hintTxt.textContent = i < total - 1 ? HINT.next : '';
         showInfo(card);
@@ -947,7 +953,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         hint.hidden = true;
         skipEl.hidden = true;
         mythicVeil.hidden = false;
-        mythicVeil.classList.remove('shown');
+        mythicVeil.classList.remove('shown', 'hit');
         mythicVeil.querySelector<HTMLElement>('.mv-name')!.textContent = card.cardName;
         mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = '';
       },
@@ -1191,6 +1197,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         ${best && br ? `<span class="sum-best r-${best.rarity}" style="--rc:${br.hex};--ra:${br.accentHex}">meilleure ${starsHtml(best.rarity)} <i class="sum-rl">${br.secret ? 'secrète' : `${br.rank + 1}★`}</i> <b>${esc(best.cardName)}</b></span>` : ''}
         <span class="sum-coll" title="${esc(cc.label)} : cartes uniques dans ta collection">${esc(cc.label)} : <b>${fmtN(cc.have)}</b>/${fmtN(cc.total)}</span>
       </div>
+      ${cc.total > 0 ? `<div class="sum-prog" aria-hidden="true" style="--from:${((Math.max(0, cc.have - fresh) / cc.total) * 100).toFixed(2)}%;--to:${((cc.have / cc.total) * 100).toFixed(2)}%"><i></i><span>${fmtPct(Math.max(0, cc.have - fresh) / cc.total)}${fresh ? ` → <b>${fmtPct(cc.have / cc.total)}</b>` : ''}</span></div>` : ''}
       ${grid ? '<div class="sum-cards"></div>' : ''}
       <div class="sum-actions">
         ${pend ? '<button class="btn-primary retry">Réessayer l’enregistrement</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? `Encore ×${again}` : 'Encore un'}<small>${bal} en réserve</small></button>` : u ? `<span class="muted next-pack">prochain booster dans ${fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now())}</span>` : ''}
@@ -1198,6 +1205,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         <button class="btn-ghost back">Boutique</button>
       </div>`;
     if (best) paintSummaryBg(best, req);
+    // règle pic-fin (réf. motion §1.6 / §7.4) : la barre d'album progresse sous les yeux du joueur (600 ms), avec un tic
+    const prog = summary.querySelector<HTMLElement>('.sum-prog');
+    if (prog) requestAnimationFrame(() => requestAnimationFrame(() => { prog.classList.add("go"); if (fresh) window.setTimeout(() => shell.sfx.tick(1.4, 0.05), 350); }));
     syncSummaryInset();
     const retry = summary.querySelector<HTMLButtonElement>('.retry');
     retry?.addEventListener('click', async () => {

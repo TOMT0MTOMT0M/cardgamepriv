@@ -1,4 +1,5 @@
 import type { BigPull, GameBackend, PackCard } from '../backend';
+import { fxReduced } from '../../core/fxPref';
 import { catalogEntry } from '../../core/sets/themes';
 import { rarity } from '../../core/rarity';
 import { esc, h, thumbUrl } from '../ui';
@@ -61,7 +62,8 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   const list = el.querySelector<HTMLElement>('.bp-list')!;
   const empty = el.querySelector<HTMLElement>('.bp-empty')!;
   const sub = el.querySelector<HTMLElement>('.bp-sub')!;
-  const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // mouvement réduit : réglage de l'appareil OU « Effets réduits » du jeu → fil statique (WCAG 2.2.2)
+  const reduced = fxReduced();
 
   const seen = new Set<string>();
   let first = true;

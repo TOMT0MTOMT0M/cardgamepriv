@@ -1,4 +1,4 @@
-import { clamp, color, cos, float, floor, positionLocal, sin, step, time, uniform, vec3 } from 'three/tsl';
+import { clamp, color, cos, float, floor, mix, positionLocal, sin, step, time, uniform, vec3 } from 'three/tsl';
 import type { Material } from 'three/webgpu';
 import { generateBackArt, generateCardArt, generateCardArtAsync, starColor, type ArtOptions, type CardArt } from '../../core/art';
 import { DEFAULT_BACK, type BackStyle } from '../../core/art/back';
@@ -38,16 +38,23 @@ export function buildFace(art: CardArt, tier: number, photo: boolean) {
 }
 
 /** Tranche de carte avec liseré lumineux (suspense) de la couleur de la rareté. */
-export function buildEdge(hex: string | 'rainbow') {
+/**
+ * Tranche d'une carte : couleur de la rareté, intensité `rim`. 6★ : tranche ARC-EN-CIEL (la teinte tourne le long du
+ * bord et dans le temps) — mais face cachée elle se présente DORÉE comme une 5★ (`tease` = 0) : le joueur sait qu'il
+ * tient « au moins une 5★ », la 6★ ne se révèle qu'en se fendant en arc-en-ciel pendant l'anticipation (`tease` → 1).
+ * (réf. motion §1.2 : le suspense n'existe que si l'issue reste incertaine ; une tranche arc-en-ciel dès l'éventail
+ * supprimait toute incertitude sur le palier.) `teaseHex` : si donnée, la couleur montrée tant que `tease` = 0 (la
+ * secrète, rose, se présente dorée elle aussi) ; sinon la tranche a sa couleur tout de suite (`tease` = 1).
+ */
+export function buildEdge(hex: string | 'rainbow', teaseHex?: string) {
   const rim = uniform(0);
+  const tease = uniform(teaseHex ? 0 : 1);
   const edge = createEdgeMaterial();
-  // 6★ (retours live 02, §12) : tranche ARC-EN-CIEL — la teinte tourne le long du bord et dans le temps
-  const tint =
-    hex === 'rainbow'
-      ? cos(vec3(0, 2.094, 4.189).add(positionLocal.x.mul(9).add(positionLocal.y.mul(6)).add(time.mul(2.2)))).mul(0.5).add(0.55)
-      : color(hex);
+  const base =
+    hex === 'rainbow' ? cos(vec3(0, 2.094, 4.189).add(positionLocal.x.mul(9).add(positionLocal.y.mul(6)).add(time.mul(2.2)))).mul(0.5).add(0.55) : color(hex);
+  const tint = teaseHex ? mix(color(teaseHex), base, tease) : base;
   edge.emissiveNode = tint.mul(rim.mul(sin(time.mul(7)).mul(0.25).add(1.75)));
-  return { edge, rim };
+  return { edge, rim, tease };
 }
 
 // ───────────────────────────────────────────── art et dos des cartes du jeu

@@ -296,11 +296,13 @@ export default function create(opts: SecretOptions = {}): Experiment {
     const pay = t + 0.95;
     target.to(S, { flip: -4 * Math.PI, duration: 2.6, ease: 'expo.out' }, pay);
     target.call(() => {
-      sfx.thump(0.85, 38);
-      sfx.crack(0.4);
-      sfx.chime(5, 0.24, 330);
-      sfx.shimmer(5, 4.5, 0.12);
-      sfx.choir(5.2, 0.13);
+      // secrète : pas d'impact brutal mais le motif « Bébou » (boîte à musique, do# lydien, jamais entendu ailleurs)
+      sfx.event(6);
+      sfx.thump(0.5, 50);
+      sfx.crack(0.3);
+      sfx.bebou(0.2);
+      sfx.shimmer(5, 4.5, 0.08);
+      sfx.choir(5.2, 0.1, 277.18);
       shake.impulse(40);
       shake2.impulse(-30);
       buzz([90, 50, 160, 70, 260]);

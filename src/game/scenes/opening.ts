@@ -80,6 +80,7 @@ import { haptics } from '../../core/haptics';
 import { onFxReducedChange } from '../../core/fxPref';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
+import { MYTHIC_SILENCE, MYTHIC_TURN, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
 import { encodeNormal, type N } from '../../core/tsl';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
 import type { PackCard, SealedPack } from '../backend';
@@ -214,19 +215,26 @@ const STACK_DZ = 0.011;
  * « Tout révéler » : une 6★ joue toute sa séquence (pause dramatique comprise), puis reste admirée ce temps-là avant que
  * la suite reparte seule (au lieu d'attendre un toucher). En manuel, rien ne change : elle attend le toucher.
  */
-const MYTHIC_ADMIRE_MS = 1600;
+const MYTHIC_ADMIRE_MS = 1500;
 /**
  * (retours live 02, anti-spoil) Couleur unique de la braise et de la fuite de lumière du booster scellé : la même pour
  * tous les boosters (c'était la couleur de la meilleure carte : on devinait une rouge ou une 6★ avant de l'ouvrir).
  */
 const NEUTRAL_EMBER = '#e8e2d6';
-/** Retournement : identique pour toutes les raretés (élan neutre, puis retournement) — durées en s. */
-const PRE_PILE = 0.16;
-const FLIP_PILE = 0.5;
-const PRE_FAN = 0.12;
-const FLIP_FAN = 0.3;
-/** Mythique : temps entre l'apparition de sa face (plein écran, assombri, battement) et l'explosion. */
-const MYTHIC_BEAT = CALM ? 0.9 : 1.5;
+/**
+ * RETOURNEMENT « charnière » (demande de Tom, 4 nov.) : la carte ne pivote plus sur son axe médian (effet « vallée de
+ * l'étrange ») mais autour de sa TRANCHE DROITE, comme une vraie carte qu'on retourne : le bord gauche se soulève vers
+ * la caméra, le bord droit reste posé. Géométrie : centre = x₀ + (w/2)(1 − cos φ), z = (w/2) sin φ. Une carte retournée
+ * ainsi atterrit décalée de sa largeur ; la « main » la ramène au centre pendant la seconde moitié (`HINGE_SETTLE`).
+ * 0 = retournement sur l'axe (ancien comportement).
+ */
+const HINGE = 1;
+/** part de la perspective réellement visible quand la carte se soulève (1 = taille apparente constante, ancien comportement) */
+const HINGE_PERSP = 0.55;
+/** Mythique (éventail) : court temps de plein écran entre l'apparition de la face et l'explosion. */
+const MYTHIC_BEAT = CALM ? 0.5 : 0.9;
+/** or des tranches face cachée des 5★, 6★ et secrètes (le même : « au moins une 5★ », sans trahir le palier) */
+const TEASE_GOLD = '#e0a63a';
 /** Fraction de la durée d'une courbe d'animation où elle passe à mi-chemin (retournement : la face devient visible). */
 function halfAt(ease: (t: number) => number): number {
   let lo = 0, hi = 1;
@@ -247,7 +255,7 @@ interface Slot {
   mesh: Mesh;
   mats: Material[];
   holoU: ReturnType<typeof createHoloMaterial>['uniforms'];
-  U: { lit: ReturnType<typeof uniform>; flash: ReturnType<typeof uniform>; rim: ReturnType<typeof uniform> };
+  U: { lit: ReturnType<typeof uniform>; flash: ReturnType<typeof uniform>; rim: ReturnType<typeof uniform>; tease: ReturnType<typeof uniform> };
   /** pose animée */
   p: { x: number; y: number; z: number; s: number; flip: number; rz: number; holo: number };
   /** survol à la souris sur l'éventail final (0..1, lissé) */
@@ -264,8 +272,11 @@ function boosterStyles(): Record<string, PackStyle> {
   return out;
 }
 
-/** lueur de la tranche face cachée, par rang (commune → secrète) : le teasing du code couleur des raretés */
-const TEASE = [0.22, 0.26, 0.3, 0.36, 0.45, 0.6, 0.6];
+/**
+ * lueur de la tranche face cachée, par rang (commune → secrète) : le teasing du code couleur des raretés. 1★ / 2★ :
+ * aucune lueur ; 5★, 6★ et secrète : la même lueur dorée (réf. motion §3.3 — l'incertitude reste au sommet de l'échelle).
+ */
+const TEASE = [0, 0, 0.3, 0.36, 0.5, 0.5, 0.5];
 
 export function createOpeningScene(): OpeningScene {
   let ctx: LabContext;
@@ -298,7 +309,21 @@ export function createOpeningScene(): OpeningScene {
    * Vitesse d'une carte en défilement auto (audit UX2-02 / UX2-04) : ×3,5 sous le seuil, sauf une légendaire (5★,
    * accélérée seulement par « Tout révéler ») qui passe à ×2 : son ralenti reste visible, sans annuler l'accéléré.
    */
-  const fastSpeed = (si: number | undefined) => (!fastCard(si) ? 1 : slots[si!].rr.rank >= 4 ? 2 : 3.5);
+  const fastSpeed = (si: number | undefined) => (!fastCard(si) ? 1 : slots[si!].rr.rank >= 3 ? 1 : 3.5);
+  /** « Tout révéler » / « 4★ et + » : une 4★ ou 5★ sous le seuil joue sa VERSION CONDENSÉE (montée raccourcie, même impact) au lieu d'une accélération ×2 */
+  const condensed = (si: number | undefined) => fastCard(si) && slots[si!].rr.rank >= 3;
+  /**
+   * Allume la tranche d'une carte face cachée (teasing) : une note dont la hauteur suit le palier (3★ grave, 4★ plus
+   * aiguë, or = accord) ; 1★ / 2★ restent éteintes. `at` en secondes dans `t`.
+   */
+  function lightRim(t: gsap.core.Timeline, si: number, at: number) {
+    const sl = slots[si];
+    const v = TEASE[Math.min(6, sl.rr.rank)];
+    if (v <= 0) return;
+    t.fromTo(sl.U.rim, { value: 0 }, { value: v, duration: 0.18, ease: EASE.glide, immediateRender: false,
+      // une note douce par palier (3★ si5 · 4★ ré6 · or mi6 + scintillement) — charte sonore §A
+      onStart: () => { ctx.sfx.note(7 + Math.min(2, sl.rr.rank - 2), 0.06, 0.5); if (sl.rr.rank >= 4) ctx.sfx.tick(2.2, 0.03); } }, at);
+  }
   /** mode auto « rapide » (« Tout révéler », « 4★ et + ») : ouvertures d'emballage raccourcies (la série manuelle garde son rythme) */
   const autoQuick = () => auto.reveal || auto.minRank > 0;
   /**
@@ -730,6 +755,7 @@ export function createOpeningScene(): OpeningScene {
           events.onOpened?.();
           flushQueued();
         }, [], 1.5);
+        lightRim(sideline(gsap.timeline()), order[0], 1.45 / qk);
       }
       tl.timeScale(qk);
       out.timeScale(qk);
@@ -752,14 +778,15 @@ export function createOpeningScene(): OpeningScene {
     const face = buildFace(art, rr.tier, !!cd.photo);
     face.holo.uniforms.strength.value = 0.1;
     // code couleur des raretés (retours live 02, §12) : 1★ gris … 5★ doré, 6★ arc-en-ciel ; secrète : son or rose
-    const { edge, rim } = buildEdge(rr.secret ? rr.hex : rr.id === 'mythic' ? 'rainbow' : rr.id === 'epic' ? '#c23a52' : rr.id === 'legendary' ? '#e0a63a' : rr.hex);
+    // 6★ et secrète : tranche DORÉE tant qu'elles sont face cachée (comme une 5★), leur vraie couleur arrive pendant l'anticipation
+    const { edge, rim, tease } = rr.secret ? buildEdge(rr.hex, TEASE_GOLD) : rr.id === 'mythic' ? buildEdge('rainbow', TEASE_GOLD) : buildEdge(rr.id === 'epic' ? '#c23a52' : rr.id === 'legendary' ? TEASE_GOLD : rr.hex);
     const mesh = new Mesh(cardGeo, [face.holo.material, back, edge]);
     mesh.frustumCulled = false;
     return {
       data, cd, rr, art, mesh,
       mats: [face.holo.material, edge],
       holoU: face.holo.uniforms,
-      U: { lit: face.lit, flash: face.flash, rim },
+      U: { lit: face.lit, flash: face.flash, rim, tease },
       p: { x: 0, y: 0, z: -0.03, s: 1, flip: Math.PI, rz: 0, holo: 0 },
       hov: 0,
     };
@@ -809,7 +836,9 @@ export function createOpeningScene(): OpeningScene {
     // TEASING (retours live 02, §12 — remplace l'anti-spoil) : face cachée, la tranche de chaque carte luit déjà doucement
     // dans la couleur de sa rareté (1★ gris · 2★ vert · 3★ bleu · 4★ rouge · 5★ doré · 6★ arc-en-ciel), un peu plus
     // fort à mesure que la rareté monte ; la révélation fait ensuite son éclat habituel
-    for (const sl of slots) sl.U.rim.value = TEASE[Math.min(6, sl.rr.rank)];
+    // … mais pas tout de suite : la tranche S'ALLUME quand la carte arrive devant (pile) ou une à une dans l'éventail
+    // (réf. motion §1.1 : l'indice le plus précoce porte le signal, son allumage est un temps de mise en scène)
+    for (const sl of slots) sl.U.rim.value = 0;
     // révélation de la moins rare à la plus rare (la secrète est toujours la dernière)
     order = slots.map((_, i) => i).sort((a, b) => RANK[slots[a].data.rarity] - RANK[slots[b].data.rarity] || a - b);
     order.forEach((si, k) => {
@@ -947,6 +976,7 @@ export function createOpeningScene(): OpeningScene {
         const s = slots[si];
         tl!.to(s.p, { z: -STACK_DZ * (order.length - 1 - k), s: 1, duration: 0.7, ease: EASE.glide }, 0.05);
       });
+      lightRim(sideline(gsap.timeline()), order[0], 0.45);
     });
   }
 
@@ -961,23 +991,26 @@ export function createOpeningScene(): OpeningScene {
       tl!.to(s.U.lit, {
         value: k + 1, duration: mythic ? 0.2 : 0.12, ease: 'power2.out',
         onStart: () => {
+          // étoiles = carillons ASCENDANTS dans la gamme (sol pentatonique ; la 6★ est en la majeur : sfx.transpose) ;
+          // 1★ / 2★ : un simple glint
           if (mythic) {
-            ctx.sfx.chime(Math.min(5, 1 + k), 0.09 + k * 0.02, 392 * Math.pow(2, k / 12));
+            ctx.sfx.note(5 + k, 0.1 + k * 0.015, 1.2);
             shake.impulse((6 + k * 3) * (CALM ? 0.25 : 1));
             haptics.pulse(20 + k * 8);
-          } else ctx.sfx.tick(1 + k * 0.14, 0.07 + tier * 0.015);
+          } else if (tier >= 2) ctx.sfx.note(2 + tier + k, 0.05 + tier * 0.012, 0.5);
+          else ctx.sfx.tick(1.2 + k * 0.3, 0.05);
         },
       }, at + k * gap);
     return at + n * gap;
   }
 
   /**
-   * Révélation d'une carte (style pile). (Retours live 02, anti-spoil) AVANT que sa face soit visible, toutes les
-   * cartes se comportent exactement pareil : même petit élan, même retournement, même son, même vitesse, aucune lueur
-   * ni tremblement (avant : suspense d'autant plus long que la carte était rare, tranche dorée, halo coloré, montée
-   * sonore, ralenti — on devinait une rouge ou une 6★). L'effet de rareté part quand la face apparaît.
-   * Mythique : à ce moment-là, plein écran (assombri, battement, montée) puis l'explosion ; la pause n'est jamais
-   * raccourcie.
+   * Révélation d'une carte (style pile) — partition par palier (réf. motion §7, 4 nov.) : anticipation → retournement
+   * (charnière droite) → impact (hit-stop, flash, son, haptique) → payoff (étoiles) → savourage. La tranche annonce la
+   * rareté (teasing validé, retours live 02), l'anticipation grandit avec elle : rien pour 1★ / 2★, 0,45 s pour une
+   * 4★, 1 s pour une 5★, 1,8 s pour une 6★ (dont la tranche dorée se fend en arc-en-ciel à mi-course, puis 0,3 s de
+   * silence avant l'impact). « Tout révéler » joue des versions CONDENSÉES des 4★ / 5★ (montée raccourcie, même
+   * impact) plutôt qu'une accélération ×2.
    */
   function revealCurrent() {
     const si = order[cursor];
@@ -993,75 +1026,112 @@ export function createOpeningScene(): OpeningScene {
     const rr = s.rr;
     const T = rr.tier;
     const mythic = T >= 5; // (la secrète est partie vers onSecret juste au-dessus)
-    // rareté encore inconnue pour la scène (réponse au toucher identique pour toutes)
-    curTier = 0;
+    const beat = TIER_BEAT[Math.min(5, T)];
+    const cond = condensed(si) && !mythic ? beat.condensed : null;
+    // PARTITION par palier (réf. motion §7) : anticipation AVANT le retournement, d'autant plus longue que la carte est
+    // rare (la tranche l'annonce déjà) ; 1★ / 2★ : aucune, retournement en 0,2 s
+    const preT = CALM ? Math.min(0.3, cond ? cond.pre : beat.pre) : cond ? cond.pre : beat.pre;
+    const flipD = cond ? cond.flip : beat.flip;
+    const holdT = cond ? cond.hold : beat.hold;
+    curTier = T;
     revealed = false;
     const sfx = ctx.sfx;
     kill();
     const main = (tl = gsap.timeline());
     // (audit UX2-06) écran court : la carte montrée remonte / rétrécit juste assez pour ne pas passer sous le panneau
     const pose = payPose(mythic ? 1.12 : 1.06);
-    // 1. élan NEUTRE (le halo de la carte précédente s'éteint, rien de neuf ne s'allume)
-    main.to(s.p, { z: 0.05, s: 1.02, duration: PRE_PILE, ease: EASE.breathe }, 0).to(S, { glow: 0, trem: 0, duration: PRE_PILE }, 0);
-    // 2. retournement identique pour toutes ; `face` = instant où la face devient visible
-    main.to(s.p, { flip: 0, duration: FLIP_PILE, ease: EASE.snap, onStart: () => sfx.whoosh(0.28, 0.2) }, PRE_PILE);
-    const face = PRE_PILE + FLIP_PILE * halfAt(EASE.snap);
-    // mythique : temps de plein écran entre l'apparition et l'explosion
-    const pay = mythic ? face + MYTHIC_BEAT : face;
+    main.to(S, { glow: 0, trem: 0, duration: 0.12 }, 0);
+    // 1. ANTICIPATION (3★ et plus) : la carte se soulève, sa tranche palpite de plus en plus vite, montée sonore ;
+    //    5★ : le fond s'assombrit ; 6★ : la tranche dorée se FEND en arc-en-ciel à mi-course, battement de cœur, puis
+    //    SILENCE avant l'impact (le retrait du son accentue le contraste, donc la surprise)
+    if (preT > 0) {
+      const liftZ = T >= 4 ? 0.09 : 0.06;
+      main.to(s.p, { z: liftZ, s: 1.02 + T * 0.012, duration: Math.min(preT, 0.35), ease: EASE.glide }, 0);
+      const rim0 = TEASE[Math.min(6, rr.rank)];
+      if (rim0 > 0) {
+        // palpitations qui accélèrent : 2 (4★) à 5 (6★), la dernière au moment du retournement
+        const n = T >= 5 ? 5 : T >= 4 ? 4 : T >= 3 ? 2 : 1;
+        for (let k = 0; k < n; k++) {
+          const at = preT * (1 - Math.pow(1 - k / n, 1.6));
+          const dur = Math.max(0.08, (preT - at) / (n - k) * 0.5);
+          main.to(s.U.rim, { value: rim0 * (2 + k * 0.5), duration: dur * 0.4, ease: 'power2.out' }, at)
+            .to(s.U.rim, { value: rim0 * 1.3, duration: dur * 0.6, ease: 'power2.in' }, at + dur * 0.4);
+        }
+        main.to(s.U.rim, { value: rim0 * 3, duration: 0.1 }, Math.max(0, preT - 0.1));
+      }
+      if (T >= 3 && !cond) main.call(() => sfx.riser(preT * 0.9, T, 0.1 + T * 0.03), [], 0.02);
+      if (beat.dark > 0) main.to(S, { dark: beat.dark, duration: Math.min(0.5, preT * 0.5), ease: EASE.glide }, 0);
+      if (mythic) {
+        const turn = preT * MYTHIC_TURN;
+        main.to(s.U.tease, { value: 1, duration: 0.45, ease: 'power3.in' }, turn);
+        main.call(() => {
+          sfx.crack(0.35);
+          sfx.heartbeat(0.5, 40);
+          haptics.pulse([40, 80, 40]);
+          shake.impulse(CALM ? 2 : 6);
+          events.onMythic?.(s.data);
+        }, [], turn);
+        main.call(() => sfx.heartbeat(0.6, 42), [], turn + (preT - turn) * 0.55);
+        main.to(S, { trem: 0.42, duration: preT - turn, ease: 'power3.in' }, turn);
+        main.to(s.p, { y: pose.y, z: 0.14, s: 1.12 * pose.k, duration: preT - turn, ease: EASE.breathe }, turn);
+        main.call(() => sfx.rumble(preT - turn, 0.3), [], turn);
+        if (!CALM) main.call(() => sfx.duck(MYTHIC_SILENCE + 0.05), [], Math.max(turn + 0.2, preT - MYTHIC_SILENCE));
+      }
+    }
+    // 2. RETOURNEMENT (charnière droite, voir render) ; `face` = instant où la face devient visible
+    const flipEase = T >= 4 ? EASE.settle : EASE.snap;
+    main.to(s.p, { flip: 0, duration: flipD, ease: flipEase, onStart: () => sfx.whoosh(0.22 + flipD * 0.3, 0.16 + T * 0.02) }, preT);
+    const face = preT + flipD * halfAt(flipEase);
+    // l'impact tombe un rien après la face (le temps que l'œil la lise ; mythique : une image pour le voile plein écran)
+    const pay = face + (mythic ? 0.12 : 0.04);
     const speed = fastSpeed(si);
-    const pre = preSpeed();
-    curBase = pre;
+    curBase = speed;
     curPay = pay;
     curFace = face;
-    // 3. la face apparaît : la rareté est connue, son effet part MAINTENANT (et pas avant)
+    // 3. la face apparaît
     main.call(() => {
       revealed = true;
-      curTier = T;
-      curBase = speed;
       // toucher mis en tampon avant de voir la carte : jamais pour sauter une belle carte
       if (T >= 2) queued = false;
       U.glowColor.value.set(T === 0 ? NEUTRAL_EMBER : rr.hex);
       U.colA.value.set(rr.hex);
       U.colB.value.set(rr.accentHex);
-      // défilement auto : la vitesse de la carte (×3,5, ×2 ou ×1) remplace la vitesse commune d'avant l'apparition
-      // (légendaire / mythique : le ralenti ci-dessous s'en charge)
-      if (pre !== speed && T < 4) main.timeScale(speed);
-      if (mythic) events.onMythic?.(s.data);
     }, [], face);
-    if (mythic) {
-      // PLEIN ÉCRAN dès que la face est visible : écran assombri, la carte seule au centre, un peu plus grande
-      main.to(S, { dark: 0.72, glow: 0.12, duration: 0.35, ease: EASE.glide }, face)
-        .to(s.U.rim, { value: 2.2, duration: MYTHIC_BEAT, ease: 'power2.in' }, face)
-        .to(S, { trem: 0.42, duration: MYTHIC_BEAT, ease: 'power3.in' }, face + 0.1)
-        .to(s.p, { y: pose.y, z: 0.14, s: 1.12 * pose.k, duration: MYTHIC_BEAT, ease: EASE.breathe }, face);
-      main.call(() => {
-        sfx.heartbeat(0.5, 40);
-        haptics.pulse(30);
-      }, [], face);
-      main.call(() => sfx.rumble(MYTHIC_BEAT, 0.35), [], face + 0.05);
-      main.call(() => sfx.riser(MYTHIC_BEAT * 0.9, 5, 0.22), [], face + 0.05);
-    }
-    // 4. payoff
+    // 4. IMPACT + payoff : hit-stop (gel logique, le rendu continue), un seul flash, secousse à partir de la 5★
     main.call(() => {
+      // 6★ : MODULATION en la majeur (+2 demi-tons) pour tout ce qui suit, glissando prismatique, les autres bus s'effacent
+      if (mythic) {
+        sfx.transpose = 2;
+        sfx.event(4.5);
+        sfx.prismatic(0.09);
+      } else if (T >= 4) sfx.event(2);
       sfx.thump(0.3 + T * 0.09);
       sfx.chime(Math.max(1, T), 0.12 + T * 0.03);
       if (T >= 4) sfx.shimmer(T, 2.8, 0.1);
       if (T >= 5) sfx.choir(4, 0.1);
-      shake.impulse((4 + rr.shake * 34) * (CALM ? 0.25 : 1));
-      shake2.impulse(-(3 + rr.shake * 24) * (CALM ? 0.25 : 1));
+      if (beat.shake > 0 && !CALM) {
+        shake.impulse(4 + beat.shake * 4);
+        shake2.impulse(-(3 + beat.shake * 3));
+      }
       if (T >= 2) {
         U.origin.value.set(0, 0, 0.1);
         // gerbe dosée (retour testeurs : « il en faut moins ») : de ~250 (rare) à 2 200 (mythique) ; burst prismatique ×1,6 pour la 6★
         U.count.value = Math.round(Math.min(rr.particles * (mythic ? 0.3 : 0.18), (ctx.quality === 'mobile' ? 1100 : 2200) * (mythic ? 1.6 : 1)) * fxk('parts'));
         S.bt = 0;
       }
-      haptics.pulse(T >= 5 ? [60, 40, 140, 40, 220] : T >= 4 ? [50, 30, 90] : T >= 3 ? 40 : T >= 2 ? 18 : 9);
+      haptics.pulse(beat.haptic);
       events.onCard?.(cursor, s.data, order.length);
+      // hit-stop : 60 / 90 / 120 ms de gel (4★ / 5★ / 6★), jamais en défilement accéléré
+      if (beat.hitStop > 0 && !CALM && curBase <= 1) {
+        main.pause();
+        window.setTimeout(() => {
+          if (tl === main) main.resume();
+        }, beat.hitStop);
+      }
     }, [], pay);
-    // la tranche s'allume À la révélation (rare et mieux), puis s'éteint
-    if (mythic) main.to(s.U.rim, { value: 0, duration: 0.6 }, pay);
-    else if (T >= 2) main.fromTo(s.U.rim, { value: 0.6 + T * 0.35 }, { value: 0, duration: 0.9, ease: EASE.glide, immediateRender: false }, pay);
-    main.to(S, { flash: (0.35 + T * 0.16) * (CALM ? 0.4 : 1), ca: T >= 3 && !CALM ? 0.35 + (T - 3) * 0.3 : 0, glow: T >= 2 ? 0.8 + T * 0.25 : 0.15, trem: 0, duration: 0.05 }, pay)
+    // la tranche s'éteint après l'impact
+    main.to(s.U.rim, { value: 0, duration: mythic ? 0.6 : 0.9, ease: EASE.glide }, pay);
+    main.to(S, { flash: T >= 2 ? (0.35 + T * 0.16) * (CALM ? 0.4 : 1) : 0, ca: T >= 3 && !CALM ? 0.35 + (T - 3) * 0.3 : 0, glow: T >= 2 ? 0.8 + T * 0.25 : 0.15, trem: 0, duration: 0.05 }, pay)
       .to(S, { flash: 0, ca: 0, dark: mythic ? 0.5 : 0, duration: 1.3, ease: EASE.glide }, pay + 0.08)
       .to(S, { glow: T >= 2 ? 0.2 + T * 0.06 : 0, duration: 2.2, ease: EASE.glide }, pay + 0.1)
       .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
@@ -1075,9 +1145,11 @@ export function createOpeningScene(): OpeningScene {
         .to(S, { flare: 0, duration: 1.6, ease: EASE.glide }, pay + 0.1)
         .fromTo(S, { shock: 0 }, { shock: 1, duration: T >= 5 ? 1.3 : 1.0, ease: 'power2.out', immediateRender: false }, pay);
       if (T >= 5 && !CALM) main.to(S, { invert: 1, duration: 0.03 }, pay).to(S, { invert: 0, duration: 0.22, ease: 'power2.out' }, pay + 0.08);
-      // ralenti au moment du payoff (APRÈS l'apparition de la face), puis retour à la vitesse de base (×1, ou l'accéléré demandé)
-      main.call(() => void gsap.to(main, { timeScale: (rr.slowmo + 0.2) * curBase, duration: 0.15 }), [], pay);
-      main.call(() => void gsap.to(main, { timeScale: curBase, duration: 0.9, ease: 'power2.in' }), [], pay + 0.3);
+      // ralenti juste après l'impact (jamais en version condensée), puis retour à la vitesse de base
+      if (!cond && !CALM) {
+        main.call(() => void gsap.to(main, { timeScale: (rr.slowmo + 0.2) * curBase, duration: 0.15 }), [], pay + 0.02);
+        main.call(() => void gsap.to(main, { timeScale: curBase, duration: 0.9, ease: 'power2.in' }), [], pay + 0.3);
+      }
     }
     // burst prismatique : les couleurs de la gerbe tournent (arc-en-ciel) pendant la montée des étoiles
     if (mythic && !CALM) {
@@ -1088,6 +1160,7 @@ export function createOpeningScene(): OpeningScene {
       } }, pay);
     }
     const end = ignite(s, pay + (mythic ? 0.5 : 0.15));
+    // 5. SAVOURAGE : temps minimal avant que la suite puisse repartir (plus long pour les belles cartes — Larche 2019)
     main.call(() => {
       const fast = curBase > 1;
       if (mythic) {
@@ -1099,11 +1172,11 @@ export function createOpeningScene(): OpeningScene {
         return;
       }
       phase = last ? 'busy' : 'shown';
-      if (last) finish(fast ? 0.35 : 1.1);
+      if (last) finish(fast ? 0.35 : T >= 3 ? 1.1 : 0.7);
       else flushQueued();
-    }, [], Math.max(end, pay + 0.45));
-    // défilement auto : même vitesse pour toutes jusqu'à l'apparition de la face
-    if (pre > 1) main.timeScale(pre);
+    }, [], T >= 4 ? Math.max(end, pay + holdT) : pay + holdT);
+    // défilement auto (communes → 3★ sous le seuil) : toute la carte en accéléré
+    if (speed > 1) main.timeScale(speed);
   }
 
   /** px CSS par unité de scène, dans le plan des cartes */
@@ -1136,9 +1209,13 @@ export function createOpeningScene(): OpeningScene {
     return { y: (H / 2 - cy) / pxU, k };
   }
 
-  /** La carte montrée part dans la rangée ; la suivante avance. */
-  function nextCard() {
+  /**
+   * La carte montrée part dans la rangée ; la suivante avance et sa tranche s'allume. `chain` (1 toucher par carte,
+   * réf. motion §9 P0) : la suivante se retourne dans la foulée, sans second toucher.
+   */
+  function nextCard(chain = false) {
     phase = 'busy';
+    ctx.sfx.transpose = 0; // retour en sol (la modulation ne vaut que pour la 6★ montrée)
     kill();
     const { halfH } = view();
     const move = sideline(gsap.timeline());
@@ -1151,6 +1228,7 @@ export function createOpeningScene(): OpeningScene {
     cursor++;
     const nxt = slots[order[cursor]];
     move.to(nxt.p, { z: 0, s: 1, rz: 0, duration: 0.45, ease: EASE.glide }, 0.1);
+    lightRim(move, order[cursor], 0.3);
     if (cursor < order.length - 1) events.onNext?.();
     if (cursor === order.length - 1) {
       // la dernière (même mise en scène quelle que soit sa rareté) : les autres s'écartent — vers le haut quand la rangée
@@ -1165,7 +1243,10 @@ export function createOpeningScene(): OpeningScene {
     const quick = s.rr.rank < 2 && cursor < order.length - 1;
     move.call(() => {
       phase = 'opened';
-      flushQueued();
+      if (chain && !(auto.minRank > 0 || auto.reveal)) {
+        queued = false;
+        revealCurrent();
+      } else flushQueued();
     }, [], quick ? 0.3 : 0.55);
     if (fastCard(order[cursor - 1])) move.timeScale(2.2);
   }
@@ -1226,6 +1307,9 @@ export function createOpeningScene(): OpeningScene {
       order.forEach((si, k) => {
         d.to(slots[si].p, { ...lay[k], duration: 0.5, ease: EASE.settle, onStart: () => ctx.sfx.whoosh(0.22, 0.07) }, k * 0.06);
       });
+      // allumage des tranches, de gauche à droite, la 5e (emplacement garanti) en dernier avec un retard de plus
+      const t0 = (order.length - 1) * 0.06 + 0.3;
+      order.forEach((si, k) => lightRim(d, si, t0 + k * TEASE_STAGGER + (k === order.length - 1 ? TEASE_LAST_EXTRA : 0)));
       d.call(() => {
         if (phase !== 'busy' || style !== 'fan' || cursor !== 0) return;
         phase = 'opened';
@@ -1273,11 +1357,28 @@ export function createOpeningScene(): OpeningScene {
       const pl = fanLayout()[cursor - 1];
       main.to(pv.p, { x: pl.x, y: pl.y, z: pl.z, s: pl.s, rz: pl.rz, duration: 0.3, ease: EASE.glide }, 0);
     }
-    // élan neutre, retournement identique
-    main.to(S, { glow: 0, trem: 0, duration: PRE_FAN }, 0);
-    main.to(s.p, { x: lay0.x, y: lay0.y, z: lay0.z + 0.14, s: lay0.s * 1.14, rz: lay0.rz * 0.3, duration: PRE_FAN, ease: EASE.breathe, onStart: () => sfx.tick(0.9, 0.12) }, 0);
-    main.to(s.p, { flip: 0, duration: FLIP_FAN, ease: EASE.snap, onStart: () => sfx.whoosh(0.22, 0.18) }, PRE_FAN);
-    const face = PRE_FAN + FLIP_FAN * halfAt(EASE.snap);
+    // éventail = style rapide : anticipation réduite de moitié par rapport à la pile (réf. motion §7), même partition
+    const beat = TIER_BEAT[Math.min(5, T)];
+    const cond = condensed(si) && !mythic ? beat.condensed : null;
+    const preT = Math.max(0.12, (CALM ? 0.3 : 1) * (cond ? cond.pre : beat.pre) * 0.5);
+    const flipD = cond ? cond.flip : beat.flip;
+    main.to(S, { glow: 0, trem: 0, duration: 0.12 }, 0);
+    main.to(s.p, { x: lay0.x, y: lay0.y, z: lay0.z + 0.14, s: lay0.s * 1.14, rz: lay0.rz * 0.3, duration: Math.min(preT, 0.3), ease: EASE.breathe, onStart: () => sfx.tick(0.9, 0.12) }, 0);
+    if (preT > 0.2) {
+      const rim0 = TEASE[Math.min(6, rr.rank)];
+      if (rim0 > 0) main.to(s.U.rim, { value: rim0 * 2.4, duration: preT * 0.5, ease: 'power2.in', yoyo: true, repeat: 1 }, 0);
+      if (T >= 3 && !cond) main.call(() => sfx.riser(preT * 0.9, T, 0.08 + T * 0.03), [], 0.02);
+      if (beat.dark > 0) main.to(S, { dark: beat.dark * 0.6, duration: preT * 0.5, ease: EASE.glide }, 0);
+      if (mythic) {
+        const turn = preT * MYTHIC_TURN;
+        main.to(s.U.tease, { value: 1, duration: 0.35, ease: 'power3.in' }, turn);
+        main.call(() => { sfx.crack(0.3); haptics.pulse([40, 80, 40]); }, [], turn);
+        if (!CALM) main.call(() => sfx.duck(MYTHIC_SILENCE), [], Math.max(turn + 0.1, preT - MYTHIC_SILENCE));
+      }
+    }
+    const flipEase = T >= 4 ? EASE.settle : EASE.snap;
+    main.to(s.p, { flip: 0, duration: flipD, ease: flipEase, onStart: () => sfx.whoosh(0.22, 0.18) }, preT);
+    const face = preT + flipD * halfAt(flipEase);
     const pay = mythic ? face + MYTHIC_BEAT * 0.93 : face;
     const speed = fastSpeed(si);
     const pre = preSpeed();
@@ -1308,17 +1409,22 @@ export function createOpeningScene(): OpeningScene {
       main.call(() => sfx.riser((pay - face) * 0.9, 5, 0.22), [], face + 0.05);
     }
     main.call(() => {
+      if (mythic) {
+        sfx.transpose = 2;
+        sfx.event(4.5);
+        sfx.prismatic(0.09);
+      } else if (T >= 4) sfx.event(2);
       sfx.thump(0.25 + T * 0.08);
       sfx.chime(Math.max(1, T), 0.1 + T * 0.03);
       if (T >= 4) sfx.shimmer(T, 2.4, 0.1);
       if (T >= 5) sfx.choir(4, 0.1);
-      shake.impulse((3 + rr.shake * 26) * (CALM ? 0.25 : 1));
+      if (beat.shake > 0 && !CALM) shake.impulse(3 + beat.shake * 4);
       if (T >= 2) {
         U.origin.value.set(s.p.x, s.p.y, s.p.z + 0.1);
         U.count.value = Math.round(Math.min(rr.particles * (mythic ? 0.3 : 0.14), (ctx.quality === 'mobile' ? 900 : 1800) * (mythic ? 1.6 : 1)) * fxk('parts'));
         S.bt = 0;
       }
-      haptics.pulse(T >= 5 ? [60, 40, 140] : T >= 4 ? [50, 30, 90] : T >= 3 ? 35 : T >= 2 ? 16 : 8);
+      haptics.pulse(beat.haptic);
       events.onCard?.(cursor, s.data, order.length);
     }, [], pay);
     if (mythic) main.to(s.U.rim, { value: 0, duration: 0.5 }, pay);
@@ -1408,6 +1514,7 @@ export function createOpeningScene(): OpeningScene {
 
   function finish(delay: number) {
     queued = false;
+    ctx.sfx.transpose = 0;
     autoWait = false;
     const places = finalPlaces();
     const tl2 = sideline(gsap.timeline({ delay }));
@@ -1442,7 +1549,7 @@ export function createOpeningScene(): OpeningScene {
     if (phase === 'opened') {
       if (style === 'fan') revealFan();
       else revealCurrent();
-    } else if (phase === 'shown') nextCard();
+    } else if (phase === 'shown') nextCard(true);
     // éventail : toucher pendant un retournement = on le termine et on passe à la suivante (sauf légendaire / mythique).
     // (anti-spoil) face pas encore visible : la réponse est la même pour toutes — la face apparaît tout de suite ; une
     // légendaire / mythique joue ensuite son effet en entier
@@ -1475,6 +1582,7 @@ export function createOpeningScene(): OpeningScene {
 
   function reset() {
     killAll();
+    if (ctx) ctx.sfx.transpose = 0;
     pack = null;
     prepared = null;
     disposeSlots();
@@ -1905,7 +2013,12 @@ export function createOpeningScene(): OpeningScene {
             if (packMeshRef && ray.intersectObject(packMeshRef, false).length) api.onBoosterTap?.();
             return;
           }
-          if (phase !== 'done') return advance();
+          if (phase !== 'done') {
+            // retour tactile AU toucher (synchrone : sur iPhone c'est le seul moment où le navigateur peut vibrer ;
+            // l'impulsion d'impact arrivera ensuite sur Android, et rejouera une 6★ gardée en attente sur iPhone)
+            if (phase === 'opened' || phase === 'shown' || phase === 'mythicHold') haptics.pulse(12);
+            return advance();
+          }
           ray.setFromCamera(new Vector2(x, y), stage.camera);
           const hit = ray.intersectObjects(slots.map((s) => s.mesh), false)[0];
           const s = hit && slots.find((x) => x.mesh === hit.object);
@@ -2073,12 +2186,22 @@ export function createOpeningScene(): OpeningScene {
         // retournement : en pivotant sur son axe, la moitié de la carte passerait DERRIÈRE sa position de repos et
         // traverserait la pile. On l'avance donc de sa demi-largeur × |sin(angle)| (+ une épaisseur) : le bord qui
         // recule s'arrête pile au plan de repos. L'échelle compense la perspective → même taille apparente, pas de « pop ».
+        // CHARNIÈRE DROITE (voir HINGE) : φ = π − flip (0 = face cachée, π = face visible). Le centre décrit
+        // x₀ + (w/2)(1 − cos φ) : le bord droit reste posé, le bord gauche se soulève (z = (w/2) sin φ) et passe par-dessus.
+        // Seconde moitié : la « main » ramène la carte au centre (lissé), sinon elle atterrirait décalée d'une largeur.
         const swing = Math.abs(Math.sin(p.flip));
-        const lift = swing > 1e-4 ? swing * ((CARD_W / 2) * p.s + 0.008) : 0;
+        const w = CARD_W * p.s;
+        const phi = Math.PI - p.flip;
+        const lift = swing > 1e-4 ? swing * (w / 2 + 0.008) : 0;
+        const u = Math.min(1, Math.max(0, (phi / Math.PI - 0.5) * 2));
+        const settle = u * u * (3 - 2 * u);
+        const dx = HINGE * ((w / 2) * (1 - Math.cos(phi)) - w * settle);
+        const rz = p.rz * (1 - hv * 0.7);
         const depth = Math.max(0.2, stage.camera.position.z - p.z - rig.position.z);
-        const persp = lift > 0 ? Math.max(0.5, (depth - lift) / depth) : 1;
-        s.mesh.position.set(p.x, p.y + hv * 0.035, p.z + lift + hv * 0.09);
-        s.mesh.rotation.set(Math.sin(t * 53) * 0.008 * tr, p.flip, p.rz * (1 - hv * 0.7) + Math.sin(t * 41) * 0.01 * tr);
+        const persp = lift > 0 ? 1 - HINGE_PERSP * (1 - Math.max(0.5, (depth - lift) / depth)) : 1;
+        s.mesh.position.set(p.x + dx * Math.cos(rz), p.y - dx * Math.sin(rz) + hv * 0.035, p.z + lift + hv * 0.09);
+        // sens de rotation inversé (−flip) : c'est le bord GAUCHE qui vient vers la caméra
+        s.mesh.rotation.set(Math.sin(t * 53) * 0.008 * tr, -p.flip, rz + Math.sin(t * 41) * 0.01 * tr);
         s.mesh.scale.setScalar(p.s * persp * (1 + hv * 0.06));
         s.holoU.strength.value = 0.1 + p.holo * 0.65 + hv * 0.15;
       });
