@@ -264,66 +264,60 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
 
   // ── les 5 pochettes
   /**
-   * TÉLÉPHONE : une ROUE (retours de Tom, 4 nov.) — seulement les visuels des boosters, sans cadre ni texte, la pochette
-   * choisie est celle du MILIEU. Défilement natif (fluide, au doigt) aimanté cran par cran (scroll-snap), avec un petit
-   * « clic » (vibration + tic) à chaque cran ; la courbure (rotation, échelle, fondu) suit le défilement sur le fil du
-   * compositeur (animations liées au défilement, CSS) — repli en JavaScript sur les navigateurs qui ne les ont pas.
-   * La roue tourne sans fin : 5 exemplaires de la rangée, et l'on revient discrètement à celui du milieu à l'arrêt.
-   * Sur ordinateur, seule la rangée du milieu est affichée (liste verticale, inchangée).
+   * TÉLÉPHONE : une ROUE 3D (retours de Tom, 4 nov. : « une scrollwheel digne des meilleurs awwwards »). Seulement les
+   * visuels des boosters, posés sur un cylindre ; la pochette choisie est celle du MILIEU. Plus de défilement natif :
+   * une petite physique maison, la même sur tous les téléphones —
+   * - au doigt, la roue suit 1:1 avec des CRANS sentis sous le doigt (elle colle un peu à chaque pochette puis saute) ;
+   * - lâchée, elle file avec l'élan du geste (projection de la vitesse), ralentit et tombe dans un cran avec un léger
+   *   rebond (ressort amorti, sans à-coup : il repart exactement à la vitesse du doigt) ;
+   * - attrapée pendant qu'elle tourne, elle s'arrête net ; un toucher sur le côté l'amène au milieu, un toucher au
+   *   milieu ouvre la fiche ;
+   * - à chaque cran : clic (vibration + tic dont la hauteur suit la vitesse), la pochette du milieu s'allume, un reflet
+   *   balaie les pochettes qui tournent, la roue s'écarte un peu quand elle va vite, un cadran gradué défile dessous.
+   * Sans fin : 5 pochettes, chacune placée à sa distance « modulo 5 » du milieu (aucune copie).
+   * Sur ordinateur, rien ne change (liste verticale).
    */
   const WHEEL = matchMedia('(max-width: 860px)');
-  const COPIES = 5;
-  const MID = 2;
-  for (let c = 0; c < COPIES; c++)
-    for (const b of list) {
-      const clone = c !== MID;
-      const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}${clone ? ' clone' : ''}`, `
-      <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">BIENTÔT</span>' : ''}</span>
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+  for (const b of list) {
+    const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}`, `
+      <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">BIENTÔT</span>' : ''}<i class="sl-shade"></i><i class="sl-shine"></i></span>
       <span class="sl-name">${esc(b.name)}</span>
       <span class="sl-desc">${esc(b.desc)}</span>
       <span class="sl-prog"><i></i></span>`);
-      btn.dataset.key = b.key;
-      btn.dataset.copy = String(c);
-      btn.setAttribute('role', 'option');
-      btn.setAttribute('aria-label', b.name);
-      if (clone) {
-        btn.setAttribute('aria-hidden', 'true');
-        btn.tabIndex = -1;
-      }
-      btn.addEventListener('click', () => {
-        haptics.pulse(6);
-        // roue : une pochette sur le côté vient d'abord au milieu ; celle du milieu ouvre sa fiche
-        if (WHEEL.matches && wheelIndexOf(btn) !== wheelCenter()) return void spinTo(btn);
-        sheet.open(b.key);
-      });
-      rowEl.append(btn);
-    }
-  const allSleeves = () => [...rowEl.querySelectorAll<HTMLElement>('.sleeve')];
-  /** La pochette d'un booster : sur la roue, l'exemplaire le plus proche du milieu ; sinon celle de la rangée du milieu. */
-  const sleeveOf = (k: string) => {
-    if (!WHEEL.matches) return rowEl.querySelector<HTMLElement>(`.sleeve:not(.clone)[data-key="${k}"]`);
-    const mid = rowEl.scrollLeft + rowEl.clientWidth / 2;
-    let best: HTMLElement | null = null;
-    let bd = Infinity;
-    for (const b of rowEl.querySelectorAll<HTMLElement>(`.sleeve[data-key="${k}"]`)) {
-      const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid);
-      if (d < bd) (bd = d), (best = b);
-    }
-    return best;
-  };
+    btn.dataset.key = b.key;
+    btn.setAttribute('role', 'option');
+    btn.setAttribute('aria-label', b.name);
+    btn.addEventListener('click', (e) => {
+      // roue : les touchers sont lus par la roue elle-même (wheelUp) ; ici, le clavier (Entrée, Espace) et l'ordinateur
+      if (WHEEL.matches && e.detail !== 0) return;
+      haptics.pulse(6);
+      sheet.open(b.key);
+    });
+    rowEl.append(btn);
+  }
+  const sleeves = [...rowEl.querySelectorAll<HTMLElement>('.sleeve')];
+  const sleeveOf = (k: string) => sleeves.find((b) => b.dataset.key === k) ?? null;
+  // cadran gradué sous la roue (téléphone)
+  const dial = h('div', 'wheel-dial', '<i></i>');
+  dial.setAttribute('aria-hidden', 'true');
+  rowEl.append(dial);
+  const dialStrip = dial.firstElementChild as HTMLElement;
   function paintSleeves() {
     for (const b of list) {
       const src = opening.packThumb(b.key, 360);
       if (!src) continue;
       thumbs.set(b.key, src);
-      for (const art of rowEl.querySelectorAll<HTMLElement>(`.sleeve[data-key="${b.key}"] .sl-art`)) {
-        if (art.querySelector('img')) continue;
-        const img = h('img');
-        img.src = src;
-        img.alt = '';
-        img.decoding = 'async';
-        art.querySelector('.sl-ph')?.replaceWith(img);
-      }
+      const btn = sleeveOf(b.key);
+      const art = btn?.querySelector<HTMLElement>('.sl-art');
+      if (!art || art.querySelector('img')) continue;
+      const img = h('img');
+      img.src = src;
+      img.alt = '';
+      img.decoding = 'async';
+      art.querySelector('.sl-ph')?.replaceWith(img);
+      // ombre et reflet de la roue découpés à la silhouette du booster (bords dentelés compris)
+      art.style.setProperty('--src', `url("${src}")`);
     }
   }
 
@@ -342,15 +336,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     } catch {
       /* ignore */
     }
-    rowEl.querySelectorAll<HTMLElement>('.sleeve').forEach((b) => {
+    for (const b of sleeves) {
       b.classList.toggle('on', b.dataset.key === k);
       b.setAttribute('aria-selected', String(b.dataset.key === k));
-    });
-    // téléphone : la pochette choisie vient au milieu de la roue (l'exemplaire le plus proche : la roue tourne d'un cran)
-    if (o.scroll !== false && WHEEL.matches) {
-      const t = sleeveOf(k);
-      if (t) spinTo(t);
     }
+    // téléphone : la roue tourne jusqu'à la pochette choisie (par le chemin le plus court)
+    if (o.scroll !== false && WHEEL.matches) spinToIndex(to);
     // (audit UX2-09) booster déjà tiré d'un autre type : la scène 3D le garde (plus d'aller-retour du booster derrière la fiche)
     const sp = backend.state.sealed;
     if (sp && keyOf(sp) !== k) {
@@ -363,101 +354,277 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     syncState();
   }
 
-  // ── la roue (téléphone) : crans, roue sans fin, courbure
-  /** centres des pochettes (en px dans la rangée), recalculés quand la mise en page change */
-  let centers: number[] = [];
-  let setW = 0;
-  const measure = () => {
-    const els = allSleeves();
-    centers = els.map((b) => b.offsetLeft + b.offsetWidth / 2);
-    setW = els.length > list.length ? centers[list.length] - centers[0] : 0;
-  };
-  const wheelCenter = () => {
-    const mid = rowEl.scrollLeft + rowEl.clientWidth / 2;
-    let best = 0;
-    let bd = Infinity;
-    for (let i = 0; i < centers.length; i++) {
-      const d = Math.abs(centers[i] - mid);
-      if (d < bd) (bd = d), (best = i);
-    }
-    return best;
-  };
-  const wheelIndexOf = (b: HTMLElement) => allSleeves().indexOf(b);
-  function spinTo(b: HTMLElement, behavior: ScrollBehavior = 'smooth') {
-    if (!centers.length) measure();
-    const i = wheelIndexOf(b);
-    if (i < 0) return;
-    rowEl.scrollTo({ left: centers[i] - rowEl.clientWidth / 2, behavior });
-  }
-  // courbure en JavaScript, seulement si le navigateur n'a pas les animations liées au défilement (CSS)
-  const CSS_WHEEL = typeof CSS !== 'undefined' && CSS.supports('animation-timeline: view()');
-  function curveJs() {
-    if (CSS_WHEEL || !WHEEL.matches) return;
-    const mid = rowEl.scrollLeft + rowEl.clientWidth / 2;
-    const els = allSleeves();
-    for (let i = 0; i < els.length; i++) {
-      const d = Math.max(-2.6, Math.min(2.6, (centers[i] - mid) / (els[i].offsetWidth || 100)));
-      const a = Math.abs(d);
-      els[i].style.transform = `perspective(700px) translateX(${(-d * a * 9).toFixed(1)}px) rotateY(${(d * 26).toFixed(1)}deg) scale(${(1 - Math.min(a, 2.6) * 0.15).toFixed(3)})`;
-      els[i].style.opacity = String(Math.max(0, 1 - a * 0.3).toFixed(2));
-    }
-  }
-  let lastIdx = -1;
+  // ── la roue (téléphone)
+  const N = list.length;
+  const TAU = Math.PI * 2;
+  /** distance signée la plus courte d'une pochette au milieu, dans [-N/2, N/2] */
+  const near = (d: number) => d - N * Math.round(d / N);
+  const mod = (x: number) => ((x % N) + N) % N;
+  const indexOfKey = (k: string) => Math.max(0, list.findIndex((b) => b.key === k));
+  /** position continue de la roue, en pochettes (entier = une pochette pile au milieu) ; vitesse en pochettes/s */
+  let pos = indexOfKey(selected);
+  let vel = 0;
+  /** cible du ressort (null : roue au repos ou tenue au doigt) et pulsation du ressort (rad/s) */
+  let target: number | null = null;
+  let omega = 11;
+  const ZETA = () => (REDUCED.matches ? 1 : 0.74);
+  /** géométrie : largeur d'une pochette, écart entre deux pochettes au repos (= px de doigt par cran), rayon du cylindre */
+  const STEP = (34 * Math.PI) / 180;
+  const geo = { w: 0, gap: 0, R: 0, W: 0 };
+  let wheelOn = false;
   let raf = 0;
-  let settleT = 0;
-  const onWheelFrame = () => {
-    raf = 0;
-    curveJs();
-    const i = wheelCenter();
-    if (i === lastIdx) return;
-    const first = lastIdx < 0;
-    lastIdx = i;
-    const els = allSleeves();
-    els.forEach((b, j) => b.classList.toggle('mid', j === i));
-    // un cran : petit clic sous le doigt
-    if (!first && el.isConnected && mode === 'pick') {
-      haptics.pulse(4);
-      try {
-        shell.sfx.tick(1.7, 0.025);
-      } catch {
-        /* son pas encore prêt */
+  let lastT = 0;
+  let detent = Math.round(pos);
+  let lastClick = 0;
+  let committed: number | null = null;
+
+  function measure() {
+    const w = sleeves[0]?.offsetWidth ?? 0;
+    geo.w = w;
+    geo.gap = w * 1.13;
+    geo.R = geo.gap / Math.sin(STEP);
+    geo.W = rowEl.clientWidth;
+    // cadran : un grand trait par cran, trois petits entre deux, le milieu sur un grand trait
+    if (geo.gap > 0) {
+      const M = Math.ceil(geo.W / 2 / geo.gap) + 2;
+      dial.style.setProperty('--px', `${geo.gap}px`);
+      dialStrip.style.left = `${geo.W / 2 - M * geo.gap}px`;
+      dialStrip.style.width = `${(2 * M + 1) * geo.gap}px`;
+    }
+  }
+
+  /** pose les pochettes sur le cylindre pour la position `pos` (une seule écriture de style par pochette et par image) */
+  function paint() {
+    if (!wheelOn || geo.w < 10) return;
+    const sp = Math.min(Math.abs(vel), 30);
+    // vite : la roue s'écarte un peu et les pochettes s'inclinent dans le sens du mouvement
+    const spread = REDUCED.matches ? 1 : 1 + Math.min(0.16, sp * 0.011);
+    const lean = REDUCED.matches ? 0 : Math.max(-7, Math.min(7, -vel * 0.45));
+    for (let i = 0; i < N; i++) {
+      const b = sleeves[i];
+      const d = near(i - pos);
+      const a = Math.abs(d);
+      const th = Math.max(-1.5, Math.min(1.5, d * STEP * spread));
+      const x = Math.sin(th) * geo.R;
+      const z = (Math.cos(th) - 1) * geo.R;
+      const lift = -9 * Math.max(0, 1 - a) ** 2; // la pochette du milieu se soulève
+      b.style.transform = `translate3d(${x.toFixed(2)}px,${lift.toFixed(2)}px,${z.toFixed(2)}px) rotateY(${((th * 180) / Math.PI).toFixed(2)}deg) rotateZ(${(lean * Math.max(0, 1 - a * 0.5)).toFixed(2)}deg)`;
+      b.style.opacity = a <= 1.55 ? '1' : Math.max(0, 1 - (a - 1.55) / 0.75).toFixed(3);
+      b.style.zIndex = String(20 - Math.round(a * 4));
+      b.style.setProperty('--shade', Math.min(0.78, a * 0.42).toFixed(3));
+      // le reflet glisse sur la pochette à mesure qu'elle tourne (de droite à gauche quand elle passe au milieu)
+      b.style.setProperty('--shine', `${(-d * 135).toFixed(1)}%`);
+      // (seulement pendant que la pochette tourne : à l'arrêt, au milieu, pas de bande figée)
+      b.style.setProperty('--shine-a', (Math.min(1, a * 3.2 + sp * 0.08) * Math.max(0, 1 - a * 1.05)).toFixed(3));
+    }
+    // cadran : défile avec la roue (motif périodique : un décalage modulo un cran suffit)
+    const frac = pos - Math.floor(pos);
+    dialStrip.style.transform = `translate3d(${(-frac * geo.gap).toFixed(2)}px,0,0)`;
+    // crans : clic + pochette du milieu
+    const r = Math.round(pos);
+    if (r !== detent) {
+      const moved = r - detent;
+      detent = r;
+      markMid();
+      const now = performance.now();
+      if (Math.abs(moved) <= 2 && now - lastClick > 38 && mode === 'pick' && el.isConnected) {
+        lastClick = now;
+        haptics.pulse(sp > 12 ? 3 : 5);
+        try {
+          shell.sfx.tick(1.45 + Math.min(sp, 24) * 0.03, 0.022 + Math.min(sp, 24) * 0.0008);
+        } catch {
+          /* son pas encore prêt */
+        }
       }
     }
-  };
-  /** Arrêt de la roue : la pochette du milieu devient le booster choisi ; on revient discrètement à la rangée du milieu. */
-  const settle = () => {
-    if (!WHEEL.matches || !centers.length) return;
-    const i = wheelCenter();
-    const els = allSleeves();
-    const b = els[i];
-    if (!b) return;
-    const copy = Number(b.dataset.copy);
-    if (copy !== MID && setW) {
-      rowEl.scrollLeft += (MID - copy) * setW;
-      lastIdx = i + (MID - copy) * list.length;
-      els.forEach((x, j) => x.classList.toggle('mid', j === lastIdx));
+  }
+  function markMid() {
+    const m = mod(Math.round(pos));
+    sleeves.forEach((b, i) => b.classList.toggle('mid', i === m));
+    rowEl.style.setProperty('--wacc', list[m]?.accent ?? 'var(--rose)');
+  }
+
+  function frame(now: number) {
+    raf = 0;
+    const dt = Math.min(0.1, Math.max(0.001, (now - lastT) / 1000));
+    lastT = now;
+    if (!drag && target !== null) {
+      // ressort amorti, intégré par petits pas (stable même à 30 images/s)
+      const k = omega * omega;
+      const c = 2 * ZETA() * omega;
+      let n = Math.ceil(dt / (1 / 240));
+      const hh = dt / n;
+      while (n--) {
+        const acc = -k * (pos - target) - c * vel;
+        vel += acc * hh;
+        pos += vel * hh;
+      }
+      // presque arrivée : le booster 3D change déjà (la roue finit sa course pendant ce temps)
+      if (committed !== target && Math.abs(pos - target) < 0.14 && Math.abs(vel) < 4) commit(target);
+      if (Math.abs(pos - target) < 0.0015 && Math.abs(vel) < 0.02) {
+        pos = mod(target);
+        detent = Math.round(pos);
+        vel = 0;
+        target = null;
+        commit(pos);
+      }
     }
-    const k = b.dataset.key!;
-    if (mode === 'pick' && !backend.state.sealed && k !== selected) select(k, { scroll: false });
+    paint();
+    if (drag || target !== null) raf = requestAnimationFrame(frame);
+  }
+  const run = () => {
+    if (raf || !wheelOn) return;
+    lastT = performance.now();
+    raf = requestAnimationFrame(frame);
   };
-  rowEl.addEventListener('scroll', () => {
-    if (!WHEEL.matches) return;
-    if (!raf) raf = requestAnimationFrame(onWheelFrame);
-    clearTimeout(settleT);
-    settleT = window.setTimeout(settle, 160);
-  }, { passive: true });
-  rowEl.addEventListener('scrollend', () => {
-    clearTimeout(settleT);
-    settle();
+  /** lance le ressort vers le cran `t` (entier), à partir de la vitesse actuelle */
+  function springTo(t: number, w?: number) {
+    target = t;
+    committed = null;
+    const D = t - pos;
+    // pulsation choisie pour que le ressort reparte SANS à-coup à la vitesse du doigt (accélération initiale ~nulle),
+    // bornée : une longue course glisse doucement, un petit cran claque vite
+    omega = w ?? (Math.abs(D) > 0.02 && vel * D > 0 ? Math.max(6.5, Math.min(15, (2 * ZETA() * vel) / D)) : 12);
+    run();
+  }
+  function spinToIndex(i: number) {
+    if (!wheelOn || i < 0) return;
+    const base = target ?? pos;
+    springTo(Math.round(base + near(i - base)), 11);
+  }
+  function commit(t: number) {
+    committed = t;
+    const k = list[mod(Math.round(t))]?.key;
+    if (!k || mode !== 'pick' || k === selected || backend.state.sealed) return;
+    select(k, { scroll: false, dir: vel >= 0 ? 1 : -1 });
+  }
+
+  // le doigt
+  /** crans sentis au doigt : la roue colle un peu à chaque pochette, puis saute à la suivante (fonction monotone) */
+  const STICK = 0.3;
+  const feel = (x: number) => x - (STICK / TAU) * Math.sin(TAU * x);
+  const unfeel = (y: number) => {
+    let x = y;
+    for (let i = 0; i < 4; i++) x -= (feel(x) - y) / (1 - STICK * Math.cos(TAU * x));
+    return x;
+  };
+  let drag: { id: number; x0: number; y0: number; raw0: number; t0: number; moved: boolean; caught: boolean; samples: Array<[number, number]> } | null = null;
+  rowEl.addEventListener('pointerdown', (e) => {
+    if (!wheelOn || drag || mode !== 'pick' || e.button > 0) return;
+    const caught = target !== null && Math.abs(vel) > 0.6; // roue lancée : on l'attrape
+    target = null;
+    vel = 0;
+    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, raw0: unfeel(pos), t0: performance.now(), moved: false, caught, samples: [[performance.now(), pos]] };
+    try {
+      rowEl.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    rowEl.classList.add('held');
+    run();
   });
+  rowEl.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x0;
+    if (!drag.moved && Math.hypot(dx, e.clientY - drag.y0) > 7) drag.moved = true;
+    if (!drag.moved) return;
+    const raw = drag.raw0 - dx / (geo.gap || 100);
+    pos = feel(raw);
+    const now = performance.now();
+    drag.samples.push([now, raw]);
+    while (drag.samples.length > 2 && now - drag.samples[0][0] > 90) drag.samples.shift();
+    const [t0, p0] = drag.samples[0];
+    vel = now - t0 > 8 ? ((raw - p0) / (now - t0)) * 1000 : vel;
+  });
+  const wheelUp = (e: PointerEvent, cancel: boolean) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    rowEl.classList.remove('held');
+    // doigt resté immobile un moment avant de lâcher : pas d'élan
+    const lastS = d.samples[d.samples.length - 1];
+    if (performance.now() - lastS[0] > 70) vel = 0;
+    if (!d.moved && !cancel && !d.caught && performance.now() - d.t0 < 450) {
+      // un toucher : au milieu → la fiche ; sur le côté → cette pochette vient au milieu
+      const hit = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>('.sleeve');
+      const i = hit ? sleeves.indexOf(hit) : -1;
+      if (i >= 0 && Math.abs(near(i - pos)) < 0.5) {
+        haptics.pulse(6);
+        springTo(Math.round(pos), 14);
+        // la fiche s'ouvre au « click » qui suit (pas avant : il tomberait sur le bouton Ouvrir de la fiche qui monte)
+        pendingOpen = list[i].key;
+        clearTimeout(pendingT);
+        pendingT = window.setTimeout(openPending, 400);
+        return;
+      }
+      if (i >= 0) {
+        haptics.pulse(4);
+        return spinToIndex(i);
+      }
+    }
+    vel = Math.max(-28, Math.min(28, vel));
+    // élan : où la roue s'arrêterait toute seule, arrondi au cran (au plus 2 tours)
+    const proj = pos + vel * (REDUCED.matches ? 0.12 : 0.26);
+    springTo(Math.round(Math.max(pos - 2 * N, Math.min(pos + 2 * N, proj))));
+  };
+  let pendingOpen: string | null = null;
+  let pendingT = 0;
+  const openPending = () => {
+    clearTimeout(pendingT);
+    const k = pendingOpen;
+    pendingOpen = null;
+    if (k && mode === 'pick' && !sheet.isOpen()) sheet.open(k);
+  };
+  rowEl.addEventListener('click', () => pendingOpen && openPending());
+  rowEl.addEventListener('pointerup', (e) => wheelUp(e, false));
+  rowEl.addEventListener('pointercancel', (e) => wheelUp(e, true));
+  rowEl.addEventListener('lostpointercapture', (e) => drag && e.pointerId === drag.id && wheelUp(e, true));
+  // molette / pavé tactile (fenêtre étroite sur ordinateur) : un cran par geste
+  let wheelAcc = 0;
+  let wheelT = 0;
+  rowEl.addEventListener(
+    'wheel',
+    (e) => {
+      if (!wheelOn || mode !== 'pick') return;
+      e.preventDefault();
+      wheelAcc += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      clearTimeout(wheelT);
+      wheelT = window.setTimeout(() => (wheelAcc = 0), 160);
+      if (Math.abs(wheelAcc) < 40) return;
+      const s = Math.sign(wheelAcc);
+      wheelAcc = 0;
+      springTo(Math.round((target ?? pos) + s), 11);
+    },
+    { passive: false },
+  );
+
+  /** mise en page : roue (téléphone) ou liste (ordinateur) */
   const relayout = () => {
+    const on = WHEEL.matches;
+    if (on !== wheelOn) {
+      wheelOn = on;
+      rowEl.classList.toggle('wheel', on);
+      if (!on) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        drag = null;
+        target = null;
+        vel = 0;
+        for (const b of sleeves) {
+          b.style.transform = b.style.opacity = b.style.zIndex = '';
+          b.classList.remove('mid');
+        }
+      }
+    }
+    if (!on) return;
     measure();
-    if (WHEEL.matches) {
-      // (à l'arrivée : l'exemplaire de la rangée du milieu — il y a des copies de part et d'autre)
-      const t = rowEl.querySelector<HTMLElement>(`.sleeve:not(.clone)[data-key="${selected}"]`);
-      if (t) spinTo(t, 'instant' as ScrollBehavior);
-    } else allSleeves().forEach((b) => ((b.style.transform = ''), (b.style.opacity = '')));
-    onWheelFrame();
+    // au repos : la pochette choisie au milieu (sans animation)
+    if (!drag && target === null) {
+      pos = indexOfKey(selected);
+      detent = Math.round(pos);
+    }
+    markMid();
+    paint();
   };
   new ResizeObserver(() => requestAnimationFrame(relayout)).observe(rowEl);
   WHEEL.addEventListener('change', relayout);
@@ -507,11 +674,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     for (const b of list) {
       if (!b.cards.length) continue;
       const have = b.cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0);
-      for (const btn of rowEl.querySelectorAll<HTMLElement>(`.sleeve[data-key="${b.key}"]`)) {
-        btn.style.setProperty('--pct', `${(have / b.cards.length) * 100}%`);
-        btn.classList.add('has-prog');
-        btn.title = `${fmtN(have)} / ${fmtN(b.cards.length)} cartes déjà dans ta collection`;
-      }
+      const btn = sleeveOf(b.key);
+      if (!btn) continue;
+      btn.style.setProperty('--pct', `${(have / b.cards.length) * 100}%`);
+      btn.classList.add('has-prog');
+      btn.title = `${fmtN(have)} / ${fmtN(b.cards.length)} cartes déjà dans ta collection`;
     }
   });
 

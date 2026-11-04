@@ -11,6 +11,34 @@ import { configureArt } from '../core/art';
 import { setFaceQuality } from './scenes/cardFace';
 
 /**
+ * Configuration du canvas WebGPU, gardée pour la RE-poser au retour d'une autre appli (shell.ts, reviveSurface) :
+ * sur téléphone, le système peut reprendre la surface d'affichage pendant que l'appli est en arrière-plan sans que
+ * le GPU soit « perdu » — la page reste vivante mais le canvas n'affiche plus rien tant qu'il n'est pas reconfiguré.
+ */
+const gpuCfg = new WeakMap<object, unknown>();
+{
+  const P = (globalThis as unknown as { GPUCanvasContext?: { prototype: { configure?: (c: unknown) => void; __bebouCfg?: boolean } } }).GPUCanvasContext?.prototype;
+  if (P?.configure && !P.__bebouCfg) {
+    const orig = P.configure;
+    P.configure = function (this: object, c: unknown) {
+      gpuCfg.set(this, c);
+      return orig.call(this, c);
+    };
+    P.__bebouCfg = true;
+  }
+}
+/** `fn` dès que la page est visible (tout de suite si elle l'est déjà). */
+function whenVisible(fn: () => void) {
+  if (!document.hidden) return fn();
+  const once = () => {
+    if (document.hidden) return;
+    document.removeEventListener('visibilitychange', once);
+    fn();
+  };
+  document.addEventListener('visibilitychange', once);
+}
+
+/**
  * Hôte 3D du jeu : UN renderer WebGPU plein écran derrière l'interface, et des scènes (même contrat que les expériences
  * du labo) gardées en vie : la boutique et l'ouverture partagent leur scène (le booster affiché est celui qu'on ouvre),
  * la visionneuse de la collection reste prête, la scène secrète est préparée en fond quand un pack en contient une.
@@ -54,6 +82,9 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
    */
   configureArt({ preloadImages: false, imageBytes: mobile ? 40e6 : 160e6, maxImageSide: mobile ? 1024 : 1600, keepSilhouettes: !mobile });
   setFaceQuality(quality);
+  // appli relancée en arrière-plan (rechargement après une veille, appli changée entre-temps) : on attend d'être
+  // visible pour demander le GPU — un GPU obtenu en arrière-plan est souvent retiré aussitôt par le système
+  if (document.hidden) await new Promise<void>((r) => whenVisible(r));
   const renderer = await createRenderer(preferredBackend(), { mobile });
   const canvas = renderer.domElement;
   canvas.className = 'gl';
@@ -126,56 +157,136 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   window.addEventListener('resize', resize);
 
   /**
-   * RETOUR DE VEILLE (retours de Tom, 4 nov.) : téléphone verrouillé puis déverrouillé, le système peut retirer le GPU à
-   * la page (WebGPU « device lost », WebGL « context lost ») — la 3D reste alors vide : plus de booster, plus de carte.
-   * three.js ne sait pas tout reconstruire : on recharge la page dès qu'elle est de nouveau visible (même page, même
-   * onglet ; un booster tiré mais pas ouvert est rendu tel quel par le serveur). Garde-fou : pas deux rechargements en
-   * moins de 20 s (sinon on prévient au lieu de boucler).
+   * RETOUR DE VEILLE / CHANGEMENT D'APPLI (retours de Tom, 4 nov.) — l'appli est installée sur l'écran d'accueil : pas
+   * de bouton « recharger », tout doit revenir tout seul. Trois cas :
+   * 1. le GPU est perdu (WebGPU « device lost », WebGL « context lost ») : three.js ne sait pas tout reconstruire → on
+   *    recharge la page, mais SEULEMENT une fois l'appli de nouveau au premier plan (avant : le rechargement pouvait
+   *    partir pendant la mise en arrière-plan, la nouvelle page perdait son GPU à son tour → message « recharge la page »
+   *    impossible à suivre dans une appli installée) ;
+   * 2. le GPU est là mais la surface d'affichage a été reprise : on reconfigure le canvas au retour, puis on vérifie la
+   *    première image (erreurs GPU) et que le GPU répond — sinon, rechargement ;
+   * 3. les images ne repartent pas (navigateur qui oublie de relancer la boucle) : on la relance, puis on recharge.
+   * Garde-fou : au plus 2 rechargements automatiques en 2 min ; au-delà, un bouton « Relancer » (pas de boucle).
    */
+  const isWebGPU = backendName(renderer) === 'WebGPU';
+  const gpu = renderer.backend as unknown as { device?: GPUDevice; gl?: WebGL2RenderingContext };
   let gpuLost = false;
-  const recoverGpu = (why: string) => {
-    if (gpuLost) return;
-    gpuLost = true;
-    console.warn(`[jeu] 3D perdue (${why}) : rechargement au retour`);
-    const go = () => {
-      let last = 0;
+  const RELOADS = 'bebou.gpuReload';
+  const recentReloads = (): number[] => {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(RELOADS) ?? '[]');
+      return Array.isArray(v) ? v.filter((t) => typeof t === 'number' && Date.now() - t < 120_000) : [];
+    } catch {
+      return [];
+    }
+  };
+  const showRelaunch = () => {
+    if (document.querySelector('.gpu-lost-box')) return;
+    document.body.classList.add('gpu-lost');
+    const box = document.createElement('div');
+    box.className = 'gpu-lost-box';
+    box.setAttribute('role', 'alertdialog');
+    box.innerHTML = '<p>La 3D s’est arrêtée pendant que l’appli était en arrière-plan.</p><button class="btn-primary">Relancer</button>';
+    box.querySelector('button')!.addEventListener('click', () => {
       try {
-        last = Number(sessionStorage.getItem('bebou.gpuReload') ?? 0);
-        sessionStorage.setItem('bebou.gpuReload', String(Date.now()));
+        sessionStorage.removeItem(RELOADS);
       } catch {
         /* ignore */
       }
-      if (Date.now() - last < 20_000) {
-        document.body.classList.add('gpu-lost');
-        return;
-      }
       location.reload();
-    };
-    if (!document.hidden) go();
-    else {
-      const once = () => {
-        if (document.hidden) return;
-        document.removeEventListener('visibilitychange', once);
-        go();
-      };
-      document.addEventListener('visibilitychange', once);
-    }
+    });
+    document.body.append(box);
+  };
+  const recoverGpu = (why: string) => {
+    if (gpuLost) return;
+    gpuLost = true;
+    console.warn(`[jeu] 3D perdue (${why}) : rechargement au retour au premier plan`);
+    const go = () =>
+      // (un court délai : au déverrouillage, la page repasse « visible » un instant avant d'avoir vraiment l'écran)
+      setTimeout(() => {
+        if (document.hidden) return whenVisible(go);
+        const hist = recentReloads();
+        if (hist.length >= 2) return showRelaunch();
+        try {
+          sessionStorage.setItem(RELOADS, JSON.stringify([...hist, Date.now()]));
+        } catch {
+          /* ignore */
+        }
+        location.reload();
+      }, 350);
+    whenVisible(go);
   };
   (renderer as unknown as { onDeviceLost: (info: { message?: string }) => void }).onDeviceLost = (info) => recoverGpu(info?.message || 'device lost');
+  gpu.device?.lost.then((info) => info.reason !== 'destroyed' && recoverGpu(info.message || 'device lost'));
   canvas.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
     recoverGpu('webgl context lost');
   });
-  // retour sur l'onglet : tailles et mesures de cadence repartent de zéro (une veille fausse la mesure des images/s)
+
+  /** une image rendue depuis le retour ? (cas 3) */
+  let lastFrame = 0;
+  /** la prochaine image rendue est surveillée (erreurs GPU) */
+  let probe = false;
+  let wakeT = 0;
+  const reviveSurface = () => {
+    if (gpuLost) return;
+    if (isWebGPU) {
+      const ctx = canvas.getContext('webgpu') as (GPUCanvasContext & object) | null;
+      const cfg = ctx && gpuCfg.get(ctx);
+      if (ctx && cfg) {
+        try {
+          ctx.configure(cfg as GPUCanvasConfiguration);
+        } catch (e) {
+          return recoverGpu(`canvas : ${(e as Error)?.message ?? e}`);
+        }
+      }
+      probe = true;
+      // le GPU doit répondre (une file bloquée ne rend plus rien, sans erreur)
+      const q = gpu.device?.queue;
+      if (q) {
+        let answered = false;
+        q.onSubmittedWorkDone().then(() => (answered = true), () => {});
+        setTimeout(() => !answered && !document.hidden && recoverGpu('le GPU ne répond plus'), 4000);
+      }
+    } else if (gpu.gl?.isContextLost()) recoverGpu('webgl perdu');
+    // la boucle d'images doit repartir
+    const since = performance.now();
+    clearTimeout(wakeT);
+    wakeT = window.setTimeout(() => {
+      if (document.hidden || gpuLost || lastFrame >= since) return;
+      console.warn('[jeu] plus d’images depuis le retour : boucle relancée');
+      renderer.setAnimationLoop(null);
+      renderer.setAnimationLoop(loop);
+      wakeT = window.setTimeout(() => !document.hidden && lastFrame < since && recoverGpu('plus aucune image'), 2500);
+    }, 1500);
+  };
+  // retour sur l'appli : surface reconfigurée, tailles et mesures de cadence repartent de zéro (une veille fausse la
+  // mesure des images/s) ; les dimensions de l'écran se stabilisent un peu après le retour (appli installée) → 2 rappels
+  let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return;
+    if (document.hidden) {
+      hiddenAt = performance.now();
+      clearTimeout(wakeT);
+      return;
+    }
     resetPerf();
     resize();
+    if (hiddenAt && performance.now() - hiddenAt > 400) reviveSurface();
+    hiddenAt = 0;
+    setTimeout(resize, 150);
+    setTimeout(resize, 700);
+  });
+  // retour depuis le cache de navigation (page figée puis restaurée telle quelle)
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    resize();
+    reviveSurface();
   });
 
   let updErrors = 0;
-  renderer.setAnimationLoop(() => {
+  const loop = () => {
     if (document.hidden) return; // onglet caché : rien (certains navigateurs servent encore quelques images)
+    lastFrame = performance.now();
     timer.update();
     const dt = Math.min(timer.getDelta(), 1 / 20);
     const t = timer.getElapsed();
@@ -211,6 +322,14 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         }
       }
     }
+    // première image après un retour : on écoute les erreurs du GPU (surface perdue, mémoire, erreur interne)
+    const dev = probe && isWebGPU ? gpu.device : undefined;
+    if (dev) {
+      probe = false;
+      dev.pushErrorScope('validation');
+      dev.pushErrorScope('out-of-memory');
+      dev.pushErrorScope('internal');
+    }
     try {
       m.exp.update(dt, t);
       updErrors = 0;
@@ -222,7 +341,16 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         recoverGpu('erreurs de rendu répétées');
       }
     }
-  });
+    if (dev)
+      void Promise.all([dev.popErrorScope(), dev.popErrorScope(), dev.popErrorScope()]).then(
+        (errs) => {
+          const err = errs.find(Boolean);
+          if (err) recoverGpu(`après le retour : ${err.message}`);
+        },
+        () => {},
+      );
+  };
+  renderer.setAnimationLoop(loop);
 
   const shell: Shell = {
     renderer,
