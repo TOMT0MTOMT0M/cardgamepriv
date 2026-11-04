@@ -12,6 +12,7 @@ import { POKEMON_MYTHIC_TYPE } from '../../core/sets/pokemonTypes';
 import { siteUrl } from '../../core/siteRoot';
 import { gbcTransition, type GbcTransition } from '../scenes/gbcTransition';
 import { markWildSeen } from '../wildEncounter';
+import { markDuelSeen } from '../duelEncounter';
 import type { WildExperiment } from '../../experiments/041-pokemon-wild/index';
 import { rarity } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
@@ -1139,6 +1140,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         info.classList.remove('in');
         mythicVeil.hidden = true;
         document.body.classList.add('duel-on');
+        markDuelSeen(card.cardId); // le récap qui suit ne la rejoue pas dans la visionneuse
         shell.show('duel');
         duel.exp.replay?.();
         return true;

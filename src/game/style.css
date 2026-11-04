@@ -2649,7 +2649,7 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
 
 /* ==== invocation Yu-Gi-Oh (6★) ==== */
 /* la cinématique est plein écran : l'en-tête s'efface entièrement (et ne capte plus les touchers) */
-body.duel-on .topbar { opacity: 0; pointer-events: none; transition: opacity .5s; }
+body.duel-on .topbar, body.duel-on .viewer-ui { visibility: hidden; }
 /* ==== fin invocation ==== */
 
 /* Pokémon 6★ : rencontre sauvage jouée depuis la visionneuse (wildEncounter.ts) — l'interface s'efface */
