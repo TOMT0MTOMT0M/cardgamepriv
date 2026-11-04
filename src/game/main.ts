@@ -4,6 +4,7 @@ import { createOpeningScene } from './scenes/opening';
 import type { ViewerScene } from './scenes/viewer';
 import { withWildEncounter } from './wildEncounter';
 import { withDuelSummon } from './duelEncounter';
+import { installDiag } from './diag';
 import { createShopView } from './views/shop';
 import { createMissions, MISSION_ICON } from './views/missions';
 import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
@@ -729,6 +730,7 @@ async function boot() {
   const viewerMod = import('./scenes/viewer');
   viewerMod.catch(() => undefined); // (échec : getViewer() réessaie)
   shell = await shellP;
+  installDiag(shell); // (diagnostic à distance des scènes 6★ sur téléphone, voir diag.ts)
   setToastSound((kind) => (kind === 'err' ? shell.sfx.decline(0.07) : kind === 'ok' ? shell.sfx.note(5, 0.05, 0.4) : shell.sfx.note(2, 0.04, 0.35)));
   step(35, 'impression des boosters…', true);
   // scène d'ouverture = vitrine de la boutique : montée (et ses shaders compilés pour toutes les raretés) avant tout

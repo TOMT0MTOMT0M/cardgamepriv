@@ -1,6 +1,6 @@
 import {
   Color, DirectionalLight, DoubleSide, DynamicDrawUsage, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, Mesh,
-  MeshBasicNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, PointLight, SphereGeometry, Vector3, type Material,
+  MeshBasicNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, PointLight, RenderTarget, SphereGeometry, Vector3, type Material,
 } from 'three/webgpu';
 import { color, float, hash, instanceIndex, instancedBufferAttribute, mix, mx_noise_float, positionLocal, positionWorld, sin, smoothstep, time, uniform, vec3, vec4 } from 'three/tsl';
 import { ClusteredLighting } from 'three/addons/lighting/ClusteredLighting.js';
@@ -313,7 +313,7 @@ export default function create(o?: WildOptions): WildExperiment {
         bm.positionNode = positionLocal.add(vec3(sway.mul(0.12), 0, sway.mul(0.05)));
         bm.colorNode = vec4(mix(color(T.grass[0]), color(T.grass[1]), h), 1);
         bm.roughnessNode = float(0.75);
-        const nBlades = Math.round((mobile ? 700 : 2200) * (tall > 1 ? 0.45 : 1));
+        const nBlades = Math.round((mobile ? 380 : 2200) * (tall > 1 ? 0.45 : 1));
         const grass = new InstancedMesh(bladeG, bm, nBlades);
         const gr = rng(3);
         for (let i = 0; i < nBlades; i++) {
@@ -342,11 +342,11 @@ export default function create(o?: WildOptions): WildExperiment {
       bodies.frustumCulled = false;
       stage.scene.add(bodies);
       const r = rng(11);
-      // (perf téléphone) 240 PointLights en Forward+ = le premier poste de la scène : une luciole sur 4 porte la lumière
-      // (60 au lieu de 240), plus forte d'autant ; les corps lumineux (bloom) restent tous là
-      lightGain = mobile ? 2.6 : 1;
+      // (perf téléphone) les PointLights = le premier poste de la scène : une luciole sur 30 porte une vraie lumière (8,
+      // éclairage classique, sans Forward+), plus forte d'autant ; les corps lumineux (bloom) restent tous là
+      lightGain = mobile ? 7 : 1;
       for (let i = 0; i < n; i++) {
-        const light = !mobile || i % 4 === 0 ? new PointLight(baseCol, 0, mobile ? 0.8 : 0.65, 2) : null;
+        const light = !mobile || i % 30 === 0 ? new PointLight(baseCol, 0, mobile ? 1.1 : 0.65, 2) : null;
         if (light) stage.scene.add(light);
         flies.push({ p: new Vector3(), v: new Vector3(), phi: r() * TWO_PI, w: TWO_PI * (0.85 + r() * 0.3), seed: [r() * 10, r() * 10, r() * 10, 0.6 + r() * 0.8], light, b: 0 });
       }
@@ -385,15 +385,33 @@ export default function create(o?: WildOptions): WildExperiment {
     activate() {
       if (activating) return activating;
       activating = (async () => {
-        // vraies lumières par particule (Forward+) — rendu au système d'éclairage d'avant au démontage
-        const prevLighting = ctx.renderer.lighting;
-        const lighting = (clustered = new ClusteredLighting(1024, 32, 24, 64));
-        ctx.renderer.lighting = lighting;
-        ctx.bag.fn(() => {
-          ctx.renderer.lighting = prevLighting;
-          lighting.dispose();
-        });
+        // vraies lumières par particule (Forward+) — rendu au système d'éclairage d'avant au démontage.
+        // (téléphone, retour de Tom 4 nov. : « gros ralentissements ») PAS de Forward+ : son calcul par tuiles coûte plus
+        // que tout le reste de la scène sur un GPU mobile ; 8 lumières classiques suffisent (voir setup)
+        if (ctx.quality !== 'mobile') {
+          const prevLighting = ctx.renderer.lighting;
+          const lighting = (clustered = new ClusteredLighting(1024, 32, 24, 64));
+          ctx.renderer.lighting = lighting;
+          ctx.bag.fn(() => {
+            ctx.renderer.lighting = prevLighting;
+            lighting.dispose();
+          });
+        }
         await stage.compile();
+        // image « à blanc » hors écran : les vrais pipelines (passe + bloom) sont créés pendant le noir de la transition,
+        // pas à la 1re image visible (à-coup de plusieurs secondes sur téléphone)
+        const warm = new RenderTarget(4, 4);
+        const prevRT = ctx.renderer.getRenderTarget();
+        try {
+          stage.scene.updateMatrixWorld();
+          ctx.renderer.setRenderTarget(warm);
+          post.render();
+        } catch (e) {
+          console.warn('[wild] image de préchauffage', e);
+        } finally {
+          ctx.renderer.setRenderTarget(prevRT);
+          warm.dispose();
+        }
         active = true;
       })();
       return activating;

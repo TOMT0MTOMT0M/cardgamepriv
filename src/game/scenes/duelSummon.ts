@@ -13,6 +13,7 @@ import {
   MeshBasicNodeMaterial,
   MeshStandardNodeMaterial,
   PlaneGeometry,
+  RenderTarget,
   CircleGeometry,
   SRGBColorSpace,
   Sprite,
@@ -758,6 +759,24 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       post.output = vec4(col, 1);
       await stage.compile();
       await post.compile();
+      /*
+       * (téléphone, retour de Tom 4 nov. : « écran noir au début de l'animation ») la compilation ci-dessus ne prépare que
+       * les variantes « canvas » ; les vrais pipelines (passe MRT émissif + MSAA, squelettes, sprites) se créaient à la 1re
+       * image affichée — plusieurs secondes de noir sur un GPU mobile. Une image « à blanc », rendue hors écran pendant la
+       * préparation (l'ouverture du booster, le voile de la visionneuse), les crée ici, invisible.
+       */
+      const warm = new RenderTarget(4, 4);
+      const prevRT = c.renderer.getRenderTarget();
+      try {
+        stage.scene.updateMatrixWorld();
+        c.renderer.setRenderTarget(warm);
+        post.render();
+      } catch (e) {
+        console.warn('[duel] image de préchauffage', e);
+      } finally {
+        c.renderer.setRenderTarget(prevRT);
+        warm.dispose();
+      }
       c.bag.fn(c.input.onTap(onTap));
       // captures (scripts Playwright) : état de la séquence
       if (import.meta.env.DEV) (window as unknown as { __duel: unknown }).__duel = { S, time: () => (tl ? tl.time() : -1), ended: () => ended, seek: (x: number) => (tl?.seek(x), tl?.pause()), resume: () => tl?.resume() };
