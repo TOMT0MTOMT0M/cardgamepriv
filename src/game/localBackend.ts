@@ -23,6 +23,7 @@ import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon,
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
 import { BOARD_HOURS, BOARD_MAX_ITEMS, BOARD_MAX_OPEN, listingLive, type BoardState, type ListingOfferView, type ListingView } from './backend';
+import type { SuggestionView } from './backend';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
 
 /** Plafonds des classeurs : les mêmes que le serveur (convex/binders.ts, recopiés : importer ce fichier tirerait le serveur Convex dans le jeu). */
@@ -53,6 +54,8 @@ interface Bot {
   inv: Inv;
 }
 interface Saved {
+  /** démo : suggestions envoyées (onglet Suggestions) */
+  suggestions?: SuggestionView[];
   packBalance: number;
   lastDaily: number;
   /** départ du minuteur de recharge (absent sur les anciennes sauvegardes) */
@@ -132,6 +135,15 @@ export function createLocalBackend(): GameBackend {
     save = JSON.parse(localStorage.getItem(LS) ?? 'null') ?? freshSave();
   } catch {
     save = freshSave();
+  }
+  // purge du 04/11 (cartes 1-3★ sans illustration supprimées du jeu) : la démo oublie aussi les cartes disparues
+  {
+    const known = (k: string) => !!catalogEntry(k.slice(0, k.lastIndexOf(':')));
+    const clean = (inv: Inv) => {
+      for (const k of Object.keys(inv)) if (!known(k)) delete inv[k];
+    };
+    clean(save.inv);
+    for (const b of save.bots ?? []) clean(b.inv);
   }
   let forceSecret = new URLSearchParams(location.search).has('secret');
   // démo : `?force=pop-blue-eyes-white-dragon` → la 3e carte du prochain booster de ce thème est cette carte, en 6★ (captures)
@@ -854,6 +866,29 @@ export function createLocalBackend(): GameBackend {
       if (!b) return [];
       // les robots : leurs gros tirages de la vitrine
       return (save.bigPulls ?? []).filter((p) => p.userId === userId).map((p) => ({ id: p.id, kind: p.rarity === 'secret' ? 'secret_pull' : p.rarity === 'mythic' ? 'mythic_pull' : 'pull', message: `${p.userName} a obtenu ${p.cardName} [${rarityOf(p.rarity).label} #${p.mintNumber ?? 1}] !`, cardId: p.cardId, cardName: p.cardName, rarity: p.rarity, mintNumber: p.mintNumber, createdAt: p.createdAt }));
+    },
+    // démo : les suggestions restent dans ce navigateur (le joueur de démo est aussi l'admin)
+    async submitSuggestion(o, file) {
+      const now = Date.now();
+      (save.suggestions ??= []).unshift({
+        id: `s${now}`, kind: o.kind, text: o.text.trim(), cardId: o.cardId, imageUrl: o.imageUrl, category: o.category, page: o.page,
+        screenshotUrl: file ? URL.createObjectURL(file) : undefined, status: 'nouvelle', author: 'Toi (démo)', createdAt: now, updatedAt: now,
+      });
+      persist();
+    },
+    async mySuggestions() {
+      return [...(save.suggestions ?? [])];
+    },
+    async adminSuggestions(status) {
+      const all = save.suggestions ?? [];
+      const counts = { nouvelle: 0, vue: 0, acceptee: 0, refusee: 0, traitee: 0 };
+      for (const x of all) counts[x.status]++;
+      return { items: all.filter((x) => !status || x.status === status), counts };
+    },
+    async setSuggestionStatus(id, status, note) {
+      const x = save.suggestions?.find((y) => y.id === id);
+      if (x) Object.assign(x, { status, updatedAt: Date.now(), ...(note !== undefined ? { adminNote: note || undefined } : {}) });
+      persist();
     },
     async toggleWish(cardId) {
       const list = save.wishlist ?? [];

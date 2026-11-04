@@ -600,7 +600,7 @@ class GameNetClient {
   public async setBio(bio: string) {
     return await this.client!.mutation(api.profiles.setBio, { sessionToken: this.requireToken(), bio });
   }
-  public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[] }) {
+  public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[]; accent?: string }) {
     return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...c });
   }
   /** Photo / bannière importées (GIF, retours live 02) : envoi au stockage Convex puis enregistrement ; `null` = retirer. */
@@ -616,6 +616,28 @@ class GameNetClient {
     const r = await this.client!.mutation(api.profiles.setProfileMedia, { sessionToken, kind, storageId });
     if (r.error) throw new Error(r.error);
     return r.url;
+  }
+  // ─── suggestions des joueurs (onglet Suggestions) ───
+  public async submitSuggestion(o: { kind: 'bug' | 'design' | 'ajout' | 'autre'; text: string; cardId?: string; imageUrl?: string; category?: string; page?: string }, file: Blob | null) {
+    const sessionToken = this.requireToken();
+    let screenshot: Id<'_storage'> | undefined;
+    if (file) {
+      const url = await this.client!.mutation(api.suggestions.generateUploadUrl, { sessionToken });
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
+      if (!res.ok) throw new Error('L’envoi de l’image a échoué : réessaie.');
+      screenshot = ((await res.json()) as { storageId: Id<'_storage'> }).storageId;
+    }
+    const { page, ...rest } = o;
+    await this.client!.mutation(api.suggestions.submit, { sessionToken, ...rest, screenshot, meta: { page, ua: navigator.userAgent } });
+  }
+  public async mySuggestions() {
+    return await this.client!.query(api.suggestions.mine, { sessionToken: this.requireToken() });
+  }
+  public async adminSuggestions(status?: 'nouvelle' | 'vue' | 'acceptee' | 'refusee' | 'traitee') {
+    return await this.client!.query(api.suggestions.adminList, { sessionToken: this.requireToken(), status });
+  }
+  public async setSuggestionStatus(id: string, status: 'nouvelle' | 'vue' | 'acceptee' | 'refusee' | 'traitee', adminNote?: string) {
+    await this.client!.mutation(api.suggestions.setStatus, { sessionToken: this.requireToken(), id: id as Id<'suggestions'>, status, adminNote });
   }
   public async leaderboard() {
     if (!this.client) return [];

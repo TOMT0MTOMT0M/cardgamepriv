@@ -28,7 +28,9 @@ import type * as migrations from "../migrations.js";
 import type * as missions from "../missions.js";
 import type * as packs from "../packs.js";
 import type * as profiles from "../profiles.js";
+import type * as purgedCards from "../purgedCards.js";
 import type * as referrals from "../referrals.js";
+import type * as suggestions from "../suggestions.js";
 import type * as trades from "../trades.js";
 import type * as users from "../users.js";
 
@@ -59,7 +61,9 @@ declare const fullApi: ApiFromModules<{
   missions: typeof missions;
   packs: typeof packs;
   profiles: typeof profiles;
+  purgedCards: typeof purgedCards;
   referrals: typeof referrals;
+  suggestions: typeof suggestions;
   trades: typeof trades;
   users: typeof users;
 }>;

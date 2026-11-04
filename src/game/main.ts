@@ -144,6 +144,7 @@ top.innerHTML = `
     <a href="#/classement" data-r="classement">Classement</a>
     <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
     <a href="#/amis" data-r="amis">Amis<b class="badge am-badge" hidden></b></a>
+    <a href="#/suggestions" data-r="suggestions">Suggestions</a>
     <i class="nav-pill" aria-hidden="true"></i>
     <button class="nav-more" tabindex="-1" aria-hidden="true">›</button>
   </nav>
@@ -676,6 +677,7 @@ const TITLES: Record<string, string> = {
   jeux: 'Bébou — jeux',
   classement: 'Bébou — classement',
   succes: 'Bébou — succès',
+  suggestions: 'Bébou — suggestions',
 };
 
 /** Page du jeu : son élément et ses entrées / sorties (route()). */
@@ -698,6 +700,7 @@ const PAGE_MODULES = {
   jeux: () => import('./views/games'),
   classement: () => import('./views/ranking'),
   succes: () => import('./views/succes'),
+  suggestions: () => import('./views/suggestions'),
 };
 type PageKey = keyof typeof PAGE_MODULES;
 const isPage = (k: string): k is PageKey => k in PAGE_MODULES;
@@ -769,6 +772,7 @@ async function boot() {
     jeux: (m) => m.createGamesView(backend, shell),
     classement: (m) => m.createRankingView(backend, shell),
     succes: (m) => m.createSuccesView(backend, shell),
+    suggestions: (m) => m.createSuggestionsView(backend, shell),
   };
   const views: Record<string, View> = { '': shop };
   const pending = new Map<PageKey, Promise<View>>();

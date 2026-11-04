@@ -431,8 +431,16 @@ def harvest(xlsx, budget, retry):
 
 
 # ───────────────────────────────────────────── données TypeScript
+def _purged():
+    import json as _j, os as _o
+    return set(_j.load(open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'data', 'purged-ids.json'), encoding='utf-8')))
+
+
 def gen(xlsx):
     cards, kept = build(xlsx, verbose=True)
+    # purge du 04/11/2026 : les cartes 1★-3★ restées sans illustration sont supprimées du jeu (scripts/data/purged-ids.json)
+    _p = _purged()
+    cards = [c for c in cards if c['id'] not in _p]
     log = load_log()
     q = lambda s: json.dumps(s, ensure_ascii=False)
     order = ['merveilles', 'ardeche', 'lieux', 'animaux', 'nourriture', 'voitures']

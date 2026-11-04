@@ -368,6 +368,11 @@ export interface GameBackend {
   setCosmetics(choice: CosmeticChoice): Promise<CosmeticChoice>;
   /** Photo de profil / bannière importées (GIF ≤ 2 Mo ; démo ≤ 700 Ko) ; `null` = retirer. Renvoie l'adresse à afficher. Refus : Error au message clair. */
   setProfileMedia(kind: 'avatar' | 'banner', file: Blob | null): Promise<string | undefined>;
+  /** Suggestions (onglet) : envoyer (capture / image facultative), les miennes, la file admin, changer un statut. */
+  submitSuggestion(o: SuggestionInput, file: Blob | null): Promise<void>;
+  mySuggestions(): Promise<SuggestionView[]>;
+  adminSuggestions(status?: SuggestionStatus): Promise<{ items: SuggestionView[]; counts: Record<SuggestionStatus, number> }>;
+  setSuggestionStatus(id: string, status: SuggestionStatus, adminNote?: string): Promise<void>;
   /** Classement entre nous. */
   leaderboard(): Promise<LeaderRow[]>;
   /** Fil d'activité d'un joueur. */
@@ -424,6 +429,34 @@ export interface ContractResult {
   rarity: RarityId;
   mintNumber: number;
   isNew: boolean;
+}
+
+/** Suggestions des joueurs (onglet Suggestions, convex/suggestions.ts) */
+export type SuggestionKind = 'bug' | 'design' | 'ajout' | 'autre';
+export type SuggestionStatus = 'nouvelle' | 'vue' | 'acceptee' | 'refusee' | 'traitee';
+export interface SuggestionInput {
+  kind: SuggestionKind;
+  text: string;
+  cardId?: string;
+  imageUrl?: string;
+  category?: string;
+  page?: string;
+}
+export interface SuggestionView {
+  id: string;
+  kind: SuggestionKind;
+  text: string;
+  cardId?: string;
+  imageUrl?: string;
+  screenshotUrl?: string;
+  category?: string;
+  status: SuggestionStatus;
+  adminNote?: string;
+  page?: string;
+  ua?: string;
+  author?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export const cardKey = (c: { cardId: string; rarity: string }) => `${c.cardId}:${c.rarity}`;

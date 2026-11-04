@@ -13548,10 +13548,10 @@
 "t": 1793667246
 },
 "spt-equipe-de-portugal": {
-"art": "",
-"file": "",
-"src": "wiki-non",
-"t": 1793666681
+"art": "i",
+"file": "equipe-de-portugal.png",
+"src": "fill:wikipedia-en:Portugal national football team",
+"t": 1793801943
 },
 "spt-equipe-de-russie-de-hockey-sur-glace": {
 "art": "i",
@@ -13680,10 +13680,10 @@
 "t": 1793663678
 },
 "spt-equipe-feminine-de-angleterre": {
-"art": "",
-"file": "",
-"src": "wiki-non",
-"t": 1793666681
+"art": "i",
+"file": "equipe-feminine-de-angleterre.png",
+"src": "fill:wikipedia-en:England women's national football team",
+"t": 1793801943
 },
 "spt-equipe-feminine-de-australie": {
 "art": "i",
@@ -19830,10 +19830,10 @@
 "t": 1793664018
 },
 "spt-jamie-anderson": {
-"art": "",
-"file": "",
-"src": "wiki-non",
-"t": 1793666681
+"art": "c",
+"file": "jamie-anderson.jpg",
+"src": "fill:wikipedia-en:Jamie Anderson (snowboarder)",
+"t": 1793801942
 },
 "spt-jamie-carragher": {
 "art": "c",

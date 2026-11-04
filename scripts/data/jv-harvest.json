@@ -6423,11 +6423,10 @@
 "t": 1793636178
 },
 "jv-guitar-hero-guitar-hero-iii": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636183
+"art": "c",
+"file": "guitar-hero--guitar-hero-iii.jpg",
+"src": "fill:wikipedia-en:Guitar Hero III: Legends of Rock",
+"t": 1793801945
 },
 "jv-guitar-hero-guitar-hero-live": {
 "art": "c",
@@ -6801,11 +6800,10 @@
 "t": 1793636202
 },
 "jv-hollow-knight-le-chevalier-hollow-knight": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636221
+"art": "c",
+"file": "hollow-knight--le-chevalier-hollow-knight.jpg",
+"src": "fill:wikipedia-en:Hollow Knight",
+"t": 1793801945
 },
 "jv-hollow-knight-le-roi-pale": {
 "art": "c",
@@ -7401,11 +7399,10 @@
 "t": 1793636278
 },
 "jv-isaac-persos-isaac": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636278
+"art": "c",
+"file": "isaac-persos--isaac.jpg",
+"src": "fill:wikipedia-en:The Binding of Isaac (video game)",
+"t": 1793801944
 },
 "jv-isaac-persos-maman-binding-of-isaac": {
 "art": "",
@@ -9025,11 +9022,10 @@
 "t": 1793768778
 },
 "jv-mario-roi-k-rool": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636431
+"art": "i",
+"file": "mario--roi-k-rool.png",
+"src": "fill:wikipedia-en:King K. Rool",
+"t": 1793801945
 },
 "jv-mario-rpg-and-spin-offs-captain-toad-treasure-tracker": {
 "art": "c",
@@ -9635,11 +9631,10 @@
 "t": 1793636541
 },
 "jv-metal-gear-mgsv-the-phantom-pain": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636531
+"art": "c",
+"file": "metal-gear--mgsv-the-phantom-pain.jpg",
+"src": "fill:wikipedia-en:Metal Gear Solid V: The Phantom Pain",
+"t": 1793801945
 },
 "jv-metal-gear-otacon": {
 "art": "c",
@@ -21458,25 +21453,22 @@
 "t": 1793638394
 },
 "jv-uncharted-uncharted-2": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638391
+"art": "c",
+"file": "uncharted--uncharted-2.jpg",
+"src": "fill:wikipedia-en:Uncharted 2: Among Thieves",
+"t": 1793801944
 },
 "jv-uncharted-uncharted-3": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638394
+"art": "c",
+"file": "uncharted--uncharted-3.jpg",
+"src": "fill:wikipedia-en:Uncharted 3: Drake's Deception",
+"t": 1793801945
 },
 "jv-uncharted-uncharted-4": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638394
+"art": "c",
+"file": "uncharted--uncharted-4.jpg",
+"src": "fill:wikipedia-en:Uncharted 4: A Thief's End",
+"t": 1793801945
 },
 "jv-uncharted-uncharted-drake-s-fortune": {
 "art": "c",
@@ -21830,11 +21822,10 @@
 "t": 1793638451
 },
 "jv-warcraft-warcraft-iii": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638422
+"art": "c",
+"file": "warcraft--warcraft-iii.jpg",
+"src": "fill:wikipedia-en:Warcraft III: Reign of Chaos",
+"t": 1793801944
 },
 "jv-warcraft-warcraft-orcs-and-humans": {
 "art": "c",

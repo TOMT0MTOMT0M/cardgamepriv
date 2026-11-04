@@ -86,7 +86,7 @@ export default defineSchema({
     /** pochettes de sous-thème choisies à la main (vue Albums) : sous-thème → carte épinglée */
     covers: v.optional(v.record(v.string(), v.string())),
     /** cosmétiques du profil (src/core/cosmetics.ts) : bannière, cadre d'avatar, titre, badges — tout se débloque en jouant */
-    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())) })),
+    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()) })),
     /** photo de profil / bannière importées par le joueur (GIF animé ou image, ≤ 2 Mo, convex/profiles.ts) — sinon l'avatar Discord */
     avatarMedia: v.optional(v.id('_storage')),
     bannerMedia: v.optional(v.id('_storage')),
@@ -484,4 +484,30 @@ export default defineSchema({
     .index('by_listing', ['listingId', 'status'])
     .index('by_from_status', ['fromUserId', 'status'])
     .index('by_listingUser_status', ['listingUserId', 'status']),
+
+  /**
+   * SUGGESTIONS des joueurs (onglet Suggestions, 04/11) : bug (+ capture), design d'une carte (+ lien d'image proposé),
+   * ajout de carte / série, autre. File admin : nouvelle → vue → acceptée / refusée → traitée (convex/suggestions.ts).
+   */
+  suggestions: defineTable({
+    userId: v.id('users'),
+    kind: v.union(v.literal('bug'), v.literal('design'), v.literal('ajout'), v.literal('autre')),
+    text: v.string(),
+    /** design : la carte concernée */
+    cardId: v.optional(v.string()),
+    /** design : lien vers l'image proposée à la place */
+    imageUrl: v.optional(v.string()),
+    /** bug / design : capture ou image envoyée */
+    screenshot: v.optional(v.id('_storage')),
+    /** ajout : catégorie (anime, joueur, jeu…) */
+    category: v.optional(v.string()),
+    status: v.union(v.literal('nouvelle'), v.literal('vue'), v.literal('acceptee'), v.literal('refusee'), v.literal('traitee')),
+    adminNote: v.optional(v.string()),
+    /** page, appareil (aide au diagnostic des bugs) */
+    meta: v.optional(v.object({ page: v.optional(v.string()), ua: v.optional(v.string()) })),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_status', ['status', 'createdAt'])
+    .index('by_user', ['userId', 'createdAt']),
 });

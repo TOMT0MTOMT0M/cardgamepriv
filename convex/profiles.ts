@@ -135,11 +135,11 @@ export const setBio = mutation({
 
 /** Cosmétiques : seulement ce qui est débloqué (un choix verrouillé est ignoré, sans erreur). */
 export const setCosmetics = mutation({
-  args: { sessionToken: v.string(), banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())) },
-  handler: async (ctx, { sessionToken, banner, frame, title, badges }) => {
+  args: { sessionToken: v.string(), banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken, banner, frame, title, badges, accent }) => {
     const user = await requireUser(ctx, sessionToken);
     const { stats } = await statsOf(ctx, user);
-    const clean = cleanCosmetics({ banner, frame, title, badges }, stats);
+    const clean = cleanCosmetics({ banner, frame, title, badges, accent }, stats);
     await ctx.db.patch(user._id, { cosmetics: clean });
     return clean;
   },

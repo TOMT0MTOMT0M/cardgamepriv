@@ -108,10 +108,43 @@ export const BADGES: Cosmetic[] = [
   C({ id: 'half', label: '5 000 cartes', need: 'uniq-5000', glyph: '📚' }),
 ];
 
+/**
+ * Couleur du profil (retours 04/11, chantier 5) : l'accent du profil (cadre d'avatar sans cadre, titre, onglets actifs,
+ * bordures, chiffres clés). Une palette libre pour tout le monde + un sélecteur de couleur libre (« #rrggbb »), et
+ * quelques teintes à débloquer par les succès. `css` = la couleur (hexadécimale).
+ */
+export const ACCENTS: Cosmetic[] = [
+  C({ id: 'rose', label: 'Bébou', css: '#e8927c' }),
+  C({ id: 'corail', label: 'Corail', css: '#ff7b6b' }),
+  C({ id: 'ambre', label: 'Ambre', css: '#f0a04b' }),
+  C({ id: 'citron', label: 'Citron', css: '#e6d35a' }),
+  C({ id: 'menthe', label: 'Menthe', css: '#6fd6a2' }),
+  C({ id: 'lagon', label: 'Lagon', css: '#4fc6c9' }),
+  C({ id: 'azur', label: 'Azur', css: '#6aa8ff' }),
+  C({ id: 'lavande', label: 'Lavande', css: '#a58bff' }),
+  C({ id: 'fuchsia', label: 'Fuchsia', css: '#ff6fc2' }),
+  C({ id: 'ivoire', label: 'Ivoire', css: '#efe4d2' }),
+  C({ id: 'or', label: 'Or massif', need: 'packs-500', css: '#ffc94a' }),
+  C({ id: 'rubis', label: 'Rubis', need: 'leg-5', css: '#ff3b5c' }),
+  C({ id: 'saphir', label: 'Saphir', need: 'full-1', css: '#3f7dff' }),
+  C({ id: 'jade', label: 'Jade', need: 'trade-10', css: '#2fbf71' }),
+  C({ id: 'braise', label: 'Braise', need: 'streak-7', css: '#ff6a1a' }),
+  C({ id: 'foudre', label: 'Foudre', need: 'myth-1', css: '#c86bff' }),
+  C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: '#ffb4a2' }),
+];
+/** couleur libre du sélecteur : « #rrggbb » (gratuite pour tout le monde) */
+export const CUSTOM_ACCENT = /^#[0-9a-f]{6}$/;
+/** couleur d'accent à appliquer (undefined = l'accent par défaut du site) */
+export function accentColor(id?: string): string | undefined {
+  if (!id) return undefined;
+  if (CUSTOM_ACCENT.test(id)) return id;
+  return find(ACCENTS, id)?.css;
+}
+
 /** Cosmétiques débloqués par un succès (page Succès : « récompenses »). */
-export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge'; c: Cosmetic }> {
-  const out: Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge'; c: Cosmetic }> = [];
-  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
+export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur'; c: Cosmetic }> {
+  const out: Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur'; c: Cosmetic }> = [];
+  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
   return out;
 }
 
@@ -150,6 +183,8 @@ export interface CosmeticChoice {
   frame?: string;
   title?: string;
   badges?: string[];
+  /** couleur du profil : id d'ACCENTS ou « #rrggbb » libre */
+  accent?: string;
 }
 
 const find = (list: Cosmetic[], id: string | undefined) => (id ? list.find((c) => c.id === id) : undefined);
@@ -167,7 +202,9 @@ export function cleanCosmetics(choice: CosmeticChoice, stats: PlayerStats): Cosm
     seen.add(id);
     return true;
   }).slice(0, 5);
-  return { banner: ok(BANNERS, choice.banner), frame: ok(FRAMES, choice.frame), title: ok(TITLES, choice.title), badges };
+  const a = (choice.accent ?? '').toLowerCase();
+  const accent = CUSTOM_ACCENT.test(a) ? a : ok(ACCENTS, choice.accent);
+  return { banner: ok(BANNERS, choice.banner), frame: ok(FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}) };
 }
 
 /** Ce que le joueur a débloqué (pour la galerie et pour le fil « succès » à venir). */

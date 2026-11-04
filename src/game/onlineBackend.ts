@@ -203,6 +203,18 @@ export function createOnlineBackend(): GameBackend {
     async setProfileMedia(kind, file) {
       return await net.setProfileMedia(kind, file);
     },
+    async submitSuggestion(o, file) {
+      await net.submitSuggestion(o, file);
+    },
+    async mySuggestions() {
+      return await net.mySuggestions();
+    },
+    async adminSuggestions(status) {
+      return await net.adminSuggestions(status);
+    },
+    async setSuggestionStatus(id, status, note) {
+      await net.setSuggestionStatus(id, status, note);
+    },
     async leaderboard() {
       return (await net.leaderboard()).map((r) => ({ ...r, id: r.id as string }));
     },

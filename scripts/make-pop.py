@@ -402,8 +402,16 @@ def code_of(sub, used):
     return f'{base}{k}'
 
 
+def _purged():
+    import json as _j, os as _o
+    return set(_j.load(open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'data', 'purged-ids.json'), encoding='utf-8')))
+
+
 def gen(xlsx):
     cards = build(xlsx)
+    # purge du 04/11/2026 : les cartes 1★-3★ restées sans illustration sont supprimées du jeu (scripts/data/purged-ids.json)
+    _p = _purged()
+    cards = [c for c in cards if c['id'] not in _p]
     log = load_log()
     q = lambda s: json.dumps(s, ensure_ascii=False)
     gorder = list(GROUP_LABELS)
@@ -419,6 +427,12 @@ def gen(xlsx):
     sub_ids, codes = {}, {}
     used_codes = existing(r'\bcode: ["\']([A-Z0-9]+)["\']') | {'POP'}
     seen = set()
+    prev_codes = {}
+    if os.path.exists(TS):
+        for lab, cd in re.findall(r'label: ("(?:[^"\\]|\\.)*"), code: "([A-Z0-9]+)"', open(TS, encoding='utf-8').read()):
+            prev_codes[json.loads(lab)] = cd
+    taken_codes = set()
+    used_codes |= set(prev_codes.values())
     for s in subs:
         sid = slug(s)
         if s == 'Marvel MCU':
@@ -427,7 +441,10 @@ def gen(xlsx):
             sid = f'pop-{sid}'
         seen.add(sid)
         sub_ids[s] = sid
-        codes[s] = code_of(s, used_codes)
+        # codes STABLES (imprimés sur les cartes) : un sous-thème garde le code qu'il a déjà dans le fichier généré, même si
+        # un autre disparaît (purge du 04/11 : « Lucy » retiré ne doit pas faire passer « Lucifer » de LU3 à LU2)
+        codes[s] = prev_codes[s] if prev_codes.get(s) and prev_codes[s] not in taken_codes else code_of(s, used_codes)
+        taken_codes.add(codes[s])
 
     L = []
     L.append('/**')

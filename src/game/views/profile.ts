@@ -5,7 +5,7 @@ import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { BADGES, BANNERS, FRAMES, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
+import { ACCENTS, BADGES, BANNERS, FRAMES, accentColor, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { guarded, isPending } from './safety';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
@@ -190,6 +190,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const title = titleOf(cos.title);
     banner.style.background = bn.css ?? '';
     banner.dataset.banner = bn.id;
+    applyAccent(cos.accent);
     // bannière importée (GIF ou image, retours live 02) : par-dessus la bannière cosmétique, sous le dégradé
     const bUrl = prof?.bannerMedia ?? '';
     const bm = banner.querySelector<HTMLElement>('.pf-bn-media');
@@ -255,8 +256,23 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       ...unlockedIds(FRAMES, st).map((id) => `frame:${id}`),
       ...unlockedIds(TITLES, st).map((id) => `title:${id}`),
       ...unlockedIds(BADGES, st).map((id) => `badge:${id}`),
+      ...unlockedIds(ACCENTS, st).map((id) => `accent:${id}`),
     ];
   };
+  /**
+   * Couleur du profil (retours 04/11) : on redéfinit les accents du site (--rose, --rose-l) à l'échelle de la page profil
+   * + --pa pour les accents propres au profil (titre, cadre « aucun », bordures). Profil d'un ami : SA couleur.
+   */
+  function applyAccent(id?: string) {
+    const c = accentColor(id);
+    el.classList.toggle('has-accent', !!c);
+    // texte posé SUR la couleur (onglet actif, boutons) : sombre sur une couleur claire, clair sur une couleur sombre
+    const lum = c ? (([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b)([1, 3, 5].map((i) => (parseInt(c.slice(i, i + 2), 16) / 255) ** 2.2)) : 1;
+    for (const [k, v] of [['--pa', c], ['--pa-ink', c ? (lum > 0.18 ? '#170a06' : '#fff6ee') : undefined], ['--rose', c], ['--rose-l', c ? `color-mix(in srgb, ${c} 45%, #fff6ee)` : undefined]] as const) {
+      if (v) el.style.setProperty(k, v);
+      else el.style.removeProperty(k);
+    }
+  }
   function newCosmetics(): Set<string> {
     const all = unlockedKeys();
     try {
@@ -308,11 +324,11 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
    * barre « Annuler / Enregistrer » collante en bas avec un résumé et un point « non enregistré », débloqués d'abord,
    * condition des verrouillés lisible avec la progression (« 180/500 »).
    */
-  type CosmTab = 'banner' | 'frame' | 'title' | 'badge';
+  type CosmTab = 'banner' | 'frame' | 'title' | 'badge' | 'accent';
   let cosmTab: CosmTab = 'banner';
   /** état enregistré à l'ouverture du panneau (pour le point « modifications non enregistrées ») */
   let cosmSaved = '';
-  const cosmKey = (c: CosmeticChoice) => JSON.stringify([c.banner ?? BANNERS[0].id, c.frame ?? 'none', c.title ?? '', c.badges ?? []]);
+  const cosmKey = (c: CosmeticChoice) => JSON.stringify([c.banner ?? BANNERS[0].id, c.frame ?? 'none', c.title ?? '', c.badges ?? [], c.accent ?? ACCENTS[0].id]);
   /**
    * Photo de profil / bannière À TOI (retours live 02) : GIF animé (ou image) importé, ≤ 2 Mo (démo : 700 Ko),
    * enregistré tout de suite (indépendant d'« Enregistrer » : ce n'est pas un cosmétique à débloquer). Sans fichier :
@@ -357,7 +373,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   function renderCosm() {
     const st = statsOf();
     const achS = achievementStats(st, emptyEcon());
-    const ok = { banner: new Set(unlockedIds(BANNERS, st)), frame: new Set(unlockedIds(FRAMES, st)), title: new Set(unlockedIds(TITLES, st)), badge: new Set(unlockedIds(BADGES, st)) };
+    const ok = { banner: new Set(unlockedIds(BANNERS, st)), frame: new Set(unlockedIds(FRAMES, st)), title: new Set(unlockedIds(TITLES, st)), badge: new Set(unlockedIds(BADGES, st)), accent: new Set(unlockedIds(ACCENTS, st)) };
     /** « 🔒 Succès « … » : ouvre 500 boosters · 180/500 » */
     const lockLine = (c: Cosmetic) => {
       const a = c.need ? ACHIEVEMENTS.find((x) => x.id === c.need) : undefined;
@@ -368,17 +384,27 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       { id: 'banner', label: 'Bannière', hint: 'le fond du haut', items: BANNERS, okSet: ok.banner, cls: 'cs-banner', sel: (c) => (cosmDraft.banner ?? BANNERS[0].id) === c.id },
       { id: 'frame', label: 'Cadre', hint: 'autour de ta photo', items: FRAMES, okSet: ok.frame, cls: 'cs-frame', sel: (c) => (cosmDraft.frame ?? 'none') === c.id },
       { id: 'title', label: 'Titre', hint: 'sous ton pseudo (touche encore pour l’enlever)', items: TITLES, okSet: ok.title, cls: 'cs-title', sel: (c) => cosmDraft.title === c.id },
+      { id: 'accent', label: 'Couleur', hint: 'les accents de ton profil (cadre, titre, onglets, bordures)', items: ACCENTS, okSet: ok.accent, cls: 'cs-accent', sel: (c) => (cosmDraft.accent ?? ACCENTS[0].id) === c.id },
       { id: 'badge', label: 'Badges', hint: 'jusqu’à 5, dans l’ordre où tu les choisis', items: BADGES, okSet: ok.badge, cls: 'cs-badge', sel: (c) => (cosmDraft.badges ?? []).includes(c.id) },
     ];
     const tabDef = TABS.find((t) => t.id === cosmTab)!;
     // débloqués d'abord (l'ordre du catalogue est gardé à l'intérieur de chaque moitié)
     const items = [...tabDef.items].sort((a, b) => Number(tabDef.okSet.has(b.id)) - Number(tabDef.okSet.has(a.id)));
     const { okSet, cls, sel } = tabDef;
-    const list = items
+    const cells = items
       .map((c) => `<button class="cs ${cls}${sel(c) ? ' on' : ''}${okSet.has(c.id) ? '' : ' locked'}${cosmNew.has(`${cosmTab}:${c.id}`) ? ' new' : ''}" data-id="${esc(c.id)}" title="${esc(okSet.has(c.id) ? c.label : `${c.label} · ${c.how}`)}" aria-pressed="${sel(c)}" ${okSet.has(c.id) ? '' : 'aria-disabled="true"'}>${
-        cls === 'cs-banner' ? `<span class="cs-sw" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring" style="--frame:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
+        cls === 'cs-banner' ? `<span class="cs-sw" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring" style="--frame:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : cls === 'cs-accent' ? `<span class="cs-dot" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
       }${okSet.has(c.id) ? '' : `<small>${lockLine(c)}</small>`}</button>`)
-      .join('');
+    // couleur libre : juste après les couleurs débloquées (avant les verrouillées)
+    const pickCell =
+      cosmTab === 'accent'
+        ? (() => {
+            const custom = /^#[0-9a-f]{6}$/i.test(cosmDraft.accent ?? '') ? cosmDraft.accent! : '';
+            return `<label class="cs cs-accent cs-custom${custom ? ' on' : ''}" title="Choisis n’importe quelle couleur"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || accentColor(cosmDraft.accent) || ACCENTS[0].css}" aria-label="Couleur libre"></span><b>${custom ? esc(custom.toUpperCase()) : 'Libre…'}</b></label>`;
+          })()
+        : '';
+    if (pickCell) cells.splice(items.filter((c) => okSet.has(c.id)).length, 0, pickCell);
+    const list = cells.join('');
     // aperçu (collant) : bannière, avatar + cadre, pseudo, titre, badges
     const name = prof?.name ?? backend.state.user?.name ?? '';
     const bn = bannerOf(cosmDraft.banner);
@@ -387,7 +413,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const badges = (cosmDraft.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     const ava = avaHtml(name);
     const dirty = cosmKey(cosmDraft) !== cosmSaved;
-    const summary = [bn.label, fr.id !== 'none' ? `Cadre ${fr.label}` : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
+    const acc = ACCENTS.find((a) => a.id === cosmDraft.accent);
+    const summary = [bn.label, fr.id !== 'none' ? `Cadre ${fr.label}` : '', cosmDraft.accent && cosmDraft.accent !== ACCENTS[0].id ? `Couleur ${acc ? acc.label : cosmDraft.accent.toUpperCase()}` : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
     cosm.innerHTML =
       `<div class="cs-head"><b>Personnaliser mon profil</b><span class="muted">Tout se débloque en jouant — rien ne s’achète.</span></div>` +
       `<div class="cs-preview" aria-label="Aperçu"><div class="cs-pv-bn" style="background:${bn.css ?? ''}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div><div class="pf-ava-wrap frame-${fr.id}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ava">${ava}</div></div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
@@ -418,13 +445,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       );
     };
     renderOrder();
-    cosm.querySelectorAll<HTMLButtonElement>('.cs').forEach((b) =>
+    cosm.querySelectorAll<HTMLButtonElement>('.cs:not(.cs-custom)').forEach((b) =>
       b.addEventListener('click', () => {
         const id = b.dataset.id!;
         if (b.classList.contains('locked')) return toast(`Verrouillé : ${b.title.split(' · ')[1] ?? ''}`, 'info');
         if (b.classList.contains('cs-banner')) cosmDraft.banner = id;
         else if (b.classList.contains('cs-frame')) cosmDraft.frame = id;
         else if (b.classList.contains('cs-title')) cosmDraft.title = cosmDraft.title === id ? undefined : id;
+        else if (b.classList.contains('cs-accent')) cosmDraft.accent = id === ACCENTS[0].id ? undefined : id;
         else {
           const l = (cosmDraft.badges ??= []);
           if (l.includes(id)) l.splice(l.indexOf(id), 1);
@@ -438,6 +466,21 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         renderCosm();
       }),
     );
+    // couleur libre : aperçu en direct pendant qu'on glisse (sans reconstruire le panneau, sinon le sélecteur se ferme)
+    const pick = cosm.querySelector<HTMLInputElement>('.cs-custom input');
+    pick?.addEventListener('input', () => {
+      cosmDraft.accent = pick.value.toLowerCase();
+      applyAccent(cosmDraft.accent);
+      const dot = cosm.querySelector<HTMLElement>('.cs-dot-pick');
+      if (dot) dot.style.background = pick.value;
+    });
+    pick?.addEventListener('change', () => {
+      cosmDraft.accent = pick.value.toLowerCase();
+      shell.sfx.tick(1.2, 0.04);
+      prof = prof ? { ...prof, cosmetics: { ...cosmDraft, badges: [...(cosmDraft.badges ?? [])] } } : prof;
+      renderHead();
+      renderCosm();
+    });
     cosm.querySelector('.cs-cancel')!.addEventListener('click', () => {
       cosmOpen = false;
       cosm.hidden = true;

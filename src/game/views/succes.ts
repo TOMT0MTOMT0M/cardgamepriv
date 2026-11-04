@@ -103,7 +103,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
   };
   const cosHtml = (id: string, ok: boolean) =>
     cosmeticsOf(id)
-      .map((r) => `<span class="sc-cos${ok ? ' ok' : ''} k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Bannière' || r.kind === 'Cadre' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}</span>`)
+      .map((r) => `<span class="sc-cos${ok ? ' ok' : ''} k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : r.kind === 'Couleur' ? 'frame' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' || r.kind === 'Couleur' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Bannière' || r.kind === 'Cadre' || r.kind === 'Couleur' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}</span>`)
       .join('');
 
   /** Une mécanique = un succès à paliers : niveau atteint, prochain seuil, et la liste des paliers avec leur récompense. */

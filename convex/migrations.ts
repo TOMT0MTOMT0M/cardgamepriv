@@ -4,6 +4,7 @@ import { internal } from './_generated/api';
 import type { Doc } from './_generated/dataModel';
 import { catalogCard } from './cardsCatalog';
 import type { RarityId } from './cardsCatalog';
+import { PURGED_CARD_IDS } from './purgedCards';
 
 /**
  * RARETÉS — une seule source de vérité : le catalogue (src/core/sets/*).
@@ -75,3 +76,72 @@ function dedupe<T extends { cardId: string; rarity: string }>(list: T[]): T[] {
     return true;
   });
 }
+
+/**
+ * PURGE DU 04/11/2026 — les cartes 1★ à 3★ restées sans illustration (2 084, convex/purgedCards.ts) n'existent plus :
+ * retirées du catalogue, et ici de tout ce que les joueurs possèdent ou proposent. Assumé : ceux qui en avaient les
+ * perdent. Inventaire (lignes supprimées), vitrines, classeurs (et leur couverture), échanges en attente (annulés),
+ * annonces ouvertes (cartes retirées ; annulées si vides), offres en cours (retirées).
+ * Idempotente (relancée à chaque mise en ligne : rattrape un booster scellé avant la purge et ouvert après).
+ *
+ *   npx convex run migrations:purgeCards
+ */
+const PURGED = new Set(PURGED_CARD_IDS);
+const purged = (c: { cardId: string }) => PURGED.has(c.cardId);
+
+export const purgeCards = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())), removed: v.optional(v.number()) },
+  handler: async (ctx, { cursor, removed = 0 }) => {
+    const page = await ctx.db.query('inventory').paginate({ cursor: cursor ?? null, numItems: BATCH });
+    const users = new Set<Doc<'users'>['_id']>();
+    for (const row of page.page) {
+      if (!PURGED.has(row.cardId)) continue;
+      removed++;
+      users.add(row.userId);
+      await ctx.db.delete(row._id);
+    }
+    for (const uid of users) {
+      const u = await ctx.db.get(uid);
+      if (u?.showcase?.some(purged)) await ctx.db.patch(uid, { showcase: u.showcase.filter((c) => !purged(c)) });
+      const binders = await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', uid)).collect();
+      for (const b of binders) {
+        const cover = b.coverCardId && PURGED.has(b.coverCardId);
+        if (!cover && !b.cards.some(purged)) continue;
+        await ctx.db.patch(b._id, { cards: b.cards.filter((c) => !purged(c)), ...(cover ? { coverCardId: undefined } : {}) });
+      }
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.migrations.purgeCards, { cursor: page.continueCursor, removed });
+      return { done: false, removed };
+    }
+    await ctx.scheduler.runAfter(0, internal.migrations.purgeCardsDeals, {});
+    return { done: true, removed };
+  },
+});
+
+/** 2e temps de la purge : échanges, annonces et offres encore ouverts qui contiennent une carte supprimée. */
+export const purgeCardsDeals = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    let trades = 0, listings = 0, offers = 0;
+    for (const t of await ctx.db.query('trades').collect()) {
+      if (t.status !== 'pending' || !(t.offered.some(purged) || t.requested.some(purged))) continue;
+      await ctx.db.patch(t._id, { status: 'cancelled', resolvedAt: now });
+      trades++;
+    }
+    for (const l of await ctx.db.query('listings').collect()) {
+      if (l.status !== 'open' || !(l.items.some(purged) || l.wanted?.some(purged))) continue;
+      const items = l.items.filter((c) => !purged(c));
+      await ctx.db.patch(l._id, items.length ? { items, wanted: l.wanted?.filter((c) => !purged(c)) } : { status: 'cancelled', resolvedAt: now });
+      listings++;
+    }
+    for (const o of await ctx.db.query('listingOffers').collect()) {
+      if (o.status !== 'pending' && o.status !== 'countered') continue;
+      if (!(o.offered.some(purged) || o.counter?.give.some(purged) || o.counter?.want.some(purged))) continue;
+      await ctx.db.patch(o._id, { status: 'withdrawn' });
+      offers++;
+    }
+    return { trades, listings, offers };
+  },
+});

@@ -6034,11 +6034,10 @@
 "t": 1793645521
 },
 "geo-departement-de-saone-et-loire": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793645680
+"art": "c",
+"file": "departements--departement-de-saone-et-loire.jpg",
+"src": "fill:wikipedia-en:Saône-et-Loire",
+"t": 1793801940
 },
 "geo-departement-de-seine-et-marne": {
 "art": "c",
@@ -7034,11 +7033,10 @@
 "t": 1793645442
 },
 "geo-grand-torii-d-itsukushima": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793645440
+"art": "c",
+"file": "monuments-patrimoine--grand-torii-d-itsukushima.jpg",
+"src": "fill:wikipedia-en:Itsukushima Shrine",
+"t": 1793801940
 },
 "geo-grand-trou-bleu-belize": {
 "art": "c",
@@ -7052,11 +7050,10 @@
 "src": "v1"
 },
 "geo-grande-mosquee-sheikh-zayed": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793645440
+"art": "c",
+"file": "monuments-patrimoine--grande-mosquee-sheikh-zayed.jpg",
+"src": "fill:wikipedia-en:Sheikh Zayed Grand Mosque",
+"t": 1793801940
 },
 "geo-grotte-de-lascaux": {
 "art": "c",
@@ -8398,11 +8395,10 @@
 "t": 1793645593
 },
 "geo-lagon-bleu-d-islande": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793645595
+"art": "c",
+"file": "sites-naturels--lagon-bleu-d-islande.jpg",
+"src": "fill:wikipedia-en:Blue Lagoon (geothermal spa)",
+"t": 1793801940
 },
 "geo-lagos": {
 "art": "c",
@@ -9356,11 +9352,10 @@
 "src": "v1"
 },
 "geo-mont-toubkal": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793645734
+"art": "c",
+"file": "montagnes-volcans--mont-toubkal.jpg",
+"src": "fill:wikipedia-en:Toubkal",
+"t": 1793801940
 },
 "geo-mont-ventoux": {
 "art": "c",
@@ -15318,11 +15313,10 @@
 "t": 1793646024
 },
 "miam-findus-poisson-pane": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793645558
+"art": "c",
+"file": "snacks-marques-fast-food--findus-poisson-pane.jpg",
+"src": "fill:wikipedia-en:Fish finger",
+"t": 1793801940
 },
 "miam-fish-and-chips": {
 "art": "c",
@@ -16839,11 +16833,10 @@
 "t": 1793646161
 },
 "miam-nems": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793645499
+"art": "c",
+"file": "plats-du-monde--nems.jpg",
+"src": "fill:wikipedia-en:Chả giò",
+"t": 1793801940
 },
 "miam-nems-croustillants": {
 "art": "c",
@@ -22529,10 +22522,10 @@
 "t": 1793737898
 },
 "zoo-couleuvre-aulique-la": {
-"art": "",
-"file": "",
-"src": "photo:none",
-"t": 1793737882
+"art": "c",
+"file": "reptiles-amphibiens--couleuvre-aulique-la.jpg",
+"src": "fill:wikipedia-en:Lycodon aulicus",
+"t": 1793801940
 },
 "zoo-couleuvre-brillante-la": {
 "art": "c",
@@ -24667,10 +24660,10 @@
 "t": 1793646112
 },
 "zoo-gorille-de-i-ouest": {
-"art": "",
-"file": "",
-"src": "photo:none",
-"t": 1793737842
+"art": "c",
+"file": "mammiferes--gorille-de-i-ouest.jpg",
+"src": "fill:wikipedia-en:Western gorilla",
+"t": 1793801940
 },
 "zoo-gorille-des-montagnes": {
 "art": "c",
@@ -28770,10 +28763,10 @@
 "t": 1793737861
 },
 "zoo-phoque-de-la-mediterranee": {
-"art": "",
-"file": "",
-"src": "photo:none",
-"t": 1793737890
+"art": "c",
+"file": "mammiferes--phoque-de-la-mediterranee.jpg",
+"src": "fill:wikipedia-en:Mediterranean monk seal",
+"t": 1793801940
 },
 "zoo-phoque-de-weddell": {
 "art": "c",

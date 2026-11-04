@@ -239,7 +239,8 @@ const bebousSub = sub(
 function theme(id: ThemeId, label: string, booster: string, style: BoosterStyle, subs: SubTheme[], secret?: true): ThemeInfo {
   return { id, label, booster, style, subthemes: subs, cards: subs.flatMap((s) => s.cards), ...(secret ? { secret } : {}) };
 }
-const subsOf = (id: ThemeId) => SUBTHEMES.filter((s) => s.themeId === id);
+// (purge du 04/11 : un sous-thème dont toutes les cartes ont été supprimées disparaît des boosters, albums et filtres)
+const subsOf = (id: ThemeId) => SUBTHEMES.filter((s) => s.themeId === id && s.cards.length > 0);
 
 /** Les 4 thèmes = les 4 boosters thématiques de la boutique, dans l'ordre d'affichage. */
 export const THEMES: ThemeInfo[] = [
