@@ -77,6 +77,7 @@ import { haptics } from '../../core/haptics';
 import { fxReduced } from '../../core/fxPref';
 import { siteUrl } from '../../core/siteRoot';
 import type { DuelMonster } from './duelMonsters';
+import { createRig, dragonPose, isWingedRig, type Rig } from './duelRig';
 
 /**
  * Invocation — la cinématique des 6★ Yu-Gi-Oh (pack Pop Culture), jouée à la place de la séquence mythique habituelle.
@@ -154,7 +155,11 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
   let aspect = 1;
   /** taille de l'hologramme (le modèle 3D, s'il y en a un, est mis à cette hauteur) */
   const tall = M.tall;
+  /** hauteur RÉELLE du monstre posé (le modèle 3D est mis à l'échelle sur sa silhouette, ailes comprises) */
+  let H = tall;
   let wide = tall;
+  /** squelette de dragon ailé animé à la main (modèles sans animation) */
+  let rig: Rig | null = null;
   const shake = new Spring(0, 240, 9);
   const camPos = new Vector3();
   const camLook = new Vector3();
@@ -165,7 +170,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
 
   const S = {
     trans: 0, tilt: 0, drop: 0, cam: 0, low: 0, flip: Math.PI, lift: 0, hover: 1,
-    field: 0, wave: 0, beam: 0, rise: 0, tex: 0, glow: 0, glitch: 0, flash: 0, ca: 0, push: 0, orbit: 0, motes: 0, ground: 0,
+    field: 0, wave: 0, beam: 0, rise: 0, tex: 0, glow: 0, glitch: 0, flash: 0, ca: 0, push: 0, orbit: 0, motes: 0, ground: 0, rear: 0.15, wing: -0.9, mouth: 0, life: 0,
   };
   const U = {
     trans: uniform(0), field: uniform(0), wave: uniform(0), beam: uniform(0), rise: uniform(0), tex: uniform(0),
@@ -292,8 +297,8 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
   // ───────────────────────────────────────────── faisceau de projection + poussière qui monte + étincelles
   function buildFx() {
     const mobile = ctx.quality === 'mobile';
-    const beamGeo = ctx.bag.add(new CylinderGeometry(wide * 0.5, CARD.w * 0.55, tall * 1.08, mobile ? 36 : 64, 1, true));
-    beamGeo.translate(0, (tall * 1.08) / 2, 0);
+    const beamGeo = ctx.bag.add(new CylinderGeometry(Math.min(wide, H * 1.3) * 0.5, CARD.w * 0.55, H * 1.08, mobile ? 36 : 64, 1, true));
+    beamGeo.translate(0, (H * 1.08) / 2, 0);
     const bm = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide });
     const v = uv();
     const streak = hash(floor(v.x.mul(90))).mul(0.7).add(0.3);
@@ -329,7 +334,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     // étincelles sur la ligne de matérialisation (repère du monstre)
     const sm = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
     const k = fract(h3.add(time.mul(h4.mul(1.4).add(0.8))));
-    const yLine = U.tex.mul(tall);
+    const yLine = U.tex.mul(H);
     sm.positionNode = vec3(h1.sub(0.5).mul(wide * 0.78).add(h4.sub(0.5).mul(k).mul(0.12)), yLine.add(k.mul(k).mul(-0.18)).add(k.mul(0.05)), h2.mul(0.22).add(0.02));
     const on = smoothstep(0.0, 0.03, U.tex).mul(smoothstep(1.0, 0.94, U.tex));
     sm.colorNode = vec4(mix(color('#ffffff'), U.accent as unknown as N, h2).mul(2.2), disc.mul(k.oneMinus()).mul(on));
@@ -348,7 +353,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     const rv = smoothstep(U.tex.mul(1.04), U.tex.mul(1.04).sub(0.025), y);
     const band = exp(abs(y.sub(U.tex.mul(1.04))).div(0.008).negate()).mul(step(0.001, U.tex)).mul(step(U.tex, 0.995));
     // balayage : lignes fines qui défilent vers le haut + scintillement (glitchs en salves)
-    const scan = sin(y.mul(tall * 90).sub(time.mul(9))).mul(0.5).add(0.5).pow(2.5);
+    const scan = sin(y.mul(H * 90).sub(time.mul(9))).mul(0.5).add(0.5).pow(2.5);
     const burst = step(0.86, hash(floor(time.mul(13)))).mul(U.glitch);
     const flicker = float(0.88).add(sin(time.mul(57)).mul(0.06)).sub(burst.mul(0.45));
     return { vis, rv, band, scan, flicker, burst };
@@ -416,28 +421,56 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       const loader = new GLTFLoader();
       loader.setMeshoptDecoder(MeshoptDecoder);
       const gltf = await loader.loadAsync(url);
-      const model = gltf.scene as unknown as Object3D;
+      const model = new Group();
+      model.add(gltf.scene as unknown as Object3D);
       let tris = 0;
       model.traverse((o) => {
         const g = (o as Mesh).isMesh ? (o as Mesh).geometry : null;
         if (g) tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
       });
       console.info(`[duel] modèle 3D ${M.file}.glb : ${Math.round(tris)} triangles, ${gltf.animations.length} animation(s)`);
-      const box = new Box3().setFromObject(model);
+      // squelette de dragon ailé sans animation (modèle extrait d'un jeu) : animé à la main, tourné vers la caméra,
+      // et mesuré dans sa pose finale (cou dressé, ailes levées)
+      const r = createRig(model);
+      if (isWingedRig(r) && !gltf.animations.length) {
+        rig = r;
+        const head = r.rest('HEAD'), waist = r.rest('WAIST') ?? r.rest('SPINE1');
+        if (head && waist && head.z < waist.z) (gltf.scene as unknown as Object3D).rotation.y = Math.PI;
+        r.apply(dragonPose({ t: 0, rear: 1, wing: 0.6, flap: 0, mouth: 0, life: 0 }));
+      }
+      model.updateMatrixWorld(true);
+      const box = new Box3().setFromObject(model, true);
       const h = Math.max(1e-3, box.max.y - box.min.y);
-      const k = tall / h;
+      const w = Math.max(1e-3, box.max.x - box.min.x);
+      // à l'échelle sur la silhouette : la hauteur prévue, sans dépasser 1,8 × cette hauteur en envergure
+      const k = Math.min(tall / h, (tall * 1.8) / w);
       model.scale.setScalar(k);
       model.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
-      wide = Math.min(tall * 1.4, (box.max.x - box.min.x) * k);
-      const y = positionWorld.y.div(tall);
+      H = h * k;
+      wide = w * k;
+      const y = positionWorld.y.div(H);
       // matériaux du modèle → hologramme puis matière (couleur, texture, émissif, métal/rugosité d'origine gardés) ;
       // un matériau partagé par plusieurs pièces n'est converti qu'une fois
-      type GlbMat = Material & { map?: Texture | null; color?: Color; emissive?: Color; emissiveIntensity?: number; emissiveMap?: Texture | null; metalness?: number; roughness?: number; vertexColors?: boolean };
+      type GlbMat = Material & {
+        map?: Texture | null; color?: Color; emissive?: Color; emissiveIntensity?: number; emissiveMap?: Texture | null; metalness?: number; roughness?: number;
+        vertexColors?: boolean; normalMap?: Texture | null; normalScale?: Vector2; roughnessMap?: Texture | null; metalnessMap?: Texture | null; aoMap?: Texture | null; aoMapIntensity?: number;
+      };
       const done = new Map<Material, MeshStandardNodeMaterial>();
       const convert = (om: GlbMat) => {
         const hit = done.get(om);
         if (hit) return hit;
         const m = new MeshStandardNodeMaterial({ transparent: true, side: DoubleSide });
+        // relief et matière d'origine : carte de normales, rugosité / métal / occlusion (ORM)
+        if (om.normalMap) {
+          m.normalMap = om.normalMap;
+          if (om.normalScale) m.normalScale.copy(om.normalScale);
+        }
+        if (om.aoMap) {
+          m.aoMap = om.aoMap;
+          m.aoMapIntensity = om.aoMapIntensity ?? 1;
+        }
+        // découpe (alphaMode MASK : membranes des ailes…) : appliquée à la main, l'hologramme étant translucide
+        const cut: N = om.alphaTest > 0 && om.map ? step(om.alphaTest, texture(om.map, uv()).a) : float(1);
         let base: N = om.map ? texture(om.map, uv()).rgb.mul(color(om.color ?? new Color(1, 1, 1))) : color(om.color ?? new Color(0.8, 0.8, 0.8));
         if (om.vertexColors) base = base.mul(vertexColor());
         const emis0: N = om.emissive && (om.emissive.r + om.emissive.g + om.emissive.b > 0)
@@ -448,17 +481,23 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
         const lum = luminance(base);
         const holoCol = mix(color(HOLO_DEEP), color(HOLO), lum).mul(lum.add(0.3)).mul(scan.mul(0.5).add(0.6)).add(color('#d8f6ff').mul(fres.mul(1.4)));
         m.colorNode = base.mul(rv);
-        m.roughnessNode = float(om.roughness ?? 0.6);
-        m.metalnessNode = float(om.metalness ?? 0.1);
+        if (om.roughnessMap) {
+          m.roughnessMap = om.roughnessMap;
+          m.roughness = om.roughness ?? 1;
+        } else m.roughnessNode = float(om.roughness ?? 0.6);
+        if (om.metalnessMap) {
+          m.metalnessMap = om.metalnessMap;
+          m.metalness = om.metalness ?? 1;
+        } else m.metalnessNode = float(om.metalness ?? 0.1);
         m.emissiveNode = holoCol.mul(rv.oneMinus()).mul(vis).mul(U.glow)
           .add((U.accent as unknown as N).mul(band.mul(3)))
           .add(base.mul(rv).mul(0.12))
           .add(emis0.mul(rv).mul(1.6))
           // une fois matérialisé, un liseré de lumière (couleur de la carte) garde l'aura de l'invocation
           .add((U.accent as unknown as N).mul(fres.mul(rv).mul(0.45)));
-        m.opacityNode = clamp(mix(scan.mul(0.3).add(0.4).add(fres.mul(0.4)).mul(flicker).mul(U.glow), float(1), rv), 0, 1).mul(vis);
+        m.opacityNode = clamp(mix(scan.mul(0.3).add(0.4).add(fres.mul(0.4)).mul(flicker).mul(U.glow), float(1), rv), 0, 1).mul(vis).mul(cut);
+        m.alphaTest = 0.01;
         ctx.bag.add(m);
-        om.dispose();
         done.set(om, m);
         return m;
       };
@@ -470,6 +509,10 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
         const mats = old.map(convert);
         mesh.material = mats.length === 1 ? mats[0] : mats;
       });
+      // textures du modèle : libérées avec la scène
+      const texs = new Set<Texture>();
+      for (const om of done.keys()) for (const v of Object.values(om)) if (v && (v as Texture).isTexture) texs.add(v as Texture);
+      texs.forEach((t2) => ctx.bag.add(t2));
       ctx.bag.scene(model);
       monsterRig.add(model);
       if (gltf.animations.length) {
@@ -557,6 +600,10 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     t.to(S, { glow: 1, duration: 0.3 }, beamAt + 0.1);
     t.to(S, { rise: 1, duration: 1.6, ease: 'power2.out' }, beamAt + 0.15);
     t.call(() => glbClips.summon?.(), [], beamAt + 0.15);
+    // dragon animé à la main : il se déplie en montant (cou qui se dresse, ailes qui s'ouvrent), puis respire
+    t.to(S, { rear: 1, duration: 1.7, ease: 'power2.out' }, beamAt + 0.2);
+    t.to(S, { wing: 0.95, duration: 1.5, ease: 'back.out(1.4)' }, beamAt + 0.25);
+    t.to(S, { life: 1, duration: 2, ease: 'power1.inOut' }, beamAt + 0.4);
     t.to(S, { low: 1, duration: 2.1, ease: 'power2.inOut' }, beamAt - 0.15);
     t.to(S, { push: 1, duration: 4.5, ease: 'power1.inOut' }, beamAt);
     const cryAt = beamAt + 0.95;
@@ -570,6 +617,8 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       haptics.pulse([40, 40, 80]);
     }, [], cryAt);
     t.to(S, { ca: 0.6 * k, duration: 0.05 }, cryAt).to(S, { ca: 0, duration: 0.9, ease: EASE.glide }, cryAt + 0.05);
+    t.to(S, { mouth: 1, duration: 0.16, ease: 'power2.out' }, cryAt).to(S, { mouth: 0.1, duration: 1.3, ease: 'power2.inOut' }, cryAt + 1.0);
+    t.to(S, { wing: 0.6, duration: 2.2, ease: 'power1.inOut' }, cryAt + 0.6);
     // 5. matérialisation, du bas vers le haut
     const texAt = beamAt + 2.05;
     t.set(S, { glitch: 0 }, texAt - 0.2);
@@ -596,6 +645,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     if (!revealed && tl) {
       // la matérialisation se termine tout de suite (la musique continue)
       tl.seek(tl.duration() - 3.2, true);
+      Object.assign(S, { rear: 1, wing: 0.6, mouth: 0.1, life: 1 });
       Object.assign(S, { tilt: 1, drop: 1, cam: 1, low: 1, flip: 0, lift: 0, hover: 0, field: 1, wave: 1, rise: 1, tex: 1, glow: 1, beam: 0.12, glitch: 0, motes: 1, trans: 1, push: 1 });
       revealed = true;
       glbClips.summon?.();
@@ -718,13 +768,15 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       shake.update(dt);
       mixer?.update(dt);
       S.ground = Math.min(1, S.cam * 1.6);
+      if (rig) rig.apply(dragonPose({ t, rear: S.rear, wing: S.wing, flap: Math.sin(t * 1.8) * 0.08 * S.life * (calm ? 0.4 : 1), mouth: S.mouth, life: S.life }));
       for (const k of Object.keys(U) as Array<keyof typeof U>) {
         if (k === 'accent' || k === 'center') continue;
         (U[k] as { value: number }).value = S[k as keyof typeof S] as number;
       }
       (bloomRef as unknown as { strength: { value: number } }).strength.value = 0.4 + S.beam * 0.2 + S.flash * 0.6 + S.glow * (1 - S.tex) * 0.22;
       key.intensity = 0.5 + S.tex * 1.3 + S.flash;
-      stage.scene.environmentIntensity = 0.25 + S.tex * 0.35;
+      // (un modèle 3D métallique vit de ses reflets : environnement plus présent une fois matérialisé)
+      stage.scene.environmentIntensity = 0.25 + S.tex * (rig ? 0.85 : 0.35);
 
       // carte : survol au départ → bascule → posée (arc) → retournement (soulevée à mi-course)
       const a = S.drop;
@@ -744,11 +796,15 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       const fov1 = portrait ? 50 : 40;
       const fovEnd = portrait ? 62 : 50;
       const tanH = Math.tan((fovEnd * Math.PI) / 360);
-      const fitDist = Math.max((tall * (portrait ? 0.7 : 0.6)) / tanH, (wide * (portrait ? 0.46 : 0.62)) / (tanH * aspect));
+      // (téléphone : un dragon aux ailes déployées est plus large que haut — on accepte de rogner le bout des ailes)
+      const fw = portrait ? Math.min(wide, H * 1.25) : wide;
+      // modèle 3D : vu d'en bas, sa tête dépasse vite du cadre (perspective) → un peu plus de recul et de marge en haut
+      const m3 = rig ? 1.16 : 1;
+      const fitDist = m3 * Math.max((H * (portrait ? 0.7 : 0.6)) / tanH, (fw * (portrait ? 0.46 : 0.62)) / (tanH * aspect));
       const sm = (x: number) => x * x * (3 - 2 * x);
       const e1 = sm(S.cam);
       const e2 = sm(S.low);
-      const off = (portrait ? 0 : wide * 0.3) * e2 * (0.35 + 0.65 * S.tex);
+      const off = (portrait ? 0 : Math.min(wide, H * 1.4) * 0.3) * e2 * (0.35 + 0.65 * S.tex);
       const orbit = Math.sin(t * 0.22) * 0.14 * e2 * (calm ? 0.4 : 1);
       const pose = ctx.input.pose(0.08);
       const R = fitDist * (1 - S.push * 0.08);
@@ -758,7 +814,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       camLook.set(0, Y0 + (0.02 - Y0) * e1, LAND.z * e1 - 0.15 * e1);
       // temps 2 → 3
       camPos.lerp(proj.set(-off + Math.sin(orbit + pose.y) * R, 0.3 + S.push * 0.04 - pose.x * 0.2, LAND.z + Math.cos(orbit + pose.y) * R), e2);
-      camLook.lerp(proj.set(-off, tall * (portrait ? 0.42 : 0.5) * (0.8 + 0.2 * S.rise), LAND.z - 0.12), e2);
+      camLook.lerp(proj.set(-off, H * (portrait ? 0.42 : 0.5) * (rig ? 1.1 : 1) * (0.8 + 0.2 * S.rise), LAND.z - 0.12), e2);
       const fov = 30 + (fov1 - 30) * e1;
       const sx = shake.value * 0.0035;
       stage.camera.position.set(camPos.x + sx, camPos.y + shake.value * 0.002, camPos.z);
@@ -767,7 +823,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       stage.camera.updateProjectionMatrix();
 
       stage.scene.updateMatrixWorld();
-      proj.set(0, tall * 0.55 * S.rise, 0).applyMatrix4(monsterRig.matrixWorld).project(stage.camera);
+      proj.set(0, H * 0.55 * S.rise, 0).applyMatrix4(monsterRig.matrixWorld).project(stage.camera);
       U.center.value.set(proj.x * 0.5 + 0.5, 0.5 - proj.y * 0.5);
       post.render();
     },

@@ -19,3 +19,7 @@ sauvegardes/
 # images sur R2 (seuls les manifestes restent dans git)
 public/art/
 !public/art/*/manifest.json
+
+# matières brutes des imports (FBX, TGA, archives : ~460 Mo) et corbeille locale — hors git
+imports/
+_to_delete/

@@ -12,11 +12,10 @@
 "t": 1793638649
 },
 "jv-a-plague-tale-amicia-de-rune": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638640
+"art": "c",
+"file": "a-plague-tale--amicia-de-rune.jpg",
+"src": "fill:fandom:aplaguetale.fandom.com:Amicia de Rune",
+"t": 1793768771
 },
 "jv-a-plague-tale-hugo-de-rune": {
 "art": "",
@@ -33,11 +32,10 @@
 "t": 1793635172
 },
 "jv-ace-attorney-apollo-justice": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635173
+"art": "c",
+"file": "ace-attorney--apollo-justice.jpg",
+"src": "fill:anilist:Odoroki Housuke",
+"t": 1793788156
 },
 "jv-ace-attorney-franziska-von-karma": {
 "art": "i",
@@ -245,18 +243,16 @@
 "t": 1793635342
 },
 "jv-angry-birds-bomb": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635346
+"art": "i",
+"file": "angry-birds--bomb.png",
+"src": "fill:fandom:angrybirds.fandom.com:Bomb (Movie)",
+"t": 1793768772
 },
 "jv-angry-birds-chuck": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635347
+"art": "i",
+"file": "angry-birds--chuck.png",
+"src": "fill:fandom:angrybirds.fandom.com:Chuck (Movie)",
+"t": 1793771511
 },
 "jv-angry-birds-hal": {
 "art": "",
@@ -280,11 +276,10 @@
 "t": 1793635347
 },
 "jv-angry-birds-red": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635184
+"art": "i",
+"file": "angry-birds--red.png",
+"src": "fill:fandom:angrybirds.fandom.com:Red (Movie)",
+"t": 1793768768
 },
 "jv-angry-birds-roi-cochon": {
 "art": "",
@@ -302,11 +297,10 @@
 "t": 1793635345
 },
 "jv-angry-birds-terence": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635349
+"art": "i",
+"file": "angry-birds--terence.png",
+"src": "fill:fandom:angry-birds-tv.fandom.com:Terence",
+"t": 1793771524
 },
 "jv-animal-crossing-animal-crossing": {
 "art": "c",
@@ -373,11 +367,10 @@
 "t": 1793635353
 },
 "jv-animal-crossing-marie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635354
+"art": "i",
+"file": "animal-crossing--marie.png",
+"src": "fill:fandom:animalcrossing.fandom.com/fr:Marie",
+"t": 1793771511
 },
 "jv-animal-crossing-raymond": {
 "art": "c",
@@ -636,18 +629,16 @@
 "t": 1793638638
 },
 "jv-assassin-s-creed-altair": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635378
+"art": "c",
+"file": "assassin-s-creed--altair.jpg",
+"src": "fill:fandom:assassinscreed.fandom.com/fr:Altaïr II",
+"t": 1793768767
 },
 "jv-assassin-s-creed-arno": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635381
+"art": "i",
+"file": "assassin-s-creed--arno.png",
+"src": "fill:fandom:assassinscreed.fandom.com/fr:Arno Dorian",
+"t": 1793771520
 },
 "jv-assassin-s-creed-assassin-s-creed": {
 "art": "c",
@@ -675,18 +666,16 @@
 "t": 1793635384
 },
 "jv-assassin-s-creed-aveline": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635387
+"art": "i",
+"file": "assassin-s-creed--aveline.png",
+"src": "fill:fandom:assassinscreed.fandom.com:Aveline de Grandpré",
+"t": 1793771520
 },
 "jv-assassin-s-creed-basim": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635392
+"art": "i",
+"file": "assassin-s-creed--basim.png",
+"src": "fill:fandom:assassinscreed.fandom.com:Basim ibn Ishaq",
+"t": 1793771521
 },
 "jv-assassin-s-creed-bayek": {
 "art": "i",
@@ -717,11 +706,10 @@
 "t": 1793635380
 },
 "jv-assassin-s-creed-desmond-miles": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635390
+"art": "i",
+"file": "assassin-s-creed--desmond-miles.png",
+"src": "fill:fandom:assassinscreed.fandom.com:Desmond Miles",
+"t": 1793771521
 },
 "jv-assassin-s-creed-edward-kenway": {
 "art": "i",
@@ -738,32 +726,28 @@
 "t": 1793635384
 },
 "jv-assassin-s-creed-evie-frye": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635388
+"art": "i",
+"file": "assassin-s-creed--evie-frye.png",
+"src": "fill:fandom:assassinscreed.fandom.com:Evie Frye",
+"t": 1793771521
 },
 "jv-assassin-s-creed-ezio-auditore": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635374
+"art": "i",
+"file": "assassin-s-creed--ezio-auditore.png",
+"src": "fill:fandom:assassinscreed.fandom.com/fr:Ezio Auditore da Firenze",
+"t": 1793768768
 },
 "jv-assassin-s-creed-jacob-frye": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635389
+"art": "i",
+"file": "assassin-s-creed--jacob-frye.png",
+"src": "fill:fandom:assassinscreed.fandom.com:Jacob Frye",
+"t": 1793771520
 },
 "jv-assassin-s-creed-kassandra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635380
+"art": "i",
+"file": "assassin-s-creed--kassandra.png",
+"src": "fill:fandom:assassinscreed.fandom.com/fr:Kassandra",
+"t": 1793768772
 },
 "jv-assassin-s-creed-lame-cachee": {
 "art": "",
@@ -773,11 +757,10 @@
 "t": 1793635376
 },
 "jv-assassin-s-creed-naoe": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635391
+"art": "c",
+"file": "assassin-s-creed--naoe.jpg",
+"src": "fill:fandom:assassinscreed.fandom.com:Naoe's House",
+"t": 1793771525
 },
 "jv-assassin-s-creed-odyssey": {
 "art": "c",
@@ -815,11 +798,10 @@
 "t": 1793635383
 },
 "jv-assassin-s-creed-shay-cormac": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635392
+"art": "i",
+"file": "assassin-s-creed--shay-cormac.png",
+"src": "fill:fandom:assassinscreed.fandom.com:Shay Cormac",
+"t": 1793771524
 },
 "jv-assassin-s-creed-syndicate": {
 "art": "c",
@@ -843,11 +825,10 @@
 "t": 1793635385
 },
 "jv-assassin-s-creed-yasuke-ac": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635393
+"art": "i",
+"file": "assassin-s-creed--yasuke-ac.png",
+"src": "fill:fandom:assassinscreed.fandom.com:Yasuke",
+"t": 1793771524
 },
 "jv-astro-bot-astro-bot": {
 "art": "i",
@@ -1246,11 +1227,10 @@
 "t": 1793635449
 },
 "jv-banjo-kazooie-bottles": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635451
+"art": "i",
+"file": "banjo-kazooie--bottles.png",
+"src": "fill:fandom:banjokazooie.fandom.com/fr:Bottles",
+"t": 1793771521
 },
 "jv-banjo-kazooie-conker-s-bad-fur-day": {
 "art": "c",
@@ -1274,11 +1254,10 @@
 "t": 1793635446
 },
 "jv-banjo-kazooie-gruntilda": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635448
+"art": "i",
+"file": "banjo-kazooie--gruntilda.png",
+"src": "fill:fandom:banjokazooie.fandom.com/fr:Gruntilda Clindoignon",
+"t": 1793768773
 },
 "jv-banjo-kazooie-kameo": {
 "art": "c",
@@ -1367,11 +1346,10 @@
 "t": 1793635471
 },
 "jv-battle-royale-and-fps-online-free-fire": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635465
+"art": "c",
+"file": "battle-royale-and-fps-online--free-fire.jpg",
+"src": "fill:wikipedia:fr:Free Fire",
+"t": 1793772873
 },
 "jv-battle-royale-and-fps-online-hell-let-loose": {
 "art": "c",
@@ -1581,18 +1559,16 @@
 "t": 1793635473
 },
 "jv-bayonetta-jeanne": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635474
+"art": "i",
+"file": "bayonetta--jeanne.png",
+"src": "fill:fandom:bayonetta.fandom.com/fr:Jeanne",
+"t": 1793771522
 },
 "jv-bayonetta-rodin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635475
+"art": "i",
+"file": "bayonetta--rodin.png",
+"src": "fill:fandom:bayonetta.fandom.com/fr:Rodin",
+"t": 1793771522
 },
 "jv-bioshock-persos-andrew-ryan": {
 "art": "c",
@@ -1658,25 +1634,22 @@
 "t": 1793638639
 },
 "jv-borderlands-amara": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635507
+"art": "c",
+"file": "borderlands--amara.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Amara",
+"t": 1793771521
 },
 "jv-borderlands-axton": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635507
+"art": "c",
+"file": "borderlands--axton.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Axton",
+"t": 1793771521
 },
 "jv-borderlands-beau-jack-handsome-jack": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635482
+"art": "c",
+"file": "borderlands--beau-jack-handsome-jack.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Beau Jack",
+"t": 1793768769
 },
 "jv-borderlands-borderlands": {
 "art": "c",
@@ -1709,11 +1682,10 @@
 "t": 1793635505
 },
 "jv-borderlands-brick": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635517
+"art": "c",
+"file": "borderlands--brick.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Brick (Borderlands)",
+"t": 1793771521
 },
 "jv-borderlands-claptrap": {
 "art": "i",
@@ -1723,25 +1695,22 @@
 "t": 1793635480
 },
 "jv-borderlands-fl4k": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635509
+"art": "c",
+"file": "borderlands--fl4k.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:FL4K",
+"t": 1793771521
 },
 "jv-borderlands-krieg": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635486
+"art": "c",
+"file": "borderlands--krieg.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Krieg",
+"t": 1793768773
 },
 "jv-borderlands-lilith-bl": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635484
+"art": "c",
+"file": "borderlands--lilith-bl.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Lilith (Borderlands 2)",
+"t": 1793768773
 },
 "jv-borderlands-maya-bl": {
 "art": "",
@@ -1758,18 +1727,16 @@
 "t": 1793635508
 },
 "jv-borderlands-moxxi": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635486
+"art": "c",
+"file": "borderlands--moxxi.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Moxxi (Borderlands)",
+"t": 1793768773
 },
 "jv-borderlands-moze": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635514
+"art": "i",
+"file": "borderlands--moze.png",
+"src": "fill:fandom:borderlands.fandom.com/fr:Moze",
+"t": 1793771521
 },
 "jv-borderlands-roland": {
 "art": "",
@@ -1779,18 +1746,16 @@
 "t": 1793635507
 },
 "jv-borderlands-salvador": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635517
+"art": "c",
+"file": "borderlands--salvador.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Salvador",
+"t": 1793771521
 },
 "jv-borderlands-tiny-tina": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635483
+"art": "c",
+"file": "borderlands--tiny-tina.jpg",
+"src": "fill:fandom:borderlands.fandom.com/fr:Tiny Tina's Wonderlands",
+"t": 1793768769
 },
 "jv-borderlands-tiny-tina-s-wonderlands": {
 "art": "c",
@@ -1799,11 +1764,10 @@
 "t": 1793635508
 },
 "jv-borderlands-zane": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635514
+"art": "i",
+"file": "borderlands--zane.png",
+"src": "fill:fandom:borderlands.fandom.com/fr:Zane",
+"t": 1793771522
 },
 "jv-borderlands-zer0": {
 "art": "",
@@ -1902,18 +1866,16 @@
 "t": 1793635511
 },
 "jv-call-of-duty-gaz": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635562
+"art": "c",
+"file": "call-of-duty--gaz.jpg",
+"src": "fill:fandom:callofduty.fandom.com/fr:\"Gaz\"",
+"t": 1793771522
 },
 "jv-call-of-duty-ghost": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635519
+"art": "c",
+"file": "call-of-duty--ghost.jpg",
+"src": "fill:fandom:callofduty.fandom.com:Ghost (Zombies)",
+"t": 1793768769
 },
 "jv-call-of-duty-ghosts": {
 "art": "c",
@@ -1923,11 +1885,10 @@
 "t": 1793635532
 },
 "jv-call-of-duty-hudson": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635535
+"art": "c",
+"file": "call-of-duty--hudson.jpg",
+"src": "fill:fandom:callofduty.fandom.com:Jhudson",
+"t": 1793771522
 },
 "jv-call-of-duty-infinite-warfare": {
 "art": "c",
@@ -1937,18 +1898,16 @@
 "t": 1793635533
 },
 "jv-call-of-duty-makarov": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635523
+"art": "c",
+"file": "call-of-duty--makarov.jpg",
+"src": "fill:fandom:callofduty.fandom.com:Makarov (Call of Duty)",
+"t": 1793771511
 },
 "jv-call-of-duty-mason": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635519
+"art": "c",
+"file": "call-of-duty--mason.jpg",
+"src": "fill:fandom:callofduty.fandom.com:Mason (World at War: Final Fronts)",
+"t": 1793768769
 },
 "jv-call-of-duty-menendez": {
 "art": "",
@@ -2000,11 +1959,10 @@
 "t": 1793635523
 },
 "jv-call-of-duty-nikolai": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635564
+"art": "c",
+"file": "call-of-duty--nikolai.jpg",
+"src": "fill:fandom:callofduty.fandom.com/fr:Nikolai Belinski",
+"t": 1793771522
 },
 "jv-call-of-duty-ray-gun": {
 "art": "c",
@@ -2078,11 +2036,10 @@
 "t": 1793635564
 },
 "jv-call-of-duty-zakhaev": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635563
+"art": "c",
+"file": "call-of-duty--zakhaev.jpg",
+"src": "fill:fandom:callofduty.fandom.com:Zakhaev Special Character",
+"t": 1793771523
 },
 "jv-candy-crush-bubble-shooter": {
 "art": "c",
@@ -2154,11 +2111,10 @@
 "t": 1793635576
 },
 "jv-capcom-divers-demitri": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635569
+"art": "c",
+"file": "capcom-divers--demitri.jpg",
+"src": "fill:anilist:Demitri Maximoff",
+"t": 1793788156
 },
 "jv-capcom-divers-dino-crisis": {
 "art": "c",
@@ -2326,11 +2282,10 @@
 "t": 1793635587
 },
 "jv-castlevania-death-castlevania": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635581
+"art": "i",
+"file": "castlevania--death-castlevania.jpg",
+"src": "fill:fandom:castlevania.fandom.com:Death",
+"t": 1793768773
 },
 "jv-castlevania-dracula-castlevania": {
 "art": "i",
@@ -2424,11 +2379,10 @@
 "t": 1793635593
 },
 "jv-clash-of-clans-supercell-barbare": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635593
+"art": "i",
+"file": "clash-of-clans-supercell--barbare.png",
+"src": "fill:fandom:clashofclans.fandom.com/fr:Barbare",
+"t": 1793768774
 },
 "jv-clash-of-clans-supercell-boom-beach": {
 "art": "i",
@@ -2452,11 +2406,10 @@
 "t": 1793635589
 },
 "jv-clash-of-clans-supercell-clash-royale": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635590
+"art": "i",
+"file": "clash-of-clans-supercell--clash-royale.png",
+"src": "fill:wikipedia:fr:Clash Royale",
+"t": 1793772873
 },
 "jv-clash-of-clans-supercell-hay-day": {
 "art": "i",
@@ -2473,11 +2426,10 @@
 "t": 1793635592
 },
 "jv-clash-of-clans-supercell-sorcier-clash": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635593
+"art": "i",
+"file": "clash-of-clans-supercell--sorcier-clash.png",
+"src": "fill:fandom:clashofclans.fandom.com/fr:Sorcier",
+"t": 1793771522
 },
 "jv-clash-of-clans-supercell-squad-busters": {
 "art": "i",
@@ -2603,11 +2555,10 @@
 "t": 1793638655
 },
 "jv-classiques-navigateur-and-flash-neopets": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638682
+"art": "i",
+"file": "classiques-navigateur-and-flash--neopets.png",
+"src": "fill:wikipedia:fr:Neopets",
+"t": 1793772874
 },
 "jv-classiques-navigateur-and-flash-newgrounds": {
 "art": "",
@@ -2684,11 +2635,10 @@
 "t": 1793638690
 },
 "jv-classiques-pc-point-n-click-and-co-april-ryan": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635623
+"art": "c",
+"file": "classiques-pc-point-n-click-and-co--april-ryan.jpg",
+"src": "fill:wikipedia:fr:April Ryan",
+"t": 1793772874
 },
 "jv-classiques-pc-point-n-click-and-co-broken-sword": {
 "art": "c",
@@ -2817,11 +2767,10 @@
 "t": 1793635626
 },
 "jv-crash-bandicoot-aku-aku": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635635
+"art": "i",
+"file": "crash-bandicoot--aku-aku.png",
+"src": "fill:fandom:crash-bandicoot.fandom.com/fr:Aku Aku",
+"t": 1793771511
 },
 "jv-crash-bandicoot-coco": {
 "art": "",
@@ -2879,18 +2828,16 @@
 "t": 1793635632
 },
 "jv-crash-bandicoot-crunch": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635638
+"art": "i",
+"file": "crash-bandicoot--crunch.png",
+"src": "fill:fandom:crash-bandicoot.fandom.com/fr:Crunch Bandicoot",
+"t": 1793771523
 },
 "jv-crash-bandicoot-dingodile": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635634
+"art": "c",
+"file": "crash-bandicoot--dingodile.jpg",
+"src": "fill:fandom:crash-bandicoot.fandom.com/fr:Dingodile",
+"t": 1793771522
 },
 "jv-crash-bandicoot-fruit-wumpa": {
 "art": "",
@@ -2907,18 +2854,16 @@
 "t": 1793635637
 },
 "jv-crash-bandicoot-n-gin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635635
+"art": "i",
+"file": "crash-bandicoot--n-gin.jpg",
+"src": "fill:fandom:crash-bandicoot-the-wrath-of-cortex.fandom.com:N.Gin",
+"t": 1793771524
 },
 "jv-crash-bandicoot-n-tropy": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635637
+"art": "i",
+"file": "crash-bandicoot--n-tropy.png",
+"src": "fill:fandom:crash-bandicoot.fandom.com/fr:N. Tropy",
+"t": 1793771522
 },
 "jv-crash-bandicoot-neo-cortex": {
 "art": "i",
@@ -2928,32 +2873,28 @@
 "t": 1793635632
 },
 "jv-crash-bandicoot-nina-cortex": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635638
+"art": "i",
+"file": "crash-bandicoot--nina-cortex.png",
+"src": "fill:fandom:crash-bandicoot.fandom.com/fr:Nina Cortex",
+"t": 1793771523
 },
 "jv-crash-bandicoot-ripper-roo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635639
+"art": "i",
+"file": "crash-bandicoot--ripper-roo.png",
+"src": "fill:fandom:crashbandicoot.fandom.com:Ripper Roo",
+"t": 1793771525
 },
 "jv-crash-bandicoot-tiny-tiger": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635639
+"art": "c",
+"file": "crash-bandicoot--tiny-tiger.jpg",
+"src": "fill:fandom:crash-bandicoot.fandom.com/fr:Tiny Tiger (XS)",
+"t": 1793771524
 },
 "jv-crash-bandicoot-uka-uka": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635640
+"art": "i",
+"file": "crash-bandicoot--uka-uka.png",
+"src": "fill:fandom:crash-bandicoot-the-wrath-of-cortex.fandom.com:Uka Uka",
+"t": 1793771525
 },
 "jv-crysis-crysis": {
 "art": "c",
@@ -2977,25 +2918,22 @@
 "t": 1793635650
 },
 "jv-crysis-nomad-crysis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635651
+"art": "c",
+"file": "crysis--nomad-crysis.jpg",
+"src": "fill:fandom:crysis.fandom.com:Nomad",
+"t": 1793771525
 },
 "jv-crysis-prophet-crysis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635652
+"art": "i",
+"file": "crysis--prophet-crysis.png",
+"src": "fill:fandom:crysis.fandom.com:Prophet",
+"t": 1793771526
 },
 "jv-cyberpunk-persos-adam-smasher": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635649
+"art": "c",
+"file": "cyberpunk-persos--adam-smasher.jpg",
+"src": "fill:anilist:Adam Smasher",
+"t": 1793788156
 },
 "jv-cyberpunk-persos-johnny-silverhand": {
 "art": "c",
@@ -3051,11 +2989,10 @@
 "t": 1793638637
 },
 "jv-danganronpa-monomi": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638638
+"art": "i",
+"file": "danganronpa--monomi.png",
+"src": "fill:fandom:danganronpa.fandom.com:Monomi",
+"t": 1793771526
 },
 "jv-danganronpa-nagito-komaeda": {
 "art": "c",
@@ -3098,11 +3035,10 @@
 "t": 1793635656
 },
 "jv-dark-souls-fire-keeper": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635683
+"art": "c",
+"file": "dark-souls--fire-keeper.jpg",
+"src": "fill:fandom:darksouls.fandom.com:Fire Keeper (Dark Souls III)",
+"t": 1793771525
 },
 "jv-dark-souls-gwyn": {
 "art": "",
@@ -3119,11 +3055,10 @@
 "t": 1793635682
 },
 "jv-dark-souls-ornstein": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635681
+"art": "c",
+"file": "dark-souls--ornstein.jpg",
+"src": "fill:fandom:darksouls.fandom.com:Ornstein's Set",
+"t": 1793768774
 },
 "jv-dark-souls-patches": {
 "art": "c",
@@ -3141,11 +3076,10 @@
 "t": 1793635683
 },
 "jv-dark-souls-solaire": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635657
+"art": "c",
+"file": "dark-souls--solaire.jpg",
+"src": "fill:fandom:dark-souls.fandom.com/fr:Solaire d'Astora",
+"t": 1793768769
 },
 "jv-dead-rising-dead-rising": {
 "art": "c",
@@ -3206,11 +3140,10 @@
 "t": 1793635685
 },
 "jv-dead-space-necromorphe": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635686
+"art": "c",
+"file": "dead-space--necromorphe.jpg",
+"src": "fill:fandom:deadspace.fandom.com/fr:Nécromorphes",
+"t": 1793771526
 },
 "jv-devil-may-cry-dante": {
 "art": "i",
@@ -3273,11 +3206,10 @@
 "t": 1793635689
 },
 "jv-devil-may-cry-v": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635695
+"art": "i",
+"file": "devil-may-cry--v.png",
+"src": "fill:fandom:devilmaycry.fandom.com:V",
+"t": 1793771527
 },
 "jv-devil-may-cry-vergil": {
 "art": "i",
@@ -3287,11 +3219,10 @@
 "t": 1793635687
 },
 "jv-diablo-baal": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635697
+"art": "i",
+"file": "diablo--baal.png",
+"src": "fill:fandom:diablo.fandom.com/fr:Baal",
+"t": 1793768773
 },
 "jv-diablo-deckard-cain": {
 "art": "i",
@@ -3301,12 +3232,10 @@
 "t": 1793635694
 },
 "jv-diablo-diablo": {
-"art": "",
-"dropped": "wiki:El Diablo (character)",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635690
+"art": "c",
+"file": "diablo--diablo.jpg",
+"src": "fill:fandom:diablo.fandom.com/fr:Diablo (jeu vidéo)",
+"t": 1793768768
 },
 "jv-diablo-diablo-ii": {
 "art": "c",
@@ -3343,11 +3272,10 @@
 "t": 1793635699
 },
 "jv-diablo-leoric": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635697
+"art": "c",
+"file": "diablo--leoric.jpg",
+"src": "fill:fandom:diablo.fandom.com:Leoric",
+"t": 1793771525
 },
 "jv-diablo-lilith": {
 "art": "i",
@@ -3357,26 +3285,22 @@
 "t": 1793635693
 },
 "jv-diablo-malthael": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635698
+"art": "c",
+"file": "diablo--malthael.jpg",
+"src": "fill:fandom:diablo.fandom.com/fr:Malthael",
+"t": 1793771525
 },
 "jv-diablo-mephisto": {
-"art": "",
-"dropped": "wiki:Mephisto (Marvel Comics)",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635699
+"art": "i",
+"file": "diablo--mephisto.png",
+"src": "fill:fandom:diablo.fandom.com/fr:Mephisto",
+"t": 1793771525
 },
 "jv-diablo-tyrael": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635693
+"art": "c",
+"file": "diablo--tyrael.jpg",
+"src": "fill:fandom:diablo.fandom.com/fr:Tyrael",
+"t": 1793771512
 },
 "jv-digimon-agumon": {
 "art": "i",
@@ -3565,11 +3489,10 @@
 "t": 1793638647
 },
 "jv-disgaea-laharl": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638648
+"art": "c",
+"file": "disgaea--laharl.jpg",
+"src": "fill:anilist:Laharl",
+"t": 1793788156
 },
 "jv-disgaea-prinny": {
 "art": "i",
@@ -3587,11 +3510,10 @@
 "t": 1793635699
 },
 "jv-dishonored-daud": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635705
+"art": "i",
+"file": "dishonored--daud.png",
+"src": "fill:fandom:dishonored.fandom.com/fr:Daud",
+"t": 1793771527
 },
 "jv-dishonored-death-of-the-outsider": {
 "art": "c",
@@ -3697,11 +3619,10 @@
 "t": 1793635710
 },
 "jv-doom-cacodemon": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635712
+"art": "c",
+"file": "doom--cacodemon.jpg",
+"src": "fill:fandom:doom.fandom.com:Cacodemon",
+"t": 1793768773
 },
 "jv-doom-cyberdemon": {
 "art": "c",
@@ -3765,25 +3686,22 @@
 "t": 1793635719
 },
 "jv-doom-icon-of-sin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635715
+"art": "c",
+"file": "doom--icon-of-sin.jpg",
+"src": "fill:fandom:doom.fandom.com:Icon of Sin/Doom (2016)",
+"t": 1793771525
 },
 "jv-doom-imp": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635741
+"art": "i",
+"file": "doom--imp.png",
+"src": "fill:fandom:doom.fandom.com:Imp/Doom",
+"t": 1793771526
 },
 "jv-doom-super-shotgun": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635712
+"art": "c",
+"file": "doom--super-shotgun.jpg",
+"src": "fill:fandom:doom.fandom.com:Super shotgun",
+"t": 1793768773
 },
 "jv-doom-tronconneuse-doom": {
 "art": "c",
@@ -3851,11 +3769,10 @@
 "t": 1793635743
 },
 "jv-dragon-age-varric": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635743
+"art": "c",
+"file": "dragon-age--varric.jpg",
+"src": "fill:fandom:dragonage.fandom.com:Varric Tethras",
+"t": 1793771526
 },
 "jv-dragon-quest-dragon-quest": {
 "art": "c",
@@ -3913,11 +3830,10 @@
 "t": 1793635756
 },
 "jv-dragon-quest-gluant": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635754
+"art": "i",
+"file": "dragon-quest--gluant.png",
+"src": "fill:fandom:dragonquest.fandom.com/fr:Gluante",
+"t": 1793768770
 },
 "jv-dragon-quest-le-heros-dq11": {
 "art": "",
@@ -3927,11 +3843,10 @@
 "t": 1793635757
 },
 "jv-dragon-quest-psaro": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635759
+"art": "i",
+"file": "dragon-quest--psaro.jpg",
+"src": "fill:fandom:dragonquest.fandom.com/fr:Psaro",
+"t": 1793771527
 },
 "jv-ea-divers-a-way-out": {
 "art": "c",
@@ -4180,11 +4095,10 @@
 "t": 1793635785
 },
 "jv-elden-ring-persos-alexander-pot": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635775
+"art": "c",
+"file": "elden-ring-persos--alexander-pot.jpg",
+"src": "fill:fandom:eldenring.fandom.com:Alexander, Warrior Jar",
+"t": 1793771526
 },
 "jv-elden-ring-persos-blaidd": {
 "art": "",
@@ -4215,11 +4129,10 @@
 "t": 1793635778
 },
 "jv-elden-ring-persos-melina": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635775
+"art": "c",
+"file": "elden-ring-persos--melina.jpg",
+"src": "fill:anilist:Melina",
+"t": 1793788156
 },
 "jv-elden-ring-persos-radahn": {
 "art": "",
@@ -4229,11 +4142,10 @@
 "t": 1793635772
 },
 "jv-elden-ring-persos-ranni": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635773
+"art": "c",
+"file": "elden-ring-persos--ranni.jpg",
+"src": "fill:fandom:eldenring.fandom.com:Ranni the Witch",
+"t": 1793768775
 },
 "jv-elden-ring-persos-torrent-cheval": {
 "art": "",
@@ -4243,11 +4155,10 @@
 "t": 1793635778
 },
 "jv-f-zero-captain-falcon": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635780
+"art": "i",
+"file": "f-zero--captain-falcon.png",
+"src": "fill:fandom:fzero.fandom.com:Captain Falcon",
+"t": 1793771512
 },
 "jv-f-zero-f-zero": {
 "art": "c",
@@ -4291,11 +4202,10 @@
 "t": 1793635782
 },
 "jv-fable-jack-of-blades": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635784
+"art": "c",
+"file": "fable--jack-of-blades.jpg",
+"src": "fill:fandom:fablefr.fandom.com/fr:Jack of Blades",
+"t": 1793771528
 },
 "jv-fable-le-heros-fable": {
 "art": "",
@@ -4313,18 +4223,16 @@
 "t": 1793635784
 },
 "jv-fallout-armure-assistee": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635786
+"art": "c",
+"file": "fallout--armure-assistee.jpg",
+"src": "fill:fandom:fallout.fandom.com/fr:Armure assistée avancée (Fallout 2)",
+"t": 1793768773
 },
 "jv-fallout-codsworth": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635802
+"art": "c",
+"file": "fallout--codsworth.jpg",
+"src": "fill:fandom:fallout.fandom.com/fr:Codsworth",
+"t": 1793771528
 },
 "jv-fallout-dogmeat": {
 "art": "c",
@@ -4386,18 +4294,16 @@
 "t": 1793635803
 },
 "jv-fallout-griffemort": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635803
+"art": "c",
+"file": "fallout--griffemort.jpg",
+"src": "fill:fandom:fallout.fandom.com/fr:Griffemort",
+"t": 1793771528
 },
 "jv-fallout-liberty-prime": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635803
+"art": "i",
+"file": "fallout--liberty-prime.png",
+"src": "fill:fandom:fallout.fandom.com/fr:Liberty Prime",
+"t": 1793771528
 },
 "jv-fallout-nick-valentine": {
 "art": "c",
@@ -4424,18 +4330,16 @@
 "t": 1793635786
 },
 "jv-fallout-piper": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635826
+"art": "c",
+"file": "fallout--piper.jpg",
+"src": "fill:fandom:fallout.fandom.com/fr:Piper Wright",
+"t": 1793771528
 },
 "jv-fallout-preston-garvey": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635823
+"art": "c",
+"file": "fallout--preston-garvey.jpg",
+"src": "fill:fandom:fallout.fandom.com/fr:Preston Garvey",
+"t": 1793771528
 },
 "jv-fallout-vault-boy": {
 "art": "i",
@@ -4452,18 +4356,16 @@
 "t": 1793635825
 },
 "jv-far-cry-boomer": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635829
+"art": "c",
+"file": "far-cry--boomer.jpg",
+"src": "fill:fandom:farcry.fandom.com:Boomer",
+"t": 1793771528
 },
 "jv-far-cry-dani-rojas": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635829
+"art": "c",
+"file": "far-cry--dani-rojas.jpg",
+"src": "fill:fandom:farcry.fandom.com:Dani Rojas",
+"t": 1793771528
 },
 "jv-far-cry-far-cry": {
 "art": "c",
@@ -4520,11 +4422,10 @@
 "t": 1793635829
 },
 "jv-far-cry-hoyt": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635833
+"art": "i",
+"file": "far-cry--hoyt.png",
+"src": "fill:fandom:farcry.fandom.com:Hoyt Volker",
+"t": 1793771529
 },
 "jv-far-cry-joseph-seed": {
 "art": "i",
@@ -4541,11 +4442,10 @@
 "t": 1793635822
 },
 "jv-far-cry-vaas": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635825
+"art": "i",
+"file": "far-cry--vaas.png",
+"src": "fill:fandom:farcry.fandom.com:Vaas Montenegro",
+"t": 1793768768
 },
 "jv-fifa-fc-ea-sports-fc-24": {
 "art": "c",
@@ -4812,11 +4712,10 @@
 "t": 1793635868
 },
 "jv-final-fantasy-barret": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635862
+"art": "c",
+"file": "final-fantasy--barret.jpg",
+"src": "fill:anilist:Barret Wallace",
+"t": 1793788156
 },
 "jv-final-fantasy-buster-sword": {
 "art": "c",
@@ -4840,25 +4739,22 @@
 "t": 1793635850
 },
 "jv-final-fantasy-cid": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635875
+"art": "i",
+"file": "final-fantasy--cid.jpg",
+"src": "fill:fandom:finalfantasy.fandom.com/fr:Cid",
+"t": 1793771526
 },
 "jv-final-fantasy-clive": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635874
+"art": "i",
+"file": "final-fantasy--clive.png",
+"src": "fill:fandom:finalfantasy.fandom.com:Clive Rosfield",
+"t": 1793771527
 },
 "jv-final-fantasy-cloud": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635852
+"art": "i",
+"file": "final-fantasy--cloud.png",
+"src": "fill:fandom:finalfantasy.fandom.com/fr:Cloud Strife",
+"t": 1793768768
 },
 "jv-final-fantasy-crisis-core": {
 "art": "c",
@@ -5015,11 +4911,10 @@
 "t": 1793635871
 },
 "jv-final-fantasy-red-xiii": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635875
+"art": "i",
+"file": "final-fantasy--red-xiii.png",
+"src": "fill:fandom:finalfantasy.fandom.com/fr:Red XIII",
+"t": 1793771527
 },
 "jv-final-fantasy-sephiroth": {
 "art": "i",
@@ -5029,11 +4924,10 @@
 "t": 1793635849
 },
 "jv-final-fantasy-shiva": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635878
+"art": "i",
+"file": "final-fantasy--shiva.jpg",
+"src": "fill:fandom:finalfantasy.fandom.com/fr:Shiva",
+"t": 1793771527
 },
 "jv-final-fantasy-squall": {
 "art": "i",
@@ -5057,46 +4951,40 @@
 "t": 1793635851
 },
 "jv-final-fantasy-tifa": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635857
+"art": "i",
+"file": "final-fantasy--tifa.png",
+"src": "fill:fandom:finalfantasy.fandom.com/fr:Tifa Lockhart",
+"t": 1793768769
 },
 "jv-final-fantasy-vincent": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635877
+"art": "i",
+"file": "final-fantasy--vincent.png",
+"src": "fill:fandom:finalfantasy.fandom.com/fr:Vincent Valentine",
+"t": 1793771527
 },
 "jv-final-fantasy-vivi": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635858
+"art": "i",
+"file": "final-fantasy--vivi.png",
+"src": "fill:fandom:finalfantasy.fandom.com:Vivi (World of Final Fantasy)",
+"t": 1793768769
 },
 "jv-final-fantasy-zack": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635868
+"art": "c",
+"file": "final-fantasy--zack.jpg",
+"src": "fill:anilist:Zack Fair",
+"t": 1793788156
 },
 "jv-fire-emblem-alear": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635920
+"art": "i",
+"file": "fire-emblem--alear.png",
+"src": "fill:fandom:fire-emblem-heroes.fandom.com/fr:Alear (H)/Galerie",
+"t": 1793771530
 },
 "jv-fire-emblem-anna": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635921
+"art": "i",
+"file": "fire-emblem--anna.png",
+"src": "fill:fandom:fire-emblem-heroes.fandom.com/fr:Anna (Awakening)",
+"t": 1793771531
 },
 "jv-fire-emblem-byleth": {
 "art": "i",
@@ -5106,11 +4994,10 @@
 "t": 1793635917
 },
 "jv-fire-emblem-camilla": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635925
+"art": "i",
+"file": "fire-emblem--camilla.png",
+"src": "fill:fandom:fire-emblem-heroes.fandom.com/fr:Camilla (été)",
+"t": 1793771531
 },
 "jv-fire-emblem-chrom": {
 "art": "c",
@@ -5185,11 +5072,10 @@
 "t": 1793635877
 },
 "jv-fire-emblem-hector": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635931
+"art": "i",
+"file": "fire-emblem--hector.png",
+"src": "fill:fandom:fire-emblem-heroes.fandom.com/fr:Hector (harmonisé)",
+"t": 1793771532
 },
 "jv-fire-emblem-ike": {
 "art": "i",
@@ -5228,18 +5114,16 @@
 "t": 1793635922
 },
 "jv-fire-emblem-tharja": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635930
+"art": "i",
+"file": "fire-emblem--tharja.png",
+"src": "fill:fandom:fire-emblem-heroes.fandom.com/fr:Tharja (été)",
+"t": 1793771532
 },
 "jv-five-nights-at-freddy-s-ballora": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635936
+"art": "i",
+"file": "five-nights-at-freddy-s--ballora.png",
+"src": "fill:fandom:five-nights-at-freddys.fandom.com/fr:Ballora",
+"t": 1793771528
 },
 "jv-five-nights-at-freddy-s-bonnie-fnaf": {
 "art": "i",
@@ -5368,11 +5252,10 @@
 "t": 1793636004
 },
 "jv-fortnite-chevalier-noir": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635938
+"art": "i",
+"file": "fortnite--chevalier-noir.png",
+"src": "fill:fandom:fortnite.fandom.com/fr:Chevalier Noir",
+"t": 1793768770
 },
 "jv-fortnite-crystal": {
 "art": "i",
@@ -5446,11 +5329,10 @@
 "t": 1793635950
 },
 "jv-fortnite-lama-de-ravitaillement": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635949
+"art": "i",
+"file": "fortnite--lama-de-ravitaillement.png",
+"src": "fill:fandom:fortnite.fandom.com/fr:Lama (Battle Royale)",
+"t": 1793768775
 },
 "jv-fortnite-le-reaper": {
 "art": "",
@@ -5495,11 +5377,10 @@
 "t": 1793635987
 },
 "jv-fortnite-poiscaille": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636003
+"art": "i",
+"file": "fortnite--poiscaille.png",
+"src": "fill:fandom:fortnite.fandom.com/fr:Poiscaille",
+"t": 1793768776
 },
 "jv-fortnite-raptor": {
 "art": "i",
@@ -5537,11 +5418,10 @@
 "t": 1793636012
 },
 "jv-fortnite-skull-trooper": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793635984
+"art": "i",
+"file": "fortnite--skull-trooper.png",
+"src": "fill:fandom:fortnite.fandom.com:Skull Trooper",
+"t": 1793768776
 },
 "jv-forza-forza-horizon": {
 "art": "c",
@@ -5688,11 +5568,10 @@
 "t": 1793636043
 },
 "jv-gears-of-war-dom-santiago": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636020
+"art": "i",
+"file": "gears-of-war--dom-santiago.jpg",
+"src": "fill:fandom:gearsofwar.fandom.com:Dom Santiago (Action Figure) Series Two (GOW3)",
+"t": 1793768776
 },
 "jv-gears-of-war-gears-5": {
 "art": "c",
@@ -5751,11 +5630,10 @@
 "t": 1793636021
 },
 "jv-gears-of-war-locuste": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636048
+"art": "c",
+"file": "gears-of-war--locuste.jpg",
+"src": "fill:fandom:gearsofwar.fandom.com:Locust (species)",
+"t": 1793771533
 },
 "jv-gears-of-war-marcus-fenix": {
 "art": "i",
@@ -5814,11 +5692,10 @@
 "t": 1793636055
 },
 "jv-genshin-impact-diluc": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636048
+"art": "i",
+"file": "genshin-impact--diluc.png",
+"src": "fill:fandom:genshin-impact.fandom.com/fr:Diluc/Profil",
+"t": 1793768779
 },
 "jv-genshin-impact-fate-grand-order": {
 "art": "i",
@@ -5876,11 +5753,10 @@
 "t": 1793636055
 },
 "jv-genshin-impact-klee": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636055
+"art": "c",
+"file": "genshin-impact--klee.jpg",
+"src": "fill:fandom:genshin-impact.fandom.com/fr:Klee",
+"t": 1793768779
 },
 "jv-genshin-impact-mavuika": {
 "art": "i",
@@ -5986,11 +5862,10 @@
 "t": 1793636046
 },
 "jv-ghost-of-tsushima-atsu": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636065
+"art": "i",
+"file": "ghost-of-tsushima--atsu.png",
+"src": "fill:fandom:ghostfranchise.fandom.com:Atsu",
+"t": 1793771535
 },
 "jv-ghost-of-tsushima-ghost-of-tsushima": {
 "art": "c",
@@ -6021,11 +5896,10 @@
 "t": 1793636068
 },
 "jv-ghost-of-tsushima-yuna": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636072
+"art": "c",
+"file": "ghost-of-tsushima--yuna.jpg",
+"src": "fill:fandom:ghostfranchise.fandom.com:Yuna",
+"t": 1793771535
 },
 "jv-ghost-recon-division-ghost-recon": {
 "art": "c",
@@ -6077,19 +5951,16 @@
 "t": 1793636070
 },
 "jv-god-of-war-ares": {
-"art": "",
-"dropped": "wiki:Ares (Marvel Comics)",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636106
+"art": "i",
+"file": "god-of-war--ares.png",
+"src": "fill:fandom:godofwar.fandom.com:Ares",
+"t": 1793771529
 },
 "jv-god-of-war-athena": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636116
+"art": "c",
+"file": "god-of-war--athena.jpg",
+"src": "fill:fandom:godofwar.fandom.com:Athena",
+"t": 1793771529
 },
 "jv-god-of-war-atreus": {
 "art": "c",
@@ -6100,25 +5971,22 @@
 "t": 1793636075
 },
 "jv-god-of-war-baldur": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636105
+"art": "i",
+"file": "god-of-war--baldur.png",
+"src": "fill:fandom:godofwar.fandom.com/fr:Baldur",
+"t": 1793768774
 },
 "jv-god-of-war-deimos": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636116
+"art": "i",
+"file": "god-of-war--deimos.png",
+"src": "fill:fandom:godofwar.fandom.com:Deimos",
+"t": 1793771529
 },
 "jv-god-of-war-freya": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636107
+"art": "c",
+"file": "god-of-war--freya.jpg",
+"src": "fill:fandom:godofwar.fandom.com/fr:Freya",
+"t": 1793768774
 },
 "jv-god-of-war-god-of-war": {
 "art": "c",
@@ -6182,33 +6050,28 @@
 "t": 1793636076
 },
 "jv-god-of-war-mimir": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636110
+"art": "c",
+"file": "god-of-war--mimir.jpg",
+"src": "fill:fandom:godofwar.fandom.com/fr:Mimir",
+"t": 1793768774
 },
 "jv-god-of-war-odin-gow": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636104
+"art": "i",
+"file": "god-of-war--odin-gow.png",
+"src": "fill:fandom:godofwar.fandom.com/fr:Odin",
+"t": 1793768774
 },
 "jv-god-of-war-thor-gow": {
-"art": "",
-"dropped": "wiki:Thor (Marvel Comics)",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636076
+"art": "i",
+"file": "god-of-war--thor-gow.png",
+"src": "fill:fandom:godofwar.fandom.com/fr:Thor",
+"t": 1793771512
 },
 "jv-god-of-war-zeus": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636107
+"art": "c",
+"file": "god-of-war--zeus.jpg",
+"src": "fill:fandom:godofwar.fandom.com/fr:Zeus",
+"t": 1793771512
 },
 "jv-gran-turismo-gran-turismo": {
 "art": "c",
@@ -6267,18 +6130,16 @@
 "t": 1793636115
 },
 "jv-gta-big-smoke": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636125
+"art": "c",
+"file": "gta--big-smoke.jpg",
+"src": "fill:fandom:gta.fandom.com/fr:Big Smoke",
+"t": 1793768770
 },
 "jv-gta-catalina": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636163
+"art": "c",
+"file": "gta--catalina.jpg",
+"src": "fill:fandom:gta.fandom.com/fr:Catalina",
+"t": 1793771528
 },
 "jv-gta-cj": {
 "art": "i",
@@ -6288,11 +6149,10 @@
 "t": 1793636120
 },
 "jv-gta-claude-gta-iii": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636126
+"art": "c",
+"file": "gta--claude-gta-iii.jpg",
+"src": "fill:fandom:gta.fandom.com/fr:Claude Speed",
+"t": 1793768776
 },
 "jv-gta-franklin-clinton": {
 "art": "c",
@@ -6365,18 +6225,16 @@
 "t": 1793636125
 },
 "jv-gta-jason-gta-vi": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636162
+"art": "c",
+"file": "gta--jason-gta-vi.jpg",
+"src": "fill:fandom:gta.fandom.com/fr:Jason Duval",
+"t": 1793771528
 },
 "jv-gta-lamar": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636131
+"art": "c",
+"file": "gta--lamar.jpg",
+"src": "fill:fandom:gta.fandom.com/fr:Lamar Davis",
+"t": 1793768776
 },
 "jv-gta-lester": {
 "art": "",
@@ -6386,11 +6244,10 @@
 "t": 1793636130
 },
 "jv-gta-lucia-gta-vi": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636163
+"art": "c",
+"file": "gta--lucia-gta-vi.jpg",
+"src": "fill:fandom:gta.fandom.com/fr:Lucia Caminos",
+"t": 1793771528
 },
 "jv-gta-michael-de-santa": {
 "art": "c",
@@ -6428,11 +6285,10 @@
 "t": 1793636161
 },
 "jv-gta-tommy-vercetti": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636128
+"art": "c",
+"file": "gta--tommy-vercetti.jpg",
+"src": "fill:fandom:gta.fandom.com/fr:Tommy Vercetti",
+"t": 1793768770
 },
 "jv-gta-trevor-philips": {
 "art": "i",
@@ -6504,53 +6360,46 @@
 "t": 1793636174
 },
 "jv-guilty-gear-ky-kiske": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636171
+"art": "i",
+"file": "guilty-gear--ky-kiske.png",
+"src": "fill:fandom:guiltygear.fandom.com:Ky Kiske",
+"t": 1793768775
 },
 "jv-guilty-gear-may-gg": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636172
+"art": "i",
+"file": "guilty-gear--may-gg.png",
+"src": "fill:fandom:guiltygear.fandom.com:May",
+"t": 1793768775
 },
 "jv-guilty-gear-millia-rage": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636176
+"art": "c",
+"file": "guilty-gear--millia-rage.jpg",
+"src": "fill:anilist:Millia Rage",
+"t": 1793788156
 },
 "jv-guilty-gear-nagoriyuki": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636179
+"art": "i",
+"file": "guilty-gear--nagoriyuki.png",
+"src": "fill:fandom:guiltygear.fandom.com:Nagoriyuki",
+"t": 1793771529
 },
 "jv-guilty-gear-potemkin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636179
+"art": "c",
+"file": "guilty-gear--potemkin.jpg",
+"src": "fill:anilist:Potemkin",
+"t": 1793788156
 },
 "jv-guilty-gear-ramlethal": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636177
+"art": "i",
+"file": "guilty-gear--ramlethal.png",
+"src": "fill:fandom:guiltygear.fandom.com:Ramlethal Valentine",
+"t": 1793771530
 },
 "jv-guilty-gear-sol-badguy": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636163
+"art": "i",
+"file": "guilty-gear--sol-badguy.png",
+"src": "fill:fandom:guiltygear.fandom.com:Sol Badguy",
+"t": 1793771512
 },
 "jv-guilty-gear-testament": {
 "art": "i",
@@ -6660,11 +6509,10 @@
 "t": 1793636185
 },
 "jv-half-life-barney": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636193
+"art": "c",
+"file": "half-life--barney.jpg",
+"src": "fill:fandom:valve.fandom.com/fr:Barney Calhoun",
+"t": 1793771530
 },
 "jv-half-life-blue-shift": {
 "art": "c",
@@ -6744,11 +6592,10 @@
 "t": 1793636190
 },
 "jv-halo-atriox": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636196
+"art": "i",
+"file": "halo--atriox.png",
+"src": "fill:fandom:halo.fandom.com:Atriox",
+"t": 1793771530
 },
 "jv-halo-cortana": {
 "art": "i",
@@ -6765,11 +6612,10 @@
 "t": 1793636195
 },
 "jv-halo-gravemind": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636196
+"art": "c",
+"file": "halo--gravemind.jpg",
+"src": "fill:fandom:halo.fandom.com:Gravemind",
+"t": 1793771530
 },
 "jv-halo-halo-2": {
 "art": "c",
@@ -6844,11 +6690,10 @@
 "t": 1793636198
 },
 "jv-halo-odst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636199
+"art": "i",
+"file": "halo--odst.png",
+"src": "fill:fandom:halo.fandom.com:ODST battle armor",
+"t": 1793771531
 },
 "jv-halo-pistolet-m6d": {
 "art": "",
@@ -6858,11 +6703,10 @@
 "t": 1793636196
 },
 "jv-halo-prophet-of-truth": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636199
+"art": "i",
+"file": "halo--prophet-of-truth.png",
+"src": "fill:fandom:halo.fandom.com:Prophet of Truth",
+"t": 1793771532
 },
 "jv-halo-sergent-johnson": {
 "art": "",
@@ -6971,25 +6815,22 @@
 "t": 1793636224
 },
 "jv-hollow-knight-quirrel": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636223
+"art": "i",
+"file": "hollow-knight--quirrel.jpg",
+"src": "fill:fandom:hollow-knight-fanon.fandom.com:Quirrel (Hollowed Ronin)",
+"t": 1793771533
 },
 "jv-hollow-knight-radiance": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636227
+"art": "i",
+"file": "hollow-knight--radiance.png",
+"src": "fill:fandom:hollowknight.fandom.com:Radiance",
+"t": 1793771532
 },
 "jv-hollow-knight-zote": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636227
+"art": "i",
+"file": "hollow-knight--zote.png",
+"src": "fill:fandom:hollowknight.fandom.com:Zote",
+"t": 1793771533
 },
 "jv-horizon-aloy": {
 "art": "c",
@@ -6999,11 +6840,10 @@
 "t": 1793636230
 },
 "jv-horizon-erend": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636229
+"art": "c",
+"file": "horizon--erend.jpg",
+"src": "fill:fandom:horizon.fandom.com/fr:Érend",
+"t": 1793771538
 },
 "jv-horizon-horizon-forbidden-west": {
 "art": "c",
@@ -7026,33 +6866,28 @@
 "t": 1793636231
 },
 "jv-horizon-rost": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636233
+"art": "c",
+"file": "horizon--rost.jpg",
+"src": "fill:fandom:horizon.fandom.com/fr:Rost",
+"t": 1793771538
 },
 "jv-horizon-sylens": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636231
+"art": "i",
+"file": "horizon--sylens.png",
+"src": "fill:fandom:horizon.fandom.com/fr:Sylens",
+"t": 1793771539
 },
 "jv-horizon-varl": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636231
+"art": "c",
+"file": "horizon--varl.jpg",
+"src": "fill:fandom:horizon.fandom.com/fr:Varl",
+"t": 1793771539
 },
 "jv-horizon-watcher": {
-"art": "",
-"dropped": "wiki:Watcher (comics)",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636233
+"art": "i",
+"file": "horizon--watcher.png",
+"src": "fill:fandom:horizon.fandom.com:Watcher",
+"t": 1793771540
 },
 "jv-horreur-and-survie-7-days-to-die": {
 "art": "c",
@@ -7385,11 +7220,10 @@
 "t": 1793638643
 },
 "jv-inazuma-eleven-mark-evans": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638650
+"art": "c",
+"file": "inazuma-eleven--mark-evans.jpg",
+"src": "fill:wikipedia:fr:Mark Evans",
+"t": 1793772874
 },
 "jv-indes-action-recents-buckshot-roulette": {
 "art": "c",
@@ -7595,11 +7429,10 @@
 "t": 1793636272
 },
 "jv-jak-and-daxter-jak": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636275
+"art": "i",
+"file": "jak-and-daxter--jak.png",
+"src": "fill:fandom:jakanddaxter.fandom.com:Jak",
+"t": 1793768781
 },
 "jv-jak-and-daxter-jak-3": {
 "art": "c",
@@ -7623,11 +7456,10 @@
 "t": 1793636278
 },
 "jv-jak-and-daxter-keira": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636281
+"art": "i",
+"file": "jak-and-daxter--keira.png",
+"src": "fill:fandom:jakanddaxter.fandom.com:Keira",
+"t": 1793771540
 },
 "jv-jeux-dragon-ball-anime-dbz-budokai-tenkaichi-3": {
 "art": "",
@@ -7955,11 +7787,10 @@
 "t": 1793636325
 },
 "jv-jeux-mobile-casual-wordle": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636288
+"art": "i",
+"file": "jeux-mobile-casual--wordle.png",
+"src": "fill:wikipedia:fr:Wordle",
+"t": 1793772874
 },
 "jv-jeux-mobile-casual-wordscapes": {
 "art": "c",
@@ -8130,18 +7961,16 @@
 "t": 1793636331
 },
 "jv-kirby-adeleine": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636380
+"art": "i",
+"file": "kirby--adeleine.png",
+"src": "fill:fandom:kirby.fandom.com/fr:Adeleine",
+"t": 1793771533
 },
 "jv-kirby-elfilin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636379
+"art": "i",
+"file": "kirby--elfilin.png",
+"src": "fill:fandom:kirby.fandom.com/fr:Elfilin",
+"t": 1793771533
 },
 "jv-kirby-kirby": {
 "art": "i",
@@ -8228,11 +8057,10 @@
 "t": 1793636378
 },
 "jv-kirby-marx": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636381
+"art": "i",
+"file": "kirby--marx.png",
+"src": "fill:fandom:kirby.fandom.com:Marx",
+"t": 1793771534
 },
 "jv-kirby-meta-knight": {
 "art": "i",
@@ -8242,18 +8070,16 @@
 "t": 1793636372
 },
 "jv-kirby-roi-dadidou": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636374
+"art": "i",
+"file": "kirby--roi-dadidou.png",
+"src": "fill:fandom:kirby.fandom.com/fr:Roi DaDiDou",
+"t": 1793771513
 },
 "jv-kirby-susie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636383
+"art": "i",
+"file": "kirby--susie.png",
+"src": "fill:fandom:kirby.fandom.com/fr:Susie",
+"t": 1793771534
 },
 "jv-koei-tecmo-dynasty-warriors-3": {
 "art": "c",
@@ -8660,25 +8486,22 @@
 "t": 1793638638
 },
 "jv-like-a-dragon-yakuza-goro-majima": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636414
+"art": "c",
+"file": "like-a-dragon-yakuza--goro-majima.jpg",
+"src": "fill:fandom:yakuza.fandom.com:Goro Majima",
+"t": 1793768770
 },
 "jv-like-a-dragon-yakuza-haruka": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636420
+"art": "c",
+"file": "like-a-dragon-yakuza--haruka.jpg",
+"src": "fill:fandom:yakuza.fandom.com:Haruka Sawamura",
+"t": 1793771534
 },
 "jv-like-a-dragon-yakuza-ichiban-kasuga": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636415
+"art": "c",
+"file": "like-a-dragon-yakuza--ichiban-kasuga.jpg",
+"src": "fill:fandom:yakuza.fandom.com:Ichiban Kasuga",
+"t": 1793771513
 },
 "jv-like-a-dragon-yakuza-judgment": {
 "art": "c",
@@ -8707,11 +8530,10 @@
 "t": 1793636413
 },
 "jv-like-a-dragon-yakuza-nishikiyama": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636417
+"art": "i",
+"file": "like-a-dragon-yakuza--nishikiyama.png",
+"src": "fill:fandom:yakuza.fandom.com:Nishikiyama Family",
+"t": 1793771534
 },
 "jv-like-a-dragon-yakuza-ryuji-goda": {
 "art": "i",
@@ -8728,11 +8550,10 @@
 "t": 1793636422
 },
 "jv-like-a-dragon-yakuza-taiga-saejima": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636421
+"art": "c",
+"file": "like-a-dragon-yakuza--taiga-saejima.jpg",
+"src": "fill:fandom:yakuza.fandom.com:Taiga Saejima",
+"t": 1793771535
 },
 "jv-like-a-dragon-yakuza-yakuza-0": {
 "art": "c",
@@ -8776,11 +8597,10 @@
 "t": 1793636414
 },
 "jv-like-a-dragon-yakuza-zhao": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636423
+"art": "c",
+"file": "like-a-dragon-yakuza--zhao.jpg",
+"src": "fill:fandom:yakuza.fandom.com:Zhao",
+"t": 1793771535
 },
 "jv-littlebigplanet-littlebigplanet": {
 "art": "c",
@@ -8853,11 +8673,10 @@
 "t": 1793636426
 },
 "jv-mario-carapace-a-epines": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636435
+"art": "i",
+"file": "mario--carapace-a-epines.png",
+"src": "fill:fandom:mario.fandom.com/fr:Carapace à épines",
+"t": 1793768776
 },
 "jv-mario-champignon": {
 "art": "c",
@@ -8903,26 +8722,22 @@
 "t": 1793636425
 },
 "jv-mario-etoile": {
-"art": "",
-"dropped": "wiki:Étoile (TV series)",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636464
+"art": "i",
+"file": "mario--etoile.png",
+"src": "fill:fandom:mario.fandom.com/fr:Étoile Millénaire",
+"t": 1793768776
 },
 "jv-mario-fleur-de-feu": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636437
+"art": "i",
+"file": "mario--fleur-de-feu.png",
+"src": "fill:fandom:mario.fandom.com/fr:Fleur de feu",
+"t": 1793768778
 },
 "jv-mario-frere-marto": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636464
+"art": "i",
+"file": "mario--frere-marto.png",
+"src": "fill:fandom:mario.fandom.com/fr:Frère Marto",
+"t": 1793771535
 },
 "jv-mario-funky-kong": {
 "art": "i",
@@ -9198,18 +9013,16 @@
 "t": 1793636440
 },
 "jv-mario-roi-bomb-omb": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636462
+"art": "i",
+"file": "mario--roi-bomb-omb.png",
+"src": "fill:fandom:mario.fandom.com/fr:Roi Bob-omb",
+"t": 1793771536
 },
 "jv-mario-roi-boo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636461
+"art": "i",
+"file": "mario--roi-boo.png",
+"src": "fill:fandom:mario.fandom.com/fr:Roi Boo",
+"t": 1793768778
 },
 "jv-mario-roi-k-rool": {
 "art": "",
@@ -9611,11 +9424,10 @@
 "t": 1793636518
 },
 "jv-mass-effect-mordin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636511
+"art": "c",
+"file": "mass-effect--mordin.jpg",
+"src": "fill:fandom:masseffect.fandom.com/fr:Mordin Solus",
+"t": 1793768781
 },
 "jv-mass-effect-saren": {
 "art": "",
@@ -9625,11 +9437,10 @@
 "t": 1793636518
 },
 "jv-mass-effect-tali": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636516
+"art": "c",
+"file": "mass-effect--tali.jpg",
+"src": "fill:fandom:masseffect.fandom.com/fr:Tali'Zorah",
+"t": 1793768781
 },
 "jv-mass-effect-thane": {
 "art": "",
@@ -9646,11 +9457,10 @@
 "t": 1793636518
 },
 "jv-mega-man-dr-wily": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636525
+"art": "c",
+"file": "mega-man--dr-wily.jpg",
+"src": "fill:anilist:Albert Wily",
+"t": 1793788156
 },
 "jv-mega-man-mega-man": {
 "art": "i",
@@ -9694,18 +9504,16 @@
 "t": 1793636521
 },
 "jv-mega-man-proto-man": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636527
+"art": "i",
+"file": "mega-man--proto-man.png",
+"src": "fill:fandom:megaman.fandom.com:Proto Man",
+"t": 1793771537
 },
 "jv-mega-man-roll": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636528
+"art": "i",
+"file": "mega-man--roll.png",
+"src": "fill:fandom:megaman.fandom.com:Roll",
+"t": 1793771535
 },
 "jv-mega-man-zero-mega-man": {
 "art": "i",
@@ -9731,11 +9539,10 @@
 "t": 1793636537
 },
 "jv-metal-gear-eva": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636547
+"art": "i",
+"file": "metal-gear--eva.jpg",
+"src": "fill:fandom:metalgear.fandom.com:Eva (Super Smash Bros)",
+"t": 1793771535
 },
 "jv-metal-gear-gray-fox": {
 "art": "c",
@@ -9753,11 +9560,10 @@
 "t": 1793636538
 },
 "jv-metal-gear-liquid-snake": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636534
+"art": "c",
+"file": "metal-gear--liquid-snake.jpg",
+"src": "fill:fandom:metalgear.fandom.com:Liquid Snake",
+"t": 1793768770
 },
 "jv-metal-gear-meryl": {
 "art": "c",
@@ -9858,11 +9664,10 @@
 "t": 1793636533
 },
 "jv-metal-gear-quiet": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636544
+"art": "c",
+"file": "metal-gear--quiet.jpg",
+"src": "fill:fandom:metalgear.fandom.com:Quiet",
+"t": 1793768781
 },
 "jv-metal-gear-raiden-mgs": {
 "art": "i",
@@ -9879,11 +9684,10 @@
 "t": 1793636530
 },
 "jv-metal-gear-skull-face": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636550
+"art": "c",
+"file": "metal-gear--skull-face.jpg",
+"src": "fill:fandom:metalgear.fandom.com:Skull Face",
+"t": 1793771535
 },
 "jv-metal-gear-sniper-wolf": {
 "art": "c",
@@ -9900,11 +9704,10 @@
 "t": 1793639912
 },
 "jv-metal-gear-the-boss": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636540
+"art": "c",
+"file": "metal-gear--the-boss.jpg",
+"src": "fill:fandom:metalgear.fandom.com:The Boss",
+"t": 1793768782
 },
 "jv-metal-gear-vamp": {
 "art": "",
@@ -10115,18 +9918,16 @@
 "t": 1793636585
 },
 "jv-minecraft-pioche-en-diamant": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636584
+"art": "i",
+"file": "minecraft--pioche-en-diamant.png",
+"src": "fill:fandom:minecraft-archive.fandom.com/fr:Pioche",
+"t": 1793768779
 },
 "jv-minecraft-squelette": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636587
+"art": "c",
+"file": "minecraft--squelette.jpg",
+"src": "fill:fandom:minecraft.fandom.com/fr:Squelette",
+"t": 1793771536
 },
 "jv-minecraft-steve": {
 "art": "i",
@@ -10136,11 +9937,10 @@
 "t": 1793636554
 },
 "jv-minecraft-villageois": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636584
+"art": "c",
+"file": "minecraft--villageois.jpg",
+"src": "fill:fandom:minecraft.fandom.com/fr:Villageois",
+"t": 1793768778
 },
 "jv-minecraft-warden": {
 "art": "i",
@@ -10234,11 +10034,10 @@
 "t": 1793636594
 },
 "jv-mmo-habbo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636598
+"art": "c",
+"file": "mmo--habbo.jpg",
+"src": "fill:wikipedia:fr:Habbo",
+"t": 1793772874
 },
 "jv-mmo-last-epoch": {
 "art": "c",
@@ -10266,11 +10065,10 @@
 "t": 1793636596
 },
 "jv-mmo-metin2": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636589
+"art": "c",
+"file": "mmo--metin2.jpg",
+"src": "fill:wikipedia:fr:Metin2",
+"t": 1793772874
 },
 "jv-mmo-new-world": {
 "art": "c",
@@ -10323,11 +10121,10 @@
 "t": 1793636601
 },
 "jv-mmo-second-life": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636594
+"art": "i",
+"file": "mmo--second-life.png",
+"src": "fill:wikipedia:fr:Second Life",
+"t": 1793772874
 },
 "jv-mmo-star-citizen": {
 "art": "i",
@@ -10356,11 +10153,10 @@
 "t": 1793636599
 },
 "jv-mmo-tibia": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636606
+"art": "c",
+"file": "mmo--tibia.jpg",
+"src": "fill:wikipedia:fr:Tibia",
+"t": 1793772874
 },
 "jv-mmo-trove": {
 "art": "c",
@@ -10454,11 +10250,10 @@
 "t": 1793636646
 },
 "jv-mobile-mmo-competitif-forge-of-empires": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636664
+"art": "i",
+"file": "mobile-mmo-competitif--forge-of-empires.png",
+"src": "fill:wikipedia:fr:Forge of Empires",
+"t": 1793772874
 },
 "jv-mobile-mmo-competitif-geoguessr": {
 "art": "",
@@ -10524,11 +10319,10 @@
 "t": 1793636657
 },
 "jv-mobile-mmo-competitif-travian": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636665
+"art": "i",
+"file": "mobile-mmo-competitif--travian.png",
+"src": "fill:wikipedia:fr:Travian",
+"t": 1793772874
 },
 "jv-mobile-mmo-competitif-vrchat": {
 "art": "c",
@@ -10597,11 +10391,10 @@
 "t": 1793636663
 },
 "jv-monster-hunter-nergigante": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636670
+"art": "c",
+"file": "monster-hunter--nergigante.jpg",
+"src": "fill:fandom:mogapedia.fandom.com/fr:Nergigante",
+"t": 1793771537
 },
 "jv-monster-hunter-palico": {
 "art": "",
@@ -10611,11 +10404,10 @@
 "t": 1793636668
 },
 "jv-monster-hunter-poogie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636671
+"art": "c",
+"file": "monster-hunter--poogie.jpg",
+"src": "fill:fandom:mogapedia.fandom.com/fr:Poogie",
+"t": 1793771537
 },
 "jv-monster-hunter-rathalos": {
 "art": "i",
@@ -10653,11 +10445,10 @@
 "t": 1793636702
 },
 "jv-mortal-kombat-d-vorah": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636714
+"art": "i",
+"file": "mortal-kombat--d-vorah.png",
+"src": "fill:fandom:mortalkombat.fandom.com:D'Vorah",
+"t": 1793771537
 },
 "jv-mortal-kombat-deadly-alliance": {
 "art": "c",
@@ -10688,11 +10479,10 @@
 "t": 1793636704
 },
 "jv-mortal-kombat-geras": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636720
+"art": "i",
+"file": "mortal-kombat--geras.png",
+"src": "fill:fandom:mortalkombat.fandom.com:Geras",
+"t": 1793771537
 },
 "jv-mortal-kombat-goro": {
 "art": "c",
@@ -10702,11 +10492,10 @@
 "t": 1793636678
 },
 "jv-mortal-kombat-jacqui-briggs": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636716
+"art": "i",
+"file": "mortal-kombat--jacqui-briggs.png",
+"src": "fill:fandom:mortalkombat.fandom.com:Jacqui Briggs",
+"t": 1793771538
 },
 "jv-mortal-kombat-jade": {
 "art": "i",
@@ -10766,11 +10555,10 @@
 "t": 1793636717
 },
 "jv-mortal-kombat-kung-lao": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636701
+"art": "i",
+"file": "mortal-kombat--kung-lao.png",
+"src": "fill:fandom:mortalkombat.fandom.com:Kung Lao",
+"t": 1793768782
 },
 "jv-mortal-kombat-liu-kang": {
 "art": "i",
@@ -10982,11 +10770,10 @@
 "t": 1793636718
 },
 "jv-mother-earthbound-lucas": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636767
+"art": "c",
+"file": "mother-earthbound--lucas.jpg",
+"src": "fill:anilist:Lucas",
+"t": 1793788156
 },
 "jv-mother-earthbound-mother": {
 "art": "c",
@@ -11576,11 +11363,10 @@
 "t": 1793636807
 },
 "jv-overwatch-freja": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636825
+"art": "i",
+"file": "overwatch--freja.png",
+"src": "fill:fandom:overwatch.fandom.com:Freja",
+"t": 1793771540
 },
 "jv-overwatch-genji": {
 "art": "i",
@@ -11604,11 +11390,10 @@
 "t": 1793636822
 },
 "jv-overwatch-illari": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636824
+"art": "i",
+"file": "overwatch--illari.png",
+"src": "fill:fandom:overwatch.fandom.com:Illari",
+"t": 1793771541
 },
 "jv-overwatch-junker-queen": {
 "art": "i",
@@ -11813,11 +11598,10 @@
 "t": 1793636822
 },
 "jv-overwatch-wuyang": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636829
+"art": "i",
+"file": "overwatch--wuyang.png",
+"src": "fill:fandom:overwatch.fandom.com:Wuyang",
+"t": 1793771541
 },
 "jv-overwatch-zarya": {
 "art": "i",
@@ -11834,11 +11618,10 @@
 "t": 1793636821
 },
 "jv-pac-man-and-arcades-namco-blinky": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636834
+"art": "i",
+"file": "pac-man-and-arcades-namco--blinky.png",
+"src": "fill:fandom:pacman.fandom.com:Blinky",
+"t": 1793768782
 },
 "jv-pac-man-and-arcades-namco-clyde": {
 "art": "",
@@ -11947,18 +11730,16 @@
 "t": 1793637653
 },
 "jv-palworld-azurobe": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637654
+"art": "i",
+"file": "palworld--azurobe.png",
+"src": "fill:fandom:palworld.fandom.com:Azurobe",
+"t": 1793768779
 },
 "jv-palworld-azurobe-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637542
+"art": "c",
+"file": "palworld--azurobe-cryst.jpg",
+"src": "fill:fandom:palworld.fandom.com:Azurobe Cryst",
+"t": 1793771513
 },
 "jv-palworld-bakemi": {
 "art": "i",
@@ -11975,18 +11756,16 @@
 "t": 1793637541
 },
 "jv-palworld-beakon": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637658
+"art": "i",
+"file": "palworld--beakon.png",
+"src": "fill:fandom:palworld.fandom.com:Beakon",
+"t": 1793768779
 },
 "jv-palworld-beakon-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637658
+"art": "i",
+"file": "palworld--beakon-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Beakon Cryst",
+"t": 1793768779
 },
 "jv-palworld-beegarde": {
 "art": "i",
@@ -11996,46 +11775,40 @@
 "t": 1793637796
 },
 "jv-palworld-bellanoir": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637532
+"art": "i",
+"file": "palworld--bellanoir.png",
+"src": "fill:fandom:palworld.fandom.com:Bellanoir",
+"t": 1793768770
 },
 "jv-palworld-bellanoir-libero": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637533
+"art": "i",
+"file": "palworld--bellanoir-libero.png",
+"src": "fill:fandom:palworld.fandom.com:Bellanoir Libero",
+"t": 1793768771
 },
 "jv-palworld-blazamut": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637543
+"art": "i",
+"file": "palworld--blazamut.png",
+"src": "fill:fandom:palworld.fandom.com:Blazamut",
+"t": 1793771513
 },
 "jv-palworld-blazamut-ryu": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637543
+"art": "i",
+"file": "palworld--blazamut-ryu.png",
+"src": "fill:fandom:palworld.fandom.com:Blazamut Ryu",
+"t": 1793771514
 },
 "jv-palworld-blazehowl": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637659
+"art": "i",
+"file": "palworld--blazehowl.png",
+"src": "fill:fandom:palworld.fandom.com:Blazehowl",
+"t": 1793768779
 },
 "jv-palworld-blazehowl-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637544
+"art": "i",
+"file": "palworld--blazehowl-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Blazehowl Noct",
+"t": 1793771515
 },
 "jv-palworld-braloha": {
 "art": "i",
@@ -12052,18 +11825,16 @@
 "t": 1793637892
 },
 "jv-palworld-broncherry": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637659
+"art": "i",
+"file": "palworld--broncherry.png",
+"src": "fill:fandom:palworld.fandom.com:Broncherry",
+"t": 1793768780
 },
 "jv-palworld-broncherry-aqua": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637544
+"art": "i",
+"file": "palworld--broncherry-aqua.png",
+"src": "fill:fandom:palworld.fandom.com:Broncherry Aqua",
+"t": 1793771515
 },
 "jv-palworld-bulldosu": {
 "art": "i",
@@ -12073,18 +11844,16 @@
 "t": 1793637658
 },
 "jv-palworld-bushi": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637665
+"art": "i",
+"file": "palworld--bushi.png",
+"src": "fill:fandom:palworld.fandom.com:Bushi",
+"t": 1793768780
 },
 "jv-palworld-bushi-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637663
+"art": "i",
+"file": "palworld--bushi-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Bushi Noct",
+"t": 1793768780
 },
 "jv-palworld-caprity": {
 "art": "",
@@ -12122,32 +11891,28 @@
 "t": 1793637903
 },
 "jv-palworld-celaray": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637904
+"art": "i",
+"file": "palworld--celaray.png",
+"src": "fill:fandom:palworld.fandom.com:Celaray",
+"t": 1793771538
 },
 "jv-palworld-celaray-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637905
+"art": "c",
+"file": "palworld--celaray-lux.jpg",
+"src": "fill:fandom:palworld.fandom.com:Celaray Lux",
+"t": 1793771538
 },
 "jv-palworld-celesdir": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637545
+"art": "i",
+"file": "palworld--celesdir.png",
+"src": "fill:fandom:palworld.fandom.com:Celesdir",
+"t": 1793771516
 },
 "jv-palworld-celesdir-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637547
+"art": "i",
+"file": "palworld--celesdir-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Celesdir Noct",
+"t": 1793771516
 },
 "jv-palworld-chikipi": {
 "art": "i",
@@ -12157,18 +11922,16 @@
 "t": 1793637903
 },
 "jv-palworld-chillet": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637664
+"art": "i",
+"file": "palworld--chillet.png",
+"src": "fill:fandom:palworld.fandom.com:Chillet",
+"t": 1793768780
 },
 "jv-palworld-chillet-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637665
+"art": "i",
+"file": "palworld--chillet-ignis.png",
+"src": "fill:fandom:palworld.fandom.com:Chillet Ignis",
+"t": 1793768780
 },
 "jv-palworld-cinnamoth": {
 "art": "i",
@@ -12192,32 +11955,28 @@
 "t": 1793637907
 },
 "jv-palworld-croajiro": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637908
+"art": "i",
+"file": "palworld--croajiro.png",
+"src": "fill:fandom:palworld.fandom.com:Croajiro",
+"t": 1793771539
 },
 "jv-palworld-croajiro-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637909
+"art": "c",
+"file": "palworld--croajiro-noct.jpg",
+"src": "fill:fandom:palworld.fandom.com:Croajiro Noct",
+"t": 1793771539
 },
 "jv-palworld-cryolinx": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637666
+"art": "i",
+"file": "palworld--cryolinx.png",
+"src": "fill:fandom:palworld.fandom.com:Cryolinx",
+"t": 1793768780
 },
 "jv-palworld-cryolinx-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637666
+"art": "c",
+"file": "palworld--cryolinx-terra.jpg",
+"src": "fill:fandom:palworld.fandom.com:Cryolinx Terra",
+"t": 1793768780
 },
 "jv-palworld-daedream": {
 "art": "i",
@@ -12241,18 +12000,16 @@
 "t": 1793637664
 },
 "jv-palworld-dazzi": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637911
+"art": "i",
+"file": "palworld--dazzi.png",
+"src": "fill:fandom:palworld.fandom.com:Dazzi",
+"t": 1793771539
 },
 "jv-palworld-dazzi-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637910
+"art": "i",
+"file": "palworld--dazzi-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Dazzi",
+"t": 1793771539
 },
 "jv-palworld-depresso": {
 "art": "i",
@@ -12269,18 +12026,16 @@
 "t": 1793637666
 },
 "jv-palworld-dinossom": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637668
+"art": "i",
+"file": "palworld--dinossom.png",
+"src": "fill:fandom:palworld.fandom.com:Dinossom",
+"t": 1793768781
 },
 "jv-palworld-dinossom-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637669
+"art": "i",
+"file": "palworld--dinossom-lux.png",
+"src": "fill:fandom:palworld.fandom.com:Dinossom Lux",
+"t": 1793768781
 },
 "jv-palworld-direhowl": {
 "art": "i",
@@ -12297,18 +12052,16 @@
 "t": 1793637669
 },
 "jv-palworld-dualith": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637548
+"art": "i",
+"file": "palworld--dualith.png",
+"src": "fill:fandom:palworld.fandom.com:Dualith",
+"t": 1793771517
 },
 "jv-palworld-dualith-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637549
+"art": "i",
+"file": "palworld--dualith-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Dualith Noct",
+"t": 1793771517
 },
 "jv-palworld-dumud": {
 "art": "",
@@ -12318,11 +12071,10 @@
 "t": 1793637801
 },
 "jv-palworld-dumud-gild": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637670
+"art": "c",
+"file": "palworld--dumud-gild.jpg",
+"src": "fill:fandom:palworld.fandom.com:Dumud Gild",
+"t": 1793768781
 },
 "jv-palworld-dupin": {
 "art": "i",
@@ -12339,18 +12091,16 @@
 "t": 1793637549
 },
 "jv-palworld-eidrolon": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637551
+"art": "i",
+"file": "palworld--eidrolon.png",
+"src": "fill:fandom:palworld.fandom.com:Eidrolon",
+"t": 1793771517
 },
 "jv-palworld-eidrolon-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637552
+"art": "i",
+"file": "palworld--eidrolon-ignis.png",
+"src": "fill:fandom:palworld.fandom.com:Eidrolon Ignis",
+"t": 1793771517
 },
 "jv-palworld-eikthyrdeer": {
 "art": "",
@@ -12360,11 +12110,10 @@
 "t": 1793637802
 },
 "jv-palworld-eikthyrdeer-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637912
+"art": "i",
+"file": "palworld--eikthyrdeer-terra.png",
+"src": "fill:fandom:palworld.fandom.com:Eikthyrdeer Terra",
+"t": 1793771539
 },
 "jv-palworld-elgrove": {
 "art": "",
@@ -12374,11 +12123,10 @@
 "t": 1793637804
 },
 "jv-palworld-elgrove-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637671
+"art": "i",
+"file": "palworld--elgrove-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Elgrove Cryst",
+"t": 1793768782
 },
 "jv-palworld-elizabee": {
 "art": "i",
@@ -12395,25 +12143,22 @@
 "t": 1793637804
 },
 "jv-palworld-elphidran-aqua": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637673
+"art": "i",
+"file": "palworld--elphidran-aqua.png",
+"src": "fill:fandom:palworld.fandom.com:Elphidran Aqua",
+"t": 1793768782
 },
 "jv-palworld-faleris": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637553
+"art": "i",
+"file": "palworld--faleris.png",
+"src": "fill:fandom:palworld.fandom.com:Faleris",
+"t": 1793771517
 },
 "jv-palworld-faleris-aqua": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637554
+"art": "c",
+"file": "palworld--faleris-aqua.jpg",
+"src": "fill:fandom:palworld.fandom.com:Faleris Aqua",
+"t": 1793771517
 },
 "jv-palworld-felbat": {
 "art": "i",
@@ -12430,11 +12175,10 @@
 "t": 1793637804
 },
 "jv-palworld-fenglope-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637674
+"art": "c",
+"file": "palworld--fenglope-lux.jpg",
+"src": "fill:fandom:palworld.fandom.com:Fenglope Lux",
+"t": 1793768782
 },
 "jv-palworld-finsider": {
 "art": "",
@@ -12493,18 +12237,16 @@
 "t": 1793637915
 },
 "jv-palworld-frostallion": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637534
+"art": "i",
+"file": "palworld--frostallion.png",
+"src": "fill:fandom:palworld.fandom.com:Frostallion",
+"t": 1793768771
 },
 "jv-palworld-frostallion-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637534
+"art": "i",
+"file": "palworld--frostallion-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Frostallion Noct",
+"t": 1793768771
 },
 "jv-palworld-frostplume": {
 "art": "i",
@@ -12514,18 +12256,16 @@
 "t": 1793637806
 },
 "jv-palworld-fuack": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637915
+"art": "c",
+"file": "palworld--fuack.jpg",
+"src": "fill:fandom:palworld.fandom.com:Fuack Ignis",
+"t": 1793771540
 },
 "jv-palworld-fuack-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637916
+"art": "c",
+"file": "palworld--fuack-ignis.jpg",
+"src": "fill:fandom:palworld.fandom.com:Fuack Ignis",
+"t": 1793771540
 },
 "jv-palworld-fuddler": {
 "art": "i",
@@ -12542,18 +12282,16 @@
 "t": 1793637915
 },
 "jv-palworld-ghangler": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637674
+"art": "i",
+"file": "palworld--ghangler.png",
+"src": "fill:fandom:palworld.fandom.com:Ghangler",
+"t": 1793768782
 },
 "jv-palworld-ghangler-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637675
+"art": "c",
+"file": "palworld--ghangler-ignis.jpg",
+"src": "fill:fandom:palworld.fandom.com:Ghangler Ignis",
+"t": 1793768782
 },
 "jv-palworld-gildane": {
 "art": "i",
@@ -12570,25 +12308,22 @@
 "t": 1793637675
 },
 "jv-palworld-gloopie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637677
+"art": "i",
+"file": "palworld--gloopie.png",
+"src": "fill:fandom:palworld.fandom.com:Gloopie",
+"t": 1793768783
 },
 "jv-palworld-gloopie-primo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637918
+"art": "i",
+"file": "palworld--gloopie-primo.png",
+"src": "fill:fandom:palworld.fandom.com:Gloopie Primo",
+"t": 1793771540
 },
 "jv-palworld-gobfin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637920
+"art": "i",
+"file": "palworld--gobfin.png",
+"src": "fill:fandom:palworld.fandom.com:Gobfin",
+"t": 1793771541
 },
 "jv-palworld-gobfin-ignis": {
 "art": "",
@@ -12598,18 +12333,16 @@
 "t": 1793637808
 },
 "jv-palworld-gorirat": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637678
+"art": "i",
+"file": "palworld--gorirat.png",
+"src": "fill:fandom:palworld.fandom.com:Gorirat",
+"t": 1793768783
 },
 "jv-palworld-gorirat-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637679
+"art": "i",
+"file": "palworld--gorirat-terra.png",
+"src": "fill:fandom:palworld.fandom.com:Gorirat Terra",
+"t": 1793768783
 },
 "jv-palworld-grintale": {
 "art": "i",
@@ -12633,18 +12366,16 @@
 "t": 1793637919
 },
 "jv-palworld-hangyu": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637921
+"art": "i",
+"file": "palworld--hangyu.png",
+"src": "fill:fandom:palworld.fandom.com:Hangyu",
+"t": 1793771541
 },
 "jv-palworld-hangyu-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637921
+"art": "i",
+"file": "palworld--hangyu-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Hangyu Cryst",
+"t": 1793771541
 },
 "jv-palworld-hartalis": {
 "art": "i",
@@ -12654,18 +12385,16 @@
 "t": 1793637556
 },
 "jv-palworld-helzephyr": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637679
+"art": "i",
+"file": "palworld--helzephyr.png",
+"src": "fill:fandom:palworld.fandom.com:Helzephyr",
+"t": 1793768783
 },
 "jv-palworld-helzephyr-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637558
+"art": "i",
+"file": "palworld--helzephyr-lux.png",
+"src": "fill:fandom:palworld.fandom.com:Helzephyr Lux",
+"t": 1793771513
 },
 "jv-palworld-herbil": {
 "art": "i",
@@ -12703,11 +12432,10 @@
 "t": 1793637811
 },
 "jv-palworld-incineram-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637680
+"art": "i",
+"file": "palworld--incineram-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Incineram Noct",
+"t": 1793768783
 },
 "jv-palworld-jelliette": {
 "art": "i",
@@ -12745,18 +12473,16 @@
 "t": 1793637924
 },
 "jv-palworld-jormuntide": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637558
+"art": "i",
+"file": "palworld--jormuntide.png",
+"src": "fill:fandom:palworld.fandom.com:Jormuntide",
+"t": 1793771514
 },
 "jv-palworld-jormuntide-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637559
+"art": "i",
+"file": "palworld--jormuntide-ignis.png",
+"src": "fill:fandom:palworld.fandom.com:Jormuntide Ignis",
+"t": 1793771514
 },
 "jv-palworld-katress": {
 "art": "",
@@ -12773,18 +12499,16 @@
 "t": 1793637814
 },
 "jv-palworld-kelpsea": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637925
+"art": "i",
+"file": "palworld--kelpsea.png",
+"src": "fill:fandom:palworld.fandom.com:Kelpsea",
+"t": 1793771541
 },
 "jv-palworld-kelpsea-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637926
+"art": "i",
+"file": "palworld--kelpsea-ignis.png",
+"src": "fill:fandom:palworld.fandom.com:Kelpsea Ignis",
+"t": 1793771542
 },
 "jv-palworld-kikit": {
 "art": "i",
@@ -12794,60 +12518,52 @@
 "t": 1793637925
 },
 "jv-palworld-killamari": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637927
+"art": "i",
+"file": "palworld--killamari.png",
+"src": "fill:fandom:palworld.fandom.com:Killamari",
+"t": 1793771542
 },
 "jv-palworld-killamari-primo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637928
+"art": "c",
+"file": "palworld--killamari-primo.jpg",
+"src": "fill:fandom:palworld.fandom.com:Killamari Primo",
+"t": 1793771542
 },
 "jv-palworld-kingpaca": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637929
+"art": "i",
+"file": "palworld--kingpaca.png",
+"src": "fill:fandom:palworld.fandom.com:Kingpaca Cryst",
+"t": 1793771542
 },
 "jv-palworld-kingpaca-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637682
+"art": "i",
+"file": "palworld--kingpaca-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Kingpaca Cryst",
+"t": 1793768783
 },
 "jv-palworld-kitsun": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637684
+"art": "i",
+"file": "palworld--kitsun.png",
+"src": "fill:fandom:palworld.fandom.com:Kitsun",
+"t": 1793768783
 },
 "jv-palworld-kitsun-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637683
+"art": "c",
+"file": "palworld--kitsun-noct.jpg",
+"src": "fill:fandom:palworld.fandom.com:Kitsun Noct",
+"t": 1793768783
 },
 "jv-palworld-knocklem": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637560
+"art": "i",
+"file": "palworld--knocklem.png",
+"src": "fill:fandom:palworld.fandom.com:Knocklem",
+"t": 1793771514
 },
 "jv-palworld-knocklem-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637561
+"art": "i",
+"file": "palworld--knocklem-ignis.png",
+"src": "fill:fandom:palworld.fandom.com:Knocklem Ignis",
+"t": 1793771514
 },
 "jv-palworld-lamball": {
 "art": "i",
@@ -12878,18 +12594,16 @@
 "t": 1793637814
 },
 "jv-palworld-leezpunk": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637930
+"art": "i",
+"file": "palworld--leezpunk.png",
+"src": "fill:fandom:palworld.fandom.com:Leezpunk",
+"t": 1793771542
 },
 "jv-palworld-leezpunk-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637930
+"art": "i",
+"file": "palworld--leezpunk-ignis.png",
+"src": "fill:fandom:palworld.fandom.com:Leezpunk Ignis",
+"t": 1793771542
 },
 "jv-palworld-lifmunk": {
 "art": "i",
@@ -12906,18 +12620,16 @@
 "t": 1793637683
 },
 "jv-palworld-loupmoon": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637931
+"art": "i",
+"file": "palworld--loupmoon.png",
+"src": "fill:fandom:palworld.fandom.com:Loupmoon",
+"t": 1793771542
 },
 "jv-palworld-loupmoon-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637685
+"art": "c",
+"file": "palworld--loupmoon-cryst.jpg",
+"src": "fill:fandom:palworld.fandom.com:Loupmoon Cryst",
+"t": 1793768783
 },
 "jv-palworld-lovander": {
 "art": "i",
@@ -12941,18 +12653,16 @@
 "t": 1793637686
 },
 "jv-palworld-lyleen": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637562
+"art": "i",
+"file": "palworld--lyleen.png",
+"src": "fill:fandom:palworld.fandom.com:Lyleen",
+"t": 1793771514
 },
 "jv-palworld-lyleen-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637563
+"art": "i",
+"file": "palworld--lyleen-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Lyleen Noct",
+"t": 1793771515
 },
 "jv-palworld-majex": {
 "art": "i",
@@ -12962,18 +12672,16 @@
 "t": 1793637687
 },
 "jv-palworld-mammorest": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637564
+"art": "i",
+"file": "palworld--mammorest.png",
+"src": "fill:fandom:palworld.fandom.com:Mammorest",
+"t": 1793771515
 },
 "jv-palworld-mammorest-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637688
+"art": "i",
+"file": "palworld--mammorest-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Mammorest Cryst",
+"t": 1793768784
 },
 "jv-palworld-maraith": {
 "art": "i",
@@ -12983,18 +12691,16 @@
 "t": 1793637688
 },
 "jv-palworld-mau": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637935
+"art": "i",
+"file": "palworld--mau.png",
+"src": "fill:fandom:palworld.fandom.com:Mau",
+"t": 1793771542
 },
 "jv-palworld-mau-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637933
+"art": "i",
+"file": "palworld--mau-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Mau Cryst",
+"t": 1793771542
 },
 "jv-palworld-melpaca": {
 "art": "i",
@@ -13004,18 +12710,16 @@
 "t": 1793637932
 },
 "jv-palworld-menasting": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637690
+"art": "i",
+"file": "palworld--menasting.png",
+"src": "fill:fandom:palworld.fandom.com:Menasting",
+"t": 1793768784
 },
 "jv-palworld-menasting-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637564
+"art": "i",
+"file": "palworld--menasting-terra.png",
+"src": "fill:fandom:palworld.fandom.com:Menasting Terra",
+"t": 1793771515
 },
 "jv-palworld-mimog": {
 "art": "i",
@@ -13025,32 +12729,28 @@
 "t": 1793637816
 },
 "jv-palworld-moldron": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637691
+"art": "i",
+"file": "palworld--moldron.png",
+"src": "fill:fandom:palworld.fandom.com:Moldron",
+"t": 1793768784
 },
 "jv-palworld-moldron-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637692
+"art": "i",
+"file": "palworld--moldron-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Moldron Cryst",
+"t": 1793768784
 },
 "jv-palworld-mossanda": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637692
+"art": "i",
+"file": "palworld--mossanda.png",
+"src": "fill:fandom:palworld.fandom.com:Mossanda",
+"t": 1793768784
 },
 "jv-palworld-mossanda-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637693
+"art": "i",
+"file": "palworld--mossanda-lux.png",
+"src": "fill:fandom:palworld.fandom.com:Mossanda Lux",
+"t": 1793768784
 },
 "jv-palworld-mozzarina": {
 "art": "i",
@@ -13110,18 +12810,16 @@
 "t": 1793637536
 },
 "jv-palworld-nitemary": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637693
+"art": "i",
+"file": "palworld--nitemary.png",
+"src": "fill:fandom:palworld.fandom.com:Nitemary",
+"t": 1793768785
 },
 "jv-palworld-nitemary-botan": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637694
+"art": "i",
+"file": "palworld--nitemary-botan.png",
+"src": "fill:fandom:palworld.fandom.com:Nitemary Botan",
+"t": 1793768785
 },
 "jv-palworld-nitewing": {
 "art": "i",
@@ -13193,88 +12891,76 @@
 "t": 1793637824
 },
 "jv-palworld-pengullet-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637936
+"art": "i",
+"file": "palworld--pengullet-lux.png",
+"src": "fill:fandom:palworld.fandom.com:Pengullet",
+"t": 1793771542
 },
 "jv-palworld-penking": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637696
+"art": "i",
+"file": "palworld--penking.png",
+"src": "fill:fandom:palworld.fandom.com:Penking",
+"t": 1793768785
 },
 "jv-palworld-penking-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637696
+"art": "c",
+"file": "palworld--penking-lux.jpg",
+"src": "fill:fandom:palworld.fandom.com:Penking Lux",
+"t": 1793768785
 },
 "jv-palworld-petallia": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637568
+"art": "i",
+"file": "palworld--petallia.png",
+"src": "fill:fandom:palworld.fandom.com:Petallia",
+"t": 1793771515
 },
 "jv-palworld-petallia-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637698
+"art": "i",
+"file": "palworld--petallia-ignis.png",
+"src": "fill:fandom:palworld.fandom.com:Petallia Ignis",
+"t": 1793768785
 },
 "jv-palworld-pierdon": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637698
+"art": "i",
+"file": "palworld--pierdon.png",
+"src": "fill:fandom:palworld.fandom.com:Pierdon",
+"t": 1793768785
 },
 "jv-palworld-pierdon-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637568
+"art": "i",
+"file": "palworld--pierdon-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Pierdon Cryst",
+"t": 1793771515
 },
 "jv-palworld-polapup": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637699
+"art": "i",
+"file": "palworld--polapup.png",
+"src": "fill:fandom:palworld.fandom.com:Polapup",
+"t": 1793768785
 },
 "jv-palworld-polapup-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637774
+"art": "i",
+"file": "palworld--polapup-terra.png",
+"src": "fill:fandom:palworld.fandom.com:Polapup Terra",
+"t": 1793768785
 },
 "jv-palworld-prixter": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637775
+"art": "i",
+"file": "palworld--prixter.png",
+"src": "fill:fandom:palworld.fandom.com:Prixter",
+"t": 1793768786
 },
 "jv-palworld-prixter-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637773
+"art": "i",
+"file": "palworld--prixter-lux.png",
+"src": "fill:fandom:palworld.fandom.com:Prixter Lux",
+"t": 1793768786
 },
 "jv-palworld-prunelia": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637767
+"art": "i",
+"file": "palworld--prunelia.png",
+"src": "fill:fandom:palworld.fandom.com:Prunelia",
+"t": 1793768786
 },
 "jv-palworld-puffolt": {
 "art": "i",
@@ -13291,32 +12977,28 @@
 "t": 1793637936
 },
 "jv-palworld-pyrin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637774
+"art": "i",
+"file": "palworld--pyrin.png",
+"src": "fill:fandom:palworld.fandom.com:Pyrin",
+"t": 1793768786
 },
 "jv-palworld-pyrin-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637775
+"art": "i",
+"file": "palworld--pyrin-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Pyrin Noct",
+"t": 1793768786
 },
 "jv-palworld-quivern": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637775
+"art": "i",
+"file": "palworld--quivern.png",
+"src": "fill:fandom:palworld.fandom.com:Quivern",
+"t": 1793768786
 },
 "jv-palworld-quivern-botan": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637569
+"art": "i",
+"file": "palworld--quivern-botan.png",
+"src": "fill:fandom:palworld.fandom.com:Quivern Botan",
+"t": 1793771516
 },
 "jv-palworld-ragnahawk": {
 "art": "i",
@@ -13326,11 +13008,10 @@
 "t": 1793637775
 },
 "jv-palworld-rayhound": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637776
+"art": "i",
+"file": "palworld--rayhound.png",
+"src": "fill:fandom:palworld.fandom.com:Rayhound",
+"t": 1793768786
 },
 "jv-palworld-rayhound-cryst": {
 "art": "",
@@ -13347,18 +13028,16 @@
 "t": 1793637823
 },
 "jv-palworld-relaxaurus": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637569
+"art": "i",
+"file": "palworld--relaxaurus.png",
+"src": "fill:fandom:palworld.fandom.com:Relaxaurus",
+"t": 1793771516
 },
 "jv-palworld-relaxaurus-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637570
+"art": "i",
+"file": "palworld--relaxaurus-lux.png",
+"src": "fill:fandom:palworld.fandom.com:Relaxaurus Lux",
+"t": 1793771517
 },
 "jv-palworld-renjishi": {
 "art": "i",
@@ -13368,46 +13047,40 @@
 "t": 1793637569
 },
 "jv-palworld-reptyro": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637777
+"art": "i",
+"file": "palworld--reptyro.png",
+"src": "fill:fandom:palworld.fandom.com:Reptyro",
+"t": 1793768786
 },
 "jv-palworld-reptyro-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637779
+"art": "i",
+"file": "palworld--reptyro-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Reptyro Cryst",
+"t": 1793768787
 },
 "jv-palworld-ribbuny": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637938
+"art": "i",
+"file": "palworld--ribbuny.png",
+"src": "fill:fandom:palworld.fandom.com:Ribbuny",
+"t": 1793771542
 },
 "jv-palworld-ribbuny-botan": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637939
+"art": "c",
+"file": "palworld--ribbuny-botan.jpg",
+"src": "fill:fandom:palworld.fandom.com:Ribbuny Botan",
+"t": 1793771543
 },
 "jv-palworld-robinquill": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637780
+"art": "i",
+"file": "palworld--robinquill.png",
+"src": "fill:fandom:palworld.fandom.com:Robinquill",
+"t": 1793768787
 },
 "jv-palworld-robinquill-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637780
+"art": "i",
+"file": "palworld--robinquill-terra.png",
+"src": "fill:fandom:palworld.fandom.com:Robinquill Terra",
+"t": 1793768787
 },
 "jv-palworld-rooby": {
 "art": "i",
@@ -13466,25 +13139,22 @@
 "t": 1793637826
 },
 "jv-palworld-shroomer-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637781
+"art": "i",
+"file": "palworld--shroomer-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Shroomer Noct",
+"t": 1793768787
 },
 "jv-palworld-sibelyx": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637782
+"art": "i",
+"file": "palworld--sibelyx.png",
+"src": "fill:fandom:palworld.fandom.com:Sibelyx",
+"t": 1793768787
 },
 "jv-palworld-sibelyx-primo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637784
+"art": "i",
+"file": "palworld--sibelyx-primo.png",
+"src": "fill:fandom:palworld.fandom.com:Sibelyx Primo",
+"t": 1793768787
 },
 "jv-palworld-silvance": {
 "art": "i",
@@ -13501,11 +13171,10 @@
 "t": 1793637573
 },
 "jv-palworld-skutlass": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637785
+"art": "i",
+"file": "palworld--skutlass.png",
+"src": "fill:fandom:palworld.fandom.com:Skutlass",
+"t": 1793768787
 },
 "jv-palworld-skutlass-ignis": {
 "art": "",
@@ -13522,32 +13191,28 @@
 "t": 1793637886
 },
 "jv-palworld-smokie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637942
+"art": "i",
+"file": "palworld--smokie.png",
+"src": "fill:fandom:palworld.fandom.com:Smokie",
+"t": 1793771543
 },
 "jv-palworld-smokie-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637943
+"art": "i",
+"file": "palworld--smokie-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Smokie Cryst",
+"t": 1793771543
 },
 "jv-palworld-snock": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637785
+"art": "i",
+"file": "palworld--snock.png",
+"src": "fill:fandom:palworld.fandom.com:Snock",
+"t": 1793768787
 },
 "jv-palworld-snock-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637786
+"art": "i",
+"file": "palworld--snock-lux.png",
+"src": "fill:fandom:palworld.fandom.com:Snock",
+"t": 1793768788
 },
 "jv-palworld-snugloo": {
 "art": "i",
@@ -13564,18 +13229,16 @@
 "t": 1793637583
 },
 "jv-palworld-solmora": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637786
+"art": "i",
+"file": "palworld--solmora.png",
+"src": "fill:fandom:palworld.fandom.com:Solmora",
+"t": 1793768788
 },
 "jv-palworld-solmora-lux": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637585
+"art": "i",
+"file": "palworld--solmora-lux.png",
+"src": "fill:fandom:palworld.fandom.com:Solmora Lux",
+"t": 1793771517
 },
 "jv-palworld-sootseer": {
 "art": "i",
@@ -13606,18 +13269,16 @@
 "t": 1793637885
 },
 "jv-palworld-starryon": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637787
+"art": "i",
+"file": "palworld--starryon.png",
+"src": "fill:fandom:palworld.fandom.com:Starryon",
+"t": 1793768788
 },
 "jv-palworld-starryon-primo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637586
+"art": "i",
+"file": "palworld--starryon-primo.png",
+"src": "fill:fandom:palworld.fandom.com:Starryon Primo",
+"t": 1793771517
 },
 "jv-palworld-surfent": {
 "art": "",
@@ -13627,25 +13288,22 @@
 "t": 1793637888
 },
 "jv-palworld-surfent-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637789
+"art": "i",
+"file": "palworld--surfent-terra.png",
+"src": "fill:fandom:palworld.fandom.com:Surfent",
+"t": 1793768788
 },
 "jv-palworld-suzaku": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637589
+"art": "i",
+"file": "palworld--suzaku.png",
+"src": "fill:fandom:palworld.fandom.com:Suzaku",
+"t": 1793771518
 },
 "jv-palworld-suzaku-aqua": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637586
+"art": "i",
+"file": "palworld--suzaku-aqua.png",
+"src": "fill:fandom:palworld.fandom.com:Suzaku Aqua",
+"t": 1793771518
 },
 "jv-palworld-swee": {
 "art": "",
@@ -13662,18 +13320,16 @@
 "t": 1793637788
 },
 "jv-palworld-tanzee": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637945
+"art": "i",
+"file": "palworld--tanzee.png",
+"src": "fill:fandom:palworld.fandom.com:Tanzee",
+"t": 1793771544
 },
 "jv-palworld-tanzee-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637946
+"art": "i",
+"file": "palworld--tanzee-ignis.png",
+"src": "fill:fandom:palworld.fandom.com:Tanzee Ignis",
+"t": 1793771544
 },
 "jv-palworld-tarantriss": {
 "art": "i",
@@ -13690,18 +13346,16 @@
 "t": 1793638007
 },
 "jv-palworld-tetroise": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637789
+"art": "i",
+"file": "palworld--tetroise.png",
+"src": "fill:fandom:palworld.fandom.com:Tetroise",
+"t": 1793768788
 },
 "jv-palworld-tetroise-primo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637587
+"art": "i",
+"file": "palworld--tetroise-primo.png",
+"src": "fill:fandom:palworld.fandom.com:Tetroise Primo",
+"t": 1793771518
 },
 "jv-palworld-tocotoco": {
 "art": "i",
@@ -13739,18 +13393,16 @@
 "t": 1793637891
 },
 "jv-palworld-univolt": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637793
+"art": "i",
+"file": "palworld--univolt.png",
+"src": "fill:fandom:palworld.fandom.com:Univolt",
+"t": 1793768788
 },
 "jv-palworld-univolt-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637588
+"art": "i",
+"file": "palworld--univolt-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Univolt Cryst",
+"t": 1793771518
 },
 "jv-palworld-vaelet": {
 "art": "i",
@@ -13774,11 +13426,10 @@
 "t": 1793637891
 },
 "jv-palworld-vanwyrm-cryst": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637793
+"art": "i",
+"file": "palworld--vanwyrm-cryst.png",
+"src": "fill:fandom:palworld.fandom.com:Vanwyrm Cryst",
+"t": 1793768788
 },
 "jv-palworld-venusa": {
 "art": "i",
@@ -13802,32 +13453,28 @@
 "t": 1793638005
 },
 "jv-palworld-warsect": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637794
+"art": "i",
+"file": "palworld--warsect.png",
+"src": "fill:fandom:palworld.fandom.com:Warsect",
+"t": 1793768789
 },
 "jv-palworld-warsect-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637795
+"art": "i",
+"file": "palworld--warsect-terra.png",
+"src": "fill:fandom:palworld.fandom.com:Warsect Terra",
+"t": 1793768789
 },
 "jv-palworld-whalaska": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637590
+"art": "i",
+"file": "palworld--whalaska.png",
+"src": "fill:fandom:palworld.fandom.com:Whalaska",
+"t": 1793771518
 },
 "jv-palworld-whalaska-ignis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637591
+"art": "c",
+"file": "palworld--whalaska-ignis.jpg",
+"src": "fill:fandom:palworld.fandom.com:Whalaska Ignis",
+"t": 1793771518
 },
 "jv-palworld-wispaw": {
 "art": "i",
@@ -13851,39 +13498,34 @@
 "t": 1793637892
 },
 "jv-palworld-wixen-noct": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637795
+"art": "i",
+"file": "palworld--wixen-noct.png",
+"src": "fill:fandom:palworld.fandom.com:Wixen Noct",
+"t": 1793768789
 },
 "jv-palworld-woolipop": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638008
+"art": "i",
+"file": "palworld--woolipop.png",
+"src": "fill:fandom:palworld.fandom.com:Woolipop",
+"t": 1793771545
 },
 "jv-palworld-woolipop-terra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638009
+"art": "i",
+"file": "palworld--woolipop-terra.png",
+"src": "fill:fandom:palworld.fandom.com:Woolipop Terra",
+"t": 1793771545
 },
 "jv-palworld-wumpo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637655
+"art": "i",
+"file": "palworld--wumpo.png",
+"src": "fill:fandom:palworld.fandom.com:Wumpo",
+"t": 1793771518
 },
 "jv-palworld-wumpo-botan": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637654
+"art": "i",
+"file": "palworld--wumpo-botan.png",
+"src": "fill:fandom:palworld.fandom.com:Wumpo Botan",
+"t": 1793771519
 },
 "jv-palworld-xenogard": {
 "art": "i",
@@ -14043,25 +13685,22 @@
 "t": 1793638522
 },
 "jv-persona-aigis": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636837
+"art": "c",
+"file": "persona--aigis.jpg",
+"src": "fill:anilist:Aigis",
+"t": 1793788156
 },
 "jv-persona-ann": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636843
+"art": "i",
+"file": "persona--ann.png",
+"src": "fill:fandom:persona-records.fandom.com:Ann Takamaki",
+"t": 1793771543
 },
 "jv-persona-chie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636839
+"art": "i",
+"file": "persona--chie.png",
+"src": "fill:fandom:persona-records.fandom.com:Chie Satonaka",
+"t": 1793771543
 },
 "jv-persona-goro-akechi": {
 "art": "c",
@@ -14079,18 +13718,16 @@
 "t": 1793636844
 },
 "jv-persona-makoto-p5": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636841
+"art": "c",
+"file": "persona--makoto-p5.jpg",
+"src": "fill:fandom:persona-records.fandom.com:Makoto Niijima",
+"t": 1793771542
 },
 "jv-persona-morgana": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636838
+"art": "i",
+"file": "persona--morgana.png",
+"src": "fill:fandom:persona-records.fandom.com:Morgana",
+"t": 1793768787
 },
 "jv-persona-persona": {
 "art": "c",
@@ -14131,18 +13768,16 @@
 "t": 1793636849
 },
 "jv-persona-ryuji": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636845
+"art": "i",
+"file": "persona--ryuji.png",
+"src": "fill:fandom:persona-records.fandom.com:Ryuji Sakamoto",
+"t": 1793771543
 },
 "jv-persona-teddie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636845
+"art": "i",
+"file": "persona--teddie.png",
+"src": "fill:fandom:persona-records.fandom.com:Teddie",
+"t": 1793771543
 },
 "jv-persona-yu-narukami": {
 "art": "c",
@@ -14196,11 +13831,10 @@
 "t": 1793636846
 },
 "jv-plants-vs-zombies-dr-zomboss": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636847
+"art": "i",
+"file": "plants-vs-zombies--dr-zomboss.png",
+"src": "fill:fandom:plantsvszombies.fandom.com:Dr. Zomboss",
+"t": 1793771544
 },
 "jv-plants-vs-zombies-garden-warfare": {
 "art": "c",
@@ -14240,11 +13874,10 @@
 "t": 1793636851
 },
 "jv-plants-vs-zombies-zombie-pvz": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636850
+"art": "i",
+"file": "plants-vs-zombies--zombie-pvz.png",
+"src": "fill:fandom:plantsvszombies.fandom.com/fr:Zombie",
+"t": 1793771544
 },
 "jv-playstation-divers-ape-escape": {
 "art": "c",
@@ -14888,11 +14521,10 @@
 "t": 1793637026
 },
 "jv-prince-of-persia-farah": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637032
+"art": "i",
+"file": "prince-of-persia--farah.png",
+"src": "fill:fandom:princeofpersia.fandom.com:Farah (Sands of Time)",
+"t": 1793771546
 },
 "jv-prince-of-persia-l-ame-du-guerrier": {
 "art": "c",
@@ -14985,18 +14617,16 @@
 "t": 1793638627
 },
 "jv-professeur-layton-luke-triton": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638629
+"art": "c",
+"file": "professeur-layton--luke-triton.jpg",
+"src": "fill:anilist:Luke Triton",
+"t": 1793788156
 },
 "jv-professeur-layton-professeur-layton": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638634
+"art": "i",
+"file": "professeur-layton--professeur-layton.jpg",
+"src": "fill:wikipedia:fr:Professeur Layton",
+"t": 1793772874
 },
 "jv-puzzle-indes-baba-is-you": {
 "art": "c",
@@ -15078,11 +14708,10 @@
 "t": 1793637035
 },
 "jv-quake-shambler": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637037
+"art": "i",
+"file": "quake--shambler.png",
+"src": "fill:fandom:quake.fandom.com:Shambler (Q1)",
+"t": 1793771546
 },
 "jv-rainbow-six-ace": {
 "art": "i",
@@ -15289,11 +14918,10 @@
 "t": 1793637145
 },
 "jv-rainbow-six-iq": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637057
+"art": "i",
+"file": "rainbow-six--iq.png",
+"src": "fill:fandom:rainbowsix.fandom.com/fr:IQ",
+"t": 1793768789
 },
 "jv-rainbow-six-jackal": {
 "art": "c",
@@ -15494,11 +15122,10 @@
 "t": 1793637188
 },
 "jv-rainbow-six-skopos": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637183
+"art": "i",
+"file": "rainbow-six--skopos.png",
+"src": "fill:fandom:rainbowsix.fandom.com:Skopós",
+"t": 1793771546
 },
 "jv-rainbow-six-sledge": {
 "art": "i",
@@ -15636,11 +15263,10 @@
 "t": 1793637192
 },
 "jv-ratchet-and-clank-qwark": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637193
+"art": "c",
+"file": "ratchet-and-clank--qwark.jpg",
+"src": "fill:fandom:ratchetandclank.fandom.com:Qwark",
+"t": 1793768789
 },
 "jv-ratchet-and-clank-ratchet": {
 "art": "i",
@@ -15691,11 +15317,10 @@
 "t": 1793637199
 },
 "jv-ratchet-and-clank-rivet": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637201
+"art": "i",
+"file": "ratchet-and-clank--rivet.png",
+"src": "fill:fandom:ratchetandclank.fandom.com:Rivet",
+"t": 1793771547
 },
 "jv-ratchet-and-clank-tools-of-destruction": {
 "art": "c",
@@ -15788,39 +15413,34 @@
 "t": 1793637202
 },
 "jv-red-dead-redemption-abigail": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637245
+"art": "c",
+"file": "red-dead-redemption--abigail.jpg",
+"src": "fill:fandom:reddead.fandom.com/fr:Abigail Marston",
+"t": 1793771545
 },
 "jv-red-dead-redemption-arthur-morgan": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637241
+"art": "c",
+"file": "red-dead-redemption--arthur-morgan.jpg",
+"src": "fill:fandom:reddead.fandom.com/fr:Arthur Morgan",
+"t": 1793768768
 },
 "jv-red-dead-redemption-bill-williamson": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637241
+"art": "c",
+"file": "red-dead-redemption--bill-williamson.jpg",
+"src": "fill:fandom:reddead.fandom.com/fr:Bill Williamson",
+"t": 1793771545
 },
 "jv-red-dead-redemption-dutch-van-der-linde": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637207
+"art": "c",
+"file": "red-dead-redemption--dutch-van-der-linde.jpg",
+"src": "fill:fandom:reddead.fandom.com/fr:Dutch van der Linde repéré",
+"t": 1793768769
 },
 "jv-red-dead-redemption-javier-escuella": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637210
+"art": "c",
+"file": "red-dead-redemption--javier-escuella.jpg",
+"src": "fill:fandom:reddead.fandom.com/fr:Javier Escuella",
+"t": 1793771545
 },
 "jv-red-dead-redemption-john-marston": {
 "art": "i",
@@ -15870,11 +15490,10 @@
 "t": 1793637242
 },
 "jv-resident-evil-albert-wesker": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637246
+"art": "c",
+"file": "resident-evil--albert-wesker.jpg",
+"src": "fill:fandom:residentevil.fandom.com/fr:Albert Wesker",
+"t": 1793768771
 },
 "jv-resident-evil-barry-burton": {
 "art": "i",
@@ -15891,18 +15510,16 @@
 "t": 1793637243
 },
 "jv-resident-evil-claire-redfield": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637253
+"art": "c",
+"file": "resident-evil--claire-redfield.jpg",
+"src": "fill:fandom:residentevil.fandom.com/fr:Claire Redfield",
+"t": 1793768789
 },
 "jv-resident-evil-ethan-winters": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637255
+"art": "i",
+"file": "resident-evil--ethan-winters.png",
+"src": "fill:fandom:residentevil.fandom.com/fr:Ethan Winters",
+"t": 1793768789
 },
 "jv-resident-evil-heisenberg": {
 "art": "",
@@ -15926,11 +15543,10 @@
 "t": 1793637257
 },
 "jv-resident-evil-jill-valentine": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637247
+"art": "i",
+"file": "resident-evil--jill-valentine.png",
+"src": "fill:fandom:residentevil.fandom.com/fr:Jill Valentine",
+"t": 1793768771
 },
 "jv-resident-evil-krauser": {
 "art": "",
@@ -16065,11 +15681,10 @@
 "t": 1793637249
 },
 "jv-resident-evil-sherry-birkin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637261
+"art": "c",
+"file": "resident-evil--sherry-birkin.jpg",
+"src": "fill:fandom:residentevil.fandom.com/fr:Sherry Birkin",
+"t": 1793771545
 },
 "jv-retro-arcade-arkanoid": {
 "art": "c",
@@ -16307,11 +15922,10 @@
 "t": 1793636608
 },
 "jv-roblox-arsenal": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636618
+"art": "c",
+"file": "roblox--arsenal.jpg",
+"src": "fill:wikipedia:fr:Arsenal",
+"t": 1793772874
 },
 "jv-roblox-bedwars": {
 "art": "",
@@ -16369,11 +15983,10 @@
 "t": 1793636602
 },
 "jv-roblox-fisch": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793636612
+"art": "c",
+"file": "roblox--fisch.jpg",
+"src": "fill:wikipedia:fr:Fisch",
+"t": 1793772874
 },
 "jv-roblox-grow-a-garden": {
 "art": "c",
@@ -17083,11 +16696,10 @@
 "t": 1793637361
 },
 "jv-shin-megami-tensei-jack-frost-smt": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637362
+"art": "c",
+"file": "shin-megami-tensei--jack-frost-smt.jpg",
+"src": "fill:anilist:Jack Frost",
+"t": 1793788156
 },
 "jv-shin-megami-tensei-smt-iii-nocturne": {
 "art": "",
@@ -17111,18 +16723,16 @@
 "t": 1793637363
 },
 "jv-silent-hill-alessa": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637368
+"art": "i",
+"file": "silent-hill--alessa.png",
+"src": "fill:fandom:silenthill.fandom.com:Alessa Gillespie",
+"t": 1793771546
 },
 "jv-silent-hill-harry-mason": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637369
+"art": "i",
+"file": "silent-hill--harry-mason.png",
+"src": "fill:fandom:silenthill.fandom.com:Harry Mason",
+"t": 1793771545
 },
 "jv-silent-hill-heather-mason": {
 "art": "i",
@@ -17261,25 +16871,22 @@
 "t": 1793638692
 },
 "jv-sly-cooper-bentley": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637373
+"art": "i",
+"file": "sly-cooper--bentley.png",
+"src": "fill:fandom:slycooper.fandom.com:Bentley",
+"t": 1793771547
 },
 "jv-sly-cooper-carmelita-fox": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637372
+"art": "i",
+"file": "sly-cooper--carmelita-fox.png",
+"src": "fill:fandom:slycooper.fandom.com:Carmelita Fox",
+"t": 1793771548
 },
 "jv-sly-cooper-murray": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637374
+"art": "i",
+"file": "sly-cooper--murray.png",
+"src": "fill:fandom:slycooper.fandom.com:Murray",
+"t": 1793771548
 },
 "jv-sly-cooper-sly-2": {
 "art": "",
@@ -17317,11 +16924,10 @@
 "t": 1793637383
 },
 "jv-sonic-big-le-chat": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637389
+"art": "c",
+"file": "sonic--big-le-chat.jpg",
+"src": "fill:fandom:sonic.fandom.com/fr:Big le Chat (Sonic Prime)",
+"t": 1793771548
 },
 "jv-sonic-blaze": {
 "art": "i",
@@ -17526,11 +17132,10 @@
 "t": 1793637395
 },
 "jv-soulcalibur-algol": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637448
+"art": "i",
+"file": "soulcalibur--algol.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Algol",
+"t": 1793771546
 },
 "jv-soulcalibur-amy": {
 "art": "",
@@ -17547,39 +17152,34 @@
 "t": 1793637401
 },
 "jv-soulcalibur-cassandra": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637403
+"art": "i",
+"file": "soulcalibur--cassandra.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Cassandra",
+"t": 1793768788
 },
 "jv-soulcalibur-cervantes": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637402
+"art": "i",
+"file": "soulcalibur--cervantes.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Cervantes",
+"t": 1793768790
 },
 "jv-soulcalibur-hilde": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637446
+"art": "i",
+"file": "soulcalibur--hilde.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Hilde",
+"t": 1793771546
 },
 "jv-soulcalibur-ivy": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637394
+"art": "i",
+"file": "soulcalibur--ivy.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Ivy",
+"t": 1793771519
 },
 "jv-soulcalibur-kilik": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637421
+"art": "i",
+"file": "soulcalibur--kilik.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Kilik",
+"t": 1793768790
 },
 "jv-soulcalibur-maxi": {
 "art": "i",
@@ -17589,11 +17189,10 @@
 "t": 1793637405
 },
 "jv-soulcalibur-mitsurugi": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637395
+"art": "i",
+"file": "soulcalibur--mitsurugi.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Mitsurugi",
+"t": 1793771519
 },
 "jv-soulcalibur-nightmare": {
 "art": "i",
@@ -17603,11 +17202,10 @@
 "t": 1793637391
 },
 "jv-soulcalibur-patroklos": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637444
+"art": "i",
+"file": "soulcalibur--patroklos.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Patroklos",
+"t": 1793771546
 },
 "jv-soulcalibur-raphael": {
 "art": "",
@@ -17617,11 +17215,10 @@
 "t": 1793637426
 },
 "jv-soulcalibur-siegfried": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637399
+"art": "i",
+"file": "soulcalibur--siegfried.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Siegfried",
+"t": 1793771519
 },
 "jv-soulcalibur-sophitia": {
 "art": "i",
@@ -17706,11 +17303,10 @@
 "t": 1793637402
 },
 "jv-soulcalibur-xianghua": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637423
+"art": "i",
+"file": "soulcalibur--xianghua.jpg",
+"src": "fill:fandom:soulcalibur.fandom.com:Xianghua",
+"t": 1793768790
 },
 "jv-soulcalibur-zasalamel": {
 "art": "c",
@@ -17735,11 +17331,10 @@
 "t": 1793637443
 },
 "jv-splatoon-perle-and-coralie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637449
+"art": "i",
+"file": "splatoon--perle-and-coralie.png",
+"src": "fill:fandom:splatoon.fandom.com/fr:Perle",
+"t": 1793771549
 },
 "jv-splatoon-splatoon": {
 "art": "c",
@@ -17763,11 +17358,10 @@
 "t": 1793637446
 },
 "jv-splatoon-tridenfer": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793637451
+"art": "i",
+"file": "splatoon--tridenfer.png",
+"src": "fill:fandom:splatoon.fandom.com/fr:Tridenfer",
+"t": 1793771550
 },
 "jv-splinter-cell-blacklist": {
 "art": "c",
@@ -19042,25 +18636,22 @@
 "t": 1793638016
 },
 "jv-street-fighter-a-k-i": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638065
+"art": "i",
+"file": "street-fighter--a-k-i.png",
+"src": "fill:fandom:streetfighter.fandom.com:A.K.I.",
+"t": 1793771548
 },
 "jv-street-fighter-abel": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638069
+"art": "i",
+"file": "street-fighter--abel.jpg",
+"src": "fill:fandom:streetfighter.fandom.com:Abel",
+"t": 1793771548
 },
 "jv-street-fighter-adon": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638069
+"art": "i",
+"file": "street-fighter--adon.jpg",
+"src": "fill:fandom:streetfighter.fandom.com:Adon",
+"t": 1793771548
 },
 "jv-street-fighter-akuma": {
 "art": "i",
@@ -19098,11 +18689,10 @@
 "t": 1793638048
 },
 "jv-street-fighter-chun-li": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638055
+"art": "c",
+"file": "street-fighter--chun-li.jpg",
+"src": "fill:fandom:streetfighter.fandom.com:Chun-Li/Pop Culture",
+"t": 1793768771
 },
 "jv-street-fighter-dan": {
 "art": "",
@@ -19162,11 +18752,10 @@
 "t": 1793638058
 },
 "jv-street-fighter-gen": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638083
+"art": "i",
+"file": "street-fighter--gen.jpg",
+"src": "fill:fandom:streetfighter.fandom.com:Gen",
+"t": 1793771549
 },
 "jv-street-fighter-gill": {
 "art": "i",
@@ -19184,18 +18773,16 @@
 "t": 1793638059
 },
 "jv-street-fighter-guile": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638053
+"art": "i",
+"file": "street-fighter--guile.png",
+"src": "fill:fandom:streetfighter.fandom.com:Guile",
+"t": 1793771519
 },
 "jv-street-fighter-hugo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638081
+"art": "i",
+"file": "street-fighter--hugo.jpg",
+"src": "fill:fandom:streetfighter.fandom.com:Hugo",
+"t": 1793771548
 },
 "jv-street-fighter-ibuki": {
 "art": "i",
@@ -19205,18 +18792,16 @@
 "t": 1793638058
 },
 "jv-street-fighter-jamie": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638082
+"art": "i",
+"file": "street-fighter--jamie.png",
+"src": "fill:fandom:streetfighter.fandom.com:Jamie",
+"t": 1793771550
 },
 "jv-street-fighter-jp": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638086
+"art": "i",
+"file": "street-fighter--jp.png",
+"src": "fill:fandom:streetfighter.fandom.com:JP",
+"t": 1793771549
 },
 "jv-street-fighter-juri": {
 "art": "i",
@@ -19226,11 +18811,10 @@
 "t": 1793638058
 },
 "jv-street-fighter-ken": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638049
+"art": "i",
+"file": "street-fighter--ken.png",
+"src": "fill:fandom:streetfighter.fandom.com:Ken Masters",
+"t": 1793771520
 },
 "jv-street-fighter-kimberly": {
 "art": "",
@@ -20408,11 +19992,10 @@
 "t": 1793638145
 },
 "jv-tales-of-namco-divers-velvet-crowe": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638117
+"art": "c",
+"file": "tales-of-namco-divers--velvet-crowe.jpg",
+"src": "fill:anilist:Velvet Crowe",
+"t": 1793788156
 },
 "jv-tales-of-namco-divers-yuri-lowell": {
 "art": "i",
@@ -20423,11 +20006,10 @@
 "t": 1793638116
 },
 "jv-tekken-alisa": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638171
+"art": "i",
+"file": "tekken--alisa.jpg",
+"src": "fill:fandom:tekken.fandom.com/fr:Alisa Bosconovitch/Archives",
+"t": 1793768790
 },
 "jv-tekken-angel-tekken": {
 "art": "",
@@ -20444,11 +20026,10 @@
 "t": 1793638149
 },
 "jv-tekken-armor-king": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638167
+"art": "i",
+"file": "tekken--armor-king.png",
+"src": "fill:fandom:tekken.fandom.com/fr:Armor King I",
+"t": 1793768790
 },
 "jv-tekken-asuka-kazama": {
 "art": "c",
@@ -20473,11 +20054,10 @@
 "t": 1793638228
 },
 "jv-tekken-baek": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638169
+"art": "i",
+"file": "tekken--baek.png",
+"src": "fill:fandom:tekken.fandom.com/fr:Baek Doo San",
+"t": 1793768791
 },
 "jv-tekken-bob": {
 "art": "i",
@@ -20666,11 +20246,10 @@
 "t": 1793638147
 },
 "jv-tekken-kuma": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638154
+"art": "i",
+"file": "tekken--kuma.jpg",
+"src": "fill:fandom:tekken.fandom.com/fr:Kuma/Archives",
+"t": 1793771520
 },
 "jv-tekken-kunimitsu": {
 "art": "c",
@@ -20701,11 +20280,10 @@
 "t": 1793638154
 },
 "jv-tekken-leo": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638201
+"art": "c",
+"file": "tekken--leo.jpg",
+"src": "fill:fandom:tekken.fandom.com/fr:Leo/Apparence",
+"t": 1793768790
 },
 "jv-tekken-leroy-smith": {
 "art": "c",
@@ -20722,11 +20300,10 @@
 "t": 1793638218
 },
 "jv-tekken-lili": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638203
+"art": "c",
+"file": "tekken--lili.jpg",
+"src": "fill:fandom:tekken.fandom.com/fr:Lili Rochefort/Sondages",
+"t": 1793768790
 },
 "jv-tekken-ling-xiaoyu": {
 "art": "i",
@@ -20764,11 +20341,10 @@
 "t": 1793638202
 },
 "jv-tekken-miguel": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638204
+"art": "i",
+"file": "tekken--miguel.png",
+"src": "fill:fandom:tekken.fandom.com/fr:Miguel Caballero Rojo",
+"t": 1793768790
 },
 "jv-tekken-mokujin": {
 "art": "c",
@@ -20785,18 +20361,16 @@
 "t": 1793638148
 },
 "jv-tekken-ogre": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638159
+"art": "i",
+"file": "tekken--ogre.png",
+"src": "fill:fandom:tekken.fandom.com/fr:Ogre",
+"t": 1793771520
 },
 "jv-tekken-panda": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638206
+"art": "c",
+"file": "tekken--panda.jpg",
+"src": "fill:fandom:tekken.fandom.com/fr:Panda/Sondages",
+"t": 1793768790
 },
 "jv-tekken-paul-phoenix": {
 "art": "c",
@@ -20806,11 +20380,10 @@
 "t": 1793638153
 },
 "jv-tekken-raven-tekken": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638205
+"art": "i",
+"file": "tekken--raven-tekken.png",
+"src": "fill:fandom:tekken.fandom.com/fr:Raven",
+"t": 1793768790
 },
 "jv-tekken-reina": {
 "art": "",
@@ -20820,11 +20393,10 @@
 "t": 1793638225
 },
 "jv-tekken-roger": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638208
+"art": "i",
+"file": "tekken--roger.png",
+"src": "fill:fandom:tekken.fandom.com/fr:Roger",
+"t": 1793768791
 },
 "jv-tekken-sebastian": {
 "art": "",
@@ -20944,11 +20516,10 @@
 "t": 1793638223
 },
 "jv-tekken-wang-jinrei": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638207
+"art": "i",
+"file": "tekken--wang-jinrei.png",
+"src": "fill:fandom:tekken.fandom.com/fr:Wang Jinrei",
+"t": 1793768791
 },
 "jv-tekken-yoshimitsu": {
 "art": "c",
@@ -21062,11 +20633,10 @@
 "t": 1793638269
 },
 "jv-the-elder-scrolls-alduin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638276
+"art": "c",
+"file": "the-elder-scrolls--alduin.jpg",
+"src": "fill:fandom:elderscrolls.fandom.com/fr:Alduin",
+"t": 1793768791
 },
 "jv-the-elder-scrolls-arena": {
 "art": "c",
@@ -21083,18 +20653,16 @@
 "t": 1793638274
 },
 "jv-the-elder-scrolls-dovahkiin": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638271
+"art": "c",
+"file": "the-elder-scrolls--dovahkiin.jpg",
+"src": "fill:fandom:teslore.fandom.com/fr:Dovahkiin",
+"t": 1793768771
 },
 "jv-the-elder-scrolls-lydia": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638278
+"art": "c",
+"file": "the-elder-scrolls--lydia.jpg",
+"src": "fill:fandom:elderscrolls.fandom.com/fr:Lydia",
+"t": 1793768791
 },
 "jv-the-elder-scrolls-miraak": {
 "art": "",
@@ -21153,11 +20721,10 @@
 "t": 1793638281
 },
 "jv-the-elder-scrolls-sheogorath": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638273
+"art": "c",
+"file": "the-elder-scrolls--sheogorath.jpg",
+"src": "fill:fandom:elderscrolls.fandom.com/fr:Shéogorath",
+"t": 1793768791
 },
 "jv-the-elder-scrolls-skyrim": {
 "art": "c",
@@ -21195,18 +20762,16 @@
 "t": 1793638322
 },
 "jv-the-king-of-fighters-fatal-fury-athena-asamiya": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638286
+"art": "c",
+"file": "the-king-of-fighters-fatal-fury--athena-asamiya.jpg",
+"src": "fill:wikipedia:fr:Athena Asamiya",
+"t": 1793772875
 },
 "jv-the-king-of-fighters-fatal-fury-benimaru": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638286
+"art": "c",
+"file": "the-king-of-fighters-fatal-fury--benimaru.jpg",
+"src": "fill:anilist:Benimaru Nikaido",
+"t": 1793788156
 },
 "jv-the-king-of-fighters-fatal-fury-fatal-fury": {
 "art": "i",
@@ -21299,11 +20864,10 @@
 "t": 1793638290
 },
 "jv-the-king-of-fighters-fatal-fury-kula": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638321
+"art": "c",
+"file": "the-king-of-fighters-fatal-fury--kula.jpg",
+"src": "fill:anilist:Kula Diamond",
+"t": 1793788156
 },
 "jv-the-king-of-fighters-fatal-fury-kyo-kusanagi": {
 "art": "i",
@@ -21393,11 +20957,10 @@
 "t": 1793638334
 },
 "jv-the-last-of-us-clicker": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638329
+"art": "c",
+"file": "the-last-of-us--clicker.jpg",
+"src": "fill:fandom:thelastofus.fandom.com:Clicker",
+"t": 1793768791
 },
 "jv-the-last-of-us-david": {
 "art": "",
@@ -21407,11 +20970,10 @@
 "t": 1793638338
 },
 "jv-the-last-of-us-dina": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638334
+"art": "c",
+"file": "the-last-of-us--dina.jpg",
+"src": "fill:anilist:Dina",
+"t": 1793788156
 },
 "jv-the-last-of-us-ellie": {
 "art": "i",
@@ -21463,11 +21025,10 @@
 "t": 1793638337
 },
 "jv-the-witcher-ciri": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638340
+"art": "i",
+"file": "the-witcher--ciri.png",
+"src": "fill:fandom:witcher-archive.fandom.com/fr:Ciri",
+"t": 1793768771
 },
 "jv-the-witcher-cyberpunk-2077": {
 "art": "c",
@@ -21498,11 +21059,10 @@
 "t": 1793638344
 },
 "jv-the-witcher-jaskier": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638340
+"art": "i",
+"file": "the-witcher--jaskier.png",
+"src": "fill:fandom:witcher-archive.fandom.com/fr:Jaskier",
+"t": 1793768791
 },
 "jv-the-witcher-roach-plot": {
 "art": "",
@@ -21533,11 +21093,10 @@
 "t": 1793638335
 },
 "jv-the-witcher-triss": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638343
+"art": "c",
+"file": "the-witcher--triss.jpg",
+"src": "fill:fandom:sorceleur.fandom.com:Triss Merigold",
+"t": 1793768791
 },
 "jv-the-witcher-vesemir": {
 "art": "",
@@ -21547,11 +21106,10 @@
 "t": 1793638343
 },
 "jv-the-witcher-yennefer": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638340
+"art": "c",
+"file": "the-witcher--yennefer.jpg",
+"src": "fill:fandom:sorceleur.fandom.com:Yennefer de Vengerberg",
+"t": 1793768771
 },
 "jv-titanfall-apex-apex-legends": {
 "art": "c",
@@ -22453,11 +22011,10 @@
 "t": 1793638454
 },
 "jv-warner-bros-lego-batman": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638459
+"art": "c",
+"file": "warner-bros--lego-batman.jpg",
+"src": "fill:wikipedia:en:Lego Batman",
+"t": 1793772875
 },
 "jv-warner-bros-lego-harry-potter": {
 "art": "c",
@@ -22699,11 +22256,10 @@
 "t": 1793638480
 },
 "jv-xbox-divers-joanna-dark": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638477
+"art": "c",
+"file": "xbox-divers--joanna-dark.jpg",
+"src": "fill:wikipedia:fr:Joanna Dark",
+"t": 1793772875
 },
 "jv-xbox-divers-killer-instinct": {
 "art": "c",
@@ -22899,25 +22455,22 @@
 "t": 1793638629
 },
 "jv-yo-kai-watch-komajiro": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638634
+"art": "c",
+"file": "yo-kai-watch--komajiro.jpg",
+"src": "fill:anilist:Komajirou",
+"t": 1793788156
 },
 "jv-yo-kai-watch-komasan": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638631
+"art": "c",
+"file": "yo-kai-watch--komasan.jpg",
+"src": "fill:anilist:Komasan",
+"t": 1793788156
 },
 "jv-yo-kai-watch-whisper": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638635
+"art": "i",
+"file": "yo-kai-watch--whisper.png",
+"src": "fill:fandom:yokaiwatch.fandom.com/fr:Whisper",
+"t": 1793768792
 },
 "jv-yo-kai-watch-yo-kai-watch": {
 "art": "c",
@@ -23125,11 +22678,10 @@
 "t": 1793638507
 },
 "jv-zelda-ocarina-du-temps": {
-"art": "",
-"file": "",
-"s2": 1,
-"src": "",
-"t": 1793638511
+"art": "i",
+"file": "zelda--ocarina-du-temps.png",
+"src": "fill:fandom:zelda.fandom.com/fr:Ocarina du Temps",
+"t": 1793768792
 },
 "jv-zelda-ocarina-of-time": {
 "art": "c",

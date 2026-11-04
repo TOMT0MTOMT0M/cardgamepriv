@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8">
+<!-- Page de conversion FBX → GLB (lancée par convert.py, jamais servie par le jeu). -->
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+const q = new URLSearchParams(location.search);
+const parts = JSON.parse(q.get('parts')); // { "head": "head", "eyeball": "eye", "body": "body" } : morceau du nom de matériau → jeu de textures
+const tl = new THREE.TextureLoader();
+const tex = (n, srgb) => tl.loadAsync('/tex/' + n + '.png').then((t) => { if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; }, () => null);
+const obj = await new FBXLoader().loadAsync('/model.fbx');
+const jobs = [];
+obj.traverse((o) => {
+  if (o.isBone) o.userData.rig = o.name; // nom d'origine : GLTFLoader renomme les doublons (un squelette par maillage)
+  if (!o.isMesh) return;
+  const key = Object.keys(parts).find((k) => o.material.name.toLowerCase().includes(k));
+  const p = key ? parts[key] : null;
+  if (!p) return;
+  jobs.push((async () => {
+    const [map, nrm, orm] = await Promise.all([tex(p + '_C', true), tex(p + '_N', false), tex(p + '_ORM', false)]);
+    const m = new THREE.MeshStandardMaterial({ name: p, map, normalMap: nrm, roughnessMap: orm, metalnessMap: orm, aoMap: orm, metalness: orm ? 1 : 0.2, roughness: orm ? 1 : 0.5 });
+    if (map && map.image && q.get('alpha')?.split(',').includes(p)) { m.alphaTest = 0.5; m.side = THREE.DoubleSide; }
+    o.material = m;
+    o.name = p;
+  })());
+});
+await Promise.all(jobs);
+const ab = await new GLTFExporter().parseAsync(obj, { binary: true, maxTextureSize: 1024 });
+const bytes = new Uint8Array(ab);
+let s = '';
+for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+window.__glb = btoa(s);
+</script>
