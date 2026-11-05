@@ -395,4 +395,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Active le son 🔈 · tap = matérialisation immédiate, puis fin · `?carte=pop-dark-magician` (10 cartes) · `?speed=0.25`',
     load: () => import('../experiments/042-duel-summon/index.ts'),
   },
+  {
+    id: '043-rarity-fx',
+    title: 'Effets de rareté (35 effets, 1★ → secrète)',
+    category: 'C',
+    tags: ['rareté', 'foil', 'mobile', 'film mince', 'paillettes'],
+    tech: ['MeshBasicNodeMaterial (non éclairé)', 'film mince d’Airy précalculé (CIE 1931)', 'textures partagées', 'sprites sans état', 'Low/Mid/High + auto', 'bloom basse résolution', 'FSR1', 'ΔE sujet'],
+    blurb: '5 effets par palier, par zones débloquées (bordure → cadre → fond → profondeur → matière → toute la carte → la carte sort d’elle-même), pensés d’abord pour le téléphone.',
+    hint: 'Rareté 1–7 · « effet » ou « planche » dans le panneau · touche la carte (ondes, coin lumineux) · secrète n°1 : appui long',
+    load: () => import('../experiments/043-rarity-fx/index.ts'),
+  },
 ];
