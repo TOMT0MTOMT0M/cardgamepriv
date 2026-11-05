@@ -1,5 +1,5 @@
 import { Group, MeshBasicNodeMaterial, NoBlending, Raycaster, RenderTarget, Vector2, type Mesh, type Object3D } from 'three/webgpu';
-import { vec4 } from 'three/tsl';
+import { uniform, vec4 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { fsr1 } from 'three/addons/tsl/display/FSR1Node.js';
 import gsap from 'gsap';
@@ -62,11 +62,17 @@ export default function create(): Experiment {
     carte: Math.max(0, Number(q0.get('card') ?? 0) || 0),
     /** mode « vitrine » (pokebox) : la carte ne tourne plus, c'est l'ŒIL qui bouge devant elle — projection hors-axe */
     vitrine: q0.has('vitrine'),
+    /** gain global des effets : sortie = carte + (effet − carte) × gain (le sujet reste protégé par les masques) */
+    gain: Math.max(0.25, Math.min(4, Number(q0.get('k') ?? 1.6) || 1.6)),
   };
+  /** instant de la dernière construction : les 1,5 premières secondes (compilations, envois de textures) ne comptent pas */
+  let builtAt = -1;
+  let autoWhy = '';
   /** budget de particules adaptatif (mattamior) : ne fait que BAISSER tant que la vue ne change pas */
   let adapt = 1;
   let adaptOverSince = 0;
   let autoQ: Q = 'high';
+  const gains: Array<{ value: number }> = [];
   const frames: number[] = [];
   let overSince = 0;
   let gpuMs: number | null = null;
@@ -94,7 +100,8 @@ export default function create(): Experiment {
   const names = () => Object.fromEntries(tierDefs().map((d, i) => [`${i + 1}. ${d.name}`, i + 1]));
 
   const now = () => (ctx.renderer as unknown as { _nodes?: { nodeFrame?: { time: number } } })._nodes?.nodeFrame?.time ?? performance.now() / 1000;
-  const quality = (): Q => (fxReduced() ? 'low' : params.qualité === 'auto' ? autoQ : params.qualité);
+  // le réglage « effets réduits » du jeu ne s'applique qu'en qualité auto : `?q=high` ou le panneau le passent outre
+  const quality = (): Q => (params.qualité === 'auto' ? (fxReduced() ? 'low' : autoQ) : params.qualité);
   const tierDefs = () => effectsOf(ctx.rarity as RarityId);
 
   async function makeArt(cd: CardData, scale: number, flat = false) {
@@ -113,6 +120,7 @@ export default function create(): Experiment {
       root.clear();
       cards = [];
       const L = LADDER[q];
+      gains.length = 0;
       adapt = 1;
       adaptOverSince = 0;
       // ?src=<rareté> : prévisualiser les effets d'un palier sur une carte d'un autre palier (les secrètes sont des photos)
@@ -151,10 +159,12 @@ export default function create(): Experiment {
         const c = createCtx(q, tex, art, I, rar.hex, rar.accentHex, layers, { ...extra, photo });
         const out = def.build(c);
         const front = new MeshBasicNodeMaterial();
-        front.colorNode = vec4(out.color, 1);
+        const gain = uniform(def.gainless ? 1 : params.gain);
+        if (!def.gainless) gains.push(gain);
+        front.colorNode = vec4(c.L.color.add(out.color.sub(c.L.color).mul(gain)), 1);
         if (def.transparentFront) front.transparent = true; // dessinée après les opaques : la copie du fond les contient
         const glowOn = params.bloom && q !== 'low' && (def.bloom ?? 0) > 0;
-        if (out.emissive && glowOn) (front as unknown as { emissiveNode: N }).emissiveNode = out.emissive;
+        if (out.emissive && glowOn) (front as unknown as { emissiveNode: N }).emissiveNode = out.emissive.mul(gain.min(1.3));
         // matériaux du contrôle de lisibilité : carte sans effet, masque du sujet
         const base = new MeshBasicNodeMaterial();
         // le masque du sujet voyage dans l'alpha de la carte témoin (NoBlending : l'alpha n'est pas forcé à 1) —
@@ -181,6 +191,8 @@ export default function create(): Experiment {
       renderHud();
     } finally {
       building = false;
+      builtAt = performance.now() / 1000;
+      frames.length = 0;
       if (rebuildQueued) {
         rebuildQueued = false;
         void build();
@@ -228,7 +240,9 @@ export default function create(): Experiment {
     const one = params.vue === 'planche'
       ? `<div class="fx-why">Planche : les 5 effets du palier, de gauche à droite.</div>`
       : `<div class="fx-name">#${d.num} · ${d.name}</div><div class="fx-why">${d.idea}</div><div class="fx-row"><b>Technique</b> ${d.tech}</div><div class="fx-row"><b>Coût</b> ${d.cost}</div><div class="fx-row"><b>Réduit</b> ${d.reduced}</div><div class="fx-row"><b>Lisibilité</b> ${d.readable}</div>`;
-    hud.innerHTML = `<div class="fx-tier">${TIER_LABEL[ctx.rarity as RarityId]} — ${list}</div>${one}<div class="fx-perf" data-perf></div><div class="fx-q">${LADDER[q].label}${params.qualité === 'auto' ? ' (auto)' : ''}${fxReduced() ? ' · effets réduits' : ''} · ${ctx.isWebGPU ? 'WebGPU' : 'WebGL2'}</div><div class="fx-check" data-check></div>`;
+    const Lq = LADDER[q];
+    const why = params.qualité === 'auto' ? (fxReduced() ? ' · ⚠ « effets réduits » activé dans les réglages du jeu → Low' : autoWhy ? ` · ${autoWhy}` : ' (auto)') : ' (forcé)';
+    hud.innerHTML = `<div class="fx-tier">${TIER_LABEL[ctx.rarity as RarityId]} — ${list}</div>${one}<div class="fx-perf" data-perf></div><div class="fx-q">${Lq.label}${why} · rendu ×${Lq.scale} · art ×${Lq.art} · DPR ×${ctx.renderer.getPixelRatio().toFixed(2)} · gain ×${params.gain} · ${ctx.isWebGPU ? 'WebGPU' : 'WebGL2'}</div><div class="fx-check" data-check></div>`;
   }
 
   function perfLine() {
@@ -416,6 +430,7 @@ export default function create(): Experiment {
       c.gui.add(params, 'carte', 0, 12, 1).name('autre carte du palier').onChange(() => void build());
       c.gui.add(demo, 'on').name('démo rotation (auto)');
       c.gui.add(params, 'vitrine').name('mode vitrine (œil hors-axe)').onChange(() => fit());
+      c.gui.add(params, 'gain', 0.25, 4, 0.05).name('gain des effets').onChange((v: number) => gains.forEach((g) => (g.value = v)));
       c.gui.add({ check: () => void readabilityCheck() }, 'check').name('contrôle de lisibilité (ΔE)');
       c.gui.add({ all: () => console.table(EFFECTS.map((e) => ({ n: e.num, palier: e.tier, effet: e.name, coût: e.cost }))) }, 'all').name('liste des 35 (console)');
       await build();
@@ -423,7 +438,8 @@ export default function create(): Experiment {
     },
     update(dt, t) {
       frameNo++;
-      frames.push(dt * 1000);
+      // mesure : après l'échauffement de la construction, sans les pauses (onglet caché, compilation tardive)
+      if (performance.now() / 1000 - builtAt > 1.5 && dt < 0.1) frames.push(dt * 1000);
       if (frames.length > 180) frames.shift();
       // ── orientation RÉELLE de la carte (souris, gyroscope, glisser-tourner, balancement, démo) → langage de rotation
       const maxT = immersive ? 0.18 : 0.32;
@@ -511,17 +527,19 @@ export default function create(): Experiment {
           if (typeof v === 'number' && v > 0) gpuMs = v;
         }).catch(() => undefined);
       if (frameNo % 20 === 0) perfLine();
-      // mode auto : p95 au-dessus du budget pendant 3 s → un niveau plus bas
+      // mode auto : p90 des images STABLES au-dessus du budget pendant 3 s → un niveau plus bas (avant : les pics de
+      // compilation du démarrage restaient 3 s dans la fenêtre et faisaient tomber la qualité à tort → image floue)
       if (params.qualité === 'auto' && !building && frames.length >= 120 && autoQ !== 'low') {
         const s = [...frames].sort((a, b) => a - b);
-        const p95 = s[Math.floor(s.length * 0.95)];
-        if (p95 > BUDGET_MS) {
+        const p90 = s[Math.floor(s.length * 0.9)];
+        if (p90 > BUDGET_MS) {
           overSince ||= t;
           if (t - overSince > 3) {
             autoQ = autoQ === 'high' ? 'mid' : 'low';
+            autoWhy = `auto → ${autoQ} (p90 ${p90.toFixed(0)} ms > ${BUDGET_MS})`;
             overSince = 0;
             frames.length = 0;
-            console.info(`[fx] p95 ${p95.toFixed(1)} ms > ${BUDGET_MS} ms : qualité auto → ${autoQ}`);
+            console.info(`[fx] ${autoWhy}`);
             void build();
           }
         } else overSince = 0;

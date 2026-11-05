@@ -353,7 +353,7 @@ export const printGuard = (base: N): N => {
   return min(hi, max(float(0.5), float(1).sub(lo)));
 };
 /** « Quasi nul de face » (cyze) : l'effet n'existe presque qu'en inclinaison ou en mouvement ; `floor` = reste au repos. */
-export const alive = (c: FxCtx, floor = 0.3): N => mix(float(floor), float(1), smoothstep(float(0.04), float(0.5), length(c.I.tilt).add(c.I.energy.mul(0.4))));
+export const alive = (c: FxCtx, floor = 0.5): N => mix(float(floor), float(1), smoothstep(float(0.04), float(0.5), length(c.I.tilt).add(c.I.energy.mul(0.4))));
 /** Éclat « par cellule » : une facette (normale 2D propre) s'allume quand l'orientation (+ inertie) passe par son angle. */
 export const cellFlash = (c: FxCtx, nrm: N, sharp = 0.82, lagK = 0.8): N => {
   const o = c.I.tilt.add(c.I.lag.mul(lagK));

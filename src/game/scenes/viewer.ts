@@ -129,7 +129,7 @@ export function createViewerScene(): ViewerScene {
       if (my !== token) return;
       const rr = rarity(rarityId);
       // mobile : calques à la taille réelle de la carte à l'écran (×2), au lieu d'un 0,7 fixe
-      const scale = mobile ? mobileArtScale(ctx.width, ctx.height, 0.8, 0.95) : 1;
+      const scale = mobile ? mobileArtScale(ctx.width, ctx.height, 0.8, 1) : 1;
       let nextArt: CardArt;
       if (mobile) {
         // téléphone : calques peints en 4 étapes (plus de pic de 20–80 ms), puis envoyés au GPU AVANT le tour d'entrée

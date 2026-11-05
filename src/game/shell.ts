@@ -143,10 +143,15 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
    * tombait à ×1 → image très pixelisée).
    */
   let dpr = mobile ? Math.min(window.devicePixelRatio || 1, 2) : resolveDpr('auto', quality);
+  const maxDpr = dpr;
   const minDpr = mobile ? Math.min(dpr, 1.25) : Math.min(dpr, 1);
+  /** fenêtres consécutives bien en dessous du budget : la définition REMONTE (avant : une seule baisse — pendant
+   *  une ouverture chargée, par exemple — laissait tout le reste de la session flou) */
+  let fast = 0;
   const WINDOW_MS = mobile ? 2500 : 3000;
   const SLOW_MS = mobile ? 22 : 25;
   let perf = { acc: 0, frames: 0, slow: 0, capped: 0, last: performance.now() };
+  const FAST_MS = mobile ? 15 : 14;
   /**
    * Cadence de l'écran mesurée quand rien n'est rendu (chargement, pages DOM) : si le téléphone livre ~30 i/s même à
    * vide, c'est le système qui bride (économie d'énergie), pas la 3D.
@@ -325,11 +330,18 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         const throttled = mobile && osCapped30 && avg > 30 && avg < 36 && perf.capped > perf.frames * 0.8;
         perf.slow = avg > SLOW_MS && !throttled ? perf.slow + 1 : 0;
         perf.acc = perf.frames = perf.capped = 0;
+        fast = avg < FAST_MS && !throttled ? fast + 1 : 0;
         if (perf.slow >= 2 && dpr > minDpr + 0.01) {
           dpr = Math.max(minDpr, Math.round((dpr - 0.25) * 4) / 4);
           perf.slow = 0;
+          fast = 0;
           resize();
           console.info(`[jeu] appareil un peu juste (${Math.round(1000 / avg)} i/s) : définition 3D ramenée à ×${dpr}`);
+        } else if (fast >= 3 && dpr < maxDpr - 0.01) {
+          dpr = Math.min(maxDpr, Math.round((dpr + 0.25) * 4) / 4);
+          fast = 0;
+          resize();
+          console.info(`[jeu] ça respire (${Math.round(1000 / avg)} i/s) : définition 3D remontée à ×${dpr}`);
         }
       }
     }

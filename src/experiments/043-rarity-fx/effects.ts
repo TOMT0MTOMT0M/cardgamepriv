@@ -71,6 +71,8 @@ export interface FxDef {
   readable: string;
   /** intensité du bloom (0 = pas de bloom) */
   bloom?: number;
+  /** effet « de remplacement » (négatif, ombres, verre, pièce) : le gain global ne s'y applique pas */
+  gainless?: boolean;
   /** la face avant est translucide : dessinée après les opaques (le fond d'écran copié contient tout le reste) */
   transparentFront?: boolean;
   layers?: (q: Q, art: CardArt, I: Inputs, photo: boolean) => LayerOpts;
@@ -407,6 +409,7 @@ const RARE: FxDef[] = [
     reduced: 'décalage ×1,4, pas d’ombre',
     readable: 'le sujet n’est pas altéré, seulement déplacé',
     layers: (q, _art, I) => (q === 'low' ? { depth: 1.4 } : { depth: I.energy.mul(0.9).add(2.4), subjectShift: I.lag.mul(vec2(-0.018, 0.018)) }),
+    gainless: true,
     build(c) {
       if (isLow(c)) return { color: c.L.color };
       const off = c.I.light.sub(0.5).mul(-0.035).add(vec2(0.008, -0.012)).add(c.I.lag.mul(vec2(-0.018, 0.018)));
@@ -428,6 +431,7 @@ const EPIC: FxDef[] = [
     reduced: 'parallaxe ×1,5, une seule ombre',
     readable: 'aucune couleur ajoutée : seulement des ombres douces et du relief',
     layers: (q, _art, I) => ({ depth: q === 'low' ? 1.5 : I.energy.mul(0.8).add(2.2), subjectShift: q === 'low' ? undefined : I.lag.mul(vec2(-0.012, 0.012)) }),
+    gainless: true,
     build(c) {
       const ld = c.I.light.sub(0.5).mul(vec2(1, 0.8)).add(isLow(c) ? vec2(0, 0) : c.I.lag.mul(0.5));
       const off = ld.mul(-0.05).add(vec2(0.006, -0.01));
@@ -494,6 +498,7 @@ const EPIC: FxDef[] = [
         },
       };
     },
+    gainless: true,
     build(c) {
       if (isLow(c)) return { color: c.L.color };
       // relief éclairé de côté : gradient de la hauteur (mip flouté) dans la direction de l'inclinaison
@@ -729,6 +734,7 @@ const MYTHIC: FxDef[] = [
     reduced: 'bascule à un seuil fixe, sans front',
     readable: 'le sujet n’est jamais inversé ; c’est un événement d’angle, pas un état',
     bloom: 0.5,
+    gainless: true,
     build(c) {
       const m = length(c.I.tilt);
       const silver = vec3(0.86, 0.88, 0.92);
@@ -758,6 +764,7 @@ const MYTHIC: FxDef[] = [
     readable: 'le sujet est l’illustration intacte, simplement devant',
     bloom: 0.3,
     layers: () => ({ noSubject: true }),
+    gainless: true,
     build(c) {
       const ld = c.I.light.sub(0.5).mul(vec2(1, 0.8)).add(isLow(c) ? vec2(0, 0) : c.I.lag.mul(0.6));
       const off = ld.mul(-0.06).add(vec2(0.008, -0.014));
@@ -796,6 +803,7 @@ const MYTHIC: FxDef[] = [
     readable: 'le sujet et le texte sont opaques et intacts ; l’illustration reste imprimée à 15 % dans le plastique',
     bloom: 0.35,
     transparentFront: true,
+    gainless: true,
     build(c) {
       // SDF de la carte (rectangle arrondi) → normale du biseau
       const sdCard = (u: N) => {
@@ -1016,6 +1024,7 @@ const SECRET: FxDef[] = [
         },
       };
     },
+    gainless: true,
     build(c) {
       // un peu de la lumière du projecteur déborde sur le cadre, côté fenêtre
       const spill = smoothstep(float(0.06), float(0), windowSDF(c.uv)).mul(c.frame).mul(0.12);
