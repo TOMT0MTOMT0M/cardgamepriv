@@ -4,7 +4,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { fsr1 } from 'three/addons/tsl/display/FSR1Node.js';
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
-import { createStage, applyPose } from '../../core/stage';
+import { createStage } from '../../core/stage';
 import { ensureCardImages, ensureFonts, generateBackArt, generateCardArt, type CardArt } from '../../core/art';
 import { KCDQ_CARDS, cardForRarity, type CardData, type CardPalette } from '../../core/cardData';
 import { rarity, type RarityId } from '../../core/rarity';
@@ -14,7 +14,7 @@ import { createPipeline } from '../../core/post';
 import { fxReduced } from '../../core/fxPref';
 import type { N } from '../../core/tsl';
 import { createFxTextures, type FxTextures } from './textures';
-import { composeLayers, createCtx, createInputs, type Inputs, type Q } from './kit';
+import { RotationRig, composeLayers, createCtx, createInputs, type Inputs, type Q } from './kit';
 import { EFFECTS, TEXREF, TIER_LABEL, effectsOf, type FxDef, type FxEnv } from './effects';
 
 /** Heures du jour pour les vues lenticulaires (même carte, autre lumière). */
@@ -58,7 +58,7 @@ export default function create(): Experiment {
     qualité: (q0.get('q') as Q | 'auto' | null) ?? 'auto',
     vue: (q0.get('view') === 'planche' ? 'planche' : 'carte') as 'carte' | 'planche',
     upscale: 'bilinéaire' as 'bilinéaire' | 'FSR1',
-    bloom: true,
+    bloom: !q0.has('nobloom'),
     carte: Math.max(0, Number(q0.get('card') ?? 0) || 0),
   };
   let autoQ: Q = 'high';
@@ -72,6 +72,19 @@ export default function create(): Experiment {
   let lastTouch = -100;
   let holdTimer = 0;
   let immersive = false;
+  let rig: RotationRig;
+  const rot = new Vector2();
+  let lastFlick = -100;
+  let gyroAlpha: number | null = null;
+  let gyroAlphaBase: number | null = null;
+  /** démo : un parcours de rotation automatique (souris immobile, captures, présentation) */
+  const demo = { on: new URLSearchParams(location.search).has('demo') };
+  function demoPose(t: number) {
+    // balayage lent en 8 + un coup de poignet toutes les 5 s + petite torsion
+    const f = t % 5;
+    const fl = f < 0.32 ? Math.sin((f / 0.32) * Math.PI) * 1.25 : 0;
+    return { x: Math.sin(t * 0.9) * 0.85 + fl, y: Math.sin(t * 1.3) * 0.55 };
+  }
   let fxCtrl: { options(o: Record<string, number>): unknown } | null = null;
   const names = () => Object.fromEntries(tierDefs().map((d, i) => [`${i + 1}. ${d.name}`, i + 1]));
 
@@ -115,6 +128,7 @@ export default function create(): Experiment {
           I,
           art,
           photo,
+          now,
           bag: { add: <T extends { dispose(): void }>(o: T) => (built.push(o), o) },
           makeViews: (n) => Promise.all(Array.from({ length: n }, (_, i) => makeArt({ ...cd, palette: { ...cd.palette, ...TIMES[i % TIMES.length] } }, L.art * 0.85, true))),
         };
@@ -352,7 +366,19 @@ export default function create(): Experiment {
       c.canvas.addEventListener('pointerdown', onPointerDown);
       c.canvas.addEventListener('pointerup', onPointerUp);
       c.canvas.addEventListener('pointercancel', onPointerUp);
+      rig = new RotationRig(I);
+      // molette : torsion (rotation autour de la normale), qui revient d'elle-même
+      const onWheel = (e: WheelEvent) => rig.kick(-e.deltaY * 0.012);
+      // gyroscope : la torsion du téléphone (α) fait tourner la carte sur elle-même, recentrée lentement
+      const onOrient = (e: DeviceOrientationEvent) => {
+        if (e.alpha == null) return;
+        gyroAlpha = e.alpha;
+      };
+      c.canvas.addEventListener('wheel', onWheel, { passive: true });
+      window.addEventListener('deviceorientation', onOrient);
       c.bag.fn(() => {
+        c.canvas.removeEventListener('wheel', onWheel);
+        window.removeEventListener('deviceorientation', onOrient);
         c.canvas.removeEventListener('pointermove', onPointerMove);
         c.canvas.removeEventListener('pointerdown', onPointerDown);
         c.canvas.removeEventListener('pointerup', onPointerUp);
@@ -367,6 +393,7 @@ export default function create(): Experiment {
       c.gui.add(params, 'upscale', ['bilinéaire', 'FSR1']).name('agrandissement (rendu < 100 %)').onChange(() => void build());
       c.gui.add(params, 'bloom').name('bloom').onChange(() => void build());
       c.gui.add(params, 'carte', 0, 12, 1).name('autre carte du palier').onChange(() => void build());
+      c.gui.add(demo, 'on').name('démo rotation (auto)');
       c.gui.add({ check: () => void readabilityCheck() }, 'check').name('contrôle de lisibilité (ΔE)');
       c.gui.add({ all: () => console.table(EFFECTS.map((e) => ({ n: e.num, palier: e.tier, effet: e.name, coût: e.cost }))) }, 'all').name('liste des 35 (console)');
       await build();
@@ -376,20 +403,48 @@ export default function create(): Experiment {
       frameNo++;
       frames.push(dt * 1000);
       if (frames.length > 180) frames.shift();
+      // ── orientation RÉELLE de la carte (souris, gyroscope, glisser-tourner, balancement, démo) → langage de rotation
+      const maxT = immersive ? 0.18 : 0.32;
+      const pose = ctx.input.pose(maxT);
+      let rx = pose.x, ry = pose.y;
+      if (demo.on) {
+        const d = demoPose(t);
+        rx = -d.y * maxT;
+        ry = d.x * maxT;
+      } else if (!ctx.input.inside && !ctx.input.gyroEnabled) ry += Math.sin(t * 0.6) * (immersive ? 0.1 : 0.22);
+      rot.set(ry / maxT, -rx / maxT);
+      if (ctx.input.gyroEnabled && gyroAlpha != null) {
+        gyroAlphaBase ??= gyroAlpha;
+        let d = gyroAlpha - gyroAlphaBase;
+        d = ((d + 540) % 360) - 180;
+        gyroAlphaBase += d * (1 - Math.exp(-0.4 * dt)); // recentrage lent, comme l'inclinaison
+        rig.gyroTwist = Math.max(-0.5, Math.min(0.5, (d * Math.PI) / 180));
+      } else rig.gyroTwist = demo.on ? Math.sin(t * 0.5) * 0.12 : 0;
+      rig.update(dt, rot, now());
+      // penche dans le virage (la carte « tient » en main) + torsion
+      const lean = Math.max(-0.09, Math.min(0.09, -I.vel.value.x * 0.02)) * (immersive ? 0.4 : 1) + I.twist.value * 0.35;
       // inclinaison et lumière virtuelle
-      I.tilt.value.set(ctx.input.tiltX, ctx.input.tiltY);
-      const lx = pointerUV && ctx.input.inside ? pointerUV.x : 0.5 + ctx.input.tiltX * 0.45;
-      const ly = pointerUV && ctx.input.inside ? pointerUV.y : 0.55 + ctx.input.tiltY * 0.4;
+      const lx = pointerUV && ctx.input.inside ? pointerUV.x : 0.5 + I.tilt.value.x * 0.45;
+      const ly = pointerUV && ctx.input.inside ? pointerUV.y : 0.55 + I.tilt.value.y * 0.4;
       I.light.value.lerp(new Vector2(lx, ly), Math.min(1, dt * 8));
       // foil réactif : une onde automatique quand personne ne touche (labo)
+      // foil réactif : un coup de poignet lance une onde depuis le bord qui « mène »
+      if (I.flick.value !== lastFlick) {
+        lastFlick = I.flick.value;
+        if (cards.some((c) => c.def.num === 35)) {
+          for (let i = I.touches.length - 1; i > 0; i--) I.touches[i].value.copy(I.touches[i - 1].value);
+          const d = I.flickDir.value;
+          I.touches[0].value.set(0.5 + d.x * 0.42, 0.5 + d.y * 0.42, now(), 1);
+          lastTouch = now();
+        }
+      }
       if (cards.some((c) => c.def.num === 35) && now() - lastTouch > 4) {
         lastTouch = now();
         const tp = I.touches[0];
         tp.value.set(0.25 + Math.random() * 0.5, 0.3 + Math.random() * 0.45, now(), 0.8);
       }
       for (const c of cards) {
-        applyPose(c.mesh, ctx, immersive ? 0.18 : 0.32);
-        if (!ctx.input.inside && !ctx.input.gyroEnabled) c.mesh.rotation.y += Math.sin(t * 0.6) * (immersive ? 0.12 : 0.3);
+        c.mesh.rotation.set(rx, ry, lean);
         c.mesh.traverse((o) => (o.userData.update as ((t: number) => void) | undefined)?.(t));
       }
       post.render();

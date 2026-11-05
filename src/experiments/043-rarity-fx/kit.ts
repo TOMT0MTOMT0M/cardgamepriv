@@ -8,12 +8,14 @@ import {
   floor,
   fract,
   hash,
+  length,
   luminance,
   max,
   min,
   mix,
   pow,
   smoothstep,
+  step,
   texture,
   time,
   uniform,
@@ -46,9 +48,95 @@ export function createInputs() {
     touches: [0, 1, 2, 3].map(() => uniform(new Vector4(0.5, 0.5, -100, 0))),
     /** 0..1 : mode « carte vivante » (appui long) */
     immersive: uniform(0),
+    // ── rotation (cf. RotationRig) : tout ce qui suit vient de l'orientation RÉELLE de la carte —
+    //    souris, gyroscope, glisser-tourner et balancement au repos donnent le même langage
+    /** vitesse angulaire lissée (unités d'inclinaison / s) */
+    vel: uniform(new Vector2()),
+    /** énergie du mouvement 0..1 (montée rapide, retombée lente) */
+    energy: uniform(0),
+    /** inertie : écart d'un ressort sous-amorti qui suit l'orientation (déborde puis se pose) — liquides, rideaux */
+    lag: uniform(new Vector2()),
+    /** chemin de rotation cumulé (ne fait qu'augmenter) : les motifs avancent quand on tourne, s'arrêtent sinon */
+    phase: uniform(0),
+    /** torsion (rad) : rotation autour de la normale (gyroscope α, molette à la souris) */
+    twist: uniform(0),
+    /** instant (horloge `time`) du dernier « coup de poignet » (rotation brusque) */
+    flick: uniform(-100),
+    /** direction du coup de poignet (unitaire) */
+    flickDir: uniform(new Vector2(1, 0)),
+    /** 0..1 : la neige « s'efface » quand on bouge, se reforme au repos (givre) */
+    wipe: uniform(0),
   };
 }
 export type Inputs = ReturnType<typeof createInputs>;
+
+/**
+ * Tout le « langage de rotation » de l'expérience, côté CPU (quelques opérations par image, aucune lecture GPU).
+ * On lui donne l'orientation effective de la carte (en unités d'inclinaison : 1 = inclinaison maximale) et il en déduit
+ * vitesse, énergie, inertie, chemin parcouru et coups de poignet.
+ */
+export class RotationRig {
+  private prev = new Vector2();
+  private first = true;
+  private lagP = new Vector2();
+  private lagV = new Vector2();
+  private flickArmed = true;
+  private twistV = 0;
+  /** torsion à la souris (molette) — revient d'elle-même (ressort) */
+  private twistKick = 0;
+  /** torsion gyroscope (rad), mise à jour par l'expérience */
+  gyroTwist = 0;
+  constructor(private I: Inputs) {}
+  /** coup de molette / geste de torsion (rad/s ajoutés) */
+  kick(v: number) {
+    this.twistV += v;
+  }
+
+  update(dt: number, rot: Vector2, now: number) {
+    const I = this.I;
+    dt = Math.max(1 / 240, Math.min(dt, 0.1));
+    if (this.first) {
+      this.prev.copy(rot);
+      this.lagP.copy(rot);
+      this.first = false;
+    }
+    I.tilt.value.set(Math.max(-1.6, Math.min(1.6, rot.x)), Math.max(-1.6, Math.min(1.6, rot.y)));
+    // vitesse (lissée sur ~50 ms)
+    const vx = (rot.x - this.prev.x) / dt, vy = (rot.y - this.prev.y) / dt;
+    this.prev.copy(rot);
+    const kv = 1 - Math.exp(-dt / 0.05);
+    I.vel.value.x += (vx - I.vel.value.x) * kv;
+    I.vel.value.y += (vy - I.vel.value.y) * kv;
+    const sp = I.vel.value.length();
+    // énergie : attaque ~60 ms, retombée ~0,7 s
+    const target = Math.min(1, sp / 4.5);
+    const ke = 1 - Math.exp(-dt / (target > I.energy.value ? 0.06 : 0.7));
+    I.energy.value += (target - I.energy.value) * ke;
+    // chemin cumulé
+    I.phase.value += Math.min(sp, 12) * dt;
+    // inertie : ressort sous-amorti (≈ 2,2 Hz, amortissement 0,35)
+    const w = 2 * Math.PI * 2.2, z = 0.35;
+    const ax = (rot.x - this.lagP.x) * w * w - this.lagV.x * 2 * z * w;
+    const ay = (rot.y - this.lagP.y) * w * w - this.lagV.y * 2 * z * w;
+    this.lagV.x += ax * dt;
+    this.lagV.y += ay * dt;
+    this.lagP.x += this.lagV.x * dt;
+    this.lagP.y += this.lagV.y * dt;
+    I.lag.value.set(Math.max(-1, Math.min(1, this.lagP.x - rot.x)), Math.max(-1, Math.min(1, this.lagP.y - rot.y)));
+    // coup de poignet : la vitesse franchit un seuil (réarmé quand on ralentit)
+    if (this.flickArmed && sp > 5.5) {
+      this.flickArmed = false;
+      I.flick.value = now;
+      I.flickDir.value.set(I.vel.value.x / sp, I.vel.value.y / sp);
+    } else if (sp < 2) this.flickArmed = true;
+    // givre : bouger efface, l'immobilité reforme (≈ 3 s)
+    I.wipe.value = Math.max(0, Math.min(1, I.wipe.value + (Math.min(sp, 6) * 0.35 - 0.33) * dt));
+    // torsion : gyroscope + impulsion molette qui revient (ressort)
+    this.twistV += (-this.twistKick * 40 - this.twistV * 9) * dt;
+    this.twistKick += this.twistV * dt;
+    I.twist.value = this.gyroTwist + this.twistKick;
+  }
+}
 
 /** Calques de la carte, avec parallaxe réelle et possibilité de déformer l'échantillonnage du fond. */
 export interface Layers {
@@ -70,6 +158,8 @@ export interface LayerOpts {
   warpBg?: (uvBg: N) => N;
   /** remplace la couleur du fond (cosmos…) */
   bgColor?: (rgb: N, uvBg: N) => N;
+  /** décalage d'UV du SUJET seul (inertie « gelée » : le personnage traîne derrière la rotation) */
+  subjectShift?: N;
 }
 
 export function composeLayers(art: CardArt, o: LayerOpts = {}): Layers {
@@ -80,7 +170,8 @@ export function composeLayers(art: CardArt, o: LayerOpts = {}): Layers {
   let bgUV = uvAt(DEFAULT_DEPTHS.bg);
   if (o.warpBg) bgUV = o.warpBg(bgUV);
   const bg = texture(art.bg, bgUV);
-  const sj = texture(art.subject, uvAt(DEFAULT_DEPTHS.subject));
+  const sjUV = o.subjectShift ? uvAt(DEFAULT_DEPTHS.subject).add(o.subjectShift) : uvAt(DEFAULT_DEPTHS.subject);
+  const sj = texture(art.subject, sjUV);
   const fg = texture(art.fg, uvAt(DEFAULT_DEPTHS.fg));
   const fr = texture(art.frame, uv());
   const masks = texture(art.masks, uv());
@@ -197,20 +288,22 @@ export function glare(c: FxCtx, radius: number, at?: N): N {
  * Paillettes : une étoile analytique par cellule (|x|^p + |y|^p, p < 1 : 4 branches — astuce rn.log), allumée quand
  * l'inclinaison passe par l'orientation propre de la paillette (comme une vraie facette) plutôt qu'au hasard du temps.
  */
-export function sparkle(c: FxCtx, scale: number, density: number, size = 0.32, seed = 0, twinkle = true): N {
+export function sparkle(c: FxCtx, scale: number, density: number | N, size = 0.32, seed = 0, twinkle = true): N {
   const g = c.uv.mul(vec2(scale * CARD.w, scale * CARD.h));
   const cell: N = floor(g);
   const h1 = hash(cell.x.add(cell.y.mul(157.0)).add(seed * 13.7));
   const h2 = hash(cell.x.mul(3.1).add(cell.y.mul(71.0)).add(seed * 5.3 + 1));
   const h3 = hash(cell.x.mul(7.7).add(cell.y.mul(13.0)).add(seed * 2.9 + 2));
-  const on = smoothstep(float(1 - density), float(1 - density * 0.6), h1);
+  const dn = float(density);
+  const on = smoothstep(float(1).sub(dn), float(1).sub(dn.mul(0.6)), h1);
   const p = fract(g).sub(vec2(h2, h3).mul(0.6).add(0.2));
   const q = abs(p).div(size);
   const star = clamp(float(1).sub(pow(q.x, 0.7).add(pow(q.y, 0.7))), 0, 1);
   if (!twinkle) return star.mul(on);
-  // facette : direction propre (h2, h3) — brille quand l'inclinaison s'en approche
+  // facette : direction propre (h2, h3) — brille quand l'orientation s'en approche ; l'inertie (lag) fait encore
+  // scintiller quelques instants après l'arrêt, comme une poudre qui se pose
   const facet = vec2(h2, h3).mul(2).sub(1);
-  const a = dot(c.I.tilt.mul(1.6).add(vec2(sin(time.mul(0.35).add(h1.mul(30))), cos(time.mul(0.3).add(h2.mul(30)))).mul(0.25)), facet.normalize());
+  const a = dot(c.I.tilt.mul(1.6).add(c.I.lag.mul(1.3)).add(vec2(sin(time.mul(0.35).add(h1.mul(30))), cos(time.mul(0.3).add(h2.mul(30)))).mul(0.25)), facet.normalize());
   const flash = smoothstep(float(0.55), float(0.95), a);
   return star.mul(on).mul(flash);
 }
@@ -227,11 +320,27 @@ export function hueRotate(rgb: N, a: N): N {
 }
 
 /** Relief éclairé à partir d'un masque de hauteur (2 lectures décalées vers la lumière) : gaufrage, gravure. */
-export function emboss(tex: Texture, uvN: N, dir: N, amount: number, channel: 'r' | 'g' | 'b' | 'a' = 'g', texel = 0.0022): N {
+export function emboss(tex: Texture, uvN: N, dir: N, amount: number | N, channel: 'r' | 'g' | 'b' | 'a' = 'g', texel: number | N = 0.0022): N {
   const a = texture(tex, uvN)[channel];
-  const b = texture(tex, uvN.add(dir.mul(texel)))[channel];
-  return a.sub(b).mul(amount);
+  const b = texture(tex, uvN.add(dir.mul(float(texel))))[channel];
+  return a.sub(b).mul(float(amount));
 }
+
+/** Direction unitaire sûre (vecteur nul → (1, 0)) et force 0..1 d'un vecteur d'inclinaison. */
+export const dirOf = (v: N): N => v.div(max(length(v), 0.0001));
+export const strength = (v: N, full = 1): N => clamp(length(v).div(full), 0, 1);
+/** Âge (s) du dernier coup de poignet. */
+export const flickAge = (c: FxCtx): N => time.sub(c.I.flick);
+/** Éclair bref après un coup de poignet (1 → 0 en `dur` s). */
+export const flickPulse = (c: FxCtx, dur = 0.5): N => {
+  const a = flickAge(c);
+  return step(float(0), a).mul(smoothstep(float(dur), float(0), a));
+};
+/** Rotation 2D d'un vecteur. */
+export const rot2 = (p: N, a: N | number): N => {
+  const ca = cos(a), sa = sin(a);
+  return vec2(p.x.mul(ca).sub(p.y.mul(sa)), p.x.mul(sa).add(p.y.mul(ca)));
+};
 
 export const sat = (rgb: N, k: number | N): N => mix(vec3(luminance(rgb)), rgb, k);
 
