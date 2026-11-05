@@ -31,7 +31,7 @@ import {
 } from 'three/tsl';
 import type { CardArt } from '../../core/art';
 import { CARD } from '../../core/cardModel';
-import { DEFAULT_DEPTHS, viewDirObject, windowSDF } from '../../core/cardMaterial';
+import { WINDOW_UV, viewDirObject, windowSDF } from '../../core/cardMaterial';
 import type { N } from '../../core/tsl';
 import type { FxTextures } from './textures';
 
@@ -141,6 +141,40 @@ export class RotationRig {
   }
 }
 
+/**
+ * GÉOMÉTRIE DU DESIGN RÉEL DE LA CARTE (celui du jeu, pas l'ancien gabarit du labo). Les effets ne raisonnent plus sur
+ * une « fenêtre » classique : ils connaissent la zone intérieure (liseré du full-art, double filet des Bébous, fenêtre du
+ * classique), le point focal du sujet (là où le gabarit cadre l'illustration) et la nature de la carte.
+ */
+export type DesignKind = 'full-art' | 'bebou' | 'classic';
+export interface CardGeo {
+  design: DesignKind;
+  /** zone intérieure en UV (centre, demi-tailles) et rayon d'angle en unités carte */
+  inner: { cx: number; cy: number; hx: number; hy: number; r: number };
+  /** point focal du sujet (UV, v vers le haut) */
+  focus: [number, number];
+}
+const PX = CARD.w / 768;
+export function cardGeo(design: DesignKind, artTo: [number, number] = [384, 470]): CardGeo {
+  const focus: [number, number] = [artTo[0] / 768, 1 - artTo[1] / 1072];
+  if (design === 'classic') return { design, inner: { cx: WINDOW_UV.cx, cy: WINDOW_UV.cy, hx: WINDOW_UV.hx, hy: WINDOW_UV.hy, r: WINDOW_UV.r }, focus };
+  // full-art : liseré roundRect(20, 20, W − 40, H − 40, 26) ; Bébou : filet extérieur roundRect(18, 18, …, 26)
+  const inset = design === 'bebou' ? 18 : 20;
+  return { design, inner: { cx: 0.5, cy: 0.5, hx: (384 - inset) / 768, hy: (536 - inset) / 1072, r: 26 * PX }, focus };
+}
+/** Distance signée (unités carte, < 0 dedans) au bord de la zone intérieure. */
+export function innerSDF(g: CardGeo, u: N): N {
+  const I = g.inner;
+  const p = u.sub(vec2(I.cx, I.cy)).mul(vec2(CARD.w, CARD.h));
+  const b = vec2(I.hx * CARD.w, I.hy * CARD.h);
+  const q = abs(p).sub(b).add(I.r);
+  return length(max(q, 0)).add(min(max(q.x, q.y), 0)).sub(I.r);
+}
+/** UV 0..1 sur la zone intérieure. */
+export const innerUV = (g: CardGeo, u: N): N => u.sub(vec2(g.inner.cx - g.inner.hx, g.inner.cy - g.inner.hy)).div(vec2(g.inner.hx * 2, g.inner.hy * 2));
+/** Profondeurs de parallaxe du JEU (core/holo.ts) — le labo utilisait des valeurs plus fortes. */
+export const GAME_DEPTHS = { bg: 0.03, subject: 0.014, fg: -0.003 };
+
 /** Calques de la carte, avec parallaxe réelle et possibilité de déformer l'échantillonnage du fond. */
 export interface Layers {
   color: N;
@@ -152,6 +186,7 @@ export interface Layers {
   fx: N;
   uvAt: (d: number | N) => N;
   bgUV: N;
+  sjUV: N;
 }
 
 export interface LayerOpts {
@@ -167,22 +202,24 @@ export interface LayerOpts {
   noSubject?: boolean;
 }
 
+/** Composition identique à celle du jeu (core/cardMaterial.cardLayers + profondeurs de core/holo.ts). */
 export function composeLayers(art: CardArt, o: LayerOpts = {}): Layers {
   const V = viewDirObject();
   const k = V.xy.div(max(V.z, 0.22)).mul(vec2(1 / CARD.w, 1 / CARD.h));
   const dm = o.depth ?? 1;
+  const D = GAME_DEPTHS;
   const uvAt = (d: number | N) => uv().sub(k.mul(float(d).mul(dm)));
-  let bgUV = uvAt(DEFAULT_DEPTHS.bg);
+  let bgUV = uvAt(D.bg);
   if (o.warpBg) bgUV = o.warpBg(bgUV);
   const bg = texture(art.bg, bgUV);
-  const sjUV = o.subjectShift ? uvAt(DEFAULT_DEPTHS.subject).add(o.subjectShift) : uvAt(DEFAULT_DEPTHS.subject);
+  const sjUV = o.subjectShift ? uvAt(D.subject).add(o.subjectShift) : uvAt(D.subject);
   const sj = texture(art.subject, sjUV);
-  const fg = texture(art.fg, uvAt(DEFAULT_DEPTHS.fg));
+  const fg = texture(art.fg, uvAt(D.fg));
   const fr = texture(art.frame, uv());
   const masks = texture(art.masks, uv());
-  const fx = texture(art.fx, uvAt(DEFAULT_DEPTHS.subject));
-  // ombre du bord de la fenêtre sur le fond
-  const sd = windowSDF(uvAt(DEFAULT_DEPTHS.bg * 0.6));
+  const fx = texture(art.fx, uvAt(D.subject));
+  // même ombre portée que le jeu (bord de la fenêtre du gabarit projeté sur le fond)
+  const sd = windowSDF(uvAt(D.bg * 0.6));
   const ao = mix(float(0.45), float(1), smoothstep(float(0.0), float(0.035), sd.negate()));
   let bgRGB: N = bg.rgb;
   if (o.bgColor) bgRGB = o.bgColor(bgRGB, bgUV);
@@ -190,16 +227,20 @@ export function composeLayers(art: CardArt, o: LayerOpts = {}): Layers {
   if (!o.noSubject) col = mix(col, sj.rgb.mul(mix(float(0.7), float(1), ao)), sj.a);
   col = mix(col, fg.rgb, fg.a);
   col = mix(col, fr.rgb, fr.a);
-  return { color: col, bg: vec4(bgRGB, 1), subject: sj, fg, frame: fr, masks, fx, uvAt, bgUV };
+  return { color: col, bg: vec4(bgRGB, 1), subject: sj, fg, frame: fr, masks, fx, uvAt, bgUV, sjUV };
 }
 
 /**
- * Contexte d'un effet : calques, MASQUES (convention du rapport, reconstruite depuis les calques de la carte) et outils.
- *  - `frame`  : cadre et texte (le cadre est la zone « libre » des petits paliers)
- *  - `fond`   : illustration HORS sujet (G du rapport) — c'est là que vivent les effets 3★–5★
- *  - `subj`   : sujet détouré (A du rapport) — PROTÉGÉ : on n'y touche presque pas avant 6★
- *  - `foil`, `relief`, `glow` : masques du gabarit (R foil, G relief, B émissif du cadre)
- *  - `edge`   : bande de bordure extérieure (code couleur des raretés)
+ * Contexte d'un effet. ZONES DE LA CARTE RÉELLE (full-art du jeu) :
+ *  - `ink`    : ce qui est imprimé par-dessus l'illustration — nom, univers, numéro, étoiles, liseré (clair, opaque)
+ *  - `veil`   : les voiles sombres de lisibilité (plaque du nom en bas, voile du haut)
+ *  - `liner`  : la ligne du liseré intérieur ; `margin` : la marge entre le liseré et le bord ; `inner` : dedans
+ *  - `stars`  : les étoiles de rareté (canal B des masques = index d'étoile) ; `starIdx` : leur numéro
+ *  - `subj`   : sujet détouré (protégé) ; `fond` : illustration HORS sujet, hors texte, atténuée sous les voiles
+ *  - `frame`  : tout le « décor » (marge, voiles, liseré, texte) — la zone libre des petits paliers ; `win` = 1 − frame
+ *  - `edge`   : bande de bordure extérieure ; `focus` : point focal du sujet
+ * Carte photo (Bébous, KCDQ) : pas de détourage → la photo est le sujet, ses OMBRES portent les effets.
+ * Gabarit classique (Marvel, Merveilles) : l'ancien découpage (cadre papier opaque + fenêtre).
  */
 export interface FxCtx {
   q: Q;
@@ -207,6 +248,7 @@ export interface FxCtx {
   art: CardArt;
   I: Inputs;
   L: Layers;
+  geo: CardGeo;
   uv: N;
   V: N;
   /** N·V (la face regarde +Z en espace objet) */
@@ -215,10 +257,20 @@ export interface FxCtx {
   frame: N;
   subj: N;
   fond: N;
+  ink: N;
+  veil: N;
+  liner: N;
+  margin: N;
+  inner: N;
+  /** distance signée au liseré (unités carte) */
+  innerD: N;
+  stars: N;
+  starIdx: N;
   foil: N;
   relief: N;
   glow: N;
   edge: N;
+  focus: N;
   /** teinte de la rareté, accent clair */
   tint: N;
   accent: N;
@@ -228,22 +280,40 @@ export interface FxCtx {
   extra: Record<string, unknown>;
 }
 
-export function createCtx(q: Q, tex: FxTextures, art: CardArt, I: Inputs, hex: string, accentHex: string, L: Layers, extra: Record<string, unknown> = {}): FxCtx {
+export function createCtx(q: Q, tex: FxTextures, art: CardArt, I: Inputs, hex: string, accentHex: string, L: Layers, geo: CardGeo, extra: Record<string, unknown> = {}): FxCtx {
   const V = viewDirObject();
-  const fr = L.frame.a;
-  const win = fr.oneMinus();
-  let subj: N, fond: N;
-  if (extra.photo) {
-    // photo pleine : aucun détourage → la photo entière est le sujet ; les effets ne vivent que dans ses ombres
-    // (clé de luminance) et restent légers ailleurs
-    const key = mix(float(0.15), float(0.55), smoothstep(float(0.32), float(0.04), luminance(L.color)));
-    fond = win.mul(key);
-    subj = win.sub(fond);
-  } else {
-    subj = L.subject.a.mul(win);
-    fond = win.mul(subj.oneMinus()).mul(L.fg.a.oneMinus());
-  }
   const u = uv();
+  const frA = L.frame.a;
+  const frL = luminance(L.frame.rgb);
+  const innerD = innerSDF(geo, u);
+  const liner = smoothstep(float(0.0055), float(0.0012), abs(innerD));
+  const margin = smoothstep(float(-0.0015), float(0.0015), innerD);
+  const inner = margin.oneMinus();
+  const starIdx = floor(L.masks.b.mul(255 / 32).add(0.5));
+  const stars = step(float(0.06), L.masks.b).mul(frA);
+  let ink: N, veil: N, frame: N, subj: N, fond: N;
+  if (geo.design === 'classic') {
+    // ancien découpage : cadre papier opaque + fenêtre ; l'encre = texte sombre sur le papier
+    ink = frA.mul(smoothstep(float(0.72), float(0.4), frL));
+    veil = float(0);
+    frame = frA;
+    subj = L.subject.a.mul(frA.oneMinus());
+    fond = frA.oneMinus().mul(subj.oneMinus()).mul(L.fg.a.oneMinus());
+  } else {
+    ink = frA.mul(smoothstep(float(0.35), float(0.7), frL));
+    veil = frA.mul(ink.oneMinus());
+    frame = clamp(margin.mul(0.85).add(veil).add(liner).add(ink.mul(0.6)), 0, 1);
+    if (extra.photo) {
+      // photo : pas de détourage → la photo est le sujet ; les effets vivent dans ses ombres (clé de luminance)
+      const key = mix(float(0.15), float(0.55), smoothstep(float(0.32), float(0.04), luminance(L.color)));
+      const art0 = inner.mul(ink.oneMinus());
+      fond = art0.mul(key).mul(veil.mul(0.6).oneMinus());
+      subj = art0.sub(fond).max(0);
+    } else {
+      subj = L.subject.a.mul(ink.oneMinus());
+      fond = subj.oneMinus().mul(L.fg.a.oneMinus()).mul(ink.oneMinus()).mul(veil.mul(0.65).oneMinus()).mul(margin.mul(0.6).oneMinus());
+    }
+  }
   const dx = min(u.x, u.x.oneMinus()).mul(CARD.w);
   const dy = min(u.y, u.y.oneMinus()).mul(CARD.h);
   const edge = smoothstep(float(0.022), float(0.012), min(dx, dy));
@@ -253,22 +323,55 @@ export function createCtx(q: Q, tex: FxTextures, art: CardArt, I: Inputs, hex: s
     art,
     I,
     L,
+    geo,
     uv: u,
     V,
     ndv: V.z,
-    win,
-    frame: fr,
+    win: frame.oneMinus(),
+    frame,
     subj,
     fond,
+    ink,
+    veil,
+    liner,
+    margin,
+    inner,
+    innerD,
+    stars,
+    starIdx,
     foil: L.masks.r,
     relief: L.masks.g,
     glow: L.masks.b,
     edge,
+    focus: vec2(geo.focus[0], geo.focus[1]),
     tint: color(new Color(hex)),
     accent: color(new Color(accentHex)),
     photo: !!extra.photo,
     extra,
   };
+}
+
+/**
+ * CONTOUR DU SUJET (ou, sur une photo, des formes de la photo) : gradient de l'alpha du sujet lu dans un mip flouté
+ * (3 lectures). `n` = normale sortante de la silhouette, `band` = bande autour du contour (0..1), `inside` = côté
+ * intérieur. Sur photo : gradient de la luminance (les bords des formes : visage, épaules, horizon).
+ */
+export function contour(c: FxCtx, lvl = 2, px = 0.006) {
+  const e = vec2(px, px * (CARD.w / CARD.h));
+  if (c.photo) {
+    const l0 = luminance(texture(c.art.bg, c.L.bgUV).level(float(lvl)).rgb);
+    const lx = luminance(texture(c.art.bg, c.L.bgUV.add(vec2(e.x, 0))).level(float(lvl)).rgb);
+    const ly = luminance(texture(c.art.bg, c.L.bgUV.add(vec2(0, e.y))).level(float(lvl)).rgb);
+    const g = vec2(lx.sub(l0), ly.sub(l0)).div(px);
+    const mag = clamp(length(g).mul(0.35), 0, 1);
+    return { n: dirOf(g.negate().add(vec2(0.00001, 0))), band: smoothstep(float(0.12), float(0.6), mag).mul(c.inner), inside: float(0.5), a: l0 };
+  }
+  const a0 = texture(c.art.subject, c.L.sjUV).level(float(lvl)).a;
+  const ax = texture(c.art.subject, c.L.sjUV.add(vec2(e.x, 0))).level(float(lvl)).a;
+  const ay = texture(c.art.subject, c.L.sjUV.add(vec2(0, e.y))).level(float(lvl)).a;
+  const g = vec2(ax.sub(a0), ay.sub(a0));
+  const band = clamp(a0.mul(a0.oneMinus()).mul(4), 0, 1).mul(c.ink.oneMinus());
+  return { n: dirOf(g.negate().add(vec2(0.00001, 0))), band, inside: c.L.subject.a, a: a0 };
 }
 
 // ───────────────────────────────────────────── outils TSL (peu d'instructions, aucun bruit procédural lourd)

@@ -5,8 +5,8 @@ import { fsr1 } from 'three/addons/tsl/display/FSR1Node.js';
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
-import { ensureCardImages, ensureFonts, generateBackArt, generateCardArt, type CardArt } from '../../core/art';
-import { KCDQ_CARDS, cardForRarity, type CardData, type CardPalette } from '../../core/cardData';
+import { DESIGN_BY_ID, ensureCardImages, ensureFonts, generateBackArt, generateCardArt, type CardArt } from '../../core/art';
+import { KCDQ_CARDS, cardForRarity, isSecretPhotoSet, type CardData, type CardPalette } from '../../core/cardData';
 import { rarity, type RarityId } from '../../core/rarity';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import { CARD, createCardMesh } from '../../core/cardModel';
@@ -14,7 +14,7 @@ import { createPipeline } from '../../core/post';
 import { fxReduced } from '../../core/fxPref';
 import type { N } from '../../core/tsl';
 import { createFxTextures, type FxTextures } from './textures';
-import { CardBackdropNode, RotationRig, composeLayers, createCtx, createInputs, type Inputs, type Q } from './kit';
+import { CardBackdropNode, RotationRig, cardGeo, composeLayers, createCtx, createInputs, type CardGeo, type DesignKind, type Inputs, type Q } from './kit';
 import { EFFECTS, TEXREF, TIER_LABEL, effectsOf, type FxDef, type FxEnv } from './effects';
 
 /** Heures du jour pour les vues lenticulaires (même carte, autre lumière). */
@@ -104,9 +104,21 @@ export default function create(): Experiment {
   const quality = (): Q => (params.qualité === 'auto' ? (fxReduced() ? 'low' : autoQ) : params.qualité);
   const tierDefs = () => effectsOf(ctx.rarity as RarityId);
 
+  /**
+   * Design de la carte : CELUI DU JEU (game/scenes/cardFace.ts) — full-art, sauf Marvel (classique) et photos des
+   * amis (gabarit Bébou). `?design=<id>` force un autre gabarit pour comparer (classic, cartouche…).
+   */
+  function designFor(cd: CardData): { id: string | undefined; kind: DesignKind; geo: CardGeo } {
+    const forced = q0.get('design');
+    const id = forced ?? (cd.id.startsWith('mrv-') ? 'classic' : isSecretPhotoSet(cd.set) ? undefined : 'full-art');
+    const dz = id ? DESIGN_BY_ID[id] : DESIGN_BY_ID.bebou;
+    const kind: DesignKind = id === 'classic' ? 'classic' : id === undefined || id === 'bebou' ? 'bebou' : 'full-art';
+    return { id, kind, geo: cardGeo(kind, (dz?.art.to as [number, number] | undefined) ?? [384, 470]) };
+  }
   async function makeArt(cd: CardData, scale: number, flat = false) {
     await ensureCardImages([cd]);
-    return ctx.bag.add(generateCardArt(cd, ctx.rarity, { scale, ...(flat ? { flatOnly: true } : {}) }));
+    const d = designFor(cd);
+    return ctx.bag.add(generateCardArt(cd, ctx.rarity, { scale, ...(d.id ? { design: d.id } : {}), ...(flat ? { flatOnly: true } : {}) }));
   }
 
   /** Construit (ou reconstruit) les cartes de la vue courante. */
@@ -136,6 +148,7 @@ export default function create(): Experiment {
       built.push(backMat, edgeMat);
       const defs = params.vue === 'planche' ? tierDefs() : [tierDefs()[params.effet - 1]];
       const art = await makeArt(cd, L.art);
+      const geo = designFor(cd).geo;
       for (const [k, def] of defs.entries()) {
         const env: FxEnv = {
           q,
@@ -143,6 +156,7 @@ export default function create(): Experiment {
           I,
           art,
           photo,
+          geo,
           now,
           bag: { add: <T extends { dispose(): void }>(o: T) => (built.push(o), o) },
           makeViews: (n) => Promise.all(Array.from({ length: n }, (_, i) => makeArt({ ...cd, palette: { ...cd.palette, ...TIMES[i % TIMES.length] } }, L.art * 0.85, true))),
@@ -155,8 +169,8 @@ export default function create(): Experiment {
           backdrops.push(node);
           return node;
         };
-        const layers = composeLayers(art, def.layers ? def.layers(q, art, I, photo) : {});
-        const c = createCtx(q, tex, art, I, rar.hex, rar.accentHex, layers, { ...extra, photo });
+        const layers = composeLayers(art, def.layers ? def.layers(q, art, I, photo, geo) : {});
+        const c = createCtx(q, tex, art, I, rar.hex, rar.accentHex, layers, geo, { ...extra, photo });
         const out = def.build(c);
         const front = new MeshBasicNodeMaterial();
         const gain = uniform(def.gainless ? 1 : params.gain);
@@ -170,7 +184,7 @@ export default function create(): Experiment {
         // le masque du sujet voyage dans l'alpha de la carte témoin (NoBlending : l'alpha n'est pas forcé à 1) —
         // une 3ᵉ relecture par inclinaison ne revenait jamais en WebGL2
         base.blending = NoBlending;
-        base.colorNode = vec4(composeLayers(art, def.layers ? def.layers(q, art, I, photo) : {}).color, c.subj);
+        base.colorNode = vec4(composeLayers(art, def.layers ? def.layers(q, art, I, photo, geo) : {}).color, c.subj);
         built.push(front, base);
         const mesh = createCardMesh(front, backMat, edgeMat);
         for (const b of backdrops) {
@@ -239,7 +253,7 @@ export default function create(): Experiment {
     const list = defs.map((e, i) => `<span class="fx-i${i + 1 === params.effet ? ' on' : ''}">${i + 1}. ${e.name}</span>`).join('');
     const one = params.vue === 'planche'
       ? `<div class="fx-why">Planche : les 5 effets du palier, de gauche à droite.</div>`
-      : `<div class="fx-name">#${d.num} · ${d.name}</div><div class="fx-why">${d.idea}</div><div class="fx-row"><b>Technique</b> ${d.tech}</div><div class="fx-row"><b>Coût</b> ${d.cost}</div><div class="fx-row"><b>Réduit</b> ${d.reduced}</div><div class="fx-row"><b>Lisibilité</b> ${d.readable}</div>`;
+      : `<div class="fx-name">#${d.num} · ${d.name}</div><div class="fx-why">${d.idea}</div><div class="fx-row"><b>Inspiration</b> ${d.inspi}</div><div class="fx-row"><b>Technique</b> ${d.tech}</div><div class="fx-row"><b>Coût</b> ${d.cost}</div><div class="fx-row"><b>Réduit</b> ${d.reduced}</div><div class="fx-row"><b>Lisibilité</b> ${d.readable}</div>`;
     const Lq = LADDER[q];
     const why = params.qualité === 'auto' ? (fxReduced() ? ' · ⚠ « effets réduits » activé dans les réglages du jeu → Low' : autoWhy ? ` · ${autoWhy}` : ' (auto)') : ' (forcé)';
     hud.innerHTML = `<div class="fx-tier">${TIER_LABEL[ctx.rarity as RarityId]} — ${list}</div>${one}<div class="fx-perf" data-perf></div><div class="fx-q">${Lq.label}${why} · rendu ×${Lq.scale} · art ×${Lq.art} · DPR ×${ctx.renderer.getPixelRatio().toFixed(2)} · gain ×${params.gain} · ${ctx.isWebGPU ? 'WebGPU' : 'WebGL2'}</div><div class="fx-check" data-check></div>`;
