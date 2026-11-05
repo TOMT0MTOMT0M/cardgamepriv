@@ -19,6 +19,9 @@ import {
   calendarReward,
   claimableAchievements,
   claimableCompletions,
+  PACK_PRICE,
+  packBuyProblem,
+  packBuysLeft,
   type StakeItem,
 } from '../src/core/economy';
 import { claimWeekly as claimWeeklyState, cleanWeekly, currentWeekly, nextWeekReset, type WeeklyState } from '../src/core/weekly';
@@ -66,7 +69,27 @@ export const state = query({
       completions: claimableCompletions(owned, econ.completions).map((s) => ({ id: s.id, label: s.label, kind: s.kind, size: s.cards.length, reward: s.reward })),
       achievements: { stats, claimable: claimableAchievements(stats, econ.achievements).map((a) => a.id) },
       isAdmin: !!u.isAdmin,
+      packShop: { price: PACK_PRICE, left: packBuysLeft(econ, missionDay(now)) },
     };
+  },
+});
+
+/** Achat de boosters avec des pièces (retours 05/11) : ils rejoignent la réserve, plafond quotidien. */
+export const buyPacks = mutation({
+  args: { sessionToken: v.string(), count: v.number() },
+  handler: async (ctx, { sessionToken, count }) => {
+    const u = await requireUser(ctx, sessionToken);
+    const now = Date.now();
+    const today = missionDay(now);
+    const econ = econOf(u);
+    const problem = packBuyProblem(count, coinsOf(u), econ, today);
+    if (problem) throw new ConvexError(problem);
+    const bought = (econ.shopDay === today ? econ.shopBought ?? 0 : 0) + count;
+    await addCoins(ctx, u._id, -count * PACK_PRICE, 'shop', `Achat de ${count} booster${count > 1 ? 's' : ''}`, { econ: { shopDay: today, shopBought: bought } });
+    const fresh = (await ctx.db.get(u._id))!;
+    const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now);
+    await ctx.db.patch(u._id, { packBalance: regen.balance + count, packRegenAt: regen.regenAt });
+    return { packs: regen.balance + count, left: packBuysLeft({ ...econ, shopDay: today, shopBought: bought }, today) };
   },
 });
 

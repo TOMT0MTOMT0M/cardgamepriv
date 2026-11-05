@@ -205,6 +205,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   }
 
   // ═════════════════════════════ 1v1 Pack Battle
+  /** « Remiser un booster » : la mise et l'adversaire du duel qui vient de finir, repris par le lobby */
+  let rematch: { opp?: string; packs: PackChoice[] } | null = null;
   function duelLobby() {
     body.innerHTML = `<div class="gm-cols"><div class="gm-panel gm-create"></div><div class="gm-panel"><div class="gm-ph"><b>Duels ouverts</b></div><div class="gm-list"></div></div></div>
       <div class="gm-rules muted">Le créateur choisit N boosters (+ un pot annexe facultatif) ; l'adversaire mise le même nombre de boosters (sortes libres) et un pot annexe de même valeur à ±5 %. Les deux valident → verrouillage ferme, ouverture côte à côte. Plus haut total d'étoiles → toutes les cartes tirées des deux côtés + les pots annexes. Égalité parfaite → chacun récupère tout.</div>`;
@@ -214,10 +216,13 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     cr.innerHTML = `<div class="gm-ph"><b>Créer un duel</b></div>`;
     cr.append(edHost);
     const risk = h('div', 'gm-risk');
-    const st = stakeEditor(edHost, { packs: [{ kind: 'bebou' }], stake: { coins: 0, cards: [] } }, { title: 'Ta mise', onChange: () => (risk.innerHTML = riskLine(st)) });
+    // « Remiser un booster » (fin d'un duel) : même nombre de boosters, même adversaire
+    const again = rematch;
+    rematch = null;
+    const st = stakeEditor(edHost, { packs: again?.packs.length ? again.packs : [{ kind: 'bebou' }], stake: { coins: 0, cards: [] } }, { title: again ? 'Ta nouvelle mise' : 'Ta mise', onChange: () => (risk.innerHTML = riskLine(st)) });
     risk.innerHTML = riskLine(st);
     const foot = h('div', 'gm-ed-foot');
-    foot.innerHTML = `<label>Adversaire <select class="gm-opp"><option value="">ouvert à tous</option>${friends.map((f) => `<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('')}</select></label><button class="btn-primary gm-go">Créer le duel</button>`;
+    foot.innerHTML = `<label>Adversaire <select class="gm-opp"><option value="">ouvert à tous</option>${friends.map((f) => `<option value="${esc(f.id)}"${again?.opp === f.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label><button class="btn-primary gm-go">${again ? 'Relancer le duel' : 'Créer le duel'}</button>`;
     cr.append(risk, foot);
     foot.querySelector<HTMLButtonElement>('.gm-go')!.addEventListener('click', (e) => {
       const btn = e.currentTarget as HTMLElement;
@@ -375,7 +380,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   async function playDuel(room: HTMLElement, d: DuelView, animate: boolean) {
     const res = d.result!;
     const n = res.packs[0].length * 5;
-    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : '<button class="btn-ghost sm gm-replay">Rejouer</button>'}</div><div class="gm-battle"></div><div class="gm-verdict"></div>`;
+    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : ''}</div><div class="gm-battle"></div><div class="gm-verdict"></div>`;
     const bat = room.querySelector<HTMLElement>('.gm-battle')!;
     const cols = d.sides.map((s, i) => {
       const c = h('div', 'gm-bcol');
@@ -387,7 +392,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     bat.append(cols[0].el, h('div', 'gm-vs-x', 'VS'), cols[1].el);
     let skip = !animate;
     room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
-    room.querySelector('.gm-replay')?.addEventListener('click', () => void playDuel(room, d, true));
     const flip = (k: number, i: number) => {
       const card = res.packs[k].flat()[i];
       const sl = cols[k].slots[i];
@@ -414,7 +418,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       }
     }
     bat.classList.remove('suspense');
-    swapReplay(room, () => void playDuel(room, d, true));
+    room.querySelector('.gm-skip')?.remove();
     const v = room.querySelector<HTMLElement>('.gm-verdict')!;
     if (res.winner === undefined) {
       v.innerHTML = `<b>Égalité parfaite : ${res.stars[0]}★ partout.</b> Égalité : chacun récupère ses cartes et sa mise.`;
@@ -436,14 +440,28 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       }
       if (animate) sfx(iWon ? 'big' : 'tick');
     }
+    // (retours 05/11) plus de « Rejouer » (revoir le même booster en boucle n'apporte rien) : on REMISE — un nouveau
+    // duel contre le même adversaire, mise pré-remplie avec le même nombre de boosters (sortes modifiables)
+    const k = d.sides.findIndex((x) => x.userId === myId());
+    if (k >= 0) {
+      const opp = d.sides[1 - k]?.userId;
+      againButton(room.querySelector<HTMLElement>('.gm-verdict')!, '⚔ Remiser un booster', () => {
+        rematch = { opp, packs: d.sides[k].packs.map((p) => ({ ...p })) };
+        location.hash = '#/jeux/duel';
+      });
+    }
   }
 
-  function swapReplay(room: HTMLElement, again: () => void) {
-    const sk = room.querySelector<HTMLElement>('.gm-skip');
-    if (!sk) return;
-    const b = h('button', 'btn-ghost sm gm-replay', 'Rejouer');
-    b.addEventListener('click', again);
-    sk.replaceWith(b);
+  /** « Remiser » / « Nouvelle partie » sous le verdict (remplace l'ancien « Rejouer ») */
+  function againButton(host: HTMLElement, label: string, go: () => void) {
+    const box = h('div', 'gm-again');
+    const b = h('button', 'btn-primary gm-again-b', label);
+    b.addEventListener('click', () => {
+      sfx('tick');
+      go();
+    });
+    box.append(b);
+    host.append(box);
   }
 
   function slot(card: GameCard) {
@@ -547,7 +565,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
 
   async function playRoyale(room: HTMLElement, r: RoyaleView, animate: boolean) {
     const res = r.result!;
-    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>Battle Royale · ${r.players.length} joueurs</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : '<button class="btn-ghost sm gm-replay">Rejouer</button>'}</div><div class="gm-royal"></div><div class="gm-verdict"></div>`;
+    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>Battle Royale · ${r.players.length} joueurs</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : ''}</div><div class="gm-royal"></div><div class="gm-verdict"></div>`;
     const g = room.querySelector<HTMLElement>('.gm-royal')!;
     const rows = r.players.map((p, i) => {
       const row = h('div', 'gm-rrow');
@@ -559,7 +577,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     });
     let skip = !animate;
     room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
-    room.querySelector('.gm-replay')?.addEventListener('click', () => void playRoyale(room, r, true));
     for (let i = 0; i < 5; i++) {
       if (!skip && i === 4) {
         g.classList.add('suspense');
@@ -581,13 +598,14 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       }
     }
     g.classList.remove('suspense');
-    swapReplay(room, () => void playRoyale(room, r, true));
+    room.querySelector('.gm-skip')?.remove();
     res.winners.forEach((w) => rows[w].row.classList.add('win'));
     const names = res.winners.map((w) => r.players[w].name);
     const iWon = res.winners.some((w) => r.players[w].userId === myId());
     room.querySelector<HTMLElement>('.gm-verdict')!.innerHTML =
       names.length === 1 ? `<b>${iWon ? 'Tu remportes tout le pot !' : `${esc(names[0])} remporte tout le pot.`}</b> ${Math.max(...res.stars)}★ — ${res.packs.flat().length} cartes.` : `<b>Ex æquo à ${Math.max(...res.stars)}★ :</b> ${names.map(esc).join(' et ')} se partagent les cartes au hasard.`;
     if (animate) sfx(iWon ? 'big' : 'tick');
+    if (r.players.some((p) => p.userId === myId())) againButton(room.querySelector<HTMLElement>('.gm-verdict')!, '♛ Nouvelle partie', () => (location.hash = '#/jeux/royale'));
   }
 
   // ═════════════════════════════ Roulette

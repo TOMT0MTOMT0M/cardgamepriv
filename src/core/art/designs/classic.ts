@@ -158,7 +158,7 @@ export const classic: CardDesign = {
     }
     f.font = `400 14px ${FONT_MONO}`;
     f.fillStyle = alpha(ink, 0.55);
-    spaced(f, `${setInfo(card).code} · ${num3(card.num)}/${setInfo(card).size}`, W - 66, 1024, 2, 'right');
+    spaced(f, d.sub ? d.sub.toUpperCase() : `${setInfo(card).code} · ${num3(card.num)}/${setInfo(card).size}`, W - 66, 1024, 2, 'right');
     grainAtop(f, card.seed);
 
     // masques — R foil

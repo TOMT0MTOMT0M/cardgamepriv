@@ -162,6 +162,8 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 .gm-bcol.lose { opacity: 0.55; filter: saturate(0.5); }
 .gm-verdict { font-size: 16px; text-align: center; min-height: 1.5em; }
 .gm-verdict b { font: 600 20px var(--title); color: var(--gold); display: block; margin-bottom: 4px; }
+.gm-again { margin-top: 14px; display: flex; justify-content: center; }
+.gm-again-b { min-height: 44px; padding: 0 22px; }
 @media (max-width: 760px) { .gm-battle { grid-template-columns: 1fr; } .gm-battle .gm-vs-x { justify-self: center; } }
 
 /* battle royale */

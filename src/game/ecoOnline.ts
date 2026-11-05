@@ -42,6 +42,7 @@ export function createOnlineEco(): EcoBackend {
       return () => listeners.delete(fn);
     },
     claimCalendar: () => net.call(api.economy.claimCalendar, {}),
+    buyPacks: (count) => net.call(api.economy.buyPacks, { count }),
     claimWeekly: async (id) => (await net.call(api.economy.claimWeekly, { missionId: id })).reward,
     burn: (items) => net.call(api.economy.burn, { items }),
     claimCompletions: () => net.call(api.economy.claimCompletions, {}),

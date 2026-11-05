@@ -1,13 +1,14 @@
 import { cardKey, collectionSig, lockedCards, type Binder, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
-import { ALL_THEMES, BEBOU_PACK, SUBTHEMES, catalogEntry, numberingSize, subthemeById, themeById, type CatalogEntry, type SubTheme, type ThemeInfo } from '../../core/sets/themes';
+import { ALL_THEMES, BEBOU_PACK, SUBTHEMES, catalogEntry, numberingSize, subthemeById, subthemeViews, themeById, type CatalogEntry, type SubTheme, type SubthemeView, type ThemeInfo } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, loadSeen, loginPrompt, navigate, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 import { createForge, forgeCount } from './forge';
 import { GAMES_OPEN } from '../../core/games';
+import { POP_ARTISTS } from '../../core/sets/popArtists';
 
 /**
  * COLLECTION (refonte, retours du 3 nov. + retours live n°1)
@@ -80,6 +81,12 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let cQuery = '';
   /** album (sous-thème) ouvert */
   let subId: string | null = null;
+  /**
+   * (retours 05/11) FAMILLE ouverte (id de groupe : « pokemon », « jeux-video », « anime »…) : la vue Albums d'un thème
+   * montre d'abord ses familles (Pokémon, Valorant, Jeux vidéo…), une famille ses sous-familles (les 9 régions), un
+   * album ses cartes. null = niveau des familles.
+   */
+  let famId: string | null = null;
   /** classeur ouvert */
   let binderId: string | null = null;
   let binderEdit = false;
@@ -277,6 +284,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }, { passive: true });
   q('.crumb-back').addEventListener('click', () => {
     if (mode === 'binder') return goBinders();
+    // niveau d'une famille → les familles du thème ; un album → sa famille (famId déjà posé) ou les familles
+    if (mode === 'albums') famId = null;
+    else if (!(subId && subthemeById(subId)?.group)) famId = null;
     goAlbums();
   });
 
@@ -442,6 +452,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       b.addEventListener('click', () => {
         theme = t;
         star = null;
+        famId = null;
         // les Bébous : 8 cartes, pas d'albums → directement la grille
         if (t.secret) {
           mode = 'grid';
@@ -596,8 +607,39 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }
   alGrid.addEventListener('click', (e) => {
     const a = (e.target as HTMLElement).closest<HTMLButtonElement>('.album');
-    if (a && !a.disabled && a.dataset.sub) goGrid(a.dataset.sub);
+    if (!a || a.disabled) return;
+    if (a.dataset.fam) {
+      famId = a.dataset.fam;
+      shell.sfx.tick(1.2, 0.04);
+      render();
+      toTop();
+    } else if (a.dataset.sub) goGrid(a.dataset.sub);
   });
+  /** Tuile d'une FAMILLE (groupe d'albums) : la meilleure carte de la famille, ses sous-familles, sa progression. */
+  function familyTile(v: SubthemeView, mine: Map<string, PlayerCard>): HTMLElement {
+    let have = 0, total = 0;
+    let cover: { entry: CatalogEntry; manual: boolean } | null = null;
+    for (const s of v.subs) {
+      const st = albumStat(s, mine);
+      have += st.have;
+      total += st.total;
+      const c = albumCover(s, mine);
+      if (c && (!cover || (c.manual && !cover.manual) || (c.manual === cover.manual && RANK[c.entry.rarity] > RANK[cover.entry.rarity]))) cover = c;
+    }
+    const gid = v.id.slice(6);
+    const unit = v.subs[0]?.group?.unit ?? 'albums';
+    const live = v.subs.filter((s) => s.cards.length).length;
+    const a = h('button', `album fam${total && have === total ? ' full' : ''}`);
+    a.dataset.fam = gid;
+    a.style.setProperty('--h', String(hueOf(gid)));
+    a.innerHTML = `
+        <span class="al-cover">${cover ? `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(cover.entry)}">` : `<span class="al-ph">${esc(v.label.slice(0, 3).toUpperCase())}</span>`}<span class="al-fam-n">${fmtN(live)} ${esc(unit)}</span></span>
+        <span class="al-name">${esc(v.label)}</span>
+        <span class="al-n">${fmtN(have)} / ${fmtN(total)}<em class="al-fam-u"> · ${fmtN(live)} ${esc(unit)}</em></span>
+        <span class="al-bar"><i style="width:${total ? (have / total) * 100 : 0}%"></i></span>`;
+    a.title = `${v.label} · ${live} ${unit} · ${fmtN(have)} / ${fmtN(total)} cartes`;
+    return a;
+  }
   function renderAlbums(mine: Map<string, PlayerCard>) {
     el.querySelectorAll<HTMLButtonElement>('.al-sort button').forEach((b) => setOn(b, b.dataset.s === albumSort));
     const sig = collectionSig(backend.state);
@@ -605,11 +647,41 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (sig !== albumMemoSig) ((albumMemoSig = sig), statMemo.clear(), coverMemo.clear());
     if (cSig !== coverMemoSig) ((coverMemoSig = cSig), coverMemo.clear());
     const opened = openGroups.get(theme.id);
-    const key = `${theme.id}|${albumSort}|${albumQuery}|${sig}|${cSig}|${opened ? [...opened].join(',') : '-'}`;
+    const key = `${theme.id}|${famId ?? '*'}|${albumSort}|${albumQuery}|${sig}|${cSig}|${opened ? [...opened].join(',') : '-'}`;
     // rien n'a changé (une envie, un retour de la visionneuse…) : on garde la mosaïque telle quelle
     if (key === albumKey && alGrid.childElementCount) return;
     albumKey = key;
-    let subs = theme.subthemes.filter((s) => !albumQuery || fold(s.label).includes(albumQuery) || (s.group && fold(s.group.label).includes(albumQuery)));
+    // (retours 05/11) sans recherche ni famille ouverte : le niveau des FAMILLES (les sous-thèmes sans groupe restent
+    // des albums à part entière, mêlés aux familles)
+    el.querySelector<HTMLElement>('.al-sort [data-s="group"]')!.hidden = !albumQuery;
+    if (!albumQuery && !famId) {
+      const views = subthemeViews(theme).filter((v) => v.cards.length || !v.group);
+      const stv = (v: SubthemeView) => {
+        let have = 0, total = 0;
+        for (const s of v.subs) {
+          const x = albumStat(s, mine);
+          have += x.have;
+          total += x.total;
+        }
+        return { have, total, pct: total ? have / total : -1 };
+      };
+      const stage = (v: SubthemeView) => {
+        const x = stv(v);
+        return !x.total ? 3 : x.have === 0 ? 2 : x.have === x.total ? 1 : 0;
+      };
+      const sorted = albumSort === 'alpha' || albumSort === 'group' ? [...views].sort((a, b) => a.label.localeCompare(b.label, 'fr'))
+        : albumSort === 'completion' ? [...views].sort((a, b) => stv(b).pct - stv(a).pct || stv(b).have - stv(a).have)
+        : [...views].sort((a, b) => stage(a) - stage(b) || stv(b).have - stv(a).have || 0);
+      q('.al-count').textContent = plural(views.length, 'famille');
+      albumIo?.disconnect();
+      alGrid.replaceChildren();
+      alGrid.classList.remove('grouped');
+      const frag = document.createDocumentFragment();
+      for (const v of sorted) frag.append(v.group ? familyTile(v, mine) : albumTile(v.subs[0], mine, false));
+      alGrid.append(frag);
+      return;
+    }
+    let subs = theme.subthemes.filter((s) => (albumQuery ? true : s.group?.id === famId) && (!albumQuery || fold(s.label).includes(albumQuery) || (s.group && fold(s.group.label).includes(albumQuery))));
     const st = (s: SubTheme) => albumStat(s, mine);
     const grpLabel = (s: SubTheme) => s.group?.label ?? '';
     // « En cours » : commencés (le plus de cartes d'abord), puis complets (les gros d'abord), puis à 0 %, puis « bientôt »
@@ -1272,9 +1344,16 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     fActive.hidden = true;
     bindersView.hidden = !inBinders;
     forgeHost.hidden = mode !== 'forge';
-    crumb.hidden = !((inGrid && !theme.secret) || mode === 'binder');
-    if (inGrid && !theme.secret) {
-      q('.crumb-back').textContent = `‹ Albums ${theme.label}`;
+    const famLabel = famId ? SUBTHEMES.find((s) => s.group?.id === famId)?.group?.label ?? '' : '';
+    crumb.hidden = !((inGrid && !theme.secret) || mode === 'binder' || (inAlbums && !!famId && !albumQuery));
+    if (inAlbums && famId) {
+      q('.crumb-back').textContent = `‹ ${theme.label}`;
+      q('.crumb-name').textContent = famLabel;
+    } else if (inGrid && !theme.secret) {
+      // (retours 05/11) un album d'une famille revient à sa famille (« ‹ Pokémon »), sinon aux familles du thème
+      const g = subId ? subthemeById(subId)?.group : undefined;
+      if (g) famId = g.id;
+      q('.crumb-back').textContent = g ? `‹ ${g.label}` : `‹ Albums ${theme.label}`;
       q('.crumb-name').textContent = subId ? (subthemeById(subId)?.label ?? '') : `Tout ${theme.label}`;
     } else if (mode === 'binder') {
       q('.crumb-back').textContent = '‹ Classeurs';
@@ -1438,7 +1517,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     binderPick.hidden = true;
     vInfo.className = `v-info r-${b.r}${dir ? ' swap' : ''}`;
     vInfo.style.setProperty('--ra', rarity(b.r).accentHex);
-    vInfo.innerHTML = `<div class="ci-name">${esc(e?.name ?? b.id)}</div><div class="ci-meta">${starsHtml(b.r)} <span class="ci-r" style="color:${rarity(b.r).accentHex}">${rarity(b.r).label}</span></div>
+    const by = POP_ARTISTS[b.id];
+    vInfo.innerHTML = `<div class="ci-name">${esc(e?.name ?? b.id)}</div>${by ? `<div class="ci-by">${esc(by)}</div>` : ''}<div class="ci-meta">${starsHtml(b.r)} <span class="ci-r" style="color:${rarity(b.r).accentHex}">${rarity(b.r).label}</span></div>
       <div class="ci-sub">${st ? `${esc(st.label)} ${String(e!.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}${have ? `${plural(have.count, 'exemplaire')} (${have.count > 1 ? 'meilleur : ' : ''}n°${fmtN(have.bestMintNumber)} imprimé)` : ''}</div>`;
     renderActions(b);
     prevBtn.disabled = i <= 0;
@@ -1525,6 +1605,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       else if (sub === 'albums') {
         if (theme.secret) theme = ALL_THEMES[0];
         mode = 'albums';
+        famId = null;
       }
       else if (sub && sub !== 'nouvelles') {
         // lien direct : un sous-thème (#/collection/pokemon) ou un thème (#/collection/monde)
@@ -1538,14 +1619,16 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
           subId = st.id;
           page = 0;
         } else if (grp?.group && t && !t.secret) {
-          // la mosaïque du thème, filtrée sur le groupe
+          // (retours 05/11) la FAMILLE : ses sous-familles (Kanto, Johto…)
           mode = 'albums';
           subId = null;
-          alSearch.value = grp.group.label;
-          albumQuery = fold(grp.group.label);
+          famId = grp.group.id;
+          alSearch.value = '';
+          albumQuery = '';
         } else if (t) {
           mode = t.secret ? 'grid' : 'albums';
           subId = null;
+          famId = null;
         } else {
           // lien inconnu : la vue Cartes, et une adresse propre
           mode = 'cards';

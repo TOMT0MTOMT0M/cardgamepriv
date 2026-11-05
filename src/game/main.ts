@@ -1,8 +1,10 @@
 import './style.css';
+import { applyFontVars } from '../core/fonts';
 import { createShell, soundOn, soundVolume, type Shell } from './shell';
 import { createOpeningScene } from './scenes/opening';
 import type { ViewerScene } from './scenes/viewer';
 import { withWildEncounter } from './wildEncounter';
+import { withMusicPreview } from './musicPreview';
 import { withDuelSummon } from './duelEncounter';
 import { installDiag } from './diag';
 import { createShopView } from './views/shop';
@@ -19,6 +21,9 @@ import { preloadOwned } from './preload';
 import { bindHapticGestures, haptics } from '../core/haptics';
 bindHapticGestures();
 import { fxReduced, setFxReduced } from '../core/fxPref';
+
+// polices du jeu (retours 05/11) : une seule source, src/core/fonts.ts
+applyFontVars();
 import { bindMotionVars } from '../core/motion';
 bindMotionVars();
 
@@ -748,7 +753,7 @@ async function boot() {
       viewerModP = null;
       // Pokémon 6★ : la visionneuse (collection, gros tirages, échanges…) rejoue la rencontre sauvage (wildEncounter.ts) ;
       // Yu-Gi-Oh 6★ : l'invocation (duelEncounter.ts)
-      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withDuelSummon(shell, withWildEncounter(shell, v)));
+      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withMusicPreview(shell, withDuelSummon(shell, withWildEncounter(shell, v))));
       viewerP.catch(() => (viewerP = null)); // (échec : nouvel essai au prochain appel, si le navigateur ne garde pas l'échec)
     }
     return viewerP;

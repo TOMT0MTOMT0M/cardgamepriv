@@ -78,6 +78,26 @@ export function rollPackCoins(kind: 'bebou' | 'theme' | 'special', rand: () => n
   return lo + Math.floor(rand() * (hi - lo + 1));
 }
 
+// ───────────────────────────────────────────── achat de boosters (retours 05/11)
+
+/**
+ * Booster acheté avec des pièces : il rejoint la réserve (n'importe quelle sorte, au choix à l'ouverture). Prix calé
+ * sur l'économie : un booster rapporte ≈ 25-30 pièces à l'ouverture + ≈ 160 pièces de cartes au brûlage (valeur
+ * moyenne des 5 cartes), donc 250 > ce qu'il rend (pas de boucle « acheter → brûler → racheter ») ; ≈ une journée de
+ * calendrier ou ~8 boosters ouverts. Plafond quotidien pour que la recharge gratuite reste la voie normale.
+ */
+export const PACK_PRICE = 250;
+export const PACK_BUY_DAILY = 10;
+/** achats encore possibles aujourd'hui (jour de Paris, comme le calendrier) */
+export const packBuysLeft = (e: EconState, today: string) => Math.max(0, PACK_BUY_DAILY - (e.shopDay === today ? e.shopBought ?? 0 : 0));
+export function packBuyProblem(count: number, coins: number, e: EconState, today: string): string | null {
+  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_DAILY) return 'Quantité invalide.';
+  const left = packBuysLeft(e, today);
+  if (count > left) return left ? `Plus que ${left} booster${left > 1 ? 's' : ''} à acheter aujourd’hui.` : `Limite de ${PACK_BUY_DAILY} boosters achetés par jour atteinte : reviens demain.`;
+  if (coins < count * PACK_PRICE) return `Pas assez de pièces (il t’en manque ${count * PACK_PRICE - coins}).`;
+  return null;
+}
+
 // ───────────────────────────────────────────── brûlage de doublons
 
 /** Pièces rendues par un brûlage (valeur de la table). Vérifie : doublons seulement, pas de secrète. */
@@ -276,6 +296,9 @@ export interface EconState {
   completions: string[];
   /** succès déjà payés */
   achievements: string[];
+  /** achats de boosters : jour (Paris) et nombre achetés ce jour-là */
+  shopDay?: string;
+  shopBought?: number;
 }
 
 export const emptyEcon = (): EconState => ({ earned: 0, burned: 0, gamesPlayed: 0, gamesWon: 0, rouletteWins: 0, completions: [], achievements: [] });
@@ -290,6 +313,7 @@ export const cleanEcon = (e: EconState): EconState => ({
   completions: e.completions,
   achievements: e.achievements,
   ...(e.calendarDay ? { calendarDay: e.calendarDay } : {}),
+  ...(e.shopDay ? { shopDay: e.shopDay, shopBought: e.shopBought ?? 0 } : {}),
 });
 
 // ───────────────────────────────────────────── anti-abus (alertes, jamais de blocage automatique)

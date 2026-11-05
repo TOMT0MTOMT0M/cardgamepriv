@@ -1,4 +1,6 @@
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
+import { POP_ARTISTS } from '../../core/sets/popArtists';
+import { playMusicPreview, stopMusicPreview } from '../musicPreview';
 import { fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import { openStyleOf, type OpeningScene } from '../scenes/opening';
@@ -885,10 +887,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     // (audit UX2-02) une fois actif, le bouton reste cliquable pour couper la révélation auto (au lieu d'être grisé)
     skipReveal.textContent = all ? 'Révélation auto ✓' : 'Tout révéler';
     // série : à partir du 2e booster l'emballage se brûle tout seul ; « 4★ et + » / « Tout révéler » : dès le premier
-    const burn = hi || all || (!!batch && batch.done.length > 0);
+    // (retours 05/11) en série (×5, ×10), CHAQUE booster rejoue son ouverture (avant : seul le 1er, les suivants
+    // brûlaient tout seuls et on avait l'impression que tout s'ouvrait d'un coup) ; « 4★ et + » / « Tout révéler » : auto
+    const burn = hi || all;
     // « Tout révéler » : tout défile tout seul SAUF une mythique (rang 5) ou une secrète (6), qui gardent leur plein écran
     // (une légendaire défile à vitesse modérée, ralenti compris : voir fastSpeed dans opening.ts)
-    opening.setAuto({ burn, minRank: all ? 5 : hi ? HI_RANK : 0, reveal: all });
+    // (retours 05/11) « Tout révéler » : une 5★ (rang 4) joue aussi sa version complète, ralenti compris
+    opening.setAuto({ burn, minRank: all ? 4 : hi ? HI_RANK : 0, reveal: all });
     if (opening.phase === 'sealed') hintTxt.textContent = burn ? 'Ouverture…' : sealedHint;
   }
   skipHi.addEventListener('click', () => {
@@ -927,6 +932,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    */
   async function skipEverything() {
     if (!batch || batch.skipping || mode !== 'opening') return;
+    stopMusicPreview();
     batch.skipping = true;
     skipAll.disabled = skipHi.disabled = true;
     opening.setAuto({ burn: false, minRank: 0, reveal: false });
@@ -1036,7 +1042,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     ring.style.strokeDashoffset = '100';
     // aide au premier geste (UX2-08) : seulement en ouverture manuelle, tant que ce geste n'a jamais réussi
     const coachSt = st === 'burn' ? 'hold' : st;
-    const autoOpen = !!batch && (batch.hi || batch.all || batch.done.length > 0);
+    const autoOpen = !!batch && (batch.hi || batch.all);
     const coachOn = !autoOpen && !coachSeen(coachSt);
     coach.className = `coach c-${coachSt}`;
     coach.hidden = !coachOn;
@@ -1051,7 +1057,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     mythicVeil.hidden = true;
     applyAuto();
     // série (2e booster et suivants) ou « 4★ et + » : l'emballage brûle tout seul
-    if (batch && (batch.hi || batch.all || batch.done.length > 0)) hintTxt.textContent = 'Ouverture…';
+    if (batch && (batch.hi || batch.all)) hintTxt.textContent = 'Ouverture…';
     if (series) setCount(series.replace(/ · $/, ''));
     void preloadArt(p.cards.map((c) => c.cardId)); // en parallèle de la scène : images prêtes au plus tôt
     const secret = p.cards.find((c) => rarity(c.rarity).secret);
@@ -1094,6 +1100,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         showInfo(card);
       },
       onNext() {
+        stopMusicPreview();
         // la carte montrée file dans la rangée : son panneau s'efface, la suivante attend face cachée
         info.classList.remove('in');
         mythicVeil.hidden = true;
@@ -1112,7 +1119,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         mythicVeil.querySelector<HTMLElement>('.mv-name')!.textContent = card.cardName;
         mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = '';
       },
-      onMythicShown(_card, last) {
+      onMythicShown(card, last) {
+        // 6★ du bloc Musique : son extrait de 30 s (retours 05/11)
+        void playMusicPreview(card.cardId, card.rarity, shell.sfx.volume);
         mythicVeil.classList.add('shown');
         mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = last ? (TOUCH ? 'Touche pour continuer' : 'Clique pour continuer') : HINT.next;
       },
@@ -1146,6 +1155,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         return true;
       },
       onDone() {
+        stopMusicPreview();
         mythicVeil.hidden = true;
         void done(p);
       },
@@ -1573,7 +1583,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const vi = viewerUi.querySelector<HTMLElement>('.v-info')!;
     vi.className = `v-info r-${card.rarity}`;
     vi.style.setProperty('--ra', rr.accentHex);
-    vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div><div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
+    vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${POP_ARTISTS[card.cardId] ? `<div class="ci-by">${esc(POP_ARTISTS[card.cardId])}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
     viewerUi.hidden = false;
     summary.hidden = true;
     fanBadges.hidden = true;
@@ -1638,6 +1648,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       if (sub && list.some((b) => b.key === sub)) sheet.open(sub);
     },
     leave() {
+      stopMusicPreview(0.3);
       sheet.close();
       if (mode === 'summary') back();
     },

@@ -12,8 +12,11 @@
   --gold: #f2c46d;
   --ok: #7fb58a;
   --err: #e0675a;
-  --title: 'Fraunces Variable', Georgia, serif;
-  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* polices (retours 05/11) : src/core/fonts.ts + fonts.css — Matcha World pour les GROS titres seulement, Bold Frame
+     pour tout le reste (graisse 400 texte · 500-600 libellés · 700 titres) */
+  --display: 'Matcha World', 'Bold Frame', 'IBM Plex Mono', system-ui, sans-serif;
+  --title: 'Bold Frame', 'IBM Plex Mono', system-ui, sans-serif;
+  --mono: 'Bold Frame', 'IBM Plex Mono', ui-monospace, monospace;
   --top: 56px;
   /* système de motion (src/core/motion.ts pose les vraies valeurs sur <html> ; ceci est le repli) */
   --dur-instant: 50ms; --dur-rapide: 150ms; --dur-standard: 250ms; --dur-emphatique: 400ms; --dur-sortie: 300ms;
@@ -78,9 +81,9 @@ canvas.gl.dim { opacity: 0.22; filter: blur(6px) saturate(0.7); }
 .topbar nav { position: relative; display: flex; gap: 4px; margin-left: 8px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .topbar nav::-webkit-scrollbar { display: none; }
 .topbar nav a { flex: none; }
-.topbar nav a { position: relative; z-index: 1; padding: 8px 12px; border-radius: 999px; color: var(--ink-2); text-decoration: none; font: 500 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; transition: color var(--dur-rapide), background-color var(--dur-rapide); }
-.topbar nav a:not(.on):hover { color: var(--ink); background: rgba(255, 236, 214, 0.04); }
-.topbar nav a.on { color: var(--ink); }
+.topbar nav a { position: relative; z-index: 1; padding: 8px 12px; border-radius: 999px; color: rgba(255, 248, 240, 0.86); text-decoration: none; font: 500 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; transition: color var(--dur-rapide), background-color var(--dur-rapide); }
+.topbar nav a:not(.on):hover { color: #fff; background: rgba(255, 236, 214, 0.04); }
+.topbar nav a.on { color: #fff; }
 .topbar nav a:active { background: rgba(255, 236, 214, 0.06); }
 /* fond de l'onglet actif : il glisse d'une page à l'autre (main.ts, placePill) */
 .nav-pill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 999px; background: rgba(255, 236, 214, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 236, 214, 0.05); opacity: 0; pointer-events: none; transition: transform var(--dur-emphatique) var(--ease-entree), width var(--dur-emphatique) var(--ease-entree), opacity var(--dur-standard); }
@@ -955,6 +958,12 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .ps-cards-btn small { font: 400 10.5px var(--mono); letter-spacing: 0.06em; color: var(--ink-3); }
 .ps-open { flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 18px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
 .ps-open .open-btn { min-width: 240px; padding: 14px 30px; }
+/* achat de boosters en pièces (retours 05/11) */
+.ps-buy { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; }
+.ps-buy-l { font: 500 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+.ps-buy button { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; }
+.ps-buy .coin-ico { width: 14px; height: 14px; }
+.ps-buy-s { flex-basis: 100%; text-align: center; font: 400 10.5px var(--mono); color: var(--ink-3); letter-spacing: 0.06em; }
 
 /* grille des cartes du booster (couche plein écran par-dessus la fiche) */
 .pack-cards { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; background: var(--bg); animation: view-in 0.3s var(--ease-entree); }
@@ -2734,3 +2743,98 @@ body.wild-on .viewer-ui, body.wild-on .topbar { visibility: hidden; }
 .profile.has-accent .pf-tabs button.on { color: var(--pa-ink); }
 .profile.has-accent .btn-primary { background: linear-gradient(180deg, color-mix(in srgb, var(--pa) 80%, #fff), var(--pa)); color: var(--pa-ink); box-shadow: 0 6px 20px -8px color-mix(in srgb, var(--pa) 80%, transparent); }
 .profile.has-accent .cs.on { border-color: var(--pa); }
+
+/* ── ÉCHANGES en un seul écran (retours 05/11) : tableau d'offres en haut (≈ la moitié de l'écran, grille qui défile
+   vers la droite), échanges directs en dessous. Les anciens onglets sont masqués. */
+.trades > .tr-tabs { display: none !important; }
+.trades > .ob { display: grid !important; grid-template-columns: minmax(0, 1fr); gap: 12px; padding-bottom: 8px; }
+.trades > .ob .ob-side { position: static; display: flex; flex-flow: row wrap; align-items: center; gap: 10px 14px; }
+.trades > .ob .ob-intro { flex: 1 1 260px; min-width: 0; }
+.trades > .ob .ob-intro h3 { margin: 0 0 2px; font: 500 30px/1.05 var(--title); font-style: italic; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.trades > .ob .ob-intro p { font-size: 13px; }
+.trades > .ob .ob-new { flex: none; }
+.trades > .ob .ob-seg { flex: 1 1 100%; flex-direction: row; overflow-x: auto; scrollbar-width: none; }
+.trades > .ob .ob-seg button { flex: 0 0 auto; border-color: var(--line); border-radius: 999px; }
+.trades > .ob .ob-filters { flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; align-items: center; }
+.trades > .ob .ob-q { flex: 1 1 220px; width: auto; }
+.trades > .ob .ob-rule { display: none; }
+.trades > .ob .ob-list {
+  grid-template-columns: none; grid-auto-flow: column; grid-template-rows: repeat(var(--ob-rows, 1), auto);
+  grid-auto-columns: minmax(280px, 320px); align-items: stretch;
+  max-height: 52vh; max-height: 52dvh; overflow: auto hidden; overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity; padding: 2px 2px 12px; scrollbar-width: thin;
+}
+.trades > .ob .ob-list > .ob-card { scroll-snap-align: start; min-height: 0; overflow: hidden; }
+.trades > .ob .ob-empty { grid-row: 1 / -1; grid-column: auto; width: min(560px, 86vw); }
+.tr-sec-h { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 10px 0 0; padding-top: 18px; border-top: 1px solid var(--line); font: 500 30px/1.05 var(--title); font-style: italic; }
+.tr-sec-h small { font: 400 12px var(--mono); font-style: normal; color: var(--ink-3); letter-spacing: 0.04em; }
+.tr-sec-h .badge { padding: 2px 8px; border-radius: 999px; background: var(--rose); color: #1a0d0a; font: 600 11px var(--mono); font-style: normal; }
+@media (min-height: 1150px) and (min-width: 861px) { .trades > .ob .ob-list { --ob-rows: 2; } }
+@media (max-width: 860px) {
+  .trades > .ob .ob-list { --ob-rows: 1; grid-auto-columns: min(86vw, 340px); margin: 0 -16px; padding: 2px 16px 12px; scroll-padding-inline: 16px; }
+  .trades > .ob .ob-intro h3, .tr-sec-h { font-size: 24px; }
+  .trades.composing > .ob, .trades.composing > .tr-sec-h { display: none !important; }
+}
+.sc-steps li.sc-hidden { color: var(--ink-3); opacity: 0.75; font-style: italic; }
+.sc-steps li.sc-hidden .sc-st-h { margin-left: auto; font: 400 10.5px var(--mono); font-style: normal; color: var(--ink-3); }
+
+/* ── extrait musical des cartes Musique 6★ (src/game/musicPreview.ts) */
+.mp-chip { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 80; display: flex; align-items: center; gap: 10px; max-width: min(92vw, 460px); padding: 8px 8px 8px 14px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(16, 12, 11, 0.86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--ink); font: 400 12px var(--mono); transform: translate(-50%, 16px); opacity: 0; transition: transform 0.35s var(--ease-entree, ease-out), opacity 0.35s; pointer-events: auto; }
+.mp-chip.in { transform: translate(-50%, 0); opacity: 1; }
+.mp-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-t b { font: 600 13px var(--title); }
+.mp-t small { display: block; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.mp-x { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--ink-2); }
+.mp-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; flex: none; }
+.mp-eq i { width: 3px; height: 100%; border-radius: 2px; background: var(--rose); animation: mp-eq 0.9s ease-in-out infinite; transform-origin: bottom; }
+.mp-eq i:nth-child(2) { animation-delay: -0.3s; }
+.mp-eq i:nth-child(3) { animation-delay: -0.6s; }
+@keyframes mp-eq { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .mp-eq i { animation: none; transform: scaleY(0.6); } }
+.ci-by { margin-top: -2px; font: 500 12px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); }
+
+/* ══ TYPOGRAPHIE (retours 05/11) : Matcha World (--display) dosée — logo, titres de page, moments forts — et Bold Frame
+   partout ailleurs, en jouant sur ses 3 graisses et l'espacement des lettres. Pas de faux italique (la police n'en a pas). */
+html { font-synthesis-style: none; font-synthesis: weight small-caps; }
+html, body { letter-spacing: 0.01em; }
+.logo { font: 400 21px/1 var(--display); letter-spacing: 0.03em; }
+.logo span { font-weight: 600; letter-spacing: 0.34em; }
+.ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font: 400 31px/1.08 var(--display); font-style: normal; letter-spacing: 0.015em; text-wrap: balance; }
+.pf-id h1 { font-family: var(--display); font-weight: 400; font-style: normal; letter-spacing: 0.02em; }
+.tr-sec-h, .trades > .ob .ob-intro h3 { font: 400 25px/1.1 var(--display); font-style: normal; letter-spacing: 0.015em; }
+.gm-verdict b { font: 400 22px/1.15 var(--display); letter-spacing: 0.02em; }
+.mv-name { font-family: var(--display) !important; font-style: normal !important; letter-spacing: 0.03em !important; }
+/* Bold Frame : libellés en capitales (graisse One) bien espacés, titres secondaires en Two */
+.kicker, .pf-eyebrow { font-weight: 600; letter-spacing: 0.34em; }
+h2, h3 { font-weight: 700; }
+.topbar nav a { font-weight: 600; letter-spacing: 0.14em; }
+@media (max-width: 640px) {
+  .ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font-size: 24px; }
+  .pf-id h1 { font-size: 22px; }
+  .tr-sec-h, .trades > .ob .ob-intro h3 { font-size: 20px; }
+  .logo { font-size: 18px; }
+}
+
+/* ── vitrine personnalisée (retours 05/11) : fond (VITRINES) + couleur --vc */
+:root { --vc: #e8927c; }
+.pf-case.has-vc { border-color: color-mix(in srgb, var(--vc) 38%, transparent); box-shadow: inset 0 -14px 24px -18px color-mix(in srgb, var(--vc) 55%, transparent), 0 18px 40px -28px color-mix(in srgb, var(--vc) 60%, transparent); }
+.pf-case.has-vc::after { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--vc) 60%, transparent), transparent); }
+.cs-vit { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vc) 45%, transparent); }
+.cs-vc.on .cs-dot { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor; }
+.cs-t small { font-weight: 400; color: var(--ink-3); }
+
+/* ── collection : niveau des FAMILLES (retours 05/11) — une tuile « famille » se distingue par une pile de pochettes */
+.album.fam .al-cover { box-shadow: 4px -4px 0 -1px color-mix(in srgb, hsl(var(--h, 20) 45% 40%) 45%, #1a1513), 8px -8px 0 -2px color-mix(in srgb, hsl(var(--h, 20) 45% 30%) 35%, #141110); }
+.al-fam-n { position: absolute; left: 6px; bottom: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(10, 8, 7, 0.78); font: 600 10px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+
+/* bouton « Mes amis » du profil (retours 05/11 : lien souligné, violet « visité ») : un lien-bouton reste un bouton */
+a.btn-ghost, a.btn-primary { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+a.btn-ghost, a.btn-ghost:visited { color: var(--ink); }
+a.btn-primary:visited { color: inherit; }
+.pf-amis-go { min-height: 40px; padding: 0 18px; }
+.al-fam-u { font-style: normal; color: var(--ink-3); display: none; }
+@media (max-width: 600px) {
+  .album.fam .al-fam-n { display: none; }
+  .al-fam-u { display: inline; }
+  .album.fam .al-cover { box-shadow: 3px -3px 0 -1px color-mix(in srgb, hsl(var(--h, 20) 45% 40%) 45%, #1a1513); }
+}

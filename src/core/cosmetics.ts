@@ -132,6 +132,24 @@ export const ACCENTS: Cosmetic[] = [
   C({ id: 'foudre', label: 'Foudre', need: 'myth-1', css: '#c86bff' }),
   C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: '#ffb4a2' }),
 ];
+/**
+ * FOND DE VITRINE (retours 05/11 : « pouvoir changer la couleur et le fond de notre vitrine »). `css` = le fond, qui
+ * peut utiliser `--vc` (la couleur de vitrine choisie : bordure, lueur, étagère). Quelques fonds à débloquer.
+ */
+export const VITRINES: Cosmetic[] = [
+  C({ id: 'velours', label: 'Velours', css: 'radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--vc) 16%, transparent), transparent 62%), linear-gradient(180deg, rgba(30, 23, 20, 0.92), rgba(12, 10, 9, 0.96))' }),
+  C({ id: 'nuit', label: 'Nuit étoilée', css: 'radial-gradient(1.5px 1.5px at 12% 22%, #fff9, transparent), radial-gradient(1px 1px at 68% 14%, #fff8, transparent), radial-gradient(1.5px 1.5px at 84% 62%, #fff7, transparent), radial-gradient(1px 1px at 34% 78%, #fff6, transparent), radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--vc) 30%, transparent), transparent 60%), linear-gradient(180deg, #0b1020, #05070e)' }),
+  C({ id: 'feutre', label: 'Feutrine', css: 'radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--vc) 20%, #12382a), #071a12 75%)' }),
+  C({ id: 'papier', label: 'Papier kraft', css: 'radial-gradient(ellipse at 30% 0%, #ffffff14, transparent 50%), linear-gradient(180deg, #3a2a1c, #21170f)' }),
+  C({ id: 'neon', label: 'Néon', css: 'repeating-linear-gradient(90deg, color-mix(in srgb, var(--vc) 18%, transparent) 0 1px, transparent 1px 44px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--vc) 14%, transparent) 0 1px, transparent 1px 44px), linear-gradient(180deg, #0d0a14, #07060b)' }),
+  C({ id: 'beton', label: 'Béton', css: 'radial-gradient(ellipse at 50% 0%, #ffffff12, transparent 60%), linear-gradient(180deg, #2a2a2c, #161617)' }),
+  C({ id: 'or', label: 'Écrin doré', need: 'packs-500', css: 'radial-gradient(ellipse at 50% 0%, #ffd77a33, transparent 60%), linear-gradient(180deg, #3a2a0c, #1a1206)' }),
+  C({ id: 'aurore', label: 'Aurore', need: 'streak-7', css: 'radial-gradient(ellipse at 20% 0%, #6bffb833, transparent 55%), radial-gradient(ellipse at 80% 10%, #c86bff33, transparent 55%), linear-gradient(180deg, #0c1418, #06090c)' }),
+  C({ id: 'prisme', label: 'Prisme', need: 'myth-1', css: 'linear-gradient(120deg, #ff6b9a1f, #ffd36b26, #6bffb826, #6bc8ff26, #c86bff26), linear-gradient(180deg, #1a1420, #0d0a10)' }),
+  C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: 'radial-gradient(ellipse at 50% 0%, #e8927c44, transparent 60%), linear-gradient(180deg, #2a0f0e, #120607)' }),
+];
+export const vitrineOf = (id?: string) => find(VITRINES, id) ?? VITRINES[0];
+
 /** couleur libre du sélecteur : « #rrggbb » (gratuite pour tout le monde) */
 export const CUSTOM_ACCENT = /^#[0-9a-f]{6}$/;
 /** couleur d'accent à appliquer (undefined = l'accent par défaut du site) */
@@ -142,9 +160,9 @@ export function accentColor(id?: string): string | undefined {
 }
 
 /** Cosmétiques débloqués par un succès (page Succès : « récompenses »). */
-export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur'; c: Cosmetic }> {
-  const out: Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur'; c: Cosmetic }> = [];
-  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
+export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine'; c: Cosmetic }> {
+  const out: Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine'; c: Cosmetic }> = [];
+  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
   return out;
 }
 
@@ -185,6 +203,9 @@ export interface CosmeticChoice {
   badges?: string[];
   /** couleur du profil : id d'ACCENTS ou « #rrggbb » libre */
   accent?: string;
+  /** vitrine : fond (VITRINES) et couleur (id d'ACCENTS ou « #rrggbb ») */
+  vitrine?: string;
+  vitrineColor?: string;
 }
 
 const find = (list: Cosmetic[], id: string | undefined) => (id ? list.find((c) => c.id === id) : undefined);
@@ -202,9 +223,14 @@ export function cleanCosmetics(choice: CosmeticChoice, stats: PlayerStats): Cosm
     seen.add(id);
     return true;
   }).slice(0, 5);
-  const a = (choice.accent ?? '').toLowerCase();
-  const accent = CUSTOM_ACCENT.test(a) ? a : ok(ACCENTS, choice.accent);
-  return { banner: ok(BANNERS, choice.banner), frame: ok(FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}) };
+  const color = (v?: string) => {
+    const a = (v ?? '').toLowerCase();
+    return CUSTOM_ACCENT.test(a) ? a : ok(ACCENTS, v);
+  };
+  const accent = color(choice.accent);
+  const vitrine = ok(VITRINES, choice.vitrine);
+  const vitrineColor = color(choice.vitrineColor);
+  return { banner: ok(BANNERS, choice.banner), frame: ok(FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}), ...(vitrine ? { vitrine } : {}), ...(vitrineColor ? { vitrineColor } : {}) };
 }
 
 /** Ce que le joueur a débloqué (pour la galerie et pour le fil « succès » à venir). */

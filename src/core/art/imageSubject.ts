@@ -62,7 +62,13 @@ export function imagePlacement(im: Pick<CardImage, 'canvas'>, fit = 1) {
   // sans plafond, les sujets larges (Pokémon allongés, armes, photos) débordaient et étaient coupés sur les côtés
   const k = Math.min((WIN.w * 0.8) / cw, (WIN.h * 0.8) / ch, (FULL_VIEW.w * 0.9) / (cw * fit)) * fit;
   const w = cw * k, h = ch * k;
-  return { x: CX - w / 2, y: GROUND - h, w, h };
+  // (retours 05/11) sujets LARGES (armes Valorant / CS, véhicules, logos…) : posés au sol ils tombaient trop bas sur la
+  // carte (sous le centre visible, contre le nom). Plus le sujet est large, plus il remonte vers le centre optique de la
+  // fenêtre ; un personnage (portrait / carré) reste posé au sol comme avant.
+  const wide = Math.max(0, Math.min(1, (cw / ch - 1.15) / 0.6));
+  const centerY = WIN.y + WIN.h * 0.56;
+  const y = (GROUND - h) * (1 - wide) + (centerY - h / 2) * wide;
+  return { x: CX - w / 2, y, w, h };
 }
 
 function sparkle(g: Ctx, x: number, y: number, s: number) {
@@ -153,7 +159,7 @@ export function paintImageSubject(t: PaintTarget, im: CardImage | null, fit = 1)
   bg.filter = `blur(${10 * px}px)`;
   bg.fillStyle = alpha(pal.ink, 0.5);
   bg.beginPath();
-  bg.ellipse(CX, GROUND - 4, p.w * 0.34, 16, 0, 0, TAU);
+  bg.ellipse(CX, Math.min(GROUND - 4, p.y + p.h + 18), p.w * 0.34, 16, 0, 0, TAU);
   bg.fill();
   bg.restore();
 

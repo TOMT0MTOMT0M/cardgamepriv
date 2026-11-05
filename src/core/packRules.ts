@@ -27,6 +27,8 @@ export interface PackPlan {
 
 /** Plan d'un pack : un seul tirage par pack décide s'il contient une carte secrète (Bébou ou Merveille du Monde). */
 export function planPack(kind: PackKind, secretChance: number, rand: () => number = Math.random): PackPlan {
-  const isSecret = secretChance > 0 && rand() < secretChance;
+  // (un tirage est toujours consommé, même à chance nulle — Bébous verrouillées : la suite du tirage ne bouge pas)
+  const roll = rand();
+  const isSecret = secretChance > 0 && roll < secretChance;
   return { size: PACK_SIZE, bebouSlot: isSecret ? PACK_SIZE - 1 : null };
 }

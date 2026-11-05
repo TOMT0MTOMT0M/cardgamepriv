@@ -103,7 +103,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
   };
   const cosHtml = (id: string, ok: boolean) =>
     cosmeticsOf(id)
-      .map((r) => `<span class="sc-cos${ok ? ' ok' : ''} k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : r.kind === 'Couleur' ? 'frame' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' || r.kind === 'Couleur' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Bannière' || r.kind === 'Cadre' || r.kind === 'Couleur' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}</span>`)
+      .map((r) => `<span class="sc-cos${ok ? ' ok' : ''} k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : r.kind === 'Couleur' ? 'frame' : r.kind === 'Vitrine' ? 'banner' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' || r.kind === 'Couleur' || r.kind === 'Vitrine' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind !== 'Titre' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}</span>`)
       .join('');
 
   /** Une mécanique = un succès à paliers : niveau atteint, prochain seuil, et la liste des paliers avec leur récompense. */
@@ -123,13 +123,16 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       <i class="sc-pb"><i style="width:${(pct * 100).toFixed(1)}%"></i></i>
       <em class="sc-n">${ready ? 'palier atteint · prime à encaisser' : next ? `${fmtCoins(Math.min(cur, next.target))} / ${fmtCoins(next.target)}` : `${fmtCoins(cur)}`}</em>
       <ol class="sc-steps">${l.steps
+        // (retours 05/11) paliers révélés UN PAR UN : ceux atteints + le prochain ; les suivants restent cachés
+        // (seuil, nom et récompenses compris) jusqu'à ce que le précédent soit atteint
+        .slice(0, lvl + 1)
         .map((a) => {
           const got = claimed.has(a.id);
           const rd = claimable.has(a.id);
           const cos = cosHtml(a.id, got || rd);
           return `<li class="${got ? 'got' : rd ? 'ready' : achievementDone(a, st) ? 'ready' : ''}"><span class="sc-st-t">${got ? '✓' : rd ? '★' : '○'} ${fmtCoins(a.target)}</span><span class="sc-st-l">${esc(a.label)}</span>${rewardHtml(a)}${cos ? `<div class="sc-rw">${cos}</div>` : ''}</li>`;
         })
-        .join('')}</ol>`;
+        .join('')}${l.steps.length > lvl + 1 ? `<li class="sc-hidden"><span class="sc-st-t">🔒</span><span class="sc-st-l">${l.steps.length - lvl - 1 > 1 ? `${l.steps.length - lvl - 1} paliers à découvrir` : '1 palier à découvrir'}</span><span class="sc-st-h">se dévoile au palier précédent</span></li>` : ''}</ol>`;
     return c;
   }
 

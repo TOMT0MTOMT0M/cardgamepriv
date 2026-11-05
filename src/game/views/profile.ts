@@ -5,7 +5,7 @@ import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { ACCENTS, BADGES, BANNERS, FRAMES, accentColor, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
+import { ACCENTS, BADGES, BANNERS, FRAMES, VITRINES, accentColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { guarded, isPending } from './safety';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
@@ -191,6 +191,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     banner.style.background = bn.css ?? '';
     banner.dataset.banner = bn.id;
     applyAccent(cos.accent);
+    applyVitrine(cos.vitrine, cos.vitrineColor);
     // bannière importée (GIF ou image, retours live 02) : par-dessus la bannière cosmétique, sous le dégradé
     const bUrl = prof?.bannerMedia ?? '';
     const bm = banner.querySelector<HTMLElement>('.pf-bn-media');
@@ -257,6 +258,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       ...unlockedIds(TITLES, st).map((id) => `title:${id}`),
       ...unlockedIds(BADGES, st).map((id) => `badge:${id}`),
       ...unlockedIds(ACCENTS, st).map((id) => `accent:${id}`),
+      ...unlockedIds(VITRINES, st).map((id) => `vitrine:${id}`),
     ];
   };
   /**
@@ -272,6 +274,17 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       if (v) el.style.setProperty(k, v);
       else el.style.removeProperty(k);
     }
+  }
+  /** Vitrine (retours 05/11) : fond choisi + sa couleur (bordure, lueur, étagère) ; sans choix : celle du profil. */
+  function applyVitrine(id?: string, color?: string) {
+    const box = el.querySelector<HTMLElement>('.pf-case');
+    if (!box) return;
+    const v = vitrineOf(id);
+    const c = accentColor(color);
+    box.style.background = id || c ? v.css ?? '' : '';
+    box.classList.toggle('has-vc', !!(id || c));
+    if (c) box.style.setProperty('--vc', c);
+    else box.style.removeProperty('--vc');
   }
   function newCosmetics(): Set<string> {
     const all = unlockedKeys();
@@ -324,11 +337,11 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
    * barre « Annuler / Enregistrer » collante en bas avec un résumé et un point « non enregistré », débloqués d'abord,
    * condition des verrouillés lisible avec la progression (« 180/500 »).
    */
-  type CosmTab = 'banner' | 'frame' | 'title' | 'badge' | 'accent';
+  type CosmTab = 'banner' | 'frame' | 'title' | 'badge' | 'accent' | 'vitrine';
   let cosmTab: CosmTab = 'banner';
   /** état enregistré à l'ouverture du panneau (pour le point « modifications non enregistrées ») */
   let cosmSaved = '';
-  const cosmKey = (c: CosmeticChoice) => JSON.stringify([c.banner ?? BANNERS[0].id, c.frame ?? 'none', c.title ?? '', c.badges ?? [], c.accent ?? ACCENTS[0].id]);
+  const cosmKey = (c: CosmeticChoice) => JSON.stringify([c.banner ?? BANNERS[0].id, c.frame ?? 'none', c.title ?? '', c.badges ?? [], c.accent ?? ACCENTS[0].id, c.vitrine ?? VITRINES[0].id, c.vitrineColor ?? '']);
   /**
    * Photo de profil / bannière À TOI (retours live 02) : GIF animé (ou image) importé, ≤ 2 Mo (démo : 700 Ko),
    * enregistré tout de suite (indépendant d'« Enregistrer » : ce n'est pas un cosmétique à débloquer). Sans fichier :
@@ -373,7 +386,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   function renderCosm() {
     const st = statsOf();
     const achS = achievementStats(st, emptyEcon());
-    const ok = { banner: new Set(unlockedIds(BANNERS, st)), frame: new Set(unlockedIds(FRAMES, st)), title: new Set(unlockedIds(TITLES, st)), badge: new Set(unlockedIds(BADGES, st)), accent: new Set(unlockedIds(ACCENTS, st)) };
+    const ok = { banner: new Set(unlockedIds(BANNERS, st)), frame: new Set(unlockedIds(FRAMES, st)), title: new Set(unlockedIds(TITLES, st)), badge: new Set(unlockedIds(BADGES, st)), accent: new Set(unlockedIds(ACCENTS, st)), vitrine: new Set(unlockedIds(VITRINES, st)) };
     /** « 🔒 Succès « … » : ouvre 500 boosters · 180/500 » */
     const lockLine = (c: Cosmetic) => {
       const a = c.need ? ACHIEVEMENTS.find((x) => x.id === c.need) : undefined;
@@ -385,6 +398,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       { id: 'frame', label: 'Cadre', hint: 'autour de ta photo', items: FRAMES, okSet: ok.frame, cls: 'cs-frame', sel: (c) => (cosmDraft.frame ?? 'none') === c.id },
       { id: 'title', label: 'Titre', hint: 'sous ton pseudo (touche encore pour l’enlever)', items: TITLES, okSet: ok.title, cls: 'cs-title', sel: (c) => cosmDraft.title === c.id },
       { id: 'accent', label: 'Couleur', hint: 'les accents de ton profil (cadre, titre, onglets, bordures)', items: ACCENTS, okSet: ok.accent, cls: 'cs-accent', sel: (c) => (cosmDraft.accent ?? ACCENTS[0].id) === c.id },
+      { id: 'vitrine', label: 'Vitrine', hint: 'le fond et la couleur de ta vitrine de cartes', items: VITRINES, okSet: ok.vitrine, cls: 'cs-vitrine', sel: (c) => (cosmDraft.vitrine ?? VITRINES[0].id) === c.id },
       { id: 'badge', label: 'Badges', hint: 'jusqu’à 5, dans l’ordre où tu les choisis', items: BADGES, okSet: ok.badge, cls: 'cs-badge', sel: (c) => (cosmDraft.badges ?? []).includes(c.id) },
     ];
     const tabDef = TABS.find((t) => t.id === cosmTab)!;
@@ -393,7 +407,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const { okSet, cls, sel } = tabDef;
     const cells = items
       .map((c) => `<button class="cs ${cls}${sel(c) ? ' on' : ''}${okSet.has(c.id) ? '' : ' locked'}${cosmNew.has(`${cosmTab}:${c.id}`) ? ' new' : ''}" data-id="${esc(c.id)}" title="${esc(okSet.has(c.id) ? c.label : `${c.label} · ${c.how}`)}" aria-pressed="${sel(c)}" ${okSet.has(c.id) ? '' : 'aria-disabled="true"'}>${
-        cls === 'cs-banner' ? `<span class="cs-sw" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring" style="--frame:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : cls === 'cs-accent' ? `<span class="cs-dot" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
+        cls === 'cs-banner' ? `<span class="cs-sw" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring" style="--frame:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : cls === 'cs-accent' ? `<span class="cs-dot" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-vitrine' ? `<span class="cs-sw cs-vit" style="background:${c.css};--vc:${accentColor(cosmDraft.vitrineColor) ?? accentColor(cosmDraft.accent) ?? '#e8927c'}"></span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
       }${okSet.has(c.id) ? '' : `<small>${lockLine(c)}</small>`}</button>`)
     // couleur libre : juste après les couleurs débloquées (avant les verrouillées)
     const pickCell =
@@ -404,6 +418,15 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
           })()
         : '';
     if (pickCell) cells.splice(items.filter((c) => okSet.has(c.id)).length, 0, pickCell);
+    // vitrine : sa couleur, juste sous les fonds (couleurs débloquées + couleur libre)
+    if (cosmTab === 'vitrine') {
+      const vc = cosmDraft.vitrineColor;
+      const custom = /^#[0-9a-f]{6}$/i.test(vc ?? '') ? vc! : '';
+      cells.push(`</div><div class="cs-t">Couleur de la vitrine <small>bordure, lueur et étagère</small></div><div class="cs-list cs-vcl">` +
+        `<button class="cs cs-vc${!vc ? ' on' : ''}" data-vc=""><span class="cs-dot" style="background:conic-gradient(var(--rose) 0 50%, #2a2220 0)"></span><b>Comme mon profil</b></button>` +
+        ACCENTS.filter((a) => ok.accent.has(a.id)).map((a) => `<button class="cs cs-vc${vc === a.id ? ' on' : ''}" data-vc="${esc(a.id)}"><span class="cs-dot" style="background:${a.css}"></span><b>${esc(a.label)}</b></button>`).join('') +
+        `<label class="cs cs-vc cs-custom-vc${custom ? ' on' : ''}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || '#e8927c'}" aria-label="Couleur libre de la vitrine"></span><b>${custom ? esc(custom.toUpperCase()) : 'Libre…'}</b></label>`);
+    }
     const list = cells.join('');
     // aperçu (collant) : bannière, avatar + cadre, pseudo, titre, badges
     const name = prof?.name ?? backend.state.user?.name ?? '';
@@ -445,7 +468,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       );
     };
     renderOrder();
-    cosm.querySelectorAll<HTMLButtonElement>('.cs:not(.cs-custom)').forEach((b) =>
+    cosm.querySelectorAll<HTMLButtonElement>('.cs:not(.cs-custom):not(.cs-vc)').forEach((b) =>
       b.addEventListener('click', () => {
         const id = b.dataset.id!;
         if (b.classList.contains('locked')) return toast(`Verrouillé : ${b.title.split(' · ')[1] ?? ''}`, 'info');
@@ -453,6 +476,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         else if (b.classList.contains('cs-frame')) cosmDraft.frame = id;
         else if (b.classList.contains('cs-title')) cosmDraft.title = cosmDraft.title === id ? undefined : id;
         else if (b.classList.contains('cs-accent')) cosmDraft.accent = id === ACCENTS[0].id ? undefined : id;
+        else if (b.classList.contains('cs-vitrine')) cosmDraft.vitrine = id === VITRINES[0].id ? undefined : id;
         else {
           const l = (cosmDraft.badges ??= []);
           if (l.includes(id)) l.splice(l.indexOf(id), 1);
@@ -466,6 +490,31 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         renderCosm();
       }),
     );
+    // couleur de la vitrine
+    const vcPreview = () => {
+      prof = prof ? { ...prof, cosmetics: { ...cosmDraft, badges: [...(cosmDraft.badges ?? [])] } } : prof;
+      renderHead();
+    };
+    cosm.querySelectorAll<HTMLButtonElement>('button.cs-vc').forEach((b) =>
+      b.addEventListener('click', () => {
+        cosmDraft.vitrineColor = b.dataset.vc || undefined;
+        shell.sfx.tick(1.2, 0.04);
+        vcPreview();
+        renderCosm();
+      }),
+    );
+    const vcPick = cosm.querySelector<HTMLInputElement>('.cs-custom-vc input');
+    vcPick?.addEventListener('input', () => {
+      cosmDraft.vitrineColor = vcPick.value.toLowerCase();
+      applyVitrine(cosmDraft.vitrine, cosmDraft.vitrineColor);
+      const dot = cosm.querySelector<HTMLElement>('.cs-custom-vc .cs-dot-pick');
+      if (dot) dot.style.background = vcPick.value;
+    });
+    vcPick?.addEventListener('change', () => {
+      cosmDraft.vitrineColor = vcPick.value.toLowerCase();
+      vcPreview();
+      renderCosm();
+    });
     // couleur libre : aperçu en direct pendant qu'on glisse (sans reconstruire le panneau, sinon le sélecteur se ferme)
     const pick = cosm.querySelector<HTMLInputElement>('.cs-custom input');
     pick?.addEventListener('input', () => {

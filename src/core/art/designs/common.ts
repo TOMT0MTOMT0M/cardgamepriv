@@ -4,12 +4,14 @@ import type { Universe, UniverseId } from '../../universes';
 import { rng } from '../../ease';
 import { type Ctx, alpha, grainTile, linear, mix } from '../canvas';
 import { BASE_H, BASE_W } from '../subjects';
+import { FONT_LABEL, FONT_TEXT } from '../../fonts';
 
 export const W = BASE_W;
 export const H = BASE_H;
 export const TAU = Math.PI * 2;
-export const FONT_TITLE = '"Fraunces Variable", "Fraunces", Georgia, serif';
-export const FONT_MONO = '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace';
+// (retours 05/11) polices du jeu : src/core/fonts.ts (Bold Frame ; Matcha World pour les gros titres de l'interface)
+export const FONT_TITLE = FONT_TEXT;
+export const FONT_MONO = FONT_LABEL;
 export const FONT_SANS = '"Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif';
 
 export interface DesignCtx {
@@ -19,6 +21,22 @@ export interface DesignCtx {
   tier: number;
   /** nombre d'étoiles = tier + 1 (1 ★ commune … 6 ★ mythique) */
   stars: number;
+  /** sous-famille (« JOHTO », « MARIO ») imprimée en bas à la place du numéro ; absente : le numéro (retours 05/11) */
+  sub?: string;
+  /** Album / Chanson : l'artiste (« ANDREA BOCELLI »), imprimé en bas à gauche */
+  byline?: string;
+}
+
+/** Texte espacé qui rétrécit (police ≤ size) pour tenir dans maxW. `font` contient « {s} ». */
+export function spacedFit(g: Ctx, text: string, x: number, y: number, spacing: number, align: 'left' | 'center' | 'right', font: string, size: number, maxW: number, min = 9) {
+  let s = size;
+  const width = () => [...text].reduce((a, c) => a + g.measureText(c).width + spacing, -spacing);
+  g.font = font.replace('{s}', String(s));
+  while (s > min && width() > maxW) {
+    s -= 1;
+    g.font = font.replace('{s}', String(s));
+  }
+  return spaced(g, text, x, y, spacing, align);
 }
 
 /**

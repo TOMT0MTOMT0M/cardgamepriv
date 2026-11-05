@@ -600,7 +600,7 @@ class GameNetClient {
   public async setBio(bio: string) {
     return await this.client!.mutation(api.profiles.setBio, { sessionToken: this.requireToken(), bio });
   }
-  public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[]; accent?: string }) {
+  public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[]; accent?: string; vitrine?: string; vitrineColor?: string }) {
     return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...c });
   }
   /** Photo / bannière importées (GIF, retours live 02) : envoi au stockage Convex puis enregistrement ; `null` = retirer. */

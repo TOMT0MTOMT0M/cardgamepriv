@@ -1,4 +1,5 @@
 import { ensureCardFonts, generateCardArt, releaseCardImage } from '../core/art';
+import { FONT_VERSION } from '../core/fonts';
 import { loadCardImage } from '../core/art/images';
 import { cardById, isSecretPhotoSet } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
@@ -23,7 +24,7 @@ const SCALE = 0.36; // 276 × 386 px : net dans une tuile de ~130 px en DPR 2–
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
-const CACHE = 'bebou-cartes-v3'; // v3 (04/11) : clé avec le fichier d'illustration — jette les cartes peintes sans image
+const CACHE = 'bebou-cartes-v4'; // v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
 // (bug du « placeholder fantôme » : une carte peinte en design typographique avant d'avoir son illustration restait
 // figée ainsi dans le cache du joueur, même après l'ajout de l'image)
 /**
@@ -84,7 +85,7 @@ function cacheUrl(key: string): string | null {
   const size = st ? numberingSize(st) : 0;
   // l'illustration ACTUELLE fait partie de la clé : quand une carte reçoit (ou change d')image, l'ancienne version peinte
   // n'est plus jamais servie — la carte est repeinte depuis la fiche du catalogue
-  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${e.dir ?? ''}${e.file}|${e.art ?? ''}|${SCALE}`)}`;
+  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${e.dir ?? ''}${e.file}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}`)}`;
 }
 async function fromCache(key: string): Promise<string | null> {
   const url = cacheUrl(key);

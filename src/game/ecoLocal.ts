@@ -15,6 +15,9 @@ import {
   claimableAchievements,
   claimableCompletions,
   emptyEcon,
+  PACK_PRICE,
+  packBuyProblem,
+  packBuysLeft,
   rollPackCoins,
   stakeValue,
   type EconState,
@@ -111,6 +114,7 @@ export function createLocalEco(host: LocalEcoHost) {
       completions: claimableCompletions(owned, s.econ.completions).map((x) => ({ id: x.id, label: x.label, kind: x.kind, size: x.cards.length, reward: x.reward })),
       achievements: { stats, claimable: claimableAchievements(stats, s.econ.achievements).map((a) => a.id) },
       isAdmin: true,
+      packShop: { price: PACK_PRICE, left: packBuysLeft(s.econ, missionDay(now)) },
     };
   }
 
@@ -313,6 +317,18 @@ export function createLocalEco(host: LocalEcoHost) {
         d().econ.calendarDay = snap.calendar.today;
         if (snap.calendar.reward.packs) host.grantPacks(snap.calendar.reward.packs);
         return { day: snap.calendar.day, ...snap.calendar.reward };
+      }),
+    buyPacks: (count) =>
+      act(() => {
+        const today = missionDay(Date.now());
+        const p = packBuyProblem(count, d().coins, d().econ, today);
+        if (p) throw new Error(p);
+        const bought = (d().econ.shopDay === today ? d().econ.shopBought ?? 0 : 0) + count;
+        coins(-count * PACK_PRICE, 'shop', `Achat de ${count} booster${count > 1 ? 's' : ''}`);
+        d().econ.shopDay = today;
+        d().econ.shopBought = bought;
+        host.grantPacks(count);
+        return { packs: count, left: packBuysLeft(d().econ, today) };
       }),
     claimWeekly: (mid) =>
       act(() => {

@@ -271,7 +271,12 @@ export const GAME_CARD_COUNT = ALL_THEMES.reduce((a, t) => a + t.cards.length, 0
  * Chance qu'un Bebou Pack contienne une carte Bébou : 1 / nombre total de cartes du jeu (règle du groupe, 2 nov.).
  * Exemple : 2 028 cartes → 1 sur 2 028 ; 10 000 cartes → 1 sur 10 000. Recalculée à chaque build, rien à régler.
  */
-export const BEBOU_SECRET_CHANCE = GAME_CARD_COUNT > 0 ? 1 / GAME_CARD_COUNT : 0;
+/**
+ * (retours 05/11) cartes Bébous / KCDQ VERROUILLÉES pour l'instant : elles ne tombent plus d'aucun booster (chance 0),
+ * l'album reste visible. Remettre à `false` pour les rouvrir — rien d'autre à changer (serveur et démo suivent).
+ */
+export const BEBOU_SECRETS_LOCKED = true;
+export const BEBOU_SECRET_CHANCE = BEBOU_SECRETS_LOCKED ? 0 : GAME_CARD_COUNT > 0 ? 1 / GAME_CARD_COUNT : 0;
 
 /**
  * Chance qu'un World Pack contienne une Merveille du Monde secrète (les 14 merveilles du monde en 3D diorama).
@@ -296,7 +301,7 @@ export const BEBOU_PACK = {
   id: 'bebou',
   label: 'Bebou Pack',
   booster: 'BEBOU PACK',
-  tagline: taglineOf(['LES 4 THÈMES', `1 CHANCE SUR ${fmtCount(GAME_CARD_COUNT, ' ')}`]),
+  tagline: taglineOf(['LES 4 THÈMES', BEBOU_SECRETS_LOCKED ? 'BÉBOUS BIENTÔT' : `1 CHANCE SUR ${fmtCount(GAME_CARD_COUNT, ' ')}`]),
   style: { ground: '#140d0c', ground2: '#2e1a24', ink: '#ffeede', foil: '#e8927c', accent: '#f2c46d' } as BoosterStyle,
 } as const;
 
@@ -373,6 +378,19 @@ export function inSubthemeScope(scope: string, subthemeId: string): boolean {
   const g = subthemeById(subthemeId)?.group?.id;
   // (« lieux », « animaux »… : anciens sous-thèmes du World Pack devenus des groupes — missions et liens d'avant)
   return !!g && (scope === `group:${g}` || scope === g);
+}
+
+/**
+ * FAMILLE / SOUS-FAMILLE d'une carte (retours 05/11) : la famille = le groupe d'albums (« Pokémon », « Jeux vidéo »,
+ * « Mangas & anime »…) imprimée en grand sur la carte, la sous-famille = le sous-thème (« Johto », « Mario »,
+ * « Naruto ») imprimée en bas à la place du numéro (déjà en haut à droite). Sous-thème sans groupe (Merveilles,
+ * Ardèche, Bébous…) : il est sa propre famille, pas de sous-famille.
+ */
+export function cardFamily(id: string): { family: string; sub?: string } | null {
+  const e = BY_ID.get(id);
+  const st = e ? SUB_BY_ID.get(e.subthemeId) : undefined;
+  if (!st) return null;
+  return st.group ? { family: st.group.label, sub: st.label } : { family: st.label };
 }
 
 /** Libellé d'une sélection (sous-thème ou groupe). */

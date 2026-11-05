@@ -8,7 +8,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { api } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
-import { BEBOU_SECRET_CHANCE } from '../src/core/sets/themes';
+import { BEBOU_SECRET_CHANCE, BEBOU_SECRETS_LOCKED } from '../src/core/sets/themes';
 import { PACK_CAP, PACK_REGEN_MS, applyRegen } from '../src/core/packRegen';
 import { CONTRACT_COST } from '../src/core/contracts';
 import { CATALOG_CARDS } from './cardsCatalog';
@@ -123,7 +123,27 @@ describe('boosters', () => {
     expect(pack.maxRarity).toBe('secret');
   });
 
-  test('bébou pack gagnant : la dernière carte est un Bébou, annoncé dans le fil', async () => {
+  test.runIf(BEBOU_SECRETS_LOCKED)('Bébous verrouillées : aucun Bébou, même sur le tirage le plus favorable', async () => {
+    const { t, alice } = await setup();
+    forceRandom(0);
+    const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
+    expect(pack.cards.some((c) => c.rarity === 'secret')).toBe(false);
+  });
+
+  test('achat de boosters en pièces : débit, réserve, plafond du jour', async () => {
+    const { t, alice } = await setup();
+    await t.run(async (ctx) => ctx.db.patch(alice.userId, { coins: 5000 }));
+    const before = (await t.query(api.users.me, { sessionToken: alice.token }))!.packBalance;
+    const r = await t.mutation(api.economy.buyPacks, { sessionToken: alice.token, count: 5 });
+    expect(r.left).toBe(5);
+    const me = await t.query(api.users.me, { sessionToken: alice.token });
+    expect(me?.packBalance).toBe(before + 5);
+    const eco = await t.query(api.economy.state, { sessionToken: alice.token });
+    expect(eco?.coins).toBe(5000 - 5 * 250);
+    await expect(t.mutation(api.economy.buyPacks, { sessionToken: alice.token, count: 6 })).rejects.toThrow(/Plus que 5/);
+  });
+
+  test.skipIf(BEBOU_SECRETS_LOCKED)('bébou pack gagnant : la dernière carte est un Bébou, annoncé dans le fil', async () => {
     const { t, alice } = await setup();
     forceRandom(BEBOU_SECRET_CHANCE * 0.5); // sous 1 / nb de cartes → le pack contient un Bébou
     const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });

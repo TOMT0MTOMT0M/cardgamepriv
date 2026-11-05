@@ -88,10 +88,11 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   };
 
   el.innerHTML = `
-    <div class="tr-tabs" role="tablist" aria-label="Échanges">
+    <div class="tr-tabs" role="tablist" aria-label="Échanges" hidden>
       <button role="tab" data-v="direct" class="on" aria-selected="true">Échanges directs<b class="badge tt-in" hidden></b></button>
       <button role="tab" data-v="board" aria-selected="false">Tableau d’offres<b class="badge tt-board" hidden></b></button>
     </div>
+    <h2 class="tr-sec-h tr-sec-direct"><span>Échanges directs</span><small>avec tes amis · propositions reçues et envoyées</small><b class="badge tt-in2" hidden></b></h2>
     <div class="tr-col left">
       <h3>En cours</h3><div class="pending"></div>
       <h3>Échanger avec…</h3><div class="friends"></div>
@@ -166,33 +167,20 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
 
   // ── TABLEAU D'OFFRES (retours live 02, lot T — views/board.ts) : 2e onglet de la page, ouvert à tous les joueurs
   const board = createBoard(backend, { fairness, gaugeHtml, ago, chime: () => shell.sfx.chime(3, 0.08) });
-  el.append(board.el);
+  // (retours 05/11) UN seul écran : le tableau d'offres en haut (grille qui défile vers la droite), les échanges
+  // directs en dessous — plus d'onglets. `on-board` n'est plus utilisé : les deux sont toujours visibles.
+  q('.tr-sec-direct').before(board.el);
   const tabBtns = [...el.querySelectorAll<HTMLButtonElement>('.tr-tabs button')];
   let onBoard = false;
   function setView(v: 'direct' | 'board') {
-    const b = v === 'board';
-    if (b === onBoard && el.classList.contains('on-board') === b) return;
-    onBoard = b;
-    el.classList.toggle('on-board', b);
-    tabBtns.forEach((x) => {
-      const on = x.dataset.v === v;
-      x.classList.toggle('on', on);
-      x.setAttribute('aria-selected', String(on));
-    });
-    // l'adresse suit (retour du téléphone, lien partagé) sans recharger la page
-    const want = b ? '#/echanges/tableau' : '#/echanges';
-    if (location.hash !== want) window.history.replaceState(window.history.state, '', want);
-    if (b) {
-      if (open) closeViewer();
-      setTrayOpen(false);
-      board.enter();
-    } else {
-      board.leave();
-      renderPending();
-      renderFriends();
-      renderHistory();
-    }
-    el.scrollTo({ top: 0 });
+    // (retours 05/11) plus d'onglets : le tableau d'offres et les échanges directs sont sur le même écran ;
+    // « aller au tableau » = remonter en haut, « échanges directs » = descendre jusqu'à leur titre
+    onBoard = v === 'board';
+    board.enter();
+    renderPending();
+    renderFriends();
+    renderHistory();
+    if (onBoard) el.scrollTo({ top: 0 });
   }
   tabBtns.forEach((x) => x.addEventListener('click', () => setView(x.dataset.v as 'direct' | 'board')));
   const syncTabBadges = () => {
@@ -202,6 +190,9 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     bIn.textContent = String(ni);
     bBd.hidden = !nb;
     bBd.textContent = String(nb);
+    const b2 = q('.tt-in2');
+    b2.hidden = !ni;
+    b2.textContent = `${ni} reçue${ni > 1 ? 's' : ''}`;
   };
   backend.onChange(() => el.isConnected && syncTabBadges());
   const vInfo = q('.v-info');
@@ -863,10 +854,9 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       syncTabBadges();
       // « #/echanges/tableau » (ou « Proposer sur le tableau » depuis une carte) : l'onglet du tableau d'offres
       const toBoard = sub === 'tableau' || !!sessionStorage.getItem('bebou.boardGive');
-      onBoard = !toBoard; // (force la mise à jour)
+      pendSig = friendSig = '';
       setView(toBoard ? 'board' : 'direct');
       if (toBoard) return;
-      pendSig = friendSig = '';
       renderPending();
       renderFriends();
       renderHistory();

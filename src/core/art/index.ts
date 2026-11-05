@@ -11,6 +11,8 @@ import { BASE_H, BASE_W, SUBJECTS, WIN, finishLayer } from './subjects';
 import { FONT_MONO, FONT_TITLE } from './designs/common';
 import { design as resolveDesign, CLASSIC_WIN, bebou, type CardDesign } from './designs';
 import { universe } from '../universes';
+import { cardFamily } from '../sets/themes';
+import { POP_ARTISTS } from '../sets/popArtists';
 import { paintBack, DEFAULT_BACK, type BackStyle } from './back';
 import { cardImage, ensureCardImages, loadCardImage, setImageLimits } from './images';
 import { paintCoverSubject, paintImageSubject } from './imageSubject';
@@ -72,7 +74,7 @@ let fontsAll: Promise<void> | null = null;
 function loadFonts(strict = false): Promise<void> {
   if (!fontsAll) {
     const italic = Promise.all([document.fonts.load(`italic 400 27px ${FONT_TITLE}`), document.fonts.load(`italic 500 40px ${FONT_TITLE}`)]);
-    const core = Promise.all([document.fonts.load(`600 44px ${FONT_TITLE}`), document.fonts.load(`500 19px ${FONT_MONO}`), document.fonts.load(`400 14px ${FONT_MONO}`)]);
+    const core = Promise.all([document.fonts.load(`700 44px ${FONT_TITLE}`), document.fonts.load(`600 44px ${FONT_TITLE}`), document.fonts.load(`500 19px ${FONT_MONO}`), document.fonts.load(`400 14px ${FONT_MONO}`)]);
     fontsAll = Promise.all([core, italic]).then(() => undefined, () => undefined);
     fontsReady = Promise.all([core, Promise.race([italic, new Promise((r) => setTimeout(r, 1500))])]).then(() => undefined, () => undefined);
   }
@@ -212,7 +214,9 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   const r = rng(card.seed);
   const release = !!o.release;
   // les cartes Bébous ont leur propre gabarit (sceau des huit), sauf si une expérience impose un design
-  const dz = o.design ? resolveDesign(o.design) : isSecretPhotoSet(card.set) ? bebou : resolveDesign();
+  const dz0 = o.design ? resolveDesign(o.design) : isSecretPhotoSet(card.set) ? bebou : resolveDesign();
+  // (retours 05/11, préparé) photo HORIZONTALE : un autre gabarit pour ces cartes, dès que LANDSCAPE.design est rempli
+  const dz = landscapeDesign(card, im, dz0);
 
   const bg = makeCanvas(W, H), subj = makeCanvas(W, H), fg = makeCanvas(W, H), fx = makeCanvas(W, H);
   const frame = makeCanvas(W, H), masks = makeCanvas(W, H);
@@ -245,8 +249,11 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   masks.g.globalCompositeOperation = 'lighter';
   frame.g.textBaseline = 'alphabetic';
   const uni0 = universe(card.universe);
-  const uni = card.uniName ? { ...uni0, name: card.uniName, short: card.uniName } : uni0;
-  dz.paint(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId) });
+  // (retours 05/11) famille en grand (« POKÉMON »), sous-famille en bas (« JOHTO ») — cartes du catalogue ; labo : inchangé
+  const fam = cardFamily(card.id);
+  const uniLabel = fam?.family ?? card.uniName;
+  const uni = uniLabel ? { ...uni0, name: uniLabel, short: uniLabel } : uni0;
+  dz.paint(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId), sub: fam?.sub, byline: POP_ARTISTS[card.id] });
   masks.g.globalCompositeOperation = 'source-over';
   yield;
 
@@ -293,6 +300,28 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     list,
     dispose: () => (list.forEach((t) => t.dispose()), release && freeAll()),
   };
+}
+
+/**
+ * GABARIT DES PHOTOS HORIZONTALES (retours 05/11 — préparé, pas encore branché) : une illustration pleine (photo,
+ * jaquette) plus large que haute d'au moins `ratio` est aujourd'hui recadrée dans le gabarit portrait (et perd ses
+ * côtés). Le jour où le gabarit « paysage » existe : l'ajouter à designs/ et mettre son id dans `design` — toutes ces
+ * cartes le prennent (hors `except` : Bébous, Merveilles, ou un id de carte), sans autre changement. Penser alors à
+ * monter la version du cache des cartes peintes (src/game/cardImages.ts).
+ */
+export const LANDSCAPE: { design: string | null; ratio: number; except: (card: CardData) => boolean } = {
+  design: null,
+  ratio: 1.2,
+  except: (card) => isSecretPhotoSet(card.set) || card.id.startsWith('mrv-'),
+};
+/** La carte a-t-elle une photo horizontale ? (illustration pleine, pas un sujet détouré) */
+export function isLandscapeArt(card: CardData, im: { canvas: { width: number; height: number }; opaque?: boolean } | null): boolean {
+  if (!im || !(card.cover || im.opaque) || !im.canvas.height) return false;
+  return im.canvas.width / im.canvas.height >= LANDSCAPE.ratio;
+}
+function landscapeDesign(card: CardData, im: Parameters<typeof isLandscapeArt>[1], dz: CardDesign): CardDesign {
+  if (!LANDSCAPE.design || dz.id !== 'full-art' || LANDSCAPE.except(card) || !isLandscapeArt(card, im)) return dz;
+  return resolveDesign(LANDSCAPE.design);
 }
 
 /** Génère les calques d'une carte (≈ 30–60 ms à pleine résolution). */

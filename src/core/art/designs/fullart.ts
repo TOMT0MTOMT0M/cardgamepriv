@@ -1,6 +1,6 @@
 import { alpha, linear, mix } from '../canvas';
 import { setInfo } from '../../cardData';
-import { type CardDesign, FONT_MONO, FONT_TITLE, H, W, fitFont, glyph, grainAtop, num3, paper, spaced, starColor, starRow } from './common';
+import { type CardDesign, FONT_MONO, FONT_TITLE, H, W, fitFont, glyph, grainAtop, num3, paper, spaced, spacedFit, starColor, starRow } from './common';
 
 /**
  * 2 · Pleine illustration — l'image va jusqu'aux bords. Un voile sombre en bas porte le nom en grand ;
@@ -51,22 +51,36 @@ export const fullArt: CardDesign = {
     f.shadowColor = 'rgba(0,0,0,0.55)';
     f.shadowBlur = 8;
     glyph(f, uni.id, 66, 886, 34, ucol, 2.6);
-    f.font = `600 28px ${FONT_MONO}`;
     f.fillStyle = ucol;
-    spaced(f, uni.short.toUpperCase(), 100, 896, 4);
+    // famille (« POKÉMON », « JEUX VIDÉO ») : rétrécit si elle est longue
+    spacedFit(f, uni.short.toUpperCase(), 100, 896, 4, 'left', `600 {s}px ${FONT_MONO}`, 28, W - 150, 16);
     f.restore();
     // nom
     f.save();
     f.shadowColor = 'rgba(0,0,0,0.55)';
     f.shadowBlur = 14;
     f.fillStyle = '#f7f2e8';
-    const nameFont = `600 {s}px ${FONT_TITLE}`;
-    const ns = fitFont(f, card.name, nameFont, 60, W - 96);
+    // nom : Bold Frame Two (la plus grasse), un rien espacé (retours 05/11)
+    const nameFont = `700 {s}px ${FONT_TITLE}`;
+    const ns = fitFont(f, card.name, nameFont, 62, W - 96);
+    f.letterSpacing = '0.5px';
     f.fillText(card.name, 46, 978);
+    f.letterSpacing = '0px';
     f.restore();
-    f.font = `400 15px ${FONT_MONO}`;
-    f.fillStyle = alpha('#f7f2e8', 0.6);
-    spaced(f, `${si.code} ${num3(card.num)}/${si.size}`, W - 48, 1036, 2, 'right');
+    f.fillStyle = alpha('#f7f2e8', d.sub ? 0.72 : 0.6);
+    // sous-famille (« JOHTO ») à la place du numéro, déjà lisible en haut à droite (retours 05/11)
+    let subW = 0;
+    if (d.sub) subW = spacedFit(f, d.sub.toUpperCase(), W - 48, 1036, 2.4, 'right', `500 {s}px ${FONT_MONO}`, 16, d.byline ? (W - 96) * 0.4 : W - 96, 10);
+    else {
+      f.font = `400 15px ${FONT_MONO}`;
+      spaced(f, `${si.code} ${num3(card.num)}/${si.size}`, W - 48, 1036, 2, 'right');
+    }
+
+    // Album / Chanson : l'artiste en bas à gauche, sous le titre (retours 05/11)
+    if (d.byline) {
+      f.fillStyle = alpha('#f7f2e8', 0.86);
+      spacedFit(f, d.byline.toUpperCase(), 48, 1036, 2, 'left', `600 {s}px ${FONT_MONO}`, 17, W - 96 - subW - 28, 10);
+    }
 
     m.strokeStyle = m.fillStyle = 'rgb(255,0,0)';
     if (tier >= 2) {

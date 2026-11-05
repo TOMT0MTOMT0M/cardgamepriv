@@ -46,6 +46,8 @@ export const econValidator = v.object({
   gamesWon: v.number(),
   rouletteWins: v.number(),
   calendarDay: v.optional(v.string()),
+  shopDay: v.optional(v.string()),
+  shopBought: v.optional(v.number()),
   completions: v.array(v.string()),
   achievements: v.array(v.string()),
 });
@@ -86,7 +88,7 @@ export default defineSchema({
     /** pochettes de sous-thème choisies à la main (vue Albums) : sous-thème → carte épinglée */
     covers: v.optional(v.record(v.string(), v.string())),
     /** cosmétiques du profil (src/core/cosmetics.ts) : bannière, cadre d'avatar, titre, badges — tout se débloque en jouant */
-    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()) })),
+    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()) })),
     /** photo de profil / bannière importées par le joueur (GIF animé ou image, ≤ 2 Mo, convex/profiles.ts) — sinon l'avatar Discord */
     avatarMedia: v.optional(v.id('_storage')),
     bannerMedia: v.optional(v.id('_storage')),

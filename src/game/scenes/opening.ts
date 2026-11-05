@@ -246,6 +246,13 @@ const STACK_DZ = 0.011;
  */
 const MYTHIC_ADMIRE_MS = 1500;
 /**
+ * (retours 05/11) « Tout révéler » ralenti : vitesse des petites cartes, temps de lecture minimal de chaque carte, et
+ * une 5★ qui garde sa version complète (ralenti compris) puis reste admirée un moment avant la suite.
+ */
+const REVEAL_SPEED = 2.2;
+const REVEAL_DWELL_MS = 320;
+const LEGEND_ADMIRE_MS = 1100;
+/**
  * (retours live 02, anti-spoil) Couleur unique de la braise et de la fuite de lumière du booster scellé : la même pour
  * tous les boosters (c'était la couleur de la meilleure carte : on devinait une rouge ou une 6★ avant de l'ouvrir).
  */
@@ -340,7 +347,8 @@ export function createOpeningScene(): OpeningScene {
    * Vitesse d'une carte en défilement auto (audit UX2-02 / UX2-04) : ×3,5 sous le seuil, sauf une légendaire (5★,
    * accélérée seulement par « Tout révéler ») qui passe à ×2 : son ralenti reste visible, sans annuler l'accéléré.
    */
-  const fastSpeed = (si: number | undefined) => (!fastCard(si) ? 1 : slots[si!].rr.rank >= 3 ? 1 : 3.5);
+  // (retours 05/11) « Tout révéler » moins pressé : ×2,2 au lieu de ×3,5 (« 4★ et + » garde son défilement rapide)
+  const fastSpeed = (si: number | undefined) => (!fastCard(si) ? 1 : slots[si!].rr.rank >= 3 ? 1 : auto.reveal ? REVEAL_SPEED : 3.5);
   /** « Tout révéler » / « 4★ et + » : une 4★ ou 5★ sous le seuil joue sa VERSION CONDENSÉE (montée raccourcie, même impact) au lieu d'une accélération ×2 */
   const condensed = (si: number | undefined) => fastCard(si) && slots[si!].rr.rank >= 3;
   /**
@@ -362,7 +370,9 @@ export function createOpeningScene(): OpeningScene {
    * auto (sinon une belle carte, plus lente, se trahissait) ; la vitesse propre à sa rareté (`fastSpeed`) prend le
    * relais quand elle apparaît.
    */
-  const preSpeed = () => (auto.minRank > 0 ? 3.5 : 1);
+  const preSpeed = () => (auto.reveal ? REVEAL_SPEED : auto.minRank > 0 ? 3.5 : 1);
+  /** « Tout révéler » : instant où la carte courante a été montrée (temps de lecture minimal avant la suivante) */
+  let shownAt = 0;
   /**
    * (audit UX2-01) toucher reçu pendant une transition (carte qui file dans la rangée, emballage qui s'ouvre) : au lieu
    * d'être avalé, il est mis de côté et rejoué dès que la scène attend de nouveau un toucher.
@@ -1250,6 +1260,8 @@ export function createOpeningScene(): OpeningScene {
         return;
       }
       phase = last ? 'busy' : 'shown';
+      shownAt = performance.now();
+      if (auto.reveal && T >= 4) autoHoldUntil = shownAt + LEGEND_ADMIRE_MS;
       if (last) finish(fast ? 0.35 : T >= 3 ? 1.1 : 0.7);
       else flushQueued();
     }, [], T >= 4 ? Math.max(end, pay + holdT) : pay + holdT);
@@ -1565,6 +1577,8 @@ export function createOpeningScene(): OpeningScene {
         finish(fast ? 0.3 : 0.9);
       } else {
         phase = 'opened';
+        // (retours 05/11) « Tout révéler » : temps de lecture, et une 5★ admirée un moment avant la suivante
+        if (auto.reveal) autoHoldUntil = performance.now() + (T >= 4 ? LEGEND_ADMIRE_MS : REVEAL_DWELL_MS);
         // « 4★ et + » : arrêt APRÈS une belle carte (avant : la scène s'arrêtait face cachée devant elle — un indice)
         if (auto.minRank > 0 && !auto.reveal && !fastCard(si)) autoWait = true;
         flushQueued();
@@ -2309,7 +2323,7 @@ export function createOpeningScene(): OpeningScene {
         if (phase === 'opened' && !autoWait && (auto.reveal ? admired : auto.minRank > 0)) {
           if (style === 'fan') revealFan();
           else revealCurrent();
-        } else if (phase === 'shown' && (fastCard(cur) || (auto.reveal && !!slots[cur] && (slots[cur].rr.rank < 5 || admired)))) nextCard();
+        } else if (phase === 'shown' && (!auto.reveal || performance.now() - shownAt >= REVEAL_DWELL_MS) && ((fastCard(cur) && (!auto.reveal || admired)) || (auto.reveal && !!slots[cur] && (slots[cur].rr.rank < 4 || admired)))) nextCard();
         else if (phase === 'mythicHold' && auto.reveal && admired) advance();
       }
       shake.update(dt);

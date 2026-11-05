@@ -18,6 +18,8 @@ export interface EcoSnapshot {
   completions: Array<{ id: string; label: string; kind: string; size: number; reward: number }>;
   achievements: { stats: AchievementStats; claimable: string[] };
   isAdmin: boolean;
+  /** achat de boosters en pièces : prix unitaire et achats encore possibles aujourd'hui */
+  packShop: { price: number; left: number };
 }
 
 export interface DuelSideView {
@@ -120,6 +122,8 @@ export interface EcoBackend {
   readonly snapshot: EcoSnapshot | null;
   onChange(fn: (s: EcoSnapshot | null) => void): () => void;
   claimCalendar(): Promise<{ day: number; coins: number; packs: number }>;
+  /** achète `count` boosters (réserve) avec des pièces */
+  buyPacks(count: number): Promise<{ packs: number; left: number }>;
   claimWeekly(id: string): Promise<number>;
   burn(items: StakeItem[]): Promise<{ coins: number; count: number }>;
   claimCompletions(): Promise<{ coins: number; sets: Array<{ id: string; label: string; reward: number }> }>;

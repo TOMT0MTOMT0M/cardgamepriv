@@ -2,12 +2,14 @@ import { collectionSig, liveRegen, type GameBackend, type PackCard } from '../ba
 import { PACK_CAP, PACK_REGEN_MS, fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import type { PackRequest } from '../../core/packRoll';
-import { BEBOU_PACK, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
+import { BEBOU_PACK, BEBOU_SECRETS_LOCKED, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { STAR_RARITIES, packOdds, slotShare } from '../../core/dropRates';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { haptics } from '../../core/haptics';
+import { fmtCoins } from '../../core/economy';
+import { COIN_ICON } from './wallet';
 
 /**
  * FICHE BOOSTER (boutique) : s'ouvre en overlay quand on touche une pochette. Tout ce qu'il faut savoir avant d'ouvrir :
@@ -98,6 +100,7 @@ export function createPackSheet(
         <div class="qty" role="radiogroup" aria-label="Nombre de boosters">${QTYS.map((n) => `<button data-n="${n}" role="radio">×${n}</button>`).join('')}</div>
         <button class="open-btn">OUVRIR</button>
         <div class="open-sub"></div>
+        <div class="ps-buy" hidden><span class="ps-buy-l">Acheter</span><button class="btn-ghost sm" data-buy="1"></button><button class="btn-ghost sm" data-buy="5"></button><span class="ps-buy-s"></span></div>
       </div>
     </aside>
     <div class="pack-cards" role="dialog" aria-modal="true" aria-label="Cartes du booster" hidden>
@@ -124,6 +127,22 @@ export function createPackSheet(
   const openSub = q('.open-sub');
   const banner = q('.sealed-banner');
   const qtyEl = q('.qty');
+  const buyEl = q('.ps-buy');
+  // (retours 05/11) acheter des boosters avec des pièces : ils rejoignent la réserve
+  buyEl.querySelectorAll<HTMLButtonElement>('button[data-buy]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      const n = Number(b.dataset.buy);
+      try {
+        await busyButton(b, backend.eco.buyPacks(n));
+        haptics.pulse(10);
+        shell.sfx.chime(2, 0.06);
+        toast(`+${n} booster${n > 1 ? 's' : ''} dans ta réserve`, 'ok');
+      } catch (e) {
+        toast(errMsg(e), 'err');
+      }
+      sync();
+    }),
+  );
   const cardsLayer = q('.pack-cards');
   const pcList = q('.pc-list');
   const pcSearch = q<HTMLInputElement>('.pc-search');
@@ -139,6 +158,8 @@ export function createPackSheet(
     }
   })();
   let opened = false;
+  // (après la déclaration : le serveur rappelle l'abonné tout de suite, « opened » n'existait pas encore → page blanche)
+  backend.eco.onChange(() => opened && sync());
   let cardsOpen = false;
   /** booster déjà tiré (d'un autre type que la fiche affichée) : c'est lui que « Ouvrir » ouvre */
   let sealedTarget: SheetPack | null = null;
@@ -226,6 +247,17 @@ export function createPackSheet(
       openSub.textContent = u ? `${n} booster${n > 1 ? 's' : ''} en réserve${n <= PACK_CAP ? ` · ${PACK_CAP} max` : ''}` : '';
     }
     const bal = u ? liveRegen(u).balance : 0;
+    const eco = backend.eco.snapshot;
+    buyEl.hidden = !u || !eco || !!current.soon || !!s.sealed;
+    if (eco && !buyEl.hidden) {
+      const { price, left } = eco.packShop;
+      for (const b of buyEl.querySelectorAll<HTMLButtonElement>('button[data-buy]')) {
+        const n = Number(b.dataset.buy);
+        if (!b.dataset.busy) b.innerHTML = `+${n} · ${COIN_ICON}${fmtCoins(n * price)}`;
+        b.disabled = n > left || eco.coins < n * price;
+      }
+      buyEl.querySelector('.ps-buy-s')!.textContent = left ? `${left} achat${left > 1 ? 's' : ''} possible${left > 1 ? 's' : ''} aujourd’hui · solde ${fmtCoins(eco.coins)}` : 'limite du jour atteinte · reviens demain';
+    }
     qtyEl.hidden = !!current.soon || needLogin || !!s.sealed;
     for (const b of qtyEl.querySelectorAll<HTMLButtonElement>('button')) {
       const n = Number(b.dataset.n);
@@ -309,7 +341,7 @@ export function createPackSheet(
     factsEl.innerHTML = `<span><b>5</b> cartes par booster</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(p.cards.length)}</b> cartes${p.soon ? ' en préparation' : t ? ` · ${live} sous-thème${live > 1 ? 's' : ''}` : ' · les 4 thèmes'}</span>`;
     if (p.key === 'bebou') {
       secretEl.hidden = false;
-      secretEl.innerHTML = `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>1 chance sur ${esc(bebouOddsLabel().replace(/^1 sur /, ''))}</b> par booster de tirer une des <b>8 Bébous</b> <small>· 1 / nombre de cartes du jeu : plus il y a de cartes, plus c’est rare</small></div>`;
+      secretEl.innerHTML = BEBOU_SECRETS_LOCKED ? `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>Les Bébous sont verrouillées pour l’instant</b> <small>· elles ne tombent d’aucun booster, leur retour sera annoncé</small></div>` : `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>1 chance sur ${esc(bebouOddsLabel().replace(/^1 sur /, ''))}</b> par booster de tirer une des <b>8 Bébous</b> <small>· 1 / nombre de cartes du jeu : plus il y a de cartes, plus c’est rare</small></div>`;
     } else secretEl.hidden = true;
     sync();
   }

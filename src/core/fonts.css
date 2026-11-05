@@ -1,0 +1,13 @@
+/*
+ * POLICES DU JEU (retours 05/11) — un seul endroit (avec src/core/fonts.ts).
+ *  - « Matcha World » : les GROS TITRES seulement (logo, titres de page, moments forts). Très large et gourmande : à
+ *    doser. Le fichier d'origine n'a ni accents ni point médian : scripts/build-fonts.py les ajoute (É È Ê Ë À Ç… ·).
+ *  - « Bold Frame » : tout le reste, en trois graisses réunies sous un même nom → les `font-weight` du CSS choisissent :
+ *      400 = Bold Frame (texte courant) · 500-600 = Bold Frame One (libellés, boutons) · 700-900 = Bold Frame Two (titres).
+ *    Étroite et nette : légèrement agrandie (`size-adjust`) pour rester lisible en petit.
+ * ⚠ Bold Frame : licence « usage personnel » (jeu privé entre amis, non commercial).
+ */
+@font-face { font-family: 'Matcha World'; src: url('./fonts/matcha-world.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'Bold Frame'; src: url('./fonts/bold-frame.woff2') format('woff2'); font-weight: 100 450; font-display: swap; size-adjust: 108%; }
+@font-face { font-family: 'Bold Frame'; src: url('./fonts/bold-frame-one.woff2') format('woff2'); font-weight: 451 650; font-display: swap; size-adjust: 108%; }
+@font-face { font-family: 'Bold Frame'; src: url('./fonts/bold-frame-two.woff2') format('woff2'); font-weight: 651 1000; font-display: swap; size-adjust: 108%; }
