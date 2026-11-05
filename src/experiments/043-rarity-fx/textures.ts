@@ -22,10 +22,8 @@ import {
  *
  *  - `film`     : table de film mince PHYSIQUE (Airy, intégrée sur le spectre visible avec les fonctions CIE 1931) :
  *                 u = épaisseur optique 0–1 000 nm, v = cos θ. La couleur « huile / nacre » vraie, pour 1 lecture.
- *  - `spectrum` : couleur d'une longueur d'onde 380–720 nm (réseau de diffraction : arc-en-ciel « vrai »).
  *  - `noise`    : 4 bruits périodiques (R, G fBm ; B turbulence ; A blanc) 256².
  *  - `cells`    : Voronoï périodique (R identifiant de cellule, G distance au bord, B distance au centre).
- *  - `pattern`  : motif « cosmos » (anneaux, disques, étoiles), périodique.
  *  - `stars`    : champ d'étoiles périodique 512² (R éclat, G teinte, B scintillement).
  *  - `caustics` : caustiques d'eau périodiques.
  *  - `lines`    : gravure (R guillochis concentrique, G hachures diagonales).
@@ -35,10 +33,8 @@ import {
  */
 export interface FxTextures {
   film: DataTexture;
-  spectrum: DataTexture;
   noise: DataTexture;
   cells: DataTexture;
-  pattern: DataTexture;
   stars: DataTexture;
   caustics: DataTexture;
   lines: DataTexture;
@@ -144,29 +140,6 @@ function filmLut(): DataTexture {
   return make(data, W, H, { srgb: true, wrap: MirroredRepeatWrapping });
 }
 
-/** Couleur d'une longueur d'onde (u : 380 → 720 nm), normalisée au canal maximal. */
-function spectrumLut(): DataTexture {
-  const W = 256;
-  const data = new Uint8Array(W * 4);
-  for (let x = 0; x < W; x++) {
-    const l = 380 + (340 * x) / (W - 1);
-    const [X, Y, Z] = cie(l);
-    let [r, gg, b] = xyz2rgb(X, Y, Z);
-    r = Math.max(0, r);
-    gg = Math.max(0, gg);
-    b = Math.max(0, b);
-    const m = Math.max(r, gg, b, 1e-4);
-    // bords du visible atténués (violet et rouge profonds)
-    const edge = Math.min(1, (l - 380) / 40, (720 - l) / 40);
-    const k = x * 4;
-    data[k] = toSrgb((r / m) * edge) * 255;
-    data[k + 1] = toSrgb((gg / m) * edge) * 255;
-    data[k + 2] = toSrgb((b / m) * edge) * 255;
-    data[k + 3] = 255;
-  }
-  return make(data, W, 1, { srgb: true, wrap: ClampToEdgeWrapping, mips: false });
-}
-
 // ───────────────────────────────────────────── bruits périodiques
 function valueNoise(size: number, period: number, seed: number) {
   const r = rng(seed);
@@ -241,46 +214,6 @@ function cellsTex(): DataTexture {
     }
   // l'identifiant ne doit pas être moyenné entre deux éclats : pas de mipmaps
   return make(data, S, S, { mips: false });
-}
-
-/** Motif « cosmos » : anneaux, disques et petites étoiles semés en périodique. */
-function patternTex(): DataTexture {
-  const S = 256, r = rng(91);
-  const cov = new Float32Array(S * S), idf = new Float32Array(S * S), star = new Float32Array(S * S);
-  const stamp = (cx: number, cy: number, rad: number, ring: boolean, id: number) => {
-    const R = Math.ceil(rad + 2);
-    for (let y = -R; y <= R; y++)
-      for (let x = -R; x <= R; x++) {
-        const d = Math.hypot(x, y);
-        const a = ring ? clamp01(1.4 - Math.abs(d - rad) * 0.9) : clamp01(rad - d + 0.7);
-        if (a <= 0) continue;
-        const k = (((cy + y) % S) + S) % S * S + ((((cx + x) % S) + S) % S);
-        if (a > cov[k]) {
-          cov[k] = a;
-          idf[k] = id;
-        }
-      }
-  };
-  for (let i = 0; i < 70; i++) stamp(Math.floor(r() * S), Math.floor(r() * S), 4 + r() * 22, r() < 0.55, r());
-  for (let i = 0; i < 160; i++) {
-    const cx = Math.floor(r() * S), cy = Math.floor(r() * S), s = 2 + r() * 5;
-    for (let y = -8; y <= 8; y++)
-      for (let x = -8; x <= 8; x++) {
-        // étoile à 4 branches : |x|^p + |y|^p < s^p avec p < 1
-        const p = 0.6;
-        const v = clamp01(1 - (Math.pow(Math.abs(x) / s, p) + Math.pow(Math.abs(y) / s, p)));
-        const k = (((cy + y) % S) + S) % S * S + ((((cx + x) % S) + S) % S);
-        star[k] = Math.max(star[k], v);
-      }
-  }
-  const data = new Uint8Array(S * S * 4);
-  for (let i = 0; i < S * S; i++) {
-    data[i * 4] = cov[i] * 255;
-    data[i * 4 + 1] = idf[i] * 255;
-    data[i * 4 + 2] = star[i] * 255;
-    data[i * 4 + 3] = 255;
-  }
-  return make(data, S, S);
 }
 
 /** Champ d'étoiles périodique (3 tailles), teinte et phase de scintillement par étoile. */
@@ -490,14 +423,12 @@ function roomAtlas(): Texture {
 
 export function createFxTextures(): FxTextures {
   const film = filmLut();
-  const spectrum = spectrumLut();
   const noise = noiseTex();
   const cells = cellsTex();
-  const pattern = patternTex();
   const stars = starsTex();
   const caustics = causticsTex(cells);
   const lines = linesTex();
   const gold = goldTex();
   const room = roomAtlas();
-  return { film, spectrum, noise, cells, pattern, stars, caustics, lines, gold, room, list: [film, spectrum, noise, cells, pattern, stars, caustics, lines, gold, room] };
+  return { film, noise, cells, stars, caustics, lines, gold, room, list: [film, noise, cells, stars, caustics, lines, gold, room] };
 }

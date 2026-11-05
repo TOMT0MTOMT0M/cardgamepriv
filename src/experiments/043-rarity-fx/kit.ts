@@ -273,10 +273,6 @@ export function createCtx(q: Q, tex: FxTextures, art: CardArt, I: Inputs, hex: s
 
 // ───────────────────────────────────────────── outils TSL (peu d'instructions, aucun bruit procédural lourd)
 
-/** Film mince physique : épaisseur 0..1 (→ 0–1 000 nm, en miroir), cos θ. */
-export const film = (c: FxCtx, th: N, cosT?: N): N => texture(c.tex.film, vec2(th, cosT ?? c.ndv)).rgb;
-/** Couleur spectrale d'une longueur d'onde normalisée 0..1 (380–720 nm). */
-export const spectrum = (c: FxCtx, l: N): N => texture(c.tex.spectrum, vec2(clamp(l, 0, 1), 0.5)).rgb;
 /** Bruit périodique (4 canaux). */
 export const noise = (c: FxCtx, p: N): N => texture(c.tex.noise, p);
 /** Mélange « écran » (éclaircit sans écraser). */
