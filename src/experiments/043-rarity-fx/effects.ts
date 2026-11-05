@@ -1,4 +1,4 @@
-import { AdditiveBlending, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, Sprite, SpriteNodeMaterial, type Object3D } from 'three/webgpu';
+import { AdditiveBlending, Mesh, MeshBasicNodeMaterial, PlaneGeometry, Sprite, SpriteNodeMaterial, type Object3D } from 'three/webgpu';
 import {
   abs,
   atan,
@@ -71,6 +71,8 @@ export interface FxDef {
   readable: string;
   /** intensité du bloom (0 = pas de bloom) */
   bloom?: number;
+  /** la face avant est translucide : dessinée après les opaques (le fond d'écran copié contient tout le reste) */
+  transparentFront?: boolean;
   layers?: (q: Q, art: CardArt, I: Inputs, photo: boolean) => LayerOpts;
   prepare?: (env: FxEnv) => Promise<Record<string, unknown>>;
   build(c: FxCtx): FxOut;
@@ -786,34 +788,46 @@ const MYTHIC: FxDef[] = [
   {
     num: 29,
     tier: 'mythic',
-    name: 'Lenticulaire animé',
-    idea: 'Trois « heures » de la même illustration selon l’angle ; les nervures des lentilles brillent et glissent quand on tourne, la bascule s’adoucit en mouvement.',
-    tech: '3 illustrations complètes, choisies et fondues par l’angle de vue ; nervures analytiques',
-    cost: '3 T · ~20 ALU',
-    reduced: 'une seule vue + scintillement',
-    readable: 'chaque vue est une illustration complète et lisible',
+    name: 'Cristal',
+    idea: 'La carte est une dalle d’acrylique transparent : on voit CE QU’IL Y A DERRIÈRE, réfracté par la dalle et ses biseaux ; seuls le personnage et les ornements imprimés sont opaques, et le personnage projette son ombre sur le monde derrière.',
+    tech: 'copie PARTIELLE du framebuffer (rectangle de la carte + marge) échantillonnée à screenUV + décalage : biseau (gradient du SDF de la carte) + inclinaison de la dalle ; Fresnel, arête lumineuse, ombre par mip ; masque d’impression = sujet + encre du cadre + foil',
+    cost: '1 copie partielle + 2 T · ~40 ALU',
+    reduced: 'dalle sans réfraction (décalage fixe), sans ombre',
+    readable: 'le sujet et le texte sont opaques et intacts ; l’illustration reste imprimée à 15 % dans le plastique',
     bloom: 0.35,
-    async prepare(env) {
-      return env.q === 'low' ? {} : { views: await env.makeViews(3) };
-    },
+    transparentFront: true,
     build(c) {
-      const views = c.extra.views as CardArt[] | undefined;
-      if (!views) {
-        const sh = sparkle(c, 60, 0.1, 0.3, 3);
-        return { color: c.L.color.add(vec3(sh.mul(0.6))) };
-      }
-      const ang = atan(c.V.x, c.V.z).mul(1.6).add(c.I.tilt.x.mul(0.5));
-      const f = clamp(ang.div(0.8).add(0.5), 0, 0.9999).mul(3);
-      const fr = fract(f);
-      const tex = (i: number) => texture(views[i].flat).rgb;
-      const pick = (k: N) => select(k.lessThan(1), tex(0), select(k.lessThan(2), tex(1), tex(2)));
-      const a = pick(f.floor());
-      const b = pick(clamp(f.floor().add(1), 0, 2));
-      // en mouvement, la bascule entre deux vues s'étale (flou de lentille) ; au repos elle est nette
-      const col = mix(a, b, smoothstep(c.I.energy.mul(-0.45).add(0.8), float(1), fr).mul(0.6));
-      // nervures : leur reflet glisse avec l'inclinaison (vraies lentilles cylindriques)
-      const ridge = sin(c.uv.x.mul(90 * Math.PI).add(c.I.tilt.x.mul(14))).mul(0.04).add(smoothstep(0.92, 1, sin(c.uv.x.mul(90 * Math.PI).add(c.I.tilt.x.mul(14)).add(1.2))).mul(0.06));
-      return { color: col.mul(ridge.add(1)) };
+      // SDF de la carte (rectangle arrondi) → normale du biseau
+      const sdCard = (u: N) => {
+        const p = u.sub(0.5).mul(vec2(CARD.w, CARD.h));
+        const q = abs(p).sub(vec2(CARD.w / 2 - CARD.r, CARD.h / 2 - CARD.r));
+        return length(max(q, 0)).add(min(max(q.x, q.y), 0)).sub(CARD.r);
+      };
+      const e = 0.002;
+      const sd = sdCard(c.uv);
+      const n = dirOf(vec2(sdCard(c.uv.add(vec2(e, 0))).sub(sd), sdCard(c.uv.add(vec2(0, e))).sub(sd)));
+      const bevel = smoothstep(float(-0.03), float(-0.002), sd);
+      const o = isLow(c) ? c.I.tilt : c.I.tilt.add(c.I.lag.mul(0.5));
+      // décalage d'échantillonnage du fond (en UV d'écran) : la dalle déplace la vue avec l'inclinaison, le biseau réfracte
+      const shift = o.mul(vec2(0.012, -0.012)).add(n.mul(bevel.mul(bevel)).mul(vec2(-0.02, 0.02)));
+      const back = c.extra.backdrop as ((off: N) => N) | undefined;
+      const seen: N = back ? back(shift).rgb : vec3(0.08, 0.07, 0.07);
+      // ce qui est IMPRIMÉ (opaque) : sujet, encre sombre du cadre, ornements foil
+      const ink = c.frame.mul(smoothstep(float(0.72), float(0.4), luminance(c.L.frame.rgb)));
+      const printed = clamp(c.subj.add(ink), 0, 1);
+      // le papier du cadre est un dépoli (35 %) : la carte garde sa silhouette sans redevenir opaque
+      // ombre du sujet sur ce qu'il y a derrière
+      const ld = c.I.light.sub(0.5).mul(vec2(1, 0.8));
+      const sh = isLow(c) ? float(0) : texture(c.art.subject, c.uv.add(ld.mul(-0.06)).add(vec2(0.01, -0.016))).level(float(3)).a;
+      const Ld = dirOf(o.add(vec2(0.0001, 0.0002)));
+      const facing = dot(n, Ld.negate());
+      const rim = max(facing, 0).pow(3).add(max(facing.negate(), 0).pow(3).mul(0.3)).mul(bevel.pow(2)).mul(strength(c.I.tilt, 0.8).mul(0.7).add(0.3));
+      const fres = float(1).sub(clamp(c.ndv, 0, 1)).pow(3).mul(0.2);
+      const sheen = isLow(c) ? float(0) : softbox(c, c.I.light.add(c.I.lag.mul(0.4)), [0.17, 0.24], 0.06, 0.16).mul(0.07);
+      const tintMul = mix(vec3(1), c.tint, 0.12);
+      const plastic = seen.mul(tintMul).mul(float(1).sub(sh.mul(0.4))).add(c.L.bg.rgb.mul(c.fond).mul(0.15)).add(vec3(fres.add(sheen).add(rim.mul(0.8))));
+      const frosted = max(printed, c.frame.mul(0.35));
+      return { color: mix(plastic, c.L.color, frosted), emissive: vec3(rim.mul(0.4)).add(c.accent.mul(c.edge).mul(0.1)) };
     },
   },
   {
@@ -952,67 +966,63 @@ const SECRET: FxDef[] = [
   {
     num: 34,
     tier: 'secret',
-    name: 'Holo-volume',
-    idea: 'Le personnage se lève de la carte en hologramme 3D, en tranches : elles s’écartent quand on tourne, traînent derrière le mouvement (cisaillement) et « décrochent » sur un coup de poignet.',
-    tech: 'tranches empilées au-dessus de la fenêtre (le sujet détouré, balayage, scintillement, additif)',
-    cost: 'High 6 tranches · Mid 4 · Low 3 (une lecture chacune)',
-    reduced: '3 tranches, sans scintillement',
-    readable: 'hors de la carte : l’illustration reste intacte dessous',
-    bloom: 0.8,
+    name: 'Pièce secrète',
+    idea: 'Derrière la fenêtre, une vraie pièce (alcôve de musée) : l’illustration y est accrochée au fond, sous un projecteur, et en tournant la carte on voit les murs, le parquet, le plafond. Le personnage se tient dans l’embrasure.',
+    tech: '« interior mapping » (astuce des façades de jeux vidéo) : rayon de vue en espace carte → intersection analytique avec 5 parois d’une boîte ; une seule texture atlas 2×2 (pas de cubemap) + l’illustration d’origine comme tableau du fond ; ombrage par la profondeur',
+    cost: '2 T · ~45 ALU',
+    reduced: 'pièce peu profonde, sans poussière',
+    readable: 'l’illustration est le tableau accroché au fond, intacte ; le sujet reste devant',
+    bloom: 0.45,
+    layers(q, art, _I, photo) {
+      return {
+        bgColor(rgb) {
+          void rgb;
+          const D = q === 'low' ? 0.11 : 0.2;
+          const V = viewDirObject();
+          const k = V.xy.div(max(V.z, 0.22)).mul(vec2(1 / CARD.w, 1 / CARD.h));
+          const u0 = uv();
+          const x0 = W.cx - W.hx, x1 = W.cx + W.hx, y0 = W.cy - W.hy, y1 = W.cy + W.hy;
+          const safe = (v: N) => select(v.greaterThanEqual(0), max(v, 0.0001), min(v, -0.0001));
+          const kx = safe(k.x), ky = safe(k.y);
+          // p(z) = u0 − k·z : parois x (kx > 0 → mur x0), parois y (ky > 0 → sol y0), fond z = D
+          const zx = select(kx.greaterThan(0), u0.x.sub(x0).div(kx), u0.x.sub(x1).div(kx));
+          const zy = select(ky.greaterThan(0), u0.y.sub(y0).div(ky), u0.y.sub(y1).div(ky));
+          const z = min(min(zx, zy), float(D));
+          const p = u0.sub(k.mul(z));
+          const lx = p.x.sub(x0).div(2 * W.hx), ly = p.y.sub(y0).div(2 * W.hy), lz = z.div(D);
+          const isBack = z.greaterThanEqual(D - 0.0005);
+          const isX = zx.lessThan(zy).and(isBack.not());
+          // tuile (0,0) fond ; (1,0) mur latéral (x = profondeur, le fond à droite) ; (0,1) sol ; (1,1) plafond
+          const tileX = select(isBack, float(0), select(isX, float(1), select(ky.greaterThan(0), float(0), float(1))));
+          const tileY = select(isBack, float(0), select(isX, float(0), float(1)));
+          const local = select(isBack, vec2(lx, ly), select(isX, vec2(lz, ly), vec2(lx, lz)));
+          const atlasUV = vec2(tileX, tileY).mul(0.5).add(clamp(local, 0.004, 0.996).mul(0.5));
+          const wall = texture(TEXREF.room!, atlasUV).rgb;
+          // ombrage par la profondeur (les parois s'assombrissent vers le fond, le fond garde son projecteur)
+          const depthShade = select(isBack, float(1), mix(float(1.15), float(0.5), lz));
+          let col: N = wall.mul(depthShade);
+          // le tableau accroché au fond (l'illustration d'origine) avec sa baguette dorée et son projecteur
+          const inset = photo ? 0.06 : 0.1;
+          const px = lx.sub(inset).div(1 - 2 * inset), py = ly.sub(inset).div(1 - 2 * inset);
+          const inPic = step(0, px).mul(step(px, 1)).mul(step(0, py)).mul(step(py, 1));
+          const pic = texture(art.bg, vec2(x0 + 2 * W.hx * 0.0, y0).add(vec2(px.mul(2 * W.hx), py.mul(2 * W.hy))));
+          const spot = smoothstep(float(0.9), float(0.2), length(vec2(px.sub(0.5), py.sub(0.55)).mul(vec2(1, 1.2)))).mul(0.5).add(0.6);
+          const bd = min(min(px, float(1).sub(px)), min(py, float(1).sub(py)));
+          const rimPic = step(float(-0.035), bd).mul(step(bd, float(0))).mul(step(0, px.add(0.035))).mul(step(px.sub(1.035), 0)).mul(step(0, py.add(0.035))).mul(step(py.sub(1.035), 0));
+          const frameGold = vec3(0.85, 0.66, 0.3).mul(smoothstep(float(-0.02), float(0.01), bd.negate()).mul(0.5).add(0.5));
+          const picCol = pic.rgb.mul(spot);
+          col = select(isBack, mix(mix(col, frameGold, rimPic), picCol, inPic), col);
+          return col;
+        },
+      };
+    },
     build(c) {
-      // photo (gabarit Bébou : la fenêtre n'est pas celle par défaut) → liseré sur la bordure de la carte
-      const glowW = c.photo ? c.edge.mul(0.7) : c.win.mul(smoothstep(0.04, 0, windowSDF(c.uv).negate()));
-      return { color: c.L.color.add(vec3(0.3, 0.85, 1).mul(glowW.mul(0.25))), emissive: vec3(0.3, 0.85, 1).mul(glowW.mul(0.35)) };
+      // un peu de la lumière du projecteur déborde sur le cadre, côté fenêtre
+      const spill = smoothstep(float(0.06), float(0), windowSDF(c.uv)).mul(c.frame).mul(0.12);
+      return { color: c.L.color.add(vec3(1, 0.85, 0.6).mul(spill)), emissive: vec3(1, 0.85, 0.6).mul(spill).mul(0.6) };
     },
     attach(env, card) {
-      const n = env.q === 'high' ? 6 : env.q === 'mid' ? 4 : 3;
-      const g = new Group();
-      const geo = env.bag.add(new PlaneGeometry(W.hx * 2 * CARD.w, W.hy * 2 * CARD.h));
-      for (let i = 0; i < n; i++) {
-        const m = env.bag.add(new MeshBasicNodeMaterial());
-        m.transparent = true;
-        m.depthWrite = false;
-        m.blending = AdditiveBlending;
-        const cu = vec2(W.cx - W.hx, W.cy - W.hy).add(uv().mul(vec2(W.hx * 2, W.hy * 2)));
-        let s: N;
-        if (env.photo) {
-          // photo : pas de détourage → buste elliptique centré au tiers haut (visage), qui s'efface vers les bords
-          const p = texture(env.art.bg, cu);
-          const e = uv().sub(vec2(0.5, 0.6)).mul(vec2(1.5, 1.1));
-          s = vec4(p.rgb, smoothstep(float(0.3), float(0.1), length(e)).mul(smoothstep(0.25, 0.6, luminance(p.rgb)).mul(0.6).add(0.4)));
-        } else s = texture(env.art.subject, cu);
-        const k = i / Math.max(1, n - 1);
-        const scan = sin(uv().y.mul(260).sub(time.mul(6)).sub(env.I.phase.mul(14))).mul(0.25).add(0.75);
-        const flick = env.q === 'low' ? float(1) : sin(time.mul(23).add(i * 1.7)).mul(0.08).add(0.92);
-        const holo = mix(s.rgb, vec3(0.35, 0.9, 1), 0.55 + 0.3 * k);
-        // couleur PRÉMULTIPLIÉE par l'alpha : en mélange additif, l'alpha seul ne suffit pas à masquer le rectangle
-        const al = s.a.mul((0.5 - k * 0.3) * (env.photo ? 0.55 : 1));
-        m.colorNode = vec4(holo.mul(scan).mul(flick).mul(1 - k * 0.55).mul(al), al);
-        (m as unknown as { emissiveNode: N }).emissiveNode = holo.mul(s.a).mul(0.25 * (1 - k));
-        const mesh = new Mesh(geo, m);
-        mesh.position.set((W.cx - 0.5) * CARD.w, (W.cy - 0.5) * CARD.h, 0.012 + k * 0.16);
-        mesh.userData.k = k;
-        mesh.userData.base = mesh.position.clone();
-        g.add(mesh);
-      }
-      const I = env.I;
-      g.userData.update = (t: number) => {
-        const e = I.energy.value as number;
-        const lg = I.lag.value;
-        const rise = (0.75 + 0.25 * Math.sin(t * 0.6)) * (1 + e * 0.9);
-        // décrochage : 0,25 s après un coup de poignet, chaque tranche saute de côté
-        const ft = env.now() - (I.flick.value as number);
-        const glitch = ft >= 0 && ft < 0.25 && env.q !== 'low' ? (1 - ft / 0.25) * 0.02 : 0;
-        g.children.forEach((m, i) => {
-          const k = m.userData.k as number;
-          const b = m.userData.base as { x: number; y: number };
-          m.position.z = 0.012 + k * 0.16 * rise;
-          // cisaillement : les tranches hautes traînent derrière la rotation
-          m.position.x = b.x - lg.x * k * 0.06 + (glitch ? Math.sin(i * 12.9 + t * 90) * glitch : 0);
-          m.position.y = b.y - lg.y * k * 0.06;
-        });
-      };
-      card.add(g);
+      if (env.q !== 'low') card.add(sparkSprites(env, env.q === 'high' ? 40 : 18, 'dust'));
     },
   },
   {
@@ -1123,6 +1133,7 @@ function sparkSprites(env: FxEnv, count: number, mode: 'border' | 'dust'): Sprit
   m.scaleNode = h1.mul(mode === 'border' ? 0.008 : 0.006).add(0.003);
   const sp = new Sprite(m);
   sp.count = count;
+  sp.userData.baseCount = count;
   sp.frustumCulled = false;
   return sp;
 }

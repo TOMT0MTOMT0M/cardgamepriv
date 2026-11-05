@@ -1,4 +1,5 @@
 import {
+  CanvasTexture,
   ClampToEdgeWrapping,
   DataTexture,
   LinearFilter,
@@ -9,6 +10,7 @@ import {
   RepeatWrapping,
   SRGBColorSpace,
   UnsignedByteType,
+  type Texture,
   type Wrapping,
 } from 'three/webgpu';
 
@@ -28,6 +30,8 @@ import {
  *  - `caustics` : caustiques d'eau périodiques.
  *  - `lines`    : gravure (R guillochis concentrique, G hachures diagonales).
  *  - `gold`     : matcap or (sphère éclairée), pour l'or liquide.
+ *  - `room`     : atlas 2×2 d'une pièce (mur du fond, mur latéral, sol, plafond) pour l'« interior mapping » de la
+ *                 carte secrète « Pièce secrète » — une seule texture 2D, pas de cubemap (repli WebGL2 bas de gamme).
  */
 export interface FxTextures {
   film: DataTexture;
@@ -39,7 +43,8 @@ export interface FxTextures {
   caustics: DataTexture;
   lines: DataTexture;
   gold: DataTexture;
-  list: DataTexture[];
+  room: Texture;
+  list: Texture[];
 }
 
 // ───────────────────────────────────────────── outils
@@ -374,6 +379,115 @@ function goldTex(): DataTexture {
   return make(data, S, S, { srgb: true, wrap: ClampToEdgeWrapping });
 }
 
+/**
+ * Atlas de la pièce (1024², 4 tuiles de 512) dessiné au Canvas 2D : (0,0) mur du fond, (1,0) mur latéral,
+ * (0,1) sol, (1,1) plafond — en coordonnées UV (v vers le haut), la tuile étant dessinée avec un repère retourné.
+ * Une alcôve de musée : plâtre chaud, lambris, parquet, plafond sombre avec sa lampe.
+ */
+function roomAtlas(): Texture {
+  const S = 1024, T = S / 2;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const g = cv.getContext('2d')!;
+  const r = rng(77);
+  const tile = (ix: number, iy: number, draw: (g: CanvasRenderingContext2D) => void) => {
+    g.save();
+    g.translate(ix * T, (2 - iy) * T);
+    g.scale(T, -T);
+    g.beginPath();
+    g.rect(0, 0, 1, 1);
+    g.clip();
+    draw(g);
+    g.restore();
+  };
+  const grain = (g: CanvasRenderingContext2D, n: number, a: number) => {
+    for (let i = 0; i < n; i++) {
+      g.fillStyle = `rgba(${r() > 0.5 ? 255 : 0},${r() > 0.5 ? 255 : 0},${r() > 0.5 ? 255 : 0},${a * r()})`;
+      g.fillRect(r(), r(), 0.004 + r() * 0.01, 0.002 + r() * 0.004);
+    }
+  };
+  // mur du fond : plâtre chaud + projecteur (ovale) + plinthe et cimaise
+  tile(0, 0, (g) => {
+    g.fillStyle = '#3a2e27';
+    g.fillRect(0, 0, 1, 1);
+    const sp = g.createRadialGradient(0.5, 0.6, 0.02, 0.5, 0.6, 0.62);
+    sp.addColorStop(0, 'rgba(255,214,160,0.55)');
+    sp.addColorStop(0.45, 'rgba(255,200,140,0.18)');
+    sp.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = sp;
+    g.fillRect(0, 0, 1, 1);
+    grain(g, 900, 0.05);
+    g.fillStyle = '#1a1411';
+    g.fillRect(0, 0, 1, 0.07);
+    g.fillStyle = '#4a3a30';
+    g.fillRect(0, 0.07, 1, 0.012);
+    g.fillRect(0, 0.78, 1, 0.01);
+  });
+  // mur latéral : lambris vertical (le fond de la pièce est à x = 1)
+  tile(1, 0, (g) => {
+    g.fillStyle = '#4a382d';
+    g.fillRect(0, 0, 1, 1);
+    for (let i = 0; i < 7; i++) {
+      const x = i / 7;
+      const lg = g.createLinearGradient(x, 0, x + 1 / 7, 0);
+      lg.addColorStop(0, '#36281f');
+      lg.addColorStop(0.08, '#5c4536');
+      lg.addColorStop(0.5, '#4e3b2f');
+      lg.addColorStop(0.92, '#3d2d24');
+      lg.addColorStop(1, '#271b15');
+      g.fillStyle = lg;
+      g.fillRect(x, 0, 1 / 7, 1);
+    }
+    g.fillStyle = '#1a1411';
+    g.fillRect(0, 0, 1, 0.07);
+    g.fillStyle = '#4a3a30';
+    g.fillRect(0, 0.07, 1, 0.012);
+    g.fillRect(0, 0.78, 1, 0.01);
+    grain(g, 600, 0.04);
+  });
+  // sol : parquet (lames le long de x, joints aléatoires), plus clair sous le projecteur
+  tile(0, 1, (g) => {
+    g.fillStyle = '#3f2c21';
+    g.fillRect(0, 0, 1, 1);
+    const rows = 9;
+    for (let j = 0; j < rows; j++) {
+      let x = -r() * 0.4;
+      while (x < 1) {
+        const w = 0.25 + r() * 0.3;
+        const k = 0.85 + r() * 0.3;
+        g.fillStyle = `rgb(${Math.round(84 * k)},${Math.round(58 * k)},${Math.round(42 * k)})`;
+        g.fillRect(x + 0.003, j / rows + 0.003, w - 0.006, 1 / rows - 0.006);
+        x += w;
+      }
+    }
+    const sp = g.createRadialGradient(0.5, 0.75, 0.02, 0.5, 0.75, 0.6);
+    sp.addColorStop(0, 'rgba(255,220,170,0.32)');
+    sp.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = sp;
+    g.fillRect(0, 0, 1, 1);
+    grain(g, 700, 0.05);
+  });
+  // plafond : sombre, halo de la lampe au centre
+  tile(1, 1, (g) => {
+    g.fillStyle = '#17120f';
+    g.fillRect(0, 0, 1, 1);
+    const sp = g.createRadialGradient(0.5, 0.5, 0.01, 0.5, 0.5, 0.45);
+    sp.addColorStop(0, 'rgba(255,225,180,0.75)');
+    sp.addColorStop(0.2, 'rgba(255,205,150,0.25)');
+    sp.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = sp;
+    g.fillRect(0, 0, 1, 1);
+    grain(g, 300, 0.04);
+  });
+  const t = new CanvasTexture(cv);
+  t.colorSpace = SRGBColorSpace;
+  t.wrapS = t.wrapT = ClampToEdgeWrapping;
+  t.generateMipmaps = true;
+  t.minFilter = LinearMipmapLinearFilter;
+  t.magFilter = LinearFilter;
+  return t;
+}
+
 export function createFxTextures(): FxTextures {
   const film = filmLut();
   const spectrum = spectrumLut();
@@ -384,5 +498,6 @@ export function createFxTextures(): FxTextures {
   const caustics = causticsTex(cells);
   const lines = linesTex();
   const gold = goldTex();
-  return { film, spectrum, noise, cells, pattern, stars, caustics, lines, gold, list: [film, spectrum, noise, cells, pattern, stars, caustics, lines, gold] };
+  const room = roomAtlas();
+  return { film, spectrum, noise, cells, pattern, stars, caustics, lines, gold, room, list: [film, spectrum, noise, cells, pattern, stars, caustics, lines, gold, room] };
 }

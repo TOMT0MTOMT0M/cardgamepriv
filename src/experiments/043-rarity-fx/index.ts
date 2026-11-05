@@ -14,7 +14,7 @@ import { createPipeline } from '../../core/post';
 import { fxReduced } from '../../core/fxPref';
 import type { N } from '../../core/tsl';
 import { createFxTextures, type FxTextures } from './textures';
-import { RotationRig, composeLayers, createCtx, createInputs, type Inputs, type Q } from './kit';
+import { CardBackdropNode, RotationRig, composeLayers, createCtx, createInputs, type Inputs, type Q } from './kit';
 import { EFFECTS, TEXREF, TIER_LABEL, effectsOf, type FxDef, type FxEnv } from './effects';
 
 /** Heures du jour pour les vues lenticulaires (même carte, autre lumière). */
@@ -60,7 +60,12 @@ export default function create(): Experiment {
     upscale: 'bilinéaire' as 'bilinéaire' | 'FSR1',
     bloom: !q0.has('nobloom'),
     carte: Math.max(0, Number(q0.get('card') ?? 0) || 0),
+    /** mode « vitrine » (pokebox) : la carte ne tourne plus, c'est l'ŒIL qui bouge devant elle — projection hors-axe */
+    vitrine: q0.has('vitrine'),
   };
+  /** budget de particules adaptatif (mattamior) : ne fait que BAISSER tant que la vue ne change pas */
+  let adapt = 1;
+  let adaptOverSince = 0;
   let autoQ: Q = 'high';
   const frames: number[] = [];
   let overSince = 0;
@@ -108,6 +113,8 @@ export default function create(): Experiment {
       root.clear();
       cards = [];
       const L = LADDER[q];
+      adapt = 1;
+      adaptOverSince = 0;
       // ?src=<rareté> : prévisualiser les effets d'un palier sur une carte d'un autre palier (les secrètes sont des photos)
       // ?src=kcdq : la vraie photo KCDQ (les Bébous n'ont encore que des silhouettes « photo à venir »)
       const src = q0.get('src');
@@ -132,12 +139,20 @@ export default function create(): Experiment {
           bag: { add: <T extends { dispose(): void }>(o: T) => (built.push(o), o) },
           makeViews: (n) => Promise.all(Array.from({ length: n }, (_, i) => makeArt({ ...cd, palette: { ...cd.palette, ...TIMES[i % TIMES.length] } }, L.art * 0.85, true))),
         };
-        const extra = def.prepare ? await def.prepare(env) : {};
+        const extra: Record<string, unknown> = def.prepare ? await def.prepare(env) : {};
+        // carte translucide : fond d'écran partiel (le rectangle de la carte), échantillonné avec le décalage demandé
+        const backdrops: CardBackdropNode[] = [];
+        if (def.transparentFront) extra.backdrop = (off: N) => {
+          const node = new CardBackdropNode(off);
+          backdrops.push(node);
+          return node;
+        };
         const layers = composeLayers(art, def.layers ? def.layers(q, art, I, photo) : {});
         const c = createCtx(q, tex, art, I, rar.hex, rar.accentHex, layers, { ...extra, photo });
         const out = def.build(c);
         const front = new MeshBasicNodeMaterial();
         front.colorNode = vec4(out.color, 1);
+        if (def.transparentFront) front.transparent = true; // dessinée après les opaques : la copie du fond les contient
         const glowOn = params.bloom && q !== 'low' && (def.bloom ?? 0) > 0;
         if (out.emissive && glowOn) (front as unknown as { emissiveNode: N }).emissiveNode = out.emissive;
         // matériaux du contrôle de lisibilité : carte sans effet, masque du sujet
@@ -148,6 +163,10 @@ export default function create(): Experiment {
         base.colorNode = vec4(composeLayers(art, def.layers ? def.layers(q, art, I, photo) : {}).color, c.subj);
         built.push(front, base);
         const mesh = createCardMesh(front, backMat, edgeMat);
+        for (const b of backdrops) {
+          b.mesh = mesh;
+          b.camera = stage.camera;
+        }
         const holder = new Group();
         holder.add(mesh);
         holder.position.x = (k - (defs.length - 1) / 2) * CARD.w * 1.16;
@@ -185,6 +204,7 @@ export default function create(): Experiment {
     post.output = params.upscale === 'FSR1' && L.scale < 1 ? (fsr1(outN, 0.2) as unknown as N) : outN;
   }
 
+  let fitDistance = 1;
   function fit() {
     const n = params.vue === 'planche' ? 5 : 1;
     const cam = stage.camera;
@@ -194,7 +214,8 @@ export default function create(): Experiment {
     const fill = immersive ? 0.98 : 0.74;
     const dH = CARD.h / fill / (2 * t);
     const dW = fw / (immersive ? 0.98 : 0.86) / (2 * t * cam.aspect);
-    cam.position.set(0, 0, Math.max(dH, dW) * (immersive ? 0.92 : 1));
+    fitDistance = Math.max(dH, dW) * (immersive ? 0.92 : 1);
+    cam.position.set(0, 0, fitDistance);
     cam.lookAt(0, 0, 0);
     cam.updateProjectionMatrix();
   }
@@ -215,7 +236,7 @@ export default function create(): Experiment {
     if (!el || frames.length < 20) return;
     const s = [...frames].sort((a, b) => a - b);
     const p = (k: number) => s[Math.min(s.length - 1, Math.floor(s.length * k))];
-    el.textContent = `image p50 ${p(0.5).toFixed(1)} ms · p95 ${p(0.95).toFixed(1)} ms${gpuMs != null ? ` · GPU ${gpuMs.toFixed(2)} ms` : ''}`;
+    el.textContent = `image p50 ${p(0.5).toFixed(1)} ms · p95 ${p(0.95).toFixed(1)} ms${gpuMs != null ? ` · GPU ${gpuMs.toFixed(2)} ms` : ''}${adapt < 1 ? ` · particules ×${adapt.toFixed(2)}` : ''}${params.vitrine ? ' · vitrine' : ''}`;
   }
 
   /** Contrôle de lisibilité : ΔE moyen et p95 sur le SUJET entre la carte sans effet et avec effet, 9 inclinaisons. */
@@ -394,6 +415,7 @@ export default function create(): Experiment {
       c.gui.add(params, 'bloom').name('bloom').onChange(() => void build());
       c.gui.add(params, 'carte', 0, 12, 1).name('autre carte du palier').onChange(() => void build());
       c.gui.add(demo, 'on').name('démo rotation (auto)');
+      c.gui.add(params, 'vitrine').name('mode vitrine (œil hors-axe)').onChange(() => fit());
       c.gui.add({ check: () => void readabilityCheck() }, 'check').name('contrôle de lisibilité (ΔE)');
       c.gui.add({ all: () => console.table(EFFECTS.map((e) => ({ n: e.num, palier: e.tier, effet: e.name, coût: e.cost }))) }, 'all').name('liste des 35 (console)');
       await build();
@@ -413,6 +435,22 @@ export default function create(): Experiment {
         ry = d.x * maxT;
       } else if (!ctx.input.inside && !ctx.input.gyroEnabled) ry += Math.sin(t * 0.6) * (immersive ? 0.1 : 0.22);
       rot.set(ry / maxT, -rx / maxT);
+      if (params.vitrine) {
+        // ── vitrine : la carte reste à plat, l'œil se déplace (souris / gyroscope) et la caméra garde la carte
+        //    EXACTEMENT cadrée (frustum asymétrique, Kooima) : la fenêtre d'illustration devient une vraie fenêtre
+        const cam = stage.camera;
+        const d0 = fitDistance;
+        const tf = Math.tan(((cam.fov * Math.PI) / 180) / 2);
+        const hh = d0 * tf, hw = hh * cam.aspect;
+        const ex = rot.x * d0 * Math.tan(maxT) * 1.6, ey = rot.y * d0 * Math.tan(maxT) * 1.6;
+        cam.position.set(ex, ey, d0);
+        cam.rotation.set(0, 0, 0);
+        const n = cam.near, f = cam.far;
+        cam.projectionMatrix.makePerspective(((-hw - ex) * n) / d0, ((hw - ex) * n) / d0, ((hh - ey) * n) / d0, ((-hh - ey) * n) / d0, n, f, cam.coordinateSystem, cam.reversedDepth);
+        cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+        rx = 0;
+        ry = 0;
+      }
       if (ctx.input.gyroEnabled && gyroAlpha != null) {
         gyroAlphaBase ??= gyroAlpha;
         let d = gyroAlpha - gyroAlphaBase;
@@ -422,7 +460,7 @@ export default function create(): Experiment {
       } else rig.gyroTwist = demo.on ? Math.sin(t * 0.5) * 0.12 : 0;
       rig.update(dt, rot, now());
       // penche dans le virage (la carte « tient » en main) + torsion
-      const lean = Math.max(-0.09, Math.min(0.09, -I.vel.value.x * 0.02)) * (immersive ? 0.4 : 1) + I.twist.value * 0.35;
+      const lean = params.vitrine ? 0 : Math.max(-0.09, Math.min(0.09, -I.vel.value.x * 0.02)) * (immersive ? 0.4 : 1) + I.twist.value * 0.35;
       // inclinaison et lumière virtuelle
       const lx = pointerUV && ctx.input.inside ? pointerUV.x : 0.5 + I.tilt.value.x * 0.45;
       const ly = pointerUV && ctx.input.inside ? pointerUV.y : 0.55 + I.tilt.value.y * 0.4;
@@ -445,9 +483,27 @@ export default function create(): Experiment {
       }
       for (const c of cards) {
         c.mesh.rotation.set(rx, ry, lean);
-        c.mesh.traverse((o) => (o.userData.update as ((t: number) => void) | undefined)?.(t));
+        c.mesh.traverse((o) => {
+          (o.userData.update as ((t: number) => void) | undefined)?.(t);
+          // budget de particules : les sprites instanciés n'en dessinent qu'une fraction
+          const base = o.userData.baseCount as number | undefined;
+          if (base) (o as unknown as { count: number }).count = Math.max(1, Math.round(base * adapt));
+        });
       }
       post.render();
+      // budget adaptatif : image > 24 ms pendant 1,5 s → ×0,85 (plancher 0,4), et ça ne remonte jamais avant un rebuild
+      if (!building && frames.length >= 60 && adapt > 0.4) {
+        const s = [...frames].sort((a, b) => a - b);
+        const p95 = s[Math.floor(s.length * 0.95)];
+        if (p95 > 24) {
+          adaptOverSince ||= t;
+          if (t - adaptOverSince > 1.5) {
+            adapt = Math.max(0.4, adapt - 0.15);
+            adaptOverSince = 0;
+            frames.length = 0;
+          }
+        } else adaptOverSince = 0;
+      }
       // temps GPU (WebGPU : requêtes d'horodatage) ; WebGL2 iOS / Firefox : indisponible (cf. rapport §5)
       const be = (ctx.renderer as unknown as { backend?: { trackTimestamp?: boolean } }).backend;
       if (be?.trackTimestamp && frameNo % 30 === 0)

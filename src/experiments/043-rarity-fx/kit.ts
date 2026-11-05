@@ -1,4 +1,4 @@
-import { Color, Vector2, Vector4, type Texture } from 'three/webgpu';
+import { Color, FramebufferTexture, LinearFilter, Vector2, Vector3, Vector4, ViewportTextureNode, type Camera, type NodeFrame, type Object3D, type RenderTarget, type Renderer, type Texture } from 'three/webgpu';
 import {
   abs,
   clamp,
@@ -15,6 +15,8 @@ import {
   min,
   mix,
   pow,
+  screenSize,
+  screenUV,
   smoothstep,
   step,
   texture,
@@ -390,3 +392,86 @@ export function iris(base: N, f: N, k: number | N, sheen = 0.1): N {
   return mix(base, tinted, k);
 }
 export { luminance };
+
+// ───────────────────────────────────────────── fond d'écran partiel (carte « Cristal »)
+
+/**
+ * Copie PARTIELLE du framebuffer (astuce de coattosintetico/holo-cards) : avant de dessiner la carte transparente, on ne
+ * copie que le rectangle d'écran qu'elle peut échantillonner (sa boîte englobante projetée + marge de réfraction), pas
+ * l'écran entier — un téléphone ne paie pas une copie plein écran par carte.
+ *
+ * La copie se fait avec `renderer.copyFramebufferToTexture(tex, rect)` (rect = x, y haut-gauche, largeur, hauteur en
+ * pixels du tampon) ; la texture a la taille du rectangle et l'UV d'échantillonnage est reconstruit depuis
+ * `screenUV` : v = (screenUV.y·H − (H − h − y)) / h — identique en WebGL2 et en WebGPU (three retourne lui-même
+ * l'axe v des textures de framebuffer sous WebGPU).
+ */
+export class CardBackdropNode extends ViewportTextureNode {
+  readonly rect = uniform(new Vector4(0, 0, 1, 1));
+  /** carte suivie (boîte englobante projetée) et caméra ; `pad` = marge de réfraction en pixels */
+  mesh: Object3D | null = null;
+  camera: Camera | null = null;
+  pad = 24;
+  private _corners = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
+  private _size = new Vector2();
+
+  constructor(offset: N = vec2(0, 0)) {
+    const rect = uniform(new Vector4(0, 0, 1, 1));
+    const su = screenUV.add(offset);
+    const uvN = vec2(su.x.mul(screenSize.x).sub(rect.x).div(rect.z), su.y.mul(screenSize.y).sub(screenSize.y.sub(rect.w).sub(rect.y)).div(rect.w));
+    const fb = new FramebufferTexture(1, 1);
+    fb.minFilter = LinearFilter;
+    fb.magFilter = LinearFilter;
+    fb.generateMipmaps = false;
+    super(clamp(uvN, 0.002, 0.998), null, fb);
+    this.rect = rect;
+    this.generateMipmaps = false;
+  }
+
+  override updateBefore(frame: NodeFrame): boolean | undefined {
+    const renderer = frame.renderer as Renderer;
+    const rt = renderer.getRenderTarget();
+    const reference = (rt ?? renderer.getCanvasTarget()) as (RenderTarget & { getDrawingBufferSize?: (v: Vector2) => Vector2 }) | null;
+    const size = this._size;
+    if (reference === null) renderer.getDrawingBufferSize(size);
+    else if (reference.getDrawingBufferSize) reference.getDrawingBufferSize(size);
+    else size.set(reference.width, reference.height);
+    // boîte englobante de la carte à l'écran (origine en haut à gauche)
+    let x0 = 0, y0 = 0, x1 = size.x, y1 = size.y;
+    if (this.mesh && this.camera) {
+      const w = CARD.w / 2, h = CARD.h / 2;
+      const cs = this._corners;
+      cs[0].set(-w, -h, 0);
+      cs[1].set(w, -h, 0);
+      cs[2].set(w, h, 0);
+      cs[3].set(-w, h, 0);
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const c of cs) {
+        c.applyMatrix4(this.mesh.matrixWorld).project(this.camera);
+        const px = (c.x * 0.5 + 0.5) * size.x, py = (0.5 - c.y * 0.5) * size.y;
+        minX = Math.min(minX, px); maxX = Math.max(maxX, px); minY = Math.min(minY, py); maxY = Math.max(maxY, py);
+      }
+      x0 = Math.max(0, Math.floor(minX - this.pad));
+      y0 = Math.max(0, Math.floor(minY - this.pad));
+      x1 = Math.min(size.x, Math.ceil(maxX + this.pad));
+      y1 = Math.min(size.y, Math.ceil(maxY + this.pad));
+    }
+    const w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
+    this.rect.value.set(x0, y0, w, h);
+    const tex = this.getTextureForReference(reference) as FramebufferTexture;
+    // le format doit être celui de la cible (passe en HalfFloat sous post-traitement)
+    const refTex = (reference as unknown as { texture?: Texture; textures?: Texture[] } | null);
+    const refType = refTex?.textures?.[0]?.type ?? refTex?.texture?.type;
+    if (refType != null && tex.type !== refType) {
+      tex.type = refType;
+      tex.needsUpdate = true;
+    }
+    if (tex.image.width !== w || tex.image.height !== h) {
+      tex.image.width = w;
+      tex.image.height = h;
+      tex.needsUpdate = true;
+    }
+    tex.generateMipmaps = false;
+    renderer.copyFramebufferToTexture(tex, this.rect.value);
+    return undefined;
+  }
+}
