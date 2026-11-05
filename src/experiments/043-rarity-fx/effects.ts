@@ -18,7 +18,6 @@ import {
   select,
   sin,
   smoothstep,
-  sqrt,
   step,
   texture,
   time,
@@ -32,7 +31,7 @@ import type { CardArt } from '../../core/art';
 import { CARD } from '../../core/cardModel';
 import { DEFAULT_DEPTHS, WINDOW_UV, viewDirObject, windowSDF } from '../../core/cardMaterial';
 import type { N } from '../../core/tsl';
-import { dirOf, emboss, film, flickAge, flickPulse, glare, hueRotate, iris, luminance, noise, rot2, sat, screen, sparkle, spectrum, strength, type FxCtx, type LayerOpts, type Q } from './kit';
+import { alive, cellFlash, dirOf, emboss, flickAge, glare, hueRotate, iris, luminance, noise, printGuard, rot2, sat, screen, softbox, sparkle, strength, strip, type FxCtx, type LayerOpts, type Q } from './kit';
 import type { Inputs } from './kit';
 import type { FxTextures } from './textures';
 
@@ -91,22 +90,18 @@ const COMMON: FxDef[] = [
   {
     num: 1,
     tier: 'common',
-    name: 'Satin',
-    idea: 'Un reflet doux glisse avec la rotation : il traîne un peu, déborde puis se pose, et s’étire quand on tourne vite.',
-    tech: 'reflet analytique elliptique : centre = lumière + inertie (ressort sous-amorti), grand axe = direction de la vitesse angulaire ; Fresnel factice (plus fort en rasant)',
-    cost: '0 T · ~10 ALU',
+    name: 'Reflet de vitrine',
+    idea: 'Comme une photo sous verre : le reflet doux d’une fenêtre glisse sur la carte, traîne un peu, s’étire quand on tourne vite. Presque rien de face.',
+    tech: 'rectangle arrondi doux (SDF) centré sur la lumière + inertie, étiré le long de la vitesse angulaire ; garde d’impression (les noirs restent noirs) ; quasi nul au repos',
+    cost: '0 T · ~18 ALU',
     reduced: 'reflet fixe, sans suivi',
-    readable: 'additif très faible, la teinte ne change pas ; moitié moins sur le sujet',
+    readable: 'additif ≤ 8 %, la teinte ne change pas ; moitié moins sur le sujet ; absent dans les noirs',
     build(c) {
-      if (isLow(c)) return { color: c.L.color.add(vec3(glare(c, 0.34, vec2(0.32, 0.78)).mul(0.075).mul(c.subj.mul(0.5).oneMinus()))) };
+      if (isLow(c)) return { color: c.L.color.add(vec3(glare(c, 0.34, vec2(0.32, 0.78)).mul(0.07).mul(c.subj.mul(0.5).oneMinus()))) };
       const at = c.I.light.add(c.I.lag.mul(vec2(0.45, 0.4)));
-      const d = c.uv.sub(at).mul(vec2(CARD.w, CARD.h));
-      const vd = dirOf(c.I.vel.add(vec2(0.0001, 0)));
-      const st = c.I.energy.mul(1.8).add(1);
-      const e = vec2(dot(d, vd).div(st), dot(d, vec2(vd.y.negate(), vd.x)).mul(st.sqrt()));
-      const g = smoothstep(float(0.34), float(0), length(e)).pow(2);
-      const fres = strength(c.I.tilt).mul(0.6).add(0.7);
-      return { color: c.L.color.add(vec3(g.mul(0.08).mul(fres).div(st.sqrt()).mul(c.subj.mul(0.5).oneMinus()))) };
+      const box = softbox(c, at, [0.15, 0.21]);
+      const k = alive(c, 0.35).mul(printGuard(c.L.color)).mul(c.subj.mul(0.5).oneMinus());
+      return { color: c.L.color.add(vec3(box.mul(0.085).mul(k))) };
     },
   },
   {
@@ -209,18 +204,20 @@ const UNCOMMON: FxDef[] = [
   {
     num: 6,
     tier: 'uncommon',
-    name: 'Foil de cadre',
-    idea: 'Le cadre irise selon l’angle de vue RÉEL (physique), et les couleurs continuent de couler un instant après l’arrêt.',
-    tech: 'film mince physique : épaisseur = diagonale + orientation + inertie, cos θ = angle de vue réel de la carte',
-    cost: '1 T · ~14 ALU',
-    reduced: 'irisation figée',
-    readable: 'cadre et bordure uniquement',
+    name: 'Vernis sélectif',
+    idea: 'Comme un vernis UV sur une belle impression : les ornements du cadre sont brillants, le reste mat. On ne le voit que quand la lumière passe dessus.',
+    tech: 'bande de lumière (lampe en bande réfléchie) dont la position suit l’inclinaison + inertie ; zone = masque foil du gabarit ; léger gloss permanent ; quasi nul de face',
+    cost: '0 T · ~14 ALU',
+    reduced: 'gloss figé',
+    readable: 'cadre uniquement, additif plafonné',
     build(c) {
-      const t = tiltOr(c);
-      const th = dot(c.uv, vec2(0.6, 0.4)).mul(0.55).add(t.x.mul(0.3)).add(t.y.mul(0.22)).add(c.I.lag.x.mul(0.35)).add(c.I.lag.y.mul(0.25)).add(0.18);
-      const f = mix(film(c, th, isLow(c) ? undefined : clamp(c.ndv, 0.35, 1)), c.tint, 0.35);
-      const k = strength(t).mul(0.2).add(0.5);
-      return { color: mix(c.L.color, screen(c.L.color, f.mul(0.8)), c.frame.mul(k).add(c.edge.mul(0.3))) };
+      const zone = max(c.foil.mul(c.frame), c.edge.mul(0.35));
+      if (isLow(c)) return { color: c.L.color.add(vec3(0.08).mul(zone)) };
+      const o = c.I.tilt.add(c.I.lag.mul(0.6));
+      const pos = float(0.55).add(o.y.mul(0.55)).add(o.x.mul(0.25));
+      const band = strip(c, [0.3, 0.95], pos, c.I.energy.mul(0.06).add(0.07));
+      const gloss = band.mul(0.55).mul(alive(c, 0.3)).add(0.06);
+      return { color: c.L.color.add(mix(vec3(1), c.accent, 0.25).mul(gloss.mul(zone).mul(printGuard(c.L.color).mul(0.6).add(0.4)))) };
     },
   },
   {
@@ -295,7 +292,8 @@ const UNCOMMON: FxDef[] = [
       const lum = luminance(c.L.frame.rgb);
       const groove = smoothstep(0.55, 0.25, lum).mul(zone);
       const tl = strength(c.I.tilt);
-      const e = emboss(c.art.frame, c.uv, lightDir(c).negate(), tl.mul(3).add(3), 'r', tl.mul(0.003).add(0.0014)).mul(zone);
+      // borné : le bord du bandeau lui-même ne doit pas devenir un rectangle sombre
+      const e = clamp(emboss(c.art.frame, c.uv, lightDir(c).negate(), tl.mul(3).add(3), 'r', tl.mul(0.003).add(0.0014)), -0.3, 0.7).mul(zone);
       return { color: c.L.color.mul(e.add(1)).add(vec3(1, 0.85, 0.55).mul(groove.mul(tl.mul(0.22).add(0.06)))) };
     },
   },
@@ -306,91 +304,95 @@ const RARE: FxDef[] = [
   {
     num: 11,
     tier: 'rare',
-    name: 'Reverse holo',
-    idea: 'Tout est holographique SAUF le personnage ; l’arc-en-ciel balaie dans la direction où l’on penche, et tourne avec la carte.',
-    tech: 'film mince physique × (1 − sujet) ; axe du dégradé = direction de l’inclinaison (azimut), cos θ réel, inertie',
-    cost: '2 T · ~16 ALU',
-    reduced: 'holo statique à 50 %',
-    readable: 'le sujet détouré n’est jamais touché',
+    name: 'Encre à variation optique',
+    idea: 'L’encre des billets de banque : le décor bascule entre DEUX couleurs selon l’angle, et une barre lumineuse roule dessus quand on incline (effet « rolling bar »). Rien d’arc-en-ciel.',
+    tech: 'teinte multiplicative (luminance conservée) entre la couleur de la rareté et sa complémentaire, k = projection de l’orientation ; barre = gaussienne dont la position suit l’inclinaison + inertie ; garde d’impression',
+    cost: '0 T · ~24 ALU',
+    reduced: 'teinte fixe à mi-chemin, sans barre',
+    readable: 'sujet intact ; les noirs restent noirs ; luminance du fond conservée',
     build(c) {
-      const t = tiltOr(c);
-      const ax = mix(vec2(0.45, 0.65), dirOf(t.add(vec2(0.0001, 0))).mul(0.8), strength(t, 0.8));
-      const th = dot(c.uv, ax).add(noise(c, c.uv.mul(2)).r.mul(0.35)).mul(0.75).add(t.x.mul(0.5)).add(t.y.mul(0.35)).add(c.I.lag.x.mul(0.4));
-      const f = film(c, th, isLow(c) ? undefined : clamp(c.ndv, 0.35, 1));
-      const k = isLow(c) ? 0.5 : 1;
-      return { color: iris(c.L.color, f, c.fond.mul(0.5 * k).add(c.frame.mul(0.3 * k)), 0.08) };
+      const A = c.tint, B = hueRotate(c.tint, float(2.6));
+      if (isLow(c)) return { color: iris(c.L.color, mix(A, B, 0.5), c.fond.mul(0.4), 0.04) };
+      const o = c.I.tilt.add(c.I.lag.mul(0.5));
+      const k = smoothstep(float(-0.75), float(0.75), dot(o, vec2(0.8, 0.6)));
+      const tinted = iris(c.L.color, mix(A, B, k), c.fond.mul(0.5).add(c.frame.mul(0.12)), 0.06);
+      // barre roulante : reflet d'une lampe en bande sur le pigment métallique
+      const pos = float(0.5).add(o.x.mul(0.6)).add(o.y.mul(0.2));
+      const bar = strip(c, [0.9, 0.35], pos, c.I.energy.mul(0.05).add(0.07));
+      const g = printGuard(c.L.color);
+      return { color: tinted.add(mix(vec3(1), A, 0.2).mul(bar.mul(0.3).mul(c.fond).mul(g).mul(alive(c, 0.4)))) };
     },
   },
   {
     num: 12,
     tier: 'rare',
-    name: 'Glace craquelée',
-    idea: 'Le fond est un miroir brisé : chaque éclat a sa propre inclinaison et S’ALLUME quand la carte passe par son angle.',
-    tech: 'Voronoï PRÉCALCULÉ ; normale par éclat (hash de l’identifiant) → éclat = alignement orientation·normale ; phase du film par éclat',
-    cost: '2 T · ~18 ALU',
-    reduced: 'éclats sans changement de phase',
-    readable: 'fond uniquement',
+    name: 'Kintsugi',
+    idea: 'Le décor est une céramique recollée à l’or : les fissures sont des veines dorées, et chaque veine s’allume à SON angle quand on tourne la carte.',
+    tech: 'Voronoï PRÉCALCULÉ (arêtes = veines) ; facette par cellule (hash de l’identifiant) → éclat quand l’orientation passe par son angle ; laque douce sur les tessons',
+    cost: '2 T · ~20 ALU',
+    reduced: 'veines d’or sans éclat',
+    readable: 'fond uniquement ; les tessons gardent l’illustration',
     build(c) {
-      const cell = texture(c.tex.cells, c.uv.mul(vec2(3 * CARD.w / 0.63, 3 * CARD.h / 0.63)));
+      const cell = texture(c.tex.cells, c.uv.mul(vec2(2.1 * CARD.w / 0.63, 2.1 * CARD.h / 0.63)));
       const id = cell.r;
-      const t = tiltOr(c);
+      const vein = smoothstep(float(0.06), float(0.0), cell.g).mul(noise(c, c.uv.mul(9)).a.mul(0.5).add(0.6));
+      const gold = vec3(1, 0.78, 0.36);
+      if (isLow(c)) return { color: mix(c.L.color, gold.mul(0.9), vein.mul(c.fond).mul(0.7)) };
       const nrm = vec2(hash(id.mul(91.3)), hash(id.mul(47.1).add(3))).mul(2).sub(1);
-      const th = id.mul(0.9).add(dot(t, nrm).mul(0.9)).add(t.y.mul(0.3));
-      const f = film(c, th);
-      const shard = smoothstep(0.04, 0.2, cell.g);
-      const lines = smoothstep(0.08, 0, cell.g);
-      const o = t.add(c.I.lag.mul(0.8));
-      const flash = isLow(c) ? float(0) : smoothstep(float(0.82), float(1), dot(dirOf(o.add(vec2(0.0001, 0))), dirOf(nrm))).mul(strength(o, 0.7));
-      const col = iris(c.L.color, f, c.fond.mul(shard).mul(flash.mul(0.25).add(0.4)), 0.06);
-      // l'éclat qui s'allume prend la couleur de son film (verre irisé), avec un cœur clair, plutôt qu'un aplat gris
-      const glow = f.mul(0.3).add(0.06).mul(flash.mul(shard).mul(c.fond));
-      return { color: col.add(vec3(lines.mul(0.16)).mul(c.fond)).add(glow), emissive: glow.mul(0.8) };
+      const flash = cellFlash(c, nrm, 0.8);
+      // la laque des tessons : un reflet doux qui glisse (boîte à lumière), très léger
+      const lacq = softbox(c, c.I.light.add(c.I.lag.mul(0.4)), [0.12, 0.18]).mul(0.05).mul(printGuard(c.L.color));
+      const base = c.L.color.add(vec3(lacq).mul(c.fond));
+      const lit = gold.mul(flash.mul(1.1).add(0.75));
+      const col = mix(base, lit, vein.mul(c.fond).mul(0.85));
+      return { color: col, emissive: gold.mul(vein.mul(flash).mul(c.fond)).mul(0.6) };
     },
   },
   {
     num: 13,
     tier: 'rare',
-    name: 'Faisceaux',
-    idea: 'Deux nappes de faisceaux arc-en-ciel à deux profondeurs : en tournant, elles glissent à des vitesses différentes — on voit du VOLUME derrière le personnage.',
-    tech: 'deux fract(u·n + inclinaison × profondeur) → couleur SPECTRALE vraie ; nappe arrière décalée par l’inertie ; douceur ∝ énergie',
-    cost: '1 T · ~14 ALU',
-    reduced: 'bandes figées',
-    readable: 'fond uniquement',
+    name: 'Cadran soleil',
+    idea: 'Le décor est un cadran de montre brossé « soleil » autour du personnage : une barre de lumière tourne autour de lui en suivant l’inclinaison et la torsion.',
+    tech: 'brossage radial centré sur la fenêtre ; reflet anisotrope = (1 − |rayon · lumière|)^p (brillant où les stries sont ⟂ à la lumière) ; grain lu le long de l’angle (1 lecture) ; torsion = gyroscope / molette',
+    cost: '1 T · ~20 ALU',
+    reduced: 'brossage statique',
+    readable: 'fond uniquement, multiplicatif (le design reste) + reflet plafonné',
     build(c) {
-      const t = tiltOr(c);
-      const soft = c.I.energy.mul(0.15);
-      const beams = (x: N) => smoothstep(float(0), soft.add(0.35), x).mul(smoothstep(float(1), soft.negate().add(0.65), x));
-      const x1 = fract(c.uv.x.mul(5).add(c.uv.y.mul(0.4)).add(t.x.mul(0.9)));
-      let col = iris(c.L.color, spectrum(c, x1), c.fond.mul(beams(x1)).mul(0.45), 0.1);
-      if (!isLow(c)) {
-        const x2 = fract(c.uv.x.mul(3.1).sub(c.uv.y.mul(0.25)).add(t.x.mul(2.1)).add(c.I.lag.x.mul(0.9)).add(0.37));
-        col = iris(col, spectrum(c, x2), c.fond.mul(beams(x2)).mul(0.25), 0.05);
-      }
-      return { color: col };
+      const p = c.uv.sub(vec2(W.cx, W.cy)).mul(vec2(CARD.w, CARD.h));
+      const r = length(p);
+      const rad = dirOf(p);
+      const ang = atan(p.y, p.x);
+      const grain = noise(c, vec2(ang.mul(14).add(0.5), 0.23)).r;
+      const brushed = c.L.color.mul(grain.mul(0.22).add(0.89));
+      if (isLow(c)) return { color: mix(c.L.color, brushed, c.fond) };
+      const Ld = rot2(dirOf(c.I.tilt.add(c.I.lag.mul(0.6)).add(vec2(0.0001, 0.0002))), c.I.twist.negate());
+      const an = float(1).sub(abs(dot(rad, Ld))).pow(7);
+      const bar = an.mul(strength(c.I.tilt, 0.7).mul(0.75).add(0.25)).mul(smoothstep(float(0.02), float(0.1), r));
+      const g = printGuard(c.L.color);
+      const metal = brushed.add(mix(vec3(1), c.accent, 0.35).mul(bar.mul(grain.add(0.4)).mul(0.5)).mul(g));
+      return { color: mix(c.L.color, metal, c.fond) };
     },
   },
   {
     num: 14,
     tier: 'rare',
-    name: 'Cosmos',
-    idea: 'Anneaux et étoiles holographiques (Cosmos Holo) sur deux plans de profondeur ; les étoiles scintillent quand on tourne la carte, pas toutes seules.',
-    tech: 'motif précalculé lu à 2 échelles avec parallaxe différente ; scintillement = sin(chemin cumulé + id) ; film par élément',
-    cost: '2 T · ~18 ALU',
-    reduced: 'motif figé',
-    readable: 'fond uniquement',
+    name: 'Pierre de lune',
+    idea: 'Une lueur laiteuse flotte SOUS la surface du décor (adularescence) : elle se déplace à contre-sens de l’inclinaison, comme si la carte avait de l’épaisseur.',
+    tech: 'lueur bleutée = tache douce centrée à l’opposé de l’inclinaison (parallaxe de sous-surface) + inertie, modulée par un bruit lu plus profond ; voile nacré léger ; garde d’impression',
+    cost: '1 T · ~16 ALU',
+    reduced: 'lueur fixe au centre',
+    readable: 'fond uniquement, additif plafonné ≈ 25 %',
     build(c) {
-      const t = tiltOr(c);
-      const p = texture(c.tex.pattern, c.uv.mul(vec2(2.2, 3.1)).add(t.mul(0.05)));
-      const f = film(c, p.g.mul(0.8).add(t.x.mul(0.6)).add(t.y.mul(0.4)));
-      const tw = isLow(c) ? float(0.6) : sin(c.I.phase.mul(5).add(time.mul(0.6)).add(p.g.mul(40))).mul(0.5).add(0.5);
-      let col = iris(c.L.color, f, c.fond.mul(p.r).mul(0.5), 0.1).add(vec3(p.b.mul(tw).mul(c.fond).mul(0.6)));
-      if (!isLow(c)) {
-        // plan arrière : motif plus petit, parallaxe ×3
-        const p2 = texture(c.tex.pattern, c.uv.mul(vec2(3.6, 5.1)).add(t.mul(0.15)).add(0.31));
-        const f2 = film(c, p2.g.mul(0.7).add(t.x.mul(0.9)).add(0.2));
-        col = iris(col, f2, c.fond.mul(p2.r).mul(0.25), 0.04);
-      }
-      return { color: col };
+      const o = isLow(c) ? vec2(0, 0) : c.I.tilt.add(c.I.lag.mul(0.7));
+      const center = vec2(W.cx, W.cy).sub(o.mul(vec2(0.16, 0.12)));
+      const d = c.uv.sub(center).mul(vec2(CARD.w, CARD.h)).length();
+      const n = noise(c, c.uv.mul(1.3).sub(o.mul(0.06))).r;
+      const glow = smoothstep(float(0.42), float(0.02), d).mul(n.mul(0.7).add(0.5));
+      const milk = vec3(0.72, 0.84, 1);
+      const g = printGuard(c.L.color);
+      const col = c.L.color.add(milk.mul(glow.mul(0.34).mul(c.fond).mul(g)));
+      const veil = mix(col, sat(col, 0.85).add(milk.mul(0.03)), c.fond.mul(0.5));
+      return { color: veil, emissive: milk.mul(glow.mul(c.fond).mul(0.12)) };
     },
   },
   {
@@ -417,45 +419,52 @@ const EPIC: FxDef[] = [
   {
     num: 16,
     tier: 'epic',
-    name: 'Prisme croisé',
-    idea: 'Deux trames diagonales arc-en-ciel défilent en sens opposés (cartes V) ; plus on penche, plus la trame se resserre en moiré, et elle coule encore un peu après l’arrêt.',
-    tech: '2 bandes fract → spectre ; fréquence ∝ inclinaison (moiré), phase + inertie',
-    cost: '1–2 T · ~30 ALU',
-    reduced: 'une seule trame',
-    readable: 'sujet à 20 % au plus',
+    name: 'Théâtre de papier',
+    idea: 'La carte devient un « tunnel book » de papier découpé : décor, personnage et premier plan sont des feuilles empilées, chacune projette son ombre sur la suivante, et l’ombre tourne avec la lumière.',
+    tech: 'parallaxe ×2,2 (+ énergie) ; ombres = alpha du calque du dessus lu dans un mip flouté, décalé vers l’opposé de la lumière (+ inertie) ; ombre de la fenêtre directionnelle ; grain papier',
+    cost: '3 T · ~22 ALU',
+    reduced: 'parallaxe ×1,5, une seule ombre',
+    readable: 'aucune couleur ajoutée : seulement des ombres douces et du relief',
+    layers: (q, _art, I) => ({ depth: q === 'low' ? 1.5 : I.energy.mul(0.8).add(2.2), subjectShift: q === 'low' ? undefined : I.lag.mul(vec2(-0.012, 0.012)) }),
     build(c) {
-      const t = c.I.tilt;
-      const band = (x: N) => spectrum(c, x).mul(smoothstep(0, 0.3, x)).mul(smoothstep(1, 0.7, x));
-      const fq = isLow(c) ? float(4.5) : strength(t).mul(2.5).add(4);
-      const lg = c.I.lag;
-      const a = fract(dot(c.uv, vec2(1, 1)).mul(fq).add(t.x.mul(1.2)).add(t.y.mul(0.4)).add(lg.x.mul(1.2)));
-      const b = fract(dot(c.uv, vec2(1, -1)).mul(fq).sub(t.x.mul(0.4)).add(t.y.mul(1.2)).add(lg.y.mul(1.2)));
-      const tr = isLow(c) ? band(a) : max(band(a), band(b));
-      const zone = max(max(c.foil.mul(c.fond).mul(0.6), c.fond.mul(0.45)), c.frame.mul(0.35)).mul(c.subj.mul(0.85).oneMinus());
-      const on = max(max(tr.r, tr.g), tr.b);
-      return { color: iris(c.L.color, tr, zone.mul(on), 0.12) };
+      const ld = c.I.light.sub(0.5).mul(vec2(1, 0.8)).add(isLow(c) ? vec2(0, 0) : c.I.lag.mul(0.5));
+      const off = ld.mul(-0.05).add(vec2(0.006, -0.01));
+      // ombre du personnage sur le décor
+      const shS = texture(c.art.subject, c.L.uvAt(DEFAULT_DEPTHS.subject).add(off).add(isLow(c) ? vec2(0, 0) : c.I.lag.mul(vec2(-0.012, 0.012)))).level(float(3)).a;
+      let shade: N = shS.mul(0.45).mul(c.fond);
+      if (!isLow(c)) {
+        // ombre du premier plan sur le personnage et le décor ; ombre de la fenêtre (cadre épais) côté opposé à la lumière
+        const shF = texture(c.art.fg, c.L.uvAt(DEFAULT_DEPTHS.fg).add(off.mul(0.7))).level(float(3)).a;
+        const sd = windowSDF(c.uv.add(ld.mul(0.03)));
+        const shW = smoothstep(float(-0.05), float(0.005), sd).mul(c.win);
+        shade = shade.add(shF.mul(0.3).mul(c.win).mul(c.L.fg.a.oneMinus())).add(shW.mul(0.32));
+      }
+      const paper = noise(c, c.uv.mul(vec2(30 * CARD.w, 30 * CARD.h))).a.sub(0.5).mul(0.05);
+      return { color: c.L.color.mul(float(1).sub(clamp(shade, 0, 0.7))).mul(paper.add(1)) };
     },
   },
   {
     num: 17,
     tier: 'epic',
-    name: 'Gravure arc-en-ciel',
-    idea: 'Un guillochis gravé (« etched ») flotte sous la surface : la rosace glisse et tourne avec la carte (torsion comprise), et s’allume en couleur selon l’angle de vue réel.',
-    tech: 'guillochis précalculé lu dans un repère tourné (inclinaison + torsion + inertie) et décalé (profondeur) ; relief des lignes ; film mince à cos θ réel',
-    cost: '3 T · ~22 ALU',
-    reduced: 'lignes en niveaux de gris, sans relief',
-    readable: 'gravure sur le fond et le cadre, jamais sur le sujet',
+    name: 'Émail guilloché',
+    idea: 'Un cadran Fabergé : un guillochis gravé à la machine, sous un émail translucide à la couleur de la rareté. La gravure accroche un reflet qui glisse, et la rosace tourne avec la carte (torsion comprise).',
+    tech: 'guillochis précalculé lu dans un repère tourné (inclinaison + torsion + inertie) ; relief (2 lectures) dont l’ombre s’allonge en rasant ; émail = teinte multiplicative + gloss (boîte à lumière) ; hachures sur le cadre',
+    cost: '3 T · ~24 ALU',
+    reduced: 'lignes plates en niveaux de gris',
+    readable: 'gravure sur le fond et le cadre, jamais sur le sujet ; teinte à luminance conservée',
     build(c) {
       const w0 = winUV(c.uv);
       const w = isLow(c) ? w0 : rot2(w0.sub(0.5), c.I.twist.add(c.I.tilt.x.mul(0.25)).add(c.I.lag.x.mul(0.35))).add(0.5).add(c.I.tilt.mul(0.035));
       const ring = texture(c.tex.lines, w).r;
       const hatch = texture(c.tex.lines, c.uv.mul(vec2(1.4, 1.4 * CARD.h / CARD.w))).g;
-      if (isLow(c)) return { color: c.L.color.add(vec3(ring.mul(c.fond).add(hatch.mul(c.frame).mul(0.5)).mul(0.18))) };
-      const t = c.I.tilt;
-      const lit = emboss(c.tex.lines, w, lightDir(c), 1.5, 'r', 0.004);
-      const f = film(c, w.x.mul(0.5).add(ring.mul(0.25)).add(t.x.mul(0.7)).add(t.y.mul(0.4)), clamp(c.ndv, 0.35, 1));
-      const g = iris(c.L.color, f, ring.mul(c.fond).mul(0.45), 0.06);
-      return { color: g.add(vec3(max(lit, 0).mul(0.14)).mul(c.fond)).add(f.mul(hatch).mul(c.frame).mul(0.16)) };
+      if (isLow(c)) return { color: c.L.color.add(vec3(ring.mul(c.fond).add(hatch.mul(c.frame).mul(0.5)).mul(0.14))) };
+      const tl = strength(c.I.tilt);
+      const lit = emboss(c.tex.lines, w, lightDir(c), tl.mul(1.4).add(0.9), 'r', tl.mul(0.004).add(0.0025));
+      const enamel = iris(c.L.color, c.tint, c.fond.mul(0.35), 0.02);
+      const gloss = softbox(c, c.I.light.add(c.I.lag.mul(0.4)), [0.14, 0.2]).mul(0.09);
+      const g = printGuard(c.L.color);
+      const col = enamel.mul(lit.mul(c.fond).mul(0.45).add(1)).add(vec3(gloss.add(ring.mul(0.06))).mul(c.fond).mul(g));
+      return { color: col.add(mix(vec3(1), c.accent, 0.5).mul(hatch).mul(c.frame).mul(lit.mul(0.5).add(0.12))) };
     },
   },
   {
@@ -574,55 +583,71 @@ const LEGENDARY: FxDef[] = [
   {
     num: 22,
     tier: 'legendary',
-    name: 'Éclats d’étoile',
-    idea: 'Des facettes de diamant s’allument chacune à son angle ; un coup de poignet fait éclater toute la poussière d’un coup, puis elle s’éteint en scintillant.',
-    tech: 'paillettes à facettes sur 2 échelles (approximation des « glints » Deliot–Belcour), facettes comparées à orientation + inertie ; densité ∝ énergie ; salve au coup de poignet',
-    cost: '0 T · ~60 ALU',
-    reduced: 'une seule échelle, sans scintillement',
-    readable: 'densité ≤ 10 % sur le sujet',
-    bloom: 0.75,
+    name: 'Verre épais',
+    idea: 'L’illustration est sous une dalle de verre épais (« liquid glass ») : les bords réfractent le décor, une arête de lumière court sur le biseau du côté de la lampe, et un reflet glisse sur la dalle.',
+    tech: 'normale du biseau = gradient analytique du SDF de la fenêtre ; réfraction = décalage de l’UV du fond près du bord ; High : dispersion sur le biseau seulement (2 lectures de plus) ; arête = (n · lumière)^p ; reflet boîte à lumière',
+    cost: 'Mid 1 T · High 3 T · ~30 ALU',
+    reduced: 'arête seule, sans réfraction',
+    readable: 'bords de la fenêtre seulement ; le centre de l’illustration et le sujet sont intacts',
+    bloom: 0.35,
+    layers(q, _art, I) {
+      if (q === 'low') return {};
+      return {
+        warpBg(u0) {
+          const e = 0.002;
+          const sd = windowSDF(u0);
+          const n = vec2(windowSDF(u0.add(vec2(e, 0))).sub(sd), windowSDF(u0.add(vec2(0, e))).sub(sd)).div(e);
+          const bevel = smoothstep(float(-0.04), float(-0.002), sd);
+          // le verre « penche » avec la carte : la réfraction se décale avec l'inclinaison
+          return u0.add(n.mul(bevel.mul(bevel)).mul(-0.022)).add(I.tilt.mul(0.004));
+        },
+      };
+    },
     build(c) {
-      const dens = c.fond.mul(0.22).add(c.frame.mul(0.12)).add(c.subj.mul(0.025));
-      const burst = isLow(c) ? float(0) : flickPulse(c, 0.7);
-      const s1 = sparkle(c, 85, isLow(c) ? 0.35 : c.I.energy.mul(0.2).add(burst.mul(0.4)).add(0.33), 0.3, 1, !isLow(c));
-      const s2 = isLow(c) ? float(0) : sparkle(c, 38, 0.25, 0.26, 2);
-      // salve : toutes les cellules allumées sans condition de facette, qui s'éteignent par vagues (hash)
-      const all = isLow(c) ? float(0) : sparkle(c, 85, 0.45, 0.28, 4, false).mul(burst.pow(2));
-      const g = glare(c, 0.28).mul(0.6).add(0.4);
-      const sp = max(max(s1, s2), all).mul(dens.mul(c.I.energy.mul(1.5).add(4))).mul(g);
-      return { color: c.L.color.add(vec3(sp.mul(0.9))), emissive: vec3(sp.mul(1.2)) };
+      const sd = windowSDF(c.uv);
+      const e = 0.002;
+      const n = dirOf(vec2(windowSDF(c.uv.add(vec2(e, 0))).sub(sd), windowSDF(c.uv.add(vec2(0, e))).sub(sd)));
+      const bevel = smoothstep(float(-0.04), float(-0.004), sd).mul(smoothstep(float(0.004), float(-0.004), sd));
+      const Ld = dirOf(c.I.tilt.add(c.I.lag.mul(0.5)).add(vec2(0.0001, 0.0002)));
+      // arête : fine ligne brillante à l'extérieur du biseau, du côté de la lampe (et un filet à l'opposé, plus faible)
+      const facing = dot(n, Ld.negate());
+      const edge = max(facing, 0).pow(3).add(max(facing.negate(), 0).pow(3).mul(0.25)).mul(bevel.pow(3)).mul(strength(c.I.tilt, 0.8).mul(0.75).add(0.25));
+      const sheen = isLow(c) ? float(0) : softbox(c, c.I.light.add(c.I.lag.mul(0.4)), [0.16, 0.22], 0.06, 0.16).mul(0.045).mul(c.win).mul(printGuard(c.L.color));
+      let col: N = c.L.color.add(vec3(edge.mul(0.9))).add(vec3(sheen));
+      if (c.q === 'high') {
+        // dispersion sur le biseau : rouge et bleu réfractés un peu différemment
+        const o = n.mul(bevel.mul(0.006));
+        const rB = texture(c.art.bg, c.L.bgUV.add(o)).r, bB = texture(c.art.bg, c.L.bgUV.sub(o)).b;
+        col = col.add(vec3(rB.sub(c.L.bg.r), 0, bB.sub(c.L.bg.b)).mul(bevel.mul(c.fond).mul(0.7)));
+      }
+      return { color: col, emissive: vec3(edge.mul(0.35)) };
     },
   },
   {
     num: 23,
     tier: 'legendary',
-    name: 'Nacre physique',
-    idea: 'Une nacre fidèle (film mince) : son arc-en-ciel roule dans la direction où l’on penche, et dépend de l’angle de vue réel.',
-    tech: 'High : réflectance d’Airy calculée par canal (650/532/450 nm, Belcour & Barla). Mid/Low : table précalculée',
-    cost: 'High 1 T · ~70 ALU ; Mid/Low 2 T · ~12 ALU',
-    reduced: 'table de film mince',
-    readable: 'cadre + fond ; le sujet n’est pas recouvert',
-    bloom: 0.4,
+    name: 'Labradorite',
+    idea: 'La pierre qui « flashe » : de larges plages du cadre et du décor s’embrasent d’un bleu profond ou d’un or, chacune à son angle, puis s’éteignent. Deux couleurs, jamais l’arc-en-ciel.',
+    tech: 'cellules PRÉCALCULÉES à basse fréquence (plages) ; facette par plage (hash) → éclat quand l’orientation + inertie passe par son angle ; couleur par plage (bleu / or) ; parallaxe de sous-surface ; garde d’impression',
+    cost: '1 T · ~22 ALU',
+    reduced: 'plages figées, éclat selon l’inclinaison seule',
+    readable: 'cadre + fond ; le sujet n’est pas recouvert ; les noirs restent noirs',
+    bloom: 0.5,
     build(c) {
-      const roll = isLow(c) ? float(0) : dot(c.uv.sub(0.5), dirOf(c.I.tilt.add(vec2(0.0001, 0)))).mul(strength(c.I.tilt)).mul(0.35);
-      const th: N = float(0.28).add(noise(c, c.uv.mul(0.7)).r.mul(0.22)).add(c.uv.y.mul(0.18)).add(c.I.tilt.x.mul(0.15)).add(roll).add(c.I.lag.x.mul(0.2));
-      const cosT = clamp(c.ndv.sub(length(c.I.tilt).mul(0.35)), 0.35, 1);
-      let nacre: N;
-      if (c.q === 'high') {
-        // Airy, incidence quasi normale (r = (1−n)/(1+n)), n = 1,45 ; épaisseur 0–1 000 nm
-        const n = 1.45, r = (1 - n) / (1 + n), r2 = r * r;
-        const sin1 = sqrt(float(1).sub(cosT.mul(cosT)));
-        const cos2 = sqrt(float(1).sub(sin1.div(n).pow(2)));
-        const d = float(th).mul(1000);
-        const R = (l: number) => {
-          const cd = cos(d.mul(cos2).mul((4 * Math.PI * n) / l));
-          return float(1).sub(cd).mul(2 * r2).div(float(1 + r2 * r2).sub(cd.mul(2 * r2)));
-        };
-        const rgb = vec3(R(650), R(532), R(450));
-        nacre = clamp(rgb.div(max(dot(rgb, vec3(0.2126, 0.7152, 0.0722)), 0.03)).mul(0.5), 0, 1);
-      } else nacre = film(c, th, cosT);
-      const zone = c.frame.mul(0.45).add(c.fond.mul(0.38));
-      return { color: iris(c.L.color, sat(nacre, 0.6), zone, 0.14), emissive: nacre.mul(c.frame).mul(0.05) };
+      const o = isLow(c) ? c.I.tilt : c.I.tilt.add(c.I.lag.mul(0.8));
+      const cell = texture(c.tex.cells, c.uv.mul(vec2(0.8 * CARD.w / 0.63, 0.8 * CARD.h / 0.63)).sub(o.mul(0.02)));
+      const id = cell.r;
+      const nrm = vec2(hash(id.mul(31.7)), hash(id.mul(53.9).add(7))).mul(2).sub(1);
+      const flash = smoothstep(float(0.78), float(1), dot(dirOf(o.add(vec2(0.0001, 0))), dirOf(nrm))).mul(strength(o, 0.6));
+      const blue = vec3(0.12, 0.32, 1), goldC = vec3(1, 0.72, 0.28);
+      const hue = mix(blue, goldC, step(0.62, hash(id.mul(17.3).add(2))));
+      // le flash est plein au cœur de la plage et s'éteint vers ses bords (pas de mosaïque à arêtes vives)
+      const edgeF = smoothstep(float(0.02), float(0.4), cell.g);
+      const zone = c.frame.mul(0.8).add(c.fond.mul(0.6));
+      const g = printGuard(c.L.color).mul(0.7).add(0.3);
+      const k = flash.mul(edgeF).mul(zone).mul(g);
+      const col = screen(c.L.color, hue.mul(k.mul(0.55))).add(hue.mul(k.mul(0.12)));
+      return { color: col, emissive: hue.mul(k).mul(0.35) };
     },
   },
   {
@@ -674,71 +699,88 @@ const MYTHIC: FxDef[] = [
   {
     num: 26,
     tier: 'mythic',
-    name: 'Polychrome borné',
-    idea: 'Les teintes tournent sur toute la carte (Balatro) au fil de la ROTATION : on tourne, les couleurs défilent ; on s’arrête, elles restent ; ±25° au plus sur le personnage.',
-    tech: 'rotation de teinte YIQ = bruit + chemin de rotation cumulé + inclinaison + torsion ; amplitude bridée sur le sujet',
-    cost: '1 T · ~30 ALU',
-    reduced: 'rotation lente, ±10° sur le sujet',
-    readable: 'plafond de rotation sur le sujet ; la saturation reste naturelle',
-    bloom: 0.5,
+    name: 'Dichroïque',
+    idea: 'Un verre dichroïque : de face la carte est d’une couleur, en la tournant elle bascule vers sa complémentaire — toute la carte, mais le personnage ne reçoit qu’un voile.',
+    tech: 'k = projection de l’orientation (+ inertie) : couleur transmise ↔ réfléchie (teinte de la rareté ↔ complémentaire) ; teinte multiplicative à luminance conservée ; voile ≤ 25 % sur le sujet ; arête de verre émissive sur la bordure',
+    cost: '0 T · ~22 ALU',
+    reduced: 'bascule selon l’inclinaison seule',
+    readable: 'plafond sur le sujet ; luminance conservée partout',
+    bloom: 0.45,
     build(c) {
-      const nb = noise(c, c.uv.mul(1.2).add(time.mul(0.02))).r;
-      const a = isLow(c) ? sin(time.mul(0.3)).mul(0.6) : nb.mul(5).add(c.I.tilt.x.mul(1.5)).add(c.I.tilt.y).add(c.I.phase.mul(0.9)).add(c.I.twist.mul(3));
-      const aSub = isLow(c) ? sin(time.mul(0.3)).mul(0.17) : sin(a).mul(0.44);
-      const out = mix(sat(hueRotate(c.L.color, a), 1.1), hueRotate(c.L.color, aSub), c.subj);
-      return { color: out, emissive: out.mul(c.edge).mul(0.15) };
+      const A = c.tint, B = hueRotate(c.tint, float(Math.PI));
+      const o = isLow(c) ? c.I.tilt : c.I.tilt.add(c.I.lag.mul(0.6));
+      const k = smoothstep(float(-0.8), float(0.8), dot(o, vec2(0.75, 0.65)));
+      const col2 = mix(A, B, k);
+      const zone = c.frame.mul(0.7).add(c.fond.mul(0.55)).add(c.subj.mul(0.22));
+      const out = iris(c.L.color, col2, zone, 0.08);
+      const rim = c.edge.mul(strength(o).mul(0.6).add(0.3));
+      return { color: out.add(col2.mul(rim.mul(0.5))), emissive: col2.mul(rim).mul(0.5) };
     },
   },
   {
     num: 27,
     tier: 'mythic',
-    name: 'Négatif révélé',
-    idea: 'Penchée fortement, le négatif du décor ENTRE par le bord qui descend, comme un liquide, avec un front irisé ; le personnage reste en couleurs.',
-    tech: '1 − rgb ; front de révélation = projection sur la direction d’inclinaison comparée à sa force ; front irisé (film mince), inertie',
-    cost: '1 T · ~12 ALU',
-    reduced: 'négatif à un seuil fixe, sans fondu',
-    readable: 'le sujet n’est jamais inversé ; c’est un événement, pas un état',
-    bloom: 0.6,
+    name: 'Daguerréotype',
+    idea: 'Comme une vraie plaque daguerréotype : penchée, l’image devient un miroir d’argent où le décor passe en négatif, en entrant par le bord qui descend ; le personnage reste en couleurs.',
+    tech: 'front de révélation = projection sur la direction d’inclinaison comparée à sa force (+ inertie) ; négatif argenté = (1 − luminance) teinté argent ; lèvre brillante (reflet d’argent) sur le front ; bordure émissive',
+    cost: '0 T · ~20 ALU',
+    reduced: 'bascule à un seuil fixe, sans front',
+    readable: 'le sujet n’est jamais inversé ; c’est un événement d’angle, pas un état',
+    bloom: 0.5,
     build(c) {
       const m = length(c.I.tilt);
-      const neg = vec3(1).sub(c.L.color);
-      const f = film(c, c.uv.y.mul(0.6).add(c.I.tilt.x.mul(0.4)));
-      if (isLow(c)) {
-        const s0 = step(0.65, m);
-        return { color: mix(c.L.color, mix(neg, f, 0.15), s0.mul(c.fond)) };
-      }
+      const silver = vec3(0.86, 0.88, 0.92);
+      // plaque polie : négatif sombre, un peu de la couleur d'origine, et le reflet d'une fenêtre qui glisse dessus
+      const neg0 = silver.mul(float(1).sub(luminance(c.L.color)).mul(0.5).add(0.06)).add(c.L.color.mul(0.12));
+      if (isLow(c)) return { color: mix(c.L.color, neg0, step(0.65, m).mul(c.fond)) };
+      const mirror = softbox(c, c.I.light.add(c.I.lag.mul(0.5)), [0.14, 0.2]).mul(0.35);
+      const neg = neg0.add(silver.mul(mirror));
       const o = c.I.tilt.add(c.I.lag.mul(0.5));
       const proj = dot(c.uv.sub(0.5).mul(vec2(CARD.w, CARD.h)), dirOf(o.add(vec2(0.0001, 0)))).div(CARD.h * 0.5).mul(0.5).add(0.5);
-      const front = float(1.15).sub(smoothstep(0.35, 0.95, length(o)).mul(1.4));
+      const front = float(1.15).sub(smoothstep(0.45, 1.05, length(o)).mul(1.4));
       const s = smoothstep(front.sub(0.06), front.add(0.06), proj);
-      const lip = smoothstep(float(0.07), float(0), abs(proj.sub(front))).mul(step(float(0.4), m));
-      const col = mix(c.L.color, mix(neg, f, 0.15), s.mul(c.fond)).add(f.mul(lip.mul(c.win).mul(0.55)));
+      const lip = smoothstep(float(0.07), float(0), abs(proj.sub(front))).mul(step(float(0.45), m));
+      const col = mix(c.L.color, neg, s.mul(c.fond)).add(silver.mul(lip.mul(c.win).mul(0.4)));
       const se = s.max(lip);
-      return { color: col.add(f.mul(c.edge.mul(se).mul(0.6))), emissive: f.mul(c.edge.mul(se).add(lip.mul(c.win).mul(0.4))).mul(0.6) };
+      return { color: col.add(silver.mul(c.edge.mul(se).mul(0.5))), emissive: silver.mul(c.edge.mul(se).add(lip.mul(c.win).mul(0.35))).mul(0.5) };
     },
   },
   {
     num: 28,
     tier: 'mythic',
-    name: 'Dispersion',
-    idea: 'Les hautes lumières se décomposent en spectre comme sur un vrai réseau de diffraction : chaque angle de vue (horizontal ET vertical) donne sa couleur, la torsion tourne les sillons.',
-    tech: 'équation du réseau (d·(sin θi + sin θo) = m·λ), ordres 1 et 2 → couleur spectrale',
-    cost: '1–2 T · ~30 ALU',
-    reduced: 'ordre 1 seul',
-    readable: 'seulement sur les hautes lumières, le cadre et le foil du gabarit',
-    bloom: 0.7,
+    name: 'Hors cadre',
+    idea: 'Le personnage est une vraie feuille posée DEVANT la carte : quand on tourne, il déborde du cadre (« 破框 » / frame break Marvel Snap), traîne en gelée et projette son ombre sur le cadre lui-même.',
+    tech: 'sujet détouré dessiné sur un plan séparé au-dessus de la carte (mélange normal), qui se lève avec l’énergie et s’écarte avec l’inertie ; la carte ne compose plus le sujet mais reçoit son ombre (mip flouté décalé vers l’opposé de la lumière)',
+    cost: '1 plan de plus · 1 T',
+    reduced: 'plan à 2 mm, sans levée',
+    readable: 'le sujet est l’illustration intacte, simplement devant',
+    bloom: 0.3,
+    layers: () => ({ noSubject: true }),
     build(c) {
-      const sI = c.I.tilt.x.mul(0.45).add(c.I.lag.x.mul(0.3));
-      // réseau 2D : la composante verticale du regard compte aussi, et la torsion fait tourner les sillons
-      const g = rot2(vec2(c.V.x, c.V.y.mul(0.6)), c.I.twist);
-      const sO = g.x.mul(2.5).add(g.y.mul(0.8)).add(c.uv.x.sub(0.5).mul(0.35));
-      const lam = abs(sI.sub(sO)).mul(1600);
-      const lobe = (l: N) => spectrum(c, l.sub(380).div(340)).mul(step(380, l)).mul(step(l, float(720)));
-      const col = isLow(c) ? lobe(lam) : lobe(lam).add(lobe(lam.div(2)).mul(c.I.energy.mul(0.6).add(0.5)));
-      const hl = smoothstep(0.55, 0.85, luminance(c.L.color));
-      const zone = max(max(hl.mul(c.subj.mul(0.6).oneMinus()).mul(0.7), c.frame.mul(0.3)), c.foil.mul(c.fond).mul(0.12));
-      const add = col.mul(zone).mul(0.4);
-      return { color: c.L.color.add(add), emissive: add.mul(0.35) };
+      const ld = c.I.light.sub(0.5).mul(vec2(1, 0.8)).add(isLow(c) ? vec2(0, 0) : c.I.lag.mul(0.6));
+      const off = ld.mul(-0.06).add(vec2(0.008, -0.014));
+      const lift = isLow(c) ? float(0.3) : c.I.energy.mul(0.7).add(0.3);
+      const sh = texture(c.art.subject, c.uv.add(off.mul(lift.mul(1.4).add(0.4)))).level(lift.mul(2).add(2.5)).a;
+      return { color: c.L.color.mul(float(1).sub(sh.mul(0.42).mul(c.win.add(c.frame.mul(0.8))))), emissive: c.accent.mul(c.edge).mul(0.15) };
+    },
+    attach(env, card) {
+      const geo = env.bag.add(new PlaneGeometry(CARD.w, CARD.h));
+      const m = env.bag.add(new MeshBasicNodeMaterial());
+      m.transparent = true;
+      m.depthWrite = false;
+      const s = texture(env.art.subject, uv().add(env.I.lag.mul(vec2(-0.012, 0.012))));
+      m.colorNode = vec4(s.rgb, s.a);
+      const mesh = new Mesh(geo, m);
+      mesh.position.z = 0.012;
+      const I = env.I;
+      mesh.userData.update = () => {
+        const e = I.energy.value as number;
+        const lift = env.q === 'low' ? 0.012 : 0.012 + e * 0.07;
+        mesh.position.z = lift;
+        const sc = env.q === 'low' ? 1 : 1 + e * 0.05;
+        mesh.scale.set(sc, sc, 1);
+      };
+      card.add(mesh);
     },
   },
   {
@@ -785,8 +827,9 @@ const MYTHIC: FxDef[] = [
     readable: 'les étincelles naissent sur le cadre et restent clairsemées devant l’art',
     bloom: 0.9,
     build(c) {
-      const f = film(c, c.uv.x.mul(0.4).add(c.uv.y.mul(0.5)).add(c.I.tilt.x.mul(0.4)));
-      return { color: mix(c.L.color, screen(c.L.color, f.mul(0.6)), c.frame.mul(0.35)), emissive: f.mul(c.edge).mul(0.25) };
+      const warm = mix(vec3(1, 0.85, 0.55), c.accent, 0.4);
+      const k = c.I.energy.mul(0.6).add(0.4);
+      return { color: c.L.color.add(warm.mul(c.edge).mul(k.mul(0.35))), emissive: warm.mul(c.edge).mul(k).mul(0.35) };
     },
     attach(env, card) {
       const n = env.q === 'high' ? 160 : env.q === 'mid' ? 60 : 20;
@@ -812,8 +855,10 @@ const SECRET: FxDef[] = [
         ? { depth: float(1).add(sin(time.mul(0.8)).mul(0.25)).add(I.immersive) }
         : { depth: float(1).add(sin(time.mul(0.8)).mul(0.25)).add(I.energy.mul(0.9)).add(I.immersive.mul(3)), subjectShift: I.lag.mul(vec2(-0.022, 0.022)) },
     build(c) {
-      const f = film(c, c.uv.y.mul(0.5).add(time.mul(0.03)).add(c.I.phase.mul(0.18)));
-      return { color: mix(c.L.color, screen(c.L.color, f.mul(0.5)), c.edge.mul(0.8)), emissive: f.mul(c.edge).mul(0.3) };
+      // la bordure respire avec la carte (même rythme que la profondeur)
+      const breath = sin(time.mul(0.8)).mul(0.5).add(0.5);
+      const k = breath.mul(0.4).add(0.3).add(c.I.energy.mul(0.4));
+      return { color: c.L.color.add(c.accent.mul(c.edge).mul(k.mul(0.5))), emissive: c.accent.mul(c.edge).mul(k).mul(0.4) };
     },
     attach(env, card) {
       card.add(sparkSprites(env, env.q === 'high' ? 90 : env.q === 'mid' ? 40 : 14, 'dust'));
@@ -856,9 +901,9 @@ const SECRET: FxDef[] = [
       };
     },
     build(c) {
-      const f = film(c, c.uv.x.mul(0.3).add(c.uv.y.mul(0.6)).add(c.I.tilt.x.mul(0.5)));
       const bright = smoothstep(0.7, 1.2, luminance(c.L.color)).mul(c.fond);
-      return { color: mix(c.L.color, screen(c.L.color, f.mul(0.5)), c.edge.mul(0.7)), emissive: c.L.color.mul(bright).mul(0.8).add(f.mul(c.edge).mul(0.25)) };
+      const neb = vec3(0.45, 0.35, 1);
+      return { color: c.L.color.add(neb.mul(c.edge).mul(0.3)), emissive: c.L.color.mul(bright).mul(0.8).add(neb.mul(c.edge).mul(0.3)) };
     },
   },
   {
@@ -973,22 +1018,35 @@ const SECRET: FxDef[] = [
   {
     num: 35,
     tier: 'secret',
-    name: 'Foil réactif',
-    idea: 'Chaque toucher — ou chaque coup de poignet, depuis le bord qui mène — lance des ondes qui changent l’épaisseur du film : la couleur se propage.',
-    tech: 'ondes ANALYTIQUES (4 derniers touchers en uniforms) → épaisseur du film mince + réfraction du fond',
-    cost: '2 T · ~45 ALU',
-    reduced: 'une seule onde à la fois',
-    readable: 'ondes temporaires qui s’amortissent ; sujet à 12 %',
-    bloom: 0.6,
+    name: 'Bioluminescence',
+    idea: 'La carte est une eau de nuit pleine de plancton : chaque toucher, chaque coup de poignet, allume une traînée bleu-vert qui s’épanouit puis s’éteint lentement, et de minuscules lueurs scintillent dans les ombres quand on bouge.',
+    tech: 'ondes ANALYTIQUES (4 derniers touchers) → lueur gaussienne qui s’élargit avec l’âge + réfraction du fond ; plancton = paillettes à facettes dans les zones sombres, densité ∝ énergie ; émissif → bloom',
+    cost: '2 T · ~48 ALU',
+    reduced: 'une seule lueur à la fois, sans plancton',
+    readable: 'lumière additive temporaire, surtout dans les ombres ; sujet à 15 %',
+    bloom: 0.8,
     layers(q, _art, I) {
       return { warpBg: (u0) => u0.add(rippleDir(I, q).mul(0.006)) };
     },
     build(c) {
-      const rp = ripple(c.I, c.q);
-      const th = float(0.35).add(noise(c, c.uv.mul(1.4)).r.mul(0.2)).add(c.I.tilt.x.mul(0.25)).add(c.I.lag.x.mul(0.3)).add(rp.mul(0.3));
-      const f = film(c, th);
-      const zone = c.fond.mul(abs(rp).mul(0.5).add(c.photo ? 0.12 : 0.28)).add(c.frame.mul(0.3)).add(c.subj.mul(abs(rp)).mul(0.12));
-      return { color: iris(c.L.color, f, zone, 0.1), emissive: f.mul(abs(rp)).mul(zone).mul(0.5) };
+      const glowC = mix(vec3(0.25, 0.95, 0.75), c.accent, 0.25);
+      const list = isLow(c) ? [c.I.touches[0]] : c.I.touches;
+      let glow: N = float(0);
+      for (const tp of list) {
+        const d = c.uv.sub(tp.xy).mul(vec2(CARD.w, CARD.h));
+        const age = time.sub(tp.z);
+        const live = step(float(0), age).mul(exp(age.mul(-0.55))).mul(tp.w);
+        const rad = age.mul(0.09).add(0.03);
+        const blob = exp(d.length().div(rad).pow(2).negate());
+        const ring = abs(ripple(c.I, c.q)).mul(0.6);
+        glow = glow.add(blob.mul(live)).add(ring.mul(live).mul(0.3));
+      }
+      const dark = smoothstep(float(0.45), float(0.08), luminance(c.L.color));
+      const plank = isLow(c) ? float(0) : sparkle(c, 120, c.I.energy.mul(0.3).add(0.12), 0.26, 9).mul(dark).mul(c.win).mul(0.8);
+      const zone = c.fond.add(c.frame.mul(0.6)).add(c.subj.mul(0.15));
+      const add = glowC.mul(glow.mul(0.6).mul(zone).mul(dark.mul(0.6).add(0.4))).add(glowC.mul(plank));
+      const tintN = mix(c.L.color, c.L.color.mul(vec3(0.9, 1, 1.05)), c.fond.mul(0.4));
+      return { color: tintN.add(add), emissive: add.mul(0.9) };
     },
   },
 ];

@@ -4,6 +4,7 @@ import {
   clamp,
   color,
   dot,
+  exp,
   float,
   floor,
   fract,
@@ -160,6 +161,8 @@ export interface LayerOpts {
   bgColor?: (rgb: N, uvBg: N) => N;
   /** décalage d'UV du SUJET seul (inertie « gelée » : le personnage traîne derrière la rotation) */
   subjectShift?: N;
+  /** ne pas composer le sujet (il est dessiné à part, en vrai relief devant la carte — « hors cadre ») */
+  noSubject?: boolean;
 }
 
 export function composeLayers(art: CardArt, o: LayerOpts = {}): Layers {
@@ -182,7 +185,7 @@ export function composeLayers(art: CardArt, o: LayerOpts = {}): Layers {
   let bgRGB: N = bg.rgb;
   if (o.bgColor) bgRGB = o.bgColor(bgRGB, bgUV);
   let col: N = bgRGB.mul(ao);
-  col = mix(col, sj.rgb.mul(mix(float(0.7), float(1), ao)), sj.a);
+  if (!o.noSubject) col = mix(col, sj.rgb.mul(mix(float(0.7), float(1), ao)), sj.a);
   col = mix(col, fg.rgb, fg.a);
   col = mix(col, fr.rgb, fr.a);
   return { color: col, bg: vec4(bgRGB, 1), subject: sj, fg, frame: fr, masks, fx, uvAt, bgUV };
@@ -340,6 +343,37 @@ export const flickPulse = (c: FxCtx, dur = 0.5): N => {
 export const rot2 = (p: N, a: N | number): N => {
   const ca = cos(a), sa = sin(a);
   return vec2(p.x.mul(ca).sub(p.y.mul(sa)), p.x.mul(sa).add(p.y.mul(ca)));
+};
+
+/**
+ * Garde d'impression (astuce du portage Balatro) : min(high, max(0,5, 1 − low)) — les noirs de l'illustration restent
+ * noirs (aucun effet n'y naît), les blancs ne reçoivent que la moitié. Lecture : 0 ALU de texture.
+ */
+export const printGuard = (base: N): N => {
+  const lo = min(min(base.r, base.g), base.b);
+  const hi = max(max(base.r, base.g), base.b);
+  return min(hi, max(float(0.5), float(1).sub(lo)));
+};
+/** « Quasi nul de face » (cyze) : l'effet n'existe presque qu'en inclinaison ou en mouvement ; `floor` = reste au repos. */
+export const alive = (c: FxCtx, floor = 0.3): N => mix(float(floor), float(1), smoothstep(float(0.04), float(0.5), length(c.I.tilt).add(c.I.energy.mul(0.4))));
+/** Éclat « par cellule » : une facette (normale 2D propre) s'allume quand l'orientation (+ inertie) passe par son angle. */
+export const cellFlash = (c: FxCtx, nrm: N, sharp = 0.82, lagK = 0.8): N => {
+  const o = c.I.tilt.add(c.I.lag.mul(lagK));
+  return smoothstep(float(sharp), float(1), dot(dirOf(o.add(vec2(0.0001, 0))), dirOf(nrm))).mul(strength(o, 0.7));
+};
+/** Reflet d'une boîte à lumière (rectangle arrondi doux) en unités de carte, étiré le long de la vitesse angulaire. */
+export const softbox = (c: FxCtx, at: N, half: [number, number], round = 0.04, feather = 0.1): N => {
+  const p = c.uv.sub(at).mul(vec2(CARD.w, CARD.h));
+  const vd = dirOf(c.I.vel.add(vec2(0.0001, 0)));
+  const st = c.I.energy.mul(1.2).add(1);
+  const e = vec2(dot(p, vd).div(st), dot(p, vec2(vd.y.negate(), vd.x)));
+  const d = length(max(abs(e).sub(vec2(half[0], half[1])), 0)).sub(round);
+  return smoothstep(float(feather), float(-0.02), d).div(st.sqrt());
+};
+/** Bande de lumière (lampe en bande réfléchie) : position le long de `dir` pilotée par `pos`, largeur `w`. */
+export const strip = (c: FxCtx, dir: [number, number], pos: N, w: number | N): N => {
+  const s = dot(c.uv, vec2(dir[0], dir[1]));
+  return exp(s.sub(pos).div(float(w)).pow(2).negate());
 };
 
 export const sat = (rgb: N, k: number | N): N => mix(vec3(luminance(rgb)), rgb, k);
