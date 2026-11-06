@@ -65,8 +65,10 @@ function catalogJson(): Plugin {
         }
         if (!jsonSafe(value)) continue;
         // chaîne entre apostrophes : le JSON (plein de ") n'a presque rien à échapper
-        const json = JSON.stringify(value).replace(/[\\']/g, '\\$&').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
-        out += `${code.slice(last, start)}JSON.parse('${json}')`;
+        // lignes compactées (préfixe d'id commun, fichier déduit du slug) quand c'est sûr ; sinon telles quelles
+        const packed = packRows(value);
+        const json = JSON.stringify(packed ? packed.rows : value).replace(/[\\']/g, '\\$&').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+        out += `${code.slice(last, start)}${packed ? `${packed.decode}(JSON.parse('${json}'))` : `JSON.parse('${json}')`}`;
         last = end;
         re.lastIndex = end;
         n++;
@@ -91,6 +93,56 @@ function catalogCoreOnly(): Plugin {
       }
     },
   };
+}
+
+/**
+ * Catalogues compacts (perf, lot chargement 4) : dans les gros tableaux de lignes `[…, "pop-naruto", …, "naruto.jpg", …]`,
+ * l'identifiant porte un préfixe commun à toutes les lignes (« pop- ») et le fichier d'illustration est presque toujours
+ * « slug + extension ». Au build, le préfixe est retiré et un fichier déductible devient `0` ; un petit décodeur refait
+ * les lignes À L'IDENTIQUE au chargement (mêmes chaînes, mêmes tableaux). ~−17 % sur les sets Pop Culture et Sport.
+ * Sûreté : le décodeur est exécuté ici même sur les lignes compactées et le résultat comparé (JSON) à l'original —
+ * à la moindre différence, ou si une colonne n'est pas du texte partout, on garde les lignes telles quelles.
+ */
+function packRows(value: unknown): { rows: unknown[][]; decode: string } | null {
+  if (!Array.isArray(value) || value.length < 1000) return null;
+  const rows = value as unknown[][];
+  const width = Array.isArray(rows[0]) ? rows[0].length : 0;
+  if (!width || !rows.every((r) => Array.isArray(r) && r.length === width)) return null;
+  const textCol = (i: number) => rows.every((r) => typeof r[i] === 'string');
+  // colonne d'identifiant : préfixe « xxx- » commun à toutes les lignes
+  let idCol = -1;
+  let prefix = '';
+  for (let i = 0; i < width && idCol < 0; i++) {
+    if (!textCol(i)) continue;
+    const m = /^[a-z]{2,6}-/.exec(rows[0][i] as string);
+    if (m && rows.every((r) => (r[i] as string).startsWith(m[0]) && (r[i] as string).length > m[0].length)) [idCol, prefix] = [i, m[0]];
+  }
+  if (idCol < 0) return null;
+  // colonne de fichier : « slug + extension » sur au moins la moitié des lignes (les autres restent écrites en entier)
+  let fileCol = -1;
+  let ext = '';
+  for (let j = 0; j < width && fileCol < 0; j++) {
+    if (j === idCol || !textCol(j)) continue;
+    for (const e of ['.jpg', '.png', '.webp']) {
+      const hits = rows.filter((r) => r[j] === (r[idCol] as string).slice(prefix.length) + e).length;
+      if (hits >= rows.length / 2) [fileCol, ext] = [j, e];
+    }
+  }
+  const packed = rows.map((r) => {
+    const out = r.slice();
+    const slug = (r[idCol] as string).slice(prefix.length);
+    out[idCol] = slug;
+    if (fileCol >= 0 && r[fileCol] === slug + ext) out[fileCol] = 0;
+    return out;
+  });
+  const p = JSON.stringify(prefix);
+  const decode =
+    fileCol >= 0
+      ? `((a)=>{for(const r of a){if(r[${fileCol}]===0)r[${fileCol}]=r[${idCol}]+${JSON.stringify(ext)};r[${idCol}]=${p}+r[${idCol}]}return a})`
+      : `((a)=>{for(const r of a)r[${idCol}]=${p}+r[${idCol}];return a})`;
+  // vérification : décodage réel des lignes compactées (copie) == lignes d'origine
+  const back = Function(`"use strict"; return ${decode};`)()(JSON.parse(JSON.stringify(packed)));
+  return JSON.stringify(back) === JSON.stringify(rows) ? { rows: packed, decode } : null;
 }
 
 /** Fin d'un littéral `[…]` qui commence à `start`, ou -1 s'il contient autre chose que des chaînes simples et des crochets. */
