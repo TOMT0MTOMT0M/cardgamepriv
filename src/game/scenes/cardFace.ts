@@ -1,7 +1,7 @@
 import { clamp, color, cos, float, floor, mix, positionLocal, sin, step, time, uniform, vec3 } from 'three/tsl';
 import type { Material } from 'three/webgpu';
 import { generateBackArt, generateCardArt, generateCardArtAsync, starColor, type ArtOptions, type CardArt } from '../../core/art';
-import { DEFAULT_BACK, type BackStyle } from '../../core/art/back';
+import { ALU_BACK, type BackStyle } from '../../core/art/back';
 import { isSecretPhotoSet, type CardData } from '../../core/cardData';
 import type { RarityId } from '../../core/rarity';
 import { catalogEntry, themeById } from '../../core/sets/themes';
@@ -89,6 +89,12 @@ function gameArtOptions(cd: CardData, scale: number): ArtOptions {
  * Dos des cartes à la couleur de leur thème (Gaming, Pop Culture…), avec le « B » du Bébou game.
  * Un matériau par thème, créé à la demande et mis en cache : même graphe → même pipeline GPU pour tous.
  */
+/** alu neutre + 8 % de la teinte du thème */
+function tintAlu(hex: string): string {
+  const p = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const A = p('#c6c9cf'), B = p(hex);
+  return `#${A.map((v, i) => Math.round(v + (B[i] - v) * 0.09).toString(16).padStart(2, '0')).join('')}`;
+}
 export function themedBacks(bag: { add<T extends { dispose(): void }>(o: T): T }, scale: number) {
   const cache = new Map<string, Material>();
   const make = (key: string, style: BackStyle) => {
@@ -96,7 +102,7 @@ export function themedBacks(bag: { add<T extends { dispose(): void }>(o: T): T }
     cache.set(key, m);
     return m;
   };
-  const fallback = make('default', DEFAULT_BACK);
+  const fallback = make('default', ALU_BACK);
   return {
     fallback,
     /** dos d'une carte du catalogue (par id) */
@@ -104,7 +110,8 @@ export function themedBacks(bag: { add<T extends { dispose(): void }>(o: T): T }
       const e = catalogEntry(cardId);
       const t = e ? themeById(e.themeId) : undefined;
       if (!t) return fallback;
-      return cache.get(t.id) ?? make(t.id, { ground: t.style.ground, line: t.style.foil, accent: t.style.ink, label: t.label.toUpperCase().split('').join(' ') });
+      // alliage légèrement teinté par le thème (une nuance, pas une couleur), thème gravé en haut
+      return cache.get(t.id) ?? make(t.id, { ...ALU_BACK, ground: tintAlu(t.style.accent), label: t.label.toUpperCase() });
     },
   };
 }

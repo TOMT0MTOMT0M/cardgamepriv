@@ -13,7 +13,7 @@ import { design as resolveDesign, CLASSIC_WIN, bebou, type CardDesign } from './
 import { universe } from '../universes';
 import { cardFamily } from '../sets/themes';
 import { POP_ARTISTS } from '../sets/popArtists';
-import { paintBack, DEFAULT_BACK, type BackStyle } from './back';
+import { paintBack, ALU_BACK, type BackStyle } from './back';
 import { cardImage, ensureCardImages, loadCardImage, setImageLimits } from './images';
 import { paintCoverSubject, paintImageSubject } from './imageSubject';
 import { paintPortraitSubject } from './portraitSubject';
@@ -361,7 +361,7 @@ export interface BackArt {
 }
 
 /** `release` : toiles vidées après l'envoi au GPU et au dispose (cf. `ArtOptions.release`). */
-export function generateBackArt(style: BackStyle = DEFAULT_BACK, scale = 1, release = false): BackArt {
+export function generateBackArt(style: BackStyle = ALU_BACK, scale = 1, release = false): BackArt {
   const W = Math.round(BASE_W * scale), H = Math.round(BASE_H * scale);
   const b = makeCanvas(W, H), m = makeCanvas(W, H);
   prep(b.g, scale);
@@ -376,6 +376,6 @@ export function generateBackArt(style: BackStyle = DEFAULT_BACK, scale = 1, rele
 export async function cardArtFor(card: CardData, rarityId: RarityId, bag: { add<T extends { dispose(): void }>(o: T): T }, o?: ArtOptions) {
   await Promise.all([ensureFonts(), ensureCardImages([card])]); // la carte peut venir d'un autre set (cardById)
   const art = bag.add(generateCardArt(card, rarityId, o));
-  const back = bag.add(generateBackArt(DEFAULT_BACK, o?.scale ?? 1, !!o?.release));
+  const back = bag.add(generateBackArt(ALU_BACK, o?.scale ?? 1, !!o?.release));
   return { art, back };
 }

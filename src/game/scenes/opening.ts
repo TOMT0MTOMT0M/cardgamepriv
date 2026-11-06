@@ -244,7 +244,7 @@ const CARD_H = 0.88;
  * Écart entre deux cartes empilées. Une carte fait 0,007 d'épaisseur (CARD.t) : en dessous de ça elles s'interpénètrent
  * (c'était 0,002–0,004 → coins qui traversent la carte de devant, surtout avec les petites rotations rz de la pile).
  */
-const STACK_DZ = 0.011;
+const STACK_DZ = 0.0165; // (06/11) cartes à 1,2 mm
 /**
  * « Tout révéler » : une 6★ joue toute sa séquence (pause dramatique comprise), puis reste admirée ce temps-là avant que
  * la suite reparte seule (au lieu d'attendre un toucher). En manuel, rien ne change : elle attend le toucher.
@@ -307,7 +307,7 @@ interface Slot {
 
 /** Styles des boosters (un par thème + le bébou pack), tirés du registre des thèmes. */
 /** couleur du sachet de chaque booster (retours 06/11) */
-const SACHET: Record<string, string> = { bebou: '#8f939b', gaming: '#7448cf', pop: '#ec7a26', sport: '#2f9e5f', monde: '#3673d1' };
+const SACHET: Record<string, string> = { bebou: '#9ea2aa', gaming: '#6a4fc4', pop: '#d8742e', sport: '#3a9a66', monde: '#3c73c8' };
 function boosterStyles(): Record<string, PackStyle> {
   const out: Record<string, PackStyle> = {};
   // mentions au dos des boosters du jeu (celles du labo parlent d'illustrations procédurales)
@@ -631,11 +631,12 @@ export function createOpeningScene(): OpeningScene {
       // booster « bientôt » : couleurs en partie éteintes (uniforme : aucun recompilage quand on change de booster)
       const base = mix(col.rgb, vec3(luminance(col.rgb)).mul(0.82), U.soon.mul(0.7));
       m.colorNode = mix(base, color('#0d0907'), smoothstep(0.06, 0.004, burnFront));
-      m.metalnessNode = mix(float(0.15), float(0.95), foil);
-      m.roughnessNode = mix(float(0.36), float(0.2), foil);
-      m.normalNode = bumpMap(cr.r, float(1.4), normalMap(encodeNormal(ridges)));
-      m.clearcoatNode = float(0.6);
-      m.clearcoatRoughnessNode = float(0.12);
+      // (retours 06/11) sachet ALUMINIUM : métal partout (« no brand » premium), le logo et les soudures plus lisses,
+      // le froissé du sachet dans le relief ; aucun vernis plastique
+      // (métal à 0,9 : un soupçon de diffus pour que le sachet reste lisible dans un décor sombre)
+      m.metalnessNode = float(0.9);
+      m.roughnessNode = mix(float(0.4), float(0.2), foil);
+      m.normalNode = bumpMap(cr.r, float(1.7), normalMap(encodeNormal(ridges)));
       m.maskNode = burnFront.greaterThan(0);
       const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(0.3)).mul(step(-0.2, U.burn));
       // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte

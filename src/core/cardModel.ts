@@ -2,13 +2,14 @@ import { BufferGeometry, Float32BufferAttribute, Mesh, type Material } from 'thr
 
 /**
  * Format réel 63 × 88 mm. 1 unité = 100 mm → la carte fait 0.63 × 0.88.
- * Épaisseur légèrement exagérée (0.7 mm) pour que la tranche se lise à l'écran.
+ * Épaisseur (retours 06/11) : 1,2 mm — une plaque d'aluminium, pas une carte en plastique : la tranche se lit et
+ * donne du poids à la carte en main.
  */
 export const CARD = {
   w: 0.63,
   h: 0.88,
   r: 0.031,
-  t: 0.007,
+  t: 0.012,
 } as const;
 
 export interface CardGeometryOptions {

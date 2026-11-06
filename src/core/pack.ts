@@ -25,8 +25,8 @@ export interface PackStyle {
   /** petites lignes imprimées au dos (défaut : les mentions du labo) */
   backLines?: string[];
   /**
-   * (retours 06/11) sachet SIMPLE du jeu : une couleur unie, le logo « BÉBOU cartes » et le nom du pack, rien d'autre ;
-   * dos en métal brossé de la même teinte. `ground` = la couleur du sachet.
+   * (retours 06/11) sachet SIMPLE du jeu : aluminium brossé teinté (« no brand », premium), le logo « BÉBOU cartes »
+   * et le nom du pack, rien d'autre ; dos en métal brossé de la même teinte. `ground` = la couleur du sachet.
    */
   simple?: boolean;
 }
@@ -291,8 +291,15 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
   };
   // ── face : couleur unie, reflet vertical doux, bords un rien plus sombres
   const g = F.g;
-  g.fillStyle = base;
+  // (06/11) aluminium teinté : la couleur du pack posée sur du métal brossé (plus de plastique)
+  g.fillStyle = mixHex(base, '#dde0e5', 0.5);
   g.fillRect(0, 0, PW, PH);
+  for (let y = 0; y < PH; y += 1) {
+    const v = Math.sin(y * 12.9898 + 3.7) * 43758.5453;
+    const n = v - Math.floor(v);
+    g.fillStyle = n > 0.5 ? alpha('#ffffff', (n - 0.5) * 0.16) : alpha('#000000', (0.5 - n) * 0.18);
+    g.fillRect(0, y, PW, 1);
+  }
   g.fillStyle = linear(g, 0, 0, PW, 0, [[0, alpha('#000', 0.22)], [0.18, alpha('#000', 0)], [0.38, alpha('#fff', 0.16)], [0.5, alpha('#fff', 0.05)], [0.82, alpha('#000', 0)], [1, alpha('#000', 0.26)]]);
   g.fillRect(0, 0, PW, PH);
   g.fillStyle = linear(g, 0, 0, 0, PH, [[0, alpha('#fff', 0.06)], [0.5, alpha('#fff', 0)], [1, alpha('#000', 0.18)]]);
@@ -425,11 +432,18 @@ export function createPackMaterials(art: PackArt, opts: { crinkle?: number } = {
     const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(mk.g), 0, 1).normalize();
     const crTex = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(side * 0.37));
     m.colorNode = col.rgb;
-    m.metalnessNode = mix(float(0.15), float(0.95), foil);
-    m.roughnessNode = side === 1 && art.metalBack ? float(0.3) : mix(float(0.36), float(0.2), foil);
-    m.normalNode = bumpMap(crTex.r, float(opts.crinkle ?? 1.4), normalMap(encodeNormal(ridges)));
-    m.clearcoatNode = float(0.6);
-    m.clearcoatRoughnessNode = float(0.12);
+    if (art.metalBack) {
+      // (retours 06/11) sachet aluminium : métal partout, sans vernis
+      m.metalnessNode = float(0.9);
+      m.roughnessNode = mix(float(0.4), float(0.2), foil);
+      m.normalNode = bumpMap(crTex.r, float(opts.crinkle ?? 1.9), normalMap(encodeNormal(ridges)));
+    } else {
+      m.metalnessNode = mix(float(0.15), float(0.95), foil);
+      m.roughnessNode = mix(float(0.36), float(0.2), foil);
+      m.normalNode = bumpMap(crTex.r, float(opts.crinkle ?? 1.4), normalMap(encodeNormal(ridges)));
+      m.clearcoatNode = float(0.6);
+      m.clearcoatRoughnessNode = float(0.12);
+    }
     return m;
   };
   return [make(art.front, 0), make(art.back, 1)];

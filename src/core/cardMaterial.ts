@@ -111,28 +111,52 @@ export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, u
 }
 
 /** Matériau de tranche : carton blanc avec âme sombre (comme les vraies cartes). */
-export function createEdgeMaterial(paper = '#e8e2d4', core = '#1d1b1a'): MeshStandardNodeMaterial {
+export function createEdgeMaterial(paper = '#e8e2d4', core = '#1d1b1a', opts: { paper?: boolean } = {}): MeshStandardNodeMaterial {
   const m = new MeshStandardNodeMaterial();
+  if (opts.paper) {
+    const y = uv().y;
+    const band = smoothstep(float(0.38), float(0.46), y).mul(smoothstep(float(0.62), float(0.54), y));
+    m.colorNode = mix(color(new Color(paper)), color(new Color(core)), band);
+    m.roughnessNode = float(0.8);
+    m.metalnessNode = float(0);
+    return m;
+  }
+  // (retours 06/11) tranche d'une plaque d'aluminium : métal usiné, arêtes un peu plus claires
   const y = uv().y;
-  const band = smoothstep(float(0.38), float(0.46), y).mul(smoothstep(float(0.62), float(0.54), y));
-  m.colorNode = mix(color(new Color(paper)), color(new Color(core)), band);
-  m.roughnessNode = float(0.8);
-  m.metalnessNode = float(0);
+  const bevel = smoothstep(float(0.0), float(0.18), y).mul(smoothstep(float(1.0), float(0.82), y));
+  m.colorNode = mix(color(new Color('#e4e6ea')), color(new Color('#b4b7bd')), bevel);
+  m.roughnessNode = float(0.38);
+  m.metalnessNode = float(1);
   return m;
 }
 
-/** Dos de carte : lignes dorées en foil, papier mat, léger relief. */
-export function createBackMaterial(back: BackArt, opts: { foil?: number } = {}): MeshPhysicalNodeMaterial {
+/**
+ * Dos de carte (retours 06/11) : ALUMINIUM BROSSÉ — métal partout, reflet anisotrope (allongé dans le sens du
+ * brossage), gravures CNC en creux mates (R du masque) avec leur relief (G). Aucun vernis plastique.
+ * `opts.paper` : l'ancien rendu papier + or (labo).
+ */
+export function createBackMaterial(back: BackArt, opts: { foil?: number; paper?: boolean } = {}): MeshPhysicalNodeMaterial {
   const m = new MeshPhysicalNodeMaterial();
   const c = texture(back.color);
   const mk = texture(back.masks);
-  const foil = mk.r.mul(opts.foil ?? 1);
+  if (opts.paper) {
+    const foil = mk.r.mul(opts.foil ?? 1);
+    m.colorNode = c.rgb;
+    m.metalnessNode = foil.mul(0.85);
+    m.roughnessNode = mix(float(0.62), float(0.28), foil);
+    m.normalNode = bumpMap(mk.g, float(0.6));
+    m.clearcoatNode = float(0.25);
+    m.clearcoatRoughnessNode = float(0.35);
+    return m;
+  }
+  const cut = mk.r; // gravure
   m.colorNode = c.rgb;
-  m.metalnessNode = foil.mul(0.85);
-  m.roughnessNode = mix(float(0.62), float(0.28), foil);
-  m.normalNode = bumpMap(mk.g, float(0.6));
-  m.clearcoatNode = float(0.25);
-  m.clearcoatRoughnessNode = float(0.35);
+  m.metalnessNode = mix(float(0.92), float(0.55), cut);
+  // brossé : rugosité moyenne ; gravure : mate
+  m.roughnessNode = mix(float(0.42), float(0.7), cut);
+  m.anisotropyNode = mix(float(0.85), float(0.1), cut);
+  m.anisotropyRotation = 0; // stries horizontales (sens du brossage)
+  m.normalNode = bumpMap(mk.g, float(1.6));
   return m;
 }
 
