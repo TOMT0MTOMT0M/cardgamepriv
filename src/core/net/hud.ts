@@ -6,6 +6,8 @@ import { RARITY_BY_ID } from '../rarity';
  * Daily Booster Claim, and Live 20-Friend Feed Popover) into the main toolbar.
  */
 export function mountNetHud(toolbar: HTMLElement, stage: HTMLElement) {
+  // ce HUD affiche le fil d'activité complet (le jeu, lui, ne s'y abonne qu'en repli des gros tirages)
+  net.watchFeed();
   const wrap = document.createElement('div');
   wrap.className = 'net-hud';
 

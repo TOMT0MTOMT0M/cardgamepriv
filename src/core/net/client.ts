@@ -82,7 +82,7 @@ export interface NetState {
   authError: string | null;
   user: MeProfile | null;
   friends: FriendPresence[];
-  collection: Doc<'inventory'>[];
+  collection: (typeof api.inventory.myCollection)['_returnType'];
   sealedPack: Doc<'packOpens'> | null;
   feed: Doc<'activityFeed'>[];
   /** gros tirages (Légendaire+) ; `null` = requête pas encore déployée sur le serveur → on les tire du fil */
@@ -133,6 +133,10 @@ class GameNetClient {
   private client: ConvexClient | null = null;
   private sessionToken: string | null = null;
   private unsubscribers: Array<() => void> = [];
+  /** fil d'activité complet (`feed.recent`) : demandé par le HUD du labo ; le jeu lit `feed.bigPulls` (repli : le fil) */
+  private feedWanted = false;
+  /** abonné au fil dans la série d'abonnements en cours (remise à zéro par setupSubscriptions) */
+  private feedOn = false;
   private heartbeatTimer: number | null = null;
   private listeners = new Set<Listener>();
   /** ce qui compte pour l'affichage dans `user` / `friends` (comparé avant d'émettre) */
@@ -262,6 +266,7 @@ class GameNetClient {
 
     for (const unsub of this.unsubscribers) unsub();
     this.unsubscribers = [];
+    this.feedOn = false;
 
     const tokenArg: { sessionToken?: string } = this.sessionToken ? { sessionToken: this.sessionToken } : {};
 
@@ -382,13 +387,9 @@ class GameNetClient {
         ),
       );
 
-    // 6. Global real-time pull & trade feed
-    this.unsubscribers.push(
-      this.client.onUpdate(api.feed.recent, { limit: 20 }, (feed) => {
-        this.state.feed = feed ?? [];
-        this.emit();
-      }),
-    );
+    // 6. Global real-time pull & trade feed — seulement si on le lit (HUD du labo) ou en repli des gros tirages (perf :
+    // le jeu ne lit que `feed.bigPulls` ; avant, les deux requêtes étaient ré-exécutées et renvoyées à chaque tirage)
+    if (this.feedWanted) this.subscribeFeed();
 
     // 7. Gros tirages (page d'accueil). Serveur pas encore redéployé → erreur → repli sur le fil ci-dessus.
     this.unsubscribers.push(
@@ -401,10 +402,29 @@ class GameNetClient {
         },
         () => {
           this.state.bigPulls = null;
+          this.subscribeFeed();
           this.emit();
         },
       ),
     );
+  }
+
+  /** Abonnement au fil d'activité (`feed.recent`, 20 derniers), une fois par série d'abonnements. */
+  private subscribeFeed() {
+    if (this.feedOn || !this.client) return;
+    this.feedOn = true;
+    this.unsubscribers.push(
+      this.client.onUpdate(api.feed.recent, { limit: 20 }, (feed) => {
+        this.state.feed = feed ?? [];
+        this.emit();
+      }),
+    );
+  }
+
+  /** Le fil d'activité complet est affiché (HUD du club, labo) : on s'y abonne. */
+  public watchFeed() {
+    this.feedWanted = true;
+    this.subscribeFeed();
   }
 
   private startHeartbeat() {

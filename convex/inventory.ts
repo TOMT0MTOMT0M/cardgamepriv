@@ -2,16 +2,23 @@ import { v } from 'convex/values';
 import { query } from './_generated/server';
 import { getUserByToken } from './auth';
 
+/**
+ * Collection du joueur (abonnement permanent du jeu, renvoyée EN ENTIER à chaque booster ouvert). Seulement les champs
+ * que le client lit (src/game/onlineBackend.ts) : ~100 o par carte au lieu de ~260 avec le document complet (`_id`,
+ * `_creationTime`, `userId`, `foilSeed`, `lastPulledAt` ne servent pas). Compatible avec un client déjà ouvert : il ne
+ * lisait déjà que ces 5 champs.
+ */
 export const myCollection = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
     const user = await getUserByToken(ctx, sessionToken);
     if (!user) return [];
 
-    return await ctx.db
+    const rows = await ctx.db
       .query('inventory')
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .collect();
+    return rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber, firstPulledAt: c.firstPulledAt }));
   },
 });
 
