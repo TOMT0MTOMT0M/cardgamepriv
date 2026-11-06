@@ -7,13 +7,13 @@ import { rng } from '../ease';
 import { makeCanvas, releaseCanvas, type Ctx } from './canvas';
 import { BASE_H, BASE_W, SUBJECTS, WIN, finishLayer } from './subjects';
 import { FONT_MONO, FONT_TITLE } from './designs/common';
-import { design as resolveDesign, CLASSIC_WIN, bebou, type CardDesign } from './designs';
+import { design as resolveDesign, CLASSIC_WIN, bebou, suisseLandscapeBand, type CardDesign } from './designs';
 import { universe } from '../universes';
 import { cardFamily } from '../sets/themes';
 import { POP_ARTISTS } from '../sets/popArtists';
 import { paintBack, ALU_BACK, type BackStyle } from './back';
 import { cardImage, ensureCardImages, loadCardImage, setImageLimits } from './images';
-import { paintCoverSubject, paintImageSubject } from './imageSubject';
+import { coverBand, paintCoverSubject, paintImageSubject } from './imageSubject';
 import { paintPortraitSubject } from './portraitSubject';
 import { paintTitleSubject } from './jvTitle';
 
@@ -232,7 +232,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
 
   const target = { bg: bg.g, subj: subj.g, fg: fg.g, fx: fx.g, pal: card.palette, r, seed: card.seed };
   if (card.photo) paintPortraitSubject(target, im);
-  else if (card.cover || (card.subject === 'image' && im?.opaque)) paintCoverSubject(target, im);
+  else if (card.cover || (card.subject === 'image' && im?.opaque)) paintCoverSubject(target, im, { crisp: dz.id === 'suisse-paysage' });
   else if (card.subject === 'image') paintImageSubject(target, im, card.fit);
   else if (card.subject === 'jvtitle') paintTitleSubject(target, { name: card.name, family: card.uniName ?? '', kind: card.jvKind, label: card.typeLabel, year: card.year });
   else SUBJECTS[card.subject](target);
@@ -310,8 +310,9 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
  * monter la version du cache des cartes peintes (src/game/cardImages.ts).
  */
 export const LANDSCAPE: { design: string | null; ratio: number; except: (card: CardData) => boolean } = {
-  // (retours 06/11) branché : le gabarit « Paysage » (designs/paysage.ts)
-  design: 'paysage',
+  // (retours 06/11) branché : le gabarit « Paysage » (designs/paysage.ts) ; (07/11) remplacé par le labo 035 « Suisse »
+  // en version paysage (designs/graphic.ts, suissePaysage) — l'ancien reste disponible : 'paysage'
+  design: 'suisse-paysage',
   ratio: 1.2,
   except: (card) => isSecretPhotoSet(card.set) || card.id.startsWith('mrv-'),
 };
@@ -322,7 +323,14 @@ export function isLandscapeArt(card: CardData, im: { canvas: { width: number; he
 }
 function landscapeDesign(card: CardData, im: Parameters<typeof isLandscapeArt>[1], dz: CardDesign): CardDesign {
   if (!LANDSCAPE.design || dz.id !== 'full-art' || LANDSCAPE.except(card) || !isLandscapeArt(card, im)) return dz;
-  return resolveDesign(LANDSCAPE.design);
+  const out = resolveDesign(LANDSCAPE.design);
+  if (out.id !== 'suisse-paysage' || !im) return out;
+  // (07/11) Suisse paysage : la photo entière (bande posée par paintCoverSubject) remplit exactement la fenêtre de la
+  // grille — cadrage propre à son format
+  const aspect = im.canvas.width / im.canvas.height;
+  const src = coverBand(aspect), dst = suisseLandscapeBand(aspect);
+  const k = dst.w / src.w;
+  return { ...out, art: { k, from: [src.x + src.w / 2, src.y + src.h / 2], to: [dst.x + dst.w / 2, dst.y + dst.h / 2] } };
 }
 
 /** Génère les calques d'une carte (≈ 30–60 ms à pleine résolution). */

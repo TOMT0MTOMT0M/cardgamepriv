@@ -204,7 +204,18 @@ export function paintImageSubject(t: PaintTarget, im: CardImage | null, fit = 1)
  * pleine largeur sans rien couper, fondue dans sa copie floutée. Autour, une copie floutée et assombrie évite tout vide
  * avec les autres gabarits du labo. Relief léger uniforme (grain d'impression), pas de détourage ni de parallaxe.
  */
-export function paintCoverSubject(t: PaintTarget, im: CardImage | null) {
+/**
+ * Bande d'une photo HORIZONTALE posée par `paintCoverSubject` (coordonnées d'avant recadrage) : toute la largeur de la
+ * vue pleine illustration, sans rien couper. Les gabarits paysage s'en servent pour cadrer la photo (07/11 : Suisse).
+ */
+export function coverBand(aspect: number) {
+  const w = FULL_VIEW.w, h = w / Math.max(0.01, aspect);
+  const y = Math.max(FULL_VIEW.y + 40, Math.min(FULL_VIEW.y + FULL_VIEW.h * 0.4 - h / 2, FULL_VIEW.y + FULL_VIEW.h * 0.66 - h));
+  return { x: FULL_VIEW.x, y, w, h };
+}
+
+/** `crisp` (07/11, gabarit Suisse paysage) : la photo horizontale est posée nette, sans fondu haut/bas ni vignettage */
+export function paintCoverSubject(t: PaintTarget, im: CardImage | null, o: { crisp?: boolean } = {}) {
   const { bg, fx, pal } = t;
   const px = bg.getTransform().a;
   bg.fillStyle = pal.sky;
@@ -236,8 +247,7 @@ export function paintCoverSubject(t: PaintTarget, im: CardImage | null) {
   } else {
     // photo large (paysage, voiture…) : RIEN n'est coupé. Elle prend toute la largeur, au-dessus du nom, fondue en haut
     // et en bas dans sa propre copie floutée.
-    const w = FULL_VIEW.w, h = w / a;
-    const y = Math.max(FULL_VIEW.y + 40, Math.min(FULL_VIEW.y + FULL_VIEW.h * 0.4 - h / 2, FULL_VIEW.y + FULL_VIEW.h * 0.66 - h));
+    const { w, h, y } = coverBand(a);
     const tmp = document.createElement('canvas');
     tmp.width = Math.max(1, Math.round(w * px));
     tmp.height = Math.max(1, Math.round(h * px));
@@ -247,22 +257,26 @@ export function paintCoverSubject(t: PaintTarget, im: CardImage | null) {
     g.drawImage(im.canvas, 0, 0, tmp.width, tmp.height);
     g.globalCompositeOperation = 'destination-in';
     const fade = g.createLinearGradient(0, 0, 0, tmp.height);
-    fade.addColorStop(0, 'rgba(0,0,0,0)');
-    fade.addColorStop(0.12, 'rgba(0,0,0,1)');
-    fade.addColorStop(0.88, 'rgba(0,0,0,1)');
-    fade.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = fade;
-    g.fillRect(0, 0, tmp.width, tmp.height);
+    if (!o.crisp) {
+      fade.addColorStop(0, 'rgba(0,0,0,0)');
+      fade.addColorStop(0.12, 'rgba(0,0,0,1)');
+      fade.addColorStop(0.88, 'rgba(0,0,0,1)');
+      fade.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = fade;
+      g.fillRect(0, 0, tmp.width, tmp.height);
+    }
     bg.drawImage(tmp, FULL_VIEW.x, y, w, h);
     releaseCanvas(tmp);
   }
   bg.restore();
   // vignettage doux (le nom en bas et les étoiles en haut restent lisibles)
-  bg.fillStyle = radial(bg, FULL_VIEW.x + FULL_VIEW.w / 2, FULL_VIEW.y + FULL_VIEW.h * 0.42, FULL_VIEW.w * 0.45, FULL_VIEW.h * 0.75, [
-    [0, alpha(pal.ink, 0)],
-    [1, alpha(pal.ink, 0.35)],
-  ]);
-  bg.fillRect(0, 0, BASE_W, BASE_H);
+  if (!o.crisp) {
+    bg.fillStyle = radial(bg, FULL_VIEW.x + FULL_VIEW.w / 2, FULL_VIEW.y + FULL_VIEW.h * 0.42, FULL_VIEW.w * 0.45, FULL_VIEW.h * 0.75, [
+      [0, alpha(pal.ink, 0)],
+      [1, alpha(pal.ink, 0.35)],
+    ]);
+    bg.fillRect(0, 0, BASE_W, BASE_H);
+  }
   fx.save();
   fx.globalCompositeOperation = 'lighter';
   fx.fillStyle = 'rgb(0,0,40)';

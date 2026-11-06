@@ -2,19 +2,20 @@ import type { CardDesign } from './common';
 import { classic, CLASSIC_WIN } from './classic';
 import { fullArt, cartouche } from './fullart';
 import { passePartout, artDeco, arche, medaillon } from './ornate';
-import { suisse, estampe, celeste } from './graphic';
+import { suisse, suissePaysage, estampe, celeste } from './graphic';
 import { bebou } from './bebou';
 import { paysage } from './paysage';
 
 export type { CardDesign, DesignCtx } from './common';
 export { STAR_COLORS, starColor, glyph } from './common';
 export { CLASSIC_WIN, bebou };
+export { suisseLandscapeBand } from './graphic';
 
 /** Les 10 maquettes de carte (nom + univers + étoiles, aucune statistique, aucun texte d'ambiance). */
 export const DESIGNS: CardDesign[] = [classic, fullArt, cartouche, passePartout, artDeco, arche, medaillon, suisse, estampe, celeste];
 
 /** + le gabarit secret des Bébous (hors des 10 maquettes génériques : réservé à ce thème). */
-export const DESIGN_BY_ID: Record<string, CardDesign> = Object.fromEntries([...DESIGNS, bebou, paysage].map((d) => [d.id, d]));
+export const DESIGN_BY_ID: Record<string, CardDesign> = Object.fromEntries([...DESIGNS, bebou, paysage, suissePaysage].map((d) => [d.id, d]));
 
 /** Gabarit utilisé par toutes les expériences qui ne choisissent pas de design. */
 export const DEFAULT_DESIGN = classic;

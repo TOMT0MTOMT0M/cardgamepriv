@@ -2,7 +2,7 @@ import { alpha, linear, mix } from '../canvas';
 import type { Ctx } from '../canvas';
 import { setInfo } from '../../cardData';
 import { rng } from '../../ease';
-import { type CardDesign, FONT_MONO, FONT_SANS, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, starColor, starRow, starsAt } from './common';
+import { type CardDesign, FONT_MONO, FONT_SANS, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, spacedFit, starColor, starRow, starsAt } from './common';
 
 /**
  * 8 · Suisse — grille stricte, typographie sans empattement, une seule couleur d'accent.
@@ -57,6 +57,97 @@ export const suisse: CardDesign = {
     if (tier >= 3) {
       m.fillRect(48, 40, 72, 8);
       m.font = `200 118px ${FONT_SANS}`;
+      m.textAlign = 'right';
+      m.fillText(num3(card.num), 724, 1038);
+      m.textAlign = 'left';
+    }
+    if (tier >= 5) {
+      m.font = `700 ${fs}px ${FONT_SANS}`;
+      m.fillText(l1, 44, 128);
+      if (l2) m.fillText(l2, 44, 128 + fs * 1.02);
+    }
+    // relief : impression typographique (le texte s'enfonce)
+    m.save();
+    m.filter = 'blur(0.8px)';
+    m.fillStyle = 'rgb(0,120,0)';
+    m.font = `700 ${fs}px ${FONT_SANS}`;
+    m.fillText(l1, 44, 128);
+    if (l2) m.fillText(l2, 44, 128 + fs * 1.02);
+    m.restore();
+  },
+};
+
+/**
+ * (07/11) SUISSE · PAYSAGE — le gabarit des PHOTOS HORIZONTALES (pochettes, concerts, lieux, voitures…), d'après le labo
+ * 035 « Suisse (typographique) » : même grille stricte (filets à 274 et 924, marges de 48), même papier, même nom en très
+ * gros en tête, mêmes étoiles carrées et même numéro de collection géant en maigre ; la bande de l'illustration prend la
+ * forme de la PHOTO ENTIÈRE (672 px de large, hauteur selon son format), centrée dans la zone d'image de la grille.
+ * Textes du pied à ≥ 26–30 px (audit 06/11) : famille, puis artiste · sous-famille ; vignette : nom, étoiles, numéro.
+ * Le cadrage de la photo (art) dépend de son format : posé par `landscapeDesign` (art/index.ts) via `suisseLandscapeArt`.
+ */
+export const SUISSE_LAND_BOX = { x: 48, w: 672, cy: 600 };
+export function suisseLandscapeBand(aspect: number) {
+  const h = Math.min(600, SUISSE_LAND_BOX.w / Math.max(0.01, aspect));
+  return { x: SUISSE_LAND_BOX.x, y: SUISSE_LAND_BOX.cy - h / 2, w: SUISSE_LAND_BOX.w, h };
+}
+export const suissePaysage: CardDesign = {
+  id: 'suisse-paysage',
+  title: 'Suisse · paysage',
+  art: { k: 1.0, to: [384, 600] },
+  paint(f, m, d) {
+    const { card, uni, tier } = d;
+    const ink = '#161616';
+    const accent = tier >= 2 ? starColor(tier) : uni.hex;
+    const band = suisseLandscapeBand(d.artAspect ?? 16 / 9);
+    f.fillStyle = '#f1efe9';
+    f.fillRect(0, 0, W, H);
+    f.fillStyle = accent;
+    f.fillRect(48, 40, 72, 8);
+    // nom sur 1 ou 2 lignes (comme 035)
+    f.fillStyle = ink;
+    const words = card.name.split(' ');
+    f.font = `700 64px ${FONT_SANS}`;
+    let l1 = card.name, l2 = '';
+    if (f.measureText(card.name).width > 540 && words.length > 1) {
+      const cut2 = Math.ceil(words.length / 2);
+      l1 = words.slice(0, cut2).join(' ');
+      l2 = words.slice(cut2).join(' ');
+    }
+    const fs = Math.min(fitFont(f, l1, `700 {s}px ${FONT_SANS}`, 64, 520, 34), l2 ? fitFont(f, l2, `700 {s}px ${FONT_SANS}`, 64, 520, 34) : 64);
+    f.font = `700 ${fs}px ${FONT_SANS}`;
+    f.fillText(l1, 44, 128);
+    if (l2) f.fillText(l2, 44, 128 + fs * 1.02);
+    starRow(f, m, d, 720 - 9, 92, 24, 'right', { r: 8.5, shape: 'square', fill: accent });
+    // grille
+    f.fillStyle = ink;
+    f.fillRect(48, 274, 672, 2);
+    f.fillRect(48, 924, 672, 2);
+    cut(f, (g) => g.rect(band.x, band.y, band.w, band.h));
+    // pied : famille (30 px), puis artiste · sous-famille (26 px), numéro de collection géant à droite
+    const numFont = `200 118px ${FONT_SANS}`;
+    f.font = numFont;
+    const numW = f.measureText(num3(card.num)).width;
+    const footW = 672 - numW - 36;
+    if (!d.mini) {
+      f.fillStyle = ink;
+      fitFont(f, uni.name, `500 {s}px ${FONT_SANS}`, 30, footW, 22);
+      f.fillText(uni.name, 48, 974);
+      const foot = [d.byline, d.sub].filter(Boolean).join('  ·  ').toUpperCase();
+      if (foot) {
+        f.fillStyle = alpha(ink, 0.6);
+        spacedFit(f, foot, 48, 1024, 1.5, 'left', `400 {s}px ${FONT_MONO}`, 26, footW, 20);
+      }
+    }
+    f.fillStyle = tier >= 3 ? accent : ink;
+    f.font = numFont;
+    f.textAlign = 'right';
+    f.fillText(num3(card.num), 724, 1038);
+    f.textAlign = 'left';
+
+    m.fillStyle = 'rgb(255,0,0)';
+    if (tier >= 3) {
+      m.fillRect(48, 40, 72, 8);
+      m.font = numFont;
       m.textAlign = 'right';
       m.fillText(num3(card.num), 724, 1038);
       m.textAlign = 'left';
