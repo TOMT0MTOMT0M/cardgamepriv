@@ -861,11 +861,21 @@ export function createOpeningScene(): OpeningScene {
     };
   }
 
+  /**
+   * (perf 06/11, fuite) Libère une carte. Le maillage doit être « disposé » lui aussi : three garde un objet de rendu par
+   * (maillage, matériau) tant que l'un des deux n'est pas libéré — celui du DOS (matériau partagé, jamais libéré)
+   * retenait le maillage, donc la face, ses nœuds, ses 6 textures et leurs toiles, et ses tampons GPU : +30 toiles et
+   * +10 tampons GPU par ouverture, pour toute la session.
+   */
+  function releaseSlot(s: Slot) {
+    s.mesh.dispatchEvent({ type: 'dispose' } as never);
+    s.mats.forEach((m) => m.dispose());
+    s.art.dispose();
+  }
   function disposeSlots() {
     for (const s of slots) {
       cardsRig.remove(s.mesh);
-      s.mats.forEach((m) => m.dispose());
-      s.art.dispose();
+      releaseSlot(s);
     }
     slots = [];
   }
@@ -880,7 +890,7 @@ export function createOpeningScene(): OpeningScene {
     for (const [id, { pr, tok }] of preloaded) {
       preloaded.delete(id);
       tok.on = false; // construction en cours : elle s'arrête et libère ce qu'elle a fait
-      void pr.then((b) => b?.forEach((s) => (s.mats.forEach((m) => m.dispose()), s.art.dispose())), () => undefined);
+      void pr.then((b) => b?.forEach(releaseSlot), () => undefined);
     }
   }
   /** Construit les 5 cartes d'un booster (sans les poser) ; null si `alive()` devient faux en route. */
@@ -911,7 +921,7 @@ export function createOpeningScene(): OpeningScene {
       if (!alive()) break; // booster abandonné (reset) : inutile de continuer
     }
     if (!alive()) {
-      built.forEach((s) => (s.mats.forEach((m) => m.dispose()), s.art.dispose()));
+      built.forEach(releaseSlot);
       return null;
     }
     return built;
@@ -926,7 +936,7 @@ export function createOpeningScene(): OpeningScene {
     let built = pre ? await pre.catch(() => null) : null;
     if (!built && pack === p) built = await buildAll(p, () => pack === p);
     if (pack !== p || !built) {
-      built?.forEach((s) => (s.mats.forEach((m) => m.dispose()), s.art.dispose()));
+      built?.forEach(releaseSlot);
       return;
     }
     slots = built;

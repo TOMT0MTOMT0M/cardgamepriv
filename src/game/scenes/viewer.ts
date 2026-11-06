@@ -99,7 +99,12 @@ export function createViewerScene(): ViewerScene {
       wonderInstance.dispose();
       wonderInstance = null;
     }
-    if (mesh) rig.remove(mesh);
+    if (mesh) {
+      rig.remove(mesh);
+      // (perf 06/11, fuite) sinon three garde l'objet de rendu (maillage + dos partagé) et, par lui, la face, ses
+      // textures et ses toiles : une carte retenue par carte regardée, pour toute la session
+      mesh.dispatchEvent({ type: 'dispose' } as never);
+    }
     mats.forEach((m) => m.dispose());
     art?.dispose();
     mesh = null;
