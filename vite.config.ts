@@ -13,7 +13,12 @@ export default defineConfig(({ mode }) => {
       ...(process.env.BEBOU_CATALOG_JSON === '0' ? [] : [catalogJson()]),
       preloadBackend(!!env.VITE_CONVEX_URL?.trim()),
       preloadFonts(),
+      catalogCoreOnly(),
     ],
+    // Catalogue en deux temps (perf, lot chargement 1) : le client lit le NOYAU du catalogue (sans les 4 gros sets) ;
+    // le jeu installe les gros sets par import() pendant le démarrage de la 3D (main.ts), le labo au lancement.
+    // Serveur Convex, tests et scripts n'utilisent pas cette config : ils gardent `themes.ts` (catalogue complet).
+    resolve: { alias: [{ find: /^(.*\/sets)\/themes$/, replacement: '$1/themesCore' }] },
     server: { host: mode === 'https' ? true : undefined },
     build: {
       target: 'esnext',
@@ -67,6 +72,23 @@ function catalogJson(): Plugin {
         n++;
       }
       return n ? { code: out + code.slice(last), map: null } : null;
+    },
+  };
+}
+
+/**
+ * Garde-fou du catalogue en deux temps : `src/core/sets/themes.ts` (catalogue complet installé d'office) ne doit jamais
+ * entrer dans le build client — sinon les 4 gros sets reviendraient dans le premier téléchargement du jeu. Un import
+ * qui échapperait à l'alias (chemin écrit autrement) fait échouer le build au lieu de passer inaperçu.
+ */
+function catalogCoreOnly(): Plugin {
+  return {
+    name: 'bebou-catalog-core-only',
+    apply: 'build',
+    buildEnd() {
+      for (const id of this.getModuleIds()) {
+        if (/[\\/]src[\\/]core[\\/]sets[\\/]themes\.ts$/.test(id)) this.error(`catalogue complet importé dans le build client (${id}) : importer « …/sets/themes » (alias vers themesCore)`);
+      }
     },
   };
 }

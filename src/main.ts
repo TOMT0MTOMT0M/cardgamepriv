@@ -1,4 +1,6 @@
 import './style.css';
+// labo : catalogue complet installé d'office, avant toute expérience (le jeu, lui, le charge en deux temps)
+import './core/sets/catalogFull';
 import { Timer, type WebGPURenderer } from 'three/webgpu';
 import GUI from 'lil-gui';
 import Stats from 'stats-gl';

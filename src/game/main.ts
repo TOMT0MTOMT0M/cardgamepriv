@@ -21,6 +21,7 @@ import { preloadOwned } from './preload';
 import { bindHapticGestures, haptics } from '../core/haptics';
 bindHapticGestures();
 import { fxReduced, setFxReduced } from '../core/fxPref';
+import { installCatalog } from '../core/sets/themes';
 
 // polices du jeu (retours 05/11) : une seule source, src/core/fonts.ts
 applyFontVars();
@@ -41,10 +42,13 @@ const params = new URLSearchParams(location.search);
 const ONLINE = !!(import.meta.env.VITE_CONVEX_URL as string | undefined)?.trim() && !params.has('demo');
 /** Serveur injoignable (bandeau) : branché quand le backend en ligne est chargé. */
 let serverDown = () => false;
+// Catalogue complet (37 088 cartes, ~700 Ko compressés) hors du premier téléchargement : il arrive pendant le
+// démarrage de la 3D et il est installé avant le backend — tout ce qui lit le catalogue vient après (themesCore.ts)
+const catalogP = import('../core/sets/catalogBig').then(installCatalog);
 // (lancé tout de suite : le téléchargement se fait pendant le démarrage de la 3D, plus bas)
 const backendP: Promise<GameBackend> = ONLINE
-  ? import('./onlineBackend').then((m) => ((serverDown = m.serverDown), m.createOnlineBackend()))
-  : import('./localBackend').then((m) => m.createLocalBackend());
+  ? catalogP.then(() => import('./onlineBackend')).then((m) => ((serverDown = m.serverDown), m.createOnlineBackend()))
+  : catalogP.then(() => import('./localBackend')).then((m) => m.createLocalBackend());
 
 const app = document.getElementById('app')!;
 const glHost = h('div', 'gl-host');
