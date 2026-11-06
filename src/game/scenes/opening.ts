@@ -2119,6 +2119,29 @@ export function createOpeningScene(): OpeningScene {
       // image rendue pendant l'attente partait dans la cible de la passe et l'écran restait figé)
       compileReal = () => pl.compile();
       const bl = pl.own(bloom(pl.emissive!, 0.35, 0.5, 0.0)) as unknown as N;
+      /*
+       * (perf 06/11) POST-TRAITEMENT À LA DEMANDE, AU BIT PRÈS. Un effet dont la contribution est nulle n'est plus
+       * recalculé : sa passe n'est pas rejouée et sa texture garde son contenu ; la sortie (même shader, mêmes
+       * pipelines) le lit comme avant. Rien ne change à l'image tant que ce contenu ne compte pas :
+       *  - bloom : l'émissif de la scène est EXACTEMENT nul en vitrine (booster non entamé : step(−0,2, burn) = 0, fuite
+       *    de lumière = 0, aucune carte dans la scène ; poussières, halo et roue n'ont pas d'émissif) ; bloom(0) = 0, et
+       *    on ne saute qu'après une image calculée sur un émissif nul (sa texture vaut alors 0) ;
+       *  - flare (ordinateur) : multiplié par U.flare, il ne compte que si U.flare > 0.
+       * `fxForce` : image de préchauffage (toutes les passes, pour créer leurs pipelines sous l'écran de chargement).
+       */
+      let fxForce = false;
+      let bloomZero = true; // dernière image de bloom calculée sur un émissif nul (textures neuves : 0)
+      const emissiveZero = () => phase === 'display' && (U.burn.value as number) < -0.2 && (U.leak.value as number) === 0 && cardsRig.children.length === 0;
+      const onDemand = (node: unknown, skip: () => boolean, ran?: () => void) => {
+        const n = node as { updateBefore(f: unknown): unknown };
+        const run = n.updateBefore.bind(n);
+        n.updateBefore = (f: unknown) => {
+          if (skip()) return undefined;
+          ran?.();
+          return run(f);
+        };
+      };
+      onDemand(bl, () => !fxForce && bloomZero && emissiveZero(), () => (bloomZero = !fxForce && emissiveZero()));
       const blStrength = (bl as unknown as { strength: { value: number } }).strength;
       // (audit PERF1-12, suggéré par le lot E) téléphone : bloom au ¼ de résolution (émissif épars, halo un peu plus doux)
       if (mobile) (bl as unknown as { setResolutionScale?(s: number): void }).setResolutionScale?.(0.25);
@@ -2136,6 +2159,9 @@ export function createOpeningScene(): OpeningScene {
       if (!mobile) {
         // flare anamorphique (légendaire et mieux), comme 018
         const fl = pl.own(anamorphicFlare(pl.emissive!, (n) => bloom(n, 1, 0, 0.12) as unknown as N)) as unknown as N;
+        // (perf 06/11) flare éteint (U.flare = 0, hors révélations légendaire / mythique) : sa contribution vaut
+        // fl × teinte × 0 = 0 quel que soit le contenu de sa texture → ses ~12 passes ne sont plus recalculées
+        onDemand(fl, () => !fxForce && (U.flare.value as number) === 0);
         col = pl.color.sample(warped).rgb.add(bl.rgb).add(fl.rgb.mul(tint).mul(U.flare)).add(tint.mul(sring.mul(0.3)));
         col = (chromaticAberration(vec4(col, 1), U.ca, U.center, float(1.06)) as unknown as N).rgb;
       } else {
@@ -2216,7 +2242,9 @@ export function createOpeningScene(): OpeningScene {
         // téléphone seulement — 12 à 14 pipelines créés pendant chaque 1re ouverture PC), roue 3D comprise.
         const ph = phase;
         phase = 'sealed';
+        fxForce = true;
         post.render();
+        fxForce = false;
         if (mobile) {
           phase = 'display';
           post.render();
