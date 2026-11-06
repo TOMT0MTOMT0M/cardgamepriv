@@ -618,24 +618,67 @@ function crinkleCanvas(): { c: HTMLCanvasElement } {
 }
 
 /**
+ * (07/11) MICRO-TEXTURE du film (retours de Tom : « l'effet miroir brûle les yeux ») : un vrai sachet n'est pas un miroir
+ * — le film est laminé (fines stries horizontales) et légèrement « peau d'orange ». Tuile 256 px répétée sur le sachet
+ * (≈ 6 × 9) : module la rugosité (le reflet s'adoucit et se casse en grain fin) et donne un relief infime. Partagée.
+ */
+let microTex: CanvasTexture | null = null;
+function microGrain(): CanvasTexture {
+  if (microTex) return microTex;
+  const N = 256;
+  const C = makeCanvas(N, N);
+  const img = C.g.createImageData(N, N);
+  const r = lcg(31337);
+  // bruit de valeur lissé (peau d'orange) + stries de laminage horizontales, tuilable (indices modulo N)
+  const grid = 32, cell = N / grid;
+  const gv = Array.from({ length: grid * grid }, () => r());
+  const val = (x: number, y: number) => {
+    const gx = x / cell, gy = y / cell, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+    const at = (i: number, j: number) => gv[((j + grid) % grid) * grid + ((i + grid) % grid)];
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    return (at(x0, y0) * (1 - sx) + at(x0 + 1, y0) * sx) * (1 - sy) + (at(x0, y0 + 1) * (1 - sx) + at(x0 + 1, y0 + 1) * sx) * sy;
+  };
+  const rows = Array.from({ length: N }, () => r());
+  for (let y = 0; y < N; y++)
+    for (let x = 0; x < N; x++) {
+      const v = 0.55 * val(x, y) + 0.25 * rows[y] + 0.2 * r();
+      const o = (y * N + x) * 4;
+      img.data[o] = img.data[o + 1] = img.data[o + 2] = Math.round(v * 255);
+      img.data[o + 3] = 255;
+    }
+  C.g.putImageData(img, 0, 0);
+  const t = new CanvasTexture(C.c);
+  t.colorSpace = NoColorSpace;
+  t.wrapS = t.wrapT = 1000; // RepeatWrapping
+  t.anisotropy = 4;
+  return (microTex = t);
+}
+
+/** (07/11) le film plastique au-dessus de l'aluminium est teinté à ~20 % : la teinte du sachet, un peu plus sombre */
+export const PLASTIC_TINT = 0.74;
+
+/**
  * (07/11) SURFACE ALUMINIUM du sachet (grand booster, déchirure, labo) — étude du matériau :
- *  - un sachet « aluminium » est un film PET métallisé : une couche d'aluminium quasi miroir SOUS un film transparent.
- *    Deux reflets superposés : le métal (teinte de l'alliage, F0 ≈ 0,9, à peine flou : rugosité 0,09) et le vernis
- *    PET au-dessus (diélectrique, F0 0,04, très net : clearcoat 0,45 / rugosité 0,05) — c'est ce double reflet, net
- *    et coloré à la fois, qui fait « vrai » ;
- *  - les GRANDS PLIS cassent la couche métallique : sur l'arête, le métal devient plus mat (micro-fissures) → rugosité
- *    0,09 → 0,30 le long de la crête ; le vernis suit le même relief (même normale) ;
- *  - les soudures thermoscellées (masque R) sont gaufrées : plus mates (0,36), le vernis y est absent.
- * `height` = carte de hauteur (0,5 = plat), `seam` = 0..1 soudures, `ridges` = normale des crans.
+ *  - un sachet « aluminium » est un film PET métallisé : une couche d'aluminium SOUS un film transparent TEINTÉ
+ *    (≈ 20 % : couleur du sachet × 0,74, le film teinté absorbe aussi un peu de lumière). Deux reflets superposés : le métal (teinte de l'alliage) et le vernis PET
+ *    au-dessus (diélectrique, F0 0,04, net mais pas miroir) ;
+ *  - le film n'est pas un miroir : laminage + peau d'orange (microGrain) → rugosité 0,15–0,25 sur le plateau (avant
+ *    0,09 : reflet aveuglant), vernis 0,1–0,16, et un relief infime qui casse le reflet en grain fin ;
+ *  - les GRANDS PLIS cassent la couche métallique : sur l'arête, le métal devient plus mat (micro-fissures) ;
+ *  - les soudures thermoscellées (masque R) sont gaufrées : plus mates (0,4), presque sans vernis.
+ * `height` = carte de hauteur (0,5 = plat), `seam` = 0..1 soudures, `ridges` = normale des crans. La couleur posée par
+ * l'appelant (m.colorNode) est assombrie par le film teinté.
  */
 export function aluminiumSurface(m: MeshPhysicalNodeMaterial, height: N, seam: N, ridges: N, bump = 3.4) {
-  const n = bumpMap(height, float(bump), normalMap(encodeNormal(ridges)));
+  const g = texture(microGrain(), uv().mul(vec2(6, 9))).r;
+  const n = bumpMap((height as N).add(g.mul(0.006)), float(bump), normalMap(encodeNormal(ridges)));
   const creaseK = smoothstep(0.7, 0.82, height);
+  if (m.colorNode) m.colorNode = (m.colorNode as N).mul(PLASTIC_TINT);
   m.metalnessNode = float(1);
-  m.roughnessNode = mix(mix(float(0.09), float(0.3), creaseK), float(0.36), seam);
+  m.roughnessNode = mix(mix(float(0.15).add(g.mul(0.1)), float(0.34), creaseK), float(0.4), seam);
   m.normalNode = n;
-  m.clearcoatNode = mix(float(0.3), float(0.05), seam);
-  m.clearcoatRoughnessNode = float(0.05);
+  m.clearcoatNode = mix(float(0.3), float(0.04), seam);
+  m.clearcoatRoughnessNode = float(0.1).add(g.mul(0.06));
   m.clearcoatNormalNode = n;
 }
 
