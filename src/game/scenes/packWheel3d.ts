@@ -32,15 +32,24 @@ const BACK_W = 128;
 /** carte des plis (sachets aluminium) : en petit, 192 px suffisent à garder les grandes cassures lisibles */
 const CREASE_W = 192;
 
+/** (perf 06/11) réductions déjà faites, par toile source et largeur : la carte des plis est commune aux cinq sachets
+ *  (core/pack.ts) → réduite une fois ; même résultat au pixel (même source, même réduction) */
+const shrunk = new WeakMap<object, Map<number, HTMLCanvasElement>>();
 function shrink(src: Texture | undefined, w: number, srgb = true): Texture | null {
   const img = src?.image as HTMLCanvasElement | ImageBitmap | undefined;
   if (!img || !img.width) return null;
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = Math.round((w * img.height) / img.width);
-  const g = c.getContext('2d')!;
-  g.imageSmoothingQuality = 'high';
-  g.drawImage(img as CanvasImageSource, 0, 0, c.width, c.height);
+  let byW = shrunk.get(img);
+  let c = byW?.get(w);
+  if (!c || !c.width) {
+    c = document.createElement('canvas');
+    c.width = w;
+    c.height = Math.round((w * img.height) / img.width);
+    const g = c.getContext('2d')!;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img as CanvasImageSource, 0, 0, c.width, c.height);
+    if (!byW) shrunk.set(img, (byW = new Map()));
+    byW.set(w, c);
+  }
   const t = new CanvasTexture(c);
   if (srgb) t.colorSpace = SRGBColorSpace;
   t.anisotropy = 2;
