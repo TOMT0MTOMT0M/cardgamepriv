@@ -72,7 +72,7 @@ let fontsAll: Promise<void> | null = null;
 function loadFonts(strict = false): Promise<void> {
   if (!fontsAll) {
     const italic = Promise.all([document.fonts.load(`italic 400 27px ${FONT_TITLE}`), document.fonts.load(`italic 500 40px ${FONT_TITLE}`)]);
-    const core = Promise.all([document.fonts.load(`700 44px ${FONT_TITLE}`), document.fonts.load(`600 44px ${FONT_TITLE}`), document.fonts.load(`500 19px ${FONT_MONO}`), document.fonts.load(`600 19px ${FONT_MONO}`), document.fonts.load(`400 14px ${FONT_MONO}`)]);
+    const core = Promise.all([document.fonts.load(`700 44px ${FONT_TITLE}`), document.fonts.load(`600 44px ${FONT_TITLE}`), document.fonts.load(`500 19px ${FONT_MONO}`), document.fonts.load(`600 19px ${FONT_MONO}`), document.fonts.load(`700 19px ${FONT_MONO}`), document.fonts.load(`400 14px ${FONT_MONO}`)]);
     fontsAll = Promise.all([core, italic]).then(() => undefined, () => undefined);
     fontsReady = Promise.all([core, Promise.race([italic, new Promise((r) => setTimeout(r, 1500))])]).then(() => undefined, () => undefined);
   }

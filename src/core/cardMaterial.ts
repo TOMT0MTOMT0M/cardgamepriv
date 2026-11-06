@@ -170,8 +170,9 @@ export function createBackMaterial(back: BackArt, opts: { foil?: number; paper?:
   const d = uv().sub(0.5).mul(vec2(CARD.w / CARD.h, 1));
   const radial = d.div(d.length().max(1e-4));
   const dir = mix(vec2(1, 0), radial, spot);
-  m.anisotropyNode = dir.mul(mix(float(0.85), float(0.1), cut));
-  m.roughnessNode = mix(mix(float(0.34), float(0.68), cut), float(0.26), spot);
+  // (07/11) fond tourné du « B » gravé : effet un peu plus discret que l'ancien lamage (anisotropie 0,6, rugosité 0,3)
+  m.anisotropyNode = dir.mul(mix(mix(float(0.85), float(0.1), cut), float(0.6), spot));
+  m.roughnessNode = mix(mix(float(0.34), float(0.68), cut), float(0.3), spot);
   m.sheenNode = float(0.25);
   m.sheenRoughnessNode = float(0.6);
   m.sheenColor = new Color('#ffffff');

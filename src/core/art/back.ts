@@ -32,12 +32,15 @@ function guilloche(g: Ctx, cx: number, cy: number, R: number, r: number, d: numb
 }
 
 /**
- * (07/11) Marque du dos : `fraisage` = une seule empreinte d'usinage au centre (lamage circulaire tourné : stries
- * concentriques, reflet qui tourne avec la lumière), sans lettre ni logo ; `aucune` = plaque nue (filets du bord seuls).
+ * (07/11) Marque du dos : `b` = un « B » GRAVÉ À LA CNC au centre (retours de Tom) — poche usinée en forme de lettre,
+ * fond tourné (stries concentriques, reflet qui tourne avec la lumière, plus discret que l'ancien lamage) et parois
+ * nettes ; `fraisage` = l'ancien lamage rond ; `aucune` = plaque nue (filets du bord seuls).
  */
-export const BACK_MARK: 'fraisage' | 'aucune' = 'fraisage';
+export const BACK_MARK: 'b' | 'fraisage' | 'aucune' = 'b';
 /** rayon du lamage (coordonnées de la carte, 768 × 1072) */
 export const BACK_SPOT_R = 112;
+/** taille du « B » gravé (px de la carte) */
+const BACK_B_SIZE = 300;
 
 /**
  * DOS ACIER BROSSÉ — (07/11) « no brand » strict : plus AUCUNE écriture (thème, millésime, « BÉBOU · CARTES »), plus de
@@ -115,49 +118,106 @@ export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = ALU_BACK) {
   engrave((g) => { g.lineWidth = 3; roundRect(g, 30, 30, BASE_W - 60, BASE_H - 60, 24); g.stroke(); }, 0.8);
   engrave((g) => { g.lineWidth = 1.2; roundRect(g, 42, 42, BASE_W - 84, BASE_H - 84, 18); g.stroke(); }, 0.5);
 
-  if (BACK_MARK === 'fraisage') {
+  // fond tourné d'une poche usinée : couleur un peu plus claire que la plaque, anneaux de tournage d'intensité irrégulière
+  const turnedFloor = (g: Ctx, R: number, light: number, k: number) => {
+    g.fillStyle = mixHex(style.ground, '#ffffff', light);
+    g.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+    let sd = 11;
+    const rn = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+    g.lineWidth = 0.9;
+    for (let r = 3; r < R; r += 1.6) {
+      const v = rn();
+      const w = (0.35 + 0.65 * (r / R)) * k;
+      g.strokeStyle = v > 0.5 ? alpha('#ffffff', (v - 0.5) * 0.22 * w) : alpha('#000000', (0.5 - v) * 0.2 * w);
+      g.beginPath();
+      g.arc(cx, cy, r, 0, TAU);
+      g.stroke();
+    }
+  };
+  // masques d'une poche : B = fond tourné (anisotropie concentrique), G = stries très fines en relief
+  const turnedMasks = (g: Ctx, R: number) => {
+    g.fillStyle = 'rgb(0,0,255)';
+    g.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+    g.lineWidth = 0.8;
+    for (let r = 6; r < R - 3; r += 3.2) {
+      g.strokeStyle = `rgba(0,${14 + Math.round(8 * Math.sin(r * 0.7))},0,1)`;
+      g.beginPath();
+      g.arc(cx, cy, r, 0, TAU);
+      g.stroke();
+    }
+  };
+  if (BACK_MARK === 'b') {
+    // ── « B » gravé à la CNC : la lettre est une POCHE (fond tourné, plus discret que l'ancien lamage : même teinte,
+    // stries à 70 %), parois nettes (ombre haut-gauche, arête vive bas-droite) ; grotesque nette (Inter 700 : le « B »
+    // de Bold Frame se lisait « 8 » en gros, la police ronde du logo faisait autocollant)
+    const R = BACK_B_SIZE * 0.62;
+    const font = `700 ${BACK_B_SIZE}px ${FONT_MONO}`;
+    const glyph = (g: Ctx) => {
+      g.font = font;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('B', cx, cy + BACK_B_SIZE * 0.04);
+    };
+    const W2 = Math.ceil(BASE_W * px), H2 = Math.ceil(BASE_H * px);
+    const tmp = document.createElement('canvas');
+    tmp.width = W2;
+    tmp.height = H2;
+    const t = tmp.getContext('2d')!;
+    t.setTransform(px, 0, 0, px, 0, 0);
+    // fond de la poche, découpé à la forme de la lettre
+    turnedFloor(t, R, 0, 0.7);
+    t.globalCompositeOperation = 'destination-in';
+    t.fillStyle = '#000';
+    glyph(t);
+    t.globalCompositeOperation = 'source-over';
+    back.save();
+    back.setTransform(1, 0, 0, 1, 0, 0);
+    back.drawImage(tmp, 0, 0);
+    back.restore();
+    // parois
+    engrave((g) => {
+      g.font = font;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.lineWidth = 2.2;
+      g.strokeText('B', cx, cy + BACK_B_SIZE * 0.04);
+    }, 0.9);
+    // masques (B : fond tourné, G : stries) découpés à la lettre
+    t.setTransform(1, 0, 0, 1, 0, 0);
+    t.clearRect(0, 0, W2, H2);
+    t.setTransform(px, 0, 0, px, 0, 0);
+    turnedMasks(t, R);
+    t.globalCompositeOperation = 'destination-in';
+    glyph(t);
+    t.globalCompositeOperation = 'source-over';
+    masks.save();
+    masks.setTransform(1, 0, 0, 1, 0, 0);
+    masks.globalCompositeOperation = 'lighter';
+    masks.drawImage(tmp, 0, 0);
+    masks.restore();
+    tmp.width = tmp.height = 0;
+    back.textAlign = 'left';
+    back.textBaseline = 'alphabetic';
+  } else if (BACK_MARK === 'fraisage') {
     const R = BACK_SPOT_R;
     // ── lamage : face usinée au tour, plus claire et plus fine que la plaque brossée (le brossage s'arrête net au bord)
     back.save();
     back.beginPath();
     back.arc(cx, cy, R, 0, TAU);
     back.clip();
-    back.fillStyle = mixHex(style.ground, '#ffffff', 0.12);
-    back.fillRect(cx - R, cy - R, 2 * R, 2 * R);
-    // stries de tournage : anneaux très fins, d'intensité irrégulière (pas d'outil), un peu plus marqués vers le bord
-    let sd = 11;
-    const rn = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
-    back.lineWidth = 0.9;
-    for (let r = 3; r < R; r += 1.6) {
-      const v = rn();
-      const k = 0.35 + 0.65 * (r / R);
-      back.strokeStyle = v > 0.5 ? alpha('#ffffff', (v - 0.5) * 0.22 * k) : alpha('#000000', (0.5 - v) * 0.2 * k);
-      back.beginPath();
-      back.arc(cx, cy, r, 0, TAU);
-      back.stroke();
-    }
-    // point de centrage (le centre de la passe d'outil)
+    turnedFloor(back, R, 0.12, 1);
     back.fillStyle = alpha('#000000', 0.35);
     back.beginPath();
     back.arc(cx, cy, 1.6, 0, TAU);
     back.fill();
     back.restore();
-    // paroi du lamage (en creux) : ombre en haut-gauche, arête vive en bas-droite, comme les gravures
     engrave((g) => { g.lineWidth = 2.4; g.beginPath(); g.arc(cx, cy, R, 0, TAU); g.stroke(); }, 0.9);
-    // masques : B = lamage (anisotropie concentrique), G = stries très fines en relief (elles accrochent la lumière)
     masks.save();
     masks.globalCompositeOperation = 'lighter';
-    masks.fillStyle = 'rgb(0,0,255)';
     masks.beginPath();
     masks.arc(cx, cy, R - 1.5, 0, TAU);
-    masks.fill();
-    masks.lineWidth = 0.8;
-    for (let r = 6; r < R - 3; r += 3.2) {
-      masks.strokeStyle = `rgba(0,${18 + Math.round(10 * Math.sin(r * 0.7))},0,1)`;
-      masks.beginPath();
-      masks.arc(cx, cy, r, 0, TAU);
-      masks.stroke();
-    }
+    masks.clip();
+    turnedMasks(masks, R);
     masks.restore();
   }
   applyGrain(back, BASE_W, BASE_H, 0.05, 4, 50);
