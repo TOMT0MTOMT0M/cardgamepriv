@@ -36,18 +36,50 @@ export const PACK_STYLES: Record<string, PackStyle> = {
   bone: { name: 'Os', ground: '#e7e0d0', ground2: '#cfc5ae', ink: '#1d1a17', foil: '#8a7a5c', accent: '#b4442f' },
 };
 
-/** Géométrie coussin fermée : face avant (groupe 0) + dos (groupe 1), UV planaires. */
+/**
+ * Géométrie du sachet (remodelée 06/11) : face avant (groupe 0) + dos (groupe 1), UV planaires.
+ *  - COUSSIN : profil gonflé « plus plat au milieu, qui tombe vite vers les bords » (un sachet rempli de cartes, pas un
+ *    ballon) ; les cartes rigides dedans le tiennent plat au centre et le bombent sur ~1,5 cm des bords ;
+ *  - SOUDURES latérales : les deux faces se rejoignent à plat sur une fine marge (le film est thermoscellé), avec un
+ *    léger retour ondulé ;
+ *  - SOUDURES crantées haut / bas : zone PLATE, légèrement rabattue vers l'arrière, avec l'ondulation des crans ;
+ *  - FROISSÉ dans la géométrie : quelques grands plis bas-relief (les mêmes familles que la carte de plis) — le reflet
+ *    casse déjà sur la silhouette, pas seulement dans la normal map ;
+ *  - normales calculées (lissées) : avant, la face était rendue avec des normales planes.
+ */
 export function createPackGeometry(segX = 36, segY = 56): BufferGeometry {
   const { w, h, bulge, crimp } = PACK;
   const pos: number[] = [];
   const uvs: number[] = [];
   const idx: number[] = [];
   const cv = crimp / h;
+  const sideSeam = 0.028; // marge thermoscellée sur les côtés (unités carte)
+  const su = sideSeam / w;
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  const rr = (() => { let a = 99991; return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296); })();
+  // grands plis bas-relief : segments (u0,v0)-(u1,v1), amplitude et largeur
+  const folds = Array.from({ length: 7 }, () => ({ u0: rr(), v0: cv + rr() * (1 - 2 * cv), u1: rr(), v1: cv + rr() * (1 - 2 * cv), amp: 0.004 + rr() * 0.006, wdt: 0.05 + rr() * 0.08 }));
+  const foldZ = (u: number, v: number) => {
+    let z = 0;
+    for (const f of folds) {
+      const dx = f.u1 - f.u0, dy = f.v1 - f.v0, l2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((u - f.u0) * dx + (v - f.v0) * dy) / l2));
+      const px = f.u0 + dx * t, py = f.v0 + dy * t;
+      const d = Math.hypot(u - px, v - py);
+      const edge = Math.min(1, t * 6, (1 - t) * 6); // fondu aux extrémités
+      z += f.amp * Math.exp(-(d * d) / (f.wdt * f.wdt * 0.5)) * edge * Math.cos((d / f.wdt) * 2.2);
+    }
+    return z;
+  };
   const prof = (u: number, v: number) => {
-    const pu = Math.pow(Math.sin(Math.PI * u), 0.42);
+    // horizontal : plat au centre, chute douce sur les bords, nul dans la marge scellée
+    const eu = Math.min(u, 1 - u);
+    const pu = eu < su ? 0 : smooth(Math.min(1, (eu - su) / 0.22));
     const vv = (v - cv) / (1 - 2 * cv);
-    const inBody = vv > 0 && vv < 1 ? Math.pow(Math.sin(Math.PI * vv), 0.3) : 0;
-    return pu * inBody;
+    if (vv <= 0 || vv >= 1) return 0;
+    const ev = Math.min(vv, 1 - vv);
+    const pv = smooth(Math.min(1, ev / 0.2));
+    return pu * pv;
   };
   for (const side of [1, -1]) {
     const base = pos.length / 3;
@@ -57,9 +89,15 @@ export function createPackGeometry(segX = 36, segY = 56): BufferGeometry {
         const u = i / segX;
         const x = (u - 0.5) * w;
         const y = (v - 0.5) * h;
-        // soudures : micro-ondulation (le relief fin vient de la normal map)
-        const crimpZ = v < cv || v > 1 - cv ? 0.0012 * Math.sin(x * 260) : 0;
-        const z = side * (bulge * prof(u, v) + 0.0006 + crimpZ);
+        const inCrimp = v < cv || v > 1 - cv;
+        const p = prof(u, v);
+        // soudures crantées : ondulation des crans + léger rabat vers l'arrière
+        const crimpZ = inCrimp ? 0.0014 * Math.sin(x * 260) - 0.003 * (1 - p) : 0;
+        // marge scellée latérale : les faces se touchent (une demi-épaisseur de film), légère ondulation
+        const eu = Math.min(u, 1 - u);
+        const seamWave = eu < su ? 0.0008 * Math.sin(y * 90) : 0;
+        const fold = inCrimp ? 0 : foldZ(u, v) * Math.min(1, p * 2);
+        const z = side * (bulge * p + 0.0005 + crimpZ + seamWave + fold);
         pos.push(x, y, z);
         uvs.push(side > 0 ? u : 1 - u, v);
       }

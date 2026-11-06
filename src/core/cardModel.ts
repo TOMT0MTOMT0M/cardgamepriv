@@ -107,7 +107,10 @@ export function createCardGeometry(o: CardGeometryOptions = {}): BufferGeometry 
     }
   const backCount = idx.length - backIdxStart;
 
-  // tranche : contour CCW (vu de +Z)
+  // tranche (remodelée 06/11) : contour CCW (vu de +Z), ARRONDIE — une plaque d'acier usinée a un bord adouci, pas une
+  // arête vive : la tranche est un demi-cylindre de rayon t/2 découpé en `segE` anneaux (normales lissées le long de
+  // l'arc), le liseré lumineux et le reflet du métal courent dessus. UV : u = abscisse le long du contour, v = 0 (dos)
+  // → 1 (face).
   const ring: number[] = [];
   for (let i = 0; i < nx; i++) ring.push(i);
   for (let j = 1; j < ny; j++) ring.push(j * nx + nx - 1);
@@ -115,6 +118,8 @@ export function createCardGeometry(o: CardGeometryOptions = {}): BufferGeometry 
   for (let j = ny - 2; j >= 1; j--) ring.push(j * nx);
   const edge0 = pos.length / 3;
   const L = ring.length;
+  const segE = 6;
+  const rE = t / 2;
   let acc = 0;
   for (let k = 0; k < L; k++) {
     const p = grid[ring[k]];
@@ -130,18 +135,25 @@ export function createCardGeometry(o: CardGeometryOptions = {}): BufferGeometry 
       const q = grid[ring[k - 1]];
       acc += Math.hypot(p[0] - q[0], p[1] - q[1]);
     }
-    for (const z of [t / 2, -t / 2]) {
-      pos.push(p[0], p[1], z);
-      nor.push(nxv, nyv, 0);
-      uv.push(acc / (2 * (w + h)), z > 0 ? 1 : 0);
+    for (let e = 0; e <= segE; e++) {
+      // angle de +90° (vers la face) à −90° (vers le dos) : point sur l'arc, rentré de rE depuis le contour
+      const a = Math.PI / 2 - (e / segE) * Math.PI;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      pos.push(p[0] - nxv * rE * (1 - ca), p[1] - nyv * rE * (1 - ca), sa * rE);
+      nor.push(nxv * ca, nyv * ca, sa);
+      uv.push(acc / (2 * (w + h)), 1 - e / segE);
       tan.push(tx, ty, 0, 1);
     }
   }
   const edgeIdxStart = idx.length;
+  const R = segE + 1;
   for (let k = 0; k < L; k++) {
-    const a = edge0 + k * 2, b = a + 1;
-    const c = edge0 + ((k + 1) % L) * 2, d = c + 1;
-    idx.push(a, b, d, a, d, c);
+    const k1 = (k + 1) % L;
+    for (let e = 0; e < segE; e++) {
+      const a = edge0 + k * R + e, b = a + 1;
+      const c = edge0 + k1 * R + e, d = c + 1;
+      idx.push(a, b, d, a, d, c);
+    }
   }
   const edgeCount = idx.length - edgeIdxStart;
 

@@ -122,10 +122,10 @@ export function createEdgeMaterial(paper = '#e8e2d4', core = '#1d1b1a', opts: { 
     return m;
   }
   // (retours 06/11) tranche d'une plaque d'aluminium : métal usiné, arêtes un peu plus claires
-  const y = uv().y;
-  const bevel = smoothstep(float(0.0), float(0.18), y).mul(smoothstep(float(1.0), float(0.82), y));
-  m.colorNode = mix(color(new Color('#e4e6ea')), color(new Color('#b4b7bd')), bevel);
-  m.roughnessNode = float(0.38);
+  // (06/11) tranche arrondie (cardModel.ts) : métal uniforme, le reflet suit l'arc tout seul ; un rien plus mate que
+  // les faces (bord usiné, pas poli)
+  m.colorNode = color(new Color('#d6d9de'));
+  m.roughnessNode = float(0.42);
   m.metalnessNode = float(1);
   return m;
 }
@@ -152,9 +152,14 @@ export function createBackMaterial(back: BackArt, opts: { foil?: number; paper?:
   const cut = mk.r; // gravure
   m.colorNode = c.rgb;
   // (ultra-réalisme) acier brossé vertical : métal pur, reflet étiré le long des stries, plus brillant ; gravure mate
-  m.metalnessNode = mix(float(1), float(0.6), cut);
-  m.roughnessNode = mix(float(0.3), float(0.68), cut);
+  // (métal à 0,88 : l'acier brossé diffuse un peu le long des stries — en vrai aussi — et reste lisible quand il ne
+  // reflète qu'un décor sombre)
+  m.metalnessNode = mix(float(0.88), float(0.55), cut);
+  m.roughnessNode = mix(float(0.34), float(0.68), cut);
   m.anisotropyNode = mix(float(0.9), float(0.1), cut);
+  m.sheenNode = float(0.25);
+  m.sheenRoughnessNode = float(0.6);
+  m.sheenColor = new Color('#ffffff');
   m.anisotropyRotation = Math.PI / 2; // stries VERTICALES (sens du brossage)
   m.normalNode = bumpMap(mk.g, float(1.6));
   return m;
