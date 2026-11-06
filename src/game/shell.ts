@@ -141,10 +141,22 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
    * sous ×1,25. Un téléphone en économie d'énergie (iPhone « mode économie », Android « économiseur ») bride
    * l'affichage à 30 images/s : ce n'est pas le GPU qui peine, on ne baisse donc rien dans ce cas (avant : la 3D
    * tombait à ×1 → image très pixelisée).
+   * (audit 06/11) Le plafond dépend de la SCÈNE (`Experiment.dprCap`) : la visionneuse (une carte, scène légère)
+   * demande la définition native de l'écran (×3 sur iPhone — le canvas rendu à ×2 était étiré ×1,5 par le navigateur :
+   * bords, texte et foil lissés) ; l'ouverture reste à ×2. Les paliers perdus quand l'appareil peine (`slowSteps`)
+   * suivent d'une scène à l'autre.
    */
-  let dpr = mobile ? Math.min(window.devicePixelRatio || 1, 2) : resolveDpr('auto', quality);
-  const maxDpr = dpr;
-  const minDpr = mobile ? Math.min(dpr, 1.25) : Math.min(dpr, 1);
+  const nativeDpr = mobile ? Math.min(window.devicePixelRatio || 1, 3) : resolveDpr('auto', quality);
+  const capFor = (key: string | null) => {
+    const cap = key ? (scenes.get(key)?.exp as Experiment | undefined)?.dprCap : undefined;
+    return Math.min(nativeDpr, cap ?? (mobile ? 2 : nativeDpr));
+  };
+  let maxDpr = Math.min(nativeDpr, mobile ? 2 : nativeDpr);
+  let dpr = maxDpr;
+  /** paliers de 0,25 retirés par l'adaptatif (0 = plein) */
+  let slowSteps = 0;
+  const minDpr = mobile ? Math.min(nativeDpr, 1.25) : Math.min(nativeDpr, 1);
+  const applyDpr = () => Math.max(minDpr, Math.round((maxDpr - slowSteps * 0.25) * 4) / 4);
   /** fenêtres consécutives bien en dessous du budget : la définition REMONTE (avant : une seule baisse — pendant
    *  une ouverture chargée, par exemple — laissait tout le reste de la session flou) */
   let fast = 0;
@@ -332,13 +344,15 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         perf.acc = perf.frames = perf.capped = 0;
         fast = avg < FAST_MS && !throttled ? fast + 1 : 0;
         if (perf.slow >= 2 && dpr > minDpr + 0.01) {
-          dpr = Math.max(minDpr, Math.round((dpr - 0.25) * 4) / 4);
+          slowSteps++;
+          dpr = applyDpr();
           perf.slow = 0;
           fast = 0;
           resize();
           console.info(`[jeu] appareil un peu juste (${Math.round(1000 / avg)} i/s) : définition 3D ramenée à ×${dpr}`);
-        } else if (fast >= 3 && dpr < maxDpr - 0.01) {
-          dpr = Math.min(maxDpr, Math.round((dpr + 0.25) * 4) / 4);
+        } else if (fast >= 3 && slowSteps > 0) {
+          slowSteps--;
+          dpr = applyDpr();
           fast = 0;
           resize();
           console.info(`[jeu] ça respire (${Math.round(1000 / avg)} i/s) : définition 3D remontée à ×${dpr}`);
@@ -430,6 +444,13 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         const m = scenes.get(key)!;
         m.overlay.hidden = false;
         applyRendererDefaults(renderer);
+      }
+      // définition propre à la scène (visionneuse : native ; ouverture : ×2) — appliquée avant sa première image
+      maxDpr = capFor(key);
+      const want = applyDpr();
+      if (Math.abs(want - dpr) > 0.01) {
+        dpr = want;
+        resize();
       }
     },
     active: () => current,

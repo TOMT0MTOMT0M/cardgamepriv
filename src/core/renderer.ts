@@ -118,8 +118,8 @@ export function backendName(renderer: WebGPURenderer): string {
  * facteur fixe trop bas (0,62 → texte et illustration flous à ×2). `screenFrac` = part de la largeur d'écran occupée
  * par la carte au plus grand. Bornée : la mémoire des canvas est limitée sur iPhone.
  */
-export function mobileArtScale(cssWidth: number, cssHeight: number, screenFrac: number, max = 0.85): number {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+export function mobileArtScale(cssWidth: number, cssHeight: number, screenFrac: number, max = 0.85, dprMax = 2): number {
+  const dpr = Math.min(window.devicePixelRatio || 1, dprMax);
   const px = Math.min(cssWidth, cssHeight * 0.72) * screenFrac * dpr;
   return Math.round(Math.min(max, Math.max(0.6, px / 768)) * 20) / 20;
 }

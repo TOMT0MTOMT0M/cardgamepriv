@@ -2,9 +2,10 @@
  * POLICES DU JEU (retours 05/11) — un seul endroit (avec src/core/fonts.ts).
  *  - « Matcha World » : les GROS TITRES seulement (logo, titres de page, moments forts). Très large et gourmande : à
  *    doser. Le fichier d'origine n'a ni accents ni point médian : scripts/build-fonts.py les ajoute (É È Ê Ë À Ç… ·).
- *  - « Bold Frame » : tout le reste, en trois graisses réunies sous un même nom → les `font-weight` du CSS choisissent :
- *      400 = Bold Frame (texte courant) · 500-600 = Bold Frame One (libellés, boutons) · 700-900 = Bold Frame Two (titres).
- *    Étroite et nette : légèrement agrandie (`size-adjust`) pour rester lisible en petit.
+ *  - « Bold Frame » : titres, noms et texte courant EN CASSE MIXTE, en trois graisses réunies sous un même nom → les
+ *    `font-weight` du CSS choisissent : 400 = Bold Frame · 500-600 = Bold Frame One · 700-900 = Bold Frame Two.
+ *    Étroite et nette : légèrement agrandie (`size-adjust`). ⚠ Ses capitales R et X se lisent A et H sous 14 px (audit
+ *    06/11) : jamais en capitales petites → les libellés, chiffres et boutons sont en Inter (fonts.ts, @fontsource).
  * Les signes « & », « + » et « × » de Bold Frame se lisent mal (ils ressemblent à « * », « • », « - ») : `unicode-range`
  * les exclut, ils viennent de la police de repli.
  * ⚠ Bold Frame : licence « usage personnel » (jeu privé entre amis, non commercial).

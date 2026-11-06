@@ -82,14 +82,20 @@ export interface LayerOptions {
   aoFromFrame?: boolean;
 }
 
+/** biais de niveau de détail des calques couleur (audit 06/11) — voir cardLayers */
+export const MIP_BIAS = float(-0.5);
+
 export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, uvNode: N = uv(), opts: LayerOptions = {}): CardLayers {
   const V = viewDirObject();
   const k = V.xy.div(max(V.z, 0.22)).mul(vec2(1 / CARD.w, 1 / CARD.h));
   const uvAt = (d: number | N) => uvNode.sub(k.mul(d));
-  const bg = texture(art.bg, uvAt(depths.bg));
-  const sj = texture(art.subject, uvAt(depths.subject));
-  const fg = texture(art.fg, uvAt(depths.fg));
-  const fr = texture(art.frame, uvNode);
+  // (audit 06/11) biais de mip −0,5 sur les calques COULEUR : la carte est souvent vue entre 55 et 80 % de la taille de
+  // sa texture (LOD 0,65–0,8 → mélange trilinéaire avec le mip moitié = flou doux permanent) ; −0,5 ramène la lecture
+  // vers le mip 0 pour 0 ms (`textureSampleBias` WGSL / `texture(s, uv, bias)` GLSL). Pas sur les masques (relief).
+  const bg = texture(art.bg, uvAt(depths.bg)).bias(MIP_BIAS);
+  const sj = texture(art.subject, uvAt(depths.subject)).bias(MIP_BIAS);
+  const fg = texture(art.fg, uvAt(depths.fg)).bias(MIP_BIAS);
+  const fr = texture(art.frame, uvNode).bias(MIP_BIAS);
   const masks = texture(art.masks, uvNode);
   const fx = texture(art.fx, uvAt(depths.subject));
   // ombre du bord de fenêtre projetée sur le fond (plus profond = plus d'ombre visible)
@@ -137,7 +143,7 @@ export function createEdgeMaterial(paper = '#e8e2d4', core = '#1d1b1a', opts: { 
  */
 export function createBackMaterial(back: BackArt, opts: { foil?: number; paper?: boolean } = {}): MeshPhysicalNodeMaterial {
   const m = new MeshPhysicalNodeMaterial();
-  const c = texture(back.color);
+  const c = texture(back.color).bias(MIP_BIAS);
   const mk = texture(back.masks);
   if (opts.paper) {
     const foil = mk.r.mul(opts.foil ?? 1);

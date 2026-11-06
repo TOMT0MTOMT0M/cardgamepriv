@@ -143,22 +143,25 @@ export const classic: CardDesign = {
       f.shadowBlur = 6;
       // le fond ne montre que les bords du drapeau : l'écusson complet (emblème compris) reste dans le bandeau
       drawFlag(f, country, 62, 949, 58, 38, 'rgba(255,248,236,0.85)');
-      f.font = `600 23px ${FONT_MONO}`;
+      // (audit 06/11) ≥ 30 px de base sur la carte : lisible sur téléphone
+      f.font = `600 30px ${FONT_MONO}`;
       f.fillStyle = ink;
-      spaced(f, COUNTRY_NAMES[country].toUpperCase(), 136, 966, 3);
-      f.font = `400 13px ${FONT_MONO}`;
-      f.fillStyle = alpha(ink, 0.8);
-      spaced(f, uni.name.toUpperCase(), 136, 990, 2.2);
+      spaced(f, COUNTRY_NAMES[country].toUpperCase(), 136, 962, 2.5);
+      if (!d.mini) {
+        f.font = `500 30px ${FONT_MONO}`;
+        f.fillStyle = alpha(ink, 0.8);
+        spaced(f, uni.name.toUpperCase(), 136, 998, 2);
+      }
       f.restore();
     } else {
       glyph(f, uni.id, 86, 968, 30, mix(uni.hex, ink, 0.35), 2.2);
-      f.font = `500 21px ${FONT_MONO}`;
+      f.font = `500 30px ${FONT_MONO}`;
       f.fillStyle = alpha(ink, 0.85);
-      spaced(f, uni.name.toUpperCase(), 118, 976, 2.6);
+      if (!d.mini) spaced(f, uni.name.toUpperCase(), 118, 978, 2.2);
     }
-    f.font = `400 14px ${FONT_MONO}`;
-    f.fillStyle = alpha(ink, 0.55);
-    spaced(f, d.sub ? d.sub.toUpperCase() : `${setInfo(card).code} · ${num3(card.num)}/${setInfo(card).size}`, W - 66, 1024, 2, 'right');
+    f.font = `500 30px ${FONT_MONO}`;
+    f.fillStyle = alpha(ink, 0.7);
+    if (!d.mini) spaced(f, d.sub ? d.sub.toUpperCase() : `${num3(card.num)} / ${setInfo(card).size}`, W - 66, 1028, 2, 'right');
     grainAtop(f, card.seed);
 
     // masques — R foil

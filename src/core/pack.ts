@@ -140,8 +140,8 @@ function crimpBands(g: Ctx, col: string) {
     g.fillStyle = col;
     g.fillRect(0, y0, PW, ch);
     g.strokeStyle = 'rgba(0,0,0,0.35)';
-    g.lineWidth = 1.2;
-    for (let x = 0; x < PW; x += 6) {
+    g.lineWidth = 2.5; // (audit 06/11) 1,2 px passait sous le pixel à l'écran du téléphone : gris moiré
+    for (let x = 0; x < PW; x += 8) {
       g.beginPath();
       g.moveTo(x, y0 + 3);
       g.lineTo(x, y0 + ch - 3);
@@ -218,11 +218,12 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   g.textAlign = 'center';
   g.font = titleFont;
   g.fillText(title, cx, PH * 0.74);
-  g.font = `500 20px ${FONT_MONO}`;
-  g.fillStyle = alpha(style.ink, 0.75);
-  g.fillText(style.series ?? `S É R I E   I  ·  ${style.name.toUpperCase()}`, cx, PH * 0.78);
-  g.font = `400 16px ${FONT_MONO}`;
-  g.fillText(style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', cx, PH * 0.84);
+  // (audit 06/11) ≥ 28 px de base : le booster fait ≈ 176 px CSS sur téléphone (1 px CSS = 3,6 px de texture)
+  g.font = fitFont(g, style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, 600, 40, PW - 80, FONT_MONO);
+  g.fillStyle = alpha(style.ink, 0.8);
+  g.fillText(style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, cx, PH * 0.785);
+  g.font = fitFont(g, style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', 500, 32, PW - 80, FONT_MONO);
+  g.fillText(style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', cx, PH * 0.845);
   // ligne de déchirure
   const ch = (PACK.crimp / PACK.h) * PH;
   const tearY = PH - ch - 40;
@@ -234,9 +235,9 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   g.lineTo(PW - 24, PH - tearY);
   g.stroke();
   g.setLineDash([]);
-  g.font = `400 13px ${FONT_MONO}`;
+  g.font = `500 26px ${FONT_MONO}`;
   g.textAlign = 'left';
-  g.fillText('✂ DÉCHIRER ICI', 28, PH - tearY - 10);
+  g.fillText('✂ DÉCHIRER ICI', 28, PH - tearY - 12);
   crimpBands(g, style.foil);
   applyGrain(g, PW, PH, 0.08, 9, 40);
 
@@ -252,9 +253,9 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   }
   b.fillStyle = alpha(style.ink, 0.8);
   b.textAlign = 'center';
-  b.font = `400 15px ${FONT_MONO}`;
+  b.font = `500 24px ${FONT_MONO}`;
   (style.backLines ?? ['Ne convient pas aux dragons de moins de trois ans.', 'Illustrations entièrement procédurales.', 'Fabriqué dans un laboratoire. Avec soin.']).forEach((l, i) =>
-    b.fillText(l, PW / 2, PH * 0.7 + i * 26),
+    b.fillText(l, PW / 2, PH * 0.68 + i * 36),
   );
   for (let i = 0; i < 46; i++) b.fillRect(PW / 2 - 120 + i * 5.3, PH * 0.82, i % 3 ? 2 : 3.5, 60);
   crimpBands(b, style.foil);

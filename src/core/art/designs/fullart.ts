@@ -25,24 +25,32 @@ export const fullArt: CardDesign = {
     };
     if (tier >= 1) {
       f.strokeStyle = alpha(starColor(tier), 0.85);
-      f.lineWidth = 2;
+      f.lineWidth = 3; // (audit 06/11) 2 px se dissolvait à l'écran du téléphone
       key(f);
       f.stroke();
     }
     starRow(f, m, d, 52, 66, 32, 'left', { r: 13, fill: tier < 2 ? '#f3efe6' : starColor(tier), stroke: alpha('#000', 0.35), glow: true });
+    // (audit 06/11) tailles de texte : ≥ 30 px de base = ≈ 11 px CSS sur un téléphone (carte montrée à 285 px CSS, texture
+    // ×0,7) — en dessous, le texte est perçu « flou » quelle que soit la résolution de rendu
     // numéro dans la collection, bien lisible en haut à droite (retour des testeurs : « on voit trop petit le numéro »)
     const si = setInfo(card);
     f.save();
     f.shadowColor = 'rgba(0,0,0,0.6)';
     f.shadowBlur = 8;
     f.textAlign = 'right';
-    f.font = `600 30px ${FONT_MONO}`;
+    f.font = `600 36px ${FONT_MONO}`;
     f.fillStyle = '#f7f2e8';
     const total = ` / ${si.size}`;
-    f.fillText(num3(card.num), W - 52 - f.measureText(total).width * 0.72, 74);
-    f.font = `500 21px ${FONT_MONO}`;
-    f.fillStyle = alpha('#f7f2e8', 0.7);
-    f.fillText(total, W - 52, 74);
+    if (d.mini) f.fillText(num3(card.num), W - 52, 76);
+    else {
+      f.font = `500 26px ${FONT_MONO}`;
+      const tw = f.measureText(total).width;
+      f.font = `600 36px ${FONT_MONO}`;
+      f.fillText(num3(card.num), W - 52 - tw, 76);
+      f.font = `500 26px ${FONT_MONO}`;
+      f.fillStyle = alpha('#f7f2e8', 0.72);
+      f.fillText(total, W - 52, 76);
+    }
     f.restore();
     f.textAlign = 'left';
     // sous-thème (« POKÉMON ») en grand au-dessus du nom
@@ -53,7 +61,7 @@ export const fullArt: CardDesign = {
     glyph(f, uni.id, 66, 886, 34, ucol, 2.6);
     f.fillStyle = ucol;
     // famille (« POKÉMON », « JEUX VIDÉO ») : rétrécit si elle est longue
-    spacedFit(f, uni.short.toUpperCase(), 100, 896, 4, 'left', `600 {s}px ${FONT_MONO}`, 28, W - 150, 16);
+    if (!d.mini) spacedFit(f, uni.short.toUpperCase(), 100, 896, 3, 'left', `600 {s}px ${FONT_MONO}`, 30, W - 150, 24);
     f.restore();
     // nom
     f.save();
@@ -67,19 +75,15 @@ export const fullArt: CardDesign = {
     f.fillText(card.name, 46, 978);
     f.letterSpacing = '0px';
     f.restore();
-    f.fillStyle = alpha('#f7f2e8', d.sub ? 0.72 : 0.6);
-    // sous-famille (« JOHTO ») à la place du numéro, déjà lisible en haut à droite (retours 05/11)
+    f.fillStyle = alpha('#f7f2e8', 0.78);
+    // sous-famille (« JOHTO ») en bas à droite (retours 05/11) ; le code de set n'est plus imprimé (doublon du numéro)
     let subW = 0;
-    if (d.sub) subW = spacedFit(f, d.sub.toUpperCase(), W - 48, 1036, 2.4, 'right', `500 {s}px ${FONT_MONO}`, 16, d.byline ? (W - 96) * 0.4 : W - 96, 10);
-    else {
-      f.font = `400 15px ${FONT_MONO}`;
-      spaced(f, `${si.code} ${num3(card.num)}/${si.size}`, W - 48, 1036, 2, 'right');
-    }
+    if (d.sub && !d.mini) subW = spacedFit(f, d.sub.toUpperCase(), W - 48, 1040, 2, 'right', `500 {s}px ${FONT_MONO}`, 30, d.byline ? (W - 96) * 0.42 : W - 96, 22);
 
     // Album / Chanson : l'artiste en bas à gauche, sous le titre (retours 05/11)
-    if (d.byline) {
-      f.fillStyle = alpha('#f7f2e8', 0.86);
-      spacedFit(f, d.byline.toUpperCase(), 48, 1036, 2, 'left', `600 {s}px ${FONT_MONO}`, 17, W - 96 - subW - 28, 10);
+    if (d.byline && !d.mini) {
+      f.fillStyle = alpha('#f7f2e8', 0.9);
+      spacedFit(f, d.byline.toUpperCase(), 48, 1040, 2, 'left', `600 {s}px ${FONT_MONO}`, 30, W - 96 - subW - 28, 22);
     }
 
     m.strokeStyle = m.fillStyle = 'rgb(255,0,0)';

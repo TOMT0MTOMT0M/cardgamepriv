@@ -3,6 +3,7 @@ import { siteUrl } from '../core/siteRoot';
 import { artPath, catalogEntry, hasArt, subthemeById, thumbPath, type CatalogEntry } from '../core/sets/themes';
 import { jvThumbSvg } from '../core/art/jvTitle';
 import { observeRealCard } from './cardImages';
+import { haptics } from '../core/haptics';
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -196,6 +197,7 @@ function closeSilently(l: Layer) {
 export function pushLayer(close: () => void) {
   if (layers.some((l) => l.close === close)) return; // déjà ouverte
   layers.push({ close });
+  haptics.pulse(6); // (audit 06/11) ouverture d'une fiche ou d'un panneau : retour tactile très court
   if (travelling) pendingPush++;
   else history.pushState({ bebouLayer: histDepth() + 1 }, '');
 }

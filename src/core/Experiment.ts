@@ -54,6 +54,11 @@ export interface Experiment {
   update(dt: number, t: number): void;
   dispose(): void;
   resize?(width: number, height: number): void;
+  /**
+   * Définition maximale du canvas pour cette scène (facteur d'écran, cf. game/shell.ts). Téléphone : 2 par défaut
+   * (5 cartes + particules + bloom) ; la visionneuse demande 3 — l'écran ×3 n'étire plus l'image ×1,5 (audit 06/11).
+   */
+  dprCap?: number;
   replay?(): void;
   /** Changement de rareté à chaud. Si absent, le shell reconstruit l'expérience. */
   setRarity?(r: RarityId): void;

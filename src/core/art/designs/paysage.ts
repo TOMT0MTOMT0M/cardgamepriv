@@ -1,6 +1,6 @@
 import { alpha, linear, mix } from '../canvas';
 import { setInfo } from '../../cardData';
-import { type CardDesign, FONT_MONO, FONT_TITLE, H, W, fitFont, grainAtop, num3, paper, spaced, spacedFit, starColor, starRow } from './common';
+import { type CardDesign, FONT_MONO, FONT_TITLE, H, W, fitFont, grainAtop, num3, paper, spacedFit, starColor, starRow } from './common';
 
 /**
  * 11 · Paysage (retours 05/11 → 06/11) — le 2e style de carte, pour les PHOTOS HORIZONTALES (pochettes, concerts,
@@ -68,17 +68,24 @@ export const paysage: CardDesign = {
     f.shadowColor = 'rgba(0,0,0,0.6)';
     f.shadowBlur = 8;
     f.textAlign = 'right';
-    f.font = `600 30px ${FONT_MONO}`;
+    // (audit 06/11) ≥ 30 px de base : lisible sur téléphone ; vignette : numéro, nom et étoiles seulement
+    f.font = `600 36px ${FONT_MONO}`;
     f.fillStyle = ink;
     const total = ` / ${si.size}`;
-    f.fillText(num3(card.num), W - 52 - f.measureText(total).width * 0.72, 74);
-    f.font = `500 21px ${FONT_MONO}`;
-    f.fillStyle = alpha(ink, 0.7);
-    f.fillText(total, W - 52, 74);
+    if (d.mini) f.fillText(num3(card.num), W - 52, 76);
+    else {
+      f.font = `500 26px ${FONT_MONO}`;
+      const tw = f.measureText(total).width;
+      f.font = `600 36px ${FONT_MONO}`;
+      f.fillText(num3(card.num), W - 52 - tw, 76);
+      f.font = `500 26px ${FONT_MONO}`;
+      f.fillStyle = alpha(ink, 0.72);
+      f.fillText(total, W - 52, 76);
+    }
     f.restore();
     // famille, nom centré, sous-famille · artiste
     f.fillStyle = acc;
-    spacedFit(f, uni.short.toUpperCase(), W / 2, PANEL_Y + 74, 5, 'center', `600 {s}px ${FONT_MONO}`, 22, W - 120, 13);
+    if (!d.mini) spacedFit(f, uni.short.toUpperCase(), W / 2, PANEL_Y + 74, 4, 'center', `600 {s}px ${FONT_MONO}`, 30, W - 120, 24);
     f.fillStyle = ink;
     f.textAlign = 'center';
     const nameFont = `700 {s}px ${FONT_TITLE}`;
@@ -86,17 +93,13 @@ export const paysage: CardDesign = {
     f.fillText(card.name, W / 2, PANEL_Y + 158);
     f.textAlign = 'left';
     const foot = [d.byline, d.sub].filter(Boolean).join('  ·  ').toUpperCase();
-    f.fillStyle = alpha(ink, 0.7);
-    if (foot) spacedFit(f, foot, W / 2, PANEL_Y + 214, 2.4, 'center', `500 {s}px ${FONT_MONO}`, 17, W - 120, 10);
-    else {
-      f.font = `400 15px ${FONT_MONO}`;
-      spaced(f, `${si.code} ${num3(card.num)}/${si.size}`, W / 2, PANEL_Y + 214, 2, 'center');
-    }
+    f.fillStyle = alpha(ink, 0.78);
+    if (foot && !d.mini) spacedFit(f, foot, W / 2, PANEL_Y + 216, 2, 'center', `500 {s}px ${FONT_MONO}`, 30, W - 120, 22);
     grainAtop(f, card.seed, 0.05, 40);
     // liseré intérieur (dès peu commune), comme le gabarit principal
     if (tier >= 1) {
       f.strokeStyle = alpha(starColor(tier), 0.85);
-      f.lineWidth = 2;
+      f.lineWidth = 3;
       f.beginPath();
       f.roundRect(20, 20, W - 40, H - 40, 26);
       f.stroke();

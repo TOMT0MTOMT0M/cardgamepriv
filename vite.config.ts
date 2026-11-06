@@ -141,13 +141,14 @@ function preloadBackend(online: boolean): Plugin {
 }
 
 /**
- * Jeu : les 3 polices qu'attend `ensureFonts()` avant de peindre les boosters (core/art/index.ts : Fraunces 600,
- * Plex Mono 400 et 500, sous-ensemble latin) sont demandées dès le HTML (audit PERF2-10) au lieu d'attendre l'analyse
- * du CSS. Noms hachés par Vite → retrouvés dans le build ; une police introuvable (renommée par fontsource) est
+ * Jeu : les polices qu'attendent le logo du chargement et `ensureFonts()` avant de peindre les boosters
+ * (core/art/index.ts : Bold Frame, Matcha World, Inter) sont demandées dès le HTML (audit PERF2-10) au lieu d'attendre
+ * l'analyse du CSS. Noms hachés par Vite → retrouvés dans le build ; une police introuvable (renommée par fontsource) est
  * simplement ignorée. L'italique (45 Ko) n'est pas préchargée : elle ne sert qu'aux cartes, pas au premier écran.
  */
 function preloadFonts(): Plugin {
-  const WANT = [/^fraunces-latin-opsz-normal-[\w-]+\.woff2$/, /^ibm-plex-mono-latin-400-normal-[\w-]+\.woff2$/, /^ibm-plex-mono-latin-500-normal-[\w-]+\.woff2$/];
+  // audit 06/11 : les polices du premier écran (logo, libellés, boosters) ; Plex Mono reste le repli des ★ ✓ des toiles
+  const WANT = [/^matcha-world-[\w-]+\.woff2$/, /^bold-frame(-one|-two)?-[\w-]+\.woff2$/, /^inter-latin-(500|600)-normal-[\w-]+\.woff2$/, /^ibm-plex-mono-latin-500-normal-[\w-]+\.woff2$/];
   return {
     name: 'bebou-preload-fonts',
     apply: 'build',

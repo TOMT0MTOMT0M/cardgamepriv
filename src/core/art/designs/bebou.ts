@@ -73,9 +73,9 @@ export const bebou: CardDesign = {
 
     // le sceau des huit (remplace les étoiles)
     seal(f, C.rose, C.light, true);
-    f.font = `500 15px ${FONT_MONO}`;
+    f.font = `600 30px ${FONT_MONO}`; // (audit 06/11) lisible sur téléphone
     f.fillStyle = alpha(C.cream, 0.9);
-    spaced(f, 'CARTE SECRÈTE', W / 2, 192, 5, 'center');
+    if (!d.mini) spaced(f, 'CARTE SECRÈTE', W / 2, 198, 4, 'center');
 
     // filet + surnom + numéro
     f.strokeStyle = alpha(C.rose, 0.8);
@@ -99,9 +99,9 @@ export const bebou: CardDesign = {
     f.fillStyle = C.cream;
     f.fillText(card.name, W / 2, 972);
     f.restore();
-    f.font = `500 16px ${FONT_MONO}`;
-    f.fillStyle = alpha(C.light, 0.8);
-    spaced(f, `${card.set === 'kcdq' ? 'KCDQ' : 'LES BÉBOUS'} · ${String(card.num).padStart(2, '0')}/${String(size).padStart(2, '0')}`, W / 2, 1018, 4, 'center');
+    f.font = `500 30px ${FONT_MONO}`;
+    f.fillStyle = alpha(C.light, 0.85);
+    spaced(f, d.mini ? String(card.num).padStart(2, '0') : `${card.set === 'kcdq' ? 'KCDQ' : 'LES BÉBOUS'} · ${String(card.num).padStart(2, '0')}/${String(size).padStart(2, '0')}`, W / 2, 1022, 3, 'center');
     grainAtop(f, card.seed, 0.07, 24);
 
     // ── masques (composite 'lighter')

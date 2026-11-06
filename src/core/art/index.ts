@@ -1,6 +1,4 @@
 import { CanvasTexture, SRGBColorSpace, NoColorSpace, type Texture } from 'three/webgpu';
-import '@fontsource-variable/fraunces/opsz.css';
-import '@fontsource-variable/fraunces/wght-italic.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import { CARDS, IMAGE_PALETTE, cardForRarity, isSecretPhotoSet, type CardData } from '../cardData';
@@ -74,7 +72,7 @@ let fontsAll: Promise<void> | null = null;
 function loadFonts(strict = false): Promise<void> {
   if (!fontsAll) {
     const italic = Promise.all([document.fonts.load(`italic 400 27px ${FONT_TITLE}`), document.fonts.load(`italic 500 40px ${FONT_TITLE}`)]);
-    const core = Promise.all([document.fonts.load(`700 44px ${FONT_TITLE}`), document.fonts.load(`600 44px ${FONT_TITLE}`), document.fonts.load(`500 19px ${FONT_MONO}`), document.fonts.load(`400 14px ${FONT_MONO}`)]);
+    const core = Promise.all([document.fonts.load(`700 44px ${FONT_TITLE}`), document.fonts.load(`600 44px ${FONT_TITLE}`), document.fonts.load(`500 19px ${FONT_MONO}`), document.fonts.load(`600 19px ${FONT_MONO}`), document.fonts.load(`400 14px ${FONT_MONO}`)]);
     fontsAll = Promise.all([core, italic]).then(() => undefined, () => undefined);
     fontsReady = Promise.all([core, Promise.race([italic, new Promise((r) => setTimeout(r, 1500))])]).then(() => undefined, () => undefined);
   }
@@ -119,6 +117,8 @@ export interface ArtOptions {
    * est synchrone), et toutes au `dispose()`. À ne pas utiliser si on relit `canvases` après coup (labo : 004, 007, 038…).
    */
   release?: boolean;
+  /** vignette des grilles : nom, étoiles et numéro seulement (designs/common.ts `DesignCtx.mini`) */
+  mini?: boolean;
 }
 
 function tex(c: HTMLCanvasElement, color: boolean, aniso: number, release = false): Texture {
@@ -253,7 +253,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   const fam = cardFamily(card.id);
   const uniLabel = fam?.family ?? card.uniName;
   const uni = uniLabel ? { ...uni0, name: uniLabel, short: uniLabel } : uni0;
-  dz.paint(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId), sub: fam?.sub, byline: POP_ARTISTS[card.id], artAspect: im && im.canvas.height ? im.canvas.width / im.canvas.height : undefined });
+  dz.paint(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId), sub: fam?.sub, byline: POP_ARTISTS[card.id], artAspect: im && im.canvas.height ? im.canvas.width / im.canvas.height : undefined, mini: !!o.mini });
   masks.g.globalCompositeOperation = 'source-over';
   yield;
 

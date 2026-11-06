@@ -842,6 +842,7 @@ async function boot() {
     }
     if (views[current] && changed) views[current].leave();
     if (changed && shell) shell.sfx.tick(1.15, 0.025); // changement de page : un tic à peine audible
+    if (changed) haptics.pulse(6); // (audit 06/11) et une vibration très courte sous le doigt, comme les apps natives
     current = key;
     document.body.dataset.route = key || 'shop';
     currentRoute = key;

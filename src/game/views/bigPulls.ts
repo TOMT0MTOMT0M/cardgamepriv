@@ -38,10 +38,15 @@ const SPEED = 24;
  * ORDINATEUR aussi (colonne de gauche, tirages plus grands : style.css, bloc lot G). Téléphone en paysage : fil masqué.
  */
 const FAN_MQ = '(max-width: 860px) and (orientation: portrait), (min-width: 861px)';
-/** sortie du tirage centré (fraction de sa largeur), inclinaison max (degrés) et réduction aux bords */
+/**
+ * sortie du tirage centré (fraction de sa largeur), inclinaison max (degrés) et réduction aux bords.
+ * (audit 06/11) sur téléphone : ni rotation ni échelle — un texte de 10 px tourné de 11° et réduit ×0,88 est
+ * ré-échantillonné (flou) ; la sortie du tirage centré suffit à lire l'éventail. PC : inclinaison discrète.
+ */
+const COARSE = matchMedia('(pointer: coarse)').matches;
 const FAN_POP = 0.3;
-const FAN_TILT = 7;
-const FAN_SHRINK = 0.12;
+const FAN_TILT = COARSE ? 0 : 3;
+const FAN_SHRINK = COARSE ? 0 : 0.06;
 
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);

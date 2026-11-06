@@ -1,4 +1,4 @@
-import { MirroredRepeatWrapping, RenderPipeline, Vector2, type Camera, type Scene } from 'three/webgpu';
+import { MirroredRepeatWrapping, RenderPipeline, RenderTarget, type Camera, type Scene } from 'three/webgpu';
 import { Fn, Loop, emissive, float, int, luminance, mix, mrt, output, pass, rtt, smoothstep, uv, vec2, vec4, viewportSize } from 'three/tsl';
 import type { LabContext } from './Experiment';
 import type { N } from './tsl';
@@ -14,6 +14,10 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
   // téléphone (GPU à tuiles) : les échantillons MSAA sont résolus sur la puce puis jetés au lieu d'être écrits en
   // mémoire (×4 de bande passante par cible, ×2 cibles avec l'émissif) — c'était le premier poste de coût
   if (ctx.quality === 'mobile') passOpts.storeMultisampledColorBuffer = false;
+  // (audit 06/11) téléphone : MSAA ×2 au lieu de ×4 — à la définition native de l'écran (×3) les marches d'escalier
+  // font ⅓ de pixel CSS, ×4 n'apporte plus rien ; et en WebGL2 (repli) le ×4 est payé plein (cibles multi-échantillons
+  // écrites en mémoire : 4× la bande passante). Une scène peut imposer la sienne (`opts.samples`).
+  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = 2;
   const scenePass = pass(scene, camera, Object.keys(passOpts).length ? passOpts : undefined);
   if (opts.emissive) scenePass.setMRT(mrt({ output, emissive: vec4(emissive, output.a) }));
   const color = scenePass.getTextureNode('output');
@@ -66,6 +70,27 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
       await compilePassAsync(ctx.renderer, scenePass);
     },
     /**
+     * (audit 06/11) Une image rendue hors écran (cible 4×4) : crée les VRAIS pipelines de la passe (MRT émissif, MSAA,
+     * HalfFloat), que `compile()` ne prépare pas — ils naissaient sinon dans la première image affichée (à-coup de 100 à
+     * 400 ms sur téléphone au premier zoom de carte). À appeler une fois la scène peuplée, avant de l'afficher.
+     */
+    warm() {
+      checkDepth();
+      const r = ctx.renderer;
+      const target = new RenderTarget(4, 4);
+      const prevRT = r.getRenderTarget();
+      try {
+        scene.updateMatrixWorld();
+        r.setRenderTarget(target);
+        pipeline.render();
+      } catch (e) {
+        console.warn('[post] image de préchauffage', e);
+      } finally {
+        r.setRenderTarget(prevRT);
+        target.dispose();
+      }
+    },
+    /**
      * Libère les cibles plein écran de la passe de scène et des effets possédés qui en ont (bloom…), sans rien
      * détruire d'autre : tout est recréé au prochain rendu (mêmes formats → mêmes pipelines, comme après un resize).
      */
@@ -85,105 +110,19 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
 type RT = { dispose(): void };
 
 /**
- * `PassNode.compileAsync` sans fuite d'état : la version de three (r187) laisse la cible et le MRT de la passe posés
- * sur le renderer pendant toute la compilation, qui rend la main au navigateur — une autre scène rendue entre-temps
- * (la vitrine pendant que la visionneuse se monte, l'ouverture pendant que 039 se prépare) dessinerait alors dans la
- * mauvaise cible. Ici, la cible et le MRT de la passe ne sont posés que pendant les tranches de compilation
- * (`_beginPreCompile` … `_finishPreCompile` du renderer, synchrones) et l'état d'avant est remis à chaque pause.
- * Repli (API interne absente) : compilation simple pour le canvas, comme `stage.compile()`.
+ * Compile les matériaux de la scène (variante « canvas », comme `stage.compile()`). Les VRAIS pipelines de la passe
+ * (MRT émissif + MSAA + HalfFloat) ne se créent qu'au premier rendu dans sa cible : c'est le rôle de `warm()`.
+ * (audit 06/11 : l'ancienne tentative de compiler « sur la vraie cible » via `_beginPreCompile` produisait en WebGL2 des
+ * programmes sans sorties MRT ; elle est remplacée par l'image à blanc, déjà éprouvée dans duelSummon.)
  */
-type PreState = Record<string, unknown>;
-type R = {
-  getRenderTarget(): unknown; setRenderTarget(t: unknown): void; getMRT(): unknown; setMRT(m: unknown): void;
-  getDrawingBufferSize(v: Vector2): Vector2; samples: number;
-  compileAsync(s: unknown, c: unknown): Promise<void>;
-  _beginPreCompile?: (st: PreState) => void; _finishPreCompile?: () => void; _precompilationState?: PreState | null;
-};
-type Slice = { rt: unknown; mrt: unknown; prevRT: unknown; prevMRT: unknown };
-const slices = new WeakMap<object, Map<PreState, Slice>>();
-let pendingSlice: Slice | null = null;
-
-function hookRenderer(r: R): Map<PreState, Slice> | null {
-  let mine = slices.get(r);
-  if (mine) return mine;
-  const begin = r._beginPreCompile, finish = r._finishPreCompile;
-  if (typeof begin !== 'function' || typeof finish !== 'function') return null;
-  const map = (mine = new Map<PreState, Slice>());
-  r._beginPreCompile = function (this: R, st: PreState) {
-    // 1er appel d'une compilation lancée par compilePassAsync : on l'adopte (l'état d'avant est déjà relevé)
-    let sl = map.get(st);
-    if (!sl && pendingSlice) {
-      map.set(st, (sl = pendingSlice));
-      pendingSlice = null;
-    } else if (sl) {
-      // reprise après une pause : l'état à remettre est celui du moment (normalement le canvas)
-      sl.prevRT = this.getRenderTarget();
-      sl.prevMRT = this.getMRT();
-    }
-    if (sl) {
-      this.setRenderTarget(sl.rt);
-      this.setMRT(sl.mrt);
-    }
-    begin.call(this, st);
-  };
-  r._finishPreCompile = function (this: R) {
-    const st = this._precompilationState;
-    finish.call(this);
-    const sl = st ? map.get(st) : undefined;
-    if (sl) {
-      this.setRenderTarget(sl.prevRT);
-      this.setMRT(sl.prevMRT);
-    }
-  };
-  slices.set(r, map);
-  return map;
-}
-
-/**
- * Désactivé (audit 03/11) : la compilation « sur la vraie cible » via `_beginPreCompile`/`_finishPreCompile` produit en
- * WebGL2 des programmes sans les sorties MRT (« Active draw buffers with missing fragment shader outputs » à chaque
- * image, constaté en Chromium/SwiftShader ; absent du code d'origine). Tant que ce n'est pas validé sur un vrai GPU
- * (WebGPU iPhone/Android et WebGL2), on garde la compilation simple pour le canvas, comme avant (`stage.compile()`).
- */
-const TARGET_PRECOMPILE = false;
-
 export async function compilePassAsync(renderer: LabContext['renderer'], passNode: unknown): Promise<void> {
-  type P = { scene: unknown; camera: unknown; renderTarget: { samples: number }; options?: { samples?: number }; _mrt: unknown; setSize(w: number, h: number): void; contextNode?: unknown };
-  const r = renderer as unknown as R, pn = passNode as P;
+  const pn = passNode as { scene: unknown; camera: unknown };
   try {
-    const map = TARGET_PRECOMPILE && pn.contextNode == null ? hookRenderer(r) : null;
-    if (!map) {
-      await r.compileAsync(pn.scene, pn.camera);
-      return;
-    }
-    // cible configurée comme dans PassNode.setup()/updateBefore() → mêmes pipelines qu'au rendu
-    pn.renderTarget.samples = pn.options?.samples === undefined ? r.samples : pn.options.samples;
-    r.getDrawingBufferSize(_size);
-    pn.setSize(_size.width, _size.height);
-    const prevRT = r.getRenderTarget(), prevMRT = r.getMRT();
-    const slice: Slice = { rt: pn.renderTarget, mrt: pn._mrt, prevRT, prevMRT };
-    // la partie synchrone de compileAsync relève la cible courante : on la pose le temps de l'appel
-    r.setRenderTarget(slice.rt);
-    r.setMRT(slice.mrt);
-    pendingSlice = slice;
-    let job: Promise<void>;
-    try {
-      job = r.compileAsync(pn.scene, pn.camera);
-    } finally {
-      pendingSlice = null;
-      // (à ce stade, soit une tranche est en cours — elle remettra l'état à sa pause —, soit tout est déjà remis)
-      if (!r._precompilationState || !map.has(r._precompilationState)) {
-        r.setRenderTarget(prevRT);
-        r.setMRT(prevMRT);
-      }
-    }
-    await job;
-    for (const [st, sl] of map) if (sl === slice) map.delete(st);
+    await (renderer as unknown as { compileAsync(s: unknown, c: unknown): Promise<void> }).compileAsync(pn.scene, pn.camera);
   } catch (e) {
     console.warn('[post] compilation de la passe', e);
   }
 }
-const _size = new Vector2();
 
 /**
  * Flare anamorphique : un BloomNode à ¼ de résolution dont le passe-haut est remplacé par un flou horizontal

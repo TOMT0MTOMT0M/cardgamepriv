@@ -18,13 +18,18 @@ bindFxReduced();
  *  - en cache : en mémoire pour la session, et dans le Cache Storage du navigateur pour les visites suivantes.
  * Tant que la vraie carte n'est pas prête, la tuile garde son aperçu (illustration + étoiles).
  */
-const SCALE = 0.36; // 276 × 386 px : net dans une tuile de ~130 px en DPR 2–3
+/**
+ * (audit 06/11) la taille suit l'écran : une tuile fait 112–150 px CSS → jusqu'à 342 px physiques en DPR 3 ; peinte à
+ * 276 px elle était agrandie ×1,22 (floue). 0,36 = 276 px (DPR ≤ 2, réduite = nette) · 0,45 (DPR 2,6) · 0,5 = 384 px
+ * (DPR 3). Entre dans la clé du cache.
+ */
+const SCALE = Math.max(0.36, Math.min(0.5, Math.ceil(((120 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))) / 768) * 20) / 20));
 /**
  * Cache persistant (Cache Storage du navigateur) : une carte peinte une fois s'affiche instantanément aux visites
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
-const CACHE = 'bebou-cartes-v5'; // v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
+const CACHE = 'bebou-cartes-v6'; // v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
 // (bug du « placeholder fantôme » : une carte peinte en design typographique avant d'avoir son illustration restait
 // figée ainsi dans le cache du joueur, même après l'ajout de l'image)
 /**
@@ -137,7 +142,7 @@ async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnTy
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre
   await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, { key: !(cd.photo || cd.cover) }).catch(() => undefined) : undefined]);
   await new Promise<void>((r) => idle(() => r()));
-  const art = generateCardArt(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, ...(isSecretPhotoSet(cd.set) ? {} : { design: 'full-art' }) });
+  const art = generateCardArt(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(isSecretPhotoSet(cd.set) ? {} : { design: 'full-art' }) });
   const blob = await new Promise<Blob | null>((r) => art.canvases.flat.toBlob(r, 'image/webp', 0.86));
   art.dispose();
   // la mémoire d'un canvas n'est rendue qu'au ramasse-miettes… sauf si on le vide (iOS plafonne le total : PERF1-01)
@@ -165,7 +170,14 @@ function apply(tile: HTMLElement, url: string, instant = false) {
   }
   if (img.src === url) return;
   // la carte ne remplace l'aperçu qu'une fois son image décodée : jamais de tuile vide, même une fraction de seconde
-  const show = () => tile.classList.add('real-on', ...(instant ? ['real-now'] : []));
+  const show = () => {
+    tile.classList.add('real-on', ...(instant ? ['real-now'] : []));
+    // (audit 06/11) l'aperçu (dégradé + miniature filtrée + méta) ne sert plus : retiré du DOM après le fondu
+    // (≈ 10 nœuds et un calque `drop-shadow` de moins par tuile)
+    setTimeout(() => {
+      if (tile.isConnected && tile.classList.contains('real-on')) tile.querySelectorAll(':scope > .art, :scope > .meta').forEach((n) => n.remove());
+    }, instant ? 0 : 500);
+  };
   img.onload = show;
   img.src = url;
   if (img.complete && img.naturalWidth) show();

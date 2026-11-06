@@ -27,10 +27,15 @@ export interface DesignCtx {
   byline?: string;
   /** largeur / hauteur de l'illustration (gabarit Paysage : position de la bande de la photo) */
   artAspect?: number;
+  /**
+   * Vignette des grilles (audit 06/11) : à 114 px CSS, rien sous le nom n'est lisible → seuls le nom, les étoiles et le
+   * numéro sont peints ; famille, sous-famille, artiste et code de set sont laissés au DOM de la tuile.
+   */
+  mini?: boolean;
 }
 
 /** Texte espacé qui rétrécit (police ≤ size) pour tenir dans maxW. `font` contient « {s} ». */
-export function spacedFit(g: Ctx, text: string, x: number, y: number, spacing: number, align: 'left' | 'center' | 'right', font: string, size: number, maxW: number, min = 9) {
+export function spacedFit(g: Ctx, text: string, x: number, y: number, spacing: number, align: 'left' | 'center' | 'right', font: string, size: number, maxW: number, min = 22) {
   let s = size;
   const width = () => [...text].reduce((a, c) => a + g.measureText(c).width + spacing, -spacing);
   g.font = font.replace('{s}', String(s));
@@ -78,7 +83,7 @@ export function spaced(g: Ctx, text: string, x: number, y: number, spacing: numb
 }
 
 /** Choisit la taille de police (≤ size) pour que le texte tienne dans maxW. `font` contient « {s} ». */
-export function fitFont(g: Ctx, text: string, font: string, size: number, maxW: number, min = 18) {
+export function fitFont(g: Ctx, text: string, font: string, size: number, maxW: number, min = 26) {
   let s = size;
   g.font = font.replace('{s}', String(s));
   while (s > min && g.measureText(text).width > maxW) {

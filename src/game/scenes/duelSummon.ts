@@ -78,6 +78,8 @@ import { haptics } from '../../core/haptics';
 import { fxReduced } from '../../core/fxPref';
 import { siteUrl } from '../../core/siteRoot';
 import type { DuelMonster } from './duelMonsters';
+// Fraunces ne sert qu'au nom du monstre de cette scène (audit 06/11) : chargée ici, pas au premier écran
+import '@fontsource-variable/fraunces/opsz.css';
 import { createAutoPose, createRig, dragonPose, isWingedRig, type AutoPose, type Rig } from './duelRig';
 
 /**
@@ -711,17 +713,17 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       style.textContent = `
         .overlay > .dz-title { pointer-events: none; position: absolute; left: 0; right: 0; bottom: max(9%, 64px); text-align: center; padding: 0 16px; }
         @media (min-aspect-ratio: 1/1) { .overlay > .dz-title { left: 6vw; right: auto; max-width: 42vw; bottom: 14%; text-align: left; padding: 0; } }
-        .dz-title .dz-kicker { font: 500 11px "IBM Plex Mono", monospace; letter-spacing: .45em; text-transform: uppercase; color: ${HOLO}; opacity: 0; transform: translateY(6px); transition: opacity .6s, transform .8s cubic-bezier(.16,1,.3,1); }
+        .dz-title .dz-kicker { font: 600 12px var(--mono, "Inter", sans-serif); letter-spacing: .14em; text-transform: uppercase; color: ${HOLO}; opacity: 0; transform: translateY(6px); transition: opacity .6s, transform .8s cubic-bezier(.16,1,.3,1); }
         .dz-title .dz-name { margin-top: 10px; font-family: "Fraunces Variable", Georgia, serif; font-weight: 600; font-size: clamp(22px, 5.4vw, 52px); line-height: 1.05; letter-spacing: .06em; color: #f4fbff; text-shadow: 0 0 28px ${M.accent}, 0 0 2px #fff; }
         .dz-title .dz-name b { font-weight: inherit; white-space: nowrap; }
         .dz-title .dz-name span { display: inline-block; opacity: 0; transform: translateY(14px) scale(.96); filter: blur(8px); transition: opacity .5s, transform .9s cubic-bezier(.16,1,.3,1), filter .7s; }
-        .dz-title .dz-sub { margin-top: 10px; font: 400 11px "IBM Plex Mono", monospace; letter-spacing: .32em; text-transform: uppercase; color: #cfe6ff; opacity: 0; transition: opacity 1s 1s; }
+        .dz-title .dz-sub { margin-top: 10px; font: 500 12px var(--mono, "Inter", sans-serif); letter-spacing: .12em; text-transform: uppercase; color: #cfe6ff; opacity: 0; transition: opacity 1s 1s; }
         .dz-title.on .dz-kicker { opacity: .85; transform: none; }
         .dz-title.on .dz-name span { opacity: 1; transform: none; filter: none; }
         .dz-title.on .dz-sub { opacity: .6; }
-        .overlay > .dz-hint { pointer-events: none; position: absolute; left: 0; right: 0; bottom: max(3.5%, 22px); text-align: center; font: 400 10px "IBM Plex Mono", monospace; letter-spacing: .35em; text-transform: uppercase; color: #cfe6ff; opacity: 0; transition: opacity .8s 1.2s; }
+        .overlay > .dz-hint { pointer-events: none; position: absolute; left: 0; right: 0; bottom: max(3.5%, 22px); text-align: center; font: 500 12px var(--mono, "Inter", sans-serif); letter-spacing: .12em; text-transform: uppercase; color: #cfe6ff; opacity: 0; transition: opacity .8s 1.2s; }
         .overlay > .dz-hint.on { opacity: .55; }
-        .overlay > .dz-skip { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; min-width: 44px; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid rgba(160,220,255,.25); background: rgba(6,12,24,.45); color: #cfe6ff; font: 500 11px "IBM Plex Mono", monospace; letter-spacing: .2em; text-transform: uppercase; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); cursor: pointer; }
+        .overlay > .dz-skip { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; min-width: 44px; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid rgba(160,220,255,.25); background: rgba(6,12,24,.45); color: #cfe6ff; font: 600 12px var(--mono, "Inter", sans-serif); letter-spacing: .1em; text-transform: uppercase; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); cursor: pointer; }
         .overlay > .dz-skip:focus-visible { outline: 2px solid ${HOLO}; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { .dz-title .dz-name span { transition: opacity .4s; transform: none; filter: none; } }`;
       textEl = document.createElement('div');

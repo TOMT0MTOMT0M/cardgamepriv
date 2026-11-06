@@ -510,11 +510,13 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       <div class="p-bar"><i data-w="${pct}"></i></div>
       <div class="p-stars">${per}</div>`;
     const bars = [...progress.querySelectorAll<HTMLElement>('[data-w]')];
-    const put = () => bars.forEach((b) => (b.style.width = `${b.dataset.w}%`));
+    // la largeur est posée d'un coup ; l'entrée (scaleX composité, `bar-in` dans style.css) ne rejoue qu'à l'arrivée
+    bars.forEach((b) => {
+      b.style.width = `${b.dataset.w}%`;
+      if (!growBars) b.style.animation = 'none';
+    });
     if (growBars) {
       growBars = false;
-      bars.forEach((b) => (b.style.width = '0%'));
-      requestAnimationFrame(() => requestAnimationFrame(put));
       const big = progress.querySelector<HTMLElement>('.p-pct');
       const txt = big?.firstChild;
       if (txt && pct > 0) {
@@ -527,10 +529,6 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         };
         requestAnimationFrame(tick);
       }
-    } else {
-      bars.forEach((b) => (b.style.transition = 'none'));
-      put();
-      requestAnimationFrame(() => bars.forEach((b) => (b.style.transition = '')));
     }
   }
 

@@ -1,5 +1,5 @@
 import { Color, PerspectiveCamera, Scene, type Object3D } from 'three/webgpu';
-import { color, float, mix, rand, screenCoordinate, screenSize, screenUV, smoothstep, time, vec2 } from 'three/tsl';
+import { color, float, mix, rand, screenCoordinate, screenSize, screenUV, smoothstep, vec2 } from 'three/tsl';
 import type { LabContext } from './Experiment';
 import { CARD } from './cardModel';
 import { studioEnv, type EnvKind } from './env';
@@ -26,7 +26,9 @@ export function backdropNode(inner: string, outer: string, grain = 0.018) {
   const p = screenUV.sub(0.5).mul(vec2(screenSize.x.div(screenSize.y), 1));
   const d = p.length();
   const c = mix(color(new Color(inner)), color(new Color(outer)), smoothstep(float(0.05), float(0.95), d));
-  const n = rand(screenCoordinate.xy.add(time.mul(37.0).fract().mul(100))).sub(0.5).mul(grain);
+  // (audit 06/11) grain FIXE : animé, il « fourmillait » sur le fond sombre (et à 30 i/s au repos, plus lentement : cheap) ;
+  // un dither statique casse tout autant le banding
+  const n = rand(screenCoordinate.xy).sub(0.5).mul(grain);
   return c.add(n);
 }
 

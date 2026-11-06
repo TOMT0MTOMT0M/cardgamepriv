@@ -74,6 +74,8 @@ export function createViewerScene(): ViewerScene {
   let zoomT = 1;
   let zoom = 1;
   let lastTap = 0;
+  const lastTilt = { x: 0, y: 0 };
+  let calmSkip = 0;
   const setZoom = (z: number) => {
     zoomT = Math.min(1.85, Math.max(1, z));
     document.body.classList.toggle('viewer-zoomed', zoomT > 1.04);
@@ -108,6 +110,8 @@ export function createViewerScene(): ViewerScene {
 
   return {
     hits,
+    // définition native de l'écran (×3 sur iPhone) : une seule carte, scène légère — c'est l'écran où l'on inspecte
+    dprCap: 3,
     async show(cardId, rarityId, opts) {
       const my = ++token;
       setZoom(1); // nouvelle carte : on repart sans zoom
@@ -128,17 +132,24 @@ export function createViewerScene(): ViewerScene {
       const W = wonder ? await wonder.catch(() => null) : null;
       if (my !== token) return;
       const rr = rarity(rarityId);
-      // mobile : calques à la taille réelle de la carte à l'écran (×2), au lieu d'un 0,7 fixe
-      const scale = mobile ? mobileArtScale(ctx.width, ctx.height, 0.8, 1) : 1;
+      // mobile : calques à la taille réelle de la carte à l'écran, zoom d'inspection compris (×1,6 → jusqu'à ×1,25 de la
+      // base, écran ×3 ; audit 06/11 : à 0,8 la carte zoomée était agrandie ×2) ; bornée à ×1 sur les appareils à ≤ 4 Go
+      const lowMem = ((navigator as { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
+      const scale = mobile ? mobileArtScale(ctx.width, ctx.height, 0.8 * 1.6, lowMem ? 1 : 1.25, 3) : 1;
       let nextArt: CardArt;
       if (mobile) {
         // téléphone : calques peints en 4 étapes (plus de pic de 20–80 ms), puis envoyés au GPU AVANT le tour d'entrée
         // (avant : 6 textures + mipmaps dans la 1re image du tour → à-coup) ; les toiles sont vidées aussitôt (release)
         nextArt = await gameCardArtAsync(cd, rarityId, scale);
         if (my !== token) return nextArt.dispose();
-        for (const t of [nextArt.bg, nextArt.subject, nextArt.fg, nextArt.frame, nextArt.masks, nextArt.fx]) ctx.renderer.initTexture(t);
-        await nextFrame();
-        if (my !== token) return nextArt.dispose();
+        // deux textures (+ mipmaps) par image, comme à l'ouverture : plus d'à-coup de 8–20 ms quand on feuillette
+        const texs = [nextArt.bg, nextArt.subject, nextArt.fg, nextArt.frame, nextArt.masks, nextArt.fx];
+        for (let i = 0; i < texs.length; i += 2) {
+          ctx.renderer.initTexture(texs[i]);
+          if (texs[i + 1]) ctx.renderer.initTexture(texs[i + 1]);
+          await nextFrame();
+          if (my !== token) return nextArt.dispose();
+        }
       } else nextArt = gameCardArt(cd, rarityId, scale);
       clear();
       rig.visible = true;
@@ -240,9 +251,11 @@ export function createViewerScene(): ViewerScene {
         if (bloomStrength && face) bloomStrength.value = (isHoloReduced() ? 0.2 : 0.3) + (face.flash.value as number) * (isHoloReduced() ? 0.45 : 0.9);
         pl.render();
       };
-      // pipelines compilés pour la VRAIE cible (MRT émissif, MSAA, HalfFloat) et non pour le canvas : plus d'à-coup
-      // de plusieurs centaines de ms au premier zoom de carte (la face holo pèse ≈ 470 nœuds)
+      // matériaux compilés, puis une image à blanc hors écran : les VRAIS pipelines (MRT émissif, MSAA, HalfFloat) sont
+      // créés ici et non dans la première image affichée (à-coup de 100 à 400 ms au premier zoom de carte — la face holo
+      // pèse ≈ 470 nœuds). La carte factice est encore dans le rig : c'est elle qui sert.
       await pl.compile();
+      pl.warm();
       c.bag.fn(() => (tl?.kill(), clear()));
       // inspecter une carte de près : molette (ordinateur) ou deux touchers rapides (téléphone, souris)
       const wheel = (e: WheelEvent) => {
@@ -282,7 +295,19 @@ export function createViewerScene(): ViewerScene {
       zoom += (zoomT - zoom) * (1 - Math.exp(-dt * 10));
       rig.scale.setScalar(st.s * zoom);
       wonderInstance?.update(dt, t);
-      render();
+      /*
+       * (audit 06/11) téléphone, carte au repos (personne ne la touche, pas de zoom en cours, pas d'animation d'entrée,
+       * gyroscope immobile) : une image sur deux — la définition native (×3) coûte ≈ ×2,25 de pixels, et une visionneuse
+       * qui tourne à 60 i/s chauffe le téléphone jusqu'à brider toute la session. Le flottement reste fluide à 30 i/s ;
+       * le moindre geste repasse à 60.
+       */
+      const tx = ctx.input.tiltX, ty = ctx.input.tiltY;
+      const tiltMoving = Math.abs(tx - lastTilt.x) + Math.abs(ty - lastTilt.y) > 0.004;
+      lastTilt.x = tx;
+      lastTilt.y = ty;
+      const calm = ctx.quality === 'mobile' && !ctx.input.down && !ctx.input.dragging && !tiltMoving && !tl?.isActive() && Math.abs(zoomT - zoom) < 0.002 && !wonderInstance;
+      if (!calm) calmSkip = 0;
+      if (!calm || (calmSkip++ & 1) === 0) render();
     },
     resize(w, h) {
       stage.fit(w, h);
