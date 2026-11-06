@@ -16,7 +16,9 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
   // (audit 06/11) téléphone : MSAA ×2 au lieu de ×4 — à la définition native de l'écran (×3) les marches d'escalier
   // font ⅓ de pixel CSS, ×4 n'apporte plus rien ; et en WebGL2 (repli) le ×4 est payé plein (cibles multi-échantillons
   // écrites en mémoire : 4× la bande passante). Une scène peut imposer la sienne (`opts.samples`).
-  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = 2;
+  // (perf 06/11, décision de Tom) WebGPU ne connaît pas ×2 (1 ou 4) : ×4 en WebGPU — le rendu lissé validé avant l'audit,
+  // échantillons résolus sur la puce puis jetés (storeOp discard, valide avec de vrais échantillons) ; WebGL2 garde ×2
+  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = ctx.isWebGPU ? 4 : 2;
   /*
    * (perf 06/11, correctif) WebGPU ne connaît que 1 ou 4 échantillons : three ramène ×2 à ×1 (WebGPUUtils.getSampleCount)
    * mais gardait « jeter les échantillons » → la cible de la passe (sans MSAA, donc la VRAIE image) était jetée en fin de
