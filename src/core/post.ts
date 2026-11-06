@@ -13,11 +13,21 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
   if (opts.samples != null) passOpts.samples = opts.samples;
   // téléphone (GPU à tuiles) : les échantillons MSAA sont résolus sur la puce puis jetés au lieu d'être écrits en
   // mémoire (×4 de bande passante par cible, ×2 cibles avec l'émissif) — c'était le premier poste de coût
-  if (ctx.quality === 'mobile') passOpts.storeMultisampledColorBuffer = false;
   // (audit 06/11) téléphone : MSAA ×2 au lieu de ×4 — à la définition native de l'écran (×3) les marches d'escalier
   // font ⅓ de pixel CSS, ×4 n'apporte plus rien ; et en WebGL2 (repli) le ×4 est payé plein (cibles multi-échantillons
   // écrites en mémoire : 4× la bande passante). Une scène peut imposer la sienne (`opts.samples`).
-  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = 2;
+  // (perf 06/11, décision de Tom) WebGPU ne connaît pas ×2 (1 ou 4) : ×4 en WebGPU — le rendu lissé validé avant l'audit,
+  // échantillons résolus sur la puce puis jetés (storeOp discard, valide avec de vrais échantillons) ; WebGL2 garde ×2
+  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = ctx.isWebGPU ? 4 : 2;
+  /*
+   * (perf 06/11, correctif) WebGPU ne connaît que 1 ou 4 échantillons : three ramène ×2 à ×1 (WebGPUUtils.getSampleCount)
+   * mais gardait « jeter les échantillons » → la cible de la passe (sans MSAA, donc la VRAIE image) était jetée en fin de
+   * passe : vitrine, ouverture et visionneuse noires au preset téléphone en WebGPU. On ne jette que s'il y a vraiment
+   * des échantillons à résoudre (WebGL2 : ×2 réel, inchangé).
+   */
+  const requested = (passOpts.samples as number | undefined) ?? ctx.renderer.samples;
+  const msaa = (ctx.isWebGPU ? (requested >= 4 ? 4 : 1) : requested) > 1;
+  if (ctx.quality === 'mobile' && msaa) passOpts.storeMultisampledColorBuffer = false;
   const scenePass = pass(scene, camera, Object.keys(passOpts).length ? passOpts : undefined);
   if (opts.emissive) scenePass.setMRT(mrt({ output, emissive: vec4(emissive, output.a) }));
   const color = scenePass.getTextureNode('output');
@@ -37,7 +47,7 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
   const checkDepth = () => {
     if (depthChecked) return;
     depthChecked = true;
-    if (ctx.quality !== 'mobile') return;
+    if (ctx.quality !== 'mobile' || !msaa) return;
     const reads = !!(scenePass as unknown as { _textureNodes?: Record<string, unknown> })._textureNodes?.depth;
     if (reads) return;
     Object.assign(scenePass.renderTarget, { storeMultisampledDepthBuffer: false, storeMultisampledStencilBuffer: false, resolveDepthBuffer: false, resolveStencilBuffer: false });

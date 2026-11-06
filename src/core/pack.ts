@@ -376,7 +376,21 @@ function lcg(seed: number) {
  *  - un très léger grain.
  * Le matériau en fait une normale (bumpMap, échelle forte) : le reflet casse le long de chaque pli.
  */
+/**
+ * (perf 06/11) La carte des plis ne dépend que de `ch` (tirage à graine fixe, mêmes opérations) : elle est la même pour
+ * les cinq sachets → peinte UNE fois et partagée (avant : 5 × des centaines de traits flous, la plus grosse dépense du
+ * démarrage et des visuels de boosters générés ensuite pendant la vitrine). Pixels identiques par construction ; chaque
+ * booster garde sa propre texture (même toile). Une toile vidée (mémoire) est repeinte.
+ */
+const creaseCache = new Map<number, { c: HTMLCanvasElement }>();
 function creaseMap(ch: number): { c: HTMLCanvasElement } {
+  const hit = creaseCache.get(ch);
+  if (hit && hit.c.width > 0) return hit;
+  const C = paintCreaseMap(ch);
+  creaseCache.set(ch, C);
+  return C;
+}
+function paintCreaseMap(ch: number): { c: HTMLCanvasElement; g: Ctx } {
   const W = PW, H = PH;
   const C = makeCanvas(W, H);
   const g = C.g;

@@ -1,4 +1,5 @@
 import { clamp, color, cos, float, floor, mix, positionLocal, sin, step, time, uniform, vec3 } from 'three/tsl';
+import { Color } from 'three/webgpu';
 import type { Material } from 'three/webgpu';
 import { generateBackArt, generateCardArt, generateCardArtAsync, starColor, type ArtOptions, type CardArt } from '../../core/art';
 import { ALU_BACK, type BackStyle } from '../../core/art/back';
@@ -50,9 +51,13 @@ export function buildEdge(hex: string | 'rainbow', teaseHex?: string) {
   const rim = uniform(0);
   const tease = uniform(teaseHex ? 0 : 1);
   const edge = createEdgeMaterial();
+  // (perf 06/11) couleurs en uniforms, plus en constantes : même valeur au bit près (la même couleur linéaire, arrondie
+  // en f32 de la même façon), mais UN seul shader pour toutes les tranches d'une même forme (unie / « teasée » /
+  // arc-en-ciel) au lieu d'un par couleur de rareté — préchauffé une fois, plus de pipeline créé à la 1re carte de
+  // chaque rareté pendant l'ouverture
   const base =
-    hex === 'rainbow' ? cos(vec3(0, 2.094, 4.189).add(positionLocal.x.mul(9).add(positionLocal.y.mul(6)).add(time.mul(2.2)))).mul(0.5).add(0.55) : color(hex);
-  const tint = teaseHex ? mix(color(teaseHex), base, tease) : base;
+    hex === 'rainbow' ? cos(vec3(0, 2.094, 4.189).add(positionLocal.x.mul(9).add(positionLocal.y.mul(6)).add(time.mul(2.2)))).mul(0.5).add(0.55) : uniform(new Color(hex));
+  const tint = teaseHex ? mix(uniform(new Color(teaseHex)), base, tease) : base;
   edge.emissiveNode = tint.mul(rim.mul(sin(time.mul(7)).mul(0.25).add(1.75)));
   return { edge, rim, tease };
 }
