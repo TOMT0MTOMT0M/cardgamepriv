@@ -2656,7 +2656,8 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
   .shop-home .bigpulls { position: relative; z-index: 2; }
   .shop-home .bigpulls .bp-list, .shop-home .bigpulls .bp-head { transform-origin: 0% 50%; transition: transform var(--dur-emphatique) var(--ease-entree), opacity var(--dur-standard) var(--ease-standard); }
   /* audit 06/11 : plus de rotateY/scale (texte et vignettes ré-échantillonnés = flous) : retrait + transparence seulement */
-  .shop-home .bigpulls .bp-list { transform: translateX(-8px); opacity: 0.5; }
+  /* (07/11) enfoncée plus loin dans la marge (20 % de sa largeur) */
+  .shop-home .bigpulls .bp-list { transform: translateX(-20%); opacity: 0.5; }
   .shop-home .bigpulls .bp-head { opacity: 0.55; }
   .shop-home .bigpulls.bp-awake .bp-list { transform: none; opacity: 1; }
   .shop-home .bigpulls.bp-awake .bp-head { transform: none; opacity: 1; }
@@ -2664,6 +2665,30 @@ body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
 @media (max-width: 860px) and (orientation: portrait) and (prefers-reduced-motion: reduce) {
   .shop-home .bigpulls .bp-list { transform: none; }
   .shop-home .bigpulls.bp-awake .bp-list { transform: none; }
+}
+/* (07/11, retours de Tom) roue des boosters sur téléphone : ni reflet sous les pochettes, ni lueur (halo du sol, ombre
+   colorée de la pochette du milieu) — la couleur du booster ne reste que sur le cadran cranté ; plus de « touche le
+   booster pour l'ouvrir » ; le NOM du booster au-dessus de chaque mini-booster (rien d'autre) */
+@media (max-width: 860px) {
+  .packs-row.wheel::before { display: none; }
+  .packs-row.wheel .sl-art { -webkit-box-reflect: none; }
+  .packs-row.wheel .sleeve.mid .sl-art { box-shadow: 0 18px 26px -16px rgba(0, 0, 0, 0.95); }
+  .packs-row.wheel.gl .sleeve.mid .sl-art { box-shadow: none; }
+  .packs-row.wheel .sl-name, .packs-row.wheel .sleeve.special .sl-name { display: block; position: absolute; left: 50%; bottom: calc(100% + 7px); margin: 0; transform: translateX(-50%); max-width: calc(var(--sw) * 1.25); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; text-align: center; color: var(--ink-2); opacity: 0.55; transition: opacity var(--dur-standard), color var(--dur-standard); pointer-events: none; }
+  .packs-row.wheel .sleeve.mid .sl-name { color: #fff; opacity: 1; }
+  .packs-row.wheel .sleeve.soon .sl-name::after { content: none; }
+  .tap-hint { display: none !important; }
+}
+/* (07/11) gros tirages enfoncés : plus de pseudo, seulement la photo ronde au milieu sous la carte (à cheval sur son
+   bord) ; le pseudo réapparaît dessous quand la colonne avance. Sa place est gardée (pas de saut dans l'éventail). */
+@media (max-width: 860px) and (orientation: portrait) {
+  .shop-home .bp-item { transition: background-color var(--dur-standard), border-color var(--dur-standard); }
+  .shop-home .bp-card { z-index: 0; }
+  .shop-home .bp-who { position: relative; z-index: 1; flex-direction: column; gap: 3px; margin-top: -9px; }
+  .shop-home .bp-ava { flex: 0 0 auto; width: 20px; height: 20px; border-width: 1.5px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
+  .shop-home .bp-user { max-width: 100%; transition: opacity var(--dur-standard); }
+  .shop-home .bigpulls:not(.bp-awake) .bp-user { opacity: 0; }
+  .shop-home .bigpulls:not(.bp-awake) .bp-item { background-color: transparent; border-color: transparent; }
 }
 /* ==== fin boutique téléphone ==== */
 

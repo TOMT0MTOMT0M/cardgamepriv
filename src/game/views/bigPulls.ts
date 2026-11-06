@@ -230,22 +230,40 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     list.scrollLeft += e.deltaY;
   }, { passive: false });
   list.addEventListener('touchstart', hold, { passive: true });
-  list.addEventListener('touchmove', () => ((dragged = true), hold(), recessed.matches && wakeUp()), { passive: true });
+  list.addEventListener('touchmove', () => ((dragged = true), hold(), recessed.matches && wakeUp(true)), { passive: true });
 
   /**
    * TÉLÉPHONE EN PORTRAIT (retours de Tom, 4 nov.) : la colonne est « enfoncée » dans le bord gauche, en transparence
    * (le booster 3D est au centre parfait). Le doigt posé dessus — pour toucher ou pour faire défiler — la fait avancer :
    * elle grandit vers la droite et redevient nette ; elle se renfonce 3,5 s après le dernier contact. Le premier toucher
    * d'une colonne enfoncée ne fait que la réveiller (pas de carte ouverte par erreur sur une colonne à peine visible).
+   * (07/11) elle reste sortie tant que le doigt est posé, se renfonce d'elle-même 1 s après qu'il s'est levé, et
+   * AUSSITÔT si l'on touche ailleurs sur l'écran.
    */
   const recessed = matchMedia('(max-width: 860px) and (orientation: portrait)');
   let awakeT = 0;
   let swallow = false;
-  const wakeUp = () => {
+  const RETRACT_MS = 1000;
+  const retract = () => {
+    clearTimeout(awakeT);
+    el.classList.remove('bp-awake');
+  };
+  /** `held` : doigt encore posé → pas de minuterie (elle part au lever du doigt) */
+  const wakeUp = (held = false) => {
     el.classList.add('bp-awake');
     clearTimeout(awakeT);
-    awakeT = window.setTimeout(() => el.classList.remove('bp-awake'), 3500);
+    if (!held) awakeT = window.setTimeout(retract, RETRACT_MS);
   };
+  // toucher ailleurs : la colonne rentre tout de suite
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (!recessed.matches || !el.classList.contains('bp-awake')) return;
+      if (el.contains(e.target as Node)) return;
+      retract();
+    },
+    { capture: true, passive: true },
+  );
   function swallowed() {
     const v = swallow;
     swallow = false;
@@ -256,11 +274,15 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     () => {
       if (!recessed.matches) return;
       swallow = !el.classList.contains('bp-awake');
-      wakeUp();
+      wakeUp(true);
     },
     { capture: true, passive: true },
   );
-  el.addEventListener('pointerup', () => recessed.matches && wakeUp(), { capture: true, passive: true });
+  // doigt levé (ou repris par le défilement natif : pointercancel, puis touchend) → 1 s, puis elle rentre
+  const release = () => recessed.matches && el.classList.contains('bp-awake') && wakeUp();
+  el.addEventListener('pointerup', release, { capture: true, passive: true });
+  el.addEventListener('pointercancel', release, { capture: true, passive: true });
+  el.addEventListener('touchend', release, { capture: true, passive: true });
   // (le pseudo mène au profil : lui aussi attend que la colonne soit réveillée)
   el.addEventListener(
     'click',
