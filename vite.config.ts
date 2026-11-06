@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
       ...(process.env.BEBOU_CATALOG_JSON === '0' ? [] : [catalogJson()]),
       preloadBackend(!!env.VITE_CONVEX_URL?.trim()),
       preloadFonts(),
+      stylesFirst(),
       catalogCoreOnly(),
     ],
     // Catalogue en deux temps (perf, lot chargement 1) : le client lit le NOYAU du catalogue (sans les 4 gros sets) ;
@@ -209,6 +210,31 @@ function preloadBackend(online: boolean): Plugin {
         add(root.fileName);
         const links = [...files].map((f) => `<link rel="modulepreload" crossorigin href="${prefix}${f}">`).join('\n    ');
         return links ? html.replace('</head>', `    ${links}\n  </head>`) : html;
+      },
+    },
+  };
+}
+
+/**
+ * Jeu : les feuilles de style (bloquantes : l'écran de chargement ne peut pas se peindre sans elles) sont demandées
+ * AVANT le script et la quarantaine de `modulepreload` (perf, lot chargement 5). Vite les place en dernier : sur une
+ * connexion HTTP/1.1 (6 connexions) elles attendaient que des Mo de JS soient servis ; en HTTP/2 elles partent avec la
+ * plus haute priorité, en tête. Même ordre entre elles (même cascade), mêmes attributs : seul le moment de la requête change.
+ */
+function stylesFirst(): Plugin {
+  return {
+    name: 'bebou-styles-first',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle || !/jeu[\\/]index\.html$/.test(ctx.filename)) return html;
+        const links = html.match(/^[ \t]*<link rel="stylesheet"[^>]*>\n?/gm);
+        const first = html.search(/^[ \t]*<(script type="module"|link rel="modulepreload")/m);
+        if (!links || first < 0 || html.indexOf(links[0]) < first) return html;
+        let out = html;
+        for (const l of links) out = out.replace(l, '');
+        return out.slice(0, first) + links.map((l) => (l.endsWith('\n') ? l : `${l}\n`)).join('') + out.slice(first);
       },
     },
   };
