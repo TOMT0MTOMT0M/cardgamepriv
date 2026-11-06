@@ -2188,7 +2188,9 @@ export function createOpeningScene(): OpeningScene {
       for (let t = 0; t <= 6; t++) {
         const tier = Math.min(5, t);
         const face = buildFace(dummyArt, tier, t === 6);
-        const { edge } = buildEdge('#ffffff');
+        // (perf 06/11) les trois formes de tranche des vraies cartes (buildSlot) : unie, dorée « teasée » (secrète),
+        // arc-en-ciel « teasée » (6★) — couleurs en uniforms : une forme = un shader pour toutes les raretés
+        const { edge } = t === 6 ? buildEdge('#ffffff', TEASE_GOLD) : t === 5 ? buildEdge('rainbow', TEASE_GOLD) : buildEdge('#ffffff');
         warm.push(face.holo.material, edge);
         const m = new Mesh(cardGeo, [face.holo.material, backMat, edge]);
         m.position.set((t - 3) * 0.1, 0, -0.4);
@@ -2200,26 +2202,31 @@ export function createOpeningScene(): OpeningScene {
       // haute qualité, ou une fenêtre étroite, montre aussi les mini-boosters 3D (5 petits maillages, rien à payer sinon)
       {
         wheel3d = createWheel3D(stage.scene, (k) => arts.get(k));
-        wheel3d.warm([boosterKey]);
+        // (perf 06/11) toutes les pochettes : celle dont le visuel est prêt (texturée, plis en relief) ET les autres
+        // (encore unies, en attendant leur visuel) — leurs pipelines naissaient sinon à la 1re image de la vitrine
+        wheel3d.warm([boosterKey, ...Object.keys(styles).filter((k) => k !== boosterKey)]);
         const w3 = wheel3d;
         c.bag.fn(() => w3.dispose());
       }
       await stage.compile();
+      {
+        // compileAsync prépare les pipelines SANS les cibles réelles (MRT émissif, MSAA) : créer ces variantes en pleine
+        // révélation coûte des centaines de ms (à-coup à la 1re carte de chaque rareté). Une image rendue par les deux
+        // sorties, sous l'écran de chargement, les crée toutes maintenant. (perf 06/11) Aussi sur ordinateur (avant :
+        // téléphone seulement — 12 à 14 pipelines créés pendant chaque 1re ouverture PC), roue 3D comprise.
+        const ph = phase;
+        phase = 'sealed';
+        post.render();
+        if (mobile) {
+          phase = 'display';
+          post.render();
+        }
+        phase = ph;
+      }
       wheel3d?.hide();
       ready3d = true;
       // la boutique a pu se mettre en page avant : elle passe maintenant aux mini-boosters 3D
       queueMicrotask(() => api.onWheelReady?.());
-      if (mobile) {
-        // compileAsync prépare les pipelines SANS les cibles réelles (MRT émissif, MSAA) : sur téléphone, créer ces
-        // variantes en pleine révélation coûte des centaines de ms (à-coup à la 1re carte de chaque rareté). Une image
-        // rendue par les deux sorties, sous l'écran de chargement, les crée toutes maintenant.
-        const ph = phase;
-        phase = 'sealed';
-        post.render();
-        phase = 'display';
-        post.render();
-        phase = ph;
-      }
       // retirées de la scène mais gardées en vie : leurs pipelines restent en cache pour les vraies cartes
       dummies.forEach((m) => stage.scene.remove(m));
       // déchirure : compilée avec le reste (visible pendant le préchauffage), cachée ensuite
