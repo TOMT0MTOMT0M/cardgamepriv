@@ -6,7 +6,8 @@ import type { ViewerScene } from './scenes/viewer';
 import { withWildEncounter } from './wildEncounter';
 import { withMusicPreview } from './musicPreview';
 import { withDuelSummon } from './duelEncounter';
-import { installDiag } from './diag';
+import { installDiag, reportLoad } from './diag';
+import { perfMark } from '../core/perfLog';
 import { createShopView } from './views/shop';
 import { createMissions, MISSION_ICON } from './views/missions';
 import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
@@ -917,6 +918,8 @@ async function boot() {
     }
   }
   loader.classList.add('done');
+  perfMark('boutique');
+  reportLoad(shell);
   setTimeout(() => loader.remove(), 700);
 
   // en tâche de fond : miniatures de la collection, puis les modules des autres pages (navigation instantanée)

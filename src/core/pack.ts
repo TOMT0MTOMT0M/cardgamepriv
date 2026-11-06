@@ -4,6 +4,7 @@ import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, type Ctx } fr
 import { FONT_MONO, FONT_TITLE } from './art/frame';
 import { ensureFonts } from './art';
 import { encodeNormal } from './tsl';
+import { perfMark } from './perfLog';
 
 /** Booster : un peu plus grand qu'une carte, coussin bombé, soudures crantées haut/bas. */
 export const PACK = { w: 0.78, h: 1.18, bulge: 0.045, crimp: 0.075 };
@@ -348,7 +349,7 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
   const tearY = PH - ch - 40;
   m.fillStyle = 'rgb(0,0,255)';
   m.fillRect(0, PH - tearY - 2, PW, 4);
-  const C = creaseMap(ch);
+  const C = await creaseMap(ch);
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
   const tex = (c: HTMLCanvasElement, color: boolean) => {
     const t = new CanvasTexture(c);
@@ -383,12 +384,75 @@ function lcg(seed: number) {
  * booster garde sa propre texture (même toile). Une toile vidée (mémoire) est repeinte.
  */
 const creaseCache = new Map<number, { c: HTMLCanvasElement }>();
-function creaseMap(ch: number): { c: HTMLCanvasElement } {
-  const hit = creaseCache.get(ch);
-  if (hit && hit.c.width > 0) return hit;
-  const C = paintCreaseMap(ch);
-  creaseCache.set(ch, C);
+const creasePending = new Map<number, Promise<{ c: HTMLCanvasElement }>>();
+/**
+ * (perf 07/11, audit 06/11 §8 ter piste a) La carte des plis rastérisée est GARDÉE d'une visite à l'autre (Cache
+ * Storage, PNG sans perte : la toile est opaque, l'aller-retour est exact au pixel) : aux visites suivantes, plus de
+ * peinture (~140 plis flous + 40 taches + grain sur 640×968 : le plus gros poste du chargement) — une image décodée.
+ * CREASE_VERSION : à CHANGER dès que `paintCreaseMap`, `applyGrain` ou PW/PH changent, sinon l'ancienne carte resterait.
+ * Le temps de peinture (1re visite) et de relecture sont notés dans perfLog (rapport de chargement, game/diag.ts).
+ */
+const CREASE_VERSION = 'plis-v1';
+const CREASE_STORE = 'bebou-plis';
+const creaseKey = (ch: number) => `/__plis/${CREASE_VERSION}-${PW}x${PH}-${Math.round(ch)}.png`;
+async function creaseFromCache(ch: number): Promise<{ c: HTMLCanvasElement } | null> {
+  if (typeof caches === 'undefined' || typeof createImageBitmap === 'undefined') return null;
+  const t0 = performance.now();
+  const res = await (await caches.open(CREASE_STORE)).match(creaseKey(ch));
+  if (!res) return null;
+  const bmp = await createImageBitmap(await res.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+  if (bmp.width !== PW || bmp.height !== PH) return null;
+  const C = makeCanvas(PW, PH);
+  C.g.drawImage(bmp, 0, 0);
+  bmp.close();
+  perfMark('plis:cache', performance.now() - t0);
   return C;
+}
+function creaseToCache(ch: number, c: HTMLCanvasElement): void {
+  if (typeof caches === 'undefined' || typeof c.toBlob !== 'function') return;
+  // encodage et écriture après l'affichage de la boutique (hors du chemin critique)
+  const go = () =>
+    c.toBlob((blob) => {
+      if (!blob) return;
+      void caches
+        .open(CREASE_STORE)
+        .then((cache) => cache.put(creaseKey(ch), new Response(blob, { headers: { 'content-type': 'image/png' } })))
+        .catch(() => undefined);
+    }, 'image/png');
+  if ('requestIdleCallback' in window) (window as Window & { requestIdleCallback(cb: () => void, o?: { timeout: number }): number }).requestIdleCallback(go, { timeout: 8000 });
+  else setTimeout(go, 3000);
+}
+function creaseMap(ch: number): Promise<{ c: HTMLCanvasElement }> {
+  const hit = creaseCache.get(ch);
+  if (hit && hit.c.width > 0) return Promise.resolve(hit);
+  let p = creasePending.get(ch);
+  if (p) return p;
+  p = (async () => {
+    let C: { c: HTMLCanvasElement } | null = null;
+    try {
+      C = await creaseFromCache(ch);
+    } catch {
+      C = null; // (cache indisponible, image illisible… : on peint)
+    }
+    if (!C) {
+      const t0 = performance.now();
+      C = paintCreaseMap(ch);
+      // Canvas2D rastérise à la première lecture : on la force ici (sous l'écran de chargement, où le temps est
+      // mesuré) plutôt qu'à la première réduction pour la roue 3D ou au premier envoi au GPU
+      makeCanvas(1, 1).g.drawImage(C.c, 0, 0, 1, 1);
+      perfMark('plis:peinture', performance.now() - t0);
+      try {
+        creaseToCache(ch, C.c);
+      } catch {
+        /* pas de cache : repeinte à la prochaine visite */
+      }
+    }
+    creaseCache.set(ch, C);
+    creasePending.delete(ch);
+    return C;
+  })();
+  creasePending.set(ch, p);
+  return p;
 }
 function paintCreaseMap(ch: number): { c: HTMLCanvasElement; g: Ctx } {
   const W = PW, H = PH;

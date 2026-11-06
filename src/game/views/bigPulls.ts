@@ -126,7 +126,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     fanLast = NaN;
     empty.hidden = pulls.length > 0;
     first = false;
-    pos = 0;
+    pos = written = 0;
     setScroll(0);
     // la boucle : le fil est doublé dès qu'il déborde (la copie prend le relais sans à-coup)
     requestAnimationFrame(() => {
@@ -145,6 +145,8 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
 
   // ── défilement automatique, continu, en boucle
   let pos = 0;
+  /** dernière position écrite par la boucle : un `scroll` qui s'en écarte vient de l'utilisateur */
+  let written = 0;
   let period = 0;
   let clones = false;
   let vertical = false;
@@ -177,9 +179,13 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   let fanOn = false;
   let fanMid: number[] = [];
   let fanLast = NaN;
-  function fan() {
+  /**
+   * (perf 07/11) `top` : position de défilement déjà connue (lue juste après l'avoir écrite, ou dans l'événement
+   * `scroll`) — plus aucune lecture de `scrollTop` au début d'une image, qui forçait une mise en page synchrone après
+   * les écritures des autres rappels d'animation (vitrine téléphone : la plus grosse dépense restante au repos).
+   */
+  function fan(top = list.scrollTop) {
     if (!fanOn) return;
-    const top = list.scrollTop;
     if (top === fanLast) return;
     fanLast = top;
     const half = Math.max(1, list.clientHeight / 2);
@@ -313,22 +319,23 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     raf = requestAnimationFrame(tick);
     const dt = last ? Math.min(0.1, (t - last) / 1000) : 0;
     last = t;
-    const cur = getScroll();
-    // l'utilisateur a bougé le fil : on repart de là où il l'a laissé
-    if (Math.abs(cur - pos) > 2) pos = cur;
     if (hover || t < holdUntil) return;
     pos += SPEED * dt;
     if (pos >= period) pos -= period;
     else if (pos < 0) pos += period;
     setScroll(pos);
-    fan();
+    // (lue tout de suite après l'écriture : la mise en page vient d'être faite pour l'écriture, la lecture ne coûte rien)
+    written = getScroll();
+    fan(written);
   }
   document.addEventListener('visibilitychange', wake);
   // au bout de la copie à la main : on reboucle aussi
   list.addEventListener('scroll', () => {
-    if (!clones || period <= 0) return;
     const cur = getScroll();
-    if (cur >= period + 1) setScroll((pos = cur - period));
+    // l'utilisateur a bougé le fil : on repart de là où il l'a laissé
+    if (Math.abs(cur - written) > 2) written = pos = cur;
+    if (!clones || period <= 0) return;
+    if (cur >= period + 1) setScroll((written = pos = cur - period));
   }, { passive: true });
 
   backend.onChange(render);

@@ -9,6 +9,7 @@
  */
 import type { Shell } from './shell';
 import { net } from '../core/net/client';
+import { perfLongTasks, perfMarks } from '../core/perfLog';
 
 const WATCH = /^(duel|duel-view|wild|wild-view)$/;
 const logs: string[] = [];
@@ -86,4 +87,52 @@ export function installDiag(shell: Shell) {
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
+}
+
+/**
+ * RAPPORT DE CHARGEMENT (07/11, audit perf 06/11 §11.3) : la première mesure « sur vrai téléphone » — temps jusqu'à
+ * la boutique, peinture (ou relecture) de la carte des plis des sachets, tâches longues du thread principal, appareil.
+ * Envoyé UNE fois par appareil et par version du rapport (sinon avec `?diag` dans l'adresse), 6 s après la boutique,
+ * dans les retours du labo (entrée « Chargement », une ligne par appareil). Aucune donnée personnelle.
+ */
+const LOAD_REPORT_V = 'charge-1';
+export function reportLoad(shell: Shell) {
+  try {
+    const forced = new URLSearchParams(location.search).has('diag');
+    if (!forced && localStorage.getItem('bebou.diag.charge') === LOAD_REPORT_V) return;
+  } catch {
+    return;
+  }
+  setTimeout(() => {
+    try {
+      const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      const be = (shell.renderer.backend as unknown as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
+      const marks = perfMarks();
+      const shop = marks.find((m) => m.name === 'boutique')?.at ?? 0;
+      const lt = perfLongTasks();
+      const before = lt.filter((t) => t.at < shop);
+      const sum = (a: ReadonlyArray<{ ms: number }>) => a.reduce((x, t) => x + t.ms, 0);
+      const top = [...lt].sort((a, b) => b.ms - a.ms).slice(0, 8).map((t) => `${(t.at / 1000).toFixed(1)}s ${t.ms} ms`);
+      const n = navigator as Navigator & { deviceMemory?: number; connection?: { effectiveType?: string; downlink?: number } };
+      const note = [
+        `boutique à ${(shop / 1000).toFixed(2)} s · DOM prêt ${nav ? (nav.domContentLoadedEventEnd / 1000).toFixed(2) : '?'} s · 1er octet ${nav ? Math.round(nav.responseStart) : '?'} ms · transfert ${nav ? (nav.transferSize / 1024).toFixed(0) : '?'} Ko (page)`,
+        `jalons : ${marks.map((m) => `${m.name} ${m.ms ? `${m.ms} ms` : `@${(m.at / 1000).toFixed(2)}s`}`).join(' · ') || 'aucun'}`,
+        `tâches longues : ${lt.length} (${sum(lt)} ms), avant la boutique ${before.length} (${sum(before)} ms) · pires : ${top.join(', ') || 'aucune / non mesurées'}`,
+        `${be} · ${shell.quality} · ${window.innerWidth}×${window.innerHeight} @${devicePixelRatio} · ${n.hardwareConcurrency ?? '?'} cœurs · ${n.deviceMemory ?? '?'} Go · ${n.connection?.effectiveType ?? '?'} ${n.connection?.downlink ?? ''}`,
+        `cache des cartes : ${typeof caches === 'undefined' ? 'indisponible' : 'ok'} · ${document.visibilityState}`,
+      ].join('\n').slice(0, 1990);
+      void net
+        .pushLabFeedback({
+          clientId: `diag-charge-${(localStorage.getItem('bebou.device') ?? 'x').slice(0, 30)}`,
+          tester: 'diag',
+          entries: [{ id: 'diag-charge', title: 'Chargement', category: 'D', vote: 0, note, updatedAt: new Date().toISOString() }],
+          meta: { backend: be, userAgent: navigator.userAgent, quality: shell.quality, dpr: devicePixelRatio },
+        })
+        .then(() => localStorage.setItem('bebou.diag.charge', LOAD_REPORT_V))
+        .catch(() => {});
+      console.info('[chargement]\n' + note);
+    } catch {
+      /* rapport facultatif */
+    }
+  }, 6000);
 }
