@@ -610,7 +610,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       cell(fmtN(dups), word(dups, 'doublon')) +
       cell(fmtN(st.fullSubthemes), `album${st.fullSubthemes > 1 ? 's' : ''} à 100 %`);
     // succès débloqués (les 36 de l'espace Jeux) — remplace le « plus gros drop » (retours live n°1)
-    const ach = prof?.achievements ?? (isMe() && backend.eco.snapshot ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, backend.eco.snapshot!.achievements.stats)).length, total: ACHIEVEMENTS.length } : null);
+    // (perf : `eco.snapshot` est un calcul complet en démo — lu UNE fois, pas une fois par succès)
+    const mySnap = () => (isMe() ? backend.eco.snapshot : null);
+    const ach = prof?.achievements ?? ((snap) => (snap ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, snap.achievements.stats)).length, total: ACHIEVEMENTS.length } : null))(mySnap());
     if (ach) {
       const sc = h('a', 'pf-stat pf-ach');
       sc.href = '#/succes';

@@ -20,13 +20,8 @@ export const me = query({
     const packRegenAt = user.packRegenAt ?? user.lastSeenAt;
     const regen = applyRegen(user.packBalance, packRegenAt, now);
 
-    const myCards = await ctx.db
-      .query('inventory')
-      .withIndex('by_user', (q) => q.eq('userId', user._id))
-      .collect();
-
-    const uniqueCards = new Set(myCards.map((c) => c.cardId)).size;
-    const totalCards = myCards.reduce((sum, c) => sum + c.count, 0);
+    // (perf : plus de lecture de tout l'inventaire ici — cette requête est ré-exécutée à chaque battement de cœur et
+    // à chaque carte gagnée ; les compteurs « cartes uniques / au total » du HUD du labo viennent de myCollection)
 
     return {
       _id: user._id,
@@ -45,8 +40,6 @@ export const me = query({
       /** ancien « +2 toutes les 12 h » : remplacé par la recharge (gardé pour le HUD du labo) */
       canClaimDaily: false,
       nextDailyClaimAt: regen.nextAt ?? now,
-      uniqueCards,
-      totalCards,
       /** pity 6★ (src/core/pity.ts) */
       pityCount: user.pityCount ?? 0,
       wishlist: user.wishlist ?? [],

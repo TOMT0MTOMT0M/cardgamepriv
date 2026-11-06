@@ -41,10 +41,18 @@ export type MissionEvent =
 
 const TIER: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 
+/**
+ * Formateur du jour de Paris, créé une seule fois (perf, PROFIL B5 : en créer un à chaque appel coûtait ~0,1 ms ×
+ * des milliers d'appels — 920 ms par ouverture au téléphone ; `nextMissionReset` en fait une dizaine par appel).
+ * Même sortie. Création impossible (pas d'Intl / de fuseaux) : l'erreur se reproduit à chaque appel → même repli qu'avant.
+ */
+let dayFmt: Intl.DateTimeFormat | undefined;
+
 /** Jour « de Paris » : 2026-11-02. */
 export function missionDay(now: number): string {
   try {
-    return new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+    dayFmt ??= new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' });
+    return dayFmt.format(now);
   } catch {
     return new Date(now + 3600_000).toISOString().slice(0, 10);
   }

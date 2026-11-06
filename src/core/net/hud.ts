@@ -5,7 +5,14 @@ import { RARITY_BY_ID } from '../rarity';
  * Mounts the online infrastructure HUD pill (Discord Auth, Pack Balance,
  * Daily Booster Claim, and Live 20-Friend Feed Popover) into the main toolbar.
  */
+/** Cartes uniques / au total (avant : calculées par le serveur dans users.me, qui relisait tout l'inventaire). */
+function cardCounts(state: NetState) {
+  return { uniqueCards: new Set(state.collection.map((c) => c.cardId)).size, totalCards: state.collection.reduce((sum, c) => sum + c.count, 0) };
+}
+
 export function mountNetHud(toolbar: HTMLElement, stage: HTMLElement) {
+  // ce HUD affiche le fil d'activité complet (le jeu, lui, ne s'y abonne qu'en repli des gros tirages)
+  net.watchFeed();
   const wrap = document.createElement('div');
   wrap.className = 'net-hud';
 
@@ -90,7 +97,8 @@ export function mountNetHud(toolbar: HTMLElement, stage: HTMLElement) {
 
       const userBtn = document.createElement('button');
       userBtn.className = 'btn net-pill user-btn';
-      userBtn.title = `${u.displayName} · ${u.uniqueCards} cartes uniques (${u.totalCards} au total) · Cliquer pour ouvrir le Club (${onlineCount} en ligne)`;
+      const { uniqueCards, totalCards } = cardCounts(state);
+      userBtn.title = `${u.displayName} · ${uniqueCards} cartes uniques (${totalCards} au total) · Cliquer pour ouvrir le Club (${onlineCount} en ligne)`;
       const avatarHtml = u.avatarUrl ? `<img src="${u.avatarUrl}" class="net-ava" alt="" />` : '👤';
       userBtn.innerHTML = `${avatarHtml} <span>${u.displayName}</span> <span class="net-pack">📦 ${u.packBalance}</span> <span class="net-online">🟢 ${onlineCount}/${state.friends.length || 1}</span>`;
       userBtn.addEventListener('click', togglePopover);
@@ -135,7 +143,7 @@ export function mountNetHud(toolbar: HTMLElement, stage: HTMLElement) {
         ${
           state.user
             ? `<div class="net-pop-foot">
-                 <span>📚 ${state.user.uniqueCards} uniques · ${state.user.totalCards} cartes</span>
+                 <span>📚 ${cardCounts(state).uniqueCards} uniques · ${cardCounts(state).totalCards} cartes</span>
                  <button class="btn net-logout">Déconnexion</button>
                </div>`
             : ''
