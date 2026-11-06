@@ -36,8 +36,6 @@ export interface MeProfile {
   packStored?: number;
   packRegenAt?: number;
   nextPackAt?: number | null;
-  uniqueCards: number;
-  totalCards: number;
   /** pity 6★ (src/core/pity.ts) */
   pityCount?: number;
   /** envies (ids de cartes) */
