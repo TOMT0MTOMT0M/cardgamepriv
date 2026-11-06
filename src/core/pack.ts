@@ -36,6 +36,24 @@ export const BIG_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1
   { x0: 0.22, y0: 0.74, x1: 0.8, y1: 0.36, amp: 0.35, w: 0.26 },
 ]
 /**
+ * (07/11, retours de Tom) PLIS NETS : une seconde famille, par-dessus les grands plis doux (inchangés) — étroits,
+ * plus profonds, arête vive de chaque côté (pas de fondu large) : le film a été vraiment cassé à ces endroits. Peu
+ * nombreux et placés là où un sachet se marque en vrai : sous la soudure du haut (tension), sur un bord, près d'un coin.
+ * Seulement dans la carte de hauteur (trop fins pour la géométrie) : ce sont des lignes de reflet franches.
+ */
+export const SHARP_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1: number; amp: number; w: number }> = [
+  { x0: 0.24, y0: 0.15, x1: 0.71, y1: 0.22, amp: 1, w: 0.032 },
+  { x0: 0.96, y0: 0.41, x1: 0.64, y1: 0.53, amp: 0.9, w: 0.028 },
+  { x0: 0.1, y0: 0.7, x1: 0.37, y1: 0.86, amp: 0.85, w: 0.03 },
+  { x0: 0.47, y0: 0.6, x1: 0.58, y1: 0.79, amp: 0.6, w: 0.024 },
+];
+/** profil d'un pli net : arête vive, pans presque droits, fin courte aux extrémités */
+function sharpRidge(d: number, w: number, t: number): number {
+  const e = Math.min(1, t * 9, (1 - t) * 7);
+  const k = Math.max(0, 1 - Math.abs(d) / w);
+  return Math.pow(k, 1.15) * e * e * (3 - 2 * e);
+}
+/**
  * Profil d'un grand pli : une ARÊTE (deux pans plans qui se rencontrent en une ligne nette — c'est la cassure du film
  * qui fait le pli, pas un bourrelet) à la distance `d` (même unité que `w`), à la position `t` (0..1) le long du
  * segment ; l'arête s'efface aux extrémités.
@@ -434,7 +452,7 @@ const creasePending = new Map<number, Promise<{ c: HTMLCanvasElement }>>();
  * CREASE_VERSION : à CHANGER dès que `paintCreaseMap`, `applyGrain` ou PW/PH changent, sinon l'ancienne carte resterait.
  * Le temps de peinture (1re visite) et de relecture sont notés dans perfLog (rapport de chargement, game/diag.ts).
  */
-const CREASE_VERSION = 'plis-v2'; // v2 (07/11) : aluminium lisse, trois grands plis (carte calculée pixel par pixel)
+const CREASE_VERSION = 'plis-v3'; // v3 (07/11) : + plis nets · v2 (07/11) : aluminium lisse, trois grands plis (carte calculée pixel par pixel)
 const CREASE_STORE = 'bebou-plis';
 const creaseKey = (ch: number) => `/__plis/${CREASE_VERSION}-${PW}x${PH}-${Math.round(ch)}.png`;
 async function creaseFromCache(ch: number): Promise<{ c: HTMLCanvasElement } | null> {
@@ -524,6 +542,12 @@ function paintCreaseMap(ch: number): { c: HTMLCanvasElement; g: Ctx } {
           const side = (c.x1 - c.x0) * ax * (y - c.y0) - (c.y1 - c.y0) * (x - c.x0) * ax;
           const ww = c.w * (side > 0 ? 0.7 : 1.2);
           h += 0.55 * c.amp * creaseRidge(d, ww, t);
+        }
+        // plis nets (seconde famille) : même asymétrie, bien plus étroits et plus profonds → arête franche
+        for (const c of SHARP_CREASES) {
+          const { d, t } = creaseDistance(c, x, y, ax);
+          const side = (c.x1 - c.x0) * ax * (y - c.y0) - (c.y1 - c.y0) * (x - c.x0) * ax;
+          h += 0.5 * c.amp * sharpRidge(d, c.w * (side > 0 ? 0.75 : 1.25), t);
         }
         // tension près des soudures : léger creux le long de la soudure (le film y est tiré)
         const ds = Math.min(y - y0s, y1s - y);
