@@ -1,7 +1,6 @@
 import { type Ctx, alpha, applyGrain, radial, roundRect } from './canvas';
 import { BASE_H, BASE_W } from './subjects';
 import { FONT_MONO, FONT_TITLE } from './frame';
-import { FONT_DISPLAY } from '../fonts';
 
 const TAU = Math.PI * 2;
 
@@ -33,11 +32,19 @@ function guilloche(g: Ctx, cx: number, cy: number, R: number, r: number, d: numb
 }
 
 /**
- * DOS ACIER BROSSÉ (retours 06/11) : plaque brossée VERTICALEMENT, sans marque, avec les seules
- * inscriptions nécessaires GRAVÉES à la CNC (en creux : fond plus sombre, arête claire en bas-droite, ombre en haut-
- * gauche) — le monogramme « B » au centre, « BÉBOU · CARTES » en bas, le thème et « MMXXVI » en haut, un filet gravé
- * qui suit le bord. Masques : R = gravure (creux, mat), G = relief (profondeur de la gravure), B = brossage (direction
- * d'anisotropie, inutilisé pour l'instant). Le matériau (cardMaterial.createBackMaterial) est métallique partout.
+ * (07/11) Marque du dos : `fraisage` = une seule empreinte d'usinage au centre (lamage circulaire tourné : stries
+ * concentriques, reflet qui tourne avec la lumière), sans lettre ni logo ; `aucune` = plaque nue (filets du bord seuls).
+ */
+export const BACK_MARK: 'fraisage' | 'aucune' = 'fraisage';
+/** rayon du lamage (coordonnées de la carte, 768 × 1072) */
+export const BACK_SPOT_R = 112;
+
+/**
+ * DOS ACIER BROSSÉ — (07/11) « no brand » strict : plus AUCUNE écriture (thème, millésime, « BÉBOU · CARTES »), plus de
+ * vis dans les coins, plus de monogramme « B » (il faisait autocollant). Restent : la plaque brossée VERTICALEMENT, son
+ * chanfrein, les deux filets gravés qui suivent le bord, et (BACK_MARK) un lamage usiné au centre — l'objet dit
+ * « usiné », pas « imprimé ». Masques : R = gravure (creux, mat), G = relief, B = lamage (le matériau y fait tourner
+ * l'anisotropie : stries concentriques au lieu des stries verticales).
  */
 export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = ALU_BACK) {
   const cx = BASE_W / 2, cy = BASE_H / 2;
@@ -54,8 +61,7 @@ export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = ALU_BACK) {
     return g;
   })();
   back.fillRect(0, 0, BASE_W, BASE_H);
-  // ── brossage VERTICAL (acier brossé, ultra-réalisme 06/11) : stries fines le long de la hauteur, intensité et
-  // longueur aléatoires (déterministes), quelques stries longues plus marquées, variation douce par bande
+  // ── brossage VERTICAL : stries fines le long de la hauteur, intensité et longueur aléatoires (déterministes)
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   for (let x = 0; x < BASE_W; x += 1) {
@@ -66,7 +72,6 @@ export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = ALU_BACK) {
     if (d) { back.fillStyle = alpha('#000000', d); back.fillRect(x, 0, 1, BASE_H); }
     if (rnd() < 0.05) { const y0 = rnd() * BASE_H, h = 80 + rnd() * 420; back.fillStyle = alpha(rnd() < 0.5 ? '#fff' : '#000', 0.2); back.fillRect(x, y0, 1, h); }
   }
-  // bandes de brossage légèrement inégales (passes de la brosse)
   for (let k = 0; k < 9; k++) {
     const x0 = rnd() * BASE_W, w = 40 + rnd() * 120;
     back.fillStyle = alpha(rnd() < 0.5 ? '#fff' : '#000', 0.04 + rnd() * 0.05);
@@ -84,7 +89,6 @@ export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = ALU_BACK) {
   // ── gravure CNC : une forme = fond sombre mat, ombre en haut-gauche, arête lumineuse en bas-droite
   const engrave = (draw: (g: Ctx) => void, depth = 1) => {
     back.save();
-    // ombre (haut-gauche) et arête (bas-droite), décalées d'un pixel environ
     back.translate(-1.2 * depth, -1.2 * depth);
     back.fillStyle = back.strokeStyle = alpha('#000000', 0.55);
     draw(back);
@@ -98,7 +102,6 @@ export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = ALU_BACK) {
     back.fillStyle = back.strokeStyle = mixHex(style.ground, '#000000', 0.42);
     draw(back);
     back.restore();
-    // masques : R = creux (mat), G = relief
     masks.save();
     masks.globalCompositeOperation = 'lighter';
     masks.fillStyle = masks.strokeStyle = 'rgb(255,0,0)';
@@ -111,32 +114,52 @@ export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = ALU_BACK) {
   // filet gravé qui suit le bord, et un second plus fin
   engrave((g) => { g.lineWidth = 3; roundRect(g, 30, 30, BASE_W - 60, BASE_H - 60, 24); g.stroke(); }, 0.8);
   engrave((g) => { g.lineWidth = 1.2; roundRect(g, 42, 42, BASE_W - 84, BASE_H - 84, 18); g.stroke(); }, 0.5);
-  // monogramme « B » gravé, dans un anneau gravé
-  engrave((g) => { g.lineWidth = 4; g.beginPath(); g.arc(cx, cy, 150, 0, TAU); g.stroke(); }, 1);
-  engrave((g) => { g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, 136, 0, TAU); g.stroke(); }, 0.6);
-  engrave((g) => {
-    g.font = `400 190px ${FONT_DISPLAY}`;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText('B', cx, cy + 8);
-  }, 1.3);
-  // inscriptions nécessaires : marque discrète en bas, millésime + thème en haut
-  const text = (t: string, y: number, size: number) =>
-    engrave((g) => {
-      g.font = `600 ${size}px ${FONT_MONO}`;
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.letterSpacing = `${Math.round(size * 0.42)}px`;
-      g.fillText(t, cx, y);
-    }, 0.7);
-  text('BÉBOU · CARTES', BASE_H - 78, 17);
-  text(`${style.label ?? 'ÉDITION I'} · MMXXVI`, 80, 14);
-  // petits repères d'usinage dans les coins (vis de fixation gravées)
-  for (const [x, y] of [[62, 62], [BASE_W - 62, 62], [62, BASE_H - 62], [BASE_W - 62, BASE_H - 62]] as Array<[number, number]>)
-    engrave((g) => { g.lineWidth = 1.4; g.beginPath(); g.arc(x, y, 6, 0, TAU); g.stroke(); g.beginPath(); g.moveTo(x - 4, y); g.lineTo(x + 4, y); g.stroke(); }, 0.5);
-  back.textAlign = 'left';
-  back.textBaseline = 'alphabetic';
-  back.letterSpacing = '0px';
+
+  if (BACK_MARK === 'fraisage') {
+    const R = BACK_SPOT_R;
+    // ── lamage : face usinée au tour, plus claire et plus fine que la plaque brossée (le brossage s'arrête net au bord)
+    back.save();
+    back.beginPath();
+    back.arc(cx, cy, R, 0, TAU);
+    back.clip();
+    back.fillStyle = mixHex(style.ground, '#ffffff', 0.12);
+    back.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+    // stries de tournage : anneaux très fins, d'intensité irrégulière (pas d'outil), un peu plus marqués vers le bord
+    let sd = 11;
+    const rn = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+    back.lineWidth = 0.9;
+    for (let r = 3; r < R; r += 1.6) {
+      const v = rn();
+      const k = 0.35 + 0.65 * (r / R);
+      back.strokeStyle = v > 0.5 ? alpha('#ffffff', (v - 0.5) * 0.22 * k) : alpha('#000000', (0.5 - v) * 0.2 * k);
+      back.beginPath();
+      back.arc(cx, cy, r, 0, TAU);
+      back.stroke();
+    }
+    // point de centrage (le centre de la passe d'outil)
+    back.fillStyle = alpha('#000000', 0.35);
+    back.beginPath();
+    back.arc(cx, cy, 1.6, 0, TAU);
+    back.fill();
+    back.restore();
+    // paroi du lamage (en creux) : ombre en haut-gauche, arête vive en bas-droite, comme les gravures
+    engrave((g) => { g.lineWidth = 2.4; g.beginPath(); g.arc(cx, cy, R, 0, TAU); g.stroke(); }, 0.9);
+    // masques : B = lamage (anisotropie concentrique), G = stries très fines en relief (elles accrochent la lumière)
+    masks.save();
+    masks.globalCompositeOperation = 'lighter';
+    masks.fillStyle = 'rgb(0,0,255)';
+    masks.beginPath();
+    masks.arc(cx, cy, R - 1.5, 0, TAU);
+    masks.fill();
+    masks.lineWidth = 0.8;
+    for (let r = 6; r < R - 3; r += 3.2) {
+      masks.strokeStyle = `rgba(0,${18 + Math.round(10 * Math.sin(r * 0.7))},0,1)`;
+      masks.beginPath();
+      masks.arc(cx, cy, r, 0, TAU);
+      masks.stroke();
+    }
+    masks.restore();
+  }
   applyGrain(back, BASE_W, BASE_H, 0.05, 4, 50);
 }
 

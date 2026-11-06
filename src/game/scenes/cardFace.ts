@@ -115,7 +115,7 @@ export function themedBacks(bag: { add<T extends { dispose(): void }>(o: T): T }
       const e = catalogEntry(cardId);
       const t = e ? themeById(e.themeId) : undefined;
       if (!t) return fallback;
-      // alliage légèrement teinté par le thème (une nuance, pas une couleur), thème gravé en haut
+      // alliage légèrement teinté par le thème (une nuance, pas une couleur) ; (07/11) plus rien de gravé (no brand)
       return cache.get(t.id) ?? make(t.id, { ...ALU_BACK, ground: tintAlu(t.style.accent), label: t.label.toUpperCase() });
     },
   };

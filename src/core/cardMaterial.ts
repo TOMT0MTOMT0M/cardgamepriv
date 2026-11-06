@@ -161,12 +161,20 @@ export function createBackMaterial(back: BackArt, opts: { foil?: number; paper?:
   // (métal à 0,88 : l'acier brossé diffuse un peu le long des stries — en vrai aussi — et reste lisible quand il ne
   // reflète qu'un décor sombre)
   m.metalnessNode = mix(float(0.88), float(0.55), cut);
-  m.roughnessNode = mix(float(0.34), float(0.68), cut);
-  m.anisotropyNode = mix(float(0.9), float(0.1), cut);
+  // (07/11) anisotropie ORIENTÉE (vec2 en espace tangent = sens où le reflet s'étire, perpendiculaire aux stries) : avant,
+  // un nombre simple donnait (a, a) → reflet étiré en DIAGONALE, et `anisotropyRotation` était ignorée par le nœud.
+  //  - plaque brossée verticalement → reflet étiré à l'horizontale ;
+  //  - lamage (masque B) tourné → stries concentriques, reflet étiré le long du RAYON (l'éclat en étoile qui tourne
+  //    avec la lumière, signature d'une pièce usinée).
+  const spot = mk.b;
+  const d = uv().sub(0.5).mul(vec2(CARD.w / CARD.h, 1));
+  const radial = d.div(d.length().max(1e-4));
+  const dir = mix(vec2(1, 0), radial, spot);
+  m.anisotropyNode = dir.mul(mix(float(0.85), float(0.1), cut));
+  m.roughnessNode = mix(mix(float(0.34), float(0.68), cut), float(0.26), spot);
   m.sheenNode = float(0.25);
   m.sheenRoughnessNode = float(0.6);
   m.sheenColor = new Color('#ffffff');
-  m.anisotropyRotation = Math.PI / 2; // stries VERTICALES (sens du brossage)
   m.normalNode = bumpMap(mk.g, float(1.6));
   return m;
 }
