@@ -224,6 +224,8 @@ export interface OpeningScene extends Experiment {
   setWheel(items: WheelItem3D[] | null): void;
   /** perspective (px CSS) et point de fuite (px CSS) de la caméra, pour caler la roue HTML dessus ; null = pas de roue 3D */
   wheelView(): { P: number; ox: number; oy: number } | null;
+  /** la roue 3D vient d'être prête (la page doit se remettre en page pour la caler) */
+  onWheelReady: (() => void) | null;
   /** rectangle écran (px CSS) du booster de la vitrine ; null hors vitrine */
   boosterRect(): { x: number; y: number; w: number; h: number } | null;
   /** vitrine : le booster se soulève un instant, comme au survol de la souris sur ordinateur (« touche-moi ») */
@@ -478,6 +480,8 @@ export function createOpeningScene(): OpeningScene {
   let sceneT = 0;
   /** roue des boosters en 3D (téléphone) et dernière pose reçue */
   let wheel3d: Wheel3D | null = null;
+  /** roue 3D compilée (avant : la page garde ses pochettes HTML) */
+  let ready3d = false;
   let wheelItems: WheelItem3D[] | null = null;
   let wheelDirty = false;
   /** tier de la carte en cours de révélation (un toucher impatient n'accélère que les communes → épiques) */
@@ -1844,12 +1848,13 @@ export function createOpeningScene(): OpeningScene {
       focusTY = py;
     },
     onBoosterSwipe: null,
+    onWheelReady: null,
     setWheel(items) {
       wheelItems = items;
       wheelDirty = true;
     },
     wheelView() {
-      if (!wheel3d || !ctx) return null;
+      if (!wheel3d || !ctx || !ready3d) return null;
       return { P: cameraScale(stage.camera, ctx.height).P, ox: ctx.width / 2 + focusCur, oy: ctx.height / 2 + focusCurY };
     },
     boosterRect() {
@@ -2190,8 +2195,10 @@ export function createOpeningScene(): OpeningScene {
         dummies.push(m);
         stage.scene.add(m);
       }
-      // roue des boosters en 3D (téléphone) : matériaux créés maintenant pour être compilés avec le reste
-      if (mobile) {
+      // roue des boosters en 3D (sélection en version téléphone, ≤ 860 px de large) : matériaux créés maintenant pour
+      // être compilés avec le reste. (07/11) Toujours créée, même en qualité « ordinateur » : un téléphone réglé en
+      // haute qualité, ou une fenêtre étroite, montre aussi les mini-boosters 3D (5 petits maillages, rien à payer sinon)
+      {
         wheel3d = createWheel3D(stage.scene, (k) => arts.get(k));
         wheel3d.warm([boosterKey]);
         const w3 = wheel3d;
@@ -2199,6 +2206,9 @@ export function createOpeningScene(): OpeningScene {
       }
       await stage.compile();
       wheel3d?.hide();
+      ready3d = true;
+      // la boutique a pu se mettre en page avant : elle passe maintenant aux mini-boosters 3D
+      queueMicrotask(() => api.onWheelReady?.());
       if (mobile) {
         // compileAsync prépare les pipelines SANS les cibles réelles (MRT émissif, MSAA) : sur téléphone, créer ces
         // variantes en pleine révélation coûte des centaines de ms (à-coup à la 1re carte de chaque rareté). Une image

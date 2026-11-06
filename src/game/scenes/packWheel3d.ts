@@ -1,5 +1,5 @@
 import { AdditiveBlending, CanvasTexture, Color, DoubleSide, Group, Mesh, MeshBasicNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, SRGBColorSpace, type BufferGeometry, type PerspectiveCamera, type Scene, type Texture } from 'three/webgpu';
-import { float, length, smoothstep, texture, uniform, uv, vec2, vec4 } from 'three/tsl';
+import { bumpMap, float, length, smoothstep, texture, uniform, uv, vec2, vec4 } from 'three/tsl';
 import { createPackGeometry, PACK, type PackArt } from '../../core/pack';
 
 /**
@@ -29,8 +29,10 @@ export interface WheelItem3D {
 
 const TEX_W = 256;
 const BACK_W = 128;
+/** carte des plis (sachets aluminium) : en petit, 192 px suffisent à garder les grandes cassures lisibles */
+const CREASE_W = 192;
 
-function shrink(src: Texture | undefined, w: number): Texture | null {
+function shrink(src: Texture | undefined, w: number, srgb = true): Texture | null {
   const img = src?.image as HTMLCanvasElement | ImageBitmap | undefined;
   if (!img || !img.width) return null;
   const c = document.createElement('canvas');
@@ -40,7 +42,7 @@ function shrink(src: Texture | undefined, w: number): Texture | null {
   g.imageSmoothingQuality = 'high';
   g.drawImage(img as CanvasImageSource, 0, 0, c.width, c.height);
   const t = new CanvasTexture(c);
-  t.colorSpace = SRGBColorSpace;
+  if (srgb) t.colorSpace = SRGBColorSpace;
   t.anisotropy = 2;
   return t;
 }
@@ -85,6 +87,10 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
   function slot(key: string): Slot {
     let s = slots.get(key);
     if (s) return s;
+    /*
+     * (07/11) mini-boosters ALUMINIUM, comme le grand : métal pur, brillant, et les plis du sachet dans le relief
+     * (même carte de plis pleine taille, en 192 px). Les anciens sachets imprimés gardent un vernis (bump nul).
+     */
     const front = new MeshStandardNodeMaterial({ roughness: 0.46, metalness: 0.12, map: blank });
     const back = new MeshStandardNodeMaterial({ roughness: 0.6, metalness: 0.05, map: blank });
     const body = new Mesh(geo, [front, back]);
@@ -115,6 +121,23 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     if (b) owned.push(b);
     s.front.map = f;
     s.back.map = b ?? f;
+    if (art.metalBack) {
+      s.front.metalness = s.back.metalness = 1;
+      s.front.roughness = 0.2;
+      s.back.roughness = 0.24;
+    }
+    if (art.fullCrease) {
+      const cr = shrink(art.crinkle, CREASE_W, false);
+      if (cr) {
+        owned.push(cr);
+        // nœuds créés ICI, avec la vraie texture : bumpMap échantillonne des copies du nœud de texture (décalages
+        // pour la pente), qui gardent la texture du moment de la compilation — changer `.value` après coup ne les
+        // atteint pas (pochettes créées après le préchauffage : rayures du brossage au lieu des plis).
+        // (le maillage est réduit à ~1/5 : un relief plus fort pour que les cassures accrochent la lumière)
+        s.front.normalNode = bumpMap(texture(cr, uv()).r, float(2.6));
+        s.back.normalNode = bumpMap(texture(cr, uv().mul(vec2(-1, 1)).add(vec2(1, 0))).r, float(2.6));
+      }
+    }
     s.front.needsUpdate = s.back.needsUpdate = true;
     (s.reflMat as unknown as { _tn: { value: Texture } })._tn.value = f;
     s.textured = true;

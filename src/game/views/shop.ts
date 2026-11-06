@@ -772,6 +772,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       wheelOn = on;
       rowEl.classList.toggle('wheel', on);
       if (!on) {
+        opening.setWheel(null);
         cancelAnimationFrame(raf);
         raf = 0;
         drag = null;
@@ -794,6 +795,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     paint();
   };
   new ResizeObserver(() => requestAnimationFrame(relayout)).observe(rowEl);
+  // (07/11) scène encore en chargement à l'arrivée sur la boutique : dès que la roue 3D est prête, on s'y cale
+  opening.onWheelReady = () => requestAnimationFrame(relayout);
   WHEEL.addEventListener('change', relayout);
 
   // ── état (booster scellé pas encore ouvert : bandeau + bouton direct)
