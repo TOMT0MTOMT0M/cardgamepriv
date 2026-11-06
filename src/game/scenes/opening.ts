@@ -614,8 +614,9 @@ export function createOpeningScene(): OpeningScene {
     const front = texture(art.front, uvn);
     const back = texture(art.back, uvn);
     const masks = texture(art.masks, uvn);
-    const crF = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
-    const crB = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
+    // (06/11) carte de plis pleine taille (UV 0..1, non répétée) : les sachets simples ; tuile répétée sinon
+    const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
+    const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
     packNodes = { front, back, masks, crF, crB } as unknown as Record<string, { value: Texture }>;
     const pp = positionLocal.xy;
     const fbm =
@@ -633,10 +634,10 @@ export function createOpeningScene(): OpeningScene {
       m.colorNode = mix(base, color('#0d0907'), smoothstep(0.06, 0.004, burnFront));
       // (retours 06/11) sachet ALUMINIUM : métal partout (« no brand » premium), le logo et les soudures plus lisses,
       // le froissé du sachet dans le relief ; aucun vernis plastique
-      // (métal à 0,9 : un soupçon de diffus pour que le sachet reste lisible dans un décor sombre)
-      m.metalnessNode = float(0.9);
-      m.roughnessNode = mix(float(0.4), float(0.2), foil);
-      m.normalNode = bumpMap(cr.r, float(1.7), normalMap(encodeNormal(ridges)));
+      // (ultra-réalisme) aluminium brillant : métal pur, rugosité basse, plis en relief fort (carte pleine taille)
+      m.metalnessNode = float(1);
+      m.roughnessNode = mix(float(0.22), float(0.14), foil);
+      m.normalNode = bumpMap(cr.r, float(art.fullCrease ? 3.2 : 1.7), normalMap(encodeNormal(ridges)));
       m.maskNode = burnFront.greaterThan(0);
       const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(0.3)).mul(step(-0.2, U.burn));
       // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte
@@ -690,8 +691,8 @@ export function createOpeningScene(): OpeningScene {
     const back = texture(art.back, uvn);
     const masks = texture(art.masks, uvn);
     tearNodes.push({ front, back, masks } as unknown as Record<'front' | 'back' | 'masks', { value: Texture }>);
-    const crF = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
-    const crB = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
+    const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
+    const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
     const ug = positionLocal.x.div(PACK.w).add(0.5);
     const v = uvn.y;
     const edge = tearEdge(ug);
@@ -705,11 +706,10 @@ export function createOpeningScene(): OpeningScene {
       const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
       const silver = color(0.6, 0.6, 0.58);
       m.colorNode = mix(select(frontFacing, col.rgb, silver), color(0.94, 0.93, 0.91), whiten.mul(0.85));
-      m.metalnessNode = select(frontFacing, mix(float(0.15), float(0.95), foil), float(1)).mul(whiten.oneMinus());
-      m.roughnessNode = select(frontFacing, mix(float(0.36), float(0.2), foil), float(0.3));
-      m.normalNode = bumpMap(cr.r, float(1.4), normalMap(encodeNormal(ridges)));
-      m.clearcoatNode = float(0.6);
-      m.clearcoatRoughnessNode = float(0.12);
+      // (06/11, ultra-réalisme) aluminium brillant, plis en relief fort, sans vernis
+      m.metalnessNode = select(frontFacing, float(1), float(1)).mul(whiten.oneMinus());
+      m.roughnessNode = select(frontFacing, mix(float(0.22), float(0.14), foil), float(0.3));
+      m.normalNode = bumpMap(cr.r, float(art.fullCrease ? 3.2 : 1.4), normalMap(encodeNormal(ridges)));
       // fuite de lumière (003) : soudures + impression claire, de la couleur de la meilleure carte
       m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)).mul(whiten.oneMinus());
       if (part === 'body') m.maskNode = v.lessThan(edge);
@@ -1979,7 +1979,7 @@ export function createOpeningScene(): OpeningScene {
       // mobile : calques à la taille réelle de la carte à l'écran (×2) — avant, 0,62 / 0,45 fixes → flou, texte baveux
       artScale = mobile ? mobileArtScale(c.width, c.height, 0.7) : 0.85;
       backArtScale = mobile ? artScale : 0.6;
-      stage = createStage(c, { bg: ['#1b1715', '#050404'], env: 'studio', envIntensity: 0.9, fill: 0.62, frameW: PACK.w, frameH: PACK.h });
+      stage = createStage(c, { bg: ['#1b1715', '#050404'], env: 'studio', envIntensity: 1.25, fill: 0.62, frameW: PACK.w, frameH: PACK.h });
       key = new DirectionalLight(0xfff2e6, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);

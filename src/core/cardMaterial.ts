@@ -151,11 +151,11 @@ export function createBackMaterial(back: BackArt, opts: { foil?: number; paper?:
   }
   const cut = mk.r; // gravure
   m.colorNode = c.rgb;
-  m.metalnessNode = mix(float(0.92), float(0.55), cut);
-  // brossé : rugosité moyenne ; gravure : mate
-  m.roughnessNode = mix(float(0.42), float(0.7), cut);
-  m.anisotropyNode = mix(float(0.85), float(0.1), cut);
-  m.anisotropyRotation = 0; // stries horizontales (sens du brossage)
+  // (ultra-réalisme) acier brossé vertical : métal pur, reflet étiré le long des stries, plus brillant ; gravure mate
+  m.metalnessNode = mix(float(1), float(0.6), cut);
+  m.roughnessNode = mix(float(0.3), float(0.68), cut);
+  m.anisotropyNode = mix(float(0.9), float(0.1), cut);
+  m.anisotropyRotation = Math.PI / 2; // stries VERTICALES (sens du brossage)
   m.normalNode = bumpMap(mk.g, float(1.6));
   return m;
 }

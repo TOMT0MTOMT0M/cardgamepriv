@@ -2,7 +2,6 @@ import { BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshPhysic
 import { bumpMap, float, mix, normalMap, positionLocal, texture, uv, vec2, vec3, smoothstep, sin } from 'three/tsl';
 import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, type Ctx } from './art/canvas';
 import { FONT_MONO, FONT_TITLE } from './art/frame';
-import { FONT_DISPLAY, FONT_TEXT } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal } from './tsl';
 
@@ -123,6 +122,8 @@ export interface PackArt {
   masks: Texture;
   /** dos entièrement métallisé (sachet simple du jeu) */
   metalBack?: boolean;
+  /** `crinkle` est la carte du sachet entier (UV 0..1, pas une tuile répétée) */
+  fullCrease?: boolean;
   dispose(): void;
 }
 
@@ -271,75 +272,31 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
  * écriture. Dos : métal brossé de la même teinte, le logo en petit (le matériau le rend entièrement métallique).
  */
 async function simplePackArt(style: PackStyle): Promise<PackArt> {
-  try {
-    await Promise.all([document.fonts.load(`400 120px ${FONT_DISPLAY}`), document.fonts.load(`700 40px ${FONT_TEXT}`), document.fonts.load(`600 26px ${FONT_TEXT}`)]);
-  } catch {
-    /* polices de repli */
-  }
+  // (06/11, ultra-réalisme) sachet NU : la couleur de l'aluminium, rien d'écrit. Le froissé est propre au sachet
+  // (une carte de hauteur pleine taille, pas une tuile répétée), avec de vrais plis : réseau de plis principaux
+  // (arêtes tendues entre points), micro-plis secondaires, bombé du coussin et soudures crantées.
   const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
   const base = style.ground;
-  const cx = PW / 2, cy = PH * 0.45;
   const ch = (PACK.crimp / PACK.h) * PH;
-  const logo = (g: Ctx, y: number, k: number, ink: string) => {
-    g.textAlign = 'center';
-    g.fillStyle = ink;
-    g.font = `400 ${Math.round(128 * k)}px ${FONT_DISPLAY}`;
-    g.fillText('BÉBOU', cx, y);
-    g.font = `600 ${Math.round(30 * k)}px ${FONT_TEXT}`;
-    const t = 'C A R T E S';
-    g.fillText(t, cx, y + 52 * k);
-  };
-  // ── face : couleur unie, reflet vertical doux, bords un rien plus sombres
-  const g = F.g;
-  // (06/11) aluminium teinté : la couleur du pack posée sur du métal brossé (plus de plastique)
-  g.fillStyle = mixHex(base, '#dde0e5', 0.5);
-  g.fillRect(0, 0, PW, PH);
-  for (let y = 0; y < PH; y += 1) {
-    const v = Math.sin(y * 12.9898 + 3.7) * 43758.5453;
-    const n = v - Math.floor(v);
-    g.fillStyle = n > 0.5 ? alpha('#ffffff', (n - 0.5) * 0.16) : alpha('#000000', (0.5 - n) * 0.18);
-    g.fillRect(0, y, PW, 1);
+  const faces: Array<[Ctx, number]> = [[F.g, 1], [B.g, 2]];
+  for (const [g, seed] of faces) {
+    const rr = lcg(seed * 7919);
+    // alliage teinté : la couleur du pack posée sur l'alu
+    g.fillStyle = mixHex(base, '#eceef1', 0.66);
+    g.fillRect(0, 0, PW, PH);
+    // brossage FIN du film (vertical, très léger : un sachet est plus lisse qu'une plaque)
+    for (let x = 0; x < PW; x += 1) {
+      const v = rr();
+      g.fillStyle = v > 0.5 ? alpha('#ffffff', (v - 0.5) * 0.08) : alpha('#000000', (0.5 - v) * 0.09);
+      g.fillRect(x, 0, 1, PH);
+    }
+    // reflet large (le vrai reflet vient du matériau ; ceci est la teinte de base)
+    g.fillStyle = linear(g, 0, 0, PW, 0, [[0, alpha('#000', 0.12)], [0.3, alpha('#fff', 0.1)], [0.55, alpha('#000', 0.06)], [1, alpha('#fff', 0.08)]]);
+    g.fillRect(0, 0, PW, PH);
+    crimpBands(g, mixHex(base, '#eef0f3', 0.6));
+    applyGrain(g, PW, PH, 0.03, 8, 20);
   }
-  g.fillStyle = linear(g, 0, 0, PW, 0, [[0, alpha('#000', 0.22)], [0.18, alpha('#000', 0)], [0.38, alpha('#fff', 0.16)], [0.5, alpha('#fff', 0.05)], [0.82, alpha('#000', 0)], [1, alpha('#000', 0.26)]]);
-  g.fillRect(0, 0, PW, PH);
-  g.fillStyle = linear(g, 0, 0, 0, PH, [[0, alpha('#fff', 0.06)], [0.5, alpha('#fff', 0)], [1, alpha('#000', 0.18)]]);
-  g.fillRect(0, 0, PW, PH);
-  g.save();
-  g.shadowColor = alpha('#000', 0.28);
-  g.shadowBlur = 18;
-  g.shadowOffsetY = 6;
-  logo(g, cy, 1, '#ffffff');
-  g.restore();
-  // nom du pack sous le logo
-  const title = (style.title ?? style.name).toUpperCase();
-  g.fillStyle = alpha('#ffffff', 0.92);
-  g.textAlign = 'center';
-  const tf = fitFont(g, title, 700, 46, PW - 140, FONT_TEXT);
-  g.font = tf;
-  g.letterSpacing = '6px';
-  g.fillText(title, cx, cy + 170);
-  g.letterSpacing = '0px';
-  g.fillStyle = alpha('#ffffff', 0.55);
-  g.fillRect(cx - 34, cy + 112, 68, 3);
-  crimpBands(g, mixHex(base, '#ffffff', 0.18));
-  applyGrain(g, PW, PH, 0.05, 9, 30);
-  // ── dos : métal brossé de la même teinte, logo en petit
-  const b = B.g;
-  b.fillStyle = mixHex(base, '#d8dbe0', 0.35);
-  b.fillRect(0, 0, PW, PH);
-  for (let y = 0; y < PH; y += 1) {
-    const v = Math.sin(y * 12.9898) * 43758.5453;
-    const n = v - Math.floor(v);
-    b.fillStyle = n > 0.5 ? alpha('#ffffff', (n - 0.5) * 0.18) : alpha('#000000', (0.5 - n) * 0.2);
-    b.fillRect(0, y, PW, 1);
-  }
-  b.fillStyle = linear(b, 0, 0, PW, PH, [[0, alpha('#fff', 0.18)], [0.45, alpha('#fff', 0)], [0.6, alpha('#000', 0.12)], [1, alpha('#fff', 0.1)]]);
-  b.fillRect(0, 0, PW, PH);
-  b.globalAlpha = 0.55;
-  logo(b, PH * 0.5, 0.55, mixHex(base, '#000000', 0.45));
-  b.globalAlpha = 1;
-  crimpBands(b, mixHex(base, '#ffffff', 0.18));
-  // ── masques : soudures + logo en foil ; relief des soudures ; ligne de déchirure (invisible) pour la découpe
+  // ── masques : R = zones plus lisses (soudures), G = relief des soudures, B = ligne de déchirure (découpe)
   const m = M.g;
   m.fillStyle = '#000';
   m.fillRect(0, 0, PW, PH);
@@ -347,13 +304,12 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
   m.fillStyle = 'rgb(255,0,0)';
   m.fillRect(0, 0, PW, ch);
   m.fillRect(0, PH - ch, PW, ch);
-  logo(m, cy, 1, 'rgb(105,0,0)'); // logo à demi métallisé (plein métal : il reflétait le noir du décor)
   m.fillStyle = 'rgb(0,255,0)';
   for (const y0 of [0, PH - ch]) for (let x = 0; x < PW; x += 6) m.fillRect(x, y0, 3, ch);
   const tearY = PH - ch - 40;
   m.fillStyle = 'rgb(0,0,255)';
   m.fillRect(0, PH - tearY - 2, PW, 4);
-  const C = crinkleCanvas();
+  const C = creaseMap(ch);
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
   const tex = (c: HTMLCanvasElement, color: boolean) => {
     const t = new CanvasTexture(c);
@@ -362,8 +318,113 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
     return t;
   };
   const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false);
-  crinkle.wrapS = crinkle.wrapT = 1000;
-  return { front, back, masks, crinkle, metalBack: true, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
+  crinkle.wrapS = crinkle.wrapT = 1001; // ClampToEdgeWrapping : la carte est celle du sachet entier (pas répétée)
+  return { front, back, masks, crinkle, metalBack: true, fullCrease: true, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
+}
+
+function lcg(seed: number) {
+  let a = seed >>> 0 || 1;
+  return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296);
+}
+
+/**
+ * CARTE DE HAUTEUR du sachet (ultra-réalisme, 06/11) : pleine taille (pas de tuile), 0,5 = plat.
+ *  - bombé du coussin (le sachet est gonflé : hauteur maximale au centre, qui retombe vers les soudures) ;
+ *  - plis PRINCIPAUX : un réseau de segments tendus entre des points, comme un film métallisé qui a été manipulé —
+ *    chaque pli = une arête nette (crête claire d'un côté, creux sombre de l'autre), d'autant plus marquée qu'elle est
+ *    longue, avec quelques plis qui rayonnent des coins des soudures (là où un sachet se froisse vraiment) ;
+ *  - plis SECONDAIRES : fins, courts, nombreux près des soudures, rares au centre ;
+ *  - un très léger grain.
+ * Le matériau en fait une normale (bumpMap, échelle forte) : le reflet casse le long de chaque pli.
+ */
+function creaseMap(ch: number): { c: HTMLCanvasElement } {
+  const W = PW, H = PH;
+  const C = makeCanvas(W, H);
+  const g = C.g;
+  const rr = lcg(424242);
+  g.fillStyle = '#808080';
+  g.fillRect(0, 0, W, H);
+  // bombé
+  g.fillStyle = radial(g, W / 2, H / 2, 0, Math.max(W, H) * 0.62, [[0, 'rgba(255,255,255,0.30)'], [0.55, 'rgba(255,255,255,0.10)'], [1, 'rgba(0,0,0,0.22)']]);
+  g.fillRect(0, 0, W, H);
+  // près des soudures le film est tiré : légère dépression
+  for (const [y0, y1] of [[ch, ch + 70], [H - ch - 70, H - ch]] as Array<[number, number]>) {
+    g.fillStyle = linear(g, 0, y0, 0, y1, y0 < H / 2 ? [[0, 'rgba(0,0,0,0.18)'], [1, 'rgba(0,0,0,0)']] : [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.18)']]);
+    g.fillRect(0, y0, W, y1 - y0);
+  }
+  const crease = (x0: number, y0: number, x1: number, y1: number, amp: number, width: number) => {
+    // une arête de pli : crête lumineuse + creux sombre parallèle, légèrement courbe, fondus aux extrémités
+    const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy) || 1;
+    const nx = -dy / l, ny = dx / l;
+    const bend = (rr() - 0.5) * l * 0.18;
+    const mx = (x0 + x1) / 2 + nx * bend, my = (y0 + y1) / 2 + ny * bend;
+    const path = (off: number) => {
+      g.beginPath();
+      g.moveTo(x0 + nx * off, y0 + ny * off);
+      g.quadraticCurveTo(mx + nx * off, my + ny * off, x1 + nx * off, y1 + ny * off);
+    };
+    g.lineCap = 'round';
+    g.filter = `blur(${width * 0.6}px)`;
+    g.lineWidth = width;
+    g.strokeStyle = `rgba(255,255,255,${amp})`;
+    path(-width * 0.45);
+    g.stroke();
+    g.strokeStyle = `rgba(0,0,0,${amp * 0.9})`;
+    path(width * 0.45);
+    g.stroke();
+    // la crête elle-même, un peu plus nette (seulement sur les plis larges)
+    if (width >= 4) {
+      g.filter = `blur(${width * 0.18}px)`;
+      g.lineWidth = Math.max(1, width * 0.3);
+      g.strokeStyle = `rgba(255,255,255,${Math.min(1, amp * 1.2)})`;
+      path(0);
+      g.stroke();
+    }
+  };
+  // plis principaux : points d'ancrage (coins des soudures + points libres), segments entre voisins proches
+  const pts: Array<[number, number]> = [[18, ch + 10], [W - 18, ch + 10], [18, H - ch - 10], [W - 18, H - ch - 10]];
+  for (let i = 0; i < 14; i++) pts.push([30 + rr() * (W - 60), ch + 40 + rr() * (H - 2 * ch - 80)]);
+  for (let i = 0; i < pts.length; i++) {
+    const [x0, y0] = pts[i];
+    const near = pts.map((p, k) => ({ k, d: Math.hypot(p[0] - x0, p[1] - y0) })).filter((o) => o.k !== i && o.d < 520).sort((a, b) => a.d - b.d).slice(0, i < 4 ? 3 : 2);
+    for (const o of near) {
+      if (o.k < i) continue; // chaque paire une fois
+      const [x1, y1] = pts[o.k];
+      crease(x0, y0, x1, y1, 0.22 + rr() * 0.3, 4 + rr() * 8);
+    }
+  }
+  // plis secondaires : doux et étirés (le film se tend entre les plis principaux), plus denses près des soudures,
+  // orientés en gros comme les plis voisins → une surface froissée continue, pas des traits posés dessus
+  const mainDir = (x: number, y: number) => {
+    let best = Infinity, ang = 0;
+    for (let i = 0; i < pts.length; i++) for (let k = i + 1; k < pts.length; k++) {
+      const d = Math.hypot((pts[i][0] + pts[k][0]) / 2 - x, (pts[i][1] + pts[k][1]) / 2 - y);
+      if (d < best) { best = d; ang = Math.atan2(pts[k][1] - pts[i][1], pts[k][0] - pts[i][0]); }
+    }
+    return ang;
+  };
+  for (let i = 0; i < 110; i++) {
+    const nearSeam = rr() < 0.55;
+    const y = nearSeam ? (rr() < 0.5 ? ch + rr() * 150 : H - ch - rr() * 150) : ch + rr() * (H - 2 * ch);
+    const x = rr() * W;
+    const a = mainDir(x, y) + (rr() - 0.5) * 1.1, l = 40 + rr() * 140;
+    crease(x, y, x + Math.cos(a) * l, y + Math.sin(a) * l, 0.05 + rr() * 0.12, 5 + rr() * 9);
+  }
+  // froissé diffus : larges bosses molles (le film n'est jamais plat)
+  g.filter = 'blur(22px)';
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = rr() > 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+    g.beginPath();
+    g.ellipse(rr() * W, ch + rr() * (H - 2 * ch), 30 + rr() * 110, 14 + rr() * 50, rr() * Math.PI, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.filter = 'none';
+  // soudures : plates (le relief cranté vient du masque G)
+  g.fillStyle = '#808080';
+  g.fillRect(0, 0, W, ch);
+  g.fillRect(0, H - ch, W, ch);
+  applyGrain(g, W, H, 0.06, 3, 0);
+  return C;
 }
 
 /** mélange de deux couleurs #rrggbb (k = part de la 2e) */
@@ -430,13 +491,14 @@ export function createPackMaterials(art: PackArt, opts: { crinkle?: number } = {
     // (retours 06/11) sachet simple : le DOS est entièrement métallisé (métal brossé)
     const foil = side === 0 ? mk.r : art.metalBack ? float(1) : smoothstep(0.5, 0.6, mk.g.add(mk.r));
     const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(mk.g), 0, 1).normalize();
-    const crTex = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(side * 0.37));
+    const crTex = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(side * 0.37));
     m.colorNode = col.rgb;
     if (art.metalBack) {
       // (retours 06/11) sachet aluminium : métal partout, sans vernis
-      m.metalnessNode = float(0.9);
-      m.roughnessNode = mix(float(0.4), float(0.2), foil);
-      m.normalNode = bumpMap(crTex.r, float(opts.crinkle ?? 1.9), normalMap(encodeNormal(ridges)));
+      // (ultra-réalisme) aluminium brillant : métal pur, rugosité basse, relief des plis fort
+      m.metalnessNode = float(1);
+      m.roughnessNode = mix(float(0.22), float(0.14), foil);
+      m.normalNode = bumpMap(crTex.r, float(opts.crinkle ?? 3.2), normalMap(encodeNormal(ridges)));
     } else {
       m.metalnessNode = mix(float(0.15), float(0.95), foil);
       m.roughnessNode = mix(float(0.36), float(0.2), foil);

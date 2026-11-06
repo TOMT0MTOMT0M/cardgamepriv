@@ -18,7 +18,7 @@ export const DEFAULT_BACK: BackStyle = { ground: '#17130f', line: '#c9a86a', acc
  * (retours 06/11) DOS ALUMINIUM : brossé, premium, « no brand ». `ground` = teinte de l'alliage (le thème ne fait
  * qu'une nuance : gris neutre, légèrement violacé pour Gaming…), `line` = nuance des arêtes de gravure.
  */
-export const ALU_BACK: BackStyle = { ground: '#c6c9cf', line: '#f6f7f9', accent: '#2a2c30' };
+export const ALU_BACK: BackStyle = { ground: '#c3c6cc', line: '#f6f7f9', accent: '#2a2c30' };
 
 /** Rosace guillochée (hypotrochoïde) — motif de dos façon billet. */
 function guilloche(g: Ctx, cx: number, cy: number, R: number, r: number, d: number, turns: number, steps = 2400) {
@@ -33,7 +33,7 @@ function guilloche(g: Ctx, cx: number, cy: number, R: number, r: number, d: numb
 }
 
 /**
- * DOS ALUMINIUM BROSSÉ (retours 06/11) : plaque d'alliage brossée horizontalement, sans marque, avec les seules
+ * DOS ACIER BROSSÉ (retours 06/11) : plaque brossée VERTICALEMENT, sans marque, avec les seules
  * inscriptions nécessaires GRAVÉES à la CNC (en creux : fond plus sombre, arête claire en bas-droite, ombre en haut-
  * gauche) — le monogramme « B » au centre, « BÉBOU · CARTES » en bas, le thème et « MMXXVI » en haut, un filet gravé
  * qui suit le bord. Masques : R = gravure (creux, mat), G = relief (profondeur de la gravure), B = brossage (direction
@@ -54,17 +54,23 @@ export function paintBack(back: Ctx, masks: Ctx, style: BackStyle = ALU_BACK) {
     return g;
   })();
   back.fillRect(0, 0, BASE_W, BASE_H);
-  // ── brossage : stries horizontales fines, intensité aléatoire par ligne (déterministe)
+  // ── brossage VERTICAL (acier brossé, ultra-réalisme 06/11) : stries fines le long de la hauteur, intensité et
+  // longueur aléatoires (déterministes), quelques stries longues plus marquées, variation douce par bande
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let y = 0; y < BASE_H; y += 1) {
+  for (let x = 0; x < BASE_W; x += 1) {
     const v = rnd();
-    const a = v > 0.5 ? (v - 0.5) * 0.22 : 0;
-    const d = v < 0.5 ? (0.5 - v) * 0.24 : 0;
-    if (a) { back.fillStyle = alpha('#ffffff', a); back.fillRect(0, y, BASE_W, 1); }
-    if (d) { back.fillStyle = alpha('#000000', d); back.fillRect(0, y, BASE_W, 1); }
-    // quelques stries plus longues et plus marquées
-    if (rnd() < 0.04) { const x0 = rnd() * BASE_W, w = 60 + rnd() * 320; back.fillStyle = alpha(rnd() < 0.5 ? '#fff' : '#000', 0.18); back.fillRect(x0, y, w, 1); }
+    const a = v > 0.5 ? (v - 0.5) * 0.26 : 0;
+    const d = v < 0.5 ? (0.5 - v) * 0.28 : 0;
+    if (a) { back.fillStyle = alpha('#ffffff', a); back.fillRect(x, 0, 1, BASE_H); }
+    if (d) { back.fillStyle = alpha('#000000', d); back.fillRect(x, 0, 1, BASE_H); }
+    if (rnd() < 0.05) { const y0 = rnd() * BASE_H, h = 80 + rnd() * 420; back.fillStyle = alpha(rnd() < 0.5 ? '#fff' : '#000', 0.2); back.fillRect(x, y0, 1, h); }
+  }
+  // bandes de brossage légèrement inégales (passes de la brosse)
+  for (let k = 0; k < 9; k++) {
+    const x0 = rnd() * BASE_W, w = 40 + rnd() * 120;
+    back.fillStyle = alpha(rnd() < 0.5 ? '#fff' : '#000', 0.04 + rnd() * 0.05);
+    back.fillRect(x0, 0, w, BASE_H);
   }
   // bords de la plaque : léger chanfrein clair
   back.strokeStyle = alpha('#ffffff', 0.35);

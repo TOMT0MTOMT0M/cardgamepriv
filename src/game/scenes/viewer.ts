@@ -205,7 +205,7 @@ export function createViewerScene(): ViewerScene {
     },
     async setup(c) {
       ctx = c;
-      stage = createStage(c, { bg: ['#211c19', '#070606'], env: 'studio', fill: 0.6, fillPortrait: 0.66 });
+      stage = createStage(c, { bg: ['#211c19', '#070606'], env: 'studio', envIntensity: 1.2, fill: 0.6, fillPortrait: 0.66 });
       const key = new DirectionalLight(0xfff0e0, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);
