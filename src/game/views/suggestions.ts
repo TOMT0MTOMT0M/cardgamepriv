@@ -275,7 +275,7 @@ export function createSuggestionsView(backend: GameBackend, shell: Shell): Sugge
     enter() {
       shell.show(null);
       shell.setDimmed(true);
-      $<HTMLElement>('.sg-tabs button[data-tab=admin]').hidden = !backend.eco.snapshot?.isAdmin;
+      $<HTMLElement>('.sg-tabs button[data-tab=admin]').hidden = !(backend.eco.snapshot?.isAdmin || backend.eco.snapshot?.isModerator);
       if (tab === 'mine') void loadMine();
       if (tab === 'admin') void loadAdmin();
     },

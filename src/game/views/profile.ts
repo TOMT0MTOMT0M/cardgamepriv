@@ -286,6 +286,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (c) box.style.setProperty('--vc', c);
     else box.style.removeProperty('--vc');
   }
+  /** onglet → champ choisi par la couleur libre */
+  const pickField = (t: CosmTab): 'accent' | 'banner' | 'frame' | null => (t === 'accent' || t === 'banner' || t === 'frame' ? t : null);
   function newCosmetics(): Set<string> {
     const all = unlockedKeys();
     try {
@@ -410,13 +412,15 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         cls === 'cs-banner' ? `<span class="cs-sw" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring" style="--frame:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : cls === 'cs-accent' ? `<span class="cs-dot" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-vitrine' ? `<span class="cs-sw cs-vit" style="background:${c.css};--vc:${accentColor(cosmDraft.vitrineColor) ?? accentColor(cosmDraft.accent) ?? '#e8927c'}"></span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
       }${okSet.has(c.id) ? '' : `<small>${lockLine(c)}</small>`}</button>`)
     // couleur libre : juste après les couleurs débloquées (avant les verrouillées)
-    const pickCell =
-      cosmTab === 'accent'
-        ? (() => {
-            const custom = /^#[0-9a-f]{6}$/i.test(cosmDraft.accent ?? '') ? cosmDraft.accent! : '';
-            return `<label class="cs cs-accent cs-custom${custom ? ' on' : ''}" title="Choisis n’importe quelle couleur"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || accentColor(cosmDraft.accent) || ACCENTS[0].css}" aria-label="Couleur libre"></span><b>${custom ? esc(custom.toUpperCase()) : 'Libre…'}</b></label>`;
-          })()
-        : '';
+    // (retours 06/11) la couleur libre partout où on choisit une couleur : bannière, cadre, couleur du profil
+    const pf = pickField(cosmTab);
+    const pickCell = pf
+      ? (() => {
+          const v = cosmDraft[pf];
+          const custom = /^#[0-9a-f]{6}$/i.test(v ?? '') ? v! : '';
+          return `<label class="cs ${cls} cs-custom${custom ? ' on' : ''}" title="Choisis n’importe quelle couleur"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || accentColor(cosmDraft.accent) || ACCENTS[0].css}" aria-label="Couleur libre"></span><b>${custom ? esc(custom.toUpperCase()) : 'Libre…'}</b></label>`;
+        })()
+      : '';
     if (pickCell) cells.splice(items.filter((c) => okSet.has(c.id)).length, 0, pickCell);
     // vitrine : sa couleur, juste sous les fonds (couleurs débloquées + couleur libre)
     if (cosmTab === 'vitrine') {
@@ -517,14 +521,21 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     });
     // couleur libre : aperçu en direct pendant qu'on glisse (sans reconstruire le panneau, sinon le sélecteur se ferme)
     const pick = cosm.querySelector<HTMLInputElement>('.cs-custom input');
+    const pfield = pickField(cosmTab);
     pick?.addEventListener('input', () => {
-      cosmDraft.accent = pick.value.toLowerCase();
-      applyAccent(cosmDraft.accent);
-      const dot = cosm.querySelector<HTMLElement>('.cs-dot-pick');
+      if (!pfield) return;
+      cosmDraft[pfield] = pick.value.toLowerCase();
+      if (pfield === 'accent') applyAccent(cosmDraft.accent);
+      else {
+        prof = prof ? { ...prof, cosmetics: { ...cosmDraft, badges: [...(cosmDraft.badges ?? [])] } } : prof;
+        renderHead();
+      }
+      const dot = cosm.querySelector<HTMLElement>('.cs-custom .cs-dot-pick');
       if (dot) dot.style.background = pick.value;
     });
     pick?.addEventListener('change', () => {
-      cosmDraft.accent = pick.value.toLowerCase();
+      if (!pfield) return;
+      cosmDraft[pfield] = pick.value.toLowerCase();
       shell.sfx.tick(1.2, 0.04);
       prof = prof ? { ...prof, cosmetics: { ...cosmDraft, badges: [...(cosmDraft.badges ?? [])] } } : prof;
       renderHead();

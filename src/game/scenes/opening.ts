@@ -156,7 +156,12 @@ export interface OpeningScene extends Experiment {
   /** Booster affiché (id de thème ou 'bebou'). */
   setBooster(key: string, animate?: boolean, dir?: 1 | -1): void;
   /** Lance l'ouverture d'un pack tiré. Les cartes sont préparées (images, textures, shaders) pendant que le joueur brûle l'emballage. */
-  open(pack: SealedPack, ev: OpeningEvents): void;
+  /**
+   * `continued` (retours 06/11 : ×5 / ×10 = UN booster de 25 / 50 cartes) : la suite du même gros booster — pas
+   * d'emballage, les cartes arrivent directement en pile. `seriesLast` : dernier morceau (son de la dernière carte,
+   * éventail final) ; faux = le morceau se range vite et la suite enchaîne.
+   */
+  open(pack: SealedPack, ev: OpeningEvents, o?: { continued?: boolean; seriesLast?: boolean }): void;
   /** Prépare à l'avance les cartes d'un booster qui sera ouvert ensuite (série) : son ouverture sera instantanée. */
   preload(pack: SealedPack): void;
   /** Après la séquence secrète : affiche directement l'éventail, la carte secrète face visible. */
@@ -301,12 +306,16 @@ interface Slot {
 }
 
 /** Styles des boosters (un par thème + le bébou pack), tirés du registre des thèmes. */
+/** couleur du sachet de chaque booster (retours 06/11) */
+const SACHET: Record<string, string> = { bebou: '#8f939b', gaming: '#7448cf', pop: '#ec7a26', sport: '#2f9e5f', monde: '#3673d1' };
 function boosterStyles(): Record<string, PackStyle> {
   const out: Record<string, PackStyle> = {};
   // mentions au dos des boosters du jeu (celles du labo parlent d'illustrations procédurales)
   const backLines = ['5 cartes, dont une rare ou mieux.', 'Ne convient pas aux dragons de moins de trois ans.', 'Fabriqué entre nous. Avec soin.'];
   for (const t of THEMES) out[t.id] = { name: t.label, ...t.style, title: t.booster, series: `S É R I E   I  ·  ${t.label.toUpperCase()}`, tagline: themeTagline(t), backLines };
   out.bebou = { name: 'Bébou', ...BEBOU_PACK.style, title: BEBOU_PACK.booster, series: 'P A C K   D E   B A S E', tagline: BEBOU_PACK.tagline, backLines: [...backLines.slice(0, 2), 'Une carte secrète s’y cache peut-être.'] };
+  // (retours 06/11) sachets SIMPLES : une couleur par pack (gris, violet, orange, vert, bleu), le logo et le nom
+  for (const [k, c] of Object.entries(SACHET)) if (out[k]) Object.assign(out[k], { simple: true, ground: c });
   return out;
 }
 
@@ -355,13 +364,20 @@ export function createOpeningScene(): OpeningScene {
    * Allume la tranche d'une carte face cachée (teasing) : une note dont la hauteur suit le palier (3★ grave, 4★ plus
    * aiguë, or = accord) ; 1★ / 2★ restent éteintes. `at` en secondes dans `t`.
    */
+  /** (retours 06/11) carte muette : ni la dernière du booster, ni une 5★ / 6★ */
+  const quietCard = (rank: number, last: boolean) => !(last && seriesLast) && rank < 4;
+  /** dernier morceau d'un gros booster ×5 / ×10 (ou booster simple) */
+  let seriesLast = true;
+  /** les mêmes appels que ctx.sfx, sans aucun son */
+  const MUTE_SFX = new Proxy({}, { get: () => () => undefined }) as typeof ctx.sfx;
   function lightRim(t: gsap.core.Timeline, si: number, at: number) {
     const sl = slots[si];
     const v = TEASE[Math.min(6, sl.rr.rank)];
     if (v <= 0) return;
+    const isLast = order.length > 0 && si === order[order.length - 1];
     t.fromTo(sl.U.rim, { value: 0 }, { value: v, duration: 0.18, ease: EASE.glide, immediateRender: false,
       // une note douce par palier (3★ si5 · 4★ ré6 · or mi6 + scintillement) — charte sonore §A
-      onStart: () => { ctx.sfx.note(7 + Math.min(2, sl.rr.rank - 2), 0.06, 0.5); if (sl.rr.rank >= 4) ctx.sfx.tick(2.2, 0.03); } }, at);
+      onStart: () => { if (quietCard(sl.rr.rank, isLast)) return; ctx.sfx.note(7 + Math.min(2, sl.rr.rank - 2), 0.06, 0.5); if (sl.rr.rank >= 4) ctx.sfx.tick(2.2, 0.03); } }, at);
   }
   /** mode auto « rapide » (« Tout révéler », « 4★ et + ») : ouvertures d'emballage raccourcies (la série manuelle garde son rythme) */
   const autoQuick = () => auto.reveal || auto.minRank > 0;
@@ -982,11 +998,12 @@ export function createOpeningScene(): OpeningScene {
       .call(() => (B.spin = 0));
   }
 
-  function open(p: SealedPack, ev: OpeningEvents) {
+  function open(p: SealedPack, ev: OpeningEvents, o: { continued?: boolean; seriesLast?: boolean } = {}) {
     killAll();
     disposeSlots();
     pack = p;
     events = ev;
+    seriesLast = o.seriesLast ?? true;
     cursor = 0;
     curTier = 0;
     queued = false;
@@ -1023,6 +1040,31 @@ export function createOpeningScene(): OpeningScene {
     autoWait = false;
     phase = 'sealed';
     prepared = prepare(p);
+    if (o.continued) {
+      // suite du gros booster : l'emballage reste hors champ, les cartes montent du bas de l'écran jusqu'à la pile
+      phase = 'busy';
+      B.follow = 0;
+      B.y = -2.6;
+      if (packMeshMain) packMeshMain.visible = false;
+      if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = false;
+      void prepared.then(() => {
+        if (pack !== p) return;
+        tl = gsap.timeline();
+        const n = order.length;
+        order.forEach((si, k) => {
+          const s = slots[si];
+          Object.assign(s.p, { x: 0, y: -1.7, z: -STACK_DZ * (n - 1 - k), s: 1, flip: Math.PI, rz: (k - 2) * 0.012 });
+          tl!.to(s.p, { y: 0, duration: 0.55, ease: EASE.settle }, k * 0.03);
+        });
+        tl.call(() => {
+          phase = 'opened';
+          events.onOpened?.();
+          flushQueued();
+        }, [], 0.5);
+        lightRim(sideline(gsap.timeline()), order[0], 0.5);
+      });
+      return;
+    }
     tl = gsap.timeline();
     // déchirure : le booster reste au plan des cartes (z 0) → quand la pile le quitte (follow → 0) elle ne recule pas à travers lui
     tl.to(B, { z: style === 'burn' ? PACK_OPEN_Z : 0, y: 0, spin: Math.abs(B.spin) > Math.PI ? Math.sign(B.spin) * Math.PI * 2 : 0, s: 1, duration: 0.6, ease: EASE.glide });
@@ -1061,6 +1103,8 @@ export function createOpeningScene(): OpeningScene {
     const n = Math.min(6, s.rr.rank + 1);
     const tier = s.rr.tier;
     const mythic = tier >= 5 && !s.rr.secret;
+    const si = slots.indexOf(s);
+    const quiet = quietCard(s.rr.rank, order.length > 0 && si === order[order.length - 1]);
     // mythique : les 6 étoiles s'allument une à une, lentement, chacune avec son carillon (et un petit choc)
     const gap = mythic ? 0.34 : 0.1 + tier * 0.018;
     for (let k = 0; k < n; k++)
@@ -1073,7 +1117,8 @@ export function createOpeningScene(): OpeningScene {
             ctx.sfx.note(5 + k, 0.1 + k * 0.015, 1.2);
             shake.impulse((6 + k * 3) * (CALM ? 0.25 : 1));
             haptics.pulse(20 + k * 8);
-          } else if (tier >= 2) ctx.sfx.note(2 + tier + k, 0.05 + tier * 0.012, 0.5);
+          } else if (quiet) return;
+          else if (tier >= 2) ctx.sfx.note(2 + tier + k, 0.05 + tier * 0.012, 0.5);
           else ctx.sfx.tick(1.2 + k * 0.3, 0.05);
         },
       }, at + k * gap);
@@ -1123,7 +1168,8 @@ export function createOpeningScene(): OpeningScene {
     const holdT = cond ? cond.hold : beat.hold;
     curTier = T;
     revealed = false;
-    const sfx = ctx.sfx;
+    // (retours 06/11) au déballage, du son SEULEMENT pour la dernière carte — sauf une 5★ / 6★ avant elle
+    const sfx = quietCard(rr.rank, last) ? MUTE_SFX : ctx.sfx;
     kill();
     const main = (tl = gsap.timeline());
     // (audit UX2-06) écran court : la carte montrée remonte / rétrécit juste assez pour ne pas passer sous le panneau
@@ -1219,7 +1265,7 @@ export function createOpeningScene(): OpeningScene {
     }, [], pay);
     // la tranche s'éteint après l'impact
     main.to(s.U.rim, { value: 0, duration: mythic ? 0.6 : 0.9, ease: EASE.glide }, pay);
-    main.to(S, { flash: T >= 2 ? (0.35 + T * 0.16) * (CALM ? 0.4 : 1) : 0, ca: T >= 3 && !CALM ? 0.35 + (T - 3) * 0.3 : 0, glow: T >= 2 ? 0.8 + T * 0.25 : 0.15, trem: 0, duration: 0.05 }, pay)
+    main.to(S, { flash: T >= 2 ? (0.35 + T * 0.16) * (CALM ? 0.4 : 1) : 0, ca: T >= 5 && !CALM ? 0.25 : 0, /* (retours 06/11) plus de franges bleu / rouge sous la 6★ */ glow: T >= 2 ? 0.8 + T * 0.25 : 0.15, trem: 0, duration: 0.05 }, pay)
       .to(S, { flash: 0, ca: 0, dark: mythic ? 0.5 : 0, duration: 1.3, ease: EASE.glide }, pay + 0.08)
       .to(S, { glow: T >= 2 ? 0.2 + T * 0.06 : 0, duration: 2.2, ease: EASE.glide }, pay + 0.1)
       .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
@@ -1311,7 +1357,7 @@ export function createOpeningScene(): OpeningScene {
     const move = sideline(gsap.timeline());
     const s = slots[order[cursor]];
     const j = cursor;
-    move.to(s.p, { ...rowPlace(j), duration: 0.55, ease: EASE.glide, onStart: () => ctx.sfx.whoosh(0.25, 0.1) }, 0)
+    move.to(s.p, { ...rowPlace(j), duration: 0.55, ease: EASE.glide, onStart: () => !quietCard(s.rr.rank, false) && ctx.sfx.whoosh(0.25, 0.1) }, 0)
       .to(S, { glow: 0, duration: 0.4 }, 0)
       .set(s.U.lit, { value: 6 }, 0)
       .to(s.p, { holo: 1, duration: 0.4 }, 0);
@@ -1446,7 +1492,8 @@ export function createOpeningScene(): OpeningScene {
     curTier = 0;
     revealed = false;
     focusSlot = si;
-    const sfx = ctx.sfx;
+    // (retours 06/11) au déballage, du son SEULEMENT pour la dernière carte — sauf une 5★ / 6★ avant elle
+    const sfx = quietCard(rr.rank, last) ? MUTE_SFX : ctx.sfx;
     kill();
     const lay0 = fanLayout()[cursor];
     // mythique : la carte quitte l'éventail pour le centre de l'écran, en grand (plein écran) — après l'apparition
@@ -1531,7 +1578,7 @@ export function createOpeningScene(): OpeningScene {
     }, [], pay);
     if (mythic) main.to(s.U.rim, { value: 0, duration: 0.5 }, pay);
     else if (T >= 2) main.fromTo(s.U.rim, { value: 0.6 + T * 0.35 }, { value: 0, duration: 0.8, ease: EASE.glide, immediateRender: false }, pay);
-    main.to(S, { flash: (0.3 + T * 0.14) * (CALM ? 0.4 : 1), ca: T >= 3 && !CALM ? 0.3 + (T - 3) * 0.25 : 0, glow: T >= 2 ? 0.6 + T * 0.2 : 0.1, trem: 0, duration: 0.05 }, pay)
+    main.to(S, { flash: (0.3 + T * 0.14) * (CALM ? 0.4 : 1), ca: T >= 5 && !CALM ? 0.2 : 0, glow: T >= 2 ? 0.6 + T * 0.2 : 0.1, trem: 0, duration: 0.05 }, pay)
       .to(S, { flash: 0, ca: 0, dark: mythic ? 0.5 : 0, duration: 1.0, ease: EASE.glide }, pay + 0.08)
       .to(S, { glow: 0, duration: 1.6, ease: EASE.glide }, pay + 0.1)
       .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
@@ -1620,6 +1667,16 @@ export function createOpeningScene(): OpeningScene {
     queued = false;
     ctx.sfx.transpose = 0;
     autoWait = false;
+    if (!seriesLast) {
+      // morceau d'un gros booster : les cartes filent dans la rangée, sans éventail ni son, et la suite enchaîne
+      const tl3 = sideline(gsap.timeline({ delay: Math.min(delay, 0.35) }));
+      order.forEach((si, k) => tl3.to(slots[si].p, { ...rowPlace(k), flip: 0, duration: 0.45, ease: EASE.glide }, k * 0.03));
+      tl3.call(() => {
+        phase = 'done';
+        events.onDone?.();
+      }, [], 0.35);
+      return;
+    }
     const places = finalPlaces();
     const tl2 = sideline(gsap.timeline({ delay }));
     tl2.call(() => ctx.sfx.whoosh(0.45, 0.07), [], 0);

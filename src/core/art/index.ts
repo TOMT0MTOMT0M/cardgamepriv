@@ -253,7 +253,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   const fam = cardFamily(card.id);
   const uniLabel = fam?.family ?? card.uniName;
   const uni = uniLabel ? { ...uni0, name: uniLabel, short: uniLabel } : uni0;
-  dz.paint(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId), sub: fam?.sub, byline: POP_ARTISTS[card.id] });
+  dz.paint(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId), sub: fam?.sub, byline: POP_ARTISTS[card.id], artAspect: im && im.canvas.height ? im.canvas.width / im.canvas.height : undefined });
   masks.g.globalCompositeOperation = 'source-over';
   yield;
 
@@ -310,7 +310,8 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
  * monter la version du cache des cartes peintes (src/game/cardImages.ts).
  */
 export const LANDSCAPE: { design: string | null; ratio: number; except: (card: CardData) => boolean } = {
-  design: null,
+  // (retours 06/11) branché : le gabarit « Paysage » (designs/paysage.ts)
+  design: 'paysage',
   ratio: 1.2,
   except: (card) => isSecretPhotoSet(card.set) || card.id.startsWith('mrv-'),
 };

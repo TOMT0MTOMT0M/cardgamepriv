@@ -112,13 +112,34 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    * boosters scellés en un seul appel ; le suivant est préparé (cartes construites) pendant qu'on regarde le courant.
    */
   async function beginSeries(req: PackRequest, n: number, hi: boolean, all: boolean): Promise<SealedPack> {
-    const packs = n > 1 ? await backend.preparePacks(req, n) : [await backend.preparePack(req)];
+    const sealed = n > 1 ? await backend.preparePacks(req, n) : [await backend.preparePack(req)];
+    // (retours 06/11) ×5 / ×10 = UN booster de 25 / 50 cartes : les cartes de tous les boosters sont réparties de la
+    // moins rare à la plus rare (la meilleure du lot à la toute fin) ; mêmes cartes, mêmes probabilités
+    const packs = sealed.length > 1 ? spreadSeries(sealed) : sealed;
     const got = packs[0];
     pack = got;
     batch = newBatch(req, packs.length, got, hi, all);
     batch.queue = packs.slice(1);
     if (packs.length < n) toast(`Réserve : ${packs.length} booster${packs.length > 1 ? 's' : ''} sur ${n} ouverts.`, 'info');
     return got;
+  }
+
+  /**
+   * Gros booster (×5 / ×10) : les N boosters scellés, leurs cartes mises en commun et triées (moins rare → plus rare,
+   * la secrète en dernier), puis redistribuées en N morceaux montrés à la suite comme un seul booster. Chaque morceau
+   * garde l'id d'un vrai booster (crédit côté serveur) : les boosters sont pris du moins bon au meilleur, pour que le
+   * meilleur — celui qui annonce un gros tirage dans le fil — soit crédité en dernier, une fois sa carte montrée.
+   */
+  function spreadSeries(list: SealedPack[]): SealedPack[] {
+    const R: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
+    const best = (p: SealedPack) => Math.max(...p.cards.map((c) => R[c.rarity] ?? 0));
+    const real = list.map((p, i) => ({ p, i })).sort((a, b) => best(a.p) - best(b.p) || a.i - b.i).map((x) => x.p);
+    const cards = list.flatMap((p) => p.cards).map((c, i) => ({ c, i })).sort((a, b) => (R[a.c.rarity] ?? 0) - (R[b.c.rarity] ?? 0) || a.i - b.i).map((x) => x.c);
+    let at = 0;
+    return real.map((p) => {
+      const chunk = cards.slice(at, (at += p.cards.length));
+      return { ...p, cards: chunk };
+    });
   }
 
   /**
@@ -1027,7 +1048,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     document.body.classList.toggle('opening', m === 'opening');
   }
 
-  function start(p: SealedPack) {
+  function start(p: SealedPack, continued = false) {
     // le bouton « Ouvrir » (désormais caché) ne doit pas garder le focus : sinon « maintenir Espace » l'activerait au
     // lieu de brûler l'emballage
     (document.activeElement as HTMLElement | null)?.blur?.();
@@ -1043,12 +1064,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     // aide au premier geste (UX2-08) : seulement en ouverture manuelle, tant que ce geste n'a jamais réussi
     const coachSt = st === 'burn' ? 'hold' : st;
     const autoOpen = !!batch && (batch.hi || batch.all);
-    const coachOn = !autoOpen && !coachSeen(coachSt);
+    const coachOn = !autoOpen && !continued && !coachSeen(coachSt);
     coach.className = `coach c-${coachSt}`;
     coach.hidden = !coachOn;
     requestAnimationFrame(syncInsets);
     let shown = 0; // index (ordre de révélation) de la dernière carte retournée
-    const series = batch && batch.total > 1 ? `BOOSTER ${batch.done.length + 1}/${batch.total} · ` : '';
+    // (retours 06/11) ×5 / ×10 = un seul gros booster : le compteur court sur toutes ses cartes (« 12 / 25 »)
+    const series = '';
+    const off = batch && batch.total > 1 ? batch.done.reduce((a, d) => a + d.cards.length, 0) : 0;
+    const all = batch && batch.total > 1 ? off + p.cards.length + batch.queue.reduce((a, d) => a + d.cards.length, 0) : p.cards.length;
+    const seriesLast = !batch || batch.queue.length === 0;
     skipEl.hidden = false;
     skipAll.disabled = skipHi.disabled = false;
     disarmSkip();
@@ -1058,7 +1083,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     applyAuto();
     // série (2e booster et suivants) ou « 4★ et + » : l'emballage brûle tout seul
     if (batch && (batch.hi || batch.all)) hintTxt.textContent = 'Ouverture…';
-    if (series) setCount(series.replace(/ · $/, ''));
+    if (batch && batch.total > 1) setCount(`${off ? `${off} / ` : ''}${all} cartes`);
+    if (continued) {
+      // suite du gros booster : pas d'emballage à ouvrir
+      coach.hidden = true;
+      hint.classList.remove('hold');
+      hintTxt.textContent = HINT.reveal;
+    }
     void preloadArt(p.cards.map((c) => c.cardId)); // en parallèle de la scène : images prêtes au plus tôt
     const secret = p.cards.find((c) => rarity(c.rarity).secret);
     if (secret) void prepareSecret(secret);
@@ -1084,10 +1115,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         else coach.hidden = true;
         hint.classList.remove('hold');
         hintTxt.textContent = HINT.reveal;
-        setCount(`${series}1 / ${p.cards.length}`);
+        setCount(`${series}${off + 1} / ${all}`);
       },
       onCard(i, card, total) {
-        setCount(`${series}${i + 1} / ${total}`);
+        setCount(`${series}${off + i + 1} / ${batch && batch.total > 1 ? all : total}`);
         shown = i;
         // mythique : la séquence plein écran (mythic-veil) tient lieu de fiche et d'indication ; le titre « MYTHIQUE »
         // n'arrive qu'après l'impact (réf. motion §7.2 : titre à +1,2 s)
@@ -1106,7 +1137,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         mythicVeil.hidden = true;
         skipEl.hidden = false;
         hintTxt.textContent = HINT.reveal;
-        setCount(`${series}${Math.min(p.cards.length, shown + 2)} / ${p.cards.length}`);
+        setCount(`${series}${off + Math.min(p.cards.length, shown + 2)} / ${all}`);
       },
       onMythic(card) {
         // 6★ PLEIN ÉCRAN : tout s'efface, pause dramatique, puis la carte, ses étoiles une à une
@@ -1129,7 +1160,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         info.classList.remove('in');
         hint.hidden = false;
         hintTxt.textContent = HINT.last;
-        setCount(`${series}${p.cards.length} / ${p.cards.length}`);
+        setCount(`${series}${off + p.cards.length} / ${all}`);
       },
       onPokemon(card) {
         void runWild(card);
@@ -1162,7 +1193,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       onPick(card) {
         void viewCard(card);
       },
-    });
+    }, { continued, seriesLast });
   }
 
   /** « 2 / 5 » : petit rebond du compteur quand il change */
@@ -1382,15 +1413,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       if (b.done.some((d) => d.id === next.id)) return showSummary();
       b.current = next;
       pack = next;
-      // (audit UX2-04) mode auto (« Tout révéler » / « 4★ et + ») : temps morts réduits ; manuel : rythme d'origine
-      const fast = b.hi || b.all;
-      await new Promise((r) => setTimeout(r, fast ? 120 : 380));
+      // (retours 06/11) gros booster ×5 / ×10 : la suite des cartes arrive tout de suite, sans nouvel emballage
+      await new Promise((r) => setTimeout(r, 60));
       if (batch !== b || b.skipping) return;
-      opening.reset();
-      // (en auto, l'entrée du booster de vitrine chevauche l'ouverture suivante : open() reprend la pose en cours)
-      await new Promise((r) => setTimeout(r, fast ? 60 : 220));
-      if (batch !== b || b.skipping) return;
-      start(next);
+      start(next, true);
       return;
     }
     showSummary();

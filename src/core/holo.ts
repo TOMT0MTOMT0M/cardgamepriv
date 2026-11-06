@@ -60,7 +60,8 @@ export interface HoloOptions {
  * une valeur agit sur toutes les cartes sans recompiler. `setHoloReduced` (option « Effets réduits ») les baisse.
  */
 export const HOLO_LIMITS = {
-  full: { image: 0.2, border: 1, glint: 1 },
+  // (retours 06/11 : « réduire les effets sur les cartes, les bleues / rouges c'est trop ») : plafonds baissés
+  full: { image: 0.1, border: 0.72, glint: 0.55 },
   reduced: { image: 0.08, border: 0.55, glint: 0.4 },
 } as const;
 export const holoFx = {
@@ -106,7 +107,8 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
     extraEmissive: uniform(0),
   };
   const L = cardLayers(art, { bg: 0.03, subject: 0.014, fg: -0.003 }, undefined, { aoFromFrame: opts.aoFromFrame });
-  const winFoil = L.window.mul(L.subject.a.oneMinus()).mul(opts.windowFoil ?? (tier >= 3 ? 1 : 0));
+  // (retours 06/11) le fond d'illustration ne s'irise plus dès l'épique (4★) : à partir de la légendaire, et moins
+  const winFoil = L.window.mul(L.subject.a.oneMinus()).mul(opts.windowFoil ?? (tier >= 4 ? 0.7 : 0));
   const subjFoil = L.window.mul(L.subject.a).mul(L.fx.g).mul(opts.subjectFoil ?? (tier >= 5 ? 0.8 : 0));
   // ── zones : cadre (opaque) + bande de bordure = effet plein ; illustration = effet plafonné (holoFx.image)
   const cuv = uv().sub(0.5).mul(vec2(CARD.w, CARD.h));

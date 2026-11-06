@@ -2,6 +2,7 @@ import { BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshPhysic
 import { bumpMap, float, mix, normalMap, positionLocal, texture, uv, vec2, vec3, smoothstep, sin } from 'three/tsl';
 import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, type Ctx } from './art/canvas';
 import { FONT_MONO, FONT_TITLE } from './art/frame';
+import { FONT_DISPLAY, FONT_TEXT } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal } from './tsl';
 
@@ -23,6 +24,11 @@ export interface PackStyle {
   tagline?: string;
   /** petites lignes imprimées au dos (défaut : les mentions du labo) */
   backLines?: string[];
+  /**
+   * (retours 06/11) sachet SIMPLE du jeu : une couleur unie, le logo « BÉBOU cartes » et le nom du pack, rien d'autre ;
+   * dos en métal brossé de la même teinte. `ground` = la couleur du sachet.
+   */
+  simple?: boolean;
 }
 
 export const PACK_STYLES: Record<string, PackStyle> = {
@@ -115,12 +121,15 @@ export interface PackArt {
   crinkle: Texture;
   /** R foil, G relief soudures, B zone de déchirure (ligne pointillée) */
   masks: Texture;
+  /** dos entièrement métallisé (sachet simple du jeu) */
+  metalBack?: boolean;
   dispose(): void;
 }
 
 /** Visuel procédural du booster (marque inventée « Card Lab »). */
 export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Promise<PackArt> {
   await ensureFonts();
+  if (style.simple) return simplePackArt(style);
   const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
   const g = F.g;
   g.fillStyle = linear(g, 0, 0, PW, PH, [[0, style.ground2], [0.55, style.ground], [1, style.ground]]);
@@ -256,6 +265,107 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   return { front, back, masks, crinkle, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
 }
 
+/**
+ * Sachet SIMPLE (retours 06/11) : « juste le Bébou Cartes qu'on a en logo + le nom du pack en dessous, un sachet tout
+ * simple » — couleur unie avec un reflet doux, logo et nom au centre (le logo et les soudures en foil), aucune autre
+ * écriture. Dos : métal brossé de la même teinte, le logo en petit (le matériau le rend entièrement métallique).
+ */
+async function simplePackArt(style: PackStyle): Promise<PackArt> {
+  try {
+    await Promise.all([document.fonts.load(`400 120px ${FONT_DISPLAY}`), document.fonts.load(`700 40px ${FONT_TEXT}`), document.fonts.load(`600 26px ${FONT_TEXT}`)]);
+  } catch {
+    /* polices de repli */
+  }
+  const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
+  const base = style.ground;
+  const cx = PW / 2, cy = PH * 0.45;
+  const ch = (PACK.crimp / PACK.h) * PH;
+  const logo = (g: Ctx, y: number, k: number, ink: string) => {
+    g.textAlign = 'center';
+    g.fillStyle = ink;
+    g.font = `400 ${Math.round(128 * k)}px ${FONT_DISPLAY}`;
+    g.fillText('BÉBOU', cx, y);
+    g.font = `600 ${Math.round(30 * k)}px ${FONT_TEXT}`;
+    const t = 'C A R T E S';
+    g.fillText(t, cx, y + 52 * k);
+  };
+  // ── face : couleur unie, reflet vertical doux, bords un rien plus sombres
+  const g = F.g;
+  g.fillStyle = base;
+  g.fillRect(0, 0, PW, PH);
+  g.fillStyle = linear(g, 0, 0, PW, 0, [[0, alpha('#000', 0.22)], [0.18, alpha('#000', 0)], [0.38, alpha('#fff', 0.16)], [0.5, alpha('#fff', 0.05)], [0.82, alpha('#000', 0)], [1, alpha('#000', 0.26)]]);
+  g.fillRect(0, 0, PW, PH);
+  g.fillStyle = linear(g, 0, 0, 0, PH, [[0, alpha('#fff', 0.06)], [0.5, alpha('#fff', 0)], [1, alpha('#000', 0.18)]]);
+  g.fillRect(0, 0, PW, PH);
+  g.save();
+  g.shadowColor = alpha('#000', 0.28);
+  g.shadowBlur = 18;
+  g.shadowOffsetY = 6;
+  logo(g, cy, 1, '#ffffff');
+  g.restore();
+  // nom du pack sous le logo
+  const title = (style.title ?? style.name).toUpperCase();
+  g.fillStyle = alpha('#ffffff', 0.92);
+  g.textAlign = 'center';
+  const tf = fitFont(g, title, 700, 46, PW - 140, FONT_TEXT);
+  g.font = tf;
+  g.letterSpacing = '6px';
+  g.fillText(title, cx, cy + 170);
+  g.letterSpacing = '0px';
+  g.fillStyle = alpha('#ffffff', 0.55);
+  g.fillRect(cx - 34, cy + 112, 68, 3);
+  crimpBands(g, mixHex(base, '#ffffff', 0.18));
+  applyGrain(g, PW, PH, 0.05, 9, 30);
+  // ── dos : métal brossé de la même teinte, logo en petit
+  const b = B.g;
+  b.fillStyle = mixHex(base, '#d8dbe0', 0.35);
+  b.fillRect(0, 0, PW, PH);
+  for (let y = 0; y < PH; y += 1) {
+    const v = Math.sin(y * 12.9898) * 43758.5453;
+    const n = v - Math.floor(v);
+    b.fillStyle = n > 0.5 ? alpha('#ffffff', (n - 0.5) * 0.18) : alpha('#000000', (0.5 - n) * 0.2);
+    b.fillRect(0, y, PW, 1);
+  }
+  b.fillStyle = linear(b, 0, 0, PW, PH, [[0, alpha('#fff', 0.18)], [0.45, alpha('#fff', 0)], [0.6, alpha('#000', 0.12)], [1, alpha('#fff', 0.1)]]);
+  b.fillRect(0, 0, PW, PH);
+  b.globalAlpha = 0.55;
+  logo(b, PH * 0.5, 0.55, mixHex(base, '#000000', 0.45));
+  b.globalAlpha = 1;
+  crimpBands(b, mixHex(base, '#ffffff', 0.18));
+  // ── masques : soudures + logo en foil ; relief des soudures ; ligne de déchirure (invisible) pour la découpe
+  const m = M.g;
+  m.fillStyle = '#000';
+  m.fillRect(0, 0, PW, PH);
+  m.globalCompositeOperation = 'lighter';
+  m.fillStyle = 'rgb(255,0,0)';
+  m.fillRect(0, 0, PW, ch);
+  m.fillRect(0, PH - ch, PW, ch);
+  logo(m, cy, 1, 'rgb(105,0,0)'); // logo à demi métallisé (plein métal : il reflétait le noir du décor)
+  m.fillStyle = 'rgb(0,255,0)';
+  for (const y0 of [0, PH - ch]) for (let x = 0; x < PW; x += 6) m.fillRect(x, y0, 3, ch);
+  const tearY = PH - ch - 40;
+  m.fillStyle = 'rgb(0,0,255)';
+  m.fillRect(0, PH - tearY - 2, PW, 4);
+  const C = crinkleCanvas();
+  const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
+  const tex = (c: HTMLCanvasElement, color: boolean) => {
+    const t = new CanvasTexture(c);
+    t.colorSpace = color ? SRGBColorSpace : NoColorSpace;
+    t.anisotropy = aniso;
+    return t;
+  };
+  const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false);
+  crinkle.wrapS = crinkle.wrapT = 1000;
+  return { front, back, masks, crinkle, metalBack: true, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
+}
+
+/** mélange de deux couleurs #rrggbb (k = part de la 2e) */
+function mixHex(a: string, b: string, k: number): string {
+  const p = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const A = p(a), Bc = p(b);
+  return `#${A.map((v, i) => Math.round(v + (Bc[i] - v) * k).toString(16).padStart(2, '0')).join('')}`;
+}
+
 let crinkleShared: { c: HTMLCanvasElement } | null = null;
 /**
  * Froissé : grands plis + froissé fin, cuit une fois (bien moins cher qu'un bruit par pixel). Graine fixe → identique
@@ -310,12 +420,13 @@ export function createPackMaterials(art: PackArt, opts: { crinkle?: number } = {
     const uvn = uv();
     const mk = texture(art.masks, uvn);
     const col = texture(map, uvn);
-    const foil = side === 0 ? mk.r : smoothstep(0.5, 0.6, mk.g.add(mk.r));
+    // (retours 06/11) sachet simple : le DOS est entièrement métallisé (métal brossé)
+    const foil = side === 0 ? mk.r : art.metalBack ? float(1) : smoothstep(0.5, 0.6, mk.g.add(mk.r));
     const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(mk.g), 0, 1).normalize();
     const crTex = texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(side * 0.37));
     m.colorNode = col.rgb;
     m.metalnessNode = mix(float(0.15), float(0.95), foil);
-    m.roughnessNode = mix(float(0.36), float(0.2), foil);
+    m.roughnessNode = side === 1 && art.metalBack ? float(0.3) : mix(float(0.36), float(0.2), foil);
     m.normalNode = bumpMap(crTex.r, float(opts.crinkle ?? 1.4), normalMap(encodeNormal(ridges)));
     m.clearcoatNode = float(0.6);
     m.clearcoatRoughnessNode = float(0.12);

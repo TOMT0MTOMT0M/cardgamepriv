@@ -43,7 +43,7 @@ const isWonderCard = (cardId: string) => cardId.startsWith('mrv-');
  */
 export interface ViewerScene extends Experiment {
   /** `dir` : on passe à la carte suivante (1) ou précédente (-1) → courte rotation latérale au lieu du grand tour */
-  show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1 }): Promise<void>;
+  show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1; quiet?: boolean }): Promise<void>;
   /** Vrai si le point (NDC −1..1) est sur la carte : un toucher ailleurs ferme la visionneuse (« clic hors zone »). */
   hits(ndcX: number, ndcY: number): boolean;
 }
@@ -182,23 +182,25 @@ export function createViewerScene(): ViewerScene {
       if (opts?.dir) tl.to(haloT, { k: haloK, duration: 0.6, ease: EASE.glide }, 0);
       else tl.fromTo(haloT, { k: 0 }, { k: haloK, duration: 1.1, ease: EASE.glide }, 0.2);
       const dir = opts?.dir ?? 0;
+      // (retours 06/11) `quiet` : aucun son (collection — on y feuillette beaucoup de cartes)
+      const sfx = opts?.quiet ? null : ctx.sfx;
       let at = 0.9;
       if (dir) {
         // carte voisine : elle arrive de côté en pivotant d'un quart de tour (feuilleter un classeur)
         Object.assign(st, { spin: -dir * Math.PI * 0.5, s: 0.94, z: -0.08, x: dir * 0.32 });
-        tl.to(st, { spin: 0, x: 0, z: 0, s: 1, duration: 0.5, ease: EASE.glide, onStart: () => ctx.sfx.whoosh(0.22, 0.05) }, 0);
+        tl.to(st, { spin: 0, x: 0, z: 0, s: 1, duration: 0.5, ease: EASE.glide, onStart: () => sfx?.whoosh(0.22, 0.05) }, 0);
         at = 0.3;
       } else {
         Object.assign(st, { spin: Math.PI, s: 0.85, z: -0.3, x: 0 });
         tl.to(st, { z: 0, s: 1, duration: 0.7, ease: EASE.glide }, 0)
-          .to(st, { spin: Math.PI * 2, duration: 1.0, ease: springCurve(0.55, 11), onStart: () => ctx.sfx.whoosh(0.35, 0.08) }, 0.1)
+          .to(st, { spin: Math.PI * 2, duration: 1.0, ease: springCurve(0.55, 11), onStart: () => sfx?.whoosh(0.35, 0.08) }, 0.1)
           .call(() => (st.spin = 0), [], 1.1);
       }
       const n = Math.min(6, rr.rank + 1);
       const gap = (dir ? 0.06 : 0.1) + rr.tier * 0.015;
-      for (let k = 0; k < n; k++) tl.to(f.lit, { value: k + 1, duration: 0.12, onStart: () => ctx.sfx.tick(1 + k * 0.14, 0.06 + rr.tier * 0.012) }, at + k * gap);
+      for (let k = 0; k < n; k++) tl.to(f.lit, { value: k + 1, duration: 0.12, onStart: () => sfx?.tick(1 + k * 0.14, 0.06 + rr.tier * 0.012) }, at + k * gap);
       const end = at + n * gap;
-      tl.to(f.flash, { value: 1, duration: 0.07, onStart: () => ctx.sfx.chime(Math.max(1, rr.tier), 0.08 + rr.tier * 0.02) }, end)
+      tl.to(f.flash, { value: 1, duration: 0.07, onStart: () => sfx?.chime(Math.max(1, rr.tier), 0.08 + rr.tier * 0.02) }, end)
         .to(f.flash, { value: 0, duration: 1.2, ease: EASE.glide }, end + 0.07);
     },
     async setup(c) {

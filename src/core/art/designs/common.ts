@@ -25,6 +25,8 @@ export interface DesignCtx {
   sub?: string;
   /** Album / Chanson : l'artiste (« ANDREA BOCELLI »), imprimé en bas à gauche */
   byline?: string;
+  /** largeur / hauteur de l'illustration (gabarit Paysage : position de la bande de la photo) */
+  artAspect?: number;
 }
 
 /** Texte espacé qui rétrécit (police ≤ size) pour tenir dans maxW. `font` contient « {s} ». */

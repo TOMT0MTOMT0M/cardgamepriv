@@ -9,7 +9,7 @@ import '@fontsource/ibm-plex-mono/500.css';
  * fichier et fonts.css ; `FONT_VERSION` entre dans la clé du cache des cartes peintes (src/game/cardImages.ts) : les
  * anciennes cartes sont repeintes toutes seules.
  */
-export const FONT_VERSION = 'bf1';
+export const FONT_VERSION = 'bf2';
 /** gros titres seulement (logo, titres de page, moments forts) */
 export const FONT_DISPLAY = '"Matcha World", "Bold Frame", "IBM Plex Mono", system-ui, sans-serif';
 /** titres, noms, texte courant (graisse 400 / 600 / 700 = les 3 Bold Frame) */

@@ -1532,11 +1532,11 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (!open || at !== i) return;
     shell.setDimmed(false);
     shell.show('viewer');
-    void viewer.show(b.id, b.r, dir ? { dir } : undefined);
+    // (retours 06/11) pas de son quand on ouvre une carte de la collection
+    void viewer.show(b.id, b.r, dir ? { dir, quiet: true } : { quiet: true });
   }
   const step = (d: 1 | -1) => {
     if (!open || !browse[at + d]) return;
-    shell.sfx.tick(1.3, 0.04);
     void openCard(at + d, d);
   };
   function closeViewer() {

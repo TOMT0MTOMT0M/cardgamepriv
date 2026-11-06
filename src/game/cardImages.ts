@@ -24,7 +24,7 @@ const SCALE = 0.36; // 276 × 386 px : net dans une tuile de ~130 px en DPR 2–
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
-const CACHE = 'bebou-cartes-v4'; // v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
+const CACHE = 'bebou-cartes-v5'; // v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
 // (bug du « placeholder fantôme » : une carte peinte en design typographique avant d'avoir son illustration restait
 // figée ainsi dans le cache du joueur, même après l'ajout de l'image)
 /**

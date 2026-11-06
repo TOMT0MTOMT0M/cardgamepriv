@@ -10,7 +10,7 @@ import { catalogCard } from './cardsCatalog';
  *  - `design` : une carte à refaire (mauvaise photo…) + le lien (ou le fichier) d'une image proposée à la place ;
  *  - `ajout` : une carte / une série à ajouter (anime, joueur, jeu…) ;
  *  - `autre` : texte libre.
- * Côté admin (users.isAdmin) : la file, filtrable par statut ; statuts nouvelle / vue / acceptée / refusée / traitée.
+ * Côté modération (users.isModerator — Hugo et Tom — ou users.isAdmin) : la file, filtrable par statut ; statuts nouvelle / vue / acceptée / refusée / traitée.
  */
 const kindV = v.union(v.literal('bug'), v.literal('design'), v.literal('ajout'), v.literal('autre'));
 const statusV = v.union(v.literal('nouvelle'), v.literal('vue'), v.literal('acceptee'), v.literal('refusee'), v.literal('traitee'));
@@ -108,7 +108,7 @@ export const adminList = query({
   args: { sessionToken: v.string(), status: v.optional(statusV) },
   handler: async (ctx, { sessionToken, status }) => {
     const user = await requireUser(ctx, sessionToken);
-    if (!user.isAdmin) throw new ConvexError('Réservé aux admins.');
+    if (!canModerate(user)) throw new ConvexError('Réservé aux modérateurs.');
     const rows = status
       ? await ctx.db.query('suggestions').withIndex('by_status', (q) => q.eq('status', status)).order('desc').take(200)
       : await ctx.db.query('suggestions').order('desc').take(200);
@@ -125,9 +125,12 @@ export const setStatus = mutation({
   args: { sessionToken: v.string(), id: v.id('suggestions'), status: statusV, adminNote: v.optional(v.string()) },
   handler: async (ctx, { sessionToken, id, status, adminNote }) => {
     const user = await requireUser(ctx, sessionToken);
-    if (!user.isAdmin) throw new ConvexError('Réservé aux admins.');
+    if (!canModerate(user)) throw new ConvexError('Réservé aux modérateurs.');
     const s = await ctx.db.get(id);
     if (!s) throw new ConvexError('Suggestion introuvable.');
     await ctx.db.patch(id, { status, updatedAt: Date.now(), ...(adminNote !== undefined ? { adminNote: adminNote.trim().slice(0, 500) || undefined } : {}) });
   },
 });
+
+/** (retours 06/11) modérateurs des suggestions : Hugo et Tom (users.isModerator), et les admins */
+export const canModerate = (u: { isAdmin?: boolean; isModerator?: boolean }) => !!u.isAdmin || !!u.isModerator;

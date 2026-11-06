@@ -4,6 +4,7 @@ import type { Doc } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
 import { rarityValidator, type RarityId } from './cardsCatalog';
 import { lockedCards } from './trades';
+import { canModerate } from './suggestions';
 import { addCoins, bumpWeekly, coinsOf, econOf } from './econLib';
 import { applyRegen } from '../src/core/packRegen';
 import { touchStreak } from '../src/core/streak';
@@ -69,6 +70,9 @@ export const state = query({
       completions: claimableCompletions(owned, econ.completions).map((s) => ({ id: s.id, label: s.label, kind: s.kind, size: s.cards.length, reward: s.reward })),
       achievements: { stats, claimable: claimableAchievements(stats, econ.achievements).map((a) => a.id) },
       isAdmin: !!u.isAdmin,
+      // (retours 06/11) modération des suggestions : nombre de nouvelles (pastille du menu)
+      isModerator: canModerate(u),
+      suggestionsNew: canModerate(u) ? (await ctx.db.query('suggestions').withIndex('by_status', (q) => q.eq('status', 'nouvelle')).take(99)).length : 0,
       packShop: { price: PACK_PRICE, left: packBuysLeft(econ, missionDay(now)) },
     };
   },

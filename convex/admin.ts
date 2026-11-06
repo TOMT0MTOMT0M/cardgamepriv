@@ -143,6 +143,37 @@ export const setAdmin = internalMutation({
 });
 
 /**
+ * Modérateurs des suggestions (retours 06/11 : Hugo et Tom) — reçoivent la file des suggestions (onglet Suggestions,
+ * pastille dans le menu) et changent leur statut.
+ *   npx convex run admin:setModerator '{"name":"hugo"}'
+ *   npx convex run admin:setModerators            (Tom et Hugo d'un coup ; lancé à chaque mise en ligne)
+ */
+export const setModerator = internalMutation({
+  args: { name: v.string(), on: v.optional(v.boolean()) },
+  handler: async (ctx, { name, on }) => {
+    const user = await findUser(ctx, name);
+    await ctx.db.patch(user._id, { isModerator: on ?? true });
+    return `${user.displayName} (@${user.username}) : modérateur ${on === false ? 'retiré' : 'activé'}`;
+  },
+});
+export const setModerators = internalMutation({
+  args: { names: v.optional(v.array(v.string())) },
+  handler: async (ctx, { names }) => {
+    const out: string[] = [];
+    for (const n of names ?? ['tom', 'hugo']) {
+      try {
+        const user = await findUser(ctx, n);
+        if (!user.isModerator) await ctx.db.patch(user._id, { isModerator: true });
+        out.push(`${user.displayName} (@${user.username}) : modérateur`);
+      } catch (e) {
+        out.push(`« ${n} » : ${(e as Error).message.slice(0, 160)}`);
+      }
+    }
+    return out;
+  },
+});
+
+/**
  * Ajuste les pièces d'un joueur (test, correction après une alerte). Journalisé (« admin »).
  *   npx convex run admin:grantCoins '{"name":"tom","amount":5000}'
  */

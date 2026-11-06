@@ -89,3 +89,18 @@ export function rollPack(req: PackRequest, rand: () => number = Math.random): Ro
   }
   return out;
 }
+
+/**
+ * (retours 06/11) VRAIE chance qu'UNE carte précise tombe dans un booster (au moins une fois) : les mêmes poids que le
+ * tirage (4 emplacements libres + 1 garanti rare ou mieux), puis 1 chance sur le nombre de cartes de son étoile dans le
+ * pool du booster. Pity et Bébous mis à part (ils ne changent pas la chance d'une carte ordinaire).
+ */
+export function cardPackChance(req: PackRequest, rarity: string): number {
+  if (rarity === 'secret' || !isValidPackRequest(req)) return 0;
+  const n = poolFor(req).get(rarity as StarRarityId)?.length ?? 0;
+  if (!n) return 0;
+  const r = rarity as StarRarityId;
+  const free = (SLOT_WEIGHTS[r] ?? 0) / 100 / n;
+  const sure = (GUARANTEED_WEIGHTS[r] ?? 0) / 100 / n;
+  return 1 - Math.pow(1 - free, 4) * (1 - sure);
+}

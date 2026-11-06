@@ -149,7 +149,9 @@ top.innerHTML = `
     <a href="#/classement" data-r="classement">Classement</a>
     <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
     <a href="#/amis" data-r="amis">Amis<b class="badge am-badge" hidden></b></a>
-    <a href="#/suggestions" data-r="suggestions">Suggestions</a>
+    <a href="#/suggestions" data-r="suggestions">Suggestions<b class="badge sg-badge" hidden></b></a>
+    <a href="#/maj" data-r="maj">Mises à jour</a>
+    <a href="#/tuto" data-r="tuto">Tutoriel</a>
     <i class="nav-pill" aria-hidden="true"></i>
     <button class="nav-more" tabindex="-1" aria-hidden="true">›</button>
   </nav>
@@ -531,6 +533,16 @@ backend.eco.onChange((snap) => {
   if (n !== was) placePill(false);
 });
 backend.eco.onChange(() => syncMissionBadge());
+/** (retours 06/11) modérateurs (Hugo, Tom) : pastille des nouvelles suggestions sur l'onglet */
+const sgBadge = top.querySelector<HTMLElement>('.sg-badge');
+backend.eco.onChange((snap) => {
+  if (!sgBadge) return;
+  const n = snap?.isModerator || snap?.isAdmin ? snap.suggestionsNew ?? 0 : 0;
+  const was = sgBadge.hidden ? 0 : Number(sgBadge.textContent);
+  sgBadge.hidden = n === 0;
+  sgBadge.textContent = String(n);
+  if (n !== was) placePill(false);
+});
 /** Portefeuille (pièces) : solde dans l'en-tête, « +N » qui s'envole à chaque gain, pastille s'il y a quelque chose à prendre. */
 let wallet: ReturnType<typeof createWallet> | null = null;
 let lastCoins = -1;
@@ -683,6 +695,8 @@ const TITLES: Record<string, string> = {
   classement: 'Bébou — classement',
   succes: 'Bébou — succès',
   suggestions: 'Bébou — suggestions',
+  maj: 'Bébou — mises à jour',
+  tuto: 'Bébou — tutoriel',
 };
 
 /** Page du jeu : son élément et ses entrées / sorties (route()). */
@@ -706,6 +720,8 @@ const PAGE_MODULES = {
   classement: () => import('./views/ranking'),
   succes: () => import('./views/succes'),
   suggestions: () => import('./views/suggestions'),
+  maj: () => import('./views/infos'),
+  tuto: () => import('./views/infos'),
 };
 type PageKey = keyof typeof PAGE_MODULES;
 const isPage = (k: string): k is PageKey => k in PAGE_MODULES;
@@ -778,6 +794,8 @@ async function boot() {
     classement: (m) => m.createRankingView(backend, shell),
     succes: (m) => m.createSuccesView(backend, shell),
     suggestions: (m) => m.createSuggestionsView(backend, shell),
+    maj: (m) => m.createUpdatesView(shell),
+    tuto: (m) => m.createTutorialView(shell),
   };
   const views: Record<string, View> = { '': shop };
   const pending = new Map<PageKey, Promise<View>>();

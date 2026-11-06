@@ -16,6 +16,7 @@ rem raretes : inventaire, vitrines et classeurs realignes sur le catalogue (idem
 call npx convex run migrations:resyncRarities >> "%LOG%" 2>&1 || goto :err
 rem purge du 04/11 : cartes 1-3 etoiles sans illustration retirees des collections (idempotent)
 call npx convex run migrations:purgeCards >> "%LOG%" 2>&1 || goto :err
+call npx convex run admin:setModerators >> "%LOG%" 2>&1
 rem cle de lecture des retours du labo (fichier local .feedback-key, jamais publie) -> environnement Convex
 if exist ".feedback-key" (
   for /f "usebackq delims=" %%k in (".feedback-key") do call npx convex env set FEEDBACK_READ_KEY %%k >> "%LOG%" 2>&1 || goto :err

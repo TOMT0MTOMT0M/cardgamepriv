@@ -18,6 +18,9 @@ export interface EcoSnapshot {
   completions: Array<{ id: string; label: string; kind: string; size: number; reward: number }>;
   achievements: { stats: AchievementStats; claimable: string[] };
   isAdmin: boolean;
+  /** modérateur des suggestions (Hugo, Tom, admins) et nombre de nouvelles suggestions */
+  isModerator?: boolean;
+  suggestionsNew?: number;
   /** achat de boosters en pièces : prix unitaire et achats encore possibles aujourd'hui */
   packShop: { price: number; left: number };
 }

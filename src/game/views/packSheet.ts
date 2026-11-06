@@ -5,6 +5,7 @@ import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, BEBOU_SECRETS_LOCKED, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { STAR_RARITIES, packOdds, slotShare } from '../../core/dropRates';
+import { cardPackChance } from '../../core/packRoll';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { haptics } from '../../core/haptics';
@@ -89,7 +90,7 @@ export function createPackSheet(
       <div class="ps-scroll">
         <div class="ps-head"><div class="ps-thumb"></div><div class="ps-titles"><span class="kicker">BOOSTER</span><h2 class="ps-name"></h2><p class="ps-desc"></p></div></div>
         <div class="ps-facts"></div>
-        <div class="ps-block ps-odds"><div class="ps-bt">Chances par carte <small>· les vrais taux du tirage</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
+        <div class="ps-block ps-odds"><div class="ps-bt">Chances par carte <small>· les vrais taux du tirage · la chance de chaque carte est écrite sous elle dans « Cartes du booster »</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
         <div class="ps-block ps-secret" hidden></div>
         <div class="ps-block ps-pity"></div>
         <div class="ps-block ps-wish"></div>
@@ -373,6 +374,11 @@ export function createPackSheet(
   function tileFor(c: CatalogEntry, owned: Map<string, number>, wish: Set<string>): HTMLElement {
     const n = owned.get(c.id) ?? 0;
     const t = cardTile(c.id, c.rarity, { owned: n > 0, count: n });
+    // (retours 06/11) la vraie chance de CETTE carte dans ce booster
+    if (current && c.rarity !== 'secret') {
+      const p = cardPackChance(current.req, c.rarity);
+      if (p > 0) t.append(h('span', 'pc-odds', `1 / ${fmtN(Math.round(1 / p))}`));
+    }
     if (n <= 0 && c.rarity !== 'secret') {
       const b = h('button', `wish-btn${wish.has(c.id) ? ' on' : ''}`, '♥');
       b.title = wish.has(c.id) ? 'Retirer de mes envies' : 'Ajouter à mes envies';

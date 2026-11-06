@@ -381,17 +381,21 @@ export function inSubthemeScope(scope: string, subthemeId: string): boolean {
 }
 
 /**
- * FAMILLE / SOUS-FAMILLE d'une carte (retours 05/11) : la famille = le groupe d'albums (« Pokémon », « Jeux vidéo »,
- * « Mangas & anime »…) imprimée en grand sur la carte, la sous-famille = le sous-thème (« Johto », « Mario »,
- * « Naruto ») imprimée en bas à la place du numéro (déjà en haut à droite). Sous-thème sans groupe (Merveilles,
+ * FAMILLE / SOUS-FAMILLE d'une carte (retours 05/11, 06/11) : `family` = imprimé en grand au-dessus du nom, `sub` =
+ * imprimé en bas à la place du numéro (déjà en haut à droite). Pokémon / LoL / Valorant / CS : le groupe en grand ;
+ * les autres : le sous-thème en grand (« Naruto »), le groupe en bas (« Mangas & anime »). Sous-thème sans groupe (Merveilles,
  * Ardèche, Bébous…) : il est sa propre famille, pas de sous-famille.
  */
 export function cardFamily(id: string): { family: string; sub?: string } | null {
   const e = BY_ID.get(id);
   const st = e ? SUB_BY_ID.get(e.subthemeId) : undefined;
   if (!st) return null;
-  return st.group ? { family: st.group.label, sub: st.label } : { family: st.label };
+  if (!st.group) return { family: st.label };
+  // (retours 06/11) seuls Pokémon, LoL, Valorant et CS gardent la famille en grand (« POKÉMON » / « JOHTO ») ; partout
+  // ailleurs (mangas, films, animaux, jeux vidéo…) c'est l'inverse : « NARUTO » en grand, « MANGAS & ANIME » en bas
+  return FAMILY_FIRST.has(st.group.id) ? { family: st.group.label, sub: st.label } : { family: st.label, sub: st.group.label };
 }
+const FAMILY_FIRST = new Set(['pokemon', 'lol', 'valorant', 'cs']);
 
 /** Libellé d'une sélection (sous-thème ou groupe). */
 export function scopeLabel(scope: string): string {

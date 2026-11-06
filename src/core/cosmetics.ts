@@ -53,8 +53,44 @@ function C(c: Partial0): Cosmetic {
   return { ...c, how: `Succès « ${a.label} » : ${a.how}`, unlock: (s) => achievementDone(a, fromStats(s)) };
 }
 
-/** Bannières (fond du haut du profil). */
-export const BANNERS: Cosmetic[] = [
+/**
+ * Couleur du profil (retours 04/11, chantier 5) : l'accent du profil (cadre d'avatar sans cadre, titre, onglets actifs,
+ * bordures, chiffres clés). Une palette libre pour tout le monde + un sélecteur de couleur libre (« #rrggbb »), et
+ * quelques teintes à débloquer par les succès. `css` = la couleur (hexadécimale).
+ */
+export const ACCENTS: Cosmetic[] = [
+  C({ id: 'rose', label: 'Bébou', css: '#e8927c' }),
+  C({ id: 'corail', label: 'Corail', css: '#ff7b6b' }),
+  C({ id: 'ambre', label: 'Ambre', css: '#f0a04b' }),
+  C({ id: 'citron', label: 'Citron', css: '#e6d35a' }),
+  C({ id: 'menthe', label: 'Menthe', css: '#6fd6a2' }),
+  C({ id: 'lagon', label: 'Lagon', css: '#4fc6c9' }),
+  C({ id: 'azur', label: 'Azur', css: '#6aa8ff' }),
+  C({ id: 'lavande', label: 'Lavande', css: '#a58bff' }),
+  C({ id: 'fuchsia', label: 'Fuchsia', css: '#ff6fc2' }),
+  C({ id: 'ivoire', label: 'Ivoire', css: '#efe4d2' }),
+  C({ id: 'or', label: 'Or massif', need: 'packs-500', css: '#ffc94a' }),
+  C({ id: 'rubis', label: 'Rubis', need: 'leg-5', css: '#ff3b5c' }),
+  C({ id: 'saphir', label: 'Saphir', need: 'full-1', css: '#3f7dff' }),
+  C({ id: 'jade', label: 'Jade', need: 'trade-10', css: '#2fbf71' }),
+  C({ id: 'braise', label: 'Braise', need: 'streak-7', css: '#ff6a1a' }),
+  C({ id: 'foudre', label: 'Foudre', need: 'myth-1', css: '#c86bff' }),
+  C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: '#ffb4a2' }),
+];
+
+/**
+ * (retours 06/11 : « bannière, cadre, couleur, vitrine : les mêmes couleurs disponibles ») — la bannière et le cadre
+ * se choisissent désormais dans la MÊME palette que la couleur du profil et la vitrine (ACCENTS : mêmes teintes, mêmes
+ * déblocages), plus la couleur libre (« #rrggbb »). Les anciens fonds / cadres (avant le 06/11) restent reconnus pour
+ * ceux qui les ont choisis, mais ne sont plus proposés.
+ */
+const bannerCss = (hex: string) => `radial-gradient(ellipse at 18% 30%, color-mix(in srgb, ${hex} 34%, transparent), transparent 60%), linear-gradient(120deg, color-mix(in srgb, ${hex} 22%, #0b0908), color-mix(in srgb, ${hex} 46%, #120d0c) 50%, color-mix(in srgb, ${hex} 14%, #070605))`;
+const frameCss = (hex: string) => `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 50%, #ffffff), color-mix(in srgb, ${hex} 70%, #000000))`;
+/** Bannières (fond du haut du profil) : une par couleur de la palette. */
+export const BANNERS: Cosmetic[] = ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: bannerCss(a.css!) }));
+/** Cadres d'avatar : aucun, puis un par couleur de la palette. */
+export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: frameCss(a.css!) }))];
+const LEGACY_BANNERS: Cosmetic[] = [
   C({ id: 'ember', label: 'Braise', css: 'linear-gradient(120deg, #2a1410, #5a2a22 45%, #1a0d0b)' }),
   C({ id: 'night', label: 'Nuit', css: 'linear-gradient(120deg, #0c1118, #16314a 50%, #0a0f16)' }),
   C({ id: 'forest', label: 'Forêt', css: 'linear-gradient(120deg, #0c1412, #123f2f 50%, #0a1210)' }),
@@ -64,9 +100,7 @@ export const BANNERS: Cosmetic[] = [
   C({ id: 'prism', label: 'Prisme', need: 'myth-1', css: 'linear-gradient(120deg, #ff6b9a22, #ffd36b33, #6bffb833, #6bc8ff33, #c86bff33), linear-gradient(120deg, #1a1420, #2a2433)' }),
   C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: 'radial-gradient(ellipse at 30% 50%, #e8927c55, transparent 60%), linear-gradient(120deg, #2a0f0e, #4a1f1a 50%, #120607)' }),
 ];
-
-/** Cadres d'avatar. */
-export const FRAMES: Cosmetic[] = [
+const LEGACY_FRAMES: Cosmetic[] = [
   C({ id: 'none', label: 'Aucun', css: 'transparent' }),
   C({ id: 'bronze', label: 'Bronze', need: 'packs-100', css: 'linear-gradient(135deg, #b87333, #e0a070, #8a5020)' }),
   C({ id: 'silver', label: 'Argent', need: 'packs-500', css: 'linear-gradient(135deg, #9aa3ad, #e8edf2, #6e7883)' }),
@@ -108,30 +142,6 @@ export const BADGES: Cosmetic[] = [
   C({ id: 'half', label: '5 000 cartes', need: 'uniq-5000', glyph: '📚' }),
 ];
 
-/**
- * Couleur du profil (retours 04/11, chantier 5) : l'accent du profil (cadre d'avatar sans cadre, titre, onglets actifs,
- * bordures, chiffres clés). Une palette libre pour tout le monde + un sélecteur de couleur libre (« #rrggbb »), et
- * quelques teintes à débloquer par les succès. `css` = la couleur (hexadécimale).
- */
-export const ACCENTS: Cosmetic[] = [
-  C({ id: 'rose', label: 'Bébou', css: '#e8927c' }),
-  C({ id: 'corail', label: 'Corail', css: '#ff7b6b' }),
-  C({ id: 'ambre', label: 'Ambre', css: '#f0a04b' }),
-  C({ id: 'citron', label: 'Citron', css: '#e6d35a' }),
-  C({ id: 'menthe', label: 'Menthe', css: '#6fd6a2' }),
-  C({ id: 'lagon', label: 'Lagon', css: '#4fc6c9' }),
-  C({ id: 'azur', label: 'Azur', css: '#6aa8ff' }),
-  C({ id: 'lavande', label: 'Lavande', css: '#a58bff' }),
-  C({ id: 'fuchsia', label: 'Fuchsia', css: '#ff6fc2' }),
-  C({ id: 'ivoire', label: 'Ivoire', css: '#efe4d2' }),
-  C({ id: 'or', label: 'Or massif', need: 'packs-500', css: '#ffc94a' }),
-  C({ id: 'rubis', label: 'Rubis', need: 'leg-5', css: '#ff3b5c' }),
-  C({ id: 'saphir', label: 'Saphir', need: 'full-1', css: '#3f7dff' }),
-  C({ id: 'jade', label: 'Jade', need: 'trade-10', css: '#2fbf71' }),
-  C({ id: 'braise', label: 'Braise', need: 'streak-7', css: '#ff6a1a' }),
-  C({ id: 'foudre', label: 'Foudre', need: 'myth-1', css: '#c86bff' }),
-  C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: '#ffb4a2' }),
-];
 /**
  * FOND DE VITRINE (retours 05/11 : « pouvoir changer la couleur et le fond de notre vitrine »). `css` = le fond, qui
  * peut utiliser `--vc` (la couleur de vitrine choisie : bordure, lueur, étagère). Quelques fonds à débloquer.
@@ -230,7 +240,11 @@ export function cleanCosmetics(choice: CosmeticChoice, stats: PlayerStats): Cosm
   const accent = color(choice.accent);
   const vitrine = ok(VITRINES, choice.vitrine);
   const vitrineColor = color(choice.vitrineColor);
-  return { banner: ok(BANNERS, choice.banner), frame: ok(FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}), ...(vitrine ? { vitrine } : {}), ...(vitrineColor ? { vitrineColor } : {}) };
+  const pick = (list: Cosmetic[], legacy: Cosmetic[], v?: string) => {
+    const a = (v ?? '').toLowerCase();
+    return CUSTOM_ACCENT.test(a) ? a : ok(list, v) ?? ok(legacy, v);
+  };
+  return { banner: pick(BANNERS, LEGACY_BANNERS, choice.banner), frame: pick(FRAMES, LEGACY_FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}), ...(vitrine ? { vitrine } : {}), ...(vitrineColor ? { vitrineColor } : {}) };
 }
 
 /** Ce que le joueur a débloqué (pour la galerie et pour le fil « succès » à venir). */
@@ -238,8 +252,10 @@ export function unlockedIds(list: Cosmetic[], stats: PlayerStats): string[] {
   return list.filter((c) => c.unlock(stats)).map((c) => c.id);
 }
 
-export const bannerOf = (id?: string) => find(BANNERS, id) ?? BANNERS[0];
-export const frameOf = (id?: string) => find(FRAMES, id) ?? FRAMES[0];
+const customOf = (id: string | undefined, css: (hex: string) => string): Cosmetic | undefined =>
+  id && CUSTOM_ACCENT.test(id) ? { id, label: id.toUpperCase(), how: '', unlock: () => true, css: css(id) } : undefined;
+export const bannerOf = (id?: string) => find(BANNERS, id) ?? find(LEGACY_BANNERS, id) ?? customOf(id, bannerCss) ?? BANNERS[0];
+export const frameOf = (id?: string) => find(FRAMES, id) ?? find(LEGACY_FRAMES, id) ?? customOf(id, frameCss) ?? FRAMES[0];
 export const titleOf = (id?: string) => find(TITLES, id);
 export const badgeOf = (id: string) => find(BADGES, id);
 
