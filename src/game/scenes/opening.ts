@@ -30,7 +30,6 @@ import {
 } from 'three/webgpu';
 import {
   abs,
-  bumpMap,
   clamp as tclamp,
   floor,
   fract,
@@ -46,7 +45,7 @@ import {
   mix,
   mx_fractal_noise_float,
   normalLocal,
-  normalMap,
+  pmremTexture,
   positionLocal,
   screenSize,
   screenUV,
@@ -69,9 +68,10 @@ import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberratio
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
+import { studioEnv } from '../../core/env';
 import { mobileArtScale } from '../../core/renderer';
 import { anamorphicFlare, createPipeline } from '../../core/post';
-import { createPackGeometry, generatePackArt, PACK, TEAR_V, type PackArt, type PackStyle } from '../../core/pack';
+import { aluminiumSurface, createPackGeometry, generatePackArt, PACK, PACK_FRAME, PACK_STACK, TEAR_V, type PackArt, type PackStyle } from '../../core/pack';
 import { ensureCardImages, ensureFonts, generateCardArt, type CardArt } from '../../core/art';
 import { LAB_CARDS, cardById, type CardData } from '../../core/cardData';
 import { rarity, type Rarity, type RarityId } from '../../core/rarity';
@@ -82,7 +82,7 @@ import { onFxReducedChange } from '../../core/fxPref';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { MYTHIC_SILENCE, MYTHIC_TURN, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
-import { encodeNormal, type N } from '../../core/tsl';
+import type { N } from '../../core/tsl';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
 import type { PackCard, SealedPack } from '../backend';
 
@@ -447,6 +447,11 @@ export function createOpeningScene(): OpeningScene {
   const packQ = new Quaternion();
   /** profondeur du booster pendant l'ouverture (la pile reste à cette distance derrière lui) */
   const PACK_OPEN_Z = 0.12;
+  /** (07/11) reflets du sachet aluminium : studio « foil » (bandes de lumière) — créé au premier sachet */
+  let foilEnv: N | null = null;
+  const foilEnvNode = (): N => (foilEnv ??= pmremTexture(studioEnv(ctx.renderer, 'foil')));
+  /** échelle du booster pendant l'ouverture : même taille à l'écran que l'ancien booster (PACK_FRAME) */
+  const OPEN_S = PACK_FRAME.h / PACK.h;
   const warm: Material[] = [];
   /** amplitude d'inclinaison de la pile (lissée) et respiration de la pile en attente */
   let tiltAmp = 0;
@@ -631,7 +636,6 @@ export function createOpeningScene(): OpeningScene {
     const burnFront = field.sub(U.burn);
     const make = (col: N, cr: N, side: 0 | 1) => {
       const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
-      const foil = side === 0 ? masks.r : smoothstep(0.5, 0.6, masks.g.add(masks.r));
       const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
       // booster « bientôt » : couleurs en partie éteintes (uniforme : aucun recompilage quand on change de booster)
       const base = mix(col.rgb, vec3(luminance(col.rgb)).mul(0.82), U.soon.mul(0.7));
@@ -639,9 +643,9 @@ export function createOpeningScene(): OpeningScene {
       // (retours 06/11) sachet ALUMINIUM : métal partout (« no brand » premium), le logo et les soudures plus lisses,
       // le froissé du sachet dans le relief ; aucun vernis plastique
       // (ultra-réalisme) aluminium brillant : métal pur, rugosité basse, plis en relief fort (carte pleine taille)
-      m.metalnessNode = float(1);
-      m.roughnessNode = mix(float(0.22), float(0.14), foil);
-      m.normalNode = bumpMap(cr.r, float(art.fullCrease ? 3.2 : 1.7), normalMap(encodeNormal(ridges)));
+      // (07/11) aluminium lisse, grands plis, double reflet métal + vernis PET (core/pack.ts aluminiumSurface)
+      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.7);
+      m.envNode = foilEnvNode();
       m.maskNode = burnFront.greaterThan(0);
       const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(0.3)).mul(step(-0.2, U.burn));
       // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte
@@ -706,14 +710,15 @@ export function createOpeningScene(): OpeningScene {
     const whiten = smoothstep(float(0.006).add(front0.mul(0.012)), 0.0, abs(v.sub(edge))).mul(tornCol);
     const make = (col: N, cr: N, side: 0 | 1) => {
       const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
-      const foil = side === 0 ? masks.r : smoothstep(0.5, 0.6, masks.g.add(masks.r));
       const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
       const silver = color(0.6, 0.6, 0.58);
       m.colorNode = mix(select(frontFacing, col.rgb, silver), color(0.94, 0.93, 0.91), whiten.mul(0.85));
-      // (06/11, ultra-réalisme) aluminium brillant, plis en relief fort, sans vernis
-      m.metalnessNode = select(frontFacing, float(1), float(1)).mul(whiten.oneMinus());
-      m.roughnessNode = select(frontFacing, mix(float(0.22), float(0.14), foil), float(0.3));
-      m.normalNode = bumpMap(cr.r, float(art.fullCrease ? 3.2 : 1.4), normalMap(encodeNormal(ridges)));
+      // (07/11) aluminium lisse, grands plis, double reflet métal + vernis PET (core/pack.ts aluminiumSurface) ;
+      // l'intérieur (face arrière) reste métal brut plus mat, la coupe blanchit (film étiré)
+      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.4);
+      m.envNode = foilEnvNode();
+      m.metalnessNode = float(1).mul(whiten.oneMinus());
+      m.roughnessNode = select(frontFacing, m.roughnessNode as N, float(0.3)).add(whiten.mul(0.4));
       // fuite de lumière (003) : soudures + impression claire, de la couleur de la meilleure carte
       m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)).mul(whiten.oneMinus());
       if (part === 'body') m.maskNode = v.lessThan(edge);
@@ -807,7 +812,8 @@ export function createOpeningScene(): OpeningScene {
         .to(B, { y: -2.6, duration: 0.85 * sp, ease: EASE.heave }, 1.05 * sp);
       // la pile glisse hors du booster, la carte de devant un rien en premier
       order.forEach((si, k) => {
-        tl!.to(slots[si].p, { y: 1.0, duration: 0.8 * sp, ease: EASE.glide, onStart: k === n - 1 ? () => ctx.sfx.whoosh(0.7, 0.14, true) : undefined }, (0.25 + (n - 1 - k) * 0.035) * sp);
+        // (07/11) booster +15 % : la pile monte d'autant plus haut pour sortir entièrement par la déchirure
+        tl!.to(slots[si].p, { y: PACK.h / PACK_FRAME.h, duration: 0.8 * sp, ease: EASE.glide, onStart: k === n - 1 ? () => ctx.sfx.whoosh(0.7, 0.14, true) : undefined }, (0.25 + (n - 1 - k) * 0.035) * sp);
       });
       tl.to(S, { push: 0, duration: 0.8, ease: EASE.glide }, 0.9 * sp);
       // (audit UX2-04) mode auto rapide : toute la sortie du booster ×1,6 (les trois timelines ensemble, rien ne se croise)
@@ -953,7 +959,7 @@ export function createOpeningScene(): OpeningScene {
       if (style === 'burn') Object.assign(s.p, { x: 0, y: 0, z: -0.03 - (order.length - 1 - k) * STACK_DZ, s: 0.97, flip: Math.PI, rz: (k - 2) * 0.012, holo: 0 });
       // DANS le booster : pile serrée (≈ l'épaisseur des cartes) centrée dans le coussin, un peu plus petite que lui,
       // sans rotation (coins loin des soudures) → aucune carte ne traverse l'emballage, même en l'inclinant
-      else Object.assign(s.p, { x: 0, y: -0.03, z: (k - (order.length - 1) / 2) * 0.0072, s: 0.92, flip: Math.PI, rz: 0, holo: 0 });
+      else Object.assign(s.p, { x: 0, y: PACK_STACK.cy, z: (k - (order.length - 1) / 2) * 0.0072, s: PACK_STACK.s, flip: Math.PI, rz: 0, holo: 0 });
       cardsRig.add(s.mesh);
     });
     // (audit PERF1-03) pipelines des 5 vraies cartes compilés pour la VRAIE cible (passe MRT + MSAA), en asynchrone
@@ -1082,7 +1088,9 @@ export function createOpeningScene(): OpeningScene {
     }
     tl = gsap.timeline();
     // déchirure : le booster reste au plan des cartes (z 0) → quand la pile le quitte (follow → 0) elle ne recule pas à travers lui
-    tl.to(B, { z: style === 'burn' ? PACK_OPEN_Z : 0, y: 0, spin: Math.abs(B.spin) > Math.PI ? Math.sign(B.spin) * Math.PI * 2 : 0, s: 1, duration: 0.6, ease: EASE.glide });
+    // (07/11) booster +15 % : en vitrine il paraît plus grand ; à l'ouverture il reprend la taille d'écran d'avant
+    // (la place entre l'en-tête et les consignes n'a pas changé) — les cartes dedans suivent son échelle (cardsRig)
+    tl.to(B, { z: style === 'burn' ? PACK_OPEN_Z : 0, y: 0, spin: Math.abs(B.spin) > Math.PI ? Math.sign(B.spin) * Math.PI * 2 : 0, s: OPEN_S, duration: 0.6, ease: EASE.glide });
     tl.to(S, { push: 0.08, duration: 0.6, ease: EASE.glide }, 0);
   }
 
@@ -1994,7 +2002,7 @@ export function createOpeningScene(): OpeningScene {
       // mobile : calques à la taille réelle de la carte à l'écran (×2) — avant, 0,62 / 0,45 fixes → flou, texte baveux
       artScale = mobile ? mobileArtScale(c.width, c.height, 0.7) : 0.85;
       backArtScale = mobile ? artScale : 0.6;
-      stage = createStage(c, { bg: ['#1b1715', '#050404'], env: 'studio', envIntensity: 1.25, fill: 0.62, frameW: PACK.w, frameH: PACK.h });
+      stage = createStage(c, { bg: ['#1b1715', '#050404'], env: 'studio', envIntensity: 1.25, fill: 0.62, frameW: PACK_FRAME.w, frameH: PACK_FRAME.h });
       key = new DirectionalLight(0xfff2e6, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);

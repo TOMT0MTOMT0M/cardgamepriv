@@ -3,11 +3,56 @@ import { bumpMap, float, mix, normalMap, positionLocal, texture, uv, vec2, vec3,
 import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, type Ctx } from './art/canvas';
 import { FONT_MONO, FONT_TITLE } from './art/frame';
 import { ensureFonts } from './art';
-import { encodeNormal } from './tsl';
+import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
 
-/** Booster : un peu plus grand qu'une carte, coussin bombé, soudures crantées haut/bas. */
-export const PACK = { w: 0.78, h: 1.18, bulge: 0.045, crimp: 0.075 };
+/**
+ * Booster : un peu plus grand qu'une carte, coussin bombé, soudures crantées haut/bas.
+ * (07/11) +15 % (0,78 × 1,18 → 0,897 × 1,357) : les cartes rangées dedans ne traversent plus le film aux coins ;
+ * le film épouse la pile (plateau de l'épaisseur des 5 cartes, voir createPackGeometry) au lieu de gonfler. La caméra des scènes garde l'ancien cadrage (`PACK_FRAME`) : le booster
+ * paraît 15 % plus grand, les cartes gardent leur taille.
+ */
+export const PACK = { w: 0.897, h: 1.357, bulge: 0.028, crimp: 0.0863 };
+/**
+ * (07/11) La pile des 5 cartes rangée dans le sachet (style « déchirure », scenes/opening.ts) : demi-largeur et
+ * demi-hauteur à l'échelle 0,92, centre vertical. Le plateau du sachet en suit l'empreinte ; `bulge` = sa demi-épaisseur
+ * (5 cartes de 1,2 mm espacées de 0,72 mm → ± 20 mm) + le film et un peu de jeu.
+ */
+export const PACK_STACK = { hw: (0.63 * 0.92) / 2, hh: (0.88 * 0.92) / 2, cy: -0.03, s: 0.92 };
+/** cadrage historique des scènes (taille de l'ancien booster) : la caméra et la taille des cartes à l'écran n'ont pas bougé */
+export const PACK_FRAME = { w: 0.78, h: 1.18 };
+
+/**
+ * (07/11) GRANDS PLIS du sachet aluminium — partagés par la géométrie (relief doux, le reflet se tord) et la carte de
+ * hauteur (arête nette du pli). Coordonnées de la toile du visuel (x → droite, y → bas, 0..1). Peu de plis, longs et
+ * francs : un film d'aluminium lisse qu'on a tenu en main, pas un paquet de chips froissé.
+ *  - un long pli de tension qui part du coin haut-gauche et descend vers le centre ;
+ *  - un plus court qui remonte du coin bas-droit (là où le film se pince autour des cartes) ;
+ *  - un grand pli oblique très doux qui traverse le plateau (asymétrique : pas d'« enveloppe » en X).
+ */
+export const BIG_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1: number; amp: number; w: number }> = [
+  { x0: 0.08, y0: 0.12, x1: 0.62, y1: 0.55, amp: 1, w: 0.2 },
+  { x0: 0.93, y0: 0.88, x1: 0.64, y1: 0.66, amp: 0.8, w: 0.16 },
+  { x0: 0.22, y0: 0.74, x1: 0.8, y1: 0.36, amp: 0.35, w: 0.26 },
+]
+/**
+ * Profil d'un grand pli : une ARÊTE (deux pans plans qui se rencontrent en une ligne nette — c'est la cassure du film
+ * qui fait le pli, pas un bourrelet) à la distance `d` (même unité que `w`), à la position `t` (0..1) le long du
+ * segment ; l'arête s'efface aux extrémités.
+ */
+function creaseRidge(d: number, w: number, t: number): number {
+  const e = Math.min(1, t * 5, (1 - t) * 3.5);
+  const k = Math.max(0, 1 - Math.abs(d) / w);
+  // k^1,5 : pente franche jusqu'à l'arête (cassure nette, le reflet change d'un coup), raccord doux au bord du pli
+  return Math.pow(k, 1.5) * e * (e * (3 - 2 * e));
+}
+function creaseDistance(c: (typeof BIG_CREASES)[number], x: number, y: number, ax: number) {
+  // x, y en coordonnées de toile (0..1) ; ax = rapport largeur/hauteur pour mesurer en distance vraie
+  const dx = (c.x1 - c.x0) * ax, dy = c.y1 - c.y0, l2 = dx * dx + dy * dy || 1;
+  const t = Math.max(0, Math.min(1, ((x - c.x0) * ax * dx + (y - c.y0) * dy) / l2));
+  const px = c.x0 * ax + dx * t, py = c.y0 + dy * t;
+  return { d: Math.hypot(x * ax - px, y - py), t };
+}
 
 export interface PackStyle {
   name: string;
@@ -56,31 +101,30 @@ export function createPackGeometry(segX = 36, segY = 56): BufferGeometry {
   const cv = crimp / h;
   const sideSeam = 0.028; // marge thermoscellée sur les côtés (unités carte)
   const su = sideSeam / w;
-  const smooth = (t: number) => t * t * (3 - 2 * t);
-  const rr = (() => { let a = 99991; return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296); })();
-  // grands plis bas-relief : segments (u0,v0)-(u1,v1), amplitude et largeur
-  const folds = Array.from({ length: 7 }, () => ({ u0: rr(), v0: cv + rr() * (1 - 2 * cv), u1: rr(), v1: cv + rr() * (1 - 2 * cv), amp: 0.004 + rr() * 0.006, wdt: 0.05 + rr() * 0.08 }));
+  // (07/11) plus de plis aléatoires : les GRANDS PLIS partagés avec la carte de hauteur, en relief large et doux
+  const ax = w / h;
   const foldZ = (u: number, v: number) => {
     let z = 0;
-    for (const f of folds) {
-      const dx = f.u1 - f.u0, dy = f.v1 - f.v0, l2 = dx * dx + dy * dy || 1;
-      const t = Math.max(0, Math.min(1, ((u - f.u0) * dx + (v - f.v0) * dy) / l2));
-      const px = f.u0 + dx * t, py = f.v0 + dy * t;
-      const d = Math.hypot(u - px, v - py);
-      const edge = Math.min(1, t * 6, (1 - t) * 6); // fondu aux extrémités
-      z += f.amp * Math.exp(-(d * d) / (f.wdt * f.wdt * 0.5)) * edge * Math.cos((d / f.wdt) * 2.2);
+    const x = u, y = 1 - v; // coordonnées de la toile
+    for (const c of BIG_CREASES) {
+      const { d, t } = creaseDistance(c, x, y, ax);
+      z += 0.006 * c.amp * creaseRidge(d, c.w * 1.4, t);
     }
     return z;
   };
+  // (07/11, retours de Tom) le film ÉPOUSE LA PILE de 5 cartes au lieu de gonfler en ballon : un plateau plat de
+  // l'épaisseur de la pile (PACK.bulge = demi-pile + épaisseur du film + un peu de jeu) sur toute l'empreinte des
+  // cartes (+ 12 mm de jeu), puis le film, mi-souple mi-rigide, retombe en S jusqu'aux soudures — net, horizontal,
+  // comme un vrai sachet de cartes. Les coins se pincent (produit des deux chutes).
+  const box = { x: PACK_STACK.hw + 0.012, yb: PACK_STACK.cy - PACK_STACK.hh - 0.012, yt: PACK_STACK.cy + PACK_STACK.hh + 0.012 };
+  const seamX = w / 2 - sideSeam, seamY = h / 2 - crimp;
+  const fall = (t: number) => (t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * t * (t * (t * 6 - 15) + 10));
   const prof = (u: number, v: number) => {
-    // horizontal : plat au centre, chute douce sur les bords, nul dans la marge scellée
-    const eu = Math.min(u, 1 - u);
-    const pu = eu < su ? 0 : smooth(Math.min(1, (eu - su) / 0.22));
-    const vv = (v - cv) / (1 - 2 * cv);
-    if (vv <= 0 || vv >= 1) return 0;
-    const ev = Math.min(vv, 1 - vv);
-    const pv = smooth(Math.min(1, ev / 0.2));
-    return pu * pv;
+    const x = Math.abs((u - 0.5) * w), y = (v - 0.5) * h;
+    if (x >= seamX || Math.abs(y) >= seamY) return 0;
+    const fx = fall((x - box.x) / (seamX - box.x));
+    const fy = y > box.yt ? fall((y - box.yt) / (seamY - box.yt)) : y < box.yb ? fall((box.yb - y) / (seamY + box.yb)) : 1;
+    return fx * fy;
   };
   for (const side of [1, -1]) {
     const base = pos.length / 3;
@@ -93,11 +137,11 @@ export function createPackGeometry(segX = 36, segY = 56): BufferGeometry {
         const inCrimp = v < cv || v > 1 - cv;
         const p = prof(u, v);
         // soudures crantées : ondulation des crans + léger rabat vers l'arrière
-        const crimpZ = inCrimp ? 0.0014 * Math.sin(x * 260) - 0.003 * (1 - p) : 0;
+        const crimpZ = inCrimp ? 0.0012 * Math.sin(x * 260) - 0.003 * (1 - p) : 0;
         // marge scellée latérale : les faces se touchent (une demi-épaisseur de film), légère ondulation
         const eu = Math.min(u, 1 - u);
-        const seamWave = eu < su ? 0.0008 * Math.sin(y * 90) : 0;
-        const fold = inCrimp ? 0 : foldZ(u, v) * Math.min(1, p * 2);
+        const seamWave = eu < su ? 0.0003 * Math.sin(y * 90) : 0;
+        const fold = inCrimp ? 0 : foldZ(u, v) * Math.min(1, p * 1.5);
         const z = side * (bulge * p + 0.0005 + crimpZ + seamWave + fold);
         pos.push(x, y, z);
         uvs.push(side > 0 ? u : 1 - u, v);
@@ -140,7 +184,7 @@ function crimpBands(g: Ctx, col: string) {
   for (const y0 of [0, PH - ch]) {
     g.fillStyle = col;
     g.fillRect(0, y0, PW, ch);
-    g.strokeStyle = 'rgba(0,0,0,0.35)';
+    g.strokeStyle = 'rgba(0,0,0,0.22)';
     g.lineWidth = 2.5; // (audit 06/11) 1,2 px passait sous le pixel à l'écran du téléphone : gris moiré
     for (let x = 0; x < PW; x += 8) {
       g.beginPath();
@@ -324,17 +368,15 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
     // alliage teinté : la couleur du pack posée sur l'alu
     g.fillStyle = mixHex(base, '#eceef1', 0.66);
     g.fillRect(0, 0, PW, PH);
-    // brossage FIN du film (vertical, très léger : un sachet est plus lisse qu'une plaque)
+    // (07/11) aluminium LISSE : à peine un voile de laminage vertical (le reflet, lui, vient du matériau et de
+    // l'environnement — rien de peint : un reflet peint ne bouge pas avec la lumière)
     for (let x = 0; x < PW; x += 1) {
       const v = rr();
-      g.fillStyle = v > 0.5 ? alpha('#ffffff', (v - 0.5) * 0.08) : alpha('#000000', (0.5 - v) * 0.09);
+      g.fillStyle = v > 0.5 ? alpha('#ffffff', (v - 0.5) * 0.025) : alpha('#000000', (0.5 - v) * 0.03);
       g.fillRect(x, 0, 1, PH);
     }
-    // reflet large (le vrai reflet vient du matériau ; ceci est la teinte de base)
-    g.fillStyle = linear(g, 0, 0, PW, 0, [[0, alpha('#000', 0.12)], [0.3, alpha('#fff', 0.1)], [0.55, alpha('#000', 0.06)], [1, alpha('#fff', 0.08)]]);
-    g.fillRect(0, 0, PW, PH);
-    crimpBands(g, mixHex(base, '#eef0f3', 0.6));
-    applyGrain(g, PW, PH, 0.03, 8, 20);
+    crimpBands(g, mixHex(base, '#d9dce1', 0.55));
+    applyGrain(g, PW, PH, 0.012, 8, 20);
   }
   // ── masques : R = zones plus lisses (soudures), G = relief des soudures, B = ligne de déchirure (découpe)
   const m = M.g;
@@ -388,11 +430,11 @@ const creasePending = new Map<number, Promise<{ c: HTMLCanvasElement }>>();
 /**
  * (perf 07/11, audit 06/11 §8 ter piste a) La carte des plis rastérisée est GARDÉE d'une visite à l'autre (Cache
  * Storage, PNG sans perte : la toile est opaque, l'aller-retour est exact au pixel) : aux visites suivantes, plus de
- * peinture (~140 plis flous + 40 taches + grain sur 640×968 : le plus gros poste du chargement) — une image décodée.
+ * peinture (v1 : ~140 plis flous + 40 taches + grain, le plus gros poste du chargement ; v2 : calcul pixel par pixel, moins cher mais toujours évité) — une image décodée.
  * CREASE_VERSION : à CHANGER dès que `paintCreaseMap`, `applyGrain` ou PW/PH changent, sinon l'ancienne carte resterait.
  * Le temps de peinture (1re visite) et de relecture sont notés dans perfLog (rapport de chargement, game/diag.ts).
  */
-const CREASE_VERSION = 'plis-v1';
+const CREASE_VERSION = 'plis-v2'; // v2 (07/11) : aluminium lisse, trois grands plis (carte calculée pixel par pixel)
 const CREASE_STORE = 'bebou-plis';
 const creaseKey = (ch: number) => `/__plis/${CREASE_VERSION}-${PW}x${PH}-${Math.round(ch)}.png`;
 async function creaseFromCache(ch: number): Promise<{ c: HTMLCanvasElement } | null> {
@@ -455,92 +497,45 @@ function creaseMap(ch: number): Promise<{ c: HTMLCanvasElement }> {
   return p;
 }
 function paintCreaseMap(ch: number): { c: HTMLCanvasElement; g: Ctx } {
+  // (07/11) ALUMINIUM LISSE + GRANDS PLIS seulement : plus de réseau de plis, de micro-plis ni de bosses floues (l'effet
+  // « paquet de chips »). La hauteur est calculée pixel par pixel (aucun trait flou à rastériser : aussi bien moins
+  // cher). Chaque grand pli est une arête nette : pente raide d'un côté (le film cassé), plus douce de l'autre, qui
+  // s'efface aux extrémités ; une ondulation très large et très faible évite le miroir parfait (un film n'est jamais
+  // plan). Les soudures restent plates (leur cranté vient du masque G).
   const W = PW, H = PH;
   const C = makeCanvas(W, H);
   const g = C.g;
-  const rr = lcg(424242);
-  g.fillStyle = '#808080';
-  g.fillRect(0, 0, W, H);
-  // bombé
-  g.fillStyle = radial(g, W / 2, H / 2, 0, Math.max(W, H) * 0.62, [[0, 'rgba(255,255,255,0.30)'], [0.55, 'rgba(255,255,255,0.10)'], [1, 'rgba(0,0,0,0.22)']]);
-  g.fillRect(0, 0, W, H);
-  // près des soudures le film est tiré : légère dépression
-  for (const [y0, y1] of [[ch, ch + 70], [H - ch - 70, H - ch]] as Array<[number, number]>) {
-    g.fillStyle = linear(g, 0, y0, 0, y1, y0 < H / 2 ? [[0, 'rgba(0,0,0,0.18)'], [1, 'rgba(0,0,0,0)']] : [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.18)']]);
-    g.fillRect(0, y0, W, y1 - y0);
-  }
-  const crease = (x0: number, y0: number, x1: number, y1: number, amp: number, width: number) => {
-    // une arête de pli : crête lumineuse + creux sombre parallèle, légèrement courbe, fondus aux extrémités
-    const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy) || 1;
-    const nx = -dy / l, ny = dx / l;
-    const bend = (rr() - 0.5) * l * 0.18;
-    const mx = (x0 + x1) / 2 + nx * bend, my = (y0 + y1) / 2 + ny * bend;
-    const path = (off: number) => {
-      g.beginPath();
-      g.moveTo(x0 + nx * off, y0 + ny * off);
-      g.quadraticCurveTo(mx + nx * off, my + ny * off, x1 + nx * off, y1 + ny * off);
-    };
-    g.lineCap = 'round';
-    g.filter = `blur(${width * 0.6}px)`;
-    g.lineWidth = width;
-    g.strokeStyle = `rgba(255,255,255,${amp})`;
-    path(-width * 0.45);
-    g.stroke();
-    g.strokeStyle = `rgba(0,0,0,${amp * 0.9})`;
-    path(width * 0.45);
-    g.stroke();
-    // la crête elle-même, un peu plus nette (seulement sur les plis larges)
-    if (width >= 4) {
-      g.filter = `blur(${width * 0.18}px)`;
-      g.lineWidth = Math.max(1, width * 0.3);
-      g.strokeStyle = `rgba(255,255,255,${Math.min(1, amp * 1.2)})`;
-      path(0);
-      g.stroke();
-    }
-  };
-  // plis principaux : points d'ancrage (coins des soudures + points libres), segments entre voisins proches
-  const pts: Array<[number, number]> = [[18, ch + 10], [W - 18, ch + 10], [18, H - ch - 10], [W - 18, H - ch - 10]];
-  for (let i = 0; i < 14; i++) pts.push([30 + rr() * (W - 60), ch + 40 + rr() * (H - 2 * ch - 80)]);
-  for (let i = 0; i < pts.length; i++) {
-    const [x0, y0] = pts[i];
-    const near = pts.map((p, k) => ({ k, d: Math.hypot(p[0] - x0, p[1] - y0) })).filter((o) => o.k !== i && o.d < 520).sort((a, b) => a.d - b.d).slice(0, i < 4 ? 3 : 2);
-    for (const o of near) {
-      if (o.k < i) continue; // chaque paire une fois
-      const [x1, y1] = pts[o.k];
-      crease(x0, y0, x1, y1, 0.22 + rr() * 0.3, 4 + rr() * 8);
+  const img = g.createImageData(W, H);
+  const d8 = img.data;
+  const ax = PACK.w / PACK.h;
+  const y0s = ch / H, y1s = 1 - ch / H;
+  for (let j = 0; j < H; j++) {
+    const y = (j + 0.5) / H;
+    const inSeam = y < y0s || y > y1s;
+    for (let i = 0; i < W; i++) {
+      const x = (i + 0.5) / W;
+      let h = 0;
+      if (!inSeam) {
+        // ondulation de fond : deux grandes vagues obliques, à peine perceptibles dans le reflet
+        h += 0.025 * Math.sin(x * 3.1 + y * 1.6 + 0.7) + 0.018 * Math.sin(x * -2.3 + y * 2.9 + 2.1);
+        for (const c of BIG_CREASES) {
+          const { d, t } = creaseDistance(c, x, y, ax);
+          // côté du pli (produit vectoriel) : arête asymétrique — raide d'un côté, douce de l'autre
+          const side = (c.x1 - c.x0) * ax * (y - c.y0) - (c.y1 - c.y0) * (x - c.x0) * ax;
+          const ww = c.w * (side > 0 ? 0.7 : 1.2);
+          h += 0.55 * c.amp * creaseRidge(d, ww, t);
+        }
+        // tension près des soudures : léger creux le long de la soudure (le film y est tiré)
+        const ds = Math.min(y - y0s, y1s - y);
+        h -= 0.08 * Math.exp(-ds / 0.03);
+      }
+      const v = Math.max(0, Math.min(255, Math.round(128 + h * 127)));
+      const o = (j * W + i) * 4;
+      d8[o] = d8[o + 1] = d8[o + 2] = v;
+      d8[o + 3] = 255;
     }
   }
-  // plis secondaires : doux et étirés (le film se tend entre les plis principaux), plus denses près des soudures,
-  // orientés en gros comme les plis voisins → une surface froissée continue, pas des traits posés dessus
-  const mainDir = (x: number, y: number) => {
-    let best = Infinity, ang = 0;
-    for (let i = 0; i < pts.length; i++) for (let k = i + 1; k < pts.length; k++) {
-      const d = Math.hypot((pts[i][0] + pts[k][0]) / 2 - x, (pts[i][1] + pts[k][1]) / 2 - y);
-      if (d < best) { best = d; ang = Math.atan2(pts[k][1] - pts[i][1], pts[k][0] - pts[i][0]); }
-    }
-    return ang;
-  };
-  for (let i = 0; i < 110; i++) {
-    const nearSeam = rr() < 0.55;
-    const y = nearSeam ? (rr() < 0.5 ? ch + rr() * 150 : H - ch - rr() * 150) : ch + rr() * (H - 2 * ch);
-    const x = rr() * W;
-    const a = mainDir(x, y) + (rr() - 0.5) * 1.1, l = 40 + rr() * 140;
-    crease(x, y, x + Math.cos(a) * l, y + Math.sin(a) * l, 0.05 + rr() * 0.12, 5 + rr() * 9);
-  }
-  // froissé diffus : larges bosses molles (le film n'est jamais plat)
-  g.filter = 'blur(22px)';
-  for (let i = 0; i < 40; i++) {
-    g.fillStyle = rr() > 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
-    g.beginPath();
-    g.ellipse(rr() * W, ch + rr() * (H - 2 * ch), 30 + rr() * 110, 14 + rr() * 50, rr() * Math.PI, 0, Math.PI * 2);
-    g.fill();
-  }
-  g.filter = 'none';
-  // soudures : plates (le relief cranté vient du masque G)
-  g.fillStyle = '#808080';
-  g.fillRect(0, 0, W, ch);
-  g.fillRect(0, H - ch, W, ch);
-  applyGrain(g, W, H, 0.06, 3, 0);
+  g.putImageData(img, 0, 0);
   return C;
 }
 
@@ -598,6 +593,28 @@ function crinkleCanvas(): { c: HTMLCanvasElement } {
   return (crinkleShared = C);
 }
 
+/**
+ * (07/11) SURFACE ALUMINIUM du sachet (grand booster, déchirure, labo) — étude du matériau :
+ *  - un sachet « aluminium » est un film PET métallisé : une couche d'aluminium quasi miroir SOUS un film transparent.
+ *    Deux reflets superposés : le métal (teinte de l'alliage, F0 ≈ 0,9, à peine flou : rugosité 0,09) et le vernis
+ *    PET au-dessus (diélectrique, F0 0,04, très net : clearcoat 0,45 / rugosité 0,05) — c'est ce double reflet, net
+ *    et coloré à la fois, qui fait « vrai » ;
+ *  - les GRANDS PLIS cassent la couche métallique : sur l'arête, le métal devient plus mat (micro-fissures) → rugosité
+ *    0,09 → 0,30 le long de la crête ; le vernis suit le même relief (même normale) ;
+ *  - les soudures thermoscellées (masque R) sont gaufrées : plus mates (0,36), le vernis y est absent.
+ * `height` = carte de hauteur (0,5 = plat), `seam` = 0..1 soudures, `ridges` = normale des crans.
+ */
+export function aluminiumSurface(m: MeshPhysicalNodeMaterial, height: N, seam: N, ridges: N, bump = 3.4) {
+  const n = bumpMap(height, float(bump), normalMap(encodeNormal(ridges)));
+  const creaseK = smoothstep(0.7, 0.82, height);
+  m.metalnessNode = float(1);
+  m.roughnessNode = mix(mix(float(0.09), float(0.3), creaseK), float(0.36), seam);
+  m.normalNode = n;
+  m.clearcoatNode = mix(float(0.3), float(0.05), seam);
+  m.clearcoatRoughnessNode = float(0.05);
+  m.clearcoatNormalNode = n;
+}
+
 /** Matériau de booster : plastique métallisé froissé, soudures crantées. */
 export function createPackMaterials(art: PackArt, opts: { crinkle?: number } = {}) {
   const make = (map: Texture, side: 0 | 1) => {
@@ -611,11 +628,8 @@ export function createPackMaterials(art: PackArt, opts: { crinkle?: number } = {
     const crTex = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(side * 0.37));
     m.colorNode = col.rgb;
     if (art.metalBack) {
-      // (retours 06/11) sachet aluminium : métal partout, sans vernis
-      // (ultra-réalisme) aluminium brillant : métal pur, rugosité basse, relief des plis fort
-      m.metalnessNode = float(1);
-      m.roughnessNode = mix(float(0.22), float(0.14), foil);
-      m.normalNode = bumpMap(crTex.r, float(opts.crinkle ?? 3.2), normalMap(encodeNormal(ridges)));
+      // (07/11) aluminium lisse, grands plis, double reflet métal + vernis (aluminiumSurface)
+      aluminiumSurface(m, crTex.r, mk.r, ridges, opts.crinkle ?? 3.4);
     } else {
       m.metalnessNode = mix(float(0.15), float(0.95), foil);
       m.roughnessNode = mix(float(0.36), float(0.2), foil);

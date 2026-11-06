@@ -12,7 +12,7 @@ import {
 } from 'three/webgpu';
 import { color, float, mix, normalize, positionLocal, smoothstep } from 'three/tsl';
 
-export type EnvKind = 'studio' | 'warm' | 'night' | 'gallery';
+export type EnvKind = 'studio' | 'warm' | 'night' | 'gallery' | 'foil';
 
 interface Box {
   pos: [number, number, number];
@@ -34,6 +34,27 @@ const PRESETS: Record<EnvKind, { top: string; bottom: string; boxes: Box[] }> = 
       { pos: [1.2, 3.8, -3], size: [2.2, 0.4], color: '#ffffff', intensity: 3 },
       // grand réflecteur frontal (derrière la caméra) : les foils vus de face restent lisibles
       { pos: [0.4, 0.6, 5.2], size: [4.2, 2.6], color: '#fff8f0', intensity: 0.75 },
+    ],
+  },
+  /**
+   * (07/11) STUDIO « ALUMINIUM » des sachets : la même pièce sombre que `studio`, mais éclairée comme on photographie
+   * un objet métallique — deux bandes verticales devant (une forte à gauche, une fine à droite), la boîte haute-gauche,
+   * le contre-jour, et un réflecteur frontal très faible. Un métal poli ne montre que ce qu'il reflète : le grand
+   * réflecteur blanc du studio en faisait un aplat gris « papier » ; ici le sachet alterne bandes claires et sombres.
+   */
+  foil: {
+    top: '#151413',
+    bottom: '#070606',
+    boxes: [
+      { pos: [-3.2, 3.6, 2.6], size: [3.4, 1.6], color: '#fff6ea', intensity: 5 },
+      // bandes verticales placées pour se refléter SUR le plateau du sachet (vu de face) : une large à gauche, une fine à droite
+      { pos: [-0.55, 0.3, 4.6], size: [0.36, 4.6], color: '#fffaf2', intensity: 4 },
+      { pos: [0.62, 0.1, 4.6], size: [0.14, 4.2], color: '#e9f0ff', intensity: 3 },
+      { pos: [-1.6, 0.3, 4.0], size: [0.3, 4.6], color: '#fffaf2', intensity: 3 },
+      { pos: [3.6, 0.6, 1.5], size: [0.5, 4.5], color: '#e9f0ff', intensity: 3 },
+      { pos: [0, -2.4, 3.2], size: [5, 0.8], color: '#ffe3c2', intensity: 0.8 },
+      { pos: [1.2, 3.8, -3], size: [2.2, 0.4], color: '#ffffff', intensity: 3 },
+      { pos: [0.4, 0.6, 5.2], size: [4.2, 2.6], color: '#fff8f0', intensity: 0.12 },
     ],
   },
   warm: {
