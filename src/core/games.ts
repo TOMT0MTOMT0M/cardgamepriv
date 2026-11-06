@@ -167,11 +167,15 @@ export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, 
   return null;
 }
 
+/** Formateur de l'heure de Paris, créé une seule fois (perf : `nextRouletteDraw` l'appelle minute par minute). */
+let hourFmt: Intl.DateTimeFormat | undefined;
+
 /** Heure (0..23) à Paris. */
 export function parisHour(now: number): number {
   try {
     // (« 01 h » en français : on lit la partie « heure » seule)
-    const h = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hourCycle: 'h23' }).formatToParts(now).find((p) => p.type === 'hour')?.value;
+    hourFmt ??= new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hourCycle: 'h23' });
+    const h = hourFmt.formatToParts(now).find((p) => p.type === 'hour')?.value;
     const n = Number(h);
     if (Number.isFinite(n)) return n % 24;
     throw new Error('heure introuvable');
