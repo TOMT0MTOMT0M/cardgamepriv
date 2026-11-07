@@ -159,6 +159,23 @@ réservées à l'information, motion déjà défini dans le papier « dopamine /
 
 ---
 
+## 1 quinquies. Tuiles des cartes manquantes : silhouette floutée — idée (déjà prototypée)
+
+**Demande de Tom (07/11)**, capture de la fiche booster (section YouTube) à l'appui :
+- les cartes pas encore trouvées s'affichent en carrés gris vides (illustration en aplat noir à 35 %) ;
+- le numéro de catalogue (16 795…) prend de la place pour rien ;
+- la chance « 1 / 62 320 » recouvre le nom, illisible.
+
+**Ce qu'on veut** : pour une carte non débloquée, sa propre illustration floutée, assombrie (un peu désaturée), avec
+un petit cadenas ; plus de numéro de catalogue sur les tuiles ; la chance sur sa propre ligne sous le nom. Les
+secrètes gardent leur « ? ». Concerne `cardTile` (src/game/ui.ts), donc toutes les grilles (collection, fiche
+booster, échanges…).
+
+**Prototype prêt** : commit `cbedd9a` (puis retiré, pour garder ça en idée) — `git cherry-pick cbedd9a` pour le
+reprendre. Rendu vérifié sur PC en démo : flou 5 px, luminosité 0,42, saturation 0,55, cadenas 24 % de la tuile.
+
+---
+
 ## 2. Abonnement « soutien » à 2 €/mois — mis de côté (07/11), à rediscuter
 
 Idée : aider à payer serveurs, abonnement Claude et temps passé. Avantages envisagés : réserve à 20 boosters au lieu
