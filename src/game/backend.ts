@@ -87,7 +87,8 @@ export interface Social {
   outgoing: FriendRequest[];
 }
 /** même fenêtre que le serveur (convex/users.ts) */
-export const ONLINE_MS = 90 * 1000;
+// (perf 07/11) le serveur n'écrit « vu à » qu'au plus toutes les 4 min (convex/users.ts, SEEN_EVERY_MS)
+export const ONLINE_MS = 6 * 60 * 1000;
 export const isOnline = (f: { lastSeenAt: number }, now = Date.now()) => now - f.lastSeenAt < ONLINE_MS;
 /** Où j'en suis avec ce joueur : ami, demande envoyée / reçue, rien. */
 export function friendState(s: Social, userId: string): { kind: 'friend'; link: FriendLink } | { kind: 'out' | 'in'; req: FriendRequest } | { kind: 'none' } {

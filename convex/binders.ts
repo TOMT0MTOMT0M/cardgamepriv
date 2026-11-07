@@ -1,7 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
 
 /**
@@ -17,9 +17,9 @@ const cleanName = (name: string) => name.replace(/\s+/g, ' ').trim().slice(0, 32
 export const mine = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const user = await getUserByToken(ctx, sessionToken);
-    if (!user) return [];
-    const list = await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', user._id)).collect();
+    const userId = await getUserIdByToken(ctx, sessionToken);
+    if (!userId) return [];
+    const list = await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
     return list.sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
   },
 });

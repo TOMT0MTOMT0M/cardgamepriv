@@ -1,6 +1,6 @@
 import { v } from 'convex/values';
 import { query } from './_generated/server';
-import { getUserByToken } from './auth';
+import { getUserIdByToken } from './auth';
 
 /**
  * Collection du joueur (abonnement permanent du jeu, renvoyée EN ENTIER à chaque booster ouvert). Seulement les champs
@@ -11,12 +11,13 @@ import { getUserByToken } from './auth';
 export const myCollection = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const user = await getUserByToken(ctx, sessionToken);
-    if (!user) return [];
+    // (perf 07/11) session seulement : plus ré-exécutée (inventaire entier relu) à chaque écriture sur le joueur
+    const userId = await getUserIdByToken(ctx, sessionToken);
+    if (!userId) return [];
 
     const rows = await ctx.db
       .query('inventory')
-      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .withIndex('by_user', (q) => q.eq('userId', userId))
       .collect();
     return rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber, firstPulledAt: c.firstPulledAt }));
   },

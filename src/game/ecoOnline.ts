@@ -3,6 +3,8 @@ import { api } from '../../convex/_generated/api';
 import type { Doc, Id } from '../../convex/_generated/dataModel';
 import type { DuelView, EcoBackend, EcoSnapshot, RoyaleView, RouletteView } from './eco';
 import type { WeeklyState } from '../core/weekly';
+import { achievementStats, claimableAchievements, claimableCompletions } from '../core/economy';
+import { statsFrom } from '../core/cosmetics';
 
 /** Économie + jeux en ligne (serveur Convex, temps réel). */
 export function createOnlineEco(): EcoBackend {
@@ -10,12 +12,38 @@ export function createOnlineEco(): EcoBackend {
   let snapshot: EcoSnapshot | null = null;
   let started = false;
 
+  // (perf 07/11) primes de complétion et succès calculés ICI avec la collection déjà reçue (inventory.myCollection) :
+  // le serveur ne relit plus tout l'inventaire à chaque mise à jour de l'économie (voir convex/economy.ts, state)
+  type Raw = NonNullable<(typeof api.economy.state)['_returnType']>;
+  let raw: Raw | null = null;
+  let rawColl: typeof net.state.collection | null = null;
+  const publish = () => {
+    if (!raw) snapshot = null;
+    else {
+      const coll = net.state.collection;
+      rawColl = coll;
+      const { achInput, ...rest } = raw;
+      const owned = new Set(coll.map((c) => c.cardId));
+      const stats = achievementStats(statsFrom(coll, achInput), rest.econ);
+      snapshot = {
+        ...rest,
+        weekly: rest.weekly as WeeklyState & { resetAt: number },
+        completions: claimableCompletions(owned, rest.econ.completions).map((x) => ({ id: x.id, label: x.label, kind: x.kind, size: x.cards.length, reward: x.reward })),
+        achievements: { stats, claimable: claimableAchievements(stats, rest.econ.achievements).map((a) => a.id) },
+      };
+    }
+    listeners.forEach((fn) => fn(snapshot));
+  };
   const start = () => {
     if (started || !net.state.configured) return;
     started = true;
     net.watch(api.economy.state, {}, (s) => {
-      snapshot = s ? { ...s, weekly: s.weekly as WeeklyState & { resetAt: number } } : null;
-      listeners.forEach((fn) => fn(snapshot));
+      raw = s ?? null;
+      publish();
+    });
+    // la collection change (booster, échange, brûlage) : on recalcule les primes sans attendre le serveur
+    net.onChange((st) => {
+      if (raw && st.collection !== rawColl) publish();
     });
   };
 

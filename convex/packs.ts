@@ -3,7 +3,7 @@ import { v, ConvexError } from 'convex/values';
 import { internalAction, mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
 import { RARITY_LABEL, RARITY_TIER, packKindValidator, rarityValidator, type RarityId } from './cardsCatalog';
 import { isValidPackRequest, rollPack, type PackRequest } from '../src/core/packRoll';
 import { artPath, bebouOddsLabel, catalogEntry, hasArt, subthemeById, themeById, BEBOU_PACK } from '../src/core/sets/themes';
@@ -31,12 +31,12 @@ function secureRandomSeed(): number {
 export const getSealedPack = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const user = await getUserByToken(ctx, sessionToken);
-    if (!user) return null;
+    const userId = await getUserIdByToken(ctx, sessionToken);
+    if (!userId) return null;
 
     return await ctx.db
       .query('packOpens')
-      .withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'sealed'))
+      .withIndex('by_user_status', (q) => q.eq('userId', userId).eq('status', 'sealed'))
       .first();
   },
 });

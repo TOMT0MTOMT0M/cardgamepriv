@@ -1,7 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type QueryCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserByToken, getUserIdByToken, requireUser } from './auth';
 import { catalogCard, rarityValidator, type RarityId } from './cardsCatalog';
 import { bumpMissions } from './missions';
 import { bumpWeekly, recordFlow } from './econLib';
@@ -107,17 +107,17 @@ export const wishlistOf = query({
 export const myTrades = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const user = await getUserByToken(ctx, sessionToken);
-    if (!user) return { incoming: [], outgoing: [] };
+    const userId = await getUserIdByToken(ctx, sessionToken);
+    if (!userId) return { incoming: [], outgoing: [] };
 
     const incoming = await ctx.db
       .query('trades')
-      .withIndex('by_toUser_status', (q) => q.eq('toUserId', user._id).eq('status', 'pending'))
+      .withIndex('by_toUser_status', (q) => q.eq('toUserId', userId).eq('status', 'pending'))
       .collect();
 
     const outgoing = await ctx.db
       .query('trades')
-      .withIndex('by_fromUser_status', (q) => q.eq('fromUserId', user._id).eq('status', 'pending'))
+      .withIndex('by_fromUser_status', (q) => q.eq('fromUserId', userId).eq('status', 'pending'))
       .collect();
 
     // noms affichés (le client n'a pas à recouper avec la liste d'amis)

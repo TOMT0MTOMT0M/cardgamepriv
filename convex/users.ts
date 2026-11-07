@@ -7,7 +7,13 @@ import { catalogEntry } from '../src/core/sets/themes';
 
 /** Taille maximale de la liste d'envies. */
 export const WISHLIST_MAX = 300;
-const ONLINE_WINDOW_MS = 90 * 1000; // 90s heartbeat window
+/**
+ * (perf 07/11) « En ligne » = vu dans les 6 dernières minutes. Le battement de cœur (toutes les 35 s côté client)
+ * n'écrit `lastSeenAt` qu'au plus toutes les 4 min : chaque écriture sur le joueur ré-exécutait toutes ses requêtes
+ * (profil, économie, missions…) et celles de tout le club (amis, classement) — 75 % de la lecture de base du mois.
+ */
+export const SEEN_EVERY_MS = 4 * 60 * 1000;
+const ONLINE_WINDOW_MS = 6 * 60 * 1000;
 
 export const me = query({
   args: { sessionToken: v.optional(v.string()) },
@@ -141,14 +147,16 @@ export const heartbeat = mutation({
     // série de connexion : premier battement de la journée → +1 jour (ou retour à 1)
     const streak = touchStreak(user.streak, now);
     const dev = deviceId && /^[a-z0-9-]{8,64}$/i.test(deviceId) && !(user.devices ?? []).includes(deviceId) ? [...(user.devices ?? []), deviceId].slice(-8) : null;
-    await ctx.db.patch(user._id, {
+    const patch = {
       ...(dev ? { devices: dev } : {}),
-      lastSeenAt: now,
+      ...(now - user.lastSeenAt >= SEEN_EVERY_MS ? { lastSeenAt: now } : {}),
       ...(streak ? { streak } : {}),
       // comptes d'avant la recharge : on fige le départ du minuteur (sinon il glisserait avec lastSeenAt)
       ...(user.packRegenAt === undefined ? { packRegenAt: user.lastSeenAt } : {}),
-      ...(statusText !== undefined ? { statusText } : {}),
-    });
+      ...(statusText !== undefined && statusText !== user.statusText ? { statusText } : {}),
+    };
+    // rien de neuf : AUCUNE écriture (sinon toutes les requêtes qui lisent ce joueur repartent)
+    if (Object.keys(patch).length) await ctx.db.patch(user._id, patch);
     return { ok: true };
   },
 });

@@ -1,6 +1,6 @@
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, type MutationCtx, type QueryCtx } from './_generated/server';
-import type { Doc } from './_generated/dataModel';
+import type { Doc, Id } from './_generated/dataModel';
 
 const MAX_FRIENDS_CAP = 20;
 const STARTER_PACKS = 5;
@@ -18,6 +18,21 @@ export async function getUserByToken(
   if (!session) return null;
   if (session.expiresAt < Date.now()) return null;
   return await ctx.db.get(session.userId);
+}
+
+/**
+ * (perf 07/11) L'id du joueur SANS lire son document : une requête qui ne lit que la session n'est pas ré-exécutée à
+ * chaque écriture sur le joueur (pièces, missions, battement de cœur…) — Convex ré-exécute une requête dès qu'un
+ * document qu'elle a lu change. À utiliser dans toute requête qui n'a besoin que de `user._id`.
+ */
+export async function getUserIdByToken(ctx: QueryCtx | MutationCtx, sessionToken: string | undefined | null): Promise<Id<'users'> | null> {
+  if (!sessionToken) return null;
+  const session = await ctx.db
+    .query('sessions')
+    .withIndex('by_token', (q) => q.eq('token', sessionToken))
+    .unique();
+  if (!session || session.expiresAt < Date.now()) return null;
+  return session.userId;
 }
 
 export async function requireUser(

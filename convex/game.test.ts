@@ -492,6 +492,28 @@ describe('retours du 3 nov. : pity, envies, série de connexion', () => {
   });
 });
 
+describe('perf 07/11 : moins de ré-exécutions', () => {
+  test('battement de cœur : aucune écriture si rien de neuf, « vu à » au plus toutes les 4 min', async () => {
+    const { t, alice } = await setup();
+    await t.mutation(api.users.heartbeat, { sessionToken: alice.token }); // 1er : la série du jour
+    const before = await t.run((ctx) => ctx.db.get(alice.userId));
+    await t.mutation(api.users.heartbeat, { sessionToken: alice.token });
+    const after = await t.run((ctx) => ctx.db.get(alice.userId));
+    expect(after).toEqual(before); // document intact : les requêtes du joueur ne repartent pas
+    await t.run((ctx) => ctx.db.patch(alice.userId, { lastSeenAt: Date.now() - 5 * 60 * 1000 }));
+    await t.mutation(api.users.heartbeat, { sessionToken: alice.token });
+    expect((await t.run((ctx) => ctx.db.get(alice.userId)))!.lastSeenAt).toBeGreaterThan(Date.now() - 60 * 1000);
+  });
+
+  test('économie : plus de primes calculées côté serveur dans state, mais achInput présent', async () => {
+    const { t, alice } = await setup();
+    const s = await t.query(api.economy.state, { sessionToken: alice.token });
+    expect(s?.achInput.packsOpened).toBe(0);
+    expect(s?.completions).toEqual([]);
+    expect(s?.achievements.claimable).toEqual([]);
+  });
+});
+
 describe('retours du 3 nov. : verrouillage, contre-proposition, historique', () => {
   const give = (t: Awaited<ReturnType<typeof setup>>['t'], userId: Id<'users'>, cardId: string, count: number) =>
     t.run((ctx) => ctx.db.insert('inventory', { userId, cardId, rarity: 'common', count, bestMintNumber: 3, foilSeed: 1, firstPulledAt: 0, lastPulledAt: 0 }));
