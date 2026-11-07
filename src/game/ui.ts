@@ -69,11 +69,13 @@ export function cardTile(cardId: string, r: RarityId, o: { count?: number; owned
   t.style.setProperty('--ra', rr.accentHex);
   t.dataset.card = cardId;
   t.dataset.rarity = r;
+  // (07/11) plus de numéro de catalogue sur les tuiles (16 795… : du bruit) ; carte pas encore trouvée = sa propre
+  // illustration floutée et assombrie, avec un cadenas (avant : aplat noir à 35 % → un carré gris vide)
   // une carte Bébou non possédée ne se montre pas (thème secret)
   const hideArt = !owned && rr.secret;
   t.innerHTML = `
-    <div class="art">${hideArt || !e ? '<span class="q">?</span>' : `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(e)}">`}</div>
-    <div class="meta"><span class="num">${e ? String(e.num).padStart(3, '0') : '—'}</span>${starsHtml(r)}</div>
+    <div class="art">${hideArt || !e ? '<span class="q">?</span>' : `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(e)}">${owned ? '' : `<span class="lock"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>`}`}</div>
+    <div class="meta">${starsHtml(r)}</div>
     <div class="name">${hideArt ? '???' : esc(e?.name ?? cardId)}</div>
     ${o.count && o.count > 1 ? `<span class="count">×${o.count}</span>` : ''}
     ${o.label ? `<span class="badge">${esc(o.label)}</span>` : ''}`;
