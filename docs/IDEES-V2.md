@@ -94,6 +94,44 @@ par type pour les deux.
 
 ---
 
+## 1 ter. Gros cache au premier lancement → démarrage et navigation plus rapides — à faire
+
+**Demande de Tom (07/11)** : au premier chargement, télécharger sur le téléphone un maximum de choses pour que les
+démarrages suivants (et tout le reste) soient plus rapides.
+
+**Ce qui existe déjà (07/11)**
+- Fichiers JS / CSS du build : cache navigateur 1 an (`_headers`, noms avec empreinte).
+- Illustrations (`/art/*`, servies depuis R2 par `functions/art/`) : 1 semaine + revalidation en arrière-plan ;
+  1 an quand l'adresse est versionnée (`?v=`).
+- Cartes 2D déjà peintes (`bebou-cartes-v10`), plis et nom moulé des sachets : Cache Storage.
+- MAIS pas de service worker : le cache HTTP du téléphone peut être vidé à tout moment (surtout iPhone), et chaque
+  démarrage repasse par le réseau (page, catalogue ~700 Ko, etc.).
+
+**Ce qu'on ferait (même service worker que les notifications, section 1)**
+- Au premier lancement, en arrière-plan, sans bloquer le jeu :
+  1. « Socle » (quelques Mo, tout de suite) : page du jeu, JS, CSS, polices, catalogue, sons, effets → le démarrage
+     suivant se fait SANS réseau, même hors connexion (écran « pas de réseau » propre au lieu d'une page blanche).
+  2. Illustrations des cartes possédées + celles des boosters les plus ouverts, petit à petit quand le téléphone est
+     au repos.
+  3. Lourd en option : modèles 3D des Merveilles (~20 Mo), effets (~6 Mo) — seulement quand c'est utile, ou via un
+     bouton « Tout télécharger pour jouer hors connexion (X Mo) » dans les réglages.
+- Pas les 37 088 cartes d'un coup : ~15–25 Ko la miniature → 600–900 Mo, trop pour un téléphone.
+- Mises à jour : à chaque patch, le service worker ne retélécharge QUE les fichiers qui ont changé (noms avec
+  empreinte) puis propose « mise à jour disponible, recharge » (cf. circuit V2) — les patchs deviennent légers.
+- `navigator.storage.persist()` pour demander que le navigateur ne vide pas ce cache.
+
+**Limites à connaître**
+- iPhone : Safari peut effacer les données d'un site non utilisé pendant ~7 jours ; une appli ajoutée à l'écran
+  d'accueil est bien mieux protégée → encore une raison de pousser l'ajout à l'écran d'accueil.
+- Données mobiles : télécharger le gros seulement en arrière-plan et par petits morceaux (pas de détection fiable du
+  Wi-Fi sur iPhone) ; le socle reste petit.
+- La compilation des shaders 3D ne se met pas en cache côté jeu (le navigateur garde déjà les siens) : le
+  préchauffage actuel reste nécessaire.
+- AVANT de coder : mesurer avec le rapport de chargement existant (diag, « jalons du démarrage ») ce qui coûte
+  vraiment au démarrage sur téléphone (réseau ? 3D ? peinture des cartes ?) pour viser juste.
+
+---
+
 ## 2. Abonnement « soutien » à 2 €/mois — mis de côté (07/11), à rediscuter
 
 Idée : aider à payer serveurs, abonnement Claude et temps passé. Avantages envisagés : réserve à 20 boosters au lieu
