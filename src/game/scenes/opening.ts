@@ -2545,7 +2545,20 @@ export function createOpeningScene(): OpeningScene {
           packRig.rotation.x += rp.rotX;
           // la roue tourne : le flottement latéral s'efface (la pochette reste dans son rail)
           if (reel.moving) packRig.rotation.y = B.spin + pose.y * 0.3;
-        } else reel.hide();
+          // (retours de Tom) le halo n'est plus une « orbe » que les pochettes traversent : il passe DERRIÈRE tout le
+          // tambour, agrandi d'autant pour garder la même taille à l'écran
+          if (glowRef) {
+            const back = reel.depth + 0.25;
+            glowRef.position.z = -0.18 - back;
+            glowRef.scale.setScalar((camBase + 0.18 + back) / (camBase + 0.18));
+          }
+        } else {
+          reel.hide();
+          if (glowRef) {
+            glowRef.position.z = -0.18;
+            glowRef.scale.setScalar(1);
+          }
+        }
       }
 
       // éventail final, à la souris : la carte survolée se soulève (curseur « main »), petit tic au passage

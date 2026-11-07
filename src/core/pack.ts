@@ -641,7 +641,8 @@ function microGrain(): CanvasTexture {
   const rows = Array.from({ length: N }, () => r());
   for (let y = 0; y < N; y++)
     for (let x = 0; x < N; x++) {
-      const v = 0.55 * val(x, y) + 0.25 * rows[y] + 0.2 * r();
+      // (07/11) stries de laminage plus discrètes (c'est elles qui trahissaient la répétition), deux octaves de bruit
+      const v = 0.45 * val(x, y) + 0.25 * val((x * 3) % N, (y * 3) % N) + 0.1 * rows[y] + 0.2 * r();
       const o = (y * N + x) * 4;
       img.data[o] = img.data[o + 1] = img.data[o + 2] = Math.round(v * 255);
       img.data[o + 3] = 255;
@@ -670,15 +671,21 @@ export const PLASTIC_TINT = 0.74;
  * l'appelant (m.colorNode) est assombrie par le film teinté.
  */
 export function aluminiumSurface(m: MeshPhysicalNodeMaterial, height: N, seam: N, ridges: N, bump = 3.4) {
-  const g = texture(microGrain(), uv().mul(vec2(6, 9))).r;
-  const n = bumpMap((height as N).add(g.mul(0.006)), float(bump), normalMap(encodeNormal(ridges)));
+  // (retours de Tom, 07/11 : « un motif qui se répète, pas seamless ») : la tuile est lue deux fois, à deux échelles
+  // non commensurables dont l'une tournée (la période apparente devient immense), avec moins de poids → grain
+  // aléatoire et discret au lieu d'un motif visible
+  const u0 = uv();
+  const ca = Math.cos(0.61), sa = Math.sin(0.61);
+  const u1 = vec2(u0.x.mul(ca).sub(u0.y.mul(sa)), u0.x.mul(sa).add(u0.y.mul(ca)));
+  const g = texture(microGrain(), u0.mul(vec2(5.3, 7.9)).add(vec2(0.17, 0.43))).r.mul(0.55).add(texture(microGrain(), u1.mul(vec2(3.7, 4.1))).r.mul(0.45));
+  const n = bumpMap((height as N).add(g.mul(0.0035)), float(bump), normalMap(encodeNormal(ridges)));
   const creaseK = smoothstep(0.7, 0.82, height);
   if (m.colorNode) m.colorNode = (m.colorNode as N).mul(PLASTIC_TINT);
   m.metalnessNode = float(1);
-  m.roughnessNode = mix(mix(float(0.15).add(g.mul(0.1)), float(0.34), creaseK), float(0.4), seam);
+  m.roughnessNode = mix(mix(float(0.16).add(g.mul(0.07)), float(0.34), creaseK), float(0.4), seam);
   m.normalNode = n;
   m.clearcoatNode = mix(float(0.3), float(0.04), seam);
-  m.clearcoatRoughnessNode = float(0.1).add(g.mul(0.06));
+  m.clearcoatRoughnessNode = float(0.1).add(g.mul(0.04));
   m.clearcoatNormalNode = n;
 }
 

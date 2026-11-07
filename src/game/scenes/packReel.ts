@@ -1,4 +1,5 @@
-import { ExtrudeGeometry, Group, Mesh, MeshBasicNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, Raycaster, Shape, Vector2, type PerspectiveCamera, type Scene } from 'three/webgpu';
+import { AdditiveBlending, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, Raycaster, Shape, ShapeGeometry, Sprite, SpriteNodeMaterial, Vector2, type PerspectiveCamera, type Scene } from 'three/webgpu';
+import { float, hash, instanceIndex, mix, select, sin, smoothstep, time, uniform, vec2, vec3, vec4 } from 'three/tsl';
 import type { LabContext } from '../../core/Experiment';
 import { PACK } from '../../core/pack';
 import { haptics } from '../../core/haptics';
@@ -47,22 +48,25 @@ const unfeel = (y: number) => {
   return x;
 };
 
-/** chevron (V) : largeur, hauteur, épaisseur du trait, en unités de scène */
-function chevronGeometry(w: number, h: number, t: number): ExtrudeGeometry {
-  const s = new Shape();
-  // trait d'épaisseur constante : décalage vertical du trait = t / cos(pente)
+/**
+ * CHEVRON plat (croquis de Tom, 07/11) : un V large et bas, dessiné en bande ; la bande d'épaisseur `t` est la zone
+ * entre la ligne du V décalée de ±t/2 (décalage vertical = (t/2) / cos(pente)). `off` décale toute la bande le long de
+ * sa normale (pour les deux liserés du contour).
+ */
+const CHEV = { w: 0.27, h: 0.1, t: 0.034, edge: 0.0035 };
+function chevronBand(w: number, h: number, t: number, off = 0): ShapeGeometry {
   const slope = Math.atan2(h, w / 2);
-  const tv = t / Math.cos(slope);
-  s.moveTo(-w / 2, -h / 2);
-  s.lineTo(0, h / 2);
-  s.lineTo(w / 2, -h / 2);
-  s.lineTo(w / 2 - tv * Math.sin(slope), -h / 2 - tv * Math.cos(slope) + tv);
-  s.lineTo(0, h / 2 - tv);
-  s.lineTo(-w / 2 + tv * Math.sin(slope), -h / 2 - tv * Math.cos(slope) + tv);
+  const k = 1 / Math.cos(slope);
+  const up = (off + t / 2) * k, dn = (off - t / 2) * k;
+  const s = new Shape();
+  s.moveTo(-w / 2, -h / 2 + up);
+  s.lineTo(0, h / 2 + up);
+  s.lineTo(w / 2, -h / 2 + up);
+  s.lineTo(w / 2, -h / 2 + dn);
+  s.lineTo(0, h / 2 + dn);
+  s.lineTo(-w / 2, -h / 2 + dn);
   s.closePath();
-  const g = new ExtrudeGeometry(s, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.003, bevelSegments: 2 });
-  g.center();
-  return g;
+  return new ShapeGeometry(s);
 }
 
 export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCamera, wheel3d: Wheel3D, hooks: ReelHooks) {
@@ -90,20 +94,54 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
   group.visible = false;
   group.renderOrder = 3;
   scene.add(group);
-  const geo = chevronGeometry(0.09, 0.044, 0.016);
   /** clic maintenu sans bouger : 0 → 1 (le booster recule un peu) */
   let holdK = 0;
-  const hitGeo = new PlaneGeometry(0.26, 0.16);
+  // (07/11, retours de Tom) « moins 3D, un mix de solide transparent et d'amas de particules » : une bande plate
+  // translucide additive (voile), ses deux liserés plus nets (le dessin du croquis), et un nuage de petites particules
+  // vivantes qui remplissent la bande
+  const fillGeo = chevronBand(CHEV.w, CHEV.h, CHEV.t);
+  const edgeGeo = [chevronBand(CHEV.w, CHEV.h, CHEV.edge, CHEV.t / 2), chevronBand(CHEV.w, CHEV.h, CHEV.edge, -CHEV.t / 2)];
+  const hitGeo = new PlaneGeometry(CHEV.w + 0.06, CHEV.h + 0.08);
   const hitMat = new MeshBasicNodeMaterial({ visible: false });
+  const IVORY = vec3(0.96, 0.9, 0.78);
+  const NPART = 150;
   const mk = (dir: 1 | -1) => {
-    const mat = new MeshStandardNodeMaterial({ color: '#efe4d0', metalness: 0.65, roughness: 0.32, emissive: '#efe4d0', emissiveIntensity: 0.08, transparent: true, opacity: 1 });
-    const m = new Mesh(geo, mat);
+    const uShow = uniform(0), uHov = uniform(0);
+    const glow = uShow.mul(float(0.55).add(uHov.mul(0.6)));
+    const fillMat = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+    fillMat.colorNode = vec4(IVORY.mul(glow.mul(0.22)), 1);
+    const edgeMat = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+    edgeMat.colorNode = vec4(IVORY.mul(glow.mul(1.5)), 1);
+    const fill = new Mesh(fillGeo, fillMat);
+    const edges = edgeGeo.map((eg) => new Mesh(eg, edgeMat));
+    // particules : un point sur l'une des deux branches du V (u le long, v en travers), petite dérive lente
+    const pm = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+    const i = instanceIndex;
+    const h1 = hash(i), h2 = hash(i.add(7)), h3 = hash(i.add(19)), h4 = hash(i.add(41));
+    const left = h1.lessThan(0.5);
+    const u = select(left, h1.mul(2), h1.sub(0.5).mul(2));
+    const ax = select(left, mix(float(-CHEV.w / 2), float(0), u), mix(float(0), float(CHEV.w / 2), u));
+    const ay = mix(float(-CHEV.h / 2), float(CHEV.h / 2), select(left, u, float(1).sub(u)));
+    const slope = Math.atan2(CHEV.h, CHEV.w / 2);
+    const nx = select(left, float(-Math.sin(slope)), float(Math.sin(slope)));
+    const ny = float(Math.cos(slope));
+    const across = h2.sub(0.5).mul(CHEV.t * 0.92);
+    const drift = sin(time.mul(h3.mul(0.6).add(0.5)).add(h4.mul(6.28))).mul(0.004);
+    pm.positionNode = vec3(ax.add(nx.mul(across)).add(drift.mul(nx)), ay.add(ny.mul(across)).add(drift.mul(ny)), h3.mul(0.01));
+    const tw = sin(time.mul(h4.mul(2).add(1.5)).add(h2.mul(6.28))).mul(0.5).add(0.5);
+    const a = glow.mul(smoothstep(0.0, 0.5, h3).mul(0.5).add(0.5)).mul(tw.mul(0.6).add(0.4));
+    pm.colorNode = vec4(IVORY.mul(a.mul(0.55)), 1);
+    pm.scaleNode = vec2(h2.mul(0.0035).add(0.002));
+    const parts = new Sprite(pm);
+    parts.count = NPART;
     const hit = new Mesh(hitGeo, hitMat);
     hit.userData.dir = dir;
     const g = new Group();
+    const m = new Group();
+    m.add(fill, ...edges, parts);
     g.add(m, hit);
     group.add(g);
-    return { g, m, mat, hit, dir, hov: 0, show: 0 };
+    return { g, m, hit, dir, hov: 0, show: 0, uShow, uHov, mats: [fillMat, edgeMat, pm] };
   };
   const arrows = [mk(1), mk(-1)];
   const ray = new Raycaster();
@@ -280,6 +318,10 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
     get holdK() {
       return holdK;
     },
+    /** profondeur du tambour (2 × rayon) : ce qu'il faut reculer pour passer derrière toutes les pochettes */
+    get depth() {
+      return 2 * radius();
+    },
     get cursor() {
       return drag?.moved ? 'grabbing' : hover || hoverKey ? 'pointer' : '';
     },
@@ -409,7 +451,7 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
       for (const ar of arrows) {
         // devant le tambour, au ras du haut / du bas de la pochette du milieu, inclinés comme le tambour à cet endroit
         const h = PACK.h * layout.S;
-        const th = ((h / 2 + 0.05) / radius()) * ar.dir;
+        const th = ((h / 2 + 0.15) / radius()) * ar.dir;
         ar.g.position.set(0, layout.cy + Math.sin(th) * radius(), (Math.cos(th) - 1) * radius() + 0.06);
         ar.g.rotation.set(-th * 0.6, 0, 0);
         ar.hov += ((hover === ar.dir ? 1 : 0) - ar.hov) * (1 - Math.exp(-dt * 14));
@@ -418,10 +460,10 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
         const bob = Math.sin(t * 1.6 + (ar.dir > 0 ? 0 : 1.7)) * 0.004;
         ar.m.position.y = bob + ar.hov * 0.006 * ar.dir;
         ar.m.rotation.z = ar.dir > 0 ? 0 : Math.PI;
-        const s = (0.9 + ar.hov * 0.14) * (0.7 + 0.3 * ar.show);
+        const s = (0.94 + ar.hov * 0.1) * (0.8 + 0.2 * ar.show);
         ar.g.scale.setScalar(s);
-        ar.mat.opacity = 0.18 + 0.82 * ar.show;
-        ar.mat.emissiveIntensity = 0.08 + ar.hov * 0.5;
+        ar.uShow.value = ar.show;
+        ar.uHov.value = ar.hov;
         ar.g.visible = ar.show > 0.02;
       }
     },
@@ -432,10 +474,11 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
       cv.removeEventListener('pointercancel', up);
       cv.removeEventListener('wheel', onWheel);
       scene.remove(group);
-      geo.dispose();
+      fillGeo.dispose();
+      edgeGeo.forEach((g) => g.dispose());
       hitGeo.dispose();
       hitMat.dispose();
-      arrows.forEach((a) => a.mat.dispose());
+      arrows.forEach((a) => a.mats.forEach((m) => m.dispose()));
     },
   };
   return api;
