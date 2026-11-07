@@ -398,8 +398,7 @@ export function createPackSheet(
     // (retours 06/11) la vraie chance de CETTE carte dans ce booster
     if (current && c.rarity !== 'secret') {
       const p = cardPackChance(current.req, c.rarity);
-      // (07/11) sur sa propre ligne sous le nom, plus par-dessus (le nom devenait illisible)
-      if (p > 0) (t.querySelector('.name') ?? t).after(h('span', 'pc-odds', `1 / ${fmtN(Math.round(1 / p))}`));
+      if (p > 0) t.append(h('span', 'pc-odds', `1 / ${fmtN(Math.round(1 / p))}`));
     }
     if (n <= 0 && c.rarity !== 'secret') {
       const b = h('button', `wish-btn${wish.has(c.id) ? ' on' : ''}`, '♥');
