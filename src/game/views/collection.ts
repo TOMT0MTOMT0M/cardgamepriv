@@ -1401,6 +1401,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   grid.addEventListener('click', (ev) => clickTile(ev, 'grid'));
   bindersView.addEventListener('click', (ev) => clickTile(ev, 'binder'));
 
+  /** cartes dont j'ai déjà signalé l'image (par appareil : évite les doublons dans la file) */
+  const IMG_REPORTED_KEY = 'bebou.imgReported';
+  const imgReported = new Set<string>();
+  try {
+    for (const id of JSON.parse(localStorage.getItem(IMG_REPORTED_KEY) ?? '[]') as string[]) imgReported.add(id);
+  } catch {
+    /* stockage indisponible */
+  }
   function renderActions(b: { id: string; r: RarityId }) {
     const e = catalogEntry(b.id);
     const have = owned().get(b.id);
@@ -1417,7 +1425,26 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       <button class="va va-trade" title="Proposer cette carte dans un échange">⇄ <span>Échanger</span></button>
       ${canBoard ? '<button class="va va-board" title="Publier une annonce sur le tableau d’offres avec cette carte">▦ <span>Proposer sur le tableau</span></button>' : ''}
       ${st && !e?.themeId.startsWith('bebous') ? `<button class="va va-cover${isCover ? ' on' : ''}" title="${isCover ? 'Ne plus utiliser comme couverture' : `En faire la couverture de l’album ${esc(st.label)}`}" aria-label="${isCover ? `Couverture de l’album ${esc(st.label)} : retirer` : `En faire la couverture de l’album ${esc(st.label)}`}" aria-pressed="${isCover}">📌 <span>${isCover ? 'Couverture ✓' : 'Couverture'}</span></button>` : ''}
+      <button class="va va-img${imgReported.has(b.id) ? ' on' : ''}" title="${imgReported.has(b.id) ? 'Image déjà signalée, merci' : 'Signaler une image buguée ou absente (on la corrigera)'}" aria-pressed="${imgReported.has(b.id)}">🖼 <span>${imgReported.has(b.id) ? 'Image signalée ✓' : 'Image à revoir'}</span></button>
       ${have?.firstPulledAt ? `<span class="va-date">obtenue le ${fmtDate(have.firstPulledAt)}</span>` : ''}`;
+    // (07/11) signalement d'image en un geste : une suggestion « design » sur cette carte, pour la file de Tom et Hugo
+    vActions.querySelector('.va-img')!.addEventListener('click', async () => {
+      if (imgReported.has(b.id)) return toast('Déjà signalée : on s’en occupe.', 'info');
+      haptics.pulse(8);
+      try {
+        await backend.submitSuggestion({ kind: 'design', cardId: b.id, text: `Image à revoir (buguée ou absente) — ${e?.name ?? b.id}`, page: 'collection/carte' }, null);
+        imgReported.add(b.id);
+        try {
+          localStorage.setItem(IMG_REPORTED_KEY, JSON.stringify([...imgReported]));
+        } catch {
+          /* stockage indisponible */
+        }
+        toast('Image signalée, merci : elle sera corrigée.', 'ok');
+        renderActions(b);
+      } catch (err) {
+        toast(errMsg(err), 'err');
+      }
+    });
     vActions.querySelector('.va-wish')!.addEventListener('click', async () => {
       haptics.pulse(8);
       try {
