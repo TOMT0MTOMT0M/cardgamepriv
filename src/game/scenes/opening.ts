@@ -545,6 +545,17 @@ export function createOpeningScene(): OpeningScene {
   let dispK = 1;
   /** roue en mouvement (0..1, lissé) : le flottement et l'inclinaison à la souris s'effacent puis REVIENNENT en douceur */
   let reelMoveK = 0;
+  /** (07/11, retours de Tom) luminosité du grand booster (il part dans l'ombre sur les côtés du tambour, comme ses voisines) */
+  const bigShade = uniform(1);
+  /**
+   * JUMEAUX du grand booster (roue verticale, ordinateur) : les pochettes du tambour visibles à l'écran sont rendues
+   * avec le maillage et les matériaux du grand booster (avant : mini-boosters à 24 × 36 et 768 px → on voyait la
+   * pochette suivante passer en basse définition, puis « pop » au lâcher quand le grand booster la remplaçait). Les
+   * pochettes hors champ restent des mini-boosters. Textures changées par `applySwaps` : aucun recompilage.
+   */
+  type Twin = { rig: Group; mesh: Mesh; swaps: ArtSwap[]; shade: { value: number }; key: string | null };
+  const twins: Twin[] = [];
+  const TWINS = 4;
   /** décalage horizontal de l'image (px CSS) : cible et valeur lissée */
   let focusT = 0;
   let focusCur = 0;
@@ -669,7 +680,15 @@ export function createOpeningScene(): OpeningScene {
     return t;
   }
 
-  function buildPackMaterials(art: PackArt) {
+  /**
+   * Matériaux du grand booster. `o.swaps` : jumeau de la roue (liste de textures à lui, ni `packNodes` ni `U.soon`) ;
+   * `o.shade` : luminosité (pochettes qui partent sur les côtés du tambour). Même graphe que le grand booster → mêmes
+   * pipelines (aucune compilation de plus).
+   */
+  function buildPackMaterials(art: PackArt, o: { swaps?: ArtSwap[]; soon?: N; shade?: N } = {}) {
+    const sw = o.swaps ?? packSwaps;
+    const soonN = o.soon ?? (U.soon as unknown as N);
+    const shadeN = o.shade ?? (bigShade as unknown as N);
     const uvn = uv();
     const front = texture(art.front, uvn);
     const back = texture(art.back, uvn);
@@ -681,14 +700,14 @@ export function createOpeningScene(): OpeningScene {
     // (07/11) face avant : plis + nom du pack thermoformé (core/packLabel.ts) ; le dos garde les plis seuls
     const nF = art.frontNormal ? texture(art.frontNormal, uvn) : art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
     const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
-    packNodes = { front, back, masks, crF, crB } as unknown as Record<string, { value: Texture }>;
-    track(packSwaps, front, (a) => a.front);
-    track(packSwaps, back, (a) => a.back);
-    track(packSwaps, masks, (a) => a.masks);
-    track(packSwaps, crF, (a) => a.crinkle);
-    track(packSwaps, crB, (a) => a.crinkle);
-    if (nF) track(packSwaps, nF, (a) => a.frontNormal ?? a.creaseNormal);
-    if (nB) track(packSwaps, nB, (a) => a.creaseNormal);
+    if (!o.swaps) packNodes = { front, back, masks, crF, crB } as unknown as Record<string, { value: Texture }>;
+    track(sw, front, (a) => a.front);
+    track(sw, back, (a) => a.back);
+    track(sw, masks, (a) => a.masks);
+    track(sw, crF, (a) => a.crinkle);
+    track(sw, crB, (a) => a.crinkle);
+    if (nF) track(sw, nF, (a) => a.frontNormal ?? a.creaseNormal);
+    if (nB) track(sw, nB, (a) => a.creaseNormal);
     const pp = positionLocal.xy;
     const fbm =
       ctx.quality === 'mobile'
@@ -700,8 +719,8 @@ export function createOpeningScene(): OpeningScene {
       const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
       const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
       // booster « bientôt » : couleurs en partie éteintes (uniforme : aucun recompilage quand on change de booster)
-      const base = mix(col.rgb, vec3(luminance(col.rgb)).mul(0.82), U.soon.mul(0.7));
-      m.colorNode = mix(base, color('#0d0907'), smoothstep(0.06, 0.004, burnFront));
+      const base = mix(col.rgb, vec3(luminance(col.rgb)).mul(0.82), soonN.mul(0.7));
+      m.colorNode = mix(base, color('#0d0907'), smoothstep(0.06, 0.004, burnFront)).mul(shadeN);
       // (retours 06/11) sachet ALUMINIUM : métal partout (« no brand » premium), le logo et les soudures plus lisses,
       // le froissé du sachet dans le relief ; aucun vernis plastique
       // (ultra-réalisme) aluminium brillant : métal pur, rugosité basse, plis en relief fort (carte pleine taille)
@@ -713,7 +732,7 @@ export function createOpeningScene(): OpeningScene {
       // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte
       const seam = masks.b.mul(1.4).add(masks.g.mul(0.35));
       m.emissiveNode = (U.ember as unknown as N).mul(ember.add(seam.add(leakPrint(col, pp)).mul(U.leak)));
-      const lift = creaseLift(packSwaps, art, side);
+      const lift = creaseLift(sw, art, side);
       m.positionNode = (lift ? positionLocal.add(lift) : positionLocal).add(normalLocal.mul(smoothstep(0.05, 0.0, burnFront).mul(0.03)));
       return m;
     };
@@ -2136,6 +2155,21 @@ export function createOpeningScene(): OpeningScene {
       c.bag.fn(() => thumbCache.forEach((u) => u && URL.revokeObjectURL(u)));
       const packGeo = c.bag.add(createPackGeometry(48, 72, { folds: false }));
       const packMesh = new Mesh(packGeo, buildPackMaterials(arts.get(boosterKey)!));
+      // jumeaux pour la roue verticale (ordinateur) : même maillage, mêmes matériaux ; visibles pendant le préchauffage
+      if (!mobile) {
+        const soon0 = uniform(0) as unknown as N;
+        for (let i = 0; i < TWINS; i++) {
+          const swaps: ArtSwap[] = [];
+          const shade = uniform(1);
+          const mesh = new Mesh(packGeo, buildPackMaterials(arts.get(boosterKey)!, { swaps, soon: soon0, shade: shade as unknown as N }));
+          (mesh.material as Material[]).forEach((m) => c.bag.add(m));
+          const rig = new Group();
+          rig.add(mesh);
+          stage.scene.add(rig);
+          twins.push({ rig, mesh, swaps, shade, key: null });
+        }
+        c.bag.fn(() => twins.splice(0).forEach((tw) => stage.scene.remove(tw.rig)));
+      }
       packMeshRef = packMeshMain = packMesh;
       (packMesh.material as Material[]).forEach((m) => c.bag.add(m));
       packRig.add(packMesh);
@@ -2345,6 +2379,12 @@ export function createOpeningScene(): OpeningScene {
           const r = (reel = createReel(c, stage.scene, stage.camera, w3, {
             bigKey: () => boosterKey,
             onCommit: (k) => api.onReelCommit?.(k),
+            hi: (k) => twins.length > 0 && arts.has(k),
+            hiMax: twins.length,
+            pick: (ray) => {
+              const hit = ray.intersectObjects(twins.filter((tw) => tw.rig.visible && tw.key).map((tw) => tw.mesh), false)[0];
+              return hit ? (twins.find((tw) => tw.mesh === hit.object)?.key ?? null) : null;
+            },
             locked: () => !!api.reelLock?.() || phase !== 'display' || !!ctx.overlay.hidden,
           }));
           r.setKeys(reelKeys ?? Object.keys(styles));
@@ -2370,6 +2410,7 @@ export function createOpeningScene(): OpeningScene {
         phase = ph;
       }
       wheel3d?.hide();
+      for (const tw of twins) tw.rig.visible = false;
       ready3d = true;
       // la boutique a pu se mettre en page avant : elle passe maintenant aux mini-boosters 3D
       queueMicrotask(() => api.onWheelReady?.());
@@ -2593,6 +2634,8 @@ export function createOpeningScene(): OpeningScene {
       packRig.rotation.set(pose.x + (display ? Math.sin(t * 0.6) * 0.04 : 0), B.spin + pose.y + (display ? Math.sin(t * 0.4) * 0.12 : 0), tearShake.value * 0.004 - S.trem * 0.06 * (style === 'burn' ? 0 : 1));
       packRig.scale.setScalar(B.s * (1 + (L.dispS - 1) * dispK) * (1 + packLift * 0.025));
       // roue verticale (ordinateur) : le grand booster est la pochette du milieu du tambour — il suit la roue
+      for (const tw of twins) tw.rig.visible = false;
+      bigShade.value = 1;
       if (reel) {
         if (display && reel.enabled && !ctx.overlay.hidden && dispK > 0.5) {
           const cy = B.y + L.dispY * dispK;
@@ -2612,6 +2655,34 @@ export function createOpeningScene(): OpeningScene {
           packRig.rotation.x -= (pose.x + Math.sin(t * 0.6) * 0.04) * 0.7 * reelMoveK;
           // (retours de Tom) le halo n'est plus une « orbe » que les pochettes traversent : il passe DERRIÈRE tout le
           // tambour, agrandi d'autant pour garder la même taille à l'écran
+          // jumeaux : même pose que le grand booster quand la roue tourne (le grand booster les remplace sans saut)
+          bigShade.value = 1 - reel.bigDim;
+          {
+            const want = reel.hiItems;
+            for (const tw of twins) if (tw.key && !want.some((w) => w.key === tw.key)) tw.key = null;
+            const sc = B.s * (1 + (L.dispS - 1) * dispK);
+            const bob = Math.sin(t * 1.1) * 0.012;
+            const tiltX = 0.3 * (pose.x + Math.sin(t * 0.6) * 0.04);
+            const rotY = B.spin + pose.y * 0.3;
+            for (const w of want) {
+              let tw = twins.find((x) => x.key === w.key);
+              if (!tw) {
+                const a = arts.get(w.key);
+                tw = twins.find((x) => !x.key);
+                if (!tw || !a) continue;
+                tw.key = w.key;
+                applySwaps(tw.swaps, a);
+              }
+              tw.rig.visible = true;
+              tw.rig.position.set(packRig.position.x, w.y + bob, B.z + w.z);
+              tw.rig.rotation.set(tiltX + w.rotX, rotY, packRig.rotation.z);
+              tw.rig.scale.setScalar(sc);
+              tw.mesh.position.copy(packMeshMain!.position);
+              tw.mesh.quaternion.copy(packMeshMain!.quaternion);
+              tw.mesh.scale.copy(packMeshMain!.scale);
+              tw.shade.value = 1 - w.dim;
+            }
+          }
           if (glowRef) {
             const back = reel.depth + 0.25;
             glowRef.position.z = -0.18 - back;

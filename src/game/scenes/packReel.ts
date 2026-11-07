@@ -28,6 +28,24 @@ export interface ReelHooks {
   onCommit(key: string): void;
   /** roue verrouillée (booster déjà tiré, fiche ouverte…) : ni glisser ni flèches */
   locked(): boolean;
+  /**
+   * (07/11, retours de Tom) pochette rendue en PLEINE définition par la scène (jumeau du grand booster) : les `hiMax`
+   * pochettes visibles les plus proches du milieu ; les autres (hors champ) restent des mini-boosters
+   */
+  hi?(key: string): boolean;
+  hiMax?: number;
+  /** pochette pleine définition touchée par ce rayon */
+  pick?(ray: Raycaster): string | null;
+}
+
+/** pochette pleine définition à poser (unités de scène, comme `bigPose`) */
+export interface ReelHiItem {
+  key: string;
+  y: number;
+  z: number;
+  rotX: number;
+  /** 0 = pleine lumière … 0,5 */
+  dim: number;
 }
 
 const TAU = Math.PI * 2;
@@ -248,6 +266,11 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
   cv.addEventListener('wheel', onWheel, { passive: false });
 
   const items: WheelItem3D[] = [];
+  const hiItems: ReelHiItem[] = [];
+  let bigDim = 0;
+  /** ombre selon la distance au milieu (en crans), continue à 0 : le grand booster et ses jumeaux s'échangent sans saut */
+  const dimAt = (a: number) => Math.min(0.5, 0.05 * Math.min(1, a) + a * 0.1);
+  const pickAny = (r: Raycaster) => hooks.pick?.(r) ?? wheel3d.pick(r);
   const tmpV = new Vector2();
 
   const api = {
@@ -311,7 +334,7 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
       if (!shown || hooks.locked()) return false;
       ndc.set(x, y);
       ray.setFromCamera(ndc, camera);
-      const k = wheel3d.pick(ray);
+      const k = pickAny(ray);
       if (k && k !== hooks.bigKey()) {
         learnt();
         haptics.pulse(4);
@@ -320,7 +343,17 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
       }
       return false;
     },
+    /** pochettes visibles à rendre en pleine définition (mises à jour par `update`) */
+    get hiItems(): readonly ReelHiItem[] {
+      return shown ? hiItems : [];
+    },
+    /** ombre du grand booster (il quitte le milieu) */
+    get bigDim() {
+      return shown ? bigDim : 0;
+    },
     hide() {
+      hiItems.length = 0;
+      bigDim = 0;
       if (shown) {
         shown = false;
         group.visible = false;
@@ -369,12 +402,28 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
       const big = hooks.bigKey();
       const sp = Math.min(Math.abs(vel), 30);
       items.length = 0;
+      hiItems.length = 0;
+      // les `hiMax` pochettes visibles les plus proches du milieu : pleine définition (jumeaux), cachées ici
+      const hi = new Set<string>();
+      if (hooks.hi && hooks.hiMax) {
+        const cand: Array<[number, string]> = [];
+        for (let i = 0; i < N(); i++) {
+          const a = Math.abs(near(i - pos - nudgeOff));
+          if (keys[i] !== big && a * stepAngle() <= Math.PI * 0.62 && hooks.hi(keys[i])) cand.push([a, keys[i]]);
+        }
+        cand.sort((x, y) => x[0] - y[0]);
+        for (const [, kk] of cand.slice(0, hooks.hiMax)) hi.add(kk);
+      }
+      bigDim = dimAt(Math.abs(near(indexOf(big) - pos - nudgeOff)));
       for (let i = 0; i < N(); i++) {
         const d = near(i - pos - nudgeOff);
         const a = Math.abs(d);
         const p = poseAt(d);
-        // celles de derrière (au-delà du quart de tour) sont cachées
-        const hidden = keys[i] === big || a * stepAngle() > Math.PI * 0.62;
+        if (hi.has(keys[i])) {
+          hiItems.push({ key: keys[i], y: p.y, z: p.z, rotX: p.rotX, dim: dimAt(a) * (keys[i] === hoverKey ? 0.25 : 1) });
+        }
+        // celles de derrière (au-delà du quart de tour) sont cachées ; celles en pleine définition aussi
+        const hidden = keys[i] === big || hi.has(keys[i]) || a * stepAngle() > Math.PI * 0.62;
         items.push({
           key: keys[i],
           x: 0,
@@ -416,7 +465,7 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
         if (ndc.x !== tmpV.x || ndc.y !== tmpV.y) {
           tmpV.copy(ndc);
           ray.setFromCamera(ndc, camera);
-          const kk = wheel3d.pick(ray);
+          const kk = pickAny(ray);
           hoverKey = kk && kk !== big ? kk : null;
         }
         else hoverKey = prevHover; // (souris immobile : même survol qu'à l'image d'avant)
