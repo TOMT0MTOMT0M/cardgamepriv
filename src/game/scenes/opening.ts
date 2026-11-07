@@ -1,4 +1,5 @@
 import { cameraScale, createWheel3D, type Wheel3D, type WheelItem3D } from './packWheel3d';
+import { createReel, type Reel } from './packReel';
 import {
   AdditiveBlending,
   ClampToEdgeWrapping,
@@ -226,6 +227,17 @@ export interface OpeningScene extends Experiment {
   wheelView(): { P: number; ox: number; oy: number } | null;
   /** la roue 3D vient d'être prête (la page doit se remettre en page pour la caler) */
   onWheelReady: (() => void) | null;
+  /**
+   * Roue VERTICALE des boosters (ordinateur, packReel.ts) : ordre des pochettes (celui de la boutique) ; la roue a
+   * trouvé son cran sur une autre pochette → `onReelCommit` (la boutique change le grand booster sans animation) ;
+   * `reelTo` : la boutique demande une pochette (menu, clavier) → true si la roue s'en charge ; `reelLock` : booster
+   * déjà tiré, fiche ouverte… → la roue ne tourne pas.
+   */
+  setReelKeys(keys: string[]): void;
+  onReelCommit: ((key: string) => void) | null;
+  reelTo(key: string): boolean;
+  reelActive(): boolean;
+  reelLock: (() => boolean) | null;
   /** rectangle écran (px CSS) du booster de la vitrine ; null hors vitrine */
   boosterRect(): { x: number; y: number; w: number; h: number } | null;
   /** vitrine : le booster se soulève un instant, comme au survol de la souris sur ordinateur (« touche-moi ») */
@@ -489,6 +501,10 @@ export function createOpeningScene(): OpeningScene {
   let ready3d = false;
   let wheelItems: WheelItem3D[] | null = null;
   let wheelDirty = false;
+  /** roue verticale (ordinateur, packReel.ts) */
+  let reel: Reel | null = null;
+  /** ordre des pochettes de la roue verticale (celui de la boutique), reçu avant que la roue existe */
+  let reelKeys: string[] | null = null;
   /** tier de la carte en cours de révélation (un toucher impatient n'accélère que les communes → épiques) */
   let curTier = 0;
   /** vitrine en portrait : le booster remonte et rétrécit pour laisser la place au choix des boosters en bas */
@@ -1867,6 +1883,18 @@ export function createOpeningScene(): OpeningScene {
     },
     onBoosterSwipe: null,
     onWheelReady: null,
+    setReelKeys(keys) {
+      reelKeys = keys;
+      reel?.setKeys(keys);
+    },
+    onReelCommit: null,
+    reelTo(k) {
+      return !!reel?.spinTo(k);
+    },
+    reelActive() {
+      return !!reel?.active;
+    },
+    reelLock: null,
     setWheel(items) {
       wheelItems = items;
       wheelDirty = true;
@@ -2245,12 +2273,24 @@ export function createOpeningScene(): OpeningScene {
       // être compilés avec le reste. (07/11) Toujours créée, même en qualité « ordinateur » : un téléphone réglé en
       // haute qualité, ou une fenêtre étroite, montre aussi les mini-boosters 3D (5 petits maillages, rien à payer sinon)
       {
-        wheel3d = createWheel3D(stage.scene, (k) => arts.get(k));
+        // (07/11) ordinateur : les mini-boosters servent aussi à la roue verticale, presque aussi grands que le grand
+        // booster → textures 768 px et maillage fin
+        wheel3d = createWheel3D(stage.scene, (k) => arts.get(k), mobile ? {} : { texW: 768, backW: 384, creaseW: 512, seg: [24, 36] });
         // (perf 06/11) toutes les pochettes : celle dont le visuel est prêt (texturée, plis en relief) ET les autres
         // (encore unies, en attendant leur visuel) — leurs pipelines naissaient sinon à la 1re image de la vitrine
         wheel3d.warm([boosterKey, ...Object.keys(styles).filter((k) => k !== boosterKey)]);
         const w3 = wheel3d;
         c.bag.fn(() => w3.dispose());
+        if (!mobile) {
+          const r = (reel = createReel(c, stage.scene, stage.camera, w3, {
+            bigKey: () => boosterKey,
+            onCommit: (k) => api.onReelCommit?.(k),
+            locked: () => !!api.reelLock?.() || phase !== 'display' || !!ctx.overlay.hidden,
+          }));
+          r.setKeys(reelKeys ?? Object.keys(styles));
+          c.bag.fn(() => r.dispose());
+          layout(c.width, c.height); // (la roue existe maintenant : échelle du booster et activation)
+        }
       }
       await stage.compile();
       {
@@ -2335,6 +2375,8 @@ export function createOpeningScene(): OpeningScene {
         c.input.onTap((x, y) => {
           if (ctx.overlay.hidden) return; // une autre scène est affichée (visionneuse…) : ce tap n'est pas pour nous
           if (phase === 'display') {
+            // roue verticale (ordinateur) : un clic sur un chevron ou une pochette voisine fait tourner la roue
+            if (reel?.tap(x, y)) return;
             // toucher le booster = l'ouvrir
             ray.setFromCamera(new Vector2(x, y), stage.camera);
             if (packMeshRef && ray.intersectObject(packMeshRef, false).length) api.onBoosterTap?.();
@@ -2490,6 +2532,21 @@ export function createOpeningScene(): OpeningScene {
       packRig.position.set(0, B.y + L.dispY * dispK + (display ? Math.sin(t * 1.1) * 0.012 : 0), B.z);
       packRig.rotation.set(pose.x + (display ? Math.sin(t * 0.6) * 0.04 : 0), B.spin + pose.y + (display ? Math.sin(t * 0.4) * 0.12 : 0), tearShake.value * 0.004 - S.trem * 0.06 * (style === 'burn' ? 0 : 1));
       packRig.scale.setScalar(B.s * (1 + (L.dispS - 1) * dispK) * (1 + packLift * 0.025));
+      // roue verticale (ordinateur) : le grand booster est la pochette du milieu du tambour — il suit la roue
+      if (reel) {
+        if (display && reel.enabled && !ctx.overlay.hidden && dispK > 0.5) {
+          const cy = B.y + L.dispY * dispK;
+          reel.setLayout(cy, L.dispS);
+          reel.update(dt, t);
+          const rp = reel.bigPose();
+          packRig.position.y += rp.y - cy;
+          // clic maintenu : « pris en main », le booster recule un peu
+          packRig.position.z += rp.z - reel.holdK * 0.06;
+          packRig.rotation.x += rp.rotX;
+          // la roue tourne : le flottement latéral s'efface (la pochette reste dans son rail)
+          if (reel.moving) packRig.rotation.y = B.spin + pose.y * 0.3;
+        } else reel.hide();
+      }
 
       // éventail final, à la souris : la carte survolée se soulève (curseur « main »), petit tic au passage
       const mouseOver = phase === 'done' && ctx.input.inside && !ctx.input.down && !ctx.input.gyroEnabled && !ctx.overlay.hidden;
@@ -2547,7 +2604,7 @@ export function createOpeningScene(): OpeningScene {
       }
       packLift += ((packHover || (phase === 'display' && sceneT < hintLiftUntil) ? 1 : 0) - packLift) * (1 - Math.exp(-dt * (packHover ? 10 : 7)));
       // curseur : maintenir sur le booster scellé, toucher pour révéler, main sur une carte de l'éventail
-      const cur = phase === 'sealed' ? (holding ? 'grabbing' : 'grab') : phase === 'opened' || phase === 'shown' ? 'pointer' : (phase === 'done' && hovered >= 0) || packHover ? 'pointer' : '';
+      const cur = phase === 'sealed' ? (holding ? 'grabbing' : 'grab') : phase === 'opened' || phase === 'shown' ? 'pointer' : (phase === 'done' && hovered >= 0) || packHover ? 'pointer' : (display && reel?.cursor) || '';
       if (!ctx.overlay.hidden && ctx.canvas.style.cursor !== cur) ctx.canvas.style.cursor = cur;
       // la pile qui attend un toucher respire un peu et suit le pointeur (elle invite à jouer) ; la carte montrée et
       // l'éventail s'inclinent davantage
@@ -2602,7 +2659,7 @@ export function createOpeningScene(): OpeningScene {
       // roue des boosters (téléphone) : posée juste avant le rendu ; une roue qui tourne = pas d'image sautée
       if (wheel3d) {
         if (phase === 'display' && wheelItems && !ctx.overlay.hidden) wheel3d.set(wheelItems, cameraScale(stage.camera, ctx.height).k);
-        else wheel3d.hide();
+        else if (!reel?.active) wheel3d.hide();
       }
       if (!calm || wheelDirty) calmSkip = 0;
       if (!calm || wheelDirty || (calmSkip++ & 1) === 0) post.render();
@@ -2641,7 +2698,12 @@ export function createOpeningScene(): OpeningScene {
     const shortPortrait = portrait && h > 0 && h < 780;
     // (téléphone, 4 nov. : plus de bouton « Ouvrir » sous le booster → il redescend un peu)
     L.dispY = wide ? 0.02 : portrait ? (shortPortrait ? 0.25 : 0.2) : shortLand ? 0.3 : 0.1;
-    L.dispS = wide ? 0.84 : shortLand ? 0.46 : shortPortrait ? 0.5 : 0.56;
+    // (07/11) ordinateur : roue verticale → le grand booster un peu plus petit, ses voisines dépassent en haut et en bas
+    L.dispS = wide ? (reel ? 0.64 : 0.84) : shortLand ? 0.46 : shortPortrait ? 0.5 : 0.56;
+    if (reel) {
+      reel.enabled = wide;
+      reel.snap();
+    }
   }
   return api;
 }

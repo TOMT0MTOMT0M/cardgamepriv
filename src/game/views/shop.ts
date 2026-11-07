@@ -465,7 +465,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       syncCta();
       return;
     }
-    opening.setBooster(k, true, dir);
+    // ordinateur (07/11) : la roue verticale tourne jusqu'à la pochette ; le grand booster change quand elle y arrive
+    // (onReelCommit → select sans défilement) — sinon il pivote sur lui-même comme avant
+    if (o.scroll !== false && opening.reelTo(k)) {
+      syncState();
+      return;
+    }
+    opening.setBooster(k, !opening.reelActive(), dir);
     opening.setBoosterSoon(!!list.find((b) => b.key === k)?.soon);
     syncState();
   }
@@ -852,6 +858,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
   });
 
+  // roue verticale (ordinateur) : l'ordre des pochettes est celui de la liste ; quand la roue s'arrête sur une autre
+  // pochette, elle devient le booster choisi (le grand booster l'affiche sans pivoter : il a tourné avec la roue)
+  opening.setReelKeys(list.map((b) => b.key));
+  opening.reelLock = () => mode !== 'pick' || !el.isConnected || !!backend.state.sealed || sheet.isOpen() || viewing;
+  opening.onReelCommit = (k) => {
+    if (mode !== 'pick' || !el.isConnected || backend.state.sealed) return;
+    select(k, { scroll: false });
+  };
   // glisser le doigt sur le booster en 3D : vers la gauche = booster suivant, vers la droite = précédent
   opening.onBoosterSwipe = (dir) => {
     if (mode !== 'pick' || !el.isConnected || backend.state.sealed || sheet.isOpen()) return;

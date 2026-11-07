@@ -1,4 +1,4 @@
-import { CanvasTexture, Color, Group, Mesh, MeshStandardNodeMaterial, SRGBColorSpace, type BufferGeometry, type PerspectiveCamera, type Scene, type Texture } from 'three/webgpu';
+import { CanvasTexture, Color, Group, Mesh, MeshStandardNodeMaterial, SRGBColorSpace, type BufferGeometry, type PerspectiveCamera, type Raycaster, type Scene, type Texture } from 'three/webgpu';
 import { bumpMap, float, texture, uv, vec2 } from 'three/tsl';
 import { createPackGeometry, PACK, type PackArt } from '../../core/pack';
 
@@ -18,6 +18,8 @@ export interface WheelItem3D {
   z: number;
   rotY: number;
   rotZ: number;
+  /** inclinaison avant/arrière (roue verticale de l'ordinateur, packReel.ts) */
+  rotX?: number;
   /** largeur (px CSS) à z = 0 */
   size: number;
   /** 0 = pleine lumière, 1 = noir (pochettes qui partent sur les côtés) */
@@ -27,6 +29,14 @@ export interface WheelItem3D {
   accent: string;
 }
 
+/** (07/11) ordinateur : les mini-boosters de la roue verticale sont presque aussi grands que le grand booster →
+ *  textures et maillage plus fins (`opts`) ; téléphone : au rabais */
+export interface Wheel3DOpts {
+  texW?: number;
+  backW?: number;
+  creaseW?: number;
+  seg?: [number, number];
+}
 const TEX_W = 256;
 const BACK_W = 128;
 /** carte des plis (sachets aluminium) : en petit, 192 px suffisent à garder les grandes cassures lisibles */
@@ -38,6 +48,7 @@ const shrunk = new WeakMap<object, Map<number, HTMLCanvasElement>>();
 function shrink(src: Texture | undefined, w: number, srgb = true): Texture | null {
   const img = src?.image as HTMLCanvasElement | ImageBitmap | undefined;
   if (!img || !img.width) return null;
+  w = Math.min(w, img.width); // jamais agrandie
   let byW = shrunk.get(img);
   let c = byW?.get(w);
   if (!c || !c.width) {
@@ -64,12 +75,15 @@ interface Slot {
   textured: boolean;
 }
 
-export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | undefined) {
+export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | undefined, opts: Wheel3DOpts = {}) {
+  const texW = opts.texW ?? TEX_W;
+  const backW = opts.backW ?? BACK_W;
+  const creaseW = opts.creaseW ?? CREASE_W;
   const group = new Group();
   group.visible = false;
   group.renderOrder = 2;
   scene.add(group);
-  const geo: BufferGeometry = createPackGeometry(10, 16);
+  const geo: BufferGeometry = createPackGeometry(...(opts.seg ?? [10, 16]));
   const owned: Array<{ dispose(): void }> = [geo];
   const slots = new Map<string, Slot>();
   const blank = new CanvasTexture(document.createElement('canvas'));
@@ -98,8 +112,8 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     if (s.textured) return;
     const art = getArt(s.key);
     if (!art) return;
-    const f = shrink(art.front, TEX_W);
-    const b = shrink(art.back, BACK_W);
+    const f = shrink(art.front, texW);
+    const b = shrink(art.back, backW);
     if (!f) return;
     owned.push(f);
     if (b) owned.push(b);
@@ -111,7 +125,7 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
       s.back.roughness = 0.24;
     }
     if (art.fullCrease) {
-      const cr = shrink(art.crinkle, CREASE_W, false);
+      const cr = shrink(art.crinkle, creaseW, false);
       if (cr) {
         owned.push(cr);
         // nœuds créés ICI, avec la vraie texture : bumpMap échantillonne des copies du nœud de texture (décalages
@@ -151,7 +165,7 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
         if (!vis) continue;
         const sc = it.size / k / PACK.w;
         s.body.position.set(it.x / k, -it.y / k, it.z / k);
-        s.body.rotation.set(0, it.rotY, -it.rotZ);
+        s.body.rotation.set(it.rotX ?? 0, it.rotY, -it.rotZ);
         s.body.scale.set(sc, sc, sc * 1.25); // (un peu plus bombé : le relief se lit mieux en petit)
         const l = 1 - it.dim;
         tmp.setScalar(l);
@@ -161,6 +175,14 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     },
     hide() {
       group.visible = false;
+    },
+    /** la pochette visible touchée par ce rayon (roue verticale : un clic sur une voisine l'amène au milieu) */
+    pick(ray: Raycaster): string | null {
+      if (!group.visible) return null;
+      const hit = ray.intersectObjects([...slots.values()].filter((s) => s.body.visible).map((s) => s.body), false)[0];
+      if (!hit) return null;
+      for (const s of slots.values()) if (s.body === hit.object) return s.key;
+      return null;
     },
     get k() {
       return lastK;
