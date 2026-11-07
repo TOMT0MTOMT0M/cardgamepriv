@@ -9,7 +9,7 @@
  */
 import type { Shell } from './shell';
 import { net } from '../core/net/client';
-import { perfLongTasks, perfMarks } from '../core/perfLog';
+import { perfLongTasks, perfMarks, perfSlowFrames, type SlowFrame } from '../core/perfLog';
 
 const WATCH = /^(duel|duel-view|wild|wild-view)$/;
 const logs: string[] = [];
@@ -95,7 +95,11 @@ export function installDiag(shell: Shell) {
  * Envoyé UNE fois par appareil et par version du rapport (sinon avec `?diag` dans l'adresse), 6 s après la boutique,
  * dans les retours du labo (entrée « Chargement », une ligne par appareil). Aucune donnée personnelle.
  */
-const LOAD_REPORT_V = 'charge-1';
+const LOAD_REPORT_V = 'charge-2'; // (07/11) v2 : jalons du démarrage, images lentes avec leurs scripts, rapport d'usage
+/** au-delà de cette durée après la boutique, le rapport d'USAGE part (images lentes pendant qu'on joue) */
+const USAGE_REPORT_MS = 150_000;
+
+const frameLine = (f: SlowFrame) => `${(f.at / 1000).toFixed(1)}s ${f.ms} ms${f.layout > 20 ? ` (style+mise en page ${f.layout})` : ''} ${f.view} ← ${f.scripts.join(' | ') || 'scripts inconnus'}`;
 export function reportLoad(shell: Shell) {
   try {
     const forced = new URLSearchParams(location.search).has('diag');
@@ -120,6 +124,8 @@ export function reportLoad(shell: Shell) {
         `tâches longues : ${lt.length} (${sum(lt)} ms), avant la boutique ${before.length} (${sum(before)} ms) · pires : ${top.join(', ') || 'aucune / non mesurées'}`,
         `${be} · ${shell.quality} · ${window.innerWidth}×${window.innerHeight} @${devicePixelRatio} · ${n.hardwareConcurrency ?? '?'} cœurs · ${n.deviceMemory ?? '?'} Go · ${n.connection?.effectiveType ?? '?'} ${n.connection?.downlink ?? ''}`,
         `cache des cartes : ${typeof caches === 'undefined' ? 'indisponible' : 'ok'} · ${document.visibilityState}`,
+        // (v2) les images les plus lentes jusqu'ici, avec ce qui les a occupées (Chrome / Android : API LoAF)
+        ...[...perfSlowFrames()].sort((a, b) => b.ms - a.ms).slice(0, 6).map(frameLine),
       ].join('\n').slice(0, 1990);
       void net
         .pushLabFeedback({
@@ -131,6 +137,32 @@ export function reportLoad(shell: Shell) {
         .then(() => localStorage.setItem('bebou.diag.charge', LOAD_REPORT_V))
         .catch(() => {});
       console.info('[chargement]\n' + note);
+      // (v2) RAPPORT D'USAGE : 2 min 30 de jeu plus tard, les images lentes APRÈS la boutique (roue, ouvertures,
+      // collection…), chacune avec la page affichée et ses scripts — ce qui ralentit pendant qu'on joue
+      setTimeout(() => {
+        try {
+          const after = perfSlowFrames().filter((f) => f.at > shop);
+          const byView = new Map<string, number>();
+          for (const f of after) byView.set(f.view, (byView.get(f.view) ?? 0) + 1);
+          const lt2 = perfLongTasks().filter((t) => t.at > shop);
+          const usage = [
+            `usage ${((performance.now() - shop) / 1000).toFixed(0)} s après la boutique · tâches longues ${lt2.length} (${sum(lt2)} ms) · images > 80 ms : ${after.length} (${[...byView].map(([v, n]) => `${v} ${n}`).join(', ') || '—'})`,
+            `${be} · ${shell.quality} · ${window.innerWidth}×${window.innerHeight} @${devicePixelRatio}`,
+            ...[...after].sort((a, b) => b.ms - a.ms).slice(0, 10).map(frameLine),
+          ].join('\n').slice(0, 1990);
+          void net
+            .pushLabFeedback({
+              clientId: `diag-usage-${(localStorage.getItem('bebou.device') ?? 'x').slice(0, 30)}`,
+              tester: 'diag',
+              entries: [{ id: 'diag-usage', title: 'Usage', category: 'D', vote: 0, note: usage, updatedAt: new Date().toISOString() }],
+              meta: { backend: be, userAgent: navigator.userAgent, quality: shell.quality, dpr: devicePixelRatio },
+            })
+            .catch(() => {});
+          console.info('[usage]\n' + usage);
+        } catch {
+          /* rapport facultatif */
+        }
+      }, USAGE_REPORT_MS);
     } catch {
       /* rapport facultatif */
     }

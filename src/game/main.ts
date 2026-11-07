@@ -767,6 +767,7 @@ async function boot() {
   const bar = loader.querySelector<HTMLElement>('.l-bar i')!;
   // étapes longues (démarrage de la 3D, compilation des shaders) : la barre ne reste pas figée, un reflet la parcourt
   const step = (pct: number, txt: string, busy = false) => {
+    perfMark(`étape ${pct} %`); // (07/11) jalons du démarrage dans le rapport de chargement (game/diag.ts)
     // barre animée en continu par jeu/index.html (__bootBar) : on ne lui donne que les vraies étapes
     const fake = (window as unknown as { __bootBar?: { step(p: number): void } }).__bootBar;
     if (fake) fake.step(pct);
