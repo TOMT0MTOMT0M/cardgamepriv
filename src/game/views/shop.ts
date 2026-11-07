@@ -364,6 +364,19 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     },
   });
   el.append(sheet.el);
+  /**
+   * (07/11, retours de Tom) ORDINATEUR : plus de liste des boosters à droite — la fiche du booster choisi y est posée en
+   * permanence, en panneau fluide (packSheet.ts dock/show) ; elle se déforme et se reforme quand la roue change de
+   * booster. Seulement sur la vitrine (pas pendant une ouverture, ni une carte en grand).
+   */
+  const DOCK = matchMedia('(min-width: 861px)');
+  function syncDock() {
+    const on = DOCK.matches && mode === 'pick' && el.isConnected && !viewing;
+    el.classList.toggle('dock', DOCK.matches);
+    sheet.show(selected);
+    sheet.dock(on);
+  }
+  DOCK.addEventListener('change', () => syncDock());
   // crochet de test (Playwright, dev seulement) : ouvre directement un booster de la liste (`__shop.open('pop')`)
   if (import.meta.env.DEV)
     (window as unknown as { __shop: unknown }).__shop = {
@@ -447,6 +460,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const to = list.findIndex((b) => b.key === k);
     const dir = o.dir ?? (to >= from ? 1 : -1);
     selected = k;
+    if (DOCK.matches) sheet.show(k);
     try {
       localStorage.setItem('bebou.booster', k);
     } catch {
@@ -1063,6 +1077,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (m !== 'pick') cta.hidden = true;
     else syncCta();
     document.body.classList.toggle('opening', m === 'opening');
+    syncDock();
   }
 
   function start(p: SealedPack, continued = false) {
@@ -1633,6 +1648,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     sumBg.classList.add('veiled');
     big.setVisible(false);
     el.classList.add('viewing');
+    syncDock();
     document.body.classList.add('card-open');
     syncHint();
     const viewer = await getViewer();
@@ -1648,6 +1664,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     viewing = false;
     viewerUi.hidden = true;
     el.classList.remove('viewing');
+    syncDock();
     document.body.classList.remove('card-open');
     summary.hidden = mode !== 'summary';
     sumBg.classList.remove('veiled');
@@ -1687,12 +1704,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       // téléphone (roue) : la pochette choisie au milieu, sans animation
       requestAnimationFrame(relayout);
       syncState();
+      requestAnimationFrame(syncDock);
       // lien direct vers une fiche (missions « Go », #/boutique/bebou)
       if (sub && list.some((b) => b.key === sub)) sheet.open(sub);
     },
     leave() {
       stopMusicPreview(0.3);
       sheet.close();
+      sheet.dock(false);
       if (mode === 'summary') back();
     },
     busy: () => mode === 'opening',

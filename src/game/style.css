@@ -2922,3 +2922,56 @@ a.btn-primary:visited { color: inherit; }
 .me, .hud-count, .p-n, .pt-n, .st-n, .msn-n, .coin-btn b, .sum-prog, .v-pos, .ps-bn, .ps-pity-l, .sc-big, .lb-n, .w-amt, .w-h, .cal-d { font-variant-numeric: tabular-nums; }
 /* textes tournés : seulement des formes ; les vignettes et textes restent droits (voir .sl-art img, .ps-thumb img) */
 /* ==== fin audit 06/11 ==== */
+
+/* ==== (07/11, retours de Tom) ORDINATEUR : fiche du booster posée à droite — « futuriste, seulement du texte, pas de
+   cadre » ====  packSheet.ts dock()/show() · shop.ts syncDock(). Pas de panneau : le texte flotte sur la scène, en
+   interface tête haute (filets d'un pixel, libellés en chasse fixe). Au changement de booster, le texte se LIQUÉFIE
+   (filtre SVG #ps-liquid, posé seulement pendant la transition : .ps-liquid) puis se reforme avec un rebond. */
+.ps-fx-defs { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
+@media (min-width: 861px) {
+  .shop.dock { --lw: clamp(300px, 23vw, 370px); }
+  .shop.dock .shop-left > .shop-title, .shop.dock .shop-left > .packs-row { display: none; }
+  .ps-root.ps-docked { pointer-events: none; z-index: 6; }
+  .ps-root.ps-docked .ps-backdrop, .ps-root.ps-docked .ps-close { display: none; }
+  .ps-root.ps-docked .pack-sheet { pointer-events: auto; left: auto; right: 22px; top: calc(var(--top) + env(safe-area-inset-top) + 18px); bottom: calc(16px + env(safe-area-inset-bottom)); width: var(--lw); background: none; border: 0; border-radius: 0; box-shadow: none; opacity: 1; transform: none; transition: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ps-root.ps-docked:not(.in) .pack-sheet { pointer-events: none; }
+  .ps-docked .pack-sheet.ps-liquid .ps-scroll, .ps-docked .pack-sheet.ps-liquid .ps-open { filter: url(#ps-liquid); }
+  .ps-docked .ps-scroll { padding: 4px 2px 10px; gap: 18px; }
+  .ps-docked .ps-scroll, .ps-docked .ps-open { text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85); }
+  .ps-docked .ps-thumb { display: none; }
+  .ps-docked .ps-head { grid-template-columns: 1fr; padding-right: 0; }
+  .ps-docked .ps-head .kicker { font: 500 11px var(--mono); letter-spacing: 0.42em; color: color-mix(in srgb, var(--acc, #e8927c) 70%, #fff); }
+  .ps-docked .ps-name { font-size: 40px; line-height: 0.98; letter-spacing: 0.01em; margin-top: 6px; }
+  .ps-docked .ps-name i { display: inline-block; font-style: inherit; }
+  .ps-docked .ps-desc { font: 400 12px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); margin-top: 8px; }
+  /* blocs : plus de cartouches — un filet d'un pixel au-dessus, comme un affichage tête haute */
+  .ps-docked .ps-block, .ps-docked .ps-facts, .ps-docked .ps-cards-btn { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 12px 0 0; border-top: 1px solid rgba(255, 236, 214, 0.1); }
+  .ps-docked .ps-facts { border-top-color: color-mix(in srgb, var(--acc, #e8927c) 45%, transparent); }
+  .ps-docked .ps-bt { font: 500 11px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; }
+  .ps-docked .ps-bt small { display: none; }
+  .ps-docked .ps-cards-btn { text-align: left; }
+  .ps-docked .ps-cards-btn:hover span { color: color-mix(in srgb, var(--acc, #e8927c) 70%, #fff); }
+  .ps-docked .ps-open { border-top: 1px solid rgba(255, 236, 214, 0.1); padding: 14px 0 0; align-items: stretch; }
+  .ps-docked .ps-open .qty { align-self: center; background: none; }
+  .ps-docked .ps-open .open-sub, .ps-docked .ps-buy { text-align: center; justify-content: center; }
+  .ps-root.ps-docked:not(.in) .ps-scroll, .ps-root.ps-docked:not(.in) .ps-open { opacity: 0; transition: opacity 0.24s 0.04s; }
+
+  /* le texte : il fond (flou, étiré) puis se reforme avec un léger rebond — chaque bloc un peu après le précédent */
+  .ps-docked .ps-scroll > *, .ps-docked .ps-open > * { transition: opacity 0.16s ease-in, filter 0.16s ease-in, transform 0.19s cubic-bezier(0.55, 0, 0.8, 0.2); }
+  .ps-docked .pack-sheet.ps-melt .ps-scroll > *, .ps-docked .pack-sheet.ps-melt .ps-open > * { opacity: 0; filter: blur(5px); transform: translateX(-14px) scale(1.06, 0.9); }
+  .ps-docked .pack-sheet.ps-form .ps-scroll > *, .ps-docked .pack-sheet.ps-form .ps-open > * { animation: ps-form 0.64s cubic-bezier(0.2, 1.25, 0.35, 1) both; animation-delay: calc(var(--k, 0) * 42ms); }
+  .ps-docked .pack-sheet.ps-form .ps-name i { animation: ps-letter 0.72s cubic-bezier(0.2, 1.55, 0.4, 1) both; animation-delay: calc(90ms + var(--i) * 22ms); }
+  .ps-docked .ps-scroll > :nth-child(2), .ps-docked .ps-open > :nth-child(2) { --k: 1; }
+  .ps-docked .ps-scroll > :nth-child(3), .ps-docked .ps-open > :nth-child(3) { --k: 2; }
+  .ps-docked .ps-scroll > :nth-child(4), .ps-docked .ps-open > :nth-child(4) { --k: 3; }
+  .ps-docked .ps-scroll > :nth-child(5), .ps-docked .ps-open > :nth-child(5) { --k: 4; }
+  .ps-docked .ps-scroll > :nth-child(6), .ps-docked .ps-open > :nth-child(6) { --k: 5; }
+  .ps-docked .ps-scroll > :nth-child(n + 7) { --k: 6; }
+  .ps-docked .ps-open > * { --k: 4; }
+}
+@keyframes ps-form { 0% { opacity: 0; filter: blur(6px); transform: translateX(-16px) scale(1.06, 0.86); } 55% { opacity: 1; filter: blur(0); transform: translateX(3px) scale(0.985, 1.03); } 100% { opacity: 1; filter: none; transform: none; } }
+@keyframes ps-letter { 0% { opacity: 0; transform: translateY(0.5em) scale(0.6, 0.2); filter: blur(3px); } 60% { opacity: 1; transform: translateY(-0.06em) scale(1.08, 1.12); filter: none; } 100% { opacity: 1; transform: none; } }
+@media (min-width: 861px) and (prefers-reduced-motion: reduce) {
+  .ps-docked .pack-sheet.ps-form .ps-scroll > *, .ps-docked .pack-sheet.ps-form .ps-open > *, .ps-docked .pack-sheet.ps-form .ps-name i { animation: none; }
+}
+/* ==== fin fiche fluide ==== */

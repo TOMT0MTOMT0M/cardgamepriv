@@ -25,6 +25,13 @@ export interface PackSheet {
   isOpen(): boolean;
   /** réserve / connexion / booster scellé : le bouton Ouvrir se met à jour */
   sync(): void;
+  /**
+   * (07/11, retours de Tom) ORDINATEUR : la fiche est posée en permanence dans la colonne de droite (à la place de la
+   * liste des boosters), en panneau « fluide » qui se forme comme une matière élastique ; `show(key)` la fait se
+   * déformer puis se reformer sur un autre booster. Ce n'est pas une couche : `isOpen()` reste faux (la roue tourne).
+   */
+  dock(on: boolean): void;
+  show(key: string): void;
 }
 
 export interface SheetPack {
@@ -65,6 +72,7 @@ export function shopPacks(): SheetPack[] {
 }
 
 const QTYS = [1, 5, 10] as const;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 const STAR_LABEL: Record<string, string> = { common: 'Commune', uncommon: 'Peu commune', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire', mythic: 'Mythique' };
 
 export function createPackSheet(
@@ -84,6 +92,7 @@ export function createPackSheet(
   const el = h('div', 'ps-root');
   el.hidden = true;
   el.innerHTML = `
+    <svg class="ps-fx-defs" width="0" height="0" aria-hidden="true" focusable="false"><filter id="ps-liquid" x="-25%" y="-8%" width="150%" height="116%" color-interpolation-filters="sRGB"><feTurbulence class="psl-noise" type="fractalNoise" baseFrequency="0.0035 0.045" numOctaves="2" seed="3" result="n"/><feDisplacementMap class="psl-disp" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" result="d"/><feOffset class="psl-r" in="d" dx="0" dy="0" result="r"/><feColorMatrix in="r" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rr"/><feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb"/><feBlend in="rr" in2="gb" mode="screen"/></filter></svg>
     <div class="ps-backdrop"></div>
     <aside class="pack-sheet" role="dialog" aria-modal="true" aria-label="Fiche du booster">
       <button class="ps-close" aria-label="Fermer">✕</button>
@@ -159,8 +168,11 @@ export function createPackSheet(
     }
   })();
   let opened = false;
+  /** posée dans la colonne de droite (ordinateur) : vivante sans être une couche ouverte */
+  let docked = false;
+  const alive = () => opened || docked;
   // (après la déclaration : le serveur rappelle l'abonné tout de suite, « opened » n'existait pas encore → page blanche)
-  backend.eco.onChange(() => opened && sync());
+  backend.eco.onChange(() => alive() && sync());
   let cardsOpen = false;
   /** booster déjà tiré (d'un autre type que la fiche affichée) : c'est lui que « Ouvrir » ouvre */
   let sealedTarget: SheetPack | null = null;
@@ -212,7 +224,7 @@ export function createPackSheet(
   });
 
   function sync() {
-    if (!current || !opened) return;
+    if (!current || !alive()) return;
     const s = backend.state;
     const u = s.user;
     const needLogin = s.mode === 'online' && !u;
@@ -328,14 +340,21 @@ export function createPackSheet(
     if (!src) {
       let tries = 0;
       const retry = () => {
-        if (current !== p || !opened || thumbEl.querySelector('img')) return;
+        if (current !== p || !alive() || thumbEl.querySelector('img')) return;
         const s2 = o.thumb(p.key, 360);
         if (s2) thumbEl.innerHTML = `<img src="${s2}" alt="">`;
         else if (++tries < 8) setTimeout(retry, 250);
       };
       setTimeout(retry, 120);
     }
-    nameEl.textContent = p.name;
+    // (ordinateur, panneau fluide) le nom se forme lettre à lettre (style.css, .ps-docked .ps-name i)
+    if (docked) {
+      nameEl.setAttribute('aria-label', p.name);
+      nameEl.innerHTML = [...p.name].map((c, i) => `<i aria-hidden="true" style="--i:${i}">${c === ' ' ? '&nbsp;' : esc(c)}</i>`).join('');
+    } else {
+      nameEl.removeAttribute('aria-label');
+      nameEl.textContent = p.name;
+    }
     descEl.textContent = p.desc;
     const t = p.key !== 'bebou' ? themeById(p.key) : null;
     const live = t ? subthemeViews(t).filter((v) => v.cards.length).length : THEMES.filter(themeOpen).length;
@@ -514,7 +533,7 @@ export function createPackSheet(
   let liveSig = '';
   let liveColl = '';
   backend.onChange((s) => {
-    if (!opened) return;
+    if (!alive()) return;
     const cs = collectionSig(s);
     const sig = `${cs}|${s.wishlist.join(',')}`;
     if (sig === liveSig) return;
@@ -527,13 +546,19 @@ export function createPackSheet(
   });
   window.addEventListener('bebou:packs', sync);
   // minuteur « EN RECHARGE » : seulement fiche ouverte, onglet visible, réserve vide (audit PERF2-16)
-  setInterval(() => !document.hidden && opened && backend.state.user && !backend.state.sealed && liveRegen(backend.state.user).balance <= 0 && sync(), 1000);
+  setInterval(() => !document.hidden && alive() && backend.state.user && !backend.state.sealed && liveRegen(backend.state.user).balance <= 0 && sync(), 1000);
 
   // ── ouvrir / fermer
   let openedAt = 0;
   function open(key: string) {
     const p = packs.find((x) => x.key === key);
     if (!p) return;
+    // panneau posé (ordinateur) : « ouvrir la fiche » = la montrer sur ce booster
+    if (docked) {
+      show(key);
+      o.onSelect(key);
+      return;
+    }
     if (!opened) {
       openedAt = performance.now();
       pushLayer(close);
@@ -599,5 +624,110 @@ export function createPackSheet(
     }
   });
 
-  return { el, open, close, isOpen: () => opened, sync };
+  // ── panneau posé (ordinateur) : matière fluide qui se forme, se déforme et se reforme (CSS + filtre SVG « goo »)
+  let morphT = 0;
+  let morphKey: string | null = null;
+  function restart(cls: string) {
+    sheet.classList.remove(cls);
+    void sheet.offsetWidth;
+    sheet.classList.add(cls);
+  }
+  /**
+   * Le texte se LIQUÉFIE (07/11, retours de Tom : « futuriste, que du texte, pas de cadre ») : filtre SVG posé sur le
+   * contenu le temps de la transition seulement — bruit étiré à l'horizontale + déplacement (le texte coule comme une
+   * matière, façon symbiote) et un léger décalage du rouge (aberration). Au repos : aucun filtre, rien ne coûte.
+   */
+  const disp = el.querySelector<SVGFEDisplacementMapElement>('.psl-disp')!;
+  const noise = el.querySelector<SVGFETurbulenceElement>('.psl-noise')!;
+  const shiftR = el.querySelector<SVGFEOffsetElement>('.psl-r')!;
+  let liqRaf = 0;
+  function liquid(from: number, to: number, ms: number, elastic: boolean, done?: () => void) {
+    cancelAnimationFrame(liqRaf);
+    sheet.classList.add('ps-liquid');
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const u = Math.min(1, (now - t0) / ms);
+      // ressort amorti (le texte dépasse un peu son état net puis se pose) ou montée douce
+      const e = elastic ? 1 - Math.exp(-6 * u) * Math.cos(u * Math.PI * 2.6) : u * u * (3 - 2 * u);
+      const v = from + (to - from) * e;
+      disp.setAttribute('scale', v.toFixed(2));
+      shiftR.setAttribute('dx', (v * 0.09).toFixed(2));
+      if (u < 1) liqRaf = requestAnimationFrame(step);
+      else {
+        liqRaf = 0;
+        if (to === 0) sheet.classList.remove('ps-liquid');
+        done?.();
+      }
+    };
+    liqRaf = requestAnimationFrame(step);
+  }
+  function show(key: string) {
+    const p = packs.find((x) => x.key === key);
+    if (!p) return;
+    if (!docked) {
+      // fiche fermée : on retient seulement le booster (le panneau se formera directement dessus)
+      if (opened) {
+        if (current?.key !== key) fill(p);
+      } else current = p;
+      return;
+    }
+    if (current?.key === key && !morphKey) return;
+    if (!current || REDUCED.matches) {
+      fill(p);
+      return;
+    }
+    // déjà en train de se déformer : on change seulement la cible (la roue a filé sur plusieurs boosters)
+    morphKey = key;
+    if (morphT) return;
+    sheet.classList.remove('ps-form');
+    restart('ps-melt');
+    noise.setAttribute('seed', String(1 + Math.floor(Math.random() * 90)));
+    liquid(0, 46, 190, false);
+    morphT = window.setTimeout(() => {
+      morphT = 0;
+      const k = morphKey;
+      morphKey = null;
+      const np = packs.find((x) => x.key === k);
+      if (np) fill(np);
+      q('.ps-scroll').scrollTop = 0;
+      sheet.classList.remove('ps-melt');
+      restart('ps-form');
+      liquid(46, 0, 720, true);
+    }, 190);
+  }
+  function dock(on: boolean) {
+    if (on === docked) return;
+    if (on) {
+      if (opened) close();
+      docked = true;
+      el.classList.add('ps-docked');
+      el.hidden = false;
+      fill(current ?? packs[0]);
+      requestAnimationFrame(() => {
+        el.classList.add('in');
+        restart('ps-form');
+        if (!REDUCED.matches) liquid(60, 0, 900, true);
+      });
+    } else {
+      docked = false;
+      clearTimeout(morphT);
+      morphT = 0;
+      morphKey = null;
+      if (cardsOpen) hideCards();
+      el.classList.remove('in');
+      sheet.classList.remove('ps-melt', 'ps-form');
+      if (!REDUCED.matches) liquid(0, 50, 260, false);
+      // la matière se retire (transition CSS), puis le panneau sort de l'arbre affiché
+      setTimeout(() => {
+        if (docked || opened) return;
+        el.hidden = true;
+        el.classList.remove('ps-docked');
+        cancelAnimationFrame(liqRaf);
+        sheet.classList.remove('ps-liquid');
+        if (current) fill(current); // (nom remis en texte simple pour la fiche du téléphone)
+      }, 420);
+    }
+  }
+
+  return { el, open, close, isOpen: () => opened || cardsOpen, sync, dock, show };
 }
