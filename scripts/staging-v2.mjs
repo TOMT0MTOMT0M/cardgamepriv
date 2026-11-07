@@ -5,8 +5,9 @@
 //   node scripts/staging-v2.mjs refresh   → remplace les données du staging par un export tout frais de la prod
 //   node scripts/staging-v2.mjs deploy    → envoie le code convex/ sur le staging (mettre-en-ligne-v2.cmd)
 //   node scripts/staging-v2.mjs name      → affiche le nom du déploiement de staging (pour --deployment)
-// Options : --team=<slug> --project=<slug> (init), --force (init : écrase .env.v2.local).
-import { existsSync, readFileSync, writeFileSync, copyFileSync, unlinkSync, mkdirSync } from 'node:fs';
+// Options : --team=<slug> --project=<slug> (init), --force (init : recrée un projet même si .env.v2.local existe).
+// Relançable : si .env.v2.local existe déjà, `init` saute la création du projet et refait les étapes suivantes.
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +35,32 @@ function convex(argv, { capture = false, cwd = ROOT } = {}) {
 }
 const stamp = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, '').replace('T', '-');
 
+/**
+ * `convex dev` (même avec --env-file, même avec --configure) REECRIT .env.local avec le déploiement qu'il vient d'utiliser
+ * (vu le 07/11 : .env.local s'est retrouvé sur le staging). Donc : copie de .env.local avant, remise à l'identique après,
+ * quoi qu'il arrive, et vérification.
+ */
+function protectProd(fn) {
+  const before = readFileSync(PROD_ENV, 'utf8');
+  let out;
+  try {
+    out = fn();
+  } finally {
+    const now = existsSync(PROD_ENV) ? readFileSync(PROD_ENV, 'utf8') : '';
+    if (now !== before) {
+      writeFileSync(PROD_ENV, before);
+      console.log('      (.env.local avait été réécrit par convex : remis à l\'identique)');
+    }
+    if (readFileSync(PROD_ENV, 'utf8') !== before) fail('.env.local n\'a pas pu être restauré !');
+  }
+  return out;
+}
+/** la base des joueurs est bien celle qu'on croit (avant tout export / lecture de variables en prod) */
+function assertProd(name) {
+  const now = depName(parseEnv(PROD_ENV));
+  if (now !== name) fail(`.env.local pointe sur ${now || 'rien'} au lieu de la prod ${name} — corrige-le avant de continuer`);
+}
+
 function prodEnv() {
   if (!existsSync(PROD_ENV)) fail('.env.local (prod) introuvable');
   const env = parseEnv(PROD_ENV);
@@ -51,50 +78,62 @@ function v2Env() {
 
 function init() {
   const prod = prodEnv();
-  if (existsSync(V2_ENV) && !args.force) fail('.env.v2.local existe déjà (staging déjà créé). --force pour recommencer.');
+  const prodName = depName(prod);
   const team = args.team || 'gamersardechois';
   const project = args.project || 'cardgamepriv-v2';
-  // 1. `convex dev --configure` réécrit .env.local : on le met de côté, puis on le remet EXACTEMENT comme avant
-  const backup = PROD_ENV + '.avant-v2';
-  copyFileSync(PROD_ENV, backup);
-  console.log(`\n[1/6] nouveau projet Convex « ${project} » (équipe ${team})...`);
-  const r = spawnSync(process.execPath, [CONVEX, 'dev', '--once', '--configure', 'new', '--team', team, '--project', project, '--dev-deployment', 'cloud'], { cwd: ROOT, stdio: 'inherit' });
-  const after = existsSync(PROD_ENV) ? parseEnv(PROD_ENV) : {};
-  // on remet la prod en place AVANT tout contrôle (quoi qu'il arrive)
-  copyFileSync(backup, PROD_ENV);
-  if (readFileSync(PROD_ENV, 'utf8') !== readFileSync(backup, 'utf8')) fail('.env.local n\'a pas pu être restauré : copie-le toi-même depuis .env.local.avant-v2');
-  unlinkSync(backup);
-  if (r.status !== 0) fail(`création du projet (code ${r.status}). Si le projet existe déjà : --project=<autre-nom>, ou supprime-le dans le tableau de bord Convex.`);
+  let after;
+  if (existsSync(V2_ENV) && !args.force) {
+    // reprise (le staging existe déjà : on refait seulement les étapes 2 à 6)
+    after = parseEnv(V2_ENV);
+    const name = depName(after);
+    if (!name || name === prodName) fail('.env.v2.local existe mais est invalide (ou pointe sur la prod) : supprime-le et relance.');
+    console.log(`\n[1/6] staging déjà créé : ${name} (.env.v2.local) — reprise des étapes suivantes.`);
+  } else {
+    // 1. `convex dev --configure` réécrit .env.local : protégé, puis on le remet EXACTEMENT comme avant
+    console.log(`\n[1/6] nouveau projet Convex « ${project} » (équipe ${team})...`);
+    const r = protectProd(() => {
+      const r = spawnSync(process.execPath, [CONVEX, 'dev', '--once', '--configure', 'new', '--team', team, '--project', project, '--dev-deployment', 'cloud'], { cwd: ROOT, stdio: 'inherit' });
+      after = existsSync(PROD_ENV) ? parseEnv(PROD_ENV) : {};
+      return r;
+    });
+    if (r.status !== 0) fail(`création du projet (code ${r.status}). Si le projet existe déjà : --project=<autre-nom>, ou supprime-le dans le tableau de bord Convex.`);
+    const name = depName(after);
+    if (!name || name === prodName) fail(`le déploiement obtenu (${name || 'aucun'}) est celui de la prod — .env.v2.local NON écrit`);
+    if (!after.VITE_CONVEX_URL) fail('VITE_CONVEX_URL manquant après la configuration');
+    const site = after.VITE_CONVEX_SITE_URL || after.VITE_CONVEX_URL.replace('.convex.cloud', '.convex.site');
+    writeFileSync(V2_ENV, [
+      `# STAGING V2 (lien admin ${V2_SITE}) — projet Convex ${project}, JAMAIS la base des joueurs.`,
+      `# Lu par : vite build --mode v2, et scripts/staging-v2.mjs (lanceurs mettre-en-ligne-v2 / creer-staging-v2).`,
+      `CONVEX_DEPLOYMENT=${after.CONVEX_DEPLOYMENT}`,
+      `VITE_CONVEX_URL=${after.VITE_CONVEX_URL}`,
+      `VITE_CONVEX_SITE_URL=${site}`,
+      '',
+    ].join('\n'));
+    console.log(`      staging : ${name} (${after.VITE_CONVEX_URL}) → .env.v2.local écrit, .env.local (prod) intact.`);
+  }
   const name = depName(after);
-  if (!name || name === depName(prod)) fail(`le déploiement obtenu (${name || 'aucun'}) est celui de la prod — .env.v2.local NON écrit`);
-  if (!after.VITE_CONVEX_URL) fail('VITE_CONVEX_URL manquant après la configuration');
   const site = after.VITE_CONVEX_SITE_URL || after.VITE_CONVEX_URL.replace('.convex.cloud', '.convex.site');
-  writeFileSync(V2_ENV, [
-    `# STAGING V2 (lien admin ${V2_SITE}) — projet Convex ${project}, JAMAIS la base des joueurs.`,
-    `# Lu par : vite build --mode v2, et scripts/staging-v2.mjs (lanceurs mettre-en-ligne-v2 / creer-staging-v2).`,
-    `CONVEX_DEPLOYMENT=${after.CONVEX_DEPLOYMENT}`,
-    `VITE_CONVEX_URL=${after.VITE_CONVEX_URL}`,
-    `VITE_CONVEX_SITE_URL=${site}`,
-    '',
-  ].join('\n'));
-  console.log(`      staging : ${name} (${after.VITE_CONVEX_URL}) → .env.v2.local écrit, .env.local (prod) intact.`);
+  assertProd(prodName);
   console.log('\n[2/6] envoi du code convex/ sur le staging...');
-  deploy(after);
+  deploy();
+  assertProd(prodName);
   console.log('\n[3/6] variables d\'environnement (copiées de la prod, sauf webhook et bot Discord)...');
   copyVars(name);
   console.log('\n[4/6] export de la base des joueurs...');
+  assertProd(prodName);
   const zip = exportProd();
   console.log('\n[5/6] import dans le staging (remplace tout)...');
   importV2(name, zip);
   console.log('\n[6/6] Tom et Hugo modérateurs sur le staging...');
   convex(['run', '--deployment', name, 'admin:setModerators']);
+  assertProd(prodName);
   console.log(`\nSTAGING PRET.\n  A faire UNE FOIS dans le portail Discord (application du jeu → OAuth2 → Redirects), ajoute :\n    ${site}/auth/discord/callback\n  sinon « Continuer avec Discord » ne marche pas sur le lien V2 (la connexion par pseudo marche déjà).\n  Ensuite : mettre-en-ligne-v2.cmd → ${V2_SITE}/jeu/`);
 }
 
-function deploy(env = v2Env()) {
-  // --env-file : le CLI choisit le déploiement d'après CE fichier (et pas .env.local)
-  convex(['dev', '--once', '--env-file', '.env.v2.local']);
-  void env;
+function deploy() {
+  v2Env();
+  // --env-file : le CLI choisit le déploiement d'après CE fichier… mais réécrit quand même .env.local → protégé
+  protectProd(() => convex(['dev', '--once', '--env-file', '.env.v2.local']));
 }
 
 function copyVars(name) {
@@ -122,6 +161,7 @@ function importV2(name, zip) {
 
 function refresh() {
   const name = depName(v2Env());
+  assertProd(depName(prodEnv()));
   console.log('\n[1/3] export de la base des joueurs...');
   const zip = exportProd();
   console.log('\n[2/3] import dans le staging (remplace tout)...');
