@@ -44,6 +44,56 @@ serveur. Notifications Web Push : gratuites, sans service tiers.
 
 ---
 
+## 1 bis. Bulles de notification animées (dans le jeu) — à faire
+
+**Demande de Tom (07/11)** : TOUTES les pastilles de notification (bulles en haut à droite des boutons) apparaissent
+en bulle qui grandit de façon fluide, bien placée sur le bon axe, et quand elle disparaît elle EXPLOSE comme une
+bulle de savon, un peu cartoon. Transitions, timings et courbes (ease) soignés.
+
+**État actuel (inventaire du 07/11)**
+- Pastilles existantes : Échanges (`.badge`), Succès (`.ach-badge`), Amis (`.am-badge`), Suggestions (`.sg-badge`
+  et `.mm-sg` dans le menu), Missions (`.msn-n`), Portefeuille (`.w-dot`), Profil (`.u-dot`), nouvelles cartes de la
+  Collection (`.fresh-badge`).
+- Animation actuelle : un seul `@keyframes badge-in` (grossit depuis 0, 0,45 s) ; la disparition est un simple
+  `hidden` → la bulle s'efface d'un coup. Chaque pastille a son propre style.
+
+**Spec de l'animation (un seul composant pour toutes les bulles)**
+- Placement : ancrée sur le coin haut-droit du bouton / de l'icône, centrée sur ce coin (même décalage partout,
+  jeton CSS unique), `transform-origin` au centre de la bulle → elle grandit sur place, sans pousser la mise en page
+  (position absolue). Sur téléphone : vérifier la barre de navigation du bas et les zones de sécurité.
+- Apparition (≈ 420 ms) : échelle 0 → 1 avec un léger dépassement (≈ 1,1 puis 1), petit écrasement cartoon au
+  rebond (scaleX 1,08 / scaleY 0,92 vers 60 %), opacité 0 → 1 sur les 120 premières ms.
+  Courbe de départ proposée : `cubic-bezier(0.34, 1.56, 0.64, 1)` ; à régler à l'œil.
+- Changement de nombre (2 → 3) : petit « bump » 1 → 1,18 → 1 (≈ 220 ms) et le chiffre roule vers le haut.
+- Disparition = bulle de savon qui éclate (≈ 350 ms au total) :
+  1. elle gonfle un instant (1 → 1,25 en ≈ 90 ms, ease-out) avec un reflet brillant qui traverse ;
+  2. « pop » : la bulle disparaît d'un coup (≈ 60 ms) ;
+  3. 6 à 8 gouttelettes partent en étoile (10 à 16 px, ease-out, ≈ 260 ms, fondu) + un anneau fin qui s'élargit
+     (×2, ≈ 220 ms) — le tout dans la couleur de la bulle.
+- Plusieurs bulles en même temps : léger décalage (≈ 60 ms) pour ne pas tout faire éclater pile ensemble.
+- « Effets réduits » et `prefers-reduced-motion` : simple fondu (≈ 150 ms), pas de gouttelettes.
+- Son (optionnel) : tout petit « pop » à l'éclatement, au volume des effets du jeu, coupé si le son est coupé.
+- Technique : un module unique (ex. `src/game/bubble.ts`) — `bubble(el).set(n)` / `.dot()` / `.clear()` —
+  animé en Web Animations API (pas de reflow), gouttelettes en `span` temporaires supprimées à la fin.
+  Remplace toutes les pastilles listées ci-dessus, qui gardent leurs couleurs actuelles (rose, or…).
+
+**Bulles à AJOUTER (oubliées aujourd'hui)**
+- Jeux : défi Pack Battle reçu, place libre dans une Battle Royale, résultat d'une partie, tirage de la roulette
+  (10 h / 20 h) et gain à récupérer.
+- Boutique : réserve de boosters pleine (15/15), boosters scellés pas encore ouverts, cadeau à récupérer.
+- Connexion / calendrier : cadeau du jour pas encore récupéré, série en danger.
+- Missions : mission terminée à récupérer (vérifier que la pastille actuelle couvre bien ce cas).
+- Contrats (dans Collection) : contrat reçu / signé / terminé.
+- Amis : parrainage payé (+10 boosters), filleul inscrit.
+- Mises à jour : nouveau patch pas encore lu.
+- Classement : changement de place notable (entrée dans le top, dépassé par un ami) — à discuter, peut faire bruit.
+
+**Lien avec les notifications push (section 1)** : quand le jeu est ouvert, un événement arrive en bulle animée
+plutôt qu'en notification système ; jeu fermé, notification système, et la bulle est là au retour. Mêmes réglages
+par type pour les deux.
+
+---
+
 ## 2. Abonnement « soutien » à 2 €/mois — mis de côté (07/11), à rediscuter
 
 Idée : aider à payer serveurs, abonnement Claude et temps passé. Avantages envisagés : réserve à 20 boosters au lieu
