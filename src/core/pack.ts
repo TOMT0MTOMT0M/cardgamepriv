@@ -6,7 +6,7 @@ import { FONT_DISPLAY } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
-import { LABEL_RELIEF, blendReliefNormals, reliefFromCoverage } from './packLabel';
+import { LABEL_RELIEF, blendReliefNormals, reliefFromCoverage, type ReliefMap } from './packLabel';
 
 /**
  * Booster : un peu plus grand qu'une carte, coussin bombé, soudures crantées haut/bas.
@@ -415,7 +415,7 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
   let seed = 7;
   for (const ch2 of `${style.name}|${style.ground}`) seed = (Math.imul(seed, 31) + ch2.charCodeAt(0)) >>> 0;
   const C = await creaseMap(ch, (seed % 9973) + 1);
-  const molded = label ? moldedLabel(F, C.n, label.text, label.px) : null;
+  const molded = label ? await moldedLabel(F, C.n, label.text, label.px) : null;
   const FN = molded?.normal ?? null;
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
   const tex = (c: HTMLCanvasElement, color: boolean) => {
@@ -439,7 +439,47 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
  * (pleine définition de la toile : les reflets font 2 à 3 px) et pose un léger ombrage de cavité sur la couleur.
  * La carte des plis partagée (en cache) n'est pas modifiée : on en dessine une copie.
  */
-function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasElement, text: string, px: number): { normal: HTMLCanvasElement; thumb: HTMLCanvasElement } {
+/**
+ * (07/11, perf) Le RELIEF du nom (la partie chère : distances euclidiennes sur la rastérisation ×2) est gardé d'une
+ * visite à l'autre dans le Cache Storage, en flottants bruts (exact au bit près) — comme la carte des plis. La clé
+ * contient le texte, la taille, les réglages de LABEL_RELIEF et LABEL_VERSION : à CHANGER si packLabel.ts change.
+ */
+const LABEL_VERSION = 'nom-v1';
+const LABEL_STORE = 'bebou-nom-moule';
+const labelKey = (text: string, px: number) => `/__nom/${LABEL_VERSION}-${PW}x${PH}-${px}-${encodeURIComponent(text)}-${encodeURIComponent(JSON.stringify(LABEL_RELIEF))}.bin`;
+async function labelFromCache(text: string, px: number): Promise<ReliefMap | null> {
+  try {
+    if (typeof caches === 'undefined') return null;
+    const r = await (await caches.open(LABEL_STORE)).match(labelKey(text, px));
+    if (!r) return null;
+    const a = new Float32Array(await r.arrayBuffer());
+    const [w, hgt, top, highlights, counters] = a;
+    if (!(w > 0 && hgt > 0) || a.length !== 5 + w * hgt) return null;
+    return { w, hgt, top, highlights, counters, h: a.slice(5) };
+  } catch {
+    return null;
+  }
+}
+function labelToCache(text: string, px: number, r: ReliefMap) {
+  try {
+    if (typeof caches === 'undefined') return;
+    const a = new Float32Array(5 + r.h.length);
+    a.set([r.w, r.hgt, r.top, r.highlights, r.counters]);
+    a.set(r.h, 5);
+    void caches
+      .open(LABEL_STORE)
+      .then(async (c) => {
+        // une seule version gardée : les anciennes clés (autre version, autres réglages) partent
+        for (const k of await c.keys()) if (!k.url.includes(`/__nom/${LABEL_VERSION}-`)) void c.delete(k);
+        await c.put(labelKey(text, px), new Response(a.buffer, { headers: { 'content-type': 'application/octet-stream' } }));
+      })
+      .catch(() => {});
+  } catch {
+    /* pas de cache : recalculé à la prochaine visite */
+  }
+}
+
+async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasElement, text: string, px: number): Promise<{ normal: HTMLCanvasElement; thumb: HTMLCanvasElement }> {
   const t0 = performance.now();
   const ss = LABEL_RELIEF.ss;
   const N = makeCanvas(PW, PH);
@@ -450,17 +490,23 @@ function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasEle
   const pad = Math.round(px * 0.3);
   const w = Math.min(PW, Math.ceil(tw + 2 * pad)), h = Math.ceil(px * 1.5 + 2 * pad);
   const x0 = Math.round(PW / 2 - w / 2), y0 = Math.round(PH * 0.5 - h / 2);
-  const L = makeCanvas(w * ss, h * ss);
-  L.g.fillStyle = '#fff';
-  L.g.font = `400 ${px * ss}px ${FONT_DISPLAY}`;
-  L.g.textAlign = 'center';
-  L.g.textBaseline = 'middle';
-  L.g.fillText(text, (PW / 2 - x0) * ss, (PH * 0.5 - y0) * ss);
-  const id = L.g.getImageData(0, 0, w * ss, h * ss).data;
-  const cov = new Uint8ClampedArray(w * ss * h * ss);
-  for (let k = 0; k < cov.length; k++) cov[k] = id[k * 4 + 3];
-  L.c.width = L.c.height = 0; // libère la toile tout de suite (iOS)
-  const relief = reliefFromCoverage(cov, w * ss, h * ss, px);
+  let relief = await labelFromCache(text, px);
+  const cached = !!relief && relief.w === w && relief.hgt === h; // même mise en page que la toile actuelle
+  if (!cached) {
+    const L = makeCanvas(w * ss, h * ss);
+    L.g.fillStyle = '#fff';
+    L.g.font = `400 ${px * ss}px ${FONT_DISPLAY}`;
+    L.g.textAlign = 'center';
+    L.g.textBaseline = 'middle';
+    L.g.fillText(text, (PW / 2 - x0) * ss, (PH * 0.5 - y0) * ss);
+    const id = L.g.getImageData(0, 0, w * ss, h * ss).data;
+    const cov = new Uint8ClampedArray(w * ss * h * ss);
+    for (let k = 0; k < cov.length; k++) cov[k] = id[k * 4 + 3];
+    L.c.width = L.c.height = 0; // libère la toile tout de suite (iOS)
+    relief = reliefFromCoverage(cov, w * ss, h * ss, px);
+    labelToCache(text, px, relief);
+  }
+  if (!relief) throw new Error('relief du nom indisponible');
   const nimg = N.g.getImageData(0, 0, PW, PH);
   const ao = blendReliefNormals(nimg.data, PW, relief, x0, y0);
   N.g.putImageData(nimg, 0, 0);
@@ -489,7 +535,7 @@ function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasEle
       for (let c = 0; c < 3; c++) timg.data[t + c] = Math.max(0, Math.min(255, timg.data[t + c] * k));
     }
   T.g.putImageData(timg, x0, y0);
-  perfMark(`sachet : nom moulé « ${text} »`, performance.now() - t0);
+  perfMark(`nom moulé ${text}${cached ? ' (cache)' : ''}`, performance.now() - t0);
   return { normal: N.c, thumb: T.c };
 }
 
