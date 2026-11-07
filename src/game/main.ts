@@ -23,6 +23,8 @@ import { bindHapticGestures, haptics } from '../core/haptics';
 bindHapticGestures();
 import { fxReduced, setFxReduced } from '../core/fxPref';
 import { installCatalog } from '../core/sets/themes';
+import { CANAL, mountCanalBadge } from '../core/canal';
+import { watchUpdates } from './maj';
 
 // polices du jeu (retours 05/11) : une seule source, src/core/fonts.ts
 applyFontVars();
@@ -100,6 +102,11 @@ const backend: GameBackend = await backendP.catch((e: unknown) => {
 });
 // (ouverture 07/11) compte à rebours jusqu'à l'ouverture officielle (convex/launch.ts) — par-dessus le chargement
 if (backend.state.mode === 'online') void import('./views/launch').then((m) => m.createLaunchGate(backend));
+// (V2) lien admin : badge « V2 — test » + jeu réservé à l'équipe ; prod : rien (src/core/canal.ts)
+mountCanalBadge();
+if (CANAL === 'v2') void import('./v2gate').then((m) => m.createV2Gate(backend));
+// (V2) pastille « mise à jour disponible » quand un patch sort pendant que le jeu est ouvert (src/game/maj.ts)
+watchUpdates();
 
 /**
  * PARRAINAGE (retours live 02, §10) : arrivée par un lien `?ref=CODE` → le clic est compté (une fois par appareil),

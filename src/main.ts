@@ -1,4 +1,6 @@
 import './style.css';
+import { mountCanalBadge } from './core/canal';
+mountCanalBadge(); // (V2) badge « V2 — test » sur le lien admin
 // labo : catalogue complet installé d'office, avant toute expérience (le jeu, lui, le charge en deux temps)
 import './core/sets/catalogFull';
 import { Timer, type WebGPURenderer } from 'three/webgpu';
