@@ -38,6 +38,12 @@ export interface PokeIn {
   /** intensité globale (holoIntensity, 0,75 chez eux) */
   op: N;
   T: PokeTextures;
+  /**
+   * Carte de placement tirée de l'illustration (effets « placés ») : `decor` = décor arrière hors sujet et hors texte,
+   * `struct` = structure de l'image (bords, motifs — 0 sur les aplats), `equip` = « équipement » du sujet (zones
+   * détaillées ou brillantes du personnage : armure, objets, accessoires).
+   */
+  place?: { decor: N; struct: N; equip: N };
 }
 export interface PokeOut {
   color: N;
@@ -406,6 +412,70 @@ export function goldSweep(uv: N, base: N, prog: N, time: N, T: PokeTextures): N 
   return mix(sr, mix(base, sr, step(fT, nv)).add(spark), step(0.001, fT));
 }
 
+
+/** Rotation 2D (évite que deux couches répétées tombent sur la même grille). */
+const rotUV = (u: N, a: number): N => vec2(u.x.mul(Math.cos(a)).sub(u.y.mul(Math.sin(a))), u.x.mul(Math.sin(a)).add(u.y.mul(Math.cos(a))));
+
+/**
+ * 6★ — « Double rare » RETRAVAILLÉ (retour de Tom, 07/11 : « plus subtil, pas partout mais à des endroits stratégiques —
+ * décor arrière, équipement —, le reflet général est bien mais tout est très répétitif, comme une texture non
+ * seamless »). Même famille que l'original, mais :
+ *  - chaque couche a SA place : confettis sur le décor qui a de la structure (pas sur les aplats), par plaques ;
+ *    éclats arc-en-ciel sur l'équipement du sujet ; voile arc-en-ciel limité au décor ; reflet général conservé, adouci ;
+ *  - plus de répétition visible : 2,5 bandes au lieu de 10, bandes et barres tordues par un champ basse fréquence,
+ *    confettis de deux échelles tournées mélangés par ce même champ (aucune grille commune).
+ */
+function doubleRarePlaced(p: PokeIn): PokeOut {
+  const { uv, base, mask, pointer, bg, op, pfc, time, T } = p;
+  const pl = p.place ?? { decor: mask, struct: float(1), equip: float(0) };
+  const sd = length(uv.sub(pointer));
+  const spot = inv(smoothstep(0, 0.8, sd));
+  // champ basse fréquence (2 lectures à échelles non entières et tournées) : plaques, distorsions
+  const lf = texture(T.noise, rotUV(uv, 0.37).mul(0.83).add(0.13)).r.mul(0.6).add(texture(T.noise, rotUV(uv, -1.1).mul(1.91).add(0.71)).r.mul(0.4));
+  const warp = lf.sub(0.48).mul(0.4);
+  // voile arc-en-ciel + barres : peu de bandes, tordues
+  let gr: N = sun(uv.y.mul(2.6).add(warp.mul(2)).add(float(0.5).sub(bg.y).mul(3.5)).add(sin(time.mul(0.3)).mul(0.05)));
+  const gbt = fract(dot(uv, dirv(128.5)).add(warp).add(float(0.5).sub(bg.x).mul(1.65)).add(bg.y.mul(0.5)).mul(2.2));
+  const gbi = smoothstep(0, 0.7, gbt).mul(inv(smoothstep(0.28, 0.55, gbt)));
+  gr = B.hard(gr, mix(vec3(0.055, 0.082, 0.18), vec3(0.45, 0.76, 0.76), gbi)).mul(spot.mul(0.5).add(0.5));
+  // confettis : deux échelles tournées, mélangées par le champ — révélés par l'inclinaison (verticale OU horizontale)
+  const tr = smoothstep(0, 0.13, max(abs(bg.y.sub(0.5)), abs(bg.x.sub(0.5)).mul(0.8)));
+  const c1 = texture(T.dank1, rotUV(uv, 0.6).mul(0.83).add(vec2(0.31, 0.17))).rgb;
+  const c2 = texture(T.dank2, rotUV(uv, -0.9).mul(1.37).add(vec2(0.5, 0.9))).rgb;
+  const conf = mix(c1, c2, smoothstep(0.35, 0.65, lf)).mul(tr);
+  // placement : décor structuré, par plaques (jamais 100 % de la surface)
+  const patches = smoothstep(0.36, 0.6, lf).mul(0.75).add(0.25);
+  const decorK = pl.decor.mul(mix(float(0.35), float(1), pl.struct)).mul(patches);
+  // voile irisé NEUTRE (ne fait que tourner la teinte autour du gris : pas de dominante, pas d'assombrissement)
+  const chroma = vec3(0.5).add(gr.sub(lum(gr)).mul(0.9));
+  let r: N = mix(base, B.hard(base, chroma), decorK.mul(op).mul(0.6));
+  // confettis : éclats vifs posés par-dessus (screen), seulement là où le décor a de la structure
+  const confB = c01(sat(conf.mul(2.4), 1.3));
+  r = mix(r, B.screen(r, confB), decorK.mul(op));
+  // voile + barres fines (lighten) : décor seulement, à moitié
+  const bt = fract(dot(uv, dirv(133)).add(warp.mul(0.7)).add(bg.x).add(bg.y).mul(2.3));
+  const bars = mix(vec3(0.055, 0.071, 0.129), vec3(0.45, 0.76, 0.76), smoothstep(0, 0.028, bt).mul(inv(smoothstep(0.035, 0.042, bt))));
+  const grain = texture(T.value, uv.mul(173).add(time.mul(0.1)).div(256)).r;
+  let shine: N = B.screen(vec3(grain.mul(0.2)), sun(uv.y.mul(2.1).add(warp).add(bg.y)));
+  const rd = mix(mix(vec3(0.1), vec3(0.15), smoothstep(0, 0.12, sd)), vec3(0.25), smoothstep(0.12, 1.2, sd));
+  shine = c01(sat(contrast(B.hard(B.hue(shine, bars), rd), 1.5), 2));
+  r = mix(r, B.lighten(r, shine), pl.decor.mul(patches).mul(op).mul(0.5));
+  // équipement : reflet métallique irisé + éclats qui suivent l'œil (pas de confettis sur le personnage)
+  const eq = pl.equip.mul(mask.max(0.6));
+  const ph = atan(pointer.y.sub(uv.y), pointer.x.sub(uv.x)).mul(3.3);
+  const rb = vec3(sin(ph).mul(0.5).add(0.5), sin(ph.add(2.094)).mul(0.5).add(0.5), sin(ph.add(4.189)).mul(0.5).add(0.5));
+  const sheen = sun(dot(uv, dirv(60)).mul(1.4).add(float(0.5).sub(bg.x).mul(2.2)).add(warp));
+  r = mix(r, B.overlay(r, sheen), eq.mul(op).mul(spot.mul(0.6).add(0.4)).mul(0.45));
+  const sp = texture(T.glitter, rotUV(uv, 0.3).mul(2.3)).r.mul(tr);
+  r = r.add(rb.mul(sp).mul(eq).mul(spot.pow(1.5)).mul(op).mul(0.9));
+  // reflet général (conservé, adouci)
+  const g1 = c01(contrast(bright(mix(mix(vec3(0.4), vec3(0.54), smoothstep(0, 0.63, sd)), vec3(0.3), smoothstep(0.63, 1.5, sd)), 1.5), 2));
+  const g2 = c01(contrast(mix(mix(vec3(0.9), vec3(0.2), smoothstep(0, 0.1, sd)), vec3(0), smoothstep(0.1, 0.6, sd)), 1.4));
+  r = mix(r, B.burn(r, g1), mask.mul(op).mul(pfc.add(0.2)).mul(0.45));
+  r = mix(r, B.lighten(r, g2), mask.mul(op).mul(pfc).mul(0.5));
+  return { color: r, area: float(1) };
+}
+
 // ───────────────────────────────────────────── catalogue
 export type Zone = 'fond' | 'cadre' | 'carte' | 'sujet';
 export interface PokeFxDef {
@@ -433,6 +503,7 @@ export const POKE_FX: PokeFxDef[] = [
   { id: 'shiny-rare', name: 'Shiny (métal)', pkmn: 'Shiny Rare', look: 'Barres acier froides, métal brossé qui se révèle en inclinant, gravure tamponnée.', zone: 'carte', etch: true, fn: shinyRare },
   { id: 'tera-rainbow-rare', name: 'Téra arc-en-ciel', pkmn: 'Tera Rainbow Rare', look: 'Arc-en-ciel oblique saturé, éclats verticaux / horizontaux selon le sens d’inclinaison.', zone: 'carte', etch: true, fn: (p) => tera(p, false) },
   { id: 'tera-shiny-rare', name: 'Téra mosaïque', pkmn: 'Tera Shiny Rare', look: 'L’arc-en-ciel éclate en facettes de cristal (Voronoï) : chaque facette a sa teinte.', zone: 'carte', etch: true, fn: (p) => tera(p, true) },
+  { id: 'double-rare-placed', name: '6★ Double rare placé', pkmn: 'Double Rare (retravaillé)', look: 'Confettis seulement sur le décor structuré, par plaques ; éclats irisés sur l’équipement du sujet ; plus de motif répété.', zone: 'carte', etch: false, fn: doubleRarePlaced },
   { id: 'master-ball', name: 'Master Ball (mosaïque gravée)', pkmn: 'Master Ball Reverse', look: 'Mosaïque désaturée qui défile, double paillettes, motif gravé qui s’assombrit et s’irise en inclinant.', zone: 'carte', etch: true, fn: masterBall },
 ];
 export const POKE_BY_ID = Object.fromEntries(POKE_FX.map((d) => [d.id, d])) as Record<string, PokeFxDef>;

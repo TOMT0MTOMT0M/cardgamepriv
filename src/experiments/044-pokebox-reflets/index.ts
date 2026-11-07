@@ -1,5 +1,5 @@
 import { Group, Matrix4, MeshBasicNodeMaterial, Raycaster, Vector2, Vector3, type Mesh } from 'three/webgpu';
-import { clamp, float, luminance, max, mix, pow, select, smoothstep, sqrt, step, texture, time, uniform, vec3, vec4 } from 'three/tsl';
+import { clamp, float, luminance, max, mix, pow, select, smoothstep, sqrt, step, texture, time, uniform, vec2, vec3, vec4 } from 'three/tsl';
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
@@ -9,6 +9,7 @@ import { RARITIES, rarity, starCount, type RarityId } from '../../core/rarity';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import { CARD, createCardMesh } from '../../core/cardModel';
 import { createPipeline } from '../../core/post';
+import { cardImage } from '../../core/art/images';
 import type { N } from '../../core/tsl';
 import { RotationRig, cardGeo, composeLayers, createCtx, createInputs, type DesignKind, type FxCtx } from '../043-rarity-fx/kit';
 import type { FxTextures } from '../043-rarity-fx/textures';
@@ -19,7 +20,11 @@ import { POKE_BY_ID, POKE_FX, goldSweep, type PokeFxDef, type Zone } from './pok
 const toS = (c: N): N => mix(c.mul(12.92), pow(max(c, 0.0031308), 1 / 2.4).mul(1.055).sub(0.055), step(0.0031308, c));
 const toL = (c: N): N => mix(c.div(12.92), pow(c.add(0.055).div(1.055), 2.4), step(0.04045, c));
 
-const LS_ASSIGN = 'cardlab.pokebox.assign.v1';
+const LS_ASSIGN = 'cardlab.pokebox.assign.v2';
+const LS_FORCE = 'cardlab.pokebox.force.v1';
+/** Choix de la visio du 07/11 (Tom et Hugo) : 1★–4★ holo classique 0,35 · 5★ illustration rare 0,2 · 6★ double rare placé. */
+const CHOIX_0711 = { common: 'regular-holo', uncommon: 'regular-holo', rare: 'regular-holo', epic: 'regular-holo', legendary: 'illustration-rare', mythic: 'double-rare-placed' } as const;
+const FORCE_0711: Record<string, number> = { common: 0.35, uncommon: 0.35, rare: 0.35, epic: 0.35, legendary: 0.2, mythic: 0.6, secret: 0.82 };
 const NONE = 'aucun';
 type Assign = Partial<Record<RarityId, string>>;
 
@@ -64,28 +69,44 @@ export default function create(): Experiment {
     sujet: uniform(0),
     relief: uniform(1),
     /** 0 = rendu, 1 = masque holo, 2 = gravure */
-    voir: uniform(0),
+    voir: uniform(Number(q0.get('voir') ?? 0) || 0),
     force: uniform(5),
     prog: uniform(0),
   };
   let assign: Assign = loadAssign();
   let fitDistance = 1;
 
+  const linkForce: Record<string, number> = {};
   function loadAssign(): Assign {
     const fromUrl = q0.get('assign');
     if (fromUrl) {
       const a: Assign = {};
       for (const kv of fromUrl.split(',')) {
-        const [k, v] = kv.split(':');
+        const [k, v, f] = kv.split(':');
         if (RARITIES.some((r) => r.id === k) && (v === NONE || POKE_BY_ID[v])) a[k as RarityId] = v;
+        if (f && Number.isFinite(+f)) linkForce[k] = +f;
       }
       return a;
     }
     try {
-      return JSON.parse(localStorage.getItem(LS_ASSIGN) ?? '{}') as Assign;
+      const v = localStorage.getItem(LS_ASSIGN);
+      return v ? (JSON.parse(v) as Assign) : { ...CHOIX_0711 };
     } catch {
-      return {};
+      return { ...CHOIX_0711 };
     }
+  }
+  let force: Record<string, number> = (() => {
+    try {
+      return { ...FORCE_0711, ...(JSON.parse(localStorage.getItem(LS_FORCE) ?? '{}') as Record<string, number>) };
+    } catch {
+      return { ...FORCE_0711 };
+    }
+  })();
+  Object.assign(force, linkForce);
+  /** intensité de la rareté courante appliquée si son reflet choisi est affiché */
+  function applyForce() {
+    if (assign[ctx.rarity] === params.effet && force[ctx.rarity] != null) U.op.value = force[ctx.rarity];
+    ctx.gui.controllersRecursive().forEach((c) => c.updateDisplay());
   }
   function saveAssign() {
     try {
@@ -142,9 +163,25 @@ export default function create(): Experiment {
       const etch = def.etch && params.gravure;
       const foil = etch ? clamp(lumAt(0).sub(lumAt(3)).mul(U.force).add(0.7), 0, 1).mul(z) : float(0);
       const silvered = mix(base, base.mul(0.75).add(0.3), mask.mul(U.argent));
-      dbgMask = mask;
-      dbgFoil = foil;
-      const out = def.fn({ uv: fc.uv, base: silvered, mask, foil, hasFoil: etch, pointer: u.ptr, bg: u.bgv, pfc: u.pfc, rotX: u.rotX, time, op: U.op, T: ptex });
+      // ── carte de placement (effets « placés ») : décor arrière, structure de l'image, équipement du sujet
+      const hp = lumAt(1).sub(lumAt(3)).abs();
+      const struct = smoothstep(0.02, 0.09, hp);
+      // équipement : seulement ce qui est À LA FOIS détaillé et clair (reflets d'armure, métal, objets) — pas tout le sujet
+      // intérieur du sujet seulement (alpha flouté ≈ 1) : pas le contour de la silhouette
+      const core = smoothstep(0.85, 0.99, texture(art.subject, L.sjUV).level(float(3.5)).a);
+      const equip = fc.subj.mul(core).mul(fc.ink.oneMinus()).mul(smoothstep(0.07, 0.15, hp)).mul(smoothstep(0.6, 0.85, lumAt(0)));
+      // illustration SANS détourage (splash LoL, photo…) : le personnage = l'ellipse autour du point focal du gabarit,
+      // le décor = ce qui l'entoure (sinon tout serait « décor », personnage compris)
+      // même règle que le peintre des cartes (core/art) : couverture, photo ou image opaque = pas de détourage
+      const im = cd.subject === 'image' ? cardImage(cd.image) : null;
+      const hasCut = float(cd.photo || cd.cover || im?.opaque ? 0 : 1);
+      const fe = float(1).sub(smoothstep(0.6, 1.1, fc.uv.sub(fc.focus).div(vec2(0.36, 0.42)).length()));
+      const noCutEquip = fe.mul(fc.ink.oneMinus()).mul(smoothstep(0.05, 0.12, hp)).mul(smoothstep(0.42, 0.7, lumAt(0)));
+      const noCutDecor = zoneNode(fc, 'carte').mul(fe.oneMinus());
+      const place = { decor: mix(noCutDecor, zoneNode(fc, 'fond'), hasCut), struct, equip: mix(noCutEquip, equip, hasCut) };
+      dbgMask = def.id === 'double-rare-placed' ? place.decor.mul(mix(float(0.2), float(1), struct)) : mask;
+      dbgFoil = def.id === 'double-rare-placed' ? place.equip : foil;
+      const out = def.fn({ uv: fc.uv, base: silvered, mask, foil, hasFoil: etch, pointer: u.ptr, bg: u.bgv, pfc: u.pfc, rotX: u.rotX, time, op: U.op, T: ptex, place });
       col = mix(base, out.color, smoothstep(0, 0.02, out.area));
       col = mix(col, out.color, U.argent.mul(mask)); // la sous-couche reste visible hors zone de réglage
     }
@@ -269,7 +306,7 @@ export default function create(): Experiment {
   function assignText() {
     const lines = RARITIES.map((r) => {
       const v = assign[r.id];
-      const name = v && v !== NONE ? `${POKE_FX.findIndex((d) => d.id === v) + 1}. ${POKE_BY_ID[v].name} (${POKE_BY_ID[v].pkmn})` : '— aucun —';
+      const name = v && v !== NONE ? `${POKE_FX.findIndex((d) => d.id === v) + 1}. ${POKE_BY_ID[v].name} (${POKE_BY_ID[v].pkmn}) · intensité ${(force[r.id] ?? 0.82).toFixed(2)}` : '— aucun —';
       return `${r.secret ? '✷' : '★'.repeat(starCount(r.id))} ${r.label} : ${name}`;
     });
     return `Reflets Pokébox — qui va où (labo 044)\n${lines.join('\n')}`;
@@ -277,7 +314,7 @@ export default function create(): Experiment {
   function assignLink() {
     const u = new URL(location.href);
     u.searchParams.set('exp', '044');
-    u.searchParams.set('assign', RARITIES.filter((r) => assign[r.id]).map((r) => `${r.id}:${assign[r.id]}`).join(','));
+    u.searchParams.set('assign', RARITIES.filter((r) => assign[r.id]).map((r) => `${r.id}:${assign[r.id]}:${force[r.id] ?? 0.82}`).join(','));
     return u.toString();
   }
   /** Copie dans le presse-papiers ; le libellé du bouton confirme (pas de calque qui masque la carte). */
@@ -296,7 +333,7 @@ export default function create(): Experiment {
     if (id === NONE || !POKE_BY_ID[id]) return;
     params.effet = id;
     params.vue = 'carte';
-    ctx.gui.controllersRecursive().forEach((c) => c.updateDisplay());
+    applyForce();
     void build();
   }
 
@@ -369,7 +406,14 @@ export default function create(): Experiment {
       });
       c.gui.add(params, 'vue', ['planche', 'carte']).name('vue').onChange(() => void build());
       c.gui.add(params, 'carte', 0, 12, 1).name('autre carte de la rareté').onChange(() => void build());
-      c.gui.add(U.op, 'value', 0, 1.5, 0.05).name('intensité').onChange(() => renderHud());
+      c.gui.add(U.op, 'value', 0, 1.5, 0.05).name('intensité').onChange((v: number) => {
+        // réglée sur le reflet choisi pour la rareté affichée → retenue pour cette rareté
+        if (assign[c.rarity] === params.effet) {
+          force[c.rarity] = v;
+          saveAssign();
+        }
+        renderHud();
+      });
       c.gui.add(params, 'zone', { 'auto (comme Pokémon)': 'auto', 'fond de l’illustration': 'fond', 'cadre / décor': 'cadre', 'toute la carte': 'carte', 'sujet seul': 'sujet' }).name('zone du foil').onChange(() => void build());
       c.gui.add(U.argent, 'value', 0, 1, 0.05).name('+ sous-couche argent (ajout)');
       c.gui.add(U.sujet, 'value', 0, 1, 0.05).name('reflet sur le sujet (toute la carte)');
@@ -384,9 +428,8 @@ export default function create(): Experiment {
       const fa = c.gui.addFolder('Qui va où ?');
       const choices = Object.fromEntries([['— aucun —', NONE], ...POKE_FX.map((d, i) => [`${i + 1}. ${d.name}`, d.id])]);
       for (const r of RARITIES) {
-        const o = { v: assign[r.id] ?? NONE };
-        fa.add(o, 'v', choices).name(`${r.secret ? '✷' : '★'.repeat(starCount(r.id))} ${r.label}`).onChange((v: string) => {
-          assign[r.id] = v;
+        assign[r.id] ??= NONE;
+        fa.add(assign, r.id, choices).name(`${r.secret ? '✷' : '★'.repeat(starCount(r.id))} ${r.label}`).onChange((v: string) => {
           saveAssign();
           preview(v);
         });
@@ -397,6 +440,16 @@ export default function create(): Experiment {
       };
       const cCopy = fa.add(acts, 'copier').name('📋 copier le choix (texte)');
       const cLink = fa.add(acts, 'lien').name('🔗 copier le lien du labo');
+      fa.add({
+        r: () => {
+          for (const r of RARITIES) assign[r.id] = (CHOIX_0711 as Assign)[r.id] ?? NONE;
+          force = { ...FORCE_0711 };
+          saveAssign();
+          applyForce();
+        },
+      }, 'r').name('↺ revenir au choix du 07/11');
+      if (!q0.has('fx') && assign[c.rarity] && assign[c.rarity] !== NONE) params.effet = assign[c.rarity]!;
+      applyForce();
       await build();
     },
     update(dt, t) {
@@ -464,7 +517,7 @@ export default function create(): Experiment {
       if (a && a !== NONE) {
         params.effet = a;
         params.vue = 'carte';
-        ctx.gui.controllersRecursive().forEach((k) => k.updateDisplay());
+        applyForce();
       }
       void build();
     },
