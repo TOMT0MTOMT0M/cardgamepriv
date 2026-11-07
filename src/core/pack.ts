@@ -385,7 +385,10 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
   const tearY = PH - ch - 40;
   m.fillStyle = 'rgb(0,0,255)';
   m.fillRect(0, PH - tearY - 2, PW, 4);
-  const C = await creaseMap(ch);
+  // graine du froissé : propre à chaque booster (sa teinte et son nom)
+  let seed = 7;
+  for (const ch2 of `${style.name}|${style.ground}`) seed = (Math.imul(seed, 31) + ch2.charCodeAt(0)) >>> 0;
+  const C = await creaseMap(ch, (seed % 9973) + 1);
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
   const tex = (c: HTMLCanvasElement, color: boolean) => {
     const t = new CanvasTexture(c);
@@ -420,8 +423,8 @@ function lcg(seed: number) {
  * démarrage et des visuels de boosters générés ensuite pendant la vitrine). Pixels identiques par construction ; chaque
  * booster garde sa propre texture (même toile). Une toile vidée (mémoire) est repeinte.
  */
-const creaseCache = new Map<number, CreaseMaps>();
-const creasePending = new Map<number, Promise<CreaseMaps>>();
+const creaseCache = new Map<string, CreaseMaps>();
+const creasePending = new Map<string, Promise<CreaseMaps>>();
 /**
  * (perf 07/11, audit 06/11 §8 ter piste a) La carte des plis rastérisée est GARDÉE d'une visite à l'autre (Cache
  * Storage, PNG sans perte : la toile est opaque, l'aller-retour est exact au pixel) : aux visites suivantes, plus de
@@ -429,20 +432,20 @@ const creasePending = new Map<number, Promise<CreaseMaps>>();
  * CREASE_VERSION : à CHANGER dès que `paintCreaseMap`, `applyGrain` ou PW/PH changent, sinon l'ancienne carte resterait.
  * Le temps de peinture (1re visite) et de relecture sont notés dans perfLog (rapport de chargement, game/diag.ts).
  */
-const CREASE_VERSION = 'plis-v10'; // v10 (07/11) : surface lisse ondulée + arêtes fines (facettes à 30 %) · v8 (07/11, nuit) : froissé en facettes (mosaïque fine, plus de plis nets) · v4 (07/11 soir) : plis courbes, effilés, anticrénelés + carte de NORMALES en flottants · v3 : + plis nets · v2 : aluminium lisse, trois grands plis
+const CREASE_VERSION = 'plis-v11'; // v10 (07/11) : surface lisse ondulée + arêtes fines (facettes à 30 %) · v8 (07/11, nuit) : froissé en facettes (mosaïque fine, plus de plis nets) · v4 (07/11 soir) : plis courbes, effilés, anticrénelés + carte de NORMALES en flottants · v3 : + plis nets · v2 : aluminium lisse, trois grands plis
 const CREASE_STORE = 'bebou-plis';
-const creaseKey = (ch: number, kind: 'h' | 'n') => `/__plis/${CREASE_VERSION}-${PW}x${PH}-${Math.round(ch)}-${kind}.png`;
+const creaseKey = (ch: number, seed: number, kind: 'h' | 'n') => `/__plis/${CREASE_VERSION}-${CRW}x${CRH}-${Math.round(ch)}-s${seed}-${kind}.png`;
 type CreaseMaps = { c: HTMLCanvasElement; n: HTMLCanvasElement };
-async function creaseFromCache(ch: number): Promise<CreaseMaps | null> {
+async function creaseFromCache(ch: number, seed: number): Promise<CreaseMaps | null> {
   if (typeof caches === 'undefined' || typeof createImageBitmap === 'undefined') return null;
   const t0 = performance.now();
   const cache = await caches.open(CREASE_STORE);
-  const [rh, rn] = await Promise.all([cache.match(creaseKey(ch, 'h')), cache.match(creaseKey(ch, 'n'))]);
+  const [rh, rn] = await Promise.all([cache.match(creaseKey(ch, seed, 'h')), cache.match(creaseKey(ch, seed, 'n'))]);
   if (!rh || !rn) return null;
   const load = async (r: Response) => {
     const bmp = await createImageBitmap(await r.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
-    if (bmp.width !== PW || bmp.height !== PH) return null;
-    const C = makeCanvas(PW, PH);
+    if (bmp.width !== CRW || bmp.height !== CRH) return null;
+    const C = makeCanvas(CRW, CRH);
     C.g.drawImage(bmp, 0, 0);
     bmp.close();
     return C.c;
@@ -452,7 +455,7 @@ async function creaseFromCache(ch: number): Promise<CreaseMaps | null> {
   perfMark('plis:cache', performance.now() - t0);
   return { c, n };
 }
-function creaseToCache(ch: number, m: CreaseMaps): void {
+function creaseToCache(ch: number, seed: number, m: CreaseMaps): void {
   if (typeof caches === 'undefined' || typeof m.c.toBlob !== 'function') return;
   // encodage et écriture après l'affichage de la boutique (hors du chemin critique)
   const put = (cv: HTMLCanvasElement, kind: 'h' | 'n') =>
@@ -460,40 +463,41 @@ function creaseToCache(ch: number, m: CreaseMaps): void {
       if (!blob) return;
       void caches
         .open(CREASE_STORE)
-        .then((cache) => cache.put(creaseKey(ch, kind), new Response(blob, { headers: { 'content-type': 'image/png' } })))
+        .then((cache) => cache.put(creaseKey(ch, seed, kind), new Response(blob, { headers: { 'content-type': 'image/png' } })))
         .catch(() => undefined);
     }, 'image/png');
   const go = () => (put(m.c, 'h'), put(m.n, 'n'));
   if ('requestIdleCallback' in window) (window as Window & { requestIdleCallback(cb: () => void, o?: { timeout: number }): number }).requestIdleCallback(go, { timeout: 8000 });
   else setTimeout(go, 3000);
 }
-function creaseMap(ch: number): Promise<CreaseMaps> {
-  const hit = creaseCache.get(ch);
+function creaseMap(ch: number, seed: number): Promise<CreaseMaps> {
+  const key = `${Math.round(ch)}|${seed}`;
+  const hit = creaseCache.get(key);
   if (hit && hit.c.width > 0 && hit.n.width > 0) return Promise.resolve(hit);
-  let p = creasePending.get(ch);
+  let p = creasePending.get(key);
   if (p) return p;
   p = (async () => {
     let C: CreaseMaps | null = null;
     try {
-      C = await creaseFromCache(ch);
+      C = await creaseFromCache(ch, seed);
     } catch {
       C = null; // (cache indisponible, image illisible… : on calcule)
     }
     if (!C) {
       const t0 = performance.now();
-      C = paintCreaseMap(ch);
+      C = paintCreaseMap(ch, seed);
       perfMark('plis:peinture', performance.now() - t0);
       try {
-        creaseToCache(ch, C);
+        creaseToCache(ch, seed, C);
       } catch {
         /* pas de cache : recalculée à la prochaine visite */
       }
     }
-    creaseCache.set(ch, C);
-    creasePending.delete(ch);
+    creaseCache.set(key, C);
+    creasePending.delete(key);
     return C;
   })();
-  creasePending.set(ch, p);
+  creasePending.set(key, p);
   return p;
 }
 /**
@@ -506,21 +510,59 @@ function creaseMap(ch: number): Promise<CreaseMaps> {
  * Maintenant : chaque pli est légèrement COURBE (le film se tord), s'EFFILE vers ses bouts, son arête est arrondie
  * sur ~1 px (anticrénelage) ; la normale est calculée en flottants (différences centrées) puis encodée : aucune marche.
  */
-function creaseHeight(x: number, y: number, ax: number, y0s: number, y1s: number): number {
+/**
+ * (07/11, retours de Tom : « des bosses / creases aléatoires pour ne pas avoir un côté répétitif quand on change de
+ * booster ») chaque sachet a SON froissé : une graine par booster tire ses grands plis (positions, longueurs, courbure),
+ * ses bosses molles, son ondulation et sa mosaïque de facettes. Même matière, jamais le même sachet.
+ */
+interface CreaseCrease { x0: number; y0: number; x1: number; y1: number; amp: number; w: number; bend?: number }
+interface CreaseLook {
+  seed: number;
+  creases: CreaseCrease[];
+  dents: Array<{ x: number; y: number; r: number; amp: number; sx: number }>;
+  waves: Array<{ dx: number; dy: number; f: number; amp: number; ph: number }>;
+  bg: [number, number, number, number];
+}
+function creaseLook(seed: number): CreaseLook {
+  const r = lcg(seed * 7919 + 17);
+  const between = (a: number, b: number) => a + (b - a) * r();
+  // 2 ou 3 grands plis : le premier part d'un coin (là où le film se tend), les autres traversent en biais
+  const creases: CreaseCrease[] = [];
+  const corner = Math.floor(r() * 4);
+  const cx = corner & 1 ? 0.92 : 0.08, cy = corner & 2 ? 0.88 : 0.12;
+  creases.push({ x0: cx, y0: cy, x1: between(0.38, 0.62), y1: between(0.4, 0.62), amp: between(0.8, 1.05), w: between(0.16, 0.22), bend: between(-0.045, 0.045) });
+  const n = 1 + Math.floor(r() * 2);
+  for (let i = 0; i < n; i++) {
+    const a = r() * Math.PI, l = between(0.35, 0.7), mx = between(0.25, 0.75), my = between(0.25, 0.75);
+    creases.push({ x0: mx - Math.cos(a) * l * 0.5, y0: my - Math.sin(a) * l * 0.5, x1: mx + Math.cos(a) * l * 0.5, y1: my + Math.sin(a) * l * 0.5, amp: between(0.3, 0.75), w: between(0.14, 0.26), bend: between(-0.05, 0.05) });
+  }
+  // bosses molles (le film a été appuyé du doigt, une carte un peu de travers…), étirées dans un sens au hasard
+  const dents = Array.from({ length: 3 + Math.floor(r() * 3) }, () => ({ x: between(0.12, 0.88), y: between(0.14, 0.86), r: between(0.05, 0.12), amp: between(-0.09, 0.07), sx: between(0.6, 1.6) }));
+  const waves = Array.from({ length: 5 }, (_, i) => {
+    const a = r() * Math.PI * 2;
+    return { dx: Math.cos(a), dy: Math.sin(a), f: (3 + i * 2.3 + r()) * Math.PI * 2, amp: (0.05 / (1 + i * 0.7)) * FACET.wave, ph: r() * Math.PI * 2 };
+  });
+  return { seed, creases, dents, waves, bg: [between(2.6, 3.6), between(1.2, 2), between(-2.8, -1.8), between(2.4, 3.4)] };
+}
+function creaseHeight(L: CreaseLook, x: number, y: number, ax: number, y0s: number, y1s: number): number {
   if (y < y0s || y > y1s) return 0;
   let h = 0;
   // ondulation de fond : deux grandes vagues obliques, à peine perceptibles dans le reflet
-  h += 0.025 * Math.sin(x * 3.1 + y * 1.6 + 0.7) + 0.018 * Math.sin(x * -2.3 + y * 2.9 + 2.1);
-  // (la hauteur d'un pli suit sa largeur : pente constante le long du pli, il s'effile en une ligne — sinon, à
-  // hauteur fixe et largeur qui diminue, ses bouts se gonflent en « pilules »)
-  // GRANDS PLIS : le film se courbe (sommet arrondi, profil en cloche) — des pentes douces, larges
-  for (const c of BIG_CREASES) {
+  h += 0.025 * Math.sin(x * L.bg[0] + y * L.bg[1] + L.seed) + 0.018 * Math.sin(x * L.bg[2] + y * L.bg[3] + 2.1 + L.seed * 0.7);
+  // GRANDS PLIS : le film se courbe (sommet arrondi, profil en cloche) — des pentes douces, larges ; la hauteur suit la
+  // largeur (pente constante le long du pli : il s'effile en une ligne, sans « pilule » au bout)
+  for (const c of L.creases) {
     const q = creaseSigned(c, x, y, ax);
     const taper = 0.5 + 0.5 * Math.sin(Math.PI * q.t);
     const ww = c.w * (q.s > 0 ? 0.8 : 1.15) * taper;
     const k = Math.max(0, 1 - q.d / ww);
-    // (faibles dans la carte : la géométrie porte déjà ces grandes courbes — plus fort, leurs bouts arrondis faisaient des « bulles » de reflet)
     h += 0.28 * c.amp * taper * k * k * (3 - 2 * k) * creaseEnds(q.t, 5, 3.5);
+  }
+  // bosses molles
+  for (const d of L.dents) {
+    const dx = ((x - d.x) * ax) / (d.r * d.sx), dy = (y - d.y) / (d.r / d.sx);
+    const q = dx * dx + dy * dy;
+    if (q < 9) h += d.amp * Math.exp(-q * 1.4);
   }
   // tension près des soudures : léger creux le long de la soudure (le film y est tiré)
   const ds = Math.min(y - y0s, y1s - y);
@@ -528,8 +570,8 @@ function creaseHeight(x: number, y: number, ax: number, y0s: number, y1s: number
   return h;
 }
 /** distance SIGNÉE au pli courbé (arc : flèche `bend` au milieu), arête arrondie sur ~1 px */
-const CREASE_AA = 1.2 / PH;
-function creaseSigned(c: (typeof BIG_CREASES)[number], x: number, y: number, ax: number) {
+const CREASE_AA = 1.6 / PH; // (≈ 1,2 px de la carte de plis, à ¾ de définition)
+function creaseSigned(c: CreaseCrease, x: number, y: number, ax: number) {
   const dx = (c.x1 - c.x0) * ax, dy = c.y1 - c.y0, l = Math.hypot(dx, dy) || 1;
   const px = (x - c.x0) * ax, py = y - c.y0;
   const t = Math.max(0, Math.min(1, (px * dx + py * dy) / (l * l)));
@@ -556,13 +598,9 @@ function facetHash(i: number, j: number, k: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 /** champ lisse de pentes (5 vagues de directions variées) : la forme d'ensemble du film */
-const FACET_WAVES = Array.from({ length: 5 }, (_, i) => {
-  const a = facetHash(i, 11, 3) * Math.PI * 2;
-  return { dx: Math.cos(a), dy: Math.sin(a), f: (3 + i * 2.3) * Math.PI * 2, amp: (0.05 / (1 + i * 0.7)) * FACET.wave, ph: facetHash(i, 20, 7) * Math.PI * 2 };
-});
-function facetField(X: number, Y: number): [number, number] {
+function facetField(L: CreaseLook, X: number, Y: number): [number, number] {
   let gx = 0, gy = 0;
-  for (const w of FACET_WAVES) {
+  for (const w of L.waves) {
     const c = Math.cos((X * w.dx + Y * w.dy) * w.f + w.ph) * w.amp;
     gx += c * w.dx;
     gy += c * w.dy;
@@ -570,7 +608,8 @@ function facetField(X: number, Y: number): [number, number] {
   return [gx, gy];
 }
 /** pente de la facette sous le point (X, Y en unités de hauteur), fondue avec la voisine sur l'arête */
-function facetSlope(X: number, Y: number, H: number): [number, number] {
+function facetSlope(L: CreaseLook, X: number, Y: number, H: number): [number, number] {
+  const S = L.seed * 131;
   const ca = Math.cos(FACET.ang), sa = Math.sin(FACET.ang);
   // espace des cellules : tourné, étiré en travers (les facettes sont allongées dans la direction `ang`)
   const qx = X * ca + Y * sa, qy = (-X * sa + Y * ca) * FACET.stretch;
@@ -580,7 +619,7 @@ function facetSlope(X: number, Y: number, H: number): [number, number] {
   for (let oj = -1; oj <= 1; oj++)
     for (let oi = -1; oi <= 1; oi++) {
       const i = gi + oi, j = gj + oj;
-      const px = (i + facetHash(i, j, 1)) * c, py = (j + facetHash(i, j, 2)) * c;
+      const px = (i + facetHash(i, j, 1 + S)) * c, py = (j + facetHash(i, j, 2 + S)) * c;
       const d = Math.hypot(qx - px, qy - py);
       if (d < d1) {
         d2 = d1; i2 = i1; j2 = j1;
@@ -591,36 +630,39 @@ function facetSlope(X: number, Y: number, H: number): [number, number] {
     }
   const slopeOf = (i: number, j: number): [number, number] => {
     // centre de la cellule, ramené en coordonnées de toile, pour le champ lisse commun
-    const px = (i + facetHash(i, j, 1)) * c, py = ((j + facetHash(i, j, 2)) * c) / FACET.stretch;
-    const [fx, fy] = facetField(px * ca - py * sa, px * sa + py * ca);
-    const a = facetHash(i, j, 3) * Math.PI * 2;
+    const px = (i + facetHash(i, j, 1 + S)) * c, py = ((j + facetHash(i, j, 2 + S)) * c) / FACET.stretch;
+    const [fx, fy] = facetField(L, px * ca - py * sa, px * sa + py * ca);
+    const a = facetHash(i, j, 3 + S) * Math.PI * 2;
     // écart propre à la facette (≈ gaussien : somme de deux tirages)
-    const m = (facetHash(i, j, 4) + facetHash(i, j, 5) - 1) * FACET.jitter * 1.7;
+    const m = (facetHash(i, j, 4 + S) + facetHash(i, j, 5 + S) - 1) * FACET.jitter * 1.7;
     return [fx + Math.cos(a) * m, fy + Math.sin(a) * m];
   };
   const a = slopeOf(i1, j1), b = slopeOf(i2, j2);
   const w = 0.5 + 0.5 * Math.min(1, (d2 - d1) / ((2 * FACET.aa) / H));
   // (07/11, retours de Tom : « trop cabossé, beaucoup de faces visibles ») surtout la surface LISSE ondulée, et seulement
   // 30 % de l'écart dû aux facettes : les arêtes restent, en lignes fines, sans mosaïque
-  const [cx, cy] = facetField(X, Y);
+  const [cx, cy] = facetField(L, X, Y);
   const fx = a[0] * w + b[0] * (1 - w), fy = a[1] * w + b[1] * (1 - w);
   return [cx + (fx - cx) * FACET.facet, cy + (fy - cy) * FACET.facet];
 }
 
-function paintCreaseMap(ch: number): CreaseMaps {
-  const W = PW, H = PH;
+/** taille des cartes de plis (une PAR booster désormais : ¾ de la toile du visuel, la normale est lisse — mémoire) */
+const CRW = Math.round(PW * 0.75), CRH = Math.round(PH * 0.75);
+function paintCreaseMap(ch: number, seed: number): CreaseMaps {
+  const W = CRW, H = CRH;
+  const L = creaseLook(seed);
   const ax = PACK.w / PACK.h;
-  const y0s = ch / H, y1s = 1 - ch / H;
+  const y0s = ch / PH, y1s = 1 - ch / PH;
   // hauteurs en flottants (une rangée de marge de chaque côté pour les différences centrées)
   const hf = new Float32Array((W + 2) * (H + 2));
   for (let j = -1; j <= H; j++) {
     const y = (j + 0.5) / H;
-    for (let i = -1; i <= W; i++) hf[(j + 1) * (W + 2) + (i + 1)] = creaseHeight((i + 0.5) / W, y, ax, y0s, y1s);
+    for (let i = -1; i <= W; i++) hf[(j + 1) * (W + 2) + (i + 1)] = creaseHeight(L, (i + 0.5) / W, y, ax, y0s, y1s);
   }
   const C = makeCanvas(W, H), N = makeCanvas(W, H);
   const ih = C.g.createImageData(W, H), inn = N.g.createImageData(W, H);
   // pente → normale : hauteur 1 ≈ 127/255 de la carte de hauteur ; NRM_K règle la force du relief : pentes douces (≈ 7° sur un grand pli, ≈ 30° sur l'arête d'un pli net) — un film d'aluminium plié, pas des bosses
-  const NRM_K = 45;
+  const NRM_K = 45 * (PH / H); // (même pente quelle que soit la définition de la carte)
   for (let j = 0; j < H; j++)
     for (let i = 0; i < W; i++) {
       const k = (j + 1) * (W + 2) + (i + 1);
@@ -639,7 +681,7 @@ function paintCreaseMap(ch: number): CreaseMaps {
         const u = (i + 0.5) / W;
         const edge = Math.min(Math.min(u, 1 - u) / 0.5, Math.min(y - y0s, y1s - y) / 0.42);
         const dens = FACET.calm + (1 - FACET.calm) * Math.pow(Math.max(0, 1 - edge), 1.6);
-        const [fx, fy] = facetSlope(u * ax, y, H);
+        const [fx, fy] = facetSlope(L, u * ax, y, H);
         nx += fx * dens;
         ny -= fy * dens; // (toile vers le bas → espace tangent vers le haut)
       }

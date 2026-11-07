@@ -515,6 +515,8 @@ export function createOpeningScene(): OpeningScene {
   /** vitrine en portrait : le booster remonte et rétrécit pour laisser la place au choix des boosters en bas */
   const L = { dispY: 0, dispS: 1 };
   let dispK = 1;
+  /** roue en mouvement (0..1, lissé) : le flottement et l'inclinaison à la souris s'effacent puis REVIENNENT en douceur */
+  let reelMoveK = 0;
   /** décalage horizontal de l'image (px CSS) : cible et valeur lissée */
   let focusT = 0;
   let focusCur = 0;
@@ -2554,8 +2556,13 @@ export function createOpeningScene(): OpeningScene {
           // clic maintenu : « pris en main », le booster recule un peu
           packRig.position.z += rp.z - reel.holdK * 0.06;
           packRig.rotation.x += rp.rotX;
-          // la roue tourne : le flottement latéral s'efface (la pochette reste dans son rail)
-          if (reel.moving) packRig.rotation.y = B.spin + pose.y * 0.3;
+          // la roue tourne : le flottement latéral et l'inclinaison à la souris s'effacent (la pochette reste dans son rail)
+          // — (07/11, retours de Tom : « une demi-seconde puis le booster se met à suivre la souris d'un coup ») avant :
+          // tout ou rien sur `reel.moving`, d'où le saut à l'arrêt ; maintenant un fondu (~0,35 s) dans les deux sens
+          reelMoveK += ((reel.moving ? 1 : 0) - reelMoveK) * (1 - Math.exp(-dt * (reel.moving ? 10 : 4.5)));
+          const free = pose.y + Math.sin(t * 0.4) * 0.12;
+          packRig.rotation.y = B.spin + free + (pose.y * 0.3 - free) * reelMoveK;
+          packRig.rotation.x -= (pose.x + Math.sin(t * 0.6) * 0.04) * 0.7 * reelMoveK;
           // (retours de Tom) le halo n'est plus une « orbe » que les pochettes traversent : il passe DERRIÈRE tout le
           // tambour, agrandi d'autant pour garder la même taille à l'écran
           if (glowRef) {
