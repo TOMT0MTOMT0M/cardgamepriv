@@ -233,3 +233,46 @@ export function blendReliefNormals(nrm: Uint8ClampedArray, NW: number, r: Relief
     }
   return ao;
 }
+
+/** agrandit une carte RGBA (bilinéaire, centres de pixels alignés — comme drawImage lissé) */
+export function resampleRGBA(src: Uint8ClampedArray, sw: number, sh: number, dw: number, dh: number): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(dw * dh * 4);
+  const kx = sw / dw, ky = sh / dh;
+  for (let y = 0; y < dh; y++) {
+    const fy = Math.max(0, Math.min(sh - 1, (y + 0.5) * ky - 0.5));
+    const y0 = Math.floor(fy), y1 = Math.min(sh - 1, y0 + 1), ty = fy - y0;
+    for (let x = 0; x < dw; x++) {
+      const fx = Math.max(0, Math.min(sw - 1, (x + 0.5) * kx - 0.5));
+      const x0 = Math.floor(fx), x1 = Math.min(sw - 1, x0 + 1), tx = fx - x0;
+      const a = (y0 * sw + x0) * 4, b = (y0 * sw + x1) * 4, c = (y1 * sw + x0) * 4, d = (y1 * sw + x1) * 4;
+      const o = (y * dw + x) * 4;
+      for (let k = 0; k < 4; k++) {
+        const top = src[a + k] + (src[b + k] - src[a + k]) * tx;
+        const bot = src[c + k] + (src[d + k] - src[c + k]) * tx;
+        out[o + k] = top + (bot - top) * ty;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Face avant du sachet moulé, tout en données (worker ou repli) : normales des plis agrandies à la toile (PW × PH),
+ * relief du nom mêlé dedans, ombrage de cavité (`ao`) et ombrage « vignette 2D » (`shade`, lumière haut-gauche) sur la
+ * zone du nom (x0, y0, relief.w × relief.hgt).
+ */
+export function moldFront(creaseN: Uint8ClampedArray, cw: number, chh: number, pw: number, ph: number, relief: ReliefMap, x0: number, y0: number) {
+  const normal = resampleRGBA(creaseN, cw, chh, pw, ph);
+  const ao = blendReliefNormals(normal, pw, relief, x0, y0);
+  const shade = new Float32Array(relief.w * relief.hgt);
+  const Lx = -0.45, Ly = 0.55, Lz = 0.7;
+  for (let y = 0; y < relief.hgt; y++)
+    for (let x = 0; x < relief.w; x++) {
+      const X = x0 + x, Y = y0 + y;
+      if (X < 0 || X >= pw || Y < 0 || Y >= ph) continue;
+      const o = (Y * pw + X) * 4;
+      const nx = normal[o] / 127.5 - 1, ny = normal[o + 1] / 127.5 - 1, nz = normal[o + 2] / 127.5 - 1;
+      shade[y * relief.w + x] = 1 + 1.6 * (nx * Lx + ny * Ly + nz * Lz - Lz);
+    }
+  return { normal, ao, shade };
+}

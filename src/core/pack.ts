@@ -6,7 +6,8 @@ import { FONT_DISPLAY } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
-import { LABEL_RELIEF, blendReliefNormals, reliefFromCoverage, type ReliefMap } from './packLabel';
+import { LABEL_RELIEF, moldFront, reliefFromCoverage, type ReliefMap } from './packLabel';
+import { CRH, CRW, PACK, PH, PW, creaseMapData, creaseRidge, creaseSigned, lcg } from './packCrease';
 
 /**
  * Booster : un peu plus grand qu'une carte, coussin bombé, soudures crantées haut/bas.
@@ -14,7 +15,7 @@ import { LABEL_RELIEF, blendReliefNormals, reliefFromCoverage, type ReliefMap } 
  * le film épouse la pile (plateau de l'épaisseur des 5 cartes, voir createPackGeometry) au lieu de gonfler. La caméra des scènes garde l'ancien cadrage (`PACK_FRAME`) : le booster
  * paraît 15 % plus grand, les cartes gardent leur taille.
  */
-export const PACK = { w: 0.897, h: 1.357, bulge: 0.028, crimp: 0.0863 };
+export { PACK } from './packCrease';
 /**
  * (07/11) La pile des 5 cartes rangée dans le sachet (style « déchirure », scenes/opening.ts) : demi-largeur et
  * demi-hauteur à l'échelle 0,92, centre vertical. Le plateau du sachet en suit l'empreinte ; `bulge` = sa demi-épaisseur
@@ -37,16 +38,6 @@ export const BIG_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1
   { x0: 0.93, y0: 0.88, x1: 0.64, y1: 0.66, amp: 0.8, w: 0.16, bend: -0.025 },
   { x0: 0.22, y0: 0.74, x1: 0.8, y1: 0.36, amp: 0.35, w: 0.26, bend: 0.05 },
 ]
-/** fondu d'un pli vers ses bouts (t = position le long du pli, 0..1) : débuts et fins progressifs */
-function creaseEnds(t: number, a: number, b: number): number {
-  const e = Math.min(1, t * a, (1 - t) * b);
-  return e * e * (3 - 2 * e);
-}
-/** profil (géométrie) d'un grand pli : cloche douce, effacée aux bouts */
-function creaseRidge(d: number, w: number, t: number): number {
-  const k = Math.max(0, 1 - Math.abs(d) / w);
-  return k * k * (3 - 2 * k) * creaseEnds(t, 5, 3.5);
-}
 
 export interface PackStyle {
   name: string;
@@ -168,7 +159,6 @@ export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean
   return g;
 }
 
-const PW = 640, PH = Math.round((640 * PACK.h) / PACK.w);
 
 /** Police du titre réduite jusqu'à tenir dans `maxW` (« BÉBOU PACK » est plus long que « Card Lab »). */
 function fitFont(g: Ctx, text: string, weight: number, size: number, maxW: number, family: string): string {
@@ -482,9 +472,6 @@ function labelToCache(text: string, px: number, r: ReliefMap) {
 async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasElement, text: string, px: number): Promise<{ normal: HTMLCanvasElement; thumb: HTMLCanvasElement }> {
   const t0 = performance.now();
   const ss = LABEL_RELIEF.ss;
-  const N = makeCanvas(PW, PH);
-  N.g.imageSmoothingQuality = 'high';
-  N.g.drawImage(creaseN, 0, 0, PW, PH);
   F.g.font = `400 ${px}px ${FONT_DISPLAY}`;
   const tw = F.g.measureText(text).width;
   const pad = Math.round(px * 0.3);
@@ -492,7 +479,10 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
   const x0 = Math.round(PW / 2 - w / 2), y0 = Math.round(PH * 0.5 - h / 2);
   let relief = await labelFromCache(text, px);
   const cached = !!relief && relief.w === w && relief.hgt === h; // même mise en page que la toile actuelle
-  if (!cached) {
+  if (!cached) relief = null;
+  // couverture du texte (rastérisation ×2 avec la police du jeu : quelques ms, sur le thread principal)
+  let cov: Uint8ClampedArray | undefined;
+  if (!relief) {
     const L = makeCanvas(w * ss, h * ss);
     L.g.fillStyle = '#fff';
     L.g.font = `400 ${px * ss}px ${FONT_DISPLAY}`;
@@ -500,20 +490,34 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
     L.g.textBaseline = 'middle';
     L.g.fillText(text, (PW / 2 - x0) * ss, (PH * 0.5 - y0) * ss);
     const id = L.g.getImageData(0, 0, w * ss, h * ss).data;
-    const cov = new Uint8ClampedArray(w * ss * h * ss);
+    cov = new Uint8ClampedArray(w * ss * h * ss);
     for (let k = 0; k < cov.length; k++) cov[k] = id[k * 4 + 3];
     L.c.width = L.c.height = 0; // libère la toile tout de suite (iOS)
-    relief = reliefFromCoverage(cov, w * ss, h * ss, px);
-    labelToCache(text, px, relief);
   }
-  if (!relief) throw new Error('relief du nom indisponible');
-  const nimg = N.g.getImageData(0, 0, PW, PH);
-  const ao = blendReliefNormals(nimg.data, PW, relief, x0, y0);
-  N.g.putImageData(nimg, 0, 0);
-  // ombrage de cavité (au pied des lettres, au fond des rainures) : la même teinte, juste un peu d'ombre portée
-  const fimg = F.g.getImageData(x0, y0, relief.w, relief.hgt);
-  for (let k = 0; k < relief.w * relief.hgt; k++) {
-    const a = ao[k];
+  const cn = (creaseN.getContext('2d') as Ctx).getImageData(0, 0, CRW, CRH).data;
+  // (07/11, perf) relief + mélange aux normales des plis : dans le WORKER (repli : ici, mêmes fonctions)
+  let out: { normal: Uint8ClampedArray; ao: Float32Array; shade: Float32Array; relief?: ReliefMap };
+  let where = 'worker';
+  try {
+    // seules les normales sont TRANSFÉRÉES (relues sur la toile au besoin) ; relief et couverture sont copiés (petits)
+    // pour rester utilisables par le repli
+    out = await inWorker({ kind: 'mold', creaseN: cn, x0, y0, px, relief: relief ?? undefined, cov, covW: w * ss, covH: h * ss }, [cn.buffer]);
+  } catch {
+    where = 'principal';
+    // le worker a emporté les normales : on les relit sur la toile
+    const cn2 = (creaseN.getContext('2d') as Ctx).getImageData(0, 0, CRW, CRH).data;
+    const rel = relief ?? (cov ? reliefFromCoverage(cov, w * ss, h * ss, px) : null);
+    if (!rel) throw new Error('relief du nom indisponible');
+    out = { ...moldFront(cn2, CRW, CRH, PW, PH, rel, x0, y0), relief: relief ? undefined : rel };
+  }
+  if (out.relief) labelToCache(text, px, out.relief);
+  const rw = w, rh = h;
+  const N = makeCanvas(PW, PH);
+  N.g.putImageData(new ImageData(out.normal as Uint8ClampedArray<ArrayBuffer>, PW, PH), 0, 0);
+  // ombrage de cavité (au pied des lettres) : la même teinte, juste un peu d'ombre portée
+  const fimg = F.g.getImageData(x0, y0, rw, rh);
+  for (let k = 0; k < rw * rh; k++) {
+    const a = out.ao[k];
     if (a >= 0.999) continue;
     fimg.data[k * 4] *= a;
     fimg.data[k * 4 + 1] *= a;
@@ -523,26 +527,62 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
   // vignette 2D : la même face, le relief éclairé une fois (lumière haut-gauche), seulement sur la zone du nom
   const T = makeCanvas(PW, PH);
   T.g.drawImage(F.c, 0, 0);
-  const timg = T.g.getImageData(x0, y0, relief.w, relief.hgt);
-  const Lx = -0.45, Ly = 0.55, Lz = 0.7;
-  for (let y = 0; y < relief.hgt; y++)
-    for (let x = 0; x < relief.w; x++) {
-      const o = ((y0 + y) * PW + x0 + x) * 4;
-      if (x0 + x < 0 || x0 + x >= PW) continue;
-      const nx = nimg.data[o] / 127.5 - 1, ny = nimg.data[o + 1] / 127.5 - 1, nz = nimg.data[o + 2] / 127.5 - 1;
-      const k = 1 + 1.6 * (nx * Lx + ny * Ly + nz * Lz - Lz);
-      const t = (y * relief.w + x) * 4;
-      for (let c = 0; c < 3; c++) timg.data[t + c] = Math.max(0, Math.min(255, timg.data[t + c] * k));
-    }
+  const timg = T.g.getImageData(x0, y0, rw, rh);
+  for (let k = 0; k < rw * rh; k++) {
+    const sh = out.shade[k];
+    if (!sh) continue;
+    for (let c = 0; c < 3; c++) timg.data[k * 4 + c] = Math.max(0, Math.min(255, timg.data[k * 4 + c] * sh));
+  }
   T.g.putImageData(timg, x0, y0);
-  perfMark(`nom moulé ${text}${cached ? ' (cache)' : ''}`, performance.now() - t0);
+  perfMark(`nom moulé ${text}${cached ? ' (cache)' : ''} · ${where}`, performance.now() - t0);
   return { normal: N.c, thumb: T.c };
 }
 
-function lcg(seed: number) {
-  let a = seed >>> 0 || 1;
-  return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296);
+// ── WORKER des sachets (07/11, perf mesurée sur téléphone) : un seul, créé à la 1re demande ; en cas d'échec
+// (navigateur sans worker module, erreur, pas de réponse en 20 s), les calculs se font sur le thread principal
+type WorkerReply = { id: number; ok: boolean; error?: string } & Record<string, unknown>;
+let packW: Worker | null | undefined;
+let packJob = 0;
+const packPending = new Map<number, { res: (v: WorkerReply) => void; rej: (e: Error) => void }>();
+function packWorker(): Worker | null {
+  if (packW !== undefined) return packW;
+  try {
+    packW = new Worker(new URL('./packWorker.ts', import.meta.url), { type: 'module' });
+    packW.onmessage = (e: MessageEvent<WorkerReply>) => {
+      const p = packPending.get(e.data.id);
+      if (!p) return;
+      packPending.delete(e.data.id);
+      if (e.data.ok) p.res(e.data);
+      else p.rej(new Error(e.data.error ?? 'worker'));
+    };
+    packW.onerror = () => {
+      packPending.forEach((p) => p.rej(new Error('worker')));
+      packPending.clear();
+      packW?.terminate();
+      packW = null;
+    };
+  } catch {
+    packW = null;
+  }
+  return packW;
 }
+function inWorker<T>(job: Record<string, unknown>, transfer: Transferable[] = []): Promise<T> {
+  const w = packWorker();
+  if (!w) return Promise.reject(new Error('pas de worker'));
+  const id = ++packJob;
+  return new Promise<T>((res, rej) => {
+    const timer = setTimeout(() => {
+      packPending.delete(id);
+      rej(new Error('worker muet'));
+    }, 20000);
+    packPending.set(id, {
+      res: (v) => (clearTimeout(timer), res(v as unknown as T)),
+      rej: (e) => (clearTimeout(timer), rej(e)),
+    });
+    w.postMessage({ ...job, id }, transfer);
+  });
+}
+
 
 /**
  * CARTE DE HAUTEUR du sachet (ultra-réalisme, 06/11) : pleine taille (pas de tuile), 0,5 = plat.
@@ -622,8 +662,14 @@ function creaseMap(ch: number, seed: number): Promise<CreaseMaps> {
     }
     if (!C) {
       const t0 = performance.now();
-      C = paintCreaseMap(ch, seed);
-      perfMark('plis:peinture', performance.now() - t0);
+      // (07/11, perf) peinte dans le WORKER (le thread principal reste libre) ; repli : ici, mêmes calculs
+      try {
+        C = creaseCanvases(await inWorker<{ h: Uint8ClampedArray; n: Uint8ClampedArray }>({ kind: 'crease', ch, seed }));
+        perfMark('plis:worker', performance.now() - t0);
+      } catch {
+        C = paintCreaseMap(ch, seed);
+        perfMark('plis:peinture', performance.now() - t0);
+      }
       try {
         creaseToCache(ch, seed, C);
       } catch {
@@ -647,191 +693,14 @@ function creaseMap(ch: number, seed: number): Promise<CreaseMaps> {
  * Maintenant : chaque pli est légèrement COURBE (le film se tord), s'EFFILE vers ses bouts, son arête est arrondie
  * sur ~1 px (anticrénelage) ; la normale est calculée en flottants (différences centrées) puis encodée : aucune marche.
  */
-/**
- * (07/11, retours de Tom : « des bosses / creases aléatoires pour ne pas avoir un côté répétitif quand on change de
- * booster ») chaque sachet a SON froissé : une graine par booster tire ses grands plis (positions, longueurs, courbure),
- * ses bosses molles, son ondulation et sa mosaïque de facettes. Même matière, jamais le même sachet.
- */
-interface CreaseCrease { x0: number; y0: number; x1: number; y1: number; amp: number; w: number; bend?: number }
-interface CreaseLook {
-  seed: number;
-  creases: CreaseCrease[];
-  dents: Array<{ x: number; y: number; r: number; amp: number; sx: number }>;
-  waves: Array<{ dx: number; dy: number; f: number; amp: number; ph: number }>;
-  bg: [number, number, number, number];
-}
-function creaseLook(seed: number): CreaseLook {
-  const r = lcg(seed * 7919 + 17);
-  const between = (a: number, b: number) => a + (b - a) * r();
-  // 2 ou 3 grands plis : le premier part d'un coin (là où le film se tend), les autres traversent en biais
-  const creases: CreaseCrease[] = [];
-  const corner = Math.floor(r() * 4);
-  const cx = corner & 1 ? 0.92 : 0.08, cy = corner & 2 ? 0.88 : 0.12;
-  creases.push({ x0: cx, y0: cy, x1: between(0.38, 0.62), y1: between(0.4, 0.62), amp: between(0.8, 1.05), w: between(0.16, 0.22), bend: between(-0.045, 0.045) });
-  const n = 1 + Math.floor(r() * 2);
-  for (let i = 0; i < n; i++) {
-    const a = r() * Math.PI, l = between(0.35, 0.7), mx = between(0.25, 0.75), my = between(0.25, 0.75);
-    creases.push({ x0: mx - Math.cos(a) * l * 0.5, y0: my - Math.sin(a) * l * 0.5, x1: mx + Math.cos(a) * l * 0.5, y1: my + Math.sin(a) * l * 0.5, amp: between(0.3, 0.75), w: between(0.14, 0.26), bend: between(-0.05, 0.05) });
-  }
-  // bosses molles (le film a été appuyé du doigt, une carte un peu de travers…), étirées dans un sens au hasard
-  const dents = Array.from({ length: 3 + Math.floor(r() * 3) }, () => ({ x: between(0.12, 0.88), y: between(0.14, 0.86), r: between(0.05, 0.12), amp: between(-0.09, 0.07), sx: between(0.6, 1.6) }));
-  const waves = Array.from({ length: 5 }, (_, i) => {
-    const a = r() * Math.PI * 2;
-    return { dx: Math.cos(a), dy: Math.sin(a), f: (3 + i * 2.3 + r()) * Math.PI * 2, amp: (0.05 / (1 + i * 0.7)) * FACET.wave, ph: r() * Math.PI * 2 };
-  });
-  return { seed, creases, dents, waves, bg: [between(2.6, 3.6), between(1.2, 2), between(-2.8, -1.8), between(2.4, 3.4)] };
-}
-function creaseHeight(L: CreaseLook, x: number, y: number, ax: number, y0s: number, y1s: number): number {
-  if (y < y0s || y > y1s) return 0;
-  let h = 0;
-  // ondulation de fond : deux grandes vagues obliques, à peine perceptibles dans le reflet
-  h += 0.025 * Math.sin(x * L.bg[0] + y * L.bg[1] + L.seed) + 0.018 * Math.sin(x * L.bg[2] + y * L.bg[3] + 2.1 + L.seed * 0.7);
-  // GRANDS PLIS : le film se courbe (sommet arrondi, profil en cloche) — des pentes douces, larges ; la hauteur suit la
-  // largeur (pente constante le long du pli : il s'effile en une ligne, sans « pilule » au bout)
-  for (const c of L.creases) {
-    const q = creaseSigned(c, x, y, ax);
-    const taper = 0.5 + 0.5 * Math.sin(Math.PI * q.t);
-    const ww = c.w * (q.s > 0 ? 0.8 : 1.15) * taper;
-    const k = Math.max(0, 1 - q.d / ww);
-    h += 0.28 * c.amp * taper * k * k * (3 - 2 * k) * creaseEnds(q.t, 5, 3.5);
-  }
-  // bosses molles
-  for (const d of L.dents) {
-    const dx = ((x - d.x) * ax) / (d.r * d.sx), dy = (y - d.y) / (d.r / d.sx);
-    const q = dx * dx + dy * dy;
-    if (q < 9) h += d.amp * Math.exp(-q * 1.4);
-  }
-  // tension près des soudures : léger creux le long de la soudure (le film y est tiré)
-  const ds = Math.min(y - y0s, y1s - y);
-  h -= 0.08 * Math.exp(-ds / 0.03);
-  return h;
-}
-/** distance SIGNÉE au pli courbé (arc : flèche `bend` au milieu), arête arrondie sur ~1 px */
-const CREASE_AA = 1.6 / PH; // (≈ 1,2 px de la carte de plis, à ¾ de définition)
-function creaseSigned(c: CreaseCrease, x: number, y: number, ax: number) {
-  const dx = (c.x1 - c.x0) * ax, dy = c.y1 - c.y0, l = Math.hypot(dx, dy) || 1;
-  const px = (x - c.x0) * ax, py = y - c.y0;
-  const t = Math.max(0, Math.min(1, (px * dx + py * dy) / (l * l)));
-  // perpendiculaire signée, moins la courbure de l'arc à cette position (parabole 4t(1−t))
-  const s = (px * dy - py * dx) / l - (c.bend ?? 0) * 4 * t * (1 - t);
-  // (distance perpendiculaire seulement : au-delà des bouts le pli est déjà effacé — une distance « en capsule »
-  // dessinait des anneaux de reflet au bout de chaque pli)
-  const d = Math.sqrt(s * s + CREASE_AA * CREASE_AA) - CREASE_AA;
-  return { s, d, t };
-}
-/**
- * (07/11 soir, 2e passe — retours de Tom : « on dirait des trous », « je veux juste un effet réaliste ») FROISSÉ RÉEL d'un
- * film métallisé : le film a été froissé puis lissé par les cartes dedans — il garde une MOSAÏQUE DE FACETTES presque
- * planes, chacune très légèrement inclinée, séparées par des arêtes fines (les plis). Les facettes voisines suivent une
- * surface ondulée commune (champ lisse échantillonné au centre de chaque facette) + un petit écart propre à chacune :
- * des plis partout mais faibles (1 à 3°), jamais de « trou » ni de « bâton ». Cellules étirées en biais (le film se
- * froisse en longueur), plus calmes au centre (les cartes le tiennent), plus marquées vers les bords et les soudures.
- * Calculé en pentes (flottants) et ajouté à la normale : aucune marche, aucun crénelage (fondu de 1,2 px sur les arêtes).
- */
-const FACET = { cell: 0.075, stretch: 1.6, ang: 0.35, jitter: 0.004, wave: 0.55, calm: 0.15, aa: 2, facet: 0.3 };
-function facetHash(i: number, j: number, k: number): number {
-  let h = (i * 374761393 + j * 668265263 + k * 2147483647) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
-/** champ lisse de pentes (5 vagues de directions variées) : la forme d'ensemble du film */
-function facetField(L: CreaseLook, X: number, Y: number): [number, number] {
-  let gx = 0, gy = 0;
-  for (const w of L.waves) {
-    const c = Math.cos((X * w.dx + Y * w.dy) * w.f + w.ph) * w.amp;
-    gx += c * w.dx;
-    gy += c * w.dy;
-  }
-  return [gx, gy];
-}
-/** pente de la facette sous le point (X, Y en unités de hauteur), fondue avec la voisine sur l'arête */
-function facetSlope(L: CreaseLook, X: number, Y: number, H: number): [number, number] {
-  const S = L.seed * 131;
-  const ca = Math.cos(FACET.ang), sa = Math.sin(FACET.ang);
-  // espace des cellules : tourné, étiré en travers (les facettes sont allongées dans la direction `ang`)
-  const qx = X * ca + Y * sa, qy = (-X * sa + Y * ca) * FACET.stretch;
-  const c = FACET.cell;
-  const gi = Math.floor(qx / c), gj = Math.floor(qy / c);
-  let d1 = 9, d2 = 9, i1 = 0, j1 = 0, i2 = 0, j2 = 0;
-  for (let oj = -1; oj <= 1; oj++)
-    for (let oi = -1; oi <= 1; oi++) {
-      const i = gi + oi, j = gj + oj;
-      const px = (i + facetHash(i, j, 1 + S)) * c, py = (j + facetHash(i, j, 2 + S)) * c;
-      const d = Math.hypot(qx - px, qy - py);
-      if (d < d1) {
-        d2 = d1; i2 = i1; j2 = j1;
-        d1 = d; i1 = i; j1 = j;
-      } else if (d < d2) {
-        d2 = d; i2 = i; j2 = j;
-      }
-    }
-  const slopeOf = (i: number, j: number): [number, number] => {
-    // centre de la cellule, ramené en coordonnées de toile, pour le champ lisse commun
-    const px = (i + facetHash(i, j, 1 + S)) * c, py = ((j + facetHash(i, j, 2 + S)) * c) / FACET.stretch;
-    const [fx, fy] = facetField(L, px * ca - py * sa, px * sa + py * ca);
-    const a = facetHash(i, j, 3 + S) * Math.PI * 2;
-    // écart propre à la facette (≈ gaussien : somme de deux tirages)
-    const m = (facetHash(i, j, 4 + S) + facetHash(i, j, 5 + S) - 1) * FACET.jitter * 1.7;
-    return [fx + Math.cos(a) * m, fy + Math.sin(a) * m];
-  };
-  const a = slopeOf(i1, j1), b = slopeOf(i2, j2);
-  const w = 0.5 + 0.5 * Math.min(1, (d2 - d1) / ((2 * FACET.aa) / H));
-  // (07/11, retours de Tom : « trop cabossé, beaucoup de faces visibles ») surtout la surface LISSE ondulée, et seulement
-  // 30 % de l'écart dû aux facettes : les arêtes restent, en lignes fines, sans mosaïque
-  const [cx, cy] = facetField(L, X, Y);
-  const fx = a[0] * w + b[0] * (1 - w), fy = a[1] * w + b[1] * (1 - w);
-  return [cx + (fx - cx) * FACET.facet, cy + (fy - cy) * FACET.facet];
-}
-
-/** taille des cartes de plis (une PAR booster désormais : ¾ de la toile du visuel, la normale est lisse — mémoire) */
-const CRW = Math.round(PW * 0.75), CRH = Math.round(PH * 0.75);
+/** carte des plis peinte sur le thread principal (repli quand le worker n'est pas disponible) — mêmes calculs */
 function paintCreaseMap(ch: number, seed: number): CreaseMaps {
-  const W = CRW, H = CRH;
-  const L = creaseLook(seed);
-  const ax = PACK.w / PACK.h;
-  const y0s = ch / PH, y1s = 1 - ch / PH;
-  // hauteurs en flottants (une rangée de marge de chaque côté pour les différences centrées)
-  const hf = new Float32Array((W + 2) * (H + 2));
-  for (let j = -1; j <= H; j++) {
-    const y = (j + 0.5) / H;
-    for (let i = -1; i <= W; i++) hf[(j + 1) * (W + 2) + (i + 1)] = creaseHeight(L, (i + 0.5) / W, y, ax, y0s, y1s);
-  }
-  const C = makeCanvas(W, H), N = makeCanvas(W, H);
-  const ih = C.g.createImageData(W, H), inn = N.g.createImageData(W, H);
-  // pente → normale : hauteur 1 ≈ 127/255 de la carte de hauteur ; NRM_K règle la force du relief : pentes douces (≈ 7° sur un grand pli, ≈ 30° sur l'arête d'un pli net) — un film d'aluminium plié, pas des bosses
-  const NRM_K = 45 * (PH / H); // (même pente quelle que soit la définition de la carte)
-  for (let j = 0; j < H; j++)
-    for (let i = 0; i < W; i++) {
-      const k = (j + 1) * (W + 2) + (i + 1);
-      const h = hf[k];
-      const o = (j * W + i) * 4;
-      const v = Math.max(0, Math.min(255, Math.round(128 + h * 127)));
-      ih.data[o] = ih.data[o + 1] = ih.data[o + 2] = v;
-      ih.data[o + 3] = 255;
-      // espace tangent : +x = droite (u), +y = HAUT (v) — la toile descend, d'où le signe de dy
-      const dhx = (hf[k + 1] - hf[k - 1]) * 0.5 * 0.5;
-      const dhy = (hf[k - (W + 2)] - hf[k + (W + 2)]) * 0.5 * 0.5;
-      let nx = -dhx * NRM_K, ny = -dhy * NRM_K;
-      // facettes du froissé, plus calmes au centre du sachet, absentes sur les soudures
-      const y = (j + 0.5) / H;
-      if (y > y0s && y < y1s) {
-        const u = (i + 0.5) / W;
-        const edge = Math.min(Math.min(u, 1 - u) / 0.5, Math.min(y - y0s, y1s - y) / 0.42);
-        const dens = FACET.calm + (1 - FACET.calm) * Math.pow(Math.max(0, 1 - edge), 1.6);
-        const [fx, fy] = facetSlope(L, u * ax, y, H);
-        nx += fx * dens;
-        ny -= fy * dens; // (toile vers le bas → espace tangent vers le haut)
-      }
-      const inv = 1 / Math.hypot(nx, ny, 1);
-      nx *= inv;
-      ny *= inv;
-      inn.data[o] = Math.round((nx * 0.5 + 0.5) * 255);
-      inn.data[o + 1] = Math.round((ny * 0.5 + 0.5) * 255);
-      inn.data[o + 2] = Math.round((inv * 0.5 + 0.5) * 255);
-      inn.data[o + 3] = 255;
-    }
-  C.g.putImageData(ih, 0, 0);
-  N.g.putImageData(inn, 0, 0);
+  return creaseCanvases(creaseMapData(ch, seed));
+}
+function creaseCanvases(d: { h: Uint8ClampedArray; n: Uint8ClampedArray }): CreaseMaps {
+  const C = makeCanvas(CRW, CRH), N = makeCanvas(CRW, CRH);
+  C.g.putImageData(new ImageData(d.h as Uint8ClampedArray<ArrayBuffer>, CRW, CRH), 0, 0);
+  N.g.putImageData(new ImageData(d.n as Uint8ClampedArray<ArrayBuffer>, CRW, CRH), 0, 0);
   return { c: C.c, n: N.c };
 }
 

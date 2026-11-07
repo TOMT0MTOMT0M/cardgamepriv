@@ -1,4 +1,4 @@
-import { ensureCardFonts, gameDesignId, generateCardArt, releaseCardImage } from '../core/art';
+import { ensureCardFonts, gameDesignId, generateCardArtAsync, releaseCardImage } from '../core/art';
 import { FONT_VERSION } from '../core/fonts';
 import { loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
@@ -139,13 +139,15 @@ async function paint(key: string): Promise<string | null> {
     }
   }
 }
+const idleYield = () => new Promise<void>((r) => idle(() => r()));
 async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnType<typeof cardById>, thumb: string | undefined): Promise<string | null> {
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre
   await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, { key: !(cd.photo || cd.cover) }).catch(() => undefined) : undefined]);
   await new Promise<void>((r) => idle(() => r()));
   // (retours live 6, B2) même gabarit que la carte 3D de la vue détail (gameDesignId), plus jamais un gabarit à part
   const design = gameDesignId(cd);
-  const art = generateCardArt(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(design ? { design } : {}) });
+  // (mesure 07/11 : tâches de 316 ms sur Android) peinture découpée en étapes, la main rendue entre chacune
+  const art = await generateCardArtAsync(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(design ? { design } : {}) }, idleYield);
   const blob = await new Promise<Blob | null>((r) => art.canvases.flat.toBlob(r, 'image/webp', 0.86));
   art.dispose();
   // la mémoire d'un canvas n'est rendue qu'au ramasse-miettes… sauf si on le vide (iOS plafonne le total : PERF1-01)
