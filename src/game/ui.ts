@@ -4,6 +4,7 @@ import { artPath, catalogEntry, hasArt, isWonderId, subthemeById, thumbPath, won
 import { jvThumbSvg } from '../core/art/jvTitle';
 import { observeRealCard } from './cardImages';
 import { haptics } from '../core/haptics';
+import type { GameBackend } from './backend';
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -465,4 +466,47 @@ export function fmtDelay(ms: number): string {
   const m = Math.max(1, Math.ceil(ms / 60000));
   if (m >= 2880) return `${Math.floor(m / 1440)} j ${Math.floor((m % 1440) / 60)} h`;
   return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
+}
+
+// ───────────────────────────────────────────── « Image à revoir » (07/11)
+/**
+ * Bouton de signalement d'une image buguée ou absente, dans TOUTES les visionneuses (collection, profil, échanges,
+ * contrats, zoom de l'ouverture) : un tap = une suggestion « design » sur la carte, pour la file de Tom et Hugo.
+ * Déjà signalée sur cet appareil (localStorage) → bouton « Image signalée ✓ », pas de doublon.
+ */
+const IMG_REPORTED_KEY = 'bebou.imgReported';
+const imgReported = new Set<string>();
+try {
+  for (const id of JSON.parse(localStorage.getItem(IMG_REPORTED_KEY) ?? '[]') as string[]) imgReported.add(id);
+} catch {
+  /* stockage indisponible */
+}
+export function imageReportButton(backend: GameBackend, cardId: string, page: string): HTMLElement {
+  const done = imgReported.has(cardId);
+  const b = h('button', `va va-img${done ? ' on' : ''}`);
+  b.title = done ? 'Image déjà signalée, merci' : 'Signaler une image buguée ou absente (on la corrigera)';
+  b.setAttribute('aria-pressed', String(done));
+  b.innerHTML = `🖼 <span>${done ? 'Image signalée ✓' : 'Image à revoir'}</span>`;
+  b.addEventListener('click', async (ev) => {
+    ev.stopPropagation();
+    if (imgReported.has(cardId)) return toast('Déjà signalée : on s’en occupe.', 'info');
+    haptics.pulse(8);
+    try {
+      await backend.submitSuggestion({ kind: 'design', cardId, text: `Image à revoir (buguée ou absente) — ${catalogEntry(cardId)?.name ?? cardId}`, page }, null);
+      imgReported.add(cardId);
+      try {
+        localStorage.setItem(IMG_REPORTED_KEY, JSON.stringify([...imgReported]));
+      } catch {
+        /* stockage indisponible */
+      }
+      toast('Image signalée, merci : elle sera corrigée.', 'ok');
+      b.classList.add('on');
+      b.setAttribute('aria-pressed', 'true');
+      b.title = 'Image déjà signalée, merci';
+      b.querySelector('span')!.textContent = 'Image signalée ✓';
+    } catch (err) {
+      toast(errMsg(err), 'err');
+    }
+  });
+  return b;
 }

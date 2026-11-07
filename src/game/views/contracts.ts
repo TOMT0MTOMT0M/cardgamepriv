@@ -7,7 +7,7 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { catalogEntry } from '../../core/sets/themes';
 import { haptics } from '../../core/haptics';
 import { paintedCard } from '../cardImages';
-import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
+import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
 import { PROTECT_LEGEND, protectIcons, protection as protectionOf } from './safety';
 import { GAMES_OPEN } from '../../core/games';
 
@@ -68,7 +68,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     </div>
     <div class="ct-flames" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="sum-bg ct-bg" hidden><div class="sum-rays"></div><div class="sum-parts"></div></div>
-    <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
+    <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
   const tiersEl = el.querySelector<HTMLElement>('.ct-tiers')!;
   const titleEl = el.querySelector<HTMLElement>('.ct-title')!;
   const fillEl = el.querySelector<HTMLElement>('.ct-fill')!;
@@ -406,6 +406,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       vInfo.innerHTML = `<div class="ci-new">${res.isNew ? 'NOUVELLE CARTE' : 'CONTRAT SIGNÉ'}</div><div class="ci-name">${esc(res.cardName)}</div>
         <div class="ci-meta">${starsHtml(res.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div>
         <div class="ci-sub">n°${fmtN(res.mintNumber)}\u00a0imprimé · contre ${CONTRACT_COST[from]} doublons ${stars(from)}</div>`;
+      viewerUi.querySelector('.v-actions')!.replaceChildren(imageReportButton(backend, res.cardId, 'contrats/carte'));
       haptics.pulse(rr.tier >= 4 ? [50, 30, 90] : 40);
       // fond dynamique (5★ / 6★ obtenue) : lueur radiale de la rareté, rayons, particules de braise
       if (rr.rank >= 4) {

@@ -16,7 +16,7 @@ import { markWildSeen } from '../wildEncounter';
 import { markDuelSeen } from '../duelEncounter';
 import type { WildExperiment } from '../../experiments/041-pokemon-wild/index';
 import { rarity } from '../../core/rarity';
-import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
+import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast, imageReportButton } from '../ui';
 import { createPackSheet, shopPacks } from './packSheet';
 import { preloadArt } from '../preload';
 import { isTouch } from '../../core/renderer';
@@ -210,7 +210,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     <div class="summary" hidden></div>
     <div class="secret-continue" hidden><button class="btn-primary">Continuer</button></div>
     <div class="secret-continue wild-continue" hidden><button class="btn-primary">Continuer</button></div>
-    <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
+    <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
   const rowEl = el.querySelector<HTMLElement>('.packs-row')!;
   const hintEl = el.querySelector<HTMLElement>('.shop-hint')!;
   const banner = el.querySelector<HTMLElement>('.home-banner')!;
@@ -1641,6 +1641,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     vi.className = `v-info r-${card.rarity}`;
     vi.style.setProperty('--ra', rr.accentHex);
     vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${e?.artist ? `<div class="ci-by">${esc(e.artist)}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
+    viewerUi.querySelector('.v-actions')!.replaceChildren(imageReportButton(backend, card.cardId, 'ouverture/zoom'));
     viewerUi.hidden = false;
     summary.hidden = true;
     fanBadges.hidden = true;
