@@ -339,6 +339,10 @@ export interface ReferralInfo {
   code: string;
   clicks: number;
   referrals: Array<{ userId: string; name: string; avatarUrl?: string; packsOpened: number; paid: boolean; at: number }>;
+  /** mon parrain (nom affiché), si j'en ai un */
+  myReferrer?: string;
+  /** compte encore assez neuf pour déclarer un parrain (lien ou pseudo collé dans l'onglet Amis) */
+  canClaim?: boolean;
 }
 
 export interface GameBackend {
@@ -417,7 +421,7 @@ export interface GameBackend {
   referral(): Promise<ReferralInfo>;
   /** un lien `?ref=` a été ouvert sur cet appareil (compté une fois par appareil) */
   referralClick(code: string): Promise<void>;
-  /** je suis arrivé par ce lien : je deviens filleul (10 boosters), si mon compte est neuf */
+  /** je suis arrivé par ce lien (ou je colle le lien / le pseudo de mon parrain) : je deviens filleul, si mon compte est neuf */
   referralClaim(code: string): Promise<{ status: 'ok' | 'already' | 'invalid' | 'self' | 'tooLate'; packs?: number; referrer?: string }>;
   // tableau d'offres (lot T) — ouvert à tous les joueurs
   /** Annonces ouvertes de tout le monde (temps réel) ; renvoie de quoi se désabonner. */

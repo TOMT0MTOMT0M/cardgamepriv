@@ -106,6 +106,14 @@ function installFriendBtns(backend: GameBackend) {
 
 const ACT_ICON: Record<string, string> ={ pull: '✦', mythic_pull: '✺', secret_pull: '✷', trade: '⇄', contract: '⚖', joined: '👋', game: '🎲' };
 
+/** Messages d'un parrainage refusé (onglet Amis et arrivée par un lien). */
+export const REF_FAIL = {
+  already: 'Tu as déjà un parrain.',
+  invalid: 'Lien ou pseudo introuvable : vérifie l’orthographe.',
+  self: 'C’est ton propre lien 🙂',
+  tooLate: `Trop tard pour déclarer un parrain : seulement les ${Math.round(REFERRAL.newAccountMs / 86_400_000)} premiers jours et avant ton ${REFERRAL.packsToPay + 1}e booster.`,
+} as const;
+
 export function createFriendsView(backend: GameBackend, shell: Shell): FriendsView {
   const el = h('section', 'view amis');
   el.innerHTML = `
@@ -120,6 +128,11 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
             <div class="am-ref-link"><input class="search am-ref-in" type="text" readonly aria-label="Mon lien d’invitation" value="…"><button class="btn-primary am-ref-copy" type="button" disabled>Copier</button></div>
             <p class="am-ref-stats muted"></p>
             <div class="am-list am-ref-list"></div>
+            <p class="muted am-ref-mine" hidden></p>
+            <form class="am-ref-claim" hidden autocomplete="off">
+              <label class="am-ref-q" for="am-ref-claim-in">Un pote t’a invité ? Colle son lien ou son pseudo :</label>
+              <div class="am-ref-link"><input id="am-ref-claim-in" class="search am-ref-claim-in" type="text" maxlength="200" placeholder="Lien ou pseudo de ton parrain" spellcheck="false" autocapitalize="none" enterkeyhint="send"><button class="btn-primary am-ref-claim-go" type="submit">Valider</button></div>
+            </form>
           </section>
           <form class="am-card am-add" autocomplete="off">
             <h2 id="am-add-t">Ajouter un ami</h2>
@@ -260,6 +273,9 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
   const refCopy = q<HTMLButtonElement>('.am-ref-copy');
   const refStats = q('.am-ref-stats');
   const refList = q('.am-ref-list');
+  const refMine = q('.am-ref-mine');
+  const refClaim = q<HTMLFormElement>('.am-ref-claim');
+  const refClaimIn = q<HTMLInputElement>('.am-ref-claim-in');
   let refAt = 0;
   async function loadReferral() {
     if (!backend.state.user || Date.now() - refAt < 20_000) return;
@@ -270,6 +286,9 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       refIn.value = link;
       refCopy.disabled = false;
       refStats.innerHTML = `<b>${plural(r.clicks, 'personne a cliqué', 'personnes ont cliqué')}</b> sur ton lien · ${plural(r.referrals.length, 'filleul')}`;
+      refMine.hidden = !r.myReferrer;
+      refMine.textContent = r.myReferrer ? `Ton parrain : ${r.myReferrer}` : '';
+      refClaim.hidden = !r.canClaim;
       refList.replaceChildren(
         ...r.referrals.map((k) => {
           const row = h('div', 'am-row am-ref-row');
@@ -282,6 +301,28 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       refStats.textContent = errMsg(e);
     }
   }
+  // (07/11) parrainage perdu (lien ouvert dans le navigateur de Discord, compte créé ailleurs) : le filleul colle le
+  // lien ou le pseudo de son parrain — tant que son compte est neuf
+  refClaim.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const v = refClaimIn.value.trim();
+    if (!v) return refClaimIn.focus();
+    const btn = q<HTMLButtonElement>('.am-ref-claim-go');
+    btn.disabled = true;
+    try {
+      const r = await backend.referralClaim(v);
+      if (r.status === 'ok') {
+        toast(`${r.referrer ?? 'Ton parrain'} est ton parrain : +${r.packs ?? REFERRAL.packs} boosters offerts 🎁`, 'ok');
+        refClaimIn.value = '';
+        refAt = 0;
+        void loadReferral();
+      } else toast(REF_FAIL[r.status], r.status === 'already' ? 'info' : 'err');
+    } catch (e) {
+      toast(errMsg(e), 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
   refIn.addEventListener('focus', () => refIn.select());
   refCopy.addEventListener('click', async () => {
     try {

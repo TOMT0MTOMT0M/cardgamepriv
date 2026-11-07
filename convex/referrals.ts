@@ -1,5 +1,5 @@
 import { v, ConvexError } from 'convex/values';
-import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
 import { applyRegen } from '../src/core/packRegen';
@@ -35,6 +35,25 @@ export async function ensureCode(ctx: MutationCtx, u: Doc<'users'>): Promise<str
   throw new ConvexError('Impossible de créer ton lien, réessaie.');
 }
 
+/**
+ * (07/11) Retrouve le parrain à partir de ce que le joueur colle : le CODE, le LIEN entier (`…/jeu/?ref=CODE`) ou le
+ * PSEUDO du parrain (majuscules, accents et « @ » ignorés). Avant, seul le code gardé par le navigateur marchait :
+ * un lien ouvert dans le navigateur de Discord puis un compte créé ailleurs = parrainage perdu sans un mot.
+ */
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^@/, '').trim().toLowerCase();
+async function findReferrer(ctx: QueryCtx, input: string): Promise<Doc<'users'> | null> {
+  const raw = input.trim();
+  const m = /[?&]ref=([a-z0-9]{6,12})/i.exec(raw);
+  const code = (m ? m[1] : raw).toLowerCase();
+  if (CODE_RE.test(code)) {
+    const byCode = await ctx.db.query('users').withIndex('by_refCode', (q) => q.eq('refCode', code)).first();
+    if (byCode) return byCode;
+  }
+  const want = fold(raw);
+  if (!want || want.length > 64) return null;
+  return (await ctx.db.query('users').collect()).find((x) => fold(x.username) === want || fold(x.displayName) === want) ?? null;
+}
+
 async function addPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {
   const u = await ctx.db.get(userId);
   if (!u) return;
@@ -64,11 +83,16 @@ export const status = query({
 });
 
 async function summary(ctx: QueryCtx, userId: Id<'users'>, code: string) {
+  const me = await ctx.db.get(userId);
+  const parrain = me?.referredBy ? await ctx.db.get(me.referredBy) : null;
   const clicks = await ctx.db.query('referralClicks').withIndex('by_referrer', (q) => q.eq('referrerId', userId)).collect();
   const kids = await ctx.db.query('users').withIndex('by_referredBy', (q) => q.eq('referredBy', userId)).collect();
   return {
     code,
     clicks: clicks.length,
+    /** mon parrain (si j'en ai un) ; `canClaim` : compte encore assez neuf pour en déclarer un */
+    myReferrer: parrain?.displayName,
+    canClaim: !!me && !me.referredBy && Date.now() - me._creationTime <= REFERRAL.newAccountMs && me.totalPacksOpened <= REFERRAL.packsToPay,
     referrals: kids.map((k) => ({ userId: k._id as string, name: k.displayName, avatarUrl: k.avatarUrl, packsOpened: k.totalPacksOpened, paid: !!k.referralPaid, at: k.referredAt ?? k._creationTime })),
   };
 }
@@ -97,10 +121,8 @@ export const claim = mutation({
   args: { sessionToken: v.string(), code: v.string(), device: v.optional(v.string()) },
   handler: async (ctx, { sessionToken, code, device }) => {
     const u = await requireUser(ctx, sessionToken);
-    code = code.toLowerCase();
-    if (!CODE_RE.test(code)) return { status: 'invalid' as const };
     if (u.referredBy) return { status: 'already' as const };
-    const owner = await ctx.db.query('users').withIndex('by_refCode', (q) => q.eq('refCode', code)).first();
+    const owner = await findReferrer(ctx, code);
     if (!owner) return { status: 'invalid' as const };
     if (owner._id === u._id) return { status: 'self' as const };
     const now = Date.now();
@@ -119,3 +141,28 @@ export async function payReferrer(ctx: MutationCtx, userId: Id<'users'>) {
   await ctx.db.patch(u._id, { referralPaid: true });
   await addPacks(ctx, u.referredBy, REFERRAL.packs);
 }
+
+/**
+ * (07/11) Rattachement MANUEL d'un filleul (lanceurs/parrainage-manuel.cmd) — pour un parrainage perdu (lien ouvert
+ * dans un navigateur, compte créé dans un autre). Pseudos ou noms affichés. Le filleul reçoit ses boosters ; s'il a
+ * déjà ouvert ses premiers boosters, le parrain est payé tout de suite. Pas de limite d'âge du compte (décision admin).
+ */
+export const linkManual = internalMutation({
+  args: { referrer: v.string(), child: v.string() },
+  handler: async (ctx, { referrer, child }) => {
+    const p = await findReferrer(ctx, referrer);
+    const f = await findReferrer(ctx, child);
+    if (!p) return `parrain introuvable : « ${referrer} »`;
+    if (!f) return `filleul introuvable : « ${child} »`;
+    if (p._id === f._id) return 'parrain et filleul sont le même compte';
+    if (f.referredBy) {
+      const cur = await ctx.db.get(f.referredBy);
+      return `${f.displayName} a déjà un parrain : ${cur?.displayName ?? '?'} (rien changé)`;
+    }
+    await ctx.db.patch(f._id, { referredBy: p._id, referredAt: Date.now() });
+    await addPacks(ctx, f._id, REFERRAL.packs);
+    await payReferrer(ctx, f._id);
+    const after = await ctx.db.get(f._id);
+    return `OK : ${f.displayName} est le filleul de ${p.displayName} · +${REFERRAL.packs} boosters pour ${f.displayName}${after?.referralPaid ? ` · +${REFERRAL.packs} boosters pour ${p.displayName} (déjà ${f.totalPacksOpened} boosters ouverts)` : ` · ${p.displayName} sera payé au ${REFERRAL.packsToPay}e booster ouvert (${f.totalPacksOpened}/${REFERRAL.packsToPay})`}`;
+  },
+});

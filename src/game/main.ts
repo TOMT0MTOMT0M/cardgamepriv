@@ -140,6 +140,9 @@ backend.onChange((st) => {
         /* rien */
       }
       if (r.status === 'ok') toast(`Bienvenue ! ${r.referrer ?? 'Ton parrain'} t’a invité : +${r.packs ?? 10} boosters offerts 🎁`, 'ok');
+      // (07/11) un lien refusé ne disparaît plus en silence (sauf « déjà parrainé », sans intérêt à l'arrivée)
+      else if (r.status === 'tooLate') toast('Lien de parrainage : ton compte n’est plus assez récent pour être parrainé.', 'info');
+      else if (r.status === 'invalid') toast('Lien de parrainage invalide : demande à ton pote de te le renvoyer (onglet Amis).', 'err');
     })
     .catch(() => {})
     .finally(() => (refBusy = false));
