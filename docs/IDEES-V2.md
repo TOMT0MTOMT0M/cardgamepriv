@@ -132,6 +132,33 @@ démarrages suivants (et tout le reste) soient plus rapides.
 
 ---
 
+## 1 quater. Audit UI/UX complet, dans tous les détails — à faire
+
+**Demande de Tom (07/11)** : auditer TOUS les détails de l'interface et de l'expérience, en s'appuyant sur des
+recherches (règles de base puis avancées), vérifier qu'on ne brise aucune règle absolue / importante, et en tirer des
+conseils — pour MONTER le niveau, pas dénaturer le jeu (DA noir et blanc futuriste, texte sans cadre, couleurs
+réservées à l'information, motion déjà défini dans le papier « dopamine / animations » du 04/11).
+
+**Méthode (pour la session)**
+1. Recherches d'abord, sources citées : règles de base (Nielsen, lois de l'UX — Fitts, Hick, Jakob, Miller,
+   Doherty…, Gestalt), accessibilité WCAG 2.2 AA (contrastes, tailles de cible ≥ 44 px, focus, lecteurs d'écran,
+   mouvement réduit), règles des plateformes (Apple HIG, Material 3 : zones de pouce, barres, gestes, zones de
+   sécurité), puis avancé : jeux mobiles et gacha / collection (boucles de récompense, attente, anticipation, retour
+   haptique et sonore, clarté des chances), micro-interactions, typographie et hiérarchie, états vides / chargement /
+   erreur, onboarding, éthique (pas de schémas trompeurs, chances et dépenses toujours claires).
+2. Repartir de l'audit du 03/11 (« audit-03-11-ui-ux-perf-mobile », documents du projet) : ce qui est réglé, ce qui
+   reste.
+3. Passer CHAQUE écran et chaque état, sur téléphone ET PC : boutique / ouverture, collection et visionneuse, forge et
+   contrats, échanges et tableau d'offres, jeux, classement, succès, amis / parrainage, profil, menus, missions,
+   connexion, portefeuille, réglages, tutoriel, erreurs, premier lancement, compte à rebours. Captures à l'appui.
+4. Classer les constats : 🔴 règle absolue brisée (bloquant, accessibilité, perte de données / d'argent du jeu,
+   confusion grave) · 🟠 importante · 🟡 finition. Pour chacun : la règle, où ça casse, la correction proposée,
+   l'effort — et pourquoi elle respecte la DA.
+5. Rendu : un rapport lisible (documents du projet) + une liste de corrections priorisées à faire sur le circuit V2,
+   validées par Tom et Hugo avant d'être codées.
+
+---
+
 ## 2. Abonnement « soutien » à 2 €/mois — mis de côté (07/11), à rediscuter
 
 Idée : aider à payer serveurs, abonnement Claude et temps passé. Avantages envisagés : réserve à 20 boosters au lieu
