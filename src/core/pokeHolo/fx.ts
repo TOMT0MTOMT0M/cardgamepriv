@@ -1,7 +1,7 @@
 import { abs, atan, clamp, cos, dFdx, dFdy, dot, float, floor, fract, length, max, min, mix, normalize, sin, smoothstep, step, texture, vec2, vec3 } from 'three/tsl';
 import type { Texture } from 'three/webgpu';
-import type { N } from '../../core/tsl';
-import type { PokeTextures } from './pokeTex';
+import type { N } from '../tsl';
+import type { PokeTextures } from './tex';
 
 /**
  * PORTAGE TSL DES 12 REFLETS DE POKÉBOX (pokebox.lopatkin.net, 07/11) — eux-mêmes un portage GLSL de la célèbre

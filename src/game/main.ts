@@ -965,6 +965,12 @@ async function boot() {
     backend,
     shell,
     opening,
+    /** test : montrer une carte dans la visionneuse (comme un clic en Collection) */
+    view: async (cardId: string, rarityId: Parameters<ViewerScene['show']>[1]) => {
+      const v = await getViewer();
+      shell.show('viewer');
+      await v.show(cardId, rarityId, { quiet: true });
+    },
     tap: () => (shell.input as unknown as { taps: Set<(x: number, y: number, e: unknown) => void> }).taps.forEach((f) => f(0, 0, {})),
   };
 }

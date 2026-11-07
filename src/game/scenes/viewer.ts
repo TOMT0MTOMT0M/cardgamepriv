@@ -1,3 +1,4 @@
+import { cardHasCutout } from '../../core/pokeHolo/face';
 import { AdditiveBlending, Color, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, Vector3, type Material } from 'three/webgpu';
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
@@ -159,7 +160,7 @@ export function createViewerScene(): ViewerScene {
       clear();
       rig.visible = true;
       art = nextArt;
-      face = buildFace(art, rr.tier, !!cd.photo);
+      face = buildFace(art, rr.tier, !!cd.photo, cardHasCutout(cd));
       face.holo.uniforms.strength.value = 0.7;
 
       if (W) {

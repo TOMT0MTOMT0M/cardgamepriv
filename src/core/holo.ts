@@ -32,6 +32,7 @@ import type { CardArt } from './art';
 import { cardLayers } from './cardMaterial';
 import { CARD } from './cardModel';
 import { noiseTexel, saturate3, thinFilm, thinFilmLUT, voronoi, type N } from './tsl';
+import { pokeFaceColor, pokeFx } from './pokeHolo/face';
 
 /**
  * Matériau holo réutilisable (version condensée de 001) : couche mince spectrale, grain de foil,
@@ -50,6 +51,10 @@ export interface HoloOptions {
    * pas de paillettes (voronoï 3×3) pour les communes / peu communes (tier ≤ 1, presque sans foil).
    */
   lite?: boolean;
+  /** reflet de rareté « Pokébox » (choix du 07/11, core/pokeHolo) — faux pour les photos (Bébous, KCDQ) */
+  poke?: boolean;
+  /** illustration détourée (sinon : splash / couverture → le 6★ place ses reflets autour du point focal) */
+  cut?: boolean;
 }
 
 /**
@@ -82,6 +87,7 @@ export function setHoloReduced(on: boolean) {
   holoFx.image.value = L.image;
   holoFx.border.value = L.border;
   holoFx.glint.value = L.glint;
+  pokeFx.k.value = on ? 0.5 : 1;
 }
 export const isHoloReduced = () => holoReduced;
 
@@ -109,6 +115,10 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
     extraEmissive: uniform(0),
   };
   const L = cardLayers(art, { bg: 0.03, subject: 0.014, fg: -0.003 }, undefined, { aoFromFrame: opts.aoFromFrame });
+  // reflet de rareté (core/pokeHolo) : apparaît avec le holo pendant la révélation (strength 0,1 → 0,7+), plein en
+  // visionneuse ; `cut` en uniform → un seul shader par palier, carte détourée ou non
+  const cutU = uniform(opts.cut === false ? 0 : 1);
+  const faceColor = opts.poke === false ? L.color : pokeFaceColor(art, L, tier, U.strength.sub(0.1).div(0.6), cutU);
   // (retours 06/11) le fond d'illustration ne s'irise plus dès l'épique (4★) : à partir de la légendaire, et moins
   const winFoil = L.window.mul(L.subject.a.oneMinus()).mul(opts.windowFoil ?? (tier >= 4 ? 0.7 : 0));
   const subjFoil = L.window.mul(L.subject.a).mul(L.fx.g).mul(opts.subjectFoil ?? (tier >= 5 ? 0.8 : 0));
@@ -175,7 +185,7 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   // la bordure reste lisible même quand le holo est au plus bas (carte encore « éteinte » pendant l'ouverture)
   const frameMix = max(metalFrame, rim.mul(0.92).mul(holoFx.border.mul(0.4).add(0.6)));
   const m = new MeshPhysicalNodeMaterial();
-  m.colorNode = mix(mix(L.color, foilCol, metalImage), frameCol, frameMix);
+  m.colorNode = mix(mix(faceColor, foilCol, metalImage), frameCol, frameMix);
   // métal au tiers sur l'illustration : un reflet par-dessus l'image, pas une image assombrie qui reflète le studio
   m.metalnessNode = max(frameMix.mul(rainbow ? 1 : 0.75), metalImage.mul(0.35));
   m.roughnessNode = mix(mix(float(0.6), float(0.34), L.window), float(0.22).add(h1.mul(0.06)), metal);
@@ -186,5 +196,5 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
   const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
   m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5)).add(film.mul(foil).mul(U.extraEmissive));
-  return { material: m, layers: L, uniforms: U, film, foil };
+  return { material: m, layers: L, uniforms: U, film, foil, cut: cutU };
 }

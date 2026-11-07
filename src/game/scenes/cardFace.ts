@@ -26,8 +26,9 @@ export function setFaceQuality(q: 'high' | 'mobile') {
   faceLite = q === 'mobile';
 }
 
-export function buildFace(art: CardArt, tier: number, photo: boolean) {
-  const holo = createHoloMaterial(art, tier, { ...(photo ? { windowFoil: 0.1, subjectFoil: 0.15 } : {}), lite: faceLite });
+/** `cut` : illustration détourée (core/pokeHolo cardHasCutout) — place les reflets 6★ ; uniform, même shader. */
+export function buildFace(art: CardArt, tier: number, photo: boolean, cut = true) {
+  const holo = createHoloMaterial(art, tier, { ...(photo ? { windowFoil: 0.1, subjectFoil: 0.15 } : {}), lite: faceLite, poke: !photo, cut });
   const lit = uniform(0);
   const flash = uniform(0);
   const b = holo.layers.masks.b;

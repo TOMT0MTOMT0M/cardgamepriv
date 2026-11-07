@@ -13,8 +13,8 @@ import { cardImage } from '../../core/art/images';
 import type { N } from '../../core/tsl';
 import { RotationRig, cardGeo, composeLayers, createCtx, createInputs, type DesignKind, type FxCtx } from '../043-rarity-fx/kit';
 import type { FxTextures } from '../043-rarity-fx/textures';
-import { createPokeTextures, type PokeTextures } from './pokeTex';
-import { POKE_BY_ID, POKE_FX, goldSweep, type PokeFxDef, type Zone } from './pokeFx';
+import { createPokeTextures, type PokeTextures } from '../../core/pokeHolo/tex';
+import { POKE_BY_ID, POKE_FX, goldSweep, type PokeFxDef, type Zone } from '../../core/pokeHolo/fx';
 
 /** sRGB ⇄ linéaire (les reflets d'origine sont calculés en espace écran). */
 const toS = (c: N): N => mix(c.mul(12.92), pow(max(c, 0.0031308), 1 / 2.4).mul(1.055).sub(0.055), step(0.0031308, c));

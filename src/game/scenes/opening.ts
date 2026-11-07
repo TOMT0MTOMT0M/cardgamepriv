@@ -1,3 +1,4 @@
+import { cardHasCutout } from '../../core/pokeHolo/face';
 import { cameraScale, createWheel3D, type Wheel3D, type WheelItem3D } from './packWheel3d';
 import { createReel, type Reel } from './packReel';
 import {
@@ -943,7 +944,7 @@ export function createOpeningScene(): OpeningScene {
     const art = mobile ? await gameCardArtAsync(cd, data.rarity, artScale) : gameCardArt(cd, data.rarity, artScale);
     if (mobile) await nextFrame();
     const back = backs.forCard(data.cardId);
-    const face = buildFace(art, rr.tier, !!cd.photo);
+    const face = buildFace(art, rr.tier, !!cd.photo, cardHasCutout(cd));
     face.holo.uniforms.strength.value = 0.1;
     // code couleur des raretés (retours live 02, §12) : 1★ gris … 5★ doré, 6★ arc-en-ciel ; secrète : son or rose
     // 6★ et secrète : tranche DORÉE tant qu'elles sont face cachée (comme une 5★), leur vraie couleur arrive pendant l'anticipation
