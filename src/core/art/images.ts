@@ -152,8 +152,9 @@ export function loadCardImage(url: string, opts: LoadOptions = {}): Promise<Card
 /** Charge (en parallèle, limité) toutes les illustrations des cartes données. Ne rejette jamais. */
 export async function ensureCardImages(cards: readonly CardData[], onProgress?: (done: number, total: number) => void): Promise<ImageReport> {
   const t0 = performance.now();
-  const urls = [...new Set(cards.map((c) => c.image).filter((u): u is string => !!u))];
-  const noKey = new Set(cards.filter((c) => (c.photo || c.cover) && c.image).map((c) => c.image as string));
+  // (double face) la seconde illustration se charge avec la première
+  const urls = [...new Set(cards.flatMap((c) => [c.image, c.image2]).filter((u): u is string => !!u))];
+  const noKey = new Set(cards.filter((c) => c.photo || c.cover).flatMap((c) => [c.image, c.image2]).filter((u): u is string => !!u));
   const todo = urls.filter((u) => !ready.has(u));
   let done = urls.length - todo.length;
   onProgress?.(done, urls.length);

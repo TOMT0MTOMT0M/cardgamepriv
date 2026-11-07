@@ -50,6 +50,12 @@ export interface CardData {
   image?: string;
   /** Photo réelle (thème Bébous) : jamais détourée automatiquement, cadrée en portrait. */
   photo?: boolean;
+  /**
+   * Preset « DOUBLE FACE » (07/11, carte KCDQ Teto) : une seconde illustration, peinte comme la première ; de face on
+   * voit `image`, en penchant la carte sur le côté (souris, gyroscope) `image2` apparaît — mêmes effets (holo, relief,
+   * étoiles). Réutilisable pour n'importe quelle carte : il suffit de remplir ce champ (core/cardMaterial.ts DOUBLE_FACE).
+   */
+  image2?: string;
   /** Échelle de l'illustration dans la fenêtre (défaut 1) : les armes Valorant, larges, sont un peu réduites. */
   fit?: number;
   /** Illustration « scène » déjà au format portrait (splash LoL) : elle remplit toute la carte, jamais détourée. */
@@ -248,6 +254,7 @@ export const KCDQ_CARDS: CardData[] = KCDQ.map((e) => ({
   set: 'kcdq',
   image: siteUrl(artV(`${KCDQ_INFO.artDir}/${e.file}`)),
   photo: true,
+  ...(e.file2 ? { image2: siteUrl(artV(`${KCDQ_INFO.artDir}/${e.file2}`)) } : {}),
 }));
 
 /** Sets au gabarit « bebou » (cartes secrètes du groupe). */
