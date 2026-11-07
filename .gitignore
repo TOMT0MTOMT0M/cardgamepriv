@@ -27,3 +27,9 @@ _to_delete/
 # fichiers de travail de Claude (aperçus, captures) — hors git
 .claude-tmp/
 .discord-bot-token
+
+# patches et exports de travail — hors git (le code vit dans les commits)
+*.patch
+/6etoiles-images-*
+
+# (V2) configuration du staging Convex : .env.v2.local est couvert par .env.*.local ci-dessus
