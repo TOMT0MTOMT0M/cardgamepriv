@@ -377,11 +377,18 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   }
 
   /** Ouverture côte à côte : cartes retournées une à une, compteurs d'étoiles en direct, suspense sur la dernière. */
+  /**
+   * Rythme des tirages (retours V1, 07/11 : « trop rapide » → tout ×2). Les deux cartes du tirage en cours s'affichent
+   * aussi EN GRAND au centre (scène), les petites tuiles en dessous restent le décompte.
+   */
+  const DUEL_TEMPO = { carte: 480, finale: 760, derniere: 1400, suspense: 2400 };
+
   async function playDuel(room: HTMLElement, d: DuelView, animate: boolean) {
     const res = d.result!;
     const n = res.packs[0].length * 5;
-    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : ''}</div><div class="gm-battle"></div><div class="gm-verdict"></div>`;
+    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : ''}</div><div class="gm-battle"><div class="gm-stage"><div class="gm-big" data-k="0"></div><div class="gm-vs-x">VS</div><div class="gm-big" data-k="1"></div></div></div><div class="gm-verdict"></div>`;
     const bat = room.querySelector<HTMLElement>('.gm-battle')!;
+    const bigs = [...bat.querySelectorAll<HTMLElement>('.gm-big')];
     const cols = d.sides.map((s, i) => {
       const c = h('div', 'gm-bcol');
       c.innerHTML = `<div class="gm-bh">${ava(s.name, s.avatarUrl)}<b>${esc(s.name)}</b><span class="gm-count">0★</span></div><div class="gm-slots"></div>`;
@@ -389,13 +396,21 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       res.packs[i].flat().forEach((card) => slots.append(slot(card)));
       return { el: c, count: c.querySelector<HTMLElement>('.gm-count')!, slots: [...slots.children] as HTMLElement[], total: 0 };
     });
-    bat.append(cols[0].el, h('div', 'gm-vs-x', 'VS'), cols[1].el);
+    bat.append(cols[0].el, cols[1].el);
     let skip = !animate;
     room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
     const flip = (k: number, i: number) => {
       const card = res.packs[k].flat()[i];
       const sl = cols[k].slots[i];
       sl.classList.add('up');
+      // la carte du tirage en grand, au centre (une nouvelle carte remplace la précédente en se retournant)
+      const big = bigs[k];
+      big.replaceChildren(cardTile(card.cardId, card.rarity));
+      big.style.setProperty('--rc', rarity(card.rarity).hex);
+      big.classList.toggle('hot', CARD_STARS[card.rarity] >= 5);
+      big.classList.remove('in');
+      void big.offsetWidth;
+      big.classList.add('in');
       cols[k].total += CARD_STARS[card.rarity];
       cols[k].count.textContent = `${cols[k].total}★`;
       cols[k].count.classList.remove('pop');
@@ -407,13 +422,13 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const last = i === n - 1;
       if (!skip && last) {
         bat.classList.add('suspense');
-        await wait(1400);
+        await wait(DUEL_TEMPO.suspense);
       }
       for (const k of [0, 1]) {
         flip(k, i);
         if (!skip) {
           sfx(CARD_STARS[res.packs[k].flat()[i].rarity] >= 5 ? 'chime' : 'tick');
-          await wait(last ? 700 : i >= n - 5 ? 380 : 240);
+          await wait(last ? DUEL_TEMPO.derniere : i >= n - 5 ? DUEL_TEMPO.finale : DUEL_TEMPO.carte);
         }
       }
     }
