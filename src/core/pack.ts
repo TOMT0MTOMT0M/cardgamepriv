@@ -35,26 +35,11 @@ export const BIG_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1
   { x0: 0.93, y0: 0.88, x1: 0.64, y1: 0.66, amp: 0.8, w: 0.16, bend: -0.025 },
   { x0: 0.22, y0: 0.74, x1: 0.8, y1: 0.36, amp: 0.35, w: 0.26, bend: 0.05 },
 ]
-/**
- * (07/11, retours de Tom) PLIS NETS : une seconde famille, par-dessus les grands plis doux (inchangés) — étroits,
- * plus profonds, arête vive de chaque côté (pas de fondu large) : le film a été vraiment cassé à ces endroits. Peu
- * nombreux et placés là où un sachet se marque en vrai : sous la soudure du haut (tension), sur un bord, près d'un coin.
- * Seulement dans la carte de hauteur (trop fins pour la géométrie) : ce sont des lignes de reflet franches.
- */
-export const SHARP_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1: number; amp: number; w: number; bend?: number }> = [
-  { x0: 0.24, y0: 0.15, x1: 0.71, y1: 0.22, amp: 1, w: 0.032, bend: -0.012 },
-  { x0: 0.96, y0: 0.41, x1: 0.64, y1: 0.53, amp: 0.9, w: 0.028, bend: 0.01 },
-  { x0: 0.1, y0: 0.7, x1: 0.37, y1: 0.86, amp: 0.85, w: 0.03, bend: 0.014 },
-  { x0: 0.47, y0: 0.6, x1: 0.58, y1: 0.79, amp: 0.6, w: 0.024, bend: -0.008 },
-];
 /** fondu d'un pli vers ses bouts (t = position le long du pli, 0..1) : débuts et fins progressifs */
 function creaseEnds(t: number, a: number, b: number): number {
   const e = Math.min(1, t * a, (1 - t) * b);
   return e * e * (3 - 2 * e);
 }
-/** plis nets : pente des pans (hauteur par unité de toile) et portée de part et d'autre de l'arête */
-const SHARP_SLOPE = 4;
-const SHARP_REACH = 0.08;
 /** profil (géométrie) d'un grand pli : cloche douce, effacée aux bouts */
 function creaseRidge(d: number, w: number, t: number): number {
   const k = Math.max(0, 1 - Math.abs(d) / w);
@@ -444,7 +429,7 @@ const creasePending = new Map<number, Promise<CreaseMaps>>();
  * CREASE_VERSION : à CHANGER dès que `paintCreaseMap`, `applyGrain` ou PW/PH changent, sinon l'ancienne carte resterait.
  * Le temps de peinture (1re visite) et de relecture sont notés dans perfLog (rapport de chargement, game/diag.ts).
  */
-const CREASE_VERSION = 'plis-v6'; // v4 (07/11 soir) : plis courbes, effilés, anticrénelés + carte de NORMALES en flottants · v3 : + plis nets · v2 : aluminium lisse, trois grands plis
+const CREASE_VERSION = 'plis-v8'; // v8 (07/11, nuit) : froissé en facettes (mosaïque fine, plus de plis nets) · v4 (07/11 soir) : plis courbes, effilés, anticrénelés + carte de NORMALES en flottants · v3 : + plis nets · v2 : aluminium lisse, trois grands plis
 const CREASE_STORE = 'bebou-plis';
 const creaseKey = (ch: number, kind: 'h' | 'n') => `/__plis/${CREASE_VERSION}-${PW}x${PH}-${Math.round(ch)}-${kind}.png`;
 type CreaseMaps = { c: HTMLCanvasElement; n: HTMLCanvasElement };
@@ -537,17 +522,6 @@ function creaseHeight(x: number, y: number, ax: number, y0s: number, y1s: number
     // (faibles dans la carte : la géométrie porte déjà ces grandes courbes — plus fort, leurs bouts arrondis faisaient des « bulles » de reflet)
     h += 0.28 * c.amp * taper * k * k * (3 - 2 * k) * creaseEnds(q.t, 5, 3.5);
   }
-  // PLIS NETS : deux PANS PLANS qui se rencontrent sur une ligne (le film a été marqué) — pente constante de part et
-  // d'autre, cassure fine sur l'arête (arrondie sur ~1 px), large zone d'influence ; ils s'effacent vers leurs bouts.
-  // C'est ce qui fait une vraie ligne de reflet (l'image du studio change d'un coup en traversant le pli), pas une bosse.
-  for (const c of SHARP_CREASES) {
-    const q = creaseSigned(c, x, y, ax);
-    const ww = SHARP_REACH * (q.s > 0 ? 0.8 : 1.2);
-    if (q.d >= ww) continue;
-    const fade = creaseEnds(q.t, 3, 3);
-    // (pente maximale sur l'arête, nulle au bord de la zone : aucun raccord visible)
-    h += (c.amp * SHARP_SLOPE * (ww - q.d) * (ww - q.d)) / ww * fade;
-  }
   // tension près des soudures : léger creux le long de la soudure (le film y est tiré)
   const ds = Math.min(y - y0s, y1s - y);
   h -= 0.08 * Math.exp(-ds / 0.03);
@@ -566,6 +540,69 @@ function creaseSigned(c: (typeof BIG_CREASES)[number], x: number, y: number, ax:
   const d = Math.sqrt(s * s + CREASE_AA * CREASE_AA) - CREASE_AA;
   return { s, d, t };
 }
+/**
+ * (07/11 soir, 2e passe — retours de Tom : « on dirait des trous », « je veux juste un effet réaliste ») FROISSÉ RÉEL d'un
+ * film métallisé : le film a été froissé puis lissé par les cartes dedans — il garde une MOSAÏQUE DE FACETTES presque
+ * planes, chacune très légèrement inclinée, séparées par des arêtes fines (les plis). Les facettes voisines suivent une
+ * surface ondulée commune (champ lisse échantillonné au centre de chaque facette) + un petit écart propre à chacune :
+ * des plis partout mais faibles (1 à 3°), jamais de « trou » ni de « bâton ». Cellules étirées en biais (le film se
+ * froisse en longueur), plus calmes au centre (les cartes le tiennent), plus marquées vers les bords et les soudures.
+ * Calculé en pentes (flottants) et ajouté à la normale : aucune marche, aucun crénelage (fondu de 1,2 px sur les arêtes).
+ */
+const FACET = { cell: 0.058, stretch: 1.8, ang: 0.35, jitter: 0.009, wave: 0.6, calm: 0.18, aa: 1.2 };
+function facetHash(i: number, j: number, k: number): number {
+  let h = (i * 374761393 + j * 668265263 + k * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+/** champ lisse de pentes (5 vagues de directions variées) : la forme d'ensemble du film */
+const FACET_WAVES = Array.from({ length: 5 }, (_, i) => {
+  const a = facetHash(i, 11, 3) * Math.PI * 2;
+  return { dx: Math.cos(a), dy: Math.sin(a), f: (3 + i * 2.3) * Math.PI * 2, amp: (0.05 / (1 + i * 0.7)) * FACET.wave, ph: facetHash(i, 20, 7) * Math.PI * 2 };
+});
+function facetField(X: number, Y: number): [number, number] {
+  let gx = 0, gy = 0;
+  for (const w of FACET_WAVES) {
+    const c = Math.cos((X * w.dx + Y * w.dy) * w.f + w.ph) * w.amp;
+    gx += c * w.dx;
+    gy += c * w.dy;
+  }
+  return [gx, gy];
+}
+/** pente de la facette sous le point (X, Y en unités de hauteur), fondue avec la voisine sur l'arête */
+function facetSlope(X: number, Y: number, H: number): [number, number] {
+  const ca = Math.cos(FACET.ang), sa = Math.sin(FACET.ang);
+  // espace des cellules : tourné, étiré en travers (les facettes sont allongées dans la direction `ang`)
+  const qx = X * ca + Y * sa, qy = (-X * sa + Y * ca) * FACET.stretch;
+  const c = FACET.cell;
+  const gi = Math.floor(qx / c), gj = Math.floor(qy / c);
+  let d1 = 9, d2 = 9, i1 = 0, j1 = 0, i2 = 0, j2 = 0;
+  for (let oj = -1; oj <= 1; oj++)
+    for (let oi = -1; oi <= 1; oi++) {
+      const i = gi + oi, j = gj + oj;
+      const px = (i + facetHash(i, j, 1)) * c, py = (j + facetHash(i, j, 2)) * c;
+      const d = Math.hypot(qx - px, qy - py);
+      if (d < d1) {
+        d2 = d1; i2 = i1; j2 = j1;
+        d1 = d; i1 = i; j1 = j;
+      } else if (d < d2) {
+        d2 = d; i2 = i; j2 = j;
+      }
+    }
+  const slopeOf = (i: number, j: number): [number, number] => {
+    // centre de la cellule, ramené en coordonnées de toile, pour le champ lisse commun
+    const px = (i + facetHash(i, j, 1)) * c, py = ((j + facetHash(i, j, 2)) * c) / FACET.stretch;
+    const [fx, fy] = facetField(px * ca - py * sa, px * sa + py * ca);
+    const a = facetHash(i, j, 3) * Math.PI * 2;
+    // écart propre à la facette (≈ gaussien : somme de deux tirages)
+    const m = (facetHash(i, j, 4) + facetHash(i, j, 5) - 1) * FACET.jitter * 1.7;
+    return [fx + Math.cos(a) * m, fy + Math.sin(a) * m];
+  };
+  const a = slopeOf(i1, j1), b = slopeOf(i2, j2);
+  const w = 0.5 + 0.5 * Math.min(1, (d2 - d1) / ((2 * FACET.aa) / H));
+  return [a[0] * w + b[0] * (1 - w), a[1] * w + b[1] * (1 - w)];
+}
+
 function paintCreaseMap(ch: number): CreaseMaps {
   const W = PW, H = PH;
   const ax = PACK.w / PACK.h;
@@ -579,7 +616,7 @@ function paintCreaseMap(ch: number): CreaseMaps {
   const C = makeCanvas(W, H), N = makeCanvas(W, H);
   const ih = C.g.createImageData(W, H), inn = N.g.createImageData(W, H);
   // pente → normale : hauteur 1 ≈ 127/255 de la carte de hauteur ; NRM_K règle la force du relief : pentes douces (≈ 7° sur un grand pli, ≈ 30° sur l'arête d'un pli net) — un film d'aluminium plié, pas des bosses
-  const NRM_K = 60;
+  const NRM_K = 45;
   for (let j = 0; j < H; j++)
     for (let i = 0; i < W; i++) {
       const k = (j + 1) * (W + 2) + (i + 1);
@@ -592,6 +629,16 @@ function paintCreaseMap(ch: number): CreaseMaps {
       const dhx = (hf[k + 1] - hf[k - 1]) * 0.5 * 0.5;
       const dhy = (hf[k - (W + 2)] - hf[k + (W + 2)]) * 0.5 * 0.5;
       let nx = -dhx * NRM_K, ny = -dhy * NRM_K;
+      // facettes du froissé, plus calmes au centre du sachet, absentes sur les soudures
+      const y = (j + 0.5) / H;
+      if (y > y0s && y < y1s) {
+        const u = (i + 0.5) / W;
+        const edge = Math.min(Math.min(u, 1 - u) / 0.5, Math.min(y - y0s, y1s - y) / 0.42);
+        const dens = FACET.calm + (1 - FACET.calm) * Math.pow(Math.max(0, 1 - edge), 1.6);
+        const [fx, fy] = facetSlope(u * ax, y, H);
+        nx += fx * dens;
+        ny -= fy * dens; // (toile vers le bas → espace tangent vers le haut)
+      }
       const inv = 1 / Math.hypot(nx, ny, 1);
       nx *= inv;
       ny *= inv;
