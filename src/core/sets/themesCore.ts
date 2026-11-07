@@ -317,7 +317,8 @@ function indexCatalog() {
   BY_ID.clear();
   for (const t of ALL_THEMES) for (const c of t.cards) BY_ID.set(c.id, c);
   SUB_BY_ID.clear();
-  for (const s of [...SUBTHEMES, bebousSub]) SUB_BY_ID.set(s.id, s);
+  // (07/11) KCDQ indexé aussi : sans lui, posséder « Enzo » faisait planter artPath/thumbPath → collection et profil vides
+  for (const s of [...SUBTHEMES, bebousSub, kcdqSub]) SUB_BY_ID.set(s.id, s);
 }
 indexCatalog();
 /** Anciens identifiants de booster (avant les 4 thèmes) encore présents dans des packs déjà tirés. */
@@ -467,11 +468,14 @@ export const numberingSize = (st: SubTheme) => st.size ?? st.cards.length;
 export const hasArt = (e: CatalogEntry) => e.file !== '';
 
 /** Illustration pleine définition (chemin relatif à la racine du site). */
+/** dossier des illustrations d'une carte — (07/11) jamais d'exception : une carte au sous-thème inconnu ne doit pas
+ *  faire tomber toute la collection (repli sur le dossier des Bébous, image manquante = silhouette) */
+const artDirOf = (e: CatalogEntry) => e.dir ?? subthemeById(e.subthemeId)?.artDir ?? BEBOUS_INFO.artDir;
 export function artPath(e: CatalogEntry): string {
-  return `${e.dir ?? subthemeById(e.subthemeId)!.artDir}/${e.file}`;
+  return `${artDirOf(e)}/${e.file}`;
 }
 
 /** Miniature WebP (grilles de collection, échanges) — générée par scripts/make-thumbs.mjs. */
 export function thumbPath(e: CatalogEntry): string {
-  return `${e.dir ?? subthemeById(e.subthemeId)!.artDir}/thumbs/${e.file.replace(/\.(png|jpe?g)$/i, '.webp')}`;
+  return `${artDirOf(e)}/thumbs/${e.file.replace(/\.(png|jpe?g)$/i, '.webp')}`;
 }
