@@ -6,6 +6,7 @@ import { FONT_DISPLAY } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
+import { LABEL_RELIEF, blendReliefNormals, reliefFromCoverage } from './packLabel';
 
 /**
  * Booster : un peu plus grand qu'une carte, coussin bombé, soudures crantées haut/bas.
@@ -91,7 +92,10 @@ export const PACK_STYLES: Record<string, PackStyle> = {
  *    casse déjà sur la silhouette, pas seulement dans la normal map ;
  *  - normales calculées (lissées) : avant, la face était rendue avec des normales planes.
  */
-export function createPackGeometry(segX = 36, segY = 56): BufferGeometry {
+export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean } = {}): BufferGeometry {
+  // (07/11) `folds: false` : pas de grands plis FIXES dans la géométrie — la scène d'ouverture déplace les sommets avec
+  // la carte de hauteur du sachet affiché (packCreaseLift), propre à chaque booster
+  const folds = opts.folds ?? true;
   const { w, h, bulge, crimp } = PACK;
   const pos: number[] = [];
   const uvs: number[] = [];
@@ -139,7 +143,7 @@ export function createPackGeometry(segX = 36, segY = 56): BufferGeometry {
         // marge scellée latérale : les faces se touchent (une demi-épaisseur de film), légère ondulation
         const eu = Math.min(u, 1 - u);
         const seamWave = eu < su ? 0.0003 * Math.sin(y * 90) : 0;
-        const fold = inCrimp ? 0 : foldZ(u, v) * Math.min(1, p * 1.5);
+        const fold = inCrimp || !folds ? 0 : foldZ(u, v) * Math.min(1, p * 1.5);
         const z = side * (bulge * p + 0.0005 + crimpZ + seamWave + fold);
         pos.push(x, y, z);
         uvs.push(side > 0 ? u : 1 - u, v);
@@ -207,6 +211,13 @@ export interface PackArt {
   fullCrease?: boolean;
   /** (07/11 soir) carte de NORMALES des plis (espace tangent, calculée en flottants) : à préférer au bumpMap de `crinkle` */
   creaseNormal?: Texture;
+  /** (07/11) normales de la FACE AVANT : les plis + le nom du pack thermoformé (packLabel.ts) — le dos garde `creaseNormal` */
+  frontNormal?: Texture;
+  /**
+   * (07/11) face avant pour les VIGNETTES 2D (pas de lumière 3D) : la couleur avec le relief du nom ombré une fois pour
+   * toutes (lumière en haut à gauche) — sans elle, le nom moulé serait presque invisible en 2D.
+   */
+  thumbFront?: HTMLCanvasElement;
   dispose(): void;
 }
 
@@ -378,17 +389,14 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
     crimpBands(g, mixHex(base, '#d9dce1', 0.55));
     applyGrain(g, PW, PH, 0.012, 8, 20);
   }
-  // (retours live 6, C1) face avant : le NOM DU PACK en noir, en Matcha World (la typo des gros titres), centré
+  // (retours de Tom, 07/11) face avant : le NOM DU PACK n'est plus imprimé en noir — il est MOULÉ dans le film
+  // (relief thermoformé, même matière) et les reflets dessinés dans Matcha World y sont creusés. Le relief passe par
+  // les normales de la face avant (plus bas, une fois la carte des plis prête) ; ici on ne garde que sa mise en page.
+  let label: { text: string; px: number } | null = null;
   if (style.label) {
     await Promise.race([document.fonts.load(`400 120px ${FONT_DISPLAY}`).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
-    const g = F.g;
-    g.save();
-    g.fillStyle = '#0b0b0c';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.font = fitFont(g, style.label, 400, 132, PW - 120, FONT_DISPLAY);
-    g.fillText(style.label, PW / 2, PH * 0.5);
-    g.restore();
+    const font = fitFont(F.g, style.label, 400, 132, PW - 120, FONT_DISPLAY);
+    label = { text: style.label, px: parseFloat(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? '132') };
   }
   // ── masques : R = zones plus lisses (soudures), G = relief des soudures, B = ligne de déchirure (découpe)
   const m = M.g;
@@ -407,6 +415,8 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
   let seed = 7;
   for (const ch2 of `${style.name}|${style.ground}`) seed = (Math.imul(seed, 31) + ch2.charCodeAt(0)) >>> 0;
   const C = await creaseMap(ch, (seed % 9973) + 1);
+  const molded = label ? moldedLabel(F, C.n, label.text, label.px) : null;
+  const FN = molded?.normal ?? null;
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
   const tex = (c: HTMLCanvasElement, color: boolean) => {
     const t = new CanvasTexture(c);
@@ -415,9 +425,72 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
     return t;
   };
   const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false), creaseNormal = tex(C.n, false);
+  const frontNormal = FN ? tex(FN, false) : undefined;
   crinkle.wrapS = crinkle.wrapT = 1001; // ClampToEdgeWrapping : la carte est celle du sachet entier (pas répétée)
   creaseNormal.wrapS = creaseNormal.wrapT = 1001;
-  return { front, back, masks, crinkle, creaseNormal, metalBack: true, fullCrease: true, dispose: () => [front, back, masks, crinkle, creaseNormal].forEach((t) => t.dispose()) };
+  if (frontNormal) frontNormal.wrapS = frontNormal.wrapT = 1001;
+  const all = [front, back, masks, crinkle, creaseNormal, ...(frontNormal ? [frontNormal] : [])];
+  return { front, back, masks, crinkle, creaseNormal, frontNormal, thumbFront: molded?.thumb, metalBack: true, fullCrease: true, dispose: () => all.forEach((t) => t.dispose()) };
+}
+
+/**
+ * NOM DU PACK THERMOFORMÉ (07/11) : rastérise le nom (×2), en tire le relief (lettres bombées, reflets de la police
+ * creusés — src/core/packLabel.ts), le mêle aux normales des plis dans une carte de normales PROPRE À LA FACE AVANT
+ * (pleine définition de la toile : les reflets font 2 à 3 px) et pose un léger ombrage de cavité sur la couleur.
+ * La carte des plis partagée (en cache) n'est pas modifiée : on en dessine une copie.
+ */
+function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasElement, text: string, px: number): { normal: HTMLCanvasElement; thumb: HTMLCanvasElement } {
+  const t0 = performance.now();
+  const ss = LABEL_RELIEF.ss;
+  const N = makeCanvas(PW, PH);
+  N.g.imageSmoothingQuality = 'high';
+  N.g.drawImage(creaseN, 0, 0, PW, PH);
+  F.g.font = `400 ${px}px ${FONT_DISPLAY}`;
+  const tw = F.g.measureText(text).width;
+  const pad = Math.round(px * 0.3);
+  const w = Math.min(PW, Math.ceil(tw + 2 * pad)), h = Math.ceil(px * 1.5 + 2 * pad);
+  const x0 = Math.round(PW / 2 - w / 2), y0 = Math.round(PH * 0.5 - h / 2);
+  const L = makeCanvas(w * ss, h * ss);
+  L.g.fillStyle = '#fff';
+  L.g.font = `400 ${px * ss}px ${FONT_DISPLAY}`;
+  L.g.textAlign = 'center';
+  L.g.textBaseline = 'middle';
+  L.g.fillText(text, (PW / 2 - x0) * ss, (PH * 0.5 - y0) * ss);
+  const id = L.g.getImageData(0, 0, w * ss, h * ss).data;
+  const cov = new Uint8ClampedArray(w * ss * h * ss);
+  for (let k = 0; k < cov.length; k++) cov[k] = id[k * 4 + 3];
+  L.c.width = L.c.height = 0; // libère la toile tout de suite (iOS)
+  const relief = reliefFromCoverage(cov, w * ss, h * ss, px);
+  const nimg = N.g.getImageData(0, 0, PW, PH);
+  const ao = blendReliefNormals(nimg.data, PW, relief, x0, y0);
+  N.g.putImageData(nimg, 0, 0);
+  // ombrage de cavité (au pied des lettres, au fond des rainures) : la même teinte, juste un peu d'ombre portée
+  const fimg = F.g.getImageData(x0, y0, relief.w, relief.hgt);
+  for (let k = 0; k < relief.w * relief.hgt; k++) {
+    const a = ao[k];
+    if (a >= 0.999) continue;
+    fimg.data[k * 4] *= a;
+    fimg.data[k * 4 + 1] *= a;
+    fimg.data[k * 4 + 2] *= a;
+  }
+  F.g.putImageData(fimg, x0, y0);
+  // vignette 2D : la même face, le relief éclairé une fois (lumière haut-gauche), seulement sur la zone du nom
+  const T = makeCanvas(PW, PH);
+  T.g.drawImage(F.c, 0, 0);
+  const timg = T.g.getImageData(x0, y0, relief.w, relief.hgt);
+  const Lx = -0.45, Ly = 0.55, Lz = 0.7;
+  for (let y = 0; y < relief.hgt; y++)
+    for (let x = 0; x < relief.w; x++) {
+      const o = ((y0 + y) * PW + x0 + x) * 4;
+      if (x0 + x < 0 || x0 + x >= PW) continue;
+      const nx = nimg.data[o] / 127.5 - 1, ny = nimg.data[o + 1] / 127.5 - 1, nz = nimg.data[o + 2] / 127.5 - 1;
+      const k = 1 + 1.6 * (nx * Lx + ny * Ly + nz * Lz - Lz);
+      const t = (y * relief.w + x) * 4;
+      for (let c = 0; c < 3; c++) timg.data[t + c] = Math.max(0, Math.min(255, timg.data[t + c] * k));
+    }
+  T.g.putImageData(timg, x0, y0);
+  perfMark(`sachet : nom moulé « ${text} »`, performance.now() - t0);
+  return { normal: N.c, thumb: T.c };
 }
 
 function lcg(seed: number) {
@@ -850,6 +923,19 @@ export function aluminiumSurface(m: MeshPhysicalNodeMaterial, height: N, seam: N
   m.clearcoatNormalNode = n;
 }
 
+/**
+ * (07/11, retours de Tom : « les creases sont aléatoires sur les mini boosters, pas sur les boosters principaux ») le
+ * RELIEF des plis dans la géométrie, lu dans la carte de hauteur du sachet (`crinkle`, propre à chaque booster) au lieu
+ * des grands plis fixes de createPackGeometry : à utiliser avec `createPackGeometry(…, { folds: false })`.
+ * `h` = nœud de texture de la carte de hauteur lu au niveau 0 (étage des sommets). Renvoie le décalage en z (unités
+ * scène, vers l'extérieur de la face) : ≈ 6 mm pour un grand pli, nul sur les soudures.
+ */
+export function packCreaseLift(h: N, u: N): N {
+  const height = (h as N).r.sub(128 / 255).mul(255 / 127); // 0,5 = plat (paintCreaseMap)
+  const edge = smoothstep(0.02, 0.09, (u as N).min((u as N).oneMinus()));
+  return height.mul(0.006 / 0.28).mul(edge);
+}
+
 /** Matériau de booster : plastique métallisé froissé, soudures crantées. */
 export function createPackMaterials(art: PackArt, opts: { crinkle?: number } = {}) {
   const make = (map: Texture, side: 0 | 1) => {
@@ -864,7 +950,7 @@ export function createPackMaterials(art: PackArt, opts: { crinkle?: number } = {
     m.colorNode = col.rgb;
     if (art.metalBack) {
       // (07/11) aluminium lisse, grands plis, double reflet métal + vernis (aluminiumSurface)
-      const crN = art.creaseNormal ? texture(art.creaseNormal, side === 0 ? uvn : uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
+      const crN = side === 0 && art.frontNormal ? texture(art.frontNormal, uvn) : art.creaseNormal ? texture(art.creaseNormal, side === 0 ? uvn : uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
       aluminiumSurface(m, crTex.r, mk.r, ridges, opts.crinkle ?? 3.4, crN);
     } else {
       m.metalnessNode = mix(float(0.15), float(0.95), foil);

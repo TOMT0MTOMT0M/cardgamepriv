@@ -72,7 +72,7 @@ import { createStage } from '../../core/stage';
 import { studioEnv } from '../../core/env';
 import { mobileArtScale } from '../../core/renderer';
 import { anamorphicFlare, createPipeline } from '../../core/post';
-import { aluminiumSurface, createPackGeometry, generatePackArt, PACK, PACK_FRAME, PACK_STACK, TEAR_V, type PackArt, type PackStyle } from '../../core/pack';
+import { aluminiumSurface, createPackGeometry, generatePackArt, packCreaseLift, PACK, PACK_FRAME, PACK_STACK, TEAR_V, type PackArt, type PackStyle } from '../../core/pack';
 import { ensureCardImages, ensureFonts, generateCardArt, type CardArt } from '../../core/art';
 import { LAB_CARDS, cardById, type CardData } from '../../core/cardData';
 import { rarity, type Rarity, type RarityId } from '../../core/rarity';
@@ -452,6 +452,32 @@ export function createOpeningScene(): OpeningScene {
   let startArts: () => Promise<void> = async () => {};
   const packKeyOf = (p: Pick<SealedPack, 'packKind' | 'themeId'>) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? THEMES[0].id);
   let packNodes: Record<string, { value: Texture }> = {};
+  /**
+   * (07/11) TOUTES les textures d'un booster à remplacer quand on change de booster : avant, seules couleur et masques
+   * suivaient — la carte de hauteur et les NORMALES des plis restaient celles du premier booster chargé (même froissé
+   * sur tous les grands boosters, alors que les mini-boosters du menu avaient chacun le leur).
+   */
+  type ArtSwap = { n: { value: Texture }; pick: (a: PackArt) => Texture | undefined };
+  const packSwaps: ArtSwap[] = [];
+  const tearSwaps: ArtSwap[] = [];
+  const track = <T,>(list: ArtSwap[], n: T, pick: ArtSwap['pick']): T => {
+    list.push({ n: n as unknown as { value: Texture }, pick });
+    return n;
+  };
+  const applySwaps = (list: ArtSwap[], a: PackArt) => {
+    for (const s of list) {
+      const t = s.pick(a);
+      if (t) s.n.value = t;
+    }
+  };
+  /** relief des plis du booster dans la géométrie (sommets), lu dans SA carte de hauteur */
+  const creaseLift = (list: ArtSwap[], art: PackArt, side: 0 | 1): N | null => {
+    if (!art.fullCrease) return null;
+    const u = uv();
+    const h = track(list, texture(art.crinkle, side === 0 ? u : u.mul(vec2(-1, 1)).add(vec2(1, 0))).level(float(0)), (a) => a.crinkle);
+    const lift = packCreaseLift(h, u.x);
+    return vec3(0, 0, side === 0 ? lift : lift.negate());
+  };
   let cardGeo: ReturnType<typeof createCardGeometry>;
   let backMat: Material;
   let backs: ReturnType<typeof themedBacks>;
@@ -652,9 +678,17 @@ export function createOpeningScene(): OpeningScene {
     const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
     const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
     // (07/11 soir) normales des plis en flottants (core/pack.ts) : plus de paliers du bumpMap 8 bits
-    const nF = art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
+    // (07/11) face avant : plis + nom du pack thermoformé (core/packLabel.ts) ; le dos garde les plis seuls
+    const nF = art.frontNormal ? texture(art.frontNormal, uvn) : art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
     const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
     packNodes = { front, back, masks, crF, crB } as unknown as Record<string, { value: Texture }>;
+    track(packSwaps, front, (a) => a.front);
+    track(packSwaps, back, (a) => a.back);
+    track(packSwaps, masks, (a) => a.masks);
+    track(packSwaps, crF, (a) => a.crinkle);
+    track(packSwaps, crB, (a) => a.crinkle);
+    if (nF) track(packSwaps, nF, (a) => a.frontNormal ?? a.creaseNormal);
+    if (nB) track(packSwaps, nB, (a) => a.creaseNormal);
     const pp = positionLocal.xy;
     const fbm =
       ctx.quality === 'mobile'
@@ -679,7 +713,8 @@ export function createOpeningScene(): OpeningScene {
       // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte
       const seam = masks.b.mul(1.4).add(masks.g.mul(0.35));
       m.emissiveNode = (U.ember as unknown as N).mul(ember.add(seam.add(leakPrint(col, pp)).mul(U.leak)));
-      m.positionNode = positionLocal.add(normalLocal.mul(smoothstep(0.05, 0.0, burnFront).mul(0.03)));
+      const lift = creaseLift(packSwaps, art, side);
+      m.positionNode = (lift ? positionLocal.add(lift) : positionLocal).add(normalLocal.mul(smoothstep(0.05, 0.0, burnFront).mul(0.03)));
       return m;
     };
     return [make(front, crF, 0), make(back, crB, 1)];
@@ -688,9 +723,7 @@ export function createOpeningScene(): OpeningScene {
   function applyBoosterArt(k: string) {
     const a = arts.get(k);
     if (!a) return;
-    packNodes.front.value = a.front;
-    packNodes.back.value = a.back;
-    packNodes.masks.value = a.masks;
+    applySwaps(packSwaps, a);
   }
 
   /**
@@ -729,9 +762,13 @@ export function createOpeningScene(): OpeningScene {
     tearNodes.push({ front, back, masks } as unknown as Record<'front' | 'back' | 'masks', { value: Texture }>);
     const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
     const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
-    // (07/11 soir) normales des plis en flottants (core/pack.ts) : plus de paliers du bumpMap 8 bits
-    const nF = art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
+    track(tearSwaps, crF, (a) => a.crinkle);
+    track(tearSwaps, crB, (a) => a.crinkle);
+    // (07/11 soir) normales des plis en flottants (core/pack.ts) : plus de paliers du bumpMap 8 bits ; face avant : + nom moulé
+    const nF = art.frontNormal ? texture(art.frontNormal, uvn) : art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
     const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
+    if (nF) track(tearSwaps, nF, (a) => a.frontNormal ?? a.creaseNormal);
+    if (nB) track(tearSwaps, nB, (a) => a.creaseNormal);
     const ug = positionLocal.x.div(PACK.w).add(0.5);
     const v = uvn.y;
     const edge = tearEdge(ug);
@@ -752,8 +789,12 @@ export function createOpeningScene(): OpeningScene {
       m.roughnessNode = select(frontFacing, m.roughnessNode as N, float(0.3)).add(whiten.mul(0.4));
       // fuite de lumière (003) : soudures + impression claire, de la couleur de la meilleure carte
       m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)).mul(whiten.oneMinus());
-      if (part === 'body') m.maskNode = v.lessThan(edge);
-      else {
+      // même relief des plis que le booster entier (sa carte de hauteur), sinon la coupe ne raccorde pas
+      const crLift = creaseLift(tearSwaps, art, side);
+      if (part === 'body') {
+        m.maskNode = v.lessThan(edge);
+        if (crLift) m.positionNode = positionLocal.add(crLift);
+      } else {
         m.maskNode = v.greaterThanEqual(edge);
         // la bande se décolle colonne par colonne derrière le front, s'enroule vers nous (plus fort vers le haut) et
         // se soulève près du front (on la tire), puis s'envole
@@ -763,8 +804,9 @@ export function createOpeningScene(): OpeningScene {
         const k = dy.div(PACK.h / 2 - yTear).clamp(0, 1);
         const a = t.pow(1.2).mul(1.9).mul(k.mul(0.7).add(0.45)).add(TFLY.mul(1.6));
         const lift = t.mul(behind).mul(PACK.w * 0.16);
-        const y2 = float(yTear).add(dy.mul(cos(a))).sub(positionLocal.z.mul(sin(a))).add(lift);
-        const z2 = positionLocal.z.mul(cos(a)).add(dy.mul(sin(a)));
+        const pz = crLift ? positionLocal.z.add(crLift.z) : positionLocal.z;
+        const y2 = float(yTear).add(dy.mul(cos(a))).sub(pz.mul(sin(a))).add(lift);
+        const z2 = pz.mul(cos(a)).add(dy.mul(sin(a)));
         m.positionNode = vec3(positionLocal.x.sub(t.mul(0.012)), y2, z2);
       }
       return m;
@@ -780,6 +822,7 @@ export function createOpeningScene(): OpeningScene {
       n.back.value = a.back;
       n.masks.value = a.masks;
     }
+    applySwaps(tearSwaps, a);
   }
 
   function spawnShreds(u: number, n: number) {
@@ -1940,7 +1983,9 @@ export function createOpeningScene(): OpeningScene {
       soonT = on ? 1 : 0;
     },
     packThumb(k, size) {
-      const src = arts.get(k)?.front.image as HTMLCanvasElement | undefined;
+      // (07/11) nom moulé : la face « vignette » (relief ombré une fois) — la couleur seule ne le montrerait presque pas
+      const a = arts.get(k);
+      const src = (a?.thumbFront ?? a?.front.image) as HTMLCanvasElement | undefined;
       if (!src?.width) return null;
       // (téléphone, écran ×3 : la vignette de 26 px CSS en demande ~84 → 96 au lieu de 64, sinon floue)
       const tw = Math.min(src.width, size ?? (ctx?.quality === 'mobile' ? 96 : 64));
@@ -2089,14 +2134,14 @@ export function createOpeningScene(): OpeningScene {
         }
       };
       c.bag.fn(() => thumbCache.forEach((u) => u && URL.revokeObjectURL(u)));
-      const packGeo = c.bag.add(createPackGeometry(48, 72));
+      const packGeo = c.bag.add(createPackGeometry(48, 72, { folds: false }));
       const packMesh = new Mesh(packGeo, buildPackMaterials(arts.get(boosterKey)!));
       packMeshRef = packMeshMain = packMesh;
       (packMesh.material as Material[]).forEach((m) => c.bag.add(m));
       packRig.add(packMesh);
       // booster déchirable (Bebou / World) : même maillage, deux passes (corps sous le bord dentelé, bande au-dessus)
       // — plus de colonnes que le booster de vitrine pour un bord net et un enroulement lisse
-      const tearGeo = c.bag.add(createPackGeometry(96, 80));
+      const tearGeo = c.bag.add(createPackGeometry(96, 80, { folds: false }));
       tearBody = new Mesh(tearGeo, buildTearMaterials(arts.get(boosterKey)!, 'body'));
       tearStrip = new Mesh(tearGeo, buildTearMaterials(arts.get(boosterKey)!, 'strip'));
       for (const m of [tearBody, tearStrip]) {

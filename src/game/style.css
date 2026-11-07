@@ -3172,3 +3172,39 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .ps-docked .ps-facts { border-top-color: var(--line-2); }
 .ps-thumb img, .sl-art img, .sl-ph, .packs-row.wheel .sleeve.mid .sl-art { box-shadow: 0 14px 24px -12px rgba(0, 0, 0, 0.95); }
 .sl-ph { background: #111; }
+
+
+/* ==== (07/11, retours de Tom) TÉLÉPHONE : la fiche du booster au style de l'ordinateur — texte seul, filets d'un pixel,
+   libellés en chasse fixe, nom qui se forme lettre à lettre, et PLUS de vignette 2D du booster (le booster 3D est
+   juste au-dessus). Feuille du bas sans cadre ni arrondi : un aplat noir translucide (DA noir / blanc, aucun dégradé). ==== */
+@media (max-width: 860px) {
+  .ps-root:not(.ps-docked) .pack-sheet { background: rgba(0, 0, 0, 0.86); border: 0; border-top: 1px solid var(--line-2); border-radius: 0; box-shadow: none; }
+  .ps-root:not(.ps-docked) .ps-close { background: none; border-color: var(--line-2); }
+  .ps-root:not(.ps-docked) .ps-thumb { display: none; }
+  .ps-root:not(.ps-docked) .ps-head { grid-template-columns: 1fr; padding-right: 44px; }
+  .ps-root:not(.ps-docked) .ps-head .kicker { font: 500 10px var(--mono); letter-spacing: 0.42em; color: #fff; }
+  .ps-root:not(.ps-docked) .ps-name { font-size: 32px; line-height: 0.98; letter-spacing: 0.01em; margin-top: 6px; }
+  .ps-root:not(.ps-docked) .ps-name i { display: inline-block; font-style: inherit; }
+  .ps-root:not(.ps-docked) .ps-desc { font: 400 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); margin-top: 8px; }
+  .ps-root:not(.ps-docked) .ps-scroll { gap: 16px; }
+  .ps-root:not(.ps-docked) .ps-block, .ps-root:not(.ps-docked) .ps-facts, .ps-root:not(.ps-docked) .ps-cards-btn { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 12px 0 0; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+  .ps-root:not(.ps-docked) .ps-facts { border-top-color: var(--line-2); }
+  .ps-root:not(.ps-docked) .ps-bt { font: 500 10px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; }
+  .ps-root:not(.ps-docked) .ps-bt small { display: none; }
+  .ps-root:not(.ps-docked) .ps-cards-btn { text-align: left; }
+  .ps-root:not(.ps-docked) .ps-open { background: none; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+  .ps-root:not(.ps-docked) .ps-open .qty { background: none; }
+  /* le texte se forme à l'ouverture (mêmes animations que le panneau de l'ordinateur) */
+  .ps-root:not(.ps-docked) .pack-sheet.ps-form .ps-scroll > *, .ps-root:not(.ps-docked) .pack-sheet.ps-form .ps-open > * { animation: ps-form 0.64s cubic-bezier(0.2, 1.25, 0.35, 1) both; animation-delay: calc(120ms + var(--k, 0) * 42ms); }
+  .ps-root:not(.ps-docked) .pack-sheet.ps-form .ps-name i { animation: ps-letter 0.72s cubic-bezier(0.2, 1.55, 0.4, 1) both; animation-delay: calc(200ms + var(--i) * 22ms); }
+  .ps-root:not(.ps-docked) .ps-scroll > :nth-child(2), .ps-root:not(.ps-docked) .ps-open > :nth-child(2) { --k: 1; }
+  .ps-root:not(.ps-docked) .ps-scroll > :nth-child(3), .ps-root:not(.ps-docked) .ps-open > :nth-child(3) { --k: 2; }
+  .ps-root:not(.ps-docked) .ps-scroll > :nth-child(4), .ps-root:not(.ps-docked) .ps-open > :nth-child(4) { --k: 3; }
+  .ps-root:not(.ps-docked) .ps-scroll > :nth-child(5), .ps-root:not(.ps-docked) .ps-open > :nth-child(5) { --k: 4; }
+  .ps-root:not(.ps-docked) .ps-scroll > :nth-child(n + 6) { --k: 5; }
+  .ps-root:not(.ps-docked) .ps-open > * { --k: 4; }
+}
+@media (max-width: 860px) and (prefers-reduced-motion: reduce) {
+  .ps-root:not(.ps-docked) .pack-sheet.ps-form .ps-scroll > *, .ps-root:not(.ps-docked) .pack-sheet.ps-form .ps-open > *, .ps-root:not(.ps-docked) .pack-sheet.ps-form .ps-name i { animation: none; }
+}
+/* ==== fin fiche téléphone ==== */

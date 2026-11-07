@@ -131,9 +131,12 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     // bumpMap sur la hauteur 8 bits : à cette taille, les dérivées d'écran donnaient un bruit d'escalier sur chaque pli.
     // Nœuds créés ICI, avec la vraie texture (un nœud créé sur une texture vide puis changé n'est pas suivi partout).
     const nrm = art.creaseNormal ? shrink(art.creaseNormal, creaseW, false) : null;
+    // (07/11) face avant : plis + nom du pack thermoformé ; réduite un peu moins (le relief des lettres reste lisible)
+    const fnrm = art.frontNormal ? shrink(art.frontNormal, Math.max(creaseW, texW), false) : null;
     if (nrm) {
       owned.push(nrm);
-      s.front.normalNode = normalMap(texture(nrm, uv()), vec2(0.8));
+      if (fnrm) owned.push(fnrm);
+      s.front.normalNode = normalMap(texture(fnrm ?? nrm, uv()), vec2(0.8));
       s.back.normalNode = normalMap(texture(nrm, uv().mul(vec2(-1, 1)).add(vec2(1, 0))), vec2(0.8));
     }
     s.front.needsUpdate = s.back.needsUpdate = true;

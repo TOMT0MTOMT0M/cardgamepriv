@@ -73,6 +73,8 @@ export function shopPacks(): SheetPack[] {
 
 const QTYS = [1, 5, 10] as const;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+/** (07/11, retours de Tom) TÉLÉPHONE : la fiche prend le style de l'ordinateur (texte seul, filets, nom qui se forme), sans vignette 2D */
+const MOBILE_SHEET = matchMedia('(max-width: 860px)');
 const STAR_LABEL: Record<string, string> = { common: 'Commune', uncommon: 'Peu commune', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire', mythic: 'Mythique' };
 
 export function createPackSheet(
@@ -347,8 +349,8 @@ export function createPackSheet(
       };
       setTimeout(retry, 120);
     }
-    // (ordinateur, panneau fluide) le nom se forme lettre à lettre (style.css, .ps-docked .ps-name i)
-    if (docked) {
+    // (ordinateur, panneau fluide — et téléphone, même style) le nom se forme lettre à lettre (style.css, .ps-name i)
+    if (docked || MOBILE_SHEET.matches) {
       nameEl.setAttribute('aria-label', p.name);
       nameEl.innerHTML = [...p.name].map((c, i) => `<i aria-hidden="true" style="--i:${i}">${c === ' ' ? '&nbsp;' : esc(c)}</i>`).join('');
     } else {
@@ -571,6 +573,8 @@ export function createPackSheet(
       requestAnimationFrame(() => {
         el.classList.add('in');
         q<HTMLButtonElement>('.ps-close').focus({ preventScroll: true });
+        // téléphone : le texte se forme comme sur ordinateur (bloc par bloc, le nom lettre à lettre)
+        if (MOBILE_SHEET.matches && !REDUCED.matches) restart('ps-form');
       });
     }
     fill(p);
