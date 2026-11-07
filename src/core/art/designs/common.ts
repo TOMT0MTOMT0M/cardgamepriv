@@ -23,7 +23,7 @@ export interface DesignCtx {
   stars: number;
   /** sous-famille (« JOHTO », « MARIO ») imprimée en bas à la place du numéro ; absente : le numéro (retours 05/11) */
   sub?: string;
-  /** Album / Chanson : l'artiste (« ANDREA BOCELLI »), imprimé en bas à gauche */
+  /** Album / Chanson : l'artiste (« Andrea Bocelli »), imprimé sur sa propre ligne juste sous le titre (07/11) */
   byline?: string;
   /** largeur / hauteur de l'illustration (gabarit Paysage : position de la bande de la photo) */
   artAspect?: number;

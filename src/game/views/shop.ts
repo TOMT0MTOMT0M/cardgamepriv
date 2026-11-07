@@ -1,5 +1,4 @@
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
-import { POP_ARTISTS } from '../../core/sets/popArtists';
 import { playMusicPreview, stopMusicPreview } from '../musicPreview';
 import { fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
@@ -1641,7 +1640,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const vi = viewerUi.querySelector<HTMLElement>('.v-info')!;
     vi.className = `v-info r-${card.rarity}`;
     vi.style.setProperty('--ra', rr.accentHex);
-    vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${POP_ARTISTS[card.cardId] ? `<div class="ci-by">${esc(POP_ARTISTS[card.cardId])}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
+    vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${e?.artist ? `<div class="ci-by">${esc(e.artist)}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
     viewerUi.hidden = false;
     summary.hidden = true;
     fanBadges.hidden = true;

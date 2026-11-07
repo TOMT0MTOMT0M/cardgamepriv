@@ -8,7 +8,6 @@ import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 import { createForge, forgeCount } from './forge';
 import { GAMES_OPEN } from '../../core/games';
-import { POP_ARTISTS } from '../../core/sets/popArtists';
 
 /**
  * COLLECTION (refonte, retours du 3 nov. + retours live n°1)
@@ -1517,7 +1516,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     binderPick.hidden = true;
     vInfo.className = `v-info r-${b.r}${dir ? ' swap' : ''}`;
     vInfo.style.setProperty('--ra', rarity(b.r).accentHex);
-    const by = POP_ARTISTS[b.id];
+    const by = e?.artist;
     vInfo.innerHTML = `<div class="ci-name">${esc(e?.name ?? b.id)}</div>${by ? `<div class="ci-by">${esc(by)}</div>` : ''}<div class="ci-meta">${starsHtml(b.r)} <span class="ci-r" style="color:${rarity(b.r).accentHex}">${rarity(b.r).label}</span></div>
       <div class="ci-sub">${st ? `${esc(st.label)} ${String(e!.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}${have ? `${plural(have.count, 'exemplaire')} (${have.count > 1 ? 'meilleur : ' : ''}n°${fmtN(have.bestMintNumber)} imprimé)` : ''}</div>`;
     renderActions(b);

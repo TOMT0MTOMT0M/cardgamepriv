@@ -57,6 +57,11 @@ export interface CatalogEntry {
   dir?: string;
   /** Monde V2 : type affiché sur le design typographique (« Mammifère », « Capitale / Métropole »…) */
   label?: string;
+  /**
+   * Album / Chanson (Pop Culture) : l'artiste principal, imprimé sous le titre. GÉNÉRÉ : scripts/build-music-artists.py
+   * → popArtists.ts (iTunes en priorité, recoupé avec Wikidata et MusicBrainz ; corrections à la main prioritaires).
+   */
+  artist?: string;
 }
 
 export interface SubTheme {
@@ -217,7 +222,7 @@ function bigSubthemes(B: typeof BigSets): SubTheme[] {
   const popCulture: SubTheme[] = B.POP_SUBS.map((s) => ({
     ...sub(
       'pop', s.id, s.label, s.code, 'art/pop',
-      (popBySub.get(s.id) ?? []).map((e) => ({ id: e.id, themeId: 'pop', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, art: e.art, label: e.label })),
+      (popBySub.get(s.id) ?? []).map((e) => ({ id: e.id, themeId: 'pop', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, art: e.art, label: e.label, ...(B.POP_ARTISTS[e.id] ? { artist: B.POP_ARTISTS[e.id] } : {}) })),
     ),
     group: { id: s.group, label: B.POP_GROUPS[s.group] },
     size: B.POP_SIZE,

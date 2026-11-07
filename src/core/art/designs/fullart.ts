@@ -42,12 +42,16 @@ export const fullArt: CardDesign = {
     }
     f.restore();
     f.textAlign = 'left';
+    // (07/11) Album / Chanson : l'artiste a sa propre ligne SOUS le titre → famille et titre remontent de 46 px
+    const by = d.byline && !d.mini ? d.byline : '';
+    const up = by ? 46 : 0;
+    const nameY = 978 - up;
     // sous-thème (« POKÉMON ») en grand au-dessus du nom
     // (retours live 6, C7) plus d'emblème à côté du thème : le texte part de la marge, comme le nom
     // (C4 : blanc, la seule couleur de la carte vient de la rareté)
     f.fillStyle = alpha('#f7f2e8', 0.86);
     // famille (« POKÉMON », « JEUX VIDÉO ») : rétrécit si elle est longue
-    if (!d.mini) spacedFit(f, uni.short.toUpperCase(), 48, 896, 3, 'left', `600 {s}px ${FONT_MONO}`, 30, W - 96, 24);
+    if (!d.mini) spacedFit(f, uni.short.toUpperCase(), 48, 896 - up, 3, 'left', `600 {s}px ${FONT_MONO}`, 30, W - 96, 24);
     // nom
     f.save();
     f.fillStyle = '#f7f2e8';
@@ -55,19 +59,18 @@ export const fullArt: CardDesign = {
     const nameFont = `700 {s}px ${FONT_TITLE}`;
     const ns = fitFont(f, card.name, nameFont, 62, W - 96);
     f.letterSpacing = '0.5px';
-    f.fillText(card.name, 46, 978);
+    f.fillText(card.name, 46, nameY);
     f.letterSpacing = '0px';
+    // artiste, juste sous le titre (Bold Frame demi-gras, un ton plus doux que le titre)
+    if (by) {
+      f.fillStyle = alpha('#f7f2e8', 0.86);
+      fitFont(f, by, `500 {s}px ${FONT_TITLE}`, 36, W - 96, 24);
+      f.fillText(by, 48, nameY + 50);
+    }
     f.restore();
     f.fillStyle = alpha('#f7f2e8', 0.78);
     // sous-famille (« JOHTO ») en bas à droite (retours 05/11) ; le code de set n'est plus imprimé (doublon du numéro)
-    let subW = 0;
-    if (d.sub && !d.mini) subW = spacedFit(f, d.sub.toUpperCase(), W - 48, 1040, 2, 'right', `500 {s}px ${FONT_MONO}`, 30, d.byline ? (W - 96) * 0.42 : W - 96, 22);
-
-    // Album / Chanson : l'artiste en bas à gauche, sous le titre (retours 05/11)
-    if (d.byline && !d.mini) {
-      f.fillStyle = alpha('#f7f2e8', 0.9);
-      spacedFit(f, d.byline.toUpperCase(), 48, 1040, 2, 'left', `600 {s}px ${FONT_MONO}`, 30, W - 96 - subW - 28, 22);
-    }
+    if (d.sub && !d.mini) spacedFit(f, d.sub.toUpperCase(), W - 48, 1040, 2, 'right', `500 {s}px ${FONT_MONO}`, 30, W - 96, 22);
 
     m.strokeStyle = m.fillStyle = 'rgb(255,0,0)';
     m.font = nameFont.replace('{s}', String(ns));
@@ -75,7 +78,7 @@ export const fullArt: CardDesign = {
     m.fillStyle = 'rgb(0,255,0)';
     m.save();
     m.filter = 'blur(1px)';
-    m.fillText(card.name, 46, 978);
+    m.fillText(card.name, 46, nameY);
     m.restore();
   },
 };

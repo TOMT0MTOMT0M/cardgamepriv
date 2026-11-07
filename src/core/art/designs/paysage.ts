@@ -91,10 +91,16 @@ export const paysage: CardDesign = {
     const nameFont = `700 {s}px ${FONT_TITLE}`;
     const ns = fitFont(f, card.name, nameFont, 60, W - 110);
     f.fillText(card.name, W / 2, PANEL_Y + 158);
+    // (07/11) Album / Chanson : l'artiste sur sa propre ligne, juste sous le titre ; la sous-famille descend d'un cran
+    const by = d.byline && !d.mini ? d.byline : '';
+    if (by) {
+      f.fillStyle = alpha(ink, 0.86);
+      fitFont(f, by, `500 {s}px ${FONT_TITLE}`, 36, W - 110, 24);
+      f.fillText(by, W / 2, PANEL_Y + 208);
+    }
     f.textAlign = 'left';
-    const foot = [d.byline, d.sub].filter(Boolean).join('  ·  ').toUpperCase();
     f.fillStyle = alpha(ink, 0.78);
-    if (foot && !d.mini) spacedFit(f, foot, W / 2, PANEL_Y + 216, 2, 'center', `500 {s}px ${FONT_MONO}`, 30, W - 120, 22);
+    if (d.sub && !d.mini) spacedFit(f, d.sub.toUpperCase(), W / 2, PANEL_Y + (by ? 262 : 216), 2, 'center', `500 {s}px ${FONT_MONO}`, 30, W - 120, 22);
     grainAtop(f, card.seed, 0.05, 40);
     // liseré intérieur (dès peu commune), comme le gabarit principal
     if (tier >= 1) {

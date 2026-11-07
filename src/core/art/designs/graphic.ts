@@ -120,6 +120,12 @@ export const suissePaysage: CardDesign = {
     f.font = `700 ${fs}px ${FONT_SANS}`;
     f.fillText(l1, 44, 128);
     if (l2) f.fillText(l2, 44, 128 + fs * 1.02);
+    // (07/11) Album / Chanson : l'artiste juste sous le titre (la photo commence plus bas : y ≥ 320)
+    if (d.byline && !d.mini) {
+      f.fillStyle = alpha(ink, 0.62);
+      fitFont(f, d.byline, `500 {s}px ${FONT_SANS}`, 36, 600, 24);
+      f.fillText(d.byline, 46, 128 + (l2 ? fs * 1.02 : 0) + 52);
+    }
     // (retours 07/11) 6★ : étoiles en aluminium brossé (comme le dos) au lieu du foil irisé
     // (retours live 6, C5c) de vraies ÉTOILES ★ comme sur les autres cartes (plus les 6 carrés)
     if (tier >= 5) brushedStars(f, m, Array.from({ length: d.stars }, (_, k) => [720 - 12 - (d.stars - 1 - k) * 30, 90] as [number, number]), 12, 'star', card.seed);
@@ -138,7 +144,7 @@ export const suissePaysage: CardDesign = {
       // (retours live 6, C5b) thème et sous-thème un peu plus grands (30 → 38 px, 26 → 31 px)
       fitFont(f, uni.name, `600 {s}px ${FONT_SANS}`, 38, footW, 26);
       f.fillText(uni.name, 48, 980);
-      const foot = [d.byline, d.sub].filter(Boolean).join('  ·  ').toUpperCase();
+      const foot = (d.sub ?? '').toUpperCase();
       if (foot) {
         f.fillStyle = alpha(ink, 0.62);
         spacedFit(f, foot, 48, 1030, 1.5, 'left', `500 {s}px ${FONT_MONO}`, 31, footW, 22);

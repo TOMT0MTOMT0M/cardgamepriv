@@ -7,3 +7,4 @@ export { JV, JV_FAMILIES, JV_INFO } from './jeuxvideo';
 export { MONDE, MONDE_GROUPS, MONDE_SUBS } from './monde';
 export { SPORT, SPORT_GROUPS, SPORT_SIZE, SPORT_SUBS } from './sport';
 export { POP, POP_GROUPS, POP_SIZE, POP_SUBS } from './popculture';
+export { POP_ARTISTS } from './popArtists';

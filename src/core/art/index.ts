@@ -9,8 +9,7 @@ import { BASE_H, BASE_W, SUBJECTS, WIN, finishLayer } from './subjects';
 import { FONT_MONO, FONT_TITLE } from './designs/common';
 import { design as resolveDesign, CLASSIC_WIN, bebou, suisseLandscapeBand, type CardDesign } from './designs';
 import { universe } from '../universes';
-import { cardFamily } from '../sets/themes';
-import { POP_ARTISTS } from '../sets/popArtists';
+import { cardFamily, catalogEntry } from '../sets/themes';
 import { paintBack, ALU_BACK, type BackStyle } from './back';
 import { cardImage, ensureCardImages, loadCardImage, setImageLimits } from './images';
 import { PORTRAIT_MAX, coverBand, paintCoverSubject, paintImageSubject } from './imageSubject';
@@ -255,7 +254,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   const fam = cardFamily(card.id);
   const uniLabel = fam?.family ?? card.uniName;
   const uni = uniLabel ? { ...uni0, name: uniLabel, short: uniLabel } : uni0;
-  dz.paint(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId), sub: fam?.sub, byline: POP_ARTISTS[card.id], artAspect: im && im.canvas.height ? im.canvas.width / im.canvas.height : undefined, mini: !!o.mini });
+  dz.paint(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId), sub: fam?.sub, byline: catalogEntry(card.id)?.artist, artAspect: im && im.canvas.height ? im.canvas.width / im.canvas.height : undefined, mini: !!o.mini });
   masks.g.globalCompositeOperation = 'source-over';
   yield;
 

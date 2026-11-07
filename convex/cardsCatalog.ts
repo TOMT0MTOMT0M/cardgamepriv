@@ -53,9 +53,11 @@ export interface CatalogCard {
   /** sous-thème (pokemon, lol, mcu…) */
   subthemeId: string;
   baseRarity: RarityId;
+  /** Album / Chanson : artiste principal (src/core/sets/popArtists.ts, généré par scripts/build-music-artists.py) */
+  artist?: string;
 }
 
-const toCatalog = (e: CatalogEntry): CatalogCard => ({ id: e.id, num: e.num, name: e.name, themeId: e.themeId, subthemeId: e.subthemeId, baseRarity: e.rarity });
+const toCatalog = (e: CatalogEntry): CatalogCard => ({ id: e.id, num: e.num, name: e.name, themeId: e.themeId, subthemeId: e.subthemeId, baseRarity: e.rarity, ...(e.artist ? { artist: e.artist } : {}) });
 
 /** Toutes les cartes de tous les thèmes, Bébous compris (source : src/core/sets/themes.ts). */
 export const CATALOG_CARDS: CatalogCard[] = ALL_THEMES.flatMap((t) => t.cards.map(toCatalog));
