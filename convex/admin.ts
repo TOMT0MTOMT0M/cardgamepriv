@@ -156,6 +156,10 @@ export const setModerator = internalMutation({
     return `${user.displayName} (@${user.username}) : modérateur ${on === false ? 'retiré' : 'activé'}`;
   },
 });
+/**
+ * (07/11) L'ÉQUIPE = Tom et Hugo, à égalité : modérateurs (suggestions) ET admins (onglet Admin des jeux, forge, alertes,
+ * accès équipe au lien V2). Lancé à chaque mise en ligne (prod et V2) : les deux comptes ont toujours tous les droits.
+ */
 export const setModerators = internalMutation({
   args: { names: v.optional(v.array(v.string())) },
   handler: async (ctx, { names }) => {
@@ -163,8 +167,8 @@ export const setModerators = internalMutation({
     for (const n of names ?? ['tom', 'hugo']) {
       try {
         const user = await findUser(ctx, n);
-        if (!user.isModerator) await ctx.db.patch(user._id, { isModerator: true });
-        out.push(`${user.displayName} (@${user.username}) : modérateur`);
+        if (!user.isModerator || !user.isAdmin) await ctx.db.patch(user._id, { isModerator: true, isAdmin: true });
+        out.push(`${user.displayName} (@${user.username}) : modérateur + admin`);
       } catch (e) {
         out.push(`« ${n} » : ${(e as Error).message.slice(0, 160)}`);
       }
