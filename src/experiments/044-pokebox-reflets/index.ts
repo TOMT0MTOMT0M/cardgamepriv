@@ -1,5 +1,5 @@
 import { Group, Matrix4, MeshBasicNodeMaterial, Raycaster, Vector2, Vector3, type Mesh } from 'three/webgpu';
-import { clamp, float, luminance, max, mix, pow, smoothstep, sqrt, step, texture, time, uniform, vec4 } from 'three/tsl';
+import { clamp, float, luminance, max, mix, pow, select, smoothstep, sqrt, step, texture, time, uniform, vec3, vec4 } from 'three/tsl';
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
@@ -61,8 +61,10 @@ export default function create(): Experiment {
     op: uniform(0.82),
     /** AJOUT (pas chez Pokébox) : sous-couche argent sous le foil — leurs cartes sont des scans imprimés sur argent, clairs */
     argent: uniform(Math.max(0, Math.min(1, Number(q0.get('argent') ?? 0) || 0))),
-    sujet: uniform(0.35),
-    relief: uniform(0.7),
+    sujet: uniform(0),
+    relief: uniform(1),
+    /** 0 = rendu, 1 = masque holo, 2 = gravure */
+    voir: uniform(0),
     force: uniform(5),
     prog: uniform(0),
   };
@@ -100,12 +102,17 @@ export default function create(): Experiment {
     return { id, kind };
   }
 
-  /** Zones de la carte où peut vivre le foil (cf. kit 043 : encre, voiles, sujet, fond). */
+  /**
+   * Zones de la carte où vit le foil — calquées sur les masques Pokémon (mesurés sur leur carte 170, 07/11) : bords nets
+   * (3 % de valeurs intermédiaires), texte et sujet en noir, TOUT le reste du décor couvert (marges et bandeaux compris).
+   */
   function zoneNode(c: FxCtx, z: Zone): N {
-    if (z === 'fond') return c.fond;
+    const notInk = c.ink.oneMinus();
     if (z === 'sujet') return c.subj;
-    if (z === 'cadre') return clamp(c.margin.add(c.veil.mul(0.8)), 0, 1).mul(c.ink.oneMinus());
-    return c.ink.mul(0.9).oneMinus().mul(mix(float(1), U.sujet, c.subj));
+    if (z === 'cadre') return clamp(c.margin.add(c.veil), 0, 1).mul(notInk);
+    const decor = c.subj.oneMinus().mul(c.L.fg.a.oneMinus()).mul(notInk);
+    if (z === 'fond') return decor.mul(c.inner);
+    return decor.add(c.subj.mul(notInk).mul(U.sujet));
   }
 
   function makeMaterial(def: PokeFxDef | null, art: CardArt, cd: CardData, u: CardU): MeshBasicNodeMaterial {
@@ -116,6 +123,7 @@ export default function create(): Experiment {
     const fc = createCtx('high', {} as FxTextures, art, I, rarity(ctx.rarity).hex, rarity(ctx.rarity).accentHex, L, geo, { photo: !!cd.photo });
     const base = toS(clamp(L.color, 0, 1));
     let col: N = base;
+    let dbgMask: N = float(0), dbgFoil: N = float(0);
     if (def) {
       // ── masque « holo » : la zone, modulée par la MATIÈRE de l'illustration (clairs = foil plein, sombres = moins)
       //    → comme leurs masques en niveaux de gris, le reflet semble imprimé dans l'image
@@ -125,17 +133,25 @@ export default function create(): Experiment {
         return sqrt(max(luminance(mix(b.rgb, s.rgb, s.a)), 0));
       };
       const z = zoneNode(fc, params.zone === 'auto' ? def.zone : params.zone);
-      const matter = mix(float(0.55), float(1), smoothstep(0.08, 0.8, lumAt(1.5)));
+      // règle mesurée sur leurs masques : dans la zone, masque ≈ 1,16 − 0,35 × clarté de l'illustration (plafonné à 1) —
+      // presque plein partout, un peu moins sur les clairs ; PAS une copie du détail de l'image (corrélation 0,05)
+      const lumS = luminance(mix(texture(art.bg, L.bgUV).level(float(1)).rgb, texture(art.subject, L.sjUV).level(float(1)).rgb, texture(art.subject, L.sjUV).level(float(1)).a));
+      const matter = clamp(float(1.16).sub(toS(vec3(lumS)).x.mul(0.35)), 0, 1);
       const mask = z.mul(mix(float(1), matter, U.relief));
       // ── gravure (etch) : le détail fin de l'illustration (passe-haut entre deux niveaux de mip), sur fond clair
       const etch = def.etch && params.gravure;
       const foil = etch ? clamp(lumAt(0).sub(lumAt(3)).mul(U.force).add(0.7), 0, 1).mul(z) : float(0);
       const silvered = mix(base, base.mul(0.75).add(0.3), mask.mul(U.argent));
+      dbgMask = mask;
+      dbgFoil = foil;
       const out = def.fn({ uv: fc.uv, base: silvered, mask, foil, hasFoil: etch, pointer: u.ptr, bg: u.bgv, pfc: u.pfc, rotX: u.rotX, time, op: U.op, T: ptex });
       col = mix(base, out.color, smoothstep(0, 0.02, out.area));
       col = mix(col, out.color, U.argent.mul(mask)); // la sous-couche reste visible hors zone de réglage
     }
     col = goldSweep(fc.uv, clamp(col, 0, 1), U.prog, time, ptex);
+    // vue « masque » : rouge = foil holo, vert = gravure, sur l'illustration en gris (où le reflet est posé)
+    const grey = vec3(luminance(base).mul(0.45));
+    col = select(U.voir.equal(0), col, select(U.voir.equal(1), grey.add(vec3(dbgMask.mul(0.85), 0, 0)), grey.add(vec3(0, dbgFoil.mul(0.85), 0))));
     const m = new MeshBasicNodeMaterial();
     m.colorNode = vec4(toL(clamp(col, 0, 1)), 1);
     return m;
@@ -357,7 +373,8 @@ export default function create(): Experiment {
       c.gui.add(params, 'zone', { 'auto (comme Pokémon)': 'auto', 'fond de l’illustration': 'fond', 'cadre / décor': 'cadre', 'toute la carte': 'carte', 'sujet seul': 'sujet' }).name('zone du foil').onChange(() => void build());
       c.gui.add(U.argent, 'value', 0, 1, 0.05).name('+ sous-couche argent (ajout)');
       c.gui.add(U.sujet, 'value', 0, 1, 0.05).name('reflet sur le sujet (toute la carte)');
-      c.gui.add(U.relief, 'value', 0, 1, 0.05).name('masque suit l’illustration');
+      c.gui.add(U.relief, 'value', 0, 1, 0.05).name('masque : règle Pokémon (clairs −35 %)');
+      c.gui.add(U.voir, 'value', { 'rendu': 0, 'voir le masque holo (rouge)': 1, 'voir la gravure (vert)': 2 }).name('affichage');
       c.gui.add(params, 'gravure').name('gravure (etch)').onChange(() => void build());
       c.gui.add(U.force, 'value', 0, 14, 0.5).name('force de la gravure');
       c.gui.add(params, 'sensibilité', 0.3, 2.5, 0.05).name('sensibilité de la lumière');
@@ -416,8 +433,11 @@ export default function create(): Experiment {
         c.mesh.updateWorldMatrix(true, false);
         // ── la « lumière » de Pokébox : l'œil exprimé dans le repère de la carte → point regardé en UV
         invM.copy(c.mesh.matrixWorld).invert();
-        eye.copy(cam.position).applyMatrix4(invM);
-        const k = params.sensibilité * 1.5;
+        // planche : chaque carte reçoit l'œil comme si elle était au centre (même lumière pour comparer à égalité)
+        eye.copy(cam.position).add(c.holder.position).applyMatrix4(invM);
+        // Pokébox : pointeur = décalage latéral de l'œil / largeur de la carte, œil à ≈ 4,5 largeurs (60 cm, carte de
+        // 15 cm, + profondeur de la boîte) → le reflet traverse toute la carte en ≈ 10° d'inclinaison
+        const k = params.sensibilité * 4.5;
         const px = Math.max(0, Math.min(1, 0.5 + (eye.x / Math.max(eye.z, 0.01)) * k));
         const py = Math.max(0, Math.min(1, 0.5 + (eye.y / Math.max(eye.z, 0.01)) * k));
         c.u.ptr.value.set(px, py);
