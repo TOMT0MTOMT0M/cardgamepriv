@@ -1,8 +1,8 @@
 /**
  * NOM DU PACK THERMOFORMÉ (retours de Tom, 07/11) : plus d'encre noire plaquée sur le sachet — les lettres sont EN
- * RELIEF dans le film d'aluminium, comme moulées à chaud (épaules arrondies, même matière, même teinte), et les petits
- * REFLETS dessinés dans la police Matcha World (traits et points clairs sur les arrondis) sont, eux, CREUSÉS dans ce
- * relief au lieu d'être imprimés.
+ * RELIEF dans le film d'aluminium, comme moulées à chaud (épaules arrondies, même matière, même teinte). Les petits
+ * REFLETS dessinés dans la police Matcha World (traits et points clairs sur les arrondis) sont COMBLÉS : la lettre est
+ * lisse (ils ont été creusés en rainures un temps — `LABEL_RELIEF.groove` > 0 les remet).
  *
  * Dans la police, ces reflets sont des TROUS fins à l'intérieur des lettres (comme les contre-formes de « O », « A »,
  * « P »… mais minces) : on rastérise le texte, on repère les trous fermés, et on les trie par épaisseur — un trou dont
@@ -23,8 +23,11 @@ export const LABEL_RELIEF = {
   height: 0.7,
   /** cercle inscrit maximal d'un trou pour être un REFLET (sinon : contre-forme) */
   highlightMax: 0.04,
-  /** profondeur des rainures des reflets, en fraction du plateau */
-  groove: 0.7,
+  /**
+   * profondeur des rainures des reflets, en fraction du plateau — (07/11, retours de Tom) 0 : plus de reflets gravés,
+   * seulement la lettre en relief (les traits de reflet de la police sont comblés, la lettre est lisse)
+   */
+  groove: 0,
 };
 
 /**
@@ -178,7 +181,7 @@ export function reliefFromCoverage(alpha: Uint8ClampedArray | Uint8Array, W: num
     const s = Math.min(1, (sd[k] + F) / (R + F));
     let v = top * s * s * (3 - 2 * s); // congé en bas, épaule arrondie en haut
     // reflet : rainure creusée dans le plateau, fond arrondi (plus profonde au milieu du trait)
-    if (!ink[k] && comp[k] >= 0 && isHighlight[comp[k]]) v -= top * o.groove * Math.min(1, 0.55 + dInk[k] / Math.max(1, 0.5 * o.highlightMax * fpx));
+    if (o.groove > 0 && !ink[k] && comp[k] >= 0 && isHighlight[comp[k]]) v -= top * o.groove * Math.min(1, 0.55 + dInk[k] / Math.max(1, 0.5 * o.highlightMax * fpx));
     hs[k] = v;
   }
   // 4) le moulage adoucit tout (≈ 0,6 px final) puis retour à la définition de la toile
