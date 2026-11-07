@@ -156,7 +156,7 @@ function exportProd() {
   return zip;
 }
 function importV2(name, zip) {
-  convex(['import', '--deployment', name, '--replace-all', '-y', '--path', zip]);
+  convex(['import', '--deployment', name, '--replace-all', '-y', zip]);
 }
 
 function refresh() {
