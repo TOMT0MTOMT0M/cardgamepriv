@@ -85,6 +85,20 @@ export interface LayerOptions {
 /** biais de niveau de détail des calques couleur (audit 06/11) — voir cardLayers */
 export const MIP_BIAS = float(-0.5);
 
+/**
+ * Preset « DOUBLE FACE » (07/11, carte KCDQ Teto) : de face, la première illustration ; en penchant la carte vers la
+ * DROITE (souris ou gyroscope), la seconde apparaît par un balayage de gauche à droite, comme une image lenticulaire.
+ *  - `from` / `to` : composante x de la direction de vue (≈ sinus de l'angle) entre lesquelles on passe d'une face à
+ *    l'autre : 0,10 → 0,30 ≈ 6° → 17° d'inclinaison ;
+ *  - `wipe` : étalement du balayage le long de la carte (0 = fondu uniforme).
+ * Penchée vers la gauche ou vue de face : toujours la première. Même holo, même relief, mêmes étoiles.
+ */
+export const DOUBLE_FACE = { from: 0.1, to: 0.3, wipe: 0.12 };
+export function doubleFaceMix(V: N, uvNode: N): N {
+  const lean = V.x.add(uvNode.x.sub(0.5).mul(DOUBLE_FACE.wipe));
+  return smoothstep(float(DOUBLE_FACE.from), float(DOUBLE_FACE.to), lean);
+}
+
 export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, uvNode: N = uv(), opts: LayerOptions = {}): CardLayers {
   const V = viewDirObject();
   const k = V.xy.div(max(V.z, 0.22)).mul(vec2(1 / CARD.w, 1 / CARD.h));
@@ -92,8 +106,14 @@ export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, u
   // (audit 06/11) biais de mip −0,5 sur les calques COULEUR : la carte est souvent vue entre 55 et 80 % de la taille de
   // sa texture (LOD 0,65–0,8 → mélange trilinéaire avec le mip moitié = flou doux permanent) ; −0,5 ramène la lecture
   // vers le mip 0 pour 0 ms (`textureSampleBias` WGSL / `texture(s, uv, bias)` GLSL). Pas sur les masques (relief).
-  const bg = texture(art.bg, uvAt(depths.bg)).bias(MIP_BIAS);
-  const sj = texture(art.subject, uvAt(depths.subject)).bias(MIP_BIAS);
+  let bg: N = texture(art.bg, uvAt(depths.bg)).bias(MIP_BIAS);
+  let sj: N = texture(art.subject, uvAt(depths.subject)).bias(MIP_BIAS);
+  if (art.bg2 && art.subject2) {
+    // (double face) seconde illustration mélangée selon l'inclinaison — un graphe à part pour ces cartes seulement
+    const t = doubleFaceMix(V, uvNode);
+    bg = mix(bg, texture(art.bg2, uvAt(depths.bg)).bias(MIP_BIAS), t);
+    sj = mix(sj, texture(art.subject2, uvAt(depths.subject)).bias(MIP_BIAS), t);
+  }
   const fg = texture(art.fg, uvAt(depths.fg)).bias(MIP_BIAS);
   const fr = texture(art.frame, uvNode).bias(MIP_BIAS);
   const masks = texture(art.masks, uvNode);

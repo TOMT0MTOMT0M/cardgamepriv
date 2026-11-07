@@ -60,13 +60,16 @@ export interface KcdqEntry {
   slug: string;
   name: string;
   file: string;
+  /** preset « double face » (07/11) : seconde photo, visible quand on penche la carte sur le côté (core/cardMaterial.ts) */
+  file2?: string;
 }
 
-const KCDQ_RAW: Array<[number, string, string, string]> = [
+const KCDQ_RAW: Array<[number, string, string, string, string?]> = [
   [1, 'enzo', 'Enzo', 'kcdq-enzo.jpg'],
+  [2, 'teto', 'Teto', 'kcdq-teto.jpg', 'kcdq-teto-2.jpg'],
 ];
 
-export const KCDQ: KcdqEntry[] = KCDQ_RAW.map(([num, slug, name, file]) => ({ num, slug, name, file }));
+export const KCDQ: KcdqEntry[] = KCDQ_RAW.map(([num, slug, name, file, file2]) => ({ num, slug, name, file, ...(file2 ? { file2 } : {}) }));
 
 /** Identifiant de carte stable. */
 export const kcdqCardId = (e: KcdqEntry) => `kcdq-${e.slug}`;

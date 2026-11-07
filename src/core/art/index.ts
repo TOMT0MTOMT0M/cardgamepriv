@@ -91,6 +91,9 @@ export interface CardArt {
   masks: Texture;
   /** R émissif sujet, G foil sujet, B relief sujet */
   fx: Texture;
+  /** preset « double face » (CardData.image2) : fond et sujet de la seconde illustration, mélangés selon l'inclinaison */
+  bg2?: Texture;
+  subject2?: Texture;
   /** version aplatie (sans parallaxe) — pratique pour les scènes à nombreuses cartes */
   flat: Texture;
   canvases: Record<string, HTMLCanvasElement>;
@@ -208,6 +211,10 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     void loadCardImage(card.image, { key: !(card.photo || card.cover) }).catch(() => undefined);
   }
   if (im && card.palette === IMAGE_PALETTE) card = { ...card, palette: im.palette };
+  // (double face) seconde illustration : chargée avec la première (ensureCardImages) ; absente → une seule face
+  const im2raw = card.image2 ? cardImage(card.image2) : null;
+  const im2 = im2raw && im2raw.canvas.width > 0 ? im2raw : null;
+  if (card.image2 && !im2) void loadCardImage(card.image2, { key: !(card.photo || card.cover) }).catch(() => undefined);
   const s = o.scale ?? 1;
   const W = Math.round(BASE_W * s), H = Math.round(BASE_H * s);
   const aniso = o.anisotropy ?? 8;
@@ -234,6 +241,25 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   }
 
   const target = { bg: bg.g, subj: subj.g, fg: fg.g, fx: fx.g, pal: card.palette, r, seed: card.seed };
+  // (double face) la seconde illustration est peinte EXACTEMENT comme la première (même gabarit, même recadrage), sur
+  // ses propres calques fond + sujet ; ses calques fg / fx de travail sont jetés (le relief et l'avant-plan sont ceux
+  // de la première face : un seul masque, mêmes effets)
+  let face2: { bg: ReturnType<typeof makeCanvas>; subj: ReturnType<typeof makeCanvas> } | null = null;
+  if (im2) {
+    const bg2 = makeCanvas(W, H), subj2 = makeCanvas(W, H), fg2 = makeCanvas(W, H), fx2 = makeCanvas(W, H);
+    const layers2 = [bg2, subj2, fg2, fx2];
+    for (const k of layers2) prep(k.g, s);
+    const zoomed2 = direct && zoomLayers(layers2, dz.art, s, W, H);
+    const target2 = { bg: bg2.g, subj: subj2.g, fg: fg2.g, fx: fx2.g, pal: card.palette, r: rng(card.seed), seed: card.seed };
+    if (card.photo) paintPortraitSubject(target2, im2);
+    else if (card.cover || im2.opaque) paintCoverSubject(target2, im2, { crisp: dz.id === 'suisse-paysage' });
+    else paintImageSubject(target2, im2, card.fit);
+    if (zoomed2) layers2.forEach(({ g }) => g.restore());
+    else reframe(layers2, dz.art, s, W, H);
+    releaseCanvas(fg2.c);
+    releaseCanvas(fx2.c);
+    face2 = { bg: bg2, subj: subj2 };
+  }
   if (card.photo) paintPortraitSubject(target, im);
   else if (card.cover || (card.subject === 'image' && im?.opaque)) paintCoverSubject(target, im, { crisp: dz.id === 'suisse-paysage' });
   else if (card.subject === 'image') paintImageSubject(target, im, card.fit);
@@ -245,6 +271,10 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
 
   finishLayer(bg.g, card.seed, 0.05);
   finishLayer(subj.g, card.seed + 1, 0.04);
+  if (face2) {
+    finishLayer(face2.bg.g, card.seed, 0.05);
+    finishLayer(face2.subj.g, card.seed + 1, 0.04);
+  }
   yield;
 
   masks.g.fillStyle = '#000';
@@ -276,6 +306,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     const list = [flatTex];
     // les calques intermédiaires ne servent plus : rendus tout de suite (iOS), même hors `release`
     for (const k of [bg, subj, fg, fx, frame, masks]) releaseCanvas(k.c);
+    if (face2) for (const k of [face2.bg, face2.subj]) releaseCanvas(k.c);
     canvasList.push(flat!.c);
     return {
       bg: flatTex, subject: flatTex, fg: flatTex, frame: flatTex, masks: flatTex, fx: flatTex, flat: flatTex,
@@ -290,10 +321,12 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     frame: tex(frame.c, true, aniso, release),
     masks: tex(masks.c, false, aniso, release),
     fx: tex(fx.c, false, aniso, release),
+    ...(face2 ? { bg2: tex(face2.bg.c, true, aniso, release), subject2: tex(face2.subj.c, true, aniso, release) } : {}),
   };
   const flatTex = flat ? tex(flat.c, true, aniso, release) : out.bg;
   const list = flat ? [...Object.values(out), flatTex] : Object.values(out);
   const canvases: Record<string, HTMLCanvasElement> = { bg: bg.c, subject: subj.c, fg: fg.c, frame: frame.c, masks: masks.c, fx: fx.c };
+  if (face2) Object.assign(canvases, { bg2: face2.bg.c, subject2: face2.subj.c });
   if (flat) canvases.flat = flat.c;
   canvasList.push(...Object.values(canvases));
   return {
