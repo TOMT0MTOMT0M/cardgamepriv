@@ -2875,7 +2875,8 @@ h2, h3 { font-weight: 700; }
 /* bouton « Mes amis » du profil (retours 05/11 : lien souligné, violet « visité ») : un lien-bouton reste un bouton */
 a.btn-ghost, a.btn-primary { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 a.btn-ghost, a.btn-ghost:visited { color: var(--ink); }
-a.btn-primary:visited { color: inherit; }
+/* (07/11) lien déjà visité : le texte restait « inherit » (blanc) sur le bouton blanc → invisible (Proposer un échange) */
+a.btn-primary, a.btn-primary:visited { color: #000000; }
 .pf-amis-go { min-height: 40px; padding: 0 18px; }
 .al-fam-u { font-style: normal; color: var(--ink-3); display: none; }
 @media (max-width: 600px) {
