@@ -157,4 +157,4 @@ button { touch-action: manipulation; }
 }
 
 /* (V2, 07/11) badge « V2 — test » sur le lien admin (src/core/canal.ts) */
-.canal-badge { position: fixed; left: 10px; bottom: 10px; z-index: 95; padding: 4px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.6); font: 600 10px ui-monospace, monospace; letter-spacing: 0.2em; text-transform: uppercase; pointer-events: none; }
+.canal-badge { position: fixed; right: 10px; bottom: 10px; z-index: 95; padding: 4px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.6); font: 600 10px ui-monospace, monospace; letter-spacing: 0.2em; text-transform: uppercase; pointer-events: none; }
