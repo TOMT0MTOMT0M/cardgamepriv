@@ -62,6 +62,19 @@ export interface CardDesign {
 /** Couleur des étoiles par tier (pierre, vert-de-gris, cobalt, grenat, or, nacre). */
 export const STAR_COLORS = ['#9a9387', '#7fae84', '#5b8bd6', '#c43b58', '#e2a93b', '#f1ece2'];
 
+/** (retours live 04) arc-en-ciel des 6★ : les mêmes teintes que la bordure des tuiles (style.css) */
+export const RAINBOW = ['#ff6b9a', '#ffd36b', '#6bffb8', '#6bc8ff', '#c86bff'];
+/** Dégradé arc-en-ciel qui traverse toute la rangée d'étoiles (chaque étoile a sa part du spectre). */
+export function rainbowFill(f: Ctx, pts: Array<[number, number]>, r: number) {
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs) - r, x1 = Math.max(...xs) + r;
+  const y0 = Math.min(...ys) - r, y1 = Math.max(...ys) + r;
+  const g = x1 - x0 >= y1 - y0 ? f.createLinearGradient(x0, 0, x1, 0) : f.createLinearGradient(0, y0, 0, y1);
+  RAINBOW.forEach((c, i) => g.addColorStop(i / (RAINBOW.length - 1), c));
+  return g;
+}
+
 export function starColor(tier: number) {
   return STAR_COLORS[Math.max(0, Math.min(5, tier))];
 }
@@ -208,7 +221,8 @@ export interface StarStyle {
 /** Étoiles à des positions données. Peint la couleur, le foil, le relief et l'index d'allumage. */
 export function starsAt(f: Ctx, m: Ctx, d: DesignCtx, pts: Array<[number, number]>, st: StarStyle) {
   const shape = st.shape ?? 'star';
-  const col = st.fill ?? starColor(d.tier);
+  // (retours live 04) 6★ : étoiles ARC-EN-CIEL, comme le contour de la carte (code rareté), sur tous les gabarits
+  const col = d.rar.id === 'mythic' && pts.length ? rainbowFill(f, pts, st.r) : (st.fill ?? starColor(d.tier));
   pts.forEach(([x, y], k) => {
     // (retours live 6, C6) plus de halo lumineux autour des étoiles (`glow` ignoré)
     f.fillStyle = col;

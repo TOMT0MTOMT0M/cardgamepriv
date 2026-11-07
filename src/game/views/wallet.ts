@@ -1,7 +1,7 @@
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import type { EcoSnapshot } from '../eco';
-import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_TOTAL, achievementReward, calendarReward, fmtCoins } from '../../core/economy';
+import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_PACKS, CALENDAR_MONTH_TOTAL, achievementReward, calendarReward, fmtCoins } from '../../core/economy';
 import { GAMES_OPEN } from '../../core/games';
 import { CLOSE_X, busyButton, errMsg, esc, fmtN, h, keepFocus, loginPrompt, panelHidden, panelShown, toast } from '../ui';
 import { forgeCount } from './forge';
@@ -25,11 +25,11 @@ export function calendarHtml(s: EcoSnapshot) {
   for (let d = 1; d <= CALENDAR_DAYS; d++) {
     const r = calendarReward(d);
     const st = d < c.day ? 'past' : d === c.day ? (c.claimed ? 'today taken' : 'today') : 'next';
-    cells += `<i class="cal-d ${st}${CALENDAR_DOUBLE.includes(d) ? ' x2' : ''}${d === CALENDAR_DAYS ? ' big' : ''}" title="Jour ${d} : ${fmtCoins(r.coins)} pièces${r.packs ? ' + 1 booster' : ''}${CALENDAR_DOUBLE.includes(d) ? ' (×2)' : ''}">${d === CALENDAR_DAYS ? '★' : d}</i>`;
+    cells += `<i class="cal-d ${st}${CALENDAR_DOUBLE.includes(d) ? ' x2' : ''}${d === CALENDAR_DAYS ? ' big' : ''}" title="Jour ${d} : ${fmtCoins(r.coins)} pièces${r.packs ? ` + ${r.packs} booster${r.packs > 1 ? 's' : ''}` : ''}${CALENDAR_DOUBLE.includes(d) ? ' (×2)' : ''}">${d === CALENDAR_DAYS ? '★' : d}</i>`;
   }
-  return `<div class="w-sec"><div class="w-h"><b>Calendrier · jour ${c.day}/${CALENDAR_DAYS}</b><span>mois parfait ≈ ${fmtCoins(CALENDAR_MONTH_TOTAL)} + 1 booster</span></div>
+  return `<div class="w-sec"><div class="w-h"><b>Calendrier · jour ${c.day}/${CALENDAR_DAYS}</b><span>mois parfait ≈ ${fmtCoins(CALENDAR_MONTH_TOTAL)} + ${CALENDAR_MONTH_PACKS} boosters</span></div>
     <div class="cal">${cells}</div>
-    ${c.claimed ? `<div class="muted">Cadeau du jour pris ✓ — demain : ${fmtCoins(calendarReward(Math.min(CALENDAR_DAYS, c.day + 1)).coins)} pièces. Un jour manqué = retour au jour 1.</div>` : `<button class="btn-primary w-cal">Prendre le cadeau · +${fmtCoins(c.reward.coins)}${c.reward.packs ? ' + 1 booster' : ''}</button>`}</div>`;
+    ${c.claimed ? `<div class="muted">Cadeau du jour pris ✓ — demain : ${fmtCoins(calendarReward(Math.min(CALENDAR_DAYS, c.day + 1)).coins)} pièces. Un jour manqué = retour au jour 1.</div>` : `<button class="btn-primary w-cal">Prendre le cadeau · +${fmtCoins(c.reward.coins)}${c.reward.packs ? ` + ${c.reward.packs} booster${c.reward.packs > 1 ? 's' : ''}` : ''}</button>`}</div>`;
 }
 
 export function createWallet(backend: GameBackend, shell: Shell) {

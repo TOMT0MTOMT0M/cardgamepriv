@@ -472,7 +472,7 @@ describe('retours du 3 nov. : pity, envies, série de connexion', () => {
     await expect(t.mutation(api.users.toggleWish, { sessionToken: alice.token, cardId: 'nope' })).rejects.toThrow();
   });
 
-  test('série de connexion : le battement compte le jour, la récompense du 7e jour ajoute 5 boosters', async () => {
+  test('série de connexion : le battement compte le jour, la récompense du 7e jour ajoute 10 boosters (retours live 04)', async () => {
     const { t, alice } = await setup();
     await t.mutation(api.users.heartbeat, { sessionToken: alice.token });
     let me = await t.query(api.users.me, { sessionToken: alice.token });
@@ -484,9 +484,9 @@ describe('retours du 3 nov. : pity, envies, série de connexion', () => {
     me = await t.query(api.users.me, { sessionToken: alice.token });
     expect(me?.streakClaimable).toBe(true);
     const r = await t.mutation(api.users.claimStreak, { sessionToken: alice.token });
-    expect(r.reward).toBe(5);
+    expect(r.reward).toBe(10);
     me = await t.query(api.users.me, { sessionToken: alice.token });
-    expect(me?.packBalance).toBe(10);
+    expect(me?.packBalance).toBe(15);
     expect(me?.streakClaimable).toBe(false);
     await expect(t.mutation(api.users.claimStreak, { sessionToken: alice.token })).rejects.toThrow();
   });

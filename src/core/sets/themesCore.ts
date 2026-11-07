@@ -481,6 +481,13 @@ export function artPath(e: CatalogEntry): string {
   return artV(`${artDirOf(e)}/${e.file}`);
 }
 
+/**
+ * (retours live 04) Merveilles (`mrv-…`) : miniature = CAPTURE STATIQUE de leur design 3D (cadre + diorama, outil
+ * outils/capture-merveilles.html), à la place de la photo du vrai lieu. La vue détail garde la 3D interactive.
+ */
+export const isWonderId = (id: string) => id.startsWith('mrv-');
+export const wonderCapturePath = (id: string) => artV(`art/merveilles/cartes3d/${id.replace(/^mrv-/, '')}.webp`);
+
 /** Miniature WebP (grilles de collection, échanges) — générée par scripts/make-thumbs.mjs. */
 export function thumbPath(e: CatalogEntry): string {
   return artV(`${artDirOf(e)}/thumbs/${e.file.replace(/\.(png|jpe?g)$/i, '.webp')}`);

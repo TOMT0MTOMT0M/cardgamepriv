@@ -45,19 +45,22 @@ export const fmtCoins = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3
 // ───────────────────────────────────────────── connexion quotidienne : calendrier de 30 jours
 
 /**
- * Calendrier mensuel (s'ajoute à la série de 7 jours et ses 5 boosters, décision de Tom du 3 nov.).
+ * Calendrier mensuel (s'ajoute à la série de 7 jours et ses 10 boosters, décision de Tom du 3 nov. ; retours live 04).
  * Il suit la même série de connexion (src/core/streak.ts) : jour = position dans un cycle de 30, un jour manqué remet
  * la série — donc le calendrier — au jour 1.
  *  - jour 1 = 50 pièces, puis +10 par jour (jour 29 = 330) ;
  *  - paliers ×2 aux jours 7, 14 et 21 ;
- *  - jour 30 = 1 000 pièces + 1 booster offert.
- * Mois parfait : 7 050 pièces + 1 booster.
+ *  - jour 30 = 1 000 pièces + 1 booster offert, et (retours live 04) la prime du MOIS PARFAIT : 50 boosters en plus.
+ * Mois parfait : 7 050 pièces + 51 boosters.
  */
 export const CALENDAR_DAYS = 30;
 export const CALENDAR_DOUBLE = [7, 14, 21];
+/** (retours live 04) prime du mois parfait (30 jours d'affilée), en plus du booster du jour 30 */
+export const PERFECT_MONTH_PACKS = 50;
+export const CALENDAR_MONTH_PACKS = 1 + PERFECT_MONTH_PACKS;
 
 export function calendarReward(day: number): { coins: number; packs: number } {
-  if (day >= CALENDAR_DAYS) return { coins: 1000, packs: 1 };
+  if (day >= CALENDAR_DAYS) return { coins: 1000, packs: 1 + PERFECT_MONTH_PACKS };
   const base = 50 + 10 * (Math.max(1, day) - 1);
   return { coins: CALENDAR_DOUBLE.includes(day) ? base * 2 : base, packs: 0 };
 }

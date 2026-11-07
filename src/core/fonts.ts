@@ -18,7 +18,8 @@ import '@fontsource/ibm-plex-mono/500.css';
  *    confondent avec A et H en petit) ; Inter : tout ce qui informe en petit — libellés, capitales espacées, chiffres
  *    (tabulaires), boutons.
  */
-export const FONT_VERSION = 'in1';
+// (retours live 04) 'in2' : étoiles 6★ arc-en-ciel et étoiles remontées (Suisse paysage) → cartes repeintes
+export const FONT_VERSION = 'in2';
 /** gros titres seulement (logo, titres de page, moments forts) */
 export const FONT_DISPLAY = '"Matcha World", "Bold Frame", "Inter", system-ui, sans-serif';
 /** titres, noms, texte courant en casse mixte (graisse 400 / 600 / 700 = les 3 Bold Frame) */

@@ -45,7 +45,7 @@ describe('règles pures', () => {
     expect(calendarReward(1)).toEqual({ coins: 50, packs: 0 });
     expect(calendarReward(7).coins).toBe(220); // (50 + 60) × 2
     expect(calendarReward(29).coins).toBe(330);
-    expect(calendarReward(30)).toEqual({ coins: 1000, packs: 1 });
+    expect(calendarReward(30)).toEqual({ coins: 1000, packs: 51 });
     expect(CALENDAR_MONTH_TOTAL).toBe(7050);
     expect(potsBalanced({ coins: 100, cards: [] }, { coins: 105, cards: [] })).toBe(true);
     expect(potsBalanced({ coins: 100, cards: [] }, { coins: 106, cards: [] })).toBe(false);

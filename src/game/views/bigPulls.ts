@@ -22,6 +22,9 @@ import { observeRealCard } from '../cardImages';
  * gauche (sous l'en-tête, jusqu'au bouton Ouvrir), qui défile toute seule ; au doigt (haut / bas) le tirage qui passe
  * au centre sort de 30 % vers la droite, les autres s'inclinent en léger ÉVENTAIL centré (`fan()`).
  *
+ * (retours live 04) la VRAIE carte seule, sans bandeau de rareté (la bordure le dit) ni nom en dessous (il est sur la
+ * carte) : autour, seulement le joueur et « il y a X h » ; toucher = la carte en grand, comme dans la Collection.
+ *
  * Retours live 02 : même chose sur ORDINATEUR — la colonne des gros tirages passe à GAUCHE (les packs à droite), en
  * éventail, défilement auto (pause au survol), tirages plus grands (pseudo + nom de la carte lisibles).
  */
@@ -91,11 +94,9 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     it.innerHTML = `
       <button class="bp-card"${clone ? ' tabindex="-1"' : ''} title="${esc(`${name} · ${rr.label}${p.mintNumber ? ` · n°${p.mintNumber}` : ''}`)}" aria-label="${esc(`Voir ${name} en grand`)}">
         <span class="bp-art">${art}</span>
-        <span class="bp-badge">${rr.secret ? '✷ SECRÈTE' : rr.id === 'mythic' ? '✺ 6★' : esc(rr.label)}</span>
       </button>
       <div class="bp-info">
         <a class="bp-who" href="#/profil/${encodeURIComponent(p.userId)}"${clone ? ' tabindex="-1"' : ''}><span class="bp-ava">${ava}</span><span class="bp-user">${esc(p.userName || '?')}${p.mine ? ' <em>(moi)</em>' : ''}</span></a>
-        <span class="bp-name">${esc(name)}</span>
         <span class="bp-time" data-t="${p.createdAt}">${ago(p.createdAt)}</span>
       </div>`;
     if (e) {

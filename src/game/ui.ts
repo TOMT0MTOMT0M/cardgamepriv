@@ -1,6 +1,6 @@
 import { rarity, type RarityId } from '../core/rarity';
 import { siteUrl } from '../core/siteRoot';
-import { artPath, catalogEntry, hasArt, subthemeById, thumbPath, type CatalogEntry } from '../core/sets/themes';
+import { artPath, catalogEntry, hasArt, isWonderId, subthemeById, thumbPath, wonderCapturePath, type CatalogEntry } from '../core/sets/themes';
 import { jvThumbSvg } from '../core/art/jvTitle';
 import { observeRealCard } from './cardImages';
 import { haptics } from '../core/haptics';
@@ -52,7 +52,8 @@ export function loadSeen(): Set<string> | null {
 }
 
 /** Miniature : l'image WebP, ou (carte Jeux vidéo sans illustration) le monogramme de son design typographique. */
-export const thumbUrl = (e: CatalogEntry) => (hasArt(e) ? siteUrl(thumbPath(e)) : jvThumbSvg(e.name, subthemeById(e.subthemeId)?.label ?? ''));
+export const thumbUrl = (e: CatalogEntry) =>
+  isWonderId(e.id) ? siteUrl(wonderCapturePath(e.id)) : hasArt(e) ? siteUrl(thumbPath(e)) : jvThumbSvg(e.name, subthemeById(e.subthemeId)?.label ?? '');
 export const artUrl = (e: CatalogEntry) => siteUrl(artPath(e));
 
 /**

@@ -47,7 +47,7 @@ export function createStatus(backend: GameBackend, shell: Shell) {
     const claimable = streakClaimable(s);
     const dots = Array.from({ length: STREAK_CYCLE }, (_, i) => `<span class="st-d${i < day ? ' on' : ''}${i === day - 1 ? ' now' : ''}${i === STREAK_CYCLE - 1 ? ' gift' : ''}"><i>${i + 1}</i></span>`).join('');
     pop.innerHTML = `<div class="msn-head"><b>Connexion</b><span>${plural(s.count, 'jour')} d’affilée</span>${CLOSE_X}</div>
-      <div class="w-sec"><div class="w-h"><b>Série · 7 jours</b><span>+${STREAK_REWARD} boosters au 7e</span></div>
+      <div class="w-sec"><div class="w-h"><b>Série · 7 jours</b><span>+${STREAK_REWARD} boosters chaque semaine</span></div>
       <div class="st-days">${dots}</div>
       <div class="st-txt">${claimable ? `<b>Jour 7 atteint !</b> Ta récompense t’attend.` : day === STREAK_CYCLE ? 'Récompense réclamée ✓ · la série continue demain' : `Jour <b>${day}</b> sur ${STREAK_CYCLE} · reviens demain pour continuer`}</div>
       ${claimable ? `<div class="msn-bonus ready"><span>+${STREAK_REWARD} boosters</span><button class="btn-primary st-claim">Réclamer</button></div>` : ''}</div>
@@ -57,7 +57,7 @@ export function createStatus(backend: GameBackend, shell: Shell) {
       try {
         const r = await busyButton(e.currentTarget as HTMLElement, backend.eco.claimCalendar());
         shell.sfx.chime(4, 0.09);
-        toast(`Jour ${r.day} : +${fmtCoins(r.coins)} pièces${r.packs ? ' et 1 booster offert' : ''} !`, 'ok');
+        toast(`Jour ${r.day} : +${fmtCoins(r.coins)} pièces${r.packs > 1 ? ` et ${r.packs} boosters — mois parfait 🏆` : r.packs ? ' et 1 booster offert' : ''} !`, 'ok');
       } catch (err) {
         toast(errMsg(err), 'err');
       }

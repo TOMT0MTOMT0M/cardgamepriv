@@ -61,7 +61,7 @@ export function createTutorialView(shell: Shell): InfoView {
       <p>Dans la fiche d’un booster, la chance exacte de <b>chaque carte</b> est écrite sous elle. Au-dessus de tout : les cartes <b>secrètes</b> (les Merveilles du monde dans le World Pack${BEBOU_SECRETS_LOCKED ? ', et les Bébous, verrouillées pour l’instant' : ', et les Bébous dans le Bebou Pack'}).</p>`)}
     ${sec('pieces', 'Les pièces', `<ul>
       <li>Chaque booster ouvert rapporte quelques pièces.</li>
-      <li>Le <b>calendrier</b> (la flamme en haut) : un cadeau par jour de connexion, de plus en plus gros sur 30 jours.</li>
+      <li>Le <b>calendrier</b> (la flamme en haut) : un cadeau par jour de connexion, de plus en plus gros sur 30 jours. <b>10 boosters</b> chaque semaine d’affilée, et <b>50 boosters</b> en plus pour un mois parfait.</li>
       <li>Les <b>missions</b> du jour et de la semaine, les <b>succès</b>, et les <b>primes de complétion</b> (5 pièces par carte d’un album bouclé).</li>
       <li>On les dépense en boosters, en mises dans l’espace Jeux et dans les échanges.</li>
     </ul>`)}

@@ -3,7 +3,7 @@ import { FONT_VERSION } from '../core/fonts';
 import { loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
-import { catalogEntry, hasArt, numberingSize, subthemeById, thumbPath } from '../core/sets/themes';
+import { catalogEntry, hasArt, isWonderId, numberingSize, subthemeById, thumbPath, wonderCapturePath } from '../core/sets/themes';
 import { siteUrl } from '../core/siteRoot';
 import { bindFxReduced } from '../core/fxPref';
 
@@ -91,7 +91,7 @@ function cacheUrl(key: string): string | null {
   // l'illustration ACTUELLE fait partie de la clé : quand une carte reçoit (ou change d')image, l'ancienne version peinte
   // n'est plus jamais servie — la carte est repeinte depuis la fiche du catalogue
   // (retours live 6, B2) l'ADRESSE versionnée de la miniature (`?v=`) : une image remplacée = une autre clé
-  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}`)}`;
+  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}`)}`;
 }
 async function fromCache(key: string): Promise<string | null> {
   const url = cacheUrl(key);
@@ -121,6 +121,20 @@ async function paint(key: string): Promise<string | null> {
   const [id, rarity] = key.split('|') as [string, RarityId];
   const e = catalogEntry(id);
   if (!e) return null;
+  // (retours live 04) Merveille : la capture statique de son design 3D est déjà la carte entière (cadre compris) — pas de
+  // peinture ; repli sur la carte peinte si la capture manque
+  if (isWonderId(id)) {
+    try {
+      const r = await fetch(siteUrl(wonderCapturePath(id)));
+      if (r.ok) {
+        const blob = await r.blob();
+        void toCache(key, blob);
+        return URL.createObjectURL(blob);
+      }
+    } catch {
+      /* réseau : on peint la carte comme avant */
+    }
+  }
   const cd = cardById(id);
   // (carte Jeux vidéo sans illustration : rien à télécharger, le design typographique est peint directement)
   const thumb = hasArt(e) ? siteUrl(thumbPath(e)) : undefined;

@@ -46,7 +46,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
 
   function row(m: Mission, rerolled: boolean) {
     const done = m.progress >= m.target;
-    const r = h('div', `msn${done ? ' done' : ''}${m.claimed ? ' claimed' : ''}`);
+    const r = h('div', `msn${done ? ' done' : ''}${m.claimed ? ' claimed' : ''}${!done && m.progress <= 0 ? ' todo' : ''}`);
     r.innerHTML = `<div class="msn-top"><span class="msn-t">${esc(missionLabel(m))}</span><span class="msn-rw" title="Récompense">+${m.reward}<svg viewBox="0 0 16 20" width="10" height="12" aria-hidden="true"><path d="M3 4h10v12H3z" fill="currentColor"/></svg><span class="msn-coins">+${dailyMissionCoins(m)}${COIN_ICON}</span></span></div>
       <div class="msn-bar"><i style="width:${((m.progress / m.target) * 100).toFixed(1)}%"></i></div>
       <div class="msn-bot"><span class="msn-p">${m.claimed ? 'réclamée ✓' : `${m.progress} / ${m.target}`}</span>
@@ -116,7 +116,7 @@ export function createMissions(backend: GameBackend, shell: Shell) {
 
   function weekRow(m: WeeklyMission) {
     const done = m.progress >= m.target;
-    const r = h('div', `msn${done ? ' done' : ''}${m.claimed ? ' claimed' : ''}`);
+    const r = h('div', `msn${done ? ' done' : ''}${m.claimed ? ' claimed' : ''}${!done && m.progress <= 0 ? ' todo' : ''}`);
     r.innerHTML = `<div class="msn-top"><span class="msn-t">${esc(weeklyLabel(m))}</span><span class="msn-rw" title="Récompense"><span class="msn-coins">+${fmtCoins(m.reward)}${COIN_ICON}</span></span></div>
       <div class="msn-bar"><i style="width:${((m.progress / m.target) * 100).toFixed(1)}%"></i></div>
       <div class="msn-bot"><span class="msn-p">${m.claimed ? 'réclamée ✓' : `${m.progress} / ${m.target}`}</span>${!m.claimed && done ? '<button class="btn-primary msn-claim">Réclamer</button>' : ''}</div>`;

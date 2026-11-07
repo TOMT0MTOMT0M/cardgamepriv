@@ -8,8 +8,9 @@ import { missionDay } from './missions';
  * s'arrête pas à 7 : le jour 8 est le jour 1 d'un nouveau cycle (« 3/7 »), la série totale reste visible sur le profil.
  */
 export const STREAK_CYCLE = 7;
-/** Boosters offerts à chaque cycle de 7 jours (au-dessus du plafond de réserve, comme les missions). */
-export const STREAK_REWARD = 5;
+/** Boosters offerts à chaque semaine (cycle de 7 jours) de connexion d'affilée — au-dessus du plafond de réserve.
+ * (retours live 04) 10 boosters, au lieu de 5. */
+export const STREAK_REWARD = 10;
 
 export interface StreakState {
   /** jours d'affilée (≥ 1 dès la première visite) */

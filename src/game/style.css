@@ -3308,3 +3308,65 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .gd-rip { position: fixed; z-index: 1; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 2px solid #fff; pointer-events: none; animation: gd-rip 620ms var(--ease-sortie) forwards; }
 @keyframes gd-rip { from { transform: scale(0.3); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .gd-cur, .gd-spot { transition-duration: 1ms !important; } .gd-rip { display: none; } }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   (retours live 04) AMENDEMENT DE LA DA NOIR / BLANC : la base reste noir / blanc, mais les éléments d'INFORMATION
+   reprennent de la couleur — chances par carte (code rareté), indicateurs de l'en-tête, états des missions et de la
+   connexion. Bloc final : il l'emporte sur le bloc noir / blanc ci-dessus.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+:root {
+  --rainbow: linear-gradient(90deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff);
+  --i-pack: #6bc8ff;
+  --i-coin: #ffc94a;
+  --i-fire: #ff8a3d;
+  --i-ok: #4fd67a;
+}
+.rainbow-txt, .ps-bar.r-mythic .ps-bl .stars, .ps-bar.r-mythic .ps-bp, .me .pt-cnt .pt-n { background: var(--rainbow); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; text-shadow: none; }
+
+/* page pack : barres « chances par carte » au code rareté (1★ gris · 2★ vert · 3★ bleu · 4★ rouge · 5★ doré · 6★ arc-en-ciel) */
+.ps-bb i { background: var(--rc); box-shadow: 0 0 10px -3px var(--rc); }
+.ps-bar.r-mythic .ps-bb i { background: var(--rainbow); box-shadow: 0 0 12px -3px rgba(255, 255, 255, 0.6); }
+.ps-bar .ps-bl .stars { color: var(--rc); }
+.ps-bar .ps-bl .stars i { color: rgba(255, 255, 255, 0.15); -webkit-text-fill-color: rgba(255, 255, 255, 0.15); }
+.ps-bar .ps-bp { color: var(--rc); }
+.ps-bar.r-common .ps-bp, .ps-bar.r-common .ps-bl .stars { color: #b8b8b8; }
+.ps-bar .ps-bn { color: color-mix(in srgb, var(--rc) 70%, #8c8c8c); }
+.ps-bar.r-mythic .ps-bn { color: var(--ink-2); }
+
+/* en-tête : boosters bleu, pièces dorées, flamme orange, missions vertes, pity arc-en-ciel (6★) */
+.me .packs .p-ico, .me .packs b { color: var(--i-pack); }
+.me .packs .p-bar > i { background: var(--i-pack); }
+.me .packs.full { border-color: var(--i-pack); box-shadow: 0 0 14px -6px var(--i-pack); }
+.me .packs.empty b { color: var(--err); }
+.me .coin-btn b { color: var(--i-coin); }
+.coin-ico circle:first-child { fill: var(--i-coin); }
+.me .icon.st-btn { color: var(--i-fire); }
+.me .st-btn.ready .st-n { background: var(--i-fire); border-color: var(--i-fire); color: #000; }
+.me .icon.msn-btn { color: var(--i-ok); }
+.me .icon.msn-btn .msn-n { background: var(--i-ok); color: #000; }
+.me .pt-cnt { border-color: rgba(200, 107, 255, 0.45); }
+.me .pt-cnt svg { color: #ff6bd0; }
+.me .pt-cnt.near, .me .pt-cnt.ready { border-color: #ffd36b; box-shadow: 0 0 12px -4px #ffd36b; }
+
+/* missions : VERT = terminée / réclamée · BLANC = en cours · GRIS = pas commencée */
+.msn { border-color: rgba(255, 255, 255, 0.28); }
+.msn .msn-t { color: #fff; }
+.msn .msn-bar i { background: #fff; }
+.msn.todo { border-color: var(--line); background: transparent; opacity: 0.72; }
+.msn.todo .msn-t, .msn.todo .msn-p, .msn.todo .msn-rw { color: var(--ink-3); }
+.msn.done:not(.claimed), .msn.claimed { border-color: color-mix(in srgb, var(--i-ok) 70%, transparent); background: color-mix(in srgb, var(--i-ok) 8%, #050505); box-shadow: none; }
+.msn.done .msn-bar i, .msn.claimed .msn-bar i { background: var(--i-ok); }
+.msn.done .msn-p, .msn.claimed .msn-p { color: var(--i-ok); font-weight: 600; }
+.msn.claimed .msn-t { color: var(--ink-2); }
+.msn.done:not(.claimed) .msn-claim { background: var(--i-ok); color: #000; }
+
+/* connexion : série de 7 jours (jours faits en vert, aujourd'hui mis en avant, cadeau doré) */
+.st-d.on { border-color: color-mix(in srgb, var(--i-ok) 70%, transparent); background: color-mix(in srgb, var(--i-ok) 14%, #050505); color: var(--i-ok); }
+.st-d.now { border-color: #fff; background: #fff; color: #000; box-shadow: 0 0 14px -2px rgba(255, 255, 255, 0.8); }
+.st-d.gift { border-color: color-mix(in srgb, var(--i-coin) 60%, transparent); color: var(--i-coin); }
+.st-d.gift.on:not(.now) { background: color-mix(in srgb, var(--i-coin) 16%, #050505); }
+/* calendrier de 30 jours : jours passés en vert, aujourd'hui en avant, paliers ×2 et jour 30 dorés */
+.w-sec .cal .cal-d.past { background: color-mix(in srgb, var(--i-ok) 18%, #050505); border-color: color-mix(in srgb, var(--i-ok) 45%, transparent); color: var(--i-ok); }
+.w-sec .cal .cal-d.today { background: #fff; color: #000; transform: scale(1.12); position: relative; z-index: 1; }
+.w-sec .cal .cal-d.today.taken { background: var(--i-ok); color: #000; box-shadow: 0 0 12px -3px var(--i-ok); }
+.w-sec .cal .cal-d.next.x2, .w-sec .cal .cal-d.next.big { color: var(--i-coin); border-color: color-mix(in srgb, var(--i-coin) 45%, transparent); }

@@ -2,7 +2,7 @@ import { alpha, linear, mix } from '../canvas';
 import type { Ctx } from '../canvas';
 import { setInfo } from '../../cardData';
 import { rng } from '../../ease';
-import { type CardDesign, FONT_MONO, FONT_SANS, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, spacedFit, brushedStars, starColor, starRow, starsAt } from './common';
+import { type CardDesign, FONT_MONO, FONT_SANS, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, spacedFit, starColor, starRow, starsAt } from './common';
 
 /**
  * 8 · Suisse — grille stricte, typographie sans empattement, une seule couleur d'accent.
@@ -126,10 +126,10 @@ export const suissePaysage: CardDesign = {
       fitFont(f, d.byline, `500 {s}px ${FONT_SANS}`, 36, 600, 24);
       f.fillText(d.byline, 46, 128 + (l2 ? fs * 1.02 : 0) + 52);
     }
-    // (retours 07/11) 6★ : étoiles en aluminium brossé (comme le dos) au lieu du foil irisé
     // (retours live 6, C5c) de vraies ÉTOILES ★ comme sur les autres cartes (plus les 6 carrés)
-    if (tier >= 5) brushedStars(f, m, Array.from({ length: d.stars }, (_, k) => [720 - 12 - (d.stars - 1 - k) * 30, 90] as [number, number]), 12, 'star', card.seed);
-    else starRow(f, m, d, 720 - 12, 90, 30, 'right', { r: 12, fill: accent });
+    // (retours live 04) 6★ : ARC-EN-CIEL (code rareté, comme le contour) au lieu de l'aluminium brossé gris ; étoiles
+    // REMONTÉES (y 90 → 56) : un nom long ne passe plus dessous (« Thomas Magnum★★★★★★ »)
+    starRow(f, m, d, 720 - 12, 56, 30, 'right', { r: 12, fill: accent });
     // (retours 07/11) plus de filets horizontaux de grille : la photo et le pied se suffisent
     cut(f, (g) => g.rect(band.x, band.y, band.w, band.h));
     // pied : famille (30 px), puis artiste · sous-famille (26 px), numéro de collection géant à droite
