@@ -315,7 +315,12 @@ body.card-open .views { pointer-events: none; }
 .tile .badge { position: absolute; top: 5px; left: 5px; padding: 1px 6px; border-radius: 999px; background: var(--gold); color: #000000; font: 600 10px var(--mono); letter-spacing: 0.12em; }
 .tile.missing { background: #0a0a0a; border-color: var(--line); cursor: help; transition: transform var(--dur-rapide), box-shadow var(--dur-rapide), border-color var(--dur-rapide); }
 .tile.missing:hover { border-color: rgba(255, 255, 255, 0.2); }
-.tile.missing .art img { filter: brightness(0) contrast(0.6); opacity: 0.35; }
+.tile.missing .art { position: relative; overflow: hidden; border-radius: 5px; }
+/* (07/11) carte pas encore trouvée : son illustration floutée, assombrie, un peu désaturée + cadenas */
+.tile.missing .art img { filter: blur(5px) brightness(0.42) saturate(0.55); opacity: 0.9; transform: scale(1.08); }
+.tile.missing .art .lock { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255, 255, 255, 0.6); pointer-events: none; }
+.tile.missing .art .lock svg { width: 24%; max-width: 22px; min-width: 12px; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7)); }
+.tile.missing:hover .art img { filter: blur(4px) brightness(0.55) saturate(0.7); }
 .tile.missing .name { color: var(--ink-3); }
 .tile.owned:hover { transform: translateY(-3px); box-shadow: 0 10px 24px -10px var(--rc); }
 .tile.owned:active { transform: scale(0.97); transition-duration: var(--dur-instant); }
@@ -2884,7 +2889,7 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
   .al-fam-u { display: inline; }
   .album.fam .al-cover { box-shadow: 3px -3px 0 -1px color-mix(in srgb, hsl(var(--h, 20) 45% 40%) 45%, #141414); }
 }
-.pc-odds { position: absolute; left: 4px; right: 4px; bottom: 4px; padding: 1px 4px; border-radius: 6px; background: rgba(0, 0, 0, 0.78); font: 600 12px var(--mono); letter-spacing: 0.04em; color: var(--ink); text-align: center; pointer-events: none; }
+.pc-odds { display: block; margin-top: 1px; font: 600 11px var(--mono); letter-spacing: 0.02em; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 
 /* ── MISES À JOUR / TUTORIEL (retours 06/11, views/infos.ts) */
 .if-wrap { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
@@ -3375,3 +3380,16 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .am-ref-mine { margin: 8px 0 0; color: var(--ink); }
 .am-ref-claim { margin-top: 12px; display: grid; gap: 6px; }
 .am-ref-q { font-size: 12px; color: var(--muted, #9a948a); }
+
+/* ===== (V2, 07/11) lien admin : badge « V2 — test », écran « réservé à l'équipe », pastille « mise à jour » ===== */
+.canal-badge { position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 95; padding: 4px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.6); font: 600 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; pointer-events: none; }
+.lc-v2 .lc-k { color: #e0a95a; }
+.lc-v2-t { margin: 0 0 18px; font: 400 clamp(28px, 6vw, 44px)/1.1 var(--display); letter-spacing: 0.02em; }
+.lc-v2 .lc-when { margin: 0 0 26px; font: 400 13px/1.6 var(--mono); color: var(--ink-3); }
+.lc-v2 .lc-when a { color: var(--ink-2); }
+.lc-v2-login { border: 1px solid rgba(255, 255, 255, 0.35); background: none; color: var(--ink); padding: 12px 22px; border-radius: 999px; font: 500 12px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; cursor: pointer; }
+.lc-v2-login:hover, .lc-v2-login:focus-visible { background: rgba(255, 255, 255, 0.08); }
+.lc-v2-build { display: block; margin-top: 28px; font: 400 10px var(--mono); letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.25); }
+.maj-pill { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 60; display: flex; align-items: center; gap: 12px; transform: translate(-50%, 16px); padding: 7px 8px 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.92); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; font: 500 12px var(--mono); letter-spacing: 0.04em; opacity: 0; transition: opacity var(--dur-standard), transform var(--dur-emphatique) var(--ease-entree); white-space: nowrap; }
+.maj-pill.on { opacity: 1; transform: translate(-50%, 0); }
+.maj-pill button { border: 0; border-radius: 999px; padding: 6px 12px; background: #fff; color: #000; font: 600 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }

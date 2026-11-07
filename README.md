@@ -28,10 +28,11 @@ npx convex dev       # pousse les fonctions et le schéma du serveur
 
 Détails, tableau de bord et choix techniques : [`docs/LAB_NOTES.md`](./docs/LAB_NOTES.md). Chaque expérience a son `NOTES.md`.
 
-**Mise en ligne** (Windows) : double-clic sur `lanceurs/mettre-en-ligne-prod.cmd` (site principal) ou `lanceurs/deployer.cmd`
-→ `npm install`, serveur Convex (`npx convex dev --once`, le déploiement utilisé par le site), build, images sur R2,
-Cloudflare Pages (cardgamepriv.pages.dev). Journaux : `logs/`.
-Le jeu : https://cardgamepriv.pages.dev/jeu/ · le labo : https://cardgamepriv.pages.dev/
+**Mise en ligne** (Windows, depuis la V1 du 07/11) : le travail se fait sur la branche `v2` et se teste sur le lien admin
+`https://v2.cardgamepriv.pages.dev` (`lanceurs/mettre-en-ligne-v2.cmd`, serveur Convex de staging) ; les joueurs reçoivent
+un patch complet par `lanceurs/publier-patch.cmd` (sauvegarde de la base → fusion `v2` → `master` → tag `vX.Y` → prod).
+Mode d'emploi : [`docs/V2.md`](./docs/V2.md) · ce qui est en ligne et comment le restaurer : [`docs/V1.md`](./docs/V1.md).
+Le jeu : https://cardgamepriv.pages.dev/jeu/ · le labo : https://cardgamepriv.pages.dev/ · journaux : `logs/`.
 
 ## Organisation du dossier
 ```
@@ -47,7 +48,7 @@ donnees/        sources des catalogues
   patchs/         patchs appliqués par-dessus un tri (Patch-monde-V7.xlsx)
   suivi/          exports de suivi (cartes sans image…)
 docs/           LAB_NOTES.md (journal technique), INFRASTRUCTURE.md, specs/, labo/, recherches/
-lanceurs/       .cmd Windows à double-cliquer (mise en ligne, R2, admin jeux, cartes de test)
+lanceurs/       .cmd Windows à double-cliquer (V2, patch prod, sauvegarde, R2, admin jeux, cartes de test)
 logs/           journaux des lanceurs (hors git)
 feedback/       retours du labo récupérés (npm run feedback, hors git)
 archives/       anciens rapports et fichiers d'origine (audit du 03/11, Pokémon 151 d'origine) — hors git

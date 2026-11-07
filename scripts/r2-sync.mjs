@@ -2,6 +2,8 @@
  * Envoie public/art/ dans le bucket R2 « cardgamepriv-art » (les images du jeu ne sont plus dans le site Pages).
  *   node scripts/r2-sync.mjs           → n'envoie que les fichiers nouveaux ou modifiés (comparés à R2)
  *   node scripts/r2-sync.mjs --dist    → idem, puis retire dist/art du build si tout est bien dans R2
+ *   --nouvelles-seulement             → (V2) n'envoie que les images que R2 n'a pas encore ; une image MODIFIÉE attend le
+ *                                       patch prod (publier-patch.cmd) — le bucket est partagé avec le site des joueurs
  * Identifiants (jamais publiés) dans .env.local : R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
  * (Cloudflare → R2 → « Gérer les jetons d'API R2 » → jeton « Lecture et écriture d'objets » limité au bucket).
  * Sans identifiants : avertissement, rien n'est envoyé et dist/art est gardé (le site marche comme avant).
@@ -38,6 +40,7 @@ function walk(dir, list = []) {
 
 const E = env();
 const dist = process.argv.includes('--dist');
+const onlyNew = process.argv.includes('--nouvelles-seulement');
 if (!E.R2_ACCOUNT_ID || !E.R2_ACCESS_KEY_ID || !E.R2_SECRET_ACCESS_KEY) {
   console.log('R2 non configuré (R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY absents de .env.local) : images gardées dans le site.');
   process.exit(0);
@@ -67,6 +70,7 @@ do {
 
 const files = walk(path.join(ROOT, 'art'));
 const todo = [];
+let deferred = 0;
 for (const f of files) {
   const key = path.relative(ROOT, f).split(path.sep).join('/');
   const r = remote.get(key);
@@ -75,9 +79,13 @@ for (const f of files) {
     const md5 = createHash('md5').update(readFileSync(f)).digest('hex');
     if (md5 === r.etag) continue;
   }
+  if (r && onlyNew) {
+    deferred++;
+    continue;
+  }
   todo.push({ f, key });
 }
-console.log(`${files.length} images locales · ${remote.size} déjà dans R2 · ${todo.length} à envoyer`);
+console.log(`${files.length} images locales · ${remote.size} déjà dans R2 · ${todo.length} à envoyer${deferred ? ` · ${deferred} modifiée(s) gardée(s) pour le patch prod` : ''}`);
 
 let done = 0, failed = 0;
 const started = Date.now();

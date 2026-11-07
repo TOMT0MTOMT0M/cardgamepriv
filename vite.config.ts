@@ -5,8 +5,12 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 // Deux pages : le labo (/) et le jeu (/jeu/).
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', 'VITE_');
+  // (V2) canal de build : `--mode v2` lit .env.v2.local (staging Convex) et marque le site « V2 — test » (src/core/canal.ts)
+  const canal = mode === 'v2' ? 'v2' : 'prod';
+  const buildId = `${canal}-${new Date().toISOString().replace(/[-:]/g, '').slice(0, 13)}${process.env.BEBOU_SHA ? `-${process.env.BEBOU_SHA}` : ''}`;
   return {
     base: './',
+    define: { __BUILD_ID__: JSON.stringify(buildId) },
     plugins: [
       ...(mode === 'https' ? [basicSsl()] : []),
       // (BEBOU_CATALOG_JSON=0 pour comparer avec les littéraux d'origine)
@@ -15,6 +19,7 @@ export default defineConfig(({ mode }) => {
       preloadFonts(),
       stylesFirst(),
       catalogCoreOnly(),
+      versionJson(buildId, canal),
     ],
     // Catalogue en deux temps (perf, lot chargement 1) : le client lit le NOYAU du catalogue (sans les 4 gros sets) ;
     // le jeu installe les gros sets par import() pendant le démarrage de la 3D (main.ts), le labo au lancement.
@@ -186,6 +191,20 @@ function jsonSafe(v: unknown): boolean {
  * (main.ts, PERF2-05 : l'autre n'est jamais téléchargé) mais il sert dès le premier écran → on le précharge depuis le
  * HTML (`modulepreload`), comme les imports statiques : pas d'aller-retour réseau en plus au démarrage.
  */
+/**
+ * (V2) `version.json` à la racine du site : { id, canal, at }. Le jeu le relit de temps en temps (src/game/maj.ts) ;
+ * quand l'identifiant n'est plus celui de son propre build, un patch est sorti → « mise à jour disponible, recharge ».
+ */
+function versionJson(id: string, canal: string): Plugin {
+  return {
+    name: 'bebou-version-json',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ id, canal, at: new Date().toISOString() }) });
+    },
+  };
+}
+
 function preloadBackend(online: boolean): Plugin {
   const want = online ? '/src/game/onlineBackend.ts' : '/src/game/localBackend.ts';
   return {
