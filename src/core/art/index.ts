@@ -96,6 +96,8 @@ export interface CardArt {
   flat: Texture;
   canvases: Record<string, HTMLCanvasElement>;
   list: Texture[];
+  /** gabarit peint (designs/*.ts `id`) : le matériau holo s'y adapte (pas de bande de bordure sur « full-art ») */
+  designId: string;
   dispose(): void;
 }
 
@@ -276,7 +278,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     canvasList.push(flat!.c);
     return {
       bg: flatTex, subject: flatTex, fg: flatTex, frame: flatTex, masks: flatTex, fx: flatTex, flat: flatTex,
-      canvases: { flat: flat!.c }, list,
+      canvases: { flat: flat!.c }, list, designId: dz.id,
       dispose: () => (list.forEach((t) => t.dispose()), release && freeAll()),
     };
   }
@@ -298,6 +300,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     flat: flatTex,
     canvases,
     list,
+    designId: dz.id,
     dispose: () => (list.forEach((t) => t.dispose()), release && freeAll()),
   };
 }

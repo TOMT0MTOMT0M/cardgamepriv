@@ -176,7 +176,11 @@ export function createViewerScene(): ViewerScene {
           ctx.renderer,
         );
         mesh = wonderInstance.cardMesh;
-        mats = [mesh.material as unknown as Material, edge];
+        // (07/11, retours de Tom : 2e Merveille sans modèle 3D tant qu'on ne recharge pas) `mesh.material` est un TABLEAU
+        // [face, dos, tranche] : mis tel quel dans `mats`, clear() plantait sur `.dispose` (« e.dispose is not a
+        // function ») et laissait la visionneuse à moitié nettoyée. La face est libérée par wonderInstance.dispose(), le
+        // dos est partagé (backs) : seule la tranche est à nous.
+        mats = [edge];
         rig.add(mesh);
         haloColor.set('#f5c662');
       } else {

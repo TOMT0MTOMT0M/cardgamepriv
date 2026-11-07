@@ -59,7 +59,8 @@ input[type='search']::-webkit-search-cancel-button:hover { opacity: 1; }
 .gl-host { position: fixed; inset: 0; z-index: 0; }
 canvas.gl { display: block; width: 100vw; height: 100vh; height: 100dvh; touch-action: none; transition: opacity var(--dur-emphatique); }
 /* audit 06/11 : pas de `filter: blur` ici — 24 images de flou plein écran à chaque changement de page pour une 3D visible à 5 % */
-canvas.gl.dim { opacity: 0.16; }
+/* (07/11) page 100 % DOM : la dernière image de la 3D ne reste plus visible derrière les panneaux translucides */
+canvas.gl.dim { opacity: 0; }
 .scene-overlays { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
 .scene-overlay { position: absolute; inset: 0; }
 

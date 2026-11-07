@@ -2,7 +2,7 @@ import { alpha, linear, mix } from '../canvas';
 import type { Ctx } from '../canvas';
 import { setInfo } from '../../cardData';
 import { rng } from '../../ease';
-import { type CardDesign, FONT_MONO, FONT_SANS, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, spacedFit, starColor, starRow, starsAt } from './common';
+import { type CardDesign, FONT_MONO, FONT_SANS, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, spacedFit, brushedStars, starColor, starRow, starsAt } from './common';
 
 /**
  * 8 · Suisse — grille stricte, typographie sans empattement, une seule couleur d'accent.
@@ -117,14 +117,14 @@ export const suissePaysage: CardDesign = {
     f.font = `700 ${fs}px ${FONT_SANS}`;
     f.fillText(l1, 44, 128);
     if (l2) f.fillText(l2, 44, 128 + fs * 1.02);
-    starRow(f, m, d, 720 - 9, 92, 24, 'right', { r: 8.5, shape: 'square', fill: accent });
-    // grille
-    f.fillStyle = ink;
-    f.fillRect(48, 274, 672, 2);
-    f.fillRect(48, 924, 672, 2);
+    // (retours 07/11) 6★ : étoiles en aluminium brossé (comme le dos) au lieu du foil irisé
+    if (tier >= 5) brushedStars(f, m, Array.from({ length: d.stars }, (_, k) => [720 - 9 - (d.stars - 1 - k) * 24, 92] as [number, number]), 8.5, 'square', card.seed);
+    else starRow(f, m, d, 720 - 9, 92, 24, 'right', { r: 8.5, shape: 'square', fill: accent });
+    // (retours 07/11) plus de filets horizontaux de grille : la photo et le pied se suffisent
     cut(f, (g) => g.rect(band.x, band.y, band.w, band.h));
     // pied : famille (30 px), puis artiste · sous-famille (26 px), numéro de collection géant à droite
-    const numFont = `200 118px ${FONT_SANS}`;
+    // (retours 07/11) numéro de collection plus affirmé (maigre → demi-gras), puis réduit à 80 % (118 → 94 px)
+    const numFont = `600 94px ${FONT_SANS}`;
     f.font = numFont;
     const numW = f.measureText(num3(card.num)).width;
     const footW = 672 - numW - 36;
@@ -138,15 +138,16 @@ export const suissePaysage: CardDesign = {
         spacedFit(f, foot, 48, 1024, 1.5, 'left', `400 {s}px ${FONT_MONO}`, 26, footW, 20);
       }
     }
-    f.fillStyle = tier >= 3 ? accent : ink;
+    // (retours 07/11) numéro toujours NOIR ; seules les 6★ gardent la couleur et le foil
+    f.fillStyle = tier >= 5 ? accent : ink;
     f.font = numFont;
     f.textAlign = 'right';
     f.fillText(num3(card.num), 724, 1038);
     f.textAlign = 'left';
 
     m.fillStyle = 'rgb(255,0,0)';
-    if (tier >= 3) {
-      m.fillRect(48, 40, 72, 8);
+    if (tier >= 3) m.fillRect(48, 40, 72, 8);
+    if (tier >= 5) {
       m.font = numFont;
       m.textAlign = 'right';
       m.fillText(num3(card.num), 724, 1038);

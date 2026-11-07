@@ -114,7 +114,9 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const cuv = uv().sub(0.5).mul(vec2(CARD.w, CARD.h));
   const cq = abs(cuv).sub(vec2(CARD.w / 2 - CARD.r, CARD.h / 2 - CARD.r));
   const edgeDist = length(max(cq, 0)).add(min(max(cq.x, cq.y), 0)).sub(CARD.r).negate(); // 0 au bord, > 0 vers l'intérieur
-  const rim = smoothstep(float(BORDER_W), float(BORDER_W * 0.55), edgeDist).mul(BORDER_FOIL[Math.min(5, Math.max(0, tier))]);
+  // (retours 07/11) gabarit « Pleine illustration » : plus de bande de bordure métallique — l'image va jusqu'au bord
+  const rimK = art.designId === 'full-art' ? 0 : BORDER_FOIL[Math.min(5, Math.max(0, tier))];
+  const rim = smoothstep(float(BORDER_W), float(BORDER_W * 0.55), edgeDist).mul(rimK);
   const frameFoil = clamp(L.masks.r.mul(L.window.oneMinus()).add(rim), 0, 1).mul(holoFx.border);
   const inner = rim.oneMinus();
   const imageFoil = clamp(winFoil.add(subjFoil), 0, 1).mul(inner);

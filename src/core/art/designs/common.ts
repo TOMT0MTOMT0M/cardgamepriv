@@ -242,6 +242,43 @@ export function starsAt(f: Ctx, m: Ctx, d: DesignCtx, pts: Array<[number, number
   });
 }
 
+/**
+ * (07/11) Étoiles en ALUMINIUM BROSSÉ (6★ du gabarit Suisse, à la place du foil irisé) : la même plaque que le dos de la
+ * carte (teinte #c3c6cc, stries verticales, chanfrein clair) découpée à la forme, avec une ombre d'enfoncement (la pièce
+ * est sertie dans le papier). Masques : relief (G) seulement — pas de foil (R), le métal se suffit.
+ */
+export function brushedStars(f: Ctx, m: Ctx, pts: Array<[number, number]>, r: number, shape: StarShape = 'square', seed = 3) {
+  const rr = rng(seed);
+  pts.forEach(([x, y]) => {
+    // sertissage : arête claire en bas-droite, puis contour sombre (la pièce est enfoncée dans le papier)
+    f.save();
+    f.fillStyle = alpha('#fff', 0.7);
+    shapePath(f, shape, x + 1.2, y + 1.2, r + 1);
+    f.fill();
+    f.fillStyle = alpha('#000', 0.6);
+    shapePath(f, shape, x, y, r + 1);
+    f.fill();
+    f.restore();
+    f.save();
+    shapePath(f, shape, x, y, r);
+    f.clip();
+    // alliage plus sombre que le dos (sur un papier clair, l'aluminium doit se lire comme du métal, pas comme du blanc)
+    f.fillStyle = linear(f, x - r, y - r, x + r, y + r, [[0, '#c0c4cb'], [0.4, '#989ca3'], [0.55, '#afb3ba'], [1, '#7a7e86']]);
+    f.fillRect(x - r - 2, y - r - 2, 2 * r + 4, 2 * r + 4);
+    // brossage vertical : stries nettes, contrastées
+    for (let i = x - r - 2; i <= x + r + 2; i += 1) {
+      const v = rr();
+      f.fillStyle = v > 0.5 ? alpha('#fff', (v - 0.5) * 0.45) : alpha('#000', (0.5 - v) * 0.4);
+      f.fillRect(i, y - r - 2, 1, 2 * r + 4);
+    }
+    f.restore();
+    // relief (G) seulement : ni foil (R), ni allumage (B — c'est lui qui faisait « la lueur » blanche sur les étoiles)
+    m.fillStyle = 'rgb(0,200,0)';
+    shapePath(m, shape, x, y, r * 0.9);
+    m.fill();
+  });
+}
+
 /** Rangée d'étoiles (horizontale ou verticale). */
 export function starRow(f: Ctx, m: Ctx, d: DesignCtx, x: number, y: number, gap: number, align: 'left' | 'center' | 'right', st: StarStyle, vertical = false) {
   const n = d.stars;

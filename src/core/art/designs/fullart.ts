@@ -18,17 +18,8 @@ export const fullArt: CardDesign = {
     f.fillRect(0, 690, W, H - 690);
     f.fillStyle = linear(f, 0, 0, 0, 190, [[0, alpha(deep, 0.6)], [1, alpha(deep, 0)]]);
     f.fillRect(0, 0, W, 190);
-    // liseré intérieur (dès peu commune)
-    const key = (g: CanvasRenderingContext2D) => {
-      g.beginPath();
-      g.roundRect(20, 20, W - 40, H - 40, 26);
-    };
-    if (tier >= 1) {
-      f.strokeStyle = alpha(starColor(tier), 0.85);
-      f.lineWidth = 3; // (audit 06/11) 2 px se dissolvait à l'écran du téléphone
-      key(f);
-      f.stroke();
-    }
+    // (retours 07/11) plus de liseré intérieur ni de bande de bordure métallique (holo.ts, `rim` coupé pour ce gabarit) :
+    // l'illustration va vraiment jusqu'au bord
     starRow(f, m, d, 52, 66, 32, 'left', { r: 13, fill: tier < 2 ? '#f3efe6' : starColor(tier), stroke: alpha('#000', 0.35), glow: true });
     // (audit 06/11) tailles de texte : ≥ 30 px de base = ≈ 11 px CSS sur un téléphone (carte montrée à 285 px CSS, texture
     // ×0,7) — en dessous, le texte est perçu « flou » quelle que soit la résolution de rendu
@@ -87,11 +78,6 @@ export const fullArt: CardDesign = {
     }
 
     m.strokeStyle = m.fillStyle = 'rgb(255,0,0)';
-    if (tier >= 2) {
-      m.lineWidth = 4;
-      key(m);
-      m.stroke();
-    }
     m.font = nameFont.replace('{s}', String(ns));
     if (tier >= 4) m.fillText(card.name, 46, 978);
     m.fillStyle = 'rgb(0,255,0)';

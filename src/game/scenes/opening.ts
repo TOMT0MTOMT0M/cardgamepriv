@@ -116,9 +116,14 @@ import type { PackCard, SealedPack } from '../backend';
  */
 export type OpenStyle = 'burn' | 'tear' | 'fan';
 export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId'>): OpenStyle {
+  // (retours 07/11) une seule ouverture pour tous les boosters : la DÉCHIRURE. « Brûler » (Gaming) et « éventail »
+  // (World) restent dans le code : à gagner plus tard (succès, boutique…) — openStyleUnlocked le dira.
+  if (!UNLOCK_STYLES) return 'tear';
   if (p.packKind === 'bebou') return 'tear';
   return themeById(p.themeId ?? '')?.id === 'monde' ? 'fan' : 'burn';
 }
+/** styles d'ouverture déverrouillables (brûler, éventail) : fermé tant que rien ne les débloque en jeu */
+const UNLOCK_STYLES = false;
 
 export interface OpeningEvents {
   /** le joueur doit maintenir pour ouvrir */
