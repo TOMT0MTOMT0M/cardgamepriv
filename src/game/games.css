@@ -139,7 +139,7 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 @media (max-width: 700px) { .gm-vs { grid-template-columns: 1fr; } .gm-vs-x { justify-self: center; } }
 
 /* ouverture côte à côte */
-.gm-battle { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: start; }
+.gm-battle { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
 .gm-bcol, .gm-rrow { border: 1px solid var(--line); border-radius: 16px; padding: 12px; background: var(--panel); transition: border-color var(--dur-emphatique), box-shadow var(--dur-emphatique), opacity var(--dur-lente), filter var(--dur-lente); }
 .gm-bh { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .gm-bh b { font: 600 15px var(--title); }
