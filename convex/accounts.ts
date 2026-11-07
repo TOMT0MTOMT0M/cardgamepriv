@@ -26,14 +26,17 @@ export const findPw = internalQuery({
 });
 
 export const createPw = internalMutation({
-  args: { loginKey: v.string(), displayName: v.string(), pwHash: v.string() },
-  handler: async (ctx, { loginKey, displayName, pwHash }) => {
+  args: { loginKey: v.string(), displayName: v.string(), pwHash: v.string(), device: v.optional(v.string()) },
+  handler: async (ctx, { loginKey, displayName, pwHash, device }) => {
     const all = await ctx.db.query('users').collect();
+    // appareil d'un compte banni : pas de nouveau compte depuis ce téléphone / navigateur
+    if (device && all.some((u) => u.bannedAt && (u.devices ?? []).includes(device))) throw new ConvexError('Impossible de créer un compte depuis cet appareil.');
     // pseudo déjà pris — par un compte pseudo OU par le nom d'un joueur Discord (les commandes admin cherchent par nom)
     const k = fold(displayName);
     if (all.some((u) => u.discordId === PW_PREFIX + loginKey || fold(u.displayName) === k || fold(u.username) === k))
       throw new ConvexError('Ce pseudo est déjà pris : choisis-en un autre.');
     const userId = await createUser(ctx, { discordId: PW_PREFIX + loginKey, username: displayName, displayName, pwHash });
+    if (device) await ctx.db.patch(userId, { devices: [device] });
     return { token: await issueSession(ctx, userId) };
   },
 });
@@ -44,6 +47,7 @@ export const pwAttempt = internalMutation({
   handler: async (ctx, { userId, ok }) => {
     const u = await ctx.db.get(userId);
     if (!u) throw new ConvexError('Compte introuvable.');
+    if (u.bannedAt) throw new ConvexError('Ce compte a été banni du club.');
     const now = Date.now();
     if (!ok) {
       const fails = (u.pwFails ?? 0) + 1;

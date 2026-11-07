@@ -185,3 +185,74 @@ export const grantCoins = internalMutation({
     return { joueur: user.displayName, pièces: coins };
   },
 });
+
+/**
+ * BANNIR (ouverture 07/11) — un compte suspect (multi-comptes, faux pseudo, place squattée) :
+ *  - sessions fermées tout de suite, reconnexion refusée (même Discord, même pseudo) ;
+ *  - plus de nouveau compte pseudo depuis ses appareils ;
+ *  - caché du classement, de la liste des joueurs et de la recherche d'amis ; sa place est libérée ;
+ *  - ses échanges en attente annulés, ses annonces retirées, ses amitiés supprimées. Rien d'autre n'est effacé
+ *    (les traces restent pour comprendre ; `admin:unban` le rétablit tel quel).
+ *   npx convex run admin:ban '{"name":"pseudo","reason":"multi-comptes"}'
+ *   npx convex run admin:unban '{"name":"pseudo"}'
+ *   npx convex run admin:bans
+ */
+export const ban = internalMutation({
+  args: { name: v.string(), reason: v.optional(v.string()) },
+  handler: async (ctx, { name, reason }) => {
+    const u = await findUser(ctx, name);
+    if (u.isAdmin || u.isModerator) throw new ConvexError(`${u.displayName} est de l'équipe : retire-lui d'abord ses droits.`);
+    const now = Date.now();
+    await ctx.db.patch(u._id, { bannedAt: now, banReason: reason ?? 'banni', statusText: undefined });
+    const n = { sessions: 0, echanges: 0, annonces: 0, offres: 0, amis: 0 };
+    for (const s of await ctx.db.query('sessions').withIndex('by_userId', (q) => q.eq('userId', u._id)).collect()) (await ctx.db.delete(s._id), n.sessions++);
+    const pending = [
+      ...(await ctx.db.query('trades').withIndex('by_fromUser_status', (q) => q.eq('fromUserId', u._id).eq('status', 'pending')).collect()),
+      ...(await ctx.db.query('trades').withIndex('by_toUser_status', (q) => q.eq('toUserId', u._id).eq('status', 'pending')).collect()),
+    ];
+    for (const t of pending) (await ctx.db.patch(t._id, { status: 'cancelled', resolvedAt: now }), n.echanges++);
+    for (const l of await ctx.db.query('listings').withIndex('by_user_status', (q) => q.eq('userId', u._id).eq('status', 'open')).collect()) {
+      await ctx.db.patch(l._id, { status: 'cancelled' });
+      n.annonces++;
+      for (const o of await ctx.db.query('listingOffers').withIndex('by_listing', (q) => q.eq('listingId', l._id).eq('status', 'pending')).collect()) await ctx.db.patch(o._id, { status: 'closed' });
+    }
+    for (const o of await ctx.db.query('listingOffers').withIndex('by_from_status', (q) => q.eq('fromUserId', u._id).eq('status', 'pending')).collect()) (await ctx.db.patch(o._id, { status: 'withdrawn' }), n.offres++);
+    const links = [
+      ...(await ctx.db.query('friendships').withIndex('by_requester', (q) => q.eq('requesterId', u._id)).collect()),
+      ...(await ctx.db.query('friendships').withIndex('by_addressee', (q) => q.eq('addresseeId', u._id)).collect()),
+    ];
+    for (const f of links) (await ctx.db.delete(f._id), n.amis++);
+    return { banni: `${u.displayName} (@${u.username})`, raison: reason ?? 'banni', ...n };
+  },
+});
+
+export const unban = internalMutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const u = await findUser(ctx, name);
+    if (!u.bannedAt) return `${u.displayName} n'est pas banni.`;
+    await ctx.db.patch(u._id, { bannedAt: undefined, banReason: undefined });
+    return `${u.displayName} (@${u.username}) rétabli : il peut se reconnecter.`;
+  },
+});
+
+export const bans = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query('users').collect();
+    return users.filter((u) => u.bannedAt).map((u) => `${u.displayName} (@${u.username}) — ${u.banReason ?? ''} — ${new Date(u.bannedAt!).toISOString()}`);
+  },
+});
+
+/**
+ * Rejouer la visite guidée automatique (normalement une seule fois par compte) :
+ *   npx convex run admin:resetGuide '{"name":"tom"}'
+ */
+export const resetGuide = internalMutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const u = await findUser(ctx, name);
+    await ctx.db.patch(u._id, { guideSeenAt: undefined });
+    return `${u.displayName} : la visite guidée se relancera à sa prochaine visite.`;
+  },
+});

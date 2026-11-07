@@ -390,6 +390,26 @@ async function newRound(ctx: MutationCtx, carriedCoins: number, carriedCards: Do
   return (await ctx.db.get(id))!;
 }
 
+/**
+ * POT DE BASE (ouverture 07/11) : le site garnit la roue en cours — `coins` pièces + une carte 6★ offerte, en plus de la
+ * carte du site habituelle. Posé à la fin de la remise à zéro (convex/launch.ts) ; à la main :
+ *   npx convex run games:seedRouletteCmd '{"coins":3000}'
+ */
+export const ROULETTE_SEED_COINS = 3000;
+export async function seedRoulette(ctx: MutationCtx, coins: number) {
+  const r = await ensureRound(ctx);
+  let c = houseCard(secureRandom);
+  for (let i = 0; i < 400 && c.rarity !== 'mythic'; i++) c = houseCard(secureRandom);
+  const rarity = c.rarity as RarityId;
+  const card = { cardId: c.id, cardName: c.name, rarity, mintNumber: await mint(ctx, c.id, rarity), foilSeed: Math.floor(secureRandom() * 900000) + 100000 };
+  await ctx.db.patch(r._id, { carriedCoins: r.carriedCoins + coins, houseCards: [...r.houseCards, card] });
+  return { tirage: r.day, pieces: r.carriedCoins + coins, cartes: [...r.houseCards, card].map((h) => `${h.cardName} (${h.rarity})`) };
+}
+export const seedRouletteCmd = internalMutation({
+  args: { coins: v.optional(v.number()) },
+  handler: async (ctx, { coins }) => await seedRoulette(ctx, Math.max(0, Math.floor(coins ?? ROULETTE_SEED_COINS))),
+});
+
 async function ensureRound(ctx: MutationCtx) {
   return (await openRound(ctx)) ?? (await newRound(ctx, 0, [], Date.now()));
 }

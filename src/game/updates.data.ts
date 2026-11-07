@@ -29,10 +29,12 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
-        date: '8 nov.', title: 'Version 1 — Bébou Cartes', tag: 'nouveau',
+        date: '7 nov.', title: 'Version 1 — Bébou Cartes', tag: 'nouveau',
         points: [
+          'Saison 1 : tout le monde repart de zéro. Compte avec Discord ou un simple pseudo, 15 boosters offerts et recharge ×2 pendant tes 24 premières heures.',
+          'La roulette démarre avec un pot de base : des pièces et une carte 6★ offertes par le club.',
           `${CARDS} cartes à collectionner dans 4 thèmes — Gaming, Pop Culture, Sport et World — plus des cartes secrètes.`,
-          '5 boosters (Bebou, Gaming, Popculture, Sport, World), 1 booster offert toutes les 5 minutes, ouvertures par 5 ou 10.',
+          '5 boosters (Bebou, Gaming, Popculture, Sport, World), 1 booster offert toutes les 5 minutes (jusqu’à 15 en réserve), ouvertures par 5 ou 10.',
           'Collection par familles et albums, classeurs, la Forge et les Contrats pour transformer tes doublons.',
           'Échanges directs entre amis et tableau d’offres ouvert à tous.',
           'Succès à paliers : à chaque palier, une récompense — pièces, boosters, titres, badges ou cadres animés.',

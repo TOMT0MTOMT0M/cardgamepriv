@@ -81,6 +81,7 @@ export function createOnlineBackend(): GameBackend {
             pityCount: n.user.pityCount ?? 0,
             streak: n.user.streak ?? undefined,
             staff: !!n.user.staff,
+            guideSeen: !!n.user.guideSeen,
           }
         : null;
       state.wishlist = n.user?.wishlist ?? [];
@@ -132,6 +133,7 @@ export function createOnlineBackend(): GameBackend {
     },
     // (ouverture 07/11) fenêtre de connexion : Discord OU pseudo + mot de passe (views/login.ts)
     login: () => void import('./views/login').then((m) => m.openLogin()),
+    markGuideSeen: () => net.markGuideSeen(),
     logout: () => net.logout(),
     async preparePack(req: PackRequest) {
       const p = await net.preparePack({ packKind: req.kind, themeId: req.themeId });

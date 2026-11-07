@@ -3,6 +3,7 @@ import { internalMutation, internalQuery, query, type MutationCtx, type QueryCtx
 import type { Doc, TableNames } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { BOOST_MS } from '../src/core/packRegen';
+import { ROULETTE_SEED_COINS, seedRoulette } from './games';
 
 /**
  * OUVERTURE OFFICIELLE (07/11) — date d'ouverture + remise à zéro de la saison de test.
@@ -194,7 +195,7 @@ export const resetStep = internalMutation({
         ...(u.refCode ? { refCode: u.refCode } : {}),
         ...(u.devices ? { devices: u.devices } : {}),
         ...(u.pwHash ? { pwHash: u.pwHash } : {}),
-        welcomeDmAt: u.welcomeDmAt ?? now, // (déjà dans le club : pas de message de bienvenue)
+        welcomeDmAt: u.welcomeDmAt ?? now,
         packBalance: STARTER_PACKS,
         lastDailyClaimAt: 0,
         packRegenAt: now,
@@ -206,6 +207,8 @@ export const resetStep = internalMutation({
       });
     }
     counts.users = removed;
+    // roulette : pot de base pour la nouvelle saison (pièces + une 6★ offerte, en plus de la carte du site)
+    await seedRoulette(ctx, ROULETTE_SEED_COINS);
     // les suggestions des joueurs supprimés restent (auteur affiché « ? ») : c'est la file de travail de l'équipe
     const c = await config(ctx);
     if (c) await ctx.db.patch(c._id, { resetAt: now, lastReset: { startedAt: a.startedAt, done: true, finishedAt: now, counts } });

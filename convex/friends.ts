@@ -49,7 +49,7 @@ async function findTarget(ctx: MutationCtx, userId: Id<'users'> | undefined, nam
   }
   const want = foldName((name ?? '').slice(0, PSEUDO_MAX));
   if (!want) throw new ConvexError('Écris le pseudo exact de ton ami.');
-  const users = await ctx.db.query('users').collect();
+  const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
   const byUsername = users.filter((u) => foldName(u.username) === want);
   if (byUsername.length === 1) return byUsername[0];
   const byName = users.filter((u) => foldName(u.displayName) === want);

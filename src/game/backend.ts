@@ -241,6 +241,8 @@ export interface Me {
   streak?: StreakState;
   /** (ouverture 07/11) équipe (admin / modérateur) : passe le compte à rebours */
   staff?: boolean;
+  /** (ouverture 07/11) visite guidée automatique déjà jouée (une fois par compte) */
+  guideSeen?: boolean;
 }
 
 /** Réserve de boosters à l'instant présent (le compte à rebours de l'en-tête l'appelle chaque seconde). */
@@ -345,6 +347,8 @@ export interface GameBackend {
   readonly eco: EcoBackend;
   onChange(fn: (s: GameState) => void): () => void;
   login(): void;
+  /** (ouverture 07/11) la visite guidée a démarré : ne plus la proposer (absent en démo) */
+  markGuideSeen?(): Promise<void>;
   logout(): Promise<void>;
   /** Tire (ou rend, s'il y en a un non ouvert) un booster scellé. */
   preparePack(req: PackRequest): Promise<SealedPack>;

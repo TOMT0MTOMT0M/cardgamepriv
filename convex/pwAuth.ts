@@ -40,13 +40,14 @@ function checkLen(password: string) {
 }
 
 export const signup = action({
-  args: { name: v.string(), password: v.string(), clubCode: v.optional(v.string()) },
+  args: { name: v.string(), password: v.string(), clubCode: v.optional(v.string()), device: v.optional(v.string()) },
   handler: async (ctx, a): Promise<{ token: string }> => {
     const name = cleanName(a.name);
     checkLen(a.password);
     const code = (process.env.CLUB_CODE ?? '').trim();
     if (code && (a.clubCode ?? '').trim().toLowerCase() !== code.toLowerCase()) throw new ConvexError('Code du club incorrect : demande-le à Tom ou Hugo.');
-    return await ctx.runMutation(internal.accounts.createPw, { loginKey: loginKey(name), displayName: name, pwHash: hashPassword(a.password) });
+    const device = a.device && /^[a-z0-9-]{8,64}$/i.test(a.device) ? a.device : undefined;
+    return await ctx.runMutation(internal.accounts.createPw, { loginKey: loginKey(name), displayName: name, pwHash: hashPassword(a.password), ...(device ? { device } : {}) });
   },
 });
 

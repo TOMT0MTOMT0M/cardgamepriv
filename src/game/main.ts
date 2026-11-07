@@ -947,6 +947,8 @@ async function boot() {
   perfMark('boutique');
   reportLoad(shell);
   setTimeout(() => loader.remove(), 700);
+  // (ouverture 07/11) visite guidée automatique : une seule fois par compte (`?guide` pour la revoir)
+  void import('./views/guide').then((m) => m.armGuide(backend));
 
   // en tâche de fond : miniatures de la collection, puis les modules des autres pages (navigation instantanée)
   setTimeout(() => {

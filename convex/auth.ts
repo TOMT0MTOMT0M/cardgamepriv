@@ -93,6 +93,7 @@ export const upsertDiscordUser = internalMutation({
       await ctx.scheduler.runAfter(4000, internal.discordBot.welcomeDm, { userId });
       user = (await ctx.db.get(userId))!;
     } else {
+      if (user.bannedAt) throw new ConvexError('Ce compte a été banni du club.');
       await ctx.db.patch(user._id, {
         username: args.username,
         displayName: args.displayName,
@@ -124,7 +125,7 @@ export async function createUser(
 ): Promise<Id<'users'>> {
   await assertOpen(ctx);
   const cap = maxPlayers();
-  const allUsers = await ctx.db.query('users').collect();
+  const allUsers = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
   if (allUsers.length >= cap) throw new ConvexError(`Le club est complet (${cap}/${cap} joueurs).`);
   const now = Date.now();
   const userId = await ctx.db.insert('users', {

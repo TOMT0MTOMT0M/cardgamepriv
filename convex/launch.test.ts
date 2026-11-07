@@ -52,7 +52,11 @@ describe('ouverture 07/11 : remise à zéro', () => {
     expect(T.coins).toBeUndefined();
     expect(T.econ).toBeUndefined();
     expect(users.find((u) => u._id === hugo)!.isModerator).toBe(true);
-    for (const table of ['inventory', 'coinTx', 'activityFeed', 'cardMints'] as const) expect(await t.run((ctx) => ctx.db.query(table).collect())).toHaveLength(0);
+    for (const table of ['inventory', 'coinTx', 'activityFeed'] as const) expect(await t.run((ctx) => ctx.db.query(table).collect())).toHaveLength(0);
+    // numéros d'impression repartis de zéro : seules les 2 cartes offertes par la roulette ont pris leur n° 1
+    const mints = await t.run((ctx) => ctx.db.query('cardMints').collect());
+    expect(mints.length).toBeLessThanOrEqual(2);
+    expect(mints.every((m) => m.lastMintNumber === 1)).toBe(true);
     // Tom et Hugo restent connectés, les autres sessions sont fermées
     const sessions = await t.run((ctx) => ctx.db.query('sessions').collect());
     expect(sessions.map((s) => s.token).sort()).toEqual(['tok-hugo', 'tok-tom']);
@@ -129,5 +133,51 @@ describe('ouverture 07/11 : recharge ×2 pendant 24 h', () => {
     expect(applyRegen(0, t0, t0 + 2.5 * R, 0)).toEqual(applyRegen(0, t0, t0 + 2.5 * R));
     expect(applyRegen(0, t0, t0 + 2.5 * R, t0 - 5)).toEqual({ balance: 2, regenAt: t0 + 2 * R, nextAt: t0 + 3 * R });
     expect(applyRegen(PACK_CAP, t0, t0 + 5, B).nextAt).toBeNull();
+  });
+});
+
+describe('ouverture 07/11 : bannissement, pot de la roulette, visite guidée', () => {
+  test('ban : sessions fermées, reconnexion refusée, caché des listes, place libérée ; unban', async () => {
+    const t = convexTest(schema, modules);
+    await player(t, 'tom', { isAdmin: true });
+    const { token } = await t.mutation(internal.accounts.createPw, { loginKey: 'troll', displayName: 'Troll', pwHash: 's1$a$b', device: 'device-troll-01' });
+    const me = (await t.query(api.users.me, { sessionToken: token }))!;
+    await expect(t.mutation(internal.admin.ban, { name: 'tom' })).rejects.toThrow(/équipe/);
+    const r = await t.mutation(internal.admin.ban, { name: 'troll', reason: 'multi-comptes' });
+    expect(r.sessions).toBe(1);
+    expect(await t.query(api.users.me, { sessionToken: token })).toBeNull();
+    await expect(t.mutation(internal.accounts.pwAttempt, { userId: me._id, ok: true })).rejects.toThrow(/banni/);
+    // même appareil : pas de nouveau compte ; même pseudo : déjà pris
+    await expect(t.mutation(internal.accounts.createPw, { loginKey: 'troll2', displayName: 'Troll2', pwHash: 's1$a$b', device: 'device-troll-01' })).rejects.toThrow(/appareil/);
+    await expect(t.mutation(internal.accounts.createPw, { loginKey: 'troll', displayName: 'Troll', pwHash: 's1$a$b' })).rejects.toThrow(/déjà pris/);
+    const list = await t.query(api.users.friends, {});
+    expect(list.map((u) => u.displayName)).toEqual(['tom']);
+    expect(await t.mutation(internal.admin.bans, {})).toHaveLength(1);
+    await t.mutation(internal.admin.unban, { name: 'troll' });
+    expect((await t.mutation(internal.accounts.pwAttempt, { userId: me._id, ok: true })).token).toBeTruthy();
+  });
+
+  test('remise à zéro : la roulette repart avec un pot de base (pièces + une 6★ offerte)', async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    await player(t, 'tom', { isAdmin: true });
+    await player(t, 'hugo', { isModerator: true });
+    await t.mutation(internal.launch.resetAll, { confirm: 'RESET' });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const rounds = await t.run((ctx) => ctx.db.query('rouletteRounds').collect());
+    expect(rounds).toHaveLength(1);
+    expect(rounds[0].carriedCoins).toBe(3000);
+    expect(rounds[0].houseCards).toHaveLength(2);
+    expect(rounds[0].houseCards[1].rarity).toBe('mythic');
+  });
+
+  test('visite guidée : une seule fois, rendue par admin:resetGuide', async () => {
+    const t = convexTest(schema, modules);
+    const { token } = await t.mutation(internal.accounts.createPw, { loginKey: 'neo', displayName: 'Neo', pwHash: 's1$a$b' });
+    expect((await t.query(api.users.me, { sessionToken: token }))!.guideSeen).toBe(false);
+    await t.mutation(api.users.markGuideSeen, { sessionToken: token });
+    expect((await t.query(api.users.me, { sessionToken: token }))!.guideSeen).toBe(true);
+    await t.mutation(internal.admin.resetGuide, { name: 'neo' });
+    expect((await t.query(api.users.me, { sessionToken: token }))!.guideSeen).toBe(false);
   });
 });

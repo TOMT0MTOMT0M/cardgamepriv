@@ -127,6 +127,11 @@ export default defineSchema({
     pwLockUntil: v.optional(v.number()),
     /** (ouverture 07/11) recharge des boosters ×2 jusqu'à cet instant (24 h après l'arrivée — src/core/packRegen.ts) */
     regenBoostUntil: v.optional(v.number()),
+    /** (ouverture 07/11) BANNI (admin:ban) : sessions fermées, reconnexion refusée, caché des listes, place libérée */
+    bannedAt: v.optional(v.number()),
+    banReason: v.optional(v.string()),
+    /** (ouverture 07/11) visite guidée automatique déjà jouée (une seule fois par compte — views/guide.ts) */
+    guideSeenAt: v.optional(v.number()),
     /** MP de bienvenue du bot Discord (lien de parrainage) déjà tenté : une seule fois, à la première connexion */
     welcomeDmAt: v.optional(v.number()),
   })

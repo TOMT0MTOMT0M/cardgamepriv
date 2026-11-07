@@ -3281,3 +3281,30 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .p-boost[hidden] { display: none; }
 @keyframes p-boost-in { from { opacity: 0; transform: translateY(4px) scale(0.8); } }
 @media (max-width: 600px) { .p-boost { top: -7px; right: -4px; font-size: 9.5px; padding: 0 5px 1px; } }
+
+/* ── VISITE GUIDÉE (ouverture 07/11, views/guide.ts) : un curseur qui fait seul le tour du jeu, une fois */
+.gd { position: fixed; inset: 0; z-index: 85; opacity: 0; transition: opacity var(--dur-standard) var(--ease-standard); }
+.gd.on { opacity: 1; }
+.gd.out { opacity: 0; pointer-events: none; }
+.gd-spot { position: fixed; left: 50%; top: 50%; width: 0; height: 0; border-radius: 16px; box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(255, 255, 255, 0.55), 0 0 28px 2px rgba(255, 255, 255, 0.18); transition: left 420ms var(--ease-standard), top 420ms var(--ease-standard), width 420ms var(--ease-standard), height 420ms var(--ease-standard), box-shadow 300ms; pointer-events: none; }
+.gd-spot.off { box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.5); left: 50% !important; top: 50% !important; width: 2px !important; height: 2px !important; }
+.gd-tip { position: fixed; left: 0; top: 0; padding: 14px 16px 12px; border-radius: 16px; background: rgba(0, 0, 0, 0.94); box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.9); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0; transition: opacity 200ms, transform 360ms var(--ease-entree); pointer-events: auto; }
+.gd-tip.in { opacity: 1; }
+.gd-l { display: block; font: 600 11px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-3); }
+.gd-t { margin: 6px 0 10px; font: 400 16px/1.4 var(--title); color: var(--ink); }
+.gd-dots { display: flex; gap: 5px; }
+.gd-dots i { width: 14px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); transition: background-color 300ms; }
+.gd-dots i.on { background: #fff; }
+.gd-go { margin-top: 12px; width: 100%; min-height: 44px; font-size: 13px; }
+.gd-skip { position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); border: 0; background: rgba(0, 0, 0, 0.6); padding: 10px 14px; border-radius: 999px; font: 600 11px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-2); }
+.gd.last .gd-skip { display: none; }
+.gd.last, .gd.last .gd-spot { pointer-events: none; }
+.gd.last .gd-tip { pointer-events: auto; }
+.gd-cur { position: fixed; left: 0; top: 0; z-index: 2; pointer-events: none; transition-property: transform; transition-timing-function: cubic-bezier(0.45, 0, 0.2, 1); will-change: transform; }
+.gd-cur.arrow svg { display: block; margin: -3px 0 0 -4px; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5)); transition: transform 150ms; }
+.gd-cur.arrow.tap svg { transform: scale(0.86); }
+.gd-cur.finger::before { content: ''; position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 255, 255, 0.88); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 18px rgba(255, 255, 255, 0.55); transition: transform 150ms; }
+.gd-cur.finger.tap::before { transform: scale(0.78); background: #fff; }
+.gd-rip { position: fixed; z-index: 1; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 2px solid #fff; pointer-events: none; animation: gd-rip 620ms var(--ease-sortie) forwards; }
+@keyframes gd-rip { from { transform: scale(0.3); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .gd-cur, .gd-spot { transition-duration: 1ms !important; } .gd-rip { display: none; } }

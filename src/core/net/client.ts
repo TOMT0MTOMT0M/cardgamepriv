@@ -56,6 +56,8 @@ export interface MeProfile {
   staff?: boolean;
   /** compte pseudo (sans Discord) */
   pwAccount?: boolean;
+  /** (ouverture 07/11) visite guidée automatique déjà jouée */
+  guideSeen?: boolean;
 }
 
 /** (ouverture 07/11, convex/launch.ts) heure d'ouverture, dernière remise à zéro, code du club demandé à l'inscription */
@@ -524,7 +526,8 @@ class GameNetClient {
   /** (ouverture 07/11) compte sans Discord : pseudo + mot de passe (convex/pwAuth.ts). */
   public async signupWithPassword(name: string, password: string, clubCode?: string) {
     if (!this.client) throw new Error('Serveur non configuré');
-    const { token } = await this.client.action(api.pwAuth.signup, { name, password, ...(clubCode ? { clubCode } : {}) });
+    const device = deviceId();
+    const { token } = await this.client.action(api.pwAuth.signup, { name, password, ...(clubCode ? { clubCode } : {}), ...(device ? { device } : {}) });
     this.adoptToken(token);
   }
   public async loginWithPassword(name: string, password: string) {
@@ -532,6 +535,11 @@ class GameNetClient {
     const { token } = await this.client.action(api.pwAuth.login, { name, password });
     this.adoptToken(token);
   }
+  /** (ouverture 07/11) visite guidée lancée : plus jamais rejouée sur ce compte */
+  public async markGuideSeen() {
+    if (this.client && this.sessionToken) await this.client.mutation(api.users.markGuideSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
+  }
+
   private adoptToken(token: string) {
     this.saveStoredToken(token);
     this.state.authError = null;

@@ -60,6 +60,8 @@ export const me = query({
       staff: !!(user.isAdmin || user.isModerator),
       /** compte pseudo (sans Discord) */
       pwAccount: user.discordId.startsWith('pw:'),
+      /** (ouverture 07/11) visite guidée automatique déjà jouée */
+      guideSeen: !!user.guideSeenAt,
     };
   },
 });
@@ -115,7 +117,7 @@ export const friends = query({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const users = await ctx.db.query('users').collect();
+    const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
     return users
       .map((u) => ({
         _id: u._id,
@@ -164,5 +166,14 @@ export const heartbeat = mutation({
     // rien de neuf : AUCUNE écriture (sinon toutes les requêtes qui lisent ce joueur repartent)
     if (Object.keys(patch).length) await ctx.db.patch(user._id, patch);
     return { ok: true };
+  },
+});
+
+/** (ouverture 07/11) La visite guidée automatique a démarré : elle ne se rejouera plus jamais sur ce compte. */
+export const markGuideSeen = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await requireUser(ctx, sessionToken);
+    if (!u.guideSeenAt) await ctx.db.patch(u._id, { guideSeenAt: Date.now() });
   },
 });

@@ -79,7 +79,7 @@ export const activity = query({
 export const leaderboard = query({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query('users').collect();
+    const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
     const rows = [];
     for (const u of users) {
       const { stats } = await statsOf(ctx, u);
@@ -110,7 +110,7 @@ export const leaderboard = query({
 export const markLeader = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query('users').collect();
+    const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
     let best: { u: Doc<'users'>; n: number } | null = null;
     for (const u of users) {
       const { stats } = await statsOf(ctx, u);
