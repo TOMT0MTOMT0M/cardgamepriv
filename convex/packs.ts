@@ -351,7 +351,8 @@ export const revealPacks = mutation({
   },
 });
 
-const PUBLIC_SITE_URL = 'https://main.cardgamepriv.pages.dev';
+// (07/11) même adresse que le bot (discordBot.ts) : « main. » était un ancien déploiement figé (illustrations récentes absentes)
+const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL ?? 'https://cardgamepriv.pages.dev').trim().replace(/\/+$/, '');
 
 export const notifyDiscordPull = internalAction({
   args: {

@@ -1,5 +1,6 @@
 import type { GameBackend } from '../backend';
 import { closeLayers, closePanels, esc, h, navigate } from '../ui';
+import { REFERRAL } from '../../core/referral';
 
 /**
  * VISITE GUIDÉE AUTOMATIQUE (ouverture 07/11) — à la première visite d'un compte, un curseur (flèche à l'ordinateur,
@@ -25,7 +26,7 @@ const STEPS = (name: string): Step[] => [
   { nav: 'collection', label: 'Ta collection', text: 'Touche une carte pour la faire tourner en 3D. Tes doublons se recyclent en contrats.' },
   { nav: 'echanges', label: 'Échanges', text: 'Propose un échange à un pote, ou poste une annonce sur le tableau d’offres.' },
   { nav: 'jeux', label: 'Jeux', text: 'Pack Battle, Battle Royale et la roulette : un pot de départ t’y attend (tirages à 10 h et 20 h).' },
-  { nav: 'amis', label: 'Amis', text: 'Ton lien d’invitation est ici : 10 boosters offerts à chaque pote, et 10 pour toi.' },
+  { nav: 'amis', label: 'Amis', text: `Ton lien d’invitation est ici : ${REFERRAL.packs} boosters offerts à chaque pote, et ${REFERRAL.packs} pour toi.` },
   { nav: '', target: ['.me .msn-btn', '.me .st-btn'], label: 'Chaque jour', text: 'Missions, série de connexion et calendrier : des pièces et des boosters tous les jours.' },
   { target: ['.open-btn', '.packs-row'], label: 'À toi', text: 'Ouvre ton premier booster. Bonne chance pour les 6★ !', end: true },
 ];

@@ -1,5 +1,6 @@
 import type { GameBackend } from '../backend';
 import { h, toast } from '../ui';
+import { REFERRAL } from '../../core/referral';
 
 /**
  * ÉCRAN D'OUVERTURE (07/11) — « ouverture dans 02h14 » tant que l'heure posée par `launch:setLaunch` n'est pas passée.
@@ -39,7 +40,7 @@ export function createLaunchGate(backend: GameBackend) {
         <ul class="lc-pts">
           <li><b>Nouvelle saison.</b> Collections, succès, stats et classement repartent de zéro.</li>
           <li><b>Ton compte</b> se crée à l’ouverture, avec Discord ou un simple pseudo : 15 boosters offerts et recharge ×2 pendant 24 h.</li>
-          <li><b>Invite tes potes</b> : 10 boosters offerts à chacun, 10 pour toi.</li>
+          <li><b>Invite tes potes</b> : ${REFERRAL.packs} boosters offerts à chacun, ${REFERRAL.packs} pour toi.</li>
         </ul>
       </div>
       <button class="lc-staff" type="button">Accès équipe</button>`;
