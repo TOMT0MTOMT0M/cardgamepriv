@@ -14,6 +14,6 @@ crons.interval('roulette : tirages 10 h et 20 h', { minutes: 5 }, internal.games
 crons.interval('annonces : expiration', { minutes: 15 }, internal.listings.expireTick, {});
 
 // (retours live 6, C15) titre « Numéro un » : le premier du classement est marqué
-crons.interval('classement : numéro un', { hours: 1 }, internal.profiles.markLeader, {});
+crons.interval('classement : numero un', { hours: 1 }, internal.profiles.markLeader, {});
 
 export default crons;
