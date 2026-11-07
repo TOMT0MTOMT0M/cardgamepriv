@@ -39,7 +39,7 @@ async function collectionOf(ctx: QueryCtx, u: Doc<'users'>) {
 
 async function achStats(ctx: QueryCtx, u: Doc<'users'>, inv?: Doc<'inventory'>[]) {
   const coll = inv ?? (await collectionOf(ctx, u));
-  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0 });
+  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0 });
   return achievementStats(p, econOf(u));
 }
 

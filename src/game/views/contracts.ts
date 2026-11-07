@@ -9,6 +9,7 @@ import { haptics } from '../../core/haptics';
 import { paintedCard } from '../cardImages';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 import { PROTECT_LEGEND, protectIcons, protection as protectionOf } from './safety';
+import { GAMES_OPEN } from '../../core/games';
 
 /**
  * CONTRATS (façon CS:GO) : on choisit une étoile, on remplit le contrat avec ses doublons (10 / 20 / 50 cartes),
@@ -38,7 +39,9 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   const countOf = (id: string) => seq.reduce((a, x) => a + (x === id ? 1 : 0), 0);
   let busy = false;
   let open = false;
+  // (retours live 6, C8) les contrats sont un onglet de la COLLECTION, à côté de la Forge : même bascule en tête
   el.innerHTML = `
+    <div class="coll-switch ct-switch"><div class="seg coll-views" role="tablist" aria-label="Vue de la collection"><a role="tab" href="#/collection">Cartes</a><a role="tab" href="#/collection/albums">Albums</a><a role="tab" href="#/collection/classeurs">Classeurs</a><a role="tab" href="#/collection/forge" class="ct-forge">Forge</a><a role="tab" class="on" aria-selected="true" href="#/collection/contrats">Contrats</a></div></div>
     <div class="ct-wrap">
       <header class="ct-head">
         <div class="eyebrow">Contrats</div>
@@ -538,6 +541,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     enter() {
       shell.show(null);
       shell.setDimmed(true);
+      // la Forge suit l'ouverture de l'espace Jeux (comme dans la collection)
+      el.querySelector<HTMLElement>('.ct-forge')!.hidden = !(GAMES_OPEN || !!backend.eco.snapshot?.isAdmin);
       // première étoile où un contrat est possible, sinon la plus basse
       if (!seq.length) tier = TIERS.find((r) => possibleOf(r).possible > 0) ?? TIERS.find((r) => possibleOf(r).extra > 0) ?? tier;
       render();

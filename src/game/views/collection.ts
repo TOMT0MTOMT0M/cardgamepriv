@@ -129,7 +129,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
 
   el.innerHTML = `
     <div class="coll-head">
-      <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="Vue de la collection"><button role="tab" data-v="cards">Cartes</button><button role="tab" data-v="albums">Albums</button><button role="tab" data-v="binders">Classeurs</button><button role="tab" data-v="forge">Forge</button></div></div>
+      <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="Vue de la collection"><button role="tab" data-v="cards">Cartes</button><button role="tab" data-v="albums">Albums</button><button role="tab" data-v="binders">Classeurs</button><button role="tab" data-v="forge">Forge</button><button role="tab" data-v="contrats">Contrats</button></div></div>
       <div class="tabs"></div>
       <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-name"></span></div>
       <div class="progress"></div>
@@ -319,6 +319,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         if (theme.secret) theme = ALL_THEMES[0];
         goAlbums();
       } else if (v === 'forge') goForge();
+      // (retours live 6, C8) les Contrats : leur page, sous l'onglet Collection
+      else if (v === 'contrats') return void (location.hash = '#/collection/contrats');
       else goBinders();
       shell.sfx.tick(1.2, 0.04);
     }),

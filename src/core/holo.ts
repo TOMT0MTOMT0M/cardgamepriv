@@ -61,8 +61,10 @@ export interface HoloOptions {
  */
 export const HOLO_LIMITS = {
   // (retours 06/11 : « réduire les effets sur les cartes, les bleues / rouges c'est trop ») : plafonds baissés
-  full: { image: 0.1, border: 0.72, glint: 0.55 },
-  reduced: { image: 0.08, border: 0.55, glint: 0.4 },
+  // (retours live 6, C6 « zéro effet sur les cartes, l'image clean ») : plus aucun foil sur l'illustration ni de
+  // paillettes / éclats ; seul le cadre garde la couleur de sa rareté (code couleur, 6★ arc-en-ciel)
+  full: { image: 0, border: 0.72, glint: 0 },
+  reduced: { image: 0, border: 0.55, glint: 0 },
 } as const;
 export const holoFx = {
   /** part maximale de couleur remplacée par le foil sur l'illustration (0..1) */
@@ -178,8 +180,9 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   m.metalnessNode = max(frameMix.mul(rainbow ? 1 : 0.75), metalImage.mul(0.35));
   m.roughnessNode = mix(mix(float(0.6), float(0.34), L.window), float(0.22).add(h1.mul(0.06)), metal);
   m.normalNode = bumpMap(L.masks.g, float(0.6), normalMap(vec4(nTS.mul(0.5).add(0.5), 1).xyz));
-  m.clearcoatNode = float(0.35);
-  m.clearcoatRoughnessNode = float(0.18);
+  // (retours live 6, C6) vernis presque mat : plus de reflet du décor qui passe sur l'image
+  m.clearcoatNode = float(0.08);
+  m.clearcoatRoughnessNode = float(0.5);
   const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
   const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
   m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5)).add(film.mul(foil).mul(U.extraEmissive));

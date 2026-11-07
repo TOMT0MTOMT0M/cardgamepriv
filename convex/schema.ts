@@ -105,6 +105,8 @@ export default defineSchema({
     isAdmin: v.optional(v.boolean()),
     /** modérateur des suggestions (retours 06/11 : Hugo et Tom) — reçoit et traite la file, sans les autres droits admin */
     isModerator: v.optional(v.boolean()),
+    /** (retours live 6, C15) a déjà été n°1 du classement (complétion) : débloque le titre « Numéro un » */
+    wasTop: v.optional(v.boolean()),
     /** appareils vus (id tiré au hasard et gardé dans le navigateur) : signal « deux comptes sur le même appareil » */
     devices: v.optional(v.array(v.string())),
     /** PARRAINAGE (retours live 02, §10 — convex/referrals.ts) : mon code d'invitation (lien `?ref=CODE`) */

@@ -62,7 +62,8 @@ function thumbs(items: Array<{ cardId: string; rarity: RarityId; count?: number 
       const rr = rarity(it.rarity);
       const hide = rr.secret && !(o.have?.(it) ?? false);
       const img = e && !hide ? `<img alt="" loading="lazy" decoding="async" src="${thumbUrl(e)}">` : '<span class="q">?</span>';
-      return `<span class="ob-th" style="--rc:${rr.hex}" title="${esc(`${hide ? 'Carte secrète' : (e?.name ?? it.cardId)} · ${rr.label}`)}"><span class="ob-im">${img}${(it.count ?? 1) > 1 ? `<b class="ob-xn">×${it.count}</b>` : ''}${o.have?.(it) ? '<i class="ob-have" title="Tu l’as">✓</i>' : ''}</span><span class="ob-tn">${esc(hide ? '???' : (e?.name ?? it.cardId))}</span><span class="ob-ts">${starLbl(it.rarity)}</span></span>`;
+      // (retours live 6, B6) toucher la carte = la voir en grand (trades.ts, `[data-zoom]`)
+      return `<span class="ob-th"${hide || !e ? '' : ` data-zoom="${esc(`${it.cardId}|${it.rarity}`)}"`} style="--rc:${rr.hex}" title="${esc(`${hide ? 'Carte secrète' : (e?.name ?? it.cardId)} · ${rr.label}`)}"><span class="ob-im">${img}${(it.count ?? 1) > 1 ? `<b class="ob-xn">×${it.count}</b>` : ''}${o.have?.(it) ? '<i class="ob-have" title="Tu l’as">✓</i>' : ''}</span><span class="ob-tn">${esc(hide ? '???' : (e?.name ?? it.cardId))}</span><span class="ob-ts">${starLbl(it.rarity)}</span></span>`;
     })
     .join('');
 }

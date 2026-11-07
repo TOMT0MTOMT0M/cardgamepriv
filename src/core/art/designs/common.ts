@@ -210,15 +210,7 @@ export function starsAt(f: Ctx, m: Ctx, d: DesignCtx, pts: Array<[number, number
   const shape = st.shape ?? 'star';
   const col = st.fill ?? starColor(d.tier);
   pts.forEach(([x, y], k) => {
-    if (st.glow && d.tier >= 3) {
-      f.save();
-      f.shadowColor = alpha(col, 0.8);
-      f.shadowBlur = st.r * 1.2;
-      f.fillStyle = col;
-      shapePath(f, shape, x, y, st.r);
-      f.fill();
-      f.restore();
-    }
+    // (retours live 6, C6) plus de halo lumineux autour des étoiles (`glow` ignoré)
     f.fillStyle = col;
     shapePath(f, shape, x, y, st.r);
     f.fill();

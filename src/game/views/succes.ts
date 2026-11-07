@@ -1,6 +1,6 @@
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
-import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, type AchievementLadder, type AchievementStats } from '../../core/economy';
+import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, type Achievement, type AchievementLadder, type AchievementStats } from '../../core/economy';
 import type { FriendAch } from '../eco';
 import { cosmeticsOf } from '../../core/cosmetics';
 import { COIN_ICON } from './wallet';
@@ -31,7 +31,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     <div class="sc-wrap">
       <header class="sc-head">
         <div><span class="kicker">SUCCÈS</span><h1>Tes succès</h1>
-        <p class="muted">Chaque succès rapporte des pièces et peut débloquer une bannière, un cadre, un titre ou un badge pour ton profil. Rien ne s’achète : tout se gagne en jouant.</p></div>
+        <p class="muted">Chaque palier donne UNE récompense : des pièces (et des boosters), ou un titre, un badge, un cadre ou une vitrine pour ton profil. Rien ne s’achète : tout se gagne en jouant.</p></div>
         <div class="sc-score"></div>
       </header>
       <div class="sc-bar">
@@ -86,10 +86,10 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     try {
       const r = await busyButton(claimBtn, backend.eco.claimAchievements());
       shell.sfx.chime(4, 0.1);
-      toast(`Succès : +${fmtCoins(r.coins)} pièces${r.packs ? ` et ${plural(r.packs, 'booster')}` : ''} !`, 'ok');
+      toast(r.coins || r.packs ? `Succès : +${fmtCoins(r.coins)} pièces${r.packs ? ` et ${plural(r.packs, 'booster')}` : ''} !` : 'Succès encaissés !', 'ok');
       const cos = ACHIEVEMENTS.filter((a) => before.has(a.id)).flatMap((a) => cosmeticsOf(a.id));
       recap.hidden = false;
-      recap.innerHTML = `<b>+${fmtCoins(r.coins)} ${COIN_ICON}${r.packs ? ` · +${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>Débloqué pour ton profil : ${cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${c.kind} « ${esc(c.c.label)} »`).join(', ')}</span><a class="btn-primary sc-equip" href="#/profil">Équiper →</a>` : '<span>Pièces ajoutées à ta bourse.</span>'}<button class="sc-recap-x" aria-label="Fermer">✕</button>`;
+      recap.innerHTML = `<b>${r.coins ? `+${fmtCoins(r.coins)} ${COIN_ICON}` : ''}${r.packs ? `${r.coins ? ' · ' : ''}+${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>Débloqué pour ton profil : ${cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${c.kind} « ${esc(c.c.label)} »`).join(', ')}</span><a class="btn-primary sc-equip" href="#/profil">Équiper →</a>` : '<span>Pièces ajoutées à ta bourse.</span>'}<button class="sc-recap-x" aria-label="Fermer">✕</button>`;
       recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem('bebou.openCosm', '1'));
       recap.querySelector('.sc-recap-x')!.addEventListener('click', () => (recap.hidden = true));
     } catch (e) {
@@ -97,14 +97,22 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     }
   });
 
-  const rewardHtml = (a: { tier: 1 | 2 | 3 | 4 }) => {
-    const packs = achievementPacks(a as never);
-    return `<span class="sc-coins">${COIN_ICON}${fmtCoins(ACHIEVEMENT_TIERS[a.tier - 1])}${packs ? ` <span class="sc-pk">+${plural(packs, 'booster')}</span>` : ''}</span>`;
+  /**
+   * (retours live 6, C10) UNE récompense par palier, en une puce sur une ligne : les pièces (+ boosters) OU le
+   * cosmétique (titre, badge, cadre, vitrine) — plus le pavé bannière + cadre + titre + badge + couleur + vitrine.
+   */
+  const KIND_CLS: Record<string, string> = { Bannière: 'banner', Cadre: 'frame', Titre: 'title', Couleur: 'frame', Vitrine: 'banner', Badge: 'badge' };
+  const rewardHtml = (a: Achievement, ok = false) => {
+    if (a.cos) {
+      const r = cosmeticsOf(a.id)[0];
+      if (!r) return '';
+      const sw = r.kind === 'Cadre' || r.kind === 'Vitrine' || r.kind === 'Bannière' ? ` style="--sw:${r.c.css}"` : '';
+      const ico = r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Titre' ? '«' : '<i></i>';
+      return `<span class="sc-cos${ok ? ' ok' : ''} k-${KIND_CLS[r.kind]}${r.c.anim ? ' anim' : ''}"${sw} title="${esc(`${r.kind} « ${r.c.label} »`)}">${ico} ${r.kind === 'Titre' ? '' : `${r.kind} · `}${esc(r.c.label)}${r.kind === 'Titre' ? ' »' : ''}</span>`;
+    }
+    const packs = achievementPacks(a);
+    return `<span class="sc-coins">${COIN_ICON}${fmtCoins(achievementReward(a))}${packs ? ` <span class="sc-pk">+${plural(packs, 'booster')}</span>` : ''}</span>`;
   };
-  const cosHtml = (id: string, ok: boolean) =>
-    cosmeticsOf(id)
-      .map((r) => `<span class="sc-cos${ok ? ' ok' : ''} k-${r.kind === 'Bannière' ? 'banner' : r.kind === 'Cadre' ? 'frame' : r.kind === 'Titre' ? 'title' : r.kind === 'Couleur' ? 'frame' : r.kind === 'Vitrine' ? 'banner' : 'badge'}"${r.kind === 'Bannière' || r.kind === 'Cadre' || r.kind === 'Couleur' || r.kind === 'Vitrine' ? ` style="--sw:${r.c.css}"` : ''}>${r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind !== 'Titre' ? '<i></i>' : '«'} ${r.kind} · ${esc(r.c.label)}</span>`)
-      .join('');
 
   /** Une mécanique = un succès à paliers : niveau atteint, prochain seuil, et la liste des paliers avec leur récompense. */
   function ladderCard(l: AchievementLadder, st: AchievementStats, claimed: Set<string>, claimable: Set<string>): HTMLElement {
@@ -129,8 +137,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
         .map((a) => {
           const got = claimed.has(a.id);
           const rd = claimable.has(a.id);
-          const cos = cosHtml(a.id, got || rd);
-          return `<li class="${got ? 'got' : rd ? 'ready' : achievementDone(a, st) ? 'ready' : ''}"><span class="sc-st-t">${got ? '✓' : rd ? '★' : '○'} ${fmtCoins(a.target)}</span><span class="sc-st-l">${esc(a.label)}</span>${rewardHtml(a)}${cos ? `<div class="sc-rw">${cos}</div>` : ''}</li>`;
+          return `<li class="${got ? 'got' : rd ? 'ready' : achievementDone(a, st) ? 'ready' : ''}"><span class="sc-st-t">${got ? '✓' : rd ? '★' : '○'} ${fmtCoins(a.target)}</span><span class="sc-st-l">${esc(a.label)}</span>${rewardHtml(a, got || rd)}</li>`;
         })
         .join('')}${l.steps.length > lvl + 1 ? `<li class="sc-hidden"><span class="sc-st-t">🔒</span><span class="sc-st-l">${l.steps.length - lvl - 1 > 1 ? `${l.steps.length - lvl - 1} paliers à découvrir` : '1 palier à découvrir'}</span><span class="sc-st-h">se dévoile au palier précédent</span></li>` : ''}</ol>`;
     return c;
@@ -194,7 +201,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const packsN = pending.reduce((n, a) => n + achievementPacks(a), 0);
     score.innerHTML = `<div class="sc-big"><b>${done}</b><span>/ ${ACHIEVEMENTS.length}</span></div><div class="muted">paliers de succès débloqués</div><i class="sc-pb big"><i style="width:${((done / ACHIEVEMENTS.length) * 100).toFixed(1)}%"></i></i>`;
     claimBtn.hidden = !pending.length;
-    claimBtn.innerHTML = `Encaisser ${plural(pending.length, 'palier', 'paliers')} · +${fmtCoins(total)} ${COIN_ICON}${packsN ? ` + ${plural(packsN, 'booster')}` : ''}`;
+    claimBtn.innerHTML = `Encaisser ${plural(pending.length, 'palier', 'paliers')}${total ? ` · +${fmtCoins(total)} ${COIN_ICON}` : ''}${packsN ? ` + ${plural(packsN, 'booster')}` : ''}`;
     if (who === 'friends') {
       if (!friends) {
         grid.innerHTML = '<div class="muted">Chargement des succès de tes amis…</div>';

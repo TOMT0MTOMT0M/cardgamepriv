@@ -5,7 +5,7 @@ import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { ACCENTS, BADGES, BANNERS, FRAMES, VITRINES, accentColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
+import { ACCENTS, BADGES, BANNERS, FRAMES, VITRINES, accentColor, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { guarded, isPending } from './safety';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
@@ -180,6 +180,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     return { list: [...mine].sort(best).slice(0, SLOTS).map((c) => ({ cardId: c.cardId, rarity: c.rarity })), auto: true };
   }
 
+  /**
+   * Avatar + cadre (retours live 6, B4 / C14) : l'anneau de couleur (`--frame`, une couleur pure) et, pour un cadre
+   * animé, son calque d'effets (`.pf-fx` : éclairs, flammes, auréole, cœurs, étoiles, néon — style.css). Ouvre
+   * `.pf-ava-wrap` (à refermer par l'appelant, après l'étiquette éventuelle).
+   */
+  const avaRing = (fr: Cosmetic, ava: string) =>
+    `<div class="pf-ava-wrap frame-${/^#/.test(fr.id) ? 'custom' : fr.id}${fr.anim ? ' anim' : ''}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ring"><div class="pf-ava">${ava}</div>${fr.anim ? '<i class="pf-fx" aria-hidden="true"></i>' : ''}</div>`;
+
   // ── bannière + identité
   function renderHead() {
     const me = isMe();
@@ -190,6 +198,10 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const title = titleOf(cos.title);
     banner.style.background = bn.css ?? '';
     banner.dataset.banner = bn.id;
+    // (retours live 6, C13) bannière GIF / image : la couleur choisie l'ENTOURE (contour) ; « Aucune couleur » = rien
+    const bc = bannerColor(cos.banner);
+    banner.style.setProperty('--bnc', bc ?? 'transparent');
+    banner.classList.toggle('bn-color', !!bc);
     applyAccent(cos.accent);
     applyVitrine(cos.vitrine, cos.vitrineColor);
     // bannière importée (GIF ou image, retours live 02) : par-dessus la bannière cosmétique, sous le dégradé
@@ -210,14 +222,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const ava = avaHtml(name);
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     // en-tête compact (retours live 02) : pseudo, puis titre + badges sur UNE ligne, puis devise · « depuis » sur une ligne
-    head.innerHTML = `<div class="pf-ava-wrap frame-${fr.id}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ava">${ava}</div>${fr.id !== 'none' ? `<span class="pf-frame-l">${esc(fr.label)}</span>` : ''}</div>
+    head.innerHTML = `${avaRing(fr, ava)}${fr.id !== 'none' ? `<span class="pf-frame-l">${esc(fr.label)}</span>` : ''}</div>
       <div class="pf-id">
         <div class="pf-eyebrow">${me ? 'Mon profil' : 'Profil'}</div>
         <h1>${esc(name)}</h1>
         ${title || badges.length ? `<div class="pf-tline">${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${b.glyph ?? '●'} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
-        <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore de devise.</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="Joue depuis le ${fmtDate(prof.joinedAt)}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
+        <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore d’informations.</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="Joue depuis le ${fmtDate(prof.joinedAt)}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier ma devise">✎ Devise</button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier mes informations">✎ Informations</button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
     hydrateStills(head);
     head.querySelector('.pf-bio-edit')?.addEventListener('click', editBio);
     // action de compte (déconnexion / remise à zéro de la démo) : en bas de page, plus sous le pseudo (audit UX3-16)
@@ -409,7 +421,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const { okSet, cls, sel } = tabDef;
     const cells = items
       .map((c) => `<button class="cs ${cls}${sel(c) ? ' on' : ''}${okSet.has(c.id) ? '' : ' locked'}${cosmNew.has(`${cosmTab}:${c.id}`) ? ' new' : ''}" data-id="${esc(c.id)}" title="${esc(okSet.has(c.id) ? c.label : `${c.label} · ${c.how}`)}" aria-pressed="${sel(c)}" ${okSet.has(c.id) ? '' : 'aria-disabled="true"'}>${
-        cls === 'cs-banner' ? `<span class="cs-sw" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring" style="--frame:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : cls === 'cs-accent' ? `<span class="cs-dot" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-vitrine' ? `<span class="cs-sw cs-vit" style="background:${c.css};--vc:${accentColor(cosmDraft.vitrineColor) ?? accentColor(cosmDraft.accent) ?? '#e8927c'}"></span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
+        cls === 'cs-banner' ? `<span class="cs-sw${c.id === 'none' ? ' cs-none' : ''}" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring${c.anim ? ` frame-${c.id} anim` : ''}" style="--frame:${c.css}">${c.anim ? '<i class="pf-fx" aria-hidden="true"></i>' : ''}</span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : cls === 'cs-accent' ? `<span class="cs-dot" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-vitrine' ? `<span class="cs-sw cs-vit" style="background:${c.css};--vc:${accentColor(cosmDraft.vitrineColor) ?? accentColor(cosmDraft.accent) ?? '#e8927c'}"></span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
       }${okSet.has(c.id) ? '' : `<small>${lockLine(c)}</small>`}</button>`)
     // couleur libre : juste après les couleurs débloquées (avant les verrouillées)
     // (retours 06/11) la couleur libre partout où on choisit une couleur : bannière, cadre, couleur du profil
@@ -444,7 +456,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const summary = [bn.label, fr.id !== 'none' ? `Cadre ${fr.label}` : '', cosmDraft.accent && cosmDraft.accent !== ACCENTS[0].id ? `Couleur ${acc ? acc.label : cosmDraft.accent.toUpperCase()}` : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
     cosm.innerHTML =
       `<div class="cs-head"><b>Personnaliser mon profil</b><span class="muted">Tout se débloque en jouant — rien ne s’achète.</span></div>` +
-      `<div class="cs-preview" aria-label="Aperçu"><div class="cs-pv-bn" style="background:${bn.css ?? ''}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div><div class="pf-ava-wrap frame-${fr.id}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ava">${ava}</div></div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
+      `<div class="cs-preview" aria-label="Aperçu"><div class="cs-pv-bn${prof?.bannerMedia && bannerColor(cosmDraft.banner) ? ' bn-color' : ''}" style="background:${bn.css ?? ''};--bnc:${bannerColor(cosmDraft.banner) ?? 'transparent'}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div>${avaRing(fr, ava)}</div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
       mediaBlock() +
       `<div class="seg cs-tabs" role="tablist" aria-label="Que personnaliser">${TABS.map((t) => `<button role="tab" data-tab="${t.id}" class="${t.id === cosmTab ? 'on' : ''}" aria-selected="${t.id === cosmTab}">${t.label} <em>${t.okSet.size}/${t.items.length}</em>${[...cosmNew].some((k) => k.startsWith(`${t.id}:`)) ? '<i class="pf-new-dot" aria-label="nouveau"></i>' : ''}</button>`).join('')}</div>` +
       `<div class="cs-group"><div class="cs-t">${tabDef.label} <small>${tabDef.hint} · ${okSet.size}/${tabDef.items.length} débloqué${okSet.size > 1 ? 's' : ''}</small></div><div class="cs-list">${list}</div></div>` +
@@ -564,7 +576,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
 
   function editBio() {
     const box = head.querySelector<HTMLElement>('.pf-bio')!;
-    box.innerHTML = `<input class="pf-bio-in" maxlength="80" placeholder="Ta devise (80 caractères)" value="${esc(prof?.bio ?? '')}">`;
+    box.innerHTML = `<input class="pf-bio-in" maxlength="80" placeholder="Tes informations (80 caractères)" value="${esc(prof?.bio ?? '')}">`;
     const inp = box.querySelector<HTMLInputElement>('input')!;
     inp.focus();
     let done = false;
@@ -574,7 +586,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       try {
         await backend.setBio(inp.value);
         prof = prof ? { ...prof, bio: inp.value.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined } : prof;
-        toast('Devise enregistrée', 'ok');
+        toast('Informations enregistrées', 'ok');
       } catch (e) {
         toast(errMsg(e), 'err');
       }

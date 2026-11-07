@@ -33,10 +33,14 @@ function fade(a: HTMLAudioElement, to: number, ms: number, done?: () => void) {
   fadeRaf = requestAnimationFrame(step);
 }
 
-function showChip(p: MusicPreview) {
+/**
+ * (retours live 6, B5) le lecteur ne recouvre plus la carte : à l'ouverture il prend sa place SOUS le texte de la 6★
+ * (`host` = le voile mythique, zone réservée en bas) ; dans la visionneuse, sa zone en haut à gauche (style.css).
+ */
+function showChip(p: MusicPreview, host?: HTMLElement | null) {
   chip?.remove();
   chip = document.createElement('div');
-  chip.className = 'mp-chip';
+  chip.className = host ? 'mp-chip mp-inline' : 'mp-chip';
   chip.setAttribute('role', 'status');
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
   chip.innerHTML = `<span class="mp-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="mp-t"><b>${esc(p.track)}</b> — ${esc(p.artist)}<small>extrait · Apple Music</small></span><button class="mp-x" aria-label="Couper l’extrait">✕</button>`;
@@ -44,7 +48,8 @@ function showChip(p: MusicPreview) {
     e.stopPropagation();
     stopMusicPreview();
   });
-  document.body.append(chip);
+  (host ?? document.body).append(chip);
+  host?.classList.add('has-mp');
   requestAnimationFrame(() => chip?.classList.add('in'));
 }
 
@@ -55,7 +60,7 @@ export async function hasMusicPreview(cardId: string, rarity: string): Promise<b
 }
 
 /** Lance l'extrait de la carte (rien si ce n'est pas une 6★ musique, ou si c'est déjà elle). `volume` : 0..1 du jeu. */
-export async function playMusicPreview(cardId: string, rarity: string, volume = 1, by: 'opening' | 'viewer' = 'opening'): Promise<void> {
+export async function playMusicPreview(cardId: string, rarity: string, volume = 1, by: 'opening' | 'viewer' = 'opening', host?: HTMLElement | null): Promise<void> {
   if (rarity !== 'mythic' || volume <= 0) return;
   owner = by;
   if (current === cardId && audio && !audio.paused) return;
@@ -77,7 +82,7 @@ export async function playMusicPreview(cardId: string, rarity: string, volume = 
     return;
   }
   if (audio !== a) return void a.pause();
-  showChip(p);
+  showChip(p, host);
   fade(a, 0.6 * Math.min(1, volume), 1400);
 }
 
@@ -90,6 +95,7 @@ export function stopMusicPreview(fadeS = 0.6): void {
   const c = chip;
   chip = null;
   if (c) {
+    c.parentElement?.classList.remove('has-mp');
     c.classList.remove('in');
     setTimeout(() => c.remove(), 400);
   }

@@ -1,5 +1,5 @@
 import { v, ConvexError } from 'convex/values';
-import { mutation, query, type QueryCtx } from './_generated/server';
+import { internalMutation, mutation, query, type QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
@@ -21,7 +21,8 @@ export async function statsOf(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: 
   // série de connexion encore vivante (comptée aujourd'hui, ou hier) ; cassée (un jour sauté) → 0
   const t = touchStreak(u.streak, Date.now());
   const streak = !u.streak ? 0 : t === null ? u.streak.count : t.count === 1 ? 0 : u.streak.count;
-  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak });
+  // (retours live 6) + doublons brûlés (titres de la forge) et « a été n°1 » (titre Numéro un)
+  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0 });
   return { stats, collection };
 }
 
@@ -99,6 +100,24 @@ export const leaderboard = query({
       });
     }
     return rows;
+  },
+});
+
+/**
+ * (retours live 6, C15) titre « Numéro un » : toutes les heures (convex/crons.ts), le premier du classement
+ * (complétion : cartes différentes) est marqué `wasTop` — définitivement, le titre reste acquis.
+ */
+export const markLeader = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query('users').collect();
+    let best: { u: Doc<'users'>; n: number } | null = null;
+    for (const u of users) {
+      const { stats } = await statsOf(ctx, u);
+      if (stats.uniques > 0 && (!best || stats.uniques > best.n)) best = { u, n: stats.uniques };
+    }
+    if (best && !best.u.wasTop) await ctx.db.patch(best.u._id, { wasTop: true });
+    return best ? { leader: best.u.displayName, uniques: best.n } : null;
   },
 });
 

@@ -1,7 +1,7 @@
-import { ensureCardFonts, generateCardArt, releaseCardImage } from '../core/art';
+import { ensureCardFonts, gameDesignId, generateCardArt, releaseCardImage } from '../core/art';
 import { FONT_VERSION } from '../core/fonts';
 import { loadCardImage } from '../core/art/images';
-import { cardById, isSecretPhotoSet } from '../core/cardData';
+import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
 import { catalogEntry, hasArt, numberingSize, subthemeById, thumbPath } from '../core/sets/themes';
 import { siteUrl } from '../core/siteRoot';
@@ -29,7 +29,7 @@ const SCALE = Math.max(0.36, Math.min(0.5, Math.ceil(((120 * Math.min(3, Math.ma
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
-const CACHE = 'bebou-cartes-v8'; // v8 (07/11 soir) : full-art sans bordure, Suisse paysage sans filets (numéro noir, étoiles 6★ en alu) · v7 (07/11) : cartes horizontales au gabarit Suisse (labo 035) · v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
+const CACHE = 'bebou-cartes-v9'; // v9 (retours live 6) : adresses d'images versionnées (?v=, clé = adresse de la miniature), même gabarit que la 3D (Merveilles), Suisse pour toutes les photos non portrait, zéro effet, sans emblème · v8 (07/11 soir) : full-art sans bordure, Suisse paysage sans filets (numéro noir, étoiles 6★ en alu) · v7 (07/11) : cartes horizontales au gabarit Suisse (labo 035) · v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
 // (bug du « placeholder fantôme » : une carte peinte en design typographique avant d'avoir son illustration restait
 // figée ainsi dans le cache du joueur, même après l'ajout de l'image)
 /**
@@ -90,7 +90,8 @@ function cacheUrl(key: string): string | null {
   const size = st ? numberingSize(st) : 0;
   // l'illustration ACTUELLE fait partie de la clé : quand une carte reçoit (ou change d')image, l'ancienne version peinte
   // n'est plus jamais servie — la carte est repeinte depuis la fiche du catalogue
-  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${e.dir ?? ''}${e.file}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}`)}`;
+  // (retours live 6, B2) l'ADRESSE versionnée de la miniature (`?v=`) : une image remplacée = une autre clé
+  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}`)}`;
 }
 async function fromCache(key: string): Promise<string | null> {
   const url = cacheUrl(key);
@@ -142,7 +143,9 @@ async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnTy
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre
   await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, { key: !(cd.photo || cd.cover) }).catch(() => undefined) : undefined]);
   await new Promise<void>((r) => idle(() => r()));
-  const art = generateCardArt(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(isSecretPhotoSet(cd.set) ? {} : { design: 'full-art' }) });
+  // (retours live 6, B2) même gabarit que la carte 3D de la vue détail (gameDesignId), plus jamais un gabarit à part
+  const design = gameDesignId(cd);
+  const art = generateCardArt(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(design ? { design } : {}) });
   const blob = await new Promise<Blob | null>((r) => art.canvases.flat.toBlob(r, 'image/webp', 0.86));
   art.dispose();
   // la mémoire d'un canvas n'est rendue qu'au ramasse-miettes… sauf si on le vide (iOS plafonne le total : PERF1-01)

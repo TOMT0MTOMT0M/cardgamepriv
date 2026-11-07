@@ -3,6 +3,8 @@
  * Pour ajouter une mise à jour : une entrée en tête du mois en cours (ou un nouveau mois en tête de la liste).
  * `tag` : nouveau · amélioré · corrigé.
  */
+import { PUBLIC_CARD_COUNT } from '../core/sets/themes';
+
 export interface UpdateEntry {
   date: string;
   title: string;
@@ -15,48 +17,27 @@ export interface UpdateMonth {
   entries: UpdateEntry[];
 }
 
+/** nombre total de cartes à collectionner (lu dans le catalogue : il suit les ajouts) */
+const CARDS = String(PUBLIC_CARD_COUNT).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+
+/**
+ * (retours live 6, C11) pour l'instant UN SEUL post : la V1, datée du 8 novembre 2026 — le nombre de cartes, les grosses
+ * fonctionnalités, et le rythme : une grosse mise à jour par mois. Pas de fil détaillé.
+ */
 export const UPDATES: UpdateMonth[] = [
   {
     month: 'Novembre 2026',
-    intro: 'Le mois où le site a pris sa forme : les 4 thèmes, des dizaines de milliers de cartes et tout ce qui va autour.',
     entries: [
       {
-        date: '6 nov.', title: 'Gros boosters, nouveaux sachets et onglets d’aide', tag: 'nouveau',
+        date: '8 nov.', title: 'Version 1 — Bébou Cartes', tag: 'nouveau',
         points: [
-          '5 ou 10 boosters d’un coup ouvrent UN seul booster de 25 ou 50 cartes (mêmes chances), la meilleure carte à la toute fin.',
-          'Nouveaux sachets tout simples : gris, violet, orange, vert, bleu, avec le logo et le nom du pack ; dos métallisé.',
-          'Cartes retournées plus lentement, du son seulement pour la dernière carte (ou une 5★ / 6★).',
-          'Les photos horizontales ont leur propre style de carte ; effets des cartes bleues / rouges adoucis.',
-          'Fiche booster : la vraie chance de chaque carte est écrite sous elle.',
-          'Bannière, cadre, couleur et vitrine : la même palette partout, plus la couleur libre.',
-          'Onglets Mises à jour et Tutoriel ; Hugo et Tom modèrent les suggestions.',
-        ],
-      },
-      {
-        date: '5 nov.', title: 'Familles, nouvelles polices, achat de boosters', tag: 'nouveau',
-        points: [
-          'Collection : thème → familles (Pokémon, Jeux vidéo, Mangas & anime…) → albums → cartes.',
-          'Boosters achetables en pièces (250 l’unité, 10 par jour).',
-          'Échanges sur un seul écran : tableau d’offres en haut, échanges directs en dessous.',
-          'Succès : les paliers se dévoilent un par un. Extraits musicaux sur les cartes Musique 6★.',
-          'Vitrine personnalisable, artiste imprimé sur les cartes albums et chansons.',
-        ],
-      },
-      {
-        date: '4 nov.', title: 'Suggestions, couleur du profil, grand ménage', tag: 'amélioré',
-        points: [
-          'Onglet Suggestions : bug, carte à refaire, série à ajouter, idée libre.',
-          'Couleur du profil à choisir dans Personnaliser.',
-          'Les cartes 1★ à 3★ sans illustration ont été retirées ; 77 illustrations 4★+ ajoutées.',
-          'Rencontre sauvage pour les Pokémon 6★, invocation pour les Yu-Gi-Oh 6★.',
-        ],
-      },
-      {
-        date: '1er – 3 nov.', title: 'Les débuts', tag: 'nouveau',
-        points: [
-          'Les 5 packs : Bebou Pack, Gaming Pack, Pop Culture Pack, Sport Pack, World Pack.',
-          'Collection, contrats, échanges, espace Jeux, succès, profils, amis.',
-          'Recharge : 1 booster toutes les 5 minutes, jusqu’à 15 en réserve.',
+          `${CARDS} cartes à collectionner dans 4 thèmes — Gaming, Pop Culture, Sport et World — plus des cartes secrètes.`,
+          '5 boosters (Bebou, Gaming, Popculture, Sport, World), 1 booster offert toutes les 5 minutes, ouvertures par 5 ou 10.',
+          'Collection par familles et albums, classeurs, la Forge et les Contrats pour transformer tes doublons.',
+          'Échanges directs entre amis et tableau d’offres ouvert à tous.',
+          'Succès à paliers : à chaque palier, une récompense — pièces, boosters, titres, badges ou cadres animés.',
+          'Profil personnalisable, classement, amis et parrainage, espace Jeux.',
+          'Une grosse mise à jour par mois : nouvelles cartes, nouvelles fonctionnalités. Tout sera annoncé ici.',
         ],
       },
     ],

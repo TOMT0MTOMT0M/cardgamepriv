@@ -87,8 +87,12 @@ export const suisse: CardDesign = {
  */
 export const SUISSE_LAND_BOX = { x: 48, w: 672, cy: 600 };
 export function suisseLandscapeBand(aspect: number) {
-  const h = Math.min(600, SUISSE_LAND_BOX.w / Math.max(0.01, aspect));
-  return { x: SUISSE_LAND_BOX.x, y: SUISSE_LAND_BOX.cy - h / 2, w: SUISSE_LAND_BOX.w, h };
+  // (retours live 6, B3) photos presque carrées / jaquettes (format < 1,12) : la photo ENTIÈRE tient dans la zone
+  // 672 × 600 — moins large, centrée — au lieu d'être coupée en haut et en bas
+  const a = Math.max(0.01, aspect);
+  const h = Math.min(600, SUISSE_LAND_BOX.w / a);
+  const w = h * a;
+  return { x: SUISSE_LAND_BOX.x + (SUISSE_LAND_BOX.w - w) / 2, y: SUISSE_LAND_BOX.cy - h / 2, w, h };
 }
 export const suissePaysage: CardDesign = {
   id: 'suisse-paysage',
@@ -101,8 +105,7 @@ export const suissePaysage: CardDesign = {
     const band = suisseLandscapeBand(d.artAspect ?? 16 / 9);
     f.fillStyle = '#f1efe9';
     f.fillRect(0, 0, W, H);
-    f.fillStyle = accent;
-    f.fillRect(48, 40, 72, 8);
+    // (retours live 6, C5d) plus de barre de couleur en haut à gauche
     // nom sur 1 ou 2 lignes (comme 035)
     f.fillStyle = ink;
     const words = card.name.split(' ');
@@ -118,46 +121,37 @@ export const suissePaysage: CardDesign = {
     f.fillText(l1, 44, 128);
     if (l2) f.fillText(l2, 44, 128 + fs * 1.02);
     // (retours 07/11) 6★ : étoiles en aluminium brossé (comme le dos) au lieu du foil irisé
-    if (tier >= 5) brushedStars(f, m, Array.from({ length: d.stars }, (_, k) => [720 - 9 - (d.stars - 1 - k) * 24, 92] as [number, number]), 8.5, 'square', card.seed);
-    else starRow(f, m, d, 720 - 9, 92, 24, 'right', { r: 8.5, shape: 'square', fill: accent });
+    // (retours live 6, C5c) de vraies ÉTOILES ★ comme sur les autres cartes (plus les 6 carrés)
+    if (tier >= 5) brushedStars(f, m, Array.from({ length: d.stars }, (_, k) => [720 - 12 - (d.stars - 1 - k) * 30, 90] as [number, number]), 12, 'star', card.seed);
+    else starRow(f, m, d, 720 - 12, 90, 30, 'right', { r: 12, fill: accent });
     // (retours 07/11) plus de filets horizontaux de grille : la photo et le pied se suffisent
     cut(f, (g) => g.rect(band.x, band.y, band.w, band.h));
     // pied : famille (30 px), puis artiste · sous-famille (26 px), numéro de collection géant à droite
     // (retours 07/11) numéro de collection plus affirmé (maigre → demi-gras), puis réduit à 80 % (118 → 94 px)
-    const numFont = `600 94px ${FONT_SANS}`;
+    // (retours live 6, C5a) numéro PLUS PETIT (94 → 56 px) et NOIR, pour toutes les raretés
+    const numFont = `600 56px ${FONT_SANS}`;
     f.font = numFont;
     const numW = f.measureText(num3(card.num)).width;
     const footW = 672 - numW - 36;
     if (!d.mini) {
       f.fillStyle = ink;
-      fitFont(f, uni.name, `500 {s}px ${FONT_SANS}`, 30, footW, 22);
-      f.fillText(uni.name, 48, 974);
+      // (retours live 6, C5b) thème et sous-thème un peu plus grands (30 → 38 px, 26 → 31 px)
+      fitFont(f, uni.name, `600 {s}px ${FONT_SANS}`, 38, footW, 26);
+      f.fillText(uni.name, 48, 980);
       const foot = [d.byline, d.sub].filter(Boolean).join('  ·  ').toUpperCase();
       if (foot) {
-        f.fillStyle = alpha(ink, 0.6);
-        spacedFit(f, foot, 48, 1024, 1.5, 'left', `400 {s}px ${FONT_MONO}`, 26, footW, 20);
+        f.fillStyle = alpha(ink, 0.62);
+        spacedFit(f, foot, 48, 1030, 1.5, 'left', `500 {s}px ${FONT_MONO}`, 31, footW, 22);
       }
     }
     // (retours 07/11) numéro toujours NOIR ; seules les 6★ gardent la couleur et le foil
-    f.fillStyle = tier >= 5 ? accent : ink;
+    f.fillStyle = ink;
     f.font = numFont;
     f.textAlign = 'right';
     f.fillText(num3(card.num), 724, 1038);
     f.textAlign = 'left';
 
-    m.fillStyle = 'rgb(255,0,0)';
-    if (tier >= 3) m.fillRect(48, 40, 72, 8);
-    if (tier >= 5) {
-      m.font = numFont;
-      m.textAlign = 'right';
-      m.fillText(num3(card.num), 724, 1038);
-      m.textAlign = 'left';
-    }
-    if (tier >= 5) {
-      m.font = `700 ${fs}px ${FONT_SANS}`;
-      m.fillText(l1, 44, 128);
-      if (l2) m.fillText(l2, 44, 128 + fs * 1.02);
-    }
+    // (retours live 6, C6) plus de foil sur le nom : seul le relief d'impression reste
     // relief : impression typographique (le texte s'enfonce)
     m.save();
     m.filter = 'blur(0.8px)';

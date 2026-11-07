@@ -327,6 +327,8 @@ interface Slot {
 /** Styles des boosters (un par thème + le bébou pack), tirés du registre des thèmes. */
 /** couleur du sachet de chaque booster (retours 06/11) */
 const SACHET: Record<string, string> = { bebou: '#9ea2aa', gaming: '#6a4fc4', pop: '#d8742e', sport: '#3a9a66', monde: '#3c73c8' };
+/** (retours live 6, C1) le nom imprimé en noir sur chaque sachet (validé par Hugo) */
+const SACHET_LABEL: Record<string, string> = { bebou: 'Bebou', gaming: 'Gaming', pop: 'Popculture', sport: 'Sport', monde: 'World' };
 function boosterStyles(): Record<string, PackStyle> {
   const out: Record<string, PackStyle> = {};
   // mentions au dos des boosters du jeu (celles du labo parlent d'illustrations procédurales)
@@ -334,7 +336,7 @@ function boosterStyles(): Record<string, PackStyle> {
   for (const t of THEMES) out[t.id] = { name: t.label, ...t.style, title: t.booster, series: `S É R I E   I  ·  ${t.label.toUpperCase()}`, tagline: themeTagline(t), backLines };
   out.bebou = { name: 'Bébou', ...BEBOU_PACK.style, title: BEBOU_PACK.booster, series: 'P A C K   D E   B A S E', tagline: BEBOU_PACK.tagline, backLines: [...backLines.slice(0, 2), 'Une carte secrète s’y cache peut-être.'] };
   // (retours 06/11) sachets SIMPLES : une couleur par pack (gris, violet, orange, vert, bleu), le logo et le nom
-  for (const [k, c] of Object.entries(SACHET)) if (out[k]) Object.assign(out[k], { simple: true, ground: c });
+  for (const [k, c] of Object.entries(SACHET)) if (out[k]) Object.assign(out[k], { simple: true, ground: c, label: SACHET_LABEL[k] });
   return out;
 }
 
@@ -2043,7 +2045,7 @@ export function createOpeningScene(): OpeningScene {
       // mobile : calques à la taille réelle de la carte à l'écran (×2) — avant, 0,62 / 0,45 fixes → flou, texte baveux
       artScale = mobile ? mobileArtScale(c.width, c.height, 0.7) : 0.85;
       backArtScale = mobile ? artScale : 0.6;
-      stage = createStage(c, { bg: ['#1b1715', '#050404'], env: 'studio', envIntensity: 1.25, fill: 0.62, frameW: PACK_FRAME.w, frameH: PACK_FRAME.h });
+      stage = createStage(c, { bg: ['#000000', '#000000'] /* (C4) noir profond */, env: 'studio', envIntensity: 1.25, fill: 0.62, frameW: PACK_FRAME.w, frameH: PACK_FRAME.h });
       key = new DirectionalLight(0xfff2e6, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);

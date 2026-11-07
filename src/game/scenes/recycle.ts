@@ -332,7 +332,7 @@ export function createRecycleScene(): RecycleScene {
       ctx = c;
       const mobile = c.quality === 'mobile';
       maxP = mobile ? 36000 : 80000;
-      stage = createStage(c, { bg: ['#1f1a17', '#060505'], env: 'studio', envIntensity: 0.9, fill: 0.5, fillPortrait: 0.62 });
+      stage = createStage(c, { bg: ['#000000', '#000000'] /* (C4) noir profond */, env: 'studio', envIntensity: 0.9, fill: 0.5, fillPortrait: 0.62 });
       const key = new DirectionalLight(0xfff2e6, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, pile);

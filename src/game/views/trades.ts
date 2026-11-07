@@ -369,7 +369,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           .map((it) => {
             const e = catalogEntry(it.cardId);
             const img = e && it.rarity !== 'secret' ? `<img alt="" loading="lazy" src="${thumbUrl(e)}">` : '';
-            return `<span class="it" style="--rc:${rarity(it.rarity).hex}">${img}${it.count > 1 ? `${it.count}× ` : ''}${esc(name(it.cardId))} <i>${rarity(it.rarity).rank + 1}★</i>${lasts.includes(it) ? ' <b class="last">dernier exemplaire</b>' : ''}</span>`;
+            return `<span class="it"${img ? ` data-zoom="${esc(`${it.cardId}|${it.rarity}`)}"` : ''} style="--rc:${rarity(it.rarity).hex}">${img}${it.count > 1 ? `${it.count}× ` : ''}${esc(name(it.cardId))} <i>${rarity(it.rarity).rank + 1}★</i>${lasts.includes(it) ? ' <b class="last">dernier exemplaire</b>' : ''}</span>`;
           })
           .join('')
       : '<span class="it none">rien</span>';
@@ -698,7 +698,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         const last = sd === 'give' && have > 0 && it.count >= have;
         const was = origCount(sd, it);
         const diff = orig ? (was === 0 ? ' added' : was !== it.count ? ' changed' : '') : '';
-        const r = h('div', `ti${diff}${last ? ' last' : ''}`, `<span class="sw" style="background:${rarity(it.rarity).hex}"></span>${e ? `<img class="tth" alt="" src="${thumbUrl(e)}">` : ''}<span class="tn">${esc(name(it.cardId))}${last ? ' <i class="ti-last">ton dernier</i>' : ''}${diff === ' added' ? ' <i class="ti-diff">ajoutée</i>' : diff === ' changed' ? ` <i class="ti-diff">avant ×${was}</i>` : ''}</span><span class="tc">×${it.count}</span>${(maxOf.get(`${sd}:${cardKey(it)}`) ?? 1) > it.count ? '<button class="plus" aria-label="Un exemplaire de plus">+</button>' : ''}<button class="minus" aria-label="Retirer une carte">✕</button>`);
+        const r = h('div', `ti${diff}${last ? ' last' : ''}`, `<span class="sw" style="background:${rarity(it.rarity).hex}"></span>${e ? `<img class="tth" alt="" data-zoom="${esc(`${it.cardId}|${it.rarity}`)}" src="${thumbUrl(e)}">` : ''}<span class="tn">${esc(name(it.cardId))}${last ? ' <i class="ti-last">ton dernier</i>' : ''}${diff === ' added' ? ' <i class="ti-diff">ajoutée</i>' : diff === ' changed' ? ` <i class="ti-diff">avant ×${was}</i>` : ''}</span><span class="tc">×${it.count}</span>${(maxOf.get(`${sd}:${cardKey(it)}`) ?? 1) > it.count ? '<button class="plus" aria-label="Un exemplaire de plus">+</button>' : ''}<button class="minus" aria-label="Retirer une carte">✕</button>`);
         if (lastAdded === `${sd}:${cardKey(it)}`) r.classList.add('new');
         r.querySelector('.minus')!.addEventListener('click', () => {
           it.count--;
@@ -825,6 +825,43 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     shell.setDimmed(true);
   }
   viewerUi.querySelector('.close')!.addEventListener('click', closeViewer);
+  /**
+   * (retours live 6, B6) TOUTE carte de la page Échanges s'ouvre en grand au toucher, comme dans la collection :
+   * annonces et offres du tableau, échanges en attente, cartes de la proposition (`data-zoom="id|rareté"`). Les
+   * vignettes du choix des cartes gardent leur fiche avec « + Demander / + Donner » (zoom ci-dessus).
+   */
+  async function zoomPlain(cardId: string, r: RarityId) {
+    shell.requestGyro();
+    const e = catalogEntry(cardId);
+    const rr = rarity(r);
+    if (!open) {
+      pushLayer(closeViewer);
+      document.body.classList.add('card-open');
+    }
+    open = true;
+    el.classList.add('viewing');
+    viewerUi.hidden = false;
+    vInfo.className = `v-info r-${r}`;
+    vInfo.style.setProperty('--ra', rr.accentHex);
+    const have = mine().get(cardKey({ cardId, rarity: r }))?.count ?? 0;
+    vInfo.innerHTML = `<div class="ci-name">${esc(e?.name ?? cardId)}</div><div class="ci-meta">${starsHtml(r)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${have ? `tu en as ${have}` : 'tu ne l’as pas encore'}</div>`;
+    vActions.innerHTML = '';
+    const viewer = await getViewer();
+    if (!open) return;
+    shell.setDimmed(false);
+    shell.show('viewer');
+    void viewer.show(cardId, r);
+  }
+  el.addEventListener('click', (ev) => {
+    const t = ev.target as HTMLElement;
+    const z = t.closest<HTMLElement>('[data-zoom]');
+    if (!z || !el.contains(z) || t.closest('button')) return;
+    const [id, r] = z.dataset.zoom!.split('|') as [string, RarityId];
+    if (!catalogEntry(id)) return;
+    ev.stopPropagation();
+    ev.preventDefault();
+    void zoomPlain(id, r);
+  }, true); // (capture : avant l'ouverture de l'annonce — toucher la CARTE la montre en grand, le reste de l'annonce l'ouvre)
   window.addEventListener('keydown', (e) => e.key === 'Escape' && open && closeViewer());
 
   let pendSig = '';

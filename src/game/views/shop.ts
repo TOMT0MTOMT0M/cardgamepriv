@@ -1184,7 +1184,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       },
       onMythicShown(card, last) {
         // 6★ du bloc Musique : son extrait de 30 s (retours 05/11)
-        void playMusicPreview(card.cardId, card.rarity, shell.sfx.volume);
+        void playMusicPreview(card.cardId, card.rarity, shell.sfx.volume, 'opening', mythicVeil);
         mythicVeil.classList.add('shown');
         mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = last ? (TOUCH ? 'Touche pour continuer' : 'Clique pour continuer') : HINT.next;
       },

@@ -1,3 +1,4 @@
+import { artV } from './artRev';
 import type { RarityId } from './rarity';
 import { siteUrl } from './siteRoot';
 import type { UniverseId } from './universes';
@@ -149,7 +150,7 @@ export const POKEMON_CARDS: CardData[] = POKEMON_151.map((e) => ({
   rarity: e.rarity,
   palette: IMAGE_PALETTE,
   set: 'pokemon151',
-  image: siteUrl(`${POKEMON_151_INFO.artDir}/${pokemonFile(e)}`),
+  image: siteUrl(artV(`${POKEMON_151_INFO.artDir}/${pokemonFile(e)}`)),
 }));
 
 /**
@@ -176,7 +177,7 @@ export const valorantCards = lazy((): CardData[] => VALORANT.map((e) => ({
   palette: IMAGE_PALETTE,
   set: 'valorant',
   fit: e.kind === 'agent' ? 1 : 0.72,
-  image: siteUrl(`${VALORANT_INFO.artDir}/${valorantFile(e)}`),
+  image: siteUrl(artV(`${VALORANT_INFO.artDir}/${valorantFile(e)}`)),
 })));
 
 /** Sous-thème « League of Legends » : 2 120 cartes (champions + skins), splash recadré qui remplit la carte. */
@@ -194,7 +195,7 @@ export const lolCards = lazy((): CardData[] => LOL.map((e) => ({
   palette: IMAGE_PALETTE,
   set: 'lol',
   cover: true,
-  image: siteUrl(`${LOL_INFO.artDir}/${lolFile(e)}`),
+  image: siteUrl(artV(`${LOL_INFO.artDir}/${lolFile(e)}`)),
 })));
 
 /** Sous-thème « Skins CS » : 1 107 cartes (armes, couteaux, gants, stickers), objets détourés comme Valorant. */
@@ -212,7 +213,7 @@ export const csCards = lazy((): CardData[] => CS.map((e) => ({
   palette: IMAGE_PALETTE,
   set: 'cs',
   fit: e.kind === 'weapon' || e.kind === 'knife' ? 0.74 : 0.86,
-  image: siteUrl(`${CS_INFO.artDir}/${csFile(e)}`),
+  image: siteUrl(artV(`${CS_INFO.artDir}/${csFile(e)}`)),
 })));
 
 /** Thème SECRET « Les Bébous » : 8 cartes, une par membre (surnom + photo), toutes en rareté secrète. */
@@ -228,7 +229,7 @@ export const BEBOU_CARDS: CardData[] = BEBOUS.map((e) => ({
   rarity: 'secret',
   palette: IMAGE_PALETTE,
   set: 'bebous',
-  image: siteUrl(`${BEBOUS_INFO.artDir}/${bebouFile(e)}`),
+  image: siteUrl(artV(`${BEBOUS_INFO.artDir}/${bebouFile(e)}`)),
   photo: true,
 }));
 
@@ -245,7 +246,7 @@ export const KCDQ_CARDS: CardData[] = KCDQ.map((e) => ({
   rarity: 'secret',
   palette: IMAGE_PALETTE,
   set: 'kcdq',
-  image: siteUrl(`${KCDQ_INFO.artDir}/${e.file}`),
+  image: siteUrl(artV(`${KCDQ_INFO.artDir}/${e.file}`)),
   photo: true,
 }));
 

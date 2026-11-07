@@ -242,7 +242,7 @@ export function createLocalBackend(): GameBackend {
     (save.activity ??= []).unshift({ id: `a${save.seq++}`, kind, message, rarity, cardId: card?.id, cardName: card?.name, mintNumber: card?.mint, createdAt: Date.now() });
     save.activity.length = Math.min(save.activity.length, 60);
   };
-  const myStats = () => statsFrom(Object.values(save.inv), { packsOpened: save.opened, tradesDone: save.trades_done ?? 0, contractsSigned: save.contracts_done ?? 0, streak: save.streak?.count ?? 0 });
+  const myStats = () => statsFrom(Object.values(save.inv), { packsOpened: save.opened, tradesDone: save.trades_done ?? 0, contractsSigned: save.contracts_done ?? 0, streak: save.streak?.count ?? 0, burned: (save.eco?.econ ?? emptyEcon()).burned });
   const doneCount = (st: PlayerStats, e: EconState) => {
     const a = achievementStats(st, e);
     return ACHIEVEMENTS.reduce((n, x) => n + (achievementDone(x, a) ? 1 : 0), 0);

@@ -21,6 +21,8 @@ rem cle de lecture des retours du labo (fichier local .feedback-key, jamais publ
 if exist ".feedback-key" (
   for /f "usebackq delims=" %%k in (".feedback-key") do call npx convex env set FEEDBACK_READ_KEY %%k >> "%LOG%" 2>&1 || goto :err
 )
+rem (retours live 6, B2) images remplacees : nouvelle adresse (?v=) pour qu'aucun cache ne garde l'ancienne
+call node scripts/art-rev.mjs >> "%LOG%" 2>&1 || goto :err
 echo [3/5] build...
 echo [3/5] npm run build >> "%LOG%"
 call npm run build >> "%LOG%" 2>&1 || goto :err

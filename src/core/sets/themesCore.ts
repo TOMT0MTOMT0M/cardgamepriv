@@ -1,3 +1,4 @@
+import { artV } from '../artRev';
 /**
  * Registre des THÈMES — données pures, sans three.js : partagé par le client (boutique, collection, échanges) et par
  * convex/ (catalogue du serveur). Une seule source de vérité pour « quelles cartes existent, dans quel booster ».
@@ -472,10 +473,10 @@ export const hasArt = (e: CatalogEntry) => e.file !== '';
  *  faire tomber toute la collection (repli sur le dossier des Bébous, image manquante = silhouette) */
 const artDirOf = (e: CatalogEntry) => e.dir ?? subthemeById(e.subthemeId)?.artDir ?? BEBOUS_INFO.artDir;
 export function artPath(e: CatalogEntry): string {
-  return `${artDirOf(e)}/${e.file}`;
+  return artV(`${artDirOf(e)}/${e.file}`);
 }
 
 /** Miniature WebP (grilles de collection, échanges) — générée par scripts/make-thumbs.mjs. */
 export function thumbPath(e: CatalogEntry): string {
-  return `${artDirOf(e)}/thumbs/${e.file.replace(/\.(png|jpe?g)$/i, '.webp')}`;
+  return artV(`${artDirOf(e)}/thumbs/${e.file.replace(/\.(png|jpe?g)$/i, '.webp')}`);
 }

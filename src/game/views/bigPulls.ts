@@ -3,6 +3,7 @@ import { fxReduced } from '../../core/fxPref';
 import { catalogEntry } from '../../core/sets/themes';
 import { rarity } from '../../core/rarity';
 import { esc, h, thumbUrl } from '../ui';
+import { observeRealCard } from '../cardImages';
 
 /**
  * « Gros tirages » : les Légendaires, Mythiques et Secrètes tirées par tout le groupe AUJOURD'HUI, en direct, sur la
@@ -83,6 +84,8 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     it.style.setProperty('--rc', rr.hex);
     it.style.setProperty('--ra', rr.accentHex);
     const name = p.cardName || e?.name || p.cardId;
+    // (retours live 6, B1) aperçu le temps que la VRAIE carte (cadre, bordure de rareté, nom : la même que la collection)
+    // soit peinte ; plus jamais l'image brute seule (logo sur fond blanc, photo qui flotte dans le cadre)
     const art = !e ? `<span class="bp-q">?</span>` : `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(e)}">`;
     const ava = p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<span>${esc((p.userName || '?').slice(0, 1).toUpperCase())}</span>`;
     it.innerHTML = `
@@ -95,6 +98,11 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
         <span class="bp-name">${esc(name)}</span>
         <span class="bp-time" data-t="${p.createdAt}">${ago(p.createdAt)}</span>
       </div>`;
+    if (e) {
+      const card = it.querySelector<HTMLElement>('.bp-card')!;
+      card.dataset.real = `${p.cardId}|${p.rarity}`;
+      observeRealCard(card);
+    }
     // tout le tirage est cliquable (sauf le pseudo, qui mène au profil) : la carte en grand
     it.addEventListener('click', (ev) => {
       if ((ev.target as HTMLElement).closest('a')) return;

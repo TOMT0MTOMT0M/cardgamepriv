@@ -20,14 +20,12 @@ export const fullArt: CardDesign = {
     f.fillRect(0, 0, W, 190);
     // (retours 07/11) plus de liseré intérieur ni de bande de bordure métallique (holo.ts, `rim` coupé pour ce gabarit) :
     // l'illustration va vraiment jusqu'au bord
-    starRow(f, m, d, 52, 66, 32, 'left', { r: 13, fill: tier < 2 ? '#f3efe6' : starColor(tier), stroke: alpha('#000', 0.35), glow: true });
+    starRow(f, m, d, 52, 66, 32, 'left', { r: 13, fill: tier < 2 ? '#f3efe6' : starColor(tier), stroke: alpha('#000', 0.35) });
     // (audit 06/11) tailles de texte : ≥ 30 px de base = ≈ 11 px CSS sur un téléphone (carte montrée à 285 px CSS, texture
     // ×0,7) — en dessous, le texte est perçu « flou » quelle que soit la résolution de rendu
     // numéro dans la collection, bien lisible en haut à droite (retour des testeurs : « on voit trop petit le numéro »)
     const si = setInfo(card);
     f.save();
-    f.shadowColor = 'rgba(0,0,0,0.6)';
-    f.shadowBlur = 8;
     f.textAlign = 'right';
     f.font = `600 36px ${FONT_MONO}`;
     f.fillStyle = '#f7f2e8';
@@ -45,19 +43,13 @@ export const fullArt: CardDesign = {
     f.restore();
     f.textAlign = 'left';
     // sous-thème (« POKÉMON ») en grand au-dessus du nom
-    const ucol = mix(uni.hex, '#fff', 0.55);
-    f.save();
-    f.shadowColor = 'rgba(0,0,0,0.55)';
-    f.shadowBlur = 8;
-    glyph(f, uni.id, 66, 886, 34, ucol, 2.6);
-    f.fillStyle = ucol;
+    // (retours live 6, C7) plus d'emblème à côté du thème : le texte part de la marge, comme le nom
+    // (C4 : blanc, la seule couleur de la carte vient de la rareté)
+    f.fillStyle = alpha('#f7f2e8', 0.86);
     // famille (« POKÉMON », « JEUX VIDÉO ») : rétrécit si elle est longue
-    if (!d.mini) spacedFit(f, uni.short.toUpperCase(), 100, 896, 3, 'left', `600 {s}px ${FONT_MONO}`, 30, W - 150, 24);
-    f.restore();
+    if (!d.mini) spacedFit(f, uni.short.toUpperCase(), 48, 896, 3, 'left', `600 {s}px ${FONT_MONO}`, 30, W - 96, 24);
     // nom
     f.save();
-    f.shadowColor = 'rgba(0,0,0,0.55)';
-    f.shadowBlur = 14;
     f.fillStyle = '#f7f2e8';
     // nom : Bold Frame Two (la plus grasse), un rien espacé (retours 05/11)
     const nameFont = `700 {s}px ${FONT_TITLE}`;
@@ -79,7 +71,7 @@ export const fullArt: CardDesign = {
 
     m.strokeStyle = m.fillStyle = 'rgb(255,0,0)';
     m.font = nameFont.replace('{s}', String(ns));
-    if (tier >= 4) m.fillText(card.name, 46, 978);
+    // (retours live 6, C6) plus de foil sur le nom
     m.fillStyle = 'rgb(0,255,0)';
     m.save();
     m.filter = 'blur(1px)';

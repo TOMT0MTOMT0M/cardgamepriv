@@ -22,6 +22,15 @@ export interface PlayerStats {
   contractsSigned: number;
   /** série de connexion en cours */
   streak: number;
+  /** (retours live 6, C15) cartes différentes par thème */
+  worldUniques: number;
+  gamingUniques: number;
+  popUniques: number;
+  sportUniques: number;
+  /** doublons brûlés à la forge (compteur de l'économie, porté par le profil pour les titres de la forge) */
+  burned?: number;
+  /** 1 = a déjà été n°1 du classement (convex/profiles.ts, markLeader) */
+  wasTop?: number;
 }
 
 export interface Cosmetic {
@@ -36,6 +45,8 @@ export interface Cosmetic {
   css?: string;
   /** badge / titre : petit glyphe */
   glyph?: string;
+  /** (retours live 6, C14) cadre ANIMÉ : nom de l'animation (style.css, `.frame-a-…`) */
+  anim?: string;
 }
 
 /**
@@ -58,7 +69,10 @@ function C(c: Partial0): Cosmetic {
  * bordures, chiffres clés). Une palette libre pour tout le monde + un sélecteur de couleur libre (« #rrggbb »), et
  * quelques teintes à débloquer par les succès. `css` = la couleur (hexadécimale).
  */
+// (retours live 6, C10) toutes les couleurs sont libres (le sélecteur « #rrggbb » l'était déjà) : un palier de succès
+// ne débloque plus qu'UNE récompense, les couleurs ne sont plus des récompenses
 export const ACCENTS: Cosmetic[] = [
+  C({ id: 'blanc', label: 'Blanc', css: '#ffffff' }),
   C({ id: 'rose', label: 'Bébou', css: '#e8927c' }),
   C({ id: 'corail', label: 'Corail', css: '#ff7b6b' }),
   C({ id: 'ambre', label: 'Ambre', css: '#f0a04b' }),
@@ -69,13 +83,13 @@ export const ACCENTS: Cosmetic[] = [
   C({ id: 'lavande', label: 'Lavande', css: '#a58bff' }),
   C({ id: 'fuchsia', label: 'Fuchsia', css: '#ff6fc2' }),
   C({ id: 'ivoire', label: 'Ivoire', css: '#efe4d2' }),
-  C({ id: 'or', label: 'Or massif', need: 'packs-500', css: '#ffc94a' }),
-  C({ id: 'rubis', label: 'Rubis', need: 'leg-5', css: '#ff3b5c' }),
-  C({ id: 'saphir', label: 'Saphir', need: 'full-1', css: '#3f7dff' }),
-  C({ id: 'jade', label: 'Jade', need: 'trade-10', css: '#2fbf71' }),
-  C({ id: 'braise', label: 'Braise', need: 'streak-7', css: '#ff6a1a' }),
-  C({ id: 'foudre', label: 'Foudre', need: 'myth-1', css: '#c86bff' }),
-  C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: '#ffb4a2' }),
+  C({ id: 'or', label: 'Or massif', css: '#ffc94a' }),
+  C({ id: 'rubis', label: 'Rubis', css: '#ff3b5c' }),
+  C({ id: 'saphir', label: 'Saphir', css: '#3f7dff' }),
+  C({ id: 'jade', label: 'Jade', css: '#2fbf71' }),
+  C({ id: 'braise', label: 'Braise', css: '#ff6a1a' }),
+  C({ id: 'foudre', label: 'Foudre', css: '#c86bff' }),
+  C({ id: 'secret', label: 'Un de nous', css: '#ffb4a2' }),
 ];
 
 /**
@@ -84,12 +98,30 @@ export const ACCENTS: Cosmetic[] = [
  * déblocages), plus la couleur libre (« #rrggbb »). Les anciens fonds / cadres (avant le 06/11) restent reconnus pour
  * ceux qui les ont choisis, mais ne sont plus proposés.
  */
-const bannerCss = (hex: string) => `radial-gradient(ellipse at 18% 30%, color-mix(in srgb, ${hex} 34%, transparent), transparent 60%), linear-gradient(120deg, color-mix(in srgb, ${hex} 22%, #0b0908), color-mix(in srgb, ${hex} 46%, #120d0c) 50%, color-mix(in srgb, ${hex} 14%, #070605))`;
-const frameCss = (hex: string) => `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 50%, #ffffff), color-mix(in srgb, ${hex} 70%, #000000))`;
-/** Bannières (fond du haut du profil) : une par couleur de la palette. */
-export const BANNERS: Cosmetic[] = ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: bannerCss(a.css!) }));
-/** Cadres d'avatar : aucun, puis un par couleur de la palette. */
-export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: frameCss(a.css!) }))];
+// (retours live 6, C4 : zéro dégradé) bannière = un APLAT de la couleur (assombrie pour le texte blanc) ; cadre = la
+// couleur pure. (B4) Le cadre était un dégradé posé dans un `box-shadow`, qui n'accepte qu'une couleur : rien ne
+// s'affichait autour de la photo.
+const bannerCss = (hex: string) => `color-mix(in srgb, ${hex} 58%, #000000)`;
+const frameCss = (hex: string) => hex;
+/**
+ * Bannières (fond du haut du profil) : « Aucune couleur » (C13 — par défaut, et pour une bannière GIF sans contour),
+ * puis une par couleur de la palette.
+ */
+export const BANNERS: Cosmetic[] = [C({ id: 'none', label: 'Aucune couleur', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: bannerCss(a.css!) }))];
+/**
+ * (retours live 6, C14) cadres ANIMÉS autour de la photo (style.css, `.frame-a-…`) : récompenses de succès. `css` = la
+ * couleur de l'anneau (classement, aperçus).
+ */
+const ANIMATED_FRAMES: Cosmetic[] = [
+  C({ id: 'a-eclairs', label: 'Éclairs', need: 'leg-5', css: '#8fd6ff', anim: 'eclairs' }),
+  C({ id: 'a-feu', label: 'Feu', need: 'leg-50', css: '#ff7a2a', anim: 'feu' }),
+  C({ id: 'a-ange', label: 'Ange', need: 'full-25', css: '#ffffff', anim: 'ange' }),
+  C({ id: 'a-coeurs', label: 'Cœurs', need: 'trade-25', css: '#ff5d8f', anim: 'coeurs' }),
+  C({ id: 'a-galaxie', label: 'Galaxie', need: 'uniq-1000', css: '#b59cff', anim: 'galaxie' }),
+  C({ id: 'a-neon', label: 'Néon', need: 'contract-25', css: '#39ffd2', anim: 'neon' }),
+];
+/** Cadres d'avatar : aucun, un par couleur de la palette, puis les cadres animés. */
+export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: frameCss(a.css!) })), ...ANIMATED_FRAMES];
 const LEGACY_BANNERS: Cosmetic[] = [
   C({ id: 'ember', label: 'Braise', css: 'linear-gradient(120deg, #2a1410, #5a2a22 45%, #1a0d0b)' }),
   C({ id: 'night', label: 'Nuit', css: 'linear-gradient(120deg, #0c1118, #16314a 50%, #0a0f16)' }),
@@ -112,29 +144,54 @@ const LEGACY_FRAMES: Cosmetic[] = [
   C({ id: 'flame', label: 'Flamme', need: 'streak-7', css: 'linear-gradient(135deg, #ff7a2a, #ffd36b, #c03010)' }),
 ];
 
-/** Titres (sous le pseudo). */
+/**
+ * Titres (sous le pseudo) — (retours live 6, C15, liste tranchée) liés à l'univers du jeu, un par palier de succès.
+ * Anciens titres (« Ouvreur compulsif »…) retirés : un joueur qui en portait un repasse sans titre.
+ */
 export const TITLES: Cosmetic[] = [
   C({ id: 'rookie', label: 'Bébou débutant' }),
-  C({ id: 'opener', label: 'Ouvreur compulsif', need: 'packs-100' }),
-  C({ id: 'opener2', label: 'Déchireur de boosters', need: 'packs-2000' }),
-  C({ id: 'collector', label: 'Collectionneur', need: 'full-1' }),
-  C({ id: 'archivist', label: 'Archiviste', need: 'full-10' }),
-  C({ id: 'legend', label: 'Chasseur de légendes', need: 'leg-5' }),
-  C({ id: 'mythic', label: 'Touché par la foudre', need: 'myth-1' }),
-  C({ id: 'secret', label: 'Un de nous', need: 'secret-1' }),
-  C({ id: 'trader', label: 'Négociant', need: 'trade-10' }),
-  C({ id: 'pyro', label: 'Pyromane', need: 'contract-10' }),
-  C({ id: 'loyal', label: 'Fidèle au poste', need: 'streak-7' }),
-  C({ id: 'king', label: 'Roi de la collection', need: 'uniq-2000' }),
+  C({ id: 't-bebou-2', label: 'Bébou confirmé', need: 'bebou-15' }),
+  C({ id: 't-bebou-3', label: 'Bébou d’or', need: 'bebou-30' }),
+  C({ id: 't-bebou-4', label: 'Roi des Bébous', need: 'bebou-50' }),
+  C({ id: 't-world-1', label: 'Explorateur', need: 'world-50' }),
+  C({ id: 't-world-2', label: 'Globe-trotteur', need: 'world-1000' }),
+  C({ id: 't-world-3', label: 'Tour du monde', need: 'world-3500' }),
+  C({ id: 't-gaming-1', label: 'Tryhard', need: 'gaming-50' }),
+  C({ id: 't-gaming-2', label: 'Boss final', need: 'gaming-1500' }),
+  C({ id: 't-gaming-3', label: 'GG', need: 'gaming-5500' }),
+  C({ id: 't-pop-1', label: 'Fan absolu', need: 'pop-100' }),
+  C({ id: 't-pop-2', label: 'Icône pop', need: 'pop-3000' }),
+  C({ id: 't-pop-3', label: 'Star absolue', need: 'pop-11000' }),
+  C({ id: 't-sport-1', label: 'Athlète', need: 'sport-50' }),
+  C({ id: 't-sport-2', label: 'Champion', need: 'sport-1500' }),
+  C({ id: 't-sport-3', label: 'Ballon d’or', need: 'sport-5000' }),
+  C({ id: 't-packs-1', label: 'Déchireur', need: 'packs-250' }),
+  C({ id: 't-packs-2', label: 'Les mains en or', need: 'packs-2000' }),
+  C({ id: 't-albums-1', label: 'Relieur', need: 'full-10' }),
+  C({ id: 't-albums-2', label: 'Maître des albums', need: 'full-50' }),
+  C({ id: 't-trade-1', label: 'Marchand', need: 'trade-10' }),
+  C({ id: 't-trade-2', label: 'Magnat des échanges', need: 'trade-50' }),
+  C({ id: 't-contract-1', label: 'Signataire', need: 'contract-10' }),
+  C({ id: 't-contract-2', label: 'As des contrats', need: 'contract-50' }),
+  C({ id: 't-forge-1', label: 'Pyromane', need: 'burn-100' }),
+  C({ id: 't-forge-2', label: 'Maître de la forge', need: 'burn-1000' }),
+  C({ id: 't-streak-1', label: 'Fidèle', need: 'streak-14' }),
+  C({ id: 't-streak-2', label: 'Inconditionnel', need: 'streak-30' }),
+  C({ id: 't-coll-1', label: 'Collectionneur', need: 'uniq-500' }),
+  C({ id: 't-coll-2', label: 'Roi de la collection', need: 'uniq-10000' }),
+  C({ id: 't-star-1', label: 'Chasseur d’étoiles', need: 'myth-1' }),
+  C({ id: 't-star-2', label: 'Chasseur de légendes', need: 'myth-10' }),
+  C({ id: 't-star-3', label: 'Arc-en-ciel', need: 'myth-50' }),
+  C({ id: 't-top', label: 'Numéro un', need: 'top-1' }),
 ];
 
 /** Badges (petites médailles sous le pseudo, plusieurs à la fois, ordonnables). */
 export const BADGES: Cosmetic[] = [
   C({ id: 'first', label: '10 boosters', need: 'packs-10', glyph: '🎴' }),
   C({ id: 'p100', label: '100 boosters', need: 'packs-100', glyph: '💯' }),
-  C({ id: 'p1000', label: '2 000 boosters', need: 'packs-2000', glyph: '🏆' }),
+  C({ id: 'p1000', label: '1 000 boosters', need: 'packs-1000', glyph: '🏆' }),
   C({ id: 'full', label: 'Album complet', need: 'full-1', glyph: '📗' }),
-  C({ id: 'mythic', label: '6★', need: 'myth-1', glyph: '✺' }),
+  C({ id: 'mythic', label: '5 × 6★', need: 'myth-5', glyph: '✺' }),
   C({ id: 'secret', label: 'Bébou secret', need: 'secret-1', glyph: '✷' }),
   C({ id: 'trade', label: 'Échangeur', need: 'trade-1', glyph: '⇄' }),
   C({ id: 'contract', label: 'Contrat signé', need: 'contract-1', glyph: '🔥' }),
@@ -154,9 +211,9 @@ export const VITRINES: Cosmetic[] = [
   C({ id: 'neon', label: 'Néon', css: 'repeating-linear-gradient(90deg, color-mix(in srgb, var(--vc) 18%, transparent) 0 1px, transparent 1px 44px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--vc) 14%, transparent) 0 1px, transparent 1px 44px), linear-gradient(180deg, #0d0a14, #07060b)' }),
   C({ id: 'beton', label: 'Béton', css: 'radial-gradient(ellipse at 50% 0%, #ffffff12, transparent 60%), linear-gradient(180deg, #2a2a2c, #161617)' }),
   C({ id: 'or', label: 'Écrin doré', need: 'packs-500', css: 'radial-gradient(ellipse at 50% 0%, #ffd77a33, transparent 60%), linear-gradient(180deg, #3a2a0c, #1a1206)' }),
-  C({ id: 'aurore', label: 'Aurore', need: 'streak-7', css: 'radial-gradient(ellipse at 20% 0%, #6bffb833, transparent 55%), radial-gradient(ellipse at 80% 10%, #c86bff33, transparent 55%), linear-gradient(180deg, #0c1418, #06090c)' }),
-  C({ id: 'prisme', label: 'Prisme', need: 'myth-1', css: 'linear-gradient(120deg, #ff6b9a1f, #ffd36b26, #6bffb826, #6bc8ff26, #c86bff26), linear-gradient(180deg, #1a1420, #0d0a10)' }),
-  C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: 'radial-gradient(ellipse at 50% 0%, #e8927c44, transparent 60%), linear-gradient(180deg, #2a0f0e, #120607)' }),
+  C({ id: 'aurore', label: 'Aurore', need: 'streak-60', css: 'radial-gradient(ellipse at 20% 0%, #6bffb833, transparent 55%), radial-gradient(ellipse at 80% 10%, #c86bff33, transparent 55%), linear-gradient(180deg, #0c1418, #06090c)' }),
+  C({ id: 'prisme', label: 'Prisme', need: 'myth-25', css: 'linear-gradient(120deg, #ff6b9a1f, #ffd36b26, #6bffb826, #6bc8ff26, #c86bff26), linear-gradient(180deg, #1a1420, #0d0a10)' }),
+  C({ id: 'secret', label: 'Un de nous', need: 'secret-3', css: 'radial-gradient(ellipse at 50% 0%, #e8927c44, transparent 60%), linear-gradient(180deg, #2a0f0e, #120607)' }),
 ];
 export const vitrineOf = (id?: string) => find(VITRINES, id) ?? VITRINES[0];
 
@@ -179,20 +236,48 @@ export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(
   collection: Array<{ cardId: string; rarity: string; count: number }>,
-  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number },
+  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number },
 ): PlayerStats {
   const ids = new Set<string>();
   let mythics = 0, legendaries = 0, secrets = 0;
+  // (retours live 6, C15) cartes différentes par thème (titres World / Gaming / Pop Culture / Sport)
+  const byTheme = new Map<string, Set<string>>();
   for (const c of collection) {
-    if (!catalogEntry(c.cardId)) continue;
+    const e = catalogEntry(c.cardId);
+    if (!e) continue;
     if (c.rarity === 'secret') secrets++;
-    else ids.add(c.cardId);
+    else {
+      ids.add(c.cardId);
+      let t = byTheme.get(e.themeId);
+      if (!t) byTheme.set(e.themeId, (t = new Set()));
+      t.add(c.cardId);
+    }
     if (c.rarity === 'mythic') mythics++;
     if (c.rarity === 'legendary') legendaries++;
   }
   let fullSubthemes = 0;
   for (const st of SUBTHEMES) if (st.cards.length && st.cards.every((c) => ids.has(c.id))) fullSubthemes++;
-  return { ...extra, uniques: ids.size, total: PUBLIC_CARD_COUNT, mythics, legendaries, secrets, fullSubthemes };
+  const n = (t: string) => byTheme.get(t)?.size ?? 0;
+  return {
+    ...extra,
+    uniques: ids.size,
+    total: PUBLIC_CARD_COUNT,
+    mythics,
+    legendaries,
+    secrets,
+    fullSubthemes,
+    worldUniques: n('monde'),
+    gamingUniques: n('gaming'),
+    popUniques: n('pop'),
+    sportUniques: n('sport'),
+  };
+}
+
+/** Couleur d'une bannière (contour d'une bannière GIF, C13) : undefined = « Aucune couleur ». */
+export function bannerColor(id?: string): string | undefined {
+  if (!id || id === 'none') return undefined;
+  if (CUSTOM_ACCENT.test(id)) return id;
+  return find(ACCENTS, id.replace(/^c-/, ''))?.css;
 }
 
 /** Plus gros drop : la meilleure carte (rareté, puis numéro d'impression le plus bas). */
@@ -255,7 +340,9 @@ export function unlockedIds(list: Cosmetic[], stats: PlayerStats): string[] {
 const customOf = (id: string | undefined, css: (hex: string) => string): Cosmetic | undefined =>
   id && CUSTOM_ACCENT.test(id) ? { id, label: id.toUpperCase(), how: '', unlock: () => true, css: css(id) } : undefined;
 export const bannerOf = (id?: string) => find(BANNERS, id) ?? find(LEGACY_BANNERS, id) ?? customOf(id, bannerCss) ?? BANNERS[0];
-export const frameOf = (id?: string) => find(FRAMES, id) ?? find(LEGACY_FRAMES, id) ?? customOf(id, frameCss) ?? FRAMES[0];
+/** cadres d'avant le 07/11 (dégradés) : leur couleur principale, en aplat (le `box-shadow` n'accepte qu'une couleur) */
+const legacyFrame = (c: Cosmetic | undefined) => (c && c.id !== 'mythic' ? { ...c, css: c.css?.match(/#[0-9a-f]{6}/i)?.[0] ?? c.css } : c);
+export const frameOf = (id?: string) => find(FRAMES, id) ?? legacyFrame(find(LEGACY_FRAMES, id)) ?? customOf(id, frameCss) ?? FRAMES[0];
 export const titleOf = (id?: string) => find(TITLES, id);
 export const badgeOf = (id: string) => find(BADGES, id);
 

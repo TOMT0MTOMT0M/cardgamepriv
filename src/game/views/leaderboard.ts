@@ -30,7 +30,7 @@ export interface Leaderboard {
 export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderboard {
   const el = h('div', 'lb-wrap');
   el.innerHTML = `
-    <div class="seg lb-boards">${BOARDS.map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.crown ? '👑 ' : ''}${b.label}</button>`).join('')}</div>
+    <div class="seg lb-boards">${BOARDS.map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.label}</button>`).join('')}</div>
     <div class="lb-podium"></div>
     <div class="lb-list"></div>`;
   const podiumEl = el.querySelector<HTMLElement>('.lb-podium')!;
@@ -73,14 +73,14 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       const r = sorted[i];
       if (!r) {
         const cell = h('div', 'lb-pd-cell');
-        cell.append(h('div', `lb-pd p${i + 1} empty`, `<span class="lb-pd-rank">${['🥇', '🥈', '🥉'][i]}</span><span class="lb-ava"><span>—</span></span><b>—</b><span class="lb-you none">&nbsp;</span><span class="lb-pd-v">&nbsp;</span>`));
+        cell.append(h('div', `lb-pd p${i + 1} empty`, `<span class="lb-pd-rank">${i + 1}</span><span class="lb-ava"><span>—</span></span><b>—</b><span class="lb-you none">&nbsp;</span><span class="lb-pd-v">&nbsp;</span>`));
         cell.insertAdjacentHTML('beforeend', SLOT);
         row.append(cell);
         continue;
       }
       const a = h('a', `lb-pd p${i + 1}${r.id === me ? ' is-me' : ''}`);
       a.href = `#/profil/${encodeURIComponent(r.id)}`;
-      a.innerHTML = `<span class="lb-pd-rank">${i === 0 && b.crown ? '👑' : ['🥇', '🥈', '🥉'][i]}</span>${ava(r)}<b>${esc(r.name)}</b>${r.id === me ? '<span class="lb-you">toi</span>' : '<span class="lb-you none">&nbsp;</span>'}<span class="lb-pd-v">${b.unit(r)}</span>`;
+      a.innerHTML = `<span class="lb-pd-rank">${i + 1}</span>${ava(r)}<b>${esc(r.name)}</b>${r.id === me ? '<span class="lb-you">toi</span>' : '<span class="lb-you none">&nbsp;</span>'}<span class="lb-pd-v">${b.unit(r)}</span>`;
       // bouton ami (lot A2) sous la place du podium, hors du lien
       // retours live 02 (bug 3) : TOUTES les places ont la même case sous la carte — le bouton « + Ami » ou, pour moi
       // (on ne s'ajoute pas soi-même) / hors connexion, un emplacement vide de même hauteur → podium toujours aligné
@@ -107,7 +107,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
         listEl.append(wrap);
       }
     }
-    if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">👑 Le classement roi : la complétion globale de la collection.</div>');
+    if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">Le classement roi : la complétion globale de la collection. Le premier gagne le titre « Numéro un ».</div>');
   }
 
   return {

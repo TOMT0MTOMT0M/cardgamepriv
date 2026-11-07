@@ -13,7 +13,7 @@ import { cardFamily } from '../sets/themes';
 import { POP_ARTISTS } from '../sets/popArtists';
 import { paintBack, ALU_BACK, type BackStyle } from './back';
 import { cardImage, ensureCardImages, loadCardImage, setImageLimits } from './images';
-import { coverBand, paintCoverSubject, paintImageSubject } from './imageSubject';
+import { PORTRAIT_MAX, coverBand, paintCoverSubject, paintImageSubject } from './imageSubject';
 import { paintPortraitSubject } from './portraitSubject';
 import { paintTitleSubject } from './jvTitle';
 
@@ -316,7 +316,9 @@ export const LANDSCAPE: { design: string | null; ratio: number; except: (card: C
   // (retours 06/11) branché : le gabarit « Paysage » (designs/paysage.ts) ; (07/11) remplacé par le labo 035 « Suisse »
   // en version paysage (designs/graphic.ts, suissePaysage) — l'ancien reste disponible : 'paysage'
   design: 'suisse-paysage',
-  ratio: 1.2,
+  // (retours live 6, B3) toute photo / jaquette qui n'est pas au format portrait (plus de flou pour combler la carte) —
+  // jaquettes DS, albums carrés, photos 4:3… — la même limite que paintCoverSubject (imageSubject.ts)
+  ratio: PORTRAIT_MAX,
   except: (card) => isSecretPhotoSet(card.set) || card.id.startsWith('mrv-'),
 };
 /** La carte a-t-elle une photo horizontale ? (illustration pleine, pas un sujet détouré) */
@@ -334,6 +336,17 @@ function landscapeDesign(card: CardData, im: Parameters<typeof isLandscapeArt>[1
   const src = coverBand(aspect), dst = suisseLandscapeBand(aspect);
   const k = dst.w / src.w;
   return { ...out, art: { k, from: [src.x + src.w / 2, src.y + src.h / 2], to: [dst.x + dst.w / 2, dst.y + dst.h / 2] } };
+}
+
+/**
+ * (retours live 6, B2 — « source unique ») gabarit d'une carte du JEU, le même partout : ouverture, visionneuse ET
+ * miniatures 2D (collection, échanges, gros tirages). Avant, les miniatures forçaient « Pleine illustration » alors que
+ * la 3D peignait les Merveilles avec le gabarit classique (fenêtre = portail du diorama) → miniature ≠ vue détail.
+ * `undefined` = gabarit propre au set (sceau des Bébous).
+ */
+export function gameDesignId(cd: CardData): string | undefined {
+  if (cd.id.startsWith('mrv-')) return 'classic';
+  return isSecretPhotoSet(cd.set) ? undefined : 'full-art';
 }
 
 /** Génère les calques d'une carte (≈ 30–60 ms à pleine résolution). */

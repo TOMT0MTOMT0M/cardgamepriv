@@ -1,6 +1,6 @@
-import { alpha, mix } from '../canvas';
+import { alpha } from '../canvas';
 import { setInfo } from '../../cardData';
-import { type CardDesign, FONT_MONO, FONT_TITLE, H, TAU, W, cut, fitFont, glyph, grainAtop, num3, paper, spaced, starColor, starRow } from './common';
+import { type CardDesign, FONT_MONO, FONT_TITLE, H, TAU, W, cut, fitFont, grainAtop, num3, paper, spaced, starColor, starRow } from './common';
 import type { Ctx } from '../canvas';
 import { COUNTRY_NAMES, countryOf, drawFlag, type CountryCode } from '../flags';
 
@@ -135,7 +135,7 @@ export const classic: CardDesign = {
     f.fillText(card.name, 62, 88);
     if (country) f.restore();
     // étoiles
-    starRow(f, m, d, W - 64, 72, 30, 'right', { r: 12.5, stroke: alpha(ink, 0.7), lineWidth: 1.2, glow: true });
+    starRow(f, m, d, W - 64, 72, 30, 'right', { r: 12.5, stroke: alpha(ink, 0.7), lineWidth: 1.2 });
     // univers — Merveilles du monde : le pays (le drapeau est le fond de la carte)
     if (country) {
       f.save();
@@ -154,10 +154,10 @@ export const classic: CardDesign = {
       }
       f.restore();
     } else {
-      glyph(f, uni.id, 86, 968, 30, mix(uni.hex, ink, 0.35), 2.2);
+      // (retours live 6, C7) plus d'emblème à côté du thème
       f.font = `500 30px ${FONT_MONO}`;
       f.fillStyle = alpha(ink, 0.85);
-      if (!d.mini) spaced(f, uni.name.toUpperCase(), 118, 978, 2.2);
+      if (!d.mini) spaced(f, uni.name.toUpperCase(), 62, 978, 2.2);
     }
     f.font = `500 30px ${FONT_MONO}`;
     f.fillStyle = alpha(ink, 0.7);
@@ -176,7 +176,6 @@ export const classic: CardDesign = {
       m.beginPath();
       win(m, 4);
       m.stroke();
-      if (!country) glyph(m, uni.id, 86, 968, 30, 'rgb(255,0,0)', 3);
     }
     if (tier >= 4) {
       m.save();
@@ -200,7 +199,7 @@ export const classic: CardDesign = {
       m.globalAlpha = 0.18;
       for (let y = 0; y < H; y += 6) m.fillRect(0, y, W, 2);
       m.globalAlpha = 1;
-    } else glyph(m, uni.id, 86, 968, 30, 'rgb(0,255,0)', 3);
+    }
     m.restore();
     void TAU;
   },

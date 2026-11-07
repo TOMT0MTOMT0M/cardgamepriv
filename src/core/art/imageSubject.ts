@@ -1,4 +1,4 @@
-import { type Ctx, alpha, ctx2d, linear, mix, radial, releaseCanvas } from './canvas';
+import { alpha, ctx2d, releaseCanvas } from './canvas';
 import { BASE_H, BASE_W, WIN, type PaintTarget } from './subjects';
 import { imageLimits, onImageEvicted, type CardImage } from './images';
 
@@ -71,70 +71,20 @@ export function imagePlacement(im: Pick<CardImage, 'canvas'>, fit = 1) {
   return { x: CX - w / 2, y, w, h };
 }
 
-function sparkle(g: Ctx, x: number, y: number, s: number) {
-  g.beginPath();
-  g.moveTo(x, y - s);
-  g.quadraticCurveTo(x + s * 0.14, y - s * 0.14, x + s, y);
-  g.quadraticCurveTo(x + s * 0.14, y + s * 0.14, x, y + s);
-  g.quadraticCurveTo(x - s * 0.14, y + s * 0.14, x - s, y);
-  g.quadraticCurveTo(x - s * 0.14, y - s * 0.14, x, y - s);
-  g.fill();
-}
-
 /**
  * Sujet « illustration » : fond peint d'après la palette de l'image (ciel teinté, halo, rayons, bokeh,
  * ombre portée), illustration détourée sur le calque sujet (parallaxe), éclats au premier plan,
  * et masques fx (B = relief de la silhouette, G = foil du sujet pour le tier mythique).
  */
 export function paintImageSubject(t: PaintTarget, im: CardImage | null, fit = 1) {
-  const { bg, subj, fg, fx, pal, r } = t;
+  const { bg, subj, fx, pal } = t;
   const hy = WIN.y + WIN.h * 0.5;
   // flou d'ombre et filtres ne suivent pas la matrice du contexte : on les met à l'échelle à la main
   const px = bg.getTransform().a;
 
-  // ── fond
-  bg.fillStyle = linear(bg, 0, 0, 0, BASE_H, [
-    [0, pal.sky],
-    [(WIN.y + WIN.h * 0.55) / BASE_H, mix(pal.sky, pal.haze, 0.45)],
-    [(WIN.y + WIN.h) / BASE_H, mix(pal.sky, pal.haze, 0.2)],
-    [1, pal.sky],
-  ]);
-  bg.fillRect(0, 0, BASE_W, BASE_H);
-  // rayons
-  bg.save();
-  bg.translate(CX, hy);
-  const n = 22;
-  const rot = r() * TAU;
-  bg.fillStyle = alpha(pal.glow, 0.055);
-  for (let i = 0; i < n; i += 2) {
-    const a0 = rot + (i / n) * TAU, a1 = rot + ((i + 1) / n) * TAU;
-    bg.beginPath();
-    bg.moveTo(0, 0);
-    bg.arc(0, 0, 900, a0, a1);
-    bg.closePath();
-    bg.fill();
-  }
-  bg.restore();
-  // halo
-  bg.fillStyle = radial(bg, CX, hy, 0, WIN.w * 0.55, [
-    [0, alpha(pal.glow, 0.62)],
-    [0.45, alpha(pal.haze, 0.22)],
-    [1, alpha(pal.haze, 0)],
-  ]);
-  bg.fillRect(0, 0, BASE_W, BASE_H);
-  // bokeh
-  bg.save();
-  bg.globalCompositeOperation = 'screen';
-  for (let i = 0; i < 16; i++) {
-    const x = WIN.x + r() * WIN.w, y = WIN.y + r() * WIN.h * 0.8, rr = 6 + r() * r() * 38;
-    bg.fillStyle = radial(bg, x, y, 0, rr, [[0, alpha(pal.glow, 0.05 + r() * 0.12)], [0.8, alpha(pal.glow, 0.04)], [1, alpha(pal.glow, 0)]]);
-    bg.beginPath();
-    bg.arc(x, y, rr, 0, TAU);
-    bg.fill();
-  }
-  bg.restore();
-  // vignettage de la fenêtre
-  bg.fillStyle = radial(bg, CX, hy, WIN.w * 0.35, WIN.w * 0.85, [[0, alpha(pal.ink, 0)], [1, alpha(pal.ink, 0.45)]]);
+  // ── fond : (retours live 6, C6 « zéro effet sur les cartes ») un aplat de la couleur de l'illustration — plus de
+  // rayons, de halo, de bokeh ni de vignettage
+  bg.fillStyle = pal.sky;
   bg.fillRect(0, 0, BASE_W, BASE_H);
 
   if (!im) {
@@ -154,21 +104,10 @@ export function paintImageSubject(t: PaintTarget, im: CardImage | null, fit = 1)
   }
 
   const p = imagePlacement(im, fit);
-  // ombre portée au sol
-  bg.save();
-  bg.filter = `blur(${10 * px}px)`;
-  bg.fillStyle = alpha(pal.ink, 0.5);
-  bg.beginPath();
-  bg.ellipse(CX, Math.min(GROUND - 4, p.y + p.h + 18), p.w * 0.34, 16, 0, 0, TAU);
-  bg.fill();
-  bg.restore();
-
-  // ── sujet : liseré lumineux (ombre colorée) puis l'illustration
+  // ── sujet : l'illustration seule (C6 : plus de liseré lumineux, d'ombre portée ni d'éclats)
   subj.save();
   subj.imageSmoothingEnabled = true;
   subj.imageSmoothingQuality = 'high';
-  subj.shadowColor = alpha(pal.glow, 0.7);
-  subj.shadowBlur = 22 * px;
   subj.drawImage(im.canvas, p.x, p.y, p.w, p.h);
   subj.restore();
 
@@ -184,18 +123,6 @@ export function paintImageSubject(t: PaintTarget, im: CardImage | null, fit = 1)
   fx.drawImage(sg, p.x, p.y, p.w, p.h);
   done(im, sg);
   fx.restore();
-
-  // ── premier plan : quelques éclats autour du sujet
-  fg.save();
-  for (let i = 0; i < 9; i++) {
-    const a = r() * TAU;
-    const rr = 0.42 + r() * 0.2;
-    const x = CX + Math.cos(a) * p.w * rr, y = p.y + p.h / 2 + Math.sin(a) * p.h * rr;
-    if (y < WIN.y + 12 || y > WIN.y + WIN.h - 12) continue;
-    fg.fillStyle = alpha(i % 3 ? pal.paper : pal.glow, 0.45 + r() * 0.4);
-    sparkle(fg, x, y, 3 + r() * 7);
-  }
-  fg.restore();
 }
 
 /**
@@ -214,10 +141,20 @@ export function coverBand(aspect: number) {
   return { x: FULL_VIEW.x, y, w, h };
 }
 
-/** `crisp` (07/11, gabarit Suisse paysage) : la photo horizontale est posée nette, sans fondu haut/bas ni vignettage */
-export function paintCoverSubject(t: PaintTarget, im: CardImage | null, o: { crisp?: boolean } = {}) {
+/**
+ * Au-delà de ce format (largeur / hauteur), une photo n'est plus recadrée bord à bord dans la carte : elle est posée
+ * ENTIÈRE dans le cadre du gabarit Suisse (art/index.ts, LANDSCAPE.ratio). ≈ 0,82 = un rien plus large qu'une
+ * jaquette PS4 ; une jaquette DS (0,88), un album carré, une photo 4:3 vont dans le cadre.
+ */
+export const PORTRAIT_MAX = 0.82;
+
+/**
+ * (retours live 6, B3 + C6 « zéro effet ») plus AUCUN flou ni fondu ni vignettage : une photo proche du portrait
+ * remplit la carte (recadrée), toute autre est posée entière et nette (le gabarit Suisse l'encadre ; ailleurs — Merveilles
+ * en 2D — le reste de la fenêtre est un aplat de sa couleur). `crisp` n'a plus d'effet (gardé pour les appelants).
+ */
+export function paintCoverSubject(t: PaintTarget, im: CardImage | null, _o: { crisp?: boolean } = {}) {
   const { bg, fx, pal } = t;
-  const px = bg.getTransform().a;
   bg.fillStyle = pal.sky;
   bg.fillRect(0, 0, BASE_W, BASE_H);
   if (!im) {
@@ -225,58 +162,23 @@ export function paintCoverSubject(t: PaintTarget, im: CardImage | null, o: { cri
     return;
   }
   const cw = im.canvas.width, ch = im.canvas.height;
-  const cover = (box: { x: number; y: number; w: number; h: number }) => {
-    const k = Math.max(box.w / cw, box.h / ch);
-    const w = cw * k, h = ch * k;
-    return { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h };
-  };
   bg.save();
   bg.imageSmoothingEnabled = true;
   bg.imageSmoothingQuality = 'high';
-  // fond : la même image, floutée, sur toute la carte
-  const all = cover({ x: 0, y: 0, w: BASE_W, h: BASE_H });
-  bg.filter = `blur(${18 * px}px) brightness(0.55)`;
-  bg.drawImage(im.canvas, all.x, all.y, all.w, all.h);
-  bg.filter = 'none';
-  const va = FULL_VIEW.w / FULL_VIEW.h, a = cw / ch;
-  if (a <= va * 1.3) {
-    // format proche du portrait : l'illustration nette remplit la carte du jeu, bord à bord (point focal un peu haut)
-    const v = cover(FULL_VIEW);
-    const y = Math.min(FULL_VIEW.y, Math.max(FULL_VIEW.y + FULL_VIEW.h - v.h, FULL_VIEW.y + FULL_VIEW.h * 0.42 - v.h * 0.42));
-    bg.drawImage(im.canvas, v.x, y, v.w, v.h);
+  const a = cw / ch;
+  if (a < PORTRAIT_MAX) {
+    // format portrait : l'illustration nette remplit la carte du jeu, bord à bord (point focal un peu haut)
+    const k = Math.max(FULL_VIEW.w / cw, FULL_VIEW.h / ch);
+    const w = cw * k, h = ch * k;
+    const x = FULL_VIEW.x + (FULL_VIEW.w - w) / 2;
+    const y = Math.min(FULL_VIEW.y, Math.max(FULL_VIEW.y + FULL_VIEW.h - h, FULL_VIEW.y + FULL_VIEW.h * 0.42 - h * 0.42));
+    bg.drawImage(im.canvas, x, y, w, h);
   } else {
-    // photo large (paysage, voiture…) : RIEN n'est coupé. Elle prend toute la largeur, au-dessus du nom, fondue en haut
-    // et en bas dans sa propre copie floutée.
-    const { w, h, y } = coverBand(a);
-    const tmp = document.createElement('canvas');
-    tmp.width = Math.max(1, Math.round(w * px));
-    tmp.height = Math.max(1, Math.round(h * px));
-    const g = ctx2d(tmp);
-    g.imageSmoothingEnabled = true;
-    g.imageSmoothingQuality = 'high';
-    g.drawImage(im.canvas, 0, 0, tmp.width, tmp.height);
-    g.globalCompositeOperation = 'destination-in';
-    const fade = g.createLinearGradient(0, 0, 0, tmp.height);
-    if (!o.crisp) {
-      fade.addColorStop(0, 'rgba(0,0,0,0)');
-      fade.addColorStop(0.12, 'rgba(0,0,0,1)');
-      fade.addColorStop(0.88, 'rgba(0,0,0,1)');
-      fade.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = fade;
-      g.fillRect(0, 0, tmp.width, tmp.height);
-    }
-    bg.drawImage(tmp, FULL_VIEW.x, y, w, h);
-    releaseCanvas(tmp);
+    // toute autre photo : ENTIÈRE, rien de coupé, rien de flouté (le cadre Suisse se cale sur elle : coverBand)
+    const { x, y, w, h } = coverBand(a);
+    bg.drawImage(im.canvas, x, y, w, h);
   }
   bg.restore();
-  // vignettage doux (le nom en bas et les étoiles en haut restent lisibles)
-  if (!o.crisp) {
-    bg.fillStyle = radial(bg, FULL_VIEW.x + FULL_VIEW.w / 2, FULL_VIEW.y + FULL_VIEW.h * 0.42, FULL_VIEW.w * 0.45, FULL_VIEW.h * 0.75, [
-      [0, alpha(pal.ink, 0)],
-      [1, alpha(pal.ink, 0.35)],
-    ]);
-    bg.fillRect(0, 0, BASE_W, BASE_H);
-  }
   fx.save();
   fx.globalCompositeOperation = 'lighter';
   fx.fillStyle = 'rgb(0,0,40)';

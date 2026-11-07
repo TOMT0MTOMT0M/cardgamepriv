@@ -149,18 +149,23 @@ top.innerHTML = `
   <nav aria-label="Pages du jeu">
     <a href="#/" data-r="">Boutique</a>
     <a href="#/collection" data-r="collection">Collection</a>
-    <a href="#/contrats" data-r="contrats">Contrats</a>
-    <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>    <a href="#/jeux" data-r="jeux">Jeux</a>
+    <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>
+    <a href="#/jeux" data-r="jeux">Jeux</a>
     <a href="#/classement" data-r="classement">Classement</a>
     <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
     <a href="#/amis" data-r="amis">Amis<b class="badge am-badge" hidden></b></a>
-    <a href="#/suggestions" data-r="suggestions">Suggestions<b class="badge sg-badge" hidden></b></a>
-    <a href="#/maj" data-r="maj">Mises à jour</a>
-    <a href="#/tuto" data-r="tuto">Tutoriel</a>
     <i class="nav-pill" aria-hidden="true"></i>
     <button class="nav-more" tabindex="-1" aria-hidden="true">›</button>
   </nav>
+  <div class="nav-extra" role="group" aria-label="Infos du jeu">
+    <a href="#/maj" data-r="maj" title="Mises à jour" aria-label="Mises à jour"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
+    <a href="#/tuto" data-r="tuto" title="Tutoriel" aria-label="Tutoriel"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
+    <a href="#/suggestions" data-r="suggestions" title="Suggestions" aria-label="Suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><b class="badge sg-badge" hidden></b></a>
+  </div>
   <div class="me"></div>`;
+// (retours live 6, C8) navigation à 7 onglets : Boutique · Collection · Échanges · Jeux · Classement · Succès · Amis.
+// Les CONTRATS sont dans la Collection (à côté de la Forge, #/collection/contrats) ; Mises à jour, Tutoriel et
+// Suggestions passent dans un petit groupe à part (ordinateur) et dans le menu du profil (téléphone).
 // lien d'évitement (visible seulement au clavier) : saute l'en-tête
 top.querySelector('.skip')!.addEventListener('click', () => viewHost.focus());
 const meEl = top.querySelector<HTMLElement>('.me')!;
@@ -403,7 +408,7 @@ function renderMe() {
     meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Recharger le jeu (si l’affichage 3D ne revient pas)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Relancer le jeu</span></button></div></div>`;
+    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Recharger le jeu (si l’affichage 3D ne revient pas)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Relancer le jeu</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Mises à jour</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Tutoriel</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
     tickPacks();
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
@@ -546,6 +551,8 @@ backend.eco.onChange((snap) => {
   const was = sgBadge.hidden ? 0 : Number(sgBadge.textContent);
   sgBadge.hidden = n === 0;
   sgBadge.textContent = String(n);
+  const mm = meEl.querySelector<HTMLElement>('.mm-sg');
+  if (mm) (mm.hidden = n === 0), (mm.textContent = String(n));
   if (n !== was) placePill(false);
 });
 /** Portefeuille (pièces) : solde dans l'en-tête, « +N » qui s'envole à chaque gain, pastille s'il y a quelque chose à prendre. */
@@ -827,9 +834,11 @@ async function boot() {
     const [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/');
     // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
     // primes de complétion dans la page Succès
-    const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : undefined;
+    const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' ? '#/collection/contrats' : undefined;
     if (moved) return void location.replace(moved);
-    const key = r in views || isPage(r) ? r : '';
+    // (retours live 6, C8) #/collection/contrats = la page des contrats, dans la Collection
+    const page = r === 'collection' && sub === 'contrats' ? 'contrats' : r;
+    const key = page in views || isPage(page) ? page : '';
     if (shop.busy() && key !== '') {
       // pas de fuite au milieu d'une ouverture : le pack est déjà tiré, on le finit
       history.replaceState(null, '', '#/');
@@ -852,11 +861,14 @@ async function boot() {
     document.body.dataset.route = key || 'shop';
     currentRoute = key;
     updateTitle();
-    top.querySelectorAll<HTMLElement>('nav a').forEach((a) => {
-      a.classList.toggle('on', a.dataset.r === key);
-      if (a.dataset.r === key) a.setAttribute('aria-current', 'page');
+    // (C8) les Contrats vivent dans la Collection : c'est son onglet qui reste allumé
+    const navKey = key === 'contrats' ? 'collection' : key;
+    top.querySelectorAll<HTMLElement>('nav a, .nav-extra a').forEach((a) => {
+      a.classList.toggle('on', a.dataset.r === navKey);
+      if (a.dataset.r === navKey) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
+    meEl.querySelectorAll<HTMLElement>('.mm-link').forEach((a) => a.classList.toggle('on', a.dataset.r === key));
     placePill(changed);
     // nav qui défile (téléphone, 7 onglets) : l'onglet actif est ramené au milieu
     showActiveTab(changed);

@@ -78,13 +78,15 @@ export interface TierBeat {
 
 // (retours 06/11 : « les cartes se retournent BIEN TROP vite, même en original ») : retournements ≈ ×2,2, savourage
 // un peu plus long ; la version condensée (« Tout révéler ») ralentit pareil
+/** (retours live 6, C2) retournements encore 30 % plus lents (toutes raretés, version normale et « Tout révéler ») */
+const FLIP_K = 1.3;
 export const TIER_BEAT: TierBeat[] = [
-  { pre: 0, flip: 0.46, hitStop: 0, hold: 0.18, dark: 0, shake: 0, haptic: 8, condensed: { pre: 0, flip: 0.38, hold: 0.1 } },
-  { pre: 0, flip: 0.46, hitStop: 0, hold: 0.18, dark: 0, shake: 0, haptic: 8, condensed: { pre: 0, flip: 0.38, hold: 0.1 } },
-  { pre: 0.16, flip: 0.52, hitStop: 0, hold: 0.5, dark: 0, shake: 0, haptic: 12, condensed: { pre: 0, flip: 0.42, hold: 0.22 } },
-  { pre: 0.5, flip: 0.6, hitStop: 60, hold: 0.8, dark: 0, shake: 0, haptic: [20, 40, 30], condensed: { pre: 0.3, flip: 0.5, hold: 0.55 } },
-  { pre: 1.0, flip: 0.7, hitStop: 90, hold: 1.3, dark: 0.35, shake: 2, haptic: [30, 60, 60], condensed: { pre: 0.6, flip: 0.6, hold: 1.0 } },
-  { pre: 1.8, flip: 0.78, hitStop: 120, hold: 1.6, dark: 0.6, shake: 3, haptic: [40, 80, 40, 80, 120], condensed: { pre: 1.8, flip: 0.78, hold: 1.6 } },
+  { pre: 0, flip: FLIP_K * 0.46, hitStop: 0, hold: 0.18, dark: 0, shake: 0, haptic: 8, condensed: { pre: 0, flip: FLIP_K * 0.38, hold: 0.1 } },
+  { pre: 0, flip: FLIP_K * 0.46, hitStop: 0, hold: 0.18, dark: 0, shake: 0, haptic: 8, condensed: { pre: 0, flip: FLIP_K * 0.38, hold: 0.1 } },
+  { pre: 0.16, flip: FLIP_K * 0.52, hitStop: 0, hold: 0.5, dark: 0, shake: 0, haptic: 12, condensed: { pre: 0, flip: FLIP_K * 0.42, hold: 0.22 } },
+  { pre: 0.5, flip: FLIP_K * 0.6, hitStop: 60, hold: 0.8, dark: 0, shake: 0, haptic: [20, 40, 30], condensed: { pre: 0.3, flip: FLIP_K * 0.5, hold: 0.55 } },
+  { pre: 1.0, flip: FLIP_K * 0.7, hitStop: 90, hold: 1.3, dark: 0.35, shake: 2, haptic: [30, 60, 60], condensed: { pre: 0.6, flip: FLIP_K * 0.6, hold: 1.0 } },
+  { pre: 1.8, flip: FLIP_K * 0.78, hitStop: 120, hold: 1.6, dark: 0.6, shake: 3, haptic: [40, 80, 40, 80, 120], condensed: { pre: 1.8, flip: FLIP_K * 0.78, hold: 1.6 } },
 ];
 
 /** 6★ : silence (retrait du son) avant l'impact, en secondes. */

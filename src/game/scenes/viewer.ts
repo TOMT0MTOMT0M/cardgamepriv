@@ -67,9 +67,9 @@ export function createViewerScene(): ViewerScene {
   let pipe: ReturnType<typeof createPipeline> | null = null;
   let bloomStrength: { value: number } | null = null;
   /** halo derrière la carte, de la couleur de sa rareté (plus présent et « vivant » pour légendaire et mieux) */
-  const halo = { color: uniform(new Color('#e8e2d6')), k: uniform(0) };
+  const halo = { color: uniform(new Color('#ffffff')), k: uniform(0) };
   const haloT = { k: 0, pulse: 0 };
-  const haloColor = new Color('#e8e2d6');
+  const haloColor = new Color('#ffffff');
   /** zoom d'inspection (molette, ou deux touchers rapides) : cible et valeur lissée */
   let zoomT = 1;
   let zoom = 1;
@@ -188,7 +188,7 @@ export function createViewerScene(): ViewerScene {
         mats = [face.holo.material, edge];
         mesh = new Mesh(geo, [face.holo.material, backs.forCard(cardId), edge]);
         rig.add(mesh);
-        haloColor.set(rr.secret ? '#e8927c' : rr.tier === 0 ? '#e8e2d6' : rr.hex);
+        haloColor.set(rr.secret ? '#e8927c' : rr.tier === 0 ? '#ffffff' : rr.hex);
       }
 
       tl?.kill();
@@ -225,7 +225,7 @@ export function createViewerScene(): ViewerScene {
     },
     async setup(c) {
       ctx = c;
-      stage = createStage(c, { bg: ['#211c19', '#070606'], env: 'studio', envIntensity: 1.2, fill: 0.6, fillPortrait: 0.66 });
+      stage = createStage(c, { bg: ['#000000', '#000000'] /* (C4) noir profond */, env: 'studio', envIntensity: 1.2, fill: 0.6, fillPortrait: 0.66 });
       const key = new DirectionalLight(0xfff0e0, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);

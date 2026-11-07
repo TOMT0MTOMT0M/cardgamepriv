@@ -2,6 +2,7 @@ import { BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshPhysic
 import { bumpMap, float, mix, normalMap, positionLocal, texture, uv, vec2, vec3, smoothstep, sin } from 'three/tsl';
 import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, type Ctx } from './art/canvas';
 import { FONT_MONO, FONT_TITLE } from './art/frame';
+import { FONT_DISPLAY } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
@@ -66,6 +67,11 @@ export interface PackStyle {
    * et le nom du pack, rien d'autre ; dos en métal brossé de la même teinte. `ground` = la couleur du sachet.
    */
   simple?: boolean;
+  /**
+   * (retours live 6, C1) nom du pack imprimé en NOIR au centre du sachet simple (« World », « Gaming », « Bebou »,
+   * « Popculture », « Sport ») — et RIEN d'autre (plus de logo « Bébou Cartes »).
+   */
+  label?: string;
 }
 
 export const PACK_STYLES: Record<string, PackStyle> = {
@@ -371,6 +377,18 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
     }
     crimpBands(g, mixHex(base, '#d9dce1', 0.55));
     applyGrain(g, PW, PH, 0.012, 8, 20);
+  }
+  // (retours live 6, C1) face avant : le NOM DU PACK en noir, en Matcha World (la typo des gros titres), centré
+  if (style.label) {
+    await Promise.race([document.fonts.load(`400 120px ${FONT_DISPLAY}`).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
+    const g = F.g;
+    g.save();
+    g.fillStyle = '#0b0b0c';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = fitFont(g, style.label, 400, 132, PW - 120, FONT_DISPLAY);
+    g.fillText(style.label, PW / 2, PH * 0.5);
+    g.restore();
   }
   // ── masques : R = zones plus lisses (soudures), G = relief des soudures, B = ligne de déchirure (découpe)
   const m = M.g;
