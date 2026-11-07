@@ -977,7 +977,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     // en ligne, pas encore connecté au serveur ou pas de joueur : ce n'est pas une collection vide (UX1-15)
     if (mine.size === 0 && signedOut()) {
       empty.hidden = false;
-      empty.innerHTML = loginPrompt(backend, 'Connecte-toi avec Discord pour retrouver ta collection.');
+      empty.innerHTML = loginPrompt(backend, 'Connecte-toi pour retrouver ta collection.');
       return;
     }
     empty.innerHTML = fr(mine.size === 0 ? 'Ta collection est vide : <a href="#/">ouvre ton premier booster</a> !' : active.length ? `Aucune de tes cartes pour ${esc(active.join(' + '))}.` : 'Aucune carte ne correspond aux filtres.') + (mine.size && active.length ? ' <button class="btn-ghost f-reset">Réinitialiser les filtres</button>' : '');

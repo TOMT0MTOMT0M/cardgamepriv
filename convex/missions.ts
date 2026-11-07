@@ -42,7 +42,7 @@ export async function bumpMissions(ctx: MutationCtx, user: Doc<'users'>, ev: Mis
 /** Ajoute des boosters à la réserve (au-dessus du plafond si besoin), recharge appliquée d'abord. */
 async function grant(ctx: MutationCtx, user: Doc<'users'>, n: number, missions: MissionsState) {
   const now = Date.now();
-  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now);
+  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
   await ctx.db.patch(user._id, { packBalance: regen.balance + n, packRegenAt: regen.regenAt, missions: cleanMissions(missions) });
 }
 

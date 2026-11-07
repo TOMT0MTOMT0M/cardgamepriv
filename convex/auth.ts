@@ -1,9 +1,15 @@
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
+import { internal } from './_generated/api';
+import { STARTER_PACKS, assertOpen } from './launch';
+import { BOOST_MS } from '../src/core/packRegen';
 
-const MAX_FRIENDS_CAP = 20;
-const STARTER_PACKS = 5;
+/** Places du club (variable Convex MAX_PLAYERS pour l'agrandir, comptes de l'équipe compris). */
+export const maxPlayers = () => {
+  const n = Number((process.env.MAX_PLAYERS ?? '').trim());
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 30;
+};
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export async function getUserByToken(
@@ -41,12 +47,12 @@ export async function requireUser(
 ): Promise<Doc<'users'>> {
   const user = await getUserByToken(ctx, sessionToken);
   if (!user) {
-    throw new ConvexError('Non connecté. Connecte-toi avec Discord.');
+    throw new ConvexError('Non connecté : connecte-toi (Discord ou pseudo).');
   }
   return user;
 }
 
-function generateRandomToken(): string {
+export function generateRandomToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -82,34 +88,9 @@ export const upsertDiscordUser = internalMutation({
       .unique();
 
     if (!user) {
-      // Enforce the 20-player private club cap
-      const allUsers = await ctx.db.query('users').collect();
-      if (allUsers.length >= MAX_FRIENDS_CAP) {
-        throw new ConvexError(`Serveur complet (${MAX_FRIENDS_CAP}/${MAX_FRIENDS_CAP} amis max).`);
-      }
-
-      const userId = await ctx.db.insert('users', {
-        discordId: args.discordId,
-        username: args.username,
-        displayName: args.displayName,
-        avatarUrl: args.avatarUrl,
-        packBalance: STARTER_PACKS,
-        lastDailyClaimAt: 0,
-        packRegenAt: now,
-        totalPacksOpened: 0,
-        lastSeenAt: now,
-        statusText: 'Vient de rejoindre le club',
-      });
-
-      await ctx.db.insert('activityFeed', {
-        userId,
-        displayName: args.displayName,
-        avatarUrl: args.avatarUrl,
-        kind: 'joined',
-        message: `${args.displayName} a rejoint le club avec ${STARTER_PACKS} boosters de départ !`,
-        createdAt: now,
-      });
-
+      const userId = await createUser(ctx, { discordId: args.discordId, username: args.username, displayName: args.displayName, avatarUrl: args.avatarUrl });
+      // (ouverture 07/11) MP du bot Discord : lien de parrainage + avantages, une seule fois (convex/discordBot.ts)
+      await ctx.scheduler.runAfter(4000, internal.discordBot.welcomeDm, { userId });
       user = (await ctx.db.get(userId))!;
     } else {
       await ctx.db.patch(user._id, {
@@ -121,17 +102,51 @@ export const upsertDiscordUser = internalMutation({
       });
     }
 
-    const token = generateRandomToken();
-    await ctx.db.insert('sessions', {
-      token,
-      userId: user._id,
-      createdAt: now,
-      expiresAt: now + SESSION_TTL_MS,
-    });
-
-    return { token, userId: user._id };
+    return { token: await issueSession(ctx, user._id), userId: user._id };
   },
 });
+
+/** Nouvelle session (30 jours) pour un joueur : le jeton que le site garde. */
+export async function issueSession(ctx: MutationCtx, userId: Id<'users'>): Promise<string> {
+  const now = Date.now();
+  const token = generateRandomToken();
+  await ctx.db.insert('sessions', { token, userId, createdAt: now, expiresAt: now + SESSION_TTL_MS });
+  return token;
+}
+
+/**
+ * Nouveau joueur (Discord ou pseudo) : refusé avant l'ouverture (convex/launch.ts) et quand le club est complet ;
+ * 15 boosters de départ + recharge ×2 pendant 24 h, arrivée annoncée dans le fil.
+ */
+export async function createUser(
+  ctx: MutationCtx,
+  f: { discordId: string; username: string; displayName: string; avatarUrl?: string; pwHash?: string },
+): Promise<Id<'users'>> {
+  await assertOpen(ctx);
+  const cap = maxPlayers();
+  const allUsers = await ctx.db.query('users').collect();
+  if (allUsers.length >= cap) throw new ConvexError(`Le club est complet (${cap}/${cap} joueurs).`);
+  const now = Date.now();
+  const userId = await ctx.db.insert('users', {
+    ...f,
+    packBalance: STARTER_PACKS,
+    lastDailyClaimAt: 0,
+    packRegenAt: now,
+    regenBoostUntil: now + BOOST_MS,
+    totalPacksOpened: 0,
+    lastSeenAt: now,
+    statusText: 'Vient de rejoindre le club',
+  });
+  await ctx.db.insert('activityFeed', {
+    userId,
+    displayName: f.displayName,
+    avatarUrl: f.avatarUrl,
+    kind: 'joined',
+    message: `${f.displayName} a rejoint le club avec ${STARTER_PACKS} boosters de départ !`,
+    createdAt: now,
+  });
+  return userId;
+}
 
 export const logout = mutation({
   args: { sessionToken: v.string() },

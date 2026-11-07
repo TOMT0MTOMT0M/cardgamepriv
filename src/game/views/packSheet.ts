@@ -240,7 +240,7 @@ export function createPackSheet(
     } else if (needLogin) {
       openBtn.textContent = 'SE CONNECTER';
       openBtn.disabled = false;
-      openSub.textContent = 'Connexion avec Discord · accès réservé au groupe';
+      openSub.textContent = 'Connexion Discord ou pseudo · accès réservé au groupe';
     } else if (sealedOther) {
       // (audit UX2-09) un autre booster est déjà tiré : on propose de l'ouvrir lui, au lieu d'un bouton grisé sans issue
       openBtn.textContent = sealedTarget ? `OUVRIR MON ${sealedTarget.name.toUpperCase()}` : 'OUVRIR';

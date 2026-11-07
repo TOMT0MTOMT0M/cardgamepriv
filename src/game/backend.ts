@@ -232,15 +232,19 @@ export interface Me {
   /** réserve stockée et départ du minuteur de recharge (1 booster / 5 min, 15 max) */
   packStored: number;
   packRegenAt: number;
+  /** (ouverture 07/11) recharge ×2 jusqu'à cet instant */
+  boostUntil?: number;
   totalPacksOpened: number;
   /** pity 6★ : boosters d'affilée sans Mythique (src/core/pity.ts) */
   pityCount: number;
   /** série de connexion (src/core/streak.ts) — telle qu'enregistrée côté serveur */
   streak?: StreakState;
+  /** (ouverture 07/11) équipe (admin / modérateur) : passe le compte à rebours */
+  staff?: boolean;
 }
 
 /** Réserve de boosters à l'instant présent (le compte à rebours de l'en-tête l'appelle chaque seconde). */
-export const liveRegen = (u: Me, now = Date.now()): RegenState => applyRegen(u.packStored, u.packRegenAt, now);
+export const liveRegen = (u: Me, now = Date.now()): RegenState => applyRegen(u.packStored, u.packRegenAt, now, u.boostUntil);
 
 export interface GameState {
   /** `online` : serveur Convex + Discord · `demo` : tout dans ce navigateur, amis robots */
@@ -248,6 +252,8 @@ export interface GameState {
   /** premières données reçues */
   ready: boolean;
   user: Me | null;
+  /** (ouverture 07/11, convex/launch.ts) heure d'ouverture (compte à rebours) — absent en démo */
+  launch?: { launchAt: number | null; resetAt: number | null; clubCode: boolean } | null;
   authError: string | null;
   collection: PlayerCard[];
   friends: Friend[];

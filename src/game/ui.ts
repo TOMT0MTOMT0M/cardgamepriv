@@ -291,7 +291,7 @@ export function panelHidden(pop: HTMLElement, close: () => void) {
  */
 export function loginPrompt(b: { state: { mode: string; ready: boolean } }, text: string): string {
   if (b.state.mode === 'online' && !b.state.ready) return '<div class="muted login-wait">Connexion au serveur…</div>';
-  return `<div class="muted">${esc(text)}</div>${b.state.mode === 'online' ? '<button class="btn-primary login-cta">Connexion Discord</button>' : ''}`;
+  return `<div class="muted">${esc(text)}</div>${b.state.mode === 'online' ? '<button class="btn-primary login-cta">Se connecter</button>' : ''}`;
 }
 
 /** Un panneau se redessine (données qui changent) : le focus clavier qui y était n'est pas perdu. */

@@ -118,11 +118,33 @@ export default defineSchema({
     referredDevice: v.optional(v.string()),
     /** le parrain a reçu ses 10 boosters (mes 10 premiers boosters ouverts) */
     referralPaid: v.optional(v.boolean()),
+    /**
+     * COMPTE SANS DISCORD (ouverture 07/11, convex/pwAuth.ts) : `discordId` vaut alors « pw:<pseudo en minuscules> » ;
+     * mot de passe haché (scrypt, sel propre au compte), jamais en clair. Essais ratés : verrou de 10 min après 8.
+     */
+    pwHash: v.optional(v.string()),
+    pwFails: v.optional(v.number()),
+    pwLockUntil: v.optional(v.number()),
+    /** (ouverture 07/11) recharge des boosters ×2 jusqu'à cet instant (24 h après l'arrivée — src/core/packRegen.ts) */
+    regenBoostUntil: v.optional(v.number()),
+    /** MP de bienvenue du bot Discord (lien de parrainage) déjà tenté : une seule fois, à la première connexion */
+    welcomeDmAt: v.optional(v.number()),
   })
     .index('by_discordId', ['discordId'])
     .index('by_lastSeenAt', ['lastSeenAt'])
     .index('by_refCode', ['refCode'])
     .index('by_referredBy', ['referredBy']),
+
+  /**
+   * Réglages du site (ouverture 07/11, convex/launch.ts) — une ligne par clé : `launch` = heure d'ouverture (compte à
+   * rebours), dernière remise à zéro (le site nettoie alors son stockage local) et bilan de la remise à zéro.
+   */
+  appConfig: defineTable({
+    key: v.string(),
+    launchAt: v.optional(v.number()),
+    resetAt: v.optional(v.number()),
+    lastReset: v.optional(v.any()),
+  }).index('by_key', ['key']),
 
   /** Clics sur les liens d'invitation : un par appareil et par code (le compteur « X personnes ont cliqué »). */
   referralClicks: defineTable({

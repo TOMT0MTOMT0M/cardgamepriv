@@ -848,7 +848,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     if (!wasOpen) return soon();
     renderHead();
     if (!backend.state.user && backend.state.mode === 'online') {
-      body.innerHTML = '<div class="gm-panel"><b>Connecte-toi avec Discord pour jouer.</b></div>';
+      body.innerHTML = '<div class="gm-panel"><b>Connecte-toi pour jouer.</b></div>';
       return;
     }
     if (sub === 'duel') arg ? duelRoom(arg) : duelLobby();

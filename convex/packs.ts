@@ -75,7 +75,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
 
   // recharge accumulée depuis la dernière fois (1 booster / 5 min, 15 max), puis on dépense
   const now = Date.now();
-  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now);
+  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
   if (regen.balance <= 0) {
     throw new ConvexError(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
   }

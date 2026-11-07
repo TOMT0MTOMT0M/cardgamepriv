@@ -120,7 +120,7 @@ export const grantTestCards = internalMutation({
     let packBalance = user.packBalance;
     if (a.packs) {
       const now = Date.now();
-      const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now);
+      const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
       packBalance = regen.balance + a.packs;
       await ctx.db.patch(user._id, { packBalance, packRegenAt: now });
     }

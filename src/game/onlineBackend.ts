@@ -8,7 +8,7 @@ import type { BoardState, ListingOfferView, ListingView } from './backend';
 import { api } from '../../convex/_generated/api';
 import type { Doc } from '../../convex/_generated/dataModel';
 
-/** Le vrai serveur : Convex (temps réel) + Discord, via le client partagé avec le labo (core/net/client.ts). */
+/** Le vrai serveur : Convex (temps réel) + Discord ou pseudo, via le client partagé avec le labo (core/net/client.ts). */
 export function createOnlineBackend(): GameBackend {
   const listeners = new Set<(s: GameState) => void>();
   const state: GameState = {
@@ -65,6 +65,7 @@ export function createOnlineBackend(): GameBackend {
     // `ready` : le serveur a répondu au moins une fois (avant : « connexion… », pas « Connexion Discord »)
     state.ready = n.connected;
     state.authError = n.authError;
+    state.launch = n.launch;
     const userChanged = changed('user', n.user);
     if (userChanged) {
       state.user = n.user
@@ -75,9 +76,11 @@ export function createOnlineBackend(): GameBackend {
             packBalance: n.user.packBalance,
             packStored: n.user.packStored ?? n.user.packBalance,
             packRegenAt: n.user.packRegenAt ?? Date.now(),
+            boostUntil: n.user.boostUntil,
             totalPacksOpened: n.user.totalPacksOpened,
             pityCount: n.user.pityCount ?? 0,
             streak: n.user.streak ?? undefined,
+            staff: !!n.user.staff,
           }
         : null;
       state.wishlist = n.user?.wishlist ?? [];
@@ -127,7 +130,8 @@ export function createOnlineBackend(): GameBackend {
       fn(state);
       return () => listeners.delete(fn);
     },
-    login: () => net.loginWithDiscord(),
+    // (ouverture 07/11) fenêtre de connexion : Discord OU pseudo + mot de passe (views/login.ts)
+    login: () => void import('./views/login').then((m) => m.openLogin()),
     logout: () => net.logout(),
     async preparePack(req: PackRequest) {
       const p = await net.preparePack({ packKind: req.kind, themeId: req.themeId });

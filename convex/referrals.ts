@@ -23,7 +23,7 @@ function newCode(): string {
   return s;
 }
 
-async function ensureCode(ctx: MutationCtx, u: Doc<'users'>): Promise<string> {
+export async function ensureCode(ctx: MutationCtx, u: Doc<'users'>): Promise<string> {
   if (u.refCode) return u.refCode;
   for (let i = 0; i < 6; i++) {
     const code = newCode();
@@ -39,7 +39,7 @@ async function addPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {
   const u = await ctx.db.get(userId);
   if (!u) return;
   const now = Date.now();
-  const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now);
+  const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil);
   await ctx.db.patch(userId, { packBalance: regen.balance + n, packRegenAt: regen.regenAt });
 }
 

@@ -24,7 +24,7 @@ export const me = query({
     const now = Date.now();
     // recharge : 1 booster / 5 min, 15 max (calcul paresseux, rien n'est écrit ici ; le client refait le calcul chaque seconde)
     const packRegenAt = user.packRegenAt ?? user.lastSeenAt;
-    const regen = applyRegen(user.packBalance, packRegenAt, now);
+    const regen = applyRegen(user.packBalance, packRegenAt, now, user.regenBoostUntil);
 
     // (perf : plus de lecture de tout l'inventaire ici — cette requête est ré-exécutée à chaque battement de cœur et
     // à chaque carte gagnée ; les compteurs « cartes uniques / au total » du HUD du labo viennent de myCollection)
@@ -39,6 +39,8 @@ export const me = query({
       /** réserve stockée + départ de la recharge : le client recalcule avec applyRegen() */
       packStored: user.packBalance,
       packRegenAt,
+      /** (ouverture 07/11) recharge ×2 jusqu'à cet instant (absent : pas de boost) */
+      boostUntil: user.regenBoostUntil && user.regenBoostUntil > now ? user.regenBoostUntil : undefined,
       packCap: PACK_CAP,
       packRegenMs: PACK_REGEN_MS,
       nextPackAt: regen.nextAt,
@@ -54,6 +56,10 @@ export const me = query({
       streakClaimable: streakClaimable(user.streak),
       /** pochettes de sous-thème épinglées (vue Albums) */
       covers: user.covers ?? {},
+      /** (ouverture 07/11) équipe (admin / modérateur) : passe le compte à rebours */
+      staff: !!(user.isAdmin || user.isModerator),
+      /** compte pseudo (sans Discord) */
+      pwAccount: user.discordId.startsWith('pw:'),
     };
   },
 });
@@ -99,7 +105,7 @@ export const claimStreak = mutation({
     const streak = touchStreak(user.streak, now) ?? user.streak;
     const r = claimStreakState(streak);
     if (typeof r === 'string') throw new ConvexError(r);
-    const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now);
+    const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
     await ctx.db.patch(user._id, { streak: r, packBalance: regen.balance + STREAK_REWARD, packRegenAt: regen.regenAt });
     return { reward: STREAK_REWARD };
   },

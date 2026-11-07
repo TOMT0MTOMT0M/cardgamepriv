@@ -20,7 +20,12 @@ const AUTH_ERRORS: Record<string, string> = {
   guild_check_failed: 'Impossible de vérifier ton serveur Discord. Réessaie.',
   missing_code: 'Connexion annulée.',
 };
-export const SESSION_EXPIRED = 'Ta session a expiré : reconnecte-toi avec Discord.';
+export const SESSION_EXPIRED = 'Ta session a expiré : reconnecte-toi.';
+/** (ouverture 07/11) la saison de test a été remise à zéro : l'ancien compte n'existe plus */
+export const NEW_SEASON = 'Nouvelle saison : les compteurs sont remis à zéro, crée ton compte pour jouer.';
+/** clés du stockage local liées à la progression : vidées après une remise à zéro (les réglages restent) */
+const SEASON_KEYS = ['bebou.vues.v1', 'bebou.cosm.seen', 'bebou.roueVue', 'bebou.booster', 'bebou.qty'];
+const LS_EPOCH = 'bebou.saison';
 
 export interface MeProfile {
   _id: Id<'users'>;
@@ -35,6 +40,8 @@ export interface MeProfile {
   /** recharge des boosters (src/core/packRegen.ts) : réserve stockée + départ du minuteur */
   packStored?: number;
   packRegenAt?: number;
+  /** (ouverture 07/11) recharge ×2 jusqu'à cet instant */
+  boostUntil?: number;
   nextPackAt?: number | null;
   /** pity 6★ (src/core/pity.ts) */
   pityCount?: number;
@@ -45,6 +52,17 @@ export interface MeProfile {
   streakClaimable?: boolean;
   /** pochettes de sous-thème épinglées (vue Albums) */
   covers?: Record<string, string>;
+  /** (ouverture 07/11) équipe (admin / modérateur) : passe le compte à rebours */
+  staff?: boolean;
+  /** compte pseudo (sans Discord) */
+  pwAccount?: boolean;
+}
+
+/** (ouverture 07/11, convex/launch.ts) heure d'ouverture, dernière remise à zéro, code du club demandé à l'inscription */
+export interface LaunchInfo {
+  launchAt: number | null;
+  resetAt: number | null;
+  clubCode: boolean;
 }
 
 export interface FriendPresence {
@@ -94,6 +112,8 @@ export interface NetState {
   board: BoardMine;
   /** AMIS (lot A2, convex/friends.ts) : `null` tant que rien n'est arrivé (ou pas connecté) */
   social: FriendsMine | null;
+  /** (ouverture 07/11) compte à rebours : `null` tant que le serveur n'a pas répondu (ou ancienne version du serveur) */
+  launch: LaunchInfo | null;
 }
 
 /** Réponse de `listings.mine` (tableau d'offres : mes annonces + mes offres). */
@@ -158,7 +178,10 @@ class GameNetClient {
     binders: [],
     social: null,
     board: { listings: [], offers: [] },
+    launch: null,
   };
+  /** remise à zéro vue pendant cette visite : la session disparue s'explique par la nouvelle saison */
+  private seasonChanged = false;
 
   constructor() {
     this.captureHashAuth();
@@ -280,7 +303,7 @@ class GameNetClient {
         if (!me && tokenArg.sessionToken && this.sessionToken === tokenArg.sessionToken) {
           expired = true;
           this.saveStoredToken(null);
-          this.state.authError = SESSION_EXPIRED;
+          this.state.authError = this.seasonChanged ? NEW_SEASON : SESSION_EXPIRED;
           queueMicrotask(() => this.setupSubscriptions());
         }
         const before = this.userSig;
@@ -298,6 +321,21 @@ class GameNetClient {
         this.state.sealedPack = pack ?? null;
         this.emit();
       }),
+    );
+
+    // 2 bis. (ouverture 07/11) compte à rebours + remise à zéro (aussi sans être connecté) ; un serveur qui n'a pas
+    // encore cette requête répond par une erreur : on reste sans compte à rebours
+    this.unsubscribers.push(
+      this.client.onUpdate(
+        api.launch.status,
+        {},
+        (l) => {
+          this.state.launch = l ?? null;
+          this.newSeason(l?.resetAt ?? null);
+          this.emit();
+        },
+        () => undefined,
+      ),
     );
 
     // 3. Player card inventory (instant BatchedMesh 019-binder loading)
@@ -467,6 +505,38 @@ class GameNetClient {
       /* ignore */
     }
     window.location.href = `${siteUrl}/auth/discord?returnTo=${encodeURIComponent(returnTo)}`;
+  }
+
+  /** Remise à zéro côté serveur pas encore vue par ce navigateur : on oublie la progression gardée en local. */
+  private newSeason(resetAt: number | null) {
+    if (!resetAt) return;
+    try {
+      const seen = localStorage.getItem(LS_EPOCH);
+      if (seen === String(resetAt)) return;
+      for (const k of SEASON_KEYS) localStorage.removeItem(k);
+      localStorage.setItem(LS_EPOCH, String(resetAt));
+      if (seen !== null || this.sessionToken) this.seasonChanged = true;
+    } catch {
+      /* stockage indisponible */
+    }
+  }
+
+  /** (ouverture 07/11) compte sans Discord : pseudo + mot de passe (convex/pwAuth.ts). */
+  public async signupWithPassword(name: string, password: string, clubCode?: string) {
+    if (!this.client) throw new Error('Serveur non configuré');
+    const { token } = await this.client.action(api.pwAuth.signup, { name, password, ...(clubCode ? { clubCode } : {}) });
+    this.adoptToken(token);
+  }
+  public async loginWithPassword(name: string, password: string) {
+    if (!this.client) throw new Error('Serveur non configuré');
+    const { token } = await this.client.action(api.pwAuth.login, { name, password });
+    this.adoptToken(token);
+  }
+  private adoptToken(token: string) {
+    this.saveStoredToken(token);
+    this.state.authError = null;
+    this.setupSubscriptions();
+    this.emit();
   }
 
   public async logout() {

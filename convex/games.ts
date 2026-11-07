@@ -44,7 +44,7 @@ const cleanStake = (s: Stake) => ({ coins: Math.round(s.coins), cards: s.cards.m
 
 /** Boosters disponibles maintenant (réserve + recharge). */
 function packsNow(u: Doc<'users'>, now: number) {
-  return applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now);
+  return applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil);
 }
 
 async function debitPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {

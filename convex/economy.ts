@@ -95,7 +95,7 @@ export const buyPacks = mutation({
     const bought = (econ.shopDay === today ? econ.shopBought ?? 0 : 0) + count;
     await addCoins(ctx, u._id, -count * PACK_PRICE, 'shop', `Achat de ${count} booster${count > 1 ? 's' : ''}`, { econ: { shopDay: today, shopBought: bought } });
     const fresh = (await ctx.db.get(u._id))!;
-    const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now);
+    const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil);
     await ctx.db.patch(u._id, { packBalance: regen.balance + count, packRegenAt: regen.regenAt });
     return { packs: regen.balance + count, left: packBuysLeft({ ...econ, shopDay: today, shopBought: bought }, today) };
   },
@@ -128,7 +128,7 @@ export const claimCalendar = mutation({
     await addCoins(ctx, u._id, cal.reward.coins, 'calendar', `Calendrier — jour ${cal.day}`, { earned: true, econ: { calendarDay: cal.today } });
     if (cal.reward.packs) {
       const fresh = (await ctx.db.get(u._id))!;
-      const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now);
+      const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil);
       await ctx.db.patch(u._id, { packBalance: regen.balance + cal.reward.packs, packRegenAt: regen.regenAt });
     }
     return { day: cal.day, ...cal.reward };
@@ -211,7 +211,7 @@ export const claimAchievements = mutation({
     if (packs) {
       const now = Date.now();
       const fresh = (await ctx.db.get(u._id))!;
-      const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now);
+      const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil);
       await ctx.db.patch(u._id, { packBalance: regen.balance + packs, packRegenAt: regen.regenAt });
     }
     // les pièces gagnées peuvent débloquer « Tirelire » : il sera réclamable au prochain passage

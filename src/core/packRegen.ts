@@ -19,14 +19,31 @@ export interface RegenState {
   nextAt: number | null;
 }
 
-export function applyRegen(balance: number, regenAt: number, now: number): RegenState {
+/**
+ * (ouverture 07/11) BOOST DE RECHARGE ×2 : jusqu'à `boostUntil`, un booster arrive deux fois plus vite (2 min 30).
+ * On raisonne en « temps effectif » : une milliseconde passée pendant le boost compte double. Sans boost (0 / absent),
+ * le calcul est exactement l'ancien.
+ */
+export const BOOST_MS = 24 * 3600 * 1000;
+/** temps effectif écoulé de `from` à `to` (le boost compte double) */
+const effSpan = (from: number, to: number, boostUntil: number) => to - from + Math.max(0, Math.min(to, boostUntil) - from);
+/** instant réel où `eff` ms de temps effectif sont écoulées depuis `from` */
+const realAt = (from: number, eff: number, boostUntil: number) => {
+  const boosted = Math.max(0, boostUntil - from);
+  return eff <= 2 * boosted ? from + eff / 2 : from + boosted + (eff - 2 * boosted);
+};
+
+export function applyRegen(balance: number, regenAt: number, now: number, boostUntil = 0): RegenState {
   if (balance >= PACK_CAP) return { balance, regenAt: now, nextAt: null };
-  const gained = Math.max(0, Math.floor((now - regenAt) / PACK_REGEN_MS));
+  const gained = Math.max(0, Math.floor(effSpan(regenAt, now, boostUntil) / PACK_REGEN_MS));
   const b = Math.min(PACK_CAP, balance + gained);
   if (b >= PACK_CAP) return { balance: b, regenAt: now, nextAt: null };
-  const at = regenAt + gained * PACK_REGEN_MS;
-  return { balance: b, regenAt: at, nextAt: at + PACK_REGEN_MS };
+  const at = realAt(regenAt, gained * PACK_REGEN_MS, boostUntil);
+  return { balance: b, regenAt: at, nextAt: realAt(at, PACK_REGEN_MS, boostUntil) };
 }
+
+/** Boost encore actif à `now` (pour l'affichage). */
+export const boostLeft = (boostUntil: number | undefined, now = Date.now()) => Math.max(0, (boostUntil ?? 0) - now);
 
 /** « 3:07 » */
 export const fmtCountdown = (ms: number) => {

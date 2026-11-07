@@ -16,7 +16,7 @@ import { COIN_ICON, createWallet } from './views/wallet';
 import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
 import { boardAttention } from './backend';
-import { PACK_CAP, PACK_REGEN_MS, fmtCountdown } from '../core/packRegen';
+import { PACK_CAP, PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
 import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, panelShown, setToastSound, syncPanelTriggers, toast } from './ui';
 import { preloadOwned } from './preload';
 import { bindHapticGestures, haptics } from '../core/haptics';
@@ -98,6 +98,8 @@ const backend: GameBackend = await backendP.catch((e: unknown) => {
   showFailure(e);
   throw e;
 });
+// (ouverture 07/11) compte à rebours jusqu'à l'ouverture officielle (convex/launch.ts) — par-dessus le chargement
+if (backend.state.mode === 'online') void import('./views/launch').then((m) => m.createLaunchGate(backend));
 
 /**
  * PARRAINAGE (retours live 02, §10) : arrivée par un lien `?ref=CODE` → le clic est compté (une fois par appareil),
@@ -404,11 +406,11 @@ function renderMe() {
   // et l'état prend toute la 2e rangée (style.css, lot A)
   if (!u) {
     // en ligne, tant que le serveur n'a pas répondu : « connexion… » (pas « Connexion Discord » à un joueur connecté)
-    const login = s.mode !== 'online' ? '' : s.ready ? `<button class="btn-primary login">Connexion Discord</button>` : `<span class="conn" role="status">connexion…</span>`;
+    const login = s.mode !== 'online' ? '' : s.ready ? `<button class="btn-primary login">Se connecter</button>` : `<span class="conn" role="status">connexion…</span>`;
     meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Recharger le jeu (si l’affichage 3D ne revient pas)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Relancer le jeu</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Mises à jour</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Tutoriel</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
+    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Recharger le jeu (si l’affichage 3D ne revient pas)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Relancer le jeu</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Mises à jour</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Tutoriel</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
     tickPacks();
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
@@ -640,7 +642,18 @@ function tickPacks() {
   const snap = gained || !fill.style.transform;
   if (snap) fill.style.transition = 'none';
   // échelle plutôt que largeur : animation composée, pas de recalcul de mise en page chaque seconde
-  fill.style.transform = `scaleX(${r.nextAt === null ? 1 : Math.min(1, (now - r.regenAt) / PACK_REGEN_MS).toFixed(4)})`;
+  fill.style.transform = `scaleX(${r.nextAt === null ? 1 : Math.min(1, (now - r.regenAt) / Math.max(1, r.nextAt - r.regenAt)).toFixed(4)})`;
+  // (ouverture 07/11) bulle « ×2 » au-dessus de la réserve tant que la recharge accélérée dure (24 h après l'arrivée)
+  const boost = meEl.querySelector<HTMLElement>('.p-boost');
+  if (boost) {
+    const left = boostLeft(u.boostUntil, now);
+    if (boost.hidden !== (left <= 0)) boost.hidden = left <= 0;
+    if (left > 0) {
+      const m = Math.ceil(left / 60000);
+      setText(boost, `×2 · ${m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` : `${m} min`}`);
+      boost.title = `Recharge ×2 : 1 booster toutes les 2 min 30 pendant encore ${m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`}`;
+    }
+  }
   if (snap) {
     void fill.offsetWidth;
     fill.style.transition = '';
