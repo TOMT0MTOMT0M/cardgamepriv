@@ -9,7 +9,7 @@ import { ACCENTS, BADGES, BANNERS, FRAMES, VITRINES, accentColor, bannerColor, v
 import { guarded, isPending } from './safety';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
-import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
+import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
 
 /**
  * PROFIL (refonte complète, retours du 3 nov.) — le mien (avatar de l'en-tête) ou celui d'un ami.
@@ -103,7 +103,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>Les autres</h2><span class="pf-tools"><a class="btn-ghost pf-amis-go" href="#/amis">Mes amis</a></span></div><div class="pf-friends"></div></div>
       <div class="pf-sec pf-account" hidden><div class="pf-sec-t"><h2>Compte</h2></div><div class="pf-account-b"></div></div>
     </div>
-    <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
+    <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
   const q = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
   const banner = q('.pf-banner');
   const head = q('.pf-head');
@@ -901,6 +901,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     vInfo.className = `v-info r-${r}`;
     vInfo.style.setProperty('--ra', rr.accentHex);
     vInfo.innerHTML = `<div class="ci-name">${esc(e?.name ?? cardId)}</div><div class="ci-meta">${starsHtml(r)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div>${row ? `<div class="ci-sub">${plural(row.count, 'exemplaire')} · meilleur n°${fmtN(row.bestMintNumber)}</div>` : ''}`;
+    viewerUi.querySelector('.v-actions')!.replaceChildren(imageReportButton(backend, cardId, 'profil/carte'));
     shell.setDimmed(false);
     shell.show('viewer');
     void viewer.show(cardId, r);

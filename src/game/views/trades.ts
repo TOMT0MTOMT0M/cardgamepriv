@@ -3,7 +3,7 @@ import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { ALL_THEMES, catalogEntry, subthemeById } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { busyButton, cardTile, errMsg, esc, fold, h, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
+import { busyButton, cardTile, errMsg, esc, fold, h, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
 import { preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 import { ABUSE, cardsValue, fmtCoins } from '../../core/economy';
@@ -803,6 +803,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     vInfo.innerHTML = `<div class="ci-name">${esc(e?.name ?? c.cardId)}</div><div class="ci-meta">${starsHtml(c.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${sd === 'get' ? `${esc(friend?.name ?? '')} en a ${c.count}` : `tu en as ${c.count}${free < c.count ? ` (${c.count - free} engagé${c.count - free > 1 ? 's' : ''})` : ''}`}${sd === 'get' && backend.state.wishlist.includes(c.cardId) ? ' · ♥ tu la cherches' : ''}${sd === 'give' && theirWish.has(c.cardId) ? ' · ♥ il la cherche' : ''}</div>`;
     const inList = (sd === 'get' ? get : give).some((x) => cardKey(x) === cardKey(c));
     vActions.innerHTML = `<button class="va va-add${inList ? ' on' : ''}">${inList ? '✓ Dans la proposition — retirer' : sd === 'get' ? '+ Demander cette carte' : '+ Donner cette carte'}</button>`;
+    vActions.append(imageReportButton(backend, c.cardId, 'echanges/carte'));
     vActions.querySelector('.va-add')!.addEventListener('click', () => {
       if (sd === 'give' && free <= 0) return toast('Déjà engagée dans un échange en attente.', 'info');
       add(sd, c, free);
