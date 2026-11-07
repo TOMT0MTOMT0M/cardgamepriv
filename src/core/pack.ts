@@ -429,7 +429,7 @@ const creasePending = new Map<number, Promise<CreaseMaps>>();
  * CREASE_VERSION : à CHANGER dès que `paintCreaseMap`, `applyGrain` ou PW/PH changent, sinon l'ancienne carte resterait.
  * Le temps de peinture (1re visite) et de relecture sont notés dans perfLog (rapport de chargement, game/diag.ts).
  */
-const CREASE_VERSION = 'plis-v8'; // v8 (07/11, nuit) : froissé en facettes (mosaïque fine, plus de plis nets) · v4 (07/11 soir) : plis courbes, effilés, anticrénelés + carte de NORMALES en flottants · v3 : + plis nets · v2 : aluminium lisse, trois grands plis
+const CREASE_VERSION = 'plis-v10'; // v10 (07/11) : surface lisse ondulée + arêtes fines (facettes à 30 %) · v8 (07/11, nuit) : froissé en facettes (mosaïque fine, plus de plis nets) · v4 (07/11 soir) : plis courbes, effilés, anticrénelés + carte de NORMALES en flottants · v3 : + plis nets · v2 : aluminium lisse, trois grands plis
 const CREASE_STORE = 'bebou-plis';
 const creaseKey = (ch: number, kind: 'h' | 'n') => `/__plis/${CREASE_VERSION}-${PW}x${PH}-${Math.round(ch)}-${kind}.png`;
 type CreaseMaps = { c: HTMLCanvasElement; n: HTMLCanvasElement };
@@ -549,7 +549,7 @@ function creaseSigned(c: (typeof BIG_CREASES)[number], x: number, y: number, ax:
  * froisse en longueur), plus calmes au centre (les cartes le tiennent), plus marquées vers les bords et les soudures.
  * Calculé en pentes (flottants) et ajouté à la normale : aucune marche, aucun crénelage (fondu de 1,2 px sur les arêtes).
  */
-const FACET = { cell: 0.058, stretch: 1.8, ang: 0.35, jitter: 0.009, wave: 0.6, calm: 0.18, aa: 1.2 };
+const FACET = { cell: 0.075, stretch: 1.6, ang: 0.35, jitter: 0.004, wave: 0.55, calm: 0.15, aa: 2, facet: 0.3 };
 function facetHash(i: number, j: number, k: number): number {
   let h = (i * 374761393 + j * 668265263 + k * 2147483647) | 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
@@ -600,7 +600,11 @@ function facetSlope(X: number, Y: number, H: number): [number, number] {
   };
   const a = slopeOf(i1, j1), b = slopeOf(i2, j2);
   const w = 0.5 + 0.5 * Math.min(1, (d2 - d1) / ((2 * FACET.aa) / H));
-  return [a[0] * w + b[0] * (1 - w), a[1] * w + b[1] * (1 - w)];
+  // (07/11, retours de Tom : « trop cabossé, beaucoup de faces visibles ») surtout la surface LISSE ondulée, et seulement
+  // 30 % de l'écart dû aux facettes : les arêtes restent, en lignes fines, sans mosaïque
+  const [cx, cy] = facetField(X, Y);
+  const fx = a[0] * w + b[0] * (1 - w), fy = a[1] * w + b[1] * (1 - w);
+  return [cx + (fx - cx) * FACET.facet, cy + (fy - cy) * FACET.facet];
 }
 
 function paintCreaseMap(ch: number): CreaseMaps {
