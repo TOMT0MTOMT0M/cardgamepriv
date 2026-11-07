@@ -1,5 +1,5 @@
 import { CanvasTexture, Color, Group, Mesh, MeshStandardNodeMaterial, SRGBColorSpace, type BufferGeometry, type PerspectiveCamera, type Raycaster, type Scene, type Texture } from 'three/webgpu';
-import { bumpMap, float, texture, uv, vec2 } from 'three/tsl';
+import { normalMap, texture, uv, vec2 } from 'three/tsl';
 import { createPackGeometry, PACK, type PackArt } from '../../core/pack';
 
 /**
@@ -83,7 +83,9 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
   group.visible = false;
   group.renderOrder = 2;
   scene.add(group);
-  const geo: BufferGeometry = createPackGeometry(...(opts.seg ?? [10, 16]));
+  // (07/11 soir, retours de Tom : « très moche sur les modèles basse définition ») 18 × 28 au lieu de 10 × 16 : le
+  // plateau qui épouse la pile et sa retombée vers les soudures se voyaient en facettes (≈ 1 100 sommets, 5 pochettes)
+  const geo: BufferGeometry = createPackGeometry(...(opts.seg ?? [18, 28]));
   const owned: Array<{ dispose(): void }> = [geo];
   const slots = new Map<string, Slot>();
   const blank = new CanvasTexture(document.createElement('canvas'));
@@ -121,20 +123,18 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     s.back.map = b ?? f;
     if (art.metalBack) {
       s.front.metalness = s.back.metalness = 1;
-      s.front.roughness = 0.2;
-      s.back.roughness = 0.24;
+      // (07/11 soir) un peu moins miroir : en petit, chaque variation de la normale devenait une tache de reflet
+      s.front.roughness = 0.28;
+      s.back.roughness = 0.32;
     }
-    if (art.fullCrease) {
-      const cr = shrink(art.crinkle, creaseW, false);
-      if (cr) {
-        owned.push(cr);
-        // nœuds créés ICI, avec la vraie texture : bumpMap échantillonne des copies du nœud de texture (décalages
-        // pour la pente), qui gardent la texture du moment de la compilation — changer `.value` après coup ne les
-        // atteint pas (pochettes créées après le préchauffage : rayures du brossage au lieu des plis).
-        // (le maillage est réduit à ~1/5 : un relief plus fort pour que les cassures accrochent la lumière)
-        s.front.normalNode = bumpMap(texture(cr, uv()).r, float(2.6));
-        s.back.normalNode = bumpMap(texture(cr, uv().mul(vec2(-1, 1)).add(vec2(1, 0))).r, float(2.6));
-      }
+    // (07/11 soir) plis : la carte de NORMALES du sachet (calculée en flottants, core/pack.ts), réduite — avant, un
+    // bumpMap sur la hauteur 8 bits : à cette taille, les dérivées d'écran donnaient un bruit d'escalier sur chaque pli.
+    // Nœuds créés ICI, avec la vraie texture (un nœud créé sur une texture vide puis changé n'est pas suivi partout).
+    const nrm = art.creaseNormal ? shrink(art.creaseNormal, creaseW, false) : null;
+    if (nrm) {
+      owned.push(nrm);
+      s.front.normalNode = normalMap(texture(nrm, uv()), vec2(0.8));
+      s.back.normalNode = normalMap(texture(nrm, uv().mul(vec2(-1, 1)).add(vec2(1, 0))), vec2(0.8));
     }
     s.front.needsUpdate = s.back.needsUpdate = true;
     s.textured = true;

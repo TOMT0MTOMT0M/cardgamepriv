@@ -30,10 +30,10 @@ export const PACK_FRAME = { w: 0.78, h: 1.18 };
  *  - un plus court qui remonte du coin bas-droit (là où le film se pince autour des cartes) ;
  *  - un grand pli oblique très doux qui traverse le plateau (asymétrique : pas d'« enveloppe » en X).
  */
-export const BIG_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1: number; amp: number; w: number }> = [
-  { x0: 0.08, y0: 0.12, x1: 0.62, y1: 0.55, amp: 1, w: 0.2 },
-  { x0: 0.93, y0: 0.88, x1: 0.64, y1: 0.66, amp: 0.8, w: 0.16 },
-  { x0: 0.22, y0: 0.74, x1: 0.8, y1: 0.36, amp: 0.35, w: 0.26 },
+export const BIG_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1: number; amp: number; w: number; bend?: number }> = [
+  { x0: 0.08, y0: 0.12, x1: 0.62, y1: 0.55, amp: 1, w: 0.2, bend: 0.035 },
+  { x0: 0.93, y0: 0.88, x1: 0.64, y1: 0.66, amp: 0.8, w: 0.16, bend: -0.025 },
+  { x0: 0.22, y0: 0.74, x1: 0.8, y1: 0.36, amp: 0.35, w: 0.26, bend: 0.05 },
 ]
 /**
  * (07/11, retours de Tom) PLIS NETS : une seconde famille, par-dessus les grands plis doux (inchangés) — étroits,
@@ -41,35 +41,24 @@ export const BIG_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1
  * nombreux et placés là où un sachet se marque en vrai : sous la soudure du haut (tension), sur un bord, près d'un coin.
  * Seulement dans la carte de hauteur (trop fins pour la géométrie) : ce sont des lignes de reflet franches.
  */
-export const SHARP_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1: number; amp: number; w: number }> = [
-  { x0: 0.24, y0: 0.15, x1: 0.71, y1: 0.22, amp: 1, w: 0.032 },
-  { x0: 0.96, y0: 0.41, x1: 0.64, y1: 0.53, amp: 0.9, w: 0.028 },
-  { x0: 0.1, y0: 0.7, x1: 0.37, y1: 0.86, amp: 0.85, w: 0.03 },
-  { x0: 0.47, y0: 0.6, x1: 0.58, y1: 0.79, amp: 0.6, w: 0.024 },
+export const SHARP_CREASES: ReadonlyArray<{ x0: number; y0: number; x1: number; y1: number; amp: number; w: number; bend?: number }> = [
+  { x0: 0.24, y0: 0.15, x1: 0.71, y1: 0.22, amp: 1, w: 0.032, bend: -0.012 },
+  { x0: 0.96, y0: 0.41, x1: 0.64, y1: 0.53, amp: 0.9, w: 0.028, bend: 0.01 },
+  { x0: 0.1, y0: 0.7, x1: 0.37, y1: 0.86, amp: 0.85, w: 0.03, bend: 0.014 },
+  { x0: 0.47, y0: 0.6, x1: 0.58, y1: 0.79, amp: 0.6, w: 0.024, bend: -0.008 },
 ];
-/** profil d'un pli net : arête vive, pans presque droits, fin courte aux extrémités */
-function sharpRidge(d: number, w: number, t: number): number {
-  const e = Math.min(1, t * 9, (1 - t) * 7);
-  const k = Math.max(0, 1 - Math.abs(d) / w);
-  return Math.pow(k, 1.15) * e * e * (3 - 2 * e);
+/** fondu d'un pli vers ses bouts (t = position le long du pli, 0..1) : débuts et fins progressifs */
+function creaseEnds(t: number, a: number, b: number): number {
+  const e = Math.min(1, t * a, (1 - t) * b);
+  return e * e * (3 - 2 * e);
 }
-/**
- * Profil d'un grand pli : une ARÊTE (deux pans plans qui se rencontrent en une ligne nette — c'est la cassure du film
- * qui fait le pli, pas un bourrelet) à la distance `d` (même unité que `w`), à la position `t` (0..1) le long du
- * segment ; l'arête s'efface aux extrémités.
- */
+/** plis nets : pente des pans (hauteur par unité de toile) et portée de part et d'autre de l'arête */
+const SHARP_SLOPE = 4;
+const SHARP_REACH = 0.08;
+/** profil (géométrie) d'un grand pli : cloche douce, effacée aux bouts */
 function creaseRidge(d: number, w: number, t: number): number {
-  const e = Math.min(1, t * 5, (1 - t) * 3.5);
   const k = Math.max(0, 1 - Math.abs(d) / w);
-  // k^1,5 : pente franche jusqu'à l'arête (cassure nette, le reflet change d'un coup), raccord doux au bord du pli
-  return Math.pow(k, 1.5) * e * (e * (3 - 2 * e));
-}
-function creaseDistance(c: (typeof BIG_CREASES)[number], x: number, y: number, ax: number) {
-  // x, y en coordonnées de toile (0..1) ; ax = rapport largeur/hauteur pour mesurer en distance vraie
-  const dx = (c.x1 - c.x0) * ax, dy = c.y1 - c.y0, l2 = dx * dx + dy * dy || 1;
-  const t = Math.max(0, Math.min(1, ((x - c.x0) * ax * dx + (y - c.y0) * dy) / l2));
-  const px = c.x0 * ax + dx * t, py = c.y0 + dy * t;
-  return { d: Math.hypot(x * ax - px, y - py), t };
+  return k * k * (3 - 2 * k) * creaseEnds(t, 5, 3.5);
 }
 
 export interface PackStyle {
@@ -125,8 +114,8 @@ export function createPackGeometry(segX = 36, segY = 56): BufferGeometry {
     let z = 0;
     const x = u, y = 1 - v; // coordonnées de la toile
     for (const c of BIG_CREASES) {
-      const { d, t } = creaseDistance(c, x, y, ax);
-      z += 0.006 * c.amp * creaseRidge(d, c.w * 1.4, t);
+      const { d, t } = creaseSigned(c, x, y, ax);
+      z += 0.006 * c.amp * creaseRidge(d, c.w * 1.4 * (0.55 + 0.45 * Math.sin(Math.PI * t)), t);
     }
     return z;
   };
@@ -225,6 +214,8 @@ export interface PackArt {
   metalBack?: boolean;
   /** `crinkle` est la carte du sachet entier (UV 0..1, pas une tuile répétée) */
   fullCrease?: boolean;
+  /** (07/11 soir) carte de NORMALES des plis (espace tangent, calculée en flottants) : à préférer au bumpMap de `crinkle` */
+  creaseNormal?: Texture;
   dispose(): void;
 }
 
@@ -417,9 +408,10 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
     t.anisotropy = aniso;
     return t;
   };
-  const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false);
+  const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false), creaseNormal = tex(C.n, false);
   crinkle.wrapS = crinkle.wrapT = 1001; // ClampToEdgeWrapping : la carte est celle du sachet entier (pas répétée)
-  return { front, back, masks, crinkle, metalBack: true, fullCrease: true, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
+  creaseNormal.wrapS = creaseNormal.wrapT = 1001;
+  return { front, back, masks, crinkle, creaseNormal, metalBack: true, fullCrease: true, dispose: () => [front, back, masks, crinkle, creaseNormal].forEach((t) => t.dispose()) };
 }
 
 function lcg(seed: number) {
@@ -443,8 +435,8 @@ function lcg(seed: number) {
  * démarrage et des visuels de boosters générés ensuite pendant la vitrine). Pixels identiques par construction ; chaque
  * booster garde sa propre texture (même toile). Une toile vidée (mémoire) est repeinte.
  */
-const creaseCache = new Map<number, { c: HTMLCanvasElement }>();
-const creasePending = new Map<number, Promise<{ c: HTMLCanvasElement }>>();
+const creaseCache = new Map<number, CreaseMaps>();
+const creasePending = new Map<number, Promise<CreaseMaps>>();
 /**
  * (perf 07/11, audit 06/11 §8 ter piste a) La carte des plis rastérisée est GARDÉE d'une visite à l'autre (Cache
  * Storage, PNG sans perte : la toile est opaque, l'aller-retour est exact au pixel) : aux visites suivantes, plus de
@@ -452,59 +444,64 @@ const creasePending = new Map<number, Promise<{ c: HTMLCanvasElement }>>();
  * CREASE_VERSION : à CHANGER dès que `paintCreaseMap`, `applyGrain` ou PW/PH changent, sinon l'ancienne carte resterait.
  * Le temps de peinture (1re visite) et de relecture sont notés dans perfLog (rapport de chargement, game/diag.ts).
  */
-const CREASE_VERSION = 'plis-v3'; // v3 (07/11) : + plis nets · v2 (07/11) : aluminium lisse, trois grands plis (carte calculée pixel par pixel)
+const CREASE_VERSION = 'plis-v6'; // v4 (07/11 soir) : plis courbes, effilés, anticrénelés + carte de NORMALES en flottants · v3 : + plis nets · v2 : aluminium lisse, trois grands plis
 const CREASE_STORE = 'bebou-plis';
-const creaseKey = (ch: number) => `/__plis/${CREASE_VERSION}-${PW}x${PH}-${Math.round(ch)}.png`;
-async function creaseFromCache(ch: number): Promise<{ c: HTMLCanvasElement } | null> {
+const creaseKey = (ch: number, kind: 'h' | 'n') => `/__plis/${CREASE_VERSION}-${PW}x${PH}-${Math.round(ch)}-${kind}.png`;
+type CreaseMaps = { c: HTMLCanvasElement; n: HTMLCanvasElement };
+async function creaseFromCache(ch: number): Promise<CreaseMaps | null> {
   if (typeof caches === 'undefined' || typeof createImageBitmap === 'undefined') return null;
   const t0 = performance.now();
-  const res = await (await caches.open(CREASE_STORE)).match(creaseKey(ch));
-  if (!res) return null;
-  const bmp = await createImageBitmap(await res.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
-  if (bmp.width !== PW || bmp.height !== PH) return null;
-  const C = makeCanvas(PW, PH);
-  C.g.drawImage(bmp, 0, 0);
-  bmp.close();
+  const cache = await caches.open(CREASE_STORE);
+  const [rh, rn] = await Promise.all([cache.match(creaseKey(ch, 'h')), cache.match(creaseKey(ch, 'n'))]);
+  if (!rh || !rn) return null;
+  const load = async (r: Response) => {
+    const bmp = await createImageBitmap(await r.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+    if (bmp.width !== PW || bmp.height !== PH) return null;
+    const C = makeCanvas(PW, PH);
+    C.g.drawImage(bmp, 0, 0);
+    bmp.close();
+    return C.c;
+  };
+  const [c, n] = await Promise.all([load(rh), load(rn)]);
+  if (!c || !n) return null;
   perfMark('plis:cache', performance.now() - t0);
-  return C;
+  return { c, n };
 }
-function creaseToCache(ch: number, c: HTMLCanvasElement): void {
-  if (typeof caches === 'undefined' || typeof c.toBlob !== 'function') return;
+function creaseToCache(ch: number, m: CreaseMaps): void {
+  if (typeof caches === 'undefined' || typeof m.c.toBlob !== 'function') return;
   // encodage et écriture après l'affichage de la boutique (hors du chemin critique)
-  const go = () =>
-    c.toBlob((blob) => {
+  const put = (cv: HTMLCanvasElement, kind: 'h' | 'n') =>
+    cv.toBlob((blob) => {
       if (!blob) return;
       void caches
         .open(CREASE_STORE)
-        .then((cache) => cache.put(creaseKey(ch), new Response(blob, { headers: { 'content-type': 'image/png' } })))
+        .then((cache) => cache.put(creaseKey(ch, kind), new Response(blob, { headers: { 'content-type': 'image/png' } })))
         .catch(() => undefined);
     }, 'image/png');
+  const go = () => (put(m.c, 'h'), put(m.n, 'n'));
   if ('requestIdleCallback' in window) (window as Window & { requestIdleCallback(cb: () => void, o?: { timeout: number }): number }).requestIdleCallback(go, { timeout: 8000 });
   else setTimeout(go, 3000);
 }
-function creaseMap(ch: number): Promise<{ c: HTMLCanvasElement }> {
+function creaseMap(ch: number): Promise<CreaseMaps> {
   const hit = creaseCache.get(ch);
-  if (hit && hit.c.width > 0) return Promise.resolve(hit);
+  if (hit && hit.c.width > 0 && hit.n.width > 0) return Promise.resolve(hit);
   let p = creasePending.get(ch);
   if (p) return p;
   p = (async () => {
-    let C: { c: HTMLCanvasElement } | null = null;
+    let C: CreaseMaps | null = null;
     try {
       C = await creaseFromCache(ch);
     } catch {
-      C = null; // (cache indisponible, image illisible… : on peint)
+      C = null; // (cache indisponible, image illisible… : on calcule)
     }
     if (!C) {
       const t0 = performance.now();
       C = paintCreaseMap(ch);
-      // Canvas2D rastérise à la première lecture : on la force ici (sous l'écran de chargement, où le temps est
-      // mesuré) plutôt qu'à la première réduction pour la roue 3D ou au premier envoi au GPU
-      makeCanvas(1, 1).g.drawImage(C.c, 0, 0, 1, 1);
       perfMark('plis:peinture', performance.now() - t0);
       try {
-        creaseToCache(ch, C.c);
+        creaseToCache(ch, C);
       } catch {
-        /* pas de cache : repeinte à la prochaine visite */
+        /* pas de cache : recalculée à la prochaine visite */
       }
     }
     creaseCache.set(ch, C);
@@ -514,53 +511,98 @@ function creaseMap(ch: number): Promise<{ c: HTMLCanvasElement }> {
   creasePending.set(ch, p);
   return p;
 }
-function paintCreaseMap(ch: number): { c: HTMLCanvasElement; g: Ctx } {
-  // (07/11) ALUMINIUM LISSE + GRANDS PLIS seulement : plus de réseau de plis, de micro-plis ni de bosses floues (l'effet
-  // « paquet de chips »). La hauteur est calculée pixel par pixel (aucun trait flou à rastériser : aussi bien moins
-  // cher). Chaque grand pli est une arête nette : pente raide d'un côté (le film cassé), plus douce de l'autre, qui
-  // s'efface aux extrémités ; une ondulation très large et très faible évite le miroir parfait (un film n'est jamais
-  // plan). Les soudures restent plates (leur cranté vient du masque G).
+/**
+ * Hauteur du film en un point (coordonnées de toile 0..1), en FLOTTANTS — la même fonction sert à la carte de hauteur
+ * (rugosité, déchirure) et à la carte de NORMALES (le relief vu par la lumière).
+ * (07/11 soir, retours de Tom : « les creases sont extrêmement mal faites, surtout sur les modèles basse définition »)
+ *  - avant : la normale venait d'un bumpMap sur une hauteur 8 bits → paliers en escalier le long des pentes (bien
+ *    visibles à l'échelle forte), et sur les mini-boosters (192 px, petits à l'écran) un bruit de dérivées d'écran ;
+ *  - les plis étaient des segments à la règle, de largeur constante, au profil en V pointu (crénelé sur l'arête).
+ * Maintenant : chaque pli est légèrement COURBE (le film se tord), s'EFFILE vers ses bouts, son arête est arrondie
+ * sur ~1 px (anticrénelage) ; la normale est calculée en flottants (différences centrées) puis encodée : aucune marche.
+ */
+function creaseHeight(x: number, y: number, ax: number, y0s: number, y1s: number): number {
+  if (y < y0s || y > y1s) return 0;
+  let h = 0;
+  // ondulation de fond : deux grandes vagues obliques, à peine perceptibles dans le reflet
+  h += 0.025 * Math.sin(x * 3.1 + y * 1.6 + 0.7) + 0.018 * Math.sin(x * -2.3 + y * 2.9 + 2.1);
+  // (la hauteur d'un pli suit sa largeur : pente constante le long du pli, il s'effile en une ligne — sinon, à
+  // hauteur fixe et largeur qui diminue, ses bouts se gonflent en « pilules »)
+  // GRANDS PLIS : le film se courbe (sommet arrondi, profil en cloche) — des pentes douces, larges
+  for (const c of BIG_CREASES) {
+    const q = creaseSigned(c, x, y, ax);
+    const taper = 0.5 + 0.5 * Math.sin(Math.PI * q.t);
+    const ww = c.w * (q.s > 0 ? 0.8 : 1.15) * taper;
+    const k = Math.max(0, 1 - q.d / ww);
+    // (faibles dans la carte : la géométrie porte déjà ces grandes courbes — plus fort, leurs bouts arrondis faisaient des « bulles » de reflet)
+    h += 0.28 * c.amp * taper * k * k * (3 - 2 * k) * creaseEnds(q.t, 5, 3.5);
+  }
+  // PLIS NETS : deux PANS PLANS qui se rencontrent sur une ligne (le film a été marqué) — pente constante de part et
+  // d'autre, cassure fine sur l'arête (arrondie sur ~1 px), large zone d'influence ; ils s'effacent vers leurs bouts.
+  // C'est ce qui fait une vraie ligne de reflet (l'image du studio change d'un coup en traversant le pli), pas une bosse.
+  for (const c of SHARP_CREASES) {
+    const q = creaseSigned(c, x, y, ax);
+    const ww = SHARP_REACH * (q.s > 0 ? 0.8 : 1.2);
+    if (q.d >= ww) continue;
+    const fade = creaseEnds(q.t, 3, 3);
+    // (pente maximale sur l'arête, nulle au bord de la zone : aucun raccord visible)
+    h += (c.amp * SHARP_SLOPE * (ww - q.d) * (ww - q.d)) / ww * fade;
+  }
+  // tension près des soudures : léger creux le long de la soudure (le film y est tiré)
+  const ds = Math.min(y - y0s, y1s - y);
+  h -= 0.08 * Math.exp(-ds / 0.03);
+  return h;
+}
+/** distance SIGNÉE au pli courbé (arc : flèche `bend` au milieu), arête arrondie sur ~1 px */
+const CREASE_AA = 1.2 / PH;
+function creaseSigned(c: (typeof BIG_CREASES)[number], x: number, y: number, ax: number) {
+  const dx = (c.x1 - c.x0) * ax, dy = c.y1 - c.y0, l = Math.hypot(dx, dy) || 1;
+  const px = (x - c.x0) * ax, py = y - c.y0;
+  const t = Math.max(0, Math.min(1, (px * dx + py * dy) / (l * l)));
+  // perpendiculaire signée, moins la courbure de l'arc à cette position (parabole 4t(1−t))
+  const s = (px * dy - py * dx) / l - (c.bend ?? 0) * 4 * t * (1 - t);
+  // (distance perpendiculaire seulement : au-delà des bouts le pli est déjà effacé — une distance « en capsule »
+  // dessinait des anneaux de reflet au bout de chaque pli)
+  const d = Math.sqrt(s * s + CREASE_AA * CREASE_AA) - CREASE_AA;
+  return { s, d, t };
+}
+function paintCreaseMap(ch: number): CreaseMaps {
   const W = PW, H = PH;
-  const C = makeCanvas(W, H);
-  const g = C.g;
-  const img = g.createImageData(W, H);
-  const d8 = img.data;
   const ax = PACK.w / PACK.h;
   const y0s = ch / H, y1s = 1 - ch / H;
-  for (let j = 0; j < H; j++) {
+  // hauteurs en flottants (une rangée de marge de chaque côté pour les différences centrées)
+  const hf = new Float32Array((W + 2) * (H + 2));
+  for (let j = -1; j <= H; j++) {
     const y = (j + 0.5) / H;
-    const inSeam = y < y0s || y > y1s;
-    for (let i = 0; i < W; i++) {
-      const x = (i + 0.5) / W;
-      let h = 0;
-      if (!inSeam) {
-        // ondulation de fond : deux grandes vagues obliques, à peine perceptibles dans le reflet
-        h += 0.025 * Math.sin(x * 3.1 + y * 1.6 + 0.7) + 0.018 * Math.sin(x * -2.3 + y * 2.9 + 2.1);
-        for (const c of BIG_CREASES) {
-          const { d, t } = creaseDistance(c, x, y, ax);
-          // côté du pli (produit vectoriel) : arête asymétrique — raide d'un côté, douce de l'autre
-          const side = (c.x1 - c.x0) * ax * (y - c.y0) - (c.y1 - c.y0) * (x - c.x0) * ax;
-          const ww = c.w * (side > 0 ? 0.7 : 1.2);
-          h += 0.55 * c.amp * creaseRidge(d, ww, t);
-        }
-        // plis nets (seconde famille) : même asymétrie, bien plus étroits et plus profonds → arête franche
-        for (const c of SHARP_CREASES) {
-          const { d, t } = creaseDistance(c, x, y, ax);
-          const side = (c.x1 - c.x0) * ax * (y - c.y0) - (c.y1 - c.y0) * (x - c.x0) * ax;
-          h += 0.5 * c.amp * sharpRidge(d, c.w * (side > 0 ? 0.75 : 1.25), t);
-        }
-        // tension près des soudures : léger creux le long de la soudure (le film y est tiré)
-        const ds = Math.min(y - y0s, y1s - y);
-        h -= 0.08 * Math.exp(-ds / 0.03);
-      }
-      const v = Math.max(0, Math.min(255, Math.round(128 + h * 127)));
-      const o = (j * W + i) * 4;
-      d8[o] = d8[o + 1] = d8[o + 2] = v;
-      d8[o + 3] = 255;
-    }
+    for (let i = -1; i <= W; i++) hf[(j + 1) * (W + 2) + (i + 1)] = creaseHeight((i + 0.5) / W, y, ax, y0s, y1s);
   }
-  g.putImageData(img, 0, 0);
-  return C;
+  const C = makeCanvas(W, H), N = makeCanvas(W, H);
+  const ih = C.g.createImageData(W, H), inn = N.g.createImageData(W, H);
+  // pente → normale : hauteur 1 ≈ 127/255 de la carte de hauteur ; NRM_K règle la force du relief : pentes douces (≈ 7° sur un grand pli, ≈ 30° sur l'arête d'un pli net) — un film d'aluminium plié, pas des bosses
+  const NRM_K = 60;
+  for (let j = 0; j < H; j++)
+    for (let i = 0; i < W; i++) {
+      const k = (j + 1) * (W + 2) + (i + 1);
+      const h = hf[k];
+      const o = (j * W + i) * 4;
+      const v = Math.max(0, Math.min(255, Math.round(128 + h * 127)));
+      ih.data[o] = ih.data[o + 1] = ih.data[o + 2] = v;
+      ih.data[o + 3] = 255;
+      // espace tangent : +x = droite (u), +y = HAUT (v) — la toile descend, d'où le signe de dy
+      const dhx = (hf[k + 1] - hf[k - 1]) * 0.5 * 0.5;
+      const dhy = (hf[k - (W + 2)] - hf[k + (W + 2)]) * 0.5 * 0.5;
+      let nx = -dhx * NRM_K, ny = -dhy * NRM_K;
+      const inv = 1 / Math.hypot(nx, ny, 1);
+      nx *= inv;
+      ny *= inv;
+      inn.data[o] = Math.round((nx * 0.5 + 0.5) * 255);
+      inn.data[o + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+      inn.data[o + 2] = Math.round((inv * 0.5 + 0.5) * 255);
+      inn.data[o + 3] = 255;
+    }
+  C.g.putImageData(ih, 0, 0);
+  N.g.putImageData(inn, 0, 0);
+  return { c: C.c, n: N.c };
 }
 
 /** mélange de deux couleurs #rrggbb (k = part de la 2e) */
@@ -670,7 +712,7 @@ export const PLASTIC_TINT = 0.74;
  * `height` = carte de hauteur (0,5 = plat), `seam` = 0..1 soudures, `ridges` = normale des crans. La couleur posée par
  * l'appelant (m.colorNode) est assombrie par le film teinté.
  */
-export function aluminiumSurface(m: MeshPhysicalNodeMaterial, height: N, seam: N, ridges: N, bump = 3.4) {
+export function aluminiumSurface(m: MeshPhysicalNodeMaterial, height: N, seam: N, ridges: N, bump = 3.4, creaseN?: N) {
   // (retours de Tom, 07/11 : « un motif qui se répète, pas seamless ») : la tuile est lue deux fois, à deux échelles
   // non commensurables dont l'une tournée (la période apparente devient immense), avec moins de poids → grain
   // aléatoire et discret au lieu d'un motif visible
@@ -678,7 +720,15 @@ export function aluminiumSurface(m: MeshPhysicalNodeMaterial, height: N, seam: N
   const ca = Math.cos(0.61), sa = Math.sin(0.61);
   const u1 = vec2(u0.x.mul(ca).sub(u0.y.mul(sa)), u0.x.mul(sa).add(u0.y.mul(ca)));
   const g = texture(microGrain(), u0.mul(vec2(5.3, 7.9)).add(vec2(0.17, 0.43))).r.mul(0.55).add(texture(microGrain(), u1.mul(vec2(3.7, 4.1))).r.mul(0.45));
-  const n = bumpMap((height as N).add(g.mul(0.0035)), float(bump), normalMap(encodeNormal(ridges)));
+  // (07/11 soir) relief des plis : la carte de NORMALES (flottants, aucune marche) quand elle existe, mêlée aux crans des
+  // soudures (« whiteout » : pentes additionnées) ; le grain du film reste un bumpMap infime par-dessus
+  let base: N = normalMap(encodeNormal(ridges));
+  if (creaseN) {
+    const cn = (creaseN as N).xyz.mul(2).sub(1);
+    const k = float(bump / 3.4);
+    base = normalMap(encodeNormal(vec3(cn.x.mul(k).add(ridges.x), cn.y.mul(k).add(ridges.y), cn.z.mul(ridges.z)).normalize()));
+  }
+  const n = creaseN ? bumpMap(g.mul(0.0035), float(bump), base) : bumpMap((height as N).add(g.mul(0.0035)), float(bump), base);
   const creaseK = smoothstep(0.7, 0.82, height);
   if (m.colorNode) m.colorNode = (m.colorNode as N).mul(PLASTIC_TINT);
   m.metalnessNode = float(1);
@@ -703,7 +753,8 @@ export function createPackMaterials(art: PackArt, opts: { crinkle?: number } = {
     m.colorNode = col.rgb;
     if (art.metalBack) {
       // (07/11) aluminium lisse, grands plis, double reflet métal + vernis (aluminiumSurface)
-      aluminiumSurface(m, crTex.r, mk.r, ridges, opts.crinkle ?? 3.4);
+      const crN = art.creaseNormal ? texture(art.creaseNormal, side === 0 ? uvn : uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
+      aluminiumSurface(m, crTex.r, mk.r, ridges, opts.crinkle ?? 3.4, crN);
     } else {
       m.metalnessNode = mix(float(0.15), float(0.95), foil);
       m.roughnessNode = mix(float(0.36), float(0.2), foil);

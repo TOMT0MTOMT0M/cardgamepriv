@@ -647,6 +647,9 @@ export function createOpeningScene(): OpeningScene {
     // (06/11) carte de plis pleine taille (UV 0..1, non répétée) : les sachets simples ; tuile répétée sinon
     const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
     const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
+    // (07/11 soir) normales des plis en flottants (core/pack.ts) : plus de paliers du bumpMap 8 bits
+    const nF = art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
+    const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
     packNodes = { front, back, masks, crF, crB } as unknown as Record<string, { value: Texture }>;
     const pp = positionLocal.xy;
     const fbm =
@@ -665,7 +668,7 @@ export function createOpeningScene(): OpeningScene {
       // le froissé du sachet dans le relief ; aucun vernis plastique
       // (ultra-réalisme) aluminium brillant : métal pur, rugosité basse, plis en relief fort (carte pleine taille)
       // (07/11) aluminium lisse, grands plis, double reflet métal + vernis PET (core/pack.ts aluminiumSurface)
-      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.7);
+      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.7, side === 0 ? nF : nB);
       m.envNode = foilEnvNode();
       m.maskNode = burnFront.greaterThan(0);
       const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(0.3)).mul(step(-0.2, U.burn));
@@ -722,6 +725,9 @@ export function createOpeningScene(): OpeningScene {
     tearNodes.push({ front, back, masks } as unknown as Record<'front' | 'back' | 'masks', { value: Texture }>);
     const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
     const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
+    // (07/11 soir) normales des plis en flottants (core/pack.ts) : plus de paliers du bumpMap 8 bits
+    const nF = art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
+    const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
     const ug = positionLocal.x.div(PACK.w).add(0.5);
     const v = uvn.y;
     const edge = tearEdge(ug);
@@ -736,7 +742,7 @@ export function createOpeningScene(): OpeningScene {
       m.colorNode = mix(select(frontFacing, col.rgb, silver), color(0.94, 0.93, 0.91), whiten.mul(0.85));
       // (07/11) aluminium lisse, grands plis, double reflet métal + vernis PET (core/pack.ts aluminiumSurface) ;
       // l'intérieur (face arrière) reste métal brut plus mat, la coupe blanchit (film étiré)
-      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.4);
+      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.4, side === 0 ? nF : nB);
       m.envNode = foilEnvNode();
       m.metalnessNode = float(1).mul(whiten.oneMinus());
       m.roughnessNode = select(frontFacing, m.roughnessNode as N, float(0.3)).add(whiten.mul(0.4));

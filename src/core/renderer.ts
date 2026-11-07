@@ -78,12 +78,15 @@ export function resolveDpr(mode: DprMode, quality: 'high' | 'mobile'): number {
   }
 }
 
-export async function createRenderer(backend: Backend, opts: { mobile?: boolean } = {}): Promise<WebGPURenderer> {
+export async function createRenderer(backend: Backend, opts: { mobile?: boolean; timestamps?: boolean } = {}): Promise<WebGPURenderer> {
   const renderer = new WebGPURenderer({
     antialias: true,
     forceWebGL: backend === 'webgl',
-    // requêtes de temps GPU à chaque passe : inutiles dans le jeu sur téléphone (et souvent non supportées) → coupées
-    trackTimestamp: !opts.mobile,
+    // requêtes de temps GPU : seulement pour le labo (mesures de 043). (07/11, console de Tom) dans le jeu, en WebGL2,
+    // une passe rendue DANS une autre (portail des Merveilles, passes de post-traitement) ouvrait une 2e requête de temps
+    // pendant que la 1re était active → « beginQuery: a query is already active » à chaque image (et des requêtes
+    // jamais relues qui s'accumulent). Le jeu ne les lisait pas : coupées.
+    trackTimestamp: !!opts.timestamps && !opts.mobile,
     powerPreference: 'high-performance',
   });
   await renderer.init();

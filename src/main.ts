@@ -456,7 +456,7 @@ function frame() {
 // ─────────────────────────────────────────── démarrage
 async function boot() {
   if (new URLSearchParams(location.search).has('clean')) document.body.classList.add('clean');
-  renderer = await createRenderer(backend);
+  renderer = await createRenderer(backend, { timestamps: true }); // (labo : 043 lit les temps GPU)
   const canvas = renderer.domElement;
   canvas.className = 'gl';
   canvasHost.append(canvas);
