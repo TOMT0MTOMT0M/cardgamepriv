@@ -13,6 +13,9 @@ if /i "%1"=="prod" set ENVF=.env.local
 if not exist "%ENVF%" ( echo Pas de %ENVF% & pause & exit /b 1 )
 for /f "tokens=1,* delims==" %%a in ('findstr /b "CONVEX_DEPLOYMENT=" "%ENVF%"') do set DEP=%%b
 if "%DEP%"=="" ( echo CONVEX_DEPLOYMENT introuvable dans %ENVF% & pause & exit /b 1 )
+rem (08/11) --deployment veut le NOM seul (good-gull-939), sans le prefixe "dev:" ni un commentaire en fin de ligne
+for /f "tokens=1" %%x in ("%DEP%") do set DEP=%%x
+set DEP=%DEP:dev:=%
 echo Deploiement : %DEP%
 rem (08/11) la bibliotheque web-push est une dependance ajoutee avec les notifications : installee si elle manque
 if not exist node_modules\web-push\package.json (
