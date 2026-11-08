@@ -101,36 +101,26 @@
 .gm-game .gm-idx { font: var(--gm-label); letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
 .gm-game b { font: 600 clamp(26px, 2.5vw, 32px)/1 var(--title); letter-spacing: -0.01em; max-width: none; }
 .gm-game .gm-desc { max-width: 30ch; font: 400 13px/1.55 var(--mono); color: var(--ink-2); }
-/* dessins « courant » (views/gridArt.ts) : circuits posés sur les points de la trame, tracés par un courant épais.
-   L'hôte est placé en JS au pixel près sur la grille ; il porte ses propres points (même pas, même phase) pour que la
-   trame reste lisible là où celle du fond s'efface. */
+/* dessins « ferrofluide » (views/gridArt.ts) : circuits posés sur les points de la trame. Le dessin est un SVG fixe ;
+   le fluide (perle, traîne, épines du champ) vit dans un petit canvas posé dessus — aucun filtre, rien à repeindre
+   au repos. L'hôte est placé en JS au pixel près sur la grille ; il porte ses propres points (même pas, même phase)
+   pour que la trame reste lisible là où celle du fond s'efface. */
 .gm-art-host { position: absolute; left: 0; top: 0; z-index: -1; pointer-events: none; opacity: 0.8; transition: opacity var(--dur-emphatique); background: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1.4px) 7px 7px / 22px 22px; -webkit-mask: radial-gradient(closest-side, #000 74%, transparent); mask: radial-gradient(closest-side, #000 74%, transparent); }
 .gm-game:hover .gm-art-host { opacity: 1; }
 .gm-art { display: block; overflow: visible; }
-.gm-art use { stroke-linecap: round; stroke-linejoin: round; }
+.gm-art path { stroke-linecap: round; stroke-linejoin: round; }
+.gm-art-fx { position: absolute; left: 0; top: 0; pointer-events: none; }
 /* piste au repos : un sillon fondu (halo large et pâle + filet) */
 .gm-art .groove .line { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; }
 .gm-art .groove .halo { stroke: rgba(255, 255, 255, 0.035); stroke-width: 8; }
-.gm-art .trace .line { stroke: rgba(255, 255, 255, 0.58); stroke-width: 1.5; }
-.gm-art .trace .dim { stroke: rgba(255, 255, 255, 0.3); stroke-width: 1.2; }
-/* la goutte : lueur floue (ordinateur) ou trait large et pâle (téléphone) */
-.gm-art .glow use { stroke: #fff; stroke-width: 12; }
-.gm-art .glow:not(.soft) { opacity: 0.35; }
-.gm-art .glow:not(.soft) use { stroke-width: 18; }
-/* coulée effilée : la plus fine est la plus longue ; fusionnées par le filtre gluant sur ordinateur */
-.gm-art .wet use { stroke: #fff; }
-/* aura du curseur (fluide magnétique, views/gridArt.ts) : un champ très pâle, au filet pointillé */
-.gm-art .aura { fill: rgba(255, 255, 255, 0.03); stroke: rgba(255, 255, 255, 0.16); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0; pointer-events: none; }
-.gm-art .wet .tail { stroke-width: 2.6; }
-.gm-art .wet .mid { stroke-width: 5.2; }
-.gm-art .wet .core { stroke-width: 7.6; }
-.gm-art .wet .head { stroke-width: 10; }
-/* la bille de la roulette : une goutte plus grosse qui roule dans sa gorge */
-.gm-art .wet .head.ball { stroke-width: 11; }
-.gm-art .wet:not([filter]) .tail { opacity: 0.45; }
-.gm-art .wet:not([filter]) .mid { opacity: 0.75; }
+/* piste déposée par le fluide */
+.gm-art .trace .line { stroke: rgba(255, 255, 255, 0.5); stroke-width: 1.2; }
+.gm-art .trace .dim { stroke: rgba(255, 255, 255, 0.26); stroke-width: 1; }
+/* gouttes posées : apparaissent au passage du fluide */
 .gm-art .drop { fill: #fff; opacity: 0; transform-box: fill-box; transform-origin: center; }
-.gm-art .drop.on { opacity: 0.9; }
+.gm-art .drop.on { opacity: 0.85; }
+.gm-art .drop.pop { animation: gm-drop 640ms var(--ease-out, cubic-bezier(0.2, 0.8, 0.2, 1)) backwards; }
+@keyframes gm-drop { 0% { transform: scale(2.1); opacity: 1; } 55% { transform: scale(0.88); } 100% { transform: scale(1); } }
 /* ordinateur : platine du dessin en haut de la carte (200 px), le texte dessous */
 @media (min-width: 861px) {
   .gm-hub .gm-game { padding-top: 242px; min-height: 0; }

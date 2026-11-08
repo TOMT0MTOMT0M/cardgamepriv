@@ -1,24 +1,30 @@
 /**
- * DESSINS « COURANT » de l'accueil des jeux (V2, 08/11).
- *  1re version : « des formes créées par une sorte de courant électrique épais et visqueux, aligné sur la grille du
- *  fond » ; 2e : « plus fluide, moins géométrique, plus fondu, presque organique » ; 3e : « pas assez descriptif, les
- *  anciennes illustrations étaient meilleures, mais avec cet effet ».
+ * DESSINS « FERROFLUIDE » de l'accueil des jeux (V2, 08/11) — refonte complète.
  *
- * Donc : les dessins d'origine (deux cartes inclinées et « VS », huit cartes en anneau autour d'une table, roue à
- * 36 crans avec sa bille), tracés par le courant. Le dessin reste posé sur la trame (son coin est recalé sur un point
- * de la grille), mais ses formes sont libres.
+ * Retours de Tom, dans l'ordre : courant épais et visqueux → plus organique → les illustrations d'origine mais avec
+ * cet effet → plus lent, avec friction, élastique → fluide magnétique repoussé par l'aura du curseur → « le
+ * ferrofluide ne PEUT PAS quitter son chemin, on peut seulement le déplacer SUR les lignes » → « extrêmement laggy,
+ * même sur PC : refonte complète, même idée, optimisée, bien plus raffinée et subtile ».
  *
- * Le courant est une goutte d'encre lumineuse : une tête ronde, une coulée qui s'effile en trois épaisseurs
- * (fusionnées par un filtre « gluant » sur ordinateur) et une lueur floue. Il avance LENTEMENT et avec FRICTION
- * (4e retour : « trop rapide, pas assez vivant, élastique ») : par à-coups, il colle, se décolle, glisse un peu trop
- * loin et revient ; la traîne le suit avec retard comme un élastique ; il laisse derrière lui la piste fine. Des gouttes se posent aux
- * points clés (moyeu, bille). Ensuite une impulsion repasse de temps en temps (la bille fait un tour de roue) ; au
- * survol, le dessin s'emballe.
+ * Architecture (la version précédente animait des filtres SVG — flou « gluant » + lueur — à chaque image) :
+ *  - le DESSIN est un SVG fixe (sillon + piste) : il ne bouge jamais et n'est jamais repeint, sauf pendant le
+ *    tracé initial (un seul `stroke-dashoffset` par piste) ;
+ *  - le FLUIDE vit dans un petit <canvas> 2D posé dessus : aucun filtre, quelques traits par image, et la boucle
+ *    ne tourne que tant qu'une goutte vit ou que le curseur est là (au repos : zéro image calculée) ;
+ *  - géométrie pré-échantillonnée (un point tous les 2 px, avec tangente et normale) : rien n'est mesuré par image.
  *
- * Coût : 3 petits SVG (≈ 236 px), animations WAAPI de `stroke-dashoffset` / `opacity` / `transform` / `stroke-width`
- * seulement, pas de boucle infinie (impulsions planifiées une à une, remplissage « backwards » : rien ne s'accumule),
- * arrêt hors écran et onglet caché. Téléphone : pas de filtres, impulsions plus rares. Mouvement réduit / « Effets
- * réduits » : le dessin est tracé d'emblée, immobile.
+ * Le fluide :
+ *  - une PERLE sur son rail : sa seule liberté est sa position s le long de la piste. Inertie, frottement visqueux,
+ *    friction statique (elle colle puis se décolle), traîne élastique qui s'effile (lancée elle s'étire, arrêtée elle
+ *    se ramasse et gonfle) ;
+ *  - l'aura du curseur la repousse LE LONG du rail et le geste l'entraîne (composante parallèle à la piste) ;
+ *  - le champ HÉRISSE les lignes : près du curseur, de fines épines se dressent perpendiculairement à la piste,
+ *    côté opposé au curseur (instabilité de Rosensweig des vrais ferrofluides), puis retombent — elles restent
+ *    plantées sur la ligne, rien ne la quitte ;
+ *  - le courant ambiant (et le tracé initial) est une perle tirée par un guide à ressort qui suit la courbe à
+ *    friction : retenue par le curseur, elle se tend et repart d'un coup ;
+ *  - le curseur qui bouge près d'une piste y fait naître une perle au point le plus proche.
+ * Mouvement réduit / « Effets réduits » : dessin tracé, immobile, sans canvas.
  */
 import { reducedMotion } from '../../core/motion';
 
@@ -112,20 +118,12 @@ const svgEl = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<strin
   return e;
 };
 
-/**
- * vitesse moyenne du courant (px/s), arrêts compris : lente, comme un fluide épais qui frotte sur sa piste
- * (retour 08/11 : « trop rapide, pas assez vivant, organique, élastique, comme s'il y avait plus de friction »)
- */
+/** vitesse moyenne du courant (px/s), arrêts compris : lente, un fluide épais qui frotte sur sa piste */
 const SPEED = 105;
 const PULSE_SPEED = 140;
-/** coulée effilée : longueur de chaque épaisseur (la plus fine est la plus longue) */
-const TAPER = [
-  { cls: 'tail', len: 96 },
-  { cls: 'mid', len: 44 },
-  { cls: 'core', len: 16 },
-];
-const TAIL = TAPER[0].len;
-const GLOW = 64;
+/** longueur maximale de la traîne derrière la perle (px) */
+const TAIL = 70;
+
 /**
  * FRICTION : la progression (0 → 1) d'un passage, en à-coups. Le fluide colle, la pression monte, il se décolle et
  * glisse avec un petit dépassement élastique (il va un peu trop loin puis revient), puis recolle. Le nombre d'à-coups
@@ -165,11 +163,40 @@ function frictionCurve(L: number, rnd: () => number): (t: number) => number {
 }
 /** petit générateur pseudo-aléatoire (graine par passage) */
 const rng = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+
 let uid = 0;
 
+const rotM = (t?: string) => {
+  const m = /rotate\(\s*(-?[\d.]+)(?:[ ,]+(-?[\d.]+)[ ,]+(-?[\d.]+))?\s*\)/.exec(t ?? '');
+  if (!m) return new DOMMatrix();
+  const cx = Number(m[2] ?? 0);
+  const cy = Number(m[3] ?? 0);
+  return new DOMMatrix().translate(cx, cy).rotate(Number(m[1])).translate(-cx, -cy);
+};
+
+interface Rail {
+  L: number;
+  /** points (repère du dessin), tangentes et normales, un tous les ~2 px */
+  x: Float32Array;
+  y: Float32Array;
+  tx: Float32Array;
+  ty: Float32Array;
+  n: number;
+  /** boîte englobante (pour ignorer les pistes loin du curseur) */
+  box: [number, number, number, number];
+  trace: SVGPathElement | null;
+  dots: Array<{ el: SVGCircleElement; f: number }>;
+  /** zone où la perle est cachée par une autre forme (carte de devant) */
+  hide: Path2D | null;
+  quick: number;
+  at: number;
+  ghost: boolean;
+  busy: boolean;
+}
+
 /**
- * Monte le dessin animé de `kind` dans `host` (dans la carte `card`, dans le défilement `scroller` qui porte la
- * trame). Renvoie le démontage.
+ * Monte le dessin de `kind` dans `host` (dans la carte `card`, dans le défilement `scroller` qui porte la trame).
+ * Renvoie le démontage.
  */
 export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTMLElement, kind: ArtKind): () => void {
   const c = DRAWINGS[kind];
@@ -179,37 +206,14 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   const still = reducedMotion();
   const id = `gm-art-${++uid}`;
 
+  // ── le dessin : SVG fixe
   const svg = svgEl('svg', { viewBox: `${-PAD} ${-PAD} ${W} ${H}`, width: W, height: H, fill: 'none', 'aria-hidden': 'true', class: 'gm-art' });
   const defs = svgEl('defs', {});
-  svg.append(defs);
-  if (fine) {
-    // « gluant » : flou + seuil d'opacité → les épaisseurs de la coulée et les gouttes fusionnent en une seule matière
-    const goo = svgEl('filter', { id: `${id}-goo`, x: '-30%', y: '-30%', width: '160%', height: '160%' });
-    goo.append(svgEl('feGaussianBlur', { stdDeviation: 3.2 }), svgEl('feColorMatrix', { values: '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8' }));
-    // lueur fondue autour de la goutte
-    const soft = svgEl('filter', { id: `${id}-soft`, x: '-40%', y: '-40%', width: '180%', height: '180%' });
-    soft.append(svgEl('feGaussianBlur', { stdDeviation: 6 }));
-    defs.append(goo, soft);
-  }
   const gGroove = svgEl('g', { class: 'groove' });
   const gTrace = svgEl('g', { class: 'trace' });
-  const gGlow = svgEl('g', fine ? { class: 'glow soft', filter: `url(#${id}-soft)` } : { class: 'glow' });
-  const gWet = svgEl('g', fine ? { class: 'wet', filter: `url(#${id}-goo)` } : { class: 'wet' });
-  svg.append(gGroove, gTrace, gGlow, gWet);
-
-  /**
-   * Chaque tracé n'a qu'UNE géométrie (un chemin source dans <defs>) ; toutes ses couches (sillon, piste, lueur,
-   * coulée, tête) sont des <use> qui la reprennent. Quand le fluide est déformé (curseur, plus bas), on ne réécrit
-   * donc qu'un seul `d` par tracé et par image.
-   */
-  interface Wire { quick: number; L: number; trace: SVGUseElement | null; glow: SVGUseElement; layers: Array<{ el: SVGUseElement; len: number }>; head: SVGUseElement; dots: Array<{ el: SVGCircleElement; f: number }>; at: number; busy: boolean }
-  const built = c.strokes.map((st, k) => {
-    // deux géométries : le DESSIN (sillon + piste, toujours fixe) et le FLUIDE (coulée, lueur, tête), seul déformé par
-    // le curseur (08/11 : « ça déforme tout alors qu'on devait contrôler uniquement le fluide vivant »)
-    const src = svgEl('path', { id: `${id}-s${k}`, d: st.d });
-    const fluid = svgEl('path', { id: `${id}-f${k}`, d: st.d });
-    defs.append(src, fluid);
-    // masque : tout visible sauf la forme qui passe devant
+  const gDots = svgEl('g', { class: 'dots' });
+  svg.append(defs, gGroove, gTrace, gDots);
+  const parts = c.strokes.map((st, k) => {
     let mask: string | undefined;
     if (st.hide) {
       const m = svgEl('mask', { id: `${id}-m${k}`, maskUnits: 'userSpaceOnUse', x: -200, y: -200, width: 600, height: 600 });
@@ -217,58 +221,71 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       defs.append(m);
       mask = `url(#${id}-m${k})`;
     }
-    const mk = (g: SVGGElement, a: Record<string, string | number | undefined> = {}, geo: 's' | 'f' = 's') => {
-      const e = svgEl('use', { href: `#${id}-${geo}${k}`, transform: st.transform, mask, ...a });
+    const mk = (g: SVGGElement, cls: string) => {
+      const e = svgEl('path', { d: st.d, transform: st.transform, mask, class: cls });
       g.append(e);
       return e;
     };
     if (!st.ghost) {
-      mk(gGroove, { class: 'halo' });
-      mk(gGroove, { class: 'line' });
+      mk(gGroove, 'halo');
+      mk(gGroove, 'line');
     }
-    return {
-      st,
-      src,
-      fluid,
-      trace: st.ghost ? null : mk(gTrace, { class: st.dim ? 'dim' : 'line' }),
-      glow: mk(gGlow, { class: 'line' }, 'f'),
-      layers: TAPER.filter((t) => !st.ghost || t.cls !== 'tail').map((t) => ({ el: mk(gWet, { class: t.cls }, 'f'), len: t.len })),
-      head: mk(gWet, { class: st.ghost ? 'head ball' : 'head' }, 'f'),
-      // gouttes (dans le groupe gluant : la coulée qui arrive s'y fond)
-      dots: (st.dots ?? []).map(([x, y, f, r]) => {
-        const el = svgEl('circle', { cx: x, cy: y, r: r ?? 3.4, transform: st.transform, class: still ? 'drop on' : 'drop' });
-        gWet.append(el);
-        return { el, f };
-      }),
-    };
+    const trace = st.ghost ? null : mk(gTrace, st.dim ? 'dim' : 'line');
+    const dots = (st.dots ?? []).map(([x, y, f, r]) => {
+      const el = svgEl('circle', { cx: x, cy: y, r: (r ?? 3.4) * 0.75, transform: st.transform, class: still ? 'drop on' : 'drop' });
+      gDots.append(el);
+      return { el, f };
+    });
+    return { st, trace, dots };
   });
-  // l'aura du curseur (un halo très pâle), sous la coulée
-  const aura = svgEl('circle', { class: 'aura', cx: -999, cy: -999, r: 1 });
-  gGroove.before(aura);
   host.append(svg);
-  // longueurs réelles (mesurées une fois l'élément dans la page)
-  const wires: Wire[] = built.map((b) => {
-    const L = b.src.getTotalLength();
-    const span = L + TAIL;
-    // (marge : le fluide déformé par le curseur est un peu plus long que la piste au repos)
-    const gap = span * 3 + 40;
-    // trace : un seul tiret dont l'avant suit la tête → la piste apparaît derrière la goutte
-    b.trace?.setAttribute('stroke-dasharray', `${span * 1.4} ${gap}`);
-    b.trace?.setAttribute('stroke-dashoffset', String(still ? 0 : span * 1.4));
-    // (au repos, chaque tiret est rangé bien AVANT le début de la piste : aucune pointe ronde ne dépasse)
-    b.glow.setAttribute('stroke-dasharray', `${GLOW} ${gap}`);
-    b.glow.setAttribute('stroke-dashoffset', String(GLOW + 40));
-    b.glow.setAttribute('opacity', '0');
-    for (const l of b.layers) {
-      l.el.setAttribute('stroke-dasharray', `${l.len} ${gap}`);
-      l.el.setAttribute('stroke-dashoffset', String(l.len + 40));
+
+  // ── géométrie : chaque piste échantillonnée une fois (repère du dessin, transformations comprises)
+  const rails: Rail[] = parts.map(({ st, trace, dots }) => {
+    const tmp = svgEl('path', { d: st.d });
+    defs.append(tmp);
+    const L = tmp.getTotalLength();
+    const M = rotM(st.transform);
+    const n = Math.max(2, Math.round(L / 2) + 1);
+    const x = new Float32Array(n);
+    const y = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const q = tmp.getPointAtLength((L * i) / (n - 1));
+      const p = new DOMPoint(q.x, q.y).matrixTransform(M);
+      x[i] = p.x;
+      y[i] = p.y;
     }
-    b.head.setAttribute('stroke-dasharray', `0.01 ${gap}`);
-    b.head.setAttribute('stroke-dashoffset', '60');
-    return { quick: b.st.quick ?? 1, L, trace: b.trace, glow: b.glow, layers: b.layers, head: b.head, dots: b.dots, at: b.st.at, busy: false };
+    tmp.remove();
+    const tx = new Float32Array(n);
+    const ty = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const a = Math.max(0, i - 1);
+      const b = Math.min(n - 1, i + 1);
+      const dx = x[b] - x[a];
+      const dy = y[b] - y[a];
+      const l = Math.hypot(dx, dy) || 1;
+      tx[i] = dx / l;
+      ty[i] = dy / l;
+    }
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < n; i++) {
+      x0 = Math.min(x0, x[i]); y0 = Math.min(y0, y[i]); x1 = Math.max(x1, x[i]); y1 = Math.max(y1, y[i]);
+    }
+    let hide: Path2D | null = null;
+    if (st.hide && typeof Path2D !== 'undefined') {
+      // tout le dessin SAUF la forme de devant (repère du dessin : transformation du tracé ∘ celle du masque)
+      hide = new Path2D();
+      hide.rect(-PAD, -PAD, W, H);
+      hide.addPath(new Path2D(st.hide.d), M.multiply(rotM(st.hide.transform)));
+    }
+    if (trace) {
+      trace.setAttribute('stroke-dasharray', `${L + 2} ${L + 2}`);
+      trace.setAttribute('stroke-dashoffset', String(still ? 0 : L + 2));
+    }
+    return { L, x, y, tx, ty, n, box: [x0, y0, x1, y1], trace, dots, hide, quick: st.quick ?? 1, at: st.at, ghost: !!st.ghost, busy: false };
   });
 
-  // ── aligner les sommets sur les points de la trame (positions de mise en page, sans les transformations)
+  // ── aligner le dessin sur les points de la trame (positions de mise en page, sans les transformations)
   const place = () => {
     let x = 0;
     let y = 0;
@@ -278,8 +295,8 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     }
     x += card.clientLeft;
     y += card.clientTop;
-    // ordinateur (3 colonnes) : le circuit occupe une « platine » en haut de la carte, le texte est dessous ;
-    // téléphone (1 colonne) : un fragment du circuit dépasse du coin haut-droit, en retrait derrière le titre
+    // ordinateur (3 colonnes) : le dessin occupe une « platine » en haut de la carte, le texte est dessous ;
+    // téléphone (1 colonne) : un fragment du dessin dépasse du coin haut-droit, en retrait derrière le titre
     const plate = typeof matchMedia === 'function' && matchMedia('(min-width: 861px)').matches;
     const wantX = plate ? card.clientWidth - c.w - 24 : card.clientWidth - c.w * 0.62;
     const wantY = plate ? 18 : -c.h * 0.2;
@@ -294,265 +311,52 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
 
   if (still) return () => ro?.disconnect();
 
-  // ── un passage de courant : l'avant de chaque couche est en d (0 → L + TAIL, courbe « fluide épais ») ; pour un
-  // tiret de longueur ℓ, offset = ℓ − d. Tout ce qui dépasse la fin de la piste n'est simplement pas dessiné.
-  const anims = new Set<Animation>();
-  const run = (el: Element, kf: Keyframe[], o: KeyframeAnimationOptions) => {
-    const a = el.animate(kf, o);
-    anims.add(a);
-    const off = () => anims.delete(a);
-    a.addEventListener('finish', off);
-    a.addEventListener('cancel', off);
-    return a;
-  };
-  /**
-   * Le TRACÉ INITIAL (une fois, quand la carte devient visible) : animations écrites d'avance. Ensuite, le fluide
-   * est simulé (plus bas) pour que le curseur puisse le pousser. ÉLASTIQUE : chaque épaisseur suit la même progression à friction, mais avec un RETARD croissant (la
-   * tête part la première, la traîne la rattrape) ; quand la tête se décolle, la coulée s'étire, quand elle colle, la
-   * traîne la rejoint et la goutte se ramasse. La tête gonfle quand elle est freinée et s'affine quand elle glisse.
-   * Keyframes échantillonnées (linéaires entre elles), remplissage « backwards » : rien ne reste accroché.
-   */
-  const SAMPLES = 44;
-  const drawFlow = (w: Wire, delay: number, speed: number) => {
-    const draw = true;
-    w.busy = true;
-    const curve = frictionCurve(w.L, rng(Math.floor(Math.random() * 1e9) + 1));
-    const span = w.L + TAIL;
-    const duration = Math.max(900, (span / (speed * w.quick)) * 1000);
-    const o: KeyframeAnimationOptions = { delay, duration, easing: 'linear', fill: 'backwards' };
-    /** avant de la couche (px) à l'instant t, avec un retard `lag` (part de la durée) ; elle finit d'exister à `end` */
-    const front = (t: number, lag: number, end: number) => curve(Math.min(1, Math.max(0, (t - lag) / (1 - lag)))) * end;
-    const sample = (len: number, lag: number, end: number, extra?: (t: number) => Keyframe) =>
-      Array.from({ length: SAMPLES + 1 }, (_, i) => {
-        const t = i / SAMPLES;
-        // (opacité 0 au tout début : pendant l'attente d'un départ décalé, aucune goutte ne patiente au point de départ)
-        return { offset: t, strokeDashoffset: len - front(t, lag, end), opacity: Math.min(1, t / (0.03 + lag)), ...(extra?.(t) ?? {}) } as Keyframe;
-      });
-    // vitesse instantanée de la tête (normalisée) → épaisseur : freinée = gonflée, lancée = étirée
-    const speedAt = (t: number) => Math.abs(curve(Math.min(1, t + 0.012)) - curve(Math.max(0, t - 0.012))) / 0.024;
-    const LAG: Record<string, number> = { core: 0.025, mid: 0.06, tail: 0.11 };
-    for (const l of w.layers) run(l.el, sample(l.len, LAG[l.el.getAttribute('class') ?? 'core'] ?? 0.04, w.L + l.len), o);
-    run(w.head, sample(0.01, 0, w.L + 30, (t) => ({ strokeWidth: Math.max(7, Math.min(14, 13.5 - speedAt(t) * 2.4)) })), o);
-    const g = run(w.glow, sample(GLOW, 0.015, w.L + GLOW, (t) => ({ opacity: t > 0.97 ? 0 : Math.min(1, t / 0.05) * (0.3 + 0.3 * Math.min(1, speedAt(t) / 2)) })), o);
-    const free = () => (w.busy = false);
-    g.addEventListener('finish', free);
-    g.addEventListener('cancel', free);
-    if (draw && w.trace) {
-      // la piste reste : l'attribut prend sa valeur finale ; elle se dépose sous la goutte (même retard que le cœur)
-      w.trace.setAttribute('stroke-dashoffset', '0');
-      run(w.trace, sample(span * 1.4, 0.025, w.L + TAIL, () => ({ opacity: 1 })), o);
-    }
-    // gouttes : elles gonflent quand la tête passe sur elles, puis se posent
-    for (const dt of w.dots) {
-      if (draw) dt.el.classList.add('on');
-      let tHit = 1;
-      for (let i = 0; i <= 200; i++) {
-        if (curve(i / 200) * (w.L + 30) >= dt.f * w.L) {
-          tHit = i / 200;
-          break;
-        }
-      }
-      run(dt.el, [{ transform: 'scale(0.2)', opacity: draw ? 0 : 1 }, { transform: 'scale(2.2)', opacity: 1, offset: 0.3 }, { transform: 'scale(0.82)', offset: 0.55 }, { transform: 'scale(1.08)', offset: 0.75 }, { transform: 'scale(1)', opacity: 1 }], {
-        delay: delay + Math.max(0, tHit * duration - 120),
-        duration: 1300,
-        easing: 'cubic-bezier(0.34, 1.3, 0.5, 1)',
-        fill: draw ? 'backwards' : 'none',
-      });
-    }
-  };
+  // ── le fluide : canvas 2D posé sur le dessin
+  const cv = document.createElement('canvas');
+  cv.className = 'gm-art-fx';
+  cv.setAttribute('aria-hidden', 'true');
+  const dpr = Math.min(2, typeof devicePixelRatio === 'number' ? devicePixelRatio : 1);
+  cv.width = Math.round(W * dpr);
+  cv.height = Math.round(H * dpr);
+  cv.style.width = `${W}px`;
+  cv.style.height = `${H}px`;
+  host.append(cv);
+  const ctx = cv.getContext('2d');
+  if (!ctx) return () => ro?.disconnect();
 
-  // ── dessin initial (quand la carte devient visible), puis impulsions planifiées une à une
-  let drawn = false;
-  let visible = false;
-  let hover = false;
-  let timer = 0;
-  const drawAll = () => {
-    drawn = true;
-    const t0 = 180 + Number(card.dataset.artDelay || 0);
-    // (départs étalés : le dessin se construit lentement, pièce par pièce)
-    wires.forEach((w) => drawFlow(w, t0 + w.at * 1600, SPEED));
-    const total = Math.max(...wires.map((w) => w.at * 1600 + Math.max(900, ((w.L + TAIL) / (SPEED * w.quick)) * 1000)));
-    // fin du tracé : les pistes passent au fluide simulé (les couches reçoivent leurs valeurs « au repos » en style)
-    timer = window.setTimeout(() => {
-      for (const w of wires) {
-        hideWire(w);
-        w.busy = false;
-      }
-      ready = true;
-      schedule();
-    }, t0 + total + 400);
-  };
-  const schedule = () => {
-    clearTimeout(timer);
-    if (!visible || document.hidden || !host.isConnected || !ready) return;
-    const free = wires.filter((w) => !w.busy);
-    if (free.length) pulse(free[Math.floor(Math.random() * free.length)], hover ? PULSE_SPEED * 1.4 : PULSE_SPEED);
-    timer = window.setTimeout(schedule, hover ? 900 + Math.random() * 600 : (fine ? 3200 : 4600) + Math.random() * 3000);
-  };
-  const io = typeof IntersectionObserver !== 'undefined'
-    ? new IntersectionObserver(([e]) => {
-        visible = e.isIntersecting;
-        if (visible && !drawn) drawAll();
-        else if (visible && drawn) schedule();
-      }, { threshold: 0.2 })
-    : null;
-  if (io) io.observe(card);
-  else {
-    visible = true;
-    drawAll();
-  }
-  const onVis = () => !document.hidden && drawn && schedule();
-  document.addEventListener('visibilitychange', onVis);
-  // survol : surtension — les pistes repartent en cascade, puis les impulsions s'enchaînent
-  const surge: number[] = [];
-  const enter = () => {
-    hover = true;
-    if (!ready) return;
-    wires.forEach((w, i) => surge.push(window.setTimeout(() => pulse(w, PULSE_SPEED * 1.4), i * 140)));
-    timer = window.setTimeout(schedule, 600);
-  };
-  const leaveH = () => {
-    hover = false;
-  };
-  if (fine) {
-    card.addEventListener('pointerenter', enter);
-    card.addEventListener('pointerleave', leaveH);
-  }
+  /** échantillon le plus proche de l'abscisse s */
+  const idx = (r: Rail, s: number) => Math.max(0, Math.min(r.n - 1, Math.round((s / r.L) * (r.n - 1))));
 
-  // ═══ FERROFLUIDE SUR RAILS (V2, 08/11). Retours de Tom : « comme un fluide magnétique repoussé par l'aura du
-  // curseur, avec de la vélocité selon la vitesse du curseur », puis « le ferrofluide ne PEUT PAS quitter son chemin
-  // (les lignes des illustrations), il est fixé sur ces lignes ; on peut le faire se déplacer SUR celles-ci, mais en
-  // aucun cas il ne doit pouvoir les quitter ».
-  // Donc le fluide n'a qu'UN degré de liberté : sa position s le long de la piste (en px). Le dessin ne bouge jamais.
-  //  - le curseur le repousse LE LONG de la piste : la répulsion de l'aura est projetée sur la tangente (il fuit le
-  //    curseur en glissant sur son rail), et il est entraîné par la composante du geste parallèle à la piste ;
-  //  - inertie + friction : frottement visqueux, et une friction statique (immobile, il ne repart que si la poussée
-  //    dépasse un seuil : il « colle », puis se décolle) ;
-  //  - élastique : la coulée suit la tête par trois « suiveurs » à retards différents (cœur, milieu, traîne) — lancée,
-  //    elle s'étire ; freinée, elle se ramasse en goutte ; la tête gonfle quand elle est arrêtée ;
-  //  - une impulsion (ambiante ou au survol) est une goutte tirée par un « guide » qui suit la courbe à friction
-  //    (`frictionCurve`) par un ressort : si le curseur la retient, le ressort se tend et elle repart d'un coup ;
-  //  - le curseur qui bouge près d'une piste y fait naître une goutte à l'endroit le plus proche (fluide « appelé »),
-  //    qu'on peut ensuite pousser ; elle se résorbe quand elle ne bouge plus.
-  // Une seule boucle rAF par dessin, active seulement tant qu'une goutte vit ou que le curseur est là.
-  const FOLLOW = [0.2, 0.09, 0.045]; // retards des suiveurs (s) : traîne, milieu, cœur (ordre de TAPER)
-  const FOLLOW_GLOW = 0.07;
-  const MINLEN = [3, 5, 6]; // longueur minimale de chaque épaisseur (goutte au repos)
-  const PUSH = 1500; // poussée maximale de l'aura le long de la piste (px/s²)
-  const DRAG = 3.2; // entraînement par la composante du geste le long de la piste
-  const VISC = 2.6; // frottement visqueux (1/s)
-  const STATIC = 160; // friction statique : poussée minimale pour décoller une goutte arrêtée (px/s²)
-  const GUIDE_K = 38; // ressort du guide (impulsions)
+  // ── physique
+  const FOLLOW = [0.16, 0.07]; // retards des suiveurs (s) : traîne, cœur — l'élastique de la coulée
+  const PUSH = 1300; // poussée maximale de l'aura le long du rail (px/s²)
+  const DRAG = 3; // entraînement par la composante du geste le long du rail
+  const VISC = 2.8; // frottement visqueux (1/s)
+  const STATIC = 150; // friction statique : poussée minimale pour décoller une perle arrêtée
+  const GUIDE_K = 36; // ressort du guide (courant ambiant, tracé)
   const GUIDE_C = 8.5;
-  interface Blob { w: Wire; s: number; v: number; fol: number[]; fg: number; t: number; T: number; curve: ((t: number) => number) | null; idle: number; age: number; fade: number; prev: number }
-  const blobs = new Set<Blob>();
+  interface Bead { r: Rail; s: number; v: number; fol: number[]; t: number; T: number; delay: number; curve: ((t: number) => number) | null; idle: number; age: number; fade: number; prev: number; reveal: boolean; front: number }
+  const beads = new Set<Bead>();
   let ready = false;
 
-  // échantillons de chaque piste (repère local) : point le plus proche du curseur, tangente
-  const samples = wires.map((w, wi) => {
-    const st = c.strokes[wi];
-    const m = /rotate\(\s*(-?[\d.]+)(?:[ ,]+(-?[\d.]+)[ ,]+(-?[\d.]+))?\s*\)/.exec(st.transform ?? '');
-    const ang = m ? (Number(m[1]) * Math.PI) / 180 : 0;
-    const src = built[wi].src;
-    const n = Math.max(2, Math.round(w.L / 4) + 1);
-    const xs = new Float32Array(n);
-    const ys = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      const pt = src.getPointAtLength((w.L * i) / (n - 1));
-      xs[i] = pt.x;
-      ys[i] = pt.y;
-    }
-    return { xs, ys, n, cos: Math.cos(ang), sin: Math.sin(ang), cx: m?.[2] ? Number(m[2]) : 0, cy: m?.[3] ? Number(m[3]) : 0 };
-  });
-  /** point (repère du dessin) et tangente unitaire à l'abscisse s de la piste wi */
-  const at = (wi: number, s: number) => {
-    const sm = samples[wi];
-    const L = wires[wi].L;
-    const u = Math.max(0, Math.min(1, s / L)) * (sm.n - 1);
-    const i = Math.min(sm.n - 2, Math.floor(u));
-    const f = u - i;
-    const lx = sm.xs[i] + (sm.xs[i + 1] - sm.xs[i]) * f;
-    const ly = sm.ys[i] + (sm.ys[i + 1] - sm.ys[i]) * f;
-    let tx = sm.xs[i + 1] - sm.xs[i];
-    let ty = sm.ys[i + 1] - sm.ys[i];
-    const tl = Math.hypot(tx, ty) || 1;
-    tx /= tl;
-    ty /= tl;
-    const { cos, sin, cx, cy } = sm;
-    return {
-      x: cx + (lx - cx) * cos - (ly - cy) * sin,
-      y: cy + (lx - cx) * sin + (ly - cy) * cos,
-      tx: tx * cos - ty * sin,
-      ty: tx * sin + ty * cos,
-    };
-  };
-  /** abscisse de la piste wi la plus proche du point (x, y) du dessin, et la distance */
-  const nearestOn = (wi: number, x: number, y: number) => {
-    const sm = samples[wi];
-    const { cos, sin, cx, cy } = sm;
-    // point du dessin → repère local de la piste
-    const lx = cx + (x - cx) * cos + (y - cy) * sin;
-    const ly = cy - (x - cx) * sin + (y - cy) * cos;
-    let best = 0;
-    let bd = Infinity;
-    for (let i = 0; i < sm.n; i++) {
-      const d = (sm.xs[i] - lx) ** 2 + (sm.ys[i] - ly) ** 2;
-      if (d < bd) {
-        bd = d;
-        best = i;
-      }
-    }
-    return { s: (best / (sm.n - 1)) * wires[wi].L, d: Math.sqrt(bd) };
-  };
-
-  const css = (el: SVGElement, k: string, v: string) => el.style.setProperty(k, v);
-  /** remet une piste au repos (toutes les couches invisibles, par le style : il prime sur les attributs) */
-  const hideWire = (w: Wire) => {
-    for (const l of w.layers) css(l.el, 'opacity', '0');
-    css(w.head, 'opacity', '0');
-    css(w.glow, 'opacity', '0');
-  };
-  /** dessine la goutte : chaque couche est le segment [suiveur, tête] de la piste (au moins MINLEN de long) */
-  const render = (b: Blob) => {
-    const w = b.w;
-    const gap = (w.L + TAIL) * 3 + 40;
-    const op = Math.min(1, b.age / 0.12) * (1 - b.fade);
-    const sp = Math.abs(b.v);
-    w.layers.forEach((l, j) => {
-      const a0 = Math.min(b.s, b.fol[j]);
-      const len = Math.max(MINLEN[j], Math.abs(b.s - b.fol[j]));
-      // (la goutte est centrée sur la tête quand elle est ramassée)
-      const start = len === MINLEN[j] ? b.s - len / 2 : a0;
-      css(l.el, 'stroke-dasharray', `${len.toFixed(1)} ${gap}`);
-      css(l.el, 'stroke-dashoffset', (-start).toFixed(1));
-      css(l.el, 'opacity', op.toFixed(3));
-    });
-    css(w.head, 'stroke-dasharray', `0.01 ${gap}`);
-    css(w.head, 'stroke-dashoffset', (-b.s).toFixed(1));
-    css(w.head, 'opacity', op.toFixed(3));
-    // la tête gonfle à l'arrêt, s'affine lancée
-    css(w.head, 'stroke-width', Math.max(7, Math.min(13.5, 13.5 - Math.min(2.7, sp / 110) * 2.4)).toFixed(2));
-    const g0 = Math.min(b.s, b.fg);
-    const gl = Math.max(26, Math.abs(b.s - b.fg));
-    css(w.glow, 'stroke-dasharray', `${gl.toFixed(1)} ${gap}`);
-    css(w.glow, 'stroke-dashoffset', (-(gl === 26 ? b.s - 13 : g0)).toFixed(1));
-    css(w.glow, 'opacity', (op * (0.28 + 0.32 * Math.min(1, sp / 220))).toFixed(3));
-  };
-  const spawn = (w: Wire, s: number, v: number, curve: Blob['curve'], T: number) => {
-    if (w.busy || !ready) return null;
-    w.busy = true;
-    const b: Blob = { w, s, v, fol: [s, s, s], fg: s, t: 0, T, curve, idle: 0, age: 0, fade: 0, prev: s };
-    blobs.add(b);
+  const spawn = (r: Rail, s: number, v: number, curve: Bead['curve'], T: number, o: { delay?: number; reveal?: boolean } = {}) => {
+    if (r.busy) return null;
+    r.busy = true;
+    const b: Bead = { r, s, v, fol: [s, s], t: 0, T, delay: o.delay ?? 0, curve, idle: 0, age: 0, fade: 0, prev: s, reveal: !!o.reveal, front: 0 };
+    beads.add(b);
     wake();
     return b;
   };
-  /** impulsion : une goutte tirée par son guide d'un bout à l'autre de la piste */
-  const pulse = (w: Wire, speed: number) =>
-    spawn(w, 0, 0, frictionCurve(w.L, rng(Math.floor(Math.random() * 1e9) + 1)), Math.max(0.9, (w.L + TAIL) / (speed * w.quick)));
-  const popDot = (el: SVGCircleElement) =>
-    el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.9)', offset: 0.3 }, { transform: 'scale(0.86)', offset: 0.6 }, { transform: 'scale(1)' }], { duration: 900, easing: 'cubic-bezier(0.34, 1.3, 0.5, 1)' });
+  const pulse = (r: Rail, speed: number, o: { delay?: number; reveal?: boolean } = {}) =>
+    spawn(r, 0, 0, frictionCurve(r.L, rng(Math.floor(Math.random() * 1e9) + 1)), Math.max(0.9, (r.L + TAIL) / (speed * r.quick)), o);
+  const popDot = (el: SVGCircleElement) => {
+    el.classList.add('on');
+    el.classList.remove('pop');
+    void el.getBoundingClientRect();
+    el.classList.add('pop');
+  };
 
-  // curseur dans le repère du dessin, vitesse lissée, intensité de l'aura
+  // ── curseur (repère du dessin), vitesse lissée, intensité du champ
   let mx = -9999;
   let my = -9999;
   let cvx = 0;
@@ -563,13 +367,11 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   let raf = 0;
   let lastFrame = 0;
   let lastCall = 0;
-  const toSvg = (e: PointerEvent) => {
-    const ctm = svg.getScreenCTM();
-    return ctm ? new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse()) : null;
-  };
+  let clock = 0;
   const onMove = (e: PointerEvent) => {
-    const pt = toSvg(e);
-    if (!pt) return;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
     const t = performance.now();
     if (lastT && t - lastT < 200) {
       const dt = Math.max(8, t - lastT) / 1000;
@@ -592,74 +394,98 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   // (au doigt, le fluide se calme dès qu'on lève le doigt)
   const onUp = (e: PointerEvent) => e.pointerType !== 'mouse' && onOut();
   const wake = () => {
-    if (raf) return;
+    if (raf || !host.isConnected) return;
     lastFrame = performance.now();
     raf = requestAnimationFrame(tick);
   };
+
+  /** épines du champ sur la piste r : la ligne se hérisse près du curseur, côté opposé, sans jamais la quitter */
+  const spines = (r: Rail, A: number, spd: number) => {
+    const A2 = A * A;
+    const k = field * (4.5 + Math.min(4, spd / 260));
+    for (let i = 0; i < r.n; i += 3) {
+      const dx = r.x[i] - mx;
+      const dy = r.y[i] - my;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > A2) continue;
+      const q = 1 - Math.sqrt(d2) / A;
+      // normale orientée à l'opposé du curseur ; longueur selon le champ, frémissement léger
+      let nx = -r.ty[i];
+      let ny = r.tx[i];
+      if (nx * dx + ny * dy < 0) {
+        nx = -nx;
+        ny = -ny;
+      }
+      const len = k * q * q * (0.82 + 0.18 * Math.sin(clock * 11 + i * 0.7));
+      if (len < 0.4) continue;
+      ctx.moveTo(r.x[i], r.y[i]);
+      ctx.lineTo(r.x[i] + nx * len, r.y[i] + ny * len);
+    }
+  };
+
   const tick = (now: number) => {
     raf = 0;
     if (!host.isConnected) return;
     const dt = Math.min(1 / 30, (now - lastFrame) / 1000);
     lastFrame = now;
-    field += ((inside ? 1 : 0) - field) * Math.min(1, dt * (inside ? 7 : 3.5));
+    clock += dt;
+    field += ((inside ? 1 : 0) - field) * Math.min(1, dt * (inside ? 6 : 3));
     if (!inside) {
-      cvx *= 0.9;
-      cvy *= 0.9;
+      cvx *= 0.88;
+      cvy *= 0.88;
     }
     const spd = Math.hypot(cvx, cvy);
-    const A = 62 + Math.min(70, spd * 0.06);
-    const boost = field * (1 + Math.min(2.2, spd / 520));
-    aura.setAttribute('cx', mx.toFixed(1));
-    aura.setAttribute('cy', my.toFixed(1));
-    aura.setAttribute('r', (A * (0.6 + 0.4 * field)).toFixed(1));
-    aura.style.opacity = String(field * (0.35 + Math.min(0.65, spd / 1400)));
+    const A = 54 + Math.min(46, spd * 0.045);
+    const boost = field * (1 + Math.min(1.8, spd / 600));
 
-    // le curseur qui bouge près d'une piste libre y fait naître une goutte, au point le plus proche
-    if (ready && inside && spd > 90 && now - lastCall > (spd > 700 ? 380 : 750)) {
-      let bw = -1;
-      let bs = 0;
-      let bd = A * 0.8;
-      wires.forEach((w, wi) => {
-        if (w.busy) return;
-        const r = nearestOn(wi, mx, my);
-        if (r.d < bd) {
-          bd = r.d;
-          bw = wi;
-          bs = r.s;
+    // le curseur qui bouge près d'une piste libre y fait naître une perle, au point le plus proche
+    if (ready && inside && spd > 90 && now - lastCall > (spd > 700 ? 420 : 800)) {
+      let br: Rail | null = null;
+      let bi = 0;
+      let bd = A * 0.7;
+      for (const r of rails) {
+        if (r.busy || mx < r.box[0] - bd || mx > r.box[2] + bd || my < r.box[1] - bd || my > r.box[3] + bd) continue;
+        for (let i = 0; i < r.n; i += 2) {
+          const d = Math.hypot(r.x[i] - mx, r.y[i] - my);
+          if (d < bd) {
+            bd = d;
+            br = r;
+            bi = i;
+          }
         }
-      });
-      if (bw >= 0) {
+      }
+      if (br) {
         lastCall = now;
-        const p = at(bw, bs);
-        // elle naît déjà poussée dans le sens du geste (le long de la piste)
-        spawn(wires[bw], bs, (cvx * p.tx + cvy * p.ty) * 0.5, null, 0);
+        spawn(br, (bi / (br.n - 1)) * br.L, (cvx * br.tx[bi] + cvy * br.ty[bi]) * 0.45, null, 0);
       }
     }
 
-    for (const b of blobs) {
-      const w = b.w;
+    // ── perles
+    for (const b of beads) {
+      if (b.delay > 0) {
+        b.delay -= dt;
+        continue;
+      }
+      const r = b.r;
       b.age += dt;
       b.t += dt;
-      // force du curseur, projetée sur la piste
       let f = 0;
       if (boost > 0.002) {
-        const p = at(wires.indexOf(w), b.s);
-        const dx = p.x - mx;
-        const dy = p.y - my;
+        const i = idx(r, Math.min(b.s, r.L));
+        const dx = r.x[i] - mx;
+        const dy = r.y[i] - my;
         const d = Math.hypot(dx, dy) + 0.001;
         if (d < A) {
           const q = 1 - d / A;
           const q2 = q * q;
-          f += ((dx / d) * p.tx + (dy / d) * p.ty) * PUSH * q2 * boost; // répulsion, le long du rail
-          f += (cvx * p.tx + cvy * p.ty) * q2 * DRAG * field; // sillage du geste, le long du rail
+          f += ((dx / d) * r.tx[i] + (dy / d) * r.ty[i]) * PUSH * q2 * boost; // répulsion, le long du rail
+          f += (cvx * r.tx[i] + cvy * r.ty[i]) * q2 * DRAG * field; // sillage du geste, le long du rail
         }
       }
       if (b.curve) {
-        // impulsion : ressort vers le guide (qui suit la courbe à friction), puis il s'écoule au bout
-        const g = b.curve(Math.min(1, b.t / b.T)) * (w.L + 30);
+        const g = b.curve(Math.min(1, b.t / b.T)) * (r.L + TAIL);
         f += GUIDE_K * (g - b.s) - GUIDE_C * b.v;
       } else {
-        // goutte appelée : frottement visqueux + friction statique
         f -= VISC * b.v;
         if (Math.abs(b.v) < 6 && Math.abs(f) < STATIC) {
           b.v = 0;
@@ -668,42 +494,184 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       }
       b.v += f * dt;
       b.s += b.v * dt;
-      // rail : jamais hors de la piste (une goutte appelée bute aux extrémités et rebondit à peine)
-      const max = b.curve ? w.L + TAIL : w.L;
+      // le rail : jamais hors de la piste (une perle appelée bute aux extrémités)
+      const max = b.curve ? r.L + TAIL : r.L;
       if (b.s < 0) {
         b.s = 0;
-        b.v = Math.abs(b.v) * 0.25;
+        b.v = Math.abs(b.v) * 0.2;
       } else if (b.s > max) {
         b.s = max;
-        b.v = -Math.abs(b.v) * 0.25;
+        b.v = -Math.abs(b.v) * 0.2;
       }
-      // suiveurs élastiques (cœur, milieu, traîne, lueur)
-      b.fol.forEach((x, j) => (b.fol[j] = x + (b.s - x) * (1 - Math.exp(-dt / FOLLOW[j]))));
-      b.fg += (b.s - b.fg) * (1 - Math.exp(-dt / FOLLOW_GLOW));
-      // gouttes posées sur la piste : elles gonflent au passage
-      for (const dd of w.dots) {
-        const at0 = dd.f * w.L;
-        if ((b.prev < at0 && b.s >= at0) || (b.prev > at0 && b.s <= at0)) popDot(dd.el);
+      b.fol[0] += (b.s - b.fol[0]) * (1 - Math.exp(-dt / FOLLOW[0]));
+      b.fol[1] += (b.s - b.fol[1]) * (1 - Math.exp(-dt / FOLLOW[1]));
+      // tracé initial : la piste se dépose sous la perle (jamais elle ne recule)
+      if (b.reveal && r.trace) {
+        b.front = Math.max(b.front, Math.min(r.L + 2, b.fol[1]));
+        r.trace.style.strokeDashoffset = String(r.L + 2 - b.front);
+      }
+      for (const dd of r.dots) {
+        const a0 = dd.f * r.L;
+        if ((b.prev < a0 && b.s >= a0) || (b.prev > a0 && b.s <= a0) || (b.prev === 0 && a0 === 0 && b.age < dt * 2)) popDot(dd.el);
       }
       b.prev = b.s;
-      // fin de vie : impulsion arrivée au bout (et écoulée), goutte appelée immobile depuis un moment
       if (b.curve) {
-        if (b.t > b.T && b.s >= w.L + TAIL * 0.8) b.fade += dt * 4;
+        if (b.t > b.T && b.s >= r.L + TAIL * 0.8) b.fade += dt * 4;
       } else {
         b.idle = Math.abs(b.v) < 8 ? b.idle + dt : 0;
-        if (b.idle > 1.4 || b.age > 9) b.fade += dt * 2.5;
+        if (b.idle > 1.3 || b.age > 9) b.fade += dt * 2.5;
       }
       if (b.fade >= 1) {
-        blobs.delete(b);
-        hideWire(w);
-        w.busy = false;
-        continue;
+        if (b.reveal && r.trace) r.trace.style.strokeDashoffset = '0';
+        beads.delete(b);
+        r.busy = false;
       }
-      render(b);
     }
-    if (blobs.size || inside || field > 0.01) raf = requestAnimationFrame(tick);
-    else aura.style.opacity = '0';
+
+    // ── rendu (canvas effacé puis redessiné : quelques traits)
+    ctx.setTransform(dpr, 0, 0, dpr, PAD * dpr, PAD * dpr);
+    ctx.clearRect(-PAD, -PAD, W, H);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // épines du champ (instabilité de Rosensweig)
+    if (field > 0.02) {
+      ctx.strokeStyle = `rgba(255,255,255,${(0.5 * field).toFixed(3)})`;
+      ctx.lineWidth = 0.7;
+      // un seul trait pour toutes les pistes libres ; les pistes en partie cachées (carte de derrière) à part, découpées
+      let open = false;
+      for (const r of rails) {
+        if (r.ghost || mx < r.box[0] - A || mx > r.box[2] + A || my < r.box[1] - A || my > r.box[3] + A) continue;
+        if (r.hide) continue;
+        if (!open) {
+          ctx.beginPath();
+          open = true;
+        }
+        spines(r, A, spd);
+      }
+      if (open) ctx.stroke();
+      for (const r of rails) {
+        if (!r.hide || r.ghost || mx < r.box[0] - A || mx > r.box[2] + A || my < r.box[1] - A || my > r.box[3] + A) continue;
+        ctx.save();
+        ctx.clip(r.hide, 'evenodd');
+        ctx.beginPath();
+        spines(r, A, spd);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    for (const b of beads) {
+      if (b.delay > 0) continue;
+      const r = b.r;
+      const op = Math.min(1, b.age / 0.15) * (1 - b.fade);
+      if (op <= 0.01) continue;
+      if (r.hide) {
+        ctx.save();
+        ctx.clip(r.hide, 'evenodd');
+      }
+      const head = Math.min(b.s, r.L);
+      const sp = Math.abs(b.v);
+      // traîne : de la queue (fine, pâle) jusqu'à la perle (pleine), tronçons de largeur croissante
+      const tail = Math.max(0, Math.min(r.L, b.fol[0]));
+      const i0 = idx(r, Math.min(tail, head));
+      const i1 = idx(r, Math.max(tail, head));
+      const span = i1 - i0;
+      if (span > 1) {
+        const dir = b.fol[0] <= b.s ? 1 : -1;
+        const steps = Math.min(10, span);
+        for (let k = 0; k < steps; k++) {
+          const a = i0 + Math.floor((span * k) / steps);
+          const e = i0 + Math.floor((span * (k + 1)) / steps);
+          // u : 0 côté queue → 1 côté perle
+          const u = dir > 0 ? (k + 1) / steps : 1 - k / steps;
+          ctx.beginPath();
+          ctx.moveTo(r.x[a], r.y[a]);
+          for (let i = a + 1; i <= e; i++) ctx.lineTo(r.x[i], r.y[i]);
+          ctx.lineWidth = 0.6 + 1.9 * u * u;
+          ctx.strokeStyle = `rgba(255,255,255,${(op * (0.12 + 0.78 * u * u)).toFixed(3)})`;
+          ctx.stroke();
+        }
+      }
+      if (b.s <= r.L + 2) {
+        const i = idx(r, head);
+        const hx = r.x[i];
+        const hy = r.y[i];
+        // halo très doux, plus présent quand elle file
+        const gr = 10 + Math.min(8, sp / 40);
+        const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, gr);
+        g.addColorStop(0, `rgba(255,255,255,${(op * (0.16 + Math.min(0.14, sp / 1500))).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(hx - gr, hy - gr, gr * 2, gr * 2);
+        // la perle : gonflée à l'arrêt, étirée le long du rail quand elle file
+        const rad = (r.ghost ? 3.6 : 2.4) * (1.15 - Math.min(0.35, sp / 900));
+        const stretch = 1 + Math.min(1.6, sp / 160);
+        const ang = Math.atan2(r.ty[i], r.tx[i]);
+        ctx.save();
+        ctx.translate(hx, hy);
+        ctx.rotate(ang);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rad * stretch, rad, 0, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${op.toFixed(3)})`;
+        ctx.fill();
+        ctx.restore();
+      }
+      if (r.hide) ctx.restore();
+    }
+
+    if (beads.size || inside || field > 0.01) raf = requestAnimationFrame(tick);
+    else ctx.clearRect(-PAD, -PAD, W, H);
   };
+
+  // ── tracé initial (quand la carte devient visible), puis courant ambiant planifié
+  let drawn = false;
+  let visible = false;
+  let hover = false;
+  let timer = 0;
+  const drawAll = () => {
+    drawn = true;
+    const t0 = 0.18 + Number(card.dataset.artDelay || 0) / 1000;
+    // (départs étalés : le dessin se construit lentement, pièce par pièce ; la piste se dépose sous la perle)
+    for (const r of rails) pulse(r, SPEED, { delay: t0 + r.at * 1.6, reveal: true });
+    const total = Math.max(...rails.map((r) => r.at * 1.6 + Math.max(0.9, (r.L + TAIL) / (SPEED * r.quick)))) + t0;
+    timer = window.setTimeout(() => {
+      ready = true;
+      schedule();
+    }, (total + 0.6) * 1000);
+  };
+  const schedule = () => {
+    clearTimeout(timer);
+    if (!visible || document.hidden || !host.isConnected || !ready) return;
+    const free = rails.filter((r) => !r.busy);
+    if (free.length) pulse(free[Math.floor(Math.random() * free.length)], hover ? PULSE_SPEED * 1.3 : PULSE_SPEED);
+    timer = window.setTimeout(schedule, hover ? 1100 + Math.random() * 700 : (fine ? 3600 : 5000) + Math.random() * 3000);
+  };
+  const io = typeof IntersectionObserver !== 'undefined'
+    ? new IntersectionObserver(([e]) => {
+        visible = e.isIntersecting;
+        if (visible && !drawn) drawAll();
+        else if (visible && drawn) schedule();
+      }, { threshold: 0.2 })
+    : null;
+  if (io) io.observe(card);
+  else {
+    visible = true;
+    drawAll();
+  }
+  const onVis = () => !document.hidden && drawn && schedule();
+  document.addEventListener('visibilitychange', onVis);
+  const enter = () => {
+    hover = true;
+    if (ready) timer = window.setTimeout(schedule, 300);
+  };
+  const leaveH = () => {
+    hover = false;
+  };
+  if (fine) {
+    card.addEventListener('pointerenter', enter);
+    card.addEventListener('pointerleave', leaveH);
+  }
   card.addEventListener('pointermove', onMove);
   card.addEventListener('pointerdown', onMove);
   card.addEventListener('pointerleave', onOut);
@@ -712,7 +680,6 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
 
   return () => {
     clearTimeout(timer);
-    surge.forEach((t) => clearTimeout(t));
     io?.disconnect();
     ro?.disconnect();
     document.removeEventListener('visibilitychange', onVis);
@@ -724,6 +691,5 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     card.removeEventListener('pointercancel', onOut);
     card.removeEventListener('pointerup', onUp);
     cancelAnimationFrame(raf);
-    anims.forEach((a) => a.cancel());
   };
 }
