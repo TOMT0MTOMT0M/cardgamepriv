@@ -42,7 +42,7 @@ const vary = (pct: number) => 1 + (Math.random() * 2 - 1) * pct;
 /** ±dB de variation de vélocité */
 const varyDb = (db: number) => Math.pow(10, ((Math.random() * 2 - 1) * db) / 20);
 
-type Bus = 'ui' | 'feedback' | 'reward' | 'event' | 'ambience';
+export type Bus = 'ui' | 'feedback' | 'reward' | 'event' | 'ambience';
 
 export class Sfx {
   enabled = false;
@@ -1065,6 +1065,17 @@ export class Sfx {
     this.out(ng, 0.5, 'event');
     if (kind === 'giant') this.rumble(d, vol * 0.5);
     if (kind === 'skyDragon') this.crack(vol * 0.5);
+  }
+
+  /**
+   * Accès brut à la chaîne audio pour les scènes des 6★ (game/mythic/sounds.ts) : contexte, bruit blanc partagé et
+   * sortie sur un bus (compresseur + limiteur + volume général compris). `null` si le son est coupé ou bloqué.
+   * `voice(d)` réserve une voix (plafond global de 24) : faux = on saute ce son.
+   */
+  rig(): { c: AudioContext; t: number; noise: (t0: number, dur: number) => AudioBufferSourceNode; out: (g: AudioNode, wet?: number, bus?: Bus) => void; voice: (dur: number) => boolean; shaper: WaveShaperNode } | null {
+    if (!this.ok) return null;
+    const c = this.ctx!;
+    return { c, t: c.currentTime, noise: (t0, d) => this.noise(t0, d), out: (g, wet = 0.3, bus = 'event') => this.out(g, wet, bus), voice: (d) => this.voice(d), shaper: this.shaper! };
   }
 
   /** Fichiers son facultatifs (déposés par le joueur dans public/fx/yugioh/sfx) : décodés une fois, null s'ils n'existent pas. */

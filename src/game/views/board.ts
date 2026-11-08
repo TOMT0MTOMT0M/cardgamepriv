@@ -4,6 +4,7 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { cardsValue, fmtCoins } from '../../core/economy';
 import { cardTile, errMsg, esc, fold, h, popLayer, pushLayer, thumbUrl, toast } from '../ui';
 import { confirmTap, guarded } from './safety';
+import { leave } from '../../core/morph';
 
 /**
  * TABLEAU D'OFFRES (retours live 02, point 4) — onglet de la vue Échanges, ouvert à TOUS les joueurs.
@@ -264,7 +265,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
       done = true;
       if (!fromLayer) popLayer(layer);
       window.removeEventListener('keydown', onKey, true);
-      veil.remove();
+      void leave(veil).then(() => veil.remove());
       onClose?.();
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };

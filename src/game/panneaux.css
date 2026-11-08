@@ -1,0 +1,54 @@
+/* ═════════════ V2 (08/11) — PANNEAUX QUI APPARAISSENT, ONGLETS QUI GLISSENT, FENÊTRES QUI SORTENT
+   Le reste du mouvement « de taille » (hauteur qui suit le contenu) est en JS : src/core/morph.ts.
+   Jetons : --dur-* / --ease-* (src/core/motion.ts). Sorties ≈ 0,75 × entrées. */
+
+/* ── panneaux de l'en-tête (missions, portefeuille, connexion, pitié) : rideau depuis le bouton + cascade du contenu */
+.missions-pop, .status-pop {
+  transform: translateY(-10px) scale(0.975);
+  clip-path: inset(-80px -80px calc(100% - 22px) -80px round 18px);
+  transition: opacity var(--dur-rapide) var(--ease-sortie), transform var(--dur-standard) var(--ease-sortie), clip-path var(--dur-standard) var(--ease-sortie), visibility 0s linear var(--dur-standard);
+}
+.missions-pop.on, .status-pop.on {
+  transform: none;
+  clip-path: inset(-80px round 18px);
+  transition: opacity var(--dur-standard) var(--ease-standard), transform var(--dur-emphatique) var(--ease-entree), clip-path var(--dur-emphatique) var(--ease-entree), visibility 0s;
+}
+/* contenu : monte en cascade à l'ouverture (spécificité nulle : les règles propres de chaque ligne gagnent) ; un
+   contenu redessiné panneau ouvert arrive directement à sa place (pas de transition sur un élément neuf) */
+:where(.missions-pop, .status-pop) > * { translate: 0 8px; opacity: 0; transition: opacity var(--dur-rapide) var(--ease-sortie), translate var(--dur-rapide) var(--ease-sortie); }
+:where(.missions-pop.on, .status-pop.on) > * { translate: 0 0; opacity: 1; transition: opacity var(--dur-emphatique) var(--ease-standard) calc(50ms + var(--k, 0) * 32ms), translate var(--dur-emphatique) var(--ease-entree) calc(50ms + var(--k, 0) * 32ms); }
+:where(.missions-pop, .status-pop) > :nth-child(2) { --k: 1; }
+:where(.missions-pop, .status-pop) > :nth-child(3) { --k: 2; }
+:where(.missions-pop, .status-pop) > :nth-child(4) { --k: 3; }
+:where(.missions-pop, .status-pop) > :nth-child(5) { --k: 4; }
+:where(.missions-pop, .status-pop) > :nth-child(6) { --k: 5; }
+:where(.missions-pop, .status-pop) > :nth-child(n + 7) { --k: 6; }
+
+/* ── fenêtres (sélecteur de cartes, tableau d'échanges) : voile en fondu, fenêtre qui monte ; sortie jouée avant retrait */
+.gm-modal-veil, .ob-veil { animation: pn-veil-in var(--dur-standard) var(--ease-standard) both; }
+.gm-modal, .ob-modal { animation: pn-modal-in var(--dur-emphatique) var(--ease-entree) both; }
+.gm-modal-veil.is-leaving, .ob-veil.is-leaving { pointer-events: none; animation: pn-veil-out var(--dur-sortie) var(--ease-sortie) forwards; }
+.is-leaving > .gm-modal, .is-leaving > .ob-modal { animation: pn-modal-out var(--dur-sortie) var(--ease-sortie) forwards; }
+@keyframes pn-veil-in { from { opacity: 0; } }
+@keyframes pn-veil-out { to { opacity: 0; } }
+@keyframes pn-modal-in { from { opacity: 0; transform: translateY(22px) scale(0.97); } }
+@keyframes pn-modal-out { to { opacity: 0; transform: translateY(12px) scale(0.985); } }
+/* téléphone : la fenêtre plein écran arrive du bas, comme une feuille */
+@media (max-width: 860px) {
+  .ob-modal { animation-name: pn-sheet-in; }
+  .is-leaving > .ob-modal { animation-name: pn-sheet-out; }
+  @keyframes pn-sheet-in { from { transform: translateY(100%); } }
+  @keyframes pn-sheet-out { to { transform: translateY(100%); } }
+}
+
+/* ── contrôles segmentés : la pastille active glisse (i.seg-ind posée par morph.ts) */
+.seg.has-ind { position: relative; isolation: isolate; }
+.seg.has-ind > button, .seg.has-ind > a { position: relative; z-index: 1; transition: color var(--dur-standard) var(--ease-standard) !important; }
+.seg.has-ind:not(.ind-measure) > button.on, .seg.has-ind:not(.ind-measure) > button[aria-checked='true'], .seg.has-ind:not(.ind-measure) > a.on { background: transparent !important; box-shadow: none !important; }
+.seg-ind { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; border-radius: 999px; background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 6px 18px -10px rgba(255, 255, 255, 0.5); opacity: 0; transition: opacity var(--dur-rapide); }
+
+@media (prefers-reduced-motion: reduce) {
+  .missions-pop, .status-pop, .missions-pop.on, .status-pop.on { clip-path: none; transform: none; }
+  :where(.missions-pop, .status-pop) > * { translate: none; transition: none; }
+  .gm-modal, .ob-modal, .gm-modal-veil, .ob-veil { animation-duration: 1ms !important; }
+}

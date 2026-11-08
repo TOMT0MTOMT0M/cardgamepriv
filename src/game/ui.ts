@@ -5,6 +5,7 @@ import { jvThumbSvg } from '../core/art/jvTitle';
 import { observeRealCard } from './cardImages';
 import { haptics } from '../core/haptics';
 import type { GameBackend } from './backend';
+import { canReplayMythic, replayMythic } from './mythic';
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -482,6 +483,23 @@ try {
   /* stockage indisponible */
 }
 export function imageReportButton(backend: GameBackend, cardId: string, page: string): HTMLElement {
+  const b = reportButton(backend, cardId, page);
+  // (08/11) 6★ avec une scène de famille : « Rejouer » juste à côté, dans toutes les visionneuses
+  if (!canReplayMythic(cardId)) return b;
+  const wrap = h('span', 'va-pair');
+  wrap.style.display = 'contents';
+  const r = h('button', 'va va-replay');
+  r.title = 'Rejouer l’animation de la carte';
+  r.innerHTML = '▶ <span>Rejouer</span>';
+  r.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    haptics.pulse(8);
+    replayMythic(cardId);
+  });
+  wrap.append(r, b);
+  return wrap;
+}
+function reportButton(backend: GameBackend, cardId: string, page: string): HTMLElement {
   const done = imgReported.has(cardId);
   const b = h('button', `va va-img${done ? ' on' : ''}`);
   b.title = done ? 'Image déjà signalée, merci' : 'Signaler une image buguée ou absente (on la corrigera)';

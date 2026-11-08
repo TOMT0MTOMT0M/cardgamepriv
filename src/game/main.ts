@@ -1,4 +1,5 @@
 import './style.css';
+import './panneaux.css';
 import { applyFontVars } from '../core/fonts';
 import { createShell, soundOn, soundVolume, type Shell } from './shell';
 import { createOpeningScene } from './scenes/opening';
@@ -6,6 +7,13 @@ import type { ViewerScene } from './scenes/viewer';
 import { withWildEncounter } from './wildEncounter';
 import { withMusicPreview } from './musicPreview';
 import { withDuelSummon } from './duelEncounter';
+import { enableMythicReplay, mythicPlaying } from './mythic';
+
+function withMythicReplay(v: ViewerScene): ViewerScene {
+  const hits = v.hits.bind(v);
+  v.hits = (x, y) => mythicPlaying() || hits(x, y);
+  return v;
+}
 import { installDiag, reportLoad } from './diag';
 import { perfMark } from '../core/perfLog';
 import { createShopView } from './views/shop';
@@ -30,6 +38,8 @@ import { watchUpdates } from './maj';
 applyFontVars();
 import { bindMotionVars } from '../core/motion';
 bindMotionVars();
+import { installMorph } from '../core/morph';
+installMorph();
 
 /**
  * LE JEU (page /jeu/) : boutique + ouverture 3D, collection, échanges.
@@ -96,6 +106,7 @@ viewHost.tabIndex = -1;
 // la 3D démarre (adaptateur WebGPU, appareil…) pendant que le backend se télécharge ; `boot()` l'attend
 const shellP = createShell(glHost, sceneOverlays);
 shellP.catch(() => undefined); // (l'échec est traité par boot())
+void shellP.then(enableMythicReplay, () => undefined); // (08/11) « Rejouer » des 6★ dans les visionneuses
 const backend: GameBackend = await backendP.catch((e: unknown) => {
   showFailure(e);
   throw e;
@@ -805,7 +816,8 @@ async function boot() {
       viewerModP = null;
       // Pokémon 6★ : la visionneuse (collection, gros tirages, échanges…) rejoue la rencontre sauvage (wildEncounter.ts) ;
       // Yu-Gi-Oh 6★ : l'invocation (duelEncounter.ts)
-      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withMusicPreview(shell, withDuelSummon(shell, withWildEncounter(shell, v))));
+      // (08/11) les autres 6★ : bouton « Rejouer » (ui.ts) ; pendant la scène, un toucher ne ferme pas la visionneuse
+      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withMythicReplay(withMusicPreview(shell, withDuelSummon(shell, withWildEncounter(shell, v)))));
       viewerP.catch(() => (viewerP = null)); // (échec : nouvel essai au prochain appel, si le navigateur ne garde pas l'échec)
     }
     return viewerP;

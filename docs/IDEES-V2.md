@@ -5,6 +5,26 @@ admin, base Convex séparée) et sort en une fois vers la prod.
 
 ---
 
+## 0. Fait sur la branche v2 (08/11) — casino « pro » + tout ce qui change de taille s'anime
+
+- **Espace Jeux en « casino noir »** (`src/game/casino.css`, `views/games.ts`) : grand titre, solde en jeton qui
+  ROULE quand il change, onglets dont la pastille glisse ; accueil en trois tables (dessins au trait, lumière qui suit
+  la souris, filet qui s'allume, flèche) ; panneaux laqués ; jetons de booster monochromes ; dos des petites cartes en
+  acier brossé avec « B » gravé.
+- **Pack Battle** : barre de rapport de force entre les deux joueurs (flash couleur de rareté à partir de 5★), totaux
+  qui roulent, cartes du centre qui arrivent avec élan + reflet, rayons fins derrière les 5★/6★, suspense (salle qui
+  s'assombrit, battement), guirlande de lumière qui court autour du gagnant, verdict en grand titre.
+- **Battle Royale** : rang #1…#8, le classement se réordonne en GLISSANT, trait lumineux sur le meneur.
+- **Roulette** : jetons posés sur les cases, bille qui ralentit en continu et s'arrête pile sur le numéro (deux tours),
+  traîne, puis grosse bille du résultat par-dessus la table. Le tout premier tirage s'anime aussi.
+- **Partout dans l'appli** (`src/core/morph.ts`, `src/game/panneaux.css`) : un bloc qui change de hauteur se
+  déplie / se replie au lieu de sauter (panneaux de l'en-tête, panneaux des jeux, contrats…) ; les panneaux de l'en-tête
+  s'ouvrent en rideau avec leur contenu en cascade ; les fenêtres (sélecteur de cartes, tableau d'échanges) montent et
+  REDESCENDENT avant de disparaître ; tous les contrôles segmentés ont une pastille qui glisse.
+- Mouvement réduit / « Effets réduits » : rien ne tourne en boucle, les dépliages sont instantanés.
+
+---
+
 ## 1. Notifications comme une vraie appli (téléphone et PC) — à faire
 
 **Le principe.** Le jeu a déjà un manifeste d'appli (`public/manifest.webmanifest` : nom « Bébou », icônes, plein

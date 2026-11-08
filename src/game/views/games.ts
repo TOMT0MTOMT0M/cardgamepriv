@@ -30,6 +30,9 @@ import { confirmTap, guarded, isPending } from './safety';
 import { COIN_ICON, coinsHtml } from './wallet';
 import { catalogEntry } from '../../core/sets/themes';
 import '../games.css';
+import '../casino.css';
+import { flip, leave, rollNumber } from '../../core/morph';
+import { reducedMotion } from '../../core/motion';
 
 /**
  * ESPACE JEUX (#/jeux) : les vrais jeux seulement — 1v1 Pack Battle, Pack Battle Royale, Roulette à cartes —, avec
@@ -57,6 +60,12 @@ const cardsSummary = (l: Array<{ rarity: RarityId; count: number }>) => {
   return [...m].sort((a, b) => CARD_VALUE[a[0]] - CARD_VALUE[b[0]]).map(([r, n]) => `${n}×${starsTxt(r)}`).join(' + ');
 };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Dessins au trait des trois tables (accueil), blanc sur noir — la roulette et la royale tournent doucement. */
+const ART = {
+  duel: `<svg class="gm-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><g transform="rotate(-14 100 100)"><rect x="46" y="46" width="70" height="98" rx="8"/><rect x="52" y="52" width="58" height="86" rx="5" stroke-opacity=".4"/></g><g transform="rotate(13 100 100)"><rect x="86" y="54" width="70" height="98" rx="8" fill="#000"/><rect x="92" y="60" width="58" height="86" rx="5" stroke-opacity=".4"/><text x="121" y="109" font-size="16" text-anchor="middle" fill="currentColor" stroke="none" font-family="inherit" letter-spacing="2">VS</text></g></svg>`,
+  royale: `<svg class="gm-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><g class="spin">${Array.from({ length: 8 }, (_, i) => `<rect x="90" y="22" width="20" height="28" rx="3" transform="rotate(${i * 45} 100 100)"/>`).join('')}</g><circle cx="100" cy="100" r="34" stroke-opacity=".5"/><circle cx="100" cy="100" r="3" fill="currentColor"/></svg>`,
+  roulette: `<svg class="gm-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><circle cx="100" cy="100" r="84"/><circle cx="100" cy="100" r="62" stroke-opacity=".6"/><g class="spin">${Array.from({ length: 36 }, (_, i) => `<line x1="100" y1="18" x2="100" y2="${i % 2 ? 30 : 38}" transform="rotate(${i * 10} 100 100)"${i % 2 ? ' stroke-opacity=".5"' : ''}/>`).join('')}<circle cx="100" cy="100" r="26" stroke-opacity=".5"/></g><g class="ball"><circle cx="100" cy="47" r="5" fill="currentColor" stroke="none"/></g></svg>`,
+};
 /** Ce qu'on risque dans un Pack Battle, à côté du bouton (et plus seulement dans les règles en bas de page). */
 const riskLine = (st: { packs: PackChoice[]; stake: Stake }) => {
   const n = st.packs.length;
@@ -100,14 +109,28 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   };
 
   // ───────────────────────────── en-tête : solde + onglets
+  /** solde affiché au dernier rendu : le nouveau solde ROULE depuis celui-ci */
+  let shownCoins: number | null = null;
   function renderHead() {
     const s = snap();
     // les trois jeux (+ l'accueil et l'historique de mes parties) ; forge, succès, primes, missions : ailleurs (retours live 02)
     const tabs: Array<[Sub, string]> = [['', 'Jeux'], ['duel', 'Pack Battle'], ['royale', 'Battle Royale'], ['roulette', 'Roulette'], ['historique', 'Mes parties']];
     if (s?.isAdmin) tabs.push(['admin', 'Admin']);
-    head.innerHTML = `<div class="gm-title"><b>Espace Jeux</b>${s ? coinsHtml(s.coins, 'big') : ''}</div>
-      <nav class="seg gm-tabs">${tabs.map(([k, l]) => `<button data-k="${k}" class="${k === sub ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
+    head.innerHTML = `<div class="gm-title"><div><span class="gm-kick">Salle privée · entre nous</span><b>Espace Jeux</b></div>${s ? `<div class="gm-bal"><span class="gm-bal-l">Solde</span>${coinsHtml(shownCoins ?? s.coins, 'big')}</div>` : ''}</div>
+      <nav class="seg gm-tabs" data-seg-key="gm-tabs">${tabs.map(([k, l]) => `<button data-k="${k}" class="${k === sub ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
     head.querySelectorAll<HTMLElement>('[data-k]').forEach((b) => b.addEventListener('click', () => (location.hash = `#/jeux${b.dataset.k ? `/${b.dataset.k}` : ''}`)));
+    // téléphone : les onglets défilent ; l'onglet actif est ramené au milieu (il était parfois coupé au bord)
+    const nav = head.querySelector<HTMLElement>('.gm-tabs');
+    const on = nav?.querySelector<HTMLElement>('button.on');
+    if (nav && on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2;
+    if (!s) return;
+    const bal = head.querySelector<HTMLElement>('.gm-bal');
+    const num = bal?.querySelector<HTMLElement>('.coins-v b');
+    if (bal && num && shownCoins !== null && shownCoins !== s.coins) {
+      rollNumber(num, shownCoins, s.coins, (n) => fmtCoins(Math.round(n)), 900);
+      bal.classList.add(s.coins > shownCoins ? 'up' : 'down');
+    }
+    shownCoins = s.coins;
   }
   backend.eco.onChange(() => {
     if (!el.isConnected) return;
@@ -118,11 +141,20 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   // ═════════════════════════════ accueil
   function hub() {
     body.innerHTML = `<div class="gm-hub">
-      <a class="gm-game duel" href="#/jeux/duel"><i class="gm-glyph">⚔</i><b>1v1 Pack Battle</b><span>Misez le même nombre de boosters (+ un pot annexe). Ouverture côte à côte : le plus haut total d'étoiles rafle TOUTES les cartes.</span><em class="gm-live" data-live="duel">…</em></a>
-      <a class="gm-game royale" href="#/jeux/royale"><i class="gm-glyph">♛</i><b>Pack Battle Royale</b><span>3 à 8 joueurs, 1 booster chacun. Le meilleur total d'étoiles remporte tout le pot.</span><em class="gm-live" data-live="royale">…</em></a>
-      <a class="gm-game roulette" href="#/jeux/roulette"><i class="gm-glyph">◎</i><b>Roulette à cartes</b><span>36 numéros, 1 à 3 par tirage, en pièces ou en cartes 4★-6★. Tirages à 10 h et 20 h : le numéro qui sort rafle tout le pot.</span><em class="gm-live" data-live="roulette">…</em></a>
+      <a class="gm-game duel" href="#/jeux/duel">${ART.duel}<span class="gm-idx">01</span><b>1v1 Pack Battle</b><span class="gm-desc">Misez le même nombre de boosters (+ un pot annexe). Ouverture côte à côte : le plus haut total d'étoiles rafle TOUTES les cartes.</span><em class="gm-live"><i class="gm-dot"></i><span data-live="duel">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game royale" href="#/jeux/royale">${ART.royale}<span class="gm-idx">02</span><b>Pack Battle Royale</b><span class="gm-desc">3 à 8 joueurs, 1 booster chacun. Le meilleur total d'étoiles remporte tout le pot.</span><em class="gm-live"><i class="gm-dot"></i><span data-live="royale">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game roulette" href="#/jeux/roulette">${ART.roulette}<span class="gm-idx">03</span><b>Roulette à cartes</b><span class="gm-desc">36 numéros, 1 à 3 par tirage, en pièces ou en cartes 4★-6★. Tirages à 10 h et 20 h : le numéro qui sort rafle tout le pot.</span><em class="gm-live"><i class="gm-dot"></i><span data-live="roulette">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
+    // plafonnier qui suit la souris (ordinateur seulement)
+    body.querySelectorAll<HTMLElement>('.gm-game').forEach((g) =>
+      g.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const r = g.getBoundingClientRect();
+        g.style.setProperty('--mx', `${e.clientX - r.left}px`);
+        g.style.setProperty('--my', `${e.clientY - r.top}px`);
+      }),
+    );
     const live = (k: string, t: string) => {
       const e = body.querySelector<HTMLElement>(`[data-live="${k}"]`);
       if (e) e.innerHTML = t;
@@ -386,9 +418,24 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   async function playDuel(room: HTMLElement, d: DuelView, animate: boolean) {
     const res = d.result!;
     const n = res.packs[0].length * 5;
-    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : ''}</div><div class="gm-battle"><div class="gm-stage"><div class="gm-big" data-k="0"></div><div class="gm-vs-x">VS</div><div class="gm-big" data-k="1"></div></div></div><div class="gm-verdict"></div>`;
+    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : ''}</div><div class="gm-battle"><div class="gm-tug" aria-hidden="true"><span><b>0</b><small>★</small></span><div class="gm-tug-bar"><i></i></div><span><b>0</b><small>★</small></span></div><div class="gm-stage"><div class="gm-big" data-k="0"></div><div class="gm-vs-x">VS</div><div class="gm-big" data-k="1"></div></div></div><div class="gm-verdict"></div>`;
     const bat = room.querySelector<HTMLElement>('.gm-battle')!;
     const bigs = [...bat.querySelectorAll<HTMLElement>('.gm-big')];
+    // rapport de force (barre partagée selon les étoiles) + totaux qui roulent
+    const tug = bat.querySelector<HTMLElement>('.gm-tug')!;
+    const tugN = [...tug.querySelectorAll<HTMLElement>(':scope > span > b')];
+    const tugBar = tug.querySelector<HTMLElement>('.gm-tug-bar > i')!;
+    const updTug = (k: number, from: number, hex: string, big: boolean) => {
+      const a = cols[0].total;
+      const b = cols[1].total;
+      tugBar.style.setProperty('--p', String(a + b ? a / (a + b) : 0.5));
+      rollNumber(tugN[k], from, cols[k].total, (x) => String(Math.round(x)), 420);
+      if (!big) return;
+      tug.classList.remove('hit-l', 'hit-r');
+      tug.style.setProperty('--hc', hex);
+      void tug.offsetWidth;
+      tug.classList.add(k ? 'hit-r' : 'hit-l');
+    };
     const cols = d.sides.map((s, i) => {
       const c = h('div', 'gm-bcol');
       c.innerHTML = `<div class="gm-bh">${ava(s.name, s.avatarUrl)}<b>${esc(s.name)}</b><span class="gm-count">0★</span></div><div class="gm-slots"></div>`;
@@ -411,8 +458,10 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       big.classList.remove('in');
       void big.offsetWidth;
       big.classList.add('in');
+      const before = cols[k].total;
       cols[k].total += CARD_STARS[card.rarity];
-      cols[k].count.textContent = `${cols[k].total}★`;
+      rollNumber(cols[k].count, before, cols[k].total, (x) => `${Math.round(x)}★`, 420);
+      updTug(k, before, rarity(card.rarity).hex, CARD_STARS[card.rarity] >= 5);
       cols[k].count.classList.remove('pop');
       void cols[k].count.offsetWidth;
       cols[k].count.classList.add('pop');
@@ -436,7 +485,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     room.querySelector('.gm-skip')?.remove();
     const v = room.querySelector<HTMLElement>('.gm-verdict')!;
     if (res.winner === undefined) {
-      v.innerHTML = `<b>Égalité parfaite : ${res.stars[0]}★ partout.</b> Égalité : chacun récupère ses cartes et sa mise.`;
+      v.innerHTML = `<b><span>Égalité parfaite.</span></b> ${res.stars[0]}★ partout : chacun récupère ses cartes et sa mise.`;
       bat.classList.add('push');
     } else {
       const w = d.sides[res.winner];
@@ -444,7 +493,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       cols[res.winner].el.classList.add('win');
       cols[1 - res.winner].el.classList.add('lose');
       const pots = stakeValue(d.sides[0].stake) + stakeValue(d.sides[1].stake);
-      v.innerHTML = `<b>${iWon ? 'Tu remportes tout !' : `${esc(w.name)} remporte tout.`}</b> ${res.stars[res.winner]}★ contre ${res.stars[1 - res.winner]}★ — ${n * 2} cartes${pots ? ` et ${fmtCoins(pots)} de pots annexes` : ''} pour ${iWon ? 'toi' : esc(w.name)}.`;
+      v.innerHTML = `<b><span>${iWon ? 'Tu remportes tout !' : `${esc(w.name)} remporte tout.`}</span></b> ${res.stars[res.winner]}★ contre ${res.stars[1 - res.winner]}★ — ${n * 2} cartes${pots ? ` et ${fmtCoins(pots)} de pots annexes` : ''} pour ${iWon ? 'toi' : esc(w.name)}.`;
       // bilan personnel (UX4-22) : ce que JE gagne ou perds, pas seulement le verdict
       const k = d.sides.findIndex((x) => x.userId === myId());
       if (k >= 0) {
@@ -584,11 +633,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     const g = room.querySelector<HTMLElement>('.gm-royal')!;
     const rows = r.players.map((p, i) => {
       const row = h('div', 'gm-rrow');
-      row.innerHTML = `<div class="gm-bh">${ava(p.name, p.avatarUrl)}<b>${esc(p.name)}</b><span class="gm-count">0★</span></div><div class="gm-slots"></div>`;
+      row.innerHTML = `<div class="gm-bh"><span class="gm-rank">#${i + 1}</span>${ava(p.name, p.avatarUrl)}<b>${esc(p.name)}</b><span class="gm-count">0★</span></div><div class="gm-slots"></div>`;
       const sl = row.querySelector<HTMLElement>('.gm-slots')!;
       res.packs[i].forEach((c) => sl.append(slot(c)));
       g.append(row);
-      return { row, count: row.querySelector<HTMLElement>('.gm-count')!, slots: [...sl.children] as HTMLElement[], total: 0 };
+      return { row, count: row.querySelector<HTMLElement>('.gm-count')!, rank: row.querySelector<HTMLElement>('.gm-rank')!, slots: [...sl.children] as HTMLElement[], total: 0 };
     });
     let skip = !animate;
     room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
@@ -601,12 +650,21 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const c = res.packs[k][i];
         x.slots[i].classList.add('up');
         if (CARD_STARS[c.rarity] >= 5) x.slots[i].classList.add('hot');
+        const before = x.total;
         x.total += CARD_STARS[c.rarity];
-        x.count.textContent = `${x.total}★`;
+        if (skip) x.count.textContent = `${x.total}★`;
+        else rollNumber(x.count, before, x.total, (n) => `${Math.round(n)}★`, 420);
       });
-      // classement en direct
+      // classement en direct : les rangées GLISSENT à leur nouvelle place (FLIP)
       const order = rows.map((x, k) => [x.total, k]).sort((a, b) => b[0] - a[0]);
-      order.forEach(([, k], rank) => (rows[k].row.style.order = String(rank)));
+      const apply = () =>
+        order.forEach(([, k], rank) => {
+          rows[k].row.style.order = String(rank);
+          rows[k].rank.textContent = `#${rank + 1}`;
+          rows[k].row.classList.toggle('lead', rank === 0 && rows[k].total > 0);
+        });
+      if (skip) apply();
+      else flip(rows.map((x) => x.row), apply);
       if (!skip) {
         sfx('tick');
         await wait(i === 4 ? 900 : 650);
@@ -618,7 +676,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     const names = res.winners.map((w) => r.players[w].name);
     const iWon = res.winners.some((w) => r.players[w].userId === myId());
     room.querySelector<HTMLElement>('.gm-verdict')!.innerHTML =
-      names.length === 1 ? `<b>${iWon ? 'Tu remportes tout le pot !' : `${esc(names[0])} remporte tout le pot.`}</b> ${Math.max(...res.stars)}★ — ${res.packs.flat().length} cartes.` : `<b>Ex æquo à ${Math.max(...res.stars)}★ :</b> ${names.map(esc).join(' et ')} se partagent les cartes au hasard.`;
+      names.length === 1 ? `<b><span>${iWon ? 'Tu remportes tout le pot !' : `${esc(names[0])} remporte tout.`}</span></b> ${Math.max(...res.stars)}★ — ${res.packs.flat().length} cartes.` : `<b><span>Ex æquo à ${Math.max(...res.stars)}★.</span></b> ${names.map(esc).join(' et ')} se partagent les cartes au hasard.`;
     if (animate) sfx(iWon ? 'big' : 'tick');
     if (r.players.some((p) => p.userId === myId())) againButton(room.querySelector<HTMLElement>('.gm-verdict')!, '♛ Nouvelle partie', () => (location.hash = '#/jeux/royale'));
   }
@@ -632,7 +690,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     let stakeCards: StakeItem[] = [];
     let pay = 0; // façon de payer choisie (index dans la grille du nombre de numéros)
     let cur: RouletteView | null = null;
-    let lastPast = '';
+    /** dernier tirage connu (null = pas encore reçu) : un NOUVEAU tirage fait tourner la bille, même le tout premier */
+    let lastPast: string | null = null;
     const cells: HTMLElement[] = [];
     for (let n = 1; n <= ROULETTE_NUMBERS; n++) {
       const c = h('button', 'gm-num', String(n));
@@ -768,26 +827,69 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         drawBet();
         tick();
         lastPast = r.past[0]?.id ?? '';
-        if (prevPast && lastPast !== prevPast && r.past[0]?.result) void spin(r.past[0].result.number, r.past[0].result.winnerName);
+        if (prevPast !== null && lastPast !== prevPast && r.past[0]?.result) void spin(r.past[0].result.number, r.past[0].result.winnerName);
       }),
     );
-    // la bille parcourt la roue, ralentit, et s'arrête sur le numéro sorti
+    /**
+     * La bille parcourt la table, ralentit (courbe continue, plus de paliers) et s'arrête EXACTEMENT sur le numéro
+     * sorti après deux tours ; chaque case qu'elle quitte s'éteint lentement (traîne). Puis le résultat s'affiche en
+     * grand par-dessus la table.
+     */
+    let spinning = false;
     async function spin(number: number, winner?: string) {
-      let i = Math.floor(Math.random() * ROULETTE_NUMBERS);
-      let d = 30;
-      while (d < 260) {
-        cells.forEach((c) => c.classList.remove('ball'));
-        cells[i % ROULETTE_NUMBERS].classList.add('ball');
-        sfx('tick');
-        await wait(d);
-        i++;
-        d *= 1.09;
-      }
-      cells.forEach((c) => c.classList.remove('ball'));
-      cells[number - 1].classList.add('ball', 'landed');
+      if (spinning) return;
+      spinning = true;
+      const N = ROULETTE_NUMBERS;
+      const start = Math.floor(Math.random() * N);
+      const steps = 2 * N + ((((number - 1 - start) % N) + N) % N);
+      const T = reducedMotion() ? 0 : 5600;
+      wheel.classList.add('spinning');
+      cells.forEach((c) => c.classList.remove('ball', 'landed'));
+      await new Promise<void>((done) => {
+        const t0 = performance.now();
+        let at = -1;
+        let lastTick = 0;
+        const step = (t: number) => {
+          if (!wheel.isConnected) return done();
+          const k = T ? Math.min(1, (t - t0) / T) : 1;
+          const pos = Math.round(steps * (1 - Math.pow(1 - k, 3.4)));
+          if (pos !== at) {
+            if (at >= 0) cells[(start + at) % N].classList.remove('ball');
+            at = pos;
+            cells[(start + at) % N].classList.add('ball');
+            if (t - lastTick > 55) {
+              sfx('tick');
+              lastTick = t;
+            }
+          }
+          if (k < 1) requestAnimationFrame(step);
+          else done();
+        };
+        requestAnimationFrame(step);
+      });
+      wheel.classList.remove('spinning');
+      spinning = false;
+      if (!wheel.isConnected) return;
+      const cell = cells[number - 1];
+      cell.classList.add('ball', 'landed');
       sfx(winner ? 'big' : 'chime');
-      toast(winner ? `Le ${number} sort : ${winner} remporte tout le pot !` : `Le ${number} sort : personne ne l’avait, le pot est reporté.`, winner ? 'ok' : 'info');
-      setTimeout(() => cells[number - 1].classList.remove('landed', 'ball'), 6000);
+      const panel = wheel.closest<HTMLElement>('.gm-panel');
+      const r = panel?.getBoundingClientRect();
+      if (panel && r && r.bottom > 0 && r.top < innerHeight) {
+        const ov = h('div', 'gm-result');
+        ov.setAttribute('role', 'status');
+        ov.innerHTML = `<div class="gm-result-n">${number}</div><div class="gm-result-t">${winner ? `${esc(winner)} remporte tout le pot` : 'Personne ne l’avait'}</div><div class="gm-result-s">${winner ? 'le pot part au gagnant' : 'le pot est reporté au prochain tirage'}</div>`;
+        let gone = false;
+        const close = () => {
+          if (gone) return;
+          gone = true;
+          void leave(ov, 450).then(() => ov.remove());
+        };
+        ov.addEventListener('click', close);
+        panel.append(ov);
+        setTimeout(close, 5200);
+      } else toast(winner ? `Le ${number} sort : ${winner} remporte tout le pot !` : `Le ${number} sort : personne ne l’avait, le pot est reporté.`, winner ? 'ok' : 'info');
+      setTimeout(() => cell.classList.remove('landed', 'ball'), 6500);
     }
   }
 

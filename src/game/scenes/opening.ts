@@ -177,6 +177,11 @@ export interface OpeningScene extends Experiment {
   resumeAfterScene(): void;
   /** Après une cinématique de 6★ (onCinematic) : la carte est montrée face visible, plein écran, comme à la fin de la séquence mythique. */
   resumeAfterCinematic(): void;
+  /**
+   * Après le PRÉLUDE d'une 6★ (indices + scène de sa famille, game/mythic) pris par onCinematic : la révélation
+   * habituelle de la carte reprend (anticipation, retournement, impact, étoiles), sans redemander de cinématique.
+   */
+  resumeReveal(): void;
   /** Retour à la vitrine (libère les cartes du pack). */
   reset(): void;
   /** Révéler / avancer (même effet qu'un tap). */
@@ -372,6 +377,8 @@ export function createOpeningScene(): OpeningScene {
   let hold = 0;
   /** pilotage automatique (voir setAuto) */
   const auto = { burn: false, minRank: 0, reveal: false };
+  /** carte (curseur) dont le prélude 6★ vient d'être joué : sa révélation ne redemande pas de cinématique */
+  let preluded = -1;
   /** la carte courante doit-elle défiler en accéléré ? */
   const fastCard = (si: number | undefined) => auto.minRank > 0 && si !== undefined && !!slots[si] && slots[si].rr.rank < auto.minRank;
   /**
@@ -1120,6 +1127,7 @@ export function createOpeningScene(): OpeningScene {
     events = ev;
     seriesLast = o.seriesLast ?? true;
     cursor = 0;
+    preluded = -1;
     curTier = 0;
     queued = false;
     curBase = 1;
@@ -1267,7 +1275,7 @@ export function createOpeningScene(): OpeningScene {
       return;
     }
     // 6★ avec sa propre cinématique (Yu-Gi-Oh) : la scène d'invocation prend le relais, la carte attend face cachée
-    if (s.rr.tier >= 5 && !s.rr.secret && events.onCinematic) {
+    if (s.rr.tier >= 5 && !s.rr.secret && events.onCinematic && preluded !== cursor) {
       phase = 'scene';
       queued = false;
       if (events.onCinematic(s.data, last)) return;
@@ -2058,6 +2066,11 @@ export function createOpeningScene(): OpeningScene {
         Object.assign(s.p, { y: pose.y, s: 1.06 * pose.k });
         phase = 'shown';
       }
+    },
+    resumeReveal() {
+      if (phase !== 'scene' || !order.length) return;
+      preluded = cursor;
+      revealCurrent();
     },
     resumeAfterCinematic() {
       if (phase !== 'scene' || !order.length) return;

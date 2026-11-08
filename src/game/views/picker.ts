@@ -5,6 +5,7 @@ import { catalogEntry } from '../../core/sets/themes';
 import { rarity, starCount, type RarityId } from '../../core/rarity';
 import { cardTile, esc, fold, h, popLayer, pushLayer } from '../ui';
 import { COIN_ICON } from './wallet';
+import { leave } from '../../core/morph';
 
 const RARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'secret'];
 
@@ -103,7 +104,7 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
       done = true;
       popLayer(layer);
       window.removeEventListener('keydown', onKey, true);
-      veil.remove();
+      void leave(veil).then(() => veil.remove());
       if (opener?.isConnected) opener.focus({ preventScroll: true });
       resolve(v);
     };

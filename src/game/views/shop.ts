@@ -23,6 +23,7 @@ import { isTouch } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
 import { createBigPulls } from './bigPulls';
 import { duelMonster } from '../scenes/duelMonsters';
+import { abortMythic, mythicFamily, playMythicPrelude, prepareMythic } from '../mythic';
 
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
 const TOUCH = isTouch();
@@ -985,6 +986,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (!batch || batch.skipping || mode !== 'opening') return;
     stopMusicPreview();
     batch.skipping = true;
+    abortMythic();
     skipAll.disabled = skipHi.disabled = true;
     opening.setAuto({ burn: false, minRank: 0, reveal: false });
     info.classList.remove('in');
@@ -1127,6 +1129,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     dropDuel();
     const duelCard = p.cards.find((c) => rarity(c.rarity).rank === 5 && duelMonster(c.cardId));
     if (duelCard) void prepareDuel(duelCard);
+    // 6★ des autres familles : moteur et scène téléchargés pendant la déchirure
+    for (const c of p.cards) prepareMythic(c.cardId, c.rarity);
     // Pokémon 6★ : musique décodée et scène montée (carte, décor) pendant que le joueur ouvre le booster
     // (plusieurs Pokémon 6★ dans le même booster : chacun aura sa rencontre ; la 1re est préparée maintenant, les
     // suivantes à la fin de la précédente — ou, au pire, pendant le noir de leur propre transition)
@@ -1204,6 +1208,20 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         void runSecret();
       },
       onCinematic(card) {
+        // (08/11) toutes les autres 6★ : indices + scène de leur famille (game/mythic), puis la révélation habituelle
+        if (mythicFamily(card.cardId, card.rarity)) {
+          hud.hidden = true;
+          info.hidden = true;
+          info.classList.remove('in');
+          mythicVeil.hidden = true;
+          const run = playMythicPrelude(shell, card.cardId, card.rarity, 'opening', { quick: !!batch?.all });
+          void run.done.then(() => {
+            if (mode !== 'opening' || batch?.skipping) return;
+            hud.hidden = false;
+            opening.resumeReveal();
+          });
+          return true;
+        }
         // la scène d'invocation n'est pas prête (téléphone lent) : séquence mythique habituelle, rien n'attend
         if (!duel || duel.cardId !== card.cardId || !duel.exp || !shell.has('duel')) return false;
         hud.hidden = true;
@@ -1688,6 +1706,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     endWild();
     dropWild();
     dropDuel();
+    abortMythic();
     setMode('pick');
     syncState();
   }
