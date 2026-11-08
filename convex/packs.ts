@@ -2,7 +2,6 @@ import { payReferrer } from './referrals';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
-import { internal } from './_generated/api';
 import { getUserIdByToken, requireUser } from './auth';
 import { scheduleReserveFull } from './push';
 import { RARITY_LABEL, RARITY_TIER, packKindValidator, rarityValidator, type RarityId } from './cardsCatalog';
@@ -13,6 +12,7 @@ import { bumpMissions } from './missions';
 import { pityAfter, pityForces } from '../src/core/pity';
 import { rollPackCoins } from '../src/core/economy';
 import { addCoins, bumpWeekly } from './econLib';
+import { queueDropShot } from './dropShots';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -267,15 +267,8 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
 
       // Discord : uniquement avant-dernier tier (Mythique 6★) et dernier tier (Secrète Bébou ✷)
       if (tier >= RARITY_TIER.mythic) {
-        await ctx.scheduler.runAfter(0, internal.packs.notifyDiscordPull, {
-          displayName: user.displayName,
-          avatarUrl: user.avatarUrl,
-          cardId: c.cardId,
-          cardName: c.cardName,
-          rarity: c.rarity,
-          mintNumber: c.mintNumber,
-          isNew: c.isNew,
-        });
+        // (V2, 08/11) la carte elle-même, de face, avec le nom du joueur au-dessus : le jeu envoie l'image (dropShots.ts)
+        await queueDropShot(ctx, user, c);
       }
     }
   }
@@ -356,6 +349,7 @@ export const revealPacks = mutation({
 // (07/11) même adresse que le bot (discordBot.ts) : « main. » était un ancien déploiement figé (illustrations récentes absentes)
 const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL ?? 'https://cardgamepriv.pages.dev').trim().replace(/\/+$/, '');
 
+/** Ancien format (fiche embed) : remplacé par dropShots.ts le 08/11, gardé pour les envois déjà programmés. */
 export const notifyDiscordPull = internalAction({
   args: {
     displayName: v.string(),

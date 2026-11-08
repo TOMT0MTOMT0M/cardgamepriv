@@ -17,6 +17,7 @@ import type * as cardsCatalog from "../cardsCatalog.js";
 import type * as contracts from "../contracts.js";
 import type * as crons from "../crons.js";
 import type * as discordBot from "../discordBot.js";
+import type * as dropShots from "../dropShots.js";
 import type * as econLib from "../econLib.js";
 import type * as economy from "../economy.js";
 import type * as feed from "../feed.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   contracts: typeof contracts;
   crons: typeof crons;
   discordBot: typeof discordBot;
+  dropShots: typeof dropShots;
   econLib: typeof econLib;
   economy: typeof economy;
   feed: typeof feed;

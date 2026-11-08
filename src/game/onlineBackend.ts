@@ -9,6 +9,25 @@ import { api } from '../../convex/_generated/api';
 import type { Doc } from '../../convex/_generated/dataModel';
 
 /** Le vrai serveur : Convex (temps réel) + Discord ou pseudo, via le client partagé avec le labo (core/net/client.ts). */
+/**
+ * (V2, 08/11) drops 6★ / secrètes : cartes des boosters scellés gardées jusqu'au crédit, puis la carte peinte de face
+ * part sur Discord (dropShot.ts). Booster scellé avant un rechargement : pas en mémoire → le serveur poste l'illustration.
+ */
+const sealedCards = new Map<string, Array<{ cardId: string; rarity: string; mintNumber: number }>>();
+function keepSealed(id: string, cards: Array<{ cardId: string; rarity: string; mintNumber: number }>) {
+  const big = cards.filter((c) => c.rarity === 'mythic' || c.rarity === 'secret');
+  if (big.length) sealedCards.set(id, big);
+}
+function shootRevealed(ids: string[]) {
+  const cards = ids.flatMap((id) => {
+    const c = sealedCards.get(id) ?? [];
+    sealedCards.delete(id);
+    return c;
+  });
+  if (!cards.length) return;
+  void import('./dropShot').then((m) => m.sendDropShots(cards, (cardId, mint, img) => net.sendDropShot(cardId, mint, img)));
+}
+
 export function createOnlineBackend(): GameBackend {
   const listeners = new Set<(s: GameState) => void>();
   const state: GameState = {
@@ -137,6 +156,7 @@ export function createOnlineBackend(): GameBackend {
     logout: () => net.logout(),
     async preparePack(req: PackRequest) {
       const p = await net.preparePack({ packKind: req.kind, themeId: req.themeId });
+      keepSealed(p.packId, p.cards);
       return {
         id: p.packId,
         packKind: p.packKind,
@@ -147,9 +167,11 @@ export function createOnlineBackend(): GameBackend {
     },
     async revealPack(id) {
       await net.revealPack(id as Id<'packOpens'>);
+      shootRevealed([id]);
     },
     async preparePacks(req, count) {
       const packs = await net.preparePacks({ packKind: req.kind, themeId: req.themeId }, count);
+      for (const p of packs) keepSealed(p._id, p.cards);
       return packs.map((p) => ({
         id: p._id,
         packKind: p.packKind ?? 'bebou',
@@ -159,7 +181,9 @@ export function createOnlineBackend(): GameBackend {
       }));
     },
     async revealPacks(ids) {
-      return await net.revealPacks(ids as Id<'packOpens'>[]);
+      const done = await net.revealPacks(ids as Id<'packOpens'>[]);
+      shootRevealed(done);
+      return done;
     },
     async friendCollection(friendId) {
       const rows = await net.userCollection(friendId as Id<'users'>);

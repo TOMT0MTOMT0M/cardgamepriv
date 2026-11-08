@@ -713,6 +713,15 @@ class GameNetClient {
     if (r.error) throw new Error(r.error);
     return r.url;
   }
+  /** (V2, 08/11) drop 6★ / secrète : la carte peinte de face part sur Discord (convex/dropShots.ts). */
+  public async sendDropShot(cardId: string, mintNumber: number, image: Blob) {
+    const sessionToken = this.requireToken();
+    const url = await this.client!.mutation(api.dropShots.uploadUrl, { sessionToken });
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': image.type }, body: image });
+    if (!res.ok) throw new Error(`envoi de l'image : ${res.status}`);
+    const { storageId } = (await res.json()) as { storageId: Id<'_storage'> };
+    return await this.client!.mutation(api.dropShots.attach, { sessionToken, cardId, mintNumber, storageId });
+  }
   // ─── suggestions des joueurs (onglet Suggestions) ───
   public async submitSuggestion(o: { kind: 'bug' | 'design' | 'ajout' | 'autre'; text: string; cardId?: string; imageUrl?: string; category?: string; page?: string }, file: Blob | null) {
     const sessionToken = this.requireToken();
