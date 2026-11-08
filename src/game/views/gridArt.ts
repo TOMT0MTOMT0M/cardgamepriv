@@ -8,9 +8,10 @@
  * 36 crans avec sa bille), tracés par le courant. Le dessin reste posé sur la trame (son coin est recalé sur un point
  * de la grille), mais ses formes sont libres.
  *
- * Le courant est une goutte d'encre lumineuse : une tête ronde qui « respire », une coulée qui s'effile en trois
- * épaisseurs (fusionnées par un filtre « gluant » sur ordinateur) et une lueur floue ; il avance comme un fluide épais
- * (départ lent, poussée, puis il s'étire et s'écoule) et laisse derrière lui la piste fine. Des gouttes se posent aux
+ * Le courant est une goutte d'encre lumineuse : une tête ronde, une coulée qui s'effile en trois épaisseurs
+ * (fusionnées par un filtre « gluant » sur ordinateur) et une lueur floue. Il avance LENTEMENT et avec FRICTION
+ * (4e retour : « trop rapide, pas assez vivant, élastique ») : par à-coups, il colle, se décolle, glisse un peu trop
+ * loin et revient ; la traîne le suit avec retard comme un élastique ; il laisse derrière lui la piste fine. Des gouttes se posent aux
  * points clés (moyeu, bille). Ensuite une impulsion repasse de temps en temps (la bille fait un tour de roue) ; au
  * survol, le dessin s'emballe.
  *
@@ -96,7 +97,7 @@ const DRAWINGS: Record<ArtKind, Drawing> = {
           return `M${p(82)} L${p(i % 2 ? 70 : 62)}`;
         }).join(' '),
         at: 0.8,
-        quick: 2.6,
+        quick: 1.7,
       },
       { d: circle(100, 100, 26), at: 1.3, dim: true },
       { d: circle(100, 100, 53), at: 1.6, ghost: true, dots: [[100, 47, 1, 5]] },
@@ -111,9 +112,12 @@ const svgEl = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<strin
   return e;
 };
 
-/** vitesse moyenne du courant (px/s) : lente, comme un fluide épais */
-const SPEED = 230;
-const PULSE_SPEED = 300;
+/**
+ * vitesse moyenne du courant (px/s), arrêts compris : lente, comme un fluide épais qui frotte sur sa piste
+ * (retour 08/11 : « trop rapide, pas assez vivant, organique, élastique, comme s'il y avait plus de friction »)
+ */
+const SPEED = 105;
+const PULSE_SPEED = 140;
 /** coulée effilée : longueur de chaque épaisseur (la plus fine est la plus longue) */
 const TAPER = [
   { cls: 'tail', len: 96 },
@@ -122,22 +126,45 @@ const TAPER = [
 ];
 const TAIL = TAPER[0].len;
 const GLOW = 64;
-/** fluide épais : départ lent, poussée, puis la goutte s'étire et s'écoule */
-const OOZE_P = [0.55, 0.08, 0.3, 1] as const;
-const OOZE = `cubic-bezier(${OOZE_P.join(', ')})`;
-/** instant (0–1) où la courbe OOZE atteint l'avancée `p` (pour poser une goutte pile au passage) */
-const oozeAt = (p: number) => {
-  const [x1, y1, x2, y2] = OOZE_P;
-  const bz = (t: number, a: number, b: number) => 3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t;
-  let lo = 0;
-  let hi = 1;
-  for (let i = 0; i < 24; i++) {
-    const m = (lo + hi) / 2;
-    if (bz(m, y1, y2) < p) lo = m;
-    else hi = m;
+/**
+ * FRICTION : la progression (0 → 1) d'un passage, en à-coups. Le fluide colle, la pression monte, il se décolle et
+ * glisse avec un petit dépassement élastique (il va un peu trop loin puis revient), puis recolle. Le nombre d'à-coups
+ * suit la longueur de la piste ; chaque passage tire ses propres longueurs et durées (jamais deux fois le même).
+ */
+function frictionCurve(L: number, rnd: () => number): (t: number) => number {
+  const n = Math.max(2, Math.min(14, Math.round(L / 58)));
+  const dist = Array.from({ length: n }, () => 0.6 + rnd() * 0.8);
+  const time = Array.from({ length: n }, (_, i) => (i === 0 ? 1.5 : 0.8 + rnd() * 0.6));
+  const dSum = dist.reduce((a, b) => a + b, 0);
+  const tSum = time.reduce((a, b) => a + b, 0);
+  const steps: Array<{ t0: number; t1: number; p0: number; p1: number; stick: number }> = [];
+  let tc = 0;
+  let pc = 0;
+  for (let i = 0; i < n; i++) {
+    const dt = time[i] / tSum;
+    const dp = dist[i] / dSum;
+    steps.push({ t0: tc, t1: tc + dt, p0: pc, p1: pc + dp, stick: i === n - 1 ? 0.08 : 0.22 + rnd() * 0.18 });
+    tc += dt;
+    pc += dp;
   }
-  return bz((lo + hi) / 2, x1, x2);
-};
+  // glisse : départ doux, dépassement de ~6 % puis retour (ressort amorti)
+  const slip = (u: number) => {
+    const k = 1.55;
+    const v = u - 1;
+    return 1 + v * v * ((k + 1) * v + k);
+  };
+  return (t: number) => {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    const st = steps.find((x) => t < x.t1) ?? steps[steps.length - 1];
+    const u = (t - st.t0) / (st.t1 - st.t0);
+    // une part du temps de chaque à-coup est collée (le fluide « hésite », il ne bouge presque pas)
+    const m = u < st.stick ? (u / st.stick) * 0.02 : 0.02 + 0.98 * slip((u - st.stick) / (1 - st.stick));
+    return st.p0 + (st.p1 - st.p0) * m;
+  };
+}
+/** petit générateur pseudo-aléatoire (graine par passage) */
+const rng = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 let uid = 0;
 
 /**
@@ -262,33 +289,55 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     a.addEventListener('cancel', off);
     return a;
   };
+  /**
+   * Un passage. ÉLASTIQUE : chaque épaisseur suit la même progression à friction, mais avec un RETARD croissant (la
+   * tête part la première, la traîne la rattrape) ; quand la tête se décolle, la coulée s'étire, quand elle colle, la
+   * traîne la rejoint et la goutte se ramasse. La tête gonfle quand elle est freinée et s'affine quand elle glisse.
+   * Keyframes échantillonnées (linéaires entre elles), remplissage « backwards » : rien ne reste accroché.
+   */
+  const SAMPLES = 44;
   const flow = (w: Wire, delay: number, speed: number, draw: boolean) => {
     if (w.busy && !draw) return;
     w.busy = true;
+    const curve = frictionCurve(w.L, rng(Math.floor(Math.random() * 1e9) + 1));
     const span = w.L + TAIL;
-    const duration = Math.max(420, (span / (speed * w.quick)) * 1000);
-    // (« backwards » seulement : un passage terminé ne reste pas accroché à l'élément, les attributs valent « éteint »)
-    const o: KeyframeAnimationOptions = { delay, duration, easing: OOZE, fill: 'backwards' };
-    const along = (el: SVGPathElement, l: number, extra: Keyframe[] = []) =>
-      run(el, [{ strokeDashoffset: l, offset: 0 }, ...extra, { strokeDashoffset: l - span, offset: 1 }], o);
-    for (const l of w.layers) along(l.el, l.len);
-    // la tête « respire » (elle gonfle et dégonfle en avançant) ; elle disparaît en fin de piste
-    along(w.head, 0.01, [{ strokeWidth: 12, offset: 0.25 }, { strokeWidth: 9, offset: 0.5 }, { strokeWidth: 11.5, offset: 0.7 }]);
-    const g = along(w.glow, GLOW, [{ opacity: 0.55, offset: 0.08 }, { opacity: 0.35, offset: 0.5 }, { opacity: 0.6, offset: 0.75 }, { opacity: 0, offset: 0.98 }]);
+    const duration = Math.max(900, (span / (speed * w.quick)) * 1000);
+    const o: KeyframeAnimationOptions = { delay, duration, easing: 'linear', fill: 'backwards' };
+    /** avant de la couche (px) à l'instant t, avec un retard `lag` (part de la durée) ; elle finit d'exister à `end` */
+    const front = (t: number, lag: number, end: number) => curve(Math.min(1, Math.max(0, (t - lag) / (1 - lag)))) * end;
+    const sample = (len: number, lag: number, end: number, extra?: (t: number, i: number) => Keyframe) =>
+      Array.from({ length: SAMPLES + 1 }, (_, i) => {
+        const t = i / SAMPLES;
+        // (opacité 0 au tout début : pendant l'attente d'un départ décalé, aucune goutte ne patiente au point de départ)
+        return { offset: t, strokeDashoffset: len - front(t, lag, end), opacity: Math.min(1, t / (0.03 + lag)), ...(extra?.(t, i) ?? {}) } as Keyframe;
+      });
+    // vitesse instantanée de la tête (normalisée) → épaisseur : freinée = gonflée, lancée = étirée
+    const speedAt = (t: number) => Math.abs(curve(Math.min(1, t + 0.012)) - curve(Math.max(0, t - 0.012))) / 0.024;
+    const LAG: Record<string, number> = { core: 0.025, mid: 0.06, tail: 0.11 };
+    for (const l of w.layers) run(l.el, sample(l.len, LAG[l.el.getAttribute('class') ?? 'core'] ?? 0.04, w.L + l.len), o);
+    run(w.head, sample(0.01, 0, w.L + 30, (t) => ({ strokeWidth: Math.max(7, Math.min(14, 13.5 - speedAt(t) * 2.4)) })), o);
+    const g = run(w.glow, sample(GLOW, 0.015, w.L + GLOW, (t) => ({ opacity: t > 0.97 ? 0 : Math.min(1, t / 0.05) * (0.3 + 0.3 * Math.min(1, speedAt(t) / 2)) })), o);
     const free = () => (w.busy = false);
     g.addEventListener('finish', free);
     g.addEventListener('cancel', free);
     if (draw && w.trace) {
-      // la piste reste : l'attribut prend sa valeur finale, l'animation (en attente) montre le début
+      // la piste reste : l'attribut prend sa valeur finale ; elle se dépose sous la goutte (même retard que le cœur)
       w.trace.setAttribute('stroke-dashoffset', '0');
-      along(w.trace, span);
+      run(w.trace, sample(span, 0.025, w.L + TAIL, () => ({ opacity: 1 })), o);
     }
     // gouttes : elles gonflent quand la tête passe sur elles, puis se posent
     for (const dt of w.dots) {
       if (draw) dt.el.classList.add('on');
-      run(dt.el, [{ transform: 'scale(0.2)', opacity: draw ? 0 : 1 }, { transform: 'scale(2.1)', opacity: 1, offset: 0.35 }, { transform: 'scale(0.9)', offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], {
-        delay: delay + Math.max(0, oozeAt((dt.f * w.L) / span) * duration - 100),
-        duration: 900,
+      let tHit = 1;
+      for (let i = 0; i <= 200; i++) {
+        if (curve(i / 200) * (w.L + 30) >= dt.f * w.L) {
+          tHit = i / 200;
+          break;
+        }
+      }
+      run(dt.el, [{ transform: 'scale(0.2)', opacity: draw ? 0 : 1 }, { transform: 'scale(2.2)', opacity: 1, offset: 0.3 }, { transform: 'scale(0.82)', offset: 0.55 }, { transform: 'scale(1.08)', offset: 0.75 }, { transform: 'scale(1)', opacity: 1 }], {
+        delay: delay + Math.max(0, tHit * duration - 120),
+        duration: 1300,
         easing: 'cubic-bezier(0.34, 1.3, 0.5, 1)',
         fill: draw ? 'backwards' : 'none',
       });
@@ -303,16 +352,17 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   const drawAll = () => {
     drawn = true;
     const t0 = 180 + Number(card.dataset.artDelay || 0);
-    wires.forEach((w) => flow(w, t0 + w.at * 1000, SPEED, true));
-    const total = Math.max(...wires.map((w) => w.at * 1000 + ((w.L + TAIL) / (SPEED * w.quick)) * 1000));
+    // (départs étalés : le dessin se construit lentement, pièce par pièce)
+    wires.forEach((w) => flow(w, t0 + w.at * 1600, SPEED, true));
+    const total = Math.max(...wires.map((w) => w.at * 1600 + ((w.L + TAIL) / (SPEED * w.quick)) * 1000));
     timer = window.setTimeout(schedule, t0 + total + 900);
   };
   const schedule = () => {
     clearTimeout(timer);
     if (!visible || document.hidden || !host.isConnected) return;
     const free = wires.filter((w) => !w.busy);
-    if (free.length) flow(free[Math.floor(Math.random() * free.length)], 0, hover ? PULSE_SPEED * 1.6 : PULSE_SPEED, false);
-    timer = window.setTimeout(schedule, hover ? 320 + Math.random() * 320 : (fine ? 2400 : 3600) + Math.random() * 2600);
+    if (free.length) flow(free[Math.floor(Math.random() * free.length)], 0, hover ? PULSE_SPEED * 1.4 : PULSE_SPEED, false);
+    timer = window.setTimeout(schedule, hover ? 700 + Math.random() * 500 : (fine ? 3200 : 4600) + Math.random() * 3000);
   };
   const io = typeof IntersectionObserver !== 'undefined'
     ? new IntersectionObserver(([e]) => {
@@ -332,7 +382,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   const enter = () => {
     hover = true;
     if (!drawn) return;
-    wires.forEach((w, i) => flow(w, i * 55, PULSE_SPEED * 1.5, false));
+    wires.forEach((w, i) => flow(w, i * 140, PULSE_SPEED * 1.4, false));
     timer = window.setTimeout(schedule, 400);
   };
   const leaveH = () => {
