@@ -545,4 +545,21 @@ export default defineSchema({
   })
     .index('by_status', ['status', 'createdAt'])
     .index('by_user', ['userId', 'createdAt']),
+
+  /**
+   * DROPS DISCORD (V2, 08/11) : un 6★ ou une secrète en attente de publication sur Discord (convex/dropShots.ts).
+   * `storageId` = la carte peinte de face par le jeu du joueur ; `postedAt` = déjà publié (une seule fois).
+   */
+  dropShots: defineTable({
+    userId: v.id('users'),
+    displayName: v.string(),
+    cardId: v.string(),
+    cardName: v.string(),
+    rarity: rarityValidator,
+    mintNumber: v.number(),
+    isNew: v.optional(v.boolean()),
+    createdAt: v.number(),
+    storageId: v.optional(v.id('_storage')),
+    postedAt: v.optional(v.number()),
+  }).index('by_user_card', ['userId', 'cardId', 'mintNumber']),
 });
