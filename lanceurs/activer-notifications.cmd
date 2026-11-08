@@ -14,6 +14,12 @@ if not exist "%ENVF%" ( echo Pas de %ENVF% & pause & exit /b 1 )
 for /f "tokens=1,* delims==" %%a in ('findstr /b "CONVEX_DEPLOYMENT=" "%ENVF%"') do set DEP=%%b
 if "%DEP%"=="" ( echo CONVEX_DEPLOYMENT introuvable dans %ENVF% & pause & exit /b 1 )
 echo Deploiement : %DEP%
+rem (08/11) la bibliotheque web-push est une dependance ajoutee avec les notifications : installee si elle manque
+if not exist node_modules\web-push\package.json (
+  echo [0/2] installation des dependances ^(web-push^)...
+  call npm install --no-audit --no-fund >> "%LOG%" 2>&1 || goto :err
+)
+if not exist .cache mkdir .cache
 echo [1/2] generation des cles VAPID...
 call node scripts/vapid-keys.mjs > .cache\vapid.tmp 2>> "%LOG%" || goto :err
 for /f "tokens=1,* delims==" %%a in (.cache\vapid.tmp) do set %%a=%%b
