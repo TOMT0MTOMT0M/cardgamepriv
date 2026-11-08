@@ -103,6 +103,9 @@ export const upsertDiscordUser = internalMutation({
       });
     }
 
+    // (08/11) rôle « Card » sur le serveur des Bébous, à chaque connexion Discord (sans effet s'il l'a déjà)
+    await ctx.scheduler.runAfter(0, internal.discordRoles.grantCardRole, { discordId: args.discordId });
+
     return { token: await issueSession(ctx, user._id), userId: user._id };
   },
 });
