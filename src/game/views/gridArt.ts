@@ -1,20 +1,23 @@
 /**
  * DESSINS « COURANT » de l'accueil des jeux (V2, 08/11).
  *  1re version : « des formes créées par une sorte de courant électrique épais et visqueux, aligné sur la grille du
- *  fond » ; 2e (même jour) : « plus fluide, moins géométrique, plus fondu, presque organique ».
+ *  fond » ; 2e : « plus fluide, moins géométrique, plus fondu, presque organique » ; 3e : « pas assez descriptif, les
+ *  anciennes illustrations étaient meilleures, mais avec cet effet ».
  *
- * Chaque dessin est un circuit ANCRÉ sur les points de la trame de fond (pas de 22 px, `.games::before`) : les pistes
- * partent et arrivent sur des points de la grille, mais leurs angles sont arrondis en grandes courbes (un petit carré
- * devient un cercle, l'octogone de la roulette devient une roue). Le courant est une goutte d'encre lumineuse :
- * une tête ronde, une coulée qui s'effile en trois épaisseurs (fusionnées par un filtre « gluant » sur ordinateur) et
- * une lueur floue ; il avance comme un fluide épais (départ lent, poussée, puis il s'étire et s'écoule) et laisse
- * derrière lui la piste fine. Aux extrémités, des gouttes gonflent puis se posent.
- * Ensuite une impulsion repasse de temps en temps ; au survol, le circuit s'emballe.
+ * Donc : les dessins d'origine (deux cartes inclinées et « VS », huit cartes en anneau autour d'une table, roue à
+ * 36 crans avec sa bille), tracés par le courant. Le dessin reste posé sur la trame (son coin est recalé sur un point
+ * de la grille), mais ses formes sont libres.
  *
- * Coût : 3 petits SVG (≈ 230 px), animations WAAPI de `stroke-dashoffset` / `opacity` / `transform` seulement, pas de
- * boucle infinie (impulsions planifiées une à une, remplissage « backwards » : rien ne s'accumule), arrêt hors écran
- * et onglet caché. Téléphone : pas de filtre (lueur en trait large et pâle), impulsions plus rares. Mouvement réduit /
- * « Effets réduits » : le circuit est dessiné d'emblée, immobile.
+ * Le courant est une goutte d'encre lumineuse : une tête ronde qui « respire », une coulée qui s'effile en trois
+ * épaisseurs (fusionnées par un filtre « gluant » sur ordinateur) et une lueur floue ; il avance comme un fluide épais
+ * (départ lent, poussée, puis il s'étire et s'écoule) et laisse derrière lui la piste fine. Des gouttes se posent aux
+ * points clés (moyeu, bille). Ensuite une impulsion repasse de temps en temps (la bille fait un tour de roue) ; au
+ * survol, le dessin s'emballe.
+ *
+ * Coût : 3 petits SVG (≈ 236 px), animations WAAPI de `stroke-dashoffset` / `opacity` / `transform` / `stroke-width`
+ * seulement, pas de boucle infinie (impulsions planifiées une à une, remplissage « backwards » : rien ne s'accumule),
+ * arrêt hors écran et onglet caché. Téléphone : pas de filtres, impulsions plus rares. Mouvement réduit / « Effets
+ * réduits » : le dessin est tracé d'emblée, immobile.
  */
 import { reducedMotion } from '../../core/motion';
 
@@ -23,113 +26,94 @@ export type ArtKind = 'duel' | 'royale' | 'roulette';
 /** pas de la trame (style.css : `.games::before`, 22 px) ; les points sont au CENTRE de chaque case */
 const G = 22;
 const DOT = G / 2;
-/** marge autour du circuit (épaisseur de la lueur floue) */
+/** marge autour du dessin (épaisseur de la lueur floue) */
 const PAD = 18;
-/** rayon des courbes aux angles (borné à la moitié des segments : un carré d'une case devient un cercle) */
-const ROUND = G * 0.95;
 
-type Pt = [number, number];
-interface Circuit {
+interface Stroke {
+  d: string;
+  /** départ (s) relatif au début du dessin */
+  at: number;
+  transform?: string;
+  /** détail secondaire (piste plus pâle) */
+  dim?: boolean;
+  /** piste invisible : seul le courant y passe (la bille sur sa gorge) */
+  ghost?: boolean;
+  /** gouttes posées sur la piste : [x, y, fraction du parcours où elles gonflent, rayon] */
+  dots?: Array<[number, number, number, number?]>;
+  /** vitesse × (les 36 crans de la roue : un balayage rapide plutôt qu'une coulée qui s'étale d'un cran à l'autre) */
+  quick?: number;
+  /** forme qui masque ce tracé (dans le repère du tracé) : la carte de devant cache celle de derrière */
+  hide?: { d: string; transform?: string };
+}
+interface Drawing {
   w: number;
   h: number;
-  /** pistes en unités de grille ; `at` = départ (s) relatif au début du dessin */
-  paths: Array<{ pts: Pt[]; at: number }>;
+  strokes: Stroke[];
 }
 
-const rect = (x0: number, y0: number, x1: number, y1: number): Pt[] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
+/** rectangle à coins arrondis, parcouru depuis le milieu du haut, sens horaire */
+const rrect = (x: number, y: number, w: number, h: number, r: number) =>
+  `M${x + w / 2} ${y} H${x + w - r} Q${x + w} ${y} ${x + w} ${y + r} V${y + h - r} Q${x + w} ${y + h} ${x + w - r} ${y + h} H${x + r} Q${x} ${y + h} ${x} ${y + h - r} V${y + r} Q${x} ${y} ${x + r} ${y} Z`;
+/** cercle parcouru depuis le haut, sens horaire */
+const circle = (cx: number, cy: number, r: number) => `M${cx} ${cy - r} A${r} ${r} 0 1 1 ${cx} ${cy + r} A${r} ${r} 0 1 1 ${cx} ${cy - r}`;
+const r2 = (v: number) => Math.round(v * 100) / 100;
 
-/** circuits ancrés sur la grille (unités = cases de 22 px) */
-const CIRCUITS: Record<ArtKind, Circuit> = {
-  // deux cartes face à face, reliées par un pont ; le courant entre par le bas à gauche et ressort à droite
+/** les trois dessins, repère 200 × 200 (celui des illustrations d'origine) */
+const DRAWINGS: Record<ArtKind, Drawing> = {
+  // deux cartes inclinées face à face, « VS » écrit sur celle de devant
   duel: {
-    w: 9,
-    h: 7,
-    paths: [
-      { pts: [[0, 6], [1, 6], [1, 4]], at: 0 },
-      { pts: [[1, 4], [1, 1], [4, 1], [4, 5], [1, 5], [1, 4]], at: 0.25 },
-      { pts: [[4, 3], [5, 3]], at: 0.95 },
-      { pts: [[5, 3], [5, 2], [8, 2], [8, 6], [5, 6], [5, 3]], at: 1.05 },
-      { pts: [[8, 4], [9, 4]], at: 1.85 },
-      { pts: [[2, 2], [3, 2]], at: 0.7 },
-      { pts: [[6, 5], [7, 5]], at: 1.6 },
+    w: 200,
+    h: 200,
+    strokes: [
+      { d: rrect(46, 46, 70, 98, 8), transform: 'rotate(-14 100 100)', at: 0, hide: { d: rrect(86, 54, 70, 98, 8), transform: 'rotate(27 100 100)' } },
+      { d: rrect(52, 52, 58, 86, 5), transform: 'rotate(-14 100 100)', at: 0.45, dim: true, hide: { d: rrect(86, 54, 70, 98, 8), transform: 'rotate(27 100 100)' } },
+      { d: rrect(86, 54, 70, 98, 8), transform: 'rotate(13 100 100)', at: 0.7 },
+      { d: rrect(92, 60, 58, 86, 5), transform: 'rotate(13 100 100)', at: 1.1, dim: true },
+      { d: 'M108.5 101.5 L113.5 115 L118.5 101.5', transform: 'rotate(13 100 100)', at: 1.45 },
+      { d: 'M133 104 C131.5 101.4 124.5 101.2 124.5 105.2 C124.5 109.2 133 107.9 133 112 C133 116.2 126 116.3 124 113.4', transform: 'rotate(13 100 100)', at: 1.65 },
     ],
   },
-  // une table centrale, huit places autour (des gouttes au bout des rayons enroulés)
+  // huit cartes en anneau autour de la table, une goutte au centre
   royale: {
-    w: 9,
-    h: 9,
-    paths: [
-      { pts: rect(3, 3, 6, 6), at: 0 },
-      ...([
-        // rayons qui s'enroulent dans le même sens (turbine) : chaque coude devient une courbe
-        [[4, 3], [4, 1], [5, 0]], [[6, 3], [7, 2], [8, 2]], [[6, 4], [8, 4], [9, 5]], [[6, 6], [7, 7], [7, 8]],
-        [[5, 6], [5, 8], [4, 9]], [[3, 6], [2, 7], [1, 7]], [[3, 5], [1, 5], [0, 4]], [[3, 3], [2, 2], [2, 1]],
-      ] as Pt[][]).map((pts, i) => ({ pts, at: 0.7 + i * 0.07 })),
+    w: 200,
+    h: 200,
+    strokes: [
+      { d: circle(100, 100, 34), at: 0, dim: true, dots: [[100, 100, 0.05, 4.8]] },
+      ...Array.from({ length: 8 }, (_, i) => ({ d: rrect(90, 22, 20, 28, 3), transform: `rotate(${i * 45} 100 100)`, at: 0.45 + i * 0.09 })),
     ],
   },
-  // roue (octogone arrondi), couronne intérieure, rayons, moyeu
+  // roue : jante, piste, 36 crans, moyeu ; la bille court dans sa gorge
   roulette: {
-    w: 9,
-    h: 9,
-    paths: [
-      { pts: [[3, 0], [6, 0], [9, 3], [9, 6], [6, 9], [3, 9], [0, 6], [0, 3], [3, 0]], at: 0 },
-      { pts: [[4, 2], [5, 2], [7, 4], [7, 5], [5, 7], [4, 7], [2, 5], [2, 4], [4, 2]], at: 0.8 },
-      ...([
-        [[4, 0], [4, 2]], [[5, 0], [5, 2]], [[9, 4], [7, 4]], [[9, 5], [7, 5]],
-        [[5, 9], [5, 7]], [[4, 9], [4, 7]], [[0, 5], [2, 5]], [[0, 4], [2, 4]],
-      ] as Pt[][]).map((pts, i) => ({ pts, at: 1.3 + i * 0.06 })),
-      { pts: rect(4, 4, 5, 5), at: 1.85 },
+    w: 200,
+    h: 200,
+    strokes: [
+      { d: circle(100, 100, 84), at: 0 },
+      { d: circle(100, 100, 62), at: 0.45, dim: true },
+      {
+        d: Array.from({ length: 36 }, (_, i) => {
+          const a = (i * 10 * Math.PI) / 180;
+          const p = (r: number) => `${r2(100 + Math.sin(a) * r)} ${r2(100 - Math.cos(a) * r)}`;
+          return `M${p(82)} L${p(i % 2 ? 70 : 62)}`;
+        }).join(' '),
+        at: 0.8,
+        quick: 2.6,
+      },
+      { d: circle(100, 100, 26), at: 1.3, dim: true },
+      { d: circle(100, 100, 53), at: 1.6, ghost: true, dots: [[100, 47, 1, 5]] },
     ],
   },
 };
 
-/**
- * Tracé lissé : chaque angle devient une courbe (quadratique, de rayon ROUND borné à la moitié des segments voisins).
- * Piste ouverte : les extrémités restent EXACTEMENT sur les points de la grille. Piste fermée : boucle sans angle.
- */
-function smooth(pts: Pt[]): { d: string; closed: boolean; ends: Pt[] } {
-  const P = pts.map(([x, y]) => [x * G, y * G] as Pt);
-  const closed = P.length > 2 && P[0][0] === P[P.length - 1][0] && P[0][1] === P[P.length - 1][1];
-  const V = closed ? P.slice(0, -1) : P;
-  const n = V.length;
-  const f = (v: number) => Math.round(v * 100) / 100;
-  const toward = (a: Pt, b: Pt, k: number): Pt => {
-    const dx = b[0] - a[0];
-    const dy = b[1] - a[1];
-    const l = Math.hypot(dx, dy) || 1;
-    return [a[0] + (dx / l) * k, a[1] + (dy / l) * k];
-  };
-  const seg = (a: Pt, b: Pt) => Math.hypot(b[0] - a[0], b[1] - a[1]);
-  const corner = (prev: Pt, c: Pt, next: Pt) => {
-    const r = Math.min(ROUND, seg(prev, c) / 2, seg(c, next) / 2);
-    const a = toward(c, prev, r);
-    const b = toward(c, next, r);
-    return ` L${f(a[0])} ${f(a[1])} Q${f(c[0])} ${f(c[1])} ${f(b[0])} ${f(b[1])}`;
-  };
-  let d: string;
-  if (closed) {
-    const m: Pt = [(V[0][0] + V[1][0]) / 2, (V[0][1] + V[1][1]) / 2];
-    d = `M${f(m[0])} ${f(m[1])}`;
-    for (let i = 1; i <= n; i++) d += corner(V[i - 1], V[i % n], V[(i + 1) % n]);
-    d += ` L${f(m[0])} ${f(m[1])}`;
-  } else {
-    d = `M${V[0][0]} ${V[0][1]}`;
-    for (let i = 1; i < n - 1; i++) d += corner(V[i - 1], V[i], V[i + 1]);
-    d += ` L${V[n - 1][0]} ${V[n - 1][1]}`;
-  }
-  return { d, closed, ends: closed ? [] : [pts[0], pts[pts.length - 1]] };
-}
-
 const NS = 'http://www.w3.org/2000/svg';
-const svgEl = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>) => {
+const svgEl = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number | undefined>) => {
   const e = document.createElementNS(NS, tag);
-  for (const k in attrs) e.setAttribute(k, String(attrs[k]));
+  for (const k in attrs) if (attrs[k] !== undefined) e.setAttribute(k, String(attrs[k]));
   return e;
 };
 
 /** vitesse moyenne du courant (px/s) : lente, comme un fluide épais */
-const SPEED = 165;
-const PULSE_SPEED = 230;
+const SPEED = 230;
+const PULSE_SPEED = 300;
 /** coulée effilée : longueur de chaque épaisseur (la plus fine est la plus longue) */
 const TAPER = [
   { cls: 'tail', len: 96 },
@@ -141,7 +125,7 @@ const GLOW = 64;
 /** fluide épais : départ lent, poussée, puis la goutte s'étire et s'écoule */
 const OOZE_P = [0.55, 0.08, 0.3, 1] as const;
 const OOZE = `cubic-bezier(${OOZE_P.join(', ')})`;
-/** instant (0–1) où la courbe OOZE atteint l'avancée `p` (pour allumer la goutte d'arrivée pile au passage) */
+/** instant (0–1) où la courbe OOZE atteint l'avancée `p` (pour poser une goutte pile au passage) */
 const oozeAt = (p: number) => {
   const [x1, y1, x2, y2] = OOZE_P;
   const bz = (t: number, a: number, b: number) => 3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t;
@@ -161,14 +145,16 @@ let uid = 0;
  * trame). Renvoie le démontage.
  */
 export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTMLElement, kind: ArtKind): () => void {
-  const c = CIRCUITS[kind];
-  const W = c.w * G + PAD * 2;
-  const H = c.h * G + PAD * 2;
+  const c = DRAWINGS[kind];
+  const W = c.w + PAD * 2;
+  const H = c.h + PAD * 2;
   const fine = typeof matchMedia === 'function' && matchMedia('(hover: hover) and (pointer: fine)').matches;
   const still = reducedMotion();
   const id = `gm-art-${++uid}`;
 
   const svg = svgEl('svg', { viewBox: `${-PAD} ${-PAD} ${W} ${H}`, width: W, height: H, fill: 'none', 'aria-hidden': 'true', class: 'gm-art' });
+  const defs = svgEl('defs', {});
+  svg.append(defs);
   if (fine) {
     // « gluant » : flou + seuil d'opacité → les épaisseurs de la coulée et les gouttes fusionnent en une seule matière
     const goo = svgEl('filter', { id: `${id}-goo`, x: '-30%', y: '-30%', width: '160%', height: '160%' });
@@ -176,9 +162,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     // lueur fondue autour de la goutte
     const soft = svgEl('filter', { id: `${id}-soft`, x: '-40%', y: '-40%', width: '180%', height: '180%' });
     soft.append(svgEl('feGaussianBlur', { stdDeviation: 6 }));
-    const defs = svgEl('defs', {});
     defs.append(goo, soft);
-    svg.append(defs);
   }
   const gGroove = svgEl('g', { class: 'groove' });
   const gTrace = svgEl('g', { class: 'trace' });
@@ -186,41 +170,50 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   const gWet = svgEl('g', fine ? { class: 'wet', filter: `url(#${id}-goo)` } : { class: 'wet' });
   svg.append(gGroove, gTrace, gGlow, gWet);
 
-  interface Wire { L: number; trace: SVGPathElement; glow: SVGPathElement; layers: Array<{ el: SVGPathElement; len: number }>; head: SVGPathElement; drops: SVGCircleElement[]; at: number; busy: boolean }
-  const built = c.paths.map((p) => {
-    const sm = smooth(p.pts);
-    const mk = (g: SVGGElement, a: Record<string, string | number> = {}) => {
-      const e = svgEl('path', { d: sm.d, ...a });
+  interface Wire { quick: number; L: number; trace: SVGPathElement | null; glow: SVGPathElement; layers: Array<{ el: SVGPathElement; len: number }>; head: SVGPathElement; dots: Array<{ el: SVGCircleElement; f: number }>; at: number; busy: boolean }
+  const built = c.strokes.map((st, k) => {
+    // masque : tout visible sauf la forme qui passe devant
+    let mask: string | undefined;
+    if (st.hide) {
+      const m = svgEl('mask', { id: `${id}-m${k}`, maskUnits: 'userSpaceOnUse', x: -200, y: -200, width: 600, height: 600 });
+      m.append(svgEl('rect', { x: -200, y: -200, width: 600, height: 600, fill: '#fff' }), svgEl('path', { d: st.hide.d, transform: st.hide.transform, fill: '#000' }));
+      defs.append(m);
+      mask = `url(#${id}-m${k})`;
+    }
+    const mk = (g: SVGGElement, a: Record<string, string | number | undefined> = {}) => {
+      const e = svgEl('path', { d: st.d, transform: st.transform, mask, ...a });
       g.append(e);
       return e;
     };
-    mk(gGroove, { class: 'halo' });
-    mk(gGroove);
+    if (!st.ghost) {
+      mk(gGroove, { class: 'halo' });
+      mk(gGroove);
+    }
     return {
-      p,
-      trace: mk(gTrace),
+      st,
+      trace: st.ghost ? null : mk(gTrace, { class: st.dim ? 'dim' : undefined }),
       glow: mk(gGlow),
-      layers: TAPER.map((t) => ({ el: mk(gWet, { class: t.cls }), len: t.len })),
-      head: mk(gWet, { class: 'head' }),
-      // gouttes aux extrémités (dans le groupe gluant : la coulée qui arrive s'y fond)
-      drops: sm.ends.map(([x, y]) => {
-        const el = svgEl('circle', { cx: x * G, cy: y * G, r: fine ? 4.6 : 3.4, class: still ? 'drop on' : 'drop' });
+      layers: TAPER.filter((t) => !st.ghost || t.cls !== 'tail').map((t) => ({ el: mk(gWet, { class: t.cls }), len: t.len })),
+      head: mk(gWet, { class: st.ghost ? 'head ball' : 'head' }),
+      // gouttes (dans le groupe gluant : la coulée qui arrive s'y fond)
+      dots: (st.dots ?? []).map(([x, y, f, r]) => {
+        const el = svgEl('circle', { cx: x, cy: y, r: r ?? 3.4, transform: st.transform, class: still ? 'drop on' : 'drop' });
         gWet.append(el);
-        return el;
+        return { el, f };
       }),
     };
   });
   host.append(svg);
-  // longueurs réelles des courbes (mesurées une fois l'élément dans la page)
+  // longueurs réelles (mesurées une fois l'élément dans la page)
   const wires: Wire[] = built.map((b) => {
-    const L = b.trace.getTotalLength();
+    const L = b.head.getTotalLength();
     const span = L + TAIL;
     const gap = span * 2 + 20;
     // trace : un seul tiret de longueur « span » dont l'avant suit la tête → la piste apparaît derrière la goutte
-    b.trace.setAttribute('stroke-dasharray', `${span} ${gap}`);
-    b.trace.setAttribute('stroke-dashoffset', String(still ? 0 : span));
-    b.glow.setAttribute('stroke-dasharray', `${GLOW} ${gap}`);
+    b.trace?.setAttribute('stroke-dasharray', `${span} ${gap}`);
+    b.trace?.setAttribute('stroke-dashoffset', String(still ? 0 : span));
     // (au repos, chaque tiret est rangé bien AVANT le début de la piste : aucune pointe ronde ne dépasse)
+    b.glow.setAttribute('stroke-dasharray', `${GLOW} ${gap}`);
     b.glow.setAttribute('stroke-dashoffset', String(GLOW + 40));
     b.glow.setAttribute('opacity', '0');
     for (const l of b.layers) {
@@ -229,7 +222,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     }
     b.head.setAttribute('stroke-dasharray', `0.01 ${gap}`);
     b.head.setAttribute('stroke-dashoffset', '60');
-    return { L, trace: b.trace, glow: b.glow, layers: b.layers, head: b.head, drops: b.drops, at: b.p.at, busy: false };
+    return { quick: b.st.quick ?? 1, L, trace: b.trace, glow: b.glow, layers: b.layers, head: b.head, dots: b.dots, at: b.st.at, busy: false };
   });
 
   // ── aligner les sommets sur les points de la trame (positions de mise en page, sans les transformations)
@@ -245,8 +238,8 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     // ordinateur (3 colonnes) : le circuit occupe une « platine » en haut de la carte, le texte est dessous ;
     // téléphone (1 colonne) : un fragment du circuit dépasse du coin haut-droit, en retrait derrière le titre
     const plate = typeof matchMedia === 'function' && matchMedia('(min-width: 861px)').matches;
-    const wantX = plate ? card.clientWidth - c.w * G - 26 : card.clientWidth - c.w * G * 0.6;
-    const wantY = plate ? 22 + ((9 - c.h) * G) / 2 : -c.h * G * 0.22;
+    const wantX = plate ? card.clientWidth - c.w - 24 : card.clientWidth - c.w * 0.62;
+    const wantY = plate ? 18 : -c.h * 0.2;
     const snap = (v: number) => DOT + G * Math.round((v - DOT) / G);
     host.style.transform = `translate(${snap(x + wantX) - x - PAD}px, ${snap(y + wantY) - y - PAD}px)`;
     host.style.width = `${W}px`;
@@ -273,7 +266,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     if (w.busy && !draw) return;
     w.busy = true;
     const span = w.L + TAIL;
-    const duration = Math.max(420, (span / speed) * 1000);
+    const duration = Math.max(420, (span / (speed * w.quick)) * 1000);
     // (« backwards » seulement : un passage terminé ne reste pas accroché à l'élément, les attributs valent « éteint »)
     const o: KeyframeAnimationOptions = { delay, duration, easing: OOZE, fill: 'backwards' };
     const along = (el: SVGPathElement, l: number, extra: Keyframe[] = []) =>
@@ -285,22 +278,21 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     const free = () => (w.busy = false);
     g.addEventListener('finish', free);
     g.addEventListener('cancel', free);
-    if (draw) {
+    if (draw && w.trace) {
       // la piste reste : l'attribut prend sa valeur finale, l'animation (en attente) montre le début
       w.trace.setAttribute('stroke-dashoffset', '0');
       along(w.trace, span);
     }
-    // gouttes aux extrémités : celle du départ gonfle tout de suite, celle de l'arrivée quand la tête l'atteint
-    const arrive = oozeAt(w.L / span) * duration;
-    w.drops.forEach((el, i) => {
-      if (draw) el.classList.add('on');
-      run(el, [{ transform: 'scale(0.2)', opacity: draw ? 0 : 1 }, { transform: 'scale(2.3)', opacity: 1, offset: 0.35 }, { transform: 'scale(0.9)', offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], {
-        delay: delay + (i ? arrive - 120 : 40),
+    // gouttes : elles gonflent quand la tête passe sur elles, puis se posent
+    for (const dt of w.dots) {
+      if (draw) dt.el.classList.add('on');
+      run(dt.el, [{ transform: 'scale(0.2)', opacity: draw ? 0 : 1 }, { transform: 'scale(2.1)', opacity: 1, offset: 0.35 }, { transform: 'scale(0.9)', offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], {
+        delay: delay + Math.max(0, oozeAt((dt.f * w.L) / span) * duration - 100),
         duration: 900,
         easing: 'cubic-bezier(0.34, 1.3, 0.5, 1)',
         fill: draw ? 'backwards' : 'none',
       });
-    });
+    }
   };
 
   // ── dessin initial (quand la carte devient visible), puis impulsions planifiées une à une
@@ -312,7 +304,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     drawn = true;
     const t0 = 180 + Number(card.dataset.artDelay || 0);
     wires.forEach((w) => flow(w, t0 + w.at * 1000, SPEED, true));
-    const total = Math.max(...wires.map((w) => w.at * 1000 + ((w.L + TAIL) / SPEED) * 1000));
+    const total = Math.max(...wires.map((w) => w.at * 1000 + ((w.L + TAIL) / (SPEED * w.quick)) * 1000));
     timer = window.setTimeout(schedule, t0 + total + 900);
   };
   const schedule = () => {

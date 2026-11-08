@@ -112,6 +112,7 @@
 .gm-art .groove path { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; }
 .gm-art .groove .halo { stroke: rgba(255, 255, 255, 0.035); stroke-width: 8; }
 .gm-art .trace path { stroke: rgba(255, 255, 255, 0.58); stroke-width: 1.5; }
+.gm-art .trace .dim { stroke: rgba(255, 255, 255, 0.3); stroke-width: 1.2; }
 /* la goutte : lueur floue (ordinateur) ou trait large et pâle (téléphone) */
 .gm-art .glow path { stroke: #fff; stroke-width: 12; }
 .gm-art .glow:not(.soft) { opacity: 0.35; }
@@ -122,11 +123,13 @@
 .gm-art .wet .mid { stroke-width: 5.2; }
 .gm-art .wet .core { stroke-width: 7.6; }
 .gm-art .wet .head { stroke-width: 10; }
+/* la bille de la roulette : une goutte plus grosse qui roule dans sa gorge */
+.gm-art .wet .head.ball { stroke-width: 11; }
 .gm-art .wet:not([filter]) .tail { opacity: 0.45; }
 .gm-art .wet:not([filter]) .mid { opacity: 0.75; }
 .gm-art .drop { fill: #fff; opacity: 0; transform-box: fill-box; transform-origin: center; }
 .gm-art .drop.on { opacity: 0.9; }
-/* ordinateur : platine du circuit en haut de la carte (9 cases = 198 px), le texte dessous */
+/* ordinateur : platine du dessin en haut de la carte (200 px), le texte dessous */
 @media (min-width: 861px) {
   .gm-hub .gm-game { padding-top: 242px; min-height: 0; }
   .gm-game .gm-idx { position: absolute; left: 22px; top: 22px; }
