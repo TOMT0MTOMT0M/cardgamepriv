@@ -29,6 +29,12 @@ admin, base Convex séparée) et sort en une fois vers la prod.
   UX : fil d'Ariane « Jeux / 03 Roulette », fiches techniques des 3 jeux (joueurs · mise · gain), enjeu en fiche
   Enjeu / Victoire / Défaite / Égalité, compteur de boosters « 1/10 », mise de la roulette en 3 étapes, compte à
   rebours 06:48:44, jauge de couverture graduée (36 crans), barre « Miser » collante au téléphone.
+- **Puis (08/11, 3e passe) : dessins « courant »** (`views/gridArt.ts`) — les trois dessins de l'accueil sont des
+  circuits posés SUR les points de la trame de fond (au pixel près, recalés au redimensionnement). Un courant épais et
+  visqueux les trace (tête en goutte, coulée qui fusionne aux angles via un filtre gluant sur ordinateur, soudures qui
+  s'allument), puis une impulsion repasse de temps en temps ; au survol, le circuit s'emballe. Ordinateur : platine en
+  haut de la carte, texte dessous ; téléphone : fragment dans le coin, sans filtre, impulsions plus rares. Rien ne tourne
+  quand la carte est hors écran ou l'onglet caché ; mouvement réduit = circuit immobile déjà tracé.
 
 ---
 

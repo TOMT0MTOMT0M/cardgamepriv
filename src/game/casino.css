@@ -94,18 +94,33 @@
 .gm-game::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; background: radial-gradient(220px circle at var(--mx) var(--my), #fff, transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity var(--dur-emphatique); }
 .gm-game::before { display: none; }
 @media (hover: hover) {
-  .gm-game:hover { --cs: 22px; border-color: var(--gm-line-2); transform: translateY(-3px); box-shadow: none; }
+  .gm-game:hover { --cs: 22px; border-color: var(--gm-line-2); box-shadow: none; }
   .gm-game:hover::after { opacity: 1; }
 }
 .gm-game:active { transform: scale(0.99); }
 .gm-game .gm-idx { font: var(--gm-label); letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
 .gm-game b { font: 600 clamp(26px, 2.5vw, 32px)/1 var(--title); letter-spacing: -0.01em; max-width: none; }
 .gm-game .gm-desc { max-width: 30ch; font: 400 13px/1.55 var(--mono); color: var(--ink-2); }
-.gm-art { position: absolute; right: -10px; top: -8px; width: 176px; height: 176px; z-index: -1; color: #fff; opacity: 0.26; pointer-events: none; -webkit-mask: radial-gradient(closest-side, #000 60%, transparent); mask: radial-gradient(closest-side, #000 60%, transparent); transition: opacity var(--dur-emphatique), transform 1.2s var(--gm-soft); }
-.gm-game:hover .gm-art { opacity: 0.55; transform: rotate(-4deg); }
-.gm-art .spin { transform-origin: 100px 100px; animation: gm-spin 70s linear infinite; }
-.gm-game:hover .gm-art .spin { animation-duration: 16s; }
-.gm-art .ball { transform-origin: 100px 100px; animation: gm-spin 9s linear infinite reverse; }
+/* dessins « courant » (views/gridArt.ts) : circuits posés sur les points de la trame, tracés par un courant épais.
+   L'hôte est placé en JS au pixel près sur la grille ; il porte ses propres points (même pas, même phase) pour que la
+   trame reste lisible là où celle du fond s'efface. */
+.gm-art-host { position: absolute; left: 0; top: 0; z-index: -1; pointer-events: none; opacity: 0.72; transition: opacity var(--dur-emphatique); background: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1.4px) 3px 3px / 22px 22px; -webkit-mask: radial-gradient(closest-side, #000 52%, transparent); mask: radial-gradient(closest-side, #000 52%, transparent); }
+.gm-game:hover .gm-art-host { opacity: 1; }
+/* ordinateur : platine du circuit en haut de la carte (9 cases = 198 px), le texte dessous */
+@media (min-width: 861px) {
+  .gm-hub .gm-game { padding-top: 242px; min-height: 0; }
+  .gm-game .gm-idx { position: absolute; left: 22px; top: 22px; }
+  .gm-game .gm-desc { max-width: 34ch; }
+}
+.gm-art { display: block; overflow: visible; }
+.gm-art path { stroke-linecap: round; stroke-linejoin: round; }
+.gm-art .groove path { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
+.gm-art .trace path { stroke: rgba(255, 255, 255, 0.55); stroke-width: 1.6; }
+.gm-art .glow path { stroke: #fff; stroke-width: 15; }
+.gm-art .wet path { stroke: #fff; stroke-width: 4.6; }
+.gm-art .wet .head { stroke-width: 9; }
+.gm-art .nodes circle { fill: #fff; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.gm-art .nodes circle.on { opacity: 0.85; }
 /* fiche : trois cotes séparées par des filets */
 .gm-spec { margin: auto 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--gm-line); border-bottom: 1px solid var(--gm-line); }
 .gm-spec > div { padding: 11px 0 10px; }
@@ -350,7 +365,7 @@
   .gm-game { min-height: 0; padding: 18px; gap: 10px; }
   .gm-game b { font-size: 25px; }
   .gm-game .gm-desc { padding-right: 70px; }
-  .gm-art { width: 124px; height: 124px; right: -14px; top: -12px; }
+  .gm-art-host { opacity: 0.5; }
   .gm-arrow { right: 18px; bottom: 16px; width: 36px; height: 36px; }
   .gm-panel { padding: 14px; }
   .gm-panel > .gm-ph:first-child { margin: -14px -14px 2px; padding: 10px 14px; }
@@ -372,7 +387,7 @@
 /* ═════ MOUVEMENT RÉDUIT */
 @media (prefers-reduced-motion: reduce) {
   .gm-top, .gm-body > *, .gm-cols > *, .gm-rp, .gm-pot .tile { animation: none; }
-  .gm-art .spin, .gm-art .ball, .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-dot, .gm-cd::before, .gm-battle.suspense .gm-stage, .gm-rp.empty .gm-ava { animation: none; }
+  .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-dot, .gm-cd::before, .gm-battle.suspense .gm-stage, .gm-rp.empty .gm-ava { animation: none; }
 }
-body.fx-reduced .gm-art .spin, body.fx-reduced .gm-art .ball, body.fx-reduced .gm-vs-x::after, body.fx-reduced .gm-big.hot::before, body.fx-reduced .gm-bcol.win::after, body.fx-reduced .gm-rrow.win::after, body.fx-reduced .gm-battle.suspense .gm-stage { animation: none; }
+body.fx-reduced .gm-vs-x::after, body.fx-reduced .gm-big.hot::before, body.fx-reduced .gm-bcol.win::after, body.fx-reduced .gm-rrow.win::after, body.fx-reduced .gm-battle.suspense .gm-stage { animation: none; }
 body.fx-reduced .gm-big.in::after { display: none; }

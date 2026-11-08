@@ -33,6 +33,7 @@ import '../games.css';
 import '../casino.css';
 import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
+import { mountGridArt } from './gridArt';
 
 /**
  * ESPACE JEUX (#/jeux) : les vrais jeux seulement — 1v1 Pack Battle, Pack Battle Royale, Roulette à cartes —, avec
@@ -60,12 +61,6 @@ const cardsSummary = (l: Array<{ rarity: RarityId; count: number }>) => {
   return [...m].sort((a, b) => CARD_VALUE[a[0]] - CARD_VALUE[b[0]]).map(([r, n]) => `${n}×${starsTxt(r)}`).join(' + ');
 };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-/** Dessins au trait des trois tables (accueil), blanc sur noir — la roulette et la royale tournent doucement. */
-const ART = {
-  duel: `<svg class="gm-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><g transform="rotate(-14 100 100)"><rect x="46" y="46" width="70" height="98" rx="8"/><rect x="52" y="52" width="58" height="86" rx="5" stroke-opacity=".4"/></g><g transform="rotate(13 100 100)"><rect x="86" y="54" width="70" height="98" rx="8" fill="#000"/><rect x="92" y="60" width="58" height="86" rx="5" stroke-opacity=".4"/><text x="121" y="109" font-size="16" text-anchor="middle" fill="currentColor" stroke="none" font-family="inherit" letter-spacing="2">VS</text></g></svg>`,
-  royale: `<svg class="gm-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><g class="spin">${Array.from({ length: 8 }, (_, i) => `<rect x="90" y="22" width="20" height="28" rx="3" transform="rotate(${i * 45} 100 100)"/>`).join('')}</g><circle cx="100" cy="100" r="34" stroke-opacity=".5"/><circle cx="100" cy="100" r="3" fill="currentColor"/></svg>`,
-  roulette: `<svg class="gm-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><circle cx="100" cy="100" r="84"/><circle cx="100" cy="100" r="62" stroke-opacity=".6"/><g class="spin">${Array.from({ length: 36 }, (_, i) => `<line x1="100" y1="18" x2="100" y2="${i % 2 ? 30 : 38}" transform="rotate(${i * 10} 100 100)"${i % 2 ? ' stroke-opacity=".5"' : ''}/>`).join('')}<circle cx="100" cy="100" r="26" stroke-opacity=".5"/></g><g class="ball"><circle cx="100" cy="47" r="5" fill="currentColor" stroke="none"/></g></svg>`,
-};
 /**
  * L'enjeu en fiche lisible d'un coup d'œil (V2, 08/11) : quatre cases Enjeu / Victoire / Défaite / Égalité au lieu
  * d'une phrase à rallonge. Sert au Pack Battle et à la Battle Royale.
@@ -157,12 +152,17 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   // ═════════════════════════════ accueil
   function hub() {
     body.innerHTML = `<div class="gm-hub">
-      <a class="gm-game duel" href="#/jeux/duel">${ART.duel}<span class="gm-idx">01 — 1v1</span><b>Pack Battle</b><span class="gm-desc">Ouverture côte à côte : le plus haut total d'étoiles rafle toutes les cartes.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>2</dd></div><div><dt>Mise</dt><dd>1–${DUEL_MAX_PACKS} boosters</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="duel">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
-      <a class="gm-game royale" href="#/jeux/royale">${ART.royale}<span class="gm-idx">02 — mêlée</span><b>Battle Royale</b><span class="gm-desc">Ouverture simultanée : le meilleur total d'étoiles remporte tout le pot.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>${ROYALE_MIN}–${ROYALE_MAX}</dd></div><div><dt>Mise</dt><dd>1 booster</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="royale">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
-      <a class="gm-game roulette" href="#/jeux/roulette">${ART.roulette}<span class="gm-idx">03 — tirage</span><b>Roulette</b><span class="gm-desc">1 à 3 numéros par tirage, en pièces ou en cartes 4★–6★ : le numéro qui sort rafle le pot.</span><dl class="gm-spec"><div><dt>Numéros</dt><dd>${ROULETTE_NUMBERS}</dd></div><div><dt>Tirages</dt><dd>${ROULETTE_HOURS.map((x) => `${x} h`).join(' · ')}</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="roulette">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game duel" href="#/jeux/duel"><span class="gm-art-host"></span><span class="gm-idx">01 — 1v1</span><b>Pack Battle</b><span class="gm-desc">Ouverture côte à côte : le plus haut total d'étoiles rafle toutes les cartes.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>2</dd></div><div><dt>Mise</dt><dd>1–${DUEL_MAX_PACKS} boosters</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="duel">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game royale" href="#/jeux/royale"><span class="gm-art-host"></span><span class="gm-idx">02 — mêlée</span><b>Battle Royale</b><span class="gm-desc">Ouverture simultanée : le meilleur total d'étoiles remporte tout le pot.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>${ROYALE_MIN}–${ROYALE_MAX}</dd></div><div><dt>Mise</dt><dd>1 booster</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="royale">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game roulette" href="#/jeux/roulette"><span class="gm-art-host"></span><span class="gm-idx">03 — tirage</span><b>Roulette</b><span class="gm-desc">1 à 3 numéros par tirage, en pièces ou en cartes 4★–6★ : le numéro qui sort rafle le pot.</span><dl class="gm-spec"><div><dt>Numéros</dt><dd>${ROULETTE_NUMBERS}</dd></div><div><dt>Tirages</dt><dd>${ROULETTE_HOURS.map((x) => `${x} h`).join(' · ')}</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="roulette">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
-    // plafonnier qui suit la souris (ordinateur seulement)
+    // dessins « courant » alignés sur la trame (views/gridArt.ts)
+    body.querySelectorAll<HTMLElement>('.gm-game').forEach((g, i) => {
+      g.dataset.artDelay = String(i * 160);
+      unsubs.push(mountGridArt(g.querySelector<HTMLElement>('.gm-art-host')!, g, el, (['duel', 'royale', 'roulette'] as const)[i]));
+    });
+    // filet qui suit la souris (ordinateur seulement)
     body.querySelectorAll<HTMLElement>('.gm-game').forEach((g) =>
       g.addEventListener('pointermove', (e) => {
         if (e.pointerType !== 'mouse') return;
