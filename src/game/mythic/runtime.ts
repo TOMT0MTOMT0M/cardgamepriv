@@ -9,7 +9,7 @@ import type { Shell } from '../shell';
 import { haptics } from '../../core/haptics';
 import { popLayer, pushLayer } from '../ui';
 import { soundKit } from './sounds';
-import { RAINBOW, seeded, type MythicCard, type SceneCanvas, type SceneCtx, type SceneFn } from './kit';
+import { ACCENTS, RAINBOW, seeded, type MythicCard, type SceneCanvas, type SceneCtx, type SceneFn } from './kit';
 import './mythic.css';
 
 export interface PreludeRun {
@@ -95,24 +95,21 @@ export function runPrelude(o: PreludeRun): { done: Promise<void>; abort(): void 
     resolve();
   }
 
-  /** fin normale (ou toucher pour passer) : flash blanc, la 3D repart, le calque s'efface */
-  async function leave() {
+  /**
+   * Fin normale : la scène s'est posée sur la carte (au centre) ; la 3D repart dessous et le calque se fond en 0,35 s
+   * — pas de flash blanc. Toucher pour passer : fondu plus court.
+   */
+  async function leave(quick = false) {
     if (leaving || over) return;
     leaving = true;
     clueTl?.pause();
-    sceneTl?.pause();
     root.classList.add('leaving');
-    gsap.killTweensOf(flash);
-    gsap.to(flash, { opacity: 1, duration: 0.09, ease: 'power2.out' });
     dim(false);
-    // deux images : la carte est redessinée sous le calque avant qu'il ne s'efface
     await nextFrame();
     await nextFrame();
     if (over) return;
-    stage.style.visibility = 'hidden';
-    clueBox.style.visibility = 'hidden';
-    root.style.background = 'transparent';
-    gsap.to(flash, { opacity: 0, duration: 0.5, ease: 'power2.out', onComplete: cleanup });
+    sceneTl?.pause();
+    gsap.to(root, { opacity: 0, duration: quick ? 0.22 : 0.4, ease: 'power2.inOut', onComplete: cleanup });
   }
 
   function abort() {
@@ -123,14 +120,14 @@ export function runPrelude(o: PreludeRun): { done: Promise<void>; abort(): void 
     e.preventDefault();
     e.stopPropagation();
     haptics.pulse(8);
-    void leave();
+    void leave(true);
   };
   root.addEventListener('pointerdown', skip);
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'Escape' && e.key !== ' ' && e.key !== 'Enter') return;
     e.stopImmediatePropagation();
     e.preventDefault();
-    void leave();
+    void leave(true);
   };
   window.addEventListener('keydown', onKey, true);
   pushLayer(abort);
@@ -152,7 +149,14 @@ export function runPrelude(o: PreludeRun): { done: Promise<void>; abort(): void 
     const w = innerWidth;
     const h = innerHeight;
     const tl = (sceneTl = gsap.timeline({ paused: true }));
-    stage.style.setProperty('--u', `${Math.min(w, h) / 100}px`);
+    const u = Math.min(w, h) / 100;
+    stage.style.setProperty('--u', `${u}px`);
+    const cw = Math.min(w * 0.56, h * 0.36 * (63 / 88), u * 46);
+    const grain = document.createElement('div');
+    grain.className = 'mp-grain';
+    const vig = document.createElement('div');
+    vig.className = 'mp-vignette';
+    let cardEl: HTMLElement | null = null;
     const ctx: SceneCtx = {
       root: stage,
       w,
@@ -216,6 +220,38 @@ export function runPrelude(o: PreludeRun): { done: Promise<void>; abort(): void 
       at(t, fn) {
         tl.call(fn, [], t);
       },
+      cw,
+      accent: ACCENTS[o.card.family] ?? '#fff',
+      actor() {
+        if (cardEl) return cardEl;
+        cardEl = document.createElement('div');
+        cardEl.className = 'mp-card';
+        cardEl.style.width = `${cw}px`;
+        cardEl.style.fontSize = `${cw * 0.12}px`;
+        cardEl.append(document.createElement('i'));
+        stage.append(cardEl);
+        gsap.set(cardEl, { xPercent: -50, yPercent: -50 });
+        return cardEl;
+      },
+      word(txt, y, size = u * 12, cls = '') {
+        const e = document.createElement('div');
+        e.className = `mp-word ${cls}`;
+        e.textContent = txt;
+        e.style.top = `${y}px`;
+        e.style.fontSize = `${Math.min(size, (w * 0.92) / Math.max(2, txt.length * 0.62))}px`;
+        stage.append(e);
+        gsap.set(e, { xPercent: -50, yPercent: -50 });
+        return e;
+      },
+      label(txt, x, y, cls = '') {
+        const e = document.createElement('div');
+        e.className = `mp-label ${cls}`;
+        e.textContent = txt;
+        e.style.left = x;
+        e.style.top = y;
+        stage.append(e);
+        return e;
+      },
     };
     try {
       const r = mod.default(ctx);
@@ -225,6 +261,9 @@ export function runPrelude(o: PreludeRun): { done: Promise<void>; abort(): void 
       return void leave();
     }
     if (over || leaving) return;
+    stage.append(vig, grain);
+    // la carte toujours au-dessus du décor, sous le grain
+    if (cardEl) stage.insertBefore(cardEl, vig);
     tl.timeScale(o.short ? SHORT_SPEED : 1);
     tl.eventCallback('onComplete', () => void leave());
     stage.classList.add('in');
@@ -258,7 +297,9 @@ function playClues(box: HTMLElement, clues: string[], short: boolean, sfx: Retur
     // taille au plus juste : le texte tient sur une ligne, 92 % de la largeur au plus
     const kChar = i === 0 ? 0.78 : 0.66;
     const max = i === 0 ? Math.min(W * 0.11, 72) : Math.min(W * 0.2, mobile ? 92 : 150);
-    el.style.fontSize = `${Math.max(22, Math.min(max, (W * 0.92) / Math.max(4, txt.length * kChar)))}px`;
+    const fs = Math.max(22, Math.min(max, (W * 0.92) / Math.max(4, txt.length * kChar)));
+    el.style.fontSize = `${fs < 30 && txt.length > 16 ? Math.min(max, (W * 0.92) / 11) : fs}px`;
+    if (fs < 30 && txt.length > 16) el.style.whiteSpace = 'normal';
     box.append(el);
     const at = 0.12 + i * step;
     tl.fromTo(el, { opacity: 0, scale: 1.35, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.22, ease: 'power4.out' }, at);

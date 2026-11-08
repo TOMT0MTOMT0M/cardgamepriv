@@ -69,7 +69,29 @@ export interface SceneCtx {
   haptic(pattern: number | number[]): void;
   /** son à `at` (s) dans la timeline */
   at(t: number, fn: () => void): void;
+  /**
+   * LA CARTE, actrice de la scène : doublure 2D de la carte face cachée (dos acier brossé, « B » gravé, tranche
+   * arc-en-ciel). Déjà centrée (pin) et cachée (opacity 0) ; la scène la fait entrer, la manipule, et la laisse AU
+   * CENTRE à l'échelle 1 à la fin : le calque s'efface dessus et la vraie carte 3D prend le relais, sans flash.
+   */
+  actor(): HTMLElement;
+  /** largeur de la carte (px) */
+  cw: number;
+  /** grand mot en Matcha World (titre de scène), centré ; `y` en px */
+  word(txt: string, y: number, size?: number, cls?: string): HTMLElement;
+  /** petite étiquette (Bold Frame, espacée, majuscules) */
+  label(txt: string, x: string, y: string, cls?: string): HTMLElement;
+  /** couleur d'accent de la famille (une seule par scène ; l'arc-en-ciel est réservé à la carte) */
+  accent: string;
 }
+
+/** un accent par famille (DA : base noir/blanc, la couleur = l'information) */
+export const ACCENTS: Record<string, string> = {
+  'jeux-video': '#8fd3ff', lol: '#ffd36b', cs: '#ff8a4d', valorant: '#ff5c7a',
+  anime: '#ffffff', musique: '#c86bff', series: '#9ad8ff', films: '#ffd9a8', dessins: '#ffe66b', stars: '#ffe4b5', youtubeurs: '#ff4d4d',
+  foot: '#6bffb8', collectifs: '#ffb347', olympiques: '#ff6b6b', combat: '#ff3b30', raquettes: '#d9ff3a', glisse: '#bfe9ff', meca: '#ff2a1a', precision: '#8fe6c8', esport: '#6bc8ff', coulisses: '#c9a64a',
+  animaux: '#7dff8a', lieux: '#6bc8ff', nourriture: '#ffc46b', voitures: '#ffffff', ardeche: '#6bc8ff',
+};
 
 export type SceneFn = (ctx: SceneCtx) => void | { dispose?(): void };
 

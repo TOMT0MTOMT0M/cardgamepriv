@@ -13,7 +13,7 @@
  * Ce module-ci est LÉGER (importé d'office par la boutique et la visionneuse) : le moteur (runtime.ts, CSS) et chaque
  * scène ne sont téléchargés qu'à la première 6★ de leur famille.
  */
-import { catalogEntry, subthemeById, themeById } from '../../core/sets/themes';
+import { SUBTHEMES, catalogEntry, fmtCount, subthemeById, themeById, type SubTheme } from '../../core/sets/themes';
 import { fxReduced } from '../../core/fxPref';
 import type { Shell } from '../shell';
 import { duelMonster } from '../scenes/duelMonsters';
@@ -33,9 +33,9 @@ const SCENES: Record<string, Loader> = {
   musique: () => import('./scenes/vinyle'),
   series: () => import('./scenes/tele'),
   films: () => import('./scenes/cinema'),
-  dessins: () => import('./scenes/iris'),
+  dessins: () => import('./scenes/celluloids'),
   stars: () => import('./scenes/tapisRouge'),
-  youtubeurs: () => import('./scenes/notification'),
+  youtubeurs: () => import('./scenes/direct'),
   // Sport
   foot: () => import('./scenes/tunnel'),
   collectifs: () => import('./scenes/buzzer'),
@@ -45,7 +45,7 @@ const SCENES: Record<string, Loader> = {
   glisse: () => import('./scenes/chrono'),
   meca: () => import('./scenes/feux'),
   precision: () => import('./scenes/precision'),
-  esport: () => import('./scenes/arene'),
+  esport: () => import('./scenes/dernierCoup'),
   coulisses: () => import('./scenes/vestiaire'),
   // World
   animaux: () => import('./scenes/piegePhoto'),
@@ -84,10 +84,22 @@ export function mythicCard(cardId: string): MythicCard | null {
   };
 }
 
+/** nombre de 6★ par sous-thème (un 3e indice qui ne laisse qu'une ou deux cartes possibles = spoil : on le cache) */
+let mythCount: Map<string, number> | null = null;
+function mythicsIn(subId: string): number {
+  if (!mythCount) {
+    mythCount = new Map();
+    for (const st of SUBTHEMES) mythCount.set(st.id, st.cards.reduce((a, c) => a + (c.rarity === 'mythic' ? 1 : 0), 0));
+  }
+  return mythCount.get(subId) ?? 0;
+}
+const familySize = (st: SubTheme | undefined) => (st?.group ? SUBTHEMES.filter((s) => s.group?.id === st.group!.id) : st ? [st] : []).reduce((a, s) => a + mythicsIn(s.id), 0);
+
 /**
  * INDICES façon walkout, tirés des données (jamais le nom de la carte) : thème → famille → détail.
- *  - Jeux vidéo : GAMING → ZELDA → 1998 ;  Football : SPORT → FOOTBALL → PREMIER LEAGUE ;
- *  - Mangas : POP CULTURE → MANGAS & ANIME → JUJUTSU KAISEN ;  Animaux : WORLD → ANIMAUX → MAMMIFÈRES.
+ *  - Jeux vidéo : GAMING → ZELDA → 1991 ;  Football : SPORT → FOOTBALL → PREMIER LEAGUE ;
+ *  - Mangas : POP CULTURE → MANGAS & ANIME → JUJUTSU KAISEN (seulement si la série a ≥ 3 cartes 6★ — sinon le nom de
+ *    la série donnerait la carte : on affiche « 1 PARMI 251 » à la place) ;  Animaux : WORLD → ANIMAUX → MAMMIFÈRES.
  */
 export function mythicClues(cardId: string): string[] {
   const e = catalogEntry(cardId);
@@ -95,17 +107,19 @@ export function mythicClues(cardId: string): string[] {
   const st = subthemeById(e.subthemeId);
   const theme = themeById(e.themeId)?.label ?? '';
   const out = [theme];
-  if (st?.group) {
-    out.push(st.group.label);
-    const sub = tidy(st.label);
-    // (Pokémon / LoL / CS / Valorant : la ligne, la classe d'arme… ; ailleurs : la série, le championnat, la classe)
-    if (sub && !st.group.label.toLowerCase().includes(sub.toLowerCase())) out.push(sub);
-  } else if (st) out.push(st.label);
-  // Jeux vidéo : GAMING → ZELDA → 1991 (le « Jeux vidéo » du milieu laisse sa place à l'année)
-  if (e.year) {
-    if (out.length >= 3) out.splice(1, 1);
-    out.push(String(e.year));
-  }
+  const fam = st?.group?.label ?? st?.label ?? '';
+  if (fam) out.push(fam);
+  const sub = tidy(st?.label ?? '');
+  const safe = mythicsIn(e.subthemeId) >= 3;
+  const generic = /^(musique|youtube|chansons|albums)/i.test(sub) || sub.toLowerCase() === fam.toLowerCase();
+  const n = familySize(st);
+  let third = '';
+  if (e.year) third = String(e.year);
+  else if (st?.group && sub && safe && !generic) third = sub;
+  else if (n > 1) third = `1 PARMI ${fmtCount(n)}`;
+  // Jeux vidéo : GAMING → ZELDA → 1991 (la famille « Jeux vidéo » laisse sa place à la série… si elle ne spoile pas)
+  if (e.year && st?.group?.id === 'jeux-video') out[1] = safe ? sub : 'JEUX VIDÉO';
+  if (third) out.push(third);
   const seen = new Set<string>();
   return out.filter((s) => s && !seen.has(s.toLowerCase()) && (seen.add(s.toLowerCase()), true)).map((s) => s.toUpperCase());
 }
