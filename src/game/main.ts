@@ -107,10 +107,22 @@ viewHost.tabIndex = -1;
 const shellP = createShell(glHost, sceneOverlays);
 shellP.catch(() => undefined); // (l'échec est traité par boot())
 void shellP.then(enableMythicReplay, () => undefined); // (08/11) « Rejouer » des 6★ dans les visionneuses
+import { syncPush } from './notif';
+import { setBubbleSound, watchBubbles } from './bubble';
+// (V2) toutes les pastilles grandissent et éclatent en bulle de savon (bubble.ts) — rien à changer dans les pages
+watchBubbles();
 const backend: GameBackend = await backendP.catch((e: unknown) => {
   showFailure(e);
   throw e;
 });
+// (V2) notifications push : si cet appareil est abonné, on resynchronise l'abonnement (clés, compte)
+if (backend.state.mode === 'online') backend.onChange((st) => void (st.ready && st.user && syncPushOnce()));
+let pushSynced = false;
+function syncPushOnce() {
+  if (pushSynced) return;
+  pushSynced = true;
+  void syncPush(backend);
+}
 // (ouverture 07/11) compte à rebours jusqu'à l'ouverture officielle (convex/launch.ts) — par-dessus le chargement
 if (backend.state.mode === 'online') void import('./views/launch').then((m) => m.createLaunchGate(backend));
 // (V2) lien admin : badge « V2 — test » + jeu réservé à l'équipe ; prod : rien (src/core/canal.ts)
@@ -801,6 +813,7 @@ async function boot() {
   const viewerMod = import('./scenes/viewer');
   viewerMod.catch(() => undefined); // (échec : getViewer() réessaie)
   shell = await shellP;
+  setBubbleSound(() => shell.sfx.tick(1.7, 0.12));
   installDiag(shell); // (diagnostic à distance des scènes 6★ sur téléphone, voir diag.ts)
   setToastSound((kind) => (kind === 'err' ? shell.sfx.decline(0.07) : kind === 'ok' ? shell.sfx.note(5, 0.05, 0.4) : shell.sfx.note(2, 0.04, 0.35)));
   step(35, 'impression des boosters…', true);

@@ -4,6 +4,7 @@ import { internalAction, mutation, query, type MutationCtx } from './_generated/
 import type { Doc, Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { getUserIdByToken, requireUser } from './auth';
+import { scheduleReserveFull } from './push';
 import { RARITY_LABEL, RARITY_TIER, packKindValidator, rarityValidator, type RarityId } from './cardsCatalog';
 import { isValidPackRequest, rollPack, type PackRequest } from '../src/core/packRoll';
 import { artPath, bebouOddsLabel, catalogEntry, hasArt, subthemeById, themeById, BEBOU_PACK } from '../src/core/sets/themes';
@@ -86,6 +87,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     lastSeenAt: now,
     statusText: `Ouvre un ${req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
   });
+  await scheduleReserveFull(ctx, user._id);
 
   const rolledCards: Array<{
     cardId: string;

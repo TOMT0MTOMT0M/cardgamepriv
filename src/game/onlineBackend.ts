@@ -209,6 +209,14 @@ export function createOnlineBackend(): GameBackend {
     async setProfileMedia(kind, file) {
       return await net.setProfileMedia(kind, file);
     },
+    push: {
+      status: (endpoint) => net.pushStatus(endpoint),
+      publicKey: () => net.pushPublicKey(),
+      subscribe: (sub) => net.pushSubscribe(sub),
+      unsubscribe: (endpoint) => net.pushUnsubscribe(endpoint),
+      setPrefs: (prefs) => net.pushSetPrefs(prefs),
+      test: () => net.pushTest(),
+    },
     async submitSuggestion(o, file) {
       await net.submitSuggestion(o, file);
     },

@@ -2,6 +2,7 @@ import { v, ConvexError } from 'convex/values';
 import { mutation, query, type QueryCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { getUserByToken, getUserIdByToken, requireUser } from './auth';
+import { notify } from './push';
 import { catalogCard, rarityValidator, type RarityId } from './cardsCatalog';
 import { bumpMissions } from './missions';
 import { bumpWeekly, recordFlow } from './econLib';
@@ -154,6 +155,7 @@ export const propose = mutation({
     }
 
     await bumpMissions(ctx, user, { type: 'trade' });
+    await notify(ctx, toUserId, { kind: 'trade', title: `${user.displayName} te propose un échange`, body: `${offered.length} carte(s) contre ${requested.length} : à voir dans Échanges.`, url: '#/echanges' });
     return await ctx.db.insert('trades', {
       fromUserId: user._id,
       toUserId,
@@ -185,11 +187,13 @@ export const respond = mutation({
     const now = Date.now();
     if (!accept) {
       await ctx.db.patch(trade._id, { status: 'declined', resolvedAt: now });
+      await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} a décliné ton échange`, body: 'Tu peux lui en proposer un autre.', url: '#/echanges' });
       return { status: 'declined' as const };
     }
 
     const fromUser = await ctx.db.get(trade.fromUserId);
     if (!fromUser) throw new ConvexError('Joueur expéditeur introuvable.');
+    await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} a accepté ton échange !`, body: 'Les cartes sont dans ta collection.', url: '#/echanges' });
     // verrouillage (retours live 02) : je ne peux pas donner une carte engagée dans MON annonce ou MON offre en cours
     {
       const mineLocked = await lockedCards(ctx, user._id);
@@ -318,6 +322,7 @@ export const counter = mutation({
     if (!trade || trade.status !== 'pending') throw new ConvexError('Échange introuvable ou déjà traité.');
     if (trade.toUserId !== user._id) throw new ConvexError('Seul le destinataire peut contre-proposer.');
     if (!offered.length && !requested.length) throw new ConvexError('Échange vide.');
+    await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} te fait une contre-proposition`, body: 'À voir dans Échanges.', url: '#/echanges' });
     checkItems(offered, 'proposée');
     checkItems(requested, 'demandée');
     const other = await ctx.db.get(trade.fromUserId);

@@ -77,6 +77,9 @@ export default defineSchema({
     missions: v.optional(missionsValidator),
     /** vitrine du profil : jusqu'à 6 cartes choisies (vide = ses meilleures cartes, automatiquement) */
     showcase: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator }))),
+    /** notifications push (V2) : types voulus (absent = tout), et le job programmé « réserve pleine » (pour l'annuler) */
+    notifPrefs: v.optional(v.array(v.string())),
+    notifFullJob: v.optional(v.id('_scheduled_functions')),
     /** petite devise affichée sur le profil */
     bio: v.optional(v.string()),
     /** pity 6★ : boosters d'affilée sans Mythique (src/core/pity.ts) — absent = 0 */
@@ -543,4 +546,20 @@ export default defineSchema({
   })
     .index('by_status', ['status', 'createdAt'])
     .index('by_user', ['userId', 'createdAt']),
+
+  /**
+   * NOTIFICATIONS PUSH (V2) : un abonnement par appareil (navigateur), lié au joueur. `prefs` = ce que le joueur veut
+   * recevoir (absent = tout). `failures` : échecs d'envoi consécutifs (abonnement retiré à 3, ou tout de suite sur 404 / 410).
+   */
+  pushSubs: defineTable({
+    userId: v.id('users'),
+    endpoint: v.string(),
+    keys: v.object({ p256dh: v.string(), auth: v.string() }),
+    ua: v.optional(v.string()),
+    createdAt: v.number(),
+    lastOkAt: v.optional(v.number()),
+    failures: v.optional(v.number()),
+  })
+    .index('by_user', ['userId'])
+    .index('by_endpoint', ['endpoint']),
 });

@@ -32,6 +32,8 @@ import type * as missions from "../missions.js";
 import type * as packs from "../packs.js";
 import type * as profiles from "../profiles.js";
 import type * as purgedCards from "../purgedCards.js";
+import type * as push from "../push.js";
+import type * as pushSend from "../pushSend.js";
 import type * as pwAuth from "../pwAuth.js";
 import type * as referrals from "../referrals.js";
 import type * as suggestions from "../suggestions.js";
@@ -69,6 +71,8 @@ declare const fullApi: ApiFromModules<{
   packs: typeof packs;
   profiles: typeof profiles;
   purgedCards: typeof purgedCards;
+  push: typeof push;
+  pushSend: typeof pushSend;
   pwAuth: typeof pwAuth;
   referrals: typeof referrals;
   suggestions: typeof suggestions;

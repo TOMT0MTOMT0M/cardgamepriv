@@ -2,6 +2,7 @@ import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
+import { notify } from './push';
 
 /**
  * AMIS (retours live 02, point 8) — un vrai lien d'amitié, À PART de `users.friends` (qui reste la liste de TOUS les
@@ -75,6 +76,7 @@ export const request = mutation({
       if (link.requesterId === me._id) throw new ConvexError(`Demande déjà envoyée à ${target.displayName}.`);
       // il m'avait demandé : on devient amis
       await ctx.db.patch(link._id, { status: 'accepted', respondedAt: now });
+      await notify(ctx, target._id, { kind: 'friend', title: `${me.displayName} a accepté ta demande d’ami`, body: 'Vous pouvez échanger des cartes.', url: '#/amis' });
       return { status: 'accepted' as const, name: target.displayName };
     }
     if (link?.status === 'declined' && link.requesterId === me._id && now - (link.respondedAt ?? link.createdAt) < DECLINE_COOLDOWN_MS)
@@ -86,6 +88,7 @@ export const request = mutation({
     if (pendingOut.length >= MAX_PENDING_OUT) throw new ConvexError(`${MAX_PENDING_OUT} demandes en attente au maximum : attends des réponses (ou annules-en).`);
     if (link) await ctx.db.patch(link._id, { requesterId: me._id, addresseeId: target._id, status: 'pending', createdAt: now, respondedAt: undefined });
     else await ctx.db.insert('friendships', { requesterId: me._id, addresseeId: target._id, status: 'pending', createdAt: now });
+    await notify(ctx, target._id, { kind: 'friend', title: `${me.displayName} te demande en ami`, body: 'Accepte dans Amis pour échanger des cartes.', url: '#/amis' });
     return { status: 'pending' as const, name: target.displayName };
   },
 });
@@ -104,6 +107,7 @@ export const accept = mutation({
     const { me, link } = await mineLink(ctx, sessionToken, friendshipId);
     if (link.status !== 'pending' || link.addresseeId !== me._id) throw new ConvexError('Demande introuvable (déjà traitée ?).');
     await ctx.db.patch(link._id, { status: 'accepted', respondedAt: Date.now() });
+    await notify(ctx, link.requesterId, { kind: 'friend', title: `${me.displayName} a accepté ta demande d’ami`, body: 'Vous pouvez échanger des cartes.', url: '#/amis' });
     return { ok: true };
   },
 });

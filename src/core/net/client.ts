@@ -726,6 +726,25 @@ class GameNetClient {
     const { page, ...rest } = o;
     await this.client!.mutation(api.suggestions.submit, { sessionToken, ...rest, screenshot, meta: { page, ua: navigator.userAgent } });
   }
+  // ─── notifications push (V2) ───
+  public async pushStatus(endpoint?: string) {
+    return await this.client!.query(api.push.status, { sessionToken: this.requireToken(), endpoint });
+  }
+  public async pushPublicKey(): Promise<string | null> {
+    return (await this.client!.query(api.push.vapidPublicKey, {})) ?? null;
+  }
+  public async pushSubscribe(sub: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+    await this.client!.mutation(api.push.subscribe, { sessionToken: this.requireToken(), ...sub, ua: navigator.userAgent });
+  }
+  public async pushUnsubscribe(endpoint: string) {
+    await this.client!.mutation(api.push.unsubscribe, { sessionToken: this.requireToken(), endpoint });
+  }
+  public async pushSetPrefs(prefs: string[]) {
+    await this.client!.mutation(api.push.setPrefs, { sessionToken: this.requireToken(), prefs: prefs as never });
+  }
+  public async pushTest() {
+    return await this.client!.mutation(api.push.sendTest, { sessionToken: this.requireToken() });
+  }
   public async mySuggestions() {
     return await this.client!.query(api.suggestions.mine, { sessionToken: this.requireToken() });
   }

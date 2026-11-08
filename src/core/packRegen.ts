@@ -42,6 +42,13 @@ export function applyRegen(balance: number, regenAt: number, now: number, boostU
   return { balance: b, regenAt: at, nextAt: realAt(at, PACK_REGEN_MS, boostUntil) };
 }
 
+/** Instant réel où la réserve sera PLEINE (null : déjà pleine) — notifications push « réserve pleine ». */
+export function fullAt(balance: number, regenAt: number, now: number, boostUntil = 0): number | null {
+  const r = applyRegen(balance, regenAt, now, boostUntil);
+  if (r.balance >= PACK_CAP) return null;
+  return realAt(r.regenAt, (PACK_CAP - r.balance) * PACK_REGEN_MS, boostUntil);
+}
+
 /** Boost encore actif à `now` (pour l'affichage). */
 export const boostLeft = (boostUntil: number | undefined, now = Date.now()) => Math.max(0, (boostUntil ?? 0) - now);
 

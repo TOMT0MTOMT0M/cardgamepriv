@@ -2,6 +2,7 @@ import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
+import { notify, scheduleReserveFull } from './push';
 import { applyRegen } from '../src/core/packRegen';
 import { REFERRAL } from '../src/core/referral';
 
@@ -60,6 +61,7 @@ async function addPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {
   const now = Date.now();
   const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil);
   await ctx.db.patch(userId, { packBalance: regen.balance + n, packRegenAt: regen.regenAt });
+  await scheduleReserveFull(ctx, userId);
 }
 
 /** Mon lien (créé à la première demande), le nombre de clics et mes filleuls. */
@@ -140,6 +142,7 @@ export async function payReferrer(ctx: MutationCtx, userId: Id<'users'>) {
   if (!u?.referredBy || u.referralPaid || u.totalPacksOpened < REFERRAL.packsToPay) return;
   await ctx.db.patch(u._id, { referralPaid: true });
   await addPacks(ctx, u.referredBy, REFERRAL.packs);
+  await notify(ctx, u.referredBy, { kind: 'referral', title: `${u.displayName} a ouvert ses boosters : +${REFERRAL.packs} pour toi`, body: 'Ton parrainage est payé. Merci !', url: '#/amis' });
 }
 
 /**

@@ -42,7 +42,17 @@ admin, base Convex séparée) et sort en une fois vers la prod.
 
 ---
 
-## 1. Notifications comme une vraie appli (téléphone et PC) — à faire
+## 1. Notifications comme une vraie appli (téléphone et PC) — FAIT (08/11, v2)
+
+**Livré** : `public/sw.js` (service worker, réception + clic → bonne page), `convex/push.ts` (abonnements par appareil,
+préférences par type, garde-fous nuit 23 h–8 h et regroupement 90 s, « réserve pleine » programmée à l'instant exact
+avec `ctx.scheduler.runAt` et annulée / reprogrammée à chaque ouverture ou gain de boosters), `convex/pushSend.ts`
+(Node, bibliothèque `web-push`, abonnements expirés retirés), fiche « Notifications » dans Profil › Compte
+(`src/game/notif.ts` : Activer / Couper, cases par type, « M'envoyer un test », guide iPhone en 2 étapes).
+Branché sur : échanges (proposition, contre-proposition, accepté, décliné), amis (demande, acceptée), parrainage payé,
+défi Pack Battle reçu, gain à la roulette, réserve pleine, annonces (`push:announce`).
+**À faire par Tom** : `lanceurs\activer-notifications.cmd` (clés VAPID sur le staging ; `prod` en argument au patch),
+puis `mettre-en-ligne-v2.cmd`. Pas encore fait : rappel de série (cron par joueur), tirage de la roulette 10 h / 20 h.
 
 **Le principe.** Le jeu a déjà un manifeste d'appli (`public/manifest.webmanifest` : nom « Bébou », icônes, plein
 écran). Il manque le « service worker » (le fichier qui reçoit les notifications même jeu fermé) et l'envoi côté
@@ -81,7 +91,13 @@ serveur. Notifications Web Push : gratuites, sans service tiers.
 
 ---
 
-## 1 bis. Bulles de notification animées (dans le jeu) — à faire
+## 1 bis. Bulles de notification animées (dans le jeu) — FAIT (08/11, v2)
+
+**Livré** : `src/game/bubble.ts`, un observateur unique : rien à changer dans les pages. Apparition 420 ms avec
+dépassement et écrasement cartoon, chiffre qui roule au changement, éclatement en bulle de savon (gonflement + reflet,
+pop, 6–8 gouttelettes, anneau), décalage de 60 ms entre bulles, fondu simple en « Effets réduits », petit « pop » sonore.
+Couvre toutes les pastilles existantes (`.badge`, `.msn-n`, `.w-dot`, `.u-dot`, `.fr-n`, `.pf-new-dot`, `.fresh-badge`).
+Pas encore fait : les bulles « à AJOUTER » ci-dessous (jeux, boutique, calendrier, contrats, mises à jour).
 
 **Demande de Tom (07/11)** : TOUTES les pastilles de notification (bulles en haut à droite des boutons) apparaissent
 en bulle qui grandit de façon fluide, bien placée sur le bon axe, et quand elle disparaît elle EXPLOSE comme une

@@ -2,6 +2,7 @@ import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
+import { notify } from './push';
 import { RARITY_TIER, type RarityId } from './cardsCatalog';
 import { packChoiceValidator, stakeValidator } from './schema';
 import { addCoins, bumpWeekly, checkStake, giveCards, mint, patchEcon, recordFlow, secureRandom, takeCards } from './econLib';
@@ -128,6 +129,7 @@ export const createDuel = mutation({
     if (packsNow(u, Date.now()).balance < packs.length) throw new ConvexError(`Tu n’as pas ${packs.length} boosters en réserve.`);
     const open = await ctx.db.query('duels').withIndex('by_creator', (q) => q.eq('creatorId', u._id)).filter((q) => q.eq(q.field('status'), 'open')).collect();
     if (open.length >= 3) throw new ConvexError('3 duels ouverts au maximum : annule-en un.');
+    if (invitedId) await notify(ctx, invitedId, { kind: 'game', title: `${u.displayName} te défie en Pack Battle`, body: 'Relève le défi dans l’espace Jeux.', url: '#/jeux' });
     return await ctx.db.insert('duels', {
       creatorId: u._id,
       ...(invitedId ? { invitedId } : {}),
@@ -498,6 +500,7 @@ async function drawRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number
     await giveCards(ctx, bet.userId, pot.cards);
     if (pot.coins) await addCoins(ctx, bet.userId, pot.coins, 'roulette', `Roulette — pot du ${r.day} (n° ${number})`, { earned: true });
     await patchEcon(ctx, bet.userId, (e) => ({ ...e, rouletteWins: e.rouletteWins + 1 }));
+    await notify(ctx, bet.userId, { kind: 'game', title: 'Roulette : tu as gagné !', body: `Le n° ${number} est sorti : le pot est à toi.`, url: '#/jeux' });
     for (const b of r.bets) if (b.userId !== bet.userId) await recordFlow(ctx, b.userId, bet.userId, b.coins + cardsValue(b.cards), 'roulette');
     const w = await ctx.db.get(bet.userId);
     if (w) await feedGame(ctx, w, `🎡 Le ${number} sort à la roulette : ${w.displayName} remporte tout le pot — ${fmtCoins(pot.coins)} pièces et ${pot.cards.reduce((a, c) => a + c.count, 0)} cartes (${fmtCoins(pot.value)} de valeur) !`);

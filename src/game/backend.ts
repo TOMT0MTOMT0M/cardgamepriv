@@ -345,6 +345,21 @@ export interface ReferralInfo {
   canClaim?: boolean;
 }
 
+export interface PushStatus {
+  configured: boolean;
+  devices: number;
+  thisDevice: boolean;
+  prefs: string[];
+}
+export interface PushApi {
+  status(endpoint?: string): Promise<PushStatus>;
+  publicKey(): Promise<string | null>;
+  subscribe(sub: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<void>;
+  unsubscribe(endpoint: string): Promise<void>;
+  setPrefs(prefs: string[]): Promise<void>;
+  test(): Promise<{ devices: number }>;
+}
+
 export interface GameBackend {
   readonly state: GameState;
   /** pièces, sources de pièces et espace Jeux (eco.ts) */
@@ -385,6 +400,8 @@ export interface GameBackend {
   setProfileMedia(kind: 'avatar' | 'banner', file: Blob | null): Promise<string | undefined>;
   /** Suggestions (onglet) : envoyer (capture / image facultative), les miennes, la file admin, changer un statut. */
   submitSuggestion(o: SuggestionInput, file: Blob | null): Promise<void>;
+  /** notifications push (V2, en ligne seulement) : absent en démo */
+  push?: PushApi;
   mySuggestions(): Promise<SuggestionView[]>;
   adminSuggestions(status?: SuggestionStatus): Promise<{ items: SuggestionView[]; counts: Record<SuggestionStatus, number> }>;
   setSuggestionStatus(id: string, status: SuggestionStatus, adminNote?: string): Promise<void>;
