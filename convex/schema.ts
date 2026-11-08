@@ -393,6 +393,8 @@ export default defineSchema({
   royales: defineTable({
     creatorId: v.id('users'),
     status: v.union(v.literal('open'), v.literal('done'), v.literal('cancelled')),
+    /** (08/11) boosters par joueur, identique pour tous (absent = 1 : parties d'avant) */
+    packCount: v.optional(v.number()),
     players: v.array(v.object({ userId: v.id('users'), name: v.string(), avatarUrl: v.optional(v.string()), pack: packChoiceValidator })),
     result: v.optional(
       v.object({

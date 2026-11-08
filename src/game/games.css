@@ -336,3 +336,9 @@ button.w-link { border: 0; background: none; padding: 0; cursor: pointer; }
 @media (max-width: 860px) {
   .gm-wheel.r36 { grid-template-columns: repeat(6, 1fr); }
 }
+
+/* (08/11) Battle Royale : nombre de boosters par joueur, choisi à la création */
+.gm-rcount { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.gm-rcount .muted { margin-right: 4px; font-size: 13px; }
+.gm-rc { min-width: 36px; height: 32px; padding: 0 8px; font: 600 14px var(--mono); color: var(--ink); border-color: var(--line); }
+.gm-rc.on { border-color: var(--ink); background: rgba(255, 255, 255, 0.08); }

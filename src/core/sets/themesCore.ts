@@ -1,3 +1,4 @@
+import { PURGE_08_11, RERATE_08_11 } from './curation';
 import { artV } from '../artRev';
 /**
  * Registre des THÈMES — données pures, sans three.js : partagé par le client (boutique, collection, échanges) et par
@@ -365,10 +366,31 @@ export const catalogInstalled = () => installed;
  * Mêmes objets, même ordre que l'ancien calcul en un temps : les tableaux exportés (SUBTHEMES, THEMES[i].subthemes,
  * THEMES[i].cards) sont complétés SUR PLACE, les compteurs (`let`) recalculés. Sans effet si déjà installé.
  */
+/**
+ * (08/11) Curation (src/core/sets/curation.ts) : cartes purgées retirées des sous-thèmes (les numéros des autres cartes
+ * ne bougent pas), raretés renotées. Une seule fois, avant l'indexation.
+ */
+function applyCuration() {
+  const purge = new Set(PURGE_08_11);
+  for (const s of SUBTHEMES) {
+    const before = s.cards.length;
+    const kept = s.cards.filter((c) => !purge.has(c.id));
+    for (const c of kept) {
+      const r = RERATE_08_11[c.id];
+      if (r) c.rarity = r;
+    }
+    if (kept.length !== before) {
+      s.cards.length = 0;
+      s.cards.push(...kept);
+    }
+  }
+}
+
 export function installCatalog(big: typeof BigSets): void {
   if (installed) return;
   installed = true;
   for (const s of bigSubthemes(big)) SUBTHEMES.push(s);
+  applyCuration();
   for (const t of THEMES) {
     const subs = subsOf(t.id);
     t.subthemes.length = 0;

@@ -14,7 +14,9 @@ import { cardsValue, fmtCoins, rollPackCoins, stakeValue } from '../src/core/eco
 import {
   DUEL_MAX_PACKS,
   ROYALE_MAX,
+  ROYALE_MAX_PACKS,
   ROYALE_MIN,
+  royalePackCount,
   betProblem,
   drawNumber,
   duelProblem,
@@ -275,16 +277,19 @@ async function resolveDuel(ctx: MutationCtx, d: Doc<'duels'>) {
 // ═════════════════════════════════════════════ PACK BATTLE ROYALE
 
 export const createRoyale = mutation({
-  args: { sessionToken: v.string(), pack: packChoiceValidator },
-  handler: async (ctx, { sessionToken, pack }) => {
+  args: { sessionToken: v.string(), pack: packChoiceValidator, packCount: v.optional(v.number()) },
+  handler: async (ctx, { sessionToken, pack, packCount: asked }) => {
     const u = await requireUser(ctx, sessionToken);
     if (!validPackChoice(pack)) throw new ConvexError('Booster inconnu.');
-    if (packsNow(u, Date.now()).balance < 1) throw new ConvexError('Il te faut un booster en réserve.');
+    if (asked !== undefined && (!Number.isInteger(asked) || asked < 1 || asked > ROYALE_MAX_PACKS)) throw new ConvexError(`De 1 à ${ROYALE_MAX_PACKS} boosters par joueur.`);
+    const n = royalePackCount({ packCount: asked });
+    if (packsNow(u, Date.now()).balance < n) throw new ConvexError(n > 1 ? `Il te faut ${n} boosters en réserve.` : 'Il te faut un booster en réserve.');
     const open = await ctx.db.query('royales').withIndex('by_status', (q) => q.eq('status', 'open')).collect();
     if (open.some((r) => r.players.some((p) => p.userId === u._id))) throw new ConvexError('Tu es déjà dans une Battle Royale en attente.');
     return await ctx.db.insert('royales', {
       creatorId: u._id,
       status: 'open',
+      ...(n > 1 ? { packCount: n } : {}),
       players: [{ userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), pack: cleanPack(pack) }],
       createdAt: Date.now(),
     });
@@ -298,7 +303,8 @@ export const joinRoyale = mutation({
     const r = await ctx.db.get(royaleId);
     if (!r || r.status !== 'open') throw new ConvexError('Cette Battle Royale n’est plus ouverte.');
     if (!validPackChoice(pack)) throw new ConvexError('Booster inconnu.');
-    if (packsNow(u, Date.now()).balance < 1) throw new ConvexError('Il te faut un booster en réserve.');
+    const n = royalePackCount(r);
+    if (packsNow(u, Date.now()).balance < n) throw new ConvexError(n > 1 ? `Il te faut ${n} boosters en réserve (mise de la partie).` : 'Il te faut un booster en réserve.');
     const players = r.players.filter((p) => p.userId !== u._id);
     if (players.length >= ROYALE_MAX) throw new ConvexError(`Complet (${ROYALE_MAX} joueurs).`);
     players.push({ userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), pack: cleanPack(pack) });
@@ -335,9 +341,16 @@ export const startRoyale = mutation({
 });
 
 async function resolveRoyale(ctx: MutationCtx, r: Doc<'royales'>) {
-  for (const p of r.players) await debitPacks(ctx, p.userId, 1);
-  const packs: GameCard[][] = [];
-  for (const p of r.players) packs.push(await openGamePack(ctx, p.userId, p.pack));
+  const n = royalePackCount(r);
+  for (const p of r.players) await debitPacks(ctx, p.userId, n);
+  // chaque joueur ouvre ses n boosters ; ses cartes (n × 5) forment une seule rangée, le total d'étoiles départage
+  const byPack: GameCard[][][] = [];
+  for (const p of r.players) {
+    const mine: GameCard[][] = [];
+    for (let k = 0; k < n; k++) mine.push(await openGamePack(ctx, p.userId, p.pack));
+    byPack.push(mine);
+  }
+  const packs: GameCard[][] = byPack.map((m) => m.flat());
   const res = royaleResult(packs, secureRandom);
   const now = Date.now();
   for (const [i, p] of r.players.entries()) if (res.awarded[i].length) await giveCards(ctx, p.userId, res.awarded[i]);
@@ -350,7 +363,9 @@ async function resolveRoyale(ctx: MutationCtx, r: Doc<'royales'>) {
     await patchEcon(ctx, p.userId, (e) => ({ ...e, gamesPlayed: e.gamesPlayed + 1, gamesWon: e.gamesWon + (won ? 1 : 0) }));
     await bumpWeekly(ctx, p.userId, { type: 'game', won });
     const u = (await ctx.db.get(p.userId))!;
-    await bumpMissions(ctx, u, { type: 'pack', packKey: p.pack.kind === 'theme' && p.pack.themeId ? p.pack.themeId : 'bebou', cards: res.awarded[i].map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: false })) });
+    // missions : un « booster ouvert » par booster misé (les cartes gardées comptent une fois, sur le premier)
+    for (let k = 0; k < n; k++)
+      await bumpMissions(ctx, u, { type: 'pack', packKey: p.pack.kind === 'theme' && p.pack.themeId ? p.pack.themeId : 'bebou', cards: k === 0 ? res.awarded[i].map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: false })) : [] });
     await announcePulls(ctx, u, packs[i], 'une Battle Royale');
     await ctx.db.patch(p.userId, { lastSeenAt: now, statusText: won ? 'Vient de gagner une Battle Royale' : 'Sort d’une Battle Royale' });
   }
@@ -361,8 +376,8 @@ async function resolveRoyale(ctx: MutationCtx, r: Doc<'royales'>) {
     ctx,
     winnerDoc,
     names.length === 1
-      ? `${names[0]} remporte la Battle Royale à ${r.players.length} joueurs (${best}★) et rafle ${packs.flat().length} cartes !`
-      : `Battle Royale à ${r.players.length} : ex æquo à ${best}★ entre ${names.join(' et ')}, le pot est partagé au hasard !`,
+      ? `${names[0]} remporte la Battle Royale à ${r.players.length} joueurs${n > 1 ? ` (${n} boosters chacun)` : ''} (${best}★) et rafle ${packs.flat().length} cartes !`
+      : `Battle Royale à ${r.players.length}${n > 1 ? ` (${n} boosters chacun)` : ''} : ex æquo à ${best}★ entre ${names.join(' et ')}, le pot est partagé au hasard !`,
   );
   await ctx.db.patch(r._id, { status: 'done', result: { packs, stars: res.stars, winners: res.winners, awarded: res.awarded }, resolvedAt: now });
 }

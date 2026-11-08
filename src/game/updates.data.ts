@@ -29,6 +29,16 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '8 nov.', title: 'Correctifs du week-end', tag: 'amélioré',
+        points: [
+          'Battle Royale : on peut maintenant miser de 1 à 5 boosters, le même nombre pour tout le monde. Le total d’étoiles de toutes tes cartes départage.',
+          'Nouvelles illustrations pour 27 cartes 5★ et 6★ (Michael Jordan, Usain Bolt, Altaïr, Ciri, Edward Elric…).',
+          'Les cartes qui n’avaient pas de vraie image sont retirées du jeu (les 5★ et 6★ restent le temps de leur en trouver une).',
+          'Raretés revues : certaines stars surtout connues hors d’Europe et des États-Unis descendent en étoiles.',
+          'Pitbull : l’extrait joué est maintenant « International Love ».',
+        ],
+      },
+      {
         date: '7 nov.', title: 'Version 1 — Bébou Cartes', tag: 'nouveau',
         points: [
           'Saison 1 : tout le monde repart de zéro. Compte avec Discord ou un simple pseudo, 15 boosters offerts et recharge ×2 pendant tes 24 premières heures.',

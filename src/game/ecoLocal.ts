@@ -36,6 +36,7 @@ import {
   ROULETTE_NUMBERS,
   packChoiceLabel,
   royaleResult,
+  royalePackCount,
   validPackChoice,
   type GameCard,
   type PackChoice,
@@ -195,16 +196,19 @@ export function createLocalEco(host: LocalEcoHost) {
 
   // ───────────────────── battle royale
   function resolveRoyale(r: RoyaleView) {
+    const n = royalePackCount(r);
     const meIdx = r.players.findIndex((p) => p.userId === ME);
     if (meIdx >= 0) {
-      if (host.packsAvailable() < 1) throw new Error('Il te faut un booster en réserve.');
-      host.debitPacks(1);
+      if (host.packsAvailable() < n) throw new Error(n > 1 ? `Il te faut ${n} boosters en réserve.` : 'Il te faut un booster en réserve.');
+      host.debitPacks(n);
     }
-    const packs = r.players.map((p) => {
-      const c = host.roll(p.pack, p.userId);
-      if (p.userId === ME) coins(rollPackCoins(p.pack.kind, Math.random), 'pack', `Ouverture — ${packChoiceLabel(p.pack)} (jeu)`, true);
-      return c;
-    });
+    const packs = r.players.map((p) =>
+      Array.from({ length: n }, () => {
+        const c = host.roll(p.pack, p.userId);
+        if (p.userId === ME) coins(rollPackCoins(p.pack.kind, Math.random), 'pack', `Ouverture — ${packChoiceLabel(p.pack)} (jeu)`, true);
+        return c;
+      }).flat(),
+    );
     const res = royaleResult(packs, Math.random);
     r.players.forEach((p, i) => giveAll(p.userId, res.awarded[i]));
     const won = res.winners.includes(meIdx);
@@ -442,11 +446,12 @@ export function createLocalEco(host: LocalEcoHost) {
         resolveDuel(du);
         return { locked: true };
       }),
-    createRoyale: (pack) =>
+    createRoyale: (pack, packCount) =>
       act(() => {
         if (!validPackChoice(pack)) throw new Error('Booster inconnu.');
-        if (host.packsAvailable() < 1) throw new Error('Il te faut un booster en réserve.');
-        const r: RoyaleView = { id: id('ro'), creatorId: ME, status: 'open', players: [{ userId: ME, name: 'Toi', pack }], createdAt: Date.now() };
+        const n = royalePackCount({ packCount });
+        if (host.packsAvailable() < n) throw new Error(n > 1 ? `Il te faut ${n} boosters en réserve.` : 'Il te faut un booster en réserve.');
+        const r: RoyaleView = { id: id('ro'), creatorId: ME, status: 'open', ...(n > 1 ? { packCount: n } : {}), players: [{ userId: ME, name: 'Toi', pack }], createdAt: Date.now() };
         d().royales.push(r);
         host.bots().forEach((b, i) =>
           setTimeout(() => {

@@ -217,6 +217,39 @@ describe('Battle Royale', () => {
     expect(counts.reduce((x, y) => x + y, 0)).toBe(15);
     for (const [i] of counts.entries()) if (!r.result!.winners.includes(i)) expect(counts[i]).toBe(0);
   });
+
+  test('(08/11) multi-boosters : même nombre pour tous, n × 5 cartes chacun, n boosters débités, tout au gagnant', async () => {
+    const { t, u } = await setup(['a', 'b', 'c']);
+    await expect(t.mutation(api.games.createRoyale, { sessionToken: u.a.token, pack: { kind: 'bebou' }, packCount: 6 })).rejects.toThrow(/1 à 5/);
+    const id = await t.mutation(api.games.createRoyale, { sessionToken: u.a.token, pack: { kind: 'bebou' }, packCount: 3 });
+    expect((await t.query(api.games.royale, { royaleId: id }))!.packCount).toBe(3);
+    // pas assez de boosters en réserve → refusé
+    await t.run(async (ctx) => ctx.db.patch(u.c.userId, { packBalance: 2 }));
+    await expect(t.mutation(api.games.joinRoyale, { sessionToken: u.c.token, royaleId: id, pack: { kind: 'bebou' } })).rejects.toThrow(/3 boosters/);
+    await t.run(async (ctx) => ctx.db.patch(u.c.userId, { packBalance: 15 }));
+    await t.mutation(api.games.joinRoyale, { sessionToken: u.b.token, royaleId: id, pack: { kind: 'theme', themeId: 'gaming' } });
+    await t.mutation(api.games.joinRoyale, { sessionToken: u.c.token, royaleId: id, pack: { kind: 'bebou' } });
+    const before = await t.run(async (ctx) => Promise.all(['a', 'b', 'c'].map(async (k) => (await ctx.db.get(u[k].userId))!)));
+    await t.mutation(api.games.startRoyale, { sessionToken: u.a.token, royaleId: id });
+    const r = (await t.query(api.games.royale, { royaleId: id }))!;
+    expect(r.status).toBe('done');
+    expect(r.result!.packs.map((p) => p.length)).toEqual([15, 15, 15]);
+    const counts = await Promise.all(['a', 'b', 'c'].map(async (k) => (await inv(t, u[k].userId)).reduce((s, c) => s + c.count, 0)));
+    expect(counts.reduce((x, y) => x + y, 0)).toBe(45);
+    for (const [i] of counts.entries()) if (!r.result!.winners.includes(i)) expect(counts[i]).toBe(0);
+    const after = await t.run(async (ctx) => Promise.all(['a', 'b', 'c'].map(async (k) => (await ctx.db.get(u[k].userId))!)));
+    for (const [i, x] of after.entries()) expect(before[i].packBalance - x.packBalance).toBe(3);
+  });
+
+  test('(08/11) ancienne partie sans packCount = 1 booster chacun', async () => {
+    const { t, u } = await setup(['a', 'b', 'c']);
+    const id = await t.mutation(api.games.createRoyale, { sessionToken: u.a.token, pack: { kind: 'bebou' } });
+    expect((await t.query(api.games.royale, { royaleId: id }))!.packCount).toBeUndefined();
+    await t.mutation(api.games.joinRoyale, { sessionToken: u.b.token, royaleId: id, pack: { kind: 'bebou' } });
+    await t.mutation(api.games.joinRoyale, { sessionToken: u.c.token, royaleId: id, pack: { kind: 'bebou' } });
+    await t.mutation(api.games.startRoyale, { sessionToken: u.a.token, royaleId: id });
+    expect((await t.query(api.games.royale, { royaleId: id }))!.result!.packs.map((p) => p.length)).toEqual([5, 5, 5]);
+  });
 });
 
 describe('Roulette', () => {
