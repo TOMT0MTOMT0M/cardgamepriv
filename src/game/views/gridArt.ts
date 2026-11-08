@@ -121,7 +121,7 @@ const svgEl = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<strin
 /** vitesse moyenne du courant (px/s), arrêts compris : lente, un fluide épais qui frotte sur sa piste */
 const SPEED = 105;
 const PULSE_SPEED = 140;
-/** longueur maximale de la traîne derrière la perle (px) */
+/** marge (px) au-delà du bout de la piste pour que la coulée en sorte entièrement */
 const TAIL = 70;
 
 /**
@@ -328,27 +328,45 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   const idx = (r: Rail, s: number) => Math.max(0, Math.min(r.n - 1, Math.round((s / r.L) * (r.n - 1))));
 
   // ── physique
-  const FOLLOW = [0.16, 0.07]; // retards des suiveurs (s) : traîne, cœur — l'élastique de la coulée
   const PUSH = 1300; // poussée maximale de l'aura le long du rail (px/s²)
   const DRAG = 3; // entraînement par la composante du geste le long du rail
   const VISC = 2.8; // frottement visqueux (1/s)
   const STATIC = 150; // friction statique : poussée minimale pour décoller une perle arrêtée
   const GUIDE_K = 36; // ressort du guide (courant ambiant, tracé)
   const GUIDE_C = 8.5;
-  interface Bead { r: Rail; s: number; v: number; fol: number[]; t: number; T: number; delay: number; curve: ((t: number) => number) | null; idle: number; age: number; fade: number; prev: number; reveal: boolean; front: number }
+  /**
+   * Une COULÉE : un filet de liquide visqueux posé sur le rail, entre sa queue et sa tête (abscisses tail → s).
+   * Tout est tiré au hasard à sa naissance : longueur au repos, épaisseur, retard de la queue, ondulations du filet.
+   */
+  interface Bead {
+    r: Rail; s: number; v: number; tail: number; dir: number;
+    len: number; wid: number; lag: number; lam: [number, number]; ph: [number, number]; drift: number;
+    t: number; T: number; delay: number; curve: ((t: number) => number) | null; idle: number; age: number; fade: number; prev: number; reveal: boolean; front: number;
+  }
   const beads = new Set<Bead>();
   let ready = false;
 
-  const spawn = (r: Rail, s: number, v: number, curve: Bead['curve'], T: number, o: { delay?: number; reveal?: boolean } = {}) => {
+  const rand = (a: number, b: number) => a + Math.random() * (b - a);
+  const spawn = (r: Rail, s: number, v: number, curve: Bead['curve'], T: number, o: { delay?: number; reveal?: boolean; len?: number } = {}) => {
     if (r.busy) return null;
     r.busy = true;
-    const b: Bead = { r, s, v, fol: [s, s], t: 0, T, delay: o.delay ?? 0, curve, idle: 0, age: 0, fade: 0, prev: s, reveal: !!o.reveal, front: 0 };
+    const len = o.len ?? rand(28, 62);
+    const b: Bead = {
+      r, s, v, tail: s, dir: v < 0 ? -1 : 1,
+      len, wid: (r.ghost ? 1.35 : 1) * rand(1.7, 2.9), lag: rand(0.22, 0.5),
+      lam: [rand(13, 24), rand(5.5, 9)], ph: [rand(0, 6.28), rand(0, 6.28)], drift: rand(-1.2, 1.2),
+      t: 0, T, delay: o.delay ?? 0, curve, idle: 0, age: 0, fade: 0, prev: s, reveal: !!o.reveal, front: 0,
+    };
     beads.add(b);
     wake();
     return b;
   };
-  const pulse = (r: Rail, speed: number, o: { delay?: number; reveal?: boolean } = {}) =>
-    spawn(r, 0, 0, frictionCurve(r.L, rng(Math.floor(Math.random() * 1e9) + 1)), Math.max(0.9, (r.L + TAIL) / (speed * r.quick)), o);
+  const pulse = (r: Rail, speed: number, o: { delay?: number; reveal?: boolean } = {}) => {
+    // longueur au hasard, bornée par la piste (un cran de la roulette ne porte qu'un court filet)
+    const len = Math.min(r.L * (r.ghost ? 0.14 : 0.75), rand(40, 120));
+    const sp = speed * rand(0.8, 1.2);
+    return spawn(r, 0, 0, frictionCurve(r.L, rng(Math.floor(Math.random() * 1e9) + 1)), Math.max(0.9, (r.L + TAIL) / (sp * r.quick)), { ...o, len });
+  };
   const popDot = (el: SVGCircleElement) => {
     el.classList.add('on');
     el.classList.remove('pop');
@@ -397,6 +415,74 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     if (raf || !host.isConnected) return;
     lastFrame = performance.now();
     raf = requestAnimationFrame(tick);
+  };
+
+  /**
+   * Dessine une coulée : un ruban plein qui suit exactement la piste, épaisseur variable — fin à la queue, plein à la
+   * tête (bout arrondi), et des renflements irréguliers qui glissent lentement le long du filet (le liquide visqueux
+   * qui perle). Volume conservé : étirée elle s'amincit, ramassée elle s'épaissit. Une lueur large et très pâle dessous.
+   */
+  const LX = new Float32Array(512);
+  const LY = new Float32Array(512);
+  const RX = new Float32Array(512);
+  const RY = new Float32Array(512);
+  const coulee = (b: Bead, op: number) => {
+    const r = b.r;
+    const sh = Math.max(0, Math.min(r.L, b.s));
+    const st = Math.max(0, Math.min(r.L, b.tail));
+    const ih = idx(r, sh);
+    const it = idx(r, st);
+    const span = Math.abs(ih - it);
+    const real = Math.abs(b.s - b.tail) + 0.001;
+    const vol = Math.max(0.6, Math.min(1.45, Math.sqrt(b.len / Math.max(6, real))));
+    const W0 = b.wid * vol * (1 - 0.35 * b.fade);
+    const step = ih >= it ? 1 : -1;
+    const n = Math.min(511, span);
+    if (n >= 2) {
+      for (let k = 0; k <= n; k++) {
+        const i = it + k * step;
+        // u : 0 à la queue → 1 à la tête (sur toute la coulée, même si une partie est hors de la piste)
+        const sAbs = (i / (r.n - 1)) * r.L;
+        const u = Math.max(0, Math.min(1, (sAbs - b.tail) / (b.s - b.tail || 1)));
+        const env = Math.pow(u, 0.9) * (0.35 + 0.65 * Math.min(1, u * 1.6));
+        const wob = 1 + 0.32 * Math.sin((sAbs / b.lam[0]) * 6.283 - b.ph[0] - clock * b.drift) + 0.14 * Math.sin((sAbs / b.lam[1]) * 6.283 + b.ph[1] + clock * 1.7);
+        const w = Math.max(0.25, W0 * env * wob) * 0.5;
+        const nx = -r.ty[i] * w;
+        const ny = r.tx[i] * w;
+        LX[k] = r.x[i] + nx;
+        LY[k] = r.y[i] + ny;
+        RX[k] = r.x[i] - nx;
+        RY[k] = r.y[i] - ny;
+      }
+      const ribbon = () => {
+        ctx.beginPath();
+        ctx.moveTo(LX[0], LY[0]);
+        for (let k = 1; k <= n; k++) ctx.lineTo(LX[k], LY[k]);
+        for (let k = n; k >= 0; k--) ctx.lineTo(RX[k], RY[k]);
+        ctx.closePath();
+      };
+      // lueur : le même ruban, contour large et très pâle
+      ribbon();
+      ctx.lineWidth = 5 + W0;
+      ctx.strokeStyle = `rgba(255,255,255,${(op * 0.06).toFixed(3)})`;
+      ctx.stroke();
+      ctx.fillStyle = `rgba(255,255,255,${(op * 0.92).toFixed(3)})`;
+      ctx.fill();
+      ctx.lineWidth = 0.6;
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.stroke();
+    }
+    // bout arrondi de la tête (tant qu'elle est sur la piste)
+    if (b.s >= 0 && b.s <= r.L) {
+      const k = Math.max(0, n);
+      const hx = n >= 2 ? (LX[k] + RX[k]) / 2 : r.x[ih];
+      const hy = n >= 2 ? (LY[k] + RY[k]) / 2 : r.y[ih];
+      const hr = n >= 2 ? Math.hypot(LX[k] - RX[k], LY[k] - RY[k]) / 2 : W0 * 0.45 * Math.min(1, b.age / 0.3);
+      ctx.beginPath();
+      ctx.arc(hx, hy, Math.max(0.4, hr), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${(op * 0.92).toFixed(3)})`;
+      ctx.fill();
+    }
   };
 
   /** épines du champ sur la piste r : la ligne se hérisse près du curseur, côté opposé, sans jamais la quitter */
@@ -483,7 +569,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
         }
       }
       if (b.curve) {
-        const g = b.curve(Math.min(1, b.t / b.T)) * (r.L + TAIL);
+        const g = b.curve(Math.min(1, b.t / b.T)) * (r.L + b.len + 8);
         f += GUIDE_K * (g - b.s) - GUIDE_C * b.v;
       } else {
         f -= VISC * b.v;
@@ -495,7 +581,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       b.v += f * dt;
       b.s += b.v * dt;
       // le rail : jamais hors de la piste (une perle appelée bute aux extrémités)
-      const max = b.curve ? r.L + TAIL : r.L;
+      const max = b.curve ? r.L + b.len + 8 : r.L;
       if (b.s < 0) {
         b.s = 0;
         b.v = Math.abs(b.v) * 0.2;
@@ -503,11 +589,14 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
         b.s = max;
         b.v = -Math.abs(b.v) * 0.2;
       }
-      b.fol[0] += (b.s - b.fol[0]) * (1 - Math.exp(-dt / FOLLOW[0]));
-      b.fol[1] += (b.s - b.fol[1]) * (1 - Math.exp(-dt / FOLLOW[1]));
-      // tracé initial : la piste se dépose sous la perle (jamais elle ne recule)
+      // la queue suit la tête avec retard, vers sa longueur au repos : lancée la coulée s'étire, freinée elle se
+      // ramasse ; elle se retourne (lentement) quand on la repousse dans l'autre sens
+      if (Math.abs(b.v) > 25) b.dir += (Math.sign(b.v) - b.dir) * Math.min(1, dt * 2.2);
+      const want = b.s - b.len * b.dir;
+      b.tail += (want - b.tail) * (1 - Math.exp(-dt / b.lag));
+      // tracé initial : la piste se dépose sous la tête (jamais elle ne recule)
       if (b.reveal && r.trace) {
-        b.front = Math.max(b.front, Math.min(r.L + 2, b.fol[1]));
+        b.front = Math.max(b.front, Math.min(r.L + 2, b.s));
         r.trace.style.strokeDashoffset = String(r.L + 2 - b.front);
       }
       for (const dd of r.dots) {
@@ -516,7 +605,8 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       }
       b.prev = b.s;
       if (b.curve) {
-        if (b.t > b.T && b.s >= r.L + TAIL * 0.8) b.fade += dt * 4;
+        if (b.t > b.T && Math.min(b.s, b.tail) >= r.L - 1) b.fade = 1;
+        else if (b.t > b.T + 1.5) b.fade += dt * 3;
       } else {
         b.idle = Math.abs(b.v) < 8 ? b.idle + dt : 0;
         if (b.idle > 1.3 || b.age > 9) b.fade += dt * 2.5;
@@ -570,53 +660,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
         ctx.save();
         ctx.clip(r.hide, 'evenodd');
       }
-      const head = Math.min(b.s, r.L);
-      const sp = Math.abs(b.v);
-      // traîne : de la queue (fine, pâle) jusqu'à la perle (pleine), tronçons de largeur croissante
-      const tail = Math.max(0, Math.min(r.L, b.fol[0]));
-      const i0 = idx(r, Math.min(tail, head));
-      const i1 = idx(r, Math.max(tail, head));
-      const span = i1 - i0;
-      if (span > 1) {
-        const dir = b.fol[0] <= b.s ? 1 : -1;
-        const steps = Math.min(10, span);
-        for (let k = 0; k < steps; k++) {
-          const a = i0 + Math.floor((span * k) / steps);
-          const e = i0 + Math.floor((span * (k + 1)) / steps);
-          // u : 0 côté queue → 1 côté perle
-          const u = dir > 0 ? (k + 1) / steps : 1 - k / steps;
-          ctx.beginPath();
-          ctx.moveTo(r.x[a], r.y[a]);
-          for (let i = a + 1; i <= e; i++) ctx.lineTo(r.x[i], r.y[i]);
-          ctx.lineWidth = 0.6 + 1.9 * u * u;
-          ctx.strokeStyle = `rgba(255,255,255,${(op * (0.12 + 0.78 * u * u)).toFixed(3)})`;
-          ctx.stroke();
-        }
-      }
-      if (b.s <= r.L + 2) {
-        const i = idx(r, head);
-        const hx = r.x[i];
-        const hy = r.y[i];
-        // halo très doux, plus présent quand elle file
-        const gr = 10 + Math.min(8, sp / 40);
-        const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, gr);
-        g.addColorStop(0, `rgba(255,255,255,${(op * (0.16 + Math.min(0.14, sp / 1500))).toFixed(3)})`);
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(hx - gr, hy - gr, gr * 2, gr * 2);
-        // la perle : gonflée à l'arrêt, étirée le long du rail quand elle file
-        const rad = (r.ghost ? 3.6 : 2.4) * (1.15 - Math.min(0.35, sp / 900));
-        const stretch = 1 + Math.min(1.6, sp / 160);
-        const ang = Math.atan2(r.ty[i], r.tx[i]);
-        ctx.save();
-        ctx.translate(hx, hy);
-        ctx.rotate(ang);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rad * stretch, rad, 0, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${op.toFixed(3)})`;
-        ctx.fill();
-        ctx.restore();
-      }
+      coulee(b, op);
       if (r.hide) ctx.restore();
     }
 
