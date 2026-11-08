@@ -57,7 +57,7 @@ export function createOnlineEco(): EcoBackend {
     createdAt: d.createdAt,
     resolvedAt: d.resolvedAt,
   });
-  const royale = (r: Doc<'royales'>): RoyaleView => ({ id: r._id, creatorId: r.creatorId, status: r.status, players: r.players, result: r.result, createdAt: r.createdAt, resolvedAt: r.resolvedAt });
+  const royale = (r: Doc<'royales'>): RoyaleView => ({ id: r._id, creatorId: r.creatorId, status: r.status, ...(r.packCount ? { packCount: r.packCount } : {}), players: r.players, result: r.result, createdAt: r.createdAt, resolvedAt: r.resolvedAt });
 
   return {
     get snapshot() {
@@ -97,7 +97,7 @@ export function createOnlineEco(): EcoBackend {
     setDuelSide: async (id, packs, stake) => void (await net.call(api.games.setDuelSide, { duelId: id as Id<'duels'>, packs, stake })),
     leaveDuel: async (id) => void (await net.call(api.games.leaveDuel, { duelId: id as Id<'duels'> })),
     readyDuel: (id) => net.call(api.games.readyDuel, { duelId: id as Id<'duels'> }),
-    createRoyale: async (pack) => await net.call(api.games.createRoyale, { pack }),
+    createRoyale: async (pack, packCount) => await net.call(api.games.createRoyale, { pack, ...(packCount && packCount > 1 ? { packCount } : {}) }),
     joinRoyale: async (id, pack) => void (await net.call(api.games.joinRoyale, { royaleId: id as Id<'royales'>, pack })),
     leaveRoyale: async (id) => void (await net.call(api.games.leaveRoyale, { royaleId: id as Id<'royales'> })),
     startRoyale: async (id) => void (await net.call(api.games.startRoyale, { royaleId: id as Id<'royales'> })),

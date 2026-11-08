@@ -197,6 +197,12 @@
 .gm-pack-b .gm-pack.bebou { background: none; border-color: var(--gm-line-2); color: var(--ink-2); }
 .gm-pack-b.on .gm-pack, .gm-pack-b.on .gm-pack.bebou { background: #fff; border-color: #fff; color: #000; }
 .gm-r-new { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+/* (fusion v1.0.5) Battle Royale multi-boosters : choix du nombre de boosters par joueur, même dessin que le compteur du duel */
+.gm-rcount { margin: 0; gap: 4px; }
+.gm-rcount .muted { width: 100%; margin: 0 0 4px; font: 500 10px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); }
+.gm-pack-b.gm-rc { min-width: 36px; height: 34px; padding: 0 8px; border: 1px solid var(--gm-line-2); border-radius: 2px; font: 600 15px var(--title); color: var(--ink-2); transition: background-color var(--dur-rapide), color var(--dur-rapide), border-color var(--dur-rapide); }
+.gm-pack-b.gm-rc.on { background: #fff; border-color: #fff; color: #000; }
+@media (hover: hover) { .gm-pack-b.gm-rc:not(.on):hover { border-color: #fff; color: #fff; } }
 .gm-mc { border-radius: 2px; }
 
 /* enjeu : fiche Enjeu / Victoire / Défaite / Égalité */

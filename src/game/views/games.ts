@@ -14,7 +14,9 @@ import {
   type RoulettePrice,
   ROULETTE_NUMBERS,
   ROYALE_MAX,
+  ROYALE_MAX_PACKS,
   ROYALE_MIN,
+  royalePackCount,
   duelProblem,
   packChoiceLabel,
   packChoices,
@@ -153,7 +155,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   function hub() {
     body.innerHTML = `<div class="gm-hub">
       <a class="gm-game duel" href="#/jeux/duel"><span class="gm-art-host"></span><span class="gm-idx">01 — 1v1</span><b>Pack Battle</b><span class="gm-desc">Ouverture côte à côte : le plus haut total d'étoiles rafle toutes les cartes.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>2</dd></div><div><dt>Mise</dt><dd>1–${DUEL_MAX_PACKS} boosters</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="duel">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
-      <a class="gm-game royale" href="#/jeux/royale"><span class="gm-art-host"></span><span class="gm-idx">02 — mêlée</span><b>Battle Royale</b><span class="gm-desc">Ouverture simultanée : le meilleur total d'étoiles remporte tout le pot.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>${ROYALE_MIN}–${ROYALE_MAX}</dd></div><div><dt>Mise</dt><dd>1 booster</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="royale">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game royale" href="#/jeux/royale"><span class="gm-art-host"></span><span class="gm-idx">02 — mêlée</span><b>Battle Royale</b><span class="gm-desc">Ouverture simultanée : le meilleur total d'étoiles remporte tout le pot.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>${ROYALE_MIN}–${ROYALE_MAX}</dd></div><div><dt>Mise</dt><dd>1–${ROYALE_MAX_PACKS} boosters</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="royale">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
       <a class="gm-game roulette" href="#/jeux/roulette"><span class="gm-art-host"></span><span class="gm-idx">03 — tirage</span><b>Roulette</b><span class="gm-desc">1 à 3 numéros par tirage, en pièces ou en cartes 4★–6★ : le numéro qui sort rafle le pot.</span><dl class="gm-spec"><div><dt>Numéros</dt><dd>${ROULETTE_NUMBERS}</dd></div><div><dt>Tirages</dt><dd>${ROULETTE_HOURS.map((x) => `${x} h`).join(' · ')}</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="roulette">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
@@ -557,17 +559,21 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   // ═════════════════════════════ Battle Royale
   function royaleLobby() {
     body.innerHTML = `<div class="gm-cols"><div class="gm-panel"><div class="gm-ph"><b>Lancer une Battle Royale</b></div><div class="gm-r-new"></div></div><div class="gm-panel"><div class="gm-ph"><b>Parties en attente</b></div><div class="gm-list"></div></div></div>
-      <div class="gm-rules muted">${ROYALE_MIN} à ${ROYALE_MAX} joueurs, 1 booster chacun (au choix). Le créateur lance dès ${ROYALE_MIN} joueurs (départ automatique à ${ROYALE_MAX}). Ouverture simultanée : le plus haut total d'étoiles remporte toutes les cartes ; ex æquo en tête → les cartes sont partagées au hasard entre eux.</div>`;
+      <div class="gm-rules muted">${ROYALE_MIN} à ${ROYALE_MAX} joueurs. Le créateur fixe la mise : de 1 à ${ROYALE_MAX_PACKS} boosters, le même nombre pour tout le monde (chacun choisit sa sorte). Il lance dès ${ROYALE_MIN} joueurs (départ automatique à ${ROYALE_MAX}). Ouverture simultanée : le plus haut total d'étoiles remporte toutes les cartes ; ex æquo en tête → les cartes sont partagées au hasard entre eux.</div>`;
     let pick: PackChoice = { kind: 'bebou' };
+    let count = 1;
     const nw = body.querySelector<HTMLElement>('.gm-r-new')!;
     const drawNew = () => {
-      nw.innerHTML = `<div class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</div><button class="btn-primary gm-r-go">Créer avec ce booster</button><div class="muted">Réserve : ${packsLeft()} booster${packsLeft() > 1 ? 's' : ''} (débité au lancement).</div>`;
+      // (08/11) mise multi-boosters : nombre fixé à la création, identique pour tous les joueurs
+      const counts = Array.from({ length: ROYALE_MAX_PACKS }, (_, i) => i + 1);
+      nw.innerHTML = `<div class="gm-rcount"><span class="muted">Boosters par joueur</span>${counts.map((n) => `<button class="gm-pack-b gm-rc${n === count ? ' on' : ''}" data-n="${n}" aria-pressed="${n === count}">${n}</button>`).join('')}</div><div class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</div><button class="btn-primary gm-r-go">Créer · ${plural(count, 'booster')} chacun</button><div class="muted">Réserve : ${packsLeft()} booster${packsLeft() > 1 ? 's' : ''} (${count > 1 ? `${count} débités` : 'débité'} au lancement).</div>`;
       nw.querySelectorAll<HTMLElement>('[data-i]').forEach((b) => b.addEventListener('click', () => ((pick = packChoices()[Number(b.dataset.i)]), drawNew())));
+      nw.querySelectorAll<HTMLElement>('[data-n]').forEach((b) => b.addEventListener('click', () => ((count = Number(b.dataset.n)), drawNew())));
       nw.querySelector<HTMLElement>('.gm-r-go')!.addEventListener('click', (e) => {
         const btn = e.currentTarget as HTMLElement;
         void guarded('royale-create', btn, async () => {
           try {
-            const id = await busyButton(btn, backend.eco.createRoyale(pick));
+            const id = await busyButton(btn, backend.eco.createRoyale(pick, count));
             location.hash = `#/jeux/royale/${id}`;
           } catch (err) {
             toast(errMsg(err), 'err');
@@ -584,7 +590,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         for (const r of l.royales) {
           const a = h('a', 'gm-item');
           a.href = `#/jeux/royale/${r.id}`;
-          a.innerHTML = `<span class="gm-avas">${r.players.map((p) => ava(p.name, p.avatarUrl)).join('')}</span><span class="gm-it"><b>${esc(r.players[0].name)}</b> · ${r.players.length}/${ROYALE_MAX} joueurs</span><span class="gm-it-r">${r.players.some((p) => p.userId === l.me) ? 'tu y es' : 'Rejoindre →'}</span>`;
+          a.innerHTML = `<span class="gm-avas">${r.players.map((p) => ava(p.name, p.avatarUrl)).join('')}</span><span class="gm-it"><b>${esc(r.players[0].name)}</b> · ${r.players.length}/${ROYALE_MAX} joueurs · ${plural(royalePackCount(r), 'booster')} chacun</span><span class="gm-it-r">${r.players.some((p) => p.userId === l.me) ? 'tu y es' : 'Rejoindre →'}</span>`;
           list.append(a);
         }
       }),
@@ -610,13 +616,14 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         if (r.status === 'cancelled') return void (room.innerHTML = '<div class="gm-panel"><b>Partie annulée.</b> <a href="#/jeux/royale">Retour</a></div>');
         const uid = myId();
         const inIt = r.players.some((p) => p.userId === uid);
-        room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>${r.players.length}/${ROYALE_MAX} joueurs</b></div>
+        const n = royalePackCount(r);
+        room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>${r.players.length}/${ROYALE_MAX} joueurs · ${plural(n, 'booster')} chacun</b></div>
           <div class="gm-royal-players">${r.players.map((p) => `<div class="gm-rp">${ava(p.name, p.avatarUrl)}<b>${esc(p.name)}</b>${packChip(p.pack)}</div>`).join('')}${Array.from({ length: Math.max(0, ROYALE_MIN - r.players.length) }, () => '<div class="gm-rp empty"><span class="gm-ava">?</span><b>en attente</b></div>').join('')}</div>
           <div class="gm-actions"></div>`;
         const acts = room.querySelector<HTMLElement>('.gm-actions')!;
         const packBar = () => `<span class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</span>`;
         const busyR = isPending('royale');
-        acts.innerHTML = `${inIt || r.players.length < ROYALE_MAX ? `<div class="gm-risk">${riskGrid([['Enjeu', '1 booster chacun'], ['Victoire', 'toutes les cartes ouvertes (5 par joueur)', 'plus'], ['Défaite', 'les 5 cartes de ton booster partent au gagnant', 'minus'], ['Ex æquo', 'cartes partagées au hasard']])}</div>` : ''}${!inIt && r.players.length < ROYALE_MAX ? `${packBar()}<button class="btn-primary gm-rj"${busyR ? ' disabled' : ''}>Rejoindre</button>` : ''}${r.creatorId === uid ? `<button class="btn-primary gm-rs"${r.players.length < ROYALE_MIN || busyR ? ' disabled' : ''}>Lancer (${r.players.length} joueurs)</button>` : ''}${inIt ? `<button class="btn-ghost danger gm-rl">${r.creatorId === uid ? 'Annuler la partie' : 'Quitter'}</button>` : ''}${r.players.length < ROYALE_MIN ? `<div class="muted">Encore ${ROYALE_MIN - r.players.length} joueur${ROYALE_MIN - r.players.length > 1 ? 's' : ''} pour pouvoir lancer.</div>` : ''}`;
+        acts.innerHTML = `${inIt || r.players.length < ROYALE_MAX ? `<div class="gm-risk">${riskGrid([['Enjeu', `${plural(n, 'booster')} chacun`], ['Victoire', `toutes les cartes ouvertes (${n * 5} par joueur)`, 'plus'], ['Défaite', `les ${n * 5} cartes de ${n > 1 ? 'tes boosters' : 'ton booster'} partent au gagnant`, 'minus'], ['Ex æquo', 'cartes partagées au hasard']])}</div>` : ''}${!inIt && r.players.length < ROYALE_MAX ? `${packBar()}<button class="btn-primary gm-rj"${busyR ? ' disabled' : ''}>Rejoindre</button>` : ''}${r.creatorId === uid ? `<button class="btn-primary gm-rs"${r.players.length < ROYALE_MIN || busyR ? ' disabled' : ''}>Lancer (${r.players.length} joueurs)</button>` : ''}${inIt ? `<button class="btn-ghost danger gm-rl">${r.creatorId === uid ? 'Annuler la partie' : 'Quitter'}</button>` : ''}${r.players.length < ROYALE_MIN ? `<div class="muted">Encore ${ROYALE_MIN - r.players.length} joueur${ROYALE_MIN - r.players.length > 1 ? 's' : ''} pour pouvoir lancer.</div>` : ''}`;
         acts.querySelectorAll<HTMLElement>('[data-i]').forEach((b) =>
           b.addEventListener('click', () => {
             pick = packChoices()[Number(b.dataset.i)];
@@ -636,7 +643,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
               }
             });
           });
-        run('.gm-rj', () => backend.eco.joinRoyale(r.id, pick), { confirm: 'Confirmer ? 1 booster en jeu' });
+        run('.gm-rj', () => backend.eco.joinRoyale(r.id, pick), { confirm: `Confirmer ? ${plural(n, 'booster')} en jeu` });
         run('.gm-rs', () => backend.eco.startRoyale(r.id), { confirm: `Confirmer ? On ouvre à ${r.players.length}` });
         run('.gm-rl', () => backend.eco.leaveRoyale(r.id), { after: () => (location.hash = '#/jeux/royale') });
       }),
@@ -645,7 +652,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
 
   async function playRoyale(room: HTMLElement, r: RoyaleView, animate: boolean) {
     const res = r.result!;
-    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>Battle Royale · ${r.players.length} joueurs</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : ''}</div><div class="gm-royal"></div><div class="gm-verdict"></div>`;
+    const n = royalePackCount(r);
+    const per = res.packs[0]?.length ?? n * 5;
+    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>Battle Royale · ${r.players.length} joueurs${n > 1 ? ` · ${plural(n, 'booster')} chacun` : ''}</b>${animate ? '<button class="btn-ghost sm gm-skip">Passer</button>' : ''}</div><div class="gm-royal"></div><div class="gm-verdict"></div>`;
     const g = room.querySelector<HTMLElement>('.gm-royal')!;
     const rows = r.players.map((p, i) => {
       const row = h('div', 'gm-rrow');
@@ -657,13 +666,15 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     });
     let skip = !animate;
     room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
-    for (let i = 0; i < 5; i++) {
-      if (!skip && i === 4) {
+    for (let i = 0; i < per; i++) {
+      const last = i === per - 1;
+      if (!skip && last) {
         g.classList.add('suspense');
         await wait(1400);
       }
       rows.forEach((x, k) => {
         const c = res.packs[k][i];
+        if (!c) return;
         x.slots[i].classList.add('up');
         if (CARD_STARS[c.rarity] >= 5) x.slots[i].classList.add('hot');
         const before = x.total;
@@ -683,7 +694,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       else flip(rows.map((x) => x.row), apply);
       if (!skip) {
         sfx('tick');
-        await wait(i === 4 ? 900 : 650);
+        // plusieurs boosters : rythme un peu plus soutenu (jusqu'à 25 cartes par joueur)
+        await wait(last ? 900 : per > 5 ? 420 : 650);
       }
     }
     g.classList.remove('suspense');

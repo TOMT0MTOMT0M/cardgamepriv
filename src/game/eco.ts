@@ -50,6 +50,8 @@ export interface RoyaleView {
   id: string;
   creatorId: string;
   status: 'open' | 'done' | 'cancelled';
+  /** (08/11) boosters par joueur (absent = 1) */
+  packCount?: number;
   players: Array<{ userId: string; name: string; avatarUrl?: string; pack: PackChoice; bot?: boolean }>;
   result?: { packs: GameCard[][]; stars: number[]; winners: number[]; awarded: GameCard[][] };
   createdAt: number;
@@ -144,7 +146,7 @@ export interface EcoBackend {
   setDuelSide(id: string, packs: PackChoice[], stake: Stake): Promise<void>;
   leaveDuel(id: string): Promise<void>;
   readyDuel(id: string): Promise<{ locked: boolean }>;
-  createRoyale(pack: PackChoice): Promise<string>;
+  createRoyale(pack: PackChoice, packCount?: number): Promise<string>;
   joinRoyale(id: string, pack: PackChoice): Promise<void>;
   leaveRoyale(id: string): Promise<void>;
   startRoyale(id: string): Promise<void>;

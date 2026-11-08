@@ -4,7 +4,7 @@
  *  1. 1v1 PACK BATTLE : chacun mise N boosters (+ un side pot facultatif en pièces et/ou cartes, de valeur égale à ±5 %).
  *     Les deux valident → verrouillage ferme, ouverture simultanée. Plus haut total d'étoiles → remporte TOUT (toutes les
  *     cartes tirées par les deux + les side pots). Égalité parfaite → PUSH : chacun récupère ses cartes et sa mise.
- *  2. PACK BATTLE ROYALE : 3 à 8 joueurs, 1 booster chacun. Le plus haut total remporte toutes les cartes ; ex æquo en
+ *  2. PACK BATTLE ROYALE : 3 à 8 joueurs, le même nombre de boosters chacun (1 à ROYALE_MAX_PACKS, fixé à la création). Le plus haut total remporte toutes les cartes ; ex æquo en
  *     tête → les cartes sont distribuées au hasard entre eux.
  *  3. ROULETTE À CARTES : 36 numéros, 1 à 3 numéros par tirage, mises en pièces ou en cartes 4★-6★ (grille fixe),
  *     tirages à 10 h et 20 h (retours live 02).
@@ -82,6 +82,13 @@ export function duelWinner(packs: GameCard[][][]): { stars: number[]; winner: 0 
 
 export const ROYALE_MIN = 3;
 export const ROYALE_MAX = 8;
+/**
+ * (08/11) Battle Royale multi-boosters : le créateur fixe le nombre de boosters (identique pour TOUS) ; chacun ouvre les
+ * siens, le total d'étoiles de toutes ses cartes départage. 5 au plus (8 joueurs × 5 = 40 boosters ouverts d'un coup).
+ * Parties créées avant : `packCount` absent = 1.
+ */
+export const ROYALE_MAX_PACKS = 5;
+export const royalePackCount = (r: { packCount?: number }) => Math.max(1, Math.min(ROYALE_MAX_PACKS, Math.floor(r.packCount ?? 1)));
 
 /**
  * Résultat d'une Battle Royale : totaux, gagnant(s), et à qui revient chaque carte.

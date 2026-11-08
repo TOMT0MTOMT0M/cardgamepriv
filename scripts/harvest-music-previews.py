@@ -15,6 +15,9 @@ def q(params):
             if '403' in str(e) or '429' in str(e): time.sleep(20)
             else: time.sleep(3)
     return None
+# (08/11) choix imposés par Tom : la récolte ne les remplace jamais (Pitbull → « International Love »)
+FORCED = {'pop-pitbull': {"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/25/73/61/25736155-2993-3277-72bb-6d4f2911eb6c/mzaf_17551155527966317730.plus.aac.p.m4a", "track": "International Love (feat. Chris Brown)", "artist": "Pitbull", "link": "https://music.apple.com/fr/album/international-love-feat-chris-brown/440733026?i=440733046&uo=4"}}
+res.update(FORCED)
 budget = time.time() + float(sys.argv[1] if len(sys.argv) > 1 else 160)
 n = 0
 for c in cards:
