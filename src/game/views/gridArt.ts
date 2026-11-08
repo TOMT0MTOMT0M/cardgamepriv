@@ -204,8 +204,11 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
    */
   interface Wire { quick: number; L: number; trace: SVGUseElement | null; glow: SVGUseElement; layers: Array<{ el: SVGUseElement; len: number }>; head: SVGUseElement; dots: Array<{ el: SVGCircleElement; f: number }>; at: number; busy: boolean }
   const built = c.strokes.map((st, k) => {
+    // deux géométries : le DESSIN (sillon + piste, toujours fixe) et le FLUIDE (coulée, lueur, tête), seul déformé par
+    // le curseur (08/11 : « ça déforme tout alors qu'on devait contrôler uniquement le fluide vivant »)
     const src = svgEl('path', { id: `${id}-s${k}`, d: st.d });
-    defs.append(src);
+    const fluid = svgEl('path', { id: `${id}-f${k}`, d: st.d });
+    defs.append(src, fluid);
     // masque : tout visible sauf la forme qui passe devant
     let mask: string | undefined;
     if (st.hide) {
@@ -214,8 +217,8 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       defs.append(m);
       mask = `url(#${id}-m${k})`;
     }
-    const mk = (g: SVGGElement, a: Record<string, string | number | undefined> = {}) => {
-      const e = svgEl('use', { href: `#${id}-s${k}`, transform: st.transform, mask, ...a });
+    const mk = (g: SVGGElement, a: Record<string, string | number | undefined> = {}, geo: 's' | 'f' = 's') => {
+      const e = svgEl('use', { href: `#${id}-${geo}${k}`, transform: st.transform, mask, ...a });
       g.append(e);
       return e;
     };
@@ -226,10 +229,11 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     return {
       st,
       src,
+      fluid,
       trace: st.ghost ? null : mk(gTrace, { class: st.dim ? 'dim' : 'line' }),
-      glow: mk(gGlow, { class: 'line' }),
-      layers: TAPER.filter((t) => !st.ghost || t.cls !== 'tail').map((t) => ({ el: mk(gWet, { class: t.cls }), len: t.len })),
-      head: mk(gWet, { class: st.ghost ? 'head ball' : 'head' }),
+      glow: mk(gGlow, { class: 'line' }, 'f'),
+      layers: TAPER.filter((t) => !st.ghost || t.cls !== 'tail').map((t) => ({ el: mk(gWet, { class: t.cls }, 'f'), len: t.len })),
+      head: mk(gWet, { class: st.ghost ? 'head ball' : 'head' }, 'f'),
       // gouttes (dans le groupe gluant : la coulée qui arrive s'y fond)
       dots: (st.dots ?? []).map(([x, y, f, r]) => {
         const el = svgEl('circle', { cx: x, cy: y, r: r ?? 3.4, transform: st.transform, class: still ? 'drop on' : 'drop' });
@@ -406,7 +410,8 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   }
   // ═══ FLUIDE MAGNÉTIQUE : l'aura du curseur repousse le liquide (V2, 08/11 : « comme un fluide magnétique repoussé
   // par l'aura du curseur, avec de la vélocité en fonction de la vitesse du curseur »).
-  // Chaque tracé devient une chaîne de points (un tous les ~4 px) montés sur ressort autour de leur place de repos :
+  // Seul le FLUIDE bouge : le dessin (sillon, piste) reste à sa place ; la coulée qui le parcourt est écartée de la
+  // piste par l'aura, puis y revient. Sa géométrie devient une chaîne de points (un tous les ~4 px) sur ressorts :
   //  - répulsion : dans l'aura (rayon ~62 px, qui grandit quand le curseur va vite), le liquide est poussé hors du
   //    curseur, d'autant plus fort que le curseur est rapide ;
   //  - sillage : il est aussi entraîné dans le sens du mouvement du curseur ;
@@ -442,7 +447,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
         tmp.remove();
         return { rx, ry, ox: new Float32Array(n), oy: new Float32Array(n), vx: new Float32Array(n), vy: new Float32Array(n), n };
       });
-      return { src: b.src, d0: b.st.d, chains, cos: Math.cos(ang), sin: Math.sin(ang), cx: m?.[2] ? Number(m[2]) : 0, cy: m?.[3] ? Number(m[3]) : 0, wire: wi };
+      return { src: b.fluid, d0: b.st.d, chains, cos: Math.cos(ang), sin: Math.sin(ang), cx: m?.[2] ? Number(m[2]) : 0, cy: m?.[3] ? Number(m[3]) : 0, wire: wi };
     });
 
   // curseur dans le repère du dessin, vitesse lissée, intensité de l'aura (0 → 1 quand il est là, retombe en partant)
@@ -577,8 +582,9 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
         b.src.setAttribute('d', d);
       } else if (b.src.getAttribute('d') !== b.d0) b.src.setAttribute('d', b.d0);
     }
-    // le liquide agité par un geste vif : une impulsion part sur le tracé le plus proche
-    if (nearest >= 0 && spd > 700 && now - lastStir > 650 && drawn) {
+    // le curseur qui bouge près d'une piste y appelle du fluide (une coulée part sur la piste la plus proche) : c'est
+    // lui qu'on pousse et qu'on entraîne ensuite — plus le geste est vif, plus il en vient
+    if (nearest >= 0 && spd > 90 && now - lastStir > (spd > 700 ? 450 : 900) && drawn) {
       lastStir = now;
       flow(wires[nearest], 0, PULSE_SPEED * 1.8, false);
     }
