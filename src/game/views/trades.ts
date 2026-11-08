@@ -374,13 +374,19 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           .join('')
       : '<span class="it none">rien</span>';
   }
+  /** Échange reçu en cours de confirmation / en cours d'envoi / dernière erreur — survivent aux redessins. */
+  let confirmingTrade: string | null = null;
+  const busyTrades = new Set<string>();
+  const tradeErr = new Map<string, string>();
   function renderPending() {
     const { incoming, outgoing } = backend.state.trades;
+    if (confirmingTrade && !incoming.some((t) => t.id === confirmingTrade)) confirmingTrade = null;
     pendingEl.innerHTML = '';
     if (!incoming.length && !outgoing.length) pendingEl.innerHTML = `<div class="muted">Aucun échange en attente. ${backend.state.friends.length ? 'Choisis un ami ci-dessous : on te montre ce que vous pouvez échanger.' : ''}</div>`;
     const owned = mine();
     const row = (t: TradeView, dir: 'in' | 'out') => {
       const r = h('div', `trade ${dir}${countering?.id === t.id ? ' countering' : ''}`);
+      r.dataset.tid = t.id;
       const tag = t.counterOf ? '<span class="ctr-tag">contre-proposition</span>' : '';
       const when = `<span class="when">${ago(t.createdAt)}</span>`;
       if (dir === 'in') {
@@ -390,30 +396,53 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           const have = owned.get(cardKey(it))?.count ?? 0;
           return have > 0 && have <= it.count;
         });
-        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> te propose ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">Tu donnerais ton dernier exemplaire de ${lasts.map((it) => esc(name(it.cardId))).join(', ')}.</div>` : ''}<div class="act"><button class="linkish no">Refuser</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-primary ok">Accepter</button></div>`;
+        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> te propose ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">Tu donnerais ton dernier exemplaire de ${lasts.map((it) => esc(name(it.cardId))).join(', ')}.</div>` : ''}${tradeErr.get(t.id) ? `<div class="fair warn t-err" role="alert">${esc(tradeErr.get(t.id)!)}</div>` : ''}${confirmingTrade === t.id ? `<div class="act t-confirm"><span class="cf-q">Confirmer l’échange ?</span><button class="btn-ghost cf-no">Annuler</button><button class="btn-primary cf-ok">Oui, échanger</button></div>` : `<div class="act"><button class="linkish no">Refuser</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-primary ok">Accepter</button></div>`}`;
       } else r.innerHTML = `<div class="who">À <b>${esc(t.toName)}</b> · tu donnes ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested)}</div><div class="act"><span class="muted">en attente…</span><button class="btn-ghost cancel">Annuler</button></div>`;
-      const act = async (fn: () => Promise<void>, ok: string) => {
-        if (r.dataset.busy) return; // (anti double-toucher : les boutons sont aussi désactivés)
+      const act = async (fn: () => Promise<void>, ok: string, btn?: HTMLElement | null) => {
+        if (r.dataset.busy || busyTrades.has(t.id)) return; // (anti double-toucher : les boutons sont aussi désactivés)
         r.dataset.busy = '1';
+        busyTrades.add(t.id);
+        tradeErr.delete(t.id);
+        r.querySelector('.t-err')?.remove();
         r.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = true));
         try {
-          await fn();
+          // bouton « en cours… » + message si le serveur tarde (au lieu d'un bouton figé sans rien dire — retours 08/11)
+          await (btn ? busyButton(btn, fn()) : fn());
+          if (confirmingTrade === t.id) confirmingTrade = null;
           toast(ok, 'ok');
           void loadHistory();
         } catch (e) {
-          toast(errMsg(e), 'err');
-          r.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = false));
+          const m = errMsg(e);
+          console.warn('[échange]', e);
+          toast(m, 'err');
+          // l'erreur reste aussi écrite DANS l'échange (un toast se rate vite)
+          tradeErr.set(t.id, m);
+          confirmingTrade = null;
+          if (r.isConnected) renderPending();
         } finally {
+          busyTrades.delete(t.id);
           delete r.dataset.busy;
+          if (r.isConnected) r.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = false));
         }
       };
-      // irréversibles : second toucher (« Confirmer ? »), la jauge et l'avertissement sont juste au-dessus
-      r.querySelector<HTMLElement>('.ok')?.addEventListener('click', (e) => {
-        if (!confirmTap(e.currentTarget as HTMLElement, 'Confirmer l’échange ?')) return;
-        void act(async () => (await backend.respondTrade(t.id, true), shell.sfx.chime(3, 0.08)), 'Échange conclu ! Les cartes sont dans ta collection.');
+      // (retours 08/11 — « j'appuie sur accepter il ne se passe rien ») : plus de « second toucher » sur le même bouton
+      // (armement de 3 s, perdu au moindre redessin ou au double-toucher trop rapide) — Accepter ouvre une vraie
+      // confirmation dans l'échange, qui reste affichée jusqu'à « Oui, échanger » ou « Annuler ».
+      r.querySelector<HTMLElement>('.ok')?.addEventListener('click', () => {
+        confirmingTrade = t.id;
+        tradeErr.delete(t.id);
+        renderPending();
+        pendingEl.querySelector<HTMLElement>(`[data-tid="${CSS.escape(t.id)}"] .cf-ok`)?.focus();
+      });
+      r.querySelector<HTMLElement>('.cf-no')?.addEventListener('click', () => {
+        confirmingTrade = null;
+        renderPending();
+      });
+      r.querySelector<HTMLElement>('.cf-ok')?.addEventListener('click', (e) => {
+        void act(async () => (await backend.respondTrade(t.id, true), shell.sfx.chime(3, 0.08)), 'Échange conclu ! Les cartes sont dans ta collection.', e.currentTarget as HTMLElement);
       });
       r.querySelector<HTMLElement>('.no')?.addEventListener('click', (e) => {
-        if (!confirmTap(e.currentTarget as HTMLElement, 'Refuser ?')) return;
+        if (!confirmTap(e.currentTarget as HTMLElement, 'Refuser ?', 4000, `tr-no-${t.id}`)) return;
         void act(() => backend.respondTrade(t.id, false), 'Échange refusé.');
       });
       r.querySelector('.cancel')?.addEventListener('click', () => act(() => backend.cancelTrade(t.id), 'Proposition annulée.'));

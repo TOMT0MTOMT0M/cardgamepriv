@@ -27,6 +27,7 @@ _to_delete/
 # fichiers de travail de Claude (aperçus, captures) — hors git
 .claude-tmp/
 .discord-bot-token
+.annonce-*.fait
 
 # patches et exports de travail — hors git (le code vit dans les commits)
 *.patch

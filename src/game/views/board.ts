@@ -544,7 +544,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
         ${live && (o.status === 'pending' || o.status === 'countered') ? `<div class="ob-act"><button class="linkish ob-no">Refuser</button><button class="btn-ghost ob-ctrb">${o.status === 'countered' ? 'Modifier la contre-offre' : 'Contre-offre'}</button>${o.status === 'pending' ? '<button class="btn-primary ob-ok">Accepter</button>' : ''}</div>` : ''}`;
       r.querySelector<HTMLButtonElement>('.ob-ok')?.addEventListener('click', (e) => {
         const b = e.currentTarget as HTMLButtonElement;
-        if (!confirmTap(b, 'Confirmer l’échange ?')) return;
+        if (!confirmTap(b, 'Confirmer l’échange ?', 4000, `ob-ok-${o.id}`)) return;
         void guarded(`board-offer-${o.id}`, b, async () => {
           try {
             await backend.acceptOffer(o.id);
@@ -557,7 +557,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
       });
       r.querySelector<HTMLButtonElement>('.ob-no')?.addEventListener('click', (e) => {
         const b = e.currentTarget as HTMLButtonElement;
-        if (!confirmTap(b, 'Refuser ?')) return;
+        if (!confirmTap(b, 'Refuser ?', 4000, `ob-no-${o.id}`)) return;
         void guarded(`board-offer-${o.id}`, b, async () => {
           try {
             await backend.declineOffer(o.id);
@@ -646,7 +646,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
         <div class="ob-act"><button class="linkish ob-no">Refuser</button><button class="btn-ghost re">Refaire une offre</button><button class="btn-primary ob-ok">Accepter</button></div>`;
       side.querySelector<HTMLButtonElement>('.ob-ok')!.addEventListener('click', (e) => {
         const b = e.currentTarget as HTMLButtonElement;
-        if (!confirmTap(b, 'Confirmer l’échange ?')) return;
+        if (!confirmTap(b, 'Confirmer l’échange ?', 4000, `bm-ok-${mo.id}`)) return;
         void guarded(`board-my-${mo.id}`, b, async () => {
           try {
             await backend.respondCounter(mo.id, true);
@@ -659,7 +659,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
       });
       side.querySelector<HTMLButtonElement>('.ob-no')!.addEventListener('click', (e) => {
         const b = e.currentTarget as HTMLButtonElement;
-        if (!confirmTap(b, 'Refuser ?')) return;
+        if (!confirmTap(b, 'Refuser ?', 4000, `bm-no-${mo.id}`)) return;
         void guarded(`board-my-${mo.id}`, b, async () => {
           try {
             await backend.respondCounter(mo.id, false);

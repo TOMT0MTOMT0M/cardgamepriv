@@ -201,6 +201,8 @@ export default defineSchema({
     themeId: v.optional(v.string()),
     /** pièces gagnées à l'ouverture (tirées avec le booster, créditées au dévoilement) */
     coins: v.optional(v.number()),
+    /** (08/11) god pack (1 sur 1 000) : toutes les cartes 4★+, au moins une 5★ et une 6★ — animation dédiée */
+    god: v.optional(v.boolean()),
     createdAt: v.number(),
     revealedAt: v.optional(v.number()),
   })

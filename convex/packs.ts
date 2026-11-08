@@ -4,7 +4,7 @@ import { internalAction, mutation, query, type MutationCtx } from './_generated/
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserIdByToken, requireUser } from './auth';
 import { RARITY_LABEL, RARITY_TIER, packKindValidator, rarityValidator, type RarityId } from './cardsCatalog';
-import { isValidPackRequest, rollPack, type PackRequest } from '../src/core/packRoll';
+import { isValidPackRequest, rollPackEx, type PackRequest } from '../src/core/packRoll';
 import { artPath, bebouOddsLabel, catalogEntry, hasArt, subthemeById, themeById, BEBOU_PACK } from '../src/core/sets/themes';
 import { applyRegen, fmtCountdown } from '../src/core/packRegen';
 import { bumpMissions } from './missions';
@@ -102,7 +102,8 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
   const seenInThisPack = new Set<string>();
 
   // tirage partagé avec le client (étoiles, pool du booster, 0,1 % de Bébou par bébou pack)
-  for (const { card, rarity } of rollPack(req, secureRandomFloat)) {
+  const rolled = rollPackEx(req, secureRandomFloat);
+  for (const { card, rarity } of rolled.slots) {
     if (RARITY_TIER[rarity] > RARITY_TIER[maxRarity]) {
       maxRarity = rarity;
     }
@@ -160,6 +161,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     themeId: req.themeId,
     // pièces d'ouverture (spec économie) : tirées ici avec le booster, créditées au dévoilement
     coins: rollPackCoins(req.kind, secureRandomFloat),
+    ...(rolled.god ? { god: true } : {}),
   });
 
   return (await ctx.db.get(packId))!;
@@ -208,8 +210,17 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
   await ctx.db.patch(user._id, {
     totalPacksOpened: user.totalPacksOpened + 1,
     lastSeenAt: now,
-    statusText: 'Contemple son tirage',
+    statusText: pack.god ? 'Vient d’ouvrir un GOD PACK' : 'Contemple son tirage',
   });
+  if (pack.god)
+    await ctx.db.insert('activityFeed', {
+      userId: user._id,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      kind: 'pull',
+      message: `✦ ${user.displayName} a ouvert un GOD PACK ! (1 booster sur 1 000)`,
+      createdAt: now,
+    });
   // parrainage (retours live 02, §10) : au 10e booster du filleul, 10 boosters pour son parrain
   await payReferrer(ctx, user._id);
 

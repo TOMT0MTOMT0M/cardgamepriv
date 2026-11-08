@@ -1,4 +1,4 @@
-import { PURGE_08_11, RERATE_08_11 } from './curation';
+import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11 } from './curation';
 import { artV } from '../artRev';
 /**
  * Registre des THÈMES — données pures, sans three.js : partagé par le client (boutique, collection, échanges) et par
@@ -371,7 +371,7 @@ export const catalogInstalled = () => installed;
  * ne bougent pas), raretés renotées. Une seule fois, avant l'indexation.
  */
 function applyCuration() {
-  const purge = new Set(PURGE_08_11);
+  const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL]);
   for (const s of SUBTHEMES) {
     const before = s.cards.length;
     const kept = s.cards.filter((c) => !purge.has(c.id));

@@ -3393,3 +3393,35 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .maj-pill { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 60; display: flex; align-items: center; gap: 12px; transform: translate(-50%, 16px); padding: 7px 8px 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.92); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; font: 500 12px var(--mono); letter-spacing: 0.04em; opacity: 0; transition: opacity var(--dur-standard), transform var(--dur-emphatique) var(--ease-entree); white-space: nowrap; }
 .maj-pill.on { opacity: 1; transform: translate(-50%, 0); }
 .maj-pill button { border: 0; border-radius: 999px; padding: 6px 12px; background: #fff; color: #000; font: 600 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
+
+/* ===== (08/11) GOD PACK : séquence d'ouverture + aura (src/game/godPack.ts) ===== */
+.god-intro { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: #000; color: #fff; opacity: 0; transition: opacity 320ms var(--ease-standard); pointer-events: auto; overflow: hidden; }
+.god-intro.on { opacity: 1; }
+.god-intro.out { opacity: 0; transition-duration: 500ms; pointer-events: none; }
+.god-intro .gi-in { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 20px; }
+.god-intro .gi-k { margin: 0 0 18px; font: 600 12px var(--mono); letter-spacing: 0.34em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); opacity: 0; animation: gi-fade 500ms 200ms var(--ease-entree) forwards; }
+.god-intro .gi-t { position: relative; margin: 0; font: 400 clamp(56px, 15vw, 150px)/0.95 var(--display); letter-spacing: 0.04em; white-space: nowrap; color: #fff; text-shadow: 0 0 28px rgba(255, 255, 255, 0.35); }
+/* reflet arc-en-ciel (code couleur des 6★) qui balaie le titre : multiplié sur le texte blanc, invisible sur le noir */
+.god-intro .gi-t::after { content: ''; position: absolute; inset: -0.1em -0.2em; pointer-events: none; mix-blend-mode: multiply;
+  background: linear-gradient(100deg, #fff 0%, #fff 30%, #ff5e5e 38%, #ffb347 44%, #fff36b 50%, #6bff9e 56%, #5ec8ff 62%, #b07cff 68%, #fff 76%, #fff 100%);
+  background-size: 300% 100%; background-position: 100% 0; animation: gi-sheen 1.9s 700ms linear forwards; }
+.god-intro .gi-t span { display: inline-block; opacity: 0; filter: blur(14px); transform: translateY(0.18em) scale(1.12); animation: gi-letter 520ms calc(350ms + var(--i) * 70ms) var(--ease-entree) forwards; }
+.god-intro .gi-s { margin: 22px 0 0; font: 500 13px var(--mono); letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.7); opacity: 0; animation: gi-fade 500ms 1250ms var(--ease-entree) forwards; }
+.god-intro .gi-scan { position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8) 30%, rgba(255, 255, 255, 0.8) 70%, transparent); box-shadow: 0 0 30px 3px rgba(255, 255, 255, 0.2); animation: gi-scan 1.6s linear forwards; }
+.god-intro .gi-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.god-intro.flash .gi-flash { animation: gi-flash 450ms ease-out forwards; }
+.god-intro.reduced .gi-t span, .god-intro.reduced .gi-k, .god-intro.reduced .gi-s { animation: gi-fade 300ms forwards; filter: none; transform: none; }
+.god-intro.reduced .gi-scan { display: none; }
+@keyframes gi-letter { to { opacity: 1; filter: none; transform: none; } }
+@keyframes gi-fade { to { opacity: 1; } }
+@keyframes gi-sheen { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+@keyframes gi-scan { from { transform: translateY(0); } to { transform: translateY(100vh); } }
+@keyframes gi-flash { 0% { opacity: 0; } 25% { opacity: 0.95; } 100% { opacity: 0; } }
+/* aura arc-en-ciel pendant toute l'ouverture du god pack (au-dessus de la 3D, sans capter les clics) */
+body.god .gl-host::after { content: ''; position: fixed; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(60% 55% at 50% 52%, transparent 55%, rgba(255, 94, 94, 0.18) 70%, rgba(94, 200, 255, 0.18) 82%, rgba(176, 124, 255, 0.22) 100%); animation: god-aura 3.2s linear infinite; mix-blend-mode: screen; }
+@keyframes god-aura { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { body.god .gl-host::after { animation: none; } }
+/* (retours 08/11) échange reçu : Accepter ouvre une confirmation qui reste affichée (plus de second toucher fragile) */
+.trade .t-confirm { padding: 8px 8px 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.35); }
+.trade .t-confirm .cf-q { margin-right: auto; font-weight: 600; color: var(--ink); }
+.trade .t-err { margin-top: 2px; }

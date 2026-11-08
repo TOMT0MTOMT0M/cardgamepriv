@@ -576,6 +576,7 @@ class GameNetClient {
     cards: Doc<'packOpens'>['cards'];
     packKind: 'theme' | 'bebou';
     themeId?: string;
+    god?: boolean;
   }> {
     const shape = (p: Doc<'packOpens'>) => ({
       packId: p._id,
@@ -583,6 +584,7 @@ class GameNetClient {
       cards: p.cards,
       packKind: p.packKind ?? ('bebou' as const),
       themeId: p.themeId,
+      ...(p.god ? { god: true } : {}),
     });
     // un pack scellé non ouvert est rendu tel quel (anti-reroll côté serveur aussi)
     if (this.state.sealedPack) return shape(this.state.sealedPack);
