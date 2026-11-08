@@ -35,6 +35,10 @@ admin, base Convex séparée) et sort en une fois vers la prod.
   s'allument), puis une impulsion repasse de temps en temps ; au survol, le circuit s'emballe. Ordinateur : platine en
   haut de la carte, texte dessous ; téléphone : fragment dans le coin, sans filtre, impulsions plus rares. Rien ne tourne
   quand la carte est hors écran ou l'onglet caché ; mouvement réduit = circuit immobile déjà tracé.
+  Retouche (« plus fluide, moins géométrique, plus fondu, presque organique ») : angles arrondis en grandes courbes
+  (un carré d'une case devient un cercle, l'octogone devient une roue, les rayons de la Royale s'enroulent en turbine),
+  coulée effilée en trois épaisseurs fondues + lueur floue, avancée de fluide épais (départ lent, poussée, étirement),
+  tête qui respire, gouttes qui gonflent aux extrémités ; les points de départ / d'arrivée restent sur la grille.
 
 ---
 
