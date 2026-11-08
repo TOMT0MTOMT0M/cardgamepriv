@@ -107,18 +107,20 @@
 .gm-art-host { position: absolute; left: 0; top: 0; z-index: -1; pointer-events: none; opacity: 0.8; transition: opacity var(--dur-emphatique); background: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1.4px) 7px 7px / 22px 22px; -webkit-mask: radial-gradient(closest-side, #000 74%, transparent); mask: radial-gradient(closest-side, #000 74%, transparent); }
 .gm-game:hover .gm-art-host { opacity: 1; }
 .gm-art { display: block; overflow: visible; }
-.gm-art path { stroke-linecap: round; stroke-linejoin: round; }
+.gm-art use { stroke-linecap: round; stroke-linejoin: round; }
 /* piste au repos : un sillon fondu (halo large et pâle + filet) */
-.gm-art .groove path { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; }
+.gm-art .groove .line { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; }
 .gm-art .groove .halo { stroke: rgba(255, 255, 255, 0.035); stroke-width: 8; }
-.gm-art .trace path { stroke: rgba(255, 255, 255, 0.58); stroke-width: 1.5; }
+.gm-art .trace .line { stroke: rgba(255, 255, 255, 0.58); stroke-width: 1.5; }
 .gm-art .trace .dim { stroke: rgba(255, 255, 255, 0.3); stroke-width: 1.2; }
 /* la goutte : lueur floue (ordinateur) ou trait large et pâle (téléphone) */
-.gm-art .glow path { stroke: #fff; stroke-width: 12; }
+.gm-art .glow use { stroke: #fff; stroke-width: 12; }
 .gm-art .glow:not(.soft) { opacity: 0.35; }
-.gm-art .glow:not(.soft) path { stroke-width: 18; }
+.gm-art .glow:not(.soft) use { stroke-width: 18; }
 /* coulée effilée : la plus fine est la plus longue ; fusionnées par le filtre gluant sur ordinateur */
-.gm-art .wet path { stroke: #fff; }
+.gm-art .wet use { stroke: #fff; }
+/* aura du curseur (fluide magnétique, views/gridArt.ts) : un champ très pâle, au filet pointillé */
+.gm-art .aura { fill: rgba(255, 255, 255, 0.03); stroke: rgba(255, 255, 255, 0.16); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0; pointer-events: none; }
 .gm-art .wet .tail { stroke-width: 2.6; }
 .gm-art .wet .mid { stroke-width: 5.2; }
 .gm-art .wet .core { stroke-width: 7.6; }

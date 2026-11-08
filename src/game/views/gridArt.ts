@@ -197,8 +197,15 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   const gWet = svgEl('g', fine ? { class: 'wet', filter: `url(#${id}-goo)` } : { class: 'wet' });
   svg.append(gGroove, gTrace, gGlow, gWet);
 
-  interface Wire { quick: number; L: number; trace: SVGPathElement | null; glow: SVGPathElement; layers: Array<{ el: SVGPathElement; len: number }>; head: SVGPathElement; dots: Array<{ el: SVGCircleElement; f: number }>; at: number; busy: boolean }
+  /**
+   * Chaque tracé n'a qu'UNE géométrie (un chemin source dans <defs>) ; toutes ses couches (sillon, piste, lueur,
+   * coulée, tête) sont des <use> qui la reprennent. Quand le fluide est déformé (curseur, plus bas), on ne réécrit
+   * donc qu'un seul `d` par tracé et par image.
+   */
+  interface Wire { quick: number; L: number; trace: SVGUseElement | null; glow: SVGUseElement; layers: Array<{ el: SVGUseElement; len: number }>; head: SVGUseElement; dots: Array<{ el: SVGCircleElement; f: number }>; at: number; busy: boolean }
   const built = c.strokes.map((st, k) => {
+    const src = svgEl('path', { id: `${id}-s${k}`, d: st.d });
+    defs.append(src);
     // masque : tout visible sauf la forme qui passe devant
     let mask: string | undefined;
     if (st.hide) {
@@ -208,18 +215,19 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       mask = `url(#${id}-m${k})`;
     }
     const mk = (g: SVGGElement, a: Record<string, string | number | undefined> = {}) => {
-      const e = svgEl('path', { d: st.d, transform: st.transform, mask, ...a });
+      const e = svgEl('use', { href: `#${id}-s${k}`, transform: st.transform, mask, ...a });
       g.append(e);
       return e;
     };
     if (!st.ghost) {
       mk(gGroove, { class: 'halo' });
-      mk(gGroove);
+      mk(gGroove, { class: 'line' });
     }
     return {
       st,
-      trace: st.ghost ? null : mk(gTrace, { class: st.dim ? 'dim' : undefined }),
-      glow: mk(gGlow),
+      src,
+      trace: st.ghost ? null : mk(gTrace, { class: st.dim ? 'dim' : 'line' }),
+      glow: mk(gGlow, { class: 'line' }),
       layers: TAPER.filter((t) => !st.ghost || t.cls !== 'tail').map((t) => ({ el: mk(gWet, { class: t.cls }), len: t.len })),
       head: mk(gWet, { class: st.ghost ? 'head ball' : 'head' }),
       // gouttes (dans le groupe gluant : la coulée qui arrive s'y fond)
@@ -230,15 +238,19 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       }),
     };
   });
+  // l'aura du curseur (un halo très pâle), sous la coulée
+  const aura = svgEl('circle', { class: 'aura', cx: -999, cy: -999, r: 1 });
+  gGroove.before(aura);
   host.append(svg);
   // longueurs réelles (mesurées une fois l'élément dans la page)
   const wires: Wire[] = built.map((b) => {
-    const L = b.head.getTotalLength();
+    const L = b.src.getTotalLength();
     const span = L + TAIL;
-    const gap = span * 2 + 20;
-    // trace : un seul tiret de longueur « span » dont l'avant suit la tête → la piste apparaît derrière la goutte
-    b.trace?.setAttribute('stroke-dasharray', `${span} ${gap}`);
-    b.trace?.setAttribute('stroke-dashoffset', String(still ? 0 : span));
+    // (marge : le fluide déformé par le curseur est un peu plus long que la piste au repos)
+    const gap = span * 3 + 40;
+    // trace : un seul tiret dont l'avant suit la tête → la piste apparaît derrière la goutte
+    b.trace?.setAttribute('stroke-dasharray', `${span * 1.4} ${gap}`);
+    b.trace?.setAttribute('stroke-dashoffset', String(still ? 0 : span * 1.4));
     // (au repos, chaque tiret est rangé bien AVANT le début de la piste : aucune pointe ronde ne dépasse)
     b.glow.setAttribute('stroke-dasharray', `${GLOW} ${gap}`);
     b.glow.setAttribute('stroke-dashoffset', String(GLOW + 40));
@@ -305,11 +317,11 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     const o: KeyframeAnimationOptions = { delay, duration, easing: 'linear', fill: 'backwards' };
     /** avant de la couche (px) à l'instant t, avec un retard `lag` (part de la durée) ; elle finit d'exister à `end` */
     const front = (t: number, lag: number, end: number) => curve(Math.min(1, Math.max(0, (t - lag) / (1 - lag)))) * end;
-    const sample = (len: number, lag: number, end: number, extra?: (t: number, i: number) => Keyframe) =>
+    const sample = (len: number, lag: number, end: number, extra?: (t: number) => Keyframe) =>
       Array.from({ length: SAMPLES + 1 }, (_, i) => {
         const t = i / SAMPLES;
         // (opacité 0 au tout début : pendant l'attente d'un départ décalé, aucune goutte ne patiente au point de départ)
-        return { offset: t, strokeDashoffset: len - front(t, lag, end), opacity: Math.min(1, t / (0.03 + lag)), ...(extra?.(t, i) ?? {}) } as Keyframe;
+        return { offset: t, strokeDashoffset: len - front(t, lag, end), opacity: Math.min(1, t / (0.03 + lag)), ...(extra?.(t) ?? {}) } as Keyframe;
       });
     // vitesse instantanée de la tête (normalisée) → épaisseur : freinée = gonflée, lancée = étirée
     const speedAt = (t: number) => Math.abs(curve(Math.min(1, t + 0.012)) - curve(Math.max(0, t - 0.012))) / 0.024;
@@ -323,7 +335,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     if (draw && w.trace) {
       // la piste reste : l'attribut prend sa valeur finale ; elle se dépose sous la goutte (même retard que le cœur)
       w.trace.setAttribute('stroke-dashoffset', '0');
-      run(w.trace, sample(span, 0.025, w.L + TAIL, () => ({ opacity: 1 })), o);
+      run(w.trace, sample(span * 1.4, 0.025, w.L + TAIL, () => ({ opacity: 1 })), o);
     }
     // gouttes : elles gonflent quand la tête passe sur elles, puis se posent
     for (const dt of w.dots) {
@@ -392,6 +404,202 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     card.addEventListener('pointerenter', enter);
     card.addEventListener('pointerleave', leaveH);
   }
+  // ═══ FLUIDE MAGNÉTIQUE : l'aura du curseur repousse le liquide (V2, 08/11 : « comme un fluide magnétique repoussé
+  // par l'aura du curseur, avec de la vélocité en fonction de la vitesse du curseur »).
+  // Chaque tracé devient une chaîne de points (un tous les ~4 px) montés sur ressort autour de leur place de repos :
+  //  - répulsion : dans l'aura (rayon ~62 px, qui grandit quand le curseur va vite), le liquide est poussé hors du
+  //    curseur, d'autant plus fort que le curseur est rapide ;
+  //  - sillage : il est aussi entraîné dans le sens du mouvement du curseur ;
+  //  - tension de surface : chaque point tire ses voisins (la déformation reste une courbe, jamais une pointe) ;
+  //  - ressort amorti (ζ ≈ 0,53) : il revient à sa place en ondulant, comme un liquide épais.
+  // La boucle ne tourne que pendant l'interaction et le retour au calme, puis la géométrie d'origine est remise.
+  const K = 64; // raideur du ressort de rappel
+  const DAMP = 8.5; // amortissement (ζ ≈ 0,53 : il ondule deux ou trois fois puis se pose)
+  const TENSION = 380; // tension de surface (entre voisins)
+  const PUSH = 1500; // répulsion maximale (px/s²) — ≈ 23 px d'écart au cœur de l'aura, curseur immobile
+  const DRAG = 5.5; // entraînement par la vitesse du curseur
+  const MAXOFF = 30;
+  interface Chain { rx: Float32Array; ry: Float32Array; ox: Float32Array; oy: Float32Array; vx: Float32Array; vy: Float32Array; n: number }
+  interface Body { src: SVGPathElement; d0: string; chains: Chain[]; cos: number; sin: number; cx: number; cy: number; wire: number }
+  let bodies: Body[] | null = null;
+  const buildBodies = (): Body[] =>
+    built.map((b, wi) => {
+      const m = /rotate\(\s*(-?[\d.]+)(?:[ ,]+(-?[\d.]+)[ ,]+(-?[\d.]+))?\s*\)/.exec(b.st.transform ?? '');
+      const ang = m ? (Number(m[1]) * Math.PI) / 180 : 0;
+      // un sous-chemin par « M » (les 36 crans sont 36 petits sous-chemins : on ne les relie pas entre eux)
+      const chains = b.st.d.split(/(?=M)/).filter((x) => x.trim()).map((sub) => {
+        const tmp = svgEl('path', { d: sub });
+        defs.append(tmp);
+        const L = tmp.getTotalLength();
+        const n = Math.max(2, Math.round(L / 4) + 1);
+        const rx = new Float32Array(n);
+        const ry = new Float32Array(n);
+        for (let i = 0; i < n; i++) {
+          const pt = tmp.getPointAtLength((L * i) / (n - 1));
+          rx[i] = pt.x;
+          ry[i] = pt.y;
+        }
+        tmp.remove();
+        return { rx, ry, ox: new Float32Array(n), oy: new Float32Array(n), vx: new Float32Array(n), vy: new Float32Array(n), n };
+      });
+      return { src: b.src, d0: b.st.d, chains, cos: Math.cos(ang), sin: Math.sin(ang), cx: m?.[2] ? Number(m[2]) : 0, cy: m?.[3] ? Number(m[3]) : 0, wire: wi };
+    });
+
+  // curseur dans le repère du dessin, vitesse lissée, intensité de l'aura (0 → 1 quand il est là, retombe en partant)
+  let mx = -9999;
+  let my = -9999;
+  let cvx = 0;
+  let cvy = 0;
+  let lastT = 0;
+  let inside = false;
+  let field = 0;
+  let raf = 0;
+  let lastFrame = 0;
+  let lastStir = 0;
+  /** dernier instant où le curseur était là (garde-fou : 5 s après son départ, la boucle s'arrête quoi qu'il arrive) */
+  let lastSeen = 0;
+  const toSvg = (e: PointerEvent) => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+    return pt;
+  };
+  const onMove = (e: PointerEvent) => {
+    const pt = toSvg(e);
+    if (!pt) return;
+    const t = performance.now();
+    if (lastT && t - lastT < 200) {
+      const dt = Math.max(8, t - lastT) / 1000;
+      // vitesse lissée (un capteur nerveux ferait trembler le liquide)
+      cvx = cvx * 0.55 + ((pt.x - mx) / dt) * 0.45;
+      cvy = cvy * 0.55 + ((pt.y - my) / dt) * 0.45;
+    } else {
+      cvx = 0;
+      cvy = 0;
+    }
+    mx = pt.x;
+    my = pt.y;
+    lastT = t;
+    lastSeen = t;
+    inside = true;
+    wake();
+  };
+  const onOut = () => {
+    inside = false;
+    lastT = 0;
+  };
+  // (au doigt, le liquide se calme dès qu'on lève le doigt)
+  const onUp = (e: PointerEvent) => e.pointerType !== 'mouse' && onOut();
+  const wake = () => {
+    if (raf || still) return;
+    bodies ??= buildBodies();
+    lastFrame = performance.now();
+    raf = requestAnimationFrame(tick);
+  };
+  const tick = (now: number) => {
+    raf = 0;
+    if (!host.isConnected || !bodies) return;
+    let dt = Math.min(1 / 30, (now - lastFrame) / 1000);
+    lastFrame = now;
+    field += ((inside ? 1 : 0) - field) * Math.min(1, dt * (inside ? 7 : 3.5));
+    if (!inside) {
+      cvx *= 0.9;
+      cvy *= 0.9;
+    }
+    const spd = Math.hypot(cvx, cvy);
+    const A = 62 + Math.min(70, spd * 0.06);
+    const A2 = A * A;
+    const boost = field * (1 + Math.min(2.2, spd / 520));
+    aura.setAttribute('cx', mx.toFixed(1));
+    aura.setAttribute('cy', my.toFixed(1));
+    aura.setAttribute('r', (A * (0.6 + 0.4 * field)).toFixed(1));
+    aura.style.opacity = String(field * (0.35 + Math.min(0.65, spd / 1400)));
+    let energy = 0;
+    let nearest = -1;
+    let nearD = Infinity;
+    // (pas de temps découpé si l'image a été longue : la tension de surface reste stable)
+    const sub = dt > 1 / 50 ? 2 : 1;
+    dt /= sub;
+    for (const b of bodies) {
+      const { cos, sin, cx, cy } = b;
+      let moved = false;
+      for (const ch of b.chains) {
+        const { rx, ry, ox, oy, vx, vy, n } = ch;
+        for (let s = 0; s < sub; s++) {
+          for (let i = 0; i < n; i++) {
+            const lx = rx[i] + ox[i];
+            const ly = ry[i] + oy[i];
+            // repère local (tracé tourné) → repère du dessin
+            const wx = cx + (lx - cx) * cos - (ly - cy) * sin;
+            const wy = cy + (lx - cx) * sin + (ly - cy) * cos;
+            const dx = wx - mx;
+            const dy = wy - my;
+            const d2 = dx * dx + dy * dy;
+            let fx = 0;
+            let fy = 0;
+            if (boost > 0.002 && d2 < A2) {
+              const d = Math.sqrt(d2) + 0.001;
+              if (d < nearD) {
+                nearD = d;
+                nearest = b.wire;
+              }
+              const q = 1 - d / A;
+              const q2 = q * q;
+              const f = PUSH * q2 * boost;
+              fx = (dx / d) * f + cvx * q2 * DRAG * field;
+              fy = (dy / d) * f + cvy * q2 * DRAG * field;
+            }
+            // force (repère du dessin) → repère local du tracé
+            const lfx = fx * cos + fy * sin;
+            const lfy = -fx * sin + fy * cos;
+            const pi = i > 0 ? i - 1 : i;
+            const ni = i < n - 1 ? i + 1 : i;
+            const ax = -K * ox[i] - DAMP * vx[i] + TENSION * (ox[pi] + ox[ni] - 2 * ox[i]) + lfx;
+            const ay = -K * oy[i] - DAMP * vy[i] + TENSION * (oy[pi] + oy[ni] - 2 * oy[i]) + lfy;
+            vx[i] += ax * dt;
+            vy[i] += ay * dt;
+            ox[i] = Math.max(-MAXOFF, Math.min(MAXOFF, ox[i] + vx[i] * dt));
+            oy[i] = Math.max(-MAXOFF, Math.min(MAXOFF, oy[i] + vy[i] * dt));
+          }
+        }
+        for (let i = 0; i < n; i++) {
+          const e = Math.abs(ox[i]) + Math.abs(oy[i]) + (Math.abs(vx[i]) + Math.abs(vy[i])) * 0.02;
+          if (e > energy) energy = e;
+          if (e > 0.05) moved = true;
+        }
+      }
+      // une seule géométrie à réécrire par tracé (toutes ses couches sont des <use>)
+      if (moved) {
+        let d = '';
+        for (const ch of b.chains) {
+          for (let i = 0; i < ch.n; i++) d += `${i ? 'L' : 'M'}${(ch.rx[i] + ch.ox[i]).toFixed(1)} ${(ch.ry[i] + ch.oy[i]).toFixed(1)}`;
+        }
+        b.src.setAttribute('d', d);
+      } else if (b.src.getAttribute('d') !== b.d0) b.src.setAttribute('d', b.d0);
+    }
+    // le liquide agité par un geste vif : une impulsion part sur le tracé le plus proche
+    if (nearest >= 0 && spd > 700 && now - lastStir > 650 && drawn) {
+      lastStir = now;
+      flow(wires[nearest], 0, PULSE_SPEED * 1.8, false);
+    }
+    if (inside || ((field > 0.01 || energy > 0.12) && now - lastSeen < 5000)) raf = requestAnimationFrame(tick);
+    else {
+      // retour au calme : géométrie d'origine exacte
+      for (const b of bodies) {
+        b.src.setAttribute('d', b.d0);
+        for (const ch of b.chains) [ch.ox, ch.oy, ch.vx, ch.vy].forEach((a) => a.fill(0));
+      }
+      aura.style.opacity = '0';
+    }
+  };
+  if (!still) {
+    card.addEventListener('pointermove', onMove);
+    card.addEventListener('pointerdown', onMove);
+    card.addEventListener('pointerleave', onOut);
+    card.addEventListener('pointercancel', onOut);
+    card.addEventListener('pointerup', onUp);
+  }
+
   return () => {
     clearTimeout(timer);
     io?.disconnect();
@@ -399,6 +607,12 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     document.removeEventListener('visibilitychange', onVis);
     card.removeEventListener('pointerenter', enter);
     card.removeEventListener('pointerleave', leaveH);
+    card.removeEventListener('pointermove', onMove);
+    card.removeEventListener('pointerdown', onMove);
+    card.removeEventListener('pointerleave', onOut);
+    card.removeEventListener('pointercancel', onOut);
+    card.removeEventListener('pointerup', onUp);
+    cancelAnimationFrame(raf);
     anims.forEach((a) => a.cancel());
   };
 }
