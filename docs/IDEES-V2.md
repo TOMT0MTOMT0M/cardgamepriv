@@ -22,6 +22,13 @@ admin, base Convex séparée) et sort en une fois vers la prod.
   s'ouvrent en rideau avec leur contenu en cascade ; les fenêtres (sélecteur de cartes, tableau d'échanges) montent et
   REDESCENDENT avant de disparaître ; tous les contrôles segmentés ont une pastille qui glisse.
 - Mouvement réduit / « Effets réduits » : rien ne tourne en boucle, les dépliages sont instantanés.
+- **Puis (08/11, 2e passe) : direction « usinage »** — fini la laque et les typos rondes : filets au pixel, repères
+  d'angle (qui s'allongent au survol et sur le gagnant), coins droits (3 px), trame de points, règle graduée sous le titre,
+  étiquettes techniques en capitales espacées, Bold Frame pour les titres (plus de Matcha dans l'espace Jeux), Inter pour
+  les textes longs, plus aucun emblème (⚔ ♛ ◎ retirés). Jetons et bille en acier tourné, numéro gravé.
+  UX : fil d'Ariane « Jeux / 03 Roulette », fiches techniques des 3 jeux (joueurs · mise · gain), enjeu en fiche
+  Enjeu / Victoire / Défaite / Égalité, compteur de boosters « 1/10 », mise de la roulette en 3 étapes, compte à
+  rebours 06:48:44, jauge de couverture graduée (36 crans), barre « Miser » collante au téléphone.
 
 ---
 

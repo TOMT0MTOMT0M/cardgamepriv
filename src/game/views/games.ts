@@ -66,14 +66,28 @@ const ART = {
   royale: `<svg class="gm-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><g class="spin">${Array.from({ length: 8 }, (_, i) => `<rect x="90" y="22" width="20" height="28" rx="3" transform="rotate(${i * 45} 100 100)"/>`).join('')}</g><circle cx="100" cy="100" r="34" stroke-opacity=".5"/><circle cx="100" cy="100" r="3" fill="currentColor"/></svg>`,
   roulette: `<svg class="gm-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><circle cx="100" cy="100" r="84"/><circle cx="100" cy="100" r="62" stroke-opacity=".6"/><g class="spin">${Array.from({ length: 36 }, (_, i) => `<line x1="100" y1="18" x2="100" y2="${i % 2 ? 30 : 38}" transform="rotate(${i * 10} 100 100)"${i % 2 ? ' stroke-opacity=".5"' : ''}/>`).join('')}<circle cx="100" cy="100" r="26" stroke-opacity=".5"/></g><g class="ball"><circle cx="100" cy="47" r="5" fill="currentColor" stroke="none"/></g></svg>`,
 };
+/**
+ * L'enjeu en fiche lisible d'un coup d'œil (V2, 08/11) : quatre cases Enjeu / Victoire / Défaite / Égalité au lieu
+ * d'une phrase à rallonge. Sert au Pack Battle et à la Battle Royale.
+ */
+const riskGrid = (rows: Array<[label: string, text: string, cls?: string]>) =>
+  `<dl class="gm-riskg">${rows.map(([l, t, c]) => `<div${c ? ` class="${c}"` : ''}><dt>${l}</dt><dd>${t}</dd></div>`).join('')}</dl>`;
 /** Ce qu'on risque dans un Pack Battle, à côté du bouton (et plus seulement dans les règles en bas de page). */
 const riskLine = (st: { packs: PackChoice[]; stake: Stake }) => {
   const n = st.packs.length;
   const v = stakeValue(st.stake);
-  return `<b>Enjeu</b> : ${plural(n, 'booster')}${v ? ` + ${fmtCoins(v)} de pot annexe${st.stake.cards.length ? ` (dont ${cardsSummary(st.stake.cards)})` : ''}` : ''}
-    · <span class="plus">si tu gagnes : les ${n * 10} cartes ouvertes${v ? ` + les deux pots annexes` : ''}</span>
-    · <span class="minus">si tu perds : tes ${n * 5} cartes${v ? ' et ton pot annexe' : ''} partent en face</span>
-    · égalité : tout est rendu`;
+  return riskGrid([
+    ['Enjeu', `${plural(n, 'booster')}${v ? ` + ${fmtCoins(v)} de pot annexe${st.stake.cards.length ? ` (dont ${cardsSummary(st.stake.cards)})` : ''}` : ''}`],
+    ['Victoire', `les ${n * 10} cartes ouvertes${v ? ' + les deux pots annexes' : ''}`, 'plus'],
+    ['Défaite', `tes ${n * 5} cartes${v ? ' et ton pot annexe' : ''} partent en face`, 'minus'],
+    ['Égalité', 'tout est rendu'],
+  ]);
+};
+/** Compte à rebours technique « 07:04:12 » (le tirage de la roulette). */
+const clock = (ms: number) => {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const p2 = (x: number) => String(x).padStart(2, '0');
+  return `${p2(Math.floor(t / 3600))}:${p2(Math.floor((t % 3600) / 60))}:${p2(t % 60)}`;
 };
 
 export function createGamesView(backend: GameBackend, shell: Shell) {
@@ -116,7 +130,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     // les trois jeux (+ l'accueil et l'historique de mes parties) ; forge, succès, primes, missions : ailleurs (retours live 02)
     const tabs: Array<[Sub, string]> = [['', 'Jeux'], ['duel', 'Pack Battle'], ['royale', 'Battle Royale'], ['roulette', 'Roulette'], ['historique', 'Mes parties']];
     if (s?.isAdmin) tabs.push(['admin', 'Admin']);
-    head.innerHTML = `<div class="gm-title"><div><span class="gm-kick">Salle privée · entre nous</span><b>Espace Jeux</b></div>${s ? `<div class="gm-bal"><span class="gm-bal-l">Solde</span>${coinsHtml(shownCoins ?? s.coins, 'big')}</div>` : ''}</div>
+    const at = tabs.findIndex(([k]) => k === sub);
+    const crumb = at > 0 ? `<i>/</i>${String(at).padStart(2, '0')} ${esc(tabs[at][1])}` : '<i>/</i>3 tables';
+    head.innerHTML = `<div class="gm-title"><div><span class="gm-kick">Jeux ${crumb}</span><b>Espace Jeux</b></div>${s ? `<div class="gm-bal"><span class="gm-bal-l">Solde</span>${coinsHtml(shownCoins ?? s.coins, 'big')}</div>` : ''}</div>
       <nav class="seg gm-tabs" data-seg-key="gm-tabs">${tabs.map(([k, l]) => `<button data-k="${k}" class="${k === sub ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
     head.querySelectorAll<HTMLElement>('[data-k]').forEach((b) => b.addEventListener('click', () => (location.hash = `#/jeux${b.dataset.k ? `/${b.dataset.k}` : ''}`)));
     // téléphone : les onglets défilent ; l'onglet actif est ramené au milieu (il était parfois coupé au bord)
@@ -141,9 +157,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   // ═════════════════════════════ accueil
   function hub() {
     body.innerHTML = `<div class="gm-hub">
-      <a class="gm-game duel" href="#/jeux/duel">${ART.duel}<span class="gm-idx">01</span><b>1v1 Pack Battle</b><span class="gm-desc">Misez le même nombre de boosters (+ un pot annexe). Ouverture côte à côte : le plus haut total d'étoiles rafle TOUTES les cartes.</span><em class="gm-live"><i class="gm-dot"></i><span data-live="duel">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
-      <a class="gm-game royale" href="#/jeux/royale">${ART.royale}<span class="gm-idx">02</span><b>Pack Battle Royale</b><span class="gm-desc">3 à 8 joueurs, 1 booster chacun. Le meilleur total d'étoiles remporte tout le pot.</span><em class="gm-live"><i class="gm-dot"></i><span data-live="royale">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
-      <a class="gm-game roulette" href="#/jeux/roulette">${ART.roulette}<span class="gm-idx">03</span><b>Roulette à cartes</b><span class="gm-desc">36 numéros, 1 à 3 par tirage, en pièces ou en cartes 4★-6★. Tirages à 10 h et 20 h : le numéro qui sort rafle tout le pot.</span><em class="gm-live"><i class="gm-dot"></i><span data-live="roulette">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game duel" href="#/jeux/duel">${ART.duel}<span class="gm-idx">01 — 1v1</span><b>Pack Battle</b><span class="gm-desc">Ouverture côte à côte : le plus haut total d'étoiles rafle toutes les cartes.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>2</dd></div><div><dt>Mise</dt><dd>1–${DUEL_MAX_PACKS} boosters</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="duel">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game royale" href="#/jeux/royale">${ART.royale}<span class="gm-idx">02 — mêlée</span><b>Battle Royale</b><span class="gm-desc">Ouverture simultanée : le meilleur total d'étoiles remporte tout le pot.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>${ROYALE_MIN}–${ROYALE_MAX}</dd></div><div><dt>Mise</dt><dd>1 booster</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="royale">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
+      <a class="gm-game roulette" href="#/jeux/roulette">${ART.roulette}<span class="gm-idx">03 — tirage</span><b>Roulette</b><span class="gm-desc">1 à 3 numéros par tirage, en pièces ou en cartes 4★–6★ : le numéro qui sort rafle le pot.</span><dl class="gm-spec"><div><dt>Numéros</dt><dd>${ROULETTE_NUMBERS}</dd></div><div><dt>Tirages</dt><dd>${ROULETTE_HOURS.map((x) => `${x} h`).join(' · ')}</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="roulette">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
     // plafonnier qui suit la souris (ordinateur seulement)
@@ -163,7 +179,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       backend.eco.watchLobby((l) => {
         if (!l) return;
         const mine = l.duels.filter((d) => d.sides.some((s) => s.userId === l.me)).length;
-        live('duel', `${plural(l.duels.length, 'duel ouvert', 'duels ouverts')}${mine ? ` · ${mine} à toi` : ''}`);
+        live('duel', `${l.duels.length ? plural(l.duels.length, 'duel ouvert', 'duels ouverts') : 'aucun duel ouvert'}${mine ? ` · ${mine} à toi` : ''}`);
         live('royale', l.royales.length ? `${plural(l.royales.length, 'partie')} en attente (${l.royales.map((r) => `${r.players.length}/${ROYALE_MAX}`).join(', ')})` : 'aucune partie en attente');
       }),
       backend.eco.watchRoulette((r) => {
@@ -185,7 +201,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     };
     const render = () => {
       host.innerHTML = `<div class="gm-ed"><div class="gm-ed-h">${esc(o.title)}</div>
-        <div class="gm-ed-row"><span>Boosters</span><span class="gm-packs">${st.packs.map((p, i) => packChip(p, i)).join('')}</span>${o.fixedCount ? '' : `<span class="gm-step"><button class="btn-ghost sm" data-a="-" aria-label="Un booster de moins">−</button><button class="btn-ghost sm" data-a="+" aria-label="Un booster de plus">+</button></span>`}</div>
+        <div class="gm-ed-row"><span>Boosters</span><span class="gm-packs">${st.packs.map((p, i) => packChip(p, i)).join('')}</span>${o.fixedCount ? '' : `<span class="gm-step"><button class="btn-ghost sm" data-a="-" aria-label="Un booster de moins"${st.packs.length <= 1 ? ' disabled' : ''}>−</button><output aria-live="polite">${st.packs.length}<small>/${DUEL_MAX_PACKS}</small></output><button class="btn-ghost sm" data-a="+" aria-label="Un booster de plus"${st.packs.length >= DUEL_MAX_PACKS ? ' disabled' : ''}>+</button></span>`}</div>
         <div class="muted">Touche un booster pour changer sa sorte · réserve : ${packsLeft()} booster${packsLeft() > 1 ? 's' : ''}</div>
         <div class="gm-ed-row"><span>Pot annexe</span><label class="gm-coin-in">${COIN_ICON}<input type="number" min="0" max="${balance()}" step="10" value="${st.stake.coins}" inputmode="numeric" aria-label="Pièces du pot annexe"></label><button class="btn-ghost sm gm-pick">Cartes${st.stake.cards.length ? ` (${st.stake.cards.reduce((a, c) => a + c.count, 0)})` : ''}…</button></div>
         <div class="gm-ed-v">${valueLine()}</div>
@@ -509,7 +525,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     const k = d.sides.findIndex((x) => x.userId === myId());
     if (k >= 0) {
       const opp = d.sides[1 - k]?.userId;
-      againButton(room.querySelector<HTMLElement>('.gm-verdict')!, '⚔ Remiser un booster', () => {
+      againButton(room.querySelector<HTMLElement>('.gm-verdict')!, 'Remiser un booster', () => {
         rematch = { opp, packs: d.sides[k].packs.map((p) => ({ ...p })) };
         location.hash = '#/jeux/duel';
       });
@@ -600,7 +616,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const acts = room.querySelector<HTMLElement>('.gm-actions')!;
         const packBar = () => `<span class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</span>`;
         const busyR = isPending('royale');
-        acts.innerHTML = `${inIt || r.players.length < ROYALE_MAX ? `<div class="gm-risk"><b>Enjeu</b> : 1 booster chacun · <span class="plus">si tu gagnes : toutes les cartes ouvertes (5 par joueur)</span> · <span class="minus">sinon : les 5 cartes de ton booster partent au gagnant</span></div>` : ''}${!inIt && r.players.length < ROYALE_MAX ? `${packBar()}<button class="btn-primary gm-rj"${busyR ? ' disabled' : ''}>Rejoindre</button>` : ''}${r.creatorId === uid ? `<button class="btn-primary gm-rs"${r.players.length < ROYALE_MIN || busyR ? ' disabled' : ''}>Lancer (${r.players.length} joueurs)</button>` : ''}${inIt ? `<button class="btn-ghost danger gm-rl">${r.creatorId === uid ? 'Annuler la partie' : 'Quitter'}</button>` : ''}${r.players.length < ROYALE_MIN ? `<div class="muted">Encore ${ROYALE_MIN - r.players.length} joueur${ROYALE_MIN - r.players.length > 1 ? 's' : ''} pour pouvoir lancer.</div>` : ''}`;
+        acts.innerHTML = `${inIt || r.players.length < ROYALE_MAX ? `<div class="gm-risk">${riskGrid([['Enjeu', '1 booster chacun'], ['Victoire', 'toutes les cartes ouvertes (5 par joueur)', 'plus'], ['Défaite', 'les 5 cartes de ton booster partent au gagnant', 'minus'], ['Ex æquo', 'cartes partagées au hasard']])}</div>` : ''}${!inIt && r.players.length < ROYALE_MAX ? `${packBar()}<button class="btn-primary gm-rj"${busyR ? ' disabled' : ''}>Rejoindre</button>` : ''}${r.creatorId === uid ? `<button class="btn-primary gm-rs"${r.players.length < ROYALE_MIN || busyR ? ' disabled' : ''}>Lancer (${r.players.length} joueurs)</button>` : ''}${inIt ? `<button class="btn-ghost danger gm-rl">${r.creatorId === uid ? 'Annuler la partie' : 'Quitter'}</button>` : ''}${r.players.length < ROYALE_MIN ? `<div class="muted">Encore ${ROYALE_MIN - r.players.length} joueur${ROYALE_MIN - r.players.length > 1 ? 's' : ''} pour pouvoir lancer.</div>` : ''}`;
         acts.querySelectorAll<HTMLElement>('[data-i]').forEach((b) =>
           b.addEventListener('click', () => {
             pick = packChoices()[Number(b.dataset.i)];
@@ -678,12 +694,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     room.querySelector<HTMLElement>('.gm-verdict')!.innerHTML =
       names.length === 1 ? `<b><span>${iWon ? 'Tu remportes tout le pot !' : `${esc(names[0])} remporte tout.`}</span></b> ${Math.max(...res.stars)}★ — ${res.packs.flat().length} cartes.` : `<b><span>Ex æquo à ${Math.max(...res.stars)}★.</span></b> ${names.map(esc).join(' et ')} se partagent les cartes au hasard.`;
     if (animate) sfx(iWon ? 'big' : 'tick');
-    if (r.players.some((p) => p.userId === myId())) againButton(room.querySelector<HTMLElement>('.gm-verdict')!, '♛ Nouvelle partie', () => (location.hash = '#/jeux/royale'));
+    if (r.players.some((p) => p.userId === myId())) againButton(room.querySelector<HTMLElement>('.gm-verdict')!, 'Nouvelle partie', () => (location.hash = '#/jeux/royale'));
   }
 
   // ═════════════════════════════ Roulette
   function roulettePage() {
-    body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>La roue · ${ROULETTE_NUMBERS} numéros</b><span class="gm-cd"></span></div><div class="gm-wheel r36"></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>Le pot</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>Derniers tirages</b></div><div class="gm-past"></div></div>
+    body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>La table · ${ROULETTE_NUMBERS} numéros</b><span class="gm-cd"></span></div><div class="gm-wheel r36"></div><div class="gm-cov" aria-hidden="true"><i></i></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>Le pot</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>Derniers tirages</b></div><div class="gm-past"></div></div>
       <div class="gm-rules muted">Choisis 1, 2 ou 3 numéros par tirage. <b>1 numéro</b> = 10 cartes 4★ ou 300 pièces · <b>2 numéros</b> = 1 carte 5★ ou 600 pièces · <b>3 numéros</b> = 2 cartes 5★, 1 carte 6★ ou 900 pièces (les cartes 1★ à 3★ ne se misent pas). Deux tirages par jour, à ${ROULETTE_HOURS.map((x) => `${x} h`).join(' et ')} : le numéro exact remporte tout le pot. Sinon, tout reste pour le tirage suivant, et le site ajoute une carte 5★ ou 6★ à chaque tirage.</div>`;
     const wheel = body.querySelector<HTMLElement>('.gm-wheel')!;
     const sel = new Set<number>();
@@ -725,6 +741,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           <div class="muted">Une mise par tirage. Rendez-vous au prochain tirage (${ROULETTE_HOURS.map((x) => `${x} h`).join(' / ')}).</div>
           ${backend.eco.demoDraw ? '<button class="btn-ghost sm gm-draw">Tirer maintenant (démo)</button>' : ''}`;
         bindDraw(bet);
+        syncDock();
         return;
       }
       const n = sel.size as 0 | 1 | 2 | 3;
@@ -736,12 +753,14 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const picked = stakeCards.reduce((a, c) => a + c.count, 0);
       const ok = !!n && !!matchPrice(n, stake) && (p?.kind !== 'coins' || p.coins <= bal);
       bet.innerHTML = `<div class="gm-ph"><b>Miser</b>${slot ? `<span class="muted">tirage de ${esc(slot)}</span>` : ''}</div>
-        <div>${n ? `${plural(n, 'numéro')} : <b>${[...sel].sort((a, b) => a - b).join(', ')}</b>` : `<span class="muted">Touche 1 à ${MAX_NUMBERS} numéros libres sur la roue.</span>`}</div>
+        <div class="gm-stepl${n ? ' done' : ' cur'}"><i>01</i><span>${n ? `${plural(n, 'numéro')} : <b>${[...sel].sort((a, b) => a - b).join(', ')}</b>` : `Touche 1 à ${MAX_NUMBERS} numéros libres sur la table`}</span></div>
+        <div class="gm-stepl${n ? (ok ? ' done' : ' cur') : ''}"><i>02</i><span>Paiement${p ? ` · <b>${p.kind === 'coins' ? `${fmtCoins(p.coins)} pièces` : esc(priceLabel(p))}</b>` : ''}</span></div>
         ${n ? `<div class="seg gm-pay" role="radiogroup" aria-label="Payer avec">${opts.map((o, i) => `<button role="radio" data-i="${i}" aria-checked="${i === pay}" class="${i === pay ? 'on' : ''}">${o.kind === 'coins' ? `${COIN_ICON}${fmtCoins(o.coins)}` : esc(priceLabel(o))}</button>`).join('')}</div>` : ''}
         ${p?.kind === 'cards' ? `<div class="gm-ed-row"><span>${esc(priceLabel(p))}</span><button class="btn-ghost sm gm-pick">${picked ? `${picked}/${p.count} choisie${picked > 1 ? 's' : ''} · changer` : 'Choisir les cartes…'}</button></div>${picked && picked !== p.count ? `<div class="gm-warn">Il faut exactement ${p.count} carte${p.count > 1 ? 's' : ''} ${starsTxt(p.rarity)} (tu en as choisi ${picked}).</div>` : ''}` : ''}
         ${p?.kind === 'coins' ? `<div class="gm-ed-v">Solde : ${coinsHtml(bal)} → après la mise : ${coinsHtml(Math.max(0, bal - p.coins))}</div>${p.coins > bal ? `<div class="gm-warn">Il te manque ${fmtCoins(p.coins - bal)} pièces.</div>` : ''}` : ''}
+        <div class="gm-stepl${ok ? ' cur' : ''}"><i>03</i><span>Miser — pas d'annulation avant le tirage</span></div>
         <button class="btn-primary gm-place"${!ok || isPending('bet') ? ' disabled' : ''}>Miser${n ? ` ${plural(n, 'numéro')}` : ''}</button>
-        <div class="muted">Pas d'annulation après la mise : tout reste au pot jusqu'au tirage (reporté si personne ne gagne).</div>
+        <div class="muted">Tout reste au pot jusqu'au tirage (reporté si personne ne gagne).</div>
         ${backend.eco.demoDraw ? '<button class="btn-ghost sm gm-draw">Tirer maintenant (démo)</button>' : ''}`;
       bet.querySelectorAll<HTMLElement>('.gm-pay [data-i]').forEach((b) =>
         b.addEventListener('click', () => {
@@ -774,7 +793,29 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         }).then(drawBet); // (redessiné par l'abonnement pendant l'envoi : le bouton reste désactivé, cf. isPending)
       });
       bindDraw(bet);
+      syncDock();
     };
+    // téléphone : la table occupe tout l'écran, le panneau de mise est en dessous → une barre « Miser » collante
+    const dock = h('button', 'gm-dock');
+    dock.type = 'button';
+    el.append(dock);
+    unsubs.push(() => dock.remove());
+    let betVisible = true;
+    const syncDock = () => {
+      const n = sel.size;
+      const has = !!cur?.round?.bets.some((b) => b.userId === cur?.me);
+      dock.innerHTML = `<span><b>${n}</b> ${n > 1 ? 'numéros' : 'numéro'} · ${[...sel].sort((a, b) => a - b).join(', ')}</span><em>Miser →</em>`;
+      dock.classList.toggle('on', n > 0 && !has && !betVisible);
+    };
+    dock.addEventListener('click', () => body.querySelector('.gm-bet')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }));
+    if (typeof IntersectionObserver !== 'undefined') {
+      const io = new IntersectionObserver(([e]) => {
+        betVisible = e.isIntersecting;
+        syncDock();
+      }, { threshold: 0.25 });
+      io.observe(body.querySelector('.gm-bet')!);
+      unsubs.push(() => io.disconnect());
+    }
     function bindDraw(bet: HTMLElement) {
       bet.querySelector<HTMLElement>('.gm-draw')?.addEventListener('click', (e) => {
         const btn = e.currentTarget as HTMLElement;
@@ -789,7 +830,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     }
     const tick = () => {
       const cd = body.querySelector<HTMLElement>('.gm-cd');
-      if (cd && cur) cd.textContent = `tirage dans ${fmtDelay(Math.max(0, cur.nextDrawAt - Date.now()))}`;
+      if (cd && cur) cd.innerHTML = `<span>Tirage dans</span><b>${clock(cur.nextDrawAt - Date.now())}</b>`;
     };
     const timer = window.setInterval(tick, 1000);
     unsubs.push(() => clearInterval(timer));
@@ -810,6 +851,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           c.title = o ? `${n} · ${o.name}` : `${n} · libre`;
         }
         const covered = owner.size;
+        body.querySelector<HTMLElement>('.gm-cov > i')?.style.setProperty('--c', String(covered / ROULETTE_NUMBERS));
         body.querySelector<HTMLElement>('.gm-legend')!.innerHTML = round ? `${round.bets.map((b, i) => `<span class="gm-lg" style="--pc:${colors[i % colors.length]}">${esc(b.name)} · ${b.numbers.length}</span>`).join('')} · ${covered}/${ROULETTE_NUMBERS} numéros couverts → ${Math.round(potOdds(covered) * 100)} % de chances que le pot tombe au prochain tirage` : '';
         body.querySelector<HTMLElement>('.gm-potv')!.innerHTML = round ? `${coinsHtml(round.pot.coins)} + ${plural(round.pot.cards.reduce((a, c) => a + c.count, 0), 'carte')} = <b>${fmtCoins(round.pot.value)}</b> de valeur` : '';
         const pot = body.querySelector<HTMLElement>('.gm-pot')!;
@@ -905,12 +947,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           const k = d.sides.findIndex((s) => s.userId === uid);
           const res = d.result!;
           const out = res.winner === undefined ? 'égalité' : res.winner === k ? '<b class="plus">victoire</b>' : '<b class="minus">défaite</b>';
-          return `⚔ Pack Battle contre ${esc(d.sides[1 - Math.max(0, k)]?.name ?? '?')} · ${res.stars[Math.max(0, k)]}★ / ${res.stars[1 - Math.max(0, k)]}★ · ${out}`;
+          return `<span class="gm-tag">Pack Battle</span> contre ${esc(d.sides[1 - Math.max(0, k)]?.name ?? '?')} · ${res.stars[Math.max(0, k)]}★ / ${res.stars[1 - Math.max(0, k)]}★ · ${out}`;
         })() })),
         ...g.royales.map((r) => ({ at: r.resolvedAt ?? r.createdAt, href: `#/jeux/royale/${r.id}`, html: (() => {
           const k = r.players.findIndex((p) => p.userId === uid);
           const won = r.result!.winners.includes(k);
-          return `♛ Battle Royale à ${r.players.length} · ${r.result!.stars[k] ?? 0}★ · ${won ? '<b class="plus">victoire</b>' : `gagnant : ${esc(r.result!.winners.map((w) => r.players[w].name).join(', '))}`}`;
+          return `<span class="gm-tag">Royale</span> à ${r.players.length} · ${r.result!.stars[k] ?? 0}★ · ${won ? '<b class="plus">victoire</b>' : `gagnant : ${esc(r.result!.winners.map((w) => r.players[w].name).join(', '))}`}`;
         })() })),
       ].sort((a, b) => b.at - a.at);
       body.querySelector<HTMLElement>('.gm-hg')!.innerHTML = rows.length ? rows.map((r) => `<a class="gm-item" href="${r.href}"><span class="gm-it">${r.html}</span><span class="gm-it-r muted">${new Date(r.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a>`).join('') : '<div class="muted">Aucune partie terminée.</div>';
