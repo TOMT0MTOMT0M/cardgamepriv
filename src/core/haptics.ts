@@ -102,6 +102,15 @@ class Haptics {
           this.why = 'onglet caché';
           return;
         }
+        // (08/11) avant le tout premier toucher, Chrome refuse la vibration ET l'écrit en rouge dans la console
+        // (« [Intervention] Blocked call to navigator.vibrate ») : on ne l'appelle pas, on garde le motif pour le
+        // premier geste (même logique que le refus ci-dessous)
+        const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+        if (ua && !ua.hasBeenActive && !this.inGesture) {
+          this.pending = { pattern, at: performance.now() };
+          this.why = 'en attente du premier toucher';
+          return;
+        }
         // segments « vibre » ≥ 12 ms (sous ~10 ms, beaucoup de vibrateurs ne font rien)
         const steps = (typeof pattern === 'number' ? [pattern] : pattern).map((v, i) => (i % 2 === 0 ? Math.max(12, v) : v));
         // (Firefox Android exige un geste EN COURS) refusée hors geste : rejouée au prochain toucher s'il arrive vite,
