@@ -5,6 +5,7 @@ import type { Doc } from './_generated/dataModel';
 import { catalogCard } from './cardsCatalog';
 import type { RarityId } from './cardsCatalog';
 import { PURGED_CARD_IDS } from './purgedCards';
+import { isBigPull } from './feed';
 
 /**
  * RARETÉS — une seule source de vérité : le catalogue (src/core/sets/*).
@@ -143,5 +144,25 @@ export const purgeCardsDeals = internalMutation({
       offers++;
     }
     return { trades, listings, offers };
+  },
+});
+
+/**
+ * (V2 fluidité, lot 4) marque `big` sur les « gros tirages » déjà dans le fil (Légendaire, Mythique, Secrète), pour
+ * que `feed.bigPulls` les lise par l'index `by_big`. Idempotent : ne touche que les lignes pas encore marquées ; les
+ * nouvelles sont marquées à l'insertion (packs.ts). On remonte les 4 000 dernières entrées : bien plus que les 40
+ * que la page affiche.
+ */
+export const markBigPulls = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const recent = await ctx.db.query('activityFeed').withIndex('by_createdAt').order('desc').take(4000);
+    let marked = 0;
+    for (const f of recent) {
+      if (f.big || !isBigPull(f)) continue;
+      await ctx.db.patch(f._id, { big: true });
+      marked++;
+    }
+    return { scanned: recent.length, marked };
   },
 });

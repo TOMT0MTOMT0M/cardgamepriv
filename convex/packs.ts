@@ -263,6 +263,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
         mintNumber: c.mintNumber,
         message: msg,
         createdAt: now,
+        ...(tier >= RARITY_TIER.legendary ? { big: true } : {}),
       });
 
       // Discord : uniquement avant-dernier tier (Mythique 6★) et dernier tier (Secrète Bébou ✷)

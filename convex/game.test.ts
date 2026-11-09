@@ -5,7 +5,7 @@
  */
 import { convexTest } from 'convex-test';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { api } from './_generated/api';
+import { api, internal } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
 import { BEBOU_SECRET_CHANCE, BEBOU_SECRETS_LOCKED } from '../src/core/sets/themes';
@@ -602,5 +602,19 @@ describe('retours du 3 nov. : profil, cosmétiques, classement, activité', () =
     await t.run((ctx) => ctx.db.insert('activityFeed', { userId: alice.userId, displayName: 'alice', kind: 'mythic_pull', message: 'alice a obtenu X', createdAt: 1 }));
     await t.run((ctx) => ctx.db.insert('activityFeed', { userId: bob.userId, displayName: 'bob', kind: 'pull', message: 'bob a obtenu Y', createdAt: 2 }));
     expect((await t.query(api.profiles.activity, { userId: alice.userId })).map((a) => a.message)).toEqual(['alice a obtenu X']);
+  });
+
+  test('gros tirages : lus par l’index une fois marqués, ancien parcours en repli, migration idempotente', async () => {
+    const { t, alice } = await setup();
+    const row = (i: number, rarity: 'legendary' | 'epic') => ({ userId: alice.userId, displayName: 'alice', kind: 'pull' as const, cardId: `c${i}`, cardName: `C${i}`, rarity, message: `m${i}`, createdAt: i });
+    await t.run(async (ctx) => {
+      for (let i = 1; i <= 6; i++) await ctx.db.insert('activityFeed', row(i, i % 2 ? 'legendary' : 'epic'));
+    });
+    // rien n'est marqué : repli sur l'ancien parcours (mêmes résultats qu'avant)
+    expect((await t.query(api.feed.bigPulls, { limit: 2 })).map((f) => f.cardId)).toEqual(['c5', 'c3']);
+    expect(await t.mutation(internal.migrations.markBigPulls, {})).toEqual({ scanned: 6, marked: 3 });
+    expect(await t.mutation(internal.migrations.markBigPulls, {})).toEqual({ scanned: 6, marked: 0 });
+    expect((await t.query(api.feed.bigPulls, { limit: 2 })).map((f) => f.cardId)).toEqual(['c5', 'c3']);
+    expect((await t.query(api.feed.bigPulls, { limit: 10 })).map((f) => f.cardId)).toEqual(['c5', 'c3', 'c1']);
   });
 });

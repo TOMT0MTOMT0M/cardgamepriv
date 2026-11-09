@@ -472,9 +472,12 @@ class GameNetClient {
         void this.client.mutation(api.users.heartbeat, { sessionToken: this.sessionToken, deviceId: deviceId() }).catch(() => {});
       }
     };
-    // tout de suite (la série de connexion compte la visite du jour), puis toutes les 35 s
+    // tout de suite (la série de connexion compte la visite du jour), puis toutes les 4 min 05.
+    // (V2 fluidité, lot 4) avant : toutes les 35 s, alors que le serveur n'écrit `lastSeenAt` qu'au plus toutes les
+    // 4 min (convex/users.ts, SEEN_EVERY_MS) — 6 appels sur 7 ne servaient à rien. « En ligne » = vu depuis moins de
+    // 6 min : un battement toutes les 4 min 05 suffit (chaque ouverture de booster rafraîchit aussi la présence).
     beat();
-    this.heartbeatTimer = window.setInterval(beat, 35_000);
+    this.heartbeatTimer = window.setInterval(beat, 245_000);
     // retour sur l'onglet après minuit : la série avance sans attendre le prochain battement
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && beat());
   }

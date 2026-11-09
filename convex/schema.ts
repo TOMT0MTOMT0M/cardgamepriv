@@ -344,9 +344,13 @@ export default defineSchema({
     mintNumber: v.optional(v.number()),
     message: v.string(),
     createdAt: v.number(),
+    /** (V2 fluidité, lot 4) vrai sur les tirages Légendaire / Mythique / Secrète : « Gros tirages » lit ces lignes par
+     *  l'index `by_big` au lieu de parcourir les 400 dernières entrées du fil. Absent ailleurs. */
+    big: v.optional(v.boolean()),
   })
     .index('by_createdAt', ['createdAt'])
-    .index('by_userId', ['userId', 'createdAt']),
+    .index('by_userId', ['userId', 'createdAt'])
+    .index('by_big', ['big', 'createdAt']),
 
   /** Journal des pièces (historique du portefeuille, contrôles admin). Montant positif = gain, négatif = dépense / mise. */
   coinTx: defineTable({
