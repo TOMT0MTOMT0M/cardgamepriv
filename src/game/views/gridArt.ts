@@ -166,6 +166,59 @@ const rng = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) /
 
 let uid = 0;
 
+/**
+ * CURSEUR PARTAGÉ : toute la page Jeux est le champ magnétique. Un seul jeu d'écouteurs pour tous les dessins
+ * (posé au premier dessin monté, retiré au dernier démonté) ; chaque dessin convertit la position dans son repère.
+ */
+const P = { x: 0, y: 0, vx: 0, vy: 0, on: false, t: 0 };
+const wakers = new Set<() => void>();
+const ptrMove = (e: PointerEvent) => {
+  const t = performance.now();
+  if (P.on && t - P.t < 200) {
+    const dt = Math.max(8, t - P.t) / 1000;
+    P.vx = P.vx * 0.55 + ((e.clientX - P.x) / dt) * 0.45;
+    P.vy = P.vy * 0.55 + ((e.clientY - P.y) / dt) * 0.45;
+  } else {
+    P.vx = 0;
+    P.vy = 0;
+  }
+  P.x = e.clientX;
+  P.y = e.clientY;
+  P.t = t;
+  P.on = true;
+  for (const w of wakers) w();
+};
+const ptrOff = () => {
+  if (!P.on) return;
+  P.on = false;
+  for (const w of wakers) w();
+};
+// (au doigt, le champ se coupe dès qu'on lève le doigt ; à la souris, quand elle sort de la fenêtre)
+const ptrUp = (e: PointerEvent) => e.pointerType !== 'mouse' && ptrOff();
+const ptrOut = (e: PointerEvent) => !e.relatedTarget && ptrOff();
+const listenPointer = (w: () => void) => {
+  if (!wakers.size) {
+    window.addEventListener('pointermove', ptrMove, { passive: true });
+    window.addEventListener('pointerdown', ptrMove, { passive: true });
+    window.addEventListener('pointerup', ptrUp, { passive: true });
+    window.addEventListener('pointercancel', ptrOff, { passive: true });
+    document.addEventListener('pointerout', ptrOut, { passive: true });
+    window.addEventListener('blur', ptrOff);
+  }
+  wakers.add(w);
+  return () => {
+    wakers.delete(w);
+    if (wakers.size) return;
+    window.removeEventListener('pointermove', ptrMove);
+    window.removeEventListener('pointerdown', ptrMove);
+    window.removeEventListener('pointerup', ptrUp);
+    window.removeEventListener('pointercancel', ptrOff);
+    document.removeEventListener('pointerout', ptrOut);
+    window.removeEventListener('blur', ptrOff);
+    P.on = false;
+  };
+};
+
 const rotM = (t?: string) => {
   const m = /rotate\(\s*(-?[\d.]+)(?:[ ,]+(-?[\d.]+)[ ,]+(-?[\d.]+))?\s*\)/.exec(t ?? '');
   if (!m) return new DOMMatrix();
@@ -182,6 +235,14 @@ interface Rail {
   tx: Float32Array;
   ty: Float32Array;
   n: number;
+  /** 1 là où la piste saute (un « M » : les crans de la roulette ne sont pas reliés) */
+  gap: Uint8Array;
+  /** piste fermée (cercle, carte) : le fluide en fait le tour sans buter sur le point de départ */
+  closed: boolean;
+  /** 1 là où la piste est cachée par la forme de devant (carte de derrière du duel) */
+  hid: Uint8Array | null;
+  /** distance au curseur (point le plus proche), mise à jour par intervalles */
+  dist: number;
   /** boîte englobante (pour ignorer les pistes loin du curseur) */
   box: [number, number, number, number];
   trace: SVGPathElement | null;
@@ -267,6 +328,8 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       tx[i] = dx / l;
       ty[i] = dy / l;
     }
+    const gap = new Uint8Array(n);
+    for (let i = 1; i < n; i++) gap[i] = Math.hypot(x[i] - x[i - 1], y[i] - y[i - 1]) > 3.5 ? 1 : 0;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < n; i++) {
       x0 = Math.min(x0, x[i]); y0 = Math.min(y0, y[i]); x1 = Math.max(x1, x[i]); y1 = Math.max(y1, y[i]);
@@ -278,11 +341,18 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       hide.rect(-PAD, -PAD, W, H);
       hide.addPath(new Path2D(st.hide.d), M.multiply(rotM(st.hide.transform)));
     }
+    let hid: Uint8Array | null = null;
+    const probe = hide ? document.createElement('canvas').getContext('2d') : null;
+    if (hide && probe) {
+      hid = new Uint8Array(n);
+      for (let i = 0; i < n; i++) hid[i] = probe.isPointInPath(hide, x[i], y[i], 'evenodd') ? 0 : 1;
+    }
     if (trace) {
       trace.setAttribute('stroke-dasharray', `${L + 2} ${L + 2}`);
       trace.setAttribute('stroke-dashoffset', String(still ? 0 : L + 2));
     }
-    return { L, x, y, tx, ty, n, box: [x0, y0, x1, y1], trace, dots, hide, quick: st.quick ?? 1, at: st.at, ghost: !!st.ghost, busy: false };
+    const closed = !gap.some((g) => g) && Math.hypot(x[0] - x[n - 1], y[0] - y[n - 1]) < 1;
+    return { L, x, y, tx, ty, n, gap, closed, hid, dist: Infinity, box: [x0, y0, x1, y1], trace, dots, hide, quick: st.quick ?? 1, at: st.at, ghost: !!st.ghost, busy: false };
   });
 
   // ── aligner le dessin sur les points de la trame (positions de mise en page, sans les transformations)
@@ -326,11 +396,16 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
 
   /** échantillon le plus proche de l'abscisse s */
   const idx = (r: Rail, s: number) => Math.max(0, Math.min(r.n - 1, Math.round((s / r.L) * (r.n - 1))));
+  /** abscisse ramenée sur la piste (une piste fermée boucle) */
+  const wrap = (r: Rail, s: number) => (r.closed ? ((s % r.L) + r.L) % r.L : s);
 
   // ── physique
   const PUSH = 1300; // poussée maximale de l'aura le long du rail (px/s²)
   const DRAG = 3; // entraînement par la composante du geste le long du rail
   const VISC = 2.8; // frottement visqueux (1/s)
+  const RES_MAX = rails.filter((r) => !r.ghost).length > 3 ? 2 : 1;
+  const ATTR = 560; // attraction maximale (px/s²), atteinte à REACH px au-delà de l'aura : plus loin = plus fort, plafonné
+  const REACH = 380;
   const STATIC = 150; // friction statique : poussée minimale pour décoller une perle arrêtée
   const GUIDE_K = 36; // ressort du guide (courant ambiant, tracé)
   const GUIDE_C = 8.5;
@@ -342,12 +417,14 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     r: Rail; s: number; v: number; tail: number; dir: number;
     len: number; wid: number; lag: number; lam: [number, number]; ph: [number, number]; drift: number;
     t: number; T: number; delay: number; curve: ((t: number) => number) | null; idle: number; age: number; fade: number; prev: number; reveal: boolean; front: number;
+    /** coulée « résidente » : elle vit tant que le curseur est sur la page, attirée par lui */
+    res: boolean;
   }
   const beads = new Set<Bead>();
   let ready = false;
 
   const rand = (a: number, b: number) => a + Math.random() * (b - a);
-  const spawn = (r: Rail, s: number, v: number, curve: Bead['curve'], T: number, o: { delay?: number; reveal?: boolean; len?: number } = {}) => {
+  const spawn = (r: Rail, s: number, v: number, curve: Bead['curve'], T: number, o: { delay?: number; reveal?: boolean; len?: number; res?: boolean } = {}) => {
     if (r.busy) return null;
     r.busy = true;
     const len = o.len ?? rand(28, 62);
@@ -355,7 +432,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       r, s, v, tail: s, dir: v < 0 ? -1 : 1,
       len, wid: (r.ghost ? 1.35 : 1) * rand(1.7, 2.9), lag: rand(0.22, 0.5),
       lam: [rand(13, 24), rand(5.5, 9)], ph: [rand(0, 6.28), rand(0, 6.28)], drift: rand(-1.2, 1.2),
-      t: 0, T, delay: o.delay ?? 0, curve, idle: 0, age: 0, fade: 0, prev: s, reveal: !!o.reveal, front: 0,
+      t: 0, T, delay: o.delay ?? 0, curve, idle: 0, age: 0, fade: 0, prev: s, reveal: !!o.reveal, front: 0, res: !!o.res,
     };
     beads.add(b);
     wake();
@@ -374,48 +451,26 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     el.classList.add('pop');
   };
 
-  // ── curseur (repère du dessin), vitesse lissée, intensité du champ
+  // ── curseur (repère du dessin, recalculé à chaque image depuis le curseur partagé), intensité du champ
   let mx = -9999;
   let my = -9999;
   let cvx = 0;
   let cvy = 0;
-  let lastT = 0;
   let inside = false;
   let field = 0;
   let raf = 0;
   let lastFrame = 0;
   let lastCall = 0;
+  let lastRes = 0;
+  let lastScan = 0;
   let clock = 0;
-  const onMove = (e: PointerEvent) => {
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return;
-    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
-    const t = performance.now();
-    if (lastT && t - lastT < 200) {
-      const dt = Math.max(8, t - lastT) / 1000;
-      cvx = cvx * 0.55 + ((pt.x - mx) / dt) * 0.45;
-      cvy = cvy * 0.55 + ((pt.y - my) / dt) * 0.45;
-    } else {
-      cvx = 0;
-      cvy = 0;
-    }
-    mx = pt.x;
-    my = pt.y;
-    lastT = t;
-    inside = true;
-    wake();
-  };
-  const onOut = () => {
-    inside = false;
-    lastT = 0;
-  };
-  // (au doigt, le fluide se calme dès qu'on lève le doigt)
-  const onUp = (e: PointerEvent) => e.pointerType !== 'mouse' && onOut();
   const wake = () => {
-    if (raf || !host.isConnected) return;
+    if (!host.isConnected) return unlisten();
+    if (raf) return;
     lastFrame = performance.now();
     raf = requestAnimationFrame(tick);
   };
+  const unlisten: () => void = listenPointer(() => wake());
 
   /**
    * Dessine une coulée : un ruban plein qui suit exactement la piste, épaisseur variable — fin à la queue, plein à la
@@ -426,40 +481,62 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   const LY = new Float32Array(512);
   const RX = new Float32Array(512);
   const RY = new Float32Array(512);
+  const BRK = new Uint8Array(512);
   const coulee = (b: Bead, op: number) => {
     const r = b.r;
-    const sh = Math.max(0, Math.min(r.L, b.s));
-    const st = Math.max(0, Math.min(r.L, b.tail));
-    const ih = idx(r, sh);
-    const it = idx(r, st);
-    const span = Math.abs(ih - it);
+    const ds = r.L / (r.n - 1);
     const real = Math.abs(b.s - b.tail) + 0.001;
     const vol = Math.max(0.6, Math.min(1.45, Math.sqrt(b.len / Math.max(6, real))));
     const W0 = b.wid * vol * (1 - 0.35 * b.fade);
-    const step = ih >= it ? 1 : -1;
-    const n = Math.min(511, span);
+    const n = Math.min(511, Math.ceil(real / ds));
+    let headIn = false;
     if (n >= 2) {
+      let ip = -1;
       for (let k = 0; k <= n; k++) {
-        const i = it + k * step;
         // u : 0 à la queue → 1 à la tête (sur toute la coulée, même si une partie est hors de la piste)
-        const sAbs = (i / (r.n - 1)) * r.L;
-        const u = Math.max(0, Math.min(1, (sAbs - b.tail) / (b.s - b.tail || 1)));
+        const u = k / n;
+        const sAbs = b.tail + (b.s - b.tail) * u;
+        const w = wrap(r, sAbs);
+        const out = w < 0 || w > r.L;
+        const i = idx(r, w);
+        // coupure : hors de la piste, ou la piste saute entre deux points (crans de la roulette)
+        BRK[k] = out || k === 0 || ip < 0 ? 1 : 0;
+        if (!BRK[k] && i !== ip) {
+          const d = Math.abs(i - ip);
+          if (d === 1) BRK[k] = r.gap[Math.max(i, ip)];
+          else if (!(r.closed && d === r.n - 1)) BRK[k] = Math.hypot(r.x[i] - r.x[ip], r.y[i] - r.y[ip]) > 3.5 ? 1 : 0;
+        }
+        ip = out ? -1 : i;
+        if (out) continue;
+        if (k === n) headIn = true;
         const env = Math.pow(u, 0.9) * (0.35 + 0.65 * Math.min(1, u * 1.6));
         const wob = 1 + 0.32 * Math.sin((sAbs / b.lam[0]) * 6.283 - b.ph[0] - clock * b.drift) + 0.14 * Math.sin((sAbs / b.lam[1]) * 6.283 + b.ph[1] + clock * 1.7);
-        const w = Math.max(0.25, W0 * env * wob) * 0.5;
-        const nx = -r.ty[i] * w;
-        const ny = r.tx[i] * w;
+        const hw = Math.max(0.25, W0 * env * wob) * 0.5;
+        const nx = -r.ty[i] * hw;
+        const ny = r.tx[i] * hw;
         LX[k] = r.x[i] + nx;
         LY[k] = r.y[i] + ny;
         RX[k] = r.x[i] - nx;
         RY[k] = r.y[i] - ny;
       }
+      // un ruban par tronçon continu
       const ribbon = () => {
         ctx.beginPath();
-        ctx.moveTo(LX[0], LY[0]);
-        for (let k = 1; k <= n; k++) ctx.lineTo(LX[k], LY[k]);
-        for (let k = n; k >= 0; k--) ctx.lineTo(RX[k], RY[k]);
-        ctx.closePath();
+        let a = -1;
+        for (let k = 0; k <= n + 1; k++) {
+          const cut = k > n || BRK[k];
+          if (cut && a >= 0 && k - 1 - a >= 1) {
+            const z = k - 1;
+            ctx.moveTo(LX[a], LY[a]);
+            for (let j = a + 1; j <= z; j++) ctx.lineTo(LX[j], LY[j]);
+            for (let j = z; j >= a; j--) ctx.lineTo(RX[j], RY[j]);
+            ctx.closePath();
+          }
+          if (cut) {
+            const w = k <= n ? wrap(r, b.tail + (b.s - b.tail) * (k / n)) : -1;
+            a = k <= n && w >= 0 && w <= r.L ? k : -1;
+          }
+        }
       };
       // lueur : le même ruban, contour large et très pâle
       ribbon();
@@ -473,8 +550,9 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       ctx.stroke();
     }
     // bout arrondi de la tête (tant qu'elle est sur la piste)
-    if (b.s >= 0 && b.s <= r.L) {
+    if (n < 2 ? wrap(r, b.s) >= 0 && wrap(r, b.s) <= r.L : headIn) {
       const k = Math.max(0, n);
+      const ih = idx(r, wrap(r, b.s));
       const hx = n >= 2 ? (LX[k] + RX[k]) / 2 : r.x[ih];
       const hy = n >= 2 ? (LY[k] + RY[k]) / 2 : r.y[ih];
       const hr = n >= 2 ? Math.hypot(LX[k] - RX[k], LY[k] - RY[k]) / 2 : W0 * 0.45 * Math.min(1, b.age / 0.3);
@@ -515,16 +593,66 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     const dt = Math.min(1 / 30, (now - lastFrame) / 1000);
     lastFrame = now;
     clock += dt;
-    field += ((inside ? 1 : 0) - field) * Math.min(1, dt * (inside ? 6 : 3));
-    if (!inside) {
+    inside = P.on;
+    if (inside) {
+      const ctm = svg.getScreenCTM();
+      if (ctm) {
+        const pt = new DOMPoint(P.x, P.y).matrixTransform(ctm.inverse());
+        mx = pt.x;
+        my = pt.y;
+      }
+      // vitesse du geste (décroît quand le curseur s'arrête)
+      const still = (now - P.t) / 1000;
+      const k = still > 0.06 ? Math.exp(-(still - 0.06) * 10) : 1;
+      cvx = P.vx * k;
+      cvy = P.vy * k;
+    } else {
       cvx *= 0.88;
       cvy *= 0.88;
     }
+    field += ((inside ? 1 : 0) - field) * Math.min(1, dt * (inside ? 6 : 3));
     const spd = Math.hypot(cvx, cvy);
     const A = 54 + Math.min(46, spd * 0.045);
     const boost = field * (1 + Math.min(1.8, spd / 600));
 
-    // le curseur qui bouge près d'une piste libre y fait naître une perle, au point le plus proche
+    // le curseur sur la page : une ou deux coulées résidentes naissent sur les pistes les plus proches de lui (à un
+    // endroit au hasard de la piste) et se laissent attirer
+    if (ready && visible && inside && field > 0.5 && now - lastScan > 450) {
+      lastScan = now;
+      // distance de chaque piste au curseur (point le plus proche)
+      let bestAll = Infinity;
+      for (const r of rails) {
+        let d = Infinity;
+        if (!r.ghost) for (let i = 0; i < r.n; i += 4) d = Math.min(d, (r.x[i] - mx) ** 2 + (r.y[i] - my) ** 2);
+        r.dist = Math.sqrt(d);
+        bestAll = Math.min(bestAll, r.dist);
+      }
+      // une coulée posée sur une piste nettement plus loin que la meilleure se retire (elle renaîtra plus près)
+      let res = 0;
+      for (const b of beads) {
+        if (!b.res) continue;
+        if (b.idle > 0.9 && b.r.dist > bestAll + 40) b.res = false;
+        else res++;
+      }
+      if (res < RES_MAX && now - lastRes > 1100) {
+        let best: Rail | null = null;
+        let bd = Infinity;
+        for (const r of rails) {
+          if (r.busy || r.ghost) continue;
+          const d = r.dist * rand(0.85, 1.2);
+          if (d < bd) {
+            bd = d;
+            best = r;
+          }
+        }
+        if (best) {
+          lastRes = now;
+          spawn(best, rand(0.1, 0.9) * best.L, 0, null, 0, { res: true, len: Math.min(best.L * 0.6, rand(36, 92)) });
+        }
+      }
+    }
+
+    // le curseur qui bouge près d'une piste libre y fait naître une coulée, au point le plus proche
     if (ready && inside && spd > 90 && now - lastCall > (spd > 700 ? 420 : 800)) {
       let br: Rail | null = null;
       let bi = 0;
@@ -557,15 +685,31 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       b.t += dt;
       let f = 0;
       if (boost > 0.002) {
-        const i = idx(r, Math.min(b.s, r.L));
+        const i = idx(r, b.curve ? Math.min(b.s, r.L) : wrap(r, b.s));
         const dx = r.x[i] - mx;
         const dy = r.y[i] - my;
         const d = Math.hypot(dx, dy) + 0.001;
+        const along = (dx / d) * r.tx[i] + (dy / d) * r.ty[i]; // > 0 : s'éloigner du curseur = avancer sur le rail
         if (d < A) {
+          // aimant contre aimant : dans l'aura le fluide est repoussé
           const q = 1 - d / A;
           const q2 = q * q;
-          f += ((dx / d) * r.tx[i] + (dy / d) * r.ty[i]) * PUSH * q2 * boost; // répulsion, le long du rail
+          f += along * PUSH * q2 * boost;
           f += (cvx * r.tx[i] + cvy * r.ty[i]) * q2 * DRAG * field; // sillage du geste, le long du rail
+        } else {
+          // au-delà il est attiré, d'autant plus fort qu'il est loin (plafonné) ; les coulées du courant
+          // ambiant, tenues par leur guide, ne font que s'infléchir
+          f -= along * ATTR * Math.min(1, (d - A) / REACH) * field * (b.curve ? 0.45 : 1);
+        }
+        // une coulée attirée sous la carte de devant en ressort par le bord le plus proche (elle resterait invisible)
+        if (r.hid && r.hid[i] && !b.curve) {
+          let a = i;
+          let e = i;
+          while (a > 0 && r.hid[a]) a--;
+          while (e < r.n - 1 && r.hid[e]) e++;
+          const toA = r.hid[a] ? Infinity : i - a;
+          const toE = r.hid[e] ? Infinity : e - i;
+          if (toA !== Infinity || toE !== Infinity) f += (toE < toA ? 1 : -1) * ATTR * 0.9;
         }
       }
       if (b.curve) {
@@ -582,7 +726,13 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       b.s += b.v * dt;
       // le rail : jamais hors de la piste (une perle appelée bute aux extrémités)
       const max = b.curve ? r.L + b.len + 8 : r.L;
-      if (b.s < 0) {
+      if (!b.curve && r.closed) {
+        // piste fermée : on en fait le tour (queue et tête décalées ensemble)
+        const sh = b.s >= r.L ? -r.L : b.s < 0 ? r.L : 0;
+        b.s += sh;
+        b.tail += sh;
+        b.prev += sh;
+      } else if (b.s < 0) {
         b.s = 0;
         b.v = Math.abs(b.v) * 0.2;
       } else if (b.s > max) {
@@ -609,7 +759,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
         else if (b.t > b.T + 1.5) b.fade += dt * 3;
       } else {
         b.idle = Math.abs(b.v) < 8 ? b.idle + dt : 0;
-        if (b.idle > 1.3 || b.age > 9) b.fade += dt * 2.5;
+        if (!(b.res && inside) && (b.idle > 1.3 || (!b.res && b.age > 9))) b.fade += dt * 2.5;
       }
       if (b.fade >= 1) {
         if (b.reveal && r.trace) r.trace.style.strokeDashoffset = '0';
@@ -664,8 +814,12 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       if (r.hide) ctx.restore();
     }
 
-    if (beads.size || inside || field > 0.01) raf = requestAnimationFrame(tick);
-    else ctx.clearRect(-PAD, -PAD, W, H);
+    // au repos complet (curseur immobile, plus rien ne bouge) la boucle s'endort ; le prochain geste la réveille
+    let moving = field > 0.01 && field < 0.99;
+    for (const b of beads) if (b.curve || b.delay > 0 || b.fade > 0 || Math.abs(b.v) > 2 || Math.abs(b.s - b.dir * b.len - b.tail) > 0.5) moving = true;
+    const calm = inside && now - P.t > 2500 && !moving;
+    if (!calm && (beads.size || inside || field > 0.01)) raf = requestAnimationFrame(tick);
+    else if (!beads.size && !inside) ctx.clearRect(-PAD, -PAD, W, H);
   };
 
   // ── tracé initial (quand la carte devient visible), puis courant ambiant planifié
@@ -688,7 +842,8 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     clearTimeout(timer);
     if (!visible || document.hidden || !host.isConnected || !ready) return;
     const free = rails.filter((r) => !r.busy);
-    if (free.length) pulse(free[Math.floor(Math.random() * free.length)], hover ? PULSE_SPEED * 1.3 : PULSE_SPEED);
+    // (curseur sur la page : ce sont les coulées attirées qui vivent, pas le courant ambiant)
+    if (free.length && !P.on) pulse(free[Math.floor(Math.random() * free.length)], hover ? PULSE_SPEED * 1.3 : PULSE_SPEED);
     timer = window.setTimeout(schedule, hover ? 1100 + Math.random() * 700 : (fine ? 3600 : 5000) + Math.random() * 3000);
   };
   const io = typeof IntersectionObserver !== 'undefined'
@@ -716,11 +871,6 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     card.addEventListener('pointerenter', enter);
     card.addEventListener('pointerleave', leaveH);
   }
-  card.addEventListener('pointermove', onMove);
-  card.addEventListener('pointerdown', onMove);
-  card.addEventListener('pointerleave', onOut);
-  card.addEventListener('pointercancel', onOut);
-  card.addEventListener('pointerup', onUp);
 
   return () => {
     clearTimeout(timer);
@@ -729,11 +879,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     document.removeEventListener('visibilitychange', onVis);
     card.removeEventListener('pointerenter', enter);
     card.removeEventListener('pointerleave', leaveH);
-    card.removeEventListener('pointermove', onMove);
-    card.removeEventListener('pointerdown', onMove);
-    card.removeEventListener('pointerleave', onOut);
-    card.removeEventListener('pointercancel', onOut);
-    card.removeEventListener('pointerup', onUp);
+    unlisten();
     cancelAnimationFrame(raf);
   };
 }
