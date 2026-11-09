@@ -128,7 +128,10 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const edgeDist = length(max(cq, 0)).add(min(max(cq.x, cq.y), 0)).sub(CARD.r).negate(); // 0 au bord, > 0 vers l'intérieur
   // (retours 07/11) gabarit « Pleine illustration » : plus de bande de bordure métallique — l'image va jusqu'au bord
   const rimK = art.designId === 'full-art' ? 0 : BORDER_FOIL[Math.min(5, Math.max(0, tier))];
-  const rim = smoothstep(float(BORDER_W), float(BORDER_W * 0.55), edgeDist).mul(rimK);
+  // (V2 fluidité, lot 3) en uniform : la valeur n'est plus écrite en dur dans le shader. Avant, une carte « Pleine
+  // illustration » (0) et la carte de préchauffage (gabarit classique) donnaient deux shaders différents : le
+  // préchauffage ne servait pas aux vraies cartes, dont les pipelines naissaient à la première révélation (gel).
+  const rim = smoothstep(float(BORDER_W), float(BORDER_W * 0.55), edgeDist).mul(uniform(rimK));
   const frameFoil = clamp(L.masks.r.mul(L.window.oneMinus()).add(rim), 0, 1).mul(holoFx.border);
   const inner = rim.oneMinus();
   const imageFoil = clamp(winFoil.add(subjFoil), 0, 1).mul(inner);

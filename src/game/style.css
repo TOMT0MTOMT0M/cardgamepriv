@@ -1719,7 +1719,9 @@ body.offline .offline-pill, body.server-down .offline-pill { opacity: 1; transfo
 }
 /* tactile : plus de flou d'arrière-plan recalculé à chaque image au-dessus de la 3D (PERF2-07) */
 @media (pointer: coarse) {
-  .bp-item, .qty, .hud-skip button { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .bp-item, .qty, .hud-skip button, .va, .mp-chip { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .va { background: rgba(0, 0, 0, 0.88); }
+  .mp-chip { background: rgba(0, 0, 0, 0.93); }
   .bp-item { background: rgba(0, 0, 0, 0.9); }
   .qty { background: rgba(0, 0, 0, 0.92); }
   .hud-skip .skip-all { background: rgba(0, 0, 0, 0.9); }

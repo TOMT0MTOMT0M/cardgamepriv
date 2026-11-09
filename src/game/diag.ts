@@ -83,8 +83,10 @@ export function installDiag(shell: Shell) {
       if (last) worst = Math.max(worst, now - last);
       if (now - since > 15000) report('15 s');
     }
-    last = now;
-    requestAnimationFrame(tick);
+    last = watching ? now : 0;
+    // (V2 fluidité, lot 3) hors scène surveillée, plus de rappel à chaque image : un coup d'œil deux fois par seconde
+    if (watching) requestAnimationFrame(tick);
+    else setTimeout(() => tick(performance.now()), 500);
   };
   requestAnimationFrame(tick);
 }

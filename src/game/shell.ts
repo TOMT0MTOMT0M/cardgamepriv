@@ -162,15 +162,21 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   let fast = 0;
   const WINDOW_MS = mobile ? 2500 : 3000;
   const SLOW_MS = mobile ? 22 : 25;
-  let perf = { acc: 0, frames: 0, slow: 0, capped: 0, last: performance.now() };
-  const FAST_MS = mobile ? 15 : 14;
+  let perf = { acc: 0, frames: 0, slow: 0, capped: 0, over: 0, last: performance.now() };
+  // (V2 fluidité, lot 3) « ça respire » = la scène tient la cadence de l'écran. L'ancien seuil (15 ms) était sous
+  // l'intervalle d'un écran 60 Hz (16,7 ms) : la définition ne remontait jamais. Maintenant : moyenne à la cadence
+  // (≤ 17,6 ms) ET moins de 5 % d'images en retard, sur 3 fenêtres ; et si une remontée est suivie d'une rechute
+  // dans les 20 s, on ne retente plus pendant 3 min (pas de yo-yo, chaque changement réalloue les cibles de rendu).
+  const FAST_MS = 17.6;
+  let raisedAt = -1e9;
+  let noRaiseUntil = 0;
   /**
    * Cadence de l'écran mesurée quand rien n'est rendu (chargement, pages DOM) : si le téléphone livre ~30 i/s même à
    * vide, c'est le système qui bride (économie d'énergie), pas la 3D.
    */
   const idle: number[] = [];
   let osCapped30 = false;
-  const resetPerf = () => (perf = { acc: 0, frames: 0, slow: 0, capped: 0, last: performance.now() });
+  const resetPerf = () => (perf = { acc: 0, frames: 0, slow: 0, capped: 0, over: 0, last: performance.now() });
   function resize() {
     const { w, h } = size();
     renderer.setPixelRatio(dpr);
@@ -337,21 +343,25 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       perf.frames++;
       // image « bridée » à 30 i/s : intervalle régulier autour de 33 ms
       if (real > 30 && real < 37.5) perf.capped++;
+      if (real > SLOW_MS) perf.over++;
       if (perf.acc > WINDOW_MS) {
         const avg = perf.acc / perf.frames;
         const throttled = mobile && osCapped30 && avg > 30 && avg < 36 && perf.capped > perf.frames * 0.8;
         perf.slow = avg > SLOW_MS && !throttled ? perf.slow + 1 : 0;
-        perf.acc = perf.frames = perf.capped = 0;
-        fast = avg < FAST_MS && !throttled ? fast + 1 : 0;
+        const late = perf.over / perf.frames;
+        perf.acc = perf.frames = perf.capped = perf.over = 0;
+        fast = avg < FAST_MS && late < 0.05 && !throttled ? fast + 1 : 0;
         if (perf.slow >= 2 && dpr > minDpr + 0.01) {
           slowSteps++;
           dpr = applyDpr();
           perf.slow = 0;
           fast = 0;
+          if (now - raisedAt < 20_000) noRaiseUntil = now + 180_000;
           resize();
           console.info(`[jeu] appareil un peu juste (${Math.round(1000 / avg)} i/s) : définition 3D ramenée à ×${dpr}`);
-        } else if (fast >= 3 && slowSteps > 0) {
+        } else if (fast >= 3 && slowSteps > 0 && now > noRaiseUntil) {
           slowSteps--;
+          raisedAt = now;
           dpr = applyDpr();
           fast = 0;
           resize();
