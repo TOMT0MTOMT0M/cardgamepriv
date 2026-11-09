@@ -64,6 +64,7 @@ def accentize(src, dst, family):
     t.flavor = 'woff2'
     t.save(dst)
     print(dst, 'ajoutés :', ''.join(added))
-accentize('b/Matcha World.ttf', 'out/matcha-world.woff2', 'Matcha World')
+# (V2, 08/11) gros titres : Atsuka Montreal (graissée, casse du jeu) → scripts/build-display-font.py
+# ancienne police des gros titres (V1) : accentize('b/Matcha World.ttf', 'out/matcha-world.woff2', 'Matcha World')
 for src, dst in [('a/Bold Frame.ttf', 'out/bold-frame.woff2'), ('a/Bold Frame One.ttf', 'out/bold-frame-one.woff2'), ('a/Bold Frame Two.ttf', 'out/bold-frame-two.woff2')]:
     accentize(src, dst, os.path.basename(src)[:-4])

@@ -77,7 +77,7 @@ export interface SceneCtx {
   actor(): HTMLElement;
   /** largeur de la carte (px) */
   cw: number;
-  /** grand mot en Matcha World (titre de scène), centré ; `y` en px */
+  /** grand mot en Atsuka Montreal (--display) (titre de scène), centré ; `y` en px */
   word(txt: string, y: number, size?: number, cls?: string): HTMLElement;
   /** petite étiquette (Bold Frame, espacée, majuscules) */
   label(txt: string, x: string, y: string, cls?: string): HTMLElement;

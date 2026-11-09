@@ -15,9 +15,9 @@
   --gold: #ffffff;
   --ok: #ffffff;
   --err: #ff4d4d;
-  /* polices (retours 05/11) : src/core/fonts.ts + fonts.css — Matcha World pour les GROS titres seulement, Bold Frame
+  /* polices (retours 05/11) : src/core/fonts.ts + fonts.css — Atsuka Montreal (V2, ex-Matcha World) pour les GROS titres seulement, Bold Frame
      pour tout le reste (graisse 400 texte · 500-600 libellés · 700 titres) */
-  --display: 'Matcha World', 'Bold Frame', 'Inter', system-ui, sans-serif;
+  --display: 'Atsuka Montreal', 'Bold Frame', 'Inter', system-ui, sans-serif;
   --title: 'Bold Frame', 'Inter', system-ui, sans-serif;
   --mono: 'Inter', 'IBM Plex Mono', system-ui, sans-serif;
   /* audit 06/11 : durée des barres de progression et des entrées amples */
@@ -2843,7 +2843,7 @@ body.wild-on .viewer-ui, body.wild-on .topbar { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .mp-eq i { animation: none; transform: scaleY(0.6); } }
 .ci-by { margin-top: -2px; font: 500 12px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); }
 
-/* ══ TYPOGRAPHIE (retours 05/11) : Matcha World (--display) dosée — logo, titres de page, moments forts — et Bold Frame
+/* ══ TYPOGRAPHIE (retours 05/11) : Atsuka Montreal (--display, V2 — ex-Matcha World) dosée — logo, titres de page, moments forts — et Bold Frame
    partout ailleurs, en jouant sur ses 3 graisses et l'espacement des lettres. Pas de faux italique (la police n'en a pas). */
 html { font-synthesis-style: none; font-synthesis: weight small-caps; }
 html, body { letter-spacing: 0.01em; }

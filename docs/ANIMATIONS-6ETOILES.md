@@ -74,4 +74,4 @@ musique / aucun logo / aucune interface reprise. Tous les sons sont synthétisé
 2. L'inscrire dans `SCENES` de `src/game/mythic/index.ts` (clé = id du groupe, ou du sous-thème sans groupe).
 3. Positionner les éléments centrés avec `k.pin(el)` (jamais `translate(-50%)` en CSS sur un élément animé par gsap).
 4. `k.actor()` = la carte (déjà centrée, opacité 0) : la faire entrer, la manipuler, la laisser au centre à l'échelle 1.
-   `k.word()` (gros titre Matcha World), `k.label()` (étiquette), `k.accent` (couleur de la famille).
+   `k.word()` (gros titre Atsuka Montreal — ex-Matcha World, V2), `k.label()` (étiquette), `k.accent` (couleur de la famille).

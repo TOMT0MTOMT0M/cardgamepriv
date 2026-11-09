@@ -1,7 +1,12 @@
 /*
  * POLICES DU JEU (retours 05/11) — un seul endroit (avec src/core/fonts.ts).
- *  - « Matcha World » : les GROS TITRES seulement (logo, titres de page, moments forts). Très large et gourmande : à
- *    doser. Le fichier d'origine n'a ni accents ni point médian : scripts/build-fonts.py les ajoute (É È Ê Ë À Ç… ·).
+ *  - « Atsuka Montreal » (V2, 08/11 — remplace Matcha World, la police ronde « Bébou ») : les GROS TITRES seulement (logo,
+ *    titres de page, moments forts, nom moulé sur les sachets). Fichier RETRAVAILLÉ par scripts/build-display-font.py :
+ *    GRAISSÉE (+3,5 % du cadratin, l'origine est trop fine) et CASSE DU JEU — la capitale à volutes seulement en
+ *    PREMIÈRE lettre : toute capitale qui suit un autre signe devient petite capitale sans volute (« BÉBOU PACK » →
+ *    un seul B à volutes). Jamais de volutes en chaîne. Une seule graisse, déclarée sur 100–900 (pas de faux gras).
+ *    Sur toile (canvas), les navigateurs mettent en forme mot par mot : passer le texte par `displayCase` (fonts.ts).
+ *    ⚠ Licence « usage personnel » (jeu privé entre amis, non commercial).
  *  - « Bold Frame » : titres, noms et texte courant EN CASSE MIXTE, en trois graisses réunies sous un même nom → les
  *    `font-weight` du CSS choisissent : 400 = Bold Frame · 500-600 = Bold Frame One · 700-900 = Bold Frame Two.
  *    Étroite et nette : légèrement agrandie (`size-adjust`). ⚠ Ses capitales R et X se lisent A et H sous 14 px (audit
@@ -10,7 +15,7 @@
  * les exclut, ils viennent de la police de repli.
  * ⚠ Bold Frame : licence « usage personnel » (jeu privé entre amis, non commercial).
  */
-@font-face { font-family: 'Matcha World'; src: url('./fonts/matcha-world.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'Atsuka Montreal'; src: url('./fonts/atsuka-montreal.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
 @font-face { font-family: 'Bold Frame'; src: url('./fonts/bold-frame.woff2') format('woff2'); font-weight: 100 450; font-display: swap; size-adjust: 108%; unicode-range: U+0020-0025, U+0027-002A, U+002C-00D6, U+00D8-FFFF; }
 @font-face { font-family: 'Bold Frame'; src: url('./fonts/bold-frame-one.woff2') format('woff2'); font-weight: 451 650; font-display: swap; size-adjust: 108%; unicode-range: U+0020-0025, U+0027-002A, U+002C-00D6, U+00D8-FFFF; }
 @font-face { font-family: 'Bold Frame'; src: url('./fonts/bold-frame-two.woff2') format('woff2'); font-weight: 651 1000; font-display: swap; size-adjust: 108%; unicode-range: U+0020-0025, U+0027-002A, U+002C-00D6, U+00D8-FFFF; }

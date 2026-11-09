@@ -9,7 +9,7 @@ import { FONT_LABEL, FONT_TEXT } from '../../fonts';
 export const W = BASE_W;
 export const H = BASE_H;
 export const TAU = Math.PI * 2;
-// (retours 05/11) polices du jeu : src/core/fonts.ts (Bold Frame ; Matcha World pour les gros titres de l'interface)
+// (retours 05/11) polices du jeu : src/core/fonts.ts (Bold Frame ; Atsuka Montreal pour les gros titres de l'interface)
 export const FONT_TITLE = FONT_TEXT;
 export const FONT_MONO = FONT_LABEL;
 export const FONT_SANS = '"Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif';

@@ -2,7 +2,7 @@ import { BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshPhysic
 import { bumpMap, float, mix, normalMap, positionLocal, texture, uv, vec2, vec3, smoothstep, sin } from 'three/tsl';
 import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, type Ctx } from './art/canvas';
 import { FONT_MONO, FONT_TITLE } from './art/frame';
-import { FONT_DISPLAY } from './fonts';
+import { FONT_DISPLAY, displayCase } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
@@ -380,13 +380,15 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
     applyGrain(g, PW, PH, 0.012, 8, 20);
   }
   // (retours de Tom, 07/11) face avant : le NOM DU PACK n'est plus imprimé en noir — il est MOULÉ dans le film
-  // (relief thermoformé, même matière) et les reflets dessinés dans Matcha World y sont creusés. Le relief passe par
+  // (relief thermoformé, même matière) (V2 : police Atsuka Montreal, sans reflets dessinés). Le relief passe par
   // les normales de la face avant (plus bas, une fois la carte des plis prête) ; ici on ne garde que sa mise en page.
   let label: { text: string; px: number } | null = null;
   if (style.label) {
     await Promise.race([document.fonts.load(`400 120px ${FONT_DISPLAY}`).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
-    const font = fitFont(F.g, style.label, 400, 132, PW - 120, FONT_DISPLAY);
-    label = { text: style.label, px: parseFloat(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? '132') };
+    // (V2) une seule capitale à volutes, en tête (« Bébou pack ») : casse posée ici, la toile ne lit pas la règle de la police
+    const text = displayCase(style.label);
+    const font = fitFont(F.g, text, 400, 132, PW - 120, FONT_DISPLAY);
+    label = { text, px: parseFloat(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? '132') };
   }
   // ── masques : R = zones plus lisses (soudures), G = relief des soudures, B = ligne de déchirure (découpe)
   const m = M.g;
@@ -434,7 +436,8 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
  * visite à l'autre dans le Cache Storage, en flottants bruts (exact au bit près) — comme la carte des plis. La clé
  * contient le texte, la taille, les réglages de LABEL_RELIEF et LABEL_VERSION : à CHANGER si packLabel.ts change.
  */
-const LABEL_VERSION = 'nom-v1';
+// (V2, 08/11) 'nom-v2' : police Atsuka Montreal — la police n'est pas dans la clé, les reliefs Matcha en cache partent
+const LABEL_VERSION = 'nom-v3';
 const LABEL_STORE = 'bebou-nom-moule';
 const labelKey = (text: string, px: number) => `/__nom/${LABEL_VERSION}-${PW}x${PH}-${px}-${encodeURIComponent(text)}-${encodeURIComponent(JSON.stringify(LABEL_RELIEF))}.bin`;
 async function labelFromCache(text: string, px: number): Promise<ReliefMap | null> {
