@@ -991,6 +991,8 @@ async function boot() {
     preloadOwned(backend.state.collection.map((c) => c.cardId));
   }, 1500);
   setTimeout(prefetchPages, 3000);
+  // (V2 fluidité) le jeu s'installe sur l'appareil en tâche de fond (bundle.ts) : démarrages suivants sans réseau
+  setTimeout(() => void import('./bundle').then((m) => m.installBundle(() => shop.busy())), 4500);
 
   // crochet de test (Playwright)
   (window as unknown as { __jeu: unknown }).__jeu = {
