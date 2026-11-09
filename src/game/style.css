@@ -1945,8 +1945,8 @@ button.pg-info:hover { color: var(--ink); }
 .trades .armed { background: linear-gradient(180deg, #ffffff, #ffffff) !important; color: #000000 !important; border-color: transparent !important; text-decoration: none; padding: 7px 12px; border-radius: 999px; }
 .trade .when { font: 400 12px var(--mono); color: var(--ink-3); }
 .trade .gauge { margin-top: 4px; }
-.trade .act .no { margin-right: auto; font-size: 12px; color: var(--ink-3); min-height: 36px; }
-.trade .act .no:hover { color: var(--err); }
+.trade .act .t-decline { margin-right: auto; font-size: 12px; color: var(--ink-3); min-height: 36px; }
+.trade .act .t-decline:hover { color: var(--err); }
 .its .it .last, .ti .ti-last { font: 700 12px var(--mono); font-style: normal; letter-spacing: 0.04em; color: var(--err); text-transform: uppercase; }
 .wb.last { top: auto; bottom: 22px; left: 5px; background: rgba(0, 0, 0, 0.88); color: var(--err); border: 1px solid var(--err); }
 .trades .tile.picked .wb.last { bottom: 40px; } /* (au-dessus de la pastille « ×N ») */
@@ -3425,3 +3425,52 @@ body.god .gl-host::after { content: ''; position: fixed; inset: 0; z-index: 1; p
 .trade .t-confirm { padding: 8px 8px 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.35); }
 .trade .t-confirm .cf-q { margin-right: auto; font-weight: 600; color: var(--ink); }
 .trade .t-err { margin-top: 2px; }
+
+/* ══ CHERCHER UN PROPRIÉTAIRE (v1.0.9) — views/owners.ts : fiche par-dessus la page ══ */
+.ow-veil { position: fixed; inset: 0; z-index: 96; display: grid; place-items: end center; padding: 16px; background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; transition: opacity var(--dur-standard) var(--ease-standard); }
+@media (min-width: 720px) { .ow-veil { place-items: center; } }
+.ow-veil.on { opacity: 1; }
+.ow-veil.out { opacity: 0; pointer-events: none; }
+.ow { width: min(440px, 100%); max-height: min(78dvh, 640px); display: flex; flex-direction: column; background: #050505; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; transform: translateY(14px); transition: transform var(--dur-standard) var(--ease-standard); padding-bottom: env(safe-area-inset-bottom); }
+.ow-veil.on .ow { transform: none; }
+.ow-h { position: relative; display: flex; gap: 14px; align-items: center; padding: 18px 52px 16px 18px; border-bottom: 1px solid var(--line); }
+.ow-img { flex: none; width: 56px; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 6px; border: 1px solid var(--rc, var(--line-2)); background: #0b0b0b; }
+.ow-sec { display: grid; place-items: center; font: 600 22px var(--mono); color: var(--ink-3); }
+.ow-id { display: grid; gap: 3px; min-width: 0; }
+.ow-k { font: 600 11px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); }
+.ow-id b { font: 600 18px/1.15 var(--title); overflow-wrap: anywhere; }
+.ow-sub { font: 500 12px var(--mono); color: var(--ink-2); }
+.ow-sub i { font-style: normal; color: var(--rc); }
+.ow-me { font: 500 12px var(--mono); color: var(--ink-3); }
+.ow-x { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; color: var(--ink-3); font-size: 15px; }
+.ow-list { overflow: auto; padding: 6px 0; overscroll-behavior: contain; }
+.ow-row { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.ow-row:last-child { border-bottom: 0; }
+.ow-row.skel { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent); background-size: 200% 100%; animation: ow-skel 1.2s linear infinite; }
+@keyframes ow-skel { to { background-position: -200% 0; } }
+.ow-row .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+.ow-row .dot.on { background: #6bffb8; box-shadow: 0 0 8px rgba(107, 255, 184, 0.6); }
+.ow-who { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.ow-who b { font: 600 15px var(--title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ow-who small { font: 500 12px var(--mono); color: var(--ink-3); }
+.ow-row.dup .ow-who small { color: #6bffb8; }
+.ow-row.busy .ow-who small { color: var(--ink-3); font-style: italic; }
+.ow-go { flex: none; min-height: 40px; }
+.ow-go:disabled { opacity: 0.35; box-shadow: none; }
+.ow-empty { margin: 0; padding: 22px 18px; font: 500 13px var(--mono); color: var(--ink-3); line-height: 1.5; }
+.ow-empty.err { color: var(--err); }
+
+/* recherche « toutes les cartes » de la page Échanges (v1.0.9) */
+.tr-find { display: grid; gap: 8px; margin: 18px 0; }
+.tr-find-in { width: 100%; min-height: 44px; }
+.tr-find-res { display: grid; gap: 2px; }
+.tr-find-res:empty { display: none; }
+.tf-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.tf-row img, .tf-row .tf-noimg { flex: none; width: 32px; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 4px; border: 1px solid var(--rc, var(--line-2)); background: #0b0b0b; }
+.tf-id { flex: 1; display: grid; gap: 1px; min-width: 0; }
+.tf-id b { font: 600 14px var(--title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tf-id small { font: 500 11px var(--mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tf-id small i { font-style: normal; color: var(--rc); }
+.tf-id small em { font-style: normal; color: var(--ink-2); }
+.tf-go { flex: none; min-height: 38px; padding: 6px 12px; font-size: 11px; }
+.tr-find .muted { font-size: 12px; padding: 4px; }

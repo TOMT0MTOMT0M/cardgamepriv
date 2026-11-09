@@ -648,6 +648,12 @@ class GameNetClient {
     return await this.client.query(api.inventory.userCollection, { userId });
   }
 
+  /** (v1.0.9) « Chercher un propriétaire » : joueurs qui possèdent la carte (hors moi). */
+  public async cardOwners(cardId: string) {
+    if (!this.client) return [];
+    return await this.client.query(api.trades.owners, { sessionToken: this.sessionToken ?? undefined, cardId });
+  }
+
   /** Contrat façon CS:GO : brûle des doublons d'une étoile contre une carte de l'étoile au-dessus (src/core/contracts.ts). */
   public async signContract(rarity: RarityId, items: Array<{ cardId: string; count: number }>) {
     return await this.client!.mutation(api.contracts.sign, { sessionToken: this.requireToken(), rarity, items });
