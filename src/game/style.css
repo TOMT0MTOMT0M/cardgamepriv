@@ -306,7 +306,8 @@ body.card-open .views { pointer-events: none; }
 /* ───────────── tuiles de carte */
 .tile { position: relative; aspect-ratio: 63 / 88; border-radius: 9px; padding: 6px; display: flex; flex-direction: column; background: linear-gradient(160deg, color-mix(in srgb, var(--rc) 28%, #141414), #0a0a0a 70%); border: 1px solid color-mix(in srgb, var(--rc) 55%, transparent); content-visibility: auto; contain-intrinsic-size: auto 114px 160px; overflow: hidden; cursor: pointer; transition: transform var(--dur-rapide), box-shadow var(--dur-rapide); }
 .tile .art { flex: 1; min-height: 0; display: grid; place-items: center; border-radius: 5px; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 22%, transparent), transparent 70%); }
-.tile .art img { width: 92%; height: 92%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5)); }
+.tile .art img { width: 92%; height: 92%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5)); opacity: 0; transition: opacity var(--dur-rapide) linear; }
+.tile .art img.in { opacity: 1; }
 .tile .art .q { font: 600 34px var(--title); color: rgba(255, 255, 255, 0.15); }
 .tile .meta { display: flex; justify-content: space-between; align-items: center; font: 500 12px var(--mono); color: var(--ink-3); margin-top: 3px; }
 .tile .meta .stars { font-size: 10px; letter-spacing: 0; }
@@ -320,6 +321,7 @@ body.card-open .views { pointer-events: none; }
 .tile.missing .art img { filter: blur(5px) brightness(0.42) saturate(0.55); opacity: 0.9; transform: scale(1.08); }
 .tile.missing .art .lock { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255, 255, 255, 0.6); pointer-events: none; }
 .tile.missing .art .lock svg { width: 24%; max-width: 22px; min-width: 12px; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7)); }
+.tile.missing .art img:not(.in) { opacity: 0; }
 .tile.missing:hover .art img { filter: blur(4px) brightness(0.55) saturate(0.7); }
 .tile.missing .name { color: var(--ink-3); }
 .tile.owned:hover { transform: translateY(-3px); box-shadow: 0 10px 24px -10px var(--rc); }

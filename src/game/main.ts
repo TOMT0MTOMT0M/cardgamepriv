@@ -784,6 +784,17 @@ const PAGE_MODULES = {
 type PageKey = keyof typeof PAGE_MODULES;
 const isPage = (k: string): k is PageKey => k in PAGE_MODULES;
 /** Précharge (sans les créer) les modules des pages, un par un quand le navigateur est libre ; rien en économie de données. */
+// (V2 fluidité, lot 2) dès que le doigt se pose sur un lien du menu, le module de la page part : il est là au lâcher,
+// même dans les premières secondes (avant le préchargement de fond)
+document.addEventListener(
+  'pointerdown',
+  (e) => {
+    const r = (e.target as Element | null)?.closest?.('a[data-r]')?.getAttribute('data-r');
+    if (r && r in PAGE_MODULES) void PAGE_MODULES[r as keyof typeof PAGE_MODULES]().catch(() => undefined);
+  },
+  { passive: true, capture: true },
+);
+
 function prefetchPages() {
   const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
   if (conn?.saveData || /2g/.test(conn?.effectiveType ?? '')) return;

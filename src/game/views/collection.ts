@@ -1556,7 +1556,12 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const tile = b && el.querySelector<HTMLElement>(`.tile.owned[data-card="${CSS.escape(b.id)}"][data-rarity="${b.r}"]`);
     tile?.scrollIntoView({ block: 'nearest' });
     if (tile && document.activeElement?.closest('.viewer-ui')) tile.focus({ preventScroll: true });
-    render(); // envies / classeurs / pochettes ont pu changer
+    // (V2 fluidité, lot 2) la grille n'est refaite que si quelque chose a changé pendant la visionneuse (envies,
+    // classeurs, pochettes) : sinon les 60 tuiles restent en place — plus de clignotement au retour
+    if (viewerDirty) {
+      viewerDirty = false;
+      render();
+    }
   }
   viewerUi.querySelector('.close')!.addEventListener('click', closeViewer);
   const prevBtn = viewerUi.querySelector<HTMLButtonElement>('.nav.prev')!;
@@ -1576,13 +1581,19 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
 
   window.addEventListener('pagehide', () => el.isConnected && saveSeen());
   let sig = '';
+  let viewerDirty = false;
   backend.onChange((st) => {
+    // (page pas affichée : rien à calculer — `enter()` refait tout à l'arrivée)
+    if (!el.isConnected) return;
     // (+ exemplaires engagés : la forge et son compteur en dépendent)
     const now = `${collectionSig(st)}|${st.wishlist.length}|${JSON.stringify(st.binders)}|${JSON.stringify(st.covers)}|${JSON.stringify([...lockedCards(st)])}|${st.ready}`;
     if (now === sig) return;
     sig = now;
     if (el.isConnected && !open) render();
-    else if (el.isConnected && open && browse[at]) renderActions(browse[at]);
+    else if (el.isConnected && open) {
+      viewerDirty = true;
+      if (browse[at]) renderActions(browse[at]);
+    }
   });
 
   return {

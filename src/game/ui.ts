@@ -59,6 +59,24 @@ export const thumbUrl = (e: CatalogEntry) =>
 export const artUrl = (e: CatalogEntry) => siteUrl(artPath(e));
 
 /**
+ * (V2 fluidité, lot 2) la miniature d'une tuile n'apparaît jamais d'un coup : fondu à son arrivée (style.css,
+ * `.tile .art img.in`). Une miniature déjà vue dans la session est posée directement (pas de fondu rejoué à chaque page).
+ */
+const thumbSeen = new Set<string>();
+if (typeof document !== 'undefined') {
+  document.addEventListener(
+    'load',
+    (ev) => {
+      const t = ev.target;
+      if (!(t instanceof HTMLImageElement) || !t.parentElement?.classList.contains('art')) return;
+      thumbSeen.add(t.getAttribute('src') ?? '');
+      t.classList.add('in');
+    },
+    true,
+  );
+}
+
+/**
  * Miniature de carte (grilles). Carte possédée : la VRAIE carte (même gabarit que la 3D), peinte quand elle arrive à
  * l'écran (cardImages.ts) ; en attendant, et pour les cartes manquantes, un aperçu illustration + étoiles.
  */
@@ -74,7 +92,7 @@ export function cardTile(cardId: string, r: RarityId, o: { count?: number; owned
   // une carte Bébou non possédée ne se montre pas (thème secret)
   const hideArt = !owned && rr.secret;
   t.innerHTML = `
-    <div class="art">${hideArt || !e ? '<span class="q">?</span>' : `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(e)}">`}</div>
+    <div class="art">${hideArt || !e ? '<span class="q">?</span>' : `<img${thumbSeen.has(thumbUrl(e)) ? ' class="in"' : ''} loading="lazy" decoding="async" alt="" src="${thumbUrl(e)}">`}</div>
     <div class="meta"><span class="num">${e ? String(e.num).padStart(3, '0') : '—'}</span>${starsHtml(r)}</div>
     <div class="name">${hideArt ? '???' : esc(e?.name ?? cardId)}</div>
     ${o.count && o.count > 1 ? `<span class="count">×${o.count}</span>` : ''}
