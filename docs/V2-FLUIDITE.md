@@ -80,7 +80,7 @@ une image sur deux au repos, `backdrop-filter` coupés sur téléphone, battemen
 | # | Constat | Gain | Effort | Lot |
 |---|---|---|---|---|
 | 1 | Pas de cache applicatif : le service worker ne fait que les notifications, absent de Safari iOS en onglet | démarrage sans réseau, résiste à l'éviction, hors ligne | M | 1 |
-| 2 | `catalogBig` téléchargé en série après tout le JS | −1 aller-retour + 480 Ko en parallèle | XS | 1 |
+| 2 | `catalogBig` téléchargé en série après tout le JS | −1 aller-retour + 480 Ko en parallèle | XS | 1 (mesuré sans gain : annulé) |
 | 3 | Retour de la vue détail : la grille des 60 tuiles est entièrement refaite | plus de clignotement | S | 2 |
 | 4 | Pages téléchargées 3 s après la boutique seulement | plus d'attente au 1er toucher | XS | 2 |
 | 5 | Miniature des tuiles sans fondu ; vue détail vide pendant le chargement | plus d'apparition brutale | S | 2 |
@@ -88,16 +88,155 @@ une image sur deux au repos, `backdrop-filter` coupés sur téléphone, battemen
 | 7 | La définition 3D ne remonte jamais sur un écran 60 Hz (seuil 15 ms < 16,7 ms) | netteté retrouvée après un passage chargé | S | 3 |
 | 8 | Boucles permanentes au repos (diag, fil des gros tirages avec mise en page forcée) | fil principal au repos, moins de chauffe | S | 3 |
 | 9 | `backdrop-filter` restants sur téléphone au-dessus de la 3D | images plus régulières en vue détail | XS | 3 |
-| 10 | Battement de cœur appelé toutes les 35 s pour une écriture toutes les 4 min | −430 appels / joueur / 30 min… | XS | 4 |
-| 11 | `feed.bigPulls` lit 400 lignes ; `markLeader` toutes les heures | −9 Mo / 30 min, −220 Mo/jour | S | 4 |
-| 12 | Abonnements ouverts onglet caché | appels en moins, radio au repos | S | 4 |
+| 10 | Battement de cœur appelé toutes les 35 s pour une écriture toutes les 4 min | −35 appels / joueur / 30 min | XS | 4 |
+| 11 | `feed.bigPulls` lit 400 lignes ; `markLeader` toutes les heures | −9 Mo / 30 min, −220 Mo/jour | S | 4 (`bigPulls`) ; `markLeader` : décision |
+| 12 | Abonnements ouverts onglet caché | appels en moins, radio au repos | S | à faire |
 | 13 | Présence + annuaire dans `users` (`users.friends` relancé partout) | −4 000 appels, −50 Mo / 30 min | M, migration | à faire |
 | 14 | `myCollection` re-poussée à chaque booster | −45 Mo lus, −1,8 Mo / joueur | M, migration | à faire |
 | 15 | Élément partagé tuile → carte 3D ; historique dans la sous-navigation de la collection ; défilement restauré | continuité « native » | M–L, visuel | à faire |
 | 16 | Changement de définition 3D en pleine révélation ; textures des sachets envoyées d'un bloc | à-coups en moins | M | à faire |
 | 17 | KTX2 / AVIF, détourage hors fil principal | à mesurer sur vrai téléphone d'abord | L | écarté pour l'instant |
 
-## 4. Lots
+## 4. Lots livrés (un commit par lot, sur `v2`)
 
-Un commit par lot, re-mesure après chacun. Un lot sans gain mesuré ou vérifiable est annulé.
-(Section complétée au fur et à mesure — voir plus bas.)
+### Lot 1 — le jeu s'installe sur l'appareil (`ed6f2ef`, `1848d93`)
+
+- `vite.config.ts` écrit **`/precache.json`** : chaque fichier du jeu, sa taille, son palier. Rien du labo, rien de la
+  démo. Les fichiers de `/assets/` ont une empreinte dans leur nom : un patch ne fait reprendre que ceux qui changent.
+- `public/sw.js` (le même service worker que les notifications, push inchangé) sert d'abord depuis Cache Storage :
+  `/assets/*`, les médias du manifeste, et les images `/art/*?v=` (gardées à l'usage, 1 800 au plus ≈ 25 Mo). La page
+  `/jeu/` reste **réseau d'abord** (3 s), copie locale en repli : un patch est vu tout de suite, et le jeu s'ouvre
+  hors connexion. `version.json`, `precache.json`, le labo et les requêtes partielles ne sont jamais touchés.
+- `src/game/bundle.ts` installe en tâche de fond (4,5 s après la boutique, jamais pendant une ouverture ni onglet
+  caché) : différentiel, reprise automatique (seulement ce qui manque), `navigator.storage.persist()`, arrêt
+  silencieux si le stockage est refusé ou plein, socle seul en économie de données, pas de médias lourds s'il reste
+  moins de 40 Mo. Le service worker est maintenant posé sur tous les navigateurs (avant : seulement ceux qui ont le
+  push, donc pas Safari iOS en onglet).
+- Écran de chargement : au premier lancement, le texte affiche la **progression réelle** (« téléchargement du jeu ·
+  52 % »), d'après les fichiers du socle effectivement reçus. Aux lancements suivants il n'apparaît pas.
+
+Taille du bundle par palier (build v2, 171 fichiers) :
+
+| Palier | Contenu | Brut | Transféré (brotli) | Quand |
+|---|---|---|---|---|
+| 0 — socle | page, JS, CSS, polices, catalogue complet | 4,99 Mo | ≈ 1,28 Mo | par la page elle-même, au 1er lancement |
+| 1 — jeu | pages à la demande, scènes 6★, autres polices | 0,72 Mo | ≈ 0,28 Mo | en fond, dès la boutique |
+| 2 — médias | `public/fx` (Yu-Gi-Oh : images, modèles, sons), `public/audio` | 6,49 Mo | 6,49 Mo | en fond, ensuite |
+| à l'usage | miniatures et illustrations vues (`/art/*?v=`) | ≤ ≈ 25 Mo | — | au fil du jeu |
+| hors bundle | modèles des Merveilles (20 Mo) | — | — | cache HTTP, comme avant |
+
+Mesuré (banc, téléphone simulé) :
+
+| | Avant | Après |
+|---|---|---|
+| Relance : requêtes servies sans réseau | 61 / 86 (cache HTTP, évinçable) | **62 / 63** (reste `precache.json`, 9 Ko) |
+| Relance hors connexion | page d'erreur du navigateur | **le jeu démarre**, pages comprises |
+| Installation complète (13 Mo bruts) | — | ≈ 100 s sur le banc (bridé par le GPU logiciel) |
+| Octets du 1er lancement | 1 487 Ko | 1 490 Ko (+ `precache.json`) |
+
+Écarté dans ce lot : précharger `catalogBig` depuis le HTML. Mesuré : fin de téléchargement du catalogue 1 907 → 1 870 ms
+en 4G, et le dernier fichier JS arrive plus tard (2 662 → 2 831 ms) : la bande passante est le goulot, pas l'ordre.
+Annulé.
+
+### Lot 2 — navigation (`34d55e8`)
+
+- Retour de la vue détail : la grille des 60 tuiles n'est refaite que si quelque chose a changé pendant la
+  visionneuse. Mesuré : la tâche longue du retour (113 ms téléphone simulé, 420 – 503 ms selon les passes) **disparaît**.
+- Miniatures des tuiles : fondu à l'arrivée (150 ms, jeton `--dur-rapide`), une fois par image et par session.
+- Le module d'une page part dès que le doigt se pose sur son lien (avant : seulement 3 s après la boutique).
+
+Écarté dans ce lot : suspendre la peinture des cartes pendant le défilement. Mesuré sur la collection : 49 → 66
+images en retard, 8 tâches longues avant comme après. Aucun gain : annulé.
+
+### Lot 3 — rendu 3D (`5ba24cd`)
+
+- `core/holo.ts` : `rimK` passe en uniform. Avant, une carte « Pleine illustration » et la carte de préchauffage
+  donnaient deux shaders différents : le préchauffage ne servait pas aux vraies cartes. Compté sur le banc : pipelines
+  GPU créés pendant la première ouverture **4 → 2** (une ouverture chacun, boosters tirés au hasard : indicatif).
+  Rendu identique (même valeur, 0 ou le coefficient du palier).
+- `game/shell.ts` : la définition 3D **remonte** quand la scène tient la cadence de l'écran (moyenne ≤ 17,6 ms et moins
+  de 5 % d'images en retard sur 3 fenêtres). L'ancien seuil (15 ms) était sous l'intervalle d'un écran 60 Hz : après
+  une baisse, la session restait floue. Anti yo-yo : une rechute dans les 5 min bloque les remontées 10 min.
+- `game/diag.ts` : plus de rappel à chaque image hors scène 6★ (sondage toutes les 100 ms).
+- Téléphone : `backdrop-filter` retiré des deux derniers éléments posés sur la 3D (`.va`, `.mp-chip`), fonds un peu
+  plus opaques.
+
+Non mesurable ici (GPU logiciel) : à confirmer avec `?diag` sur téléphone.
+
+### Lot 4 — Convex (`a4b9f5e`)
+
+- `feed.bigPulls` lit par un index (`activityFeed.big`, champ **optionnel**, index `by_big`) : 30 lignes lues au lieu
+  de 400 à chaque nouvelle entrée du fil. Marqué à l'insertion (boosters, Pack Battle, Royale) ; migration idempotente
+  `migrations:markBigPulls` ajoutée à `mettre-en-ligne-v2.cmd` et `mettre-en-ligne-prod.cmd` ; ancien parcours en
+  repli tant que la base n'est pas marquée. Même nom de requête, même forme de retour : le client V1 n'y voit rien.
+- Battement de cœur : 35 s → **110 s**. Le serveur n'écrit la présence qu'au plus toutes les 4 min, « en ligne » =
+  vu depuis moins de 6 min : 110 s garantit qu'un joueur actif ne paraît jamais hors ligne.
+- Test ajouté (`convex/game.test.ts`) : index, repli, migration rejouée sans effet. 104 tests verts.
+
+### Corrections après relecture (`afa83d5`)
+
+Une relecture indépendante des quatre lots a trouvé 12 points, tous corrigés : battement d'abord réglé trop long
+(245 s : un joueur actif pouvait paraître hors ligne 2 min), gros tirages en jeu non marqués, délai de 3 s appliqué
+sans copie locale de la page, différentiel qui pouvait effacer les fichiers d'une page restée sur l'ancienne version,
+yo-yo de définition entre scènes, fichiers sans empreinte jamais revalidés en économie de données, miniature qui
+pouvait rester invisible sur un navigateur sans `loading=lazy`.
+
+## 5. Coûts : avant / après
+
+| Poste | Avant | Après | Pourquoi |
+|---|---|---|---|
+| Convex — battements / joueur / 30 min | 51 | 16 | période 110 s |
+| Convex — `bigPulls` : lignes lues par exécution | 400 | 30 | index `by_big` |
+| Convex — session type (10 joueurs, 30 min), estimation | ≈ 8 700 appels · ≈ 125 Mo lus | ≈ 8 350 appels · ≈ 116 Mo lus | −350 battements, −9 Mo de fil |
+| Fonction R2 (`/art/*`) | 1 appel par image et par vidage du cache HTTP | 1 appel par image, puis plus rien tant qu'elle est dans les 1 800 gardées | cache du service worker |
+| Pages (fichiers statiques, gratuits) | re-téléchargement après éviction (iPhone) | une fois par appareil et par version ; +6,5 Mo de médias une fois | bundle |
+| Services payants ajoutés | — | aucun | |
+
+Les chiffres Convex sont des estimations par lecture du code (hypothèses en section 2), pas des relevés du tableau de
+bord : à comparer avec l'onglet Usage de Convex une semaine après le patch. Le gros de la facture (lignes 13 et 14 du
+tableau des constats) n'est **pas** traité ici.
+
+## 6. Ce qui reste (pas fait, et pourquoi)
+
+| Sujet | Gain attendu | Pourquoi pas dans cette passe |
+|---|---|---|
+| Présence et annuaire hors de `users` (tables `presence` / `publicProfiles`) | ≈ −4 000 appels et −50 Mo / 30 min | migration + double écriture tant que la V1 tourne : à tester sur le staging, que je ne peux pas déployer d'ici |
+| Collection sans re-poussée à chaque booster (`invRev`) | ≈ −45 Mo lus, −1,8 Mo / joueur | touche toutes les mutations qui donnent ou retirent des cartes : même raison |
+| Cron `markLeader` (relit tous les inventaires chaque heure) | ≈ −200 Mo/jour (estimation) | l'espacer retarde l'attribution du titre « Numéro un » : **décision de Tom** |
+| Abonnements coupés onglet caché, fusion `me` + `economy.state` + `missions.mine` | ≈ −700 appels / 30 min | change le cycle de vie du client Convex : à faire avec le staging sous les yeux |
+| Élément partagé tuile → carte 3D, View Transitions entre pages, historique dans la sous-navigation de la collection, défilement restauré au retour | continuité « native » | change ce que le joueur voit : à valider à l'œil, lot par lot |
+| Vue détail : afficher la carte peinte en attendant la 3D | plus d'écran vide à l'ouverture | idem (raccord visuel avec le tour d'entrée) |
+| Changement de définition différé hors révélation ; textures des sachets et des dos envoyées deux par image ; préchauffage des scènes 6★ hors ouverture | à-coups en moins | non mesurable sans GPU : à faire avec les rapports `?diag` |
+| Animations hors compositeur (`name-shine`, `bp-hue`, `bp-secret`) | fil principal plus libre en révélation | réécriture à l'identique à comparer image par image |
+| AVIF / KTX2, détourage dans un worker, 60 i/s par animation | à chiffrer | demande un vrai téléphone ; KTX2 n'a de sens que si la mémoire GPU est le goulot mesuré |
+| Miniatures de toute la collection dans le bundle | — | **écarté** : 36 955 fichiers ≈ 443 Mo, et 739 000 appels à la fonction R2 pour 20 joueurs (quota gratuit : 100 000 / jour). Remplacé par le cache à l'usage. |
+
+## 7. Vérifications
+
+Faites ici (build démo, Chrome piloté, 390 px et 1440 px) : `tsc` client et Convex, 104 tests Convex, build mode v2,
+parcours boutique → ouverture → collection → vue détail → retour → échanges → jeux → classement → succès → amis →
+profil, **aucune erreur console ni requête échouée**, installation du bundle, relance hors connexion.
+
+Pas faites (impossible d'ici) : première connexion et échange **en ligne** (le banc tourne sans Convex), migration sur
+le staging, mode « effets réduits » (aucun des changements ne touche ses règles, mais il n'a pas été rejoué), tout ce
+qui est 3D en vrai (GPU logiciel), iPhone.
+
+### À lancer chez Tom, dans cet ordre
+
+1. `lanceurs\mettre-en-ligne-v2.cmd` — déploie Convex sur le staging, passe `markBigPulls`, build v2, Pages `v2`.
+2. `lanceurs\push.cmd` — pousse les commits.
+
+### À vérifier à l'œil sur le téléphone (lien V2)
+
+1. `…/jeu/?diag` : ouvrir 3 boosters, puis lire le rapport — images > 80 ms pendant la première révélation de chaque
+   rareté (attendu : moins qu'avant), et la ligne « définition 3D remontée » après un passage chargé.
+2. Premier lancement après avoir vidé les données du site : le texte « téléchargement du jeu · N % » avance.
+3. Jouer 2 min, passer en **mode avion**, fermer et rouvrir : le jeu démarre (bandeau « pas de réseau » attendu).
+4. Collection : les miniatures arrivent en fondu, pas d'un coup ; ouvrir une carte puis revenir : la grille ne
+   clignote plus.
+5. Vue détail sur téléphone : les boutons d'action et la pastille de musique (fonds sans flou) restent lisibles.
+6. Bordure métallique des cartes au cadre « Suisse » et absence de bordure sur les pleines illustrations : inchangées.
+7. Page d'accueil : « Gros tirages » affiche les mêmes cartes qu'avant ; un ami actif reste « en ligne ».
+8. Après le prochain déploiement V2 : la pastille « Mise à jour disponible · Recharger » apparaît, et un seul
+   rechargement suffit.
+9. « Effets réduits » activé : ouverture, collection et jeux se comportent comme avant.
