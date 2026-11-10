@@ -264,6 +264,8 @@ export interface OpeningScene extends Experiment {
   debug(): unknown;
   /** tests : ralenti de toutes les timelines gsap */
   slowMo(k: number): void;
+  /** tests / rendu de l'icône : fige la sortie simulée à l'instant `exit` (s) et pose les cartes à la main */
+  pose(o: { exit: number; strip?: boolean; cards: { x?: number; y: number; z?: number; rz?: number }[] }): void;
 }
 
 /** `mythicHold` : la 6★ est révélée plein écran, la scène attend un toucher avant l'éventail */
@@ -621,6 +623,8 @@ export function createOpeningScene(): OpeningScene {
   let bakePlay = 0;
   /** horloge de la sortie (s) ; < 0 : encore en déchirure */
   const bakeExit = { t: -1 };
+  /** pose figée (rendu de l'icône) : visibilité imposée de la bande arrachée */
+  let poseStrip: boolean | null = null;
   function setTearVisible(on: boolean) {
     if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = on && !useBake;
     if (bakedBody && bakedStrip) bakedBody.visible = bakedStrip.visible = on && useBake;
@@ -1257,6 +1261,7 @@ export function createOpeningScene(): OpeningScene {
     if (useBake) bakePlayer!.use(bakes[Math.floor(Math.random() * bakes.length)]);
     bakePlay = 0;
     bakeExit.t = -1;
+    poseStrip = null;
     bakePlayer?.setTear(0);
     if (packMeshMain) packMeshMain.visible = !tearing;
     setTearVisible(tearing);
@@ -2031,6 +2036,15 @@ export function createOpeningScene(): OpeningScene {
     slowMo(k: number) {
       gsap.globalTimeline.timeScale(k);
     },
+    pose(o) {
+      gsap.globalTimeline.timeScale(0);
+      bakeExit.t = o.exit;
+      poseStrip = o.strip ?? null;
+      order.forEach((si, k) => {
+        const c = o.cards[k];
+        if (c) Object.assign(slots[si].p, c);
+      });
+    },
     /** diagnostic (tests) : état de la pile */
     debug() {
       return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
@@ -2730,7 +2744,7 @@ export function createOpeningScene(): OpeningScene {
           bakePlayer.setTear(bakePlay);
         } else {
           bakePlayer.setExit(bakeExit.t);
-          if (bakedStrip) bakedStrip.visible = bakePlayer.stripVisible(bakeExit.t);
+          if (bakedStrip) bakedStrip.visible = poseStrip ?? bakePlayer.stripVisible(bakeExit.t);
         }
       } else if (tearStrip) {
         tearStrip.position.set(fly.t * 0.9, fly.t * 0.6, fly.t * 0.5);

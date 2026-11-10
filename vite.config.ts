@@ -13,6 +13,8 @@ export default defineConfig(({ mode }) => {
     define: { __BUILD_ID__: JSON.stringify(buildId) },
     plugins: [
       ...(mode === 'https' ? [basicSsl()] : []),
+      // (V2) aperçu de lien : sur le site de test, l'image et l'adresse partagées pointent vers v2.… (l'image n'existe pas encore en prod)
+      ...(canal === 'v2' ? [{ name: 'og-v2', transformIndexHtml: (html: string) => html.replaceAll('https://cardgamepriv.pages.dev/', 'https://v2.cardgamepriv.pages.dev/') } satisfies Plugin] : []),
       // (BEBOU_CATALOG_JSON=0 pour comparer avec les littéraux d'origine)
       ...(process.env.BEBOU_CATALOG_JSON === '0' ? [] : [catalogJson()]),
       preloadBackend(!!env.VITE_CONVEX_URL?.trim()),
@@ -348,7 +350,7 @@ function precacheManifest(id: string, online: boolean): Plugin {
       }
       // (les gros sets du catalogue arrivent par import() mais le démarrage les attend : socle)
       for (const c of chunks) if (norm(c.facadeModuleId).endsWith('/src/core/sets/catalogBig.ts')) walk(c.fileName, 0, seen);
-      for (const f of ['manifest.webmanifest', 'icons/favicon.svg', 'icons/icon-192.png']) if (fs.existsSync(path.resolve(outDir, f))) put(f, 0);
+      for (const f of ['manifest.webmanifest', 'icons/booster-fav-32.png', 'icons/booster-192.png']) if (fs.existsSync(path.resolve(outDir, f))) put(f, 0);
       // les workers (new Worker(new URL(…))) sont des fichiers à part : palier 1
       for (const a of all) if (a.type === 'asset' && /^assets\/[^/]*[wW]orker[^/]*\.js$/.test(a.fileName)) put(a.fileName, 1);
       // palier 2 : médias des scènes spéciales (public/)
