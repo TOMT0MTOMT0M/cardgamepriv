@@ -35,6 +35,14 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '11 nov.', title: 'Sport Pack : 278 nouvelles cartes Sport & Esport', tag: 'nouveau',
+        points: [
+          'Esport : nouveaux joueurs pros sur League of Legends (anciens et nouveaux), Counter-Strike, Valorant, Call of Duty, Apex Legends (Zer0 6★, Reps, Yulariman et Blinkzr 5★) et Fortnite.',
+          'Sport : Lin Dan (6★), Lee Chong Wei, Gao Ling et Carolina Marín (Badminton) ; Shohei Ohtani (6★), Aaron Judge et Bobby Witt Jr. (Baseball) ; Shai Gilgeous-Alexander (Basketball) ; Félix et Alexis Lebrun (6★, Tennis de table) ; Luke Littler (6★), Luke Humphries et Gian van Veen (Fléchettes) ; The Rock (6★, Catch) ; Remco Evenepoel et Paul Seixas (Cyclisme) ; Efren Reyes et Raymond Ceulemans (Billard).',
+          'Passent en 6★ : Antoine Dupont (Rugby), Tadej Pogačar (Cyclisme), Naoya Inoue (Boxe) et Hikaru Nakamura (Échecs) — les cartes déjà tirées suivent toutes seules.',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Vos suggestions traitées plus vite', tag: 'amélioré',
         points: [
           'Tom et Hugo ont un nouvel outil pour lire vos suggestions et vos cartes signalées, et régler vos soucis (boosters manquants, parrainage, échange bloqué) en quelques secondes. Continuez à tout signaler dans l’onglet Suggestions !',

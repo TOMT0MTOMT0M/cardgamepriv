@@ -1,4 +1,10 @@
 {
+"spt-04": {
+"art": "c",
+"file": "04.jpg",
+"src": "liquipedia.net",
+"t": 1794352646
+},
 "spt-1-fc-cologne": {
 "art": "i",
 "file": "1-fc-cologne.png",
@@ -41,11 +47,23 @@
 "src": "liquipedia.net",
 "t": 1793665852
 },
+"spt-369": {
+"art": "c",
+"file": "369.jpg",
+"src": "liquipedia.net",
+"t": 1794352618
+},
 "spt-3arena": {
 "art": "i",
 "file": "3arena.png",
 "src": "thumb.wikimedia.org",
 "t": 1793665468
+},
+"spt-910": {
+"art": "c",
+"file": "910.jpg",
+"src": "liquipedia.net",
+"t": 1794352661
 },
 "spt-a-c-milan": {
 "art": "i",
@@ -88,6 +106,12 @@
 "file": "aaron-doran.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663649
+},
+"spt-aaron-judge": {
+"art": "c",
+"file": "aaron-judge.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
 },
 "spt-aaron-mooy": {
 "art": "c",
@@ -179,6 +203,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664550
 },
+"spt-abuzah": {
+"art": "c",
+"file": "abuzah.jpg",
+"src": "liquipedia.net",
+"t": 1794352645
+},
 "spt-abyss": {
 "art": "c",
 "file": "abyss.jpg",
@@ -202,6 +232,12 @@
 "file": "acf-fiorentina.png",
 "src": "thumb.wikimedia.org",
 "t": 1793665069
+},
+"spt-acorn": {
+"art": "c",
+"file": "acorn.jpg",
+"src": "liquipedia.net",
+"t": 1794352631
 },
 "spt-ada-hegerberg": {
 "art": "c",
@@ -581,11 +617,23 @@
 "src": "commons.wikimedia.org",
 "t": 1793663000
 },
+"spt-aiming": {
+"art": "c",
+"file": "aiming.jpg",
+"src": "liquipedia.net",
+"t": 1794352636
+},
 "spt-aino-kaisa-saarinen": {
 "art": "c",
 "file": "aino-kaisa-saarinen.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663846
+},
+"spt-airwaks": {
+"art": "c",
+"file": "airwaks.jpg",
+"src": "liquipedia.net",
+"t": 1794352649
 },
 "spt-aisam-ul-haq-qureshi": {
 "art": "c",
@@ -923,6 +971,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663931
 },
+"spt-albralelie": {
+"art": "c",
+"file": "albralelie.jpg",
+"src": "liquipedia.net",
+"t": 1794352611
+},
 "spt-aleandro-rosi": {
 "art": "c",
 "file": "aleandro-rosi.jpg",
@@ -1073,6 +1127,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793666426
 },
+"spt-aleksib": {
+"art": "c",
+"file": "aleksib.jpg",
+"src": "liquipedia.net",
+"t": 1794352614
+},
 "spt-alemannia-aachen": {
 "art": "i",
 "file": "alemannia-aachen.png",
@@ -1180,6 +1240,12 @@
 "file": "alex-honnold.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793662981
+},
+"spt-alex-ich": {
+"art": "c",
+"file": "alex-ich.jpg",
+"src": "liquipedia.net",
+"t": 1794352619
 },
 "spt-alex-jany": {
 "art": "c",
@@ -1456,6 +1522,12 @@
 "file": "alexis-arguello.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664171
+},
+"spt-alexis-lebrun": {
+"art": "c",
+"file": "alexis-lebrun.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352603
 },
 "spt-alexis-masbou": {
 "art": "c",
@@ -1787,6 +1859,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793664489
 },
+"spt-alvaro": {
+"art": "c",
+"file": "alvaro.jpg",
+"src": "liquipedia.net",
+"t": 1794352654
+},
 "spt-alvaro-bautista": {
 "art": "c",
 "file": "alvaro-bautista.jpg",
@@ -2039,6 +2117,12 @@
 "src": "wiki-non",
 "t": 1793664400
 },
+"spt-anas": {
+"art": "c",
+"file": "anas.jpg",
+"src": "liquipedia.net",
+"t": 1794352662
+},
 "spt-anastasia-bliznyuk": {
 "art": "c",
 "file": "anastasia-bliznyuk.jpg",
@@ -2116,6 +2200,12 @@
 "file": "anderson-varejao.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665633
+},
+"spt-andilex": {
+"art": "c",
+"file": "andilex.jpg",
+"src": "liquipedia.net",
+"t": 1794352649
 },
 "spt-andoni-zubizarreta": {
 "art": "c",
@@ -3275,6 +3365,12 @@
 "src": "liquipedia.net",
 "t": 1793664225
 },
+"spt-aphromoo": {
+"art": "c",
+"file": "aphromoo.jpg",
+"src": "liquipedia.net",
+"t": 1794352639
+},
 "spt-apostolos-giannou": {
 "art": "c",
 "file": "apostolos-giannou.jpg",
@@ -3809,6 +3905,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664522
 },
+"spt-asuna": {
+"art": "c",
+"file": "asuna.jpg",
+"src": "liquipedia.net",
+"t": 1794352642
+},
 "spt-asvel": {
 "art": "i",
 "file": "asvel.png",
@@ -3964,6 +4066,12 @@
 "file": "austin-aries.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664878
+},
+"spt-autimatic": {
+"art": "c",
+"file": "autimatic.jpg",
+"src": "liquipedia.net",
+"t": 1794352629
 },
 "spt-autodromo-enzo-e-dino-ferrari": {
 "art": "c",
@@ -5177,6 +5285,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663775
 },
+"spt-bin": {
+"art": "c",
+"file": "bin.jpg",
+"src": "liquipedia.net",
+"t": 1794352607
+},
 "spt-bing-dwen-dwen": {
 "art": "i",
 "file": "bing-dwen-dwen.png",
@@ -5279,6 +5393,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663452
 },
+"spt-blamef": {
+"art": "c",
+"file": "blamef.jpg",
+"src": "liquipedia.net",
+"t": 1794352649
+},
 "spt-blandine-dancette": {
 "art": "c",
 "file": "blandine-dancette.jpg",
@@ -5308,6 +5428,18 @@
 "file": "blessing-okagbare.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663391
+},
+"spt-blinkzr": {
+"art": "c",
+"file": "blinkzr.jpg",
+"src": "liquipedia.net",
+"t": 1794352604
+},
+"spt-blitz": {
+"art": "c",
+"file": "blitz.jpg",
+"src": "liquipedia.net",
+"t": 1794352660
 },
 "spt-blu-volley-verone": {
 "art": "",
@@ -5513,6 +5645,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663486
 },
+"spt-bobby-witt-jr": {
+"art": "c",
+"file": "bobby-witt-jr.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
+},
 "spt-boca-juniors": {
 "art": "i",
 "file": "boca-juniors.png",
@@ -5567,11 +5705,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666064
 },
+"spt-boo": {
+"art": "c",
+"file": "boo.jpg",
+"src": "liquipedia.net",
+"t": 1794352623
+},
 "spt-booker-t": {
 "art": "c",
 "file": "booker-t.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663498
+},
+"spt-boostio": {
+"art": "c",
+"file": "boostio.jpg",
+"src": "liquipedia.net",
+"t": 1794352642
 },
 "spt-bora-kostic": {
 "art": "c",
@@ -5674,6 +5824,12 @@
 "file": "bouclier-de-brennus.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666589
+},
+"spt-boukada": {
+"art": "c",
+"file": "boukada.jpg",
+"src": "liquipedia.net",
+"t": 1794352664
 },
 "spt-bowers-stadium": {
 "art": "i",
@@ -5812,6 +5968,12 @@
 "file": "breanna-stewart.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664737
+},
+"spt-breathe": {
+"art": "c",
+"file": "breathe.jpg",
+"src": "liquipedia.net",
+"t": 1794352652
 },
 "spt-bren": {
 "art": "c",
@@ -6040,6 +6202,18 @@
 "file": "brokenblade.jpg",
 "src": "liquipedia.net",
 "t": 1793665857
+},
+"spt-broky": {
+"art": "c",
+"file": "broky.jpg",
+"src": "liquipedia.net",
+"t": 1794352615
+},
+"spt-brollan": {
+"art": "c",
+"file": "brollan.jpg",
+"src": "liquipedia.net",
+"t": 1794352630
 },
 "spt-bronte-barratt": {
 "art": "c",
@@ -6287,6 +6461,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663001
 },
+"spt-c0m": {
+"art": "c",
+"file": "c0m.jpg",
+"src": "liquipedia.net",
+"t": 1794352642
+},
 "spt-cabochard": {
 "art": "c",
 "file": "cabochard.jpg",
@@ -6484,6 +6664,12 @@
 "file": "camille-prigent.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664183
+},
+"spt-cammy": {
+"art": "c",
+"file": "cammy.jpg",
+"src": "liquipedia.net",
+"t": 1794352646
 },
 "spt-cammy-smith": {
 "art": "",
@@ -6887,6 +7073,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664644
 },
+"spt-carolina-marin": {
+"art": "c",
+"file": "carolina-marin.jpg",
+"src": "upload.wikimedia.org",
+"t": 1794352604
+},
 "spt-caroline-drouin": {
 "art": "c",
 "file": "caroline-drouin.jpg",
@@ -6934,6 +7126,12 @@
 "file": "carsten-mogensen.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663976
+},
+"spt-carzzy": {
+"art": "c",
+"file": "carzzy.jpg",
+"src": "liquipedia.net",
+"t": 1794352638
 },
 "spt-casey-dellacqua": {
 "art": "c",
@@ -7036,6 +7234,12 @@
 "file": "cathy-melain.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665637
+},
+"spt-cauanzin": {
+"art": "c",
+"file": "cauanzin.jpg",
+"src": "liquipedia.net",
+"t": 1794352655
 },
 "spt-cc-sabathia": {
 "art": "c",
@@ -7150,6 +7354,12 @@
 "file": "celine-lebrun.jpg",
 "src": "fr:Céline Lebrun",
 "t": 1793667359
+},
+"spt-cellium": {
+"art": "c",
+"file": "cellium.jpg",
+"src": "liquipedia.net",
+"t": 1794352605
 },
 "spt-celtic-f-c": {
 "art": "i",
@@ -7895,6 +8105,18 @@
 "src": "commons.wikimedia.org",
 "t": 1793663452
 },
+"spt-chichoo": {
+"art": "c",
+"file": "chichoo.jpg",
+"src": "liquipedia.net",
+"t": 1794352642
+},
+"spt-chico": {
+"art": "c",
+"file": "chico.jpg",
+"src": "liquipedia.net",
+"t": 1794352663
+},
 "spt-chiefs": {
 "art": "i",
 "file": "chiefs.png",
@@ -7942,6 +8164,12 @@
 "file": "choi-kyung-ju.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793666245
+},
+"spt-chopper": {
+"art": "c",
+"file": "chopper.jpg",
+"src": "liquipedia.net",
+"t": 1794352662
 },
 "spt-chot-reyes": {
 "art": "c",
@@ -8765,11 +8993,23 @@
 "src": "upload.wikimedia.org",
 "t": 1793666238
 },
+"spt-clayster": {
+"art": "c",
+"file": "clayster.jpg",
+"src": "liquipedia.net",
+"t": 1794352603
+},
 "spt-clayton-kershaw": {
 "art": "c",
 "file": "clayton-kershaw.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663988
+},
+"spt-cleanx": {
+"art": "c",
+"file": "cleanx.jpg",
+"src": "liquipedia.net",
+"t": 1794352626
 },
 "spt-clearlove": {
 "art": "c",
@@ -9022,6 +9262,12 @@
 "file": "cody-rhodes.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793662967
+},
+"spt-cold": {
+"art": "c",
+"file": "cold.jpg",
+"src": "liquipedia.net",
+"t": 1794352616
 },
 "spt-coldzera": {
 "art": "c",
@@ -9575,6 +9821,18 @@
 "src": "commons.wikimedia.org",
 "t": 1793663660
 },
+"spt-crashies": {
+"art": "c",
+"file": "crashies.jpg",
+"src": "liquipedia.net",
+"t": 1794352641
+},
+"spt-creme": {
+"art": "c",
+"file": "creme.jpg",
+"src": "liquipedia.net",
+"t": 1794352651
+},
 "spt-crewe-alexandra-football-club": {
 "art": "i",
 "file": "crewe-alexandra-football-club.png",
@@ -9604,6 +9862,12 @@
 "file": "cris-cyborg.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666328
+},
+"spt-crisp": {
+"art": "c",
+"file": "crisp.jpg",
+"src": "liquipedia.net",
+"t": 1794352619
 },
 "spt-cristian-bud": {
 "art": "",
@@ -9641,11 +9905,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664197
 },
+"spt-crown": {
+"art": "c",
+"file": "crown.jpg",
+"src": "liquipedia.net",
+"t": 1794352634
+},
 "spt-crusaders": {
 "art": "i",
 "file": "crusaders.png",
 "src": "fr:Crusaders",
 "t": 1793667142
+},
+"spt-cryocells": {
+"art": "c",
+"file": "cryocells.jpg",
+"src": "liquipedia.net",
+"t": 1794352641
 },
 "spt-crypto-com-arena": {
 "art": "c",
@@ -9713,6 +9989,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793662979
 },
+"spt-cuvee": {
+"art": "c",
+"file": "cuvee.jpg",
+"src": "liquipedia.net",
+"t": 1794352634
+},
 "spt-cynthia-cooper": {
 "art": "c",
 "file": "cynthia-cooper.jpg",
@@ -9755,11 +10037,29 @@
 "src": "kimi-web-img.kimi.ai",
 "t": 1793663731
 },
+"spt-czajek": {
+"art": "c",
+"file": "czajek.jpg",
+"src": "liquipedia.net",
+"t": 1794352664
+},
 "spt-d-von-dudley": {
 "art": "c",
 "file": "d-von-dudley.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664878
+},
+"spt-d4v41": {
+"art": "c",
+"file": "d4v41.jpg",
+"src": "liquipedia.net",
+"t": 1794352623
+},
+"spt-dade": {
+"art": "c",
+"file": "dade.jpg",
+"src": "liquipedia.net",
+"t": 1794352633
 },
 "spt-dafne-schippers": {
 "art": "c",
@@ -9958,6 +10258,12 @@
 "file": "dancing-brave.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793665232
+},
+"spt-dandy": {
+"art": "c",
+"file": "dandy.jpg",
+"src": "liquipedia.net",
+"t": 1794352621
 },
 "spt-dani-alves": {
 "art": "c",
@@ -10402,6 +10708,12 @@
 "file": "daryl-selby.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666546
+},
+"spt-dashy": {
+"art": "c",
+"file": "dashy.jpg",
+"src": "liquipedia.net",
+"t": 1794352605
 },
 "spt-daskalakis-athletic-center": {
 "art": "c",
@@ -10931,6 +11243,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666066
 },
+"spt-delight": {
+"art": "c",
+"file": "delight.jpg",
+"src": "liquipedia.net",
+"t": 1794352636
+},
 "spt-delphine-cascarino": {
 "art": "c",
 "file": "delphine-cascarino.jpg",
@@ -11087,6 +11405,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664809
 },
+"spt-dep": {
+"art": "c",
+"file": "dep.jpg",
+"src": "liquipedia.net",
+"t": 1794352656
+},
 "spt-derartu-tulu": {
 "art": "c",
 "file": "derartu-tulu.jpg",
@@ -11207,6 +11531,12 @@
 "src": "en:Devin Booker",
 "t": 1793667387
 },
+"spt-dezignful": {
+"art": "c",
+"file": "dezignful.jpg",
+"src": "liquipedia.net",
+"t": 1794352644
+},
 "spt-dfb-pokal": {
 "art": "i",
 "file": "dfb-pokal.png",
@@ -11218,6 +11548,12 @@
 "file": "dhyan-chand.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793666291
+},
+"spt-diamondprox": {
+"art": "c",
+"file": "diamondprox.jpg",
+"src": "liquipedia.net",
+"t": 1794352608
 },
 "spt-diana-taurasi": {
 "art": "c",
@@ -11861,6 +12197,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663470
 },
+"spt-dosia": {
+"art": "c",
+"file": "dosia.jpg",
+"src": "liquipedia.net",
+"t": 1794352628
+},
 "spt-doublelift": {
 "art": "c",
 "file": "doublelift.jpg",
@@ -11927,6 +12269,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793664017
 },
+"spt-drazah": {
+"art": "c",
+"file": "drazah.jpg",
+"src": "liquipedia.net",
+"t": 1794352626
+},
 "spt-drazen-petrovic": {
 "art": "c",
 "file": "drazen-petrovic.jpg",
@@ -11962,6 +12310,12 @@
 "file": "dries-mertens.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664374
+},
+"spt-dropped": {
+"art": "c",
+"file": "dropped.jpg",
+"src": "liquipedia.net",
+"t": 1794352625
 },
 "spt-ducati-corse": {
 "art": "i",
@@ -12118,6 +12472,12 @@
 "file": "dynamo-kiev.png",
 "src": "thumb.wikimedia.org",
 "t": 1793666067
+},
+"spt-dyrus": {
+"art": "c",
+"file": "dyrus.jpg",
+"src": "liquipedia.net",
+"t": 1794352650
 },
 "spt-dzsenifer-marozsan": {
 "art": "c",
@@ -12371,11 +12731,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665907
 },
+"spt-effect": {
+"art": "c",
+"file": "effect.jpg",
+"src": "liquipedia.net",
+"t": 1794352624
+},
 "spt-efim-geller": {
 "art": "c",
 "file": "efim-geller.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666611
+},
+"spt-efren-reyes": {
+"art": "c",
+"file": "efren-reyes.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
 },
 "spt-efren-vazquez": {
 "art": "c",
@@ -12659,6 +13031,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666506
 },
+"spt-elk": {
+"art": "c",
+"file": "elk.jpg",
+"src": "liquipedia.net",
+"t": 1794352618
+},
 "spt-ellen-macarthur": {
 "art": "c",
 "file": "ellen-macarthur.jpg",
@@ -12742,6 +13120,12 @@
 "file": "elvis-stojko.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665324
+},
+"spt-elyoya": {
+"art": "c",
+"file": "elyoya.jpg",
+"src": "liquipedia.net",
+"t": 1794352637
 },
 "spt-ema-klinec": {
 "art": "c",
@@ -12989,6 +13373,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665074
 },
+"spt-emtee": {
+"art": "c",
+"file": "emtee.jpg",
+"src": "liquipedia.net",
+"t": 1794352658
+},
 "spt-en-avant-de-guingamp": {
 "art": "i",
 "file": "en-avant-de-guingamp.png",
@@ -13049,6 +13439,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793665806
 },
+"spt-envoy": {
+"art": "c",
+"file": "envoy.jpg",
+"src": "liquipedia.net",
+"t": 1794352613
+},
 "spt-enzo": {
 "art": "c",
 "file": "enzo.jpg",
@@ -13066,6 +13462,12 @@
 "file": "eoin-jess.jpg",
 "src": "fill:thesportsdb:34202940",
 "t": 1793771508
+},
+"spt-epikwhale": {
+"art": "c",
+"file": "epikwhale.jpg",
+"src": "liquipedia.net",
+"t": 1794352606
 },
 "spt-epke-zonderland": {
 "art": "c",
@@ -14075,6 +14477,12 @@
 "src": "liquipedia.net",
 "t": 1793665887
 },
+"spt-ethan": {
+"art": "c",
+"file": "ethan.jpg",
+"src": "liquipedia.net",
+"t": 1794352622
+},
 "spt-etienne-bacrot": {
 "art": "c",
 "file": "etienne-bacrot.jpg",
@@ -14278,6 +14686,18 @@
 "file": "evonne-goolagong.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665488
+},
+"spt-ex6tenz": {
+"art": "c",
+"file": "ex6tenz.jpg",
+"src": "liquipedia.net",
+"t": 1794352647
+},
+"spt-exakick": {
+"art": "c",
+"file": "exakick.jpg",
+"src": "liquipedia.net",
+"t": 1794352663
 },
 "spt-exeter-chiefs": {
 "art": "i",
@@ -14699,6 +15119,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666067
 },
+"spt-febiven": {
+"art": "i",
+"file": "febiven.png",
+"src": "liquipedia.net",
+"t": 1794352620
+},
 "spt-federica-brignone": {
 "art": "c",
 "file": "federica-brignone.jpg",
@@ -14788,6 +15214,12 @@
 "file": "felix-hernandez.jpg",
 "src": "fr:Félix Hernández",
 "t": 1793667173
+},
+"spt-felix-lebrun": {
+"art": "c",
+"file": "felix-lebrun.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
 },
 "spt-felix-loch": {
 "art": "c",
@@ -15077,6 +15509,30 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666068
 },
+"spt-flame": {
+"art": "c",
+"file": "flame.jpg",
+"src": "liquipedia.net",
+"t": 1794352622
+},
+"spt-flamez": {
+"art": "c",
+"file": "flamez.jpg",
+"src": "liquipedia.net",
+"t": 1794352615
+},
+"spt-flamie": {
+"art": "c",
+"file": "flamie.jpg",
+"src": "liquipedia.net",
+"t": 1794352628
+},
+"spt-flandre": {
+"art": "c",
+"file": "flandre.jpg",
+"src": "liquipedia.net",
+"t": 1794352635
+},
 "spt-flash": {
 "art": "c",
 "file": "flash.jpg",
@@ -15268,6 +15724,18 @@
 "file": "fncs.png",
 "src": "en:Fortnite Championship Series",
 "t": 1793667261
+},
+"spt-fns": {
+"art": "c",
+"file": "fns.jpg",
+"src": "liquipedia.net",
+"t": 1794352610
+},
+"spt-fnx": {
+"art": "c",
+"file": "fnx.jpg",
+"src": "liquipedia.net",
+"t": 1794352629
 },
 "spt-football-club-de-lorient": {
 "art": "i",
@@ -15899,6 +16367,18 @@
 "src": "commons.wikimedia.org",
 "t": 1793662760
 },
+"spt-fresskowy": {
+"art": "c",
+"file": "fresskowy.jpg",
+"src": "liquipedia.net",
+"t": 1794352665
+},
+"spt-frexs": {
+"art": "c",
+"file": "frexs.jpg",
+"src": "liquipedia.net",
+"t": 1794352643
+},
 "spt-frida-hansdotter": {
 "art": "c",
 "file": "frida-hansdotter.jpg",
@@ -15922,6 +16402,12 @@
 "file": "froggen.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664945
+},
+"spt-frozen": {
+"art": "c",
+"file": "frozen.jpg",
+"src": "liquipedia.net",
+"t": 1794352615
 },
 "spt-ftx-arena": {
 "art": "i",
@@ -15952,6 +16438,12 @@
 "file": "fulham-football-club.png",
 "src": "thumb.wikimedia.org",
 "t": 1793666068
+},
+"spt-funfps": {
+"art": "c",
+"file": "funfps.jpg",
+"src": "liquipedia.net",
+"t": 1794352643
 },
 "spt-furia-esports": {
 "art": "i",
@@ -16157,6 +16649,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666547
 },
+"spt-gala": {
+"art": "c",
+"file": "gala.jpg",
+"src": "liquipedia.net",
+"t": 1794352619
+},
 "spt-galatasaray-s-k": {
 "art": "i",
 "file": "galatasaray-s-k.png",
@@ -16198,6 +16696,12 @@
 "file": "gao-lin.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663003
+},
+"spt-gao-ling": {
+"art": "c",
+"file": "gao-ling.jpg",
+"src": "upload.wikimedia.org",
+"t": 1794352603
 },
 "spt-gao-ning": {
 "art": "c",
@@ -16763,6 +17267,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793665078
 },
+"spt-ghosty": {
+"art": "c",
+"file": "ghosty.jpg",
+"src": "liquipedia.net",
+"t": 1794352645
+},
 "spt-giacomo-agostini": {
 "art": "c",
 "file": "giacomo-agostini.jpg",
@@ -16786,6 +17296,12 @@
 "file": "giampiero-pinzi.jpg",
 "src": "fr:Giampiero Pinzi",
 "t": 1793667157
+},
+"spt-gian-van-veen": {
+"art": "c",
+"file": "gian-van-veen.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
 },
 "spt-giancarlo-brusati": {
 "art": "",
@@ -16876,6 +17392,12 @@
 "file": "gilberto-simoni.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793665807
+},
+"spt-gild": {
+"art": "c",
+"file": "gild.jpg",
+"src": "liquipedia.net",
+"t": 1794352626
 },
 "spt-gilles-panizzi": {
 "art": "c",
@@ -17051,6 +17573,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665884
 },
+"spt-gnaske": {
+"art": "c",
+"file": "gnaske.jpg",
+"src": "liquipedia.net",
+"t": 1794352657
+},
 "spt-gnonsiane-niombla": {
 "art": "c",
 "file": "gnonsiane-niombla.jpg",
@@ -17176,6 +17704,12 @@
 "file": "grace-zaadi.jpg",
 "src": "fr:Grâce Zaadi",
 "t": 1793667414
+},
+"spt-graceful": {
+"art": "c",
+"file": "graceful.jpg",
+"src": "liquipedia.net",
+"t": 1794352658
 },
 "spt-graeme-dott": {
 "art": "c",
@@ -17681,6 +18215,12 @@
 "src": "fr:Hafizh Syahrin",
 "t": 1793667417
 },
+"spt-hai": {
+"art": "c",
+"file": "hai.jpg",
+"src": "liquipedia.net",
+"t": 1794352650
+},
 "spt-haile-gebrselassie": {
 "art": "c",
 "file": "haile-gebrselassie.jpg",
@@ -17710,6 +18250,12 @@
 "file": "hakim-ziyech.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793666160
+},
+"spt-hakis": {
+"art": "c",
+"file": "hakis.jpg",
+"src": "liquipedia.net",
+"t": 1794352612
 },
 "spt-hal-greer": {
 "art": "c",
@@ -18083,6 +18629,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663947
 },
+"spt-hen": {
+"art": "c",
+"file": "hen.jpg",
+"src": "liquipedia.net",
+"t": 1794352632
+},
 "spt-hen-ezra": {
 "art": "c",
 "file": "hen-ezra.jpg",
@@ -18287,6 +18839,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793662843
 },
+"spt-hicksy": {
+"art": "c",
+"file": "hicksy.jpg",
+"src": "liquipedia.net",
+"t": 1794352646
+},
 "spt-hidenoyama-raigoro": {
 "art": "c",
 "file": "hidenoyama-raigoro.jpg",
@@ -18311,6 +18869,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665571
 },
+"spt-hiko": {
+"art": "c",
+"file": "hiko.jpg",
+"src": "liquipedia.net",
+"t": 1794352630
+},
 "spt-hinkelien-schreuder": {
 "art": "",
 "file": "",
@@ -18322,6 +18886,12 @@
 "file": "hinrich-romeike.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793665574
+},
+"spt-hiro": {
+"art": "c",
+"file": "hiro.jpg",
+"src": "liquipedia.net",
+"t": 1794352667
 },
 "spt-hirooki-goto": {
 "art": "c",
@@ -18346,6 +18916,18 @@
 "file": "hisato-sato.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663544
+},
+"spt-hiswattson": {
+"art": "c",
+"file": "hiswattson.jpg",
+"src": "liquipedia.net",
+"t": 1794352611
+},
+"spt-hobbit": {
+"art": "c",
+"file": "hobbit.jpg",
+"src": "liquipedia.net",
+"t": 1794352629
 },
 "spt-hocine-soltani": {
 "art": "i",
@@ -18509,6 +19091,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663291
 },
+"spt-huke": {
+"art": "c",
+"file": "huke.jpg",
+"src": "liquipedia.net",
+"t": 1794352627
+},
 "spt-hulk": {
 "art": "c",
 "file": "hulk.jpg",
@@ -18551,6 +19139,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793662997
 },
+"spt-huni": {
+"art": "c",
+"file": "huni.jpg",
+"src": "liquipedia.net",
+"t": 1794352620
+},
 "spt-hunter-mahan": {
 "art": "c",
 "file": "hunter-mahan.jpg",
@@ -18580,6 +19174,12 @@
 "file": "hurricanes.png",
 "src": "thumb.wikimedia.org",
 "t": 1793664512
+},
+"spt-hydra": {
+"art": "c",
+"file": "hydra.jpg",
+"src": "liquipedia.net",
+"t": 1794352605
 },
 "spt-hylissang": {
 "art": "c",
@@ -18743,6 +19343,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665194
 },
+"spt-iitztimmy": {
+"art": "c",
+"file": "iitztimmy.jpg",
+"src": "liquipedia.net",
+"t": 1794352611
+},
 "spt-iker-casillas": {
 "art": "c",
 "file": "iker-casillas.jpg",
@@ -18791,6 +19397,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793664423
 },
+"spt-im": {
+"art": "c",
+"file": "im.jpg",
+"src": "liquipedia.net",
+"t": 1794352614
+},
 "spt-im-dong-hyun": {
 "art": "c",
 "file": "im-dong-hyun.jpg",
@@ -18802,6 +19414,12 @@
 "file": "imanol-harinordoquy.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663818
+},
+"spt-imp": {
+"art": "c",
+"file": "imp.jpg",
+"src": "liquipedia.net",
+"t": 1794352621
 },
 "spt-impact": {
 "art": "c",
@@ -18892,6 +19510,24 @@
 "file": "innovation.jpg",
 "src": "liquipedia.net",
 "t": 1793665885
+},
+"spt-insec": {
+"art": "c",
+"file": "insec.jpg",
+"src": "liquipedia.net",
+"t": 1794352608
+},
+"spt-insight": {
+"art": "c",
+"file": "insight.jpg",
+"src": "liquipedia.net",
+"t": 1794352627
+},
+"spt-inspired": {
+"art": "c",
+"file": "inspired.jpg",
+"src": "liquipedia.net",
+"t": 1794352638
 },
 "spt-inter-milan": {
 "art": "i",
@@ -19367,6 +20003,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665667
 },
+"spt-jabbi": {
+"art": "c",
+"file": "jabbi.jpg",
+"src": "liquipedia.net",
+"t": 1794352648
+},
 "spt-jack-brabham": {
 "art": "c",
 "file": "jack-brabham.jpg",
@@ -19480,6 +20122,12 @@
 "file": "jacky-ickx.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663226
+},
+"spt-jackz": {
+"art": "c",
+"file": "jackz.jpg",
+"src": "liquipedia.net",
+"t": 1794352647
 },
 "spt-jaco-peyper": {
 "art": "c",
@@ -19883,6 +20531,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793666232
 },
+"spt-jamppi": {
+"art": "c",
+"file": "jamppi.jpg",
+"src": "liquipedia.net",
+"t": 1794352657
+},
 "spt-jan-bakelants": {
 "art": "c",
 "file": "jan-bakelants.jpg",
@@ -20002,6 +20656,18 @@
 "file": "janko-tipsarevic.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666559
+},
+"spt-jankos": {
+"art": "c",
+"file": "jankos.jpg",
+"src": "liquipedia.net",
+"t": 1794352607
+},
+"spt-jannisz": {
+"art": "c",
+"file": "jannisz.jpg",
+"src": "liquipedia.net",
+"t": 1794352632
 },
 "spt-japeth-aguilar": {
 "art": "c",
@@ -21227,6 +21893,12 @@
 "src": "en:Jhon Murillo",
 "t": 1793667470
 },
+"spt-jiejie": {
+"art": "c",
+"file": "jiejie.jpg",
+"src": "liquipedia.net",
+"t": 1794352635
+},
 "spt-jigoro-kano": {
 "art": "c",
 "file": "jigoro-kano.jpg",
@@ -21406,6 +22078,18 @@
 "file": "jiri-vesely.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666560
+},
+"spt-jl": {
+"art": "c",
+"file": "jl.jpg",
+"src": "liquipedia.net",
+"t": 1794352614
+},
+"spt-jnx": {
+"art": "c",
+"file": "jnx.jpg",
+"src": "liquipedia.net",
+"t": 1794352664
 },
 "spt-jo-albertville-1992": {
 "art": "i",
@@ -22211,6 +22895,12 @@
 "src": "wiki-non",
 "t": 1793664815
 },
+"spt-johnqt": {
+"art": "c",
+"file": "johnqt.jpg",
+"src": "liquipedia.net",
+"t": 1794352622
+},
 "spt-johnson-hagood-stadium": {
 "art": "i",
 "file": "johnson-hagood-stadium.png",
@@ -22222,6 +22912,12 @@
 "file": "",
 "src": "wiki-non",
 "t": 1793665670
+},
+"spt-jojopyun": {
+"art": "c",
+"file": "jojopyun.jpg",
+"src": "liquipedia.net",
+"t": 1794352638
 },
 "spt-jon-champion": {
 "art": "",
@@ -23129,6 +23825,12 @@
 "src": "fill:wikipedia:fr:Julius Evola",
 "t": 1793768961
 },
+"spt-jun": {
+"art": "c",
+"file": "jun.jpg",
+"src": "liquipedia.net",
+"t": 1794352665
+},
 "spt-jun-mizutani": {
 "art": "c",
 "file": "jun-mizutani.jpg",
@@ -23375,6 +24077,12 @@
 "src": "fr:K. C. Jones",
 "t": 1793667149
 },
+"spt-k4shera": {
+"art": "c",
+"file": "k4shera.jpg",
+"src": "liquipedia.net",
+"t": 1794352658
+},
 "spt-kaa-la-gantoise": {
 "art": "i",
 "file": "kaa-la-gantoise.png",
@@ -23410,6 +24118,12 @@
 "file": "kaisa-makarainen.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664782
+},
+"spt-kaiser": {
+"art": "c",
+"file": "kaiser.jpg",
+"src": "liquipedia.net",
+"t": 1794352666
 },
 "spt-kaka": {
 "art": "c",
@@ -23453,6 +24167,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665534
 },
+"spt-kami": {
+"art": "c",
+"file": "kami.jpg",
+"src": "liquipedia.net",
+"t": 1794352606
+},
 "spt-kami-craig": {
 "art": "c",
 "file": "kami-craig.jpg",
@@ -23470,6 +24190,12 @@
 "file": "kamui-kobayashi.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793666241
+},
+"spt-kanavi": {
+"art": "c",
+"file": "kanavi.jpg",
+"src": "liquipedia.net",
+"t": 1794352635
 },
 "spt-kane": {
 "art": "c",
@@ -23650,6 +24376,12 @@
 "file": "karolina-pliskova.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666560
+},
+"spt-karon": {
+"art": "c",
+"file": "karon.jpg",
+"src": "liquipedia.net",
+"t": 1794352640
 },
 "spt-karrie-webb": {
 "art": "c",
@@ -23969,6 +24701,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663348
 },
+"spt-keloqz": {
+"art": "c",
+"file": "keloqz.jpg",
+"src": "liquipedia.net",
+"t": 1794352667
+},
 "spt-kelsey-serwa": {
 "art": "c",
 "file": "kelsey-serwa.jpg",
@@ -24034,6 +24772,12 @@
 "file": "kenneth-eriksson.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793666464
+},
+"spt-kenny": {
+"art": "c",
+"file": "kenny.jpg",
+"src": "liquipedia.net",
+"t": 1794352613
 },
 "spt-kenny-bayless": {
 "art": "",
@@ -24347,6 +25091,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793666166
 },
+"spt-keznit": {
+"art": "c",
+"file": "keznit.jpg",
+"src": "liquipedia.net",
+"t": 1794352655
+},
 "spt-khabib-nurmagomedov": {
 "art": "c",
 "file": "khabib-nurmagomedov.jpg",
@@ -24364,6 +25114,18 @@
 "file": "khaleem-hyland.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664299
+},
+"spt-khan": {
+"art": "c",
+"file": "khan.jpg",
+"src": "liquipedia.net",
+"t": 1794352618
+},
+"spt-khanada": {
+"art": "c",
+"file": "khanada.jpg",
+"src": "liquipedia.net",
+"t": 1794352631
 },
 "spt-kheira-hamraoui": {
 "art": "c",
@@ -24400,6 +25162,12 @@
 "file": "kieran-read.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665410
+},
+"spt-kiin": {
+"art": "c",
+"file": "kiin.jpg",
+"src": "liquipedia.net",
+"t": 1794352617
 },
 "spt-kiki-caron": {
 "art": "c",
@@ -24509,6 +25277,18 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666591
 },
+"spt-kingen": {
+"art": "c",
+"file": "kingen.jpg",
+"src": "liquipedia.net",
+"t": 1794352636
+},
+"spt-kingg": {
+"art": "c",
+"file": "kingg.jpg",
+"src": "liquipedia.net",
+"t": 1794352655
+},
 "spt-kingsley-coman": {
 "art": "c",
 "file": "kingsley-coman.jpg",
@@ -24575,6 +25355,12 @@
 "src": "fr:Kirsty Coventry",
 "t": 1793667138
 },
+"spt-kismet": {
+"art": "c",
+"file": "kismet.jpg",
+"src": "liquipedia.net",
+"t": 1794352627
+},
 "spt-kiyou-shimizu": {
 "art": "c",
 "file": "kiyou-shimizu.jpg",
@@ -24628,6 +25414,18 @@
 "file": "knee.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664233
+},
+"spt-knight": {
+"art": "c",
+"file": "knight.jpg",
+"src": "liquipedia.net",
+"t": 1794352607
+},
+"spt-knoqd": {
+"art": "c",
+"file": "knoqd.jpg",
+"src": "liquipedia.net",
+"t": 1794352625
 },
 "spt-ko-itakura": {
 "art": "c",
@@ -24737,11 +25535,23 @@
 "src": "wiki-non",
 "t": 1793665954
 },
+"spt-koyful": {
+"art": "c",
+"file": "koyful.jpg",
+"src": "liquipedia.net",
+"t": 1794352659
+},
 "spt-krc-genk": {
 "art": "i",
 "file": "krc-genk.png",
 "src": "thumb.wikimedia.org",
 "t": 1793666069
+},
+"spt-kremp": {
+"art": "c",
+"file": "kremp.jpg",
+"src": "liquipedia.net",
+"t": 1794352660
 },
 "spt-kresimir-cosic": {
 "art": "c",
@@ -24832,6 +25642,12 @@
 "file": "krisztina-egerszegi.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666384
+},
+"spt-kscerato": {
+"art": "c",
+"file": "kscerato.jpg",
+"src": "liquipedia.net",
+"t": 1794352616
 },
 "spt-kubrat-pulev": {
 "art": "c",
@@ -24977,6 +25793,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666069
 },
+"spt-l1nk": {
+"art": "c",
+"file": "l1nk.jpg",
+"src": "liquipedia.net",
+"t": 1794352668
+},
 "spt-la-berrichonne-de-chateauroux": {
 "art": "i",
 "file": "la-berrichonne-de-chateauroux.png",
@@ -25006,6 +25828,12 @@
 "file": "la-vere-corbin-ong.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665955
+},
+"spt-labrov": {
+"art": "c",
+"file": "labrov.jpg",
+"src": "liquipedia.net",
+"t": 1794352653
 },
 "spt-ladji-doucoure": {
 "art": "c",
@@ -25048,6 +25876,12 @@
 "file": "lakhdar-belloumi.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793665955
+},
+"spt-lakia": {
+"art": "c",
+"file": "lakia.jpg",
+"src": "liquipedia.net",
+"t": 1794352640
 },
 "spt-lalas-abubakar": {
 "art": "c",
@@ -25517,6 +26351,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664360
 },
+"spt-laz": {
+"art": "c",
+"file": "laz.jpg",
+"src": "liquipedia.net",
+"t": 1794352656
+},
 "spt-lazaro-alvarez": {
 "art": "c",
 "file": "lazaro-alvarez.jpg",
@@ -25595,6 +26435,12 @@
 "src": "liquipedia.net",
 "t": 1793664248
 },
+"spt-lee-chong-wei": {
+"art": "c",
+"file": "lee-chong-wei.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
+},
 "spt-lee-dong-gook": {
 "art": "c",
 "file": "lee-dong-gook.jpg",
@@ -25666,6 +26512,12 @@
 "file": "legia-varsovie.png",
 "src": "thumb.wikimedia.org",
 "t": 1793666070
+},
+"spt-lehends": {
+"art": "c",
+"file": "lehends.jpg",
+"src": "liquipedia.net",
+"t": 1794352636
 },
 "spt-leicester-city-f-c": {
 "art": "i",
@@ -26057,6 +26909,12 @@
 "src": "fr:Lilly King",
 "t": 1793667207
 },
+"spt-lin-dan": {
+"art": "c",
+"file": "lin-dan.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352603
+},
 "spt-lincoln-city-f-c": {
 "art": "i",
 "file": "lincoln-city-f-c.png",
@@ -26297,6 +27155,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793664750
 },
+"spt-looper": {
+"art": "c",
+"file": "looper.jpg",
+"src": "liquipedia.net",
+"t": 1794352634
+},
 "spt-lorena-ochoa": {
 "art": "c",
 "file": "lorena-ochoa.jpg",
@@ -26422,6 +27286,12 @@
 "file": "lottie-dod.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665505
+},
+"spt-lou": {
+"art": "c",
+"file": "lou.jpg",
+"src": "liquipedia.net",
+"t": 1794352644
 },
 "spt-lou-gehrig": {
 "art": "c",
@@ -26626,6 +27496,12 @@
 "file": "luciano-acosta.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663556
+},
+"spt-lucid": {
+"art": "c",
+"file": "lucid.jpg",
+"src": "liquipedia.net",
+"t": 1794352651
 },
 "spt-lucie-bertaud": {
 "art": "c",
@@ -26915,6 +27791,18 @@
 "src": "upload.wikimedia.org",
 "t": 1793664207
 },
+"spt-luke-humphries": {
+"art": "c",
+"file": "luke-humphries.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
+},
+"spt-luke-littler": {
+"art": "c",
+"file": "luke-littler.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
+},
 "spt-luke-mcalister": {
 "art": "c",
 "file": "luke-mcalister.jpg",
@@ -26957,11 +27845,23 @@
 "src": "upload.wikimedia.org",
 "t": 1793664168
 },
+"spt-lwx": {
+"art": "c",
+"file": "lwx.jpg",
+"src": "liquipedia.net",
+"t": 1794352635
+},
 "spt-lydia-ko": {
 "art": "c",
 "file": "lydia-ko.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665178
+},
+"spt-lyncas": {
+"art": "c",
+"file": "lyncas.jpg",
+"src": "liquipedia.net",
+"t": 1794352665
 },
 "spt-lynn-hill": {
 "art": "c",
@@ -26974,6 +27874,12 @@
 "file": "lynn-swann.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793665893
+},
+"spt-lynz": {
+"art": "c",
+"file": "lynz.jpg",
+"src": "liquipedia.net",
+"t": 1794352645
 },
 "spt-lyon-olympique-universitaire": {
 "art": "",
@@ -27143,6 +28049,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793664915
 },
+"spt-magixx": {
+"art": "c",
+"file": "magixx.jpg",
+"src": "liquipedia.net",
+"t": 1794352661
+},
 "spt-magnus-carlsen": {
 "art": "c",
 "file": "magnus-carlsen.jpg",
@@ -27245,6 +28157,12 @@
 "src": "wiki-non",
 "t": 1793665072
 },
+"spt-maka": {
+"art": "c",
+"file": "maka.jpg",
+"src": "liquipedia.net",
+"t": 1794352647
+},
 "spt-mako": {
 "art": "c",
 "file": "mako.jpg",
@@ -27299,6 +28217,12 @@
 "src": "fr:Malia Metella",
 "t": 1793667138
 },
+"spt-malibuca": {
+"art": "c",
+"file": "malibuca.jpg",
+"src": "liquipedia.net",
+"t": 1794352617
+},
 "spt-malkhaz-asatiani": {
 "art": "c",
 "file": "malkhaz-asatiani.jpg",
@@ -27346,6 +28270,12 @@
 "file": "mandalay-bay-events-center.png",
 "src": "upload.wikimedia.org",
 "t": 1793665478
+},
+"spt-mande": {
+"art": "c",
+"file": "mande.jpg",
+"src": "liquipedia.net",
+"t": 1794352624
 },
 "spt-mandeep-singh": {
 "art": "c",
@@ -28535,6 +29465,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793666564
 },
+"spt-markeloff": {
+"art": "c",
+"file": "markeloff.jpg",
+"src": "liquipedia.net",
+"t": 1794352628
+},
 "spt-markis-kido": {
 "art": "c",
 "file": "markis-kido.jpg",
@@ -28822,6 +29758,12 @@
 "file": "maruyama-gondazaemon.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664535
+},
+"spt-marved": {
+"art": "c",
+"file": "marved.jpg",
+"src": "liquipedia.net",
+"t": 1794352622
 },
 "spt-marvelous-marvin-hagler": {
 "art": "c",
@@ -29597,6 +30539,12 @@
 "src": "wiki-non",
 "t": 1793664993
 },
+"spt-mazino": {
+"art": "c",
+"file": "mazino.jpg",
+"src": "liquipedia.net",
+"t": 1794352655
+},
 "spt-mc-alger": {
 "art": "i",
 "file": "mc-alger.png",
@@ -29777,6 +30725,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793662854
 },
+"spt-mero": {
+"art": "i",
+"file": "mero.png",
+"src": "liquipedia.net",
+"t": 1794352606
+},
 "spt-merstach": {
 "art": "c",
 "file": "merstach.jpg",
@@ -29801,6 +30755,18 @@
 "src": "fr:Metalist Kharkiv",
 "t": 1793667507
 },
+"spt-meteor": {
+"art": "c",
+"file": "meteor.jpg",
+"src": "liquipedia.net",
+"t": 1794352610
+},
+"spt-meteos": {
+"art": "c",
+"file": "meteos.jpg",
+"src": "liquipedia.net",
+"t": 1794352650
+},
 "spt-metta-world-peace": {
 "art": "c",
 "file": "metta-world-peace.jpg",
@@ -29818,6 +30784,12 @@
 "file": "mew2king.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664936
+},
+"spt-mezii": {
+"art": "c",
+"file": "mezii.jpg",
+"src": "liquipedia.net",
+"t": 1794352646
 },
 "spt-mia-hamm": {
 "art": "c",
@@ -30905,6 +31877,24 @@
 "src": "commons.wikimedia.org",
 "t": 1793663527
 },
+"spt-mindfreak": {
+"art": "c",
+"file": "mindfreak.jpg",
+"src": "liquipedia.net",
+"t": 1794352624
+},
+"spt-ming": {
+"art": "c",
+"file": "ming.jpg",
+"src": "liquipedia.net",
+"t": 1794352617
+},
+"spt-miniboo": {
+"art": "c",
+"file": "miniboo.jpg",
+"src": "liquipedia.net",
+"t": 1794352624
+},
 "spt-mink-van-der-weerden": {
 "art": "c",
 "file": "mink-van-der-weerden.jpg",
@@ -31061,6 +32051,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793664818
 },
+"spt-missing": {
+"art": "c",
+"file": "missing.jpg",
+"src": "liquipedia.net",
+"t": 1794352652
+},
 "spt-missy-franklin": {
 "art": "c",
 "file": "missy-franklin.jpg",
@@ -31091,11 +32087,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665677
 },
+"spt-mithy": {
+"art": "c",
+"file": "mithy.jpg",
+"src": "liquipedia.net",
+"t": 1794352620
+},
 "spt-mitre-ultimax": {
 "art": "",
 "file": "",
 "src": "wiki-non",
 "t": 1793663976
+},
+"spt-mixwell": {
+"art": "c",
+"file": "mixwell.jpg",
+"src": "liquipedia.net",
+"t": 1794352657
 },
 "spt-miya-tachibana": {
 "art": "",
@@ -31319,6 +32327,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793665497
 },
+"spt-monsoon": {
+"art": "c",
+"file": "monsoon.jpg",
+"src": "liquipedia.net",
+"t": 1794352644
+},
 "spt-montel-vontavious-porter": {
 "art": "c",
 "file": "montel-vontavious-porter.jpg",
@@ -31457,6 +32471,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664766
 },
+"spt-munchkin": {
+"art": "c",
+"file": "munchkin.jpg",
+"src": "liquipedia.net",
+"t": 1794352639
+},
 "spt-munster-rugby": {
 "art": "i",
 "file": "munster-rugby.png",
@@ -31529,6 +32549,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663500
 },
+"spt-muz": {
+"art": "c",
+"file": "muz.jpg",
+"src": "liquipedia.net",
+"t": 1794352662
+},
 "spt-mvp-nba": {
 "art": "c",
 "file": "mvp-nba.jpg",
@@ -31571,6 +32597,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666563
 },
+"spt-myrwn": {
+"art": "c",
+"file": "myrwn.jpg",
+"src": "liquipedia.net",
+"t": 1794352653
+},
 "spt-n-golo-kante": {
 "art": "c",
 "file": "n-golo-kante.jpg",
@@ -31594,6 +32626,12 @@
 "file": "nacer-bouhanni.jpg",
 "src": "fr:Nacer Bouhanni",
 "t": 1793667135
+},
+"spt-nadeshot": {
+"art": "c",
+"file": "nadeshot.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
 },
 "spt-nadia-comaneci": {
 "art": "c",
@@ -31630,6 +32668,12 @@
 "file": "nadzeya-astapchuk.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793665619
+},
+"spt-naf": {
+"art": "c",
+"file": "naf.jpg",
+"src": "liquipedia.net",
+"t": 1794352630
 },
 "spt-nafissatou-thiam": {
 "art": "c",
@@ -31750,6 +32794,12 @@
 "file": "nastia-liukin.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664411
+},
+"spt-nastie": {
+"art": "c",
+"file": "nastie.jpg",
+"src": "liquipedia.net",
+"t": 1794352659
 },
 "spt-nastja-ceh": {
 "art": "c",
@@ -32038,6 +33088,12 @@
 "file": "",
 "src": "wiki-non",
 "t": 1793665229
+},
+"spt-nertz": {
+"art": "c",
+"file": "nertz.jpg",
+"src": "liquipedia.net",
+"t": 1794352660
 },
 "spt-neslihan-demir": {
 "art": "c",
@@ -32543,6 +33599,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793662994
 },
+"spt-nikof": {
+"art": "c",
+"file": "nikof.jpg",
+"src": "liquipedia.net",
+"t": 1794352649
+},
 "spt-nikola-grbic": {
 "art": "c",
 "file": "nikola-grbic.jpg",
@@ -32627,6 +33689,12 @@
 "src": "en:Nina Kamto Njitam",
 "t": 1793667531
 },
+"spt-ning": {
+"art": "c",
+"file": "ning.jpg",
+"src": "liquipedia.net",
+"t": 1794352634
+},
 "spt-ninjas-in-pyjamas": {
 "art": "i",
 "file": "ninjas-in-pyjamas.png",
@@ -32656,6 +33724,24 @@
 "file": "",
 "src": "wiki-non",
 "t": 1793664299
+},
+"spt-noah": {
+"art": "c",
+"file": "noah.jpg",
+"src": "liquipedia.net",
+"t": 1794352665
+},
+"spt-noahreyli": {
+"art": "c",
+"file": "noahreyli.jpg",
+"src": "liquipedia.net",
+"t": 1794352632
+},
+"spt-nobody": {
+"art": "c",
+"file": "nobody.jpg",
+"src": "liquipedia.net",
+"t": 1794352639
 },
 "spt-nodar-kumaritashvili": {
 "art": "c",
@@ -32789,6 +33875,12 @@
 "src": "liquipedia.net",
 "t": 1793665844
 },
+"spt-nuc": {
+"art": "c",
+"file": "nuc.jpg",
+"src": "liquipedia.net",
+"t": 1794352654
+},
 "spt-nuno-gomes": {
 "art": "c",
 "file": "nuno-gomes.jpg",
@@ -32902,6 +33994,12 @@
 "file": "",
 "src": "wiki-non",
 "t": 1793665746
+},
+"spt-odoamne": {
+"art": "c",
+"file": "odoamne.jpg",
+"src": "liquipedia.net",
+"t": 1794352651
 },
 "spt-og": {
 "art": "i",
@@ -33257,6 +34355,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793665990
 },
+"spt-on": {
+"art": "c",
+"file": "on.jpg",
+"src": "liquipedia.net",
+"t": 1794352618
+},
 "spt-ona-carbonell": {
 "art": "c",
 "file": "ona-carbonell.jpg",
@@ -33413,6 +34517,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665753
 },
+"spt-oscarinin": {
+"art": "c",
+"file": "oscarinin.jpg",
+"src": "liquipedia.net",
+"t": 1794352653
+},
 "spt-oskar-eriksson": {
 "art": "c",
 "file": "oskar-eriksson.jpg",
@@ -33490,6 +34600,12 @@
 "file": "overwatch-league.jpg",
 "src": "liquipedia.net",
 "t": 1793664249
+},
+"spt-owakening": {
+"art": "c",
+"file": "owakening.jpg",
+"src": "liquipedia.net",
+"t": 1794352628
 },
 "spt-owen-farrell": {
 "art": "c",
@@ -33641,6 +34757,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665698
 },
+"spt-pancada": {
+"art": "c",
+"file": "pancada.jpg",
+"src": "liquipedia.net",
+"t": 1794352640
+},
 "spt-paola-cardullo": {
 "art": "c",
 "file": "paola-cardullo.jpg",
@@ -33772,6 +34894,12 @@
 "file": "partizan-belgrade.png",
 "src": "en.wikipedia.org",
 "t": 1793663158
+},
+"spt-parus": {
+"art": "c",
+"file": "parus.jpg",
+"src": "liquipedia.net",
+"t": 1794352663
 },
 "spt-pascal-dupraz": {
 "art": "c",
@@ -34283,6 +35411,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665105
 },
+"spt-paul-seixas": {
+"art": "c",
+"file": "paul-seixas.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
+},
 "spt-paul-silas": {
 "art": "c",
 "file": "paul-silas.jpg",
@@ -34439,6 +35573,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665526
 },
+"spt-pawn": {
+"art": "c",
+"file": "pawn.jpg",
+"src": "liquipedia.net",
+"t": 1794352621
+},
 "spt-payne-stewart": {
 "art": "c",
 "file": "payne-stewart.jpg",
@@ -34450,6 +35590,12 @@
 "file": "",
 "src": "wiki-non",
 "t": 1793665230
+},
+"spt-peanut": {
+"art": "c",
+"file": "peanut.jpg",
+"src": "liquipedia.net",
+"t": 1794352609
 },
 "spt-pedro": {
 "art": "c",
@@ -34774,6 +35920,12 @@
 "file": "peter-wright.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664271
+},
+"spt-peterbot": {
+"art": "c",
+"file": "peterbot.jpg",
+"src": "liquipedia.net",
+"t": 1794352606
 },
 "spt-petero-civoniceva": {
 "art": "c",
@@ -35105,6 +36257,18 @@
 "src": "en.wikipedia.org",
 "t": 1793663471
 },
+"spt-phony": {
+"art": "c",
+"file": "phony.jpg",
+"src": "liquipedia.net",
+"t": 1794352626
+},
+"spt-photon": {
+"art": "c",
+"file": "photon.jpg",
+"src": "liquipedia.net",
+"t": 1794352666
+},
 "spt-pi-hongyan": {
 "art": "c",
 "file": "pi-hongyan.jpg",
@@ -35285,6 +36449,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666544
 },
+"spt-piglet": {
+"art": "c",
+"file": "piglet.jpg",
+"src": "liquipedia.net",
+"t": 1794352633
+},
 "spt-pikes-peak": {
 "art": "i",
 "file": "pikes-peak.png",
@@ -35296,6 +36466,12 @@
 "file": "",
 "src": "wiki-non",
 "t": 1793664613
+},
+"spt-pinq": {
+"art": "c",
+"file": "pinq.jpg",
+"src": "liquipedia.net",
+"t": 1794352662
 },
 "spt-pioneer-stadium": {
 "art": "i",
@@ -35357,11 +36533,23 @@
 "src": "commons.wikimedia.org",
 "t": 1793663747
 },
+"spt-pollo": {
+"art": "c",
+"file": "pollo.jpg",
+"src": "liquipedia.net",
+"t": 1794352616
+},
 "spt-pontus-tidemand": {
 "art": "c",
 "file": "pontus-tidemand.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665358
+},
+"spt-poohmandu": {
+"art": "c",
+"file": "poohmandu.jpg",
+"src": "liquipedia.net",
+"t": 1794352633
 },
 "spt-porsche-motorsport": {
 "art": "c",
@@ -35380,6 +36568,12 @@
 "file": "pray.jpg",
 "src": "liquipedia.net",
 "t": 1793664931
+},
+"spt-pred": {
+"art": "c",
+"file": "pred.jpg",
+"src": "liquipedia.net",
+"t": 1794352613
 },
 "spt-predrag-sikimic": {
 "art": "c",
@@ -35494,6 +36688,12 @@
 "file": "pusarla-venkata-sindhu.jpg",
 "src": "fr:Pusarla Venkata Sindhu",
 "t": 1793667548
+},
+"spt-pyosik": {
+"art": "c",
+"file": "pyosik.jpg",
+"src": "liquipedia.net",
+"t": 1794352637
 },
 "spt-pyrros-dimas": {
 "art": "c",
@@ -36047,6 +37247,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793664435
 },
+"spt-raymond-ceulemans": {
+"art": "c",
+"file": "raymond-ceulemans.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
+},
 "spt-raymond-domenech": {
 "art": "c",
 "file": "raymond-domenech.jpg",
@@ -36088,6 +37294,18 @@
 "file": "raymond-van-barneveld.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664271
+},
+"spt-razork": {
+"art": "c",
+"file": "razork.jpg",
+"src": "liquipedia.net",
+"t": 1794352637
+},
+"spt-rb": {
+"art": "c",
+"file": "rb.jpg",
+"src": "liquipedia.net",
+"t": 1794352657
 },
 "spt-rc-toulon": {
 "art": "i",
@@ -36179,6 +37397,24 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665072
 },
+"spt-redgar": {
+"art": "c",
+"file": "redgar.jpg",
+"src": "liquipedia.net",
+"t": 1794352666
+},
+"spt-reeker": {
+"art": "c",
+"file": "reeker.jpg",
+"src": "liquipedia.net",
+"t": 1794352664
+},
+"spt-reet": {
+"art": "c",
+"file": "reet.jpg",
+"src": "liquipedia.net",
+"t": 1794352632
+},
 "spt-reggie-cannon": {
 "art": "i",
 "file": "reggie-cannon.png",
@@ -36244,6 +37480,12 @@
 "file": "rekkles.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793662996
+},
+"spt-remco-evenepoel": {
+"art": "c",
+"file": "remco-evenepoel.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
 },
 "spt-remi-garde": {
 "art": "c",
@@ -36358,6 +37600,12 @@
 "file": "renzo-nostini.jpg",
 "src": "kimi-web-img.kimi.ai",
 "t": 1793663527
+},
+"spt-reps": {
+"art": "c",
+"file": "reps.jpg",
+"src": "liquipedia.net",
+"t": 1794352604
 },
 "spt-retief-goosen": {
 "art": "c",
@@ -36682,6 +37930,12 @@
 "file": "riddick-bowe.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664821
+},
+"spt-riens": {
+"art": "c",
+"file": "riens.jpg",
+"src": "liquipedia.net",
+"t": 1794352623
 },
 "spt-rigoberto-uran": {
 "art": "c",
@@ -38051,6 +39305,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666072
 },
+"spt-s0m": {
+"art": "c",
+"file": "s0m.jpg",
+"src": "liquipedia.net",
+"t": 1794352641
+},
 "spt-s1mple": {
 "art": "c",
 "file": "s1mple.jpg",
@@ -38110,6 +39370,12 @@
 "file": "sacramento-kings.png",
 "src": "thumb.wikimedia.org",
 "t": 1793664774
+},
+"spt-sacy": {
+"art": "c",
+"file": "sacy.jpg",
+"src": "liquipedia.net",
+"t": 1794352610
 },
 "spt-sada-cruzeiro": {
 "art": "c",
@@ -38813,6 +40079,18 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665464
 },
+"spt-scout": {
+"art": "c",
+"file": "scout.jpg",
+"src": "liquipedia.net",
+"t": 1794352609
+},
+"spt-scrap": {
+"art": "c",
+"file": "scrap.jpg",
+"src": "liquipedia.net",
+"t": 1794352613
+},
 "spt-scream": {
 "art": "",
 "file": "",
@@ -39034,6 +40312,12 @@
 "file": "sentinels.png",
 "src": "liquipedia.net",
 "t": 1793664912
+},
+"spt-senzu": {
+"art": "c",
+"file": "senzu.jpg",
+"src": "liquipedia.net",
+"t": 1794352661
 },
 "spt-sep-vanmarcke": {
 "art": "c",
@@ -39281,6 +40565,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663499
 },
+"spt-setty": {
+"art": "c",
+"file": "setty.jpg",
+"src": "liquipedia.net",
+"t": 1794352607
+},
 "spt-severiano-ballesteros": {
 "art": "c",
 "file": "severiano-ballesteros.jpg",
@@ -39305,6 +40595,12 @@
 "src": "en.wikipedia.org",
 "t": 1793663246
 },
+"spt-sh1ro": {
+"art": "c",
+"file": "sh1ro.jpg",
+"src": "liquipedia.net",
+"t": 1794352605
+},
 "spt-shahar-peer": {
 "art": "c",
 "file": "shahar-peer.jpg",
@@ -39322,6 +40618,12 @@
 "file": "shahrul-saad.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664323
+},
+"spt-shai-gilgeous-alexander": {
+"art": "c",
+"file": "shai-gilgeous-alexander.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352603
 },
 "spt-shaiiko": {
 "art": "c",
@@ -39437,6 +40739,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665445
 },
+"spt-sharky": {
+"art": "c",
+"file": "sharky.jpg",
+"src": "liquipedia.net",
+"t": 1794352612
+},
 "spt-sharon-van-rouwendaal": {
 "art": "c",
 "file": "sharon-van-rouwendaal.jpg",
@@ -39539,6 +40847,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664186
 },
+"spt-sheo": {
+"art": "c",
+"file": "sheo.jpg",
+"src": "liquipedia.net",
+"t": 1794352654
+},
 "spt-shergar": {
 "art": "c",
 "file": "shergar.jpg",
@@ -39556,6 +40870,12 @@
 "file": "sheryl-swoopes.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664169
+},
+"spt-sheydos": {
+"art": "c",
+"file": "sheydos.jpg",
+"src": "liquipedia.net",
+"t": 1794352666
 },
 "spt-shin": {
 "art": "c",
@@ -39605,6 +40925,12 @@
 "src": "wiki-non",
 "t": 1793665767
 },
+"spt-shohei-ohtani": {
+"art": "c",
+"file": "shohei-ohtani.jpg",
+"src": "upload.wikimedia.org",
+"t": 1794352603
+},
 "spt-shohei-ono": {
 "art": "c",
 "file": "shohei-ono.jpg",
@@ -39647,11 +40973,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666056
 },
+"spt-shy": {
+"art": "c",
+"file": "shy.jpg",
+"src": "liquipedia.net",
+"t": 1794352633
+},
 "spt-siarhei-rutenka": {
 "art": "c",
 "file": "siarhei-rutenka.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793666287
+},
+"spt-sib": {
+"art": "c",
+"file": "sib.jpg",
+"src": "liquipedia.net",
+"t": 1794352645
 },
 "spt-sid-lowe": {
 "art": "c",
@@ -39688,6 +41026,12 @@
 "file": "sifan-hassan.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793662857
+},
+"spt-sikezz": {
+"art": "c",
+"file": "sikezz.jpg",
+"src": "liquipedia.net",
+"t": 1794352643
 },
 "spt-silvan-zurbriggen": {
 "art": "c",
@@ -39893,6 +41237,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665230
 },
+"spt-sirdel": {
+"art": "c",
+"file": "sirdel.jpg",
+"src": "liquipedia.net",
+"t": 1794352658
+},
 "spt-sithu-aung": {
 "art": "",
 "file": "",
@@ -39905,11 +41255,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666500
 },
+"spt-siuhy": {
+"art": "c",
+"file": "siuhy.jpg",
+"src": "liquipedia.net",
+"t": 1794352630
+},
 "spt-six-invitational": {
 "art": "i",
 "file": "six-invitational.png",
 "src": "liquipedia.net",
 "t": 1793664943
+},
+"spt-skadoodle": {
+"art": "c",
+"file": "skadoodle.jpg",
+"src": "liquipedia.net",
+"t": 1794352629
 },
 "spt-skelly-field-at-h-a-chapman-stadium": {
 "art": "i",
@@ -39917,17 +41279,35 @@
 "src": "commons.wikimedia.org",
 "t": 1793663860
 },
+"spt-skewmond": {
+"art": "c",
+"file": "skewmond.jpg",
+"src": "liquipedia.net",
+"t": 1794352663
+},
 "spt-skip-bayless": {
 "art": "c",
 "file": "skip-bayless.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664475
 },
+"spt-skittlecakes": {
+"art": "c",
+"file": "skittlecakes.jpg",
+"src": "liquipedia.net",
+"t": 1794352625
+},
 "spt-sky-brown": {
 "art": "c",
 "file": "sky-brown.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664517
+},
+"spt-skyz": {
+"art": "c",
+"file": "skyz.jpg",
+"src": "liquipedia.net",
+"t": 1794352627
 },
 "spt-slavko-goluza": {
 "art": "c",
@@ -39989,11 +41369,35 @@
 "src": "upload.wikimedia.org",
 "t": 1793665840
 },
+"spt-smoggy": {
+"art": "c",
+"file": "smoggy.jpg",
+"src": "liquipedia.net",
+"t": 1794352639
+},
 "spt-snax": {
 "art": "c",
 "file": "snax.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665829
+},
+"spt-sneaky": {
+"art": "c",
+"file": "sneaky.jpg",
+"src": "liquipedia.net",
+"t": 1794352638
+},
+"spt-snip3down": {
+"art": "c",
+"file": "snip3down.jpg",
+"src": "liquipedia.net",
+"t": 1794352611
+},
+"spt-snoopy": {
+"art": "c",
+"file": "snoopy.jpg",
+"src": "liquipedia.net",
+"t": 1794352659
 },
 "spt-soaz": {
 "art": "c",
@@ -40145,6 +41549,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665498
 },
+"spt-soulcas": {
+"art": "c",
+"file": "soulcas.jpg",
+"src": "liquipedia.net",
+"t": 1794352668
+},
 "spt-souleymane-camara": {
 "art": "c",
 "file": "souleymane-camara.jpg",
@@ -40180,6 +41590,12 @@
 "file": "sparg0.jpg",
 "src": "liquipedia.net",
 "t": 1793665884
+},
+"spt-spinx": {
+"art": "c",
+"file": "spinx.jpg",
+"src": "liquipedia.net",
+"t": 1794352615
 },
 "spt-sporting-club-bastiais": {
 "art": "i",
@@ -40660,6 +42076,12 @@
 "file": "state-farm-arena.png",
 "src": "thumb.wikimedia.org",
 "t": 1793665479
+},
+"spt-stavn": {
+"art": "c",
+"file": "stavn.jpg",
+"src": "liquipedia.net",
+"t": 1794352648
 },
 "spt-stax": {
 "art": "c",
@@ -41309,6 +42731,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793662737
 },
+"spt-sugarz3ro": {
+"art": "c",
+"file": "sugarz3ro.jpg",
+"src": "liquipedia.net",
+"t": 1794352656
+},
 "spt-sumail": {
 "art": "c",
 "file": "sumail.jpg",
@@ -41344,6 +42772,18 @@
 "file": "sunil-gavaskar.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793665839
+},
+"spt-sunpayus": {
+"art": "c",
+"file": "sunpayus.jpg",
+"src": "liquipedia.net",
+"t": 1794352660
+},
+"spt-supa": {
+"art": "c",
+"file": "supa.jpg",
+"src": "liquipedia.net",
+"t": 1794352653
 },
 "spt-super-bowl": {
 "art": "i",
@@ -41590,6 +43030,12 @@
 "file": "t1.png",
 "src": "liquipedia.net",
 "t": 1793662995
+},
+"spt-t3xture": {
+"art": "c",
+"file": "t3xture.jpg",
+"src": "liquipedia.net",
+"t": 1794352610
 },
 "spt-tables-ladders-chairs": {
 "art": "i",
@@ -42131,6 +43577,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665499
 },
+"spt-th0mashd": {
+"art": "c",
+"file": "th0mashd.jpg",
+"src": "liquipedia.net",
+"t": 1794352616
+},
 "spt-thaisa-menezes": {
 "art": "c",
 "file": "thaisa-menezes.jpg",
@@ -42178,6 +43630,12 @@
 "file": "the-ocean-race.jpg",
 "src": "en:The Ocean Race",
 "t": 1793667303
+},
+"spt-the-rock": {
+"art": "c",
+"file": "the-rock.jpg",
+"src": "thumb.wikimedia.org",
+"t": 1794352604
 },
 "spt-the-undertaker": {
 "art": "c",
@@ -42526,6 +43984,12 @@
 "file": "tiago-camilo.jpg",
 "src": "fr:Tiago Camilo",
 "t": 1793667204
+},
+"spt-tian": {
+"art": "c",
+"file": "tian.jpg",
+"src": "liquipedia.net",
+"t": 1794352619
 },
 "spt-tianna-bartoletta": {
 "art": "c",
@@ -43271,6 +44735,12 @@
 "src": "en.wikipedia.org",
 "t": 1793663483
 },
+"spt-torzsi": {
+"art": "c",
+"file": "torzsi.jpg",
+"src": "liquipedia.net",
+"t": 1794352631
+},
 "spt-toshiyuki-takagi": {
 "art": "c",
 "file": "toshiyuki-takagi.jpg",
@@ -43396,6 +44866,12 @@
 "file": "toyota-gazoo-racing.png",
 "src": "commons.wikimedia.org",
 "t": 1793663975
+},
+"spt-toyz": {
+"art": "c",
+"file": "toyz.jpg",
+"src": "liquipedia.net",
+"t": 1794352608
 },
 "spt-trackmania-grand-league": {
 "art": "i",
@@ -43558,6 +45034,12 @@
 "file": "turbopolsa.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664241
+},
+"spt-tuyz": {
+"art": "c",
+"file": "tuyz.jpg",
+"src": "liquipedia.net",
+"t": 1794352656
 },
 "spt-twistzz": {
 "art": "c",
@@ -43751,11 +45233,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665480
 },
+"spt-unlucky": {
+"art": "c",
+"file": "unlucky.jpg",
+"src": "liquipedia.net",
+"t": 1794352625
+},
 "spt-unryu-kyukichi": {
 "art": "c",
 "file": "unryu-kyukichi.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793666557
+},
+"spt-upset": {
+"art": "c",
+"file": "upset.jpg",
+"src": "liquipedia.net",
+"t": 1794352637
 },
 "spt-urijah-faber": {
 "art": "c",
@@ -43828,6 +45322,12 @@
 "file": "uzi.jpg",
 "src": "en:Uzi (gamer)",
 "t": 1793667682
+},
+"spt-vadeal": {
+"art": "c",
+"file": "vadeal.jpg",
+"src": "liquipedia.net",
+"t": 1794352650
 },
 "spt-vahid-halilhodzic": {
 "art": "c",
@@ -44039,6 +45539,12 @@
 "src": "liquipedia.net",
 "t": 1793664939
 },
+"spt-vaxlon": {
+"art": "c",
+"file": "vaxlon.jpg",
+"src": "liquipedia.net",
+"t": 1794352659
+},
 "spt-vct-masters": {
 "art": "",
 "file": "",
@@ -44062,6 +45568,12 @@
 "file": "vendee-globe.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793664569
+},
+"spt-veno": {
+"art": "c",
+"file": "veno.jpg",
+"src": "liquipedia.net",
+"t": 1794352617
 },
 "spt-venus-rosewater-dish": {
 "art": "c",
@@ -44147,6 +45659,12 @@
 "src": "wiki-non",
 "t": 1793664568
 },
+"spt-vetheo": {
+"art": "c",
+"file": "vetheo.jpg",
+"src": "liquipedia.net",
+"t": 1794352654
+},
 "spt-vfb-stuttgart": {
 "art": "i",
 "file": "vfb-stuttgart.png",
@@ -44170,6 +45688,12 @@
 "file": "vicente-del-bosque.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663646
+},
+"spt-victor": {
+"art": "c",
+"file": "victor.jpg",
+"src": "liquipedia.net",
+"t": 1794352641
 },
 "spt-victor-agali": {
 "art": "",
@@ -44609,6 +46133,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793666060
 },
+"spt-vizicsacsi": {
+"art": "c",
+"file": "vizicsacsi.jpg",
+"src": "liquipedia.net",
+"t": 1794352651
+},
 "spt-vlade-divac": {
 "art": "c",
 "file": "vlade-divac.jpg",
@@ -44710,6 +46240,12 @@
 "file": "w-g-grace.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664207
+},
+"spt-w0nderful": {
+"art": "c",
+"file": "w0nderful.jpg",
+"src": "liquipedia.net",
+"t": 1794352614
 },
 "spt-wade-barrett": {
 "art": "c",
@@ -44945,6 +46481,12 @@
 "src": "thumb.wikimedia.org",
 "t": 1793666245
 },
+"spt-wei": {
+"art": "c",
+"file": "wei.jpg",
+"src": "liquipedia.net",
+"t": 1794352652
+},
 "spt-wei-shihao": {
 "art": "c",
 "file": "wei-shihao.jpg",
@@ -44956,6 +46498,12 @@
 "file": "weibo-gaming.png",
 "src": "liquipedia.net",
 "t": 1793665849
+},
+"spt-weixiao": {
+"art": "c",
+"file": "weixiao.jpg",
+"src": "liquipedia.net",
+"t": 1794352608
 },
 "spt-wells-fargo-center": {
 "art": "i",
@@ -45257,6 +46805,12 @@
 "src": "fr:Women's National Basketball Association",
 "t": 1793667146
 },
+"spt-wo0t": {
+"art": "c",
+"file": "wo0t.jpg",
+"src": "liquipedia.net",
+"t": 1794352623
+},
 "spt-wolf": {
 "art": "c",
 "file": "wolf.jpg",
@@ -45341,6 +46895,12 @@
 "src": "commons.wikimedia.org",
 "t": 1793663208
 },
+"spt-woxic": {
+"art": "c",
+"file": "woxic.jpg",
+"src": "liquipedia.net",
+"t": 1794352648
+},
 "spt-wrestle-kingdom": {
 "art": "",
 "file": "",
@@ -45365,11 +46925,23 @@
 "src": "commons.wikimedia.org",
 "t": 1793663773
 },
+"spt-wunder": {
+"art": "c",
+"file": "wunder.jpg",
+"src": "liquipedia.net",
+"t": 1794352621
+},
 "spt-wwe-championship": {
 "art": "i",
 "file": "wwe-championship.png",
 "src": "commons.wikimedia.org",
 "t": 1793662969
+},
+"spt-wxltzy": {
+"art": "c",
+"file": "wxltzy.jpg",
+"src": "liquipedia.net",
+"t": 1794352644
 },
 "spt-wyatt-earp": {
 "art": "i",
@@ -45394,6 +46966,12 @@
 "file": "xabi-alonso.jpg",
 "src": "commons.wikimedia.org",
 "t": 1793663647
+},
+"spt-xantares": {
+"art": "c",
+"file": "xantares.jpg",
+"src": "liquipedia.net",
+"t": 1794352647
 },
 "spt-xavi": {
 "art": "c",
@@ -45449,11 +47027,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793665087
 },
+"spt-xertion": {
+"art": "c",
+"file": "xertion.jpg",
+"src": "liquipedia.net",
+"t": 1794352631
+},
 "spt-xherdan-shaqiri": {
 "art": "c",
 "file": "xherdan-shaqiri.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664384
+},
+"spt-xiaohu": {
+"art": "c",
+"file": "xiaohu.jpg",
+"src": "liquipedia.net",
+"t": 1794352609
 },
 "spt-xiaoming-wang-drechou": {
 "art": "",
@@ -45466,6 +47056,12 @@
 "file": "xizt.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793665853
+},
+"spt-xms": {
+"art": "c",
+"file": "xms.jpg",
+"src": "liquipedia.net",
+"t": 1794352667
 },
 "spt-xpeke": {
 "art": "c",
@@ -45490,6 +47086,18 @@
 "file": "xue-chen.jpg",
 "src": "fr:Xue Chen",
 "t": 1793667168
+},
+"spt-xun": {
+"art": "c",
+"file": "xun.jpg",
+"src": "liquipedia.net",
+"t": 1794352652
+},
+"spt-xynew": {
+"art": "c",
+"file": "xynew.jpg",
+"src": "liquipedia.net",
+"t": 1794352612
 },
 "spt-xyp9x": {
 "art": "c",
@@ -45857,6 +47465,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793664885
 },
+"spt-yukaf": {
+"art": "c",
+"file": "yukaf.jpg",
+"src": "liquipedia.net",
+"t": 1794352612
+},
 "spt-yukari-kinga": {
 "art": "c",
 "file": "yukari-kinga.jpg",
@@ -45874,6 +47488,12 @@
 "file": "yuki-nagasato.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665065
+},
+"spt-yulariman": {
+"art": "c",
+"file": "yulariman.jpg",
+"src": "liquipedia.net",
+"t": 1794352604
 },
 "spt-yuliya-efimova": {
 "art": "c",
@@ -45929,6 +47549,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793665235
 },
+"spt-yuurih": {
+"art": "c",
+"file": "yuurih.jpg",
+"src": "liquipedia.net",
+"t": 1794352648
+},
 "spt-yuzuru-hanyu": {
 "art": "c",
 "file": "yuzuru-hanyu.jpg",
@@ -45976,6 +47602,12 @@
 "file": "zach-randolph.jpg",
 "src": "thumb.wikimedia.org",
 "t": 1793665733
+},
+"spt-zachmazer": {
+"art": "c",
+"file": "zachmazer.jpg",
+"src": "liquipedia.net",
+"t": 1794352643
 },
 "spt-zack-greinke": {
 "art": "c",
@@ -46067,6 +47699,12 @@
 "src": "upload.wikimedia.org",
 "t": 1793665735
 },
+"spt-zellsis": {
+"art": "c",
+"file": "zellsis.jpg",
+"src": "liquipedia.net",
+"t": 1794352640
+},
 "spt-zen": {
 "art": "c",
 "file": "zen.jpg",
@@ -46078,6 +47716,12 @@
 "file": "zenith-kazan.png",
 "src": "en.wikipedia.org",
 "t": 1793663390
+},
+"spt-zer0": {
+"art": "c",
+"file": "zer0.jpg",
+"src": "liquipedia.net",
+"t": 1794352603
 },
 "spt-zersenay-tadesse": {
 "art": "c",
@@ -46181,11 +47825,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664434
 },
+"spt-zmjjkk": {
+"art": "c",
+"file": "zmjjkk.jpg",
+"src": "liquipedia.net",
+"t": 1794352609
+},
 "spt-zoltan-kammerer": {
 "art": "c",
 "file": "zoltan-kammerer.jpg",
 "src": "upload.wikimedia.org",
 "t": 1793664843
+},
+"spt-zont1x": {
+"art": "c",
+"file": "zont1x.jpg",
+"src": "liquipedia.net",
+"t": 1794352661
 },
 "spt-zoran-dragic": {
 "art": "c",
@@ -46235,11 +47891,23 @@
 "src": "thumb.wikimedia.org",
 "t": 1793664567
 },
+"spt-zven": {
+"art": "c",
+"file": "zven.jpg",
+"src": "liquipedia.net",
+"t": 1794352620
+},
 "spt-zvonko-radnic": {
 "art": "c",
 "file": "zvonko-radnic.jpg",
 "src": "fill:wikipedia:fr:Zvonko Radnic",
 "t": 1793768962
+},
+"spt-zyppan": {
+"art": "c",
+"file": "zyppan.jpg",
+"src": "liquipedia.net",
+"t": 1794352667
 },
 "spt-zywoo": {
 "art": "c",
