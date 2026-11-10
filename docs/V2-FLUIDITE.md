@@ -200,6 +200,28 @@ pouvait rester invisible sur un navigateur sans `loading=lazy`.
   1440 px → 387×540 en (527, 149), identiques à la carte 3D.
 - Rien en « effets réduits » ni si la carte peinte n'est pas encore prête (comportement d'avant).
 
+### Fluidité 2 — pistes du papier de recherche web (10/11)
+
+Papier relu contre le code et les sources (38 fautes corrigées : 2 pistes sur 16 déjà faites, 9 partielles).
+Exécution piste par piste, mesurée sur le banc. Gardé :
+
+| Lot | Effet mesuré / prouvé |
+|---|---|
+| Peinture des cartes de la collection en worker (détourage + encodage WebP) | 1re visite, 55 cartes, téléphone simulé : 24–32 tâches longues · 2,2–3,6 s → 7 tâches · 0,5 s ; plus longue 280–390 → ~100 ms ; cartes identiques octet pour octet ; repli sur l'ancien chemin (Safari probable) |
+| Catalogue construit en un passage, tableaux bruts libérés | installation 49,8 → 28,3 ms, total 130 → 105 ms, tas −12 % (Node) ; résultat identique octet pour octet |
+| Boucle de rendu arrêtée hors scène 3D, changement de définition différé au repos, démarrage prudent après 2 arrêts brutaux (iOS) | pages DOM : ~50 → 0 rappels d'animation/s ; plus de réallocation en pleine révélation |
+| Textures des sachets envoyées d'avance (2 par image), canvas source libérés | glissé de la roue : 6 → 2 textures par image ; ouverture 4 → 2 ; ~15 Mo de canvas libérés par sachet, +~34 Mo GPU au repos (voisins préparés) |
+| Préchauffage par la vraie passe de rendu (MRT + MSAA) | démarrage : 63 → 34 pipelines créés en bloquant (29 en parallèle) ; 1re ouverture inchangée |
+| Service worker : fichiers /assets servis sans le réveiller (Chrome), Navigation Preload | ~60 passages par le service worker en moins par relance ; hors ligne OK |
+| Jeux : 3 dessins montés un par tâche | plus longue tâche à l'entrée 1,56–1,65 s → 0,6–0,9 s |
+| Défilement restauré au retour arrière ; View Transitions derrière `?vt=1` (désactivées par défaut) | fonctionnel (900 → 900 px) |
+| Albums (téléphone) : hauteur réservée juste | barre de défilement : saut de 258 → 2 px |
+
+Écarté après vérification : Early Hints (gain d'une seule visite, invérifiable), `_routes.json` (déjà généré par Pages),
+découpage des fichiers (déjà stable), animations CSS de la vitrine (déjà composées ou mortes), précache à l'installation
+pour le cache de code (modules ES : sans effet), vues gardées attachées (≈ 45 tests `isConnected` à revoir : régression).
+Relecture indépendante des lots fusionnés : 1 défaut et 3 mineurs corrigés. Parcours complet 390 / 1440 px sans erreur.
+
 ## 5. Coûts : avant / après
 
 | Poste | Avant | Après | Pourquoi |
