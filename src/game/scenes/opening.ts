@@ -365,7 +365,7 @@ export function createOpeningScene(): OpeningScene {
   let ctx: LabContext;
   let stage: ReturnType<typeof createStage>;
   let post: { render(): void };
-  /** compile les pipelines de la scène pour la cible réelle de la passe (voir setup) ; repli : stage.compile() */
+  /** compile les pipelines de la scène pour la cible réelle de la passe (voir setup, WebGPU ; WebGL2 : variante canvas) ; repli : stage.compile() */
   let compileReal: () => Promise<void> = () => stage.compile();
   let key: DirectionalLight;
   const rig = new Group();
@@ -2427,7 +2427,7 @@ export function createOpeningScene(): OpeningScene {
       // (audit PERF1-03) compilation des cartes du pack pour la cible RÉELLE de la passe (MRT émissif + MSAA), par la
       // version sûre du lot E (post.ts : la cible du moteur est rendue à chaque pause de la compilation — sinon une
       // image rendue pendant l'attente partait dans la cible de la passe et l'écran restait figé)
-      compileReal = () => pl.compile();
+      compileReal = () => pl.compile({ real: true });
       const bl = pl.own(bloom(pl.emissive!, 0.35, 0.5, 0.0)) as unknown as N;
       /*
        * (perf 06/11) POST-TRAITEMENT À LA DEMANDE, AU BIT PRÈS. Un effet dont la contribution est nulle n'est plus
@@ -2562,11 +2562,13 @@ export function createOpeningScene(): OpeningScene {
           layout(c.width, c.height); // (la roue existe maintenant : échelle du booster et activation)
         }
       }
-      await stage.compile();
+      // (fluidité 2) WebGPU : pipelines créés en asynchrone et en parallèle dans la configuration RÉELLE de la passe
+      // (MRT émissif, HalfFloat, MSAA ×4 — PassNode.compileAsync, voir post.ts) ; WebGL2 : variante « canvas » comme avant
+      await compileReal();
       {
-        // compileAsync prépare les pipelines SANS les cibles réelles (MRT émissif, MSAA) : créer ces variantes en pleine
+        // la précompilation ne couvre pas la chaîne de post-traitement (bloom, sortie) : créer ces variantes en pleine
         // révélation coûte des centaines de ms (à-coup à la 1re carte de chaque rareté). Une image rendue par les deux
-        // sorties, sous l'écran de chargement, les crée toutes maintenant. (perf 06/11) Aussi sur ordinateur (avant :
+        // sorties, sous l'écran de chargement, les crée toutes maintenant (et, en WebGL2, tout le reste). (perf 06/11) Aussi sur ordinateur (avant :
         // téléphone seulement — 12 à 14 pipelines créés pendant chaque 1re ouverture PC), roue 3D comprise.
         const ph = phase;
         phase = 'sealed';

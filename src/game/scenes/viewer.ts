@@ -309,7 +309,7 @@ export function createViewerScene(): ViewerScene {
       // matériaux compilés, puis une image à blanc hors écran : les VRAIS pipelines (MRT émissif, MSAA, HalfFloat) sont
       // créés ici et non dans la première image affichée (à-coup de 100 à 400 ms au premier zoom de carte — la face holo
       // pèse ≈ 470 nœuds). La carte factice est encore dans le rig : c'est elle qui sert.
-      await pl.compile();
+      await pl.compile({ real: true });
       pl.warm();
       c.bag.fn(() => (tl?.kill(), clear()));
       // inspecter une carte de près : molette (ordinateur) ou deux touchers rapides (téléphone, souris)
