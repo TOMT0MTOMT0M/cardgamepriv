@@ -78,7 +78,8 @@ const EXIT_DUR = 1.4;
 const EXIT_FPS = 30;
 const N_EXIT = Math.round(EXIT_DUR * EXIT_FPS) + 1;
 const STRIP_HIDE = 0.75; // la bande disparaît du jeu à 0,75 s (comme l'ancienne `fly`)
-const Q = 2e-4; // quantification (20 µm) — ±6,5 unités en int16
+const Q = 5e-5; // quantification du corps (5 µm — ±1,6 unité en int16) : plus grossier, l'arrondi se voit en reflet
+const Q_STRIP = 2e-4; // bande arrachée (20 µm — ±6,5 unités : elle vole loin)
 const FRAME_DT = 1 / 240;
 const GRIP_COLS = 3; // le doigt pince les 4 premières colonnes (≈ 5 mm) : l'encoche, déjà fendue au départ
 const SUB = ENV('SUB', 10); // sous-pas par image → 2 400 Hz
@@ -93,7 +94,21 @@ const YIELD = ENV('YIELD', 0.05); // angle (rad) au-delà duquel le pli reste
 const CREEP = 0.3; // part de l'excès qui devient permanente à chaque image
 const DRAG_N = 9, DRAG_T = 0.6;
 const CONTACT_V = ENV('CV', 1.2); // vitesse max donnée au film par une carte (unités / s, normale)
-const DAMP = ENV('DAMP', 0.9995); // amortissement interne du film (par sous-pas) // traînée de l'air (1/s) : selon la normale, le long du film
+const DAMP = ENV('DAMP', 0.9995); // amortissement interne du film (par sous-pas)
+const DAMP_BODY = ENV('DAMPB', 0.997); // corps : le film frotte sur les cartes et l'air piégé le freine (anti-scintillement)
+/**
+ * (10/11, retours de Tom : « la texture est un peu trop fragile, elle flicker ») LA MAIN QUI TIENT LE SACHET : pouce à
+ * plat sur la moitié basse droite de la face avant, deux doigts derrière. Le pouce appuie le film contre la pile (léger
+ * creux), les doigts le retiennent au dos ; contact collant (la peau ne glisse pas). Une fois les cartes sorties, la main
+ * pince le sachet vide. Le film n'est plus libre de vibrer d'un bord à l'autre.
+ */
+const THUMB = { x: ENV('TX', 0.17), y: ENV('TY', -0.32), rx: 0.08, ry: 0.095 };
+const FINGERS = [
+  { x: 0.12, y: -0.25, rx: 0.055, ry: 0.07 },
+  { x: 0.22, y: -0.33, rx: 0.055, ry: 0.07 },
+];
+const HAND_STICK = ENV('STICK', 0.2); // la peau retient le film (part du glissement annulée par sous-pas)
+const SMOOTH = ENV('SMOOTH', 2); // filtre temporel du corps à l'encodage (binomial 5 points, 0 = aucun)
 
 // ───────────────────────────── nappes
 type Part = 'body' | 'strip';
@@ -367,6 +382,9 @@ function simulate(V: Variant) {
   };
 
   const g12 = new Float64Array(12);
+  const bodyEnd = sF.base * 3;
+  /** appui de la main (0 → 1 pendant le repos : le pouce se pose) */
+  let handDepth = 0;
   let contacts = 0;
   const step = (h: number, stripFree: boolean) => {
     const h2 = h * h;
@@ -444,6 +462,32 @@ function simulate(V: Variant) {
           pos[o] -= (pos[o] - prev[o]) * 0.3;
         }
       }
+    // la main : pouce devant, doigts derrière (contact collant)
+    if (!SKIP.has('hand')) {
+      for (const s of [bF, bB])
+        for (let k = s.base, e = s.base + s.ny * (NX + 1); k < e; k++) {
+          const o = k * 3;
+          const pads: Array<{ x: number; y: number; rx: number; ry: number }> = s.side > 0 ? [THUMB] : FINGERS;
+          for (const P of pads) {
+            const dx = (pos[o] - P.x) / P.rx, dy = (pos[o + 1] - P.y) / P.ry;
+            const r2 = dx * dx + dy * dy;
+            if (r2 >= 1) continue;
+            // pulpe posée sur la pile (les pulpes restent dans la partie plate des cartes) ; une fois les cartes sorties,
+            // elle tient le film là où il était au repos (pas de pincement brutal : il se battrait contre la carte qui passe)
+            const hz = stackH(pos[o], pos[o + 1], s.side);
+            const base = Number.isNaN(hz) ? rest[o + 2] : hz + s.side * FILM_R;
+            // bord de la pulpe : remonte (r⁴) ; le pouce se pose pendant le repos (handDepth)
+            const surf = base + s.side * (0.012 * r2 * r2 + (1 - handDepth) * 0.01);
+            if (s.side > 0 ? pos[o + 2] > surf : pos[o + 2] < surf) {
+              pos[o + 2] += (surf - pos[o + 2]) * 0.35;
+              // la peau colle : le film ne glisse pas sous la pulpe
+              const stick = HAND_STICK * (1 - r2);
+              pos[o] -= (pos[o] - prev[o]) * stick;
+              pos[o + 1] -= (pos[o + 1] - prev[o + 1]) * stick;
+            }
+          }
+        }
+    }
     // avant ↔ dos du corps : l'avant reste devant (hors soudures)
     for (let j = 0; j < (SKIP.has('zo') ? 0 : bF.ny); j++)
       for (let i = 0; i <= NX; i++) {
@@ -497,7 +541,7 @@ function simulate(V: Variant) {
             }
       }
     }
-    for (let o = 0; o < n * 3; o++) vel[o] = ((pos[o] - prev[o]) / h) * DAMP;
+    for (let o = 0; o < n * 3; o++) vel[o] = ((pos[o] - prev[o]) / h) * (o < bodyEnd ? DAMP_BODY : DAMP);
   };
 
   /** plasticité : au-delà du seuil, l'angle de repos suit (le pli reste marqué) */
@@ -545,7 +589,8 @@ function simulate(V: Variant) {
   };
 
   // repos : le film se pose (0,1 s), puis ce repos devient la référence de flexion
-  for (let t = 0, fi = 0; t < 0.1; t += FRAME_DT, fi++) {
+  for (let t = 0, fi = 0; t < 0.2; t += FRAME_DT, fi++) {
+    handDepth = Math.min(1, t / 0.1);
     runFrame(false);
     if (DEBUG && fi % 6 === 0) diag(`repos t=${t.toFixed(3)}`);
   }
@@ -603,13 +648,36 @@ function simulate(V: Variant) {
 }
 
 // ───────────────────────────── encodage
+/**
+ * Filtre temporel du CORPS (binomial 1-4-6-4-1, `SMOOTH` passes) : enlève le frémissement d'une image à l'autre que
+ * le solveur laisse dans le film (sur l'alu poli, le moindre millième de radian de normale se voit en reflet) ; les
+ * grands mouvements (lèvres, passage des cartes) restent. Déchirure et sortie filtrées séparément.
+ */
+function smoothBody(r: ReturnType<typeof simulate>) {
+  const bodyEnd = r.sheets.find((s) => s.part === 'strip')!.base * 3;
+  for (const [a, b] of [[0, N_TEAR - 1], [N_TEAR, N_TEAR + N_EXIT - 1]]) {
+    for (let pass = 0; pass < SMOOTH; pass++) {
+      const src = r.frames.slice(a, b + 1).map((f) => f.slice(0, bodyEnd));
+      const L = src.length;
+      for (let f = 1; f < L - 1; f++) {
+        const g = (k: number) => src[Math.min(L - 1, Math.max(0, f + k))];
+        const m2 = g(-2), m1 = g(-1), c = g(0), p1 = g(1), p2 = g(2);
+        const dst = r.frames[a + f];
+        for (let o = 0; o < bodyEnd; o++) dst[o] = (m2[o] + 4 * m1[o] + 6 * c[o] + 4 * p1[o] + p2[o]) / 16;
+      }
+    }
+  }
+}
+
 function encode(V: Variant, r: ReturnType<typeof simulate>, index: number) {
+  if (SMOOTH > 0) smoothBody(r);
   const { sheets, rest, frames, n } = r;
   const header: TearBakeHeader = {
     format: TEAR_BAKE_FORMAT,
     seed: V.seed,
     index,
     q: Q,
+    qStrip: Q_STRIP,
     nx: NX + 1,
     sheets: sheets.map((s) => ({ part: s.part, side: s.side, ny: s.ny, ys: s.ys.map((y) => +y.toFixed(6)), base: s.base })),
     verts: n,
@@ -624,11 +692,12 @@ function encode(V: Variant, r: ReturnType<typeof simulate>, index: number) {
   const restF = Float32Array.from(rest);
   const F = frames.length;
   const q = new Int16Array(F * n * 3);
+  const stripFrom = sheets.find((s) => s.part === 'strip')!.base * 3;
   const last = new Int32Array(n * 3);
   let clamped = 0;
   for (let f = 0; f < F; f++)
     for (let o = 0; o < n * 3; o++) {
-      let cur = Math.round((frames[f][o] - restF[o]) / Q);
+      let cur = Math.round((frames[f][o] - restF[o]) / (o < stripFrom ? Q : Q_STRIP));
       if (cur > 32767 || cur < -32767) (cur = Math.max(-32767, Math.min(32767, cur))), clamped++;
       // écart à l'image précédente, plans x / y / z séparés (meilleure compression)
       q[f * n * 3 + (o % 3) * n + ((o / 3) | 0)] = cur - last[o];

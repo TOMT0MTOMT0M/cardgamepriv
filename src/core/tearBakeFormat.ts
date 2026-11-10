@@ -4,10 +4,10 @@
  *
  * Fichier (gzip) : « TEAR » · u32 longueur de l'en-tête · en-tête JSON · bourrage à 4 octets · positions de repos
  * (float32 × 3 × verts) · images : int16, pour chaque image 3 plans (x de tous les sommets, puis y, puis z), chaque
- * valeur = (position − repos) / q MOINS celle de l'image précédente (la première : moins zéro).
+ * valeur = (position − repos) / q (qStrip pour la bande) MOINS celle de l'image précédente (la première : moins zéro).
  * Images : `nTear` pour la déchirure (progression 0..1, pas régulier), puis `nExit` pour la sortie (temps, `exitFps`).
  */
-export const TEAR_BAKE_FORMAT = 1;
+export const TEAR_BAKE_FORMAT = 2;
 export interface TearBakeSheet {
   part: 'body' | 'strip';
   /** +1 face avant, −1 dos */
@@ -23,7 +23,10 @@ export interface TearBakeHeader {
   format: number;
   seed: number;
   index: number;
+  /** pas de quantification du corps */
   q: number;
+  /** pas de quantification de la bande arrachée (elle vole loin : plage plus grande) */
+  qStrip: number;
   nx: number;
   sheets: TearBakeSheet[];
   verts: number;

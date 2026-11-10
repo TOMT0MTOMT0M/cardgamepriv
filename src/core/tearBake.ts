@@ -15,7 +15,7 @@ import { siteUrl } from './siteRoot';
  *  - phase DÉCHIRURE : `setTear(p)` (p = progression du doigt, 0..1) ; phase SORTIE : `setExit(t)` (secondes, même horloge
  *    que la sortie des cartes).
  *
- * Mémoire : positions gardées en int16 (écart au repos × q), ~6 Mo par variante.
+ * Mémoire : positions gardées en int16 (écart au repos × q : 5 µm pour le corps, 20 µm pour la bande), ~6 Mo par variante.
  */
 export interface TearBake {
   header: TearBakeHeader;
@@ -26,7 +26,7 @@ export interface TearBake {
 
 const N_VARIANTS = 3;
 /** à monter à chaque nouvelle cuisson (npm run bake:tear) : le service worker garde les fichiers par version */
-export const BAKE_REV = 1;
+export const BAKE_REV = 2;
 let loading: Promise<TearBake | null>[] | null = null;
 
 async function fetchBake(i: number): Promise<TearBake | null> {
@@ -203,14 +203,11 @@ export class TearBakePlayer {
     if (Math.abs(f - this.cur) < 1e-4) return;
     this.cur = f;
     const f0 = Math.floor(f), f1 = Math.min(F - 1, f0 + 1), k = f - f0;
-    const n = h.verts, q = h.q, rest = this.bake.rest, fr = this.bake.frames;
+    const n = h.verts, rest = this.bake.rest, fr = this.bake.frames;
     const o0 = f0 * n * 3, o1 = f1 * n * 3;
     const bn3 = this.bodyN * 3;
-    for (let i = 0; i < n * 3; i++) {
-      const v = rest[i] + (fr[o0 + i] + (fr[o1 + i] - fr[o0 + i]) * k) * q;
-      if (i < bn3) this.bodyPos[i] = v;
-      else this.stripPos[i - bn3] = v;
-    }
+    for (let i = 0; i < bn3; i++) this.bodyPos[i] = rest[i] + (fr[o0 + i] + (fr[o1 + i] - fr[o0 + i]) * k) * h.q;
+    for (let i = bn3; i < n * 3; i++) this.stripPos[i - bn3] = rest[i] + (fr[o0 + i] + (fr[o1 + i] - fr[o0 + i]) * k) * h.qStrip;
     this.normals(h.sheets.filter((s) => s.part === 'body'), this.bodyPos, this.bodyNrm, 0);
     this.normals(h.sheets.filter((s) => s.part === 'strip'), this.stripPos, this.stripNrm, this.bodyN);
     for (const g of [this.body, this.strip]) {
