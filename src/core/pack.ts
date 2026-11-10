@@ -1,6 +1,6 @@
 import { BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshPhysicalNodeMaterial, NoColorSpace, SRGBColorSpace, type Texture } from 'three/webgpu';
 import { bumpMap, float, mix, normalMap, positionLocal, texture, uv, vec2, vec3, smoothstep, sin } from 'three/tsl';
-import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, type Ctx } from './art/canvas';
+import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, releaseCanvas, type Ctx } from './art/canvas';
 import { FONT_MONO, FONT_TITLE } from './art/frame';
 import { FONT_DISPLAY, displayCase } from './fonts';
 import { ensureFonts } from './art';
@@ -183,13 +183,29 @@ export interface PackArt {
    * toutes (lumière en haut à gauche) — sans elle, le nom moulé serait presque invisible en 2D.
    */
   thumbFront?: HTMLCanvasElement;
+  /**
+   * (perf) les textures d'un sachet à envoyer au GPU, dans l'ordre où `renderer.initTexture` les prend (deux par image
+   * au plus : l'envoi + les mipmaps de chacune). Les envoyer d'avance, au repos, évite que les 6 partent d'un bloc au
+   * moment où le joueur change de booster.
+   */
+  gpuTextures: Texture[];
   dispose(): void;
 }
 
+export interface PackArtOptions {
+  /**
+   * (perf, iOS plafonne la mémoire des toiles) vide chaque toile source dès que sa texture est sur le GPU, comme les
+   * calques des cartes (`ArtOptions.release`) : ≈ 12 Mo de toiles par sachet. La face avant et sa vignette 2D
+   * (`thumbFront`, relue à la demande par `packThumb`) : seule la vignette est gardée. À n'activer que si personne
+   * d'autre ne relit les toiles après l'envoi (la roue 3D les réduit AVANT : `createWheel3D.prepare`).
+   */
+  releaseSources?: boolean;
+}
+
 /** Visuel procédural du booster (marque inventée « Card Lab »). */
-export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Promise<PackArt> {
+export async function generatePackArt(style: PackStyle = PACK_STYLES.ember, o: PackArtOptions = {}): Promise<PackArt> {
   await ensureFonts();
-  if (style.simple) return simplePackArt(style);
+  if (style.simple) return simplePackArt(style, !!o.releaseSources);
   const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
   const g = F.g;
   g.fillStyle = linear(g, 0, 0, PW, PH, [[0, style.ground2], [0.55, style.ground], [1, style.ground]]);
@@ -323,7 +339,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   };
   const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false);
   crinkle.wrapS = crinkle.wrapT = 1000; // RepeatWrapping
-  return { front, back, masks, crinkle, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
+  return { front, back, masks, crinkle, gpuTextures: [front, back, masks, crinkle], dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
 }
 
 /**
@@ -331,7 +347,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
  * simple » — couleur unie avec un reflet doux, logo et nom au centre (le logo et les soudures en foil), aucune autre
  * écriture. Dos : métal brossé de la même teinte, le logo en petit (le matériau le rend entièrement métallique).
  */
-async function simplePackArt(style: PackStyle): Promise<PackArt> {
+async function simplePackArt(style: PackStyle, release = false): Promise<PackArt> {
   // (06/11, ultra-réalisme) sachet NU : la couleur de l'aluminium, rien d'écrit. Le froissé est propre au sachet
   // (une carte de hauteur pleine taille, pas une tuile répétée), avec de vrais plis : réseau de plis principaux
   // (arêtes tendues entre points), micro-plis secondaires, bombé du coussin et soudures crantées.
@@ -385,19 +401,34 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
   const molded = label ? await moldedLabel(F, C.n, label.text, label.px) : null;
   const FN = molded?.normal ?? null;
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
-  const tex = (c: HTMLCanvasElement, color: boolean) => {
+  // `keep` : toile à ne pas vider (la face avant sert encore de vignette si le nom moulé n'a pas fourni la sienne)
+  const tex = (c: HTMLCanvasElement, color: boolean, keep = false) => {
     const t = new CanvasTexture(c);
     t.colorSpace = color ? SRGBColorSpace : NoColorSpace;
     t.anisotropy = aniso;
+    if (release && !keep)
+      t.onUpdate = () => {
+        // appelé juste après l'envoi et la génération des mipmaps (synchrones) : le CPU n'a plus besoin de la toile
+        t.onUpdate = null;
+        releaseCanvas(c);
+      };
     return t;
   };
-  const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false), creaseNormal = tex(C.n, false);
+  const front = tex(F.c, true, !molded?.thumb), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false), creaseNormal = tex(C.n, false);
   const frontNormal = FN ? tex(FN, false) : undefined;
   crinkle.wrapS = crinkle.wrapT = 1001; // ClampToEdgeWrapping : la carte est celle du sachet entier (pas répétée)
   creaseNormal.wrapS = creaseNormal.wrapT = 1001;
   if (frontNormal) frontNormal.wrapS = frontNormal.wrapT = 1001;
   const all = [front, back, masks, crinkle, creaseNormal, ...(frontNormal ? [frontNormal] : [])];
-  return { front, back, masks, crinkle, creaseNormal, frontNormal, thumbFront: molded?.thumb, metalBack: true, fullCrease: true, dispose: () => all.forEach((t) => t.dispose()) };
+  // ordre d'envoi : les paires (face + sa normale), (dos + masques), (plis + normale des plis)
+  const gpuTextures = [front, ...(frontNormal ? [frontNormal] : []), back, masks, crinkle, creaseNormal];
+  return {
+    front, back, masks, crinkle, creaseNormal, frontNormal, thumbFront: molded?.thumb, metalBack: true, fullCrease: true, gpuTextures,
+    dispose: () => {
+      all.forEach((t) => t.dispose());
+      if (release) [F.c, B.c, M.c, C.c, C.n, FN, molded?.thumb].forEach(releaseCanvas);
+    },
+  };
 }
 
 /**

@@ -1,6 +1,7 @@
 import { CanvasTexture, Color, Group, Mesh, MeshStandardNodeMaterial, SRGBColorSpace, type BufferGeometry, type PerspectiveCamera, type Raycaster, type Scene, type Texture } from 'three/webgpu';
 import { normalMap, texture, uv, vec2 } from 'three/tsl';
 import { createPackGeometry, PACK, type PackArt } from '../../core/pack';
+import { releaseCanvas } from '../../core/art/canvas';
 
 /**
  * ROUE DES BOOSTERS EN 3D (téléphone, retours de Tom, 4 nov.) : les 5 pochettes de la boutique deviennent de vrais petits
@@ -42,28 +43,28 @@ const BACK_W = 128;
 /** carte des plis (sachets aluminium) : en petit, 192 px suffisent à garder les grandes cassures lisibles */
 const CREASE_W = 192;
 
-/** (perf 06/11) réductions déjà faites, par toile source et largeur : la carte des plis est commune aux cinq sachets
- *  (core/pack.ts) → réduite une fois ; même résultat au pixel (même source, même réduction) */
-const shrunk = new WeakMap<object, Map<number, HTMLCanvasElement>>();
+/**
+ * Réduit une toile source à `w` px de large (jamais agrandie) et en fait une texture. (perf, iOS plafonne la mémoire des
+ * toiles) la réduction est propre à chaque texture (les cartes de plis sont par booster depuis le 07/11, plus partagées
+ * entre les cinq) : sa toile est vidée dès que la texture est sur le GPU.
+ */
 function shrink(src: Texture | undefined, w: number, srgb = true): Texture | null {
   const img = src?.image as HTMLCanvasElement | ImageBitmap | undefined;
   if (!img || !img.width) return null;
   w = Math.min(w, img.width); // jamais agrandie
-  let byW = shrunk.get(img);
-  let c = byW?.get(w);
-  if (!c || !c.width) {
-    c = document.createElement('canvas');
-    c.width = w;
-    c.height = Math.round((w * img.height) / img.width);
-    const g = c.getContext('2d')!;
-    g.imageSmoothingQuality = 'high';
-    g.drawImage(img as CanvasImageSource, 0, 0, c.width, c.height);
-    if (!byW) shrunk.set(img, (byW = new Map()));
-    byW.set(w, c);
-  }
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = Math.round((w * img.height) / img.width);
+  const g = c.getContext('2d')!;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img as CanvasImageSource, 0, 0, c.width, c.height);
   const t = new CanvasTexture(c);
   if (srgb) t.colorSpace = SRGBColorSpace;
   t.anisotropy = 2;
+  t.onUpdate = () => {
+    t.onUpdate = null;
+    releaseCanvas(c);
+  };
   return t;
 }
 
@@ -147,6 +148,14 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
   let lastK = 0;
   return {
     group,
+    /**
+     * Réduit tout de suite les toiles du sachet `key` (si son visuel est prêt) : à appeler dès que `getArt(key)` répond,
+     * AVANT d'envoyer les grandes textures au GPU (leurs toiles sont vidées à l'envoi, `PackArtOptions.releaseSources`).
+     * Les petites textures partent au GPU à la première image où la pochette est montrée (quelques centaines de Ko).
+     */
+    prepare(key: string) {
+      texturize(slot(key));
+    },
     /** crée d'avance les matériaux (préchauffage des shaders sous l'écran de chargement) */
     warm(keys: string[]) {
       for (const k of keys) texturize(slot(k));

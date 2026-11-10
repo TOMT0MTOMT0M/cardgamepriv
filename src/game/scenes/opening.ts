@@ -475,6 +475,18 @@ export function createOpeningScene(): OpeningScene {
    * sur tous les grands boosters, alors que les mini-boosters du menu avaient chacun le leur).
    */
   type ArtSwap = { n: { value: Texture }; pick: (a: PackArt) => Texture | undefined };
+  /**
+   * (perf, audit R5) textures de sachet déjà envoyées (ou posées dans un matériau) : avant, les 6 textures d'un booster
+   * partaient d'un bloc (+ leurs mipmaps ≈ 55 passes de rendu) à la 1re sélection, en plein glissé de la roue.
+   * `feedArts` les envoie d'avance, DEUX par image, vitrine et roue au repos : le booster affiché d'abord, puis ses
+   * voisins (±1 sur téléphone, toute la roue sur ordinateur) ; le sachet visé par un changement de booster passe devant.
+   */
+  const sentTex = new WeakSet<Texture>();
+  let allKeys: string[] = [];
+  let urgentKey: string | null = null;
+  let lastDir: 1 | -1 = 1;
+  let wheelSig = 0;
+  let wheelMovedAt = 0;
   const packSwaps: ArtSwap[] = [];
   const tearSwaps: ArtSwap[] = [];
   const track = <T,>(list: ArtSwap[], n: T, pick: ArtSwap['pick']): T => {
@@ -482,6 +494,7 @@ export function createOpeningScene(): OpeningScene {
     return n;
   };
   const applySwaps = (list: ArtSwap[], a: PackArt) => {
+    for (const t of a.gpuTextures) sentTex.add(t); // posées dans un matériau : elles partent à la prochaine image
     for (const s of list) {
       const t = s.pick(a);
       if (t) s.n.value = t;
@@ -1044,9 +1057,17 @@ export function createOpeningScene(): OpeningScene {
     // dos des thèmes du pack peints d'abord, chacun dans son image (pas dans celle d'une carte, PERF1-04.3)
     if (ctx.quality === 'mobile') {
       for (const c of p.cards) {
-        backs.forCard(c.cardId);
+        const bm = backs.forCard(c.cardId);
         await nextFrame();
         if (!alive()) return null;
+        // (perf) les 2 textures du dos (couleur + masques) partent ici, dans leur image : avant, tous les dos neufs du
+        // pack (jusqu'à 5 thèmes = 10 textures + mipmaps) partaient ensemble à la 1re image où la pile se montre
+        const send = backs.toSend(bm);
+        if (send.length) {
+          send.forEach((t) => ctx.renderer.initTexture(t));
+          await nextFrame();
+          if (!alive()) return null;
+        }
       }
     }
     for (const c of p.cards) {
@@ -1133,6 +1154,45 @@ export function createOpeningScene(): OpeningScene {
     return { halfH, halfW: halfH * cam.aspect };
   }
 
+  /** envoie au GPU au plus 2 textures du sachet `k` qui ne le sont pas encore ; renvoie combien */
+  function feedPack(k: string): number {
+    const a = arts.get(k);
+    if (!a) return 0;
+    let n = 0;
+    for (const t of a.gpuTextures) {
+      if (sentTex.has(t)) continue;
+      if (n === 2) break;
+      sentTex.add(t);
+      ctx.renderer.initTexture(t);
+      n++;
+    }
+    return n;
+  }
+  /** sachets voisins du booster affiché, le sens du dernier changement d'abord (±1 sur téléphone, ±2 = toute la roue sinon) */
+  function neighbours(): string[] {
+    const ring = reelKeys ?? allKeys;
+    const i = ring.indexOf(boosterKey);
+    if (i < 0) return [];
+    const out: string[] = [];
+    const reach = ctx.quality === 'mobile' ? 1 : 2;
+    for (let d = 1; d <= reach; d++) for (const sgn of [lastDir, -lastDir]) {
+      const k = ring[(((i + sgn * d) % ring.length) + ring.length) % ring.length];
+      if (k !== boosterKey && !out.includes(k)) out.push(k);
+    }
+    return out;
+  }
+  /** une étape par image : jamais plus de 2 textures ; seulement au repos, sauf pour le sachet visé par un changement */
+  function feedArts() {
+    if (!ready3d || phase !== 'display') return;
+    if (urgentKey) {
+      if (feedPack(urgentKey) > 0) return;
+      urgentKey = null;
+    }
+    if (ctx.input.down || spinTl?.isActive() || reel?.moving || performance.now() - wheelMovedAt < 250) return;
+    if (feedPack(boosterKey) > 0) return; // (le booster affiché : déjà parti avec son matériau ; sécurité)
+    for (const k of neighbours()) if (feedPack(k) > 0) return;
+  }
+
   function setBooster(k: string, animate = true, dir: 1 | -1 = 1) {
     if (phase !== 'display') return;
     if (k === boosterKey) return void (wantKey = null);
@@ -1144,10 +1204,12 @@ export function createOpeningScene(): OpeningScene {
     }
     wantKey = null;
     boosterKey = k;
+    lastDir = dir;
     if (!animate) {
       applyBoosterArt(k);
       return;
     }
+    urgentKey = k; // les textures partent pendant la 1re moitié du tour (≤ 2 par image), pas toutes à `applyBoosterArt`
     // timeline à part : ne coupe pas l'entrée du booster (reset) si on change de booster pendant qu'il arrive
     spinTl?.kill();
     const sp = (spinTl = sideline(gsap.timeline()));
@@ -2037,6 +2099,13 @@ export function createOpeningScene(): OpeningScene {
     setWheel(items) {
       wheelItems = items;
       wheelDirty = true;
+      // la roue bouge-t-elle ? (pose des pochettes différente de l'image précédente) → pas d'envoi de textures pendant
+      let sig = 0;
+      if (items) for (const it of items) sig += it.x * 1.31 + it.y * 0.77 + it.z * 0.37 + it.rotY * 7.1 + it.rotZ * 3.3 + it.dim * 3.1;
+      if (sig !== wheelSig) {
+        wheelSig = sig;
+        wheelMovedAt = performance.now();
+      }
     },
     wheelView() {
       if (!wheel3d || !ctx || !ready3d) return null;
@@ -2200,7 +2269,8 @@ export function createOpeningScene(): OpeningScene {
       } catch {
         /* ignore */
       }
-      arts.set(boosterKey, c.bag.add(await generatePackArt(styles[boosterKey])));
+      allKeys = Object.keys(styles);
+      arts.set(boosterKey, c.bag.add(await generatePackArt(styles[boosterKey], { releaseSources: true })));
       startArts = async () => {
         await nextFrame();
         await nextFrame();
@@ -2208,7 +2278,9 @@ export function createOpeningScene(): OpeningScene {
           // le booster demandé (choisi ou en cours d'ouverture) passe devant les autres
           const k = wantKey && !arts.has(wantKey) && styles[wantKey] ? wantKey : Object.keys(styles).find((x) => !arts.has(x));
           if (!k) break;
-          arts.set(k, c.bag.add(await generatePackArt(styles[k])));
+          arts.set(k, c.bag.add(await generatePackArt(styles[k], { releaseSources: true })));
+          // la roue en réduit les toiles tout de suite : elles sont vidées à l'envoi des grandes textures au GPU
+          wheel3d?.prepare(k);
           api.onThumb?.(k);
           if (wantKey === k) {
             wantKey = null;
@@ -2510,6 +2582,7 @@ export function createOpeningScene(): OpeningScene {
       wheel3d?.hide();
       for (const tw of twins) tw.rig.visible = false;
       ready3d = true;
+      arts.get(boosterKey)?.gpuTextures.forEach((t) => sentTex.add(t)); // parties avec la 1re image
       // la boutique a pu se mettre en page avant : elle passe maintenant aux mini-boosters 3D
       queueMicrotask(() => api.onWheelReady?.());
       // retirées de la scène mais gardées en vie : leurs pipelines restent en cache pour les vraies cartes
@@ -2913,6 +2986,7 @@ export function createOpeningScene(): OpeningScene {
       const tiltMoving = Math.abs(tx - lastTilt.x) + Math.abs(ty - lastTilt.y) > 0.004;
       lastTilt.set(tx, ty);
       const calm = ctx.quality === 'mobile' && phase === 'display' && !ctx.input.down && !tiltMoving && !spinTl?.isActive() && !tl?.isActive() && Math.abs(dispK - 1) < 0.01 && Math.abs(focusCur - focusT) < 0.5 && packLift < 0.01;
+      feedArts();
       // roue des boosters (téléphone) : posée juste avant le rendu ; une roue qui tourne = pas d'image sautée
       if (wheel3d) {
         if (phase === 'display' && wheelItems && !ctx.overlay.hidden) wheel3d.set(wheelItems, cameraScale(stage.camera, ctx.height).k);
