@@ -5,6 +5,10 @@
  * Le BUILD CLIENT (jeu et labo, vite.config.ts → alias `…/sets/themes` → `themesCore`) ne passe pas par ici : le jeu
  * installe les gros sets pendant son démarrage (main.ts), avant toute lecture du catalogue ; le labo au lancement.
  */
-import './catalogFull';
+import { installCatalog } from './themesCore';
+import * as big from './catalogBig';
+
+// (les tableaux bruts des 4 gros sets restent importables côté serveur / tests : `keepRaw`, comme avant)
+installCatalog(big, { keepRaw: true });
 
 export * from './themesCore';

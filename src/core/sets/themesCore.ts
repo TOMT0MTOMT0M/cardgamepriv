@@ -26,8 +26,6 @@ import { VALORANT, VALORANT_CLASSES, VALORANT_INFO, valorantCardId, valorantClas
 import { LOL, LOL_INFO, lolCardId, lolFile } from './lol';
 import { LOL_LINES, lolLine } from './lolLines';
 import { CS, CS_CLASSES, CS_INFO, csCardId, csClass, csFile } from './cs';
-import type { SportEntry } from './sport';
-import type { PopEntry } from './popculture';
 // (types seulement : les données des 4 gros sets arrivent par installCatalog(), voir plus bas)
 import type * as BigSets from './catalogBig';
 
@@ -175,42 +173,75 @@ const cs = split(
 /**
  * Les 4 GROS sets (Jeux vidéo, Pop Culture, Sport, World : ~90 % des 37 088 cartes, ~700 Ko compressés) : leurs
  * sous-thèmes sont construits ici, à l'installation (installCatalog). Même code et même ordre qu'avant, seulement déplacé.
+ *
+ * (perf, fluidité 2 — coût du catalogue au démarrage) UN seul passage sur les ~37 000 lignes brutes : chaque carte est
+ * créée une fois, directement dans la liste de son sous-thème, et la curation (cartes purgées, raretés renotées) est
+ * appliquée au passage. Avant : un `groupBy` (table intermédiaire), un `map` + spread par carte, puis un `filter` de
+ * tout le catalogue dans applyCuration. Mêmes objets (mêmes clés, même ordre de clés), mêmes listes, même ordre.
  */
-function bigSubthemes(B: typeof BigSets): SubTheme[] {
+type Curation = { purge: ReadonlySet<string>; rerate: ReadonlyMap<string, CatalogRarity> };
+
+/** Une liste vide par sous-thème (clé = id) : les cartes y sont rangées en un passage. Ids de sous-thèmes uniques. */
+function emptyLists(subs: ReadonlyArray<{ id: string }>): Map<string, CatalogEntry[]> {
+  const out = new Map<string, CatalogEntry[]>();
+  for (const s of subs) out.set(s.id, []);
+  return out;
+}
+
+function bigSubthemes(B: typeof BigSets, cur: Curation): SubTheme[] {
+  const { purge, rerate } = cur;
+  // (une `Map` plutôt qu'un objet : chercher une clé dans un objet exige d'« internaliser » la chaîne, ~12 ms perdues sur
+  // 37 000 ids ; la `Map` réutilise le hachage déjà calculé par `purge.has`. Mesuré dans Node : installCatalog 50 → 28 ms)
+  const artists = new Map(Object.entries(B.POP_ARTISTS));
+
   /** Jeux vidéo : 1 famille (Mario, Tekken, Palworld…) = 1 sous-thème (décision du 2 nov.), regroupées à l'affichage. */
   const JV_GROUP = { id: 'jeux-video', label: B.JV_INFO.label, unit: 'familles' };
-  const jvByFamily = groupBy(B.JV, (e) => e.family);
+  const jvLists = emptyLists(B.JV_FAMILIES);
+  let key: string | undefined;
+  let list: CatalogEntry[] | undefined;
+  for (const e of B.JV) {
+    const id = e.id;
+    if (purge.has(id)) continue;
+    // (les cartes d'un même sous-thème se suivent : on ne cherche dans la table que quand la clé change)
+    if (e.family !== key) list = jvLists.get((key = e.family));
+    if (list) list.push({ id, themeId: 'gaming', subthemeId: e.family, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, kind: e.kind, year: e.year, art: e.art });
+  }
   const jeuxVideo: SubTheme[] = B.JV_FAMILIES.map((f) => ({
-    ...sub(
-      'gaming', f.id, f.label, f.code, B.JV_INFO.artDir,
-      (jvByFamily.get(f.id) ?? []).map((e) => ({ id: e.id, themeId: 'gaming', subthemeId: f.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, kind: e.kind, year: e.year, art: e.art })),
-    ),
-    group: JV_GROUP,
+    id: f.id, label: f.label, themeId: 'gaming', code: f.code, artDir: B.JV_INFO.artDir, cards: jvLists.get(f.id)!, group: JV_GROUP,
   }));
 
   // ── WORLD PACK V2 (5 236 cartes) : 34 sous-thèmes ; les 924 cartes de la V1 gardent leur id et leur illustration.
   // Affichage : 14 Merveilles · Ardèche · et 4 groupes (Lieux & pays, Animaux, Nourriture, Voitures) qui reprennent les ids
   // des anciens sous-thèmes (« lieux »…) : liens et missions d'avant continuent de marcher.
-  const mondeBySub = groupBy(B.MONDE, (e) => e.sub);
-  const monde: SubTheme[] = B.MONDE_SUBS.map((s) => ({
-    ...sub(
-      'monde', s.id, s.label, s.code, 'art/monde',
-      (mondeBySub.get(s.id) ?? []).map((e) => ({ id: e.id, themeId: 'monde', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, dir: e.dir, art: e.art, label: e.label })),
-    ),
-    ...(s.group ? { group: { id: s.group, label: B.MONDE_GROUPS[s.group] } } : {}),
-  }));
+  const mondeLists = emptyLists(B.MONDE_SUBS);
+  key = undefined;
+  list = undefined;
+  for (const e of B.MONDE) {
+    const id = e.id;
+    if (purge.has(id)) continue;
+    if (e.sub !== key) list = mondeLists.get((key = e.sub));
+    if (list) list.push({ id, themeId: 'monde', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, dir: e.dir, art: e.art, label: e.label });
+  }
+  const monde: SubTheme[] = B.MONDE_SUBS.map((s) =>
+    s.group
+      ? { id: s.id, label: s.label, themeId: 'monde', code: s.code, artDir: 'art/monde', cards: mondeLists.get(s.id)!, group: { id: s.group, label: B.MONDE_GROUPS[s.group] } }
+      : { id: s.id, label: s.label, themeId: 'monde', code: s.code, artDir: 'art/monde', cards: mondeLists.get(s.id)! },
+  );
 
   // ── SPORT PACK (7 708 cartes, SPEC-THEME-SPORT v5.1) : 114 sous-thèmes (« Football — Premier League », « Esport — LoL »…,
   // imprimés en grand sur la carte), regroupés à l'affichage en 10 (Football, Esport, Sports collectifs…). Le groupe « esport »
   // reprend l'id de l'ancien sous-thème vide. Numéro = n° de l'Excel, sur 7 708 (« 0123/7708 »). GÉNÉRÉ : scripts/make-sport.py.
-  const sportBySub: Map<string, SportEntry[]> = groupBy(B.SPORT, (e) => e.sub);
+  const sportLists = emptyLists(B.SPORT_SUBS);
+  key = undefined;
+  list = undefined;
+  for (const e of B.SPORT) {
+    const id = e.id;
+    if (purge.has(id)) continue;
+    if (e.sub !== key) list = sportLists.get((key = e.sub));
+    if (list) list.push({ id, themeId: 'sport', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label });
+  }
   const sport: SubTheme[] = B.SPORT_SUBS.map((s) => ({
-    ...sub(
-      'sport', s.id, s.label, s.code, 'art/sport',
-      (sportBySub.get(s.id) ?? []).map((e) => ({ id: e.id, themeId: 'sport', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, art: e.art, label: e.label })),
-    ),
-    group: { id: s.group, label: B.SPORT_GROUPS[s.group] },
-    size: B.SPORT_SIZE,
+    id: s.id, label: s.label, themeId: 'sport', code: s.code, artDir: 'art/sport', cards: sportLists.get(s.id)!, group: { id: s.group, label: B.SPORT_GROUPS[s.group] }, size: B.SPORT_SIZE,
   }));
 
   // ── POP CULTURE PACK (n° 1 → 17 477 avec le patch Berserk, SPEC-THEME-POP-CULTURE v5) : 856 sous-thèmes (franchises, œuvres ou pools :
@@ -219,14 +250,24 @@ function bigSubthemes(B: typeof BigSets): SubTheme[] {
   // les ids des anciens sous-thèmes vides (films, series, anime, musique, youtubeurs ; « Marvel MCU » garde « marvel »).
   // Yu-Gi-Oh est une licence d'anime du bloc Mangas & anime (l'ancien sous-thème vide du Gaming est retiré).
   // Numéro = n° de l'Excel, sur 17 471. GÉNÉRÉ : scripts/make-pop.py.
-  const popBySub: Map<string, PopEntry[]> = groupBy(B.POP, (e) => e.sub);
+  const popLists = emptyLists(B.POP_SUBS);
+  key = undefined;
+  list = undefined;
+  for (const e of B.POP) {
+    const id = e.id;
+    if (purge.has(id)) continue;
+    if (e.sub !== key) list = popLists.get((key = e.sub));
+    if (!list) continue;
+    const artist = artists.get(id);
+    // (deux littéraux plutôt qu'un spread : même clés dans le même ordre, `artist` en dernier et seulement s'il existe)
+    list.push(
+      artist
+        ? { id, themeId: 'pop', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label, artist }
+        : { id, themeId: 'pop', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label },
+    );
+  }
   const popCulture: SubTheme[] = B.POP_SUBS.map((s) => ({
-    ...sub(
-      'pop', s.id, s.label, s.code, 'art/pop',
-      (popBySub.get(s.id) ?? []).map((e) => ({ id: e.id, themeId: 'pop', subthemeId: s.id, num: e.num, name: e.name, rarity: e.rarity, file: e.file, art: e.art, label: e.label, ...(B.POP_ARTISTS[e.id] ? { artist: B.POP_ARTISTS[e.id] } : {}) })),
-    ),
-    group: { id: s.group, label: B.POP_GROUPS[s.group] },
-    size: B.POP_SIZE,
+    id: s.id, label: s.label, themeId: 'pop', code: s.code, artDir: 'art/pop', cards: popLists.get(s.id)!, group: { id: s.group, label: B.POP_GROUPS[s.group] }, size: B.POP_SIZE,
   }));
   return [...jeuxVideo, ...popCulture, ...sport, ...monde];
 }
@@ -368,15 +409,15 @@ export const catalogInstalled = () => installed;
  */
 /**
  * (08/11) Curation (src/core/sets/curation.ts) : cartes purgées retirées des sous-thèmes (les numéros des autres cartes
- * ne bougent pas), raretés renotées. Une seule fois, avant l'indexation.
+ * ne bougent pas), raretés renotées. Une seule fois, avant l'indexation. Ici : les sous-thèmes du NOYAU (Pokémon, Valorant,
+ * LoL, CS) ; les 4 gros sets sont curés au passage par bigSubthemes() (un seul passage sur leurs lignes).
  */
-function applyCuration() {
-  const purge = new Set(PURGE_08_11);
+function applyCuration(purge: ReadonlySet<string>, rerate: ReadonlyMap<string, CatalogRarity>) {
   for (const s of SUBTHEMES) {
     const before = s.cards.length;
     const kept = s.cards.filter((c) => !purge.has(c.id));
     for (const c of kept) {
-      const r = RERATE_08_11[c.id];
+      const r = rerate.get(c.id);
       if (r) c.rarity = r;
     }
     if (kept.length !== before) {
@@ -386,11 +427,24 @@ function applyCuration() {
   }
 }
 
-export function installCatalog(big: typeof BigSets): void {
+/** Options d'installCatalog. */
+export interface InstallOptions {
+  /**
+   * Garder les tableaux bruts des 4 gros sets (`JV`, `MONDE`, `SPORT`, `POP` de catalogBig, ~37 000 objets « lignes » que
+   * seule l'installation lit) : vrai pour le serveur Convex, les tests et les scripts (`themes.ts`), qui peuvent les importer
+   * eux-mêmes. Faux par défaut (jeu, labo) : ils sont vidés une fois le catalogue construit — les objets intermédiaires
+   * (~3 Mo de tas) deviennent récupérables au lieu de rester accrochés à l'espace de noms du module pour toute la session.
+   */
+  keepRaw?: boolean;
+}
+
+export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): void {
   if (installed) return;
   installed = true;
-  for (const s of bigSubthemes(big)) SUBTHEMES.push(s);
-  applyCuration();
+  const purge = new Set(PURGE_08_11);
+  const rerate = new Map(Object.entries(RERATE_08_11));
+  applyCuration(purge, rerate);
+  for (const s of bigSubthemes(big, { purge, rerate })) SUBTHEMES.push(s);
   for (const t of THEMES) {
     const subs = subsOf(t.id);
     t.subthemes.length = 0;
@@ -407,6 +461,12 @@ export function installCatalog(big: typeof BigSets): void {
   WORLD_SECRET_CHANCE = worldSecretChance();
   (BEBOU_PACK as { tagline: string }).tagline = bebouTagline();
   VIEWS = new WeakMap(); // (vues de sous-thèmes calculées avant : à refaire)
+  if (!opts.keepRaw) releaseRaw(big);
+}
+
+/** Vide les tableaux « lignes » des 4 gros sets (voir InstallOptions.keepRaw) : leurs objets ne sont plus lus nulle part. */
+function releaseRaw(big: typeof BigSets): void {
+  for (const raw of [big.JV, big.MONDE, big.SPORT, big.POP] as unknown[][]) raw.length = 0;
 }
 
 /** Un sous-thème tel qu'affiché : seul, ou un groupe (« Jeux vidéo ») qui réunit plusieurs sous-thèmes. */
