@@ -549,6 +549,23 @@ export default defineSchema({
     .index('by_user', ['userId', 'createdAt']),
 
   /**
+   * SONDAGE « prochaines mises à jour » (v1.0.10, 10/11) : une réponse par joueur et par sondage (convex/survey.ts,
+   * définition dans src/core/survey.ts). Table nouvelle : rien ne change pour le code d'avant le patch.
+   */
+  surveyAnswers: defineTable({
+    userId: v.id('users'),
+    surveyId: v.string(),
+    universes: v.array(v.string()),
+    features: v.array(v.string()),
+    names: v.optional(v.string()),
+    rating: v.optional(v.number()),
+    comment: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index('by_user', ['userId', 'surveyId'])
+    .index('by_survey', ['surveyId', 'createdAt']),
+
+  /**
    * DROPS DISCORD (V2, 08/11) : un 6★ ou une secrète en attente de publication sur Discord (convex/dropShots.ts).
    * `storageId` = la carte peinte de face par le jeu du joueur ; `postedAt` = déjà publié (une seule fois).
    */

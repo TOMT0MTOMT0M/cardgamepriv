@@ -1,4 +1,5 @@
 import { ConvexClient } from 'convex/browser';
+import type { SurveyAnswer } from '../survey';
 import type { FunctionReference } from 'convex/server';
 import { api } from '../../../convex/_generated/api';
 import type { Doc, Id } from '../../../convex/_generated/dataModel';
@@ -748,6 +749,15 @@ class GameNetClient {
   }
   public async adminSuggestions(status?: 'nouvelle' | 'vue' | 'acceptee' | 'refusee' | 'traitee') {
     return await this.client!.query(api.suggestions.adminList, { sessionToken: this.requireToken(), status });
+  }
+  public async surveyAnswered(surveyId: string) {
+    return await this.client!.query(api.survey.answered, { sessionToken: this.requireToken(), surveyId });
+  }
+  public async submitSurvey(surveyId: string, answer: SurveyAnswer) {
+    await this.client!.mutation(api.survey.submit, { sessionToken: this.requireToken(), surveyId, answer });
+  }
+  public async surveyResults(surveyId: string) {
+    return await this.client!.query(api.survey.results, { sessionToken: this.requireToken(), surveyId });
   }
   public async setSuggestionStatus(id: string, status: 'nouvelle' | 'vue' | 'acceptee' | 'refusee' | 'traitee', adminNote?: string) {
     await this.client!.mutation(api.suggestions.setStatus, { sessionToken: this.requireToken(), id: id as Id<'suggestions'>, status, adminNote });

@@ -1,7 +1,8 @@
 import type { GameBackend, SuggestionKind, SuggestionStatus, SuggestionView } from '../backend';
 import type { Shell } from '../shell';
 import { THEMES, catalogEntry, subthemeById } from '../../core/sets/themes';
-import { busyButton, errMsg, esc, fold, h, thumbUrl, toast } from '../ui';
+import { busyButton, errMsg, esc, fold, h, plural, thumbUrl, toast } from '../ui';
+import { SURVEY_FEATURES, SURVEY_ID, SURVEY_UNIVERSES, type SurveyOption } from '../../core/survey';
 
 /**
  * SUGGESTIONS (#/suggestions, onglet de la navigation — 04/11) : chaque joueur peut nous envoyer proprement
@@ -81,6 +82,7 @@ export function createSuggestionsView(backend: GameBackend, shell: Shell): Sugge
       </form>
       <div class="sg-mine" hidden></div>
       <div class="sg-admin" hidden>
+        <details class="sg-survey"><summary>Sondage « prochaines mises à jour » <em class="sg-sv-n"></em></summary><div class="sg-sv-body"><p class="muted">Chargement…</p></div></details>
         <div class="sg-filters seg"></div>
         <div class="sg-list"></div>
       </div>
@@ -239,7 +241,31 @@ export function createSuggestionsView(backend: GameBackend, shell: Shell): Sugge
       box.innerHTML = `<p class="muted">${esc(errMsg(err))}</p>`;
     }
   }
+  /** (v1.0.10) résultats du sondage, en tête de la file admin */
+  async function loadSurvey() {
+    const body = $('.sg-sv-body');
+    try {
+      const r = await backend.surveyResults(SURVEY_ID);
+      $('.sg-sv-n').textContent = plural(r.total, 'réponse');
+      const voters = r.ratings.reduce((a, b) => a + b, 0);
+      const avg = voters ? r.ratings.reduce((a, n, i) => a + n * (i + 1), 0) / voters : 0;
+      const bars = (title: string, opts: SurveyOption[], counts: Record<string, number>) => {
+        const rows = opts.map((o) => ({ o, n: counts[o.id] ?? 0 })).sort((a, b) => b.n - a.n);
+        const max = Math.max(1, ...rows.map((x) => x.n));
+        return `<h3>${title}</h3><ol class="sg-sv-bars">${rows.map(({ o, n }) => `<li><span>${esc(o.label)}</span><i style="--w:${(n / max) * 100}%"></i><b>${n}</b></li>`).join('')}</ol>`;
+      };
+      body.innerHTML = r.total
+        ? `<p class="sg-sv-avg">Note moyenne <b>${avg.toFixed(1).replace('.', ',')} / 5</b> <span class="muted">(${plural(voters, 'note')} · ${r.ratings.map((n, i) => `${i + 1}★ ${n}`).join(' · ')})</span></p>
+          ${bars('Univers demandés', SURVEY_UNIVERSES, r.universes)}
+          ${bars('Nouveautés demandées', SURVEY_FEATURES, r.features)}
+          ${r.texts.length ? `<h3>Réponses écrites</h3>${r.texts.map((x) => `<article class="sg-item"><header><span class="sg-k">${esc(x.author)}</span>${x.rating ? `<span class="sg-st">${x.rating}★</span>` : ''}<time>${when(x.createdAt)}</time></header>${x.names ? `<p><b>Noms :</b> ${esc(x.names)}</p>` : ''}${x.comment ? `<p>${esc(x.comment).replace(/\n/g, '<br>')}</p>` : ''}</article>`).join('')}` : ''}`
+        : '<p class="muted sg-empty">Pas encore de réponse.</p>';
+    } catch (err) {
+      body.innerHTML = `<p class="muted">${esc(errMsg(err))}</p>`;
+    }
+  }
   async function loadAdmin() {
+    void loadSurvey();
     const list = $('.sg-list');
     list.innerHTML = '<p class="muted">Chargement…</p>';
     try {

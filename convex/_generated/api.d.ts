@@ -37,6 +37,7 @@ import type * as purgedCards from "../purgedCards.js";
 import type * as pwAuth from "../pwAuth.js";
 import type * as referrals from "../referrals.js";
 import type * as suggestions from "../suggestions.js";
+import type * as survey from "../survey.js";
 import type * as trades from "../trades.js";
 import type * as users from "../users.js";
 
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   pwAuth: typeof pwAuth;
   referrals: typeof referrals;
   suggestions: typeof suggestions;
+  survey: typeof survey;
   trades: typeof trades;
   users: typeof users;
 }>;

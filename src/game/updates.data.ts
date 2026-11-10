@@ -35,6 +35,13 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Sondage : à toi de choisir la suite', tag: 'nouveau',
+        points: [
+          'Un petit sondage d’une minute s’ouvre à la connexion : les univers que tu veux collectionner, les nouveautés de jeu qui te tentent, ta note du jeu et un mot libre. Les réponses décident de ce qui arrive en premier.',
+          '« Plus tard » le referme : il revient une heure après, tant qu’il n’est pas rempli.',
+        ],
+      },
+      {
         date: '9 nov.', title: 'Échanges : « Accepter » réparé, et trouver qui a une carte', tag: 'nouveau',
         points: [
           'Le bouton « Accepter » d’un échange reçu marche du premier coup (il fallait parfois toucher la fine barre d’équilibre au milieu avant).',

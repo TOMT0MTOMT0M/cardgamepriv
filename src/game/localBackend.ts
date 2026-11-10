@@ -1,4 +1,5 @@
 import { rollPack, rollPackEx, type PackRequest } from '../core/packRoll';
+import { SURVEY_FEATURES, SURVEY_UNIVERSES, cleanSurvey, surveyFilled, type SurveyAnswer } from '../core/survey';
 import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
 import { contractProblem, contractTarget, rollContract } from '../core/contracts';
@@ -54,6 +55,8 @@ interface Bot {
   inv: Inv;
 }
 interface Saved {
+  /** démo : réponses au sondage (une par sondage) */
+  surveys?: Record<string, SurveyAnswer & { createdAt: number }>;
   /** démo : suggestions envoyées (onglet Suggestions) */
   suggestions?: SuggestionView[];
   packBalance: number;
@@ -903,6 +906,23 @@ export function createLocalBackend(): GameBackend {
       const x = save.suggestions?.find((y) => y.id === id);
       if (x) Object.assign(x, { status, updatedAt: Date.now(), ...(note !== undefined ? { adminNote: note || undefined } : {}) });
       persist();
+    },
+    // démo : le sondage reste dans ce navigateur (le joueur de démo voit aussi les résultats)
+    async surveyAnswered(id) {
+      return !!save.surveys?.[id];
+    },
+    async submitSurvey(id, answer) {
+      const a = cleanSurvey(answer);
+      if (!surveyFilled(a)) throw new Error('Coche au moins une réponse.');
+      (save.surveys ??= {})[id] ??= { ...a, createdAt: Date.now() };
+      persist();
+    },
+    async surveyResults(id) {
+      const a = save.surveys?.[id];
+      const universes = Object.fromEntries(SURVEY_UNIVERSES.map((o) => [o.id, a?.universes.includes(o.id) ? 1 : 0]));
+      const features = Object.fromEntries(SURVEY_FEATURES.map((o) => [o.id, a?.features.includes(o.id) ? 1 : 0]));
+      const ratings = [1, 2, 3, 4, 5].map((n) => (a?.rating === n ? 1 : 0));
+      return { surveyId: id, total: a ? 1 : 0, universes, features, ratings, texts: a && (a.names || a.comment) ? [{ author: 'Toi (démo)', names: a.names, comment: a.comment, rating: a.rating, createdAt: a.createdAt }] : [] };
     },
     async toggleWish(cardId) {
       const list = save.wishlist ?? [];

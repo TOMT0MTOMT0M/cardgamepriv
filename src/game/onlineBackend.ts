@@ -251,6 +251,15 @@ export function createOnlineBackend(): GameBackend {
     async setSuggestionStatus(id, status, note) {
       await net.setSuggestionStatus(id, status, note);
     },
+    async surveyAnswered(id) {
+      return await net.surveyAnswered(id);
+    },
+    async submitSurvey(id, answer) {
+      await net.submitSurvey(id, answer);
+    },
+    async surveyResults(id) {
+      return await net.surveyResults(id);
+    },
     async leaderboard() {
       return (await net.leaderboard()).map((r) => ({ ...r, id: r.id as string }));
     },
