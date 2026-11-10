@@ -1,6 +1,6 @@
 import { ensureCardFonts, gameDesignId, generateCardArtAsync, releaseCardImage } from '../core/art';
 import { FONT_VERSION } from '../core/fonts';
-import { loadCardImage } from '../core/art/images';
+import { canvasToBlob, loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
 import { catalogEntry, hasArt, isWonderId, numberingSize, subthemeById, thumbPath, wonderCapturePath } from '../core/sets/themes';
@@ -162,7 +162,7 @@ async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnTy
   const design = gameDesignId(cd);
   // (mesure 07/11 : tâches de 316 ms sur Android) peinture découpée en étapes, la main rendue entre chacune
   const art = await generateCardArtAsync(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(design ? { design } : {}) }, idleYield);
-  const blob = await new Promise<Blob | null>((r) => art.canvases.flat.toBlob(r, 'image/webp', 0.86));
+  const blob = await canvasToBlob(art.canvases.flat, 'image/webp', 0.86);
   art.dispose();
   // la mémoire d'un canvas n'est rendue qu'au ramasse-miettes… sauf si on le vide (iOS plafonne le total : PERF1-01)
   for (const c of Object.values(art.canvases)) {
