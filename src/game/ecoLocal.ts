@@ -518,6 +518,11 @@ export function createLocalEco(host: LocalEcoHost) {
       weekly({ type: 'trade' });
       emit();
     },
+    /** (retours Hugo 10/11) marché : pièces payées (négatif) ou reçues ; lève une erreur s'il en manque */
+    onMarket(amount: number, label: string) {
+      coins(amount, amount < 0 ? 'market-buy' : 'market-sell', label);
+      emit();
+    },
     onMission(m: Mission) {
       const c = dailyMissionCoins(m);
       coins(c, 'mission', 'Mission du jour', true);

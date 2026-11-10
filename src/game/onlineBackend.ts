@@ -1,6 +1,6 @@
 import { deviceId, net, type NetState } from '../core/net/client';
 import type { Id } from '../../convex/_generated/dataModel';
-import { BIG_PULL_RARITIES, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
+import { BIG_PULL_RARITIES, EMPTY_MARKET, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
 import { createOnlineEco } from './ecoOnline';
 import type { Social } from './backend';
@@ -361,6 +361,26 @@ export function createOnlineBackend(): GameBackend {
     // tableau d'offres (lot T, convex/listings.ts)
     watchMembers: (on, who) => net.watchMembers(on, who),
     watchBoard: (cb) => net.watch(api.listings.open, {}, (rows) => cb((rows ?? []).map((l) => listingOf(l))), true, () => cb([])),
+    watchMarket: (cb) =>
+      net.watch(
+        api.market.board,
+        {},
+        (b) => {
+          const conv = (l: NonNullable<typeof b>['open']) => l.map((m) => ({ ...m, id: m.id as string, sellerId: m.sellerId as string, buyerId: m.buyerId as string | undefined }));
+          cb(b ? { open: conv(b.open), sold: conv(b.sold), bought: conv(b.bought) } : EMPTY_MARKET);
+        },
+        true,
+        () => cb(EMPTY_MARKET),
+      ),
+    async marketSell(cardId, rarity, price) {
+      await net.call(api.market.sell, { cardId, rarity, price });
+    },
+    async marketCancel(id) {
+      await net.call(api.market.cancel, { id: id as Id<'market'> });
+    },
+    async marketBuy(id, price) {
+      await net.call(api.market.buy, { id: id as Id<'market'>, price });
+    },
     async createListing(items, wanted, note, hours) {
       await net.call(api.listings.create, { items, wanted, note, hours });
     },

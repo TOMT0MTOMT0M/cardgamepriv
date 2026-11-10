@@ -301,3 +301,70 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 .pf-all { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .pf-all-more { display: block; margin: 16px auto 0; }
 @media (max-width: 860px) { .pf-all { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; } }
+
+/* ───────────── ÉCHANGES en trois onglets (retours Hugo 10/11) : Marché · Avec un ami · Offres — un seul écran à la fois */
+.trades > .tr-tabs.tr-tabs3 { display: inline-flex !important; grid-column: 1 / -1; justify-self: start; }
+.trades[data-v='market'] > :is(.ob, .tr-sec-direct, .tr-col) { display: none !important; }
+.trades[data-v='board'] > :is(.mk, .tr-sec-direct, .tr-col) { display: none !important; }
+.trades[data-v='direct'] > :is(.mk, .ob) { display: none !important; }
+.trades.composing > .tr-tabs.tr-tabs3 { display: none !important; }
+@media (max-width: 860px) { .trades > .tr-tabs.tr-tabs3 { display: flex !important; justify-self: stretch; } }
+
+/* ───────────── MARCHÉ (views/market.ts) : grandes cartes, un prix, un bouton */
+.trades > .mk { grid-column: 1 / -1; min-width: 0; }
+.mk-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; margin: 6px 0 18px; }
+.mk-intro p { margin: 8px 0 0; font-size: 13px; }
+.mk-acts { display: flex; align-items: center; gap: 12px; }
+.mk-c { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.mk-c .coin-ico { width: 15px; height: 15px; flex: none; }
+.mk-wallet { padding: 7px 12px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); font: 600 13px var(--mono); }
+.mk-h { margin: 0 0 12px; font: 600 15px/1.2 var(--title); letter-spacing: 0; }
+.mk-h small { margin-left: 6px; color: var(--ink-3); font: 500 11px var(--mono); }
+.mk-mine { margin-bottom: 26px; padding-bottom: 18px; border-bottom: 1px solid var(--gm-line); }
+.mk-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.mk-tools .search { flex: 1 1 220px; max-width: 380px; }
+.mk-stars { display: flex; flex-wrap: wrap; gap: 6px; }
+.mk-stars .chip.on { border-color: var(--rc); background: color-mix(in srgb, var(--rc) 22%, transparent); color: #fff; }
+.mk-sort { min-height: 38px; padding: 0 12px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: #000; color: var(--ink); font: 500 12px var(--mono); }
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 16px; }
+.mk-grid.mini { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.mk-item { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mk-meta { display: flex; flex-direction: column; gap: 3px; padding: 0 2px; }
+.mk-pr { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 600 16px var(--mono); }
+.mk-sub { color: var(--ink-3); font: 500 11px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-sub .stars { color: var(--rc); }
+.mk-tag { padding: 2px 7px; border-radius: var(--r-pill); font: 600 10.5px var(--mono); letter-spacing: 0.04em; border: 1px solid currentColor; }
+.mk-tag.low { color: #6f9a74; }
+.mk-tag.fair { color: var(--ink-3); }
+.mk-tag.up { color: #d9982a; }
+.mk-tag.high { color: #b5344f; }
+.mk-buy, .mk-cancel { width: 100%; min-height: 40px; }
+.mk-empty { padding: 40px 0; text-align: center; }
+.mk-rl { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; font: 500 12px var(--mono); color: var(--ink-2); }
+.mk-rl li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mk-rl li b { color: var(--ink); }
+.mk-rl li.in span { color: #6f9a74; }
+.mk-rl li.out span { color: var(--ink-3); }
+/* feuille « Vendre une carte » */
+.mk-sheet { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.72); }
+.mk-sheet[hidden] { display: none; }
+.mk-sheet-b { width: min(760px, 100%); max-height: min(86dvh, 820px); overflow: auto; padding: 18px; border: 1px solid var(--gm-line-2); border-radius: var(--r-box); background: #050505; }
+.mk-sh-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.mk-x { width: 36px; height: 36px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: none; color: var(--ink); }
+.mk-price { display: grid; grid-template-columns: minmax(140px, 210px) 1fr; gap: 20px; align-items: start; }
+.mk-pform { display: flex; flex-direction: column; gap: 12px; }
+.mk-pl { font: 600 14px var(--title); }
+.mk-hint { display: block; margin-top: 4px; color: var(--ink-3); font: 500 11.5px var(--mono); }
+.mk-prow { display: flex; align-items: center; gap: 8px; }
+.mk-pin { width: 140px; min-height: 44px; padding: 0 14px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: #000; color: #fff; font: 600 18px var(--mono); text-align: center; }
+.mk-step { min-width: 44px; min-height: 44px; padding: 0; font-size: 18px; }
+.mk-pbtns { display: flex; flex-wrap: wrap; gap: 10px; }
+.mk-note { margin: 0; font-size: 12px; }
+@media (max-width: 860px) {
+  .mk-grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 12px; }
+  .mk-acts { width: 100%; justify-content: space-between; }
+  .mk-sheet { place-items: end stretch; padding: 0; }
+  .mk-sheet-b { width: 100%; max-height: 92dvh; border-radius: var(--r-box) var(--r-box) 0 0; padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); }
+  .mk-price { grid-template-columns: 1fr; }
+  .mk-chosen { max-width: 170px; margin: 0 auto; }
+}

@@ -1,0 +1,86 @@
+import { v, ConvexError } from 'convex/values';
+import { mutation, query, type QueryCtx } from './_generated/server';
+import type { Doc } from './_generated/dataModel';
+import { getUserByToken, requireUser } from './auth';
+import { catalogCard, rarityValidator } from './cardsCatalog';
+import { addCoins, giveCards, recordFlow, takeCards } from './econLib';
+import { MARKET_MAX_OPEN, marketProblem } from '../src/core/market';
+import { CARD_VALUE } from '../src/core/economy';
+
+/**
+ * MARCHÉ (retours Hugo 10/11) : des cartes à prix fixe, en pièces, entre joueurs. Règles : src/core/market.ts.
+ * Séquestre : la carte quitte l'inventaire à la mise en vente (takeCards : seulement des exemplaires libres, pas engagés
+ * ailleurs), revient au retrait (giveCards), part chez l'acheteur à l'achat. Achat = une seule mutation atomique : le
+ * premier qui achète l'a, le second reçoit « déjà vendue ».
+ */
+
+const nameOf = (id: string) => catalogCard(id)?.name ?? id;
+const view = async (ctx: QueryCtx, m: Doc<'market'>) => {
+  const s = await ctx.db.get(m.sellerId);
+  return { id: m._id, sellerId: m.sellerId, sellerName: s?.displayName ?? '?', sellerAvatar: s?.avatarUrl, cardId: m.cardId, rarity: m.rarity, mintNumber: m.mintNumber, price: m.price, status: m.status, createdAt: m.createdAt, resolvedAt: m.resolvedAt, buyerId: m.buyerId };
+};
+
+/** Le marché : annonces ouvertes (les plus récentes d'abord) + mes ventes / achats récents. */
+export const board = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken }) => {
+    const me = await getUserByToken(ctx, sessionToken);
+    const open = await ctx.db.query('market').withIndex('by_status_created', (q) => q.eq('status', 'open')).order('desc').take(300);
+    const recent = Date.now() - 7 * 86400_000;
+    const sold = me ? (await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', me._id).eq('status', 'sold')).order('desc').take(10)).filter((m) => (m.resolvedAt ?? 0) >= recent) : [];
+    const bought = me ? await ctx.db.query('market').withIndex('by_buyer', (q) => q.eq('buyerId', me._id).gte('resolvedAt', recent)).order('desc').take(10) : [];
+    return {
+      open: await Promise.all(open.map((m) => view(ctx, m))),
+      sold: await Promise.all(sold.map((m) => view(ctx, m))),
+      bought: await Promise.all(bought.map((m) => view(ctx, m))),
+    };
+  },
+});
+
+export const sell = mutation({
+  args: { sessionToken: v.string(), cardId: v.string(), rarity: rarityValidator, price: v.number() },
+  handler: async (ctx, { sessionToken, cardId, rarity, price }) => {
+    const me = await requireUser(ctx, sessionToken);
+    const card = catalogCard(cardId);
+    if (!card) throw new ConvexError('Carte inconnue.');
+    const problem = marketProblem(rarity, price);
+    if (problem) throw new ConvexError(problem);
+    const mine = await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', me._id).eq('status', 'open')).collect();
+    if (mine.length >= MARKET_MAX_OPEN) throw new ConvexError(`${MARKET_MAX_OPEN} cartes en vente au maximum : retires-en une d’abord.`);
+    const [taken] = await takeCards(ctx, me._id, [{ cardId, rarity, count: 1 }]);
+    await ctx.db.insert('market', { sellerId: me._id, cardId, rarity, mintNumber: taken.mintNumber, price, status: 'open', createdAt: Date.now() });
+  },
+});
+
+export const cancel = mutation({
+  args: { sessionToken: v.string(), id: v.id('market') },
+  handler: async (ctx, { sessionToken, id }) => {
+    const me = await requireUser(ctx, sessionToken);
+    const m = await ctx.db.get(id);
+    if (!m || m.sellerId !== me._id) throw new ConvexError('Annonce introuvable.');
+    if (m.status !== 'open') throw new ConvexError('Cette carte n’est plus en vente.');
+    await ctx.db.patch(id, { status: 'cancelled', resolvedAt: Date.now() });
+    await giveCards(ctx, me._id, [{ cardId: m.cardId, rarity: m.rarity, mintNumber: m.mintNumber }]);
+  },
+});
+
+export const buy = mutation({
+  args: { sessionToken: v.string(), id: v.id('market'), price: v.number() },
+  handler: async (ctx, { sessionToken, id, price }) => {
+    const me = await requireUser(ctx, sessionToken);
+    const m = await ctx.db.get(id);
+    if (!m || m.status !== 'open') throw new ConvexError('Trop tard : cette carte vient d’être vendue (ou retirée).');
+    if (m.sellerId === me._id) throw new ConvexError('C’est ta propre annonce.');
+    // le prix affiché est celui payé : une annonce modifiée entre-temps n'est jamais achetée à l'aveugle
+    if (m.price !== price) throw new ConvexError('Le prix a changé : regarde de nouveau l’annonce.');
+    const now = Date.now();
+    await addCoins(ctx, me._id, -m.price, 'market-buy', `Marché : achat de ${nameOf(m.cardId)}`);
+    await addCoins(ctx, m.sellerId, m.price, 'market-sell', `Marché : vente de ${nameOf(m.cardId)}`);
+    await ctx.db.patch(id, { status: 'sold', buyerId: me._id, resolvedAt: now });
+    await giveCards(ctx, me._id, [{ cardId: m.cardId, rarity: m.rarity, mintNumber: m.mintNumber }]);
+    // anti-abus : les deux sens du flux de valeur (comme un échange)
+    await recordFlow(ctx, m.sellerId, me._id, CARD_VALUE[m.rarity] ?? 0, 'market');
+    await recordFlow(ctx, me._id, m.sellerId, m.price, 'market');
+    return { cardId: m.cardId, rarity: m.rarity };
+  },
+});

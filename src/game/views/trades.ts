@@ -9,6 +9,7 @@ import { haptics } from '../../core/haptics';
 import { ABUSE, cardsValue, fmtCoins } from '../../core/economy';
 import { confirmTap } from './safety';
 import { createBoard } from './board';
+import { createMarket } from './market';
 import { showOwners } from './owners';
 import { cardQuery, cardWhere, searchCatalog } from '../../core/cardSearch';
 
@@ -90,9 +91,10 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   };
 
   el.innerHTML = `
-    <div class="tr-tabs" role="tablist" aria-label="Échanges" hidden>
-      <button role="tab" data-v="direct" class="on" aria-selected="true">Échanges directs<b class="badge tt-in" hidden></b></button>
-      <button role="tab" data-v="board" aria-selected="false">Tableau d’offres<b class="badge tt-board" hidden></b></button>
+    <div class="tr-tabs tr-tabs3" role="tablist" aria-label="Échanges">
+      <button role="tab" data-v="market" class="on" aria-selected="true">Marché</button>
+      <button role="tab" data-v="direct" aria-selected="false">Avec un ami<b class="badge tt-in" hidden></b></button>
+      <button role="tab" data-v="board" aria-selected="false">Offres<b class="badge tt-board" hidden></b></button>
     </div>
     <h2 class="tr-sec-h tr-sec-direct"><span>Échanges directs</span><small>avec tes amis · propositions reçues et envoyées</small><b class="badge tt-in2" hidden></b></h2>
     <div class="tr-col left">
@@ -170,22 +172,35 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
 
   // ── TABLEAU D'OFFRES (retours live 02, lot T — views/board.ts) : 2e onglet de la page, ouvert à tous les joueurs
   const board = createBoard(backend, { fairness, gaugeHtml, ago, chime: () => shell.sfx.chime(3, 0.08) });
-  // (retours 05/11) UN seul écran : le tableau d'offres en haut (grille qui défile vers la droite), les échanges
-  // directs en dessous — plus d'onglets. `on-board` n'est plus utilisé : les deux sont toujours visibles.
+  // (retours Hugo 10/11 : « complètement fouillis, incompréhensible ») retour à TROIS onglets, un seul écran à la fois :
+  // le MARCHÉ (views/market.ts, par défaut), les échanges AVEC UN AMI, et le tableau d'OFFRES. Avant (05/11), le
+  // tableau d'offres et les échanges directs s'empilaient sur la même page.
+  const market = createMarket(backend, { chime: () => shell.sfx.chime(3, 0.08) });
   q('.tr-sec-direct').before(board.el);
+  board.el.before(market.el);
   const tabBtns = [...el.querySelectorAll<HTMLButtonElement>('.tr-tabs button')];
-  let onBoard = false;
-  function setView(v: 'direct' | 'board') {
-    // (retours 05/11) plus d'onglets : le tableau d'offres et les échanges directs sont sur le même écran ;
-    // « aller au tableau » = remonter en haut, « échanges directs » = descendre jusqu'à leur titre
-    onBoard = v === 'board';
-    board.enter();
-    renderPending();
-    renderFriends();
-    renderHistory();
-    if (onBoard) el.scrollTo({ top: 0 });
+  type TradesTab = 'market' | 'direct' | 'board';
+  let view: TradesTab = 'market';
+  function setView(v: TradesTab) {
+    view = v;
+    el.dataset.v = v;
+    tabBtns.forEach((b) => {
+      const on = b.dataset.v === v;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    if (v === 'market') market.enter();
+    else market.leave();
+    if (v === 'board') board.enter();
+    else board.leave();
+    if (v === 'direct') {
+      renderPending();
+      renderFriends();
+      renderHistory();
+    }
+    el.scrollTo({ top: 0 });
   }
-  tabBtns.forEach((x) => x.addEventListener('click', () => setView(x.dataset.v as 'direct' | 'board')));
+  tabBtns.forEach((x) => x.addEventListener('click', () => setView(x.dataset.v as TradesTab)));
   const syncTabBadges = () => {
     const bIn = q('.tt-in'), bBd = q('.tt-board');
     const ni = backend.state.trades.incoming.length, nb = board.attention();
@@ -978,9 +993,12 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       syncTabBadges();
       // « #/echanges/tableau » (ou « Proposer sur le tableau » depuis une carte) : l'onglet du tableau d'offres
       const toBoard = sub === 'tableau' || !!sessionStorage.getItem('bebou.boardGive');
+      // échange direct demandé (bouton « Proposer un échange » d'un profil, carte à donner, proposition en cours) ou
+      // proposition reçue : l'onglet « Avec un ami » ; sinon le marché (#/echanges/ami : l'onglet direct)
+      const toDirect = sub === 'ami' || !!sessionStorage.getItem('bebou.tradeWith') || !!sessionStorage.getItem('bebou.tradeGive') || !!friend || backend.state.trades.incoming.length > 0;
       pendSig = friendSig = '';
-      setView(toBoard ? 'board' : 'direct');
-      if (toBoard) return;
+      setView(toBoard ? 'board' : toDirect ? 'direct' : sub === 'direct' ? 'direct' : view === 'direct' && !sub ? 'direct' : 'market');
+      if (toBoard || el.dataset.v === 'market') return;
       renderPending();
       renderFriends();
       renderHistory();
@@ -996,6 +1014,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       if (open) closeViewer();
       setTrayOpen(false);
       board.leave();
+      market.leave();
     },
   };
 }

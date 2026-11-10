@@ -487,6 +487,27 @@ export default defineSchema({
     .index('by_pair', ['requesterId', 'addresseeId']),
 
   /**
+   * MARCHÉ (retours Hugo 10/11 — convex/market.ts) : une carte mise en vente à PRIX FIXE en pièces (pas d'enchères).
+   * La carte quitte l'inventaire du vendeur à la mise en vente (séquestre) : elle revient s'il retire l'annonce, part
+   * chez l'acheteur sinon. Table nouvelle : rien ne change pour la V1.
+   */
+  market: defineTable({
+    sellerId: v.id('users'),
+    cardId: v.string(),
+    rarity: rarityValidator,
+    /** n° d'impression de l'exemplaire mis en vente (le meilleur du vendeur à ce moment) */
+    mintNumber: v.number(),
+    price: v.number(),
+    status: v.union(v.literal('open'), v.literal('sold'), v.literal('cancelled')),
+    createdAt: v.number(),
+    buyerId: v.optional(v.id('users')),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index('by_status_created', ['status', 'createdAt'])
+    .index('by_seller_status', ['sellerId', 'status'])
+    .index('by_buyer', ['buyerId', 'resolvedAt']),
+
+  /**
    * TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : une ANNONCE = des cartes proposées (verrouillées
    * tant qu'elle est ouverte) + des cartes recherchées (indicatives) ; ouverte à TOUS les joueurs ; expire après 24/48 h.
    */

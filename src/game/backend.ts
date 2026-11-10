@@ -183,6 +183,29 @@ export function lockedCards(s: GameState): Map<string, number> {
   return out;
 }
 
+// ─────────────────────────────── MARCHÉ (retours Hugo 10/11 — convex/market.ts, src/core/market.ts)
+export interface MarketItem {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  sellerAvatar?: string;
+  cardId: string;
+  rarity: RarityId;
+  mintNumber: number;
+  price: number;
+  status: 'open' | 'sold' | 'cancelled';
+  createdAt: number;
+  resolvedAt?: number;
+  buyerId?: string;
+}
+export interface MarketBoard {
+  open: MarketItem[];
+  /** mes ventes / achats des 7 derniers jours */
+  sold: MarketItem[];
+  bought: MarketItem[];
+}
+export const EMPTY_MARKET: MarketBoard = { open: [], sold: [], bought: [] };
+
 // ─────────────────────────────── TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts)
 
 /** Offre faite sur une annonce : les cartes de l'offrant contre celles de l'annonce (ou une contre-offre de l'auteur). */
@@ -472,6 +495,13 @@ export interface GameBackend {
   watchMembers?(on: boolean, who?: string): void;
   /** Annonces ouvertes de tout le monde (temps réel) ; renvoie de quoi se désabonner. */
   watchBoard(cb: (listings: ListingView[]) => void): () => void;
+  /** MARCHÉ (retours Hugo 10/11) : cartes à prix fixe, en pièces (temps réel) */
+  watchMarket(cb: (b: MarketBoard) => void): () => void;
+  /** met UNE carte en vente (elle quitte la collection jusqu'à la vente ou au retrait) */
+  marketSell(cardId: string, rarity: RarityId, price: number): Promise<void>;
+  marketCancel(id: string): Promise<void>;
+  /** `price` : le prix affiché (refusé s'il a changé entre-temps) */
+  marketBuy(id: string, price: number): Promise<void>;
   createListing(items: TradeItem[], wanted: Array<{ cardId: string; rarity: RarityId }>, note: string | undefined, hours: number): Promise<void>;
   cancelListing(id: string): Promise<void>;
   /** Faire (ou refaire : remplace la précédente) une offre sur l'annonce d'un autre. */

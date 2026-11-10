@@ -4,6 +4,7 @@ import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
 import { contractProblem, contractTarget, rollContract } from '../core/contracts';
 import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
+import { MARKET_MAX_OPEN, marketMax, marketProblem, marketSuggested } from '../core/market';
 import { POKEMON_151, pokemonCardId } from '../core/sets/pokemon151';
 import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
@@ -24,7 +25,7 @@ import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon,
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
 import { createLocalChat } from './chatLocal';
-import { BOARD_HOURS, BOARD_MAX_ITEMS, BOARD_MAX_OPEN, listingLive, type BoardState, type ListingOfferView, type ListingView } from './backend';
+import { BOARD_HOURS, BOARD_MAX_ITEMS, BOARD_MAX_OPEN, listingLive, type BoardState, type MarketBoard, type MarketItem, type ListingOfferView, type ListingView } from './backend';
 import type { SuggestionView } from './backend';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
 
@@ -98,6 +99,8 @@ interface Saved {
   friendships?: Array<{ id: string; from: string; to: string; status: 'pending' | 'accepted' | 'declined'; createdAt: number; respondedAt?: number }>;
   /** un robot t'a déjà envoyé sa demande d'ami (une seule fois par partie de démo) */
   botAsked?: boolean;
+  /** MARCHÉ (retours Hugo 10/11) : mêmes règles que convex/market.ts ; les robots y vendent quelques doublons */
+  market?: MarketItem[];
   /** TABLEAU D'OFFRES (lot T) : annonces (les miennes + celles des robots) et offres */
   listings?: DemoListing[];
   listingOffers?: DemoOffer[];
@@ -240,6 +243,10 @@ export function createLocalBackend(): GameBackend {
     persist();
     listeners.forEach((fn) => fn(state));
     boardWatchers.forEach((fn) => fn(boardOpen()));
+    if (marketWatchers.size) {
+      const mb = marketBoard();
+      marketWatchers.forEach((fn) => fn(mb));
+    }
   }
 
   const feed = (kind: string, message: string, rarity?: RarityId, card?: { id: string; name: string; mint?: number }) => {
@@ -315,6 +322,31 @@ export function createLocalBackend(): GameBackend {
   // annonces, font des offres sur les tiennes (2 à 12 s après), répondent aux tiennes (acceptent dès 0,8× la valeur,
   // sinon contre-offre avec moins de cartes, sinon refus) et à tes contre-offres.
   const boardWatchers = new Set<(l: ListingView[]) => void>();
+  // ── MARCHÉ (démo) : les robots mettent en vente quelques doublons, au prix conseillé à ±40 %
+  const marketWatchers = new Set<(b: MarketBoard) => void>();
+  const M = () => {
+    if (!save.market) {
+      save.market = [];
+      for (const bot of save.bots) {
+        const dups = Object.values(bot.inv).filter((c) => c.count >= 2 && c.rarity !== 'secret').sort(() => Math.random() - 0.5).slice(0, 3);
+        for (const c of dups) {
+          bot.inv[cardKey(c)].count--;
+          const price = Math.max(1, Math.min(marketMax(c.rarity), Math.round(marketSuggested(c.rarity) * (0.6 + Math.random() * 0.8))));
+          save.market.push({ id: `mk${save.seq++}`, sellerId: bot.id, sellerName: bot.name, cardId: c.cardId, rarity: c.rarity, mintNumber: c.bestMintNumber, price, status: 'open', createdAt: Date.now() - Math.round(Math.random() * 86400_000) });
+        }
+      }
+    }
+    return save.market;
+  };
+  const marketBoard = (): MarketBoard => {
+    const all = M();
+    const week = Date.now() - 7 * 86400_000;
+    return {
+      open: all.filter((m) => m.status === 'open').sort((a, b) => b.createdAt - a.createdAt),
+      sold: all.filter((m) => m.status === 'sold' && m.sellerId === 'me' && (m.resolvedAt ?? 0) >= week),
+      bought: all.filter((m) => m.status === 'sold' && m.sellerId !== 'me' && m.buyerId === 'me' && (m.resolvedAt ?? 0) >= week),
+    };
+  };
   const L = () => (save.listings ??= []);
   const O = () => (save.listingOffers ??= []);
   const ACTIVE_OFFER = (o: DemoOffer) => o.status === 'pending' || o.status === 'countered';
@@ -1084,6 +1116,60 @@ export function createLocalBackend(): GameBackend {
       const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'accepted');
       if (!l) throw new Error('Vous n’êtes pas (ou plus) amis.');
       save.friendships = (save.friendships ?? []).filter((x) => x !== l);
+      sync();
+    },
+    // ── marché (retours Hugo 10/11) : mêmes règles que convex/market.ts
+    watchMarket(cb) {
+      marketWatchers.add(cb);
+      cb(marketBoard());
+      return () => marketWatchers.delete(cb);
+    },
+    async marketSell(cardId, r, price) {
+      await delay(120);
+      const problem = marketProblem(r, price);
+      if (problem) throw new Error(problem);
+      if (M().filter((m) => m.sellerId === 'me' && m.status === 'open').length >= MARKET_MAX_OPEN) throw new Error(`${MARKET_MAX_OPEN} cartes en vente au maximum : retires-en une d’abord.`);
+      const it = { cardId, rarity: r, count: 1 };
+      if ((save.inv[cardKey(it)]?.count ?? 0) - (lockedCards(state).get(cardKey(it)) ?? 0) < 1) throw new Error(`${cardName(cardId)} n’est pas libre (engagée dans un échange ou une annonce).`);
+      const mint = save.inv[cardKey(it)]?.bestMintNumber ?? 999;
+      remove(save.inv, it);
+      M().push({ id: `mk${save.seq++}`, sellerId: 'me', sellerName: 'Toi', cardId, rarity: r, mintNumber: mint, price, status: 'open', createdAt: Date.now() });
+      sync();
+      // un robot achète parfois (pas tout de suite, et seulement à un prix raisonnable)
+      const id = M()[M().length - 1].id;
+      if (price <= marketSuggested(r) * 1.5 && Math.random() < 0.6)
+        setTimeout(() => {
+          const m = M().find((x) => x.id === id && x.status === 'open');
+          if (!m) return;
+          const bot = save.bots[Math.floor(Math.random() * save.bots.length)];
+          m.status = 'sold';
+          m.buyerId = bot.id;
+          m.resolvedAt = Date.now();
+          add(bot.inv, m.cardId, m.rarity, 1, m.mintNumber);
+          eco.hooks.onMarket(m.price, `Marché : vente de ${cardName(m.cardId)}`);
+          sync();
+        }, 8000 + Math.random() * 12000);
+    },
+    async marketCancel(id) {
+      const m = M().find((x) => x.id === id && x.sellerId === 'me');
+      if (!m) throw new Error('Annonce introuvable.');
+      if (m.status !== 'open') throw new Error('Cette carte n’est plus en vente.');
+      m.status = 'cancelled';
+      m.resolvedAt = Date.now();
+      add(save.inv, m.cardId, m.rarity, 1, m.mintNumber);
+      sync();
+    },
+    async marketBuy(id, price) {
+      await delay(120);
+      const m = M().find((x) => x.id === id);
+      if (!m || m.status !== 'open') throw new Error('Trop tard : cette carte vient d’être vendue (ou retirée).');
+      if (m.sellerId === 'me') throw new Error('C’est ta propre annonce.');
+      if (m.price !== price) throw new Error('Le prix a changé : regarde de nouveau l’annonce.');
+      eco.hooks.onMarket(-m.price, `Marché : achat de ${cardName(m.cardId)}`);
+      m.status = 'sold';
+      m.buyerId = 'me';
+      m.resolvedAt = Date.now();
+      add(save.inv, m.cardId, m.rarity, 1, m.mintNumber);
       sync();
     },
     // ── tableau d'offres (lot T) : mêmes règles que convex/listings.ts

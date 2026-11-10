@@ -3,8 +3,9 @@
  * convex/games.ts), le mode démo et l'interface.
  *
  * Règles d'or (non négociables) :
- *  - les pièces ne servent JAMAIS à acheter des cartes : pas de boutique de cartes, pas de jeu qui échange des cartes
- *    contre des pièces ; pas de marché (échanges oui, vente non) ;
+ *  - les pièces ne servent JAMAIS à acheter des cartes au JEU : pas de boutique de cartes, pas de jeu qui échange des
+ *    cartes contre des pièces ; (retours Hugo 10/11, décision de Tom) seule exception : le MARCHÉ entre joueurs, à prix
+ *    fixe (src/core/market.ts) ;
  *  - monnaie 100 % virtuelle, aucun achat en argent réel.
  *
  * Une seule table de valeur, utilisée PARTOUT : brûlage, équivalence des mises en duel, roulette.
