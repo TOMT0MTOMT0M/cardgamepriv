@@ -181,13 +181,33 @@ sans copie locale de la page, différentiel qui pouvait effacer les fichiers d'u
 yo-yo de définition entre scènes, fichiers sans empreinte jamais revalidés en économie de données, miniature qui
 pouvait rester invisible sur un navigateur sans `loading=lazy`.
 
+### Lot 5 — Convex : abonnements à la demande (`4bda465`)
+
+- La liste du club (`users.friends`, la requête la plus relancée : elle relit tous les joueurs à chaque écriture sur
+  n'importe lequel) n'est suivie en temps réel que sur Jeux, Échanges, Amis, Profil et Classement. Sur la boutique et
+  la collection — où l'on passe le plus de temps — une lecture simple au démarrage la remplit.
+- Onglet caché depuis 60 s : les abonnements permanents sont coupés ; au retour ils reprennent tout de suite, sans
+  vider l'affichage. Un onglet oublié sur un PC ne fait plus tourner aucune requête. Les notifications (push) n'en
+  dépendent pas.
+- Aucun changement côté serveur ni de schéma. Non testable ici (pas de Convex sur le banc) : à vérifier sur le lien V2.
+
+### Lot 6 — collection → vue détail en continu (`03c3117`)
+
+- À l'ouverture d'une carte depuis la grille, la carte de la tuile **grandit jusqu'à la place exacte de la carte 3D**
+  (animation `transform`, durée « emphatique » et courbe d'entrée du référentiel motion) et tient l'écran pendant que
+  la 3D se prépare, puis s'efface quand elle arrive. Avant : écran noir avec le texte seul.
+- Position d'arrivée calculée par la scène (`viewer.restRect()`), vérifiée au pixel : 390 px → 257×360 en (66, 222) ;
+  1440 px → 387×540 en (527, 149), identiques à la carte 3D.
+- Rien en « effets réduits » ni si la carte peinte n'est pas encore prête (comportement d'avant).
+
 ## 5. Coûts : avant / après
 
 | Poste | Avant | Après | Pourquoi |
 |---|---|---|---|
 | Convex — battements / joueur / 30 min | 51 | 16 | période 110 s |
 | Convex — `bigPulls` : lignes lues par exécution | 400 | 30 | index `by_big` |
-| Convex — session type (10 joueurs, 30 min), estimation | ≈ 8 700 appels · ≈ 125 Mo lus | ≈ 8 350 appels · ≈ 116 Mo lus | −350 battements, −9 Mo de fil |
+| Convex — session type (10 joueurs, 30 min), estimation | ≈ 8 700 appels · ≈ 125 Mo lus | ≈ 6 700 appels · ≈ 103 Mo lus | −350 battements, −9 Mo de fil, `users.friends` coupée la moitié du temps (≈ −1 650 exécutions, −13 Mo) |
+| Convex — onglet laissé ouvert en arrière-plan | toutes les requêtes relancées en continu | 0 après 60 s | abonnements coupés onglet caché |
 | Fonction R2 (`/art/*`) | 1 appel par image et par vidage du cache HTTP | 1 appel par image, puis plus rien tant qu'elle est dans les 1 800 gardées | cache du service worker |
 | Pages (fichiers statiques, gratuits) | re-téléchargement après éviction (iPhone) | une fois par appareil et par version ; +6,5 Mo de médias une fois | bundle |
 | Services payants ajoutés | — | aucun | |
@@ -200,13 +220,12 @@ tableau des constats) n'est **pas** traité ici.
 
 | Sujet | Gain attendu | Pourquoi pas dans cette passe |
 |---|---|---|
-| Présence et annuaire hors de `users` (tables `presence` / `publicProfiles`) | ≈ −4 000 appels et −50 Mo / 30 min | migration + double écriture tant que la V1 tourne : à tester sur le staging, que je ne peux pas déployer d'ici |
+| Présence et annuaire hors de `users` | moins qu'annoncé : la liste du club affiche le statut en direct (« Ouvre un booster… ») et le nombre de boosters, qui changent à chaque ouverture — elle doit donc être relancée tant qu'on l'affiche | le vrai levier serait de ne plus écrire le statut à chaque ouverture : **ça change ce que voient les joueurs, décision de Tom**. Le lot 5 retire déjà le coût là où la liste n'est pas affichée. |
 | Collection sans re-poussée à chaque booster (`invRev`) | ≈ −45 Mo lus, −1,8 Mo / joueur | touche toutes les mutations qui donnent ou retirent des cartes : même raison |
 | Cron `markLeader` (relit tous les inventaires chaque heure) | ≈ −200 Mo/jour (estimation) | l'espacer retarde l'attribution du titre « Numéro un » : **décision de Tom** |
-| Abonnements coupés onglet caché, fusion `me` + `economy.state` + `missions.mine` | ≈ −700 appels / 30 min | change le cycle de vie du client Convex : à faire avec le staging sous les yeux |
-| Élément partagé tuile → carte 3D, View Transitions entre pages, historique dans la sous-navigation de la collection, défilement restauré au retour | continuité « native » | change ce que le joueur voit : à valider à l'œil, lot par lot |
-| Vue détail : afficher la carte peinte en attendant la 3D | plus d'écran vide à l'ouverture | idem (raccord visuel avec le tour d'entrée) |
-| Changement de définition différé hors révélation ; textures des sachets et des dos envoyées deux par image ; préchauffage des scènes 6★ hors ouverture | à-coups en moins | non mesurable sans GPU : à faire avec les rapports `?diag` |
+| Fusion `me` + `economy.state` + `missions.mine` | ≈ −650 appels / 30 min | nouvelle requête côté serveur à garder compatible avec la V1 : à faire avec le staging sous les yeux |
+| View Transitions entre pages, historique dans la sous-navigation de la collection, défilement restauré au retour | continuité « native » | chaque page remet son état à zéro à l'entrée (onglet, tri, page) : à reprendre vue par vue, et à valider à l'œil |
+| Changement de définition différé hors révélation ; textures des sachets et des dos envoyées deux par image ; préchauffage des scènes 6★ hors ouverture | à-coups en moins | non mesurable sans GPU ; envoyer d'avance les textures des 5 sachets coûte de la mémoire GPU (risque iPhone) : à faire avec les rapports `?diag` |
 | Animations hors compositeur (`name-shine`, `bp-hue`, `bp-secret`) | fil principal plus libre en révélation | réécriture à l'identique à comparer image par image |
 | AVIF / KTX2, détourage dans un worker, 60 i/s par animation | à chiffrer | demande un vrai téléphone ; KTX2 n'a de sens que si la mémoire GPU est le goulot mesuré |
 | Miniatures de toute la collection dans le bundle | — | **écarté** : 36 955 fichiers ≈ 443 Mo, et 739 000 appels à la fonction R2 pour 20 joueurs (quota gratuit : 100 000 / jour). Remplacé par le cache à l'usage. |
@@ -237,6 +256,10 @@ qui est 3D en vrai (GPU logiciel), iPhone.
 5. Vue détail sur téléphone : les boutons d'action et la pastille de musique (fonds sans flou) restent lisibles.
 6. Bordure métallique des cartes au cadre « Suisse » et absence de bordure sur les pleines illustrations : inchangées.
 7. Page d'accueil : « Gros tirages » affiche les mêmes cartes qu'avant ; un ami actif reste « en ligne ».
-8. Après le prochain déploiement V2 : la pastille « Mise à jour disponible · Recharger » apparaît, et un seul
+8. Collection → carte : la carte de la tuile grandit jusqu'à la carte 3D sans saut au moment du relais ; dire si le
+   raccord avec le tour d'entrée te plaît.
+9. Lien V2 : sur la boutique puis sur Amis / Échanges / Jeux, les joueurs et leurs statuts s'affichent ; mettre le
+   jeu en arrière-plan 2 min puis revenir : tout se remet à jour en une seconde.
+10. Après le prochain déploiement V2 : la pastille « Mise à jour disponible · Recharger » apparaît, et un seul
    rechargement suffit.
-9. « Effets réduits » activé : ouverture, collection et jeux se comportent comme avant.
+11. « Effets réduits » activé : ouverture, collection et jeux se comportent comme avant.
