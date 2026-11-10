@@ -614,8 +614,9 @@ function syncCoins() {
     // gain : tics de pièces dont la hauteur monte dans la gamme (3 à 8 selon le montant), puis un « ting » final
     if (d > 0 && shell) {
       const n = Math.min(8, 3 + Math.floor(Math.log10(Math.max(1, d))));
-      for (let i = 0; i < n; i++) setTimeout(() => shell.sfx.coin(i, 0.07), i * 55);
-      setTimeout(() => shell.sfx.note(10, 0.08, 0.5), n * 55 + 60);
+      // (son V2) la rafale est programmée d'un coup sur l'horloge audio : régulière à l'échantillon près
+      for (let i = 0; i < n; i++) shell.sfx.coin(i, 0.07, i * 0.055);
+      shell.sfx.note(10, 0.08, 0.5, n * 0.055 + 0.06);
     }
   }
   lastCoins = snap.coins;
@@ -870,7 +871,7 @@ async function boot() {
   const viewerMod = import('./scenes/viewer');
   viewerMod.catch(() => undefined); // (échec : getViewer() réessaie)
   shell = await shellP;
-  setBubbleSound(() => shell.sfx.tick(1.7, 0.12));
+  setBubbleSound(() => shell.sfx.ui('pop'));
   installDiag(shell); // (diagnostic à distance des scènes 6★ sur téléphone, voir diag.ts)
   setToastSound((kind) => (kind === 'err' ? shell.sfx.decline(0.07) : kind === 'ok' ? shell.sfx.note(5, 0.05, 0.4) : shell.sfx.note(2, 0.04, 0.35)));
   step(35, 'impression des boosters…', true);

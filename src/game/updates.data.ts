@@ -35,6 +35,15 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Nouveau son : plus doux, plus proche, plus précis', tag: 'amélioré',
+        points: [
+          'Tous les sons courants sont refaits en « matière » : carton, feutre, bois, alu froissé — fini les bips aigus.',
+          'Tout ce qui se touche répond par un petit « toc » feutré, placé là où tu touches.',
+          'Les souffles suivent la vitesse des animations, et les impacts tombent pile sur l’image.',
+          'Plus léger pour le téléphone : les sons sont fabriqués une fois au lancement, puis simplement relus.',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Profil : vitrine au glisser-déposer, page plus lisible', tag: 'amélioré',
         points: [
           'Vitrine : touche une carte de ta collection pour l’ajouter, touche-la encore pour la retirer. Glisse-la sur une case pour la placer, glisse les cartes de la vitrine pour changer leur ordre, ou hors de la vitrine pour les retirer (au téléphone : maintiens la carte, puis glisse).',

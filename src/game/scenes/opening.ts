@@ -410,6 +410,18 @@ export function createOpeningScene(): OpeningScene {
   let seriesLast = true;
   /** les mêmes appels que ctx.sfx, sans aucun son */
   const MUTE_SFX = new Proxy({}, { get: () => () => undefined }) as typeof ctx.sfx;
+  /**
+   * (son V2) SOUFFLE CALÉ SUR UN MOUVEMENT : même durée réelle que le tween (échelle de temps de sa timeline comprise) et
+   * même courbe — le son suit la VITESSE de l'animation (fort là où ça file, éteint là où ça ralentit ; un ressort
+   * s'entend rebondir). `up` : la couleur monte (départ) ou descend (arrivée).
+   */
+  const air = (line: { timeScale(): number } | null, dur: number, vol: number, ease: (t: number) => number, up = true, sfx = ctx.sfx) =>
+    sfx.whoosh(dur / Math.max(0.2, line?.timeScale() ?? 1), vol, up, ease);
+  /**
+   * (son V2) avance (s de timeline) avec laquelle l'impact SONORE d'une révélation est programmé avant l'image : il part
+   * sur l'horloge audio, latence de sortie déduite (audio.ts `ahead`), et sort du haut-parleur pile sur le flash.
+   */
+  const SND_LEAD = 0.1;
   function lightRim(t: gsap.core.Timeline, si: number, at: number) {
     const sl = slots[si];
     const v = TEASE[Math.min(6, sl.rr.rank)];
@@ -962,14 +974,14 @@ export function createOpeningScene(): OpeningScene {
         const T = (bakePlayer.header.nExit - 1) / bakePlayer.header.exitFps;
         out.fromTo(bakeExit, { t: 0 }, { t: T, duration: T, ease: 'none' }, 0);
       }
-      out.to(fly, { t: 1, duration: 0.75 * sp, ease: EASE.glide, onStart: () => ctx.sfx.whoosh(0.45, 0.22) }, 0)
+      out.to(fly, { t: 1, duration: 0.75 * sp, ease: EASE.glide, onStart: () => air(out, 0.75 * sp, 0.22, EASE.glide) }, 0)
         .to(B, { follow: 0, duration: 0.3 * sp, ease: EASE.glide }, 0.75 * sp)
         .to(B, { z: -0.6, duration: 0.6 * sp, ease: EASE.glide }, 1.3 * sp)
         .to(B, { y: -2.6, duration: 0.85 * sp, ease: EASE.heave }, 1.05 * sp);
       // la pile glisse hors du booster, la carte de devant un rien en premier
       order.forEach((si, k) => {
         // (07/11) booster +15 % : la pile monte d'autant plus haut pour sortir entièrement par la déchirure
-        tl!.to(slots[si].p, { y: PACK.h / PACK_FRAME.h, duration: 0.8 * sp, ease: EASE.glide, onStart: k === n - 1 ? () => ctx.sfx.whoosh(0.7, 0.14, true) : undefined }, (0.25 + (n - 1 - k) * 0.035) * sp);
+        tl!.to(slots[si].p, { y: PACK.h / PACK_FRAME.h, duration: 0.8 * sp, ease: EASE.glide, onStart: k === n - 1 ? () => air(tl, 0.8 * sp, 0.14, EASE.glide) : undefined }, (0.25 + (n - 1 - k) * 0.035) * sp);
       });
       tl.to(S, { push: 0, duration: 0.8, ease: EASE.glide }, 0.9 * sp);
       // (audit UX2-04) mode auto rapide : toute la sortie du booster ×1,6 (les trois timelines ensemble, rien ne se croise)
@@ -1218,7 +1230,7 @@ export function createOpeningScene(): OpeningScene {
     spinTl?.kill();
     const sp = (spinTl = sideline(gsap.timeline()));
     // booster suivant (dir 1) : la face part vers la gauche, comme un carrousel qu'on pousse ; précédent : vers la droite
-    sp.to(B, { spin: -Math.PI * dir, duration: 0.32, ease: EASE.heave, onStart: () => ctx.sfx.whoosh(0.3, 0.12) })
+    sp.to(B, { spin: -Math.PI * dir, duration: 0.32, ease: EASE.heave, onStart: () => air(sp, 0.32, 0.12, EASE.heave) })
       .call(() => applyBoosterArt(k))
       .to(B, { spin: -Math.PI * 2 * dir, duration: 0.7, ease: 'back.out(1.6)' })
       .call(() => (B.spin = 0));
@@ -1451,7 +1463,7 @@ export function createOpeningScene(): OpeningScene {
     }
     // 2. RETOURNEMENT (charnière droite, voir render) ; `face` = instant où la face devient visible
     const flipEase = T >= 4 ? EASE.settle : EASE.snap;
-    main.to(s.p, { flip: 0, duration: flipD, ease: flipEase, onStart: () => sfx.whoosh(0.22 + flipD * 0.3, 0.16 + T * 0.02) }, preT);
+    main.to(s.p, { flip: 0, duration: flipD, ease: flipEase, onStart: () => air(main, flipD, 0.16 + T * 0.02, flipEase, true, sfx) }, preT);
     const face = preT + flipD * halfAt(flipEase);
     // l'impact tombe un rien après la face (le temps que l'œil la lise ; mythique : une image pour le voile plein écran)
     const pay = face + (mythic ? 0.12 : 0.04);
@@ -1469,7 +1481,8 @@ export function createOpeningScene(): OpeningScene {
       U.colB.value.set(rr.accentHex);
     }, [], face);
     // 4. IMPACT + payoff : hit-stop (gel logique, le rendu continue), un seul flash, secousse à partir de la 5★
-    main.call(() => {
+    // (son V2) le SON de l'impact part SND_LEAD plus tôt, programmé sur l'horloge audio (voir SND_LEAD)
+    main.call(() => sfx.ahead(SND_LEAD / Math.max(0.2, main.timeScale()), () => {
       // 6★ : MODULATION en la majeur (+2 demi-tons) pour tout ce qui suit, glissando prismatique, les autres bus s'effacent
       if (mythic) {
         sfx.transpose = 2;
@@ -1480,6 +1493,8 @@ export function createOpeningScene(): OpeningScene {
       sfx.chime(Math.max(1, T), 0.12 + T * 0.03);
       if (T >= 4) sfx.shimmer(T, 2.8, 0.1);
       if (T >= 5) sfx.choir(4, 0.1);
+    }), [], Math.max(0, pay - SND_LEAD));
+    main.call(() => {
       if (beat.shake > 0 && !CALM) {
         shake.impulse(4 + beat.shake * 4);
         shake2.impulse(-(3 + beat.shake * 3));
@@ -1594,7 +1609,7 @@ export function createOpeningScene(): OpeningScene {
     const move = sideline(gsap.timeline());
     const s = slots[order[cursor]];
     const j = cursor;
-    move.to(s.p, { ...rowPlace(j), duration: 0.55, ease: EASE.glide, onStart: () => !quietCard(s.rr.rank, false) && ctx.sfx.whoosh(0.25, 0.1) }, 0)
+    move.to(s.p, { ...rowPlace(j), duration: 0.55, ease: EASE.glide, onStart: () => !quietCard(s.rr.rank, false) && air(move, 0.55, 0.1, EASE.glide, false) }, 0)
       .to(S, { glow: 0, duration: 0.4 }, 0)
       .set(s.U.lit, { value: 6 }, 0)
       .to(s.p, { holo: 1, duration: 0.4 }, 0);
@@ -1683,7 +1698,7 @@ export function createOpeningScene(): OpeningScene {
       const lay = fanLayout();
       const d = sideline(gsap.timeline());
       order.forEach((si, k) => {
-        d.to(slots[si].p, { ...lay[k], duration: 0.5, ease: EASE.settle, onStart: () => ctx.sfx.whoosh(0.22, 0.07) }, k * 0.06);
+        d.to(slots[si].p, { ...lay[k], duration: 0.5, ease: EASE.settle, onStart: () => air(d, 0.5, 0.07, EASE.settle, false) }, k * 0.06);
       });
       // allumage des tranches, de gauche à droite, la 5e (emplacement garanti) en dernier avec un retard de plus
       const t0 = (order.length - 1) * 0.06 + 0.3;
@@ -1763,7 +1778,7 @@ export function createOpeningScene(): OpeningScene {
       }
     }
     const flipEase = T >= 4 ? EASE.settle : EASE.snap;
-    main.to(s.p, { flip: 0, duration: flipD, ease: flipEase, onStart: () => sfx.whoosh(0.22, 0.18) }, preT);
+    main.to(s.p, { flip: 0, duration: flipD, ease: flipEase, onStart: () => air(main, flipD, 0.18, flipEase, true, sfx) }, preT);
     const face = preT + flipD * halfAt(flipEase);
     const pay = mythic ? face + MYTHIC_BEAT * 0.93 : face;
     const speed = fastSpeed(si);
@@ -1794,7 +1809,7 @@ export function createOpeningScene(): OpeningScene {
       main.call(() => sfx.rumble(pay - face, 0.35), [], face + 0.05);
       main.call(() => sfx.riser((pay - face) * 0.9, 5, 0.22), [], face + 0.05);
     }
-    main.call(() => {
+    main.call(() => sfx.ahead(SND_LEAD / Math.max(0.2, main.timeScale()), () => {
       if (mythic) {
         sfx.transpose = 2;
         sfx.event(4.5);
@@ -1804,6 +1819,8 @@ export function createOpeningScene(): OpeningScene {
       sfx.chime(Math.max(1, T), 0.1 + T * 0.03);
       if (T >= 4) sfx.shimmer(T, 2.4, 0.1);
       if (T >= 5) sfx.choir(4, 0.1);
+    }), [], Math.max(0, pay - SND_LEAD));
+    main.call(() => {
       if (beat.shake > 0 && !CALM) shake.impulse(3 + beat.shake * 4);
       if (T >= 2) {
         U.origin.value.set(s.p.x, s.p.y, s.p.z + 0.1);

@@ -149,6 +149,8 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   host.append(canvas);
   const input = new Input(canvas);
   const sfx = new Sfx();
+  // (son V2) tout ce qui se touche rend un « toc » feutré, placé en stéréo sous le doigt (audio.ts `bindUi`)
+  sfx.bindUi();
   // les scènes du labo ajoutent leurs réglages (lil-gui) : dans le jeu, jamais affichés → un bouchon qui accepte tout
   // (chaînage .add().name().onChange()…) au lieu d'embarquer lil-gui et un panneau DOM caché par scène
   const gui = guiStub();

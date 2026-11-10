@@ -6,6 +6,7 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
 ## Vérifier avant de dire « fait »
 - `npm run typecheck`
 - `npm run test:server` (tests Convex). Un seul fichier : `npx vitest run convex/chat.test.ts`
+- `npm run test:sound` si `src/core/sound/` ou `src/core/audio.ts` change (banque de sons cuite hors navigateur)
 - `npm run test:rolls` seulement si les taux de drop ou `packRoll` / `packRules` changent
 - Rendu : `npm run dev` puis `/jeu/` (`?demo` = hors-ligne), ou le lien V2 après `lanceurs/mettre-en-ligne-v2.cmd`
 

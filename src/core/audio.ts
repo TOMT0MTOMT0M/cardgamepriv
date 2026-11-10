@@ -1,48 +1,95 @@
 /**
- * Sound design 100 % synthétisé (Web Audio). Muet tant que `enable()` n'a pas été appelé (le navigateur exige un geste) :
- * dans le jeu, le shell l'appelle au premier toucher sauf si le joueur a coupé le son (bouton 🔈, `bebou.sound` = '0') ;
- * coupé, le contexte audio est suspendu.
+ * MOTEUR SON DU JEU (Web Audio) — V2 « matière » (10 nov. 2026). Muet tant que `enable()` n'a pas été appelé (le
+ * navigateur exige un geste) : dans le jeu, le shell l'appelle au premier toucher sauf si le joueur a coupé le son
+ * (bouton 🔈, `bebou.sound` = '0') ; coupé, le contexte audio est suspendu.
  *
- * CHARTE SONORE (réf. « Le son de Bebou Card », 4 nov. 2026) :
- *  - une seule gamme pour tout ce qui est musical : SOL MAJEUR PENTATONIQUE (sol la si ré mi), fondamentales ≥ 390 Hz
- *    → audibles sur le haut-parleur d'un téléphone ; seule la 6★ module (la majeur, +2 demi-tons) ; la secrète a son motif
- *    lydien, jamais entendu ailleurs ;
- *  - BUS : ui · feedback · reward · event · ambience → master → compresseur doux → LIMITEUR (−3 dBFS, 20:1) → sortie.
- *    Un événement (6★, secrète) baisse les autres bus (ducking planifié) ; `duck()` fait le vrai silence (queue de
- *    réverbe coupée aussi) ;
- *  - VARIATION anti-habituation : sons bruités (tick, whoosh, tear) ±4 % de hauteur, ±10 % de filtre, ±1,5 dB ;
- *    sons tonals : jamais désaccordés, vélocité ±2 dB, micro-décalages de 5–15 ms dans les arpèges ;
- *  - IMPACTS pour téléphone : un transitoire 2–5 kHz + un corps + une couche saturée 150–500 Hz (la « fondamentale
- *    manquante » : le cerveau reconstruit le grave que le petit haut-parleur ne sort pas) ;
+ * DIRECTION : satisfaisant, proche, FEUTRÉ (« ASMR »). Des matières (carton, feutre, bois, alu froissé), pas des bips.
+ *
+ * COMMENT ÇA MARCHE
+ *  - Les sons courants (toc, tic, pop, pose de carte, impacts, notes, carillons, pièces, alu, papier, air) sont
+ *    FABRIQUÉS une fois au démarrage dans un Worker (sound/bank.ts : synthèse modale + grains, 0 fichier, 0 réseau),
+ *    puis simplement relus : 2 nœuds audio par son (au lieu de 4 à 18), aucune synthèse pendant le jeu.
+ *    Tant qu'un son n'est pas cuit, sa version synthétisée d'origine joue à sa place (méthodes `…Synth`).
+ *  - Les sons longs ou rares (montées, chœur, scènes 6★ via `rig()`) restent synthétisés en direct, adoucis par le
+ *    même filtre de sortie.
+ *  - SON ↔ MOUVEMENT : un souffle suit la VITESSE de la courbe d'animation (`whoosh(…, ease)` / `sweep`), et un
+ *    impact se programme en avance sur l'horloge audio (`ahead`) pour sortir du haut-parleur pile sur l'image,
+ *    latence de sortie compensée.
+ *  - INTERFACE : `bindUi()` donne un « toc » feutré à tout ce qui se touche, placé en stéréo sous le doigt ;
+ *    `ui('press' | 'nav' | 'on' | …)` pour les intentions.
+ *
+ * CHARTE (réf. « Le son de Bebou Card », 4 nov. 2026 — toujours valable) :
+ *  - une seule gamme pour tout ce qui est musical : SOL MAJEUR PENTATONIQUE (sound/scale.ts) ; seule la 6★ module
+ *    (la majeur, +2 demi-tons) ; la secrète a son motif lydien, jamais entendu ailleurs ;
+ *  - BUS : ui · feedback · reward · event · ambience → FEUTRE (plateau −4,5 dB au-dessus de 4,2 kHz) → master →
+ *    compresseur doux → LIMITEUR (−3 dBFS, 20:1) → sortie. Un événement (6★, secrète) baisse les autres bus ;
+ *    `duck()` fait le vrai silence (queue de réverbe coupée aussi) ;
+ *  - VARIATION anti-habituation : 3 à 6 variantes cuites par bruit, jamais deux fois la même, ±2,5 % de vitesse,
+ *    ±1 dB ; sons tonals : jamais désaccordés, vélocité ±2 dB ;
+ *  - TÉLÉPHONE : l'énergie des sons feutrés reste entre 400 Hz et 3 kHz (ce qu'un petit haut-parleur restitue) ;
+ *    les impacts gardent une couche saturée 150–700 Hz (la « fondamentale manquante ») ;
  *  - plafond de voix (24) et débit limité des tics (35 ms) ; premier son de la session à −6 dB, remonte en 30 s.
  *
- * Batterie : le contexte audio (réverbe à convolution + compresseur, qui tournent en continu sur le thread audio même
- * sans aucun son) est mis en veille après quelques secondes de silence et dès que l'onglet est caché ; il se réveille
- * tout seul au son suivant (~10 ms).
+ * Batterie : le contexte audio (réverbe + compresseurs tournent en continu, même sans son) est mis en veille après
+ * quelques secondes de silence et dès que l'onglet est caché ; il se réveille dès que le doigt touche l'écran
+ * (avant même le son), donc sans retard audible.
  */
+import { bakeBank } from './sound/bake';
+import { CHIME_BASES, COIN_HZ, NOTE_BASES } from './sound/ids';
+import type { Clip } from './sound/dsp';
+import { type Ease, velocityCurve } from './sound/motion';
+import { quantize, scaleHz } from './sound/scale';
+export { quantize, scaleHz };
 /** Silence avant la mise en veille : plus long que le plus long son (chœur 5,2 s) + la queue de réverbe. */
 const IDLE_MS = 9000;
-/** sol majeur pentatonique, en demi-tons depuis G4 (392 Hz) : sol la si ré mi */
-const PENTA = [0, 2, 4, 7, 9];
-const G4 = 392;
-/** fréquence du `deg`-ième degré de la gamme (0 = sol4), transposée de `semis` demi-tons */
-export const scaleHz = (deg: number, semis = 0) => G4 * Math.pow(2, (PENTA[((deg % 5) + 5) % 5] + 12 * Math.floor(deg / 5) + semis) / 12);
-/** cale une fréquence sur le degré de la gamme le plus proche (le carillon historique à 392 Hz reste sol4) */
-export function quantize(hz: number, semis = 0): number {
-  let best = hz, dist = Infinity;
-  for (let deg = -10; deg < 20; deg++) {
-    const f = scaleHz(deg, semis);
-    const d = Math.abs(Math.log2(f / hz));
-    if (d < dist) (dist = d), (best = f);
-  }
-  return best;
-}
 /** ±pct de variation multiplicative (anti-habituation) */
 const vary = (pct: number) => 1 + (Math.random() * 2 - 1) * pct;
 /** ±dB de variation de vélocité */
 const varyDb = (db: number) => Math.pow(10, ((Math.random() * 2 - 1) * db) / 20);
 
 export type Bus = 'ui' | 'feedback' | 'reward' | 'event' | 'ambience';
+export type UiKind = 'tap' | 'press' | 'nav' | 'back' | 'on' | 'off' | 'pop' | 'hover' | 'open' | 'close' | 'ok' | 'err';
+export interface PlayO {
+  /** volume (1 = le son cuit tel quel, crête −6 dBFS) */
+  vol?: number;
+  /** vitesse de lecture (hauteur) */
+  rate?: number;
+  /** position stéréo −1 (gauche) .. 1 (droite) */
+  pan?: number;
+  /** décalage de départ (s) */
+  at?: number;
+  /** durée max (s) : coupe douce */
+  dur?: number;
+  /** point de départ dans le son (s) — textures */
+  offset?: number;
+  /** fondu d'entrée (s) */
+  fadeIn?: number;
+  bus?: Bus;
+  /** envoi vers la réverbe du jeu (0 = sec) */
+  wet?: number;
+  /** faux : ni variation de vitesse ni de volume (sons tonals) */
+  vary?: boolean;
+}
+export interface SweepO {
+  vol?: number;
+  /** courbe de l'animation accompagnée : le souffle suit sa vitesse */
+  ease?: Ease;
+  /** la couleur monte (vrai, défaut) ou descend */
+  up?: boolean;
+  tex?: 'paper' | 'air';
+  /** position stéréo, ou trajet [départ, arrivée] */
+  pan?: number | [number, number];
+  at?: number;
+  /** bornes du filtre (Hz) */
+  lo?: number;
+  hi?: number;
+}
+
+/**
+ * NIVEAUX des sons cuits (tous à −6 dBFS de crête) : étalonnés par mesure (sonie pondérée A, tools/ du chantier son V2)
+ * pour qu'un appel `tick(1, 0.25)`, `thump(0.6)`, `chime(2, 0.22)`… garde la place qu'il avait dans le mix.
+ */
+const LV = { ui: 0.16, tick: 0.85, air: 1.25, paper: 2.2, foil: 3.2, land: 1.2, thud: 1.5, boom: 1.1, chimeS: 6.5, chimeM: 5.6, chimeL: 6.2, note: 1.9, coin: 2, crack: 3.5 };
 
 export class Sfx {
   enabled = false;
@@ -63,12 +110,35 @@ export class Sfx {
   /** voix en cours (plafond) et dernier tic (débit limité) */
   private voices = 0;
   private lastTick = 0;
+  /** (V2) sons cuits : id → variantes ; dernière variante jouée (jamais deux fois la même) */
+  private bank = new Map<string, AudioBuffer[]>();
+  private lastVar = new Map<string, number>();
+  /** (V2) avance de programmation en cours (s), voir `ahead` */
+  private lead = 0;
 
-  constructor() {
-    if (typeof document !== 'undefined')
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) this.nap();
-      });
+  /** `bake: false` : pas de cuisson automatique (outils, tests) — les sons arrivent par `addSound`. */
+  constructor(opts: { bake?: boolean } = {}) {
+    if (typeof document === 'undefined') return;
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.nap();
+    });
+    // (V2) le doigt touche l'écran : on réveille le contexte TOUT DE SUITE — le son du tap (≥ 50 ms plus tard) sort sans retard
+    document.addEventListener('pointerdown', () => this.prewake(), { capture: true, passive: true });
+    // (V2) cuisson de la banque au calme, hors du fil principal ; n'attend pas l'activation du son
+    if (opts.bake !== false) {
+      const go = () => bakeBank((id, clips) => this.addSound(id, clips));
+      if ('requestIdleCallback' in window) (window as Window & { requestIdleCallback(cb: () => void, o?: { timeout: number }): number }).requestIdleCallback(go, { timeout: 1500 });
+      else setTimeout(go, 400);
+    }
+  }
+
+  /** Réveil anticipé (toucher) : si c'est nous qui dormions, on repart ; sans son dans les 3 s, on se rendort. */
+  private prewake() {
+    if (!this.enabled || !this.ctx || !this.napping || this.ctx.state === 'closed') return;
+    this.napping = false;
+    this.waking = this.ctx.resume().finally(() => (this.waking = null));
+    clearTimeout(this.idleT);
+    this.idleT = window.setTimeout(() => this.nap(), 3000);
   }
 
   /** Met le contexte en veille (s'il tourne). */
@@ -115,19 +185,26 @@ export class Sfx {
       master.gain.value = 0.7 * this.volume * 0.5; // premier son à −6 dB (voir softStart)
       master.connect(comp).connect(lim).connect(ctx.destination);
       const buses = {} as Record<Bus, GainNode>;
+      // (V2) FEUTRE : plateau −4,5 dB au-dessus de 4,2 kHz sur tous les sons (pas la musique) — rien ne pique
+      const tone = ctx.createBiquadFilter();
+      tone.type = 'highshelf';
+      tone.frequency.value = 4200;
+      tone.gain.value = -4.5;
+      tone.connect(master);
       for (const b of ['ui', 'feedback', 'reward', 'event', 'ambience'] as Bus[]) {
         const g = ctx.createGain();
-        g.connect(master);
+        g.connect(tone);
         buses[b] = g;
       }
       const verb = ctx.createConvolver();
-      // réponse impulsionnelle courte et lumineuse (1,4 s ; téléphone : tronquée à 1,2 s, création moins chère)
+      // (V2) réponse impulsionnelle courte et SOMBRE (1,2 s ; téléphone : tronquée à 1 s) : les aigus s'éteignent
+      // d'abord, comme dans une pièce meublée — et une convolution plus courte coûte moins cher
       const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-      verb.buffer = this.impulse(ctx, 1.4, 2.6, touch ? 1.2 : 1.4);
+      verb.buffer = this.impulse(ctx, 1.2, 2.6, touch ? 1 : 1.2);
       const send = ctx.createGain();
       send.gain.value = 0.28;
       const ret = ctx.createGain();
-      send.connect(verb).connect(ret).connect(master);
+      send.connect(verb).connect(ret).connect(tone);
       // saturation douce (couche harmonique des impacts, pour le haut-parleur du téléphone)
       const sh = ctx.createWaveShaper();
       const curve = new Float32Array(1024);
@@ -191,7 +268,7 @@ export class Sfx {
    */
   duck(dur = 0.3) {
     if (!this.master || !this.verbReturn || !this.ctx || !this.wake()) return;
-    const t = this.ctx.currentTime;
+    const t = this.now();
     for (const g of [this.master.gain, this.verbReturn.gain]) {
       const full = g === this.master.gain ? 0.7 * this.volume : 1;
       g.cancelScheduledValues(t);
@@ -208,7 +285,7 @@ export class Sfx {
    */
   event(dur = 3) {
     if (!this.buses || !this.ctx || !this.wake()) return;
-    const t = this.ctx.currentTime;
+    const t = this.now();
     const set = (g: GainNode, to: number) => {
       g.gain.cancelScheduledValues(t);
       g.gain.setValueAtTime(g.gain.value, t);
@@ -300,9 +377,14 @@ export class Sfx {
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let c = 0; c < 2; c++) {
       const d = buf.getChannelData(c);
+      let y = 0;
       for (let i = 0; i < len; i++) {
         const f = fadeN && i > len - fadeN ? (len - i) / fadeN : 1;
-        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / total, decay) * f;
+        const p = i / total;
+        // (V2) passe-bas qui se referme avec le temps (6 kHz → 700 Hz) : queue sombre ; ×1,7 compense l'énergie filtrée
+        const a = 1 - Math.exp((-2 * Math.PI * (700 + 5300 * Math.pow(1 - p, 2))) / ctx.sampleRate);
+        y += a * (Math.random() * 2 - 1 - y);
+        d[i] = y * 1.7 * Math.pow(1 - p, decay) * f;
       }
     }
     return buf;
@@ -357,12 +439,340 @@ export class Sfx {
     this.out(g, 0.1, bus);
   }
 
-  /** Petit clic sec (flip, UI) — bus feedback, débit limité à un tic / 35 ms, variation ±4 % / ±1,5 dB. */
-  tick(pitch = 1, vol = 0.25) {
+  // ═══════════════════════════════════════════ V2 — banque de sons cuits (sound/bank.ts), lecture en 2 nœuds
+
+  /** Reçoit un son cuit (toutes ses variantes) : dès lors, la version « matière » remplace la synthèse d'origine. */
+  addSound(id: string, clips: Clip[]) {
+    try {
+      this.bank.set(
+        id,
+        clips.map((c) => {
+          const b = new AudioBuffer({ length: c.ch[0].length, numberOfChannels: c.ch.length, sampleRate: c.sr });
+          c.ch.forEach((x, k) => b.copyToChannel(x as Float32Array<ArrayBuffer>, k));
+          return b;
+        }),
+      );
+    } catch {
+      /* AudioBuffer hors contexte indisponible (très vieux navigateur) : on garde la synthèse d'origine */
+    }
+  }
+  /** vrai si le son cuit `id` est prêt */
+  has(id: string): boolean {
+    return this.bank.has(id);
+  }
+
+  /** instant de départ des sons : maintenant, ou un peu plus tard pendant un `ahead()` (horloge audio, à l'échantillon près) */
+  private now(): number {
+    return this.ctx!.currentTime + this.lead;
+  }
+
+  /**
+   * SYNCHRO IMAGE / SON. Un impact déclenché « à l'image » sort en retard : la sortie audio a une latence (10–20 ms sur
+   * iPhone, 40–100 ms sur beaucoup d'Android), plus la gigue d'une image. Ici l'appelant prévient `lead` s AVANT
+   * l'instant visuel : tous les sons joués dans `fn` sont programmés sur l'horloge audio à `lead − latence`, donc ils
+   * sortent du haut-parleur pile sur l'image. Si la latence dépasse `lead`, le son part tout de suite (au mieux).
+   */
+  ahead(lead: number, fn: () => void) {
+    const keep = this.lead;
+    this.lead = keep + Math.max(0, lead - this.latency());
+    try {
+      fn();
+    } finally {
+      this.lead = keep;
+    }
+  }
+
+  /**
+   * Joue un son cuit. Variante tirée sans jamais répéter la précédente, micro-variation (±2,5 % de vitesse, ±1 dB)
+   * sauf `vary: false` (sons tonals). Faux si le son n'est pas (encore) cuit ou si le plafond de voix est atteint.
+   */
+  play(id: string, o: PlayO = {}): boolean {
+    if (!this.ok) return false;
+    const list = this.bank.get(id);
+    if (!list || !list.length || this.voices >= 24) return false;
+    const c = this.ctx!;
+    let i = 0;
+    if (list.length > 1) {
+      const last = this.lastVar.get(id) ?? -1;
+      i = Math.floor(Math.random() * (last < 0 ? list.length : list.length - 1));
+      if (last >= 0 && i >= last) i++;
+      this.lastVar.set(id, i);
+    }
+    const buf = list[i];
+    const rate = Math.max(0.25, Math.min(4, (o.rate ?? 1) * (o.vary === false ? 1 : vary(0.025))));
+    const v = (o.vol ?? 1) * (o.vary === false ? 1 : varyDb(1));
+    const t = this.now() + (o.at ?? 0);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = rate;
+    const g = c.createGain();
+    if (o.fadeIn) {
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(v, t + o.fadeIn);
+    } else g.gain.value = v;
+    const natural = (buf.duration - (o.offset ?? 0)) / rate;
+    let stopAt = 0;
+    if (o.dur !== undefined && o.dur < natural) {
+      // coupe douce : le son s'éteint à `dur` au lieu d'aller au bout
+      const tau = Math.min(0.04, Math.max(0.006, o.dur * 0.25));
+      g.gain.setTargetAtTime(0, t + Math.max(o.fadeIn ?? 0, o.dur - tau), tau);
+      stopAt = t + o.dur + tau * 5;
+    }
+    let node: AudioNode = src.connect(g);
+    if (o.pan && typeof c.createStereoPanner === 'function') {
+      const p = c.createStereoPanner();
+      p.pan.value = Math.max(-1, Math.min(1, o.pan));
+      node = node.connect(p);
+    }
+    node.connect(this.buses![o.bus ?? 'feedback']);
+    if (o.wet) {
+      const s = c.createGain();
+      s.gain.value = o.wet;
+      node.connect(s).connect(this.verbSend!);
+    }
+    this.voices++;
+    src.onended = () => (this.voices = Math.max(0, this.voices - 1));
+    src.start(t, o.offset ?? 0);
+    if (stopAt) src.stop(stopAt);
+    return true;
+  }
+
+  /**
+   * SOUFFLE COUPLÉ AU MOUVEMENT (sound/motion.ts) : une texture cuite (papier pour les gestes courts, air pour les
+   * longs) dont le volume ET la couleur suivent la vitesse de la courbe d'animation `ease` — forte là où l'objet va
+   * vite, éteinte là où il ralentit. Sans `ease` : profil « sortie douce ». Faux si les textures ne sont pas prêtes.
+   */
+  sweep(dur: number, o: SweepO = {}): boolean {
+    if (!this.ok) return false;
+    const short = dur < 0.34;
+    const texId = o.tex ?? (short ? 'paper' : 'air');
+    const tex = this.bank.get(texId)?.[0];
+    if (!tex || this.voices >= 24) return false;
+    const c = this.ctx!, t = this.now() + (o.at ?? 0);
+    const vel = velocityCurve(o.ease);
+    const n = vel.length;
+    const vol = (o.vol ?? 0.3) * LV[texId] * varyDb(1.5);
+    const k = vary(0.05);
+    const lo = (o.lo ?? 300) * k, hi = (o.hi ?? (short ? 1900 : 1350)) * k;
+    const up = o.up ?? true;
+    const gain = new Float32Array(n), freq = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const p = i / (n - 1);
+      gain[i] = vol * Math.pow(vel[i], 0.75);
+      // la couleur : surtout la vitesse (plus vite = plus clair), un peu le sens (monte ou descend)
+      freq[i] = lo * Math.pow(hi / lo, 0.65 * vel[i] + 0.35 * (up ? p : 1 - p));
+    }
+    const src = c.createBufferSource();
+    src.buffer = tex;
+    src.loop = true;
+    src.playbackRate.value = k;
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 0.8;
+    const g = c.createGain();
+    g.gain.value = 0;
+    try {
+      f.frequency.setValueCurveAtTime(freq, t, dur);
+      g.gain.setValueCurveAtTime(gain, t, dur);
+    } catch {
+      return false;
+    }
+    let node: AudioNode = src.connect(f).connect(g);
+    if (o.pan !== undefined && typeof c.createStereoPanner === 'function') {
+      const p = c.createStereoPanner();
+      const [a, b] = typeof o.pan === 'number' ? [o.pan, o.pan] : o.pan;
+      p.pan.setValueAtTime(Math.max(-1, Math.min(1, a)), t);
+      p.pan.linearRampToValueAtTime(Math.max(-1, Math.min(1, b)), t + dur);
+      node = node.connect(p);
+    }
+    this.out(node, 0.12, 'feedback');
+    this.voices++;
+    src.onended = () => (this.voices = Math.max(0, this.voices - 1));
+    src.start(t, Math.random() * Math.max(0, tex.duration - 0.1));
+    src.stop(t + dur + 0.03);
+    return true;
+  }
+
+  /**
+   * Sons d'INTERFACE, par intention (plus de `tick(1.7, 0.035)` au jugé). `pan` −1..1 : position du geste à l'écran.
+   *  tap : toc feutré (tout ce qui se touche) · press : tok profond (action principale) · nav : changement de page ·
+   *  back : fermer / retour (plus grave) · on / off : interrupteur (bulle qui monte / descend) · pop : pastille ·
+   *  hover : survol (à peine) · open / close : panneau qui s'ouvre / se ferme (souffle court) · ok / err : résultat.
+   */
+  ui(kind: UiKind, pan = 0) {
+    switch (kind) {
+      case 'tap':
+        if (!this.play('tap', { vol: LV.ui, pan, bus: 'ui' })) this.tick(1, 0.08);
+        break;
+      case 'press':
+        if (!this.play('press', { vol: LV.ui * 1.15, pan, bus: 'ui' })) this.tick(0.8, 0.1);
+        break;
+      case 'nav':
+        if (!this.play('tap', { vol: LV.ui * 0.8, rate: 0.86, pan, bus: 'ui' })) this.tick(1.15, 0.03);
+        break;
+      case 'back':
+        if (!this.play('tap', { vol: LV.ui * 0.9, rate: 0.76, pan, bus: 'ui' })) this.tick(0.8, 0.05);
+        break;
+      case 'on':
+        if (!this.play('pop', { vol: LV.ui * 0.55, rate: 1.14, pan, bus: 'ui' })) this.tick(1.4, 0.06);
+        break;
+      case 'off':
+        if (!this.play('pop', { vol: LV.ui * 0.5, rate: 0.84, pan, bus: 'ui' })) this.tick(0.9, 0.06);
+        break;
+      case 'pop':
+        if (!this.play('pop', { vol: LV.ui * 0.6, pan, bus: 'ui' })) this.tick(1.7, 0.1);
+        break;
+      case 'hover':
+        this.play('tick', { vol: LV.tick * 0.03, rate: 1.5, pan, bus: 'ui' });
+        break;
+      case 'open':
+        this.sweep(0.2, { vol: 0.06, up: true, tex: 'air', pan });
+        break;
+      case 'close':
+        this.sweep(0.16, { vol: 0.05, up: false, tex: 'air', pan });
+        break;
+      case 'ok':
+        this.note(5, 0.05, 0.4);
+        break;
+      case 'err':
+        this.decline(0.07);
+        break;
+    }
+  }
+
+  /**
+   * Toucher SONORE de toute l'interface, branché une fois : chaque élément cliquable rend un « toc » feutré, placé en
+   * stéréo là où le doigt touche. Souris : dès l'appui (réponse immédiate) ; tactile : au tap confirmé (jamais pendant
+   * un défilement). `data-sfx="press|nav|back|on|off|pop|off…"` sur un élément choisit le son ; `data-sfx="none"` le
+   * coupe. Les sons propres d'un bouton (carillon, note…) se posent par-dessus.
+   */
+  bindUi(root: Document | HTMLElement = document) {
+    const SEL = 'button, a[href], summary, select, input[type="checkbox"], input[type="radio"], [role="button"], [role="tab"], [role="switch"], [role="menuitem"], [role="option"], [data-sfx]';
+    const fire = (e: Event) => {
+      if (!this.enabled) return;
+      const from = e.target instanceof Element ? e.target : null;
+      const el = from?.closest<HTMLElement>(SEL);
+      if (!el || (el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return;
+      let kind = el.closest<HTMLElement>('[data-sfx]')?.dataset.sfx as UiKind | 'none' | undefined;
+      if (kind === 'none') return;
+      if (!kind) {
+        const box = el as HTMLInputElement;
+        if (el.matches('input[type="checkbox"], [role="switch"]')) {
+          // au clic, la case a déjà basculé ; à l'appui (souris), pas encore
+          const on = el.matches('input') ? box.checked : el.getAttribute('aria-checked') === 'true';
+          kind = (e.type === 'click' ? on : !on) ? 'on' : 'off';
+        } else if (el.matches('[role="tab"], nav *')) kind = 'nav';
+        else if (/close|fermer|retour|back/i.test(`${el.className} ${el.getAttribute('aria-label') ?? ''}`)) kind = 'back';
+        else kind = 'tap';
+      }
+      const x = (e as MouseEvent).clientX;
+      const pan = Number.isFinite(x) && x > 0 ? (x / Math.max(1, window.innerWidth) - 0.5) * 0.7 : 0;
+      this.ui(kind, pan);
+    };
+    // souris / stylet : à l'appui ; doigt : au tap confirmé (un `pointerdown` tactile peut être le début d'un défilement)
+    root.addEventListener('pointerdown', (e) => {
+      const pe = e as PointerEvent;
+      if (pe.pointerType !== 'touch' && pe.button === 0) fire(e);
+    }, { capture: true, passive: true });
+    root.addEventListener('click', (e) => {
+      const pe = e as PointerEvent;
+      // clic clavier (Entrée / Espace : pas de coordonnées) ou tactile ; le clic souris a déjà sonné à l'appui
+      if (pe.pointerType === 'touch' || !pe.pointerType || pe.detail === 0) fire(e);
+    }, { capture: true, passive: true });
+  }
+
+  /** Carte qui se pose (« pat » sur le tapis). `pan` : où elle se pose. */
+  pat(vol = 0.3, pan = 0) {
+    if (!this.play('land', { vol: vol * LV.land, pan, bus: 'feedback', wet: 0.05 })) this.thumpSynth(vol * 0.6);
+  }
+
+  // ═══════════════════════════════════════════ sons historiques : même API, version « matière » si elle est cuite
+
+  /** Petit « tic » feutré (cran, étoile, survol) — bus feedback, débit limité à un tic / 35 ms. `pitch` : hauteur relative. */
+  tick(pitch = 1, vol = 0.25, pan = 0) {
     if (!this.ok) return;
-    const c = this.ctx!, t = c.currentTime;
-    if (t - this.lastTick < 0.035) return;
-    this.lastTick = t;
+    const now = this.ctx!.currentTime;
+    if (now - this.lastTick < 0.035) return;
+    const rate = Math.max(0.5, Math.min(2.6, pitch));
+    // (lu plus vite, un son est plus court : un peu de gain rend la même présence)
+    if (this.play('tick', { rate, vol: vol * LV.tick * Math.pow(rate, 0.4), pan, wet: 0.04 })) this.lastTick = now;
+    else this.tickSynth(pitch, vol);
+  }
+
+  /**
+   * Souffle d'un mouvement — bus feedback. `ease` : la courbe de l'animation qu'il accompagne (EASE.* ou toute
+   * fonction 0..1 → 0..1) : le son suit sa vitesse (voir `sweep`). `up` : la couleur monte (départ) ou descend (arrivée).
+   */
+  whoosh(dur = 0.45, vol = 0.3, up = true, ease?: Ease) {
+    if (!this.sweep(dur, { vol, up, ease })) this.whooshSynth(dur, vol, up);
+  }
+
+  /** Déchirure du sachet : un morceau de la texture « alu froissé » (grains résonants), jamais deux fois le même. */
+  tear(dur = 0.6, vol = 0.35) {
+    const tex = this.bank.get('foil')?.[0];
+    if (tex) {
+      const d = Math.min(dur, tex.duration - 0.2);
+      if (this.play('foil', { vol: vol * LV.foil, dur: d, offset: Math.random() * (tex.duration - d - 0.1), fadeIn: 0.004, rate: vary(0.06), wet: 0.06 })) return;
+    }
+    this.tearSynth(dur, vol);
+  }
+
+  /**
+   * Impact (pose, payoff), selon la force : « pat » d'une carte (vol < 0,36) · coup feutré (3★–4★) · grand impact
+   * (5★–6★). Chacun garde sa couche d'harmoniques 150–700 Hz : le grave « suggéré » qu'un téléphone sait rendre.
+   */
+  thump(vol = 0.6, low = 46, pan = 0) {
+    const id = vol < 0.36 ? 'land' : vol < 0.6 ? 'thud' : 'boom';
+    const rate = Math.max(0.85, Math.min(1.25, Math.sqrt(low / 46)));
+    if (!this.play(id, { vol: vol * LV[id], rate, pan, bus: 'reward', wet: id === 'land' ? 0.04 : 0.08 })) this.thumpSynth(vol, low);
+  }
+
+  /**
+   * Carillon de récompense : bol feutré, plus riche et plus long selon la rareté. `base` est CALÉE sur la gamme (sol
+   * pentatonique, transposée pendant la 6★) ; vélocité ±2 dB, jamais de désaccord. 1★ : pas de réverbe.
+   */
+  chime(tier = 2, vol = 0.22, base = 392, at = 0) {
+    const hz = quantize(base, this.transpose);
+    const b = hz < 555 ? CHIME_BASES[0] : CHIME_BASES[1];
+    const size = tier <= 2 ? 'S' : tier <= 4 ? 'M' : 'L';
+    const ok = this.play(`chime${size}${b}`, { rate: hz / b, vol: vol * LV[`chime${size}`] * varyDb(2), at, vary: false, bus: tier >= 5 ? 'event' : 'reward', wet: tier <= 0 ? 0 : 0.4 });
+    if (!ok) this.chimeSynth(tier, vol, base, at);
+  }
+
+  /** Une note de la gamme (degré `deg`, 0 = sol4, 5 = sol5…) : lame de bois feutrée. `dur` : tenue max, `at` : décalage (s). */
+  note(deg: number, vol = 0.15, dur = 0.8, at = 0) {
+    const d = Math.round(deg);
+    const lo = NOTE_BASES[0], hi = NOTE_BASES[NOTE_BASES.length - 1];
+    // base cuite la plus proche (une sur deux est cuite : au plus un degré d'écart, relu un peu plus vite ou lentement)
+    const base = Math.max(lo, Math.min(hi, (d - lo) % 2 === 0 ? d : d - 1));
+    const ok = this.play(`note${base}`, { rate: scaleHz(d, this.transpose) / scaleHz(base), vol: vol * LV.note * varyDb(2), dur: Math.max(0.12, dur), at, vary: false, bus: 'reward', wet: dur > 0.3 ? 0.3 : 0.06 });
+    if (!ok) this.noteSynth(deg, vol, dur, at);
+  }
+
+  /**
+   * Pièce qui arrive au compteur : « ting » mat dont la hauteur suit le degré `deg` de la gamme. `at` (s) : décalage sur
+   * l'horloge audio — une rafale de pièces se programme d'un coup, régulière à l'échantillon près (pas de setTimeout).
+   */
+  coin(deg = 0, vol = 0.09, at = 0) {
+    const rate = scaleHz(5 + (((deg % 10) + 10) % 10), this.transpose) / COIN_HZ;
+    const ok = this.play('coin', { rate, vol: vol * LV.coin * Math.sqrt(rate) * varyDb(2), at, vary: false, bus: 'reward', wet: 0.1 });
+    if (ok) return;
+    if (at > 0) window.setTimeout(() => this.coinSynth(deg, vol), at * 1000);
+    else this.coinSynth(deg, vol);
+  }
+
+  /** Craquement feutré (verre, fracture) : quelques grains serrés et un coup grave. */
+  crack(vol = 0.5) {
+    if (!this.play('crack', { vol: vol * LV.crack, bus: 'reward', wet: 0.15 })) this.crackSynth(vol);
+  }
+
+  // ═══════════════════════════════════════════ synthèse d'origine (secours tant que la banque cuit, et sons longs)
+
+  /** Petit clic sec (flip, UI) — bus feedback, débit limité à un tic / 35 ms, variation ±4 % / ±1,5 dB. */
+  private tickSynth(pitch = 1, vol = 0.25) {
+    if (!this.ok) return;
+    const c = this.ctx!, t = this.now();
+    this.lastTick = c.currentTime;
     if (!this.voice(0.1)) return;
     const f = c.createBiquadFilter();
     f.type = 'bandpass';
@@ -375,9 +785,9 @@ export class Sfx {
   }
 
   /** Souffle d'air (mouvement rapide) — bus feedback. */
-  whoosh(dur = 0.45, vol = 0.3, up = true) {
+  private whooshSynth(dur = 0.45, vol = 0.3, up = true) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const k = vary(0.04);
     const f = c.createBiquadFilter();
     f.type = 'bandpass';
@@ -393,9 +803,9 @@ export class Sfx {
   }
 
   /** Déchirure : bruit granuleux modulé — bus feedback. */
-  tear(dur = 0.6, vol = 0.35) {
+  private tearSynth(dur = 0.6, vol = 0.35) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const f = c.createBiquadFilter();
     f.type = 'highpass';
     f.frequency.value = 900 * vary(0.1);
@@ -416,9 +826,9 @@ export class Sfx {
    * corps en sinus qui chute (low × 2,6 → low), et copie saturée filtrée passe-haut à 150 Hz (harmoniques 150–500 Hz :
    * le grave « suggéré » que le petit haut-parleur ne sort pas).
    */
-  thump(vol = 0.6, low = 46) {
+  private thumpSynth(vol = 0.6, low = 46) {
     if (!this.ok || !this.voice(0.5)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     this.transient(t, vol * 0.45, 3000 + vol * 1500);
     const o = c.createOscillator();
     o.type = 'sine';
@@ -446,7 +856,7 @@ export class Sfx {
   /** Montée de tension (suspense), à deux couches (bruit filtré + sinus qui monte). */
   riser(dur = 1.5, tier = 2, vol = 0.22) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const f = c.createBiquadFilter();
     f.type = 'bandpass';
     f.Q.value = 6;
@@ -476,9 +886,9 @@ export class Sfx {
    * Cloche inharmonique : récompense. Plus de partiels selon la rareté. `base` est CALÉE sur la gamme (sol pentatonique,
    * transposée pendant la 6★) ; vélocité ±2 dB, jamais de désaccord. 1★ : pas de réverbe.
    */
-  chime(tier = 2, vol = 0.22, base = 392, at = 0) {
+  private chimeSynth(tier = 2, vol = 0.22, base = 392, at = 0) {
     if (!this.ok || !this.voice(1.5 + tier * 0.4)) return;
-    const c = this.ctx!, t = c.currentTime + at;
+    const c = this.ctx!, t = this.now() + at;
     const hz = quantize(base, this.transpose);
     const v = vol * varyDb(2);
     const ratios = [1, 2.0, 2.76, 4.07, 5.4, 6.8].slice(0, 2 + Math.min(4, tier));
@@ -496,9 +906,9 @@ export class Sfx {
   }
 
   /** Une note de la gamme (degré `deg`, 0 = sol4, 5 = sol5…), timbre cristal doux. `at` = décalage (s). */
-  note(deg: number, vol = 0.15, dur = 0.8, at = 0) {
+  private noteSynth(deg: number, vol = 0.15, dur = 0.8, at = 0) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime + at;
+    const c = this.ctx!, t = this.now() + at;
     const hz = scaleHz(deg, this.transpose);
     const v = vol * varyDb(2);
     // porteuse + partiel inharmonique (cloche) + pluck triangle
@@ -537,7 +947,7 @@ export class Sfx {
    */
   bebou(vol = 0.16, short = false) {
     if (!this.ok) return;
-    const c = this.ctx!, t0 = c.currentTime;
+    const c = this.ctx!, t0 = this.now();
     const semis = [0, 4, 6, 7, 11];
     const times = [0, 0.22, 0.44, 0.58, 0.9];
     (short ? semis.slice(0, 3) : semis).forEach((s, i) => {
@@ -558,9 +968,9 @@ export class Sfx {
   }
 
   /** Pièce qui arrive au compteur : tic métallique dont la hauteur suit le degré `deg` de la gamme (puis à l'octave). */
-  coin(deg = 0, vol = 0.09) {
+  private coinSynth(deg = 0, vol = 0.09) {
     if (!this.ok || !this.voice(0.25)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const hz = scaleHz(10 + (deg % 10), this.transpose);
     for (const [r, k] of [[1, 1], [2.5, 0.3]] as const) {
       const o = c.createOscillator();
@@ -585,7 +995,7 @@ export class Sfx {
   /** Nappe scintillante (rareté haute), dans la gamme. */
   shimmer(tier = 4, dur = 2.2, vol = 0.12) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const degs = [5, 7, 9, 10, 12, 14].slice(0, 2 + tier);
     degs.forEach((dg, i) => {
       const o = c.createOscillator();
@@ -610,9 +1020,9 @@ export class Sfx {
   }
 
   /** Craquement sec (verre, fracture). */
-  crack(vol = 0.5) {
+  private crackSynth(vol = 0.5) {
     if (!this.ok || !this.voice(0.3)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     for (let k = 0; k < 4; k++) {
       const f = c.createBiquadFilter();
       f.type = 'highpass';
@@ -627,7 +1037,7 @@ export class Sfx {
   /** Grondement grave (+ harmoniques 150–400 Hz pour le téléphone). */
   rumble(dur = 1.2, vol = 0.4) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     for (const [hz, k] of [[140, 1], [360, 0.35]] as const) {
       const f = c.createBiquadFilter();
       f.type = 'lowpass';
@@ -644,7 +1054,7 @@ export class Sfx {
   /** Battement de cœur (« lub-dub ») : deux coups sourds, le second plus doux, avec leurs harmoniques (160–320 Hz). */
   heartbeat(vol = 0.5, low = 40) {
     if (!this.ok || !this.voice(0.6)) return;
-    const c = this.ctx!, t0 = c.currentTime;
+    const c = this.ctx!, t0 = this.now();
     for (const [dt, k] of [[0, 1], [0.17, 0.62]] as const) {
       const t = t0 + dt;
       const o = c.createOscillator();
@@ -681,7 +1091,7 @@ export class Sfx {
   /** Arrêt de bande : tout s'effondre vers le grave (la fausse ouverture « déraille »). */
   tapeStop(vol = 0.35, dur = 0.45) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const o = c.createOscillator();
     o.type = 'triangle';
     o.frequency.setValueAtTime(520, t);
@@ -707,7 +1117,7 @@ export class Sfx {
   /** Chœur synthétique (« aah » : scies désaccordées → formants), accord majeur 9 qui s'ouvre — sol (ou la pendant la 6★). */
   choir(dur = 4.5, vol = 0.14, base = 220) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const root = base * Math.pow(2, this.transpose / 12);
     const f1 = c.createBiquadFilter();
     f1.type = 'bandpass';
@@ -821,7 +1231,7 @@ export class Sfx {
    */
   duelSting(vol = 0.5) {
     if (!this.ok || !this.voice(3.2)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const pre = 0.55;
     // cymbale inversée (bruit aigu qui gonfle jusqu'au premier coup)
     const hf = c.createBiquadFilter();
@@ -869,7 +1279,7 @@ export class Sfx {
   /** Bourdonnement du projecteur d'hologramme : scie à 55 Hz dans un filtre qui balaie, crépitements, `dur` s. */
   holoHum(dur = 2.4, vol = 0.18) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const f = c.createBiquadFilter();
     f.type = 'bandpass';
     f.Q.value = 5;
@@ -898,7 +1308,7 @@ export class Sfx {
   /** Balayage de matérialisation (bas → haut) : sinus qui monte + souffle filtré qui le suit. */
   scanSweep(dur = 1.6, vol = 0.14) {
     if (!this.ok || !this.voice(dur)) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     const o = c.createOscillator();
     o.type = 'triangle';
     o.frequency.setValueAtTime(scaleHz(0, this.transpose) / 2, t);
@@ -933,7 +1343,7 @@ export class Sfx {
    */
   creature(kind: CreatureKind, vol = 0.5) {
     if (!this.ok) return;
-    const c = this.ctx!, t = c.currentTime;
+    const c = this.ctx!, t = this.now();
     if (kind === 'mage' || kind === 'fairy') {
       if (!this.voice(2.4)) return;
       // éclat magique : sinus modulé en fréquence qui monte (FM), puis arpège / clochettes dans la gamme
@@ -1075,7 +1485,7 @@ export class Sfx {
   rig(): { c: AudioContext; t: number; noise: (t0: number, dur: number) => AudioBufferSourceNode; out: (g: AudioNode, wet?: number, bus?: Bus) => void; voice: (dur: number) => boolean; shaper: WaveShaperNode } | null {
     if (!this.ok) return null;
     const c = this.ctx!;
-    return { c, t: c.currentTime, noise: (t0, d) => this.noise(t0, d), out: (g, wet = 0.3, bus = 'event') => this.out(g, wet, bus), voice: (d) => this.voice(d), shaper: this.shaper! };
+    return { c, t: this.now(), noise: (t0, d) => this.noise(t0, d), out: (g, wet = 0.3, bus = 'event') => this.out(g, wet, bus), voice: (d) => this.voice(d), shaper: this.shaper! };
   }
 
   /** Fichiers son facultatifs (déposés par le joueur dans public/fx/yugioh/sfx) : décodés une fois, null s'ils n'existent pas. */
@@ -1104,7 +1514,7 @@ export class Sfx {
     const g = c.createGain();
     g.gain.value = vol;
     s.connect(g);
-    s.start();
+    s.start(this.now());
     this.out(g, wet, 'event');
     return {
       fade: (d = 0.8) => {
