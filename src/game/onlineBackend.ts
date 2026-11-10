@@ -166,6 +166,7 @@ export function createOnlineBackend(): GameBackend {
         themeId: p.themeId,
         maxRarity: p.maxRarity,
         cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
+        ...(p.god ? { god: true } : {}),
       };
     },
     async revealPack(id) {
@@ -181,6 +182,7 @@ export function createOnlineBackend(): GameBackend {
         themeId: p.themeId,
         maxRarity: p.maxRarity,
         cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
+        ...(p.god ? { god: true } : {}),
       }));
     },
     async revealPacks(ids) {

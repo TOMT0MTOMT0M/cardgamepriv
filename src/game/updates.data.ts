@@ -24,6 +24,12 @@ const CARDS = String(PUBLIC_CARD_COUNT).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0
  * (retours live 6, C11) pour l'instant UN SEUL post : la V1, datée du 8 novembre 2026 — le nombre de cartes, les grosses
  * fonctionnalités, et le rythme : une grosse mise à jour par mois. Pas de fil détaillé.
  */
+/**
+ * Annonce du moment : à la PROCHAINE visite (une seule fois par appareil), le jeu ouvre la page des mises à jour
+ * (src/game/announce.ts). Changer cet identifiant à chaque nouvelle annonce qui mérite d'être montrée d'office.
+ */
+export const ANNOUNCE_ID = 'patch-2026-11-08';
+
 export const UPDATES: UpdateMonth[] = [
   {
     month: 'Novembre 2026',
@@ -69,13 +75,20 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '8 nov.', title: 'Correctifs du week-end', tag: 'amélioré',
+        date: '8 nov.', title: 'God pack, échanges réparés et tout ce qui a changé depuis la V1', tag: 'nouveau',
         points: [
-          'Battle Royale : on peut maintenant miser de 1 à 5 boosters, le même nombre pour tout le monde. Le total d’étoiles de toutes tes cartes départage.',
+          'GOD PACK : 1 booster sur 1 000 est un god pack. Que des cartes 4★ et plus, au moins une 5★ et une 6★, et sa propre animation à l’ouverture. Toute la bande est prévenue quand quelqu’un en ouvre un.',
+          'Échanges : le bouton « Accepter » d’un échange reçu marche à nouveau (il était devenu illisible et ne répondait pas toujours). Il ouvre maintenant une confirmation « Oui, échanger » qui reste affichée, et si l’échange coince, la raison reste écrite dans l’échange.',
+          'Visages : plus de 600 cartes recadrées pour que le visage soit en entier, et plus caché sous le nom.',
+          'Patrick Bruel et tout ce qui le concerne (ses chansons, Le Prénom) sont retirés du jeu.',
+          'Pack Battle : tirages deux fois plus lents, les deux cartes du tirage en grand au centre, et les deux colonnes de la même taille à la fin.',
+          'Battle Royale : on peut miser de 1 à 5 boosters, le même nombre pour tout le monde. Le total d’étoiles de toutes tes cartes départage.',
+          '« Image à revoir » : un bouton dans toutes les visionneuses (collection, profil, échanges, contrats, ouverture) pour nous signaler une image buguée ou absente en un geste.',
           'Nouvelles illustrations pour 27 cartes 5★ et 6★ (Michael Jordan, Usain Bolt, Altaïr, Ciri, Edward Elric…).',
           'Les cartes qui n’avaient pas de vraie image sont retirées du jeu (les 5★ et 6★ restent le temps de leur en trouver une).',
           'Raretés revues : certaines stars surtout connues hors d’Europe et des États-Unis descendent en étoiles.',
           'Pitbull : l’extrait joué est maintenant « International Love ».',
+          'Discord : les 6★ et les cartes secrètes tirées y sont annoncées avec la carte de face, en grand, et le nom du joueur. Connecté avec Discord ? Tu reçois tout seul le rôle « Card » sur le serveur.',
         ],
       },
       {

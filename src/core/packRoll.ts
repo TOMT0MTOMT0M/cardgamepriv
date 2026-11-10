@@ -23,7 +23,16 @@ export interface PackRequest {
   themeId?: string;
   /** pity (src/core/pity.ts) : l'emplacement garanti devient une Mythique, sauf si une Secrète l'a déjà pris */
   forceMythic?: boolean;
+  /** tests / démo (`?god`) : ce booster est un god pack */
+  forceGod?: boolean;
 }
+
+/**
+ * GOD PACK (08/11) : 1 booster sur 1 000, n'importe lequel. Toutes ses cartes sont des 4★ ou mieux, avec au moins
+ * une 5★ ET une 6★, et des chances de 5★ / 6★ bien plus fortes que d'habitude. Une Bébou / secrète tirée garde sa place.
+ */
+export const GOD_PACK_CHANCE = 1 / 1000;
+export const GOD_WEIGHTS: Record<StarRarityId, number> = { common: 0, uncommon: 0, rare: 0, epic: 55, legendary: 30, mythic: 15 };
 
 const poolCache = new Map<string, Map<StarRarityId, CatalogEntry[]>>();
 
@@ -57,6 +66,11 @@ function pick<T>(list: T[], rand: () => number): T {
 
 /** Tire les cartes d'un booster. `rand` : RNG [0,1) (crypto côté serveur). */
 export function rollPack(req: PackRequest, rand: () => number = Math.random): RolledSlot[] {
+  return rollPackEx(req, rand).slots;
+}
+
+/** Même tirage, en disant si c'est un god pack (l'ouverture a alors son animation, et le serveur le garde en mémoire). */
+export function rollPackEx(req: PackRequest, rand: () => number = Math.random): { slots: RolledSlot[]; god: boolean } {
   if (!isValidPackRequest(req)) throw new Error('Ce booster n’est pas encore disponible.');
   const pool = poolFor(req);
   const theme = req.kind === 'theme' ? themeById(req.themeId ?? '') : undefined;
@@ -67,6 +81,8 @@ export function rollPack(req: PackRequest, rand: () => number = Math.random): Ro
     : (themeSecrets.length > 0 ? (theme!.id === 'monde' ? WORLD_SECRET_CHANCE : 1 / theme!.cards.length) : 0);
 
   const plan = planPack(req.kind, secretChance, rand);
+  // tiré APRÈS le plan (la démo force une Bébou en truquant le tout premier tirage)
+  const god = !!req.forceGod || rand() < GOD_PACK_CHANCE;
   const out: RolledSlot[] = [];
   for (let slot = 0; slot < plan.size; slot++) {
     if (slot === plan.bebouSlot) {
@@ -77,8 +93,8 @@ export function rollPack(req: PackRequest, rand: () => number = Math.random): Ro
       continue;
     }
     const last = slot === plan.size - 1;
-    const weights = last ? GUARANTEED_WEIGHTS : SLOT_WEIGHTS;
-    let star: StarRarityId = last && req.forceMythic && pool.get('mythic')?.length ? 'mythic' : rollStar(weights, rand);
+    const weights = god ? GOD_WEIGHTS : last ? GUARANTEED_WEIGHTS : SLOT_WEIGHTS;
+    let star: StarRarityId = !god && last && req.forceMythic && pool.get('mythic')?.length ? 'mythic' : rollStar(weights, rand);
     // thème sans carte de cette étoile (petit thème) : on descend, puis on remonte, jusqu'à trouver
     if (!pool.get(star)?.length) {
       const order: StarRarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
@@ -87,7 +103,21 @@ export function rollPack(req: PackRequest, rand: () => number = Math.random): Ro
     }
     out.push({ card: pick(pool.get(star)!, rand), rarity: star });
   }
-  return out;
+  if (god) {
+    // au moins une 6★ et une 5★ : sinon l'emplacement le plus faible (jamais une secrète, jamais la seule 6★ ou la
+    // seule 5★ déjà là) devient la carte qui manque
+    const RANK: Record<string, number> = { epic: 4, legendary: 5, mythic: 6 };
+    const only = (r: CatalogRarity) => out.filter((x) => x.rarity === r).length === 1;
+    for (const want of ['mythic', 'legendary'] as const) {
+      if (out.some((x) => x.rarity === want) || !pool.get(want)?.length) continue;
+      const cand = out.map((x, i) => ({ x, i })).filter(({ x }) => x.rarity !== 'secret' && !((x.rarity === 'mythic' || x.rarity === 'legendary') && only(x.rarity)));
+      if (!cand.length) continue;
+      const low = Math.min(...cand.map(({ x }) => RANK[x.rarity] ?? 0));
+      const { i } = pick(cand.filter(({ x }) => (RANK[x.rarity] ?? 0) === low), rand);
+      out[i] = { card: pick(pool.get(want)!, rand), rarity: want };
+    }
+  }
+  return { slots: out, god };
 }
 
 /**

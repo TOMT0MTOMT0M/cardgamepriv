@@ -29,25 +29,35 @@ export async function guarded(key: string, btn: HTMLElement | null, run: () => P
   }
 }
 
+/** Armements par clé (`confirmTap(…, key)`) : survivent au redessin du bouton (abonnement temps réel, 08/11). */
+const armedKeys = new Map<string, number>();
 /**
  * Second toucher : le 1er toucher arme le bouton (libellé « Confirmer ? … ») pendant `ms`, le 2nd lance l'action.
- * Un double-toucher trop rapide (< 0,4 s) ne vaut pas confirmation. Renvoie vrai quand l'action peut partir.
+ * Un double-toucher trop rapide (< 0,3 s) ne vaut pas confirmation. Renvoie vrai quand l'action peut partir.
+ * `key` (conseillé dès que l'écran se redessine tout seul) : un bouton redessiné entre les deux touchers garde
+ * l'armement — sinon le 2nd toucher retombait sur un bouton neuf et ré-armait sans fin (« il ne se passe rien »).
  * Pas de confirm() natif (bloquant, illisible au téléphone).
  */
-export function confirmTap(btn: HTMLElement, label: string, ms = 3000): boolean {
-  const at = Number(btn.dataset.armedAt || 0);
-  if (at) {
-    if (Date.now() - at < 400) return false; // double-toucher : on reste armé
+export function confirmTap(btn: HTMLElement, label: string, ms = 3000, key?: string): boolean {
+  const at = Number(btn.dataset.armedAt || 0) || (key ? (armedKeys.get(key) ?? 0) : 0);
+  if (at && Date.now() - at < ms + 500) {
+    if (Date.now() - at < 300) return false; // double-toucher : on reste armé
     disarm(btn);
+    if (key) armedKeys.delete(key);
     return true;
   }
-  const stamp = String(Date.now());
+  const now = Date.now();
+  const stamp = String(now);
+  if (key) armedKeys.set(key, now);
   btn.dataset.armedAt = stamp;
   btn.dataset.label = btn.innerHTML;
   btn.classList.add('armed');
   btn.textContent = label;
   btn.setAttribute('aria-live', 'polite');
-  window.setTimeout(() => btn.dataset.armedAt === stamp && disarm(btn), ms);
+  window.setTimeout(() => {
+    if (key && armedKeys.get(key) === now) armedKeys.delete(key);
+    if (btn.dataset.armedAt === stamp) disarm(btn);
+  }, ms);
   return false;
 }
 function disarm(btn: HTMLElement) {

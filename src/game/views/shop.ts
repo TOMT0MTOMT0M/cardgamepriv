@@ -24,6 +24,7 @@ import { haptics } from '../../core/haptics';
 import { createBigPulls } from './bigPulls';
 import { duelMonster } from '../scenes/duelMonsters';
 import { abortMythic, mythicFamily, playMythicPrelude, prepareMythic } from '../mythic';
+import { clearGod, playGodIntro } from '../godPack';
 
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
 const TOUCH = isTouch();
@@ -1124,6 +1125,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       hintTxt.textContent = HINT.reveal;
     }
     void preloadArt(p.cards.map((c) => c.cardId)); // en parallèle de la scène : images prêtes au plus tôt
+    // (08/11) god pack : séquence plein écran avant l'emballage (la scène se monte dessous pendant ce temps)
+    if (p.god) void playGodIntro(shell);
+    else clearGod();
     const secret = p.cards.find((c) => rarity(c.rarity).secret);
     if (secret) void prepareSecret(secret);
     dropDuel();
@@ -1702,6 +1706,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   window.addEventListener('keydown', (e) => e.key === 'Escape' && closeViewer());
 
   function back() {
+    clearGod();
     closeViewer();
     hideFanBadges();
     sumBg.hidden = true;

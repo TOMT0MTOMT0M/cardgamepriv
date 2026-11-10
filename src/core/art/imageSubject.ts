@@ -1,6 +1,24 @@
 import { alpha, ctx2d, releaseCanvas } from './canvas';
 import { BASE_H, BASE_W, WIN, type PaintTarget } from './subjects';
 import { imageLimits, onImageEvicted, type CardImage } from './images';
+import FACE_FOCUS from './faceFocus.json';
+
+/**
+ * (08/11) VISAGES : point focal des photos dont le cadrage par défaut coupait la tête (on ne voyait que le buste) ou la
+ * posait sous le nom. Centre du visage [x, y] en fraction de l'image, détecté hors ligne (YuNet) sur les 18 318 photos
+ * en portrait — 616 corrigées. Clé = chemin sous art/. Absente : cadrage par défaut (point focal à 42 % de la hauteur).
+ */
+const FACES = FACE_FOCUS as unknown as Record<string, [number, number]>;
+function faceOf(url: string): [number, number] | undefined {
+  const m = /\/art\/([^?#]+)/.exec(url);
+  if (!m) return undefined;
+  try {
+    return FACES[decodeURIComponent(m[1])];
+  } catch {
+    return FACES[m[1]];
+  }
+}
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 const TAU = Math.PI * 2;
 const CX = WIN.x + WIN.w / 2;
@@ -170,8 +188,14 @@ export function paintCoverSubject(t: PaintTarget, im: CardImage | null, _o: { cr
     // format portrait : l'illustration nette remplit la carte du jeu, bord à bord (point focal un peu haut)
     const k = Math.max(FULL_VIEW.w / cw, FULL_VIEW.h / ch);
     const w = cw * k, h = ch * k;
-    const x = FULL_VIEW.x + (FULL_VIEW.w - w) / 2;
-    const y = Math.min(FULL_VIEW.y, Math.max(FULL_VIEW.y + FULL_VIEW.h - h, FULL_VIEW.y + FULL_VIEW.h * 0.42 - h * 0.42));
+    let x = FULL_VIEW.x + (FULL_VIEW.w - w) / 2;
+    let y = Math.min(FULL_VIEW.y, Math.max(FULL_VIEW.y + FULL_VIEW.h - h, FULL_VIEW.y + FULL_VIEW.h * 0.42 - h * 0.42));
+    const face = faceOf(im.url);
+    if (face) {
+      // le visage au tiers haut de la carte (entre les étoiles et le nom), centré en largeur — sans jamais laisser de bord vide
+      y = clamp(FULL_VIEW.y + FULL_VIEW.h * 0.33 - face[1] * h, FULL_VIEW.y + FULL_VIEW.h - h, FULL_VIEW.y);
+      x = clamp(FULL_VIEW.x + FULL_VIEW.w * 0.5 - face[0] * w, FULL_VIEW.x + FULL_VIEW.w - w, FULL_VIEW.x);
+    }
     bg.drawImage(im.canvas, x, y, w, h);
   } else {
     // toute autre photo : ENTIÈRE, rien de coupé, rien de flouté (le cadre Suisse se cale sur elle : coverBand)

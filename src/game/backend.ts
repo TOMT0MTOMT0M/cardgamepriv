@@ -42,6 +42,8 @@ export interface SealedPack {
   themeId?: string;
   maxRarity: RarityId;
   cards: PackCard[];
+  /** (08/11) god pack : 1 sur 1 000, que des 4★+ dont une 5★ et une 6★ — l'ouverture a son animation */
+  god?: boolean;
 }
 
 export interface Friend {

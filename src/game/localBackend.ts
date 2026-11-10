@@ -1,4 +1,4 @@
-import { rollPack, type PackRequest } from '../core/packRoll';
+import { rollPack, rollPackEx, type PackRequest } from '../core/packRoll';
 import { SURVEY_FEATURES, SURVEY_UNIVERSES, cleanSurvey, surveyFilled, type SurveyAnswer } from '../core/survey';
 import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
@@ -150,6 +150,8 @@ export function createLocalBackend(): GameBackend {
     for (const b of save.bots ?? []) clean(b.inv);
   }
   let forceSecret = new URLSearchParams(location.search).has('secret');
+  /** démo : `?god` → le prochain booster est un god pack (test de l'animation) */
+  let forceGod = new URLSearchParams(location.search).has('god');
   // démo : `?force=pop-blue-eyes-white-dragon` → la 3e carte du prochain booster de ce thème est cette carte, en 6★ (captures)
   let forceCard = new URLSearchParams(location.search).get('force');
   /** démo, test de la rencontre sauvage : `?wild=2` → les 2 dernières cartes du prochain booster sont des Pokémon 6★ */
@@ -550,7 +552,9 @@ export function createLocalBackend(): GameBackend {
       rand = () => (first ? ((first = false), 0) : Math.random());
     }
     const seen = new Set<string>();
-    const cards = rollPack(req, rand).map(({ card, rarity }) => {
+    const rolled = rollPackEx(forceGod ? { ...req, forceGod: true } : req, rand);
+    forceGod = false;
+    const cards = rolled.slots.map(({ card, rarity }) => {
       const k = cardKey({ cardId: card.id, rarity });
       const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
       const isNew = !save.inv[k] && !seen.has(k);
@@ -575,7 +579,7 @@ export function createLocalBackend(): GameBackend {
     }
     const maxRarity = cards.reduce<RarityId>((m, c) => (RANK[c.rarity] > RANK[m] ? c.rarity : m), 'common');
     save.pity = pityAfter(save.pity ?? 0, cards.map((c) => c.rarity));
-    return { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards };
+    return { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards, ...(rolled.god ? { god: true } : {}) };
   }
 
   return {

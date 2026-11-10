@@ -1,4 +1,4 @@
-import { PURGE_08_11, RERATE_08_11 } from './curation';
+import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11 } from './curation';
 import { artV } from '../artRev';
 /**
  * Registre des THÈMES — données pures, sans three.js : partagé par le client (boutique, collection, échanges) et par
@@ -441,7 +441,7 @@ export interface InstallOptions {
 export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): void {
   if (installed) return;
   installed = true;
-  const purge = new Set(PURGE_08_11);
+  const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL]);
   const rerate = new Map(Object.entries(RERATE_08_11));
   applyCuration(purge, rerate);
   for (const s of bigSubthemes(big, { purge, rerate })) SUBTHEMES.push(s);
