@@ -59,6 +59,9 @@ export interface MeProfile {
   pwAccount?: boolean;
   /** (ouverture 07/11) visite guidée automatique déjà jouée */
   guideSeen?: boolean;
+  /** (V2, bulles) derniers événements Jeux / parrainage (game/navDots.ts) */
+  gamesNoticeAt?: number;
+  referralNoticeAt?: number;
 }
 
 /** (ouverture 07/11, convex/launch.ts) heure d'ouverture, dernière remise à zéro, code du club demandé à l'inscription */

@@ -12,7 +12,7 @@
  */
 import { fxReduced } from '../core/fxPref';
 
-const SELECTOR = '.badge, .msn-n, .w-dot, .u-dot, .fr-n, .pf-new-dot, .fresh-badge';
+const SELECTOR = '.badge, .msn-n, .w-dot, .u-dot, .fr-n, .pf-new-dot, .fresh-badge, .nb-dot';
 const EASE_OUT_BACK = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 
 interface Info {

@@ -155,3 +155,59 @@ async function run(busy: () => boolean) {
     /* stockage indisponible */
   }
 }
+
+// ───────────────────────────── « Tout télécharger » (game/offline.ts) : tous les paliers, Merveilles 3D comprises
+
+async function loadManifest(): Promise<{ id: string; files: Entry[] } | null> {
+  if (import.meta.env.DEV || !('caches' in window)) return null;
+  try {
+    const res = await fetch(`${siteUrl('precache.json')}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const man = (await res.json()) as { id: string; files: Entry[] };
+    return man?.id === BUILD_ID && Array.isArray(man.files) ? man : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Ce qui est sur l'appareil : octets du jeu (tous paliers) déjà rangés / au total. `null` : rien à faire ici. */
+export async function bundleStatus(): Promise<{ have: number; total: number } | null> {
+  const man = await loadManifest();
+  if (!man) return null;
+  const cache = await caches.open(APP);
+  const have = new Set((await cache.keys()).map((r) => r.url));
+  const abs = (f: string) => new URL(siteUrl(f)).href;
+  return man.files.reduce((s, [f, size]) => ({ have: s.have + (have.has(abs(f)) ? size : 0), total: s.total + size }), { have: 0, total: 0 });
+}
+
+/**
+ * Télécharge TOUT le manifeste (palier 3 compris : Merveilles 3D), 3 fichiers de front. `progress(octets)` à chaque
+ * fichier rangé ; `stop()` vrai → on s'arrête après les fichiers en cours. Rend vrai si tout est sur l'appareil.
+ */
+export async function downloadBundle(progress: (bytes: number) => void, stop: () => boolean): Promise<boolean> {
+  const man = await loadManifest();
+  if (!man) return false;
+  const cache = await caches.open(APP);
+  const have = new Set((await cache.keys()).map((r) => r.url));
+  const abs = (f: string) => new URL(siteUrl(f)).href;
+  const queue = man.files.filter(([f]) => !have.has(abs(f)));
+  let failed = false;
+  await Promise.all(
+    Array.from({ length: 3 }, async () => {
+      for (let e = queue.shift(); e && !stop() && !failed; e = queue.shift()) {
+        const [f, size] = e;
+        try {
+          const page = f === 'jeu/index.html';
+          const r = await fetch(page ? abs('jeu/') : abs(f));
+          const html = /text\/html/.test(r.headers.get('content-type') ?? '');
+          if (!r.ok || r.status !== 200 || r.redirected || html !== page) continue;
+          await cache.put(abs(f), r);
+          progress(size);
+        } catch (err) {
+          if ((err as Error)?.name === 'QuotaExceededError' || !navigator.onLine) failed = true;
+        }
+      }
+    }),
+  );
+  return !failed && !stop() && queue.length === 0;
+}

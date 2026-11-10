@@ -132,7 +132,10 @@ export const createDuel = mutation({
     if (packsNow(u, Date.now()).balance < packs.length) throw new ConvexError(`Tu n’as pas ${packs.length} boosters en réserve.`);
     const open = await ctx.db.query('duels').withIndex('by_creator', (q) => q.eq('creatorId', u._id)).filter((q) => q.eq(q.field('status'), 'open')).collect();
     if (open.length >= 3) throw new ConvexError('3 duels ouverts au maximum : annule-en un.');
-    if (invitedId) await notify(ctx, invitedId, { kind: 'game', title: `${u.displayName} te défie en Pack Battle`, body: 'Relève le défi dans l’espace Jeux.', url: '#/jeux' });
+    if (invitedId) {
+      await notify(ctx, invitedId, { kind: 'game', title: `${u.displayName} te défie en Pack Battle`, body: 'Relève le défi dans l’espace Jeux.', url: '#/jeux' });
+      await ctx.db.patch(invitedId, { gamesNoticeAt: Date.now() }); // pastille de l'onglet Jeux
+    }
     return await ctx.db.insert('duels', {
       creatorId: u._id,
       ...(invitedId ? { invitedId } : {}),
@@ -259,7 +262,7 @@ async function resolveDuel(ctx: MutationCtx, d: Doc<'duels'>) {
     for (const [j, p] of s.packs.entries())
       await bumpMissions(ctx, u, { type: 'pack', packKey: p.kind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: keep ? packs[k][j].map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: false })) : [] });
     await announcePulls(ctx, u, packs[k].flat(), 'un Pack Battle');
-    await ctx.db.patch(s.userId, { lastSeenAt: now, statusText: won ? 'Vient de gagner un Pack Battle' : winner === null ? 'Égalité parfaite en Pack Battle' : 'Vient de perdre un Pack Battle' });
+    await ctx.db.patch(s.userId, { lastSeenAt: now, gamesNoticeAt: now, statusText: won ? 'Vient de gagner un Pack Battle' : winner === null ? 'Égalité parfaite en Pack Battle' : 'Vient de perdre un Pack Battle' });
   }
   const n = d.sides[0].packs.length;
   await feedGame(
@@ -370,7 +373,7 @@ async function resolveRoyale(ctx: MutationCtx, r: Doc<'royales'>) {
     for (let k = 0; k < n; k++)
       await bumpMissions(ctx, u, { type: 'pack', packKey: p.pack.kind === 'theme' && p.pack.themeId ? p.pack.themeId : 'bebou', cards: k === 0 ? res.awarded[i].map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: false })) : [] });
     await announcePulls(ctx, u, packs[i], 'une Battle Royale');
-    await ctx.db.patch(p.userId, { lastSeenAt: now, statusText: won ? 'Vient de gagner une Battle Royale' : 'Sort d’une Battle Royale' });
+    await ctx.db.patch(p.userId, { lastSeenAt: now, gamesNoticeAt: now, statusText: won ? 'Vient de gagner une Battle Royale' : 'Sort d’une Battle Royale' });
   }
   const best = Math.max(...res.stars);
   const names = res.winners.map((i) => r.players[i].name);
@@ -521,6 +524,8 @@ async function drawRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number
     const w = await ctx.db.get(bet.userId);
     if (w) await feedGame(ctx, w, `🎡 Le ${number} sort à la roulette : ${w.displayName} remporte tout le pot — ${fmtCoins(pot.coins)} pièces et ${pot.cards.reduce((a, c) => a + c.count, 0)} cartes (${fmtCoins(pot.value)} de valeur) !`);
   }
+  // pastille de l'onglet Jeux chez chaque joueur qui avait misé (le résultat est à voir)
+  for (const id of new Set(r.bets.map((b) => b.userId))) await ctx.db.patch(id, { gamesNoticeAt: now });
   await ctx.db.patch(r._id, {
     status: 'drawn',
     drawnAt: now,

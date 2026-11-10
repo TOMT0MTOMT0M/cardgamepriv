@@ -97,7 +97,15 @@ serveur. Notifications Web Push : gratuites, sans service tiers.
 dépassement et écrasement cartoon, chiffre qui roule au changement, éclatement en bulle de savon (gonflement + reflet,
 pop, 6–8 gouttelettes, anneau), décalage de 60 ms entre bulles, fondu simple en « Effets réduits », petit « pop » sonore.
 Couvre toutes les pastilles existantes (`.badge`, `.msn-n`, `.w-dot`, `.u-dot`, `.fr-n`, `.pf-new-dot`, `.fresh-badge`).
-Pas encore fait : les bulles « à AJOUTER » ci-dessous (jeux, boutique, calendrier, contrats, mises à jour).
+**Puis (10/11) les bulles « à AJOUTER »** (`src/game/navDots.ts`, point doré `.nb-dot` animé par bubble.ts) :
+- Boutique : réserve pleine (recharge à l'arrêt), sauf quand on y est ;
+- Jeux : défi Pack Battle reçu, partie jouée (duel, Battle Royale), tirage de roulette où on avait misé — depuis la
+  dernière visite de l'espace Jeux. Serveur : champ `gamesNoticeAt` du joueur (optionnel), écrit avec ce qui touche
+  déjà le joueur, lu par `users:me` déjà suivi → aucune requête en plus ;
+- Amis : filleul inscrit, parrainage payé (`referralNoticeAt`, même principe) ;
+- Mises à jour : entrée du journal pas encore lue (lien de l'en-tête, menu du profil, pastille de l'avatar).
+Laissés tels quels : calendrier / série (flamme dorée qui bat + pastille du portefeuille), missions (`.msn-n`),
+contrats (solos : rien de « reçu »), classement (bruit, toujours à discuter).
 
 **Demande de Tom (07/11)** : TOUTES les pastilles de notification (bulles en haut à droite des boutons) apparaissent
 en bulle qui grandit de façon fluide, bien placée sur le bon axe, et quand elle disparaît elle EXPLOSE comme une
@@ -147,7 +155,14 @@ par type pour les deux.
 
 ---
 
-## 1 ter. Gros cache au premier lancement → démarrage et navigation plus rapides — à faire
+## 1 ter. Gros cache au premier lancement → démarrage et navigation plus rapides — FAIT (09–10/11, v2)
+
+**Livré** : le jeu s'installe (fluidité lot 1, `bundle.ts`, `/precache.json`, `storage.persist()`), puis (10/11,
+`src/game/offline.ts`) : miniatures des 300 cartes possédées les plus récentes en fond, une fois par appareil ; fiche
+« Hors connexion » dans Profil › Compte : « Tout télécharger » (jeu entier dont les Merveilles 3D, nouveau palier 3 du
+manifeste ; miniatures de toute la collection ; cartes 4★+ en pleine définition, dans `bebou-garde-v1` jamais élagué),
+barre de progression, « Arrêter ». Pas fait : illustrations « des boosters les plus ouverts » (cartes NON possédées :
+écarté, données mobiles).
 
 **Demande de Tom (07/11)** : au premier chargement, télécharger sur le téléphone un maximum de choses pour que les
 démarrages suivants (et tout le reste) soient plus rapides.

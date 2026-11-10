@@ -3510,3 +3510,18 @@ html.vt-pages::view-transition-new(pages) { animation: vt-pages-in var(--dur-emp
 @keyframes vt-pages-out { to { opacity: 0; } }
 @keyframes vt-pages-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { html.vt-pages::view-transition-group(*), html.vt-pages::view-transition-old(*), html.vt-pages::view-transition-new(*) { animation: none !important; } }
+
+/* (V2, bulles ajoutées — game/navDots.ts) point doré : réserve pleine (Boutique), du nouveau dans les Jeux, parrainage
+   (Amis), mise à jour à lire. Animé par game/bubble.ts comme les autres pastilles. */
+.nb-dot { display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--gold); vertical-align: 2px; box-shadow: 0 0 8px rgba(255, 255, 255, 0.45); }
+.nb-dot[hidden] { display: none; }
+.nav-extra .nb-dot { position: absolute; top: 1px; right: 1px; margin: 0; box-shadow: 0 0 0 2px #000, 0 0 8px var(--gold); }
+.me-menu .mm-link .nb-dot { margin-left: auto; }
+
+/* (V2) fiche « Hors connexion » (game/offline.ts), dans Profil › Compte sous les notifications */
+.off-t { font: 600 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); }
+.off-l { display: flex; justify-content: space-between; gap: 12px; font: 500 12px var(--mono); letter-spacing: 0.06em; color: var(--ink-2); }
+.off-l b { color: var(--ink); font-weight: 600; }
+.off-ok { font: 600 12px var(--mono); letter-spacing: 0.08em; color: var(--gold); }
+.off-bar { position: relative; flex: 1 1 200px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.off-bar > i { position: absolute; inset: 0; background: #fff; transform-origin: 0 50%; transform: scaleX(0); transition: transform var(--dur-rapide) linear; }

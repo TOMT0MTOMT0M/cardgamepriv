@@ -244,6 +244,10 @@ export interface Me {
   staff?: boolean;
   /** (ouverture 07/11) visite guidée automatique déjà jouée (une fois par compte) */
   guideSeen?: boolean;
+  /** (V2, bulles) dernier événement Jeux (défi reçu, partie jouée, tirage où j'avais misé) — game/navDots.ts */
+  gamesNoticeAt?: number;
+  /** (V2, bulles) dernier événement de parrainage (filleul inscrit, parrainage payé) */
+  referralNoticeAt?: number;
 }
 
 /** Réserve de boosters à l'instant présent (le compte à rebours de l'en-tête l'appelle chaque seconde). */

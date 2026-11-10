@@ -36,6 +36,9 @@ describe('parrainage (retours live 02, §10)', () => {
     expect((await t.mutation(api.referrals.claim, { sessionToken: p.token, code: mine.code })).status).toBe('self');
     const r = await t.mutation(api.referrals.claim, { sessionToken: f.token, code: mine.code, device: 'dev-ami-0001' });
     expect(r.status).toBe('ok');
+    // (V2, bulles) le parrain voit une pastille sur Amis : filleul inscrit
+    const n1 = await t.run(async (ctx) => (await ctx.db.get(p.userId))!.referralNoticeAt ?? 0);
+    expect(n1).toBeGreaterThan(0);
     expect(await bal(t, f.userId)).toBe(25);
     expect((await t.mutation(api.referrals.claim, { sessionToken: f.token, code: mine.code })).status).toBe('already');
     // 10e booster du filleul → 10 boosters pour le parrain, une seule fois
@@ -44,6 +47,7 @@ describe('parrainage (retours live 02, §10)', () => {
     const pk = await t.mutation(api.packs.preparePack, { sessionToken: f.token, packKind: 'bebou' });
     await t.mutation(api.packs.revealPack, { sessionToken: f.token, packId: pk._id });
     expect(await bal(t, p.userId)).toBe(before + 10);
+    expect(await t.run(async (ctx) => (await ctx.db.get(p.userId))!.referralNoticeAt ?? 0)).toBeGreaterThanOrEqual(n1); // payé
     const pk2 = await t.mutation(api.packs.preparePack, { sessionToken: f.token, packKind: 'bebou' });
     await t.mutation(api.packs.revealPack, { sessionToken: f.token, packId: pk2._id });
     expect(await bal(t, p.userId)).toBe(before + 10);

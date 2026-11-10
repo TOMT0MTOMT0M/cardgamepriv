@@ -102,6 +102,8 @@ export function createOnlineBackend(): GameBackend {
             streak: n.user.streak ?? undefined,
             staff: !!n.user.staff,
             guideSeen: !!n.user.guideSeen,
+            gamesNoticeAt: n.user.gamesNoticeAt,
+            referralNoticeAt: n.user.referralNoticeAt,
           }
         : null;
       state.wishlist = n.user?.wishlist ?? [];

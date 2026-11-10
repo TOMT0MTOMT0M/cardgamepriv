@@ -9,7 +9,8 @@
         remplissage de ce cache pour /assets/* est alors fait par la page (bundle.ts), pas par ce fichier. Rien d'autre
         n'est routé : /art et /bake sont rangés par ce fichier, /fx /audio /icons se revalident par la page) ;
       - /art/*?v=… (images versionnées, immuables) : cache d'abord, gardées au fil de l'usage (plafonnées) →
-        moins d'appels à la fonction R2, jamais plus ;
+        moins d'appels à la fonction R2, jamais plus ; celles de « Tout télécharger » (bebou-garde-v1) d'abord ;
+      - /models/* (Merveilles 3D, palier 3 du manifeste) : cache d'abord ;
       - /bake/*?v=… (déchirure simulée, versionnée) : cache d'abord ;
       - la page /jeu/ : RÉSEAU d'abord (3 s max), copie locale en repli → un patch est vu tout de suite ; la requête
         réseau part pendant le réveil de ce fichier (Navigation Preload : `preloadResponse`, une seule requête) ;
@@ -20,6 +21,7 @@
 const APP = 'bebou-app-v1';
 const ART = 'bebou-art-v1';
 const ART_MAX = 1800; // (≈ 12 Ko la miniature : ~25 Mo au plus)
+const KEEP = 'bebou-garde-v1'; // (V2) illustrations téléchargées pour jouer hors connexion (src/game/offline.ts)
 const SCOPE = new URL(self.registration.scope);
 const PAGE = new URL('jeu/index.html', SCOPE).href;
 
@@ -40,6 +42,13 @@ async function cacheFirst(name, req) {
     if (name === ART) void trimArt();
   }
   return res;
+}
+
+/** (V2) « Tout télécharger » (src/game/offline.ts) range les illustrations de la collection dans KEEP, jamais élagué :
+ *  servies de là d'abord, sinon le cache ordinaire (plafonné). */
+async function keepThen(name, req) {
+  const hit = await caches.open(KEEP).then((c) => c.match(req.url)).catch(() => undefined);
+  return hit || cacheFirst(name, req);
 }
 
 let trimming = false;
@@ -102,8 +111,8 @@ self.addEventListener('fetch', (e) => {
     else e.respondWith(Promise.resolve(e.preloadResponse).then((pre) => pre || fetch(req)));
     return;
   }
-  if (p.startsWith('assets/') || p.startsWith('fx/') || p.startsWith('audio/') || p.startsWith('icons/')) e.respondWith(cacheFirst(APP, req));
-  else if (p.startsWith('art/') && url.searchParams.has('v')) e.respondWith(cacheFirst(ART, req));
+  if (p.startsWith('assets/') || p.startsWith('fx/') || p.startsWith('audio/') || p.startsWith('icons/') || p.startsWith('models/')) e.respondWith(cacheFirst(APP, req));
+  else if (p.startsWith('art/') && url.searchParams.has('v')) e.respondWith(keepThen(ART, req));
   // (10/11) déchirure simulée : enregistrements versionnés (?v=, core/tearBake.ts BAKE_REV), ~1,2 Mo chacun
   else if (p.startsWith('bake/') && url.searchParams.has('v')) e.respondWith(cacheFirst(APP, req));
 });

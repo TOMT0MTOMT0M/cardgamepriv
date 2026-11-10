@@ -348,22 +348,25 @@ function precacheManifest(id: string, online: boolean): Plugin {
       // les workers (new Worker(new URL(…))) sont des fichiers à part : palier 1
       for (const a of all) if (a.type === 'asset' && /^assets\/[^/]*[wW]orker[^/]*\.js$/.test(a.fileName)) put(a.fileName, 1);
       // palier 2 : médias des scènes spéciales (public/)
-      const dir = (rel: string) => {
+      const dir = (rel: string, t = 2, only?: RegExp) => {
         const abs = path.resolve(outDir, rel);
         if (!fs.existsSync(abs)) return;
         for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
-          if (e.isDirectory()) dir(`${rel}/${e.name}`);
-          else put(`${rel}/${e.name}`, 2);
+          if (e.isDirectory()) dir(`${rel}/${e.name}`, t, only);
+          else if (!only || only.test(e.name)) put(`${rel}/${e.name}`, t);
         }
       };
-      ['fx', 'audio'].forEach(dir);
+      ['fx', 'audio'].forEach((d) => dir(d));
+      // palier 3 : modèles 3D des Merveilles (~20 Mo) — jamais d'office, seulement par « Tout télécharger » (game/offline.ts)
+      // ou à leur première vue (service worker) ; gardés à jour à chaque patch une fois sur l'appareil
+      dir('models', 3, /\.(glb|gltf|bin|ktx2|webp|png|jpe?g)$/i);
       const files = [...tier]
         .filter(([f]) => fs.existsSync(path.resolve(outDir, f)))
         .map(([f, t]) => [f, fs.statSync(path.resolve(outDir, f)).size, t] as const)
         .sort((a, b) => a[2] - b[2] || a[0].localeCompare(b[0]));
       fs.writeFileSync(path.resolve(outDir, 'precache.json'), JSON.stringify({ id, files }));
       const sum = (t: number) => files.filter((f) => f[2] === t).reduce((n, f) => n + f[1], 0);
-      console.log(`\nprecache.json : ${files.length} fichiers — socle ${(sum(0) / 1e6).toFixed(2)} Mo · jeu ${(sum(1) / 1e6).toFixed(2)} Mo · médias ${(sum(2) / 1e6).toFixed(2)} Mo (brut)`);
+      console.log(`\nprecache.json : ${files.length} fichiers — socle ${(sum(0) / 1e6).toFixed(2)} Mo · jeu ${(sum(1) / 1e6).toFixed(2)} Mo · médias ${(sum(2) / 1e6).toFixed(2)} Mo · Merveilles 3D ${(sum(3) / 1e6).toFixed(2)} Mo (brut)`);
     },
   };
 }

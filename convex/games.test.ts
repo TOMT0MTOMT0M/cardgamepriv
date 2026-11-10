@@ -177,6 +177,23 @@ describe('1v1 Pack Battle', () => {
     expect(left).toEqual([13, 13]);
   });
 
+  test('(V2, bulles) défi reçu puis partie jouée : pastille Jeux (gamesNoticeAt) chez les bons joueurs', async () => {
+    const { t, u } = await setup(['alice', 'bob', 'carol']);
+    const notice = (id: Id<'users'>) => t.run(async (ctx) => (await ctx.db.get(id))!.gamesNoticeAt);
+    const pk = [{ kind: 'bebou' as const }];
+    const id = await t.mutation(api.games.createDuel, { sessionToken: u.alice.token, packs: pk, stake: { coins: 0, cards: [] }, invitedId: u.bob.userId });
+    expect(await notice(u.bob.userId)).toBeGreaterThan(0); // défié
+    expect(await notice(u.alice.userId)).toBeFalsy();
+    expect(await notice(u.carol.userId)).toBeFalsy();
+    const me = await t.query(api.users.me, { sessionToken: u.bob.token });
+    expect(me!.gamesNoticeAt).toBeGreaterThan(0);
+    await t.mutation(api.games.setDuelSide, { sessionToken: u.bob.token, duelId: id, packs: pk, stake: { coins: 0, cards: [] } });
+    await t.mutation(api.games.readyDuel, { sessionToken: u.alice.token, duelId: id });
+    await t.mutation(api.games.readyDuel, { sessionToken: u.bob.token, duelId: id });
+    expect(await notice(u.alice.userId)).toBeGreaterThan(0); // partie jouée
+    expect(await notice(u.carol.userId)).toBeFalsy();
+  });
+
   test('changer sa mise remet les validations à zéro', async () => {
     const { t, u } = await setup();
     const pk = [{ kind: 'bebou' as const }];

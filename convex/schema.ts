@@ -130,6 +130,11 @@ export default defineSchema({
     pwLockUntil: v.optional(v.number()),
     /** (ouverture 07/11) recharge des boosters ×2 jusqu'à cet instant (24 h après l'arrivée — src/core/packRegen.ts) */
     regenBoostUntil: v.optional(v.number()),
+    /** (V2, bulles) dernier événement de l'espace Jeux pour ce joueur (défi reçu, partie jouée, tirage de roulette) :
+     *  le client compare à sa dernière visite de #/jeux (pastille de l'onglet). Écrit avec ce qui touche déjà le joueur. */
+    gamesNoticeAt: v.optional(v.number()),
+    /** (V2, bulles) dernier événement de parrainage (filleul inscrit, parrainage payé) : pastille de l'onglet Amis */
+    referralNoticeAt: v.optional(v.number()),
     /** (ouverture 07/11) BANNI (admin:ban) : sessions fermées, reconnexion refusée, caché des listes, place libérée */
     bannedAt: v.optional(v.number()),
     banReason: v.optional(v.string()),

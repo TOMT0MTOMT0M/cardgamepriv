@@ -132,6 +132,7 @@ export const claim = mutation({
     const dev = device && DEVICE_RE.test(device) ? device : undefined;
     await ctx.db.patch(u._id, { referredBy: owner._id, referredAt: now, ...(dev ? { referredDevice: dev } : {}) });
     await addPacks(ctx, u._id, REFERRAL.packs);
+    await ctx.db.patch(owner._id, { referralNoticeAt: now }); // (V2) pastille Amis du parrain : un filleul est arrivé
     return { status: 'ok' as const, packs: REFERRAL.packs, referrer: owner.displayName };
   },
 });
@@ -142,6 +143,7 @@ export async function payReferrer(ctx: MutationCtx, userId: Id<'users'>) {
   if (!u?.referredBy || u.referralPaid || u.totalPacksOpened < REFERRAL.packsToPay) return;
   await ctx.db.patch(u._id, { referralPaid: true });
   await addPacks(ctx, u.referredBy, REFERRAL.packs);
+  await ctx.db.patch(u.referredBy, { referralNoticeAt: Date.now() }); // (V2) pastille Amis : parrainage payé
   await notify(ctx, u.referredBy, { kind: 'referral', title: `${u.displayName} a ouvert ses boosters : +${REFERRAL.packs} pour toi`, body: 'Ton parrainage est payé. Merci !', url: '#/amis' });
 }
 

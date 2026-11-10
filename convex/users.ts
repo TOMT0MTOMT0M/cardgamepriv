@@ -58,6 +58,9 @@ export const me = query({
       covers: user.covers ?? {},
       /** (ouverture 07/11) équipe (admin / modérateur) : passe le compte à rebours */
       staff: !!(user.isAdmin || user.isModerator),
+      /** (V2, bulles) derniers événements Jeux / parrainage (pastilles de la navigation) */
+      gamesNoticeAt: user.gamesNoticeAt,
+      referralNoticeAt: user.referralNoticeAt,
       /** compte pseudo (sans Discord) */
       pwAccount: user.discordId.startsWith('pw:'),
       /** (ouverture 07/11) visite guidée automatique déjà jouée */

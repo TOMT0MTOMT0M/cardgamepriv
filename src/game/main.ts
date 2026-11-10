@@ -28,6 +28,7 @@ import { fxReduced, setFxReduced } from '../core/fxPref';
 import { installCatalog } from '../core/sets/themes';
 import { CANAL, mountCanalBadge } from '../core/canal';
 import { watchUpdates } from './maj';
+import { installNavDots } from './navDots';
 
 // polices du jeu (retours 05/11) : une seule source, src/core/fonts.ts
 applyFontVars();
@@ -405,7 +406,7 @@ function layoutMenu() {
 function syncMenuDot() {
   const d = meEl.querySelector<HTMLElement>('.u-dot');
   if (!d) return;
-  const n = (missions?.ready() ?? 0) + (status ? Number(status.streak().claimable || status.streak().calendar) : 0);
+  const n = (missions?.ready() ?? 0) + (status ? Number(status.streak().claimable || status.streak().calendar) : 0) + Number(navDots?.majUnread() ?? false);
   d.hidden = !phoneHead.matches || n === 0;
 }
 phoneHead.addEventListener('change', () => layoutMenu());
@@ -440,6 +441,7 @@ function renderMe() {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
     meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Recharger le jeu (si l’affichage 3D ne revient pas)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Relancer le jeu</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Mises à jour</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Tutoriel</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
     tickPacks();
+    navDots?.sync(); // (le menu du profil vient d'être refait : sa pastille « Mises à jour » aussi)
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
   meEl.querySelector('.demo')?.addEventListener('click', () => toast(DEMO_TXT, 'info'));
@@ -729,6 +731,9 @@ window.addEventListener('offline', syncOnline);
 backend.onChange(syncOnline);
 
 let currentRoute = '';
+/** (V2) pastilles ajoutées : réserve pleine, Jeux, parrainage, mises à jour (game/navDots.ts) */
+let navDots: ReturnType<typeof installNavDots> | null = null;
+queueMicrotask(() => (navDots = installNavDots(backend, top, meEl, { route: () => currentRoute, onChange: () => syncMenuDot() })));
 /** Titre de l'onglet : la page, précédée du nombre de boosters prêts (« (3) Bébou — boutique »). */
 function updateTitle() {
   const u = backend.state.user;
@@ -1030,6 +1035,7 @@ async function boot() {
     document.body.dataset.route = key || 'shop';
     currentRoute = key;
     updateTitle();
+    navDots?.sync();
     // (C8) les Contrats vivent dans la Collection : c'est son onglet qui reste allumé
     const navKey = key === 'contrats' ? 'collection' : key;
     top.querySelectorAll<HTMLElement>('nav a, .nav-extra a').forEach((a) => {
@@ -1125,6 +1131,10 @@ async function boot() {
   setTimeout(() => void getChat().catch(() => (chatP = null)), 900);
   // (V2 fluidité) le jeu s'installe sur l'appareil en tâche de fond (bundle.ts) : démarrages suivants sans réseau
   setTimeout(() => void import('./bundle').then((m) => m.installBundle(() => shop.busy())), 4500);
+  // (V2) puis, en fond, les miniatures des cartes possédées (game/offline.ts) — une fois la collection arrivée
+  const artSoon = (tries = 0) =>
+    setTimeout(() => (backend.state.collection.length ? void import('./offline').then((m) => m.prefetchCollectionArt(backend, () => shop.busy())) : tries < 6 && artSoon(tries + 1)), 20000);
+  artSoon();
 
   // crochet de test (Playwright)
   (window as unknown as { __jeu: unknown }).__jeu = {

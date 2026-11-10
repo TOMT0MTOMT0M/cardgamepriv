@@ -8,6 +8,7 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { ACCENTS, BADGES, BANNERS, FRAMES, VITRINES, accentColor, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { guarded, isPending } from './safety';
 import { notifPanel } from '../notif';
+import { offlinePanel } from '../offline';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
@@ -240,6 +241,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     accB.innerHTML = me ? `<button class="btn-ghost pf-out">${outLabel}</button><span class="muted">${backend.state.mode === 'demo' ? 'Efface toute la collection de démo de ce navigateur.' : 'Tu pourras te reconnecter quand tu veux : ta collection reste sur le serveur.'}</span>` : '';
     // (V2) notifications push : fiche au-dessus de la déconnexion (notif.ts)
     if (me) accB.prepend(notifPanel(backend));
+    // (V2) hors connexion : tout télécharger (offline.ts), juste sous les notifications
+    if (me) accB.querySelector('.nf-box')?.after(offlinePanel(backend));
     const out = accB.querySelector<HTMLButtonElement>('.pf-out');
     let armed = 0;
     out?.addEventListener('click', () => {
