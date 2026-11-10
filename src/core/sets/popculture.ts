@@ -1,8 +1,8 @@
 /**
  * POP CULTURE PACK (thème « pop ») — données pures, AUCUN import (partagé avec convex/cardsCatalog.ts).
  * GÉNÉRÉ par scripts/make-pop.py (ne pas éditer à la main) depuis Tri-etoiles-popculture.xlsx (SPEC-THEME-POP-CULTURE v5).
- * 16423 cartes · 853 sous-thèmes (libellé imprimé en grand sur la carte), regroupés à l'affichage en 7.
- * Numéro = « N° » de l'Excel, sur 17471. Ids « pop-… » figés dans scripts/data/pop-ids.json (ne JAMAIS les changer).
+ * 16429 cartes · 853 sous-thèmes (libellé imprimé en grand sur la carte), regroupés à l'affichage en 7.
+ * Numéro = « N° » de l'Excel, sur 17477. Ids « pop-… » figés dans scripts/data/pop-ids.json (ne JAMAIS les changer).
  */
 export type PopRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
@@ -18,7 +18,7 @@ export interface PopEntry {
   /** identifiant de carte — ne JAMAIS le changer */
   id: string;
   sub: string;
-  /** n° de la carte dans tout le thème (1 → 17471) */
+  /** n° de la carte dans tout le thème (1 → 17477) */
   num: number;
   name: string;
   rarity: PopRarity;
@@ -30,7 +30,7 @@ export interface PopEntry {
   label: string;
 }
 
-export const POP_SIZE = 17471;
+export const POP_SIZE = 17477;
 export const POP_GROUPS: Record<string, string> = {
   anime: "Mangas & anime",
   films: "Films",
@@ -1212,6 +1212,12 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [12, 2437, "pop-midland-no-ou", "Midland no Ou", 'c', "midland-no-ou.jpg", "c", 6],
   [12, 2438, "pop-midland-no-ouhi", "Midland no Ouhi", 'c', "midland-no-ouhi.jpg", "c", 6],
   [12, 2439, "pop-owen", "Owen", 'c', "owen.jpg", "c", 6],
+  [12, 17472, "pop-femto", "Femto", 'm', "", "", 6],
+  [12, 17473, "pop-chevalier-squelette", "Chevalier Squelette", 'm', "chevalier-squelette.jpg", "c", 6],
+  [12, 17474, "pop-guts-armure-du-berserker", "Guts (Armure du Berserker)", 'm', "", "", 6],
+  [12, 17475, "pop-schierke", "Schierke", 'l', "schierke.jpg", "c", 6],
+  [12, 17476, "pop-farnese", "Farnese", 'l', "farnese.jpg", "c", 6],
+  [12, 17477, "pop-serpico", "Serpico", 'l', "serpico.jpg", "c", 6],
   [13, 2454, "pop-ginga-hagane", "Ginga Hagane", 'e', "ginga-hagane.jpg", "c", 6],
   [13, 2455, "pop-kyouya-tategami", "Kyouya Tategami", 'e', "kyouya-tategami.jpg", "c", 6],
   [13, 2456, "pop-ryuuga", "Ryuuga", 'e', "ryuuga.jpg", "c", 6],

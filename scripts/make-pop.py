@@ -10,7 +10,7 @@ Source : Tri-etoiles-popculture.xlsx (SPEC-THEME-POP-CULTURE v5, feuille « Tri 
 Import en REMPLACEMENT : src/core/sets/popculture.ts est réécrit en entier à chaque « gen ».
 Identifiants STABLES « pop-<nom> » : figés la première fois dans scripts/data/pop-ids.json (clé = nom + type), réutilisés
 ensuite même si une future version du tri renumérote ou ré-étiquette les sous-thèmes (une carte ne change jamais d'id).
-Numéro affiché = colonne « N° » de l'Excel, sur 17 471.
+Numéro affiché = colonne « N° » de l'Excel (+ patchs), sur 17 477.
 Bloc d'affichage d'un sous-thème : déduit du type des cartes (Artiste, Chanson, Album, Acteur, Youtubeur, Yu-Gi-Oh) ;
 pour les personnages : AniList → Mangas & anime, sinon listes DA / SERIE ci-dessous (tout le reste = Films).
 harvest : image de la colonne « Image URL » (AniList, Wikimedia Commons via l'API, cache web) téléchargée une fois dans
@@ -32,7 +32,11 @@ LOG = os.path.join(ROOT, 'scripts', 'data', 'pop-harvest.json')
 TS = os.path.join(SETS, 'popculture.ts')
 UA = 'BebouCard/1.0 (https://cardgamepriv.pages.dev; private card game, one-time image harvest)'
 R = {1: 'c', 2: 'u', 3: 'r', 4: 'e', 5: 'l', 6: 'm'}
-TOTAL = 17471
+BASE = 17471  # lignes du tri de base (Tri-etoiles-popculture.xlsx)
+# patchs du tri (donnees/patchs/), appliqués dans l'ordre à chaque gen / harvest — INSERT seulement, après le N° 17471
+#   Patch-pop-berserk.xlsx (10/11/2026) : 6 cartes Berserk 5★/6★ hors Âge d'or (N° 17472 → 17477)
+PATCHES = ['Patch-pop-berserk.xlsx']
+TOTAL = 17477  # BASE + patchs
 
 # ── blocs d'affichage. Ids de groupe : ceux des anciens sous-thèmes vides du thème (films, series, anime, musique,
 # youtubeurs) pour garder les liens d'avant, + dessins / stars.
@@ -70,6 +74,28 @@ def existing(pattern):
 
 
 # ───────────────────────────────────────────── Excel
+def patch_rows():
+    """Nouvelles cartes des patchs (feuille « Nouvelles cartes », sous l'en-tête « N° », mêmes colonnes que le tri)."""
+    out = []
+    for name in PATCHES:
+        ws = openpyxl.load_workbook(os.path.join(ROOT, 'donnees', 'patchs', name), read_only=True, data_only=True)['Nouvelles cartes']
+        head = None
+        for r in ws.iter_rows(values_only=True):
+            if head is None:
+                if r and r[0] == 'N°':
+                    head = [str(x or '').strip() for x in r]
+                continue
+            if not r or not isinstance(r[0], (int, float)) or not r[2]:
+                continue
+            col = lambda k: r[head.index(k)]
+            t = str(col('Type') or '').strip()
+            n = int(col('N°'))
+            assert n > BASE, f'{name} : N° {n} déjà dans le tri de base'
+            out.append({'n': n, 'sub': str(col('Sous-thème')).strip(), 'name': str(col('Carte')).strip(), 'type': t,
+                        'label': TYPE_FR.get(t, t), 'stars': int(col('Étoiles finales')), 'url': str(col('Image URL') or '').strip()})
+    return out
+
+
 def read_rows(xlsx):
     ws = openpyxl.load_workbook(xlsx, read_only=True, data_only=True)['Tri étoiles']
     rows = []
@@ -86,7 +112,9 @@ def read_rows(xlsx):
         t = str(col('Type') or '').strip()
         rows.append({'n': int(col('N°')), 'sub': sub, 'name': str(col('Carte')).strip(), 'type': t,
                      'label': TYPE_FR.get(t, t), 'stars': int(col('Étoiles finales')), 'url': str(col('Image URL') or '').strip()})
-    assert len(rows) == TOTAL, f'{len(rows)} lignes ({TOTAL} attendues)'
+    assert len(rows) == BASE, f'{len(rows)} lignes ({BASE} attendues)'
+    rows += patch_rows()
+    assert len(rows) == TOTAL, f'{len(rows)} lignes avec les patchs ({TOTAL} attendues)'
     assert sorted(r['n'] for r in rows) == list(range(1, TOTAL + 1)), f'colonne N° : 1 → {TOTAL} attendu'
     assert all(1 <= r['stars'] <= 6 for r in rows)
     # bloc de chaque sous-thème

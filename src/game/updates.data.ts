@@ -29,6 +29,12 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Berserk : six nouvelles cartes', tag: 'nouveau',
+        points: [
+          'Six nouvelles cartes Berserk au-delà de l’Âge d’or, dans le booster Pop Culture : Femto, le Chevalier Squelette et Guts (Armure du Berserker) en 6★, Schierke, Farnese et Serpico en 5★.',
+        ],
+      },
+      {
         date: '8 nov.', title: 'Correctifs du week-end', tag: 'amélioré',
         points: [
           'Battle Royale : on peut maintenant miser de 1 à 5 boosters, le même nombre pour tout le monde. Le total d’étoiles de toutes tes cartes départage.',

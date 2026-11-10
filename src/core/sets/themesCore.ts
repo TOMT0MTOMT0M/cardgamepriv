@@ -213,7 +213,7 @@ function bigSubthemes(B: typeof BigSets): SubTheme[] {
     size: B.SPORT_SIZE,
   }));
 
-  // ── POP CULTURE PACK (17 471 cartes, SPEC-THEME-POP-CULTURE v5) : 856 sous-thèmes (franchises, œuvres ou pools :
+  // ── POP CULTURE PACK (n° 1 → 17 477 avec le patch Berserk, SPEC-THEME-POP-CULTURE v5) : 856 sous-thèmes (franchises, œuvres ou pools :
   // « Naruto », « Star Wars », « Caméra Café », « Musique FR »…, imprimés en grand sur la carte), regroupés à l'affichage en
   // 7 blocs (Mangas & anime, Films, Séries TV, Dessins animés, Musique, Acteurs & actrices, YouTube). Les groupes reprennent
   // les ids des anciens sous-thèmes vides (films, series, anime, musique, youtubeurs ; « Marvel MCU » garde « marvel »).
