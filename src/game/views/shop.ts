@@ -1,5 +1,5 @@
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
-import { playMusicPreview, stopMusicPreview } from '../musicPreview';
+import { playMusicPreview, prefetchMusicPreview, stopMusicPreview } from '../musicPreview';
 import { fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import { openStyleOf, type OpeningScene } from '../scenes/opening';
@@ -1135,7 +1135,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const duelCard = p.cards.find((c) => rarity(c.rarity).rank === 5 && duelMonster(c.cardId));
     if (duelCard) void prepareDuel(duelCard);
     // 6★ des autres familles : moteur et scène téléchargés pendant la déchirure
-    for (const c of p.cards) prepareMythic(c.cardId, c.rarity);
+    for (const c of p.cards) {
+      prepareMythic(c.cardId, c.rarity);
+      prefetchMusicPreview(c.cardId, c.rarity);
+    }
     // Pokémon 6★ : musique décodée et scène montée (carte, décor) pendant que le joueur ouvre le booster
     // (plusieurs Pokémon 6★ dans le même booster : chacun aura sa rencontre ; la 1re est préparée maintenant, les
     // suivantes à la fin de la précédente — ou, au pire, pendant le noir de leur propre transition)

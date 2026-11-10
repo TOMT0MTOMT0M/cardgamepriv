@@ -1,16 +1,73 @@
 import type { MusicPreview } from './musicPreviews.data';
+import { catalogEntry, subthemeById } from '../core/sets/themes';
 import type { Shell } from './shell';
 import type { ViewerScene } from './scenes/viewer';
 
 /**
- * EXTRAIT MUSICAL des cartes Musique 6★ (retours 05/11) : quand une 6★ du bloc Musique (artiste, chanson, album) est
+ * EXTRAIT MUSICAL des cartes Musique 6★ (retours 05/11) — et, depuis les retours de Hugo (10/11), OPENING de l'animé
+ * pour les 6★ d'animés : quand une 6★ du bloc Musique (artiste, chanson, album) est
  * révélée à l'ouverture ou regardée dans la visionneuse, son aperçu officiel de 30 s (iTunes, lu depuis Apple) monte en
  * fondu, avec une petite étiquette « ♪ titre — artiste » et un bouton pour couper. Il s'arrête en fondu à la carte
  * suivante, à la fermeture, ou au bout des 30 s. Rien à précharger : la table (≈ 200 cartes) arrive à la 1re 6★.
  * Muet si le volume du jeu est à 0 ; suit le volume général.
  */
-let table: Promise<Record<string, MusicPreview>> | null = null;
-const load = () => (table ??= import('./musicPreviews.data').then((m) => m.MUSIC_PREVIEWS).catch(() => ({}) as Record<string, MusicPreview>));
+type Tables = { cards: Record<string, MusicPreview>; anime: Record<string, MusicPreview> };
+let table: Promise<Tables> | null = null;
+const load = () =>
+  (table ??= import('./musicPreviews.data')
+    .then((m) => ({ cards: m.MUSIC_PREVIEWS, anime: m.ANIME_OPENINGS }))
+    .catch(() => ({ cards: {}, anime: {} }) as Tables));
+
+/**
+ * (retours Hugo 10/11) Extrait d'une carte : le sien (cartes Musique), sinon — 6★ d'un ANIMÉ — l'opening de son animé,
+ * en fond. Berserk (ambiance « Éclipse ») et Yu-Gi-Oh (invocation) gardent leur propre musique : absents de la table.
+ */
+async function previewOf(cardId: string): Promise<MusicPreview | null> {
+  const t = await load();
+  if (t.cards[cardId]) return t.cards[cardId];
+  const e = catalogEntry(cardId);
+  if (!e || subthemeById(e.subthemeId)?.group?.id !== 'anime') return null;
+  return t.anime[e.subthemeId] ?? null;
+}
+
+/**
+ * Morceaux trouvés seulement chez Deezer : leur adresse d'aperçu est signée et expire au bout de quelques heures —
+ * on la redemande à l'API publique (JSONP : elle n'autorise pas les appels depuis un autre site), gardée 20 min.
+ */
+const DEEZER_TTL = 20 * 60_000;
+const deezerUrls = new Map<number, { at: number; url: Promise<string | null> }>();
+function deezerUrl(id: number): Promise<string | null> {
+  const hit = deezerUrls.get(id);
+  if (hit && Date.now() - hit.at < DEEZER_TTL) return hit.url;
+  const url = new Promise<string | null>((resolve) => {
+    const cb = `__dzPreview${id}_${Date.now().toString(36)}`;
+    const w = window as unknown as Record<string, unknown>;
+    const el = document.createElement('script');
+    const end = (v: string | null) => {
+      clearTimeout(timer);
+      delete w[cb];
+      el.remove();
+      resolve(v);
+    };
+    const timer = setTimeout(() => end(null), 6000);
+    w[cb] = (d: { preview?: string }) => end(typeof d?.preview === 'string' && d.preview ? d.preview : null);
+    el.src = `https://api.deezer.com/track/${id}?output=jsonp&callback=${cb}`;
+    el.onerror = () => end(null);
+    document.head.append(el);
+  });
+  deezerUrls.set(id, { at: Date.now(), url });
+  void url.then((u) => u || deezerUrls.delete(id));
+  return url;
+}
+const urlOf = (p: MusicPreview) => (p.url ? Promise.resolve(p.url) : p.deezer ? deezerUrl(p.deezer) : Promise.resolve(null));
+
+/** À l'ouverture d'un booster : l'adresse Deezer d'une 6★ du booster est demandée pendant la déchirure (pas d'attente à la révélation). */
+export function prefetchMusicPreview(cardId: string, rarity: string): void {
+  if (rarity !== 'mythic') return;
+  void previewOf(cardId).then((p) => {
+    if (p && !p.url && p.deezer) void deezerUrl(p.deezer);
+  });
+}
 
 let audio: HTMLAudioElement | null = null;
 let chip: HTMLElement | null = null;
@@ -56,7 +113,7 @@ function showChip(p: MusicPreview, host?: HTMLElement | null) {
 /** La carte a-t-elle un extrait ? (6★ du bloc Musique trouvée sur iTunes) */
 export async function hasMusicPreview(cardId: string, rarity: string): Promise<boolean> {
   if (rarity !== 'mythic') return false;
-  return !!(await load())[cardId];
+  return !!(await previewOf(cardId));
 }
 
 /** Lance l'extrait de la carte (rien si ce n'est pas une 6★ musique, ou si c'est déjà elle). `volume` : 0..1 du jeu. */
@@ -65,11 +122,13 @@ export async function playMusicPreview(cardId: string, rarity: string, volume = 
   owner = by;
   if (current === cardId && audio && !audio.paused) return;
   const my = ++token;
-  const p = (await load())[cardId];
+  const p = await previewOf(cardId);
   if (!p || my !== token) return;
+  const src = await urlOf(p);
+  if (!src || my !== token) return;
   stopMusicPreview(0.2);
   current = cardId;
-  const a = new Audio(p.url);
+  const a = new Audio(src);
   a.preload = 'auto';
   a.volume = 0;
   audio = a;

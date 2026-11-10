@@ -226,7 +226,8 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   // (retours 05/11, préparé) photo HORIZONTALE : un autre gabarit pour ces cartes, dès que LANDSCAPE.design est rempli
   // (07/11, décision Tom & Hugo) les 6★ restent TOUJOURS en pleine illustration, quel que soit le format de la photo :
   // leurs images non portrait sont remplacées à la main par des photos verticales (doc claude/retours-live-06-avancement.md)
-  const dz = rarityId === 'mythic' ? dz0 : landscapeDesign(card, im, dz0);
+  // (retours Hugo 10/11) les 5★ aussi : plus aucune 5★ au gabarit Suisse, toutes en pleine illustration
+  const dz = rarityId === 'mythic' || rarityId === 'legendary' ? dz0 : landscapeDesign(card, im, dz0);
 
   const bg = makeCanvas(W, H), subj = makeCanvas(W, H), fg = makeCanvas(W, H), fx = makeCanvas(W, H);
   const frame = makeCanvas(W, H), masks = makeCanvas(W, H);

@@ -1,0 +1,647 @@
+{
+  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer).",
+  "cards": {
+    "pop-au-dd": [
+      "Au DD",
+      "PNL"
+    ],
+    "pop-aux-champs-elysees": [
+      "Les Champs-Élysées",
+      "Joe Dassin"
+    ],
+    "pop-bande-organisee": [
+      "Bande organisée",
+      "Jul"
+    ],
+    "pop-bruxellesvie": [
+      "BruxellesVie",
+      "Damso"
+    ],
+    "pop-dans-l-espace": [
+      "Dans l'espace",
+      "Gambi"
+    ],
+    "pop-die": [
+      "Die",
+      "Gazo"
+    ],
+    "pop-je-t-aimais-je-t-aime-et-je-t-aimerai": [
+      "Je t'aimais, je t'aime, je t'aimerai",
+      "Francis Cabrel"
+    ],
+    "pop-je-t-emmene-au-vent": [
+      "J't'emmène au vent",
+      "Louise Attaque"
+    ],
+    "pop-jefe": [
+      "Jefe",
+      "Ninho"
+    ],
+    "pop-lettre-a-une-femme": [
+      "Lettre à une femme",
+      "Ninho"
+    ],
+    "pop-maman-ne-le-sait-pas": [
+      "Maman ne le sait pas",
+      "Ninho"
+    ],
+    "pop-mon-soleil": [
+      "Mon soleil",
+      "Dadju"
+    ],
+    "pop-naha": [
+      "Naha",
+      "PNL"
+    ],
+    "pop-reseaux": [
+      "Réseaux",
+      "Niska"
+    ],
+    "pop-seine-saint-denis-style": [
+      "Seine Saint-Denis Style",
+      "Suprême NTM"
+    ],
+    "pop-plugged-in": [
+      "I Hear You Knocking",
+      "Dave Edmunds"
+    ],
+    "pop-arthur-honegger": [
+      "Pacific 231",
+      "Honegger"
+    ],
+    "pop-coppelia": [
+      "Coppélia",
+      "Delibes"
+    ],
+    "pop-darius-milhaud": [
+      "Le bœuf sur le toit",
+      "Milhaud"
+    ],
+    "pop-don-carlos": [
+      "Don Carlo",
+      "Verdi"
+    ],
+    "pop-francis-poulenc": [
+      "Les Biches",
+      "Poulenc"
+    ],
+    "pop-giselle": [
+      "Giselle",
+      "Adolphe Adam"
+    ],
+    "pop-jean-baptiste-lully": [
+      "Cérémonie des Turcs",
+      ""
+    ],
+    "pop-palais-garnier": [
+      "Habanera",
+      "Maria Callas"
+    ],
+    "pop-paris-opera": [
+      "Galop infernal",
+      ""
+    ],
+    "pop-rudolf-nureyev": [
+      "Dance of the Knights",
+      "Prokofiev"
+    ],
+    "pop-theatre-des-champs-elysees": [
+      "Le Sacre du printemps",
+      "Stravinsky"
+    ],
+    "pop-andy-warhol": [
+      "Sunday Morning",
+      "The Velvet Underground"
+    ],
+    "pop-metropolitan-opera": [
+      "Nessun dorma",
+      "Pavarotti"
+    ],
+    "pop-richard-strauss": [
+      "Zarathustra",
+      "Karajan"
+    ]
+  },
+  "anime": {
+    "86": [
+      "Kyoukaisen",
+      "amazarashi"
+    ],
+    "a-silent-voice": [
+      "Koi wo Shita no wa",
+      "aiko"
+    ],
+    "akame-ga-kill": [
+      "Skyreach",
+      "Sora Amamiya"
+    ],
+    "angel-beats": [
+      "My Soul, Your Beats!",
+      "Lia"
+    ],
+    "angels-of-death": [
+      "Vital",
+      "Masaaki Endoh"
+    ],
+    "assassination-classroom": [
+      "Seishun Satsubatsuron",
+      "3-nen E-gumi"
+    ],
+    "banana-fish": [
+      "found & lost",
+      "Survive Said The Prophet"
+    ],
+    "beastars": [
+      "Wild Side",
+      "ALI"
+    ],
+    "black-butler": [
+      "Monochrome no Kiss",
+      "SID"
+    ],
+    "black-clover": [
+      "Haruka Mirai",
+      "Kankaku Piero"
+    ],
+    "black-lagoon": [
+      "Red Fraction",
+      "MELL"
+    ],
+    "bleach": [
+      "Asterisk",
+      "ORANGE RANGE"
+    ],
+    "blue-box": [
+      "Same Blue",
+      "Official HIGE DANdism"
+    ],
+    "blue-exorcist": [
+      "Core Pride",
+      "UVERworld"
+    ],
+    "blue-lock": [
+      "Chaos ga Kiwamaru",
+      "UNISON SQUARE GARDEN"
+    ],
+    "bocchi-the-rock": [
+      "Seishun Complex",
+      "Kessoku Band"
+    ],
+    "bungo-stray-dogs": [
+      "TRASH CANDY",
+      "GRANRODEO"
+    ],
+    "cardcaptor-sakura": [
+      "Catch You Catch Me",
+      "Gumi"
+    ],
+    "carnet-de-l-apothicaire": [
+      "Hana ni Natte",
+      "Ryokuoushoku Shakai"
+    ],
+    "chainsaw-man": [
+      "KICK BACK",
+      "Kenshi Yonezu"
+    ],
+    "charlotte": [
+      "Bravely You",
+      "Lia"
+    ],
+    "city-hunter": [
+      "Get Wild",
+      "TM NETWORK"
+    ],
+    "clannad": [
+      "Mag Mell",
+      "eufonius"
+    ],
+    "classroom-of-the-elite": [
+      "Caste Room",
+      "ZAQ"
+    ],
+    "code-geass": [
+      "COLORS",
+      "FLOW"
+    ],
+    "cowboy-bebop": [
+      "Tank!",
+      "SEATBELTS"
+    ],
+    "cyberpunk-edgerunners": [
+      "This Fffire",
+      "Franz Ferdinand"
+    ],
+    "d-gray-man": [
+      "Innocent Sorrow",
+      "abingdon boys school"
+    ],
+    "dandadan": [
+      "Otonoke",
+      "Creepy Nuts"
+    ],
+    "danmachi": [
+      "Hey World",
+      "Yuka Iguchi"
+    ],
+    "death-note": [
+      "the WORLD",
+      "NIGHTMARE"
+    ],
+    "death-parade": [
+      "Flyers",
+      "BRADIO"
+    ],
+    "delicious-in-dungeon": [
+      "Sleep Walking Orchestra",
+      "BUMP OF CHICKEN"
+    ],
+    "demon-slayer": [
+      "Gurenge",
+      "LiSA"
+    ],
+    "devilman-crybaby": [
+      "MAN HUMAN",
+      "Denki Groove"
+    ],
+    "doraemon": [
+      "Yume wo Kanaete Doraemon",
+      "mao"
+    ],
+    "dorohedoro": [
+      "Welcome to Chaos",
+      "(K)NoW_NAME"
+    ],
+    "dororo": [
+      "Kaen",
+      "Queen Bee"
+    ],
+    "dr-stone": [
+      "Good Morning World!",
+      "BURNOUT SYNDROMES"
+    ],
+    "dragon-ball": [
+      "CHA-LA HEAD-CHA-LA",
+      "Hironobu Kageyama"
+    ],
+    "durarara": [
+      "Uragiri no Yuuyake",
+      "THEATRE BROOK"
+    ],
+    "erased": [
+      "Re:Re:",
+      "ASIAN KUNG-FU GENERATION"
+    ],
+    "evangelion": [
+      "A Cruel Angel's Thesis",
+      "Yoko Takahashi"
+    ],
+    "fairy-tail": [
+      "Snow Fairy",
+      "FUNKIST"
+    ],
+    "fire-force": [
+      "Inferno",
+      "Mrs. GREEN APPLE"
+    ],
+    "food-wars": [
+      "Kibou no Uta",
+      "ultra tower"
+    ],
+    "free": [
+      "Rage on",
+      "OLDCODEX"
+    ],
+    "frieren": [
+      "Yuusha",
+      "YOASOBI"
+    ],
+    "fruits-basket": [
+      "For Fruits Basket",
+      "Ritsuko Okazaki"
+    ],
+    "fullmetal-alchemist": [
+      "again",
+      "YUI"
+    ],
+    "ghost-in-the-shell-film": [
+      "Making of Cyborg",
+      "Kenji Kawai"
+    ],
+    "gintama": [
+      "Pray",
+      "Tommy heavenly6"
+    ],
+    "goblin-slayer": [
+      "Rightfully",
+      "Mili"
+    ],
+    "golden-kamuy": [
+      "Winter Wind",
+      "MAN WITH A MISSION"
+    ],
+    "goldorak": [
+      "Goldorak",
+      ""
+    ],
+    "gto": [
+      "DRIVER'S HIGH",
+      "L'Arc-en-Ciel"
+    ],
+    "gurren-lagann": [
+      "Sorairo Days",
+      "Shoko Nakagawa"
+    ],
+    "haikyu": [
+      "Imagination",
+      "SPYAIR"
+    ],
+    "hajime-no-ippo": [
+      "Under Star",
+      "Shocking Lemon"
+    ],
+    "hell-s-paradise": [
+      "W●RK",
+      "Ringo Sheena"
+    ],
+    "hellsing": [
+      "Logos Naki World",
+      "Yasushi Ishii"
+    ],
+    "high-school-dxd": [
+      "Trip -innocent of D-",
+      "Larval Stage Planning"
+    ],
+    "horimiya": [
+      "Iro Kousui",
+      "Yoh Kamiyama"
+    ],
+    "hunter-x-hunter": [
+      "departure!",
+      "Masatoshi Ono"
+    ],
+    "jojo-s-bizarre-adventure": [
+      "Sono Chi no Sadame",
+      "Tominaga"
+    ],
+    "jujutsu-kaisen": [
+      "Kaikai Kitan",
+      "Eve"
+    ],
+    "kaguya-sama": [
+      "Love Dramatic",
+      "Masayuki Suzuki"
+    ],
+    "kaiji": [
+      "Mirai wa Ore no Te no Naka",
+      "Hakuryu"
+    ],
+    "kenshin-le-vagabond": [
+      "Sobakasu",
+      "JUDY AND MARY"
+    ],
+    "kill-la-kill": [
+      "Sirius",
+      "Eir Aoi"
+    ],
+    "konosuba": [
+      "fantastic dreamer",
+      "Machico"
+    ],
+    "kuroko-no-basket": [
+      "Can Do",
+      "GRANRODEO"
+    ],
+    "l-attaque-des-titans": [
+      "Guren no Yumiya",
+      "Linked Horizon"
+    ],
+    "lady-oscar": [
+      "Bara wa Utsukushiku Chiru",
+      "Hiroko Suzuki"
+    ],
+    "lycoris-recoil": [
+      "ALIVE",
+      "ClariS"
+    ],
+    "march-comes-in-like-a-lion": [
+      "Answer",
+      "BUMP OF CHICKEN"
+    ],
+    "mashle": [
+      "Bling-Bang-Bang-Born",
+      "Creepy Nuts"
+    ],
+    "mirai-nikki": [
+      "Kuusou Mesorogiwi",
+      "Yousei Teikoku"
+    ],
+    "mob-psycho-100": [
+      "99",
+      "MOB CHOIR"
+    ],
+    "moi-quand-je-me-reincarne-en-slime": [
+      "Nameless Story",
+      "Takuma Terashima"
+    ],
+    "monogatari": [
+      "Renai Circulation",
+      "Kana Hanazawa"
+    ],
+    "pop-monster": [
+      "Grain",
+      "Kuniaki Haishima"
+    ],
+    "moriarty-the-patriot": [
+      "DYING WISH",
+      ""
+    ],
+    "mushoku-tensei": [
+      "Tabibito no Uta",
+      "Yuiko Ohara"
+    ],
+    "my-dress-up-darling": [
+      "Sansan Days",
+      "spira spica"
+    ],
+    "my-hero-academia": [
+      "THE DAY",
+      "Porno Graffitti"
+    ],
+    "nana": [
+      "Rose",
+      "BLACK STONES"
+    ],
+    "naruto": [
+      "Blue Bird",
+      "Ikimonogakari"
+    ],
+    "no-game-no-life": [
+      "This Game",
+      "Konomi Suzuki"
+    ],
+    "noragami": [
+      "Goya no Machiawase",
+      "Hello Sleepwalkers"
+    ],
+    "one-piece": [
+      "We Are!",
+      "Hiroshi Kitadani"
+    ],
+    "one-punch-man": [
+      "THE HERO!!",
+      "JAM Project"
+    ],
+    "oshi-no-ko": [
+      "Idol",
+      "YOASOBI"
+    ],
+    "overlord": [
+      "Clattanoia",
+      "OxT"
+    ],
+    "panty-stocking": [
+      "D City Rock",
+      "TeddyLoid"
+    ],
+    "parasite": [
+      "Let Me Hear",
+      "Fear, and Loathing in Las Vegas"
+    ],
+    "pokemon-anime": [
+      "Pokémon Theme",
+      "Jason Paige"
+    ],
+    "psycho-pass": [
+      "abnormalize",
+      "Ling tosite sigure"
+    ],
+    "ranking-of-kings": [
+      "BOY",
+      "King Gnu"
+    ],
+    "re-zero": [
+      "Redo",
+      "Konomi Suzuki"
+    ],
+    "rent-a-girlfriend": [
+      "Centimeter",
+      "the peggies"
+    ],
+    "saga-of-tanya-the-evil": [
+      "JINGO JUNGLE",
+      "MYTH & ROID"
+    ],
+    "samurai-champloo": [
+      "Battlecry",
+      "Nujabes"
+    ],
+    "seraph-of-the-end": [
+      "X.U.",
+      "SawanoHiroyuki[nZk]"
+    ],
+    "seven-deadly-sins": [
+      "Netsujou no Spectrum",
+      "Ikimonogakari"
+    ],
+    "sk8-the-infinity": [
+      "Paradise",
+      "Rude-α"
+    ],
+    "slam-dunk": [
+      "Kimi ga Suki da to Sakebitai",
+      "BAAD"
+    ],
+    "solo-leveling": [
+      "LEveL",
+      "SawanoHiroyuki[nZk]"
+    ],
+    "soul-eater": [
+      "Resonance",
+      "T.M.Revolution"
+    ],
+    "spy-x-family": [
+      "Mixed Nuts",
+      "Official HIGE DANdism"
+    ],
+    "steins-gate": [
+      "Hacking to the Gate",
+      "Kanako Itou"
+    ],
+    "sword-art-online": [
+      "crossing field",
+      "LiSA"
+    ],
+    "sword-art-online-alicization": [
+      "ADAMAS",
+      "LiSA"
+    ],
+    "the-case-study-of-vanitas": [
+      "Sora to Utsuro",
+      "SawanoHiroyuki[nZk]"
+    ],
+    "the-eminence-in-shadow": [
+      "HIGHEST",
+      "OxT"
+    ],
+    "the-god-of-high-school": [
+      "CONTRADICTION",
+      "KSUKE"
+    ],
+    "the-promised-neverland": [
+      "Touch Off",
+      "UVERworld"
+    ],
+    "the-quintessential-quintuplets": [
+      "Gotoubun no Kimochi",
+      "Nakano Family Quintuplets"
+    ],
+    "the-rising-of-the-shield-hero": [
+      "RISE",
+      "MADKID"
+    ],
+    "tokyo-ghoul": [
+      "unravel",
+      "TK from Ling tosite sigure"
+    ],
+    "tokyo-revengers": [
+      "Cry Baby",
+      "Official HIGE DANdism"
+    ],
+    "toradora": [
+      "Pre-Parade",
+      "Rie Kugimiya"
+    ],
+    "tower-of-god": [
+      "TOP",
+      "Stray Kids"
+    ],
+    "trigun": [
+      "H.T.",
+      "Tsuneo Imahori"
+    ],
+    "vinland-saga": [
+      "MUKANJYO",
+      "Survive Said The Prophet"
+    ],
+    "violet-evergarden": [
+      "Sincerely",
+      "TRUE"
+    ],
+    "your-lie-in-april": [
+      "Hikaru Nara",
+      "Goose house"
+    ],
+    "your-name": [
+      "Zenzenzense",
+      "RADWIMPS"
+    ],
+    "yu-yu-hakusho": [
+      "Hohoemi no Bakudan",
+      "Matsuko Mawatari"
+    ],
+    "yuri-on-ice": [
+      "History Maker",
+      "DEAN FUJIOKA"
+    ]
+  }
+}
