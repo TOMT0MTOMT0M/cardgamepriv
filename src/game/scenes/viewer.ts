@@ -47,6 +47,11 @@ export interface ViewerScene extends Experiment {
   show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1; quiet?: boolean }): Promise<void>;
   /** Vrai si le point (NDC −1..1) est sur la carte : un toucher ailleurs ferme la visionneuse (« clic hors zone »). */
   hits(ndcX: number, ndcY: number): boolean;
+  /**
+   * (V2 fluidité, lot 6) où la carte se pose à l'écran une fois arrivée (au repos, sans zoom), en coordonnées
+   * normalisées (−1..1, y vers le haut) : cible de la tuile qui « grandit » vers la carte 3D. null avant le montage.
+   */
+  restRect(): { x0: number; y0: number; x1: number; y1: number } | null;
 }
 
 export function createViewerScene(): ViewerScene {
@@ -95,6 +100,18 @@ export function createViewerScene(): ViewerScene {
     return nx >= x0 - m && nx <= x1 + m && ny >= y0 - m && ny <= y1 + m;
   }
 
+  function restRect() {
+    if (!stage) return null;
+    stage.camera.updateMatrixWorld();
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      // (pose de repos : centre légèrement relevé, cf. `lift` dans la boucle)
+      corner.set((cx * 0.63) / 2, (cy * 0.88) / 2 + 0.05, 0).project(stage.camera);
+      x0 = Math.min(x0, corner.x); y0 = Math.min(y0, corner.y); x1 = Math.max(x1, corner.x); y1 = Math.max(y1, corner.y);
+    }
+    return Number.isFinite(x0 + y0 + x1 + y1) ? { x0, y0, x1, y1 } : null;
+  }
+
   function clear() {
     if (wonderInstance) {
       wonderInstance.dispose();
@@ -116,6 +133,7 @@ export function createViewerScene(): ViewerScene {
 
   return {
     hits,
+    restRect,
     // définition native de l'écran (×3 sur iPhone) : une seule carte, scène légère — c'est l'écran où l'on inspecte
     dprCap: 3,
     async show(cardId, rarityId, opts) {

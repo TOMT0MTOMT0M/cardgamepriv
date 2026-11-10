@@ -346,6 +346,8 @@ body.card-open .views { pointer-events: none; }
 .tile img.real { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; opacity: 0; transform: scale(1.04); transition: opacity var(--dur-emphatique), transform var(--dur-lente) var(--ease-entree); z-index: 1; pointer-events: none; }
 .tile.real-on img.real { opacity: 1; transform: none; }
 .tile.real-now img.real { transition: none; }
+/* (V2 fluidité, lot 6) la carte de la tuile en vol vers la visionneuse : au-dessus de la 3D, sous la fiche et les boutons */
+.card-ghost { position: fixed; z-index: 3; transform-origin: 0 0; border-radius: 9px; object-fit: cover; pointer-events: none; will-change: transform, opacity; }
 /* fondu enchaîné : l'aperçu reste dessous pendant que la vraie carte apparaît, puis s'efface (jamais de tuile vide) */
 .tile.real-on .art, .tile.real-on .meta, .tile.real-on .name { visibility: hidden; transition: visibility 0s var(--dur-emphatique); }
 .tile.real-now .art, .tile.real-now .meta, .tile.real-now .name { transition: none; }

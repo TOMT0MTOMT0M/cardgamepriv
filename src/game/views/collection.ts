@@ -6,6 +6,8 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, imageReportButton, loadSeen, loginPrompt, navigate, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
+import { fxReduced } from '../../core/fxPref';
+import { DUR, EASING } from '../../core/motion';
 import { createForge, forgeCount } from './forge';
 import { GAMES_OPEN } from '../../core/games';
 
@@ -1509,6 +1511,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const e = catalogEntry(b.id);
     const have = owned().get(b.id);
     const st = e ? subthemeById(e.subthemeId) : null;
+    const first = !open && !dir;
     if (!open) {
       document.body.classList.add('card-open');
       pushLayer(closeViewer);
@@ -1535,8 +1538,46 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (!open || at !== i) return;
     shell.setDimmed(false);
     shell.show('viewer');
+    // (V2 fluidité, lot 6) ouverture depuis la grille : la carte de la tuile grandit jusqu'à la place de la carte 3D
+    // et tient l'écran pendant que celle-ci se prépare (illustration, calques, textures) — plus d'écran noir
+    const land = first ? flyGhost(b, viewer) : null;
     // (retours 06/11) pas de son quand on ouvre une carte de la collection
-    void viewer.show(b.id, b.r, dir ? { dir, quiet: true } : { quiet: true });
+    void viewer.show(b.id, b.r, dir ? { dir, quiet: true } : { quiet: true }).finally(() => land?.());
+  }
+  /** carte « fantôme » en vol (une seule à la fois) */
+  let ghost: HTMLElement | null = null;
+  const dropGhost = () => {
+    ghost?.remove();
+    ghost = null;
+  };
+  function flyGhost(b: { id: string; r: RarityId }, viewer: ViewerScene): (() => void) | null {
+    dropGhost();
+    if (fxReduced() || matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+    const tile = el.querySelector<HTMLElement>(`.tile.owned.real-on[data-card="${CSS.escape(b.id)}"][data-rarity="${b.r}"]`);
+    const img = tile?.querySelector<HTMLImageElement>('img.real');
+    const to = viewer.restRect();
+    if (!tile || !img?.complete || !img.naturalWidth || !to) return null;
+    const from = tile.getBoundingClientRect();
+    const host = shell.renderer.domElement.getBoundingClientRect();
+    if (!from.width || !host.width) return null;
+    const w = ((to.x1 - to.x0) / 2) * host.width;
+    const h = ((to.y1 - to.y0) / 2) * host.height;
+    const x = host.left + ((to.x0 + 1) / 2) * host.width;
+    const y = host.top + ((1 - to.y1) / 2) * host.height;
+    const g = document.createElement('img');
+    g.className = 'card-ghost';
+    g.alt = '';
+    g.src = img.currentSrc || img.src;
+    g.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px`;
+    document.body.append(g);
+    ghost = g;
+    g.animate([{ transform: 'none' }, { transform: `translate(${x - from.left}px,${y - from.top}px) scale(${w / from.width},${h / from.height})` }], { duration: DUR.emphatique(), easing: EASING.entree, fill: 'forwards' });
+    // la carte 3D est là : le fantôme s'efface (elle fait son tour d'entrée à sa place)
+    return () => {
+      if (ghost !== g) return;
+      const out = g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: DUR.rapide(), easing: 'linear', fill: 'forwards' });
+      out.onfinish = out.oncancel = () => ghost === g && dropGhost();
+    };
   }
   const step = (d: 1 | -1) => {
     if (!open || !browse[at + d]) return;
@@ -1544,6 +1585,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   };
   function closeViewer() {
     if (!open) return;
+    dropGhost();
     popLayer();
     open = false;
     document.body.classList.remove('card-open');
