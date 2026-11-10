@@ -1,5 +1,6 @@
 import { v, ConvexError } from 'convex/values';
-import { internalMutation, mutation, query, type QueryCtx } from './_generated/server';
+import { internalAction, internalMutation, internalQuery, mutation, query, type QueryCtx } from './_generated/server';
+import { internal } from './_generated/api';
 import type { Doc } from './_generated/dataModel';
 import { requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
@@ -75,50 +76,138 @@ export const activity = query({
   },
 });
 
-/** Classement entre nous : complétion, 6★ + secrets, boosters ouverts, échanges conclus, série de connexion. */
+/** Une ligne du classement (calculée sur la collection d'UN joueur). */
+async function rankRowOf(ctx: QueryCtx, u: Doc<'users'>) {
+  const { stats } = await statsOf(ctx, u);
+  return {
+    id: u._id,
+    name: u.displayName,
+    avatarUrl: u.avatarUrl,
+    cosmetics: cleanCosmetics(u.cosmetics ?? {}, stats),
+    uniques: stats.uniques,
+    total: stats.total,
+    pct: stats.total ? (stats.uniques / stats.total) * 100 : 0,
+    mythics: stats.mythics,
+    secrets: stats.secrets,
+    packsOpened: stats.packsOpened,
+    tradesDone: stats.tradesDone,
+    streak: stats.streak,
+    achievements: achievementsDone(stats, u),
+  };
+}
+type RankRow = Awaited<ReturnType<typeof rankRowOf>>;
+
+/**
+ * Classement entre nous : complétion, 6★ + secrets, boosters ouverts, échanges conclus, série de connexion.
+ *
+ * (v1.0.11, « le classement ne marche plus ») AVANT : cette requête relisait la collection ENTIÈRE de tous les joueurs à
+ * chaque affichage — avec la croissance des collections, elle a dépassé la limite de Convex (16 384 documents lus par
+ * requête) et échouait. MAINTENANT : elle ne lit que les lignes déjà calculées (`rankRows`, une par joueur), tenues à
+ * jour toutes les 5 min par `refreshRanks` (un joueur à la fois, chacun bien sous la limite). Même forme de réponse.
+ */
 export const leaderboard = query({
   args: {},
   handler: async (ctx) => {
-    const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
-    const rows = [];
-    for (const u of users) {
-      const { stats } = await statsOf(ctx, u);
-      rows.push({
-        id: u._id,
-        name: u.displayName,
-        avatarUrl: u.avatarUrl,
-        cosmetics: cleanCosmetics(u.cosmetics ?? {}, stats),
-        uniques: stats.uniques,
-        total: stats.total,
-        pct: stats.total ? (stats.uniques / stats.total) * 100 : 0,
-        mythics: stats.mythics,
-        secrets: stats.secrets,
-        packsOpened: stats.packsOpened,
-        tradesDone: stats.tradesDone,
-        streak: stats.streak,
-        achievements: achievementsDone(stats, u),
-      });
+    const rows = await ctx.db.query('rankRows').collect();
+    return rows.map((r) => r.row as RankRow);
+  },
+});
+
+/** Ma ligne, recalculée tout de suite (le client l'appelle en ouvrant le classement : on s'y voit à jour). */
+export const refreshMyRank = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await requireUser(ctx, sessionToken);
+    if (u.bannedAt) return { ok: false };
+    const now = Date.now();
+    const old = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', u._id)).first();
+    if (old && now - old.updatedAt < 20_000) return { ok: true };
+    const row = await rankRowOf(ctx, u);
+    if (old) await ctx.db.patch(old._id, { row, updatedAt: now });
+    else await ctx.db.insert('rankRows', { userId: u._id, row, updatedAt: now });
+    return { ok: true };
+  },
+});
+
+/** joueurs, dernière activité, et date de leur ligne du classement (pour savoir qui recalculer) */
+export const rankPlan = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query('users').collect();
+    const rows = await ctx.db.query('rankRows').collect();
+    const at = new Map(rows.map((r) => [r.userId as string, r.updatedAt]));
+    return {
+      users: users.map((u) => ({ id: u._id, seen: u.lastSeenAt ?? 0, banned: !!u.bannedAt, at: at.get(u._id) ?? 0 })),
+      rows: rows.map((r) => ({ id: r._id, userId: r.userId })),
+    };
+  },
+});
+
+/** la ligne d'un joueur (lit SA collection seulement) */
+export const rankRow = internalQuery({
+  args: { userId: v.id('users') },
+  handler: async (ctx, { userId }) => {
+    const u = await ctx.db.get(userId);
+    return u && !u.bannedAt ? await rankRowOf(ctx, u) : null;
+  },
+});
+
+export const saveRanks = internalMutation({
+  args: { rows: v.array(v.object({ userId: v.id('users'), row: v.any() })), drop: v.array(v.id('rankRows')) },
+  handler: async (ctx, { rows, drop }) => {
+    const now = Date.now();
+    for (const id of drop) await ctx.db.delete(id);
+    for (const { userId, row } of rows) {
+      const old = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', userId)).first();
+      if (old) await ctx.db.patch(old._id, { row, updatedAt: now });
+      else await ctx.db.insert('rankRows', { userId, row, updatedAt: now });
     }
-    return rows;
+    // (retours live 6, C15) titre « Numéro un » : le premier en cartes différentes est marqué, définitivement
+    let best: { userId: string; n: number } | null = null;
+    for (const r of await ctx.db.query('rankRows').collect()) {
+      const n = (r.row as RankRow).uniques;
+      if (n > 0 && (!best || n > best.n)) best = { userId: r.userId, n };
+    }
+    if (best) {
+      const u = await ctx.db.get(best.userId as Doc<'users'>['_id']);
+      if (u && !u.wasTop) await ctx.db.patch(u._id, { wasTop: true });
+    }
+    return { saved: rows.length, dropped: drop.length };
   },
 });
 
 /**
- * (retours live 6, C15) titre « Numéro un » : toutes les heures (convex/crons.ts), le premier du classement
- * (complétion : cartes différentes) est marqué `wasTop` — définitivement, le titre reste acquis.
+ * Recalcule le classement (cron toutes les 5 min ; `all` : tout le monde, après une mise en ligne). Sans `all`, seuls
+ * les joueurs actifs depuis leur dernière ligne (lastSeenAt) et les lignes de plus de 6 h — un échange accepté pendant
+ * qu'on est hors ligne est rattrapé par ce tour complet. Joueurs bannis ou supprimés : ligne retirée.
  */
-export const markLeader = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
-    let best: { u: Doc<'users'>; n: number } | null = null;
-    for (const u of users) {
-      const { stats } = await statsOf(ctx, u);
-      if (stats.uniques > 0 && (!best || stats.uniques > best.n)) best = { u, n: stats.uniques };
+export const refreshRanks = internalAction({
+  args: { all: v.optional(v.boolean()) },
+  handler: async (ctx, { all }): Promise<{ saved: number; dropped: number }> => {
+    const plan = await ctx.runQuery(internal.profiles.rankPlan, {});
+    const now = Date.now();
+    const live = new Set(plan.users.filter((u) => !u.banned).map((u) => u.id as string));
+    const drop = plan.rows.filter((r) => !live.has(r.userId)).map((r) => r.id);
+    const rows: Array<{ userId: Doc<'users'>['_id']; row: RankRow }> = [];
+    for (const u of plan.users) {
+      if (u.banned) continue;
+      const stale = all || !u.at || u.seen >= u.at - 60_000 || now - u.at > 6 * 3600_000;
+      if (!stale) continue;
+      const row = await ctx.runQuery(internal.profiles.rankRow, { userId: u.id });
+      if (row) rows.push({ userId: u.id, row });
     }
-    if (best && !best.u.wasTop) await ctx.db.patch(best.u._id, { wasTop: true });
-    return best ? { leader: best.u.displayName, uniques: best.n } : null;
+    if (!rows.length && !drop.length) return { saved: 0, dropped: 0 };
+    return await ctx.runMutation(internal.profiles.saveRanks, { rows, drop });
   },
+});
+
+/**
+ * (retours live 6, C15) titre « Numéro un » — gardé pour les anciens appels manuels : recalcule tout (saveRanks marque
+ * le premier). Le cron passe désormais par `refreshRanks`.
+ */
+export const markLeader = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ saved: number; dropped: number }> => await ctx.runAction(internal.profiles.refreshRanks, { all: true }),
 });
 
 /** vitrine : 2 rangées de 6 (retours live n°1) */

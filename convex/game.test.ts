@@ -5,7 +5,7 @@
  */
 import { convexTest } from 'convex-test';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { api } from './_generated/api';
+import { api, internal } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
 import { BEBOU_SECRET_CHANCE, BEBOU_SECRETS_LOCKED } from '../src/core/sets/themes';
@@ -589,12 +589,30 @@ describe('retours du 3 nov. : profil, cosmétiques, classement, activité', () =
     const { t, alice, bob } = await setup();
     const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
     await t.mutation(api.packs.revealPack, { sessionToken: alice.token, packId: pack._id });
+    // (v1.0.11) les lignes sont calculées à part (cron), le classement ne fait que les lire
+    expect(await t.query(api.profiles.leaderboard, {})).toEqual([]);
+    await t.action(internal.profiles.refreshRanks, {});
     const rows = await t.query(api.profiles.leaderboard, {});
     expect(rows.map((r) => r.name).sort()).toEqual(['alice', 'bob']);
     const a = rows.find((r) => r.id === alice.userId)!;
     expect(a.packsOpened).toBe(1);
     expect(a.uniques).toBeGreaterThan(0);
     expect(rows.find((r) => r.id === bob.userId)!.uniques).toBe(0);
+    // le premier en cartes différentes devient « Numéro un »
+    expect(await t.run(async (ctx) => (await ctx.db.get(alice.userId))!.wasTop)).toBe(true);
+    // un nouveau booster : ma ligne se met à jour en ouvrant le classement (refreshMyRank), sans attendre le cron
+    await t.run(async (ctx) => {
+      const r = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', bob.userId)).first();
+      await ctx.db.patch(r!._id, { updatedAt: 0 });
+    });
+    const pb = await t.mutation(api.packs.preparePack, { sessionToken: bob.token, packKind: 'bebou' });
+    await t.mutation(api.packs.revealPack, { sessionToken: bob.token, packId: pb._id });
+    await t.mutation(api.profiles.refreshMyRank, { sessionToken: bob.token });
+    expect((await t.query(api.profiles.leaderboard, {})).find((r) => r.id === bob.userId)!.uniques).toBeGreaterThan(0);
+    // banni : sa ligne disparaît au tour suivant
+    await t.run((ctx) => ctx.db.patch(bob.userId, { bannedAt: Date.now() }));
+    await t.action(internal.profiles.refreshRanks, {});
+    expect((await t.query(api.profiles.leaderboard, {})).map((r) => r.name)).toEqual(['alice']);
   });
 
   test('activité : les gros drops et contrats d’un joueur, pas ceux des autres', async () => {
