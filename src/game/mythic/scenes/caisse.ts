@@ -3,22 +3,46 @@
  * plus basses défilent de bas en haut en pile, ralentissent, FAUX ARRÊT sur la voisine, puis le dernier cran tombe sur
  * la carte face cachée à tranche arc-en-ciel — au centre.
  */
-import { catalogEntry, subthemeById, THEMES } from '../../../core/sets/themes';
+import { catalogEntry, subthemeById, thumbPath, THEMES, type CatalogEntry } from '../../../core/sets/themes';
+import { siteUrl } from '../../../core/siteRoot';
 import { rarity } from '../../../core/rarity';
-import { thumbUrl } from '../../ui';
-import type { SceneCtx } from '../kit';
+import { seeded, type MythicCard, type SceneCtx } from '../kit';
+
+const N = 30;
+const TARGET = 26;
+
+/** les cartes CS de la bande, les mêmes à chaque fois pour une carte donnée (et connues AVANT la scène : préchargement) */
+function picks(cardId: string): Array<CatalogEntry | undefined> {
+  const rand = seeded(`${cardId}/caisse`);
+  const gaming = THEMES.find((t) => t.id === 'gaming');
+  const pool = (gaming?.cards ?? []).filter((c) => subthemeById(c.subthemeId)?.group?.id === 'cs' && c.rarity !== 'mythic' && c.file);
+  const same = pool.filter((c) => c.subthemeId === catalogEntry(cardId)?.subthemeId);
+  return Array.from({ length: N }, () => {
+    const from = same.length > 8 && rand() < 0.5 ? same : pool;
+    return from[Math.floor(rand() * from.length)];
+  });
+}
+
+/**
+ * (10/11) Appelé pendant que le joueur ouvre le booster (index.ts prepareMythic) : les miniatures des dernières cases
+ * — celles qu'on a le temps de voir quand la bande ralentit — sont déjà là quand la scène démarre (avant : cases vides
+ * sur un téléphone qui ne les avait pas en cache).
+ */
+export function preload(card: MythicCard): void {
+  picks(card.id).forEach((e, i) => {
+    if (!e || i < TARGET - 10 || i === TARGET) return;
+    const im = new Image();
+    im.decoding = 'async';
+    im.src = siteUrl(thumbPath(e));
+  });
+}
 
 export default function caisse(k: SceneCtx) {
   const { tl, u, el, sfx, actor, cw, accent, w, h } = k;
   el('div', '', 'position:absolute;inset:0;background:linear-gradient(180deg,#07070a,#111116 50%,#07070a);');
-  const gaming = THEMES.find((t) => t.id === 'gaming');
-  const pool = (gaming?.cards ?? []).filter((c) => subthemeById(c.subthemeId)?.group?.id === 'cs' && c.rarity !== 'mythic' && c.file);
-  const same = pool.filter((c) => c.subthemeId === catalogEntry(k.card.id)?.subthemeId);
-  const pick = () => (same.length > 8 && k.rand() < 0.5 ? same : pool)[Math.floor(k.rand() * pool.length) % (same.length > 8 && k.rand() < 0.5 ? same.length : pool.length)];
+  const rows = picks(k.card.id);
   const TH = cw * 0.62;
   const GAP = u * 1.6;
-  const N = 30;
-  const TARGET = 26;
   const step = TH + GAP;
   const band = el('div', '', `position:absolute;left:50%;top:0;width:${cw * 1.9}px;display:flex;flex-direction:column;gap:${GAP}px;will-change:transform;`);
   k.pin(band, -50, 0);
@@ -28,13 +52,14 @@ export default function caisse(k: SceneCtx) {
       row.style.visibility = 'hidden'; // la vraie carte prendra la place
       continue;
     }
-    const e = pick();
+    const e = rows[i];
     const rr = rarity(e?.rarity ?? 'common');
     el('div', '', `position:absolute;left:0;top:0;bottom:0;width:${u * 0.8}px;background:${rr.hex};box-shadow:0 0 ${u * 2}px ${rr.hex};`, row);
     if (e) {
       const img = el('img', '', `height:82%;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 4px 8px #000);`, row);
       img.decoding = 'async';
-      img.src = thumbUrl(e);
+      img.onerror = () => img.remove();
+      img.src = siteUrl(thumbPath(e));
       img.alt = '';
     }
     const t = el('div', 'mp-label', `position:static;font-size:${u * 1.8}px;color:${rr.hex};opacity:.8;`, row);
@@ -76,5 +101,6 @@ export default function caisse(k: SceneCtx) {
   });
   tl.to(band, { opacity: 0, duration: 0.3 }, 2.7);
   tl.to(c, { y: 0, scale: 1, duration: 0.5, ease: 'power3.inOut' }, 2.72);
-  tl.to({}, { duration: 0.01 }, 3.25);
+  k.glint(3.1, 0.45);
+  tl.to({}, { duration: 0.01 }, 3.6);
 }

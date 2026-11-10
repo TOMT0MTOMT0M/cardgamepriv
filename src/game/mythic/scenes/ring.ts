@@ -2,6 +2,7 @@
  * COMBAT — « Ring » : vrai ring en perspective (cordes rouge / blanc / bleu, piquets), cloche, la poursuite cherche puis
  * se fige au centre ; le speaker tape l'annonce en grand ; la carte descend dans la lumière, au centre du ring — gong.
  */
+import { displayCase } from '../../../core/fonts';
 import type { SceneCtx } from '../kit';
 
 export default function ring(k: SceneCtx) {
@@ -22,9 +23,11 @@ export default function ring(k: SceneCtx) {
   const spot = el('div', '', `position:absolute;left:50%;top:-${h * 0.1}px;width:${w * 0.9}px;height:${h * 0.86}px;margin-left:-${w * 0.45}px;background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.18));clip-path:polygon(46% 0,54% 0,78% 100%,22% 100%);transform-origin:50% 0;opacity:0;`);
   const pool = el('div', '', `position:absolute;left:50%;top:${h * 0.76}px;width:${w * 0.6}px;height:${h * 0.1}px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,255,255,.5),transparent 70%);opacity:0;`);
   k.pin(pool);
-  const corner = card.subId === 'catch' ? 'SUR LE RING…' : k.rand() < 0.5 ? 'DANS LE COIN ROUGE…' : 'DANS LE COIN BLEU…';
-  const lines = [corner, 'LA SIX ÉTOILES !'];
-  const lineEls = lines.map((t, i) => el('div', '', `position:absolute;left:0;right:0;top:${h * (0.12 + i * 0.1)}px;text-align:center;white-space:nowrap;font:${i ? 800 : 700} ${Math.min(u * (i ? 9 : 6.5), (w * 0.92) / (t.length * 0.62))}px var(${i ? '--display' : '--title'});letter-spacing:.04em;color:#fff;`));
+  // (10/11) casse mixte : les capitales R de Bold Frame se lisent « A » (« SUA LE AING »)
+  const corner = card.subId === 'catch' ? 'Sur le ring…' : k.rand() < 0.5 ? 'Dans le coin rouge…' : 'Dans le coin bleu…';
+  const lines = [corner, displayCase('La six étoiles !')];
+  const lineEls = lines.map((t, i) => el('div', '', `position:absolute;left:0;right:0;top:${h * (0.12 + i * 0.1)}px;text-align:center;white-space:nowrap;font:${i ? 800 : 700} ${Math.min(u * (i ? 9 : 6.5), (w * 0.92) / (t.length * 0.62))}px var(${i ? '--display' : '--title'});letter-spacing:${i ? '0' : '.04em'};color:#fff;`));
+  lineEls.forEach((e, i) => ((e.textContent = lines[i]), k.fit(e, 0.9)));
   [0.05, 0.3, 0.55].forEach((t, i) => k.at(t, () => sfx.bell(1150, 0.2 - i * 0.02, 1.2)));
   k.at(0.05, () => k.haptic([20, 230, 20, 230, 20]));
   tl.to(spot, { opacity: 1, duration: 0.2 }, 0.3);

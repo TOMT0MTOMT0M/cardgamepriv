@@ -265,4 +265,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Planche : touche une carte pour l’agrandir · incline (souris / gyroscope) · « Qui va où ? » dans les réglages : un reflet par rareté, puis Copier / Lien',
     load: () => import('../experiments/044-pokebox-reflets/index.ts'),
   },
+  {
+    id: '045-mythic-scenes',
+    title: 'Scènes 6★ par famille (26)',
+    category: 'C',
+    tags: ['6★', 'mythique', 'walkout', 'scènes', 'familles'],
+    tech: ['calque DOM + SVG + canvas 2D piloté par une timeline gsap', 'une scène = un module chargé à la demande', 'doublure 2D de la carte raccordée à la carte 3D (rectangle projeté)', 'sons 100 % synthétisés (Web Audio)', 'hasard déterministe par carte'],
+    blurb: 'Les 26 mises en scène des 6★ du jeu (une par famille : cartouche, vinyle, case de manga, tunnel, piège photo…), avec la vraie visionneuse dessous : indices façon walkout, la scène, puis la carte se retourne. Le même code que le jeu.',
+    hint: 'Active le son 🔈 · famille / sous-famille / version dans le panneau · toucher pendant la scène = passer, ensuite = rejouer · `?famille=musique&speed=0.25&t=1.8`',
+    load: () => import('../experiments/045-mythic-scenes/index.ts'),
+  },
 ];

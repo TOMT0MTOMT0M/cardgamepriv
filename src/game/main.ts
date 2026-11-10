@@ -7,13 +7,8 @@ import type { ViewerScene } from './scenes/viewer';
 import { withWildEncounter } from './wildEncounter';
 import { withMusicPreview } from './musicPreview';
 import { withDuelSummon } from './duelEncounter';
-import { enableMythicReplay, mythicPlaying } from './mythic';
-
-function withMythicReplay(v: ViewerScene): ViewerScene {
-  const hits = v.hits.bind(v);
-  v.hits = (x, y) => mythicPlaying() || hits(x, y);
-  return v;
-}
+import { enableMythicReplay } from './mythic';
+import { withMythicPrelude } from './mythicEncounter';
 import { installDiag, reportLoad } from './diag';
 import { perfMark } from '../core/perfLog';
 import { createShopView } from './views/shop';
@@ -840,8 +835,8 @@ async function boot() {
       viewerModP = null;
       // Pokémon 6★ : la visionneuse (collection, gros tirages, échanges…) rejoue la rencontre sauvage (wildEncounter.ts) ;
       // Yu-Gi-Oh 6★ : l'invocation (duelEncounter.ts)
-      // (08/11) les autres 6★ : bouton « Rejouer » (ui.ts) ; pendant la scène, un toucher ne ferme pas la visionneuse
-      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withMythicReplay(withMusicPreview(shell, withDuelSummon(shell, withWildEncounter(shell, v)))));
+      // (10/11) les autres 6★ : la scène de leur famille (mythicEncounter.ts), et le bouton « Rejouer » (ui.ts)
+      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withMythicPrelude(shell, withMusicPreview(shell, withDuelSummon(shell, withWildEncounter(shell, v)))));
       viewerP.catch(() => (viewerP = null)); // (échec : nouvel essai au prochain appel, si le navigateur ne garde pas l'échec)
     }
     return viewerP;

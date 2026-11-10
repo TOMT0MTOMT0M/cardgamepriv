@@ -13,6 +13,7 @@ import { LAB_CARDS, cardById } from '../../core/cardData';
 import { rarity, type RarityId } from '../../core/rarity';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, springCurve } from '../../core/ease';
+import { DUR } from '../../core/motion';
 import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
 import { isHoloReduced } from '../../core/holo';
 import type { WonderVisualInstance } from '../../core/wonderDiorama';
@@ -44,7 +45,12 @@ const isWonderCard = (cardId: string) => cardId.startsWith('mrv-');
  */
 export interface ViewerScene extends Experiment {
   /** `dir` : on passe à la carte suivante (1) ou précédente (-1) → courte rotation latérale au lieu du grand tour */
-  show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1; quiet?: boolean }): Promise<void>;
+  /**
+   * `hold` (10/11, scènes 6★ — game/mythicEncounter.ts) : la carte se prépare, puis ATTEND cette promesse de dos, au
+   * centre de l'écran, à la largeur `fromW` (px CSS : celle de la doublure 2D de la scène, qui se fond sur elle) ;
+   * ensuite elle se retourne en venant à sa place de repos (au lieu du tour d'entrée habituel).
+   */
+  show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1; quiet?: boolean; hold?: Promise<void>; fromW?: number }): Promise<void>;
   /** Vrai si le point (NDC −1..1) est sur la carte : un toucher ailleurs ferme la visionneuse (« clic hors zone »). */
   hits(ndcX: number, ndcY: number): boolean;
   /**
@@ -68,7 +74,7 @@ export function createViewerScene(): ViewerScene {
   let wonderInstance: WonderVisualInstance | null = null;
   let tl: gsap.core.Timeline | null = null;
   let token = 0;
-  const st = { spin: Math.PI, s: 0.85, z: -0.3, x: 0 };
+  const st = { spin: Math.PI, s: 0.85, z: -0.3, x: 0, y: 0 };
   let render: () => void = () => undefined;
   let pipe: ReturnType<typeof createPipeline> | null = null;
   let bloomStrength: { value: number } | null = null;
@@ -212,6 +218,18 @@ export function createViewerScene(): ViewerScene {
 
       tl?.kill();
       const f = face;
+      // (10/11) une scène 6★ se joue au-dessus : la carte attend de dos, déjà à sa place ; le calque se fond dessus
+      const held = !!opts?.hold && !opts.dir;
+      if (held) {
+        // même taille et même place que la doublure : centre de l'écran (le repos est 0,05 plus haut), largeur fromW
+        const r = restRect();
+        const restW = r ? ((r.x1 - r.x0) / 2) * ctx.width : 0;
+        const s0 = restW > 0 && opts!.fromW ? Math.min(1.15, Math.max(0.4, opts!.fromW / restW)) : 1;
+        Object.assign(st, { spin: Math.PI, s: s0, z: 0, x: 0, y: -0.05 });
+        haloT.k = 0;
+        await opts!.hold;
+        if (my !== token) return;
+      }
       tl = gsap.timeline();
       // halo : il prend la couleur de la carte et monte doucement (presque rien pour une commune)
       if (!opts?.dir) halo.color.value.copy(haloColor); // nouvelle ouverture : couleur posée ; carte voisine : fondu
@@ -226,11 +244,18 @@ export function createViewerScene(): ViewerScene {
       let at = 0.9;
       if (dir) {
         // carte voisine : elle arrive de côté en pivotant d'un quart de tour (feuilleter un classeur)
-        Object.assign(st, { spin: -dir * Math.PI * 0.5, s: 0.94, z: -0.08, x: dir * 0.32 });
+        Object.assign(st, { spin: -dir * Math.PI * 0.5, s: 0.94, z: -0.08, x: dir * 0.32, y: 0 });
         tl.to(st, { spin: 0, x: 0, z: 0, s: 1, duration: 0.5, ease: EASE.glide, onStart: () => sfx?.whoosh(0.22, 0.05) }, 0);
         at = 0.3;
+      } else if (held) {
+        // le calque de la scène finit de se fondre (0,4 s) sur la carte de dos ; elle se retourne en venant à sa place
+        const lead = (DUR.emphatique() / 1000) * 0.85; // (le fondu du calque dure « emphatique », core/motion.ts)
+        tl.to(st, { s: 1, y: 0, duration: 0.8, ease: EASE.glide }, lead)
+          .to(st, { spin: Math.PI * 2, duration: 1.0, ease: springCurve(0.55, 11), onStart: () => sfx?.whoosh(0.35, 0.08) }, lead + 0.04)
+          .call(() => (st.spin = 0), [], lead + 1.04);
+        at = lead + 0.82;
       } else {
-        Object.assign(st, { spin: Math.PI, s: 0.85, z: -0.3, x: 0 });
+        Object.assign(st, { spin: Math.PI, s: 0.85, z: -0.3, x: 0, y: 0 });
         tl.to(st, { z: 0, s: 1, duration: 0.7, ease: EASE.glide }, 0)
           .to(st, { spin: Math.PI * 2, duration: 1.0, ease: springCurve(0.55, 11), onStart: () => sfx?.whoosh(0.35, 0.08) }, 0.1)
           .call(() => (st.spin = 0), [], 1.1);
@@ -318,7 +343,7 @@ export function createViewerScene(): ViewerScene {
       const idle = ctx.input.inside ? 0 : 1;
       // un peu au-dessus du centre (la fiche texte se lit dessous) ; zoomée, la carte se recentre : la fiche s'est effacée
       const lift = 0.05 * Math.max(0, 1 - (zoom - 1) / 0.6);
-      rig.position.set(st.x, lift + Math.sin(t * 0.9) * 0.006, st.z);
+      rig.position.set(st.x, lift + st.y + Math.sin(t * 0.9) * 0.006, st.z);
       rig.rotation.set(p.x + Math.sin(t * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(t * 0.37) * 0.18 * idle, 0);
       zoom += (zoomT - zoom) * (1 - Math.exp(-dt * 10));
       rig.scale.setScalar(st.s * zoom);

@@ -70,13 +70,17 @@ export interface SceneCtx {
   /** son à `at` (s) dans la timeline */
   at(t: number, fn: () => void): void;
   /**
-   * LA CARTE, actrice de la scène : doublure 2D de la carte face cachée (dos acier brossé, « B » gravé, tranche
-   * arc-en-ciel). Déjà centrée (pin) et cachée (opacity 0) ; la scène la fait entrer, la manipule, et la laisse AU
+   * LA CARTE, actrice de la scène : doublure 2D de la carte face cachée (le vrai dos peint : alu brossé, filets,
+   * « B » usiné ; liseré arc-en-ciel = la tranche des 6★). Déjà centrée (pin) et cachée (opacity 0) ; la scène la fait entrer, la manipule, et la laisse AU
    * CENTRE à l'échelle 1 à la fin : le calque s'efface dessus et la vraie carte 3D prend le relais, sans flash.
    */
   actor(): HTMLElement;
   /** largeur de la carte (px) */
   cw: number;
+  /** un reflet balaie la carte (doublure) à `at` : la signature « elle est là » quand elle se pose au centre */
+  glint(at: number, dur?: number): void;
+  /** réduit la taille de police d'un texte sur une ligne pour qu'il tienne dans `max` × la largeur du calque */
+  fit<T extends HTMLElement>(e: T, max?: number): T;
   /** grand mot en Atsuka Montreal (--display) (titre de scène), centré ; `y` en px */
   word(txt: string, y: number, size?: number, cls?: string): HTMLElement;
   /** petite étiquette (Bold Frame, espacée, majuscules) */
@@ -94,6 +98,12 @@ export const ACCENTS: Record<string, string> = {
 };
 
 export type SceneFn = (ctx: SceneCtx) => void | { dispose?(): void };
+
+/**
+ * Largeur (px CSS) de la doublure de la carte pour un calque de `w` × `h` : la même formule sert au moteur (runtime.ts)
+ * et à la visionneuse, qui fait attendre la vraie carte 3D exactement à cette taille (mythicEncounter.ts).
+ */
+export const actorWidth = (w: number, h: number) => Math.min(w * 0.56, h * 0.36 * (63 / 88), (Math.min(w, h) / 100) * 46);
 
 /** couleurs de l'arc-en-ciel des 6★ (mêmes que .mv-stars) */
 export const RAINBOW = ['#ff6b9a', '#ffd36b', '#6bffb8', '#6bc8ff', '#c86bff'];

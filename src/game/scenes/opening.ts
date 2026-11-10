@@ -184,6 +184,11 @@ export interface OpeningScene extends Experiment {
    * habituelle de la carte reprend (anticipation, retournement, impact, étoiles), sans redemander de cinématique.
    */
   resumeReveal(): void;
+  /**
+   * (10/11) Rectangle écran (px CSS) de la carte qui attend sa révélation, d'après la dernière image rendue : la
+   * doublure 2D des scènes 6★ (game/mythic) vient s'y poser avant que le calque se fonde. null s'il n'y en a pas.
+   */
+  revealRect(): { x: number; y: number; w: number; h: number } | null;
   /** Retour à la vitrine (libère les cartes du pack). */
   reset(): void;
   /** Révéler / avancer (même effet qu'un tap). */
@@ -2117,6 +2122,10 @@ export function createOpeningScene(): OpeningScene {
       if (phase !== 'scene' || !order.length) return;
       preluded = cursor;
       revealCurrent();
+    },
+    revealRect() {
+      const s = slots[order[cursor]];
+      return s ? screenRect(s) : null;
     },
     resumeAfterCinematic() {
       if (phase !== 'scene' || !order.length) return;

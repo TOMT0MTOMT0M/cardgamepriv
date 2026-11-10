@@ -1214,7 +1214,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
           info.hidden = true;
           info.classList.remove('in');
           mythicVeil.hidden = true;
-          const run = playMythicPrelude(shell, card.cardId, card.rarity, 'opening', { quick: !!batch?.all });
+          // (10/11) `target` : la doublure 2D de la scène finit à la taille et à la place exactes de la carte 3D
+          const run = playMythicPrelude(shell, card.cardId, card.rarity, 'opening', {
+            quick: !!batch?.all,
+            target: () => {
+              const r = opening.revealRect();
+              return r && r.w > 8 ? { cx: r.x + r.w / 2, cy: r.y + r.h / 2, w: r.w } : null;
+            },
+          });
           void run.done.then(() => {
             if (mode !== 'opening' || batch?.skipping) return;
             hud.hidden = false;

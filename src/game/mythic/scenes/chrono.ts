@@ -38,13 +38,13 @@ export default function chrono(k: SceneCtx) {
     }
   });
   const splits = ['INTER 1', 'INTER 2', 'INTER 3'].map((lab, i) => {
-    const r = el('div', '', `position:absolute;left:${u * 6}px;top:${u * (8 + i * 6)}px;display:flex;gap:${u * 3}px;font:600 ${u * 3.2}px var(--title);letter-spacing:.14em;color:#fff;opacity:0;`);
+    const r = el('div', '', `position:absolute;left:${u * 6}px;top:${u * (8 + i * 6)}px;display:flex;gap:${u * 3}px;font:600 ${u * 3}px var(--mono);letter-spacing:.14em;color:#fff;opacity:0;`);
     r.innerHTML = `<span style="opacity:.55">${lab}</span><b style="font-variant-numeric:tabular-nums;color:${accent}">−0.${String(Math.floor(k.rand() * 90 + 10))}</b>`;
     return r;
   });
   const big = el('div', '', `position:absolute;right:${u * 6}px;top:${u * 7}px;font:700 ${u * 11}px/1 var(--mono);color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 2px 20px rgba(0,0,0,.6);`);
-  const best = el('div', '', `position:absolute;left:0;right:0;top:${h * 0.78}px;text-align:center;font:800 ${u * 5}px var(--display);letter-spacing:.2em;color:${accent};opacity:0;`);
-  best.textContent = 'MEILLEUR TEMPS';
+  const best = el('div', '', `position:absolute;left:0;right:0;top:${h * 0.78}px;text-align:center;font:800 ${u * 7}px var(--display);letter-spacing:.2em;color:#0b1c28;white-space:nowrap;opacity:0;`);
+  best.textContent = 'Meilleur temps'; // (10/11) casse du jeu, encre sombre : le bleu glacier ne se lisait pas sur la neige
   k.at(0.05, () => sfx.ambience('glace', 2.4, 0.12));
   k.at(0.1, () => sfx.whoosh(0.6, 0.2, false));
   const T = { s: 0 };
@@ -69,6 +69,6 @@ export default function chrono(k: SceneCtx) {
   }, [], 2.0);
   tl.fromTo(big, { scale: 1.12 }, { scale: 1, duration: 0.35, ease: 'power3.out', immediateRender: false }, 2.0);
   tl.to(best, { opacity: 1, duration: 0.2 }, 2.05);
-  tl.fromTo(best, { letterSpacing: '0.6em' }, { letterSpacing: '0.2em', duration: 0.4, ease: 'power3.out', immediateRender: false }, 2.05);
+  tl.fromTo(best, { letterSpacing: '0.3em' }, { letterSpacing: '0.06em', duration: 0.4, ease: 'power3.out', immediateRender: false }, 2.05);
   tl.to({}, { duration: 0.01 }, 2.75);
 }

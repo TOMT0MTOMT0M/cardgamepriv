@@ -10,7 +10,7 @@ export default function piegePhoto(k: SceneCtx) {
   const sub = card.subId;
   const marine = sub === 'vie-marine';
   const amb = marine ? 'ocean' : sub === 'oiseaux' ? 'foret' : sub === 'mammiferes' ? 'savane' : 'nuit';
-  const scene = el('div', '', `position:absolute;inset:0;background:${marine ? 'linear-gradient(180deg,#0b3a3a,#04140f)' : 'radial-gradient(ellipse 90% 70% at 50% 60%,#1c4a28,#05120a 75%)'};`);
+  const scene = el('div', '', `position:absolute;inset:0;background:${marine ? 'linear-gradient(180deg,#0a2f4a,#030c18)' : 'radial-gradient(ellipse 90% 70% at 50% 60%,#1c4a28,#05120a 75%)'};`);
   if (!marine) for (let i = 0; i < 9; i++) el('div', '', `position:absolute;left:${k.rand() * 100}%;bottom:${-u * 4}px;width:${u * (14 + k.rand() * 20)}px;height:${u * (18 + k.rand() * 26)}px;margin-left:-${u * 10}px;border-radius:50% 50% 0 0;background:rgba(3,12,6,.85);`, scene);
   const cv = k.canvas();
   const gw = 120, gh = Math.round((120 * h) / w);
@@ -24,9 +24,9 @@ export default function piegePhoto(k: SceneCtx) {
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
       const v = Math.random() * 90;
-      d[i] = v * 0.4;
-      d[i + 1] = v;
-      d[i + 2] = v * 0.4;
+      d[i] = v * (marine ? 0.25 : 0.4);
+      d[i + 1] = v * (marine ? 0.8 : 1);
+      d[i + 2] = v * (marine ? 1 : 0.4);
       d[i + 3] = 70;
     }
     og.putImageData(img, 0, 0);
@@ -34,11 +34,11 @@ export default function piegePhoto(k: SceneCtx) {
     cv.c.imageSmoothingEnabled = false;
     cv.c.drawImage(off, 0, 0, w, h);
   });
-  const nv = el('div', '', 'position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(120,255,140,.08),rgba(0,20,0,.78) 85%);');
+  const nv = el('div', '', `position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,${marine ? 'rgba(120,200,255,.08),rgba(0,8,24,.8)' : 'rgba(120,255,140,.08),rgba(0,20,0,.78)'} 85%);`);
   // les yeux
   const eyes = el('div', '', `position:absolute;left:50%;top:54%;display:flex;gap:${u * 7}px;opacity:0;`);
   k.pin(eyes);
-  const eye = () => el('div', '', `width:${u * 4}px;height:${u * 2.6}px;border-radius:50%;background:radial-gradient(ellipse,#fff 0 20%,${accent} 55%,transparent 72%);box-shadow:0 0 ${u * 3}px ${accent};transform-origin:50% 50%;`, eyes);
+  const eye = () => el('div', '', `width:${u * 5}px;height:${u * 3.2}px;border-radius:50%;background:radial-gradient(ellipse,#fff 0 20%,${accent} 55%,transparent 72%);box-shadow:0 0 ${u * 3}px ${accent};transform-origin:50% 50%;`, eyes);
   const e1 = eye(), e2 = eye();
   const hud = el('div', 'mp-mono', `position:absolute;inset:${u * 5}px;font-size:${u * 3}px;color:#d8ffd8;`);
   for (const [a2, b] of [['top', 'left'], ['top', 'right'], ['bottom', 'left'], ['bottom', 'right']]) el('div', '', `position:absolute;${a2}:0;${b}:0;width:${u * 8}px;height:${u * 8}px;border-${a2}:2px solid #d8ffd8;border-${b}:2px solid #d8ffd8;`, hud);

@@ -30,7 +30,8 @@ export default function tele(k: SceneCtx) {
   const line = el('div', '', 'position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:#fff;box-shadow:0 0 16px #fff;transform:scaleX(0);', scr);
   // la carte « à l'écran » : copie noir et blanc dans le poste, puis la vraie carte sort
   const a = actor();
-  const ghost = el('div', '', `position:absolute;left:50%;top:50%;width:${cw * 0.5}px;aspect-ratio:63/88;border-radius:4%;background:#cfcfcf;box-shadow:0 0 0 2px #fff;opacity:0;filter:contrast(1.4);`, scr);
+  const ghost = el('div', '', `position:absolute;left:50%;top:50%;width:${cw * 0.5}px;aspect-ratio:768/1072;border-radius:5%;background:repeating-linear-gradient(90deg,#c9c9c9 0 1px,#bdbdbd 1px 2px,#d2d2d2 2px 3px);box-shadow:0 0 0 1px #fff,inset 0 0 0 ${cw * 0.025}px #c4c4c4,inset 0 0 0 ${cw * 0.03}px #8e8e8e;display:grid;place-items:center;font:700 ${cw * 0.19}px var(--mono);color:#9a9a9a;text-shadow:1px 1px 0 #e8e8e8,-1px -1px 0 #777;opacity:0;filter:contrast(1.4);`, scr);
+  ghost.textContent = 'B'; // (10/11) le dos de la carte, en noir et blanc : filets et « B » usiné — plus un simple rectangle gris
   k.pin(ghost);
   el('div', '', 'position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px),radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.1),transparent 50%);pointer-events:none;', scr);
   k.loop((t) => {

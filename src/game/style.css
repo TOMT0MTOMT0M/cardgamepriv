@@ -2713,6 +2713,8 @@ body.duel-on .topbar, body.duel-on .viewer-ui { visibility: hidden; }
 
 /* Pokémon 6★ : rencontre sauvage jouée depuis la visionneuse (wildEncounter.ts) — l'interface s'efface */
 body.wild-on .viewer-ui, body.wild-on .topbar { visibility: hidden; }
+/* (10/11) la tuile qui « grandit » vers la carte (collection) ne reste pas posée par-dessus une rencontre / une invocation */
+body.wild-on .card-ghost, body.duel-on .card-ghost { visibility: hidden; }
 
 /* ── SUGGESTIONS (#/suggestions) */
 .sg-wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }

@@ -1,4 +1,7 @@
-# Animations des 6★ par famille (V2, 08/11 — refonte « la carte actrice », même jour)
+# Animations des 6★ par famille (V2, 08/11 — refonte « la carte actrice », même jour — polish et visionneuse, 10/11)
+
+> **10/11** — polish des 26 scènes, scène jouée dans TOUTES les visionneuses (comme Pokémon et Yu-Gi-Oh), labo 045.
+> Voir « Polish du 10/11 » en bas de page.
 
 Toutes les 6★ ont maintenant leur mise en scène, sauf celles qui avaient déjà la leur :
 Pokémon (rencontre sauvage), Yu-Gi-Oh (invocation), secrètes (Bébous, KCDQ, Merveilles).
@@ -23,7 +26,13 @@ grain + vignette sur toutes les scènes, fins toutes différentes.
   vue sur l'appareil (`localStorage` `bebou.mythSeen`), et toujours en « Tout révéler ».
 - **Effets réduits** : indices seuls.
 - **Toucher / Échap** : passe directement à la carte. « Tout passer » coupe tout.
-- **Rejouer** : bouton « ▶ Rejouer » à côté de « Image à revoir » dans toutes les visionneuses (version complète).
+- **Visionneuse** (10/11, `game/mythicEncounter.ts`) : ouvrir une 6★ en Collection, Gros tirages, Échanges, Contrats,
+  Profil ou dans le récap joue la scène de sa famille, puis la carte se retourne à sa place — comme la rencontre Pokémon
+  et l'invocation Yu-Gi-Oh. On sait déjà quelle carte c'est : un seul indice (la famille, ≈ 0,9 s) puis la scène à vitesse
+  normale. Pas rejouée quand on feuillette (flèches / glisser), ni dans la minute qui suit une lecture de la même carte
+  (ouverture → récap). « Effets réduits » : rien, la carte directement.
+- **Rejouer** : bouton « ▶ Rejouer » à côté de « Image à revoir » dans toutes les visionneuses (version complète, indices
+  compris ; la carte refait son retournement à la fin).
 
 ## Familles
 
@@ -62,6 +71,8 @@ musique / aucun logo / aucune interface reprise. Tous les sons sont synthétisé
 ## Code
 
 - `src/game/mythic/index.ts` (léger) : famille d'une carte, indices, « déjà vue », lecture, bouton Rejouer.
+- `src/game/mythicEncounter.ts` : la scène dans la visionneuse (`withMythicPrelude`, branché une fois dans main.ts).
+- `src/experiments/045-mythic-scenes/` : le labo — les 26 scènes avec la vraie visionneuse dessous (même code que le jeu).
 - `src/game/mythic/runtime.ts` + `mythic.css` (chargés à la 1re 6★) : calque, indices, enchaînement, toucher pour passer.
   Pendant l'ouverture, le rendu 3D est mis en pause sous le calque.
 - `src/game/mythic/scenes/*.ts` : une scène = une fonction qui remplit une timeline gsap (outils dans `kit.ts`).
@@ -75,3 +86,41 @@ musique / aucun logo / aucune interface reprise. Tous les sons sont synthétisé
 3. Positionner les éléments centrés avec `k.pin(el)` (jamais `translate(-50%)` en CSS sur un élément animé par gsap).
 4. `k.actor()` = la carte (déjà centrée, opacité 0) : la faire entrer, la manipuler, la laisser au centre à l'échelle 1.
    `k.word()` (gros titre Atsuka Montreal — ex-Matcha World, V2), `k.label()` (étiquette), `k.accent` (couleur de la famille).
+
+## Polish du 10/11
+
+**Le raccord avec la vraie carte** (le plus visible)
+- La doublure 2D est maintenant LE VRAI DOS peint (`core/art/back.ts` : alu brossé vertical, deux filets gravés, « B »
+  usiné, teinte du thème), assombri comme l'éclairage de studio l'assombrit en 3D. Avant : un dégradé anthracite avec un
+  « B » à volutes — au raccord, la carte changeait de matière et de couleur.
+- Ouverture : la carte 3D qui attend est ×1,37 plus grande que la doublure sur téléphone (246 px contre 179). La
+  doublure grandit d'abord jusqu'à elle (`target` = `opening.revealRect()`), puis le calque se fond. Mesuré en jeu :
+  doublure 72,249 · 247×344 — carte 3D 72,250 · 246×343.
+- Visionneuse : c'est la carte 3D qui attend de dos, au centre, à la largeur de la doublure (`show(..., { hold, fromW })`),
+  puis se retourne en venant à sa place de repos.
+- La 3D repart 0,5 s avant la fin de la scène (encore cachée) : le fondu du canvas et celui du calque ne se croisent plus.
+- Signature commune : un reflet balaie la carte quand elle se pose (`k.glint`), juste avant le fondu.
+
+**Typographie**
+- Atsuka Montreal : UNE capitale à volutes par titre (`displayCase`) — « VICTOIRE », « ÉCHEC ET MAT », « LA SIX
+  ÉTOILES », les indices « famille » et le fil d'actions de l'Esport avaient une volute sur chaque lettre.
+- Les titres tiennent dans l'écran (`k.fit`) : « Spirit Blossom », « La six étoiles ! », « Échec et mat », « Victoire ».
+- Bold Frame n'est plus utilisée en capitales (R et X s'y lisent A et H : « SPOAT », « PAEMIEA LEAGUE ») : thème et
+  étiquettes en Inter espacée, 3e indice en casse mixte.
+
+**Scènes**
+- Cartouche : composition centrée ; la console ÉJECTE la carte par le haut (avant : elle « poussait » vers le bas, sous
+  la console, et perdait son liseré) ; étoiles en pixels quand l'année est inconnue ; étiquette POWER sur la console.
+- Caisse CS : miniatures préchargées pendant l'ouverture du booster (`preload`), plus d'icône d'image cassée, plus de
+  dépendance à l'interface du jeu.
+- Valorant : le reflet reste sur la carte (un quadrilatère gris en sortait), coupe plus franche.
+- YouTube : textes à la taille de l'écran (les messages faisaient 13 px sur téléphone).
+- Buzzer : matrice LED sur le tableau seulement (le sol devenait un nuage de points), tir qui reste dans l'écran, sols
+  lisibles (parquet, gazon, glace).
+- Esport : le fil tient dans l'écran sur ordinateur. Glisse : « Meilleur temps » lisible sur la neige.
+- Échecs : l'échiquier couvre toute la largeur sur ordinateur. Voitures : trois silhouettes vraiment différentes
+  (citadine, coupé, supercar à aileron). Vie marine : vision nocturne bleue. Télé : la carte à l'écran a ses filets et
+  son « B ».
+
+**Vérifié** : 26 scènes + variantes rejouées image par image à 390 × 844 et 1440 × 900 ; en jeu (démo, GPU logiciel) :
+ouverture d'un booster 6★ et ouverture d'une 6★ dans la visionneuse, sans erreur. Pas vérifié : vrai téléphone, sons.

@@ -2,6 +2,7 @@
  * ESPORT — « Le dernier coup » : un fil d'actions de match en texte libre (sans cadre) défile de plus en plus vite,
  * l'image se FIGE (écran gelé, glitch), silence… « VICTOIRE » ; la carte sort de l'écran gelé, au centre.
  */
+import { displayCase } from '../../../core/fonts';
 import type { SceneCtx } from '../kit';
 
 const FEED = ['ENGAGEMENT', 'DOUBLE', 'CLUTCH', 'ACE', 'OBJECTIF', 'TRIPLE', 'RETOUR', 'DERNIER ROUND', 'OVERTIME', 'MATCH POINT', '1 CONTRE 3', 'DERNIER COUP'];
@@ -11,9 +12,12 @@ export default function dernierCoup(k: SceneCtx) {
   el('div', '', 'position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 40%,#0e1016,#030305 75%);');
   k.label(k.card.sub.toUpperCase(), '50%', `${u * 7}px`).style.cssText += `transform:translateX(-50%);color:${accent};`;
   const feed = el('div', '', `position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:${u * 2}px;`);
+  // (10/11) le fil tient toujours dans l'écran (ordinateur : 12 lignes dépassaient en haut et en bas)
+  const fs = Math.min(u, (h * 0.78) / 108);
+  feed.style.gap = `${fs * 2}px`;
   const items = FEED.map((t, i) => {
-    const e = el('div', '', `font:800 ${u * (5 + (i % 3) * 2)}px var(--display);color:${i === FEED.length - 1 ? accent : '#fff'};opacity:0;letter-spacing:.02em;`, feed);
-    e.textContent = t;
+    const e = el('div', '', `font:800 ${fs * (5 + (i % 3) * 2)}px/1 var(--display);color:${i === FEED.length - 1 ? accent : '#fff'};opacity:0;white-space:nowrap;`, feed);
+    e.textContent = displayCase(t); // une capitale à volutes par ligne, jamais en chaîne
     return e;
   });
   items.forEach((e, i) => {
@@ -44,6 +48,7 @@ export default function dernierCoup(k: SceneCtx) {
   tl.set(a, { opacity: 1, scale: 0.3, filter: 'brightness(3) contrast(0)' }, 2.3);
   tl.to(a, { scale: 1, filter: 'brightness(1) contrast(1)', duration: 0.5, ease: 'power3.out' }, 2.32);
   tl.to([feed, freeze], { opacity: 0, duration: 0.3 }, 2.35);
-  tl.to({}, { duration: 0.01 }, 2.95);
+  k.glint(2.75, 0.45);
+  tl.to({}, { duration: 0.01 }, 3.15);
   void w;
 }

@@ -17,7 +17,10 @@ function chess(k: SceneCtx) {
   const { tl, u, el, sfx, actor, w, h } = k;
   el('div', '', 'position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 50% 55%,#1a1816,#050504 75%);');
   const S = Math.min(w * 1.1, u * 110);
-  const board = el('div', '', `position:absolute;left:50%;top:${h * 0.5}px;width:${S}px;height:${S}px;background:repeating-conic-gradient(#d9d2c3 0 25%,#1c1917 0 50%) 0 0/${S / 4}px ${S / 4}px;transform-origin:50% 0;`);
+  // (10/11) l'échiquier couvre toute la largeur, y compris sur un écran large (il s'arrêtait aux 5/6 de l'écran) :
+  // on ajoute des motifs entiers de chaque côté, les cases du centre ne bougent pas
+  const BW = S * (1 + 2 * Math.ceil(Math.max(0, w * 1.5 - S) / (2 * S)));
+  const board = el('div', '', `position:absolute;left:50%;top:${h * 0.5}px;width:${BW}px;height:${S}px;background:repeating-conic-gradient(#d9d2c3 0 25%,#1c1917 0 50%) 0 0/${S / 4}px ${S / 4}px;transform-origin:50% 0;`);
   k.gsap.set(board, { xPercent: -50, transformPerspective: u * 70, rotationX: 62 });
   const king = k.svg(`<svg viewBox="0 0 60 120" width="${u * 22}" height="${u * 44}" style="position:absolute;left:50%;top:${h * 0.66}px;overflow:visible"><g fill="#f4f1ea" stroke="#111" stroke-width="2" stroke-linejoin="round"><path d="M26 4h8v8h8v8h-8v8h-8v-8h-8v-8h8z"/><path d="M14 36q16-10 32 0l-4 12h-24z"/><path d="M18 48h24l6 44h-36z"/><path d="M10 92h40l4 14q-24 6-48 0z"/></g></svg>`);
   k.gsap.set(king, { xPercent: -50, yPercent: -100, transformOrigin: '50% 100%' });

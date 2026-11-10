@@ -29,6 +29,13 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Cartes 6★ : leur scène partout', tag: 'amélioré',
+        points: [
+          'Ouvrir une carte 6★ dans la Collection, les Échanges, les Contrats, le Profil ou les Gros tirages rejoue la scène de sa famille (cartouche, vinyle, case de manga, tunnel…), puis la carte se retourne. Un toucher passe la scène ; « Rejouer » relance la version complète.',
+          'Les 26 scènes ont été retravaillées : la carte de la scène est le vrai dos en aluminium brossé, elle se raccorde à la carte sans à-coup, et les textes sont plus lisibles sur téléphone.',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Berserk : six nouvelles cartes', tag: 'nouveau',
         points: [
           'Six nouvelles cartes Berserk au-delà de l’Âge d’or, dans le booster Pop Culture : Femto, le Chevalier Squelette et Guts (Armure du Berserker) en 6★, Schierke, Farnese et Serpico en 5★.',

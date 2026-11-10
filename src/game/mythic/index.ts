@@ -18,8 +18,10 @@ import { fxReduced } from '../../core/fxPref';
 import type { Shell } from '../shell';
 import { duelMonster } from '../scenes/duelMonsters';
 import type { MythicCard, SceneFn } from './kit';
+import type { CardTarget } from './runtime';
 
-type Loader = () => Promise<{ default: SceneFn }>;
+/** une scène peut exposer `preload` : ses images sont demandées pendant que le joueur ouvre le booster */
+type Loader = () => Promise<{ default: SceneFn; preload?: (card: MythicCard) => void }>;
 
 /** famille (id de groupe, ou sous-thème sans groupe) → scène */
 const SCENES: Record<string, Loader> = {
@@ -55,6 +57,10 @@ const SCENES: Record<string, Loader> = {
   ardeche: () => import('./scenes/topo'),
 };
 
+/** les familles qui ont une scène, dans l'ordre du catalogue (labo 045) */
+export const MYTHIC_FAMILIES = Object.keys(SCENES);
+/** chargeur de la scène d'une famille (labo 045) */
+export const mythicScene = (fam: string): Loader | undefined => SCENES[fam];
 
 /** Famille d'une 6★ qui a sa scène (null : pas une 6★, ou elle a déjà sa propre séquence). */
 export function mythicFamily(cardId: string, rarity: string): string | null {
@@ -116,12 +122,13 @@ export function mythicClues(cardId: string): string[] {
   let third = '';
   if (e.year) third = String(e.year);
   else if (st?.group && sub && safe && !generic) third = sub;
-  else if (n > 1) third = `1 PARMI ${fmtCount(n)}`;
+  else if (n > 1) third = `1 parmi ${fmtCount(n)}`;
   // Jeux vidéo : GAMING → ZELDA → 1991 (la famille « Jeux vidéo » laisse sa place à la série… si elle ne spoile pas)
-  if (e.year && st?.group?.id === 'jeux-video') out[1] = safe ? sub : 'JEUX VIDÉO';
+  if (e.year && st?.group?.id === 'jeux-video') out[1] = safe ? sub : 'Jeux vidéo';
   if (third) out.push(third);
   const seen = new Set<string>();
-  return out.filter((s) => s && !seen.has(s.toLowerCase()) && (seen.add(s.toLowerCase()), true)).map((s) => s.toUpperCase());
+  // (10/11) casse naturelle : le moteur met chaque indice dans la casse de SA police (runtime.ts playClues)
+  return out.filter((s) => s && !seen.has(s.toLowerCase()) && (seen.add(s.toLowerCase()), true));
 }
 
 // ───────────────────────────────────────────── « déjà vue » (par famille, mémorisé sur l'appareil)
@@ -152,25 +159,45 @@ function markFamilySeen(fam: string) {
 export interface PreludeHandle {
   /** résolu quand la carte doit prendre le relais (fin, toucher pour passer, ou abandon) */
   done: Promise<void>;
+  /** résolu un peu avant : la carte doit être LÀ sous le calque, qui commence à se fondre (visionneuse) */
+  handoff: Promise<void>;
   /** coupe tout de suite (Tout passer, retour boutique) */
   abort(): void;
 }
 
 let current: PreludeHandle | null = null;
 
+/** dernière lecture par carte : la visionneuse ne rejoue pas la scène d'une carte qu'on vient de voir (ouverture → récap) */
+const played = new Map<string, number>();
+export const mythicJustPlayed = (cardId: string, within = 60_000) => performance.now() - (played.get(cardId) ?? -Infinity) < within;
+
 /** Précharge le moteur et la scène d'une 6★ (pendant que le joueur ouvre le booster). */
 export function prepareMythic(cardId: string, rarity: string): void {
   const fam = mythicFamily(cardId, rarity);
   if (!fam) return;
   void import('./runtime').catch(() => undefined);
-  void SCENES[fam]().catch(() => undefined);
+  void SCENES[fam]()
+    .then((m) => {
+      const card = mythicCard(cardId);
+      if (card) m.preload?.(card);
+    })
+    .catch(() => undefined);
 }
 
 /**
  * Joue indices + scène de la famille. `mode` : 'opening' (la carte attend face cachée derrière, le rendu 3D est mis
- * en pause pendant la scène) ou 'viewer' (rejouer depuis une visionneuse). `quick` : force la version courte (Tout révéler).
+ * en pause pendant la scène) ou 'viewer' (visionneuse). `quick` : force la version courte (Tout révéler) ; `full` :
+ * version complète quoi qu'il arrive (bouton Rejouer) ; `auto` : ouverture d'une 6★ dans une visionneuse — on sait
+ * déjà quelle carte c'est, donc pas de suspense : la famille seule en indice, puis la scène à vitesse normale ;
+ * `target` : place de la vraie carte 3D, où la doublure se pose avant de s'effacer.
  */
-export function playMythicPrelude(shell: Shell, cardId: string, rarity: string, mode: 'opening' | 'viewer', o: { quick?: boolean; full?: boolean } = {}): PreludeHandle {
+export function playMythicPrelude(
+  shell: Shell,
+  cardId: string,
+  rarity: string,
+  mode: 'opening' | 'viewer',
+  o: { quick?: boolean; full?: boolean; auto?: boolean; target?: () => CardTarget | null } = {},
+): PreludeHandle {
   current?.abort();
   const fam = mythicFamily(cardId, rarity);
   const card = mythicCard(cardId);
@@ -178,32 +205,44 @@ export function playMythicPrelude(shell: Shell, cardId: string, rarity: string, 
   let inner: PreludeHandle | null = null;
   let resolve!: () => void;
   const done = new Promise<void>((r) => (resolve = r));
+  let handed!: () => void;
+  const handoff = new Promise<void>((r) => (handed = r));
   const h: PreludeHandle = {
     done,
+    handoff,
     abort() {
       aborted = true;
       inner?.abort();
+      handed();
       resolve();
     },
   };
   current = h;
   if (!fam || !card) {
+    handed();
     resolve();
     return h;
   }
   const reduced = fxReduced();
-  const short = !o.full && (!!o.quick || familySeen(fam));
+  const short = !o.full && !o.auto && (!!o.quick || familySeen(fam));
   markFamilySeen(fam);
+  played.set(cardId, performance.now());
+  prepareMythic(cardId, rarity); // (visionneuse : pas d'ouverture avant — les images de la scène partent maintenant)
   void (async () => {
     try {
-      const rt = await import('./runtime');
+      // (la pile de couches du jeu est déjà chargée : import() instantané, et pas de dépendance circulaire avec ui.ts)
+      const [rt, ui] = await Promise.all([import('./runtime'), import('../ui')]);
       if (aborted) return;
-      inner = rt.runPrelude({ shell, card, clues: mythicClues(cardId), mode, short, reduced, scene: SCENES[fam] });
+      const all = mythicClues(cardId);
+      const clues = o.auto ? all.slice(1, 2).concat(all.length > 1 ? [] : all) : all;
+      inner = rt.runPrelude({ host: shell, card, clues, mode, short, reduced, scene: SCENES[fam], layers: { push: ui.pushLayer, pop: ui.popLayer }, target: o.target });
+      void inner.handoff.then(handed);
       await inner.done;
     } catch (e) {
       console.error('[jeu] scène 6★', e);
     } finally {
       if (current === h) current = null;
+      handed();
       resolve();
     }
   })();
@@ -225,7 +264,12 @@ export function enableMythicReplay(shell: Shell) {
 export function canReplayMythic(cardId: string): boolean {
   return !!replayShell && !!mythicFamily(cardId, catalogEntry(cardId)?.rarity ?? '');
 }
-export function replayMythic(cardId: string): PreludeHandle | null {
-  if (!replayShell) return null;
-  return playMythicPrelude(replayShell, cardId, 'mythic', 'viewer', { full: true });
+/** posé par mythicEncounter.ts : « Rejouer » passe par la visionneuse (la carte refait son retournement à la fin) */
+let replayer: ((cardId: string) => void) | null = null;
+export function setMythicReplayer(fn: (cardId: string) => void) {
+  replayer = fn;
+}
+export function replayMythic(cardId: string): void {
+  if (replayer) return replayer(cardId);
+  if (replayShell) playMythicPrelude(replayShell, cardId, 'mythic', 'viewer', { full: true });
 }

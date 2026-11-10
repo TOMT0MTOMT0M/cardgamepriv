@@ -40,7 +40,11 @@ export default function splash(k: SceneCtx) {
     }
     void dt;
   });
-  const word = k.word(k.card.sub.toUpperCase(), h * 0.5, u * 14);
+  const word = k.word(k.card.sub, h * 0.5, u * 14);
+  // (10/11) taille calculée avec l'espacement FINAL des lettres : « Spirit Blossom » ne déborde plus de l'écran
+  word.style.letterSpacing = '0.12em';
+  k.fit(word, 0.88);
+  word.style.letterSpacing = '0.01em';
   word.style.color = tint;
   word.style.textShadow = `0 0 ${u * 6}px rgba(${rgb},.6)`;
   tl.fromTo(word, { opacity: 0, scale: 1.3, filter: 'blur(12px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.5, ease: 'power3.out' }, 0.1);
