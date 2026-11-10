@@ -1,6 +1,6 @@
 /* ═════════════ DIRECTION « USINAGE » — TOUT LE JEU (V2, 10/11)
    La direction de l'espace Jeux (casino.css) et du chat (chat.css), étendue à chaque page : noir, filets blancs au
-   pixel, repères d'angle sur les pièces encadrées, coins droits (2–3 px), étiquettes techniques en capitales espacées,
+   pixel, repères d'angle sur les pièces encadrées, coins RONDS depuis les retours de Hugo (10/11 : jetons --r-*, repères d'angle éteints), étiquettes techniques en capitales espacées,
    chiffres tabulaires, blanc plein = actif, aucun dégradé ni halo décoratif. Seule couleur : l'information (raretés
    --rc, états, erreurs). Chargé après style.css et panneaux.css (main.ts) : ce bloc l'emporte sur ce qui précède.
 
@@ -11,15 +11,17 @@
 
 :root {
   /* rayons : pastilles, boîtes, petits contrôles */
-  --r-pill: 3px;
-  --r-box: 3px;
-  --r-ctl: 2px;
+  /* (retours Hugo 10/11) « tout est trop carré, je préférais le truc tout rond » : retour aux formes rondes de la V1 */
+  --r-pill: 999px;
+  --r-box: 16px;
+  --r-ctl: 10px;
   /* filets et repères (mêmes valeurs que l'espace Jeux, qui les lisait sur .games) */
   --gm-line: rgba(255, 255, 255, 0.11);
   --gm-line-2: rgba(255, 255, 255, 0.24);
-  --gm-k: rgba(255, 255, 255, 0.62);
+  /* repères d'angle éteints : un angle arrondi les couperait (retours Hugo 10/11) */
+  --gm-k: transparent;
   --gm-fill: rgba(255, 255, 255, 0.018);
-  --gm-r: 3px;
+  --gm-r: var(--r-box);
   --gm-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --gm-spring: cubic-bezier(0.34, 1.45, 0.5, 1);
   --gm-label: 500 10.5px/1.2 var(--mono);
@@ -30,7 +32,7 @@
 
 /* ───────────── socle */
 html, body { font-variant-numeric: tabular-nums; }
-::-webkit-scrollbar-thumb { border-radius: 0; }
+::-webkit-scrollbar-thumb { border-radius: var(--r-pill); }
 :focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
 
 /* pages : aplat noir + trame de points au pas de 22 px qui s'efface vers le bas (plan de travail), comme .games::before.
@@ -52,13 +54,7 @@ html, body { font-variant-numeric: tabular-nums; }
   --uk: var(--gm-k);
   border-radius: var(--gm-r);
   border-color: var(--gm-line);
-  background-image:
-    linear-gradient(var(--uk) 0 0), linear-gradient(var(--uk) 0 0), linear-gradient(var(--uk) 0 0), linear-gradient(var(--uk) 0 0),
-    linear-gradient(var(--uk) 0 0), linear-gradient(var(--uk) 0 0), linear-gradient(var(--uk) 0 0), linear-gradient(var(--uk) 0 0);
-  background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
-  background-size: var(--cs) 1px, 1px var(--cs), var(--cs) 1px, 1px var(--cs), var(--cs) 1px, 1px var(--cs), var(--cs) 1px, 1px var(--cs);
-  background-repeat: no-repeat;
-  background-origin: border-box;
+  /* (retours Hugo 10/11) pièces arrondies : plus de repères d'angle (--uk ne colore plus que le filet des états actifs) */
   box-shadow: none;
 }
 
@@ -83,18 +79,18 @@ html, body { font-variant-numeric: tabular-nums; }
 /* ───────────── en-tête du site */
 .topbar { background: #000; border-bottom: 1px solid var(--gm-line); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .topbar nav a { font: 500 11px var(--mono); letter-spacing: 0.16em; }
-.topbar nav .badge, .nav-extra .badge, .me-menu .mm-link .badge, .tr-tabs .badge, .tr-sec-h .badge { border-radius: 2px; }
+.topbar nav .badge, .nav-extra .badge, .me-menu .mm-link .badge, .tr-tabs .badge, .tr-sec-h .badge { border-radius: var(--r-ctl); }
 .me .packs, .me .coin-btn, .me .pt-cnt, .coin-btn { background: none; border-color: var(--gm-line-2); box-shadow: none; }
 .me .packs:hover, .coin-btn:hover { background: rgba(255, 255, 255, 0.04); border-color: #fff; }
 .me .packs.full { border-color: #fff; }
-.me .icon, .me .user, .me .user img, .me .ava { border-radius: 2px; }
+.me .icon, .me .user, .me .user img, .me .ava { border-radius: var(--r-pill); }
 .me .user img, .me .ava { border: 1px solid var(--gm-line-2); background: #0d0d0d; }
 .me .user:hover, .me .user.on { box-shadow: 0 0 0 1px #fff; }
 .um-veil { background: rgba(0, 0, 0, 0.6); }
 
 /* avatars des listes : carrés, comme dans l'espace Jeux et le chat (l'avatar du profil garde son cadre gagné) */
-.lb-ava, .pd-ava, .bp-ava, .am-ava { border-radius: 2px; }
-.lb-ava img, .pd-ava img, .bp-ava img, .am-ava img { border-radius: 1px; }
+.lb-ava, .pd-ava, .bp-ava, .am-ava { border-radius: 50%; }
+.lb-ava img, .pd-ava img, .bp-ava img, .am-ava img { border-radius: 50%; }
 
 /* ───────────── boutons */
 .btn-primary, .open-btn, .m-go { letter-spacing: 0.16em; box-shadow: none; transition: background-color var(--dur-rapide), transform var(--dur-rapide), opacity var(--dur-rapide); }
@@ -106,8 +102,8 @@ a.btn-ghost, a.btn-ghost:visited { color: var(--ink); }
 
 /* ───────────── contrôles segmentés, onglets, jetons */
 .seg { border-color: var(--gm-line-2); padding: 3px; gap: 0; }
-.seg button, .seg a { border-radius: 2px; }
-.seg-ind { border-radius: 2px; box-shadow: none; }
+.seg button, .seg a { border-radius: var(--r-ctl); }
+.seg-ind { border-radius: var(--r-ctl); box-shadow: none; }
 .seg button.on, .seg a.on { background: #fff; color: #000; }
 /* onglets de page : capitales espacées */
 .seg.coll-views button, .seg.coll-views a, .pf-tabs button, .tr-tabs button, .lb-boards button, .sg-tabs button { padding: 8px 14px; font: 500 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
@@ -126,7 +122,7 @@ select, textarea { border-radius: var(--gm-r); }
 
 /* ───────────── notifications, panneaux de l'en-tête, fenêtres */
 .toast { border-radius: var(--gm-r); border-color: var(--gm-line-2); background: #000; box-shadow: none; letter-spacing: 0.04em; }
-.toast::before { width: 6px; height: 6px; border-radius: 0; box-shadow: none; }
+.toast::before { width: 6px; height: 6px; border-radius: 50%; box-shadow: none; }
 .toast.ok::before, .toast.err::before { box-shadow: none; }
 .toast.ok { border-color: #fff; }
 .toast.err { border-color: rgba(255, 77, 77, 0.6); }
@@ -135,7 +131,7 @@ select, textarea { border-radius: var(--gm-r); }
 .gm-modal-veil, .ob-veil { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgba(0, 0, 0, 0.82); }
 
 /* ───────────── barres de progression : droites, graduées par le fond */
-.p-bar, .p-bar i, .msn-bar, .msn-bar i, .sc-pb, .sc-pb > i, .pf-k-bar, .pf-rbar, .ps-pb, .ps-pb i, .ps-bb, .ps-bb i, .gauge-bar, .gm-bar, .al-bar, .al-bar i, .sum-prog i, .pf-ach-bar, .pf-ach-bar > i, .l-bar { border-radius: 0; }
+.p-bar, .p-bar i, .msn-bar, .msn-bar i, .sc-pb, .sc-pb > i, .pf-k-bar, .pf-rbar, .ps-pb, .ps-pb i, .ps-bb, .ps-bb i, .gauge-bar, .gm-bar, .al-bar, .al-bar i, .sum-prog i, .pf-ach-bar, .pf-ach-bar > i, .l-bar { border-radius: var(--r-pill); }
 
 @media (prefers-reduced-motion: no-preference) {
   .sc-c, .if-entry, .ob-card, .am-card, .pf-stat, .ct-tier, .lb-pd, .pd, .sg-item { transition: --cs var(--dur-emphatique) var(--gm-soft), border-color var(--dur-standard); }
@@ -155,7 +151,7 @@ select, textarea { border-radius: var(--gm-r); }
 .tr-sec-h::after { top: -1px; bottom: auto; }
 .tr-sec-h small { font: var(--gm-label); letter-spacing: 0.2em; text-transform: uppercase; }
 .ob-intro p, .trades > .ob .ob-intro p { font: 400 12.5px/1.6 var(--mono); font-style: normal; color: var(--ink-3); }
-.ob-seg button, .trades > .ob .ob-seg button { border-radius: 2px; border-color: var(--gm-line-2); font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.ob-seg button, .trades > .ob .ob-seg button { border-radius: var(--r-ctl); border-color: var(--gm-line-2); font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
 .ob-seg button.on, .trades > .ob .ob-seg button.on { background: #fff; border-color: #fff; color: #000; }
 .ob-seg button.on .ob-n { color: rgba(0, 0, 0, 0.6); }
 
@@ -165,7 +161,7 @@ select, textarea { border-radius: var(--gm-r); }
 .pf-bio-in { font: 400 14px var(--mono); background: none; }
 .pf-banner { background: #000; border-color: var(--gm-line); }
 .pf-banner-btn { background: #000; }
-.pf-title, .pf-badge, .pf-count { border-radius: 2px; background: none; }
+.pf-title, .pf-badge, .pf-count { border-radius: var(--r-ctl); background: none; }
 .pf-case { border-color: var(--gm-line); box-shadow: none; background: var(--gm-fill); }
 .pf-case::after { display: none; }
 .pf-stat b, .pf-stat.big b { font-family: var(--title); font-style: normal; font-weight: 600; text-shadow: none; }
@@ -174,7 +170,7 @@ select, textarea { border-radius: var(--gm-r); }
 .pf-panel { background-color: var(--gm-fill); }
 
 /* ───────────── en-tête : icônes de droite (mises à jour, tutoriel, suggestions) */
-.nav-extra a { border-radius: 2px; }
+.nav-extra a { border-radius: var(--r-ctl); }
 .nav-extra .nb-dot { box-shadow: 0 0 0 2px #000; }
 .msn-n { box-shadow: none; }
 
@@ -185,34 +181,34 @@ select, textarea { border-radius: var(--gm-r); }
 .lb-pd-rank, .pd-rank { font: 600 26px/1 var(--title); letter-spacing: 0; }
 .lb-pd.p1 .lb-pd-rank { font-size: 44px; }
 .lb-pd b, .pd b { font: 600 15px/1.2 var(--title); font-style: normal; }
-.lb-you { border-radius: 2px; letter-spacing: 0.2em; }
-.pd-ava, .lb-ava { border-radius: 2px; }
-.lb-row { border-radius: 2px; border-color: var(--gm-line); transition: border-color var(--dur-rapide), background-color var(--dur-rapide), transform var(--dur-standard) var(--gm-soft); }
+.lb-you { border-radius: var(--r-ctl); letter-spacing: 0.2em; }
+.pd-ava, .lb-ava { border-radius: 50%; }
+.lb-row { border-radius: var(--r-ctl); border-color: var(--gm-line); transition: border-color var(--dur-rapide), background-color var(--dur-rapide), transform var(--dur-standard) var(--gm-soft); }
 @media (hover: hover) { .lb-row:hover { transform: translateX(3px); border-color: var(--gm-line-2); background: rgba(255, 255, 255, 0.03); } }
 .lb-row.is-me { border-color: #fff; background: rgba(255, 255, 255, 0.05); }
 
 /* ───────────── MISSIONS, CONNEXION (panneaux de l'en-tête) */
-.msn { border-radius: 2px; }
+.msn { border-radius: var(--r-ctl); }
 .msn-head b { font: 600 18px var(--title); font-style: normal; }
 .msn-t { font: 500 13px/1.35 var(--mono); }
-.msn-bonus { border-radius: 2px; }
+.msn-bonus { border-radius: var(--r-ctl); }
 .msn-bonus.ready { background: rgba(255, 255, 255, 0.05); border-color: #fff; }
-.msn-head .pop-x { border-radius: 2px; }
+.msn-head .pop-x { border-radius: var(--r-ctl); }
 
 /* ───────────── SUGGESTIONS */
-.sg-kind { border-radius: 2px; border-color: var(--gm-line-2); }
+.sg-kind { border-radius: var(--r-ctl); border-color: var(--gm-line-2); }
 .sg-kind b { font: 600 15px var(--title); font-style: normal; }
 .sg-kind.on { border-color: #fff; background: rgba(255, 255, 255, 0.07); }
 .sg-kinds legend, .sg-f > label, .sg-f legend { font: var(--gm-label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-3); }
 .sg-f textarea, .sg-f input[type='search'], .sg-f input[type='url'], .sg-f select, .sg-note-in { font-family: var(--mono); background: none; border-color: var(--gm-line-2); }
 .sg-f textarea:focus, .sg-f input:focus { border-color: #fff; }
 .sg-item p { font: 400 13px/1.55 var(--mono); }
-.sg-st { border-radius: 2px; }
+.sg-st { border-radius: var(--r-ctl); }
 
 /* ───────────── MISES À JOUR / TUTORIEL */
-.if-tag { border-radius: 2px; background: none; border: 1px solid var(--gm-line-2); color: var(--ink-2); font: 500 9.5px var(--mono); letter-spacing: 0.2em; padding: 2px 6px; }
+.if-tag { border-radius: var(--r-ctl); background: none; border: 1px solid var(--gm-line-2); color: var(--ink-2); font: 500 9.5px var(--mono); letter-spacing: 0.2em; padding: 2px 6px; }
 .if-tag.t-new { background: #fff; border-color: #fff; color: #000; }
-.if-toc a { border-radius: 2px; }
+.if-toc a { border-radius: var(--r-ctl); }
 
 /* ───────────── CONTRATS */
 .ct-head p { max-width: 66ch; margin: 0; font: 400 12.5px/1.6 var(--mono); color: var(--ink-3); }
@@ -220,7 +216,7 @@ select, textarea { border-radius: var(--gm-r); }
 .ct-tier { background-color: var(--gm-fill); }
 .ct-tier:not(.on):hover { transform: none; }
 .ct-tier.on { --uk: var(--rc); --cs: 18px; border-color: var(--rc); box-shadow: none; }
-.ct-tier .ct-tp, .ct-prot { border-radius: 2px; }
+.ct-tier .ct-tp, .ct-prot { border-radius: var(--r-ctl); }
 .ct-tier .ct-tp.ok { background: none; }
 .ct-sheet { background-color: var(--gm-fill); }
 .ct-actions .ghost { letter-spacing: 0.04em; }
@@ -229,26 +225,26 @@ select, textarea { border-radius: var(--gm-r); }
 .am-card { background-color: var(--gm-fill); }
 .am-card h2 { font: var(--gm-label); letter-spacing: 0.28em; color: var(--ink-3); }
 .am-in.has { --uk: #fff; --cs: 18px; border-color: var(--gm-line-2); box-shadow: none; }
-.am-row, .fr-row, .friend { border-radius: 2px; border-color: var(--gm-line); background: none; }
+.am-row, .fr-row, .friend { border-radius: var(--r-ctl); border-color: var(--gm-line); background: none; }
 
 /* ───────────── SUCCÈS */
 .sc-c { background-color: var(--gm-fill); }
 .sc-c.t4 { background: var(--gm-fill); }
 .sc-c.ready { --uk: #fff; --cs: 18px; border-color: #fff; box-shadow: none; }
-.sc-cos, .sc-pr, .sc-frl li { border-radius: 2px; }
+.sc-cos, .sc-pr, .sc-frl li { border-radius: var(--r-ctl); }
 .sc-primes { background-color: var(--gm-fill); }
 
 /* ───────────── COLLECTION */
 .progress { background-color: var(--gm-fill); }
 .album { border-radius: var(--gm-r); background: var(--gm-fill); border-color: var(--gm-line); }
 .album:not(:disabled):hover { transform: none; border-color: var(--gm-line-2); box-shadow: none; }
-.al-fam-n, .al-soon { border-radius: 2px; }
+.al-fam-n, .al-soon { border-radius: var(--r-ctl); }
 .al-name { font: 600 14px var(--title); }
 .bd-card { background-color: var(--gm-fill); }
 .cards-bar, .tray { border-color: var(--gm-line-2); box-shadow: none; }
 
 /* ───────────── boutons ronds de fermeture / retour : touches carrées */
-.to-top, .ps-close, .pc-back, .bp-x, .msn-head .pop-x, .sc-recap-x, .ob-mh .ob-x, .sg-file-x, .pf-x, .trades.composing .tr-back { border-radius: 2px; }
+.to-top, .ps-close, .pc-back, .bp-x, .msn-head .pop-x, .sc-recap-x, .ob-mh .ob-x, .sg-file-x, .pf-x, .trades.composing .tr-back { border-radius: var(--r-ctl); }
 .ob-mh .ob-x, .ps-close, .pc-back, .to-top { background: none; border: 1px solid var(--gm-line-2); box-shadow: none; }
 @media (hover: hover) { .ob-mh .ob-x:hover, .ps-close:hover, .pc-back:hover, .to-top:hover { border-color: #fff; background: rgba(255, 255, 255, 0.04); } }
 
@@ -263,19 +259,36 @@ select, textarea { border-radius: var(--gm-r); }
 .ps-bt { font: var(--gm-label); letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-3); }
 .ps-bt small { letter-spacing: 0.04em; text-transform: none; }
 .bp-item, .shop-home .bp-item { border-radius: var(--gm-r); }
-.bp-row { border-radius: 2px; }
+.bp-row { border-radius: var(--r-ctl); }
 .sleeve, .sleeve.special { border-radius: var(--gm-r); }
 .qty { background: none; border-color: var(--gm-line-2); padding: 3px; }
-.qty button { border-radius: 2px; }
+.qty button { border-radius: var(--r-ctl); }
 .sealed-banner, .sum-warn { border-radius: var(--gm-r); }
 
 /* ───────────── connexion, accès V2, sondage, « qui a cette carte » */
 .lg-t, .lc-v2-t, .sv h2 { font-family: var(--title); font-weight: 600; letter-spacing: -0.01em; }
-.lg-tabs button { border-radius: 2px; }
-.sv-chip, .sv-rword { border-radius: 2px; }
-.canal-badge, .offline-pill, .maj-pill { border-radius: 2px; box-shadow: none; }
+.lg-tabs button { border-radius: var(--r-ctl); }
+.sv-chip, .sv-rword { border-radius: var(--r-ctl); }
+.canal-badge, .offline-pill, .maj-pill { border-radius: var(--r-ctl); box-shadow: none; }
 
 /* ───────────── menu du profil (son, vibrations, effets réduits) */
 .vol-pop, .vol-pop:has(.vol-fx), .vol-pop:has(.vol-hap) { border-radius: var(--gm-r); box-shadow: none; }
-.vol-hap, .vol-mute, .vol-fx { border-radius: 2px; background: none; border-color: var(--gm-line-2); }
-.me-menu .icon.mm-link, .me-menu .icon.msn-btn, .me-menu .icon.st-btn, .me-menu .icon.mm-reload { border-radius: 2px; }
+.vol-hap, .vol-mute, .vol-fx { border-radius: var(--r-ctl); background: none; border-color: var(--gm-line-2); }
+.me-menu .icon.mm-link, .me-menu .icon.msn-btn, .me-menu .icon.st-btn, .me-menu .icon.mm-reload { border-radius: var(--r-ctl); }
+
+/* ───────────── touches de couleur (retours Hugo 10/11 : « le noir et blanc est bien mieux, mais n'hésite pas à
+   rajouter des touches de couleur ») — la base reste noir / blanc ; chaque page a UNE couleur repère, prise dans le
+   code des raretés, posée seulement sur de petits signes : pastille de l'étiquette, filet de l'onglet actif, règle
+   graduée de l'en-tête. */
+body { --accent: #fff; }
+body[data-route='shop'] { --accent: #d9982a; }
+body[data-route='collection'] { --accent: #4c7cc2; }
+body[data-route='echanges'], body[data-route='marche'] { --accent: #6f9a74; }
+body[data-route='jeux'] { --accent: #b5344f; }
+body[data-route='classement'], body[data-route='succes'] { --accent: #d9982a; }
+body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
+.kicker::before, .pf-eyebrow::before, .ct-head .eyebrow::before { border-radius: 50%; border-color: var(--accent); background: var(--accent); }
+.ct-head::after, .rk-head::after, .sc-head::after, .am-head::after, .sg-head::after, .if-head::after, .tr-sec-h::after {
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent) 0 1px, transparent 1px 22px);
+}
+.nav-pill { box-shadow: inset 0 -2px 0 var(--accent); }

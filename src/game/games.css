@@ -199,7 +199,7 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 @keyframes landed { to { box-shadow: 0 0 30px 10px var(--gold); } }
 .gm-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; line-height: 1.6; }
 .gm-lg { display: inline-flex; align-items: center; gap: 5px; }
-.gm-lg::before { content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--pc); }
+.gm-lg::before { content: ''; width: 9px; height: 9px; border-radius: var(--r-ctl); background: var(--pc); }
 .gm-cd { margin-left: auto; font: 500 12px var(--mono); color: var(--gold); }
 .gm-potv { margin-left: auto; font-size: 13px; color: var(--ink-2); }
 .gm-pot, .gm-fgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }

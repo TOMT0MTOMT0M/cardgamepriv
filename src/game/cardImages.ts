@@ -23,7 +23,8 @@ bindFxReduced();
  * 276 px elle était agrandie ×1,22 (floue). 0,36 = 276 px (DPR ≤ 2, réduite = nette) · 0,45 (DPR 2,6) · 0,5 = 384 px
  * (DPR 3). Entre dans la clé du cache.
  */
-const SCALE = Math.max(0.36, Math.min(0.5, Math.ceil(((120 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))) / 768) * 20) / 20));
+// (retours Hugo 10/11) tuiles de collection plus grandes (~170 px au lieu de 120) : définition peinte en rapport
+const SCALE = Math.max(0.36, Math.min(0.5, Math.ceil(((170 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))) / 768) * 20) / 20));
 /**
  * Cache persistant (Cache Storage du navigateur) : une carte peinte une fois s'affiche instantanément aux visites
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes

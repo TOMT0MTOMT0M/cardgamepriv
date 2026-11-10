@@ -11,9 +11,9 @@
 .games {
   --gm-line: rgba(255, 255, 255, 0.11);
   --gm-line-2: rgba(255, 255, 255, 0.24);
-  --gm-k: rgba(255, 255, 255, 0.62);
+  --gm-k: transparent; /* (retours Hugo 10/11) arrondi : repères d'angle éteints */
   --gm-fill: rgba(255, 255, 255, 0.018);
-  --gm-r: 3px;
+  --gm-r: var(--r-box);
   --gm-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --gm-spring: cubic-bezier(0.34, 1.45, 0.5, 1);
   --gm-label: 500 10.5px/1.2 var(--mono);
@@ -90,8 +90,8 @@
 
 /* contrôles segmentés de l'espace Jeux : coins droits, pastille blanche */
 .games .seg { border-radius: var(--gm-r); border-color: var(--gm-line-2); padding: 3px; }
-.games .seg button { border-radius: 2px; }
-.games .seg-ind { border-radius: 2px; box-shadow: none; }
+.games .seg button { border-radius: var(--r-ctl); }
+.games .seg-ind { border-radius: var(--r-ctl); box-shadow: none; }
 .gm-tabs button { padding: 8px 14px; font: 500 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
 .gm-tabs button.on, .gm-pay button.on { background: #fff; color: #000; }
 
@@ -174,12 +174,12 @@
 .gm-back:hover { gap: 10px; color: #fff; }
 .gm-rules { font: 400 12.5px/1.6 var(--mono); color: var(--ink-3); }
 .gm-rules b { color: var(--ink-2); font-weight: 500; }
-.gm-item { border-radius: 2px; border-color: var(--gm-line); background: none; min-height: 52px; font-family: var(--mono); transition: border-color var(--dur-rapide), background-color var(--dur-rapide), transform var(--dur-standard) var(--gm-soft); }
+.gm-item { border-radius: var(--r-ctl); border-color: var(--gm-line); background: none; min-height: 52px; font-family: var(--mono); transition: border-color var(--dur-rapide), background-color var(--dur-rapide), transform var(--dur-standard) var(--gm-soft); }
 @media (hover: hover) { .gm-item:hover { transform: translateX(3px); border-color: var(--gm-line-2); background: rgba(255, 255, 255, 0.03); } }
 .gm-it { font-size: 13px; }
 .gm-it-r { color: #fff; font: 500 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
-.gm-tag { display: inline-block; margin-right: 6px; padding: 2px 6px; border: 1px solid var(--gm-line-2); border-radius: 2px; font: 500 9.5px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-2); vertical-align: 1px; }
-.gm-ava { border-radius: 2px; background: #0d0d0d; border-color: var(--gm-line-2); font-family: var(--title); }
+.gm-tag { display: inline-block; margin-right: 6px; padding: 2px 6px; border: 1px solid var(--gm-line-2); border-radius: var(--r-ctl); font: 500 9.5px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-2); vertical-align: 1px; }
+.gm-ava { border-radius: var(--r-ctl); background: #0d0d0d; border-color: var(--gm-line-2); font-family: var(--title); }
 
 /* éditeur de mise : étiquettes techniques, compteur de boosters */
 .gm-ed-h { font: var(--gm-label); letter-spacing: 0.28em; color: var(--ink-3); }
@@ -195,21 +195,21 @@
 .gm-ed-foot select { border-radius: var(--gm-r); background: #000; border-color: var(--gm-line-2); font-family: var(--mono); min-height: 38px; }
 
 /* jetons de booster : gravés au trait, le choix en blanc plein */
-.games .gm-pack, .gm-modal .gm-pack { border-radius: 2px; background: none; border-color: var(--gm-line-2); color: var(--ink-2); padding: 3px 9px; font: 500 10.5px var(--mono); letter-spacing: 0.16em; }
+.games .gm-pack, .gm-modal .gm-pack { border-radius: var(--r-ctl); background: none; border-color: var(--gm-line-2); color: var(--ink-2); padding: 3px 9px; font: 500 10.5px var(--mono); letter-spacing: 0.16em; }
 .games .gm-pack.bebou, .gm-modal .gm-pack.bebou { background: #fff; border-color: #fff; color: #000; }
 .gm-pack[data-i] { transition: transform var(--dur-rapide) var(--gm-spring), border-color var(--dur-rapide); }
 .gm-pack[data-i]:active { transform: scale(0.92); }
-.gm-pack-b, .gm-pack-b.on { border-color: transparent; background: none; border-radius: 2px; }
+.gm-pack-b, .gm-pack-b.on { border-color: transparent; background: none; border-radius: var(--r-ctl); }
 .gm-pack-b .gm-pack.bebou { background: none; border-color: var(--gm-line-2); color: var(--ink-2); }
 .gm-pack-b.on .gm-pack, .gm-pack-b.on .gm-pack.bebou { background: #fff; border-color: #fff; color: #000; }
 .gm-r-new { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
 /* (fusion v1.0.5) Battle Royale multi-boosters : choix du nombre de boosters par joueur, même dessin que le compteur du duel */
 .gm-rcount { margin: 0; gap: 4px; }
 .gm-rcount .muted { width: 100%; margin: 0 0 4px; font: 500 10px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); }
-.gm-pack-b.gm-rc { min-width: 36px; height: 34px; padding: 0 8px; border: 1px solid var(--gm-line-2); border-radius: 2px; font: 600 15px var(--title); color: var(--ink-2); transition: background-color var(--dur-rapide), color var(--dur-rapide), border-color var(--dur-rapide); }
+.gm-pack-b.gm-rc { min-width: 36px; height: 34px; padding: 0 8px; border: 1px solid var(--gm-line-2); border-radius: var(--r-ctl); font: 600 15px var(--title); color: var(--ink-2); transition: background-color var(--dur-rapide), color var(--dur-rapide), border-color var(--dur-rapide); }
 .gm-pack-b.gm-rc.on { background: #fff; border-color: #fff; color: #000; }
 @media (hover: hover) { .gm-pack-b.gm-rc:not(.on):hover { border-color: #fff; color: #fff; } }
-.gm-mc { border-radius: 2px; }
+.gm-mc { border-radius: var(--r-ctl); }
 
 /* enjeu : fiche Enjeu / Victoire / Défaite / Égalité */
 .gm-risk { padding: 0; border: 1px solid var(--gm-line); border-radius: var(--gm-r); background: none; }
@@ -225,7 +225,7 @@
 
 /* salle du duel */
 .gm-side { padding: 14px; gap: 10px; }
-.gm-side.ready { --cs: 18px; --gm-k: #fff; border-color: rgba(255, 255, 255, 0.45); }
+.gm-side.ready { --cs: 18px; border-color: rgba(255, 255, 255, 0.45); }
 .gm-ok { font: 500 10.5px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; }
 .gm-vs-x { position: relative; display: grid; place-items: center; width: 46px; height: 46px; font: 500 11px var(--mono); letter-spacing: 0.24em; text-indent: 0.24em; color: #fff; text-shadow: none; }
 .gm-vs-x::before { content: ''; position: absolute; inset: 7px; border: 1px solid var(--gm-line-2); transform: rotate(45deg); }
@@ -288,7 +288,7 @@
 @keyframes gm-heart { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.022); } 28% { transform: scale(1); } 42% { transform: scale(1.012); } }
 
 /* gagnant : repères qui s'allongent + lumière qui court sur le filet ; perdant éteint */
-.gm-bcol.win, .gm-rrow.win { --cs: 26px; --gm-k: #fff; border-color: rgba(255, 255, 255, 0.4); box-shadow: none; }
+.gm-bcol.win, .gm-rrow.win { --cs: 26px; border-color: rgba(255, 255, 255, 0.4); box-shadow: none; }
 .gm-bcol.win::after, .gm-rrow.win::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; background: conic-gradient(from var(--gm-a), transparent 0 64%, #fff 80%, transparent 90%), conic-gradient(from calc(var(--gm-a) + 180deg), transparent 0 64%, #fff 80%, transparent 90%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: gm-marquee 2.8s linear infinite; }
 @keyframes gm-marquee { to { --gm-a: 360deg; } }
 .gm-bcol.lose { opacity: 0.4; filter: grayscale(1); transition: opacity var(--dur-lente), filter var(--dur-lente); }
@@ -308,7 +308,7 @@
 @media (min-width: 701px) { .gm-rrow { grid-template-columns: 240px 1fr; } }
 .gm-rank { flex: none; width: 28px; font: 500 11px var(--mono); letter-spacing: 0.08em; color: var(--ink-3); }
 .gm-rrow.lead .gm-rank { color: #fff; }
-.gm-rrow.lead:not(.win) { --gm-k: #fff; border-color: var(--gm-line-2); }
+.gm-rrow.lead:not(.win) { border-color: var(--gm-line-2); }
 .gm-rp { padding: 16px 10px; animation: gm-rise 0.5s var(--gm-soft) backwards; }
 .gm-rp b { font: 600 14px var(--title); }
 .gm-rp.empty { background: none; border-style: dashed; border-color: var(--gm-line-2); }
@@ -316,7 +316,7 @@
 
 /* ═════ ROULETTE */
 .gm-wheel.r36 { gap: 5px; }
-.gm-num { position: relative; border-radius: 2px; border-color: var(--gm-line); background: none; font: 600 15px var(--title); color: var(--ink-2); transition: transform var(--dur-standard) var(--gm-spring), background-color 0.7s var(--ease-standard), box-shadow 0.7s var(--ease-standard), border-color var(--dur-standard), color var(--dur-standard); }
+.gm-num { position: relative; border-radius: var(--r-ctl); border-color: var(--gm-line); background: none; font: 600 15px var(--title); color: var(--ink-2); transition: transform var(--dur-standard) var(--gm-spring), background-color 0.7s var(--ease-standard), box-shadow 0.7s var(--ease-standard), border-color var(--dur-standard), color var(--dur-standard); }
 @media (hover: hover) { .gm-num:hover:not(.taken):not(.mine):not(.ball) { border-color: #fff; color: #fff; } }
 .gm-num:active:not(.taken):not(.mine) { transform: scale(0.94); transition-duration: var(--dur-instant); }
 .gm-num.sel, .gm-num.mine { color: #fff; }
@@ -339,8 +339,8 @@
 .gm-cov { position: relative; height: 8px; background: repeating-linear-gradient(90deg, var(--gm-line-2) 0 1px, transparent 1px calc(100% / 36)); }
 .gm-cov > i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--c, 0) * 100%); background: repeating-linear-gradient(90deg, #fff 0 1px, transparent 1px calc(100% / 36 / var(--c, 1))); border-bottom: 2px solid #fff; transition: width 0.8s var(--gm-soft); }
 .gm-legend { font: 400 12px/1.6 var(--mono); }
-.gm-lg { padding: 3px 9px 3px 7px; border: 1px solid var(--gm-line); border-radius: 2px; color: var(--ink-2); }
-.gm-lg::before { border-radius: 1px; }
+.gm-lg { padding: 3px 9px 3px 7px; border: 1px solid var(--gm-line); border-radius: var(--r-ctl); color: var(--ink-2); }
+.gm-lg::before { border-radius: var(--r-ctl); }
 /* compte à rebours technique */
 .gm-cd { display: inline-flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 1px solid var(--gm-line-2); border-radius: var(--gm-r); color: #fff; font: 500 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; }
 .gm-cd::before { content: ''; width: 6px; height: 6px; background: #fff; animation: gm-blink 1s steps(2, jump-none) infinite; }
@@ -349,7 +349,7 @@
 .gm-cd:empty { display: none; }
 /* mise en trois étapes */
 .gm-stepl { display: flex; align-items: center; gap: 12px; font: 400 13px var(--mono); color: var(--ink-3); }
-.gm-stepl i { flex: none; width: 26px; height: 22px; display: grid; place-items: center; border: 1px solid var(--gm-line-2); border-radius: 2px; font: 500 10px var(--mono); font-style: normal; letter-spacing: 0.06em; }
+.gm-stepl i { flex: none; width: 26px; height: 22px; display: grid; place-items: center; border: 1px solid var(--gm-line-2); border-radius: var(--r-ctl); font: 500 10px var(--mono); font-style: normal; letter-spacing: 0.06em; }
 .gm-stepl.cur { color: #fff; }
 .gm-stepl.cur i { background: #fff; border-color: #fff; color: #000; }
 .gm-stepl.done { color: var(--ink-2); }
