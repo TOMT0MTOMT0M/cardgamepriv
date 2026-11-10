@@ -3525,3 +3525,7 @@ html.vt-pages::view-transition-new(pages) { animation: vt-pages-in var(--dur-emp
 .off-ok { font: 600 12px var(--mono); letter-spacing: 0.08em; color: var(--gold); }
 .off-bar { position: relative; flex: 1 1 200px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
 .off-bar > i { position: absolute; inset: 0; background: #fff; transform-origin: 0 50%; transform: scaleX(0); transition: transform var(--dur-rapide) linear; }
+
+/* (v1.0.12) mise à jour forcée (src/game/maj.ts) : voile plein écran le temps du ménage et du rechargement */
+.maj-veil { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #000; color: #fff; font: 500 12px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; opacity: 0; transition: opacity var(--dur-rapide); }
+.maj-veil.on { opacity: 1; }
