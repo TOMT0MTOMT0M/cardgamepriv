@@ -157,6 +157,16 @@ class GameNetClient {
   private feedWanted = false;
   /** abonné au fil dans la série d'abonnements en cours (remise à zéro par setupSubscriptions) */
   private feedOn = false;
+  /**
+   * (V2 fluidité, lot 5) liste du club (`users.friends`) : la requête la plus souvent relancée (elle relit tous les
+   * joueurs à chaque écriture sur n'importe lequel). Suivie en temps réel seulement sur les pages qui l'affichent
+   * (`watchMembers`) ; ailleurs, une lecture simple au démarrage suffit.
+   */
+  private membersWanted = false;
+  private membersOn = false;
+  /** abonnements coupés parce que l'onglet est caché depuis un moment (repris au retour) */
+  private paused = false;
+  private pauseTimer: number | null = null;
   private heartbeatTimer: number | null = null;
   private listeners = new Set<Listener>();
   /** ce qui compte pour l'affichage dans `user` / `friends` (comparé avant d'émettre) */
@@ -199,6 +209,7 @@ class GameNetClient {
     this.setupSubscriptions();
     this.startHeartbeat();
     this.watchConnection();
+    this.watchVisibility();
   }
 
   private downTimer: number | null = null;
@@ -290,6 +301,9 @@ class GameNetClient {
     for (const unsub of this.unsubscribers) unsub();
     this.unsubscribers = [];
     this.feedOn = false;
+    this.membersOn = false;
+    const resuming = this.paused;
+    this.paused = false;
 
     const tokenArg: { sessionToken?: string } = this.sessionToken ? { sessionToken: this.sessionToken } : {};
 
@@ -348,18 +362,9 @@ class GameNetClient {
       }),
     );
 
-    // 4. Online friends list (20 max)
-    this.unsubscribers.push(
-      this.client.onUpdate(api.users.friends, {}, (friends) => {
-        this.state.friends = friends ?? [];
-        // battement de cœur d'un ami (toutes les 35 s chacun) : seuls `lastSeenAt` et l'ordre bougent → pas d'émission
-        // (avant : tout l'état du jeu remappé et les signatures de collection recalculées ~toutes les 2 s à 20 amis)
-        const sig = friendsSig(this.state.friends);
-        if (sig === this.friendsSig) return;
-        this.friendsSig = sig;
-        this.emit();
-      }),
-    );
+    // 4. Liste du club : en temps réel seulement si une page l'affiche, sinon une lecture simple (lot 5)
+    if (this.membersWanted) this.subscribeMembers();
+    else void this.client.query(api.users.friends, {}).then((f) => !this.membersOn && this.applyMembers(f), () => undefined);
 
     // 5. Échanges en attente (reçus / envoyés)
     this.unsubscribers.push(
@@ -380,8 +385,11 @@ class GameNetClient {
 
     // 6 quater. Amis (lot A2) : battement de cœur d'un ami = `lastSeenAt` gardé à jour SANS émettre (la page Amis relit
     // l'état toutes les 30 s) ; on n'émet que si une demande, un ami ou un statut en ligne / hors ligne change
-    this.state.social = null;
-    this.socialSig = '';
+    // (reprise après une pause onglet caché : on garde l'affichage en place, la réponse le rafraîchit)
+    if (!resuming) {
+      this.state.social = null;
+      this.socialSig = '';
+    }
     if (this.sessionToken)
       this.unsubscribers.push(
         this.client.onUpdate(
@@ -445,6 +453,66 @@ class GameNetClient {
         },
       ),
     );
+  }
+
+  private applyMembers(friends: NetState['friends'] | null | undefined) {
+    this.state.friends = friends ?? [];
+    // battement de cœur d'un ami : seuls `lastSeenAt` et l'ordre bougent → pas d'émission
+    // (avant : tout l'état du jeu remappé et les signatures de collection recalculées ~toutes les 2 s à 20 amis)
+    const sig = friendsSig(this.state.friends);
+    if (sig === this.friendsSig) return;
+    this.friendsSig = sig;
+    this.emit();
+  }
+
+  private subscribeMembers() {
+    if (this.membersOn || !this.client || this.paused) return;
+    this.membersOn = true;
+    const unsub = this.client.onUpdate(api.users.friends, {}, (f) => this.applyMembers(f));
+    this.membersUnsub = unsub;
+    this.unsubscribers.push(unsub);
+  }
+  private membersUnsub: (() => void) | null = null;
+
+  /** Une page qui affiche la liste du club (Jeux, Échanges, Amis, Profil, Classement) est à l'écran, ou ne l'est plus. */
+  public watchMembers(on: boolean) {
+    if (this.membersWanted === on) return;
+    this.membersWanted = on;
+    if (on) return this.subscribeMembers();
+    if (!this.membersOn) return;
+    this.membersOn = false;
+    const u = this.membersUnsub;
+    this.membersUnsub = null;
+    if (u) {
+      u();
+      this.unsubscribers = this.unsubscribers.filter((x) => x !== u);
+    }
+  }
+
+  /**
+   * (V2 fluidité, lot 5) onglet caché depuis 60 s : tous les abonnements permanents sont coupés — un onglet oublié en
+   * arrière-plan ne fait plus tourner aucune requête. Au retour, ils reprennent tout de suite (l'état affiché reste
+   * en place en attendant la réponse). Les notifications passent par le push : elles n'en dépendent pas.
+   */
+  private watchVisibility() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        if (this.pauseTimer === null && !this.paused)
+          this.pauseTimer = window.setTimeout(() => {
+            this.pauseTimer = null;
+            if (document.visibilityState !== 'hidden') return;
+            for (const unsub of this.unsubscribers) unsub();
+            this.unsubscribers = [];
+            this.feedOn = this.membersOn = false;
+            this.membersUnsub = null;
+            this.paused = true;
+          }, 60_000);
+        return;
+      }
+      if (this.pauseTimer !== null) clearTimeout(this.pauseTimer);
+      this.pauseTimer = null;
+      if (this.paused) this.setupSubscriptions();
+    });
   }
 
   /** Abonnement au fil d'activité (`feed.recent`, 20 derniers), une fois par série d'abonnements. */

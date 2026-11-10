@@ -918,6 +918,8 @@ async function boot() {
     if (changed && shell) shell.sfx.tick(1.15, 0.025); // changement de page : un tic à peine audible
     if (changed) haptics.pulse(6); // (audit 06/11) et une vibration très courte sous le doigt, comme les apps natives
     current = key;
+    // (V2 fluidité, lot 5) la liste du club n'est suivie en temps réel que sur les pages qui l'affichent
+    backend.watchMembers?.(key === 'jeux' || key === 'echanges' || key === 'amis' || key === 'profil' || key === 'classement');
     document.body.dataset.route = key || 'shop';
     currentRoute = key;
     updateTitle();

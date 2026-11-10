@@ -441,6 +441,8 @@ export interface GameBackend {
   /** je suis arrivé par ce lien (ou je colle le lien / le pseudo de mon parrain) : je deviens filleul, si mon compte est neuf */
   referralClaim(code: string): Promise<{ status: 'ok' | 'already' | 'invalid' | 'self' | 'tooLate'; packs?: number; referrer?: string }>;
   // tableau d'offres (lot T) — ouvert à tous les joueurs
+  /** (lot fluidité 5) la page à l'écran affiche la liste du club → suivie en temps réel ; sinon non. Absent en démo. */
+  watchMembers?(on: boolean): void;
   /** Annonces ouvertes de tout le monde (temps réel) ; renvoie de quoi se désabonner. */
   watchBoard(cb: (listings: ListingView[]) => void): () => void;
   createListing(items: TradeItem[], wanted: Array<{ cardId: string; rarity: RarityId }>, note: string | undefined, hours: number): Promise<void>;

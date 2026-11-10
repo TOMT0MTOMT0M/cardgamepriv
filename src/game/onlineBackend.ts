@@ -322,6 +322,7 @@ export function createOnlineBackend(): GameBackend {
       await net.friendAction('remove', id as Id<'friendships'>);
     },
     // tableau d'offres (lot T, convex/listings.ts)
+    watchMembers: (on) => net.watchMembers(on),
     watchBoard: (cb) => net.watch(api.listings.open, {}, (rows) => cb((rows ?? []).map((l) => listingOf(l))), true, () => cb([])),
     async createListing(items, wanted, note, hours) {
       await net.call(api.listings.create, { items, wanted, note, hours });
