@@ -2917,6 +2917,35 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .if-table th, .if-table td { padding: 6px 14px 6px 0; text-align: left; border-bottom: 1px solid var(--line); }
 .if-table th { font-weight: 600; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
 .if-table td:first-child { color: var(--gold); letter-spacing: 0.1em; }
+/* (11/11) MISES À JOUR lisibles : texte courant en Inter (Bold Frame réservé aux titres), un point = un libellé + son texte,
+   points séparés par un filet, entrées repliables (les 2 plus récentes ouvertes), lignes plus courtes */
+.if-maj { max-width: 720px; gap: 22px; }
+.if-maj .if-month h2 { margin: 4px 0 12px; }
+.if-maj .if-entry { padding: 0; margin-bottom: 12px; overflow: hidden; }
+.if-maj .if-entry > summary { list-style: none; display: flex; flex-direction: column; gap: 8px; padding: 16px 48px 16px 20px; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+.if-maj .if-entry > summary::-webkit-details-marker { display: none; }
+.if-maj .if-entry > summary::after { content: ''; position: absolute; right: 20px; top: 50%; width: 9px; height: 9px; margin-top: -7px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(45deg); transition: transform var(--dur-standard, 0.2s) var(--ease-entree, ease); }
+.if-maj .if-entry[open] > summary::after { transform: rotate(225deg); margin-top: -2px; }
+.if-maj .if-entry > summary:hover::after { border-color: var(--ink); }
+.if-maj .if-entry[open] > summary { border-bottom: 1px solid var(--line); }
+.if-maj .if-date { font-size: 11px; }
+.if-maj .if-tag { font-size: 10.5px; padding: 3px 9px; }
+.if-maj .if-e-t { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.if-maj .if-entry h3 { margin: 0; font: 700 19px/1.25 var(--title); letter-spacing: 0.01em; color: var(--ink); }
+.if-maj .if-e-n { flex: none; font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.if-maj .if-entry[open] .if-e-n { display: none; }
+.if-maj .if-points { list-style: none; margin: 0; padding: 4px 20px 8px; display: block; }
+.if-maj .if-p { display: flex; flex-direction: column; gap: 4px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.if-maj .if-p:last-child { border-bottom: 0; }
+.if-maj .if-p-k { font: 700 15px/1.25 var(--title); letter-spacing: 0.02em; color: var(--ink); }
+.if-maj .if-p-t { font: 400 15px/1.6 var(--mono); letter-spacing: 0; color: var(--ink-2); text-wrap: pretty; -webkit-user-select: text; user-select: text; }
+@media (max-width: 560px) {
+  .if-maj .if-entry > summary { padding: 14px 42px 14px 16px; }
+  .if-maj .if-points { padding: 2px 16px 6px; }
+  .if-maj .if-entry h3 { font-size: 17px; }
+  .if-maj .if-e-t { flex-direction: column; gap: 4px; }
+  .if-maj .if-p-t { font-size: 14.5px; }
+}
 
 /* ==== audit 06/11 : net, fini, crisp ==== */
 /* cibles tactiles ≥ 44 px sans grossir l'en-tête : la zone de toucher déborde du visuel */
