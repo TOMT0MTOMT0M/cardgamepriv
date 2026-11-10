@@ -660,6 +660,8 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
 
   function open(conv?: string) {
     if (!backend.state.user) return;
+    // (fluidité, lot 5) le chat affiche qui est en ligne : liste du club suivie en direct tant qu'il est ouvert
+    backend.watchMembers?.(true, 'chat');
     if (conv) {
       if (conv === CHAT_GENERAL) view = 'general';
       else if (dmPeer(conv, backend.state.user.id)) {
@@ -696,6 +698,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   }
   function close() {
     if (!isOpen) return;
+    backend.watchMembers?.(false, 'chat');
     const key = curKey();
     if (key) drafts.set(key, input.value);
     isOpen = false;

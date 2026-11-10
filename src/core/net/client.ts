@@ -474,9 +474,14 @@ class GameNetClient {
     this.unsubscribers.push(unsub);
   }
   private membersUnsub: (() => void) | null = null;
+  private membersBy = new Set<string>();
 
   /** Une page qui affiche la liste du club (Jeux, Échanges, Amis, Profil, Classement) est à l'écran, ou ne l'est plus. */
-  public watchMembers(on: boolean) {
+  public watchMembers(on: boolean, who = 'page') {
+    // (plusieurs demandeurs : la page à l'écran, le chat ouvert — suivie tant qu'il en reste un)
+    if (on) this.membersBy.add(who);
+    else this.membersBy.delete(who);
+    on = this.membersBy.size > 0;
     if (this.membersWanted === on) return;
     this.membersWanted = on;
     if (on) return this.subscribeMembers();

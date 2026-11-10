@@ -15,7 +15,8 @@ export const recent = query({
 
 /**
  * « Gros tirages » de la page d'accueil : les dernières cartes Légendaires, Mythiques et Secrètes tirées par tout le
- * monde (5★ et plus). Parcourt les 400 dernières entrées du fil (épique+ et n°1) et ne garde que les plus belles.
+ * monde (5★ et plus). Lues par l'index `by_big` ; tant que la base n'est pas marquée, ancien parcours des 400
+ * dernières entrées du fil en repli.
  */
 export const bigPulls = query({
   args: { limit: v.optional(v.number()) },

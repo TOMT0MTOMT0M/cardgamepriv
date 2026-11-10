@@ -76,7 +76,8 @@ async function pageNetworkFirst(req, preload) {
       ? Promise.race([net, new Promise((_, no) => (timer = setTimeout(() => (ctl.abort(), no(new Error('lent'))), 3000)))])
       : net);
     clearTimeout(timer);
-    if (storable(res, true)) void stash(APP, PAGE, res.clone());
+    // (la copie locale de la page est rangée par bundle.ts, APRÈS les fichiers qu'elle nomme : rangée ici dès la
+    // navigation, elle pouvait, après un patch, pointer hors connexion vers des fichiers pas encore installés)
     return res;
   } catch (e) {
     clearTimeout(timer);

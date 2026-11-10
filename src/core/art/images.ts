@@ -324,6 +324,7 @@ function offThread(): Promise<OffThread | null> {
     if (!pr?.ok) {
       dead = true;
       w.terminate();
+      console.info('[art] worker d’images indisponible ou trop lent : peinture sur le fil principal pour cette session');
       return null;
     }
     return {
@@ -344,14 +345,19 @@ function offThread(): Promise<OffThread | null> {
 async function loadOffThread(url: string, allowKey: boolean): Promise<CardImage | null> {
   const w = await offThread();
   if (!w) return null;
-  let blob: Blob;
+  let blob: Blob | null = null;
+  let notFound = false;
   try {
     const r = await fetch(url);
-    if (!r.ok) return null; // introuvable : le chemin d'avant produit l'erreur habituelle
-    blob = await r.blob();
+    // introuvable : l'erreur habituelle, tout de suite (pas de 2e requête — et pas de 2e appel à la fonction R2 —
+    // par le chemin d'avant) ; autre échec (5xx, coupure) : le chemin d'avant retente, comme toujours
+    if (r.status === 404) notFound = true;
+    else if (!r.ok) return null;
+    if (!notFound) blob = await r.blob();
   } catch {
     return null;
   }
+  if (notFound || !blob) throw new Error(`illustration introuvable ou illisible : ${url}`);
   const r = await w.process(blob, allowKey);
   if (!r) return null;
   try {

@@ -1092,9 +1092,9 @@ async function boot() {
   backend.onChange(renderMe);
   backend.onChange(() => updateFresh());
   route();
-  // (visionneuse : PAS montée sous l'écran de chargement — sa compilation ne vise plus la vraie cible de la passe
-  // (post.ts, TARGET_PRECOMPILE coupé) : l'attendre ici allongerait le chargement pour rien. Son module est déjà
-  // téléchargé (début de boot) ; elle est montée 1,5 s après l'affichage de la boutique, comme avant.)
+  // (visionneuse : PAS montée sous l'écran de chargement : l'attendre ici allongerait le chargement. Son module est
+  // déjà téléchargé (début de boot) ; elle est montée 1,5 s après l'affichage de la boutique, et compile alors ses
+  // pipelines dans la vraie passe (post.ts, `compile({ real: true })`).)
   step(100, 'c’est prêt');
   // démo : on le dit une fois (collection locale, amis robots)
   if (backend.state.mode === 'demo') {

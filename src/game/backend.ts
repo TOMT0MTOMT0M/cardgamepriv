@@ -449,7 +449,7 @@ export interface GameBackend {
   referralClaim(code: string): Promise<{ status: 'ok' | 'already' | 'invalid' | 'self' | 'tooLate'; packs?: number; referrer?: string }>;
   // tableau d'offres (lot T) — ouvert à tous les joueurs
   /** (lot fluidité 5) la page à l'écran affiche la liste du club → suivie en temps réel ; sinon non. Absent en démo. */
-  watchMembers?(on: boolean): void;
+  watchMembers?(on: boolean, who?: string): void;
   /** Annonces ouvertes de tout le monde (temps réel) ; renvoie de quoi se désabonner. */
   watchBoard(cb: (listings: ListingView[]) => void): () => void;
   createListing(items: TradeItem[], wanted: Array<{ cardId: string; rarity: RarityId }>, note: string | undefined, hours: number): Promise<void>;

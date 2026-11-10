@@ -71,8 +71,25 @@ async function run(busy: () => boolean) {
   }
   const patched = lastId !== man.id;
   const wanted = new Set(man.files.map(([f]) => abs(f)));
-  // différentiel : ce qui n'est plus dans le manifeste s'en va (anciennes versions des fichiers à empreinte)
-  for (const url of have) if (!wanted.has(url)) void cache.delete(url);
+  // différentiel : ce qui n'est plus dans le manifeste s'en ira (anciennes versions des fichiers à empreinte) — mais
+  // seulement une fois le nouveau socle rangé (`sweep`, plus bas) : jusque-là l'ancienne page et ses fichiers restent
+  // utilisables hors connexion. Les enregistrements de déchirure (/bake/*.tear?v=, rangés à l'usage par sw.js) ne sont
+  // pas dans le manifeste : on garde, pour chaque fichier, sa révision la plus récente (les anciennes s'en vont).
+  const bakePrefix = abs('bake/');
+  const bakeRev = (url: string) => +(new URL(url).searchParams.get('v') ?? 0) || 0;
+  const sweep = () => {
+    const newest = new Map<string, number>();
+    for (const url of have) {
+      if (!url.startsWith(bakePrefix)) continue;
+      const path = url.split('?')[0];
+      newest.set(path, Math.max(newest.get(path) ?? 0, bakeRev(url)));
+    }
+    for (const url of have) {
+      if (wanted.has(url)) continue;
+      if (url.startsWith(bakePrefix) && bakeRev(url) === newest.get(url.split('?')[0])) continue;
+      void cache.delete(url);
+    }
+  };
 
   // économie de données / 2G : le socle seulement ; stockage presque plein : pas les médias lourds
   const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
@@ -117,11 +134,19 @@ async function run(busy: () => boolean) {
   };
   // palier par palier, 3 fichiers de front (le socle d'un trait : il est déjà dans le cache HTTP)
   for (const tier of [0, 1, 2]) {
-    const queue = todo.filter((f) => f[2] === tier);
+    // (la page en dernier, seule : sa copie locale ne doit jamais nommer des fichiers pas encore rangés — c'est ici,
+    // et non dans sw.js, qu'elle est gardée)
+    const isPage = (f: Entry) => f[0] === 'jeu/index.html';
+    const queue = todo.filter((f) => f[2] === tier && !isPage(f));
     await Promise.all(Array.from({ length: 3 }, async () => {
       for (let f = queue.shift(); f; f = queue.shift()) await one(f);
     }));
     if (stop) return;
+    if (tier === 0) {
+      for (const f of todo.filter(isPage)) await one(f);
+      if (stop) return;
+      sweep();
+    }
   }
   state.complete = maxTier === 2 && state.done >= state.total;
   try {
