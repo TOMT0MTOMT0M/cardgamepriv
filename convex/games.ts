@@ -91,6 +91,7 @@ async function announcePulls(ctx: MutationCtx, opener: Doc<'users'>, cards: Game
       displayName: opener.displayName,
       avatarUrl: opener.avatarUrl,
       kind: c.rarity === 'secret' ? 'secret_pull' : 'mythic_pull',
+      big: true, // (« Gros tirages » : index by_big, convex/feed.ts)
       cardId: c.cardId,
       cardName: c.cardName,
       rarity: c.rarity,

@@ -293,7 +293,7 @@ function preloadFonts(): Plugin {
  * l'appareil (src/game/bundle.ts + public/sw.js), par PALIER, avec les tailles (progression réelle) :
  *   0 = socle : la page du jeu et tout ce qu'elle demande pour afficher la boutique (JS, CSS, polices, catalogue) ;
  *   1 = le reste du jeu : pages chargées à la demande, scènes 6★, autres polices ;
- *   2 = médias lourds des scènes spéciales (effets, sons, modèles Yu-Gi-Oh) — pas les Merveilles (20 Mo : à l'usage).
+ *   2 = médias lourds des scènes spéciales (public/fx, public/audio) — pas les Merveilles (20 Mo : à l'usage).
  * Les fichiers de /assets/ portent une empreinte dans leur nom : un patch ne fait retélécharger que ceux qui ont changé.
  * Rien du labo, rien de la démo quand le build est en ligne : aucun octet servi pour rien.
  */
@@ -356,7 +356,7 @@ function precacheManifest(id: string, online: boolean): Plugin {
           else put(`${rel}/${e.name}`, 2);
         }
       };
-      ['fx', 'audio', 'models/yugioh'].forEach(dir);
+      ['fx', 'audio'].forEach(dir);
       const files = [...tier]
         .filter(([f]) => fs.existsSync(path.resolve(outDir, f)))
         .map(([f, t]) => [f, fs.statSync(path.resolve(outDir, f)).size, t] as const)

@@ -166,7 +166,8 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   // (V2 fluidité, lot 3) « ça respire » = la scène tient la cadence de l'écran. L'ancien seuil (15 ms) était sous
   // l'intervalle d'un écran 60 Hz (16,7 ms) : la définition ne remontait jamais. Maintenant : moyenne à la cadence
   // (≤ 17,6 ms) ET moins de 5 % d'images en retard, sur 3 fenêtres ; et si une remontée est suivie d'une rechute
-  // dans les 20 s, on ne retente plus pendant 3 min (pas de yo-yo, chaque changement réalloue les cibles de rendu).
+  // dans les 5 min, on ne retente plus pendant 10 min (pas de yo-yo, chaque changement réalloue les cibles de rendu).
+  // Les fenêtres d'une scène ne comptent pas pour la suivante (resetPerf).
   const FAST_MS = 17.6;
   let raisedAt = -1e9;
   let noRaiseUntil = 0;
@@ -176,7 +177,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
    */
   const idle: number[] = [];
   let osCapped30 = false;
-  const resetPerf = () => (perf = { acc: 0, frames: 0, slow: 0, capped: 0, over: 0, last: performance.now() });
+  const resetPerf = () => ((fast = 0), (perf = { acc: 0, frames: 0, slow: 0, capped: 0, over: 0, last: performance.now() }));
   function resize() {
     const { w, h } = size();
     renderer.setPixelRatio(dpr);
@@ -356,7 +357,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
           dpr = applyDpr();
           perf.slow = 0;
           fast = 0;
-          if (now - raisedAt < 20_000) noRaiseUntil = now + 180_000;
+          if (now - raisedAt < 300_000) noRaiseUntil = now + 600_000;
           resize();
           console.info(`[jeu] appareil un peu juste (${Math.round(1000 / avg)} i/s) : définition 3D ramenée à ×${dpr}`);
         } else if (fast >= 3 && slowSteps > 0 && now > noRaiseUntil) {

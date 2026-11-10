@@ -97,6 +97,12 @@ export function cardTile(cardId: string, r: RarityId, o: { count?: number; owned
     <div class="name">${hideArt ? '???' : esc(e?.name ?? cardId)}</div>
     ${o.count && o.count > 1 ? `<span class="count">×${o.count}</span>` : ''}
     ${o.label ? `<span class="badge">${esc(o.label)}</span>` : ''}`;
+  // (le `load` d'une image pas encore dans la page n'atteint pas l'écouteur du document : on écoute aussi ici)
+  const im = t.querySelector<HTMLImageElement>('.art img');
+  if (im && !im.classList.contains('in')) {
+    if (im.complete && im.naturalWidth) im.classList.add('in');
+    else im.addEventListener('load', () => (thumbSeen.add(im.getAttribute('src') ?? ''), im.classList.add('in')), { once: true });
+  }
   if (!owned) t.title = hideArt ? 'Carte secrète' : `${e?.name ?? cardId} · pas encore trouvée`;
   if (owned && e) {
     t.title = `${e.name} · ${rr.label}${o.fresh ? ' · nouvelle depuis ta dernière visite' : ''}`;

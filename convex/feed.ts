@@ -30,7 +30,8 @@ export const bigPulls = query({
     if (big.length >= max) return big;
     // pas encore assez de lignes marquées (avant `migrations:markBigPulls`, ou tout début d'une base) : ancien parcours
     const recent = await ctx.db.query('activityFeed').withIndex('by_createdAt').order('desc').take(400);
-    return recent.filter(isBigPull).slice(0, max);
+    const seen = new Set(big.map((f) => f._id));
+    return [...big, ...recent.filter((f) => isBigPull(f) && !seen.has(f._id))].sort((a, b) => b.createdAt - a.createdAt).slice(0, max);
   },
 });
 

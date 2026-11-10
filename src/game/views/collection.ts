@@ -1583,8 +1583,6 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let sig = '';
   let viewerDirty = false;
   backend.onChange((st) => {
-    // (page pas affichée : rien à calculer — `enter()` refait tout à l'arrivée)
-    if (!el.isConnected) return;
     // (+ exemplaires engagés : la forge et son compteur en dépendent)
     const now = `${collectionSig(st)}|${st.wishlist.length}|${JSON.stringify(st.binders)}|${JSON.stringify(st.covers)}|${JSON.stringify([...lockedCards(st)])}|${st.ready}`;
     if (now === sig) return;

@@ -84,9 +84,9 @@ export function installDiag(shell: Shell) {
       if (now - since > 15000) report('15 s');
     }
     last = watching ? now : 0;
-    // (V2 fluidité, lot 3) hors scène surveillée, plus de rappel à chaque image : un coup d'œil deux fois par seconde
+    // (V2 fluidité, lot 3) hors scène surveillée, plus de rappel à chaque image : un coup d'œil dix fois par seconde
     if (watching) requestAnimationFrame(tick);
-    else setTimeout(() => tick(performance.now()), 500);
+    else setTimeout(() => tick(performance.now()), 100);
   };
   requestAnimationFrame(tick);
 }

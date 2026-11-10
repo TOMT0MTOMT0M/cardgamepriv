@@ -53,6 +53,13 @@ async function trimArt() {
 }
 
 async function pageNetworkFirst(req) {
+  // (pas de copie locale : rien à servir en repli → le réseau, sans délai imposé, comme sans service worker)
+  const have = await caches.open(APP).then((c) => c.match(PAGE)).catch(() => undefined);
+  if (!have) {
+    const res = await fetch(req);
+    if (storable(res, true)) void stash(APP, PAGE, res.clone());
+    return res;
+  }
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 3000);
   try {
@@ -71,11 +78,13 @@ async function pageNetworkFirst(req) {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   // (une revalidation demandée par la page — bundle.ts après un patch — va au réseau, pas à notre copie)
-  if (req.method !== 'GET' || req.headers.has('range') || req.cache === 'no-cache' || req.cache === 'reload' || req.cache === 'no-store') return;
+  if (req.method !== 'GET' || req.headers.has('range')) return;
+  const nav = req.mode === 'navigate';
+  if (!nav && (req.cache === 'no-cache' || req.cache === 'reload' || req.cache === 'no-store')) return;
   const url = new URL(req.url);
   if (url.origin !== SCOPE.origin || !url.pathname.startsWith(SCOPE.pathname)) return;
   const p = url.pathname.slice(SCOPE.pathname.length);
-  if (req.mode === 'navigate') {
+  if (nav) {
     if (p === 'jeu/' || p === 'jeu/index.html') e.respondWith(pageNetworkFirst(req));
     return;
   }

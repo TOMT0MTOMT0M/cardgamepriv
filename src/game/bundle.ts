@@ -1,3 +1,4 @@
+import { BUILD_ID } from '../core/canal';
 import { siteUrl } from '../core/siteRoot';
 
 /**
@@ -56,6 +57,9 @@ async function run(busy: () => boolean) {
   if (!res.ok) return;
   const man = (await res.json()) as { id: string; files: Entry[] };
   if (!man?.id || !Array.isArray(man.files)) return;
+  // un patch est sorti et cette page tourne encore sur l'ancienne version : on ne touche à rien (effacer « ce qui
+  // n'est plus dans le manifeste » scierait les fichiers dont elle a besoin) — la page rechargée fera le travail
+  if (man.id !== BUILD_ID) return;
   const cache = await caches.open(APP);
   const have = new Set((await cache.keys()).map((r) => r.url));
   const abs = (f: string) => new URL(siteUrl(f)).href;
@@ -81,7 +85,8 @@ async function run(busy: () => boolean) {
   }
   // (un fichier sans empreinte — hors /assets/ — peut avoir changé à un patch : revalidé une fois par version)
   const hashed = (f: string) => f.startsWith('assets/');
-  const todo = man.files.filter(([f, , t]) => t <= maxTier && (!have.has(abs(f)) || (patched && !hashed(f))));
+  // (… y compris ceux d'un palier qu'on ne télécharge plus ici : une copie déjà rangée ne doit pas rester périmée)
+  const todo = man.files.filter(([f, , t]) => (t <= maxTier && !have.has(abs(f))) || (patched && !hashed(f) && (t <= maxTier || have.has(abs(f)))));
   state.total = man.files.reduce((n, f) => n + (f[2] <= maxTier ? f[1] : 0), 0);
   state.done = state.total - todo.reduce((n, f) => n + f[1], 0);
 
