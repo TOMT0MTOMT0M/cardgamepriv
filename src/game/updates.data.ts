@@ -29,6 +29,13 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Classement réparé', tag: 'corrigé',
+        points: [
+          'Le classement ne s’affichait plus depuis que les collections ont beaucoup grossi : il revient, et s’ouvre plus vite.',
+          'Ta ligne est à jour dès que tu ouvres le classement ; celles des autres se mettent à jour toutes les 5 minutes.',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Sondage : à toi de choisir la suite', tag: 'nouveau',
         points: [
           'Un petit sondage d’une minute s’ouvre à la connexion : les univers que tu veux collectionner, les nouveautés de jeu qui te tentent, ta note du jeu et un mot libre. Les réponses décident de ce qui arrive en premier.',

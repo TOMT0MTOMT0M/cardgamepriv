@@ -578,6 +578,13 @@ export default defineSchema({
    * SONDAGE « prochaines mises à jour » (v1.0.10, 10/11) : une réponse par joueur et par sondage (convex/survey.ts,
    * définition dans src/core/survey.ts). Table nouvelle : rien ne change pour le code d'avant le patch.
    */
+  /** (v1.0.11) classement : une ligne par joueur, recalculée par profiles:refreshRanks (lire toutes les collections à
+   *  chaque affichage dépassait la limite de Convex). `row` = la ligne telle que `profiles:leaderboard` la renvoie. */
+  rankRows: defineTable({
+    userId: v.id('users'),
+    row: v.any(),
+    updatedAt: v.number(),
+  }).index('by_user', ['userId']),
   surveyAnswers: defineTable({
     userId: v.id('users'),
     surveyId: v.string(),

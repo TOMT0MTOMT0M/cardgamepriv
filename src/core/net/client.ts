@@ -855,6 +855,8 @@ class GameNetClient {
   }
   public async leaderboard() {
     if (!this.client) return [];
+    // (v1.0.11) ma ligne recalculée d'abord (les autres le sont toutes les 5 min côté serveur) : je m'y vois à jour
+    if (this.sessionToken) await this.client.mutation(api.profiles.refreshMyRank, { sessionToken: this.sessionToken }).catch(() => undefined);
     return await this.client.query(api.profiles.leaderboard, {});
   }
   public async activity(userId: Id<'users'>) {

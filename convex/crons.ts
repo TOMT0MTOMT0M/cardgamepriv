@@ -13,7 +13,9 @@ crons.interval('roulette : tirages 10 h et 20 h', { minutes: 5 }, internal.games
 // tableau d'offres (retours live 02) : annonces arrivées à 24 / 48 h → expirées, offres closes (la lecture filtre déjà)
 crons.interval('annonces : expiration', { minutes: 15 }, internal.listings.expireTick, {});
 
-// (retours live 6, C15) titre « Numéro un » : le premier du classement est marqué
-crons.interval('classement : numero un', { hours: 1 }, internal.profiles.markLeader, {});
+// (v1.0.11) classement : lignes recalculées joueur par joueur (actifs toutes les 5 min, tout le monde toutes les 6 h) ;
+// le premier est marqué « Numéro un » (retours live 6, C15). Avant : une seule requête qui lisait toutes les
+// collections, au-delà de la limite de Convex.
+crons.interval('classement : lignes et numero un', { minutes: 5 }, internal.profiles.refreshRanks, {});
 
 export default crons;
