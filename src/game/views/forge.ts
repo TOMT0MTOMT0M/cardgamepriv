@@ -8,6 +8,7 @@ import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, toast } from '../ui
 import { confirmTap, guarded, isPending, protectIcons, protection } from './safety';
 import { coinsHtml } from './wallet';
 import '../games.css';
+import '../casino.css'; // (V2) direction « usinage » : mêmes panneaux que l'espace Jeux
 
 /**
  * LA FORGE (doublons → pièces) — retours live 02 : sortie de l'espace Jeux (ce n'est pas un jeu), elle vit dans la

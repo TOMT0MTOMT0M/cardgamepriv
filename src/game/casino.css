@@ -17,12 +17,6 @@
   --gm-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --gm-spring: cubic-bezier(0.34, 1.45, 0.5, 1);
   --gm-label: 500 10.5px/1.2 var(--mono);
-  /* repères d'angle (8 traits de 1 px) — longueur --cs, animable */
-  --gm-corners:
-    linear-gradient(var(--gm-k) 0 0) 0 0 / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 0 0 / 1px var(--cs) no-repeat,
-    linear-gradient(var(--gm-k) 0 0) 100% 0 / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 100% 0 / 1px var(--cs) no-repeat,
-    linear-gradient(var(--gm-k) 0 0) 0 100% / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 0 100% / 1px var(--cs) no-repeat,
-    linear-gradient(var(--gm-k) 0 0) 100% 100% / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 100% 100% / 1px var(--cs) no-repeat;
   background: #000;
   overflow-x: hidden;
   font-variant-numeric: tabular-nums;
@@ -32,13 +26,35 @@
 .games > .gm-top, .games > .gm-body { position: relative; }
 
 /* pièces encadrées : filet + repères d'angle */
-.gm-panel, .gm-game, .gm-bcol, .gm-rrow, .gm-side, .gm-rp {
+.gm-panel, .gm-game, .gm-bcol, .gm-rrow, .gm-side, .gm-rp, .gm-big:empty {
   border-radius: var(--gm-r);
   border: 1px solid var(--gm-line);
-  background: var(--gm-corners), var(--gm-fill);
+  /* repères d'angle (8 traits de 1 px, longueur --cs, couleur --gm-k) : écrits sur l'élément lui-même — passés par une
+     variable posée sur .games, --cs restait figé à 9 px et ils ne s'allongeaient pas au survol */
+  background:
+    linear-gradient(var(--gm-k) 0 0) 0 0 / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 0 0 / 1px var(--cs) no-repeat,
+    linear-gradient(var(--gm-k) 0 0) 100% 0 / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 100% 0 / 1px var(--cs) no-repeat,
+    linear-gradient(var(--gm-k) 0 0) 0 100% / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 0 100% / 1px var(--cs) no-repeat,
+    linear-gradient(var(--gm-k) 0 0) 100% 100% / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 100% 100% / 1px var(--cs) no-repeat,
+    var(--gm-fill);
   background-origin: border-box;
   box-shadow: none;
   transition: --cs var(--dur-emphatique) var(--gm-soft), border-color var(--dur-standard), background-color var(--dur-standard), transform var(--dur-emphatique) var(--gm-soft);
+}
+
+/* fenêtre de choix de cartes (picker.ts) : même cadre, fond plein */
+.gm-modal {
+  --cs: 12px;
+  border-radius: var(--gm-r);
+  border-color: var(--gm-line-2);
+  box-shadow: none;
+  background:
+    linear-gradient(var(--gm-k) 0 0) 0 0 / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 0 0 / 1px var(--cs) no-repeat,
+    linear-gradient(var(--gm-k) 0 0) 100% 0 / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 100% 0 / 1px var(--cs) no-repeat,
+    linear-gradient(var(--gm-k) 0 0) 0 100% / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 0 100% / 1px var(--cs) no-repeat,
+    linear-gradient(var(--gm-k) 0 0) 100% 100% / var(--cs) 1px no-repeat, linear-gradient(var(--gm-k) 0 0) 100% 100% / 1px var(--cs) no-repeat,
+    #000;
+  background-origin: border-box;
 }
 
 /* ── entrée de page : cascade */
@@ -234,7 +250,7 @@
 .gm-stage::before { content: ''; position: absolute; left: 0; right: 0; bottom: 10px; height: 1px; background: linear-gradient(90deg, transparent, var(--gm-line-2) 20%, var(--gm-line-2) 80%, transparent); }
 .gm-stage::after { content: ''; position: absolute; left: 50%; bottom: 6px; width: 1px; height: 9px; background: var(--gm-line-2); }
 .gm-big { position: relative; perspective: 1100px; border-radius: 6px; }
-.gm-big:empty { border: 1px dashed var(--gm-line-2); background: var(--gm-corners); --cs: 12px; }
+.gm-big:empty { border: 1px dashed var(--gm-line-2); border-radius: 6px; --cs: 12px; }
 .gm-big .tile { border-radius: 6px; box-shadow: 0 26px 46px -24px #000; transform-origin: 50% 60%; }
 .gm-big.in .tile { animation: gm-card-in 0.75s var(--gm-soft) backwards; }
 @keyframes gm-card-in {

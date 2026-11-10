@@ -35,6 +35,14 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Tout le jeu passe au style de l’espace Jeux', tag: 'amélioré',
+        points: [
+          'Collection, Échanges, Classement, Succès, Amis, Profil, Suggestions : même dessin que l’espace Jeux — noir, traits fins, coins droits, repères aux angles.',
+          'Grands titres de page, étiquettes en capitales, textes plus lisibles (surtout au téléphone).',
+          'Boutons, onglets, menus et fenêtres identiques d’une page à l’autre. Les cartes, les boosters et l’ouverture ne changent pas.',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Nouveau son : plus doux, plus proche, plus précis', tag: 'amélioré',
         points: [
           'Tous les sons courants sont refaits en « matière » : carton, feutre, bois, alu froissé — fini les bips aigus.',

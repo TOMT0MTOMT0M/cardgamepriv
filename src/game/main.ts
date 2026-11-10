@@ -1,5 +1,6 @@
 import './style.css';
 import './panneaux.css';
+import './usinage.css';
 import { applyFontVars } from '../core/fonts';
 import { createShell, soundOn, soundVolume, type Shell } from './shell';
 import { createOpeningScene } from './scenes/opening';
