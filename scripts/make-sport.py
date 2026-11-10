@@ -31,7 +31,9 @@ LOG = os.path.join(ROOT, 'scripts', 'data', 'sport-harvest.json')
 TS = os.path.join(SETS, 'sport.ts')
 UA = 'BebouCard/1.0 (https://cardgamepriv.pages.dev; private card game, one-time image harvest)'
 R = {1: 'c', 2: 'u', 3: 'r', 4: 'e', 5: 'l', 6: 'm'}
-TOTAL = 7708
+BASE = 7708
+PATCHES = ['Patch-sport-v1.xlsx']
+TOTAL = 7986
 
 # groupe d'affichage → (libellé, sous-thèmes dans l'ordre d'affichage). Chaque sous-thème reste un vrai sous-thème
 # (filtres, contrats, libellé imprimé en grand sur la carte) ; le groupe ne sert qu'à l'affichage (boutique, albums).
@@ -90,6 +92,44 @@ def existing(pattern):
 
 
 # ───────────────────────────────────────────── Excel
+def apply_patches(rows):
+    """Patchs du tri (donnees/patchs/) : INSERT (« Nouvelles cartes », après le N° 7708) + UPDATE d'étoiles (« Étoiles »)."""
+    by_n = {r['n']: r for r in rows}
+    for name in PATCHES:
+        wb = openpyxl.load_workbook(os.path.join(ROOT, 'donnees', 'patchs', name), read_only=True, data_only=True)
+        if 'Nouvelles cartes' in wb.sheetnames:
+            ws = wb['Nouvelles cartes']
+            head = None
+            for r in ws.iter_rows(values_only=True):
+                if head is None:
+                    if r and r[0] == 'N°':
+                        head = [str(x or '').strip() for x in r]
+                    continue
+                if not r or not isinstance(r[0], (int, float)) or not r[2]:
+                    continue
+                col = lambda k: r[head.index(k)]
+                sub = str(col('Sous-thème')).strip()
+                assert sub in SUB_GROUP, f'{name} : sous-thème sans groupe : {sub!r}'
+                t = str(col('Type') or '').strip()
+                n = int(col('N°'))
+                assert n > BASE and n not in by_n, f'{name} : N° {n} invalide'
+                by_n[n] = {'n': n, 'sub': sub, 'group': SUB_GROUP[sub], 'name': str(col('Carte')).strip(), 'type': t,
+                           'label': TYPE_FR.get(t, t), 'stars': int(col('Étoiles finales')), 'url': str(col('Image URL') or '').strip()}
+        if 'Étoiles' in wb.sheetnames:
+            ws2 = wb['Étoiles']
+            head2 = None
+            for r in ws2.iter_rows(values_only=True):
+                if head2 is None:
+                    if r and r[0] == 'N°':
+                        head2 = [str(x or '').strip() for x in r]
+                    continue
+                if not r or not isinstance(r[0], (int, float)):
+                    continue
+                col2 = lambda k: r[head2.index(k)]
+                by_n[int(col2('N°'))]['stars'] = int(col2('Étoiles finales'))
+    return [by_n[n] for n in sorted(by_n)]
+
+
 def read_rows(xlsx):
     ws = openpyxl.load_workbook(xlsx, read_only=True, data_only=True)['Tri étoiles']
     rows = []
@@ -107,8 +147,10 @@ def read_rows(xlsx):
         t = str(col('Type') or '').strip()
         rows.append({'n': int(col('N°')), 'sub': sub, 'group': SUB_GROUP[sub], 'name': str(col('Carte')).strip(), 'type': t,
                      'label': TYPE_FR.get(t, t), 'stars': int(col('Étoiles finales')), 'url': str(col('Image URL') or '').strip()})
-    assert len(rows) == TOTAL, f'{len(rows)} lignes ({TOTAL} attendues)'
-    assert sorted(r['n'] for r in rows) == list(range(1, TOTAL + 1)), 'colonne N° : 1 → 7708 attendu'
+    assert len(rows) == BASE, f'{len(rows)} lignes ({BASE} attendues)'
+    rows = apply_patches(rows)
+    assert len(rows) == TOTAL, f'{len(rows)} lignes avec les patchs ({TOTAL} attendues)'
+    assert sorted(r['n'] for r in rows) == list(range(1, TOTAL + 1)), f'colonne N° : 1 → {TOTAL} attendu'
     assert all(1 <= r['stars'] <= 6 for r in rows)
     return rows
 
@@ -158,7 +200,7 @@ S = requests.Session()
 S.headers['User-Agent'] = UA
 _last = collections.defaultdict(float)
 _host_lock = collections.defaultdict(threading.Lock)
-GAP = {'liquipedia.net': 1.0, 'www.wikidata.org': 0.3, 'commons.wikimedia.org': 0.25, 'fr.wikipedia.org': 0.25, 'en.wikipedia.org': 0.25, 'thumb.wikimedia.org': 0.04, 'upload.wikimedia.org': 0.45}
+GAP = {'liquipedia.net': 0.25, 'www.wikidata.org': 0.3, 'commons.wikimedia.org': 0.25, 'fr.wikipedia.org': 0.25, 'en.wikipedia.org': 0.25, 'thumb.wikimedia.org': 0.04, 'upload.wikimedia.org': 0.45}
 
 
 def get(url, tries=4):
