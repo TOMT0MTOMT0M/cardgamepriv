@@ -75,6 +75,15 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '9 nov.', title: 'Échanges : « Accepter » réparé, et trouver qui a une carte', tag: 'nouveau',
+        points: [
+          'Le bouton « Accepter » d’un échange reçu marche du premier coup (il fallait parfois toucher la fine barre d’équilibre au milieu avant).',
+          'Échanges → « Trouver une carte » : cherche n’importe quelle carte du jeu, puis « Qui l’a ? » montre les joueurs qui la possèdent et combien ils en ont de libres. « Échanger » ouvre l’échange avec la carte déjà demandée : il ne reste qu’à choisir ce que tu donnes.',
+          'Collection : « Chercher un propriétaire » sur la fiche d’une carte, et toucher une carte qui te manque montre directement qui l’a.',
+          'Recherche de cartes plus souple partout : plusieurs mots dans n’importe quel ordre (« pikachu pokemon », « messi foot »), sans se soucier des accents ni des apostrophes, l’univers ou l’artiste, le numéro, ou « 6★ » pour les étoiles.',
+        ],
+      },
+      {
         date: '8 nov.', title: 'God pack, échanges réparés et tout ce qui a changé depuis la V1', tag: 'nouveau',
         points: [
           'GOD PACK : 1 booster sur 1 000 est un god pack. Que des cartes 4★ et plus, au moins une 5★ et une 6★, et sa propre animation à l’ouverture. Toute la bande est prévenue quand quelqu’un en ouvre un.',

@@ -128,6 +128,37 @@ export const myTrades = query({
   },
 });
 
+/** (v1.0.9) même fenêtre « en ligne » que la liste des joueurs (users.ts) */
+const OWNER_ONLINE_MS = 6 * 60 * 1000;
+
+/**
+ * « CHERCHER UN PROPRIÉTAIRE » (v1.0.9, retours 09/11) : qui possède cette carte — hors moi et comptes bannis — avec les
+ * exemplaires LIBRES (pas engagés dans un échange en attente ou une annonce). Lecture seule, index existant
+ * `by_card_rarity` (préfixe cardId) : aucun changement de schéma. Doublons d'abord, puis en ligne, puis exemplaires.
+ */
+export const owners = query({
+  args: { sessionToken: v.optional(v.string()), cardId: v.string() },
+  handler: async (ctx, { sessionToken, cardId }) => {
+    if (!catalogCard(cardId)) return [];
+    const me = await getUserIdByToken(ctx, sessionToken);
+    const rows = await ctx.db
+      .query('inventory')
+      .withIndex('by_card_rarity', (q) => q.eq('cardId', cardId))
+      .collect();
+    const now = Date.now();
+    const out: Array<{ userId: Id<'users'>; name: string; avatarUrl?: string; online: boolean; rarity: RarityId; count: number; free: number }> = [];
+    for (const r of rows) {
+      if (r.count < 1 || r.userId === me) continue;
+      const u = await ctx.db.get(r.userId);
+      if (!u || u.bannedAt) continue;
+      const locked = (await lockedCards(ctx, r.userId)).get(`${r.cardId}:${r.rarity}`) ?? 0;
+      out.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online: now - u.lastSeenAt < OWNER_ONLINE_MS, rarity: r.rarity, count: r.count, free: Math.max(0, r.count - locked) });
+    }
+    const rank = (o: (typeof out)[number]) => (o.free >= 2 ? 0 : o.free >= 1 ? 1 : 2);
+    return out.sort((a, b) => rank(a) - rank(b) || Number(b.online) - Number(a.online) || b.count - a.count || a.name.localeCompare(b.name));
+  },
+});
+
 export const propose = mutation({
   args: {
     sessionToken: v.string(),

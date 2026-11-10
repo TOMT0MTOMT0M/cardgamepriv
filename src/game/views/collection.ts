@@ -4,6 +4,8 @@ import type { ViewerScene } from '../scenes/viewer';
 import { ALL_THEMES, BEBOU_PACK, SUBTHEMES, catalogEntry, numberingSize, subthemeById, subthemeViews, themeById, type CatalogEntry, type SubTheme, type SubthemeView, type ThemeInfo } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, imageReportButton, loadSeen, loginPrompt, navigate, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
+import { showOwners } from './owners';
+import { cardQuery, type CardQuery } from '../../core/cardSearch';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 import { fxReduced } from '../../core/fxPref';
@@ -377,12 +379,6 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     }
     return m;
   }
-  const foldCache = new Map<string, string>();
-  const folded = (e: CatalogEntry) => {
-    let f = foldCache.get(e.id);
-    if (f === undefined) foldCache.set(e.id, (f = fold(e.name)));
-    return f;
-  };
   const scope = (): CatalogEntry[] => (subId ? theme.cards.filter((c) => c.subthemeId === subId) : theme.cards);
   const toTop = () => el.scrollTo({ top: 0 });
 
@@ -744,6 +740,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }
 
   // ── GRILLE
+  let cqKey: string | null = null;
+  let cq: CardQuery = cardQuery('');
+  const queryOf = (s: string) => (cqKey === s ? cq : ((cqKey = s), (cq = cardQuery(s))));
   function matches(e: CatalogEntry, mine: Map<string, PlayerCard>): boolean {
     const have = mine.get(e.id);
     if (filter === 'owned' && !have) return false;
@@ -753,7 +752,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (star && e.rarity !== star) return false;
     if (query) {
       if (e.rarity === 'secret' && !have) return false;
-      if (!folded(e).includes(query) && String(e.num) !== query.replace(/^0+/, '')) return false;
+      if (!queryOf(query).test(e)) return false;
     }
     return true;
   }
@@ -868,15 +867,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   el.addEventListener('click', (e) => {
     if ((e.target as HTMLElement).closest('.f-reset')) resetFilters();
   });
-  /** recherche de la vue Cartes : nom, nom d'album, ou numéro (« 25 », « 025 ») */
-  const subFold = new Map<string, string>();
-  const subFolded = (id: string) => {
-    let f = subFold.get(id);
-    if (f === undefined) subFold.set(id, (f = fold(subthemeById(id)?.label ?? '')));
-    return f;
-  };
-  const cardHit = (e: CatalogEntry) =>
-    folded(e).includes(cQuery) || (/^\d+$/.test(cQuery) && String(e.num) === cQuery.replace(/^0+/, '')) || subFolded(e.subthemeId).includes(cQuery);
+  // (v1.0.9) recherche partagée (core/cardSearch.ts) : plusieurs mots dans n'importe quel ordre, univers, pack,
+  // artiste, n°, « 6★ »
+  const cardHit = (e: CatalogEntry) => queryOf(cQuery).test(e);
   /** cartes du catalogue (hors Bébous secrets), pour la recherche globale des cartes pas encore trouvées */
   let catalogAll: CatalogEntry[] | null = null;
   const CATALOG_CAP = 60;
@@ -1386,7 +1379,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       if (!e) return;
       if (e.rarity === 'secret') return toast(`Carte secrète : elle ne se cache que dans le ${BEBOU_PACK.label}.`, 'info');
       const t = themeById(e.themeId);
-      return toast(`${e.name} (${rarity(e.rarity).rank + 1}★) : pas encore trouvée · dans le ${t ? `${t.label} Pack` : 'booster de son thème'} et le ${BEBOU_PACK.label} · ♥ pour la suivre`, 'info');
+      // (v1.0.9) carte manquante : qui l'a ? (la fiche dit aussi où elle tombe)
+      return showOwners(backend, e.id, undefined, `Pas encore trouvée · dans le ${t ? `${t.label} Pack` : 'booster de son thème'} et le ${BEBOU_PACK.label}`);
     }
     const t = (ev.target as HTMLElement).closest<HTMLElement>('.tile.owned');
     if (!t || (ev.target as HTMLElement).closest('button')) return;
@@ -1417,6 +1411,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       <button class="va va-wish${wish ? ' on' : ''}" title="${wish ? 'Retirer de mes envies' : 'Je veux cette carte (envies)'}" aria-pressed="${wish}">♥ <span>${wish ? 'Envie ✓' : 'Envie'}</span></button>
       <button class="va va-binder${inBinders ? ' on' : ''}" title="Ranger dans un classeur" aria-label="Ranger dans un classeur${inBinders ? ` (déjà dans ${inBinders})` : ''}">▤ <span>${inBinders ? `Classeur ×${inBinders}` : '+ Classeur'}</span></button>
       <button class="va va-trade" title="Proposer cette carte dans un échange">⇄ <span>Échanger</span></button>
+      <button class="va va-owners" title="Voir qui d’autre possède cette carte">⌕ <span>Chercher un propriétaire</span></button>
       ${canBoard ? '<button class="va va-board" title="Publier une annonce sur le tableau d’offres avec cette carte">▦ <span>Proposer sur le tableau</span></button>' : ''}
       ${st && !e?.themeId.startsWith('bebous') ? `<button class="va va-cover${isCover ? ' on' : ''}" title="${isCover ? 'Ne plus utiliser comme couverture' : `En faire la couverture de l’album ${esc(st.label)}`}" aria-label="${isCover ? `Couverture de l’album ${esc(st.label)} : retirer` : `En faire la couverture de l’album ${esc(st.label)}`}" aria-pressed="${isCover}">📌 <span>${isCover ? 'Couverture ✓' : 'Couverture'}</span></button>` : ''}
       ${have?.firstPulledAt ? `<span class="va-date">obtenue le ${fmtDate(have.firstPulledAt)}</span>` : ''}`;
@@ -1440,6 +1435,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       navigate('#/echanges');
       toast('Choisis un ami : la carte sera dans ta proposition', 'info');
     });
+    vActions.querySelector('.va-owners')!.addEventListener('click', () => showOwners(backend, b.id));
     vActions.querySelector('.va-board')?.addEventListener('click', () => {
       try {
         sessionStorage.setItem('bebou.boardGive', `${b.id}:${b.r}`);

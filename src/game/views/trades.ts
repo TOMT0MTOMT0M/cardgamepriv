@@ -1,14 +1,16 @@
-import { cardKey, lockedCards, type Friend, type GameBackend, type PlayerCard, type TradeHistoryItem, type TradeItem, type TradeView } from '../backend';
+import { cardKey, lockedCards, type CardOwner, type Friend, type GameBackend, type PlayerCard, type TradeHistoryItem, type TradeItem, type TradeView } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
-import { ALL_THEMES, catalogEntry, subthemeById } from '../../core/sets/themes';
+import { ALL_THEMES, catalogEntry } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { busyButton, cardTile, errMsg, esc, fold, h, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
+import { busyButton, cardTile, errMsg, esc, h, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
 import { preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 import { ABUSE, cardsValue, fmtCoins } from '../../core/economy';
 import { confirmTap } from './safety';
 import { createBoard } from './board';
+import { showOwners } from './owners';
+import { cardQuery, cardWhere, searchCatalog } from '../../core/cardSearch';
 
 /**
  * ÉCHANGES de cartes entre nous (n'importe quelle carte, doublon ou non) — refonte retours du 3 nov.
@@ -95,6 +97,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     <h2 class="tr-sec-h tr-sec-direct"><span>Échanges directs</span><small>avec tes amis · propositions reçues et envoyées</small><b class="badge tt-in2" hidden></b></h2>
     <div class="tr-col left">
       <h3>En cours</h3><div class="pending"></div>
+      <div class="tr-find"><h3>Trouver une carte</h3><input class="search tr-find-in" type="search" placeholder="Nom, univers, n° ou 6★ — qui l’a ?" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Chercher une carte chez tous les joueurs"><div class="tr-find-res"></div></div>
       <h3>Échanger avec…</h3><div class="friends"></div>
       <h3 class="hist-t"><button class="linkish hist-toggle">Historique ▸</button></h3><div class="history" hidden></div>
     </div>
@@ -229,7 +232,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   let searchT = 0;
   search.addEventListener('input', () => {
     clearTimeout(searchT);
-    searchT = window.setTimeout(() => ((flt[side].q = fold(search.value.trim())), renderPicks(side)), 160);
+    searchT = window.setTimeout(() => ((flt[side].q = search.value.trim()), renderPicks(side)), 160);
   });
   packSel.addEventListener('change', () => ((flt[side].pack = packSel.value), renderPicks(side)));
   starBtns.forEach((b) =>
@@ -396,7 +399,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           const have = owned.get(cardKey(it))?.count ?? 0;
           return have > 0 && have <= it.count;
         });
-        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> te propose ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">Tu donnerais ton dernier exemplaire de ${lasts.map((it) => esc(name(it.cardId))).join(', ')}.</div>` : ''}${tradeErr.get(t.id) ? `<div class="fair warn t-err" role="alert">${esc(tradeErr.get(t.id)!)}</div>` : ''}${confirmingTrade === t.id ? `<div class="act t-confirm"><span class="cf-q">Confirmer l’échange ?</span><button class="btn-ghost cf-no">Annuler</button><button class="btn-primary cf-ok">Oui, échanger</button></div>` : `<div class="act"><button class="linkish no">Refuser</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-primary ok">Accepter</button></div>`}`;
+        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> te propose ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">Tu donnerais ton dernier exemplaire de ${lasts.map((it) => esc(name(it.cardId))).join(', ')}.</div>` : ''}${tradeErr.get(t.id) ? `<div class="fair warn t-err" role="alert">${esc(tradeErr.get(t.id)!)}</div>` : ''}${confirmingTrade === t.id ? `<div class="act t-confirm"><span class="cf-q">Confirmer l’échange ?</span><button class="btn-ghost cf-no">Annuler</button><button class="btn-primary cf-ok">Oui, échanger</button></div>` : `<div class="act"><button class="linkish t-decline">Refuser</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-primary t-accept">Accepter</button></div>`}`;
       } else r.innerHTML = `<div class="who">À <b>${esc(t.toName)}</b> · tu donnes ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested)}</div><div class="act"><span class="muted">en attente…</span><button class="btn-ghost cancel">Annuler</button></div>`;
       const act = async (fn: () => Promise<void>, ok: string, btn?: HTMLElement | null) => {
         if (r.dataset.busy || busyTrades.has(t.id)) return; // (anti double-toucher : les boutons sont aussi désactivés)
@@ -428,7 +431,10 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       // (retours 08/11 — « j'appuie sur accepter il ne se passe rien ») : plus de « second toucher » sur le même bouton
       // (armement de 3 s, perdu au moindre redessin ou au double-toucher trop rapide) — Accepter ouvre une vraie
       // confirmation dans l'échange, qui reste affichée jusqu'à « Oui, échanger » ou « Annuler ».
-      r.querySelector<HTMLElement>('.ok')?.addEventListener('click', () => {
+      // (v1.0.9, retours 09/11 — « Accepter ne marche pas tant qu'on n'appuie pas sur un fin bouton blanc au milieu ») :
+      // l'écouteur était posé sur le PREMIER « .ok » de l'échange — la jauge d'équilibre (`gauge ok`) quand l'échange est
+      // juste, pas le bouton. Classes propres aux boutons : `.t-accept` / `.t-decline`.
+      r.querySelector<HTMLElement>('.act .t-accept')?.addEventListener('click', () => {
         confirmingTrade = t.id;
         tradeErr.delete(t.id);
         renderPending();
@@ -441,7 +447,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       r.querySelector<HTMLElement>('.cf-ok')?.addEventListener('click', (e) => {
         void act(async () => (await backend.respondTrade(t.id, true), shell.sfx.chime(3, 0.08)), 'Échange conclu ! Les cartes sont dans ta collection.', e.currentTarget as HTMLElement);
       });
-      r.querySelector<HTMLElement>('.no')?.addEventListener('click', (e) => {
+      r.querySelector<HTMLElement>('.act .t-decline')?.addEventListener('click', (e) => {
         if (!confirmTap(e.currentTarget as HTMLElement, 'Refuser ?', 4000, `tr-no-${t.id}`)) return;
         void act(() => backend.respondTrade(t.id, false), 'Échange refusé.');
       });
@@ -495,6 +501,39 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     }
   }
 
+  // ── TROUVER UNE CARTE (v1.0.9, retours 09/11) : recherche dans TOUT le catalogue, « Qui l'a ? » ouvre la liste des
+  // propriétaires (views/owners.ts), « Échanger » ouvre l'échange avec lui, la carte déjà demandée
+  let pendingGet: string | null = null;
+  const findIn = q<HTMLInputElement>('.tr-find-in');
+  const findRes = q('.tr-find-res');
+  const tradeWithOwner = (o: CardOwner, cardId: string) => {
+    const f = backend.state.friends.find((x) => x.id === o.id) ?? { id: o.id, name: o.name, avatarUrl: o.avatarUrl, online: o.online, packsOpened: 0 };
+    pendingGet = `${cardId}:${o.rarity}`;
+    void pick(f);
+  };
+  function renderFind() {
+    const v = findIn.value.trim();
+    if (!v) return void (findRes.innerHTML = '');
+    const have = new Map(backend.state.collection.map((c) => [c.cardId, c.count]));
+    const res = searchCatalog(v, { limit: 12, includeSecret: (id) => have.has(id) });
+    if (!res.length) return void (findRes.innerHTML = `<div class="muted">Aucune carte ne correspond à « ${esc(v)} ».</div>`);
+    findRes.innerHTML = '';
+    for (const e of res) {
+      const r = rarity(e.rarity);
+      const n = have.get(e.id) ?? 0;
+      const row = h('div', 'tf-row');
+      row.style.setProperty('--rc', r.hex);
+      row.innerHTML = `${e.rarity !== 'secret' ? `<img alt="" loading="lazy" src="${thumbUrl(e)}">` : '<span class="tf-noimg"></span>'}<span class="tf-id"><b>${esc(e.name)}</b><small>${esc(cardWhere(e))} · <i>${r.rank + 1}★</i> · <em>${n ? `tu en as ${n}` : 'manquante'}</em></small></span><button class="btn-ghost tf-go">Qui l’a ?</button>`;
+      row.querySelector('.tf-go')!.addEventListener('click', () => showOwners(backend, e.id, (o) => tradeWithOwner(o, e.id)));
+      findRes.append(row);
+    }
+  }
+  let findT = 0;
+  findIn.addEventListener('input', () => {
+    clearTimeout(findT);
+    findT = window.setTimeout(renderFind, 140);
+  });
+
   // ── composer
   async function pick(f: Friend, keep = false) {
     const changed = friend?.id !== f.id;
@@ -529,6 +568,10 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         setSide('give', false);
       }
     }
+    // (v1.0.9) « Chercher un propriétaire » → « Échanger » : sa carte est déjà dans « Je demande »
+    const preGet = keep ? null : (pendingGet ?? sessionStorage.getItem('bebou.tradeGet'));
+    pendingGet = null;
+    sessionStorage.removeItem('bebou.tradeGet');
     const my = ++loading;
     try {
       const [coll, wish] = await Promise.all([backend.friendCollection(f.id), backend.friendWishlist(f.id).catch(() => [] as string[])]);
@@ -540,6 +583,16 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       theirWish = new Set();
     }
     if (my !== loading) return;
+    if (preGet) {
+      const [cid, rr] = preGet.split(':');
+      const c = theirs.find((x) => x.cardId === cid && x.rarity === rr);
+      if (c) {
+        if (!get.some((x) => cardKey(x) === cardKey(c))) get.push({ cardId: c.cardId, rarity: c.rarity, count: 1 });
+        maxOf.set(`get:${cardKey(c)}`, c.count);
+        setSide('give', false);
+        toast(`${name(c.cardId)} est dans ta proposition. Choisis ce que tu donnes en échange.`, 'info');
+      } else toast(`${f.name} n’a plus ${name(cid)}.`, 'info');
+    }
     renderMatches();
     renderPicks('get');
     renderPicks('give');
@@ -630,13 +683,17 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     const m = mine();
     const t = new Map(theirs.map((c) => [cardKey(c), c]));
     const f = flt[sd];
-    const sort = (a: PlayerCard, b: PlayerCard) => RANK[b.rarity] - RANK[a.rarity] || (catalogEntry(a.cardId)?.num ?? 0) - (catalogEntry(b.cardId)?.num ?? 0);
+    // (v1.0.9) recherche partagée (core/cardSearch.ts) : plusieurs mots, univers, pack, artiste, n°, « 6★ » ; les plus
+    // pertinentes d'abord pendant une recherche
+    const cq = cardQuery(f.q);
+    const rel = (c: PlayerCard) => (f.q ? cq.score(catalogEntry(c.cardId)!) : 0);
+    const sort = (a: PlayerCard, b: PlayerCard) => rel(a) - rel(b) || RANK[b.rarity] - RANK[a.rarity] || (catalogEntry(a.cardId)?.num ?? 0) - (catalogEntry(b.cardId)?.num ?? 0);
     const match = (c: PlayerCard) => {
       const e = catalogEntry(c.cardId);
       if (!e) return false;
       if (f.star && c.rarity !== f.star) return false;
       if (f.pack && e.themeId !== f.pack) return false;
-      if (f.q && !fold(e.name).includes(f.q) && String(e.num) !== f.q && !fold(subthemeById(e.subthemeId)?.label ?? '').includes(f.q)) return false;
+      if (f.q && !cq.test(e)) return false;
       return true;
     };
     // une recherche passe outre les deux filtres (on cherche UNE carte précise, UX4-11)

@@ -673,6 +673,16 @@ export function createLocalBackend(): GameBackend {
       await delay(80);
       return Object.values(save.bots.find((b) => b.id === friendId)?.inv ?? {});
     },
+    async cardOwners(cardId) {
+      await delay(80);
+      return save.bots
+        .flatMap((b, i) =>
+          Object.values(b.inv)
+            .filter((c) => c.cardId === cardId && c.count > 0)
+            .map((c) => ({ id: b.id, name: b.name, online: i !== 2, rarity: c.rarity, count: c.count, free: c.count })),
+        )
+        .sort((a, b) => b.count - a.count);
+    },
     async proposeTrade(toId, offered, requested, note) {
       const bot = save.bots.find((b) => b.id === toId);
       if (!bot) throw new Error('Joueur introuvable.');

@@ -194,6 +194,10 @@ export function createOnlineBackend(): GameBackend {
       const rows = await net.userCollection(friendId as Id<'users'>);
       return rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));
     },
+    async cardOwners(cardId) {
+      const rows = await net.cardOwners(cardId);
+      return rows.map((o) => ({ id: o.userId, name: o.name, avatarUrl: o.avatarUrl, online: o.online, rarity: o.rarity, count: o.count, free: o.free }));
+    },
     async proposeTrade(toId, offered, requested, note) {
       await net.proposeTrade(toId as Id<'users'>, offered, requested, note);
     },

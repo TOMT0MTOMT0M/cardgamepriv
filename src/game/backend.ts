@@ -136,6 +136,18 @@ export interface TradeItem {
   count: number;
 }
 
+/** (v1.0.9) « Chercher un propriétaire » : un joueur qui possède la carte */
+export interface CardOwner {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  online: boolean;
+  rarity: RarityId;
+  count: number;
+  /** exemplaires pas engagés dans un échange en attente ou une annonce */
+  free: number;
+}
+
 export interface TradeView {
   id: string;
   fromId: string;
@@ -385,6 +397,8 @@ export interface GameBackend {
   /** Fin de l'ouverture : crédite la collection, annonce les belles cartes. */
   revealPack(id: string): Promise<void>;
   friendCollection(friendId: string): Promise<PlayerCard[]>;
+  /** (v1.0.9) qui possède cette carte (hors moi) — doublons et exemplaires libres d'abord */
+  cardOwners(cardId: string): Promise<CardOwner[]>;
   proposeTrade(toId: string, offered: TradeItem[], requested: TradeItem[], note?: string): Promise<void>;
   respondTrade(id: string, accept: boolean): Promise<void>;
   cancelTrade(id: string): Promise<void>;
