@@ -319,7 +319,8 @@ function offThread(): Promise<OffThread | null> {
           res(null);
         }
       });
-    const pr = await call({ kind: 'probe' }, [], 8000);
+    // (2,5 s au plus : la peinture des cartes attend la sonde, elle ne doit pas rester bloquée sur un worker lent)
+    const pr = await call({ kind: 'probe' }, [], 2500);
     if (!pr?.ok) {
       dead = true;
       w.terminate();
@@ -375,6 +376,7 @@ export async function canvasToBlob(c: HTMLCanvasElement, type: string, quality: 
       const bitmap = await createImageBitmap(c);
       const blob = await w.encode(bitmap, type, quality);
       if (blob) return blob;
+      bitmap.close(); // (encodage raté : sans effet s'il avait été transféré)
     } catch {
       /* repli ci-dessous */
     }

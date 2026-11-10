@@ -1687,13 +1687,13 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
           // lien inconnu : la vue Cartes, et une adresse propre
           mode = 'cards';
           page = 0;
-          history.replaceState(null, '', '#/collection');
+          history.replaceState(history.state, '', '#/collection');
         }
       } else if (sub === 'nouvelles' && !fresh.size) {
         // « Voir mes nouvelles » alors qu'elles ont déjà été vues : on le dit, au lieu de rester sur l'ancienne vue
         mode = 'cards';
         page = 0;
-        history.replaceState(null, '', '#/collection');
+        history.replaceState(history.state, '', '#/collection');
         toast('Pas de nouvelle carte depuis ta dernière visite', 'info');
       } else if (sub === 'nouvelles' && fresh.size) {
         // « Voir mes nouvelles » depuis le récap : la grille du sous-thème de la première, filtre « Nouvelles »
@@ -1709,7 +1709,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         search.value = '';
         filter = 'fresh';
         page = 0;
-        history.replaceState(null, '', '#/collection');
+        history.replaceState(history.state, '', '#/collection');
       }
       preloadOwned(mine.keys());
       growBars = true;

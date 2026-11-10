@@ -131,6 +131,18 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       return { level: 0, kills: 0 };
     }
   })();
+  // (posé AVANT la création du GPU : un rechargement pendant un démarrage lent n'est pas un arrêt brutal)
+  // quittée proprement (rechargement, fermeture) : le prochain démarrage n'y verra pas un arrêt brutal ; page revenue du
+  // cache de navigation : de nouveau « en cours »
+  const bootMark = (clean: boolean) => {
+    try {
+      sessionStorage.setItem('bebou.boot', JSON.stringify({ t: Date.now(), clean }));
+    } catch {
+      /* ignore */
+    }
+  };
+  window.addEventListener('pagehide', () => bootMark(true));
+  window.addEventListener('pageshow', (e) => e.persisted && bootMark(false));
   const renderer = await createRenderer(preferredBackend(), { mobile });
   const canvas = renderer.domElement;
   canvas.className = 'gl';
@@ -215,17 +227,6 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     console.warn(`[jeu] démarrage prudent (niveau ${safe.level}) : ${safe.kills} arrêt(s) brutal(aux) + ${recentReloads().length} perte(s) du GPU récents → définition 3D ×${dpr} pour cette session`);
     perfMark(`démarrage-prudent-${safe.level}-k${safe.kills}-g${recentReloads().length}`);
   }
-  // quittée proprement (rechargement, fermeture) : le prochain démarrage n'y verra pas un arrêt brutal ; page revenue du
-  // cache de navigation : de nouveau « en cours »
-  const bootMark = (clean: boolean) => {
-    try {
-      sessionStorage.setItem('bebou.boot', JSON.stringify({ t: Date.now(), clean }));
-    } catch {
-      /* ignore */
-    }
-  };
-  window.addEventListener('pagehide', () => bootMark(true));
-  window.addEventListener('pageshow', (e) => e.persisted && bootMark(false));
   /** fenêtres consécutives bien en dessous du budget : la définition REMONTE (avant : une seule baisse — pendant
    *  une ouverture chargée, par exemple — laissait tout le reste de la session flou) */
   let fast = 0;

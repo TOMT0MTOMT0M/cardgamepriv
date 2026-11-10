@@ -990,7 +990,7 @@ async function boot() {
     const key = page in views || isPage(page) ? page : '';
     if (shop.busy() && key !== '') {
       // pas de fuite au milieu d'une ouverture : le pack est déjà tiré, on le finit
-      history.replaceState(null, '', '#/');
+      history.replaceState(history.state, '', '#/');
       toast('Termine d’abord ton booster !', 'info');
       return;
     }
