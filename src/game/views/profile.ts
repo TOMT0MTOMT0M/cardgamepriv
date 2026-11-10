@@ -108,6 +108,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       <div class="pf-pane p-collection" hidden>
         <div class="pf-sec pf-binder-sec" hidden><div class="pf-sec-t"><h2 class="pf-binder-t">Classeur</h2><span class="pf-auto">· épinglé</span><span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs" hidden>Mes classeurs</a></span></div><div class="grid mini pf-binder"></div></div>
         <div class="pf-nobinder muted" hidden></div>
+        <div class="pf-sec pf-all-sec"><div class="pf-sec-t"><h2>Toute la collection</h2><span class="pf-count pf-all-n"></span></div>
+          <div class="pf-all-tools"><input class="search pf-all-q" type="search" placeholder="Chercher une carte…" autocomplete="off" spellcheck="false" aria-label="Chercher dans cette collection"><div class="pf-all-r" role="group" aria-label="Étoiles"></div></div>
+          <div class="grid pf-all"></div><button class="btn-ghost pf-all-more" hidden>Voir plus</button></div>
       </div>
       <div class="pf-pane p-activite" hidden><div class="pf-activity"></div></div>
       <div class="pf-pane p-classement" hidden></div>
@@ -240,8 +243,13 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         ${title || badges.length ? `<div class="pf-tline">${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${b.glyph ?? '●'} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
         <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore d’informations.</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="Joue depuis le ${fmtDate(prof.joinedAt)}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier mes informations" title="Modifier mes informations">✎<span> Informations</span></button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier mes informations" title="Modifier mes informations">✎<span> Informations</span></button>` : `<button class="btn-primary pf-see-coll">Voir sa collection</button><a class="btn-ghost pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
     hydrateStills(head);
+    head.querySelector('.pf-see-coll')?.addEventListener('click', () => {
+      tab = 'collection';
+      syncTabs();
+      q('.pf-tabs').scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
     head.querySelector('.pf-bio-edit')?.addEventListener('click', editBio);
     // action de compte (déconnexion / remise à zéro de la démo) : en bas de page, plus sous le pseudo (audit UX3-16)
     account.hidden = !me;
@@ -778,6 +786,51 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     }
     if (!list.length) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? 'Ouvre des boosters : tes plus belles cartes s’afficheront ici.' : 'Pas encore de carte.'}</div>`);
   }
+  /**
+   * (retours Hugo et Tom, 10/11) TOUTE LA COLLECTION d'un joueur, pas seulement son classeur épinglé : recherche par nom,
+   * filtre par étoiles, de la plus rare à la moins rare, par paquets de 60 (« Voir plus »). Toucher = la carte en grand.
+   */
+  const ALL_STEP = 60;
+  let allShown = ALL_STEP;
+  let allR = '';
+  const allQ = q<HTMLInputElement>('.pf-all-q');
+  const fold = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  function renderAllCards() {
+    const owned = ownedOf();
+    const rEl = q('.pf-all-r');
+    const ranks = [...new Set(owned.map((c) => c.rarity))].sort((a, b) => rarity(b).rank - rarity(a).rank);
+    rEl.innerHTML = `<button class="chip${allR ? '' : ' on'}" data-r="">Toutes</button>${ranks.map((r) => `<button class="chip${allR === r ? ' on' : ''}" data-r="${r}" style="--rc:${rarity(r).hex}">${starsHtml(r)}</button>`).join('')}`;
+    const needle = fold(allQ.value.trim());
+    const list = owned
+      .filter((c) => (!allR || c.rarity === allR) && (!needle || fold(catalogEntry(c.cardId)?.name ?? '').includes(needle)))
+      .sort((a, b) => rarity(b.rarity).rank - rarity(a.rarity).rank || (catalogEntry(a.cardId)?.name ?? '').localeCompare(catalogEntry(b.cardId)?.name ?? '', 'fr'));
+    q('.pf-all-n').textContent = `${fmtN(list.length)} carte${list.length > 1 ? 's' : ''}`;
+    const g = q('.pf-all');
+    g.replaceChildren();
+    for (const c of list.slice(0, allShown)) {
+      const t = cardTile(c.cardId, c.rarity, { count: c.count });
+      t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+      g.append(t);
+    }
+    if (!list.length) g.append(h('div', 'muted', owned.length ? 'Aucune carte ne correspond.' : 'Pas encore de carte.'));
+    q('.pf-all-more').hidden = list.length <= allShown;
+  }
+  q('.pf-all-r').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-r]');
+    if (!b) return;
+    allR = b.dataset.r ?? '';
+    allShown = ALL_STEP;
+    renderAllCards();
+  });
+  allQ.addEventListener('input', () => {
+    allShown = ALL_STEP;
+    renderAllCards();
+  });
+  q('.pf-all-more').addEventListener('click', () => {
+    allShown += ALL_STEP * 2;
+    renderAllCards();
+  });
+
   function renderBinder() {
     const sec = q('.pf-binder-sec');
     const b = isMe() ? backend.state.binders.find((x) => x.pinned) ?? null : prof?.pinnedBinder ?? null;
@@ -843,6 +896,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     renderRarities();
     renderCase();
     renderBinder();
+    renderAllCards();
     renderFriends();
     syncTabs();
     renderActivity();
@@ -850,6 +904,11 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
 
   async function load(id: string) {
     const my = ++token;
+    if (who !== id) {
+      allShown = ALL_STEP;
+      allR = '';
+      allQ.value = '';
+    }
     who = id;
     stopEditing();
     cosmOpen = false;
@@ -945,6 +1004,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         location.replace('#/classement');
         return;
       }
+      // (10/11) #/profil/<id>/collection : directement l'onglet Collection (bouton « Sa collection » des amis, du classement)
+      if (parts[1] === 'collection') tab = 'collection';
       void load(id);
     },
     leave() {
