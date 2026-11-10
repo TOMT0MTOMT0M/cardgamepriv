@@ -196,6 +196,7 @@ const TABS = [
   ['alertes', 'Alertes'],
   ['outils', 'Outils'],
   ['journal', 'Journal'],
+  ['guide', 'Guide'],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 let overview: Overview | null = null;
@@ -273,7 +274,16 @@ async function viewAccueil(v: HTMLElement) {
   ];
   const stat = (l: string, n: number | string, hint = '') => `<div class="stat"><b>${typeof n === 'number' ? num(n) : esc(n)}</b><span>${esc(l)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</div>`;
   const locked = o.launchAt && o.launchAt > Date.now();
+  const seenGuide = (() => {
+    try {
+      return localStorage.getItem('bebou.admin.guide') === '1';
+    } catch {
+      return true;
+    }
+  })();
   v.innerHTML = `
+    ${seenGuide ? '' : `<div class="panel hello"><b>Première fois ici ?</b><p>Le guide explique tout en 2 minutes : quoi regarder chaque jour, quoi faire quand un joueur a un souci, et que faire si le jeu est cassé.</p><div class="actions"><a class="btn accent" href="#guide">Lire le guide</a><button class="btn ghost" type="button" data-hide>Plus tard</button></div></div>`}
+    <a class="urgent" href="#guide/urgence"><b>Le jeu est cassé ?</b><span>Marche à suivre en cas d’urgence →</span></a>
     <section>
       <h2>À traiter</h2>
       <div class="todo">${todo.map(([l, n, href, k]) => `<a class="todo-i ${k}${n ? '' : ' zero'}" href="${href}"><b>${n}</b><span>${l}</span></a>`).join('')}</div>
@@ -290,7 +300,7 @@ async function viewAccueil(v: HTMLElement) {
         ${stat('boosters ouverts', o.packsOpened)}
         ${stat('boosters en réserve', o.packsWaiting)}
         ${stat('pièces en circulation', o.coins)}
-        ${stat('notifs activées', o.pushPlayers, 'joueurs')}
+        ${stat('notifs activées', o.pushPlayers ?? '—', o.pushPlayers === null ? 'pas sur cette version' : 'joueurs')}
         ${stat('réponses au sondage', o.surveyAnswers)}
         ${stat('club', locked ? 'verrouillé' : 'ouvert', locked ? `jusqu’au ${fullDate(o.launchAt!)}` : '')}
       </div>
@@ -298,7 +308,28 @@ async function viewAccueil(v: HTMLElement) {
     <section>
       <h2>Activité récente</h2>
       <ul class="feed">${o.activity.map((a) => `<li><span class="who">${esc(a.who)}</span> ${esc(a.message)} ${rarTag(a.rarity)} <span class="muted">${when(a.at)}</span></li>`).join('') || '<li class="muted">Rien pour l’instant.</li>'}</ul>
-    </section>`;
+    </section>
+    <p class="muted small version"></p>`;
+  v.querySelector('[data-hide]')?.addEventListener('click', () => {
+    try {
+      localStorage.setItem('bebou.admin.guide', '1');
+    } catch {
+      /* stockage refusé : le bandeau reviendra */
+    }
+    v.querySelector('.hello')?.remove();
+  });
+  void onlineVersion().then((t) => ($('.version', v).textContent = t));
+}
+
+/** version du site actuellement en ligne (même site que cette page) */
+async function onlineVersion() {
+  try {
+    const r = await fetch(siteUrl('version.json'), { cache: 'no-store' });
+    const j = (await r.json()) as { id?: string; at?: string };
+    return `Version en ligne : ${j.id ?? '?'}${j.at ? ` · publiée ${ago(Date.parse(j.at))}` : ''}`;
+  } catch {
+    return 'Version en ligne : inconnue (pas de version.json)';
+  }
 }
 
 // ───────────────────────────── Retours (suggestions + sondage) ─────────────────────────────
@@ -591,6 +622,14 @@ async function openPlayer(p: Player, reload: () => void) {
       <div class="act"><label>Parrainage perdu</label><div class="row"><input type="text" placeholder="Pseudo du parrain" data-ref><button class="btn" data-ref-go>Rattacher</button></div></div>
       ${p.pw ? `<div class="act"><label>Mot de passe oublié</label><div class="row"><input type="text" placeholder="Nouveau mot de passe" data-pw autocomplete="off"><button class="btn" data-pw-go>Changer</button></div><small class="muted">Ses sessions sont fermées ; donne-lui le mot de passe en privé.</small></div>` : ''}
       <div class="act"><label>Visite guidée</label><button class="btn" data-guide>Relancer à sa prochaine visite</button></div>
+      <div class="act"><label>Jeu bloqué chez lui</label><button class="btn" data-logout>Le déconnecter partout</button><small class="muted">Rien n’est perdu : il se reconnecte.</small></div>
+      <div class="act"><label>Échanges en attente : ${d.pendingTrades}</label><button class="btn" data-trades${d.pendingTrades ? '' : ' disabled'}>Annuler ses échanges en attente</button></div>
+      <div class="act wide"><label>Notes de l’équipe <small class="muted">(jamais visibles du joueur)</small></label>
+        <ul class="feed notes">${d.notes.map((n) => `<li>${esc(n.text)} <span class="muted">— ${esc(n.by)}, ${when(n.at)}</span> <button class="btn sm ghost" data-unnote="${esc(n.id)}" aria-label="Supprimer la note">✕</button></li>`).join('') || '<li class="muted">Aucune note.</li>'}</ul>
+        <div class="row"><input type="text" placeholder="Ex. a payé l’abonnement le 10/11" data-note><button class="btn" data-note-go>Ajouter</button></div></div>
+      <div class="act wide"><label>Sa collection — retirer une carte <small class="muted">(doublon après un bug, carte donnée par erreur)</small></label>
+        <input type="search" placeholder="Chercher dans ses cartes" data-coll-q>
+        <div class="coll"></div></div>
       ${p.staff ? '' : p.bannedAt ? `<div class="act"><label>Compte</label><button class="btn" data-unban>Rétablir le compte</button></div>` : `<div class="act danger"><label>Bannir</label><div class="row"><input type="text" placeholder="Raison (multi-comptes…)" data-ban-r><button class="btn red" data-ban>Bannir</button></div><small class="muted">Sessions fermées, échanges annulés, amitiés retirées. Réversible.</small></div>`}
     </div>
 
@@ -623,6 +662,61 @@ async function openPlayer(p: Player, reload: () => void) {
   btn('[data-ref-go]').addEventListener('click', (e) => void busy(e.currentTarget as HTMLButtonElement, () => call(api.adminDash.linkReferral, { referrer: val('[data-ref]'), child: p.username }), done));
   inner.querySelector<HTMLButtonElement>('[data-pw-go]')?.addEventListener('click', (e) => void busy(e.currentTarget as HTMLButtonElement, () => run(api.adminDash.setPassword, { id, password: val('[data-pw]') }), done));
   btn('[data-guide]').addEventListener('click', (e) => void busy(e.currentTarget as HTMLButtonElement, () => call(api.adminDash.resetGuide, { id }), done));
+  btn('[data-logout]').addEventListener('click', (e) => {
+    if (confirm(`Déconnecter ${p.name} de tous ses appareils ?`)) void busy(e.currentTarget as HTMLButtonElement, () => call(api.adminDash.logout, { id }), done);
+  });
+  btn('[data-trades]').addEventListener('click', (e) => {
+    if (confirm(`Annuler les ${d.pendingTrades} échange(s) en attente de ${p.name} ?`)) void busy(e.currentTarget as HTMLButtonElement, () => call(api.adminDash.cancelTrades, { id }), done);
+  });
+  btn('[data-note-go]').addEventListener('click', (e) => void busy(e.currentTarget as HTMLButtonElement, () => call(api.adminDash.addNote, { id, text: val('[data-note]') }), done));
+  inner.querySelectorAll<HTMLButtonElement>('[data-unnote]').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (confirm('Supprimer cette note ?')) void busy(b, () => call(api.adminDash.removeNote, { noteId: b.dataset.unnote }), () => (done(null), 'Note supprimée.'));
+    }),
+  );
+  // collection : chargée à la première recherche (catalogue pour les noms)
+  let coll: Array<{ cardId: string; rarity: string; count: number; mint: number; name: string; key: string }> | null = null;
+  const collBox = $('.coll', inner);
+  const collQ = $<HTMLInputElement>('[data-coll-q]', inner);
+  const drawColl = async () => {
+    if (!coll) {
+      collBox.innerHTML = '<p class="muted small">Chargement de sa collection…</p>';
+      const [rows, t] = await Promise.all([ask(api.adminDash.playerCards, { id }), catalog()]);
+      coll = rows.map((r) => {
+        const e = t.catalogEntry(r.cardId);
+        const name = e?.name ?? r.cardId;
+        return { ...r, name, key: fold(`${name} ${e ? (t.subthemeById(e.subthemeId)?.label ?? '') : ''} ${r.cardId}`) };
+      });
+    }
+    const words = fold(collQ.value.trim()).split(/\s+/).filter(Boolean);
+    const hits = coll
+      .filter((c) => words.every((w) => c.key.includes(w)))
+      .sort((a, b) => RAR_ORDER.indexOf(b.rarity) - RAR_ORDER.indexOf(a.rarity) || b.count - a.count)
+      .slice(0, 12);
+    collBox.innerHTML = hits.length
+      ? hits.map((c, i) => `<div class="collrow"><span class="grow"><b>${esc(c.name)}</b> ${rarTag(c.rarity)} <span class="muted">× ${c.count} · n° ${c.mint}</span></span><button class="btn sm ghost" data-take="${i}">Retirer…</button></div>`).join('')
+      : '<p class="muted small">Aucune carte.</p>';
+    collBox.querySelectorAll<HTMLButtonElement>('[data-take]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const c = hits[Number(b.dataset.take)];
+        const n = Number(prompt(`Combien d’exemplaires de « ${c.name} » retirer ? (il en a ${c.count})`, '1'));
+        if (!n) return;
+        const reason = prompt('Raison (gardée dans le journal) :', 'doublon après un bug');
+        if (!reason) return;
+        void busy(b, () => call(api.adminDash.takeCard, { id, cardId: c.cardId, rarity: c.rarity, count: n, reason }), (r) => {
+          coll = null;
+          void drawColl();
+          return done(r);
+        });
+      }),
+    );
+  };
+  let collT = 0;
+  collQ.addEventListener('input', () => {
+    clearTimeout(collT);
+    collT = window.setTimeout(() => void drawColl(), 200);
+  });
+  collQ.addEventListener('focus', () => void (coll ? undefined : drawColl()), { once: true });
   inner.querySelector<HTMLButtonElement>('[data-unban]')?.addEventListener('click', (e) => void busy(e.currentTarget as HTMLButtonElement, () => call(api.adminDash.unban, { id }), done));
   inner.querySelector<HTMLButtonElement>('[data-ban]')?.addEventListener('click', (e) => {
     const reason = val('[data-ban-r]').trim();
@@ -689,10 +783,19 @@ async function viewOutils(v: HTMLElement) {
     <div class="grid2">
       <form class="panel" data-ann>
         <h3>Notification à tout le monde</h3>
-        <p class="muted small">${o.pushPlayers} joueur(s) ont activé les notifications${CANAL === 'v2' ? ' (staging : seulement l’équipe en pratique)' : ''}.</p>
+        <p class="muted small">${o.pushPlayers === null ? 'Les notifications ne sont pas encore sur cette version du jeu : préviens sur Discord.' : `${o.pushPlayers} joueur(s) ont activé les notifications${CANAL === 'v2' ? ' (staging : seulement l’équipe en pratique)' : ''}.`}</p>
         <input name="t" maxlength="60" placeholder="Titre (ex. Nouveau patch !)" required>
         <textarea name="b" maxlength="180" rows="2" placeholder="Message" required></textarea>
-        <button class="btn accent" type="submit">Envoyer</button>
+        <button class="btn accent" type="submit"${o.pushPlayers === null ? ' disabled' : ''}>Envoyer</button>
+      </form>
+      <form class="panel" data-gift>
+        <h3>Cadeau à tout le monde</h3>
+        <p class="muted small">Compensation après un bug, fête… Chaque joueur non banni reçoit le cadeau, avec le motif dans son portefeuille.</p>
+        <div class="row"><label class="grow">Boosters<input name="packs" type="number" min="0" max="50" value="5"></label><label class="grow">Pièces<input name="coins" type="number" min="0" max="20000" value="0"></label></div>
+        <input name="label" maxlength="80" placeholder="Motif (ex. Désolé pour la panne de ce soir)" required>
+        <label class="check"><input name="active" type="checkbox"> Seulement les joueurs venus ces 7 derniers jours</label>
+        <label class="check"><input name="notify" type="checkbox"${o.pushPlayers === null ? ' disabled' : ' checked'}> Les prévenir par notification</label>
+        <button class="btn accent" type="submit">Offrir</button>
       </form>
       <form class="panel" data-lock>
         <h3>Verrou du club</h3>
@@ -705,11 +808,23 @@ async function viewOutils(v: HTMLElement) {
         <input name="p" placeholder="Pseudo du parrain" required><input name="f" placeholder="Pseudo du filleul" required>
         <button class="btn" type="submit">Rattacher</button>
       </form>
+      <div class="panel" data-owners>
+        <h3>Qui possède cette carte ?</h3>
+        <div class="picker"></div>
+        <div class="owners"></div>
+      </div>
+      <form class="panel" data-roul>
+        <h3>Roulette</h3>
+        <p class="muted small">Si la roulette reste bloquée : forcer le tirage en cours, ou remettre un pot de base.</p>
+        <div class="actions"><button class="btn" type="button" data-draw>Forcer le tirage</button></div>
+        <div class="row"><input name="coins" type="number" min="0" max="50000" value="3000"><button class="btn" type="submit">Remettre un pot</button></div>
+      </form>
       <div class="panel">
         <h3>Entretien</h3>
         <div class="actions col">
           <button class="btn" type="button" data-ranks>Recalculer le classement maintenant</button>
           <button class="btn" type="button" data-discord>Donner le rôle Discord « Card » à tous</button>
+          <button class="btn" type="button" data-export>Exporter la liste des joueurs (Excel)</button>
         </div>
       </div>
     </div>
@@ -727,6 +842,48 @@ async function viewOutils(v: HTMLElement) {
       <a class="chip" href="${base}/version.json" target="_blank" rel="noopener">Version en ligne</a>
     </div>`;
   v.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) => b.addEventListener('click', () => void copy(b.dataset.copy!)));
+  const gift = $<HTMLFormElement>('[data-gift]', v);
+  gift.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(gift);
+    const packs = Number(fd.get('packs') || 0);
+    const coins = Number(fd.get('coins') || 0);
+    const who = fd.get('active') ? 'aux joueurs venus ces 7 jours' : 'à TOUS les joueurs';
+    if (!confirm(`Offrir ${packs} booster(s) et ${coins} pièce(s) ${who} ?`)) return;
+    void busy($<HTMLButtonElement>('button[type=submit]', gift), () => call(api.adminDash.giftAll, { packs, coins, label: String(fd.get('label')), ...(fd.get('active') ? { activeDays: 7 } : {}), notify: !!fd.get('notify') }), (r) => (gift.reset(), r));
+  });
+  const owners = $('[data-owners]', v);
+  cardPicker($('.picker', owners), (cid) => {
+    const box = $('.owners', owners);
+    box.innerHTML = `<div class="cardline" data-card="${esc(cid)}"></div><p class="muted small">Recherche…</p>`;
+    hydrateCards(box);
+    void ask(api.adminDash.cardOwners, { cardId: cid }).then(
+      (rows) =>
+        (box.querySelector('p')!.outerHTML = rows.length
+          ? `<ul class="feed">${rows.map((r) => `<li><b>${esc(r.name)}</b> ${rarTag(r.rarity)} × ${r.count} <span class="muted">n° ${r.mint}</span></li>`).join('')}</ul>`
+          : '<p class="muted small">Personne ne l’a encore.</p>'),
+      (e) => toast(errMsg(e), 'err'),
+    );
+  });
+  const roul = $<HTMLFormElement>('[data-roul]', v);
+  $('[data-draw]', roul).addEventListener('click', (e) => {
+    if (confirm('Forcer le tirage de la roulette maintenant ?')) void busy(e.currentTarget as HTMLButtonElement, () => call(api.adminDash.rouletteDraw));
+  });
+  roul.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const coins = Number(new FormData(roul).get('coins') || 0);
+    if (confirm(`Ajouter un pot de ${coins} pièces (+ une carte du site) à la roulette ?`)) void busy($<HTMLButtonElement>('button[type=submit]', roul), () => call(api.adminDash.rouletteSeed, { coins }));
+  });
+  $('[data-export]', v).addEventListener('click', (e) =>
+    void busy(e.currentTarget as HTMLButtonElement, async () => {
+      const rows = await ask(api.adminDash.players);
+      const cell = (x: unknown) => `"${String(x ?? '').replace(/"/g, '""')}"`;
+      const head = ['Nom', 'Pseudo', 'Inscrit', 'Dernière visite', 'Réserve', 'Boosters ouverts', 'Pièces', 'Série', 'Parrain', 'Équipe', 'Banni'];
+      const lines = rows.map((p) => [p.name, p.username, fullDate(p.createdAt), fullDate(p.lastSeenAt), p.packs, p.opened, p.coins, p.streak, p.referredBy, p.staff ? 'oui' : '', p.bannedAt ? p.banReason ?? 'oui' : ''].map(cell).join(';'));
+      download(`joueurs-${new Date().toISOString().slice(0, 10)}.csv`, '\ufeff' + [head.map(cell).join(';'), ...lines].join('\r\n'));
+      return `${rows.length} joueurs exportés.`;
+    }),
+  );
   const ann = $<HTMLFormElement>('[data-ann]', v);
   ann.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -761,6 +918,93 @@ async function viewJournal(v: HTMLElement) {
     <ul class="feed log">${rows.map((r) => `<li><b>${esc(r.by)}</b> <span class="kind k-autre">${esc(r.action)}</span>${r.target ? ` → <b>${esc(r.target)}</b>` : ''} ${esc(r.detail)} <span class="muted">${when(r.at)}</span></li>`).join('') || '<li class="muted">Aucune action pour l’instant.</li>'}</ul>`;
 }
 
+// ───────────────────────────── Guide (tuto pour Tom et Hugo) ─────────────────────────────
+const GUIDE: Array<{ id: string; title: string; body: string }> = [
+  {
+    id: 'acces',
+    title: '1. Ouvrir le dashboard',
+    body: `<ol>
+      <li>Connecte-toi au jeu avec <b>ton</b> compte (Tom ou Hugo) : <a href="https://cardgamepriv.pages.dev/jeu/">cardgamepriv.pages.dev/jeu</a>.</li>
+      <li>Ouvre <a href="https://cardgamepriv.pages.dev/admin/"><b>cardgamepriv.pages.dev/admin</b></a> sur le même téléphone ou le même navigateur. Ajoute-le à l’écran d’accueil ou en favori.</li>
+      <li>En haut, le badge rouge <b>PROD · vrais joueurs</b> veut dire que tout ce que tu fais touche les vrais comptes. Le badge jaune <b>V2 · test</b>, c’est le lien de test : rien n’y compte.</li>
+    </ol>
+    <p>Il marche tout seul, sans Claude et sans le PC : il fait partie du site en ligne.</p>`,
+  },
+  {
+    id: 'jour',
+    title: '2. Chaque jour (2 minutes)',
+    body: `<ol>
+      <li><b>Accueil</b> → « À traiter » : les cases colorées montrent ce qui attend. Touche une case pour y aller.</li>
+      <li><b>Retours</b> : lis chaque nouveau message. Écris une réponse dans le champ (le joueur la voit dans « Mes suggestions »), puis touche un statut : <i>Vue</i>, <i>Acceptée</i>, <i>Traitée</i> ou <i>Refusée</i>.</li>
+      <li>Une carte signalée (mauvaise photo, nom…) → bouton <b>→ Cartes à corriger</b>. La liste est partagée entre vous deux. « Exporter pour Excel » donne le fichier à corriger.</li>
+      <li>Un bug à me faire réparer → bouton <b>Copier</b>, puis colle le texte à Claude : tout y est (page, téléphone, message, capture).</li>
+      <li><b>Alertes</b> (s’il y en a) : <i>Légitime</i> si c’est normal entre potes, <i>À surveiller</i> sinon.</li>
+    </ol>`,
+  },
+  {
+    id: 'joueur',
+    title: '3. Un joueur a un souci',
+    body: `<p>Onglet <b>Joueurs</b> → cherche son nom → touche-le : sa fiche s’ouvre avec toutes les actions.</p>
+    <table class="howto">
+      <tr><td>« Je n’ai pas reçu mes boosters / mes pièces »</td><td>Fiche → <b>Boosters</b> ou <b>Pièces</b> → Donner.</td></tr>
+      <tr><td>« Mon lien de parrainage n’a pas marché »</td><td>Fiche du <b>filleul</b> → Parrainage perdu → pseudo du parrain → Rattacher.</td></tr>
+      <tr><td>« J’ai oublié mon mot de passe »</td><td>Compte pseudo : fiche → Mot de passe → choisis-en un et donne-le-lui en privé. Compte Discord : rien à faire, il se reconnecte avec Discord.</td></tr>
+      <tr><td>« Le jeu est bizarre / bloqué chez moi »</td><td>Dis-lui : menu du profil → <b>Réparer et mettre à jour</b>. Si ça ne suffit pas : fiche → <b>Le déconnecter partout</b> (rien n’est perdu).</td></tr>
+      <tr><td>« Mon échange est bloqué »</td><td>Fiche → <b>Annuler ses échanges en attente</b>. Les cartes redeviennent libres.</td></tr>
+      <tr><td>Une carte en double à cause d’un bug</td><td>Fiche → Sa collection → cherche la carte → <b>Retirer…</b> (avec une raison).</td></tr>
+      <tr><td>Il lui manque une carte promise</td><td>Fiche → <b>Donner une carte</b> → cherche-la → rareté → Donner.</td></tr>
+      <tr><td>Double compte, triche, compte squatté</td><td>Regarde d’abord <b>Alertes</b>. Puis fiche → <b>Bannir</b> avec une raison. C’est réversible : <b>Rétablir le compte</b>.</td></tr>
+      <tr><td>Retenir quelque chose sur lui (ex. il a payé)</td><td>Fiche → <b>Notes de l’équipe</b>. Le joueur ne les voit jamais.</td></tr>
+      <tr><td>Savoir qui a une carte</td><td>Outils → <b>Qui possède cette carte ?</b></td></tr>
+    </table>`,
+  },
+  {
+    id: 'urgence',
+    title: '4. URGENCE : le jeu est cassé pour tout le monde',
+    body: `<ol>
+      <li><b>Fermer le club</b> : Outils → Verrou du club → mets une heure (dans 1 ou 2 h) → Verrouiller. Les joueurs voient un compte à rebours. Vous deux, vous entrez toujours.</li>
+      <li><b>Prévenir</b> : un message sur le Discord des Bébous (et Outils → Notification à tout le monde, quand elle est disponible).</li>
+      <li><b>Réparer</b> :
+        <ul>
+          <li>Avec Claude : colle-lui le problème (onglet Retours → Copier).</li>
+          <li><b>Sans Claude</b>, revenir à la version d’avant (PC de Tom) : dans le dossier <code>cardgamepriv\\.wt-master</code>, clic droit → <i>Ouvrir dans le terminal</i>, tape <code>git tag</code> pour voir les versions, puis <code>git reset --hard v1.0.13</code> (la dernière qui marchait — garde v1.0.13 ou plus récent pour garder ce dashboard). Ensuite double-clic sur <code>lanceurs\\mettre-en-ligne-prod.cmd</code> dans ce même dossier.</li>
+        </ul></li>
+      <li><b>Rouvrir</b> : Outils → Verrou du club → <b>Ouvrir maintenant</b>.</li>
+      <li><b>Dédommager</b> si besoin : Outils → <b>Cadeau à tout le monde</b> (ex. 5 boosters, « Désolé pour la panne »).</li>
+    </ol>
+    <p class="muted">Une sauvegarde complète de la base des joueurs est faite avant chaque patch (<code>sauvegardes\\avant-patch-…zip</code>) : pour la remettre, demande à Claude (voir docs/V1.md).</p>`,
+  },
+  {
+    id: 'sans',
+    title: '5. Ce qu’on peut faire sans Claude, et ce qui demande du code',
+    body: `<table class="howto">
+      <tr><td><b>Ici, sans Claude</b></td><td>Joueurs (boosters, pièces, cartes, bans, mots de passe, parrainages, déconnexion, échanges), retours, cartes à corriger, sondage, alertes, cadeau à tous, verrou du club, roulette, classement, rôle Discord.</td></tr>
+      <tr><td><b>Lanceurs du PC</b></td><td>Mettre en ligne, sauvegarder, revenir en arrière (voir Outils → Lanceurs du PC).</td></tr>
+      <tr><td><b>Avec du code</b></td><td>Changer une image ou une carte du catalogue, corriger un bug, ajouter une fonction. Garde la liste dans « Cartes à corriger » et les bugs dans « Retours » : tout sera prêt pour la prochaine session.</td></tr>
+    </table>`,
+  },
+  {
+    id: 'bon',
+    title: '6. Bon à savoir',
+    body: `<ul>
+      <li>Tout ce que vous faites ici est noté dans <b>Journal</b> (qui, quoi, quand).</li>
+      <li>Les actions qui touchent tout le monde (cadeau, verrou, notification) demandent toujours une confirmation.</li>
+      <li>Le bouton ↻ en haut actualise. L’accueil se met à jour tout seul chaque minute.</li>
+      <li>Si la page dit « Session expirée » : reconnecte-toi dans le jeu, puis reviens.</li>
+    </ul>`,
+  },
+];
+async function viewGuide(v: HTMLElement, sub: string) {
+  try {
+    localStorage.setItem('bebou.admin.guide', '1');
+  } catch {
+    /* rien */
+  }
+  v.innerHTML = `<div class="guide"><h2>Mode d’emploi — Tom et Hugo</h2>
+    ${GUIDE.map((g) => `<details id="g-${g.id}"${g.id === sub || (!sub && g.id === 'acces') ? ' open' : ''}${g.id === 'urgence' ? ' class="urg"' : ''}><summary>${esc(g.title)}</summary><div class="g-body">${g.body}</div></details>`).join('')}</div>`;
+  if (sub) document.getElementById(`g-${sub}`)?.scrollIntoView({ block: 'start' });
+}
+
 const VIEWS: Record<Tab, (v: HTMLElement, sub: string) => Promise<void>> = {
   accueil: viewAccueil,
   retours: viewRetours,
@@ -769,6 +1013,7 @@ const VIEWS: Record<Tab, (v: HTMLElement, sub: string) => Promise<void>> = {
   alertes: viewAlertes,
   outils: viewOutils,
   journal: viewJournal,
+  guide: viewGuide,
 };
 
 // ───────────────────────────── démarrage ─────────────────────────────

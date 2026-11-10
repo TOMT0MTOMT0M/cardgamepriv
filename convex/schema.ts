@@ -709,4 +709,12 @@ export default defineSchema({
   })
     .index('by_status', ['status', 'updatedAt'])
     .index('by_card', ['cardId']),
+
+  /** (V2, 10/11) notes internes de l'équipe sur un joueur (dashboard admin) — jamais visibles du joueur. */
+  playerNotes: defineTable({
+    userId: v.id('users'),
+    text: v.string(),
+    byName: v.string(),
+    at: v.number(),
+  }).index('by_user', ['userId', 'at']),
 });

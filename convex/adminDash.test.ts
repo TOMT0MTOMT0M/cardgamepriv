@@ -89,4 +89,37 @@ describe('dashboard admin', () => {
     await t.mutation(api.adminDash.setLaunch, { sessionToken: tom.token, at: null });
     expect((await t.query(api.adminDash.overview, { sessionToken: tom.token })).launchAt).toBeNull();
   });
+
+  test('cadeau à tous : boosters + pièces aux joueurs non bannis, journalisé', async () => {
+    const { t, tom, alice, hugo } = await setup();
+    await t.run((ctx) => ctx.db.patch(hugo.userId, { bannedAt: Date.now() }));
+    const r = await t.mutation(api.adminDash.giftAll, { sessionToken: tom.token, packs: 3, coins: 100, label: 'Désolé pour le bug' });
+    expect(r).toMatch(/2 joueur/);
+    expect((await t.run((ctx) => ctx.db.get(alice.userId)))!.coins).toBe(100);
+    expect((await t.run((ctx) => ctx.db.get(hugo.userId)))!.coins).toBeUndefined();
+    await expect(t.mutation(api.adminDash.giftAll, { sessionToken: tom.token, label: 'x' })).rejects.toThrow(/au moins/);
+    expect((await t.query(api.adminDash.journal, { sessionToken: tom.token }))[0].action).toBe('cadeau à tous');
+  });
+
+  test('retirer une carte, qui la possède, déconnecter, notes', async () => {
+    const { t, tom, alice } = await setup();
+    await t.mutation(api.adminDash.giveCard, { sessionToken: tom.token, id: alice.userId, cardId: card.id, count: 3 });
+    expect(await t.query(api.adminDash.cardOwners, { sessionToken: tom.token, cardId: card.id })).toMatchObject([{ name: 'alice', count: 3, rarity: 'rare' }]);
+    await expect(t.mutation(api.adminDash.takeCard, { sessionToken: tom.token, id: alice.userId, cardId: card.id, rarity: 'rare', count: 1, reason: ' ' })).rejects.toThrow(/raison/);
+    await t.mutation(api.adminDash.takeCard, { sessionToken: tom.token, id: alice.userId, cardId: card.id, rarity: 'rare', count: 2, reason: 'doublon bug' });
+    expect(await t.query(api.adminDash.playerCards, { sessionToken: tom.token, id: alice.userId })).toMatchObject([{ cardId: card.id, count: 1 }]);
+    await expect(t.mutation(api.adminDash.takeCard, { sessionToken: tom.token, id: alice.userId, cardId: card.id, rarity: 'rare', count: 5, reason: 'x' })).rejects.toThrow(/alice n’a pas assez/);
+    await t.mutation(api.adminDash.logout, { sessionToken: tom.token, id: alice.userId });
+    expect(await t.query(api.adminDash.whoami, { sessionToken: alice.token })).toMatchObject({ ok: false, reason: 'login' });
+    await t.mutation(api.adminDash.addNote, { sessionToken: tom.token, id: alice.userId, text: 'a payé l’abonnement' });
+    const d = await t.query(api.adminDash.playerDetail, { sessionToken: tom.token, id: alice.userId });
+    expect(d.notes).toMatchObject([{ text: 'a payé l’abonnement', by: 'tom' }]);
+    expect(d.pendingTrades).toBe(0);
+  });
+
+  test('annonce : envoyée sur une version avec notifications', async () => {
+    const { t, tom } = await setup();
+    expect(await t.mutation(api.adminDash.announce, { sessionToken: tom.token, title: 'Patch', body: 'Nouveautés !' })).toMatch(/Annonce envoyée à 0 joueur/);
+    expect((await t.query(api.adminDash.overview, { sessionToken: tom.token })).pushPlayers).toBe(0);
+  });
 });

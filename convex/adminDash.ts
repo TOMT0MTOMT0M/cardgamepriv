@@ -1,10 +1,11 @@
 import { v, ConvexError } from 'convex/values';
+import { makeFunctionReference } from 'convex/server';
 import { action, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { getUserByToken } from './auth';
 import { catalogCard, rarityValidator, RARITY_LABEL, type RarityId } from './cardsCatalog';
-import { addCoins } from './econLib';
+import { addCoins, takeCards } from './econLib';
 import { give } from './admin';
 import { addPacks } from './referrals';
 import { applyRegen } from '../src/core/packRegen';
@@ -22,6 +23,27 @@ import { SURVEY_ID } from '../src/core/survey';
 
 const ONLINE_MS = 5 * 60_000;
 const DAY = 86_400_000;
+
+/**
+ * Notifications push : arrivées avec la V2 (convex/push.ts). Appelées PAR LEUR NOM pour que ce fichier soit identique sur
+ * master (prod V1, sans notifications) et sur v2 : sur une version sans push, l'appel échoue et l'action le dit.
+ */
+const PUSH_ANNOUNCE = makeFunctionReference<'mutation', { title: string; body: string; url?: string }, { players: number; devices: number }>('push:announce');
+async function pushPlayers(ctx: QueryCtx): Promise<number | null> {
+  try {
+    const db = ctx.db as unknown as { query(t: string): { collect(): Promise<Array<{ userId: string }>> } };
+    return new Set((await db.query('pushSubs').collect()).map((s) => s.userId)).size;
+  } catch {
+    return null;
+  }
+}
+async function tryAnnounce(ctx: MutationCtx, title: string, body: string): Promise<{ players: number; devices: number } | null> {
+  try {
+    return await ctx.runMutation(PUSH_ANNOUNCE, { title, body });
+  } catch {
+    return null;
+  }
+}
 
 const isStaff = (u: Pick<Doc<'users'>, 'isAdmin' | 'isModerator'>) => !!(u.isAdmin || u.isModerator);
 
@@ -69,7 +91,6 @@ export const overview = query({
     const newByKind = { bug: 0, design: 0, ajout: 0, autre: 0 };
     for (const s of suggNew) newByKind[s.kind]++;
     const fixes = await ctx.db.query('cardFixes').withIndex('by_status', (q) => q.eq('status', 'afaire')).take(500);
-    const pushSubs = await ctx.db.query('pushSubs').collect();
     const launch = await ctx.db.query('appConfig').withIndex('by_key', (q) => q.eq('key', 'launch')).unique();
     const survey = await ctx.db.query('surveyAnswers').withIndex('by_survey', (q) => q.eq('surveyId', SURVEY_ID)).take(1000);
     const feed = await ctx.db.query('activityFeed').withIndex('by_createdAt').order('desc').take(15);
@@ -83,7 +104,7 @@ export const overview = query({
       packsOpened: live.reduce((a, u) => a + u.totalPacksOpened, 0),
       packsWaiting: live.reduce((a, u) => a + packsNow(u, now), 0),
       coins: live.reduce((a, u) => a + (u.coins ?? 0), 0),
-      pushPlayers: new Set(pushSubs.map((s) => s.userId as string)).size,
+      pushPlayers: await pushPlayers(ctx),
       suggestions: { nouvelle: suggNew.length, vue: suggSeen.length, acceptee: suggOk.length, newByKind },
       fixesTodo: fixes.length,
       surveyId: SURVEY_ID,
@@ -144,7 +165,13 @@ export const playerDetail = query({
     const kids = await ctx.db.query('users').withIndex('by_referredBy', (q) => q.eq('referredBy', id)).collect();
     const sessions = await ctx.db.query('sessions').withIndex('by_userId', (q) => q.eq('userId', id)).collect();
     const sugg = await ctx.db.query('suggestions').withIndex('by_user', (q) => q.eq('userId', id)).collect();
+    const pending =
+      (await ctx.db.query('trades').withIndex('by_fromUser_status', (q) => q.eq('fromUserId', id).eq('status', 'pending')).collect()).length +
+      (await ctx.db.query('trades').withIndex('by_toUser_status', (q) => q.eq('toUserId', id).eq('status', 'pending')).collect()).length;
+    const notes = await ctx.db.query('playerNotes').withIndex('by_user', (q) => q.eq('userId', id)).order('desc').take(30);
     return {
+      pendingTrades: pending,
+      notes: notes.map((n) => ({ id: n._id as string, text: n.text, by: n.byName, at: n.at })),
       distinct: inv.length,
       copies,
       byRarity,
@@ -274,7 +301,8 @@ export const announce = mutation({
     const t = title.trim().slice(0, 60);
     const b = body.trim().slice(0, 180);
     if (!t || !b) throw new ConvexError('Un titre et un message.');
-    const r: { players: number; devices: number } = await ctx.runMutation(internal.push.announce, { title: t, body: b });
+    const r = await tryAnnounce(ctx, t, b);
+    if (!r) throw new ConvexError('Les notifications ne sont pas encore en ligne sur cette version du jeu.');
     await log(ctx, me, 'annonce', `« ${t} » — ${b} (${r.players} joueurs, ${r.devices} appareils)`);
     return `Annonce envoyée à ${r.players} joueur(s) (${r.devices} appareil(s)).`;
   },
@@ -402,5 +430,155 @@ export const journal = query({
     await requireStaff(ctx, sessionToken);
     const rows = await ctx.db.query('adminLog').withIndex('by_at').order('desc').take(150);
     return rows.map((r) => ({ at: r.at, by: r.byName, action: r.action, target: r.target, detail: r.detail }));
+  },
+});
+
+// ─────────────────────────────── (10/11, amélioration) actions en plus ───────────────────────────────
+
+/** Toutes les cartes d'un joueur (pour retirer une carte en trop après un bug). */
+export const playerCards = query({
+  args: { sessionToken: v.string(), id: v.id('users') },
+  handler: async (ctx, { sessionToken, id }) => {
+    await requireStaff(ctx, sessionToken);
+    const inv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', id)).collect();
+    return inv.map((r) => ({ cardId: r.cardId, rarity: r.rarity, count: r.count, mint: r.bestMintNumber }));
+  },
+});
+
+/** Retire des exemplaires (doublon après un bug, carte donnée par erreur). Refusé si la carte est engagée dans un échange. */
+export const takeCard = mutation({
+  args: { sessionToken: v.string(), id: v.id('users'), cardId: v.string(), rarity: rarityValidator, count: v.number(), reason: v.string() },
+  handler: async (ctx, { sessionToken, id, cardId, rarity, count, reason }) => {
+    const me = await requireStaff(ctx, sessionToken);
+    const u = await player(ctx, id);
+    const n = Math.floor(count);
+    if (!(n >= 1 && n <= 50)) throw new ConvexError('Entre 1 et 50 exemplaires.');
+    const why = reason.trim().slice(0, 120);
+    if (!why) throw new ConvexError('Écris la raison (elle reste dans le journal).');
+    try {
+      await takeCards(ctx, id, [{ cardId, rarity, count: n }]);
+    } catch (e) {
+      throw new ConvexError(String((e as { data?: unknown }).data ?? (e as Error).message).replace(/^Tu n’as/, `${u.displayName} n’a`));
+    }
+    const name = catalogCard(cardId)?.name ?? cardId;
+    await log(ctx, me, 'carte retirée', `−${n} × ${name} (${RARITY_LABEL[rarity]}) : ${why}`, u.displayName);
+    return `−${n} × ${name} (${RARITY_LABEL[rarity]}) retiré à ${u.displayName}.`;
+  },
+});
+
+/** Ferme toutes ses sessions (jeu bloqué, compte partagé…) : il se reconnecte, rien n'est perdu. */
+export const logout = mutation({
+  args: { sessionToken: v.string(), id: v.id('users') },
+  handler: async (ctx, { sessionToken, id }) => {
+    const me = await requireStaff(ctx, sessionToken);
+    const u = await player(ctx, id);
+    if (u._id === me._id) throw new ConvexError('Pas toi : tu fermerais ta propre session ici.');
+    const rows = await ctx.db.query('sessions').withIndex('by_userId', (q) => q.eq('userId', id)).collect();
+    for (const r of rows) await ctx.db.delete(r._id);
+    await log(ctx, me, 'déconnexion', `${rows.length} session(s) fermée(s)`, u.displayName);
+    return `${u.displayName} déconnecté (${rows.length} session(s)). Il se reconnecte normalement.`;
+  },
+});
+
+/** Annule ses échanges en attente (échange bloqué) : les cartes redeviennent libres des deux côtés. */
+export const cancelTrades = mutation({
+  args: { sessionToken: v.string(), id: v.id('users') },
+  handler: async (ctx, { sessionToken, id }) => {
+    const me = await requireStaff(ctx, sessionToken);
+    const u = await player(ctx, id);
+    const now = Date.now();
+    const rows = [
+      ...(await ctx.db.query('trades').withIndex('by_fromUser_status', (q) => q.eq('fromUserId', id).eq('status', 'pending')).collect()),
+      ...(await ctx.db.query('trades').withIndex('by_toUser_status', (q) => q.eq('toUserId', id).eq('status', 'pending')).collect()),
+    ];
+    for (const t of rows) await ctx.db.patch(t._id, { status: 'cancelled', resolvedAt: now });
+    await log(ctx, me, 'échanges', `${rows.length} échange(s) en attente annulé(s)`, u.displayName);
+    return `${rows.length} échange(s) en attente annulé(s) pour ${u.displayName}.`;
+  },
+});
+
+/** Note interne sur un joueur (ex. « a payé l'abonnement le 10/11 ») — jamais visible du joueur. */
+export const addNote = mutation({
+  args: { sessionToken: v.string(), id: v.id('users'), text: v.string() },
+  handler: async (ctx, { sessionToken, id, text }) => {
+    const me = await requireStaff(ctx, sessionToken);
+    const u = await player(ctx, id);
+    const t = text.trim().slice(0, 500);
+    if (!t) throw new ConvexError('Note vide.');
+    await ctx.db.insert('playerNotes', { userId: id, text: t, byName: me.displayName, at: Date.now() });
+    await log(ctx, me, 'note', t, u.displayName);
+    return 'Note ajoutée.';
+  },
+});
+export const removeNote = mutation({
+  args: { sessionToken: v.string(), noteId: v.id('playerNotes') },
+  handler: async (ctx, { sessionToken, noteId }) => {
+    await requireStaff(ctx, sessionToken);
+    if (await ctx.db.get(noteId)) await ctx.db.delete(noteId);
+  },
+});
+
+/** Cadeau à tout le monde (compensation après un bug, fête…) : boosters et / ou pièces à chaque joueur non banni. */
+export const giftAll = mutation({
+  args: { sessionToken: v.string(), packs: v.optional(v.number()), coins: v.optional(v.number()), label: v.string(), activeDays: v.optional(v.number()), notify: v.optional(v.boolean()) },
+  handler: async (ctx, a): Promise<string> => {
+    const me = await requireStaff(ctx, a.sessionToken);
+    const packs = Math.floor(a.packs ?? 0);
+    const coins = Math.floor(a.coins ?? 0);
+    if (packs < 0 || packs > 50 || coins < 0 || coins > 20_000) throw new ConvexError('Au plus 50 boosters et 20 000 pièces par joueur.');
+    if (!packs && !coins) throw new ConvexError('Mets au moins des boosters ou des pièces.');
+    const label = a.label.trim().slice(0, 80) || 'Cadeau de l’équipe';
+    const now = Date.now();
+    const since = a.activeDays ? now - a.activeDays * DAY : 0;
+    const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt && u.lastSeenAt >= since);
+    for (const u of users) {
+      if (packs) await addPacks(ctx, u._id, packs);
+      if (coins) await addCoins(ctx, u._id, coins, 'admin', label);
+    }
+    const what = [packs && `${packs} booster${packs > 1 ? 's' : ''}`, coins && `${num(coins)} pièces`].filter(Boolean).join(' + ');
+    let notified = '';
+    if (a.notify) {
+      const r = await tryAnnounce(ctx, 'Cadeau de l’équipe 🎁', `${what} pour toi : ${label}`);
+      notified = r ? ` · notification à ${r.players} joueur(s)` : ' · (notifications pas disponibles sur cette version)';
+    }
+    await log(ctx, me, 'cadeau à tous', `${what} à ${users.length} joueur(s)${a.activeDays ? ` actifs ${a.activeDays} j` : ''} — ${label}${notified}`);
+    return `${what} donnés à ${users.length} joueur(s)${notified}.`;
+  },
+});
+const num = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
+
+/** Qui possède cette carte ? (toutes raretés) */
+export const cardOwners = query({
+  args: { sessionToken: v.string(), cardId: v.string() },
+  handler: async (ctx, { sessionToken, cardId }) => {
+    await requireStaff(ctx, sessionToken);
+    const rows = await ctx.db.query('inventory').withIndex('by_card_rarity', (q) => q.eq('cardId', cardId)).take(500);
+    const names = new Map<string, string>();
+    for (const r of rows) if (!names.has(r.userId)) names.set(r.userId, (await ctx.db.get(r.userId))?.displayName ?? '?');
+    return rows.map((r) => ({ name: names.get(r.userId)!, rarity: r.rarity, count: r.count, mint: r.bestMintNumber })).sort((x, y) => y.count - x.count);
+  },
+});
+
+/** Roulette en panne : forcer le tirage en cours, ou remettre un pot de base. */
+export const rouletteDraw = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }): Promise<string> => {
+    const me = await requireStaff(ctx, sessionToken);
+    const r: unknown = await ctx.runMutation(internal.games.forceDraw, {});
+    const msg = r ? `Tirage forcé : ${JSON.stringify(r).slice(0, 220)}` : 'Aucun tirage en cours.';
+    await log(ctx, me, 'roulette', msg);
+    return msg;
+  },
+});
+export const rouletteSeed = mutation({
+  args: { sessionToken: v.string(), coins: v.number() },
+  handler: async (ctx, { sessionToken, coins }): Promise<string> => {
+    const me = await requireStaff(ctx, sessionToken);
+    const c = Math.floor(coins);
+    if (!(c >= 0 && c <= 50_000)) throw new ConvexError('Entre 0 et 50 000 pièces.');
+    const r: unknown = await ctx.runMutation(internal.games.seedRouletteCmd, { coins: c });
+    const msg = `Pot de roulette : ${JSON.stringify(r).slice(0, 220)}`;
+    await log(ctx, me, 'roulette', msg);
+    return msg;
   },
 });

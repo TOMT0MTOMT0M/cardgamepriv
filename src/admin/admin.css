@@ -200,6 +200,33 @@ form.panel > * + * { margin-top: 10px; }
 .toast.show { transform: translate(-50%, 0); visibility: visible; transition: transform 0.25s ease; }
 .toast.err { background: var(--red); color: #fff; }
 
+/* (amélioration 10/11) accueil, fiche, outils, guide */
+.hello { border-color: var(--text); }
+.hello p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+.urgent { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 14px; padding: 12px 16px; border-radius: var(--radius); border: 1px solid color-mix(in srgb, var(--red) 45%, var(--line)); text-decoration: none; }
+.urgent b { color: #ff8d94; }
+.urgent span { color: var(--muted); font-size: 14px; }
+.version { margin-top: 24px; }
+.collrow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.notes li { display: flex; align-items: center; gap: 8px; }
+.notes li .btn { margin-left: auto; min-height: 28px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.check input { width: 18px; height: 18px; min-height: 0; flex: none; }
+.row label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.guide h2 { margin-top: 20px; }
+.guide details { scroll-margin-top: calc(130px + env(safe-area-inset-top)); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 0 16px; margin-bottom: 10px; }
+.guide details[open] { padding-bottom: 14px; }
+.guide summary { margin: 0; padding: 16px 0; font-size: 16px; }
+.guide details.urg { border-color: color-mix(in srgb, var(--red) 50%, var(--line)); }
+.guide details.urg summary { color: #ff8d94; }
+.g-body { font-size: 15px; line-height: 1.6; }
+.g-body ol, .g-body ul { padding-left: 20px; margin: 0; }
+.g-body li + li { margin-top: 8px; }
+.g-body a { color: var(--blue); }
+.howto { width: 100%; border-collapse: collapse; font-size: 14px; }
+.howto td { padding: 10px 8px 10px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.howto td:first-child { width: 42%; color: var(--muted); }
+
 @media (min-width: 900px) {
   .grid2, .cols { grid-template-columns: 1fr 1fr; }
   .acts { grid-template-columns: 1fr 1fr; }
