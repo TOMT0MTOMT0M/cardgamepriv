@@ -4,11 +4,17 @@
       (src/game/bundle.ts, d'après /precache.json) → démarrage sans réseau, même hors connexion, et qui résiste au
       ménage du cache HTTP (iPhone). Règles, volontairement étroites :
       - /assets/* (noms à empreinte, immuables) et médias du manifeste (/fx, /audio, /icons) : cache d'abord ;
+        (/assets/* est de plus déclaré en ROUTE STATIQUE à l'install — Chrome / Edge 123+ : le navigateur lit le cache
+        lui-même, sans réveiller ni solliciter ce fichier ; entrée absente → réseau, vérifié sur Chrome 153. Le
+        remplissage de ce cache pour /assets/* est alors fait par la page (bundle.ts), pas par ce fichier. Rien d'autre
+        n'est routé : /art et /bake sont rangés par ce fichier, /fx /audio /icons se revalident par la page) ;
       - /art/*?v=… (images versionnées, immuables) : cache d'abord, gardées au fil de l'usage (plafonnées) →
         moins d'appels à la fonction R2, jamais plus ;
       - /bake/*?v=… (déchirure simulée, versionnée) : cache d'abord ;
-      - la page /jeu/ : RÉSEAU d'abord (3 s max), copie locale en repli → un patch est vu tout de suite ;
-      - /version.json, /precache.json, /sw.js, le labo, les requêtes partielles (Range) et tout le reste : jamais touchés.
+      - la page /jeu/ : RÉSEAU d'abord (3 s max), copie locale en repli → un patch est vu tout de suite ; la requête
+        réseau part pendant le réveil de ce fichier (Navigation Preload : `preloadResponse`, une seule requête) ;
+      - /version.json, /precache.json, /sw.js, le labo, les requêtes partielles (Range) et tout le reste : jamais touchés
+        (les autres PAGES, labo compris, ne font que reprendre la réponse du préchargement de navigation, sans rien garder).
       Une réponse n'est rangée que si elle est correcte (200, même origine, pas une page HTML à la place d'un fichier).
       Le ménage ne touche que les caches de ce fichier : ceux de la page (bebou-cartes-*, bebou-plis, bebou-nom-moule) restent. */
 const APP = 'bebou-app-v1';
@@ -53,25 +59,28 @@ async function trimArt() {
   trimming = false;
 }
 
-async function pageNetworkFirst(req) {
-  // (pas de copie locale : rien à servir en repli → le réseau, sans délai imposé, comme sans service worker)
-  const have = await caches.open(APP).then((c) => c.match(PAGE)).catch(() => undefined);
-  if (!have) {
-    const res = await fetch(req);
-    if (storable(res, true)) void stash(APP, PAGE, res.clone());
-    return res;
-  }
+async function pageNetworkFirst(req, preload) {
+  // (preload : requête réseau déjà partie pendant le réveil du service worker — Navigation Preload ; `undefined` s'il
+  // n'y en a pas. On la consomme au lieu d'en refaire une : une seule requête. Elle ne s'annule pas : le délai de 3 s
+  // se fait donc par une course, et le signal ne sert qu'à la requête que nous aurions lancée nous-mêmes.)
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 3000);
+  const net = Promise.resolve(preload)
+    .catch(() => undefined)
+    .then((pre) => pre || fetch(req, { signal: ctl.signal }));
+  net.catch(() => {}); // (si le délai l'emporte, l'échec tardif n'est pas une erreur non gérée)
+  const have = await caches.open(APP).then((c) => c.match(PAGE)).catch(() => undefined);
+  // (pas de copie locale : rien à servir en repli → le réseau, sans délai imposé, comme sans service worker)
+  let timer;
   try {
-    const res = await fetch(req, { signal: ctl.signal });
+    const res = await (have
+      ? Promise.race([net, new Promise((_, no) => (timer = setTimeout(() => (ctl.abort(), no(new Error('lent'))), 3000)))])
+      : net);
     clearTimeout(timer);
     if (storable(res, true)) void stash(APP, PAGE, res.clone());
     return res;
   } catch (e) {
     clearTimeout(timer);
-    const hit = await caches.open(APP).then((c) => c.match(PAGE));
-    if (hit) return hit;
+    if (have) return have;
     throw e;
   }
 }
@@ -86,7 +95,10 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== SCOPE.origin || !url.pathname.startsWith(SCOPE.pathname)) return;
   const p = url.pathname.slice(SCOPE.pathname.length);
   if (nav) {
-    if (p === 'jeu/' || p === 'jeu/index.html') e.respondWith(pageNetworkFirst(req));
+    if (p === 'jeu/' || p === 'jeu/index.html') e.respondWith(pageNetworkFirst(req, e.preloadResponse));
+    // (le préchargement de navigation vaut pour TOUTE page du site : sans réponse de notre part, le navigateur referait
+    // la requête → les autres pages — le labo… — la reprennent telle quelle, sans rien en garder)
+    else e.respondWith(Promise.resolve(e.preloadResponse).then((pre) => pre || fetch(req)));
     return;
   }
   if (p.startsWith('assets/') || p.startsWith('fx/') || p.startsWith('audio/') || p.startsWith('icons/')) e.respondWith(cacheFirst(APP, req));
@@ -95,13 +107,26 @@ self.addEventListener('fetch', (e) => {
   else if (p.startsWith('bake/') && url.searchParams.has('v')) e.respondWith(cacheFirst(APP, req));
 });
 
-self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+  // Route statique (Chrome / Edge 123+) : /assets/* (noms à empreinte, immuables) lu dans le cache par le navigateur
+  // lui-même. Entrée absente → réseau ; une erreur ici (navigateur sans la fonction, règle refusée) ne gêne rien :
+  // le gestionnaire `fetch` ci-dessus reste la voie de repli.
+  if (typeof e.addRoutes === 'function') {
+    e.waitUntil(
+      Promise.resolve()
+        .then(() => e.addRoutes({ condition: { urlPattern: new URL('assets/*', SCOPE).href, requestMethod: 'get' }, source: { cacheName: APP } }))
+        .catch(() => {}),
+    );
+  }
+});
 self.addEventListener('activate', (e) =>
   e.waitUntil(
     caches
       .keys()
       .then((ks) => Promise.all(ks.filter((k) => /^bebou-(app|art)-/.test(k) && k !== APP && k !== ART).map((k) => caches.delete(k))))
       .catch(() => {})
+      .then(() => self.registration.navigationPreload?.enable().catch(() => {}))
       .then(() => self.clients.claim()),
   ),
 );
