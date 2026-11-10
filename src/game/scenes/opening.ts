@@ -1984,6 +1984,8 @@ export function createOpeningScene(): OpeningScene {
     },
     reset,
     advance,
+    /** pour le shell : 'rest' = vitrine / récap final (définition 3D modifiable) ; 'prepare' = cartes du booster en construction */
+    pacing: () => (phase === 'sealed' && !slots.length ? 'prepare' : phase === 'display' || phase === 'done' ? 'rest' : 'busy'),
     setAuto(o) {
       if (o.burn !== undefined) auto.burn = o.burn;
       if (o.minRank !== undefined) auto.minRank = o.minRank;

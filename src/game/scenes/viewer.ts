@@ -142,6 +142,8 @@ export function createViewerScene(): ViewerScene {
     restRect,
     // définition native de l'écran (×3 sur iPhone) : une seule carte, scène légère — c'est l'écran où l'on inspecte
     dprCap: 3,
+    /** pour le shell : au repos tant que la carte n'est ni touchée, ni animée, ni zoomée (changement de définition 3D permis) */
+    pacing: () => (tl?.isActive() || ctx.input.down || ctx.input.dragging || Math.abs(zoomT - zoom) > 0.002 ? 'busy' : 'rest'),
     async show(cardId, rarityId, opts) {
       const my = ++token;
       setZoom(1); // nouvelle carte : on repart sans zoom
