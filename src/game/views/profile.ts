@@ -7,11 +7,12 @@ import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes'
 import { rarity, type RarityId } from '../../core/rarity';
 import { ACCENTS, BADGES, BANNERS, FRAMES, VITRINES, accentColor, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { guarded, isPending } from './safety';
+import { createShowcaseEditor } from './showcaseEditor';
 import { notifPanel } from '../notif';
 import { offlinePanel } from '../offline';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
-import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
+import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
 
 /**
  * PROFIL (refonte complète, retours du 3 nov.) — le mien (avatar de l'en-tête) ou celui d'un ami.
@@ -83,18 +84,26 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       </div>
       <div class="pf-pane p-tableau">
         <div class="pf-sec pf-case-sec">
-          <div class="pf-sec-t"><h2>Vitrine</h2><span class="pf-auto"></span><span class="pf-tools"></span></div>
-          <div class="pf-case all"></div>
+          <div class="pf-tray">
+            <div class="pf-sec-t"><h2>Vitrine</h2><span class="pf-count" hidden></span><span class="pf-auto"></span><span class="pf-tools"></span></div>
+            <div class="pf-case all"></div>
+            <div class="pf-edit-bar" hidden><span class="pf-edit-hint"></span><span class="pf-edit-more"><button type="button" class="pf-link pf-fill">Compléter auto</button><button type="button" class="pf-link pf-clear">Tout retirer</button></span></div>
+          </div>
           <div class="pf-picker" hidden>
-            <div class="pf-pick-t"><span>Choisis une carte pour la case <b class="pf-slot-n">1</b></span><input class="search pf-search" type="search" placeholder="Chercher…" autocomplete="off" spellcheck="false" aria-label="Chercher une de mes cartes"></div>
+            <div class="pf-pick-t"><span class="pf-pick-h">Ma collection</span><input class="search pf-search" type="search" placeholder="Chercher une carte…" autocomplete="off" spellcheck="false" aria-label="Chercher une de mes cartes"></div>
+            <div class="pf-pick-hint"></div>
             <div class="starf pf-pick-stars" aria-label="Filtrer par étoiles"></div>
             <div class="grid mini pf-pick-grid"></div>
             <div class="muted pf-pick-more" hidden></div>
           </div>
         </div>
         <div class="pf-keys"></div>
-        <div class="pf-stats"></div>
-        <div class="pf-sec"><div class="pf-sec-t"><h2>Raretés</h2></div><div class="pf-rar"></div></div>
+        <div class="pf-panels pf-stats">
+          <section class="pf-panel pf-p-act" aria-label="Activité"></section>
+          <section class="pf-panel pf-p-coll" aria-label="Collection"></section>
+          <section class="pf-panel pf-p-rar" aria-label="Raretés"></section>
+          <section class="pf-panel pf-p-th" aria-label="Univers"></section>
+        </div>
       </div>
       <div class="pf-pane p-collection" hidden>
         <div class="pf-sec pf-binder-sec" hidden><div class="pf-sec-t"><h2 class="pf-binder-t">Classeur</h2><span class="pf-auto">· épinglé</span><span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs" hidden>Mes classeurs</a></span></div><div class="grid mini pf-binder"></div></div>
@@ -110,16 +119,19 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const banner = q('.pf-banner');
   const head = q('.pf-head');
   const cosm = q('.pf-cosm');
-  const stats = q('.pf-stats');
   const keysEl = q('.pf-keys');
+  const pActEl = q('.pf-p-act');
+  const pCollEl = q('.pf-p-coll');
+  const pThEl = q('.pf-p-th');
   const account = q('.pf-account');
+  const caseSec = q('.pf-case-sec');
   const caseEl = q('.pf-case');
   const autoEl = q('.pf-case-sec .pf-auto');
+  const countEl = q('.pf-case-sec .pf-count');
   const tools = q('.pf-case-sec .pf-tools');
+  const editBar = q('.pf-edit-bar');
   const picker = q('.pf-picker');
-  const pickGrid = q('.pf-pick-grid');
-  const pickSearch = q<HTMLInputElement>('.pf-search');
-  const rarEl = q('.pf-rar');
+  const rarEl = q('.pf-p-rar');
   const friendsEl = q('.pf-friends');
   const activityEl = q('.pf-activity');
   const leaderboard = createLeaderboard(backend, shell);
@@ -130,9 +142,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   let who = '';
   let prof: Profile | null = null;
   let cards: PlayerCard[] = [];
-  let editing = false;
-  let draft: Array<{ cardId: string; rarity: RarityId } | null> = [];
-  let slot = 0;
   let token = 0;
   let open = false;
   let tab: Tab = 'tableau';
@@ -220,7 +229,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const bb = q<HTMLButtonElement>('.pf-banner-btn');
     bb.hidden = !me;
     const fresh = me && !cosmOpen ? newCosmetics().size : 0;
-    bb.innerHTML = cosmOpen ? 'Fermer' : `Personnaliser${fresh ? ` <i class="pf-new">${fresh} nouveau${fresh > 1 ? 'x' : ''}</i>` : ''}`;
+    bb.innerHTML = cosmOpen ? 'Fermer' : `Personnaliser${fresh ? ` <i class="pf-new" title="${fresh} nouveau${fresh > 1 ? 'x' : ''}">${fresh}<span> nouveau${fresh > 1 ? 'x' : ''}</span></i>` : ''}`;
     const ava = avaHtml(name);
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     // en-tête compact (retours live 02) : pseudo, puis titre + badges sur UNE ligne, puis devise · « depuis » sur une ligne
@@ -231,7 +240,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         ${title || badges.length ? `<div class="pf-tline">${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${b.glyph ?? '●'} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
         <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore d’informations.</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="Joue depuis le ${fmtDate(prof.joinedAt)}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier mes informations">✎ Informations</button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier mes informations" title="Modifier mes informations">✎<span> Informations</span></button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
     hydrateStills(head);
     head.querySelector('.pf-bio-edit')?.addEventListener('click', editBio);
     // action de compte (déconnexion / remise à zéro de la démo) : en bas de page, plus sous le pseudo (audit UX3-16)
@@ -605,110 +614,114 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     inp.addEventListener('blur', () => void save());
   }
 
-  // ── TABLEAU : stats enrichies
+  // ── TABLEAU : 3 chiffres clés, puis 4 panneaux courts (Activité · Collection · Raretés · Univers)
+  /**
+   * (V2 lisibilité) Un CODE COULEUR fixe, tiré des raretés (la seule couleur de la DA) et le même partout :
+   *  bleu (3★) = progression de la collection · doré (5★) = succès · arc-en-ciel (6★) / corail (secrète) = prestige ·
+   *  vert (2★) = activité. Les zéros sont estompés : l'œil va aux vrais chiffres.
+   */
+  const panelHead = (title: string, c: string, extra = '') => `<h3 class="pf-ph" style="--c:${c}"><i aria-hidden="true"></i>${title}${extra}</h3>`;
+  const row = (glyph: string, label: string, v: number, shown = fmtN(v), c = '', sub = '') =>
+    `<div class="pf-row${v ? '' : ' zero'}"${c ? ` style="--c:${c}"` : ''}><span class="pf-ri" aria-hidden="true">${glyph}</span><span class="pf-rl">${label}${sub ? ` <small>${sub}</small>` : ''}</span><b class="pf-rv">${shown}</b></div>`;
+  const barPct = (have: number, of: number) => (have ? Math.max(1.5, (have / Math.max(1, of)) * 100) : 0).toFixed(1);
   function renderStats() {
     const mine = ownedOf();
     const st = statsOf();
     const total = mine.reduce((a, c) => a + c.count, 0);
     const dups = mine.reduce((a, c) => a + Math.max(0, c.count - 1), 0);
-    const pct = (st.uniques / Math.max(1, st.total || PUBLIC_CARD_COUNT)) * 100;
+    const all = st.total || PUBLIC_CARD_COUNT;
+    const pct = (st.uniques / Math.max(1, all)) * 100;
     const sd = prof?.streakDay ?? ((st.streak - 1) % STREAK_CYCLE) + 1;
-    const cell = (v: string, l: string, cls = '') => `<div class="pf-stat ${cls}"><b>${v}</b><span>${l}</span></div>`;
-    // les 3 chiffres clés (complétion, 6★, succès) juste APRÈS la vitrine (retours live 02 : la vitrine d'abord), puis le détail
-    keysEl.innerHTML =
-      cell(fmtPct(pct), `${fmtN(st.uniques)} / ${fmtN(st.total || PUBLIC_CARD_COUNT)} cartes uniques`, 'big') +
-      cell(`✺ ${fmtN(st.mythics)}`, `${word(st.mythics, 'carte')} 6★`, 'mythic');
-    stats.innerHTML =
-      cell(fmtN(st.packsOpened), 'boosters ouverts') +
-      (st.secrets ? cell(`✷ ${fmtN(st.secrets)}`, word(st.secrets, 'secrète'), 'secret') : '') +
-      cell(st.streak ? `🔥 ${fmtN(st.streak)}` : '—', st.streak ? `jour${st.streak > 1 ? 's' : ''} d’affilée · ${Math.max(1, sd)}/${STREAK_CYCLE}` : 'série de connexion', 'streak') +
-      cell(fmtN(st.tradesDone), word(st.tradesDone, 'échange conclu', 'échanges conclus')) +
-      cell(fmtN(st.contractsSigned), word(st.contractsSigned, 'contrat signé', 'contrats signés')) +
-      cell(fmtN(total), 'cartes en tout') +
-      cell(fmtN(dups), word(dups, 'doublon')) +
-      cell(fmtN(st.fullSubthemes), `album${st.fullSubthemes > 1 ? 's' : ''} à 100 %`);
-    // succès débloqués (les 36 de l'espace Jeux) — remplace le « plus gros drop » (retours live n°1)
+    // succès débloqués (les succès de l'espace Jeux) — remplace le « plus gros drop » (retours live n°1)
     // (perf : `eco.snapshot` est un calcul complet en démo — lu UNE fois, pas une fois par succès)
     const mySnap = () => (isMe() ? backend.eco.snapshot : null);
     const ach = prof?.achievements ?? ((snap) => (snap ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, snap.achievements.stats)).length, total: ACHIEVEMENTS.length } : null))(mySnap());
-    if (ach) {
-      const sc = h('a', 'pf-stat pf-ach');
-      sc.href = '#/succes';
-      sc.innerHTML = `<b>🏅 ${ach.done}<small>/${ach.total}</small></b><span>succès débloqués${isMe() ? ' · voir' : ''}</span><i class="pf-ach-bar"><i style="width:${((ach.done / ach.total) * 100).toFixed(1)}%"></i></i>`;
-      if (!isMe()) sc.removeAttribute('href');
-      keysEl.append(sc);
-    }
-    // complétion par thème
+    // les 3 chiffres clés juste APRÈS la vitrine (retours live 02 : la vitrine d'abord)
+    keysEl.innerHTML =
+      `<div class="pf-key k-prog"><span class="pf-k-l">Complétion</span><b class="pf-k-v">${fmtPct(pct)}</b><span class="pf-k-s">${fmtN(st.uniques)} / ${fmtN(all)} cartes</span><i class="pf-k-bar"><i style="width:${barPct(st.uniques, all)}%"></i></i></div>` +
+      `<div class="pf-key k-myth${st.mythics ? '' : ' zero'}"><span class="pf-k-l">Cartes 6★</span><b class="pf-k-v">${fmtN(st.mythics)}</b><span class="pf-k-s${st.secrets ? ' has-secret' : ''}">${st.secrets ? `+ ${fmtN(st.secrets)} ${word(st.secrets, 'secrète')} ✷` : 'les plus rares'}</span></div>` +
+      (ach
+        ? `<${isMe() ? 'a href="#/succes"' : 'div'} class="pf-key k-ach"><span class="pf-k-l">Succès</span><b class="pf-k-v">${ach.done}<small>/${ach.total}</small></b><span class="pf-k-s">${isMe() ? 'voir mes succès →' : 'débloqués'}</span><i class="pf-k-bar"><i style="width:${barPct(ach.done, ach.total)}%"></i></i></${isMe() ? 'a' : 'div'}>`
+        : '');
+    pActEl.innerHTML =
+      panelHead('Activité', 'var(--pc-act)') +
+      row('▣', 'Boosters ouverts', st.packsOpened) +
+      row('🔥', 'Série de connexion', st.streak, st.streak ? `${fmtN(st.streak)} j` : '—', 'var(--pc-fire)', st.streak ? `jour ${Math.max(1, sd)}/${STREAK_CYCLE} du cycle` : '') +
+      row('⇄', word(st.tradesDone, 'Échange conclu', 'Échanges conclus'), st.tradesDone) +
+      row('⚖', word(st.contractsSigned, 'Contrat signé', 'Contrats signés'), st.contractsSigned);
+    pCollEl.innerHTML =
+      panelHead('Collection', 'var(--pc-coll)') +
+      row('▤', 'Cartes en tout', total, fmtN(total), '', `${fmtN(mine.length)} différentes`) +
+      row('⧉', word(dups, 'Doublon'), dups) +
+      row('✓', word(st.fullSubthemes, 'Album complet', 'Albums complets'), st.fullSubthemes) +
+      row('✷', word(st.secrets, 'Carte secrète', 'Cartes secrètes'), st.secrets, fmtN(st.secrets), 'var(--pc-secret)');
+    // complétion par univers : barre à la couleur de l'univers, triée du plus avancé au moins avancé
     const ids = new Set(mine.filter((c) => c.rarity !== 'secret').map((c) => c.cardId));
     const themes = (prof?.themes ?? THEMES.map((t) => ({ id: t.id, have: t.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: t.cards.length })))
       .filter((t) => t.total)
+      .sort((a, b) => b.have / b.total - a.have / a.total)
       .map((t) => {
         const th = THEMES.find((x) => x.id === t.id);
-        return `<div class="pf-th" style="--rc:${th?.style.accent ?? 'var(--rose)'}"><span>${esc(th?.label ?? t.id)}</span><i><i style="width:${((t.have / t.total) * 100).toFixed(1)}%"></i></i><em>${fmtN(t.have)}/${fmtN(t.total)}</em></div>`;
+        return `<div class="pf-th${t.have ? '' : ' zero'}" style="--rc:${th?.style.accent ?? '#fff'}"><span class="pf-th-l"><i aria-hidden="true"></i>${esc(th?.label ?? t.id)}</span><i class="pf-th-bar"><i style="width:${barPct(t.have, t.total)}%"></i></i><em><b>${fmtN(t.have)}</b> / ${fmtN(t.total)}</em></div>`;
       })
       .join('');
-    stats.insertAdjacentHTML('beforeend', `<div class="pf-themes">${themes}</div>`);
+    pThEl.innerHTML = panelHead('Univers', 'var(--pc-coll)', '<small>cartes différentes</small>') + `<div class="pf-themes">${themes}</div>`;
   }
 
+  /** Raretés : une barre de répartition (une couleur par rareté) + la légende chiffrée */
   function renderRarities() {
     const mine = ownedOf();
     const rows = [...STARS, ...(mine.some((c) => c.rarity === 'secret') ? (['secret'] as RarityId[]) : [])];
-    const max = Math.max(1, ...rows.map((r) => mine.filter((c) => c.rarity === r).length));
-    rarEl.innerHTML = rows
-      .map((r) => {
-        const n = mine.filter((c) => c.rarity === r).length;
-        return `<div class="pf-r" style="--rc:${rarity(r).hex}"><span class="pf-r-l">${starsHtml(r)}</span><i><i style="width:${((n / max) * 100).toFixed(1)}%"></i></i><em>${fmtN(n)}</em></div>`;
-      })
-      .join('');
+    const n = Object.fromEntries(rows.map((r) => [r, mine.filter((c) => c.rarity === r).length])) as Record<RarityId, number>;
+    const sum = Math.max(1, rows.reduce((a, r) => a + n[r], 0));
+    const seg = (r: RarityId) => (n[r] ? `<i class="pf-rs r-${r}" style="--rc:${rarity(r).hex};flex-grow:${n[r]}" title="${esc(rarity(r).label)} : ${fmtN(n[r])}"></i>` : '');
+    rarEl.innerHTML =
+      panelHead('Raretés', 'var(--pc-gold)', '<small>cartes différentes</small>') +
+      `<div class="pf-rbar" role="img" aria-label="Répartition par rareté">${mine.length ? rows.map(seg).join('') : ''}</div>` +
+      `<div class="pf-rlist">${rows
+        .map((r) => `<div class="pf-rr r-${r}${n[r] ? '' : ' zero'}" style="--rc:${rarity(r).hex};--rt:${r === 'epic' ? '#e0607a' : r === 'rare' ? '#6f9be0' : rarity(r).hex}"><span class="pf-rr-s">${r === 'secret' ? '✷' : `${rarity(r).rank + 1}★`}</span><span class="pf-rr-l">${esc(rarity(r).label)}</span><b>${fmtN(n[r])}</b><em>${n[r] ? fmtPct((n[r] / sum) * 100) : ''}</em></div>`)
+        .join('')}</div>`;
   }
 
-  // ── COLLECTION : vitrine + classeur épinglé
-  function renderCase() {
-    const me = isMe();
-    const sc = showcase();
-    const list = editing ? draft : sc.list;
-    autoEl.textContent = editing ? 'touche une case pour la changer' : sc.auto && list.length ? me ? '· tes meilleures cartes (automatique)' : '· ses meilleures cartes' : '';
-    tools.innerHTML = me ? (editing ? `<button class="btn-ghost pf-cancel">Annuler</button><button class="btn-primary pf-save">Enregistrer</button>` : `<button class="btn-ghost pf-edit">Choisir mes cartes</button>`) : '';
-    caseEl.innerHTML = '';
-    caseEl.classList.toggle('editing', editing);
-    // retours live 02 : les 12 cases toujours (plus de « Voir les 12 » au téléphone), au premier écran
-    for (let i = 0; i < SLOTS; i++) {
-      const c = list[i];
-      const wrap = h('div', `pf-slot${editing && i === slot ? ' sel' : ''}`);
-      wrap.style.setProperty('--i', String(i));
-      if (c) {
-        const t = cardTile(c.cardId, c.rarity);
-        wrap.append(t);
-        if (editing) wrap.insertAdjacentHTML('beforeend', `<button class="pf-x" aria-label="Retirer">✕</button>`);
-        wrap.addEventListener('click', (e) => {
-          if ((e.target as HTMLElement).closest('.pf-x')) {
-            draft[i] = null;
-            renderCase();
-            renderPicker();
-            return;
-          }
-          if (editing) selectSlot(i);
-          else void openCard(c.cardId, c.rarity);
-        });
-      } else {
-        wrap.innerHTML = `<div class="pf-empty">${editing ? '+' : ''}</div>`;
-        if (editing) wrap.addEventListener('click', () => selectSlot(i));
-      }
-      caseEl.append(wrap);
-    }
-    if (!list.length && !editing) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? 'Ouvre des boosters : tes plus belles cartes s’afficheront ici.' : 'Pas encore de carte.'}</div>`);
-    tools.querySelector('.pf-edit')?.addEventListener('click', () => {
-      editing = true;
-      draft = Array.from({ length: SLOTS }, (_, i) => sc.list[i] ?? null);
-      slot = draft.findIndex((x) => !x) >= 0 ? draft.findIndex((x) => !x) : 0;
-      picker.hidden = false;
-      renderCase();
-      renderPicker();
-    });
-    tools.querySelector('.pf-cancel')?.addEventListener('click', stopEditing);
-    const saveBtn = tools.querySelector<HTMLButtonElement>('.pf-save');
-    saveBtn?.addEventListener('click', async () => {
-      const cardsOut = draft.filter((x): x is { cardId: string; rarity: RarityId } => !!x);
+
+  // ── VITRINE : affichage (lecture) ; l'édition (choix, retrait, glisser-déposer) est dans showcaseEditor.ts
+  const editor = createShowcaseEditor({
+    slots: SLOTS,
+    caseEl,
+    pickerEl: picker,
+    owned: ownedOf,
+    sort: best,
+    sfx: shell.sfx,
+    onChange: renderEditTools,
+  });
+  /** en édition : compteur « 8/12 », consigne, Annuler / Enregistrer (actif seulement s'il y a un changement) */
+  function renderEditTools() {
+    if (!editor.active) return;
+    const n = editor.value().length;
+    countEl.hidden = false;
+    countEl.innerHTML = `<b>${n}</b>/${SLOTS}`;
+    countEl.classList.toggle('full', n >= SLOTS);
+    const save = tools.querySelector<HTMLButtonElement>('.pf-save');
+    if (save) save.disabled = !editor.dirty();
+    editBar.querySelector<HTMLElement>('.pf-edit-hint')!.textContent = n ? (coarseQ.matches ? 'Glisse une carte pour la ranger, hors de la vitrine pour la retirer' : 'Glisse une carte pour la ranger · ✕ ou hors de la vitrine pour la retirer · ← → au clavier') : 'Vitrine vide : enregistrée ainsi, elle montrera tes meilleures cartes automatiquement';
+    editBar.querySelector<HTMLButtonElement>('.pf-fill')!.disabled = n >= SLOTS;
+    editBar.querySelector<HTMLButtonElement>('.pf-clear')!.disabled = !n;
+  }
+  const coarseQ = matchMedia('(pointer: coarse)');
+  editBar.querySelector('.pf-fill')!.addEventListener('click', () => editor.fill());
+  editBar.querySelector('.pf-clear')!.addEventListener('click', () => editor.clear());
+
+  function startEditing() {
+    if (open) closeViewer();
+    caseSec.classList.add('editing');
+    el.classList.add('pf-editing');
+    editBar.hidden = false;
+    autoEl.textContent = '';
+    tools.innerHTML = `<button class="btn-ghost pf-cancel">Annuler</button><button class="btn-primary pf-save" disabled>Enregistrer</button>`;
+    tools.querySelector('.pf-cancel')!.addEventListener('click', stopEditing);
+    const saveBtn = tools.querySelector<HTMLButtonElement>('.pf-save')!;
+    saveBtn.addEventListener('click', async () => {
+      const cardsOut = editor.value();
       try {
         await busyButton(saveBtn, backend.setShowcase(cardsOut));
         prof = prof ? { ...prof, showcase: cardsOut } : prof;
@@ -719,67 +732,52 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         toast(errMsg(e), 'err');
       }
     });
+    editor.start(showcase().list);
+    // bouton « retour » du téléphone : quitte l'édition (sans enregistrer) au lieu de quitter la page
+    pushLayer(stopEditing);
+    caseSec.scrollIntoView({ block: 'start', behavior: lessMotion.matches ? 'auto' : 'smooth' });
   }
   function stopEditing() {
-    editing = false;
-    picker.hidden = true;
-    pickSearch.value = '';
+    if (!editor.active) return;
+    popLayer(stopEditing);
+    editor.stop();
+    caseSec.classList.remove('editing');
+    el.classList.remove('pf-editing');
+    editBar.hidden = true;
+    countEl.hidden = true;
     renderCase();
   }
-  function selectSlot(i: number) {
-    slot = i;
-    renderCase();
-    q('.pf-slot-n').textContent = String(i + 1);
-    picker.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }
-  function renderPicker() {
-    q('.pf-slot-n').textContent = String(slot + 1);
-    const qq = fold(pickSearch.value.trim());
-    const used = new Set(draft.filter(Boolean).map((c) => `${c!.cardId}:${c!.rarity}`));
-    pickStarsEl.querySelectorAll<HTMLElement>('.chip').forEach((b) => (b.classList.toggle('on', b.dataset.r === pickStar), b.setAttribute('aria-pressed', String(b.dataset.r === pickStar))));
-    const all = [...ownedOf()].sort(best).filter((c) => (!pickStar || c.rarity === pickStar) && (!qq || fold(catalogEntry(c.cardId)?.name ?? '').includes(qq)));
-    const list = all.slice(0, PICK_CAP);
-    // liste tronquée : on le dit (audit UX3-20)
-    pickMore.hidden = all.length <= PICK_CAP;
-    pickMore.textContent = `${fmtN(PICK_CAP)} sur ${fmtN(all.length)} · affine ta recherche ou filtre par étoiles`;
-    pickGrid.replaceChildren(
-      ...list.map((c) => {
-        const t = cardTile(c.cardId, c.rarity, { mini: true, count: c.count });
-        if (used.has(`${c.cardId}:${c.rarity}`)) t.classList.add('picked');
-        t.addEventListener('click', () => {
-          if (used.has(`${c.cardId}:${c.rarity}`)) return toast('Déjà dans ta vitrine.', 'info');
-          draft[slot] = { cardId: c.cardId, rarity: c.rarity };
-          shell.sfx.tick(1.3, 0.05);
-          const nextEmpty = draft.findIndex((x) => !x);
-          slot = nextEmpty >= 0 ? nextEmpty : slot;
-          renderCase();
-          renderPicker();
-        });
-        return t;
-      }),
-    );
-    if (!list.length) pickGrid.innerHTML = '<div class="muted">Aucune carte.</div>';
-  }
-  const PICK_CAP = 240;
-  const pickStarsEl = q('.pf-pick-stars');
-  const pickMore = q('.pf-pick-more');
-  let pickStar: RarityId | null = null;
-  for (const r of [...STARS, 'secret'] as RarityId[]) {
-    const b = h('button', 'chip', r === 'secret' ? '✷' : `${rarity(r).rank + 1}★`);
-    b.dataset.r = r;
-    b.title = rarity(r).label;
-    b.style.setProperty('--rc', rarity(r).hex);
-    // texte lisible pour Rare / Épique (UX5-09), la teinte de la carte ne change pas
-    b.style.setProperty('--rt', r === 'epic' ? '#e0607a' : r === 'rare' ? '#6f9be0' : rarity(r).hex);
-    b.setAttribute('aria-pressed', 'false');
-    b.addEventListener('click', () => ((pickStar = pickStar === r ? null : r), renderPicker()));
-    pickStarsEl.append(b);
-  }
-  let searchT = 0;
-  pickSearch.addEventListener('input', () => {
-    clearTimeout(searchT);
-    searchT = window.setTimeout(renderPicker, 150);
+  // Échap : quitte l'édition sans enregistrer (pendant un glissé, l'éditeur annule le glissé et arrête l'événement)
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !editor.active || !el.isConnected || open) return;
+    if ((e.target as HTMLElement)?.closest?.('.pf-search') && (e.target as HTMLInputElement).value) return;
+    stopEditing();
   });
+
+  function renderCase() {
+    if (editor.active) return;
+    const me = isMe();
+    const sc = showcase();
+    const list = sc.list;
+    autoEl.textContent = sc.auto && list.length ? (me ? 'tes meilleures cartes, choisies automatiquement' : 'ses meilleures cartes') : '';
+    tools.innerHTML = me && ownedOf().length ? `<button class="btn-ghost pf-edit">${sc.auto ? 'Choisir mes cartes' : 'Modifier'}</button>` : '';
+    tools.querySelector('.pf-edit')?.addEventListener('click', startEditing);
+    caseEl.replaceChildren();
+    caseEl.classList.toggle('is-empty', !list.length);
+    // retours live 02 : les 12 cases toujours (plus de « Voir les 12 » au téléphone), au premier écran
+    for (let i = 0; i < SLOTS; i++) {
+      const c = list[i];
+      const wrap = h('div', `pf-slot${c ? ' filled' : ' free'}`);
+      wrap.style.setProperty('--i', String(i));
+      if (c) {
+        const t = cardTile(c.cardId, c.rarity);
+        wrap.append(t);
+        t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+      } else wrap.innerHTML = `<div class="pf-empty"></div>`;
+      caseEl.append(wrap);
+    }
+    if (!list.length) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? 'Ouvre des boosters : tes plus belles cartes s’afficheront ici.' : 'Pas encore de carte.'}</div>`);
+  }
   function renderBinder() {
     const sec = q('.pf-binder-sec');
     const b = isMe() ? backend.state.binders.find((x) => x.pinned) ?? null : prof?.pinnedBinder ?? null;
@@ -853,10 +851,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   async function load(id: string) {
     const my = ++token;
     who = id;
-    editing = false;
+    stopEditing();
     cosmOpen = false;
     cosm.hidden = true;
-    picker.hidden = true;
     activity = null;
     leaderLoaded = false;
     const me = backend.state.user;
@@ -927,7 +924,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
 
   let sig = '';
   backend.onChange((st) => {
-    if (!el.isConnected || !isMe() || editing || open || cosmOpen) return;
+    if (!el.isConnected || !isMe() || editor.active || open || cosmOpen) return;
     const s = `${st.collection.length}:${st.user?.totalPacksOpened}:${st.friends.length}:${st.binders.length}`;
     if (s === sig) return;
     sig = s;
@@ -952,7 +949,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     },
     leave() {
       if (open) closeViewer();
-      editing = false;
+      stopEditing();
       cosmOpen = false;
       cosm.hidden = true;
     },

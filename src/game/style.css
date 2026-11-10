@@ -3609,3 +3609,175 @@ body.god .gl-host::after { content: ''; position: fixed; inset: 0; z-index: 1; p
 .tf-id small em { font-style: normal; color: var(--ink-2); }
 .tf-go { flex: none; min-height: 38px; padding: 6px 12px; font-size: 11px; }
 .tr-find .muted { font-size: 12px; padding: 4px; }
+
+/* ==== V2 — PROFIL : vitrine au glisser-déposer + lisibilité (10/11) ====================================================
+   Code couleur du profil, tiré des raretés (la seule couleur de la DA) et le même partout :
+   bleu 3★ = progression · vert 2★ = activité · doré 5★ = succès / raretés · arc-en-ciel 6★ et corail secrète = prestige.
+   Les zéros sont estompés. Éditeur de vitrine : src/game/views/showcaseEditor.ts. */
+.profile {
+  --pc-prog: #6f9be0; --pc-prog-l: #b4cdf2;
+  --pc-act: #7fbf8a; --pc-act-l: #c4dcb8;
+  --pc-gold: #e0a43a; --pc-gold-l: #ffe0a0;
+  --pc-secret: #e8927c; --pc-fire: #ff8a3d;
+  --pc-coll: var(--pc-prog);
+  --pc-rainbow: linear-gradient(90deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff);
+}
+
+/* — 3 chiffres clés — */
+.pf-keys { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pf-key { --c: #fff; position: relative; display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 12px 14px 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--c) 32%, transparent); background: color-mix(in srgb, var(--c) 6%, #0a0a0a); color: var(--ink); text-decoration: none; transition: border-color var(--dur-rapide), transform var(--dur-rapide); }
+.pf-k-l { font: 600 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--c); }
+.pf-k-v { font: 500 30px/1.05 var(--title); font-variant-numeric: tabular-nums; color: var(--ink); }
+.pf-k-v small { font-size: 0.55em; color: var(--ink-3); }
+.pf-k-s { font: 400 12px/1.3 var(--mono); color: var(--ink-2); }
+.pf-k-bar { display: block; height: 4px; margin-top: auto; padding-top: 0; border-radius: 4px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.pf-k-s + .pf-k-bar { margin-top: 8px; }
+.pf-k-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--c); }
+.pf-key.k-prog { --c: var(--pc-prog); }
+.pf-key.k-ach { --c: var(--pc-gold); }
+a.pf-key.k-ach:hover { border-color: var(--c); transform: translateY(-1px); }
+.pf-key.k-myth { --c: #ffffff; border-color: transparent; background: linear-gradient(#0b0b0b, #0b0b0b) padding-box, conic-gradient(from 200deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a) border-box; }
+.pf-key.k-myth .pf-k-l { background: var(--pc-rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pf-key.k-myth .pf-k-s.has-secret { color: var(--pc-secret); }
+.pf-key.k-myth.zero { background: #0a0a0a; border-color: var(--line); }
+.pf-key.zero .pf-k-v { color: var(--ink-3); }
+
+/* — 4 panneaux : Activité · Collection · Raretés · Univers — */
+.pf-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.pf-panel { --c: #fff; display: flex; flex-direction: column; min-width: 0; padding: 12px 14px 8px; border-radius: 14px; border: 1px solid var(--line); background: #0a0a0a; }
+.pf-panel.pf-p-act { --c: var(--pc-act); }
+.pf-panel.pf-p-coll, .pf-panel.pf-p-th { --c: var(--pc-coll); }
+.pf-panel.pf-p-rar { --c: var(--pc-gold); }
+.pf-ph { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font: 600 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+.pf-ph > i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent); }
+.pf-ph small { margin-left: auto; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; text-transform: none; color: var(--ink-3); }
+.pf-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 40px; padding: 4px 0; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.pf-ph + .pf-row { border-top: 0; }
+.pf-ri { text-align: center; font: 600 15px/1 var(--mono); color: var(--c); }
+.pf-rl { min-width: 0; font: 400 14px/1.25 var(--mono); color: var(--ink-2); }
+.pf-rl small { display: block; font-size: 12px; color: var(--ink-3); }
+.pf-rv { font: 500 20px/1 var(--title); font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+.pf-row.zero .pf-rl, .pf-row.zero .pf-rv { color: var(--ink-3); }
+.pf-row.zero .pf-ri { opacity: 0.35; filter: grayscale(1); }
+
+/* raretés : barre de répartition + légende */
+.pf-rbar { display: flex; gap: 2px; height: 10px; margin: 2px 0 8px; border-radius: 6px; overflow: hidden; background: rgba(255, 255, 255, 0.06); }
+.pf-rs { display: block; flex-basis: 0; min-width: 4px; background: var(--rc); }
+.pf-rs.r-mythic { background: var(--pc-rainbow); }
+.pf-rlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+.pf-rr { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto 44px; align-items: baseline; gap: 6px; padding: 7px 0; border-top: 1px solid rgba(255, 255, 255, 0.06); font: 400 13px var(--mono); }
+.pf-rr-s { font-weight: 700; color: var(--rt); }
+.pf-rr.r-mythic .pf-rr-s { background: var(--pc-rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pf-rr-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.pf-rr b { font: 500 16px var(--title); font-variant-numeric: tabular-nums; color: var(--ink); }
+.pf-rr em { font-style: normal; font-size: 12px; text-align: right; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pf-rr.zero { opacity: 0.4; }
+
+/* univers : couleur de l'univers, triés du plus avancé au moins avancé */
+.pf-themes { display: flex; flex-direction: column; gap: 0; padding: 0; }
+.pf-th { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(40px, 1fr) auto; align-items: center; gap: 10px; min-height: 38px; border-top: 1px solid rgba(255, 255, 255, 0.06); font: 400 14px var(--mono); color: var(--ink-2); }
+.pf-th:first-child { border-top: 0; }
+.pf-th-l { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-th-l > i { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--rc); }
+.pf-th > i.pf-th-bar { display: block; height: 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.pf-th > i.pf-th-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--rc); }
+.pf-th em { font-style: normal; font-size: 12px; color: var(--ink-3); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pf-th em b { font-size: 13px; font-weight: 600; color: var(--ink); }
+.pf-th.zero { opacity: 0.5; }
+
+/* « Les autres » : une rangée plus légère */
+.pf-friends-sec .pf-sec-t { align-items: center; }
+.pf-friends-sec .pf-sec-t h2 { font-size: 20px; }
+.pf-friends-sec .pf-amis-go { min-height: 34px; padding: 0 14px; font-size: 12px; }
+.pf-friends-sec .pf-tools { margin-left: auto; }
+.pf-case-sec .pf-auto:not(:empty)::before { content: '· '; }
+
+/* — VITRINE : édition — */
+.pf-tray { display: flex; flex-direction: column; gap: 8px; }
+.pf-count { padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-2); font: 500 13px var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pf-count b { color: var(--ink); font-weight: 700; }
+.pf-count.full { border-color: var(--pc-gold); color: var(--pc-gold-l); }
+.pf-count.full b { color: var(--pc-gold-l); }
+.pf-case-sec.editing { gap: 10px; }
+/* collée sous l'en-tête du site : `top` se compte depuis le bord du CONTENU de la page qui défile (après son padding,
+   qui contient déjà la hauteur de l'en-tête) → on remonte du reste du padding pour ne rien laisser voir au-dessus */
+.pf-case-sec.editing .pf-tray { position: sticky; top: -18px; z-index: 6; margin: 0 -10px; padding: 18px 10px 12px; background: #000; border-bottom: 1px solid var(--line); box-shadow: 0 18px 24px -18px #000; }
+.profile.pf-editing .pf-keys, .profile.pf-editing .pf-panels, .profile.pf-editing .pf-friends-sec, .profile.pf-editing .pf-account, .profile.pf-editing .pf-tabs, .profile.pf-editing .pf-cosm { display: none !important; }
+.pf-case-sec.editing .pf-case { --slot: min(104px, calc((100vw - 120px) / 6)); grid-template-columns: repeat(6, minmax(0, var(--slot))); gap: 10px; padding: 10px 14px 16px; }
+.pf-case.editing .pf-slot, .pf-case-sec.editing .pf-slot { animation: none; }
+.pf-slot { position: relative; }
+.pf-card { position: relative; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; will-change: transform; }
+.pf-case-sec.editing .pf-card .tile { cursor: grab; }
+.pf-case-sec.editing img, .pf-pick-grid img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
+.pf-case-sec.editing .pf-slot.sel .tile { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 22px -4px rgba(255, 255, 255, 0.55); }
+.pf-card.lifted { opacity: 0.3; }
+.pf-card.lifted .tile { outline: 2px dashed rgba(255, 255, 255, 0.8); outline-offset: 2px; }
+.pf-hole { aspect-ratio: 63 / 88; border-radius: 9px; border: 2px dashed rgba(255, 255, 255, 0.8); background: rgba(255, 255, 255, 0.07); animation: pf-hole-in 0.16s var(--ease-entree); }
+@keyframes pf-hole-in { from { transform: scale(0.85); opacity: 0; } }
+.pf-slot.swap .tile { outline: 2px solid var(--pc-gold); outline-offset: 2px; filter: brightness(0.45); }
+.pf-slot.swap::after { content: '⇄'; position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; font: 600 24px var(--mono); color: var(--pc-gold-l); pointer-events: none; }
+.pf-case-sec.editing .pf-empty { border-color: rgba(255, 255, 255, 0.2); font-size: 22px; color: rgba(255, 255, 255, 0.3); }
+.pf-case.dragging .pf-empty { border-color: rgba(255, 255, 255, 0.5); color: rgba(255, 255, 255, 0.6); }
+.pf-case-sec.editing .pf-x { display: none; place-items: center; padding: 0; background: #000; border: 1px solid #fff; color: #fff; }
+.pf-case-sec.editing .pf-slot.sel .pf-x, .pf-case-sec.editing .pf-card:focus-within .pf-x { display: grid; }
+@media (hover: hover) { .pf-case-sec.editing .pf-card:hover .pf-x { display: grid; } .pf-case-sec.editing .pf-x:hover { background: var(--err); border-color: var(--err); } }
+.pf-case.dragging .pf-x { display: none !important; }
+.pf-ghost { position: fixed !important; left: 0; top: 0; z-index: 1000; margin: 0; pointer-events: none; transform-origin: 0 0; will-change: transform; content-visibility: visible; box-shadow: 0 26px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 2px #fff; transition: box-shadow var(--dur-rapide), opacity var(--dur-rapide); }
+.pf-ghost.out { opacity: 0.8; box-shadow: 0 26px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 2px var(--err); }
+.pf-ghost.out::after { content: 'Retirer'; display: block !important; position: absolute; left: 50%; top: 50%; z-index: 5; transform: translate(-50%, -50%); padding: 3px 9px; border-radius: 999px; background: var(--err); color: #fff; font: 600 12px var(--mono); white-space: nowrap; }
+body.pf-dragging, body.pf-dragging * { cursor: grabbing !important; -webkit-user-select: none !important; user-select: none !important; }
+.pf-edit-bar { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; font: 400 12px/1.35 var(--mono); color: var(--ink-3); }
+.pf-edit-hint { flex: 1 1 240px; min-width: 0; }
+.pf-edit-more { display: flex; gap: 16px; }
+.pf-link { border: 0; background: none; padding: 6px 0; font: 600 12px var(--mono); letter-spacing: 0.04em; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.pf-link:disabled { color: var(--ink-3); text-decoration: none; cursor: default; }
+.pf-case-sec.editing .pf-tools .pf-save:disabled { opacity: 0.4; }
+
+/* collection (sous la vitrine collée) : la page défile, plus de liste dans la liste */
+.pf-picker { gap: 8px; padding: 12px; background: #050505; }
+.pf-pick-h { font: 600 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+.pf-pick-hint { font: 400 12px/1.4 var(--mono); color: var(--ink-3); }
+.pf-pick-hint b { color: var(--ink); font-weight: 600; }
+.pf-pick-stars { margin: 0; }
+.pf-picker .pf-pick-grid { max-height: none; overflow: visible; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.pf-pick-grid .tile { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: pan-y; transition: transform var(--dur-rapide), box-shadow var(--dur-rapide); }
+.pf-pick-grid .tile.pressing { transform: scale(0.93); }
+.pf-pick-grid .tile.picked { box-shadow: 0 0 0 2px #fff, 0 0 18px -6px rgba(255, 255, 255, 0.7); }
+.pf-pos { position: absolute; left: 4px; top: 4px; z-index: 3; display: none; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #fff; color: #000; font: 700 12px/20px var(--mono); text-align: center; }
+.tile.picked .pf-pos { display: block; }
+
+@media (max-width: 860px) {
+  .pf-panels { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  /* en-tête : « Informations » en icône, « Personnaliser » + pastille chiffrée — plus de boutons qui se chevauchent */
+  .pf-bio-edit span, .pf-new span { display: none; }
+  .pf-actions .pf-bio-edit { width: 34px; padding: 0; display: grid; place-items: center; font-size: 15px; letter-spacing: 0; }
+  .pf-new { margin-left: 4px; padding: 0 6px; min-width: 18px; text-align: center; }
+  .pf-tabs button { padding: 7px 3px; letter-spacing: 0.03em; }
+  .pf-keys { gap: 6px; }
+  .pf-key { padding: 10px 10px 11px; border-radius: 12px; }
+  .pf-k-l { letter-spacing: 0.04em; }
+  .pf-k-v { font-size: 24px; }
+  .pf-panels { gap: 8px; }
+  .pf-panel { padding: 10px 12px 6px; border-radius: 12px; }
+  .pf-rlist { column-gap: 12px; }
+  .pf-rr { grid-template-columns: 26px minmax(0, 1fr) auto; }
+  .pf-rr em { display: none; }
+  .pf-friends { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px 2px; }
+  .pf-friends::-webkit-scrollbar { display: none; }
+  .pf-friend { flex: none; }
+  /* édition : vitrine 6 × 2 compacte (collée en haut), collection 4 par rangée */
+  .pf-case-sec.editing .pf-tray { top: -8px; margin: 0 -12px; padding: 8px 12px 10px; gap: 6px; }
+  .pf-case-sec.editing .pf-case { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; padding: 6px 6px 10px; }
+  .pf-case-sec.editing .pf-case .tile { padding: 3px; border-radius: 6px; }
+  .pf-case-sec.editing .pf-case .tile .name, .pf-case-sec.editing .pf-case .tile .meta, .pf-case-sec.editing .pf-case .tile .count { display: none; }
+  .pf-case-sec.editing .pf-empty { border-radius: 6px; font-size: 16px; }
+  .pf-case-sec.editing .pf-x { top: -7px; right: -7px; width: 26px; height: 26px; font-size: 11px; }
+  .pf-case-sec.editing .pf-tools .btn-ghost, .pf-case-sec.editing .pf-tools .btn-primary { padding: 5px 10px; }
+  .pf-picker { padding: 10px 8px; margin: 0 -4px; }
+  .pf-pick-t { flex-wrap: nowrap; }
+  .pf-pick-t .pf-search { flex: 1; min-width: 0; }
+  .pf-picker .pf-pick-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .pf-hole { animation: none; } }

@@ -35,6 +35,14 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Profil : vitrine au glisser-déposer, page plus lisible', tag: 'amélioré',
+        points: [
+          'Vitrine : touche une carte de ta collection pour l’ajouter, touche-la encore pour la retirer. Glisse-la sur une case pour la placer, glisse les cartes de la vitrine pour changer leur ordre, ou hors de la vitrine pour les retirer (au téléphone : maintiens la carte, puis glisse).',
+          'Pendant que tu choisis, la vitrine reste en haut de l’écran ; « Compléter auto » remplit les cases vides avec tes meilleures cartes.',
+          'Tableau du profil rangé : trois chiffres clés, puis Activité, Collection, Raretés et Univers, avec un code couleur (bleu = progression, vert = activité, doré = succès, arc-en-ciel = 6★).',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Vos suggestions traitées plus vite', tag: 'amélioré',
         points: [
           'Tom et Hugo ont un nouvel outil pour lire vos suggestions et vos cartes signalées, et régler vos soucis (boosters manquants, parrainage, échange bloqué) en quelques secondes. Continuez à tout signaler dans l’onglet Suggestions !',
