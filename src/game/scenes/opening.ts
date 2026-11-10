@@ -85,7 +85,7 @@ import { onFxReducedChange } from '../../core/fxPref';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { loadTearBakes, loadedBakes, TearBakePlayer } from '../../core/tearBake';
-import { MYTHIC_SILENCE, MYTHIC_TURN, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
+import { DUR, MYTHIC_SILENCE, MYTHIC_TURN, STAGGER, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
 import type { N } from '../../core/tsl';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
 import type { PackCard, SealedPack } from '../backend';
@@ -139,6 +139,11 @@ export interface OpeningEvents {
   onNext?(): void;
   /** prochaine carte = la dernière (les autres s'écartent) */
   onLast?(): void;
+  /**
+   * (retours Hugo 10/11) « Direct 4★ » : les cartes sous le seuil viennent d'être rangées d'un coup, sans défilement ;
+   * `to` = index (ordre de révélation) de la carte qui attend maintenant, face cachée.
+   */
+  onJump?(to: number, total: number): void;
   /** la dernière carte est SECRÈTE : le jeu passe la main à la séquence « Un de nous » */
   onSecret?(card: PackCard): void;
   /**
@@ -205,8 +210,11 @@ export interface OpeningScene extends Experiment {
    *   la scène s'arrête (attend un toucher) sur chaque carte de rang ≥ minRank. 0 = désactivé.
    * - `reveal` (« Tout révéler ») : toutes les cartes se retournent toutes seules, à vitesse normale pour celles de
    *   rang ≥ minRank ; une mythique garde sa séquence plein écran et attend le toucher final.
+   * - `jump` (retours Hugo 10/11, avec `minRank`) : plus de défilement — les cartes sous le seuil se rangent d'un coup,
+   *   face visible, et la scène va DIRECTEMENT à la première carte de rang ≥ minRank ; s'il n'y en a aucune, tout le
+   *   booster s'ouvre d'un coup (éventail final).
    */
-  setAuto(o: { burn?: boolean; minRank?: number; reveal?: boolean }): void;
+  setAuto(o: { burn?: boolean; minRank?: number; reveal?: boolean; jump?: boolean }): void;
   /** Vitrine : le booster lui-même a été touché (le jeu l'ouvre, comme le bouton « Ouvrir »). */
   onBoosterTap: (() => void) | null;
   /**
@@ -387,7 +395,7 @@ export function createOpeningScene(): OpeningScene {
   let holding = false;
   let hold = 0;
   /** pilotage automatique (voir setAuto) */
-  const auto = { burn: false, minRank: 0, reveal: false };
+  const auto = { burn: false, minRank: 0, reveal: false, jump: false };
   /** carte (curseur) dont le prélude 6★ vient d'être joué : sa révélation ne redemande pas de cinématique */
   let preluded = -1;
   /** la carte courante doit-elle défiler en accéléré ? */
@@ -925,6 +933,9 @@ export function createOpeningScene(): OpeningScene {
     }
   }
 
+  /** son de la déchirure : dernier grain joué (performance.now) et progression accumulée depuis */
+  let tearSndAt = 0;
+  let tearSndAcc = 0;
   function setTearProgress(p: number) {
     const before = tearProgress;
     tearProgress = p;
@@ -933,7 +944,15 @@ export function createOpeningScene(): OpeningScene {
     if (d > 0.001) {
       spawnShreds(Math.min(1, p), 2 + Math.floor(d * 40));
       tearShake.impulse(2.4 + d * 30);
-      ctx.sfx.tear(0.05 + d * 1.1, 0.22 + Math.min(0.15, d));
+      // (retours Hugo 10/11 : « trop de bruit ») un grain discret au plus toutes les 90 ms (avant : un grain à chaque
+      // image, empilés, et 2,5× plus fort) ; la progression accumulée entre deux grains règle sa longueur
+      tearSndAcc += d;
+      const now = performance.now();
+      if (now - tearSndAt >= 90 || p >= 1) {
+        ctx.sfx.tear(0.06 + Math.min(0.3, tearSndAcc * 0.8), 0.07 + Math.min(0.05, tearSndAcc * 0.3));
+        tearSndAt = now;
+        tearSndAcc = 0;
+      }
       // une impulsion par tranche de 0,08 de progression au plus (audit UX2-14 : c'était une par à-coup, 10 à 20 par booster)
       if (p - hapticTear >= 0.08 || p >= 1) {
         hapticTear = p;
@@ -1645,6 +1664,51 @@ export function createOpeningScene(): OpeningScene {
   }
 
   /**
+   * (retours Hugo 10/11) « Direct 4★ » : toutes les cartes sous le seuil, de la carte en attente jusqu'à la première
+   * belle carte, se rangent D'UN COUP dans la rangée, face visible (pas de retournement un par un, pas de défilement) ;
+   * la belle carte avance devant, face cachée, et sa révélation habituelle suit (pilotage auto). Aucune carte de rang
+   * ≥ seuil dans le booster : l'éventail final, tout de suite.
+   */
+  function jumpAhead() {
+    let k = cursor;
+    while (k < order.length && fastCard(order[k])) k++;
+    phase = 'busy';
+    queued = false;
+    kill();
+    if (k >= order.length) {
+      for (const si of order) slots[si].U.lit.value = 6;
+      finish(0);
+      return;
+    }
+    const { halfH } = view();
+    const move = sideline(gsap.timeline());
+    const last = k === order.length - 1;
+    // durées : jetons du référentiel motion (s) — rangement « emphatique », cascade serrée
+    const dE = DUR.emphatique() / 1000, dS = DUR.standard() / 1000, st = STAGGER.serre / 1000;
+    const away = bottomPanel() ? halfH + 0.8 : -halfH - 0.8;
+    move.call(() => ctx.sfx.whoosh(dE, 0.06, false, EASE.glide), [], 0);
+    for (let j = last ? 0 : cursor; j < k; j++) {
+      const sl = slots[order[j]];
+      sl.U.lit.value = 6;
+      move.to(sl.p, { ...rowPlace(j), ...(last ? { y: away } : {}), flip: 0, holo: 1, duration: dE, ease: last ? EASE.heave : EASE.glide }, Math.max(0, j - cursor) * st);
+    }
+    move.to(S, { glow: 0, duration: dS }, 0);
+    cursor = k;
+    const nxt = slots[order[cursor]];
+    move.to(nxt.p, { z: 0, s: 1, rz: 0, duration: dE, ease: EASE.glide }, dS / 3);
+    lightRim(move, order[cursor], dE * 0.75);
+    events.onJump?.(cursor, order.length);
+    if (last) {
+      move.call(() => events.onLast?.(), [], dS);
+      move.to(S, { dark: 0.22, duration: DUR.dramatique / 1000, ease: EASE.glide }, dS);
+    }
+    move.call(() => {
+      phase = 'opened';
+      flushQueued();
+    }, [], dE + dS / 3);
+  }
+
+  /**
    * Place de la j-ième carte déjà révélée (style pile). (Retours live 02) Quand l'interface occupe le bas de l'écran
    * (téléphone en portrait, ordinateur), la rangée passe EN HAUT, juste sous le compteur : avant, elle était collée au bas
    * de l'écran, sous les boutons « 4★ et + / Tout révéler / Tout passer ». La carte montrée passe devant elle.
@@ -2083,6 +2147,7 @@ export function createOpeningScene(): OpeningScene {
       if (o.burn !== undefined) auto.burn = o.burn;
       if (o.minRank !== undefined) auto.minRank = o.minRank;
       if (o.reveal !== undefined) auto.reveal = o.reveal;
+      if (o.jump !== undefined) auto.jump = o.jump;
       // carte en cours de révélation sous le nouveau seuil : on accélère tout de suite (face pas encore visible : la
       // vitesse commune, la même pour toutes — anti-spoil)
       const sp = revealed ? fastSpeed(order[cursor]) : preSpeed();
@@ -2798,7 +2863,8 @@ export function createOpeningScene(): OpeningScene {
         const admired = performance.now() >= autoHoldUntil;
         // (retours live 02, anti-spoil) « 4★ et + » : TOUTES les cartes se retournent seules, et la scène s'arrête APRÈS
         // une belle carte (avant : elle s'arrêtait face cachée devant une 4★+, ce qui l'annonçait)
-        if (phase === 'opened' && !autoWait && (auto.reveal ? admired : auto.minRank > 0)) {
+        if (phase === 'opened' && !autoWait && auto.jump && !auto.reveal && style !== 'fan' && fastCard(cur)) jumpAhead();
+        else if (phase === 'opened' && !autoWait && (auto.reveal ? admired : auto.minRank > 0)) {
           if (style === 'fan') revealFan();
           else revealCurrent();
         } else if (phase === 'shown' && (!auto.reveal || performance.now() - shownAt >= REVEAL_DWELL_MS) && ((fastCard(cur) && (!auto.reveal || admired)) || (auto.reveal && !!slots[cur] && (slots[cur].rr.rank < 4 || admired)))) nextCard();

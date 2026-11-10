@@ -203,7 +203,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       <div class="hud-bottom">
         <div class="card-info" hidden></div>
         <div class="hud-hint"><span class="ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" pathLength="100"/><circle class="p" cx="18" cy="18" r="15.5" pathLength="100"/></svg></span><span class="txt"></span></div>
-        <div class="hud-skip"><button class="skip-hi" title="Les cartes de moins de 4 étoiles défilent toutes seules">⏭ 4★ et +</button><button class="skip-reveal" title="Les cartes se retournent toutes seules (une 6★ garde son plein écran)">Tout révéler</button><button class="skip-all" title="Aller directement au récap (tout est crédité)">Tout passer</button></div>
+        <div class="hud-skip"><button class="skip-hi" title="Direct à la première 4★ ou mieux — s'il n'y en a pas, tout le booster s'ouvre d'un coup">⏭ Direct 4★</button><button class="skip-reveal" title="Les cartes se retournent toutes seules (une 6★ garde son plein écran)">Tout révéler</button><button class="skip-all" title="Aller directement au récap (tout est crédité)">Tout passer</button></div>
       </div>
       <div class="mythic-veil" hidden><div class="mv-kicker">✺ MYTHIQUE ✺</div><div class="mv-stars">★★★★★★</div><div class="mv-name"></div><div class="mv-hint"></div></div>
     </div>
@@ -946,7 +946,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     // « Tout révéler » : tout défile tout seul SAUF une mythique (rang 5) ou une secrète (6), qui gardent leur plein écran
     // (une légendaire défile à vitesse modérée, ralenti compris : voir fastSpeed dans opening.ts)
     // (retours 05/11) « Tout révéler » : une 5★ (rang 4) joue aussi sa version complète, ralenti compris
-    opening.setAuto({ burn, minRank: all ? 4 : hi ? HI_RANK : 0, reveal: all });
+    // (retours Hugo 10/11) « 4★ et + » ne fait plus défiler : il va DIRECT à la première 4★ (ou ouvre tout s'il n'y en a pas)
+    opening.setAuto({ burn, minRank: all ? 4 : hi ? HI_RANK : 0, reveal: all, jump: hi && !all });
     if (opening.phase === 'sealed') hintTxt.textContent = burn ? 'Ouverture…' : sealedHint;
   }
   skipHi.addEventListener('click', () => {
@@ -1168,6 +1169,15 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         hint.hidden = i < total - 1 ? false : true;
         hintTxt.textContent = i < total - 1 ? HINT.next : '';
         showInfo(card);
+      },
+      onJump(to, total) {
+        // « Direct 4★ » : les petites cartes sont rangées d'un coup, la belle carte attend face cachée
+        shown = to - 1;
+        info.classList.remove('in');
+        mythicVeil.hidden = true;
+        hint.hidden = false;
+        hintTxt.textContent = HINT.reveal;
+        setCount(`${series}${off + to + 1} / ${batch && batch.total > 1 ? all : total}`);
       },
       onNext() {
         stopMusicPreview();
