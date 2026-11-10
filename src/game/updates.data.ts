@@ -35,6 +35,19 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Retours de Hugo : le Marché, des cartes plus grandes, l’ouverture plus rapide', tag: 'nouveau',
+        points: [
+          'Nouveau Marché dans Échanges : mets une carte en vente à prix fixe, en pièces, et achète celles des autres en un geste (pas d’enchères : le premier qui achète l’a).',
+          'Échanges en trois onglets clairs : Marché, Avec un ami, Offres.',
+          'Ouverture : « Direct 4★ » va droit à ta première 4★ (ou ouvre tout le booster s’il n’y en a pas), sans faire défiler les autres ; la déchirure fait beaucoup moins de bruit.',
+          'La pity en haut à droite ne bouge plus qu’une fois le booster fini : plus de spoil.',
+          'Contrats : 10 cartes pour chaque étoile, de 1★ à 5★.',
+          'Collection : cartes plus grandes, moins par rangée. Et tu peux voir la collection complète des autres depuis leur profil.',
+          'Retour des formes rondes et de la police ronde sur les boosters, avec des touches de couleur.',
+          'Toutes les 5★ en pleine illustration ; les 6★ d’animés jouent l’opening de leur animé, et les extraits manquants des 6★ Musique sont arrivés (Au DD…).',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Tout le jeu passe au style de l’espace Jeux', tag: 'amélioré',
         points: [
           'Collection, Échanges, Classement, Succès, Amis, Profil, Suggestions : même dessin que l’espace Jeux — noir, traits fins, coins droits, repères aux angles.',
