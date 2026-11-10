@@ -1911,7 +1911,7 @@ button.pg-info:hover { color: var(--ink); }
 @media (max-width: 600px) {
   /* téléphone : 2 colonnes de lignes compactes (pochette 38 px + nom sur 2 lignes + barre) ≈ 64 px par album au lieu de 223 */
   .al-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .album { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-content: center; align-items: center; column-gap: 8px; row-gap: 2px; padding: 6px 8px 6px 6px; border-radius: 12px; contain-intrinsic-size: auto 66px; }
+  .album { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-content: center; align-items: center; column-gap: 8px; row-gap: 2px; padding: 6px 8px 6px 6px; border-radius: 12px; contain-intrinsic-size: auto 53px; }
   .album .al-cover { grid-row: 1 / 4; width: 38px; border-radius: 6px; }
   .album .al-cover img { width: 94%; height: 94%; }
   .album .al-ph { font-size: 12px; letter-spacing: 0.02em; }
