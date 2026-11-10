@@ -3498,3 +3498,15 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .sg-sv-bars li { display: grid; grid-template-columns: minmax(120px, 34%) 1fr 32px; gap: 10px; align-items: center; font: 400 12px var(--mono); }
 .sg-sv-bars i { height: 8px; border-radius: 4px; background: linear-gradient(90deg, #fff var(--w), rgba(255, 255, 255, 0.08) var(--w)); }
 .sg-sv-bars b { text-align: right; }
+
+/* ==== VIEW TRANSITIONS entre pages DOM (V2 fluidité, lot « nav » ; main.ts `swapPage`, essai à l'œil avec ?vt=1) ====
+   Fondu enchaîné sobre de `.views` seul (l'en-tête, la 3D et le reste ne sont pas dans la capture nommée) : l'ancienne
+   page s'efface pendant que la nouvelle apparaît, avec les jetons de `view-in` (--dur-emphatique, --ease-entree) et
+   SANS le petit déplacement. Même courbe dans les deux sens : somme des opacités constante (pas de flash). */
+html.vt-pages .views { view-transition-name: pages; }
+html.vt-pages::view-transition-group(pages) { animation: none; }
+html.vt-pages::view-transition-old(pages) { animation: vt-pages-out var(--dur-emphatique) var(--ease-entree) both; }
+html.vt-pages::view-transition-new(pages) { animation: vt-pages-in var(--dur-emphatique) var(--ease-entree) both; }
+@keyframes vt-pages-out { to { opacity: 0; } }
+@keyframes vt-pages-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { html.vt-pages::view-transition-group(*), html.vt-pages::view-transition-old(*), html.vt-pages::view-transition-new(*) { animation: none !important; } }

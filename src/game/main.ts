@@ -759,6 +759,52 @@ interface View {
   leave(): void;
 }
 /**
+ * (V2 fluidité, lot « nav ») CHANGEMENT DE PAGE DOM ↔ DOM par View Transitions — OFF par défaut, essai à l'œil avec
+ * `?vt=1` dans l'adresse. Fondu enchaîné sobre : l'ancienne page s'efface pendant que la nouvelle apparaît, mêmes jeton
+ * de durée (emphatique) et même courbe (entrée) que `view-in`, sans le petit déplacement (bloc « VIEW TRANSITIONS » en
+ * fin de style.css). Jamais quand la boutique / la 3D est d'un côté (capture du canvas WebGPU) ni en « Effets réduits ».
+ * Coupe-circuit : une erreur, ou une mise à jour qui tarde (> 600 ms) ou une transition qui s'éternise (> durée + 800 ms)
+ * la coupe pour le reste de la session — le changement de page se fait alors comme avant.
+ */
+const VT_FLAG = (() => {
+  try {
+    return new URLSearchParams(location.search).get('vt') === '1';
+  } catch {
+    return false;
+  }
+})();
+let vtDead = false;
+/** Fait `apply` (le vrai changement de page) sous transition ; `canVT()` d'abord (sinon `apply` direct, avec `view-in`). */
+const canVT = () => VT_FLAG && !vtDead && !document.hidden && !fxReduced() && typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+function swapPage(apply: () => void): void {
+  const root = document.documentElement;
+  let ran = false;
+  const run = () => {
+    if (ran) return;
+    ran = true;
+    apply();
+  };
+  const trip = (why: unknown) => {
+    if (!vtDead) console.warn('[jeu] View Transitions coupées pour la session :', why);
+    vtDead = true;
+  };
+  try {
+    root.classList.add('vt-pages');
+    const t = document.startViewTransition(run);
+    // mise à jour qui n'arrive pas (fil principal pris) : on change de page quand même, et on coupe
+    const late = window.setTimeout(() => (trip('mise à jour tardive'), run()), 600);
+    // transition qui s'éternise : on la saute
+    const stuck = window.setTimeout(() => (trip('transition trop longue'), t.skipTransition()), 800 + parseFloat(getComputedStyle(root).getPropertyValue('--dur-emphatique') || '400'));
+    t.updateCallbackDone.then(() => clearTimeout(late), (e: unknown) => (clearTimeout(late), console.error(e), trip(e)));
+    t.ready.catch(() => undefined); // (transition sautée : normal)
+    void t.finished.catch(() => undefined).then(() => (clearTimeout(late), clearTimeout(stuck), root.classList.remove('vt-pages')));
+  } catch (e) {
+    trip(e);
+    root.classList.remove('vt-pages');
+    run();
+  }
+}
+/**
  * Pages chargées à leur première visite (PERF2-05) : hors du premier téléchargement, préchargées en tâche de fond une
  * fois la boutique affichée (`prefetchPages`). Missions, portefeuille et série / pity restent dans le premier
  * téléchargement : leurs pastilles vivent dans l'en-tête.
@@ -897,6 +943,33 @@ async function boot() {
     ));
   let routed = false;
 
+  /**
+   * (V2 fluidité, lot « nav ») DÉFILEMENT RESTAURÉ AU RETOUR (bouton / geste « retour » ou « avancer » du navigateur) :
+   * chaque entrée d'historique de page reçoit un repère (`bebouPg`, ajouté à `history.state` par ÉTALEMENT : la pile
+   * des couches de ui.ts y garde `bebouLayer`). Une entrée qui porte déjà un repère à l'arrivée = traversée de
+   * l'historique ; un clic dans le menu crée une entrée neuve, sans repère : remise à zéro comme avant.
+   * On garde le `scrollTop` de la page quittée, par entrée ; les vues, elles, restent détachées (leurs
+   * `el.isConnected` pilotent le travail de fond : elles ne peuvent pas rester dans le DOM).
+   */
+  const scrollMemo = new Map<string, number>();
+  let navStamp = '';
+  let stampSeq = 0;
+  const restoreScroll = (el: HTMLElement, top: number, gen: number) => {
+    let tries = 0;
+    let cancelled = false;
+    const stop = () => (cancelled = true);
+    el.addEventListener('wheel', stop, { once: true, passive: true });
+    el.addEventListener('touchstart', stop, { once: true, passive: true });
+    el.addEventListener('keydown', stop, { once: true });
+    const step = () => {
+      if (cancelled || gen !== routeGen || !el.isConnected) return;
+      el.scrollTop = top;
+      // contenu encore trop court (rendu / images en route) : on réessaie quelques images
+      if (el.scrollTop < top - 2 && el.scrollHeight - el.clientHeight < top && ++tries < 12) requestAnimationFrame(step);
+    };
+    step();
+  };
+
   function route() {
     let [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/') as [string?, string?];
     if (r === 'chat') {
@@ -922,6 +995,15 @@ async function boot() {
       return;
     }
     const changed = current !== key;
+    const from = current;
+    // traversée de l'historique ? (entrée déjà repérée, et pas celle qu'on quitte) → le défilement mémorisé sera rendu
+    const arrived = (history.state as { bebouPg?: string } | null)?.bebouPg;
+    const wantTop = arrived && arrived !== navStamp ? scrollMemo.get(arrived) : undefined;
+    const leaving = views[current];
+    if (navStamp && leaving?.el.isConnected) {
+      scrollMemo.set(navStamp, leaving.el.scrollTop);
+      if (scrollMemo.size > 60) scrollMemo.delete(scrollMemo.keys().next().value!);
+    }
     const gen = ++routeGen;
     // changement de page : aucun panneau de l'en-tête ni aucune couche ne reste ouvert par-dessus la nouvelle page
     // (avant que la page quittée ne ferme ses propres visionneuses)
@@ -934,6 +1016,15 @@ async function boot() {
     if (changed && shell) shell.sfx.tick(1.15, 0.025); // changement de page : un tic à peine audible
     if (changed) haptics.pulse(6); // (audit 06/11) et une vibration très courte sous le doigt, comme les apps natives
     current = key;
+    if (arrived) navStamp = arrived;
+    else {
+      navStamp = `${Date.now().toString(36)}.${++stampSeq}`;
+      try {
+        history.replaceState({ ...(history.state as object | null), bebouPg: navStamp }, '');
+      } catch {
+        /* historique refusé : pas de repère, pas de restauration */
+      }
+    }
     // (V2 fluidité, lot 5) la liste du club n'est suivie en temps réel que sur les pages qui l'affichent
     backend.watchMembers?.(key === 'jeux' || key === 'echanges' || key === 'amis' || key === 'profil' || key === 'classement');
     document.body.dataset.route = key || 'shop';
@@ -952,19 +1043,28 @@ async function boot() {
     showActiveTab(changed);
     syncNavMore();
     meEl.querySelector('.user')?.classList.toggle('on', key === 'profil');
-    const show = (v: View, fade: boolean) => {
-      viewHost.replaceChildren(v.el);
-      // la page arrive en fondu (pas de saut sec d'un écran à l'autre)
-      if (fade) {
-        v.el.classList.remove('view-in');
-        void v.el.offsetWidth;
-        v.el.classList.add('view-in');
-      }
-      v.enter(sub);
-      updateFresh(true); // on vient (peut-être) de quitter la collection : ce qu'on y a vu est vu
+    const show = (v: View, fade: boolean, vtWanted = false) => {
+      const vt = vtWanted && canVT();
+      const apply = () => {
+        if (vt && gen !== routeGen) return; // (sous transition la mise à jour arrive une image plus tard : une autre page a pris la main)
+        viewHost.replaceChildren(v.el);
+        // la page arrive en fondu (pas de saut sec d'un écran à l'autre) — sous View Transitions, c'est elle qui fond
+        if (fade && !vt) {
+          v.el.classList.remove('view-in');
+          void v.el.offsetWidth;
+          v.el.classList.add('view-in');
+        } else if (vt) v.el.classList.remove('view-in'); // (la classe ne doit pas doubler le fondu de la transition)
+        v.enter(sub);
+        // retour arrière / avant du navigateur : la page retrouve son défilement (après `enter`, qui le remet à zéro)
+        if (wantTop) restoreScroll(v.el, wantTop, gen);
+        updateFresh(true); // on vient (peut-être) de quitter la collection : ce qu'on y a vu est vu
+      };
+      if (vt) swapPage(apply);
+      else apply();
     };
     const ready = views[key];
-    if (ready) return show(ready, changed);
+    // fondu enchaîné (essai `?vt=1`) : seulement entre deux pages 100 % DOM, jamais depuis / vers la boutique (3D)
+    if (ready) return show(ready, changed, changed && from !== '' && key !== '' && !!views[from]);
     // première visite de cette page : son module arrive (souvent déjà préchargé : quelques ms)
     if (!isPage(key)) return;
     shell.show(null); // page 100 % DOM : la vitrine ne tourne pas dessous (comme chaque page à son entrée)
