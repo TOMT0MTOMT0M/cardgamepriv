@@ -117,9 +117,13 @@ describe('dashboard admin', () => {
     expect(d.pendingTrades).toBe(0);
   });
 
-  test('annonce : envoyée sur une version avec notifications', async () => {
+  test('annonce : envoyée si la version a les notifications (V2), sinon refus clair (prod V1)', async () => {
     const { t, tom } = await setup();
-    expect(await t.mutation(api.adminDash.announce, { sessionToken: tom.token, title: 'Patch', body: 'Nouveautés !' })).toMatch(/Annonce envoyée à 0 joueur/);
-    expect((await t.query(api.adminDash.overview, { sessionToken: tom.token })).pushPlayers).toBe(0);
+    const push = (await t.query(api.adminDash.overview, { sessionToken: tom.token })).pushPlayers;
+    const send = t.mutation(api.adminDash.announce, { sessionToken: tom.token, title: 'Patch', body: 'Nouveautés !' });
+    if (push === null) await expect(send).rejects.toThrow(/pas encore en ligne/);
+    else expect(await send).toMatch(/Annonce envoyée à 0 joueur/);
+    // le cadeau à tous marche dans les deux cas (notification facultative)
+    expect(await t.mutation(api.adminDash.giftAll, { sessionToken: tom.token, packs: 1, label: 'test', notify: true })).toMatch(push === null ? /pas disponibles/ : /notification à 0/);
   });
 });

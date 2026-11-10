@@ -3,6 +3,7 @@ import { makeFunctionReference } from 'convex/server';
 import { action, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
+import schema from './schema';
 import { getUserByToken } from './auth';
 import { catalogCard, rarityValidator, RARITY_LABEL, type RarityId } from './cardsCatalog';
 import { addCoins, takeCards } from './econLib';
@@ -30,6 +31,7 @@ const DAY = 86_400_000;
  */
 const PUSH_ANNOUNCE = makeFunctionReference<'mutation', { title: string; body: string; url?: string }, { players: number; devices: number }>('push:announce');
 async function pushPlayers(ctx: QueryCtx): Promise<number | null> {
+  if (!('pushSubs' in schema.tables)) return null;
   try {
     const db = ctx.db as unknown as { query(t: string): { collect(): Promise<Array<{ userId: string }>> } };
     return new Set((await db.query('pushSubs').collect()).map((s) => s.userId)).size;
@@ -38,6 +40,7 @@ async function pushPlayers(ctx: QueryCtx): Promise<number | null> {
   }
 }
 async function tryAnnounce(ctx: MutationCtx, title: string, body: string): Promise<{ players: number; devices: number } | null> {
+  if (!('pushSubs' in schema.tables)) return null;
   try {
     return await ctx.runMutation(PUSH_ANNOUNCE, { title, body });
   } catch {

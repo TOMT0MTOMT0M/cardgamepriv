@@ -29,6 +29,12 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Vos suggestions traitées plus vite', tag: 'amélioré',
+        points: [
+          'Tom et Hugo ont un nouvel outil pour lire vos suggestions et vos cartes signalées, et régler vos soucis (boosters manquants, parrainage, échange bloqué) en quelques secondes. Continuez à tout signaler dans l’onglet Suggestions !',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Toujours la dernière version', tag: 'amélioré',
         points: [
           'Quand une mise à jour sort, le jeu se met à jour tout seul la prochaine fois que tu le rouvres (ou que tu reviens dessus), même installé sur l’écran d’accueil. Jamais pendant une ouverture de booster, et tu restes connecté.',
