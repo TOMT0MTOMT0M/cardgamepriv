@@ -5,6 +5,7 @@ import type { MissionsState } from '../core/missions';
 import type { StreakState } from '../core/streak';
 import type { CosmeticChoice, PlayerStats } from '../core/cosmetics';
 import type { EcoBackend } from './eco';
+import type { ChatApi } from '../core/chat';
 
 /** Une ligne de collection : (carte, rareté) → nombre d'exemplaires. */
 export interface PlayerCard {
@@ -402,6 +403,8 @@ export interface GameBackend {
   submitSuggestion(o: SuggestionInput, file: Blob | null): Promise<void>;
   /** notifications push (V2, en ligne seulement) : absent en démo */
   push?: PushApi;
+  /** chat (V2, 10/11) : le Club et les privés (src/game/chat.ts) */
+  chat?: ChatApi;
   mySuggestions(): Promise<SuggestionView[]>;
   adminSuggestions(status?: SuggestionStatus): Promise<{ items: SuggestionView[]; counts: Record<SuggestionStatus, number> }>;
   setSuggestionStatus(id: string, status: SuggestionStatus, adminNote?: string): Promise<void>;

@@ -585,4 +585,69 @@ export default defineSchema({
     storageId: v.optional(v.id('_storage')),
     postedAt: v.optional(v.number()),
   }).index('by_user_card', ['userId', 'cardId', 'mintNumber']),
+
+  /**
+   * CHAT (V2, 10/11 — convex/chat.ts). `conv` = « general » (chat général) ou « dm:<idA>:<idB> » (ids triés). `n` = numéro d'ordre du
+   * message dans sa conversation ; `touchedAt` = dernier changement (envoi, réaction, suppression) : le fil ouvert ne
+   * relit que ce qui a bougé depuis T. Le nom de l'auteur est recopié (aucune lecture de `users` à l'affichage).
+   */
+  chatMessages: defineTable({
+    conv: v.string(),
+    n: v.number(),
+    userId: v.id('users'),
+    name: v.string(),
+    text: v.string(),
+    createdAt: v.number(),
+    touchedAt: v.number(),
+    card: v.optional(v.object({ cardId: v.string(), rarity: rarityValidator, mintNumber: v.optional(v.number()) })),
+    reply: v.optional(v.object({ id: v.id('chatMessages'), name: v.string(), text: v.string() })),
+    reacts: v.optional(v.array(v.object({ k: v.string(), by: v.array(v.id('users')) }))),
+    mentions: v.optional(v.array(v.id('users'))),
+    deletedAt: v.optional(v.number()),
+    clientId: v.optional(v.string()),
+  })
+    .index('by_conv_created', ['conv', 'createdAt'])
+    .index('by_conv_touched', ['conv', 'touchedAt']),
+
+  /**
+   * En-tête d'une conversation : compteur de messages, dernier message (aperçu), et pour un privé ses deux joueurs
+   * (`a` < `b`), jusqu'où chacun a lu (`seenA` / `seenB`, pour les non-lus et « Vu ») et la dernière notification
+   * envoyée à chacun. C'est tout ce que lit la pastille : jamais les messages.
+   */
+  chatConvs: defineTable({
+    key: v.string(),
+    a: v.optional(v.id('users')),
+    b: v.optional(v.id('users')),
+    n: v.number(),
+    lastAt: v.number(),
+    lastUserId: v.optional(v.id('users')),
+    lastName: v.optional(v.string()),
+    lastText: v.optional(v.string()),
+    seenA: v.optional(v.number()),
+    seenB: v.optional(v.number()),
+    seenAtA: v.optional(v.number()),
+    seenAtB: v.optional(v.number()),
+    pushAtA: v.optional(v.number()),
+    pushAtB: v.optional(v.number()),
+    /** général : dernière notification « le chat général se réveille » */
+    wakeAt: v.optional(v.number()),
+  })
+    .index('by_key', ['key'])
+    .index('by_a', ['a'])
+    .index('by_b', ['b']),
+
+  /**
+   * Ma ligne de chat (une par joueur, À PART de `users` : y écrire relancerait toutes les requêtes du joueur) :
+   * jusqu'où j'ai lu le chat général, dernière mention reçue, conversations en sourdine, anti-rafale.
+   */
+  chatReads: defineTable({
+    userId: v.id('users'),
+    generalN: v.number(),
+    generalAt: v.optional(v.number()),
+    mentionN: v.optional(v.number()),
+    muted: v.optional(v.array(v.string())),
+    sentAt: v.optional(v.number()),
+    burstStart: v.optional(v.number()),
+    burstCount: v.optional(v.number()),
+  }).index('by_user', ['userId']),
 });

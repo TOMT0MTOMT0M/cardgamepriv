@@ -17,6 +17,7 @@ export const KIND_LABELS: Array<[string, string, string]> = [
   ['friend', 'Amis', 'demande reçue, demande acceptée'],
   ['referral', 'Parrainage', 'ton filleul a ouvert ses boosters'],
   ['game', 'Jeux', 'défi Pack Battle, gain à la roulette'],
+  ['chat', 'Chat', 'message privé, mention, le chat général qui se réveille'],
   ['news', 'Annonces de l’équipe', 'nouveau patch, événement'],
 ];
 

@@ -7,6 +7,7 @@ import type { Social } from './backend';
 import type { BoardState, ListingOfferView, ListingView } from './backend';
 import { api } from '../../convex/_generated/api';
 import type { Doc } from '../../convex/_generated/dataModel';
+import type { ChatInbox, ChatMsg } from '../core/chat';
 
 /** Le vrai serveur : Convex (temps réel) + Discord ou pseudo, via le client partagé avec le labo (core/net/client.ts). */
 /**
@@ -240,6 +241,25 @@ export function createOnlineBackend(): GameBackend {
       unsubscribe: (endpoint) => net.pushUnsubscribe(endpoint),
       setPrefs: (prefs) => net.pushSetPrefs(prefs),
       test: () => net.pushTest(),
+    },
+    // chat (V2, 10/11 — convex/chat.ts). Serveur pas encore redéployé → erreur → « pas connecté » (lanceur sans pastille)
+    chat: {
+      watchInbox: (cb) => net.watch(api.chat.inbox, {}, (v) => cb((v as ChatInbox | null) ?? null), true, () => cb(null)),
+      page: async (conv, before) => (await net.ask(api.chat.page, { conv, before })) as { msgs: ChatMsg[]; done: boolean },
+      watchTail: (conv, after, cb) => net.watch(api.chat.tail, { conv, after }, (v) => cb((v as { msgs: ChatMsg[]; more: boolean } | null) ?? null), true, () => cb(null)),
+      send: async (conv, o) =>
+        await net.call(api.chat.send, {
+          conv,
+          text: o.text,
+          card: o.card as { cardId: string; rarity: Doc<'inventory'>['rarity'] } | undefined,
+          replyTo: o.replyTo as Id<'chatMessages'> | undefined,
+          mentions: o.mentions as Id<'users'>[] | undefined,
+          clientId: o.clientId,
+        }),
+      react: async (id, k) => void (await net.call(api.chat.react, { id: id as Id<'chatMessages'>, k })),
+      remove: async (id) => void (await net.call(api.chat.remove, { id: id as Id<'chatMessages'> })),
+      markRead: async (conv, n) => void (await net.call(api.chat.markRead, { conv, n })),
+      mute: async (conv, on) => void (await net.call(api.chat.mute, { conv, on })),
     },
     async submitSuggestion(o, file) {
       await net.submitSuggestion(o, file);

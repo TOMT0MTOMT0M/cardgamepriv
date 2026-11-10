@@ -22,6 +22,7 @@ function demoMedia(): { avatarMedia?: string; bannerMedia?: string } {
 import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon, type EconState } from '../core/economy';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
+import { createLocalChat } from './chatLocal';
 import { BOARD_HOURS, BOARD_MAX_ITEMS, BOARD_MAX_OPEN, listingLive, type BoardState, type ListingOfferView, type ListingView } from './backend';
 import type { SuggestionView } from './backend';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
@@ -577,6 +578,11 @@ export function createLocalBackend(): GameBackend {
   return {
     state,
     eco: eco.backend,
+    // chat de la démo : les robots répondent (chatLocal.ts)
+    chat: createLocalChat(
+      () => save.bots.map((b) => ({ id: b.id, name: b.name })),
+      (cardId, r) => save.inv[`${cardId}:${r}`]?.bestMintNumber ?? null,
+    ),
     onChange(fn) {
       listeners.add(fn);
       fn(state);

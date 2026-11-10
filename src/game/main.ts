@@ -890,8 +890,29 @@ async function boot() {
   let current = '';
   let routeGen = 0;
 
+  /**
+   * (V2, 10/11) CHAT : lanceur en bas à droite, sur toutes les pages (chat.ts) — hors du premier téléchargement,
+   * monté une fois la boutique affichée. `#/chat/<conversation>` (notification touchée) ouvre le panneau sur la bonne
+   * conversation sans changer de page.
+   */
+  let chatP: Promise<import('./chat').ChatWidget | null> | null = null;
+  const getChat = () =>
+    (chatP ??= import('./chat').then((m) =>
+      m.createChat(backend, { sound: (k) => (k === 'in' ? shell.sfx.note(4, 0.04, 0.3) : k === 'out' ? shell.sfx.tick(1.45, 0.045) : shell.sfx.tick(1.1, 0.035)) }),
+    ));
+  let routed = false;
+
   function route() {
-    const [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/');
+    let [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/') as [string?, string?];
+    if (r === 'chat') {
+      const conv = sub;
+      history.replaceState(history.state, '', current ? `#/${current}` : '#/');
+      void getChat().then((c) => c?.open(conv), () => undefined);
+      if (routed) return;
+      r = '';
+      sub = undefined;
+    }
+    routed = true;
     // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
     // primes de complétion dans la page Succès
     const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' ? '#/collection/contrats' : undefined;
@@ -1004,6 +1025,7 @@ async function boot() {
     preloadOwned(backend.state.collection.map((c) => c.cardId));
   }, 1500);
   setTimeout(prefetchPages, 3000);
+  setTimeout(() => void getChat().catch(() => (chatP = null)), 900);
   // (V2 fluidité) le jeu s'installe sur l'appareil en tâche de fond (bundle.ts) : démarrages suivants sans réseau
   setTimeout(() => void import('./bundle').then((m) => m.installBundle(() => shop.busy())), 4500);
 

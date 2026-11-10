@@ -10,11 +10,11 @@ import { fullAt } from '../src/core/packRegen';
  * runtime Node) est dans pushSend.ts. Ici : abonnements, préférences, file d'envoi avec garde-fous, et la
  * programmation de « réserve pleine ».
  *
- * Types (`kind`) : reserve · trade · friend · referral · game · streak · news. Le joueur coche ce qu'il veut (users.notifPrefs ;
+ * Types (`kind`) : reserve · trade · friend · referral · game · streak · news · chat (convex/chat.ts). Le joueur coche ce qu'il veut (users.notifPrefs ;
  * absent = tout). Garde-fous : rien entre 23 h et 8 h (heure de Paris) sauf `trade` / `friend` / `game` reportés à 8 h ;
  * un même type regroupé : au plus une notification par type et par joueur toutes les 2 minutes (la dernière gagne).
  */
-export const KINDS = ['reserve', 'trade', 'friend', 'referral', 'game', 'streak', 'news'] as const;
+export const KINDS = ['reserve', 'trade', 'friend', 'referral', 'game', 'streak', 'news', 'chat'] as const;
 export type Kind = (typeof KINDS)[number];
 const kindValidator = v.union(...KINDS.map((k) => v.literal(k)));
 
@@ -41,6 +41,8 @@ function next8h(t: number): number {
   return x - (x % (15 * 60 * 1000));
 }
 const NIGHT = (h: number) => h >= 23 || h < 8;
+/** entre 23 h et 8 h (heure de Paris) ? */
+export const isNightParis = (t: number) => NIGHT(parisHour(t));
 
 /** Clé publique VAPID (posée par lanceurs\activer-notifications.cmd) : le client en a besoin pour s'abonner. */
 export const vapidPublicKey = query({
