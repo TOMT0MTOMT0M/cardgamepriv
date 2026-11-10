@@ -2,7 +2,7 @@ import { BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshPhysic
 import { bumpMap, float, mix, normalMap, positionLocal, texture, uv, vec2, vec3, smoothstep, sin } from 'three/tsl';
 import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, releaseCanvas, type Ctx } from './art/canvas';
 import { FONT_MONO, FONT_TITLE } from './art/frame';
-import { FONT_DISPLAY, displayCase } from './fonts';
+import { FONT_PACK } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
@@ -375,10 +375,10 @@ async function simplePackArt(style: PackStyle, release = false): Promise<PackArt
   // les normales de la face avant (plus bas, une fois la carte des plis prête) ; ici on ne garde que sa mise en page.
   let label: { text: string; px: number } | null = null;
   if (style.label) {
-    await Promise.race([document.fonts.load(`400 120px ${FONT_DISPLAY}`).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
-    // (V2) une seule capitale à volutes, en tête (« Bébou pack ») : casse posée ici, la toile ne lit pas la règle de la police
-    const text = displayCase(style.label);
-    const font = fitFont(F.g, text, 400, 132, PW - 120, FONT_DISPLAY);
+    await Promise.race([document.fonts.load(`400 120px ${FONT_PACK}`).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
+    // (retours Hugo 10/11) retour à Matcha World, la police ronde d'origine, avec la casse du nom tel quel (comme en V1)
+    const text = style.label;
+    const font = fitFont(F.g, text, 400, 132, PW - 120, FONT_PACK);
     label = { text, px: parseFloat(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? '132') };
   }
   // ── masques : R = zones plus lisses (soudures), G = relief des soudures, B = ligne de déchirure (découpe)
@@ -443,7 +443,8 @@ async function simplePackArt(style: PackStyle, release = false): Promise<PackArt
  * contient le texte, la taille, les réglages de LABEL_RELIEF et LABEL_VERSION : à CHANGER si packLabel.ts change.
  */
 // (V2, 08/11) 'nom-v2' : police Atsuka Montreal — la police n'est pas dans la clé, les reliefs Matcha en cache partent
-const LABEL_VERSION = 'nom-v3';
+// (retours Hugo 10/11) 'nom-v4' : retour à Matcha World sur les sachets
+const LABEL_VERSION = 'nom-v4';
 const LABEL_STORE = 'bebou-nom-moule';
 const labelKey = (text: string, px: number) => `/__nom/${LABEL_VERSION}-${PW}x${PH}-${px}-${encodeURIComponent(text)}-${encodeURIComponent(JSON.stringify(LABEL_RELIEF))}.bin`;
 async function labelFromCache(text: string, px: number): Promise<ReliefMap | null> {
@@ -481,7 +482,7 @@ function labelToCache(text: string, px: number, r: ReliefMap) {
 async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasElement, text: string, px: number): Promise<{ normal: HTMLCanvasElement; thumb: HTMLCanvasElement }> {
   const t0 = performance.now();
   const ss = LABEL_RELIEF.ss;
-  F.g.font = `400 ${px}px ${FONT_DISPLAY}`;
+  F.g.font = `400 ${px}px ${FONT_PACK}`;
   const tw = F.g.measureText(text).width;
   const pad = Math.round(px * 0.3);
   const w = Math.min(PW, Math.ceil(tw + 2 * pad)), h = Math.ceil(px * 1.5 + 2 * pad);
@@ -494,7 +495,7 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
   if (!relief) {
     const L = makeCanvas(w * ss, h * ss);
     L.g.fillStyle = '#fff';
-    L.g.font = `400 ${px * ss}px ${FONT_DISPLAY}`;
+    L.g.font = `400 ${px * ss}px ${FONT_PACK}`;
     L.g.textAlign = 'center';
     L.g.textBaseline = 'middle';
     L.g.fillText(text, (PW / 2 - x0) * ss, (PH * 0.5 - y0) * ss);

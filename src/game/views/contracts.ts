@@ -12,7 +12,7 @@ import { PROTECT_LEGEND, protectIcons, protection as protectionOf } from './safe
 import { GAMES_OPEN } from '../../core/games';
 
 /**
- * CONTRATS (façon CS:GO) : on choisit une étoile, on remplit le contrat avec ses doublons (10 / 20 / 50 cartes),
+ * CONTRATS (façon CS:GO) : on choisit une étoile, on remplit le contrat avec ses doublons (10 cartes, quelle que soit l'étoile),
  * on voit d'où viendra la carte (au prorata des sous-thèmes brûlés), on signe : les cartes BRÛLENT dans leurs cases
  * (retours du 3 nov. : combustion, braises, flammes), puis la carte obtenue émerge des flammes — mini-révélation dans
  * la visionneuse 3D, fond dynamique si elle est 5★ / 6★. Règles : src/core/contracts.ts.

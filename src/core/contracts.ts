@@ -2,7 +2,7 @@
  * CONTRATS (façon CS:GO) — logique pure partagée par le serveur Convex (convex/contracts.ts) et le mode démo.
  *
  * Règle (décision du groupe, 2 nov.) : on brûle des DOUBLONS d'une même étoile contre UNE carte de l'étoile au-dessus.
- *  - prix selon l'étoile brûlée : 1★ et 2★ → 10 cartes · 3★ et 4★ → 20 cartes · 5★ → 50 cartes (pas de contrat 6★) ;
+ *  - prix : 10 cartes pour chaque étoile, de 1★ à 5★ (retours Hugo 10/11 ; avant 10 / 20 / 50) — pas de contrat 6★ ;
  *  - uniquement des doublons : on ne brûle jamais son dernier exemplaire d'une carte (la collection ne recule pas) ;
  *  - comme dans CS:GO, la carte reçue vient des sous-thèmes des cartes brûlées, au prorata (7 Pokémon + 3 Valorant →
  *    70 % Pokémon, 30 % Valorant) ;
@@ -17,9 +17,9 @@ import { SUBTHEMES, catalogEntry, type CatalogEntry } from './sets/themes';
 export const CONTRACT_COST: Partial<Record<StarRarityId, number>> = {
   common: 10,
   uncommon: 10,
-  rare: 20,
-  epic: 20,
-  legendary: 50,
+  rare: 10,
+  epic: 10,
+  legendary: 10,
 };
 
 export interface ContractItem {

@@ -638,6 +638,11 @@ function syncStatus() {
   st.setAttribute('aria-label', st.title);
   syncMenuDot();
   // pity (retours live 02, §11) : compteur « X/200 » toujours visible, sans clic
+  // (retours Hugo 10/11, anti-spoil) le serveur remet le compteur à zéro dès le TIRAGE : pendant l'ouverture (et tant
+  // qu'un booster tiré attend d'être ouvert) le compteur reste figé, il ne bouge qu'une fois le booster fini
+  if (document.body.classList.contains('opening') || backend.state.sealed) {
+    if (pt.querySelector('.pt-n')!.textContent) return;
+  }
   const n = status.pityCount();
   const left = status.pityLeft();
   pt.querySelector('.pt-n')!.textContent = `${n}/${PITY_LIMIT}`;
@@ -648,6 +653,14 @@ function syncStatus() {
 }
 backend.eco.onChange(syncStatus);
 backend.onChange(syncStatus);
+// fin de l'ouverture (la classe « opening » du body tombe) : la pity se met enfin à jour
+{
+  let wasOpening = false;
+  new MutationObserver(() => {
+    const on = document.body.classList.contains('opening');
+    if (on !== wasOpening && !(wasOpening = on)) syncStatus();
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+}
 /** N'écrit dans le DOM que si le texte change (le compteur tourne chaque seconde). */
 const setText = (e: Element, t: string) => {
   if (e.textContent !== t) e.textContent = t;

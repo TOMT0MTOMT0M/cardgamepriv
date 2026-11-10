@@ -368,7 +368,7 @@ describe('contrats (façon CS:GO)', () => {
   });
 
   test('coûts : 10 / 10 / 20 / 20 / 50 selon l’étoile brûlée', () => {
-    expect(CONTRACT_COST).toEqual({ common: 10, uncommon: 10, rare: 20, epic: 20, legendary: 50 });
+    expect(CONTRACT_COST).toEqual({ common: 10, uncommon: 10, rare: 10, epic: 10, legendary: 10 });
   });
 });
 

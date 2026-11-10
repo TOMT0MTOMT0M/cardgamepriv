@@ -23,6 +23,8 @@ import '@fontsource/ibm-plex-mono/500.css';
 export const FONT_VERSION = 'in2';
 /** gros titres seulement (logo, titres de page, moments forts) */
 export const FONT_DISPLAY = '"Atsuka Montreal", "Bold Frame", "Inter", system-ui, sans-serif';
+/** (retours Hugo 10/11) nom moulé des sachets : la police ronde d'origine (« elle était mieux, tout rond ») */
+export const FONT_PACK = '"Matcha World", "Bold Frame", "Inter", system-ui, sans-serif';
 /** titres, noms, texte courant en casse mixte (graisse 400 / 600 / 700 = les 3 Bold Frame) */
 export const FONT_TEXT = '"Bold Frame", "Inter", system-ui, sans-serif';
 /** libellés en capitales, chiffres, boutons, petits corps */
