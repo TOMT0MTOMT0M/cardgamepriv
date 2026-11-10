@@ -36,6 +36,7 @@ import '../casino.css';
 import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
 import { mountGridArt } from './gridArt';
+import { yieldToMain } from '../../core/yieldMain';
 
 /**
  * ESPACE JEUX (#/jeux) : les vrais jeux seulement — 1v1 Pack Battle, Pack Battle Royale, Roulette à cartes —, avec
@@ -95,7 +96,10 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   let sub: Sub = '';
   let arg = '';
   let unsubs: Array<() => void> = [];
+  /** change à chaque nettoyage : un montage différé d'une page quittée entre-temps s'abandonne */
+  let hubGen = 0;
   const cleanup = () => {
+    hubGen++;
     unsubs.forEach((u) => u());
     unsubs = [];
   };
@@ -159,11 +163,20 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       <a class="gm-game roulette" href="#/jeux/roulette"><span class="gm-art-host"></span><span class="gm-idx">03 — tirage</span><b>Roulette</b><span class="gm-desc">1 à 3 numéros par tirage, en pièces ou en cartes 4★–6★ : le numéro qui sort rafle le pot.</span><dl class="gm-spec"><div><dt>Numéros</dt><dd>${ROULETTE_NUMBERS}</dd></div><div><dt>Tirages</dt><dd>${ROULETTE_HOURS.map((x) => `${x} h`).join(' · ')}</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="roulette">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
       <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
-    // dessins « courant » alignés sur la trame (views/gridArt.ts)
-    body.querySelectorAll<HTMLElement>('.gm-game').forEach((g, i) => {
-      g.dataset.artDelay = String(i * 160);
-      unsubs.push(mountGridArt(g.querySelector<HTMLElement>('.gm-art-host')!, g, el, (['duel', 'royale', 'roulette'] as const)[i]));
-    });
+    // dessins « courant » alignés sur la trame (views/gridArt.ts). Chaque montage échantillonne ses pistes (~0,5 s sur
+    // téléphone) : un par tâche, l'accueil et ses textes étant déjà peints ; même ordre, mêmes délais de tracé.
+    const kinds = ['duel', 'royale', 'roulette'] as const;
+    const gen = hubGen;
+    void (async () => {
+      for (let i = 0; i < kinds.length; i++) {
+        await yieldToMain();
+        if (gen !== hubGen) return;
+        const g = body.querySelectorAll<HTMLElement>('.gm-game')[i];
+        if (!g?.isConnected) return;
+        g.dataset.artDelay = String(i * 160);
+        unsubs.push(mountGridArt(g.querySelector<HTMLElement>('.gm-art-host')!, g, el, kinds[i]));
+      }
+    })();
     // filet qui suit la souris (ordinateur seulement)
     body.querySelectorAll<HTMLElement>('.gm-game').forEach((g) =>
       g.addEventListener('pointermove', (e) => {
