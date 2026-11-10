@@ -11,6 +11,7 @@
 import type * as abuse from "../abuse.js";
 import type * as accounts from "../accounts.js";
 import type * as admin from "../admin.js";
+import type * as adminDash from "../adminDash.js";
 import type * as auth from "../auth.js";
 import type * as binders from "../binders.js";
 import type * as cardsCatalog from "../cardsCatalog.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   abuse: typeof abuse;
   accounts: typeof accounts;
   admin: typeof admin;
+  adminDash: typeof adminDash;
   auth: typeof auth;
   binders: typeof binders;
   cardsCatalog: typeof cardsCatalog;

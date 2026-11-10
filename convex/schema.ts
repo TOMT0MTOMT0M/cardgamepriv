@@ -679,4 +679,34 @@ export default defineSchema({
     burstStart: v.optional(v.number()),
     burstCount: v.optional(v.number()),
   }).index('by_user', ['userId']),
+
+  /**
+   * (V2, 10/11) DASHBOARD ADMIN (/admin/, convex/adminDash.ts) — journal de tout ce que Tom et Hugo font depuis le
+   * dashboard (qui, quoi, sur qui). Table à part : le code d'avant ne la voit pas.
+   */
+  adminLog: defineTable({
+    byUserId: v.id('users'),
+    byName: v.string(),
+    action: v.string(),
+    target: v.optional(v.string()),
+    detail: v.string(),
+    at: v.number(),
+  }).index('by_at', ['at']),
+
+  /**
+   * (V2, 10/11) CARTES À CORRIGER (dashboard admin) : la liste partagée de Tom et Hugo — photo à changer, nom, étoiles…
+   * Remplie à la main ou depuis une suggestion « design » d'un joueur.
+   */
+  cardFixes: defineTable({
+    cardId: v.string(),
+    note: v.string(),
+    imageUrl: v.optional(v.string()),
+    status: v.union(v.literal('afaire'), v.literal('fait')),
+    suggestionId: v.optional(v.id('suggestions')),
+    byName: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_status', ['status', 'updatedAt'])
+    .index('by_card', ['cardId']),
 });

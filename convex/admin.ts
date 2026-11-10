@@ -32,7 +32,7 @@ async function findUser(ctx: MutationCtx, name: string) {
 }
 
 /** Ajoute `count` exemplaires d'une carte (numéros d'impression réels, à la suite). */
-async function give(ctx: MutationCtx, userId: Id<'users'>, cardId: string, rarity: RarityId, count: number) {
+export async function give(ctx: MutationCtx, userId: Id<'users'>, cardId: string, rarity: RarityId, count: number) {
   const mint = await ctx.db
     .query('cardMints')
     .withIndex('by_card_rarity', (q) => q.eq('cardId', cardId).eq('rarity', rarity))
