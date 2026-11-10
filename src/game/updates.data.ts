@@ -29,6 +29,13 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Sondage : à toi de choisir la suite', tag: 'nouveau',
+        points: [
+          'Un petit sondage d’une minute s’ouvre à la connexion : les univers que tu veux collectionner, les nouveautés de jeu qui te tentent, ta note du jeu et un mot libre. Les réponses décident de ce qui arrive en premier.',
+          '« Plus tard » le referme : il revient une heure après, tant qu’il n’est pas rempli.',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Cartes 6★ : leur scène partout', tag: 'amélioré',
         points: [
           'Ouvrir une carte 6★ dans la Collection, les Échanges, les Contrats, le Profil ou les Gros tirages rejoue la scène de sa famille (cartouche, vinyle, case de manga, tunnel…), puis la carte se retourne. Un toucher passe la scène ; « Rejouer » relance la version complète.',

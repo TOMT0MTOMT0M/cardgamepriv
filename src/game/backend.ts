@@ -408,6 +408,10 @@ export interface GameBackend {
   mySuggestions(): Promise<SuggestionView[]>;
   adminSuggestions(status?: SuggestionStatus): Promise<{ items: SuggestionView[]; counts: Record<SuggestionStatus, number> }>;
   setSuggestionStatus(id: string, status: SuggestionStatus, adminNote?: string): Promise<void>;
+  /** Sondage « prochaines mises à jour » (v1.0.10) : déjà répondu ?, répondre, résultats (modérateurs). */
+  surveyAnswered(surveyId: string): Promise<boolean>;
+  submitSurvey(surveyId: string, answer: SurveyAnswer): Promise<void>;
+  surveyResults(surveyId: string): Promise<SurveyResults>;
   /** Classement entre nous. */
   leaderboard(): Promise<LeaderRow[]>;
   /** Fil d'activité d'un joueur. */
@@ -467,6 +471,8 @@ export interface ContractResult {
   mintNumber: number;
   isNew: boolean;
 }
+
+import type { SurveyAnswer, SurveyResults } from '../core/survey';
 
 /** Suggestions des joueurs (onglet Suggestions, convex/suggestions.ts) */
 export type SuggestionKind = 'bug' | 'design' | 'ajout' | 'autre';

@@ -1012,6 +1012,8 @@ async function boot() {
   reportLoad(shell);
   setTimeout(() => loader.remove(), 700);
   // (ouverture 07/11) visite guidée automatique : une seule fois par compte (`?guide` pour la revoir)
+  // (v1.0.10) sondage « prochaines mises à jour » : à la connexion, puis toutes les heures tant qu'il n'est pas rempli
+  void import('./survey').then((m) => m.armSurvey(backend));
   void import('./views/guide').then((m) => m.armGuide(backend));
 
   // en tâche de fond : miniatures de la collection, puis les modules des autres pages (navigation instantanée)
