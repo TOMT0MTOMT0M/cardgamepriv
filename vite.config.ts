@@ -192,15 +192,18 @@ function jsonSafe(v: unknown): boolean {
  * HTML (`modulepreload`), comme les imports statiques : pas d'aller-retour réseau en plus au démarrage.
  */
 /**
- * (V2) `version.json` à la racine du site : { id, canal, at }. Le jeu le relit de temps en temps (src/game/maj.ts) ;
+ * (V2) `version.json` à la racine du site : { id, canal, at, force }. Le jeu le relit de temps en temps (src/game/maj.ts) ;
  * quand l'identifiant n'est plus celui de son propre build, un patch est sorti → « mise à jour disponible, recharge ».
+ * (v1.0.12) `force` (vrai par défaut) : le jeu se met à jour TOUT SEUL (caches vidés, connexion gardée) dès qu'il est
+ * rouvert ou revient au premier plan. Patch facultatif : `set BEBOU_MAJ_OPTIONNELLE=1` avant le build → simple pastille.
  */
 function versionJson(id: string, canal: string): Plugin {
   return {
     name: 'bebou-version-json',
     apply: 'build',
     generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ id, canal, at: new Date().toISOString() }) });
+      const force = process.env.BEBOU_MAJ_OPTIONNELLE !== '1';
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ id, canal, at: new Date().toISOString(), force }) });
     },
   };
 }

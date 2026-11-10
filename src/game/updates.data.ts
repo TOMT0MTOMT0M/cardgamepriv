@@ -35,6 +35,13 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '10 nov.', title: 'Toujours la dernière version', tag: 'amélioré',
+        points: [
+          'Quand une mise à jour sort, le jeu se met à jour tout seul la prochaine fois que tu le rouvres (ou que tu reviens dessus), même installé sur l’écran d’accueil. Jamais pendant une ouverture de booster, et tu restes connecté.',
+          'Un souci d’affichage ? Menu du profil → « Réparer et mettre à jour » : le jeu vide ses caches et recharge la dernière version.',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Classement réparé', tag: 'corrigé',
         points: [
           'Le classement ne s’affichait plus depuis que les collections ont beaucoup grossi : il revient, et s’ouvre plus vite.',

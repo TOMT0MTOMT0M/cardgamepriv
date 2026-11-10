@@ -3560,3 +3560,7 @@ body.god .gl-host::after { content: ''; position: fixed; inset: 0; z-index: 1; p
 .sg-sv-bars li { display: grid; grid-template-columns: minmax(120px, 34%) 1fr 32px; gap: 10px; align-items: center; font: 400 12px var(--mono); }
 .sg-sv-bars i { height: 8px; border-radius: 4px; background: linear-gradient(90deg, #fff var(--w), rgba(255, 255, 255, 0.08) var(--w)); }
 .sg-sv-bars b { text-align: right; }
+
+/* (v1.0.12) mise à jour forcée (src/game/maj.ts) : voile plein écran le temps du ménage et du rechargement */
+.maj-veil { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #000; color: #fff; font: 500 12px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; opacity: 0; transition: opacity var(--dur-rapide); }
+.maj-veil.on { opacity: 1; }
