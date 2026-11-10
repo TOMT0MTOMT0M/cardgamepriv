@@ -6,6 +6,7 @@
       - /assets/* (noms à empreinte, immuables) et médias du manifeste (/fx, /audio, /icons) : cache d'abord ;
       - /art/*?v=… (images versionnées, immuables) : cache d'abord, gardées au fil de l'usage (plafonnées) →
         moins d'appels à la fonction R2, jamais plus ;
+      - /bake/*?v=… (déchirure simulée, versionnée) : cache d'abord ;
       - la page /jeu/ : RÉSEAU d'abord (3 s max), copie locale en repli → un patch est vu tout de suite ;
       - /version.json, /precache.json, /sw.js, le labo, les requêtes partielles (Range) et tout le reste : jamais touchés.
       Une réponse n'est rangée que si elle est correcte (200, même origine, pas une page HTML à la place d'un fichier).
@@ -90,6 +91,8 @@ self.addEventListener('fetch', (e) => {
   }
   if (p.startsWith('assets/') || p.startsWith('fx/') || p.startsWith('audio/') || p.startsWith('icons/')) e.respondWith(cacheFirst(APP, req));
   else if (p.startsWith('art/') && url.searchParams.has('v')) e.respondWith(cacheFirst(ART, req));
+  // (10/11) déchirure simulée : enregistrements versionnés (?v=, core/tearBake.ts BAKE_REV), ~1,2 Mo chacun
+  else if (p.startsWith('bake/') && url.searchParams.has('v')) e.respondWith(cacheFirst(APP, req));
 });
 
 self.addEventListener('install', () => self.skipWaiting());

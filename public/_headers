@@ -5,3 +5,8 @@
 # douce). Cette règle ne vaut que pour le repli sur les fichiers du site : même politique, pour ne pas en avoir deux.
 /art/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+# (10/11) enregistrements de la déchirure simulée (scripts/bake-tear) : ~1,2 Mo chacun, changent rarement
+/bake/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+  Content-Type: application/octet-stream

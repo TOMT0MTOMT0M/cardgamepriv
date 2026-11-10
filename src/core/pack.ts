@@ -7,7 +7,7 @@ import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
 import { LABEL_RELIEF, moldFront, reliefFromCoverage, type ReliefMap } from './packLabel';
-import { CRH, CRW, PACK, PH, PW, creaseMapData, creaseRidge, creaseSigned, lcg } from './packCrease';
+import { CRH, CRW, PACK, PH, PW, creaseMapData, creaseRidge, creaseSigned, lcg, packRestZ } from './packCrease';
 
 /**
  * Booster : un peu plus grand qu'une carte, coussin bombé, soudures crantées haut/bas.
@@ -16,12 +16,7 @@ import { CRH, CRW, PACK, PH, PW, creaseMapData, creaseRidge, creaseSigned, lcg }
  * paraît 15 % plus grand, les cartes gardent leur taille.
  */
 export { PACK } from './packCrease';
-/**
- * (07/11) La pile des 5 cartes rangée dans le sachet (style « déchirure », scenes/opening.ts) : demi-largeur et
- * demi-hauteur à l'échelle 0,92, centre vertical. Le plateau du sachet en suit l'empreinte ; `bulge` = sa demi-épaisseur
- * (5 cartes de 1,2 mm espacées de 0,72 mm → ± 20 mm) + le film et un peu de jeu.
- */
-export const PACK_STACK = { hw: (0.63 * 0.92) / 2, hh: (0.88 * 0.92) / 2, cy: -0.03, s: 0.92 };
+export { PACK_STACK } from './packCrease';
 /** cadrage historique des scènes (taille de l'ancien booster) : la caméra et la taille des cartes à l'écran n'ont pas bougé */
 export const PACK_FRAME = { w: 0.78, h: 1.18 };
 
@@ -87,13 +82,10 @@ export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean
   // (07/11) `folds: false` : pas de grands plis FIXES dans la géométrie — la scène d'ouverture déplace les sommets avec
   // la carte de hauteur du sachet affiché (packCreaseLift), propre à chaque booster
   const folds = opts.folds ?? true;
-  const { w, h, bulge, crimp } = PACK;
+  const { w, h } = PACK;
   const pos: number[] = [];
   const uvs: number[] = [];
   const idx: number[] = [];
-  const cv = crimp / h;
-  const sideSeam = 0.028; // marge thermoscellée sur les côtés (unités carte)
-  const su = sideSeam / w;
   // (07/11) plus de plis aléatoires : les GRANDS PLIS partagés avec la carte de hauteur, en relief large et doux
   const ax = w / h;
   const foldZ = (u: number, v: number) => {
@@ -108,18 +100,9 @@ export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean
   // (07/11, retours de Tom) le film ÉPOUSE LA PILE de 5 cartes au lieu de gonfler en ballon : un plateau plat de
   // l'épaisseur de la pile (PACK.bulge = demi-pile + épaisseur du film + un peu de jeu) sur toute l'empreinte des
   // cartes (+ 12 mm de jeu), puis le film, mi-souple mi-rigide, retombe en S jusqu'aux soudures — net, horizontal,
-  // comme un vrai sachet de cartes. Les coins se pincent (produit des deux chutes).
-  const box = { x: PACK_STACK.hw + 0.012, yb: PACK_STACK.cy - PACK_STACK.hh - 0.012, yt: PACK_STACK.cy + PACK_STACK.hh + 0.012 };
-  const seamX = w / 2 - sideSeam, seamY = h / 2 - crimp;
-  const fall = (t: number) => (t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * t * (t * (t * 6 - 15) + 10));
-  const prof = (u: number, v: number) => {
-    const x = Math.abs((u - 0.5) * w), y = (v - 0.5) * h;
-    if (x >= seamX || Math.abs(y) >= seamY) return 0;
-    const fx = fall((x - box.x) / (seamX - box.x));
-    const fy = y > box.yt ? fall((y - box.yt) / (seamY - box.yt)) : y < box.yb ? fall((box.yb - y) / (seamY + box.yb)) : 1;
-    return fx * fy;
-  };
-  for (const side of [1, -1]) {
+  // comme un vrai sachet de cartes. Les coins se pincent (produit des deux chutes). (10/11) profil dans packCrease.ts
+  // (packRestZ), partagé avec le simulateur de déchirure.
+  for (const side of [1, -1] as const) {
     const base = pos.length / 3;
     for (let j = 0; j <= segY; j++) {
       const v = j / segY;
@@ -127,15 +110,7 @@ export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean
         const u = i / segX;
         const x = (u - 0.5) * w;
         const y = (v - 0.5) * h;
-        const inCrimp = v < cv || v > 1 - cv;
-        const p = prof(u, v);
-        // soudures crantées : ondulation des crans + léger rabat vers l'arrière
-        const crimpZ = inCrimp ? 0.0012 * Math.sin(x * 260) - 0.003 * (1 - p) : 0;
-        // marge scellée latérale : les faces se touchent (une demi-épaisseur de film), légère ondulation
-        const eu = Math.min(u, 1 - u);
-        const seamWave = eu < su ? 0.0003 * Math.sin(y * 90) : 0;
-        const fold = inCrimp || !folds ? 0 : foldZ(u, v) * Math.min(1, p * 1.5);
-        const z = side * (bulge * p + 0.0005 + crimpZ + seamWave + fold);
+        const z = packRestZ(u, v, side, folds ? foldZ(u, v) : 0);
         pos.push(x, y, z);
         uvs.push(side > 0 ? u : 1 - u, v);
       }
@@ -888,5 +863,4 @@ export function createPackMesh(art: PackArt, opts?: { crinkle?: number }) {
   return mesh;
 }
 
-/** Ligne "déchirer ici" en UV (v), cohérente avec le visuel. */
-export const TEAR_V = 1 - ((PACK.crimp / PACK.h) * PH + 40) / PH;
+export { TEAR_V } from './packCrease';

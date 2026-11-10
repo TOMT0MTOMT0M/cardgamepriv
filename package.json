@@ -15,6 +15,7 @@
     "test:rolls": "esbuild scripts/test-rolls.mts --bundle --platform=node --format=esm --outfile=.cache/test-rolls.mjs --log-level=warning && node .cache/test-rolls.mjs",
     "test:server": "vitest run",
     "thumbs": "node scripts/make-thumbs.mjs",
+    "bake:tear": "esbuild scripts/bake-tear/bake.mts --bundle --platform=node --format=esm --outfile=.cache/bake-tear.mjs --log-level=warning && node .cache/bake-tear.mjs",
     "feedback": "node scripts/pull-feedback.mjs",
     "r2:sync": "node scripts/r2-sync.mjs",
     "convert:yugioh": "node scripts/import_faithful_model.mjs"

@@ -5,8 +5,56 @@
  * Code déplacé tel quel depuis pack.ts : mêmes nombres, mêmes pixels.
  */
 export const PACK = { w: 0.897, h: 1.357, bulge: 0.028, crimp: 0.0863 };
+/**
+ * (07/11) La pile des 5 cartes rangée dans le sachet (style « déchirure », scenes/opening.ts) : demi-largeur et
+ * demi-hauteur à l'échelle 0,92, centre vertical. Le plateau du sachet en suit l'empreinte ; `bulge` = sa demi-épaisseur
+ * (5 cartes de 1,2 mm espacées de 0,72 mm → ± 20 mm) + le film et un peu de jeu.
+ */
+export const PACK_STACK = { hw: (0.63 * 0.92) / 2, hh: (0.88 * 0.92) / 2, cy: -0.03, s: 0.92 };
+/** marge thermoscellée sur les côtés (unités carte) */
+export const PACK_SIDE_SEAM = 0.028;
+
+/**
+ * (10/11) Forme au repos du film, SANS les grands plis (calcul pur, partagé par createPackGeometry et par le
+ * simulateur de déchirure `scripts/bake-tear`) : profil du plateau (0..1, 1 = film posé sur la pile) et z du film
+ * (côté `side` = +1 face avant, −1 dos), aux coordonnées (u, v) du sachet (0..1, v vers le haut).
+ */
+export function packProfile(u: number, v: number): number {
+  const { w, h, crimp } = PACK;
+  const box = { x: PACK_STACK.hw + 0.012, yb: PACK_STACK.cy - PACK_STACK.hh - 0.012, yt: PACK_STACK.cy + PACK_STACK.hh + 0.012 };
+  const seamX = w / 2 - PACK_SIDE_SEAM, seamY = h / 2 - crimp;
+  const fall = (t: number) => (t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * t * (t * (t * 6 - 15) + 10));
+  const x = Math.abs((u - 0.5) * w), y = (v - 0.5) * h;
+  if (x >= seamX || Math.abs(y) >= seamY) return 0;
+  const fx = fall((x - box.x) / (seamX - box.x));
+  const fy = y > box.yt ? fall((y - box.yt) / (seamY - box.yt)) : y < box.yb ? fall((box.yb - y) / (seamY + box.yb)) : 1;
+  return fx * fy;
+}
+export function packRestZ(u: number, v: number, side: 1 | -1, fold = 0, physical = false): number {
+  const { w, h, bulge, crimp } = PACK;
+  const cv = crimp / h;
+  const su = PACK_SIDE_SEAM / w;
+  const x = (u - 0.5) * w;
+  const y = (v - 0.5) * h;
+  const inCrimp = v < cv || v > 1 - cv;
+  const p = packProfile(u, v);
+  // soudures crantées : ondulation des crans + léger rabat vers l'arrière
+  const crimpZ = inCrimp ? 0.0012 * Math.sin(x * 260) - 0.003 * (1 - p) : 0;
+  // marge scellée latérale : les faces se touchent (une demi-épaisseur de film), légère ondulation
+  const eu = Math.min(u, 1 - u);
+  const seamWave = eu < su ? 0.0003 * Math.sin(y * 90) : 0;
+  // `physical` (simulateur) : crans et soudures se déplacent ENSEMBLE (les deux faces y sont collées) ; la géométrie
+  // d'affichage, elle, les écarte en miroir (invisible : les deux faces s'y croisent, même matière)
+  // (sans les crans ni l'ondulation des soudures : à la résolution du simulateur ce seraient des plis en accordéon
+  // d'un sommet à l'autre — le relief des crans reste dans la carte de normales)
+  if (physical) return side * (bulge * p + 0.0005) + (inCrimp ? -0.003 * (1 - p) : 0);
+  return side * (bulge * p + 0.0005 + crimpZ + seamWave + (inCrimp ? 0 : fold * Math.min(1, p * 1.5)));
+}
+
 /** toile du visuel d'un sachet */
 export const PW = 640, PH = Math.round((640 * PACK.h) / PACK.w);
+/** Ligne "déchirer ici" en UV (v), cohérente avec le visuel. */
+export const TEAR_V = 1 - ((PACK.crimp / PACK.h) * PH + 40) / PH;
 
 /** fondu d'un pli vers ses bouts (t = position le long du pli, 0..1) : débuts et fins progressifs */
 export function creaseEnds(t: number, a: number, b: number): number {

@@ -32,6 +32,7 @@ import {
 } from 'three/webgpu';
 import {
   abs,
+  attribute,
   clamp as tclamp,
   floor,
   fract,
@@ -83,6 +84,7 @@ import { haptics } from '../../core/haptics';
 import { onFxReducedChange } from '../../core/fxPref';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
+import { loadTearBakes, loadedBakes, TearBakePlayer } from '../../core/tearBake';
 import { MYTHIC_SILENCE, MYTHIC_TURN, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
 import type { N } from '../../core/tsl';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
@@ -255,6 +257,8 @@ export interface OpeningScene extends Experiment {
   hintPulse(): void;
   readonly phase: Phase;
   debug(): unknown;
+  /** tests : ralenti de toutes les timelines gsap */
+  slowMo(k: number): void;
 }
 
 /** `mythicHold` : la 6★ est révélée plein écran, la scène attend un toucher avant l'éventail */
@@ -585,6 +589,24 @@ export function createOpeningScene(): OpeningScene {
   let tearProgress = 0;
   let autoTear: gsap.core.Tween | null = null;
   const tearShake = new Spring(0, 420, 16);
+  /**
+   * (10/11) DÉCHIRURE SIMULÉE (core/tearBake.ts, scripts/bake-tear) : film alu / PET simulé hors-ligne (plis plastiques,
+   * soudures qui cèdent, cartes rigides qui écartent les lèvres en sortant), rejoué ici. La déchirure procédurale reste
+   * le repli (enregistrement pas encore arrivé, navigateur sans DecompressionStream).
+   */
+  let bakePlayer: TearBakePlayer | null = null;
+  let bakedBody: Mesh | null = null;
+  let bakedStrip: Mesh | null = null;
+  /** cette ouverture rejoue la simulation */
+  let useBake = false;
+  /** tête de lecture de la déchirure (lissée derrière la progression du doigt) */
+  let bakePlay = 0;
+  /** horloge de la sortie (s) ; < 0 : encore en déchirure */
+  const bakeExit = { t: -1 };
+  function setTearVisible(on: boolean) {
+    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = on && !useBake;
+    if (bakedBody && bakedStrip) bakedBody.visible = bakedStrip.visible = on && useBake;
+  }
   /** position de la pile dans le booster qu'elle suit (burn : 12 cm derrière ; déchirure : DEDANS) */
   let followZ = -PACK_OPEN_Z;
   /** éventail : la carte en cours de retournement (centre des effets plein écran) */
@@ -781,7 +803,7 @@ export function createOpeningScene(): OpeningScene {
     return float(TEAR_V).add(teeth).add(wave);
   };
 
-  function buildTearMaterials(art: PackArt, part: 'body' | 'strip') {
+  function buildTearMaterials(art: PackArt, part: 'body' | 'strip', baked = false) {
     const uvn = uv();
     const front = texture(art.front, uvn);
     const back = texture(art.back, uvn);
@@ -796,7 +818,8 @@ export function createOpeningScene(): OpeningScene {
     const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
     if (nF) track(tearSwaps, nF, (a) => a.frontNormal ?? a.creaseNormal);
     if (nB) track(tearSwaps, nB, (a) => a.creaseNormal);
-    const ug = positionLocal.x.div(PACK.w).add(0.5);
+    // (enregistrement simulé : la géométrie bouge, la coordonnée de repos vient d'un attribut)
+    const ug = baked ? (attribute('aug', 'float') as unknown as N) : positionLocal.x.div(PACK.w).add(0.5);
     const v = uvn.y;
     const edge = tearEdge(ug);
     const tornCol = smoothstep(0.0, 0.012, TP.sub(ug));
@@ -818,7 +841,11 @@ export function createOpeningScene(): OpeningScene {
       m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)).mul(whiten.oneMinus());
       // même relief des plis que le booster entier (sa carte de hauteur), sinon la coupe ne raccorde pas
       const crLift = creaseLift(tearSwaps, art, side);
-      if (part === 'body') {
+      if (baked) {
+        // positions et normales écrites par TearBakePlayer ; le relief des plis du booster s'ajoute selon la normale
+        m.maskNode = part === 'body' ? v.lessThan(edge) : v.greaterThanEqual(edge);
+        if (crLift) m.positionNode = positionLocal.add(normalLocal.mul(side === 0 ? crLift.z : crLift.z.negate()));
+      } else if (part === 'body') {
         m.maskNode = v.lessThan(edge);
         if (crLift) m.positionNode = positionLocal.add(crLift);
       } else {
@@ -907,6 +934,12 @@ export function createOpeningScene(): OpeningScene {
       // sortie du booster vide sur une timeline à part : un toucher (révélation suivante, défilement auto des séries)
       // coupe la timeline principale et laissait le paquet vide planté DEVANT les cartes. Il recule aussi derrière elles.
       const out = sideline(gsap.timeline());
+      // déchirure simulée : la sortie enregistrée suit la MÊME horloge que les cartes (même départ, même accélération)
+      if (useBake && bakePlayer) {
+        bakePlay = 1;
+        const T = (bakePlayer.header.nExit - 1) / bakePlayer.header.exitFps;
+        out.fromTo(bakeExit, { t: 0 }, { t: T, duration: T, ease: 'none' }, 0);
+      }
       out.to(fly, { t: 1, duration: 0.75 * sp, ease: EASE.glide, onStart: () => ctx.sfx.whoosh(0.45, 0.22) }, 0)
         .to(B, { follow: 0, duration: 0.3 * sp, ease: EASE.glide }, 0.75 * sp)
         .to(B, { z: -0.6, duration: 0.6 * sp, ease: EASE.glide }, 1.3 * sp)
@@ -1151,8 +1184,15 @@ export function createOpeningScene(): OpeningScene {
     autoTear?.kill();
     autoTear = null;
     if (tearing) applyTearArt(k);
+    // une des variantes enregistrées, au hasard (chaque booster se déchire un peu différemment)
+    const bakes = loadedBakes();
+    useBake = tearing && !!bakePlayer && bakes.length > 0;
+    if (useBake) bakePlayer!.use(bakes[Math.floor(Math.random() * bakes.length)]);
+    bakePlay = 0;
+    bakeExit.t = -1;
+    bakePlayer?.setTear(0);
     if (packMeshMain) packMeshMain.visible = !tearing;
-    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = tearing;
+    setTearVisible(tearing);
     // (retours live 02, anti-spoil) braise et fuite de lumière : une seule couleur pour tous les boosters (avant : la
     // couleur de la meilleure carte, qui annonçait une rouge ou une 6★ dès que le booster était posé)
     U.ember.value.set(NEUTRAL_EMBER);
@@ -1169,7 +1209,7 @@ export function createOpeningScene(): OpeningScene {
       B.follow = 0;
       B.y = -2.6;
       if (packMeshMain) packMeshMain.visible = false;
-      if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = false;
+      setTearVisible(false);
       void prepared.then(() => {
         if (pack !== p) return;
         tl = gsap.timeline();
@@ -1895,7 +1935,9 @@ export function createOpeningScene(): OpeningScene {
     sh.forEach((q) => (q.life = 0));
     shredsDirty = true;
     if (packMeshMain) packMeshMain.visible = true;
-    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = false;
+    setTearVisible(false);
+    useBake = false;
+    bakeExit.t = -1;
     applyBoosterArt(boosterKey);
     tl = gsap.timeline();
     tl.to(B, { y: 0, s: 1, duration: 0.8, ease: 'back.out(1.4)' });
@@ -1918,9 +1960,13 @@ export function createOpeningScene(): OpeningScene {
     get phase() {
       return phase;
     },
+    /** diagnostic (tests) : ralenti de toutes les timelines (captures de la sortie simulée) */
+    slowMo(k: number) {
+      gsap.globalTimeline.timeScale(k);
+    },
     /** diagnostic (tests) : état de la pile */
     debug() {
-      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
+      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
     },
     setBooster,
     open,
@@ -2197,6 +2243,33 @@ export function createOpeningScene(): OpeningScene {
         m.frustumCulled = false;
         packRig.add(m);
       }
+      // déchirure simulée : les meshes naissent dès que le 1er enregistrement est là (attendu au plus 1,5 s ici, sous
+      // l'écran de chargement, pour être compilés avec le reste ; sinon plus tard, compilés à part)
+      {
+        let gone = false;
+        c.bag.fn(() => (gone = true));
+        const mount = (b: Awaited<ReturnType<typeof loadTearBakes>>) => {
+          if (!b || gone || bakePlayer) return false;
+          bakePlayer = new TearBakePlayer(b);
+          const pl = bakePlayer;
+          c.bag.fn(() => pl.dispose());
+          bakedBody = new Mesh(pl.body, buildTearMaterials(arts.get(boosterKey)!, 'body', true));
+          bakedStrip = new Mesh(pl.strip, buildTearMaterials(arts.get(boosterKey)!, 'strip', true));
+          for (const m of [bakedBody, bakedStrip]) {
+            (m.material as Material[]).forEach((x) => c.bag.add(x));
+            m.frustumCulled = false;
+            m.visible = false;
+            packRig.add(m);
+          }
+          return true;
+        };
+        const first = loadTearBakes();
+        const b0 = await Promise.race([first, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
+        // arrivé à temps : visible pendant le préchauffage (pipelines créés avec le reste), caché ensuite ; sinon
+        // monté caché, compilé à sa première déchirure
+        if (b0 && mount(b0)) bakedBody!.visible = bakedStrip!.visible = true;
+        else void first.then(mount);
+      }
       const shredMat = new MeshPhysicalNodeMaterial({ side: DoubleSide });
       shredMat.colorNode = mix(color('#e9e3da'), U.ember as unknown as N, 0.25);
       shredMat.metalnessNode = float(0.8);
@@ -2432,6 +2505,7 @@ export function createOpeningScene(): OpeningScene {
       dummies.forEach((m) => stage.scene.remove(m));
       // déchirure : compilée avec le reste (visible pendant le préchauffage), cachée ensuite
       tearBody.visible = tearStrip.visible = false;
+      if (bakedBody && bakedStrip) bakedBody.visible = bakedStrip.visible = false;
       c.bag.fn(() => warm.forEach((m) => m.dispose()));
 
       // maintenir pour ouvrir (souris, doigt, espace) ; déchirure : le glisser horizontal est suivi ici, au pixel près
@@ -2563,7 +2637,16 @@ export function createOpeningScene(): OpeningScene {
       }
       tearShake.update(dt);
       TFLY.value = fly.t;
-      if (tearStrip) {
+      if (useBake && bakePlayer) {
+        if (bakeExit.t < 0) {
+          // la tête de lecture suit le doigt (rattrapage rapide : les à-coups de la déchirure restent nets)
+          bakePlay += (Math.min(1, tearProgress) - bakePlay) * (1 - Math.exp(-dt * 28));
+          bakePlayer.setTear(bakePlay);
+        } else {
+          bakePlayer.setExit(bakeExit.t);
+          if (bakedStrip) bakedStrip.visible = bakePlayer.stripVisible(bakeExit.t);
+        }
+      } else if (tearStrip) {
         tearStrip.position.set(fly.t * 0.9, fly.t * 0.6, fly.t * 0.5);
         tearStrip.rotation.z = -fly.t * 0.9;
         tearStrip.visible = style !== 'burn' && fly.t < 0.999;
