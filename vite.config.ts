@@ -2,7 +2,7 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // `npm run dev:mobile` → HTTPS + LAN : WebGPU et le gyroscope exigent un contexte sécurisé sur téléphone.
-// Deux pages : le labo (/) et le jeu (/jeu/).
+// Trois pages : le labo (/), le jeu (/jeu/) et le dashboard de l'équipe (/admin/, src/admin/).
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', 'VITE_');
   // (V2) canal de build : `--mode v2` lit .env.v2.local (staging Convex) et marque le site « V2 — test » (src/core/canal.ts)
@@ -33,6 +33,7 @@ export default defineConfig(({ mode }) => {
         input: {
           lab: 'index.html',
           jeu: 'jeu/index.html',
+          admin: 'admin/index.html',
         },
       },
     },

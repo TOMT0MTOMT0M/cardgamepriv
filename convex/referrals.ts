@@ -54,7 +54,7 @@ async function findReferrer(ctx: QueryCtx, input: string): Promise<Doc<'users'> 
   return (await ctx.db.query('users').collect()).find((x) => fold(x.username) === want || fold(x.displayName) === want) ?? null;
 }
 
-async function addPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {
+export async function addPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {
   const u = await ctx.db.get(userId);
   if (!u) return;
   const now = Date.now();
