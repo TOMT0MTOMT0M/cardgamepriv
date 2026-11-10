@@ -21,12 +21,41 @@ export interface InfoView {
 
 const TAG_LABEL = { nouveau: 'Nouveau', amélioré: 'Amélioré', corrigé: 'Corrigé' } as const;
 
+/**
+ * Un point « Libellé : texte » → libellé en titre court + texte lisible dessous (retours 11/11 : « pas lisible »).
+ * Seulement si le libellé est court (sinon c'est une phrase qui contient « : »).
+ */
+function point(p: string): string {
+  const i = p.indexOf(' : ');
+  if (i > 0 && i <= 32) {
+    const t = p.slice(i + 3);
+    return `<li class="if-p"><b class="if-p-k">${esc(nbsp(p.slice(0, i)))}</b><span class="if-p-t">${esc(nbsp(t.charAt(0).toUpperCase() + t.slice(1)))}</span></li>`;
+  }
+  return `<li class="if-p"><span class="if-p-t">${esc(nbsp(p))}</span></li>`;
+}
+/** espaces insécables de la typo française : jamais un « ou un ! seul en début de ligne */
+const nbsp = (s: string) => s.replace(/« /g, '«\u00a0').replace(/ ([»!?:;])/g, '\u00a0$1');
+
+/** Les entrées les plus récentes sont dépliées ; les autres se lisent d'un toucher (le titre suffit pour s'y retrouver). */
+const OPEN_ENTRIES = 2;
+
 export function createUpdatesView(shell: Shell): InfoView {
   const el = h('section', 'view infos');
-  el.innerHTML = `<div class="if-wrap">
-    <header class="if-head"><span class="kicker">MISES À JOUR</span><h1>Quoi de neuf</h1><p class="muted">Tout ce qui change sur le site, mois par mois. Le plus récent en haut.</p></header>
+  let n = 0;
+  el.innerHTML = `<div class="if-wrap if-maj">
+    <header class="if-head"><span class="kicker">MISES À JOUR</span><h1>Quoi de neuf</h1><p class="muted">Tout ce qui change sur le site. Le plus récent en haut.</p></header>
     ${UPDATES.map((m) => `<section class="if-month"><h2>${esc(m.month)}</h2>${m.intro ? `<p class="if-intro">${esc(m.intro)}</p>` : ''}
-      ${m.entries.map((e) => `<article class="if-entry"><div class="if-e-h"><span class="if-date">${esc(e.date)}</span><span class="if-tag t-${e.tag === 'amélioré' ? 'up' : e.tag === 'corrigé' ? 'fix' : 'new'}">${TAG_LABEL[e.tag]}</span></div><h3>${esc(e.title)}</h3><ul>${e.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></article>`).join('')}
+      ${m.entries
+        .map((e) => {
+          const tag = e.tag === 'amélioré' ? 'up' : e.tag === 'corrigé' ? 'fix' : 'new';
+          const nb = e.points.length;
+          return `<details class="if-entry"${n++ < OPEN_ENTRIES ? ' open' : ''}>
+            <summary><span class="if-e-h"><span class="if-date">${esc(e.date)}</span><span class="if-tag t-${tag}">${TAG_LABEL[e.tag]}</span></span>
+              <span class="if-e-t"><h3>${esc(e.title)}</h3><span class="if-e-n">${nb} ${nb > 1 ? 'nouveautés' : 'nouveauté'}</span></span></summary>
+            <ul class="if-points">${e.points.map(point).join('')}</ul>
+          </details>`;
+        })
+        .join('')}
     </section>`).join('')}
   </div>`;
   return { el, enter: () => (shell.show(null), shell.setDimmed(true)), leave() {} };
