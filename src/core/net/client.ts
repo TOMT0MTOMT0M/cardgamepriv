@@ -517,10 +517,11 @@ class GameNetClient {
             this.emit();
             return;
           }
-          if (d.more) return void full();
+          if (d.more) return void queueMicrotask(full);
           if (this.inv.apply(d)) publish();
           // la réponse grossit à chaque booster : au-delà de quelques dizaines de lignes, on repart d'une révision récente
-          if (d.rows.length + d.gone.length > INV_REBASE_ROWS && this.inv.since() > since) follow(this.inv.since());
+          // (hors du rappel : l'abonnement en cours est remplacé une fois son rappel terminé)
+          if (d.rows.length + d.gone.length > INV_REBASE_ROWS && this.inv.since() > since) queueMicrotask(() => follow(this.inv.since()));
         },
         () => legacy(),
       );
