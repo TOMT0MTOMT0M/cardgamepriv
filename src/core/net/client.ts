@@ -93,6 +93,8 @@ export type TradeDoc = Doc<'trades'> & { fromName: string; toName: string };
 export interface PackRequestArgs {
   packKind: 'theme' | 'bebou';
   themeId?: string;
+  /** (11/11) booster du moment */
+  eventId?: Id<'packEvents'>;
 }
 
 export interface NetState {
@@ -658,6 +660,8 @@ class GameNetClient {
     packKind: 'theme' | 'bebou';
     themeId?: string;
     god?: boolean;
+    eventId?: string;
+    eventName?: string;
   }> {
     const shape = (p: Doc<'packOpens'>) => ({
       packId: p._id,
@@ -666,6 +670,7 @@ class GameNetClient {
       packKind: p.packKind ?? ('bebou' as const),
       themeId: p.themeId,
       ...(p.god ? { god: true } : {}),
+      ...(p.eventId ? { eventId: p.eventId as string, eventName: p.eventName } : {}),
     });
     // un pack scellé non ouvert est rendu tel quel (anti-reroll côté serveur aussi)
     if (this.state.sealedPack) return shape(this.state.sealedPack);

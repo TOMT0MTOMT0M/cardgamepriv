@@ -201,7 +201,7 @@ export const tick = internalMutation({
       await ctx.runMutation(internal.push.announce, {
         title: `Booster du moment : ${e.name}`,
         body: `${e.blurb ? `${e.blurb.replace(/[.!…\s]+$/, '')}. ` : ''}À la boutique pendant ${fmtLeft(e.endAt - now).replace(/ /g, ' ')} seulement.`,
-        url: '#/',
+        url: '#/boutique/event', // (la fiche du booster du moment s'ouvre : shop.ts enter)
       });
     } catch (err) {
       console.warn('[events] notification', err);

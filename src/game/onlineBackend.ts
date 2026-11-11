@@ -8,6 +8,10 @@ import type { BoardState, ListingOfferView, ListingView } from './backend';
 import { api } from '../../convex/_generated/api';
 import type { Doc } from '../../convex/_generated/dataModel';
 import type { ChatInbox, ChatMsg } from '../core/chat';
+import type { PackEvent } from '../core/events';
+
+/** demande de booster → arguments du serveur (booster du moment : l'id de l'événement suffit, le serveur relit le reste) */
+const packArgs = (req: PackRequest) => (req.event ? { packKind: 'theme' as const, eventId: req.event.id as Id<'packEvents'> } : { packKind: req.kind, themeId: req.themeId });
 
 /** Le vrai serveur : Convex (temps réel) + Discord ou pseudo, via le client partagé avec le labo (core/net/client.ts). */
 /**
@@ -60,6 +64,7 @@ export function createOnlineBackend(): GameBackend {
     themeId: p.themeId,
     maxRarity: p.maxRarity,
     cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
+    ...(p.eventId ? { eventId: p.eventId, eventName: p.eventName } : {}),
   });
   const toTrade = (t: NetState['trades']['incoming'][number]): TradeView => ({
     id: t._id,
@@ -158,7 +163,7 @@ export function createOnlineBackend(): GameBackend {
     markGuideSeen: () => net.markGuideSeen(),
     logout: () => net.logout(),
     async preparePack(req: PackRequest) {
-      const p = await net.preparePack({ packKind: req.kind, themeId: req.themeId });
+      const p = await net.preparePack(packArgs(req));
       keepSealed(p.packId, p.cards);
       return {
         id: p.packId,
@@ -167,14 +172,17 @@ export function createOnlineBackend(): GameBackend {
         maxRarity: p.maxRarity,
         cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
         ...(p.god ? { god: true } : {}),
+        ...(p.eventId ? { eventId: p.eventId, eventName: p.eventName } : {}),
       };
     },
+    // (11/11) booster du moment : abonnement léger (quelques lignes, relancé seulement quand un événement change)
+    watchEvents: (cb) => net.watch(api.events.current, {}, (rows) => cb((rows ?? []) as PackEvent[]), false, () => cb([])),
     async revealPack(id) {
       await net.revealPack(id as Id<'packOpens'>);
       shootRevealed([id]);
     },
     async preparePacks(req, count) {
-      const packs = await net.preparePacks({ packKind: req.kind, themeId: req.themeId }, count);
+      const packs = await net.preparePacks(packArgs(req), count);
       for (const p of packs) keepSealed(p._id, p.cards);
       return packs.map((p) => ({
         id: p._id,
@@ -183,6 +191,7 @@ export function createOnlineBackend(): GameBackend {
         maxRarity: p.maxRarity,
         cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
         ...(p.god ? { god: true } : {}),
+        ...(p.eventId ? { eventId: p.eventId as string, eventName: p.eventName } : {}),
       }));
     },
     async revealPacks(ids) {

@@ -37,15 +37,14 @@ export const EVENT_LIMITS = { name: 28, blurb: 90, subthemes: 40, cards: 400, ma
 
 /**
  * Teintes proposées dans le dashboard (sachets alu teintés comme les 5 autres). Le serveur accepte n'importe quel
- * #rrggbb ; celles-ci restent loin des couleurs de rareté (gris, vert, bleu, rouge, doré) pour ne pas les brouiller.
+ * #rrggbb ; celles-ci restent loin des couleurs de rareté (gris, vert, bleu, rouge, doré) pour ne pas les brouiller
+ * (le Gaming Pack est déjà violet : préférer une autre teinte pour un événement Gaming).
  */
 export const EVENT_ACCENTS: Array<[string, string]> = [
-  ['#c2410c', 'Cuivre'],
-  ['#be185d', 'Framboise'],
   ['#7c3aed', 'Violet'],
-  ['#0f766e', 'Pétrole'],
-  ['#4d7c0f', 'Olive'],
-  ['#525252', 'Graphite'],
+  ['#c026d3', 'Fuchsia'],
+  ['#0e7490', 'Pétrole'],
+  ['#c2410c', 'Cuivre'],
 ];
 
 export const isHex = (s: string) => /^#[0-9a-f]{6}$/i.test(s);
@@ -141,5 +140,5 @@ export function fmtLeft(ms: number): string {
 export function demoEvent(now = Date.now()): PackEvent {
   const h = 3_600_000;
   const start = Math.floor(now / h) * h - 2 * h;
-  return { id: 'demo-valorant', name: 'Valorant', blurb: 'Les armes et leurs skins, quelques jours seulement', startAt: start, endAt: start + 56 * h, accent: '#be185d', subthemes: ['group:valorant'] };
+  return { id: 'demo-valorant', name: 'Valorant', blurb: 'Les armes et leurs skins, quelques jours seulement', startAt: start, endAt: start + 56 * h, accent: '#c026d3', subthemes: ['group:valorant'] };
 }

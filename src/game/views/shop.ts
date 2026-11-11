@@ -19,7 +19,9 @@ import { markDuelSeen } from '../duelEncounter';
 import type { WildExperiment } from '../../experiments/041-pokemon-wild/index';
 import { rarity } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast, imageReportButton } from '../ui';
-import { createPackSheet, shopPacks } from './packSheet';
+import { createPackSheet, shopPacks, type SheetPack } from './packSheet';
+import { EVENT_KEY, contentLabel, contentSig, eventCards, fmtLeft, liveEvent, type PackEvent } from '../../core/events';
+import '../evenements.css';
 import { preloadArt } from '../preload';
 import { isTouch } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
@@ -85,7 +87,22 @@ interface Batch {
   queue: SealedPack[];
 }
 
-const keyOf = (p: SealedPack) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? 'gaming');
+const keyOfBase = (p: SealedPack) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? 'gaming');
+
+/** (11/11) le booster du moment dans la fiche (même tirage que les autres, pool de l'événement) */
+function eventPack(e: PackEvent): SheetPack {
+  return {
+    key: EVENT_KEY,
+    req: { kind: 'theme', event: { id: e.id, subthemes: e.subthemes, cards: e.cards } },
+    name: e.name,
+    tagline: 'BOOSTER DU MOMENT',
+    desc: e.blurb ?? contentLabel(e),
+    accent: e.accent,
+    cards: eventCards(e),
+    event: { endAt: e.endAt, label: contentLabel(e) },
+  };
+}
+const EV_SEEN = 'bebou.evenement-vu';
 
 export function createShopView(backend: GameBackend, shell: Shell, opening: OpeningScene, go: (route: string) => void, getViewer: () => Promise<ViewerScene>): ShopView {
   const el = h('section', 'view shop');
@@ -98,6 +115,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
   })();
   if (!list.some((b) => b.key === selected)) selected = 'bebou';
+  /**
+   * (11/11) BOOSTER DU MOMENT : la fiche connaît les 5 boosters + celui de l'événement en cours (EN TÊTE). Il n'entre
+   * ni dans la roue (téléphone) ni dans la colonne (ordinateur) : il a son bandeau en haut de la boutique, avec le
+   * compte à rebours ; le toucher le montre au centre (sachet à la couleur de l'événement) et ouvre sa fiche.
+   */
+  const sheetList: SheetPack[] = [...list];
+  const packOf = (k: string) => sheetList.find((x) => x.key === k);
+  let ev: PackEvent | null = null;
+  // (booster du moment tiré puis événement fini : on le range avec le Bebou Pack, le serveur le rend tel quel)
+  const keyOf = (p: SealedPack) => (p.eventId ? (packOf(EVENT_KEY) ? EVENT_KEY : 'bebou') : keyOfBase(p));
   let mode: 'pick' | 'opening' | 'summary' = 'pick';
   let pack: SealedPack | null = null;
   /**
@@ -244,6 +271,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const ctaBtn = cta.querySelector<HTMLButtonElement>('button')!;
   const tapHint = el.querySelector<HTMLElement>('.tap-hint')!;
   const tapGhost = el.querySelector<HTMLElement>('.tap-ghost')!;
+  /** (11/11) bandeau du booster du moment (evenements.css) : rien du tout quand aucun événement n'est en cours */
+  const band = h('button', 'ev-band', `<i class="ev-dot" aria-hidden="true"></i><span class="ev-txt"><span class="ev-k">Booster du moment</span><b class="ev-n"></b></span><span class="ev-left"><small>encore</small><b data-ev-left="0"></b></span>`);
+  band.type = 'button';
+  band.hidden = true;
+  el.querySelector('.shop-left')!.prepend(band);
+  let wantEventSheet = false;
 
   /**
    * (audit UX2-06) Zone libre pour la carte montrée : hauteur de l'en-tête + compteur en haut, et du panneau du bas
@@ -271,7 +304,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const show = mode === 'pick' && !s.sealed && !(s.mode === 'online' && !u);
     cta.hidden = !show;
     if (!show) return;
-    const b = list.find((x) => x.key === selected);
+    const b = packOf(selected);
     const bal = u ? liveRegen(u).balance : 0;
     cta.querySelector('.hc-t')!.textContent = b?.soon ? `Voir le ${b.name}` : bal > 0 ? `Ouvrir le ${b?.name ?? 'booster'}` : `Voir le ${b?.name ?? 'booster'}`;
     // premier booster jamais ouvert : la 2e ligne du bouton le dit (une phrase de plus ne tient pas sous le booster en 360×740)
@@ -298,7 +331,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     tapHint.hidden = !on;
     if (!on) return void (tapGhost.hidden = true);
     const s = backend.state;
-    const b = list.find((x) => x.key === selected);
+    const b = packOf(selected);
     const bal = s.user ? liveRegen(s.user).balance : 0;
     tapHint.classList.toggle('idle', !!b?.soon || bal <= 0);
     tapHint.querySelector('.th-t')!.textContent = b?.soon ? 'bientôt disponible' : bal > 0 ? 'touche le booster pour l’ouvrir' : 'réserve vide · en recharge';
@@ -355,7 +388,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   // ── fiche du booster (overlay)
   // visuels des pochettes (face du vrai booster, rendue par la scène) : capturés une fois, dès qu'ils existent
   const thumbs = new Map<string, string>();
-  const sheet = createPackSheet(backend, shell, list, {
+  const sheet = createPackSheet(backend, shell, sheetList, {
     thumb: (k, size) => thumbs.get(k) ?? opening.packThumb(k, size),
     onSelect: (k) => select(k, { scroll: true }),
     viewCard: (c) => void viewCard(c),
@@ -384,7 +417,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   if (import.meta.env.DEV)
     (window as unknown as { __shop: unknown }).__shop = {
       async open(key: string) {
-        const p = list.find((x) => x.key === key);
+        const p = packOf(key);
         if (!p || mode !== 'pick') return false;
         const got = await backend.preparePack(p.req);
         pack = got;
@@ -458,11 +491,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
 
   function select(k: string, o: { dir?: 1 | -1; scroll?: boolean } = {}) {
     if (mode !== 'pick') return;
+    if (k === EVENT_KEY) return selectEvent();
     // sens de rotation du booster : vers la droite si on avance dans la liste, vers la gauche si on recule
     const from = list.findIndex((b) => b.key === selected);
     const to = list.findIndex((b) => b.key === k);
     const dir = o.dir ?? (to >= from ? 1 : -1);
     selected = k;
+    band.classList.remove('on');
     if (DOCK.matches) sheet.show(k);
     try {
       localStorage.setItem('bebou.booster', k);
@@ -490,6 +525,28 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
     opening.setBooster(k, !opening.reelActive(), dir);
     opening.setBoosterSoon(!!list.find((b) => b.key === k)?.soon);
+    syncState();
+  }
+
+  /** (11/11) le booster du moment au centre (pas de cran dans la roue : aucune pochette n'est « choisie ») */
+  function selectEvent() {
+    if (!ev || mode !== 'pick') return;
+    const from = selected;
+    selected = EVENT_KEY;
+    if (DOCK.matches) sheet.show(EVENT_KEY);
+    for (const b of sleeves) {
+      b.classList.remove('on');
+      b.setAttribute('aria-selected', 'false');
+    }
+    band.classList.add('on');
+    const sp = backend.state.sealed;
+    if (sp && keyOf(sp) !== EVENT_KEY) {
+      sheet.sync();
+      syncCta();
+      return;
+    }
+    if (from !== EVENT_KEY) opening.setBooster(EVENT_KEY, true, -1);
+    opening.setBoosterSoon(false);
     syncState();
   }
 
@@ -822,13 +879,93 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   opening.onWheelReady = () => requestAnimationFrame(relayout);
   WHEEL.addEventListener('change', relayout);
 
+  // ── (11/11) booster du moment : abonnement, bandeau, compte à rebours, annonce
+  let evSig = '';
+  const bootAt = performance.now();
+  function setEvents(rows: PackEvent[]) {
+    const next = liveEvent(rows);
+    const sig = next ? `${next.id}|${next.name}|${next.accent}|${next.endAt}|${next.blurb ?? ''}|${contentSig(next)}` : '';
+    if (sig === evSig) return;
+    evSig = sig;
+    ev = next;
+    const i = sheetList.findIndex((x) => x.key === EVENT_KEY);
+    if (i >= 0) sheetList.splice(i, 1);
+    if (ev) sheetList.unshift(eventPack(ev));
+    thumbs.delete(EVENT_KEY);
+    opening.setEventBooster(ev);
+    band.hidden = !ev;
+    if (ev) {
+      band.style.setProperty('--ev', ev.accent);
+      band.querySelector('.ev-n')!.textContent = ev.name;
+      band.querySelector<HTMLElement>('[data-ev-left]')!.dataset.evLeft = String(ev.endAt);
+      band.setAttribute('aria-label', `Booster du moment : ${ev.name}`);
+      tickEvent();
+      announceEvent(ev);
+      if (wantEventSheet && mode === 'pick') {
+        wantEventSheet = false;
+        sheet.open(EVENT_KEY);
+      }
+    } else if (selected === EVENT_KEY) {
+      // fini pendant qu'on le regardait : retour au Bebou Pack (un booster déjà tiré reste ouvrable)
+      if (sheet.isOpen()) sheet.close();
+      selected = 'bebou';
+      band.classList.remove('on');
+      if (mode === 'pick') select('bebou', { scroll: true });
+    }
+    if (mode === 'pick') {
+      sheet.sync();
+      syncCta();
+    }
+  }
+  /** compte à rebours (bandeau + fiche) ; à la fin, l'événement disparaît sans attendre le serveur */
+  function tickEvent() {
+    const now = Date.now();
+    if (ev && now >= ev.endAt) return setEvents([]);
+    for (const b of el.querySelectorAll<HTMLElement>('[data-ev-left]')) {
+      const end = Number(b.dataset.evLeft);
+      if (end > 0) b.textContent = fmtLeft(end - now);
+    }
+  }
+  window.setInterval(() => ev && el.isConnected && !document.hidden && tickEvent(), 1000);
+  /**
+   * Notification dans le jeu au début d'un événement (en plus de la notification push envoyée par le serveur) : un
+   * message une fois par appareil et par événement, et le bandeau marqué « nouveau » jusqu'au premier toucher.
+   */
+  function seenEvents(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem(EV_SEEN) ?? '[]') as string[];
+    } catch {
+      return [];
+    }
+  }
+  function announceEvent(e: PackEvent) {
+    const seen = seenEvents();
+    if (seen.includes(e.id)) return void band.classList.remove('new');
+    band.classList.add('new');
+    // sorti pendant qu'on joue : un message en plus (au chargement, le bandeau en tête de la boutique suffit)
+    if (performance.now() - bootAt > 15_000) toast(`Nouveau : le booster ${e.name}, à la boutique pendant ${fmtLeft(e.endAt - Date.now())} seulement`, 'info');
+    try {
+      localStorage.setItem(EV_SEEN, JSON.stringify([...seen, e.id].slice(-20)));
+    } catch {
+      /* stockage bloqué : le message reviendra */
+    }
+  }
+  band.addEventListener('click', () => {
+    if (!ev || mode !== 'pick') return;
+    haptics.pulse(6);
+    band.classList.remove('new');
+    if (DOCK.matches) select(EVENT_KEY);
+    else sheet.open(EVENT_KEY); // (la fiche appelle onSelect → select : le booster passe au centre)
+  });
+  backend.watchEvents?.(setEvents);
+
   // ── état (booster scellé pas encore ouvert : bandeau + bouton direct)
   function syncState() {
     const s = backend.state;
     if (mode !== 'pick') return;
     if (s.sealed) {
       const t = themeById(s.sealed.themeId ?? '');
-      const name = s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster';
+      const name = s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster';
       banner.hidden = false;
       banner.querySelector('span')!.textContent = `Tu as un ${name} déjà tiré, pas encore ouvert.`;
       if (keyOf(s.sealed) !== selected) select(keyOf(s.sealed));
@@ -843,7 +980,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const sp = backend.state.sealed;
     // (audit UX2-20) double toucher pendant la latence de preparePack : un seul départ
     if (!sp || mode !== 'pick' || bannerBtn.disabled) return;
-    const p = list.find((b) => b.key === keyOf(sp)) ?? list.find((b) => b.key === 'bebou') ?? list[0];
+    const p = packOf(keyOf(sp)) ?? list.find((b) => b.key === 'bebou') ?? list[0];
     bannerBtn.disabled = true;
     try {
       const got = await busyButton(bannerBtn, backend.preparePack(p.req));
@@ -895,7 +1032,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   let tapBusy = false;
   opening.onBoosterTap = async () => {
     if (mode !== 'pick' || !el.isConnected || sheet.isOpen() || tapBusy) return;
-    const p = list.find((b) => b.key === selected);
+    const p = packOf(selected);
     const s = backend.state;
     const bal = s.user ? liveRegen(s.user).balance : 0;
     if (!p || p.soon || s.sealed || bal <= 0) return void setTimeout(() => mode === 'pick' && !sheet.isOpen() && sheet.open(selected), 0);
@@ -1503,11 +1640,15 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
     showSummary();
   }
-  const openingReq = (p: SealedPack): PackRequest => (p.packKind === 'bebou' ? { kind: 'bebou' } : { kind: 'theme', themeId: p.themeId });
+  const openingReq = (p: SealedPack): PackRequest => (p.eventId ? packOf(EVENT_KEY)?.req ?? { kind: 'bebou' } : p.packKind === 'bebou' ? { kind: 'bebou' } : { kind: 'theme', themeId: p.themeId });
 
   /** Compteur de collection du booster : « World : 143/924 » (thème), « Collection : 1 234/13 888 » (Bebou Pack). */
   function collectionCounter(req: PackRequest): { label: string; have: number; total: number } {
     const mine = new Set(backend.state.collection.map((c) => c.cardId));
+    if (req.event) {
+      const ec = eventCards(req.event);
+      return { label: ev?.name ?? 'Booster du moment', have: ec.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: ec.length };
+    }
     const t = req.kind === 'theme' ? themeById(req.themeId ?? '') : undefined;
     const cards = t ? t.cards : THEMES.flatMap((x) => x.cards);
     return { label: t ? t.label : 'Collection', have: cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: cards.length };
@@ -1516,7 +1657,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   /** Fond du récap selon le meilleur drop : lueur radiale de la couleur de la rareté, rayons et particules aux couleurs du pack. */
   function paintSummaryBg(best: PackCard, req: PackRequest) {
     const rr = rarity(best.rarity);
-    const accent = req.kind === 'bebou' ? BEBOU_PACK.style.accent : themeById(req.themeId ?? '')?.style.accent ?? rr.hex;
+    const accent = req.event ? packOf(EVENT_KEY)?.accent ?? rr.hex : req.kind === 'bebou' ? BEBOU_PACK.style.accent : themeById(req.themeId ?? '')?.style.accent ?? rr.hex;
     sumBg.className = `sum-bg r-${best.rarity}`;
     sumBg.style.setProperty('--rc', rr.secret ? '#e8927c' : rr.hex);
     sumBg.style.setProperty('--ra', rr.accentHex);
@@ -1652,7 +1793,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       btn.disabled = true; // double toucher : un seul départ
       shell.requestGyro();
       const n = Number(btn.dataset.n) || 1;
-      const p = list.find((b) => b.key === (req.kind === 'bebou' ? 'bebou' : themeById(req.themeId ?? '')?.id)) ?? list.find((b) => b.key === 'bebou') ?? list[0];
+      // (booster du moment terminé entre-temps : « Encore un » repart sur le Bebou Pack)
+      const p = (req.event ? packOf(EVENT_KEY) : list.find((b) => b.key === (req.kind === 'bebou' ? 'bebou' : themeById(req.themeId ?? '')?.id))) ?? list.find((b) => b.key === 'bebou') ?? list[0];
       const hi = batch?.hi ?? false;
       const all = batch?.all ?? false; // (audit UX2-02) « Tout révéler » suit, comme « 4★ et + »
       back();
@@ -1760,7 +1902,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       syncState();
       requestAnimationFrame(syncDock);
       // lien direct vers une fiche (missions « Go », #/boutique/bebou)
-      if (sub && list.some((b) => b.key === sub)) sheet.open(sub);
+      if (sub && sheetList.some((b) => b.key === sub)) sheet.open(sub);
+      // (lien de la notification de début : l'événement peut arriver juste après la boutique)
+      else if (sub === EVENT_KEY) wantEventSheet = true;
     },
     leave() {
       stopMusicPreview(0.3);
