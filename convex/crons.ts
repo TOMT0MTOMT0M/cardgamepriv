@@ -17,5 +17,8 @@ crons.interval('annonces : expiration', { minutes: 15 }, internal.listings.expir
 // le premier est marqué « Numéro un » (retours live 6, C15). Avant : une seule requête qui lisait toutes les
 // collections, au-delà de la limite de Convex.
 crons.interval('classement : lignes et numero un', { minutes: 5 }, internal.profiles.refreshRanks, {});
+// (11/11, chantier ouvertures-saisons) saisons mensuelles : ouvre la saison, ajoute les nouveaux joueurs, et au changement
+// de mois (Paris) fige le classement, donne les récompenses et ouvre la suivante (idempotent — convex/seasons.ts)
+crons.interval('saisons : fin du mois', { hours: 1 }, internal.seasons.tick, {});
 
 export default crons;

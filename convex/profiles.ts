@@ -23,7 +23,7 @@ export async function statsOf(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: 
   const t = touchStreak(u.streak, Date.now());
   const streak = !u.streak ? 0 : t === null ? u.streak.count : t.count === 1 ? 0 : u.streak.count;
   // (retours live 6) + doublons brûlés (titres de la forge) et « a été n°1 » (titre Numéro un)
-  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0 });
+  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 });
   return { stats, collection };
 }
 

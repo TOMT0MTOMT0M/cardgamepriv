@@ -112,6 +112,9 @@ export default defineSchema({
     isModerator: v.optional(v.boolean()),
     /** (retours live 6, C15) a déjà été n°1 du classement (complétion) : débloque le titre « Numéro un » */
     wasTop: v.optional(v.boolean()),
+    /** (11/11, chantier ouvertures-saisons — convex/seasons.ts) saisons finies dans les 3 premiers / à la 1re place */
+    seasonPodiums: v.optional(v.number()),
+    seasonWins: v.optional(v.number()),
     /** appareils vus (id tiré au hasard et gardé dans le navigateur) : signal « deux comptes sur le même appareil » */
     devices: v.optional(v.array(v.string())),
     /** PARRAINAGE (retours live 02, §10 — convex/referrals.ts) : mon code d'invitation (lien `?ref=CODE`) */
@@ -742,4 +745,22 @@ export default defineSchema({
     byName: v.string(),
     at: v.number(),
   }).index('by_user', ['userId', 'at']),
+
+  // ───────────────────────────── (11/11) chantier « ouvertures-saisons » : SAISONS MENSUELLES du classement
+  /**
+   * Une saison = un mois (heure de Paris, clé « 2026-11 »). Une seule est `open` : `bases` garde, pour chaque joueur,
+   * ses cartes différentes et ses boosters au début de la saison (score = cartes différentes gagnées depuis). À la fin
+   * du mois, `convex/seasons.ts` (cron horaire) la fige : `results` (classement final, récompenses données), `podium`
+   * (3 premiers, affichés dans Classement), puis ouvre la suivante. Rejouer le cron ne redonne rien (status `closed`).
+   */
+  seasons: defineTable({
+    key: v.string(),
+    status: v.union(v.literal('open'), v.literal('closed')),
+    startAt: v.number(),
+    closedAt: v.optional(v.number()),
+    bases: v.array(v.object({ userId: v.id('users'), uniques: v.number(), packs: v.number() })),
+    results: v.optional(v.array(v.object({ userId: v.id('users'), name: v.string(), avatarUrl: v.optional(v.string()), rank: v.number(), gained: v.number(), packs: v.number(), boosters: v.number() }))),
+  })
+    .index('by_status', ['status'])
+    .index('by_key', ['key']),
 });

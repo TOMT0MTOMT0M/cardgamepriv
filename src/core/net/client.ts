@@ -873,6 +873,11 @@ class GameNetClient {
     if (this.sessionToken) await this.client.mutation(api.profiles.refreshMyRank, { sessionToken: this.sessionToken }).catch(() => undefined);
     return await this.client.query(api.profiles.leaderboard, {});
   }
+  /** (11/11) saisons du classement */
+  public async seasonBoard() {
+    if (!this.client) return { current: null, past: [] };
+    return await this.client.query(api.seasons.board, {});
+  }
   public async activity(userId: Id<'users'>) {
     if (!this.client) return [];
     return await this.client.query(api.profiles.activity, { userId, limit: 40 });

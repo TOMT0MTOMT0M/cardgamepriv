@@ -297,6 +297,9 @@ export function createOnlineBackend(): GameBackend {
     async leaderboard() {
       return (await net.leaderboard()).map((r) => ({ ...r, id: r.id as string }));
     },
+    async seasonBoard() {
+      return await net.seasonBoard();
+    },
     async activity(userId) {
       return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
     },

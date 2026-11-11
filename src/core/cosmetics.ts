@@ -31,6 +31,9 @@ export interface PlayerStats {
   burned?: number;
   /** 1 = a déjà été n°1 du classement (convex/profiles.ts, markLeader) */
   wasTop?: number;
+  /** (11/11, saisons — convex/seasons.ts) saisons finies dans les 3 premiers / premier */
+  seasonPodiums?: number;
+  seasonWins?: number;
 }
 
 export interface Cosmetic {
@@ -120,8 +123,10 @@ const ANIMATED_FRAMES: Cosmetic[] = [
   C({ id: 'a-galaxie', label: 'Galaxie', need: 'uniq-1000', css: '#b59cff', anim: 'galaxie' }),
   C({ id: 'a-neon', label: 'Néon', need: 'contract-25', css: '#39ffd2', anim: 'neon' }),
 ];
-/** Cadres d'avatar : aucun, un par couleur de la palette, puis les cadres animés. */
-export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: frameCss(a.css!) })), ...ANIMATED_FRAMES];
+/** (11/11, saisons) cadre gagné en finissant une saison sur le podium (convex/seasons.ts) — doré : la couleur dit le rang */
+const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison', need: 'season-podium', css: '#ffc94a' })];
+/** Cadres d'avatar : aucun, un par couleur de la palette, puis les cadres animés et celui des saisons. */
+export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: frameCss(a.css!) })), ...ANIMATED_FRAMES, ...SEASON_FRAMES];
 const LEGACY_BANNERS: Cosmetic[] = [
   C({ id: 'ember', label: 'Braise', css: 'linear-gradient(120deg, #2a1410, #5a2a22 45%, #1a0d0b)' }),
   C({ id: 'night', label: 'Nuit', css: 'linear-gradient(120deg, #0c1118, #16314a 50%, #0a0f16)' }),
@@ -183,6 +188,8 @@ export const TITLES: Cosmetic[] = [
   C({ id: 't-star-2', label: 'Chasseur de légendes', need: 'myth-10' }),
   C({ id: 't-star-3', label: 'Arc-en-ciel', need: 'myth-50' }),
   C({ id: 't-top', label: 'Numéro un', need: 'top-1' }),
+  // (11/11, saisons) premier d'une saison mensuelle du classement (convex/seasons.ts)
+  C({ id: 't-season-1', label: 'Champion de saison', need: 'season-1' }),
 ];
 
 /**
@@ -251,7 +258,7 @@ export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(
   collection: Array<{ cardId: string; rarity: string; count: number }>,
-  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number },
+  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number },
 ): PlayerStats {
   const ids = new Set<string>();
   let mythics = 0, legendaries = 0, secrets = 0;

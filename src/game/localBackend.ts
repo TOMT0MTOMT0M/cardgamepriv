@@ -11,6 +11,7 @@ import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, ne
 import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak, type StreakState } from '../core/streak';
 import { OPENINGS, PROFILE_MEDIA_DEMO_MAX, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type CosmeticChoice, type OpeningId, type PlayerStats } from '../core/cosmetics';
+import { seasonKey } from '../core/seasons';
 
 /** démo : photo / bannière importées (data URL), une clé par sorte — hors de la sauvegarde principale (lot P, live 02) */
 const DEMO_MEDIA_LS = 'bebou.demo.media';
@@ -925,6 +926,12 @@ export function createLocalBackend(): GameBackend {
     async leaderboard() {
       const row = (id: string, name: string, st: ReturnType<typeof myStats>, cosmetics: CosmeticChoice) => ({ id, name, cosmetics: cleanCosmetics(cosmetics, st), uniques: st.uniques, total: st.total, pct: st.total ? (st.uniques / st.total) * 100 : 0, mythics: st.mythics, secrets: st.secrets, packsOpened: st.packsOpened, tradesDone: st.tradesDone, streak: st.streak, achievements: doneCount(st, id === 'me' ? myEcon() : emptyEcon()) });
       return [row('me', 'Toi', myStats(), save.cosmetics ?? {}), ...save.bots.map((b, i) => row(b.id, b.name, botStats(b, i), {}))];
+    },
+    // (11/11) démo : la saison du mois en cours, départ à zéro pour tout le monde (pas de cron, pas d'historique)
+    async seasonBoard() {
+      const now = Date.now();
+      const bases = [{ userId: 'me', uniques: 0, packs: 0 }, ...save.bots.map((b) => ({ userId: b.id, uniques: 0, packs: 0 }))];
+      return { current: { key: seasonKey(now), startAt: now, bases }, past: [] };
     },
     async activity(userId) {
       if (userId === 'me') return (save.activity ?? []).slice(0, 40);

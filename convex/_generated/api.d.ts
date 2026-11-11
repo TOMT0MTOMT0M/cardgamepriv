@@ -41,6 +41,7 @@ import type * as push from "../push.js";
 import type * as pushSend from "../pushSend.js";
 import type * as pwAuth from "../pwAuth.js";
 import type * as referrals from "../referrals.js";
+import type * as seasons from "../seasons.js";
 import type * as suggestions from "../suggestions.js";
 import type * as survey from "../survey.js";
 import type * as trades from "../trades.js";
@@ -86,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   pushSend: typeof pushSend;
   pwAuth: typeof pwAuth;
   referrals: typeof referrals;
+  seasons: typeof seasons;
   suggestions: typeof suggestions;
   survey: typeof survey;
   trades: typeof trades;

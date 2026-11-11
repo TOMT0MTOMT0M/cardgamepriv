@@ -191,6 +191,9 @@ export interface AchievementStats {
   sportUniques: number;
   /** a déjà été n°1 du classement (1 = oui) — posé par le serveur (convex/profiles.ts, `markLeader`) */
   wasTop: number;
+  /** (11/11, saisons — convex/seasons.ts) saisons finies sur le podium (top 3) / à la première place */
+  seasonPodiums: number;
+  seasonWins: number;
   /** BÉBOU : paliers obtenus dans les autres succès du profil (le « niveau » du joueur) */
   bebouLevel: number;
 }
@@ -305,6 +308,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('streak-60', 'Aurore', '60 jours de connexion d’affilée', 4, 'streak', 60, K),
   // Classement
   A('top-1', 'Numéro un', 'Sois premier du classement (complétion)', 4, 'wasTop', 1, K),
+  // (11/11) saisons mensuelles (convex/seasons.ts) : le podium donne un cadre, la victoire un titre
+  A('season-podium', 'Sur le podium', 'Finis une saison dans les 3 premiers', 3, 'seasonPodiums', 1, K),
+  A('season-1', 'Champion de saison', 'Gagne une saison du classement', 4, 'seasonWins', 1, K),
   // Bébou : le niveau (paliers obtenus dans les succès du profil)
   A('bebou-5', 'Bébou en herbe', 'Obtiens 5 paliers de succès', 1, 'bebouLevel', 5),
   A('bebou-15', 'Bébou confirmé', 'Obtiens 15 paliers de succès', 2, 'bebouLevel', 15, K),
@@ -357,6 +363,8 @@ const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   burned: 'Forge',
   streak: 'Série de connexion',
   wasTop: 'Classement',
+  seasonPodiums: 'Podiums de saison',
+  seasonWins: 'Saisons gagnées',
   bebouLevel: 'Niveau Bébou',
   gamesPlayed: 'Parties jouées',
   gamesWon: 'Batailles gagnées',
@@ -436,6 +444,7 @@ export function achievementStats(
   p: {
     packsOpened: number; uniques: number; mythics: number; legendaries: number; secrets: number; fullSubthemes: number; tradesDone: number; contractsSigned: number; streak: number;
     worldUniques?: number; gamingUniques?: number; popUniques?: number; sportUniques?: number; burned?: number; wasTop?: number;
+    seasonPodiums?: number; seasonWins?: number;
   },
   e: EconState,
 ): AchievementStats {
@@ -460,6 +469,8 @@ export function achievementStats(
     popUniques: p.popUniques ?? 0,
     sportUniques: p.sportUniques ?? 0,
     wasTop: p.wasTop ?? 0,
+    seasonPodiums: p.seasonPodiums ?? 0,
+    seasonWins: p.seasonWins ?? 0,
     bebouLevel: 0,
   };
   s.bebouLevel = ACHIEVEMENTS.filter((a) => !ECON_ONLY.has(a.stat) && achievementDone(a, s)).length;

@@ -4,6 +4,7 @@ import { applyRegen, type RegenState } from '../core/packRegen';
 import type { MissionsState } from '../core/missions';
 import type { StreakState } from '../core/streak';
 import type { CosmeticChoice, OpeningId, PlayerStats } from '../core/cosmetics';
+import type { SeasonBoard } from '../core/seasons';
 import type { EcoBackend } from './eco';
 import type { ChatApi } from '../core/chat';
 
@@ -463,6 +464,8 @@ export interface GameBackend {
   surveyResults(surveyId: string): Promise<SurveyResults>;
   /** Classement entre nous. */
   leaderboard(): Promise<LeaderRow[]>;
+  /** (11/11) saisons mensuelles du classement : la saison en cours (points de départ) et les saisons passées */
+  seasonBoard(): Promise<SeasonBoard>;
   /** Fil d'activité d'un joueur. */
   activity(userId: string): Promise<ActivityItem[]>;
   /** Contrat : brûle des doublons d'une étoile contre une carte de l'étoile au-dessus. */
