@@ -111,6 +111,7 @@ export function createOnlineBackend(): GameBackend {
             guideSeen: !!n.user.guideSeen,
             gamesNoticeAt: n.user.gamesNoticeAt,
             referralNoticeAt: n.user.referralNoticeAt,
+            openingStyle: n.user.openingStyle === 'burn' || n.user.openingStyle === 'fan' ? n.user.openingStyle : undefined,
           }
         : null;
       state.wishlist = n.user?.wishlist ?? [];
@@ -277,6 +278,9 @@ export function createOnlineBackend(): GameBackend {
     async setCosmetics(choice) {
       return await net.setCosmetics(choice);
     },
+    async setOpening(style) {
+      await net.setOpening(style);
+    },
     async setProfileMedia(kind, file) {
       return await net.setProfileMedia(kind, file);
     },
@@ -330,6 +334,9 @@ export function createOnlineBackend(): GameBackend {
     },
     async leaderboard() {
       return (await net.leaderboard()).map((r) => ({ ...r, id: r.id as string }));
+    },
+    async seasonBoard() {
+      return await net.seasonBoard();
     },
     async activity(userId) {
       return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));

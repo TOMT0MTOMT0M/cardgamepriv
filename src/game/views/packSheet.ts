@@ -10,7 +10,9 @@ import { cardPackChance } from '../../core/packRoll';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { haptics } from '../../core/haptics';
-import { fmtCoins } from '../../core/economy';
+import { ACHIEVEMENTS, achievementDone, fmtCoins } from '../../core/economy';
+import { DEFAULT_OPENING, OPENINGS, type OpeningId } from '../../core/cosmetics';
+import '../progression.css';
 import { COIN_ICON } from './wallet';
 
 /**
@@ -108,6 +110,7 @@ export function createPackSheet(
         <div class="ps-block ps-odds"><div class="ps-bt">Chances par carte <small>· les vrais taux du tirage · la chance de chaque carte est écrite sous elle dans « Cartes du booster »</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
         <div class="ps-block ps-secret" hidden></div>
         <div class="ps-block ps-pity"></div>
+        <div class="ps-block ps-anim" hidden></div>
         <div class="ps-block ps-wish"></div>
         <button class="ps-cards-btn"></button>
       </div>
@@ -140,6 +143,7 @@ export function createPackSheet(
   const secretEl = q('.ps-secret');
   const pityEl = q('.ps-pity');
   const wishEl = q('.ps-wish');
+  const animEl = q('.ps-anim');
   const cardsBtn = q<HTMLButtonElement>('.ps-cards-btn');
   const openBtn = q<HTMLButtonElement>('.open-btn');
   const openSub = q('.open-sub');
@@ -300,7 +304,54 @@ export function createPackSheet(
       : `<div class="ps-bt">Pity 6★ <small>· ${PITY_LIMIT} boosters secs max</small></div><div class="ps-pity-l"><b>${fmtN(left)}</b> booster${left > 1 ? 's' : ''} avant un 6★ sûr</div><span class="ps-pb"><i style="width:${pct.toFixed(1)}%"></i></span>`;
     renderWish();
     renderCardsBtn();
+    renderAnim();
   }
+
+  /**
+   * (11/11, sondage) ANIMATION D'OUVERTURE : la déchirure pour tous, les autres se gagnent par un succès
+   * (src/core/cosmetics.ts, OPENINGS). Le choix vaut pour tous les boosters (serveur : `setOpening`, refusé si verrouillé).
+   */
+  let animSig = '';
+  let animBusy = false;
+  function renderAnim() {
+    const u = backend.state.user;
+    if (!u) return void (animEl.hidden = true);
+    const st = backend.eco.snapshot?.achievements.stats;
+    const cur = u.openingStyle ?? DEFAULT_OPENING;
+    const rows = OPENINGS.map((o) => {
+      const a = o.need ? ACHIEVEMENTS.find((x) => x.id === o.need) : undefined;
+      const ok = !a || (!!st && achievementDone(a, st));
+      const prog = a && st ? ` · ${fmtN(Math.min(st[a.stat] ?? 0, a.target))}/${fmtN(a.target)}` : '';
+      return { o, ok, on: o.id === cur, sub: ok ? o.blurb : `${a ? `Succès « ${a.label} » : ${a.how}` : ''}${prog}` };
+    });
+    const sig = JSON.stringify(rows.map((r) => [r.o.id, r.ok, r.on, r.sub]));
+    animEl.hidden = false;
+    if (sig === animSig) return;
+    animSig = sig;
+    animEl.innerHTML = `<div class="ps-bt">Animation d’ouverture <small>· pour tous tes boosters · les autres se gagnent avec les succès</small></div><div class="ps-an-row" role="radiogroup" aria-label="Animation d’ouverture">${rows
+      .map((r) => `<button class="ps-an${r.on ? ' on' : ''}${r.ok ? '' : ' locked'}" role="radio" aria-checked="${r.on}" data-o="${r.o.id}"${r.ok ? '' : ' aria-disabled="true"'}><b>${esc(r.o.label)}</b><small>${esc(r.sub)}</small></button>`)
+      .join('')}</div>`;
+  }
+  animEl.addEventListener('click', async (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-o]');
+    if (!b || animBusy || b.classList.contains('on')) return;
+    const o = OPENINGS.find((x) => x.id === b.dataset.o);
+    if (!o) return;
+    if (b.classList.contains('locked')) return void toast(`Verrouillée · ${o.how}`, 'info');
+    animBusy = true;
+    try {
+      await busyButton(b, backend.setOpening(o.id as OpeningId));
+      haptics.pulse(6);
+      shell.sfx.tick(1.2, 0.04);
+      toast(`Animation d’ouverture : ${o.label}`, 'ok');
+    } catch (err) {
+      toast(errMsg(err), 'err');
+    } finally {
+      animBusy = false;
+      animSig = '';
+      renderAnim();
+    }
+  });
 
   let wishSig = '';
   function renderWish() {

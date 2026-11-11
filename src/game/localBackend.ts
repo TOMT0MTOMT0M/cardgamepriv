@@ -12,7 +12,8 @@ import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
 import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak, type StreakState } from '../core/streak';
-import { PROFILE_MEDIA_DEMO_MAX, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type CosmeticChoice, type PlayerStats } from '../core/cosmetics';
+import { OPENINGS, PROFILE_MEDIA_DEMO_MAX, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type CosmeticChoice, type OpeningId, type PlayerStats } from '../core/cosmetics';
+import { seasonKey } from '../core/seasons';
 
 /** démo : photo / bannière importées (data URL), une clé par sorte — hors de la sauvegarde principale (lot P, live 02) */
 const DEMO_MEDIA_LS = 'bebou.demo.media';
@@ -94,6 +95,8 @@ interface Saved {
   binders?: Binder[];
   covers?: Record<string, string>;
   cosmetics?: CosmeticChoice;
+  /** (11/11) animation d'ouverture choisie (OPENINGS) ; absente : la déchirure */
+  opening?: OpeningId;
   trades_done?: number;
   contracts_done?: number;
   /** pièces, compteurs de l'économie, parties de l'espace Jeux (ecoLocal.ts) */
@@ -232,6 +235,7 @@ export function createLocalBackend(): GameBackend {
       totalPacksOpened: save.opened,
       pityCount: save.pity ?? 0,
       streak: save.streak,
+      ...(save.opening && save.opening !== 'tear' ? { openingStyle: save.opening } : {}),
     };
     state.wishlist = save.wishlist ?? [];
     state.tradeProtected = save.tradeProtected ?? [];
@@ -1057,6 +1061,13 @@ export function createLocalBackend(): GameBackend {
       sync();
       return save.cosmetics;
     },
+    async setOpening(style) {
+      const o = OPENINGS.find((x) => x.id === style);
+      if (!o) throw new Error('Animation d’ouverture inconnue.');
+      if (!o.unlock(myStats())) throw new Error(`Pas encore débloquée. ${o.how}`);
+      save.opening = o.id === 'tear' ? undefined : o.id;
+      sync();
+    },
     // photo / bannière importées (retours live 02) : data URL dans une clé à part du localStorage (pas dans la sauvegarde
     // écrite à chaque action), limite plus basse qu'en ligne ; stockage plein ou bloqué → refus clair
     async setProfileMedia(kind, file) {
@@ -1087,6 +1098,12 @@ export function createLocalBackend(): GameBackend {
     async leaderboard() {
       const row = (id: string, name: string, st: ReturnType<typeof myStats>, cosmetics: CosmeticChoice) => ({ id, name, cosmetics: cleanCosmetics(cosmetics, st), uniques: st.uniques, total: st.total, pct: st.total ? (st.uniques / st.total) * 100 : 0, mythics: st.mythics, secrets: st.secrets, packsOpened: st.packsOpened, tradesDone: st.tradesDone, streak: st.streak, achievements: doneCount(st, id === 'me' ? myEcon() : emptyEcon()) });
       return [row('me', 'Toi', myStats(), save.cosmetics ?? {}), ...save.bots.map((b, i) => row(b.id, b.name, botStats(b, i), {}))];
+    },
+    // (11/11) démo : la saison du mois en cours, départ à zéro pour tout le monde (pas de cron, pas d'historique)
+    async seasonBoard() {
+      const now = Date.now();
+      const bases = [{ userId: 'me', uniques: 0, packs: 0 }, ...save.bots.map((b) => ({ userId: b.id, uniques: 0, packs: 0 }))];
+      return { current: { key: seasonKey(now), startAt: now, bases }, past: [] };
     },
     async activity(userId) {
       if (userId === 'me') return (save.activity ?? []).slice(0, 40);

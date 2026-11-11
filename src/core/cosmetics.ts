@@ -31,6 +31,9 @@ export interface PlayerStats {
   burned?: number;
   /** 1 = a déjà été n°1 du classement (convex/profiles.ts, markLeader) */
   wasTop?: number;
+  /** (11/11, saisons — convex/seasons.ts) saisons finies dans les 3 premiers / premier */
+  seasonPodiums?: number;
+  seasonWins?: number;
 }
 
 export interface Cosmetic {
@@ -120,8 +123,10 @@ const ANIMATED_FRAMES: Cosmetic[] = [
   C({ id: 'a-galaxie', label: 'Galaxie', need: 'uniq-1000', css: '#b59cff', anim: 'galaxie' }),
   C({ id: 'a-neon', label: 'Néon', need: 'contract-25', css: '#39ffd2', anim: 'neon' }),
 ];
-/** Cadres d'avatar : aucun, un par couleur de la palette, puis les cadres animés. */
-export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: frameCss(a.css!) })), ...ANIMATED_FRAMES];
+/** (11/11, saisons) cadre gagné en finissant une saison sur le podium (convex/seasons.ts) — doré : la couleur dit le rang */
+const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison', need: 'season-podium', css: '#ffc94a' })];
+/** Cadres d'avatar : aucun, un par couleur de la palette, puis les cadres animés et celui des saisons. */
+export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: frameCss(a.css!) })), ...ANIMATED_FRAMES, ...SEASON_FRAMES];
 const LEGACY_BANNERS: Cosmetic[] = [
   C({ id: 'ember', label: 'Braise', css: 'linear-gradient(120deg, #2a1410, #5a2a22 45%, #1a0d0b)' }),
   C({ id: 'night', label: 'Nuit', css: 'linear-gradient(120deg, #0c1118, #16314a 50%, #0a0f16)' }),
@@ -183,7 +188,23 @@ export const TITLES: Cosmetic[] = [
   C({ id: 't-star-2', label: 'Chasseur de légendes', need: 'myth-10' }),
   C({ id: 't-star-3', label: 'Arc-en-ciel', need: 'myth-50' }),
   C({ id: 't-top', label: 'Numéro un', need: 'top-1' }),
+  // (11/11, saisons) premier d'une saison mensuelle du classement (convex/seasons.ts)
+  C({ id: 't-season-1', label: 'Champion de saison', need: 'season-1' }),
 ];
+
+/**
+ * (11/11, sondage : « animations d'ouverture à débloquer ») ANIMATIONS D'OUVERTURE — décision de Tom du 07/11 : la
+ * déchirure pour tout le monde, les autres se GAGNENT (un succès chacune). Le choix vaut pour tous les boosters ; il est
+ * gardé au serveur (`users.cosmetics.opening`, convex/profiles.ts `setOpening`, refusé si verrouillé). Mise en scène :
+ * src/game/scenes/opening.ts (`openStyleOf`).
+ */
+export type OpeningId = 'tear' | 'burn' | 'fan';
+export const OPENINGS: Array<Cosmetic & { id: OpeningId; blurb: string }> = [
+  { ...C({ id: 'tear', label: 'Déchirure' }), id: 'tear', blurb: 'Glisse le doigt pour déchirer le haut du booster.' },
+  { ...C({ id: 'burn', label: 'Brûlure', need: 'burn-250' }), id: 'burn', blurb: 'Maintiens pour brûler l’emballage depuis le centre.' },
+  { ...C({ id: 'fan', label: 'Éventail', need: 'world-150' }), id: 'fan', blurb: 'Un toucher arrache le haut, les cartes s’ouvrent en éventail.' },
+];
+export const DEFAULT_OPENING: OpeningId = 'tear';
 
 /** Badges (petites médailles sous le pseudo, plusieurs à la fois, ordonnables). */
 export const BADGES: Cosmetic[] = [
@@ -227,16 +248,17 @@ export function accentColor(id?: string): string | undefined {
 }
 
 /** Cosmétiques débloqués par un succès (page Succès : « récompenses »). */
-export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine'; c: Cosmetic }> {
-  const out: Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine'; c: Cosmetic }> = [];
-  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
+export type CosmeticKind = 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine' | 'Ouverture';
+export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; c: Cosmetic }> {
+  const out: Array<{ kind: CosmeticKind; c: Cosmetic }> = [];
+  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES], ['Ouverture', OPENINGS]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
   return out;
 }
 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(
   collection: Array<{ cardId: string; rarity: string; count: number }>,
-  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number },
+  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number },
 ): PlayerStats {
   const ids = new Set<string>();
   let mythics = 0, legendaries = 0, secrets = 0;

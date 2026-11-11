@@ -93,7 +93,9 @@ export default defineSchema({
     /** pochettes de sous-thème choisies à la main (vue Albums) : sous-thème → carte épinglée */
     covers: v.optional(v.record(v.string(), v.string())),
     /** cosmétiques du profil (src/core/cosmetics.ts) : bannière, cadre d'avatar, titre, badges — tout se débloque en jouant */
-    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()) })),
+    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()),
+      /** (11/11, chantier ouvertures-saisons) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) — absente : la déchirure */
+      opening: v.optional(v.string()) })),
     /** photo de profil / bannière importées par le joueur (GIF animé ou image, ≤ 2 Mo, convex/profiles.ts) — sinon l'avatar Discord */
     avatarMedia: v.optional(v.id('_storage')),
     bannerMedia: v.optional(v.id('_storage')),
@@ -112,6 +114,9 @@ export default defineSchema({
     isModerator: v.optional(v.boolean()),
     /** (retours live 6, C15) a déjà été n°1 du classement (complétion) : débloque le titre « Numéro un » */
     wasTop: v.optional(v.boolean()),
+    /** (11/11, chantier ouvertures-saisons — convex/seasons.ts) saisons finies dans les 3 premiers / à la 1re place */
+    seasonPodiums: v.optional(v.number()),
+    seasonWins: v.optional(v.number()),
     /** appareils vus (id tiré au hasard et gardé dans le navigateur) : signal « deux comptes sur le même appareil » */
     devices: v.optional(v.array(v.string())),
     /** PARRAINAGE (retours live 02, §10 — convex/referrals.ts) : mon code d'invitation (lien `?ref=CODE`) */
@@ -773,4 +778,22 @@ export default defineSchema({
     /** dernier passage d'une tâche (début / fin) : réécrire la ligne relance `events:current` chez tout le monde */
     tickAt: v.optional(v.number()),
   }).index('by_end', ['endAt']),
+
+  // ───────────────────────────── (11/11) chantier « ouvertures-saisons » : SAISONS MENSUELLES du classement
+  /**
+   * Une saison = un mois (heure de Paris, clé « 2026-11 »). Une seule est `open` : `bases` garde, pour chaque joueur,
+   * ses cartes différentes et ses boosters au début de la saison (score = cartes différentes gagnées depuis). À la fin
+   * du mois, `convex/seasons.ts` (cron horaire) la fige : `results` (classement final, récompenses données), `podium`
+   * (3 premiers, affichés dans Classement), puis ouvre la suivante. Rejouer le cron ne redonne rien (status `closed`).
+   */
+  seasons: defineTable({
+    key: v.string(),
+    status: v.union(v.literal('open'), v.literal('closed')),
+    startAt: v.number(),
+    closedAt: v.optional(v.number()),
+    bases: v.array(v.object({ userId: v.id('users'), uniques: v.number(), packs: v.number() })),
+    results: v.optional(v.array(v.object({ userId: v.id('users'), name: v.string(), avatarUrl: v.optional(v.string()), rank: v.number(), gained: v.number(), packs: v.number(), boosters: v.number() }))),
+  })
+    .index('by_status', ['status'])
+    .index('by_key', ['key']),
 });

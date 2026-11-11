@@ -124,15 +124,26 @@ import type { PackCard, SealedPack } from '../backend';
  *    cachées, chaque toucher retourne la suivante (de la moins rare à la plus rare), sans attendre.
  */
 export type OpenStyle = 'burn' | 'tear' | 'fan';
-export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId' | 'eventId'>): OpenStyle {
-  // (retours 07/11) une seule ouverture pour tous les boosters : la DÉCHIRURE. « Brûler » (Gaming) et « éventail »
-  // (World) restent dans le code : à gagner plus tard (succès, boutique…) — openStyleUnlocked le dira.
-  if (!UNLOCK_STYLES) return 'tear';
-  if (p.packKind === 'bebou' || p.eventId) return 'tear';
-  return themeById(p.themeId ?? '')?.id === 'monde' ? 'fan' : 'burn';
+/**
+ * (retours 07/11) une seule ouverture par défaut pour tous les boosters : la DÉCHIRURE. (11/11, sondage) « Brûler »
+ * (ex-Gaming) et « éventail » (ex-World Pack) se GAGNENT par un succès (src/core/cosmetics.ts, OPENINGS) ; le joueur
+ * choisit dans la fiche d'un booster et son choix vaut pour tous les boosters (`setOpeningChoice`, posé par la boutique
+ * depuis `users.me`). L'ambiance Éclipse, le god pack et les Merveilles du World Pack se jouent par-dessus, quel que
+ * soit le style.
+ */
+export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId' | 'eventId'> & { cards?: unknown[] }): OpenStyle {
+  // (11/11) le booster du moment (événement limité) suit aussi le choix du joueur
+  // l'éventail tient 10 cartes au plus (×5 / ×10 = gros booster de 25 / 50) : au-delà, la déchirure
+  if (chosenStyle === 'fan' && (p.cards?.length ?? 5) > FAN_MAX) return 'tear';
+  return chosenStyle;
 }
-/** styles d'ouverture déverrouillables (brûler, éventail) : fermé tant que rien ne les débloque en jeu */
-const UNLOCK_STYLES = false;
+/** cartes au plus dans l'éventail (fanLayout : au-delà, elles deviennent trop petites) */
+const FAN_MAX = 10;
+let chosenStyle: OpenStyle = 'tear';
+/** Animation d'ouverture choisie par le joueur (déjà vérifiée débloquée par le serveur) ; inconnue → la déchirure. */
+export function setOpeningChoice(id: string | undefined) {
+  chosenStyle = id === 'burn' || id === 'fan' ? id : 'tear';
+}
 
 export interface OpeningEvents {
   /** le joueur doit maintenir pour ouvrir */
