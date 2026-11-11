@@ -59,9 +59,13 @@ const POSE: Record<Cs3dModel, { side: [number, number, number]; a: number; s: nu
   m4a4: { side: [0, Math.PI / 2, 0], a: 0.75, s: 0.9, y: 0 },
 } as Record<Cs3dModel, { side: [number, number, number]; a: number; s: number; y: number }>;
 
-/** profondeur de la boîte (unités carte) : le fond est à BACK derrière la vitre, le skin au milieu */
-const BACK = 0.42;
-const MID = 0.17;
+/**
+ * Profondeur de la boîte (unités carte) : le skin tourne sur lui-même au milieu (MID, assez loin de la vitre pour qu'une
+ * demi-longueur ne la traverse jamais), le fond est à BACK. SCALE compense la perspective (le skin est plus loin).
+ */
+const BACK = 0.85;
+const MID = 0.4;
+const SCALE = 1.0;
 
 interface Assets {
   model: Group;
@@ -108,6 +112,8 @@ export function preloadCs3d(cardId: string): Promise<Assets> {
 
 export interface CsVisualInstance {
   cardMesh: Mesh;
+  /** rotation du skin (radians, axes de l'écran) donnée par la visionneuse ; idle 0..1 : balancement automatique */
+  inspect: { yaw: number; pitch: number; idle: number };
   update: (dt: number, t: number) => void;
   dispose: () => void;
 }
@@ -138,7 +144,7 @@ export function createCsCardInstance(
   // fond de la boîte : le fond de la carte, plus grand que la fenêtre (on le voit de biais quand on incline)
   const wallMat = new MeshBasicNodeMaterial();
   wallMat.colorNode = texture(art.bg, uv()).rgb;
-  const wall = new Mesh(new PlaneGeometry(CARD.w * 1.45, CARD.h * 1.45), wallMat);
+  const wall = new Mesh(new PlaneGeometry(CARD.w * 1.7, CARD.h * 1.7), wallMat);
   wall.position.z = -BACK;
   root.add(wall);
 
@@ -147,11 +153,15 @@ export function createCsCardInstance(
   const clip = new ClippingGroup();
   clip.clippingPlanes = [glass];
   root.add(clip);
+  // (11/11, retours de Tom) la carte reste de face : le geste (doigt, souris, gyroscope) tourne le SKIN, autour des
+  // axes de l'écran (spin), puis sa pose dans la carte (diagonale)
   const holder = new Group();
   holder.position.set(0, pose.y, -MID);
-  holder.rotation.z = pose.a;
   const spin = new Group();
   holder.add(spin);
+  const diag = new Group();
+  diag.rotation.z = pose.a;
+  spin.add(diag);
   const skinMat = new MeshStandardNodeMaterial({ map: a.color, roughnessMap: a.orm, metalnessMap: a.orm, roughness: 1, metalness: 1 });
   const plainMat = new MeshStandardNodeMaterial({ color: 0x15171a, roughness: 0.35, metalness: 0.6 });
   const inst = a.model.clone(true);
@@ -160,8 +170,8 @@ export function createCsCardInstance(
     if (m.isMesh) m.material = m.material && (m.material as Material).name === 'shared_scope' ? plainMat : skinMat;
   });
   inst.rotation.set(...pose.side);
-  inst.scale.setScalar(pose.s);
-  spin.add(inst);
+  inst.scale.setScalar(pose.s * SCALE);
+  diag.add(inst);
   clip.add(holder);
   root.traverse((o) => (o.frustumCulled = false));
 
@@ -188,6 +198,7 @@ export function createCsCardInstance(
   const cardMesh = new Mesh(cardGeometry, [frontMat, backMaterial, edgeMaterial]);
   if ('compileAsync' in renderer) void compilePassAsync(renderer as never, portalPass);
 
+  const inspect = { yaw: 0, pitch: 0, idle: 1 };
   const cardPos = new Vector3();
   const cardZ = new Vector3();
   const tmp = new Vector3();
@@ -199,9 +210,9 @@ export function createCsCardInstance(
     root.matrix.copy(cardMesh.matrixWorld);
     root.matrixWorldNeedsUpdate = true;
     root.updateMatrixWorld(true);
-    // visionneuse : le skin se balance lentement d'une face à l'autre
-    spin.rotation.y = Math.sin(t * 0.45) * 0.42;
-    spin.rotation.x = Math.sin(t * 0.31) * 0.06;
+    // le geste du joueur, plus un balancement lent quand personne ne touche
+    spin.rotation.y = inspect.yaw + Math.sin(t * 0.45) * 0.42 * inspect.idle;
+    spin.rotation.x = inspect.pitch + Math.sin(t * 0.31) * 0.06 * inspect.idle;
     cardPos.setFromMatrixPosition(cardMesh.matrixWorld);
     cardZ.setFromMatrixColumn(cardMesh.matrixWorld, 2).normalize().negate();
     glass.setFromNormalAndCoplanarPoint(cardZ, cardPos);
@@ -228,5 +239,5 @@ export function createCsCardInstance(
     wall.geometry.dispose();
     // maillage du modèle et textures : partagés (cache), libérés par preloadCs3d
   };
-  return { cardMesh, update, dispose };
+  return { cardMesh, inspect, update, dispose };
 }

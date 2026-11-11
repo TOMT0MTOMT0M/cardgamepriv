@@ -114,6 +114,9 @@ export function createViewerScene(): ViewerScene {
   const haloColor = new Color('#ffffff');
   /** zoom d'inspection (molette, ou deux touchers rapides) : cible et valeur lissée */
   let zoomT = 1;
+  /** gros plan des skins CS 6★ (×CS_CLOSE, en douceur) */
+  const CS_CLOSE = 1.22;
+  let csClose = 1;
   let zoom = 1;
   let lastTap = 0;
   const lastTilt = { x: 0, y: 0 };
@@ -404,12 +407,21 @@ export function createViewerScene(): ViewerScene {
       if (ctx.input.dragging && !document.body.classList.contains('viewer-spun')) document.body.classList.add('viewer-spun');
       const p = ctx.input.pose(0.38);
       const idle = ctx.input.inside ? 0 : 1;
+      // (11/11) skin CS 6★ : la carte reste de face, en gros plan ; le geste et le gyroscope tournent le skin dedans
+      csClose += ((csInstance ? CS_CLOSE : 1) - csClose) * (1 - Math.exp(-dt * 4));
+      if (csInstance) {
+        const q = ctx.input.pose(0.9);
+        csInstance.inspect.yaw = q.y;
+        csInstance.inspect.pitch = q.x;
+        csInstance.inspect.idle += ((ctx.input.inside || ctx.input.down ? 0 : 1) - csInstance.inspect.idle) * (1 - Math.exp(-dt * 3));
+      }
       // un peu au-dessus du centre (la fiche texte se lit dessous) ; zoomée, la carte se recentre : la fiche s'est effacée
       const lift = 0.05 * Math.max(0, 1 - (zoom - 1) / 0.6);
       rig.position.set(st.x, lift + st.y + Math.sin(t * 0.9) * 0.006, st.z);
-      rig.rotation.set(p.x + Math.sin(t * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(t * 0.37) * 0.18 * idle, 0);
+      if (csInstance) rig.rotation.set(0, st.spin, 0);
+      else rig.rotation.set(p.x + Math.sin(t * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(t * 0.37) * 0.18 * idle, 0);
       zoom += (zoomT - zoom) * (1 - Math.exp(-dt * 10));
-      rig.scale.setScalar(st.s * zoom);
+      rig.scale.setScalar(st.s * zoom * csClose);
       if (mesh) mesh.rotation.z = pose.rz;
       if (camBase) stage.camera.position.z = camBase * pose.cam;
       wonderInstance?.update(dt, t);
