@@ -23,6 +23,10 @@ export interface MarketView {
   el: HTMLElement;
   enter(): void;
   leave(): void;
+  /** (refonte 11/11) recherche commune de la zone « Chercher » de la page Échanges : nom et étoile */
+  setFilter(q: string, star: RarityId | null): void;
+  /** nombre de cartes en vente affichées (hors les miennes) */
+  shown(): number;
 }
 
 type Sort = 'new' | 'cheap' | 'dear';
@@ -77,6 +81,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void }): Market
   let chosen: { cardId: string; rarity: RarityId } | null = null;
   const meId = () => backend.state.user?.id ?? 'me';
   const isMine = (m: MarketItem) => m.sellerId === meId() || m.sellerId === 'me';
+  let shownN = 0;
 
   /** étiquette prix / valeur : vert = sous la valeur, rouge = bien au-dessus */
   function cmpHtml(r: RarityId, price: number) {
@@ -118,6 +123,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void }): Market
     const list = board.open
       .filter((m) => !isMine(m) && (!star || m.rarity === star) && (!needle || fold(nameOf(m.cardId)).includes(needle)))
       .sort((a, b) => (sort === 'cheap' ? a.price - b.price : sort === 'dear' ? b.price - a.price : b.createdAt - a.createdAt));
+    shownN = list.length;
     gOpen.replaceChildren(...list.map(item));
     const empty = q('.mk-empty');
     empty.hidden = list.length > 0;
@@ -255,5 +261,12 @@ export function createMarket(backend: GameBackend, o: { chime(): void }): Market
       unwatch = null;
       if (!sheet.hidden) closeSheet();
     },
+    setFilter(text: string, s: RarityId | null) {
+      q<HTMLInputElement>('.mk-q').value = text;
+      star = s;
+      el.querySelectorAll<HTMLButtonElement>('.mk-stars .chip').forEach((x) => x.classList.toggle('on', x.dataset.r === star));
+      render();
+    },
+    shown: () => shownN,
   };
 }
