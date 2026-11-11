@@ -5,6 +5,7 @@ import { applyRegen, fmtCountdown } from '../core/packRegen';
 import { contractProblem, contractTarget, rollContract } from '../core/contracts';
 import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
 import { MARKET_MAX_OPEN, marketMax, marketProblem, marketSuggested } from '../core/market';
+import { DEAL_ALTS, DEALS_MAX, PICK_MAX, THEY_WANT_MAX, proposable, rankGives, type CardPanel, type Deal, type TheyWant } from '../core/deals';
 import { POKEMON_151, pokemonCardId } from '../core/sets/pokemon151';
 import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
@@ -86,6 +87,8 @@ interface Saved {
   /** pity 6★ (src/core/pity.ts) */
   pity?: number;
   wishlist?: string[];
+  /** (refonte des échanges 11/11) cartes protégées */
+  tradeProtected?: string[];
   streak?: StreakState;
   binders?: Binder[];
   covers?: Record<string, string>;
@@ -185,6 +188,7 @@ export function createLocalBackend(): GameBackend {
     trades: { incoming: [], outgoing: [] },
     missions: null,
     wishlist: [],
+    tradeProtected: [],
     binders: [],
     covers: {},
     social: { ready: true, friends: [], incoming: [], outgoing: [] },
@@ -229,6 +233,7 @@ export function createLocalBackend(): GameBackend {
       streak: save.streak,
     };
     state.wishlist = save.wishlist ?? [];
+    state.tradeProtected = save.tradeProtected ?? [];
     state.binders = [...(save.binders ?? [])].sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
     state.covers = save.covers ?? {};
     state.collection = Object.values(save.inv);
@@ -302,20 +307,35 @@ export function createLocalBackend(): GameBackend {
     }, 8000);
   const botStats = (b: Bot, i: number) => statsFrom(Object.values(b.inv), { packsOpened: 30 + i * 12, tradesDone: 3 - i, contractsSigned: i, streak: [12, 3, 0][i] ?? 0 });
 
+  /** robots : en ligne (le 3e est hors ligne, comme la liste d'amis) et envies (stables, tirées de MES cartes qu'il n'a pas) */
+  const botOnline = (i: number) => i !== 2;
+  function botWish(id: string): string[] {
+    const bot = save.bots.find((b) => b.id === id);
+    if (!bot) return [];
+    save.botWish ??= {};
+    if (!save.botWish[id]) {
+      const r = rng(4242 + id.length * 7 + Number(id.slice(-1)));
+      save.botWish[id] = Object.values(save.inv).filter((c) => !bot.inv[cardKey(c)] && r() < 0.35).slice(0, 12).map((c) => c.cardId);
+      persist();
+    }
+    return save.botWish[id];
+  }
+
   /** Un robot propose parfois un échange : un de ses doublons qui te manque contre un des tiens qui lui manque. */
   function maybeBotOffer() {
     if (state.trades.incoming.length || Math.random() > 0.45) return;
     const bot = save.bots[Math.floor(Math.random() * save.bots.length)];
     const mineDup = Object.values(save.inv).filter((c) => c.count >= 2 && c.rarity !== 'secret' && !bot.inv[cardKey(c)]);
-    const theirDup = Object.values(bot.inv).filter((c) => c.count >= 2 && !save.inv[cardKey(c)] && Math.abs(RANK[c.rarity] - RANK[mineDup[0]?.rarity ?? 'common']) <= 1);
+    // (refonte 11/11) un doublon contre un doublon de MÊME étoile, en un toucher : « Choisir autre chose » possible
+    const theirDup = Object.values(bot.inv).filter((c) => c.count >= 2 && !save.inv[cardKey(c)] && mineDup.some((m) => m.rarity === c.rarity));
     if (!mineDup.length || !theirDup.length) return;
     const give = theirDup[Math.floor(Math.random() * theirDup.length)];
-    const want = mineDup.find((c) => Math.abs(RANK[c.rarity] - RANK[give.rarity]) <= 1) ?? mineDup[0];
+    const want = mineDup.find((c) => c.rarity === give.rarity)!;
     save.trades.push({
       id: `t${save.seq++}`, fromId: bot.id, toId: 'me', fromName: bot.name, toName: 'Toi',
       offered: [{ cardId: give.cardId, rarity: give.rarity, count: 1 }],
       requested: [{ cardId: want.cardId, rarity: want.rarity, count: 1 }],
-      note: 'doublon contre doublon ?', createdAt: Date.now(), status: 'pending',
+      createdAt: Date.now(), status: 'pending', quick: true,
     });
   }
 
@@ -816,17 +836,151 @@ export function createLocalBackend(): GameBackend {
         .sort((a, b) => b.resolvedAt - a.resolvedAt)
         .slice(0, 30);
     },
+    // ── REFONTE DES ÉCHANGES (11/11) : mêmes règles que convex/deals.ts (src/core/deals.ts), robots compris
+    async cardPanel(cardId) {
+      await delay(60);
+      const owners = save.bots
+        .map((b, i) => ({ b, i, n: b.inv[cardKey({ cardId, rarity: catalogEntry(cardId)?.rarity ?? 'common' })]?.count ?? 0 }))
+        .filter((x) => x.n > 0)
+        .map(({ b, i, n }) => ({ userId: b.id, name: b.name, online: botOnline(i), count: n, dup: n >= 2 }))
+        .sort((a, b) => Number(b.dup) - Number(a.dup) || Number(b.online) - Number(a.online) || b.count - a.count);
+      const sellers = M()
+        .filter((m) => m.status === 'open' && m.cardId === cardId && m.sellerId !== 'me')
+        .map((m) => ({ id: m.id, sellerId: m.sellerId, name: m.sellerName, price: m.price, mintNumber: m.mintNumber }))
+        .sort((a, b) => a.price - b.price);
+      const wanters = save.bots.map((b, i) => ({ b, i })).filter(({ b }) => botWish(b.id).includes(cardId)).map(({ b, i }) => ({ userId: b.id, name: b.name, online: botOnline(i) }));
+      return { owners, sellers, wanters, protected: (save.tradeProtected ?? []).includes(cardId), reads: 0 } satisfies CardPanel;
+    },
+    async forYou() {
+      await delay(120);
+      const guard = { protected: save.tradeProtected, wishlist: save.wishlist };
+      const locked = lockedCards(state);
+      const gives = Object.values(save.inv).filter((c) => catalogEntry(c.cardId) && proposable(c, locked.get(cardKey(c)) ?? 0, guard) > 0).sort((a, b) => b.count - a.count);
+      const asked = new Set(save.trades.filter((t) => t.status === 'pending' && t.fromId === 'me').flatMap((t) => t.requested.map((it) => `${t.toId}|${it.cardId}`)));
+      const deals: Deal[] = [];
+      for (const id of save.wishlist ?? []) {
+        if (deals.length >= DEALS_MAX) break;
+        const e = catalogEntry(id);
+        if (!e || e.rarity === 'secret' || save.inv[cardKey({ cardId: id, rarity: e.rarity })]) continue;
+        const bots = save.bots.map((b, i) => ({ b, i })).filter(({ b }) => !asked.has(`${b.id}|${id}`) && (b.inv[cardKey({ cardId: id, rarity: e.rarity })]?.count ?? 0) >= 2);
+        bots.sort((a, b) => Number(botOnline(b.i)) - Number(botOnline(a.i)));
+        for (const { b, i } of bots) {
+          const tw = new Set(botWish(b.id));
+          const ok = rankGives(gives.filter((c) => c.rarity === e.rarity && !b.inv[cardKey(c)]), tw);
+          if (!ok.length) continue;
+          deals.push({ userId: b.id, name: b.name, online: botOnline(i), get: { cardId: id, rarity: e.rarity }, give: { cardId: ok[0].cardId, rarity: ok[0].rarity }, alts: ok.slice(1, DEAL_ALTS + 1).map((c) => c.cardId), theyWish: tw.has(ok[0].cardId) });
+          break;
+        }
+      }
+      const theyWant: TheyWant[] = [];
+      for (const [i, b] of save.bots.entries())
+        for (const id of botWish(b.id)) {
+          const c = gives.find((g) => g.cardId === id);
+          if (!c || b.inv[cardKey(c)] || theyWant.length >= THEY_WANT_MAX || deals.some((d) => d.userId === b.id && d.give.cardId === id)) continue;
+          theyWant.push({ userId: b.id, name: b.name, online: botOnline(i), card: { cardId: c.cardId, rarity: c.rarity } });
+        }
+      return { deals, theyWant, reads: 0, at: Date.now() };
+    },
+    async quickTrade(toId, get, give) {
+      await delay(80);
+      const bot = save.bots.find((b) => b.id === toId);
+      if (!bot) throw new Error('Joueur introuvable.');
+      const r = (get ?? give)?.rarity;
+      if (!r) throw new Error('Échange vide.');
+      if (get && give && get.rarity !== give.rarity) throw new Error('Échange en un toucher : deux cartes de même étoile.');
+      const star = r === 'secret' ? 'Bébou' : `${RANK[r] + 1}★`;
+      const locked = lockedCards(state);
+      if (!give) {
+        const guard = { protected: save.tradeProtected, wishlist: save.wishlist };
+        const c = rankGives(Object.values(save.inv).filter((c) => c.rarity === r && c.cardId !== get!.cardId && proposable(c, locked.get(cardKey(c)) ?? 0, guard) > 0 && !bot.inv[cardKey(c)]), new Set(botWish(bot.id)))[0];
+        if (!c) throw new Error(`Tu n’as pas de doublon ${star} libre qui manque à ${bot.name} : compose l’échange toi-même.`);
+        give = { cardId: c.cardId, rarity: c.rarity };
+      }
+      if (!get) {
+        const c = rankGives(Object.values(bot.inv).filter((c) => c.rarity === r && c.count >= 2 && c.cardId !== give!.cardId && !save.inv[cardKey(c)]), new Set(save.wishlist ?? []))[0];
+        if (!c) throw new Error(`${bot.name} n’a pas de doublon ${star} libre qui te manque.`);
+        get = { cardId: c.cardId, rarity: c.rarity };
+      }
+      if ((save.inv[cardKey(give)]?.count ?? 0) - (locked.get(cardKey(give)) ?? 0) < 1) throw new Error(`${catalogEntry(give.cardId)?.name ?? give.cardId} n’est plus libre chez toi.`);
+      if (!bot.inv[cardKey(get)]) throw new Error(`${bot.name} n’a pas (ou plus) ${catalogEntry(get.cardId)?.name ?? get.cardId}.`);
+      if (save.trades.some((t) => t.status === 'pending' && t.fromId === 'me' && t.toId === bot.id && t.requested.some((it) => it.cardId === get!.cardId))) throw new Error(`Tu as déjà demandé ${catalogEntry(get.cardId)?.name} à ${bot.name}.`);
+      const t = { id: `t${save.seq++}`, fromId: 'me', toId: bot.id, fromName: 'Toi', toName: bot.name, offered: [{ ...give, count: 1 }], requested: [{ ...get, count: 1 }], createdAt: Date.now(), status: 'pending' as const, quick: true };
+      save.trades.push(t);
+      bump({ type: 'trade' });
+      sync();
+      // le robot répond au bout de 3 s : accepte si ma carte lui manque, sinon choisit autre chose parmi mes doublons, sinon refuse
+      setTimeout(() => {
+        const cur = save.trades.find((x) => x.id === t.id);
+        if (!cur || cur.status !== 'pending') return;
+        cur.resolvedAt = Date.now();
+        const guard = { protected: save.tradeProtected, wishlist: save.wishlist };
+        const lk = lockedCards(state);
+        let mine = cur.offered[0];
+        if (bot.inv[cardKey(mine)]) {
+          const alt = Object.values(save.inv).find((c) => c.rarity === mine.rarity && !bot.inv[cardKey(c)] && proposable(c, (lk.get(cardKey(c)) ?? 0) - (cardKey(c) === cardKey(mine) ? 1 : 0), guard) > 0);
+          if (alt) mine = { cardId: alt.cardId, rarity: alt.rarity, count: 1 };
+        }
+        const want = cur.requested[0];
+        if (!bot.inv[cardKey(mine)] && (save.inv[cardKey(mine)]?.count ?? 0) >= 1 && (bot.inv[cardKey(want)]?.count ?? 0) >= 1) {
+          const changed = mine.cardId !== cur.offered[0].cardId;
+          cur.offered = [mine];
+          cur.status = 'accepted';
+          remove(save.inv, mine);
+          add(bot.inv, mine.cardId, mine.rarity, 1);
+          remove(bot.inv, want);
+          add(save.inv, want.cardId, want.rarity, 1);
+          save.trades_done = (save.trades_done ?? 0) + 1;
+          eco.hooks.onTrade();
+          feed('trade', changed ? `${bot.name} a accepté ton échange en choisissant ${cardName(mine.cardId)}.` : `${bot.name} a accepté ton échange !`);
+        } else {
+          cur.status = 'declined';
+          feed('trade', `${bot.name} a refusé ton échange.`);
+        }
+        sync();
+      }, 3000);
+      return { get, give };
+    },
+    async swapTradeGive(tradeId, cardId) {
+      const t = save.trades.find((x) => x.id === tradeId && x.status === 'pending' && x.fromId === 'me' && x.quick);
+      if (!t) throw new Error('Échange introuvable ou déjà traité.');
+      const r = t.offered[0].rarity;
+      if (catalogEntry(cardId)?.rarity !== r) throw new Error('Il faut une carte de même étoile.');
+      const c = { cardId, rarity: r };
+      const busy = (lockedCards(state).get(cardKey(c)) ?? 0) - (cardKey(t.offered[0]) === cardKey(c) ? 1 : 0);
+      if ((save.inv[cardKey(c)]?.count ?? 0) - busy < 1) throw new Error(`${cardName(cardId)} n’est pas libre chez toi.`);
+      t.offered = [{ ...c, count: 1 }];
+      sync();
+    },
+    async tradePickOptions(tradeId) {
+      await delay(60);
+      const t = save.trades.find((x) => x.id === tradeId && x.status === 'pending' && x.toId === 'me' && x.quick);
+      const bot = t && save.bots.find((b) => b.id === t.fromId);
+      if (!t || !bot) return [];
+      return rankGives(Object.values(bot.inv).filter((c) => c.rarity === t.offered[0].rarity && (c.count >= 2 || cardKey(c) === cardKey(t.offered[0]))), new Set(save.wishlist ?? []))
+        .slice(0, PICK_MAX)
+        .map((c) => ({ cardId: c.cardId, rarity: c.rarity, lacking: !save.inv[cardKey(c)] }))
+        .sort((a, b) => Number(b.lacking) - Number(a.lacking));
+    },
+    async acceptTradePick(tradeId, cardId) {
+      const t = save.trades.find((x) => x.id === tradeId && x.status === 'pending' && x.toId === 'me' && x.quick);
+      if (!t) throw new Error('Échange introuvable ou déjà traité.');
+      const bot = save.bots.find((b) => b.id === t.fromId)!;
+      const c = { cardId, rarity: t.offered[0].rarity, count: 1 };
+      const changed = cardId !== t.offered[0].cardId;
+      if (changed && (bot.inv[cardKey(c)]?.count ?? 0) < 2) throw new Error(`${bot.name} garde ${cardName(cardId)} : choisis-en une autre.`);
+      t.offered = [c];
+      await this.respondTrade(tradeId, true);
+      return { changed };
+    },
+    async setTradeProtect(cardId, on) {
+      const list = (save.tradeProtected ?? []).filter((id) => id !== cardId);
+      if (on) list.push(cardId);
+      save.tradeProtected = list;
+      sync();
+    },
     async friendWishlist(friendId) {
       // un robot « cherche » quelques-unes de mes cartes qu'il n'a pas (stable d'une visite à l'autre)
-      const bot = save.bots.find((b) => b.id === friendId);
-      if (!bot) return [];
-      save.botWish ??= {};
-      if (!save.botWish[friendId]) {
-        const r = rng(4242 + friendId.length * 7 + Number(friendId.slice(-1)));
-        save.botWish[friendId] = Object.values(save.inv).filter((c) => !bot.inv[cardKey(c)] && r() < 0.35).slice(0, 12).map((c) => c.cardId);
-        persist();
-      }
-      return save.botWish[friendId];
+      return botWish(friendId);
     },
     async claimMission(id) {
       const r = claimMission(currentMissions(save.missions, 'me', Date.now()), id);

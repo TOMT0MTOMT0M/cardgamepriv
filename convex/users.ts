@@ -51,6 +51,8 @@ export const me = query({
       /** pity 6★ (src/core/pity.ts) */
       pityCount: user.pityCount ?? 0,
       wishlist: user.wishlist ?? [],
+      /** (refonte des échanges 11/11) cartes protégées : jamais proposées (convex/deals.ts) */
+      tradeProtected: user.tradeProtected ?? [],
       /** série de connexion (src/core/streak.ts) — telle qu'enregistrée ; le client affiche aussi « aujourd'hui » via touchStreak */
       streak: user.streak ?? null,
       streakClaimable: streakClaimable(user.streak),

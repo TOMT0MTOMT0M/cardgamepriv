@@ -86,6 +86,8 @@ export default defineSchema({
     pityCount: v.optional(v.number()),
     /** « envies » : ids de cartes marquées (fiche booster, échanges) */
     wishlist: v.optional(v.array(v.string())),
+    /** (refonte des échanges 11/11, convex/deals.ts) cartes PROTÉGÉES : leurs doublons ne sont jamais proposés (absent = aucune) */
+    tradeProtected: v.optional(v.array(v.string())),
     /** série de connexion (src/core/streak.ts) */
     streak: v.optional(v.object({ count: v.number(), day: v.string(), rewardedAt: v.number() })),
     /** pochettes de sous-thème choisies à la main (vue Albums) : sous-thème → carte épinglée */
@@ -292,6 +294,9 @@ export default defineSchema({
     counteredBy: v.optional(v.id('trades')),
     /** conclu depuis le TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : l'annonce d'origine */
     listingId: v.optional(v.id('listings')),
+    /** (refonte des échanges 11/11, convex/deals.ts) demande en un toucher : 1 carte contre 1 de même étoile ; le
+     *  destinataire peut « choisir autre chose » parmi les doublons proposables du demandeur */
+    quick: v.optional(v.boolean()),
     createdAt: v.number(),
     resolvedAt: v.optional(v.number()),
   })

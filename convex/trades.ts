@@ -1,6 +1,6 @@
 import { v, ConvexError } from 'convex/values';
-import { mutation, query, type QueryCtx } from './_generated/server';
-import type { Id } from './_generated/dataModel';
+import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import type { Doc, Id } from './_generated/dataModel';
 import { getUserByToken, getUserIdByToken, requireUser } from './auth';
 import { notify } from './push';
 import { catalogCard, rarityValidator, type RarityId } from './cardsCatalog';
@@ -222,115 +222,8 @@ export const respond = mutation({
       return { status: 'declined' as const };
     }
 
-    const fromUser = await ctx.db.get(trade.fromUserId);
-    if (!fromUser) throw new ConvexError('Joueur expéditeur introuvable.');
     await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} a accepté ton échange !`, body: 'Les cartes sont dans ta collection.', url: '#/echanges' });
-    // verrouillage (retours live 02) : je ne peux pas donner une carte engagée dans MON annonce ou MON offre en cours
-    {
-      const mineLocked = await lockedCards(ctx, user._id);
-      for (const item of trade.requested) {
-        const busy = mineLocked.get(`${item.cardId}:${item.rarity}`) ?? 0;
-        if (busy && (await ownedCount(ctx, user._id, item)) - busy < item.count)
-          throw new ConvexError(`${catalogCard(item.cardId)?.name ?? item.cardId} est engagée dans une de tes annonces ou offres en cours : retire-la d’abord.`);
-      }
-    }
-
-    // Verify and transfer offered cards (fromUser -> user)
-    for (const item of trade.offered) {
-      const src = await ctx.db
-        .query('inventory')
-        .withIndex('by_user_card_rarity', (q) =>
-          q.eq('userId', fromUser._id).eq('cardId', item.cardId).eq('rarity', item.rarity),
-        )
-        .unique();
-      if (!src || src.count < item.count) {
-        throw new ConvexError(`${fromUser.displayName} n'a plus les cartes proposées.`);
-      }
-      if (src.count === item.count) {
-        await ctx.db.delete(src._id);
-      } else {
-        await ctx.db.patch(src._id, { count: src.count - item.count });
-      }
-
-      const dst = await ctx.db
-        .query('inventory')
-        .withIndex('by_user_card_rarity', (q) =>
-          q.eq('userId', user._id).eq('cardId', item.cardId).eq('rarity', item.rarity),
-        )
-        .unique();
-      if (dst) {
-        await ctx.db.patch(dst._id, { count: dst.count + item.count, lastPulledAt: now });
-      } else {
-        await ctx.db.insert('inventory', {
-          userId: user._id,
-          cardId: item.cardId,
-          rarity: item.rarity,
-          count: item.count,
-          bestMintNumber: src.bestMintNumber,
-          foilSeed: src.foilSeed,
-          firstPulledAt: now,
-          lastPulledAt: now,
-        });
-      }
-    }
-
-    // Verify and transfer requested cards (user -> fromUser)
-    for (const item of trade.requested) {
-      const src = await ctx.db
-        .query('inventory')
-        .withIndex('by_user_card_rarity', (q) =>
-          q.eq('userId', user._id).eq('cardId', item.cardId).eq('rarity', item.rarity),
-        )
-        .unique();
-      if (!src || src.count < item.count) {
-        throw new ConvexError('Tu n’as plus les cartes demandées.');
-      }
-      if (src.count === item.count) {
-        await ctx.db.delete(src._id);
-      } else {
-        await ctx.db.patch(src._id, { count: src.count - item.count });
-      }
-
-      const dst = await ctx.db
-        .query('inventory')
-        .withIndex('by_user_card_rarity', (q) =>
-          q.eq('userId', fromUser._id).eq('cardId', item.cardId).eq('rarity', item.rarity),
-        )
-        .unique();
-      if (dst) {
-        await ctx.db.patch(dst._id, { count: dst.count + item.count, lastPulledAt: now });
-      } else {
-        await ctx.db.insert('inventory', {
-          userId: fromUser._id,
-          cardId: item.cardId,
-          rarity: item.rarity,
-          count: item.count,
-          bestMintNumber: src.bestMintNumber,
-          foilSeed: src.foilSeed,
-          firstPulledAt: now,
-          lastPulledAt: now,
-        });
-      }
-    }
-
-    await ctx.db.patch(trade._id, { status: 'accepted', resolvedAt: now });
-    await ctx.db.patch(user._id, { totalTrades: (user.totalTrades ?? 0) + 1 });
-    await ctx.db.patch(fromUser._id, { totalTrades: (fromUser.totalTrades ?? 0) + 1 });
-    await bumpMissions(ctx, user, { type: 'trade' });
-    await bumpWeekly(ctx, user._id, { type: 'trade' });
-    await bumpWeekly(ctx, fromUser._id, { type: 'trade' });
-    // anti-abus : valeur échangée dans chaque sens (alertes du panneau admin, jamais de blocage)
-    await recordFlow(ctx, fromUser._id, user._id, cardsValue(trade.offered), 'trade');
-    await recordFlow(ctx, user._id, fromUser._id, cardsValue(trade.requested), 'trade');
-    await ctx.db.insert('activityFeed', {
-      userId: user._id,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      kind: 'trade',
-      message: `${user.displayName} et ${fromUser.displayName} ont conclu un échange !`,
-      createdAt: now,
-    });
-
+    await concludeTrade(ctx, trade, user);
     return { status: 'accepted' as const };
   },
 });
@@ -391,3 +284,119 @@ export const cancel = mutation({
     return { status: 'cancelled' as const };
   },
 });
+
+/**
+ * Conclut un échange en attente accepté par son destinataire `user` : vérifie, transfère les cartes dans les deux sens,
+ * compteurs, missions, anti-abus, fil. Partagé par `respond` et l'acceptation « Choisir autre chose » (convex/deals.ts).
+ */
+export async function concludeTrade(ctx: MutationCtx, trade: Doc<'trades'>, user: Doc<'users'>) {
+  const now = Date.now();
+  const fromUser = await ctx.db.get(trade.fromUserId);
+  if (!fromUser) throw new ConvexError('Joueur expéditeur introuvable.');
+  // verrouillage (retours live 02) : je ne peux pas donner une carte engagée dans MON annonce ou MON offre en cours
+  {
+    const mineLocked = await lockedCards(ctx, user._id);
+    for (const item of trade.requested) {
+      const busy = mineLocked.get(`${item.cardId}:${item.rarity}`) ?? 0;
+      if (busy && (await ownedCount(ctx, user._id, item)) - busy < item.count)
+        throw new ConvexError(`${catalogCard(item.cardId)?.name ?? item.cardId} est engagée dans une de tes annonces ou offres en cours : retire-la d’abord.`);
+    }
+  }
+
+  // Verify and transfer offered cards (fromUser -> user)
+  for (const item of trade.offered) {
+    const src = await ctx.db
+      .query('inventory')
+      .withIndex('by_user_card_rarity', (q) =>
+        q.eq('userId', fromUser._id).eq('cardId', item.cardId).eq('rarity', item.rarity),
+      )
+      .unique();
+    if (!src || src.count < item.count) {
+      throw new ConvexError(`${fromUser.displayName} n'a plus les cartes proposées.`);
+    }
+    if (src.count === item.count) {
+      await ctx.db.delete(src._id);
+    } else {
+      await ctx.db.patch(src._id, { count: src.count - item.count });
+    }
+
+    const dst = await ctx.db
+      .query('inventory')
+      .withIndex('by_user_card_rarity', (q) =>
+        q.eq('userId', user._id).eq('cardId', item.cardId).eq('rarity', item.rarity),
+      )
+      .unique();
+    if (dst) {
+      await ctx.db.patch(dst._id, { count: dst.count + item.count, lastPulledAt: now });
+    } else {
+      await ctx.db.insert('inventory', {
+        userId: user._id,
+        cardId: item.cardId,
+        rarity: item.rarity,
+        count: item.count,
+        bestMintNumber: src.bestMintNumber,
+        foilSeed: src.foilSeed,
+        firstPulledAt: now,
+        lastPulledAt: now,
+      });
+    }
+  }
+
+  // Verify and transfer requested cards (user -> fromUser)
+  for (const item of trade.requested) {
+    const src = await ctx.db
+      .query('inventory')
+      .withIndex('by_user_card_rarity', (q) =>
+        q.eq('userId', user._id).eq('cardId', item.cardId).eq('rarity', item.rarity),
+      )
+      .unique();
+    if (!src || src.count < item.count) {
+      throw new ConvexError('Tu n’as plus les cartes demandées.');
+    }
+    if (src.count === item.count) {
+      await ctx.db.delete(src._id);
+    } else {
+      await ctx.db.patch(src._id, { count: src.count - item.count });
+    }
+
+    const dst = await ctx.db
+      .query('inventory')
+      .withIndex('by_user_card_rarity', (q) =>
+        q.eq('userId', fromUser._id).eq('cardId', item.cardId).eq('rarity', item.rarity),
+      )
+      .unique();
+    if (dst) {
+      await ctx.db.patch(dst._id, { count: dst.count + item.count, lastPulledAt: now });
+    } else {
+      await ctx.db.insert('inventory', {
+        userId: fromUser._id,
+        cardId: item.cardId,
+        rarity: item.rarity,
+        count: item.count,
+        bestMintNumber: src.bestMintNumber,
+        foilSeed: src.foilSeed,
+        firstPulledAt: now,
+        lastPulledAt: now,
+      });
+    }
+  }
+
+  await ctx.db.patch(trade._id, { status: 'accepted', resolvedAt: now });
+  await ctx.db.patch(user._id, { totalTrades: (user.totalTrades ?? 0) + 1 });
+  await ctx.db.patch(fromUser._id, { totalTrades: (fromUser.totalTrades ?? 0) + 1 });
+  await bumpMissions(ctx, user, { type: 'trade' });
+  await bumpWeekly(ctx, user._id, { type: 'trade' });
+  await bumpWeekly(ctx, fromUser._id, { type: 'trade' });
+  // anti-abus : valeur échangée dans chaque sens (alertes du panneau admin, jamais de blocage)
+  await recordFlow(ctx, fromUser._id, user._id, cardsValue(trade.offered), 'trade');
+  await recordFlow(ctx, user._id, fromUser._id, cardsValue(trade.requested), 'trade');
+  await ctx.db.insert('activityFeed', {
+    userId: user._id,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    kind: 'trade',
+    message: `${user.displayName} et ${fromUser.displayName} ont conclu un échange !`,
+    createdAt: now,
+  });
+
+}

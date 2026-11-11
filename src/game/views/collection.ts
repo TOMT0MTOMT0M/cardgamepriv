@@ -1,10 +1,10 @@
-import { cardKey, collectionSig, lockedCards, type Binder, type GameBackend, type PlayerCard } from '../backend';
+import { collectionSig, lockedCards, type Binder, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { ALL_THEMES, BEBOU_PACK, SUBTHEMES, catalogEntry, numberingSize, subthemeById, subthemeViews, themeById, type CatalogEntry, type SubTheme, type SubthemeView, type ThemeInfo } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, imageReportButton, loadSeen, loginPrompt, navigate, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
-import { showOwners } from './owners';
+import { SEEN_KEY, cardTile, errMsg, esc, fmtN, fmtPct, fold, fr, h, imageReportButton, loadSeen, loginPrompt, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast } from '../ui';
+import { gestureButtons, panelStrip, showCardPanel } from './cardPanel';
 import { cardQuery, type CardQuery } from '../../core/cardSearch';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
@@ -1380,7 +1380,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       if (e.rarity === 'secret') return toast(`Carte secrète : elle ne se cache que dans le ${BEBOU_PACK.label}.`, 'info');
       const t = themeById(e.themeId);
       // (v1.0.9) carte manquante : qui l'a ? (la fiche dit aussi où elle tombe)
-      return showOwners(backend, e.id, undefined, `Pas encore trouvée · dans le ${t ? `${t.label} Pack` : 'booster de son thème'} et le ${BEBOU_PACK.label}`);
+      return showCardPanel(backend, e.id, `Pas encore trouvée · dans le ${t ? `${t.label} Pack` : 'booster de son thème'} et le ${BEBOU_PACK.label}`);
     }
     const t = (ev.target as HTMLElement).closest<HTMLElement>('.tile.owned');
     if (!t || (ev.target as HTMLElement).closest('button')) return;
@@ -1400,50 +1400,22 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   function renderActions(b: { id: string; r: RarityId }) {
     const e = catalogEntry(b.id);
     const have = owned().get(b.id);
-    const wish = backend.state.wishlist.includes(b.id);
     const st = e ? subthemeById(e.subthemeId) : null;
     const isCover = !!st && backend.state.covers[st.id] === b.id;
     const inBinders = backend.state.binders.filter((x) => x.cards.some((c) => c.cardId === b.id && c.rarity === b.r)).length;
-    // tableau d'offres (lot T) : pas pour une carte déjà engagée (🔒) ni pour le dernier exemplaire
-    const row = backend.state.collection.find((c) => c.cardId === b.id && c.rarity === b.r);
-    const canBoard = !!row && row.count > 1 && !(lockedCards(backend.state).get(cardKey(row)) ?? 0);
+    // (refonte des échanges 11/11, views/cardPanel.ts) : « chez les joueurs » en une ligne sous la carte, et DEUX gestes
+    // d'échange seulement — Je la veux · Protéger (les doublons sont proposés par défaut). Plus de « Échanger »,
+    // « Chercher un propriétaire » ni « Proposer sur le tableau » : la fiche (›) porte Demander / Acheter / Proposer.
     vActions.innerHTML = `
-      <button class="va va-wish${wish ? ' on' : ''}" title="${wish ? 'Retirer de mes envies' : 'Je veux cette carte (envies)'}" aria-pressed="${wish}">♥ <span>${wish ? 'Envie ✓' : 'Envie'}</span></button>
       <button class="va va-binder${inBinders ? ' on' : ''}" title="Ranger dans un classeur" aria-label="Ranger dans un classeur${inBinders ? ` (déjà dans ${inBinders})` : ''}">▤ <span>${inBinders ? `Classeur ×${inBinders}` : '+ Classeur'}</span></button>
-      <button class="va va-trade" title="Proposer cette carte dans un échange">⇄ <span>Échanger</span></button>
-      <button class="va va-owners" title="Voir qui d’autre possède cette carte">⌕ <span>Chercher un propriétaire</span></button>
-      ${canBoard ? '<button class="va va-board" title="Publier une annonce sur le tableau d’offres avec cette carte">▦ <span>Proposer sur le tableau</span></button>' : ''}
       ${st && !e?.themeId.startsWith('bebous') ? `<button class="va va-cover${isCover ? ' on' : ''}" title="${isCover ? 'Ne plus utiliser comme couverture' : `En faire la couverture de l’album ${esc(st.label)}`}" aria-label="${isCover ? `Couverture de l’album ${esc(st.label)} : retirer` : `En faire la couverture de l’album ${esc(st.label)}`}" aria-pressed="${isCover}">📌 <span>${isCover ? 'Couverture ✓' : 'Couverture'}</span></button>` : ''}
       ${have?.firstPulledAt ? `<span class="va-date">obtenue le ${fmtDate(have.firstPulledAt)}</span>` : ''}`;
     // (07/11) signalement d'image en un geste (ui.ts imageReportButton) — avant la date d'obtention
     const vaDate = vActions.querySelector('.va-date');
     if (vaDate) vaDate.before(imageReportButton(backend, b.id, 'collection/carte'));
     else vActions.append(imageReportButton(backend, b.id, 'collection/carte'));
-    vActions.querySelector('.va-wish')!.addEventListener('click', async () => {
-      haptics.pulse(8);
-      try {
-        await backend.toggleWish(b.id);
-        renderActions(b);
-      } catch (err) {
-        toast(errMsg(err), 'err');
-      }
-    });
+    vActions.prepend(panelStrip(backend, b.id, b.r), ...gestureButtons(backend, b.id, b.r, 'va', () => renderActions(b)));
     vActions.querySelector('.va-binder')!.addEventListener('click', () => showBinderPick(b));
-    vActions.querySelector('.va-trade')!.addEventListener('click', () => {
-      sessionStorage.setItem('bebou.tradeGive', `${b.id}:${b.r}`);
-      // ferme la visionneuse (couche) puis va aux échanges, sans entrée d'historique fantôme (API lot A)
-      navigate('#/echanges');
-      toast('Choisis un ami : la carte sera dans ta proposition', 'info');
-    });
-    vActions.querySelector('.va-owners')!.addEventListener('click', () => showOwners(backend, b.id));
-    vActions.querySelector('.va-board')?.addEventListener('click', () => {
-      try {
-        sessionStorage.setItem('bebou.boardGive', `${b.id}:${b.r}`);
-      } catch {
-        /* stockage bloqué : le tableau s'ouvre sans la carte */
-      }
-      navigate('#/echanges/tableau');
-    });
     vActions.querySelector('.va-cover')?.addEventListener('click', async () => {
       if (!st) return;
       try {

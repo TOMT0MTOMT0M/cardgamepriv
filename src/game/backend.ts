@@ -160,6 +160,8 @@ export interface TradeView {
   createdAt: number;
   /** contre-proposition d'un échange précédent */
   counterOf?: string;
+  /** (refonte 11/11) demande en un toucher : 1 contre 1, même étoile — « Choisir autre chose » possible */
+  quick?: boolean;
 }
 
 /** Échange terminé (historique). */
@@ -310,6 +312,8 @@ export interface GameState {
   missions: (MissionsState & { resetAt: number }) | null;
   /** « envies » : ids de cartes marquées (ordre d'ajout) */
   wishlist: string[];
+  /** (refonte des échanges 11/11) cartes protégées : leurs doublons ne sont jamais proposés (src/core/deals.ts) */
+  tradeProtected: string[];
   /** classeurs perso (épinglé en premier) */
   binders: Binder[];
   /** pochettes de sous-thème épinglées (vue Albums) : sous-thème → carte */
@@ -433,6 +437,21 @@ export interface GameBackend {
   tradeHistory(): Promise<TradeHistoryItem[]>;
   /** Envies d'un ami (ids de cartes). */
   friendWishlist(friendId: string): Promise<string[]>;
+  // ── REFONTE DES ÉCHANGES (11/11, convex/deals.ts, règles src/core/deals.ts)
+  /** sous une carte : qui l'a, qui la vend et à quel prix, qui la veut */
+  cardPanel(cardId: string): Promise<CardPanel>;
+  /** recoupement à la demande : échanges prêts + « ils cherchent tes doublons » */
+  forYou(): Promise<ForYou>;
+  /** « Demander » en un toucher (1 contre 1, même étoile) : le côté absent est choisi par le serveur */
+  quickTrade(toId: string, get?: DealCard, give?: DealCard): Promise<{ get: DealCard; give: DealCard }>;
+  /** le demandeur change sa contrepartie tant que l'autre n'a pas répondu */
+  swapTradeGive(tradeId: string, cardId: string): Promise<void>;
+  /** « Choisir autre chose » : les doublons proposables du demandeur, même étoile */
+  tradePickOptions(tradeId: string): Promise<PickOption[]>;
+  /** le destinataire choisit une autre carte et l'échange est conclu */
+  acceptTradePick(tradeId: string, cardId: string): Promise<{ changed: boolean }>;
+  /** protéger (jamais proposée) / proposer de nouveau une carte */
+  setTradeProtect(cardId: string, on: boolean): Promise<void>;
   claimMission(id: string): Promise<number>;
   claimMissionBonus(): Promise<number>;
   rerollMission(id: string): Promise<void>;
@@ -525,6 +544,7 @@ export interface ContractResult {
 }
 
 import type { SurveyAnswer, SurveyResults } from '../core/survey';
+import type { CardPanel, DealCard, ForYou, PickOption } from '../core/deals';
 
 /** Suggestions des joueurs (onglet Suggestions, convex/suggestions.ts) */
 export type SuggestionKind = 'bug' | 'design' | 'ajout' | 'autre';

@@ -18,6 +18,7 @@ import type * as cardsCatalog from "../cardsCatalog.js";
 import type * as chat from "../chat.js";
 import type * as contracts from "../contracts.js";
 import type * as crons from "../crons.js";
+import type * as deals from "../deals.js";
 import type * as discordBot from "../discordBot.js";
 import type * as discordRoles from "../discordRoles.js";
 import type * as dropShots from "../dropShots.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   contracts: typeof contracts;
   crons: typeof crons;
+  deals: typeof deals;
   discordBot: typeof discordBot;
   discordRoles: typeof discordRoles;
   dropShots: typeof dropShots;
