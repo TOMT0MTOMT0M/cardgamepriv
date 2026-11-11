@@ -36,6 +36,7 @@ import type * as market from "../market.js";
 import type * as migrations from "../migrations.js";
 import type * as missions from "../missions.js";
 import type * as packs from "../packs.js";
+import type * as presse from "../presse.js";
 import type * as profiles from "../profiles.js";
 import type * as purgedCards from "../purgedCards.js";
 import type * as push from "../push.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   missions: typeof missions;
   packs: typeof packs;
+  presse: typeof presse;
   profiles: typeof profiles;
   purgedCards: typeof purgedCards;
   push: typeof push;

@@ -1,15 +1,19 @@
 import type { RarityId } from '../core/rarity';
 import { DEFI_ACCEPT_MS, defiGain, defiProblem, defiWinner } from '../core/defis';
-import type { DefiView, JeuxBackend } from './ecoJeux';
+import { PRESSE_STRIKES, presseBetProblem, presseCracks, presseStrip, presseValue } from '../core/presse';
+import { validPackChoice } from '../core/games';
+import { missionDay } from '../core/missions';
+import type { DefiView, JeuxBackend, PresseCard, PresseRunView, PresseState } from './ecoJeux';
 
 /**
- * (V2, 11/11) Défis entre amis en MODE DÉMO : tout dans ce navigateur. Les amis robots acceptent les défis
+ * (V2, 11/11) Défis entre amis + La Presse en MODE DÉMO : tout dans ce navigateur. Les amis robots acceptent les défis
  * au bout d'un instant ; « Terminer (démo) » tranche le défi tout de suite (les robots marquent au hasard). Mêmes règles
- * que le serveur (src/core/defis.ts).
+ * que le serveur (src/core/defis.ts, src/core/presse.ts).
  */
 
 export interface LocalJeuxSave {
   defis?: DefiView[];
+  presse?: Array<PresseRunView & { strip: PresseCard[] }>;
 }
 
 export interface LocalJeuxHost {
@@ -28,6 +32,7 @@ const ME = 'me';
 export function createLocalJeux(host: LocalJeuxHost) {
   const s = () => host.save();
   const defis = () => (s().defis ??= []);
+  const runs = () => (s().presse ??= []);
   const nid = (p: string) => `${p}${s().seq++}`;
   const find = (id: string) => {
     const c = defis().find((x) => x.id === id);
@@ -136,7 +141,63 @@ export function createLocalJeux(host: LocalJeuxHost) {
         resolve(c, null);
       }),
 
+    watchPresse: (cb) =>
+      host.watch<PresseState>(() => {
+        const list = runs();
+        const today = missionDay(Date.now());
+        const strip = ({ strip: _s, ...r }: PresseRunView & { strip: PresseCard[] }): PresseRunView => (void _s, r);
+        return {
+          run: list.length ? strip(list[list.length - 1]) : null,
+          today: list.filter((r) => missionDay(r.createdAt) === today).length,
+          past: list.slice(-9).reverse().filter((r) => r.status !== 'live').slice(0, 8).map((r) => ({ id: r.id, bet: r.bet, shown: r.shown, status: r.status, payout: r.payout ?? 0, createdAt: r.createdAt })),
+        };
+      }, cb),
+    presseStart: (bet, album) =>
+      host.act(() => {
+        if (!validPackChoice(album)) throw new Error('Album inconnu.');
+        if (runs().some((r) => r.status === 'live')) throw new Error('Une pièce est déjà sous la presse : frappe ou encaisse-la.');
+        const today = missionDay(Date.now());
+        const p = presseBetProblem(bet, s().coins, runs().filter((r) => missionDay(r.createdAt) === today).length);
+        if (p) throw new Error(p);
+        host.coins(-bet, 'presse', 'La Presse — mise');
+        const strip = presseStrip(album, Math.random);
+        const r = { id: nid('presse'), bet, album, strip, cards: strip.slice(0, 1), shown: 1, status: 'live' as const, value: presseValue(bet, strip.slice(0, 1)), createdAt: Date.now() };
+        runs().push(r);
+        runs().splice(0, Math.max(0, runs().length - 40));
+        return view(r);
+      }),
+    presseStrike: (id) =>
+      host.act(() => {
+        const r = runOf(id);
+        if (r.status !== 'live') return view(r);
+        const cracked = presseCracks(r.strip, r.shown);
+        r.shown++;
+        r.cards = r.strip.slice(0, r.shown);
+        r.value = presseValue(r.bet, r.strip.slice(0, cracked ? r.shown - 1 : r.shown));
+        if (cracked) close(r, 'cracked');
+        else if (r.shown >= PRESSE_STRIKES) close(r, 'cashed');
+        return view(r);
+      }),
+    presseCash: (id) =>
+      host.act(() => {
+        const r = runOf(id);
+        if (r.status === 'live') close(r, 'cashed');
+        return view(r);
+      }),
   };
+  const view = ({ strip: _s, ...r }: PresseRunView & { strip: PresseCard[] }): PresseRunView => (void _s, structuredClone(r));
+  function runOf(id: string) {
+    const r = runs().find((x) => x.id === id);
+    if (!r) throw new Error('Partie introuvable.');
+    return r;
+  }
+  function close(r: PresseRunView & { strip: PresseCard[] }, status: 'cashed' | 'cracked') {
+    r.status = status;
+    r.payout = status === 'cashed' ? presseValue(r.bet, r.cards) : 0;
+    if (r.payout) host.coins(r.payout, 'presse', `La Presse — pièce encaissée (${r.shown} frappes)`, r.payout > r.bet);
+    host.game(r.payout > r.bet);
+  }
+
   return {
     backend,
     /** crochet d'ouverture de booster (démo) : avance mes défis en cours */

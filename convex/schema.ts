@@ -787,5 +787,22 @@ export default defineSchema({
     .index('by_user_phase', ['userId', 'phase'])
     .index('by_user', ['userId', 'createdAt'])
     .index('by_challenge', ['challengeId']),
-
+  /**
+   * LA PRESSE (convex/presse.ts, règles : src/core/presse.ts) : une partie = une bande de 6 cartes gravée au départ,
+   * dévoilée frappe par frappe. La bande n'est jamais envoyée au joueur avant d'être frappée.
+   */
+  presseRuns: defineTable({
+    userId: v.id('users'),
+    bet: v.number(),
+    album: v.object({ kind: v.union(v.literal('bebou'), v.literal('theme')), themeId: v.optional(v.string()) }),
+    strip: v.array(v.object({ cardId: v.string(), cardName: v.string(), rarity: rarityValidator })),
+    /** frappes dévoilées (1 à 6) */
+    shown: v.number(),
+    status: v.union(v.literal('live'), v.literal('cashed'), v.literal('cracked')),
+    payout: v.optional(v.number()),
+    createdAt: v.number(),
+    endedAt: v.optional(v.number()),
+  })
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_user_status', ['userId', 'status']),
 });
