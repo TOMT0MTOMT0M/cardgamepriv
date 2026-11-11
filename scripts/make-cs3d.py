@@ -431,6 +431,57 @@ def bake_glove(k):
     return col, rough, np.clip(metal, 0, 1), nrm
 
 
+# ───────────────────────────────────────────── sticker holo (shader csgo_weapon_sticker, 11/11)
+STICKERS = {'sticker-74': ('emskatowice2014', 'reason')}  # Reason Gaming (Holo) | Katowice 2014
+
+
+def bake_sticker(card):
+    """
+    Le sticker sur sa FEUILLE (objet plat, pas de maillage de CS2) : une feuille de papier mat (fibres légères), le
+    sticker au centre avec sa ligne de prédécoupe (un sillon sombre, légèrement décalé du bord) ; la forme vient de
+    l'alpha de la normale du sticker (net, texte compris : l'alpha de la couleur est flou).
+    → couleur ; « orm » repurposé : R = masque holo (canaux R et B du holomask), G = rugosité, B = motif du holo
+    (canal G du holomask, le « GAMING » en filigrane : décale la couleur du spectre) ; normale (relief du sticker + sillon).
+    Le spectre (holowarp_default) part à côté, une fois pour tous : art/cs3d/holo-spectre.webp (make-cs3d.mjs).
+    """
+    ev, nm = STICKERS[card.replace('cs-', '')]
+    d = lambda f: g1(f'stickers_{ev}_sticker_{nm}/**/{f}')
+    col = img(d(f'sticker_{nm}_psd_*.png'), 'RGBA', None)
+    nor = img(d(f'sticker_{nm}_normal_psd_*.png'), 'RGBA', None)
+    hm = img(d(f'sticker_{nm}_holomask_psd_*.png'), 'RGBA', None)
+    n = col.shape[0]
+    shape = np.clip((nor[..., 3] * 255 - 26) / 12, 0, 1)
+    # feuille RES² : le sticker occupe 78 % du côté, centré
+    k = 0.78
+    v, u = np.mgrid[0:RES, 0:RES].astype(np.float32)
+    su, sv = ((u + 0.5) / RES - 0.5) / k + 0.5, ((v + 0.5) / RES - 0.5) / k + 0.5
+    inside = (su >= 0) & (su <= 1) & (sv >= 0) & (sv <= 1)
+    S = lambda a: np.where(inside[..., None] if a.ndim == 3 else inside, sample(a, np.clip(su, 0, 1), np.clip(sv, 0, 1), wrap=False), 0)
+    m = S(shape)
+    # prédécoupe : la forme élargie de ~5 texels, son contour (un trait de ~1,5 texel)
+    from PIL import ImageFilter
+    big = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(11)).filter(ImageFilter.GaussianBlur(1.2)), np.float32) / 255
+    cut = np.clip(1 - np.abs(big - 0.5) / 0.22, 0, 1) * (1 - m)
+    rng = np.random.default_rng(74)
+    fib = np.asarray(Image.fromarray((rng.random((RES // 2, RES // 2)) * 255).astype(np.uint8)).resize((RES, RES), Image.BICUBIC).filter(ImageFilter.GaussianBlur(0.8)), np.float32) / 255
+    paper = np.array([0.86, 0.86, 0.845], np.float32) * (0.97 + 0.06 * fib)[..., None]
+    paper = paper * (1 - 0.45 * cut[..., None])
+    c = S(col)[..., :3]
+    color = paper * (1 - m[..., None]) + c * m[..., None]
+    H = S(hm)
+    holo = np.clip(np.maximum(H[..., 0], H[..., 2]), 0, 1) * m
+    rough = 0.82 * (1 - m) + 0.38 * m
+    pat = H[..., 1] * m
+    N = S(nor)[..., :3]
+    flat = np.array([0.5, 0.5, 1], np.float32)
+    # sillon de la prédécoupe : la pente de son profil
+    gy, gx = np.gradient(cut * 0.6)
+    groove = np.stack([0.5 - gx * 6, 0.5 + gy * 6, np.ones_like(gx)], -1)
+    normal = np.clip(N * m[..., None] + groove * (1 - m[..., None]), 0, 1)
+    normal[..., 2] = np.where(m > 0.5, normal[..., 2], 1.0)
+    return np.clip(color, 0, 1), np.stack([holo, rough, pat], -1), normal
+
+
 # ───────────────────────────────────────────── maillage (GLB exporté par Source 2 Viewer) + aperçu logiciel
 def load_mesh(path, name):
     b = open(path, 'rb').read()
@@ -595,6 +646,9 @@ def cards():
     kits = json.load(open(os.path.join(ROOT, 'scripts', 'data', 'cs3d-peintures.json'), encoding='utf-8'))
     out = []
     for r in csv.DictReader(open(os.path.join(ROOT, 'donnees', 'suivi', 'cs-3d-5-6-etoiles.csv'), encoding='utf-8-sig'), delimiter=';'):
+        if r['etoiles'] == '6' and r['id'] in STICKERS:  # sticker : objet plat, pas de modèle (bake_sticker)
+            out.append(dict(card='cs-' + r['id'], name=r['nom_marche_steam'], model='sticker', kit=None, seed=None))
+            continue
         if r['etoiles'] != '6' or r['modele'] not in MODEL_OF:
             continue
         key = MODEL_OF[r['modele']]
@@ -619,6 +673,14 @@ if __name__ == '__main__':
     done = []
     for c in cards():
         if only and only not in (c['model'], c['card'], c['kit']):
+            continue
+        if c['model'] == 'sticker':  # sticker holo sur sa feuille ; « orm » = holo, rugosité, motif
+            col, orm3, nrm = bake_sticker(c['card'])
+            Image.fromarray((col * 255 + 0.5).astype(np.uint8)).save(os.path.join(OUT, c['card'] + '-color.png'))
+            Image.fromarray((orm3 * 255 + 0.5).astype(np.uint8)).save(os.path.join(OUT, c['card'] + '-orm.png'))
+            Image.fromarray((nrm * 255 + 0.5).astype(np.uint8)).save(os.path.join(OUT, c['card'] + '-normal.png'))
+            done.append(c)
+            print(c['name'], '→ sticker')
             continue
         if c['model'] in GLOVES:  # gants : autre shader (csgo_customglove), normale en plus
             col, rough, metal, nrm = bake_glove(glove_paint(c['kit']))
