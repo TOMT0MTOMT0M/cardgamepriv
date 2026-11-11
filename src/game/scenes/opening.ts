@@ -3,6 +3,7 @@ import { cameraScale, createWheel3D, type Wheel3D, type WheelItem3D } from './pa
 import { createReel, type Reel } from './packReel';
 import {
   AdditiveBlending,
+  CanvasTexture,
   ClampToEdgeWrapping,
   Color,
   DataTexture,
@@ -90,6 +91,7 @@ import { loadTearBakes, loadedBakes, TearBakePlayer } from '../../core/tearBake'
 import { DUR, ECLIPSE, MYTHIC_SILENCE, MYTHIC_TURN, STAGGER, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
 import { fbmTexel, type N } from '../../core/tsl';
 import { isEclipseCard } from '../eclipse';
+import { apostleStrip } from '../apostles';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
 import type { PackCard, SealedPack } from '../backend';
 
@@ -312,9 +314,12 @@ const NEUTRAL_EMBER = '#e8e2d6';
 /**
  * AMBIANCE « ÉCLIPSE » (Berserk 5★ / 6★ — game/eclipse.ts). Palette relevée sur les planches : noir, bordeaux,
  * cramoisi, braise, couronne. `ember` / `aura` : la fuite de lumière et le halo du sachet fermé (temps 1) ;
- * `horizon`, `moonY` : fraction de la hauteur d'écran (0 = haut) ; `dark` : assombrissement fermé / ouvert / effets réduits.
+ * `horizon`, `moonY` : fraction de la hauteur d'écran (0 = haut) ; `dark` : assombrissement fermé / ouvert / effets réduits ;
+ * `dusk` : présence du ciel à la fin du temps 1 condensé d'un morceau de gros booster (l'horizon rougeoit, l'astre à peine).
  */
-const ECL = { ember: '#e0301a', aura: '#9c0c0c', horizon: 0.6, moonY: 0.26, dark: { sealed: 0.5, open: 0.14, low: 0.3 } };
+/** bande des apôtres sur la crête (game/apostles.ts) : largeur et hauteur en hauteurs d'écran */
+const APO = { span: 2, band: 0.09 };
+const ECL = { ember: '#e0301a', aura: '#9c0c0c', horizon: 0.6, moonY: 0.26, dark: { sealed: 0.5, open: 0.14, low: 0.3 }, dusk: 0.32 };
 /**
  * RETOURNEMENT « charnière » (demande de Tom, 4 nov.) : la carte ne pivote plus sur son axe médian (effet « vallée de
  * l'étrange ») mais autour de sa TRANCHE DROITE, comme une vraie carte qu'on retourne : le bord gauche se soulève vers
@@ -719,9 +724,15 @@ export function createOpeningScene(): OpeningScene {
   /**
    * Début d'un booster. Avec une carte de l'Éclipse : TEMPS 1 — une fois le sachet posé, sa fuite de lumière et son halo
    * virent lentement au cramoisi et la scène s'assombrit (spoil assumé, décision de Tom du 10/11). Sans : tout ce qui
-   * restait d'une Éclipse précédente s'efface. Suite d'un gros booster (pas de sachet) : le ciel monte tout de suite.
+   * restait d'une Éclipse précédente s'efface.
+   * (11/11) Gros booster ×5 / ×10 : chaque MORCEAU (5 cartes, `continued`, sans sachet) qui contient une carte de
+   * l'Éclipse la déclenche à son tour — temps 1 condensé pendant que ses cartes montent (pénombre, horizon qui rougeoit,
+   * ECLIPSE.suite), puis le lever. Avant : le ciel montait d'un coup, sans annonce, et seul le sachet du 1er morceau
+   * (les 5 cartes les moins rares de la série) pouvait virer au cramoisi. Un morceau qui suit un morceau déjà en Éclipse
+   * garde le ciel levé (pas de 2e coucher-lever).
    */
   function eclipseBegin(on: boolean, continued: boolean) {
+    const wasUp = eclipse && E.sky > 0.5;
     gsap.killTweensOf(E);
     eclipse = on;
     eclRisen = false;
@@ -730,7 +741,13 @@ export function createOpeningScene(): OpeningScene {
       return;
     }
     U.ember.value.set(ECL.ember);
-    if (continued) return; // phase « busy » : la boucle lève le ciel à l'image suivante
+    if (continued) {
+      // le lever est lancé par le temps 1 condensé (la boucle n'y touche pas tant que eclRisen est vrai)
+      eclRisen = true;
+      if (wasUp && !fxLow) return eclipseRise();
+      gsap.to(E, { aura: 0, dark: ECL.dark.sealed, sky: fxLow ? 0 : ECL.dusk, duration: ECLIPSE.suite, ease: EASE.glide, onComplete: eclipseRise });
+      return;
+    }
     gsap.to(E, { sky: 0, duration: ECLIPSE.coucher, ease: EASE.glide });
     gsap.to(E, { aura: 1, dark: ECL.dark.sealed, duration: ECLIPSE.teinte, delay: DUR.dramatique / 1000, ease: EASE.glide });
   }
@@ -2620,7 +2637,16 @@ export function createOpeningScene(): OpeningScene {
         sky = sky.mul(smoothstep(R.mul(0.975), R, rm)); // le disque noir
         // crête sombre sur l'horizon (se reflète toute seule dans le lac)
         const ridge = sin(q.x.mul(23).add(1.7)).mul(0.5).add(0.5).mul(sin(q.x.mul(7.3)).mul(0.5).add(0.5)).mul(0.018).add(0.012).add(sin(q.x.mul(61)).mul(0.004));
-        sky = mix(sky, color('#060303'), smoothstep(hz.sub(ridge).sub(0.002), hz.sub(ridge), qy));
+        // (11/11) les APÔTRES debout sur la crête (game/apostles.ts : créatures génériques inventées) — bande dessinée une
+        // fois sur un canvas (APO.span × APO.band hauteurs d'écran), une lecture de texture par pixel ; reflet dans le lac compris
+        const apoTex = c.bag.add(new CanvasTexture(apostleStrip(APO.span, APO.band, mobile ? 640 : 1024)));
+        apoTex.flipY = false;
+        apoTex.wrapS = apoTex.wrapT = ClampToEdgeWrapping;
+        apoTex.generateMipmaps = false;
+        apoTex.minFilter = LinearFilter;
+        const apoH = hz.sub(ridge).sub(qy as N).div(APO.band); // hauteur au-dessus de la crête (0 = pieds, 1 = haut de la bande)
+        const apo = texture(apoTex, vec2(q.x.div(APO.span).add(0.5), apoH.oneMinus())).a.mul(step(0, apoH)).mul(step(apoH, 1));
+        sky = mix(sky, color('#060303'), max(smoothstep(hz.sub(ridge).sub(0.002), hz.sub(ridge), qy), apo));
         const lake = sky.mul(mix(float(0.62), float(0.2), depth)).add(color('#cc7b72').mul(ring.mul(0.22))).add(color('#b4240c').mul(exp(abs(screenUV.y.sub(hz)).div(0.003).negate()).mul(0.3)));
         const eclCol: N = mix(sky, lake, below as N);
         em.colorNode = vec4(eclCol.mul(U.ecl), 1);
