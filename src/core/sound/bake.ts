@@ -4,18 +4,21 @@
  * `each` reçoit chaque son prêt ; tant qu'un son n'est pas arrivé, le moteur joue son ancienne version synthétisée.
  */
 import type { Clip } from './dsp';
+import type { BookName } from './books';
 
 type Each = (id: string, clips: Clip[]) => void;
 
-export function bakeBank(each: Each): void {
+/** `book` : la banque principale (démarrage) ou, à la demande, celle des scènes 6★ / la nappe des menus */
+export function bakeBank(each: Each, book: BookName = 'main'): void {
   let got = 0;
   const onMain = () => {
-    void import('./bank').then(({ SOUND_IDS, renderSound }) => {
-      const ids = [...SOUND_IDS];
+    void Promise.all([import('./bank'), import('./books')]).then(([{ renderSound }, { BOOKS }]) => {
+      const recipes = BOOKS[book];
+      const ids = Object.keys(recipes);
       const step = () => {
         const id = ids.shift();
         if (!id) return;
-        each(id, renderSound(id));
+        each(id, renderSound(id, recipes));
         setTimeout(step, 30);
       };
       step();
@@ -34,6 +37,7 @@ export function bakeBank(each: Each): void {
       w.terminate();
       if (!got) onMain();
     };
+    w.postMessage({ book });
   } catch {
     onMain();
   }

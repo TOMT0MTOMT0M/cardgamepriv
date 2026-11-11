@@ -17,6 +17,7 @@ import { isEclipseCard } from '../eclipse';
 import { SUBTHEMES, catalogEntry, fmtCount, subthemeById, themeById, type SubTheme } from '../../core/sets/themes';
 import { fxReduced } from '../../core/fxPref';
 import type { Shell } from '../shell';
+import type { Sfx } from '../../core/audio';
 import { duelMonster } from '../scenes/duelMonsters';
 import type { MythicCard, SceneFn } from './kit';
 import type { CardTarget } from './runtime';
@@ -176,10 +177,14 @@ let current: PreludeHandle | null = null;
 const played = new Map<string, number>();
 export const mythicJustPlayed = (cardId: string, within = 60_000) => performance.now() - (played.get(cardId) ?? -Infinity) < within;
 
-/** Précharge le moteur et la scène d'une 6★ (pendant que le joueur ouvre le booster). */
-export function prepareMythic(cardId: string, rarity: string): void {
+/**
+ * Précharge le moteur et la scène d'une 6★ (pendant que le joueur ouvre le booster) ; `sfx` : la banque de sons des
+ * scènes 6★ (son V2) est cuite tout de suite, dans le Worker — prête quand la scène démarre.
+ */
+export function prepareMythic(cardId: string, rarity: string, sfx?: Sfx): void {
   const fam = mythicFamily(cardId, rarity);
   if (!fam) return;
+  sfx?.loadBook('mythic');
   void import('./runtime').catch(() => undefined);
   void SCENES[fam]()
     .then((m) => {
@@ -235,7 +240,7 @@ export function playMythicPrelude(
   const short = !o.full && !o.auto && (!!o.quick || familySeen(fam));
   markFamilySeen(fam);
   played.set(cardId, performance.now());
-  prepareMythic(cardId, rarity); // (visionneuse : pas d'ouverture avant — les images de la scène partent maintenant)
+  prepareMythic(cardId, rarity, shell.sfx); // (visionneuse : pas d'ouverture avant — les images de la scène partent maintenant)
   void (async () => {
     try {
       // (la pile de couches du jeu est déjà chargée : import() instantané, et pas de dépendance circulaire avec ui.ts)

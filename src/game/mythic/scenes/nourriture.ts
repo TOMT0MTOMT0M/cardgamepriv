@@ -63,7 +63,7 @@ function vending(k: SceneCtx) {
   // on la prend dans le bac : elle vient au centre
   tl.to(a, { x: 0, y: 0, rotation: 0, scale: 1, duration: 0.6, ease: 'power3.inOut' }, 2.4);
   tl.to(m, { opacity: 0.25, filter: 'blur(2px)', duration: 0.5 }, 2.5);
-  k.at(2.4, () => sfx.whoosh(0.4, 0.14));
+  k.at(2.4, () => sfx.whoosh(0.4, 0.14, true, 'power3.inOut'));
   k.at(3.0, () => sfx.hit(0.3, 60));
   tl.to({}, { duration: 0.01 }, 3.15);
   void cw;

@@ -44,7 +44,7 @@ export default function direct(k: SceneCtx) {
   tl.to(live, { opacity: 0.5, duration: 0.3 }, 2.0);
   tl.set(a, { opacity: 1, y: h * 0.75, rotation: 4, scale: 0.9 }, 2.0);
   tl.to(a, { y: 0, rotation: 0, scale: 1, duration: 0.6, ease: 'power3.out' }, 2.05);
-  k.at(2.05, () => sfx.whoosh(0.5, 0.2));
+  k.at(2.05, () => sfx.whoosh(0.5, 0.2, true, 'power3.out'));
   // le compteur explose
   bump(v.n * 40, 2.5, 0.6);
   tl.to(viewers, { color: accent, scale: 1.25, transformOrigin: '100% 50%', duration: 0.25, ease: 'back.out(2)' }, 2.5);

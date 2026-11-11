@@ -26,6 +26,7 @@ import {
   type StakeItem,
 } from '../src/core/economy';
 import { claimWeekly as claimWeeklyState, cleanWeekly, currentWeekly, nextWeekReset, type WeeklyState } from '../src/core/weekly';
+import { invRev } from './invRev';
 
 /**
  * ÉCONOMIE — portefeuille et sources de pièces (spec du 3 nov., src/core/economy.ts) :
@@ -163,7 +164,7 @@ export const burn = mutation({
     let n = 0;
     for (const it of items) {
       const r = row(it as StakeItem)!;
-      await ctx.db.patch(r._id, { count: r.count - it.count });
+      await ctx.db.patch(r._id, { count: r.count - it.count, rev: invRev() });
       coins += CARD_VALUE[it.rarity as RarityId] * it.count;
       n += it.count;
     }

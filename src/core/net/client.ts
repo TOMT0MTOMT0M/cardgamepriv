@@ -6,6 +6,7 @@ import type { Doc, Id } from '../../../convex/_generated/dataModel';
 import type { RarityId } from '../rarity';
 import type { MissionsState } from '../missions';
 import type { StreakState } from '../streak';
+import { INV_REBASE_ROWS, InvMirror } from './invDiff';
 
 const LS_SESSION_TOKEN = 'cardlab.session_token';
 /** page (hash compris) d'où l'on part se connecter : le serveur écrase le hash au retour de Discord */
@@ -364,13 +365,9 @@ class GameNetClient {
       ),
     );
 
-    // 3. Player card inventory (instant BatchedMesh 019-binder loading)
-    this.unsubscribers.push(
-      this.client.onUpdate(api.inventory.myCollection, tokenArg, (cards) => {
-        this.state.collection = cards ?? [];
-        this.emit();
-      }),
-    );
+    // 3. Collection du joueur — (V2 fluidité) lue en entier une fois, puis suivie PAR DIFFÉRENCE (inventory.mineSince) :
+    // après un booster, ~5 lignes reçues au lieu de toute la collection. Reprise après pause : on repart de la copie.
+    this.subscribeInventory(tokenArg, resuming);
 
     // 4. Liste du club : en temps réel seulement si une page l'affiche, sinon une lecture simple (lot 5)
     if (this.membersWanted) this.subscribeMembers();
@@ -473,6 +470,82 @@ class GameNetClient {
     if (sig === this.friendsSig) return;
     this.friendsSig = sig;
     this.emit();
+  }
+
+  /** (V2 fluidité) copie locale de la collection, tenue par différence */
+  private inv = new InvMirror();
+  private invToken: string | undefined = undefined;
+  private invUnsub: (() => void) | null = null;
+  /** série d'abonnements en cours (une réponse d'une ancienne série est ignorée) */
+  private invGen = 0;
+
+  private subscribeInventory(tokenArg: { sessionToken?: string }, resuming: boolean) {
+    const client = this.client!;
+    const gen = ++this.invGen;
+    const live = () => gen === this.invGen && !this.paused;
+    // abonnement unique, remplaçable (nouvelle révision de départ) sans toucher aux autres
+    this.invUnsub = null;
+    this.unsubscribers.push(() => {
+      this.invGen++;
+      this.invUnsub?.();
+      this.invUnsub = null;
+    });
+    if (this.invToken !== tokenArg.sessionToken) {
+      this.inv = new InvMirror();
+      this.invToken = tokenArg.sessionToken;
+    }
+    const publish = () => {
+      if (this.state.collection === this.inv.cards) return;
+      this.state.collection = this.inv.cards as NetState['collection'];
+      this.emit();
+    };
+    // repli : serveur sans le suivi par différence (pas encore redéployé) → l'ancien abonnement complet
+    const legacy = () => {
+      if (!live()) return;
+      this.invUnsub?.();
+      this.invUnsub = client.onUpdate(api.inventory.myCollection, tokenArg, (cards) => {
+        this.state.collection = cards ?? [];
+        this.emit();
+      });
+    };
+    const follow = (since: number) => {
+      if (!live()) return;
+      this.invUnsub?.();
+      this.invUnsub = client.onUpdate(
+        api.inventory.mineSince,
+        { ...tokenArg, since },
+        (d) => {
+          if (!live()) return;
+          if (!d) {
+            // pas (ou plus) connecté
+            this.inv = new InvMirror();
+            this.state.collection = [];
+            this.emit();
+            return;
+          }
+          if (d.more) return void queueMicrotask(full);
+          if (this.inv.apply(d)) publish();
+          // la réponse grossit à chaque booster : au-delà de quelques dizaines de lignes, on repart d'une révision récente
+          // (hors du rappel : l'abonnement en cours est remplacé une fois son rappel terminé)
+          if (d.rows.length + d.gone.length > INV_REBASE_ROWS && this.inv.since() > since) queueMicrotask(() => follow(this.inv.since()));
+        },
+        () => legacy(),
+      );
+    };
+    const full = () => {
+      if (!live()) return;
+      client.query(api.inventory.collectionFull, tokenArg).then(
+        (rows) => {
+          if (!live()) return;
+          this.inv.reset(rows ?? []);
+          publish();
+          follow(this.inv.since());
+        },
+        () => legacy(),
+      );
+    };
+    if (resuming && this.inv.loaded) follow(this.inv.since());
+    else full();
   }
 
   private subscribeMembers() {
@@ -641,6 +714,7 @@ class GameNetClient {
     this.saveStoredToken(null);
     this.state.user = null;
     this.state.collection = [];
+    this.inv = new InvMirror();
     this.state.sealedPack = null;
     this.setupSubscriptions();
     this.emit();

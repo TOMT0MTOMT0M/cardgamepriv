@@ -67,7 +67,7 @@ export default function manga(k: SceneCtx) {
   ot.textContent = ono + '！';
   k.pin(ot);
   tl.fromTo(page, { y: h * 0.6, rotation: 4, opacity: 0 }, { y: 0, rotation: -1.5, opacity: 1, duration: 0.45, ease: 'power3.out' }, 0);
-  k.at(0.05, () => sfx.whoosh(0.4, 0.2));
+  k.at(0.05, () => sfx.whoosh(0.4, 0.2, true, 'power3.out'));
   els.forEach((e, i) => {
     const at = 0.3 + (i === 2 ? 0.25 : i * 0.08);
     tl.fromTo(e, { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.18, ease: 'power2.out' }, at);
@@ -91,7 +91,7 @@ export default function manga(k: SceneCtx) {
   tl.to(a, { scale: 1, x: 0, y: 0, rotation: 0, duration: 0.55, ease: 'back.out(1.4)' }, 1.98);
   tl.to(page, { scale: 1.12, opacity: 0.25, filter: 'blur(3px)', duration: 0.5, ease: 'power2.out' }, 2.0);
   k.at(2.0, () => {
-    sfx.whoosh(0.4, 0.25);
+    sfx.whoosh(0.4, 0.25, true, 'power2.out');
     k.haptic(20);
   });
   k.at(2.5, () => sfx.hit(0.4, 60));

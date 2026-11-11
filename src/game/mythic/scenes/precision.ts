@@ -44,7 +44,7 @@ function chess(k: SceneCtx) {
   tl.set(a, { opacity: 1, scale: 0.6, y: h * 0.16, rotationX: 90, transformOrigin: '50% 100%' }, 2.2);
   tl.to(a, { rotationX: 0, scale: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 2.22);
   tl.to(king, { opacity: 0, duration: 0.3 }, 2.2);
-  k.at(2.22, () => sfx.whoosh(0.4, 0.14));
+  k.at(2.22, () => sfx.whoosh(0.4, 0.14, true, 'power3.out'));
   k.at(2.75, () => sfx.hit(0.35, 60));
   tl.to({}, { duration: 0.01 }, 2.95);
 }
@@ -84,7 +84,7 @@ function target(k: SceneCtx) {
   tl.fromTo(tgt, { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'power3.out' }, 0);
   tl.set(a, { opacity: 1, scale: 3.4, y: h * 0.5, rotation: 30 }, 0.2);
   tl.to(a, { scale: 1, y: 0, rotation: 0, duration: 1.5, ease: 'power1.in' }, 0.25);
-  k.at(0.25, () => sfx.whoosh(1.4, 0.14));
+  k.at(0.25, () => sfx.whoosh(1.4, 0.14, true, 'power1.in'));
   k.at(1.75, () => {
     sfx.clank(0.24, /billard/.test(k.card.subId) ? 1600 : 700);
     sfx.hit(0.45, 70);

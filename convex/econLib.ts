@@ -6,6 +6,7 @@ import { catalogCard } from './cardsCatalog';
 import { cleanEcon, emptyEcon, type EconState } from '../src/core/economy';
 import { applyWeeklyEvent, cleanWeekly, currentWeekly, type WeeklyEvent, type WeeklyState } from '../src/core/weekly';
 import { lockedCards } from './trades';
+import { dropInv, invRev } from './invRev';
 
 /**
  * Briques serveur de l'économie (pièces, inventaire, journaux), partagées par convex/economy.ts et convex/games.ts.
@@ -81,8 +82,8 @@ export async function takeCards(ctx: MutationCtx, userId: Id<'users'>, items: Ar
     const { row, have, free } = await freeCount(ctx, userId, it.cardId, it.rarity, locked);
     if (have < it.count) throw new ConvexError(`Tu n’as pas assez d’exemplaires de ${name}.`);
     if (free < it.count) throw new ConvexError(`${name} est engagée dans un échange en attente.`);
-    if (row!.count === it.count) await ctx.db.delete(row!._id);
-    else await ctx.db.patch(row!._id, { count: row!.count - it.count });
+    if (row!.count === it.count) await dropInv(ctx, row!);
+    else await ctx.db.patch(row!._id, { count: row!.count - it.count, rev: invRev() });
     out.push({ ...it, mintNumber: row!.bestMintNumber });
   }
   return out;
@@ -118,7 +119,7 @@ export async function giveCards(ctx: MutationCtx, userId: Id<'users'>, cards: Ar
       .query('inventory')
       .withIndex('by_user_card_rarity', (q) => q.eq('userId', userId).eq('cardId', c.cardId).eq('rarity', c.rarity))
       .unique();
-    if (row) await ctx.db.patch(row._id, { count: row.count + n, bestMintNumber: Math.min(row.bestMintNumber, c.mintNumber), lastPulledAt: now });
+    if (row) await ctx.db.patch(row._id, { count: row.count + n, bestMintNumber: Math.min(row.bestMintNumber, c.mintNumber), lastPulledAt: now, rev: invRev() });
     else {
       fresh.push(`${c.cardId}:${c.rarity}`);
       await ctx.db.insert('inventory', {
@@ -130,6 +131,7 @@ export async function giveCards(ctx: MutationCtx, userId: Id<'users'>, cards: Ar
         foilSeed: c.foilSeed ?? Math.floor(secureRandom() * 900000) + 100000,
         firstPulledAt: now,
         lastPulledAt: now,
+        rev: invRev(),
       });
     }
   }

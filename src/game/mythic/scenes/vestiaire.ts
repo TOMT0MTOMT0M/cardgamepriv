@@ -48,7 +48,7 @@ export default function vestiaire(k: SceneCtx) {
   tl.set(a, { opacity: 1, scale: 0.42, y: u * 4 }, 1.9);
   tl.to(a, { scale: 1, y: 0, duration: 0.6, ease: 'power3.inOut' }, 2.0);
   tl.to([row, beam], { opacity: 0.3, filter: 'blur(2px)', duration: 0.5 }, 2.2);
-  k.at(2.0, () => sfx.whoosh(0.4, 0.2));
+  k.at(2.0, () => sfx.whoosh(0.4, 0.2, true, 'power3.inOut'));
   k.at(2.6, () => sfx.hit(0.35, 60));
   tl.to({}, { duration: 0.01 }, 2.85);
 }

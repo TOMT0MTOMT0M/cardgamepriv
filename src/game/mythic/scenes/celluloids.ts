@@ -65,7 +65,7 @@ export default function celluloids(k: SceneCtx) {
   const a = actor();
   tl.set(a, { opacity: 1, y: -h * 0.6, rotation: -6, scale: 1.05 }, 2.3);
   tl.to(a, { y: 0, rotation: 0, scale: 1, duration: 0.5, ease: 'power3.out' }, 2.35);
-  k.at(2.35, () => sfx.whoosh(0.4, 0.14, false));
+  k.at(2.35, () => sfx.whoosh(0.4, 0.14, false, 'power3.out'));
   k.at(2.8, () => {
     sfx.hit(0.3, 70);
     sfx.note(9, 0.1, 0.8);

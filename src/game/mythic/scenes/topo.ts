@@ -59,7 +59,7 @@ export default function topo(k: SceneCtx) {
   tl.to(a, { scale: 1, rotationX: 0, duration: 0.6, ease: 'power3.out' }, 2.22);
   tl.to([mark, lab], { opacity: 0, duration: 0.25 }, 2.25);
   tl.to(svg, { opacity: 0.35, scale: 1.3, transformOrigin: '50% 50%', duration: 0.6, ease: 'power2.out' }, 2.25);
-  k.at(2.22, () => sfx.whoosh(0.4, 0.14));
+  k.at(2.22, () => sfx.whoosh(0.4, 0.14, true, 'power2.out'));
   k.at(2.75, () => sfx.hit(0.35, 60));
   tl.to({}, { duration: 0.01 }, 2.95);
 }

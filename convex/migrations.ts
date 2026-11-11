@@ -6,6 +6,7 @@ import { catalogCard } from './cardsCatalog';
 import type { RarityId } from './cardsCatalog';
 import { PURGED_CARD_IDS } from './purgedCards';
 import { isBigPull } from './feed';
+import { dropInv, invRev } from './invRev';
 
 /**
  * RARETÉS — une seule source de vérité : le catalogue (src/core/sets/*).
@@ -42,10 +43,12 @@ export const resyncRarities = internalMutation({
           bestMintNumber: Math.min(twin.bestMintNumber, row.bestMintNumber),
           firstPulledAt: Math.min(twin.firstPulledAt, row.firstPulledAt),
           lastPulledAt: Math.max(twin.lastPulledAt, row.lastPulledAt),
+          rev: invRev(),
         });
-        await ctx.db.delete(row._id);
+        await dropInv(ctx, row);
       } else {
-        await ctx.db.patch(row._id, { rarity: want });
+        // (11/11) collection par différence : une étoile changée doit arriver chez le joueur (rev), sinon sa copie garde l'ancienne
+        await ctx.db.patch(row._id, { rarity: want, rev: invRev() });
       }
     }
     // vitrines et classeurs des joueurs touchés
@@ -156,7 +159,7 @@ export const purgeCards = internalMutation({
       if (!PURGED.has(row.cardId)) continue;
       removed++;
       users.add(row.userId);
-      await ctx.db.delete(row._id);
+      await dropInv(ctx, row);
     }
     for (const uid of users) {
       const u = await ctx.db.get(uid);

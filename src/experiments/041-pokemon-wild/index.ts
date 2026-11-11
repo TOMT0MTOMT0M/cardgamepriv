@@ -250,6 +250,9 @@ export default function create(o?: WildOptions): WildExperiment {
   }
 
   const this_: WildExperiment = {
+    // (V2 fluidité, 11/11) un changement de définition 3D attend la fin de la rencontre (transition, essaim, révélation) :
+    // shell, moment calme — avant, il réallouait les cibles de rendu en pleine scène
+    pacing: () => (transitioning || tl?.isActive() || rtl?.isActive() ? 'busy' : 'rest'),
     async setup(c) {
       ctx = c;
       const mobile = c.quality === 'mobile';

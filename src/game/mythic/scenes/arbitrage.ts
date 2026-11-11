@@ -20,7 +20,7 @@ export default function arbitrage(k: SceneCtx) {
   tl.set(ball, { opacity: 1, scale: 0.15, x: w * 0.3, y: -h * 0.4 }, 0.1);
   tl.to(ball, { scale: 1, x: 0, y: ly - h / 2 - u * 3, duration: 1.4, ease: 'power1.in' }, 0.15);
   tl.fromTo(shadow, { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1, duration: 1.4, ease: 'power1.in', immediateRender: false }, 0.15);
-  k.at(0.15, () => sfx.whoosh(1.3, 0.12));
+  k.at(0.15, () => sfx.whoosh(1.3, 0.12, true, 'power1.in'));
   tl.to(ball, { scaleY: 0.55, scaleX: 1.3, duration: 0.08 }, 1.55);
   k.at(1.55, () => {
     sfx.bounce(0.3);

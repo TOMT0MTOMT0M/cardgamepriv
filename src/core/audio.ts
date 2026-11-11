@@ -35,6 +35,7 @@
  * (avant même le son), donc sans retard audible.
  */
 import { bakeBank } from './sound/bake';
+import type { BookName } from './sound/books';
 import { CHIME_BASES, COIN_HZ, NOTE_BASES } from './sound/ids';
 import type { Clip } from './sound/dsp';
 import { type Ease, velocityCurve } from './sound/motion';
@@ -69,6 +70,23 @@ export interface PlayO {
   wet?: number;
   /** faux : ni variation de vitesse ni de volume (sons tonals) */
   vary?: boolean;
+  /** (11/11) texture en boucle : rejouée tant que `dur` n'est pas écoulé */
+  loop?: boolean;
+}
+/** (11/11) lit de texture filtré (le « hiss » des scènes 6★, version matière) */
+export interface BedO {
+  vol?: number;
+  type?: BiquadFilterType;
+  /** fréquence du filtre, et vers où elle glisse (exponentiel) */
+  f?: number;
+  f2?: number;
+  q?: number;
+  at?: number;
+  /** attaque (s) ; tenue avant la chute (0..1 de la durée) */
+  a?: number;
+  hold?: number;
+  wet?: number;
+  bus?: Bus;
 }
 export interface SweepO {
   vol?: number;
@@ -83,6 +101,8 @@ export interface SweepO {
   /** bornes du filtre (Hz) */
   lo?: number;
   hi?: number;
+  /** (11/11) bus de sortie (défaut feedback ; les scènes 6★ jouent sur « event ») */
+  bus?: Bus;
 }
 
 /**
@@ -90,6 +110,19 @@ export interface SweepO {
  * pour qu'un appel `tick(1, 0.25)`, `thump(0.6)`, `chime(2, 0.22)`… garde la place qu'il avait dans le mix.
  */
 const LV = { ui: 0.16, tick: 0.85, air: 1.25, paper: 2.2, foil: 3.2, land: 1.2, thud: 1.5, boom: 1.1, chimeS: 6.5, chimeM: 5.6, chimeL: 6.2, note: 1.9, coin: 2, crack: 3.5 };
+
+/**
+ * (11/11) COULEUR SONORE PAR PACK : le même geste, une matière un peu différente selon le booster — alu plus vif et
+ * souffle plus clair pour Gaming, plus mat pour Sport, plus chaud pour le World Pack. Deux nombres, aucun nœud en plus :
+ * vitesse de lecture de l'alu (déchirure) et bande du souffle (`sweep`).
+ */
+const PACK_COLOR: Record<string, { foil: number; band: number }> = {
+  gaming: { foil: 1.07, band: 1.15 },
+  pop: { foil: 1.02, band: 1.05 },
+  sport: { foil: 0.95, band: 0.9 },
+  monde: { foil: 0.9, band: 0.82 },
+  bebou: { foil: 1, band: 1 },
+};
 
 export class Sfx {
   enabled = false;
@@ -120,6 +153,7 @@ export class Sfx {
   constructor(opts: { bake?: boolean } = {}) {
     if (typeof document === 'undefined') return;
     document.addEventListener('visibilitychange', () => {
+      this.padSync();
       if (document.hidden) this.nap();
     });
     // (V2) le doigt touche l'écran : on réveille le contexte TOUT DE SUITE — le son du tap (≥ 50 ms plus tard) sort sans retard
@@ -236,6 +270,7 @@ export class Sfx {
     this.enabled = true;
     await Promise.race([resumed, new Promise((r) => setTimeout(r, 300))]);
     if (this.ctx.state === 'running') this.wake(); // veille armée dès l'activation (aucun son → suspendu au bout de 9 s)
+    this.padSync();
   }
 
   /** Vrai si le son est voulu mais que le navigateur n'a pas encore laissé démarrer le contexte audio. */
@@ -251,6 +286,7 @@ export class Sfx {
   disable() {
     this.stopMusic(0.05);
     this.enabled = false;
+    this.padSync();
     this.napping = false;
     clearTimeout(this.idleT);
     void this.ctx?.suspend();
@@ -344,6 +380,7 @@ export class Sfx {
     src.connect(gain).connect(this.master!);
     src.start(t);
     this.music = { src, gain };
+    this.padSync(); // (la nappe des menus se tait sous une musique)
     // tant que la musique joue, le contexte ne se met pas en veille
     const keep = window.setInterval(() => (this.music?.src === src ? this.wake() : clearInterval(keep)), 4000);
   }
@@ -352,6 +389,7 @@ export class Sfx {
     const m = this.music;
     if (!m || !this.ctx) return;
     this.music = null;
+    queueMicrotask(() => this.padSync());
     const t = this.ctx.currentTime;
     m.gain.gain.cancelScheduledValues(t);
     m.gain.gain.setValueAtTime(Math.max(0.0001, m.gain.gain.value), t);
@@ -505,12 +543,13 @@ export class Sfx {
     const src = c.createBufferSource();
     src.buffer = buf;
     src.playbackRate.value = rate;
+    if (o.loop) src.loop = true;
     const g = c.createGain();
     if (o.fadeIn) {
       g.gain.setValueAtTime(0, t);
       g.gain.linearRampToValueAtTime(v, t + o.fadeIn);
     } else g.gain.value = v;
-    const natural = (buf.duration - (o.offset ?? 0)) / rate;
+    const natural = o.loop ? Infinity : (buf.duration - (o.offset ?? 0)) / rate;
     let stopAt = 0;
     if (o.dur !== undefined && o.dur < natural) {
       // coupe douce : le son s'éteint à `dur` au lieu d'aller au bout
@@ -552,7 +591,7 @@ export class Sfx {
     const vel = velocityCurve(o.ease);
     const n = vel.length;
     const vol = (o.vol ?? 0.3) * LV[texId] * varyDb(1.5);
-    const k = vary(0.05);
+    const k = vary(0.05) * this.color.band;
     const lo = (o.lo ?? 300) * k, hi = (o.hi ?? (short ? 1900 : 1350)) * k;
     const up = o.up ?? true;
     const gain = new Float32Array(n), freq = new Float32Array(n);
@@ -585,12 +624,138 @@ export class Sfx {
       p.pan.linearRampToValueAtTime(Math.max(-1, Math.min(1, b)), t + dur);
       node = node.connect(p);
     }
-    this.out(node, 0.12, 'feedback');
+    this.out(node, 0.12, o.bus ?? 'feedback');
     this.voices++;
     src.onended = () => (this.voices = Math.max(0, this.voices - 1));
     src.start(t, Math.random() * Math.max(0, tex.duration - 0.1));
     src.stop(t + dur + 0.03);
     return true;
+  }
+
+  /**
+   * (11/11) LIT DE TEXTURE : une texture cuite (air sous 2 kHz, papier au-dessus) passée dans un filtre qui peut glisser,
+   * avec attaque / tenue / chute — la version « matière » du bruit filtré des scènes 6★ (même coût : 3 nœuds).
+   * Faux si les textures ne sont pas encore cuites.
+   */
+  bed(dur: number, o: BedO = {}): boolean {
+    if (!this.ok) return false;
+    const f0 = o.f ?? 1200;
+    const texId = f0 >= 2000 || (o.f2 ?? 0) >= 3000 ? 'paper' : 'air';
+    const tex = this.bank.get(texId)?.[0];
+    if (!tex || this.voices >= 24) return false;
+    const c = this.ctx!, t = this.now() + (o.at ?? 0);
+    const src = c.createBufferSource();
+    src.buffer = tex;
+    src.loop = true;
+    src.playbackRate.value = vary(0.04);
+    const f = c.createBiquadFilter();
+    f.type = o.type ?? 'bandpass';
+    f.Q.value = o.q ?? 1;
+    f.frequency.setValueAtTime(f0, t);
+    if (o.f2) f.frequency.exponentialRampToValueAtTime(o.f2, t + dur);
+    const g = c.createGain();
+    const a = Math.max(0.004, o.a ?? 0.01);
+    const peak = Math.max(0.0002, (o.vol ?? 0.1) * LV[texId] * varyDb(1));
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + a);
+    if (o.hold) g.gain.setValueAtTime(peak, t + a + dur * o.hold);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + a + dur);
+    src.connect(f).connect(g);
+    this.out(g, o.wet ?? 0.2, o.bus ?? 'event');
+    this.voices++;
+    src.onended = () => (this.voices = Math.max(0, this.voices - 1));
+    src.start(t, Math.random() * Math.max(0, tex.duration - 0.1));
+    src.stop(t + a + dur + 0.05);
+    return true;
+  }
+
+  /** (11/11) une banque cuite à la demande (scènes 6★ à la première 6★, nappe des menus si allumée) : une seule fois */
+  private books = new Set<BookName>();
+  loadBook(book: BookName) {
+    if (this.books.has(book) || typeof window === 'undefined') return;
+    this.books.add(book);
+    bakeBank((id, clips) => {
+      this.addSound(id, clips);
+      if (id === 'pad') this.padSync();
+    }, book);
+  }
+
+  /** (11/11) couleur sonore du booster en cours d'ouverture (`gaming`, `pop`, `sport`, `monde`, `bebou`) ; null = neutre */
+  private color = { foil: 1, band: 1 };
+  setPackColor(key: string | null) {
+    this.color = (key && PACK_COLOR[key]) || { foil: 1, band: 1 };
+  }
+
+  // ─────────────────────────────────────────── (11/11) nappe des menus (réglage, désactivée par défaut)
+
+  private padWanted = false;
+  private padHolds = new Set<string>();
+  private padNode: { src: AudioBufferSourceNode; g: GainNode; keep: number } | null = null;
+  /** Allume / éteint la nappe des menus (la banque `pad` est cuite à la première demande). */
+  setPad(on: boolean) {
+    this.padWanted = on;
+    if (on) this.loadBook('pad');
+    this.padSync();
+  }
+  /** Une raison de se taire (ouverture d'un booster, visionneuse, musique, scène) : la nappe s'efface tant qu'il en reste une. */
+  padHold(reason: string, on: boolean) {
+    if (on) this.padHolds.add(reason);
+    else this.padHolds.delete(reason);
+    this.padSync();
+  }
+  private padSync() {
+    const buf = this.bank.get('pad')?.[0];
+    const want = this.padWanted && this.enabled && !!buf && !!this.ctx && !this.padHolds.size && !this.music && (typeof document === 'undefined' || !document.hidden);
+    const c = this.ctx;
+    if (want && !this.padNode && c && buf && this.wake()) {
+      const t = c.currentTime + 0.05;
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      // très discrète (≈ −26 dBFS) : on la devine sous l'interface, on ne l'écoute pas
+      g.gain.exponentialRampToValueAtTime(0.1, t + 3);
+      src.connect(g);
+      this.out(g, 0.25, 'ambience');
+      src.start(t, Math.random() * buf.duration);
+      // tant qu'elle joue, le contexte ne se met pas en veille (c'est le prix de la nappe : elle est optionnelle)
+      const keep = window.setInterval(() => this.wake(), 4000);
+      this.padNode = { src, g, keep };
+    } else if (!want && this.padNode && c) {
+      const { src, g, keep } = this.padNode;
+      this.padNode = null;
+      clearInterval(keep);
+      const t = c.currentTime;
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+      try {
+        src.stop(t + 1.3);
+      } catch {
+        /* déjà arrêtée */
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────── (11/11) iPhone en mode silencieux
+
+  /**
+   * Réglage « Son même en mode silencieux (iPhone) », désactivé par défaut. Safari range le son des pages avec les
+   * sonneries : coupé par l'interrupteur latéral. `navigator.audioSession.type = 'playback'` (Safari 17+) le range
+   * avec la musique : il passe même en silencieux. Sans l'API (autres navigateurs), rien ne change.
+   */
+  static silentSupported(): boolean {
+    return typeof navigator !== 'undefined' && !!(navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  }
+  setPlayThroughSilent(on: boolean) {
+    const s = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (!s) return;
+    try {
+      s.type = on ? 'playback' : 'auto';
+    } catch {
+      /* type refusé : on garde celui du navigateur */
+    }
   }
 
   /**
@@ -712,7 +877,7 @@ export class Sfx {
     const tex = this.bank.get('foil')?.[0];
     if (tex) {
       const d = Math.min(dur, tex.duration - 0.2);
-      if (this.play('foil', { vol: vol * LV.foil, dur: d, offset: Math.random() * (tex.duration - d - 0.1), fadeIn: 0.004, rate: vary(0.06), wet: 0.06 })) return;
+      if (this.play('foil', { vol: vol * LV.foil, dur: d, offset: Math.random() * (tex.duration - d - 0.1), fadeIn: 0.004, rate: vary(0.06) * this.color.foil, wet: 0.06 })) return;
     }
     this.tearSynth(dur, vol);
   }
@@ -721,10 +886,10 @@ export class Sfx {
    * Impact (pose, payoff), selon la force : « pat » d'une carte (vol < 0,36) · coup feutré (3★–4★) · grand impact
    * (5★–6★). Chacun garde sa couche d'harmoniques 150–700 Hz : le grave « suggéré » qu'un téléphone sait rendre.
    */
-  thump(vol = 0.6, low = 46, pan = 0) {
+  thump(vol = 0.6, low = 46, pan = 0, bus: Bus = 'reward') {
     const id = vol < 0.36 ? 'land' : vol < 0.6 ? 'thud' : 'boom';
     const rate = Math.max(0.85, Math.min(1.25, Math.sqrt(low / 46)));
-    if (!this.play(id, { vol: vol * LV[id], rate, pan, bus: 'reward', wet: id === 'land' ? 0.04 : 0.08 })) this.thumpSynth(vol, low);
+    if (!this.play(id, { vol: vol * LV[id], rate, pan, bus, wet: id === 'land' ? 0.04 : 0.08 })) this.thumpSynth(vol, low);
   }
 
   /**

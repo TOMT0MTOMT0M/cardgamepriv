@@ -1418,6 +1418,9 @@ export function createOpeningScene(): OpeningScene {
     hold = 0;
     holding = false;
     const k = packKeyOf(p);
+    // (son V2) couleur sonore du booster ; la nappe des menus (si allumée) se tait pendant l'ouverture
+    ctx.sfx.setPackColor(k);
+    ctx.sfx.padHold('opening', true);
     if (arts.has(k)) {
       boosterKey = k;
       applyBoosterArt(k);
@@ -2215,7 +2218,11 @@ export function createOpeningScene(): OpeningScene {
   function reset() {
     killAll();
     eclipseReset();
-    if (ctx) ctx.sfx.transpose = 0;
+    if (ctx) {
+      ctx.sfx.transpose = 0;
+      ctx.sfx.setPackColor(null);
+      ctx.sfx.padHold('opening', false);
+    }
     pack = null;
     prepared = null;
     disposeSlots();

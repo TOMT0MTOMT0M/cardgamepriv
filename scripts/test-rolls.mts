@@ -4,7 +4,7 @@
  */
 import { rollPack } from '../src/core/packRoll';
 import { packOdds, STAR_RARITIES } from '../src/core/dropRates';
-import { BEBOU_SECRET_CHANCE, GAME_CARD_COUNT, THEMES, WORLD_SECRET_CHANCE } from '../src/core/sets/themes';
+import { BEBOU_SECRET_CHANCE, BEBOU_SECRETS_LOCKED, GAME_CARD_COUNT, THEMES, WORLD_SECRET_CHANCE } from '../src/core/sets/themes';
 import { PITY_LIMIT, pityAfter, pityForces, pityLeft } from '../src/core/pity';
 
 const N = Number(process.argv[2] ?? 400_000);
@@ -40,6 +40,9 @@ for (const req of [...THEMES.filter((t) => t.cards.length).map((t) => ({ kind: '
     }
     check(wrongTheme === 0, 'que des cartes du thème');
     for (const r of STAR_RARITIES.slice(2)) check(Math.abs(atLeast[r] / N - th[r]) < 0.006, `${r}+ conforme à la théorie`);
+  } else if (BEBOU_SECRETS_LOCKED) {
+    // (11/11) Bébous verrouillées (sets/themesCore.ts) : elles ne tombent d'aucun booster, chance affichée à 0
+    check(BEBOU_SECRET_CHANCE === 0 && secret === 0, `Bébous verrouillées : aucune sur ${N.toLocaleString('fr')} packs (chance ${BEBOU_SECRET_CHANCE})`);
   } else {
     const sd = Math.sqrt(BEBOU_SECRET_CHANCE / N);
     check(Math.abs(secret / N - BEBOU_SECRET_CHANCE) < 4 * sd, `Bébou ≈ 1 sur ${GAME_CARD_COUNT} par pack (1 / nb total de cartes)`);

@@ -234,6 +234,23 @@ installés (elle est maintenant rangée en dernier, et le ménage des anciens fi
 Connu, non corrigé : un onglet resté sur l'ancienne version pendant qu'un autre installe la nouvelle recharge une fois
 à sa prochaine page (comme avant le service worker).
 
+### Fluidité 3 — le « reste à faire » (11/11, branche `wip/son-perf`)
+
+| Lot | Mesuré | Commit |
+|---|---|---|
+| Collection suivie **par différence** : `inventory.rev` (optionnel, index `by_user_rev`) posé par chaque écriture (`convex/invRev.ts`), table `invGone` (lignes supprimées) ; le client lit tout une fois (`collectionFull`) puis suit `mineSince` (copie locale `src/core/net/invDiff.ts`) ; `myCollection` inchangée pour la V1, repli automatique | `convex/invDiff.test.ts`, 300 cartes, 6 boosters : 173 754 o renvoyés → 13 373 o (7,7 %) ; lignes relues par booster : toute la collection → ≤ 5 × boosters depuis la dernière base (rebase à 60). Écritures : + 1 petite ligne `invGone` seulement quand un dernier exemplaire part. Aucune migration | `3320c1a`, `e53ce94` |
+| Page Jeux : tracés échantillonnés sans le DOM (`views/pathSample.ts` au lieu de `getPointAtLength`) | build démo, 390 px, CPU ×4, 3 passes : tâches longues 1 017–1 258 ms → 229–433 ms, pire 445–505 → 65–95 ms ; points identiques à 0,047 px | `b696b1d` |
+| Scènes 6★ 3D (invocation, rencontre Pokémon) : `pacing()` → définition différée au repos | non mesurable (GPU logiciel) : `?diag` | `930e7a3` |
+| `test:rolls` : Bébous verrouillées → le test vérifie qu'aucune ne tombe | vert | `008cfca` |
+
+Écarté après mesure : **variante de shader de la 1re ouverture**. Trouvé : c'est la composition finale (aberration,
+flash, vignette) dessinée pendant que la précompilation des 5 cartes du booster (`compileReal`, à l'ouverture) est
+suspendue au milieu d'un élément — une attente interne de three r187 hors des pauses gardées par
+`installPreCompileGuard` : l'image part dans le tampon intermédiaire HalfFloat ×4 (image perdue) et crée ce pipeline.
+Deux essais (préchauffage sur la cible réelle ; image rendue dans l'état de sortie) : 1 → 1 puis 1 → 2 pipelines,
+annulés. Piste : ne plus rendre d'image pendant `compileReal`, ou le retirer à l'ouverture si le préchauffage par
+rareté suffit — à juger avec `?diag` sur téléphone (le banc perd son GPU logiciel toutes les ~10 s).
+
 ## 5. Coûts : avant / après
 
 | Poste | Avant | Après | Pourquoi |
@@ -255,11 +272,10 @@ tableau des constats) n'est **pas** traité ici.
 | Sujet | Gain attendu | Pourquoi pas dans cette passe |
 |---|---|---|
 | Présence et annuaire hors de `users` | moins qu'annoncé : la liste du club affiche le statut en direct (« Ouvre un booster… ») et le nombre de boosters, qui changent à chaque ouverture — elle doit donc être relancée tant qu'on l'affiche | le vrai levier serait de ne plus écrire le statut à chaque ouverture : **ça change ce que voient les joueurs, décision de Tom**. Le lot 5 retire déjà le coût là où la liste n'est pas affichée. |
-| Collection sans re-poussée à chaque booster (`invRev`) | ≈ −45 Mo lus, −1,8 Mo / joueur | touche toutes les mutations qui donnent ou retirent des cartes : même raison |
 | Cron `markLeader` (relit tous les inventaires chaque heure) | ≈ −200 Mo/jour (estimation) | l'espacer retarde l'attribution du titre « Numéro un » : **décision de Tom** |
 | Fusion `me` + `economy.state` + `missions.mine` | ≈ −650 appels / 30 min | nouvelle requête côté serveur à garder compatible avec la V1 : à faire avec le staging sous les yeux |
 | Historique dans la sous-navigation de la collection ; View Transitions activées par défaut | continuité « native » | le défilement restauré est fait ; le fondu entre pages existe derrière `?vt=1` et attend l'avis de Tom |
-| Préchauffage des scènes 6★ hors ouverture ; `pacing()` pour les scènes 6★ ; variante de shader qui naît encore à la 1re ouverture | à-coups en moins | non mesurable sans GPU : à faire avec les rapports `?diag` (définition différée et textures étalées : faites) |
+| Préchauffage des scènes 6★ hors ouverture ; variante de shader qui naît encore à la 1re ouverture (cause trouvée, voir Fluidité 3) | à-coups en moins | non mesurable sans GPU : à faire avec les rapports `?diag` (`pacing()` des scènes 6★ : fait) |
 | Animations hors compositeur (`name-shine`, `bp-hue`, `bp-secret`) | fil principal plus libre en révélation | réécriture à l'identique à comparer image par image |
 | AVIF / KTX2, 60 i/s par animation (détourage en worker : fait) | à chiffrer | demande un vrai téléphone ; KTX2 n'a de sens que si la mémoire GPU est le goulot mesuré |
 | Miniatures de toute la collection dans le bundle | — | **écarté** : 36 955 fichiers ≈ 443 Mo, et 739 000 appels à la fonction R2 pour 20 joueurs (quota gratuit : 100 000 / jour). Remplacé par le cache à l'usage. |

@@ -15,6 +15,7 @@ import { addCoins, bumpWeekly } from './econLib';
 import { queueDropShot } from './dropShots';
 import { liveEventOrThrow } from './events';
 import { bumpChallenges } from './challenges';
+import { invRev } from './invRev';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -248,6 +249,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
         count: existing.count + 1,
         bestMintNumber: Math.min(existing.bestMintNumber, c.mintNumber),
         lastPulledAt: now,
+        rev: invRev(),
       });
     } else {
       await ctx.db.insert('inventory', {
@@ -259,6 +261,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
         foilSeed: c.foilSeed,
         firstPulledAt: now,
         lastPulledAt: now,
+        rev: invRev(),
       });
     }
 

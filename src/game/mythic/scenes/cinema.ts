@@ -89,7 +89,7 @@ export default function cinema(k: SceneCtx) {
   k.at(1.9, () => sfx.note(7, 0.1, 0.9));
   tl.to(a, { scale: 1, y: 0, filter: 'grayscale(0) contrast(1) brightness(1)', duration: 0.7, ease: 'power3.inOut' }, 2.1);
   tl.to([screen, cv.c.canvas], { opacity: 0.25, duration: 0.5 }, 2.3);
-  k.at(2.1, () => sfx.whoosh(0.6, 0.18));
+  k.at(2.1, () => sfx.whoosh(0.6, 0.18, true, 'power3.inOut'));
   k.at(2.8, () => sfx.hit(0.4, 60));
   tl.to({}, { duration: 0.01 }, 3.0);
 }

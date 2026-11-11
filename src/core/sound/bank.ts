@@ -16,18 +16,18 @@ import { type Clip, type Rng, SR, between, decay, drive, glide, hp1, loopable, l
 import { CHIME_BASES, CHIME_SIZES, COIN_HZ, NOTE_BASES } from './ids';
 import { scaleHz } from './scale';
 
-const unit = (x: Float32Array) => {
+export const unit = (x: Float32Array) => {
   const p = peak([x]);
   return p > 0 ? scale(x, 1 / p) : x;
 };
-const finish = (ch: Float32Array[], db = -6) => trim(normalize(ch, db));
+export const finish = (ch: Float32Array[], db = -6) => trim(normalize(ch, db));
 const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
 
 /**
  * Enveloppe « à grain » : impulsions clairsemées (`density` par seconde) lissées à `smoothHz`, moyenne ≈ 1.
  * C'est le frottement irrégulier d'une matière (fibres du carton, plis de l'alu) — pas un souffle lisse.
  */
-function grainEnv(n: number, density: number, smoothHz: number, r: Rng): Float32Array {
+export function grainEnv(n: number, density: number, smoothHz: number, r: Rng): Float32Array {
   const m = new Float32Array(n);
   const p = density / SR;
   for (let i = 0; i < n; i++) if (r() < p) m[i] = r() * r();
@@ -39,7 +39,7 @@ function grainEnv(n: number, density: number, smoothHz: number, r: Rng): Float32
   return m;
 }
 
-type Recipe = { n: number; make: (r: Rng, i: number) => Float32Array[] };
+export type Recipe = { n: number; make: (r: Rng, i: number) => Float32Array[] };
 
 /** « toc » feutré : un doigt sur une carte épaisse posée sur du feutre. Le son de base de toute l'interface. */
 function tap(r: Rng) {
@@ -249,7 +249,7 @@ function air(r: Rng) {
 }
 
 /** Les recettes, dans l'ordre de cuisson : ce que l'interface joue en premier d'abord. */
-const RECIPES: Record<string, Recipe> = {
+export const RECIPES: Record<string, Recipe> = {
   tap: { n: 6, make: tap },
   tick: { n: 6, make: tick },
   press: { n: 4, make: press },
@@ -269,15 +269,15 @@ CHIME_SIZES.forEach((s, si) => CHIME_BASES.forEach((b) => (RECIPES[`chime${s}${b
 export const SOUND_IDS = Object.keys(RECIPES);
 
 /** graine stable par son (le même son d'une session à l'autre, d'un appareil à l'autre) */
-function seedOf(id: string, i: number) {
+export function seedOf(id: string, i: number) {
   let h = 2166136261;
   for (let k = 0; k < id.length; k++) h = Math.imul(h ^ id.charCodeAt(k), 16777619);
   return (h ^ (i * 0x9e3779b1)) >>> 0;
 }
 
-/** cuit toutes les variantes d'un son */
-export function renderSound(id: string): Clip[] {
-  const rec = RECIPES[id];
+/** cuit toutes les variantes d'un son (`book` : un autre livre de recettes, ex. sound/mythicBank.ts) */
+export function renderSound(id: string, book: Record<string, Recipe> = RECIPES): Clip[] {
+  const rec = book[id];
   if (!rec) return [];
   const out: Clip[] = [];
   for (let i = 0; i < rec.n; i++) out.push({ sr: SR, ch: rec.make(mulberry(seedOf(id, i)), i) });
@@ -285,10 +285,10 @@ export function renderSound(id: string): Clip[] {
 }
 
 /** cuit toute la banque ; `each` reçoit chaque son dès qu'il est prêt (les sons d'interface d'abord) */
-export function renderBank(each?: (id: string, clips: Clip[]) => void): Record<string, Clip[]> {
+export function renderBank(each?: (id: string, clips: Clip[]) => void, book: Record<string, Recipe> = RECIPES): Record<string, Clip[]> {
   const bank: Record<string, Clip[]> = {};
-  for (const id of SOUND_IDS) {
-    bank[id] = renderSound(id);
+  for (const id of Object.keys(book)) {
+    bank[id] = renderSound(id, book);
     each?.(id, bank[id]);
   }
   return bank;
