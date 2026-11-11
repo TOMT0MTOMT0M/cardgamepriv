@@ -408,6 +408,542 @@
     "pop-on-verra": [
       "On verra",
       "Nekfeu"
+    ],
+    "pop-booba": [
+      "DKR",
+      "Booba"
+    ],
+    "pop-claude-francois": [
+      "Comme d'habitude",
+      "Claude François"
+    ],
+    "pop-georges-brassens": [
+      "Les copains d'abord",
+      "Georges Brassens"
+    ],
+    "pop-gojira": [
+      "Stranded",
+      "Gojira"
+    ],
+    "pop-m83": [
+      "Midnight City",
+      "M83"
+    ],
+    "pop-manu-chao": [
+      "Me Gustas Tu",
+      "Manu Chao"
+    ],
+    "pop-francis-cabrel": [
+      "Je t'aimais, je t'aime, je t'aimerai",
+      "Francis Cabrel"
+    ],
+    "pop-iam": [
+      "Petit frère",
+      "IAM"
+    ],
+    "pop-indochine": [
+      "L'aventurier",
+      "Indochine"
+    ],
+    "pop-jul": [
+      "Tchikita",
+      "Jul"
+    ],
+    "pop-mc-solaar": [
+      "Caroline",
+      "MC Solaar"
+    ],
+    "pop-orelsan": [
+      "Basique",
+      "Orelsan"
+    ],
+    "pop-bigflo-oli": [
+      "Picasso",
+      "Bigflo & Oli"
+    ],
+    "pop-daniel-balavoine": [
+      "Le chanteur",
+      "Daniel Balavoine"
+    ],
+    "pop-gregory-lemarchal": [
+      "Écris l'histoire",
+      "Grégory Lemarchal"
+    ],
+    "pop-sexion-d-assaut": [
+      "Wati by Night",
+      "Sexion d'Assaut"
+    ],
+    "pop-supreme-ntm": [
+      "Laisse pas traîner ton fils",
+      "Suprême NTM"
+    ],
+    "pop-tryo": [
+      "L'hymne de nos campagnes",
+      "Tryo"
+    ],
+    "pop-pnl": [
+      "Au DD",
+      "PNL"
+    ],
+    "pop-blink-182": [
+      "All the Small Things",
+      "blink-182"
+    ],
+    "pop-bob-marley": [
+      "Could You Be Loved",
+      "Bob Marley & The Wailers"
+    ],
+    "pop-earth-wind-fire": [
+      "September",
+      "Earth, Wind & Fire"
+    ],
+    "pop-enrique-iglesias": [
+      "Hero",
+      "Enrique Iglesias"
+    ],
+    "pop-fall-out-boy": [
+      "Centuries",
+      "Fall Out Boy"
+    ],
+    "pop-flo-rida": [
+      "Right Round",
+      "Flo Rida"
+    ],
+    "pop-freddie-mercury": [
+      "Living On My Own",
+      "Freddie Mercury"
+    ],
+    "pop-linkin-park": [
+      "In the End",
+      "Linkin Park"
+    ],
+    "pop-my-chemical-romance": [
+      "Welcome to the Black Parade",
+      "My Chemical Romance"
+    ],
+    "pop-one-direction": [
+      "What Makes You Beautiful",
+      "One Direction"
+    ],
+    "pop-sean-paul": [
+      "Temperature",
+      "Sean Paul"
+    ],
+    "pop-twenty-one-pilots": [
+      "Stressed Out",
+      "Twenty One Pilots"
+    ],
+    "pop-6ix9ine": [
+      "GUMMO",
+      "6ix9ine"
+    ],
+    "pop-bullet-for-my-valentine": [
+      "Your Betrayal",
+      "Bullet for My Valentine"
+    ],
+    "pop-alexandrie-alexandra": [
+      "Alexandrie Alexandra",
+      "Claude François"
+    ],
+    "pop-alors-on-danse": [
+      "Alors on danse",
+      "Stromae"
+    ],
+    "pop-amsterdam": [
+      "Amsterdam",
+      "Jacques Brel"
+    ],
+    "pop-apologize": [
+      "Apologize",
+      "OneRepublic"
+    ],
+    "pop-bella": [
+      "Bella",
+      "GIMS"
+    ],
+    "pop-billie-jean": [
+      "Billie Jean",
+      "Michael Jackson"
+    ],
+    "pop-bohemian-rhapsody": [
+      "Bohemian Rhapsody",
+      "Queen"
+    ],
+    "pop-comme-d-habitude": [
+      "Comme d'habitude",
+      "Claude François"
+    ],
+    "pop-complicated": [
+      "Complicated",
+      "Avril Lavigne"
+    ],
+    "pop-derniere-danse": [
+      "Dernière danse",
+      "Indila"
+    ],
+    "pop-diamonds": [
+      "Diamonds",
+      "Rihanna"
+    ],
+    "pop-don-t-stop-me-now": [
+      "Don't Stop Me Now",
+      "Queen"
+    ],
+    "pop-dynamite": [
+      "Dynamite",
+      "BTS"
+    ],
+    "pop-e-t": [
+      "E.T.",
+      "Katy Perry"
+    ],
+    "pop-earth-song": [
+      "Earth Song",
+      "Michael Jackson"
+    ],
+    "pop-ella-elle-l-a": [
+      "Ella, elle l'a",
+      "France Gall"
+    ],
+    "pop-emmenez-moi": [
+      "Emmenez-moi",
+      "Charles Aznavour"
+    ],
+    "pop-empire-state-of-mind": [
+      "Empire State of Mind",
+      "JAŸ-Z"
+    ],
+    "pop-en-apesanteur": [
+      "En apesanteur",
+      "Calogero"
+    ],
+    "pop-envole-moi": [
+      "Envole-moi",
+      "Jean-Jacques Goldman"
+    ],
+    "pop-i-m-still-standing": [
+      "I'm Still Standing",
+      "Elton John"
+    ],
+    "pop-j-ai-demande-a-la-lune": [
+      "J'ai demandé à la lune",
+      "Indochine"
+    ],
+    "pop-je-danse-le-mia": [
+      "Je danse le Mia",
+      "IAM"
+    ],
+    "pop-je-te-donne": [
+      "Je te donne",
+      "Michael Jones"
+    ],
+    "pop-joe-le-taxi": [
+      "Joe le taxi",
+      "Vanessa Paradis"
+    ],
+    "pop-just-the-way-you-are": [
+      "Just the Way You Are",
+      "Bruno Mars"
+    ],
+    "pop-l-aventurier": [
+      "L'Aventurier",
+      "Indochine"
+    ],
+    "pop-la-boheme": [
+      "La Bohème",
+      "Charles Aznavour"
+    ],
+    "pop-la-vie-en-rose": [
+      "La Vie en rose",
+      "Édith Piaf"
+    ],
+    "pop-last-friday-night": [
+      "Last Friday Night",
+      "Katy Perry"
+    ],
+    "pop-les-demons-de-minuit": [
+      "Les Démons de minuit",
+      "Images"
+    ],
+    "pop-les-lacs-du-connemara": [
+      "Les Lacs du Connemara",
+      "Michel Sardou"
+    ],
+    "pop-lose-yourself": [
+      "Lose Yourself",
+      "Eminem"
+    ],
+    "pop-ma-benz": [
+      "Ma Benz",
+      "Suprême NTM"
+    ],
+    "pop-macarena": [
+      "Macarena",
+      "Los del Río"
+    ],
+    "pop-mamma-mia": [
+      "Mamma Mia",
+      "ABBA"
+    ],
+    "pop-mistral-gagnant": [
+      "Mistral gagnant",
+      "Renaud"
+    ],
+    "pop-never-gonna-give-you-up": [
+      "Never Gonna Give You Up",
+      "Rick Astley"
+    ],
+    "pop-nothing-else-matters": [
+      "Nothing Else Matters",
+      "Metallica"
+    ],
+    "pop-papaoutai": [
+      "Papaoutai",
+      "Stromae"
+    ],
+    "pop-quand-la-musique-est-bonne": [
+      "Quand la musique est bonne",
+      "Jean-Jacques Goldman"
+    ],
+    "pop-rock-around-the-clock": [
+      "Rock Around the Clock",
+      "Bill Haley & His Comets"
+    ],
+    "pop-sapes-comme-jamais": [
+      "Sapés comme jamais",
+      "GIMS"
+    ],
+    "pop-shake-it-off": [
+      "Shake It Off",
+      "Taylor Swift"
+    ],
+    "pop-somebody-that-i-used-to-know": [
+      "Somebody That I Used to Know",
+      "Gotye"
+    ],
+    "pop-someone-like-you": [
+      "Someone like You",
+      "Adele"
+    ],
+    "pop-the-show-must-go-on": [
+      "The Show Must Go On",
+      "Queen"
+    ],
+    "pop-thriller": [
+      "Thriller",
+      "Michael Jackson"
+    ],
+    "pop-titanium": [
+      "Titanium",
+      "Sia"
+    ],
+    "pop-tous-les-cris-les-sos": [
+      "Tous les cris les SOS",
+      "Daniel Balavoine"
+    ],
+    "pop-voyage-voyage": [
+      "Voyage voyage",
+      "Desireless"
+    ],
+    "pop-without-me": [
+      "Without Me",
+      "Eminem"
+    ],
+    "pop-zombie": [
+      "Zombie",
+      "The Cranberries"
+    ],
+    "pop-american-idiot": [
+      "American Idiot",
+      "Green Day"
+    ],
+    "pop-another-brick-in-the-wall": [
+      "Another Brick in the Wall",
+      "Pink Floyd"
+    ],
+    "pop-beat-it": [
+      "Beat It",
+      "Michael Jackson"
+    ],
+    "pop-boulevard-of-broken-dreams": [
+      "Boulevard of Broken Dreams",
+      "Green Day"
+    ],
+    "pop-crazy-in-love": [
+      "Crazy in Love",
+      "Beyoncé"
+    ],
+    "pop-gangsta-s-paradise": [
+      "Gangsta's Paradise",
+      "Coolio"
+    ],
+    "pop-hallelujah": [
+      "Hallelujah",
+      "Leonard Cohen"
+    ],
+    "pop-i-will-survive": [
+      "I Will Survive",
+      "Gloria Gaynor"
+    ],
+    "pop-numb": [
+      "Numb",
+      "Linkin Park"
+    ],
+    "pop-pump-it": [
+      "Pump It",
+      "Black Eyed Peas"
+    ],
+    "pop-rockstar": [
+      "Rockstar",
+      "Post Malone"
+    ],
+    "pop-they-don-t-care-about-us": [
+      "They Don't Care About Us",
+      "Michael Jackson"
+    ],
+    "pop-we-will-rock-you": [
+      "We Will Rock You",
+      "Queen"
+    ],
+    "pop-without-you": [
+      "Without You",
+      "Mariah Carey"
+    ],
+    "pop-ai-se-eu-te-pego": [
+      "Ai Se Eu Te Pego",
+      "Michel Teló"
+    ],
+    "pop-bad": [
+      "Bad",
+      "Michael Jackson"
+    ],
+    "pop-call-me-maybe": [
+      "Call Me Maybe",
+      "Carly Rae Jepsen"
+    ],
+    "pop-creep": [
+      "Creep",
+      "Radiohead"
+    ],
+    "pop-eye-of-the-tiger": [
+      "Eye of the Tiger",
+      "Survivor"
+    ],
+    "pop-hotel-california": [
+      "Hotel California",
+      "Eagles"
+    ],
+    "pop-i-was-made-for-lovin-you": [
+      "I Was Made for Lovin' You",
+      "Kiss"
+    ],
+    "pop-in-the-air-tonight": [
+      "In the Air Tonight",
+      "Phil Collins"
+    ],
+    "pop-my-heart-will-go-on": [
+      "My Heart Will Go On",
+      "Céline Dion"
+    ],
+    "pop-rolling-in-the-deep": [
+      "Rolling in the Deep",
+      "Adele"
+    ],
+    "pop-seven-nation-army": [
+      "Seven Nation Army",
+      "The White Stripes"
+    ],
+    "pop-99-luftballons": [
+      "99 Luftballons",
+      "Nena"
+    ],
+    "pop-africa": [
+      "Africa",
+      "Toto"
+    ],
+    "pop-beggin": [
+      "Beggin'",
+      "Måneskin"
+    ],
+    "pop-cry-me-a-river": [
+      "Cry Me a River",
+      "Justin Timberlake"
+    ],
+    "pop-dragostea-din-tei": [
+      "Dragostea din tei",
+      "O-Zone"
+    ],
+    "pop-radioactive": [
+      "Radioactive",
+      "Imagine Dragons"
+    ],
+    "pop-thrift-shop": [
+      "Thrift Shop",
+      "Macklemore & Ryan Lewis"
+    ],
+    "pop-viva-la-vida": [
+      "Viva la Vida",
+      "Coldplay"
+    ],
+    "pop-freed-from-desire": [
+      "Freed from Desire",
+      "Gala"
+    ],
+    "pop-la-groupie-du-pianiste": [
+      "La Groupie du pianiste",
+      "Michel Berger"
+    ],
+    "pop-la-tribu-de-dana": [
+      "La Tribu de Dana",
+      "Manau"
+    ],
+    "pop-le-paradis-blanc": [
+      "Le Paradis blanc",
+      "Michel Berger"
+    ],
+    "pop-les-rois-du-monde": [
+      "Les Rois du monde",
+      "Damien Sargue"
+    ],
+    "pop-mr-saxobeat": [
+      "Mr. Saxobeat",
+      "Alexandra Stan"
+    ],
+    "pop-september": [
+      "September",
+      "Earth, Wind & Fire"
+    ],
+    "pop-sexual-healing": [
+      "Sexual Healing",
+      "Marvin Gaye"
+    ],
+    "pop-stressed-out": [
+      "Stressed Out",
+      "Twenty One Pilots"
+    ],
+    "pop-sultans-of-swing": [
+      "Sultans of Swing",
+      "Dire Straits"
+    ],
+    "pop-wavin-flag": [
+      "Wavin' Flag",
+      "K'Naan"
+    ],
+    "pop-where-is-my-mind": [
+      "Where Is My Mind?",
+      "Pixies"
+    ],
+    "pop-ecris-l-histoire": [
+      "Écris l'histoire",
+      "Grégory Lemarchal"
+    ],
+    "pop-montero": [
+      "Montero",
+      "Lil Nas X"
+    ],
+    "pop-paramore": [
+      "Misery Business",
+      "Paramore"
     ]
   },
   "anime": {
@@ -930,6 +1466,46 @@
     "yuri-on-ice": [
       "History Maker",
       "DEAN FUJIOKA"
+    ],
+    "akira": [
+      "Kaneda",
+      "Geinoh Yamashirogumi"
+    ],
+    "baki": [
+      "Beastful",
+      "GRANRODEO"
+    ],
+    "boruto": [
+      "Baton Road",
+      "KANA-BOON"
+    ],
+    "detective-conan": [
+      "Meitantei Conan Main Theme",
+      "Katsuo Ohno"
+    ],
+    "eyeshield-21": [
+      "Breakthrough",
+      "Coming Century"
+    ],
+    "inazuma-eleven": [
+      "Tachiagari Youth",
+      "T-Pistonz+KMC"
+    ],
+    "olive-et-tom": [
+      "Olive et Tom",
+      "Bernard Minet"
+    ],
+    "space-dandy": [
+      "Viva Namida",
+      "Okamura Yasuyuki"
+    ],
+    "world-trigger": [
+      "Glorious Days",
+      "Three Lights Down Kings"
+    ],
+    "yu-gi-oh-5d-s": [
+      "Believe in Nexus",
+      "Masaaki Endo"
     ]
   },
   "ambience": {
