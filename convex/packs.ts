@@ -13,6 +13,7 @@ import { pityAfter, pityForces } from '../src/core/pity';
 import { rollPackCoins } from '../src/core/economy';
 import { addCoins, bumpWeekly } from './econLib';
 import { queueDropShot } from './dropShots';
+import { liveEventOrThrow } from './events';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -54,7 +55,7 @@ export const getSealedPack = query({
  * Prépare (scelle) UN booster pour `user` — cœur de `preparePack` et de `preparePacks`. Débite la réserve, tire les cartes,
  * attribue les n° d'impression, avance le pity. `allowExisting` : rend le booster déjà scellé s'il y en a un (anti-reroll).
  */
-async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme' | 'bebou' | undefined, themeId: string | undefined, allowExisting = true) {
+async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme' | 'bebou' | undefined, themeId: string | undefined, allowExisting = true, eventId?: Id<'packEvents'>) {
 
   const existingSealed = await ctx.db
     .query('packOpens')
@@ -65,8 +66,12 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     return existingSealed;
   }
 
+  // (11/11) booster du moment : seulement pendant l'événement, pool relu en base (convex/events.ts, src/core/events.ts)
+  const ev = eventId ? await liveEventOrThrow(ctx, eventId) : null;
   // anciens identifiants (« pokemon ») ramenés à leur thème (« gaming »)
-  const req: PackRequest = { kind: packKind ?? 'bebou', themeId: packKind === 'theme' ? themeById(themeId ?? '')?.id ?? themeId : undefined };
+  const req: PackRequest = ev
+    ? { kind: 'theme', event: { id: ev._id, subthemes: ev.subthemes, cards: ev.cards } }
+    : { kind: packKind ?? 'bebou', themeId: packKind === 'theme' ? themeById(themeId ?? '')?.id ?? themeId : undefined };
   // pity : 200 boosters secs → celui-ci contient une Mythique (src/core/pity.ts)
   const pity = user.pityCount ?? 0;
   req.forceMythic = pityForces(pity);
@@ -85,7 +90,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     packBalance: regen.balance - 1,
     packRegenAt: regen.regenAt,
     lastSeenAt: now,
-    statusText: `Ouvre un ${req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
+    statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
   });
   await scheduleReserveFull(ctx, user._id);
 
@@ -164,6 +169,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     // pièces d'ouverture (spec économie) : tirées ici avec le booster, créditées au dévoilement
     coins: rollPackCoins(req.kind, secureRandomFloat),
     ...(rolled.god ? { god: true } : {}),
+    ...(ev ? { eventId: ev._id, eventName: ev.name } : {}),
   });
 
   return (await ctx.db.get(packId))!;
@@ -175,10 +181,12 @@ export const preparePack = mutation({
     /** 'theme' = booster d'un des 4 thèmes (themeId : gaming | pop | sport | monde) · 'bebou' = bébou pack. Absent = bébou pack. */
     packKind: v.optional(packKindValidator),
     themeId: v.optional(v.string()),
+    /** (11/11) booster du moment : l'événement en cours (src/core/events.ts) — packKind / themeId ignorés */
+    eventId: v.optional(v.id('packEvents')),
   },
-  handler: async (ctx, { sessionToken, packKind, themeId }) => {
+  handler: async (ctx, { sessionToken, packKind, themeId, eventId }) => {
     const user = await requireUser(ctx, sessionToken);
-    return await prepareOne(ctx, user, packKind, themeId);
+    return await prepareOne(ctx, user, packKind, themeId, true, eventId);
   },
 });
 
@@ -286,13 +294,14 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
   }
 
   // pièces d'ouverture + missions de la semaine (src/core/economy.ts, src/core/weekly.ts)
-  if (pack.coins) await addCoins(ctx, user._id, pack.coins, 'pack', `Ouverture — ${pack.packKind === 'theme' && pack.themeId ? themeById(pack.themeId)?.label ?? 'booster' : BEBOU_PACK.label}`, { earned: true });
+  if (pack.coins) await addCoins(ctx, user._id, pack.coins, 'pack', `Ouverture — ${pack.eventName ? `Booster ${pack.eventName}` : pack.packKind === 'theme' && pack.themeId ? themeById(pack.themeId)?.label ?? 'booster' : BEBOU_PACK.label}`, { earned: true });
   await bumpWeekly(ctx, user._id, { type: 'pack', cards: pack.cards.map((c) => ({ rarity: c.rarity, isNew: c.isNew })) });
 
   // missions du jour (ouvrir, raretés, nouvelles cartes, doublons…)
   await bumpMissions(ctx, user, {
     type: 'pack',
-    packKey: pack.packKind === 'theme' && pack.themeId ? pack.themeId : 'bebou',
+    // (booster du moment : clé à part, il ne compte pas pour « ouvre un Bebou Pack »)
+    packKey: pack.eventId ? 'event' : pack.packKind === 'theme' && pack.themeId ? pack.themeId : 'bebou',
     cards: pack.cards.map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: c.isNew })),
   });
 
@@ -324,15 +333,16 @@ export const preparePacks = mutation({
     sessionToken: v.string(),
     packKind: v.optional(packKindValidator),
     themeId: v.optional(v.string()),
+    eventId: v.optional(v.id('packEvents')),
     count: v.number(),
   },
-  handler: async (ctx, { sessionToken, packKind, themeId, count }) => {
+  handler: async (ctx, { sessionToken, packKind, themeId, eventId, count }) => {
     let user = await requireUser(ctx, sessionToken);
     const n = Math.max(1, Math.min(10, Math.floor(count)));
     const out = (await ctx.db.query('packOpens').withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'sealed')).take(n)) as Doc<'packOpens'>[];
     while (out.length < n) {
       try {
-        out.push(await prepareOne(ctx, user, packKind, themeId, false));
+        out.push(await prepareOne(ctx, user, packKind, themeId, false, eventId));
       } catch (e) {
         if (!out.length) throw e;
         break; // réserve épuisée en cours de série : on garde ce qui est scellé
