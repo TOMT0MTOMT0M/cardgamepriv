@@ -59,7 +59,7 @@ export default function cartouche(k: SceneCtx) {
   tl.set(c, { opacity: 1, x: w * 0.42, rotation: 14 }, 0);
   tl.fromTo(state, { y: -h * 0.75 }, { y: yAbove, duration: 0.55, ease: 'power3.out', onUpdate: sync, immediateRender: false }, 0.05);
   tl.to(c, { x: 0, rotation: 0, duration: 0.55, ease: 'power3.out' }, 0.05);
-  k.at(0.05, () => sfx.whoosh(0.5, 0.2, false));
+  k.at(0.05, () => sfx.whoosh(0.5, 0.2, false, 'power3.out'));
   tl.to(state, { y: yIn, duration: 0.32, ease: 'power2.in', onUpdate: sync }, 0.72);
   k.at(1.04, () => {
     sfx.slot();
@@ -127,7 +127,7 @@ export default function cartouche(k: SceneCtx) {
   tl.set(state, { out: 1 }, 3.24);
   tl.to(state, { y: 0, duration: 0.5, ease: 'power3.inOut', onUpdate: sync }, 3.24);
   tl.to([scr, con], { opacity: 0, scale: 0.94, duration: 0.42, ease: 'power2.in' }, 3.2);
-  k.at(3.26, () => sfx.whoosh(0.4, 0.14));
+  k.at(3.26, () => sfx.whoosh(0.4, 0.14, true, 'power3.inOut'));
   k.glint(3.6, 0.5);
   k.at(3.72, () => sfx.hit(0.35, 60));
   tl.to({}, { duration: 0.01 }, 4.12);

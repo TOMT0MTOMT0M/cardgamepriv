@@ -10,6 +10,7 @@ import type { RarityId } from '../core/rarity';
 import { configureArt } from '../core/art';
 import { setFaceQuality } from './scenes/cardFace';
 import { perfMark } from '../core/perfLog';
+import { padOn, silentOn } from '../core/soundPrefs';
 
 /**
  * Configuration du canvas WebGPU, gardée pour la RE-poser au retour d'une autre appli (shell.ts, reviveSurface) :
@@ -171,6 +172,9 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   } catch {
     /* ignore */
   }
+  // (son V2, 11/11) réglages désactivés par défaut : nappe des menus, son même en mode silencieux (iPhone)
+  if (silentOn()) sfx.setPlayThroughSilent(true);
+  if (padOn()) sfx.setPad(true);
   const needsGyroPermission = () =>
     typeof (window.DeviceOrientationEvent as unknown as { requestPermission?: unknown } | undefined)?.requestPermission === 'function';
   /*
@@ -591,6 +595,8 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       }
       canvas.style.cursor = ''; // chaque scène remet le sien
       current = key;
+      // (son V2) la nappe des menus se tait dans la visionneuse et les rencontres (l'ouverture la coupe elle-même)
+      sfx.padHold('scene', !!key && key !== 'opening');
       if (key) {
         const m = scenes.get(key)!;
         m.overlay.hidden = false;

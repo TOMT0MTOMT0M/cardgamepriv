@@ -72,7 +72,7 @@ export default function tapisRouge(k: SceneCtx) {
   const a = actor();
   tl.set(a, { opacity: 1, scale: 0.08, y: hz - h / 2 + u * 2 }, 1.5);
   tl.to(a, { scale: 1, y: 0, duration: 1.1, ease: 'power3.in' }, 1.55);
-  k.at(1.55, () => sfx.riser(1.1, 0.1));
+  k.at(1.55, () => sfx.riser(1.1, 0.1, 'power3.in'));
   for (let i = 0; i < 5; i++) {
     tl.fromTo(glare, { opacity: 0.45 + i * 0.1 }, { opacity: 0, duration: 0.08, immediateRender: false }, 2.65 + i * 0.07);
     k.at(2.65 + i * 0.07, () => sfx.shutter(0.18));

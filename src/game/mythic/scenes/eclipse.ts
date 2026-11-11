@@ -99,7 +99,7 @@ export default function eclipse(k: SceneCtx) {
   tl.set(a, { opacity: 0, scale: 0.18, x: 0, y: sy, rotation: 0 }, 1.75);
   tl.to(a, { opacity: 1, duration: 0.25 }, 1.8);
   tl.to(a, { scale: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 1.85);
-  k.at(1.85, () => sfx.whoosh(0.5, 0.22, false));
+  k.at(1.85, () => sfx.whoosh(0.5, 0.22, false, 'power3.out'));
   k.glint(2.5);
   k.at(2.55, () => sfx.hit(0.4, 52));
   tl.to({}, { duration: 0.01 }, 2.9);

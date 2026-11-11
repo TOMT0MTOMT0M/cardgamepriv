@@ -65,6 +65,8 @@ export interface PreludeHandle {
 
 /** accélération de la version courte */
 const SHORT_SPEED = 2.2;
+/** avance (s, temps réel) des sons d'une scène sur leur image : voir `at` */
+const AT_LEAD = 0.06;
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
@@ -92,7 +94,8 @@ export function runPrelude(o: PreludeRun): PreludeHandle {
   const W = o.mount ? o.mount.clientWidth : innerWidth;
   const H = o.mount ? o.mount.clientHeight : innerHeight;
 
-  const sfx = soundKit(host.sfx);
+  // (son V2) les souffles suivent la vitesse réelle de la scène (version courte : timeline accélérée)
+  const sfx = soundKit(host.sfx, () => sceneTl?.timeScale() ?? 1);
   const loops: Array<(t: number, dt: number) => void> = [];
   const disposers: Array<() => void> = [];
   let sceneTl: gsap.core.Timeline | null = null;
@@ -288,7 +291,10 @@ export function runPrelude(o: PreludeRun): PreludeHandle {
         haptics.pulse(p);
       },
       at(t, fn) {
-        tl.call(fn, [], t);
+        // (son V2) programmé AT_LEAD plus tôt sur l'horloge audio (Sfx.ahead) : le son sort du haut-parleur PILE sur
+        // l'image, latence de sortie compensée (10–100 ms selon le téléphone), version courte comprise
+        const p = Math.max(0, t - AT_LEAD * tl.timeScale());
+        tl.call(() => host.sfx.ahead((t - p) / Math.max(0.2, tl.timeScale()), fn), [], p);
       },
       cw,
       accent: ACCENTS[o.card.family] ?? '#fff',

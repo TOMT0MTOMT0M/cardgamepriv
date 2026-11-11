@@ -53,7 +53,7 @@ export default function bache(k: SceneCtx) {
   const a = actor();
   tl.set(a, { opacity: 1, scale: 0.36, y: top + CH * 0.1 - h / 2, rotationX: 50 }, 1.25);
   tl.to(tarp, { x: -CW * 1.2, skewX: 18, opacity: 0, duration: 0.6, ease: 'power3.in' }, 1.25);
-  k.at(1.25, () => sfx.whoosh(0.6, 0.22, false));
+  k.at(1.25, () => sfx.whoosh(0.6, 0.22, false, 'power3.in'));
   k.at(1.7, () => {
     sfx.engine(1.0, 0.24, 60, 210);
     k.haptic([40, 30, 60]);

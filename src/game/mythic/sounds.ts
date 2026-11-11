@@ -1,12 +1,21 @@
 /**
- * SONS DES SCÈNES 6★ — 100 % synthétisés (Web Audio), comme le reste du jeu : aucun fichier, aucun son repris d'un jeu,
- * d'un film ou d'une marque. Tout passe par la chaîne du jeu (`Sfx.rig()` : bus « event », compresseur, limiteur,
- * volume général) : coupé quand le son du jeu est coupé.
+ * SONS DES SCÈNES 6★ — (son V2, 11/11) sur le système son V2 du jeu : chaque bruitage (cloche, sifflet, moteur, foule,
+ * déclencheur, gong…) est un son CUIT (core/sound/mythicBank.ts : matières, attaques arrondies, aigus feutrés), cuit dans
+ * le Worker dès qu'un booster contient une 6★ (`prepareMythic`) ; les impacts sont ceux du jeu (land / thud / boom) ;
+ * les souffles et les montées SUIVENT LA COURBE de l'animation qu'ils accompagnent (`whoosh(…, ease)` : la vitesse de
+ * l'ease, timeline accélérée comprise) ; le moteur (runtime.ts `at`) programme chaque son en avance sur l'horloge audio
+ * pour qu'il sorte pile sur l'image. Aucun fichier, aucun son repris d'un jeu, d'un film ou d'une marque.
  *
- * Deux primitives (`tone`, `hiss`) et une trentaine de sons composés à partir d'elles. Chaque son part « maintenant » :
- * les scènes les placent dans leur timeline (`tl.call`), donc la version courte (timeline accélérée) suit toute seule.
+ * Tant que la banque n'est pas cuite (toute première seconde, vieux navigateur), la synthèse d'origine (`legacy`, deux
+ * primitives `tone` / `hiss`) joue à sa place. Tout passe par la chaîne du jeu (bus « event », feutre, compresseur,
+ * limiteur, volume général) : coupé quand le son du jeu est coupé. Chaque son part « maintenant » : les scènes les
+ * placent dans leur timeline (`k.at`), donc la version courte suit toute seule.
  */
-import type { Sfx } from '../../core/audio';
+import gsap from 'gsap';
+import type { PlayO, Sfx } from '../../core/audio';
+import { ENGINE_S, SWELL_S } from '../../core/sound/mythicBank';
+import type { Ease } from '../../core/sound/motion';
+import { EASE } from '../../core/ease';
 
 type Filt = 'lowpass' | 'highpass' | 'bandpass' | 'notch' | 'peaking';
 interface ToneO {
@@ -54,8 +63,21 @@ const PENTA = [0, 2, 4, 7, 9];
 const A4 = 440;
 export const deg = (d: number) => A4 * Math.pow(2, (PENTA[((d % 5) + 5) % 5] + 12 * Math.floor(d / 5)) / 12);
 
-export function soundKit(sfx: Sfx) {
+/** courbe d'une animation gsap (« power3.out »…) ou fonction : ce que le souffle doit suivre */
+type EaseLike = string | Ease;
+const easeOf = (e?: EaseLike): Ease | undefined => (typeof e === 'function' ? e : e ? (gsap.parseEase(e) as Ease) : undefined);
+
+/**
+ * NIVEAUX des sons cuits des scènes (crête −6 dBFS) face à l'ancienne synthèse au même `vol` : ~×2 rendrait la même
+ * crête ; un peu moins, la direction V2 est « étouffée ». À régler à l'oreille (voir docs du chantier son).
+ */
+const L = { bell: 1.6, whistle: 1.3, buzzer: 1.3, engine: 1.4, crowd: 1.7, shutter: 1.6, crackle: 1.2, snow: 0.9, tvOn: 1.5, chip: 1.5, slot: 1.6, projector: 1.4, boing: 1.6, buzz: 1.4, sizzle: 1.2, clank: 1.6, flood: 1.5, shing: 1.4, beep: 1.4, bounce: 1.8, gong: 1.6, chirp: 1.3, cricket: 1.0, roll: 1.3, slash: 1.6, rumble: 1.8, swell: 1.2, tick: 0.85 };
+
+/** `speed()` : vitesse de la timeline de la scène (version courte ×2,2) — un souffle dure ce que dure le geste réel */
+export function soundKit(sfx: Sfx, speed: () => number = () => 1) {
   const rig = () => sfx.rig();
+  // (son V2) cuisson à la demande, si `prepareMythic` ne l'a pas déjà lancée (labo, visionneuse)
+  sfx.loadBook('mythic');
 
   function env(g: GainNode, t: number, a: number, peak: number, d: number, hold = 0) {
     g.gain.setValueAtTime(0.0001, t);
@@ -139,7 +161,7 @@ export function soundKit(sfx: Sfx) {
     tone({ f: low * 2.6, f2: low, dur: 0.38, vol, drive: true, lp: 900, wet: 0.15 });
   };
 
-  return {
+  const legacy = {
     tone,
     hiss,
     hit,
@@ -296,6 +318,199 @@ export function soundKit(sfx: Sfx) {
     stamp: (vol = 0.3) => {
       hit(vol, 60);
       hiss({ dur: 0.06, vol: vol * 0.5, f: 900, q: 1 });
+    },
+  };
+
+  /** joue un son cuit des scènes 6★ sur le bus « event » ; faux s'il n'est pas (encore) cuit */
+  const P = (id: string, o: PlayO = {}) => sfx.play(id, { bus: 'event', wet: 0.22, ...o });
+  /** texture en boucle à la durée voulue, départ au hasard, fondus doux */
+  const T = (id: string, dur: number, o: PlayO = {}) => sfx.play(id, { bus: 'event', wet: 0.2, loop: true, dur, offset: Math.random() * 0.8, fadeIn: Math.min(0.08, dur * 0.2), ...o });
+  const sp = () => Math.max(0.2, speed());
+  const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
+  /** note de la gamme des 6★ (la majeur pentatonique : sol + 2 demi-tons, charte sonore), lame de bois feutrée du jeu */
+  const noteLa = (d: number, vol: number, dur: number, at = 0) => {
+    const keep = sfx.transpose;
+    sfx.transpose = 2;
+    sfx.note(d, vol, dur, at);
+    sfx.transpose = keep;
+  };
+  /** impact : les coups cuits du jeu (pat / coup feutré / grand impact selon la force), grave réglé par `low` */
+  const hitV2 = (vol = 0.5, low = 55) => {
+    if (sfx.has('thud')) sfx.thump(vol, low, 0, 'event');
+    else legacy.hit(vol, low);
+  };
+
+  return {
+    /** primitives brutes (gardées pour les rares sons sur mesure des scènes) */
+    tone,
+    /** bruit filtré : (V2) un lit de texture cuite (air / papier), même filtre, même enveloppe */
+    hiss: (o: HissO) => {
+      if (o.gates || !sfx.bed(o.dur, { vol: o.vol ?? 0.2, type: o.type, f: o.f, f2: o.f2, q: o.q, at: o.at, a: o.a, hold: o.hold, wet: o.wet })) hiss(o);
+    },
+    hit: hitV2,
+    /**
+     * souffle qui passe — `ease` : la courbe du mouvement qu'il accompagne (« power3.out »…) ; le souffle suit sa
+     * vitesse (fort là où ça va vite). Sans courbe : sortie douce.
+     */
+    whoosh: (dur = 0.45, vol = 0.25, up = true, ease?: EaseLike) => {
+      if (!sfx.sweep(dur / sp(), { vol: vol * 0.9, up, ease: easeOf(ease), bus: 'event', lo: 320, hi: dur < 0.34 ? 2200 : 1700 })) legacy.whoosh(dur, vol, up);
+    },
+    /** tic feutré (roulette, défilement) */
+    tick: (pitch = 1, vol = 0.18) => {
+      if (!P('tick', { rate: clamp(pitch, 0.5, 2.6), vol: vol * L.tick, wet: 0.05 })) legacy.tick(pitch, vol);
+    },
+    /**
+     * montée de tension : souffle qui ENFLE (départ retenu, `EASE.heave` par défaut : il culmine à l'arrivée, là où tombe
+     * l'impact) + nappe tonale qui monte et finit toujours à son sommet, quelle que soit la durée
+     */
+    riser: (dur = 1.2, vol = 0.18, ease?: EaseLike) => {
+      const d = dur / sp();
+      const a = sfx.sweep(d, { vol: vol * 0.8, up: true, ease: easeOf(ease) ?? EASE.heave, bus: 'event', tex: 'air', lo: 380, hi: 2600 });
+      const b = P('mSwell', { vol: vol * L.swell, offset: Math.max(0, SWELL_S - d), rate: d > SWELL_S ? SWELL_S / d : 1, vary: false, wet: 0.35 });
+      if (!a && !b) legacy.riser(dur, vol);
+    },
+    /** note de la gamme (la majeur pentatonique) */
+    note: (d: number, vol = 0.14, dur = 0.6, at = 0, type: OscillatorType = 'triangle') => {
+      if (sfx.has('note5')) noteLa(d, vol, dur, at);
+      else legacy.note(d, vol, dur, at, type);
+    },
+    /** CLOCHE (ring, cloche de service) : bol frappé au maillet feutré ; `f` = hauteur */
+    bell: (f = 1320, vol = 0.22, dur = 1.6) => {
+      if (!P('mBell', { rate: f / 1150, vol: vol * L.bell, dur: Math.max(0.3, dur), vary: false, wet: 0.4 })) legacy.bell(f, vol, dur);
+    },
+    /** SIFFLET d'arbitre */
+    whistle: (dur = 0.6, vol = 0.16) => {
+      if (!P('mWhistle', { vol: vol * L.whistle, dur, wet: 0.2 })) legacy.whistle(dur, vol);
+    },
+    /** SIRÈNE de fin de temps (corne feutrée) */
+    buzzer: (dur = 0.9, vol = 0.2) => {
+      if (!P('mBuzzer', { vol: vol * L.buzzer, dur, wet: 0.12 })) legacy.buzzer(dur, vol);
+    },
+    /** MOTEUR qui monte en régime (de `from` Hz, sur `dur` s) */
+    engine: (dur = 1.4, vol = 0.22, from = 55, to = 190) => {
+      if (!P('mEngine', { rate: clamp((from / 55) * Math.pow(ENGINE_S / Math.max(0.3, dur), 0.25), 0.6, 2), vol: vol * L.engine, dur, wet: 0.15 })) legacy.engine(dur, vol, from, to);
+    },
+    /** CLAMEUR de stade (enfle, voix éparses) */
+    crowd: (dur = 2, vol = 0.2) => {
+      if (!P('mCrowd', { rate: clamp(1.8 / dur, 0.85, 1.4), vol: vol * L.crowd, dur, wet: 0.5 })) legacy.crowd(dur, vol);
+    },
+    /** DÉCLENCHEUR d'appareil photo (rideau mécanique) */
+    shutter: (vol = 0.2) => {
+      if (!P('mShutter', { vol: vol * L.shutter, wet: 0.12 })) legacy.shutter(vol);
+    },
+    /** CRÉPITEMENT de vinyle */
+    crackle: (dur = 1.5, vol = 0.12) => {
+      if (!T('mCrackle', dur, { vol: vol * L.crackle, wet: 0.05 })) legacy.crackle(dur, vol);
+    },
+    /** NEIGE de télé (feutrée) */
+    staticNoise: (dur = 0.8, vol = 0.14) => {
+      if (!T('mSnow', dur, { vol: vol * L.snow, fadeIn: 0.01, wet: 0.05 })) legacy.staticNoise(dur, vol);
+    },
+    /** télé cathodique qui s'allume */
+    tvOn: (vol = 0.16) => {
+      if (!P('mTvOn', { vol: vol * L.tvOn, wet: 0.15 })) legacy.tvOn(vol);
+    },
+    /** petit jingle 8 bits ORIGINAL (carré adouci, gamme du jeu) */
+    chip: (vol = 0.1) => {
+      if (!P('mChip', { vol: vol * L.chip, vary: false, wet: 0.1 })) legacy.chip(vol);
+    },
+    /** cartouche enfoncée */
+    slot: (vol = 0.25) => {
+      if (!P('mSlot', { vol: vol * L.slot, wet: 0.08 })) legacy.slot(vol);
+    },
+    /** ronron du projecteur de cinéma */
+    projector: (dur = 2, vol = 0.1) => {
+      if (!T('mProjector', dur, { vol: vol * L.projector, fadeIn: 0.15 })) legacy.projector(dur, vol);
+    },
+    /** BOING (dessin animé) */
+    boing: (vol = 0.18) => {
+      if (!P('mBoing', { vol: vol * L.boing, wet: 0.2 })) legacy.boing(vol);
+    },
+    /** NOTIFICATION (deux notes de la gamme) */
+    notif: (vol = 0.14) => {
+      if (!sfx.has('note5')) return legacy.notif(vol);
+      noteLa(7, vol, 0.25);
+      noteLa(9, vol, 0.4, 0.12);
+    },
+    /** vibreur de téléphone posé sur une table */
+    buzz: (dur = 0.4, vol = 0.16) => {
+      if (!P('mBuzz', { vol: vol * L.buzz, dur, rate: dur > 0.8 ? 0.8 / dur : 1, wet: 0.05 })) legacy.buzz(dur, vol);
+    },
+    /** GRÉSILLEMENT (plat chaud) */
+    sizzle: (dur = 1.4, vol = 0.12) => {
+      if (!T('mSizzle', dur, { vol: vol * L.sizzle, fadeIn: 0.12 })) legacy.sizzle(dur, vol);
+    },
+    /** CLAQUEMENT métallique (casier, distributeur) ; `f` = hauteur */
+    clank: (vol = 0.25, f = 420) => {
+      if (!P('mClank', { rate: clamp(f / 420, 0.4, 2.5), vol: vol * L.clank, wet: 0.3 })) legacy.clank(vol, f);
+    },
+    /** projecteur de stade (gros interrupteur + bourdon) */
+    flood: (vol = 0.24) => {
+      if (!P('mFlood', { vol: vol * L.flood, wet: 0.2 })) legacy.flood(vol);
+    },
+    /** lame : « shing » métallique */
+    shing: (vol = 0.18) => {
+      if (!P('mShing', { vol: vol * L.shing, wet: 0.45 })) legacy.shing(vol);
+    },
+    /** bip électronique (chrono, compte à rebours) ; `f` = hauteur */
+    beep: (f = 1320, vol = 0.12, dur = 0.12) => {
+      if (!P('mBeep', { rate: clamp(f / 1320, 0.3, 2), vol: vol * L.beep, dur: Math.max(0.05, dur * 1.3), vary: false, wet: 0.1 })) legacy.beep(f, vol, dur);
+    },
+    /** ballon / balle qui rebondit */
+    bounce: (vol = 0.25) => {
+      if (!P('mBounce', { vol: vol * L.bounce, wet: 0.08 })) legacy.bounce(vol);
+    },
+    /** gong (combat, esport) */
+    gong: (vol = 0.2) => {
+      if (!P('mGong', { vol: vol * L.gong, vary: false, wet: 0.55 })) legacy.gong(vol);
+    },
+    /** gazouillis d'oiseau */
+    chirp: (vol = 0.08) => {
+      if (!P('mChirp', { vol: vol * L.chirp, wet: 0.5 })) legacy.chirp(vol);
+    },
+    /**
+     * AMBIANCE (savane, forêt, océan, glace, ville, nuit) : lit de texture filtré + petits événements cuits
+     */
+    ambience: (kind: 'savane' | 'foret' | 'ocean' | 'glace' | 'ville' | 'nuit', dur = 3, vol = 0.12) => {
+      if (!sfx.has('mCrickets') || !sfx.has('air')) return legacy.ambience(kind, dur, vol);
+      const bed = (d: number, o: Parameters<Sfx['bed']>[1]) => sfx.bed(d, { bus: 'event', ...o });
+      if (kind === 'ocean') {
+        // trois vagues : chacune enfle puis se retire (respiration lente du filtre)
+        for (let i = 0; i < 3; i++) bed(1.4, { vol: vol * 1.1, type: 'lowpass', f: 500, f2: 1500, a: 0.7, at: i * 1.0, wet: 0.6 });
+        return;
+      }
+      if (kind === 'glace') {
+        bed(dur, { vol: vol * 0.8, f: 600, q: 0.7, a: dur * 0.4, hold: 0.3, wet: 0.7 });
+        noteLa(14, vol * 0.25, dur * 0.8);
+        return;
+      }
+      const base = kind === 'foret' ? 1100 : kind === 'savane' ? 700 : kind === 'ville' ? 400 : 300;
+      bed(dur, { vol: vol * 0.75, type: kind === 'ville' ? 'lowpass' : 'bandpass', f: base, q: 0.6, a: dur * 0.3, hold: 0.4, wet: 0.6 });
+      if (kind === 'nuit') T('mCrickets', Math.max(0.3, dur - 0.2), { vol: vol * L.cricket * 0.6, at: 0.2, offset: 0, fadeIn: 0.01, wet: 0.4 });
+      if (kind === 'foret' || kind === 'savane')
+        for (let i = 0; i < (kind === 'foret' ? 3 : 2); i++) P('mChirp', { vol: vol * L.chirp * 0.7, at: 0.2 + Math.random() * dur * 0.6, wet: 0.5 });
+    },
+    /** feux de départ : bip grave par feu */
+    light: (vol = 0.14) => {
+      if (!P('mBeep', { rate: 0.5, vol: vol * L.beep, dur: 0.2, vary: false, wet: 0.15 })) legacy.light(vol);
+    },
+    /** chiffre qui défile vite (compteur) */
+    roll: (dur = 0.6, vol = 0.1) => {
+      if (!T('mRoll', dur, { vol: vol * L.roll, fadeIn: 0.02, wet: 0.05 })) legacy.roll(dur, vol);
+    },
+    /** déchirure d'air (coupe nette, lame, fente de case de manga) */
+    slash: (vol = 0.26) => {
+      if (!P('mSlash', { vol: vol * L.slash, wet: 0.15 })) return legacy.slash(vol);
+      hitV2(vol * 0.7, 70);
+    },
+    /** grondement sourd (globe, tunnel) */
+    rumble: (dur = 1.4, vol = 0.2) => {
+      if (!T('mRumble', dur, { vol: vol * L.rumble, fadeIn: dur * 0.3, wet: 0.1 })) legacy.rumble(dur, vol);
+    },
+    /** tampon (carte postale) : coup feutré + papier */
+    stamp: (vol = 0.3) => {
+      hitV2(vol, 60);
+      if (!sfx.bed(0.06, { vol: vol * 0.5, f: 900, q: 1, bus: 'event' })) hiss({ dur: 0.06, vol: vol * 0.5, f: 900, q: 1 });
     },
   };
 }

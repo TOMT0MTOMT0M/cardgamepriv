@@ -76,7 +76,7 @@ export default function tele(k: SceneCtx) {
   tl.to(a, { scale: 1, x: 0, y: 0, filter: 'grayscale(0) contrast(1)', duration: 0.6, ease: 'power3.inOut' }, 2.02);
   tl.to(set, { scale: 0.9, opacity: 0, duration: 0.5, ease: 'power2.in' }, 2.1);
   k.at(2.0, () => {
-    sfx.whoosh(0.5, 0.2);
+    sfx.whoosh(0.5, 0.2, true, 'power2.in');
     k.haptic(16);
   });
   k.at(2.62, () => sfx.hit(0.4, 60));

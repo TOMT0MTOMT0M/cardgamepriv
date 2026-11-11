@@ -61,7 +61,7 @@ export default function piegePhoto(k: SceneCtx) {
   tl.to([e1, e2], { scaleY: 0.05, duration: 0.07, yoyo: true, repeat: 1 }, 1.0);
   tl.to([e1, e2], { scaleY: 0.05, duration: 0.07, yoyo: true, repeat: 1 }, 1.18);
   tl.to(eyes, { scale: 1.2, x: 0, y: 0, duration: 0.9, ease: 'power2.in' }, 1.1);
-  k.at(1.1, () => sfx.riser(0.9, 0.08));
+  k.at(1.1, () => sfx.riser(0.9, 0.08, 'power2.in'));
   if (marine) for (let i = 0; i < 6; i++) {
     const b = el('div', '', `position:absolute;left:${35 + k.rand() * 30}%;top:90%;width:${u * (2 + k.rand() * 3)}px;height:${u * (2 + k.rand() * 3)}px;border-radius:50%;border:1px solid rgba(200,255,240,.7);opacity:0;`);
     tl.fromTo(b, { opacity: 0.9, y: 0 }, { opacity: 0, y: -h * 0.7, duration: 1.4, ease: 'power1.in', immediateRender: false }, 0.4 + i * 0.2);

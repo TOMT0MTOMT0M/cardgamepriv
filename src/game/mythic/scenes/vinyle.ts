@@ -29,7 +29,7 @@ export default function vinyle(k: SceneCtx) {
   // la pochette (= la carte) arrive, le disque en sort
   tl.set(a, { opacity: 1, x: -w, rotation: -8 }, 0);
   tl.to(a, { x: 0, rotation: 0, duration: 0.45, ease: 'power3.out' }, 0);
-  k.at(0.02, () => sfx.whoosh(0.45, 0.2));
+  k.at(0.02, () => sfx.whoosh(0.45, 0.2, true, 'power3.out'));
   tl.set(disc, { opacity: 1 }, 0.5);
   tl.to(disc, { x: D * 0.5, duration: 0.45, ease: 'power2.inOut' }, 0.5);
   tl.to(a, { x: -w * 0.42, scale: 0.7, rotation: -6, duration: 0.5, ease: 'power3.inOut' }, 0.85);

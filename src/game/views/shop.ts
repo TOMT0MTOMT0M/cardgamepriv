@@ -1139,7 +1139,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (duelCard) void prepareDuel(duelCard);
     // 6★ des autres familles : moteur et scène téléchargés pendant la déchirure
     for (const c of p.cards) {
-      prepareMythic(c.cardId, c.rarity);
+      prepareMythic(c.cardId, c.rarity, shell.sfx);
       prefetchMusicPreview(c.cardId, c.rarity);
     }
     // ambiance « Éclipse » (Berserk 5★ / 6★ — game/eclipse.ts) : la scène 3D s'en charge (opening.open) ; ici, sa musique

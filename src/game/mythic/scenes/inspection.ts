@@ -13,7 +13,7 @@ export default function inspection(k: SceneCtx) {
   k.label(cls === 'knife' ? 'INSPECTION · LAME' : cls === 'agent' ? 'SCAN · AGENT' : 'INSPECTION · ARME', '50%', `${h * 0.14}px`).style.transform = 'translateX(-50%)';
   tl.set(c, { opacity: 1, x: w * 0.6, y: h * 0.1, rotation: 30, scale: 0.9 }, 0);
   tl.to(c, { x: 0, y: 0, rotation: -10, scale: 1, duration: 0.5, ease: 'power3.out' }, 0.05);
-  k.at(0.05, () => sfx.whoosh(0.4, 0.2));
+  k.at(0.05, () => sfx.whoosh(0.4, 0.2, true, 'power3.out'));
   // inspection : on la tourne en main (scaleX ≈ rotation sur l'axe), on la retourne, elle revient
   tl.to(c, { scaleX: -1, rotation: 8, duration: 0.5, ease: 'power2.inOut' }, 0.6);
   tl.to(c, { scaleX: 1, rotation: -4, duration: 0.55, ease: 'power3.inOut' }, 1.15);
