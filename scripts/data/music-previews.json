@@ -880,12 +880,7 @@
 "artist": "IAM",
 "link": "https://music.apple.com/fr/album/n%C3%A9s-sous-la-m%C3%AAme-%C3%A9toile/698793153?i=698793511&uo=4"
 },
-"pop-on-verra": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/45/5f/c5/455fc5d9-f4e0-0480-f5dd-729e6e1d9f0b/mzaf_190619064194093574.plus.aac.p.m4a",
-"track": "On verra",
-"artist": "Angèle",
-"link": "https://music.apple.com/fr/album/on-verra/6804661401?i=6804661662&uo=4"
-},
+"pop-on-verra": null,
 "pop-paroles-paroles": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/55/3e/0e/553e0ec4-8ca2-0ab8-03a8-957f6e736559/mzaf_7758321041086422837.plus.aac.p.m4a",
 "track": "Paroles paroles",

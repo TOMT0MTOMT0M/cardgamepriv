@@ -35,8 +35,9 @@ R = {1: 'c', 2: 'u', 3: 'r', 4: 'e', 5: 'l', 6: 'm'}
 BASE = 17471  # lignes du tri de base (Tri-etoiles-popculture.xlsx)
 # patchs du tri (donnees/patchs/), appliqués dans l'ordre à chaque gen / harvest — INSERT seulement, après le N° 17471
 #   Patch-pop-berserk.xlsx (10/11/2026) : 6 cartes Berserk 5★/6★ hors Âge d'or (N° 17472 → 17477)
-PATCHES = ['Patch-pop-berserk.xlsx']
-TOTAL = 17477  # BASE + patchs
+#   Patch-pop-chansons-11-11.xlsx (11/11/2026) : 56 chansons 6★ + Finn l'Humain (Adventure Time) 6★ (N° 17478 → 17534)
+PATCHES = ['Patch-pop-berserk.xlsx', 'Patch-pop-chansons-11-11.xlsx']
+TOTAL = 17534  # BASE + patchs
 
 # ── blocs d'affichage. Ids de groupe : ceux des anciens sous-thèmes vides du thème (films, series, anime, musique,
 # youtubeurs) pour garder les liens d'avant, + dessins / stars.

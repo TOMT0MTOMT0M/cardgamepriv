@@ -1,8 +1,8 @@
 /**
  * POP CULTURE PACK (thème « pop ») — données pures, AUCUN import (partagé avec convex/cardsCatalog.ts).
  * GÉNÉRÉ par scripts/make-pop.py (ne pas éditer à la main) depuis Tri-etoiles-popculture.xlsx (SPEC-THEME-POP-CULTURE v5).
- * 16429 cartes · 853 sous-thèmes (libellé imprimé en grand sur la carte), regroupés à l'affichage en 7.
- * Numéro = « N° » de l'Excel, sur 17477. Ids « pop-… » figés dans scripts/data/pop-ids.json (ne JAMAIS les changer).
+ * 16486 cartes · 853 sous-thèmes (libellé imprimé en grand sur la carte), regroupés à l'affichage en 7.
+ * Numéro = « N° » de l'Excel, sur 17534. Ids « pop-… » figés dans scripts/data/pop-ids.json (ne JAMAIS les changer).
  */
 export type PopRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
@@ -18,7 +18,7 @@ export interface PopEntry {
   /** identifiant de carte — ne JAMAIS le changer */
   id: string;
   sub: string;
-  /** n° de la carte dans tout le thème (1 → 17477) */
+  /** n° de la carte dans tout le thème (1 → 17534) */
   num: number;
   name: string;
   rarity: PopRarity;
@@ -30,7 +30,7 @@ export interface PopEntry {
   label: string;
 }
 
-export const POP_SIZE = 17477;
+export const POP_SIZE = 17534;
 export const POP_GROUPS: Record<string, string> = {
   anime: "Mangas & anime",
   films: "Films",
@@ -10699,6 +10699,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [756, 998, "pop-bmo", "BMO", 'c', "bmo.png", "i", 6],
   [756, 999, "pop-lady-rainicorn", "Lady Rainicorn", 'c', "lady-rainicorn.png", "i", 6],
   [756, 1000, "pop-lumpy-space-princess", "Lumpy Space Princess", 'c', "lumpy-space-princess.jpg", "c", 6],
+  [756, 17534, "pop-finn-l-humain", "Finn l'Humain", 'm', "finn-l-humain.png", "i", 6],
   [757, 1047, "pop-albator", "Albator", 'l', "albator.jpg", "c", 6],
   [758, 2002, "pop-stan-smith", "Stan Smith", 'l', "stan-smith.jpg", "c", 6],
   [758, 2003, "pop-francine-smith", "Francine Smith", 'e', "francine-smith.png", "i", 6],
@@ -15313,6 +15314,62 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [848, 4829, "pop-a-nos-actes-manques", "À nos actes manqués", 'c', "a-nos-actes-manques.jpg", "c", 4],
   [848, 4830, "pop-ca-m-enerve", "Ça m'énerve", 'c', "ca-m-enerve.jpg", "c", 4],
   [848, 4831, "pop-ecris-l-histoire", "Écris l'histoire", 'c', "ecris-l-histoire.jpg", "c", 4],
+  [848, 17478, "pop-give-me-the-night", "Give Me the Night", 'm', "give-me-the-night.jpg", "c", 4],
+  [848, 17479, "pop-plus-pres-des-etoiles", "Plus près des étoiles", 'm', "plus-pres-des-etoiles.jpg", "c", 4],
+  [848, 17480, "pop-temperature", "Temperature", 'm', "temperature.jpg", "c", 4],
+  [848, 17481, "pop-international-love", "International Love", 'm', "international-love.jpg", "c", 4],
+  [848, 17482, "pop-caravane", "Caravane", 'm', "caravane.jpg", "c", 4],
+  [848, 17483, "pop-lettre-a-elise", "Lettre à Élise", 'm', "lettre-a-elise.jpg", "c", 4],
+  [848, 17484, "pop-sonate-au-clair-de-lune", "Sonate au clair de lune", 'm', "sonate-au-clair-de-lune.jpg", "c", 4],
+  [848, 17485, "pop-le-lac-des-cygnes", "Le Lac des cygnes", 'm', "le-lac-des-cygnes.jpg", "c", 4],
+  [848, 17486, "pop-la-chevauchee-des-walkyries", "La Chevauchée des Walkyries", 'm', "la-chevauchee-des-walkyries.jpg", "c", 4],
+  [848, 17487, "pop-eine-kleine-nachtmusik", "Eine kleine Nachtmusik", 'm', "eine-kleine-nachtmusik.jpg", "c", 4],
+  [848, 17488, "pop-suite-pour-violoncelle-n-1", "Suite pour violoncelle n° 1", 'm', "suite-pour-violoncelle-n-1.jpg", "c", 4],
+  [848, 17489, "pop-il-est-libre-max", "Il est libre Max", 'm', "il-est-libre-max.jpg", "c", 4],
+  [848, 17490, "pop-le-temps-des-cathedrales", "Le Temps des cathédrales", 'm', "le-temps-des-cathedrales.jpg", "c", 4],
+  [848, 17491, "pop-je-ne-suis-pas-un-heros", "Je ne suis pas un héros", 'm', "je-ne-suis-pas-un-heros.jpg", "c", 4],
+  [848, 17492, "pop-partenaire-particulier", "Partenaire particulier", 'm', "partenaire-particulier.jpg", "c", 4],
+  [848, 17493, "pop-on-va-s-aimer", "On va s'aimer", 'm', "on-va-s-aimer.jpg", "c", 4],
+  [848, 17494, "pop-laisse-pas-trainer-ton-fils", "Laisse pas traîner ton fils", 'm', "laisse-pas-trainer-ton-fils.jpg", "c", 4],
+  [848, 17495, "pop-grave-dans-la-roche", "Gravé dans la roche", 'm', "grave-dans-la-roche.jpg", "c", 4],
+  [848, 17496, "pop-le-bilan", "Le Bilan", 'm', "le-bilan.jpg", "c", 4],
+  [848, 17497, "pop-du-ferme", "Du ferme", 'm', "du-ferme.jpg", "c", 4],
+  [848, 17498, "pop-pitbull-chansons", "Pitbull", 'm', "pitbull-chansons.jpg", "c", 4],
+  [848, 17499, "pop-la-haine", "La Haine", 'm', "la-haine.jpg", "c", 4],
+  [848, 17500, "pop-suicide-social", "Suicide social", 'm', "suicide-social.jpg", "c", 4],
+  [848, 17501, "pop-mwaka-moon", "Mwaka Moon", 'm', "mwaka-moon.jpg", "c", 4],
+  [848, 17502, "pop-desaccorde", "Désaccordé", 'm', "desaccorde.jpg", "c", 4],
+  [848, 17503, "pop-or-noir", "Or noir", 'm', "or-noir.jpg", "c", 4],
+  [848, 17504, "pop-92i-veyron", "92i Veyron", 'm', "92i-veyron.jpg", "c", 4],
+  [848, 17505, "pop-fusil", "Fusil", 'm', "fusil.jpg", "c", 4],
+  [848, 17506, "pop-est-ce-que-tu-m-aimes", "Est-ce que tu m'aimes ?", 'm', "est-ce-que-tu-m-aimes.jpg", "c", 4],
+  [848, 17507, "pop-le-monde-ou-rien", "Le monde ou rien", 'm', "le-monde-ou-rien.jpg", "c", 4],
+  [848, 17508, "pop-awa", "Awa", 'm', "awa.jpg", "c", 4],
+  [848, 17509, "pop-zoo", "Zoo", 'm', "zoo.jpg", "c", 4],
+  [848, 17510, "pop-mosaique-solitaire", "Mosaïque solitaire", 'm', "mosaique-solitaire.jpg", "c", 4],
+  [848, 17511, "pop-asalto", "Asalto", 'm', "asalto.jpg", "c", 4],
+  [848, 17512, "pop-avant-la-douane", "Avant la douane", 'm', "avant-la-douane.jpg", "c", 4],
+  [848, 17513, "pop-j-me-tire", "J'me tire", 'm', "j-me-tire.jpg", "c", 4],
+  [848, 17514, "pop-unravel", "Unravel", 'm', "unravel.jpg", "c", 4],
+  [848, 17515, "pop-kick-back", "KICK BACK", 'm', "kick-back.jpg", "c", 4],
+  [848, 17516, "pop-again", "Again", 'm', "again.jpg", "c", 4],
+  [848, 17517, "pop-kaikai-kitan", "Kaikai Kitan", 'm', "kaikai-kitan.jpg", "c", 4],
+  [848, 17518, "pop-guren-no-yumiya", "Guren no Yumiya", 'm', "guren-no-yumiya.jpg", "c", 4],
+  [848, 17519, "pop-the-world", "The World", 'm', "the-world.jpg", "c", 4],
+  [848, 17520, "pop-fly-high", "Fly High!!", 'm', "fly-high.jpg", "c", 4],
+  [848, 17521, "pop-sign", "Sign", 'm', "sign.jpg", "c", 4],
+  [848, 17522, "pop-crossing-field", "Crossing Field", 'm', "crossing-field.jpg", "c", 4],
+  [848, 17523, "pop-peace-sign", "Peace Sign", 'm', "peace-sign.jpg", "c", 4],
+  [848, 17524, "pop-let-me-hear", "Let Me Hear", 'm', "let-me-hear.jpg", "c", 4],
+  [848, 17525, "pop-asphyxia", "Asphyxia", 'm', "asphyxia.jpg", "c", 4],
+  [848, 17526, "pop-idol", "Idol", 'm', "idol.jpg", "c", 4],
+  [848, 17527, "pop-history-maker", "History Maker", 'm', "history-maker.jpg", "c", 4],
+  [848, 17528, "pop-black-rover", "Black Rover", 'm', "black-rover.jpg", "c", 4],
+  [848, 17529, "pop-snow-fairy", "Snow Fairy", 'm', "snow-fairy.jpg", "c", 4],
+  [848, 17530, "pop-rise", "Rise", 'm', "rise.jpg", "c", 4],
+  [848, 17531, "pop-black-catcher", "Black Catcher", 'm', "black-catcher.jpg", "c", 4],
+  [848, 17532, "pop-closer-joe-inoue", "Closer (Joe Inoue)", 'm', "closer-joe-inoue.jpg", "c", 4],
+  [848, 17533, "pop-brave-shine", "Brave Shine", 'm', "brave-shine.jpg", "c", 4],
   [849, 1049, "pop-21st-century-breakdown", "21st Century Breakdown", 'm', "21st-century-breakdown.jpg", "c", 1],
   [849, 1050, "pop-animals", "Animals", 'm', "animals.jpg", "c", 1],
   [849, 1051, "pop-batman", "Batman", 'm', "batman.jpg", "c", 1],

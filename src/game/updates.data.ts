@@ -35,6 +35,15 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '11 nov.', title: '56 chansons en 6★, Finn d’Adventure Time', tag: 'nouveau',
+        points: [
+          'Nouvelles 6★ : Give Me the Night, Temperature, Plus près des étoiles, Caravane, Le Temps des cathédrales, Je ne suis pas un héros, Laisse pas traîner ton fils, Gravé dans la roche, Suicide social, Le monde ou rien, Mosaïque solitaire, Avant la douane, et les grands classiques (Lettre à Élise, Le Lac des cygnes, La Chevauchée des Walkyries…).',
+          'Openings d’animés en 6★ : Unravel, KICK BACK, Kaikai Kitan, Guren no Yumiya, Sign, crossing field, Peace Sign, Idol, Black Rover, Brave Shine, Snow Fairy, Fly High!! et d’autres.',
+          'Passent en 6★ : Locked Out of Heaven, Take on Me, Wonderwall, In the End, Dream On, Every Breath You Take, Californication, L’Aziza, Ne me quitte pas, Petite Marie, La Boulette… Chaque 6★ joue son extrait.',
+          'Finn l’Humain (Adventure Time) arrive en 6★. Gérard Depardieu est retiré du jeu.',
+        ],
+      },
+      {
         date: '11 nov.', title: 'Skins CS 6★ en 3D et Éclipse pour Berserk', tag: 'nouveau',
         points: [
           'Dans la visionneuse, les skins Counter-Strike 6★ apparaissent en 3D dans la carte : la caméra zoome, puis le doigt, la souris ou le gyroscope font tourner l’arme.',
