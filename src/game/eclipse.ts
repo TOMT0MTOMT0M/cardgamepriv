@@ -7,8 +7,8 @@ import { catalogEntry } from '../core/sets/themes';
  *     exception à la lueur neutre) ;
  *  2. une fois descellé : le soleil noir et sa couronne, le lac-miroir, des temps lents (scenes/opening.ts), et
  *     l'extrait « Behelit » en fond (musicPreview.ts, `playAmbience`).
- * 6★ Berserk : l'Éclipse remplace la case de manga des animés (mythic/index.ts, mythicFamily → null).
- * Pas de rejeu dans la visionneuse. « Effets réduits » : couleur et assombrissement seulement (la musique reste).
+ * 6★ Berserk : l'Éclipse remplace la case de manga des animés. À l'ouverture, l'ambiance ci-dessus tient lieu de prélude ;
+ * dans la visionneuse, la scène 6★ « Éclipse » (mythic/scenes/eclipse.ts), avec « Rejouer ». « Effets réduits » : couleur et assombrissement seulement (la musique reste).
  */
 export const ECLIPSE_SUBTHEME = 'berserk';
 

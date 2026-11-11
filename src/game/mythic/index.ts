@@ -33,6 +33,8 @@ const SCENES: Record<string, Loader> = {
   valorant: () => import('./scenes/inspection'),
   // Pop Culture
   anime: () => import('./scenes/manga'),
+  // (11/11) Berserk 6★ : « Éclipse » à la place de la case de manga — visionneuse seulement (l'ouverture a son Éclipse)
+  berserk: () => import('./scenes/eclipse'),
   musique: () => import('./scenes/vinyle'),
   series: () => import('./scenes/tele'),
   films: () => import('./scenes/cinema'),
@@ -66,8 +68,8 @@ export const mythicScene = (fam: string): Loader | undefined => SCENES[fam];
 /** Famille d'une 6★ qui a sa scène (null : pas une 6★, ou elle a déjà sa propre séquence). */
 export function mythicFamily(cardId: string, rarity: string): string | null {
   if (rarity !== 'mythic' || cardId.startsWith('pkm-') || duelMonster(cardId)) return null;
-  // (11/11, Tom) Berserk 6★ : l'Éclipse (game/eclipse.ts, scenes/opening.ts) REMPLACE la case de manga des animés
-  if (isEclipseCard({ cardId, rarity })) return null;
+  // (11/11, Tom) Berserk 6★ : l'Éclipse REMPLACE la case de manga des animés (scènes « berserk », voir playMythicPrelude)
+  if (isEclipseCard({ cardId, rarity })) return 'berserk';
   const e = catalogEntry(cardId);
   if (!e) return null;
   const st = subthemeById(e.subthemeId);
@@ -221,7 +223,10 @@ export function playMythicPrelude(
     },
   };
   current = h;
-  if (!fam || !card) {
+  // Berserk 6★ à l'OUVERTURE : l'Éclipse du booster (scenes/opening.ts) tient lieu de prélude — rien à jouer, mais la
+  // carte compte comme vue (le récapitulatif qui suit ne rejoue pas la scène dans la visionneuse)
+  if (fam === 'berserk' && mode === 'opening') played.set(cardId, performance.now());
+  if (!fam || !card || (fam === 'berserk' && mode === 'opening')) {
     handed();
     resolve();
     return h;
