@@ -1,4 +1,5 @@
 import { rollPack, rollPackEx, type PackRequest } from '../core/packRoll';
+import { demoEvent, eventLive, type PackEvent } from '../core/events';
 import { SURVEY_FEATURES, SURVEY_UNIVERSES, cleanSurvey, surveyFilled, type SurveyAnswer } from '../core/survey';
 import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
@@ -590,9 +591,26 @@ export function createLocalBackend(): GameBackend {
     changed: () => sync(),
   });
 
+  /**
+   * (11/11) BOOSTER DU MOMENT de la démo : un événement d'exemple toujours en cours (src/core/events.ts). Pour tester :
+   * `?demo&evenement=non` (aucun événement : rien dans la boutique), `?demo&evenement=fin` (il se termine dans 90 s).
+   */
+  const evParam = new URLSearchParams(location.search).get('evenement');
+  const demoEv: PackEvent | null = evParam === 'non' ? null : evParam === 'fin' ? { ...demoEvent(), endAt: Date.now() + 90_000 } : demoEvent();
+  const liveDemoEvents = () => (demoEv && eventLive(demoEv) ? [demoEv] : []);
+
   /** Scelle un booster (débite la réserve, tire les cartes, n° d'impression, pity) — préparation simple ou en série. */
   function rollSealed(req: PackRequest): SealedPack {
     const now = Date.now();
+    // même refus que le serveur (convex/events.ts) ; le pool vient de l'événement de la démo, pas de la demande
+    let ev: PackEvent | null = null;
+    if (req.event) {
+      ev = demoEv && demoEv.id === req.event.id ? demoEv : null;
+      if (!ev) throw new Error('Ce booster du moment n’existe plus.');
+      if (now < ev.startAt) throw new Error('Ce booster du moment n’est pas encore sorti.');
+      if (now >= ev.endAt) throw new Error(`Le booster ${ev.name} est terminé : il n’était là que pour un temps.`);
+      req = { kind: 'theme', event: { id: ev.id, subthemes: ev.subthemes, cards: ev.cards } };
+    }
     const regen = applyRegen(save.packBalance, save.regenAt ?? now, now);
     if (regen.balance <= 0) throw new Error(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
     save.packBalance = regen.balance - 1;
@@ -632,7 +650,7 @@ export function createLocalBackend(): GameBackend {
     }
     const maxRarity = cards.reduce<RarityId>((m, c) => (RANK[c.rarity] > RANK[m] ? c.rarity : m), 'common');
     save.pity = pityAfter(save.pity ?? 0, cards.map((c) => c.rarity));
-    return { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards, ...(rolled.god ? { god: true } : {}) };
+    return { id: `p${save.seq++}`, packKind: req.kind, themeId: req.themeId, maxRarity, cards, ...(rolled.god ? { god: true } : {}), ...(ev ? { eventId: ev.id, eventName: ev.name } : {}) };
   }
 
   return {
@@ -717,8 +735,8 @@ export function createLocalBackend(): GameBackend {
       save.opened++;
       // série : le booster scellé suivant prend la place
       save.sealed = save.queue?.shift() ?? null;
-      bump({ type: 'pack', packKey: p.packKind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: p.cards });
-      eco.hooks.onPack(p.packKind, p.packKind === 'theme' && p.themeId ? themeById(p.themeId)?.label ?? 'booster' : BEBOU_PACK.label, p.cards);
+      bump({ type: 'pack', packKey: p.eventId ? 'event' : p.packKind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: p.cards });
+      eco.hooks.onPack(p.packKind, p.eventName ? `Booster ${p.eventName}` : p.packKind === 'theme' && p.themeId ? themeById(p.themeId)?.label ?? 'booster' : BEBOU_PACK.label, p.cards);
       maybeBotOffer();
       sync();
     },
@@ -1330,6 +1348,13 @@ export function createLocalBackend(): GameBackend {
       m.resolvedAt = Date.now();
       add(save.inv, m.cardId, m.rarity, 1, m.mintNumber);
       sync();
+    },
+    // (11/11) booster du moment : l'événement d'exemple, retiré tout seul à sa fin
+    watchEvents(cb) {
+      cb(liveDemoEvents());
+      const left = demoEv ? demoEv.endAt - Date.now() : -1;
+      const t = left > 0 && left < 2 ** 31 ? window.setTimeout(() => cb(liveDemoEvents()), left + 50) : 0;
+      return () => clearTimeout(t);
     },
     // ── tableau d'offres (lot T) : mêmes règles que convex/listings.ts
     watchBoard(cb) {

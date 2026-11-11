@@ -1,0 +1,64 @@
+/* ═════════════ ÉVÉNEMENTS LIMITÉS — le « booster du moment » (V2, 11/11) — views/shop.ts, views/packSheet.ts
+   Bandeau en tête de la boutique (rien quand aucun événement n'est en cours), fiche du booster. Noir et blanc, une
+   seule couleur : celle de l'événement (--ev), en point et en filet, comme son sachet. Titres en Bold Frame, petites
+   capitales en Inter. Durées et courbes : jetons de motion.ts. « Effets réduits » : plus de pulsation. */
+
+.ev-band {
+  --ev: #ffffff;
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; min-height: 52px; padding: 8px 14px 8px 12px;
+  border-radius: var(--r-pill); border: 1px solid color-mix(in srgb, var(--ev) 55%, var(--gm-line-2, rgba(255, 255, 255, 0.24)));
+  background: #000; color: var(--ink); text-align: left; cursor: pointer;
+  transition: border-color var(--dur-rapide) var(--ease-standard), background-color var(--dur-rapide) var(--ease-standard), transform var(--dur-rapide) var(--ease-standard);
+}
+.ev-band[hidden] { display: none; }
+.ev-band:hover, .ev-band.on { border-color: var(--ev); background: color-mix(in srgb, var(--ev) 9%, #000); }
+.ev-band:active { transform: scale(0.98); }
+.ev-band:focus-visible { outline: 2px solid var(--ev); outline-offset: 2px; }
+.ev-dot { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; background: var(--ev); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ev) 22%, transparent); }
+.ev-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ev-k { font: 600 9.5px/1.1 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
+.ev-n { font: 500 19px/1.05 var(--title); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev-left { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-variant-numeric: tabular-nums; }
+.ev-left small { font: 500 9.5px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+.ev-left b { font: 600 13px/1.1 var(--mono); white-space: nowrap; }
+
+/* tout nouveau : le point respire jusqu'au premier toucher */
+.ev-band.new .ev-dot { animation: ev-breathe calc(var(--dur-emphatique) * 5) var(--ease-standard) infinite; }
+@keyframes ev-breathe {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ev) 22%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--ev) 0%, transparent); }
+}
+.fx-reduced .ev-band.new .ev-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ev-band.new .ev-dot { animation: none; } }
+
+/* ordinateur : en tête de la vitrine, au-dessus du grand booster (la colonne de droite est prise par la fiche posée) */
+@media (min-width: 861px) {
+  .shop-home .ev-band {
+    position: absolute; z-index: 3; top: calc(var(--top) + env(safe-area-inset-top) + 14px); left: 50%;
+    width: min(420px, 34vw); transform: translateX(-50%);
+  }
+  .shop-home .ev-band:active { transform: translateX(-50%) scale(0.98); }
+}
+/* téléphone : en haut, à droite de la colonne des gros tirages (portrait), hors du flux de la vitrine */
+@media (max-width: 860px) {
+  .shop-home > .shop-left > .ev-band, .shop-home .ev-band {
+    position: absolute; z-index: 3; top: calc(var(--top) + env(safe-area-inset-top) + 6px); right: 10px; left: 136px;
+    width: auto; min-height: 46px; padding: 6px 12px 6px 10px; gap: 8px;
+  }
+  .ev-n { font-size: 16px; }
+  .ev-k, .ev-left small { font-size: 8.5px; }
+  .ev-left b { font-size: 12px; }
+}
+@media (max-width: 860px) and (orientation: landscape) {
+  .shop-home .ev-band { left: auto; width: min(320px, 46vw); }
+}
+@media (max-width: 380px) {
+  .shop-home .ev-band { left: 130px; right: 8px; }
+  .ev-k { letter-spacing: 0.14em; }
+}
+
+/* fiche du booster du moment : filet et temps restant à la couleur de l'événement */
+.pack-sheet.ps-event .ps-ev-left b { color: var(--acc); font-variant-numeric: tabular-nums; }
+.pack-sheet.ps-event .ps-ev { border-left: 2px solid var(--acc); padding-left: 12px; }
+.pack-sheet .ps-ev-l { font: 400 13px/1.45 var(--mono); color: var(--ink-2); }

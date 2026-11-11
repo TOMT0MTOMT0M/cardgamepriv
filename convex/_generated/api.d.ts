@@ -24,6 +24,7 @@ import type * as discordRoles from "../discordRoles.js";
 import type * as dropShots from "../dropShots.js";
 import type * as econLib from "../econLib.js";
 import type * as economy from "../economy.js";
+import type * as events from "../events.js";
 import type * as feed from "../feed.js";
 import type * as friends from "../friends.js";
 import type * as games from "../games.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   dropShots: typeof dropShots;
   econLib: typeof econLib;
   economy: typeof economy;
+  events: typeof events;
   feed: typeof feed;
   friends: typeof friends;
   games: typeof games;

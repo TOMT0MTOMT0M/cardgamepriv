@@ -213,6 +213,9 @@ export default defineSchema({
     coins: v.optional(v.number()),
     /** (08/11) god pack (1 sur 1 000) : toutes les cartes 4★+, au moins une 5★ et une 6★ — animation dédiée */
     god: v.optional(v.boolean()),
+    /** (11/11, événements limités) booster du moment : l'événement et son nom au moment du tirage (packKind 'theme', sans themeId) */
+    eventId: v.optional(v.id('packEvents')),
+    eventName: v.optional(v.string()),
     createdAt: v.number(),
     revealedAt: v.optional(v.number()),
   })
@@ -745,4 +748,29 @@ export default defineSchema({
     byName: v.string(),
     at: v.number(),
   }).index('by_user', ['userId', 'at']),
+
+  // ─────────────── (V2, 11/11) ÉVÉNEMENTS LIMITÉS — chantier « événements » (convex/events.ts, src/core/events.ts)
+  /**
+   * Un « booster du moment » : ouvrable seulement entre `startAt` et `endAt`. Contenu = sous-thèmes (ou `group:<id>`)
+   * et / ou cartes une à une. Créé et réglé depuis le dashboard admin (Tom et Hugo). `startJob` / `endJob` : tâches
+   * programmées au début (notification à tous, l'événement apparaît chez les joueurs) et à la fin (il disparaît).
+   */
+  packEvents: defineTable({
+    name: v.string(),
+    blurb: v.optional(v.string()),
+    startAt: v.number(),
+    endAt: v.number(),
+    accent: v.string(),
+    subthemes: v.array(v.string()),
+    cards: v.array(v.string()),
+    byName: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startJob: v.optional(v.id('_scheduled_functions')),
+    endJob: v.optional(v.id('_scheduled_functions')),
+    /** notification de début envoyée (une fois par événement) */
+    notifiedAt: v.optional(v.number()),
+    /** dernier passage d'une tâche (début / fin) : réécrire la ligne relance `events:current` chez tout le monde */
+    tickAt: v.optional(v.number()),
+  }).index('by_end', ['endAt']),
 });

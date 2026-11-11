@@ -6,6 +6,7 @@ import type { StreakState } from '../core/streak';
 import type { CosmeticChoice, PlayerStats } from '../core/cosmetics';
 import type { EcoBackend } from './eco';
 import type { ChatApi } from '../core/chat';
+import type { PackEvent } from '../core/events';
 
 /** Une ligne de collection : (carte, rareté) → nombre d'exemplaires. */
 export interface PlayerCard {
@@ -44,6 +45,9 @@ export interface SealedPack {
   cards: PackCard[];
   /** (08/11) god pack : 1 sur 1 000, que des 4★+ dont une 5★ et une 6★ — l'ouverture a son animation */
   god?: boolean;
+  /** (11/11) booster du moment (src/core/events.ts) : l'événement et son nom au tirage */
+  eventId?: string;
+  eventName?: string;
 }
 
 export interface Friend {
@@ -419,6 +423,11 @@ export interface GameBackend {
   logout(): Promise<void>;
   /** Tire (ou rend, s'il y en a un non ouvert) un booster scellé. */
   preparePack(req: PackRequest): Promise<SealedPack>;
+  /**
+   * (11/11) BOOSTER DU MOMENT : l'événement en cours (0 ou 1 en pratique ; vide quand il n'y en a pas). En ligne :
+   * abonnement léger à `events:current` ; démo : un événement d'exemple (src/core/events.ts, demoEvent).
+   */
+  watchEvents?(cb: (events: PackEvent[]) => void): () => void;
   /** ouverture en série : `count` boosters scellés d'un coup (les déjà scellés d'abord ; moins si la réserve manque) */
   preparePacks(req: PackRequest, count: number): Promise<SealedPack[]>;
   /** « Tout passer » : crédite plusieurs boosters montrés en un seul appel ; renvoie les ids crédités */

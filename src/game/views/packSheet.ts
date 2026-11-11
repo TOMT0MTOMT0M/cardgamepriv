@@ -2,7 +2,8 @@ import { collectionSig, liveRegen, type GameBackend, type PackCard } from '../ba
 import { PACK_CAP, PACK_REGEN_MS, fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import type { PackRequest } from '../../core/packRoll';
-import { BEBOU_PACK, BEBOU_SECRETS_LOCKED, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
+import { BEBOU_PACK, BEBOU_SECRETS_LOCKED, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeById, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
+import { EVENT_KEY, fmtLeft } from '../../core/events';
 import { rarity, type RarityId } from '../../core/rarity';
 import { STAR_RARITIES, packOdds, slotShare } from '../../core/dropRates';
 import { cardPackChance } from '../../core/packRoll';
@@ -44,6 +45,8 @@ export interface SheetPack {
   soon?: boolean;
   /** cartes du booster (toutes, sauf les Bébous pour les packs de thème) */
   cards: CatalogEntry[];
+  /** (11/11) booster du moment : fin de l'événement (compte à rebours) et contenu en clair */
+  event?: { endAt: number; label: string };
 }
 
 /** Les 5 boosters de la boutique, dans l'ordre d'affichage : Bebou Pack (signature) au centre. */
@@ -101,6 +104,7 @@ export function createPackSheet(
       <div class="ps-scroll">
         <div class="ps-head"><div class="ps-thumb"></div><div class="ps-titles"><span class="kicker">BOOSTER</span><h2 class="ps-name"></h2><p class="ps-desc"></p></div></div>
         <div class="ps-facts"></div>
+        <div class="ps-block ps-ev" hidden></div>
         <div class="ps-block ps-odds"><div class="ps-bt">Chances par carte <small>· les vrais taux du tirage · la chance de chaque carte est écrite sous elle dans « Cartes du booster »</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
         <div class="ps-block ps-secret" hidden></div>
         <div class="ps-block ps-pity"></div>
@@ -130,6 +134,8 @@ export function createPackSheet(
   const nameEl = q('.ps-name');
   const descEl = q('.ps-desc');
   const factsEl = q('.ps-facts');
+  const evEl = q('.ps-ev');
+  const kickerEl = q('.ps-titles .kicker');
   const barsEl = q('.ps-bars');
   const secretEl = q('.ps-secret');
   const pityEl = q('.ps-pity');
@@ -230,7 +236,7 @@ export function createPackSheet(
     const s = backend.state;
     const u = s.user;
     const needLogin = s.mode === 'online' && !u;
-    const sealedKey = s.sealed ? (s.sealed.packKind === 'bebou' ? 'bebou' : themeById(s.sealed.themeId ?? '')?.id) : null;
+    const sealedKey = s.sealed ? (s.sealed.eventId ? (packs.some((x) => x.key === EVENT_KEY) ? EVENT_KEY : 'bebou') : s.sealed.packKind === 'bebou' ? 'bebou' : themeById(s.sealed.themeId ?? '')?.id) : null;
     const sealedOther = !!s.sealed && sealedKey !== current.key;
     sealedTarget = sealedOther ? packs.find((x) => x.key === sealedKey) ?? null : null;
     if (current.soon) {
@@ -283,7 +289,7 @@ export function createPackSheet(
     if (sealedOther && s.sealed) {
       const t = themeById(s.sealed.themeId ?? '');
       banner.hidden = false;
-      banner.textContent = `Tu as un ${s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster'} déjà tiré, pas encore ouvert : ouvre-le d’abord (bouton ci-dessous).`;
+      banner.textContent = `Tu as un ${s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster'} déjà tiré, pas encore ouvert : ouvre-le d’abord (bouton ci-dessous).`;
     } else banner.hidden = true;
     // pity (compteur du joueur, tous boosters confondus)
     const left = u ? pityLeft(u.pityCount) : PITY_LIMIT - 1;
@@ -358,9 +364,16 @@ export function createPackSheet(
       nameEl.textContent = p.name;
     }
     descEl.textContent = p.desc;
-    const t = p.key !== 'bebou' ? themeById(p.key) : null;
+    kickerEl.textContent = p.event ? 'BOOSTER DU MOMENT' : 'BOOSTER';
+    sheet.classList.toggle('ps-event', !!p.event);
+    const t = p.key !== 'bebou' && !p.event ? themeById(p.key) : null;
     const live = t ? subthemeViews(t).filter((v) => v.cards.length).length : THEMES.filter(themeOpen).length;
-    factsEl.innerHTML = `<span><b>5</b> cartes par booster</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(p.cards.length)}</b> cartes${p.soon ? ' en préparation' : t ? ` · ${live} sous-thème${live > 1 ? 's' : ''}` : ' · les 4 thèmes'}</span>`;
+    // (11/11) booster du moment : son contenu et le temps qui reste (shop.ts met [data-ev-left] à jour chaque seconde)
+    factsEl.innerHTML = p.event
+      ? `<span><b>5</b> cartes par booster</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(p.cards.length)}</b> cartes · ${esc(p.event.label)}</span><span class="ps-ev-left">se termine dans <b data-ev-left="${p.event.endAt}">${fmtLeft(p.event.endAt - Date.now())}</b></span>`
+      : `<span><b>5</b> cartes par booster</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(p.cards.length)}</b> cartes${p.soon ? ' en préparation' : t ? ` · ${live} sous-thème${live > 1 ? 's' : ''}` : ' · les 4 thèmes'}</span>`;
+    evEl.hidden = !p.event;
+    if (p.event) evEl.innerHTML = `<div class="ps-bt">Édition limitée</div><div class="ps-ev-l">Ce booster disparaît à la fin de l’événement. Ses cartes restent ensuite dans les boosters habituels.</div>`;
     if (p.key === 'bebou') {
       secretEl.hidden = false;
       secretEl.innerHTML = BEBOU_SECRETS_LOCKED ? `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>Les Bébous sont verrouillées pour l’instant</b> <small>· elles ne tombent d’aucun booster, leur retour sera annoncé</small></div>` : `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>1 chance sur ${esc(bebouOddsLabel().replace(/^1 sur /, ''))}</b> par booster de tirer une des <b>8 Bébous</b> <small>· 1 / nombre de cartes du jeu : plus il y a de cartes, plus c’est rare</small></div>`;
@@ -372,6 +385,12 @@ export function createPackSheet(
   let filter: 'all' | 'missing' | 'wish' = 'all';
   let search = '';
   function sectionsOf(p: SheetPack): SubthemeView[] {
+    // booster du moment : ses cartes rangées par sous-thème (ordre du catalogue)
+    if (p.event) {
+      const by = new Map<string, CatalogEntry[]>();
+      for (const c of p.cards) by.set(c.subthemeId, [...(by.get(c.subthemeId) ?? []), c]);
+      return [...by].map(([id, cards]) => ({ id, label: subthemeById(id)?.label ?? id, subs: [], cards, group: false }));
+    }
     if (p.key !== 'bebou') return subthemeViews(themeById(p.key)!);
     return [...THEMES.flatMap(subthemeViews), { id: 'bebous', label: 'Les Bébous · secrètes', subs: BEBOU_THEME.subthemes, cards: BEBOU_THEME.cards, group: false }];
   }

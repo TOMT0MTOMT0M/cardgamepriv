@@ -93,6 +93,7 @@ import { fbmTexel, type N } from '../../core/tsl';
 import { isEclipseCard } from '../eclipse';
 import { apostleStrip } from '../apostles';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
+import { EVENT_KEY } from '../../core/events';
 import type { PackCard, SealedPack } from '../backend';
 
 /**
@@ -123,11 +124,11 @@ import type { PackCard, SealedPack } from '../backend';
  *    cachées, chaque toucher retourne la suivante (de la moins rare à la plus rare), sans attendre.
  */
 export type OpenStyle = 'burn' | 'tear' | 'fan';
-export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId'>): OpenStyle {
+export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId' | 'eventId'>): OpenStyle {
   // (retours 07/11) une seule ouverture pour tous les boosters : la DÉCHIRURE. « Brûler » (Gaming) et « éventail »
   // (World) restent dans le code : à gagner plus tard (succès, boutique…) — openStyleUnlocked le dira.
   if (!UNLOCK_STYLES) return 'tear';
-  if (p.packKind === 'bebou') return 'tear';
+  if (p.packKind === 'bebou' || p.eventId) return 'tear';
   return themeById(p.themeId ?? '')?.id === 'monde' ? 'fan' : 'burn';
 }
 /** styles d'ouverture déverrouillables (brûler, éventail) : fermé tant que rien ne les débloque en jeu */
@@ -174,6 +175,11 @@ export interface OpeningEvents {
 export interface OpeningScene extends Experiment {
   /** Booster affiché (id de thème ou 'bebou'). */
   setBooster(key: string, animate?: boolean, dir?: 1 | -1): void;
+  /**
+   * (11/11) BOOSTER DU MOMENT (src/core/events.ts) : son sachet (clé `EVENT_KEY`), le même alu que les autres, teinté
+   * de la couleur de l'événement, son nom moulé au centre. null : pas d'événement (le sachet n'est plus proposé).
+   */
+  setEventBooster(ev: { name: string; accent: string } | null): void;
   /** Lance l'ouverture d'un pack tiré. Les cartes sont préparées (images, textures, shaders) pendant que le joueur brûle l'emballage. */
   /**
    * `continued` (retours 06/11 : ×5 / ×10 = UN booster de 25 / 50 cartes) : la suite du même gros booster — pas
@@ -379,6 +385,11 @@ function boosterStyles(): Record<string, PackStyle> {
   return out;
 }
 
+/** (11/11) sachet du booster du moment : comme les 5 autres (alu teinté, nom moulé), à la couleur de l'événement */
+function eventBoosterStyle(ev: { name: string; accent: string }): PackStyle {
+  return { name: ev.name, ...BEBOU_PACK.style, accent: ev.accent, title: ev.name.toUpperCase(), series: 'B O O S T E R   D U   M O M E N T', tagline: 'Édition limitée', backLines: ['5 cartes, dont une rare ou mieux.', 'Là pour un temps seulement.', 'Fabriqué entre nous. Avec soin.'], simple: true, ground: ev.accent, label: ev.name };
+}
+
 /**
  * lueur de la tranche face cachée, par rang (commune → secrète) : le teasing du code couleur des raretés. 1★ / 2★ :
  * aucune lueur ; 5★, 6★ et secrète : la même lueur dorée (réf. motion §3.3 — l'incertitude reste au sommet de l'échelle).
@@ -503,7 +514,15 @@ export function createOpeningScene(): OpeningScene {
   let wantDir: 1 | -1 = 1;
   /** génère en tâche de fond les visuels des boosters pas encore prêts (lancé à la fin de setup) */
   let startArts: () => Promise<void> = async () => {};
-  const packKeyOf = (p: Pick<SealedPack, 'packKind' | 'themeId'>) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? THEMES[0].id);
+  /** styles des boosters (setup) ; le booster du moment s'y ajoute / s'en retire (setEventBooster) */
+  let styles: Record<string, PackStyle> = {};
+  let eventWant: { name: string; accent: string } | null = null;
+  let eventSig = '';
+  /** visuels en cours de génération (la file de fond et le booster du moment ne se marchent pas dessus) */
+  const genBusy = new Set<string>();
+  let artsLoopDone = false;
+  // (booster du moment tiré, événement fini depuis : sachet du Bebou Pack plutôt qu'un visuel qui n'existe plus)
+  const packKeyOf = (p: Pick<SealedPack, 'packKind' | 'themeId' | 'eventId'>) => (p.eventId ? (styles[EVENT_KEY] ? EVENT_KEY : 'bebou') : p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? THEMES[0].id);
   let packNodes: Record<string, { value: Texture }> = {};
   /**
    * (07/11) TOUTES les textures d'un booster à remplacer quand on change de booster : avant, seules couleur et masques
@@ -883,6 +902,50 @@ export function createOpeningScene(): OpeningScene {
       return m;
     };
     return [make(front, crF, 0), make(back, crB, 1)];
+  }
+
+  /** génère le visuel d'un booster puis le pose s'il était attendu (file de fond, booster du moment) */
+  async function genArt(k: string) {
+    const st = styles[k];
+    if (!st || !ctx || genBusy.has(k)) return;
+    genBusy.add(k);
+    try {
+      const a = ctx.bag.add(await generatePackArt(st, { releaseSources: true }));
+      if (styles[k] !== st) return; // (booster du moment changé ou retiré pendant la génération)
+      arts.set(k, a);
+      // la roue en réduit les toiles tout de suite : elles sont vidées à l'envoi des grandes textures au GPU
+      if (k !== EVENT_KEY) wheel3d?.prepare(k);
+      api.onThumb?.(k);
+      if (wantKey === k) {
+        wantKey = null;
+        if (phase === 'display') setBooster(k, true, wantDir);
+        else if (pack && packKeyOf(pack) === k) {
+          // booster ouvert avant que son visuel ne soit prêt : on le pose dès qu'il l'est
+          boosterKey = k;
+          applyBoosterArt(k);
+          if (style !== 'burn') applyTearArt(k);
+        }
+      }
+    } finally {
+      genBusy.delete(k);
+    }
+  }
+
+  /** (11/11) pose ou retire le style du booster du moment ; son visuel suit (file de fond, ou tout de suite après) */
+  function applyEventStyle() {
+    if (!eventWant) {
+      delete styles[EVENT_KEY];
+      return;
+    }
+    const prev = styles[EVENT_KEY];
+    styles[EVENT_KEY] = eventBoosterStyle(eventWant);
+    accents.set(EVENT_KEY, new Color(eventWant.accent));
+    // nouveau visuel (autre événement) : l'ancien n'est plus proposé, ni sa vignette ; s'il est affiché, il le reste
+    if (prev && boosterKey !== EVENT_KEY) {
+      arts.delete(EVENT_KEY);
+      for (const [ck, u] of thumbCache) if (ck.startsWith(`${EVENT_KEY}|`)) (u && URL.revokeObjectURL(u), thumbCache.delete(ck));
+    }
+    if (artsLoopDone && !arts.has(EVENT_KEY)) void genArt(EVENT_KEY);
   }
 
   function applyBoosterArt(k: string) {
@@ -2210,6 +2273,13 @@ export function createOpeningScene(): OpeningScene {
       return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, eclipse: { on: eclipse, aura: +E.aura.toFixed(2), dark: +E.dark.toFixed(2), sky: +E.sky.toFixed(2), rip: +E.rip.toFixed(2) }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
     },
     setBooster,
+    setEventBooster(ev) {
+      const sig = ev ? `${ev.name}|${ev.accent}` : '';
+      if (sig === eventSig) return;
+      eventSig = sig;
+      eventWant = ev ? { name: ev.name, accent: ev.accent } : null;
+      if (ctx) applyEventStyle(); // (sinon : appliqué au setup)
+    },
     open,
     preload(p: SealedPack) {
       if (preloaded.has(p.id) || preloaded.size >= 2 || !p.cards.length || p.id === pack?.id) return;
@@ -2435,9 +2505,10 @@ export function createOpeningScene(): OpeningScene {
       layout(c.width, c.height);
       await ensureFonts();
 
-      // boosters : un visuel par thème + le bébou pack, générés une fois
-      const styles = boosterStyles();
+      // boosters : un visuel par thème + le bébou pack, générés une fois (+ le booster du moment s'il y en a un)
+      styles = boosterStyles();
       for (const [k, st] of Object.entries(styles)) accents.set(k, new Color(st.accent));
+      applyEventStyle();
       // (audit PERF1-15) seul le booster affiché d'abord (le dernier choisi) est généré sous l'écran de chargement ; les
       // autres suivent en tâche de fond, un par image, une fois la vitrine affichée (setBooster / open les attendent)
       try {
@@ -2446,31 +2517,19 @@ export function createOpeningScene(): OpeningScene {
       } catch {
         /* ignore */
       }
-      allKeys = Object.keys(styles);
+      allKeys = Object.keys(styles).filter((k) => k !== EVENT_KEY);
       arts.set(boosterKey, c.bag.add(await generatePackArt(styles[boosterKey], { releaseSources: true })));
       startArts = async () => {
         await nextFrame();
         await nextFrame();
         for (;;) {
           // le booster demandé (choisi ou en cours d'ouverture) passe devant les autres
-          const k = wantKey && !arts.has(wantKey) && styles[wantKey] ? wantKey : Object.keys(styles).find((x) => !arts.has(x));
+          const k = wantKey && !arts.has(wantKey) && styles[wantKey] && !genBusy.has(wantKey) ? wantKey : Object.keys(styles).find((x) => !arts.has(x) && !genBusy.has(x));
           if (!k) break;
-          arts.set(k, c.bag.add(await generatePackArt(styles[k], { releaseSources: true })));
-          // la roue en réduit les toiles tout de suite : elles sont vidées à l'envoi des grandes textures au GPU
-          wheel3d?.prepare(k);
-          api.onThumb?.(k);
-          if (wantKey === k) {
-            wantKey = null;
-            if (phase === 'display') setBooster(k, true, wantDir);
-            else if (pack && packKeyOf(pack) === k) {
-              // booster ouvert avant que son visuel ne soit prêt : on le pose dès qu'il l'est
-              boosterKey = k;
-              applyBoosterArt(k);
-              if (style !== 'burn') applyTearArt(k);
-            }
-          }
+          await genArt(k);
           await nextFrame();
         }
+        artsLoopDone = true;
       };
       c.bag.fn(() => thumbCache.forEach((u) => u && URL.revokeObjectURL(u)));
       const packGeo = c.bag.add(createPackGeometry(48, 72, { folds: false }));
