@@ -779,8 +779,8 @@ interface View {
   leave(): void;
 }
 /**
- * (V2 fluidité, lot « nav ») CHANGEMENT DE PAGE DOM ↔ DOM par View Transitions — OFF par défaut, essai à l'œil avec
- * `?vt=1` dans l'adresse. Fondu enchaîné sobre : l'ancienne page s'efface pendant que la nouvelle apparaît, mêmes jeton
+ * (V2 fluidité, lot « nav ») CHANGEMENT DE PAGE DOM ↔ DOM par View Transitions — ACTIF par défaut depuis le 11/11 (validé par Tom ;
+ * `?vt=0` dans l'adresse le coupe). Fondu enchaîné sobre : l'ancienne page s'efface pendant que la nouvelle apparaît, mêmes jeton
  * de durée (emphatique) et même courbe (entrée) que `view-in`, sans le petit déplacement (bloc « VIEW TRANSITIONS » en
  * fin de style.css). Jamais quand la boutique / la 3D est d'un côté (capture du canvas WebGPU) ni en « Effets réduits ».
  * Coupe-circuit : une erreur, ou une mise à jour qui tarde (> 600 ms) ou une transition qui s'éternise (> durée + 800 ms)
@@ -788,9 +788,9 @@ interface View {
  */
 const VT_FLAG = (() => {
   try {
-    return new URLSearchParams(location.search).get('vt') === '1';
+    return new URLSearchParams(location.search).get('vt') !== '0';
   } catch {
-    return false;
+    return true;
   }
 })();
 let vtDead = false;

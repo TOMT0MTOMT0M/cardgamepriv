@@ -22,7 +22,8 @@ import '@fontsource/ibm-plex-mono/500.css';
 // (V2, 08/11) inchangé au passage Matcha World → Atsuka Montreal : aucune carte peinte n'utilise FONT_DISPLAY
 export const FONT_VERSION = 'in2';
 /** gros titres seulement (logo, titres de page, moments forts) */
-export const FONT_DISPLAY = '"Atsuka Montreal", "Bold Frame", "Inter", system-ui, sans-serif';
+/** (11/11) plus d'Atsuka Montreal : les gros titres sont en Bold Frame grasse (graisse 800 dans le CSS) */
+export const FONT_DISPLAY = '"Bold Frame", "Inter", system-ui, sans-serif';
 /** (retours Hugo 10/11) nom moulé des sachets : la police ronde d'origine (« elle était mieux, tout rond ») */
 export const FONT_PACK = '"Matcha World", "Bold Frame", "Inter", system-ui, sans-serif';
 /** titres, noms, texte courant en casse mixte (graisse 400 / 600 / 700 = les 3 Bold Frame) */

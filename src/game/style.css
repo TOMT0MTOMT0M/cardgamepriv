@@ -17,7 +17,7 @@
   --err: #ff4d4d;
   /* polices (retours 05/11) : src/core/fonts.ts + fonts.css — Atsuka Montreal (V2, ex-Matcha World) pour les GROS titres seulement, Bold Frame
      pour tout le reste (graisse 400 texte · 500-600 libellés · 700 titres) */
-  --display: 'Atsuka Montreal', 'Bold Frame', 'Inter', system-ui, sans-serif;
+  --display: 'Bold Frame', 'Inter', system-ui, sans-serif;
   --title: 'Bold Frame', 'Inter', system-ui, sans-serif;
   --mono: 'Inter', 'IBM Plex Mono', system-ui, sans-serif;
   /* audit 06/11 : durée des barres de progression et des entrées amples */
@@ -2857,14 +2857,14 @@ body.wild-on .card-ghost, body.duel-on .card-ghost { visibility: hidden; }
    partout ailleurs, en jouant sur ses 3 graisses et l'espacement des lettres. Pas de faux italique (la police n'en a pas). */
 html { font-synthesis-style: none; font-synthesis: weight small-caps; }
 html, body { letter-spacing: 0.01em; }
-/* (11/11) logo de l'en-tête : plus d'Atsuka Montreal (une volute sur chaque capitale) — Bold Frame grasse */
+/* (11/11) plus d'Atsuka Montreal nulle part (décision de Tom) : gros titres en Bold Frame grasse (Bold Frame Two) */
 .logo { font: 800 20px/1 var(--title); letter-spacing: 0.1em; }
 .logo span { font-weight: 600; letter-spacing: 0.34em; }
-.ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font: 400 31px/1.08 var(--display); font-style: normal; letter-spacing: 0.015em; text-wrap: balance; }
-.pf-id h1 { font-family: var(--display); font-weight: 400; font-style: normal; letter-spacing: 0.02em; }
-.tr-sec-h, .trades > .ob .ob-intro h3 { font: 400 25px/1.1 var(--display); font-style: normal; letter-spacing: 0.015em; }
-.gm-verdict b { font: 400 22px/1.15 var(--display); letter-spacing: 0.02em; }
-.mv-name { font-family: var(--display) !important; font-style: normal !important; letter-spacing: 0.03em !important; }
+.ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font: 800 31px/1.08 var(--title); font-style: normal; letter-spacing: 0.015em; text-wrap: balance; }
+.pf-id h1 { font-family: var(--title); font-weight: 800; font-style: normal; letter-spacing: 0.02em; }
+.tr-sec-h, .trades > .ob .ob-intro h3 { font: 800 25px/1.1 var(--title); font-style: normal; letter-spacing: 0.015em; }
+.gm-verdict b { font: 800 22px/1.15 var(--title); letter-spacing: 0.02em; }
+.mv-name { font-family: var(--title) !important; font-style: normal !important; font-weight: 800 !important; letter-spacing: 0.03em !important; }
 /* Bold Frame : libellés en capitales (graisse One) bien espacés, titres secondaires en Two */
 .kicker, .pf-eyebrow { font-weight: 600; letter-spacing: 0.34em; }
 h2, h3 { font-weight: 700; }
@@ -2904,7 +2904,7 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 
 /* ── MISES À JOUR / TUTORIEL (retours 06/11, views/infos.ts) */
 .if-wrap { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-.if-head h1 { margin: 4px 0 6px; font: 400 31px/1.08 var(--display); letter-spacing: 0.015em; }
+.if-head h1 { margin: 4px 0 6px; font: 800 31px/1.08 var(--title); letter-spacing: 0.015em; }
 .if-head .muted { max-width: 620px; line-height: 1.5; }
 .if-month h2, .if-sec h2 { margin: 6px 0 10px; font: 700 22px/1.1 var(--title); letter-spacing: 0.02em; }
 .if-intro { margin: -4px 0 12px; color: var(--ink-2); line-height: 1.5; }
@@ -3176,7 +3176,7 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 /* (C9) CLASSEMENT : rangs en typographie pure, podium noir / blanc, le 1er distingué par la taille (pas la couleur) */
 .lb-pd, .pd { background: #0a0a0a; border-color: var(--line-2); box-shadow: none; }
 .lb-pd.p1, .pd.p1 { background: #0a0a0a; border-color: #fff; box-shadow: none; transform: translateY(-8px); }
-.lb-pd-rank { font: 700 28px/1 var(--display); color: #fff; letter-spacing: 0; }
+.lb-pd-rank { font: 700 28px/1 var(--title); color: #fff; letter-spacing: 0; }
 .lb-pd.p1 .lb-pd-rank { font-size: 46px; }
 .lb-pd.p2 .lb-pd-rank, .lb-pd.p3 .lb-pd-rank { color: var(--ink-2); }
 .lb-pd.p1 .lb-ava { width: 72px; height: 72px; }
@@ -3259,7 +3259,7 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .lc.on { opacity: 1; }
 .lc.out { opacity: 0; transition-duration: 700ms; pointer-events: none; }
 .lc-in { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 640px; }
-.lc-logo { font: 400 clamp(22px, 4.2vw, 30px)/1 var(--display); letter-spacing: 0.06em; margin-bottom: clamp(36px, 9vh, 84px); }
+.lc-logo { font: 800 clamp(22px, 4.2vw, 30px)/1 var(--title); letter-spacing: 0.06em; margin-bottom: clamp(36px, 9vh, 84px); }
 .lc-k { margin: 0 0 14px; font: 600 12px var(--mono); letter-spacing: 0.32em; text-transform: uppercase; color: var(--ink-3); transition: color var(--dur-standard); }
 .lc-time { display: flex; align-items: baseline; justify-content: center; font: 600 clamp(84px, 24vw, 200px)/0.86 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.05em; }
 .lc-time > span, .lc-time small { display: inline-block; }
@@ -3300,7 +3300,7 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .lg-veil.on .lg { transform: none; }
 .lg-x { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; border: 0; background: none; color: var(--ink-3); font-size: 15px; }
 .lg-k { margin: 0; font: 600 11px var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
-.lg-t { margin: 8px 0 22px; font: 400 34px/1 var(--display); letter-spacing: 0.03em; }
+.lg-t { margin: 8px 0 22px; font: 800 34px/1 var(--title); letter-spacing: 0.03em; }
 .lg-discord { width: 100%; min-height: 48px; border: 0; border-radius: var(--r-pill); background: #fff; color: #000; font: 600 13px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
 .lg-discord:active { transform: scale(0.98); }
 .lg-or { display: flex; align-items: center; gap: 12px; margin: 22px 0 16px; font: 500 11px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-3); }
@@ -3424,7 +3424,7 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 /* ===== (V2, 07/11) lien admin : badge « V2 — test », écran « réservé à l'équipe », pastille « mise à jour » ===== */
 .canal-badge { position: fixed; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 95; padding: 4px 9px; border-radius: var(--r-pill); background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.6); font: 600 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; pointer-events: none; }
 .lc-v2 .lc-k { color: #e0a95a; }
-.lc-v2-t { margin: 0 0 18px; font: 400 clamp(28px, 6vw, 44px)/1.1 var(--display); letter-spacing: 0.02em; }
+.lc-v2-t { margin: 0 0 18px; font: 800 clamp(28px, 6vw, 44px)/1.1 var(--title); letter-spacing: 0.02em; }
 .lc-v2 .lc-when { margin: 0 0 26px; font: 400 13px/1.6 var(--mono); letter-spacing: 0.02em; text-transform: none; color: var(--ink-3); }
 .lc-v2 .lc-when a { color: var(--ink-2); }
 .lc-v2-login { border: 1px solid rgba(255, 255, 255, 0.35); background: none; color: var(--ink); padding: 12px 22px; border-radius: var(--r-pill); font: 500 12px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; cursor: pointer; }
@@ -3466,7 +3466,7 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .sv-page { grid-area: 1 / 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 22px 18px; display: flex; flex-direction: column; gap: 10px; opacity: 0; visibility: hidden; transform: translateX(28px); transition: opacity var(--dur-standard) var(--ease-standard), transform var(--dur-emphatique) var(--ease-entree), visibility 0s var(--dur-emphatique); }
 .sv-page.past { transform: translateX(-28px); }
 .sv-page.on { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
-.sv h2 { margin: 0; font: 400 clamp(26px, 7.4vw, 34px)/1.04 var(--display); letter-spacing: 0.01em; color: #fff; text-wrap: balance; }
+.sv h2 { margin: 0; font: 800 clamp(26px, 7.4vw, 34px)/1.04 var(--title); letter-spacing: 0.01em; color: #fff; text-wrap: balance; }
 .sv-eyebrow, .sv-step { margin: 0; font: 600 11px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-3); }
 .sv-sub { margin: 0 0 4px; font: 400 13px/1.45 var(--mono); color: var(--ink-2); }
 .sv-sub em, .sv-field em { font-style: normal; color: var(--ink-3); }
@@ -3505,7 +3505,7 @@ body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::
 .sv-stars button.on { animation: sv-pop 0.34s var(--ease-entree); }
 .sv-stars button:active { transform: scale(0.9); }
 @keyframes sv-pop { 40% { transform: scale(1.18); } }
-.sv-rword { margin: 4px 0 0; text-align: center; font: 400 26px var(--display); color: #fff; min-height: 1.2em; }
+.sv-rword { margin: 4px 0 0; text-align: center; font: 800 26px var(--title); color: #fff; min-height: 1.2em; }
 .sv-thanks { align-items: center; justify-content: center; text-align: center; min-height: 340px; gap: 14px; }
 .sv-thanks .sv-lead { text-align: center; }
 .sv-ok { width: 72px; height: 72px; border-radius: 50%; border: 1px solid #fff; display: grid; place-items: center; }
@@ -3567,7 +3567,7 @@ html.vt-pages::view-transition-new(pages) { animation: vt-pages-in var(--dur-emp
 .god-intro.out { opacity: 0; transition-duration: 500ms; pointer-events: none; }
 .god-intro .gi-in { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 20px; }
 .god-intro .gi-k { margin: 0 0 18px; font: 600 12px var(--mono); letter-spacing: 0.34em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); opacity: 0; animation: gi-fade 500ms 200ms var(--ease-entree) forwards; }
-.god-intro .gi-t { position: relative; margin: 0; font: 400 clamp(56px, 15vw, 150px)/0.95 var(--display); letter-spacing: 0.04em; white-space: nowrap; color: #fff; text-shadow: 0 0 28px rgba(255, 255, 255, 0.35); }
+.god-intro .gi-t { position: relative; margin: 0; font: 800 clamp(56px, 15vw, 150px)/0.95 var(--title); letter-spacing: 0.04em; white-space: nowrap; color: #fff; text-shadow: 0 0 28px rgba(255, 255, 255, 0.35); }
 /* reflet arc-en-ciel (code couleur des 6★) qui balaie le titre : multiplié sur le texte blanc, invisible sur le noir */
 .god-intro .gi-t::after { content: ''; position: absolute; inset: -0.1em -0.2em; pointer-events: none; mix-blend-mode: multiply;
   background: linear-gradient(100deg, #fff 0%, #fff 30%, #ff5e5e 38%, #ffb347 44%, #fff36b 50%, #6bff9e 56%, #5ec8ff 62%, #b07cff 68%, #fff 76%, #fff 100%);
