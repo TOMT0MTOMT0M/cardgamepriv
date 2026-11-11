@@ -48,6 +48,8 @@ export interface MeProfile {
   pityCount?: number;
   /** envies (ids de cartes) */
   wishlist?: string[];
+  /** (refonte des échanges 11/11) cartes protégées */
+  tradeProtected?: string[];
   /** série de connexion (src/core/streak.ts) */
   streak?: StreakState | null;
   streakClaimable?: boolean;

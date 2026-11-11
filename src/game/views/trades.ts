@@ -1,4 +1,4 @@
-import { cardKey, lockedCards, type CardOwner, type Friend, type GameBackend, type PlayerCard, type TradeHistoryItem, type TradeItem, type TradeView } from '../backend';
+import { cardKey, lockedCards, type Friend, type GameBackend, type PlayerCard, type TradeHistoryItem, type TradeItem, type TradeView } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { ALL_THEMES, catalogEntry } from '../../core/sets/themes';
@@ -10,10 +10,21 @@ import { ABUSE, cardsValue, fmtCoins } from '../../core/economy';
 import { confirmTap } from './safety';
 import { createBoard } from './board';
 import { createMarket } from './market';
-import { showOwners } from './owners';
 import { cardQuery, cardWhere, searchCatalog } from '../../core/cardSearch';
+import { createForYou, pickCardSheet } from './forYou';
+import { invalidatePanel, showCardPanel } from './cardPanel';
+import { proposable } from '../../core/deals';
+import '../echanges.css';
 
 /**
+ * (REFONTE 11/11 — « fouillis, compliqué, fastidieux » → une seule page, trois zones ; échanges serveur : convex/deals.ts)
+ *  - POUR TOI (views/forYou.ts) : les échanges prêts (mes envies × les doublons proposables de tous), un toucher.
+ *  - CHERCHER : une recherche dans tout le catalogue (toucher = « chez les joueurs » : qui l'a, la vend, la veut) ET le
+ *    marché fondu dessous (mêmes filtres) ; « Vendre une carte » reste là.
+ *  - EN COURS : reçus (Accepter / Choisir autre chose / Refuser pour une demande en un toucher ; Accepter /
+ *    Contre-proposer / Refuser sinon) et envoyés (Changer / Annuler), annonces du tableau d'offres encore ouvertes
+ *    (retiré de l'interface : elles vont à leur terme), historique ; le composeur manuel derrière « Composer moi-même ».
+ * Le composeur (ci-dessous, inchangé) :
  * ÉCHANGES de cartes entre nous (n'importe quelle carte, doublon ou non) — refonte retours du 3 nov.
  *  - En cours : propositions reçues (accepter / refuser / CONTRE-PROPOSER) et envoyées (annuler) ; historique dessous.
  *  - Nouvel échange : on choisit un ami ; le jeu croise les deux collections. En haut, les MATCHS PARFAITS (ses doublons
@@ -91,17 +102,32 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   };
 
   el.innerHTML = `
-    <div class="tr-tabs tr-tabs3" role="tablist" aria-label="Échanges">
-      <button role="tab" data-v="market" class="on" aria-selected="true">Marché</button>
-      <button role="tab" data-v="direct" aria-selected="false">Avec un ami<b class="badge tt-in" hidden></b></button>
-      <button role="tab" data-v="board" aria-selected="false">Offres<b class="badge tt-board" hidden></b></button>
+    <header class="ex-head">
+      <span class="kicker">Échanges</span>
+      <div class="ex-tabs" role="tablist" aria-label="Échanges">
+        <button role="tab" data-z="pour" class="on" aria-selected="true">Pour toi<b class="badge ex-b-pour" hidden></b></button>
+        <button role="tab" data-z="cherche" aria-selected="false">Chercher</button>
+        <button role="tab" data-z="cours" aria-selected="false">En cours<b class="badge ex-b-cours" hidden></b></button>
+      </div>
+    </header>
+    <div class="ex-zone ex-pour" data-z="pour"></div>
+    <div class="ex-zone ex-cherche" data-z="cherche" hidden>
+      <div class="ex-search">
+        <input class="search ex-q" type="search" placeholder="Une carte : nom, univers, n° ou 6★" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Chercher une carte chez tous les joueurs et au marché">
+        <div class="starf ex-stars" role="group" aria-label="Étoiles">${STARS.map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}" title="${rarity(r).label}">${RANK[r] + 1}★</button>`).join('')}</div>
+      </div>
+      <div class="ex-results" aria-live="polite"></div>
+      <h3 class="ex-h ex-h-mk">Au marché <small>prix fixe, en pièces</small></h3>
     </div>
-    <h2 class="tr-sec-h tr-sec-direct"><span>Échanges directs</span><small>avec tes amis · propositions reçues et envoyées</small><b class="badge tt-in2" hidden></b></h2>
-    <div class="tr-col left">
-      <h3>En cours</h3><div class="pending"></div>
-      <div class="tr-find"><h3>Trouver une carte</h3><input class="search tr-find-in" type="search" placeholder="Nom, univers, n° ou 6★ — qui l’a ?" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Chercher une carte chez tous les joueurs"><div class="tr-find-res"></div></div>
-      <h3>Échanger avec…</h3><div class="friends"></div>
+    <div class="ex-zone ex-cours" data-z="cours" hidden>
+      <div class="pending"></div>
+      <div class="ex-legacy" hidden><button class="linkish ex-legacy-t" aria-expanded="false"></button><div class="ex-legacy-b" hidden></div></div>
+      <div class="ex-compose-cta"><button class="btn-ghost ex-compose">Composer moi-même</button><small>un joueur, des cartes de chaque côté, un petit mot</small></div>
       <h3 class="hist-t"><button class="linkish hist-toggle">Historique ▸</button></h3><div class="history" hidden></div>
+    </div>
+    <div class="tr-col left">
+      <button class="linkish ex-back">‹ Échanges</button>
+      <h3>Échanger avec…</h3><div class="friends"></div>
     </div>
     <div class="tr-col compose">
       <div class="placeholder">Choisis un ami : on croise vos collections pour trouver les cartes à échanger.</div>
@@ -170,47 +196,92 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   const matchList = q('.match-list');
   const viewerUi = q('.viewer-ui');
 
-  // ── TABLEAU D'OFFRES (retours live 02, lot T — views/board.ts) : 2e onglet de la page, ouvert à tous les joueurs
-  const board = createBoard(backend, { fairness, gaugeHtml, ago, chime: () => shell.sfx.chime(3, 0.08) });
-  // (retours Hugo 10/11 : « complètement fouillis, incompréhensible ») retour à TROIS onglets, un seul écran à la fois :
-  // le MARCHÉ (views/market.ts, par défaut), les échanges AVEC UN AMI, et le tableau d'OFFRES. Avant (05/11), le
-  // tableau d'offres et les échanges directs s'empilaient sur la même page.
+  // ── (refonte 11/11) LA PAGE : trois zones (Pour toi · Chercher · En cours) + le composeur manuel
+  const forYou = createForYou(backend, { chime: () => shell.sfx.chime(3, 0.08), search: () => setZone('cherche') });
+  q('.ex-pour').append(forYou.el);
+  // marché fondu dans « Chercher » (views/market.ts, même recherche) — abonnement seulement quand la zone est à l'écran
   const market = createMarket(backend, { chime: () => shell.sfx.chime(3, 0.08) });
-  q('.tr-sec-direct').before(board.el);
-  board.el.before(market.el);
-  const tabBtns = [...el.querySelectorAll<HTMLButtonElement>('.tr-tabs button')];
-  type TradesTab = 'market' | 'direct' | 'board';
-  let view: TradesTab = 'market';
-  function setView(v: TradesTab) {
-    view = v;
-    el.dataset.v = v;
+  q('.ex-cherche').append(market.el);
+  // TABLEAU D'OFFRES : retiré de l'interface (décision de Tom, 11/11). Les annonces et offres encore ouvertes vont à
+  // leur terme : on les montre (repliées) dans « En cours », sans pouvoir en publier de nouvelles.
+  const board = createBoard(backend, { fairness, gaugeHtml, ago, chime: () => shell.sfx.chime(3, 0.08) });
+  board.el.classList.add('ob-legacy');
+  q('.ex-legacy-b').append(board.el);
+  let legacyOpen = false;
+  const boardLive = () => {
+    const st = backend.state, now = Date.now();
+    return st.board.mine.filter((l) => l.status === 'open' && l.expiresAt > now).length + st.board.offers.filter((o) => (o.status === 'pending' || o.status === 'countered') && o.listing && o.listing.status === 'open' && o.listing.expiresAt > now).length;
+  };
+  function syncLegacy() {
+    const n = boardLive();
+    const box = q('.ex-legacy');
+    box.hidden = !n && !legacyOpen;
+    const att = board.attention();
+    q('.ex-legacy-t').innerHTML = `Tableau d’offres : ${n} annonce${n > 1 ? 's' : ''} ou offre${n > 1 ? 's' : ''} en cours${att ? ` <b class="badge">${att}</b>` : ''} ${legacyOpen ? '▾' : '▸'}`;
+    q('.ex-legacy-t').setAttribute('aria-expanded', String(legacyOpen));
+    q('.ex-legacy-b').hidden = !legacyOpen;
+  }
+  function setLegacy(on: boolean) {
+    legacyOpen = on;
+    if (on) {
+      try {
+        if (!sessionStorage.getItem('bebou.boardTab') || sessionStorage.getItem('bebou.boardTab') === 'all') sessionStorage.setItem('bebou.boardTab', 'mine');
+      } catch {
+        /* rien */
+      }
+      board.enter();
+    } else board.leave();
+    syncLegacy();
+  }
+  q('.ex-legacy-t').addEventListener('click', () => setLegacy(!legacyOpen));
+
+  type Zone = 'pour' | 'cherche' | 'cours' | 'compose';
+  let zone: Zone = 'pour';
+  const tabBtns = [...el.querySelectorAll<HTMLButtonElement>('.ex-tabs button')];
+  function setZone(z: Zone) {
+    if (zone === 'compose' && z !== 'compose' && friend) {
+      if (!askLeave()) return;
+      leaveFriend();
+    }
+    zone = z;
+    el.dataset.z = z;
     tabBtns.forEach((b) => {
-      const on = b.dataset.v === v;
+      const on = b.dataset.z === z;
       b.classList.toggle('on', on);
       b.setAttribute('aria-selected', String(on));
     });
-    if (v === 'market') market.enter();
+    el.querySelectorAll<HTMLElement>('.ex-zone').forEach((x) => (x.hidden = x.dataset.z !== z));
+    if (z === 'cherche') market.enter();
     else market.leave();
-    if (v === 'board') board.enter();
-    else board.leave();
-    if (v === 'direct') {
+    if (z !== 'cours' && legacyOpen) setLegacy(false);
+    if (z === 'pour') forYou.enter();
+    if (z === 'cours') {
       renderPending();
-      renderFriends();
       renderHistory();
+      syncLegacy();
+      void loadHistory();
+    }
+    if (z === 'compose') renderFriends();
+    try {
+      if (z !== 'compose') sessionStorage.setItem('bebou.exZone', z);
+    } catch {
+      /* rien */
     }
     el.scrollTo({ top: 0 });
   }
-  tabBtns.forEach((x) => x.addEventListener('click', () => setView(x.dataset.v as TradesTab)));
+  tabBtns.forEach((x) => x.addEventListener('click', () => setZone(x.dataset.z as Zone)));
+  q('.ex-compose').addEventListener('click', () => setZone('compose'));
+  q('.ex-back').addEventListener('click', () => setZone('cours'));
   const syncTabBadges = () => {
-    const bIn = q('.tt-in'), bBd = q('.tt-board');
-    const ni = backend.state.trades.incoming.length, nb = board.attention();
-    bIn.hidden = !ni;
-    bIn.textContent = String(ni);
-    bBd.hidden = !nb;
-    bBd.textContent = String(nb);
-    const b2 = q('.tt-in2');
-    b2.hidden = !ni;
-    b2.textContent = `${ni} reçue${ni > 1 ? 's' : ''}`;
+    const ni = backend.state.trades.incoming.length + board.attention();
+    const bc = q('.ex-b-cours');
+    bc.hidden = !ni;
+    bc.textContent = String(ni);
+    const np = forYou.count();
+    const bp = q('.ex-b-pour');
+    bp.hidden = !np;
+    bp.textContent = String(np);
+    if (zone === 'cours') syncLegacy();
   };
   backend.onChange(() => el.isConnected && syncTabBadges());
   const vInfo = q('.v-info');
@@ -400,7 +471,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     const { incoming, outgoing } = backend.state.trades;
     if (confirmingTrade && !incoming.some((t) => t.id === confirmingTrade)) confirmingTrade = null;
     pendingEl.innerHTML = '';
-    if (!incoming.length && !outgoing.length) pendingEl.innerHTML = `<div class="muted">Aucun échange en attente. ${backend.state.friends.length ? 'Choisis un ami ci-dessous : on te montre ce que vous pouvez échanger.' : ''}</div>`;
+    if (!incoming.length && !outgoing.length) pendingEl.innerHTML = `<div class="muted ex-none">Aucun échange en attente. Les échanges prêts t’attendent dans « Pour toi ».</div>`;
     const owned = mine();
     const row = (t: TradeView, dir: 'in' | 'out') => {
       const r = h('div', `trade ${dir}${countering?.id === t.id ? ' countering' : ''}`);
@@ -414,8 +485,11 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           const have = owned.get(cardKey(it))?.count ?? 0;
           return have > 0 && have <= it.count;
         });
-        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> te propose ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">Tu donnerais ton dernier exemplaire de ${lasts.map((it) => esc(name(it.cardId))).join(', ')}.</div>` : ''}${tradeErr.get(t.id) ? `<div class="fair warn t-err" role="alert">${esc(tradeErr.get(t.id)!)}</div>` : ''}${confirmingTrade === t.id ? `<div class="act t-confirm"><span class="cf-q">Confirmer l’échange ?</span><button class="btn-ghost cf-no">Annuler</button><button class="btn-primary cf-ok">Oui, échanger</button></div>` : `<div class="act"><button class="linkish t-decline">Refuser</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-primary t-accept">Accepter</button></div>`}`;
-      } else r.innerHTML = `<div class="who">À <b>${esc(t.toName)}</b> · tu donnes ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested)}</div><div class="act"><span class="muted">en attente…</span><button class="btn-ghost cancel">Annuler</button></div>`;
+        const acts = t.quick
+          ? `<div class="act"><button class="linkish t-decline">Refuser</button><button class="btn-ghost t-pick">Choisir autre chose</button><button class="btn-primary t-accept">Accepter</button></div>`
+          : `<div class="act"><button class="linkish t-decline">Refuser</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-primary t-accept">Accepter</button></div>`;
+        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> ${t.quick ? 'te demande' : 'te propose'} ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">Tu donnerais ton dernier exemplaire de ${lasts.map((it) => esc(name(it.cardId))).join(', ')}.</div>` : ''}${tradeErr.get(t.id) ? `<div class="fair warn t-err" role="alert">${esc(tradeErr.get(t.id)!)}</div>` : ''}${confirmingTrade === t.id ? `<div class="act t-confirm"><span class="cf-q">Confirmer l’échange ?</span><button class="btn-ghost cf-no">Annuler</button><button class="btn-primary cf-ok">Oui, échanger</button></div>` : acts}`;
+      } else r.innerHTML = `<div class="who">À <b>${esc(t.toName)}</b> · tu donnes ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">contre</div><div class="its">${itemsHtml(t.requested)}</div><div class="act"><span class="muted">en attente…</span>${t.quick ? '<button class="btn-ghost t-swap">Changer</button>' : ''}<button class="btn-ghost cancel">Annuler</button></div>`;
       const act = async (fn: () => Promise<void>, ok: string, btn?: HTMLElement | null) => {
         if (r.dataset.busy || busyTrades.has(t.id)) return; // (anti double-toucher : les boutons sont aussi désactivés)
         r.dataset.busy = '1';
@@ -468,6 +542,70 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       });
       r.querySelector('.cancel')?.addEventListener('click', () => act(() => backend.cancelTrade(t.id), 'Proposition annulée.'));
       r.querySelector('.ctr')?.addEventListener('click', () => void startCounter(t));
+      // (refonte 11/11) demande en un toucher reçue : « Choisir autre chose » parmi ses doublons proposables de même
+      // étoile (convex/deals.ts) — l'échange est conclu au toucher de la carte choisie
+      r.querySelector('.t-pick')?.addEventListener('click', () => {
+        const it = t.offered[0];
+        const star = it.rarity === 'secret' ? 'Bébou' : `${RANK[it.rarity] + 1}★`;
+        pickCardSheet({
+          title: 'Choisir autre chose',
+          sub: `Un doublon ${star} de ${t.fromName} à la place de ${name(it.cardId)}. Toucher une carte conclut l’échange.`,
+          load: async () =>
+            (await backend.tradePickOptions(t.id)).map((o) => ({ cardId: o.cardId, rarity: o.rarity, on: o.cardId === it.cardId, tag: o.cardId === it.cardId ? 'proposée' : o.lacking ? 'te manque' : 'tu l’as déjà' })),
+          empty: `${t.fromName} n’a pas d’autre doublon ${star} à proposer.`,
+          onPick: async (c) => {
+            try {
+              const res = await backend.acceptTradePick(t.id, c.cardId);
+              shell.sfx.chime(3, 0.08);
+              haptics.pulse([10, 40, 18]);
+              invalidatePanel();
+              toast(res.changed ? `Échange conclu : ${name(c.cardId)} est dans ta collection.` : 'Échange conclu ! Les cartes sont dans ta collection.', 'ok');
+              void loadHistory();
+              return true;
+            } catch (e) {
+              toast(errMsg(e), 'err');
+              return false;
+            }
+          },
+        });
+      });
+      // demande envoyée : changer ce que je donne (même étoile, une carte libre à moi), tant qu'il n'a pas répondu
+      r.querySelector('.t-swap')?.addEventListener('click', () => {
+        const it = t.offered[0];
+        const star = it.rarity === 'secret' ? 'Bébou' : `${RANK[it.rarity] + 1}★`;
+        pickCardSheet({
+          title: 'Ce que tu donnes',
+          sub: `Une de tes cartes ${star} libres, à la place de ${name(it.cardId)}`,
+          load: async () => {
+            const st = backend.state;
+            const locked = lockedCards(st);
+            const guard = { protected: st.tradeProtected, wishlist: st.wishlist };
+            return st.collection
+              .filter((c) => c.rarity === it.rarity && catalogEntry(c.cardId))
+              .map((c) => {
+                const back = cardKey(c) === cardKey(it) ? 1 : 0;
+                const lk = (locked.get(cardKey(c)) ?? 0) - back;
+                return { c, free: c.count - lk, dup: proposable(c, lk, guard) > 0 };
+              })
+              .filter((x) => x.free >= 1)
+              .sort((a, b) => Number(b.dup) - Number(a.dup) || b.c.count - a.c.count)
+              .slice(0, 36)
+              .map(({ c, dup }) => ({ cardId: c.cardId, rarity: c.rarity, on: c.cardId === it.cardId, tag: c.cardId === it.cardId ? 'proposée' : dup ? `doublon ×${c.count}` : 'ton seul exemplaire' }));
+          },
+          empty: `Aucune autre carte ${star} libre.`,
+          onPick: async (c) => {
+            if (c.cardId === it.cardId) return true;
+            try {
+              await backend.swapTradeGive(t.id, c.cardId);
+              toast(`Tu proposes maintenant ${name(c.cardId)}.`, 'ok');
+              return true;
+            } catch (e) {
+              toast(errMsg(e), 'err');
+              return false;
+            }
+          },
+        });
+      });
       pendingEl.append(r);
     };
     incoming.forEach((t) => row(t, 'in'));
@@ -516,38 +654,49 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     }
   }
 
-  // ── TROUVER UNE CARTE (v1.0.9, retours 09/11) : recherche dans TOUT le catalogue, « Qui l'a ? » ouvre la liste des
-  // propriétaires (views/owners.ts), « Échanger » ouvre l'échange avec lui, la carte déjà demandée
+  // ── CHERCHER (refonte 11/11) : une recherche dans TOUT le catalogue (toucher = « chez les joueurs », views/cardPanel.ts)
+  // et le marché dessous, filtré pareil. Sans texte : rien que le marché (avec l'étoile choisie).
   let pendingGet: string | null = null;
-  const findIn = q<HTMLInputElement>('.tr-find-in');
-  const findRes = q('.tr-find-res');
-  const tradeWithOwner = (o: CardOwner, cardId: string) => {
-    const f = backend.state.friends.find((x) => x.id === o.id) ?? { id: o.id, name: o.name, avatarUrl: o.avatarUrl, online: o.online, packsOpened: 0 };
-    pendingGet = `${cardId}:${o.rarity}`;
-    void pick(f);
-  };
+  const findIn = q<HTMLInputElement>('.ex-q');
+  const findRes = q('.ex-results');
+  let findStar: RarityId | null = null;
+  const findStars = [...el.querySelectorAll<HTMLButtonElement>('.ex-stars .chip')];
   function renderFind() {
     const v = findIn.value.trim();
+    market.setFilter(v, findStar);
+    q('.ex-h-mk').hidden = false;
     if (!v) return void (findRes.innerHTML = '');
     const have = new Map(backend.state.collection.map((c) => [c.cardId, c.count]));
-    const res = searchCatalog(v, { limit: 12, includeSecret: (id) => have.has(id) });
-    if (!res.length) return void (findRes.innerHTML = `<div class="muted">Aucune carte ne correspond à « ${esc(v)} ».</div>`);
-    findRes.innerHTML = '';
-    for (const e of res) {
-      const r = rarity(e.rarity);
-      const n = have.get(e.id) ?? 0;
-      const row = h('div', 'tf-row');
-      row.style.setProperty('--rc', r.hex);
-      row.innerHTML = `${e.rarity !== 'secret' ? `<img alt="" loading="lazy" src="${thumbUrl(e)}">` : '<span class="tf-noimg"></span>'}<span class="tf-id"><b>${esc(e.name)}</b><small>${esc(cardWhere(e))} · <i>${r.rank + 1}★</i> · <em>${n ? `tu en as ${n}` : 'manquante'}</em></small></span><button class="btn-ghost tf-go">Qui l’a ?</button>`;
-      row.querySelector('.tf-go')!.addEventListener('click', () => showOwners(backend, e.id, (o) => tradeWithOwner(o, e.id)));
-      findRes.append(row);
-    }
+    const res = searchCatalog(v, { limit: 40, includeSecret: (id) => have.has(id) })
+      .filter((e) => !findStar || e.rarity === findStar)
+      .slice(0, 12);
+    if (!res.length) return void (findRes.innerHTML = `<div class="muted ex-none">Aucune carte ne correspond à « ${esc(v)} ».</div>`);
+    findRes.replaceChildren(
+      h('h3', 'ex-h', `Cartes <small>touche une carte : qui l’a, qui la vend, qui la veut</small>`),
+      ...res.map((e) => {
+        const r = rarity(e.rarity);
+        const n = have.get(e.id) ?? 0;
+        const wish = backend.state.wishlist.includes(e.id);
+        const row = h('button', 'tf-row ex-row');
+        row.style.setProperty('--rc', r.hex);
+        row.innerHTML = `${e.rarity !== 'secret' ? `<img alt="" loading="lazy" src="${thumbUrl(e)}">` : '<span class="tf-noimg"></span>'}<span class="tf-id"><b>${esc(e.name)}</b><small>${esc(cardWhere(e))} · <i>${r.rank + 1}★</i> · <em>${n ? `tu en as ${n}` : 'manquante'}</em>${wish ? ' · <em class="ex-wish">♥ voulue</em>' : ''}</small></span><span class="ex-go" aria-hidden="true">›</span>`;
+        row.addEventListener('click', () => showCardPanel(backend, e.id));
+        return row;
+      }),
+    );
   }
   let findT = 0;
   findIn.addEventListener('input', () => {
     clearTimeout(findT);
     findT = window.setTimeout(renderFind, 140);
   });
+  findStars.forEach((b) =>
+    b.addEventListener('click', () => {
+      findStar = findStar === b.dataset.r ? null : (b.dataset.r as RarityId);
+      findStars.forEach((x) => x.classList.toggle('on', x.dataset.r === findStar));
+      renderFind();
+    }),
+  );
 
   // ── composer
   async function pick(f: Friend, keep = false) {
@@ -559,6 +708,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       note.value = '';
       countering = null;
     }
+    if (zone !== 'compose') setZone('compose');
     renderFriends();
     placeholder.hidden = true;
     work.hidden = false;
@@ -991,24 +1141,37 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       shell.show(null);
       shell.setDimmed(true);
       syncTabBadges();
-      // « #/echanges/tableau » (ou « Proposer sur le tableau » depuis une carte) : l'onglet du tableau d'offres
-      const toBoard = sub === 'tableau' || !!sessionStorage.getItem('bebou.boardGive');
-      // échange direct demandé (bouton « Proposer un échange » d'un profil, carte à donner, proposition en cours) ou
-      // proposition reçue : l'onglet « Avec un ami » ; sinon le marché (#/echanges/ami : l'onglet direct)
-      const toDirect = sub === 'ami' || !!sessionStorage.getItem('bebou.tradeWith') || !!sessionStorage.getItem('bebou.tradeGive') || !!friend || backend.state.trades.incoming.length > 0;
       pendSig = friendSig = '';
-      setView(toBoard ? 'board' : toDirect ? 'direct' : sub === 'direct' ? 'direct' : view === 'direct' && !sub ? 'direct' : 'market');
-      if (toBoard || el.dataset.v === 'market') return;
-      renderPending();
-      renderFriends();
-      renderHistory();
-      void loadHistory();
+      // composeur manuel : « Composer moi-même », bouton « Proposer un échange » d'un profil, « Demander » sans doublon
+      // à proposer (views/cardPanel.ts), carte à donner, proposition en cours
       const want = sessionStorage.getItem('bebou.tradeWith');
       sessionStorage.removeItem('bebou.tradeWith');
+      sessionStorage.removeItem('bebou.boardGive'); // (ancien « Proposer sur le tableau » : le tableau est retiré)
+      const toCompose = sub === 'composer' || sub === 'ami' || !!want || !!sessionStorage.getItem('bebou.tradeGive') || !!friend;
+      let last: string | null = null;
+      try {
+        last = sessionStorage.getItem('bebou.exZone');
+      } catch {
+        /* rien */
+      }
+      const z: Zone = toCompose
+        ? 'compose'
+        : sub === 'tableau'
+          ? 'cours'
+          : sub === 'pour' || sub === 'chercher' || sub === 'cours'
+            ? (sub === 'chercher' ? 'cherche' : sub)
+            : backend.state.trades.incoming.length > 0
+              ? 'cours'
+              : last === 'cherche' || last === 'cours'
+                ? last
+                : 'pour';
+      setZone(z);
+      if (sub === 'tableau') setLegacy(true);
+      if (z !== 'compose') return;
       const wanted = want ? backend.state.friends.find((f) => f.id === want) : undefined;
       if (wanted) void pick(wanted);
       else if (friend) void pick(backend.state.friends.find((f) => f.id === friend!.id) ?? friend, true);
-      else if (sessionStorage.getItem('bebou.tradeGive')) toast('Choisis un ami : la carte sera dans ta proposition', 'info');
+      else if (sessionStorage.getItem('bebou.tradeGive')) toast('Choisis un joueur : la carte sera dans ta proposition', 'info');
     },
     leave() {
       if (open) closeViewer();

@@ -44,6 +44,7 @@ export function createOnlineBackend(): GameBackend {
     trades: { incoming: [], outgoing: [] },
     missions: null,
     wishlist: [],
+    tradeProtected: [],
     binders: [],
     covers: {},
     // AMIS (lot A2) : relu à chaque accès (mémorisé par réponse du serveur) — les battements de cœur des amis mettent
@@ -72,6 +73,7 @@ export function createOnlineBackend(): GameBackend {
     note: t.note,
     createdAt: t.createdAt,
     counterOf: t.counterOf,
+    quick: t.quick,
   });
 
   /**
@@ -107,6 +109,7 @@ export function createOnlineBackend(): GameBackend {
           }
         : null;
       state.wishlist = n.user?.wishlist ?? [];
+      state.tradeProtected = n.user?.tradeProtected ?? [];
       state.covers = n.user?.covers ?? {};
     }
     if (changed('collection', n.collection))
@@ -216,6 +219,32 @@ export function createOnlineBackend(): GameBackend {
     },
     async friendWishlist(friendId) {
       return await net.wishlistOf(friendId as Id<'users'>);
+    },
+    // refonte des échanges (11/11, convex/deals.ts)
+    async cardPanel(cardId) {
+      return await net.ask(api.deals.cardPanel, { cardId });
+    },
+    async forYou() {
+      return await net.ask(api.deals.forYou, {});
+    },
+    async quickTrade(toId, get, give) {
+      const r = await net.call(api.deals.quick, { toUserId: toId as Id<'users'>, get, give });
+      return { get: r.get, give: r.give };
+    },
+    async swapTradeGive(tradeId, cardId) {
+      await net.call(api.deals.swapGive, { tradeId: tradeId as Id<'trades'>, cardId });
+    },
+    async tradePickOptions(tradeId) {
+      return (await net.ask(api.deals.pickOptions, { tradeId: tradeId as Id<'trades'> })).options;
+    },
+    async acceptTradePick(tradeId, cardId) {
+      const r = await net.call(api.deals.acceptPick, { tradeId: tradeId as Id<'trades'>, cardId });
+      return { changed: r.changed };
+    },
+    async setTradeProtect(cardId, on) {
+      // réponse immédiate (la souscription `me` confirme juste après)
+      state.tradeProtected = await net.call(api.deals.setProtect, { cardId, on });
+      listeners.forEach((fn) => fn(state));
     },
     async claimMission(id) {
       return (await net.claimMission(id)).reward;
