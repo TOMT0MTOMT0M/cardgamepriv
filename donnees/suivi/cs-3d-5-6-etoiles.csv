@@ -1,0 +1,150 @@
+﻿num;id;nom_marche_steam;etoiles;type;modele;rarete_in_game
+41;skin-921a5a81c48a;AK-47 | Wild Lotus;5;Arme;AK-47;Covert
+66;skin-4f8d99d09ded;AWP | Dragon Lore;6;Arme;AWP;Covert
+72;skin-2b99573c887b;AWP | Gungnir;5;Arme;AWP;Covert
+77;skin-8af685c49feb;AWP | Medusa;5;Arme;AWP;Covert
+249;skin-8aacf99e7f2f;M4A4 | Howl;6;Arme;M4A4;Contraband
+487;skin-e655cd4b41ee;Bayonet | Autotronic;5;Couteau;Bayonet;Covert
+492;skin-1a4722df3bb9;Bayonet | Case Hardened;5;Couteau;Bayonet;Covert
+495;skin-d466b1683b88;Bayonet | Doppler;5;Couteau;Bayonet;Covert
+496;skin-95831ce7c492;Bayonet | Fade;5;Couteau;Bayonet;Covert
+499;skin-9af6c8a5a9c1;Bayonet | Gamma Doppler;5;Couteau;Bayonet;Covert
+500;skin-41061f8a5cc4;Bayonet | Lore;5;Couteau;Bayonet;Covert
+501;skin-352633fab46b;Bayonet | Marble Fade;5;Couteau;Bayonet;Covert
+506;skin-8084beee1235;Bayonet | Slaughter;5;Couteau;Bayonet;Covert
+508;skin-65d7965e0e39;Bayonet | Tiger Tooth;5;Couteau;Bayonet;Covert
+520;skin-793b9eb6b4b7;Bowie Knife | Doppler;5;Couteau;Bowie Knife;Covert
+536;skin-vanilla-weapon_knife_butterfly;Butterfly Knife;6;Couteau;Butterfly Knife;Covert
+537;skin-51688cf28133;Butterfly Knife | Autotronic;6;Couteau;Butterfly Knife;Covert
+538;skin-f022f759f62a;Butterfly Knife | Black Laminate;5;Couteau;Butterfly Knife;Covert
+539;skin-379727014f65;Butterfly Knife | Blue Steel;6;Couteau;Butterfly Knife;Covert
+540;skin-1471c201cd68;Butterfly Knife | Boreal Forest;5;Couteau;Butterfly Knife;Covert
+541;skin-4ffaeff43385;Butterfly Knife | Bright Water;5;Couteau;Butterfly Knife;Covert
+542;skin-688d607e4dec;Butterfly Knife | Case Hardened;6;Couteau;Butterfly Knife;Covert
+543;skin-6c3fbb89c658;Butterfly Knife | Crimson Web;6;Couteau;Butterfly Knife;Covert
+544;skin-da19db61f316;Butterfly Knife | Damascus Steel;6;Couteau;Butterfly Knife;Covert
+545;skin-89f34e17d8b4;Butterfly Knife | Doppler;6;Couteau;Butterfly Knife;Covert
+546;skin-6656ae9270b9;Butterfly Knife | Fade;6;Couteau;Butterfly Knife;Covert
+547;skin-a54b82c79b59;Butterfly Knife | Forest DDPAT;5;Couteau;Butterfly Knife;Covert
+548;skin-54da4d116a31;Butterfly Knife | Freehand;5;Couteau;Butterfly Knife;Covert
+549;skin-a07ae9bbbeff;Butterfly Knife | Gamma Doppler;6;Couteau;Butterfly Knife;Covert
+550;skin-b083e3da3e03;Butterfly Knife | Lore;5;Couteau;Butterfly Knife;Covert
+551;skin-c14ef2ceee15;Butterfly Knife | Marble Fade;6;Couteau;Butterfly Knife;Covert
+552;skin-c8f815e08499;Butterfly Knife | Night;5;Couteau;Butterfly Knife;Covert
+553;skin-466c6dee0868;Butterfly Knife | Rust Coat;5;Couteau;Butterfly Knife;Covert
+554;skin-c10084b67a2b;Butterfly Knife | Safari Mesh;5;Couteau;Butterfly Knife;Covert
+555;skin-59943a4e472a;Butterfly Knife | Scorched;5;Couteau;Butterfly Knife;Covert
+556;skin-eae7c10fa54f;Butterfly Knife | Slaughter;6;Couteau;Butterfly Knife;Covert
+557;skin-c537f6da0a92;Butterfly Knife | Stained;6;Couteau;Butterfly Knife;Covert
+558;skin-9f5234d3821f;Butterfly Knife | Tiger Tooth;6;Couteau;Butterfly Knife;Covert
+559;skin-0063b0378b5b;Butterfly Knife | Ultraviolet;6;Couteau;Butterfly Knife;Covert
+560;skin-e4f6bbb7bf5f;Butterfly Knife | Urban Masked;5;Couteau;Butterfly Knife;Covert
+561;skin-vanilla-weapon_knife_css;Classic Knife;5;Couteau;Classic Knife;Covert
+566;skin-7997ad94608a;Classic Knife | Fade;5;Couteau;Classic Knife;Covert
+583;skin-17a57bfea011;Falchion Knife | Doppler;5;Couteau;Falchion Knife;Covert
+584;skin-eb63179edd1a;Falchion Knife | Fade;5;Couteau;Falchion Knife;Covert
+608;skin-90511e74f417;Flip Knife | Doppler;5;Couteau;Flip Knife;Covert
+609;skin-c414cd2f0b52;Flip Knife | Fade;5;Couteau;Flip Knife;Covert
+612;skin-3d89f1fbeff4;Flip Knife | Gamma Doppler;5;Couteau;Flip Knife;Covert
+614;skin-c6d244df9c44;Flip Knife | Marble Fade;5;Couteau;Flip Knife;Covert
+615;skin-ba43884c26b8;Flip Knife | Night;5;Couteau;Flip Knife;Covert
+619;skin-66d8b7a8bda6;Flip Knife | Slaughter;5;Couteau;Flip Knife;Covert
+658;skin-76b081082456;Huntsman Knife | Doppler;5;Couteau;Huntsman Knife;Covert
+659;skin-85ba0d17a1f9;Huntsman Knife | Fade;5;Couteau;Huntsman Knife;Covert
+674;skin-vanilla-weapon_knife_karambit;Karambit;6;Couteau;Karambit;Covert
+675;skin-3d2a30953c01;Karambit | Autotronic;6;Couteau;Karambit;Covert
+676;skin-e7fa76b05d6f;Karambit | Black Laminate;6;Couteau;Karambit;Covert
+677;skin-648d6470a3f9;Karambit | Blue Steel;6;Couteau;Karambit;Covert
+678;skin-c73034f2d720;Karambit | Boreal Forest;5;Couteau;Karambit;Covert
+679;skin-8e57ec28871d;Karambit | Bright Water;5;Couteau;Karambit;Covert
+680;skin-c187005d5542;Karambit | Case Hardened;6;Couteau;Karambit;Covert
+681;skin-8370ef040f98;Karambit | Crimson Web;6;Couteau;Karambit;Covert
+682;skin-d1da7a632cfe;Karambit | Damascus Steel;6;Couteau;Karambit;Covert
+683;skin-525ac56c082c;Karambit | Doppler;6;Couteau;Karambit;Covert
+684;skin-657a59e6566b;Karambit | Fade;6;Couteau;Karambit;Covert
+685;skin-0b8c896de2ea;Karambit | Forest DDPAT;5;Couteau;Karambit;Covert
+686;skin-ab2a1f1254f9;Karambit | Freehand;5;Couteau;Karambit;Covert
+687;skin-6bd8a366ec88;Karambit | Gamma Doppler;6;Couteau;Karambit;Covert
+688;skin-d23dde6eae59;Karambit | Lore;6;Couteau;Karambit;Covert
+689;skin-cc03bb38269b;Karambit | Marble Fade;6;Couteau;Karambit;Covert
+690;skin-73516aae3abf;Karambit | Night;5;Couteau;Karambit;Covert
+691;skin-9d759b84ad90;Karambit | Rust Coat;5;Couteau;Karambit;Covert
+692;skin-396b97d31af5;Karambit | Safari Mesh;5;Couteau;Karambit;Covert
+693;skin-da3a54656a27;Karambit | Scorched;5;Couteau;Karambit;Covert
+694;skin-818be290cd5b;Karambit | Slaughter;6;Couteau;Karambit;Covert
+695;skin-00ad6b64e94d;Karambit | Stained;5;Couteau;Karambit;Covert
+696;skin-672713e8a04e;Karambit | Tiger Tooth;6;Couteau;Karambit;Covert
+697;skin-26cdcb9587dd;Karambit | Ultraviolet;5;Couteau;Karambit;Covert
+698;skin-187b287cedbf;Karambit | Urban Masked;5;Couteau;Karambit;Covert
+712;skin-vanilla-weapon_knife_m9_bayonet;M9 Bayonet;6;Couteau;M9 Bayonet;Covert
+713;skin-456130d33acd;M9 Bayonet | Autotronic;6;Couteau;M9 Bayonet;Covert
+714;skin-36a2df6a9d85;M9 Bayonet | Black Laminate;5;Couteau;M9 Bayonet;Covert
+715;skin-50f7716ec9b0;M9 Bayonet | Blue Steel;5;Couteau;M9 Bayonet;Covert
+716;skin-c935837938e9;M9 Bayonet | Boreal Forest;5;Couteau;M9 Bayonet;Covert
+717;skin-26b0b871b60f;M9 Bayonet | Bright Water;5;Couteau;M9 Bayonet;Covert
+718;skin-d335b89fc7a5;M9 Bayonet | Case Hardened;6;Couteau;M9 Bayonet;Covert
+719;skin-34b5bf84f96f;M9 Bayonet | Crimson Web;6;Couteau;M9 Bayonet;Covert
+720;skin-c3fedbe62633;M9 Bayonet | Damascus Steel;5;Couteau;M9 Bayonet;Covert
+721;skin-ae0ce77b8db7;M9 Bayonet | Doppler;6;Couteau;M9 Bayonet;Covert
+722;skin-68778cfbe46d;M9 Bayonet | Fade;6;Couteau;M9 Bayonet;Covert
+723;skin-94c797045c14;M9 Bayonet | Forest DDPAT;5;Couteau;M9 Bayonet;Covert
+724;skin-acb2333c3cd8;M9 Bayonet | Freehand;5;Couteau;M9 Bayonet;Covert
+725;skin-8f49a19645c9;M9 Bayonet | Gamma Doppler;6;Couteau;M9 Bayonet;Covert
+726;skin-56ef5fcd4d5e;M9 Bayonet | Lore;5;Couteau;M9 Bayonet;Covert
+727;skin-fd0ac7570eb0;M9 Bayonet | Marble Fade;6;Couteau;M9 Bayonet;Covert
+728;skin-62ca63790424;M9 Bayonet | Night;5;Couteau;M9 Bayonet;Covert
+729;skin-e0db2b025d4a;M9 Bayonet | Rust Coat;5;Couteau;M9 Bayonet;Covert
+730;skin-68446ed62265;M9 Bayonet | Safari Mesh;5;Couteau;M9 Bayonet;Covert
+731;skin-fe68351b7867;M9 Bayonet | Scorched;5;Couteau;M9 Bayonet;Covert
+732;skin-07fea33b6a5f;M9 Bayonet | Slaughter;6;Couteau;M9 Bayonet;Covert
+733;skin-bab9cbb31702;M9 Bayonet | Stained;5;Couteau;M9 Bayonet;Covert
+734;skin-3bc3ff53883a;M9 Bayonet | Tiger Tooth;6;Couteau;M9 Bayonet;Covert
+735;skin-049129e06871;M9 Bayonet | Ultraviolet;5;Couteau;M9 Bayonet;Covert
+736;skin-8e3dc7a7458c;M9 Bayonet | Urban Masked;6;Couteau;M9 Bayonet;Covert
+756;skin-vanilla-weapon_knife_outdoor;Nomad Knife;5;Couteau;Nomad Knife;Covert
+759;skin-2f7326c83e40;Nomad Knife | Case Hardened;5;Couteau;Nomad Knife;Covert
+760;skin-f18965313816;Nomad Knife | Crimson Web;5;Couteau;Nomad Knife;Covert
+762;skin-8f0cdb10c200;Nomad Knife | Doppler;5;Couteau;Nomad Knife;Covert
+763;skin-47d49e017564;Nomad Knife | Fade;5;Couteau;Nomad Knife;Covert
+781;skin-19875cb0c4d2;Paracord Knife | Doppler;5;Couteau;Paracord Knife;Covert
+822;skin-0f571379fb57;Skeleton Knife | Case Hardened;5;Couteau;Skeleton Knife;Covert
+823;skin-4d68917f3f3f;Skeleton Knife | Crimson Web;5;Couteau;Skeleton Knife;Covert
+825;skin-8d0c4a99f9a1;Skeleton Knife | Doppler;5;Couteau;Skeleton Knife;Covert
+826;skin-cde6adda102c;Skeleton Knife | Fade;5;Couteau;Skeleton Knife;Covert
+828;skin-81ec9b1d09fd;Skeleton Knife | Marble Fade;5;Couteau;Skeleton Knife;Covert
+833;skin-6b5516a41499;Skeleton Knife | Slaughter;5;Couteau;Skeleton Knife;Covert
+835;skin-0c0f10fa7512;Skeleton Knife | Tiger Tooth;5;Couteau;Skeleton Knife;Covert
+841;skin-85e8c0552210;Stiletto Knife | Case Hardened;5;Couteau;Stiletto Knife;Covert
+844;skin-a7e098fc5154;Stiletto Knife | Doppler;5;Couteau;Stiletto Knife;Covert
+845;skin-8416be60f992;Stiletto Knife | Fade;5;Couteau;Stiletto Knife;Covert
+846;skin-269c23931264;Stiletto Knife | Forest DDPAT;5;Couteau;Stiletto Knife;Covert
+847;skin-1c8f54fa853f;Stiletto Knife | Marble Fade;5;Couteau;Stiletto Knife;Covert
+852;skin-05341f90a3cf;Stiletto Knife | Slaughter;5;Couteau;Stiletto Knife;Covert
+854;skin-5301f5924e2a;Stiletto Knife | Tiger Tooth;5;Couteau;Stiletto Knife;Covert
+876;skin-vanilla-weapon_knife_widowmaker;Talon Knife;5;Couteau;Talon Knife;Covert
+877;skin-626085828c3d;Talon Knife | Blue Steel;5;Couteau;Talon Knife;Covert
+879;skin-69c2c09781c9;Talon Knife | Case Hardened;5;Couteau;Talon Knife;Covert
+880;skin-0ab3baba1e98;Talon Knife | Crimson Web;5;Couteau;Talon Knife;Covert
+881;skin-9eed82f3d27d;Talon Knife | Damascus Steel;5;Couteau;Talon Knife;Covert
+882;skin-ae7ba223bf1f;Talon Knife | Doppler;6;Couteau;Talon Knife;Covert
+883;skin-b578d971da2a;Talon Knife | Fade;5;Couteau;Talon Knife;Covert
+885;skin-e628ad554646;Talon Knife | Marble Fade;5;Couteau;Talon Knife;Covert
+890;skin-39fd4dd08be3;Talon Knife | Slaughter;5;Couteau;Talon Knife;Covert
+891;skin-0788e11cab11;Talon Knife | Stained;5;Couteau;Talon Knife;Covert
+892;skin-680a9e6c14da;Talon Knife | Tiger Tooth;5;Couteau;Talon Knife;Covert
+893;skin-fe4a0f2cc9a7;Talon Knife | Ultraviolet;5;Couteau;Talon Knife;Covert
+901;skin-2dae8bd09ad6;Ursus Knife | Doppler;5;Couteau;Ursus Knife;Covert
+902;skin-8512690f4f86;Ursus Knife | Fade;5;Couteau;Ursus Knife;Covert
+952;skin-1f6ac4772c2b;Hand Wraps | Slaughter;5;Gants;Hand Wraps;Extraordinary
+967;skin-a363d8de9765;Moto Gloves | Spearmint;5;Gants;Moto Gloves;Extraordinary
+975;skin-5766610447f3;Specialist Gloves | Crimson Kimono;6;Gants;Specialist Gloves;Extraordinary
+977;skin-844038d20265;Specialist Gloves | Emerald Web;5;Gants;Specialist Gloves;Extraordinary
+996;skin-b05ee2bf4f0d;Sport Gloves | Hedge Maze;6;Gants;Sport Gloves;Extraordinary
+1000;skin-e506270deff6;Sport Gloves | Pandora's Box;6;Gants;Sport Gloves;Extraordinary
+1004;skin-562a47f22d9c;Sport Gloves | Superconductor;5;Gants;Sport Gloves;Extraordinary
+1006;skin-c1ae7186f829;Sport Gloves | Vice;5;Gants;Sport Gloves;Extraordinary
+1072;sticker-72;Ninjas in Pyjamas (Holo) | Katowice 2014;5;Sticker;;Remarkable
+1078;sticker-74;Reason Gaming (Holo) | Katowice 2014;6;Sticker;;Remarkable
+1093;sticker-53;Team Dignitas (Holo) | Katowice 2014;5;Sticker;;Remarkable
+1095;sticker-62;Team LDLC.com (Holo) | Katowice 2014;5;Sticker;;Remarkable
+1102;sticker-80;Vox Eminor (Holo) | Katowice 2014;5;Sticker;;Remarkable

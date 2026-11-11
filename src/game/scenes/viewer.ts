@@ -16,6 +16,7 @@ import { EASE, springCurve } from '../../core/ease';
 import { DUR } from '../../core/motion';
 import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
 import { isHoloReduced } from '../../core/holo';
+import { fxReduced } from '../../core/fxPref';
 import type { WonderVisualInstance } from '../../core/wonderDiorama';
 
 /**
@@ -38,6 +39,16 @@ const loadWonder = () => {
 };
 /** Même test que `isWonderCard` (core/wonderDiorama.ts), sans charger le module. */
 const isWonderCard = (cardId: string) => cardId.startsWith('mrv-');
+
+/** (11/11) Skins CS 6★ en 3D dans la carte (core/csPortal) : module chargé à la première carte concernée. */
+let csMod: Promise<typeof import('../../core/csPortal')> | null = null;
+const loadCs = () => {
+  if (!csMod) {
+    csMod = import('../../core/csPortal');
+    csMod.catch(() => (csMod = null));
+  }
+  return csMod;
+};
 
 /**
  * Visionneuse de la collection : la carte en grand, en vrai 3D (holo, parallaxe), inclinable au doigt / à la souris,
@@ -72,6 +83,8 @@ export function createViewerScene(): ViewerScene {
   let geo: ReturnType<typeof createCardGeometry>;
   let face: ReturnType<typeof buildFace> | null = null;
   let wonderInstance: WonderVisualInstance | null = null;
+  /** carte-fenêtre d'un skin CS 6★ (même rôle que wonderInstance) */
+  let csInstance: import('../../core/csPortal').CsVisualInstance | null = null;
   let tl: gsap.core.Timeline | null = null;
   let token = 0;
   const st = { spin: Math.PI, s: 0.85, z: -0.3, x: 0, y: 0 };
@@ -140,6 +153,10 @@ export function createViewerScene(): ViewerScene {
       wonderInstance.dispose();
       wonderInstance = null;
     }
+    if (csInstance) {
+      csInstance.dispose();
+      csInstance = null;
+    }
     if (mesh) {
       rig.remove(mesh);
       // (perf 06/11, fuite) sinon three garde l'objet de rendu (maillage + dos partagé) et, par lui, la face, ses
@@ -175,10 +192,15 @@ export function createViewerScene(): ViewerScene {
       // remplace dès que le modèle arrive (avant : visionneuse figée le temps du téléchargement en 4G)
       const wonder = isWonderCard(cardId) ? loadWonder() : null;
       void wonder?.then((w) => w.preloadWonderModel(cardId), () => undefined);
+      // skin CS 6★ : modèle + textures (~300 Ko) chargés avec les illustrations ; échec réseau / Effets réduits → carte normale
+      const csAssets = rarityId === 'mythic' && !fxReduced() && cardId.startsWith('cs-')
+        ? loadCs().then((m) => (m.isCs3dCard(cardId) ? m.preloadCs3d(cardId).then((a) => ({ m, a })) : null)).catch(() => null)
+        : null;
       await ensureCardImages([cd]);
       if (my !== token) return;
       // (le module du diorama arrive en parallèle des illustrations ; en cas d'échec réseau, la carte s'affiche sans)
       const W = wonder ? await wonder.catch(() => null) : null;
+      const CS = csAssets ? await csAssets : null;
       if (my !== token) return;
       const rr = rarity(rarityId);
       // mobile : calques à la taille réelle de la carte à l'écran, zoom d'inspection compris (×1,6 → jusqu'à ×1,25 de la
@@ -227,6 +249,14 @@ export function createViewerScene(): ViewerScene {
         mats = [edge];
         rig.add(mesh);
         haloColor.set('#f5c662');
+      } else if (CS) {
+        const { edge } = buildEdge(rr.hex);
+        csInstance = CS.m.createCsCardInstance(cardId, CS.a, art, backs.forCard(cardId), edge, geo, stage.camera, ctx.quality, ctx.renderer);
+        mesh = csInstance.cardMesh;
+        // la face est à l'instance (libérée par csInstance.dispose()), le dos est partagé : seule la tranche est à nous
+        mats = [edge];
+        rig.add(mesh);
+        haloColor.set(rr.hex);
       } else {
         const { edge } = buildEdge(rr.hex);
         mats = [face.holo.material, edge];
@@ -383,6 +413,7 @@ export function createViewerScene(): ViewerScene {
       if (mesh) mesh.rotation.z = pose.rz;
       if (camBase) stage.camera.position.z = camBase * pose.cam;
       wonderInstance?.update(dt, t);
+      csInstance?.update(dt, t);
       /*
        * (audit 06/11) téléphone, carte au repos (personne ne la touche, pas de zoom en cours, pas d'animation d'entrée,
        * gyroscope immobile) : une image sur deux — la définition native (×3) coûte ≈ ×2,25 de pixels, et une visionneuse
@@ -393,7 +424,7 @@ export function createViewerScene(): ViewerScene {
       const tiltMoving = Math.abs(tx - lastTilt.x) + Math.abs(ty - lastTilt.y) > 0.004;
       lastTilt.x = tx;
       lastTilt.y = ty;
-      const calm = ctx.quality === 'mobile' && !ctx.input.down && !ctx.input.dragging && !tiltMoving && !tl?.isActive() && Math.abs(zoomT - zoom) < 0.002 && !wonderInstance;
+      const calm = ctx.quality === 'mobile' && !ctx.input.down && !ctx.input.dragging && !tiltMoving && !tl?.isActive() && Math.abs(zoomT - zoom) < 0.002 && !wonderInstance && !csInstance;
       if (!calm) calmSkip = 0;
       if (!calm || (calmSkip++ & 1) === 0) render();
     },
