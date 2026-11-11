@@ -43,7 +43,15 @@ if (-not (Test-Path $todo)) {
   Run @('-i', "`"$vpk`"", '-o', "`"$out\brut`"", '-f', 'scripts/items/items_game.txt') (Join-Path $out 'sortie.log')
   Write-Host "OK. Dis a Claude : liste CS2 prete."
 } else {
-  $paths = Get-Content $todo | Where-Object { $_ -and -not $_.StartsWith('#') }
+  # Lot 5 (11/11) : sticker 6 etoiles "Reason Gaming (Holo) | Katowice 2014" -- materiau holo, ses textures
+  # (couleur, masque holo, normale), le spectre holo par defaut et l'icone de l'inventaire (reference)
+  $lot5 = @(
+    'stickers/emskatowice2014/reason_holo',
+    'stickers/emskatowice2014/sticker_reason',
+    'materials/default/stickers/default_holo',
+    'panorama/images/econ/stickers/emskatowice2014/reason_holo'
+  )
+  $paths = @(Get-Content $todo | Where-Object { $_ -and -not $_.StartsWith('#') }) + $lot5 | Select-Object -Unique
   $i = 0
   foreach ($f in $paths) {
     $i++

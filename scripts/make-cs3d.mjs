@@ -2,7 +2,8 @@
  * Skins CS 6★ en 3D (11/11) — 2e étape, après `python scripts/make-cs3d.py` (textures recomposées) :
  *  - maillages : public/models/cs/<modèle>.glb (maillage legacy de CS2, sans squelette ni texture, centré, plus grande
  *    dimension = 1, quantifié + meshopt) ;
- *  - textures : public/art/cs3d/<carte>-c.webp (couleur) et -m.webp (G rugosité, B métal) → R2 avec le reste de art/ ;
+ *  - textures : public/art/cs3d/<carte>-c.webp (couleur) et -m.webp (G rugosité, B métal), + -n.webp (normale) pour les
+ *    gants → R2 avec le reste de art/ ;
  *  - src/core/sets/cs3d.ts (GÉNÉRÉ) : carte → modèle.
  * Dépendances hors du projet (outil hors ligne) : `npm i @gltf-transform/core @gltf-transform/extensions
  * @gltf-transform/functions meshoptimizer sharp` dans .claude-tmp/cs3d/ (ou CS3D_DEPS=<dossier node_modules>).
@@ -19,12 +20,12 @@ const req = createRequire(path.join(DEPS, 'x.js'));
 const imp = (n) => import(pathToFileURL(req.resolve(n)).href);
 const { NodeIO } = await imp('@gltf-transform/core');
 const { ALL_EXTENSIONS, EXTMeshoptCompression } = await imp('@gltf-transform/extensions');
-const { prune, dedup, weld, quantize, reorder } = await imp('@gltf-transform/functions');
+const { prune, dedup, weld, quantize, reorder, compactPrimitive } = await imp('@gltf-transform/functions');
 const { MeshoptEncoder, MeshoptDecoder } = await imp('meshoptimizer');
 const sharp = (await imp('sharp')).default;
 
-const EXP = path.join(ROOT, 'imports', 'cs2', 'export');
-const BAKE = path.join(ROOT, '.claude-tmp', 'cs3d', 'bake');
+const EXP = process.env.CS3D_EXP || path.join(ROOT, 'imports', 'cs2', 'export');
+const BAKE = process.env.CS3D_BAKE || path.join(ROOT, '.claude-tmp', 'cs3d', 'bake');
 const OUT_M = path.join(ROOT, 'public', 'models', 'cs');
 const OUT_T = path.join(ROOT, 'public', 'art', 'cs3d');
 fs.mkdirSync(OUT_M, { recursive: true });
@@ -37,7 +38,17 @@ const SRC = {
   talon: 'weapons_models_knife_knife_talon/weapons/models/knife/knife_talon/weapon_knife_talon.glb',
   awp: 'weapons_models_awp/weapons/models/awp/weapon_snip_awp.glb',
   m4a4: 'weapons_models_m4a4/weapons/models/m4a4/weapon_rif_m4a4.glb',
+  specialist: 'agents_models_shared_arms_glove_s/agents/models/shared/arms/glove_specialist/glove_specialist.glb',
+  sporty: 'agents_models_shared_arms_glove_s/agents/models/shared/arms/glove_sporty/glove_sporty.glb',
 };
+/**
+ * GANTS (11/11) : la PAIRE du maillage « viewmodel » (le plus fin), sans le bras. Dans le fichier, les deux gants pendent
+ * doigts vers le bas (−y), au bout de bras écartés, et partagent un seul tableau de sommets : chacun est d'abord séparé
+ * (compactPrimitive), ramené sur son propre centre puis tourné d'un quart de tour (y) — le dos du gant droit face à
+ * l'œil, le gauche derrière, paume vers l'œil, décalé comme sur les aperçus Steam. UV du gant droit : u ∈ [−1, 0]
+ * (texture en miroir) → +1.
+ */
+const GLOVE_PAIR = { right: [0, 0, 0], left: [0.055, 0.035, -0.06] };
 
 await MeshoptEncoder.ready;
 await MeshoptDecoder.ready;
@@ -64,11 +75,48 @@ for (const key of used) {
   const doc = await io.readJSON({ json, resources: { '@glb.bin': new Uint8Array(bin) } });
   const root = doc.getRoot();
   // seul le maillage legacy (les peintures sont calées sur ses UV) ; pas de squelette, pas de texture
+  const glove = key === 'specialist' || key === 'sporty';
   for (const node of root.listNodes()) {
     const mesh = node.getMesh();
-    if (mesh && !mesh.getName().endsWith('body_legacy')) node.dispose();
+    if (mesh && !mesh.getName().endsWith(glove ? 'viewmodel' : 'body_legacy')) node.dispose();
     node.setSkin(null);
   }
+  if (glove)
+    for (const m of root.listMeshes())
+      for (const p of m.listPrimitives()) {
+        const side = /_right$/.test(p.getMaterial()?.getName() ?? '') ? 'right' : /_left$/.test(p.getMaterial()?.getName() ?? '') ? 'left' : null;
+        if (!side) {
+          m.removePrimitive(p);
+          continue;
+        }
+        // quelques triangles du gant gauche (Specialist) pointent vers des sommets du gant droit : écartés (> 0,2 du
+        // centre du gant, qui mesure 0,24 de haut)
+        {
+          const ia = p.getIndices(), P0 = p.getAttribute('POSITION'), e = [];
+          const idx = Array.from(ia.getArray());
+          const med = [0, 1, 2].map((j) => idx.map((i) => P0.getElement(i, e)[j]).sort((a, b) => a - b)[idx.length >> 1]);
+          const near = (i) => Math.hypot(...P0.getElement(i, e).map((v, j) => v - med[j])) < 0.2;
+          const keep = [];
+          for (let t = 0; t < idx.length; t += 3) if (near(idx[t]) && near(idx[t + 1]) && near(idx[t + 2])) keep.push(idx[t], idx[t + 1], idx[t + 2]);
+          if (keep.length < idx.length) console.log(key, side, 'triangles écartés :', (idx.length - keep.length) / 3);
+          ia.setArray(new Uint32Array(keep));
+        }
+        compactPrimitive(p);
+        const pos = p.getAttribute('POSITION'), nor = p.getAttribute('NORMAL'), uv = p.getAttribute('TEXCOORD_0');
+        const c = [0, 0, 0], el = [];
+        for (let i = 0; i < pos.getCount(); i++) pos.getElement(i, el).forEach((v, j) => (c[j] += v / pos.getCount()));
+        const o = GLOVE_PAIR[side];
+        // quart de tour autour de y : (x, y, z) → (z, y, −x)
+        for (let i = 0; i < pos.getCount(); i++) {
+          const [x, y, z] = pos.getElement(i, el).map((v, j) => v - c[j]);
+          pos.setElement(i, [z + o[0], y + o[1], -x + o[2]]);
+        }
+        for (let i = 0; i < nor.getCount(); i++) {
+          const [x, y, z] = nor.getElement(i, el);
+          nor.setElement(i, [z, y, -x]);
+        }
+        if (side === 'right') for (let i = 0; i < uv.getCount(); i++) uv.setElement(i, uv.getElement(i, el).map((v, j) => (j === 0 ? v + 1 : v)));
+      }
   for (const s of root.listSkins()) s.dispose();
   for (const a of root.listAnimations()) a.dispose();
   for (const t of root.listTextures()) t.dispose();
@@ -111,25 +159,38 @@ for (const key of used) {
 }
 
 let ko = 0;
+let n = 0;
 for (const c of cards) {
+  // (une carte sans texture cuite ici garde ses .webp déjà sur R2 : `python scripts/make-cs3d.py --only <modèle>`)
+  if (!fs.existsSync(path.join(BAKE, `${c.card}-color.png`))) continue;
+  n++;
   await sharp(path.join(BAKE, `${c.card}-color.png`)).webp({ quality: 88 }).toFile(path.join(OUT_T, `${c.card}-c.webp`));
   await sharp(path.join(BAKE, `${c.card}-orm.png`)).webp({ quality: 90 }).toFile(path.join(OUT_T, `${c.card}-m.webp`));
   ko += (fs.statSync(path.join(OUT_T, `${c.card}-c.webp`)).size + fs.statSync(path.join(OUT_T, `${c.card}-m.webp`)).size) / 1024;
+  // gants : la normale du modèle (coutures, rembourrages), 3e texture
+  if (fs.existsSync(path.join(BAKE, `${c.card}-normal.png`))) {
+    await sharp(path.join(BAKE, `${c.card}-normal.png`)).webp({ quality: 92 }).toFile(path.join(OUT_T, `${c.card}-n.webp`));
+    ko += fs.statSync(path.join(OUT_T, `${c.card}-n.webp`)).size / 1024;
+  }
 }
-console.log(cards.length, 'cartes, textures', Math.round(ko), 'Ko');
+console.log(n, '/', cards.length, 'cartes converties, textures', Math.round(ko), 'Ko');
 
 const lines = cards.map((c) => `  '${c.card}': '${c.model}', // ${c.name}${c.kit ? ` · ${c.kit}` : ''}${c.seed != null ? ` #${c.seed}` : ''}`);
 fs.writeFileSync(
   path.join(ROOT, 'src', 'core', 'sets', 'cs3d.ts'),
   `/**
  * GÉNÉRÉ par scripts/make-cs3d.py + scripts/make-cs3d.mjs — ne pas éditer à la main.
- * Skins CS 6★ en 3D : carte → modèle (public/models/cs/<modèle>.glb) ; textures public/art/cs3d/<carte>-c.webp / -m.webp.
+ * Skins CS 6★ en 3D : carte → modèle (public/models/cs/<modèle>.glb) ; textures public/art/cs3d/<carte>-c.webp / -m.webp
+ * (+ -n.webp, la normale, pour les gants).
  */
 export type Cs3dModel = ${[...used].map((k) => `'${k}'`).join(' | ')};
 
 export const CS3D: Record<string, Cs3dModel> = {
 ${lines.join('\n')}
 };
+
+/** modèles qui ont une 3e texture (normale) : public/art/cs3d/<carte>-n.webp */
+export const CS3D_NORMAL: ReadonlySet<Cs3dModel> = new Set([${[...used].filter((k) => k === 'specialist' || k === 'sporty').map((k) => `'${k}'`).join(', ')}]);
 
 /** dimensions (plus grande = 1) et triangles de chaque modèle */
 export const CS3D_MODELS: Record<Cs3dModel, { size: [number, number, number]; tris: number }> = ${JSON.stringify(Object.fromEntries(Object.entries(info).map(([k, v]) => [k, { size: v.size, tris: v.tris }])))};

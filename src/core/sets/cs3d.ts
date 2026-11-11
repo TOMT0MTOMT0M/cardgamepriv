@@ -1,8 +1,9 @@
 /**
  * GÉNÉRÉ par scripts/make-cs3d.py + scripts/make-cs3d.mjs — ne pas éditer à la main.
- * Skins CS 6★ en 3D : carte → modèle (public/models/cs/<modèle>.glb) ; textures public/art/cs3d/<carte>-c.webp / -m.webp.
+ * Skins CS 6★ en 3D : carte → modèle (public/models/cs/<modèle>.glb) ; textures public/art/cs3d/<carte>-c.webp / -m.webp
+ * (+ -n.webp, la normale, pour les gants).
  */
-export type Cs3dModel = 'awp' | 'm4a4' | 'butterfly' | 'karambit' | 'm9' | 'talon';
+export type Cs3dModel = 'awp' | 'm4a4' | 'butterfly' | 'karambit' | 'm9' | 'talon' | 'specialist' | 'sporty';
 
 export const CS3D: Record<string, Cs3dModel> = {
   'cs-skin-4f8d99d09ded': 'awp', // AWP | Dragon Lore · cu_medieval_dragon_awp
@@ -47,7 +48,13 @@ export const CS3D: Record<string, Cs3dModel> = {
   'cs-skin-3bc3ff53883a': 'm9', // M9 Bayonet | Tiger Tooth · an_tiger_orange
   'cs-skin-8e3dc7a7458c': 'm9', // M9 Bayonet | Urban Masked · sp_tape_urban
   'cs-skin-ae7ba223bf1f': 'talon', // Talon Knife | Doppler · am_sapphire_marbleized
+  'cs-skin-5766610447f3': 'specialist', // Specialist Gloves | Crimson Kimono · specialist_kimono_diamonds_red
+  'cs-skin-b05ee2bf4f0d': 'sporty', // Sport Gloves | Hedge Maze · sporty_green
+  'cs-skin-e506270deff6': 'sporty', // Sport Gloves | Pandora's Box · sporty_purple
 };
 
+/** modèles qui ont une 3e texture (normale) : public/art/cs3d/<carte>-n.webp */
+export const CS3D_NORMAL: ReadonlySet<Cs3dModel> = new Set(['specialist', 'sporty']);
+
 /** dimensions (plus grande = 1) et triangles de chaque modèle */
-export const CS3D_MODELS: Record<Cs3dModel, { size: [number, number, number]; tris: number }> = {"awp":{"size":[0.085,0.188,1],"tris":21916},"m4a4":{"size":[0.087,0.321,1],"tris":18156},"butterfly":{"size":[0.059,1,0.172],"tris":11996},"karambit":{"size":[0.074,1,0.783],"tris":13938},"m9":{"size":[0.086,1,0.277],"tris":10124},"talon":{"size":[0.085,1,0.764],"tris":6824}};
+export const CS3D_MODELS: Record<Cs3dModel, { size: [number, number, number]; tris: number }> = {"awp":{"size":[0.085,0.188,1],"tris":21916},"m4a4":{"size":[0.087,0.321,1],"tris":18156},"butterfly":{"size":[0.059,1,0.172],"tris":11996},"karambit":{"size":[0.074,1,0.783],"tris":13938},"m9":{"size":[0.086,1,0.277],"tris":10124},"talon":{"size":[0.085,1,0.764],"tris":6824},"specialist":{"size":[0.71,1,0.547],"tris":15350},"sporty":{"size":[0.719,1,0.626],"tris":9900}};
