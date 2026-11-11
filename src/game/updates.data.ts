@@ -35,11 +35,18 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
-        date: '11 nov.', title: 'Skins CS 6★ en 3D, Éclipse pour Berserk, nouveau tri World et Sport', tag: 'nouveau',
+        date: '11 nov.', title: 'Skins CS 6★ en 3D et Éclipse pour Berserk', tag: 'nouveau',
         points: [
           'Dans la visionneuse, les skins Counter-Strike 6★ apparaissent en 3D dans la carte : la caméra zoome, puis le doigt, la souris ou le gyroscope font tourner l’arme.',
           'Les 6★ Berserk ont leur propre animation, l’Éclipse, à l’ouverture comme dans la visionneuse.',
-          'Nouveau tri des étoiles pour World (75 cartes) et Sport (287 cartes, dont Dupont, Pogačar, Inoue et Nakamura qui quittent les 6★) : les cartes déjà tirées, en vitrine, en échange ou sur le Marché changent aussi.',
+        ],
+      },
+      {
+        date: '11 nov.', title: 'Nouveau tri des étoiles : World et Sport', tag: 'amélioré',
+        points: [
+          'World : 75 cartes changent d’étoiles (Paris, Heineken et la Nissan GT-R passent en 6★, par exemple).',
+          'Sport : 287 cartes changent d’étoiles (Ousmane Dembélé, T1 et Rey Mysterio passent en 6★). Antoine Dupont, Tadej Pogačar, Naoya Inoue et Hikaru Nakamura quittent les 6★.',
+          'Les cartes déjà tirées suivent toutes seules : collection, vitrine, échanges et annonces en cours.',
         ],
       },
       {
