@@ -27,6 +27,7 @@
  * Mouvement réduit / « Effets réduits » : dessin tracé, immobile, sans canvas.
  */
 import { reducedMotion } from '../../core/motion';
+import { pathLength, samplePath } from './pathSample';
 
 export type ArtKind = 'duel' | 'royale' | 'roulette';
 
@@ -302,21 +303,18 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   host.append(svg);
 
   // ── géométrie : chaque piste échantillonnée une fois (repère du dessin, transformations comprises)
+  // (V2 fluidité, 11/11) sans le DOM (pathSample.ts) : getPointAtLength coûtait ~1 s à l'entrée de la page sur téléphone
   const rails: Rail[] = parts.map(({ st, trace, dots }) => {
-    const tmp = svgEl('path', { d: st.d });
-    defs.append(tmp);
-    const L = tmp.getTotalLength();
+    const L = pathLength(st.d);
     const M = rotM(st.transform);
     const n = Math.max(2, Math.round(L / 2) + 1);
+    const smp = samplePath(st.d, n);
     const x = new Float32Array(n);
     const y = new Float32Array(n);
     for (let i = 0; i < n; i++) {
-      const q = tmp.getPointAtLength((L * i) / (n - 1));
-      const p = new DOMPoint(q.x, q.y).matrixTransform(M);
-      x[i] = p.x;
-      y[i] = p.y;
+      x[i] = M.a * smp.x[i] + M.c * smp.y[i] + M.e;
+      y[i] = M.b * smp.x[i] + M.d * smp.y[i] + M.f;
     }
-    tmp.remove();
     const tx = new Float32Array(n);
     const ty = new Float32Array(n);
     for (let i = 0; i < n; i++) {
