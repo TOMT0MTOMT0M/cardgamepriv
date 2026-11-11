@@ -12,6 +12,8 @@ PATCHS (liste PATCHES, appliqués dans l'ordre par-dessus le tri de base, à cha
   4418 Monster Energy → Monster Original Green 6★ : MÊME id de carte, nouveau nom / sous-thème / étoiles / image) ;
   (3) resynchronisation des étoiles de chaque N° 1 → 5236 (« Étoiles à jour »). Contrôles : 5 342 cartes,
   1652/1267/1101/606/496/220, Monster = 60, Red Bull = 48.
+  Patch-monde-V8-tri.xlsx (11/11) — nouveau tri complet du thème : seule la feuille « Étoiles » (75 cartes), même N°, même id.
+  Les cartes déjà tombées suivent à la mise en ligne (migrations:resyncRarities + resyncRaritiesOpen).
 
 Identifiants STABLES : les 924 cartes de la V1 (déjà tombées chez les joueurs) gardent leur id (geo-…, zoo-…, miam-…,
 auto-…, ard-…, mrv-…) et leur illustration (public/art/<ancien dossier>/). La correspondance est figée la première fois
@@ -53,8 +55,12 @@ ALONE = {'Les 14 Merveilles': 'merveilles', 'Ardèche': 'ardeche'}
 ALIASES = {'Acropole d’Athènes (Parthénon)': 'Acropole & Parthénon'}
 SUB_GROUP = {s: g for g, (_, subs) in GROUPS.items() for s in subs}
 # patchs du tri, appliqués dans l'ordre (fichiers à la racine du projet)
-PATCHES = ['Patch-monde-V7.xlsx']
-PATCH_CHECK = {'Patch-monde-V7.xlsx': {'count': 5342, 'stars': {1: 1652, 2: 1267, 3: 1101, 4: 606, 5: 496, 6: 220}, 'subs': {'Monster': 60, 'Red Bull': 48}}}
+PATCHES = ['Patch-monde-V7.xlsx', 'Patch-monde-V8-tri.xlsx']
+PATCH_CHECK = {
+    'Patch-monde-V7.xlsx': {'count': 5342, 'stars': {1: 1652, 2: 1267, 3: 1101, 4: 606, 5: 496, 6: 220}, 'subs': {'Monster': 60, 'Red Bull': 48}},
+    # (11/11) nouveau tri du thème (« Tri__toiles_monde.xlsx », 5 342 cartes, mêmes N° / noms / sous-thèmes) : 75 cartes changent d'étoiles
+    'Patch-monde-V8-tri.xlsx': {'count': 5342, 'stars': {1: 1630, 2: 1264, 3: 1092, 4: 625, 5: 487, 6: 244}, 'subs': {'Monster': 60, 'Red Bull': 48}},
+}
 OLD = {'lieux': ('geo', 'lieux'), 'animaux': ('zoo', 'animaux'), 'nourriture': ('miam', 'nourriture'), 'voitures': ('auto', 'voitures'),
        'ardeche': ('ard', 'ardeche'), 'merveilles': ('mrv', 'merveilles')}
 # illustrations V1 remplacées (nouveau nom : le cache des cartes peintes, indexé par le fichier, est ainsi renouvelé)

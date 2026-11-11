@@ -25,6 +25,7 @@ echo [2/5] npx convex dev --once >> "%LOG%"
 call npx convex dev --once >> "%LOG%" 2>&1 || goto :err
 rem raretes : inventaire, vitrines et classeurs realignes sur le catalogue (idempotent)
 call npx convex run migrations:resyncRarities >> "%LOG%" 2>&1 || goto :err
+call npx convex run migrations:resyncRaritiesOpen >> "%LOG%" 2>&1 || goto :err
 rem purge du 04/11 : cartes 1-3 etoiles sans illustration retirees des collections (idempotent)
 call npx convex run migrations:purgeCards >> "%LOG%" 2>&1 || goto :err
 call npx convex run admin:setModerators >> "%LOG%" 2>&1

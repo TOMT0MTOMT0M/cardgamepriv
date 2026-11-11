@@ -35,6 +35,14 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '11 nov.', title: 'Nouveau tri des étoiles : World et Sport', tag: 'amélioré',
+        points: [
+          'World : 75 cartes changent d’étoiles (Paris, Heineken et la Nissan GT-R passent en 6★, par exemple).',
+          'Sport : 287 cartes changent d’étoiles (Ousmane Dembélé, T1 et Rey Mysterio passent en 6★). Antoine Dupont, Tadej Pogačar, Naoya Inoue et Hikaru Nakamura quittent les 6★.',
+          'Les cartes déjà tirées suivent toutes seules : collection, vitrine, échanges et annonces en cours.',
+        ],
+      },
+      {
         date: '11 nov.', title: '37 cartes 5★ et 6★ avec une meilleure image', tag: 'corrigé',
         points: [
           'Nouvelles images pour Eminem, Bruno Mars, Chris Brown, Charles Aznavour, Allumer le feu, Tchikita, Mon fils ma bataille, Iron Man, Hulk, Han Solo, Yoda, le Joker, Ron Weasley, Michael Scofield, Fernand Naudin, Jess Day et Jayce.',
