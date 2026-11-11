@@ -13,6 +13,7 @@
  * Ce module-ci est LÉGER (importé d'office par la boutique et la visionneuse) : le moteur (runtime.ts, CSS) et chaque
  * scène ne sont téléchargés qu'à la première 6★ de leur famille.
  */
+import { isEclipseCard } from '../eclipse';
 import { SUBTHEMES, catalogEntry, fmtCount, subthemeById, themeById, type SubTheme } from '../../core/sets/themes';
 import { fxReduced } from '../../core/fxPref';
 import type { Shell } from '../shell';
@@ -65,6 +66,8 @@ export const mythicScene = (fam: string): Loader | undefined => SCENES[fam];
 /** Famille d'une 6★ qui a sa scène (null : pas une 6★, ou elle a déjà sa propre séquence). */
 export function mythicFamily(cardId: string, rarity: string): string | null {
   if (rarity !== 'mythic' || cardId.startsWith('pkm-') || duelMonster(cardId)) return null;
+  // (11/11, Tom) Berserk 6★ : l'Éclipse (game/eclipse.ts, scenes/opening.ts) REMPLACE la case de manga des animés
+  if (isEclipseCard({ cardId, rarity })) return null;
   const e = catalogEntry(cardId);
   if (!e) return null;
   const st = subthemeById(e.subthemeId);
