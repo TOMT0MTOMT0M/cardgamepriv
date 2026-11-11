@@ -2,6 +2,7 @@ import type { RarityId } from '../core/rarity';
 import type { AchievementStats, EconState, StakeItem } from '../core/economy';
 import type { WeeklyState } from '../core/weekly';
 import type { GameCard, PackChoice, Stake } from '../core/games';
+import type { JeuxBackend } from './ecoJeux';
 
 /**
  * ÉCONOMIE + ESPACE JEUX côté client : même interface en ligne (ecoOnline.ts, serveur Convex) et en démo
@@ -123,7 +124,7 @@ export interface FriendAch {
   stats: AchievementStats;
 }
 
-export interface EcoBackend {
+export interface EcoBackend extends JeuxBackend {
   readonly snapshot: EcoSnapshot | null;
   onChange(fn: (s: EcoSnapshot | null) => void): () => void;
   claimCalendar(): Promise<{ day: number; coins: number; packs: number }>;

@@ -5,6 +5,7 @@ import type { DuelView, EcoBackend, EcoSnapshot, RoyaleView, RouletteView } from
 import type { WeeklyState } from '../core/weekly';
 import { achievementStats, claimableAchievements, claimableCompletions } from '../core/economy';
 import { statsFrom } from '../core/cosmetics';
+import { onlineJeux } from './ecoOnlineJeux';
 
 /** Économie + jeux en ligne (serveur Convex, temps réel). */
 export function createOnlineEco(): EcoBackend {
@@ -60,6 +61,7 @@ export function createOnlineEco(): EcoBackend {
   const royale = (r: Doc<'royales'>): RoyaleView => ({ id: r._id, creatorId: r.creatorId, status: r.status, ...(r.packCount ? { packCount: r.packCount } : {}), players: r.players, result: r.result, createdAt: r.createdAt, resolvedAt: r.resolvedAt });
 
   return {
+    ...onlineJeux(), // (V2, 11/11) défis entre amis + La Presse
     get snapshot() {
       return snapshot;
     },
