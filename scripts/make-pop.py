@@ -108,7 +108,7 @@ def read_rows(xlsx):
             continue
         if not r or r[0] is None or not r[2]:
             continue
-        col = lambda k: r[head.index(k)]
+        col = lambda k: r[head.index(k)] if head.index(k) < len(r) else None  # lignes sans « Image URL » : cellule absente
         sub = str(col('Sous-thème')).strip()
         t = str(col('Type') or '').strip()
         rows.append({'n': int(col('N°')), 'sub': sub, 'name': str(col('Carte')).strip(), 'type': t,
