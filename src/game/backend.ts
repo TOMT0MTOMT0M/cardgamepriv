@@ -3,7 +3,7 @@ import type { PackRequest } from '../core/packRoll';
 import { applyRegen, type RegenState } from '../core/packRegen';
 import type { MissionsState } from '../core/missions';
 import type { StreakState } from '../core/streak';
-import type { CosmeticChoice, PlayerStats } from '../core/cosmetics';
+import type { CosmeticChoice, OpeningId, PlayerStats } from '../core/cosmetics';
 import type { EcoBackend } from './eco';
 import type { ChatApi } from '../core/chat';
 
@@ -285,6 +285,8 @@ export interface Me {
   gamesNoticeAt?: number;
   /** (V2, bulles) dernier événement de parrainage (filleul inscrit, parrainage payé) */
   referralNoticeAt?: number;
+  /** (11/11) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) ; absente : la déchirure */
+  openingStyle?: OpeningId;
 }
 
 /** Réserve de boosters à l'instant présent (le compte à rebours de l'en-tête l'appelle chaque seconde). */
@@ -442,6 +444,8 @@ export interface GameBackend {
   setBio(bio: string): Promise<void>;
   /** Cosmétiques du profil (seulement du débloqué : le serveur filtre) ; renvoie le choix retenu. */
   setCosmetics(choice: CosmeticChoice): Promise<CosmeticChoice>;
+  /** (11/11) animation d'ouverture des boosters (refusée si pas débloquée : Error au message clair) */
+  setOpening(style: OpeningId): Promise<void>;
   /** Photo de profil / bannière importées (GIF ≤ 2 Mo ; démo ≤ 700 Ko) ; `null` = retirer. Renvoie l'adresse à afficher. Refus : Error au message clair. */
   setProfileMedia(kind: 'avatar' | 'banner', file: Blob | null): Promise<string | undefined>;
   /** Suggestions (onglet) : envoyer (capture / image facultative), les miennes, la file admin, changer un statut. */

@@ -10,7 +10,7 @@ import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
 import { pityAfter, pityForces } from '../core/pity';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak, type StreakState } from '../core/streak';
-import { PROFILE_MEDIA_DEMO_MAX, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type CosmeticChoice, type PlayerStats } from '../core/cosmetics';
+import { OPENINGS, PROFILE_MEDIA_DEMO_MAX, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type CosmeticChoice, type OpeningId, type PlayerStats } from '../core/cosmetics';
 
 /** démo : photo / bannière importées (data URL), une clé par sorte — hors de la sauvegarde principale (lot P, live 02) */
 const DEMO_MEDIA_LS = 'bebou.demo.media';
@@ -90,6 +90,8 @@ interface Saved {
   binders?: Binder[];
   covers?: Record<string, string>;
   cosmetics?: CosmeticChoice;
+  /** (11/11) animation d'ouverture choisie (OPENINGS) ; absente : la déchirure */
+  opening?: OpeningId;
   trades_done?: number;
   contracts_done?: number;
   /** pièces, compteurs de l'économie, parties de l'espace Jeux (ecoLocal.ts) */
@@ -227,6 +229,7 @@ export function createLocalBackend(): GameBackend {
       totalPacksOpened: save.opened,
       pityCount: save.pity ?? 0,
       streak: save.streak,
+      ...(save.opening && save.opening !== 'tear' ? { openingStyle: save.opening } : {}),
     };
     state.wishlist = save.wishlist ?? [];
     state.binders = [...(save.binders ?? [])].sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
@@ -884,6 +887,13 @@ export function createLocalBackend(): GameBackend {
       save.cosmetics = cleanCosmetics(choice, myStats());
       sync();
       return save.cosmetics;
+    },
+    async setOpening(style) {
+      const o = OPENINGS.find((x) => x.id === style);
+      if (!o) throw new Error('Animation d’ouverture inconnue.');
+      if (!o.unlock(myStats())) throw new Error(`Pas encore débloquée. ${o.how}`);
+      save.opening = o.id === 'tear' ? undefined : o.id;
+      sync();
     },
     // photo / bannière importées (retours live 02) : data URL dans une clé à part du localStorage (pas dans la sauvegarde
     // écrite à chaque action), limite plus basse qu'en ligne ; stockage plein ou bloqué → refus clair

@@ -4,7 +4,7 @@ import { isEclipsePack } from '../eclipse';
 import { ECLIPSE } from '../../core/motion';
 import { fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
-import { openStyleOf, type OpeningScene } from '../scenes/opening';
+import { openStyleOf, setOpeningChoice, type OpeningScene } from '../scenes/opening';
 import type { WheelItem3D } from '../scenes/packWheel3d';
 import type { ViewerScene } from '../scenes/viewer';
 import type { PackRequest } from '../../core/packRoll';
@@ -837,6 +837,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     syncCta();
   }
   backend.onChange(syncState);
+  // (11/11) animation d'ouverture choisie (fiche booster) : suit `users.me`
+  setOpeningChoice(backend.state.user?.openingStyle);
+  backend.onChange((st) => setOpeningChoice(st.user?.openingStyle));
   const bannerBtn = banner.querySelector<HTMLButtonElement>('button')!;
   bannerBtn.addEventListener('click', async () => {
     shell.requestGyro();

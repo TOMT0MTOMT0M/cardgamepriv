@@ -239,6 +239,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('uniq-10000', 'Roi de la collection', 'Possède 10 000 cartes différentes', 4, 'uniques', 10000, K),
   // Thèmes
   A('world-50', 'Explorateur', 'Possède 50 cartes World différentes', 1, 'worldUniques', 50, K),
+  // (11/11, ouvertures) palier « cosmétique » : débloque l'ouverture en éventail (src/core/cosmetics.ts, OPENINGS)
+  A('world-150', 'Cartographe', 'Possède 150 cartes World différentes', 2, 'worldUniques', 150, K),
   A('world-300', 'Voyageur', 'Possède 300 cartes World différentes', 2, 'worldUniques', 300),
   A('world-1000', 'Globe-trotteur', 'Possède 1 000 cartes World différentes', 3, 'worldUniques', 1000, K),
   A('world-2000', 'Grand voyageur', 'Possède 2 000 cartes World différentes', 3, 'worldUniques', 2000),
@@ -291,6 +293,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Forge
   A('burn-50', 'Allumette', 'Brûle 50 doublons à la forge', 1, 'burned', 50),
   A('burn-100', 'Pyromane', 'Brûle 100 doublons à la forge', 2, 'burned', 100, K),
+  // (11/11, ouvertures) palier « cosmétique » : débloque l'ouverture qui brûle l'emballage (OPENINGS)
+  A('burn-250', 'Braise', 'Brûle 250 doublons à la forge', 2, 'burned', 250, K),
   A('burn-500', 'Incendiaire', 'Brûle 500 doublons', 2, 'burned', 500),
   A('burn-1000', 'Maître de la forge', 'Brûle 1 000 doublons', 3, 'burned', 1000, K),
   // Série de connexion

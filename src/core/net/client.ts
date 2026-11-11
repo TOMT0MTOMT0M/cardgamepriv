@@ -62,6 +62,8 @@ export interface MeProfile {
   /** (V2, bulles) derniers événements Jeux / parrainage (game/navDots.ts) */
   gamesNoticeAt?: number;
   referralNoticeAt?: number;
+  /** (11/11) animation d'ouverture choisie ; absente : la déchirure */
+  openingStyle?: string;
 }
 
 /** (ouverture 07/11, convex/launch.ts) heure d'ouverture, dernière remise à zéro, code du club demandé à l'inscription */
@@ -787,6 +789,10 @@ class GameNetClient {
   }
   public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[]; accent?: string; vitrine?: string; vitrineColor?: string }) {
     return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...c });
+  }
+  /** (11/11) animation d'ouverture des boosters (refusée si verrouillée) */
+  public async setOpening(style: string) {
+    return await this.client!.mutation(api.profiles.setOpening, { sessionToken: this.requireToken(), style });
   }
   /** Photo / bannière importées (GIF, retours live 02) : envoi au stockage Convex puis enregistrement ; `null` = retirer. */
   public async setProfileMedia(kind: 'avatar' | 'banner', file: Blob | null): Promise<string | undefined> {

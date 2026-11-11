@@ -1,0 +1,31 @@
+/*
+ * (11/11) Chantier « ouvertures-saisons » : styles à part (moins de conflits à la fusion).
+ * Direction usinage : filets --gm-line, rayons par jetons, couleur = information seulement.
+ */
+
+/* ── fiche booster : animation d'ouverture (src/game/views/packSheet.ts) */
+.ps-an-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ps-an {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 9px 10px 10px;
+  border-radius: var(--r-ctl); border: 1px solid var(--gm-line-2); background: none; color: var(--ink); text-align: left;
+  cursor: pointer; transition: border-color var(--dur-rapide) var(--ease-standard), background-color var(--dur-rapide) var(--ease-standard);
+}
+.ps-an b { font: 400 15px/1.1 var(--title); }
+.ps-an small { font: 500 11px/1.35 var(--mono); color: var(--ink-3); }
+.ps-an:hover { border-color: var(--ink-2); }
+.ps-an.on { border-color: var(--ink); background: rgba(255, 255, 255, 0.08); }
+.ps-an.on b::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 6px; vertical-align: middle; border-radius: 50%; background: var(--ink); }
+.ps-an.locked { border-style: dashed; cursor: default; }
+.ps-an.locked b { color: var(--ink-3); }
+.ps-an:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (max-width: 420px) {
+  .ps-an-row { grid-template-columns: 1fr; }
+  .ps-an { flex-direction: row; align-items: baseline; gap: 10px; }
+  .ps-an b { flex: none; min-width: 84px; }
+}
+.ps-docked .ps-an-row { grid-template-columns: 1fr; }
+.ps-docked .ps-an { flex-direction: row; align-items: baseline; gap: 10px; }
+.ps-docked .ps-an b { flex: none; min-width: 84px; }
+
+/* ── page Succès : la récompense « Ouverture » (petite pochette de booster) */
+.sc-cos.k-open i { width: 8px; height: 11px; border-radius: 2px; border: 1.5px solid currentColor; }

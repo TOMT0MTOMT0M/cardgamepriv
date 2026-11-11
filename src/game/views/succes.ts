@@ -31,7 +31,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     <div class="sc-wrap">
       <header class="sc-head">
         <div><span class="kicker">SUCCÈS</span><h1>Tes succès</h1>
-        <p class="muted">Chaque palier donne UNE récompense : des pièces (et des boosters), ou un titre, un badge, un cadre ou une vitrine pour ton profil. Rien ne s’achète : tout se gagne en jouant.</p></div>
+        <p class="muted">Chaque palier donne UNE récompense : des pièces (et des boosters), ou un titre, un badge, un cadre, une vitrine pour ton profil, ou une animation d’ouverture des boosters. Rien ne s’achète : tout se gagne en jouant.</p></div>
         <div class="sc-score"></div>
       </header>
       <div class="sc-bar">
@@ -87,7 +87,11 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       const r = await busyButton(claimBtn, backend.eco.claimAchievements());
       shell.sfx.chime(4, 0.1);
       toast(r.coins || r.packs ? `Succès : +${fmtCoins(r.coins)} pièces${r.packs ? ` et ${plural(r.packs, 'booster')}` : ''} !` : 'Succès encaissés !', 'ok');
-      const cos = ACHIEVEMENTS.filter((a) => before.has(a.id)).flatMap((a) => cosmeticsOf(a.id));
+      const all = ACHIEVEMENTS.filter((a) => before.has(a.id)).flatMap((a) => cosmeticsOf(a.id));
+      // (11/11) une animation d'ouverture débloquée se choisit dans la fiche d'un booster, pas sur le profil
+      const opens = all.filter((c) => c.kind === 'Ouverture');
+      const cos = all.filter((c) => c.kind !== 'Ouverture');
+      if (opens.length) toast(`Animation d’ouverture débloquée : ${opens.map((c) => `« ${c.c.label} »`).join(', ')}. Choisis-la dans la fiche d’un booster.`, 'ok');
       recap.hidden = false;
       recap.innerHTML = `<b>${r.coins ? `+${fmtCoins(r.coins)} ${COIN_ICON}` : ''}${r.packs ? `${r.coins ? ' · ' : ''}+${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>Débloqué pour ton profil : ${cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${c.kind} « ${esc(c.c.label)} »`).join(', ')}</span><a class="btn-primary sc-equip" href="#/profil">Équiper →</a>` : '<span>Pièces ajoutées à ta bourse.</span>'}<button class="sc-recap-x" aria-label="Fermer">✕</button>`;
       recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem('bebou.openCosm', '1'));
@@ -101,7 +105,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
    * (retours live 6, C10) UNE récompense par palier, en une puce sur une ligne : les pièces (+ boosters) OU le
    * cosmétique (titre, badge, cadre, vitrine) — plus le pavé bannière + cadre + titre + badge + couleur + vitrine.
    */
-  const KIND_CLS: Record<string, string> = { Bannière: 'banner', Cadre: 'frame', Titre: 'title', Couleur: 'frame', Vitrine: 'banner', Badge: 'badge' };
+  const KIND_CLS: Record<string, string> = { Bannière: 'banner', Cadre: 'frame', Titre: 'title', Couleur: 'frame', Vitrine: 'banner', Badge: 'badge', Ouverture: 'open' };
   const rewardHtml = (a: Achievement, ok = false) => {
     if (a.cos) {
       const r = cosmeticsOf(a.id)[0];

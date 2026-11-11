@@ -185,6 +185,20 @@ export const TITLES: Cosmetic[] = [
   C({ id: 't-top', label: 'Numéro un', need: 'top-1' }),
 ];
 
+/**
+ * (11/11, sondage : « animations d'ouverture à débloquer ») ANIMATIONS D'OUVERTURE — décision de Tom du 07/11 : la
+ * déchirure pour tout le monde, les autres se GAGNENT (un succès chacune). Le choix vaut pour tous les boosters ; il est
+ * gardé au serveur (`users.cosmetics.opening`, convex/profiles.ts `setOpening`, refusé si verrouillé). Mise en scène :
+ * src/game/scenes/opening.ts (`openStyleOf`).
+ */
+export type OpeningId = 'tear' | 'burn' | 'fan';
+export const OPENINGS: Array<Cosmetic & { id: OpeningId; blurb: string }> = [
+  { ...C({ id: 'tear', label: 'Déchirure' }), id: 'tear', blurb: 'Glisse le doigt pour déchirer le haut du booster.' },
+  { ...C({ id: 'burn', label: 'Brûlure', need: 'burn-250' }), id: 'burn', blurb: 'Maintiens pour brûler l’emballage depuis le centre.' },
+  { ...C({ id: 'fan', label: 'Éventail', need: 'world-150' }), id: 'fan', blurb: 'Un toucher arrache le haut, les cartes s’ouvrent en éventail.' },
+];
+export const DEFAULT_OPENING: OpeningId = 'tear';
+
 /** Badges (petites médailles sous le pseudo, plusieurs à la fois, ordonnables). */
 export const BADGES: Cosmetic[] = [
   C({ id: 'first', label: '10 boosters', need: 'packs-10', glyph: '🎴' }),
@@ -227,9 +241,10 @@ export function accentColor(id?: string): string | undefined {
 }
 
 /** Cosmétiques débloqués par un succès (page Succès : « récompenses »). */
-export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine'; c: Cosmetic }> {
-  const out: Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine'; c: Cosmetic }> = [];
-  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
+export type CosmeticKind = 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine' | 'Ouverture';
+export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; c: Cosmetic }> {
+  const out: Array<{ kind: CosmeticKind; c: Cosmetic }> = [];
+  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES], ['Ouverture', OPENINGS]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
   return out;
 }
 

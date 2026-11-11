@@ -5,7 +5,7 @@ import type { Doc } from './_generated/dataModel';
 import { requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
 import { pinnedOf } from './binders';
-import { bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type PlayerStats } from '../src/core/cosmetics';
+import { DEFAULT_OPENING, OPENINGS, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type PlayerStats } from '../src/core/cosmetics';
 import { streakDay, touchStreak } from '../src/core/streak';
 import { THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
@@ -249,8 +249,31 @@ export const setCosmetics = mutation({
     const user = await requireUser(ctx, sessionToken);
     const { stats } = await statsOf(ctx, user);
     const clean = cleanCosmetics({ banner, frame, title, badges, accent, vitrine, vitrineColor }, stats);
-    await ctx.db.patch(user._id, { cosmetics: clean });
+    // (11/11) l'animation d'ouverture se choisit ailleurs (fiche booster, `setOpening`) : on la garde telle quelle
+    const opening = user.cosmetics?.opening;
+    await ctx.db.patch(user._id, { cosmetics: opening ? { ...clean, opening } : clean });
     return clean;
+  },
+});
+
+/**
+ * (11/11, chantier ouvertures-saisons) Animation d'ouverture des boosters : la déchirure pour tous, les autres se
+ * gagnent par un succès (src/core/cosmetics.ts, OPENINGS). Verrouillée → refusée (message clair). Rangée dans
+ * `users.cosmetics.opening` (absente = la déchirure) ; `users.me` la renvoie au client.
+ */
+export const setOpening = mutation({
+  args: { sessionToken: v.string(), style: v.string() },
+  handler: async (ctx, { sessionToken, style }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const o = OPENINGS.find((x) => x.id === style);
+    if (!o) throw new ConvexError('Animation d’ouverture inconnue.');
+    if (o.need) {
+      const { stats } = await statsOf(ctx, user);
+      if (!o.unlock(stats)) throw new ConvexError(`Pas encore débloquée. ${o.how}`);
+    }
+    const { opening: _old, ...rest } = user.cosmetics ?? {};
+    await ctx.db.patch(user._id, { cosmetics: o.id === DEFAULT_OPENING ? rest : { ...rest, opening: o.id } });
+    return { style: o.id };
   },
 });
 

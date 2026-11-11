@@ -65,6 +65,8 @@ export const me = query({
       pwAccount: user.discordId.startsWith('pw:'),
       /** (ouverture 07/11) visite guidée automatique déjà jouée */
       guideSeen: !!user.guideSeenAt,
+      /** (11/11) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) ; absente : la déchirure */
+      openingStyle: user.cosmetics?.opening,
     };
   },
 });
