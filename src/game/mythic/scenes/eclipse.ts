@@ -3,8 +3,11 @@
  * toutes les 6★). Même univers que l'ambiance de l'ouverture (scenes/opening.ts, game/eclipse.ts) : ciel cramoisi,
  * crête noire sur l'horizon, lac-miroir ; le SOLEIL NOIR se lève, sa couronne s'embrase… et LA CARTE en descend, jusqu'au
  * centre. À l'ouverture, l'Éclipse du booster suffit : pas de prélude (mythic/index.ts).
+ * (11/11) Les apôtres sur la crête (game/apostles.ts, les mêmes que dans l'ouverture : créatures génériques inventées).
+ * Pas de signe ajouté : le soleil noir porte déjà la scène (décision notée dans claude/berserk-eclipse-v2-10-11.md).
  */
 import { easeInOut, easeOut, span, type SceneCtx } from '../kit';
+import { APOSTLES, drawApostle } from '../../apostles';
 
 export default function eclipse(k: SceneCtx) {
   const { tl, u, w, h, sfx, actor } = k;
@@ -69,6 +72,14 @@ export default function eclipse(k: SceneCtx) {
     for (const p of ridge) c.lineTo(p.x, p.y);
     c.lineTo(w, HY + 1);
     c.fill();
+    // les apôtres, debout sur la crête (pieds sur la ligne brisée)
+    for (const a of APOSTLES) {
+      const x = sunX + a.x * h;
+      if (x < -h * 0.1 || x > w + h * 0.1) continue;
+      const i = Math.min(ridge.length - 2, Math.max(0, Math.floor((x / w) * 33)));
+      const f = Math.min(1, Math.max(0, (x - ridge[i].x) / (ridge[i + 1].x - ridge[i].x)));
+      drawApostle(c, a.k, x, ridge[i].y + (ridge[i + 1].y - ridge[i].y) * f + a.h * h * 0.06, a.h * h, a.f);
+    }
     // lac-miroir : reflet du ciel, assombri, coupé de lignes de houle
     const lg = c.createLinearGradient(0, HY, 0, h);
     lg.addColorStop(0, `rgba(${120 + 50 * flare | 0},14,16,${sky * 0.85})`);

@@ -10,14 +10,17 @@ personnalisée · 7 patine · 8 gunsmith. Canaux du motif → couleurs : noir = 
 Le shader du jeu n'est pas public : c'est une reconstitution, réglée à l'œil sur les rendus Steam (aperçus : --preview).
 
   python scripts/make-cs3d.py [--preview] [--only karambit]
+Gants (11/11) : bake_glove (shader csgo_customglove : calques de matière, 8 teintes, motif, détails tuilés) → -color,
+-orm et -normal (maillage « viewmodel » des gants, la paire).
 """
 import glob, json, os, re, struct, sys, math
 import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EXP = os.path.join(ROOT, 'imports', 'cs2', 'export')
-OUT = os.path.join(ROOT, '.claude-tmp', 'cs3d', 'bake')
+# (CS3D_EXP / CS3D_BAKE : depuis une copie de travail git, l'export et les textures cuites du dossier principal)
+EXP = os.environ.get('CS3D_EXP') or os.path.join(ROOT, 'imports', 'cs2', 'export')
+OUT = os.environ.get('CS3D_BAKE') or os.path.join(ROOT, '.claude-tmp', 'cs3d', 'bake')
 RES = 1024
 
 
@@ -316,6 +319,118 @@ def bake(m, k, opts=None):
     return np.clip(col, 0, 1), np.clip(rough, 0, 1), np.clip(metal, 0, 1)
 
 
+# ───────────────────────────────────────────── gants (shader csgo_customglove, 11/11)
+GLOVES = {'specialist': 'glove_specialist', 'sporty': 'glove_sporty'}
+GLOVE_GLB = 'agents_models_shared_arms_glove_s/**/{0}/{0}.glb'
+# rugosité de base de chaque matière (nom du calque : gloves/textiles/<matière>.vmat), avant g_fDetailRoughnessBrightness
+GLOVE_ROUGH = {'fabric': 0.62, 'chemicalfiber': 0.5, 'leather': 0.5, 'rubber': 0.42}
+
+
+def glove_paint(kit):
+    """Peinture de gants (.vmat csgo_customglove) : textures (relues dans l'export) et paramètres."""
+    v = g1(f'gloves_paints/**/{kit}.vmat')
+    p = vmat(v)
+    d = os.path.dirname(v)
+
+    def tex(k):
+        if k not in p or p[k].startswith('['):
+            return None
+        b = os.path.basename(p[k]).replace('.psd', '.png').replace('.tga', '.png')
+        f = os.path.join(d, b)
+        return f if os.path.exists(f) else g1('**/' + b)
+    f = lambda n, dv=0.0: float(p.get(n, dv))
+    k = dict(kit=kit, p=p, tex=tex, f=f)
+    k['tints'] = [vec(p.get(f'g_vColorTint{i}', '[0.5 0.5 0.5 0]'))[:3] for i in range(1, 9)]
+    k['palette'] = [int(x) for x in vec(p.get('g_vPatternPaletteIndices', '[1 2 3 4]'))[:4]]
+    k['replace'] = int(p.get('g_nPatternReplaceIndex', '0')) if p.get('F_PATTERN', '0') == '1' else 0
+    k['layers'] = [re.sub(r'.*[\\/]', '', p.get(f'layer_name_{i}', 'fabric')).replace('.vmat', '') for i in range(1, 5)]
+    return k
+
+
+def bake_glove(k):
+    """
+    Reconstitution de csgo_customglove (le shader n'est pas public ; réglée à l'œil sur les aperçus Steam) :
+     - masque de calques (TextureLayerMask) : RGB = matière (noir 1, R 2, G 3, B 4 : tissu, cuir, caoutchouc…) ;
+       ALPHA = numéro de teinte en 8 paliers (18, 49, 77… 226) → g_vColorTint1..8 ;
+     - motif : là où la teinte vaut g_nPatternReplaceIndex, le motif (tuilé ×g_fPatternTexCoordScale) remplace la
+       couleur ; ses canaux noir / R / G / B prennent les teintes g_vPatternPaletteIndices ;
+     - chaque matière : sa texture de détail tuilée ×g_fDetailScale (le grain du tissu, le labyrinthe de « Hedge Maze »
+       est celui de chemicalfiber03), qui module la couleur et la rugosité ;
+     - TextureSurfaceProperties : R = occlusion, G = cavités (coutures) → cuites dans la couleur ;
+     - normale du modèle (TextureNormal) gardée telle quelle (3e texture, -n.webp).
+    → couleur, rugosité, métal, normale (RES²).
+    """
+    p, tex, f = k['p'], k['tex'], k['f']
+    v, u = np.mgrid[0:RES, 0:RES].astype(np.float32)
+    u, v = (u + 0.5) / RES, (v + 0.5) / RES
+    mask = img(tex('TextureLayerMask'), 'RGBA')
+    # numéro de teinte (1..8), adouci (g_fColorMaskBlur) : mélange des deux paliers voisins
+    tA = np.clip((mask[..., 3] * 255 - 18) / 29.7, 0, 7)
+    blur = max(0.05, f('g_fColorMaskBlur', 1) * 0.08)
+    lo = np.floor(tA).astype(int)
+    fr = np.clip((tA - lo - 0.5) / blur + 0.5, 0, 1)
+    hi = np.minimum(lo + 1, 7)
+    T = np.array(k['tints'], np.float32)
+    col = T[lo] * (1 - fr[..., None]) + T[hi] * fr[..., None]
+    if k['replace'] and tex('TexturePattern'):
+        pat = img(tex('TexturePattern'), 'RGBA', None)
+        s = f('g_fPatternTexCoordScale', 1)
+        a = math.radians(f('g_fPatternTexCoordRotation', 0))
+        off = vec(p.get('g_fPatternTexCoordOffset', '[0 0 0 0]'))[:2]
+        x, y = u * s, v * s
+        pu, pv = x * math.cos(a) - y * math.sin(a) + off[0], x * math.sin(a) + y * math.cos(a) + off[1]
+        # (aliasing : le motif est réduit avant d'être tuilé quand il serait plus fin qu'un texel)
+        n = max(32, min(pat.shape[0], int(RES / s)))
+        if n < pat.shape[0]:
+            pat = np.asarray(Image.fromarray((pat * 255).astype(np.uint8)).resize((n, n), Image.LANCZOS), np.float32) / 255
+        w = sample(pat, pu, pv)[..., :3]
+        P = [T[i - 1] for i in k['palette']]
+        pc = np.broadcast_to(P[0], w.shape).copy()
+        for i in range(3):
+            pc = pc * (1 - w[..., i:i + 1]) + P[i + 1] * w[..., i:i + 1]
+        sel = np.clip(1 - np.abs(tA + 1 - k['replace']) / 0.5, 0, 1)[..., None]
+        col = col * (1 - sel) + pc * sel
+    # matière : noir = 1, R = 2, G = 3, B = 4 (poids doux)
+    mr, mg, mb = mask[..., 0], mask[..., 1], mask[..., 2]
+    W = [np.clip(1 - mr - mg - mb, 0, 1), mr, mg, mb]
+    tot = sum(W) + 1e-6
+    W = [x / tot for x in W]
+    shade = np.zeros((RES, RES), np.float32)
+    rough = np.zeros((RES, RES), np.float32)
+    metal = np.zeros((RES, RES), np.float32)
+    for i in range(4):
+        dt = tex(f'TextureDetail{i + 1}')
+        sc = f(f'g_fDetailScale{i + 1}', 2)
+        if dt:
+            d = img(dt, 'RGBA', None)
+            n = max(16, min(d.shape[0], int(RES / sc)))
+            if n < d.shape[0]:
+                d = np.asarray(Image.fromarray((d * 255).astype(np.uint8)).resize((n, n), Image.LANCZOS), np.float32) / 255
+            g = sample(d, u * sc, v * sc)[..., 1]
+            g = g / max(1e-3, float(d[..., 1].mean()))
+        else:
+            g = np.ones((RES, RES), np.float32)
+        bp = f(f'g_fDetailBlackPoint{i + 1}', 0)
+        det = np.clip(1 + 0.55 * (g - 1) - bp, 0.25, 1.6)
+        mat = k['layers'][i]
+        base = next((r for m, r in GLOVE_ROUGH.items() if mat.startswith(m)), 0.6)
+        rb = f(f'g_fDetailRoughnessBrightness{i + 1}', 1)
+        r = np.clip(base * (0.6 + 0.4 * rb) * (1.15 - 0.15 * det), 0.28, 0.95)
+        shade += W[i] * det
+        rough += W[i] * r
+        metal += W[i] * f(f'g_fDetailMetalness{i + 1}', 0) * 0.5
+    sp = tex('TextureSurfaceProperties')
+    if sp:
+        S = img(sp, 'RGBA')
+        ao = 0.35 + 0.65 * S[..., 0] / max(1e-3, float(np.percentile(S[..., 0], 95)))
+        cav = 0.55 + 0.45 * S[..., 1] / max(1e-3, float(np.percentile(S[..., 1], 95)))
+        shade = shade * np.clip(ao, 0, 1) * np.clip(cav, 0, 1)
+    col = np.clip(col * shade[..., None], 0, 1)
+    nt = tex('TextureNormal')
+    nrm = img(nt, 'RGB') if nt else np.broadcast_to(np.array([0.5, 0.5, 1], np.float32), (RES, RES, 3)).copy()
+    return col, rough, np.clip(metal, 0, 1), nrm
+
+
 # ───────────────────────────────────────────── maillage (GLB exporté par Source 2 Viewer) + aperçu logiciel
 def load_mesh(path, name):
     b = open(path, 'rb').read()
@@ -462,7 +577,8 @@ def scan(key, kit, goal, side_axis=0, seeds=range(0, 1001), res=256):
 
 
 # ───────────────────────────────────────────── les cartes 6★ (variante la plus recherchée de chaque skin, 11/11)
-MODEL_OF = {'Butterfly Knife': 'butterfly', 'Karambit': 'karambit', 'M9 Bayonet': 'm9', 'Talon Knife': 'talon', 'AWP': 'awp', 'M4A4': 'm4a4'}
+MODEL_OF = {'Butterfly Knife': 'butterfly', 'Karambit': 'karambit', 'M9 Bayonet': 'm9', 'Talon Knife': 'talon', 'AWP': 'awp', 'M4A4': 'm4a4',
+            'Specialist Gloves': 'specialist', 'Sport Gloves': 'sporty'}
 FINISH = {  # finition → (peinture, graine) ; None = graine par défaut de la peinture
     'Doppler': ('am_sapphire_marbleized', None),
     'Gamma Doppler': ('am_emerald_marbleized', None),
@@ -504,9 +620,13 @@ if __name__ == '__main__':
     for c in cards():
         if only and only not in (c['model'], c['card'], c['kit']):
             continue
-        m = models.get(c['model']) or models.setdefault(c['model'], model(c['model']))
-        k = apply_seed(paint(c['kit']), c['seed']) if c['kit'] else None
-        col, rough, metal = bake(m, k)
+        if c['model'] in GLOVES:  # gants : autre shader (csgo_customglove), normale en plus
+            col, rough, metal, nrm = bake_glove(glove_paint(c['kit']))
+            Image.fromarray((nrm * 255 + 0.5).astype(np.uint8)).save(os.path.join(OUT, c['card'] + '-normal.png'))
+        else:
+            m = models.get(c['model']) or models.setdefault(c['model'], model(c['model']))
+            k = apply_seed(paint(c['kit']), c['seed']) if c['kit'] else None
+            col, rough, metal = bake(m, k)
         Image.fromarray((col * 255 + 0.5).astype(np.uint8)).save(os.path.join(OUT, c['card'] + '-color.png'))
         orm = np.stack([np.ones_like(rough), rough, metal], -1)
         Image.fromarray((orm * 255 + 0.5).astype(np.uint8)).save(os.path.join(OUT, c['card'] + '-orm.png'))

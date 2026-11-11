@@ -100,9 +100,11 @@ export const TEASE_LAST_EXTRA = 0.2;
 /**
  * Ambiance « Éclipse » (Berserk 5★ / 6★, 11/11 — game/eclipse.ts) : des temps LENTS, en secondes. `teinte` : l'aura du
  * sachet fermé vire au cramoisi et la scène s'assombrit · `lever` : le soleil noir et le lac montent une fois le sachet
- * ouvert · `onde` : le cercle qui court sur le lac quand une carte se pose · `coucher` : tout s'efface.
+ * ouvert · `onde` : le cercle qui court sur le lac quand une carte se pose · `coucher` : tout s'efface · `suite` : gros
+ * booster (×5 / ×10), le morceau qui contient la carte arrive sans sachet : la pénombre tombe et l'horizon rougeoit
+ * (temps 1 condensé) avant le lever.
  */
-export const ECLIPSE = { teinte: 2.4, lever: 3.2, onde: 2.8, coucher: 1.2 } as const;
+export const ECLIPSE = { teinte: 2.4, lever: 3.2, onde: 2.8, coucher: 1.2, suite: 1.1 } as const;
 
 /** Vrai si les mouvements doivent être réduits (réglage de l'appareil, ou choix du joueur « Effets réduits »). */
 export const reducedMotion = () => fxReduced();

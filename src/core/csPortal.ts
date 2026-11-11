@@ -8,7 +8,8 @@
  *
  * Éclairage IDENTIQUE à celui des cartes de la visionneuse (game/scenes/viewer.ts) : environnement 'studio' ×1,2 + lumière
  * principale 0xfff0e0 ×1,2 venant de (−1, 2, 3), en repère monde (elle ne tourne pas avec la carte).
- * Coût : un maillage (7 000 à 22 000 triangles, ~120 Ko) partagé par modèle, deux textures WebP 1024² par carte (~200 Ko),
+ * Coût : un maillage (7 000 à 22 000 triangles, ~120 Ko) partagé par modèle, deux textures WebP 1024² par carte (~200 Ko,
+ * trois pour les gants : + la normale, ~170 Ko),
  * passe portail limitée (scissor) au rectangle de la carte, 0,8 de résolution sur téléphone. Effets réduits : pas de 3D.
  */
 import {
@@ -39,7 +40,7 @@ import { artV } from './artRev';
 import { CARD } from './cardModel';
 import { studioEnv } from './env';
 import { compilePassAsync } from './post';
-import { CS3D, type Cs3dModel } from './sets/cs3d';
+import { CS3D, CS3D_NORMAL, type Cs3dModel } from './sets/cs3d';
 import { siteUrl } from './siteRoot';
 import type { N } from './tsl';
 
@@ -57,6 +58,9 @@ const POSE: Record<Cs3dModel, { side: [number, number, number]; a: number; s: nu
   talon: { side: [0, Math.PI / 2, 0], a: -0.55, s: 0.74, y: 0.02 },
   awp: { side: [0, Math.PI / 2, 0], a: 0.75, s: 0.9, y: 0 },
   m4a4: { side: [0, Math.PI / 2, 0], a: 0.75, s: 0.9, y: 0 },
+  // (11/11) gants : la paire (make-cs3d.mjs) — dos du gant droit vers l'œil, doigts vers le bas, en diagonale
+  specialist: { side: [0, 0, 0], a: 0.55, s: 0.68, y: 0 },
+  sporty: { side: [0, 0, 0], a: 0.55, s: 0.7, y: 0 },
 } as Record<Cs3dModel, { side: [number, number, number]; a: number; s: number; y: number }>;
 
 /**
@@ -71,6 +75,8 @@ interface Assets {
   model: Group;
   color: Texture;
   orm: Texture;
+  /** gants : normale du modèle (coutures, rembourrages) */
+  normal: Texture | null;
 }
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
@@ -94,9 +100,12 @@ export function preloadCs3d(cardId: string): Promise<Assets> {
     const m = CS3D[cardId];
     let g = models.get(m);
     if (!g) models.set(m, (g = loader.loadAsync(siteUrl(`models/cs/${m}.glb`)).then((x) => x.scene)));
-    p = Promise.all([g, loadTex(siteUrl(artV(`art/cs3d/${cardId}-c.webp`)), true), loadTex(siteUrl(artV(`art/cs3d/${cardId}-m.webp`)), false)]).then(
-      ([model, color, orm]) => ({ model, color, orm }),
-    );
+    p = Promise.all([
+      g,
+      loadTex(siteUrl(artV(`art/cs3d/${cardId}-c.webp`)), true),
+      loadTex(siteUrl(artV(`art/cs3d/${cardId}-m.webp`)), false),
+      CS3D_NORMAL.has(m) ? loadTex(siteUrl(artV(`art/cs3d/${cardId}-n.webp`)), false) : null,
+    ]).then(([model, color, orm, normal]) => ({ model, color, orm, normal }));
     p.catch(() => assets.delete(cardId)); // (réseau : on réessaiera à la prochaine ouverture)
     // une seule carte gardée en mémoire en plus de celle affichée : ~8 Mo de textures décodées chacune
     assets.set(cardId, p);
@@ -104,7 +113,7 @@ export function preloadCs3d(cardId: string): Promise<Assets> {
       const [old] = assets.keys();
       const q = assets.get(old);
       assets.delete(old);
-      void q?.then((a) => (a.color.dispose(), a.orm.dispose()), () => undefined);
+      void q?.then((a) => (a.color.dispose(), a.orm.dispose(), a.normal?.dispose()), () => undefined);
     }
   }
   return p;
@@ -162,7 +171,13 @@ export function createCsCardInstance(
   const diag = new Group();
   diag.rotation.z = pose.a;
   spin.add(diag);
-  const skinMat = new MeshStandardNodeMaterial({ map: a.color, roughnessMap: a.orm, metalnessMap: a.orm, roughness: 1, metalness: 1 });
+  // gants (11/11) : textile — normale du modèle, et un voile de « sheen » (le duvet du tissu au bord des reliefs) sur
+  // ordinateur ; téléphone : matériau standard + normale (même coût par pixel que les couteaux, une lecture en plus)
+  const cloth = !!a.normal;
+  const skinMat =
+    cloth && quality === 'high'
+      ? new MeshPhysicalNodeMaterial({ map: a.color, roughnessMap: a.orm, metalnessMap: a.orm, roughness: 1, metalness: 1, normalMap: a.normal, sheen: 0.6, sheenRoughness: 0.75, sheenColor: 0xd8d4cc })
+      : new MeshStandardNodeMaterial({ map: a.color, roughnessMap: a.orm, metalnessMap: a.orm, roughness: 1, metalness: 1, normalMap: a.normal });
   const plainMat = new MeshStandardNodeMaterial({ color: 0x15171a, roughness: 0.35, metalness: 0.6 });
   const inst = a.model.clone(true);
   inst.traverse((o) => {
