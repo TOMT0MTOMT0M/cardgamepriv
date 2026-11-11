@@ -55,7 +55,7 @@ import { createPipeline, anamorphicFlare } from '../../core/post';
 import { createHoloMaterial } from '../../core/holo';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import { createCardMesh, CARD } from '../../core/cardModel';
-import { EASE, Spring } from '../../core/ease';
+import { EASE, Spring, springCurve } from '../../core/ease';
 import { fbmTexel, rot2, voronoi, type N } from '../../core/tsl';
 import { mobileArtScale } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
@@ -123,6 +123,8 @@ export default function create(opts: SecretOptions = {}): Experiment {
   let bloomRef: N;
   let textRoot: HTMLDivElement;
   let camBase = 3;
+  /** (11/11) la carte courante est horizontale (KCDQ Teto) : elle se couche après la vrille */
+  let land = false;
   let current: CardData;
   let currentRarity: RarityId = 'secret';
   let ownedArt: Array<{ dispose(): void }> = [];
@@ -136,6 +138,8 @@ export default function create(opts: SecretOptions = {}): Experiment {
   const S0 = {
     burn: -0.25, flip: Math.PI, dark: 0, mono: 0, glitch: 0, rim: 0, trem: 0, crack: 0, pulse: 0, crackOn: 1,
     gather: 0, ring: 1, push: 0, bt: 0, flash: 0, flare: 0, ca: 0, shock: 0, invert: 0, holo: 0, lift: 0,
+    /** (11/11) carte horizontale : quart de tour pour la coucher (0 → 1) et recul de la caméra (× distance) */
+    lay: 0, back: 0,
   };
   const S = { ...S0 };
   const U = {
@@ -213,7 +217,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
       .add(tint.mul(front.mul(U.pulse).mul(0.08).mul(U.crackOn)));
     const edgeMat = createEdgeMaterial();
     edgeMat.emissiveNode = tint.mul(U.rim.mul(sin(time.mul(5)).mul(0.25).add(1.6)));
-    return { mats: [holo.material, backMat, edgeMat] as Material[], holoU: holo.uniforms, list };
+    return { mats: [holo.material, backMat, edgeMat] as Material[], holoU: holo.uniforms, list, land: !!art.landscape };
   }
 
   async function setCard(cd: CardData, rid: RarityId) {
@@ -224,6 +228,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
     holoU = b.holoU;
     current = cd;
     currentRarity = rid;
+    land = b.land;
     if (!card) {
       card = createCardMesh(b.mats[0], b.mats[1], b.mats[2]);
       cardRig.add(card);
@@ -318,6 +323,13 @@ export default function create(opts: SecretOptions = {}): Experiment {
       .to(S, { flash: 0, flare: 0, ca: 0, mono: 0, duration: 1.6, ease: EASE.glide }, pay + 0.1)
       .to(S, { dark: 0.15, push: 0.15, duration: 2.6, ease: EASE.glide }, pay + 0.3)
       .to(S, { holo: 1, duration: 2.6, ease: EASE.glide }, pay + 0.6);
+    if (land) {
+      // (11/11) carte horizontale : la vrille finie, elle se couche d'un quart de tour, la caméra prend un peu de recul
+      target
+        .to(S, { lay: 1, duration: 0.95, ease: springCurve(0.62, 9), onStart: () => ctx.sfx.whoosh(0.3, 0.07) }, pay + 1.9)
+        .to(S, { back: 0.16, duration: 0.5, ease: EASE.glide }, pay + 1.9)
+        .to(S, { back: 0.1, duration: 1.0, ease: EASE.glide }, pay + 2.4);
+    }
     target.call(() => showText(rarity('secret')), [], pay + 0.9);
     // le foil se rallume une seconde fois quand le nom finit de s'écrire
     target.call(() => sfx.shimmer(5, 2.2, 0.06), [], pay + 2.4);
@@ -679,7 +691,8 @@ export default function create(opts: SecretOptions = {}): Experiment {
       cardRig.rotation.set(Math.sin(t * 53) * 0.01 * tr, S.flip, Math.sin(t * 43) * 0.012 * tr);
       // une fois révélée, la carte flotte doucement devant son halo
       cardRig.position.set(0, Math.sin(t * 1.1) * 0.008 * S.holo, (1 - Math.cos(Math.min(1, S.holo) * Math.PI)) * 0.04);
-      stage.camera.position.z = camBase * (1 - S.push * 0.2);
+      stage.camera.position.z = camBase * (1 - S.push * 0.2) * (1 + S.back);
+      if (card) card.rotation.z = S.lay * (Math.PI / 2);
       stage.scene.updateMatrixWorld();
       proj.set(0, 0, 0).applyMatrix4(rig.matrixWorld).project(stage.camera);
       U.center.value.set(proj.x * 0.5 + 0.5, 0.5 - proj.y * 0.5);

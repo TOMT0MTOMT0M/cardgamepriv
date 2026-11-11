@@ -11,7 +11,7 @@ import type { N } from '../../core/tsl';
 import { ensureCardImages, ensureFonts, generateCardArt, nextFrame, type CardArt } from '../../core/art';
 import { LAB_CARDS, cardById } from '../../core/cardData';
 import { rarity, type RarityId } from '../../core/rarity';
-import { createCardGeometry } from '../../core/cardModel';
+import { CARD, createCardGeometry } from '../../core/cardModel';
 import { EASE, springCurve } from '../../core/ease';
 import { DUR } from '../../core/motion';
 import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
@@ -75,6 +75,23 @@ export function createViewerScene(): ViewerScene {
   let tl: gsap.core.Timeline | null = null;
   let token = 0;
   const st = { spin: Math.PI, s: 0.85, z: -0.3, x: 0, y: 0 };
+  /**
+   * (11/11) carte HORIZONTALE (art.landscape, KCDQ Teto) : après son entrée, la carte se couche d'un quart de tour
+   * (`rz`) pendant que la caméra recule un peu (`cam`, multiple de sa distance) puis se repose à la distance où la
+   * carte couchée tient dans l'écran.
+   */
+  const pose = { rz: 0, cam: 1 };
+  let camBase = 0;
+  /** distance de caméra (× la distance portrait) où la carte couchée tient dans l'écran */
+  const landscapeCam = () => {
+    const cam = stage.camera;
+    const t = Math.tan(((cam.fov * Math.PI) / 180) / 2);
+    const dPort = Math.max(CARD.h / 0.6 / (2 * t), CARD.w / 0.66 / (2 * t * cam.aspect));
+    // couchée : 0,63 de haut, 0,88 de large — un peu moins haute que la portrait (la fiche se lit dessous), et jamais plus
+    // près qu'avant (le recul voulu : sur un écran large, la caméra recule puis revient à sa place)
+    const dLand = Math.max(CARD.w / 0.5 / (2 * t), CARD.h / 0.8 / (2 * t * cam.aspect));
+    return Math.max(1, dLand / dPort);
+  };
   let render: () => void = () => undefined;
   let pipe: ReturnType<typeof createPipeline> | null = null;
   let bloomStrength: { value: number } | null = null;
@@ -262,6 +279,19 @@ export function createViewerScene(): ViewerScene {
           .to(st, { spin: Math.PI * 2, duration: 1.0, ease: springCurve(0.55, 11), onStart: () => sfx?.whoosh(0.35, 0.08) }, 0.1)
           .call(() => (st.spin = 0), [], 1.1);
       }
+      // (11/11) carte horizontale : elle se couche après son entrée, la caméra prend un peu de recul
+      if (art.landscape) {
+        const k = landscapeCam();
+        const t0 = dir ? 0.3 : 1.0;
+        pose.rz = 0;
+        tl.to(pose, { rz: Math.PI / 2, duration: 0.9, ease: springCurve(0.62, 9), onStart: () => sfx?.whoosh(0.28, 0.06) }, t0)
+          .to(pose, { cam: k * 1.12, duration: 0.45, ease: EASE.glide }, t0)
+          .to(pose, { cam: k, duration: 0.9, ease: EASE.glide }, t0 + 0.45);
+        at = Math.max(at, t0 + 0.6);
+      } else {
+        pose.rz = 0;
+        tl.to(pose, { cam: 1, duration: 0.5, ease: EASE.glide }, 0);
+      }
       const n = Math.min(6, rr.rank + 1);
       const gap = (dir ? 0.06 : 0.1) + rr.tier * 0.015;
       for (let k = 0; k < n; k++) tl.to(f.lit, { value: k + 1, duration: 0.12, onStart: () => sfx?.tick(1 + k * 0.14, 0.06 + rr.tier * 0.012) }, at + k * gap);
@@ -275,6 +305,7 @@ export function createViewerScene(): ViewerScene {
       const key = new DirectionalLight(0xfff0e0, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);
+      camBase = stage.camera.position.z;
       await ensureFonts();
       if (c.quality === 'mobile') wonderLimit = 2; // (posé au chargement du diorama, cf. loadWonder)
       geo = c.bag.add(createCardGeometry());
@@ -349,6 +380,8 @@ export function createViewerScene(): ViewerScene {
       rig.rotation.set(p.x + Math.sin(t * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(t * 0.37) * 0.18 * idle, 0);
       zoom += (zoomT - zoom) * (1 - Math.exp(-dt * 10));
       rig.scale.setScalar(st.s * zoom);
+      if (mesh) mesh.rotation.z = pose.rz;
+      if (camBase) stage.camera.position.z = camBase * pose.cam;
       wonderInstance?.update(dt, t);
       /*
        * (audit 06/11) téléphone, carte au repos (personne ne la touche, pas de zoom en cours, pas d'animation d'entrée,
@@ -366,6 +399,9 @@ export function createViewerScene(): ViewerScene {
     },
     resize(w, h) {
       stage.fit(w, h);
+      camBase = stage.camera.position.z;
+      // carte couchée déjà posée : la distance suit le nouveau format d'écran
+      if (art?.landscape && !tl?.isActive()) pose.cam = landscapeCam();
     },
     /** Téléphone, visionneuse fermée (appelé par le shell) : ses cibles plein écran (~100 Mo) sont rendues au GPU. */
     suspend() {

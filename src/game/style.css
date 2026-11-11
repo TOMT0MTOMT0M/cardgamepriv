@@ -345,6 +345,8 @@ body.card-open .views { pointer-events: none; }
 /* vraie carte (cardImages.ts) posée sur l'aperçu, en fondu */
 .tile img.real { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; opacity: 0; transform: scale(1.04); transition: opacity var(--dur-emphatique), transform var(--dur-lente) var(--ease-entree); z-index: 1; pointer-events: none; }
 .tile.real-on img.real { opacity: 1; transform: none; }
+/* (11/11) carte horizontale : entière, centrée dans la tuile portrait (fond de la tuile autour) */
+.tile img.real.land { object-fit: contain; border-radius: 0; }
 .tile.real-now img.real { transition: none; }
 /* (V2 fluidité, lot 6) la carte de la tuile en vol vers la visionneuse : au-dessus de la 3D, sous la fiche et les boutons */
 .card-ghost { position: fixed; z-index: 3; transform-origin: 0 0; border-radius: 9px; object-fit: cover; pointer-events: none; will-change: transform, opacity; }

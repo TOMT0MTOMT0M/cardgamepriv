@@ -8,6 +8,7 @@ import { makeCanvas, releaseCanvas, type Ctx } from './canvas';
 import { BASE_H, BASE_W, SUBJECTS, WIN, finishLayer } from './subjects';
 import { FONT_MONO, FONT_TITLE } from './designs/common';
 import { design as resolveDesign, CLASSIC_WIN, bebou, suisseLandscapeBand, type CardDesign } from './designs';
+import { paintBebouFrame } from './designs/bebou';
 import { universe } from '../universes';
 import { cardFamily, catalogEntry } from '../sets/themes';
 import { paintBack, ALU_BACK, type BackStyle } from './back';
@@ -96,6 +97,14 @@ export interface CardArt {
   subject2?: Texture;
   /** version aplatie (sans parallaxe) — pratique pour les scènes à nombreuses cartes */
   flat: Texture;
+  /**
+   * (11/11) carte HORIZONTALE (CardData.landscape) : les calques sont peints couchés (le haut de la composition sur le
+   * bord droit de la texture) → la carte se lit une fois tournée d'un quart de tour (+90° autour de son axe Z).
+   * L'aplat (`flatOnly`), lui, est rendu À L'ENDROIT, au format paysage (miniatures 2D).
+   */
+  landscape?: boolean;
+  /** (11/11) revêtement lenticulaire entre `bg` et `bg2` (core/lenticular.ts), au lieu du simple « double face » */
+  lenticular?: boolean;
   canvases: Record<string, HTMLCanvasElement>;
   list: Texture[];
   /** gabarit peint (designs/*.ts `id`) : le matériau holo s'y adapte (pas de bande de bordure sur « full-art ») */
@@ -203,6 +212,7 @@ function zoomLayers(layers: Array<{ c: HTMLCanvasElement; g: Ctx }>, art: CardDe
  * aplat et textures. La version synchrone les enchaîne ; la version asynchrone rend la main entre chaque.
  */
 function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator<void, CardArt> {
+  if (card.landscape) return yield* landscapeSteps(card, rarityId, o);
   // carte illustrée : palette tirée de l'image (sauf palette explicitement surchargée, cf. 021)
   const im0 = card.subject === 'image' ? cardImage(card.image) : null;
   const im = im0 && im0.canvas.width > 0 ? im0 : null; // (toile vidée = illustration sortie du cache)
@@ -336,6 +346,122 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     canvases,
     list,
     designId: dz.id,
+    dispose: () => (list.forEach((t) => t.dispose()), release && freeAll()),
+  };
+}
+
+/**
+ * CARTE HORIZONTALE (11/11, KCDQ Teto) : même maillage, mêmes 6 calques (+ la 2e face), mais tout est peint dans un
+ * repère PAYSAGE de 1072×768 posé en travers de la texture portrait : un point (lx, ly) du paysage tombe sur
+ * (768 − ly, lx) du portrait. Tournée de +90° (sens trigonométrique, vue de face), la carte se lit à l'endroit.
+ * Photo pleine (recadrage « cover » autour de `landscape.focusX`), gabarit Bébou redessiné aux proportions paysage
+ * (designs/bebou.ts paintBebouFrame). Les deux faces partagent exactement le même recadrage (images lenticulaires).
+ */
+function* landscapeSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator<void, CardArt> {
+  const LW = BASE_H, LH = BASE_W; // repère paysage
+  const s = o.scale ?? 1;
+  const W = Math.round(BASE_W * s), H = Math.round(BASE_H * s);
+  const aniso = o.anisotropy ?? 8;
+  const release = !!o.release;
+  const rar = getRarity(rarityId);
+  const pick = (url: string | undefined) => {
+    const im = url ? cardImage(url) : null;
+    if (url && !(im && im.canvas.width > 0)) void loadCardImage(url, { key: false }).catch(() => undefined);
+    return im && im.canvas.width > 0 ? im : null;
+  };
+  const im1 = pick(card.image), im2 = pick(card.image2);
+  if (im1 && card.palette === IMAGE_PALETTE) card = { ...card, palette: im1.palette };
+  /** couché : (lx, ly) → (BASE_W − ly, lx), à l'échelle des calques */
+  const lay = (g: Ctx) => g.setTransform(0, s, -s, 0, BASE_W * s, 0);
+  const photo = (g: Ctx, im: ReturnType<typeof pick>) => {
+    lay(g);
+    if (!im) {
+      g.fillStyle = '#1a0d0c';
+      g.fillRect(0, 0, LW, LH);
+      return;
+    }
+    const iw = im.canvas.width, ih = im.canvas.height;
+    const k = Math.max(LW / iw, LH / ih);
+    const dw = iw * k, dh = ih * k;
+    const fx = card.landscape?.focusX ?? 0.5;
+    const x = Math.min(0, Math.max(LW - dw, LW / 2 - fx * dw));
+    g.imageSmoothingQuality = 'high';
+    // un rien plus lumineux : sous le plastique strié, une photo de nuit s'éteint vite (les vraies cartes lenticulaires
+    // sont imprimées « poussées » pour la même raison)
+    if (card.lenticular) g.filter = 'brightness(1.12) saturate(1.06)';
+    g.drawImage(im.canvas, x, (LH - dh) / 2, dw, dh);
+    g.filter = 'none';
+  };
+  const bg = makeCanvas(W, H), subj = makeCanvas(W, H), fg = makeCanvas(W, H), fx = makeCanvas(W, H);
+  const frame = makeCanvas(W, H), masks = makeCanvas(W, H);
+  photo(bg.g, im1);
+  const bg2 = im2 ? makeCanvas(W, H) : null;
+  if (bg2) photo(bg2.g, im2);
+  // sujet / avant-plan vides (photo pleine), émissif noir
+  fx.g.fillStyle = '#000';
+  fx.g.fillRect(0, 0, W, H);
+  yield;
+  prep(bg.g, s);
+  finishLayer(bg.g, card.seed, 0.05);
+  if (bg2) {
+    prep(bg2.g, s);
+    finishLayer(bg2.g, card.seed, 0.05);
+  }
+  yield;
+  lay(masks.g);
+  masks.g.fillStyle = '#000';
+  masks.g.fillRect(0, 0, LW, LH);
+  masks.g.globalCompositeOperation = 'lighter';
+  lay(frame.g);
+  frame.g.textBaseline = 'alphabetic';
+  const uni = universe(card.universe);
+  paintBebouFrame(frame.g, masks.g, { card, rar, uni, tier: rar.tier, stars: starCount(rarityId), mini: !!o.mini }, LW, LH);
+  masks.g.globalCompositeOperation = 'source-over';
+  yield;
+
+  const canvasList: HTMLCanvasElement[] = [];
+  const freeAll = () => canvasList.forEach(releaseCanvas);
+  const layersOf = [bg, subj, fg, frame];
+  if (o.flatOnly || !o.noFlat) {
+    // aplat À L'ENDROIT (paysage) : miniatures 2D ; en 3D (sans `flatOnly`) il ne sert qu'aux scènes du labo
+    const flat = makeCanvas(H, W);
+    flat.g.setTransform(0, -1, 1, 0, 0, W);
+    for (const k of layersOf) flat.g.drawImage(k.c, 0, 0);
+    if (o.flatOnly) {
+      const flatTex = tex(flat.c, true, aniso, release);
+      for (const k of [bg, subj, fg, fx, frame, masks, ...(bg2 ? [bg2] : [])]) releaseCanvas(k.c);
+      canvasList.push(flat.c);
+      return {
+        bg: flatTex, subject: flatTex, fg: flatTex, frame: flatTex, masks: flatTex, fx: flatTex, flat: flatTex,
+        canvases: { flat: flat.c }, list: [flatTex], designId: bebou.id, landscape: true,
+        dispose: () => (flatTex.dispose(), release && freeAll()),
+      };
+    }
+    canvasList.push(flat.c);
+  }
+  const subjTex = tex(subj.c, true, aniso, release);
+  const out = {
+    bg: tex(bg.c, true, aniso, release),
+    subject: subjTex,
+    fg: tex(fg.c, true, aniso, release),
+    frame: tex(frame.c, true, aniso, release),
+    masks: tex(masks.c, false, aniso, release),
+    fx: tex(fx.c, false, aniso, release),
+    // seconde face : fond seul (sujet vide, le même que la première)
+    ...(bg2 ? { bg2: tex(bg2.c, true, aniso, release), subject2: subjTex } : {}),
+  };
+  const list = [...new Set(Object.values(out))];
+  const canvases: Record<string, HTMLCanvasElement> = { bg: bg.c, subject: subj.c, fg: fg.c, frame: frame.c, masks: masks.c, fx: fx.c };
+  if (bg2) canvases.bg2 = bg2.c;
+  canvasList.push(...Object.values(canvases));
+  return {
+    ...out,
+    flat: out.bg,
+    canvases,
+    list,
+    designId: bebou.id,
+    landscape: true,
+    ...(card.lenticular && bg2 ? { lenticular: true } : {}),
     dispose: () => (list.forEach((t) => t.dispose()), release && freeAll()),
   };
 }

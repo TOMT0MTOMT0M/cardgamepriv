@@ -3015,8 +3015,11 @@ export function createOpeningScene(): OpeningScene {
         const persp = lift > 0 ? 1 - HINGE_PERSP * (1 - Math.max(0.5, (depth - lift) / depth)) : 1;
         s.mesh.position.set(p.x + dx * Math.cos(rz), p.y - dx * Math.sin(rz) + hv * 0.035, p.z + lift + hv * 0.09);
         // sens de rotation inversé (−flip) : c'est le bord GAUCHE qui vient vers la caméra
-        s.mesh.rotation.set(Math.sin(t * 53) * 0.008 * tr, -p.flip, rz + Math.sin(t * 41) * 0.01 * tr);
-        s.mesh.scale.setScalar(p.s * persp * (1 + hv * 0.06));
+        // (11/11) carte HORIZONTALE (KCDQ Teto) : face visible, elle est couchée d'un quart de tour (et un peu plus
+        // petite : elle est plus large) — face cachée, elle reste droite comme les autres dans la pile
+        const land = s.art.landscape ? Math.min(1, Math.max(0, 1 - p.flip / Math.PI)) : 0;
+        s.mesh.rotation.set(Math.sin(t * 53) * 0.008 * tr, -p.flip, rz + land * (Math.PI / 2) + Math.sin(t * 41) * 0.01 * tr);
+        s.mesh.scale.setScalar(p.s * persp * (1 + hv * 0.06) * (1 - land * 0.14));
         s.holoU.strength.value = 0.1 + p.holo * 0.65 + hv * 0.15;
       });
       // vitrine, à la souris : le booster survolé se signale (curseur main, léger soulèvement)

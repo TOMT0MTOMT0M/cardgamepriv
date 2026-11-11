@@ -56,6 +56,14 @@ export interface CardData {
    * étoiles). Réutilisable pour n'importe quelle carte : il suffit de remplir ce champ (core/cardMaterial.ts DOUBLE_FACE).
    */
   image2?: string;
+  /**
+   * (11/11, KCDQ Teto) carte HORIZONTALE : la carte (même maillage) est peinte « couchée » — photo, cadre et texte
+   * se lisent quand on la tourne d'un quart de tour — et la visionneuse / l'ouverture la posent à l'horizontale
+   * (core/art/index.ts `landscapeSteps`, game/scenes/landscapePose.ts). `focusX` : centre du recadrage de la photo.
+   */
+  landscape?: { focusX: number };
+  /** (11/11) les deux illustrations (`image`, `image2`) sous un revêtement lenticulaire (core/lenticular.ts) */
+  lenticular?: boolean;
   /** Échelle de l'illustration dans la fenêtre (défaut 1) : les armes Valorant, larges, sont un peu réduites. */
   fit?: number;
   /** Illustration « scène » déjà au format portrait (splash LoL) : elle remplit toute la carte, jamais détourée. */
@@ -255,6 +263,8 @@ export const KCDQ_CARDS: CardData[] = KCDQ.map((e) => ({
   image: siteUrl(artV(`${KCDQ_INFO.artDir}/${e.file}`)),
   photo: true,
   ...(e.file2 ? { image2: siteUrl(artV(`${KCDQ_INFO.artDir}/${e.file2}`)) } : {}),
+  ...(e.landscape ? { landscape: e.landscape } : {}),
+  ...(e.lenticular ? { lenticular: true } : {}),
 }));
 
 /** Sets au gabarit « bebou » (cartes secrètes du groupe). */

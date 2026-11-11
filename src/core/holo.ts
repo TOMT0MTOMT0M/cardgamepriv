@@ -104,6 +104,9 @@ const RIM_HEX = ['#a39d91', '#6f9a74', '#4c7cc2', '#c23a52', '#e0a63a'];
 /** Largeur de la bande de bordure (unités carte : 0.02 ≈ 2 mm, juste au-delà du liseré du gabarit Pleine illustration). */
 const BORDER_W = 0.02;
 
+/** vernis du revêtement lenticulaire (réglable au labo) */
+export const lensCoat = { coat: 0.45, roughness: 0.14 };
+
 export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions = {}) {
   const U = {
     strength: uniform(0.75),
@@ -120,8 +123,10 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const cutU = uniform(opts.cut === false ? 0 : 1);
   const faceColor = opts.poke === false ? L.color : pokeFaceColor(art, L, tier, U.strength.sub(0.1).div(0.6), cutU);
   // (retours 06/11) le fond d'illustration ne s'irise plus dès l'épique (4★) : à partir de la légendaire, et moins
-  const winFoil = L.window.mul(L.subject.a.oneMinus()).mul(opts.windowFoil ?? (tier >= 4 ? 0.7 : 0));
-  const subjFoil = L.window.mul(L.subject.a).mul(L.fx.g).mul(opts.subjectFoil ?? (tier >= 5 ? 0.8 : 0));
+  // (11/11) lenticulaire : l'effet, c'est la feuille striée — pas de foil irisé sur les photos
+  const imgFoilK = L.lens ? 0 : 1;
+  const winFoil = L.window.mul(L.subject.a.oneMinus()).mul((opts.windowFoil ?? (tier >= 4 ? 0.7 : 0)) * imgFoilK);
+  const subjFoil = L.window.mul(L.subject.a).mul(L.fx.g).mul((opts.subjectFoil ?? (tier >= 5 ? 0.8 : 0)) * imgFoilK);
   // ── zones : cadre (opaque) + bande de bordure = effet plein ; illustration = effet plafonné (holoFx.image)
   const cuv = uv().sub(0.5).mul(vec2(CARD.w, CARD.h));
   const cq = abs(cuv).sub(vec2(CARD.w / 2 - CARD.r, CARD.h / 2 - CARD.r));
@@ -189,13 +194,22 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const frameMix = max(metalFrame, rim.mul(0.92).mul(holoFx.border.mul(0.4).add(0.6)));
   const m = new MeshPhysicalNodeMaterial();
   m.colorNode = mix(mix(faceColor, foilCol, metalImage), frameCol, frameMix);
+  if (L.lens) {
+    // (11/11) LENTICULAIRE : feuille de plastique épaisse et brillante, striée — le vernis prend le relief des
+    // nervures : chaque nervure accroche la lumière en un fin reflet allongé (core/lenticular.ts)
+    m.clearcoatNode = float(lensCoat.coat);
+    m.clearcoatRoughnessNode = float(lensCoat.roughness);
+    m.clearcoatNormalNode = normalMap(L.lens.normalTS);
+  }
   // métal au tiers sur l'illustration : un reflet par-dessus l'image, pas une image assombrie qui reflète le studio
   m.metalnessNode = max(frameMix.mul(rainbow ? 1 : 0.75), metalImage.mul(0.35));
   m.roughnessNode = mix(mix(float(0.6), float(0.34), L.window), float(0.22).add(h1.mul(0.06)), metal);
   m.normalNode = bumpMap(L.masks.g, float(0.6), normalMap(vec4(nTS.mul(0.5).add(0.5), 1).xyz));
   // (retours live 6, C6) vernis presque mat : plus de reflet du décor qui passe sur l'image
-  m.clearcoatNode = float(0.08);
-  m.clearcoatRoughnessNode = float(0.5);
+  if (!L.lens) {
+    m.clearcoatNode = float(0.08);
+    m.clearcoatRoughnessNode = float(0.5);
+  }
   const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
   const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
   m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5)).add(film.mul(foil).mul(U.extraEmissive));

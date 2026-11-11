@@ -191,6 +191,8 @@ function apply(tile: HTMLElement, url: string, instant = false) {
   if (img.src === url) return;
   // la carte ne remplace l'aperçu qu'une fois son image décodée : jamais de tuile vide, même une fraction de seconde
   const show = () => {
+    // (11/11) carte horizontale (KCDQ Teto) : montrée entière, couchée dans la tuile, au lieu d'être rognée
+    img.classList.toggle('land', img.naturalWidth > img.naturalHeight);
     tile.classList.add('real-on', ...(instant ? ['real-now'] : []));
     // (audit 06/11) l'aperçu (dégradé + miniature filtrée + méta) ne sert plus : retiré du DOM après le fondu
     // (≈ 10 nœuds et un calque `drop-shadow` de moins par tuile)
