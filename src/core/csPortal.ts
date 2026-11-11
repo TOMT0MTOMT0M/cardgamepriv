@@ -9,10 +9,11 @@
  * Éclairage IDENTIQUE à celui des cartes de la visionneuse (game/scenes/viewer.ts) : environnement 'studio' ×1,2 + lumière
  * principale 0xfff0e0 ×1,2 venant de (−1, 2, 3), en repère monde (elle ne tourne pas avec la carte).
  * Coût : un maillage (7 000 à 22 000 triangles, ~120 Ko) partagé par modèle, deux textures WebP 1024² par carte (~200 Ko,
- * trois pour les gants : + la normale, ~170 Ko),
+ * trois pour les gants et le sticker : + la normale, ~170 Ko ; sticker : 12 triangles + le spectre holo commun, ~3 Ko),
  * passe portail limitée (scissor) au rectangle de la carte, 0,8 de résolution sur téléphone. Effets réduits : pas de 3D.
  */
 import {
+  BoxGeometry,
   ClippingGroup,
   DirectionalLight,
   Group,
@@ -28,11 +29,12 @@ import {
   TextureLoader,
   Vector2,
   Vector3,
+  RepeatWrapping,
   type Camera,
   type Material,
   type Texture,
 } from 'three/webgpu';
-import { float, min, mix, pass, screenUV, smoothstep, texture, uv, vec3 } from 'three/tsl';
+import { float, fract, luminance, min, mix, pass, screenUV, smoothstep, texture, uniform, uv, vec2, vec3 } from 'three/tsl';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import type { CardArt } from './art';
@@ -61,6 +63,8 @@ const POSE: Record<Cs3dModel, { side: [number, number, number]; a: number; s: nu
   // (11/11) gants : la paire (make-cs3d.mjs) — dos du gant droit vers l'œil, doigts vers le bas, en diagonale
   specialist: { side: [0, 0, 0], a: 0.55, s: 0.68, y: 0 },
   sporty: { side: [0, 0, 0], a: 0.55, s: 0.7, y: 0 },
+  // (11/11) sticker : la feuille posée de face, à peine inclinée
+  sticker: { side: [0, 0, 0], a: -0.08, s: 0.5, y: 0.02 },
 } as Record<Cs3dModel, { side: [number, number, number]; a: number; s: number; y: number }>;
 
 /**
@@ -75,9 +79,12 @@ interface Assets {
   model: Group;
   color: Texture;
   orm: Texture;
-  /** gants : normale du modèle (coutures, rembourrages) */
+  /** gants et sticker : normale (coutures, rembourrages ; relief du sticker et prédécoupe) */
   normal: Texture | null;
+  /** sticker : spectre du holo (commun) */
+  holo: Texture | null;
 }
+let holoSpectre: Promise<Texture> | null = null;
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
 const texLoader = new TextureLoader();
@@ -99,13 +106,19 @@ export function preloadCs3d(cardId: string): Promise<Assets> {
   if (!p) {
     const m = CS3D[cardId];
     let g = models.get(m);
-    if (!g) models.set(m, (g = loader.loadAsync(siteUrl(`models/cs/${m}.glb`)).then((x) => x.scene)));
+    // (le sticker n'a pas de maillage : sa feuille est construite dans createCsCardInstance)
+    if (!g) models.set(m, (g = m === 'sticker' ? Promise.resolve(new Group()) : loader.loadAsync(siteUrl(`models/cs/${m}.glb`)).then((x) => x.scene)));
+    if (m === 'sticker' && !holoSpectre) {
+      holoSpectre = loadTex(siteUrl(artV('art/cs3d/holo-spectre.webp')), true).then((t) => ((t.wrapS = RepeatWrapping), t));
+      holoSpectre.catch(() => (holoSpectre = null));
+    }
     p = Promise.all([
       g,
       loadTex(siteUrl(artV(`art/cs3d/${cardId}-c.webp`)), true),
       loadTex(siteUrl(artV(`art/cs3d/${cardId}-m.webp`)), false),
       CS3D_NORMAL.has(m) ? loadTex(siteUrl(artV(`art/cs3d/${cardId}-n.webp`)), false) : null,
-    ]).then(([model, color, orm, normal]) => ({ model, color, orm, normal }));
+      m === 'sticker' ? holoSpectre : null,
+    ]).then(([model, color, orm, normal, holo]) => ({ model, color, orm, normal, holo }));
     p.catch(() => assets.delete(cardId)); // (réseau : on réessaiera à la prochaine ouverture)
     // une seule carte gardée en mémoire en plus de celle affichée : ~8 Mo de textures décodées chacune
     assets.set(cardId, p);
@@ -179,11 +192,42 @@ export function createCsCardInstance(
       ? new MeshPhysicalNodeMaterial({ map: a.color, roughnessMap: a.orm, metalnessMap: a.orm, roughness: 1, metalness: 1, normalMap: a.normal, sheen: 0.6, sheenRoughness: 0.75, sheenColor: 0xd8d4cc })
       : new MeshStandardNodeMaterial({ map: a.color, roughnessMap: a.orm, metalnessMap: a.orm, roughness: 1, metalness: 1, normalMap: a.normal });
   const plainMat = new MeshStandardNodeMaterial({ color: 0x15171a, roughness: 0.35, metalness: 0.6 });
-  const inst = a.model.clone(true);
-  inst.traverse((o) => {
-    const m = o as Mesh;
-    if (m.isMesh) m.material = m.material && (m.material as Material).name === 'shared_scope' ? plainMat : skinMat;
-  });
+  // STICKER (11/11) : objet plat — la feuille (papier, le sticker et sa prédécoupe imprimés dessus, cuits par
+  // make-cs3d.py), une boîte de 1 × 1 × 0,008. Holo : le spectre de CS2 (holowarp) lu selon l'angle sous lequel on
+  // regarde la feuille (`tilt` : direction de l'œil dans le repère de la feuille, mise à jour à chaque image), plus la
+  // position sur la feuille et le filigrane du masque ; là où le masque holo est fort, la vinyle devient miroir coloré.
+  const sticker = CS3D[cardId] === 'sticker' && !!a.holo;
+  const tilt = uniform(new Vector2());
+  let stickerMats: Material[] = [];
+  let inst: Group | Mesh;
+  if (sticker) {
+    const o = texture(a.orm);
+    const base = texture(a.color).rgb;
+    const holo = o.r as unknown as N;
+    const phase = tilt.x.mul(1.7).add(tilt.y.mul(1.2)).add(uv().x.mul(0.9)).sub(uv().y.mul(0.6)).add(o.b.mul(0.35));
+    const spec = texture(a.holo!, vec2(fract(phase), 0.5)).rgb;
+    const holoCol = spec.mul(luminance(base).mul(0.7).add(0.45));
+    const face = quality === 'high' ? new MeshPhysicalNodeMaterial({ normalMap: a.normal }) : new MeshStandardNodeMaterial({ normalMap: a.normal });
+    face.colorNode = mix(base, holoCol, holo.mul(0.62));
+    face.roughnessNode = mix(o.g, float(0.16), holo);
+    face.metalnessNode = holo.mul(0.5);
+    face.emissiveNode = spec.mul(holo).mul(0.1); // le holo garde son éclat dans la pénombre de la boîte
+    if (face instanceof MeshPhysicalNodeMaterial) face.clearcoatNode = float(0.5); // vinyle laminée (ordinateur)
+    const paper = new MeshStandardNodeMaterial({ color: 0xd6d6d2, roughness: 0.85, metalness: 0 });
+    stickerMats = [face, paper];
+    // (ordre des faces de BoxGeometry : +x, −x, +y, −y, +z (devant), −z)
+    const geo = new BoxGeometry(1, 1, 0.008);
+    // textures cuites à la mode glTF (flipY = false, origine en haut) : v retourné sur la boîte
+    const uvA = geo.getAttribute('uv');
+    for (let i = 0; i < uvA.count; i++) uvA.setY(i, 1 - uvA.getY(i));
+    inst = new Mesh(geo, [paper, paper, paper, paper, face, paper]);
+  } else {
+    inst = a.model.clone(true);
+    inst.traverse((o) => {
+      const m = o as Mesh;
+      if (m.isMesh) m.material = m.material && (m.material as Material).name === 'shared_scope' ? plainMat : skinMat;
+    });
+  }
   inst.rotation.set(...pose.side);
   inst.scale.setScalar(pose.s * SCALE);
   diag.add(inst);
@@ -228,6 +272,12 @@ export function createCsCardInstance(
     // le geste du joueur, plus un balancement lent quand personne ne touche
     spin.rotation.y = inspect.yaw + Math.sin(t * 0.45) * 0.42 * inspect.idle;
     spin.rotation.x = inspect.pitch + Math.sin(t * 0.31) * 0.06 * inspect.idle;
+    if (sticker) {
+      // l'œil dans le repère de la feuille → le holo glisse quand on l'incline
+      inst.updateMatrixWorld(true);
+      inst.worldToLocal(tmp.copy(camera.position)).normalize();
+      tilt.value.set(tmp.x, tmp.y);
+    }
     cardPos.setFromMatrixPosition(cardMesh.matrixWorld);
     cardZ.setFromMatrixColumn(cardMesh.matrixWorld, 2).normalize().negate();
     glass.setFromNormalAndCoplanarPoint(cardZ, cardPos);
@@ -250,6 +300,8 @@ export function createCsCardInstance(
     frontMat.dispose();
     skinMat.dispose();
     plainMat.dispose();
+    for (const m of stickerMats) m.dispose();
+    if (sticker) (inst as Mesh).geometry.dispose();
     wallMat.dispose();
     wall.geometry.dispose();
     // maillage du modèle et textures : partagés (cache), libérés par preloadCs3d

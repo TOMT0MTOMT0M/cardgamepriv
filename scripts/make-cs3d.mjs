@@ -58,6 +58,11 @@ const cards = JSON.parse(fs.readFileSync(path.join(BAKE, 'cartes.json'), 'utf8')
 const used = new Set(cards.map((c) => c.model));
 const info = {};
 for (const key of used) {
+  // sticker : objet plat construit dans le jeu (core/csPortal : une feuille de 1 × 1, épaisseur 0,008), pas de maillage
+  if (key === 'sticker') {
+    info.sticker = { size: [1, 1, 0.008], tris: 12, ko: 0 };
+    continue;
+  }
   // GLB de Source 2 Viewer : textures en fichiers à côté (non utilisées ici) → on les retire avant lecture
   const glb = fs.readFileSync(path.join(EXP, SRC[key]));
   const jl = glb.readUInt32LE(12);
@@ -174,6 +179,12 @@ for (const c of cards) {
   }
 }
 console.log(n, '/', cards.length, 'cartes converties, textures', Math.round(ko), 'Ko');
+// spectre du holo des stickers (holowarp_default de CS2, 512 × 32), un seul fichier pour tous
+if (used.has('sticker')) {
+  const hw = fs.globSync ? fs.globSync('stickers_*/**/holowarp_default.png', { cwd: EXP })[0] : null;
+  if (hw) await sharp(path.join(EXP, hw)).webp({ quality: 95 }).toFile(path.join(OUT_T, 'holo-spectre.webp'));
+  console.log('spectre holo :', hw ?? 'introuvable (lanceurs/extraire-cs2.cmd, lot 5)');
+}
 
 const lines = cards.map((c) => `  '${c.card}': '${c.model}', // ${c.name}${c.kit ? ` · ${c.kit}` : ''}${c.seed != null ? ` #${c.seed}` : ''}`);
 fs.writeFileSync(
@@ -181,7 +192,8 @@ fs.writeFileSync(
   `/**
  * GÉNÉRÉ par scripts/make-cs3d.py + scripts/make-cs3d.mjs — ne pas éditer à la main.
  * Skins CS 6★ en 3D : carte → modèle (public/models/cs/<modèle>.glb) ; textures public/art/cs3d/<carte>-c.webp / -m.webp
- * (+ -n.webp, la normale, pour les gants).
+ * (+ -n.webp, la normale, pour les gants et le sticker ; sticker : -m.webp = R holo, G rugosité, B motif du holo,
+ * spectre commun art/cs3d/holo-spectre.webp).
  */
 export type Cs3dModel = ${[...used].map((k) => `'${k}'`).join(' | ')};
 
@@ -190,7 +202,7 @@ ${lines.join('\n')}
 };
 
 /** modèles qui ont une 3e texture (normale) : public/art/cs3d/<carte>-n.webp */
-export const CS3D_NORMAL: ReadonlySet<Cs3dModel> = new Set([${[...used].filter((k) => k === 'specialist' || k === 'sporty').map((k) => `'${k}'`).join(', ')}]);
+export const CS3D_NORMAL: ReadonlySet<Cs3dModel> = new Set([${[...used].filter((k) => k === 'specialist' || k === 'sporty' || k === 'sticker').map((k) => `'${k}'`).join(', ')}]);
 
 /** dimensions (plus grande = 1) et triangles de chaque modèle */
 export const CS3D_MODELS: Record<Cs3dModel, { size: [number, number, number]; tris: number }> = ${JSON.stringify(Object.fromEntries(Object.entries(info).map(([k, v]) => [k, { size: v.size, tris: v.tris }])))};
