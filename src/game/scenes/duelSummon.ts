@@ -697,6 +697,9 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
   }
 
   return {
+    // (V2 fluidité, 11/11) un changement de définition 3D attend la fin de l'invocation (shell : moment calme), comme à
+    // l'ouverture et dans la visionneuse — avant, il réallouait les cibles de rendu en pleine scène (à-coup + saut de netteté)
+    pacing: () => (tl?.isActive() ? 'busy' : 'rest'),
     async setup(c) {
       ctx = c;
       calm = fxReduced();
