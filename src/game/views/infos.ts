@@ -105,9 +105,11 @@ export function createTutorialView(shell: Shell): InfoView {
       <li>On ne perd jamais le dernier exemplaire d’une carte.</li>
     </ul>`)}
     ${sec('echanges', 'Les échanges', `<ul>
-      <li>Le <b>tableau d’offres</b> (en haut) : publie des cartes, les autres te font leurs offres ; tu acceptes, refuses ou fais une contre-offre.</li>
-      <li>Les <b>échanges directs</b> (en dessous) : choisis un ami, le jeu croise vos collections et propose les « matchs parfaits ».</li>
-      <li>Une carte engagée dans une annonce ou un échange en cours est <b>verrouillée</b> 🔒 jusqu’à la fin.</li>
+      <li><b>Pour toi</b> : des échanges prêts. Marque les cartes que tu veux (♥ Je la veux) : le jeu trouve qui en a un doublon et ce que tu peux donner en échange (un de tes doublons de même étoile qui lui manque). Un toucher : Demander.</li>
+      <li>Tes <b>doublons</b> sont proposés aux autres par défaut (tu gardes toujours un exemplaire). « Protéger » sur une carte : elle n’est jamais proposée.</li>
+      <li>Une demande reçue : <b>Accepter</b>, <b>Choisir autre chose</b> parmi ses doublons de même étoile, ou <b>Refuser</b>.</li>
+      <li><b>Chercher</b> : n’importe quelle carte — qui l’a, qui la vend et à quel prix (marché), qui la veut. <b>Composer moi-même</b> (dans En cours) pour un échange sur mesure.</li>
+      <li>Une carte engagée dans un échange en cours est <b>verrouillée</b> jusqu’à la fin.</li>
     </ul>`)}
     ${sec('jeux', 'Les jeux', `<ul>
       <li><b>1v1 Pack Battle</b> : chacun mise le même nombre de boosters ; on ouvre côte à côte, le plus gros total d’étoiles rafle toutes les cartes.</li>
