@@ -1297,7 +1297,6 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .pf-ava-wrap.frame-mythic::before { content: ''; position: absolute; top: -4px; left: 50%; width: 116px; height: 116px; margin-left: -58px; border-radius: 50%; background: var(--frame); animation: bp-spin 6s linear infinite; z-index: -1; }
 .pf-ava-wrap.frame-secret .pf-ava { box-shadow: 0 0 0 3px var(--rose), 0 0 24px -2px var(--rose); }
 .pf-ava-wrap.frame-flame .pf-ava { box-shadow: 0 0 0 3px #ff7a2a, 0 0 22px -2px #ff7a2a; }
-.pf-frame-l { font: 600 12px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
 .pf-id { padding-bottom: 6px; }
 .pf-title { display: inline-block; margin: 2px 0 6px; padding: 3px 10px; border-radius: var(--r-pill); border: 1px solid var(--gold); color: var(--gold); font: 600 12px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
 .pf-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
@@ -2187,7 +2186,6 @@ body.fx-reduced .card-info .ci-name, body.fx-reduced .v-info .ci-name { animatio
   .pf-ava-wrap { gap: 2px; }
   .pf-ava-wrap .pf-ava { width: 64px; height: 64px; border-width: 3px; font-size: 26px; }
   .pf-ava-wrap.frame-mythic::before { top: -3px; width: 70px; height: 70px; margin-left: -35px; }
-  .pf-frame-l { display: none; }
   .pf-id { flex: 1; gap: 2px; padding-bottom: 0; }
   .pf-eyebrow { display: none; }
   .pf-id h1 { font-size: 23px; line-height: 1.1; }
@@ -2859,7 +2857,8 @@ body.wild-on .card-ghost, body.duel-on .card-ghost { visibility: hidden; }
    partout ailleurs, en jouant sur ses 3 graisses et l'espacement des lettres. Pas de faux italique (la police n'en a pas). */
 html { font-synthesis-style: none; font-synthesis: weight small-caps; }
 html, body { letter-spacing: 0.01em; }
-.logo { font: 400 21px/1 var(--display); letter-spacing: 0.03em; }
+/* (11/11) logo de l'en-tête : plus d'Atsuka Montreal (une volute sur chaque capitale) — Bold Frame grasse */
+.logo { font: 800 20px/1 var(--title); letter-spacing: 0.1em; }
 .logo span { font-weight: 600; letter-spacing: 0.34em; }
 .ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font: 400 31px/1.08 var(--display); font-style: normal; letter-spacing: 0.015em; text-wrap: balance; }
 .pf-id h1 { font-family: var(--display); font-weight: 400; font-style: normal; letter-spacing: 0.02em; }

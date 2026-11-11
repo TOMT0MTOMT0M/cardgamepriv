@@ -18,10 +18,11 @@ body.myth-on .card-ghost { visibility: hidden; }
 .mp-clues { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: grid; place-items: center; }
 .mp-clue { grid-area: 1 / 1; max-width: 94vw; text-align: center; white-space: nowrap; line-height: 0.95; font-weight: 700; letter-spacing: 0.02em; color: #fff; opacity: 0; will-change: transform, opacity, filter; }
 .mp-clue.c0 { font-family: var(--mono); font-weight: 600; letter-spacing: 0.34em; text-indent: 0.34em; }
-.mp-clue.c1 { font-family: var(--display); font-weight: 800; }
+/* (11/11) plus d'Atsuka Montreal dans les scènes 6★ : Bold Frame grasse (Bold Frame Two), casse mixte */
+.mp-clue.c1 { font-family: var(--title); font-weight: 800; }
 .mp-clue.c2, .mp-clue.c3 { font-family: var(--title); font-weight: 700; letter-spacing: 0.02em; }
 .mp-clue.last { text-shadow: 0 0 40px color-mix(in srgb, var(--mp-rb, #fff) 55%, transparent); }
-.myth-pre.short .mp-clue { font-family: var(--display); font-weight: 800; letter-spacing: 0.02em; text-indent: 0; }
+.myth-pre.short .mp-clue { font-family: var(--title); font-weight: 800; letter-spacing: 0.02em; text-indent: 0; }
 .mp-stars { position: absolute; top: calc(30% - 40px); left: 0; right: 0; text-align: center; font: 400 15px var(--mono); letter-spacing: 0.5em; text-indent: 0.5em; background: linear-gradient(100deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: mp-shine 2.4s linear infinite; opacity: 0; }
 .mp-crumb { position: absolute; top: 30%; left: 0; right: 0; display: flex; justify-content: center; gap: 14px; font: 600 12px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
 .mp-crumb span + span::before { content: '·'; margin-right: 14px; color: rgba(255, 255, 255, 0.3); }
@@ -37,7 +38,7 @@ body.myth-on .card-ghost { visibility: hidden; }
 @keyframes mp-edge { to { filter: hue-rotate(360deg); } }
 .mp-card > span { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
 .mp-card > span > i { position: absolute; inset: -10% 0; opacity: 0; background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, 0.5) 47%, rgba(255, 255, 255, 0.75) 50%, rgba(255, 255, 255, 0.5) 53%, transparent 68%); mix-blend-mode: soft-light; }
-.mp-word { position: absolute; left: 50%; white-space: nowrap; font-family: var(--display); font-weight: 800; line-height: 0.9; color: #fff; letter-spacing: 0.01em; }
+.mp-word { position: absolute; left: 50%; white-space: nowrap; font-family: var(--title); font-weight: 800; line-height: 0.9; color: #fff; letter-spacing: 0.01em; }
 /* (10/11) Inter : en petites capitales espacées, les R / X de Bold Frame se lisent A / H (« PAEMIEA LEAGUE ») */
 .mp-label { position: absolute; font: 600 11px var(--mono); letter-spacing: 0.28em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
 /* éléments communs des scènes */

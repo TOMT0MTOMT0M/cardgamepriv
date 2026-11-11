@@ -16,8 +16,8 @@ export default function dernierCoup(k: SceneCtx) {
   const fs = Math.min(u, (h * 0.78) / 108);
   feed.style.gap = `${fs * 2}px`;
   const items = FEED.map((t, i) => {
-    const e = el('div', '', `font:800 ${fs * (5 + (i % 3) * 2)}px/1 var(--display);color:${i === FEED.length - 1 ? accent : '#fff'};opacity:0;white-space:nowrap;`, feed);
-    e.textContent = displayCase(t); // une capitale à volutes par ligne, jamais en chaîne
+    const e = el('div', '', `font:800 ${fs * (5 + (i % 3) * 2)}px/1 var(--title);color:${i === FEED.length - 1 ? accent : '#fff'};opacity:0;white-space:nowrap;`, feed);
+    e.textContent = displayCase(t); // (11/11) casse de phrase : Bold Frame ne se lit pas en capitales (R → A)
     return e;
   });
   items.forEach((e, i) => {

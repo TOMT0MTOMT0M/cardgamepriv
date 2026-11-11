@@ -11,6 +11,9 @@ import gsap from 'gsap';
 import type { Sfx } from '../../core/audio';
 import { haptics } from '../../core/haptics';
 import { applyFontVars, displayCase } from '../../core/fonts';
+
+/** (11/11) « VICTOIRE » → « Victoire » ; « League of Legends », « MCU » (sigle court) restent tels quels */
+const sentenceIfCaps = (t: string) => (t.length > 3 && t === t.toLocaleUpperCase('fr') && t !== t.toLocaleLowerCase('fr') ? displayCase(t) : t);
 import { DUR } from '../../core/motion';
 import { ALU_BACK, paintBack } from '../../core/art/back';
 import { BASE_H, BASE_W } from '../../core/art/subjects';
@@ -316,8 +319,8 @@ export function runPrelude(o: PreludeRun): PreludeHandle {
       word(txt, y, size = u * 12, cls = '') {
         const e = document.createElement('div');
         e.className = `mp-word ${cls}`;
-        // (10/11) casse du jeu : UNE capitale à volutes, le reste en petites capitales — jamais de volutes en chaîne
-        e.textContent = displayCase(txt);
+        // (11/11) Bold Frame : casse naturelle ; un texte tout en capitales passe en casse de phrase (ses R se lisent A)
+        e.textContent = sentenceIfCaps(txt);
         e.style.top = `${y}px`;
         e.style.fontSize = `${size}px`;
         stage.append(e);
@@ -385,9 +388,9 @@ function playClues(box: HTMLElement, clues: string[], short: boolean, sfx: Retur
     // un seul indice (version courte, visionneuse) = la famille : même traitement que le 2e indice
     const ci = list.length === 1 ? 1 : i;
     el.className = `mp-clue c${ci}${big ? ' last' : ''}`;
-    // (10/11) chaque police dans SA casse : thème en capitales espacées (Inter), famille en Atsuka Montreal avec UNE
-    // capitale à volutes, détail en Bold Frame casse mixte — ses capitales R / X se lisent A / H (« SPOAT »)
-    el.textContent = ci === 0 ? txt.toUpperCase() : ci === 1 ? displayCase(txt) : txt;
+    // chaque police dans SA casse : thème en capitales espacées (Inter) ; famille (11/11 : Bold Frame grasse, plus
+    // d'Atsuka Montreal) et détail en Bold Frame casse naturelle — ses capitales R / X se lisent A / H (« SPOAT »)
+    el.textContent = ci === 0 ? txt.toUpperCase() : sentenceIfCaps(txt);
     // taille au plus juste : le texte tient sur une ligne, 92 % de la largeur au plus
     const kChar = ci === 0 ? 0.95 : 0.6;
     const max = ci === 0 ? Math.min(W * 0.085, 56) : Math.min(W * 0.2, mobile ? 92 : 150);

@@ -236,7 +236,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const ava = avaHtml(name);
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     // en-tête compact (retours live 02) : pseudo, puis titre + badges sur UNE ligne, puis devise · « depuis » sur une ligne
-    head.innerHTML = `${avaRing(fr, ava)}${fr.id !== 'none' ? `<span class="pf-frame-l">${esc(fr.label)}</span>` : ''}</div>
+    head.innerHTML = `${avaRing(fr, ava)}</div>
       <div class="pf-id">
         <div class="pf-eyebrow">${me ? 'Mon profil' : 'Profil'}</div>
         <h1>${esc(name)}</h1>

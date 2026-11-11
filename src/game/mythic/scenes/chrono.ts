@@ -43,7 +43,7 @@ export default function chrono(k: SceneCtx) {
     return r;
   });
   const big = el('div', '', `position:absolute;right:${u * 6}px;top:${u * 7}px;font:700 ${u * 11}px/1 var(--mono);color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 2px 20px rgba(0,0,0,.6);`);
-  const best = el('div', '', `position:absolute;left:0;right:0;top:${h * 0.78}px;text-align:center;font:800 ${u * 7}px var(--display);letter-spacing:.2em;color:#0b1c28;white-space:nowrap;opacity:0;`);
+  const best = el('div', '', `position:absolute;left:0;right:0;top:${h * 0.78}px;text-align:center;font:800 ${u * 7}px var(--title);letter-spacing:.2em;color:#0b1c28;white-space:nowrap;opacity:0;`);
   best.textContent = 'Meilleur temps'; // (10/11) casse du jeu, encre sombre : le bleu glacier ne se lisait pas sur la neige
   k.at(0.05, () => sfx.ambience('glace', 2.4, 0.12));
   k.at(0.1, () => sfx.whoosh(0.6, 0.2, false));

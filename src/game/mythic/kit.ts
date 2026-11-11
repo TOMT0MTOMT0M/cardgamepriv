@@ -81,7 +81,7 @@ export interface SceneCtx {
   glint(at: number, dur?: number): void;
   /** réduit la taille de police d'un texte sur une ligne pour qu'il tienne dans `max` × la largeur du calque */
   fit<T extends HTMLElement>(e: T, max?: number): T;
-  /** grand mot en Atsuka Montreal (--display) (titre de scène), centré ; `y` en px */
+  /** grand mot en Bold Frame grasse (titre de scène), centré ; `y` en px — un texte tout en capitales passe en casse de phrase */
   word(txt: string, y: number, size?: number, cls?: string): HTMLElement;
   /** petite étiquette (Bold Frame, espacée, majuscules) */
   label(txt: string, x: string, y: string, cls?: string): HTMLElement;
