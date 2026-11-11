@@ -48,8 +48,9 @@ export const profile = query({
       packsOpened: u.totalPacksOpened,
       joinedAt: u._creationTime,
       lastSeenAt: u.lastSeenAt,
-      /** classeur épinglé (visible des potes) */
-      pinnedBinder: pinned ? { id: pinned._id, name: pinned.name, cards: pinned.cards, coverCardId: pinned.coverCardId } : null,
+      /** classeurs épinglés (visibles des potes), 3 au plus ; `pinnedBinder` = le premier, gardé pour les jeux pas encore à jour */
+      pinnedBinders: pinned.map((b) => ({ id: b._id, name: b.name, cards: b.cards, coverCardId: b.coverCardId })),
+      pinnedBinder: pinned[0] ? { id: pinned[0]._id, name: pinned[0].name, cards: pinned[0].cards, coverCardId: pinned[0].coverCardId } : null,
       cosmetics: cleanCosmetics(u.cosmetics ?? {}, stats),
       stats,
       streakDay: streakDay(u.streak),

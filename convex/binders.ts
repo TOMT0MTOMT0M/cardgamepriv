@@ -10,6 +10,8 @@ import { catalogCard, rarityValidator } from './cardsCatalog';
  */
 export const BINDER_MAX = 30;
 export const BINDER_CARDS_MAX = 500;
+/** classeurs épinglés sur le profil, au plus (sondage 11/11 : « afficher 2/3 classeurs ») */
+export const BINDER_PINS_MAX = 3;
 const cardValidator = v.object({ cardId: v.string(), rarity: rarityValidator });
 
 const cleanName = (name: string) => name.replace(/\s+/g, ' ').trim().slice(0, 32);
@@ -24,10 +26,13 @@ export const mine = query({
   },
 });
 
-/** Classeur épinglé d'un joueur (profil public). */
-export async function pinnedOf(ctx: { db: QueryCtx['db'] }, userId: Id<'users'>): Promise<Doc<'binders'> | null> {
+/** Classeurs épinglés d'un joueur (profil public), du plus ancien au plus récent, BINDER_PINS_MAX au plus. */
+export async function pinnedOf(ctx: { db: QueryCtx['db'] }, userId: Id<'users'>): Promise<Doc<'binders'>[]> {
   const list = await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
-  return list.find((b) => b.pinned) ?? null;
+  return list
+    .filter((b) => b.pinned)
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .slice(0, BINDER_PINS_MAX);
 }
 
 async function own(ctx: MutationCtx, sessionToken: string, binderId: Id<'binders'>) {
@@ -128,13 +133,13 @@ export const setCover = mutation({
   },
 });
 
-/** Épingle ce classeur sur le profil (un seul à la fois) ; `on: false` le désépingle. */
+/** Épingle ce classeur sur le profil (BINDER_PINS_MAX au plus, les autres restent épinglés) ; `on: false` le désépingle. */
 export const pin = mutation({
   args: { sessionToken: v.string(), binderId: v.id('binders'), on: v.boolean() },
   handler: async (ctx, { sessionToken, binderId, on }) => {
     const { user, b } = await own(ctx, sessionToken, binderId);
     const list = await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', user._id)).collect();
-    for (const x of list) if (x.pinned && x._id !== b._id) await ctx.db.patch(x._id, { pinned: false });
+    if (on && !b.pinned && list.filter((x) => x.pinned).length >= BINDER_PINS_MAX) throw new ConvexError(`${BINDER_PINS_MAX} classeurs au plus sur ton profil : retires-en un d’abord.`);
     await ctx.db.patch(b._id, { pinned: on, updatedAt: Date.now() });
   },
 });

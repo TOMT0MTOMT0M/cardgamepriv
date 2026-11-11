@@ -97,7 +97,7 @@ export function createTutorialView(shell: Shell): InfoView {
     ${sec('collection', 'La collection', `<ul>
       <li><b>Cartes</b> : toutes tes cartes, les plus rares d’abord. <b>Albums</b> : un thème, puis ses familles (Pokémon, Jeux vidéo…), puis les albums et leurs cartes.</li>
       <li>Touche une carte pour la voir en grand ; ♥ l’ajoute à tes <b>envies</b>.</li>
-      <li>Les <b>classeurs</b> rangent tes cartes comme tu veux ; épingles-en un sur ton profil.</li>
+      <li>Les <b>classeurs</b> rangent tes cartes comme tu veux ; épingles-en jusqu’à 3 sur ton profil.</li>
     </ul>`)}
     ${sec('contrats', 'Contrats et forge', `<ul>
       <li><b>Contrat</b> : brûle des doublons d’une même étoile contre <b>une carte de l’étoile au-dessus</b> — 1★ et 2★ : ${CONTRACT_COST.common} cartes · 3★ et 4★ : ${CONTRACT_COST.rare} · 5★ : ${CONTRACT_COST.legendary}. Elle vient des mêmes familles que les cartes brûlées, et c’est une nouvelle carte si tu peux en avoir une.</li>

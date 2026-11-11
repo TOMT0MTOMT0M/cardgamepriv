@@ -106,7 +106,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         </div>
       </div>
       <div class="pf-pane p-collection" hidden>
-        <div class="pf-sec pf-binder-sec" hidden><div class="pf-sec-t"><h2 class="pf-binder-t">Classeur</h2><span class="pf-auto">· épinglé</span><span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs" hidden>Mes classeurs</a></span></div><div class="grid mini pf-binder"></div></div>
+        <div class="pf-binders"></div>
         <div class="pf-nobinder muted" hidden></div>
         <div class="pf-sec pf-all-sec"><div class="pf-sec-t"><h2>Toute la collection</h2><span class="pf-count pf-all-n"></span></div>
           <div class="pf-all-tools"><input class="search pf-all-q" type="search" placeholder="Chercher une carte…" autocomplete="off" spellcheck="false" aria-label="Chercher dans cette collection"><div class="pf-all-r" role="group" aria-label="Étoiles"></div></div>
@@ -831,26 +831,40 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     renderAllCards();
   });
 
+  /** Classeurs épinglés : un bloc par classeur, 3 au plus (sondage 11/11). Seul : 24 cartes ; à plusieurs : 12 chacun, « + N autres » déplie. */
   function renderBinder() {
-    const sec = q('.pf-binder-sec');
-    const b = isMe() ? backend.state.binders.find((x) => x.pinned) ?? null : prof?.pinnedBinder ?? null;
-    sec.hidden = !b;
-    q('.pf-binder-go').hidden = !isMe();
+    const box = q('.pf-binders');
+    const list = isMe() ? backend.state.binders.filter((x) => x.pinned).slice(0, 3) : prof?.pinnedBinders ?? (prof?.pinnedBinder ? [prof.pinnedBinder] : []);
+    box.replaceChildren();
     const nob = q('.pf-nobinder');
-    nob.hidden = !!b;
-    nob.innerHTML = isMe() ? 'Pas de classeur épinglé. Crée un classeur dans <a class="p-link" href="#/collection/classeurs">ta collection</a> et épingle-le : il s’affichera ici, visible des potes.' : 'Pas de classeur épinglé.';
-    if (!b) return;
-    q('.pf-binder-t').textContent = b.name;
-    const g = q('.pf-binder');
-    g.replaceChildren();
+    nob.hidden = list.length > 0;
+    nob.innerHTML = isMe() ? 'Pas de classeur épinglé. Crée un classeur dans <a class="p-link" href="#/collection/classeurs">ta collection</a> et épingle-le (3 au plus) : il s’affichera ici, visible des potes.' : 'Pas de classeur épinglé.';
+    if (!list.length) return;
     const have = new Map(ownedOf().map((c) => [`${c.cardId}:${c.rarity}`, c]));
-    for (const c of b.cards.slice(0, 24)) {
-      const row = have.get(`${c.cardId}:${c.rarity}`);
-      const t = cardTile(c.cardId, c.rarity, { owned: !!row, count: row?.count });
-      if (row) t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
-      g.append(t);
-    }
-    if (b.cards.length > 24) g.append(h('div', 'muted', `+ ${fmtN(b.cards.length - 24)} autres`));
+    const first = list.length > 1 ? 12 : 24;
+    list.forEach((b, i) => {
+      const sec = h('div', 'pf-sec pf-binder-sec');
+      sec.innerHTML = `<div class="pf-sec-t"><h2 class="pf-binder-t"></h2><span class="pf-auto">· épinglé</span>${isMe() && i === 0 ? '<span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs">Mes classeurs</a></span>' : ''}</div><div class="grid mini pf-binder"></div>`;
+      sec.querySelector('.pf-binder-t')!.textContent = b.name;
+      const g = sec.querySelector<HTMLElement>('.pf-binder')!;
+      const fill = (n: number) => {
+        g.replaceChildren();
+        for (const c of b.cards.slice(0, n)) {
+          const row = have.get(`${c.cardId}:${c.rarity}`);
+          const t = cardTile(c.cardId, c.rarity, { owned: !!row, count: row?.count });
+          if (row) t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+          g.append(t);
+        }
+        if (b.cards.length > n) {
+          const more = h('button', 'btn-ghost pf-binder-more');
+          more.textContent = `+ ${fmtN(b.cards.length - n)} autres`;
+          more.addEventListener('click', () => fill(n + 48));
+          g.append(more);
+        }
+      };
+      fill(first);
+      box.append(sec);
+    });
   }
 
   // ── ACTIVITÉ

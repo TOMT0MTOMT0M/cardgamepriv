@@ -228,7 +228,7 @@ export function createOnlineBackend(): GameBackend {
     },
     async profile(userId) {
       const p = await net.profile(userId as Id<'users'>);
-      return p ? { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null } : null;
+      return p ? { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null, pinnedBinders: p.pinnedBinders?.map((b) => ({ ...b, id: b.id as string })) } : null;
     },
     async setShowcase(cards) {
       await net.setShowcase(cards);

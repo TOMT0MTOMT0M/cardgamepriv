@@ -32,6 +32,7 @@ import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, typ
 /** Plafonds des classeurs : les mêmes que le serveur (convex/binders.ts, recopiés : importer ce fichier tirerait le serveur Convex dans le jeu). */
 const BINDER_MAX = 30;
 const BINDER_CARDS_MAX = 500;
+const BINDER_PINS_MAX = 3;
 const BINDER_NAME_MAX = 32;
 /** Amis : mêmes plafonds que le serveur (convex/friends.ts, recopiés pour la même raison) */
 const DEMO_MAX_PENDING = 15;
@@ -859,7 +860,7 @@ export function createLocalBackend(): GameBackend {
       if (userId === 'me') {
         const st = myStats();
         const top = bestCard(Object.values(save.inv));
-        return { id: 'me', name: 'Toi', ...demoMedia(), bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: ACHIEVEMENTS.length } };
+        return { id: 'me', name: 'Toi', ...demoMedia(), bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, pinnedBinders: (save.binders ?? []).filter((b) => b.pinned).slice(0, BINDER_PINS_MAX), cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: ACHIEVEMENTS.length } };
       }
       const i = save.bots.findIndex((b) => b.id === userId);
       if (i < 0) return null;
@@ -1036,7 +1037,11 @@ export function createLocalBackend(): GameBackend {
       sync();
     },
     async pinBinder(id, on) {
-      for (const b of save.binders ?? []) b.pinned = b.id === id ? on : false;
+      const list = save.binders ?? [];
+      const b = list.find((x) => x.id === id);
+      if (!b) throw new Error('Classeur introuvable.');
+      if (on && !b.pinned && list.filter((x) => x.pinned).length >= BINDER_PINS_MAX) throw new Error(`${BINDER_PINS_MAX} classeurs au plus sur ton profil : retires-en un d’abord.`);
+      b.pinned = on;
       sync();
     },
     // ── amis (lot A2) : mêmes règles que le serveur (convex/friends.ts) ; les robots acceptent au bout de ~3 s

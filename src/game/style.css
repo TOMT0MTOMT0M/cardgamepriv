@@ -1170,7 +1170,8 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .bd-tools .bd-cov.on { background: var(--gold); border-color: var(--gold); color: #000000; }
 .bd-tools .bd-rm:hover { color: #fff; background: var(--err); border-color: var(--err); }
 .bd-ghost { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; opacity: 0.9; transform-origin: center; box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.95); }
-.pf-binder .muted { align-self: center; }
+.pf-binder .muted,
+.pf-binder-more { align-self: center; }
 @media (max-width: 860px) {
   .al-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
   .album { padding: 6px 6px 8px; border-radius: var(--r-box); }

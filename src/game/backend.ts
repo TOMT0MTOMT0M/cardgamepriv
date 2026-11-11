@@ -333,8 +333,10 @@ export interface Profile {
   showcase: Array<{ cardId: string; rarity: RarityId }>;
   packsOpened: number;
   joinedAt?: number;
-  /** classeur épinglé (visible des potes) */
+  /** classeur épinglé (visible des potes) — le premier de `pinnedBinders`, gardé pour un serveur pas encore à jour */
   pinnedBinder?: { id: string; name: string; cards: Array<{ cardId: string; rarity: RarityId }>; coverCardId?: string } | null;
+  /** classeurs épinglés, 3 au plus (sondage 11/11) */
+  pinnedBinders?: Array<{ id: string; name: string; cards: Array<{ cardId: string; rarity: RarityId }>; coverCardId?: string }>;
   /** bannière, cadre, titre, badges (déjà filtrés : seulement du débloqué) */
   cosmetics?: CosmeticChoice;
   stats?: PlayerStats;
