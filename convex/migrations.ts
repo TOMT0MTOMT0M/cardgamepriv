@@ -68,6 +68,63 @@ export const resyncRarities = internalMutation({
   },
 });
 
+/**
+ * (11/11, nouveau tri Monde + Sport) Complément de resyncRarities : ce qui est EN COURS et cite une carte avec sa rareté
+ * — échanges en attente (ou contre-proposés), annonces ouvertes du tableau d'offres, offres sur annonce en cours (et leur
+ * contre-offre), ventes ouvertes du marché. Sans lui, une carte passée de 3★ à 5★ restait citée en 3★ : l'échange ou
+ * l'offre ne trouvait plus l'exemplaire à l'inventaire (réaligné, lui) et échouait. Mêmes lignes fusionnées (une carte
+ * citée deux fois après coup → quantités additionnées). Idempotente ; à lancer APRÈS resyncRarities (mêmes lanceurs).
+ *
+ *   npx convex run migrations:resyncRaritiesOpen
+ */
+type Item = { cardId: string; rarity: RarityId; count: number };
+const fixItems = (list: Item[]): Item[] => {
+  const by = new Map<string, Item>();
+  for (const it of list) {
+    const r = truth(it.cardId, it.rarity);
+    const k = `${it.cardId}:${r}`;
+    const prev = by.get(k);
+    if (prev) prev.count += it.count;
+    else by.set(k, { ...it, rarity: r });
+  }
+  return [...by.values()];
+};
+const needsFix = (list: Array<{ cardId: string; rarity: RarityId }> | undefined) => !!list?.some((c) => truth(c.cardId, c.rarity) !== c.rarity);
+
+export const resyncRaritiesOpen = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let trades = 0, listings = 0, offers = 0, market = 0;
+    for (const tr of await ctx.db.query('trades').collect()) {
+      if (tr.status !== 'pending' && tr.status !== 'countered') continue;
+      if (!needsFix(tr.offered) && !needsFix(tr.requested)) continue;
+      await ctx.db.patch(tr._id, { offered: fixItems(tr.offered), requested: fixItems(tr.requested) });
+      trades++;
+    }
+    for (const l of await ctx.db.query('listings').withIndex('by_status_expires', (q) => q.eq('status', 'open')).collect()) {
+      if (!needsFix(l.items) && !needsFix(l.wanted)) continue;
+      await ctx.db.patch(l._id, { items: fixItems(l.items), ...(l.wanted ? { wanted: dedupe(l.wanted.map((c) => ({ cardId: c.cardId, rarity: truth(c.cardId, c.rarity) }))) } : {}) });
+      listings++;
+    }
+    for (const o of await ctx.db.query('listingOffers').collect()) {
+      if (o.status !== 'pending' && o.status !== 'countered') continue;
+      if (!needsFix(o.offered) && !needsFix(o.counter?.give) && !needsFix(o.counter?.want)) continue;
+      await ctx.db.patch(o._id, {
+        offered: fixItems(o.offered),
+        ...(o.counter ? { counter: { ...o.counter, give: fixItems(o.counter.give), want: fixItems(o.counter.want) } } : {}),
+      });
+      offers++;
+    }
+    for (const m of await ctx.db.query('market').withIndex('by_status_created', (q) => q.eq('status', 'open')).collect()) {
+      const r = truth(m.cardId, m.rarity);
+      if (r === m.rarity) continue;
+      await ctx.db.patch(m._id, { rarity: r });
+      market++;
+    }
+    return { trades, listings, offers, market };
+  },
+});
+
 function dedupe<T extends { cardId: string; rarity: string }>(list: T[]): T[] {
   const seen = new Set<string>();
   return list.filter((c) => {
