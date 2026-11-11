@@ -15,6 +15,7 @@ import type * as adminDash from "../adminDash.js";
 import type * as auth from "../auth.js";
 import type * as binders from "../binders.js";
 import type * as cardsCatalog from "../cardsCatalog.js";
+import type * as challenges from "../challenges.js";
 import type * as chat from "../chat.js";
 import type * as contracts from "../contracts.js";
 import type * as crons from "../crons.js";
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   binders: typeof binders;
   cardsCatalog: typeof cardsCatalog;
+  challenges: typeof challenges;
   chat: typeof chat;
   contracts: typeof contracts;
   crons: typeof crons;

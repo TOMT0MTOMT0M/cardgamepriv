@@ -740,4 +740,52 @@ export default defineSchema({
     byName: v.string(),
     at: v.number(),
   }).index('by_user', ['userId', 'at']),
+  // ═══════════════ chantier « défis + mini-jeu » (V2, 11/11) — tables nouvelles, rien ne change pour la V1
+  /**
+   * DÉFIS ENTRE AMIS (convex/challenges.ts, règles : src/core/defis.ts) : objectif mesuré par le serveur sur une durée,
+   * mise facultative en pièces (la même pour tous) en séquestre jusqu'à la fin.
+   */
+  challenges: defineTable({
+    creatorId: v.id('users'),
+    kind: v.union(v.literal('first'), v.literal('new'), v.literal('stars')),
+    /** « premier à » : rareté minimale à tirer */
+    target: v.optional(rarityValidator),
+    durationMs: v.number(),
+    /** mise de chaque joueur, en pièces (0 = pour l'honneur) */
+    stake: v.number(),
+    status: v.union(v.literal('pending'), v.literal('live'), v.literal('done'), v.literal('cancelled')),
+    players: v.array(
+      v.object({
+        userId: v.id('users'),
+        name: v.string(),
+        avatarUrl: v.optional(v.string()),
+        /** invited : pas encore répondu · in : inscrit (mise en séquestre) · out : a refusé / pas répondu */
+        state: v.union(v.literal('invited'), v.literal('in'), v.literal('out')),
+        score: v.number(),
+        /** dernier point marqué (affichage) */
+        at: v.optional(v.number()),
+      }),
+    ),
+    createdAt: v.number(),
+    acceptBy: v.number(),
+    startedAt: v.optional(v.number()),
+    endsAt: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+    winnerId: v.optional(v.id('users')),
+    /** win : un gagnant · tie : égalité en tête (rendu) · nobody : personne n'a marqué (rendu) · alone : personne n'a accepté */
+    outcome: v.optional(v.union(v.literal('win'), v.literal('tie'), v.literal('nobody'), v.literal('alone'))),
+  })
+    .index('by_status', ['status', 'createdAt'])
+    .index('by_creator', ['creatorId', 'status']),
+  /** une ligne par joueur et par défi : le crochet d'ouverture de booster ne lit QUE les défis en cours du joueur */
+  challengeSeats: defineTable({
+    userId: v.id('users'),
+    challengeId: v.id('challenges'),
+    phase: v.union(v.literal('pending'), v.literal('live'), v.literal('over')),
+    createdAt: v.number(),
+  })
+    .index('by_user_phase', ['userId', 'phase'])
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_challenge', ['challengeId']),
+
 });

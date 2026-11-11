@@ -1,0 +1,83 @@
+/* ═════════════ DÉFIS ENTRE AMIS (V2, 11/11) — views/defis.ts
+   Même direction « usinage » que l'espace Jeux (casino.css) : noir, filets, étiquettes techniques en Inter capitales,
+   chiffres en Bold Frame. Couleur = information seulement. Rayons par jetons.
+   Effets réduits / mouvement réduit : plus de barre qui glisse. */
+
+/* ── accueil : deuxième rangée (Défis) */
+.gm-hub-x { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.gm-hub-x .gm-game { min-height: 0; padding: 22px; }
+.gm-hub-x .gm-spec { margin-top: 4px; }
+.gm-hub-x .gm-mini { display: flex; gap: 6px; height: 34px; margin-bottom: 4px; }
+.gm-hub-x .gm-mini i { flex: 1; max-width: 26px; border: 1px solid var(--gm-line-2); border-radius: var(--r-ctl); }
+.gm-hub-x .gm-mini i.on { border-color: var(--rc, #fff); background: color-mix(in srgb, var(--rc, #fff) 18%, transparent); }
+.gm-hub-x .gm-mini.av i { max-width: 34px; border-radius: var(--r-pill); }
+@media (max-width: 860px) { .gm-hub-x { grid-template-columns: 1fr; } }
+
+/* ── étiquette technique commune */
+.df-l { display: block; font: 500 10px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ── Défis : formulaire */
+.df-new { display: flex; flex-direction: column; gap: 16px; }
+.df-step { display: flex; flex-direction: column; gap: 8px; }
+.df-goals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.df-goal { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px; text-align: left; border: 1px solid var(--gm-line-2); border-radius: var(--r-ctl); background: none; color: var(--ink-2); cursor: pointer; transition: border-color var(--dur-rapide), background-color var(--dur-rapide), color var(--dur-rapide); }
+.df-goal b { font: 600 16px var(--title); color: #fff; }
+.df-goal span { font: 400 12px/1.35 var(--mono); }
+.df-goal.on { background: #fff; border-color: #fff; color: #333; }
+.df-goal.on b { color: #000; }
+@media (hover: hover) { .df-goal:not(.on):hover { border-color: #fff; } }
+.df-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.df-friends { display: flex; flex-wrap: wrap; gap: 6px; }
+.df-fr { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 3px 12px 3px 3px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: none; color: var(--ink-2); font: 500 13px var(--mono); cursor: pointer; transition: border-color var(--dur-rapide), background-color var(--dur-rapide), color var(--dur-rapide); }
+.df-fr .gm-ava { width: 32px; height: 32px; border-radius: var(--r-pill); }
+.df-fr.on { background: #fff; border-color: #fff; color: #000; }
+@media (hover: hover) { .df-fr:not(.on):hover { border-color: #fff; color: #fff; } }
+.df-sum { border: 1px solid var(--gm-line); border-radius: var(--gm-r); }
+.df-sum dt { font: 500 9.5px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
+.df-sum dd { margin: 0; font: 500 12.5px/1.4 var(--mono); color: var(--ink-2); }
+.df-new .btn-primary { align-self: stretch; min-height: 48px; }
+
+/* ── Défis : fiches */
+.df-list { display: flex; flex-direction: column; gap: 10px; }
+.df-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--gm-line); border-radius: var(--gm-r); }
+.df-card.s-live { border-color: var(--gm-line-2); }
+.df-card.s-done, .df-card.s-cancelled { padding: 12px 14px; }
+.df-card header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.df-goal-t { font: 600 16px/1.25 var(--title); color: #fff; }
+.df-meta { display: inline-flex; align-items: center; gap: 10px; font: 500 10.5px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+.df-st { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.df-st.live { color: #fff; }
+.df-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.df-tags .gm-tag { margin: 0; }
+.df-ps-list { display: flex; flex-direction: column; gap: 6px; }
+.df-p { position: relative; display: grid; grid-template-columns: 28px minmax(0, auto) 1fr auto; align-items: center; gap: 10px; min-height: 36px; font: 400 13px var(--mono); color: var(--ink-2); }
+.df-p .gm-ava { width: 28px; height: 28px; border-radius: var(--r-pill); font-size: 13px; }
+.df-pn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.df-p.df-me .df-pn { color: #fff; font-weight: 600; }
+.df-p.df-out { opacity: 0.45; }
+.df-p.df-win .df-ps { color: #fff; font-weight: 600; }
+.df-p.df-win .df-pn::after { content: ' — gagnant'; color: #fff; }
+.df-ps { font: 600 14px var(--title); color: #fff; white-space: nowrap; }
+.df-bar { display: block; height: 4px; border-radius: var(--r-pill); background: var(--gm-line); overflow: hidden; }
+.df-bar::after { content: ''; display: block; height: 100%; width: 100%; border-radius: inherit; background: #fff; transform-origin: left; transform: scaleX(var(--k, 0)); transition: transform var(--dur-emphatique) var(--ease-standard); }
+.df-p:not(:has(.df-bar)) { grid-template-columns: 28px minmax(0, 1fr) auto; }
+.df-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.df-acts .btn-primary, .df-acts .btn-ghost { min-height: 40px; }
+
+@media (max-width: 860px) {
+  .df-goals { grid-template-columns: 1fr 1fr; }
+  .df-goal { padding: 10px; }
+  .df-goal b { font-size: 15px; }
+}
+
+/* ── mouvement réduit / Effets réduits */
+@media (prefers-reduced-motion: reduce) { .df-bar::after { transition: none; } }
+body.fx-reduced .df-bar::after { transition: none; }
+
+/* l'accueil des jeux est une grille de 3 : la deuxième rangée la traverse ; sa carte garde un en-tête normal
+   (pas de platine de dessin de 200 px au-dessus, réservée aux trois premières tables) */
+.gm-hub > .gm-hub-x { grid-column: 1 / -1; }
+@media (min-width: 861px) {
+  .gm-hub .gm-hub-x .gm-game { padding-top: 22px; }
+  .gm-hub .gm-hub-x .gm-game .gm-idx { position: static; }
+}

@@ -43,6 +43,7 @@ import {
   type Stake,
 } from '../core/games';
 import type { CoinTx, DuelView, EcoBackend, EcoSnapshot, LobbyView, PotCard, RoyaleView, RouletteView } from './eco';
+import { createLocalJeux, type LocalJeuxSave } from './ecoLocalJeux';
 
 /**
  * Économie + espace Jeux du MODE DÉMO : tout dans ce navigateur, avec les amis robots comme adversaires
@@ -50,7 +51,7 @@ import type { CoinTx, DuelView, EcoBackend, EcoSnapshot, LobbyView, PotCard, Roy
  * Un bouton « Tirer maintenant » lance la roulette sans attendre 10 h / 20 h.
  */
 
-export interface LocalEcoSave {
+export interface LocalEcoSave extends LocalJeuxSave {
   coins: number;
   econ: EconState;
   weekly?: WeeklyState;
@@ -304,7 +305,24 @@ export function createLocalEco(host: LocalEcoHost) {
     return r;
   };
 
+  // (V2, 11/11) défis entre amis + La Presse (ecoLocalJeux.ts)
+  const jeux = createLocalJeux({
+    save: d,
+    coins,
+    game(won) {
+      d().econ.gamesPlayed++;
+      if (won) d().econ.gamesWon++;
+      weekly({ type: 'game', won });
+    },
+    bots: () => host.bots(),
+    feed: (m) => host.feed(m),
+    emit: () => emit(),
+    watch,
+    act,
+  });
+
   const backend: EcoBackend = {
+    ...jeux.backend,
     get snapshot() {
       return snapshot();
     },
@@ -508,6 +526,7 @@ export function createLocalEco(host: LocalEcoHost) {
     onPack(kind: 'bebou' | 'theme', label: string, cards: Array<{ rarity: string; isNew: boolean }>) {
       coins(rollPackCoins(kind, Math.random), 'pack', `Ouverture — ${label}`, true);
       weekly({ type: 'pack', cards });
+      jeux.onPack(cards);
       emit();
     },
     onContract() {

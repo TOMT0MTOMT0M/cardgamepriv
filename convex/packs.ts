@@ -13,6 +13,7 @@ import { pityAfter, pityForces } from '../src/core/pity';
 import { rollPackCoins } from '../src/core/economy';
 import { addCoins, bumpWeekly } from './econLib';
 import { queueDropShot } from './dropShots';
+import { bumpChallenges } from './challenges';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -295,6 +296,8 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
     packKey: pack.packKind === 'theme' && pack.themeId ? pack.themeId : 'bebou',
     cards: pack.cards.map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: c.isNew })),
   });
+  // défis entre amis en cours (convex/challenges.ts) : seulement les boosters scellés après le départ du défi
+  await bumpChallenges(ctx, user._id, pack.createdAt, pack.cards.map((c) => ({ rarity: c.rarity, isNew: c.isNew })));
 
   return (await ctx.db.get(pack._id))!;
 }
