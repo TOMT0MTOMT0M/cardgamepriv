@@ -27,6 +27,7 @@ import type * as feed from "../feed.js";
 import type * as friends from "../friends.js";
 import type * as games from "../games.js";
 import type * as http from "../http.js";
+import type * as invRev from "../invRev.js";
 import type * as inventory from "../inventory.js";
 import type * as labFeedback from "../labFeedback.js";
 import type * as launch from "../launch.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   friends: typeof friends;
   games: typeof games;
   http: typeof http;
+  invRev: typeof invRev;
   inventory: typeof inventory;
   labFeedback: typeof labFeedback;
   launch: typeof launch;

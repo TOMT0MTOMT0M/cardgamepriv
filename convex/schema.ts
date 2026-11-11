@@ -229,10 +229,28 @@ export default defineSchema({
     foilSeed: v.number(),
     firstPulledAt: v.number(),
     lastPulledAt: v.number(),
+    /**
+     * (V2 fluidité) instant de la dernière écriture de la ligne (convex/invRev.ts) : le client suit sa collection PAR
+     * DIFFÉRENCE (`inventory.mineSince`) au lieu de la recevoir en entier à chaque booster. Absent sur les lignes jamais
+     * réécrites depuis : elles arrivent par la lecture complète du démarrage. Aucune migration nécessaire.
+     */
+    rev: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_user_card_rarity', ['userId', 'cardId', 'rarity'])
-    .index('by_card_rarity', ['cardId', 'rarity']),
+    .index('by_card_rarity', ['cardId', 'rarity'])
+    .index('by_user_rev', ['userId', 'rev']),
+
+  /**
+   * (V2 fluidité) trace d'une ligne d'inventaire supprimée (dernier exemplaire donné, vendu, misé) : le client qui suit
+   * sa collection par différence l'efface aussi. Une ligne par suppression, rien d'autre.
+   */
+  invGone: defineTable({
+    userId: v.id('users'),
+    cardId: v.string(),
+    rarity: rarityValidator,
+    rev: v.number(),
+  }).index('by_user_rev', ['userId', 'rev']),
 
   /**
    * Global sequential serial counter (#1, #2, #3...) per (cardId, rarity).

@@ -7,6 +7,7 @@ import { RARITY_LABEL, RARITY_TIER, rarityValidator, type RarityId } from './car
 import { CONTRACT_COST, contractProblem, contractTarget, rollContract } from '../src/core/contracts';
 import type { StarRarityId } from '../src/core/dropRates';
 import { lockedCards } from './trades';
+import { invRev } from './invRev';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -43,7 +44,7 @@ export const sign = mutation({
     // 1. on brûle (jamais le dernier exemplaire : vérifié par contractProblem)
     for (const it of items) {
       const r = row(it.cardId, rarity)!;
-      await ctx.db.patch(r._id, { count: r.count - it.count });
+      await ctx.db.patch(r._id, { count: r.count - it.count, rev: invRev() });
     }
 
     // 2. la carte reçue (nouvelle si possible dans le sous-thème tiré)
@@ -61,7 +62,7 @@ export const sign = mutation({
     const existing = row(card.id, target);
     const isNew = !ownedIds.has(card.id);
     if (existing) {
-      await ctx.db.patch(existing._id, { count: existing.count + 1, bestMintNumber: Math.min(existing.bestMintNumber, mintNumber), lastPulledAt: now });
+      await ctx.db.patch(existing._id, { count: existing.count + 1, bestMintNumber: Math.min(existing.bestMintNumber, mintNumber), lastPulledAt: now, rev: invRev() });
     } else {
       await ctx.db.insert('inventory', {
         userId: user._id,
@@ -72,6 +73,7 @@ export const sign = mutation({
         foilSeed: Math.floor(secureRandomFloat() * 900000) + 100000,
         firstPulledAt: now,
         lastPulledAt: now,
+        rev: invRev(),
       });
     }
 

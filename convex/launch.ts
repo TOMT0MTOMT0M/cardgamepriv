@@ -32,6 +32,7 @@ const WIPE: TableNames[] = [
   'cardMints',
   'packOpens',
   'inventory',
+  'invGone',
   'binders',
   'trades',
   'listingOffers',

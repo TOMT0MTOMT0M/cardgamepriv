@@ -7,6 +7,7 @@ import { bumpMissions } from './missions';
 import { bumpWeekly, recordFlow } from './econLib';
 import { lockedCards } from './trades';
 import { cardsValue } from '../src/core/economy';
+import { dropInv, invRev } from './invRev';
 
 /**
  * TABLEAU D'OFFRES (retours live 02, point 4) — ouvert à TOUS les joueurs (pas seulement aux amis).
@@ -74,13 +75,13 @@ async function moveCards(ctx: MutationCtx, from: Doc<'users'>, to: Doc<'users'>,
       .withIndex('by_user_card_rarity', (q) => q.eq('userId', from._id).eq('cardId', it.cardId).eq('rarity', it.rarity))
       .unique();
     if (!src || src.count < it.count) throw new ConvexError(`${from.displayName} n’a plus ${nameOf(it.cardId)}.`);
-    if (src.count === it.count) await ctx.db.delete(src._id);
-    else await ctx.db.patch(src._id, { count: src.count - it.count });
+    if (src.count === it.count) await dropInv(ctx, src);
+    else await ctx.db.patch(src._id, { count: src.count - it.count, rev: invRev() });
     const dst = await ctx.db
       .query('inventory')
       .withIndex('by_user_card_rarity', (q) => q.eq('userId', to._id).eq('cardId', it.cardId).eq('rarity', it.rarity))
       .unique();
-    if (dst) await ctx.db.patch(dst._id, { count: dst.count + it.count, lastPulledAt: now });
+    if (dst) await ctx.db.patch(dst._id, { count: dst.count + it.count, lastPulledAt: now, rev: invRev() });
     else
       await ctx.db.insert('inventory', {
         userId: to._id,
@@ -91,6 +92,7 @@ async function moveCards(ctx: MutationCtx, from: Doc<'users'>, to: Doc<'users'>,
         foilSeed: src.foilSeed,
         firstPulledAt: now,
         lastPulledAt: now,
+        rev: invRev(),
       });
   }
 }

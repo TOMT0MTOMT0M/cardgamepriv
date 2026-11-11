@@ -7,6 +7,7 @@ import { catalogCard, rarityValidator, type RarityId } from './cardsCatalog';
 import { bumpMissions } from './missions';
 import { bumpWeekly, recordFlow } from './econLib';
 import { cardsValue } from '../src/core/economy';
+import { dropInv, invRev } from './invRev';
 
 const tradeItemValidator = v.object({
   cardId: v.string(),
@@ -247,9 +248,9 @@ export const respond = mutation({
         throw new ConvexError(`${fromUser.displayName} n'a plus les cartes proposées.`);
       }
       if (src.count === item.count) {
-        await ctx.db.delete(src._id);
+        await dropInv(ctx, src);
       } else {
-        await ctx.db.patch(src._id, { count: src.count - item.count });
+        await ctx.db.patch(src._id, { count: src.count - item.count, rev: invRev() });
       }
 
       const dst = await ctx.db
@@ -259,7 +260,7 @@ export const respond = mutation({
         )
         .unique();
       if (dst) {
-        await ctx.db.patch(dst._id, { count: dst.count + item.count, lastPulledAt: now });
+        await ctx.db.patch(dst._id, { count: dst.count + item.count, lastPulledAt: now, rev: invRev() });
       } else {
         await ctx.db.insert('inventory', {
           userId: user._id,
@@ -270,6 +271,7 @@ export const respond = mutation({
           foilSeed: src.foilSeed,
           firstPulledAt: now,
           lastPulledAt: now,
+          rev: invRev(),
         });
       }
     }
@@ -286,9 +288,9 @@ export const respond = mutation({
         throw new ConvexError('Tu n’as plus les cartes demandées.');
       }
       if (src.count === item.count) {
-        await ctx.db.delete(src._id);
+        await dropInv(ctx, src);
       } else {
-        await ctx.db.patch(src._id, { count: src.count - item.count });
+        await ctx.db.patch(src._id, { count: src.count - item.count, rev: invRev() });
       }
 
       const dst = await ctx.db
@@ -298,7 +300,7 @@ export const respond = mutation({
         )
         .unique();
       if (dst) {
-        await ctx.db.patch(dst._id, { count: dst.count + item.count, lastPulledAt: now });
+        await ctx.db.patch(dst._id, { count: dst.count + item.count, lastPulledAt: now, rev: invRev() });
       } else {
         await ctx.db.insert('inventory', {
           userId: fromUser._id,
@@ -309,6 +311,7 @@ export const respond = mutation({
           foilSeed: src.foilSeed,
           firstPulledAt: now,
           lastPulledAt: now,
+          rev: invRev(),
         });
       }
     }

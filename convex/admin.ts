@@ -4,6 +4,7 @@ import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS, type RarityId } from './cardsCatalog';
 import { applyRegen } from '../src/core/packRegen';
 import { addCoins } from './econLib';
+import { invRev } from './invRev';
 
 /**
  * OUTILS DE TEST (admin) — fonctions INTERNES : impossibles à appeler depuis le site, seulement depuis la ligne de
@@ -47,7 +48,7 @@ export async function give(ctx: MutationCtx, userId: Id<'users'>, cardId: string
     .query('inventory')
     .withIndex('by_user_card_rarity', (q) => q.eq('userId', userId).eq('cardId', cardId).eq('rarity', rarity))
     .unique();
-  if (inv) await ctx.db.patch(inv._id, { count: inv.count + count, bestMintNumber: Math.min(inv.bestMintNumber, first), lastPulledAt: now });
+  if (inv) await ctx.db.patch(inv._id, { count: inv.count + count, bestMintNumber: Math.min(inv.bestMintNumber, first), lastPulledAt: now, rev: invRev() });
   else
     await ctx.db.insert('inventory', {
       userId,
@@ -58,6 +59,7 @@ export async function give(ctx: MutationCtx, userId: Id<'users'>, cardId: string
       foilSeed: Math.floor(rand() * 900000) + 100000,
       firstPulledAt: now,
       lastPulledAt: now,
+      rev: invRev(),
     });
 }
 
