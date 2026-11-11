@@ -1,7 +1,7 @@
 /**
  * SPORT PACK (thème « sport », sport + esport) — données pures, AUCUN import (partagé avec convex/cardsCatalog.ts).
  * GÉNÉRÉ par scripts/make-sport.py (ne pas éditer à la main) depuis Tri-etoiles-sport.xlsx (SPEC-THEME-SPORT v5.1, « Étoiles finales »).
- * 7448 cartes · 114 sous-thèmes (libellé imprimé en grand sur la carte), regroupés à l'affichage en 10.
+ * 7493 cartes · 114 sous-thèmes (libellé imprimé en grand sur la carte), regroupés à l'affichage en 10.
  * Numéro = « N° » de l'Excel, sur 7 708. Ids « spt-… » figés dans scripts/data/sport-ids.json (ne JAMAIS les changer).
  */
 export type SportRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
@@ -30,7 +30,7 @@ export interface SportEntry {
   label: string;
 }
 
-export const SPORT_SIZE = 7986;
+export const SPORT_SIZE = 8031;
 export const SPORT_GROUPS: Record<string, string> = {
   foot: "Football",
   esport: "Esport",
@@ -696,6 +696,51 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [1, 6589, "spt-teji-savanier", "Téji Savanier", 'c', "teji-savanier.jpg", "c", 2],
   [1, 6591, "spt-vincent-guerin", "Vincent Guérin", 'c', "vincent-guerin.jpg", "c", 2],
   [1, 6592, "spt-eric-di-meco", "Éric Di Meco", 'c', "eric-di-meco.jpg", "c", 2],
+  [1, 7987, "spt-ferran-torres", "Ferran Torres", 'r', "ferran-torres.jpg", "c", 2],
+  [1, 7988, "spt-khvicha-kvaratskhelia", "Khvicha Kvaratskhelia", 'r', "khvicha-kvaratskhelia.jpg", "c", 2],
+  [1, 7989, "spt-ansu-fati", "Ansu Fati", 'r', "ansu-fati.jpg", "c", 2],
+  [1, 7990, "spt-eric-dier", "Eric Dier", 'r', "eric-dier.jpg", "c", 2],
+  [1, 7991, "spt-lucas-hernandez", "Lucas Hernandez", 'r', "lucas-hernandez.jpg", "c", 2],
+  [1, 7992, "spt-desire-doue", "Désiré Doué", 'r', "desire-doue.jpg", "c", 2],
+  [1, 7993, "spt-lucas-digne", "Lucas Digne", 'r', "lucas-digne.jpg", "c", 2],
+  [1, 7994, "spt-denis-zakaria", "Denis Zakaria", 'u', "denis-zakaria.jpg", "c", 2],
+  [1, 7995, "spt-joao-neves", "João Neves", 'u', "joao-neves.jpg", "c", 2],
+  [1, 7996, "spt-folarin-balogun", "Folarin Balogun", 'u', "folarin-balogun.jpg", "c", 2],
+  [1, 7997, "spt-pierre-hojbjerg", "Pierre Højbjerg", 'u', "pierre-hojbjerg.jpg", "c", 2],
+  [1, 7998, "spt-timothy-weah", "Timothy Weah", 'u', "timothy-weah.jpg", "c", 2],
+  [1, 7999, "spt-emerson-palmieri-dos-santos", "Emerson Palmieri dos Santos", 'u', "emerson-palmieri-dos-santos.jpg", "c", 2],
+  [1, 8000, "spt-keito-nakamura", "Keito Nakamura", 'u', "keito-nakamura.jpg", "c", 2],
+  [1, 8001, "spt-kyogo-furuhashi", "Kyogo Furuhashi", 'u', "kyogo-furuhashi.jpg", "c", 2],
+  [1, 8002, "spt-nayef-aguerd", "Nayef Aguerd", 'u', "nayef-aguerd.jpg", "c", 2],
+  [1, 8003, "spt-thilo-kehrer", "Thilo Kehrer", 'u', "thilo-kehrer.jpg", "c", 2],
+  [1, 8004, "spt-lukas-hradecky", "Lukáš Hrádecký", 'u', "lukas-hradecky.jpg", "c", 2],
+  [1, 8005, "spt-musa-al-taamari", "Musa Al-Taamari", 'u', "musa-al-taamari.jpg", "c", 2],
+  [1, 8006, "spt-matvey-safonov", "Matvey Safonov", 'c', "matvey-safonov.jpg", "c", 2],
+  [1, 8007, "spt-willian-pacho", "Willian Pacho", 'c', "willian-pacho.jpg", "c", 2],
+  [1, 8008, "spt-illya-zabarnyi", "Illya Zabarnyi", 'c', "illya-zabarnyi.jpg", "c", 2],
+  [1, 8009, "spt-tanguy-ndombele", "Tanguy Ndombele", 'c', "tanguy-ndombele.jpg", "c", 2],
+  [1, 8010, "spt-lois-openda", "Loïs Openda", 'c', "lois-openda.jpg", "c", 2],
+  [1, 8011, "spt-brice-samba", "Brice Samba", 'c', "brice-samba.jpg", "c", 2],
+  [1, 8012, "spt-facundo-medina", "Facundo Medina", 'c', "facundo-medina.jpg", "c", 2],
+  [1, 8013, "spt-mohammed-salisu", "Mohammed Salisu", 'c', "mohammed-salisu.jpg", "c", 2],
+  [1, 8014, "spt-maghnes-akliouche", "Maghnes Akliouche", 'c', "maghnes-akliouche.jpg", "c", 2],
+  [1, 8015, "spt-przemyslaw-frankowski", "Przemysław Frankowski", 'c', "przemyslaw-frankowski.jpg", "c", 2],
+  [1, 8016, "spt-boulaye-dia", "Boulaye Dia", 'c', "boulaye-dia.jpg", "c", 2],
+  [1, 8017, "spt-lucas-beraldo", "Lucas Beraldo", 'c', "lucas-beraldo.jpg", "c", 2],
+  [1, 8018, "spt-jonathan-clauss", "Jonathan Clauss", 'c', "jonathan-clauss.jpg", "c", 2],
+  [1, 8019, "spt-ismael-kone", "Ismaël Koné", 'c', "ismael-kone.jpg", "c", 2],
+  [1, 8020, "spt-mark-mckenzie", "Mark McKenzie", 'c', "mark-mckenzie.jpg", "c", 2],
+  [1, 8021, "spt-pavel-sulc", "Pavel Šulc", 'c', "pavel-sulc.jpg", "c", 2],
+  [1, 8022, "spt-senny-mayulu", "Senny Mayulu", 'c', "senny-mayulu.jpg", "c", 2],
+  [1, 8023, "spt-derek-cornelius", "Derek Cornelius", 'c', "derek-cornelius.jpg", "c", 2],
+  [1, 8024, "spt-morgan-sanson", "Morgan Sanson", 'c', "morgan-sanson.jpg", "c", 2],
+  [1, 8025, "spt-lucas-chevalier", "Lucas Chevalier", 'c', "lucas-chevalier.jpg", "c", 2],
+  [1, 8026, "spt-mohammed-amoura", "Mohammed Amoura", 'c', "mohammed-amoura.jpg", "c", 2],
+  [1, 8027, "spt-moise-bombito", "Moïse Bombito", 'c', "moise-bombito.jpg", "c", 2],
+  [1, 8028, "spt-mika-godts", "Mika Godts", 'c', "mika-godts.jpg", "c", 2],
+  [1, 8029, "spt-ali-abdi", "Ali Abdi", 'c', "ali-abdi.jpg", "c", 2],
+  [1, 8030, "spt-dominik-greif", "Dominik Greif", 'c', "dominik-greif.jpg", "c", 2],
+  [1, 8031, "spt-vincent-sierro", "Vincent Sierro", 'c', "vincent-sierro.jpg", "c", 2],
   [2, 143, "spt-andres-iniesta", "Andrés Iniesta", 'm', "andres-iniesta.jpg", "c", 2],
   [2, 144, "spt-antoine-griezmann", "Antoine Griezmann", 'm', "antoine-griezmann.jpg", "c", 2],
   [2, 145, "spt-diego-maradona", "Diego Maradona", 'm', "diego-maradona.jpg", "c", 2],

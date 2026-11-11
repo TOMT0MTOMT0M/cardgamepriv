@@ -35,6 +35,15 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '11 nov.', title: 'Pop Culture et Sport : 3 024 nouvelles cartes', tag: 'nouveau',
+        points: [
+          'Animés : 1 843 nouveaux personnages dans les séries déjà présentes (Toji Fushiguro, Himiko Toga, Bokuto, Akaza, Escanor, Echidna, Dabi…), de 1★ à 4★.',
+          'Musique : 1 136 nouvelles chansons des artistes déjà dans le jeu, de 1★ à 4★.',
+          'Sport : 45 joueurs de Ligue 1 (Kvaratskhelia, Désiré Doué, João Neves, Lucas Hernandez…).',
+          'Les 5★ et 6★ ne changent pas : la collection est juste plus fournie.',
+        ],
+      },
+      {
         date: '11 nov.', title: 'Échanges repensés, booster du moment, saisons, défis et La Presse', tag: 'nouveau',
         points: [
           'Échanges : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies : on demande en un toucher, l’autre accepte, choisit une autre carte ou refuse. Ton bouton « Protéger » garde une carte hors des propositions.',
