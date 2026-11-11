@@ -35,8 +35,9 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
-        date: '11 nov.', title: 'Nouveau tri des étoiles : World et Sport', tag: 'amélioré',
+        date: '11 nov.', title: 'Nouveau tri des étoiles : Pop Culture, World et Sport', tag: 'amélioré',
         points: [
+          'Pop Culture : 530 cartes montent en étoiles, dont 335 qui passent en 6★ (Leonardo DiCaprio, Morgan Freeman, Louis de Funès, Bruce Lee, Astérix et Obélix, les capitaines de Bleach, Blue Lock…).',
           'World : 75 cartes changent d’étoiles (Paris, Heineken et la Nissan GT-R passent en 6★, par exemple).',
           'Sport : 287 cartes changent d’étoiles (Ousmane Dembélé, T1 et Rey Mysterio passent en 6★). Antoine Dupont, Tadej Pogačar, Naoya Inoue et Hikaru Nakamura quittent les 6★.',
           'Les cartes déjà tirées suivent toutes seules : collection, vitrine, échanges et annonces en cours.',
