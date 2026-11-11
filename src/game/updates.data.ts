@@ -35,6 +35,14 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '11 nov.', title: '37 cartes 5★ et 6★ avec une meilleure image', tag: 'corrigé',
+        points: [
+          'Nouvelles images pour Eminem, Bruno Mars, Chris Brown, Charles Aznavour, Allumer le feu, Tchikita, Mon fils ma bataille, Iron Man, Hulk, Han Solo, Yoda, le Joker, Ron Weasley, Michael Scofield, Fernand Naudin, Jess Day et Jayce.',
+          'Animés : Ichigo, Kisuke Urahara, Eren, Giyuu, Shikamaru, Ippo, Aquamarine, Yuno Gasai, Exodia et le Dragon Blanc aux Yeux Bleus.',
+          'Sport : Zidane, Deschamps, Alex Ferguson, Kobe Bryant, Evander Holyfield, Bugha, Footix et WrestleMania. Et aussi Ratchet et les Maki.',
+        ],
+      },
+      {
         date: '11 nov.', title: 'Sport Pack : 278 nouvelles cartes Sport & Esport', tag: 'nouveau',
         points: [
           'Esport : nouveaux joueurs pros sur League of Legends (anciens et nouveaux), Counter-Strike, Valorant, Call of Duty, Apex Legends (Zer0 6★, Reps, Yulariman et Blinkzr 5★) et Fortnite.',
