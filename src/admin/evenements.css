@@ -10,11 +10,15 @@
 .ev-st-done { opacity: 0.6; }
 
 .sheet-in.ev-sheet { width: min(920px, 100%); }
+.ev-sheet .sheet-head { margin-bottom: 14px; }
 .ev-form { display: grid; gap: 12px; }
 .ev-form label { display: grid; gap: 4px; font-size: 13px; }
-.ev-cols { display: grid; gap: 16px; }
+.ev-cols { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.ev-form input:not([type=color]):not([type=checkbox]) { width: 100%; min-width: 0; box-sizing: border-box; }
+.ev-form .row { flex-wrap: wrap; }
+.ev-form .row label { flex: 1 1 150px; min-width: 0; }
 @media (min-width: 900px) { .ev-cols { grid-template-columns: minmax(0, 1fr) 300px; } }
-.ev-fields { display: grid; gap: 12px; align-content: start; }
+.ev-fields { display: grid; gap: 12px; align-content: start; min-width: 0; }
 .ev-colors { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .ev-c { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; background: var(--c); cursor: pointer; padding: 0; box-shadow: inset 0 0 0 2px #000; }
 .ev-c.on { border-color: #fff; }
