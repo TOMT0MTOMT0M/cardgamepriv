@@ -4323,7 +4323,7 @@ const RAW: Array<[number, string, string, keyof typeof R, number, string, '' | '
   [24, "miam-ribs-barbecue", "Ribs barbecue", 'l', 0, "plats-du-monde--ribs-barbecue.jpg", "c", "Gastronomie mondiale"],
   [24, "miam-tapas", "Tapas", 'l', 0, "plats-du-monde--tapas.jpg", "c", "Gastronomie mondiale"],
   [24, "miam-butter-chicken", "Butter chicken", 'l', 0, "plats-du-monde--butter-chicken.jpg", "c", "Gastronomie asiatique"],
-  [24, "miam-maki", "Maki", 'l', 0, "plats-du-monde--maki.jpg", "c", "Gastronomie asiatique"],
+  [24, "miam-maki", "Maki", 'l', 0, "plats-du-monde--maki-r2611110028.jpg", "c", "Gastronomie asiatique"],
   [24, "miam-naan", "Naan", 'l', 0, "plats-du-monde--naan.jpg", "c", "Gastronomie asiatique"],
   [24, "miam-nems", "Nems", 'l', 0, "plats-du-monde--nems.jpg", "c", "Gastronomie asiatique"],
   [24, "miam-pho", "Phở", 'l', 0, "plats-du-monde--pho.jpg", "c", "Gastronomie asiatique"],

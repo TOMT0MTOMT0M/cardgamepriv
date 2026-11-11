@@ -1909,7 +1909,7 @@ const RAW: Array<[number, string, string, keyof typeof K, keyof typeof R, number
   [106, "wamai", "Wamai", 'p', 'c', 0, "rainbow-six--wamai.png", "i"],
   [106, "ying", "Ying", 'p', 'c', 0, "rainbow-six--ying.png", "i"],
   [107, "clank", "Clank", 'p', 'm', 0, "ratchet-and-clank--clank.png", "i"],
-  [107, "ratchet", "Ratchet", 'p', 'm', 0, "ratchet-and-clank--ratchet.png", "i"],
+  [107, "ratchet", "Ratchet", 'p', 'm', 0, "ratchet-and-clank--ratchet-r2611110028.png", "i"],
   [107, "dr-nefarious", "Dr. Nefarious", 'p', 'r', 0, "ratchet-and-clank--dr-nefarious.jpg", "c"],
   [107, "qwark", "Qwark", 'p', 'r', 0, "ratchet-and-clank--qwark.jpg", "c"],
   [107, "ratchet-and-clank", "Ratchet & Clank", 'j', 'r', 2002, "ratchet-and-clank--ratchet-and-clank.jpg", "c"],
