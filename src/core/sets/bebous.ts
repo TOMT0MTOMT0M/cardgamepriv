@@ -20,14 +20,17 @@ export interface BebouEntry {
   slug: string;
   /** surnom affiché sur la carte */
   nickname: string;
+  /** fichier photo dans `BEBOUS_INFO.artDir` (défaut : `<slug>.png`) — les vraies photos sont en JPEG */
+  file?: string;
 }
 
 export const BEBOUS_INFO = { id: 'bebous', label: 'Les Bébous (secret)', code: 'BÉBOUS', size: 8, artDir: 'art/bebous' } as const;
 
-// [num, slug, surnom] — surnoms provisoires, à remplacer par les vrais
-const RAW: Array<[number, string, string]> = [
-  [1, 'bebou-1', 'Bébou n°1'],
-  [2, 'bebou-2', 'Bébou n°2'],
+// [num, slug, surnom, fichier?] — surnoms provisoires, à remplacer par les vrais
+// (11/11) les deux premières vraies cartes : Magizz et Asluck (photos de Tom)
+const RAW: Array<[number, string, string, string?]> = [
+  [1, 'bebou-1', 'Magizz', 'bebou-1.jpg'],
+  [2, 'bebou-2', 'Asluck', 'bebou-2.jpg'],
   [3, 'bebou-3', 'Bébou n°3'],
   [4, 'bebou-4', 'Bébou n°4'],
   [5, 'bebou-5', 'Bébou n°5'],
@@ -36,13 +39,13 @@ const RAW: Array<[number, string, string]> = [
   [8, 'bebou-8', 'Bébou n°8'],
 ];
 
-export const BEBOUS: BebouEntry[] = RAW.map(([num, slug, nickname]) => ({ num, slug, nickname }));
+export const BEBOUS: BebouEntry[] = RAW.map(([num, slug, nickname, file]) => ({ num, slug, nickname, ...(file ? { file } : {}) }));
 
 /** Identifiant de carte stable. */
 export const bebouCardId = (e: BebouEntry) => `bebou-${e.slug.replace(/^bebou-/, '')}`;
 
 /** Nom du fichier photo (relatif à `BEBOUS_INFO.artDir`). */
-export const bebouFile = (e: BebouEntry) => `${e.slug}.png`;
+export const bebouFile = (e: BebouEntry) => e.file ?? `${e.slug}.png`;
 
 // ═══════════════════════════════════════════════════════════════════ KCDQ
 /**
@@ -62,14 +65,24 @@ export interface KcdqEntry {
   file: string;
   /** preset « double face » (07/11) : seconde photo, visible quand on penche la carte sur le côté (core/cardMaterial.ts) */
   file2?: string;
+  /**
+   * (11/11, Teto) carte HORIZONTALE : photos au format paysage, carte peinte et posée à l'horizontale (cardData
+   * `landscape`). `focusX` : centre du recadrage dans la largeur de la photo (0 = bord gauche, 1 = bord droit).
+   */
+  landscape?: { focusX: number };
+  /** (11/11, Teto) les deux photos sous un revêtement LENTICULAIRE (carte « flip » à l'ancienne, core/lenticular.ts) */
+  lenticular?: boolean;
 }
 
-const KCDQ_RAW: Array<[number, string, string, string, string?]> = [
+type KcdqOpts = Pick<KcdqEntry, 'landscape' | 'lenticular'>;
+const KCDQ_RAW: Array<[number, string, string, string, string?, KcdqOpts?]> = [
   [1, 'enzo', 'Enzo', 'kcdq-enzo.jpg'],
-  [2, 'teto', 'Teto', 'kcdq-teto.jpg', 'kcdq-teto-2.jpg'],
+  // (11/11) Teto : exception, carte horizontale et lenticulaire — de face (ou penchée à gauche) l'image 1, penchée à
+  // droite l'image 2 ; les deux photos sont prises du même point de vue (même pièce) → le basculement « tient »
+  [2, 'teto', 'Teto', 'kcdq-teto.jpg', 'kcdq-teto-2.jpg', { landscape: { focusX: 0.62 }, lenticular: true }],
 ];
 
-export const KCDQ: KcdqEntry[] = KCDQ_RAW.map(([num, slug, name, file, file2]) => ({ num, slug, name, file, ...(file2 ? { file2 } : {}) }));
+export const KCDQ: KcdqEntry[] = KCDQ_RAW.map(([num, slug, name, file, file2, opts]) => ({ num, slug, name, file, ...(file2 ? { file2 } : {}), ...(opts ?? {}) }));
 
 /** Identifiant de carte stable. */
 export const kcdqCardId = (e: KcdqEntry) => `kcdq-${e.slug}`;

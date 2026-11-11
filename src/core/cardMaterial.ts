@@ -22,6 +22,7 @@ import {
 import { CARD } from './cardModel';
 import type { N } from './tsl';
 import type { CardArt, BackArt } from './art';
+import { lenticularLens, type LensNodes } from './lenticular';
 import { FRAME_WIN as WIN, BASE_W, BASE_H } from './art';
 
 
@@ -71,6 +72,8 @@ export interface CardLayers {
   uvAt: (depth: number | N) => N;
   /** ombre portée du cadre sur l'illustration (0 = ombre, 1 = libre) */
   ao: N;
+  /** (11/11) revêtement lenticulaire (carte `art.lenticular`) : nervures, pour le vernis du matériau */
+  lens?: LensNodes;
 }
 
 /**
@@ -108,7 +111,15 @@ export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, u
   // vers le mip 0 pour 0 ms (`textureSampleBias` WGSL / `texture(s, uv, bias)` GLSL). Pas sur les masques (relief).
   let bg: N = texture(art.bg, uvAt(depths.bg)).bias(MIP_BIAS);
   let sj: N = texture(art.subject, uvAt(depths.subject)).bias(MIP_BIAS);
-  if (art.bg2 && art.subject2) {
+  let lens: LensNodes | undefined;
+  if (art.lenticular && art.bg2 && art.subject2) {
+    // (11/11) LENTICULAIRE : chaque nervure montre la bande de l'image 1 ou de l'image 2 selon l'angle (core/lenticular)
+    lens = lenticularLens(V, uvNode);
+    const L = lens;
+    bg = mix(texture(art.bg, L.uvAt(uvAt(depths.bg))).bias(MIP_BIAS), texture(art.bg2, L.uvAt(uvAt(depths.bg))).bias(MIP_BIAS), L.t);
+    bg = vec4(bg.rgb.mul(L.shade), bg.a);
+    sj = mix(sj, texture(art.subject2, L.uvAt(uvAt(depths.subject))).bias(MIP_BIAS), L.t);
+  } else if (art.bg2 && art.subject2) {
     // (double face) seconde illustration mélangée selon l'inclinaison — un graphe à part pour ces cartes seulement
     const t = doubleFaceMix(V, uvNode);
     bg = mix(bg, texture(art.bg2, uvAt(depths.bg)).bias(MIP_BIAS), t);
@@ -133,7 +144,7 @@ export function cardLayers(art: CardArt, depths: LayerDepths = DEFAULT_DEPTHS, u
   col = mix(col, fg.rgb, fg.a);
   const win = fr.a.oneMinus();
   col = mix(col, fr.rgb, fr.a);
-  return { color: col, window: win, frame: fr, bg, subject: sj, fg, masks, fx, view: V, uvAt, ao };
+  return { color: col, window: win, frame: fr, bg, subject: sj, fg, masks, fx, view: V, uvAt, ao, ...(lens ? { lens } : {}) };
 }
 
 /** Matériau de tranche : carton blanc avec âme sombre (comme les vraies cartes). */

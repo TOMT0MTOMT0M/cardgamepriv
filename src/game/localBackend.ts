@@ -574,7 +574,7 @@ export function createLocalBackend(): GameBackend {
     const forced = forceCard ? catalogEntry(forceCard) : null;
     if (forced && cards.length && cards.some((c) => c.themeId === forced.themeId)) {
       forceCard = null;
-      cards[Math.min(2, cards.length - 1)] = { cardId: forced.id, cardName: forced.name, rarity: 'mythic', mintNumber: 1, isNew: true, themeId: forced.themeId };
+      cards[Math.min(2, cards.length - 1)] = { cardId: forced.id, cardName: forced.name, rarity: forced.rarity === 'secret' ? 'secret' : 'mythic', mintNumber: 1, isNew: true, themeId: forced.themeId };
     }
     const maxRarity = cards.reduce<RarityId>((m, c) => (RANK[c.rarity] > RANK[m] ? c.rarity : m), 'common');
     save.pity = pityAfter(save.pity ?? 0, cards.map((c) => c.rarity));
