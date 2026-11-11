@@ -33,7 +33,7 @@ UA = 'BebouCard/1.0 (https://cardgamepriv.pages.dev; private card game, one-time
 R = {1: 'c', 2: 'u', 3: 'r', 4: 'e', 5: 'l', 6: 'm'}
 BASE = 7708
 # (11/11) Patch-sport-v2-tri.xlsx : nouveau tri des 7 708 cartes de base (« Tri-etoiles-sport_2.xlsx ») — 293 cartes changent
-# d'étoiles ; les 4 promotions 6★ de Patch-sport-v1 (Dupont, Inoue, Nakamura, Pogačar) sont gardées. Cartes déjà tombées :
+# d'étoiles ; les 4 promotions 6★ de Patch-sport-v1 (Dupont, Inoue, Nakamura, Pogačar) suivent aussi le nouveau tri. Cartes déjà tombées :
 # migrations:resyncRarities + resyncRaritiesOpen à la mise en ligne.
 PATCHES = ['Patch-sport-v1.xlsx', 'Patch-sport-v2-tri.xlsx']
 TOTAL = 7986

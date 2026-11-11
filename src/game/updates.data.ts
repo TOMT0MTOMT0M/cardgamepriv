@@ -39,7 +39,7 @@ export const UPDATES: UpdateMonth[] = [
         points: [
           'Dans la visionneuse, les skins Counter-Strike 6★ apparaissent en 3D dans la carte : la caméra zoome, puis le doigt, la souris ou le gyroscope font tourner l’arme.',
           'Les 6★ Berserk ont leur propre animation, l’Éclipse, à l’ouverture comme dans la visionneuse.',
-          'Nouveau tri des étoiles pour World (75 cartes) et Sport (283 cartes) : les cartes déjà tirées, en vitrine, en échange ou sur le Marché changent aussi.',
+          'Nouveau tri des étoiles pour World (75 cartes) et Sport (287 cartes, dont Dupont, Pogačar, Inoue et Nakamura qui quittent les 6★) : les cartes déjà tirées, en vitrine, en échange ou sur le Marché changent aussi.',
         ],
       },
       {
