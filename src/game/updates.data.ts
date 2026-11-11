@@ -35,6 +35,14 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '11 nov.', title: 'Skins CS 6★ en 3D, Éclipse pour Berserk, nouveau tri World et Sport', tag: 'nouveau',
+        points: [
+          'Dans la visionneuse, les skins Counter-Strike 6★ apparaissent en 3D dans la carte : la caméra zoome, puis le doigt, la souris ou le gyroscope font tourner l’arme.',
+          'Les 6★ Berserk ont leur propre animation, l’Éclipse, à l’ouverture comme dans la visionneuse.',
+          'Nouveau tri des étoiles pour World (75 cartes) et Sport (283 cartes) : les cartes déjà tirées, en vitrine, en échange ou sur le Marché changent aussi.',
+        ],
+      },
+      {
         date: '11 nov.', title: '37 cartes 5★ et 6★ avec une meilleure image', tag: 'corrigé',
         points: [
           'Nouvelles images pour Eminem, Bruno Mars, Chris Brown, Charles Aznavour, Allumer le feu, Tchikita, Mon fils ma bataille, Iron Man, Hulk, Han Solo, Yoda, le Joker, Ron Weasley, Michael Scofield, Fernand Naudin, Jess Day et Jayce.',
