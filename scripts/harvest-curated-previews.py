@@ -43,7 +43,7 @@ def deezer(t, a):
         time.sleep(0.4)
     return False
 budget = time.time() + float(sys.argv[1] if len(sys.argv) > 1 else 160)
-for kind in ('cards', 'anime'):
+for kind in ('cards', 'anime', 'ambience'):
     for key, (t, a) in SRC[kind].items():
         k = f'{kind}:{key}'
         if k in res or time.time() > budget: continue
@@ -53,5 +53,5 @@ for kind in ('cards', 'anime'):
         res[k] = p
         json.dump(res, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
         print(k, '→', (p or {}).get('track'), '—', (p or {}).get('artist'), '(deezer)' if p and 'deezer' in p else '')
-total = sum(len(SRC[k]) for k in ('cards', 'anime'))
+total = sum(len(SRC[k]) for k in ('cards', 'anime', 'ambience'))
 print('fait', len(res), '/', total, 'trouvés', sum(1 for v in res.values() if v))

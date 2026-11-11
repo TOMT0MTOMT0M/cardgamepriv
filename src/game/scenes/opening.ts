@@ -32,6 +32,7 @@ import {
 } from 'three/webgpu';
 import {
   abs,
+  atan,
   attribute,
   clamp as tclamp,
   floor,
@@ -49,6 +50,7 @@ import {
   mx_fractal_noise_float,
   normalLocal,
   pmremTexture,
+  positionGeometry,
   positionLocal,
   screenSize,
   screenUV,
@@ -85,8 +87,9 @@ import { onFxReducedChange } from '../../core/fxPref';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { loadTearBakes, loadedBakes, TearBakePlayer } from '../../core/tearBake';
-import { DUR, MYTHIC_SILENCE, MYTHIC_TURN, STAGGER, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
-import type { N } from '../../core/tsl';
+import { DUR, ECLIPSE, MYTHIC_SILENCE, MYTHIC_TURN, STAGGER, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
+import { fbmTexel, type N } from '../../core/tsl';
+import { isEclipseCard } from '../eclipse';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
 import type { PackCard, SealedPack } from '../backend';
 
@@ -306,6 +309,12 @@ const LEGEND_ADMIRE_MS = 1100;
  * tous les boosters (c'était la couleur de la meilleure carte : on devinait une rouge ou une 6★ avant de l'ouvrir).
  */
 const NEUTRAL_EMBER = '#e8e2d6';
+/**
+ * AMBIANCE « ÉCLIPSE » (Berserk 5★ / 6★ — game/eclipse.ts). Palette relevée sur les planches : noir, bordeaux,
+ * cramoisi, braise, couronne. `ember` / `aura` : la fuite de lumière et le halo du sachet fermé (temps 1) ;
+ * `horizon`, `moonY` : fraction de la hauteur d'écran (0 = haut) ; `dark` : assombrissement fermé / ouvert / effets réduits.
+ */
+const ECL = { ember: '#e0301a', aura: '#9c0c0c', horizon: 0.6, moonY: 0.26, dark: { sealed: 0.5, open: 0.14, low: 0.3 } };
 /**
  * RETOURNEMENT « charnière » (demande de Tom, 4 nov.) : la carte ne pivote plus sur son axe médian (effet « vallée de
  * l'étrange ») mais autour de sa TRANCHE DROITE, comme une vraie carte qu'on retourne : le bord gauche se soulève vers
@@ -686,7 +695,17 @@ export function createOpeningScene(): OpeningScene {
     soon: uniform(0),
     /** poussières lumineuses de la vitrine (0 pendant l'ouverture) */
     dust: uniform(0),
+    /** ambiance « Éclipse » : présence du ciel (0..1), onde sur le lac (0 → 1, 1 = éteinte), rayon du soleil noir (hauteurs d'écran) */
+    ecl: uniform(0),
+    eclRip: uniform(1),
+    eclR: uniform(0.15),
   };
+  /** ambiance « Éclipse » : valeurs animées (aura du sachet fermé, assombrissement, ciel, onde) — voir eclipseBegin */
+  const E = { aura: 0, dark: 0, sky: 0, rip: 1 };
+  let eclipse = false;
+  let eclRisen = false;
+  let eclMesh: Mesh | null = null;
+  const eclAura = new Color(ECL.aura);
   let soonT = 0;
   /**
    * (retours live 02, option « Effets réduits » du lot K, core/fxPref.ts) : aura / halo, éclair plein écran, aberration,
@@ -695,6 +714,44 @@ export function createOpeningScene(): OpeningScene {
   let fxLow = false;
   const FXK = { glow: 0.45, flash: 0.35, shake: 0.3, parts: 0.35, flare: 0.5 };
   const fxk = (k: keyof typeof FXK) => (fxLow ? FXK[k] : 1);
+
+  // ───────────────────────────────────────────── ambiance « Éclipse » (Berserk 5★ / 6★)
+  /**
+   * Début d'un booster. Avec une carte de l'Éclipse : TEMPS 1 — une fois le sachet posé, sa fuite de lumière et son halo
+   * virent lentement au cramoisi et la scène s'assombrit (spoil assumé, décision de Tom du 10/11). Sans : tout ce qui
+   * restait d'une Éclipse précédente s'efface. Suite d'un gros booster (pas de sachet) : le ciel monte tout de suite.
+   */
+  function eclipseBegin(on: boolean, continued: boolean) {
+    gsap.killTweensOf(E);
+    eclipse = on;
+    eclRisen = false;
+    if (!on) {
+      gsap.to(E, { aura: 0, dark: 0, sky: 0, duration: ECLIPSE.coucher, ease: EASE.glide });
+      return;
+    }
+    U.ember.value.set(ECL.ember);
+    if (continued) return; // phase « busy » : la boucle lève le ciel à l'image suivante
+    gsap.to(E, { sky: 0, duration: ECLIPSE.coucher, ease: EASE.glide });
+    gsap.to(E, { aura: 1, dark: ECL.dark.sealed, duration: ECLIPSE.teinte, delay: DUR.dramatique / 1000, ease: EASE.glide });
+  }
+  /** TEMPS 2 — sachet descellé : le halo s'éteint, le soleil noir et le lac montent lentement (effets réduits : seulement la pénombre). */
+  function eclipseRise() {
+    eclRisen = true;
+    gsap.killTweensOf(E);
+    gsap.to(E, { aura: 0, duration: ECLIPSE.coucher, ease: EASE.glide });
+    gsap.to(E, { dark: fxLow ? ECL.dark.low : ECL.dark.open, sky: fxLow ? 0 : 1, duration: ECLIPSE.lever, ease: EASE.glide });
+  }
+  /** une carte vient de se poser face visible : un cercle court sur le lac */
+  function eclipseRipple() {
+    if (!eclipse || fxLow) return;
+    gsap.killTweensOf(E, 'rip');
+    gsap.fromTo(E, { rip: 0 }, { rip: 1, duration: ECLIPSE.onde, ease: EASE.glide });
+  }
+  function eclipseReset() {
+    gsap.killTweensOf(E);
+    eclipse = eclRisen = false;
+    Object.assign(E, { aura: 0, dark: 0, sky: 0, rip: 1 });
+  }
 
   // ───────────────────────────────────────────── booster
   /**
@@ -1299,6 +1356,8 @@ export function createOpeningScene(): OpeningScene {
     // (retours live 02, anti-spoil) braise et fuite de lumière : une seule couleur pour tous les boosters (avant : la
     // couleur de la meilleure carte, qui annonçait une rouge ou une 6★ dès que le booster était posé)
     U.ember.value.set(NEUTRAL_EMBER);
+    // … sauf l'Éclipse (Berserk 5★ / 6★) : braise cramoisie, pénombre — spoil assumé (décision de Tom, 10/11)
+    eclipseBegin(p.cards.some(isEclipseCard), !!o.continued);
     B.leak = 0;
     B.follow = 1;
     sealedT = 0;
@@ -1526,6 +1585,7 @@ export function createOpeningScene(): OpeningScene {
       }
       haptics.pulse(beat.haptic);
       events.onCard?.(cursor, s.data, order.length);
+      eclipseRipple();
       // hit-stop : 60 / 90 / 120 ms de gel (4★ / 5★ / 6★), jamais en défilement accéléré
       if (beat.hitStop > 0 && !CALM && curBase <= 1) {
         main.pause();
@@ -1893,6 +1953,7 @@ export function createOpeningScene(): OpeningScene {
       }
       haptics.pulse(beat.haptic);
       events.onCard?.(cursor, s.data, order.length);
+      eclipseRipple();
     }, [], pay);
     if (mythic) main.to(s.U.rim, { value: 0, duration: 0.5 }, pay);
     else if (T >= 2) main.fromTo(s.U.rim, { value: 0.6 + T * 0.35 }, { value: 0, duration: 0.8, ease: EASE.glide, immediateRender: false }, pay);
@@ -2062,6 +2123,7 @@ export function createOpeningScene(): OpeningScene {
 
   function reset() {
     killAll();
+    eclipseReset();
     if (ctx) ctx.sfx.transpose = 0;
     pack = null;
     prepared = null;
@@ -2128,7 +2190,7 @@ export function createOpeningScene(): OpeningScene {
     },
     /** diagnostic (tests) : état de la pile */
     debug() {
-      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
+      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, eclipse: { on: eclipse, aura: +E.aura.toFixed(2), dark: +E.dark.toFixed(2), sky: +E.sky.toFixed(2), rip: +E.rip.toFixed(2) }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
     },
     setBooster,
     open,
@@ -2271,6 +2333,7 @@ export function createOpeningScene(): OpeningScene {
       revealed = true;
       curTier = s.rr.tier;
       events.onCard?.(cursor, s.data, order.length);
+      eclipseRipple();
       if (last) {
         phase = 'busy';
         finish(0.05);
@@ -2319,6 +2382,7 @@ export function createOpeningScene(): OpeningScene {
       phase = 'busy';
       events.onMythic?.(s.data);
       events.onCard?.(cursor, s.data, order.length);
+      eclipseRipple();
       const main = (tl = gsap.timeline());
       main.to(S, { flash: 0, duration: 0.9, ease: EASE.glide }, 0);
       const end = ignite(s, 0.35);
@@ -2518,6 +2582,55 @@ export function createOpeningScene(): OpeningScene {
       dust.frustumCulled = false;
       stage.scene.add(dust);
 
+      // ── AMBIANCE « ÉCLIPSE » (Berserk 5★ / 6★) : UN plan plein écran derrière tout (dessiné en premier, sans
+      // profondeur), caché hors Éclipse → coût nul le reste du temps. Tout est procédural, en coordonnées d'écran :
+      // ciel cramoisi et nuages lents (bruit cuit), soleil noir + couronne, crête sombre sur l'horizon ; sous
+      // l'horizon, le LAC : le même ciel relu à l'envers (un seul calcul par pixel, pas de 2e rendu), houle lente,
+      // et l'onde elliptique d'une carte qui se pose (U.eclRip).
+      {
+        const em = new MeshBasicNodeMaterial({ depthWrite: false, depthTest: false });
+        em.vertexNode = vec4(positionGeometry.xy.mul(2), 0.5, 1);
+        const asp = screenSize.x.div(screenSize.y);
+        const hz = float(ECL.horizon);
+        const below = step(hz, screenUV.y);
+        const depth = max(screenUV.y.sub(hz), 0).div(1 - ECL.horizon);
+        // onde : anneau elliptique (lac vu rasant) centré sous la carte, qui s'élargit en s'éteignant
+        const el = length(screenUV.sub(vec2(0.5, ECL.horizon + 0.09)).mul(vec2(asp, 3.4)));
+        const ring = exp(abs(el.sub(U.eclRip.mul(0.8))).div(0.016).negate()).mul(U.eclRip.oneMinus()).mul(below);
+        // houle : des rides qui se resserrent vers l'horizon (perspective), lentes, plus amples au premier plan
+        const swell = sin(float(26).div(depth.add(0.14)).add(time.mul(0.8)).add(sin(screenUV.x.mul(9).add(time.mul(0.23))).mul(1.4))).mul(depth.add(0.15)).mul(0.003);
+        // point du CIEL lu par ce pixel : lui-même au-dessus de l'horizon, son reflet (tassé : lac vu rasant) en dessous
+        const qy = mix(screenUV.y, hz.sub(screenUV.y.sub(hz).mul(1.7)).add(swell.mul(2)).add(ring.mul(0.03)), below);
+        const q = vec2(screenUV.x.add(swell.mul(below)).sub(0.5).mul(asp), qy);
+        const pm = q.sub(vec2(0, ECL.moonY));
+        const rm = length(pm);
+        const ang = atan(pm.y, pm.x);
+        const R = U.eclR as unknown as N;
+        const clouds = smoothstep(-0.25, 0.7, fbmTexel(q.mul(vec2(4.6, 9)).add(vec2(time.mul(0.012), time.mul(0.004))), mobile ? 2 : 3));
+        // le ciel n'est rouge que près de l'astre et sur l'horizon : bordeaux presque noir ailleurs, nuages sombres par-dessus
+        const lit = exp(rm.div(0.42).negate()).mul(0.85).add(smoothstep(hz.sub(0.22), hz, qy as N).mul(0.22));
+        let sky: N = mix(color('#1c0707'), color('#9c0c0c'), lit);
+        sky = mix(sky, color('#090405'), clouds.mul(0.82));
+        sky = sky.add(color('#b4240c').mul(exp(rm.div(R.mul(2.2)).negate()).mul(0.7)));
+        // couronne : fine et blanche au bord, rosée plus loin, en rayons inégaux
+        const rays = sin(ang.mul(9).add(clouds.mul(2))).mul(sin(ang.mul(5).sub(1.3))).mul(0.45).add(0.55);
+        const out = max(rm.sub(R), 0);
+        const corona = exp(out.div(R.mul(rays.mul(0.16).add(0.07))).negate());
+        sky = sky.add(mix(color('#cc7b72'), color('#fff1ea'), exp(out.div(R.mul(0.03)).negate())).mul(corona).mul(1.2));
+        sky = sky.mul(smoothstep(R.mul(0.975), R, rm)); // le disque noir
+        // crête sombre sur l'horizon (se reflète toute seule dans le lac)
+        const ridge = sin(q.x.mul(23).add(1.7)).mul(0.5).add(0.5).mul(sin(q.x.mul(7.3)).mul(0.5).add(0.5)).mul(0.018).add(0.012).add(sin(q.x.mul(61)).mul(0.004));
+        sky = mix(sky, color('#060303'), smoothstep(hz.sub(ridge).sub(0.002), hz.sub(ridge), qy));
+        const lake = sky.mul(mix(float(0.62), float(0.2), depth)).add(color('#cc7b72').mul(ring.mul(0.22))).add(color('#b4240c').mul(exp(abs(screenUV.y.sub(hz)).div(0.003).negate()).mul(0.3)));
+        const eclCol: N = mix(sky, lake, below as N);
+        em.colorNode = vec4(eclCol.mul(U.ecl), 1);
+        eclMesh = new Mesh(c.bag.add(new PlaneGeometry(1, 1)), c.bag.add(em));
+        eclMesh.frustumCulled = false;
+        eclMesh.renderOrder = -1000;
+        eclMesh.visible = false;
+        stage.scene.add(eclMesh);
+      }
+
       // post : bloom sur l'émissif, éclair, aberration, assombrissement
       const pl = createPipeline(c, stage.scene, stage.camera, { emissive: true });
       // (audit PERF1-03) compilation des cartes du pack pour la cible RÉELLE de la passe (MRT émissif + MSAA), par la
@@ -2669,7 +2782,9 @@ export function createOpeningScene(): OpeningScene {
         const ph = phase;
         phase = 'sealed';
         fxForce = true;
+        if (eclMesh) eclMesh.visible = true; // (Éclipse) son pipeline se crée ici aussi, pas à sa première apparition
         post.render();
+        if (eclMesh) eclMesh.visible = false;
         fxForce = false;
         if (mobile) {
           phase = 'display';
@@ -2879,8 +2994,9 @@ export function createOpeningScene(): OpeningScene {
       if (phase === 'sealed' && sealedT >= 0) {
         sealedT += dt;
         const t0 = 0.65; // le booster finit de se poser
-        const env = sealedT < t0 ? 0 : Math.min(1, (sealedT - t0) / 0.6) * (0.55 + 0.2 * Math.sin((sealedT - t0) * 1.8));
-        const lk = env * 0.5;
+        // (Éclipse : la fuite respire deux fois plus lentement, un peu plus fort)
+        const env = sealedT < t0 ? 0 : Math.min(1, (sealedT - t0) / 0.6) * (0.55 + 0.2 * Math.sin((sealedT - t0) * (eclipse ? 0.9 : 1.8)));
+        const lk = env * (eclipse ? 0.5 + 0.2 * E.aura : 0.5);
         if (style === 'burn') B.leak = Math.max(lk, hold * 0.55);
         else B.leak = lk;
       } else if (phase !== 'sealed') sealedT = -1;
@@ -2888,7 +3004,14 @@ export function createOpeningScene(): OpeningScene {
       U.leak.value = B.leak;
       U.flash.value = S.flash * fxk('flash');
       U.ca.value = fxLow ? 0 : S.ca;
-      U.dark.value = S.dark;
+      // Éclipse : sachet descellé (quel que soit le style d'ouverture) → le ciel se lève ; sa pénombre s'ajoute à celle des révélations
+      if (eclipse && !eclRisen && phase !== 'sealed' && phase !== 'display') eclipseRise();
+      const dark = Math.max(S.dark, E.dark);
+      U.dark.value = dark;
+      U.ecl.value = E.sky;
+      U.eclRip.value = E.rip;
+      if (eclMesh) eclMesh.visible = E.sky > 0.002;
+      if (E.aura > 0.001 && phase === 'sealed') U.glowColor.value.lerp(eclAura, 1 - Math.exp(-dt * 3));
       // vitrine : un halo discret, de la couleur du booster, l'éclaire par derrière (il ne flotte plus dans le noir)
       if (phase === 'display') {
         const acc = accents.get(boosterKey);
@@ -2896,7 +3019,7 @@ export function createOpeningScene(): OpeningScene {
       }
       U.soon.value += (soonT * dispK - U.soon.value) * (1 - Math.exp(-dt * 5));
       U.dust.value = dispK * (1 - U.soon.value * 0.5);
-      U.glow.value = S.glow * fxk('glow') + dispK * (0.085 + Math.sin(t * 0.8) * 0.015) * (1 - U.soon.value * 0.6);
+      U.glow.value = (S.glow + E.aura * 0.4) * fxk('glow') + dispK * (0.085 + Math.sin(t * 0.8) * 0.015) * (1 - U.soon.value * 0.6);
       if (glowRef) glowRef.visible = (U.glow.value as number) > 0.003 && !(ctx.quality === 'mobile' && phase === 'display');
       U.bt.value = S.bt;
       // (vie max d'une particule ≈ 4,4 s : au-delà, plus rien de visible)
@@ -2904,7 +3027,7 @@ export function createOpeningScene(): OpeningScene {
       U.flare.value = S.flare * fxk('flare');
       U.shock.value = S.shock;
       U.invert.value = fxLow ? 0 : S.invert;
-      key.intensity = 1.2 * (1 - S.dark * 0.6) + S.flash * 1.5;
+      key.intensity = 1.2 * (1 - dark * 0.6) + S.flash * 1.5;
 
       packRig.visible = B.burn < 0.94 && B.y > -2.4;
       const display = phase === 'display';
@@ -3121,6 +3244,8 @@ export function createOpeningScene(): OpeningScene {
     dispose() {},
   };
   function layout(w: number, h: number) {
+    // (Éclipse) soleil noir : 15 % de la hauteur, mais jamais plus de 54 % de la largeur en portrait
+    if (h > 0) U.eclR.value = Math.min(0.15, (0.27 * w) / h);
     // vitrine. Ordinateur (retours live n°1) : 3 colonnes, plus de rangée en bas → le GROS booster, centré, comme
     // avant. Téléphone / écran étroit : la rangée des pochettes occupe le bas → le booster remonte (plus en portrait).
     const portrait = w / h < 0.8;

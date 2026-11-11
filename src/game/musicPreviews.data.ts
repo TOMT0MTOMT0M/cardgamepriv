@@ -351,3 +351,8 @@ export const ANIME_OPENINGS: Record<string, MusicPreview> = {
   "jojo-s-bizarre-adventure": { url: "", deezer: 4381039551, track: "JOJO SONO CHINO SADAME", artist: "Hiroaki Tommy Tominaga", link: "https://www.deezer.com/track/4381039551" },
   "nana": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/b8/26/b8/b826b8e7-9c7d-c3e4-b7dd-b15497f3dfa9/mzaf_15121567752137615401.plus.aac.p.m4a", track: "Rose (1st Opening Song)", artist: "ANNA TSUCHIYA inspi' NANA(BLACK STONES)", link: "https://music.apple.com/fr/album/rose-1st-opening-song/250046265?i=250046270&uo=4" },
 };
+
+/** musique d’une ambiance d’ouverture (eclipse : Berserk 5★ / 6★ — game/eclipse.ts), par nom d’ambiance */
+export const AMBIENCE_PREVIEWS: Record<string, MusicPreview> = {
+  "eclipse": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/3b/a1/a7/3ba1a77f-0ce9-156f-a485-b6be47c4bde2/mzaf_13901538488822440811.plus.aac.p.m4a", track: "Behelit", artist: "Susumu Hirasawa", link: "https://music.apple.com/fr/album/behelit/1652625970?i=1652625971&uo=4" },
+};

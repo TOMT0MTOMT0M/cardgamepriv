@@ -126,6 +126,7 @@ export const UPDATES: UpdateMonth[] = [
         date: '10 nov.', title: 'Berserk : six nouvelles cartes', tag: 'nouveau',
         points: [
           'Six nouvelles cartes Berserk au-delà de l’Âge d’or, dans le booster Pop Culture : Femto, le Chevalier Squelette et Guts (Armure du Berserker) en 6★, Schierke, Farnese et Serpico en 5★.',
+          'L’Éclipse : un booster qui cache une carte Berserk 5★ ou 6★ se trahit — sa lueur vire au rouge sang, puis, une fois ouvert, le soleil noir se lève au-dessus d’un lac pendant que « Behelit » joue en fond.',
         ],
       },
       {

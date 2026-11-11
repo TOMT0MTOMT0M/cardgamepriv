@@ -1,7 +1,7 @@
 """Écrit src/game/musicPreviews.data.ts (GÉNÉRÉ — ne pas éditer à la main) depuis :
  - scripts/data/music-previews.json : récolte iTunes automatique (harvest-music-previews.py) ;
  - scripts/data/previews-curated-resolved.json : extraits choisis à la main (harvest-curated-previews.py, retours
-   Hugo 10/11) — cartes Musique 6★ que la récolte n'a pas trouvées, et openings d'animés par sous-thème."""
+   Hugo 10/11) — cartes Musique 6★ que la récolte n'a pas trouvées, openings d'animés par sous-thème, musiques d'ambiance."""
 import json, os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 D = os.path.join(ROOT, 'scripts', 'data')
@@ -38,6 +38,10 @@ out += [entry(k, v) for k, v in cards]
 out += ['};', '', '/** (retours Hugo 10/11) opening de l’animé, par sous-thème : joué en fond quand une 6★ de cet animé tombe */',
         'export const ANIME_OPENINGS: Record<string, MusicPreview> = {']
 out += [entry(k, v) for k, v in anime]
+amb = [(k.split(':', 1)[1], v) for k, v in cur.items() if k.startswith('ambience:') and v]
+out += ['};', '', '/** musique d’une ambiance d’ouverture (eclipse : Berserk 5★ / 6★ — game/eclipse.ts), par nom d’ambiance */',
+        'export const AMBIENCE_PREVIEWS: Record<string, MusicPreview> = {']
+out += [entry(k, v) for k, v in amb]
 out += ['};', '']
 open(os.path.join(ROOT, 'src', 'game', 'musicPreviews.data.ts'), 'w', encoding='utf-8', newline='\n').write('\n'.join(out))
-print('cartes', len(cards), '· animés', len(anime))
+print('cartes', len(cards), '· animés', len(anime), '· ambiances', len(amb))

@@ -1,5 +1,5 @@
 {
-  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer).",
+  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts).",
   "cards": {
     "pop-au-dd": [
       "Au DD",
@@ -642,6 +642,12 @@
     "yuri-on-ice": [
       "History Maker",
       "DEAN FUJIOKA"
+    ]
+  },
+  "ambience": {
+    "eclipse": [
+      "Behelit",
+      "Susumu Hirasawa"
     ]
   }
 }

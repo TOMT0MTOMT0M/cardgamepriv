@@ -1,5 +1,7 @@
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
-import { playMusicPreview, prefetchMusicPreview, stopMusicPreview } from '../musicPreview';
+import { playAmbience, playMusicPreview, prefetchAmbience, prefetchMusicPreview, stopAmbience, stopMusicPreview } from '../musicPreview';
+import { isEclipsePack } from '../eclipse';
+import { ECLIPSE } from '../../core/motion';
 import { fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import { openStyleOf, type OpeningScene } from '../scenes/opening';
@@ -987,6 +989,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   async function skipEverything() {
     if (!batch || batch.skipping || mode !== 'opening') return;
     stopMusicPreview();
+    stopAmbience();
     batch.skipping = true;
     abortMythic();
     skipAll.disabled = skipHi.disabled = true;
@@ -1139,6 +1142,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       prepareMythic(c.cardId, c.rarity);
       prefetchMusicPreview(c.cardId, c.rarity);
     }
+    // ambiance « Éclipse » (Berserk 5★ / 6★ — game/eclipse.ts) : la scène 3D s'en charge (opening.open) ; ici, sa musique
+    // — demandée d'avance, lancée quand le sachet est descellé (onOpened), coupée au booster suivant s'il n'en est pas
+    const eclipse = isEclipsePack(p.cards);
+    if (eclipse) prefetchAmbience('eclipse');
+    else stopAmbience(ECLIPSE.coucher);
     // Pokémon 6★ : musique décodée et scène montée (carte, décor) pendant que le joueur ouvre le booster
     // (plusieurs Pokémon 6★ dans le même booster : chacun aura sa rencontre ; la 1re est préparée maintenant, les
     // suivantes à la fin de la précédente — ou, au pire, pendant le noir de leur propre transition)
@@ -1152,6 +1160,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         ring.style.strokeDashoffset = String(100 - v * 100);
       },
       onOpened() {
+        if (eclipse) void playAmbience('eclipse', shell.sfx.volume, ECLIPSE.lever);
         // série : le booster suivant se prépare (cartes construites) pendant qu'on regarde celui-ci
         if (batch?.queue[0]) opening.preload(batch.queue[0]);
         if (coachOn) coachDone(coachSt);
@@ -1726,6 +1735,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     mythicVeil.hidden = true;
     pack = null;
     batch = null;
+    stopAmbience(ECLIPSE.coucher);
     opening.setAuto({ burn: false, minRank: 0, reveal: false });
     opening.reset();
     endWild();
@@ -1754,6 +1764,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     },
     leave() {
       stopMusicPreview(0.3);
+      stopAmbience(0.3);
       sheet.close();
       sheet.dock(false);
       if (mode === 'summary') back();
