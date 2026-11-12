@@ -96,29 +96,54 @@ const fixItems = (list: Item[]): Item[] => {
 };
 const needsFix = (list: Array<{ cardId: string; rarity: RarityId }> | undefined) => !!list?.some((c) => truth(c.cardId, c.rarity) !== c.rarity);
 
+/**
+ * (audit 12/11, S12 / A8-09) Les tables `trades` et `listingOffers` ne sont jamais purgées : les lire en entier dans
+ * une seule mutation finirait par dépasser la limite de lecture de Convex, et la mise en ligne s'arrêterait serveur
+ * déployé, site non. Elles sont lues par PAGES de PAGE lignes, UNE lecture paginée par mutation (règle de Convex) :
+ * la première page d'échanges dans l'appel du lanceur, la suite programmée à la chaîne (`part` + `cursor`), table
+ * après table. Les compteurs rendus sont ceux de l'appel.
+ */
+const PAGE = 400;
+const part = v.optional(v.union(v.literal('trades'), v.literal('listings'), v.literal('offers')));
+type Part = 'trades' | 'listings' | 'offers';
+
 export const resyncRaritiesOpen = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { part, cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, a) => {
     let trades = 0, listings = 0, offers = 0, market = 0;
-    for (const tr of await ctx.db.query('trades').collect()) {
-      if (tr.status !== 'pending' && tr.status !== 'countered') continue;
-      if (!needsFix(tr.offered) && !needsFix(tr.requested)) continue;
-      await ctx.db.patch(tr._id, { offered: fixItems(tr.offered), requested: fixItems(tr.requested) });
-      trades++;
+    /** page suivante de la même table, sinon première page de la table d'après */
+    const next = async (p: Part, page: { isDone: boolean; continueCursor: string }, then?: Part) => {
+      if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.resyncRaritiesOpen, { part: p, cursor: page.continueCursor });
+      else if (then) await ctx.scheduler.runAfter(0, internal.migrations.resyncRaritiesOpen, { part: then, cursor: null });
+    };
+    if (!a.part || a.part === 'trades') {
+      const page = await ctx.db.query('trades').paginate({ cursor: a.part ? (a.cursor ?? null) : null, numItems: PAGE });
+      for (const tr of page.page) {
+        if (tr.status !== 'pending' && tr.status !== 'countered') continue;
+        if (!needsFix(tr.offered) && !needsFix(tr.requested)) continue;
+        await ctx.db.patch(tr._id, { offered: fixItems(tr.offered), requested: fixItems(tr.requested) });
+        trades++;
+      }
+      await next('trades', page, 'offers');
     }
+    if (a.part === 'offers') {
+      const page = await ctx.db.query('listingOffers').paginate({ cursor: a.cursor ?? null, numItems: PAGE });
+      for (const o of page.page) {
+        if (o.status !== 'pending' && o.status !== 'countered') continue;
+        if (!needsFix(o.offered) && !needsFix(o.counter?.give) && !needsFix(o.counter?.want)) continue;
+        await ctx.db.patch(o._id, {
+          offered: fixItems(o.offered),
+          ...(o.counter ? { counter: { ...o.counter, give: fixItems(o.counter.give), want: fixItems(o.counter.want) } } : {}),
+        });
+        offers++;
+      }
+      await next('offers', page);
+    }
+    if (a.part) return { trades, listings, offers, market };
     for (const l of await ctx.db.query('listings').withIndex('by_status_expires', (q) => q.eq('status', 'open')).collect()) {
       if (!needsFix(l.items) && !needsFix(l.wanted)) continue;
       await ctx.db.patch(l._id, { items: fixItems(l.items), ...(l.wanted ? { wanted: dedupe(l.wanted.map((c) => ({ cardId: c.cardId, rarity: truth(c.cardId, c.rarity) }))) } : {}) });
       listings++;
-    }
-    for (const o of await ctx.db.query('listingOffers').collect()) {
-      if (o.status !== 'pending' && o.status !== 'countered') continue;
-      if (!needsFix(o.offered) && !needsFix(o.counter?.give) && !needsFix(o.counter?.want)) continue;
-      await ctx.db.patch(o._id, {
-        offered: fixItems(o.offered),
-        ...(o.counter ? { counter: { ...o.counter, give: fixItems(o.counter.give), want: fixItems(o.counter.want) } } : {}),
-      });
-      offers++;
     }
     for (const m of await ctx.db.query('market').withIndex('by_status_created', (q) => q.eq('status', 'open')).collect()) {
       const r = truth(m.cardId, m.rarity);
@@ -184,26 +209,45 @@ export const purgeCards = internalMutation({
 
 /** 2e temps de la purge : échanges, annonces et offres encore ouverts qui contiennent une carte supprimée. */
 export const purgeCardsDeals = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  // (audit 12/11, S12 / A8-09) par pages, comme resyncRaritiesOpen : ces tables ne sont jamais purgées
+  args: { part, cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, a) => {
     const now = Date.now();
     let trades = 0, listings = 0, offers = 0;
-    for (const t of await ctx.db.query('trades').collect()) {
-      if (t.status !== 'pending' || !(t.offered.some(purged) || t.requested.some(purged))) continue;
-      await ctx.db.patch(t._id, { status: 'cancelled', resolvedAt: now });
-      trades++;
+    const cur = a.part ?? 'trades'; // une seule table (une seule lecture paginée) par appel : échanges, annonces, offres
+    const start = { cursor: a.part ? (a.cursor ?? null) : null, numItems: PAGE };
+    const next = async (p: Part, page: { isDone: boolean; continueCursor: string }, then?: Part) => {
+      if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.purgeCardsDeals, { part: p, cursor: page.continueCursor });
+      else if (then) await ctx.scheduler.runAfter(0, internal.migrations.purgeCardsDeals, { part: then, cursor: null });
+    };
+    if (cur === 'trades') {
+      const page = await ctx.db.query('trades').paginate(start);
+      for (const t of page.page) {
+        if (t.status !== 'pending' || !(t.offered.some(purged) || t.requested.some(purged))) continue;
+        await ctx.db.patch(t._id, { status: 'cancelled', resolvedAt: now });
+        trades++;
+      }
+      await next('trades', page, 'listings');
     }
-    for (const l of await ctx.db.query('listings').collect()) {
-      if (l.status !== 'open' || !(l.items.some(purged) || l.wanted?.some(purged))) continue;
-      const items = l.items.filter((c) => !purged(c));
-      await ctx.db.patch(l._id, items.length ? { items, wanted: l.wanted?.filter((c) => !purged(c)) } : { status: 'cancelled', resolvedAt: now });
-      listings++;
+    if (cur === 'listings') {
+      const page = await ctx.db.query('listings').paginate(start);
+      for (const l of page.page) {
+        if (l.status !== 'open' || !(l.items.some(purged) || l.wanted?.some(purged))) continue;
+        const items = l.items.filter((c) => !purged(c));
+        await ctx.db.patch(l._id, items.length ? { items, wanted: l.wanted?.filter((c) => !purged(c)) } : { status: 'cancelled', resolvedAt: now });
+        listings++;
+      }
+      await next('listings', page, 'offers');
     }
-    for (const o of await ctx.db.query('listingOffers').collect()) {
-      if (o.status !== 'pending' && o.status !== 'countered') continue;
-      if (!(o.offered.some(purged) || o.counter?.give.some(purged) || o.counter?.want.some(purged))) continue;
-      await ctx.db.patch(o._id, { status: 'withdrawn' });
-      offers++;
+    if (cur === 'offers') {
+      const page = await ctx.db.query('listingOffers').paginate(start);
+      for (const o of page.page) {
+        if (o.status !== 'pending' && o.status !== 'countered') continue;
+        if (!(o.offered.some(purged) || o.counter?.give.some(purged) || o.counter?.want.some(purged))) continue;
+        await ctx.db.patch(o._id, { status: 'withdrawn' });
+        offers++;
+      }
+      await next('offers', page);
     }
     return { trades, listings, offers };
   },
