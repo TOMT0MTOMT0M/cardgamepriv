@@ -783,6 +783,9 @@ export function createWonderCardInstance(
     void preloadModel(cardId).then((g) => {
       if (!g || disposed) return;
       clip.remove(monument);
+      // (audit 12/11, A10-08) le monument procédural remplacé sort du groupe : `dispose` ne le parcourra plus, ses
+      // géométries sont donc libérées ici (ses matériaux viennent du kit, libéré à la fin)
+      monument.traverse((c) => c instanceof Mesh && c.geometry?.dispose?.());
       monument = placeModel(g);
       clip.add(monument);
     });
@@ -902,7 +905,8 @@ export function createWonderCardInstance(
     dioRoot.traverse((c) => {
       if (c.userData.sharedModel) return; // modèle 3D partagé entre instances (cache)
       if (c instanceof Mesh || c instanceof Sprite) {
-        c.geometry?.dispose?.();
+        // (audit 12/11, A10-09) la géométrie des sprites est partagée par three : la libérer forçait son renvoi au GPU
+        if (c instanceof Mesh) c.geometry?.dispose?.();
         (c.material as Material)?.dispose?.();
       }
     });

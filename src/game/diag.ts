@@ -57,6 +57,7 @@ export function installDiag(shell: Shell) {
       `scène ${scene} (${why}) · ${secs.toFixed(1)} s · ${frames} images (${(frames / Math.max(0.1, secs)).toFixed(0)} i/s, pire ${worst.toFixed(0)} ms)`,
       `${be} · ${window.innerWidth}×${window.innerHeight} @${devicePixelRatio} · canvas ${shell.renderer.domElement.width}×${shell.renderer.domElement.height}`,
       limits,
+      gpuMemLine(shell),
       ...logs.slice(-35),
     ].join('\n').slice(0, 1990);
     void net
@@ -100,6 +101,14 @@ export function installDiag(shell: Shell) {
 const LOAD_REPORT_V = 'charge-2'; // (07/11) v2 : jalons du démarrage, images lentes avec leurs scripts, rapport d'usage
 /** au-delà de cette durée après la boutique, le rapport d'USAGE part (images lentes pendant qu'on joue) */
 const USAGE_REPORT_MS = 150_000;
+
+/** (audit 12/11) mémoire GPU déclarée par le moteur (textures, cibles de rendu, tampons) : ce que three a alloué, pas ce que la puce consomme vraiment */
+export function gpuMemLine(shell: Shell): string {
+  const m = (shell.renderer.info as unknown as { memory?: Record<string, number> }).memory;
+  if (!m) return 'mémoire GPU : inconnue';
+  const mo = (b = 0) => (b / 1048576).toFixed(1);
+  return `mémoire GPU déclarée ${mo(m.total)} Mo (textures ${m.textures ?? 0} = ${mo(m.texturesSize)} Mo)`;
+}
 
 const frameLine = (f: SlowFrame) => `${(f.at / 1000).toFixed(1)}s ${f.ms} ms${f.layout > 20 ? ` (style+mise en page ${f.layout})` : ''} ${f.view} ← ${f.scripts.join(' | ') || 'scripts inconnus'}`;
 export function reportLoad(shell: Shell) {

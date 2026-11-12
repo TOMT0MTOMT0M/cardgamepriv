@@ -587,7 +587,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         // → mêmes pipelines) — sinon chaque scène déjà vue garde ~100 Mo de GPU
         if (mobile) {
           try {
-            (prev.exp as Experiment & { suspend?(): void }).suspend?.();
+            (prev.exp as Experiment & { suspend?(next: string | null): void }).suspend?.(key ?? null);
           } catch (e) {
             console.warn('[jeu] suspend', current, e);
           }

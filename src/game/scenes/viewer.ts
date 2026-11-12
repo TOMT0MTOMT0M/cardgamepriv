@@ -447,8 +447,16 @@ export function createViewerScene(): ViewerScene {
       if (art?.landscape && !tl?.isActive()) pose.cam = landscapeCam();
     },
     /** Téléphone, visionneuse fermée (appelé par le shell) : ses cibles plein écran (~100 Mo) sont rendues au GPU. */
-    suspend() {
+    suspend(next?: string | null) {
       pipe?.releaseTargets();
+      // (audit 12/11, E3-04) retour à la boutique ou à une page : la carte regardée (6 calques + mipmaps, diorama,
+      // skin 3D) part avec — `show` la reconstruit à chaque ouverture ; une préparation en cours est abandonnée.
+      // PAS vers une scène jouée par-dessus la visionneuse (invocation, rencontre, prélude 6★) : elles y reviennent
+      // sans repasser par `show`, la carte doit les attendre.
+      if (next !== 'opening' && next != null) return;
+      token++;
+      clear();
+      rig.visible = false;
     },
     dispose() {},
   } as ViewerScene;

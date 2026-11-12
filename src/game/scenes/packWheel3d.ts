@@ -89,7 +89,8 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
   const geo: BufferGeometry = createPackGeometry(...(opts.seg ?? [18, 28]));
   const owned: Array<{ dispose(): void }> = [geo];
   const slots = new Map<string, Slot>();
-  const blank = new CanvasTexture(document.createElement('canvas'));
+  // (audit 12/11, A10-12) toile 1×1 : la toile par défaut (300×150) coûtait ~240 Ko de GPU pour une texture provisoire
+  const blank = new CanvasTexture(Object.assign(document.createElement('canvas'), { width: 1, height: 1 }));
   owned.push(blank);
 
   // (07/11, retours de Tom) ni halo derrière la pochette du milieu ni reflet au sol : la couleur du booster reste sur

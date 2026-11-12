@@ -184,6 +184,8 @@ export interface OpeningEvents {
 }
 
 export interface OpeningScene extends Experiment {
+  /** téléphone : rend ses cibles plein écran quand une autre scène est à l'écran (appelé par le shell) */
+  suspend?(): void;
   /** Booster affiché (id de thème ou 'bebou'). */
   setBooster(key: string, animate?: boolean, dir?: 1 | -1): void;
   /**
@@ -411,6 +413,8 @@ export function createOpeningScene(): OpeningScene {
   let ctx: LabContext;
   let stage: ReturnType<typeof createStage>;
   let post: { render(): void };
+  /** (audit 12/11, E3-01) rend au GPU les cibles plein écran de l'ouverture quand une autre scène est à l'écran */
+  let releaseTargets: (() => void) | null = null;
   /** compile les pipelines de la scène pour la cible réelle de la passe (voir setup, WebGPU ; WebGL2 : variante canvas) ; repli : stage.compile() */
   let compileReal: () => Promise<void> = () => stage.compile();
   let key: DirectionalLight;
@@ -2736,6 +2740,7 @@ export function createOpeningScene(): OpeningScene {
 
       // post : bloom sur l'émissif, éclair, aberration, assombrissement
       const pl = createPipeline(c, stage.scene, stage.camera, { emissive: true });
+      releaseTargets = () => pl.releaseTargets();
       // (audit PERF1-03) compilation des cartes du pack pour la cible RÉELLE de la passe (MRT émissif + MSAA), par la
       // version sûre du lot E (post.ts : la cible du moteur est rendue à chaque pause de la compilation — sinon une
       // image rendue pendant l'attente partait dans la cible de la passe et l'écran restait figé)
@@ -3343,6 +3348,14 @@ export function createOpeningScene(): OpeningScene {
         const lastUp = cursor === order.length - 1;
         if (!lastUp && (phase === 'opened' || phase === 'shown')) for (let j = 0; j < cursor; j++) re.to(slots[order[j]].p, { ...rowPlace(j), duration: 0.3, ease: EASE.glide }, 0);
       }
+    },
+    /**
+     * (audit 12/11, E3-01) Téléphone, ouverture quittée (appelé par le shell) : ses cibles plein écran (scène en
+     * demi-flottant ×4 échantillons + bloom) étaient gardées pendant la visionneuse, les pages et les duels. Recréées
+     * au prochain rendu, mêmes formats → mêmes pipelines (comme la visionneuse et le duel).
+     */
+    suspend() {
+      releaseTargets?.();
     },
     dispose() {},
   };
