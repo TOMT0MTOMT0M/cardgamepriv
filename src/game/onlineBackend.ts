@@ -294,7 +294,8 @@ export function createOnlineBackend(): GameBackend {
     },
     // chat (V2, 10/11 — convex/chat.ts). Serveur pas encore redéployé → erreur → « pas connecté » (lanceur sans pastille)
     chat: {
-      watchInbox: (cb) => net.watch(api.chat.inbox, {}, (v) => cb((v as ChatInbox | null) ?? null), true, () => cb(null)),
+      // (audit 12/11, S04) `lean` : la requête ne lit plus le document joueur ; `staff` vient de users.me
+      watchInbox: (cb) => net.watch(api.chat.inbox, { lean: true }, (v) => cb(v ? ({ ...v, staff: !!net.state.user?.staff } as ChatInbox) : null), true, () => cb(null)),
       page: async (conv, before) => (await net.ask(api.chat.page, { conv, before })) as { msgs: ChatMsg[]; done: boolean },
       watchTail: (conv, after, cb) => net.watch(api.chat.tail, { conv, after }, (v) => cb((v as { msgs: ChatMsg[]; more: boolean } | null) ?? null), true, () => cb(null)),
       send: async (conv, o) =>

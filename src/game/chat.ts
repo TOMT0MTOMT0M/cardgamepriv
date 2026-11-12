@@ -376,7 +376,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     if (!key) return;
     const c = store.conv(key);
     const meId = backend.state.user?.id ?? '';
-    const staff = !!store.inbox?.staff;
+    const staff = !!(store.inbox?.staff || backend.state.user?.staff);
     const head = store.head(key);
     const stick = reason === 'switch' || atBottom();
     const prevH = thread.scrollHeight;

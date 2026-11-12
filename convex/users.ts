@@ -47,7 +47,8 @@ export const me = query({
       totalPacksOpened: user.totalPacksOpened,
       /** ancien « +2 toutes les 12 h » : remplacé par la recharge (gardé pour le HUD du labo) */
       canClaimDaily: false,
-      nextDailyClaimAt: regen.nextAt ?? now,
+      // (audit 12/11, E1-10) réserve pleine : valeur stable (avant : `now`, donc un résultat différent à chaque ré-exécution)
+      nextDailyClaimAt: regen.nextAt ?? packRegenAt,
       /** pity 6★ (src/core/pity.ts) */
       pityCount: user.pityCount ?? 0,
       wishlist: user.wishlist ?? [],

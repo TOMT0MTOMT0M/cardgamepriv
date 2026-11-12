@@ -1,7 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
 import { notify } from './push';
 
 /**
@@ -152,7 +152,9 @@ export const remove = mutation({
 export const mine = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const me = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    const me = meId ? { _id: meId } : null;
     if (!me) return null;
     const [outAll, inAll] = await Promise.all([
       ctx.db.query('friendships').withIndex('by_requester', (q) => q.eq('requesterId', me._id)).collect(),

@@ -2,7 +2,7 @@ import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
 import { notify } from './push';
 import { rarityValidator, type RarityId } from './cardsCatalog';
 import { addCoins, bumpWeekly, coinsOf, patchEcon, recordFlow } from './econLib';
@@ -251,7 +251,9 @@ export async function bumpChallenges(ctx: MutationCtx, userId: Id<'users'>, seal
 export const mine = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const u = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const uId = await getUserIdByToken(ctx, sessionToken);
+    const u = uId ? { _id: uId } : null;
     if (!u) return null;
     const seats = await ctx.db.query('challengeSeats').withIndex('by_user', (q) => q.eq('userId', u._id)).order('desc').take(15);
     const list: Challenge[] = [];

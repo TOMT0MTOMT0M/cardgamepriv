@@ -1,7 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
 import { addCoins, giveCards, recordFlow, takeCards } from './econLib';
 import { MARKET_MAX_OPEN, marketProblem } from '../src/core/market';
@@ -24,7 +24,9 @@ const view = async (ctx: QueryCtx, m: Doc<'market'>) => {
 export const board = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const me = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    const me = meId ? { _id: meId } : null;
     const open = await ctx.db.query('market').withIndex('by_status_created', (q) => q.eq('status', 'open')).order('desc').take(300);
     const recent = Date.now() - 7 * 86400_000;
     const sold = me ? (await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', me._id).eq('status', 'sold')).order('desc').take(10)).filter((m) => (m.resolvedAt ?? 0) >= recent) : [];

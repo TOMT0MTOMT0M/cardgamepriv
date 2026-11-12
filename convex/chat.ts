@@ -2,7 +2,7 @@ import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserByToken, getUserIdByToken, requireUser } from './auth';
 import { isNightParis, notify } from './push';
 import { rarityValidator } from './cardsCatalog';
 import { catalogEntry } from '../src/core/sets/themes';
@@ -78,9 +78,15 @@ const view = (m: Doc<'chatMessages'>) => ({
 
 /** Mes conversations et mes non-lus. `null` sans session. */
 export const inbox = query({
-  args: { sessionToken: v.optional(v.string()) },
-  handler: async (ctx, { sessionToken }) => {
-    const me = await getUserByToken(ctx, sessionToken);
+  // (audit 12/11, S04 / E1-03) `lean` (client V2) : id seul, la requête ne repart plus à chaque écriture du document
+  // joueur ; `staff` vaut alors `false` ici et le client le prend dans `users.me`. Sans `lean` (client V1) : inchangé.
+  args: { sessionToken: v.optional(v.string()), lean: v.optional(v.boolean()) },
+  handler: async (ctx, { sessionToken, lean }) => {
+    let me: { _id: Id<'users'>; isAdmin?: boolean; isModerator?: boolean } | null;
+    if (lean) {
+      const meId = await getUserIdByToken(ctx, sessionToken);
+      me = meId ? { _id: meId } : null;
+    } else me = await getUserByToken(ctx, sessionToken);
     if (!me) return null;
     const [general, reads, asA, asB] = await Promise.all([
       headOf(ctx, CHAT_GENERAL),
@@ -144,7 +150,9 @@ export const page = query({
 export const tail = query({
   args: { sessionToken: v.optional(v.string()), conv: v.string(), after: v.number() },
   handler: async (ctx, { sessionToken, conv, after }) => {
-    const me = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    const me = meId ? { _id: meId } : null;
     if (!me || !allowed(me._id, conv)) return null;
     const rows = await ctx.db
       .query('chatMessages')

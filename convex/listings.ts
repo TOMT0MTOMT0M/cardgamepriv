@@ -1,7 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
 import { catalogCard, rarityValidator, type RarityId } from './cardsCatalog';
 import { bumpMissions } from './missions';
 import { bumpWeekly, recordFlow } from './econLib';
@@ -171,7 +171,9 @@ const offerView = async (ctx: QueryCtx, o: Doc<'listingOffers'>) => ({ ...o, fro
 export const open = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const me = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    const me = meId ? { _id: meId } : null;
     const now = Date.now();
     const rows = await ctx.db
       .query('listings')
@@ -201,13 +203,26 @@ export const open = query({
 export const mine = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const me = await getUserByToken(ctx, sessionToken);
-    if (!me) return { listings: [], offers: [] };
+    // (audit 12/11, S04 / E1-04) id seul, et le document joueur (nom, avatar) n'est lu que s'il y a une annonce ou une
+    // offre à nommer : sans rien en cours (le cas courant), la requête ne repart plus à chaque écriture du joueur
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    if (!meId) return { listings: [], offers: [] };
+    const idOnly = { _id: meId, displayName: '?', avatarUrl: undefined as string | undefined };
+    let me = idOnly;
     const now = Date.now();
     const recent = now - 48 * HOUR;
     const ls: Doc<'listings'>[] = await ctx.db.query('listings').withIndex('by_user_status', (q) => q.eq('userId', me._id).eq('status', 'open')).collect();
     for (const st of ['closed', 'cancelled', 'expired'] as const)
       ls.push(...(await ctx.db.query('listings').withIndex('by_user_status', (q) => q.eq('userId', me._id).eq('status', st)).order('desc').take(5)).filter((l) => (l.resolvedAt ?? l.expiresAt) >= recent));
+    const os: Doc<'listingOffers'>[] = [];
+    for (const st of ACTIVE) os.push(...(await ctx.db.query('listingOffers').withIndex('by_from_status', (q) => q.eq('fromUserId', meId).eq('status', st)).collect()));
+    for (const st of ['accepted', 'declined', 'withdrawn', 'closed'] as const)
+      os.push(...(await ctx.db.query('listingOffers').withIndex('by_from_status', (q) => q.eq('fromUserId', meId).eq('status', st)).order('desc').take(6)).filter((o) => (o.resolvedAt ?? o.createdAt) >= recent));
+    if (ls.length || os.length) {
+      const doc = await ctx.db.get(meId);
+      if (!doc) return { listings: [], offers: [] };
+      me = { _id: meId, displayName: doc.displayName, avatarUrl: doc.avatarUrl };
+    }
     const listings = await Promise.all(
       ls.map(async (l) => {
         const offers: Doc<'listingOffers'>[] = [];
@@ -218,10 +233,6 @@ export const mine = query({
       }),
     );
     listings.sort((a, b) => b.createdAt - a.createdAt);
-    const os: Doc<'listingOffers'>[] = [];
-    for (const st of ACTIVE) os.push(...(await ctx.db.query('listingOffers').withIndex('by_from_status', (q) => q.eq('fromUserId', me._id).eq('status', st)).collect()));
-    for (const st of ['accepted', 'declined', 'withdrawn', 'closed'] as const)
-      os.push(...(await ctx.db.query('listingOffers').withIndex('by_from_status', (q) => q.eq('fromUserId', me._id).eq('status', st)).order('desc').take(6)).filter((o) => (o.resolvedAt ?? o.createdAt) >= recent));
     const offers = await Promise.all(
       os.map(async (o) => {
         const l = await ctx.db.get(o.listingId);

@@ -1,7 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
 import { notify } from './push';
 import { RARITY_TIER, type RarityId } from './cardsCatalog';
 import { packChoiceValidator, stakeValidator } from './schema';
@@ -542,7 +542,9 @@ async function drawRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number
 export const lobby = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const u = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const uId = await getUserIdByToken(ctx, sessionToken);
+    const u = uId ? { _id: uId } : null;
     if (!u) return null;
     const duels = (await ctx.db.query('duels').withIndex('by_status', (q) => q.eq('status', 'open')).order('desc').take(60)).filter(
       (d) => !d.invitedId || d.invitedId === u._id || d.creatorId === u._id || d.sides.some((s) => s.userId === u._id),
@@ -567,7 +569,9 @@ export const royale = query({
 export const history = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const u = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const uId = await getUserIdByToken(ctx, sessionToken);
+    const u = uId ? { _id: uId } : null;
     if (!u) return { duels: [], royales: [] };
     const duels = (await ctx.db.query('duels').withIndex('by_status', (q) => q.eq('status', 'done')).order('desc').take(200)).filter((d) => d.sides.some((s) => s.userId === u._id)).slice(0, 25);
     const royales = (await ctx.db.query('royales').withIndex('by_status', (q) => q.eq('status', 'done')).order('desc').take(200)).filter((r) => r.players.some((p) => p.userId === u._id)).slice(0, 25);
@@ -579,7 +583,9 @@ export const history = query({
 export const roulette = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const u = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const uId = await getUserIdByToken(ctx, sessionToken);
+    const u = uId ? { _id: uId } : null;
     const r = await openRound(ctx);
     const past = await ctx.db.query('rouletteRounds').withIndex('by_status', (q) => q.eq('status', 'drawn')).order('desc').take(10);
     const now = Date.now();

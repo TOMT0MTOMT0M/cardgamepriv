@@ -1,7 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
 import { packChoiceValidator } from './schema';
 import { addCoins, bumpWeekly, coinsOf, patchEcon, secureRandom } from './econLib';
 import { fmtCoins } from '../src/core/economy';
@@ -110,7 +110,9 @@ export const cashOut = mutation({
 export const current = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const u = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const uId = await getUserIdByToken(ctx, sessionToken);
+    const u = uId ? { _id: uId } : null;
     if (!u) return null;
     const now = Date.now();
     const recent = await ctx.db.query('presseRuns').withIndex('by_user', (q) => q.eq('userId', u._id)).order('desc').take(PRESSE_DAILY);
