@@ -38,13 +38,26 @@ export function createOnlineEco(): EcoBackend {
   const start = () => {
     if (started || !net.state.configured) return;
     started = true;
-    net.watch(api.economy.state, {}, (s) => {
-      raw = s ?? null;
-      publish();
-    });
+    // (audit 12/11, A5-01) `net.watch` fige le jeton du moment : après une connexion par mot de passe (pas de
+    // rechargement de page), l'abonnement posé sans jeton renvoyait `null` pour toujours → pièces et pastilles vides.
+    let epoch = net.tokenEpoch;
+    let unsub = () => {};
+    const sub = () => {
+      unsub();
+      unsub = net.watch(api.economy.state, {}, (s) => {
+        raw = s ?? null;
+        publish();
+      });
+    };
+    sub();
     // la collection change (booster, échange, brûlage) : on recalcule les primes sans attendre le serveur
     net.onChange((st) => {
-      if (raw && st.collection !== rawColl) publish();
+      if (net.tokenEpoch !== epoch) {
+        epoch = net.tokenEpoch;
+        raw = null;
+        publish();
+        sub();
+      } else if (raw && st.collection !== rawColl) publish();
     });
   };
 

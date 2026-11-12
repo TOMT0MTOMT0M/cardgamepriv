@@ -270,6 +270,7 @@ class GameNetClient {
   }
 
   private saveStoredToken(token: string | null) {
+    if (token !== this.sessionToken) this.tokenEpoch++;
     this.sessionToken = token;
     try {
       if (token) localStorage.setItem(LS_SESSION_TOKEN, token);
@@ -621,6 +622,11 @@ class GameNetClient {
     this.subscribeFeed();
   }
 
+  /** (audit 12/11, A5-01) change à chaque connexion / déconnexion : les abonnements posés hors de ce fichier
+   *  (`watch`) gardent le jeton du moment où ils ont été créés ; ils se reposent quand ce compteur bouge. */
+  public tokenEpoch = 0;
+  private beatNow: (() => void) | null = null;
+
   private startHeartbeat() {
     if (this.heartbeatTimer !== null) clearInterval(this.heartbeatTimer);
     const beat = () => {
@@ -634,6 +640,7 @@ class GameNetClient {
     // 6 min : il faut un battement au plus toutes les 6 − 4 = 2 min pour qu'un joueur actif ne paraisse jamais
     // hors ligne (une ouverture de booster décale l'écriture suivante) → 110 s, 3 fois moins d'appels.
     beat();
+    this.beatNow = beat;
     this.heartbeatTimer = window.setInterval(beat, 110_000);
     // retour sur l'onglet après minuit : la série avance sans attendre le prochain battement
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && beat());
@@ -704,6 +711,8 @@ class GameNetClient {
     this.saveStoredToken(token);
     this.state.authError = null;
     this.setupSubscriptions();
+    // (audit 12/11, A5-09) premier battement utile tout de suite (série du jour, appareil) : celui du démarrage est parti sans jeton
+    this.beatNow?.();
     this.emit();
   }
 

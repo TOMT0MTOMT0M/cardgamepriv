@@ -83,17 +83,24 @@ export function pressePage({ body, backend, unsubs, sfx }: JeuxPageCtx) {
     } else riskEl.textContent = '—';
   };
 
+  let ctlKey = '';
   const drawCtl = () => {
     const live = run?.status === 'live';
     const bal = backend.eco.snapshot?.coins ?? 0;
     const left = PRESSE_DAILY - (st?.today ?? 0);
     body.querySelector<HTMLElement>('.ps-today')!.textContent = `${Math.max(0, left)} partie${left > 1 ? 's' : ''} restante${left > 1 ? 's' : ''} aujourd’hui`;
     if (live) {
+      // (audit 12/11, T-01) l'abonnement rappelle drawCtl juste après la mutation avec le même état : sans ce garde les
+      // boutons étaient remplacés une 2e fois, et un tap en cours tombait sur un nœud retiré (frappe perdue)
+      const key = `live|${run!.id}|${run!.shown}|${run!.value}`;
+      if (key === ctlKey && ctl.querySelector('.ps-hit')) return;
+      ctlKey = key;
       ctl.innerHTML = `<div class="ps-btns"><button class="btn-primary ps-hit">Frapper · ${run!.shown + 1}/${PRESSE_STRIKES}</button><button class="btn-ghost ps-cash">Encaisser ${COIN_ICON}${fmtCoins(run!.value)}</button></div>`;
       ctl.querySelector<HTMLElement>('.ps-hit')!.addEventListener('click', (e) => send(e.currentTarget as HTMLElement, () => backend.eco.presseStrike(run!.id)));
       ctl.querySelector<HTMLElement>('.ps-cash')!.addEventListener('click', (e) => send(e.currentTarget as HTMLElement, () => backend.eco.presseCash(run!.id)));
       return;
     }
+    ctlKey = '';
     const end = run && run.status !== 'live' ? `<div class="ps-end ${run.status}">${run.status === 'cracked' ? `La pièce se fend : <b class="minus">−${fmtCoins(run.bet)}</b>` : `Pièce encaissée : <b class="${(run.payout ?? 0) >= run.bet ? 'plus' : ''}">+${fmtCoins(run.payout ?? 0)}</b> <span class="muted">(mise ${fmtCoins(run.bet)})</span>`}</div>` : '';
     ctl.innerHTML = `${end}<div class="df-step"><span class="df-l">Album</span><div class="df-chips ps-albums">${albums.map((a, i) => `<button class="gm-pack-b${a.kind === album.kind && a.themeId === album.themeId ? ' on' : ''}" data-al="${i}"><span class="gm-pack ${a.kind === 'bebou' ? 'bebou' : `t-${a.themeId}`}">${esc(packChoiceLabel(a).replace(' Pack', ''))}</span></button>`).join('')}</div></div>
       <div class="df-step"><span class="df-l">Mise</span><div class="df-chips">${PRESSE_BETS.map((b) => `<button class="gm-pack-b gm-rc${b === bet ? ' on' : ''}" data-b="${b}">${b}</button>`).join('')}<span class="muted ps-per">1★ = ${presseStar(bet)} pièces</span></div></div>
