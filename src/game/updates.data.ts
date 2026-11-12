@@ -35,6 +35,12 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '12 nov.', title: 'Les nouvelles 6★ Musique ont leur extrait', tag: 'nouveau',
+        points: [
+          'Les chansons, artistes et albums passés en 6★ jouent maintenant leur extrait de 30 s quand on les tire et dans la visionneuse.',
+        ],
+      },
+      {
         date: '11 nov.', title: 'Nouveau tri des étoiles : Pop Culture, World et Sport', tag: 'amélioré',
         points: [
           'Pop Culture : 530 cartes montent en étoiles, dont 335 qui passent en 6★ (Leonardo DiCaprio, Morgan Freeman, Louis de Funès, Bruce Lee, Astérix et Obélix, les capitaines de Bleach, Blue Lock…).',
