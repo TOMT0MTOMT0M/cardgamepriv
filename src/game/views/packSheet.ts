@@ -4,8 +4,8 @@ import type { Shell } from '../shell';
 import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, BEBOU_SECRETS_LOCKED, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { STAR_RARITIES, packOdds, slotShare } from '../../core/dropRates';
-import { cardPackChance } from '../../core/packRoll';
+import { STAR_RARITIES } from '../../core/dropRates';
+import { cardPackChance, packTrueOdds } from '../../core/packRoll';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { haptics } from '../../core/haptics';
@@ -186,23 +186,29 @@ export function createPackSheet(
     return m;
   };
 
-  // ── barres de chance (une fois : les taux ne bougent pas)
-  {
-    const share = slotShare();
-    const max = Math.max(...Object.values(share));
-    barsEl.innerHTML = STAR_RARITIES.map((r) => {
+  // ── barres de chance : les VRAIS taux du booster affiché (12/11 : calcul exact, god pack, pity et secrètes compris ;
+  // arrondis qui tombent juste — la somme fait 100 %, au lieu de 98,5 % avec les anciens arrondis par défaut)
+  const fmtShare = (v: number) => `${v.toFixed(1).replace('.', ',')}\u00a0%`;
+  function renderOdds(p: SheetPack) {
+    const o = packTrueOdds(p.req);
+    const raw = STAR_RARITIES.map((r) => o.share[r] * 100);
+    // arrondi au dixième « au plus fort reste » : la somme affichée tombe pile sur le total (100 % moins les secrètes)
+    const tenths = raw.map((v) => Math.floor(v * 10));
+    let left = Math.round((100 - o.share.secret * 100) * 10) - tenths.reduce((a, v) => a + v, 0);
+    for (const i of raw.map((v, i) => i).sort((x, y) => (raw[y] * 10 - tenths[y]) - (raw[x] * 10 - tenths[x]))) if (left-- > 0) tenths[i]++;
+    const shown = tenths.map((t) => t / 10);
+    const max = Math.max(...raw);
+    barsEl.innerHTML = STAR_RARITIES.map((r, i) => {
       const rr = rarity(r as RarityId);
-      return `<div class="ps-bar r-${r}" style="--rc:${rr.hex};--ra:${rr.accentHex}"><span class="ps-bl">${starsHtml(r as RarityId)}</span><span class="ps-bb"><i style="width:${((share[r] / max) * 100).toFixed(1)}%"></i></span><span class="ps-bp">${fmtPct(share[r])}</span><span class="ps-bn">${STAR_LABEL[r]}</span></div>`;
+      return `<div class="ps-bar r-${r}" style="--rc:${rr.hex};--ra:${rr.accentHex}"><span class="ps-bl">${starsHtml(r as RarityId)}</span><span class="ps-bb"><i style="width:${((raw[i] / max) * 100).toFixed(1)}%"></i></span><span class="ps-bp">${fmtShare(shown[i])}</span><span class="ps-bn">${STAR_LABEL[r]}</span></div>`;
     }).join('');
-    // (audit UX2-17) le joueur raisonne en boosters : « 6★ : 1 booster sur 40 » (chance d'au moins une carte de ce rang ou mieux)
-    const odds = packOdds();
-    const one = (r: string) => {
-      const p = odds[r as keyof typeof odds];
+    // (audit UX2-17) le joueur raisonne en boosters : « 6★ : 1 booster sur 38 » (chance d'au moins une carte de ce rang ou mieux)
+    const one = (p: number) => {
       const n = p > 0 ? 1 / p : Infinity;
-      return n < 1.05 ? 'presque toujours' : `1 sur ${n < 10 ? n.toFixed(1).replace('.', ',').replace(',0', '') : fmtN(n)}`;
+      return n < 1.05 ? 'presque toujours' : `1 sur ${n < 100 ? n.toFixed(1).replace('.', ',').replace(',0', '') : fmtN(Math.round(n))}`;
     };
-    const lab: Array<[string, string]> = [['epic', '4★ et +'], ['legendary', '5★ et +'], ['mythic', '6★']];
-    el.querySelector<HTMLElement>('.ps-per-pack')!.innerHTML = `<b>Par booster</b> · ${lab.filter(([r]) => r in odds).map(([r, l]) => `${l}\u00a0: <b>${one(r)}</b>`).join(' · ')}`;
+    const lab: Array<[keyof typeof o.atLeast, string]> = [['epic', '4★ et +'], ['legendary', '5★ et +'], ['mythic', '6★']];
+    el.querySelector<HTMLElement>('.ps-per-pack')!.innerHTML = `<b>Par booster</b> · ${lab.map(([r, l]) => `${l}\u00a0: <b>${one(o.atLeast[r])}</b>`).join(' · ')}<br><small>God pack (que des 4★ et plus, au moins une 5★ et une 6★)\u00a0: <b>${one(o.god)}</b> · taux réels, god pack et pity compris</small>`;
   }
 
   /** quantité réellement ouvrable maintenant */
@@ -328,7 +334,8 @@ export function createPackSheet(
     cardsSig = sig;
     const owned = ownedIds();
     const have = current.cards.reduce((a, c) => a + (owned.has(c.id) ? 1 : 0), 0);
-    cardsBtn.innerHTML = `<span>Voir les ${fmtN(current.cards.length)} cartes</span><small>${fmtN(have)} possédée${have > 1 ? 's' : ''} · ${fmtPct((have / Math.max(1, current.cards.length)) * 100)}</small>`;
+    const locked = BEBOU_SECRETS_LOCKED ? current.cards.filter((c) => c.themeId === 'bebous').length : 0;
+    cardsBtn.innerHTML = `<span>Voir les ${fmtN(current.cards.length - locked)} cartes${locked ? ' + les Bébous' : ''}</span><small>${fmtN(have)} possédée${have > 1 ? 's' : ''} · ${fmtPct((have / Math.max(1, current.cards.length)) * 100)}</small>`;
   }
 
   function fill(p: SheetPack) {
@@ -360,8 +367,15 @@ export function createPackSheet(
     descEl.textContent = p.desc;
     const t = p.key !== 'bebou' ? themeById(p.key) : null;
     const live = t ? subthemeViews(t).filter((v) => v.cards.length).length : THEMES.filter(themeOpen).length;
-    factsEl.innerHTML = `<span><b>5</b> cartes par booster</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(p.cards.length)}</b> cartes${p.soon ? ' en préparation' : t ? ` · ${live} sous-thème${live > 1 ? 's' : ''}` : ' · les 4 thèmes'}</span>`;
-    if (p.key === 'bebou') {
+    // (12/11) on compte les cartes qui peuvent VRAIMENT tomber de ce booster (les Bébous verrouillées n'en font pas partie)
+    const droppable = p.cards.filter((c) => !(BEBOU_SECRETS_LOCKED && c.themeId === 'bebous')).length;
+    factsEl.innerHTML = `<span><b>5</b> cartes par booster</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(droppable)}</b> cartes${p.soon ? ' en préparation' : t ? ` · ${live} sous-thème${live > 1 ? 's' : ''}` : ' · les 4 thèmes'}</span>`;
+    renderOdds(p);
+    const worldSecrets = t ? t.cards.filter((c) => c.rarity === 'secret').length : 0;
+    if (t && worldSecrets && !p.soon) {
+      secretEl.hidden = false;
+      secretEl.innerHTML = `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>1 chance sur ${fmtN(Math.round(1 / packTrueOdds(p.req).secret))}</b> par booster de tirer une des <b>${worldSecrets} Merveilles du monde</b> <small>· 1 / nombre de cartes du thème</small></div>`;
+    } else if (p.key === 'bebou') {
       secretEl.hidden = false;
       secretEl.innerHTML = BEBOU_SECRETS_LOCKED ? `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>Les Bébous sont verrouillées pour l’instant</b> <small>· elles ne tombent d’aucun booster, leur retour sera annoncé</small></div>` : `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>1 chance sur ${esc(bebouOddsLabel().replace(/^1 sur /, ''))}</b> par booster de tirer une des <b>8 Bébous</b> <small>· 1 / nombre de cartes du jeu : plus il y a de cartes, plus c’est rare</small></div>`;
     } else secretEl.hidden = true;

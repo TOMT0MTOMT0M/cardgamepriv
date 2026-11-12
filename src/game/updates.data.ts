@@ -3,7 +3,6 @@
  * Pour ajouter une mise à jour : une entrée en tête du mois en cours (ou un nouveau mois en tête de la liste).
  * `tag` : nouveau · amélioré · corrigé.
  */
-import { PUBLIC_CARD_COUNT } from '../core/sets/themes';
 
 export interface UpdateEntry {
   date: string;
@@ -17,8 +16,12 @@ export interface UpdateMonth {
   entries: UpdateEntry[];
 }
 
-/** nombre total de cartes à collectionner (lu dans le catalogue : il suit les ajouts) */
-const CARDS = String(PUBLIC_CARD_COUNT).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+/**
+ * `{CARTES}` dans un point = le nombre total de cartes à collectionner, lu dans le catalogue AU MOMENT DE L'AFFICHAGE
+ * (src/game/views/infos.ts) : il suit les ajouts et les retraits. (12/11) Avant, il était lu au chargement de ce fichier,
+ * avant l'arrivée des 4 gros thèmes : la page affichait 5 247 cartes au lieu du vrai total.
+ */
+export const CARDS_TOKEN = '{CARTES}';
 
 /**
  * (retours live 6, C11) pour l'instant UN SEUL post : la V1, datée du 8 novembre 2026 — le nombre de cartes, les grosses
@@ -34,6 +37,17 @@ export const UPDATES: UpdateMonth[] = [
   {
     month: 'Novembre 2026',
     entries: [
+      {
+        date: '12 nov.', title: 'Plus de 6★ en pleine illustration, nouvelles images et vrais taux des boosters', tag: 'amélioré',
+        points: [
+          'Pleine illustration : 208 cartes 6★ dont la photo était posée en bande passent en plein cadre (photos recadrées sur le visage ; pochettes, voitures et groupes gardés en entier sur un fond tiré de l’image).',
+          'Nouvelles images pour 77 cartes : Gojo, Kaneki, Aizen, Byakuya, Lelouch, Minato, Shikamaru, Mulan, Neo, John Wick, Indiana Jones, Louis de Funès, François Pignon, Pierre Brochant, Perceval, Arthur (Kaamelott), Kanye West, Orelsan, Stevie Wonder, One Direction, Thomas Müller, Gerrard, Kanté, Neuer, s1mple, apEX, Keria, Neon, Tracer, Séphiroth, Heineken, la Nissan GT-R, la Skyline R34…',
+          'Norman fait des vidéos est retiré du jeu.',
+          'Fiche booster : les vrais taux. Les pourcentages par carte tombent juste (100 % au total), le god pack et la pity sont comptés (6★ : 1 booster sur 38,6), la chance de chaque carte aussi, et le World Pack affiche la chance de ses Merveilles secrètes.',
+          'Le nombre de cartes affiché suit le vrai catalogue : {CARTES} cartes à collectionner (les Bébous verrouillées ne sont plus comptées).',
+          'Extraits : American Idiot joue enfin American Idiot (c’était 21 Guns), Pump It et Bande organisée le bon morceau, et Francis Poulenc a le sien. 20 chansons ont aussi le bon artiste imprimé (Bad → Michael Jackson, Someone Like You → Adele…).',
+        ],
+      },
       {
         date: '12 nov.', title: '56 chansons en 6★, Finn d’Adventure Time, et la musique des 6★', tag: 'nouveau',
         points: [
@@ -126,7 +140,7 @@ export const UPDATES: UpdateMonth[] = [
         points: [
           'Saison 1 : tout le monde repart de zéro. Compte avec Discord ou un simple pseudo, 15 boosters offerts et recharge ×2 pendant tes 24 premières heures.',
           'La roulette démarre avec un pot de base : des pièces et une carte 6★ offertes par le club.',
-          `${CARDS} cartes à collectionner dans 4 thèmes — Gaming, Pop Culture, Sport et World — plus des cartes secrètes.`,
+          '{CARTES} cartes à collectionner dans 4 thèmes — Gaming, Pop Culture, Sport et World — plus des cartes secrètes.',
           '5 boosters (Bebou, Gaming, Popculture, Sport, World), 1 booster offert toutes les 5 minutes (jusqu’à 15 en réserve), ouvertures par 5 ou 10.',
           'Collection par familles et albums, classeurs, la Forge et les Contrats pour transformer tes doublons.',
           'Échanges directs entre amis et tableau d’offres ouvert à tous.',

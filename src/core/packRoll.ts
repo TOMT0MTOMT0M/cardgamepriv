@@ -10,6 +10,7 @@
  */
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS, rollStar, type StarRarityId } from './dropRates';
 import { planPack, type PackKind } from './packRules';
+import { PITY_LIMIT } from './pity';
 import { BEBOU_SECRET_CHANCE, BEBOU_THEME, THEMES, WORLD_SECRET_CHANCE, themeById, themeOpen, type CatalogEntry, type CatalogRarity } from './sets/themes';
 
 export interface RolledSlot {
@@ -121,16 +122,134 @@ export function rollPackEx(req: PackRequest, rand: () => number = Math.random): 
 }
 
 /**
- * (retours 06/11) VRAIE chance qu'UNE carte précise tombe dans un booster (au moins une fois) : les mêmes poids que le
- * tirage (4 emplacements libres + 1 garanti rare ou mieux), puis 1 chance sur le nombre de cartes de son étoile dans le
- * pool du booster. Pity et Bébous mis à part (ils ne changent pas la chance d'une carte ordinaire).
+ * (retours 06/11) VRAIE chance qu'UNE carte précise tombe dans un booster (au moins une fois). (12/11) Calculée sur les
+ * vrais taux de chaque emplacement (packTrueOdds : god pack, pity 6★, secrète comprises), puis 1 chance sur le nombre
+ * de cartes de son étoile dans le pool du booster.
  */
 export function cardPackChance(req: PackRequest, rarity: string): number {
   if (rarity === 'secret' || !isValidPackRequest(req)) return 0;
   const n = poolFor(req).get(rarity as StarRarityId)?.length ?? 0;
   if (!n) return 0;
   const r = rarity as StarRarityId;
-  const free = (SLOT_WEIGHTS[r] ?? 0) / 100 / n;
-  const sure = (GUARANTEED_WEIGHTS[r] ?? 0) / 100 / n;
-  return 1 - Math.pow(1 - free, 4) * (1 - sure);
+  let miss = 1;
+  for (const s of packTrueOdds(req).slots) miss *= 1 - (s[r] ?? 0) / n;
+  return 1 - miss;
+}
+
+/**
+ * (12/11) VRAIS TAUX d'un booster, calculés EXACTEMENT sur le tirage ci-dessus (pas de simulation) : les poids des
+ * emplacements, l'emplacement garanti, le GOD PACK (1 sur 1 000, ses 4★+ et sa correction « au moins une 5★ et une
+ * 6★ »), la PITY 6★ en régime établi (part des boosters où elle force une Mythique), la carte SECRÈTE (Bébou ou
+ * Merveille) qui prend la dernière place, et le repli d'étoile d'un pool incomplet. C'est ce qu'affiche la fiche booster.
+ */
+export interface PackTrueOdds {
+  /** part de chaque étoile parmi les cartes tirées (fractions, total 1 avec `secret`) */
+  share: Record<StarRarityId | 'secret', number>;
+  /** chance qu'un booster contienne au moins une carte de cette étoile OU MIEUX (une secrète compte comme mieux qu'une 6★) */
+  atLeast: Record<StarRarityId, number>;
+  /** chance qu'un booster contienne une carte secrète */
+  secret: number;
+  /** chance qu'un booster soit un god pack */
+  god: number;
+  /** part des boosters où la pity force la 6★ (régime établi, en n'ouvrant que ce booster) */
+  pity: number;
+  /** probabilité, pour chaque emplacement (0..4), de chaque étoile (fractions) — sert à la chance d'une carte précise */
+  slots: Array<Record<StarRarityId | 'secret', number>>;
+}
+
+const STARS: StarRarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+type Out = StarRarityId | 'secret';
+const oddsCache = new Map<string, PackTrueOdds>();
+
+export function packTrueOdds(req: PackRequest, pityLimit = PITY_LIMIT): PackTrueOdds {
+  const key = `${req.kind}:${req.themeId ?? ''}:${pityLimit}`;
+  const hit = oddsCache.get(key);
+  if (hit) return hit;
+  const pool = poolFor(req);
+  const has = (r: StarRarityId) => !!pool.get(r)?.length;
+  // repli d'étoile identique au tirage : on descend, puis on remonte
+  const fall = (r: StarRarityId): StarRarityId => {
+    if (has(r)) return r;
+    const i = STARS.indexOf(r);
+    return [...STARS.slice(0, i).reverse(), ...STARS.slice(i + 1)].find(has) ?? r;
+  };
+  const dist = (w: Record<StarRarityId, number>) => {
+    const tot = STARS.reduce((a, r) => a + w[r], 0);
+    const d = new Map<StarRarityId, number>();
+    for (const r of STARS) if (w[r] > 0) d.set(fall(r), (d.get(fall(r)) ?? 0) + w[r] / tot);
+    return d;
+  };
+  const FREE = dist(SLOT_WEIGHTS), GUAR = dist(GUARANTEED_WEIGHTS), GODW = dist(GOD_WEIGHTS);
+  const FORCED = new Map<StarRarityId, number>([[has('mythic') ? 'mythic' : fall('mythic'), 1]]);
+  const theme = req.kind === 'theme' ? themeById(req.themeId ?? '') : undefined;
+  const themeSecrets = theme ? theme.cards.filter((c) => c.rarity === 'secret').length : 0;
+  const sc = req.kind === 'bebou' ? BEBOU_SECRET_CHANCE : themeSecrets > 0 ? (theme!.id === 'monde' ? WORLD_SECRET_CHANCE : 1 / theme!.cards.length) : 0;
+  const g = GOD_PACK_CHANCE;
+
+  /** toutes les issues d'un booster (liste d'étoiles par emplacement, avec leur probabilité) pour un cas donné */
+  function outcomes(god: boolean, secret: boolean, forced: boolean): Array<[Out[], number]> {
+    const n = secret ? 4 : 5;
+    const per: Array<Map<StarRarityId, number>> = [];
+    for (let i = 0; i < n; i++) per.push(god ? GODW : i === 4 ? (forced ? FORCED : GUAR) : FREE);
+    let acc: Array<[Out[], number]> = [[[], 1]];
+    for (const d of per) {
+      const next: Array<[Out[], number]> = [];
+      for (const [o, p] of acc) for (const [r, q] of d) next.push([[...o, r], p * q]);
+      acc = next;
+    }
+    if (secret) acc = acc.map(([o, p]) => [[...o, 'secret'], p]);
+    if (!god) return acc;
+    // correction du god pack (au moins une 6★ et une 5★), avec le même choix de l'emplacement remplacé
+    const RANK: Record<string, number> = { epic: 4, legendary: 5, mythic: 6 };
+    let cur = acc;
+    for (const want of ['mythic', 'legendary'] as const) {
+      if (!has(want)) continue;
+      const next: Array<[Out[], number]> = [];
+      for (const [o, p] of cur) {
+        if (o.includes(want)) { next.push([o, p]); continue; }
+        const only = (r: Out) => o.filter((x) => x === r).length === 1;
+        const cand = o.map((x, i) => ({ x, i })).filter(({ x }) => x !== 'secret' && !((x === 'mythic' || x === 'legendary') && only(x)));
+        if (!cand.length) { next.push([o, p]); continue; }
+        const low = Math.min(...cand.map(({ x }) => RANK[x] ?? 0));
+        const picks = cand.filter(({ x }) => (RANK[x] ?? 0) === low);
+        for (const { i } of picks) { const o2 = o.slice(); o2[i] = want; next.push([o2, p / picks.length]); }
+      }
+      cur = next;
+    }
+    return cur;
+  }
+  const rankOf = (r: Out) => (r === 'secret' ? 6 : STARS.indexOf(r));
+  const zero = () => Object.fromEntries([...STARS, 'secret'].map((r) => [r, 0])) as Record<Out, number>;
+  function aggregate(cases: Array<[boolean, boolean, boolean, number]>) {
+    const slots = [zero(), zero(), zero(), zero(), zero()];
+    const best = new Array(7).fill(0);
+    let dry = 0;
+    for (const [god, secret, forced, w] of cases) {
+      if (w <= 0) continue;
+      for (const [o, p] of outcomes(god, secret, forced)) {
+        o.forEach((r, i) => (slots[i][r] += w * p));
+        const b = Math.max(...o.map(rankOf));
+        best[b] += w * p;
+        if (b < 5) dry += w * p;
+      }
+    }
+    return { slots, best, dry };
+  }
+  // 1) sans pity : part des boosters « secs » (ni 6★ ni secrète) → régime établi de la pity
+  const base = aggregate([[false, false, false, (1 - g) * (1 - sc)], [false, true, false, (1 - g) * sc], [true, false, false, g * (1 - sc)], [true, true, false, g * sc]]);
+  const q = base.dry;
+  const cycle = q >= 1 ? pityLimit : (1 - Math.pow(q, pityLimit)) / (1 - q);
+  const pity = q >= 1 ? 1 / pityLimit : Math.pow(q, pityLimit - 1) / cycle;
+  // 2) avec pity : un booster forcé (ni god pack ni secrète à la dernière place) prend une 6★ garantie à la place de l'emplacement garanti
+  const all = aggregate([
+    [false, false, false, (1 - g) * (1 - sc) * (1 - pity)], [false, false, true, (1 - g) * (1 - sc) * pity],
+    [false, true, false, (1 - g) * sc], [true, false, false, g * (1 - sc)], [true, true, false, g * sc],
+  ]);
+  const share = zero();
+  for (const s of all.slots) for (const r of [...STARS, 'secret'] as Out[]) share[r] += s[r] / 5;
+  const atLeast = {} as Record<StarRarityId, number>;
+  STARS.forEach((r, i) => (atLeast[r] = all.best.slice(i).reduce((a, b) => a + b, 0)));
+  const out: PackTrueOdds = { share, atLeast, secret: sc, god: g, pity, slots: all.slots };
+  oddsCache.set(key, out);
+  return out;
 }

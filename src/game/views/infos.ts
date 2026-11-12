@@ -1,12 +1,12 @@
 import type { Shell } from '../shell';
 import { esc, h } from '../ui';
-import { UPDATES } from '../updates.data';
+import { CARDS_TOKEN, UPDATES } from '../updates.data';
 import { PACK_CAP, PACK_REGEN_MS } from '../../core/packRegen';
 import { PACK_BUY_DAILY, PACK_PRICE, fmtCoins } from '../../core/economy';
 import { CONTRACT_COST } from '../../core/contracts';
 import { PITY_LIMIT } from '../../core/pity';
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS } from '../../core/dropRates';
-import { BEBOU_SECRETS_LOCKED, GAME_CARD_COUNT, THEMES, fmtCount } from '../../core/sets/themes';
+import { BEBOU_SECRETS_LOCKED, GAME_CARD_COUNT, PUBLIC_CARD_COUNT, THEMES, fmtCount } from '../../core/sets/themes';
 
 /**
  * Deux pages d'information (retours 06/11) :
@@ -52,7 +52,7 @@ export function createUpdatesView(shell: Shell): InfoView {
           return `<details class="if-entry"${n++ < OPEN_ENTRIES ? ' open' : ''}>
             <summary><span class="if-e-h"><span class="if-date">${esc(e.date)}</span><span class="if-tag t-${tag}">${TAG_LABEL[e.tag]}</span></span>
               <span class="if-e-t"><h3>${esc(e.title)}</h3><span class="if-e-n">${nb} ${nb > 1 ? 'nouveautés' : 'nouveauté'}</span></span></summary>
-            <ul class="if-points">${e.points.map(point).join('')}</ul>
+            <ul class="if-points">${e.points.map((x) => point(x.split(CARDS_TOKEN).join(fmtCount(PUBLIC_CARD_COUNT)))).join('')}</ul>
           </details>`;
         })
         .join('')}
@@ -75,7 +75,7 @@ export function createTutorialView(shell: Shell): InfoView {
   el.innerHTML = `<div class="if-wrap">
     <header class="if-head"><span class="kicker">TUTORIEL</span><h1>Comment ça marche</h1><p class="muted">Les grandes règles du site, en deux minutes de lecture.</p></header>
     <nav class="if-toc" aria-label="Sommaire">${toc.map(([id, t]) => `<a href="#/tuto" data-to="${id}">${t}</a>`).join('')}</nav>
-    ${sec('principe', 'Le principe', `<p>Bébou Cartes, c’est notre jeu de cartes à collectionner, entre nous. On ouvre des boosters, on complète sa collection et on s’échange les doublons. Pas de combat : tout est dans l’ouverture et la collection. Il y a aujourd’hui <b>${fmtCount(GAME_CARD_COUNT)}</b> cartes à trouver.</p>`)}
+    ${sec('principe', 'Le principe', `<p>Bébou Cartes, c’est notre jeu de cartes à collectionner, entre nous. On ouvre des boosters, on complète sa collection et on s’échange les doublons. Pas de combat : tout est dans l’ouverture et la collection. Il y a aujourd’hui <b>${fmtCount(BEBOU_SECRETS_LOCKED ? PUBLIC_CARD_COUNT : GAME_CARD_COUNT)}</b> cartes à trouver.</p>`)}
     ${sec('boosters', 'Les boosters', `<ul>
       <li><b>5 packs</b> : le <b>Bebou Pack</b> (toutes les cartes des 4 thèmes) et ${THEMES.map((t) => `le <b>${esc(t.label)} Pack</b>`).join(', ')}.</li>
       <li>Un booster = <b>5 cartes</b>, dont au moins une <b>3★</b> ou mieux.</li>

@@ -2,7 +2,7 @@
  * Vérifie le tirage des boosters (logique partagée client/serveur) sur un grand nombre de packs.
  *   npm run test:rolls          (bundle esbuild puis node ; nbPacks par défaut 400 000)
  */
-import { rollPack } from '../src/core/packRoll';
+import { packTrueOdds, rollPack } from '../src/core/packRoll';
 import { packOdds, STAR_RARITIES } from '../src/core/dropRates';
 import { BEBOU_SECRET_CHANCE, GAME_CARD_COUNT, THEMES, WORLD_SECRET_CHANCE } from '../src/core/sets/themes';
 import { PITY_LIMIT, pityAfter, pityForces, pityLeft } from '../src/core/pity';
@@ -29,6 +29,12 @@ for (const req of [...THEMES.filter((t) => t.cards.length).map((t) => ({ kind: '
   const th = packOdds();
   for (const r of STAR_RARITIES.slice(2)) console.log(`  ${r.padEnd(9)} ou mieux : ${(atLeast[r] / N * 100).toFixed(2)} %  (théorie ${(th[r] * 100).toFixed(2)} %, 1 booster sur ${(1 / th[r]).toFixed(1)})`);
   console.log(`  secrète (Bébou) : ${(secret / N * 100).toFixed(3)} %`);
+  // (12/11) les vrais taux affichés par la fiche booster (packTrueOdds : god pack compris ; pas de pity dans cette boucle)
+  const tr = packTrueOdds(req, Infinity);
+  for (const r of STAR_RARITIES.slice(3)) {
+    const sd = Math.sqrt(tr.atLeast[r] * (1 - tr.atLeast[r]) / N);
+    check(Math.abs(atLeast[r] / N - tr.atLeast[r]) < 4 * sd, `${r}+ = taux affiché par la fiche (${(tr.atLeast[r] * 100).toFixed(2)} %)`);
+  }
   check(rareGuarantee === N, 'au moins une rare (ou un Bébou) dans chaque booster');
   if (req.kind === 'theme') {
     if (req.themeId === 'monde') {
@@ -41,8 +47,11 @@ for (const req of [...THEMES.filter((t) => t.cards.length).map((t) => ({ kind: '
     check(wrongTheme === 0, 'que des cartes du thème');
     for (const r of STAR_RARITIES.slice(2)) check(Math.abs(atLeast[r] / N - th[r]) < 0.006, `${r}+ conforme à la théorie`);
   } else {
-    const sd = Math.sqrt(BEBOU_SECRET_CHANCE / N);
-    check(Math.abs(secret / N - BEBOU_SECRET_CHANCE) < 4 * sd, `Bébou ≈ 1 sur ${GAME_CARD_COUNT} par pack (1 / nb total de cartes)`);
+    if (BEBOU_SECRET_CHANCE === 0) check(secret === 0, 'Bébous verrouillées : aucune secrète');
+    else {
+      const sd = Math.sqrt(BEBOU_SECRET_CHANCE / N);
+      check(Math.abs(secret / N - BEBOU_SECRET_CHANCE) < 4 * sd, `Bébou ≈ 1 sur ${GAME_CARD_COUNT} par pack (1 / nb total de cartes)`);
+    }
   }
 }
 // ── pity 6★ (src/core/pity.ts) : 200 boosters secs → le suivant contient une Mythique
