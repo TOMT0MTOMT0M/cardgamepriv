@@ -152,19 +152,23 @@ export async function scheduleReserveFull(ctx: MutationCtx, userId: Id<'users'>)
   try {
     const u = await ctx.db.get(userId);
     if (!u) return;
-    if (u.notifFullJob) {
-      await ctx.scheduler.cancel(u.notifFullJob).catch(() => undefined);
-      await ctx.db.patch(userId, { notifFullJob: undefined });
+    // l'instant visé, ou `null` s'il n'y a rien à programmer
+    let at: number | null = null;
+    if (process.env.VAPID_PUBLIC_KEY && !(u.notifPrefs && !u.notifPrefs.includes('reserve')) && (await ctx.db.query('pushSubs').withIndex('by_user', (q) => q.eq('userId', userId)).first()))
+      at = fullAt(u.packBalance, u.packRegenAt ?? u.lastSeenAt, Date.now(), u.regenBoostUntil);
+    const regenAt = u.packRegenAt ?? u.lastSeenAt;
+    const key = at === null ? undefined : `${at}:${u.packBalance}:${regenAt}`;
+    // (audit 12/11, S11 / E1-07) le même job attend déjà (même instant, même réserve) : AUCUNE écriture. Avant : annulé
+    // puis reprogrammé à l'identique, soit 2 écritures du document joueur à chaque chargement de l'appli (push.subscribe),
+    // qui relançaient ses requêtes et celles de ses amis.
+    if (key && u.notifFullJob && u.notifFullKey === key && (await ctx.db.system.get(u.notifFullJob))?.state.kind === 'pending') return;
+    if (u.notifFullJob) await ctx.scheduler.cancel(u.notifFullJob).catch(() => undefined);
+    if (at === null) {
+      if (u.notifFullJob || u.notifFullKey) await ctx.db.patch(userId, { notifFullJob: undefined, notifFullKey: undefined });
+      return;
     }
-    if (!process.env.VAPID_PUBLIC_KEY) return;
-    if (u.notifPrefs && !u.notifPrefs.includes('reserve')) return;
-    const subs = await ctx.db.query('pushSubs').withIndex('by_user', (q) => q.eq('userId', userId)).first();
-    if (!subs) return;
-    const now = Date.now();
-    const at = fullAt(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil);
-    if (at === null) return;
-    const job = await ctx.scheduler.runAt(at + 1000, internal.push.reserveFull, { userId, balance: u.packBalance, regenAt: u.packRegenAt ?? u.lastSeenAt });
-    await ctx.db.patch(userId, { notifFullJob: job });
+    const job = await ctx.scheduler.runAt(at + 1000, internal.push.reserveFull, { userId, balance: u.packBalance, regenAt });
+    await ctx.db.patch(userId, { notifFullJob: job, notifFullKey: key });
   } catch (e) {
     console.warn('[push] réserve', e);
   }
@@ -176,7 +180,7 @@ export const reserveFull = internalMutation({
   handler: async (ctx, { userId, balance, regenAt }) => {
     const u = await ctx.db.get(userId);
     if (!u || u.packBalance !== balance || (u.packRegenAt ?? u.lastSeenAt) !== regenAt) return;
-    await ctx.db.patch(userId, { notifFullJob: undefined });
+    await ctx.db.patch(userId, { notifFullJob: undefined, notifFullKey: undefined });
     await notify(ctx, userId, { kind: 'reserve', title: 'Réserve pleine : 15 boosters', body: 'Ta réserve est au maximum, elle ne se recharge plus. Viens ouvrir !', url: '#/' }, { at: Date.now() });
   },
 });

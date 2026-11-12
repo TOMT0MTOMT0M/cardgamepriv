@@ -56,7 +56,26 @@ export async function syncPush(backend: GameBackend): Promise<void> {
   if (!backend.push || !supported()) return;
   try {
     const s = await currentSub();
-    if (s) await backend.push.subscribe(subJson(s));
+    if (!s) return;
+    // (audit 12/11, S11 / E1-07) déjà envoyé pour ce compte et cet abonnement depuis moins d'un jour : pas d'appel
+    // (avant : une mutation à chaque chargement de l'appli). Clés renouvelées ou autre compte → l'empreinte change.
+    // (un jour, pas plus : le serveur retire un abonnement après 3 envois ratés ; il est ainsi recréé dès le lendemain)
+    const j = subJson(s);
+    const uid = backend.state.user?.id; // compte pas encore connu : on envoie, sans rien retenir
+    const print = `${uid ?? ''}|${j.endpoint}|${j.keys.p256dh}`;
+    const KEY = 'bebou.pushSync';
+    try {
+      const [p, at] = (localStorage.getItem(KEY) ?? '').split('\n');
+      if (uid && p === print && Date.now() - Number(at) < 86400_000) return;
+    } catch {
+      /* stockage bloqué : on envoie */
+    }
+    await backend.push.subscribe(j);
+    try {
+      if (uid) localStorage.setItem(KEY, `${print}\n${Date.now()}`);
+    } catch {
+      /* ignore */
+    }
   } catch {
     /* hors ligne, pas grave */
   }

@@ -652,8 +652,10 @@ class GameNetClient {
 
   private startHeartbeat() {
     if (this.heartbeatTimer !== null) clearInterval(this.heartbeatTimer);
+    let lastBeat = 0;
     const beat = () => {
       if (this.client && this.sessionToken && document.visibilityState === 'visible') {
+        lastBeat = Date.now();
         void this.client.mutation(api.users.heartbeat, { sessionToken: this.sessionToken, deviceId: deviceId() }).catch(() => {});
       }
     };
@@ -666,7 +668,9 @@ class GameNetClient {
     this.beatNow = beat;
     this.heartbeatTimer = window.setInterval(beat, 110_000);
     // retour sur l'onglet après minuit : la série avance sans attendre le prochain battement
-    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && beat());
+    // (audit 12/11, S11 / A5-08) pas plus d'un battement par demi-minute sur les retours d'onglet (avant : un appel à
+    // chaque retour, même après 3 secondes)
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && Date.now() - lastBeat > 30_000 && beat());
   }
 
   public onChange(fn: Listener): () => void {

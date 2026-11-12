@@ -277,8 +277,12 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
   const refClaim = q<HTMLFormElement>('.am-ref-claim');
   const refClaimIn = q<HTMLInputElement>('.am-ref-claim-in');
   let refAt = 0;
+  let refFor: string | undefined;
   async function loadReferral() {
-    if (!backend.state.user || Date.now() - refAt < 20_000) return;
+    // (audit 12/11, S11 / A5-07) `referrals.mine` est une mutation : au plus une fois toutes les 2 min sur la page
+    // (avant : à chaque entrée sur Amis et jusqu'à 3 fois par minute au fil des émissions) ; remise à zéro après un geste
+    if (backend.state.user?.id !== refFor) ((refFor = backend.state.user?.id), (refAt = 0)); // autre compte : son lien à lui
+    if (!backend.state.user || Date.now() - refAt < 120_000) return;
     refAt = Date.now();
     try {
       const r = await backend.referral();
@@ -344,7 +348,6 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       shell.setDimmed(true);
       el.scrollTo({ top: 0 });
       render(true);
-      refAt = 0;
       void loadReferral();
       // « en ligne » / « vu il y a… » : relus toutes les 30 s (les battements de cœur des amis n'émettent pas)
       clearInterval(tick);

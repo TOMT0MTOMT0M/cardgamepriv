@@ -80,6 +80,8 @@ export default defineSchema({
     /** notifications push (V2) : types voulus (absent = tout), et le job programmé « réserve pleine » (pour l'annuler) */
     notifPrefs: v.optional(v.array(v.string())),
     notifFullJob: v.optional(v.id('_scheduled_functions')),
+    /** (audit 12/11, S11) ce que vise ce job (« instant:réserve:départ ») : identique → on ne le reprogramme pas */
+    notifFullKey: v.optional(v.string()),
     /** petite devise affichée sur le profil */
     bio: v.optional(v.string()),
     /** pity 6★ : boosters d'affilée sans Mythique (src/core/pity.ts) — absent = 0 */
