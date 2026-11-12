@@ -4,6 +4,7 @@ import type { Doc, TableNames } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { BOOST_MS } from '../src/core/packRegen';
 import { ROULETTE_SEED_COINS, seedRoulette } from './games';
+import { syncPresence } from './presence';
 
 /**
  * OUVERTURE OFFICIELLE (07/11) — date d'ouverture + remise à zéro de la saison de test.
@@ -183,6 +184,7 @@ export const resetStep = internalMutation({
     for (const u of await ctx.db.query('users').collect()) {
       if (!keep.has(u._id)) {
         await ctx.db.delete(u._id);
+        await syncPresence(ctx, u._id); // joueur supprimé : sa carte de présence aussi
         removed++;
         continue;
       }
@@ -206,6 +208,7 @@ export const resetStep = internalMutation({
         lastSeenAt: now,
         statusText: 'Nouvelle saison',
       });
+      await syncPresence(ctx, u._id);
     }
     counts.users = removed;
     // roulette : pot de base pour la nouvelle saison (pièces + une 6★ offerte, en plus de la carte du site)

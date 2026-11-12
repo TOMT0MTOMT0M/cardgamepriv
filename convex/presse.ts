@@ -8,6 +8,7 @@ import { fmtCoins } from '../src/core/economy';
 import { nextMissionReset } from '../src/core/missions';
 import { validPackChoice, packChoiceLabel, type PackChoice } from '../src/core/games';
 import { PRESSE_DAILY, PRESSE_STRIKES, presseBetProblem, presseCracks, presseStrip, presseValue } from '../src/core/presse';
+import { syncPresence } from './presence';
 
 /**
  * LA PRESSE (V2, 11/11) — mini-jeu contre la maison, règles : src/core/presse.ts.
@@ -75,6 +76,7 @@ export const start = mutation({
     const a = album.kind === 'theme' ? { kind: 'theme' as const, themeId: album.themeId } : { kind: 'bebou' as const };
     const id = await ctx.db.insert('presseRuns', { userId: u._id, bet, album: a, strip: presseStrip(a, secureRandom), shown: 1, status: 'live', createdAt: now });
     await ctx.db.patch(u._id, { statusText: 'Fait tourner La Presse' });
+    await syncPresence(ctx, u._id);
     return view((await ctx.db.get(id))!);
   },
 });

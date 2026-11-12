@@ -7,6 +7,7 @@ import type { RarityId } from './cardsCatalog';
 import { PURGED_CARD_IDS } from './purgedCards';
 import { isBigPull } from './feed';
 import { dropInv, invRev } from './invRev';
+import { ensurePresence } from './presence';
 
 /**
  * RARETÉS — une seule source de vérité : le catalogue (src/core/sets/*).
@@ -224,5 +225,21 @@ export const markBigPulls = internalMutation({
       marked++;
     }
     return { scanned: recent.length, marked };
+  },
+});
+
+/**
+ * (audit perf 12/11, décision 8) PRÉSENCE : une carte publique par joueur (convex/presence.ts). Crée d'un coup les
+ * lignes manquantes — tant que la table est vide, le serveur lit et écrit `users` comme avant. Idempotente.
+ *
+ *   npx convex run migrations:backfillPresence
+ */
+export const backfillPresence = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let created = 0;
+    const users = await ctx.db.query('users').collect();
+    for (const u of users) if (await ensurePresence(ctx, u)) created++;
+    return { users: users.length, created };
   },
 });

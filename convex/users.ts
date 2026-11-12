@@ -4,6 +4,7 @@ import { getUserByToken, requireUser } from './auth';
 import { PACK_CAP, PACK_REGEN_MS, applyRegen } from '../src/core/packRegen';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakClaimable, touchStreak } from '../src/core/streak';
 import { catalogEntry } from '../src/core/sets/themes';
+import { presenceOf, syncPresence } from './presence';
 
 /** Taille maximale de la liste d'envies. */
 export const WISHLIST_MAX = 300;
@@ -125,6 +126,26 @@ export const friends = query({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
+    // (audit 12/11, décision 8) la liste du club ne lit plus que les cartes publiques : elle ne repart plus aux
+    // écritures privées des joueurs (pièces, missions, réserve), et lit ≈ 0,3 Ko par joueur au lieu de ≈ 1,8 Ko
+    const cards = await ctx.db.query('presence').collect();
+    if (cards.length)
+      return cards
+        .filter((p) => !p.bannedAt)
+        .map((p) => ({
+          _id: p.userId,
+          displayName: p.displayName,
+          username: p.username,
+          avatarUrl: p.avatarUrl,
+          totalPacksOpened: p.totalPacksOpened,
+          online: now - p.lastSeenAt < ONLINE_WINDOW_MS,
+          statusText: p.statusText,
+          lastSeenAt: p.lastSeenAt,
+          /** (E1-13) âge de la dernière visite à l'horloge du SERVEUR : le client fait retomber « en ligne » sans dépendre de la sienne */
+          seenAgo: Math.max(0, now - p.lastSeenAt),
+        }))
+        .sort((a, b) => Number(b.online) - Number(a.online) || b.lastSeenAt - a.lastSeenAt);
+    // table de présence pas encore remplie (avant migrations:backfillPresence) : comme avant
     const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
     return users
       .map((u) => ({
@@ -136,6 +157,7 @@ export const friends = query({
         online: now - u.lastSeenAt < ONLINE_WINDOW_MS,
         statusText: u.statusText,
         lastSeenAt: u.lastSeenAt,
+        seenAgo: Math.max(0, now - u.lastSeenAt),
       }))
       .sort((a, b) => Number(b.online) - Number(a.online) || b.lastSeenAt - a.lastSeenAt);
   },
@@ -163,16 +185,22 @@ export const heartbeat = mutation({
     // série de connexion : premier battement de la journée → +1 jour (ou retour à 1)
     const streak = touchStreak(user.streak, now);
     const dev = deviceId && /^[a-z0-9-]{8,64}$/i.test(deviceId) && !(user.devices ?? []).includes(deviceId) ? [...(user.devices ?? []), deviceId].slice(-8) : null;
+    // (audit 12/11, décision 8) « vu à l'instant » va dans la carte de présence, plus dans le document joueur : le
+    // battement ne relance plus profil, économie et missions chez soi. Sans ligne de présence (avant la migration) : comme avant.
+    const seen = await presenceOf(ctx, user._id);
     const patch = {
       ...(dev ? { devices: dev } : {}),
-      ...(now - user.lastSeenAt >= SEEN_EVERY_MS ? { lastSeenAt: now } : {}),
+      ...(!seen && now - user.lastSeenAt >= SEEN_EVERY_MS ? { lastSeenAt: now } : {}),
       ...(streak ? { streak } : {}),
       // comptes d'avant la recharge : on fige le départ du minuteur (sinon il glisserait avec lastSeenAt)
       ...(user.packRegenAt === undefined ? { packRegenAt: user.lastSeenAt } : {}),
       ...(statusText !== undefined && statusText !== user.statusText ? { statusText } : {}),
     };
     // rien de neuf : AUCUNE écriture (sinon toutes les requêtes qui lisent ce joueur repartent)
-    if (Object.keys(patch).length) await ctx.db.patch(user._id, patch);
+    // (une écriture a lieu de toute façon — 1re visite du jour, nouvel appareil : `lastSeenAt` suit, pour le tableau de bord)
+    const wrote = Object.keys(patch).length > 0;
+    if (wrote) await ctx.db.patch(user._id, seen ? { ...patch, lastSeenAt: now } : patch);
+    if (seen ? wrote || now - seen.lastSeenAt >= SEEN_EVERY_MS : wrote) await syncPresence(ctx, user._id, seen ? now : 0);
     return { ok: true };
   },
 });

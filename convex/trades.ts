@@ -8,6 +8,7 @@ import { bumpMissions } from './missions';
 import { bumpWeekly, recordFlow } from './econLib';
 import { cardsValue } from '../src/core/economy';
 import { dropInv, invRev } from './invRev';
+import { seenAtOf } from './presence';
 
 const tradeItemValidator = v.object({
   cardId: v.string(),
@@ -153,7 +154,7 @@ export const owners = query({
       const u = await ctx.db.get(r.userId);
       if (!u || u.bannedAt) continue;
       const locked = (await lockedCards(ctx, r.userId)).get(`${r.cardId}:${r.rarity}`) ?? 0;
-      out.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online: now - u.lastSeenAt < OWNER_ONLINE_MS, rarity: r.rarity, count: r.count, free: Math.max(0, r.count - locked) });
+      out.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online: now - (await seenAtOf(ctx, u)) < OWNER_ONLINE_MS, rarity: r.rarity, count: r.count, free: Math.max(0, r.count - locked) });
     }
     const rank = (o: (typeof out)[number]) => (o.free >= 2 ? 0 : o.free >= 1 ? 1 : 2);
     return out.sort((a, b) => rank(a) - rank(b) || Number(b.online) - Number(a.online) || b.count - a.count || a.name.localeCompare(b.name));

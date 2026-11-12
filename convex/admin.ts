@@ -5,6 +5,7 @@ import { CATALOG_CARDS, type RarityId } from './cardsCatalog';
 import { applyRegen } from '../src/core/packRegen';
 import { addCoins } from './econLib';
 import { invRev } from './invRev';
+import { syncPresence } from './presence';
 
 /**
  * OUTILS DE TEST (admin) — fonctions INTERNES : impossibles à appeler depuis le site, seulement depuis la ligne de
@@ -210,6 +211,7 @@ export const ban = internalMutation({
     if (u.isAdmin || u.isModerator) throw new ConvexError(`${u.displayName} est de l'équipe : retire-lui d'abord ses droits.`);
     const now = Date.now();
     await ctx.db.patch(u._id, { bannedAt: now, banReason: reason ?? 'banni', statusText: undefined });
+    await syncPresence(ctx, u._id);
     const n = { sessions: 0, echanges: 0, annonces: 0, offres: 0, amis: 0 };
     for (const s of await ctx.db.query('sessions').withIndex('by_userId', (q) => q.eq('userId', u._id)).collect()) (await ctx.db.delete(s._id), n.sessions++);
     const pending = [
@@ -238,6 +240,7 @@ export const unban = internalMutation({
     const u = await findUser(ctx, name);
     if (!u.bannedAt) return `${u.displayName} n'est pas banni.`;
     await ctx.db.patch(u._id, { bannedAt: undefined, banReason: undefined });
+    await syncPresence(ctx, u._id);
     return `${u.displayName} (@${u.username}) rétabli : il peut se reconnecter.`;
   },
 });

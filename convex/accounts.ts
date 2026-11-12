@@ -1,6 +1,7 @@
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
 import { createUser, issueSession } from './auth';
+import { syncPresence } from './presence';
 
 /**
  * COMPTES SANS DISCORD (ouverture 07/11) — la partie base de données ; le hachage du mot de passe (scrypt, Node) est
@@ -55,6 +56,7 @@ export const pwAttempt = internalMutation({
       return { token: null };
     }
     await ctx.db.patch(userId, { pwFails: 0, pwLockUntil: undefined, lastSeenAt: now });
+    await syncPresence(ctx, userId);
     return { token: await issueSession(ctx, userId) };
   },
 });

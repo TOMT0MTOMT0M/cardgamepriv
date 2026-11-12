@@ -4,6 +4,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { STARTER_PACKS, assertOpen } from './launch';
 import { BOOST_MS } from '../src/core/packRegen';
+import { syncPresence } from './presence';
 
 /** Places du club (variable Convex MAX_PLAYERS pour l'agrandir, comptes de l'équipe compris). */
 export const maxPlayers = () => {
@@ -101,6 +102,7 @@ export const upsertDiscordUser = internalMutation({
         lastSeenAt: now,
         ...(user.packRegenAt === undefined ? { packRegenAt: user.lastSeenAt } : {}),
       });
+      await syncPresence(ctx, user._id);
     }
 
     // (08/11) rôle « Card » sur le serveur des Bébous, à chaque connexion Discord (sans effet s'il l'a déjà)
@@ -141,6 +143,7 @@ export async function createUser(
     lastSeenAt: now,
     statusText: 'Vient de rejoindre le club',
   });
+  await syncPresence(ctx, userId);
   await ctx.db.insert('activityFeed', {
     userId,
     displayName: f.displayName,

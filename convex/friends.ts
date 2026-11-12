@@ -3,6 +3,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/s
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserIdByToken, requireUser } from './auth';
 import { notify } from './push';
+import { presenceOf } from './presence';
 
 /**
  * AMIS (retours live 02, point 8) — un vrai lien d'amitié, À PART de `users.friends` (qui reste la liste de TOUS les
@@ -160,7 +161,14 @@ export const mine = query({
       ctx.db.query('friendships').withIndex('by_requester', (q) => q.eq('requesterId', me._id)).collect(),
       ctx.db.query('friendships').withIndex('by_addressee', (q) => q.eq('addresseeId', me._id)).collect(),
     ]);
-    const person = (u: Doc<'users'>) => ({ userId: u._id, name: u.displayName, username: u.username, avatarUrl: u.avatarUrl });
+    type Pub = { _id: Id<'users'>; displayName: string; username: string; avatarUrl?: string; lastSeenAt: number; statusText?: string; totalPacksOpened: number };
+    // (audit 12/11, décision 8) la carte publique de l'ami (convex/presence.ts), pas son document : « mes amis » ne
+    // repart plus à chacune de ses écritures privées. Sans carte (avant la migration) : son document, comme avant.
+    const pub = async (id: Id<'users'>): Promise<Pub | null> => {
+      const p = await presenceOf(ctx, id);
+      return p ? { ...p, _id: p.userId } : await ctx.db.get(id);
+    };
+    const person = (u: Pub) => ({ userId: u._id, name: u.displayName, username: u.username, avatarUrl: u.avatarUrl });
     type Req = ReturnType<typeof person> & { friendshipId: Id<'friendships'>; createdAt: number };
     const friends = [];
     const incoming: Req[] = [];
@@ -168,7 +176,7 @@ export const mine = query({
     for (const f of [...outAll, ...inAll]) {
       if (f.status === 'declined') continue;
       const otherId = f.requesterId === me._id ? f.addresseeId : f.requesterId;
-      const u = await ctx.db.get(otherId);
+      const u = await pub(otherId);
       if (!u) continue;
       if (f.status === 'pending') {
         (f.requesterId === me._id ? outgoing : incoming).push({ friendshipId: f._id, ...person(u), createdAt: f.createdAt });

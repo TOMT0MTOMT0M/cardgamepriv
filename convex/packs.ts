@@ -16,6 +16,7 @@ import { queueDropShot } from './dropShots';
 import { liveEventOrThrow } from './events';
 import { bumpChallenges } from './challenges';
 import { invRev } from './invRev';
+import { syncPresence } from './presence';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -94,6 +95,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     lastSeenAt: now,
     statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
   });
+  await syncPresence(ctx, user._id);
   await scheduleReserveFull(ctx, user._id);
 
   const rolledCards: Array<{
@@ -224,6 +226,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
     lastSeenAt: now,
     statusText: pack.god ? 'Vient d’ouvrir un GOD PACK' : 'Contemple son tirage',
   });
+  await syncPresence(ctx, user._id);
   if (pack.god)
     await ctx.db.insert('activityFeed', {
       userId: user._id,

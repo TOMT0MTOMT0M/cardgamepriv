@@ -634,6 +634,20 @@ export default defineSchema({
    */
   /** (v1.0.11) classement : une ligne par joueur, recalculée par profiles:refreshRanks (lire toutes les collections à
    *  chaque affichage dépassait la limite de Convex). `row` = la ligne telle que `profiles:leaderboard` la renvoie. */
+  /**
+   * (audit perf 12/11, décision 8) carte publique d'un joueur, hors de son document (convex/presence.ts) : écrite par
+   * le battement de cœur et les gestes de jeu, lue par la liste du club et « mes amis ». Une ligne par joueur.
+   */
+  presence: defineTable({
+    userId: v.id('users'),
+    lastSeenAt: v.number(),
+    displayName: v.string(),
+    username: v.string(),
+    totalPacksOpened: v.number(),
+    avatarUrl: v.optional(v.string()),
+    statusText: v.optional(v.string()),
+    bannedAt: v.optional(v.number()),
+  }).index('by_user', ['userId']),
   rankRows: defineTable({
     userId: v.id('users'),
     row: v.any(),

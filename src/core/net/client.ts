@@ -85,6 +85,8 @@ export interface FriendPresence {
   online: boolean;
   statusText?: string;
   lastSeenAt: number;
+  /** âge de la dernière visite à l'horloge du serveur, au moment du calcul (absent : serveur d'avant le 12/11) */
+  seenAgo?: number;
 }
 
 export interface TradeItem {
@@ -149,6 +151,8 @@ type Listener = (state: NetState) => void;
 /** Profil sans les champs qui changent à chaque battement de cœur sans rien changer à l'écran. */
 const userSig = (u: MeProfile | null) => (u ? JSON.stringify({ ...u, nextDailyClaimAt: 0 }) : '');
 /** Amis sans `lastSeenAt` (change à chaque battement) ni l'ordre qui en découle. */
+/** « en ligne » = vu depuis moins de 6 min (même fenêtre que convex/users.ts, ONLINE_WINDOW_MS) */
+const ONLINE_WINDOW_MS = 6 * 60 * 1000;
 const friendsSig = (fs: FriendPresence[]) =>
   fs
     .map((f) => JSON.stringify([f._id, f.displayName, f.username, f.avatarUrl ?? '', f.totalPacksOpened, f.online, f.statusText ?? '']))
@@ -463,8 +467,27 @@ class GameNetClient {
     );
   }
 
+  /** (audit 12/11, E1-13) liste du club telle que reçue, et l'instant local où chaque « en ligne » expire */
+  private membersRaw: FriendPresence[] = [];
+  private onlineUntil = new Map<string, number>();
+  private onlineTimer: number | null = null;
+
   private applyMembers(friends: NetState['friends'] | null | undefined) {
-    this.state.friends = friends ?? [];
+    // (audit 12/11, E1-13) AVANT : « en ligne » était figé à l'heure de la dernière exécution de la requête côté serveur,
+    // et ne retombait que si une écriture la relançait. MAINTENANT : le client le fait retomber lui-même, 6 min après
+    // la dernière visite (même fenêtre que le serveur). L'âge vient de l'horloge du serveur (`seenAgo`) : un téléphone
+    // mal réglé ne fausse rien.
+    this.membersRaw = friends ?? [];
+    const t0 = Date.now();
+    this.onlineUntil.clear();
+    for (const f of this.membersRaw) if (f.online) this.onlineUntil.set(f._id, t0 + Math.max(30_000, ONLINE_WINDOW_MS - (f.seenAgo ?? 0)));
+    if (this.onlineTimer === null) this.onlineTimer = window.setInterval(() => this.membersRaw.length && this.refreshOnline(), 30_000);
+    this.refreshOnline();
+  }
+
+  private refreshOnline() {
+    const now = Date.now();
+    this.state.friends = this.membersRaw.map((f) => (f.online && now >= (this.onlineUntil.get(f._id) ?? 0) ? { ...f, online: false } : f));
     // battement de cœur d'un ami : seuls `lastSeenAt` et l'ordre bougent → pas d'émission
     // (avant : tout l'état du jeu remappé et les signatures de collection recalculées ~toutes les 2 s à 20 amis)
     const sig = friendsSig(this.state.friends);

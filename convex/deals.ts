@@ -24,6 +24,7 @@ import {
   type PickOption,
   type TheyWant,
 } from '../src/core/deals';
+import { seenAtAll } from './presence';
 
 /**
  * REFONTE DES ÉCHANGES (11/11) — règles : src/core/deals.ts.
@@ -101,7 +102,8 @@ export const cardPanel = query({
     if (!catalogCard(cardId)) return { owners: [], sellers: [], wanters: [], protected: false, reads: reads() };
     const now = Date.now();
     const users = new Map((await ctx.db.query('users').collect()).filter((u) => !u.bannedAt).map((u) => [u._id as string, u]));
-    const online = (u: Doc<'users'>) => now - u.lastSeenAt < ONLINE_MS;
+    const seen = await seenAtAll(ctx);
+    const online = (u: Doc<'users'>) => now - seen(u) < ONLINE_MS;
     const rows = await ctx.db.query('inventory').withIndex('by_card_rarity', (q) => q.eq('cardId', cardId)).collect();
     const owners: CardPanel['owners'] = [];
     for (const r of rows) {
@@ -133,7 +135,8 @@ export const forYou = query({
     const me = await getUserByToken(ctx, sessionToken);
     if (!me) return { deals: [], theyWant: [], reads: reads(), at: now };
     const users = new Map((await ctx.db.query('users').collect()).filter((u) => !u.bannedAt && u._id !== me._id).map((u) => [u._id as string, u]));
-    const online = (u: Doc<'users'>) => now - u.lastSeenAt < ONLINE_MS;
+    const seen = await seenAtAll(ctx);
+    const online = (u: Doc<'users'>) => now - seen(u) < ONLINE_MS;
     const myInv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', me._id)).collect();
     const mine = new Map(myInv.map((r) => [key(r), r]));
     const myLocked = await lockedCards(ctx, me._id);

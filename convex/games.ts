@@ -32,6 +32,7 @@ import {
   type PackChoice,
   type Stake,
 } from '../src/core/games';
+import { syncPresence } from './presence';
 
 /**
  * ESPACE JEUX (V1) : 1v1 Pack Battle · Pack Battle Royale · Roulette à cartes. Règles : src/core/games.ts.
@@ -58,6 +59,7 @@ async function debitPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {
     throw new ConvexError(`${u.displayName} n’a que ${regen.balance} booster${regen.balance > 1 ? 's' : ''} (il en faut ${n})${regen.nextAt ? ` — le prochain arrive dans ${fmtCountdown(regen.nextAt - now)}` : ''}.`);
   }
   await ctx.db.patch(userId, { packBalance: regen.balance - n, packRegenAt: regen.regenAt, lastSeenAt: now });
+  await syncPresence(ctx, userId);
 }
 
 /**
@@ -263,6 +265,7 @@ async function resolveDuel(ctx: MutationCtx, d: Doc<'duels'>) {
       await bumpMissions(ctx, u, { type: 'pack', packKey: p.kind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: keep ? packs[k][j].map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: false })) : [] });
     await announcePulls(ctx, u, packs[k].flat(), 'un Pack Battle');
     await ctx.db.patch(s.userId, { lastSeenAt: now, gamesNoticeAt: now, statusText: won ? 'Vient de gagner un Pack Battle' : winner === null ? 'Égalité parfaite en Pack Battle' : 'Vient de perdre un Pack Battle' });
+    await syncPresence(ctx, s.userId);
   }
   const n = d.sides[0].packs.length;
   await feedGame(
@@ -374,6 +377,7 @@ async function resolveRoyale(ctx: MutationCtx, r: Doc<'royales'>) {
       await bumpMissions(ctx, u, { type: 'pack', packKey: p.pack.kind === 'theme' && p.pack.themeId ? p.pack.themeId : 'bebou', cards: k === 0 ? res.awarded[i].map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: false })) : [] });
     await announcePulls(ctx, u, packs[i], 'une Battle Royale');
     await ctx.db.patch(p.userId, { lastSeenAt: now, gamesNoticeAt: now, statusText: won ? 'Vient de gagner une Battle Royale' : 'Sort d’une Battle Royale' });
+    await syncPresence(ctx, p.userId);
   }
   const best = Math.max(...res.stars);
   const names = res.winners.map((i) => r.players[i].name);
@@ -465,6 +469,7 @@ export const placeBet = mutation({
     await patchEcon(ctx, u._id, (e) => ({ ...e, gamesPlayed: e.gamesPlayed + 1 }));
     await bumpWeekly(ctx, u._id, { type: 'game', won: false });
     await ctx.db.patch(u._id, { lastSeenAt: now, statusText: 'A misé à la roulette' });
+    await syncPresence(ctx, u._id);
     return { numbers: merged.numbers };
   },
 });

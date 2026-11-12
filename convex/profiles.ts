@@ -10,6 +10,7 @@ import { streakDay, touchStreak } from '../src/core/streak';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
 import { econOf } from './econLib';
+import { seenAtOf } from './presence';
 
 /**
  * PROFIL (refonte retours du 3 nov.) : identité + cosmétiques (bannière, cadre, titre, badges — débloqués en jouant),
@@ -84,7 +85,7 @@ export const profile = query({
       showcase: u.showcase ?? [],
       packsOpened: u.totalPacksOpened,
       joinedAt: u._creationTime,
-      lastSeenAt: u.lastSeenAt,
+      lastSeenAt: await seenAtOf(ctx, u),
       /** classeurs épinglés (visibles des potes), 3 au plus ; `pinnedBinder` = le premier, gardé pour les jeux pas encore à jour */
       pinnedBinders: pinned.map((b) => ({ id: b._id, name: b.name, cards: b.cards, coverCardId: b.coverCardId })),
       pinnedBinder: pinned[0] ? { id: pinned[0]._id, name: pinned[0].name, cards: pinned[0].cards, coverCardId: pinned[0].coverCardId } : null,

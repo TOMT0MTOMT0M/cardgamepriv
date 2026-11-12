@@ -8,6 +8,7 @@ import { CONTRACT_COST, contractProblem, contractTarget, rollContract } from '..
 import type { StarRarityId } from '../src/core/dropRates';
 import { lockedCards } from './trades';
 import { invRev } from './invRev';
+import { syncPresence } from './presence';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -78,6 +79,7 @@ export const sign = mutation({
     }
 
     await ctx.db.patch(user._id, { lastSeenAt: now, statusText: 'Vient de signer un contrat', totalContracts: (user.totalContracts ?? 0) + 1 });
+    await syncPresence(ctx, user._id);
     await bumpMissions(ctx, user, { type: 'contract' });
     await bumpWeekly(ctx, user._id, { type: 'contract' });
     if (RARITY_TIER[target] >= RARITY_TIER.epic) {

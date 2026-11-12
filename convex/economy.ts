@@ -27,6 +27,7 @@ import {
 } from '../src/core/economy';
 import { claimWeekly as claimWeeklyState, cleanWeekly, currentWeekly, nextWeekReset, type WeeklyState } from '../src/core/weekly';
 import { invRev } from './invRev';
+import { syncPresence } from './presence';
 
 /**
  * ÉCONOMIE — portefeuille et sources de pièces (spec du 3 nov., src/core/economy.ts) :
@@ -172,6 +173,7 @@ export const burn = mutation({
     await addCoins(ctx, u._id, coins, 'burn', `Brûlage de ${n} doublon${n > 1 ? 's' : ''}`, { earned: true, econ: { burned: econ.burned + n } });
     await bumpWeekly(ctx, u._id, { type: 'burn', count: n });
     await ctx.db.patch(u._id, { lastSeenAt: Date.now(), statusText: 'Fait chauffer la forge à doublons' });
+    await syncPresence(ctx, u._id);
     return { coins, count: n };
   },
 });
