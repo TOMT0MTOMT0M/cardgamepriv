@@ -12,7 +12,9 @@
  */
 import { fxReduced } from '../core/fxPref';
 
-const SELECTOR = '.badge, .msn-n, .w-dot, .u-dot, .fr-n, .pf-new-dot, .fresh-badge, .nb-dot';
+// (audit 12/11, décision 1 de Tom / E2-03) les étiquettes des tuiles de cartes (`.tile .badge` : ×N, NEW…) ne sont plus
+// des bulles : une grille de 50 doublons faisait éclater 50 bulles (et leurs sons) au moindre re-rendu. Menus inchangés.
+const SELECTOR = '.badge:not(.tile .badge), .msn-n, .w-dot, .u-dot, .fr-n, .pf-new-dot, .fresh-badge, .nb-dot';
 const EASE_OUT_BACK = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 
 interface Info {

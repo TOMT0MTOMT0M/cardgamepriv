@@ -447,9 +447,29 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     else if (!running) parkRaf();
   };
   let updErrors = 0;
+  /**
+   * (audit 12/11, décision 5 / E4-18) ÉCRANS À PLUS DE 60 Hz. Téléphone : la 3D est plafonnée à ~60 images/s (un
+   * écran 120 Hz doublait le travail du GPU, et « une image sur deux au repos » y donnait 60 au lieu de 30).
+   * Ordinateur : plafonnée seulement au repos, la pleine cadence revient dès qu'on touche ou qu'une animation joue.
+   * On rend une image sur `div` de l'écran : 120 Hz → 2 (60 i/s), 144 Hz → 2 (72), 165 Hz → 3 (55), 90 Hz → 1 (90).
+   */
+  let rawLast = 0;
+  let rawAvg = 1000 / 60;
+  let rawN = 0;
+  let lastPace: string = 'busy';
+  /** ordinateur : dernier geste (souris, molette, clavier) — la vitrine « au repos » suit la souris, pleine cadence alors */
+  let lastGesture = 0;
+  if (!mobile) for (const ev of ['pointermove', 'pointerdown', 'wheel', 'keydown'] as const) window.addEventListener(ev, () => (lastGesture = performance.now()), { passive: true });
   const loop = () => {
     if (document.hidden) return stopLoop(); // onglet caché : rien (certains navigateurs servent encore quelques images)
     lastFrame = performance.now();
+    const rawDt = lastFrame - rawLast;
+    rawLast = lastFrame;
+    if (rawDt > 2 && rawDt < 50) rawAvg += (rawDt - rawAvg) * 0.1;
+    if (current && scenes.get(current)?.ready && !dimmed && (mobile || (lastPace === 'rest' && lastFrame - lastGesture > 800))) {
+      const div = Math.floor(1000 / rawAvg / 60 + 0.25);
+      if (div > 1 && ++rawN % div !== 0) return;
+    }
     timer.update();
     const dt = Math.min(timer.getDelta(), 1 / 20);
     const t = timer.getElapsed();
@@ -471,6 +491,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       return;
     }
     const pace = m.exp.pacing?.() ?? 'rest';
+    lastPace = m.exp.pacing ? pace : 'busy'; // scène sans `pacing` : jamais considérée « au repos » pour le plafond
     // un changement de définition en attente part dès que la scène est au calme (au plus 60 s d'attente)
     if (Math.abs(applyDpr() - dpr) > 0.01 && (pace === 'rest' || now - pendingSince > 60_000)) flushDpr(now);
     // préparation d'un booster (peinture CPU des calques) : images lentes qui ne disent rien du GPU → fenêtre non comptée
