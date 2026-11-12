@@ -152,6 +152,12 @@ async function paint(key: string): Promise<string | null> {
   }
 }
 const idleYield = () => new Promise<void>((r) => idle(() => r()));
+const tileStats = new Map<string, { n: number; bytes: number }>();
+/** Formats des tuiles peintes depuis le démarrage (pour le rapport ?diag) : « image/webp ×42 (18 Ko en moyenne) ». */
+export function tileFormats(): string {
+  if (!tileStats.size) return 'aucune tuile peinte';
+  return [...tileStats].map(([t, f]) => `${t || 'type inconnu'} ×${f.n} (${Math.round(f.bytes / f.n / 1024)} Ko en moyenne)`).join(', ');
+}
 async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnType<typeof cardById>, thumb: string | undefined): Promise<string | null> {
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre
   await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, { key: !(cd.photo || cd.cover) }).catch(() => undefined) : undefined]);
@@ -161,6 +167,14 @@ async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnTy
   // (mesure 07/11 : tâches de 316 ms sur Android) peinture découpée en étapes, la main rendue entre chacune
   const art = await generateCardArtAsync(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(design ? { design } : {}) }, idleYield);
   const blob = await canvasToBlob(art.canvases.flat, 'image/webp', 0.86);
+  // (audit 12/11, décision 3 / E3-07) format RÉELLEMENT rendu : un navigateur qui n'encode pas le WebP rend du PNG,
+  // bien plus lourd — noté pour le rapport ?diag avant de décider d'un repli JPEG
+  if (blob) {
+    const f = tileStats.get(blob.type) ?? { n: 0, bytes: 0 };
+    f.n++;
+    f.bytes += blob.size;
+    tileStats.set(blob.type, f);
+  }
   art.dispose();
   // la mémoire d'un canvas n'est rendue qu'au ramasse-miettes… sauf si on le vide (iOS plafonne le total : PERF1-01)
   for (const c of Object.values(art.canvases)) {

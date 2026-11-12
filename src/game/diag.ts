@@ -11,6 +11,7 @@ import type { Shell } from './shell';
 import { net } from '../core/net/client';
 import { perfLongTasks, perfMarks, perfSlowFrames, type SlowFrame } from '../core/perfLog';
 import { hasTransientAttachment } from '../core/post';
+import { tileFormats } from './cardImages';
 
 const WATCH = /^(duel|duel-view|wild|wild-view)$/;
 const logs: string[] = [];
@@ -152,8 +153,15 @@ export function reportLoad(shell: Shell) {
       console.info('[chargement]\n' + note);
       // (v2) RAPPORT D'USAGE : 2 min 30 de jeu plus tard, les images lentes APRÈS la boutique (roue, ouvertures,
       // collection…), chacune avec la page affichée et ses scripts — ce qui ralentit pendant qu'on joue
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
+          let storageLine = 'stockage : inconnu';
+          try {
+            const e = await navigator.storage?.estimate?.();
+            if (e) storageLine = `stockage utilisé ${((e.usage ?? 0) / 1048576).toFixed(0)} Mo sur ${((e.quota ?? 0) / 1048576).toFixed(0)} Mo permis`;
+          } catch {
+            /* pas d'estimation sur ce navigateur */
+          }
           const after = perfSlowFrames().filter((f) => f.at > shop);
           const byView = new Map<string, number>();
           for (const f of after) byView.set(f.view, (byView.get(f.view) ?? 0) + 1);
@@ -161,6 +169,10 @@ export function reportLoad(shell: Shell) {
           const usage = [
             `usage ${((performance.now() - shop) / 1000).toFixed(0)} s après la boutique · tâches longues ${lt2.length} (${sum(lt2)} ms) · images > 80 ms : ${after.length} (${[...byView].map(([v, n]) => `${v} ${n}`).join(', ') || '—'})`,
             `${be} · ${shell.quality} · ${window.innerWidth}×${window.innerHeight} @${devicePixelRatio}`,
+            // (audit 12/11) décision 3 : format des tuiles ; décision 9 : stockage utilisé ; S02 : mémoire GPU
+            `tuiles peintes : ${tileFormats()}`,
+            storageLine,
+            gpuMemLine(shell),
             ...[...after].sort((a, b) => b.ms - a.ms).slice(0, 10).map(frameLine),
           ].join('\n').slice(0, 1990);
           void net
