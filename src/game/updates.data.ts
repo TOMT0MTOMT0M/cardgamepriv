@@ -35,9 +35,12 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
-        date: '12 nov.', title: 'Les nouvelles 6★ Musique ont leur extrait', tag: 'nouveau',
+        date: '12 nov.', title: '56 chansons en 6★, Finn d’Adventure Time, et la musique des 6★', tag: 'nouveau',
         points: [
-          'Les chansons, artistes et albums passés en 6★ jouent maintenant leur extrait de 30 s quand on les tire et dans la visionneuse.',
+          'Nouvelles 6★ : Give Me the Night, Temperature, Plus près des étoiles, Caravane, Lettre à Élise et une cinquantaine d’autres chansons, plus Finn l’Humain (Adventure Time).',
+          'Passent en 6★ : Locked Out of Heaven, Take on Me, Wonderwall, In the End, Dream On, Every Breath You Take, Californication, L’Aziza, Ne me quitte pas, Petite Marie, La Boulette… Les exemplaires déjà tirés suivent tout seuls.',
+          'Les 6★ Musique jouent leur extrait de 30 s quand on les tire et dans la visionneuse, et les 6★ d’animés jouent l’opening de leur animé.',
+          'Gérard Depardieu est retiré du jeu.',
         ],
       },
       {
