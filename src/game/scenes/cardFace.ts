@@ -6,7 +6,7 @@ import { ALU_BACK, type BackStyle } from '../../core/art/back';
 import type { CardData } from '../../core/cardData';
 import type { RarityId } from '../../core/rarity';
 import { catalogEntry, themeById } from '../../core/sets/themes';
-import { createHoloMaterial, holoFx, setHoloReduced } from '../../core/holo';
+import { HOLO_GLINT_ON, createHoloMaterial, holoFx, setHoloReduced } from '../../core/holo';
 import { bindFxReduced, onFxReducedChange } from '../../core/fxPref';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import type { N } from '../../core/tsl';
@@ -35,7 +35,9 @@ export function buildFace(art: CardArt, tier: number, photo: boolean, cut = true
   const idx = floor(b.mul(255 / 32).add(0.5)).sub(1);
   const on = clamp(lit.sub(idx), 0, 1).mul(step(0.06, b));
   const glow = on.mul(float(0.3 + tier * 0.2).add(flash.mul(0.8 + tier * 0.4)));
-  holo.material.emissiveNode = (holo.material.emissiveNode as N).add(color(starColor(tier)).mul(glow)).add(holo.film.mul(holo.foil).mul(flash).mul(0.5).mul(holoFx.glint));
+  const starGlow = (holo.material.emissiveNode as N).add(color(starColor(tier)).mul(glow));
+  // (audit 12/11, E4-04) l'éclat du foil au flash est multiplié par le plafond des paillettes (0) : pas construit tant qu'il vaut 0
+  holo.material.emissiveNode = HOLO_GLINT_ON ? starGlow.add(holo.film.mul(holo.foil).mul(flash).mul(0.5).mul(holoFx.glint)) : starGlow;
   return { holo, lit, flash };
 }
 

@@ -71,6 +71,12 @@ export const HOLO_LIMITS = {
   full: { image: 0, border: 0.72, glint: 0 },
   reduced: { image: 0, border: 0.55, glint: 0 },
 } as const;
+/**
+ * (audit 12/11, S03 / E4-04) Paillettes et éclats : leurs plafonds valent 0 dans les deux modes depuis les retours
+ * live 6 — le shader les calculait quand même à chaque pixel (cellules de Voronoï, 2 tirages, reflet à la puissance 80)
+ * pour les multiplier par 0. La branche n'est construite que si un plafond redevient positif.
+ */
+export const HOLO_GLINT_ON = HOLO_LIMITS.full.glint > 0 || HOLO_LIMITS.reduced.glint > 0;
 export const holoFx = {
   /** part maximale de couleur remplacée par le foil sur l'illustration (0..1) */
   image: uniform(HOLO_LIMITS.full.image),
@@ -153,7 +159,7 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   // ── paillettes : disques ronds anti-crénelés, orientation propre, disparaissent si trop petites à l'écran
   let disk: N = float(0);
   let nFlake: N = vec3(0, 0, 1);
-  if (!(lite && tier <= 1)) {
+  if (HOLO_GLINT_ON && !(lite && tier <= 1)) {
     const FQ = fuv.mul(95);
     const vo = voronoi(FQ, float(0.9)) as N;
     const fq = max(fwidth(FQ.x), fwidth(FQ.y));
@@ -210,8 +216,11 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
     m.clearcoatNode = float(0.08);
     m.clearcoatRoughnessNode = float(0.5);
   }
-  const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
-  const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
-  m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5)).add(film.mul(foil).mul(U.extraEmissive));
+  const subjectGlow = L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5).add(film.mul(foil).mul(U.extraEmissive));
+  if (HOLO_GLINT_ON) {
+    const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
+    const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
+    m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(subjectGlow);
+  } else m.emissiveNode = subjectGlow; // le terme des paillettes valait exactement 0
   return { material: m, layers: L, uniforms: U, film, foil, cut: cutU };
 }

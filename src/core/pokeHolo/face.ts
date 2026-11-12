@@ -64,10 +64,17 @@ export function pokeFaceColor(art: CardArt, L: CardLayers, tier: number, amount:
   const sdf = length(max(q, 0)).add(min(max(q.x, q.y), 0)).sub(rr);
   const inner = smoothstep(0.0015, -0.0015, sdf);
   const bgUV = L.uvAt(0.03), sjUV = L.uvAt(0.014);
-  const lumAt = (lvl: number) => {
-    const b = texture(art.bg, bgUV).level(float(lvl));
-    const s = texture(art.subject, sjUV).level(float(lvl));
-    return max(luminance(mix(b.rgb, s.rgb, s.a)), 0).sqrt();
+  // (audit 12/11, E4-05) un seul calcul par niveau : chaque appel créait 2 lectures de texture, et les niveaux 0 et 1
+  // étaient demandés deux fois chacun (4 lectures en double sur les 6★, mêmes coordonnées, même niveau)
+  const lumCache = new Map<number, N>();
+  const lumAt = (lvl: number): N => {
+    let v = lumCache.get(lvl);
+    if (!v) {
+      const b = texture(art.bg, bgUV).level(float(lvl));
+      const s = texture(art.subject, sjUV).level(float(lvl));
+      lumCache.set(lvl, (v = max(luminance(mix(b.rgb, s.rgb, s.a)), 0).sqrt() as N));
+    }
+    return v;
   };
   const zone = def.zone === 'fond' ? decor.mul(inner) : decor;
   const mask = zone.mul(clamp(float(1.16).sub(lumAt(1).mul(0.35)), 0, 1));
