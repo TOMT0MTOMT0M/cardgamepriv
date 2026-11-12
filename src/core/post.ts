@@ -7,6 +7,12 @@ import type { N } from './tsl';
  * Petit utilitaire autour de RenderPipeline (r183+) : passe de scène avec MRT {output, emissive},
  * et suivi des nœuds à libérer (RenderPipeline.dispose ne libère pas les PassNode / BloomNode).
  */
+/** Le navigateur expose-t-il les attachements transitoires de WebGPU (échantillons MSAA jamais écrits en mémoire) ? */
+export function hasTransientAttachment(): boolean {
+  const usage = (globalThis as { GPUTextureUsage?: object }).GPUTextureUsage;
+  return !!usage && 'TRANSIENT_ATTACHMENT' in usage;
+}
+
 export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, opts: { emissive?: boolean; samples?: number } = {}) {
   const pipeline = new RenderPipeline(ctx.renderer);
   const passOpts: Record<string, unknown> = {};
@@ -18,7 +24,10 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
   // écrites en mémoire : 4× la bande passante). Une scène peut imposer la sienne (`opts.samples`).
   // (perf 06/11, décision de Tom) WebGPU ne connaît pas ×2 (1 ou 4) : ×4 en WebGPU — le rendu lissé validé avant l'audit,
   // échantillons résolus sur la puce puis jetés (storeOp discard, valide avec de vrais échantillons) ; WebGL2 garde ×2
-  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = ctx.isWebGPU ? 4 : 2;
+  // (audit 12/11, décision 2 de Tom / E3-02) ×4 seulement si le navigateur sait garder les échantillons sur la puce
+  // (attachement transitoire) : sans lui, « échantillons jetés » n'économise que de la bande passante et les textures
+  // ×4 restent en mémoire (+237 Mo à la visionneuse d'un iPhone ×3). Dans ce cas : ×1 à la définition native.
+  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = ctx.isWebGPU ? (hasTransientAttachment() ? 4 : 1) : 2;
   /*
    * (perf 06/11, correctif) WebGPU ne connaît que 1 ou 4 échantillons : three ramène ×2 à ×1 (WebGPUUtils.getSampleCount)
    * mais gardait « jeter les échantillons » → la cible de la passe (sans MSAA, donc la VRAIE image) était jetée en fin de
