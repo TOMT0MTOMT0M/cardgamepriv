@@ -35,6 +35,12 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '12 nov.', title: 'Les nouvelles 6★ Musique ont leur extrait', tag: 'nouveau',
+        points: [
+          'Les chansons, artistes et albums passés en 6★ jouent maintenant leur extrait de 30 s quand on les tire et dans la visionneuse.',
+        ],
+      },
+      {
         date: '11 nov.', title: 'Pop Culture et Sport : 3 024 nouvelles cartes', tag: 'nouveau',
         points: [
           'Animés : 1 843 nouveaux personnages dans les séries déjà présentes (Toji Fushiguro, Himiko Toga, Bokuto, Akaza, Escanor, Echidna, Dabi…), de 1★ à 4★.',
