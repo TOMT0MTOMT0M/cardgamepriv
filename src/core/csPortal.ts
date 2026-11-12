@@ -41,7 +41,7 @@ import type { CardArt } from './art';
 import { artV } from './artRev';
 import { CARD } from './cardModel';
 import { studioEnv } from './env';
-import { compilePassAsync } from './post';
+import { compilePassAsync, isWebGPURenderer } from './post';
 import { CS3D, CS3D_NORMAL, type Cs3dModel } from './sets/cs3d';
 import { siteUrl } from './siteRoot';
 import type { N } from './tsl';
@@ -255,7 +255,10 @@ export function createCsCardInstance(
   frontMat.clearcoatNode = win.mul(0.3); // vitre discrète : le skin garde ses vraies couleurs
   frontMat.clearcoatRoughnessNode = float(0.02);
   const cardMesh = new Mesh(cardGeometry, [frontMat, backMaterial, edgeMaterial]);
-  if ('compileAsync' in renderer) void compilePassAsync(renderer as never, portalPass);
+  // (audit 12/11, S08 / E4-01) WebGPU : compilation dans la VRAIE configuration de la passe portail (3e argument).
+  // Sans lui, three compilait une « variante canvas » : des pipelines jamais utilisés, et sa cible interne plein écran
+  // (demi-flottant ×4, 79 à 178 Mo sur téléphone) allouée pour toujours à la 1re Merveille / au 1er skin CS.
+  if ('compileAsync' in renderer) void compilePassAsync(renderer as never, portalPass, isWebGPURenderer(renderer));
 
   const inspect = { yaw: 0, pitch: 0, idle: 1 };
   const cardPos = new Vector3();

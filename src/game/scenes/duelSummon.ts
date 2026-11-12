@@ -67,7 +67,7 @@ import { createStage } from '../../core/stage';
 import { cardArtFor } from '../../core/art';
 import type { CardData } from '../../core/cardData';
 import { rarity } from '../../core/rarity';
-import { createPipeline } from '../../core/post';
+import { createPipeline, isWebGPURenderer } from '../../core/post';
 import { createHoloMaterial } from '../../core/holo';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import { createCardMesh, CARD } from '../../core/cardModel';
@@ -772,8 +772,10 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       col = col.mul(mix(float(0.62), float(1), vig));
       col = mix(col, vec3(0.86, 0.95, 1), U.flash);
       post.output = vec4(col, 1);
-      await stage.compile();
-      await post.compile();
+      // (audit 12/11, S08 / E4-01) WebGPU : seulement la vraie configuration de la passe ; la « variante canvas »
+      // (stage.compile, post.compile sans `real`) compilait des pipelines inutiles et allouait la cible interne du moteur
+      if (!isWebGPURenderer(c.renderer)) await stage.compile();
+      await post.compile({ real: true });
       /*
        * (téléphone, retour de Tom 4 nov. : « écran noir au début de l'animation ») la compilation ci-dessus ne prépare que
        * les variantes « canvas » ; les vrais pipelines (passe MRT émissif + MSAA, squelettes, sprites) se créaient à la 1re

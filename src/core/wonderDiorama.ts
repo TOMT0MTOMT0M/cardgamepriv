@@ -78,7 +78,7 @@ export function preloadWonderModel(cardId: string): Promise<unknown> {
   return Promise.all([preloadModel(cardId), preloadEnv(cardId)]);
 }
 import type { N } from './tsl';
-import { compilePassAsync } from './post';
+import { compilePassAsync, isWebGPURenderer } from './post';
 
 /** Vérifie si une carte fait partie des 14 Merveilles du Monde (Secrets du World Pack). */
 export function isWonderCard(cardId: string): boolean {
@@ -820,7 +820,10 @@ export function createWonderCardInstance(
   const cardMesh = new Mesh(cardGeometry, [frontMat, backMaterial, edgeMaterial]);
   // pipelines du monde (sol, crête, ciel, monument) compilés tout de suite pour la vraie cible de la passe portail, en
   // tâche de fond, au lieu de la 1re image du diorama
-  if (renderer && 'compileAsync' in renderer) void compilePassAsync(renderer as never, portalPass);
+  // (audit 12/11, S08 / E4-01) WebGPU : compilation dans la VRAIE configuration de la passe portail (3e argument).
+  // Sans lui, three compilait une « variante canvas » : des pipelines jamais utilisés, et sa cible interne plein écran
+  // (demi-flottant ×4, 79 à 178 Mo sur téléphone) allouée pour toujours à la 1re Merveille / au 1er skin CS.
+  if (renderer && 'compileAsync' in renderer) void compilePassAsync(renderer as never, portalPass, isWebGPURenderer(renderer));
 
   let depth = depthScale;
   const M = new Matrix4();

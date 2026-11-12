@@ -188,6 +188,11 @@ function installPreCompileGuard(renderer: RendererPriv): boolean {
  * programmes sans sorties MRT — d'où le repli WebGL2 inchangé ; en WebGPU, la 1re image de `warm()` crée ce qui reste :
  * chaîne de post-traitement.)
  */
+/** Le moteur tourne-t-il sur WebGPU (et pas sur le repli WebGL2) ? */
+export function isWebGPURenderer(renderer: unknown): boolean {
+  return !!(renderer as { backend?: { isWebGPUBackend?: boolean } } | null)?.backend?.isWebGPUBackend;
+}
+
 export async function compilePassAsync(renderer: LabContext['renderer'], passNode: unknown, real = false): Promise<void> {
   const pn = passNode as { scene: unknown; camera: unknown; renderTarget?: object; compileAsync?: (r: unknown) => Promise<void> };
   const r = renderer as unknown as RendererPriv;
