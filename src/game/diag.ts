@@ -110,7 +110,8 @@ export function gpuMemLine(shell: Shell): string {
   if (!m) return 'mémoire GPU : inconnue';
   const mo = (b = 0) => (b / 1048576).toFixed(1);
   // (décision 2) lissage : ×4 seulement avec les attachements transitoires (src/core/post.ts)
-  return `mémoire GPU déclarée ${mo(m.total)} Mo (textures ${m.textures ?? 0} = ${mo(m.texturesSize)} Mo) · attachement transitoire ${hasTransientAttachment() ? 'oui' : 'non'} (téléphone en WebGPU : lissage ${hasTransientAttachment() ? '×4' : '×1'})`;
+  const stray = (window as unknown as { __strayFrames?: () => number }).__strayFrames?.() ?? 0;
+  return `programmes GPU ${m.programs ?? "?"} · cibles de rendu ${m.renderTargets ?? "?"} · images parties dans une cible de passe ${stray} · mémoire GPU déclarée ${mo(m.total)} Mo (textures ${m.textures ?? 0} = ${mo(m.texturesSize)} Mo) · attachement transitoire ${hasTransientAttachment() ? 'oui' : 'non'} (téléphone en WebGPU : lissage ${hasTransientAttachment() ? '×4' : '×1'})`;
 }
 
 const frameLine = (f: SlowFrame) => `${(f.at / 1000).toFixed(1)}s ${f.ms} ms${f.layout > 20 ? ` (style+mise en page ${f.layout})` : ''} ${f.view} ← ${f.scripts.join(' | ') || 'scripts inconnus'}`;

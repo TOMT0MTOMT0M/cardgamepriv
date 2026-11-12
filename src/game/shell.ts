@@ -11,6 +11,8 @@ import { configureArt } from '../core/art';
 import { setFaceQuality } from './scenes/cardFace';
 import { perfMark } from '../core/perfLog';
 import { padOn, silentOn } from '../core/soundPrefs';
+/** `?diag` dans l'adresse : compteurs de mesure activés (rapports de src/game/diag.ts) */
+const DIAG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('diag');
 
 /**
  * Configuration du canvas WebGPU, gardée pour la RE-poser au retour d'une autre appli (shell.ts, reviveSurface) :
@@ -447,6 +449,8 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     else if (!running) parkRaf();
   };
   let updErrors = 0;
+  let strayFrames = 0;
+  (window as unknown as { __strayFrames?: () => number }).__strayFrames = () => strayFrames;
   /**
    * (audit 12/11, décision 5 / E4-18) ÉCRANS À PLUS DE 60 Hz. Téléphone : la 3D est plafonnée à ~60 images/s (un
    * écran 120 Hz doublait le travail du GPU, et « une image sur deux au repos » y donnait 60 au lieu de 30).
@@ -490,6 +494,9 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       if ((!m || dimmed) && !mounting && (!mobile || idleN >= 30 || now - loopSince > 4000)) stopLoop();
       return;
     }
+    // (audit 12/11, S09 / protocole E4-03 b) mesure seulement, avec ?diag : une image qui DÉMARRE alors que le moteur
+    // pointe encore une cible de passe (précompilation en cours) part dans cette cible — on les compte pour le rapport
+    if (DIAG && (renderer.getRenderTarget() !== null || renderer.getMRT() !== null)) strayFrames++;
     const pace = m.exp.pacing?.() ?? 'rest';
     lastPace = m.exp.pacing ? pace : 'busy'; // scène sans `pacing` : jamais considérée « au repos » pour le plafond
     // un changement de définition en attente part dès que la scène est au calme (au plus 60 s d'attente)
