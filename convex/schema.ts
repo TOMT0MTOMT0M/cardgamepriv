@@ -538,7 +538,9 @@ export default defineSchema({
   })
     .index('by_status_created', ['status', 'createdAt'])
     .index('by_seller_status', ['sellerId', 'status'])
-    .index('by_buyer', ['buyerId', 'resolvedAt']),
+    .index('by_buyer', ['buyerId', 'resolvedAt'])
+    /** (audit 12/11, décision 10) annonces d'UNE carte (fiche carte) sans relire les 300 dernières annonces */
+    .index('by_card_status', ['cardId', 'status']),
 
   /**
    * TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : une ANNONCE = des cartes proposées (verrouillées
@@ -636,6 +638,13 @@ export default defineSchema({
    */
   /** (v1.0.11) classement : une ligne par joueur, recalculée par profiles:refreshRanks (lire toutes les collections à
    *  chaque affichage dépassait la limite de Convex). `row` = la ligne telle que `profiles:leaderboard` la renvoie. */
+  /** (audit perf 12/11, décision 10) index inversé des envies : qui veut cette carte ? (convex/wishes.ts) */
+  wishes: defineTable({
+    userId: v.id('users'),
+    cardId: v.string(),
+  })
+    .index('by_card', ['cardId'])
+    .index('by_user', ['userId', 'cardId']),
   /**
    * (audit perf 12/11, décision 8) carte publique d'un joueur, hors de son document (convex/presence.ts) : écrite par
    * le battement de cœur et les gestes de jeu, lue par la liste du club et « mes amis ». Une ligne par joueur.

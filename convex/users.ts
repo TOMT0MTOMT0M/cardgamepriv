@@ -5,6 +5,7 @@ import { PACK_CAP, PACK_REGEN_MS, applyRegen } from '../src/core/packRegen';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakClaimable, touchStreak } from '../src/core/streak';
 import { catalogEntry } from '../src/core/sets/themes';
 import { presenceOf, syncPresence } from './presence';
+import { setWish } from './wishes';
 
 /** Taille maximale de la liste d'envies. */
 export const WISHLIST_MAX = 300;
@@ -103,6 +104,7 @@ export const toggleWish = mutation({
     const next = list.includes(cardId) ? list.filter((id) => id !== cardId) : [...list, cardId];
     if (next.length > WISHLIST_MAX) throw new ConvexError(`${WISHLIST_MAX} envies au maximum : fais un peu de tri.`);
     await ctx.db.patch(user._id, { wishlist: next });
+    await setWish(ctx, user._id, cardId, next.includes(cardId)); // index inversé des envies (convex/wishes.ts)
     return next;
   },
 });

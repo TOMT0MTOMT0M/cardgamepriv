@@ -235,7 +235,13 @@ export function createOnlineBackend(): GameBackend {
       return await net.ask(api.deals.cardPanel, { cardId });
     },
     async forYou() {
-      return await net.ask(api.deals.forYou, {});
+      // (audit 12/11, décision 10) mes lignes en double, déjà connues ici : le serveur ne relit plus toute ma collection
+      const give = net.state.collection
+        .filter((c) => c.count > 1)
+        .sort((x, y) => y.count - x.count)
+        .slice(0, 600)
+        .map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count }));
+      return await net.ask(api.deals.forYou, { give });
     },
     async quickTrade(toId, get, give) {
       const r = await net.call(api.deals.quick, { toUserId: toId as Id<'users'>, get, give });

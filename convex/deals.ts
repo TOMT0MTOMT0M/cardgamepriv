@@ -24,7 +24,8 @@ import {
   type PickOption,
   type TheyWant,
 } from '../src/core/deals';
-import { seenAtAll } from './presence';
+import { seenAtAll, seenAtOf } from './presence';
+import { wishersOf, wishesReady } from './wishes';
 
 /**
  * REFONTE DES ÉCHANGES (11/11) — règles : src/core/deals.ts.
@@ -93,6 +94,32 @@ async function proposableOf(ctx: QueryCtx, u: Doc<'users'>, rarity?: RarityId, e
     .map((r) => ({ cardId: r.cardId, rarity: r.rarity }));
 }
 
+// ─────────────────────────────── les autres joueurs, lus à la demande
+/**
+ * (audit 12/11, décision 10) Accès aux AUTRES joueurs pour une requête. Index des envies prêt (convex/wishes.ts) :
+ * chaque joueur n'est lu que s'il sert (propriétaire, vendeur, demandeur), une fois, avec sa carte de présence pour
+ * « en ligne ». Sinon (avant la migration) : tous les joueurs relus d'un coup, comme avant.
+ */
+type Person = { u: Doc<'users'>; online: boolean };
+async function peopleOf(ctx: QueryCtx, lazy: boolean, now: number): Promise<{ get: (id: Id<'users'>) => Promise<Person | null>; all: () => Promise<Person[]> }> {
+  const cache = new Map<string, Person | null>();
+  if (!lazy) {
+    const seen = await seenAtAll(ctx);
+    for (const u of await ctx.db.query('users').collect()) cache.set(u._id, u.bannedAt ? null : { u, online: now - seen(u) < ONLINE_MS });
+    return { get: async (id) => cache.get(id) ?? null, all: async () => [...cache.values()].filter((p): p is Person => !!p) };
+  }
+  const get = async (id: Id<'users'>) => {
+    let p = cache.get(id);
+    if (p === undefined) {
+      const u = await ctx.db.get(id);
+      p = !u || u.bannedAt ? null : { u, online: now - (await seenAtOf(ctx, u)) < ONLINE_MS };
+      cache.set(id, p);
+    }
+    return p;
+  };
+  return { get, all: async () => [...cache.values()].filter((p): p is Person => !!p) };
+}
+
 // ─────────────────────────────── « Chez les joueurs » (fiche d'une carte)
 export const cardPanel = query({
   args: { sessionToken: v.optional(v.string()), cardId: v.string() },
@@ -101,51 +128,79 @@ export const cardPanel = query({
     const me = await getUserByToken(ctx, sessionToken);
     if (!catalogCard(cardId)) return { owners: [], sellers: [], wanters: [], protected: false, reads: reads() };
     const now = Date.now();
-    const users = new Map((await ctx.db.query('users').collect()).filter((u) => !u.bannedAt).map((u) => [u._id as string, u]));
-    const seen = await seenAtAll(ctx);
-    const online = (u: Doc<'users'>) => now - seen(u) < ONLINE_MS;
+    const lazy = await wishesReady(ctx);
+    const people = await peopleOf(ctx, lazy, now);
     const rows = await ctx.db.query('inventory').withIndex('by_card_rarity', (q) => q.eq('cardId', cardId)).collect();
     const owners: CardPanel['owners'] = [];
     for (const r of rows) {
-      const u = users.get(r.userId);
-      if (!u || r.count < 1 || u._id === me?._id) continue;
-      owners.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online: online(u), count: r.count, dup: proposable(r, 0, guardOf(u)) > 0 });
+      const p = await people.get(r.userId);
+      if (!p || r.count < 1 || p.u._id === me?._id) continue;
+      owners.push({ userId: p.u._id, name: p.u.displayName, avatarUrl: p.u.avatarUrl, online: p.online, count: r.count, dup: proposable(r, 0, guardOf(p.u)) > 0 });
     }
     owners.sort((a, b) => Number(b.dup) - Number(a.dup) || Number(b.online) - Number(a.online) || b.count - a.count || a.name.localeCompare(b.name));
-    // marché : annonces ouvertes (≤ 10 par joueur, la même lecture que le tableau du marché), celles de cette carte
-    const open = await ctx.db.query('market').withIndex('by_status_created', (q) => q.eq('status', 'open')).order('desc').take(300);
-    const sellers = open
-      .filter((m) => m.cardId === cardId && users.has(m.sellerId))
-      .map((m) => ({ id: m._id as string, sellerId: m.sellerId as string, name: users.get(m.sellerId)!.displayName, price: m.price, mintNumber: m.mintNumber }))
-      .sort((a, b) => a.price - b.price);
-    const wanters = [...users.values()]
-      .filter((u) => u._id !== me?._id && (u.wishlist ?? []).includes(cardId))
-      .map((u) => ({ userId: u._id as string, name: u.displayName, avatarUrl: u.avatarUrl, online: online(u) }))
+    // marché : les annonces ouvertes de cette carte (index by_card_status ; avant : les 300 dernières annonces, filtrées)
+    const open = lazy
+      ? await ctx.db.query('market').withIndex('by_card_status', (q) => q.eq('cardId', cardId).eq('status', 'open')).order('desc').collect()
+      : (await ctx.db.query('market').withIndex('by_status_created', (q) => q.eq('status', 'open')).order('desc').take(300)).filter((m) => m.cardId === cardId);
+    const sellers: CardPanel['sellers'] = [];
+    for (const m of open) {
+      const p = await people.get(m.sellerId);
+      if (p) sellers.push({ id: m._id as string, sellerId: m.sellerId as string, name: p.u.displayName, price: m.price, mintNumber: m.mintNumber });
+    }
+    sellers.sort((a, b) => a.price - b.price);
+    // qui la veut : par l'index des envies (avant : la liste d'envies de tous les joueurs)
+    const wishers: Person[] = [];
+    if (lazy) for (const id of await wishersOf(ctx, cardId)) {
+      const p = await people.get(id);
+      if (p && (p.u.wishlist ?? []).includes(cardId)) wishers.push(p);
+    }
+    else wishers.push(...(await people.all()).filter((p) => (p.u.wishlist ?? []).includes(cardId)));
+    const wanters = wishers
+      .filter((p) => p.u._id !== me?._id)
+      .map((p) => ({ userId: p.u._id as string, name: p.u.displayName, avatarUrl: p.u.avatarUrl, online: p.online }))
       .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
     return { owners, sellers, wanters, protected: !!me?.tradeProtected?.includes(cardId), reads: reads() };
   },
 });
 
 // ─────────────────────────────── « Pour toi » : le recoupement
+/** doublons envoyés par le client : au plus tant de lignes (les plus fournies d'abord) */
+const GIVE_MAX = 600;
+/** « ils cherchent tes doublons » : au plus tant de mes cartes proposables confrontées à l'index des envies */
+const THEY_WANT_SCAN = 300;
+
 export const forYou = query({
-  args: { sessionToken: v.optional(v.string()) },
-  handler: async (raw, { sessionToken }): Promise<ForYou> => {
+  /**
+   * (audit 12/11, décision 10 / A7-02) `give` (client V2) : mes lignes en double, que le client connaît déjà — le
+   * serveur ne relit plus toute ma collection (≈ 4 700 lignes) à chaque ouverture de la vue. Rien n'est cru sur parole :
+   * ce ne sont que des suggestions, `quick` / `propose` revérifient l'inventaire réel. Sans `give` (client V1) : comme avant.
+   */
+  args: { sessionToken: v.optional(v.string()), give: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() }))) },
+  handler: async (raw, { sessionToken, give }): Promise<ForYou> => {
     const { ctx, reads } = counting(raw);
     const now = Date.now();
     const me = await getUserByToken(ctx, sessionToken);
     if (!me) return { deals: [], theyWant: [], reads: reads(), at: now };
-    const users = new Map((await ctx.db.query('users').collect()).filter((u) => !u.bannedAt && u._id !== me._id).map((u) => [u._id as string, u]));
-    const seen = await seenAtAll(ctx);
-    const online = (u: Doc<'users'>) => now - seen(u) < ONLINE_MS;
-    const myInv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', me._id)).collect();
-    const mine = new Map(myInv.map((r) => [key(r), r]));
+    const lazy = await wishesReady(ctx);
+    const people = await peopleOf(ctx, lazy, now);
+    const other = async (id: Id<'users'>) => (id === me._id ? null : await people.get(id));
+    const myRows: Array<{ cardId: string; rarity: RarityId; count: number }> = give
+      ? give.slice(0, GIVE_MAX).filter((r) => Number.isFinite(r.count) && r.count > 1)
+      : await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', me._id)).collect();
+    const mine = new Map(myRows.map((r) => [key(r), r]));
+    /** ai-je déjà cette carte ? (avec `give`, seules mes lignes en double sont connues : le reste se lit par l'index) */
+    const iHave = async (c: DealCard) => (mine.get(key(c))?.count ?? (give ? ((await invRow(ctx, me._id, c))?.count ?? 0) : 0)) > 0;
     const myLocked = await lockedCards(ctx, me._id);
     const g = guardOf(me);
     const gives = new Map<RarityId, DealCard[]>();
-    for (const r of [...myInv].sort((a, b) => b.count - a.count)) {
+    /** mes cartes proposables, les plus fournies d'abord (une ligne par carte et rareté, même si `give` en répète) */
+    const myProp = new Map<string, DealCard>();
+    for (const r of [...(give ? mine.values() : myRows)].sort((a, b) => b.count - a.count)) {
       if (!catalogCard(r.cardId) || proposable(r, myLocked.get(key(r)) ?? 0, g) <= 0) continue;
       if (!gives.has(r.rarity)) gives.set(r.rarity, []);
       gives.get(r.rarity)!.push({ cardId: r.cardId, rarity: r.rarity });
+      if (!give) continue;
+      myProp.set(r.cardId, { cardId: r.cardId, rarity: r.rarity });
     }
     // déjà demandé (en attente) : pas proposé une seconde fois
     const asked = new Set<string>();
@@ -166,21 +221,23 @@ export const forYou = query({
     };
 
     const deals: Deal[] = [];
-    const wishes = (me.wishlist ?? []).filter((id) => {
+    const wishes: string[] = [];
+    for (const id of me.wishlist ?? []) {
+      if (wishes.length >= DEALS_WISH_SCAN) break;
       const c = catalogCard(id);
-      return c && c.baseRarity !== 'secret' && !mine.get(key({ cardId: id, rarity: c.baseRarity }))?.count && gives.get(c.baseRarity)?.length;
-    });
-    for (const cardId of wishes.slice(0, DEALS_WISH_SCAN)) {
+      if (c && c.baseRarity !== 'secret' && gives.get(c.baseRarity)?.length && !(await iHave({ cardId: id, rarity: c.baseRarity }))) wishes.push(id);
+    }
+    for (const cardId of wishes) {
       if (deals.length >= DEALS_MAX) break;
       const rows = await ctx.db.query('inventory').withIndex('by_card_rarity', (q) => q.eq('cardId', cardId)).collect();
-      const cands: Array<{ u: Doc<'users'>; r: Doc<'inventory'> }> = [];
+      const cands: Array<{ u: Doc<'users'>; online: boolean; r: Doc<'inventory'> }> = [];
       for (const r of rows) {
-        const u = users.get(r.userId);
-        if (!u || asked.has(`${u._id}|${cardId}`) || proposable(r, 0, guardOf(u)) <= 0) continue;
-        cands.push({ u, r });
+        const p = await other(r.userId);
+        if (!p || asked.has(`${p.u._id}|${cardId}`) || proposable(r, 0, guardOf(p.u)) <= 0) continue;
+        cands.push({ ...p, r });
       }
-      cands.sort((a, b) => Number(online(b.u)) - Number(online(a.u)) || b.r.count - a.r.count);
-      for (const { u, r } of cands.slice(0, DEALS_OWNERS_TRY)) {
+      cands.sort((a, b) => Number(b.online) - Number(a.online) || b.r.count - a.r.count);
+      for (const { u, online, r } of cands.slice(0, DEALS_OWNERS_TRY)) {
         if (proposable(r, (await lockOf(u._id)).get(key(r)) ?? 0, guardOf(u)) <= 0) continue;
         const theirWish = new Set(u.wishlist ?? []);
         const ok: DealCard[] = [];
@@ -189,23 +246,31 @@ export const forYou = query({
           if (ok.length > DEAL_ALTS) break;
         }
         if (!ok.length) continue;
-        deals.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online: online(u), get: { cardId, rarity: r.rarity }, give: ok[0], alts: ok.slice(1).map((c) => c.cardId), theyWish: theirWish.has(ok[0].cardId) });
+        deals.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online, get: { cardId, rarity: r.rarity }, give: ok[0], alts: ok.slice(1).map((c) => c.cardId), theyWish: theirWish.has(ok[0].cardId) });
         break;
       }
     }
 
     // ils cherchent mes doublons (et ne les ont pas) : à moi de proposer, le serveur choisira sa contrepartie
     const theyWant: TheyWant[] = [];
-    const myProp = new Map<string, DealCard>();
-    for (const l of gives.values()) for (const c of l) myProp.set(c.cardId, c);
-    const others = [...users.values()].sort((a, b) => Number(online(b)) - Number(online(a)));
-    outer: for (const u of others)
-      for (const id of u.wishlist ?? []) {
-        if (theyWant.length >= THEY_WANT_MAX) break outer;
-        const c = myProp.get(id);
-        if (!c || deals.some((d) => d.userId === u._id && d.give.cardId === id) || (await has(u._id, c))) continue;
-        theyWant.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online: online(u), card: c });
-      }
+    // (sans `give` : même construction qu'avant, étoile par étoile — une carte possédée à deux raretés garde la dernière)
+    if (!give) for (const l of gives.values()) for (const c of l) myProp.set(c.cardId, c);
+    // joueurs en ligne d'abord, puis du plus ancien au plus récent ; pour chacun, dans l'ordre de sa liste d'envies
+    const pairs: Array<{ p: Person; id: string }> = [];
+    if (lazy) {
+      for (const id of [...myProp.keys()].slice(0, THEY_WANT_SCAN))
+        for (const uid of await wishersOf(ctx, id)) {
+          const p = await other(uid);
+          if (p && (p.u.wishlist ?? []).includes(id)) pairs.push({ p, id });
+        }
+    } else for (const p of await people.all()) if (p.u._id !== me._id) for (const id of p.u.wishlist ?? []) if (myProp.has(id)) pairs.push({ p, id });
+    pairs.sort((a, b) => Number(b.p.online) - Number(a.p.online) || a.p.u._creationTime - b.p.u._creationTime || (a.p.u.wishlist ?? []).indexOf(a.id) - (b.p.u.wishlist ?? []).indexOf(b.id));
+    for (const { p, id } of pairs) {
+      if (theyWant.length >= THEY_WANT_MAX) break;
+      const c = myProp.get(id)!;
+      if (deals.some((d) => d.userId === p.u._id && d.give.cardId === id) || (await has(p.u._id, c))) continue;
+      theyWant.push({ userId: p.u._id, name: p.u.displayName, avatarUrl: p.u.avatarUrl, online: p.online, card: c });
+    }
     return { deals, theyWant, reads: reads(), at: now };
   },
 });

@@ -35,6 +35,8 @@ rem (V2 fluidite, lot 4) gros tirages marques pour l'index by_big (idempotent)
 call npx convex run --deployment %V2% migrations:markBigPulls >> "%LOG%" 2>&1 || goto :err
 rem (audit perf 12/11) presence : une carte publique par joueur (idempotent)
 call npx convex run --deployment %V2% migrations:backfillPresence >> "%LOG%" 2>&1 || goto :err
+rem (audit perf 12/11) envies par carte : index inverse des listes d'envies (idempotent, par lots)
+call npx convex run --deployment %V2% migrations:backfillWishes >> "%LOG%" 2>&1 || goto :err
 call npx convex run --deployment %V2% admin:setModerators >> "%LOG%" 2>&1
 echo [3/5] build (mode v2)...
 for /f "usebackq delims=" %%s in (`git rev-parse --short HEAD`) do set BEBOU_SHA=%%s
