@@ -45,7 +45,10 @@ function pools() {
   const add = (key: string, c: CatalogEntry) => {
     const m = POOLS!.get(key) ?? new Map<RarityId, CatalogEntry[]>();
     const r = c.rarity as RarityId;
-    m.set(r, [...(m.get(r) ?? []), c]);
+    // (audit 12/11, A7-13) ajout en place, même ordre : la recopie du tableau à chaque carte coûtait O(n²) sur le catalogue
+    const l = m.get(r);
+    if (l) l.push(c);
+    else m.set(r, [c]);
     POOLS!.set(key, m);
   };
   for (const t of THEMES) for (const c of t.cards) {

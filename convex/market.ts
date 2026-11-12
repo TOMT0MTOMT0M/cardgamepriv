@@ -1,11 +1,12 @@
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type QueryCtx } from './_generated/server';
-import type { Doc } from './_generated/dataModel';
+import type { Doc, Id } from './_generated/dataModel';
 import { getUserIdByToken, requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
 import { addCoins, giveCards, recordFlow, takeCards } from './econLib';
 import { MARKET_MAX_OPEN, marketProblem } from '../src/core/market';
 import { CARD_VALUE } from '../src/core/economy';
+import { presenceOf } from './presence';
 
 /**
  * MARCHÉ (retours Hugo 10/11) : des cartes à prix fixe, en pièces, entre joueurs. Règles : src/core/market.ts.
@@ -15,8 +16,19 @@ import { CARD_VALUE } from '../src/core/economy';
  */
 
 const nameOf = (id: string) => catalogCard(id)?.name ?? id;
-const view = async (ctx: QueryCtx, m: Doc<'market'>) => {
-  const s = await ctx.db.get(m.sellerId);
+/**
+ * (audit 12/11, S13 / A7-01) le vendeur : une lecture par vendeur et par appel (avant : une par annonce, jusqu'à 300),
+ * et sa carte publique (convex/presence.ts) plutôt que son document — le tableau du marché, suivi en continu, ne
+ * repart plus aux écritures privées des vendeurs.
+ */
+type Sellers = Map<string, Promise<{ displayName: string; avatarUrl?: string } | null>>;
+const sellerOf = (ctx: QueryCtx, cache: Sellers, id: Id<'users'>) => {
+  let p = cache.get(id);
+  if (!p) cache.set(id, (p = (async (): Promise<{ displayName: string; avatarUrl?: string } | null> => (await presenceOf(ctx, id)) ?? (await ctx.db.get(id)))()));
+  return p;
+};
+const view = async (ctx: QueryCtx, m: Doc<'market'>, cache: Sellers = new Map()) => {
+  const s = await sellerOf(ctx, cache, m.sellerId);
   return { id: m._id, sellerId: m.sellerId, sellerName: s?.displayName ?? '?', sellerAvatar: s?.avatarUrl, cardId: m.cardId, rarity: m.rarity, mintNumber: m.mintNumber, price: m.price, status: m.status, createdAt: m.createdAt, resolvedAt: m.resolvedAt, buyerId: m.buyerId };
 };
 
@@ -31,10 +43,11 @@ export const board = query({
     const recent = Date.now() - 7 * 86400_000;
     const sold = me ? (await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', me._id).eq('status', 'sold')).order('desc').take(10)).filter((m) => (m.resolvedAt ?? 0) >= recent) : [];
     const bought = me ? await ctx.db.query('market').withIndex('by_buyer', (q) => q.eq('buyerId', me._id).gte('resolvedAt', recent)).order('desc').take(10) : [];
+    const sellers: Sellers = new Map();
     return {
-      open: await Promise.all(open.map((m) => view(ctx, m))),
-      sold: await Promise.all(sold.map((m) => view(ctx, m))),
-      bought: await Promise.all(bought.map((m) => view(ctx, m))),
+      open: await Promise.all(open.map((m) => view(ctx, m, sellers))),
+      sold: await Promise.all(sold.map((m) => view(ctx, m, sellers))),
+      bought: await Promise.all(bought.map((m) => view(ctx, m, sellers))),
     };
   },
 });

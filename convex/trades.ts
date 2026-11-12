@@ -97,7 +97,14 @@ export const history = query({
       all.push(...(await ctx.db.query('trades').withIndex('by_fromUser_status', (q) => q.eq('fromUserId', user._id).eq('status', st)).order('desc').take(max)));
     }
     all.sort((a, b) => (b.resolvedAt ?? b.createdAt) - (a.resolvedAt ?? a.createdAt));
-    return Promise.all(all.slice(0, max).map(async (t) => ({ ...t, fromName: await nameOf(ctx, t.fromUserId), toName: await nameOf(ctx, t.toUserId) })));
+    // (audit 12/11, S13 / A7-05) un nom par joueur et par appel (avant : 2 lectures par échange, dont une de moi à chaque fois)
+    const names = new Map<string, Promise<string>>();
+    const name = (id: Id<'users'>) => {
+      let p = names.get(id);
+      if (!p) names.set(id, (p = id === user._id ? Promise.resolve(user.displayName) : nameOf(ctx, id)));
+      return p;
+    };
+    return Promise.all(all.slice(0, max).map(async (t) => ({ ...t, fromName: await name(t.fromUserId), toName: await name(t.toUserId) })));
   },
 });
 

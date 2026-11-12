@@ -62,7 +62,15 @@ export const create = mutation({
     if (!n) throw new ConvexError('Donne un nom à ton classeur.');
     const count = (await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', user._id)).collect()).length;
     if (count >= BINDER_MAX) throw new ConvexError(`${BINDER_MAX} classeurs au maximum.`);
-    const list = cards ?? [];
+    // (audit 12/11, T-09) mêmes garde-fous que `setCards` : doublons retirés, plafond de cartes (1 lecture par carte)
+    const seen = new Set<string>();
+    const list = (cards ?? []).filter((c) => {
+      const k = `${c.cardId}:${c.rarity}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    if (list.length > BINDER_CARDS_MAX) throw new ConvexError(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
     await checkOwned(ctx, user._id, list);
     const now = Date.now();
     return await ctx.db.insert('binders', { userId: user._id, name: n, cards: list, pinned: false, createdAt: now, updatedAt: now });
