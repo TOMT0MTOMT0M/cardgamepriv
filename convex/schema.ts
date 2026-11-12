@@ -283,7 +283,9 @@ export default defineSchema({
     pinned: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index('by_user', ['userId']),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_pinned', ['userId', 'pinned']),
 
   /**
    * Peer-to-peer card trades between friends.

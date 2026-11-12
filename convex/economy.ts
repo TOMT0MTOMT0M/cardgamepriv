@@ -28,6 +28,7 @@ import {
 import { claimWeekly as claimWeeklyState, cleanWeekly, currentWeekly, nextWeekReset, type WeeklyState } from '../src/core/weekly';
 import { invRev } from './invRev';
 import { syncPresence } from './presence';
+import { statsCached } from './profiles';
 
 /**
  * ÉCONOMIE — portefeuille et sources de pièces (spec du 3 nov., src/core/economy.ts) :
@@ -40,7 +41,12 @@ async function collectionOf(ctx: QueryCtx, u: Doc<'users'>) {
 }
 
 async function achStats(ctx: QueryCtx, u: Doc<'users'>, inv?: Doc<'inventory'>[]) {
-  const coll = inv ?? (await collectionOf(ctx, u));
+  // (audit 12/11, S07 / A6-06, A6-10) sans collection fournie : statistiques stockées avec la ligne de classement
+  // (convex/profiles.ts, statsCached — collection relue seulement si elle a changé depuis). AVANT : la collection
+  // entière de chaque ami dans une seule requête (Succès > Amis), au risque de dépasser la limite de lecture.
+  // Seule différence avec le profil : ici la série est celle enregistrée, pas la série « encore vivante ».
+  if (!inv) return achievementStats({ ...(await statsCached(ctx, u)), streak: u.streak?.count ?? 0 }, econOf(u));
+  const coll = inv;
   const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 });
   return achievementStats(p, econOf(u));
 }
@@ -156,8 +162,13 @@ export const burn = mutation({
   handler: async (ctx, { sessionToken, items }) => {
     const u = await requireUser(ctx, sessionToken);
     if (items.length > 200) throw new ConvexError('Trop de cartes d’un coup.');
-    const inv = await collectionOf(ctx, u);
-    const row = (it: StakeItem) => inv.find((c) => c.cardId === it.cardId && c.rarity === it.rarity);
+    // (audit 12/11, S07 / A6-09) seulement les lignes brûlées (≤ 200, par l'index), plus la collection entière
+    const rows = new Map<string, Doc<'inventory'> | null>();
+    for (const it of items) {
+      const k = `${it.cardId}:${it.rarity}`;
+      if (!rows.has(k)) rows.set(k, await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', u._id).eq('cardId', it.cardId).eq('rarity', it.rarity)).first());
+    }
+    const row = (it: StakeItem) => rows.get(`${it.cardId}:${it.rarity}`) ?? undefined;
     const locked = await lockedCards(ctx, u._id);
     const problem = burnProblem(items as StakeItem[], (it) => Math.max(0, (row(it)?.count ?? 0) - 1 - (locked.get(`${it.cardId}:${it.rarity}`) ?? 0)));
     if (problem) throw new ConvexError(problem);

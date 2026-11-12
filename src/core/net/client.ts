@@ -839,9 +839,9 @@ class GameNetClient {
   }
 
   /** Collection d'un ami (pour composer un échange). */
-  public async userCollection(userId: Id<'users'>): Promise<Doc<'inventory'>[]> {
+  public async userCollection(userId: Id<'users'>) {
     if (!this.client) return [];
-    return await this.client.query(api.inventory.userCollection, { userId });
+    return await this.client.query(api.inventory.userCollectionSlim, { userId });
   }
 
   /** (v1.0.9) « Chercher un propriétaire » : joueurs qui possèdent la carte (hors moi). */
@@ -890,9 +890,9 @@ class GameNetClient {
   public async rerollMission(missionId: string) {
     return await this.client!.mutation(api.missions.reroll, { sessionToken: this.requireToken(), missionId });
   }
-  public async profile(userId: Id<'users'>) {
+  public async profile(userId: Id<'users'>, withCollection = false) {
     if (!this.client) return null;
-    return await this.client.query(api.profiles.profile, { userId });
+    return await this.client.query(api.profiles.profile, withCollection ? { userId, withCollection } : { userId });
   }
   public async setShowcase(cards: Array<{ cardId: string; rarity: RarityId }>) {
     return await this.client!.mutation(api.profiles.setShowcase, { sessionToken: this.requireToken(), cards });

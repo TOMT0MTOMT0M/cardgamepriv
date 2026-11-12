@@ -1027,6 +1027,10 @@ export function createLocalBackend(): GameBackend {
       save.missions = r;
       sync();
     },
+    async friendProfile(userId) {
+      const [profile, cards] = await Promise.all([this.profile(userId), this.friendCollection(userId)]);
+      return { profile, cards };
+    },
     async profile(userId) {
       await delay(60);
       const themesOf = (inv: Inv) => {

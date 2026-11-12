@@ -935,7 +935,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     el.classList.add('loading');
     renderAll();
     try {
-      const [p, c] = await Promise.all([backend.profile(isMe() ? me?.id ?? 'me' : id), isMe() ? Promise.resolve(backend.state.collection) : backend.friendCollection(id)]);
+      // (audit 12/11, A4-02) profil d'un ami : une seule lecture de sa collection côté serveur (avant : deux)
+      const [p, c] = isMe() ? [await backend.profile(me?.id ?? 'me'), backend.state.collection] : await backend.friendProfile(id).then((r) => [r.profile, r.cards] as const);
       if (my !== token) return;
       if (p) prof = p;
       cards = c;

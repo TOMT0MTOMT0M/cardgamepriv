@@ -469,6 +469,8 @@ export interface GameBackend {
   rerollMission(id: string): Promise<void>;
   /** profil d'un joueur (moi : state.user.id) */
   profile(userId: string): Promise<Profile | null>;
+  /** Profil d'un autre joueur ET sa collection, en une seule lecture. */
+  friendProfile(userId: string): Promise<{ profile: Profile | null; cards: PlayerCard[] }>;
   setShowcase(cards: Array<{ cardId: string; rarity: RarityId }>): Promise<void>;
   setBio(bio: string): Promise<void>;
   /** Cosmétiques du profil (seulement du débloqué : le serveur filtre) ; renvoie le choix retenu. */

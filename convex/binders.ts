@@ -28,7 +28,8 @@ export const mine = query({
 
 /** Classeurs épinglés d'un joueur (profil public), du plus ancien au plus récent, BINDER_PINS_MAX au plus. */
 export async function pinnedOf(ctx: { db: QueryCtx['db'] }, userId: Id<'users'>): Promise<Doc<'binders'>[]> {
-  const list = await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
+  // (audit 12/11, S07 / T-10) seulement les classeurs épinglés (index by_user_pinned), plus tous les classeurs du joueur
+  const list = await ctx.db.query('binders').withIndex('by_user_pinned', (q) => q.eq('userId', userId).eq('pinned', true)).collect();
   return list
     .filter((b) => b.pinned)
     .sort((a, b) => a.createdAt - b.createdAt)

@@ -74,6 +74,18 @@ export const mineSince = query({
   },
 });
 
+/** (audit 12/11, S07 / A6-08) collection d'un autre joueur en 4 champs (client V2) : réponse ≈ 4 fois plus légère. */
+export const userCollectionSlim = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, { userId }) => {
+    const rows = await ctx.db
+      .query('inventory')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    return rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));
+  },
+});
+
 export const userCollection = query({
   args: { userId: v.id('users') },
   handler: async (ctx, { userId }) => {

@@ -265,6 +265,13 @@ export function createOnlineBackend(): GameBackend {
     async rerollMission(id) {
       await net.rerollMission(id);
     },
+    // (audit 12/11, S07 / A4-02) profil d'un ami : le profil et sa collection en une seule lecture serveur
+    async friendProfile(userId) {
+      const r = await net.profile(userId as Id<'users'>, true);
+      if (!r) return { profile: null, cards: [] };
+      const { collection, ...p } = r;
+      return { profile: { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null, pinnedBinders: p.pinnedBinders?.map((b) => ({ ...b, id: b.id as string })) }, cards: collection ?? [] };
+    },
     async profile(userId) {
       const p = await net.profile(userId as Id<'users'>);
       return p ? { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null, pinnedBinders: p.pinnedBinders?.map((b) => ({ ...b, id: b.id as string })) } : null;
