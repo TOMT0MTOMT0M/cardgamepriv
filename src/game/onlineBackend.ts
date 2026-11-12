@@ -333,8 +333,9 @@ export function createOnlineBackend(): GameBackend {
     async surveyResults(id) {
       return await net.surveyResults(id);
     },
-    async leaderboard() {
-      return (await net.leaderboard()).map((r) => ({ ...r, id: r.id as string }));
+    async leaderboard(onFresh) {
+      const view = (rows: Awaited<ReturnType<typeof net.leaderboardRows>>) => rows.map((r) => ({ ...r, id: r.id as string }));
+      return view(await net.leaderboard(onFresh && ((rows) => onFresh(view(rows)))));
     },
     async seasonBoard() {
       return await net.seasonBoard();

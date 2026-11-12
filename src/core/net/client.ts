@@ -957,11 +957,18 @@ class GameNetClient {
   public async setSuggestionStatus(id: string, status: 'nouvelle' | 'vue' | 'acceptee' | 'refusee' | 'traitee', adminNote?: string) {
     await this.client!.mutation(api.suggestions.setStatus, { sessionToken: this.requireToken(), id: id as Id<'suggestions'>, status, adminNote });
   }
-  public async leaderboard() {
+  public async leaderboard(onFresh?: (rows: Awaited<ReturnType<GameNetClient['leaderboardRows']>>) => void) {
     if (!this.client) return [];
-    // (v1.0.11) ma ligne recalculée d'abord (les autres le sont toutes les 5 min côté serveur) : je m'y vois à jour
-    if (this.sessionToken) await this.client.mutation(api.profiles.refreshMyRank, { sessionToken: this.sessionToken }).catch(() => undefined);
-    return await this.client.query(api.profiles.leaderboard, {});
+    // (v1.0.11) ma ligne recalculée (les autres le sont toutes les 5 min côté serveur) : je m'y vois à jour.
+    // (audit 12/11, S05 / A6-03) le classement s'affiche SANS attendre ce recalcul (p95 5 s en prod) ; il n'est relu
+    // que si ma ligne a réellement bougé.
+    const refresh = this.sessionToken ? this.client.mutation(api.profiles.refreshMyRank, { sessionToken: this.sessionToken }).catch(() => undefined) : Promise.resolve(undefined);
+    if (!onFresh) await refresh;
+    else void refresh.then(async (r) => r?.changed && onFresh(await this.leaderboardRows())).catch(() => undefined);
+    return await this.leaderboardRows();
+  }
+  public async leaderboardRows() {
+    return await this.client!.query(api.profiles.leaderboard, {});
   }
   /** (11/11) saisons du classement */
   public async seasonBoard() {

@@ -638,6 +638,10 @@ export default defineSchema({
     userId: v.id('users'),
     row: v.any(),
     updatedAt: v.number(),
+    /** (audit 12/11, S05) signature de ce dont dépend la ligne (profiles.ts, rankSigOf) : inchangée → pas de recalcul */
+    sig: v.optional(v.string()),
+    /** (audit 12/11, S05) statistiques complètes du joueur à cette signature (PlayerStats) : évite de relire sa collection */
+    stats: v.optional(v.any()),
   }).index('by_user', ['userId']),
   surveyAnswers: defineTable({
     userId: v.id('users'),

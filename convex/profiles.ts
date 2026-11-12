@@ -7,7 +7,7 @@ import { catalogCard, rarityValidator } from './cardsCatalog';
 import { pinnedOf } from './binders';
 import { DEFAULT_OPENING, OPENINGS, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type PlayerStats } from '../src/core/cosmetics';
 import { streakDay, touchStreak } from '../src/core/streak';
-import { THEMES } from '../src/core/sets/themes';
+import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
 import { econOf } from './econLib';
 
@@ -16,12 +16,49 @@ import { econOf } from './econLib';
  * vitrine, classeur épinglé, statistiques enrichies, fil d'activité et classement entre nous.
  */
 
+/** série de connexion encore vivante (comptée aujourd'hui, ou hier) ; cassée (un jour sauté) → 0 */
+function liveStreak(u: Doc<'users'>): number {
+  const t = touchStreak(u.streak, Date.now());
+  return !u.streak ? 0 : t === null ? u.streak.count : t.count === 1 ? 0 : u.streak.count;
+}
+
+/**
+ * (audit 12/11, S05 / A8-01) SIGNATURE de tout ce dont dépendent `statsOf` et `rankRowOf`, SANS lire la collection :
+ * la dernière révision de l'inventaire du joueur (convex/invRev.ts : toute écriture pose `rev`, toute suppression
+ * laisse une ligne `invGone`), ses compteurs, ses cosmétiques et la taille du catalogue. Même signature = mêmes
+ * statistiques : on ne relit la collection entière (≈ 4 700 documents à taille prod) que si elle a changé.
+ * À FAIRE SUIVRE : un champ de `users` ajouté à `statsOf` / `rankRowOf` doit entrer ici (sinon ligne figée ≤ 24 h).
+ * Catalogue retrié ou seuil de succès / cosmétique changé sans changer la taille du catalogue : monter le `1` en tête.
+ */
+export async function rankSigOf(ctx: QueryCtx, u: Doc<'users'>): Promise<string> {
+  const [inv, gone] = await Promise.all([
+    ctx.db.query('inventory').withIndex('by_user_rev', (q) => q.eq('userId', u._id)).order('desc').first(),
+    ctx.db.query('invGone').withIndex('by_user_rev', (q) => q.eq('userId', u._id)).order('desc').first(),
+  ]);
+  const e = econOf(u);
+  return JSON.stringify([
+    1, PUBLIC_CARD_COUNT, SUBTHEMES.length,
+    inv?._id ?? '', inv?.rev ?? 0, inv?.count ?? 0, inv?.lastPulledAt ?? 0, gone?._id ?? '',
+    u.displayName, u.avatarUrl ?? '', u.cosmetics ?? null,
+    u.totalPacksOpened, u.totalTrades ?? 0, u.totalContracts ?? 0, liveStreak(u), u.wasTop ? 1 : 0, u.seasonPodiums ?? 0, u.seasonWins ?? 0,
+    e.earned, e.burned, e.gamesPlayed, e.gamesWon, e.rouletteWins,
+  ]);
+}
+
+/**
+ * Statistiques d'un joueur sans relire sa collection quand sa ligne de classement est à jour (même signature) ;
+ * sinon calcul complet. Mêmes valeurs que `statsOf(...).stats`.
+ */
+export async function statsCached(ctx: QueryCtx, u: Doc<'users'>): Promise<PlayerStats> {
+  const [sig, row] = await Promise.all([rankSigOf(ctx, u), ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', u._id)).first()]);
+  if (row?.stats && row.sig === sig) return row.stats as PlayerStats;
+  return (await statsOf(ctx, u)).stats;
+}
+
 /** Statistiques d'un joueur (déblocages, classement). */
 export async function statsOf(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: PlayerStats; collection: Doc<'inventory'>[] }> {
   const collection = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
-  // série de connexion encore vivante (comptée aujourd'hui, ou hier) ; cassée (un jour sauté) → 0
-  const t = touchStreak(u.streak, Date.now());
-  const streak = !u.streak ? 0 : t === null ? u.streak.count : t.count === 1 ? 0 : u.streak.count;
+  const streak = liveStreak(u);
   // (retours live 6) + doublons brûlés (titres de la forge) et « a été n°1 » (titre Numéro un)
   const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 });
   return { stats, collection };
@@ -78,8 +115,8 @@ export const activity = query({
 });
 
 /** Une ligne du classement (calculée sur la collection d'UN joueur). */
-async function rankRowOf(ctx: QueryCtx, u: Doc<'users'>) {
-  const { stats } = await statsOf(ctx, u);
+async function rankRowOf(ctx: QueryCtx, u: Doc<'users'>, known?: PlayerStats) {
+  const stats = known ?? (await statsOf(ctx, u)).stats;
   return {
     id: u._id,
     name: u.displayName,
@@ -122,11 +159,15 @@ export const refreshMyRank = mutation({
     if (u.bannedAt) return { ok: false };
     const now = Date.now();
     const old = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', u._id)).first();
-    if (old && now - old.updatedAt < 20_000) return { ok: true };
-    const row = await rankRowOf(ctx, u);
-    if (old) await ctx.db.patch(old._id, { row, updatedAt: now });
-    else await ctx.db.insert('rankRows', { userId: u._id, row, updatedAt: now });
-    return { ok: true };
+    if (old && now - old.updatedAt < 20_000) return { ok: true, changed: false };
+    // (audit 12/11, S05 / A6-03) rien n'a changé depuis ma ligne : pas de relecture de la collection, pas d'écriture
+    const sig = await rankSigOf(ctx, u);
+    if (old?.stats && old.sig === sig) return { ok: true, changed: false };
+    const { stats } = await statsOf(ctx, u);
+    const row = await rankRowOf(ctx, u, stats);
+    if (old) await ctx.db.patch(old._id, { row, sig, stats, updatedAt: now });
+    else await ctx.db.insert('rankRows', { userId: u._id, row, sig, stats, updatedAt: now });
+    return { ok: true, changed: true };
   },
 });
 
@@ -136,9 +177,15 @@ export const rankPlan = internalQuery({
   handler: async (ctx) => {
     const users = await ctx.db.query('users').collect();
     const rows = await ctx.db.query('rankRows').collect();
-    const at = new Map(rows.map((r) => [r.userId as string, r.updatedAt]));
+    const by = new Map(rows.map((r) => [r.userId as string, r]));
     return {
-      users: users.map((u) => ({ id: u._id, seen: u.lastSeenAt ?? 0, banned: !!u.bannedAt, at: at.get(u._id) ?? 0 })),
+      // (audit 12/11, S05) `sig` : signature du moment (2 petites lectures par joueur) ; `rowSig` : celle de sa ligne
+      users: await Promise.all(
+        users.map(async (u) => {
+          const r = by.get(u._id);
+          return { id: u._id, banned: !!u.bannedAt, at: r?.updatedAt ?? 0, sig: u.bannedAt ? '' : await rankSigOf(ctx, u), rowSig: r?.stats ? (r.sig ?? '') : '' };
+        }),
+      ),
       rows: rows.map((r) => ({ id: r._id, userId: r.userId })),
     };
   },
@@ -149,19 +196,22 @@ export const rankRow = internalQuery({
   args: { userId: v.id('users') },
   handler: async (ctx, { userId }) => {
     const u = await ctx.db.get(userId);
-    return u && !u.bannedAt ? await rankRowOf(ctx, u) : null;
+    if (!u || u.bannedAt) return null;
+    // signature et statistiques prises dans la même lecture que la ligne : elles vont ensemble dans `rankRows`
+    const [sig, { stats }] = await Promise.all([rankSigOf(ctx, u), statsOf(ctx, u)]);
+    return { row: await rankRowOf(ctx, u, stats), sig, stats };
   },
 });
 
 export const saveRanks = internalMutation({
-  args: { rows: v.array(v.object({ userId: v.id('users'), row: v.any() })), drop: v.array(v.id('rankRows')) },
+  args: { rows: v.array(v.object({ userId: v.id('users'), row: v.any(), sig: v.optional(v.string()), stats: v.optional(v.any()) })), drop: v.array(v.id('rankRows')) },
   handler: async (ctx, { rows, drop }) => {
     const now = Date.now();
     for (const id of drop) await ctx.db.delete(id);
-    for (const { userId, row } of rows) {
+    for (const { userId, row, sig, stats } of rows) {
       const old = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', userId)).first();
-      if (old) await ctx.db.patch(old._id, { row, updatedAt: now });
-      else await ctx.db.insert('rankRows', { userId, row, updatedAt: now });
+      if (old) await ctx.db.patch(old._id, { row, sig, stats, updatedAt: now });
+      else await ctx.db.insert('rankRows', { userId, row, sig, stats, updatedAt: now });
     }
     // (retours live 6, C15) titre « Numéro un » : le premier en cartes différentes est marqué, définitivement
     let best: { userId: string; n: number } | null = null;
@@ -179,8 +229,8 @@ export const saveRanks = internalMutation({
 
 /**
  * Recalcule le classement (cron toutes les 5 min ; `all` : tout le monde, après une mise en ligne). Sans `all`, seuls
- * les joueurs actifs depuis leur dernière ligne (lastSeenAt) et les lignes de plus de 6 h — un échange accepté pendant
- * qu'on est hors ligne est rattrapé par ce tour complet. Joueurs bannis ou supprimés : ligne retirée.
+ * les joueurs dont la signature a changé (collection, compteurs, cosmétiques : `rankSigOf`) et les lignes de plus de
+ * 24 h — un échange accepté pendant qu'on est hors ligne change la signature. Joueurs bannis ou supprimés : ligne retirée.
  */
 export const refreshRanks = internalAction({
   args: { all: v.optional(v.boolean()) },
@@ -189,13 +239,15 @@ export const refreshRanks = internalAction({
     const now = Date.now();
     const live = new Set(plan.users.filter((u) => !u.banned).map((u) => u.id as string));
     const drop = plan.rows.filter((r) => !live.has(r.userId)).map((r) => r.id);
-    const rows: Array<{ userId: Doc<'users'>['_id']; row: RankRow }> = [];
+    const rows: Array<{ userId: Doc<'users'>['_id']; row: RankRow; sig: string; stats: PlayerStats }> = [];
     for (const u of plan.users) {
       if (u.banned) continue;
-      const stale = all || !u.at || u.seen >= u.at - 60_000 || now - u.at > 6 * 3600_000;
+      // (audit 12/11, S05 / A8-01) AVANT : tout joueur vu depuis sa ligne était recalculé toutes les 5 min, collection
+      // entière. MAINTENANT : seulement si sa signature a changé (rankSigOf) ; filet de sécurité : une fois par 24 h.
+      const stale = all || !u.at || u.sig !== u.rowSig || now - u.at > 24 * 3600_000;
       if (!stale) continue;
-      const row = await ctx.runQuery(internal.profiles.rankRow, { userId: u.id });
-      if (row) rows.push({ userId: u.id, row });
+      const r = await ctx.runQuery(internal.profiles.rankRow, { userId: u.id });
+      if (r) rows.push({ userId: u.id, ...r });
     }
     if (!rows.length && !drop.length) return { saved: 0, dropped: 0 };
     return await ctx.runMutation(internal.profiles.saveRanks, { rows, drop });
@@ -247,7 +299,7 @@ export const setCosmetics = mutation({
   args: { sessionToken: v.string(), banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()) },
   handler: async (ctx, { sessionToken, banner, frame, title, badges, accent, vitrine, vitrineColor }) => {
     const user = await requireUser(ctx, sessionToken);
-    const { stats } = await statsOf(ctx, user);
+    const stats = await statsCached(ctx, user); // (audit 12/11, A6-11) sans relire l'inventaire si la ligne de classement est à jour
     const clean = cleanCosmetics({ banner, frame, title, badges, accent, vitrine, vitrineColor }, stats);
     // (11/11) l'animation d'ouverture se choisit ailleurs (fiche booster, `setOpening`) : on la garde telle quelle
     const opening = user.cosmetics?.opening;
@@ -268,7 +320,7 @@ export const setOpening = mutation({
     const o = OPENINGS.find((x) => x.id === style);
     if (!o) throw new ConvexError('Animation d’ouverture inconnue.');
     if (o.need) {
-      const { stats } = await statsOf(ctx, user);
+      const stats = await statsCached(ctx, user);
       if (!o.unlock(stats)) throw new ConvexError(`Pas encore débloquée. ${o.how}`);
     }
     const { opening: _old, ...rest } = user.cosmetics ?? {};

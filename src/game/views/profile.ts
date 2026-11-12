@@ -952,7 +952,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       cosm.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
     if (tab === 'activite') void loadActivity();
-    if (tab === 'classement') ((leaderLoaded = true), void leaderboard.load());
+    // (audit 12/11, A5-11) un re-rendu du profil (collection, amis, classeurs) ne recharge plus le classement déjà affiché
+    if (tab === 'classement' && !leaderLoaded) ((leaderLoaded = true), void leaderboard.load());
   }
 
   // ── une carte en grand ; un toucher à côté la referme (audit UX3-09, même règle que la boutique)

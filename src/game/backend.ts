@@ -490,8 +490,8 @@ export interface GameBackend {
   surveyAnswered(surveyId: string): Promise<boolean>;
   submitSurvey(surveyId: string, answer: SurveyAnswer): Promise<void>;
   surveyResults(surveyId: string): Promise<SurveyResults>;
-  /** Classement entre nous. */
-  leaderboard(): Promise<LeaderRow[]>;
+  /** Classement entre nous. `onFresh` : rappelé si ma ligne vient d'être recalculée (le premier retour n'attend pas). */
+  leaderboard(onFresh?: (rows: LeaderRow[]) => void): Promise<LeaderRow[]>;
   /** (11/11) saisons mensuelles du classement : la saison en cours (points de départ) et les saisons passées */
   seasonBoard(): Promise<SeasonBoard>;
   /** Fil d'activité d'un joueur. */

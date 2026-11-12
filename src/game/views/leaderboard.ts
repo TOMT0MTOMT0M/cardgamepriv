@@ -157,23 +157,38 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     if (b.id === 'season' && !season?.current) listEl.replaceChildren();
   }
 
+  let loadId = 0;
   return {
     el,
     async load() {
       rows = null;
       render();
+      const my = ++loadId;
+      const show = () => {
+        seasonGain.clear();
+        if (season?.current && rows) for (const st of seasonStandings(rows.map((x) => ({ userId: x.id, name: x.name, avatarUrl: x.avatarUrl, uniques: x.uniques, packsOpened: x.packsOpened })), season.current.bases)) seasonGain.set(st.userId, st.gained);
+        render();
+      };
       try {
         // (11/11) les saisons à côté : une panne de ce côté ne prive pas du classement
-        const [r, s] = await Promise.all([backend.leaderboard(), backend.seasonBoard().catch(() => null)]);
-        rows = r;
+        // (audit 12/11, A6-03) affiché tout de suite ; ma ligne recalculée arrive ensuite, seulement si elle a bougé
+        let freshRows: LeaderRow[] | null = null;
+        const fresh = (r: LeaderRow[]) => {
+          if (my !== loadId) return;
+          freshRows = r; // arrivée avant la première lecture (saisons lentes) : c'est elle qui sera affichée
+          if (!rows) return;
+          rows = r;
+          show();
+        };
+        const [r, s] = await Promise.all([backend.leaderboard(fresh), backend.seasonBoard().catch(() => null)]);
+        if (my !== loadId) return;
+        rows = freshRows ?? r;
         season = s;
       } catch (e) {
         rows = [];
         toast(errMsg(e), 'err');
       }
-      seasonGain.clear();
-      if (season?.current && rows) for (const st of seasonStandings(rows.map((x) => ({ userId: x.id, name: x.name, avatarUrl: x.avatarUrl, uniques: x.uniques, packsOpened: x.packsOpened })), season.current.bases)) seasonGain.set(st.userId, st.gained);
-      render();
+      show();
     },
   };
 }
