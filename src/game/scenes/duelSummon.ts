@@ -75,7 +75,7 @@ import { EASE, Spring } from '../../core/ease';
 import type { N } from '../../core/tsl';
 import { mobileArtScale } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
-import { fxReduced } from '../../core/fxPref';
+import { reducedMotion } from '../../core/motion';
 import { siteUrl } from '../../core/siteRoot';
 import type { DuelMonster } from './duelMonsters';
 // Fraunces ne sert qu'au nom du monstre de cette scène (audit 06/11) : chargée ici, pas au premier écran
@@ -702,7 +702,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     pacing: () => (tl?.isActive() ? 'busy' : 'rest'),
     async setup(c) {
       ctx = c;
-      calm = fxReduced();
+      calm = reducedMotion();
       stage = createStage(c, { bg: ['#0b1222', '#020305'], env: 'studio', envIntensity: 0.35, fill: 0.62 });
       D0 = stage.camera.position.z;
       aspect = c.width / c.height;

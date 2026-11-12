@@ -15,7 +15,7 @@
  */
 import { isEclipseCard } from '../eclipse';
 import { SUBTHEMES, catalogEntry, fmtCount, subthemeById, themeById, type SubTheme } from '../../core/sets/themes';
-import { fxReduced } from '../../core/fxPref';
+import { reducedMotion } from '../../core/motion';
 import type { Shell } from '../shell';
 import type { Sfx } from '../../core/audio';
 import { duelMonster } from '../scenes/duelMonsters';
@@ -236,7 +236,7 @@ export function playMythicPrelude(
     resolve();
     return h;
   }
-  const reduced = fxReduced();
+  const reduced = reducedMotion();
   const short = !o.full && !o.auto && (!!o.quick || familySeen(fam));
   markFamilySeen(fam);
   played.set(cardId, performance.now());

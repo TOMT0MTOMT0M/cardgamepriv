@@ -32,7 +32,7 @@ import type { CardArt } from './art';
 import { cardLayers } from './cardMaterial';
 import { CARD } from './cardModel';
 import { noiseTexel, saturate3, thinFilm, thinFilmLUT, voronoi, type N } from './tsl';
-import { pokeFaceColor, pokeFx } from './pokeHolo/face';
+import { pokeFaceColor } from './pokeHolo/face';
 
 /**
  * Matériau holo réutilisable (version condensée de 001) : couche mince spectrale, grain de foil,
@@ -62,21 +62,20 @@ export interface HoloOptions {
  * couleurs d'origine »). L'effet est porté par le cadre, le liseré, une bande de bordure et les paillettes ; sur
  * l'illustration (fenêtre du cadre : fond + sujet) le foil ne remplace jamais plus de `image` de la couleur d'origine
  * (avant : jusqu'à 70 % en visionneuse, 90 % à l'ouverture, sur tout le fond dès épique). Uniforms uniques → changer
- * une valeur agit sur toutes les cartes sans recompiler. `setHoloReduced` (option « Effets réduits ») les baisse.
+ * une valeur agit sur toutes les cartes sans recompiler. (L'option « Effets réduits » qui les baissait a été supprimée le 12/11.)
  */
 export const HOLO_LIMITS = {
   // (retours 06/11 : « réduire les effets sur les cartes, les bleues / rouges c'est trop ») : plafonds baissés
   // (retours live 6, C6 « zéro effet sur les cartes, l'image clean ») : plus aucun foil sur l'illustration ni de
   // paillettes / éclats ; seul le cadre garde la couleur de sa rareté (code couleur, 6★ arc-en-ciel)
   full: { image: 0, border: 0.72, glint: 0 },
-  reduced: { image: 0, border: 0.55, glint: 0 },
 } as const;
 /**
- * (audit 12/11, S03 / E4-04) Paillettes et éclats : leurs plafonds valent 0 dans les deux modes depuis les retours
+ * (audit 12/11, S03 / E4-04) Paillettes et éclats : leurs plafonds valent 0 depuis les retours
  * live 6 — le shader les calculait quand même à chaque pixel (cellules de Voronoï, 2 tirages, reflet à la puissance 80)
  * pour les multiplier par 0. La branche n'est construite que si un plafond redevient positif.
  */
-export const HOLO_GLINT_ON = HOLO_LIMITS.full.glint > 0 || HOLO_LIMITS.reduced.glint > 0;
+export const HOLO_GLINT_ON = HOLO_LIMITS.full.glint > 0;
 export const holoFx = {
   /** part maximale de couleur remplacée par le foil sur l'illustration (0..1) */
   image: uniform(HOLO_LIMITS.full.image),
@@ -85,17 +84,6 @@ export const holoFx = {
   /** intensité des paillettes et des éclats émissifs (0..1) */
   glint: uniform(HOLO_LIMITS.full.glint),
 };
-let holoReduced = false;
-/** Option « Effets réduits » (core/fxPref.ts) : plafonds abaissés pour toutes les faces holo, à chaud. */
-export function setHoloReduced(on: boolean) {
-  holoReduced = on;
-  const L = on ? HOLO_LIMITS.reduced : HOLO_LIMITS.full;
-  holoFx.image.value = L.image;
-  holoFx.border.value = L.border;
-  holoFx.glint.value = L.glint;
-  pokeFx.k.value = on ? 0.5 : 1;
-}
-export const isHoloReduced = () => holoReduced;
 
 /**
  * Bande de bordure (bord de la carte → liseré intérieur) : présente à TOUS les paliers (retours live 02, §12 : code

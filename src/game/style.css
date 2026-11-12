@@ -2130,18 +2130,10 @@ body[data-route='amis'] .me .icon.fr-link { color: var(--ink); box-shadow: 0 0 0
 /* ==== fin lot A2 ==== */
 
 /* ==== RETOURS LIVE 02 — lot K ==== */
-/* « Effets réduits » (core/fxPref.ts, classe posée sur <body>) : vignettes sans reflet, liseré uni de la rareté,
-   plus de lueurs autour des cartes ni de reflet animé sur le nom. Le holo 3D, lui, baisse via les uniforms (holo.ts). */
-body.fx-reduced .tile.real-on::after { display: none; }
-body.fx-reduced .tile.owned.real-on.r-epic, body.fx-reduced .tile.owned.real-on.r-legendary, body.fx-reduced .tile.owned.real-on.r-mythic { border-color: color-mix(in srgb, var(--rc) 55%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--rc) 28%, #141414), #0a0a0a 70%); }
-body.fx-reduced .tile.owned.real-on.r-mythic { border-color: color-mix(in srgb, #fff 45%, transparent); }
-body.fx-reduced .tile.r-secret.owned { box-shadow: none; }
-body.fx-reduced .tile.owned:hover { box-shadow: 0 8px 18px -12px rgba(0, 0, 0, 0.9); }
-body.fx-reduced .card-info.r-legendary, body.fx-reduced .card-info.r-mythic { box-shadow: none; }
-body.fx-reduced .card-info .ci-name, body.fx-reduced .v-info .ci-name { animation: none; background: none; color: inherit; -webkit-background-clip: border-box; background-clip: border-box; }
+/* (12/11, décision 4) le mode « Effets réduits » du jeu est supprimé ; reste le réglage « réduire les animations » de l'appareil */
+@media (prefers-reduced-motion: reduce) { .card-info.r-legendary .ci-name, .card-info.r-mythic .ci-name, .v-info.r-legendary .ci-name, .v-info.r-mythic .ci-name, body .card-info .ci-name, body .v-info .ci-name { animation: none !important; } }
 /* interrupteur du panneau du son : même rangée pleine largeur que « Vibrations » (présent aussi sur ordinateur) */
-.vol-pop:has(.vol-fx) { flex-wrap: wrap; width: 264px; max-width: calc(100vw - 24px); border-radius: 18px; row-gap: 6px; }
-.vol-fx[aria-checked='true'] i { color: var(--rose); }
+.vol-pop:has(.vol-pad) { flex-wrap: wrap; width: 264px; max-width: calc(100vw - 24px); border-radius: 18px; row-gap: 6px; }
 /* ==== fin lot K ==== */
 
 /* ==== RETOURS LIVE 02 — lot P (profil : en-tête compact, vitrine 12 au premier écran, GIF ; Succès : primes) ==== */
@@ -2283,10 +2275,7 @@ body.fx-reduced .card-info .ci-name, body.fx-reduced .v-info .ci-name { animatio
 .sum-rays { opacity: calc(var(--k) * 0.35); }
 .sum-bg.r-mythic::after { opacity: 0.45; }
 .sum-parts i { box-shadow: 0 0 5px var(--pa); }
-/* « Effets réduits » (lot K, body.fx-reduced) : récap sans particules ni rayons, halo très léger ; voile 6★ sans pulsation */
-body.fx-reduced .sum-parts, body.fx-reduced .sum-rays, body.fx-reduced .sum-bg.r-mythic::after { display: none; }
-body.fx-reduced .sum-bg::before { opacity: 0.5; animation: none; }
-body.fx-reduced .mv-kicker { animation: none; }
+@media (prefers-reduced-motion: reduce) { .sum-parts, .sum-rays { display: none; } .sum-bg::before, .mv-kicker { animation: none; } }
 /* (1) ordinateur : gros tirages à GAUCHE (colonne en éventail, comme au téléphone, tirages plus grands), booster au
    centre, packs à DROITE (Bebou Pack en haut) ; la fiche du pack s'ouvre à gauche, sans masquer la liste */
 @media (min-width: 861px) {
@@ -2486,8 +2475,6 @@ button.ob-w { min-height: 36px; }
 .tile.owned.r-legendary { box-shadow: 0 0 0 0.5px color-mix(in srgb, #ffe0a0 50%, transparent) inset; }
 .tile.owned.r-mythic, .tile.owned.real-on.r-mythic { border-color: transparent; background: linear-gradient(160deg, #141414, #0a0a0a 70%) padding-box, conic-gradient(from 200deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a) border-box; }
 .tile.owned.r-secret { border-color: var(--rc); }
-body.fx-reduced .tile.owned.real-on.r-epic, body.fx-reduced .tile.owned.real-on.r-legendary { border-color: var(--rc); }
-body.fx-reduced .tile.owned.real-on.r-mythic { border-color: transparent; }
 /* gros tirages : 5★ = doré plein (plus d'irisé), 6★ = arc-en-ciel (inchangé) */
 .bp-item.r-legendary .bp-card { border-color: var(--rc); }
 
@@ -3079,7 +3066,7 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .tile.skel { background: #111; animation: none; }
 .tile.real-on::after { display: none; }
 .tile.r-secret.owned { background: #0d0d0d; box-shadow: none; }
-.tile.owned.real-on.r-epic, .tile.owned.real-on.r-legendary, body.fx-reduced .tile.owned.real-on.r-epic, body.fx-reduced .tile.owned.real-on.r-legendary { border-color: var(--rc); background: #0d0d0d; }
+.tile.owned.real-on.r-epic, .tile.owned.real-on.r-legendary { border-color: var(--rc); background: #0d0d0d; }
 .tile.owned.r-mythic, .tile.owned.real-on.r-mythic { background: linear-gradient(#0d0d0d, #0d0d0d) padding-box, conic-gradient(from 200deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a) border-box; }
 .tile .count { background: #000; }
 .tile .badge, .tile.fresh::before { background: #fff; color: #000; box-shadow: none; }
@@ -3171,7 +3158,7 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .frame-a-neon .pf-fx { inset: -8%; border: 3px solid #39ffd2; box-shadow: 0 0 12px #39ffd2, inset 0 0 10px #39ffd2; animation: fx-neon 4s linear infinite; }
 @keyframes fx-neon { to { filter: hue-rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .pf-fx, .pf-fx::before, .pf-fx::after { animation: none !important; } }
-body.fx-reduced .pf-fx, body.fx-reduced .pf-fx::before, body.fx-reduced .pf-fx::after { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .pf-fx, .pf-fx::before, .pf-fx::after { animation: none !important; } }
 
 /* (C9) CLASSEMENT : rangs en typographie pure, podium noir / blanc, le 1er distingué par la taille (pas la couleur) */
 .lb-pd, .pd { background: #0a0a0a; border-color: var(--line-2); box-shadow: none; }

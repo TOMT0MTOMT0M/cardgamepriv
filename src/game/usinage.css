@@ -272,8 +272,8 @@ select, textarea { border-radius: var(--gm-r); }
 .canal-badge, .offline-pill, .maj-pill { border-radius: var(--r-ctl); box-shadow: none; }
 
 /* ───────────── menu du profil (son, vibrations, effets réduits) */
-.vol-pop, .vol-pop:has(.vol-fx), .vol-pop:has(.vol-hap) { border-radius: var(--gm-r); box-shadow: none; }
-.vol-hap, .vol-mute, .vol-fx { border-radius: var(--r-ctl); background: none; border-color: var(--gm-line-2); }
+.vol-pop, .vol-pop:has(.vol-pad), .vol-pop:has(.vol-hap) { border-radius: var(--gm-r); box-shadow: none; }
+.vol-hap, .vol-mute { border-radius: var(--r-ctl); background: none; border-color: var(--gm-line-2); }
 .me-menu .icon.mm-link, .me-menu .icon.msn-btn, .me-menu .icon.st-btn, .me-menu .icon.mm-reload { border-radius: var(--r-ctl); }
 
 /* ───────────── touches de couleur (retours Hugo 10/11 : « le noir et blanc est bien mieux, mais n'hésite pas à

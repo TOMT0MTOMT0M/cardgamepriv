@@ -303,5 +303,4 @@ body.chat-on .views > .view:not(.shop) { padding-bottom: calc(84px + env(safe-ar
   .chat-panel, .chat.open .chat-panel { clip-path: none; transition: opacity var(--dur-rapide), visibility 0s; }
   .cm, .chat-picker, .cz-card, .chat-jump, .chat-launch.tick .chat-l-live > span, .chat-wait { animation: none; }
 }
-body.fx-reduced .chat-panel, body.fx-reduced .chat.open .chat-panel { clip-path: none; transition: opacity var(--dur-rapide), visibility 0s; }
-body.fx-reduced .cm, body.fx-reduced .chat-picker, body.fx-reduced .cz-card { animation: none; }
+@media (prefers-reduced-motion: reduce) { .chat-panel, .chat.open .chat-panel { clip-path: none; transition: opacity var(--dur-rapide), visibility 0s; } .cm, .chat-picker, .cz-card { animation: none; } }

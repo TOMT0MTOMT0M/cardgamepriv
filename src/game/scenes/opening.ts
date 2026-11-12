@@ -84,7 +84,7 @@ import { rarity, type Rarity, type RarityId } from '../../core/rarity';
 import type { createHoloMaterial } from '../../core/holo';
 import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
 import { haptics } from '../../core/haptics';
-import { onFxReducedChange } from '../../core/fxPref';
+import { onReducedMotionChange } from '../../core/motion';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { loadTearBakes, loadedBakes, TearBakePlayer } from '../../core/tearBake';
@@ -747,7 +747,7 @@ export function createOpeningScene(): OpeningScene {
   const eclAura = new Color(ECL.aura);
   let soonT = 0;
   /**
-   * (retours live 02, option « Effets réduits » du lot K, core/fxPref.ts) : aura / halo, éclair plein écran, aberration,
+   * (retours live 02 ; depuis le 12/11 : réglage « réduire les animations » de l'appareil seulement) : aura / halo, éclair plein écran, aberration,
    * flare, secousses de caméra et particules baissés à l'ouverture (les règles et le plein écran 6★ restent).
    */
   let fxLow = false;
@@ -2513,7 +2513,7 @@ export function createOpeningScene(): OpeningScene {
 
     async setup(c) {
       ctx = c;
-      c.bag.fn(onFxReducedChange((on) => (fxLow = on)));
+      c.bag.fn(onReducedMotionChange((on) => (fxLow = on)));
       const mobile = c.quality === 'mobile';
       // mobile : calques à la taille réelle de la carte à l'écran (×2) — avant, 0,62 / 0,45 fixes → flou, texte baveux
       artScale = mobile ? mobileArtScale(c.width, c.height, 0.7) : 0.85;

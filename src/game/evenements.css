@@ -29,7 +29,7 @@
   0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ev) 22%, transparent); }
   50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--ev) 0%, transparent); }
 }
-.fx-reduced .ev-band.new .ev-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ev-band.new .ev-dot { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .ev-band.new .ev-dot { animation: none; } }
 
 /* ordinateur : en tête de la vitrine, au-dessus du grand booster (la colonne de droite est prise par la fiche posée) */

@@ -10,7 +10,7 @@
  * Tout en Web Animations API (pas de reflow) ; l'éclatement se joue sur un calque fixe au-dessus de tout, à la dernière
  * position connue de la pastille (mesurée à chaque apparition / changement).
  */
-import { fxReduced } from '../core/fxPref';
+import { reducedMotion } from '../core/motion';
 
 // (audit 12/11, décision 1 de Tom / E2-03) les étiquettes des tuiles de cartes (`.tile .badge` : ×N, NEW…) ne sont plus
 // des bulles : une grille de 50 doublons faisait éclater 50 bulles (et leurs sons) au moindre re-rendu. Menus inchangés.
@@ -29,7 +29,7 @@ let popAt = 0;
 export let bubbleSound: (() => void) | null = null;
 export const setBubbleSound = (f: (() => void) | null) => (bubbleSound = f);
 
-const reduced = () => fxReduced() || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced = () => reducedMotion();
 const isVisible = (el: Element) => !(el as HTMLElement).hidden && el.isConnected && (el as HTMLElement).offsetParent !== null;
 
 function measure(el: Element): Info {

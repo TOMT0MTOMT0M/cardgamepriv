@@ -417,5 +417,4 @@
   .gm-top, .gm-body > *, .gm-cols > *, .gm-rp, .gm-pot .tile { animation: none; }
   .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-dot, .gm-cd::before, .gm-battle.suspense .gm-stage, .gm-rp.empty .gm-ava { animation: none; }
 }
-body.fx-reduced .gm-vs-x::after, body.fx-reduced .gm-big.hot::before, body.fx-reduced .gm-bcol.win::after, body.fx-reduced .gm-rrow.win::after, body.fx-reduced .gm-battle.suspense .gm-stage { animation: none; }
-body.fx-reduced .gm-big.in::after { display: none; }
+@media (prefers-reduced-motion: reduce) { .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-battle.suspense .gm-stage { animation: none; } .gm-big.in::after { display: none; } }

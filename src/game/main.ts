@@ -25,7 +25,6 @@ import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, pane
 import { preloadOwned } from './preload';
 import { bindHapticGestures, haptics } from '../core/haptics';
 bindHapticGestures();
-import { fxReduced, setFxReduced } from '../core/fxPref';
 import { Sfx } from '../core/audio';
 import { padOn, setPadOn, setSilentOn, silentOn } from '../core/soundPrefs';
 import { installCatalog } from '../core/sets/themes';
@@ -341,8 +340,6 @@ const fmtCoinsShort = (n: number) => {
 const HAPTIC_UI = matchMedia('(pointer: coarse)').matches;
 const HAP_NOTE = haptics.support === 'ios' ? ' · iPhone : au toucher seulement' : haptics.support === 'none' ? ' · indisponibles ici' : '';
 const hapBtn = () => `<button class="vol-hap" role="switch" aria-checked="${haptics.enabled}" title="Toucher pour tester${haptics.support === 'ios' ? ' (iPhone : le navigateur ne vibre que pendant un toucher, jamais pendant une animation)' : ''}">Vibrations<small>${HAP_NOTE}</small><i aria-hidden="true">${haptics.enabled ? 'oui' : 'non'}</i></button>`;
-/** Interrupteur « Effets réduits » (retours live 02 §7, core/fxPref.ts) : holo / reflets / halos des cartes encore plus discrets, partout (PC et téléphone). */
-const fxBtn = () => `<button class="vol-hap vol-fx" role="switch" aria-checked="${fxReduced()}" title="Holo, reflets et halos des cartes plus discrets">Effets réduits<i aria-hidden="true">${fxReduced() ? 'oui' : 'non'}</i></button>`;
 /** (son V2, 11/11) « Nappe des menus » : un accord feutré, très discret, sous les pages — désactivé par défaut. */
 const padBtn = () => `<button class="vol-hap vol-pad" role="switch" aria-checked="${padOn()}" title="Une nappe très discrète sous les menus (elle se tait pendant les ouvertures)">Nappe des menus<i aria-hidden="true">${padOn() ? 'oui' : 'non'}</i></button>`;
 /** (son V2, 11/11) « Son même en mode silencieux (iPhone) » : seulement là où le navigateur le permet (Safari 17+). */
@@ -436,7 +433,7 @@ function renderMe() {
   const demo = s.mode === 'demo' ? `<button class="demo" title="${DEMO_TXT}" aria-label="${DEMO_TXT}"><span class="d-l">démo hors-ligne</span><span class="d-s">démo</span></button>` : '';
   // son (correctif retours live n°1) : l'icône ouvre / ferme le panneau du volume (curseur + couper / activer) ; un clic
   // ailleurs ou Échap le ferme aussi. Plus d'ouverture au survol : c'est ce qui l'empêchait de se refermer.
-  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="Son et volume" aria-label="Son et volume" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? 'Couper' : 'Activer'}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}${fxBtn()}${padBtn()}${silentBtn()}</span></span>`;
+  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="Son et volume" aria-label="Son et volume" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? 'Couper' : 'Activer'}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}${padBtn()}${silentBtn()}</span></span>`;
   // deux groupes : l'état du joueur (réserve, pièces, missions, série, pity) et l'identité (démo, son, profil). Sur
   // ordinateur ils se suivent sur une ligne ; au téléphone (`.me { display: contents }`) l'identité monte à côté du logo
   // et l'état prend toute la 2e rangée (style.css, lot A)
@@ -469,19 +466,13 @@ function renderMe() {
   };
   meEl.querySelector('.vol-mute')?.addEventListener('click', () => setSoundOn(!soundOn()));
   // (11/11) le sélecteur visait le premier `.vol-hap` : sans vibrations (ordinateur), c'était « Effets réduits »
-  meEl.querySelector('.vol-hap:not(.vol-fx):not(.vol-pad):not(.vol-ios)')?.addEventListener('click', (e) => {
+  meEl.querySelector('.vol-hap:not(.vol-pad):not(.vol-ios)')?.addEventListener('click', (e) => {
     const b = e.currentTarget as HTMLElement;
     haptics.enabled = !haptics.enabled;
     b.setAttribute('aria-checked', String(haptics.enabled));
     b.querySelector('i')!.textContent = haptics.enabled ? 'oui' : 'non';
     haptics.pulse([40, 60, 40]); // (allumées : on les sent tout de suite ; coupées : rien)
     if (haptics.enabled && haptics.why) toast(`Vibrations : ${haptics.why}.`, 'info');
-  });
-  meEl.querySelector('.vol-fx')?.addEventListener('click', (e) => {
-    const b = e.currentTarget as HTMLElement;
-    setFxReduced(!fxReduced()); // → matériaux holo (uniforms) + classe fx-reduced du <body> (vignettes)
-    b.setAttribute('aria-checked', String(fxReduced()));
-    b.querySelector('i')!.textContent = fxReduced() ? 'oui' : 'non';
   });
   const toggle = (sel: string, read: () => boolean, write: (on: boolean) => void, apply: (on: boolean) => void) =>
     meEl.querySelector(sel)?.addEventListener('click', (e) => {
@@ -812,7 +803,7 @@ const VT_FLAG = (() => {
 })();
 let vtDead = false;
 /** Fait `apply` (le vrai changement de page) sous transition ; `canVT()` d'abord (sinon `apply` direct, avec `view-in`). */
-const canVT = () => VT_FLAG && !vtDead && !document.hidden && !fxReduced() && typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canVT = () => VT_FLAG && !vtDead && !document.hidden && typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
 function swapPage(apply: () => void): void {
   const root = document.documentElement;
   let ran = false;

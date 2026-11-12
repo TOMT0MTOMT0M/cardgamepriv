@@ -13,7 +13,7 @@
 import type { Shell } from './shell';
 import type { ViewerScene } from './scenes/viewer';
 import type { RarityId } from '../core/rarity';
-import { fxReduced } from '../core/fxPref';
+import { reducedMotion } from '../core/motion';
 import { mythicFamily, mythicJustPlayed, mythicPlaying, playMythicPrelude, setMythicReplayer } from './mythic';
 import { actorWidth } from './mythic/kit';
 
@@ -35,7 +35,7 @@ export function withMythicPrelude(shell: Shell, viewer: ViewerScene): ViewerScen
 
   viewer.show = (cardId, rarityId, opts) => {
     last = { cardId, rarityId, opts };
-    if (!opts?.dir && !opts?.hold && !mythicPlaying() && !fxReduced() && !mythicJustPlayed(cardId) && mythicFamily(cardId, rarityId)) return play(cardId, rarityId, opts, false);
+    if (!opts?.dir && !opts?.hold && !mythicPlaying() && !reducedMotion() && !mythicJustPlayed(cardId) && mythicFamily(cardId, rarityId)) return play(cardId, rarityId, opts, false);
     return show(cardId, rarityId, opts);
   };
 

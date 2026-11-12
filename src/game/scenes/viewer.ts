@@ -13,10 +13,8 @@ import { LAB_CARDS, cardById } from '../../core/cardData';
 import { rarity, type RarityId } from '../../core/rarity';
 import { CARD, createCardGeometry } from '../../core/cardModel';
 import { EASE, springCurve } from '../../core/ease';
-import { DUR } from '../../core/motion';
+import { reducedMotion, DUR } from '../../core/motion';
 import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
-import { isHoloReduced } from '../../core/holo';
-import { fxReduced } from '../../core/fxPref';
 import type { WonderVisualInstance } from '../../core/wonderDiorama';
 
 /**
@@ -195,8 +193,8 @@ export function createViewerScene(): ViewerScene {
       // remplace dès que le modèle arrive (avant : visionneuse figée le temps du téléchargement en 4G)
       const wonder = isWonderCard(cardId) ? loadWonder() : null;
       void wonder?.then((w) => w.preloadWonderModel(cardId), () => undefined);
-      // skin CS 6★ : modèle + textures (~300 Ko) chargés avec les illustrations ; échec réseau / Effets réduits → carte normale
-      const csAssets = rarityId === 'mythic' && !fxReduced() && cardId.startsWith('cs-')
+      // skin CS 6★ : modèle + textures (~300 Ko) chargés avec les illustrations ; échec réseau / animations réduites sur l'appareil → carte normale
+      const csAssets = rarityId === 'mythic' && !reducedMotion() && cardId.startsWith('cs-')
         ? loadCs().then((m) => (m.isCs3dCard(cardId) ? m.preloadCs3d(cardId).then((a) => ({ m, a })) : null)).catch(() => null)
         : null;
       await ensureCardImages([cd]);
@@ -367,7 +365,7 @@ export function createViewerScene(): ViewerScene {
       bloomStrength = (bl as unknown as { strength: { value: number } }).strength;
       pl.output = vec4((pl.color as N).rgb.add(bl.rgb), 1);
       render = () => {
-        if (bloomStrength && face) bloomStrength.value = (isHoloReduced() ? 0.2 : 0.3) + (face.flash.value as number) * (isHoloReduced() ? 0.45 : 0.9);
+        if (bloomStrength && face) bloomStrength.value = (reducedMotion() ? 0.2 : 0.3) + (face.flash.value as number) * (reducedMotion() ? 0.45 : 0.9);
         pl.render();
       };
       // matériaux compilés, puis une image à blanc hors écran : les VRAIS pipelines (MRT émissif, MSAA, HalfFloat) sont
@@ -397,8 +395,8 @@ export function createViewerScene(): ViewerScene {
     },
     update(dt, t) {
       halo.color.value.lerp(haloColor, 1 - Math.exp(-dt * 5));
-      // « Effets réduits » (core/fxPref.ts) : halo plus faible et immobile
-      const red = isHoloReduced();
+      // « réduire les animations » de l'appareil : halo plus faible et immobile
+      const red = reducedMotion();
       halo.k.value = haloT.k * (red ? 0.45 : 1 + haloT.pulse * Math.sin(t * 1.6) * 0.18);
       ctx.input.spinEnabled = true; // ici on fait tourner la carte en la glissant (l'ouverture, elle, le coupe)
       // curseur « main » : on attrape la carte pour la faire tourner ; l'indication s'efface après le premier tour

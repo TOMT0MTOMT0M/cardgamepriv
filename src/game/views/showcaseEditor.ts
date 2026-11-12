@@ -120,7 +120,7 @@ export function createShowcaseEditor(o: Opts): ShowcaseEditor {
 
   /** Pose les cartes dans les cases ; FLIP : chaque carte part de là où elle était (ou de `from`) et glisse à sa place. */
   function layout(items: Item[], opts: { from?: { k: string; r: DOMRect }; swap?: number } = {}) {
-    const anim = !lessMotion.matches && !document.body.classList.contains('fx-reduced');
+    const anim = !lessMotion.matches;
     const first = new Map<string, DOMRect>();
     if (anim) for (const [k, w] of cardEls) if (w.isConnected) first.set(k, w.getBoundingClientRect());
     if (opts.from) first.set(opts.from.k, opts.from.r);

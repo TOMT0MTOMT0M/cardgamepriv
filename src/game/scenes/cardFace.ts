@@ -6,8 +6,7 @@ import { ALU_BACK, type BackStyle } from '../../core/art/back';
 import type { CardData } from '../../core/cardData';
 import type { RarityId } from '../../core/rarity';
 import { catalogEntry, themeById } from '../../core/sets/themes';
-import { HOLO_GLINT_ON, createHoloMaterial, holoFx, setHoloReduced } from '../../core/holo';
-import { bindFxReduced, onFxReducedChange } from '../../core/fxPref';
+import { HOLO_GLINT_ON, createHoloMaterial, holoFx } from '../../core/holo';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import type { N } from '../../core/tsl';
 
@@ -19,9 +18,6 @@ import type { N } from '../../core/tsl';
  */
 /** Qualité des faces (posée par le shell) : téléphone → variante « lite » du holo, même aspect, ≈ −40 % d'ALU par pixel. */
 let faceLite = false;
-// option « Effets réduits » (core/fxPref.ts) : plafonds du holo de toutes les faces du jeu, à chaud, PC comme téléphone
-bindFxReduced();
-onFxReducedChange(setHoloReduced);
 export function setFaceQuality(q: 'high' | 'mobile') {
   faceLite = q === 'mobile';
 }

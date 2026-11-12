@@ -35,7 +35,6 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
 - Durées et courbes : uniquement les jetons de `src/core/motion.ts`, rien en dur.
 - DA, effets de rareté et animations 6★ identiques à l'œil sauf demande explicite.
 - Interface : direction « usinage » partout (`src/game/usinage.css`, chargé après `style.css`). Rayons par jetons `--r-pill` / `--r-box` / `--r-ctl`, jamais en dur (sauf les cartes) ; filets `--gm-line` / `--gm-line-2` ; couleur = information seulement.
-- Le mode « Effets réduits » (`src/core/fxPref.ts`) doit continuer de fonctionner.
 - Perf : mesurer avant, re-mesurer après. Un lot sans gain mesuré est annulé.
 
 ## Façon de travailler

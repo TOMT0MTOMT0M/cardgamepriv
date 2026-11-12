@@ -8,8 +8,7 @@ import { gestureButtons, panelStrip, showCardPanel } from './cardPanel';
 import { cardQuery, type CardQuery } from '../../core/cardSearch';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
-import { fxReduced } from '../../core/fxPref';
-import { DUR, EASING } from '../../core/motion';
+import { reducedMotion, DUR, EASING } from '../../core/motion';
 import { createForge, forgeCount } from './forge';
 import { GAMES_OPEN } from '../../core/games';
 
@@ -1520,7 +1519,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   };
   function flyGhost(b: { id: string; r: RarityId }, viewer: ViewerScene): (() => void) | null {
     dropGhost();
-    if (fxReduced() || matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+    if (reducedMotion()) return null;
     const tile = el.querySelector<HTMLElement>(`.tile.owned.real-on[data-card="${CSS.escape(b.id)}"][data-rarity="${b.r}"]`);
     const img = tile?.querySelector<HTMLImageElement>('img.real');
     const to = viewer.restRect();
