@@ -108,6 +108,9 @@ export class TearBakePlayer {
   private readonly bodyNrm: Float32Array;
   private readonly stripNrm: Float32Array;
   private cur = -1;
+  private sheetsOf: TearBakeHeader | null = null;
+  private bodySheets: TearBakeHeader['sheets'] = [];
+  private stripSheets: TearBakeHeader['sheets'] = [];
 
   constructor(bake: TearBake) {
     this.bake = bake;
@@ -208,8 +211,14 @@ export class TearBakePlayer {
     const bn3 = this.bodyN * 3;
     for (let i = 0; i < bn3; i++) this.bodyPos[i] = rest[i] + (fr[o0 + i] + (fr[o1 + i] - fr[o0 + i]) * k) * h.q;
     for (let i = bn3; i < n * 3; i++) this.stripPos[i - bn3] = rest[i] + (fr[o0 + i] + (fr[o1 + i] - fr[o0 + i]) * k) * h.qStrip;
-    this.normals(h.sheets.filter((s) => s.part === 'body'), this.bodyPos, this.bodyNrm, 0);
-    this.normals(h.sheets.filter((s) => s.part === 'strip'), this.stripPos, this.stripNrm, this.bodyN);
+    // (audit 12/11, A10-10) feuilles triées une fois par variante, plus deux filtres par image de lecture
+    if (this.sheetsOf !== h) {
+      this.sheetsOf = h;
+      this.bodySheets = h.sheets.filter((s) => s.part === 'body');
+      this.stripSheets = h.sheets.filter((s) => s.part === 'strip');
+    }
+    this.normals(this.bodySheets, this.bodyPos, this.bodyNrm, 0);
+    this.normals(this.stripSheets, this.stripPos, this.stripNrm, this.bodyN);
     for (const g of [this.body, this.strip]) {
       g.getAttribute('position').needsUpdate = true;
       g.getAttribute('normal').needsUpdate = true;

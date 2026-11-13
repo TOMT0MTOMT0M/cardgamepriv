@@ -1,3 +1,4 @@
+import { preloadNoise } from '../core/tsl';
 import './style.css';
 import './panneaux.css';
 import './usinage.css';
@@ -103,7 +104,14 @@ viewHost.tabIndex = -1;
 
 // la 3D démarre (adaptateur WebGPU, appareil…) pendant que le backend se télécharge ; `boot()` l'attend
 const shellP = createShell(glHost, sceneOverlays);
+void preloadNoise(); // (audit 12/11, S06 / E2-01) bruit des matériaux calculé dans un worker pendant le démarrage de la 3D
 shellP.catch(() => undefined); // (l'échec est traité par boot())
+// (audit 12/11, S06 / E2-02) la vitrine se monte SANS attendre le catalogue ni le backend : son montage (visuel du
+// sachet, matériaux, pipelines) ne lit rien du catalogue — les 5 sachets sont « simples », sans le texte qui en dépend —
+// et il attendait pour rien la fin du téléchargement et de l'analyse du catalogue (boot() démarrait 2,4 à 4 s après le
+// lancement sur le téléphone de Tom, la 3D déjà prête). `boot()` attend les deux.
+const openingP = shellP.then((s) => (installDiag(s), s.mount('opening', createOpeningScene())));
+openingP.catch(() => undefined); // (l'échec est traité par boot())
 void shellP.then(enableMythicReplay, () => undefined); // (08/11) « Rejouer » des 6★ dans les visionneuses
 import { syncPush } from './notif';
 import { setBubbleSound, watchBubbles } from './bubble';
@@ -894,11 +902,10 @@ async function boot() {
   viewerMod.catch(() => undefined); // (échec : getViewer() réessaie)
   shell = await shellP;
   setBubbleSound(() => shell.sfx.ui('pop'));
-  installDiag(shell); // (diagnostic à distance des scènes 6★ sur téléphone, voir diag.ts)
   setToastSound((kind) => (kind === 'err' ? shell.sfx.decline(0.07) : kind === 'ok' ? shell.sfx.note(5, 0.05, 0.4) : shell.sfx.note(2, 0.04, 0.35)));
   step(35, 'impression des boosters…', true);
   // scène d'ouverture = vitrine de la boutique : montée (et ses shaders compilés pour toutes les raretés) avant tout
-  const opening = await shell.mount('opening', createOpeningScene());
+  const opening = await openingP;
   step(85, 'mise en place…');
 
   let viewerP: Promise<ViewerScene> | null = null;

@@ -90,7 +90,7 @@ import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { loadTearBakes, loadedBakes, TearBakePlayer } from '../../core/tearBake';
 import { DUR, ECLIPSE, MYTHIC_SILENCE, MYTHIC_TURN, STAGGER, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
-import { fbmTexel, type N } from '../../core/tsl';
+import { fbmTexel, preloadNoise, type N } from '../../core/tsl';
 import { isEclipseCard } from '../eclipse';
 import { apostleStrip } from '../apostles';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
@@ -2894,6 +2894,7 @@ export function createOpeningScene(): OpeningScene {
       }
       // (fluidité 2) WebGPU : pipelines créés en asynchrone et en parallèle dans la configuration RÉELLE de la passe
       // (MRT émissif, HalfFloat, MSAA ×4 — PassNode.compileAsync, voir post.ts) ; WebGL2 : variante « canvas » comme avant
+      await preloadNoise(); // (E2-01) pixels du bruit arrivés du worker avant la 1re image (déjà là en pratique)
       lap('matériaux');
       await compileReal();
       lap('pipelines');

@@ -71,8 +71,10 @@
       (function () {
         var txt = document.querySelector('.l-txt');
         if (!txt || !window.PerformanceObserver || !window.fetch) return;
-        fetch('../precache.json', { cache: 'no-store' })
+        // (audit 12/11, A1-09) réponse gardée pour game/bundle.ts, qui redemandait le même fichier 4,5 s plus tard
+        (window.__precache = fetch('../precache.json', { cache: 'no-store' })
           .then(function (r) { return r.ok ? r.json() : null; })
+          .catch(function () { return null; }))
           .then(function (man) {
             if (!man || !man.files) return;
             var size = {}, total = 0, got = 0, net = 0, seen = {};

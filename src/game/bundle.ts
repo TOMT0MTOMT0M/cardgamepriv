@@ -53,9 +53,15 @@ export function installBundle(busy: () => boolean = () => false): void {
 }
 
 async function run(busy: () => boolean) {
-  const res = await fetch(`${siteUrl('precache.json')}?t=${Date.now()}`, { cache: 'no-store' });
-  if (!res.ok) return;
-  const man = (await res.json()) as { id: string; files: Entry[] };
+  type Manifest = { id: string; files: Entry[] };
+  // (audit 12/11, A1-09) la page a déjà demandé ce fichier au lancement (jeu/index.html) : même réponse, pas de 2e requête
+  const early = await ((window as unknown as { __precache?: Promise<Manifest | null> }).__precache ?? null);
+  let man = early;
+  if (!man) {
+    const res = await fetch(`${siteUrl('precache.json')}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    man = (await res.json()) as Manifest;
+  }
   if (!man?.id || !Array.isArray(man.files)) return;
   // un patch est sorti et cette page tourne encore sur l'ancienne version : on ne touche à rien (effacer « ce qui
   // n'est plus dans le manifeste » scierait les fichiers dont elle a besoin) — la page rechargée fera le travail
