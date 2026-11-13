@@ -9507,10 +9507,10 @@
 "t": 1793645420
 },
 "geo-musee-de-l-ermitage": {
-"art": "i",
-"file": "monuments-patrimoine--musee-de-l-ermitage.png",
-"src": "url",
-"t": 1793645457
+"art": "c",
+"file": "monuments-patrimoine--musee-de-l-ermitage-r2611132242.jpg",
+"src": "reillustre:geo-musee-de-l-ermitage.jpg",
+"t": 1794609747
 },
 "geo-musee-du-louvre": {
 "art": "c",

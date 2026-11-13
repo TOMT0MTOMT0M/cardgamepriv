@@ -38,6 +38,14 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '13 nov.', title: 'Corrections : Star Wars et The Mandalorian, Oner et ShowMaker, nouvelles images', tag: 'corrigé',
+        points: [
+          'Star Wars et The Mandalorian : Grogu, le Mandalorien, Cobb Vanth et Koska Reeves rejoignent l’album The Mandalorian.',
+          'Oner et ShowMaker passent 6★.',
+          'Nouvelles images : Iron Man recadré, 15 cartes The Walking Dead, Will Smith, Captain America, Soldat de l’Hiver, Scarlet Witch, Joey Tribbiani, Jeff Tuche, Rex, Ben 10, ZywOo, Oner, ShowMaker, Dembélé, Fernando Alonso, Ballon d’Or, LaLiga, Zelda, Alan Wake II, PNL, Idol et d’autres.',
+        ],
+      },
+      {
         date: '14 nov.', title: 'Version 2 : le chat, le marché, les saisons', tag: 'nouveau',
         points: [
           'Ta collection est gardée : cartes, pièces, boosters, succès, classeurs, rien ne s’est perdu.',

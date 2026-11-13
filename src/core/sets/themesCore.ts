@@ -1,4 +1,4 @@
-import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11, RERATE_11_11 } from './curation';
+import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11, RERATE_11_11, RERATE_13_11, RESUB_13_11 } from './curation';
 import { artV } from '../artRev';
 import { msgRef, str } from '../msgRefs';
 /**
@@ -258,13 +258,16 @@ function bigSubthemes(B: typeof BigSets, cur: Curation): SubTheme[] {
     const id = e.id;
     if (purge.has(id)) continue;
     if (e.sub !== key) list = popLists.get((key = e.sub));
-    if (!list) continue;
+    // (13/11) carte rangée dans un autre sous-thème que celui de l'Excel (curation.ts, RESUB_13_11)
+    const sub = RESUB_13_11[id] ?? e.sub;
+    const into = sub === e.sub ? list : popLists.get(sub);
+    if (!into) continue;
     const artist = artists.get(id);
     // (deux littéraux plutôt qu'un spread : même clés dans le même ordre, `artist` en dernier et seulement s'il existe)
-    list.push(
+    into.push(
       artist
-        ? { id, themeId: 'pop', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label, artist }
-        : { id, themeId: 'pop', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label },
+        ? { id, themeId: 'pop', subthemeId: sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label, artist }
+        : { id, themeId: 'pop', subthemeId: sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label },
     );
   }
   const popCulture: SubTheme[] = B.POP_SUBS.map((s) => ({
@@ -443,7 +446,7 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
   if (installed) return;
   installed = true;
   const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL]);
-  const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11 }));
+  const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11, ...RERATE_13_11 }));
   applyCuration(purge, rerate);
   for (const s of bigSubthemes(big, { purge, rerate })) SUBTHEMES.push(s);
   for (const t of THEMES) {

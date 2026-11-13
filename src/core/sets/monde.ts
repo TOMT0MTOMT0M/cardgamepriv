@@ -1488,7 +1488,7 @@ const RAW: Array<[number, string, string, keyof typeof R, number, string, '' | '
   [11, "geo-mosquee-bleue", "Mosquée bleue", 'l', 0, "monuments-patrimoine--mosquee-bleue.jpg", "c", "Monument emblématique"],
   [11, "geo-mosquee-cathedrale-de-cordoue", "Mosquée-Cathédrale de Cordoue", 'l', 0, "monuments-patrimoine--mosquee-cathedrale-de-cordoue.jpg", "c", "Monument emblématique"],
   [11, "geo-mur-des-lamentations", "Mur des Lamentations", 'l', 0, "monuments-patrimoine--mur-des-lamentations.jpg", "c", "Monument emblématique"],
-  [11, "geo-musee-de-l-ermitage", "Musée de l'Ermitage", 'l', 0, "monuments-patrimoine--musee-de-l-ermitage.png", "i", "Monument emblématique"],
+  [11, "geo-musee-de-l-ermitage", "Musée de l'Ermitage", 'l', 0, "monuments-patrimoine--musee-de-l-ermitage-r2611132242.jpg", "c", "Monument emblématique"],
   [11, "geo-one-world-trade-center", "One World Trade Center", 'l', 0, "monuments-patrimoine--one-world-trade-center.jpg", "c", "Monument emblématique"],
   [11, "geo-palais-garnier-opera-de-paris", "Palais Garnier (Opéra de Paris)", 'l', 0, "monuments-patrimoine--palais-garnier-opera-de-paris.jpg", "c", "Monument emblématique"],
   [11, "geo-palais-de-topkapi", "Palais de Topkapi", 'l', 0, "monuments-patrimoine--palais-de-topkapi.jpg", "c", "Monument emblématique"],

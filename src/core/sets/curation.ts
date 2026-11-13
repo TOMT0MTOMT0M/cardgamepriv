@@ -48,3 +48,21 @@ export const RERATE_11_11: Readonly<Record<string, CatalogRarity>> = {
   'pop-ne-me-quitte-pas': 'mythic',
   'pop-la-boulette': 'mythic',
 };
+
+/** (13/11, demande de Tom) Oner et ShowMaker (LoL esport) passent 6★. Inventaires : migrations:resyncRarities. */
+export const RERATE_13_11: Readonly<Record<string, CatalogRarity>> = {
+  'spt-oner': 'mythic',
+  'spt-showmaker': 'mythic',
+};
+
+/**
+ * (13/11, demande de Tom) Star Wars et The Mandalorian sont deux univers distincts : les personnages nés dans la série
+ * (Grogu, le Mandalorien, Cobb Vanth, Koska Reeves) quittent l'album Star Wars pour The Mandalorian. Ids, numéros et
+ * images inchangés ; seul l'album (et donc la complétion) change.
+ */
+export const RESUB_13_11: Readonly<Record<string, string>> = {
+  'pop-grogu': 'the-mandalorian',
+  'pop-le-mandalorien': 'the-mandalorian',
+  'pop-cobb-vanth': 'the-mandalorian',
+  'pop-koska-reeves': 'the-mandalorian',
+};

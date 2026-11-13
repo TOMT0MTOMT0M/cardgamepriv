@@ -4345,9 +4345,9 @@
 },
 "spt-ballon-d-or": {
 "art": "c",
-"file": "ballon-d-or.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793662775
+"file": "ballon-d-or-r2611132242.jpg",
+"src": "reillustre:spt-ballon-d-or.jpg",
+"t": 1794609747
 },
 "spt-baltimore-orioles": {
 "art": "i",
@@ -15391,9 +15391,9 @@
 },
 "spt-fernando-alonso": {
 "art": "c",
-"file": "fernando-alonso.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793662788
+"file": "fernando-alonso-r2611132242.jpg",
+"src": "reillustre:spt-fernando-alonso.webp",
+"t": 1794609747
 },
 "spt-fernando-felicevich": {
 "art": "",
@@ -15685,9 +15685,9 @@
 },
 "spt-florent-manaudou": {
 "art": "c",
-"file": "florent-manaudou.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793662811
+"file": "florent-manaudou-r2611132242.jpg",
+"src": "reillustre:spt-florent-manaudou.jpg",
+"t": 1794609747
 },
 "spt-florent-pietrus": {
 "art": "c",
@@ -17647,9 +17647,9 @@
 },
 "spt-glutonny": {
 "art": "c",
-"file": "glutonny.jpg",
-"src": "thumb.wikimedia.org",
-"t": 1793665884
+"file": "glutonny-r2611132242.jpg",
+"src": "reillustre:spt-glutonny.webp",
+"t": 1794609747
 },
 "spt-gnaske": {
 "art": "c",
@@ -26946,10 +26946,10 @@
 "t": 1793663363
 },
 "spt-liga": {
-"art": "i",
-"file": "liga.png",
-"src": "commons.wikimedia.org",
-"t": 1793663011
+"art": "c",
+"file": "liga-r2611132242.jpg",
+"src": "reillustre:spt-liga.png",
+"t": 1794609747
 },
 "spt-ligue-1": {
 "art": "i",
@@ -34597,9 +34597,9 @@
 },
 "spt-oner": {
 "art": "c",
-"file": "oner.jpg",
-"src": "upload.wikimedia.org",
-"t": 1793664245
+"file": "oner-r2611132242.jpg",
+"src": "reillustre:spt-oner.jpg",
+"t": 1794609747
 },
 "spt-ong-beng-hee": {
 "art": "",
@@ -34795,9 +34795,9 @@
 },
 "spt-ousmane-dembele": {
 "art": "c",
-"file": "ousmane-dembele.jpg",
-"src": "upload.wikimedia.org",
-"t": 1793664346
+"file": "ousmane-dembele-r2611132242.jpg",
+"src": "reillustre:spt-ousmane-dembele.jpg",
+"t": 1794609747
 },
 "spt-oussama-mellouli": {
 "art": "c",
@@ -38515,9 +38515,9 @@
 },
 "spt-roberto-carlos": {
 "art": "c",
-"file": "roberto-carlos-r2611121558.jpg",
+"file": "roberto-carlos-r2611132242.jpg",
 "src": "reillustre:spt-roberto-carlos.jpg",
-"t": 1794499120
+"t": 1794609747
 },
 "spt-roberto-colautti": {
 "art": "c",
@@ -41191,9 +41191,9 @@
 },
 "spt-showmaker": {
 "art": "c",
-"file": "showmaker.jpg",
-"src": "liquipedia.net",
-"t": 1793662997
+"file": "showmaker-r2611132242.jpg",
+"src": "reillustre:spt-showmaker.jpg",
+"t": 1794609747
 },
 "spt-shox": {
 "art": "c",
@@ -45793,9 +45793,9 @@
 },
 "spt-vatira": {
 "art": "c",
-"file": "vatira.jpg",
-"src": "liquipedia.net",
-"t": 1793664939
+"file": "vatira-r2611132242.jpg",
+"src": "reillustre:spt-vatira.jpg",
+"t": 1794609747
 },
 "spt-vaxlon": {
 "art": "c",
@@ -48181,8 +48181,8 @@
 },
 "spt-zywoo": {
 "art": "c",
-"file": "zywoo.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793662755
+"file": "zywoo-r2611132242.jpg",
+"src": "reillustre:spt-zywoo.jpg",
+"t": 1794609747
 }
 }
