@@ -83,7 +83,17 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
   const N = () => keys.length;
   const near = (d: number) => d - N() * Math.round(d / N());
   const mod = (x: number) => ((x % N()) + N()) % N();
-  const indexOf = (k: string) => Math.max(0, keys.indexOf(k));
+  /**
+   * cran du grand booster. (13/11, retours Hugo) le booster du moment n'a pas de cran dans la roue : il prend celui du
+   * milieu au moment où il arrive (et le cache) au lieu du cran 0, où il se superposait au Bebou Pack.
+   */
+  let ghost: { k: string; i: number } | null = null;
+  const indexOf = (k: string) => {
+    const i = keys.indexOf(k);
+    if (i >= 0 || !N()) return (ghost = null), Math.max(0, i);
+    if (ghost?.k !== k) ghost = { k, i: mod(Math.round(target ?? pos)) };
+    return ghost.i;
+  };
 
   // (07/11, retours de Tom : « enlève les flèches, c'est horrible ») plus de chevrons. Le guidage est dans le geste :
   // tant que la roue n'a jamais été tournée, elle « respire » d'un quart de cran de temps en temps (on voit qu'elle
@@ -276,6 +286,7 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
   const api = {
     setKeys(ks: string[]) {
       keys = ks.slice();
+      ghost = null;
       pos = indexOf(hooks.bigKey());
       detent = Math.round(pos);
     },
@@ -400,6 +411,7 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
       holdK += (((drag && !drag.moved) ? 1 : 0) - holdK) * (1 - Math.exp(-dt * 12));
       const { k } = cameraScale(camera, ctx.height);
       const big = hooks.bigKey();
+      const bigI = indexOf(big);
       const sp = Math.min(Math.abs(vel), 30);
       items.length = 0;
       hiItems.length = 0;
@@ -409,12 +421,12 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
         const cand: Array<[number, string]> = [];
         for (let i = 0; i < N(); i++) {
           const a = Math.abs(near(i - pos - nudgeOff));
-          if (keys[i] !== big && a * stepAngle() <= Math.PI * 0.62 && hooks.hi(keys[i])) cand.push([a, keys[i]]);
+          if (i !== bigI && a * stepAngle() <= Math.PI * 0.62 && hooks.hi(keys[i])) cand.push([a, keys[i]]);
         }
         cand.sort((x, y) => x[0] - y[0]);
         for (const [, kk] of cand.slice(0, hooks.hiMax)) hi.add(kk);
       }
-      bigDim = dimAt(Math.abs(near(indexOf(big) - pos - nudgeOff)));
+      bigDim = dimAt(Math.abs(near(bigI - pos - nudgeOff)));
       for (let i = 0; i < N(); i++) {
         const d = near(i - pos - nudgeOff);
         const a = Math.abs(d);
@@ -423,7 +435,7 @@ export function createReel(ctx: LabContext, scene: Scene, camera: PerspectiveCam
           hiItems.push({ key: keys[i], y: p.y, z: p.z, rotX: p.rotX, dim: dimAt(a) * (keys[i] === hoverKey ? 0.25 : 1) });
         }
         // celles de derrière (au-delà du quart de tour) sont cachées ; celles en pleine définition aussi
-        const hidden = keys[i] === big || hi.has(keys[i]) || a * stepAngle() > Math.PI * 0.62;
+        const hidden = i === bigI || hi.has(keys[i]) || a * stepAngle() > Math.PI * 0.62;
         items.push({
           key: keys[i],
           x: 0,
