@@ -1308,8 +1308,15 @@ export function createOpeningScene(): OpeningScene {
       // DANS le booster : pile serrée (≈ l'épaisseur des cartes) centrée dans le coussin, un peu plus petite que lui,
       // sans rotation (coins loin des soudures) → aucune carte ne traverse l'emballage, même en l'inclinant
       else Object.assign(s.p, { x: 0, y: PACK_STACK.cy, z: (k - (order.length - 1) / 2) * 0.0072, s: PACK_STACK.s, flip: Math.PI, rz: 0, holo: 0 });
-      cardsRig.add(s.mesh);
     });
+    // (audit 12/11, S09 / E4-02) UNE carte par image dans la scène : three construit les nœuds d'un objet (≈ 470 pour une
+    // face) dans la première image où il est soumis ; ajoutées ensemble, les 5 constructions tombaient dans la même
+    // image, à chaque booster (la pile est cachée par le sachet, mais soumise au rendu)
+    for (const si of order) {
+      cardsRig.add(slots[si].mesh);
+      await nextFrame();
+      if (pack !== p || slots !== built) return;
+    }
     // (audit PERF1-03) pipelines des 5 vraies cartes compilés pour la VRAIE cible (passe MRT + MSAA), en asynchrone
     await compileReal();
   }

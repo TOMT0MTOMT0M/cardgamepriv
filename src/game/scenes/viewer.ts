@@ -223,10 +223,42 @@ export function createViewerScene(): ViewerScene {
           if (my !== token) return nextArt.dispose();
         }
       } else nextArt = gameCardArt(cd, rarityId, scale);
+      // (audit 12/11, S09 / E4-22) carte ordinaire : face, tranche et dos préparés AVANT le tour d'entrée. Le maillage
+      // passe une image hors champ (derrière la caméra, rien n'est dessiné) : three y construit ses nœuds et ses
+      // pipelines, et le dos neuf d'un thème y envoie ses 2 textures — plus dans la 1re image du tour d'entrée.
+      let pre: { face: ReturnType<typeof buildFace>; edge: Material; mesh: Mesh } | null = null;
+      if (!W && !CS) {
+        const back = backs.forCard(cardId);
+        if (mobile) {
+          const send = backs.toSend(back);
+          if (send.length) {
+            send.forEach((t) => ctx.renderer.initTexture(t));
+            await nextFrame();
+            if (my !== token) return nextArt.dispose();
+          }
+        }
+        const pf = buildFace(nextArt, rr.tier, !!cd.photo, cardHasCutout(cd));
+        const { edge: pe } = buildEdge(rr.hex);
+        const pm = new Mesh(geo, [pf.holo.material, back, pe]);
+        pm.frustumCulled = false;
+        pm.position.z = camBase + 10;
+        stage.scene.add(pm);
+        await nextFrame();
+        await nextFrame();
+        stage.scene.remove(pm);
+        pm.position.z = 0;
+        if (my !== token) {
+          pm.dispatchEvent({ type: 'dispose' } as never);
+          pf.holo.material.dispose();
+          pe.dispose();
+          return nextArt.dispose();
+        }
+        pre = { face: pf, edge: pe, mesh: pm };
+      }
       clear();
       rig.visible = true;
       art = nextArt;
-      face = buildFace(art, rr.tier, !!cd.photo, cardHasCutout(cd));
+      face = pre ? pre.face : buildFace(art, rr.tier, !!cd.photo, cardHasCutout(cd));
       face.holo.uniforms.strength.value = 0.7;
 
       if (W) {
@@ -259,9 +291,9 @@ export function createViewerScene(): ViewerScene {
         rig.add(mesh);
         haloColor.set(rr.hex);
       } else {
-        const { edge } = buildEdge(rr.hex);
+        const edge = pre ? pre.edge : buildEdge(rr.hex).edge;
         mats = [face.holo.material, edge];
-        mesh = new Mesh(geo, [face.holo.material, backs.forCard(cardId), edge]);
+        mesh = pre ? pre.mesh : new Mesh(geo, [face.holo.material, backs.forCard(cardId), edge]);
         rig.add(mesh);
         haloColor.set(rr.secret ? '#e8927c' : rr.tier === 0 ? '#ffffff' : rr.hex);
       }
@@ -371,8 +403,29 @@ export function createViewerScene(): ViewerScene {
       // matériaux compilés, puis une image à blanc hors écran : les VRAIS pipelines (MRT émissif, MSAA, HalfFloat) sont
       // créés ici et non dans la première image affichée (à-coup de 100 à 400 ms au premier zoom de carte — la face holo
       // pèse ≈ 470 nœuds). La carte factice est encore dans le rig : c'est elle qui sert.
+      // (audit 12/11, S09 / E2-09) UNE FACE PAR PALIER (0 à 5, + photo) gardée en vie, comme à l'ouverture. Mesuré au banc
+      // (WebGL2) : chaque carte ouverte recompilait et reliait son shader de face (28 Ko) — le palier y est écrit en
+      // constantes, et three jette un programme dès que plus aucun matériau ne s'en sert (le factice de palier 2 était
+      // libéré à la première carte). Ces 7 matériaux ne sont jamais affichés : ils gardent programmes et pipelines en cache.
+      const warmArt = generateCardArt(LAB_CARDS[0], 'rare', { scale: 0.25 });
+      const warmMats: Material[] = [];
+      const warmMeshes: Mesh[] = [];
+      for (let t = 0; t <= 6; t++) {
+        const wf = buildFace(warmArt, Math.min(5, t), t === 6);
+        warmMats.push(wf.holo.material);
+        const wm = new Mesh(geo, [wf.holo.material, backMat, edge]);
+        wm.position.set((t - 3) * 0.1, 0, -0.4);
+        warmMeshes.push(wm);
+        stage.scene.add(wm);
+      }
       await pl.compile({ real: true });
       pl.warm();
+      warmMeshes.forEach((m) => stage.scene.remove(m));
+      c.bag.fn(() => {
+        warmMeshes.forEach((m) => m.dispatchEvent({ type: 'dispose' } as never));
+        warmMats.forEach((m) => m.dispose());
+        warmArt.dispose();
+      });
       c.bag.fn(() => (tl?.kill(), clear()));
       // inspecter une carte de près : molette (ordinateur) ou deux touchers rapides (téléphone, souris)
       const wheel = (e: WheelEvent) => {
