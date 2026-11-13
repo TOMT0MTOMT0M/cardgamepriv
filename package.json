@@ -16,6 +16,7 @@
     "test:server": "vitest run",
     "test:sound": "esbuild scripts/test-sound.mts --bundle --platform=node --format=esm --outfile=.cache/test-sound.mjs --log-level=warning && node .cache/test-sound.mjs",
     "thumbs": "node scripts/make-thumbs.mjs",
+    "check:images": "esbuild scripts/verifier-images.mts --bundle --platform=node --format=esm --outfile=.cache/verifier-images.mjs --log-level=warning && node .cache/verifier-images.mjs",
     "bake:tear": "esbuild scripts/bake-tear/bake.mts --bundle --platform=node --format=esm --outfile=.cache/bake-tear.mjs --log-level=warning && node .cache/bake-tear.mjs",
     "feedback": "node scripts/pull-feedback.mjs",
     "r2:sync": "node scripts/r2-sync.mjs",
