@@ -83,7 +83,7 @@ import { ensureCardImages, ensureFonts, generateCardArt, type CardArt } from '..
 import { LAB_CARDS, cardById, type CardData } from '../../core/cardData';
 import { rarity, type Rarity, type RarityId } from '../../core/rarity';
 import type { createHoloMaterial } from '../../core/holo';
-import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
+import { buildEdge, buildFace, gameCardArtAsync, themedBacks } from './cardFace';
 import { haptics } from '../../core/haptics';
 import { onReducedMotionChange } from '../../core/motion';
 import { perfMark } from '../../core/perfLog';
@@ -1168,9 +1168,10 @@ export function createOpeningScene(): OpeningScene {
     const rr = rarity(data.rarity);
     // (audit PERF1-04) téléphone : calques peints en 4 étapes (gameCardArtAsync, lot E), puis dos et graphes de nœuds
     // chacun dans sa propre image
-    const mobile = ctx.quality === 'mobile';
-    const art = mobile ? await gameCardArtAsync(cd, data.rarity, artScale) : gameCardArt(cd, data.rarity, artScale);
-    if (mobile) await nextFrame();
+    // (audit 12/11, S17 / A9-08) aussi sur ordinateur : la peinture synchrone des 6 calques (768 px) et leur envoi d'un
+    // bloc coûtaient plusieurs images à 144 Hz par carte
+    const art = await gameCardArtAsync(cd, data.rarity, artScale);
+    await nextFrame();
     const back = backs.forCard(data.cardId);
     const face = buildFace(art, rr.tier, !!cd.photo, cardHasCutout(cd));
     face.holo.uniforms.strength.value = 0.1;
@@ -1246,7 +1247,7 @@ export function createOpeningScene(): OpeningScene {
       // mobile : textures envoyées au GPU carte par carte (sinon les 30 calques + mipmaps partent tous dans la même
       // image, au moment où la pile apparaît derrière les trous → à-coup) ; l'aplat inutilisé n'est jamais envoyé
       // (audit PERF1-04) deux textures par image au plus : l'envoi + les mipmaps de 6 calques ne tombent plus dans la même image
-      if (ctx.quality === 'mobile') {
+      {
         const tex = [sl.art.bg, sl.art.subject, sl.art.fg, sl.art.frame, sl.art.masks, sl.art.fx];
         for (let i = 0; i < tex.length; i++) {
           ctx.renderer.initTexture(tex[i]);

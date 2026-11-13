@@ -51,6 +51,10 @@ const CREASE_W = 192;
 function shrink(src: Texture | undefined, w: number, srgb = true): Texture | null {
   const img = src?.image as HTMLCanvasElement | ImageBitmap | undefined;
   if (!img || !img.width) return null;
+  // (audit 12/11, S17 / A10-07) rien à réduire (ordinateur : 768 demandés pour un visuel de 640) : la texture du sachet
+  // sert telle quelle au lieu d'une copie à l'identique (≈ 9,6 Mo de GPU par pochette, × 5). Elle reste au sachet :
+  // l'appelant ne la libère pas (voir `mine`).
+  if (w >= img.width && src) return src;
   w = Math.min(w, img.width); // jamais agrandie
   const c = document.createElement('canvas');
   c.width = w;
@@ -119,8 +123,10 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     const f = shrink(art.front, texW);
     const b = shrink(art.back, backW);
     if (!f) return;
-    owned.push(f);
-    if (b) owned.push(b);
+    // (A10-07) seules les copies réduites sont à nous ; une texture du sachet reprise telle quelle reste au sachet
+    const mine = (t: Texture | null | undefined) => !!t && t !== art.front && t !== art.back && t !== art.creaseNormal && t !== art.frontNormal;
+    if (mine(f)) owned.push(f);
+    if (mine(b)) owned.push(b!);
     s.front.map = f;
     s.back.map = b ?? f;
     if (art.metalBack) {
@@ -136,8 +142,8 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     // (07/11) face avant : plis + nom du pack thermoformé ; réduite un peu moins (le relief des lettres reste lisible)
     const fnrm = art.frontNormal ? shrink(art.frontNormal, Math.max(creaseW, texW), false) : null;
     if (nrm) {
-      owned.push(nrm);
-      if (fnrm) owned.push(fnrm);
+      if (mine(nrm)) owned.push(nrm);
+      if (mine(fnrm)) owned.push(fnrm!);
       s.front.normalNode = normalMap(texture(fnrm ?? nrm, uv()), vec2(0.8));
       s.back.normalNode = normalMap(texture(nrm, uv().mul(vec2(-1, 1)).add(vec2(1, 0))), vec2(0.8));
     }

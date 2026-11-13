@@ -16,7 +16,7 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { CARD, createCardGeometry } from '../../core/cardModel';
 import { EASE, springCurve } from '../../core/ease';
 import { reducedMotion, DUR } from '../../core/motion';
-import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
+import { buildEdge, buildFace, gameCardArtAsync, themedBacks } from './cardFace';
 import type { WonderVisualInstance } from '../../core/wonderDiorama';
 
 /**
@@ -216,7 +216,8 @@ export function createViewerScene(): ViewerScene {
       const lowMem = ((navigator as { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
       const scale = mobile ? mobileArtScale(ctx.width, ctx.height, 0.8 * 1.6, lowMem ? 1 : 1.25, 3) : 1;
       let nextArt: CardArt;
-      if (mobile) {
+      // (audit 12/11, S17 / A9-08) même voie sur ordinateur : peinture en étapes, textures envoyées deux par image
+      {
         // téléphone : calques peints en 4 étapes (plus de pic de 20–80 ms), puis envoyés au GPU AVANT le tour d'entrée
         // (avant : 6 textures + mipmaps dans la 1re image du tour → à-coup) ; les toiles sont vidées aussitôt (release)
         nextArt = await gameCardArtAsync(cd, rarityId, scale);
@@ -229,7 +230,7 @@ export function createViewerScene(): ViewerScene {
           await nextFrame();
           if (my !== token) return nextArt.dispose();
         }
-      } else nextArt = gameCardArt(cd, rarityId, scale);
+      }
       // (audit 12/11, S09 / E4-22) carte ordinaire : face, tranche et dos préparés AVANT le tour d'entrée. Le maillage
       // passe une image hors champ (derrière la caméra, rien n'est dessiné) : three y construit ses nœuds et ses
       // pipelines, et le dos neuf d'un thème y envoie ses 2 textures — plus dans la 1re image du tour d'entrée.
