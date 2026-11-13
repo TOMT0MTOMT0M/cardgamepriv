@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
@@ -132,7 +133,7 @@ export const claimCalendar = mutation({
     const u = await requireUser(ctx, sessionToken);
     const now = Date.now();
     const cal = calendarOf(u, now);
-    if (cal.claimed) throw new ConvexError('Cadeau du jour déjà pris : reviens demain.');
+    if (cal.claimed) throw new ConvexError(fe('economy.1'));
     const streak = touchStreak(u.streak, now);
     if (streak) await ctx.db.patch(u._id, { streak });
     await addCoins(ctx, u._id, cal.reward.coins, 'calendar', `Calendrier — jour ${cal.day}`, { earned: true, econ: { calendarDay: cal.today } });
@@ -163,7 +164,7 @@ export const burn = mutation({
   args: { sessionToken: v.string(), items: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })) },
   handler: async (ctx, { sessionToken, items }) => {
     const u = await requireUser(ctx, sessionToken);
-    if (items.length > 200) throw new ConvexError('Trop de cartes d’un coup.');
+    if (items.length > 200) throw new ConvexError(fe('economy.2'));
     // (audit 12/11, S07 / A6-09) seulement les lignes brûlées (≤ 200, par l'index), plus la collection entière
     const rows = new Map<string, Doc<'inventory'> | null>();
     for (const it of items) {
@@ -199,7 +200,7 @@ export const claimCompletions = mutation({
     const inv = await collectionOf(ctx, u);
     const econ = econOf(u);
     const sets = claimableCompletions(new Set(inv.map((c) => c.cardId)), econ.completions);
-    if (!sets.length) throw new ConvexError('Aucune prime de complétion en attente.');
+    if (!sets.length) throw new ConvexError(fe('economy.3'));
     const total = sets.reduce((a, s) => a + s.reward, 0);
     await addCoins(ctx, u._id, total, 'completion', sets.length === 1 ? `Complétion — ${sets[0].label}` : `Complétion — ${sets.length} ensembles`, {
       earned: true,
@@ -216,7 +217,7 @@ export const claimAchievements = mutation({
     const u = await requireUser(ctx, sessionToken);
     const econ = econOf(u);
     const list = claimableAchievements(await achStats(ctx, u), econ.achievements);
-    if (!list.length) throw new ConvexError('Aucun succès à réclamer.');
+    if (!list.length) throw new ConvexError(fe('economy.4'));
     const total = list.reduce((a, x) => a + achievementReward(x), 0);
     const packs = list.reduce((a, x) => a + achievementPacks(x), 0);
     await addCoins(ctx, u._id, total, 'achievement', list.length === 1 ? `Succès — ${list[0].label}` : `${list.length} succès`, {

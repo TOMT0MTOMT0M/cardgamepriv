@@ -7,6 +7,10 @@ import { fr as frCore } from '../src/core/i18n/fr';
 import { en } from '../src/core/i18n/en';
 import { compare, format, installLang, langFromDevice, t as tr } from '../src/core/i18n';
 import { enData } from '../src/core/i18n/en/data';
+import { enErrors } from '../src/core/i18n/en/errors';
+import { ERR_FR } from '../src/core/i18n/errFr';
+import { errText, fe } from '../src/core/errors';
+import { installData } from '../src/core/i18n';
 import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS } from '../src/core/economy';
 import { SURVEY_FEATURES, SURVEY_UNIVERSES } from '../src/core/survey';
 import { RARITIES } from '../src/core/rarity';
@@ -59,6 +63,28 @@ describe('version anglaise : règle de langue et dictionnaires', () => {
     installLang('fr', fr);
     expect(tr('title.shop')).toBe('Bébou — boutique');
     expect(['é', 'e', 'f'].sort(compare)).toEqual(['e', 'é', 'f']);
+  });
+});
+
+describe('version anglaise : erreurs à code (lot 4)', () => {
+  test('chaque code a son anglais, avec les mêmes paramètres (ou moins)', () => {
+    const vars = (m: string) => new Set(m.match(/\{\w+\}/g) ?? []);
+    for (const k of Object.keys(ERR_FR) as (keyof typeof ERR_FR)[]) {
+      expect(enErrors[k]?.trim(), k).toBeTruthy();
+      const fr = vars(ERR_FR[k]);
+      for (const v of vars(enErrors[k])) expect(fr.has(v), `${k} ${v}`).toBe(true);
+    }
+  });
+  test('fe garde le texte français + le code ; errText le rend dans la langue', () => {
+    const m = fe('market.10', { p0: 300 });
+    expect(m.startsWith('Prix trop élevé : 300 pièces au maximum pour cette étoile.')).toBe(true);
+    expect(m).toContain('⟦market.10{"p0":300}⟧');
+    expect(errText(m)).toBe('Prix trop élevé : 300 pièces au maximum pour cette étoile.');
+    installLang('en', en);
+    installData(Object.fromEntries(Object.entries(enErrors).map(([k, v]) => [`err.${k}`, v])));
+    expect(errText(m)).toBe('Price too high: 300 coins max for this star.');
+    expect(errText('Ancien message sans code')).toBe('Ancien message sans code');
+    installLang('fr', fr);
   });
 });
 

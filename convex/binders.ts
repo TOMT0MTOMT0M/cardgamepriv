@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -39,18 +40,18 @@ export async function pinnedOf(ctx: { db: QueryCtx['db'] }, userId: Id<'users'>)
 async function own(ctx: MutationCtx, sessionToken: string, binderId: Id<'binders'>) {
   const user = await requireUser(ctx, sessionToken);
   const b = await ctx.db.get(binderId);
-  if (!b || b.userId !== user._id) throw new ConvexError('Classeur introuvable.');
+  if (!b || b.userId !== user._id) throw new ConvexError(fe('binders.12'));
   return { user, b };
 }
 
 async function checkOwned(ctx: MutationCtx, userId: Id<'users'>, cards: Array<{ cardId: string; rarity: Doc<'inventory'>['rarity'] }>) {
   for (const c of cards) {
-    if (!catalogCard(c.cardId)) throw new ConvexError('Carte inconnue.');
+    if (!catalogCard(c.cardId)) throw new ConvexError(fe('binders.1'));
     const inv = await ctx.db
       .query('inventory')
       .withIndex('by_user_card_rarity', (q) => q.eq('userId', userId).eq('cardId', c.cardId).eq('rarity', c.rarity))
       .unique();
-    if (!inv || inv.count < 1) throw new ConvexError(`Tu n’as pas ${catalogCard(c.cardId)?.name ?? 'cette carte'}.`);
+    if (!inv || inv.count < 1) throw new ConvexError(fe('binders.3', { p0: catalogCard(c.cardId)?.name ?? '?' }));
   }
 }
 
@@ -59,9 +60,9 @@ export const create = mutation({
   handler: async (ctx, { sessionToken, name, cards }) => {
     const user = await requireUser(ctx, sessionToken);
     const n = cleanName(name);
-    if (!n) throw new ConvexError('Donne un nom à ton classeur.');
+    if (!n) throw new ConvexError(fe('binders.4'));
     const count = (await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', user._id)).collect()).length;
-    if (count >= BINDER_MAX) throw new ConvexError(`${BINDER_MAX} classeurs au maximum.`);
+    if (count >= BINDER_MAX) throw new ConvexError(fe('binders.5', { p0: BINDER_MAX }));
     // (audit 12/11, T-09) mêmes garde-fous que `setCards` : doublons retirés, plafond de cartes (1 lecture par carte)
     const seen = new Set<string>();
     const list = (cards ?? []).filter((c) => {
@@ -70,7 +71,7 @@ export const create = mutation({
       seen.add(k);
       return true;
     });
-    if (list.length > BINDER_CARDS_MAX) throw new ConvexError(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
+    if (list.length > BINDER_CARDS_MAX) throw new ConvexError(fe('binders.6', { p0: BINDER_CARDS_MAX }));
     await checkOwned(ctx, user._id, list);
     const now = Date.now();
     return await ctx.db.insert('binders', { userId: user._id, name: n, cards: list, pinned: false, createdAt: now, updatedAt: now });
@@ -82,7 +83,7 @@ export const rename = mutation({
   handler: async (ctx, { sessionToken, binderId, name }) => {
     const { b } = await own(ctx, sessionToken, binderId);
     const n = cleanName(name);
-    if (!n) throw new ConvexError('Donne un nom à ton classeur.');
+    if (!n) throw new ConvexError(fe('binders.7'));
     await ctx.db.patch(b._id, { name: n, updatedAt: Date.now() });
   },
 });
@@ -108,7 +109,7 @@ export const setCards = mutation({
       seen.add(k);
       return true;
     });
-    if (list.length > BINDER_CARDS_MAX) throw new ConvexError(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
+    if (list.length > BINDER_CARDS_MAX) throw new ConvexError(fe('binders.8', { p0: BINDER_CARDS_MAX }));
     await checkOwned(ctx, user._id, list);
     const cover = b.coverCardId && list.some((c) => c.cardId === b.coverCardId) ? b.coverCardId : undefined;
     await ctx.db.patch(b._id, { cards: list, coverCardId: cover, updatedAt: Date.now() });
@@ -124,7 +125,7 @@ export const toggleCard = mutation({
     const has = b.cards.some((c) => `${c.cardId}:${c.rarity}` === k);
     const list = has ? b.cards.filter((c) => `${c.cardId}:${c.rarity}` !== k) : [...b.cards, card];
     if (!has) {
-      if (list.length > BINDER_CARDS_MAX) throw new ConvexError(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
+      if (list.length > BINDER_CARDS_MAX) throw new ConvexError(fe('binders.9', { p0: BINDER_CARDS_MAX }));
       await checkOwned(ctx, user._id, [card]);
     }
     const cover = b.coverCardId && list.some((c) => c.cardId === b.coverCardId) ? b.coverCardId : undefined;
@@ -137,7 +138,7 @@ export const setCover = mutation({
   args: { sessionToken: v.string(), binderId: v.id('binders'), cardId: v.optional(v.string()) },
   handler: async (ctx, { sessionToken, binderId, cardId }) => {
     const { b } = await own(ctx, sessionToken, binderId);
-    if (cardId && !b.cards.some((c) => c.cardId === cardId)) throw new ConvexError('La couverture doit être une carte du classeur.');
+    if (cardId && !b.cards.some((c) => c.cardId === cardId)) throw new ConvexError(fe('binders.10'));
     await ctx.db.patch(b._id, { coverCardId: cardId, updatedAt: Date.now() });
   },
 });
@@ -148,7 +149,7 @@ export const pin = mutation({
   handler: async (ctx, { sessionToken, binderId, on }) => {
     const { user, b } = await own(ctx, sessionToken, binderId);
     const list = await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', user._id)).collect();
-    if (on && !b.pinned && list.filter((x) => x.pinned).length >= BINDER_PINS_MAX) throw new ConvexError(`${BINDER_PINS_MAX} classeurs au plus sur ton profil : retires-en un d’abord.`);
+    if (on && !b.pinned && list.filter((x) => x.pinned).length >= BINDER_PINS_MAX) throw new ConvexError(fe('binders.11', { p0: BINDER_PINS_MAX }));
     await ctx.db.patch(b._id, { pinned: on, updatedAt: Date.now() });
   },
 });

@@ -8,6 +8,7 @@
  * (La règle d'or « les pièces n'achètent jamais de cartes » de economy.ts est levée pour le marché, décision de Tom
  * et Hugo du 10/11 : seulement entre joueurs, jamais de boutique de cartes.)
  */
+import { fe } from './errors';
 import { CARD_VALUE } from './economy';
 import type { RarityId } from './rarity';
 
@@ -21,9 +22,9 @@ export const marketMax = (r: RarityId | string) => Math.max(1, marketSuggested(r
 
 /** Message d'erreur si la mise en vente est invalide (null sinon). */
 export function marketProblem(r: RarityId | string, price: number): string | null {
-  if (r === 'secret') return 'Les cartes Bébou ne se vendent pas.';
-  if (!(r in CARD_VALUE)) return 'Carte inconnue.';
-  if (!Number.isInteger(price) || price < 1) return 'Prix invalide (au moins 1 pièce).';
-  if (price > marketMax(r)) return `Prix trop élevé : ${marketMax(r)} pièces au maximum pour cette étoile.`;
+  if (r === 'secret') return fe('market.7');
+  if (!(r in CARD_VALUE)) return fe('market.8');
+  if (!Number.isInteger(price) || price < 1) return fe('market.9');
+  if (price > marketMax(r)) return fe('market.10', { p0: marketMax(r) });
   return null;
 }

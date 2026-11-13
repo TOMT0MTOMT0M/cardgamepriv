@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -136,7 +137,7 @@ export const page = query({
   args: { sessionToken: v.string(), conv: v.string(), before: v.optional(v.number()) },
   handler: async (ctx, { sessionToken, conv, before }) => {
     const me = await requireUser(ctx, sessionToken);
-    if (!allowed(me._id, conv)) throw new ConvexError('Conversation introuvable.');
+    if (!allowed(me._id, conv)) throw new ConvexError(fe('chat.8'));
     const rows = await ctx.db
       .query('chatMessages')
       .withIndex('by_conv_created', (q) => (before === undefined ? q.eq('conv', conv) : q.eq('conv', conv).lt('createdAt', before)))
@@ -182,19 +183,19 @@ export const send = mutation({
   },
   handler: async (ctx, a) => {
     const me = await requireUser(ctx, a.sessionToken);
-    if (me.bannedAt) throw new ConvexError('Compte suspendu.');
-    if (!allowed(me._id, a.conv)) throw new ConvexError('Conversation introuvable.');
+    if (me.bannedAt) throw new ConvexError(fe('chat.9'));
+    if (!allowed(me._id, a.conv)) throw new ConvexError(fe('chat.10'));
     const text = cleanChatText(a.text);
-    if (!text && !a.card) throw new ConvexError('Message vide.');
+    if (!text && !a.card) throw new ConvexError(fe('chat.11'));
 
     // anti-rafale (sur ma ligne de lecture : rien n'est écrit sur `users`)
     const reads = await myReads(ctx, me._id);
     let now = Date.now();
-    if (reads.sentAt && now - reads.sentAt < CHAT_MIN_GAP_MS) throw new ConvexError('Doucement : un message à la fois.');
+    if (reads.sentAt && now - reads.sentAt < CHAT_MIN_GAP_MS) throw new ConvexError(fe('chat.1'));
     const fresh = now - (reads.burstStart ?? 0) > CHAT_BURST_WINDOW_MS;
     const burstStart = fresh ? now : reads.burstStart!;
     const burstCount = fresh ? 0 : (reads.burstCount ?? 0);
-    if (burstCount >= CHAT_BURST_MAX) throw new ConvexError(`Tu écris trop vite : reprends dans ${Math.max(1, Math.ceil((burstStart + CHAT_BURST_WINDOW_MS - now) / 1000))} s.`);
+    if (burstCount >= CHAT_BURST_MAX) throw new ConvexError(fe('chat.2', { p0: Math.max(1, Math.ceil((burstStart + CHAT_BURST_WINDOW_MS - now) / 1000)) }));
 
     // la conversation (créée au premier message)
     const isGeneral = a.conv === CHAT_GENERAL;
@@ -205,8 +206,8 @@ export const send = mutation({
       const peerId = (pa === me._id ? pb : pa) as Id<'users'>;
       const normal = ctx.db.normalizeId('users', peerId);
       peer = normal ? await ctx.db.get(normal) : null;
-      if (!peer || peer.bannedAt || peer._id === me._id) throw new ConvexError('Joueur introuvable.');
-      if (dmKey(me._id, peer._id) !== a.conv) throw new ConvexError('Conversation introuvable.');
+      if (!peer || peer.bannedAt || peer._id === me._id) throw new ConvexError(fe('chat.3'));
+      if (dmKey(me._id, peer._id) !== a.conv) throw new ConvexError(fe('chat.12'));
     }
     if (!head) {
       const p = isGeneral ? null : dmPeers(a.conv)!;
@@ -221,12 +222,12 @@ export const send = mutation({
     let card: Doc<'chatMessages'>['card'];
     if (a.card) {
       const e = catalogEntry(a.card.cardId);
-      if (!e) throw new ConvexError('Carte inconnue.');
+      if (!e) throw new ConvexError(fe('chat.4'));
       const inv = await ctx.db
         .query('inventory')
         .withIndex('by_user_card_rarity', (q) => q.eq('userId', me._id).eq('cardId', a.card!.cardId).eq('rarity', a.card!.rarity))
         .unique();
-      if (!inv || inv.count < 1) throw new ConvexError(`Tu n’as pas ${e.name}.`);
+      if (!inv || inv.count < 1) throw new ConvexError(fe('chat.5', { p0: e.name }));
       card = { cardId: a.card.cardId, rarity: a.card.rarity, mintNumber: inv.bestMintNumber };
     }
 
@@ -331,9 +332,9 @@ export const react = mutation({
   args: { sessionToken: v.string(), id: v.id('chatMessages'), k: v.string() },
   handler: async (ctx, { sessionToken, id, k }) => {
     const me = await requireUser(ctx, sessionToken);
-    if (!(CHAT_REACTS as readonly string[]).includes(k)) throw new ConvexError('Réaction inconnue.');
+    if (!(CHAT_REACTS as readonly string[]).includes(k)) throw new ConvexError(fe('chat.6'));
     const m = await ctx.db.get(id);
-    if (!m || m.deletedAt || !allowed(me._id, m.conv)) throw new ConvexError('Message introuvable.');
+    if (!m || m.deletedAt || !allowed(me._id, m.conv)) throw new ConvexError(fe('chat.13'));
     const reacts = (m.reacts ?? []).map((r) => ({ k: r.k, by: [...r.by] }));
     const cur = reacts.find((r) => r.k === k);
     if (cur?.by.includes(me._id)) cur.by = cur.by.filter((u) => u !== me._id);
@@ -351,9 +352,9 @@ export const remove = mutation({
   handler: async (ctx, { sessionToken, id }) => {
     const me = await requireUser(ctx, sessionToken);
     const m = await ctx.db.get(id);
-    if (!m || !allowed(me._id, m.conv)) throw new ConvexError('Message introuvable.');
+    if (!m || !allowed(me._id, m.conv)) throw new ConvexError(fe('chat.14'));
     if (m.deletedAt) return { ok: true };
-    if (m.userId !== me._id && !(me.isAdmin || me.isModerator)) throw new ConvexError('Tu ne peux supprimer que tes messages.');
+    if (m.userId !== me._id && !(me.isAdmin || me.isModerator)) throw new ConvexError(fe('chat.7'));
     const now = Date.now();
     await ctx.db.patch(id, { deletedAt: now, text: '', card: undefined, reply: undefined, reacts: undefined, mentions: undefined, touchedAt: Math.max(now, m.touchedAt + 1) });
     const head = await headOf(ctx, m.conv);
@@ -367,7 +368,7 @@ export const markRead = mutation({
   args: { sessionToken: v.string(), conv: v.string(), n: v.number() },
   handler: async (ctx, { sessionToken, conv, n }) => {
     const me = await requireUser(ctx, sessionToken);
-    if (!allowed(me._id, conv)) throw new ConvexError('Conversation introuvable.');
+    if (!allowed(me._id, conv)) throw new ConvexError(fe('chat.15'));
     const head = await headOf(ctx, conv);
     if (!head) return { ok: true };
     const upTo = Math.max(0, Math.min(Math.floor(n), head.n));
@@ -389,7 +390,7 @@ export const mute = mutation({
   args: { sessionToken: v.string(), conv: v.string(), on: v.boolean() },
   handler: async (ctx, { sessionToken, conv, on }) => {
     const me = await requireUser(ctx, sessionToken);
-    if (!allowed(me._id, conv)) throw new ConvexError('Conversation introuvable.');
+    if (!allowed(me._id, conv)) throw new ConvexError(fe('chat.16'));
     const r = await myReads(ctx, me._id);
     const cur = r.muted ?? [];
     const next = on ? [...new Set([...cur, conv])].slice(-40) : cur.filter((c) => c !== conv);

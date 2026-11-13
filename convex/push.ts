@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -68,7 +69,7 @@ export const subscribe = mutation({
   args: { sessionToken: v.string(), endpoint: v.string(), keys: v.object({ p256dh: v.string(), auth: v.string() }), ua: v.optional(v.string()) },
   handler: async (ctx, { sessionToken, endpoint, keys, ua }) => {
     const user = await requireUser(ctx, sessionToken);
-    if (!process.env.VAPID_PUBLIC_KEY) throw new ConvexError('Notifications pas encore activées côté serveur.');
+    if (!process.env.VAPID_PUBLIC_KEY) throw new ConvexError(fe('push.1'));
     const old = await ctx.db.query('pushSubs').withIndex('by_endpoint', (q) => q.eq('endpoint', endpoint)).unique();
     if (old) await ctx.db.patch(old._id, { userId: user._id, keys, ua: ua?.slice(0, 160), failures: 0 });
     else await ctx.db.insert('pushSubs', { userId: user._id, endpoint, keys, ua: ua?.slice(0, 160), createdAt: Date.now(), failures: 0 });
@@ -207,7 +208,7 @@ export const sendTest = mutation({
   handler: async (ctx, { sessionToken }) => {
     const user = await requireUser(ctx, sessionToken);
     const subs = await ctx.db.query('pushSubs').withIndex('by_user', (q) => q.eq('userId', user._id)).collect();
-    if (!subs.length) throw new ConvexError('Aucun appareil abonné.');
+    if (!subs.length) throw new ConvexError(fe('push.2'));
     await ctx.scheduler.runAfter(0, internal.pushSend.send, {
       subs: subs.map((s) => ({ endpoint: s.endpoint, keys: s.keys })),
       payload: { kind: 'news', title: 'Bébou : ça marche !', body: 'Tu recevras ici les échanges, les amis, la réserve pleine…', url: '#/profil', tag: 'test' },

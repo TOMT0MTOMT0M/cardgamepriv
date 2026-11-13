@@ -2,6 +2,7 @@
 import type { Dict } from '../i18n';
 /** tables de données (succès, cosmétiques, missions…) : voir tData dans ../i18n.ts */
 export { enData } from './en/data';
+export { enErrors } from './en/errors';
 import { en as p_game_v2gate } from './en/game.v2gate';
 import { en as p_game_chatStore } from './en/game.chatStore';
 import { en as p_game_offline } from './en/game.offline';

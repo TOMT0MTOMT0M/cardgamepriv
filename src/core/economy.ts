@@ -10,6 +10,7 @@
  *
  * Une seule table de valeur, utilisée PARTOUT : brûlage, équivalence des mises en duel, roulette.
  */
+import { fe } from './errors';
 import { tData } from './i18n';
 import type { RarityId } from './rarity';
 import { THEMES, subthemeViews, type CatalogEntry } from './sets/themes';
@@ -96,10 +97,10 @@ export const PACK_BUY_DAILY = 10;
 /** achats encore possibles aujourd'hui (jour de Paris, comme le calendrier) */
 export const packBuysLeft = (e: EconState, today: string) => Math.max(0, PACK_BUY_DAILY - (e.shopDay === today ? e.shopBought ?? 0 : 0));
 export function packBuyProblem(count: number, coins: number, e: EconState, today: string): string | null {
-  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_DAILY) return 'Quantité invalide.';
+  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_DAILY) return fe('economy.5');
   const left = packBuysLeft(e, today);
-  if (count > left) return left ? `Plus que ${left} booster${left > 1 ? 's' : ''} à acheter aujourd’hui.` : `Limite de ${PACK_BUY_DAILY} boosters achetés par jour atteinte : reviens demain.`;
-  if (coins < count * PACK_PRICE) return `Pas assez de pièces (il t’en manque ${count * PACK_PRICE - coins}).`;
+  if (count > left) return left ? fe('economy.6', { p0: left, p1: left > 1 ? 's' : '' }) : fe('economy.7', { p0: PACK_BUY_DAILY });
+  if (coins < count * PACK_PRICE) return fe('economy.8', { p0: count * PACK_PRICE - coins });
   return null;
 }
 
@@ -107,15 +108,15 @@ export function packBuyProblem(count: number, coins: number, e: EconState, today
 
 /** Pièces rendues par un brûlage (valeur de la table). Vérifie : doublons seulement, pas de secrète. */
 export function burnProblem(items: StakeItem[], spare: (it: StakeItem) => number): string | null {
-  if (!items.length) return 'Choisis au moins une carte.';
+  if (!items.length) return fe('economy.9');
   const seen = new Set<string>();
   for (const it of items) {
-    if (!Number.isInteger(it.count) || it.count < 1) return 'Quantité invalide.';
-    if (!burnable(it.rarity)) return 'Les cartes secrètes ne se brûlent pas.';
+    if (!Number.isInteger(it.count) || it.count < 1) return fe('economy.10');
+    if (!burnable(it.rarity)) return fe('economy.11');
     const k = `${it.cardId}:${it.rarity}`;
-    if (seen.has(k)) return 'Même carte en double dans la liste.';
+    if (seen.has(k)) return fe('economy.12');
     seen.add(k);
-    if (spare(it) < it.count) return 'On ne brûle que des doublons libres (on garde toujours 1 exemplaire).';
+    if (spare(it) < it.count) return fe('economy.13');
   }
   return null;
 }
@@ -129,7 +130,7 @@ export interface CompletionSet {
   /** `sub:<sous-thème>` · `grp:<groupe>` · `theme:<thème>` */
   id: string;
   label: string;
-  kind: 'album' | 'groupe' | 'thème';
+  kind: 'album' | 'groupe' | 'thème'; // i18n-ok (identifiant)
   cards: CatalogEntry[];
   reward: number;
 }
@@ -149,7 +150,8 @@ export function completionSets(): CompletionSet[] {
         out.push({ id: `grp:${v.id.replace(/^group:/, '')}`, label: v.label, kind: 'groupe', cards: v.cards, reward: v.cards.length * COMPLETION_RATE });
       } else out.push({ id: `sub:${v.id}`, label: v.label, kind: 'album', cards: v.cards, reward: v.cards.length * COMPLETION_RATE });
     }
-    out.push({ id: `theme:${t.id}`, label: `${t.label} (thème entier)`, kind: 'thème', cards: t.cards, reward: t.cards.length * COMPLETION_RATE });
+    out.push({ id: `theme:${t.id}`, get label() { return tData('compl.theme', '{p0} (thème entier)').replace('{p0}', t.label); }, kind: 'thème', // i18n-ok
+      cards: t.cards, reward: t.cards.length * COMPLETION_RATE });
   }
   SETS = out;
   return out;

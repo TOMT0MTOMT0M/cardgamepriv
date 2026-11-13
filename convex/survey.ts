@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireUser } from './auth';
@@ -33,9 +34,9 @@ export const submit = mutation({
   handler: async (ctx, { sessionToken, surveyId, answer }) => {
     const user = await requireUser(ctx, sessionToken);
     const id = surveyId.trim().slice(0, 40);
-    if (!id) throw new ConvexError('Sondage inconnu.');
+    if (!id) throw new ConvexError(fe('survey.3'));
     const a = cleanSurvey(answer);
-    if (!surveyFilled(a)) throw new ConvexError('Coche au moins une réponse.');
+    if (!surveyFilled(a)) throw new ConvexError(fe('survey.1'));
     const prev = await ctx.db.query('surveyAnswers').withIndex('by_user', (q) => q.eq('userId', user._id).eq('surveyId', id)).first();
     // déjà répondu (deux appareils, double toucher) : on garde la première réponse
     if (prev) return { ok: true, already: true };
@@ -49,7 +50,7 @@ export const results = query({
   args: { sessionToken: v.string(), surveyId: v.string() },
   handler: async (ctx, { sessionToken, surveyId }): Promise<SurveyResults> => {
     const user = await requireUser(ctx, sessionToken);
-    if (!canModerate(user)) throw new ConvexError('Réservé aux modérateurs.');
+    if (!canModerate(user)) throw new ConvexError(fe('survey.2'));
     const rows = await ctx.db.query('surveyAnswers').withIndex('by_survey', (q) => q.eq('surveyId', surveyId)).order('desc').take(1000);
     const universes = Object.fromEntries(SURVEY_UNIVERSES.map((o) => [o.id, 0]));
     const features = Object.fromEntries(SURVEY_FEATURES.map((o) => [o.id, 0]));

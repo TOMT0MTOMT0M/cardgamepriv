@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, internalMutation, mutation, type MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -56,7 +57,7 @@ export const attach = mutation({
   handler: async (ctx, { sessionToken, cardId, mintNumber, storageId }) => {
     const user = await requireUser(ctx, sessionToken);
     const meta = await ctx.db.system.get(storageId);
-    if (!meta) throw new ConvexError('Image introuvable.');
+    if (!meta) throw new ConvexError(fe('dropShots.1'));
     const drop = await ctx.db
       .query('dropShots')
       .withIndex('by_user_card', (q) => q.eq('userId', user._id).eq('cardId', cardId).eq('mintNumber', mintNumber))

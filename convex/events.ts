@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -39,17 +40,17 @@ export const current = query({
 /** Pour packs.ts : l'événement ouvrable maintenant, ou une erreur claire. */
 export async function liveEventOrThrow(ctx: QueryCtx | MutationCtx, id: Id<'packEvents'>, now = Date.now()): Promise<Doc<'packEvents'>> {
   const e = await ctx.db.get(id);
-  if (!e) throw new ConvexError('Ce booster du moment n’existe plus.');
-  if (now < e.startAt) throw new ConvexError('Ce booster du moment n’est pas encore sorti.');
-  if (now >= e.endAt) throw new ConvexError(`Le booster ${e.name} est terminé : il n’était là que pour un temps.`);
+  if (!e) throw new ConvexError(fe('events.1'));
+  if (now < e.startAt) throw new ConvexError(fe('events.2'));
+  if (now >= e.endAt) throw new ConvexError(fe('events.3', { p0: e.name }));
   return e;
 }
 
 // ───────────────────────────── dashboard (équipe) ─────────────────────────────
 async function requireStaff(ctx: QueryCtx | MutationCtx, sessionToken: string) {
   const me = await getUserByToken(ctx, sessionToken);
-  if (!me) throw new ConvexError('Non connecté : connecte-toi dans le jeu, puis reviens ici.');
-  if (!(me.isAdmin || me.isModerator)) throw new ConvexError('Réservé à l’équipe (Tom et Hugo).');
+  if (!me) throw new ConvexError(fe('events.4'));
+  if (!(me.isAdmin || me.isModerator)) throw new ConvexError(fe('events.5'));
   return me;
 }
 async function log(ctx: MutationCtx, me: Doc<'users'>, action: string, detail: string, target?: string) {
@@ -73,7 +74,7 @@ export const adminList = query({
 async function assertNoOverlap(ctx: MutationCtx, startAt: number, endAt: number, self?: Id<'packEvents'>) {
   const others = await ctx.db.query('packEvents').withIndex('by_end', (q) => q.gt('endAt', startAt)).take(50);
   const clash = others.find((o) => o._id !== self && o.startAt < endAt);
-  if (clash) throw new ConvexError(`Ces dates tombent sur « ${clash.name} » : un seul booster du moment à la fois.`);
+  if (clash) throw new ConvexError(fe('events.6', { p0: clash.name }));
 }
 
 /** (re)programme les tâches de début et de fin ; annule les anciennes */
@@ -113,9 +114,9 @@ export const adminSave = mutation({
     const err = checkEvent({ name, blurb, startAt: a.startAt, endAt: a.endAt, accent, subthemes, cards });
     if (err) throw new ConvexError(err);
     const prev = a.id ? await ctx.db.get(a.id) : null;
-    if (a.id && !prev) throw new ConvexError('Événement introuvable.');
-    if (!prev && a.endAt <= now) throw new ConvexError('Cet événement serait déjà fini : choisis une fin dans le futur.');
-    if (!prev && a.startAt < now - DAY) throw new ConvexError('Le début est passé depuis plus d’un jour : choisis « maintenant » ou une date à venir.');
+    if (a.id && !prev) throw new ConvexError(fe('events.7'));
+    if (!prev && a.endAt <= now) throw new ConvexError(fe('events.8'));
+    if (!prev && a.startAt < now - DAY) throw new ConvexError(fe('events.9'));
     await assertNoOverlap(ctx, a.startAt, a.endAt, a.id);
     const fields = { name, blurb, startAt: a.startAt, endAt: a.endAt, accent, subthemes, cards, updatedAt: now };
     let id: Id<'packEvents'>;
@@ -136,9 +137,9 @@ export const adminStartNow = mutation({
   handler: async (ctx, { sessionToken, id }): Promise<string> => {
     const me = await requireStaff(ctx, sessionToken);
     const e = await ctx.db.get(id);
-    if (!e) throw new ConvexError('Événement introuvable.');
+    if (!e) throw new ConvexError(fe('events.10'));
     const now = Date.now();
-    if (e.endAt <= now) throw new ConvexError('Cet événement est déjà terminé.');
+    if (e.endAt <= now) throw new ConvexError(fe('events.11'));
     if (e.startAt <= now) return `« ${e.name} » est déjà en cours.`;
     await assertNoOverlap(ctx, now, e.endAt, id);
     await ctx.db.patch(id, { startAt: now, updatedAt: now });
@@ -154,10 +155,10 @@ export const adminEndNow = mutation({
   handler: async (ctx, { sessionToken, id }): Promise<string> => {
     const me = await requireStaff(ctx, sessionToken);
     const e = await ctx.db.get(id);
-    if (!e) throw new ConvexError('Événement introuvable.');
+    if (!e) throw new ConvexError(fe('events.12'));
     const now = Date.now();
     if (e.endAt <= now) return `« ${e.name} » est déjà terminé.`;
-    if (e.startAt > now) throw new ConvexError('Pas encore commencé : supprime-le plutôt.');
+    if (e.startAt > now) throw new ConvexError(fe('events.13'));
     await ctx.db.patch(id, { endAt: now, updatedAt: now });
     await schedule(ctx, id);
     await log(ctx, me, 'evenement-fin', `« ${e.name} » terminé à la main`, e.name);
@@ -172,7 +173,7 @@ export const adminRemove = mutation({
     const me = await requireStaff(ctx, sessionToken);
     const e = await ctx.db.get(id);
     if (!e) return 'Déjà supprimé.';
-    if (e.startAt <= Date.now()) throw new ConvexError('Déjà commencé : termine-le plutôt (il reste dans l’historique).');
+    if (e.startAt <= Date.now()) throw new ConvexError(fe('events.14'));
     for (const job of [e.startJob, e.endJob]) if (job) await ctx.scheduler.cancel(job).catch(() => undefined);
     await ctx.db.delete(id);
     await log(ctx, me, 'evenement-suppr', `« ${e.name} » supprimé avant sa sortie`, e.name);

@@ -10,6 +10,7 @@
  *    une NOUVELLE carte (les doublons servent à compléter la collection) ;
  *  - jamais de Bébou (elles restent réservées au Bebou Pack).
  */
+import { fe } from './errors';
 import { STAR_RARITIES, type StarRarityId } from './dropRates';
 import { SUBTHEMES, catalogEntry, type CatalogEntry } from './sets/themes';
 
@@ -36,19 +37,19 @@ export function contractTarget(r: string): StarRarityId | null {
 /** Message d'erreur si le contrat est invalide (null s'il est bon). `spare(cardId)` = doublons disponibles. */
 export function contractProblem(rarity: string, items: ContractItem[], spare: (cardId: string) => number): string | null {
   const cost = CONTRACT_COST[rarity as StarRarityId];
-  if (!cost || !contractTarget(rarity)) return 'Pas de contrat pour cette étoile.';
+  if (!cost || !contractTarget(rarity)) return fe('contracts.1');
   const seen = new Set<string>();
   let total = 0;
   for (const it of items) {
-    if (!Number.isInteger(it.count) || it.count < 1) return 'Quantité invalide.';
-    if (seen.has(it.cardId)) return 'Même carte en double dans le contrat.';
+    if (!Number.isInteger(it.count) || it.count < 1) return fe('contracts.2');
+    if (seen.has(it.cardId)) return fe('contracts.3');
     seen.add(it.cardId);
     const e = catalogEntry(it.cardId);
-    if (!e || e.rarity !== rarity) return 'Toutes les cartes d’un contrat doivent avoir la même étoile.';
-    if (spare(it.cardId) < it.count) return `Pas assez de doublons de ${e.name} (on garde toujours 1 exemplaire).`;
+    if (!e || e.rarity !== rarity) return fe('contracts.4');
+    if (spare(it.cardId) < it.count) return fe('contracts.5', { p0: e.name });
     total += it.count;
   }
-  if (total !== cost) return `Il faut exactement ${cost} cartes (${total} choisies).`;
+  if (total !== cost) return fe('contracts.6', { p0: cost, p1: total });
   return null;
 }
 

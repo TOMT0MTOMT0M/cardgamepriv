@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { bumpMissions } from './missions';
 import { bumpWeekly } from './econLib';
@@ -31,7 +32,7 @@ export const sign = mutation({
   handler: async (ctx, { sessionToken, rarity, items }) => {
     const user = await requireUser(ctx, sessionToken);
     const target = contractTarget(rarity) as RarityId | null;
-    if (!target || items.length > 60) throw new ConvexError('Contrat invalide.');
+    if (!target || items.length > 60) throw new ConvexError(fe('contracts.7'));
 
     // (audit 12/11, S07 / A7-04) seulement les lignes du contrat (≤ 60, par l'index), plus la collection entière
     const mine = (cardId: string) => ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', user._id).eq('cardId', cardId));

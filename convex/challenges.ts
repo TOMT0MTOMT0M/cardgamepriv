@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -61,17 +62,17 @@ export const create = mutation({
     const u = await requireUser(ctx, sessionToken);
     const problem = defiProblem({ kind, target, durationMs, stake, invited: invitedIds }, u._id);
     if (problem) throw new ConvexError(problem);
-    if (stake > coinsOf(u)) throw new ConvexError(`Il te manque ${fmtCoins(stake - coinsOf(u))} pièces pour cette mise.`);
+    if (stake > coinsOf(u)) throw new ConvexError(fe('challenges.1', { p0: fmtCoins(stake - coinsOf(u)) }));
     const open = [
       ...(await ctx.db.query('challenges').withIndex('by_creator', (q) => q.eq('creatorId', u._id).eq('status', 'pending')).take(DEFI_MAX_OPEN)),
       ...(await ctx.db.query('challenges').withIndex('by_creator', (q) => q.eq('creatorId', u._id).eq('status', 'live')).take(DEFI_MAX_OPEN)),
     ];
-    if (open.length >= DEFI_MAX_OPEN) throw new ConvexError(`${DEFI_MAX_OPEN} défis lancés à la fois au plus : attends la fin d’un défi.`);
+    if (open.length >= DEFI_MAX_OPEN) throw new ConvexError(fe('challenges.2', { p0: DEFI_MAX_OPEN }));
     const invited: Doc<'users'>[] = [];
     for (const id of invitedIds) {
       const f = await ctx.db.get(id);
-      if (!f) throw new ConvexError('Joueur introuvable.');
-      if (!(await areFriends(ctx, u._id, id))) throw new ConvexError(`${f.displayName} n’est pas dans tes amis.`);
+      if (!f) throw new ConvexError(fe('challenges.3'));
+      if (!(await areFriends(ctx, u._id, id))) throw new ConvexError(fe('challenges.4', { p0: f.displayName }));
       invited.push(f);
     }
     const now = Date.now();
@@ -101,7 +102,7 @@ export const create = mutation({
 
 async function pendingOf(ctx: QueryCtx, id: Id<'challenges'>) {
   const c = await ctx.db.get(id);
-  if (!c || c.status !== 'pending') throw new ConvexError('Ce défi n’attend plus de réponse.');
+  if (!c || c.status !== 'pending') throw new ConvexError(fe('challenges.5'));
   return c;
 }
 
@@ -132,9 +133,9 @@ export const respond = mutation({
     const u = await requireUser(ctx, sessionToken);
     const c = await pendingOf(ctx, challengeId);
     const i = c.players.findIndex((p) => p.userId === u._id);
-    if (i < 0 || c.players[i].state !== 'invited') throw new ConvexError('Tu as déjà répondu à ce défi.');
+    if (i < 0 || c.players[i].state !== 'invited') throw new ConvexError(fe('challenges.6'));
     if (accept && c.stake) {
-      if (c.stake > coinsOf(u)) throw new ConvexError(`Il te manque ${fmtCoins(c.stake - coinsOf(u))} pièces pour la mise.`);
+      if (c.stake > coinsOf(u)) throw new ConvexError(fe('challenges.7', { p0: fmtCoins(c.stake - coinsOf(u)) }));
       await addCoins(ctx, u._id, -c.stake, 'challenge', `Défi — mise en séquestre (défi de ${c.players[0].name})`);
     }
     const players = c.players.map((p, k) => (k === i ? { ...p, state: accept ? ('in' as const) : ('out' as const) } : p));
@@ -155,8 +156,8 @@ export const start = mutation({
   handler: async (ctx, { sessionToken, challengeId }) => {
     const u = await requireUser(ctx, sessionToken);
     const c = await pendingOf(ctx, challengeId);
-    if (c.creatorId !== u._id) throw new ConvexError('Seul le créateur lance le défi.');
-    if (c.players.filter((p) => p.state === 'in').length < 2) throw new ConvexError('Aucun ami n’a encore accepté.');
+    if (c.creatorId !== u._id) throw new ConvexError(fe('challenges.8'));
+    if (c.players.filter((p) => p.state === 'in').length < 2) throw new ConvexError(fe('challenges.9'));
     await goLive(ctx, c, u._id);
   },
 });
@@ -167,7 +168,7 @@ export const cancel = mutation({
   handler: async (ctx, { sessionToken, challengeId }) => {
     const u = await requireUser(ctx, sessionToken);
     const c = await pendingOf(ctx, challengeId);
-    if (c.creatorId !== u._id) throw new ConvexError('Seul le créateur annule le défi.');
+    if (c.creatorId !== u._id) throw new ConvexError(fe('challenges.10'));
     await refundAll(ctx, c, 'défi annulé');
     await ctx.db.patch(c._id, { status: 'cancelled', resolvedAt: Date.now() });
     await setPhase(ctx, c, () => 'over');

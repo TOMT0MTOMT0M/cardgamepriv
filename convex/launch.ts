@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, internalQuery, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, TableNames } from './_generated/dataModel';
@@ -71,7 +72,7 @@ export async function assertOpen(ctx: MutationCtx) {
   const at = await launchAt(ctx);
   if (at && Date.now() < at) {
     const t = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(at);
-    throw new ConvexError(`Le club ouvre ${t.replace(':', ' h ')} : reviens à ce moment-là pour créer ton compte.`);
+    throw new ConvexError(fe('launch.1', { p0: t.replace(':', ' h ') }));
   }
 }
 
@@ -93,7 +94,7 @@ export const setLaunch = internalMutation({
   args: { at: v.union(v.string(), v.number(), v.null()) },
   handler: async (ctx, { at }) => {
     const ms = at === null ? null : typeof at === 'number' ? at : Date.parse(at);
-    if (ms !== null && !Number.isFinite(ms)) throw new ConvexError(`Date illisible : « ${at} » (ex. 2026-11-07T21:00:00+01:00)`);
+    if (ms !== null && !Number.isFinite(ms)) throw new ConvexError(fe('launch.2', { p0: String(at) }));
     const c = await config(ctx);
     if (c) await ctx.db.patch(c._id, { launchAt: ms ?? undefined });
     else await ctx.db.insert('appConfig', { key: KEY, launchAt: ms ?? undefined });
@@ -112,8 +113,8 @@ async function resolveKeep(ctx: MutationCtx, names: string[]) {
     const exact = users.filter((u) => u.username.toLowerCase() === q || u.displayName.toLowerCase() === q);
     const found = exact.length ? exact : users.filter((u) => u.username.toLowerCase().includes(q) || u.displayName.toLowerCase().includes(q));
     if (found.length !== 1)
-      throw new ConvexError(`${found.length ? 'Plusieurs' : 'Aucun'} joueur(s) pour « ${n} » — rien n'a été touché. Joueurs : ${users.map((u) => `${u.displayName} (@${u.username})`).join(', ')}`);
-    if (!isStaff(found[0])) throw new ConvexError(`« ${found[0].displayName} » n'est ni admin ni modérateur — rien n'a été touché (lance d'abord admin:setModerators).`);
+      throw new ConvexError(fe('launch.5', { p0: found.length ? 'Plusieurs' : 'Aucun', p1: n, p2: users.map((u) => `${u.displayName} (@${u.username})`).join(', ') }));
+    if (!isStaff(found[0])) throw new ConvexError(fe('launch.6', { p0: found[0].displayName }));
     keep.push(found[0]);
   }
   return { users, keep };

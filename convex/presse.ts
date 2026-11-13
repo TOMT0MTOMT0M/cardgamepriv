@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -67,8 +68,8 @@ export const start = mutation({
   args: { sessionToken: v.string(), bet: v.number(), album: packChoiceValidator },
   handler: async (ctx, { sessionToken, bet, album }) => {
     const u = await requireUser(ctx, sessionToken);
-    if (!validPackChoice(album as PackChoice)) throw new ConvexError('Album inconnu.');
-    if (await liveRun(ctx, u._id)) throw new ConvexError('Une pièce est déjà sous la presse : frappe ou encaisse-la.');
+    if (!validPackChoice(album as PackChoice)) throw new ConvexError(fe('presse.5'));
+    if (await liveRun(ctx, u._id)) throw new ConvexError(fe('presse.1'));
     const now = Date.now();
     const problem = presseBetProblem(bet, coinsOf(u), await playedToday(ctx, u._id, now));
     if (problem) throw new ConvexError(problem);
@@ -87,7 +88,7 @@ export const strike = mutation({
   handler: async (ctx, { sessionToken, runId }) => {
     const u = await requireUser(ctx, sessionToken);
     const r = await ctx.db.get(runId);
-    if (!r || r.userId !== u._id) throw new ConvexError('Partie introuvable.');
+    if (!r || r.userId !== u._id) throw new ConvexError(fe('presse.6'));
     if (r.status !== 'live') return view(r);
     const next = { ...r, shown: r.shown + 1 };
     if (presseCracks(r.strip, r.shown)) return view(await close(ctx, next, 'cracked'));
@@ -102,7 +103,7 @@ export const cashOut = mutation({
   handler: async (ctx, { sessionToken, runId }) => {
     const u = await requireUser(ctx, sessionToken);
     const r = await ctx.db.get(runId);
-    if (!r || r.userId !== u._id) throw new ConvexError('Partie introuvable.');
+    if (!r || r.userId !== u._id) throw new ConvexError(fe('presse.7'));
     if (r.status !== 'live') return view(r);
     return view(await close(ctx, r, 'cashed'));
   },

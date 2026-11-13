@@ -392,4 +392,9 @@ export const enData: Record<string, string> = {
   'pk.plante': 'GRASS', 'pk.insecte': 'BUG', 'pk.feu': 'FIRE', 'pk.eau': 'WATER', 'pk.electrik': 'ELECTRIC', 'pk.psy': 'PSYCHIC', 'pk.spectre': 'GHOST',
   'pk.tenebres': 'DARK', 'pk.dragon': 'DRAGON', 'pk.fee': 'FAIRY', 'pk.combat': 'FIGHTING', 'pk.acier': 'STEEL', 'pk.normal': 'NORMAL', 'pk.poison': 'POISON',
   'pk.roche': 'ROCK', 'pk.sol': 'GROUND', 'pk.vol': 'FLYING', 'pk.glace': 'ICE',
+  // ───── divers partagés ─────
+  'compl.theme': '{p0} (whole theme)',
+  'rou.coins': '{n} coins',
+  'rou.card': '{n} {s} card',
+  'rou.cards': '{n} {s} cards',
 };

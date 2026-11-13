@@ -46,7 +46,7 @@ let picked = forced !== null || manualPick;
 const listeners = new Set<(l: Lang) => void>();
 
 let enP: Promise<Dict | null> | null = null;
-const loadDict = (l: Lang): Promise<Dict | null> => (l === 'fr' ? Promise.resolve(null) : (enP ??= import('../core/i18n/en').then((m) => (installData(m.enData), m.en), (e: unknown) => ((enP = null), Promise.reject(e)))));
+const loadDict = (l: Lang): Promise<Dict | null> => (l === 'fr' ? Promise.resolve(null) : (enP ??= import('../core/i18n/en').then((m) => (installData({ ...m.enData, ...Object.fromEntries(Object.entries(m.enErrors).map(([k, v]) => [`err.${k}`, v])) }), m.en), (e: unknown) => ((enP = null), Promise.reject(e)))));
 
 function applyDoc(l: Lang) {
   document.documentElement.lang = l;

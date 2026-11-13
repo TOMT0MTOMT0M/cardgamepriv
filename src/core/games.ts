@@ -13,6 +13,8 @@
  *
  * Les jeux ne font que REDISTRIBUER (aucun puits de pièces en V1) et ne vendent jamais de cartes contre des pièces.
  */
+import { tData } from './i18n';
+import { fe } from './errors';
 import type { RarityId } from './rarity';
 import { THEMES, catalogEntry, themeOpen, BEBOU_PACK, type CatalogEntry } from './sets/themes';
 import { starsOf, stakeValue, type StakeItem } from './economy';
@@ -24,7 +26,7 @@ export interface PackChoice {
   themeId?: string;
 }
 
-export const packChoiceLabel = (p: PackChoice) => (p.kind === 'bebou' ? BEBOU_PACK.label : `${THEMES.find((t) => t.id === p.themeId)?.label ?? '?'} Pack`);
+export const packChoiceLabel = (p: PackChoice) => (p.kind === 'bebou' ? BEBOU_PACK.label : `${THEMES.find((t) => t.id === p.themeId)?.label ?? '?'} Pack`); // i18n-ok
 export const validPackChoice = (p: PackChoice) => p.kind === 'bebou' || (p.kind === 'theme' && THEMES.some((t) => t.id === p.themeId && themeOpen(t)));
 /** Les boosters qu'on peut miser (ordre d'affichage). */
 export const packChoices = (): PackChoice[] => [{ kind: 'bebou' }, ...THEMES.filter(themeOpen).map((t): PackChoice => ({ kind: 'theme', themeId: t.id }))];
@@ -61,13 +63,13 @@ export function potsBalanced(a: Stake, b: Stake): boolean {
 
 /** Message d'erreur si un duel ne peut pas se lancer (null : il peut). */
 export function duelProblem(a: { packs: PackChoice[]; stake: Stake }, b: { packs: PackChoice[]; stake: Stake } | null): string | null {
-  if (!a.packs.length || a.packs.length > DUEL_MAX_PACKS) return `Mise de 1 à ${DUEL_MAX_PACKS} boosters.`;
-  if (!a.packs.every(validPackChoice)) return 'Booster inconnu.';
-  if (!b) return 'En attente d’un adversaire.';
-  if (b.packs.length !== a.packs.length) return `Il faut miser le même nombre de boosters (${a.packs.length}).`;
-  if (!b.packs.every(validPackChoice)) return 'Booster inconnu.';
+  if (!a.packs.length || a.packs.length > DUEL_MAX_PACKS) return fe('games.30', { p0: DUEL_MAX_PACKS });
+  if (!a.packs.every(validPackChoice)) return fe('games.45');
+  if (!b) return fe('games.31');
+  if (b.packs.length !== a.packs.length) return fe('games.32', { p0: a.packs.length });
+  if (!b.packs.every(validPackChoice)) return fe('games.46');
   if (!potsBalanced(a.stake, b.stake)) {
-    return `Les pots annexes doivent avoir la même valeur à ±5 % (${stakeValue(a.stake)} contre ${stakeValue(b.stake)}).`;
+    return fe('games.33', { p0: stakeValue(a.stake), p1: stakeValue(b.stake) });
   }
   return null;
 }
@@ -139,7 +141,7 @@ export const ROULETTE_PRICES: Record<1 | 2 | 3, RoulettePrice[]> = {
 /** raretés acceptées en mise */
 export const ROULETTE_CARD_RARITIES: RarityId[] = ['epic', 'legendary', 'mythic'];
 const STARS_TXT: Record<string, string> = { epic: '4★', legendary: '5★', mythic: '6★' };
-export const priceLabel = (p: RoulettePrice) => (p.kind === 'coins' ? `${p.coins} pièces` : `${p.count} carte${p.count > 1 ? 's' : ''} ${STARS_TXT[p.rarity]}`);
+export const priceLabel = (p: RoulettePrice) => (p.kind === 'coins' ? tData('rou.coins', '{n} pièces').replace('{n}', String(p.coins)) : tData(p.count > 1 ? 'rou.cards' : 'rou.card', p.count > 1 ? '{n} cartes {s}' : '{n} carte {s}').replace('{n}', String(p.count)).replace('{s}', STARS_TXT[p.rarity])); // i18n-ok
 
 /** La façon de payer qui correspond exactement à une mise (null : la mise ne colle à aucune ligne de la grille). */
 export function matchPrice(n: number, stake: Stake): RoulettePrice | null {
@@ -155,21 +157,21 @@ export function matchPrice(n: number, stake: Stake): RoulettePrice | null {
 
 /** Problème d'un pari (null : valable). `taken` = numéros déjà pris par les autres joueurs ; `already` : j'ai déjà misé. */
 export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, already: number): string | null {
-  if (already) return 'Tu as déjà misé pour ce tirage (1 mise par tirage, 3 numéros au plus).';
-  if (!numbers.length) return 'Choisis au moins un numéro.';
-  if (numbers.length > MAX_NUMBERS) return `${MAX_NUMBERS} numéros au plus par tirage.`;
+  if (already) return fe('games.34');
+  if (!numbers.length) return fe('games.35');
+  if (numbers.length > MAX_NUMBERS) return fe('games.36', { p0: MAX_NUMBERS });
   const seen = new Set<number>();
   for (const n of numbers) {
-    if (!Number.isInteger(n) || n < 1 || n > ROULETTE_NUMBERS) return `Numéro invalide (1 à ${ROULETTE_NUMBERS}).`;
-    if (seen.has(n)) return 'Même numéro deux fois.';
-    if (taken.has(n)) return `Le numéro ${n} est déjà pris.`;
+    if (!Number.isInteger(n) || n < 1 || n > ROULETTE_NUMBERS) return fe('games.37', { p0: ROULETTE_NUMBERS });
+    if (seen.has(n)) return fe('games.38');
+    if (taken.has(n)) return fe('games.39', { p0: n });
     seen.add(n);
   }
-  if (stake.coins < 0 || !Number.isInteger(stake.coins)) return 'Montant invalide.';
-  if (stake.cards.some((c) => !ROULETTE_CARD_RARITIES.includes(c.rarity as RarityId))) return 'Seules les cartes 4★, 5★ et 6★ se misent à la roulette.';
+  if (stake.coins < 0 || !Number.isInteger(stake.coins)) return fe('games.48');
+  if (stake.cards.some((c) => !ROULETTE_CARD_RARITIES.includes(c.rarity as RarityId))) return fe('games.40');
   if (!matchPrice(numbers.length, stake)) {
     const opts = ROULETTE_PRICES[numbers.length as 1 | 2 | 3].map(priceLabel).join(' ou ');
-    return `${numbers.length} numéro${numbers.length > 1 ? 's' : ''} = ${opts}.`;
+    return fe('games.49', { p0: numbers.length, p1: numbers.length > 1 ? 's' : '', p2: opts });
   }
   return null;
 }

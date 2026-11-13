@@ -4,6 +4,7 @@
  * Règle du groupe (3 nov.) : tout se débloque EN JOUANT, rien ne s'achète. Bannières, cadres d'avatar, titres et badges
  * sont des récompenses de SUCCÈS (les 36 de src/core/economy.ts) — calculées à la volée sur les stats, rien à stocker.
  */
+import { fe } from './errors';
 import { tData } from './i18n';
 import { locale } from './i18n';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, catalogEntry } from './sets/themes';
@@ -419,7 +420,7 @@ export const PROFILE_MEDIA_TYPES = ['image/gif', 'image/png', 'image/jpeg', 'ima
 export const fmtMo = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString(locale(), { maximumFractionDigits: 1 })} Mo`;
 /** Motif de refus (vide = accepté) : le même texte au client (avant l'envoi) et au serveur. */
 export function profileMediaProblem(size: number, type: string | undefined, max = PROFILE_MEDIA_MAX): string {
-  if (!PROFILE_MEDIA_TYPES.includes(type ?? '')) return 'Format refusé : GIF, PNG, JPEG ou WebP seulement.';
-  if (size > max) return `Fichier trop lourd (${fmtMo(size)}) : ${max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`} au maximum.`;
+  if (!PROFILE_MEDIA_TYPES.includes(type ?? '')) return fe('cosmetics.1');
+  if (size > max) return fe('cosmetics.2', { p0: fmtMo(size), p1: max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko` });
   return '';
 }

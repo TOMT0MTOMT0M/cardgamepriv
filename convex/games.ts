@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -56,7 +57,7 @@ async function debitPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {
   const now = Date.now();
   const regen = packsNow(u, now);
   if (regen.balance < n) {
-    throw new ConvexError(`${u.displayName} n’a que ${regen.balance} booster${regen.balance > 1 ? 's' : ''} (il en faut ${n})${regen.nextAt ? ` — le prochain arrive dans ${fmtCountdown(regen.nextAt - now)}` : ''}.`);
+    throw new ConvexError(fe('games.2', { p0: u.displayName, p1: regen.balance, p2: regen.balance > 1 ? 's' : '', p3: n, p4: regen.nextAt ? ` — le prochain arrive dans ${fmtCountdown(regen.nextAt - now)}` : '' })); // i18n-ok (complément français ; l'anglais s'en passe)
   }
   await ctx.db.patch(userId, { packBalance: regen.balance - n, packRegenAt: regen.regenAt, lastSeenAt: now });
   await syncPresence(ctx, userId);
@@ -72,7 +73,7 @@ async function openGamePack(ctx: MutationCtx, userId: Id<'users'>, choice: PackC
   const req: PackRequest = { kind: choice.kind, themeId: choice.kind === 'theme' ? themeById(choice.themeId ?? '')?.id : undefined };
   const pity = u.pityCount ?? 0;
   req.forceMythic = pityForces(pity);
-  if (!isValidPackRequest(req)) throw new ConvexError('Ce booster n’existe pas.');
+  if (!isValidPackRequest(req)) throw new ConvexError(fe('games.3'));
   const cards: GameCard[] = [];
   for (const { card, rarity } of rollPack(req, secureRandom)) {
     cards.push({ cardId: card.id, cardName: card.name, rarity: rarity as RarityId, mintNumber: await mint(ctx, card.id, rarity as RarityId), foilSeed: Math.floor(secureRandom() * 900000) + 100000 });
@@ -127,13 +128,13 @@ export const createDuel = mutation({
   handler: async (ctx, { sessionToken, packs, stake, invitedId }) => {
     const u = await requireUser(ctx, sessionToken);
     const problem = duelProblem({ packs, stake }, null);
-    if (problem && !problem.startsWith('En attente')) throw new ConvexError(problem);
-    if (invitedId === u._id) throw new ConvexError('Tu ne peux pas te défier toi-même.');
-    if (invitedId && !(await ctx.db.get(invitedId))) throw new ConvexError('Joueur introuvable.');
+    if (problem && !problem.startsWith('En attente')) throw new ConvexError(problem); // i18n-ok (test du texte, pas un affichage)
+    if (invitedId === u._id) throw new ConvexError(fe('games.5'));
+    if (invitedId && !(await ctx.db.get(invitedId))) throw new ConvexError(fe('games.6'));
     await checkStake(ctx, u, stake);
-    if (packsNow(u, Date.now()).balance < packs.length) throw new ConvexError(`Tu n’as pas ${packs.length} boosters en réserve.`);
+    if (packsNow(u, Date.now()).balance < packs.length) throw new ConvexError(fe('games.7', { p0: packs.length }));
     const open = await ctx.db.query('duels').withIndex('by_creator', (q) => q.eq('creatorId', u._id)).filter((q) => q.eq(q.field('status'), 'open')).collect();
-    if (open.length >= 3) throw new ConvexError('3 duels ouverts au maximum : annule-en un.');
+    if (open.length >= 3) throw new ConvexError(fe('games.8'));
     if (invitedId) {
       await notify(ctx, invitedId, { kind: 'game', title: `${u.displayName} te défie en Pack Battle`, body: 'Relève le défi dans l’espace Jeux.', url: '#/jeux' });
       await ctx.db.patch(invitedId, { gamesNoticeAt: Date.now() }); // pastille de l'onglet Jeux
@@ -150,7 +151,7 @@ export const createDuel = mutation({
 
 async function openDuel(ctx: QueryCtx, id: Id<'duels'>) {
   const d = await ctx.db.get(id);
-  if (!d || d.status !== 'open') throw new ConvexError('Ce duel n’est plus ouvert.');
+  if (!d || d.status !== 'open') throw new ConvexError(fe('games.9'));
   return d;
 }
 
@@ -171,15 +172,15 @@ export const setDuelSide = mutation({
     // mise identique à celle enregistrée : rien ne change, les validations (la sienne et celle d'en face) restent
     const had = d.sides.find((s) => s.userId === u._id);
     if (had && sideKey(had.packs, stakeOf(had)) === sideKey(packs, stake)) return;
-    if (!packs.length || packs.length > DUEL_MAX_PACKS || !packs.every(validPackChoice)) throw new ConvexError(`Mise de 1 à ${DUEL_MAX_PACKS} boosters.`);
+    if (!packs.length || packs.length > DUEL_MAX_PACKS || !packs.every(validPackChoice)) throw new ConvexError(fe('games.10', { p0: DUEL_MAX_PACKS }));
     await checkStake(ctx, u, stake);
-    if (packsNow(u, Date.now()).balance < packs.length) throw new ConvexError(`Tu n’as pas ${packs.length} boosters en réserve.`);
+    if (packsNow(u, Date.now()).balance < packs.length) throw new ConvexError(fe('games.11', { p0: packs.length }));
     const sides = d.sides.map((s) => ({ ...s, ready: false }));
     const i = sides.findIndex((s) => s.userId === u._id);
     if (i >= 0) sides[i] = sideOf(u, packs, stake);
     else {
-      if (sides.length >= 2) throw new ConvexError('Ce duel a déjà un adversaire.');
-      if (d.invitedId && d.invitedId !== u._id) throw new ConvexError('Ce duel est réservé à un autre joueur.');
+      if (sides.length >= 2) throw new ConvexError(fe('games.12'));
+      if (d.invitedId && d.invitedId !== u._id) throw new ConvexError(fe('games.13'));
       sides.push(sideOf(u, packs, stake));
     }
     await ctx.db.patch(duelId, { sides });
@@ -204,7 +205,7 @@ export const readyDuel = mutation({
     const u = await requireUser(ctx, sessionToken);
     const d = await openDuel(ctx, duelId);
     const i = d.sides.findIndex((s) => s.userId === u._id);
-    if (i < 0) throw new ConvexError('Tu ne participes pas à ce duel.');
+    if (i < 0) throw new ConvexError(fe('games.14'));
     const problem = duelProblem({ packs: d.sides[0].packs, stake: stakeOf(d.sides[0]) }, d.sides[1] ? { packs: d.sides[1].packs, stake: stakeOf(d.sides[1]) } : null);
     if (problem) throw new ConvexError(problem);
     const sides = d.sides.map((s, k) => (k === i ? { ...s, ready: true } : s));
@@ -219,7 +220,7 @@ export const readyDuel = mutation({
 
 async function resolveDuel(ctx: MutationCtx, d: Doc<'duels'>) {
   const users = await Promise.all(d.sides.map((s) => ctx.db.get(s.userId)));
-  if (users.some((x) => !x)) throw new ConvexError('Joueur introuvable.');
+  if (users.some((x) => !x)) throw new ConvexError(fe('games.15'));
   const [a, b] = users as Doc<'users'>[];
   // 1. tout est encore là ? (boosters, pièces, cartes libres)
   for (const [k, s] of d.sides.entries()) await checkStake(ctx, users[k]!, stakeOf(s));
@@ -289,12 +290,12 @@ export const createRoyale = mutation({
   args: { sessionToken: v.string(), pack: packChoiceValidator, packCount: v.optional(v.number()) },
   handler: async (ctx, { sessionToken, pack, packCount: asked }) => {
     const u = await requireUser(ctx, sessionToken);
-    if (!validPackChoice(pack)) throw new ConvexError('Booster inconnu.');
-    if (asked !== undefined && (!Number.isInteger(asked) || asked < 1 || asked > ROYALE_MAX_PACKS)) throw new ConvexError(`De 1 à ${ROYALE_MAX_PACKS} boosters par joueur.`);
+    if (!validPackChoice(pack)) throw new ConvexError(fe('games.42'));
+    if (asked !== undefined && (!Number.isInteger(asked) || asked < 1 || asked > ROYALE_MAX_PACKS)) throw new ConvexError(fe('games.16', { p0: ROYALE_MAX_PACKS }));
     const n = royalePackCount({ packCount: asked });
-    if (packsNow(u, Date.now()).balance < n) throw new ConvexError(n > 1 ? `Il te faut ${n} boosters en réserve.` : 'Il te faut un booster en réserve.');
+    if (packsNow(u, Date.now()).balance < n) throw new ConvexError(n > 1 ? fe('games.17', { p0: n }) : fe('games.18'));
     const open = await ctx.db.query('royales').withIndex('by_status', (q) => q.eq('status', 'open')).collect();
-    if (open.some((r) => r.players.some((p) => p.userId === u._id))) throw new ConvexError('Tu es déjà dans une Battle Royale en attente.');
+    if (open.some((r) => r.players.some((p) => p.userId === u._id))) throw new ConvexError(fe('games.19'));
     return await ctx.db.insert('royales', {
       creatorId: u._id,
       status: 'open',
@@ -310,12 +311,12 @@ export const joinRoyale = mutation({
   handler: async (ctx, { sessionToken, royaleId, pack }) => {
     const u = await requireUser(ctx, sessionToken);
     const r = await ctx.db.get(royaleId);
-    if (!r || r.status !== 'open') throw new ConvexError('Cette Battle Royale n’est plus ouverte.');
-    if (!validPackChoice(pack)) throw new ConvexError('Booster inconnu.');
+    if (!r || r.status !== 'open') throw new ConvexError(fe('games.20'));
+    if (!validPackChoice(pack)) throw new ConvexError(fe('games.43'));
     const n = royalePackCount(r);
-    if (packsNow(u, Date.now()).balance < n) throw new ConvexError(n > 1 ? `Il te faut ${n} boosters en réserve (mise de la partie).` : 'Il te faut un booster en réserve.');
+    if (packsNow(u, Date.now()).balance < n) throw new ConvexError(n > 1 ? fe('games.21', { p0: n }) : fe('games.22'));
     const players = r.players.filter((p) => p.userId !== u._id);
-    if (players.length >= ROYALE_MAX) throw new ConvexError(`Complet (${ROYALE_MAX} joueurs).`);
+    if (players.length >= ROYALE_MAX) throw new ConvexError(fe('games.23', { p0: ROYALE_MAX }));
     players.push({ userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), pack: cleanPack(pack) });
     // on garde l'ordre d'arrivée (le créateur d'abord) ; changer de booster ne fait pas perdre sa place
     const order = r.players.map((p) => p.userId);
@@ -330,7 +331,7 @@ export const leaveRoyale = mutation({
   handler: async (ctx, { sessionToken, royaleId }) => {
     const u = await requireUser(ctx, sessionToken);
     const r = await ctx.db.get(royaleId);
-    if (!r || r.status !== 'open') throw new ConvexError('Cette Battle Royale n’est plus ouverte.');
+    if (!r || r.status !== 'open') throw new ConvexError(fe('games.24'));
     if (r.creatorId === u._id) await ctx.db.patch(royaleId, { status: 'cancelled', resolvedAt: Date.now() });
     else await ctx.db.patch(royaleId, { players: r.players.filter((p) => p.userId !== u._id) });
   },
@@ -342,9 +343,9 @@ export const startRoyale = mutation({
   handler: async (ctx, { sessionToken, royaleId }) => {
     const u = await requireUser(ctx, sessionToken);
     const r = await ctx.db.get(royaleId);
-    if (!r || r.status !== 'open') throw new ConvexError('Cette Battle Royale n’est plus ouverte.');
-    if (r.creatorId !== u._id) throw new ConvexError('Seul le créateur lance la partie.');
-    if (r.players.length < ROYALE_MIN) throw new ConvexError(`Il faut au moins ${ROYALE_MIN} joueurs.`);
+    if (!r || r.status !== 'open') throw new ConvexError(fe('games.25'));
+    if (r.creatorId !== u._id) throw new ConvexError(fe('games.26'));
+    if (r.players.length < ROYALE_MIN) throw new ConvexError(fe('games.27', { p0: ROYALE_MIN }));
     await resolveRoyale(ctx, r);
   },
 });
@@ -456,8 +457,8 @@ export const placeBet = mutation({
     const u = await requireUser(ctx, sessionToken);
     const r = await ensureRound(ctx);
     const now = Date.now();
-    if (!r.drawAt) throw new ConvexError('La roulette change de règles : réessaie dans quelques minutes.');
-    if (now >= drawInstant(r)) throw new ConvexError('Le tirage est en cours : réessaie dans une minute.');
+    if (!r.drawAt) throw new ConvexError(fe('games.28'));
+    if (now >= drawInstant(r)) throw new ConvexError(fe('games.29'));
     const taken = new Set(r.bets.flatMap((b) => b.numbers));
     const mine = r.bets.find((b) => b.userId === u._id);
     const problem = betProblem(numbers, stake, taken, mine ? 1 : 0);

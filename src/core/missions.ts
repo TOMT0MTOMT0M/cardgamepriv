@@ -1,3 +1,4 @@
+import { fe } from './errors';
 import { t } from './i18n';
 import { BEBOU_PACK, THEMES, catalogEntry, inSubthemeScope, subthemeViews, themeOpen } from './sets/themes';
 
@@ -193,24 +194,24 @@ export function applyMissionEvent(s: MissionsState, ev: MissionEvent): { state: 
 /** Réclamer une mission terminée : renvoie l'état et le nombre de boosters gagnés (ou un message d'erreur). */
 export function claimMission(s: MissionsState, id: string): { state: MissionsState; reward: number } | string {
   const m = s.list.find((x) => x.id === id);
-  if (!m) return 'Mission introuvable (un nouveau jour a commencé ?).';
-  if (m.claimed) return 'Déjà réclamée.';
-  if (m.progress < m.target) return 'Mission pas encore terminée.';
+  if (!m) return fe('missions.1');
+  if (m.claimed) return fe('missions.2');
+  if (m.progress < m.target) return fe('missions.3');
   return { state: { ...s, list: s.list.map((x) => (x.id === id ? { ...x, claimed: true } : x)) }, reward: m.reward };
 }
 
 export function claimMissionBonus(s: MissionsState): { state: MissionsState; reward: number } | string {
-  if (s.bonusClaimed) return 'Bonus déjà réclamé.';
-  if (!s.list.every((m) => m.claimed)) return 'Réclame d’abord les 3 missions.';
+  if (s.bonusClaimed) return fe('missions.4');
+  if (!s.list.every((m) => m.claimed)) return fe('missions.5');
   return { state: { ...s, bonusClaimed: true }, reward: MISSION_BONUS };
 }
 
 /** Changer une mission (1 fois par jour, pas une mission terminée). */
 export function rerollMission(s: MissionsState, id: string, userKey: string): MissionsState | string {
-  if (s.rerolled) return 'Tu as déjà changé une mission aujourd’hui.';
+  if (s.rerolled) return fe('missions.6');
   const i = s.list.findIndex((x) => x.id === id);
-  if (i < 0) return 'Mission introuvable.';
-  if (s.list[i].claimed || s.list[i].progress >= s.list[i].target) return 'Cette mission est déjà terminée.';
+  if (i < 0) return fe('missions.8');
+  if (s.list[i].claimed || s.list[i].progress >= s.list[i].target) return fe('missions.7');
   const r = rand(`${userKey}|${s.day}|reroll`);
   const used = new Set(s.list.map((m) => m.kind));
   const k = drawKind(r, used);

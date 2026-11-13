@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -37,13 +38,13 @@ const isLive = (l: Doc<'listings'> | null, now = Date.now()): l is Doc<'listings
 const ACTIVE = ['pending', 'countered'] as const;
 
 function checkItems(items: Item[], what: string, allowEmpty = false) {
-  if (!allowEmpty && !items.length) throw new ConvexError(`Choisis au moins une carte (${what}).`);
-  if (items.length > MAX_ITEMS) throw new ConvexError(`${MAX_ITEMS} cartes différentes au maximum (${what}).`);
+  if (!allowEmpty && !items.length) throw new ConvexError(fe('listings.1', { p0: what }));
+  if (items.length > MAX_ITEMS) throw new ConvexError(fe('listings.2', { p0: MAX_ITEMS, p1: what }));
   const seen = new Set<string>();
   for (const it of items) {
-    if (!Number.isInteger(it.count) || it.count < 1 || it.count > 99) throw new ConvexError('Quantité invalide.');
-    if (!catalogCard(it.cardId)) throw new ConvexError(`Carte inconnue : ${it.cardId}`);
-    if (seen.has(key(it))) throw new ConvexError('Même carte en double dans la liste.');
+    if (!Number.isInteger(it.count) || it.count < 1 || it.count > 99) throw new ConvexError(fe('listings.3'));
+    if (!catalogCard(it.cardId)) throw new ConvexError(fe('listings.4', { p0: it.cardId }));
+    if (seen.has(key(it))) throw new ConvexError(fe('listings.5'));
     seen.add(key(it));
   }
 }
@@ -61,9 +62,9 @@ async function checkFree(ctx: QueryCtx, userId: Id<'users'>, items: Item[], who:
   const locked = await lockedCards(ctx, userId, undefined, exceptOffer);
   for (const it of items) {
     const have = await ownedCount(ctx, userId, it);
-    if (have < it.count) throw new ConvexError(who ? `${who} n’a pas (ou plus) ${nameOf(it.cardId)}.` : `Tu ne possèdes pas assez d’exemplaires de ${nameOf(it.cardId)}.`);
+    if (have < it.count) throw new ConvexError(who ? fe('listings.6', { p0: who, p1: nameOf(it.cardId) }) : fe('listings.7', { p0: nameOf(it.cardId) }));
     if (have - (locked.get(key(it)) ?? 0) < it.count)
-      throw new ConvexError(who ? `${nameOf(it.cardId)} est engagée ailleurs chez ${who} (échange, annonce ou offre en cours).` : `${nameOf(it.cardId)} est déjà engagée dans un échange, une annonce ou une offre en cours.`);
+      throw new ConvexError(who ? fe('listings.8', { p0: nameOf(it.cardId), p1: who }) : fe('listings.9', { p0: nameOf(it.cardId) }));
   }
 }
 
@@ -74,7 +75,7 @@ async function moveCards(ctx: MutationCtx, from: Doc<'users'>, to: Doc<'users'>,
       .query('inventory')
       .withIndex('by_user_card_rarity', (q) => q.eq('userId', from._id).eq('cardId', it.cardId).eq('rarity', it.rarity))
       .unique();
-    if (!src || src.count < it.count) throw new ConvexError(`${from.displayName} n’a plus ${nameOf(it.cardId)}.`);
+    if (!src || src.count < it.count) throw new ConvexError(fe('listings.10', { p0: from.displayName, p1: nameOf(it.cardId) }));
     if (src.count === it.count) await dropInv(ctx, src);
     else await ctx.db.patch(src._id, { count: src.count - it.count, rev: invRev() });
     const dst = await ctx.db
@@ -109,8 +110,8 @@ async function closeOffers(ctx: MutationCtx, listingId: Id<'listings'>, now: num
 async function liveListing(ctx: MutationCtx, id: Id<'listings'>): Promise<Doc<'listings'>> {
   const l = await ctx.db.get(id);
   const now = Date.now();
-  if (l && l.status === 'open' && l.expiresAt <= now) throw new ConvexError('Cette annonce a expiré.');
-  if (!isLive(l, now)) throw new ConvexError('Annonce introuvable ou déjà terminée.');
+  if (l && l.status === 'open' && l.expiresAt <= now) throw new ConvexError(fe('listings.11'));
+  if (!isLive(l, now)) throw new ConvexError(fe('listings.12'));
   return l;
 }
 
@@ -122,8 +123,8 @@ async function liveListing(ctx: MutationCtx, id: Id<'listings'>): Promise<Doc<'l
 async function conclude(ctx: MutationCtx, listing: Doc<'listings'>, offer: Doc<'listingOffers'>, give: Item[], want: Item[]) {
   const author = await ctx.db.get(listing.userId);
   const offerer = await ctx.db.get(offer.fromUserId);
-  if (!author || !offerer) throw new ConvexError('Joueur introuvable.');
-  for (const it of give) if ((await ownedCount(ctx, author._id, it)) < it.count) throw new ConvexError(`${author.displayName} n’a plus ${nameOf(it.cardId)}.`);
+  if (!author || !offerer) throw new ConvexError(fe('listings.13'));
+  for (const it of give) if ((await ownedCount(ctx, author._id, it)) < it.count) throw new ConvexError(fe('listings.14', { p0: author.displayName, p1: nameOf(it.cardId) }));
   await checkFree(ctx, offerer._id, want, offerer.displayName, offer._id);
   const now = Date.now();
   await moveCards(ctx, author, offerer, give, now);
@@ -257,19 +258,19 @@ export const create = mutation({
   },
   handler: async (ctx, { sessionToken, items, wanted, note, hours }) => {
     const me = await requireUser(ctx, sessionToken);
-    if (!(LISTING_HOURS as readonly number[]).includes(hours)) throw new ConvexError('Durée invalide (24 ou 48 h).');
+    if (!(LISTING_HOURS as readonly number[]).includes(hours)) throw new ConvexError(fe('listings.15'));
     checkItems(items, 'proposées');
     const w = wanted ?? [];
-    if (w.length > MAX_WANTED) throw new ConvexError(`${MAX_WANTED} cartes recherchées au maximum.`);
+    if (w.length > MAX_WANTED) throw new ConvexError(fe('listings.16', { p0: MAX_WANTED }));
     const seen = new Set<string>();
     for (const it of w) {
-      if (!catalogCard(it.cardId)) throw new ConvexError(`Carte inconnue : ${it.cardId}`);
-      if (seen.has(key(it))) throw new ConvexError('Même carte recherchée deux fois.');
+      if (!catalogCard(it.cardId)) throw new ConvexError(fe('listings.17', { p0: it.cardId }));
+      if (seen.has(key(it))) throw new ConvexError(fe('listings.18'));
       seen.add(key(it));
     }
     const now = Date.now();
     const open = (await ctx.db.query('listings').withIndex('by_user_status', (q) => q.eq('userId', me._id).eq('status', 'open')).collect()).filter((l) => l.expiresAt > now);
-    if (open.length >= MAX_OPEN_LISTINGS) throw new ConvexError(`${MAX_OPEN_LISTINGS} annonces ouvertes au maximum : retires-en une d’abord.`);
+    if (open.length >= MAX_OPEN_LISTINGS) throw new ConvexError(fe('listings.19', { p0: MAX_OPEN_LISTINGS }));
     await checkFree(ctx, me._id, items, null);
     return await ctx.db.insert('listings', {
       userId: me._id,
@@ -289,8 +290,8 @@ export const cancel = mutation({
   handler: async (ctx, { sessionToken, listingId }) => {
     const me = await requireUser(ctx, sessionToken);
     const l = await ctx.db.get(listingId);
-    if (!l || l.status !== 'open') throw new ConvexError('Annonce introuvable ou déjà terminée.');
-    if (l.userId !== me._id) throw new ConvexError('Seul l’auteur peut retirer son annonce.');
+    if (!l || l.status !== 'open') throw new ConvexError(fe('listings.20'));
+    if (l.userId !== me._id) throw new ConvexError(fe('listings.21'));
     const now = Date.now();
     await ctx.db.patch(l._id, { status: 'cancelled', resolvedAt: now });
     await closeOffers(ctx, l._id, now);
@@ -306,7 +307,7 @@ export const offer = mutation({
   handler: async (ctx, { sessionToken, listingId, offered, note }) => {
     const me = await requireUser(ctx, sessionToken);
     const l = await liveListing(ctx, listingId);
-    if (l.userId === me._id) throw new ConvexError('C’est ton annonce : tu ne peux pas y faire d’offre.');
+    if (l.userId === me._id) throw new ConvexError(fe('listings.22'));
     checkItems(offered, 'offertes');
     // mon offre précédente sur cette annonce est remplacée (son verrou ne compte pas)
     let previous: Doc<'listingOffers'> | null = null;
@@ -318,7 +319,7 @@ export const offer = mutation({
         else if (isLive(await ctx.db.get(o.listingId))) active++;
       }
     }
-    if (active >= MAX_ACTIVE_OFFERS) throw new ConvexError(`${MAX_ACTIVE_OFFERS} offres en cours au maximum : attends des réponses ou retires-en une.`);
+    if (active >= MAX_ACTIVE_OFFERS) throw new ConvexError(fe('listings.23', { p0: MAX_ACTIVE_OFFERS }));
     await checkFree(ctx, me._id, offered, null, previous?._id);
     const now = Date.now();
     if (previous) await ctx.db.patch(previous._id, { status: 'withdrawn', resolvedAt: now });
@@ -340,8 +341,8 @@ export const withdrawOffer = mutation({
   handler: async (ctx, { sessionToken, offerId }) => {
     const me = await requireUser(ctx, sessionToken);
     const o = await ctx.db.get(offerId);
-    if (!o || !(ACTIVE as readonly string[]).includes(o.status)) throw new ConvexError('Offre introuvable ou déjà traitée.');
-    if (o.fromUserId !== me._id) throw new ConvexError('Seul l’auteur de l’offre peut la retirer.');
+    if (!o || !(ACTIVE as readonly string[]).includes(o.status)) throw new ConvexError(fe('listings.24'));
+    if (o.fromUserId !== me._id) throw new ConvexError(fe('listings.25'));
     await ctx.db.patch(o._id, { status: 'withdrawn', resolvedAt: Date.now() });
     return { status: 'withdrawn' as const };
   },
@@ -350,8 +351,8 @@ export const withdrawOffer = mutation({
 async function authorOffer(ctx: MutationCtx, sessionToken: string, offerId: Id<'listingOffers'>, statuses: readonly string[]) {
   const me = await requireUser(ctx, sessionToken);
   const o = await ctx.db.get(offerId);
-  if (!o || !statuses.includes(o.status)) throw new ConvexError('Offre introuvable ou déjà traitée.');
-  if (o.listingUserId !== me._id) throw new ConvexError('Seul l’auteur de l’annonce peut répondre à cette offre.');
+  if (!o || !statuses.includes(o.status)) throw new ConvexError(fe('listings.26'));
+  if (o.listingUserId !== me._id) throw new ConvexError(fe('listings.27'));
   const l = await liveListing(ctx, o.listingId);
   return { me, o, l };
 }
@@ -386,10 +387,10 @@ export const counter = mutation({
     checkItems(want, 'demandées', true);
     for (const it of give) {
       const inListing = l.items.find((x) => key(x) === key(it));
-      if (!inListing || inListing.count < it.count) throw new ConvexError(`${nameOf(it.cardId)} ne fait pas partie de ton annonce : une contre-offre ne donne que des cartes de l’annonce.`);
+      if (!inListing || inListing.count < it.count) throw new ConvexError(fe('listings.28', { p0: nameOf(it.cardId) }));
     }
     const from = await ctx.db.get(o.fromUserId);
-    for (const it of want) if ((await ownedCount(ctx, o.fromUserId, it)) < it.count) throw new ConvexError(`${from?.displayName ?? 'Ce joueur'} n’a pas (ou plus) ${nameOf(it.cardId)}.`);
+    for (const it of want) if ((await ownedCount(ctx, o.fromUserId, it)) < it.count) throw new ConvexError(fe('listings.30', { p0: from?.displayName ?? 'Ce joueur', p1: nameOf(it.cardId) }));
     await ctx.db.patch(o._id, { status: 'countered', counter: { give, want, note: note?.trim().slice(0, 140) || undefined, at: Date.now() } });
     return { status: 'countered' as const };
   },
@@ -401,8 +402,8 @@ export const respondCounter = mutation({
   handler: async (ctx, { sessionToken, offerId, accept }) => {
     const me = await requireUser(ctx, sessionToken);
     const o = await ctx.db.get(offerId);
-    if (!o || o.status !== 'countered' || !o.counter) throw new ConvexError('Contre-offre introuvable ou déjà traitée.');
-    if (o.fromUserId !== me._id) throw new ConvexError('Seul l’auteur de l’offre peut répondre à la contre-offre.');
+    if (!o || o.status !== 'countered' || !o.counter) throw new ConvexError(fe('listings.31'));
+    if (o.fromUserId !== me._id) throw new ConvexError(fe('listings.32'));
     if (!accept) {
       await ctx.db.patch(o._id, { status: 'withdrawn', resolvedAt: Date.now() });
       return { status: 'withdrawn' as const };

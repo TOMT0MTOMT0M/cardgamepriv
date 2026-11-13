@@ -1,3 +1,4 @@
+import { errText } from '../../core/errors';
 import '../../core/i18n/fr/game.views.games'; // (textes de ce module, version anglaise)
 import { locale, t as tr, lang } from '../../core/i18n';
 import type { GameBackend } from '../backend';
@@ -408,7 +409,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const otherReady = !!other?.ready;
         const canReady = mine >= 0 && d.sides.length === 2 && !meReady;
         risk.innerHTML = riskLine(st);
-        acts.innerHTML = `${mine >= 0 ? `<button class="btn-ghost gm-save"${ch && !isPending('duel') ? '' : ' disabled'}>${tr('gm.saveBet')}</button>` : ''}${canJoin ? `<button class="btn-primary gm-join"${isPending('duel') ? ' disabled' : ''}>${tr('gm.join')}</button>` : ''}${canReady ? `<button class="btn-primary gm-ready"${problem || isPending('duel') ? ' disabled' : ''}>${ch ? tr('gm.saveConfirm') : otherReady ? tr('gm.confirmOpen') : tr('gm.confirmBet')}</button>` : ''}${mine >= 0 ? `<button class="btn-ghost danger gm-leave">${mine === 0 ? tr('gm.cancelDuel') : tr('gm.leave')}</button>` : ''}${ch ? '<div class="gm-warn">' + tr('gm.unsaved') + '</div>' : ''}${problem && (d.sides.length === 2 || canJoin) ? `<div class="gm-warn">${esc(problem)}</div>` : ''}${meReady && !otherReady ? '<div class="muted">' + tr('gm.waitOther') + '</div>' : ''}`;
+        acts.innerHTML = `${mine >= 0 ? `<button class="btn-ghost gm-save"${ch && !isPending('duel') ? '' : ' disabled'}>${tr('gm.saveBet')}</button>` : ''}${canJoin ? `<button class="btn-primary gm-join"${isPending('duel') ? ' disabled' : ''}>${tr('gm.join')}</button>` : ''}${canReady ? `<button class="btn-primary gm-ready"${problem || isPending('duel') ? ' disabled' : ''}>${ch ? tr('gm.saveConfirm') : otherReady ? tr('gm.confirmOpen') : tr('gm.confirmBet')}</button>` : ''}${mine >= 0 ? `<button class="btn-ghost danger gm-leave">${mine === 0 ? tr('gm.cancelDuel') : tr('gm.leave')}</button>` : ''}${ch ? '<div class="gm-warn">' + tr('gm.unsaved') + '</div>' : ''}${problem && (d.sides.length === 2 || canJoin) ? `<div class="gm-warn">${esc(errText(problem))}</div>` : ''}${meReady && !otherReady ? '<div class="muted">' + tr('gm.waitOther') + '</div>' : ''}`;
         const save = (btn: HTMLElement) =>
           guarded('duel', btn, async () => {
             try {

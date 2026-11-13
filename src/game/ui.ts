@@ -1,3 +1,4 @@
+import { errText } from '../core/errors';
 import { fmtNum, lang, t as tr, type MsgKey } from '../core/i18n';
 import { rarity, type RarityId } from '../core/rarity';
 import { siteUrl } from '../core/siteRoot';
@@ -508,13 +509,14 @@ export function toast(msg: string, kind: 'ok' | 'err' | 'info' = 'info') {
  */
 export const errMsg = (e: unknown) => {
   const m = String((e as { data?: string; message?: string })?.data ?? (e as Error)?.message ?? String(e));
-  if (/ConvexError:/.test(m)) return m.replace(/^[\s\S]*ConvexError:\s*/, '').replace(/\s*at [\s\S]*$/, '').trim();
+  // (version anglaise, lot 4) erreurs à code : le repère ⟦code⟧ est retiré, et traduit en anglais (core/errors.ts)
+  if (/ConvexError:/.test(m)) return errText(m.replace(/^[\s\S]*ConvexError:\s*/, '').replace(/\s*⟧[\s\S]*$/, '⟧').replace(/\s*at [^⟦]*$/, '').trim());
   if (/\[CONVEX |\[Request ID|Server Error|Uncaught \w*Error/.test(m)) {
     console.warn(e);
     return tr('net.refused');
   }
   if (/Failed to fetch|NetworkError|WebSocket/i.test(m)) return tr('net.unreachable');
-  return m.replace(/^Uncaught Error:\s*/, '');
+  return errText(m.replace(/^Uncaught Error:\s*/, ''));
 };
 
 /** « 12 min », « 3 h 05 », « 5 j 11 h » (au-delà de 48 h : personne ne lit « 131 h 48 »). */

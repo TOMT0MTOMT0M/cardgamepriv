@@ -1,3 +1,4 @@
+import { errText } from '../../core/errors';
 import '../../core/i18n/fr/game.views.profile'; // (textes de ce module, version anglaise)
 import { locale, t as tr } from '../../core/i18n';
 import type { ActivityItem, GameBackend, PlayerCard, Profile } from '../backend';
@@ -417,7 +418,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       if (!f) return;
       // refus clair AVANT l'envoi (le serveur revérifie)
       const bad = profileMediaProblem(f.size, f.type, backend.state.mode === 'demo' ? PROFILE_MEDIA_DEMO_MAX : PROFILE_MEDIA_MAX);
-      if (bad) return void toast(bad, 'err');
+      if (bad) return void toast(errText(bad), 'err');
       send(f);
     });
     inp.click();

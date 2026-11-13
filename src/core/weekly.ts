@@ -6,6 +6,7 @@
  *  - Missions de la SEMAINE (ici) : 3 par joueur et par semaine (lundi → dimanche, heure de Paris), ~200 pièces chacune.
  *    Tirage déterministe (joueur + semaine) : rien n'est écrit tant qu'on ne progresse pas.
  */
+import { fe } from './errors';
 import { t } from './i18n';
 import { missionDay, type Mission } from './missions';
 
@@ -138,9 +139,9 @@ export function applyWeeklyEvent(s: WeeklyState, ev: WeeklyEvent): { state: Week
 
 export function claimWeekly(s: WeeklyState, id: string): { state: WeeklyState; reward: number } | string {
   const m = s.list.find((x) => x.id === id);
-  if (!m) return 'Mission introuvable (une nouvelle semaine a commencé ?).';
-  if (m.claimed) return 'Déjà réclamée.';
-  if (m.progress < m.target) return 'Mission pas encore terminée.';
+  if (!m) return fe('weekly.1');
+  if (m.claimed) return fe('weekly.2');
+  if (m.progress < m.target) return fe('weekly.3');
   return { state: { ...s, list: s.list.map((x) => (x.id === id ? { ...x, claimed: true } : x)) }, reward: m.reward };
 }
 

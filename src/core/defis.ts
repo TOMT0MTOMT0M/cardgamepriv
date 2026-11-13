@@ -12,6 +12,7 @@
  *  - « Premier à… » se tranche dès la carte tirée.
  * Les défis ne vendent aucune carte : ils redistribuent les pièces misées.
  */
+import { fe } from './errors';
 import { t } from './i18n';
 import type { RarityId } from './rarity';
 import { CARD_STARS } from './economy';
@@ -63,15 +64,15 @@ export interface DefiDraft {
 
 /** Message d'erreur si le défi ne peut pas être lancé (null : il peut). */
 export function defiProblem(d: DefiDraft, me: string): string | null {
-  if (!DEFI_KINDS.some((k) => k.id === d.kind)) return 'Objectif inconnu.';
-  if (d.kind === 'first' && !DEFI_TARGETS.includes(d.target as RarityId)) return 'Choisis la rareté à tirer (5★ ou 6★).';
-  if (!DEFI_DURATIONS.some((x) => x.ms === d.durationMs)) return 'Durée inconnue.';
-  if (!Number.isInteger(d.stake) || d.stake < 0 || d.stake > DEFI_MAX_STAKE) return `Mise de 0 à ${DEFI_MAX_STAKE} pièces.`;
+  if (!DEFI_KINDS.some((k) => k.id === d.kind)) return fe('defis.8');
+  if (d.kind === 'first' && !DEFI_TARGETS.includes(d.target as RarityId)) return fe('defis.1');
+  if (!DEFI_DURATIONS.some((x) => x.ms === d.durationMs)) return fe('defis.2');
+  if (!Number.isInteger(d.stake) || d.stake < 0 || d.stake > DEFI_MAX_STAKE) return fe('defis.3', { p0: DEFI_MAX_STAKE });
   const ids = new Set(d.invited);
-  if (ids.size !== d.invited.length) return 'Un ami est invité deux fois.';
-  if (ids.has(me)) return 'Tu ne peux pas te défier toi-même.';
-  if (!ids.size) return 'Invite au moins un ami.';
-  if (ids.size > DEFI_MAX_FRIENDS) return `${DEFI_MAX_FRIENDS} amis au plus.`;
+  if (ids.size !== d.invited.length) return fe('defis.4');
+  if (ids.has(me)) return fe('defis.5');
+  if (!ids.size) return fe('defis.6');
+  if (ids.size > DEFI_MAX_FRIENDS) return fe('defis.7', { p0: DEFI_MAX_FRIENDS });
   return null;
 }
 

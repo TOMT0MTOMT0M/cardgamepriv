@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { payReferrer } from './referrals';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, mutation, query, type MutationCtx } from './_generated/server';
@@ -79,14 +80,14 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
   const pity = user.pityCount ?? 0;
   req.forceMythic = pityForces(pity);
   if (!isValidPackRequest(req)) {
-    throw new ConvexError('Ce booster n’existe pas.');
+    throw new ConvexError(fe('packs.1'));
   }
 
   // recharge accumulée depuis la dernière fois (1 booster / 5 min, 15 max), puis on dépense
   const now = Date.now();
   const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
   if (regen.balance <= 0) {
-    throw new ConvexError(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
+    throw new ConvexError(fe('packs.2', { p0: fmtCountdown((regen.nextAt ?? now) - now) }));
   }
 
   await ctx.db.patch(user._id, {
@@ -209,7 +210,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
   const pack = await ctx.db.get(packId);
 
   if (!pack || pack.userId !== user._id) {
-    throw new ConvexError('Booster introuvable.');
+    throw new ConvexError(fe('packs.3'));
   }
   if (pack.status === 'revealed') {
     return pack;

@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
@@ -94,9 +95,9 @@ export const setSubthemeCover = mutation({
     const covers = { ...(user.covers ?? {}) };
     if (cardId) {
       const e = catalogEntry(cardId);
-      if (!e) throw new ConvexError('Carte inconnue.');
+      if (!e) throw new ConvexError(fe('users.1'));
       const inv = await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', user._id).eq('cardId', cardId).eq('rarity', e.rarity)).unique();
-      if (!inv || inv.count < 1) throw new ConvexError(`Tu n’as pas ${e.name}.`);
+      if (!inv || inv.count < 1) throw new ConvexError(fe('users.2', { p0: e.name }));
       covers[subthemeId] = cardId;
     } else delete covers[subthemeId];
     await ctx.db.patch(user._id, { covers });
@@ -109,10 +110,10 @@ export const toggleWish = mutation({
   args: { sessionToken: v.string(), cardId: v.string() },
   handler: async (ctx, { sessionToken, cardId }) => {
     const user = await requireUser(ctx, sessionToken);
-    if (!catalogEntry(cardId)) throw new ConvexError('Carte inconnue.');
+    if (!catalogEntry(cardId)) throw new ConvexError(fe('users.3'));
     const list = user.wishlist ?? [];
     const next = list.includes(cardId) ? list.filter((id) => id !== cardId) : [...list, cardId];
-    if (next.length > WISHLIST_MAX) throw new ConvexError(`${WISHLIST_MAX} envies au maximum : fais un peu de tri.`);
+    if (next.length > WISHLIST_MAX) throw new ConvexError(fe('users.4', { p0: WISHLIST_MAX }));
     await ctx.db.patch(user._id, { wishlist: next });
     await setWish(ctx, user._id, cardId, next.includes(cardId)); // index inversé des envies (convex/wishes.ts)
     return next;
@@ -179,7 +180,7 @@ export const claimDailyBooster = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
     await requireUser(ctx, sessionToken);
-    throw new ConvexError(`Les boosters se rechargent tout seuls : 1 toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP}.`);
+    throw new ConvexError(fe('users.5', { p0: PACK_REGEN_MS / 60000, p1: PACK_CAP }));
   },
 });
 

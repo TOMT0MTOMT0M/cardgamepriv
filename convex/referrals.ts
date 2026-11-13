@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -33,7 +34,7 @@ export async function ensureCode(ctx: MutationCtx, u: Doc<'users'>): Promise<str
     await ctx.db.patch(u._id, { refCode: code });
     return code;
   }
-  throw new ConvexError('Impossible de créer ton lien, réessaie.');
+  throw new ConvexError(fe('referrals.1'));
 }
 
 /**

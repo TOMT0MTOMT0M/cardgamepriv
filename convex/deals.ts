@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -293,33 +294,33 @@ export const quick = mutation({
   args: { sessionToken: v.string(), toUserId: v.id('users'), get: v.optional(dealCard), give: v.optional(dealCard) },
   handler: async (ctx, { sessionToken, toUserId, get, give }) => {
     const me = await requireUser(ctx, sessionToken);
-    if (me._id === toUserId) throw new ConvexError('Impossible d’échanger avec soi-même.');
+    if (me._id === toUserId) throw new ConvexError(fe('deals.1'));
     const other = await ctx.db.get(toUserId);
-    if (!other || other.bannedAt) throw new ConvexError('Joueur introuvable.');
-    if (!get && !give) throw new ConvexError('Échange vide.');
+    if (!other || other.bannedAt) throw new ConvexError(fe('deals.2'));
+    if (!get && !give) throw new ConvexError(fe('deals.3'));
     for (const c of [get, give]) {
       if (!c) continue;
       const cat = catalogCard(c.cardId);
-      if (!cat || cat.baseRarity !== c.rarity) throw new ConvexError('Carte inconnue.');
-      if (c.rarity === 'secret') throw new ConvexError('Les cartes Bébou ne s’échangent pas en un toucher : compose l’échange toi-même.');
+      if (!cat || cat.baseRarity !== c.rarity) throw new ConvexError(fe('deals.4'));
+      if (c.rarity === 'secret') throw new ConvexError(fe('deals.5'));
     }
-    if (get && give && get.rarity !== give.rarity) throw new ConvexError('Échange en un toucher : deux cartes de même étoile.');
+    if (get && give && get.rarity !== give.rarity) throw new ConvexError(fe('deals.6'));
     const rarity = (get ?? give)!.rarity;
     if (!give) {
       give = (await autoPick(ctx, me, other, rarity, get!.cardId)) ?? undefined;
-      if (!give) throw new ConvexError(`Tu n’as pas de doublon ${starOf(rarity)} libre qui manque à ${other.displayName} : compose l’échange toi-même.`);
+      if (!give) throw new ConvexError(fe('deals.7', { p0: starOf(rarity), p1: other.displayName }));
     }
     if (!get) {
       get = (await autoPick(ctx, other, me, rarity, give.cardId)) ?? undefined;
-      if (!get) throw new ConvexError(`${other.displayName} n’a pas de doublon ${starOf(rarity)} libre qui te manque.`);
+      if (!get) throw new ConvexError(fe('deals.8', { p0: other.displayName, p1: starOf(rarity) }));
     }
     // ce que je donne : à moi, libre (pas engagé ailleurs) ; ce que je demande : chez lui
     const mineRow = await invRow(ctx, me._id, give);
     const busy = (await lockedCards(ctx, me._id)).get(key(give)) ?? 0;
-    if (!mineRow || mineRow.count - busy < 1) throw new ConvexError(`${cardName(give.cardId)} n’est plus libre chez toi.`);
-    if (!((await invRow(ctx, other._id, get))?.count)) throw new ConvexError(`${other.displayName} n’a pas (ou plus) ${cardName(get.cardId)}.`);
+    if (!mineRow || mineRow.count - busy < 1) throw new ConvexError(fe('deals.9', { p0: cardName(give.cardId) }));
+    if (!((await invRow(ctx, other._id, get))?.count)) throw new ConvexError(fe('deals.10', { p0: other.displayName, p1: cardName(get.cardId) }));
     const pending = await ctx.db.query('trades').withIndex('by_fromUser_status', (q) => q.eq('fromUserId', me._id).eq('status', 'pending')).collect();
-    if (pending.some((t) => t.toUserId === other._id && t.requested.some((it) => it.cardId === get!.cardId))) throw new ConvexError(`Tu as déjà demandé ${cardName(get.cardId)} à ${other.displayName}.`);
+    if (pending.some((t) => t.toUserId === other._id && t.requested.some((it) => it.cardId === get!.cardId))) throw new ConvexError(fe('deals.11', { p0: cardName(get.cardId), p1: other.displayName }));
     const id = await ctx.db.insert('trades', {
       fromUserId: me._id,
       toUserId: other._id,
@@ -338,8 +339,8 @@ export const quick = mutation({
 /** Quick trade en attente, côté demandeur ou destinataire. */
 async function quickTrade(ctx: MutationCtx | QueryCtx, tradeId: Id<'trades'>) {
   const t = await ctx.db.get(tradeId);
-  if (!t || t.status !== 'pending') throw new ConvexError('Échange introuvable ou déjà traité.');
-  if (!t.quick || t.offered.length !== 1 || t.requested.length !== 1) throw new ConvexError('Cet échange se modifie dans le composeur.');
+  if (!t || t.status !== 'pending') throw new ConvexError(fe('deals.12'));
+  if (!t.quick || t.offered.length !== 1 || t.requested.length !== 1) throw new ConvexError(fe('deals.13'));
   return t;
 }
 
@@ -349,13 +350,13 @@ export const swapGive = mutation({
   handler: async (ctx, { sessionToken, tradeId, cardId }) => {
     const me = await requireUser(ctx, sessionToken);
     const t = await quickTrade(ctx, tradeId);
-    if (t.fromUserId !== me._id) throw new ConvexError('Seul le demandeur peut changer sa contrepartie.');
+    if (t.fromUserId !== me._id) throw new ConvexError(fe('deals.14'));
     const r = t.offered[0].rarity;
-    if (catalogCard(cardId)?.baseRarity !== r) throw new ConvexError(`Il faut une carte ${starOf(r)}.`);
+    if (catalogCard(cardId)?.baseRarity !== r) throw new ConvexError(fe('deals.15', { p0: starOf(r) }));
     const c = { cardId, rarity: r };
     const row = await invRow(ctx, me._id, c);
     const busy = (await lockedCards(ctx, me._id, t._id)).get(key(c)) ?? 0;
-    if (!row || row.count - busy < 1) throw new ConvexError(`${cardName(cardId)} n’est pas libre chez toi.`);
+    if (!row || row.count - busy < 1) throw new ConvexError(fe('deals.16', { p0: cardName(cardId) }));
     await ctx.db.patch(t._id, { offered: [{ ...c, count: 1 }] });
   },
 });
@@ -384,17 +385,17 @@ export const acceptPick = mutation({
   handler: async (ctx, { sessionToken, tradeId, cardId }) => {
     const me = await requireUser(ctx, sessionToken);
     const t = await quickTrade(ctx, tradeId);
-    if (t.toUserId !== me._id) throw new ConvexError('Seul le destinataire peut répondre à cet échange.');
+    if (t.toUserId !== me._id) throw new ConvexError(fe('deals.17'));
     const from = await ctx.db.get(t.fromUserId);
-    if (!from) throw new ConvexError('Joueur introuvable.');
+    if (!from) throw new ConvexError(fe('deals.18'));
     const before = t.offered[0];
     const c = { cardId, rarity: before.rarity };
-    if (catalogCard(cardId)?.baseRarity !== c.rarity) throw new ConvexError(`Il faut une carte ${starOf(c.rarity)}.`);
+    if (catalogCard(cardId)?.baseRarity !== c.rarity) throw new ConvexError(fe('deals.19', { p0: starOf(c.rarity) }));
     if (cardId !== before.cardId) {
       // seulement un doublon PROPOSABLE du demandeur (il a dit oui d'avance à ceux-là, pas aux cartes qu'il garde)
       const row = await invRow(ctx, from._id, c);
       const locked = (await lockedCards(ctx, from._id, t._id)).get(key(c)) ?? 0;
-      if (!row || proposable(row, locked, guardOf(from)) < 1) throw new ConvexError(`${from.displayName} garde ${cardName(cardId)} : choisis-en une autre.`);
+      if (!row || proposable(row, locked, guardOf(from)) < 1) throw new ConvexError(fe('deals.20', { p0: from.displayName, p1: cardName(cardId) }));
     }
     const trade = { ...t, offered: [{ ...c, count: 1 }] };
     await ctx.db.patch(t._id, { offered: trade.offered });
@@ -410,10 +411,10 @@ export const setProtect = mutation({
   args: { sessionToken: v.string(), cardId: v.string(), on: v.boolean() },
   handler: async (ctx, { sessionToken, cardId, on }) => {
     const me = await requireUser(ctx, sessionToken);
-    if (!catalogCard(cardId)) throw new ConvexError('Carte inconnue.');
+    if (!catalogCard(cardId)) throw new ConvexError(fe('deals.21'));
     const list = (me.tradeProtected ?? []).filter((id) => id !== cardId);
     if (on) list.push(cardId);
-    if (list.length > PROTECT_MAX) throw new ConvexError(`${PROTECT_MAX} cartes protégées au maximum.`);
+    if (list.length > PROTECT_MAX) throw new ConvexError(fe('deals.22', { p0: PROTECT_MAX }));
     await ctx.db.patch(me._id, { tradeProtected: list });
     return list;
   },
