@@ -33,6 +33,8 @@ import { COIN_ICON, coinsHtml } from './wallet';
 import { catalogEntry } from '../../core/sets/themes';
 import '../games.css';
 import '../casino.css';
+import { createRouletteWheel } from './rouletteWheel';
+import { markRouletteSeen } from './rouletteReplay';
 import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
 import { mountGridArt } from './gridArt';
@@ -755,9 +757,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
 
   // ═════════════════════════════ Roulette
   function roulettePage() {
-    body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>La table · ${ROULETTE_NUMBERS} numéros</b><span class="gm-cd"></span></div><div class="gm-wheel r36"></div><div class="gm-cov" aria-hidden="true"><i></i></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>Le pot</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>Derniers tirages</b></div><div class="gm-past"></div></div>
+    body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>La table · ${ROULETTE_NUMBERS} numéros</b><span class="gm-cd"></span></div><div class="gm-rw"></div><div class="gm-wheel r36"></div><div class="gm-cov" aria-hidden="true"><i></i></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>Le pot</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>Derniers tirages</b></div><div class="gm-past"></div></div>
       <div class="gm-rules muted">Choisis 1, 2 ou 3 numéros par tirage. <b>1 numéro</b> = 10 cartes 4★ ou 300 pièces · <b>2 numéros</b> = 1 carte 5★ ou 600 pièces · <b>3 numéros</b> = 2 cartes 5★, 1 carte 6★ ou 900 pièces (les cartes 1★ à 3★ ne se misent pas). Deux tirages par jour, à ${ROULETTE_HOURS.map((x) => `${x} h`).join(' et ')} : le numéro exact remporte tout le pot. Sinon, tout reste pour le tirage suivant, et le site ajoute une carte 5★ ou 6★ à chaque tirage.</div>`;
     const wheel = body.querySelector<HTMLElement>('.gm-wheel')!;
+    // (13/11, retours Hugo) la vraie roue, au-dessus de la table des numéros : elle tourne à chaque tirage
+    const rw = createRouletteWheel(ROULETTE_NUMBERS);
+    body.querySelector('.gm-rw')!.append(rw.el);
     const sel = new Set<number>();
     let stakeCards: StakeItem[] = [];
     let pay = 0; // façon de payer choisie (index dans la grille du nombre de numéros)
@@ -930,6 +935,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         drawBet();
         tick();
         lastPast = r.past[0]?.id ?? '';
+        // tirage vu ici (en direct ou déjà passé) : pas de rejeu à la prochaine connexion (rouletteReplay.ts)
+        if (lastPast) markRouletteSeen(lastPast);
+        if (prevPast === null) rw.show(r.past[0]?.result?.number ?? null);
         if (prevPast !== null && lastPast !== prevPast && r.past[0]?.result) void spin(r.past[0].result.number, r.past[0].result.winnerName);
       }),
     );
@@ -948,6 +956,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const T = reducedMotion() ? 0 : 5600;
       wheel.classList.add('spinning');
       cells.forEach((c) => c.classList.remove('ball', 'landed'));
+      void rw.spinTo(number, T);
       await new Promise<void>((done) => {
         const t0 = performance.now();
         let at = -1;

@@ -1178,6 +1178,17 @@ async function boot() {
   const artSoon = (tries = 0) =>
     setTimeout(() => (backend.state.collection.length ? void import('./offline').then((m) => m.prefetchCollectionArt(backend, () => shop.busy())) : tries < 6 && artSoon(tries + 1)), 20000);
   artSoon();
+  // (13/11, retours Hugo) le dernier tirage de la roulette, rejoué une fois à la connexion, puis « Miser »
+  setTimeout(
+    () =>
+      void import('./views/rouletteReplay').then((m) =>
+        m.startRouletteReplay(backend, shell, {
+          route: () => currentRoute,
+          busy: () => shop.busy() || !!document.querySelector('.viewing, .ow-veil, .cp-veil.on, .mk-sheet:not([hidden]), .mp-veil, .ob-modal, .rr-veil'),
+        }),
+      ),
+    7000,
+  );
 
   // crochet de test (Playwright)
   (window as unknown as { __jeu: unknown }).__jeu = {

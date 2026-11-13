@@ -497,6 +497,8 @@ export default defineSchema({
     ),
     result: v.optional(v.object({ number: v.number(), winnerId: v.optional(v.id('users')), winnerName: v.optional(v.string()), potValue: v.number() })),
     drawnAt: v.optional(v.number()),
+    /** (13/11) notification « tirage dans 10 min » déjà envoyée pour cette manche */
+    warned: v.optional(v.boolean()),
   })
     .index('by_day', ['day'])
     .index('by_status', ['status', 'day']),
