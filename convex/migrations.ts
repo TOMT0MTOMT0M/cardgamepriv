@@ -33,6 +33,11 @@ const BATCH = 200;
  *    étoiles et les cartes du jour de son tirage et les verse à l'inventaire à son ouverture : c'est le seul chemin
  *    par lequel une ligne périmée peut arriver après un passage complet, et c'est pour lui que ces migrations étaient
  *    relancées. Les boosters tirés ensuite le sont avec le catalogue en place.
+ *  - ET deux passages complets de suite ont déjà eu lieu avec cette même entrée : le premier corrige l'inventaire, le
+ *    second rattrape ce qui était en jeu au moment du changement et n'est revenu qu'après (mises d'un duel, d'une
+ *    battle royale ou de la roulette rendues avec l'étoile d'avant, vente du marché d'une carte supprimée, échange
+ *    accepté pendant le passage) ;
+ *  - ET le dernier passage complet a moins de 7 jours (filet).
  * `force: true` : passage complet quoi qu'il arrive.
  */
 const fnv = (parts: Iterable<string>): string => {
@@ -51,8 +56,10 @@ let purgeSig: string | null = null;
 const purgeStamp = () => (purgeSig ??= fnv(PURGED_CARD_IDS));
 export async function stampFresh(ctx: MutationCtx, key: string, sig: string): Promise<boolean> {
   const st = await ctx.db.query('migStamps').withIndex('by_key', (q) => q.eq('key', key)).unique();
-  return !!st && st.sig === sig && st.clean;
+  return !!st && st.sig === sig && st.clean && (st.runs ?? 1) >= STAMP_RUNS && Date.now() - st.at < STAMP_MAX_AGE_MS;
 }
+const STAMP_RUNS = 2;
+const STAMP_MAX_AGE_MS = 7 * 24 * 3600_000;
 /** Les boosters encore scellés (un par joueur au plus, en pratique) sont-ils tous conformes à `ok` ? */
 async function sealedAll(ctx: MutationCtx, ok: (c: { cardId: string; rarity: RarityId }) => boolean): Promise<boolean> {
   const sealed = await ctx.db.query('packOpens').withIndex('by_status', (q) => q.eq('status', 'sealed')).take(301);
@@ -60,8 +67,10 @@ async function sealedAll(ctx: MutationCtx, ok: (c: { cardId: string; rarity: Rar
 }
 async function stampSet(ctx: MutationCtx, key: string, sig: string, at: number, clean: boolean) {
   const st = await ctx.db.query('migStamps').withIndex('by_key', (q) => q.eq('key', key)).unique();
-  if (st) await ctx.db.patch(st._id, { sig, at, clean });
-  else await ctx.db.insert('migStamps', { key, sig, at, clean });
+  // passages complets de suite avec la même entrée (repart de 1 quand elle change)
+  const runs = st && st.sig === sig ? (st.runs ?? 1) + 1 : 1;
+  if (st) await ctx.db.patch(st._id, { sig, at, clean, runs });
+  else await ctx.db.insert('migStamps', { key, sig, at, clean, runs });
 }
 
 const truth = (cardId: string, r: RarityId): RarityId => catalogCard(cardId)?.baseRarity ?? r;

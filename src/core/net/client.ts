@@ -282,7 +282,12 @@ class GameNetClient {
   }
 
   private saveStoredToken(token: string | null) {
-    if (token !== this.sessionToken) this.tokenEpoch++;
+    if (token !== this.sessionToken) {
+      this.tokenEpoch++;
+      // (E1-08) plus rien de l'économie de l'ancien compte pour un abonné qui arriverait avant la réponse du nouveau
+      this.ecoRaw = null;
+      this.ecoKnown = false;
+    }
     this.sessionToken = token;
     try {
       if (token) localStorage.setItem(LS_SESSION_TOKEN, token);
@@ -356,11 +361,25 @@ class GameNetClient {
       // pleine, mais rien de ce qu'on affiche → état tenu à jour sans réveiller tout le jeu, audit PERF2-08)
       if (first || expired || this.userSig !== before) this.emit();
     };
-    const onMissions = (m: (typeof api.missions.mine)['_returnType']) => {
+    // (la requête fusionnée répond dès que l'une des trois parties change : chaque partie n'est publiée que si ELLE a
+    // changé, comme quand chacune avait son abonnement — sinon tout le jeu se réveillait pour rien)
+    let missionsSig: string | null = null;
+    const onMissions = (m: (typeof api.missions.mine)['_returnType'], merged = false) => {
+      if (merged) {
+        const sig = JSON.stringify(m ?? null);
+        if (sig === missionsSig) return;
+        missionsSig = sig;
+      }
       this.state.missions = (m as NetState['missions']) ?? null;
       this.emit();
     };
-    const onEco = (e: EcoRaw | null | undefined) => {
+    let ecoSig: string | null = null;
+    const onEco = (e: EcoRaw | null | undefined, merged = false) => {
+      if (merged) {
+        const sig = JSON.stringify(e ?? null);
+        if (this.ecoKnown && sig === ecoSig) return;
+        ecoSig = sig;
+      }
       this.ecoRaw = e ?? null;
       this.ecoKnown = true;
       this.ecoCbs.forEach((cb) => cb(this.ecoRaw));
@@ -379,8 +398,8 @@ class GameNetClient {
         (x) => {
           if (!live()) return;
           onMe(x?.me ?? null);
-          if (hasToken) onMissions(x?.missions ?? null);
-          onEco(x?.eco ?? null);
+          onMissions(x?.missions ?? null, true);
+          onEco(x?.eco ?? null, true);
         },
         () => {
           u();

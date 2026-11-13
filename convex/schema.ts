@@ -236,7 +236,7 @@ export default defineSchema({
    * leur entrée (étoiles du catalogue, liste des cartes supprimées), la date du dernier passage complet, et si les
    * boosters scellés à ce moment-là étaient tous à jour (`clean`).
    */
-  migStamps: defineTable({ key: v.string(), sig: v.string(), at: v.number(), clean: v.boolean() }).index('by_key', ['key']),
+  migStamps: defineTable({ key: v.string(), sig: v.string(), at: v.number(), clean: v.boolean(), runs: v.optional(v.number()) }).index('by_key', ['key']),
 
   /**
    * Player card collection (powers the 019-binder BatchedMesh & trading).
