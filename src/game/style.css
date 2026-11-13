@@ -425,7 +425,7 @@ body.card-open .views { pointer-events: none; }
 .search { flex: 1; min-width: 140px; max-width: 260px; padding: 8px 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); outline: none; }
 .search:focus { border-color: var(--line-2); }
 /* (retours Hugo 10/11) « encore un peu fouillis » : moins de cartes par rangée, cartes plus grandes (avant 112 / 96 px) */
-.collection .grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
+.collection .grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; } /* (13/11, retours Hugo) 5 colonnes sur ordinateur : un peu plus grand, les 2 premières rangées remplissent l’écran */
 .grid-more { grid-column: 1 / -1; height: 1px; }
 .collection .grid.swap { animation: grid-in 0.32s var(--ease-entree); }
 @keyframes grid-in { from { opacity: 0.25; transform: translateY(6px); } }

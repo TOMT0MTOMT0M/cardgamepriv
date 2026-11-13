@@ -824,6 +824,9 @@ export class Sfx {
       const from = e.target instanceof Element ? e.target : null;
       const el = from?.closest<HTMLElement>(SEL);
       if (!el || (el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return;
+      // (13/11, retours Hugo) toucher une CARTE (gros tirages, grilles, fiches) ne fait pas de « toc » : comme en
+      // Collection ; ses boutons (♥, retirer…) gardent le leur
+      if (el.matches('.tile, .bp-card, [data-card]')) return;
       let kind = el.closest<HTMLElement>('[data-sfx]')?.dataset.sfx as UiKind | 'none' | undefined;
       if (kind === 'none') return;
       if (!kind) {

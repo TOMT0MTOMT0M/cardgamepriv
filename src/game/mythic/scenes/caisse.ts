@@ -6,6 +6,7 @@
 import { catalogEntry, subthemeById, thumbPath, THEMES, type CatalogEntry } from '../../../core/sets/themes';
 import { siteUrl } from '../../../core/siteRoot';
 import { rarity } from '../../../core/rarity';
+import { BASE_H, BASE_W } from '../../../core/art/subjects';
 import { seeded, type MythicCard, type SceneCtx } from '../kit';
 
 const N = 30;
@@ -48,14 +49,13 @@ export default function caisse(k: SceneCtx) {
   k.pin(band, -50, 0);
   for (let i = 0; i < N; i++) {
     const row = el('div', '', `position:relative;height:${TH}px;border-radius:${u}px;background:linear-gradient(90deg,#17181d,#0e0e12);overflow:hidden;display:flex;align-items:center;gap:${u * 2}px;padding:0 ${u * 2}px;`, band);
-    if (i === TARGET) {
-      row.style.visibility = 'hidden'; // la vraie carte prendra la place
-      continue;
-    }
-    const e = rows[i];
-    const rr = rarity(e?.rarity ?? 'common');
+    // (13/11, retours Hugo) la case de la carte est une case comme les autres, marquée MYTHIQUE : la vraie carte (la
+    // doublure) se pose à la place de la miniature
+    const e = i === TARGET ? undefined : rows[i];
+    const rr = rarity(i === TARGET ? 'mythic' : e?.rarity ?? 'common');
     el('div', '', `position:absolute;left:0;top:0;bottom:0;width:${u * 0.8}px;background:${rr.hex};box-shadow:0 0 ${u * 2}px ${rr.hex};`, row);
-    if (e) {
+    if (i === TARGET) el('div', '', `height:82%;aspect-ratio:1;flex:none;`, row);
+    else if (e) {
       const img = el('img', '', `height:82%;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 4px 8px #000);`, row);
       img.decoding = 'async';
       img.onerror = () => img.remove();
@@ -86,9 +86,11 @@ export default function caisse(k: SceneCtx) {
     }
     lastIdx = idx;
   });
-  // la carte voyage avec la bande (même y que la case cible), puis reste au centre
+  // la carte voyage avec la bande, dans sa case (à la place de la miniature), puis vient au centre
   const c = actor();
-  tl.set(c, { opacity: 1, scale: 0.56 }, 0);
+  const sIn = (TH * 0.86) / ((cw * BASE_H) / BASE_W);
+  const xIn = -cw * 0.95 + u * 2 + TH * 0.41;
+  tl.set(c, { opacity: 1, scale: sIn, x: xIn }, 0);
   k.loop((t) => {
     if (t > 2.7) return;
     const y = Number(k.gsap.getProperty(band, 'y')) + TARGET * step + TH / 2 - h / 2;
@@ -100,7 +102,7 @@ export default function caisse(k: SceneCtx) {
     k.haptic([20, 30]);
   });
   tl.to(band, { opacity: 0, duration: 0.3 }, 2.7);
-  tl.to(c, { y: 0, scale: 1, duration: 0.5, ease: 'power3.inOut' }, 2.72);
+  tl.to(c, { x: 0, y: 0, scale: 1, duration: 0.5, ease: 'power3.inOut' }, 2.72);
   k.glint(3.1, 0.45);
   tl.to({}, { duration: 0.01 }, 3.6);
 }
