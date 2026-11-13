@@ -1,4 +1,5 @@
 import { DataTexture, LinearFilter, LinearMipmapLinearFilter, NoColorSpace, RGBAFormat, RepeatWrapping, UnsignedByteType } from 'three/webgpu';
+import { POKE_TEX_SIZES, pokeTexData, type PokeTexData, type PokeTexName } from './texData';
 
 /**
  * Textures « matière » des reflets Pokébox, GÉNÉRÉES (on ne reprend pas les fichiers du site) mais calibrées sur leurs
@@ -27,134 +28,73 @@ export interface PokeTextures {
   list: DataTexture[];
 }
 
-function rng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const c01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
-function hue2rgb(h: number, s: number, v: number): [number, number, number] {
-  const f = (n: number) => {
-    const k = (n + h * 6) % 6;
-    return v - v * s * Math.max(0, Math.min(k, 4 - k, 1));
-  };
-  return [f(5), f(3), f(1)];
-}
-function make(n: number, fill: (d: Float32Array) => void): DataTexture {
-  const f = new Float32Array(n * n * 4);
-  fill(f);
-  const u = new Uint8Array(n * n * 4);
-  for (let i = 0; i < u.length; i++) u[i] = Math.round(c01(f[i]) * 255);
-  for (let i = 3; i < u.length; i += 4) u[i] = 255;
-  const t = new DataTexture(u, n, n, RGBAFormat, UnsignedByteType);
+function wrap(n: number, data: Uint8Array, name: PokeTexName): DataTexture {
+  const t = new DataTexture(data, n, n, RGBAFormat, UnsignedByteType);
   t.wrapS = t.wrapT = RepeatWrapping;
   t.magFilter = LinearFilter;
-  t.minFilter = LinearMipmapLinearFilter;
-  t.generateMipmaps = true;
+  // `value` : bruit blanc lu tel quel, sans mipmaps
+  t.minFilter = name === 'value' ? LinearFilter : LinearMipmapLinearFilter;
+  t.generateMipmaps = name !== 'value';
   t.colorSpace = NoColorSpace;
   t.needsUpdate = true;
   return t;
 }
-/** Tampon de taille n (périodique) : dépose une étoile / un point. */
-function splat(d: Float32Array, n: number, x: number, y: number, rgb: [number, number, number], r: number, star: boolean) {
-  const R = Math.ceil(r * (star ? 3 : 1.5));
-  for (let j = -R; j <= R; j++)
-    for (let i = -R; i <= R; i++) {
-      const ax = Math.abs(i + 0.5 - (x % 1)) / r, ay = Math.abs(j + 0.5 - (y % 1)) / r;
-      const k = star ? Math.max(0, 1 - (Math.pow(ax, 0.55) + Math.pow(ay, 0.55)) * 0.9) : Math.exp(-(ax * ax + ay * ay) * 2);
-      if (k <= 0.002) continue;
-      const px = (((Math.floor(x) + i) % n) + n) % n, py = (((Math.floor(y) + j) % n) + n) % n;
-      const o = (py * n + px) * 4;
-      for (let c = 0; c < 3; c++) d[o + c] = Math.max(d[o + c], rgb[c] * k);
-    }
+const NAMES = Object.keys(POKE_TEX_SIZES) as PokeTexName[];
+/** attente maximale du worker avant de calculer sur le fil principal */
+const WORKER_PATIENCE_MS = 5000;
+function pack(of: (name: PokeTexName) => DataTexture): PokeTextures {
+  const t = Object.fromEntries(NAMES.map((k) => [k, of(k)])) as Record<PokeTexName, DataTexture>;
+  return { ...t, list: NAMES.map((k) => t[k]) };
 }
 
+/** Textures générées tout de suite, sur le fil appelant (labo). */
 export function createPokeTextures(): PokeTextures {
-  // paillettes : étoiles à 4 branches (canal R = éclat), couleurs pour la lecture RGB
-  const glitter = make(512, (d) => {
-    const r = rng(11);
-    for (let k = 0; k < 900; k++) {
-      const b = 0.35 + 0.65 * r() ** 0.6;
-      const [cr, cg, cb] = hue2rgb(r(), 0.35, b);
-      splat(d, 512, r() * 512, r() * 512, [Math.max(cr, b * 0.8), cg, cb], 1 + r() * 2.2, true);
+  const d = pokeTexData();
+  return pack((k) => wrap(d[k].n, d[k].data, k));
+}
+
+/**
+ * (audit 12/11, S06) Mêmes textures, PIXELS CALCULÉS DANS UN WORKER : la génération (11 textures, ≈ 1,3 million de
+ * pixels passés en flottants) tournait sur le fil principal pendant le montage de la scène d'ouverture — 237 ms sur
+ * PC au profil du démarrage, dans la tâche la plus longue du chargement sur téléphone. Les textures existent tout de
+ * suite (noires), leurs pixels arrivent du worker moins d'une seconde après, bien avant la première carte à reflet.
+ * Pas de worker, ou worker en échec : calcul sur le fil principal, comme avant.
+ */
+export function createPokeTexturesDeferred(): PokeTextures {
+  if (typeof Worker === 'undefined') return createPokeTextures();
+  const out = pack((k) => wrap(POKE_TEX_SIZES[k], new Uint8Array(POKE_TEX_SIZES[k] * POKE_TEX_SIZES[k] * 4), k));
+  let filled = false;
+  const fill = (d: Record<PokeTexName, PokeTexData>) => {
+    if (filled) return;
+    filled = true;
+    for (const k of NAMES) {
+      (out[k].image.data as Uint8Array).set(d[k].data);
+      out[k].needsUpdate = true;
     }
-  });
-  // moucheté sombre : la plupart des pixels gris foncé, quelques points colorés vifs (iri-7/8/9)
-  const speckle = (seed: number, tint: number) =>
-    make(256, (d) => {
-      const r = rng(seed);
-      for (let i = 0; i < 256 * 256; i++) {
-        const v = 0.08 + 0.32 * r() ** 1.6;
-        const g = r();
-        const lit = g > 0.93 ? 0.5 + 0.5 * r() : 0;
-        const [cr, cg, cb] = hue2rgb((r() + tint) % 1, 0.75, lit);
-        d[i * 4] = v + cr;
-        d[i * 4 + 1] = v + cg;
-        d[i * 4 + 2] = v + cb + 0.02;
-      }
-    });
-  // moucheté clair pastel (iri-1/2)
-  const pastel = (seed: number) =>
-    make(256, (d) => {
-      const r = rng(seed);
-      for (let i = 0; i < 256 * 256; i++) {
-        const v = 0.86 + (r() - 0.5) * 0.22;
-        const [cr, cg, cb] = hue2rgb(r(), 0.18, 1);
-        d[i * 4] = v * (0.88 + cr * 0.12) - 0.04;
-        d[i * 4 + 1] = v * (0.9 + cg * 0.12) - 0.01;
-        d[i * 4 + 2] = v * (0.94 + cb * 0.1) + 0.04;
-      }
-    });
-  // bruit gris : blanc lissé (2 octaves) centré 0,48
-  const noise = make(256, (d) => {
-    const r = rng(23);
-    const w = new Float32Array(256 * 256).map(() => r());
-    for (let y = 0; y < 256; y++)
-      for (let x = 0; x < 256; x++) {
-        let s = 0;
-        for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) s += w[((y + j + 256) % 256) * 256 + ((x + i + 256) % 256)] * (i || j ? 1 : 2);
-        const v = 0.48 + (s / 10 - 0.5) * 1.7 + (w[y * 256 + x] - 0.5) * 0.25;
-        d.fill(v, (y * 256 + x) * 4, (y * 256 + x) * 4 + 3);
-      }
-  });
-  const grain = make(256, (d) => {
-    const r = rng(31);
-    for (let i = 0; i < 256 * 256; i++) d.fill(0.28 * r() ** 3.2, i * 4, i * 4 + 3);
-  });
-  const value = make(256, (d) => {
-    const r = rng(41);
-    for (let i = 0; i < 256 * 256; i++) d.fill(r(), i * 4, i * 4 + 3);
-  });
-  value.minFilter = LinearFilter;
-  value.generateMipmaps = false;
-  // confettis : traits courts et points saturés épars sur noir (double rare)
-  const confetti = (seed: number) =>
-    make(512, (d) => {
-      const r = rng(seed);
-      for (let i = 0; i < 512 * 512; i++) d.fill(0.035 + r() * 0.03, i * 4, i * 4 + 3);
-      for (let k = 0; k < 1400; k++) {
-        const x = r() * 512, y = r() * 512, a = r() * Math.PI, len = 2 + r() * 7;
-        const col = hue2rgb(r(), 0.8, 0.7 + 0.3 * r());
-        for (let s = 0; s <= len; s++) splat(d, 512, x + Math.cos(a) * s, y + Math.sin(a) * s, col, 0.9, false);
-      }
-    });
-  const t = {
-    glitter,
-    iri7: speckle(71, 0.0),
-    iri8: speckle(83, 0.33),
-    iri9: speckle(97, 0.66),
-    iri1: pastel(101),
-    iri2: pastel(113),
-    noise,
-    grain,
-    value,
-    dank1: confetti(127),
-    dank2: confetti(131),
   };
-  return { ...t, list: Object.values(t) };
+  let w: Worker | null = null;
+  let guard = 0;
+  const stop = () => {
+    clearTimeout(guard);
+    w?.terminate();
+    w = null;
+  };
+  const local = () => {
+    stop();
+    if (!filled) fill(pokeTexData());
+  };
+  try {
+    w = new Worker(new URL('./tex.worker.ts', import.meta.url), { type: 'module' });
+    w.onmessage = (e: MessageEvent<Record<PokeTexName, PokeTexData>>) => {
+      fill(e.data);
+      stop();
+    };
+    w.onerror = w.onmessageerror = local;
+    w.postMessage(0);
+    // worker muet (script qui ne finit pas de charger) : pas de textures noires, on calcule ici
+    guard = window.setTimeout(local, WORKER_PATIENCE_MS);
+  } catch {
+    local();
+  }
+  return out;
 }

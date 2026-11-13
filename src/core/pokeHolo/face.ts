@@ -6,7 +6,7 @@ import type { CardLayers } from '../cardMaterial';
 import { CARD } from '../cardModel';
 import type { N } from '../tsl';
 import { POKE_BY_ID } from './fx';
-import { createPokeTextures, type PokeTextures } from './tex';
+import { createPokeTexturesDeferred, type PokeTextures } from './tex';
 
 /**
  * REFLETS DES CARTES DU JEU (visio Tom et Hugo du 07/11, labo 044 « Reflets Pokébox ») :
@@ -29,7 +29,7 @@ export const pokeFx = { k: uniform(1) };
 
 let T: PokeTextures | null = null;
 /** Textures de matière partagées par toutes les faces (créées une fois, jamais libérées : quelques Mo au total). */
-const tex = () => (T ??= createPokeTextures());
+const tex = () => (T ??= createPokeTexturesDeferred());
 
 const toS = (c: N): N => mix(c.mul(12.92), pow(max(c, 0.0031308), 1 / 2.4).mul(1.055).sub(0.055), step(0.0031308, c));
 const toL = (c: N): N => mix(c.div(12.92), pow(c.add(0.055).div(1.055), 2.4), step(0.04045, c));
