@@ -822,9 +822,12 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     allShown = ALL_STEP;
     renderAllCards();
   });
+  // (audit 12/11, S14 / A4-06) recherche temporisée (tri complet de la collection à chaque frappe sinon)
+  let allQT = 0;
   allQ.addEventListener('input', () => {
     allShown = ALL_STEP;
-    renderAllCards();
+    clearTimeout(allQT);
+    allQT = window.setTimeout(renderAllCards, 150);
   });
   q('.pf-all-more').addEventListener('click', () => {
     allShown += ALL_STEP * 2;

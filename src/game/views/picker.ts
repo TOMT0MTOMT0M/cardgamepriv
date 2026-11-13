@@ -48,9 +48,12 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
       rbar.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b));
       drawGrid();
     });
+    // (audit 12/11, S14 / A4-05) saisie temporisée : chaque frappe refiltrait, retriait et recréait jusqu'à 180 tuiles
+    let qT = 0;
     box.querySelector<HTMLInputElement>('.pk-q')!.addEventListener('input', (e) => {
       q = fold((e.target as HTMLInputElement).value.trim());
-      drawGrid();
+      clearTimeout(qT);
+      qT = window.setTimeout(() => box.isConnected && drawGrid(), 150); // (fenêtre refermée entre-temps : rien)
     });
 
     function drawGrid() {

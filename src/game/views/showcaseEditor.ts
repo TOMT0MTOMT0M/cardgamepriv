@@ -239,7 +239,8 @@ export function createShowcaseEditor(o: Opts): ShowcaseEditor {
   function renderPicker() {
     const qq = fold(pickSearch.value.trim());
     pickStarsEl.querySelectorAll<HTMLElement>('.chip').forEach((b) => (b.classList.toggle('on', b.dataset.r === pickStar), b.setAttribute('aria-pressed', String(b.dataset.r === pickStar))));
-    const all = [...o.owned()].sort(o.sort).filter((c) => (!pickStar || c.rarity === pickStar) && (!qq || fold(catalogEntry(c.cardId)?.name ?? '').includes(qq)));
+    // (audit 12/11, S14 / A4-15) filtrer d'abord, trier ensuite (même résultat : le tri est stable)
+    const all = [...o.owned()].filter((c) => (!pickStar || c.rarity === pickStar) && (!qq || fold(catalogEntry(c.cardId)?.name ?? '').includes(qq))).sort(o.sort);
     const list = all.slice(0, PICK_CAP);
     // liste tronquée : on le dit (audit UX3-20)
     pickMore.hidden = all.length <= PICK_CAP;

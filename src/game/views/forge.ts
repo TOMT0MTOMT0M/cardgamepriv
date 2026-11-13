@@ -76,10 +76,12 @@ export function createForge(backend: GameBackend, shell: Shell) {
     }
   };
 
+  let tiles = new Map<string, { t: HTMLElement; sig: string }>();
   function render() {
     const st = backend.state;
     if (st.mode === 'online' && (!st.ready || !st.user)) {
       el.innerHTML = '<div class="gm-panel gm-forge"><b>Connecte-toi pour brûler tes doublons.</b></div>';
+      tiles = new Map();
       return;
     }
     const dups = forgeDups(st);
@@ -88,7 +90,8 @@ export function createForge(backend: GameBackend, shell: Shell) {
       if (!d) sel.delete(k);
       else v.count = Math.min(v.count, d.spare);
     }
-    const lockedN = st.collection.reduce((a, c) => a + (burnable(c.rarity) ? Math.min(lockedCards(st).get(cardKey(c)) ?? 0, Math.max(0, c.count - 1)) : 0), 0);
+    const lockedMap = lockedCards(st); // (audit 12/11, A4-01) une fois par rendu, plus une fois par carte de la collection
+    const lockedN = st.collection.reduce((a, c) => a + (burnable(c.rarity) ? Math.min(lockedMap.get(cardKey(c)) ?? 0, Math.max(0, c.count - 1)) : 0), 0);
     const total = cardsValue([...sel.values()]);
     const n = [...sel.values()].reduce((a, c) => a + c.count, 0);
     const rars = (['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as RarityId[]).filter((r) => dups.some((d) => d.rarity === r));
@@ -110,12 +113,28 @@ export function createForge(backend: GameBackend, shell: Shell) {
       <div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')} (${cardsSummary([...sel.values()])}) → ${coinsHtml(total)}` : '<span class="muted">Touche des doublons pour les mettre au feu (touche encore pour en ajouter un exemplaire).</span>'}</span><button class="btn-primary gm-burn"${n && !isPending('forge') ? '' : ' disabled'}>Brûler${n ? ` · +${fmtCoins(total)}` : ''}</button></div></div>`;
     const grid = el.querySelector<HTMLElement>('.gm-fgrid')!;
     if (!dups.length) grid.innerHTML = `<div class="muted">Aucun doublon à brûler pour l’instant${lockedN ? ' (tes autres doublons sont engagés 🔒)' : ''}. <a href="#/">Ouvre des boosters →</a></div>`;
+    // (audit 12/11, S14 / A4-01) les tuiles sont GARDÉES d'un rendu à l'autre : un toucher ne recrée plus jusqu'à 400
+    // tuiles (et leurs images), il met à jour l'étiquette de celles qui existent déjà. Refaite si la carte a changé.
+    const kept = tiles;
+    tiles = new Map();
     for (const d of dups.slice(0, 400)) {
       const k = cardKey(d);
       const inSel = sel.get(k)?.count ?? 0;
-      // ×N = exemplaires brûlables (on en garde toujours un ; les engagés ne comptent pas)
-      const t = cardTile(d.cardId, d.rarity, { mini: true, count: d.spare, label: inSel ? `🔥 ${inSel}/${d.spare}` : `+${CARD_VALUE[d.rarity]}` });
+      const label = inSel ? `🔥 ${inSel}/${d.spare}` : `+${CARD_VALUE[d.rarity]}`;
       const why = [...d.protect, ...(d.locked ? [`${d.locked} engagé${d.locked > 1 ? 's' : ''}`] : [])];
+      const sig = `${d.spare}|${why.join(',')}`;
+      const old = kept.get(k);
+      const badge = old?.sig === sig ? old.t.querySelector<HTMLElement>(':scope > .badge') : null;
+      if (old && badge) {
+        if (badge.textContent !== label) badge.textContent = label;
+        old.t.classList.toggle('burning', inSel > 0);
+        tiles.set(k, old);
+        grid.append(old.t);
+        continue;
+      }
+      // ×N = exemplaires brûlables (on en garde toujours un ; les engagés ne comptent pas)
+      const t = cardTile(d.cardId, d.rarity, { mini: true, count: d.spare, label });
+      tiles.set(k, { t, sig });
       t.title = `${cardName(d.cardId)} · ${plural(d.spare, 'exemplaire brûlable', 'exemplaires brûlables')}${why.length ? ` · ${why.join(', ')}` : ''}`;
       const icons = protectIcons(d.protect) + (d.locked ? '🔒' : '');
       if (icons) t.insertAdjacentHTML('beforeend', `<span class="ct-prot gm-prot" aria-label="${esc(why.join(', '))}">${icons}</span>`);

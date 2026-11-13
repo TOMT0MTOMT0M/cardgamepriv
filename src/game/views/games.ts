@@ -186,14 +186,28 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       }
     })();
     // filet qui suit la souris (ordinateur seulement)
-    body.querySelectorAll<HTMLElement>('.gm-game').forEach((g) =>
+    // (audit 12/11, S14 / A4-13) position de la tuile mesurée à l'entrée de la souris (et au défilement), plus à
+    // chaque mouvement : lire après avoir écrit forçait une mise en page par mouvement
+    body.querySelectorAll<HTMLElement>('.gm-game').forEach((g) => {
+      let r: DOMRect | null = null;
+      const drop = () => (r = null); // la page a défilé ou changé de taille : à remesurer au prochain mouvement
+      g.addEventListener('pointerenter', () => {
+        r = g.getBoundingClientRect();
+        window.addEventListener('scroll', drop, { capture: true, passive: true });
+        window.addEventListener('resize', drop, { passive: true });
+      });
+      g.addEventListener('pointerleave', () => {
+        r = null;
+        window.removeEventListener('scroll', drop, { capture: true });
+        window.removeEventListener('resize', drop);
+      });
       g.addEventListener('pointermove', (e) => {
         if (e.pointerType !== 'mouse') return;
-        const r = g.getBoundingClientRect();
+        r ??= g.getBoundingClientRect();
         g.style.setProperty('--mx', `${e.clientX - r.left}px`);
         g.style.setProperty('--my', `${e.clientY - r.top}px`);
-      }),
-    );
+      });
+    });
     const live = (k: string, t: string) => {
       const e = body.querySelector<HTMLElement>(`[data-live="${k}"]`);
       if (e) e.innerHTML = t;
@@ -869,7 +883,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     }
     const tick = () => {
       const cd = body.querySelector<HTMLElement>('.gm-cd');
-      if (cd && cur) cd.innerHTML = `<span>Tirage dans</span><b>${clock(cur.nextDrawAt - Date.now())}</b>`;
+      if (!cd || !cur) return;
+      // (audit 12/11, S14 / T-08) seul le chiffre change chaque seconde : on écrit son texte, sans recréer les nœuds
+      const b = cd.querySelector('b');
+      const txt = clock(cur.nextDrawAt - Date.now());
+      if (b && cd.firstElementChild?.textContent === 'Tirage dans') b.textContent = txt;
+      else cd.innerHTML = `<span>Tirage dans</span><b>${txt}</b>`;
     };
     const timer = window.setInterval(tick, 1000);
     unsubs.push(() => clearInterval(timer));
