@@ -18,6 +18,8 @@ import { en as p_game_views_contracts } from './en/game.views.contracts';
 import { en as p_game_views_succes } from './en/game.views.succes';
 import { en as p_game_views_guide } from './en/game.views.guide';
 import { en as p_game_views_suggestions } from './en/game.views.suggestions';
+import { en as p_game_views_games } from './en/game.views.games';
+import { en as p_game_views_board } from './en/game.views.board';
 // <imports>
 
 export const en: Dict = {
@@ -40,6 +42,8 @@ export const en: Dict = {
   ...p_game_views_succes,
   ...p_game_views_guide,
   ...p_game_views_suggestions,
+  ...p_game_views_games,
+  ...p_game_views_board,
   // <parts>
 
   // ───── language (header switch) ─────

@@ -21,6 +21,8 @@ import type { fr as p_game_views_contracts } from './fr/game.views.contracts';
 import type { fr as p_game_views_succes } from './fr/game.views.succes';
 import type { fr as p_game_views_guide } from './fr/game.views.guide';
 import type { fr as p_game_views_suggestions } from './fr/game.views.suggestions';
+import type { fr as p_game_views_games } from './fr/game.views.games';
+import type { fr as p_game_views_board } from './fr/game.views.board';
 // <imports>
 
 export type AllFr = typeof core &
@@ -42,5 +44,7 @@ export type AllFr = typeof core &
   typeof p_game_views_succes &
   typeof p_game_views_guide &
   typeof p_game_views_suggestions &
+  typeof p_game_views_games &
+  typeof p_game_views_board &
   // <parts>
   Record<never, never>;
