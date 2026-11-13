@@ -16,6 +16,11 @@ import type { fr as p_game_chat } from './fr/game.chat';
 import type { fr as p_game_views_profile } from './fr/game.views.profile';
 import type { fr as p_game_views_collection } from './fr/game.views.collection';
 import type { fr as p_game_views_trades } from './fr/game.views.trades';
+import type { fr as p_game_views_cardPanel } from './fr/game.views.cardPanel';
+import type { fr as p_game_views_contracts } from './fr/game.views.contracts';
+import type { fr as p_game_views_succes } from './fr/game.views.succes';
+import type { fr as p_game_views_guide } from './fr/game.views.guide';
+import type { fr as p_game_views_suggestions } from './fr/game.views.suggestions';
 // <imports>
 
 export type AllFr = typeof core &
@@ -32,5 +37,10 @@ export type AllFr = typeof core &
   typeof p_game_views_profile &
   typeof p_game_views_collection &
   typeof p_game_views_trades &
+  typeof p_game_views_cardPanel &
+  typeof p_game_views_contracts &
+  typeof p_game_views_succes &
+  typeof p_game_views_guide &
+  typeof p_game_views_suggestions &
   // <parts>
   Record<never, never>;

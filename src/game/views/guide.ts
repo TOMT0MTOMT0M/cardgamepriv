@@ -1,3 +1,5 @@
+import { t } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.guide'; // (textes de ce module, version anglaise)
 import type { GameBackend } from '../backend';
 import { closeLayers, closePanels, esc, h, navigate } from '../ui';
 import { REFERRAL } from '../../core/referral';
@@ -23,29 +25,29 @@ type Step = {
 };
 
 const STEPS = (name: string): Step[] => [
-  { label: 'Visite express', text: `Salut ${name} ! 30 secondes pour faire le tour, ensuite c’est à toi.` },
-  { target: ['.me .packs'], label: 'Ta réserve', text: '15 boosters pour commencer. Un nouveau toutes les 5 min, et ×2 pendant tes 24 premières heures.' },
-  { target: ['.packs-row', '.open-btn'], label: 'Les boosters', text: 'Choisis ton thème ici. Le Bebou Pack contient tout… et les cartes secrètes de la bande.' },
-  { nav: 'collection', label: 'Ta collection', text: 'Touche une carte pour la faire tourner en 3D. Tes doublons se recyclent en contrats.' },
-  { nav: 'echanges', label: 'Échanges', text: 'Des échanges prêts pour toi : tes envies contre tes doublons, en un toucher.' },
-  { nav: 'jeux', label: 'Jeux', text: 'Pack Battle, Battle Royale et la roulette : un pot de départ t’y attend (tirages à 10 h et 20 h).' },
-  { nav: 'amis', label: 'Amis', text: `Ton lien d’invitation est ici : ${REFERRAL.packs} boosters offerts à chaque pote, et ${REFERRAL.packs} pour toi.` },
-  { nav: '', target: ['.me .msn-btn', '.me .st-btn'], label: 'Chaque jour', text: 'Missions, série de connexion et calendrier : des pièces et des boosters tous les jours.' },
-  { target: ['.open-btn', '.packs-row'], label: 'À toi', text: 'Ouvre ton premier booster. Bonne chance pour les 6★ !', end: true },
+  { label: t('gd.express'), text: t('gd.hello', { name }) },
+  { target: ['.me .packs'], label: t('gd.reserve'), text: t('gd.reserveD') },
+  { target: ['.packs-row', '.open-btn'], label: t('gd.boosters'), text: t('gd.boostersD') },
+  { nav: 'collection', label: t('gd.coll'), text: t('gd.collD') },
+  { nav: 'echanges', label: t('gd.trades'), text: t('gd.tradesD') },
+  { nav: 'jeux', label: t('gd.games'), text: t('gd.gamesD') },
+  { nav: 'amis', label: t('gd.friends'), text: t('gd.friendsD', { n: REFERRAL.packs, m: REFERRAL.packs }) },
+  { nav: '', target: ['.me .msn-btn', '.me .st-btn'], label: t('gd.daily'), text: t('gd.dailyD') },
+  { target: ['.open-btn', '.packs-row'], label: t('gd.yours'), text: t('gd.yoursD'), end: true },
 ];
 
 /** (13/11) nouveautés et gros changements de la V2 (updates.data.ts, « 14 nov. — Version 2 ») */
 const V2_STEPS = (name: string): Step[] => [
-  { label: 'Nouveau : la V2', text: `${name}, le jeu passe en V2 ! Ta collection est gardée : cartes, pièces, boosters, succès. Tour rapide des nouveautés.` },
-  { nav: '', target: ['.ev-band'], label: 'Booster du moment', text: 'Une édition limitée en tête de la boutique, avec son compte à rebours. Ses cartes rejoignent ensuite les boosters habituels.' },
-  { target: ['.chat-launch'], label: 'Chat', text: 'Le salon de tout le monde et les messages privés, avec les mentions. Montre une carte, propose un échange.' },
-  { nav: 'echanges', target: ['button[role="tab"][data-z="pour"]'], label: 'Échanges simplifiés', text: '« Pour toi » prépare des échanges tout faits : tes envies contre tes doublons, en un toucher.' },
-  { target: ['button[role="tab"][data-z="cherche"]'], label: 'Marché', text: 'Vends une carte à prix fixe en pièces, achète celles des autres : le premier qui achète l’a. Sous chaque carte : qui l’a, qui la vend, qui la veut.' },
-  { nav: 'collection', label: '3 000 nouvelles cartes', text: 'Pop Culture, Sport et le reste s’agrandissent, avec un nouveau tri des étoiles : certaines de tes cartes ont changé d’étoile.' },
-  { label: 'Les 6★', text: 'Chaque 6★ a sa mise en scène, les 6★ Musique et d’animés jouent leur extrait. Le son est tout neuf et la déchirure du booster plus vraie.' },
-  { nav: 'classement', target: ['.lb-boards [data-b="season"]'], label: 'Saisons', text: 'Chaque mois, le classement des nouvelles cartes gagnées, et des boosters pour tout le monde à la fin. La première se termine le 30 novembre.' },
-  { nav: 'profil', target: ['.nf-box'], label: 'Notifications', text: 'Réserve pleine, échanges, amis : active-les ici. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.' },
-  { nav: 'maj', label: 'Tout le détail', text: 'Toutes les nouveautés sont écrites ici, dans les mises à jour. Bon jeu !', end: true },
+  { label: t('gd.v2'), text: t('gd.v2D', { name }) },
+  { nav: '', target: ['.ev-band'], label: t('gd.event'), text: t('gd.eventD') },
+  { target: ['.chat-launch'], label: t('gd.chat'), text: t('gd.chatD') },
+  { nav: 'echanges', target: ['button[role="tab"][data-z="pour"]'], label: t('gd.simple'), text: t('gd.simpleD') },
+  { target: ['button[role="tab"][data-z="cherche"]'], label: t('gd.market'), text: t('gd.marketD') },
+  { nav: 'collection', label: t('gd.new'), text: t('gd.newD') },
+  { label: t('gd.six'), text: t('gd.sixD') },
+  { nav: 'classement', target: ['.lb-boards [data-b="season"]'], label: t('gd.seasons'), text: t('gd.seasonsD') },
+  { nav: 'profil', target: ['.nf-box'], label: t('gd.notifs'), text: t('gd.notifsD') },
+  { nav: 'maj', label: t('gd.all'), text: t('gd.allD'), end: true },
 ];
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -69,7 +71,7 @@ export function armGuide(backend: GameBackend) {
     }
     started = true;
     if (!forced) void backend.markGuideSeen?.();
-    setTimeout(() => void run(STEPS(firstName(s.user?.name)), { skippable: true, go: 'C’est parti', label: 'Visite guidée' }), 900);
+    setTimeout(() => void run(STEPS(firstName(s.user?.name)), { skippable: true, go: t('gd.go'), label: t('gd.tour') }), 900);
   };
   backend.onChange(check);
   check();
@@ -94,7 +96,7 @@ export function armV2Tour(backend: GameBackend) {
     }
     started = true;
     if (!forced) void backend.markV2TourSeen?.();
-    setTimeout(() => void run(V2_STEPS(firstName(s.user?.name)), { skippable: false, go: 'Terminé', label: 'Nouveautés de la V2' }), 900);
+    setTimeout(() => void run(V2_STEPS(firstName(s.user?.name)), { skippable: false, go: t('gd.done'), label: t('gd.v2Tour') }), 900);
   };
   backend.onChange(check);
   check();
@@ -111,7 +113,7 @@ async function run(steps: Step[], opts: { skippable: boolean; go: string; label:
   root.setAttribute('aria-label', opts.label);
   root.innerHTML = `<i class="gd-spot off"></i>
     <div class="gd-tip" aria-live="polite"><small class="gd-l"></small><p class="gd-t"></p><div class="gd-dots"></div><button class="btn-primary gd-go" hidden>${esc(opts.go)}</button></div>
-    ${opts.skippable ? '<button class="gd-skip" type="button">Passer</button>' : ''}
+    ${opts.skippable ? '<button class="gd-skip" type="button">' + t('gd.skip') + '</button>' : ''}
     <i class="gd-cur ${coarse() ? 'finger' : 'arrow'}">${coarse() ? '' : ARROW}</i>`;
   document.body.append(root);
   const spot = root.querySelector<HTMLElement>('.gd-spot')!;

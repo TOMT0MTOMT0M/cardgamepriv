@@ -16,7 +16,6 @@ export const en: PartOf<typeof fr> = {
   'pf.autoFill': 'Auto-fill',
   'pf.removeAll': 'Remove all',
   'pf.myColl': 'My collection',
-  'pf.search': 'Search for a card…',
   'pf.searchMine': 'Search one of my cards',
   'pf.filterStars': 'Filter by stars',
   'pf.rarities': 'Rarities',

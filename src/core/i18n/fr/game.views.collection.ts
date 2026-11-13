@@ -2,17 +2,9 @@
 import { addFr } from '../../i18n';
 
 export const fr = {
-  'coll.f.all': 'Toutes',
   'coll.f.owned': 'Possédées',
-  'coll.f.missing': 'Manquantes',
   'coll.f.dups': 'Doublons',
   'coll.f.new': 'Nouvelles',
-  'coll.viewAria': 'Vue de la collection',
-  'coll.cards': 'Cartes',
-  'coll.albums': 'Albums',
-  'coll.binders': 'Classeurs',
-  'coll.forge': 'Forge',
-  'coll.contracts': 'Contrats',
   'coll.searchAlbum': 'Chercher un album…',
   'coll.searchAlbumA': 'Chercher un album',
   'coll.albumSort': 'Tri des albums',
@@ -55,8 +47,6 @@ export const fr = {
   'coll.noAlbum': 'Aucun album.',
   'coll.subthemes': 'Sous-thèmes',
   'coll.started': { one: '{nf}/{albums} commencé · {have}/{total} cartes · {pct}', other: '{nf}/{albums} commencés · {have}/{total} cartes · {pct}' },
-  'coll.unwish': 'Retirer de mes envies',
-  'coll.wish': 'Ajouter à mes envies',
   'coll.newN': 'Nouvelles ({n})',
   'coll.themeSoon': 'Ce thème arrive bientôt : {list}.',
   'coll.noDupHere': 'Pas encore de doublon ici : ils arrivent vite en ouvrant des boosters.',

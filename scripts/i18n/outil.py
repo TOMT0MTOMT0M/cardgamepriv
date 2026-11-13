@@ -344,10 +344,11 @@ def cmd_apply(f, mapf):
         # fin de ligne DANS un gabarit (texte affiché) : commentaire HTML ; sinon commentaire JS
         tpls = [(L.start, L.end) for L in scan(src) if L.kind == 'tpl']
         ls = src.split('\n')
+        orig = list(ls)
         delta = []  # (les positions des remplacements suivent l'ajout des commentaires)
         for ln in sorted(okl):
             if 'i18n-ok' in ls[ln - 1]: continue
-            eol = sum(len(x) + 1 for x in ls[:ln - 1]) + len(ls[ln - 1])
+            eol = sum(len(x) + 1 for x in orig[:ln - 1]) + len(orig[ln - 1])
             mark = ' <!-- i18n-ok -->' if any(a < eol < b for a, b in tpls) else ' // i18n-ok'
             ls[ln - 1] += mark
             delta.append((eol, len(mark)))

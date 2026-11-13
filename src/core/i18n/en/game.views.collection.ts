@@ -3,17 +3,9 @@ import type { PartOf } from '../../i18n';
 import type { fr } from '../fr/game.views.collection';
 
 export const en: PartOf<typeof fr> = {
-  'coll.f.all': 'All',
   'coll.f.owned': 'Owned',
-  'coll.f.missing': 'Missing',
   'coll.f.dups': 'Duplicates',
   'coll.f.new': 'New',
-  'coll.viewAria': 'Collection view',
-  'coll.cards': 'Cards',
-  'coll.albums': 'Albums',
-  'coll.binders': 'Binders',
-  'coll.forge': 'Forge',
-  'coll.contracts': 'Contracts',
   'coll.searchAlbum': 'Search for an album…',
   'coll.searchAlbumA': 'Search for an album',
   'coll.albumSort': 'Album sorting',
@@ -56,8 +48,6 @@ export const en: PartOf<typeof fr> = {
   'coll.noAlbum': 'No album.',
   'coll.subthemes': 'Subthemes',
   'coll.started': { one: '{nf}/{albums} started · {have}/{total} cards · {pct}', other: '{nf}/{albums} started · {have}/{total} cards · {pct}' },
-  'coll.unwish': 'Remove from my wishes',
-  'coll.wish': 'Add to my wishes',
   'coll.newN': 'New ({n})',
   'coll.themeSoon': 'This theme is coming soon: {list}.',
   'coll.noDupHere': 'No duplicates here yet: they come fast as you open boosters.',

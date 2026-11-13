@@ -15,7 +15,6 @@ export const fr = {
   'pf.autoFill': 'Compléter auto',
   'pf.removeAll': 'Tout retirer',
   'pf.myColl': 'Ma collection',
-  'pf.search': 'Chercher une carte…',
   'pf.searchMine': 'Chercher une de mes cartes',
   'pf.filterStars': 'Filtrer par étoiles',
   'pf.rarities': 'Raretés',

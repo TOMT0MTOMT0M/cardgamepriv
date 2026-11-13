@@ -60,7 +60,6 @@ export const fr = {
   'chat.player': 'Joueur',
   'chat.mutedBtn': 'Sourdine',
   'chat.notifsBtn': 'Notifs',
-  'chat.me': 'Toi',
   'chat.card': 'Carte',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

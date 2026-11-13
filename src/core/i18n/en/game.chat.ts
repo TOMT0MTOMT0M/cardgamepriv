@@ -61,6 +61,5 @@ export const en: PartOf<typeof fr> = {
   'chat.player': 'Player',
   'chat.mutedBtn': 'Muted',
   'chat.notifsBtn': 'Notifs',
-  'chat.me': 'You',
   'chat.card': 'Card',
 };

@@ -13,6 +13,11 @@ import { en as p_game_chat } from './en/game.chat';
 import { en as p_game_views_profile } from './en/game.views.profile';
 import { en as p_game_views_collection } from './en/game.views.collection';
 import { en as p_game_views_trades } from './en/game.views.trades';
+import { en as p_game_views_cardPanel } from './en/game.views.cardPanel';
+import { en as p_game_views_contracts } from './en/game.views.contracts';
+import { en as p_game_views_succes } from './en/game.views.succes';
+import { en as p_game_views_guide } from './en/game.views.guide';
+import { en as p_game_views_suggestions } from './en/game.views.suggestions';
 // <imports>
 
 export const en: Dict = {
@@ -30,6 +35,11 @@ export const en: Dict = {
   ...p_game_views_profile,
   ...p_game_views_collection,
   ...p_game_views_trades,
+  ...p_game_views_cardPanel,
+  ...p_game_views_contracts,
+  ...p_game_views_succes,
+  ...p_game_views_guide,
+  ...p_game_views_suggestions,
   // <parts>
 
   // ───── language (header switch) ─────
@@ -428,4 +438,102 @@ export const en: Dict = {
   // ───── src/game/views/status.ts ─────
   'st.day': 'Day',
   'pf.cancel': 'Cancel',
+  'coll.viewAria': 'Collection view',
+  'coll.cards': 'Cards',
+  'coll.albums': 'Albums',
+  'coll.binders': 'Binders',
+  'coll.forge': 'Forge',
+  'coll.contracts': 'Contracts',
+  'chat.me': 'You',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'cos.kind.Cadre': 'Frame',
+  'cos.kind.Vitrine': 'Showcase',
+  'cos.kind.Bannière': 'Banner',
+  'cos.kind.Badge': 'Badge',
+  'cos.kind.Titre': 'Title',
+  'cos.kind.Ouverture': 'Opening',
+  'sc.andPacks': ' and {packs}',
+  'pf.search': 'Search for a card…',
+  'coll.f.all': 'All',
+  'coll.f.missing': 'Missing',
+  'coll.unwish': 'Remove from my wishes',
+  'coll.wish': 'Add to my wishes',
+
+  // ───── src/game/views/packSheet.ts ─────
+  'ps.d.bebou': 'All the cards + the Bébous',
+  'ps.d.gaming': 'Video games',
+  'ps.d.pop': 'Manga, movies, series, music',
+  'ps.d.sport': 'Every sport',
+  'ps.d.world': 'Life, simply',
+  'rar.common': 'Common',
+  'rar.rare': 'Rare',
+  'rar.epic': 'Epic',
+  'rar.legendary': 'Legendary',
+  'rar.mythic': 'Mythic',
+  'ps.aria': 'Booster sheet',
+  'ps.odds': 'Odds per card',
+  'ps.oddsD': '· the real draw rates · each card’s chance is written under it in “Booster cards”',
+  'ps.openCaps': 'OPEN',
+  'ps.buy': 'Buy',
+  'ps.cardsA': 'Booster cards',
+  'ps.back': 'Back',
+  'ps.wishes': 'Wishes',
+  'ps.bought': { one: '+{n} booster in your reserve', other: '+{n} boosters in your reserve' },
+  'ps.four': '4★ and up',
+  'ps.five': '5★ and up',
+  'ps.perPack': 'Per booster',
+  'ps.god': 'God pack (only 4★ and up, at least one 5★ and one 6★):',
+  'ps.realRates': '· real rates, god pack and pity included',
+  'ps.soonD': 'Its cards are coming soon · meanwhile, the Bebou Pack has everything',
+  'ps.loginCaps': 'LOG IN',
+  'ps.loginD': 'Discord login or username · access reserved to the group',
+  'ps.openMy': 'OPEN MY {name}',
+  'ps.drawn': 'Booster already drawn, not opened yet',
+  'ps.next': 'The next one arrives in {time} · 1 every {min} min',
+  'ps.openN': 'OPEN ×{n}',
+  'ps.inReserve': { one: '{n} booster in reserve{max}', other: '{n} boosters in reserve{max}' },
+  'ps.buysLeft': { one: '{n} purchase left today · balance {coins}', other: '{n} purchases left today · balance {coins}' },
+  'ps.limit': 'daily limit reached · come back tomorrow',
+  'ps.pitySure': 'Your next booster has a guaranteed 6★!',
+  'ps.achHow': 'Achievement “{label}”: {how}',
+  'ps.anim': 'Opening animation',
+  'ps.animD': '· for all your boosters · the others are earned with achievements',
+  'ps.lockedHow': 'Locked · {how}',
+  'ps.animIs': 'Opening animation: {name}',
+  'ps.yourWishes': 'Your wishes',
+  'ps.noWish': 'None of your wishes here · mark cards with ♥ to follow them',
+  'ps.seeAll': 'See the {n} cards{b}',
+  'ps.plusBebous': ' + the Bébous',
+  'ps.owned': { one: '{nf} owned · {pct}', other: '{nf} owned · {pct}' },
+  'ps.perBooster': 'cards per booster',
+  'ps.cardsOf': 'cards · {label}',
+  'ps.endsIn': 'ends in',
+  'ps.inPrep': ' in preparation',
+  'ps.subthemes': { one: '· {n} subtheme', other: '· {n} subthemes' },
+  'ps.fourThemes': ' · all 4 themes',
+  'ps.limited': 'Limited edition',
+  'ps.limitedD': 'This booster disappears at the end of the event. Its cards then stay in the usual boosters.',
+  'ps.secrets': 'Secret cards',
+  'ps.bebousLocked': 'The Bébous are locked for now',
+  'ps.bebousLockedD': '· they don’t drop from any booster, their return will be announced',
+  'ps.bebousSecret': 'The Bébous · secret',
+  'ps.more': { one: 'See {m} more · {left} left', other: 'See {m} more · {left} left' },
+  'ps.noWishHere': 'No wishes in this booster for now.',
+  'ps.allOwned': 'You have every card in this selection!',
+  'ps.noMatch': 'No card matches.',
+  'ps.sections': '{res} · the first sections are unfolded, tap a section to see the rest{refine}',
+  'ps.refine': ' (or refine your search)',
+  'ps.count': '{n} cards · {have} owned',
+
+  // ───── src/game/views/packSheet.ts (à la main) ─────
+  'ps.almostAlways': 'almost always',
+  'ps.oneIn': '1 in {n}',
+  'ps.sealed': 'You have a {what} already drawn, not opened yet: open it first (button below).',
+  'ps.dryMax': '· {n} dry boosters max',
+  'ps.pityLeft': { one: '<b>{nf}</b> booster before a guaranteed 6★', other: '<b>{nf}</b> boosters before a guaranteed 6★' },
+  'ps.wishIn': { one: '<b>{n} of your wishes</b> in this booster', other: '<b>{n} of your wishes</b> in this booster' },
+  'ps.secretWorld': '<b>1 chance in {n}</b> per booster to pull one of the <b>{w} Wonders of the World</b> <small>· 1 / number of cards in the theme</small>',
+  'ps.secretBebou': '<b>1 chance in {n}</b> per booster to pull one of the <b>8 Bébous</b> <small>· 1 / number of cards in the game: the more cards, the rarer</small>',
+  'rar.uncommon': 'Uncommon',
 };
