@@ -107,7 +107,7 @@ async function toCache(key: string, blob: Blob) {
   const c = url && (await cacheStore());
   if (!c || !url) return;
   try {
-    await c.put(url, new Response(blob, { headers: { 'content-type': 'image/webp' } }));
+    await c.put(url, new Response(blob, { headers: { 'content-type': blob.type || 'image/webp' } }));
   } catch {
     /* quota plein : tant pis, on repeindra */
   }
@@ -171,6 +171,7 @@ function stripDue() {
 }
 const idleYield = () => new Promise<void>((r) => idle(() => r()));
 const tileStats = new Map<string, { n: number; bytes: number }>();
+let noWebp = false;
 /** Formats des tuiles peintes depuis le démarrage (pour le rapport ?diag) : « image/webp ×42 (18 Ko en moyenne) ». */
 export function tileFormats(): string {
   if (!tileStats.size) return 'aucune tuile peinte';
@@ -184,7 +185,14 @@ async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnTy
   const design = gameDesignId(cd);
   // (mesure 07/11 : tâches de 316 ms sur Android) peinture découpée en étapes, la main rendue entre chacune
   const art = await generateCardArtAsync(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(design ? { design } : {}) }, idleYield);
-  const blob = await canvasToBlob(art.canvases.flat, 'image/webp', 0.86);
+  let blob = await canvasToBlob(art.canvases.flat, noWebp ? 'image/jpeg' : 'image/webp', noWebp ? 0.9 : 0.86);
+  // (audit 12/11, décision 3 / E3-07) navigateur qui n'encode pas le WebP (Safari) : `toBlob` rend alors un PNG, 5 à 17
+  // fois plus lourd (mémoire, stockage, compression sur le fil principal). Repli : JPEG 0,9 — la tuile a un fond opaque
+  // et ses coins sont arrondis par la page. Constaté une fois, retenu pour toutes les tuiles suivantes.
+  if (blob && !noWebp && blob.type !== 'image/webp') {
+    noWebp = true;
+    blob = (await canvasToBlob(art.canvases.flat, 'image/jpeg', 0.9)) ?? blob;
+  }
   // (audit 12/11, décision 3 / E3-07) format RÉELLEMENT rendu : un navigateur qui n'encode pas le WebP rend du PNG,
   // bien plus lourd — noté pour le rapport ?diag avant de décider d'un repli JPEG
   if (blob) {

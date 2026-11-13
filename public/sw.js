@@ -20,7 +20,13 @@
       Le ménage ne touche que les caches de ce fichier : ceux de la page (bebou-cartes-*, bebou-plis, bebou-nom-moule) restent. */
 const APP = 'bebou-app-v1';
 const ART = 'bebou-art-v1';
-const ART_MAX = 1800; // (≈ 12 Ko la miniature : ~25 Mo au plus)
+// (audit 12/11, décision 9 / A2-03) plafond en POIDS : ce cache range les miniatures (≈ 12 Ko) ET les illustrations en
+// pleine définition (jusqu'à plusieurs centaines de Ko) ; 1 800 entrées pouvaient donc peser 25 Mo comme plusieurs
+// centaines. 150 Mo au plus, et jamais plus de 15 % de la place que le navigateur accorde au site ; le nombre
+// d'entrées ne sert plus que de garde-fou.
+const ART_MAX_BYTES = 150 * 1024 * 1024;
+const ART_MAX = 8000;
+const ART_GUESS = 60 * 1024; // (entrée rangée avant ce changement, sans poids noté)
 const KEEP = 'bebou-garde-v1'; // (V2) illustrations téléchargées pour jouer hors connexion (src/game/offline.ts)
 const SCOPE = new URL(self.registration.scope);
 const PAGE = new URL('jeu/index.html', SCOPE).href;
@@ -38,8 +44,8 @@ async function cacheFirst(name, req) {
   if (hit) return hit;
   const res = await fetch(req);
   if (storable(res, false)) {
-    void stash(name, req.url, res.clone());
-    if (name === ART) void trimArt();
+    if (name === ART) void stashArt(req.url, res.clone());
+    else void stash(name, req.url, res.clone());
   }
   return res;
 }
@@ -51,6 +57,21 @@ async function keepThen(name, req) {
   return hit || cacheFirst(name, req);
 }
 
+/** Illustration rangée avec son poids en en-tête (`x-bytes`) : le ménage additionne sans relire les fichiers. */
+async function stashArt(key, res) {
+  try {
+    const blob = await res.blob();
+    const headers = new Headers(res.headers);
+    headers.set('x-bytes', String(blob.size));
+    headers.delete('content-encoding'); // (le corps rangé est déjà décodé)
+    headers.set('content-length', String(blob.size));
+    await stash(ART, key, new Response(blob, { status: 200, headers }));
+  } catch {
+    /* tant pis : servie par le réseau */
+  }
+  void trimArt();
+}
+
 let trimming = false;
 let sinceTrim = 0;
 async function trimArt() {
@@ -59,9 +80,22 @@ async function trimArt() {
   sinceTrim = 0;
   try {
     const cache = await caches.open(ART);
-    const keys = await cache.keys();
-    // (les plus anciennes d'abord : keys() rend l'ordre d'insertion)
-    for (let i = 0; i < keys.length - ART_MAX; i++) await cache.delete(keys[i]);
+    // (les plus anciennes d'abord : keys() et matchAll() rendent l'ordre d'insertion ; matchAll ne lit que les en-têtes)
+    const [keys, all] = await Promise.all([cache.keys(), cache.matchAll()]);
+    const bytes = all.map((r) => +(r.headers.get('x-bytes') || r.headers.get('content-length') || 0) || ART_GUESS);
+    let total = bytes.reduce((a, b) => a + b, 0);
+    let max = ART_MAX_BYTES;
+    try {
+      const est = await self.navigator.storage.estimate();
+      if (est && est.quota) max = Math.min(max, est.quota * 0.15);
+    } catch {
+      /* pas d'estimation : plafond fixe */
+    }
+    const n = Math.min(keys.length, bytes.length);
+    for (let i = 0; i < n && (total > max || keys.length - i > ART_MAX); i++) {
+      await cache.delete(keys[i]);
+      total -= bytes[i];
+    }
   } catch {
     /* tant pis */
   }
