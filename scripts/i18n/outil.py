@@ -23,13 +23,15 @@ WORDS = re.compile(r"\b(le|la|les|des|une|du|au|aux|et|ou|est|sont|pas|plus|avec
 IGNORE_BEFORE = re.compile(r"(console\.\w+\(|import\s|from\s*$|querySelector(All)?(<[^>]*>)?\(|closest(<[^>]*>)?\(|perfMark\(|trip\(|matches\(|\bt\(|i18n-ok|classList\.\w+\(|className\s*=\s*|getElementById\(|dataset\.|addEventListener\(|setAttribute\('(class|data-|id)|new Error\(|throw new \w+\()\s*[^'\"`]*$")
 ATTRS = ('title', 'aria-label', 'placeholder', 'alt', 'data-tip')
 
+IDENT = re.compile(r"^(Escape|Enter|Tab|Space|Backspace|Delete|Home|End|PageUp|PageDown|Shift|Control|Meta|Alt|Arrow(Left|Right|Up|Down)|Bébou|BÉBOU|Discord|Chrome|Safari|Edge|Firefox|WebGPU|WebGL|Convex|Pokémon|Valorant|Mythic|Infinity|NaN|Error|Promise|Date|Math|Object|Array|String|Number|Boolean|JSON|Intl|Map|Set|Symbol|None|Auto|Inter)$")
+CAP = re.compile(r"^[A-ZÀ-Ý][a-zà-ÿ]{2,}$")
 LONE = re.compile(r"^(oui|non|annuler|valider|envoyer|refuser|accepter|retirer|ajouter|supprimer|modifier|enregistrer|partager|copier|suivant|nouveau|nouvelle|recharger|couper|activer|réessayer|terminer|ouvrir|garder|vendre|acheter|donner|choisir|chercher|trier|fermer|retour|profil|boutique|classement|envies|doublons|vitrine|bientôt|connexion|amis|jeux|tirages|gagnant|perdant|semaine|mois|aujourd’hui|demain|hier|rejouer|parier|miser|jouer|quitter|continuer|commencer|confirmer|voir|plus|moins|tout|tous|aucun|aucune|rien|son|langue|vibrations|succès|saison|niveau|rang|offre|pari|mise|gains|vendu|acheté|reçu|envoyé|refusé|accepté|annulé|terminé|expiré|attente|libre|plein|pleine|vide|tutoriel|chargement|relancer|portefeuille|réglages|paramètres)[.!…:]?$", re.I)
 def french(txt):
     t = re.sub(r"<[^>]*>", " ", txt)
     t = re.sub(r"\$\{\d+\}", " ", t)
     t = re.sub(r"&[a-z]+;", " ", t).strip()
     if not re.search(r"[A-Za-zÀ-ÿ]{2}", t): return False
-    if not re.search(r"\s", t): return bool(ACCENT.search(t) or LONE.match(t))
+    if not re.search(r"\s", t): return bool(ACCENT.search(t) or LONE.match(t) or (CAP.match(t) and not IDENT.match(t)))
     return bool(ACCENT.search(t) or WORDS.search(t))
 
 class Lit:

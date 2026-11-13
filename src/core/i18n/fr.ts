@@ -391,4 +391,11 @@ export const fr = {
 
   // ───── src/game/views/bigPulls.ts (à la main) ─────
   'time.yesterday': 'hier',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'common.loading2': 'Chargement…',
+  'chat.aCard': 'une carte',
+
+  // ───── src/game/views/status.ts ─────
+  'st.day': 'Jour',
 } as const satisfies Record<string, string | { one?: string; other: string }>;

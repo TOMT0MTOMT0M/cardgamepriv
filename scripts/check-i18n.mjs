@@ -17,11 +17,14 @@ const ONLY_COUNT = process.argv.includes('--count');
 
 const ACCENT = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒ’«»]/;
 const WORDS = /\b(le|la|les|des|une|du|au|aux|et|ou|est|sont|pas|plus|avec|pour|dans|sur|ton|ta|tes|tu|toi|vous|votre|il|elle|on|ce|cette|ces|qui|que|ne|ici|rien|tout|tous|encore|jamais|aucun|aucune|carte|cartes|joueur|joueurs|ami|amis|échange|pièces|ouvrir|voir|fermer|retour|chargement|connexion|réseau|mise|jeu|jeux|demain|aujourd|hier|minutes?|secondes?|heures?|jours?|se|mon|ma|mes|son|sa|ses|leur|leurs|nos|notre|par|sans|chez|depuis|avant|après|oui|non|fois|semaine|mois|ans|niveau|saison|ton|annuler|valider|envoyer|refuser|accepter|retirer|ajouter|supprimer|modifier|enregistrer|partager|copier|suivant|nouveau|nouvelle|nouvelles|recharger|couper|activer|réessayer|terminer|garder|vendre|acheter|donner|choisir|chercher|trier|profil|boutique|classement|envies|doublons|vitrine|cadre|titre|gagné|perdu|offre|offres|tirage|tirages|collectionner|bébous?)\b/i;
+// mot seul en capitale (« Cadre », « Personnaliser ») : un libellé, sauf noms de touches et noms propres
+const IDENT = /^(Escape|Enter|Tab|Space|Backspace|Delete|Home|End|PageUp|PageDown|Shift|Control|Meta|Alt|Arrow(Left|Right|Up|Down)|Bébou|BÉBOU|Discord|Chrome|Safari|Edge|Firefox|WebGPU|WebGL|Convex|Pokémon|Valorant|Mythic|Infinity|NaN|Error|Promise|Date|Math|Object|Array|String|Number|Boolean|JSON|Intl|Map|Set|Symbol|None|Auto|Inter)$/;
+const CAP = /^[A-ZÀ-Ý][a-zà-ÿ]{2,}$/;
 const LONE = /^(oui|non|annuler|valider|envoyer|refuser|accepter|retirer|ajouter|supprimer|modifier|enregistrer|partager|copier|suivant|nouveau|nouvelle|recharger|couper|activer|réessayer|terminer|ouvrir|garder|vendre|acheter|donner|choisir|chercher|trier|fermer|retour|profil|boutique|classement|envies|doublons|vitrine|bientôt|connexion|amis|jeux|tirages|gagnant|perdant|semaine|mois|aujourd’hui|demain|hier|rejouer|parier|miser|jouer|quitter|continuer|commencer|confirmer|voir|plus|moins|tout|tous|aucun|aucune|rien|son|langue|vibrations|succès|saison|niveau|rang|offre|pari|mise|gains|vendu|acheté|reçu|envoyé|refusé|accepté|annulé|terminé|expiré|attente|libre|plein|pleine|vide|tutoriel|chargement|relancer|portefeuille|réglages|paramètres)[.!…:]?$/i;
 const looksFrench = (s) => {
   const txt = s.replace(/<[^>]*>/g, ' ').replace(/\$\{[^}]*\}/g, ' ').replace(/&[a-z]+;/g, ' ').trim();
   if (!/[A-Za-zÀ-ÿ]{2}/.test(txt)) return false;
-  if (/^[\w.#:/@\-[\]=*'" ]+$/.test(txt) && !/\s/.test(txt.trim())) return ACCENT.test(txt) || LONE.test(txt.trim()); // (un mot seul : accent, ou mot d'interface français connu)
+  if (/^[\w.#:/@\-[\]=*'" ]+$/.test(txt) && !/\s/.test(txt.trim())) return ACCENT.test(txt) || LONE.test(txt.trim()) || (CAP.test(txt.trim()) && !IDENT.test(txt.trim())); // (un mot seul : accent, mot d'interface connu, ou libellé en capitale)
   if (/^(M|L|C|Q|A|Z|H|V)[\d .,\-]+/.test(txt)) return false; // (tracé SVG)
   return ACCENT.test(txt) || WORDS.test(txt);
 };

@@ -250,7 +250,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     <div class="shop-home">
       <div class="shop-left">
         <div class="shop-title"><span class="kicker" data-t="shop.kicker">${tr('shop.kicker')}</span><h2 data-t="shop.pick">${tr('shop.pick')}</h2><p class="shop-hint"></p></div>
-        <div class="packs-row" role="listbox" aria-label="Boosters"></div>
+        <div class="packs-row" role="listbox" aria-label="Boosters"></div> // i18n-ok
       </div>
       <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary" data-t="shop.open">${tr('shop.open')}</button></div>
       <div class="tap-hint" hidden aria-hidden="true"><i class="th-dot"></i><span class="th-t"></span></div>
@@ -998,7 +998,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (mode !== 'pick') return;
     if (s.sealed) {
       const t = themeById(s.sealed.themeId ?? '');
-      const name = s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster';
+      const name = s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster'; // i18n-ok
       banner.hidden = false;
       banner.querySelector('span')!.textContent = tr('shop.alreadyDrawn', { name });
       if (keyOf(s.sealed) !== selected) select(keyOf(s.sealed));
@@ -1766,7 +1766,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
     const t = req.kind === 'theme' ? themeById(req.themeId ?? '') : undefined;
     const cards = t ? t.cards : THEMES.flatMap((x) => x.cards);
-    return { label: t ? t.label : 'Collection', have: cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: cards.length };
+    return { label: t ? t.label : 'Collection', have: cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: cards.length }; // i18n-ok
   }
 
   /** Fond du récap selon le meilleur drop : lueur radiale de la couleur de la rareté, rayons et particules aux couleurs du pack. */

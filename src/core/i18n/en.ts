@@ -8,6 +8,9 @@ import { en as p_game_views_ranking } from './en/game.views.ranking';
 import { en as p_game_views_gridArt } from './en/game.views.gridArt';
 import { en as p_game_views_owners } from './en/game.views.owners';
 import { en as p_game_views_picker } from './en/game.views.picker';
+import { en as p_game_views_friends } from './en/game.views.friends';
+import { en as p_game_chat } from './en/game.chat';
+import { en as p_game_views_profile } from './en/game.views.profile';
 // <imports>
 
 export const en: Dict = {
@@ -20,6 +23,9 @@ export const en: Dict = {
   ...p_game_views_gridArt,
   ...p_game_views_owners,
   ...p_game_views_picker,
+  ...p_game_views_friends,
+  ...p_game_chat,
+  ...p_game_views_profile,
   // <parts>
 
   // ───── language (header switch) ─────
@@ -410,4 +416,11 @@ export const en: Dict = {
 
   // ───── src/game/views/bigPulls.ts (à la main) ─────
   'time.yesterday': 'yesterday',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'common.loading2': 'Loading…',
+  'chat.aCard': 'a card',
+
+  // ───── src/game/views/status.ts ─────
+  'st.day': 'Day',
 };

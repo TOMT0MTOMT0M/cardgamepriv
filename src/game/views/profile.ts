@@ -1,4 +1,5 @@
-import { locale } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.profile'; // (textes de ce module, version anglaise)
+import { locale, t as tr } from '../../core/i18n';
 import type { ActivityItem, GameBackend, PlayerCard, Profile } from '../backend';
 import { createLeaderboard } from './leaderboard';
 import { friendBtn } from './friends';
@@ -39,7 +40,6 @@ const STARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'm
 const best = (a: PlayerCard, b: PlayerCard) => RANK[b.rarity] - RANK[a.rarity] || a.bestMintNumber - b.bestMintNumber || (catalogEntry(a.cardId)?.num ?? 0) - (catalogEntry(b.cardId)?.num ?? 0);
 /** le mot seul, accordé (« doublon » / « doublons ») : le nombre est affiché à part, formaté par fmtN (audit UX3-05 :
  *  retirer le nombre de `plural()` par regex cassait dès 1 000, à cause de l'espace insécable des milliers) */
-const word = (n: number, one: string, many = `${one}s`) => (n > 1 ? many : one);
 const fmtDate = (t: number) => new Date(t).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 /** « nov. 2026 » (en-tête compact) */
 const fmtMonth = (t: number) => new Date(t).toLocaleDateString(locale(), { month: 'short', year: 'numeric' });
@@ -65,11 +65,11 @@ function hydrateStills(root: HTMLElement) {
 }
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
-  if (s < 60) return 'à l’instant';
-  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  if (s < 60) return tr('time.justNow');
+  if (s < 3600) return tr('time.agoMin', { n: Math.floor(s / 60) });
+  if (s < 86400) return tr('time.agoH', { n: Math.floor(s / 3600) });
   const d = Math.round(s / 86400);
-  return d === 1 ? 'hier' : `il y a ${d} j`;
+  return d === 1 ? 'hier' : tr('time.agoD', { n: d });
 };
 type Tab = 'tableau' | 'collection' | 'activite' | 'classement';
 
@@ -77,48 +77,48 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const el = h('section', 'view profile');
   el.innerHTML = `
     <div class="pf-wrap">
-      <div class="pf-banner"><button class="btn-ghost pf-banner-btn" hidden>Personnaliser</button></div>
+      <div class="pf-banner"><button class="btn-ghost pf-banner-btn" hidden>${tr('pf.customizeBtn')}</button></div>
       <div class="pf-head"></div>
       <div class="pf-cosm" hidden></div>
       <div class="pf-tabs" role="tablist">
-        <button role="tab" data-t="tableau" class="on">Tableau</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">Activité</button><button role="tab" data-t="classement">Classement</button>
+        <button role="tab" data-t="tableau" class="on">${tr('pf.board')}</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">${tr('pf.activity')}</button><button role="tab" data-t="classement">${tr('pf.ranking')}</button> // i18n-ok
       </div>
       <div class="pf-pane p-tableau">
         <div class="pf-sec pf-case-sec">
           <div class="pf-tray">
-            <div class="pf-sec-t"><h2>Vitrine</h2><span class="pf-count" hidden></span><span class="pf-auto"></span><span class="pf-tools"></span></div>
+            <div class="pf-sec-t"><h2>${tr('pf.vitrine')}</h2><span class="pf-count" hidden></span><span class="pf-auto"></span><span class="pf-tools"></span></div>
             <div class="pf-case all"></div>
-            <div class="pf-edit-bar" hidden><span class="pf-edit-hint"></span><span class="pf-edit-more"><button type="button" class="pf-link pf-fill">Compléter auto</button><button type="button" class="pf-link pf-clear">Tout retirer</button></span></div>
+            <div class="pf-edit-bar" hidden><span class="pf-edit-hint"></span><span class="pf-edit-more"><button type="button" class="pf-link pf-fill">${tr('pf.autoFill')}</button><button type="button" class="pf-link pf-clear">${tr('pf.removeAll')}</button></span></div>
           </div>
           <div class="pf-picker" hidden>
-            <div class="pf-pick-t"><span class="pf-pick-h">Ma collection</span><input class="search pf-search" type="search" placeholder="Chercher une carte…" autocomplete="off" spellcheck="false" aria-label="Chercher une de mes cartes"></div>
+            <div class="pf-pick-t"><span class="pf-pick-h">${tr('pf.myColl')}</span><input class="search pf-search" type="search" placeholder="${tr('pf.search')}" autocomplete="off" spellcheck="false" aria-label="${tr('pf.searchMine')}"></div>
             <div class="pf-pick-hint"></div>
-            <div class="starf pf-pick-stars" aria-label="Filtrer par étoiles"></div>
+            <div class="starf pf-pick-stars" aria-label="${tr('pf.filterStars')}"></div>
             <div class="grid mini pf-pick-grid"></div>
             <div class="muted pf-pick-more" hidden></div>
           </div>
         </div>
         <div class="pf-keys"></div>
         <div class="pf-panels pf-stats">
-          <section class="pf-panel pf-p-act" aria-label="Activité"></section>
-          <section class="pf-panel pf-p-coll" aria-label="Collection"></section>
-          <section class="pf-panel pf-p-rar" aria-label="Raretés"></section>
-          <section class="pf-panel pf-p-th" aria-label="Univers"></section>
+          <section class="pf-panel pf-p-act" aria-label="${tr('pf.activity')}"></section>
+          <section class="pf-panel pf-p-coll" aria-label="Collection"></section> // i18n-ok
+          <section class="pf-panel pf-p-rar" aria-label="${tr('pf.rarities')}"></section>
+          <section class="pf-panel pf-p-th" aria-label="${tr('pf.universes')}"></section>
         </div>
       </div>
       <div class="pf-pane p-collection" hidden>
         <div class="pf-binders"></div>
         <div class="pf-nobinder muted" hidden></div>
-        <div class="pf-sec pf-all-sec"><div class="pf-sec-t"><h2>Toute la collection</h2><span class="pf-count pf-all-n"></span></div>
-          <div class="pf-all-tools"><input class="search pf-all-q" type="search" placeholder="Chercher une carte…" autocomplete="off" spellcheck="false" aria-label="Chercher dans cette collection"><div class="pf-all-r" role="group" aria-label="Étoiles"></div></div>
-          <div class="grid pf-all"></div><button class="btn-ghost pf-all-more" hidden>Voir plus</button></div>
+        <div class="pf-sec pf-all-sec"><div class="pf-sec-t"><h2>${tr('pf.wholeColl')}</h2><span class="pf-count pf-all-n"></span></div>
+          <div class="pf-all-tools"><input class="search pf-all-q" type="search" placeholder="${tr('pf.search')}" autocomplete="off" spellcheck="false" aria-label="${tr('pf.searchThis')}"><div class="pf-all-r" role="group" aria-label="${tr('pf.stars')}"></div></div>
+          <div class="grid pf-all"></div><button class="btn-ghost pf-all-more" hidden>${tr('pf.more')}</button></div>
       </div>
       <div class="pf-pane p-activite" hidden><div class="pf-activity"></div></div>
       <div class="pf-pane p-classement" hidden></div>
-      <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>Les autres</h2><span class="pf-tools"><a class="btn-ghost pf-amis-go" href="#/amis">Mes amis</a></span></div><div class="pf-friends"></div></div>
-      <div class="pf-sec pf-account" hidden><div class="pf-sec-t"><h2>Compte</h2></div><div class="pf-account-b"></div></div>
+      <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>${tr('pf.others')}</h2><span class="pf-tools"><a class="btn-ghost pf-amis-go" href="#/amis">${tr('pf.myFriends')}</a></span></div><div class="pf-friends"></div></div>
+      <div class="pf-sec pf-account" hidden><div class="pf-sec-t"><h2>${tr('pf.account')}</h2></div><div class="pf-account-b"></div></div>
     </div>
-    <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
+    <div class="viewer-ui" hidden><button class="close" aria-label="${tr('pf.close')}">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">${tr('pf.spin')}</div></div>`;
   const q = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
   const banner = q('.pf-banner');
   const head = q('.pf-head');
@@ -234,18 +234,18 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const bb = q<HTMLButtonElement>('.pf-banner-btn');
     bb.hidden = !me;
     const fresh = me && !cosmOpen ? newCosmetics().size : 0;
-    bb.innerHTML = cosmOpen ? 'Fermer' : `Personnaliser${fresh ? ` <i class="pf-new" title="${fresh} nouveau${fresh > 1 ? 'x' : ''}">${fresh}<span> nouveau${fresh > 1 ? 'x' : ''}</span></i>` : ''}`;
+    bb.innerHTML = cosmOpen ? tr('pf.close') : tr('pf.customizeNew', { x: fresh ? ` <i class="pf-new" title="${tr('pf.newTitle', { n: fresh })}">${fresh}<span> ${tr('pf.newWord', { n: fresh })}</span></i>` : '' });
     const ava = avaHtml(name);
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     // en-tête compact (retours live 02) : pseudo, puis titre + badges sur UNE ligne, puis devise · « depuis » sur une ligne
     head.innerHTML = `${avaRing(fr, ava)}</div>
       <div class="pf-id">
-        <div class="pf-eyebrow">${me ? 'Mon profil' : 'Profil'}</div>
+        <div class="pf-eyebrow">${me ? tr('pf.myProfile') : tr('pf.profile')}</div>
         <h1>${esc(name)}</h1>
         ${title || badges.length ? `<div class="pf-tline">${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${b.glyph ?? '●'} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
-        <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore d’informations.</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="Joue depuis le ${fmtDate(prof.joinedAt)}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
+        <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>' + tr('pf.noInfo') + '</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="${tr('pf.since', { date: fmtDate(prof.joinedAt) })}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier mes informations" title="Modifier mes informations">✎<span> Informations</span></button>` : `<button class="btn-primary pf-see-coll">Voir sa collection</button><a class="btn-ghost pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="${tr('pf.editInfo')}" title="${tr('pf.editInfo')}">✎<span> ${tr('pf.info')}</span></button>` : `<button class="btn-primary pf-see-coll">${tr('pf.seeColl')}</button><a class="btn-ghost pf-trade" href="#/echanges">${tr('pf.offerTrade')}</a>${friendBtn(backend, who, name)}`}</div>`;
     hydrateStills(head);
     head.querySelector('.pf-see-coll')?.addEventListener('click', () => {
       tab = 'collection';
@@ -256,8 +256,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     // action de compte (déconnexion / remise à zéro de la démo) : en bas de page, plus sous le pseudo (audit UX3-16)
     account.hidden = !me;
     const accB = q('.pf-account-b');
-    const outLabel = backend.state.mode === 'demo' ? 'Remettre la démo à zéro' : 'Se déconnecter';
-    accB.innerHTML = me ? `<button class="btn-ghost pf-out">${outLabel}</button><span class="muted">${backend.state.mode === 'demo' ? 'Efface toute la collection de démo de ce navigateur.' : 'Tu pourras te reconnecter quand tu veux : ta collection reste sur le serveur.'}</span>` : '';
+    const outLabel = backend.state.mode === 'demo' ? tr('pf.resetDemo') : tr('pf.logout');
+    accB.innerHTML = me ? `<button class="btn-ghost pf-out">${outLabel}</button><span class="muted">${backend.state.mode === 'demo' ? tr('pf.resetDemoD') : tr('pf.logoutD')}</span>` : '';
     // (V2) notifications push : fiche au-dessus de la déconnexion (notif.ts)
     if (me) accB.prepend(notifPanel(backend));
     // (V2) hors connexion : tout télécharger (offline.ts), juste sous les notifications
@@ -266,7 +266,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     let armed = 0;
     out?.addEventListener('click', () => {
       if (!armed) {
-        out.textContent = backend.state.mode === 'demo' ? 'Sûr ? Tout est effacé' : 'Sûr ? Se déconnecter';
+        out.textContent = backend.state.mode === 'demo' ? tr('pf.resetSure') : tr('pf.logoutSure');
         out.classList.add('danger');
         // la confirmation se désarme seule au bout de 4 s
         armed = window.setTimeout(() => {
@@ -295,7 +295,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       ...unlockedIds(TITLES, st).map((id) => `title:${id}`),
       ...unlockedIds(BADGES, st).map((id) => `badge:${id}`),
       ...unlockedIds(ACCENTS, st).map((id) => `accent:${id}`),
-      ...unlockedIds(VITRINES, st).map((id) => `vitrine:${id}`),
+      ...unlockedIds(VITRINES, st).map((id) => `vitrine:${id}`), // i18n-ok
     ];
   };
   /**
@@ -389,8 +389,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   function mediaBlock() {
     const max = backend.state.mode === 'demo' ? PROFILE_MEDIA_DEMO_MAX : PROFILE_MEDIA_MAX;
     const row = (kind: ProfileMediaKind, label: string, has: boolean) =>
-      `<div class="cs-md-row"><span class="cs-md-l">${label}${has ? ' <b>✓ importée</b>' : ''}</span><button class="btn-ghost cs-md-b" data-media="${kind}"${isPending(`media-${kind}`) ? ' disabled' : ''}>${has ? 'Remplacer' : 'Importer un GIF'}</button>${has ? `<button class="btn-ghost cs-md-x" data-media="${kind}" data-rm="1"${isPending(`media-${kind}`) ? ' disabled' : ''} aria-label="Retirer ${kind === 'avatar' ? 'la photo' : 'la bannière'} importée">Retirer</button>` : ''}</div>`;
-    return `<div class="cs-media"><div class="cs-t">Photo et bannière à toi <small>GIF animé (ou PNG, JPEG, WebP) · ${max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`} max · enregistré tout de suite · ${lessMotion.matches ? 'image fixe : « mouvements réduits » est activé' : 'lu en boucle, sans son'}</small></div>${row('avatar', 'Photo de profil', !!prof?.avatarMedia)}${row('banner', 'Bannière', !!prof?.bannerMedia)}</div>`;
+      `<div class="cs-md-row"><span class="cs-md-l">${label}${has ? ' <b>' + tr('pf.imported') + '</b>' : ''}</span><button class="btn-ghost cs-md-b" data-media="${kind}"${isPending(`media-${kind}`) ? ' disabled' : ''}>${has ? tr('pf.replace') : 'Importer un GIF'}</button>${has ? `<button class="btn-ghost cs-md-x" data-media="${kind}" data-rm="1"${isPending(`media-${kind}`) ? ' disabled' : ''} aria-label="${tr('pf.removeImported', { what: kind === 'avatar' ? tr('pf.thePhoto') : tr('pf.theBanner') })}">${tr('pf.remove')}</button>` : ''}</div>`;
+    return `<div class="cs-media"><div class="cs-t">${tr('pf.mediaTitle')} <small>${tr('pf.mediaRules', { max: max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`, how: lessMotion.matches ? tr('pf.reducedMotion') : tr('pf.looped') })}</small></div>${row('avatar', tr('pf.avatar'), !!prof?.avatarMedia)}${row('banner', tr('pf.banner'), !!prof?.bannerMedia)}</div>`;
   }
   function mediaAction(btn: HTMLButtonElement) {
     const kind = btn.dataset.media as ProfileMediaKind;
@@ -400,7 +400,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         try {
           const url = await busyButton(btn, backend.setProfileMedia(kind, file));
           prof = prof ? { ...prof, [field]: url } : prof;
-          toast(file ? (kind === 'avatar' ? 'Photo de profil enregistrée' : 'Bannière enregistrée') : kind === 'avatar' ? 'Photo retirée : ton avatar Discord revient' : 'Bannière importée retirée', 'ok');
+          toast(file ? (kind === 'avatar' ? tr('pf.avatarSaved') : tr('pf.bannerSaved')) : kind === 'avatar' ? tr('pf.avatarRemoved') : tr('pf.bannerRemoved'), 'ok');
           shell.sfx.chime(2, 0.06);
         } catch (e) {
           toast(errMsg(e), 'err');
@@ -433,12 +433,12 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       return `🔒 ${esc(c.how)}${a ? ` <em>${fmtN(cur)}/${fmtN(a.target)}</em>` : ''}`;
     };
     const TABS: Array<{ id: CosmTab; label: string; hint: string; items: Cosmetic[]; okSet: Set<string>; cls: string; sel: (c: Cosmetic) => boolean }> = [
-      { id: 'banner', label: 'Bannière', hint: 'le fond du haut', items: BANNERS, okSet: ok.banner, cls: 'cs-banner', sel: (c) => (cosmDraft.banner ?? BANNERS[0].id) === c.id },
-      { id: 'frame', label: 'Cadre', hint: 'autour de ta photo', items: FRAMES, okSet: ok.frame, cls: 'cs-frame', sel: (c) => (cosmDraft.frame ?? 'none') === c.id },
-      { id: 'title', label: 'Titre', hint: 'sous ton pseudo (touche encore pour l’enlever)', items: TITLES, okSet: ok.title, cls: 'cs-title', sel: (c) => cosmDraft.title === c.id },
-      { id: 'accent', label: 'Couleur', hint: 'les accents de ton profil (cadre, titre, onglets, bordures)', items: ACCENTS, okSet: ok.accent, cls: 'cs-accent', sel: (c) => (cosmDraft.accent ?? ACCENTS[0].id) === c.id },
-      { id: 'vitrine', label: 'Vitrine', hint: 'le fond et la couleur de ta vitrine de cartes', items: VITRINES, okSet: ok.vitrine, cls: 'cs-vitrine', sel: (c) => (cosmDraft.vitrine ?? VITRINES[0].id) === c.id },
-      { id: 'badge', label: 'Badges', hint: 'jusqu’à 5, dans l’ordre où tu les choisis', items: BADGES, okSet: ok.badge, cls: 'cs-badge', sel: (c) => (cosmDraft.badges ?? []).includes(c.id) },
+      { id: 'banner', label: tr('pf.banner'), hint: tr('pf.hint.banner'), items: BANNERS, okSet: ok.banner, cls: 'cs-banner', sel: (c) => (cosmDraft.banner ?? BANNERS[0].id) === c.id },
+      { id: 'frame', label: tr('pf.tab.frame'), hint: tr('pf.hint.frame'), items: FRAMES, okSet: ok.frame, cls: 'cs-frame', sel: (c) => (cosmDraft.frame ?? 'none') === c.id },
+      { id: 'title', label: tr('pf.tab.title'), hint: tr('pf.hint.title'), items: TITLES, okSet: ok.title, cls: 'cs-title', sel: (c) => cosmDraft.title === c.id },
+      { id: 'accent', label: tr('pf.tab.color'), hint: tr('pf.hint.accent'), items: ACCENTS, okSet: ok.accent, cls: 'cs-accent', sel: (c) => (cosmDraft.accent ?? ACCENTS[0].id) === c.id },
+      { id: 'vitrine', label: tr('pf.vitrine'), hint: tr('pf.hint.vitrine'), items: VITRINES, okSet: ok.vitrine, cls: 'cs-vitrine', sel: (c) => (cosmDraft.vitrine ?? VITRINES[0].id) === c.id },
+      { id: 'badge', label: 'Badges', hint: tr('pf.hint.badges'), items: BADGES, okSet: ok.badge, cls: 'cs-badge', sel: (c) => (cosmDraft.badges ?? []).includes(c.id) }, // i18n-ok
     ];
     const tabDef = TABS.find((t) => t.id === cosmTab)!;
     // débloqués d'abord (l'ordre du catalogue est gardé à l'intérieur de chaque moitié)
@@ -455,7 +455,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       ? (() => {
           const v = cosmDraft[pf];
           const custom = /^#[0-9a-f]{6}$/i.test(v ?? '') ? v! : '';
-          return `<label class="cs ${cls} cs-custom${custom ? ' on' : ''}" title="Choisis n’importe quelle couleur"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || accentColor(cosmDraft.accent) || ACCENTS[0].css}" aria-label="Couleur libre"></span><b>${custom ? esc(custom.toUpperCase()) : 'Libre…'}</b></label>`;
+          return `<label class="cs ${cls} cs-custom${custom ? ' on' : ''}" title="${tr('pf.anyColor')}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || accentColor(cosmDraft.accent) || ACCENTS[0].css}" aria-label="Couleur libre"></span><b>${custom ? esc(custom.toUpperCase()) : tr('pf.free')}</b></label>`;
         })()
       : '';
     if (pickCell) cells.splice(items.filter((c) => okSet.has(c.id)).length, 0, pickCell);
@@ -463,10 +463,10 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (cosmTab === 'vitrine') {
       const vc = cosmDraft.vitrineColor;
       const custom = /^#[0-9a-f]{6}$/i.test(vc ?? '') ? vc! : '';
-      cells.push(`</div><div class="cs-t">Couleur de la vitrine <small>bordure, lueur et étagère</small></div><div class="cs-list cs-vcl">` +
-        `<button class="cs cs-vc${!vc ? ' on' : ''}" data-vc=""><span class="cs-dot" style="background:conic-gradient(var(--rose) 0 50%, #2a2220 0)"></span><b>Comme mon profil</b></button>` +
+      cells.push(`</div><div class="cs-t">${tr('pf.vitColor')} <small>${tr('pf.vitColorD')}</small></div><div class="cs-list cs-vcl">` +
+        `<button class="cs cs-vc${!vc ? ' on' : ''}" data-vc=""><span class="cs-dot" style="background:conic-gradient(var(--rose) 0 50%, #2a2220 0)"></span><b>${tr('pf.likeProfile')}</b></button>` +
         ACCENTS.filter((a) => ok.accent.has(a.id)).map((a) => `<button class="cs cs-vc${vc === a.id ? ' on' : ''}" data-vc="${esc(a.id)}"><span class="cs-dot" style="background:${a.css}"></span><b>${esc(a.label)}</b></button>`).join('') +
-        `<label class="cs cs-vc cs-custom-vc${custom ? ' on' : ''}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || '#e8927c'}" aria-label="Couleur libre de la vitrine"></span><b>${custom ? esc(custom.toUpperCase()) : 'Libre…'}</b></label>`);
+        `<label class="cs cs-vc cs-custom-vc${custom ? ' on' : ''}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || '#e8927c'}" aria-label="${tr('pf.vitFree')}"></span><b>${custom ? esc(custom.toUpperCase()) : tr('pf.free')}</b></label>`);
     }
     const list = cells.join('');
     // aperçu (collant) : bannière, avatar + cadre, pseudo, titre, badges
@@ -478,14 +478,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const ava = avaHtml(name);
     const dirty = cosmKey(cosmDraft) !== cosmSaved;
     const acc = ACCENTS.find((a) => a.id === cosmDraft.accent);
-    const summary = [bn.label, fr.id !== 'none' ? `Cadre ${fr.label}` : '', cosmDraft.accent && cosmDraft.accent !== ACCENTS[0].id ? `Couleur ${acc ? acc.label : cosmDraft.accent.toUpperCase()}` : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
+    const summary = [bn.label, fr.id !== 'none' ? tr('pf.sumFrame', { name: fr.label }) : '', cosmDraft.accent && cosmDraft.accent !== ACCENTS[0].id ? tr('pf.sumColor', { name: acc ? acc.label : cosmDraft.accent.toUpperCase() }) : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
     cosm.innerHTML =
-      `<div class="cs-head"><b>Personnaliser mon profil</b><span class="muted">Tout se débloque en jouant — rien ne s’achète.</span></div>` +
-      `<div class="cs-preview" aria-label="Aperçu"><div class="cs-pv-bn${prof?.bannerMedia && bannerColor(cosmDraft.banner) ? ' bn-color' : ''}" style="background:${bn.css ?? ''};--bnc:${bannerColor(cosmDraft.banner) ?? 'transparent'}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div>${avaRing(fr, ava)}</div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
+      `<div class="cs-head"><b>${tr('pf.customize')}</b><span class="muted">${tr('pf.customizeD')}</span></div>` +
+      `<div class="cs-preview" aria-label="${tr('pf.preview')}"><div class="cs-pv-bn${prof?.bannerMedia && bannerColor(cosmDraft.banner) ? ' bn-color' : ''}" style="background:${bn.css ?? ''};--bnc:${bannerColor(cosmDraft.banner) ?? 'transparent'}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div>${avaRing(fr, ava)}</div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
       mediaBlock() +
-      `<div class="seg cs-tabs" role="tablist" aria-label="Que personnaliser">${TABS.map((t) => `<button role="tab" data-tab="${t.id}" class="${t.id === cosmTab ? 'on' : ''}" aria-selected="${t.id === cosmTab}">${t.label} <em>${t.okSet.size}/${t.items.length}</em>${[...cosmNew].some((k) => k.startsWith(`${t.id}:`)) ? '<i class="pf-new-dot" aria-label="nouveau"></i>' : ''}</button>`).join('')}</div>` +
-      `<div class="cs-group"><div class="cs-t">${tabDef.label} <small>${tabDef.hint} · ${okSet.size}/${tabDef.items.length} débloqué${okSet.size > 1 ? 's' : ''}</small></div><div class="cs-list">${list}</div></div>` +
-      `<div class="cs-order"></div><div class="cs-actions"><span class="cs-sum">${dirty ? '<i class="cs-dirty" aria-hidden="true"></i>' : ''}<span>${esc(summary)}${dirty ? ' · <b>non enregistré</b>' : ''}</span></span><button class="btn-ghost cs-cancel">Annuler</button><button class="btn-primary cs-save"${dirty ? '' : ' disabled'}>Enregistrer</button></div>`;
+      `<div class="seg cs-tabs" role="tablist" aria-label="${tr('pf.whatTo')}">${TABS.map((t) => `<button role="tab" data-tab="${t.id}" class="${t.id === cosmTab ? 'on' : ''}" aria-selected="${t.id === cosmTab}">${t.label} <em>${t.okSet.size}/${t.items.length}</em>${[...cosmNew].some((k) => k.startsWith(`${t.id}:`)) ? `<i class="pf-new-dot" aria-label="${tr('pf.newDot')}"></i>` : ''}</button>`).join('')}</div>` +
+      `<div class="cs-group"><div class="cs-t">${tabDef.label} <small>${tr('pf.unlocked', { hint: tabDef.hint, n: okSet.size, total: tabDef.items.length })}</small></div><div class="cs-list">${list}</div></div>` +
+      `<div class="cs-order"></div><div class="cs-actions"><span class="cs-sum">${dirty ? '<i class="cs-dirty" aria-hidden="true"></i>' : ''}<span>${esc(summary)}${dirty ? ' · <b>' + tr('pf.unsaved') + '</b>' : ''}</span></span><button class="btn-ghost cs-cancel">${tr('pf.cancel')}</button><button class="btn-primary cs-save"${dirty ? '' : ' disabled'}>${tr('pf.save')}</button></div>`;
     hydrateStills(cosm);
     cosm.querySelectorAll<HTMLButtonElement>('[data-media]').forEach((b) => b.addEventListener('click', () => mediaAction(b)));
     cosm.querySelectorAll<HTMLButtonElement>('.cs-tabs button').forEach((b) =>
@@ -498,7 +498,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const renderOrder = () => {
       const o = cosm.querySelector<HTMLElement>('.cs-order')!;
       const list = cosmDraft.badges ?? [];
-      o.innerHTML = cosmTab === 'badge' && list.length ? `<span class="cs-t">Ordre des badges</span>${list.map((id, i) => `<span class="cs-ord">${badgeOf(id)?.glyph ?? '●'} ${esc(badgeOf(id)?.label ?? id)}<button data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Avant">◀</button><button data-mv="1" data-i="${i}" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Après">▶</button></span>`).join('')}` : '';
+      o.innerHTML = cosmTab === 'badge' && list.length ? `<span class="cs-t">${tr('pf.badgeOrder')}</span>${list.map((id, i) => `<span class="cs-ord">${badgeOf(id)?.glyph ?? '●'} ${esc(badgeOf(id)?.label ?? id)}<button data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${tr('pf.before')}">◀</button><button data-mv="1" data-i="${i}" ${i === list.length - 1 ? 'disabled' : ''} aria-label="${tr('pf.after')}">▶</button></span>`).join('')}` : '';
       o.querySelectorAll<HTMLButtonElement>('button[data-mv]').forEach((b) =>
         b.addEventListener('click', () => {
           const i = Number(b.dataset.i), d = Number(b.dataset.mv);
@@ -512,7 +512,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     cosm.querySelectorAll<HTMLButtonElement>('.cs:not(.cs-custom):not(.cs-vc)').forEach((b) =>
       b.addEventListener('click', () => {
         const id = b.dataset.id!;
-        if (b.classList.contains('locked')) return toast(`Verrouillé : ${b.title.split(' · ')[1] ?? ''}`, 'info');
+        if (b.classList.contains('locked')) return toast(tr('pf.locked', { how: b.title.split(' · ')[1] ?? '' }), 'info');
         if (b.classList.contains('cs-banner')) cosmDraft.banner = id;
         else if (b.classList.contains('cs-frame')) cosmDraft.frame = id;
         else if (b.classList.contains('cs-title')) cosmDraft.title = cosmDraft.title === id ? undefined : id;
@@ -521,7 +521,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         else {
           const l = (cosmDraft.badges ??= []);
           if (l.includes(id)) l.splice(l.indexOf(id), 1);
-          else if (l.length >= 5) return toast('5 badges au maximum.', 'info');
+          else if (l.length >= 5) return toast(tr('pf.max5'), 'info');
           else l.push(id);
         }
         shell.sfx.tick(1.2, 0.04);
@@ -591,7 +591,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         cosmOpen = false;
         cosm.hidden = true;
         shell.sfx.chime(2, 0.06);
-        toast('Profil enregistré', 'ok');
+        toast(tr('pf.saved'), 'ok');
         renderHead();
       } catch (e) {
         toast(errMsg(e), 'err');
@@ -601,7 +601,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
 
   function editBio() {
     const box = head.querySelector<HTMLElement>('.pf-bio')!;
-    box.innerHTML = `<input class="pf-bio-in" maxlength="80" placeholder="Tes informations (80 caractères)" value="${esc(prof?.bio ?? '')}">`;
+    box.innerHTML = `<input class="pf-bio-in" maxlength="80" placeholder="${tr('pf.infoField')}" value="${esc(prof?.bio ?? '')}">`;
     const inp = box.querySelector<HTMLInputElement>('input')!;
     inp.focus();
     let done = false;
@@ -611,7 +611,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       try {
         await backend.setBio(inp.value);
         prof = prof ? { ...prof, bio: inp.value.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined } : prof;
-        toast('Informations enregistrées', 'ok');
+        toast(tr('pf.infoSaved'), 'ok');
       } catch (e) {
         toast(errMsg(e), 'err');
       }
@@ -648,23 +648,23 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const ach = prof?.achievements ?? ((snap) => (snap ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, snap.achievements.stats)).length, total: ACHIEVEMENTS.length } : null))(mySnap());
     // les 3 chiffres clés juste APRÈS la vitrine (retours live 02 : la vitrine d'abord)
     keysEl.innerHTML =
-      `<div class="pf-key k-prog"><span class="pf-k-l">Complétion</span><b class="pf-k-v">${fmtPct(pct)}</b><span class="pf-k-s">${fmtN(st.uniques)} / ${fmtN(all)} cartes</span><i class="pf-k-bar"><i style="width:${barPct(st.uniques, all)}%"></i></i></div>` +
-      `<div class="pf-key k-myth${st.mythics ? '' : ' zero'}"><span class="pf-k-l">Cartes 6★</span><b class="pf-k-v">${fmtN(st.mythics)}</b><span class="pf-k-s${st.secrets ? ' has-secret' : ''}">${st.secrets ? `+ ${fmtN(st.secrets)} ${word(st.secrets, 'secrète')} ✷` : 'les plus rares'}</span></div>` +
+      `<div class="pf-key k-prog"><span class="pf-k-l">${tr('pf.completion')}</span><b class="pf-k-v">${fmtPct(pct)}</b><span class="pf-k-s">${tr('pf.cardsOf', { n: fmtN(st.uniques), total: fmtN(all) })}</span><i class="pf-k-bar"><i style="width:${barPct(st.uniques, all)}%"></i></i></div>` +
+      `<div class="pf-key k-myth${st.mythics ? '' : ' zero'}"><span class="pf-k-l">${tr('pf.mythics')}</span><b class="pf-k-v">${fmtN(st.mythics)}</b><span class="pf-k-s${st.secrets ? ' has-secret' : ''}">${st.secrets ? `+ ${fmtN(st.secrets)} ${tr('pf.w.secret', { n: st.secrets })} ✷` : tr('pf.rarest')}</span></div>` +
       (ach
-        ? `<${isMe() ? 'a href="#/succes"' : 'div'} class="pf-key k-ach"><span class="pf-k-l">Succès</span><b class="pf-k-v">${ach.done}<small>/${ach.total}</small></b><span class="pf-k-s">${isMe() ? 'voir mes succès →' : 'débloqués'}</span><i class="pf-k-bar"><i style="width:${barPct(ach.done, ach.total)}%"></i></i></${isMe() ? 'a' : 'div'}>`
+        ? `<${isMe() ? 'a href="#/succes"' : 'div'} class="pf-key k-ach"><span class="pf-k-l">${tr('pf.achievements')}</span><b class="pf-k-v">${ach.done}<small>/${ach.total}</small></b><span class="pf-k-s">${isMe() ? tr('pf.seeAch') : tr('pf.unlockedW')}</span><i class="pf-k-bar"><i style="width:${barPct(ach.done, ach.total)}%"></i></i></${isMe() ? 'a' : 'div'}>`
         : '');
     pActEl.innerHTML =
-      panelHead('Activité', 'var(--pc-act)') +
+      panelHead(tr('pf.activity'), 'var(--pc-act)') +
       row('▣', 'Boosters ouverts', st.packsOpened) +
-      row('🔥', 'Série de connexion', st.streak, st.streak ? `${fmtN(st.streak)} j` : '—', 'var(--pc-fire)', st.streak ? `jour ${Math.max(1, sd)}/${STREAK_CYCLE} du cycle` : '') +
-      row('⇄', word(st.tradesDone, 'Échange conclu', 'Échanges conclus'), st.tradesDone) +
-      row('⚖', word(st.contractsSigned, 'Contrat signé', 'Contrats signés'), st.contractsSigned);
+      row('🔥', tr('pf.streak'), st.streak, st.streak ? `${fmtN(st.streak)} j` : '—', 'var(--pc-fire)', st.streak ? tr('pf.cycleDay', { d: Math.max(1, sd), n: STREAK_CYCLE }) : '') +
+      row('⇄', tr('pf.w.trades', { n: st.tradesDone }), st.tradesDone) +
+      row('⚖', tr('pf.w.contracts', { n: st.contractsSigned }), st.contractsSigned);
     pCollEl.innerHTML =
-      panelHead('Collection', 'var(--pc-coll)') +
-      row('▤', 'Cartes en tout', total, fmtN(total), '', `${fmtN(mine.length)} différentes`) +
-      row('⧉', word(dups, 'Doublon'), dups) +
-      row('✓', word(st.fullSubthemes, 'Album complet', 'Albums complets'), st.fullSubthemes) +
-      row('✷', word(st.secrets, 'Carte secrète', 'Cartes secrètes'), st.secrets, fmtN(st.secrets), 'var(--pc-secret)');
+      panelHead('Collection', 'var(--pc-coll)') + // i18n-ok
+      row('▤', tr('pf.cardsTotal'), total, fmtN(total), '', tr('pf.distinct', { n: fmtN(mine.length) })) +
+      row('⧉', tr('pf.w.dups', { n: dups }), dups) +
+      row('✓', tr('pf.w.albums', { n: st.fullSubthemes }), st.fullSubthemes) +
+      row('✷', tr('pf.w.secretCards', { n: st.secrets }), st.secrets, fmtN(st.secrets), 'var(--pc-secret)');
     // complétion par univers : barre à la couleur de l'univers, triée du plus avancé au moins avancé
     const ids = new Set(mine.filter((c) => c.rarity !== 'secret').map((c) => c.cardId));
     const themes = (prof?.themes ?? THEMES.map((t) => ({ id: t.id, have: t.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: t.cards.length })))
@@ -675,7 +675,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         return `<div class="pf-th${t.have ? '' : ' zero'}" style="--rc:${th?.style.accent ?? '#fff'}"><span class="pf-th-l"><i aria-hidden="true"></i>${esc(th?.label ?? t.id)}</span><i class="pf-th-bar"><i style="width:${barPct(t.have, t.total)}%"></i></i><em><b>${fmtN(t.have)}</b> / ${fmtN(t.total)}</em></div>`;
       })
       .join('');
-    pThEl.innerHTML = panelHead('Univers', 'var(--pc-coll)', '<small>cartes différentes</small>') + `<div class="pf-themes">${themes}</div>`;
+    pThEl.innerHTML = panelHead(tr('pf.universes'), 'var(--pc-coll)', '<small>' + tr('pf.distinctW') + '</small>') + `<div class="pf-themes">${themes}</div>`;
   }
 
   /** Raretés : une barre de répartition (une couleur par rareté) + la légende chiffrée */
@@ -686,8 +686,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const sum = Math.max(1, rows.reduce((a, r) => a + n[r], 0));
     const seg = (r: RarityId) => (n[r] ? `<i class="pf-rs r-${r}" style="--rc:${rarity(r).hex};flex-grow:${n[r]}" title="${esc(rarity(r).label)} : ${fmtN(n[r])}"></i>` : '');
     rarEl.innerHTML =
-      panelHead('Raretés', 'var(--pc-gold)', '<small>cartes différentes</small>') +
-      `<div class="pf-rbar" role="img" aria-label="Répartition par rareté">${mine.length ? rows.map(seg).join('') : ''}</div>` +
+      panelHead(tr('pf.rarities'), 'var(--pc-gold)', '<small>' + tr('pf.distinctW') + '</small>') +
+      `<div class="pf-rbar" role="img" aria-label="${tr('pf.byRarity')}">${mine.length ? rows.map(seg).join('') : ''}</div>` +
       `<div class="pf-rlist">${rows
         .map((r) => `<div class="pf-rr r-${r}${n[r] ? '' : ' zero'}" style="--rc:${rarity(r).hex};--rt:${r === 'epic' ? '#e0607a' : r === 'rare' ? '#6f9be0' : rarity(r).hex}"><span class="pf-rr-s">${r === 'secret' ? '✷' : `${rarity(r).rank + 1}★`}</span><span class="pf-rr-l">${esc(rarity(r).label)}</span><b>${fmtN(n[r])}</b><em>${n[r] ? fmtPct((n[r] / sum) * 100) : ''}</em></div>`)
         .join('')}</div>`;
@@ -713,7 +713,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     countEl.classList.toggle('full', n >= SLOTS);
     const save = tools.querySelector<HTMLButtonElement>('.pf-save');
     if (save) save.disabled = !editor.dirty();
-    editBar.querySelector<HTMLElement>('.pf-edit-hint')!.textContent = n ? (coarseQ.matches ? 'Glisse une carte pour la ranger, hors de la vitrine pour la retirer' : 'Glisse une carte pour la ranger · ✕ ou hors de la vitrine pour la retirer · ← → au clavier') : 'Vitrine vide : enregistrée ainsi, elle montrera tes meilleures cartes automatiquement';
+    editBar.querySelector<HTMLElement>('.pf-edit-hint')!.textContent = n ? (coarseQ.matches ? tr('pf.vit.dragTouch') : tr('pf.vit.dragMouse')) : tr('pf.vit.empty');
     editBar.querySelector<HTMLButtonElement>('.pf-fill')!.disabled = n >= SLOTS;
     editBar.querySelector<HTMLButtonElement>('.pf-clear')!.disabled = !n;
   }
@@ -727,7 +727,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     el.classList.add('pf-editing');
     editBar.hidden = false;
     autoEl.textContent = '';
-    tools.innerHTML = `<button class="btn-ghost pf-cancel">Annuler</button><button class="btn-primary pf-save" disabled>Enregistrer</button>`;
+    tools.innerHTML = `<button class="btn-ghost pf-cancel">${tr('pf.cancel')}</button><button class="btn-primary pf-save" disabled>${tr('pf.save')}</button>`;
     tools.querySelector('.pf-cancel')!.addEventListener('click', stopEditing);
     const saveBtn = tools.querySelector<HTMLButtonElement>('.pf-save')!;
     saveBtn.addEventListener('click', async () => {
@@ -735,7 +735,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       try {
         await busyButton(saveBtn, backend.setShowcase(cardsOut));
         prof = prof ? { ...prof, showcase: cardsOut } : prof;
-        toast(cardsOut.length ? 'Vitrine enregistrée' : 'Vitrine automatique : tes meilleures cartes', 'ok');
+        toast(cardsOut.length ? tr('pf.vit.saved') : tr('pf.vit.auto'), 'ok');
         shell.sfx.chime(2, 0.06);
         stopEditing();
       } catch (e) {
@@ -769,8 +769,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const me = isMe();
     const sc = showcase();
     const list = sc.list;
-    autoEl.textContent = sc.auto && list.length ? (me ? 'tes meilleures cartes, choisies automatiquement' : 'ses meilleures cartes') : '';
-    tools.innerHTML = me && ownedOf().length ? `<button class="btn-ghost pf-edit">${sc.auto ? 'Choisir mes cartes' : 'Modifier'}</button>` : '';
+    autoEl.textContent = sc.auto && list.length ? (me ? tr('pf.vit.bestMine') : tr('pf.vit.bestTheirs')) : '';
+    tools.innerHTML = me && ownedOf().length ? `<button class="btn-ghost pf-edit">${sc.auto ? tr('pf.vit.pick') : tr('pf.edit')}</button>` : '';
     tools.querySelector('.pf-edit')?.addEventListener('click', startEditing);
     caseEl.replaceChildren();
     caseEl.classList.toggle('is-empty', !list.length);
@@ -786,7 +786,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       } else wrap.innerHTML = `<div class="pf-empty"></div>`;
       caseEl.append(wrap);
     }
-    if (!list.length) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? 'Ouvre des boosters : tes plus belles cartes s’afficheront ici.' : 'Pas encore de carte.'}</div>`);
+    if (!list.length) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? tr('pf.vit.openSome') : tr('pf.noCardYet')}</div>`);
   }
   /**
    * (retours Hugo et Tom, 10/11) TOUTE LA COLLECTION d'un joueur, pas seulement son classeur épinglé : recherche par nom,
@@ -806,7 +806,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const owned = ownedOf();
     const rEl = q('.pf-all-r');
     const ranks = [...new Set(owned.map((c) => c.rarity))].sort((a, b) => rarity(b).rank - rarity(a).rank);
-    rEl.innerHTML = `<button class="chip${allR ? '' : ' on'}" data-r="">Toutes</button>${ranks.map((r) => `<button class="chip${allR === r ? ' on' : ''}" data-r="${r}" style="--rc:${rarity(r).hex}">${starsHtml(r)}</button>`).join('')}`;
+    rEl.innerHTML = `<button class="chip${allR ? '' : ' on'}" data-r="">${tr('pf.all')}</button>${ranks.map((r) => `<button class="chip${allR === r ? ' on' : ''}" data-r="${r}" style="--rc:${rarity(r).hex}">${starsHtml(r)}</button>`).join('')}`;
     const needle = fold(allQ.value.trim());
     const list = owned
       .filter((c) => (!allR || c.rarity === allR) && (!needle || fold(catalogEntry(c.cardId)?.name ?? '').includes(needle)))
@@ -819,7 +819,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
       g.append(t);
     }
-    if (!list.length) g.append(h('div', 'muted', owned.length ? 'Aucune carte ne correspond.' : 'Pas encore de carte.'));
+    if (!list.length) g.append(h('div', 'muted', owned.length ? tr('pf.noMatch') : tr('pf.noCardYet')));
     q('.pf-all-more').hidden = list.length <= allShown;
   }
   q('.pf-all-r').addEventListener('click', (e) => {
@@ -848,13 +848,13 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     box.replaceChildren();
     const nob = q('.pf-nobinder');
     nob.hidden = list.length > 0;
-    nob.innerHTML = isMe() ? 'Pas de classeur épinglé. Crée un classeur dans <a class="p-link" href="#/collection/classeurs">ta collection</a> et épingle-le (3 au plus) : il s’affichera ici, visible des potes.' : 'Pas de classeur épinglé.';
+    nob.innerHTML = isMe() ? tr('pf.noBinderMine') : tr('pf.noBinder');
     if (!list.length) return;
     const have = new Map(ownedOf().map((c) => [`${c.cardId}:${c.rarity}`, c]));
     const first = list.length > 1 ? 12 : 24;
     list.forEach((b, i) => {
       const sec = h('div', 'pf-sec pf-binder-sec');
-      sec.innerHTML = `<div class="pf-sec-t"><h2 class="pf-binder-t"></h2><span class="pf-auto">· épinglé</span>${isMe() && i === 0 ? '<span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs">Mes classeurs</a></span>' : ''}</div><div class="grid mini pf-binder"></div>`;
+      sec.innerHTML = `<div class="pf-sec-t"><h2 class="pf-binder-t"></h2><span class="pf-auto">${tr('pf.pinned')}</span>${isMe() && i === 0 ? '<span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs">' + tr('pf.myBinders') + '</a></span>' : ''}</div><div class="grid mini pf-binder"></div>`;
       sec.querySelector('.pf-binder-t')!.textContent = b.name;
       const g = sec.querySelector<HTMLElement>('.pf-binder')!;
       const fill = (n: number) => {
@@ -879,7 +879,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
 
   // ── ACTIVITÉ
   async function loadActivity() {
-    activityEl.innerHTML = '<div class="muted">Chargement…</div>';
+    activityEl.innerHTML = '<div class="muted">' + tr('common.loading2') + '</div>';
     try {
       activity = await backend.activity(isMe() ? (backend.state.user?.id ?? 'me') : who);
     } catch (e) {
@@ -892,7 +892,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (tab !== 'activite') return;
     const list = activity ?? [];
     activityEl.replaceChildren();
-    if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? 'Rien pour l’instant : tes gros tirages (5★ et +), échanges conclus et contrats signés apparaîtront ici.' : 'Rien à montrer pour l’instant.'}</div>`);
+    if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? tr('pf.nothingMine') : tr('pf.nothing')}</div>`);
     const ICON: Record<string, string> = { pull: '✦', mythic_pull: '✺', secret_pull: '✷', trade: '⇄', contract: '⚖', joined: '👋', achievement: '🏅' };
     for (const a of list) {
       const e = a.cardId ? catalogEntry(a.cardId) : undefined;

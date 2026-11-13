@@ -50,7 +50,7 @@ export function createStatus(backend: GameBackend, shell: Shell) {
     pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.streak')}</b><span>${tr('st.inARow', { days: plural(s.count, 'jour') })}</span>${CLOSE_X}</div>
       <div class="w-sec"><div class="w-h"><b>${tr('st.streak7')}</b><span>${tr('st.weekly', { n: STREAK_REWARD })}</span></div>
       <div class="st-days">${dots}</div>
-      <div class="st-txt">${claimable ? `<b>${tr('st.day7')}</b> ${tr('st.waiting')}` : day === STREAK_CYCLE ? tr('st.claimedCont') : `Jour <b>${day}</b> ${tr('st.outOf', { n: STREAK_CYCLE })}`}</div>
+      <div class="st-txt">${claimable ? `<b>${tr('st.day7')}</b> ${tr('st.waiting')}` : day === STREAK_CYCLE ? tr('st.claimedCont') : `${tr('st.day')} <b>${day}</b> ${tr('st.outOf', { n: STREAK_CYCLE })}`}</div>
       ${claimable ? `<div class="msn-bonus ready"><span>+${STREAK_REWARD} boosters</span><button class="btn-primary st-claim">${tr('msn.claim')}</button></div>` : ''}</div>
       ${eco ? calendarHtml(eco) : ''}
       <div class="msn-foot">${tr('st.reset')}</div>`;

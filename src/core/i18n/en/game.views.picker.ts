@@ -12,4 +12,6 @@ export const en: PartOf<typeof fr> = {
   'pick.none': 'No card available.',
   'pick.help': 'Tap a card to add it; tap it here to remove it.',
   'pick.removeOne': 'Remove one copy',
+  'pick.clear': 'Clear',
+  'pick.all': 'All',
 };

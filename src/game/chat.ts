@@ -1,4 +1,5 @@
-import { locale } from '../core/i18n';
+import '../core/i18n/fr/game.chat'; // (textes de ce module, version anglaise)
+import { locale, t as tr } from '../core/i18n';
 import './chat.css';
 import type { BigPull, GameBackend } from './backend';
 import { CHAT_GENERAL, CHAT_MENTIONS_MAX, CHAT_REACTS, CHAT_TEXT_MAX, chatSnippet, cleanChatText, dmKey, dmPeer, type ChatMsg } from '../core/chat';
@@ -40,14 +41,14 @@ const dayKey = (t: number) => {
 };
 function dayLabel(t: number): string {
   const today = dayKey(Date.now());
-  if (dayKey(t) === today) return 'Aujourd’hui';
-  if (dayKey(t) === dayKey(Date.now() - 86400000)) return 'Hier';
+  if (dayKey(t) === today) return tr('chat.today');
+  if (dayKey(t) === dayKey(Date.now() - 86400000)) return tr('chat.yesterday');
   const d = new Date(t);
   return `${d.toLocaleDateString(locale(), { weekday: 'short' }).replace('.', '')} ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 function ago(t: number): string {
   const m = Math.floor((Date.now() - t) / 60000);
-  if (m < 1) return 'à l’instant';
+  if (m < 1) return tr('time.justNow');
   if (m < 60) return `${m} min`;
   if (dayKey(t) === dayKey(Date.now())) return hhmm(t);
   if (m < 60 * 24 * 6) return dayLabel(t);
@@ -84,25 +85,25 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   launch.type = 'button';
   launch.setAttribute('aria-controls', 'chat-panel');
   launch.setAttribute('aria-expanded', 'false');
-  launch.innerHTML = `${ICON}<span class="chat-l-k">Chat</span><span class="chat-l-live" aria-live="polite"><span></span></span><b class="badge chat-n" hidden></b>`;
+  launch.innerHTML = `${ICON}<span class="chat-l-k">Chat</span><span class="chat-l-live" aria-live="polite"><span></span></span><b class="badge chat-n" hidden></b>`; // i18n-ok
   const liveEl = launch.querySelector<HTMLElement>('.chat-l-live > span')!;
   const badgeEl = launch.querySelector<HTMLElement>('.chat-n')!;
 
   const panel = h('section', 'chat-panel');
   panel.id = 'chat-panel';
   panel.setAttribute('role', 'dialog');
-  panel.setAttribute('aria-label', 'Chat');
+  panel.setAttribute('aria-label', 'Chat'); // i18n-ok
   panel.inert = true;
   panel.innerHTML = `
     <header class="chat-head">
       <div class="chat-kick"></div>
-      <div class="chat-title"><button class="chat-back" type="button" aria-label="Retour aux privés" hidden>←</button><b></b></div>
+      <div class="chat-title"><button class="chat-back" type="button" aria-label="${tr('chat.backDms')}" data-t-aria="chat.backDms" hidden>←</button><b></b></div>
       <div class="chat-sub"></div>
-      <div class="chat-tools"><button class="chat-mute" type="button" aria-pressed="false"></button><button class="chat-x" type="button" aria-label="Fermer le chat">✕</button></div>
-      <div class="seg chat-tabs" data-seg-key="chat-tabs" role="tablist"><button type="button" data-tab="general" role="tab">Général<b class="badge" hidden></b></button><button type="button" data-tab="dms" role="tab">Privés<b class="badge" hidden></b></button></div>
+      <div class="chat-tools"><button class="chat-mute" type="button" aria-pressed="false"></button><button class="chat-x" type="button" aria-label="${tr('chat.close')}" data-t-aria="chat.close">✕</button></div>
+      <div class="seg chat-tabs" data-seg-key="chat-tabs" role="tablist"><button type="button" data-tab="general" role="tab" data-t="chat.general">${tr('chat.general')}<b class="badge" hidden></b></button><button type="button" data-tab="dms" role="tab" data-t="chat.dms">${tr('chat.dms')}<b class="badge" hidden></b></button></div>
     </header>
     <div class="chat-body">
-      <div class="chat-thread" role="log" aria-label="Messages" tabindex="-1"></div>
+      <div class="chat-thread" role="log" aria-label="Messages" tabindex="-1"></div> // i18n-ok
       <div class="chat-list" hidden></div>
       <button class="chat-jump" type="button" hidden></button>
       <div class="chat-picker" hidden></div>
@@ -112,10 +113,10 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
       <div class="chat-ac" role="listbox" hidden></div>
       <div class="chat-ctx" hidden></div>
       <div class="chat-row">
-        <button class="chat-add" type="button" title="Montrer une carte de ma collection" aria-label="Montrer une carte">+</button>
-        <textarea class="chat-in" rows="1" maxlength="${CHAT_TEXT_MAX}" enterkeyhint="send" autocomplete="off" aria-label="Message"></textarea>
+        <button class="chat-add" type="button" title="${tr('chat.showCardTitle')}" data-t-title="chat.showCardTitle" aria-label="${tr('chat.showCard')}" data-t-aria="chat.showCard">+</button>
+        <textarea class="chat-in" rows="1" maxlength="${CHAT_TEXT_MAX}" enterkeyhint="send" autocomplete="off" aria-label="Message"></textarea> // i18n-ok
         <span class="chat-cnt" hidden></span>
-        <button class="chat-send" type="button" aria-label="Envoyer" disabled><i>→</i></button>
+        <button class="chat-send" type="button" aria-label="${tr('chat.send')}" data-t-aria="chat.send" disabled><i>→</i></button>
       </div>
     </footer>`;
   root.append(launch, panel);
@@ -159,7 +160,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     atMemo = null;
     return map;
   }
-  const nameOf = (id: string | undefined, fallback = 'Joueur') => (id && players().get(id)?.name) || fallback;
+  const nameOf = (id: string | undefined, fallback = tr('chat.player')) => (id && players().get(id)?.name) || fallback;
   const onlineCount = () => [...players().values()].filter((p) => p.online).length;
   function ava(id: string, name: string, dot = false): string {
     const p = players().get(id);
@@ -224,7 +225,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     if (badgeEl.hidden === show) badgeEl.hidden = !show;
     launch.classList.toggle('has-unread', u.n > 0);
     launch.classList.toggle('at', u.mention);
-    launch.setAttribute('aria-label', u.n ? `Chat : ${u.n} message${u.n > 1 ? 's' : ''} non lu${u.n > 1 ? 's' : ''}` : 'Ouvrir le chat');
+    launch.setAttribute('aria-label', u.n ? tr('chat.unread', { n: u.n }) : tr('chat.open'));
     if (!tickKey) {
       const n = onlineCount();
       const t = `${String(n).padStart(2, '0')} en ligne`;
@@ -235,7 +236,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   function tick(e: Extract<ChatEvent, { type: 'incoming' }>) {
     clearTimeout(tickTimer);
     tickKey = e.key;
-    const who = e.key === CHAT_GENERAL ? e.name : `${e.name} · privé`;
+    const who = e.key === CHAT_GENERAL ? e.name : tr('chat.privateOf', { name: e.name });
     liveEl.innerHTML = `<b>${esc(who)}</b> ${esc(chatSnippet(e.text || '…', 60))}`;
     launch.classList.remove('tick');
     void launch.offsetWidth;
@@ -254,18 +255,18 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const inbox = store.inbox;
     const peerId = view === 'dm' && dmCur ? dmPeer(dmCur, backend.state.user?.id ?? '') : null;
     const peer = peerId ? players().get(peerId) : null;
-    kickEl.innerHTML = view === 'general' ? 'Chat <i>/</i> 01 Général' : 'Chat <i>/</i> 02 Privés';
-    titleEl.textContent = view === 'general' ? 'Général' : view === 'dms' ? 'Privés' : (peer?.name ?? nameOf(peerId ?? undefined));
+    kickEl.innerHTML = view === 'general' ? 'Chat <i>/</i> ' + tr('chat.kGeneral') + '' : 'Chat <i>/</i> ' + tr('chat.kDms') + '';
+    titleEl.textContent = view === 'general' ? tr('chat.general') : view === 'dms' ? tr('chat.dms') : (peer?.name ?? nameOf(peerId ?? undefined));
     backBtn.hidden = view !== 'dm';
     const n = onlineCount();
-    subEl.textContent = view === 'general' ? `${String(n).padStart(2, '0')} en ligne · ${players().size} joueurs` : view === 'dms' ? 'Un message à un seul joueur' : peer?.online ? 'en ligne · vous deux seulement' : 'hors ligne · il le lira à son retour';
+    subEl.textContent = view === 'general' ? tr('chat.onlineCount', { on: String(n).padStart(2, '0'), n: players().size }) : view === 'dms' ? tr('chat.dmSub') : peer?.online ? tr('chat.dmOn') : tr('chat.dmOff');
     subEl.classList.toggle('live', view === 'dm' && !!peer?.online);
     const muted = !!key && !!inbox?.muted.includes(key);
     muteBtn.hidden = !key;
-    muteBtn.textContent = muted ? 'Sourdine' : 'Notifs';
+    muteBtn.textContent = muted ? tr('chat.mutedBtn') : tr('chat.notifsBtn');
     muteBtn.classList.toggle('on', !muted);
     muteBtn.setAttribute('aria-pressed', String(!muted));
-    muteBtn.title = muted ? 'Conversation en sourdine : ni pastille ni notification. Toucher pour réactiver.' : 'Notifications actives pour cette conversation. Toucher pour la mettre en sourdine.';
+    muteBtn.title = muted ? tr('chat.muted') : tr('chat.unmuted');
     tabsEl.querySelectorAll<HTMLElement>('button').forEach((b) => {
       const on = b.dataset.tab === (view === 'general' ? 'general' : 'dms');
       b.classList.toggle('on', on);
@@ -280,7 +281,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
       if (bd.textContent !== t) bd.textContent = t;
       if (bd.hidden === c > 0) bd.hidden = !(c > 0);
     });
-    input.placeholder = view === 'general' ? 'Message à tout le monde…' : peer ? `Message à ${peer.name}…` : 'Message…';
+    input.placeholder = view === 'general' ? tr('chat.phAll') : peer ? tr('chat.phOne', { name: peer.name }) : 'Message…';
     compose.hidden = view === 'dms';
   }
 
@@ -291,20 +292,20 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const withDm = new Set<string>();
     let html = '';
     const rows = inbox?.dms ?? [];
-    if (rows.length) html += '<div class="cl-k">Conversations</div>';
+    if (rows.length) html += '<div class="cl-k">Conversations</div>'; // i18n-ok
     for (const d of rows) {
       const pid = d.peerId ?? dmPeer(d.key, meId) ?? '';
       withDm.add(pid);
-      const name = nameOf(pid, d.lastUserId !== meId ? (d.lastName ?? 'Joueur') : 'Joueur');
+      const name = nameOf(pid, d.lastUserId !== meId ? (d.lastName ?? tr('chat.player')) : tr('chat.player'));
       const un = inbox!.muted.includes(d.key) ? 0 : Math.max(0, d.n - d.seenN);
-      const last = d.lastText === '' ? 'message supprimé' : (d.lastText ?? '');
-      html += `<button type="button" class="cl-row${un ? ' unread' : ''}" data-key="${esc(d.key)}">${ava(pid, name, true)}<span class="cl-m"><b>${esc(name)}</b><em>${d.lastUserId === meId ? '<i>Toi :</i> ' : ''}${esc(last)}</em></span><span class="cl-r"><time>${esc(ago(d.lastAt))}</time>${un ? `<b class="badge">${un > 99 ? '99+' : un}</b>` : inbox!.muted.includes(d.key) ? '<small>sourdine</small>' : ''}</span></button>`;
+      const last = d.lastText === '' ? tr('chat.deleted') : (d.lastText ?? '');
+      html += `<button type="button" class="cl-row${un ? ' unread' : ''}" data-key="${esc(d.key)}">${ava(pid, name, true)}<span class="cl-m"><b>${esc(name)}</b><em>${d.lastUserId === meId ? '<i>' + tr('chat.you') + '</i> ' : ''}${esc(last)}</em></span><span class="cl-r"><time>${esc(ago(d.lastAt))}</time>${un ? `<b class="badge">${un > 99 ? '99+' : un}</b>` : inbox!.muted.includes(d.key) ? '<small>sourdine</small>' : ''}</span></button>`;
     }
     const others = [...players().values()].filter((p) => p.id !== meId && !withDm.has(p.id)).sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, locale()));
-    if (others.length) html += `<div class="cl-k">${rows.length ? 'Autres joueurs' : 'Écrire à un joueur'}</div>`;
+    if (others.length) html += `<div class="cl-k">${rows.length ? tr('chat.others') : tr('chat.writeTo')}</div>`;
     for (const p of others)
       html += `<button type="button" class="cl-row new" data-peer="${esc(p.id)}">${ava(p.id, p.name, true)}<span class="cl-m"><b>${esc(p.name)}</b><em>${p.online ? 'en ligne' : 'hors ligne'}</em></span><span class="cl-r"><i class="cl-go">→</i></span></button>`;
-    if (!html) html = '<div class="chat-empty"><b>Personne pour l’instant</b><span>Les joueurs du club apparaîtront ici.</span></div>';
+    if (!html) html = '<div class="chat-empty"><b>' + tr('chat.nobody') + '</b><span>' + tr('chat.nobodyD') + '</span></div>';
     listEl.innerHTML = html;
   }
 
@@ -324,7 +325,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   function syncJump() {
     const show = !atBottom();
     jumpBtn.hidden = !show;
-    jumpBtn.innerHTML = newBelow ? `<i>↓</i> ${newBelow} nouveau${newBelow > 1 ? 'x' : ''}` : '<i>↓</i>';
+    jumpBtn.innerHTML = newBelow ? `<i>↓</i> ${tr('chat.newBelow', { n: newBelow })}` : '<i>↓</i>';
     jumpBtn.classList.toggle('new', newBelow > 0);
   }
 
@@ -335,15 +336,15 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const t = m.deleted ? { html: '', atMe: false } : fmt(m.text);
     if (t.atMe && !f.mine) el.classList.add('at-me');
     const meId = backend.state.user?.id ?? '';
-    const head = f.cont ? '' : `<div class="cm-h"><b>${esc(f.mine ? 'Toi' : name)}</b><time datetime="${new Date(m.at).toISOString()}">${hhmm(m.at)}</time></div>`;
+    const head = f.cont ? '' : `<div class="cm-h"><b>${esc(f.mine ? tr('chat.me') : name)}</b><time datetime="${new Date(m.at).toISOString()}">${hhmm(m.at)}</time></div>`;
     const reply = m.reply ? `<div class="cm-reply"><b>${esc(m.reply.name)}</b> ${esc(m.reply.text)}</div>` : '';
-    const body = m.deleted ? '<div class="cm-t gone">message supprimé</div>' : m.text ? `<div class="cm-t">${t.html}</div>` : '';
+    const body = m.deleted ? '<div class="cm-t gone">' + tr('chat.deleted') + '</div>' : m.text ? `<div class="cm-t">${t.html}</div>` : '';
     const rs = (m.reacts ?? []).filter((r) => r.by.length);
     const reacts = rs.length
       ? `<div class="cm-rs">${rs.map((r) => `<button type="button" class="cm-r${r.by.includes(meId) ? ' me' : ''}" data-k="${esc(r.k)}" title="${esc(r.by.map((u) => nameOf(u)).join(', '))}">${esc(r.k)}<i>${r.by.length}</i></button>`).join('')}</div>`
       : '';
     const state = m.failed
-      ? `<div class="cm-st err">Pas envoyé <button type="button" class="cm-retry" data-a="retry">Réessayer</button><button type="button" class="cm-retry" data-a="discard">Retirer</button></div>`
+      ? `<div class="cm-st err">${tr('chat.notSent')} <button type="button" class="cm-retry" data-a="retry">${tr('chat.retry')}</button><button type="button" class="cm-retry" data-a="discard">${tr('chat.remove')}</button></div>`
       : m.pending
         ? '<div class="cm-st">envoi…</div>'
         : f.seen
@@ -351,13 +352,13 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
           : '';
     const canAct = !m.deleted && !m.pending && !m.failed;
     const acts = canAct
-      ? `<div class="cm-acts" role="group" aria-label="Réagir, répondre">${CHAT_REACTS.map((k) => `<button type="button" data-a="react" data-k="${esc(k)}">${esc(k)}</button>`).join('')}<button type="button" data-a="reply" title="Répondre">↩</button>${f.mine || f.staff ? '<button type="button" data-a="del" title="Supprimer">✕</button>' : ''}</div>`
+      ? `<div class="cm-acts" role="group" aria-label="${tr('chat.reactTitle')}">${CHAT_REACTS.map((k) => `<button type="button" data-a="react" data-k="${esc(k)}">${esc(k)}</button>`).join('')}<button type="button" data-a="reply" title="${tr('chat.reply')}">↩</button>${f.mine || f.staff ? `<button type="button" data-a="del" title="${tr('chat.delete')}">✕</button>` : ''}</div>`
       : '';
     el.innerHTML = `${f.mine || f.cont ? '' : ava(m.userId, name)}<div class="cm-main">${head}${reply}${body}<div class="cm-card"></div>${reacts}${state}</div>${acts}`;
     const cardHost = el.querySelector<HTMLElement>('.cm-card')!;
     if (m.card && !m.deleted && catalogEntry(m.card.cardId)) {
       const tile = cardTile(m.card.cardId, m.card.rarity as RarityId, { mini: true });
-      tile.dataset.zoom = `${m.card.cardId}|${m.card.rarity}|${m.card.mintNumber ?? ''}|${f.mine ? 'Toi' : name}`;
+      tile.dataset.zoom = `${m.card.cardId}|${m.card.rarity}|${m.card.mintNumber ?? ''}|${f.mine ? tr('chat.me') : name}`;
       cardHost.append(tile);
     } else cardHost.remove();
     return el;
@@ -367,8 +368,8 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const el = h('button', `cdrop r-${p.rarity}`);
     (el as HTMLButtonElement).type = 'button';
     el.style.setProperty('--rc', rr.hex);
-    el.dataset.zoom = `${p.cardId}|${p.rarity}|${p.mintNumber ?? ''}|${p.mine ? 'Toi' : p.userName}`;
-    el.innerHTML = `<span class="cdrop-k">Drop</span><span class="cdrop-m"><b>${esc(p.mine ? 'Toi' : p.userName)}</b>${starsHtml(p.rarity)}<em>${esc(p.cardName)}</em></span><time>${hhmm(p.createdAt)}</time>`;
+    el.dataset.zoom = `${p.cardId}|${p.rarity}|${p.mintNumber ?? ''}|${p.mine ? tr('chat.me') : p.userName}`;
+    el.innerHTML = `<span class="cdrop-k">Drop</span><span class="cdrop-m"><b>${esc(p.mine ? tr('chat.me') : p.userName)}</b>${starsHtml(p.rarity)}<em>${esc(p.cardName)}</em></span><time>${hhmm(p.createdAt)}</time>`; // i18n-ok
     return el;
   }
 
@@ -400,9 +401,9 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     }
 
     const rows: Row[] = [];
-    if (c.loaded && !c.done && c.msgs.length) rows.push({ key: 'older', sig: c.loading ? 'l' : 'i', make: () => h('button', 'chat-older', c.loading ? 'chargement…' : 'Messages plus anciens') });
+    if (c.loaded && !c.done && c.msgs.length) rows.push({ key: 'older', sig: c.loading ? 'l' : 'i', make: () => h('button', 'chat-older', c.loading ? tr('chat.loading') : tr('chat.older')) });
     if (c.loaded && c.done && c.msgs.length)
-      rows.push({ key: 'start', sig: view, make: () => h('div', 'chat-start', view === 'general' ? 'Début du chat général' : 'Début de la conversation') });
+      rows.push({ key: 'start', sig: view, make: () => h('div', 'chat-start', view === 'general' ? tr('chat.startGeneral') : tr('chat.startConv')) });
     let prev: Item | null = null;
     for (const it of items) {
       if (!prev || dayKey(prev.at) !== dayKey(it.at)) {
@@ -428,12 +429,12 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
       }
       prev = it;
     }
-    if (!c.loaded) rows.push({ key: 'wait', sig: c.error ?? 'w', make: () => h('div', 'chat-empty', c.error ? `<b>Chat indisponible</b><span>${esc(c.error)}</span>` : '<span class="chat-wait">chargement…</span>') });
+    if (!c.loaded) rows.push({ key: 'wait', sig: c.error ?? 'w', make: () => h('div', 'chat-empty', c.error ? `<b>Chat indisponible</b><span>${esc(c.error)}</span>` : '<span class="chat-wait">' + tr('chat.loading') + '</span>') });
     else if (!items.length)
       rows.push({
         key: 'empty',
         sig: view,
-        make: () => h('div', 'chat-empty', view === 'general' ? '<b>Le chat général est silencieux</b><span>Écris le premier message : tout le monde le verra.</span>' : '<b>Nouvelle conversation</b><span>Vous deux seulement. Montre une carte avec +, propose un échange.</span>'),
+        make: () => h('div', 'chat-empty', view === 'general' ? '<b>' + tr('chat.quiet') + '</b><span>' + tr('chat.quietD') + '</span>' : '<b>' + tr('chat.newConv') + '</b><span>' + tr('chat.newConvD') + '</span>'),
       });
 
     // réconciliation : on ne refait que les lignes qui ont changé (les cartes déjà peintes ne clignotent pas)
@@ -482,11 +483,11 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   }
   function renderCtx() {
     let html = '';
-    if (replyTo) html += `<div class="chat-chip"><span class="k">Réponse</span><span class="t"><b>${esc(nameOf(replyTo.userId, replyTo.name))}</b> ${esc(chatSnippet(replyTo.text || 'une carte', 70))}</span><button type="button" data-x="reply" aria-label="Annuler la réponse">✕</button></div>`;
+    if (replyTo) html += `<div class="chat-chip"><span class="k">${tr('chat.replyTo')}</span><span class="t"><b>${esc(nameOf(replyTo.userId, replyTo.name))}</b> ${esc(chatSnippet(replyTo.text || tr('chat.aCard'), 70))}</span><button type="button" data-x="reply" aria-label="${tr('chat.cancelReply')}">✕</button></div>`;
     if (attached) {
       const e = catalogEntry(attached.cardId);
       const rr = rarity(attached.rarity as RarityId);
-      html += `<div class="chat-chip card" style="--rc:${rr.hex}">${e ? `<img src="${esc(thumbUrl(e))}" alt="">` : ''}<span class="k">Carte</span><span class="t"><b>${esc(e?.name ?? attached.cardId)}</b> ${starsHtml(attached.rarity as RarityId)}</span><button type="button" data-x="card" aria-label="Retirer la carte">✕</button></div>`;
+      html += `<div class="chat-chip card" style="--rc:${rr.hex}">${e ? `<img src="${esc(thumbUrl(e))}" alt="">` : ''}<span class="k">${tr('chat.card')}</span><span class="t"><b>${esc(e?.name ?? attached.cardId)}</b> ${starsHtml(attached.rarity as RarityId)}</span><button type="button" data-x="card" aria-label="${tr('chat.removeCard')}">✕</button></div>`;
     }
     ctxEl.innerHTML = html;
     ctxEl.hidden = !html;
@@ -556,7 +557,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   let pickQ = '';
   function openPicker() {
     pickQ = '';
-    picker.innerHTML = `<div class="cp-h"><b>Montrer une carte</b><button type="button" class="cp-x" aria-label="Fermer">✕</button></div><input type="search" class="cp-q" placeholder="Chercher dans ma collection…" aria-label="Chercher une carte"><div class="cp-grid"></div>`;
+    picker.innerHTML = `<div class="cp-h"><b>${tr('chat.showCard')}</b><button type="button" class="cp-x" aria-label="${tr('chat.closeX')}">✕</button></div><input type="search" class="cp-q" placeholder="${tr('chat.searchColl')}" aria-label="${tr('chat.searchCard')}"><div class="cp-grid"></div>`;
     picker.hidden = false;
     drawPicker();
     if (!touch.matches) picker.querySelector<HTMLInputElement>('.cp-q')!.focus();
@@ -582,7 +583,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
             t.dataset.pick = `${c.cardId}|${c.rarity}|${c.bestMintNumber}`;
             return t;
           })
-        : [h('div', 'chat-empty', qy ? '<span>Aucune carte à ce nom dans ta collection.</span>' : '<b>Collection vide</b><span>Ouvre un booster : tu pourras montrer tes cartes ici.</span>')]),
+        : [h('div', 'chat-empty', qy ? '<span>' + tr('chat.noCard') + '</span>' : '<b>Collection vide</b><span>' + tr('chat.openFirst') + '</span>')]),
     );
   }
   function openZoom(spec: string) {
@@ -591,7 +592,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     if (!e) return;
     const rr = rarity(r as RarityId);
     zoom.style.setProperty('--rc', rr.hex);
-    zoom.innerHTML = `<button type="button" class="cz-x" aria-label="Fermer">✕</button><div class="cz-card"><img alt="${esc(e.name)}" src="${esc(thumbUrl(e))}"></div><div class="cz-i"><b>${esc(e.name)}</b><span>${starsHtml(r as RarityId)}${mint ? ` · n°${esc(mint)}` : ''}</span><em>${owner ? `Carte de ${esc(owner)}` : ''}</em></div>`;
+    zoom.innerHTML = `<button type="button" class="cz-x" aria-label="${tr('chat.closeX')}">✕</button><div class="cz-card"><img alt="${esc(e.name)}" src="${esc(thumbUrl(e))}"></div><div class="cz-i"><b>${esc(e.name)}</b><span>${starsHtml(r as RarityId)}${mint ? ` · n°${esc(mint)}` : ''}</span><em>${owner ? tr('chat.cardOf', { name: esc(owner) }) : ''}</em></div>`;
     zoom.hidden = false;
     // la vraie carte (même gabarit que la 3D) dès qu'elle est peinte ; en attendant, l'illustration
     void realCardUrl(cardId, r).then((url) => {
@@ -743,7 +744,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     if (!key) return;
     const muted = !!store.inbox?.muted.includes(key);
     store.mute(key, !muted);
-    toast(!muted ? 'Conversation en sourdine : plus de pastille ni de notification.' : 'Notifications réactivées pour cette conversation.', 'info');
+    toast(!muted ? tr('chat.mutedToast') : tr('chat.unmutedToast'), 'info');
   });
   listEl.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('.cl-row');
@@ -799,7 +800,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
         // deux touchers : le premier arme le bouton (pas de fenêtre de confirmation)
         if (!a.classList.contains('armed')) {
           a.classList.add('armed');
-          a.textContent = 'Supprimer ?';
+          a.textContent = tr('chat.deleteQ');
           setTimeout(() => a.isConnected && (a.classList.remove('armed'), (a.textContent = '✕')), 2600);
           return;
         }

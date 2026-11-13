@@ -36,13 +36,13 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
       <div class="pk-tools"><input type="search" class="pk-q" placeholder="${tr('pick.search')}"><div class="pk-r"></div></div>
       <div class="pk-grid"></div>
       <div class="pk-sel"></div>
-      <div class="pk-foot"><span class="pk-v"></span><button class="btn-ghost pk-clear">Vider</button><button class="btn-primary pk-ok">${tr('pick.ok')}</button></div>`;
+      <div class="pk-foot"><span class="pk-v"></span><button class="btn-ghost pk-clear">${tr('pick.clear')}</button><button class="btn-primary pk-ok">${tr('pick.ok')}</button></div>`;
     veil.append(box);
     document.body.append(veil);
     const grid = box.querySelector<HTMLElement>('.pk-grid')!;
     const sel = box.querySelector<HTMLElement>('.pk-sel')!;
     const rbar = box.querySelector<HTMLElement>('.pk-r')!;
-    rbar.innerHTML = `<button class="chip on" data-r="">Toutes</button>${RARS.filter((r) => rows.some((c) => c.rarity === r)).map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}">${r === 'secret' ? '✷' : `${starCount(r)}★`}</button>`).join('')}`;
+    rbar.innerHTML = `<button class="chip on" data-r="">${tr('pick.all')}</button>${RARS.filter((r) => rows.some((c) => c.rarity === r)).map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}">${r === 'secret' ? '✷' : `${starCount(r)}★`}</button>`).join('')}`;
     rbar.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-r]');
       if (!b) return;

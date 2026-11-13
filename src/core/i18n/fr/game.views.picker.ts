@@ -11,5 +11,7 @@ export const fr = {
   'pick.none': 'Aucune carte disponible.',
   'pick.help': 'Touche une carte pour l’ajouter ; touche-la ici pour la retirer.',
   'pick.removeOne': 'Retirer un exemplaire',
+  'pick.clear': 'Vider',
+  'pick.all': 'Toutes',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

@@ -1,3 +1,5 @@
+import { t as tr } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.friends'; // (textes de ce module, version anglaise)
 import { friendState, isOnline, type FriendLink, type FriendRequest, type GameBackend, type Social } from '../backend';
 import type { Shell } from '../shell';
 import { busyButton, errMsg, esc, h, loginPrompt, navigate, plural, toast } from '../ui';
@@ -21,11 +23,11 @@ export interface FriendsView {
 /** « à l'instant », « il y a 12 min », « il y a 3 h », « hier », « il y a 4 j » */
 export function ago(t: number, now = Date.now()): string {
   const s = Math.max(0, (now - t) / 1000);
-  if (s < 60) return 'à l’instant';
-  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  if (s < 60) return tr('time.justNow');
+  if (s < 3600) return tr('time.agoMin', { n: Math.floor(s / 60) });
+  if (s < 86400) return tr('time.agoH', { n: Math.floor(s / 3600) });
   const d = Math.floor(s / 86400);
-  return d === 1 ? 'hier' : `il y a ${d} j`;
+  return d === 1 ? tr('time.yesterday') : tr('time.agoD', { n: d });
 }
 /**
  * Bouton « ami » réutilisable (profil d'un autre joueur, lignes du classement) : son libellé suit l'état du lien
@@ -44,10 +46,10 @@ export function friendBtn(backend: GameBackend, userId: string, name: string, va
 function btnLook(k: 'none' | 'out' | 'in' | 'friend', variant: 'profile' | 'row') {
   const row = variant === 'row';
   const L = {
-    none: { label: row ? '+ Ami' : '+ Ajouter en ami', aria: (n: string) => `Demander ${n} en ami` },
-    out: { label: row ? 'Envoyée' : 'Demande envoyée', aria: (n: string) => `Demande d’ami envoyée à ${n} : toucher deux fois pour l’annuler` },
-    in: { label: row ? 'Accepter' : 'Accepter en ami', aria: (n: string) => `Accepter la demande d’ami de ${n}` },
-    friend: { label: row ? '✓ Ami' : '✓ Ami', aria: (n: string) => `${n} est ton ami : voir mes amis` },
+    none: { label: row ? tr('am.addShort') : tr('am.add'), aria: (n: string) => tr('am.addTitle', { n }) },
+    out: { label: row ? tr('am.sentShort') : tr('am.sent'), aria: (n: string) => tr('am.sentTitle', { n }) },
+    in: { label: row ? tr('am.accept') : tr('am.acceptLong'), aria: (n: string) => tr('am.acceptTitle', { n }) },
+    friend: { label: row ? tr('am.isFriend') : tr('am.isFriend'), aria: (n: string) => tr('am.isFriendTitle', { n }) },
   }[k];
   return { k, ...L };
 }
@@ -82,18 +84,18 @@ function installFriendBtns(backend: GameBackend) {
     const name = b.dataset.name ?? '';
     const st = friendState(backend.state.social, uid);
     if (st.kind === 'friend') return void navigate('#/amis');
-    if (st.kind === 'out' && !confirmTap(b, 'Annuler ?')) return;
+    if (st.kind === 'out' && !confirmTap(b, tr('am.cancelQ'))) return;
     void guarded(`fr-u-${uid}`, null, async () => {
       try {
         if (st.kind === 'none') {
           const r = await busyButton(b, backend.requestFriend({ userId: uid }));
-          toast(r.status === 'accepted' ? `${r.name} t’avait déjà demandé : vous êtes amis !` : `Demande d’ami envoyée à ${r.name}.`, 'ok');
+          toast(r.status === 'accepted' ? tr('am.mutual', { name: r.name }) : tr('am.sentTo', { name: r.name }), 'ok');
         } else if (st.kind === 'in') {
           await busyButton(b, backend.acceptFriend(st.req.id));
-          toast(`${name} et toi êtes amis !`, 'ok');
+          toast(tr('am.nowFriends', { name }), 'ok');
         } else if (st.kind === 'out') {
           await busyButton(b, backend.cancelFriend(st.req.id));
-          toast(`Demande à ${name} annulée.`, 'ok');
+          toast(tr('am.cancelled', { name }), 'ok');
         }
       } catch (err) {
         toast(errMsg(err), 'err');
@@ -108,46 +110,46 @@ const ACT_ICON: Record<string, string> ={ pull: '✦', mythic_pull: '✺', secre
 
 /** Messages d'un parrainage refusé (onglet Amis et arrivée par un lien). */
 export const REF_FAIL = {
-  already: 'Tu as déjà un parrain.',
-  invalid: 'Lien ou pseudo introuvable : vérifie l’orthographe.',
-  self: 'C’est ton propre lien 🙂',
-  tooLate: `Trop tard pour déclarer un parrain : seulement les ${Math.round(REFERRAL.newAccountMs / 86_400_000)} premiers jours et avant ton ${REFERRAL.packsToPay + 1}e booster.`,
+  already: tr('am.ref.already'),
+  invalid: tr('am.ref.notFound'),
+  self: tr('am.ref.self'),
+  tooLate: tr('am.ref.tooLate', { days: Math.round(REFERRAL.newAccountMs / 86_400_000), nth: REFERRAL.packsToPay + 1 }),
 } as const;
 
 export function createFriendsView(backend: GameBackend, shell: Shell): FriendsView {
-  const el = h('section', 'view amis');
+  const el = h('section', 'view amis'); // i18n-ok
   el.innerHTML = `
     <div class="am-wrap">
-      <header class="am-head"><span class="kicker">AMIS</span><h1>Mes amis</h1><p class="muted am-sum"></p></header>
+      <header class="am-head"><span class="kicker">${tr('am.kicker')}</span><h1>${tr('am.title')}</h1><p class="muted am-sum"></p></header>
       <div class="am-login" hidden></div>
       <div class="am-grid">
         <aside class="am-side">
           <section class="am-card am-ref" aria-labelledby="am-ref-t">
-            <h2 id="am-ref-t">Parrainage</h2>
-            <p class="muted am-ref-rules">Invite tes potes avec ton lien : ils reçoivent <b>${REFERRAL.packs} boosters</b> en arrivant, et toi <b>${REFERRAL.packs} boosters</b> quand ils ont ouvert leurs ${REFERRAL.packsToPay} premiers.</p>
-            <div class="am-ref-link"><input class="search am-ref-in" type="text" readonly aria-label="Mon lien d’invitation" value="…"><button class="btn-primary am-ref-copy" type="button" disabled>Copier</button></div>
+            <h2 id="am-ref-t">${tr('notif.k.referral')}</h2>
+            <p class="muted am-ref-rules">${tr('am.ref.rules', { n: REFERRAL.packs, k: REFERRAL.packsToPay })}</p>
+            <div class="am-ref-link"><input class="search am-ref-in" type="text" readonly aria-label="${tr('am.ref.myLink')}" value="…"><button class="btn-primary am-ref-copy" type="button" disabled>${tr('am.copy')}</button></div>
             <p class="am-ref-stats muted"></p>
             <div class="am-list am-ref-list"></div>
             <p class="muted am-ref-mine" hidden></p>
             <form class="am-ref-claim" hidden autocomplete="off">
-              <label class="am-ref-q" for="am-ref-claim-in">Un pote t’a invité ? Colle son lien ou son pseudo :</label>
-              <div class="am-ref-link"><input id="am-ref-claim-in" class="search am-ref-claim-in" type="text" maxlength="200" placeholder="Lien ou pseudo de ton parrain" spellcheck="false" autocapitalize="none" enterkeyhint="send"><button class="btn-primary am-ref-claim-go" type="submit">Valider</button></div>
+              <label class="am-ref-q" for="am-ref-claim-in">${tr('am.ref.invited')}</label>
+              <div class="am-ref-link"><input id="am-ref-claim-in" class="search am-ref-claim-in" type="text" maxlength="200" placeholder="${tr('am.ref.field')}" spellcheck="false" autocapitalize="none" enterkeyhint="send"><button class="btn-primary am-ref-claim-go" type="submit">${tr('am.ok')}</button></div>
             </form>
           </section>
           <form class="am-card am-add" autocomplete="off">
-            <h2 id="am-add-t">Ajouter un ami</h2>
+            <h2 id="am-add-t">${tr('am.addTitleH')}</h2>
             <div class="am-add-row">
               <input class="search am-input" type="text" name="pseudo" maxlength="64" placeholder="Pseudo exact" aria-labelledby="am-add-t" spellcheck="false" autocapitalize="none" enterkeyhint="send">
-              <button class="btn-primary am-send" type="submit">Demander</button>
+              <button class="btn-primary am-send" type="submit">${tr('am.ask')}</button>
             </div>
-            <p class="muted am-hint">Le pseudo en entier (majuscules et accents ignorés). Tu peux aussi l’ajouter depuis son profil ou le classement.</p>
+            <p class="muted am-hint">${tr('am.addHelp')}</p>
           </form>
-          <section class="am-card am-in" aria-labelledby="am-in-t"><h2 id="am-in-t">Demandes reçues <b class="am-n"></b></h2><div class="am-list"></div></section>
-          <section class="am-card am-out" aria-labelledby="am-out-t"><h2 id="am-out-t">Envoyées <b class="am-n"></b></h2><div class="am-list"></div></section>
+          <section class="am-card am-in" aria-labelledby="am-in-t"><h2 id="am-in-t">${tr('am.incoming')} <b class="am-n"></b></h2><div class="am-list"></div></section>
+          <section class="am-card am-out" aria-labelledby="am-out-t"><h2 id="am-out-t">${tr('am.outgoing')} <b class="am-n"></b></h2><div class="am-list"></div></section>
         </aside>
-        <section class="am-card am-main" aria-labelledby="am-f-t"><h2 id="am-f-t">Amis <b class="am-n"></b></h2><div class="am-list am-friends"></div></section>
+        <section class="am-card am-main" aria-labelledby="am-f-t"><h2 id="am-f-t">${tr('nav.friends.aria')} <b class="am-n"></b></h2><div class="am-list am-friends"></div></section>
       </div>
-      <p class="muted am-foot">Les échanges et le tableau d’offres restent ouverts à tous les joueurs, amis ou pas.</p>
+      <p class="muted am-foot">${tr('am.openToAll')}</p>
     </div>`;
   const q = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
   const form = q<HTMLFormElement>('.am-add');
@@ -175,7 +177,7 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     e.preventDefault();
     const name = input.value.trim();
     if (!name) {
-      toast('Écris le pseudo exact de ton ami.', 'info');
+      toast(tr('am.typeName'), 'info');
       input.focus();
       return;
     }
@@ -183,7 +185,7 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       try {
         const r = await busyButton(sendBtn, backend.requestFriend({ name }));
         input.value = '';
-        toast(r.status === 'accepted' ? `${r.name} t’avait déjà demandé : vous êtes amis !` : `Demande envoyée à ${r.name}.`, 'ok');
+        toast(r.status === 'accepted' ? tr('am.mutual', { name: r.name }) : tr('am.sentTo2', { name: r.name }), 'ok');
         shell.sfx.tick(1.3, 0.05);
       } catch (err) {
         toast(errMsg(err), 'err');
@@ -198,28 +200,28 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
 
   function reqRow(r: FriendRequest, kind: 'in' | 'out'): HTMLElement {
     const row = h('div', `am-row am-req k-${kind}`);
-    row.innerHTML = `<a class="am-who" href="${profileHref(r.userId)}" aria-label="Profil de ${esc(r.name)}">${ava(r)}<span class="am-txt"><b>${esc(r.name)}</b><small>${kind === 'in' ? 'te demande en ami' : 'demande envoyée'} · ${ago(r.createdAt)}</small></span></a>
-      <span class="am-acts">${kind === 'in' ? `<button class="btn-primary am-ok">Accepter</button><button class="btn-ghost am-no">Refuser</button>` : `<button class="btn-ghost am-cancel">Annuler</button>`}</span>`;
+    row.innerHTML = `<a class="am-who" href="${profileHref(r.userId)}" aria-label="${tr('am.profileOf', { name: esc(r.name) })}">${ava(r)}<span class="am-txt"><b>${esc(r.name)}</b><small>${kind === 'in' ? tr('am.asksYou') : tr('am.requestSent')} · ${ago(r.createdAt)}</small></span></a>
+      <span class="am-acts">${kind === 'in' ? `<button class="btn-primary am-ok">${tr('am.accept')}</button><button class="btn-ghost am-no">${tr('am.refuse')}</button>` : `<button class="btn-ghost am-cancel">${tr('am.cancel')}</button>`}</span>`;
     const ok = row.querySelector<HTMLElement>('.am-ok');
-    ok?.addEventListener('click', () => act(`fr-${r.id}`, ok, () => backend.acceptFriend(r.id), `${r.name} et toi êtes amis !`));
+    ok?.addEventListener('click', () => act(`fr-${r.id}`, ok, () => backend.acceptFriend(r.id), tr('am.nowFriends', { name: r.name })));
     const no = row.querySelector<HTMLElement>('.am-no');
-    no?.addEventListener('click', () => act(`fr-${r.id}`, no, () => backend.declineFriend(r.id), `Demande de ${r.name} refusée.`));
+    no?.addEventListener('click', () => act(`fr-${r.id}`, no, () => backend.declineFriend(r.id), tr('am.refused', { name: r.name })));
     const cancel = row.querySelector<HTMLElement>('.am-cancel');
-    cancel?.addEventListener('click', () => act(`fr-${r.id}`, cancel, () => backend.cancelFriend(r.id), `Demande à ${r.name} annulée.`));
+    cancel?.addEventListener('click', () => act(`fr-${r.id}`, cancel, () => backend.cancelFriend(r.id), tr('am.cancelled', { name: r.name })));
     return row;
   }
 
   function friendRow(f: FriendLink, now: number): HTMLElement {
     const on = isOnline(f, now);
     const row = h('div', `am-row am-friend${on ? ' is-on' : ''}`);
-    const seen = on ? `<span class="am-live">en ligne</span>${f.status ? ` · ${esc(f.status)}` : ''}` : `vu ${ago(f.lastSeenAt, now)}`;
+    const seen = on ? `<span class="am-live">${tr('am.online')}</span>${f.status ? ` · ${esc(f.status)}` : ''}` : tr('am.seen', { when: ago(f.lastSeenAt, now) });
     const a = f.lastActivity;
-    row.innerHTML = `<a class="am-who" href="${profileHref(f.userId)}" aria-label="Profil de ${esc(f.name)}${on ? ', en ligne' : ''}">${ava(f, on)}<span class="am-txt"><b>${esc(f.name)}</b><small class="am-seen">${seen}</small>${a ? `<small class="am-act"><i aria-hidden="true">${ACT_ICON[a.kind] ?? '•'}</i> ${esc(a.message)} · ${ago(a.createdAt, now)}</small>` : `<small class="am-act">${plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small>`}</span></a>
-      <span class="am-acts"><a class="btn-ghost am-prof" href="${profileHref(f.userId)}">Profil</a><button class="btn-ghost am-rm" aria-label="Retirer ${esc(f.name)} de mes amis">Retirer</button></span>`;
+    row.innerHTML = `<a class="am-who" href="${profileHref(f.userId)}" aria-label="${tr('am.profileOfOn', { name: esc(f.name), on: on ? tr('am.onlineSuffix') : '' })}">${ava(f, on)}<span class="am-txt"><b>${esc(f.name)}</b><small class="am-seen">${seen}</small>${a ? `<small class="am-act"><i aria-hidden="true">${ACT_ICON[a.kind] ?? '•'}</i> ${esc(a.message)} · ${ago(a.createdAt, now)}</small>` : `<small class="am-act">${plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small>`}</span></a>
+      <span class="am-acts"><a class="btn-ghost am-prof" href="${profileHref(f.userId)}">${tr('am.profile')}</a><button class="btn-ghost am-rm" aria-label="${tr('am.removeTitle', { name: esc(f.name) })}">${tr('am.remove')}</button></span>`;
     const rm = row.querySelector<HTMLElement>('.am-rm')!;
     rm.addEventListener('click', () => {
-      if (!confirmTap(rm, 'Retirer ?')) return;
-      act(`fr-${f.id}`, rm, () => backend.removeFriend(f.id), `${f.name} n’est plus dans tes amis.`);
+      if (!confirmTap(rm, tr('am.removeQ'))) return;
+      act(`fr-${f.id}`, rm, () => backend.removeFriend(f.id), tr('am.removed', { name: f.name }));
     });
     return row;
   }
@@ -240,13 +242,13 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     loginEl.hidden = logged;
     grid.hidden = !logged;
     if (!logged) {
-      loginEl.innerHTML = loginPrompt(backend,'Connecte-toi pour retrouver tes amis.');
+      loginEl.innerHTML = loginPrompt(backend,tr('am.login'));
       loginEl.querySelector('.login-cta')?.addEventListener('click', () => backend.login());
-      sumEl.textContent = 'Tes potes du club, en un coup d’œil.';
+      sumEl.textContent = tr('am.pitch');
       return;
     }
     const onlineN = s.friends.filter((f) => isOnline(f, now)).length;
-    sumEl.textContent = !s.ready ? 'Chargement…' : s.friends.length ? `${plural(s.friends.length, 'ami')} · ${onlineN} en ligne` : 'Ajoute tes potes : tu verras qui est en ligne et ce qu’ils ont tiré.';
+    sumEl.textContent = !s.ready ? tr('common.loading2') : s.friends.length ? `${plural(s.friends.length, 'ami')} · ${onlineN} en ligne` : tr('am.emptyPitch');
 
     const fill = (sec: HTMLElement, rows: HTMLElement[], empty: string) => {
       const n = sec.querySelector<HTMLElement>('.am-n')!;
@@ -256,12 +258,12 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       if (!rows.length) list.innerHTML = `<div class="muted am-empty">${empty}</div>`;
     };
     if (!s.ready) {
-      fill(mainSec, [], 'Chargement…');
+      fill(mainSec, [], tr('common.loading2'));
       inSec.hidden = outSec.hidden = true;
       return;
     }
-    fill(mainSec, s.friends.map((f) => friendRow(f, now)), 'Pas encore d’amis. Écris le pseudo d’un pote dans « Ajouter un ami », ou passe par son profil (classement, gros tirages).');
-    fill(inSec, s.incoming.map((r) => reqRow(r, 'in')), 'Aucune demande en attente.');
+    fill(mainSec, s.friends.map((f) => friendRow(f, now)), tr('am.none'));
+    fill(inSec, s.incoming.map((r) => reqRow(r, 'in')), tr('am.noReq'));
     fill(outSec, s.outgoing.map((r) => reqRow(r, 'out')), '');
     inSec.classList.toggle('has', s.incoming.length > 0);
     // « Envoyées » n'apparaît que s'il y en a (moins de bruit)
@@ -289,14 +291,14 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       const link = referralLink(location.origin, r.code);
       refIn.value = link;
       refCopy.disabled = false;
-      refStats.innerHTML = `<b>${plural(r.clicks, 'personne a cliqué', 'personnes ont cliqué')}</b> sur ton lien · ${plural(r.referrals.length, 'filleul')}`;
+      refStats.innerHTML = `<b>${plural(r.clicks, 'personne a cliqué', 'personnes ont cliqué')}</b> ${tr('am.ref.clicked', { x: plural(r.referrals.length, 'filleul') })}`; // i18n-ok
       refMine.hidden = !r.myReferrer;
-      refMine.textContent = r.myReferrer ? `Ton parrain : ${r.myReferrer}` : '';
+      refMine.textContent = r.myReferrer ? tr('am.ref.mine', { name: r.myReferrer }) : '';
       refClaim.hidden = !r.canClaim;
       refList.replaceChildren(
         ...r.referrals.map((k) => {
           const row = h('div', 'am-row am-ref-row');
-          row.innerHTML = `<a class="am-who" href="${profileHref(k.userId)}">${ava(k)}<span class="am-txt"><b>${esc(k.name)}</b><small>${k.paid ? `✓ tu as reçu tes ${REFERRAL.packs} boosters` : `${Math.min(k.packsOpened, REFERRAL.packsToPay)}/${REFERRAL.packsToPay} boosters ouverts`}</small></span></a>`;
+          row.innerHTML = `<a class="am-who" href="${profileHref(k.userId)}">${ava(k)}<span class="am-txt"><b>${esc(k.name)}</b><small>${k.paid ? tr('am.ref.got', { n: REFERRAL.packs }) : `${Math.min(k.packsOpened, REFERRAL.packsToPay)}/${REFERRAL.packsToPay} boosters ouverts`}</small></span></a>`;
           return row;
         }),
       );
@@ -316,7 +318,7 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     try {
       const r = await backend.referralClaim(v);
       if (r.status === 'ok') {
-        toast(`${r.referrer ?? 'Ton parrain'} est ton parrain : +${r.packs ?? REFERRAL.packs} boosters offerts 🎁`, 'ok');
+        toast(tr('am.ref.welcome', { name: r.referrer ?? tr('ref.yourSponsor'), n: r.packs ?? REFERRAL.packs }), 'ok');
         refClaimIn.value = '';
         refAt = 0;
         void loadReferral();
@@ -331,11 +333,11 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
   refCopy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(refIn.value);
-      toast('Lien copié : envoie-le à tes potes !', 'ok');
+      toast(tr('am.copied'), 'ok');
     } catch {
       refIn.focus();
       refIn.select();
-      toast('Sélectionné : copie-le (Ctrl+C).', 'info');
+      toast(tr('am.selected'), 'info');
     }
   });
 

@@ -22,7 +22,13 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, h
  * `data-t-aria` — `relabel()` les remet dans la nouvelle langue au changement (main.ts, onLang).
  */
 export function relabel(root: ParentNode = document): void {
-  root.querySelectorAll<HTMLElement>('[data-t]').forEach((e) => (e.textContent = tr(e.dataset.t as MsgKey)));
+  root.querySelectorAll<HTMLElement>('[data-t]').forEach((e) => {
+    // (le texte seulement : une pastille <b> dans le bouton reste)
+    const v = tr(e.dataset.t as MsgKey);
+    const tn = [...e.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim());
+    if (tn) tn.textContent = v;
+    else if (!e.children.length) e.textContent = v;
+  });
   root.querySelectorAll<HTMLElement>('[data-t-title]').forEach((e) => (e.title = tr(e.dataset.tTitle as MsgKey)));
   root.querySelectorAll<HTMLElement>('[data-t-aria]').forEach((e) => e.setAttribute('aria-label', tr(e.dataset.tAria as MsgKey)));
 }

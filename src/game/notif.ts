@@ -23,7 +23,7 @@ export const KIND_LABELS = (): Array<[string, string, string]> => [
   ['news', t('notif.k.news'), t('notif.k.newsD')],
 ];
 
-const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; // i18n-ok
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 
