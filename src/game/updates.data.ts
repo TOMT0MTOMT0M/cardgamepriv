@@ -28,12 +28,26 @@ const CARDS = String(PUBLIC_CARD_COUNT).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0
  * Annonce du moment : à la PROCHAINE visite (une seule fois par appareil), le jeu ouvre la page des mises à jour
  * (src/game/announce.ts). Changer cet identifiant à chaque nouvelle annonce qui mérite d'être montrée d'office.
  */
-export const ANNOUNCE_ID = 'patch-2026-11-08';
+export const ANNOUNCE_ID = 'v2-0-2026-11-14';
 
 export const UPDATES: UpdateMonth[] = [
   {
     month: 'Novembre 2026',
     entries: [
+      {
+        date: '14 nov.', title: 'Version 2 : le chat, le marché, les saisons', tag: 'nouveau',
+        points: [
+          'Ta collection est gardée : cartes, pièces, boosters, succès, classeurs, rien ne s’est perdu.',
+          'Chat : le salon de tout le monde et les messages privés, avec les mentions.',
+          'Marché : vends une carte à prix fixe en pièces, achète celles des autres. Le premier qui achète l’a.',
+          'Échanges simplifiés : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies, en un toucher.',
+          'Saisons : chaque mois, le classement des nouvelles cartes gagnées et des boosters pour tout le monde à la fin. La première se termine le 30 novembre.',
+          'Booster du moment : une édition limitée, avec son compte à rebours en tête de la boutique.',
+          `Plus de 3 000 nouvelles cartes (${CARDS} en tout) et un nouveau tri des étoiles : certaines de tes cartes ont changé d’étoile.`,
+          'Les 6★ ont chacune leur mise en scène, les 6★ Musique et d’animés jouent leur extrait, le son est tout neuf et la déchirure du booster plus vraie.',
+          'Notifications : réserve pleine, échanges, amis. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.',
+        ],
+      },
       {
         date: '12 nov.', title: 'Les nouvelles 6★ Musique ont leur extrait', tag: 'nouveau',
         points: [
@@ -50,13 +64,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '11 nov.', title: 'Échanges repensés, booster du moment, saisons, défis et La Presse', tag: 'nouveau',
+        date: '11 nov.', title: 'Échanges repensés, booster du moment et saisons', tag: 'nouveau',
         points: [
           'Échanges : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies : on demande en un toucher, l’autre accepte, choisit une autre carte ou refuse. Ton bouton « Protéger » garde une carte hors des propositions.',
           'Booster du moment : un booster en édition limitée, avec son compte à rebours en tête de la boutique.',
           'Saisons : chaque mois, un classement des nouvelles cartes gagnées, des boosters pour tout le monde à la fin, un cadre et un titre pour le podium.',
           'Animations d’ouverture à gagner : la brûlure (succès Braise) et l’éventail (succès Cartographe), à choisir dans la fiche d’un booster.',
-          'Jeux : défie tes amis (premier à tirer une 5★, le plus de nouvelles cartes…) avec ou sans mise, et La Presse, un nouveau mini-jeu en pièces.',
           'Aussi : les cartes que tu n’as pas montrent leur illustration floutée, les gants et un sticker CS 6★ en 3D, des apôtres dans l’Éclipse, de nouveaux sons pour les 6★, une collection plus rapide à mettre à jour.',
         ],
       },

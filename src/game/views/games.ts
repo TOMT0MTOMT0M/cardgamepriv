@@ -37,10 +37,6 @@ import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
 import { mountGridArt } from './gridArt';
 import { yieldToMain } from '../../core/yieldMain';
-import { defisPage, type JeuxPageCtx } from './defis';
-import { pressePage } from './presse';
-import { PRESSE_BETS, PRESSE_STRIKES } from '../../core/presse';
-import { DEFI_MAX_FRIENDS } from '../../core/defis';
 
 /**
  * ESPACE JEUX (#/jeux) : les vrais jeux seulement — 1v1 Pack Battle, Pack Battle Royale, Roulette à cartes —, avec
@@ -55,7 +51,7 @@ import { DEFI_MAX_FRIENDS } from '../../core/defis';
  * engage des cartes ou des pièces demande un second toucher (`confirmTap`) avec l'enjeu affiché.
  */
 
-type Sub = '' | 'duel' | 'royale' | 'roulette' | 'defis' | 'presse' | 'historique' | 'admin';
+type Sub = '' | 'duel' | 'royale' | 'roulette' | 'historique' | 'admin';
 
 const starsTxt = (r: RarityId) => (r === 'secret' ? '✷' : '★'.repeat(starCount(r)));
 const ava = (name: string, url?: string) => (url ? `<img class="gm-ava" src="${esc(url)}" alt="">` : `<span class="gm-ava">${esc(name.slice(0, 1))}</span>`);
@@ -133,10 +129,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   function renderHead() {
     const s = snap();
     // les trois jeux (+ l'accueil et l'historique de mes parties) ; forge, succès, primes, missions : ailleurs (retours live 02)
-    const tabs: Array<[Sub, string]> = [['', 'Jeux'], ['duel', 'Pack Battle'], ['royale', 'Battle Royale'], ['roulette', 'Roulette'], ['defis', 'Défis'], ['presse', 'La Presse'], ['historique', 'Mes parties']];
+    // (13/11, décision de Tom et Hugo) Défis et La Presse retirés du jeu : les trois jeux seulement
+    const tabs: Array<[Sub, string]> = [['', 'Jeux'], ['duel', 'Pack Battle'], ['royale', 'Battle Royale'], ['roulette', 'Roulette'], ['historique', 'Mes parties']];
     if (s?.isAdmin) tabs.push(['admin', 'Admin']);
     const at = tabs.findIndex(([k]) => k === sub);
-    const crumb = at > 0 ? `<i>/</i>${String(at).padStart(2, '0')} ${esc(tabs[at][1])}` : '<i>/</i>5 tables';
+    const crumb = at > 0 ? `<i>/</i>${String(at).padStart(2, '0')} ${esc(tabs[at][1])}` : '<i>/</i>3 tables';
     head.innerHTML = `<div class="gm-title"><div><span class="gm-kick">Jeux ${crumb}</span><b>Espace Jeux</b></div>${s ? `<div class="gm-bal"><span class="gm-bal-l">Solde</span>${coinsHtml(shownCoins ?? s.coins, 'big')}</div>` : ''}</div>
       <nav class="seg gm-tabs" data-seg-key="gm-tabs">${tabs.map(([k, l]) => `<button data-k="${k}" class="${k === sub ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
     head.querySelectorAll<HTMLElement>('[data-k]').forEach((b) => b.addEventListener('click', () => (location.hash = `#/jeux${b.dataset.k ? `/${b.dataset.k}` : ''}`)));
@@ -165,11 +162,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       <a class="gm-game duel" href="#/jeux/duel"><span class="gm-art-host"></span><span class="gm-idx">01 — 1v1</span><b>Pack Battle</b><span class="gm-desc">Ouverture côte à côte : le plus haut total d'étoiles rafle toutes les cartes.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>2</dd></div><div><dt>Mise</dt><dd>1–${DUEL_MAX_PACKS} boosters</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="duel">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
       <a class="gm-game royale" href="#/jeux/royale"><span class="gm-art-host"></span><span class="gm-idx">02 — mêlée</span><b>Battle Royale</b><span class="gm-desc">Ouverture simultanée : le meilleur total d'étoiles remporte tout le pot.</span><dl class="gm-spec"><div><dt>Joueurs</dt><dd>${ROYALE_MIN}–${ROYALE_MAX}</dd></div><div><dt>Mise</dt><dd>1–${ROYALE_MAX_PACKS} boosters</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="royale">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
       <a class="gm-game roulette" href="#/jeux/roulette"><span class="gm-art-host"></span><span class="gm-idx">03 — tirage</span><b>Roulette</b><span class="gm-desc">1 à 3 numéros par tirage, en pièces ou en cartes 4★–6★ : le numéro qui sort rafle le pot.</span><dl class="gm-spec"><div><dt>Numéros</dt><dd>${ROULETTE_NUMBERS}</dd></div><div><dt>Tirages</dt><dd>${ROULETTE_HOURS.map((x) => `${x} h`).join(' · ')}</dd></div><div><dt>Gain</dt><dd>tout</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="roulette">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
-      <div class="gm-hub-x">
-        <a class="gm-game defis" href="#/jeux/defis"><span class="gm-idx">04 — entre amis</span><span class="gm-mini av" aria-hidden="true"><i class="on"></i><i></i><i></i></span><b>Défis</b><span class="gm-desc">Un objectif, une durée, une mise : premier à tirer une 5★, le plus de nouvelles cartes… Le serveur compte, le meilleur rafle les mises.</span><dl class="gm-spec"><div><dt>Amis</dt><dd>1–${DEFI_MAX_FRIENDS}</dd></div><div><dt>Durée</dt><dd>1 h – 3 j</dd></div><div><dt>Égalité</dt><dd>rendu</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span data-live="defis">…</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
-        <a class="gm-game presse" href="#/jeux/presse"><span class="gm-idx">05 — maison</span><span class="gm-mini" aria-hidden="true"><i class="on" style="--rc:${rarity('rare').hex}"></i><i class="on" style="--rc:${rarity('uncommon').hex}"></i><i class="on" style="--rc:${rarity('epic').hex}"></i><i></i><i></i><i></i></span><b>La Presse</b><span class="gm-desc">Frappe la bande carte après carte : les étoiles chargent la pièce. Deux raretés identiques d'affilée et elle se fend.</span><dl class="gm-spec"><div><dt>Mise</dt><dd>${PRESSE_BETS.join(' · ')}</dd></div><div><dt>Frappes</dt><dd>${PRESSE_STRIKES}</dd></div><div><dt>Durée</dt><dd>20 s</dd></div></dl><em class="gm-live"><i class="gm-dot"></i><span>contre la maison</span></em><i class="gm-arrow" aria-hidden="true"><i>→</i></i></a>
-      </div>
-      <div class="gm-rules muted">Règles d'or : les pièces ne servent jamais à acheter des cartes, pas de marché, monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
+      <div class="gm-rules muted">Monnaie 100 % virtuelle. Les jeux ne font que redistribuer ce que vous misez.</div>
     </div>`;
     // dessins « courant » alignés sur la trame (views/gridArt.ts). Chaque montage échantillonne ses pistes (~0,5 s sur
     // téléphone) : un par tâche, l'accueil et ses textes étant déjà peints ; même ordre, mêmes délais de tracé.
@@ -218,12 +211,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const mine = l.duels.filter((d) => d.sides.some((s) => s.userId === l.me)).length;
         live('duel', `${l.duels.length ? plural(l.duels.length, 'duel ouvert', 'duels ouverts') : 'aucun duel ouvert'}${mine ? ` · ${mine} à toi` : ''}`);
         live('royale', l.royales.length ? `${plural(l.royales.length, 'partie')} en attente (${l.royales.map((r) => `${r.players.length}/${ROYALE_MAX}`).join(', ')})` : 'aucune partie en attente');
-      }),
-      backend.eco.watchDefis((l) => {
-        if (!l) return;
-        const ask = l.list.filter((c) => c.status === 'pending' && c.players.some((p) => p.userId === l.me && p.state === 'invited')).length;
-        const on = l.list.filter((c) => c.status === 'live').length;
-        live('defis', ask || on ? [ask ? `${plural(ask, 'défi')} à accepter` : '', on ? `${plural(on, 'défi')} en cours` : ''].filter(Boolean).join(' · ') : 'aucun défi en cours');
       }),
       backend.eco.watchRoulette((r) => {
         if (!r) return;
@@ -1071,11 +1058,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     if (sub === 'duel') arg ? duelRoom(arg) : duelLobby();
     else if (sub === 'royale') arg ? royaleRoom(arg) : royaleLobby();
     else if (sub === 'roulette') roulettePage();
-    else if (sub === 'defis' || sub === 'presse') {
-      const ctx: JeuxPageCtx = { body, backend, unsubs, sfx };
-      if (sub === 'defis') defisPage(ctx);
-      else pressePage(ctx);
-    }
     else if (sub === 'historique') void historyPage();
     else if (sub === 'admin') void admin();
     else hub();
@@ -1092,7 +1074,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       // page 100 % DOM : la vitrine 3D ne tourne pas dessous (PERF1-06, comme collection / contrats / classement)
       shell.show(null);
       shell.setDimmed(true);
-      sub = (['duel', 'royale', 'roulette', 'defis', 'presse', 'historique', 'admin'].includes(parts[1] ?? '') ? parts[1] : '') as Sub;
+      // (13/11) anciennes adresses de Défis et de La Presse (retirés) : l'accueil des Jeux
+      if (parts[1] === 'defis' || parts[1] === 'presse') return void location.replace('#/jeux');
+      sub = (['duel', 'royale', 'roulette', 'historique', 'admin'].includes(parts[1] ?? '') ? parts[1] : '') as Sub;
       arg = parts[2] ?? '';
       draw();
     },
