@@ -350,7 +350,7 @@ function precacheManifest(id: string, online: boolean): Plugin {
       }
       // (les gros sets du catalogue arrivent par import() mais le démarrage les attend : socle)
       for (const c of chunks) if (norm(c.facadeModuleId).endsWith('/src/core/sets/catalogBig.ts')) walk(c.fileName, 0, seen);
-      for (const f of ['manifest.webmanifest', 'icons/booster-fav-32.png', 'icons/booster-192.png']) if (fs.existsSync(path.resolve(outDir, f))) put(f, 0);
+      for (const f of ['manifest.webmanifest', 'icons/bebou-fav-32.png', 'icons/bebou-192.png']) if (fs.existsSync(path.resolve(outDir, f))) put(f, 0);
       // les workers (new Worker(new URL(…))) sont des fichiers à part : palier 1
       for (const a of all) if (a.type === 'asset' && /^assets\/[^/]*[wW]orker[^/]*\.js$/.test(a.fileName)) put(a.fileName, 1);
       // palier 2 : médias des scènes spéciales (public/)
