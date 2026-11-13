@@ -570,7 +570,9 @@ export function artPath(e: CatalogEntry): string {
  * outils/capture-merveilles.html), à la place de la photo du vrai lieu. La vue détail garde la 3D interactive.
  */
 export const isWonderId = (id: string) => id.startsWith('mrv-');
-export const wonderCapturePath = (id: string) => artV(`art/merveilles/cartes3d/${id.replace(/^mrv-/, '')}.webp`);
+export const wonderCapturePath = (id: string) => artV(`art/merveilles/cartes3d/${catLang && WONDER_CAPTURES_EN ? 'en/' : ''}${id.replace(/^mrv-/, '')}.webp`);
+/** (version anglaise, lot 6) captures anglaises posées dans public/art/merveilles/cartes3d/en/ (outils/capture-merveilles.html?lang=en) */
+const WONDER_CAPTURES_EN = true;
 
 /** Miniature WebP (grilles de collection, échanges) — générée par scripts/make-thumbs.mjs. */
 export function thumbPath(e: CatalogEntry): string {

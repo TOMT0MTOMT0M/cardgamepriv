@@ -42,7 +42,12 @@
           var d = ((navigator.languages && navigator.languages[0]) || navigator.language || '').trim().toLowerCase().replace('_', '-');
           var l = q === 'en' || q === 'fr' ? q : st === 'en' || st === 'fr' ? st : L.indexOf(d) >= 0 ? 'fr' : 'en';
           document.documentElement.lang = l;
-          if (l === 'en') document.title = 'Bébou — cards';
+          if (l === 'en') {
+            document.title = 'Bébou — cards';
+            // (version anglaise, lot 6) installation sur l'écran d'accueil : nom et description en anglais
+            var mf = document.querySelector('link[rel=manifest]');
+            if (mf) mf.setAttribute('href', '../manifest.en.webmanifest');
+          }
         } catch (e) {}
       })();
     </script>

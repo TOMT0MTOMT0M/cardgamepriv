@@ -5,6 +5,7 @@
  * interactive. À relancer si le design 3D d'une Merveille change :
  *   npx vite   →   http://localhost:5173/outils/capture-merveilles.html   (?webgl pour forcer WebGL2)
  * Chaque image se télécharge (<slug>.webp) : les poser dans public/art/merveilles/cartes3d/, puis mettre en ligne.
+ * (version anglaise, lot 6) `?lang=en` : textes et noms en anglais → les poser dans public/art/merveilles/cartes3d/en/.
  * `window.__captures` donne aussi les data URL (automatisation).
  */
 import '../src/core/fonts';
@@ -29,6 +30,12 @@ const say = (s: string) => ((log.textContent = s), console.log('[captures]', s))
 async function main() {
   applyFontVars();
   installCatalog(await import('../src/core/sets/catalogBig'));
+  if (params.get('lang') === 'en') {
+    const [{ en, enData }, { CATALOG_EN }, I, T] = await Promise.all([import('../src/core/i18n/en'), import('../src/core/sets/catalog.en'), import('../src/core/i18n'), import('../src/core/sets/themes')]);
+    I.installLang('en', en);
+    I.installData(enData);
+    T.setCatalogLang(CATALOG_EN);
+  }
   const [W] = await Promise.all([import('../src/core/wonderDiorama'), import('../src/core/wonderModels')]);
   const ids = Object.keys(W.WONDER_ATMOSPHERES).filter((id) => !params.get('only') || id.includes(params.get('only')!));
 

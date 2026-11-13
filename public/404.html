@@ -18,5 +18,23 @@
   <p>Le fichier demandé est introuvable (ou une nouvelle version du jeu vient d'être mise en ligne).</p>
   <p><a href="/jeu/">Retour au jeu</a></p>
 </main>
+<script>
+  // (version anglaise, lot 6) même règle que le jeu : choix enregistré, sinon langue de l'appareil (fr, fr-FR, fr-BE, fr-CH)
+  (function () {
+    try {
+      var st = null;
+      try { st = localStorage.getItem('bebou.lang'); } catch (e) {}
+      var d = ((navigator.languages && navigator.languages[0]) || navigator.language || '').trim().toLowerCase().replace('_', '-');
+      var l = st === 'en' || st === 'fr' ? st : ['fr', 'fr-fr', 'fr-be', 'fr-ch'].indexOf(d) >= 0 ? 'fr' : 'en';
+      if (l !== 'en') return;
+      document.documentElement.lang = 'en';
+      document.title = 'Not found · Bébou';
+      var t = document.querySelectorAll('main h1, main p');
+      t[0].textContent = 'This page doesn’t exist';
+      t[1].textContent = 'The requested file can’t be found (or a new version of the game has just been released).';
+      t[2].firstChild.textContent = 'Back to the game';
+    } catch (e) {}
+  })();
+</script>
 </body>
 </html>
