@@ -399,7 +399,7 @@ export function createViewerScene(): ViewerScene {
       haloMesh.position.set(0, 0.05, -0.32);
       stage.scene.add(haloMesh);
       // bloom sur l'émissif : les étoiles, les paillettes et le foil brillent vraiment (comme à l'ouverture)
-      const pl = (pipe = createPipeline(c, stage.scene, stage.camera, { emissive: true }));
+      const pl = (pipe = createPipeline(c, stage.scene, stage.camera, { emissive: true, lean: true }));
       const bl = pl.own(bloom(pl.emissive!, 0.3, 0.45, 0.0)) as unknown as N;
       // téléphone : bloom au ¼ de la résolution (au lieu de ½) — l'émissif est épars (étoiles, paillettes) : halo un
       // peu plus doux, −75 % de pixels de bloom en permanence dans la visionneuse

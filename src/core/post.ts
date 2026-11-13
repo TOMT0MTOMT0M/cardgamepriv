@@ -13,7 +13,7 @@ export function hasTransientAttachment(): boolean {
   return !!usage && 'TRANSIENT_ATTACHMENT' in usage;
 }
 
-export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, opts: { emissive?: boolean; samples?: number } = {}) {
+export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, opts: { emissive?: boolean; samples?: number; lean?: boolean } = {}) {
   const pipeline = new RenderPipeline(ctx.renderer);
   const passOpts: Record<string, unknown> = {};
   if (opts.samples != null) passOpts.samples = opts.samples;
@@ -36,7 +36,11 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
    */
   const requested = (passOpts.samples as number | undefined) ?? ctx.renderer.samples;
   const msaa = (ctx.isWebGPU ? (requested >= 4 ? 4 : 1) : requested) > 1;
-  if (ctx.quality === 'mobile' && msaa) passOpts.storeMultisampledColorBuffer = false;
+  // (audit 12/11, S17 / E4-10) aussi sur ordinateur : une fois résolus, les échantillons ne sont relus par personne —
+  // aucun pixel ne change ; sur un GPU à tuiles classé « ordinateur » (Mac Apple Silicon) c'est le même gain que sur iPhone
+  // `lean` : demandé par les scènes du jeu (le labo garde son réglage : téléphone seulement).
+  const lean = ctx.quality === 'mobile' || opts.lean === true;
+  if (lean && msaa) passOpts.storeMultisampledColorBuffer = false;
   const scenePass = pass(scene, camera, Object.keys(passOpts).length ? passOpts : undefined);
   if (opts.emissive) scenePass.setMRT(mrt({ output, emissive: vec4(emissive, output.a) }));
   const color = scenePass.getTextureNode('output');
@@ -56,7 +60,8 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
   const checkDepth = () => {
     if (depthChecked) return;
     depthChecked = true;
-    if (ctx.quality !== 'mobile' || !msaa) return;
+    // (E4-10) aussi sur ordinateur : profondeur ni gardée ni résolue quand la scène ne la lit pas
+    if (!lean || !msaa) return;
     const reads = !!(scenePass as unknown as { _textureNodes?: Record<string, unknown> })._textureNodes?.depth;
     if (reads) return;
     Object.assign(scenePass.renderTarget, { storeMultisampledDepthBuffer: false, storeMultisampledStencilBuffer: false, resolveDepthBuffer: false, resolveStencilBuffer: false });

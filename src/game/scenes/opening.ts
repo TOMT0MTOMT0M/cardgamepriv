@@ -2744,7 +2744,7 @@ export function createOpeningScene(): OpeningScene {
       }
 
       // post : bloom sur l'émissif, éclair, aberration, assombrissement
-      const pl = createPipeline(c, stage.scene, stage.camera, { emissive: true });
+      const pl = createPipeline(c, stage.scene, stage.camera, { emissive: true, lean: true });
       releaseTargets = () => pl.releaseTargets();
       // (audit PERF1-03) compilation des cartes du pack pour la cible RÉELLE de la passe (MRT émissif + MSAA), par la
       // version sûre du lot E (post.ts : la cible du moteur est rendue à chaque pause de la compilation — sinon une

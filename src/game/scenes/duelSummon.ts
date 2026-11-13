@@ -776,7 +776,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       buildFx();
 
       // post : bloom sur l'émissif, aberration chromatique (cri), flash, vignette
-      post = createPipeline(c, stage.scene, stage.camera, { emissive: true });
+      post = createPipeline(c, stage.scene, stage.camera, { emissive: true, lean: true });
       const bl = post.own(bloom(post.emissive!, 0.55, 0.45, 0.0)) as unknown as N;
       bloomRef = bl;
       const off = screenUV.sub(U.center);
