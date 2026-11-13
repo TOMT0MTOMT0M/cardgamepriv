@@ -164,6 +164,10 @@ const friendsSig = (fs: FriendPresence[]) =>
  * Keeps collection, friend presence, live pull feed, and pre-rolled ("sealed")
  * boosters in local memory so the Three.js WebGPU loop runs with 0ms network wait.
  */
+/** nombre d'émissions réellement faites (mesure : `window.__netEmits()` avec ?diag) */
+let emitCount = 0;
+if (typeof window !== 'undefined') (window as unknown as { __netEmits?: () => number }).__netEmits = () => emitCount;
+
 class GameNetClient {
   private client: ConvexClient | null = null;
   private sessionToken: string | null = null;
@@ -679,8 +683,22 @@ class GameNetClient {
     return () => this.listeners.delete(fn);
   }
 
+  /**
+   * (audit 12/11, S10 / E2-05) ÉMISSIONS REGROUPÉES. Convex livre toutes les requêtes changées par une mutation dans
+   * une seule tâche et appelle chaque abonnement à la suite : un booster révélé donnait 4 à 5 émissions, donc 4 à 5
+   * passages dans tous les `onChange` du jeu (33 côté pages, 14 côté économie). L'état est écrit tout de suite ; les
+   * écouteurs sont prévenus UNE fois, à la fin de la tâche en cours (micro-tâche : avant toute peinture, et avant la
+   * suite de tout `await` déjà en attente).
+   */
+  private emitQueued = false;
   private emit() {
-    for (const fn of this.listeners) fn(this.state);
+    if (this.emitQueued) return;
+    this.emitQueued = true;
+    queueMicrotask(() => {
+      this.emitQueued = false;
+      emitCount++;
+      for (const fn of this.listeners) fn(this.state);
+    });
   }
 
   /**

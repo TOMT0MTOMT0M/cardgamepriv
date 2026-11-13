@@ -1079,12 +1079,14 @@ async function boot() {
         if (vt && gen !== routeGen) return; // (sous transition la mise à jour arrive une image plus tard : une autre page a pris la main)
         viewHost.replaceChildren(v.el);
         // la page arrive en fondu (pas de saut sec d'un écran à l'autre) — sous View Transitions, c'est elle qui fond
+        // (audit 12/11, S10 / E2-07) la page est remplie AVANT le recalcul qui relance le fondu : une mise en page au
+        // lieu de deux (avant : recalcul forcé sur la page vide, puis de nouveau une fois remplie)
+        if (fade && !vt) v.el.classList.remove('view-in');
+        v.enter(sub);
         if (fade && !vt) {
-          v.el.classList.remove('view-in');
           void v.el.offsetWidth;
           v.el.classList.add('view-in');
         } else if (vt) v.el.classList.remove('view-in'); // (la classe ne doit pas doubler le fondu de la transition)
-        v.enter(sub);
         // retour arrière / avant du navigateur : la page retrouve son défilement (après `enter`, qui le remet à zéro)
         if (wantTop) restoreScroll(v.el, wantTop, gen);
         updateFresh(true); // on vient (peut-être) de quitter la collection : ce qu'on y a vu est vu

@@ -151,6 +151,24 @@ async function paint(key: string): Promise<string | null> {
     }
   }
 }
+/** aperçus à retirer une fois le fondu de la vraie carte terminé : [tuile, échéance] */
+const strip: Array<[HTMLElement, number]> = [];
+let stripT: number | null = null;
+function stripDue() {
+  stripT = null;
+  const now = performance.now() + 20; // (celles qui arrivent à échéance dans la même image partent avec)
+  let next = Infinity;
+  for (let i = strip.length - 1; i >= 0; i--) {
+    const [tile, due] = strip[i];
+    if (due > now) {
+      next = Math.min(next, due);
+      continue;
+    }
+    strip.splice(i, 1);
+    if (tile.isConnected && tile.classList.contains('real-on')) tile.querySelectorAll(':scope > .art, :scope > .meta').forEach((n) => n.remove());
+  }
+  if (strip.length) stripT = window.setTimeout(stripDue, Math.max(0, next - performance.now()));
+}
 const idleYield = () => new Promise<void>((r) => idle(() => r()));
 const tileStats = new Map<string, { n: number; bytes: number }>();
 /** Formats des tuiles peintes depuis le démarrage (pour le rapport ?diag) : « image/webp ×42 (18 Ko en moyenne) ». */
@@ -207,9 +225,10 @@ function apply(tile: HTMLElement, url: string, instant = false) {
     tile.classList.add('real-on', ...(instant ? ['real-now'] : []));
     // (audit 06/11) l'aperçu (dégradé + miniature filtrée + méta) ne sert plus : retiré du DOM après le fondu
     // (≈ 10 nœuds et un calque `drop-shadow` de moins par tuile)
-    setTimeout(() => {
-      if (tile.isConnected && tile.classList.contains('real-on')) tile.querySelectorAll(':scope > .art, :scope > .meta').forEach((n) => n.remove());
-    }, instant ? 0 : 500);
+    // (audit 12/11, S10 / M-05) un seul minuteur pour toutes les tuiles en attente (avant : un par tuile, soit 60
+    // minuteries et 60 petites mutations étalées quand une page de collection se peint)
+    strip.push([tile, performance.now() + (instant ? 0 : 500)]);
+    if (stripT === null) stripT = window.setTimeout(stripDue, instant ? 0 : 500);
   };
   img.onload = show;
   img.src = url;

@@ -369,8 +369,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   });
   // ── données
   /** id → ligne de collection (une carte a une seule rareté : celle de son thème) */
+  // (audit 12/11, S10 / A4-09) refaite seulement quand la collection change (nouveau tableau) : elle était reconstruite
+  // à chaque rendu, clic de tuile et ouverture de carte
+  let ownedFor: readonly PlayerCard[] | null = null;
+  let ownedMap = new Map<string, PlayerCard>();
   function owned(): Map<string, PlayerCard> {
+    if (ownedFor === backend.state.collection) return ownedMap;
     const m = new Map<string, PlayerCard>();
+    ownedFor = backend.state.collection;
+    ownedMap = m;
     for (const c of backend.state.collection) {
       const prev = m.get(c.cardId);
       if (prev) m.set(c.cardId, { ...prev, count: prev.count + c.count, firstPulledAt: Math.min(prev.firstPulledAt ?? Infinity, c.firstPulledAt ?? Infinity) });
