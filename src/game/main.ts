@@ -1152,8 +1152,16 @@ async function boot() {
 
   // en tâche de fond : miniatures de la collection, puis les modules des autres pages (navigation instantanée)
   setTimeout(() => {
-    void getViewer();
     preloadOwned(backend.state.collection.map((c) => c.cardId));
+    // (audit 12/11, S06 / E2-06) la visionneuse (module + scène + compilation de ses shaders) se monte quand la
+    // boutique est au calme et le navigateur inoccupé — plus à heure fixe, où elle tombait sur le 1er booster ouvert.
+    // Une carte touchée avant la monte tout de suite (getViewer est appelé à la demande).
+    const mountViewer = (tries = 0) => {
+      if (shop.busy() && tries < 40) return void setTimeout(() => mountViewer(tries + 1), 750);
+      if ('requestIdleCallback' in window) requestIdleCallback(() => void getViewer(), { timeout: 4000 });
+      else void getViewer();
+    };
+    mountViewer();
   }, 1500);
   setTimeout(prefetchPages, 3000);
   setTimeout(() => void getChat().catch(() => (chatP = null)), 900);
