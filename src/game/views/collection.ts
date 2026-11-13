@@ -141,7 +141,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     <div class="albums" hidden>
       <div class="al-bar">
         <input class="search al-search" type="search" placeholder="${tr('coll.searchAlbum')}" autocomplete="off" spellcheck="false" aria-label="${tr('coll.searchAlbumA')}">
-        <div class="seg al-sort" aria-label="${tr('coll.albumSort')}"><button data-s="progress">En cours</button><button data-s="completion">${tr('coll.completion')}</button><button data-s="group">${tr('coll.byGroup')}</button><button data-s="alpha">A → Z</button></div>
+        <div class="seg al-sort" aria-label="${tr('coll.albumSort')}"><button data-s="progress">${tr('coll.inProgress')}</button><button data-s="completion">${tr('coll.completion')}</button><button data-s="group">${tr('coll.byGroup')}</button><button data-s="alpha">A → Z</button></div>
         <span class="al-count"></span>
       </div>
       <div class="al-grid"></div>
@@ -166,7 +166,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     <div class="grid"></div>
     <div class="pager" hidden></div>
     <div class="empty" hidden></div>
-    <button class="to-top" aria-label="Revenir en haut" title="Revenir en haut" hidden>↑</button>
+    <button class="to-top" aria-label="${tr('coll.backTop')}" title="${tr('coll.backTop')}" hidden>↑</button>
     <div class="viewer-ui" hidden><button class="close" aria-label="${tr('common.close')}">✕</button>
       <button class="nav prev" aria-label="${tr('coll.prev')}">‹</button><button class="nav next" aria-label="${tr('coll.next')}">›</button>
       <div class="v-info"></div><div class="v-actions"></div><div class="v-pos"></div><div class="v-hint">${tr('shop.spinHint')}</div>

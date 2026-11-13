@@ -19,7 +19,7 @@ Un paramètre peut prendre une autre expression que celle de la source : [n=list
 import json, os, re, sys
 
 ACCENT = re.compile(r"[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒ’«»]")
-WORDS = re.compile(r"\b(le|la|les|des|une|du|au|aux|et|ou|est|sont|pas|plus|avec|pour|dans|sur|ton|ta|tes|tu|toi|vous|votre|il|elle|on|ce|cette|ces|qui|que|ne|ici|rien|tout|tous|encore|jamais|aucun|aucune|carte|cartes|joueur|joueurs|ami|amis|échange|pièces|ouvrir|voir|fermer|retour|chargement|connexion|réseau|mise|jeu|jeux|demain|aujourd|hier|minutes?|secondes?|heures?|jours?|se|mon|ma|mes|son|sa|ses|leur|leurs|nos|notre|par|sans|chez|depuis|avant|après|oui|non|fois|semaine|mois|ans|niveau|saison|ton|annuler|valider|envoyer|refuser|accepter|retirer|ajouter|supprimer|modifier|enregistrer|partager|copier|suivant|nouveau|nouvelle|nouvelles|recharger|couper|activer|réessayer|terminer|garder|vendre|acheter|donner|choisir|chercher|trier|profil|boutique|classement|envies|doublons|vitrine|cadre|titre|gagné|perdu|offre|offres|tirage|tirages|collectionner|bébous?)\b", re.I)
+WORDS = re.compile(r"\b(le|la|les|des|une|du|au|aux|et|ou|est|sont|pas|plus|avec|pour|dans|sur|ton|ta|tes|tu|toi|vous|votre|il|elle|on|ce|cette|ces|qui|que|ne|ici|rien|tout|tous|encore|jamais|aucun|aucune|carte|cartes|joueur|joueurs|ami|amis|échange|pièces|ouvrir|voir|fermer|retour|chargement|connexion|réseau|mise|jeu|jeux|demain|aujourd|hier|minutes?|secondes?|heures?|jours?|se|en|cours|prochain|prochaine|dernier|dernière|palier|paliers|vos|nos|ici|là|déjà|toujours|jamais|alors|aussi|mon|ma|mes|son|sa|ses|leur|leurs|nos|notre|par|sans|chez|depuis|avant|après|oui|non|fois|semaine|mois|ans|niveau|saison|ton|annuler|valider|envoyer|refuser|accepter|retirer|ajouter|supprimer|modifier|enregistrer|partager|copier|suivant|nouveau|nouvelle|nouvelles|recharger|couper|activer|réessayer|terminer|garder|vendre|acheter|donner|choisir|chercher|trier|profil|boutique|classement|envies|doublons|vitrine|cadre|titre|gagné|perdu|offre|offres|tirage|tirages|collectionner|bébous?)\b", re.I)
 IGNORE_BEFORE = re.compile(r"(console\.\w+\(|import\s|from\s*$|querySelector(All)?(<[^>]*>)?\(|closest(<[^>]*>)?\(|perfMark\(|trip\(|matches\(|\bt\(|i18n-ok|classList\.\w+\(|className\s*=\s*|getElementById\(|dataset\.|addEventListener\(|setAttribute\('(class|data-|id)|new Error\(|throw new \w+\()\s*[^'\"`]*$")
 ATTRS = ('title', 'aria-label', 'placeholder', 'alt', 'data-tip')
 
@@ -99,8 +99,8 @@ def items(src):
         line = src[src.rfind('\n', 0, L.start) + 1: (src.find('\n', L.start) if src.find('\n', L.start) >= 0 else len(src))]
         if IGNORE_BEFORE.search(before) or 'i18n-ok' in line: continue
         if L.kind == 'q':
-            if not french(L.text): continue
             if not re.search(r"<[a-zA-Z/!][^>]*>", L.text):
+                if not french(L.text): continue
                 if re.match(r"^[a-z][a-z-]*$", L.text.strip()): continue  # (clé, route : « profil », « amis »)
                 out.append(dict(kind='S', start=L.start, end=L.end, text=L.text, exprs=[], before=before)); continue
             # chaîne avec du HTML : seulement ses textes, recollés par « ' + t(…) + ' »
@@ -147,6 +147,11 @@ def items(src):
         add_seg(out, flat, pos, flat[pos:], exprs, src_pos, before)
     out.sort(key=lambda d: d['start'])
     lines = src.split('\n')
+    inData = False
+    for k, l in enumerate(lines):  # (régions i18n-data : traduites par identifiant, voir tData)
+        if 'i18n-data:début' in l: inData = True
+        if inData: lines[k] = l + ' i18n-ok'
+        if 'i18n-data:fin' in l: inData = False
     out = [d for d in out if 'i18n-ok' not in lines[lineno(src, d['start']) - 1]]
     for k, d in enumerate(out):
         d['id'] = k + 1; d['line'] = lineno(src, d['start'])

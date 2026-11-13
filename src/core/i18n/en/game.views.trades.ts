@@ -151,4 +151,7 @@ export const en: PartOf<typeof fr> = {
   'tr.trayGave': { one: '<b>{n}</b> given', other: '<b>{n}</b> given' },
   'tr.lastCopyW': 'last copy',
   'tr.oneMore': 'One more copy',
+  'tr.ongoing': 'Ongoing',
+  'tr.lastCopyItem': 'last copy',
+  'tr.theyHave': '{name} has {n}',
 };

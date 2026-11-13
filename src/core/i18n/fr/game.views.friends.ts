@@ -64,5 +64,6 @@ export const fr = {
   'am.copied': 'Lien copié : envoie-le à tes potes !',
   'am.selected': 'Sélectionné : copie-le (Ctrl+C).',
   'am.ask': 'Demander',
+  'am.countOnline': '{friends} · {n} en ligne',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

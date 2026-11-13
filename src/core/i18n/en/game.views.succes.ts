@@ -36,4 +36,9 @@ export const en: PartOf<typeof fr> = {
   'sc.allDone': 'All done. Hats off.',
   'sc.nothingAlbum': 'Nothing to collect for now: complete an album in your <a href="#/collection/albums">collection</a> (a family of 30 cards = 150 coins).',
   'sc.addFriends': 'Add friends (<a href="#/amis">Friends</a> tab) to compare your achievements.',
+  'sc.tier': 'Tier {n}/{total}',
+  'sc.next': 'Next: {label} — {how}',
+  'sc.lastTier': 'Last tier: {label}',
+  'sc.ongoing': 'In progress',
+  'sc.tierLow': 'tier {n}/{total}',
 };

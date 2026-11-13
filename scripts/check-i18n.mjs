@@ -16,7 +16,7 @@ const SKIP = [/src[\\/]core[\\/]sets[\\/]/, /src[\\/]core[\\/]i18n[\\/]/, /src[\
 const ONLY_COUNT = process.argv.includes('--count');
 
 const ACCENT = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒ’«»]/;
-const WORDS = /\b(le|la|les|des|une|du|au|aux|et|ou|est|sont|pas|plus|avec|pour|dans|sur|ton|ta|tes|tu|toi|vous|votre|il|elle|on|ce|cette|ces|qui|que|ne|ici|rien|tout|tous|encore|jamais|aucun|aucune|carte|cartes|joueur|joueurs|ami|amis|échange|pièces|ouvrir|voir|fermer|retour|chargement|connexion|réseau|mise|jeu|jeux|demain|aujourd|hier|minutes?|secondes?|heures?|jours?|se|mon|ma|mes|son|sa|ses|leur|leurs|nos|notre|par|sans|chez|depuis|avant|après|oui|non|fois|semaine|mois|ans|niveau|saison|ton|annuler|valider|envoyer|refuser|accepter|retirer|ajouter|supprimer|modifier|enregistrer|partager|copier|suivant|nouveau|nouvelle|nouvelles|recharger|couper|activer|réessayer|terminer|garder|vendre|acheter|donner|choisir|chercher|trier|profil|boutique|classement|envies|doublons|vitrine|cadre|titre|gagné|perdu|offre|offres|tirage|tirages|collectionner|bébous?)\b/i;
+const WORDS = /\b(le|la|les|des|une|du|au|aux|et|ou|est|sont|pas|plus|avec|pour|dans|sur|ton|ta|tes|tu|toi|vous|votre|il|elle|on|ce|cette|ces|qui|que|ne|ici|rien|tout|tous|encore|jamais|aucun|aucune|carte|cartes|joueur|joueurs|ami|amis|échange|pièces|ouvrir|voir|fermer|retour|chargement|connexion|réseau|mise|jeu|jeux|demain|aujourd|hier|minutes?|secondes?|heures?|jours?|se|en|cours|prochain|prochaine|dernier|dernière|palier|paliers|vos|nos|ici|là|déjà|toujours|jamais|alors|aussi|mon|ma|mes|son|sa|ses|leur|leurs|nos|notre|par|sans|chez|depuis|avant|après|oui|non|fois|semaine|mois|ans|niveau|saison|ton|annuler|valider|envoyer|refuser|accepter|retirer|ajouter|supprimer|modifier|enregistrer|partager|copier|suivant|nouveau|nouvelle|nouvelles|recharger|couper|activer|réessayer|terminer|garder|vendre|acheter|donner|choisir|chercher|trier|profil|boutique|classement|envies|doublons|vitrine|cadre|titre|gagné|perdu|offre|offres|tirage|tirages|collectionner|bébous?)\b/i;
 // mot seul en capitale (« Cadre », « Personnaliser ») : un libellé, sauf noms de touches et noms propres
 const IDENT = /^(Escape|Enter|Tab|Space|Backspace|Delete|Home|End|PageUp|PageDown|Shift|Control|Meta|Alt|Arrow(Left|Right|Up|Down)|Bébou|BÉBOU|Discord|Chrome|Safari|Edge|Firefox|WebGPU|WebGL|Convex|Pokémon|Valorant|Mythic|Infinity|NaN|Error|Promise|Date|Math|Object|Array|String|Number|Boolean|JSON|Intl|Map|Set|Symbol|None|Auto|Inter)$/;
 const CAP = /^[A-ZÀ-Ý][a-zà-ÿ]{2,}$/;
@@ -136,7 +136,16 @@ const per = [];
 {
   for (const f of files()) {
     const src = readFileSync(f, 'utf8');
-    const lines = src.split('\n');
+    // (régions « i18n-data:début » … « i18n-data:fin » : tables traduites par identifiant via tData, vérifiées par le test)
+    const lines = src.split('\n').map((l, k, all) => l);
+    {
+      let inData = false;
+      for (let k = 0; k < lines.length; k++) {
+        if (lines[k].includes('i18n-data:début')) inData = true;
+        if (inData) lines[k] += ' // i18n-ok';
+        if (lines[k].includes('i18n-data:fin')) inData = false;
+      }
+    }
     const rel = relative(ROOT, f).replace(/\\/g, '/');
     const hits = [];
     if (f.endsWith('.css')) {

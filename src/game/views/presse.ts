@@ -1,4 +1,5 @@
-import { locale } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.presse'; // (textes de ce module, version anglaise)
+import { locale, t as tr } from '../../core/i18n';
 import type { PresseRunView, PresseState } from '../ecoJeux';
 import { fmtCoins } from '../../core/economy';
 import { packChoiceLabel, packChoices, type PackChoice } from '../../core/games';
@@ -21,12 +22,12 @@ import '../defis.css';
 const starsTxt = (r: RarityId | string) => (r === 'secret' ? '✷' : '★'.repeat(starCount(r as RarityId)));
 
 export function pressePage({ body, backend, unsubs, sfx }: JeuxPageCtx) {
-  body.innerHTML = `<div class="gm-panel ps-panel"><div class="gm-ph"><b>La Presse</b><span class="muted ps-today"></span></div>
+  body.innerHTML = `<div class="gm-panel ps-panel"><div class="gm-ph"><b>${tr('pr.title')}</b><span class="muted ps-today"></span></div>
       <div class="ps-strip" aria-live="polite"></div>
-      <div class="ps-gauge"><div><span class="df-l">Valeur de la pièce</span><b class="ps-val">${COIN_ICON}<i>0</i></b></div><div><span class="df-l">Fêlure à la prochaine frappe</span><b class="ps-risk">—</b></div></div>
+      <div class="ps-gauge"><div><span class="df-l">${tr('pr.value')}</span><b class="ps-val">${COIN_ICON}<i>0</i></b></div><div><span class="df-l">${tr('pr.crack')}</span><b class="ps-risk">—</b></div></div>
       <div class="ps-ctl"></div></div>
-    <div class="gm-panel"><div class="gm-ph"><b>Dernières pièces</b></div><div class="gm-list ps-past"></div></div>
-    <div class="gm-rules muted">Mise ${PRESSE_BETS.join(', ')} pièces. La presse grave en secret ${PRESSE_STRIKES} cartes de l'album choisi (raretés d'un booster) ; la première frappe est offerte. Chaque carte frappée charge la pièce de ses étoiles (<b>1★ = ${presseStar(100)} pièces pour une mise de 100</b>). <b>Deux raretés identiques d'affilée : la pièce se fend</b> et la mise est perdue — après une 1★, le risque est de 58 %, après une 3★ de 10 %. Encaisse quand tu veux ; à la ${PRESSE_STRIKES}e frappe, la pièce sort seule. ${PRESSE_DAILY} parties par jour. Aucune carte n'est gagnée : la presse montre l'album (les cartes que tu n'as pas encore sont marquées), les pièces servent aux boosters.</div>`;
+    <div class="gm-panel"><div class="gm-ph"><b>${tr('pr.last')}</b></div><div class="gm-list ps-past"></div></div>
+    <div class="gm-rules muted">${tr('pr.rules', { bets: PRESSE_BETS.join(', '), n: PRESSE_STRIKES, star: presseStar(100), daily: PRESSE_DAILY })}</div>`;
   const strip = body.querySelector<HTMLElement>('.ps-strip')!;
   const ctl = body.querySelector<HTMLElement>('.ps-ctl')!;
   const valEl = body.querySelector<HTMLElement>('.ps-val i')!;
@@ -80,7 +81,7 @@ export function pressePage({ body, backend, unsubs, sfx }: JeuxPageCtx) {
     const last = cards[cards.length - 1];
     if (r?.status === 'live' && last) {
       const p = presseRisk(last.rarity);
-      riskEl.innerHTML = `<span style="--rc:${rarity(last.rarity).hex}" class="ps-rk">${Math.round(p * 100)} %</span><small>si la prochaine est encore ${starsTxt(last.rarity)}</small>`;
+      riskEl.innerHTML = `<span style="--rc:${rarity(last.rarity).hex}" class="ps-rk">${Math.round(p * 100)} %</span><small>${tr('pr.ifNext', { stars: starsTxt(last.rarity) })}</small>`;
     } else riskEl.textContent = '—';
   };
 
@@ -89,24 +90,24 @@ export function pressePage({ body, backend, unsubs, sfx }: JeuxPageCtx) {
     const live = run?.status === 'live';
     const bal = backend.eco.snapshot?.coins ?? 0;
     const left = PRESSE_DAILY - (st?.today ?? 0);
-    body.querySelector<HTMLElement>('.ps-today')!.textContent = `${Math.max(0, left)} partie${left > 1 ? 's' : ''} restante${left > 1 ? 's' : ''} aujourd’hui`;
+    body.querySelector<HTMLElement>('.ps-today')!.textContent = tr('pr.left', { n: Math.max(0, left) });
     if (live) {
       // (audit 12/11, T-01) l'abonnement rappelle drawCtl juste après la mutation avec le même état : sans ce garde les
       // boutons étaient remplacés une 2e fois, et un tap en cours tombait sur un nœud retiré (frappe perdue)
       const key = `live|${run!.id}|${run!.shown}|${run!.value}`;
       if (key === ctlKey && ctl.querySelector('.ps-hit')) return;
       ctlKey = key;
-      ctl.innerHTML = `<div class="ps-btns"><button class="btn-primary ps-hit">Frapper · ${run!.shown + 1}/${PRESSE_STRIKES}</button><button class="btn-ghost ps-cash">Encaisser ${COIN_ICON}${fmtCoins(run!.value)}</button></div>`;
+      ctl.innerHTML = `<div class="ps-btns"><button class="btn-primary ps-hit">Frapper · ${run!.shown + 1}/${PRESSE_STRIKES}</button><button class="btn-ghost ps-cash">${tr('pr.cash', { icon: COIN_ICON, v: fmtCoins(run!.value) })}</button></div>`;
       ctl.querySelector<HTMLElement>('.ps-hit')!.addEventListener('click', (e) => send(e.currentTarget as HTMLElement, () => backend.eco.presseStrike(run!.id)));
       ctl.querySelector<HTMLElement>('.ps-cash')!.addEventListener('click', (e) => send(e.currentTarget as HTMLElement, () => backend.eco.presseCash(run!.id)));
       return;
     }
     ctlKey = '';
-    const end = run && run.status !== 'live' ? `<div class="ps-end ${run.status}">${run.status === 'cracked' ? `La pièce se fend : <b class="minus">−${fmtCoins(run.bet)}</b>` : `Pièce encaissée : <b class="${(run.payout ?? 0) >= run.bet ? 'plus' : ''}">+${fmtCoins(run.payout ?? 0)}</b> <span class="muted">(mise ${fmtCoins(run.bet)})</span>`}</div>` : '';
-    ctl.innerHTML = `${end}<div class="df-step"><span class="df-l">Album</span><div class="df-chips ps-albums">${albums.map((a, i) => `<button class="gm-pack-b${a.kind === album.kind && a.themeId === album.themeId ? ' on' : ''}" data-al="${i}"><span class="gm-pack ${a.kind === 'bebou' ? 'bebou' : `t-${a.themeId}`}">${esc(packChoiceLabel(a).replace(' Pack', ''))}</span></button>`).join('')}</div></div>
-      <div class="df-step"><span class="df-l">Mise</span><div class="df-chips">${PRESSE_BETS.map((b) => `<button class="gm-pack-b gm-rc${b === bet ? ' on' : ''}" data-b="${b}">${b}</button>`).join('')}<span class="muted ps-per">1★ = ${presseStar(bet)} pièces</span></div></div>
-      ${bet > bal ? `<div class="gm-warn">Il te manque ${fmtCoins(bet - bal)} pièces.</div>` : ''}
-      <button class="btn-primary ps-go"${bet > bal || left <= 0 ? ' disabled' : ''}>${left <= 0 ? 'La presse refroidit jusqu’à demain' : `Graver la bande · ${coinsHtml(bet)}`}</button>`;
+    const end = run && run.status !== 'live' ? `<div class="ps-end ${run.status}">${run.status === 'cracked' ? `${tr('pr.cracks')} <b class="minus">−${fmtCoins(run.bet)}</b>` : `${tr('pr.cashed')} <b class="${(run.payout ?? 0) >= run.bet ? 'plus' : ''}">+${fmtCoins(run.payout ?? 0)}</b> <span class="muted">${tr('pr.betW', { n: fmtCoins(run.bet) })}</span>`}</div>` : '';
+    ctl.innerHTML = `${end}<div class="df-step"><span class="df-l">${tr('pr.album')}</span><div class="df-chips ps-albums">${albums.map((a, i) => `<button class="gm-pack-b${a.kind === album.kind && a.themeId === album.themeId ? ' on' : ''}" data-al="${i}"><span class="gm-pack ${a.kind === 'bebou' ? 'bebou' : `t-${a.themeId}`}">${esc(packChoiceLabel(a).replace(' Pack', ''))}</span></button>`).join('')}</div></div> <!-- i18n-ok -->
+      <div class="df-step"><span class="df-l">${tr('pr.bet')}</span><div class="df-chips">${PRESSE_BETS.map((b) => `<button class="gm-pack-b gm-rc${b === bet ? ' on' : ''}" data-b="${b}">${b}</button>`).join('')}<span class="muted ps-per">${tr('pr.star', { n: presseStar(bet) })}</span></div></div>
+      ${bet > bal ? `<div class="gm-warn">${tr('pr.short', { n: fmtCoins(bet - bal) })}</div>` : ''}
+      <button class="btn-primary ps-go"${bet > bal || left <= 0 ? ' disabled' : ''}>${left <= 0 ? tr('pr.cool') : tr('pr.engrave', { bet: coinsHtml(bet) })}</button>`;
     ctl.querySelectorAll<HTMLElement>('[data-al]').forEach((b) => b.addEventListener('click', () => ((album = albums[Number(b.dataset.al)]), drawCtl())));
     ctl.querySelectorAll<HTMLElement>('[data-b]').forEach((b) => b.addEventListener('click', () => ((bet = Number(b.dataset.b)), drawCtl())));
     ctl.querySelector<HTMLElement>('.ps-go')!.addEventListener('click', (e) => send(e.currentTarget as HTMLElement, () => backend.eco.presseStart(bet, album)));
@@ -130,7 +131,7 @@ export function pressePage({ body, backend, unsubs, sfx }: JeuxPageCtx) {
 
   unsubs.push(
     backend.eco.watchPresse((s) => {
-      if (!s) return void (ctl.innerHTML = '<div class="muted">Connecte-toi pour jouer.</div>');
+      if (!s) return void (ctl.innerHTML = '<div class="muted">' + tr('pr.login') + '</div>');
       st = s;
       // la mutation a déjà tout montré : l'abonnement ne fait que rattraper (autre appareil, rechargement)
       if (!run || s.run?.id !== run.id || (s.run && s.run.shown > run.shown) || (s.run && s.run.status !== run.status)) {
@@ -139,8 +140,8 @@ export function pressePage({ body, backend, unsubs, sfx }: JeuxPageCtx) {
       }
       drawCtl();
       body.querySelector<HTMLElement>('.ps-past')!.innerHTML = s.past.length
-        ? s.past.map((p) => `<div class="gm-item"><span class="gm-it"><span class="gm-tag">${p.shown}/${PRESSE_STRIKES}</span>mise ${fmtCoins(p.bet)} · ${p.status === 'cracked' ? '<b class="minus">fendue</b>' : `<b class="${p.payout >= p.bet ? 'plus' : ''}">${fmtCoins(p.payout)}</b>`}</span><span class="gm-it-r muted">${new Date(p.createdAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}</span></div>`).join('')
-        : '<div class="muted">Pas encore de pièce.</div>';
+        ? s.past.map((p) => `<div class="gm-item"><span class="gm-it"><span class="gm-tag">${p.shown}/${PRESSE_STRIKES}</span>${tr('pr.row', { bet: fmtCoins(p.bet), st: p.status === 'cracked' ? `<b class="minus">${tr('pr.cracked')}</b>` : `<b class="${p.payout >= p.bet ? 'plus' : ''}">${fmtCoins(p.payout)}</b>` })}</span><span class="gm-it-r muted">${new Date(p.createdAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}</span></div>`).join('')
+        : '<div class="muted">' + tr('pr.none') + '</div>';
     }),
     backend.eco.onChange(() => body.isConnected && run?.status !== 'live' && !ctl.contains(document.activeElement) && drawCtl()),
   );

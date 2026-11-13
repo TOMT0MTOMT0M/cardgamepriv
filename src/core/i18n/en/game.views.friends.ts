@@ -65,4 +65,5 @@ export const en: PartOf<typeof fr> = {
   'am.copied': 'Link copied: send it to your mates!',
   'am.selected': 'Selected: copy it (Ctrl+C).',
   'am.ask': 'Send request',
+  'am.countOnline': '{friends} · {n} online',
 };

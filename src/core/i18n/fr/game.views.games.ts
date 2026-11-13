@@ -165,5 +165,8 @@ export const fr = {
   'gm.rouletteRules': 'Choisis 1, 2 ou 3 numéros par tirage. <b>1 numéro</b> = 10 cartes 4★ ou 300 pièces · <b>2 numéros</b> = 1 carte 5★ ou 600 pièces · <b>3 numéros</b> = 2 cartes 5★, 1 carte 6★ ou 900 pièces (les cartes 1★ à 3★ ne se misent pas). Deux tirages par jour, à {hours} : le numéro exact remporte tout le pot. Sinon, tout reste pour le tirage suivant, et le site ajoute une carte 5★ ou 6★ à chaque tirage.',
   'gm.and': ' et ',
   'gm.reserveDebit': { one: 'Réserve : {n} booster ({d} débité au lancement).', other: 'Réserve : {n} boosters ({d} débités au lancement).' },
+  'gm.royalesWaiting': '{games} en attente ({list})',
+  'gm.waitingW': 'en attente',
+  'gm.gamesWaiting': 'Parties en attente',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

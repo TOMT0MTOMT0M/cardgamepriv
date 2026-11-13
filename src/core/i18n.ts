@@ -50,6 +50,17 @@ export function addFr(part: Record<string, Msg>): void {
 }
 const plurals = new Map<Lang, Intl.PluralRules>();
 
+/**
+ * (version anglaise) TABLES DE DONNÉES partagées avec le serveur (succès, cosmétiques, missions…) : le français reste
+ * dans la table (le serveur s'en sert), l'anglais vient de `en/data.ts`, par identifiant. `tData('ach.packs-10', 'Premiers pas')`.
+ * Une entrée anglaise manquante : le français s'affiche (et le test convex/i18n.test.ts échoue).
+ */
+let data: Record<string, string> = {};
+export function installData(d: Record<string, string>): void {
+  data = d;
+}
+export const tData = (key: string, frText: string): string => (cur === 'fr' ? frText : (data[key] ?? frText));
+
 /** Langue active. */
 export const lang = (): Lang => cur;
 /** Locale pour Intl (dates, nombres, tris) : l'anglais en version britannique (24 h, jour avant le mois). */

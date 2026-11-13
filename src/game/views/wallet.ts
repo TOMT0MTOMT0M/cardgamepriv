@@ -52,7 +52,7 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     if (!on) return;
     const s = backend.eco.snapshot;
     if (!s) {
-      pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.wallet.label')}</b>${CLOSE_X}</div>${loginPrompt(backend, tr('wal.login'))}`;
+      pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.wallet.label')}</b>${CLOSE_X()}</div>${loginPrompt(backend, tr('wal.login'))}`;
       return;
     }
     const compTotal = s.completions.reduce((a, c) => a + c.reward, 0);
@@ -63,7 +63,7 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     // la forge n'est plus dans l'espace Jeux (retours live 02) : elle est dans la collection, ouverte en même temps
     // que les jeux (admins seulement d'ici là, comme avant)
     const forgeN = forgeCount(backend.state);
-    pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.wallet.label')}</b>${games ? '<a href="#/jeux" class="w-link">' + tr('wal.games') + '</a>' : ''}${CLOSE_X}</div>
+    pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.wallet.label')}</b>${games ? '<a href="#/jeux" class="w-link">' + tr('wal.games') + '</a>' : ''}${CLOSE_X()}</div>
       <div class="w-bal">${coinsHtml(s.coins, 'big')}<span class="muted">${tr('wal.virtual')}</span></div>
       <div class="w-sec"><div class="w-h"><b>${tr('wal.toCollect')}</b></div>
         <div class="w-row"><span>${tr('wal.completion', { x: s.completions.length ? ` · ${esc(s.completions.slice(0, 2).map((c) => c.label).join(', '))}${s.completions.length > 2 ? '…' : ''}` : tr('wal.completionHint') })}</span>${s.completions.length ? `<button class="btn-primary w-comp">+${fmtCoins(compTotal)}</button>` : '<span class="muted">' + tr('wal.nothing') + '</span>'}</div>

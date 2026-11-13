@@ -1,3 +1,5 @@
+import { t as tr } from '../core/i18n';
+import '../core/i18n/fr/game.survey'; // (textes de ce module, version anglaise)
 import type { GameBackend } from './backend';
 import { SURVEY_FEATURES, SURVEY_ID, SURVEY_MAX_FEATURES, SURVEY_UNIVERSES, cleanSurvey, surveyFilled, type SurveyAnswer, type SurveyOption } from '../core/survey';
 import { haptics } from '../core/haptics';
@@ -16,7 +18,7 @@ import { busyButton, errMsg, esc, layerCount, popLayer, pushLayer, toast } from 
  *    on attend que ce soit calme. Compte tout neuf : après la visite guidée. Pas en démo (sauf `?sondage`).
  *  - `?sondage` : l'ouvrir tout de suite (test).
  */
-const LATER_KEY = `bebou.sondage.${SURVEY_ID}.plus-tard`;
+const LATER_KEY = `bebou.sondage.${SURVEY_ID}.plus-tard`; // i18n-ok
 const DONE_KEY = `bebou.sondage.${SURVEY_ID}.fait`;
 const AGAIN_MS = 60 * 60 * 1000;
 /** à la connexion : on laisse le jeu se poser (annonce de patch, notifications…) avant de proposer */
@@ -111,7 +113,7 @@ export function armSurvey(backend: GameBackend) {
 // ───────────────────────────────────────────── la feuille du sondage
 
 const STEPS = 4;
-const RATING_WORDS = ['Bof', 'Moyen', 'Bien', 'Très bien', 'J’adore'];
+const RATING_WORDS = () => [tr('sv.r1'), tr('sv.r2'), tr('sv.r3'), tr('sv.r4'), tr('sv.r5')];
 const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.85 6.06 6.65.78-4.92 4.53 1.3 6.57L12 17.3l-5.88 3.24 1.3-6.57L2.5 9.44l6.65-.78z"/></svg>';
 
 const chips = (name: string, opts: SurveyOption[]) =>
@@ -125,50 +127,50 @@ function showSurvey(backend: GameBackend, cb: { onLater(): void; onDone(): void 
     <header class="sv-top">
       <span class="sv-k">Sondage · 1 min</span>
       <span class="sv-prog" aria-hidden="true">${Array.from({ length: STEPS }, () => '<i></i>').join('')}</span>
-      <button type="button" class="sv-x" aria-label="Plus tard">Plus tard <span aria-hidden="true">✕</span></button>
+      <button type="button" class="sv-x" aria-label="${tr('sv.later')}">${tr('sv.later')} <span aria-hidden="true">✕</span></button>
     </header>
     <div class="sv-pages">
       <section class="sv-page sv-hello on" data-p="0">
-        <p class="sv-eyebrow">Prochaines mises à jour</p>
-        <h2 id="sv-t0">${name ? `${esc(name)}, c’est toi` : 'C’est toi'} qui choisis la suite</h2>
-        <p class="sv-lead">Quatre questions, une minute. On lit toutes les réponses, et les plus demandées arrivent en premier.</p>
-        <ol class="sv-plan"><li><b>Les univers</b> que tu veux collectionner</li><li><b>Les nouveautés</b> de jeu qui te tentent</li><li><b>Ta note</b> du jeu aujourd’hui</li><li><b>Un mot</b> pour nous, si tu veux</li></ol>
+        <p class="sv-eyebrow">${tr('sv.title')}</p>
+        <h2 id="sv-t0">${tr('sv.youChoose', { who: name ? tr('sv.itsYouName', { name: esc(name) }) : tr('sv.itsYou') })}</h2>
+        <p class="sv-lead">${tr('sv.intro')}</p>
+        <ol class="sv-plan"><li><b>${tr('sv.s1')}</b> ${tr('sv.s1d')}</li><li><b>${tr('sv.s2')}</b> ${tr('sv.s2d')}</li><li><b>${tr('sv.s3')}</b> ${tr('sv.s3d')}</li><li><b>Un mot</b> ${tr('sv.s4d')}</li></ol>
       </section>
       <section class="sv-page" data-p="1">
         <p class="sv-step">1 / ${STEPS}</p>
-        <h2>Quels univers veux-tu voir arriver&nbsp;?</h2>
-        <p class="sv-sub">Coche tout ce qui te plaît.</p>
+        <h2>${tr('sv.q1')}</h2>
+        <p class="sv-sub">${tr('sv.q1d')}</p>
         <div class="sv-grid">${chips('universes', SURVEY_UNIVERSES)}</div>
-        <label class="sv-field"><span>Des noms précis&nbsp;? <em>facultatif</em></span><input class="sv-names" maxlength="300" placeholder="Une série, un joueur, un jeu, un artiste…" autocomplete="off"></label>
+        <label class="sv-field"><span>${tr('sv.q1n')} <em>facultatif</em></span><input class="sv-names" maxlength="300" placeholder="${tr('sv.q1ph')}" autocomplete="off"></label>
       </section>
       <section class="sv-page" data-p="2">
         <p class="sv-step">2 / ${STEPS}</p>
-        <h2>Quelles nouveautés de jeu te tentent le plus&nbsp;?</h2>
-        <p class="sv-sub">Jusqu’à ${SURVEY_MAX_FEATURES} choix. <span class="sv-count" aria-live="polite">0 / ${SURVEY_MAX_FEATURES}</span></p>
+        <h2>${tr('sv.q2')}</h2>
+        <p class="sv-sub">${tr('sv.q2d', { n: SURVEY_MAX_FEATURES })} <span class="sv-count" aria-live="polite">0 / ${SURVEY_MAX_FEATURES}</span></p>
         <div class="sv-grid">${chips('features', SURVEY_FEATURES)}</div>
       </section>
       <section class="sv-page" data-p="3">
         <p class="sv-step">3 / ${STEPS}</p>
-        <h2>Ta note du jeu aujourd’hui</h2>
-        <p class="sv-sub">Honnêtement : ça nous aide à savoir où on en est.</p>
-        <div class="sv-stars" role="radiogroup" aria-label="Note de 1 à 5">${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" aria-checked="false" data-r="${n}" aria-label="${n} sur 5 — ${RATING_WORDS[n - 1]}">${STAR}</button>`).join('')}</div>
+        <h2>${tr('sv.q3')}</h2>
+        <p class="sv-sub">${tr('sv.q3d')}</p>
+        <div class="sv-stars" role="radiogroup" aria-label="${tr('sv.q3a')}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" aria-checked="false" data-r="${n}" aria-label="${tr('sv.starA', { n, word: RATING_WORDS()[n - 1] })}">${STAR}</button>`).join('')}</div>
         <p class="sv-rword" aria-live="polite">&nbsp;</p>
       </section>
       <section class="sv-page" data-p="4">
         <p class="sv-step">4 / ${STEPS}</p>
-        <h2>Un mot pour nous&nbsp;?</h2>
-        <p class="sv-sub">Une idée, ce qui t’agace, ce que tu adores… <em>facultatif</em></p>
-        <textarea class="sv-comment" rows="5" maxlength="1000" placeholder="Écris ce que tu veux"></textarea>
+        <h2>${tr('sv.q4')}</h2>
+        <p class="sv-sub">${tr('sv.q4d')} <em>facultatif</em></p>
+        <textarea class="sv-comment" rows="5" maxlength="1000" placeholder="${tr('sv.q4a')}"></textarea>
       </section>
       <section class="sv-page sv-thanks" data-p="5">
         <span class="sv-ok" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 25l7 7 15-16"/></svg></span>
         <h2>Merci${name ? ` ${esc(name)}` : ''}&nbsp;!</h2>
-        <p class="sv-lead">C’est bien arrivé. On fait le tri, et tu verras le résultat dans les prochaines mises à jour.</p>
+        <p class="sv-lead">${tr('sv.done')}</p>
       </section>
     </div>
     <footer class="sv-foot">
-      <button type="button" class="btn-ghost sv-back">Retour</button>
-      <button type="button" class="btn-primary sv-next">C’est parti</button>
+      <button type="button" class="btn-ghost sv-back">${tr('sv.back')}</button>
+      <button type="button" class="btn-primary sv-next">${tr('sv.go')}</button>
     </footer>
   </div>`;
 
@@ -191,7 +193,7 @@ function showSurvey(backend: GameBackend, cb: { onLater(): void; onDone(): void 
     });
     veil.querySelectorAll('.sv-prog i').forEach((d, i) => d.classList.toggle('on', i < page || sent));
     back.hidden = page === 0 || page > STEPS;
-    next.textContent = page === 0 ? 'C’est parti' : page === STEPS ? 'Envoyer' : page > STEPS ? 'Retour au jeu' : 'Suivant';
+    next.textContent = page === 0 ? tr('sv.go') : page === STEPS ? tr('sv.send') : page > STEPS ? tr('sv.backGame') : tr('sv.next');
     next.disabled = page >= 1 && page <= STEPS && !valid(page);
     $<HTMLElement>('.sv-x').hidden = page > STEPS;
     veil.querySelector<HTMLElement>('.sv')!.dataset.p = String(page);
@@ -219,7 +221,7 @@ function showSurvey(backend: GameBackend, cb: { onLater(): void; onDone(): void 
         chip.classList.remove('nope');
         void chip.offsetWidth;
         chip.classList.add('nope');
-        return toast(`${SURVEY_MAX_FEATURES} choix au plus : retire-en un d’abord.`, 'info');
+        return toast(tr('sv.maxPick', { n: SURVEY_MAX_FEATURES }), 'info');
       }
       answer[g] = on ? list.filter((x) => x !== id) : [...list, id];
       chip.setAttribute('aria-pressed', String(!on));
@@ -238,7 +240,7 @@ function showSurvey(backend: GameBackend, cb: { onLater(): void; onDone(): void 
         b.classList.toggle('on', n <= answer.rating!);
         b.setAttribute('aria-checked', String(n === answer.rating));
       });
-      $('.sv-rword').textContent = RATING_WORDS[answer.rating - 1];
+      $('.sv-rword').textContent = RATING_WORDS()[answer.rating - 1];
       haptics.pulse(8 + answer.rating * 4);
       return sync();
     }
@@ -251,7 +253,7 @@ function showSurvey(backend: GameBackend, cb: { onLater(): void; onDone(): void 
     if (page > STEPS) return close();
     if (page < STEPS) return go(page + 1);
     const a = cleanSurvey({ ...answer, names: $<HTMLInputElement>('.sv-names').value, comment: $<HTMLTextAreaElement>('.sv-comment').value });
-    if (!surveyFilled(a)) return toast('Coche au moins une réponse.', 'err');
+    if (!surveyFilled(a)) return toast(tr('sv.tickOne'), 'err');
     try {
       await busyButton(next, backend.submitSurvey(SURVEY_ID, a));
       sent = true;

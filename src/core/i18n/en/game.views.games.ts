@@ -166,4 +166,7 @@ export const en: PartOf<typeof fr> = {
   'gm.rouletteRules': 'Pick 1, 2 or 3 numbers per draw. <b>1 number</b> = 10 4★ cards or 300 coins · <b>2 numbers</b> = 1 5★ card or 600 coins · <b>3 numbers</b> = 2 5★ cards, 1 6★ card or 900 coins (1★ to 3★ cards can’t be bet). Two draws a day, at {hours}: the exact number wins the whole pot. Otherwise, everything stays for the next draw, and the site adds a 5★ or 6★ card at each draw.',
   'gm.and': ' and ',
   'gm.reserveDebit': { one: 'Reserve: {n} booster ({d} charged at launch).', other: 'Reserve: {n} boosters ({d} charged at launch).' },
+  'gm.royalesWaiting': '{games} waiting ({list})',
+  'gm.waitingW': 'waiting',
+  'gm.gamesWaiting': 'Games waiting',
 };

@@ -269,7 +269,7 @@ export function createPackSheet(
       openSub.textContent = tr('ps.drawn');
     } else if (u && liveRegen(u).balance <= 0) {
       const r = liveRegen(u);
-      openBtn.textContent = 'EN RECHARGE';
+      openBtn.textContent = tr('ps.recharging');
       openBtn.disabled = true;
       openSub.textContent = tr('ps.next', { time: fmtCountdown((r.nextAt ?? Date.now()) - Date.now()), min: PACK_REGEN_MS / 60000 });
     } else {

@@ -314,7 +314,7 @@ document.addEventListener('click', (e) => {
  * panneau a plusieurs contenus) : son `aria-expanded` suit.
  */
 /** bouton ✕ des panneaux de l'en-tête (missions, portefeuille, série / pity) */
-export const CLOSE_X = '<button class="icon pop-x" aria-label="Fermer">✕</button>';
+export const CLOSE_X = () => `<button class="icon pop-x" aria-label="${tr('common.close')}">✕</button>`;
 const openPanels = new Map<() => void, { pop: HTMLElement; opener: HTMLElement | null }>();
 export function panelShown(pop: HTMLElement, close: () => void) {
   for (const c of [...openPanels.keys()]) if (c !== close) c();
@@ -545,7 +545,7 @@ export function imageReportButton(backend: GameBackend, cardId: string, page: st
   wrap.style.display = 'contents';
   const r = h('button', 'va va-replay');
   r.title = tr('card.replay');
-  r.innerHTML = '▶ <span>Rejouer</span>';
+  r.innerHTML = `▶ <span>${tr('card.replayShort')}</span>`;
   r.addEventListener('click', (ev) => {
     ev.stopPropagation();
     haptics.pulse(8);

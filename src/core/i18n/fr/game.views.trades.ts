@@ -150,5 +150,8 @@ export const fr = {
   'tr.trayGave': { one: '<b>{n}</b> donnée', other: '<b>{n}</b> données' },
   'tr.lastCopyW': 'dernier exemplaire',
   'tr.oneMore': 'Un exemplaire de plus',
+  'tr.ongoing': 'En cours',
+  'tr.lastCopyItem': 'dernier exemplaire',
+  'tr.theyHave': '{name} en a {n}',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

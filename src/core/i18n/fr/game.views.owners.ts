@@ -10,5 +10,6 @@ export const fr = {
   'own.busy': 'déjà engagée ailleurs',
   'own.only': 'son seul exemplaire',
   'own.trade': 'Échanger',
+  'own.online': 'en ligne',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

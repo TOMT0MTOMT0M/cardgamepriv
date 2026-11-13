@@ -164,7 +164,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   const onlineCount = () => [...players().values()].filter((p) => p.online).length;
   function ava(id: string, name: string, dot = false): string {
     const p = players().get(id);
-    const on = dot && p?.online ? '<i class="chat-on-dot" title="en ligne"></i>' : '';
+    const on = dot && p?.online ? '<i class="chat-on-dot" title="' + tr('chat.onlineW') + '"></i>' : '';
     return p?.avatarUrl
       ? `<span class="cm-ava"><img src="${esc(p.avatarUrl)}" alt="" loading="lazy" decoding="async">${on}</span>`
       : `<span class="cm-ava">${esc((name.trim()[0] ?? '?').toUpperCase())}${on}</span>`;
@@ -228,7 +228,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     launch.setAttribute('aria-label', u.n ? tr('chat.unread', { n: u.n }) : tr('chat.open'));
     if (!tickKey) {
       const n = onlineCount();
-      const t = `${String(n).padStart(2, '0')} en ligne`;
+      const t = tr('chat.nOnline', { n: String(n).padStart(2, '0') });
       if (liveEl.textContent !== t) liveEl.textContent = t;
     }
   }
@@ -304,7 +304,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const others = [...players().values()].filter((p) => p.id !== meId && !withDm.has(p.id)).sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, locale()));
     if (others.length) html += `<div class="cl-k">${rows.length ? tr('chat.others') : tr('chat.writeTo')}</div>`;
     for (const p of others)
-      html += `<button type="button" class="cl-row new" data-peer="${esc(p.id)}">${ava(p.id, p.name, true)}<span class="cl-m"><b>${esc(p.name)}</b><em>${p.online ? 'en ligne' : 'hors ligne'}</em></span><span class="cl-r"><i class="cl-go">→</i></span></button>`;
+      html += `<button type="button" class="cl-row new" data-peer="${esc(p.id)}">${ava(p.id, p.name, true)}<span class="cl-m"><b>${esc(p.name)}</b><em>${p.online ? tr('chat.onlineW') : 'hors ligne'}</em></span><span class="cl-r"><i class="cl-go">→</i></span></button>`;
     if (!html) html = '<div class="chat-empty"><b>' + tr('chat.nobody') + '</b><span>' + tr('chat.nobodyD') + '</span></div>';
     listEl.innerHTML = html;
   }

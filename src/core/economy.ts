@@ -10,6 +10,7 @@
  *
  * Une seule table de valeur, utilisée PARTOUT : brûlage, équivalence des mises en duel, roulette.
  */
+import { tData } from './i18n';
 import type { RarityId } from './rarity';
 import { THEMES, subthemeViews, type CatalogEntry } from './sets/themes';
 
@@ -213,7 +214,20 @@ export interface Achievement {
   cos?: true;
 }
 
-const A = (id: string, label: string, how: string, tier: Achievement['tier'], stat: keyof AchievementStats, target: number, cos = false): Achievement => ({ id, label, how, tier, stat, target, ...(cos ? { cos: true as const } : {}) });
+// (version anglaise) libellé et consigne lus à l'affichage : le français ici (serveur, joueurs francophones), l'anglais dans i18n/en/data.ts
+const A = (id: string, label: string, how: string, tier: Achievement['tier'], stat: keyof AchievementStats, target: number, cos = false): Achievement => ({
+  id,
+  get label() {
+    return tData(`ach.${id}`, label);
+  },
+  get how() {
+    return tData(`ach.${id}.how`, how);
+  },
+  tier,
+  stat,
+  target,
+  ...(cos ? { cos: true as const } : {}),
+});
 /** palier « cosmétique » (la récompense est un titre, un badge, un cadre ou une vitrine) */
 const K = true;
 
@@ -222,6 +236,7 @@ const K = true;
  * titres (C15) et les cadres animés (C14), plus de paliers et de nouveaux succès (cartes par thème, niveau Bébou,
  * classement). Les ids existants ne changent pas (paliers déjà encaissés).
  */
+// i18n-data:début (anglais dans i18n/en/data.ts, vérifié par convex/i18n.test.ts)
 export const ACHIEVEMENTS: Achievement[] = [
   // Boosters
   A('packs-10', 'Premiers pas', 'Ouvre 10 boosters', 1, 'packsOpened', 10, K),
@@ -327,6 +342,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('coins-10k', 'Tirelire', 'Gagne 10 000 pièces au total', 2, 'coinsEarned', 10000),
   A('coins-100k', 'Coffre-fort', 'Gagne 100 000 pièces au total', 3, 'coinsEarned', 100000),
 ];
+// i18n-data:fin
 
 /** palier « cosmétique » : 0 pièce (C10 : une seule récompense, le cosmétique) */
 export const achievementReward = (a: Achievement) => (a.cos ? 0 : ACHIEVEMENT_TIERS[a.tier - 1]);
@@ -347,6 +363,7 @@ export interface AchievementLadder {
   /** paliers, du plus facile au plus dur */
   steps: Achievement[];
 }
+// i18n-data:début
 const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   packsOpened: 'Ouvrir des boosters',
   uniques: 'Collection',
@@ -371,10 +388,11 @@ const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   rouletteWins: 'Roulette',
   coinsEarned: 'Pièces gagnées',
 };
+// i18n-data:fin
 export const ACHIEVEMENT_LADDERS: AchievementLadder[] = (() => {
   const m = new Map<keyof AchievementStats, Achievement[]>();
   for (const a of ACHIEVEMENTS) m.set(a.stat, [...(m.get(a.stat) ?? []), a]);
-  return [...m].map(([stat, steps]) => ({ stat, label: LADDER_LABEL[stat], steps: steps.sort((x, y) => x.target - y.target) }));
+  return [...m].map(([stat, steps]) => ({ stat, get label() { return tData(`ach.stat.${stat}`, LADDER_LABEL[stat]); }, steps: steps.sort((x, y) => x.target - y.target) }));
 })();
 /** Paliers atteints d'une échelle (0 = aucun). */
 export const ladderLevel = (l: AchievementLadder, s: AchievementStats) => l.steps.filter((a) => achievementDone(a, s)).length;

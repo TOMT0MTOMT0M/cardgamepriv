@@ -11,4 +11,5 @@ export const en: PartOf<typeof fr> = {
   'own.busy': 'already committed elsewhere',
   'own.only': 'their only copy',
   'own.trade': 'Trade',
+  'own.online': 'online',
 };

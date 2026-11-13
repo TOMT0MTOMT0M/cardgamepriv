@@ -1,5 +1,5 @@
 import '../../core/i18n/fr/game.views.succes'; // (textes de ce module, version anglaise)
-import { locale, t, type MsgKey } from '../../core/i18n';
+import { locale, t, type MsgKey, t as tr } from '../../core/i18n';
 /** (version anglaise) genre de cosmétique affiché (« Cadre » → « Frame ») ; le genre lui-même reste l'identifiant français */
 const kindLabel = (k: string) => t(`cos.kind.${k}` as MsgKey);
 import type { GameBackend } from '../backend';
@@ -40,7 +40,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       </header>
       <div class="sc-bar">
         <div class="seg sc-who" aria-label="${t('sc.see')}"><button data-w="me" class="on" aria-pressed="true">${t('sc.me')}</button><button data-w="friends" aria-pressed="false">${t('nav.friends.aria')}</button></div>
-        <div class="seg sc-filters" aria-label="${t('sc.filterA')}"><button data-f="all" class="on" aria-pressed="true">${t('sc.all')}</button><button data-f="ready" aria-pressed="false">${t('sc.toCollect')}</button><button data-f="got" aria-pressed="false">${t('sc.earned')}</button><button data-f="todo" aria-pressed="false">En cours</button></div>
+        <div class="seg sc-filters" aria-label="${t('sc.filterA')}"><button data-f="all" class="on" aria-pressed="true">${t('sc.all')}</button><button data-f="ready" aria-pressed="false">${t('sc.toCollect')}</button><button data-f="got" aria-pressed="false">${t('sc.earned')}</button><button data-f="todo" aria-pressed="false">${t('sc.ongoing')}</button></div>
         <button class="btn-primary sc-claim" hidden></button>
       </div>
       <div class="sc-recap" role="status" hidden></div>
@@ -133,9 +133,9 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const c = h('div', `sc-c sc-ladder${all ? ' got' : ready ? ' ready' : ''}`);
     const pct = next ? Math.min(1, (cur - prevT) / Math.max(1, next.target - prevT)) : 1;
     c.innerHTML = `
-      <div class="sc-top"><span class="sc-tier">Palier ${lvl}/${l.steps.length}</span>${next ? rewardHtml(next) : '<span class="sc-n">' + t('sc.allTiers') + '</span>'}</div>
+      <div class="sc-top"><span class="sc-tier">${t('sc.tier', { n: lvl, total: l.steps.length })}</span>${next ? rewardHtml(next) : '<span class="sc-n">' + t('sc.allTiers') + '</span>'}</div>
       <b class="sc-name">${all ? '✓ ' : ''}${esc(l.label)}</b>
-      <span class="sc-how">${next ? `Prochain : ${esc(next.label)} — ${esc(next.how)}` : `Dernier palier : ${esc(l.steps[l.steps.length - 1].label)}`}</span>
+      <span class="sc-how">${next ? t('sc.next', { label: esc(next.label), how: esc(next.how) }) : t('sc.lastTier', { label: esc(l.steps[l.steps.length - 1].label) })}</span>
       <i class="sc-pb"><i style="width:${(pct * 100).toFixed(1)}%"></i></i>
       <em class="sc-n">${ready ? t('sc.tierReady') : next ? `${fmtCoins(Math.min(cur, next.target))} / ${fmtCoins(next.target)}` : `${fmtCoins(cur)}`}</em>
       <ol class="sc-steps">${l.steps
@@ -162,7 +162,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
         .map((f, i) => {
           const v = f.stats[l.stat] ?? 0;
           const lv = ladderLevel(l, f.stats);
-          return `<li class="${f.me ? 'me' : ''}"><span class="sc-fr-i">${i + 1}</span><span class="sc-fr-n">${esc(f.me ? t('chat.me') : f.name)}</span><span class="sc-fr-l">palier ${lv}/${l.steps.length}</span><b>${fmtCoins(v)}</b></li>`;
+          return `<li class="${f.me ? 'me' : ''}"><span class="sc-fr-i">${i + 1}</span><span class="sc-fr-n">${esc(f.me ? t('chat.me') : f.name)}</span><span class="sc-fr-l">${tr('sc.tierLow', { n: lv, total: l.steps.length })}</span><b>${fmtCoins(v)}</b></li>`;
         })
         .join('')}</ol>`;
     return c;

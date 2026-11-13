@@ -153,4 +153,5 @@ export const en: PartOf<typeof fr> = {
   'bd.st.pending': 'pending',
   'bd.st.closed': 'closed',
   'bd.haveIt': 'You have it',
+  'bd.waitingW': 'pending',
 };

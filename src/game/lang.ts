@@ -10,7 +10,7 @@
  * Le dictionnaire anglais n'est téléchargé qu'en anglais (import() à part) : en français, rien ne change au chargement.
  * La langue EFFECTIVE part au serveur à la connexion et à chaque changement (push et messages privés Discord).
  */
-import { LANG_STORAGE_KEY, installLang, isLang, lang, langFromDevice, t, type Dict, type Lang } from '../core/i18n';
+import { LANG_STORAGE_KEY, installData, installLang, isLang, lang, langFromDevice, t, type Dict, type Lang } from '../core/i18n';
 
 export { lang, t };
 
@@ -46,7 +46,7 @@ let picked = forced !== null || manualPick;
 const listeners = new Set<(l: Lang) => void>();
 
 let enP: Promise<Dict | null> | null = null;
-const loadDict = (l: Lang): Promise<Dict | null> => (l === 'fr' ? Promise.resolve(null) : (enP ??= import('../core/i18n/en').then((m) => m.en, (e: unknown) => ((enP = null), Promise.reject(e)))));
+const loadDict = (l: Lang): Promise<Dict | null> => (l === 'fr' ? Promise.resolve(null) : (enP ??= import('../core/i18n/en').then((m) => (installData(m.enData), m.en), (e: unknown) => ((enP = null), Promise.reject(e)))));
 
 function applyDoc(l: Lang) {
   document.documentElement.lang = l;

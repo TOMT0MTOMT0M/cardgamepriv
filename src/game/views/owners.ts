@@ -74,7 +74,7 @@ export function showOwners(backend: GameBackend, cardId: string, onTrade?: (o: C
       for (const o of owners) {
         const what = o.free <= 0 ? t('own.busy') : o.free >= 2 ? `${o.free} exemplaires · doublon` : o.count > 1 ? '1 exemplaire libre' : t('own.only');
         const row = h('div', `ow-row${o.free >= 2 ? ' dup' : ''}${o.free <= 0 ? ' busy' : ''}`);
-        row.innerHTML = `<span class="dot${o.online ? ' on' : ''}" title="${o.online ? 'en ligne' : 'hors ligne'}"></span><span class="ow-who"><b>${esc(o.name)}</b><small>${what}</small></span>
+        row.innerHTML = `<span class="dot${o.online ? ' on' : ''}" title="${o.online ? t('own.online') : 'hors ligne'}"></span><span class="ow-who"><b>${esc(o.name)}</b><small>${what}</small></span>
           <button class="btn-primary ow-go"${o.free <= 0 ? ' disabled' : ''}>${t('own.trade')}</button>`;
         row.querySelector('.ow-go')!.addEventListener('click', () => {
           close();

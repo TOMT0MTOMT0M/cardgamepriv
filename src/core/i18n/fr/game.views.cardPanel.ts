@@ -48,5 +48,7 @@ export const fr = {
   'cp.seeks': 'la cherche',
   'cp.owners': { one: '<b>{n}</b> l’a', other: '<b>{n}</b> l’ont' },
   'cp.asDup': '{n} en doublon',
+  'cp.online': 'en ligne',
+  'cp.forSaleT': 'En vente',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

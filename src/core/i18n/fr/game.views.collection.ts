@@ -133,5 +133,7 @@ export const fr = {
   'coll.pinnedTitle': 'Épinglé sur ton profil',
   'coll.nothingOpen': 'Aucune carte ici pour l’instant. <a href="#/">Ouvre un booster</a> !',
   'coll.emptyOpen': 'Ta collection est vide : <a href="#/">ouvre ton premier booster</a> !',
+  'coll.inProgress': 'En cours',
+  'coll.backTop': 'Revenir en haut',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

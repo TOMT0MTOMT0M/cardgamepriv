@@ -168,7 +168,7 @@ export function createChatStore(api: ChatApi, me: () => { id: string; name: stri
       first = false;
       const fresh = merge(key, r.msgs, live);
       emit({ type: 'conv', key });
-      for (const m of fresh) emit({ type: 'incoming', key, name: m.name, text: m.text || 'Carte', userId: m.userId });
+      for (const m of fresh) emit({ type: 'incoming', key, name: m.name, text: m.text || tr('chat.card'), userId: m.userId });
       // le fil suivi grossit : on repart de plus près (la prochaine relecture ne porte que sur quelques lignes)
       if (r.msgs.length >= ROLL_AT) {
         const t = maxTouched(conv(key)) - CHAT_TAIL_OVERLAP_MS;

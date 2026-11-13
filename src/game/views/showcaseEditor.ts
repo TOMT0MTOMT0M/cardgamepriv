@@ -1,3 +1,5 @@
+import { t as tr } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.showcaseEditor'; // (textes de ce module, version anglaise)
 import type { PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import { catalogEntry } from '../../core/sets/themes';
@@ -109,9 +111,9 @@ export function createShowcaseEditor(o: Opts): ShowcaseEditor {
       w = h('div', 'pf-card');
       w.dataset.k = k;
       const t = cardTile(c.cardId, c.rarity);
-      t.setAttribute('aria-roledescription', 'carte de la vitrine, déplaçable');
+      t.setAttribute('aria-roledescription', tr('sce.cardA'));
       w.append(t);
-      w.insertAdjacentHTML('beforeend', '<button class="pf-x" type="button" tabindex="-1" aria-label="Retirer de la vitrine">✕</button>');
+      w.insertAdjacentHTML('beforeend', '<button class="pf-x" type="button" tabindex="-1" aria-label="' + tr('sce.remove') + '">✕</button>');
       cardEls.set(k, w);
     }
     return w;
@@ -184,7 +186,7 @@ export function createShowcaseEditor(o: Opts): ShowcaseEditor {
       sel = -1;
     } else if (draft.length >= slots) {
       bump();
-      return void toast('Vitrine pleine : touche la carte à remplacer dans la vitrine, ou glisse celle-ci dessus.', 'info');
+      return void toast(tr('sce.full'), 'info');
     } else add(c);
     o.sfx.tick(1.3, 0.05);
     haptics.pulse(6);
@@ -244,7 +246,7 @@ export function createShowcaseEditor(o: Opts): ShowcaseEditor {
     const list = all.slice(0, PICK_CAP);
     // liste tronquée : on le dit (audit UX3-20)
     pickMore.hidden = all.length <= PICK_CAP;
-    pickMore.textContent = `${fmtN(PICK_CAP)} sur ${fmtN(all.length)} · affine ta recherche ou filtre par étoiles`;
+    pickMore.textContent = tr('sce.cap', { n: fmtN(PICK_CAP), total: fmtN(all.length) });
     pickTiles.clear();
     pickGrid.replaceChildren(
       ...list.map((c) => {
@@ -256,7 +258,7 @@ export function createShowcaseEditor(o: Opts): ShowcaseEditor {
         return t;
       }),
     );
-    if (!list.length) pickGrid.innerHTML = `<div class="muted">${qq || pickStar ? 'Aucune carte avec ce filtre.' : 'Aucune carte.'}</div>`;
+    if (!list.length) pickGrid.innerHTML = `<div class="muted">${qq || pickStar ? tr('sce.noFilter') : tr('sce.none')}</div>`;
     syncPicker();
   }
   /** état « en vitrine » (pastille avec sa place) sans reconstruire la grille */
@@ -268,7 +270,7 @@ export function createShowcaseEditor(o: Opts): ShowcaseEditor {
       t.setAttribute('aria-pressed', String(!!p));
       t.querySelector('.pf-pos')!.textContent = p ? String(p) : '';
     }
-    pickHint.innerHTML = sel >= 0 && sel < draft.length ? `Choisis une carte pour <b>remplacer la case ${sel + 1}</b> · retouche la case pour annuler` : coarse.matches ? 'Touche pour ajouter ou retirer · <b>maintiens</b> puis glisse sur une case' : 'Clique pour ajouter ou retirer · <b>glisse</b> sur une case pour la placer';
+    pickHint.innerHTML = sel >= 0 && sel < draft.length ? tr('sce.replace', { n: sel + 1 }) : coarse.matches ? tr('sce.touch') : tr('sce.mouse');
   }
   pickGrid.addEventListener('click', (e) => {
     if (!active || swallowClick()) return;
@@ -496,7 +498,7 @@ export function createShowcaseEditor(o: Opts): ShowcaseEditor {
     fill() {
       const have = new Set(keys());
       const more = [...o.owned()].sort(o.sort).filter((c) => !have.has(showcaseKey(c))).slice(0, slots - draft.length);
-      if (!more.length) return void toast(draft.length >= slots ? 'La vitrine est déjà pleine.' : 'Plus aucune carte à ajouter.', 'info');
+      if (!more.length) return void toast(draft.length >= slots ? tr('sce.fullShort') : tr('sce.nothingLeft'), 'info');
       for (const c of more) add({ cardId: c.cardId, rarity: c.rarity });
       o.sfx.tick(1.4, 0.05);
       settle();

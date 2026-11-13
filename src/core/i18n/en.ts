@@ -1,5 +1,7 @@
 /** Game texts in English — loaded only when the game runs in English (src/game/lang.ts). Keys: see fr.ts. */
 import type { Dict } from '../i18n';
+/** tables de données (succès, cosmétiques, missions…) : voir tData dans ../i18n.ts */
+export { enData } from './en/data';
 import { en as p_game_v2gate } from './en/game.v2gate';
 import { en as p_game_chatStore } from './en/game.chatStore';
 import { en as p_game_offline } from './en/game.offline';
@@ -20,6 +22,14 @@ import { en as p_game_views_guide } from './en/game.views.guide';
 import { en as p_game_views_suggestions } from './en/game.views.suggestions';
 import { en as p_game_views_games } from './en/game.views.games';
 import { en as p_game_views_board } from './en/game.views.board';
+import { en as p_game_views_market } from './en/game.views.market';
+import { en as p_game_views_forYou } from './en/game.views.forYou';
+import { en as p_game_views_leaderboard } from './en/game.views.leaderboard';
+import { en as p_game_views_login } from './en/game.views.login';
+import { en as p_game_survey } from './en/game.survey';
+import { en as p_game_views_defis } from './en/game.views.defis';
+import { en as p_game_views_presse } from './en/game.views.presse';
+import { en as p_game_views_showcaseEditor } from './en/game.views.showcaseEditor';
 // <imports>
 
 export const en: Dict = {
@@ -44,6 +54,14 @@ export const en: Dict = {
   ...p_game_views_suggestions,
   ...p_game_views_games,
   ...p_game_views_board,
+  ...p_game_views_market,
+  ...p_game_views_forYou,
+  ...p_game_views_leaderboard,
+  ...p_game_views_login,
+  ...p_game_survey,
+  ...p_game_views_defis,
+  ...p_game_views_presse,
+  ...p_game_views_showcaseEditor,
   // <parts>
 
   // ───── language (header switch) ─────
@@ -540,4 +558,38 @@ export const en: Dict = {
   'ps.secretWorld': '<b>1 chance in {n}</b> per booster to pull one of the <b>{w} Wonders of the World</b> <small>· 1 / number of cards in the theme</small>',
   'ps.secretBebou': '<b>1 chance in {n}</b> per booster to pull one of the <b>8 Bébous</b> <small>· 1 / number of cards in the game: the more cards, the rarer</small>',
   'rar.uncommon': 'Uncommon',
+
+  // ───── src/game/views/forge.ts ─────
+  'fg.protectedTitle': 'Protected, never burned: the last copy of each card, secrets, ♥ wishes, ▤ binders, ⌂ sleeves and 🔒 committed copies (pending trade, listing)',
+  'fg.login': 'Log in to burn your duplicates.',
+  'fg.title': 'The forge',
+  'fg.count': { one: '{nf} burnable duplicate{locked} · we always keep 1 copy · secrets are never burned', other: '{nf} burnable duplicates{locked} · we always keep 1 copy · secrets are never burned' },
+  'fg.locked': { one: '· {nf} committed 🔒', other: '· {nf} committed 🔒' },
+  'fg.values': '1★ = 5 · 2★ = 15 · 3★ = 40 · 4★ = 100 · 5★ = 300 · 6★ = 1,000 coins',
+  'fg.allOf': 'All {stars} ({n} · {v}){prot}',
+  'fg.protLeft': { one: '· {n} protected left out', other: '· {n} protected left out' },
+  'fg.nothing': 'Nothing',
+  'fg.cancelQuick': 'Cancel the quick selection',
+  'fg.tapHint': 'Tap duplicates to put them in the fire (tap again to add another copy).',
+  'fg.burn': 'Burn{x}',
+  'fg.none': 'No duplicates to burn for now{x}.',
+  'fg.othersLocked': ' (your other duplicates are committed 🔒)',
+  'fg.openBoosters': 'Open boosters →',
+  'fg.lockedN': { one: '{n} committed', other: '{n} committed' },
+  'fg.andMore': '… and {n} others (quick selections take them too).',
+  'fg.confirm': 'Burn {cards} ({list})?',
+  'fg.burned': { one: '{dups} burned: +{coins} coins!', other: '{dups} burned: +{coins} coins!' },
+  'chat.card': 'Card',
+
+  // ───── src/game/views/packSheet.ts ─────
+  'ps.recharging': 'RECHARGING',
+
+  // ───── src/game/wildEncounter.ts ─────
+  'wild.continue': 'Continue',
+
+  // ───── src/game/musicPreview.ts ─────
+  'mp.mute': 'Mute the clip',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'card.replayShort': 'Replay',
 };

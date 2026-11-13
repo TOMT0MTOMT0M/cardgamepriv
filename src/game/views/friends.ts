@@ -248,7 +248,7 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
       return;
     }
     const onlineN = s.friends.filter((f) => isOnline(f, now)).length;
-    sumEl.textContent = !s.ready ? tr('common.loading2') : s.friends.length ? `${plural(s.friends.length, 'ami')} · ${onlineN} en ligne` : tr('am.emptyPitch');
+    sumEl.textContent = !s.ready ? tr('common.loading2') : s.friends.length ? tr('am.countOnline', { friends: plural(s.friends.length, 'ami'), n: onlineN }) : tr('am.emptyPitch');
 
     const fill = (sec: HTMLElement, rows: HTMLElement[], empty: string) => {
       const n = sec.querySelector<HTMLElement>('.am-n')!;

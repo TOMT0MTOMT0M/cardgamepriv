@@ -23,6 +23,14 @@ import type { fr as p_game_views_guide } from './fr/game.views.guide';
 import type { fr as p_game_views_suggestions } from './fr/game.views.suggestions';
 import type { fr as p_game_views_games } from './fr/game.views.games';
 import type { fr as p_game_views_board } from './fr/game.views.board';
+import type { fr as p_game_views_market } from './fr/game.views.market';
+import type { fr as p_game_views_forYou } from './fr/game.views.forYou';
+import type { fr as p_game_views_leaderboard } from './fr/game.views.leaderboard';
+import type { fr as p_game_views_login } from './fr/game.views.login';
+import type { fr as p_game_survey } from './fr/game.survey';
+import type { fr as p_game_views_defis } from './fr/game.views.defis';
+import type { fr as p_game_views_presse } from './fr/game.views.presse';
+import type { fr as p_game_views_showcaseEditor } from './fr/game.views.showcaseEditor';
 // <imports>
 
 export type AllFr = typeof core &
@@ -46,5 +54,13 @@ export type AllFr = typeof core &
   typeof p_game_views_suggestions &
   typeof p_game_views_games &
   typeof p_game_views_board &
+  typeof p_game_views_market &
+  typeof p_game_views_forYou &
+  typeof p_game_views_leaderboard &
+  typeof p_game_views_login &
+  typeof p_game_survey &
+  typeof p_game_views_defis &
+  typeof p_game_views_presse &
+  typeof p_game_views_showcaseEditor &
   // <parts>
   Record<never, never>;

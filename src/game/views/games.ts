@@ -214,7 +214,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         if (!l) return;
         const mine = l.duels.filter((d) => d.sides.some((s) => s.userId === l.me)).length;
         live('duel', `${l.duels.length ? plural(l.duels.length, 'duel ouvert', 'duels ouverts') : tr('gm.noDuel')}${mine ? tr('gm.yours', { n: mine }) : ''}`);
-        live('royale', l.royales.length ? `${plural(l.royales.length, 'partie')} en attente (${l.royales.map((r) => `${r.players.length}/${ROYALE_MAX}`).join(', ')})` : tr('gm.noRoyale'));
+        live('royale', l.royales.length ? tr('gm.royalesWaiting', { games: plural(l.royales.length, 'partie'), list: l.royales.map((r) => `${r.players.length}/${ROYALE_MAX}`).join(', ') }) : tr('gm.noRoyale'));
       }),
       backend.eco.watchRoulette((r) => {
         if (!r) return;
@@ -328,7 +328,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           const a = d.sides[0];
           const r = h('a', 'gm-item');
           r.href = `#/jeux/duel/${d.id}`;
-          r.innerHTML = `${ava(a.name, a.avatarUrl)}<span class="gm-it"><b>${esc(a.name)}</b> · ${plural(a.packs.length, 'booster')} ${a.packs.map((p) => packChip(p)).join('')}<br>${stakeLine(a.stake)}${d.invitedId ? ` · <em>${d.invitedId === l.me ? tr('gm.challenges') : tr('gm.invite')}</em>` : ''}</span><span class="gm-it-r">${d.sides.length > 1 ? `contre ${esc(d.sides[1].name)}` : d.creatorId === l.me ? 'en attente' : 'Rejoindre →'}</span>`;
+          r.innerHTML = `${ava(a.name, a.avatarUrl)}<span class="gm-it"><b>${esc(a.name)}</b> · ${plural(a.packs.length, 'booster')} ${a.packs.map((p) => packChip(p)).join('')}<br>${stakeLine(a.stake)}${d.invitedId ? ` · <em>${d.invitedId === l.me ? tr('gm.challenges') : tr('gm.invite')}</em>` : ''}</span><span class="gm-it-r">${d.sides.length > 1 ? `contre ${esc(d.sides[1].name)}` : d.creatorId === l.me ? tr('gm.waitingW') : 'Rejoindre →'}</span>`;
           list.append(r);
         }
       }),
@@ -590,7 +590,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
 
   // ═════════════════════════════ Battle Royale
   function royaleLobby() {
-    body.innerHTML = `<div class="gm-cols"><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.startRoyale')}</b></div><div class="gm-r-new"></div></div><div class="gm-panel"><div class="gm-ph"><b>Parties en attente</b></div><div class="gm-list"></div></div></div>
+    body.innerHTML = `<div class="gm-cols"><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.startRoyale')}</b></div><div class="gm-r-new"></div></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.gamesWaiting')}</b></div><div class="gm-list"></div></div></div>
       <div class="gm-rules muted">${tr('gm.royaleRules', { min: ROYALE_MIN, max: ROYALE_MAX, packs: ROYALE_MAX_PACKS })}</div>`;
     let pick: PackChoice = { kind: 'bebou' };
     let count = 1;
@@ -650,7 +650,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const inIt = r.players.some((p) => p.userId === uid);
         const n = royalePackCount(r);
         room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>${tr('gm.royaleHead', { n: r.players.length, max: ROYALE_MAX, packs: plural(n, 'booster') })}</b></div>
-          <div class="gm-royal-players">${r.players.map((p) => `<div class="gm-rp">${ava(p.name, p.avatarUrl)}<b>${esc(p.name)}</b>${packChip(p.pack)}</div>`).join('')}${Array.from({ length: Math.max(0, ROYALE_MIN - r.players.length) }, () => '<div class="gm-rp empty"><span class="gm-ava">?</span><b>en attente</b></div>').join('')}</div>
+          <div class="gm-royal-players">${r.players.map((p) => `<div class="gm-rp">${ava(p.name, p.avatarUrl)}<b>${esc(p.name)}</b>${packChip(p.pack)}</div>`).join('')}${Array.from({ length: Math.max(0, ROYALE_MIN - r.players.length) }, () => '<div class="gm-rp empty"><span class="gm-ava">?</span><b>' + tr('gm.waitingW') + '</b></div>').join('')}</div>
           <div class="gm-actions"></div>`;
         const acts = room.querySelector<HTMLElement>('.gm-actions')!;
         const packBar = () => `<span class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</span>`;

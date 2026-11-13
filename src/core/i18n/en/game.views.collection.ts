@@ -134,4 +134,6 @@ export const en: PartOf<typeof fr> = {
   'coll.pinnedTitle': 'Pinned on your profile',
   'coll.nothingOpen': 'No card here for now. <a href="#/">Open a booster</a>!',
   'coll.emptyOpen': 'Your collection is empty: <a href="#/">open your first booster</a>!',
+  'coll.inProgress': 'In progress',
+  'coll.backTop': 'Back to top',
 };

@@ -6,6 +6,9 @@ import schema from './schema';
 import { fr as frCore } from '../src/core/i18n/fr';
 import { en } from '../src/core/i18n/en';
 import { compare, format, installLang, langFromDevice, t as tr } from '../src/core/i18n';
+import { enData } from '../src/core/i18n/en/data';
+import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS } from '../src/core/economy';
+import { ACCENTS, BADGES, BANNERS, FRAMES, OPENINGS, TITLES, VITRINES } from '../src/core/cosmetics';
 
 // toutes les parties françaises (fr.ts + fr/*.ts des modules chargés à la demande)
 const parts = import.meta.glob<{ fr: Record<string, unknown> }>('../src/core/i18n/fr/*.ts', { eager: true });
@@ -27,6 +30,14 @@ describe('version anglaise : règle de langue et dictionnaires', () => {
   test('mêmes paramètres {x} dans les deux langues', () => {
     const vars = (m: unknown) => [...new Set(JSON.stringify(m).match(/\{\w+\}/g) ?? [])].sort();
     for (const k of Object.keys(fr) as (keyof typeof fr)[]) expect(vars(en[k]), k).toEqual(vars(fr[k]));
+  });
+  test('tables de données : chaque succès a son anglais (libellé, consigne, échelle)', () => {
+    const miss: string[] = [];
+    for (const a of ACHIEVEMENTS) for (const k of [`ach.${a.id}`, `ach.${a.id}.how`]) if (!enData[k]?.trim()) miss.push(k);
+    for (const l of ACHIEVEMENT_LADDERS) if (!enData[`ach.stat.${l.stat}`]?.trim()) miss.push(`ach.stat.${l.stat}`);
+    for (const c of [...ACCENTS, ...BANNERS, ...FRAMES, ...TITLES, ...BADGES, ...VITRINES, ...OPENINGS]) if (!enData[`cos.${c.label}`]?.trim()) miss.push(`cos.${c.label}`);
+    for (const o of OPENINGS) if (!enData[`cos.blurb.${o.id}`]) miss.push(`cos.blurb.${o.id}`);
+    expect(miss).toEqual([]);
   });
   test('paramètres et pluriels (Intl.PluralRules)', () => {
     const d = { ...fr, 'x.n': { one: '{n} carte', other: '{n} cartes' } } as never;

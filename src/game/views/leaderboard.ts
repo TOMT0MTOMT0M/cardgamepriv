@@ -1,4 +1,5 @@
-import { locale } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.leaderboard'; // (textes de ce module, version anglaise)
+import { locale, t as tr } from '../../core/i18n';
 import type { GameBackend, LeaderRow } from '../backend';
 import type { Shell } from '../shell';
 import { frameOf, titleOf } from '../../core/cosmetics';
@@ -18,13 +19,13 @@ const SLOT = '<span class="lb-pd-slot" aria-hidden="true"></span>';
 type Board = 'pct' | 'season' | 'mythic' | 'packs' | 'trades' | 'streak';
 /** (11/11) saison en cours : cartes différentes gagnées depuis le début du mois, par joueur (rempli au chargement) */
 const seasonGain = new Map<string, number>();
-const BOARDS: Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; crown?: boolean }> = [
-  { id: 'pct', label: 'Complétion', crown: true, value: (r) => r.pct, unit: (r) => `${fmtPct(r.pct)} · ${fmtN(r.uniques)} cartes` },
-  { id: 'season', label: 'Saison', value: (r) => seasonGain.get(r.id) ?? 0, unit: (r) => `+${plural(seasonGain.get(r.id) ?? 0, 'carte')}` },
-  { id: 'mythic', label: '6★ & secrets', value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${fmtN(r.mythics)} × 6★${r.secrets ? ` · ✷ ${fmtN(r.secrets)}` : ''}` },
-  { id: 'packs', label: 'Boosters', value: (r) => r.packsOpened, unit: (r) => plural(r.packsOpened, 'booster') },
-  { id: 'trades', label: 'Échanges', value: (r) => r.tradesDone, unit: (r) => plural(r.tradesDone, 'échange', 'échanges') },
-  { id: 'streak', label: 'Série', value: (r) => r.streak, unit: (r) => plural(r.streak, 'jour') },
+const BOARDS = (): Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; crown?: boolean }> => [
+  { id: 'pct', label: tr('lb.completion'), crown: true, value: (r) => r.pct, unit: (r) => tr('lb.pctUnit', { pct: fmtPct(r.pct), n: fmtN(r.uniques) }) },
+  { id: 'season', label: tr('lb.season'), value: (r) => seasonGain.get(r.id) ?? 0, unit: (r) => `+${plural(seasonGain.get(r.id) ?? 0, 'carte')}` },
+  { id: 'mythic', label: tr('lb.mythics'), value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${fmtN(r.mythics)} × 6★${r.secrets ? ` · ✷ ${fmtN(r.secrets)}` : ''}` },
+  { id: 'packs', label: 'Boosters', value: (r) => r.packsOpened, unit: (r) => plural(r.packsOpened, 'booster') }, // i18n-ok
+  { id: 'trades', label: tr('lb.trades'), value: (r) => r.tradesDone, unit: (r) => plural(r.tradesDone, 'échange', 'échanges') }, // i18n-ok
+  { id: 'streak', label: tr('lb.streak'), value: (r) => r.streak, unit: (r) => plural(r.streak, 'jour') },
 ];
 
 export interface Leaderboard {
@@ -36,7 +37,7 @@ export interface Leaderboard {
 export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderboard {
   const el = h('div', 'lb-wrap');
   el.innerHTML = `
-    <div class="seg lb-boards">${BOARDS.map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.label}</button>`).join('')}</div>
+    <div class="seg lb-boards">${BOARDS().map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.label}</button>`).join('')}</div>
     <div class="lb-season" hidden></div>
     <div class="lb-podium"></div>
     <div class="lb-list"></div>
@@ -85,21 +86,21 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     const me = backend.state.user?.id;
     const inIt = !!cur && !!me && cur.bases.some((b) => b.userId === me);
     seasonEl.innerHTML = cur
-      ? `<div class="lb-ss-h"><span class="lb-ss-k">Saison</span><b>${esc(seasonLabel(cur.key))}</b><span class="lb-ss-end">fin dans ${until(seasonEndAt(Date.now()) - Date.now())}</span></div>` +
-        `<p class="lb-ss-rule">Score : les cartes différentes gagnées depuis le début du mois. Le classement est figé à la fin du mois, puis tout repart à zéro.${me && !inIt ? ' <b>Tu entres dans la saison dans l’heure</b> : tes cartes comptent à partir de là.' : ''}</p>` +
-        `<ol class="lb-ss-rw"><li class="g1"><span>1<sup>er</sup></span>${plural(SEASON_PACKS[0], 'booster')} · titre « Champion de saison » · cadre « Podium de saison »</li><li class="g2"><span>2<sup>e</sup> · 3<sup>e</sup></span>${SEASON_PACKS[1]} / ${plural(SEASON_PACKS[2], 'booster')} · cadre « Podium de saison »</li><li><span>4<sup>e</sup> – 10<sup>e</sup></span>${plural(SEASON_TOP10_PACKS, 'booster')}</li><li><span>les autres</span>${plural(SEASON_PLAYED_PACKS, 'booster')} dès une carte gagnée</li></ol>`
-      : '<p class="muted lb-ss-rule">La première saison démarre dans l’heure : à partir de là, chaque carte différente gagnée compte.</p>';
+      ? `<div class="lb-ss-h"><span class="lb-ss-k">${tr('lb.season')}</span><b>${esc(seasonLabel(cur.key))}</b><span class="lb-ss-end">${tr('lb.endsIn', { t: until(seasonEndAt(Date.now()) - Date.now()) })}</span></div>` +
+        `<p class="lb-ss-rule">${tr('lb.rule', { joining: me && !inIt ? tr('lb.joining') : '' })}</p>` +
+        `<ol class="lb-ss-rw"><li class="g1"><span>1<sup>er</sup></span>${tr('lb.first', { packs: plural(SEASON_PACKS[0], 'booster') })}</li><li class="g2"><span>2<sup>e</sup> · 3<sup>e</sup></span>${tr('lb.second', { a: SEASON_PACKS[1], b: plural(SEASON_PACKS[2], 'booster') })}</li><li><span>4<sup>e</sup> – 10<sup>e</sup></span>${plural(SEASON_TOP10_PACKS, 'booster')}</li><li><span>${tr('lb.others')}</span>${tr('lb.played', { packs: plural(SEASON_PLAYED_PACKS, 'booster') })}</li></ol>`
+      : '<p class="muted lb-ss-rule">' + tr('lb.firstSoon') + '</p>';
     const past = season?.past ?? [];
-    if (!past.length) return void (pastEl.innerHTML = '<div class="lb-ss-t">Saisons passées</div><p class="muted">Aucune saison terminée pour l’instant : le premier podium sera gravé ici à la fin du mois.</p>');
+    if (!past.length) return void (pastEl.innerHTML = '<div class="lb-ss-t">' + tr('lb.past') + '</div><p class="muted">' + tr('lb.noPast') + '</p>');
     pastEl.innerHTML =
-      '<div class="lb-ss-t">Saisons passées</div>' +
+      '<div class="lb-ss-t">' + tr('lb.past') + '</div>' +
       past
         .map((p) => {
           const mine = me ? p.results.find((r) => r.userId === me) : undefined;
           const pod = [0, 1, 2].map((i) => p.results[i]);
-          return `<section class="lb-ps"><header><b>Saison ${esc(seasonOf(p.key))}</b><span>${esc(seasonLabel(p.key).split(' ')[1] ?? '')}</span></header><ol class="lb-ps-pod">${pod
+          return `<section class="lb-ps"><header><b>${tr('lb.seasonOf', { s: esc(seasonOf(p.key)) })}</b><span>${esc(seasonLabel(p.key).split(' ')[1] ?? '')}</span></header><ol class="lb-ps-pod">${pod
             .map((r, i) => (r ? `<li class="p${i + 1}"><span class="lb-ps-r">${i + 1}</span><a href="#/profil/${encodeURIComponent(r.userId)}">${esc(r.name)}</a><em>+${plural(r.gained, 'carte')}</em></li>` : `<li class="p${i + 1} empty"><span class="lb-ps-r">${i + 1}</span><span>—</span></li>`))
-            .join('')}</ol>${mine ? `<p class="lb-ps-me">Toi : ${mine.rank}<sup>${mine.rank === 1 ? 'er' : 'e'}</sup> · +${plural(mine.gained, 'carte')} · ${plural(mine.boosters, 'booster')} reçu${mine.boosters > 1 ? 's' : ''}</p>` : ''}</section>`;
+            .join('')}</ol>${mine ? `<p class="lb-ps-me">${tr('lb.you', { rank: mine.rank })}<sup>${mine.rank === 1 ? 'er' : 'e'}</sup> ${tr('lb.gained', { cards: plural(mine.gained, 'carte'), packs: plural(mine.boosters, 'booster'), n: mine.boosters })}</p>` : ''}</section>`;
         })
         .join('');
   }
@@ -107,13 +108,13 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
   function render() {
     requestAnimationFrame(markOvf);
     renderSeason();
-    const b = BOARDS.find((x) => x.id === board)!;
+    const b = BOARDS().find((x) => x.id === board)!;
     const sorted = [...(rows ?? [])].sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, locale()));
     const me = backend.state.user?.id;
     podiumEl.replaceChildren();
     listEl.replaceChildren();
-    if (!rows) return void (podiumEl.innerHTML = '<div class="muted">Chargement…</div>');
-    if (!sorted.length) return void (podiumEl.innerHTML = '<div class="muted">Personne au classement pour l’instant.</div>');
+    if (!rows) return void (podiumEl.innerHTML = '<div class="muted">' + tr('common.loading2') + '</div>');
+    if (!sorted.length) return void (podiumEl.innerHTML = '<div class="muted">' + tr('lb.nobody') + '</div>');
     // podium : toujours 3 places de même gabarit, dans l'ordre 2e – 1er – 3e (places vides si moins de 3 joueurs)
     const row = h('div', 'lb-pd-row');
     for (const i of [1, 0, 2]) {
@@ -154,7 +155,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
         listEl.append(wrap);
       }
     }
-    if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">Le classement roi : la complétion globale de la collection. Le premier gagne le titre « Numéro un ».</div>');
+    if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">' + tr('lb.king') + '</div>');
     if (b.id === 'season' && !season?.current) listEl.replaceChildren();
   }
 

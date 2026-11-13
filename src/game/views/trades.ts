@@ -109,7 +109,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       <div class="ex-tabs" role="tablist" aria-label="${tr('tr.title')}">
         <button role="tab" data-z="pour" class="on" aria-selected="true">${tr('tr.forYou')}<b class="badge ex-b-pour" hidden></b></button>
         <button role="tab" data-z="cherche" aria-selected="false">${tr('tr.search')}</button>
-        <button role="tab" data-z="cours" aria-selected="false">En cours<b class="badge ex-b-cours" hidden></b></button>
+        <button role="tab" data-z="cours" aria-selected="false">${tr('tr.ongoing')}<b class="badge ex-b-cours" hidden></b></button>
       </div>
     </header>
     <div class="ex-zone ex-pour" data-z="pour"></div>
@@ -460,7 +460,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           .map((it) => {
             const e = catalogEntry(it.cardId);
             const img = e && it.rarity !== 'secret' ? `<img alt="" loading="lazy" src="${thumbUrl(e)}">` : '';
-            return `<span class="it"${img ? ` data-zoom="${esc(`${it.cardId}|${it.rarity}`)}"` : ''} style="--rc:${rarity(it.rarity).hex}">${img}${it.count > 1 ? `${it.count}× ` : ''}${esc(name(it.cardId))} <i>${rarity(it.rarity).rank + 1}★</i>${lasts.includes(it) ? ' <b class="last">dernier exemplaire</b>' : ''}</span>`;
+            return `<span class="it"${img ? ` data-zoom="${esc(`${it.cardId}|${it.rarity}`)}"` : ''} style="--rc:${rarity(it.rarity).hex}">${img}${it.count > 1 ? `${it.count}× ` : ''}${esc(name(it.cardId))} <i>${rarity(it.rarity).rank + 1}★</i>${lasts.includes(it) ? ' <b class="last">' + tr('tr.lastCopyItem') + '</b>' : ''}</span>`;
           })
           .join('')
       : '<span class="it none">' + tr('tr.nothing') + '</span>';
@@ -951,7 +951,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         const last = sd === 'give' && have > 0 && it.count >= have;
         const was = origCount(sd, it);
         const diff = orig ? (was === 0 ? ' added' : was !== it.count ? ' changed' : '') : '';
-        const r = h('div', `ti${diff}${last ? ' last' : ''}`, `<span class="sw" style="background:${rarity(it.rarity).hex}"></span>${e ? `<img class="tth" alt="" data-zoom="${esc(`${it.cardId}|${it.rarity}`)}" src="${thumbUrl(e)}">` : ''}<span class="tn">${esc(name(it.cardId))}${last ? ' <i class="ti-last">' + tr('tr.yourLast') + '</i>' : ''}${diff === ' added' ? ' <i class="ti-diff">' + tr('tr.added') + '</i>' : diff === ' changed' ? ` <i class="ti-diff">${tr('tr.before', { n: was })}</i>` : ''}</span><span class="tc">×${it.count}</span>${(maxOf.get(`${sd}:${cardKey(it)}`) ?? 1) > it.count ? '<button class="plus" aria-label="' + tr('tr.oneMore') + '">+</button>' : ''}<button class="minus" aria-label="${tr('tr.removeCard')}">✕</button>`);
+        const r = h('div', `ti${diff}${last ? ' last' : ''}`, `<span class="sw" style="background:${rarity(it.rarity).hex}"></span>${e ? `<img class="tth" alt="" data-zoom="${esc(`${it.cardId}|${it.rarity}`)}" src="${thumbUrl(e)}">` : ''}<span class="tn">${esc(name(it.cardId))}${last ? ' <i class="ti-last">' + tr('tr.yourLast') + '</i>' : ''}${diff === ' added' ? ' <i class="ti-diff">' + tr('tr.added') + '</i>' : diff === ' changed' ? ` <i class="ti-diff">${tr('tr.before', { n: was })}</i>` : ''}</span><span class="tc">×${it.count}</span>${(maxOf.get(`${sd}:${cardKey(it)}`) ?? 1) > it.count ? '<button class="plus" aria-label="' + tr('tr.oneMore') + '">+</button>' : ''}<button class="minus" aria-label="${tr('tr.removeCard')}">✕</button>`); // i18n-ok
         if (lastAdded === `${sd}:${cardKey(it)}`) r.classList.add('new');
         r.querySelector('.minus')!.addEventListener('click', () => {
           it.count--;
@@ -1053,7 +1053,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     viewerUi.hidden = false;
     vInfo.className = `v-info r-${c.rarity}`;
     vInfo.style.setProperty('--ra', rr.accentHex);
-    vInfo.innerHTML = `<div class="ci-name">${esc(e?.name ?? c.cardId)}</div><div class="ci-meta">${starsHtml(c.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${sd === 'get' ? `${esc(friend?.name ?? '')} en a ${c.count}` : tr('tr.youHaveN', { n: c.count, busy: free < c.count ? tr('tr.engaged', { n: c.count - free }) : '' })}${sd === 'get' && backend.state.wishlist.includes(c.cardId) ? tr('tr.youWantDot') : ''}${sd === 'give' && theirWish.has(c.cardId) ? tr('tr.heWantsDot') : ''}</div>`;
+    vInfo.innerHTML = `<div class="ci-name">${esc(e?.name ?? c.cardId)}</div><div class="ci-meta">${starsHtml(c.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${sd === 'get' ? tr('tr.theyHave', { name: esc(friend?.name ?? ''), n: c.count }) : tr('tr.youHaveN', { n: c.count, busy: free < c.count ? tr('tr.engaged', { n: c.count - free }) : '' })}${sd === 'get' && backend.state.wishlist.includes(c.cardId) ? tr('tr.youWantDot') : ''}${sd === 'give' && theirWish.has(c.cardId) ? tr('tr.heWantsDot') : ''}</div>`;
     const inList = (sd === 'get' ? get : give).some((x) => cardKey(x) === cardKey(c));
     vActions.innerHTML = `<button class="va va-add${inList ? ' on' : ''}">${inList ? tr('tr.inOfferRemove') : sd === 'get' ? tr('tr.askThis') : tr('tr.giveThis')}</button>`;
     vActions.append(imageReportButton(backend, c.cardId, 'echanges/carte'));

@@ -35,5 +35,10 @@ export const fr = {
   'sc.allDone': 'Tout est fait. Chapeau.',
   'sc.nothingAlbum': 'Rien à encaisser pour l’instant : boucle un album dans ta <a href="#/collection/albums">collection</a> (famille de 30 cartes = 150 pièces).',
   'sc.addFriends': 'Ajoute des amis (onglet <a href="#/amis">Amis</a>) pour comparer vos succès.',
+  'sc.tier': 'Palier {n}/{total}',
+  'sc.next': 'Prochain : {label} — {how}',
+  'sc.lastTier': 'Dernier palier : {label}',
+  'sc.ongoing': 'En cours',
+  'sc.tierLow': 'palier {n}/{total}',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

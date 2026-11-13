@@ -84,11 +84,11 @@ export function createMissions(backend: GameBackend, shell: Shell) {
     if (!on) return;
     pop.innerHTML = '';
     if (!s) {
-      pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.missions')}</b>${CLOSE_X}</div>${loginPrompt(backend, tr('msn.login'))}`;
+      pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.missions')}</b>${CLOSE_X()}</div>${loginPrompt(backend, tr('msn.login'))}`;
       return;
     }
     const allClaimed = s.list.every((m) => m.claimed);
-    pop.insertAdjacentHTML('beforeend', `<div class="msn-head"><b>${tr('hdr.missions')}</b><span>${tr('msn.newIn', { time: fmtDelay(s.resetAt - Date.now()) })}</span>${CLOSE_X}</div>`);
+    pop.insertAdjacentHTML('beforeend', `<div class="msn-head"><b>${tr('hdr.missions')}</b><span>${tr('msn.newIn', { time: fmtDelay(s.resetAt - Date.now()) })}</span>${CLOSE_X()}</div>`);
     for (const m of s.list) pop.append(row(m, s.rerolled));
     const bonus = h('div', `msn-bonus${allClaimed ? ' ready' : ''}${s.bonusClaimed ? ' claimed' : ''}`);
     bonus.innerHTML = s.bonusClaimed

@@ -217,7 +217,7 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
 
   const row = (cls: string, who: string, sub: string, online: boolean | null, action?: HTMLElement) => {
     const w = h('div', `ow-row ${cls}`);
-    w.innerHTML = `${online === null ? '<span class="dot cp-dot-none"></span>' : `<span class="dot${online ? ' on' : ''}" title="${online ? 'en ligne' : 'hors ligne'}"></span>`}<span class="ow-who"><b>${who}</b><small>${sub}</small></span>`;
+    w.innerHTML = `${online === null ? '<span class="dot cp-dot-none"></span>' : `<span class="dot${online ? ' on' : ''}" title="${online ? tr('cp.online') : 'hors ligne'}"></span>`}<span class="ow-who"><b>${who}</b><small>${sub}</small></span>`;
     if (action) w.append(action);
     return w;
   };
@@ -242,7 +242,7 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
     }
     // en vente
     if (p.sellers.length) {
-      sec('En vente', p.sellers.length);
+      sec(tr('cp.forSaleT'), p.sellers.length);
       for (const m of p.sellers) {
         const b = h('button', 'btn-primary ow-go cp-buy', tr('cp.buy'));
         b.addEventListener('click', async () => {

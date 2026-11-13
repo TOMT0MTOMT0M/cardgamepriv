@@ -40,14 +40,14 @@ export function createStatus(backend: GameBackend, shell: Shell) {
     const s = streakNow();
     pop.setAttribute('aria-label', tr('hdr.streakTitle'));
     if (!u || !s) {
-      pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.streak')}</b>${CLOSE_X}</div>${loginPrompt(backend, tr('st.hint'))}`;
+      pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.streak')}</b>${CLOSE_X()}</div>${loginPrompt(backend, tr('st.hint'))}`;
       return;
     }
     const eco = backend.eco.snapshot;
     const day = streakDay(s);
     const claimable = streakClaimable(s);
     const dots = Array.from({ length: STREAK_CYCLE }, (_, i) => `<span class="st-d${i < day ? ' on' : ''}${i === day - 1 ? ' now' : ''}${i === STREAK_CYCLE - 1 ? ' gift' : ''}"><i>${i + 1}</i></span>`).join('');
-    pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.streak')}</b><span>${tr('st.inARow', { days: plural(s.count, 'jour') })}</span>${CLOSE_X}</div>
+    pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.streak')}</b><span>${tr('st.inARow', { days: plural(s.count, 'jour') })}</span>${CLOSE_X()}</div>
       <div class="w-sec"><div class="w-h"><b>${tr('st.streak7')}</b><span>${tr('st.weekly', { n: STREAK_REWARD })}</span></div>
       <div class="st-days">${dots}</div>
       <div class="st-txt">${claimable ? `<b>${tr('st.day7')}</b> ${tr('st.waiting')}` : day === STREAK_CYCLE ? tr('st.claimedCont') : `${tr('st.day')} <b>${day}</b> ${tr('st.outOf', { n: STREAK_CYCLE })}`}</div>
@@ -79,12 +79,12 @@ export function createStatus(backend: GameBackend, shell: Shell) {
     const u = backend.state.user;
     pop.setAttribute('aria-label', 'Pity 6★');
     if (!u) {
-      pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b>${CLOSE_X}</div>${loginPrompt(backend, tr('st.loginPity'))}`;
+      pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b>${CLOSE_X()}</div>${loginPrompt(backend, tr('st.loginPity'))}`;
       return;
     }
     const left = pityLeft(u.pityCount);
     const pct = ((PITY_LIMIT - 1 - left) / (PITY_LIMIT - 1)) * 100;
-    pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b><span>${tr('st.pityCount', { n: u.pityCount, nf: fmtN(u.pityCount) })}</span>${CLOSE_X}</div>
+    pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b><span>${tr('st.pityCount', { n: u.pityCount, nf: fmtN(u.pityCount) })}</span>${CLOSE_X()}</div>
       <div class="msn-bar"><i style="width:${pct.toFixed(1)}%"></i></div>
       <div class="st-txt">${left === 0 ? '<b>' + tr('st.pityNext') + '</b>' : tr('st.pityLeft', { n: left, nf: fmtN(left) })}</div>
       <div class="msn-foot">${tr('st.pityRule', { n: PITY_LIMIT, m: PITY_LIMIT })}</div>`;

@@ -152,5 +152,6 @@ export const fr = {
   'bd.st.pending': 'en attente',
   'bd.st.closed': 'close',
   'bd.haveIt': 'Tu l’as',
+  'bd.waitingW': 'en attente',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

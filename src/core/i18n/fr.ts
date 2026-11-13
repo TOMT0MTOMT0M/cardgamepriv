@@ -497,4 +497,38 @@ export const fr = {
   'ps.secretWorld': '<b>1 chance sur {n}</b> par booster de tirer une des <b>{w} Merveilles du monde</b> <small>· 1 / nombre de cartes du thème</small>',
   'ps.secretBebou': '<b>1 chance sur {n}</b> par booster de tirer une des <b>8 Bébous</b> <small>· 1 / nombre de cartes du jeu : plus il y a de cartes, plus c’est rare</small>',
   'rar.uncommon': 'Peu commune',
+
+  // ───── src/game/views/forge.ts ─────
+  'fg.protectedTitle': 'Protégées, jamais brûlées : le dernier exemplaire de chaque carte, les secrètes, ♥ envies, ▤ classeurs, ⌂ pochettes et 🔒 exemplaires engagés (échange en attente, annonce)',
+  'fg.login': 'Connecte-toi pour brûler tes doublons.',
+  'fg.title': 'La forge',
+  'fg.count': { one: '{nf} doublon brûlable{locked} · on garde toujours 1 exemplaire · les secrètes ne se brûlent jamais', other: '{nf} doublons brûlables{locked} · on garde toujours 1 exemplaire · les secrètes ne se brûlent jamais' },
+  'fg.locked': { one: '· {nf} engagé 🔒', other: '· {nf} engagés 🔒' },
+  'fg.values': '1★ = 5 · 2★ = 15 · 3★ = 40 · 4★ = 100 · 5★ = 300 · 6★ = 1 000 pièces',
+  'fg.allOf': 'Tous les {stars} ({n} · {v}){prot}',
+  'fg.protLeft': { one: '· {n} protégée laissée', other: '· {n} protégées laissées' },
+  'fg.nothing': 'Rien',
+  'fg.cancelQuick': 'Annuler la sélection rapide',
+  'fg.tapHint': 'Touche des doublons pour les mettre au feu (touche encore pour en ajouter un exemplaire).',
+  'fg.burn': 'Brûler{x}',
+  'fg.none': 'Aucun doublon à brûler pour l’instant{x}.',
+  'fg.othersLocked': ' (tes autres doublons sont engagés 🔒)',
+  'fg.openBoosters': 'Ouvre des boosters →',
+  'fg.lockedN': { one: '{n} engagé', other: '{n} engagés' },
+  'fg.andMore': '… et {n} autres (les sélections rapides les prennent aussi).',
+  'fg.confirm': 'Brûler {cards} ({list}) ?',
+  'fg.burned': { one: '{dups} brûlé : +{coins} pièces !', other: '{dups} brûlés : +{coins} pièces !' },
+  'chat.card': 'Carte',
+
+  // ───── src/game/views/packSheet.ts ─────
+  'ps.recharging': 'EN RECHARGE',
+
+  // ───── src/game/wildEncounter.ts ─────
+  'wild.continue': 'Continuer',
+
+  // ───── src/game/musicPreview.ts ─────
+  'mp.mute': 'Couper l’extrait',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'card.replayShort': 'Rejouer',
 } as const satisfies Record<string, string | { one?: string; other: string }>;

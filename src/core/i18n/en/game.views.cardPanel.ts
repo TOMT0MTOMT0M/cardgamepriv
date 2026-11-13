@@ -49,4 +49,6 @@ export const en: PartOf<typeof fr> = {
   'cp.seeks': 'is looking for it',
   'cp.owners': { one: '<b>{n}</b> has it', other: '<b>{n}</b> have it' },
   'cp.asDup': '{n} as a duplicate',
+  'cp.online': 'online',
+  'cp.forSaleT': 'For sale',
 };

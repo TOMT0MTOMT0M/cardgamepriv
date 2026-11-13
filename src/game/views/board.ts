@@ -677,7 +677,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
     }
     if (mo) {
       const f = deps.fairness(mo.offered, l.items);
-      side.innerHTML = `<h4>${tr('bd.yourOfferT')} <span class="ob-st pending">en attente</span></h4><div class="ob-ths">${thumbs(mo.offered)}</div>
+      side.innerHTML = `<h4>${tr('bd.yourOfferT')} <span class="ob-st pending">${tr('bd.waitingW')}</span></h4><div class="ob-ths">${thumbs(mo.offered)}</div>
         ${mo.note ? `<p class="ob-note">« ${esc(mo.note)} »</p>` : ''}${deps.gaugeHtml(mo.offered, l.items, gaugeCls(f.cls))}
         <p class="muted">${tr('bd.canAccept', { name: esc(l.userName) })}</p>
         <div class="ob-act"><button class="linkish wd">${tr('bd.withdrawMine')}</button><button class="btn-ghost re">${tr('bd.edit')}</button></div>`;
