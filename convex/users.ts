@@ -66,6 +66,10 @@ export function meView(user: Doc<'users'>, now: number) {
     pwAccount: user.discordId.startsWith('pw:'),
     /** (ouverture 07/11) visite guidée automatique déjà jouée */
     guideSeen: !!user.guideSeenAt,
+    /** (13/11) tour des nouveautés V2 déjà joué */
+    v2TourSeen: !!user.v2TourSeenAt,
+    /** (13/11) testeur du lien V2 (variable V2_TESTERS du staging : pseudos séparés par des virgules) — pas l'équipe */
+    tester: v2Testers().has(user.username.toLowerCase()),
     /** (11/11) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) ; absente : la déchirure */
     openingStyle: user.cosmetics?.opening,
   };
@@ -215,6 +219,21 @@ export const markGuideSeen = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
     const u = await requireUser(ctx, sessionToken);
-    if (!u.guideSeenAt) await ctx.db.patch(u._id, { guideSeenAt: Date.now() });
+    // (13/11) un compte tout neuf a sa visite guidée : le tour des nouveautés V2 ne le concerne pas
+    if (!u.guideSeenAt) await ctx.db.patch(u._id, { guideSeenAt: Date.now(), v2TourSeenAt: u.v2TourSeenAt ?? Date.now() });
   },
 });
+
+/** (13/11) Le tour des nouveautés V2 a démarré : il ne se rejouera plus sur ce compte. */
+export const markV2TourSeen = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await requireUser(ctx, sessionToken);
+    if (!u.v2TourSeenAt) await ctx.db.patch(u._id, { v2TourSeenAt: Date.now() });
+  },
+});
+
+/** (13/11) testeurs du lien V2 : variable V2_TESTERS du déploiement (pseudos, virgules) ; absente = personne */
+function v2Testers(): Set<string> {
+  return new Set((process.env.V2_TESTERS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+}

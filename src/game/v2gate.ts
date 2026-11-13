@@ -6,13 +6,15 @@ import { CANAL, BUILD_ID } from '../core/canal';
  * LIEN ADMIN V2 (07/11) — https://v2.cardgamepriv.pages.dev : le jeu y tourne sur le serveur Convex de STAGING
  * (copie des données, jamais la base des joueurs). Réservé à l'équipe : sans compte admin / modérateur (Tom, Hugo),
  * un écran « Réservé à l'équipe » couvre tout, avec le bouton de connexion. Même écran que le compte à rebours (.lc).
- * Côté serveur, rien à protéger : ce déploiement ne contient que des données de test.
+ * Côté serveur, rien à protéger : ce déploiement ne contient que des données de test. (13/11) Les testeurs invités
+ * (`V2_TESTERS` sur le staging) passent aussi, sans les droits de l'équipe.
  */
 export function createV2Gate(backend: GameBackend) {
   if (CANAL !== 'v2') return;
   let el: HTMLElement | null = null;
 
-  const blocked = () => backend.state.mode === 'online' && backend.state.ready && !backend.state.user?.staff;
+  // (13/11) + les testeurs invités (variable V2_TESTERS du staging, convex/users.ts)
+  const blocked = () => backend.state.mode === 'online' && backend.state.ready && !backend.state.user?.staff && !backend.state.user?.tester;
 
   function mount() {
     el = h('div', 'lc lc-v2');

@@ -66,6 +66,9 @@ export interface MeProfile {
   pwAccount?: boolean;
   /** (ouverture 07/11) visite guidée automatique déjà jouée */
   guideSeen?: boolean;
+  /** (13/11) tour des nouveautés V2 déjà joué ; testeur du lien V2 */
+  v2TourSeen?: boolean;
+  tester?: boolean;
   /** (V2, bulles) derniers événements Jeux / parrainage (game/navDots.ts) */
   gamesNoticeAt?: number;
   referralNoticeAt?: number;
@@ -848,6 +851,10 @@ class GameNetClient {
   /** (ouverture 07/11) visite guidée lancée : plus jamais rejouée sur ce compte */
   public async markGuideSeen() {
     if (this.client && this.sessionToken) await this.client.mutation(api.users.markGuideSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
+  }
+  /** (13/11) tour des nouveautés V2 lancé : plus jamais rejoué sur ce compte */
+  public async markV2TourSeen() {
+    if (this.client && this.sessionToken) await this.client.mutation(api.users.markV2TourSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
   }
 
   private adoptToken(token: string) {

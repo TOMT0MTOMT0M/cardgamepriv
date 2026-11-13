@@ -7,6 +7,9 @@ import { REFERRAL } from '../../core/referral';
  * doigt au téléphone) fait seul et vite le tour du jeu : réserve, boosters, collection, échanges, jeux, amis, missions.
  * UNE SEULE FOIS par compte (marquée côté serveur dès qu'elle démarre — `users.markGuideSeen`) ; « Passer » à tout
  * moment. `?guide` dans l'adresse la rejoue sans rien marquer (tests, démo) ; `admin:resetGuide` la rend à un joueur.
+ * (13/11) TOUR DES NOUVEAUTÉS V2 — même mécanique, pour les joueurs d'avant la V2 (visite guidée déjà vue) : joué
+ * d'office une seule fois par compte (`users.markV2TourSeen`), sans « Passer », et il finit sur la page des mises à
+ * jour (il remplace l'annonce, announce.ts). `?tourv2` le rejoue sans rien marquer ; `admin:resetV2Tour` le rend.
  */
 type Step = {
   /** onglet à toucher d'abord (data-r de la navigation, '' = boutique) */
@@ -31,6 +34,20 @@ const STEPS = (name: string): Step[] => [
   { target: ['.open-btn', '.packs-row'], label: 'À toi', text: 'Ouvre ton premier booster. Bonne chance pour les 6★ !', end: true },
 ];
 
+/** (13/11) nouveautés et gros changements de la V2 (updates.data.ts, « 14 nov. — Version 2 ») */
+const V2_STEPS = (name: string): Step[] => [
+  { label: 'Nouveau : la V2', text: `${name}, le jeu passe en V2 ! Ta collection est gardée : cartes, pièces, boosters, succès. Tour rapide des nouveautés.` },
+  { nav: '', target: ['.ev-band'], label: 'Booster du moment', text: 'Une édition limitée en tête de la boutique, avec son compte à rebours. Ses cartes rejoignent ensuite les boosters habituels.' },
+  { target: ['.chat-launch'], label: 'Chat', text: 'Le salon de tout le monde et les messages privés, avec les mentions. Montre une carte, propose un échange.' },
+  { nav: 'echanges', target: ['button[role="tab"][data-z="pour"]'], label: 'Échanges simplifiés', text: '« Pour toi » prépare des échanges tout faits : tes envies contre tes doublons, en un toucher.' },
+  { target: ['button[role="tab"][data-z="cherche"]'], label: 'Marché', text: 'Vends une carte à prix fixe en pièces, achète celles des autres : le premier qui achète l’a. Sous chaque carte : qui l’a, qui la vend, qui la veut.' },
+  { nav: 'collection', label: '3 000 nouvelles cartes', text: 'Pop Culture, Sport et le reste s’agrandissent, avec un nouveau tri des étoiles : certaines de tes cartes ont changé d’étoile.' },
+  { label: 'Les 6★', text: 'Chaque 6★ a sa mise en scène, les 6★ Musique et d’animés jouent leur extrait. Le son est tout neuf et la déchirure du booster plus vraie.' },
+  { nav: 'classement', target: ['.lb-boards [data-b="season"]'], label: 'Saisons', text: 'Chaque mois, le classement des nouvelles cartes gagnées, et des boosters pour tout le monde à la fin. La première se termine le 30 novembre.' },
+  { nav: 'profil', target: ['.nf-box'], label: 'Notifications', text: 'Réserve pleine, échanges, amis : active-les ici. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.' },
+  { nav: 'maj', label: 'Tout le détail', text: 'Toutes les nouveautés sont écrites ici, dans les mises à jour. Bon jeu !', end: true },
+];
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const coarse = () => matchMedia('(pointer: coarse)').matches;
 const ARROW = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M4 2.5v17l4.6-4.3 3.1 7 2.9-1.3-3-6.9h6.3z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/></svg>';
@@ -52,28 +69,54 @@ export function armGuide(backend: GameBackend) {
     }
     started = true;
     if (!forced) void backend.markGuideSeen?.();
-    setTimeout(() => void run(s.user?.name ?? ''), 900);
+    setTimeout(() => void run(STEPS(firstName(s.user?.name)), { skippable: true, go: 'C’est parti', label: 'Visite guidée' }), 900);
   };
   backend.onChange(check);
   check();
 }
 
-async function run(name: string) {
+/**
+ * (13/11) Tour des nouveautés V2, d'office, une fois : comptes qui ont déjà eu la visite guidée (joueurs d'avant la V2)
+ * et pas encore ce tour. Un compte tout neuf a la visite guidée à la place (le serveur marque alors les deux).
+ */
+export function armV2Tour(backend: GameBackend) {
+  const forced = new URLSearchParams(location.search).has('tourv2');
+  let started = false;
+  let timer = 0;
+  const check = () => {
+    if (started) return;
+    const s = backend.state;
+    if (!forced && !(s.mode === 'online' && s.user && s.user.guideSeen && !s.user.v2TourSeen)) return;
+    if (document.querySelector('.lc, .lg-veil, .gd') || document.body.classList.contains('opening')) {
+      clearTimeout(timer);
+      timer = window.setTimeout(check, 1000);
+      return;
+    }
+    started = true;
+    if (!forced) void backend.markV2TourSeen?.();
+    setTimeout(() => void run(V2_STEPS(firstName(s.user?.name)), { skippable: false, go: 'Terminé', label: 'Nouveautés de la V2' }), 900);
+  };
+  backend.onChange(check);
+  check();
+}
+
+const firstName = (name?: string) => (name ?? '').replace(/^Bébou\s+/i, '').split(/\s+/)[0] || 'toi';
+
+async function run(steps: Step[], opts: { skippable: boolean; go: string; label: string }) {
   closePanels();
   closeLayers();
   if (location.hash.replace(/^#\/?/, '') !== '') navigate('#/');
   const root = h('div', 'gd');
   root.setAttribute('role', 'dialog');
-  root.setAttribute('aria-label', 'Visite guidée');
+  root.setAttribute('aria-label', opts.label);
   root.innerHTML = `<i class="gd-spot off"></i>
-    <div class="gd-tip" aria-live="polite"><small class="gd-l"></small><p class="gd-t"></p><div class="gd-dots"></div><button class="btn-primary gd-go" hidden>C’est parti</button></div>
-    <button class="gd-skip" type="button">Passer</button>
+    <div class="gd-tip" aria-live="polite"><small class="gd-l"></small><p class="gd-t"></p><div class="gd-dots"></div><button class="btn-primary gd-go" hidden>${esc(opts.go)}</button></div>
+    ${opts.skippable ? '<button class="gd-skip" type="button">Passer</button>' : ''}
     <i class="gd-cur ${coarse() ? 'finger' : 'arrow'}">${coarse() ? '' : ARROW}</i>`;
   document.body.append(root);
   const spot = root.querySelector<HTMLElement>('.gd-spot')!;
   const tip = root.querySelector<HTMLElement>('.gd-tip')!;
   const cur = root.querySelector<HTMLElement>('.gd-cur')!;
-  const steps = STEPS(name.split(/\s+/)[0] || 'toi');
   root.querySelector('.gd-dots')!.innerHTML = steps.map(() => '<i></i>').join('');
   let alive = true;
   let finish: () => void = () => {};
@@ -87,10 +130,11 @@ async function run(name: string) {
     document.removeEventListener('pointerdown', onDown, { capture: true });
     finish();
   };
-  const onKey = (e: KeyboardEvent) => e.key === 'Escape' && stop();
+  // (13/11) tour V2 : pas d'Échap, pas de « Passer » — seul le dernier écran se ferme (bouton ou toucher)
+  const onKey = (e: KeyboardEvent) => opts.skippable && e.key === 'Escape' && stop();
   const onDown = (e: PointerEvent) => !tip.contains(e.target as Node) && stop();
   window.addEventListener('keydown', onKey);
-  root.querySelector('.gd-skip')!.addEventListener('click', () => {
+  root.querySelector('.gd-skip')?.addEventListener('click', () => {
     stop();
     navigate('#/');
   });
@@ -168,7 +212,13 @@ async function run(name: string) {
       await sleep(450);
       if (!alive) break;
     }
-    // 2. élément montré (ou bulle seule)
+    // 2. élément montré (ou bulle seule) ; (13/11) présent mais hors de l'écran (fiche plus bas) : on y fait défiler
+    const off = (st.target ?? []).map((q) => document.querySelector<HTMLElement>(q)).find((e) => e && !visible(e));
+    if (off && !(st.target ?? []).some((q) => visible(document.querySelector(q)))) {
+      off.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      await sleep(450);
+      if (!alive) break;
+    }
     const el = (st.target ?? []).map((q) => document.querySelector(q)).find(visible) ?? null;
     const rect = el ? el.getBoundingClientRect() : null;
     light(rect);

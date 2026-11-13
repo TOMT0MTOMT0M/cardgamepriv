@@ -1155,7 +1155,8 @@ async function boot() {
   void import('./survey').then((m) => m.armSurvey(backend));
   // (patch 08/11) annonce du patch : la page des mises à jour s'ouvre une fois, à la prochaine visite (announce.ts)
   void import('./announce').then((m) => m.armAnnounce(backend));
-  void import('./views/guide').then((m) => m.armGuide(backend));
+  // (13/11) + le tour des nouveautés V2 pour les joueurs d'avant la V2 (une fois, d'office)
+  void import('./views/guide').then((m) => (m.armGuide(backend), m.armV2Tour(backend)));
 
   // en tâche de fond : miniatures de la collection, puis les modules des autres pages (navigation instantanée)
   setTimeout(() => {

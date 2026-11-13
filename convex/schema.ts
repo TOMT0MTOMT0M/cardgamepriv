@@ -149,6 +149,8 @@ export default defineSchema({
     banReason: v.optional(v.string()),
     /** (ouverture 07/11) visite guidée automatique déjà jouée (une seule fois par compte — views/guide.ts) */
     guideSeenAt: v.optional(v.number()),
+    /** (13/11) tour des nouveautés V2 déjà joué (joueurs d'avant la V2 — views/guide.ts, armV2Tour) */
+    v2TourSeenAt: v.optional(v.number()),
     /** MP de bienvenue du bot Discord (lien de parrainage) déjà tenté : une seule fois, à la première connexion */
     welcomeDmAt: v.optional(v.number()),
   })

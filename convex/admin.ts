@@ -265,3 +265,16 @@ export const resetGuide = internalMutation({
     return `${u.displayName} : la visite guidée se relancera à sa prochaine visite.`;
   },
 });
+
+/**
+ * (13/11) Rejouer le tour des nouveautés V2 :
+ *   npx convex run admin:resetV2Tour '{"name":"magizz"}'
+ */
+export const resetV2Tour = internalMutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const u = await findUser(ctx, name);
+    await ctx.db.patch(u._id, { v2TourSeenAt: undefined });
+    return `${u.displayName} : le tour des nouveautés V2 se relancera à sa prochaine visite.`;
+  },
+});

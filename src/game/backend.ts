@@ -288,6 +288,10 @@ export interface Me {
   staff?: boolean;
   /** (ouverture 07/11) visite guidée automatique déjà jouée (une fois par compte) */
   guideSeen?: boolean;
+  /** (13/11) tour des nouveautés V2 déjà joué (une fois par compte) */
+  v2TourSeen?: boolean;
+  /** (13/11) testeur du lien V2 (pas l'équipe) : passe l'écran « Réservé à l'équipe » */
+  tester?: boolean;
   /** (V2, bulles) dernier événement Jeux (défi reçu, partie jouée, tirage où j'avais misé) — game/navDots.ts */
   gamesNoticeAt?: number;
   /** (V2, bulles) dernier événement de parrainage (filleul inscrit, parrainage payé) */
@@ -423,6 +427,8 @@ export interface GameBackend {
   login(): void;
   /** (ouverture 07/11) la visite guidée a démarré : ne plus la proposer (absent en démo) */
   markGuideSeen?(): Promise<void>;
+  /** (13/11) le tour des nouveautés V2 a démarré : ne plus le proposer (absent en démo) */
+  markV2TourSeen?(): Promise<void>;
   logout(): Promise<void>;
   /** Tire (ou rend, s'il y en a un non ouvert) un booster scellé. */
   preparePack(req: PackRequest): Promise<SealedPack>;

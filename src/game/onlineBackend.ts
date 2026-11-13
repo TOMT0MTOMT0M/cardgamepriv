@@ -109,6 +109,8 @@ export function createOnlineBackend(): GameBackend {
             streak: n.user.streak ?? undefined,
             staff: !!n.user.staff,
             guideSeen: !!n.user.guideSeen,
+            v2TourSeen: !!n.user.v2TourSeen,
+            tester: !!n.user.tester,
             gamesNoticeAt: n.user.gamesNoticeAt,
             referralNoticeAt: n.user.referralNoticeAt,
             openingStyle: n.user.openingStyle === 'burn' || n.user.openingStyle === 'fan' ? n.user.openingStyle : undefined,
@@ -165,6 +167,7 @@ export function createOnlineBackend(): GameBackend {
     // (ouverture 07/11) fenêtre de connexion : Discord OU pseudo + mot de passe (views/login.ts)
     login: () => void import('./views/login').then((m) => m.openLogin()),
     markGuideSeen: () => net.markGuideSeen(),
+    markV2TourSeen: () => net.markV2TourSeen(),
     logout: () => net.logout(),
     async preparePack(req: PackRequest) {
       const p = await net.preparePack(packArgs(req));
