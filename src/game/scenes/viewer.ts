@@ -1,5 +1,5 @@
 import { cardHasCutout } from '../../core/pokeHolo/face';
-import { AdditiveBlending, Color, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, Vector3, type Material, CircleGeometry } from 'three/webgpu';
+import { AdditiveBlending, Color, DataTexture, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, NearestFilter, PlaneGeometry, RedFormat, UnsignedByteType, Vector3, type Material, CircleGeometry } from 'three/webgpu';
 /** rayon du dodécagone circonscrit / rayon du cercle inscrit */
 const HALO_K = 1 / Math.cos(Math.PI / 12);
 import gsap from 'gsap';
@@ -8,7 +8,8 @@ import { createStage } from '../../core/stage';
 import { mobileArtScale } from '../../core/renderer';
 import { createPipeline } from '../../core/post';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
-import { length, smoothstep, uniform, uv, vec4 } from 'three/tsl';
+import { abs, floor, fract, length, smoothstep, step, texture, uniform, uv, vec2, vec4 } from 'three/tsl';
+import { musicLevel, musicLevels } from '../musicPreview';
 import type { N } from '../../core/tsl';
 import { ensureCardImages, ensureFonts, generateCardArt, nextFrame, type CardArt } from '../../core/art';
 import { LAB_CARDS, cardById } from '../../core/cardData';
@@ -110,6 +111,21 @@ export function createViewerScene(): ViewerScene {
   let bloomStrength: { value: number } | null = null;
   /** halo derrière la carte, de la couleur de sa rareté (plus présent et « vivant » pour légendaire et mieux) */
   const halo = { color: uniform(new Color('#ffffff')), k: uniform(0) };
+  /**
+   * (13/11, retours Hugo) BARRES DE MUSIQUE derrière la carte quand son extrait joue (6★ Musique, openings d'animés) :
+   * le spectre de l'extrait (musicPreview.ts), graves au centre, en miroir, de la couleur du halo. Un plan derrière la
+   * carte, une texture de EQ_N octets mise à jour à chaque image, invisible (et non dessiné) sans musique.
+   */
+  const EQ_N = 48;
+  const eqLv = new Float32Array(EQ_N);
+  const eqSm = new Float32Array(EQ_N);
+  const eqData = new Uint8Array(EQ_N);
+  const eqTex = new DataTexture(eqData, EQ_N, 1, RedFormat, UnsignedByteType);
+  eqTex.magFilter = eqTex.minFilter = NearestFilter;
+  eqTex.needsUpdate = true;
+  const eqK = uniform(0);
+  let eqMesh: Mesh | null = null;
+  let eqVis = 0;
   const haloT = { k: 0, pulse: 0 };
   const haloColor = new Color('#ffffff');
   /** zoom d'inspection (molette, ou deux touchers rapides) : cible et valeur lissée */
@@ -398,6 +414,22 @@ export function createViewerScene(): ViewerScene {
       const haloMesh = new Mesh(c.bag.add(new CircleGeometry(1.2 * HALO_K, 12)), hm);
       haloMesh.position.set(0, 0.05, -0.32);
       stage.scene.add(haloMesh);
+      {
+        const em = c.bag.add(new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending }));
+        const u = uv();
+        const fx = u.x.mul(EQ_N);
+        const cell = fract(fx);
+        const lv = texture(c.bag.add(eqTex), vec2(floor(fx).add(0.5).div(EQ_N), 0.5)).r;
+        const d = abs(u.y.sub(0.5)).mul(2);
+        const bar = step(0.3, cell).mul(step(cell, 0.7)).mul(step(d, lv.mul(0.8).add(0.015)));
+        // les bords s'éteignent (la rangée finit en fondu), le haut des barres un peu plus clair
+        const side = smoothstep(0, 0.12, u.x).mul(smoothstep(1, 0.88, u.x));
+        em.colorNode = vec4(halo.color.mul(bar.mul(side).mul(eqK).mul(d.mul(0.6).add(0.2))), 1);
+        eqMesh = new Mesh(c.bag.add(new PlaneGeometry(2.6, 1.05)), em);
+        eqMesh.position.set(0, 0.05, -0.36);
+        // visible au préchauffage (pipeline prêt, eqK = 0 : rien ne se dessine) ; caché dès la première image
+        stage.scene.add(eqMesh);
+      }
       // bloom sur l'émissif : les étoiles, les paillettes et le foil brillent vraiment (comme à l'ouverture)
       const pl = (pipe = createPipeline(c, stage.scene, stage.camera, { emissive: true, lean: true }));
       const bl = pl.own(bloom(pl.emissive!, 0.3, 0.45, 0.0)) as unknown as N;
@@ -461,6 +493,22 @@ export function createViewerScene(): ViewerScene {
     },
     update(dt, t) {
       halo.color.value.lerp(haloColor, 1 - Math.exp(-dt * 5));
+      // barres de musique : montent avec l'extrait, retombent quand il s'arrête
+      {
+        const playing = musicLevels(eqLv, t);
+        eqVis += ((playing ? musicLevel() : 0) - eqVis) * (1 - Math.exp(-dt * 6));
+        if (eqMesh) eqMesh.visible = eqVis > 0.01;
+        if (eqVis > 0.01) {
+          for (let i = 0; i < EQ_N; i++) {
+            const target = playing ? eqLv[i] : 0;
+            // monte vite, retombe doucement (lecture d'un vumètre)
+            eqSm[i] += (target - eqSm[i]) * (1 - Math.exp(-dt * (target > eqSm[i] ? 22 : 7)));
+            eqData[i] = Math.round(Math.min(1, eqSm[i]) * 255);
+          }
+          eqTex.needsUpdate = true;
+        }
+        eqK.value = eqVis * (reducedMotion() ? 0.5 : 1) * 0.42;
+      }
       // « réduire les animations » de l'appareil : halo plus faible et immobile
       const red = reducedMotion();
       halo.k.value = haloT.k * (red ? 0.45 : 1 + haloT.pulse * Math.sin(t * 1.6) * 0.18);

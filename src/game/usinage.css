@@ -378,3 +378,21 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
   .mk-price { grid-template-columns: 1fr; }
   .mk-chosen { max-width: 170px; margin: 0 auto; }
 }
+
+/* (13/11, retours Hugo) SUCCÈS en pastilles : nom, palier, progression ; un toucher déplie le détail */
+.sc-grid:has(> .sc-pill) { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; align-items: start; }
+.sc-pill { padding: 0; gap: 0; }
+.sc-pl-h { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 12px 14px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.sc-pl-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sc-pill .sc-name { font: 600 13px/1.2 var(--title); letter-spacing: 0.06em; text-transform: uppercase; }
+.sc-pill .sc-tier { flex: none; font: 600 13px var(--mono); color: var(--ink); }
+.sc-pill .sc-n { font-size: 12px; }
+.sc-more { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 12px; border-top: 1px solid var(--gm-line); padding-top: 10px; }
+.sc-more[hidden] { display: none; }
+.sc-more .sc-how b { color: var(--ink); }
+.sc-rw-l { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 500 12px var(--mono); color: var(--ink-3); }
+.sc-pill.open { grid-column: span 2; }
+@media (max-width: 860px) {
+  .sc-grid:has(> .sc-pill) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sc-pill.open { grid-column: 1 / -1; }
+}

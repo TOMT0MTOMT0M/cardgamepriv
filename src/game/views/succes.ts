@@ -31,7 +31,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     <div class="sc-wrap">
       <header class="sc-head">
         <div><span class="kicker">SUCCÈS</span><h1>Tes succès</h1>
-        <p class="muted">Chaque palier donne UNE récompense : des pièces (et des boosters), ou un titre, un badge, un cadre, une vitrine pour ton profil, ou une animation d’ouverture des boosters. Rien ne s’achète : tout se gagne en jouant.</p></div>
+        <p class="muted">Chaque palier donne une récompense. Touche un succès pour voir ce qu’il te manque.</p></div>
         <div class="sc-score"></div>
       </header>
       <div class="sc-bar">
@@ -118,7 +118,12 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     return `<span class="sc-coins">${COIN_ICON}${fmtCoins(achievementReward(a))}${packs ? ` <span class="sc-pk">+${plural(packs, 'booster')}</span>` : ''}</span>`;
   };
 
-  /** Une mécanique = un succès à paliers : niveau atteint, prochain seuil, et la liste des paliers avec leur récompense. */
+  /**
+   * Une mécanique = un succès à paliers. (13/11, retours Hugo « trop d'écritures, impossible à lire ») une PASTILLE :
+   * le nom, le palier (« 2/7 ») et la progression (« 500 / 1 000 ») ; un toucher la déplie : le prochain palier (ce
+   * qu'il manque, sa récompense) et les paliers déjà atteints.
+   */
+  const openLadders = new Set<string>();
   function ladderCard(l: AchievementLadder, st: AchievementStats, claimed: Set<string>, claimable: Set<string>): HTMLElement {
     const cur = st[l.stat] ?? 0;
     const lvl = ladderLevel(l, st);
@@ -126,24 +131,36 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const prevT = lvl ? l.steps[lvl - 1].target : 0;
     const ready = l.steps.some((a) => claimable.has(a.id));
     const all = lvl === l.steps.length;
-    const c = h('div', `sc-c sc-ladder${all ? ' got' : ready ? ' ready' : ''}`);
+    const open = openLadders.has(l.stat + l.label);
+    const c = h('div', `sc-c sc-ladder sc-pill${all ? ' got' : ready ? ' ready' : ''}${open ? ' open' : ''}`);
     const pct = next ? Math.min(1, (cur - prevT) / Math.max(1, next.target - prevT)) : 1;
+    const left = next ? Math.max(0, next.target - cur) : 0;
     c.innerHTML = `
-      <div class="sc-top"><span class="sc-tier">Palier ${lvl}/${l.steps.length}</span>${next ? rewardHtml(next) : '<span class="sc-n">tous les paliers ✓</span>'}</div>
-      <b class="sc-name">${all ? '✓ ' : ''}${esc(l.label)}</b>
-      <span class="sc-how">${next ? `Prochain : ${esc(next.label)} — ${esc(next.how)}` : `Dernier palier : ${esc(l.steps[l.steps.length - 1].label)}`}</span>
-      <i class="sc-pb"><i style="width:${(pct * 100).toFixed(1)}%"></i></i>
-      <em class="sc-n">${ready ? 'palier atteint · prime à encaisser' : next ? `${fmtCoins(Math.min(cur, next.target))} / ${fmtCoins(next.target)}` : `${fmtCoins(cur)}`}</em>
-      <ol class="sc-steps">${l.steps
-        // (retours 05/11) paliers révélés UN PAR UN : ceux atteints + le prochain ; les suivants restent cachés
-        // (seuil, nom et récompenses compris) jusqu'à ce que le précédent soit atteint
-        .slice(0, lvl + 1)
-        .map((a) => {
-          const got = claimed.has(a.id);
-          const rd = claimable.has(a.id);
-          return `<li class="${got ? 'got' : rd ? 'ready' : achievementDone(a, st) ? 'ready' : ''}"><span class="sc-st-t">${got ? '✓' : rd ? '★' : '○'} ${fmtCoins(a.target)}</span><span class="sc-st-l">${esc(a.label)}</span>${rewardHtml(a, got || rd)}</li>`;
-        })
-        .join('')}${l.steps.length > lvl + 1 ? `<li class="sc-hidden"><span class="sc-st-t">🔒</span><span class="sc-st-l">${l.steps.length - lvl - 1 > 1 ? `${l.steps.length - lvl - 1} paliers à découvrir` : '1 palier à découvrir'}</span><span class="sc-st-h">se dévoile au palier précédent</span></li>` : ''}</ol>`;
+      <button class="sc-pl-h" aria-expanded="${open}">
+        <span class="sc-pl-top"><b class="sc-name">${esc(l.label)}</b><span class="sc-tier">${lvl}/${l.steps.length}</span></span>
+        <i class="sc-pb"><i style="width:${(pct * 100).toFixed(1)}%"></i></i>
+        <em class="sc-n">${ready ? '★ à encaisser' : next ? `${fmtCoins(Math.min(cur, next.target))} / ${fmtCoins(next.target)}` : 'terminé ✓'}</em>
+      </button>
+      <div class="sc-more"${open ? '' : ' hidden'}>
+        ${next ? `<span class="sc-how"><b>Il te manque ${fmtCoins(left)}</b> pour « ${esc(next.label)} » : ${esc(next.how)}</span><span class="sc-rw-l">Récompense : ${rewardHtml(next)}</span>` : `<span class="sc-how">Tous les paliers sont faits. Dernier : ${esc(l.steps[l.steps.length - 1].label)}</span>`}
+        ${lvl ? `<ol class="sc-steps">${l.steps
+          .slice(0, lvl)
+          .map((a) => {
+            const got = claimed.has(a.id);
+            const rd = claimable.has(a.id);
+            return `<li class="${got ? 'got' : 'ready'}"><span class="sc-st-t">${got ? '✓' : '★'} ${fmtCoins(a.target)}</span><span class="sc-st-l">${esc(a.label)}</span>${rewardHtml(a, got || rd)}</li>`;
+          })
+          .join('')}</ol>` : ''}
+      </div>`;
+    c.querySelector('.sc-pl-h')!.addEventListener('click', () => {
+      const k = l.stat + l.label;
+      const on = !openLadders.has(k);
+      if (on) openLadders.add(k);
+      else openLadders.delete(k);
+      c.classList.toggle('open', on);
+      c.querySelector('.sc-pl-h')!.setAttribute('aria-expanded', String(on));
+      c.querySelector<HTMLElement>('.sc-more')!.hidden = !on;
+    });
     return c;
   }
 
