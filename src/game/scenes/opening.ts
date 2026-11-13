@@ -91,7 +91,7 @@ import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { loadTearBakes, loadedBakes, TearBakePlayer } from '../../core/tearBake';
 import { DUR, ECLIPSE, MYTHIC_SILENCE, MYTHIC_TURN, STAGGER, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
-import { fbmTexel, preloadNoise, type N } from '../../core/tsl';
+import { burnNoise, fbmTexel, preloadNoise, type N } from '../../core/tsl';
 import { isEclipseCard } from '../eclipse';
 import { apostleStrip } from '../apostles';
 import { BEBOU_PACK, THEMES, themeById, themeTagline } from '../../core/sets/themes';
@@ -813,53 +813,34 @@ export function createOpeningScene(): OpeningScene {
    * lecture de texture. Coordonnées = position locale (pas les UV) : les trous de la face et du dos restent alignés.
    */
   function bakedBurnNoise(): DataTexture {
-    const W = 256, H = Math.round((256 * PACK.h) / PACK.w);
-    const perm = new Uint8Array(512);
-    {
-      const p = Array.from({ length: 256 }, (_, i) => i);
-      let a = 0x9e3779b9;
-      for (let i = 255; i > 0; i--) {
-        a = (Math.imul(a ^ (a >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) >>> 0;
-        const j = a % (i + 1);
-        [p[i], p[j]] = [p[j], p[i]];
-      }
-      for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
-    }
-    const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
-    const grad = (h: number, x: number, y: number) => {
-      const g = h & 7;
-      const u = g < 4 ? x : y, v = g < 4 ? y : x;
-      return ((g & 1) ? -u : u) + ((g & 2) ? -2 * v : 2 * v);
-    };
-    const perlin = (x: number, y: number) => {
-      const xi = Math.floor(x), yi = Math.floor(y);
-      const xf = x - xi, yf = y - yi;
-      const X = xi & 255, Y = yi & 255;
-      const u = fade(xf), v = fade(yf);
-      const aa = perm[perm[X] + Y], ab = perm[perm[X] + Y + 1], ba = perm[perm[X + 1] + Y], bb = perm[perm[X + 1] + Y + 1];
-      const x1 = grad(aa, xf, yf) + (grad(ba, xf - 1, yf) - grad(aa, xf, yf)) * u;
-      const x2 = grad(ab, xf, yf - 1) + (grad(bb, xf - 1, yf - 1) - grad(ab, xf, yf - 1)) * u;
-      return (x1 + (x2 - x1) * v) * 0.5; // ≈ [-1, 1], comme le Perlin de MaterialX
-    };
+    // (audit 12/11, S06 / E2-01) UNE texture pour toute la scène, valeurs calculées dans un worker (22 ms sur PC au
+    // profil, à chaque appel) : créée vide ici, remplie par `burnNoiseReady`, que le montage attend avant sa 1re image
+    if (burnTex) return burnTex;
+    const W = BURN_W, H = BURN_H;
     const data = new Uint16Array(W * H);
-    for (let j = 0; j < H; j++)
-      for (let i = 0; i < W; i++) {
-        // même domaine que l'original : pp × 4, pp = position locale du booster
-        const x = ((i + 0.5) / W - 0.5) * PACK.w * 4, y = ((j + 0.5) / H - 0.5) * PACK.h * 4;
-        let v = 0, amp = 1, f = 1;
-        for (let o = 0; o < 4; o++) {
-          v += perlin(x * f + o * 17.31, y * f + o * 9.73) * amp;
-          f *= 2;
-          amp *= 0.5;
-        }
-        data[j * W + i] = DataUtils.toHalfFloat(v);
-      }
     const t = new DataTexture(data, W, H, RedFormat, HalfFloatType);
     t.magFilter = t.minFilter = LinearFilter;
     t.wrapS = t.wrapT = ClampToEdgeWrapping;
     t.generateMipmaps = false;
     t.needsUpdate = true;
+    burnTex = t;
+    void burnNoiseReady();
     return t;
+  }
+  let burnTex: DataTexture | null = null;
+  let burnP: Promise<void> | null = null;
+  const BURN_W = 256, BURN_H = Math.round((256 * PACK.h) / PACK.w);
+  /** valeurs du bruit de brûlure demandées (une fois) ; résolue quand la texture, si elle existe, est remplie */
+  function burnNoiseReady(): Promise<void> {
+    return (burnP ??= burnNoise(BURN_W, BURN_H, PACK.w, PACK.h).then((v) => {
+      const fill = () => {
+        if (!burnTex) return;
+        const d = burnTex.image.data as Uint16Array;
+        for (let i = 0; i < d.length; i++) d[i] = DataUtils.toHalfFloat(v[i]);
+        burnTex.needsUpdate = true;
+      };
+      fill();
+    }));
   }
 
   /**
@@ -2924,6 +2905,7 @@ export function createOpeningScene(): OpeningScene {
       // (fluidité 2) WebGPU : pipelines créés en asynchrone et en parallèle dans la configuration RÉELLE de la passe
       // (MRT émissif, HalfFloat, MSAA ×4 — PassNode.compileAsync, voir post.ts) ; WebGL2 : variante « canvas » comme avant
       await preloadNoise(); // (E2-01) pixels du bruit arrivés du worker avant la 1re image (déjà là en pratique)
+      if (burnTex) await burnNoiseReady();
       lap('matériaux');
       await compileReal();
       lap('pipelines');

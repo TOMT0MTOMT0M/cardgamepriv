@@ -27,6 +27,7 @@ import {
   mx_noise_float,
   hash,
   color,
+  varying,
 } from 'three/tsl';
 import type { CardArt } from './art';
 import { cardLayers } from './cardMaterial';
@@ -206,7 +207,7 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   }
   const subjectGlow = L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5).add(film.mul(foil).mul(U.extraEmissive));
   if (HOLO_GLINT_ON) {
-    const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
+    const Lobj = varying(normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz)); // (E4-06) par sommet, pas par pixel
     const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
     m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(subjectGlow);
   } else m.emissiveNode = subjectGlow; // le terme des paillettes valait exactement 0

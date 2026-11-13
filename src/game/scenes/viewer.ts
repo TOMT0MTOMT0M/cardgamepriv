@@ -190,6 +190,11 @@ export function createViewerScene(): ViewerScene {
       if (!opts?.dir) {
         rig.visible = false;
         haloT.k = 0;
+        // (audit 12/11, E3-08) l'ancienne carte est libérée TOUT DE SUITE (elle est déjà cachée) : la nouvelle se peignait
+        // et partait au GPU avant, deux cartes en mémoire pendant ≈ 4 images (82 Mo sur iPhone). En glissé, les deux
+        // cartes se voient : l'ordre d'avant est gardé.
+        tl?.kill();
+        clear();
       }
       // Merveille : on n'attend plus le modèle 3D (≈ 1–2 Mo) — le diorama montre le monument procédural puis le
       // remplace dès que le modèle arrive (avant : visionneuse figée le temps du téléchargement en 4G)

@@ -142,6 +142,9 @@ export function runPrelude(o: PreludeRun): PreludeHandle {
     }
     window.removeEventListener('keydown', onKey, true);
     o.layers?.pop(abort);
+    // (audit 12/11, E3-09) toiles vidées : détachées seulement, leur mémoire (≈ 3 Mo chacune) n'était rendue qu'au
+    // ramasse-miettes, et iOS les compte dans son plafond jusque-là
+    root.querySelectorAll<HTMLCanvasElement>('canvas.mp-cv').forEach((cv) => (cv.width = cv.height = 0));
     root.remove();
     document.body.classList.remove('myth-on');
     dim(false);

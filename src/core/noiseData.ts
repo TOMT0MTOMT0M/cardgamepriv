@@ -40,3 +40,51 @@ export function noisePixels(): Uint8Array {
   for (let i = 3; i < data.length; i += 4) data[i] = 255;
   return data;
 }
+
+/**
+ * VALEURS du bruit fractal de la brûlure du sachet (4 octaves de Perlin, voir `bakedBurnNoise` dans
+ * game/scenes/opening.ts) : W × H flottants, à convertir en demi-flottants côté fil principal.
+ */
+export function burnNoiseValues(W: number, H: number, packW: number, packH: number): Float64Array {
+  const perm = new Uint8Array(512);
+  {
+    const p = Array.from({ length: 256 }, (_, i) => i);
+    let a = 0x9e3779b9;
+    for (let i = 255; i > 0; i--) {
+      a = (Math.imul(a ^ (a >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) >>> 0;
+      const j = a % (i + 1);
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  }
+  const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+  const grad = (h: number, x: number, y: number) => {
+    const g = h & 7;
+    const u = g < 4 ? x : y, v = g < 4 ? y : x;
+    return ((g & 1) ? -u : u) + ((g & 2) ? -2 * v : 2 * v);
+  };
+  const perlin = (x: number, y: number) => {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const X = xi & 255, Y = yi & 255;
+    const u = fade(xf), v = fade(yf);
+    const aa = perm[perm[X] + Y], ab = perm[perm[X] + Y + 1], ba = perm[perm[X + 1] + Y], bb = perm[perm[X + 1] + Y + 1];
+    const x1 = grad(aa, xf, yf) + (grad(ba, xf - 1, yf) - grad(aa, xf, yf)) * u;
+    const x2 = grad(ab, xf, yf - 1) + (grad(bb, xf - 1, yf - 1) - grad(ab, xf, yf - 1)) * u;
+    return (x1 + (x2 - x1) * v) * 0.5; // ≈ [-1, 1], comme le Perlin de MaterialX
+  };
+  const data = new Float64Array(W * H);
+  for (let j = 0; j < H; j++)
+    for (let i = 0; i < W; i++) {
+      // même domaine que l'original : pp × 4, pp = position locale du booster
+      const x = ((i + 0.5) / W - 0.5) * packW * 4, y = ((j + 0.5) / H - 0.5) * packH * 4;
+      let v = 0, amp = 1, f = 1;
+      for (let o = 0; o < 4; o++) {
+        v += perlin(x * f + o * 17.31, y * f + o * 9.73) * amp;
+        f *= 2;
+        amp *= 0.5;
+      }
+      data[j * W + i] = v;
+    }
+  return data;
+}

@@ -229,6 +229,17 @@ export function stopAmbience(fadeS = 0.6): void {
 }
 
 /** Coupe l'extrait en fondu (`fadeS` secondes). */
+/** (audit 12/11, E3-09) extrait arrêté ET rendu : sans cela l'élément audio gardait son tampon jusqu'au ramasse-miettes */
+function release(a: HTMLAudioElement) {
+  a.pause();
+  try {
+    a.removeAttribute('src');
+    a.load();
+  } catch {
+    /* rien */
+  }
+}
+
 export function stopMusicPreview(fadeS = 0.6): void {
   token++;
   current = '';
@@ -242,11 +253,8 @@ export function stopMusicPreview(fadeS = 0.6): void {
     setTimeout(() => c.remove(), 400);
   }
   if (!a) return;
-  if (fadeS <= 0) {
-    a.pause();
-    return;
-  }
-  fade(a, 0, fadeS * 1000, () => a.pause());
+  if (fadeS <= 0) return release(a);
+  fade(a, 0, fadeS * 1000, () => release(a));
 }
 
 /**

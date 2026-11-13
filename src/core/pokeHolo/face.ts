@@ -1,4 +1,4 @@
-import { abs, cameraPosition, clamp, float, length, luminance, max, min, mix, modelWorldMatrixInverse, pow, smoothstep, step, texture, time, uniform, uv, vec2, vec4, atan } from 'three/tsl';
+import { varying, abs, cameraPosition, clamp, float, length, luminance, max, min, mix, modelWorldMatrixInverse, pow, smoothstep, step, texture, time, uniform, uv, vec2, vec4, atan } from 'three/tsl';
 import type { CardArt } from '../art';
 import { cardImage } from '../art/images';
 import type { CardData } from '../cardData';
@@ -91,11 +91,13 @@ export function pokeFaceColor(art: CardArt, L: CardLayers, tier: number, amount:
     place = { decor: mix(noCutDecor, decor.mul(inner), cut), struct, equip: mix(noCutEquip, equip, cut) };
   }
   // lumière : l'œil dans le repère de la carte → point regardé (≈ 4,5 largeurs de carte de distance, comme Pokébox)
+  // (audit 12/11, E4-06) rien de tout cela ne dépend du pixel : calculé par sommet (même valeur aux 4 coins, donc la même
+  // partout après interpolation) au lieu d'une matrice 4×4 × vecteur et de ce qui suit à chaque pixel
   const eye = modelWorldMatrixInverse.mul(vec4(cameraPosition, 1)).xyz;
   const tn = eye.xy.div(max(eye.z, 0.01));
-  const pointer = clamp(tn.mul(4.5).add(0.5), 0, 1);
-  const bgv = pointer.mul(0.26).add(0.37);
-  const pfc = min(pointer.sub(0.5).length().mul(2), 1);
+  const pointer = varying(clamp(tn.mul(4.5).add(0.5), 0, 1)) as unknown as N;
+  const bgv = varying(clamp(tn.mul(4.5).add(0.5), 0, 1).mul(0.26).add(0.37)) as unknown as N;
+  const pfc = varying(min(clamp(tn.mul(4.5).add(0.5), 0, 1).sub(0.5).length().mul(2), 1)) as unknown as N;
   const base = toS(clamp(L.color, 0, 1));
   const out = def.fn({
     uv: u,

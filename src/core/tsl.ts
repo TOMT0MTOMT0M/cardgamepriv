@@ -2,7 +2,7 @@
  * Petits outils TSL partagés : hash 2D, voronoï avec identifiant de cellule,
  * interférence de couche mince spectrale, rotation 2D, courbes.
  */
-import { NOISE_PERIOD, NOISE_SIZE, noisePixels } from './noiseData';
+import { NOISE_PERIOD, NOISE_SIZE, burnNoiseValues, noisePixels } from './noiseData';
 import { Fn, Loop, cos, dot, float, floor, fract, hash, length, min, mix, sin, vec2, vec3, sqrt, max, clamp, luminance, texture } from 'three/tsl';
 import { ClampToEdgeWrapping, DataTexture, DataUtils, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, RGBAFormat, RepeatWrapping, UnsignedByteType } from 'three/webgpu';
 
@@ -223,6 +223,36 @@ export function preloadNoise(): Promise<void> {
       local();
     }
   }));
+}
+
+/**
+ * (audit 12/11, S06 / E2-01) Valeurs du bruit de brûlure du sachet, calculées dans un worker (repli : fil principal).
+ */
+export function burnNoise(W: number, H: number, packW: number, packH: number): Promise<Float64Array> {
+  return new Promise<Float64Array>((done) => {
+    let settled = false;
+    let w: Worker | null = null;
+    let guard = 0;
+    const finish = (d: Float64Array) => {
+      clearTimeout(guard);
+      w?.terminate();
+      w = null;
+      if (settled) return;
+      settled = true;
+      done(d);
+    };
+    const local = () => void (settled || finish(burnNoiseValues(W, H, packW, packH)));
+    try {
+      if (typeof Worker === 'undefined') return local();
+      w = new Worker(new URL('./noise.worker.ts', import.meta.url), { type: 'module' });
+      w.onmessage = (e: MessageEvent<Float64Array>) => finish(e.data);
+      w.onerror = w.onmessageerror = local;
+      w.postMessage({ burn: [W, H, packW, packH] });
+      guard = window.setTimeout(local, 5000);
+    } catch {
+      local();
+    }
+  });
 }
 
 /** Bruit cuit en `p` (unités de bruit) → vec3 de 3 tirages indépendants dans ≈ [-1, 1]. */
