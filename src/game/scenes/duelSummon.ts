@@ -752,7 +752,11 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
         ctx.sfx.loadSample(siteUrl(`${FX_DIR}sfx/duel.mp3`)).then((b) => (duelBuf = b)),
         // un cri, pas une musique : au-delà de 12 s, le fichier n'est pas un cri → cri synthétisé (sinon il est joué,
         // et coupé en fondu après ~4,5 s s'il est long)
-        ctx.sfx.loadSample(siteUrl(`${FX_DIR}sfx/${M.file}.mp3`)).then((b) => (cryBuf = b && b.duration <= 12 ? b : null)),
+        ctx.sfx.loadSample(siteUrl(`${FX_DIR}sfx/${M.file}.mp3`)).then((b) => {
+          cryBuf = b && b.duration <= 12 ? b : null;
+          // (audit 12/11, A2-06) fichier refusé (une musique de 24 s ≈ 4 Mo décodés) : pas gardé en mémoire pour rien
+          if (b && !cryBuf) ctx.sfx.dropSample?.(siteUrl(`${FX_DIR}sfx/${M.file}.mp3`));
+        }),
       ]);
       if (!(hasGlb && (await buildGlb(glbUrl)))) await buildHolo2D();
       await buildCard();

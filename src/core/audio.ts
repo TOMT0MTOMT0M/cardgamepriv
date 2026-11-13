@@ -350,6 +350,9 @@ export class Sfx {
           const c: BaseAudioContext = this.ctx ?? new OfflineAudioContext(1, 1, 44100);
           return await c.decodeAudioData(data);
         } catch {
+          // (audit 12/11, S16 / A2-08) raté passager (réseau coupé) : pas gardé, nouvel essai la prochaine fois.
+          // Un fichier absent (réponse 404) reste en cache : pas de requête répétée.
+          this.musicBufs.delete(url);
           return null;
         }
       })();
@@ -1665,10 +1668,17 @@ export class Sfx {
           const off = new OfflineAudioContext(2, 1, 44100);
           return await off.decodeAudioData(await r.arrayBuffer());
         })
-        .catch(() => null);
+        .catch(() => {
+          queueMicrotask(() => this.samples.delete(url)); // (A2-08) raté passager : nouvel essai la prochaine fois
+          return null;
+        });
       this.samples.set(url, p);
     }
     return p;
+  }
+  /** (audit 12/11, S16 / A2-06) oublie un échantillon décodé dont l'appelant ne veut pas (trop long pour un cri…) */
+  dropSample(url: string): void {
+    if (this.samples.has(url)) this.samples.set(url, Promise.resolve(null)); // (refusé une fois pour toutes : ni gardé, ni redécodé)
   }
   /** Joue un fichier décodé ; `fade(s)` l'éteint en douceur (fin de séquence, passage). */
   playSample(buf: AudioBuffer, vol = 0.8, wet = 0.08): { fade(s?: number): void } | null {
