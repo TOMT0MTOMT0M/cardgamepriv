@@ -100,7 +100,7 @@ export function installDiag(shell: Shell) {
  * Envoyé UNE fois par appareil et par version du rapport (sinon avec `?diag` dans l'adresse), 6 s après la boutique,
  * dans les retours du labo (entrée « Chargement », une ligne par appareil). Aucune donnée personnelle.
  */
-const LOAD_REPORT_V = 'charge-4'; // (07/11) v2 : jalons du démarrage, images lentes avec leurs scripts, rapport d'usage
+const LOAD_REPORT_V = 'charge-5'; // (07/11) v2 : jalons du démarrage, images lentes avec leurs scripts, rapport d'usage
 /** au-delà de cette durée après la boutique, le rapport d'USAGE part (images lentes pendant qu'on joue) */
 const USAGE_REPORT_MS = 150_000;
 

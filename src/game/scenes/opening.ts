@@ -85,6 +85,7 @@ import type { createHoloMaterial } from '../../core/holo';
 import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
 import { haptics } from '../../core/haptics';
 import { onReducedMotionChange } from '../../core/motion';
+import { perfMark } from '../../core/perfLog';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { loadTearBakes, loadedBakes, TearBakePlayer } from '../../core/tearBake';
@@ -2525,7 +2526,16 @@ export function createOpeningScene(): OpeningScene {
       rig.add(packRig, cardsRig);
       camBase = stage.camera.position.z;
       layout(c.width, c.height);
+      // (audit 12/11, S06) jalons du montage dans le rapport « Chargement » : où passent les secondes entre 35 et 85 %
+      let lapAt = performance.now();
+      const lap = (name: string) => {
+        const now = performance.now();
+        perfMark(`ouv:${name}`, now - lapAt, now);
+        lapAt = now;
+      };
+      lap('scène');
       await ensureFonts();
+      lap('polices');
 
       // boosters : un visuel par thème + le bébou pack, générés une fois (+ le booster du moment s'il y en a un)
       styles = boosterStyles();
@@ -2541,6 +2551,7 @@ export function createOpeningScene(): OpeningScene {
       }
       allKeys = Object.keys(styles).filter((k) => k !== EVENT_KEY);
       arts.set(boosterKey, c.bag.add(await generatePackArt(styles[boosterKey], { releaseSources: true })));
+      lap('visuel du booster');
       startArts = async () => {
         await nextFrame();
         await nextFrame();
@@ -2605,7 +2616,9 @@ export function createOpeningScene(): OpeningScene {
           return true;
         };
         const first = loadTearBakes();
+        lap('sachet');
         const b0 = await Promise.race([first, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
+        lap(`attente déchirure${b0 ? '' : ' (pas arrivée)'}`);
         // arrivé à temps : visible pendant le préchauffage (pipelines créés avec le reste), caché ensuite ; sinon
         // monté caché, compilé à sa première déchirure
         if (b0 && mount(b0)) bakedBody!.visible = bakedStrip!.visible = true;
@@ -2881,7 +2894,9 @@ export function createOpeningScene(): OpeningScene {
       }
       // (fluidité 2) WebGPU : pipelines créés en asynchrone et en parallèle dans la configuration RÉELLE de la passe
       // (MRT émissif, HalfFloat, MSAA ×4 — PassNode.compileAsync, voir post.ts) ; WebGL2 : variante « canvas » comme avant
+      lap('matériaux');
       await compileReal();
+      lap('pipelines');
       {
         // la précompilation ne couvre pas la chaîne de post-traitement (bloom, sortie) : créer ces variantes en pleine
         // révélation coûte des centaines de ms (à-coup à la 1re carte de chaque rareté). Une image rendue par les deux
@@ -2900,6 +2915,7 @@ export function createOpeningScene(): OpeningScene {
         }
         phase = ph;
       }
+      lap('1res images');
       wheel3d?.hide();
       for (const tw of twins) tw.rig.visible = false;
       ready3d = true;
