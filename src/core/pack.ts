@@ -62,8 +62,8 @@ export interface PackStyle {
 }
 
 export const PACK_STYLES: Record<string, PackStyle> = {
-  ember: { name: 'Braise', ground: '#1a1513', ground2: '#3a1f17', ink: '#f1e4cf', foil: '#c98a4b', accent: '#e8643a' },
-  tide: { name: 'Marée', ground: '#0f1c1c', ground2: '#16342f', ink: '#e8e3d3', foil: '#c7b27a', accent: '#5fa58f' },
+  ember: { name: 'Braise', ground: '#1a1513', ground2: '#3a1f17', ink: '#f1e4cf', foil: '#c98a4b', accent: '#e8643a' }, // i18n-ok
+  tide: { name: 'Marée', ground: '#0f1c1c', ground2: '#16342f', ink: '#e8e3d3', foil: '#c7b27a', accent: '#5fa58f' }, // i18n-ok
   bone: { name: 'Os', ground: '#e7e0d0', ground2: '#cfc5ae', ink: '#1d1a17', foil: '#8a7a5c', accent: '#b4442f' },
 };
 
@@ -261,11 +261,11 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember, o: P
   g.font = titleFont;
   g.fillText(title, cx, PH * 0.74);
   // (audit 06/11) ≥ 28 px de base : le booster fait ≈ 176 px CSS sur téléphone (1 px CSS = 3,6 px de texture)
-  g.font = fitFont(g, style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, 600, 40, PW - 80, FONT_MONO);
+  g.font = fitFont(g, style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, 600, 40, PW - 80, FONT_MONO); // i18n-ok
   g.fillStyle = alpha(style.ink, 0.8);
-  g.fillText(style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, cx, PH * 0.785);
-  g.font = fitFont(g, style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', 500, 32, PW - 80, FONT_MONO);
-  g.fillText(style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', cx, PH * 0.845);
+  g.fillText(style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, cx, PH * 0.785); // i18n-ok
+  g.font = fitFont(g, style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', 500, 32, PW - 80, FONT_MONO); // i18n-ok
+  g.fillText(style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', cx, PH * 0.845); // i18n-ok
   // ligne de déchirure
   const ch = (PACK.crimp / PACK.h) * PH;
   const tearY = PH - ch - 40;
@@ -279,7 +279,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember, o: P
   g.setLineDash([]);
   g.font = `500 26px ${FONT_MONO}`;
   g.textAlign = 'left';
-  g.fillText('✂ DÉCHIRER ICI', 28, PH - tearY - 12);
+  g.fillText('✂ DÉCHIRER ICI', 28, PH - tearY - 12); // i18n-ok
   crimpBands(g, style.foil);
   applyGrain(g, PW, PH, 0.08, 9, 40);
 
@@ -296,7 +296,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember, o: P
   b.fillStyle = alpha(style.ink, 0.8);
   b.textAlign = 'center';
   b.font = `500 24px ${FONT_MONO}`;
-  (style.backLines ?? ['Ne convient pas aux dragons de moins de trois ans.', 'Illustrations entièrement procédurales.', 'Fabriqué dans un laboratoire. Avec soin.']).forEach((l, i) =>
+  (style.backLines ?? ['Ne convient pas aux dragons de moins de trois ans.', 'Illustrations entièrement procédurales.', 'Fabriqué dans un laboratoire. Avec soin.']).forEach((l, i) => // i18n-ok
     b.fillText(l, PW / 2, PH * 0.68 + i * 36),
   );
   for (let i = 0; i < 46; i++) b.fillRect(PW / 2 - 120 + i * 5.3, PH * 0.82, i % 3 ? 2 : 3.5, 60);

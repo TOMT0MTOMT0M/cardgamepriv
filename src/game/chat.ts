@@ -164,7 +164,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   const onlineCount = () => [...players().values()].filter((p) => p.online).length;
   function ava(id: string, name: string, dot = false): string {
     const p = players().get(id);
-    const on = dot && p?.online ? '<i class="chat-on-dot" title="' + tr('chat.onlineW') + '"></i>' : '';
+    const on = dot && p?.online ? '<i class="chat-on-dot" title="' + tr('chat.onlineW') + '"></i>' : ''; // i18n-ok
     return p?.avatarUrl
       ? `<span class="cm-ava"><img src="${esc(p.avatarUrl)}" alt="" loading="lazy" decoding="async">${on}</span>`
       : `<span class="cm-ava">${esc((name.trim()[0] ?? '?').toUpperCase())}${on}</span>`;

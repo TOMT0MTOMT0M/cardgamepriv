@@ -12,7 +12,7 @@ const R = (v: number) => `rgb(${Math.round(255 * v)},0,0)`;
  */
 export const passePartout: CardDesign = {
   id: 'passe-partout',
-  title: 'Passe-partout (musée)',
+  title: 'Passe-partout (musée)', // i18n-ok (labo)
   art: { k: 1.05, to: [384, 452] },
   paint(f, m, d) {
     const { card, uni, tier } = d;
@@ -121,7 +121,7 @@ function stepped(g: Ctx, x0: number, y0: number, x1: number, y1: number, s: numb
  */
 export const artDeco: CardDesign = {
   id: 'art-deco',
-  title: 'Art déco',
+  title: 'Art déco', // i18n-ok (labo)
   art: { k: 1.18, to: [384, 525] },
   paint(f, m, d) {
     const { card, uni, tier } = d;
@@ -234,7 +234,7 @@ function archPath(g: Ctx, x0: number, x1: number, bottom: number, spring: number
  */
 export const arche: CardDesign = {
   id: 'arche',
-  title: 'Arche',
+  title: 'Arche', // i18n-ok (labo)
   art: { k: 1.3, to: [384, 470] },
   paint(f, m, d) {
     const { card, uni, tier } = d;
@@ -355,7 +355,7 @@ export const arche: CardDesign = {
  */
 export const medaillon: CardDesign = {
   id: 'medaillon',
-  title: 'Médaillon',
+  title: 'Médaillon', // i18n-ok (labo)
   art: { k: 1.12, to: [384, 462] },
   paint(f, m, d) {
     const { card, uni, tier } = d;

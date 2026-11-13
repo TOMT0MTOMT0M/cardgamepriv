@@ -1,3 +1,4 @@
+import { tData } from './i18n';
 import { Color } from 'three/webgpu';
 import { SLOT_WEIGHTS } from './dropRates';
 
@@ -37,16 +38,18 @@ export interface Rarity {
   glyph: string;
 }
 
+// i18n-data:début (libellés : anglais dans i18n/en/data.ts)
 export const RARITIES: Rarity[] = [
-  { id: 'common', tier: 0, rank: 0, label: 'Commune', hex: '#a39d91', accentHex: '#e6e0d2', deepHex: '#3a3631', intensity: 0.0, foil: 0.0, particles: 0, suspense: 0.35, shake: 0, slowmo: 1, glyph: '●' },
-  { id: 'uncommon', tier: 1, rank: 1, label: 'Peu commune', hex: '#6f9a74', accentHex: '#c4dcb8', deepHex: '#1f3324', intensity: 0.15, foil: 0.12, particles: 400, suspense: 0.6, shake: 0, slowmo: 1, glyph: '◆' },
-  { id: 'rare', tier: 2, rank: 2, label: 'Rare', hex: '#4c7cc2', accentHex: '#b4cdf2', deepHex: '#14233d', intensity: 0.35, foil: 0.3, particles: 1500, suspense: 0.9, shake: 0.05, slowmo: 1, glyph: '✦' },
-  { id: 'epic', tier: 3, rank: 3, label: 'Épique', hex: '#b5344f', accentHex: '#f3b2b5', deepHex: '#36101a', intensity: 0.55, foil: 0.55, particles: 4000, suspense: 1.3, shake: 0.15, slowmo: 0.75, glyph: '✸' },
-  { id: 'legendary', tier: 4, rank: 4, label: 'Légendaire', hex: '#d9982a', accentHex: '#ffe0a0', deepHex: '#3a2408', intensity: 0.8, foil: 0.8, particles: 12000, suspense: 1.8, shake: 0.35, slowmo: 0.45, glyph: '❂' },
-  { id: 'mythic', tier: 5, rank: 5, label: 'Mythique', hex: '#ece5d6', accentHex: '#ffffff', deepHex: '#0d0b10', intensity: 1.0, foil: 1.0, particles: 30000, suspense: 2.6, shake: 0.6, slowmo: 0.25, glyph: '✺' },
+  { id: 'common', tier: 0, rank: 0, get label() { return tData('rar.common', 'Commune'); }, hex: '#a39d91', accentHex: '#e6e0d2', deepHex: '#3a3631', intensity: 0.0, foil: 0.0, particles: 0, suspense: 0.35, shake: 0, slowmo: 1, glyph: '●' },
+  { id: 'uncommon', tier: 1, rank: 1, get label() { return tData('rar.uncommon', 'Peu commune'); }, hex: '#6f9a74', accentHex: '#c4dcb8', deepHex: '#1f3324', intensity: 0.15, foil: 0.12, particles: 400, suspense: 0.6, shake: 0, slowmo: 1, glyph: '◆' },
+  { id: 'rare', tier: 2, rank: 2, get label() { return tData('rar.rare', 'Rare'); }, hex: '#4c7cc2', accentHex: '#b4cdf2', deepHex: '#14233d', intensity: 0.35, foil: 0.3, particles: 1500, suspense: 0.9, shake: 0.05, slowmo: 1, glyph: '✦' },
+  { id: 'epic', tier: 3, rank: 3, get label() { return tData('rar.epic', 'Épique'); }, hex: '#b5344f', accentHex: '#f3b2b5', deepHex: '#36101a', intensity: 0.55, foil: 0.55, particles: 4000, suspense: 1.3, shake: 0.15, slowmo: 0.75, glyph: '✸' },
+  { id: 'legendary', tier: 4, rank: 4, get label() { return tData('rar.legendary', 'Légendaire'); }, hex: '#d9982a', accentHex: '#ffe0a0', deepHex: '#3a2408', intensity: 0.8, foil: 0.8, particles: 12000, suspense: 1.8, shake: 0.35, slowmo: 0.45, glyph: '❂' },
+  { id: 'mythic', tier: 5, rank: 5, get label() { return tData('rar.mythic', 'Mythique'); }, hex: '#ece5d6', accentHex: '#ffffff', deepHex: '#0d0b10', intensity: 1.0, foil: 1.0, particles: 30000, suspense: 2.6, shake: 0.6, slowmo: 0.25, glyph: '✺' },
   // SECRÈTE — or rose incarnat sur fond presque noir : chaud, humain (c'est un de nous), hors de toutes les teintes des autres tiers.
-  { id: 'secret', tier: 5, rank: 6, secret: true, label: 'Secrète', hex: '#e8927c', accentHex: '#ffe4d8', deepHex: '#120607', intensity: 1.0, foil: 1.0, particles: 60000, suspense: 6.5, shake: 0.85, slowmo: 0.15, glyph: '✷' },
+  { id: 'secret', tier: 5, rank: 6, secret: true, get label() { return tData('rar.secret', 'Secrète'); }, hex: '#e8927c', accentHex: '#ffe4d8', deepHex: '#120607', intensity: 1.0, foil: 1.0, particles: 60000, suspense: 6.5, shake: 0.85, slowmo: 0.15, glyph: '✷' },
 ];
+// i18n-data:fin
 
 export const RARITY_BY_ID: Record<RarityId, Rarity> = Object.fromEntries(RARITIES.map((r) => [r.id, r])) as Record<RarityId, Rarity>;
 

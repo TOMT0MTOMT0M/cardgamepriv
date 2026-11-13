@@ -24,13 +24,13 @@ import '@fontsource/ibm-plex-mono/500.css';
 export const FONT_VERSION = 'in2';
 /** gros titres seulement (logo, titres de page, moments forts) */
 /** (11/11) plus d'Atsuka Montreal : les gros titres sont en Bold Frame grasse (graisse 800 dans le CSS) */
-export const FONT_DISPLAY = '"Bold Frame", "Inter", system-ui, sans-serif';
+export const FONT_DISPLAY = '"Bold Frame", "Inter", system-ui, sans-serif'; // i18n-ok
 /** (retours Hugo 10/11) nom moulé des sachets : la police ronde d'origine (« elle était mieux, tout rond ») */
-export const FONT_PACK = '"Matcha World", "Bold Frame", "Inter", system-ui, sans-serif';
+export const FONT_PACK = '"Matcha World", "Bold Frame", "Inter", system-ui, sans-serif'; // i18n-ok
 /** titres, noms, texte courant en casse mixte (graisse 400 / 600 / 700 = les 3 Bold Frame) */
-export const FONT_TEXT = '"Bold Frame", "Inter", system-ui, sans-serif';
+export const FONT_TEXT = '"Bold Frame", "Inter", system-ui, sans-serif'; // i18n-ok
 /** libellés en capitales, chiffres, boutons, petits corps */
-export const FONT_LABEL = '"Inter", "IBM Plex Mono", system-ui, -apple-system, "Segoe UI", sans-serif';
+export const FONT_LABEL = '"Inter", "IBM Plex Mono", system-ui, -apple-system, "Segoe UI", sans-serif'; // i18n-ok
 
 /**
  * (V2, 08/11) Casse des gros titres PEINTS SUR TOILE en Atsuka Montreal : capitale (à volutes) en première lettre, le

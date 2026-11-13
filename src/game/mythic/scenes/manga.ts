@@ -63,7 +63,7 @@ export default function manga(k: SceneCtx) {
     }
   });
   const ono = ONO[Math.floor(k.rand() * ONO.length)];
-  const ot = el('div', '', `position:absolute;left:50%;top:50%;font:900 ${mh * 0.6}px/1 "Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif;color:#fff;-webkit-text-stroke:${u * 0.9}px #111;paint-order:stroke;white-space:nowrap;letter-spacing:-.04em;opacity:0;`, mid);
+  const ot = el('div', '', `position:absolute;left:50%;top:50%;font:900 ${mh * 0.6}px/1 "Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif;color:#fff;-webkit-text-stroke:${u * 0.9}px #111;paint-order:stroke;white-space:nowrap;letter-spacing:-.04em;opacity:0;`, mid); // i18n-ok (CSS)
   ot.textContent = ono + '！';
   k.pin(ot);
   tl.fromTo(page, { y: h * 0.6, rotation: 4, opacity: 0 }, { y: 0, rotation: -1.5, opacity: 1, duration: 0.45, ease: 'power3.out' }, 0);

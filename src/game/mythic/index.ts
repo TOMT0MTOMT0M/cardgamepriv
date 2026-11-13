@@ -13,6 +13,7 @@
  * Ce module-ci est LÉGER (importé d'office par la boutique et la visionneuse) : le moteur (runtime.ts, CSS) et chaque
  * scène ne sont téléchargés qu'à la première 6★ de leur famille.
  */
+import { tData } from '../../core/i18n';
 import { isEclipseCard } from '../eclipse';
 import { SUBTHEMES, catalogEntry, fmtCount, subthemeById, themeById, type SubTheme } from '../../core/sets/themes';
 import { reducedMotion } from '../../core/motion';
@@ -128,9 +129,9 @@ export function mythicClues(cardId: string): string[] {
   let third = '';
   if (e.year) third = String(e.year);
   else if (st?.group && sub && safe && !generic) third = sub;
-  else if (n > 1) third = `1 parmi ${fmtCount(n)}`;
+  else if (n > 1) third = tData('myth.oneOf', '1 parmi {n}').replace('{n}', fmtCount(n)); // i18n-ok
   // Jeux vidéo : GAMING → ZELDA → 1991 (la famille « Jeux vidéo » laisse sa place à la série… si elle ne spoile pas)
-  if (e.year && st?.group?.id === 'jeux-video') out[1] = safe ? sub : 'Jeux vidéo';
+  if (e.year && st?.group?.id === 'jeux-video') out[1] = safe ? sub : tData('grp.jeux-video', 'Jeux vidéo'); // i18n-ok
   if (third) out.push(third);
   const seen = new Set<string>();
   // (10/11) casse naturelle : le moteur met chaque indice dans la casse de SA police (runtime.ts playClues)

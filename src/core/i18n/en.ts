@@ -647,4 +647,31 @@ export const en: Dict = {
   'auth.expired': 'Your session has expired: log in again.',
   'auth.newSeason': 'New season: the counters have been reset, create your account to play.',
   'auth.failed': 'Couldn’t log in ({err}). Try again.',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'myth.skip': 'Tap to skip',
+  'myth.ring': 'In the ring…',
+  'myth.red': 'In the red corner…',
+  'myth.blue': 'In the blue corner…',
+  'myth.six': 'The six-star!',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'duel.tapCont': 'tap to continue',
+  'duel.clickCont': 'click to continue',
+  'gd.skip2': 'Skip',
+
+  // ───── src/game/scenes/opening.ts ─────
+  'op.back1': '5 cards, including one rare or better.',
+  'op.back2': 'Not suitable for dragons under three years old.',
+  'op.back3': 'Made between us. With care.',
+  'op.backSecret': 'A secret card might be hiding in it.',
+  'op.limited': 'Limited edition',
+  'op.backTime': 'Here for a limited time only.',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'wild.appears': 'A wild {name} appeared!',
+  'bb.heartHint': 'tap · make its heart beat',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'wild.sub': '{type} type · ★★★★★★ MYTHIC',
 };

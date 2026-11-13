@@ -1,3 +1,4 @@
+import { tData, t as tr } from '../../core/i18n';
 import {
   AdditiveBlending,
   AnimationMixer,
@@ -573,7 +574,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
 
   // ───────────────────────────────────────────── texte
   function showTitle() {
-    const name = M.fr ?? opts.card.name; // nom français de la carte (retour de Tom)
+    const name = (M.fr ? tData(`duel.${opts.card.id}`, M.fr) : undefined) ?? opts.card.name; // nom français de la carte (retour de Tom) ; (version anglaise) le nom officiel anglais
     let i = 0;
     const letters = name.toUpperCase().split(' ').map((w) => `<b>${[...w].map((ch) => `<span style="transition-delay:${(0.25 + i++ * 0.035).toFixed(3)}s">${ch.replace(/[&<>"]/g, '')}</span>`).join('')}</b>`).join(' ');
     textEl.innerHTML = `<div class="dz-kicker">invocation · 6★ mythique</div><div class="dz-name">${letters}</div><div class="dz-sub">${(opts.card.uniName ?? 'Yu-Gi-Oh').replace(/[&<>"]/g, '')}</div>`;
@@ -725,7 +726,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
 
       // texte + indication + bouton « passer » (HTML au-dessus du canvas)
       const style = document.createElement('style');
-      style.textContent = `
+      style.textContent = `/* i18n-ok (CSS) */
         .overlay > .dz-title { pointer-events: none; position: absolute; left: 0; right: 0; bottom: max(9%, 64px); text-align: center; padding: 0 16px; }
         @media (min-aspect-ratio: 1/1) { .overlay > .dz-title { left: 6vw; right: auto; max-width: 42vw; bottom: 14%; text-align: left; padding: 0; } }
         .dz-title .dz-kicker { font: 600 12px var(--mono, "Inter", sans-serif); letter-spacing: .14em; text-transform: uppercase; color: ${HOLO}; opacity: 0; transform: translateY(6px); transition: opacity .6s, transform .8s cubic-bezier(.16,1,.3,1); }
@@ -746,11 +747,11 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       textEl.setAttribute('aria-live', 'polite');
       hintEl = document.createElement('div');
       hintEl.className = 'dz-hint';
-      hintEl.textContent = matchMedia('(pointer: coarse)').matches ? 'touche pour continuer' : 'clique pour continuer';
+      hintEl.textContent = matchMedia('(pointer: coarse)').matches ? tr('duel.tapCont') : tr('duel.clickCont');
       skipEl = document.createElement('button');
       skipEl.className = 'dz-skip';
       skipEl.type = 'button';
-      skipEl.textContent = 'Passer';
+      skipEl.textContent = tr('gd.skip2');
       skipEl.addEventListener('click', (e) => {
         e.stopPropagation();
         end();

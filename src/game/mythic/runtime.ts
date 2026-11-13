@@ -7,7 +7,7 @@
  * (10/11) Le moteur ne dépend plus du jeu : il reçoit un « hôte » minimal (qualité, sons) — le jeu lui passe son
  * shell et sa pile de couches (retour du téléphone), le labo (045) seulement la qualité et les sons.
  */
-import { locale } from '../../core/i18n';
+import { locale, t } from '../../core/i18n';
 import gsap from 'gsap';
 import type { Sfx } from '../../core/audio';
 import { haptics } from '../../core/haptics';
@@ -85,7 +85,7 @@ export function runPrelude(o: PreludeRun): PreludeHandle {
   flash.className = 'mp-flash';
   const hint = document.createElement('div');
   hint.className = 'mp-hint';
-  hint.textContent = 'Toucher pour passer';
+  hint.textContent = t('myth.skip');
   root.append(stage, clueBox, flash, hint);
   if (o.mount) root.classList.add('in-mount');
   applyFontVars(root); // (le labo n'a pas les variables de polices du jeu)

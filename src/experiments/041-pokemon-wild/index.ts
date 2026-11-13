@@ -1,3 +1,4 @@
+import { tData, t as tr } from '../../core/i18n';
 import {
   Color, DirectionalLight, DoubleSide, DynamicDrawUsage, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, Mesh,
   MeshBasicNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, PointLight, RenderTarget, SphereGeometry, Vector3, type Material,
@@ -81,11 +82,14 @@ const SCENES: Record<PokemonType, TypeScene> = {
 };
 
 /** libellés de la boîte de dialogue */
+// i18n-data:début (anglais : i18n/en/data.ts, pk.<type>)
 const TYPE_LABEL: Record<PokemonType, string> = {
   plante: 'PLANTE', insecte: 'INSECTE', feu: 'FEU', eau: 'EAU', electrik: 'ÉLECTRIK', psy: 'PSY', spectre: 'SPECTRE',
   tenebres: 'TÉNÈBRES', dragon: 'DRAGON', fee: 'FÉE', combat: 'COMBAT', acier: 'ACIER', normal: 'NORMAL', poison: 'POISON',
   roche: 'ROCHE', sol: 'SOL', vol: 'VOL', glace: 'GLACE',
 };
+// i18n-data:fin
+const typeLabel = (k: PokemonType) => tData(`pk.${k}`, TYPE_LABEL[k]);
 
 export interface WildOptions {
   card: CardData;
@@ -96,7 +100,7 @@ export interface WildOptions {
 
 const TWO_PI = Math.PI * 2;
 /** boîte de dialogue façon Game Boy Color (injectée : valable dans le jeu comme dans le labo) */
-const GBC_CSS = `
+const GBC_CSS = `/* i18n-ok (CSS) */
 .gbc-box { position: absolute; left: 50%; bottom: calc(108px + env(safe-area-inset-bottom)); width: min(560px, calc(100vw - 24px)); box-sizing: border-box; transform: translate(-50%, 14px); padding: 14px 18px 12px; background: #f8f8f0; color: #181818; border: 4px solid #181818; box-shadow: inset 0 0 0 3px #f8f8f0, inset 0 0 0 6px #5878a8, 0 10px 40px -10px rgba(0,0,0,.9); border-radius: 6px; font: 700 clamp(15px, 4.2vw, 20px)/1.35 'IBM Plex Mono', ui-monospace, monospace; letter-spacing: .02em; opacity: 0; transition: opacity .15s steps(3), transform .2s steps(4); pointer-events: none; z-index: 2; }
 .gbc-box.on { opacity: 1; transform: translate(-50%, 0); }
 .gbc-t { min-height: 2.7em; }
@@ -230,7 +234,7 @@ export default function create(o?: WildOptions): WildExperiment {
   /** boîte de dialogue de la console, texte tapé lettre par lettre (avec le petit bip) */
   function dialog() {
     const txt = box.querySelector<HTMLElement>('.gbc-t')!;
-    const full = `Un ${opts.card.name.toUpperCase()} sauvage apparaît !`;
+    const full = tr('wild.appears', { name: opts.card.name.toUpperCase() });
     txt.textContent = '';
     box.classList.add('on');
     let i = 0;
@@ -241,7 +245,7 @@ export default function create(o?: WildOptions): WildExperiment {
       if (i % 2 === 0) ctx.sfx.tick(1.8, 0.03);
       if (i < full.length) window.setTimeout(tick, 28);
       else {
-        box.querySelector<HTMLElement>('.gbc-s')!.textContent = `Type ${TYPE_LABEL[opts.type] ?? ''} · ★★★★★★ MYTHIQUE`;
+        box.querySelector<HTMLElement>('.gbc-s')!.textContent = tr('wild.sub', { type: typeLabel(opts.type) ?? '' });
         dialogDone = true;
         opts.onRevealed?.();
       }

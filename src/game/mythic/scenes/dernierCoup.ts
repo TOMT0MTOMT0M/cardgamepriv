@@ -2,10 +2,12 @@
  * ESPORT — « Le dernier coup » : un fil d'actions de match en texte libre (sans cadre) défile de plus en plus vite,
  * l'image se FIGE (écran gelé, glitch), silence… « VICTOIRE » ; la carte sort de l'écran gelé, au centre.
  */
+import { lang } from '../../../core/i18n';
 import { displayCase } from '../../../core/fonts';
 import type { SceneCtx } from '../kit';
 
-const FEED = ['ENGAGEMENT', 'DOUBLE', 'CLUTCH', 'ACE', 'OBJECTIF', 'TRIPLE', 'RETOUR', 'DERNIER ROUND', 'OVERTIME', 'MATCH POINT', '1 CONTRE 3', 'DERNIER COUP'];
+// (version anglaise) fil de la scène dans la langue du moment
+const FEED = () => (lang() === 'fr' ? ['ENGAGEMENT', 'DOUBLE', 'CLUTCH', 'ACE', 'OBJECTIF', 'TRIPLE', 'RETOUR', 'DERNIER ROUND', 'OVERTIME', 'MATCH POINT', '1 CONTRE 3', 'DERNIER COUP'] : ['ENGAGE', 'DOUBLE', 'CLUTCH', 'ACE', 'OBJECTIVE', 'TRIPLE', 'COMEBACK', 'FINAL ROUND', 'OVERTIME', 'MATCH POINT', '1 VS 3', 'FINAL BLOW']); // i18n-ok
 
 export default function dernierCoup(k: SceneCtx) {
   const { tl, u, el, sfx, actor, accent, w, h } = k;
@@ -15,7 +17,7 @@ export default function dernierCoup(k: SceneCtx) {
   // (10/11) le fil tient toujours dans l'écran (ordinateur : 12 lignes dépassaient en haut et en bas)
   const fs = Math.min(u, (h * 0.78) / 108);
   feed.style.gap = `${fs * 2}px`;
-  const items = FEED.map((t, i) => {
+  const items = FEED().map((t, i) => {
     const e = el('div', '', `font:800 ${fs * (5 + (i % 3) * 2)}px/1 var(--title);color:${i === FEED.length - 1 ? accent : '#fff'};opacity:0;white-space:nowrap;`, feed);
     e.textContent = displayCase(t); // (11/11) casse de phrase : Bold Frame ne se lit pas en capitales (R → A)
     return e;
@@ -36,7 +38,7 @@ export default function dernierCoup(k: SceneCtx) {
   for (let i = 0; i < 6; i++) tl.set(feed, { x: (k.rand() - 0.5) * u * 6, skewX: (k.rand() - 0.5) * 12 }, 1.9 + i * 0.04);
   tl.set(feed, { x: 0, skewX: 0 }, 2.15);
   k.at(1.9, () => sfx.staticNoise(0.25, 0.14));
-  const vict = k.word('VICTOIRE', h * 0.18, u * 15);
+  const vict = k.word(lang() === 'fr' ? 'VICTOIRE' : 'VICTORY', h * 0.18, u * 15); // i18n-ok
   tl.fromTo(vict, { opacity: 0, scale: 1.5, filter: 'blur(8px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.25, ease: 'power4.out' }, 2.3);
   k.at(2.3, () => {
     sfx.hit(0.6, 50);

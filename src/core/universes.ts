@@ -14,20 +14,20 @@ export interface Universe {
 }
 
 export const UNIVERSES: Record<UniverseId, Universe> = {
-  cendre: { id: 'cendre', name: 'Royaume de Cendre', short: 'Cendre', hex: '#c4572f' },
-  marees: { id: 'marees', name: 'Archipel des Marées', short: 'Marées', hex: '#2f6a62' },
-  lune: { id: 'lune', name: 'Cour de la Lune Pâle', short: 'Lune Pâle', hex: '#8d93a6' },
-  monts: { id: 'monts', name: 'Les Monts Muets', short: 'Monts Muets', hex: '#8a7656' },
-  ronces: { id: 'ronces', name: 'Forêt des Ronces', short: 'Ronces', hex: '#5d6b3a' },
-  abime: { id: 'abime', name: 'Le Grand Abîme', short: 'Abîme', hex: '#33456e' },
-  pokemon: { id: 'pokemon', name: 'Pokémon', short: 'Pokémon', hex: '#d2a23a' },
+  cendre: { id: 'cendre', name: 'Royaume de Cendre', short: 'Cendre', hex: '#c4572f' }, // i18n-ok
+  marees: { id: 'marees', name: 'Archipel des Marées', short: 'Marées', hex: '#2f6a62' }, // i18n-ok
+  lune: { id: 'lune', name: 'Cour de la Lune Pâle', short: 'Lune Pâle', hex: '#8d93a6' }, // i18n-ok
+  monts: { id: 'monts', name: 'Les Monts Muets', short: 'Monts Muets', hex: '#8a7656' }, // i18n-ok
+  ronces: { id: 'ronces', name: 'Forêt des Ronces', short: 'Ronces', hex: '#5d6b3a' }, // i18n-ok
+  abime: { id: 'abime', name: 'Le Grand Abîme', short: 'Abîme', hex: '#33456e' }, // i18n-ok
+  pokemon: { id: 'pokemon', name: 'Pokémon', short: 'Pokémon', hex: '#d2a23a' }, // i18n-ok
   valorant: { id: 'valorant', name: 'Valorant', short: 'Valorant', hex: '#ff4655' },
   lol: { id: 'lol', name: 'League of Legends', short: 'League of Legends', hex: '#c89b3c' },
   cs: { id: 'cs', name: 'Counter-Strike', short: 'Counter-Strike', hex: '#de9b35' },
-  bebous: { id: 'bebous', name: 'Les Bébous', short: 'Bébous', hex: '#e8927c' },
-  monde: { id: 'monde', name: 'Monde Réel', short: 'Monde', hex: '#4c9be0' },
-  jv: { id: 'jv', name: 'Jeux vidéo', short: 'Jeux vidéo', hex: '#a77bff' },
-  sport: { id: 'sport', name: 'Sport & Esport', short: 'Sport', hex: '#3fbf7f' },
+  bebous: { id: 'bebous', name: 'Les Bébous', short: 'Bébous', hex: '#e8927c' }, // i18n-ok
+  monde: { id: 'monde', name: 'Monde Réel', short: 'Monde', hex: '#4c9be0' }, // i18n-ok
+  jv: { id: 'jv', name: 'Jeux vidéo', short: 'Jeux vidéo', hex: '#a77bff' }, // i18n-ok
+  sport: { id: 'sport', name: 'Sport & Esport', short: 'Sport', hex: '#3fbf7f' }, // i18n-ok
   pop: { id: 'pop', name: 'Pop Culture', short: 'Pop Culture', hex: '#ff7a3d' },
 };
 

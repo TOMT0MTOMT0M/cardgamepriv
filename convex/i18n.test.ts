@@ -9,6 +9,9 @@ import { compare, format, installLang, langFromDevice, t as tr } from '../src/co
 import { enData } from '../src/core/i18n/en/data';
 import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS } from '../src/core/economy';
 import { SURVEY_FEATURES, SURVEY_UNIVERSES } from '../src/core/survey';
+import { RARITIES } from '../src/core/rarity';
+import { WONDER_ATMOSPHERES } from '../src/core/wonderDiorama';
+import { COUNTRY_NAMES } from '../src/core/art/flags';
 import { ACCENTS, BADGES, BANNERS, FRAMES, OPENINGS, TITLES, VITRINES } from '../src/core/cosmetics';
 
 // toutes les parties françaises (fr.ts + fr/*.ts des modules chargés à la demande)
@@ -38,6 +41,9 @@ describe('version anglaise : règle de langue et dictionnaires', () => {
     for (const l of ACHIEVEMENT_LADDERS) if (!enData[`ach.stat.${l.stat}`]?.trim()) miss.push(`ach.stat.${l.stat}`);
     for (const c of [...ACCENTS, ...BANNERS, ...FRAMES, ...TITLES, ...BADGES, ...VITRINES, ...OPENINGS]) if (!enData[`cos.${c.label}`]?.trim()) miss.push(`cos.${c.label}`);
     for (const o of OPENINGS) if (!enData[`cos.blurb.${o.id}`]) miss.push(`cos.blurb.${o.id}`);
+    for (const r of RARITIES) if (!enData[`rar.${r.id}`]) miss.push(`rar.${r.id}`);
+    for (const id of Object.keys(WONDER_ATMOSPHERES)) if (!enData[`wonder.${id}`]) miss.push(`wonder.${id}`);
+    for (const c of Object.keys(COUNTRY_NAMES)) if (!enData[`country.${c}`]) miss.push(`country.${c}`);
     for (const [k, list] of [['u', SURVEY_UNIVERSES], ['f', SURVEY_FEATURES]] as const) for (const o of list) for (const x of [`sv.${k}.${o.id}`, `sv.${k}.${o.id}.hint`]) if (!enData[x]) miss.push(x);
     expect(miss).toEqual([]);
   });

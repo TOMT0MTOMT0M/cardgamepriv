@@ -586,4 +586,31 @@ export const fr = {
   'auth.expired': 'Ta session a expiré : reconnecte-toi.',
   'auth.newSeason': 'Nouvelle saison : les compteurs sont remis à zéro, crée ton compte pour jouer.',
   'auth.failed': 'Connexion impossible ({err}). Réessaie.',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'myth.skip': 'Toucher pour passer',
+  'myth.ring': 'Sur le ring…',
+  'myth.red': 'Dans le coin rouge…',
+  'myth.blue': 'Dans le coin bleu…',
+  'myth.six': 'La six étoiles !',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'duel.tapCont': 'touche pour continuer',
+  'duel.clickCont': 'clique pour continuer',
+  'gd.skip2': 'Passer',
+
+  // ───── src/game/scenes/opening.ts ─────
+  'op.back1': '5 cartes, dont une rare ou mieux.',
+  'op.back2': 'Ne convient pas aux dragons de moins de trois ans.',
+  'op.back3': 'Fabriqué entre nous. Avec soin.',
+  'op.backSecret': 'Une carte secrète s’y cache peut-être.',
+  'op.limited': 'Édition limitée',
+  'op.backTime': 'Là pour un temps seulement.',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'wild.appears': 'Un {name} sauvage apparaît !',
+  'bb.heartHint': 'touche · fais battre son cœur',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'wild.sub': 'Type {type} · ★★★★★★ MYTHIQUE',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
