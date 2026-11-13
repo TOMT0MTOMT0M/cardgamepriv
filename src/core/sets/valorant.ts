@@ -1041,7 +1041,15 @@ export const VALORANT: ValorantEntry[] = RAW.map(([num, uuid, name, r, k, weapon
 export const valorantCardId = (e: ValorantEntry) => `val-${e.uuid}`;
 
 /** Nom du fichier d'illustration (relatif à `VALORANT_INFO.artDir`). */
-export const valorantFile = (e: ValorantEntry) => `${e.uuid}.png`;
+/**
+ * Illustrations remplacées à la main (nouveau nom : aucun cache ne peut ressortir l'ancienne). Image pleine (opaque) :
+ * peinte bord à bord comme les photos des autres thèmes.
+ * (12/11, dossier 4 de Tom) Neon.
+ */
+const VALORANT_FILE_OVERRIDE: Readonly<Record<string, string>> = {
+  'bb2a4828-46eb-8cd1-e765-15848195d751': 'bb2a4828-46eb-8cd1-e765-15848195d751-r2611121554.jpg',
+};
+export const valorantFile = (e: ValorantEntry) => VALORANT_FILE_OVERRIDE[e.uuid] ?? `${e.uuid}.png`;
 
 /**
  * Sous-thèmes d'affichage (correctif du 3 nov.) : la CLASSE d'arme, ou « Agents ». Le libellé est imprimé en grand sur

@@ -4913,11 +4913,10 @@
 "t": 1793771527
 },
 "jv-final-fantasy-sephiroth": {
-"art": "i",
-"file": "final-fantasy--sephiroth.png",
-"ok2": 1,
-"src": "wiki:Sephiroth (Final Fantasy)",
-"t": 1793635849
+"art": "c",
+"file": "final-fantasy--sephiroth-r2611121554.jpg",
+"src": "reillustre:jv-final-fantasy-sephiroth.jpg",
+"t": 1794498872
 },
 "jv-final-fantasy-shiva": {
 "art": "i",
@@ -6245,10 +6244,9 @@
 },
 "jv-gta-michael-de-santa": {
 "art": "c",
-"file": "gta--michael-de-santa.jpg",
-"fx": 1,
-"src": "wiki:Grand Theft Auto V",
-"t": 1793639907
+"file": "gta--michael-de-santa-r2611121554.jpg",
+"src": "reillustre:jv-gta-michael-de-santa.jpg",
+"t": 1794498872
 },
 "jv-gta-niko-bellic": {
 "art": "i",
@@ -11551,10 +11549,9 @@
 },
 "jv-overwatch-tracer": {
 "art": "c",
-"file": "overwatch--tracer.jpg",
-"s2": 1,
-"src": "wikidata:Q25204271:P18",
-"t": 1793636789
+"file": "overwatch--tracer-r2611121554.jpg",
+"src": "reillustre:jv-overwatch-tracer.jpg",
+"t": 1794498872
 },
 "jv-overwatch-venture": {
 "art": "i",
