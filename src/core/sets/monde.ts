@@ -3946,7 +3946,7 @@ const RAW: Array<[number, string, string, keyof typeof R, number, string, '' | '
   [21, "zoo-tarbosaure", "Tarbosaure", 'r', 0, "dinosaures-prehistoire--tarbosaure.jpg", "c", "Créature préhistorique"],
   [21, "zoo-tiktaalik", "Tiktaalik", 'r', 0, "dinosaures-prehistoire--tiktaalik.jpg", "c", "Créature préhistorique"],
   [21, "zoo-utahraptor", "Utahraptor", 'r', 0, "dinosaures-prehistoire--utahraptor.jpg", "c", "Créature préhistorique"],
-  [22, "miam-raclette-savoyarde", "Raclette savoyarde", 'm', 3, "001-raclette-savoyarde.png", "c", "Plat du terroir"],
+  [22, "miam-raclette-savoyarde", "Raclette savoyarde", 'm', 0, "001-raclette-savoyarde-r2611131907.jpg", "c", "Plat du terroir"],
   [22, "miam-choucroute-garnie", "Choucroute garnie", 'l', 0, "plats-francais--choucroute-garnie.jpg", "c", "Plat du terroir"],
   [22, "miam-cuisses-de-grenouille", "Cuisses de grenouille", 'l', 0, "plats-francais--cuisses-de-grenouille.jpg", "c", "Plat du terroir"],
   [22, "miam-escargots-de-bourgogne", "Escargots de Bourgogne", 'l', 0, "plats-francais--escargots-de-bourgogne.jpg", "c", "Plat du terroir"],
