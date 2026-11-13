@@ -1,4 +1,5 @@
-import { locale } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.launch'; // (textes de ce module, version anglaise)
+import { locale, t as tr } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import { h, toast } from '../ui';
 
@@ -33,18 +34,18 @@ export function createLaunchGate(backend: GameBackend) {
     el.setAttribute('aria-labelledby', 'lc-k');
     el.innerHTML = `<i class="lc-scan" aria-hidden="true"></i>
       <div class="lc-in">
-        <div class="lc-logo" aria-hidden="true">BÉBOU</div>
-        <p class="lc-v2-t">Grosse mise à jour</p>
-        <p class="lc-k" id="lc-k">Réouverture dans</p>
+        <div class="lc-logo" aria-hidden="true">${tr('boot.logo')}</div>
+        <p class="lc-v2-t">${tr('launch.big')}</p>
+        <p class="lc-k" id="lc-k">${tr('launch.reopen')}</p>
         <div class="lc-time" role="timer" aria-live="off"><span class="lc-a"></span><i class="lc-u"></i><span class="lc-b"></span><small class="lc-c"></small></div>
         <p class="lc-when"></p>
         <ul class="lc-pts">
-          <li><b>Ta collection est gardée</b> : cartes, pièces, boosters, succès, rien ne se perd.</li>
-          <li><b>La V2 arrive</b> : chat, marché, échanges simplifiés, saisons, notifications.</li>
-          <li>Le jeu se met à jour tout seul à la réouverture.</li>
+          <li><b>${tr('launch.kept')}</b> ${tr('launch.keptD')}</li>
+          <li><b>${tr('launch.v2')}</b> ${tr('launch.v2D')}</li>
+          <li>${tr('launch.auto')}</li>
         </ul>
       </div>
-      <button class="lc-staff" type="button">Accès équipe</button>`;
+      <button class="lc-staff" type="button">${tr('launch.team')}</button>`;
     el.querySelector('.lc-staff')!.addEventListener('click', () => backend.login());
     document.body.append(el);
     const app = document.getElementById('app');
@@ -92,7 +93,7 @@ export function createLaunchGate(backend: GameBackend) {
       set('lc-c', '');
     }
     const label = d > 0 ? `${d} j ${hh} h ${mm} min` : hh > 0 ? `${hh} h ${mm} min` : `${mm} min ${ss} s`;
-    el.querySelector('.lc-time')!.setAttribute('aria-label', `Réouverture dans ${label}`);
+    el.querySelector('.lc-time')!.setAttribute('aria-label', tr('launch.reopenIn', { label }));
     if (left <= 0) opened();
   }
 
@@ -103,14 +104,14 @@ export function createLaunchGate(backend: GameBackend) {
     const gate = el;
     el = null;
     gate.classList.add('lc-open');
-    gate.querySelector('.lc-k')!.textContent = 'C’est ouvert';
+    gate.querySelector('.lc-k')!.textContent = tr('launch.open');
     setTimeout(() => {
       gate.classList.add('out');
       const app = document.getElementById('app');
       if (app) app.inert = false;
       setTimeout(() => gate.remove(), 700);
       if (!backend.state.user) backend.login();
-      else toast('C’est rouvert : bienvenue dans la V2 🎴', 'ok');
+      else toast(tr('launch.reopened'), 'ok');
     }, 1400);
   }
 

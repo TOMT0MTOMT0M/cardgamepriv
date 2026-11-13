@@ -1,3 +1,4 @@
+import { t as tr } from '../../core/i18n';
 import type { BigPull, GameBackend, PackCard } from '../backend';
 import { reducedMotion } from '../../core/motion';
 import { catalogEntry } from '../../core/sets/themes';
@@ -54,20 +55,20 @@ const FAN_SHRINK = COARSE ? 0 : 0.06;
 
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
-  if (s < 45) return 'à l’instant';
-  if (s < 3600) return `il y a ${Math.max(1, Math.floor(s / 60))} min`;
-  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  if (s < 45) return tr('time.justNow');
+  if (s < 3600) return tr('time.agoMin', { n: Math.max(1, Math.floor(s / 60)) });
+  if (s < 86400) return tr('time.agoH', { n: Math.floor(s / 3600) });
   const d = Math.round(s / 86400);
-  return d === 1 ? 'hier' : `il y a ${d} j`;
+  return d === 1 ? tr('time.yesterday') : tr('time.agoD', { n: d });
 };
 
 export function createBigPulls(backend: GameBackend, view: (card: PackCard) => void): BigPullsWidget {
   const el = h('aside', 'bigpulls');
-  el.setAttribute('aria-label', 'Gros tirages');
+  el.setAttribute('aria-label', tr('bp.title'));
   el.innerHTML = `
-    <div class="bp-head"><h3>Gros tirages</h3><span class="bp-sub">5★ et + du groupe · aujourd’hui</span></div>
+    <div class="bp-head"><h3>${tr('bp.title')}</h3><span class="bp-sub">${tr('bp.sub')}</span></div>
     <div class="bp-list" role="list"></div>
-    <div class="bp-empty" hidden>Personne n’a encore tiré de Légendaire… à toi de jouer.</div>`;
+    <div class="bp-empty" hidden>${tr('bp.empty')}</div>`;
   const list = el.querySelector<HTMLElement>('.bp-list')!;
   const empty = el.querySelector<HTMLElement>('.bp-empty')!;
   const sub = el.querySelector<HTMLElement>('.bp-sub')!;
@@ -92,7 +93,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     const art = !e ? `<span class="bp-q">?</span>` : `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(e)}">`;
     const ava = p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<span>${esc((p.userName || '?').slice(0, 1).toUpperCase())}</span>`;
     it.innerHTML = `
-      <button class="bp-card"${clone ? ' tabindex="-1"' : ''} title="${esc(`${name} · ${rr.label}${p.mintNumber ? ` · n°${p.mintNumber}` : ''}`)}" aria-label="${esc(`Voir ${name} en grand`)}">
+      <button class="bp-card"${clone ? ' tabindex="-1"' : ''} title="${esc(`${name} · ${rr.label}${p.mintNumber ? ` · n°${p.mintNumber}` : ''}`)}" aria-label="${esc(tr('bp.see', { name }))}">
         <span class="bp-art">${art}</span>
       </button>
       <div class="bp-info">
@@ -117,7 +118,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   function shown(): BigPull[] {
     const all = backend.state.bigPulls;
     const today = all.filter((p) => Date.now() - p.createdAt < DAY);
-    sub.textContent = today.length || !all.length ? '5★ et + du groupe · aujourd’hui' : '5★ et + du groupe · les derniers';
+    sub.textContent = today.length || !all.length ? tr('bp.sub') : tr('bp.subLatest');
     return today.length ? today : all;
   }
 

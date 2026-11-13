@@ -3,6 +3,11 @@ import type { Dict } from '../i18n';
 import { en as p_game_v2gate } from './en/game.v2gate';
 import { en as p_game_chatStore } from './en/game.chatStore';
 import { en as p_game_offline } from './en/game.offline';
+import { en as p_game_views_launch } from './en/game.views.launch';
+import { en as p_game_views_ranking } from './en/game.views.ranking';
+import { en as p_game_views_gridArt } from './en/game.views.gridArt';
+import { en as p_game_views_owners } from './en/game.views.owners';
+import { en as p_game_views_picker } from './en/game.views.picker';
 // <imports>
 
 export const en: Dict = {
@@ -10,6 +15,11 @@ export const en: Dict = {
   ...p_game_v2gate,
   ...p_game_chatStore,
   ...p_game_offline,
+  ...p_game_views_launch,
+  ...p_game_views_ranking,
+  ...p_game_views_gridArt,
+  ...p_game_views_owners,
+  ...p_game_views_picker,
   // <parts>
 
   // ───── language (header switch) ─────
@@ -209,4 +219,195 @@ export const en: Dict = {
   'unit.mb': '{n} MB',
   'unit.kb': '{n} KB',
 
+
+  // ───── src/game/views/shop.ts ─────
+  'shop.hint.holdTouch': 'Hold to open',
+  'shop.hint.holdMouse': 'Hold the click (or Space) to open',
+  'shop.hint.tearTouch': 'Swipe right to tear',
+  'shop.hint.tearMouse': 'Swipe right (or click) to tear',
+  'shop.hint.tapTouch': 'Tap to open',
+  'shop.hint.tapMouse': 'Click to open',
+  'shop.hint.revealTouch': 'Tap to reveal',
+  'shop.hint.revealMouse': 'Click to reveal',
+  'shop.hint.nextTouch': 'Tap for the next one',
+  'shop.hint.nextMouse': 'Click for the next one',
+  'shop.hint.last': 'Last card…',
+  'shop.eventTagline': 'BOOSTER OF THE MOMENT',
+  'shop.reserveOpened': { one: 'Reserve: {got} booster of {n} opened.', other: 'Reserve: {got} boosters of {n} opened.' },
+  'shop.saving': 'Saving the cards…',
+  'shop.pending': '{why}: this booster isn’t credited yet. You’ll find it as is in the shop (Open button).',
+  'shop.noNet': 'No network',
+  'shop.kicker': 'SHOP',
+  'shop.pick': 'Pick your booster',
+  'shop.open': 'Open',
+  'shop.revealTitle': 'Straight to the first 4★ or better — if there isn’t one, the whole booster opens at once',
+  'shop.autoTitle': 'The cards flip by themselves (a 6★ keeps its full screen)',
+  'shop.revealAll': 'Reveal all',
+  'shop.skipTitle': 'Go straight to the recap (everything is credited)',
+  'shop.skipAll': 'Skip all',
+  'common.continue': 'Continue',
+  'common.close': 'Close',
+  'shop.spinHint': 'swipe to spin it',
+  'shop.pickTouch': 'Tap a pack to see what’s inside',
+  'shop.pickMouse': 'Click a pack to see what’s inside · ↑ ↓ to switch',
+  'shop.eventLabel': 'Booster of the moment',
+  'shop.see': 'See the {name}',
+  'shop.openName': 'Open the {name}',
+  'common.soon': 'soon',
+  'shop.firstPack': 'your first booster is waiting · {n} in reserve',
+  'shop.inReserve': '{n} in reserve',
+  'shop.reserveEmpty': 'reserve empty · recharging',
+  'shop.soonAvail': 'coming soon',
+  'shop.tapToOpen': 'tap the booster to open it',
+  'common.soonCaps': 'SOON',
+  'shop.eventNow': 'Booster of the moment: {name}',
+  'shop.eventNew': 'New: the {name} booster, in the shop for only {left}',
+  'shop.alreadyDrawn': 'You have a {name} already drawn, not opened yet.',
+  'shop.alreadyHave': '{have} / {total} cards already in your collection',
+  'shop.autoOn': 'Auto reveal ✓',
+  'shop.contTouch': 'Tap to continue',
+  'shop.contMouse': 'Click to continue',
+  'shop.dupHave': 'already {n}× in your collection',
+  'shop.dupPack': 'duplicate in this booster',
+  'shop.cardSub': '{sub}{theme} · print #{n}',
+  'shop.newCaps': 'NEW',
+  'shop.notCredited': '{what}: it stays as is in the shop (Open button), nothing is lost.',
+  'shop.batchPending': 'Booster {i}/{n} isn’t credited yet',
+  'shop.onePending': 'This booster isn’t credited yet',
+  'shop.fourPlus': '4★ and up',
+  'shop.newWord': { one: 'new', other: 'new' },
+  'shop.secretWord': 'secret',
+  'shop.uniqueTitle': '{label}: unique cards in your collection',
+  'shop.retrySave': 'Retry saving',
+  'shop.againN': 'Again ×{n}',
+  'shop.againOne': 'One more',
+  'shop.nextIn': 'next booster in {time}',
+  'shop.myNew': 'My new cards',
+  'shop.myColl': 'My collection',
+  'shop.credited': 'Booster credited.',
+  'shop.cardSub2': '{pre}print #{n}',
+
+  // ───── src/game/views/shop.ts (à la main) ─────
+  'shop.saveFailed': 'Couldn’t save ({err})',
+  'shop.dupWord': { one: 'duplicate', other: 'duplicates' },
+  'shop.best': 'best',
+  'shop.contracts': 'Contracts',
+  'shop.newBang': 'NEW!',
+
+  // ───── src/game/views/shop.ts (à la main) ─────
+  'shop.evLeft': 'left',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'plural.booster': { one: '{n} booster', other: '{n} boosters' },
+  'plural.carte': { one: '{n} card', other: '{n} cards' },
+  'plural.numéro': { one: '{n} number', other: '{n} numbers' },
+  'plural.doublon': { one: '{n} duplicate', other: '{n} duplicates' },
+  'plural.album': { one: '{n} album', other: '{n} albums' },
+  'plural.jour': { one: '{n} day', other: '{n} days' },
+  'plural.exemplaire': { one: '{n} copy', other: '{n} copies' },
+  'plural.ami': { one: '{n} friend', other: '{n} friends' },
+  'plural.échange': { one: '{n} trade', other: '{n} trades' },
+  'plural.résultat': { one: '{n} result', other: '{n} results' },
+  'plural.réponse': { one: '{n} answer', other: '{n} answers' },
+  'plural.prime déjà encaissée': { one: '{n} bonus already collected', other: '{n} bonuses already collected' },
+  'plural.personne a cliqué': { one: '{n} person clicked', other: '{n} people clicked' },
+  'plural.partie': { one: '{n} match', other: '{n} matches' },
+  'plural.palier': { one: '{n} tier', other: '{n} tiers' },
+  'plural.note': { one: '{n} rating', other: '{n} ratings' },
+  'plural.filleul': { one: '{n} invitee', other: '{n} invitees' },
+  'plural.famille': { one: '{n} family', other: '{n} families' },
+  'plural.exemplaire brûlable': { one: '{n} burnable copy', other: '{n} burnable copies' },
+  'plural.duel ouvert': { one: '{n} open duel', other: '{n} open duels' },
+  'plural.de tes envies': { one: '{n} of your wishes', other: '{n} of your wishes' },
+  'plural.contrat possible': { one: '{n} possible contract', other: '{n} possible contracts' },
+  'plural.booster ouvert': { one: '{n} booster opened', other: '{n} boosters opened' },
+  'plural.badge': { one: '{n} badge', other: '{n} badges' },
+  'plural.ami invité': { one: '{n} friend invited', other: '{n} friends invited' },
+
+  // ───── src/game/views/missions.ts ─────
+  'msn.reward': 'Reward',
+  'msn.claimed': 'claimed ✓',
+  'msn.claim': 'Claim',
+  'msn.rerollTitle': 'Change this mission (once a day)',
+  'msn.goTitle': 'Go where it happens',
+  'msn.claimedToast': '+{packs} in your reserve and +{coins} coins!',
+  'msn.login': 'Log in to get your missions.',
+  'msn.newIn': 'new ones in {time}',
+  'msn.bonusDone': 'Daily bonus claimed ✓ · come back tomorrow',
+  'msn.allDone': 'All 3 missions are done!',
+  'msn.bonusHint': 'Bonus: +{n} boosters once all 3 are claimed',
+  'msn.rerollFoot': 'Don’t like a mission? You can change one per day.',
+  'msn.week': 'This week',
+  'msn.weekToast': 'Weekly mission: +{coins} coins!',
+  'msn.doneToast': 'Mission complete: {label} → claim +{packs} (target at the top)',
+
+  // ───── src/game/views/missions.ts (à la main) ─────
+  'msn.reroll': 'change',
+  'msn.bonusBtn': 'Bonus +{n}',
+  'msn.bonusToast': 'Bonus: +{packs}!',
+
+  // ───── src/game/views/status.ts (à la main) ─────
+  'st.pityCount': { one: '{nf} booster without a 6★', other: '{nf} boosters without a 6★' },
+  'st.pityLeft': { one: '<b>{nf}</b> more booster without a 6★, then the next one has one, <b>guaranteed</b>.', other: '<b>{nf}</b> more boosters without a 6★, then the next one has one, <b>guaranteed</b>.' },
+
+  // ───── src/game/views/status.ts ─────
+  'st.hint': 'Log in every day: on day 7, a reward.',
+  'st.inARow': '{days} in a row',
+  'st.streak7': 'Streak · 7 days',
+  'st.weekly': '+{n} boosters every week',
+  'st.day7': 'Day 7 reached!',
+  'st.waiting': 'Your reward is waiting.',
+  'st.claimedCont': 'Reward claimed ✓ · the streak goes on tomorrow',
+  'st.outOf': 'out of {n} · come back tomorrow to keep going',
+  'st.reset': 'Missing a day resets the streak and the calendar.',
+  'st.calToast': 'Day {day}: +{coins} coins{extra}!',
+  'st.calPerfect': ' and {n} boosters — perfect month 🏆',
+  'st.calOne': ' and 1 free booster',
+  'st.streakToast': '7-day streak: +{packs}!',
+  'st.loginPity': 'Log in to track your counter.',
+  'st.pityNext': 'Your next booster has a guaranteed 6★!',
+  'st.pityRule': '{n} boosters in a row without a Mythic: number {m} has one. The counter resets as soon as a 6★ drops, across all boosters.',
+
+  // ───── src/game/views/wallet.ts ─────
+  'wal.calDayTitle': 'Day {d}: {coins} coins{packs}{x2}',
+  'wal.calHead': 'Calendar · day {day}/{days}',
+  'wal.calPerfect': 'perfect month ≈ {coins} + {packs} boosters',
+  'wal.calTaken': 'Today’s gift taken ✓ — tomorrow: {coins} coins. Miss a day = back to day 1.',
+  'wal.calTake': 'Take the gift · +{coins}{packs}',
+  'hdr.wallet.label': 'Wallet',
+  'wal.login': 'Log in to earn coins.',
+  'wal.games': 'Games →',
+  'wal.virtual': '100% virtual coins · never exchangeable for cards',
+  'wal.toCollect': 'To collect',
+  'wal.completion': 'Completion{x}',
+  'wal.completionHint': ': 5 coins × cards of each completed album',
+  'wal.nothing': 'nothing',
+  'wal.ach': 'Achievements{x}',
+  'wal.see': 'see',
+  'wal.burn': 'Duplicates to burn{x}',
+  'wal.forge': 'the forge →',
+  'wal.empty': 'No transactions yet.',
+  'wal.compToast': 'Completion: +{coins} coins ({sets})',
+  'wal.achToast': 'Achievements: +{coins} coins!',
+
+  // ───── src/game/views/wallet.ts (à la main) ─────
+  'wal.plusPacks': { one: ' + {n} booster', other: ' + {n} boosters' },
+  'wal.achCount': ': {n}/{total} earned',
+
+  // ───── src/game/views/bigPulls.ts ─────
+  'time.justNow': 'just now',
+  'time.agoMin': '{n} min ago',
+  'time.agoH': '{n} h ago',
+  'time.agoD': '{n} d ago',
+  'bp.title': 'Big pulls',
+  'bp.sub': 'the group’s 5★+ · today',
+  'bp.empty': 'Nobody has pulled a Legendary yet… your turn.',
+  'bp.see': 'See {name} big',
+  'bp.subLatest': 'the group’s 5★+ · latest',
+
+  // ───── src/game/views/safety.ts ─────
+  'safe.legend': '♥ wish · ▤ binder · ⌂ sleeve: kept out of automatic picks (burnable by hand) · 🔒 committed to a pending trade',
+
+  // ───── src/game/views/bigPulls.ts (à la main) ─────
+  'time.yesterday': 'yesterday',
 };

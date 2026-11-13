@@ -24,6 +24,7 @@ import { boardAttention } from './backend';
 import { PACK_CAP, PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
 import { initLang, lang, onLang, setLang, t as tr } from './lang';
 import type { MsgKey } from '../core/i18n';
+import { relabel } from './ui';
 import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, panelShown, setToastSound, syncPanelTriggers, toast } from './ui';
 import { preloadOwned } from './preload';
 import { bindHapticGestures, haptics } from '../core/haptics';
@@ -1167,6 +1168,7 @@ async function boot() {
    */
   onLang(() => {
     relabelTop();
+    relabel(); // (éléments durables marqués data-t : boutique, couches de l'ouverture…)
     meSig = '';
     renderMe();
     updateTitle();

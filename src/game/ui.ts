@@ -1,4 +1,4 @@
-import { fmtNum, lang, t as tr } from '../core/i18n';
+import { fmtNum, lang, t as tr, type MsgKey } from '../core/i18n';
 import { rarity, type RarityId } from '../core/rarity';
 import { siteUrl } from '../core/siteRoot';
 import { artPath, catalogEntry, hasArt, isWonderId, subthemeById, thumbPath, wonderCapturePath, type CatalogEntry } from '../core/sets/themes';
@@ -15,6 +15,16 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, h
   if (cls) e.className = cls;
   if (html != null) e.innerHTML = html;
   return e;
+}
+
+/**
+ * (version anglaise) Éléments durables (créés une fois, jamais refaits) : `data-t="clé"` (texte), `data-t-title`,
+ * `data-t-aria` — `relabel()` les remet dans la nouvelle langue au changement (main.ts, onLang).
+ */
+export function relabel(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>('[data-t]').forEach((e) => (e.textContent = tr(e.dataset.t as MsgKey)));
+  root.querySelectorAll<HTMLElement>('[data-t-title]').forEach((e) => (e.title = tr(e.dataset.tTitle as MsgKey)));
+  root.querySelectorAll<HTMLElement>('[data-t-aria]').forEach((e) => e.setAttribute('aria-label', tr(e.dataset.tAria as MsgKey)));
 }
 
 /** ★★★☆☆☆ (la secrète : le sceau ✷). */
@@ -44,7 +54,15 @@ export const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g
 export const fr = (s: string) => s.replace(/ ([!?:;»])/g, ' $1').replace(/« /g, '« ');
 
 /** « 1 doublon », « 2 doublons » */
-export const plural = (n: number, one: string, many = `${one}s`) => `${fmtN(n)} ${n > 1 ? many : one}`;
+/**
+ * « 3 boosters » : nombre + mot accordé. (version anglaise) Le mot français sert de clé : `plural.<mot>` (fr.ts / en.ts)
+ * donne les deux formes dans la langue active ; un mot sans clé reste en français.
+ */
+export const plural = (n: number, one: string, many = `${one}s`) => {
+  const k = `plural.${one}` as MsgKey;
+  if (lang() !== 'fr' && tr(k) !== k) return tr(k, { n: fmtN(n) });
+  return `${fmtN(n)} ${n > 1 ? many : one}`;
+};
 
 /** Cartes vues lors de la dernière visite de la collection (navigateur) : sert à repérer les nouvelles. */
 export const SEEN_KEY = 'bebou.vues.v1';

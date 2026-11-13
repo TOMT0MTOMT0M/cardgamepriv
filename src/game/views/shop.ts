@@ -1,4 +1,4 @@
-import { fmtPct as fmtPctI } from '../../core/i18n';
+import { fmtPct as fmtPctI, t as tr } from '../../core/i18n';
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
 import { playAmbience, playMusicPreview, prefetchAmbience, prefetchMusicPreview, stopAmbience, stopMusicPreview } from '../musicPreview';
 import { isEclipsePack } from '../eclipse';
@@ -34,12 +34,24 @@ import { clearGod, playGodIntro } from '../godPack';
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
 const TOUCH = isTouch();
 const HINT = {
-  hold: TOUCH ? 'Maintiens pour ouvrir' : 'Maintiens le clic (ou Espace) pour ouvrir',
-  tear: TOUCH ? 'Glisse vers la droite pour déchirer' : 'Glisse vers la droite (ou clique) pour déchirer',
-  tap: TOUCH ? 'Touche pour ouvrir' : 'Clique pour ouvrir',
-  reveal: TOUCH ? 'Touche pour révéler' : 'Clique pour révéler',
-  next: TOUCH ? 'Touche pour la suivante' : 'Clique pour la suivante',
-  last: 'Dernière carte…',
+  get hold() {
+    return TOUCH ? tr('shop.hint.holdTouch') : tr('shop.hint.holdMouse');
+  },
+  get tear() {
+    return TOUCH ? tr('shop.hint.tearTouch') : tr('shop.hint.tearMouse');
+  },
+  get tap() {
+    return TOUCH ? tr('shop.hint.tapTouch') : tr('shop.hint.tapMouse');
+  },
+  get reveal() {
+    return TOUCH ? tr('shop.hint.revealTouch') : tr('shop.hint.revealMouse');
+  },
+  get next() {
+    return TOUCH ? tr('shop.hint.nextTouch') : tr('shop.hint.nextMouse');
+  },
+  get last() {
+    return tr('shop.hint.last');
+  },
 };
 
 /** Seuil de « Passer jusqu'aux 4★ » : rang 3 = Épique (★★★★), puis Légendaire, Mythique, Secrète. */
@@ -96,7 +108,7 @@ function eventPack(e: PackEvent): SheetPack {
     key: EVENT_KEY,
     req: { kind: 'theme', event: { id: e.id, subthemes: e.subthemes, cards: e.cards } },
     name: e.name,
-    tagline: 'BOOSTER DU MOMENT',
+    tagline: tr('shop.eventTagline'),
     desc: e.blurb ?? contentLabel(e),
     accent: e.accent,
     cards: eventCards(e),
@@ -168,10 +180,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       }
       b.current = pack = packs[k];
       b.queue = packs.slice(k + 1);
-      if (packs.length < n) toast(`Réserve : ${packs.length} booster${packs.length > 1 ? 's' : ''} sur ${n} ouverts.`, 'info');
+      if (packs.length < n) toast(tr('shop.reserveOpened', { got: packs.length, n: packs.length > 1 ? 's' : '' }), 'info');
       return packs[k];
     }
-    if (packs.length < n) toast(`Réserve : ${packs.length} booster${packs.length > 1 ? 's' : ''} sur ${n} ouverts.`, 'info');
+    if (packs.length < n) toast(tr('shop.reserveOpened', { got: packs.length, n: packs.length > 1 ? 's' : '' }), 'info');
     return got;
   }
 
@@ -216,7 +228,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
           }
           if (i === 0 && mode === 'opening') {
             hint.hidden = false;
-            hintTxt.textContent = 'Enregistrement des cartes…';
+            hintTxt.textContent = tr('shop.saving');
           }
           await new Promise<void>((r) => {
             const done = () => (clearTimeout(t), window.removeEventListener('online', done), r());
@@ -232,18 +244,18 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   }
   /** Message exact quand un booster n'a pas pu être crédité (il n'est PAS perdu : il reste scellé, à rouvrir). */
   const pendingMsg = (e: unknown) =>
-    `${typeof navigator !== 'undefined' && navigator.onLine === false ? 'Pas de réseau' : `Enregistrement impossible (${errMsg(e)})`} : ce booster n’est pas encore crédité. Tu le retrouveras tel quel à la boutique (bouton Ouvrir).`;
+    tr('shop.pending', { why: typeof navigator !== 'undefined' && navigator.onLine === false ? tr('shop.noNet') : tr('shop.saveFailed', { err: errMsg(e) }) });
 
   el.innerHTML = `
     <div class="shop-home">
       <div class="shop-left">
-        <div class="shop-title"><span class="kicker">BOUTIQUE</span><h2>Choisis ton booster</h2><p class="shop-hint"></p></div>
+        <div class="shop-title"><span class="kicker" data-t="shop.kicker">${tr('shop.kicker')}</span><h2 data-t="shop.pick">${tr('shop.pick')}</h2><p class="shop-hint"></p></div>
         <div class="packs-row" role="listbox" aria-label="Boosters"></div>
       </div>
-      <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary">Ouvrir</button></div>
+      <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary" data-t="shop.open">${tr('shop.open')}</button></div>
       <div class="tap-hint" hidden aria-hidden="true"><i class="th-dot"></i><span class="th-t"></span></div>
       <div class="tap-ghost" hidden aria-hidden="true"><i></i></div>
-      <div class="home-cta" hidden><button class="btn-primary"><span class="hc-t">Ouvrir</span><small class="hc-s"></small></button><p class="hc-tip"></p></div>
+      <div class="home-cta" hidden><button class="btn-primary"><span class="hc-t" data-t="shop.open">${tr('shop.open')}</span><small class="hc-s"></small></button><p class="hc-tip"></p></div>
       <div class="shop-right"></div>
     </div>
     <div class="hud" hidden>
@@ -253,16 +265,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       <div class="hud-bottom">
         <div class="card-info" hidden></div>
         <div class="hud-hint"><span class="ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" pathLength="100"/><circle class="p" cx="18" cy="18" r="15.5" pathLength="100"/></svg></span><span class="txt"></span></div>
-        <div class="hud-skip"><button class="skip-hi" title="Direct à la première 4★ ou mieux — s'il n'y en a pas, tout le booster s'ouvre d'un coup">⏭ Direct 4★</button><button class="skip-reveal" title="Les cartes se retournent toutes seules (une 6★ garde son plein écran)">Tout révéler</button><button class="skip-all" title="Aller directement au récap (tout est crédité)">Tout passer</button></div>
+        <div class="hud-skip"><button class="skip-hi" title="${tr('shop.revealTitle')}" data-t-title="shop.revealTitle">⏭ Direct 4★</button><button class="skip-reveal" title="${tr('shop.autoTitle')}" data-t-title="shop.autoTitle" data-t="shop.revealAll">${tr('shop.revealAll')}</button><button class="skip-all" title="${tr('shop.skipTitle')}" data-t-title="shop.skipTitle" data-t="shop.skipAll">${tr('shop.skipAll')}</button></div>
       </div>
       <div class="mythic-veil" hidden><div class="mv-kicker">✺ MYTHIQUE ✺</div><div class="mv-stars">★★★★★★</div><div class="mv-name"></div><div class="mv-hint"></div></div>
     </div>
     <div class="sum-bg" hidden><div class="sum-rays"></div><div class="sum-parts"></div></div>
     <div class="fan-badges" hidden></div>
     <div class="summary" hidden></div>
-    <div class="secret-continue" hidden><button class="btn-primary">Continuer</button></div>
-    <div class="secret-continue wild-continue" hidden><button class="btn-primary">Continuer</button></div>
-    <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
+    <div class="secret-continue" hidden><button class="btn-primary" data-t="common.continue">${tr('common.continue')}</button></div>
+    <div class="secret-continue wild-continue" hidden><button class="btn-primary" data-t="common.continue">${tr('common.continue')}</button></div>
+    <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="${tr('common.close')}" data-t-aria="common.close">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint" data-t="shop.spinHint">${tr('shop.spinHint')}</div></div>`;
   const rowEl = el.querySelector<HTMLElement>('.packs-row')!;
   const hintEl = el.querySelector<HTMLElement>('.shop-hint')!;
   const banner = el.querySelector<HTMLElement>('.home-banner')!;
@@ -285,7 +297,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const mythicVeil = el.querySelector<HTMLElement>('.mythic-veil')!;
   const sumBg = el.querySelector<HTMLElement>('.sum-bg')!;
   const fanBadges = el.querySelector<HTMLElement>('.fan-badges')!;
-  hintEl.textContent = TOUCH ? 'Touche une pochette pour voir ce qu’elle contient' : 'Clique sur un pack pour voir ce qu’il contient · ↑ ↓ pour changer';
+  hintEl.textContent = TOUCH ? tr('shop.pickTouch') : tr('shop.pickMouse');
   const hudBottom = el.querySelector<HTMLElement>('.hud-bottom')!;
   const coach = el.querySelector<HTMLElement>('.coach')!;
   const cta = el.querySelector<HTMLElement>('.home-cta')!;
@@ -293,7 +305,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const tapHint = el.querySelector<HTMLElement>('.tap-hint')!;
   const tapGhost = el.querySelector<HTMLElement>('.tap-ghost')!;
   /** (11/11) bandeau du booster du moment (evenements.css) : rien du tout quand aucun événement n'est en cours */
-  const band = h('button', 'ev-band', `<i class="ev-dot" aria-hidden="true"></i><span class="ev-txt"><span class="ev-k">Booster du moment</span><b class="ev-n"></b></span><span class="ev-left"><small>encore</small><b data-ev-left="0"></b></span>`);
+  const band = h('button', 'ev-band', `<i class="ev-dot" aria-hidden="true"></i><span class="ev-txt"><span class="ev-k" data-t="shop.eventLabel">${tr('shop.eventLabel')}</span><b class="ev-n"></b></span><span class="ev-left"><small data-t="shop.evLeft">${tr('shop.evLeft')}</small><b data-ev-left="0"></b></span>`);
   band.type = 'button';
   band.hidden = true;
   el.querySelector('.shop-left')!.prepend(band);
@@ -327,10 +339,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (!show) return;
     const b = packOf(selected);
     const bal = u ? liveRegen(u).balance : 0;
-    cta.querySelector('.hc-t')!.textContent = b?.soon ? `Voir le ${b.name}` : bal > 0 ? `Ouvrir le ${b?.name ?? 'booster'}` : `Voir le ${b?.name ?? 'booster'}`;
+    cta.querySelector('.hc-t')!.textContent = b?.soon ? tr('shop.see', { name: b.name }) : bal > 0 ? tr('shop.openName', { name: b?.name ?? 'booster' }) : tr('shop.see', { name: b?.name ?? 'booster' });
     // premier booster jamais ouvert : la 2e ligne du bouton le dit (une phrase de plus ne tient pas sous le booster en 360×740)
     const first = !!u && u.totalPacksOpened === 0 && bal > 0 && !b?.soon;
-    cta.querySelector('.hc-s')!.textContent = b?.soon ? 'bientôt' : first ? `ton premier booster t’attend · ${bal} en réserve` : bal > 0 ? `${bal} en réserve` : 'réserve vide · en recharge';
+    cta.querySelector('.hc-s')!.textContent = b?.soon ? tr('common.soon') : first ? tr('shop.firstPack', { n: bal }) : bal > 0 ? tr('shop.inReserve', { n: bal }) : tr('shop.reserveEmpty');
     cta.querySelector<HTMLElement>('.hc-tip')!.hidden = true;
     syncHint();
   }
@@ -355,7 +367,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const b = packOf(selected);
     const bal = s.user ? liveRegen(s.user).balance : 0;
     tapHint.classList.toggle('idle', !!b?.soon || bal <= 0);
-    tapHint.querySelector('.th-t')!.textContent = b?.soon ? 'bientôt disponible' : bal > 0 ? 'touche le booster pour l’ouvrir' : 'réserve vide · en recharge';
+    tapHint.querySelector('.th-t')!.textContent = b?.soon ? tr('shop.soonAvail') : bal > 0 ? tr('shop.tapToOpen') : tr('shop.reserveEmpty');
     placeHint();
   }
   function placeHint() {
@@ -467,7 +479,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
   for (const b of list) {
     const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}`, `
-      <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">BIENTÔT</span>' : ''}<i class="sl-shade"></i><i class="sl-shine"></i></span>
+      <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">' + tr('common.soonCaps') + '</span>' : ''}<i class="sl-shade"></i><i class="sl-shine"></i></span>
       <span class="sl-name">${esc(b.name)}</span>
       <span class="sl-desc">${esc(b.desc)}</span>
       <span class="sl-prog"><i></i></span>`);
@@ -919,7 +931,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       band.style.setProperty('--ev', ev.accent);
       band.querySelector('.ev-n')!.textContent = ev.name;
       band.querySelector<HTMLElement>('[data-ev-left]')!.dataset.evLeft = String(ev.endAt);
-      band.setAttribute('aria-label', `Booster du moment : ${ev.name}`);
+      band.setAttribute('aria-label', tr('shop.eventNow', { name: ev.name }));
       tickEvent();
       announceEvent(ev);
       if (wantEventSheet && mode === 'pick') {
@@ -964,7 +976,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (seen.includes(e.id)) return void band.classList.remove('new');
     band.classList.add('new');
     // sorti pendant qu'on joue : un message en plus (au chargement, le bandeau en tête de la boutique suffit)
-    if (performance.now() - bootAt > 15_000) toast(`Nouveau : le booster ${e.name}, à la boutique pendant ${fmtLeft(e.endAt - Date.now())} seulement`, 'info');
+    if (performance.now() - bootAt > 15_000) toast(tr('shop.eventNew', { name: e.name, left: fmtLeft(e.endAt - Date.now()) }), 'info');
     try {
       localStorage.setItem(EV_SEEN, JSON.stringify([...seen, e.id].slice(-20)));
     } catch {
@@ -988,7 +1000,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       const t = themeById(s.sealed.themeId ?? '');
       const name = s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster';
       banner.hidden = false;
-      banner.querySelector('span')!.textContent = `Tu as un ${name} déjà tiré, pas encore ouvert.`;
+      banner.querySelector('span')!.textContent = tr('shop.alreadyDrawn', { name });
       if (keyOf(s.sealed) !== selected) select(keyOf(s.sealed));
     } else banner.hidden = true;
     sheet.sync();
@@ -1032,7 +1044,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       if (!btn) continue;
       btn.style.setProperty('--pct', `${(have / b.cards.length) * 100}%`);
       btn.classList.add('has-prog');
-      btn.title = `${fmtN(have)} / ${fmtN(b.cards.length)} cartes déjà dans ta collection`;
+      btn.title = tr('shop.alreadyHave', { have: fmtN(have), total: fmtN(b.cards.length) });
     }
   });
 
@@ -1101,7 +1113,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     skipReveal.classList.toggle('on', all);
     skipReveal.setAttribute('aria-pressed', String(all));
     // (audit UX2-02) une fois actif, le bouton reste cliquable pour couper la révélation auto (au lieu d'être grisé)
-    skipReveal.textContent = all ? 'Révélation auto ✓' : 'Tout révéler';
+    skipReveal.textContent = all ? tr('shop.autoOn') : tr('shop.revealAll');
     // série : à partir du 2e booster l'emballage se brûle tout seul ; « 4★ et + » / « Tout révéler » : dès le premier
     // (retours 05/11) en série (×5, ×10), CHAQUE booster rejoue son ouverture (avant : seul le 1er, les suivants
     // brûlaient tout seuls et on avait l'impression que tout s'ouvrait d'un coup) ; « 4★ et + » / « Tout révéler » : auto
@@ -1209,7 +1221,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    */
   const disarmSkip = () => {
     skipAll.classList.remove('armed');
-    skipAll.textContent = 'Tout passer';
+    skipAll.textContent = tr('shop.skipAll');
   };
   skipAll.addEventListener('click', () => {
     if (!batch || batch.skipping || mode !== 'opening') return;
@@ -1239,7 +1251,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     sumBg.hidden = true;
     setMode('summary');
     summary.classList.remove('multi', 'pending');
-    summary.innerHTML = `<div class="sum-line sum-wait" role="status"><span class="sum-k">Enregistrement des cartes… <b class="sw-n">${Math.min(b.total, b.done.length + 1)}</b> / ${b.total}</span></div>`;
+    summary.innerHTML = `<div class="sum-line sum-wait" role="status"><span class="sum-k">${tr('shop.saving')} <b class="sw-n">${Math.min(b.total, b.done.length + 1)}</b> / ${b.total}</span></div>`;
     const waitN = summary.querySelector<HTMLElement>('.sw-n');
     syncSummaryInset();
     try {
@@ -1451,7 +1463,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         // 6★ du bloc Musique : son extrait de 30 s (retours 05/11)
         void playMusicPreview(card.cardId, card.rarity, shell.sfx.volume, 'opening', mythicVeil);
         mythicVeil.classList.add('shown');
-        mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = last ? (TOUCH ? 'Touche pour continuer' : 'Clique pour continuer') : HINT.next;
+        mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = last ? (TOUCH ? tr('shop.contTouch') : tr('shop.contMouse')) : HINT.next;
       },
       onLast() {
         info.classList.remove('in');
@@ -1536,10 +1548,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     // exemplaires déjà possédés (la collection n'est créditée qu'à la fin de l'ouverture)
     const had = backend.state.collection.find((c) => c.cardId === card.cardId && c.rarity === card.rarity)?.count ?? 0;
     info.innerHTML = `
-      ${card.isNew ? '<span class="new">NOUVELLE\u00a0!</span>' : `<span class="dup">${had ? `déjà ${had}× dans ta collection` : 'en double dans ce booster'}</span>`}
+      ${card.isNew ? `<span class="new">${tr('shop.newBang')}</span>` : `<span class="dup">${had ? tr('shop.dupHave', { n: had }) : tr('shop.dupPack')}</span>`}
       <div class="ci-name">${esc(card.cardName)}</div>
       <div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r">${rr.label}</span></div>
-      <div class="ci-sub">${subt ? esc(subt.label) : ''}${theme && !theme.secret ? ` · ${esc(theme.label)}` : ''} · n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
+      <div class="ci-sub">${tr('shop.cardSub', { sub: subt ? esc(subt.label) : '', theme: theme && !theme.secret ? ` · ${esc(theme.label)}` : '', n: fmtN(card.mintNumber) })}</div>`;
     void info.offsetWidth;
     info.classList.add('in');
     // hauteur réelle du panneau : la carte suivante se placera au-dessus (UX2-06)
@@ -1750,7 +1762,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const mine = new Set(backend.state.collection.map((c) => c.cardId));
     if (req.event) {
       const ec = eventCards(req.event);
-      return { label: ev?.name ?? 'Booster du moment', have: ec.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: ec.length };
+      return { label: ev?.name ?? tr('shop.eventLabel'), have: ec.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: ec.length };
     }
     const t = req.kind === 'theme' ? themeById(req.themeId ?? '') : undefined;
     const cards = t ? t.cards : THEMES.flatMap((x) => x.cards);
@@ -1794,7 +1806,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     for (const c of cards) {
       const k = `${c.cardId}:${c.rarity}:${c.mintNumber}`;
       const n = counts.get(`${c.cardId}:${c.rarity}`) ?? 0;
-      const b = h('span', `fb ${c.isNew ? 'fb-new' : 'fb-dup'}`, c.isNew ? 'NOUVELLE' : `DOUBLON${n > 1 ? ` ×${n}` : ''}`);
+      const b = h('span', `fb ${c.isNew ? 'fb-new' : 'fb-dup'}`, c.isNew ? tr('shop.newCaps') : `DOUBLON${n > 1 ? ` ×${n}` : ''}`);
       b.style.opacity = '0';
       fanBadges.append(b);
       byKey.set(k, b);
@@ -1849,20 +1861,20 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const again = u ? Math.min(liveRegen(u).balance, packs.length) : 0;
     const bal = u ? liveRegen(u).balance : 0;
     summary.innerHTML = `
-      ${pend ? `<div class="sum-warn" role="alert">${credited.length ? `Le booster ${credited.length + 1}/${batch?.total ?? 1} n’est pas encore crédité` : 'Ce booster n’est pas encore crédité'} : il reste tel quel à la boutique (bouton Ouvrir), rien n’est perdu.</div>` : ''}
+      ${pend ? `<div class="sum-warn" role="alert">${tr('shop.notCredited', { what: credited.length ? tr('shop.batchPending', { i: credited.length + 1, n: batch?.total ?? 1 }) : tr('shop.onePending') })}</div>` : ''}
       <div class="sum-line">
-        ${multi ? `<span class="sum-k"><b>${packs.length}</b> boosters${hiN ? ` · <b>${hiN}</b> 4★ et +` : ''}</span>` : ''}
-        <span class="sum-k${fresh ? ' hi' : ''}"><b>${fresh}</b> nouvelle${fresh > 1 ? 's' : ''}</span>
-        <span class="sum-k"><b>${dups}</b> doublon${dups > 1 ? 's' : ''}</span>
-        ${best && br ? `<span class="sum-best r-${best.rarity}" style="--rc:${br.hex};--ra:${br.accentHex}">meilleure ${starsHtml(best.rarity)} <i class="sum-rl">${br.secret ? 'secrète' : `${br.rank + 1}★`}</i> <b>${esc(best.cardName)}</b></span>` : ''}
-        <span class="sum-coll" title="${esc(cc.label)} : cartes uniques dans ta collection">${esc(cc.label)} : <b>${fmtN(cc.have)}</b>/${fmtN(cc.total)}</span>
+        ${multi ? `<span class="sum-k"><b>${packs.length}</b> boosters${hiN ? ` · <b>${hiN}</b> ${tr('shop.fourPlus')}` : ''}</span>` : ''}
+        <span class="sum-k${fresh ? ' hi' : ''}"><b>${fresh}</b> ${tr('shop.newWord', { n: fresh })}</span>
+        <span class="sum-k"><b>${dups}</b> ${tr('shop.dupWord', { n: dups })}</span>
+        ${best && br ? `<span class="sum-best r-${best.rarity}" style="--rc:${br.hex};--ra:${br.accentHex}">${tr('shop.best')} ${starsHtml(best.rarity)} <i class="sum-rl">${br.secret ? tr('shop.secretWord') : `${br.rank + 1}★`}</i> <b>${esc(best.cardName)}</b></span>` : ''}
+        <span class="sum-coll" title="${tr('shop.uniqueTitle', { label: esc(cc.label) })}">${esc(cc.label)} : <b>${fmtN(cc.have)}</b>/${fmtN(cc.total)}</span>
       </div>
       ${cc.total > 0 ? `<div class="sum-prog" aria-hidden="true" style="--from:${((Math.max(0, cc.have - fresh) / cc.total) * 100).toFixed(2)}%;--to:${((cc.have / cc.total) * 100).toFixed(2)}%"><i></i><span>${fmtPct(Math.max(0, cc.have - fresh) / cc.total)}${fresh ? ` → <b>${fmtPct(cc.have / cc.total)}</b>` : ''}</span></div>` : ''}
       ${grid ? '<div class="sum-cards"></div>' : ''}
       <div class="sum-actions">
-        ${pend ? '<button class="btn-primary retry">Réessayer l’enregistrement</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? `Encore ×${again}` : 'Encore un'}<small>${bal} en réserve</small></button>` : u ? `<span class="muted next-pack">prochain booster dans ${fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now())}</span>` : ''}
-        <button class="btn-ghost coll">${fresh ? 'Mes nouvelles' : dups === all.length ? 'Contrats' : 'Ma collection'}</button>
-        <button class="btn-ghost back">Boutique</button>
+        ${pend ? '<button class="btn-primary retry">' + tr('shop.retrySave') + '</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? tr('shop.againN', { n: again }) : tr('shop.againOne')}<small>${tr('shop.inReserve', { n: bal })}</small></button>` : u ? `<span class="muted next-pack">${tr('shop.nextIn', { time: fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now()) })}</span>` : ''}
+        <button class="btn-ghost coll">${fresh ? tr('shop.myNew') : dups === all.length ? tr('shop.contracts') : tr('shop.myColl')}</button>
+        <button class="btn-ghost back">${tr('nav.shop')}</button>
       </div>`;
     if (best) paintSummaryBg(best, req);
     // règle pic-fin (réf. motion §1.6 / §7.4) : la barre d'album progresse sous les yeux du joueur (600 ms), avec un tic
@@ -1876,14 +1888,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       retry.disabled = true;
       const ok = await busyButton(retry, credit(b, b.pending.pack));
       if (batch !== b || mode !== 'summary') return;
-      if (ok) toast('Booster crédité.', 'ok');
+      if (ok) toast(tr('shop.credited'), 'ok');
       else toast(pendingMsg(b.pending?.err), 'err');
       showSummary();
     });
     if (grid) {
       const cards = summary.querySelector<HTMLElement>('.sum-cards')!;
       for (const [k, c] of sorted.entries()) {
-        const tile = cardTile(c.cardId, c.rarity, { mini: true, label: c.isNew ? 'NOUVELLE' : undefined });
+        const tile = cardTile(c.cardId, c.rarity, { mini: true, label: c.isNew ? tr('shop.newCaps') : undefined });
         tile.style.setProperty('--i', String(k)); // arrivée en cascade
         tile.addEventListener('click', () => void viewCard(c));
         cards.append(tile);
@@ -1936,7 +1948,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const vi = viewerUi.querySelector<HTMLElement>('.v-info')!;
     vi.className = `v-info r-${card.rarity}`;
     vi.style.setProperty('--ra', rr.accentHex);
-    vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${e?.artist ? `<div class="ci-by">${esc(e.artist)}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
+    vi.innerHTML = `${card.isNew ? '<div class="ci-new">' + tr('shop.newCaps') + '</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${e?.artist ? `<div class="ci-by">${esc(e.artist)}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${tr('shop.cardSub2', { pre: st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : '', n: fmtN(card.mintNumber) })}</div>`;
     viewerUi.querySelector('.v-actions')!.replaceChildren(imageReportButton(backend, card.cardId, 'ouverture/zoom'));
     viewerUi.hidden = false;
     summary.hidden = true;

@@ -173,7 +173,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 FR = os.path.join(ROOT, 'src/core/i18n/fr.ts'); EN = os.path.join(ROOT, 'src/core/i18n/en.ts')
 
 def ts_str(s):
-    return "'" + s.replace('\\', '\\\\').replace("'", "\\'") + "'"
+    # (texte repris du code : ses échappements `\u00a0` sont déjà du JS valide — on n'échappe que les apostrophes droites nues)
+    return "'" + re.sub(r"(?<!\\)'", "\\'", s) + "'"
 def msg_ts(v):
     if isinstance(v, dict): return '{ ' + ', '.join(f"{k}: {ts_str(x)}" for k, x in v.items()) + ' }'
     return ts_str(v)
@@ -326,7 +327,9 @@ def cmd_apply(f, mapf):
                 if fr_keys[key] != msg_ts(frm): sys.exit(f"clé {key} déjà prise avec un autre texte : {fr_keys[key]}")
             else:
                 if isinstance(frm, str) and isinstance(en, str):
-                    en = frm[:len(frm) - len(frm.lstrip())] + en.strip() + frm[len(frm.rstrip()):]  # (espaces de bord comme en français)
+                    lead = frm[:len(frm) - len(frm.lstrip())]
+                    if en.strip()[:1] in ':;!?': lead = ''  # (« : » / « ! » français → pas d'espace en anglais)
+                    en = lead + en.strip() + frm[len(frm.rstrip()):]  # (espaces de bord comme en français)
                 fr_keys[key] = msg_ts(frm); new_fr.append(f"  '{key}': {msg_ts(frm)},"); new_en.append(f"  '{key}': {msg_ts(en)},")
     # un texte DANS l'expression d'un autre (ex. `${x ? 'Ton parrain' : …}`) : celui du dehors l'emporte (paramètre explicite)
     edits = [e for e in edits if not any(o is not e and o[0] <= e[0] and e[1] <= o[1] for o in edits)]
