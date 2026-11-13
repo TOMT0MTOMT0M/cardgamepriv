@@ -1,5 +1,7 @@
 import { cardHasCutout } from '../../core/pokeHolo/face';
-import { AdditiveBlending, Color, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, Vector3, type Material } from 'three/webgpu';
+import { AdditiveBlending, Color, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, Vector3, type Material, CircleGeometry } from 'three/webgpu';
+/** rayon du dodécagone circonscrit / rayon du cercle inscrit */
+const HALO_K = 1 / Math.cos(Math.PI / 12);
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
@@ -384,9 +386,10 @@ export function createViewerScene(): ViewerScene {
       rig.add(mesh);
       // halo derrière la carte (ne tourne pas avec elle)
       const hm = c.bag.add(new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending }));
-      const hd = length(uv().sub(0.5).mul(2));
+      // (audit 12/11, S17 / E4-20) dodécagone circonscrit au lieu du carré (voir opening.ts)
+      const hd = length(uv().sub(0.5).mul(2 * HALO_K));
       hm.colorNode = vec4(halo.color.mul(smoothstep(1, 0, hd).pow(2.4).mul(halo.k)), 1);
-      const haloMesh = new Mesh(c.bag.add(new PlaneGeometry(2.4, 2.4)), hm);
+      const haloMesh = new Mesh(c.bag.add(new CircleGeometry(1.2 * HALO_K, 12)), hm);
       haloMesh.position.set(0, 0.05, -0.32);
       stage.scene.add(haloMesh);
       // bloom sur l'émissif : les étoiles, les paillettes et le foil brillent vraiment (comme à l'ouverture)

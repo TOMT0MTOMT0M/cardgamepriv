@@ -183,6 +183,18 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     accent: uniform(new Color(M.accent)), center: uniform(new Vector2(0.5, 0.5)),
   };
 
+  // (audit 12/11, S17 / A10-16) minuteurs annulés au démontage (ils gardaient le mixer et le cri en mémoire jusqu'à échéance)
+  const pending = new Set<number>();
+  let pendingHooked = false;
+  const later = (fn: () => void, ms: number) => {
+    if (!pendingHooked) {
+      pendingHooked = true;
+      ctx.bag.fn(() => (pending.forEach((id) => clearTimeout(id)), pending.clear(), (pendingHooked = false)));
+    }
+    const id = window.setTimeout(() => (pending.delete(id), fn()), ms);
+    pending.add(id);
+  };
+
   // ───────────────────────────────────────────── carte : face du jeu, dos qui se métamorphose
   async function buildCard() {
     const mobile = ctx.quality === 'mobile';
@@ -545,7 +557,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
             const a = mx.clipAction(summon).setLoop(LoopOnce, 1);
             a.clampWhenFinished = true;
             a.reset().play();
-            window.setTimeout(() => {
+            later(() => {
               a.fadeOut(0.35);
               loopIdle();
             }, Math.max(200, summon.duration * 1000 - 350));
@@ -629,7 +641,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     t.call(() => {
       if (cryBuf) {
         const h = sfx.playSample(cryBuf, 0.9, 0.3);
-        if (cryBuf.duration > 5) window.setTimeout(() => h?.fade(0.8), 4200);
+        if (cryBuf.duration > 5) later(() => h?.fade(0.8), 4200);
       }
       else sfx.creature(M.cry, 0.55);
       shake.impulse(11 * k);

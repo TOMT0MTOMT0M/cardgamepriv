@@ -29,8 +29,9 @@ import {
   Vector2,
   Vector3,
   type Material,
-  type Texture,
-} from 'three/webgpu';
+  type Texture, CircleGeometry } from 'three/webgpu';
+/** rayon du dodécagone circonscrit / rayon du cercle inscrit */
+const HALO_K = 1 / Math.cos(Math.PI / 12);
 import {
   abs,
   atan,
@@ -2645,9 +2646,11 @@ export function createOpeningScene(): OpeningScene {
 
       // halo derrière la carte (suspense, rareté)
       const glowMat = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
-      const gd = length(uv().sub(0.5).mul(2));
+      // (audit 12/11, S17 / E4-20) halo dessiné sur un dodécagone circonscrit au cercle utile (au-delà du rayon 1 il vaut
+      // exactement 0) au lieu du carré : mêmes pixels, 20 % de surface mélangée en moins
+      const gd = length(uv().sub(0.5).mul(2 * HALO_K));
       glowMat.colorNode = vec4((U.glowColor as unknown as N).mul(smoothstep(1, 0, gd).pow(2.2).mul(U.glow)), 1);
-      const glow = (glowRef = new Mesh(c.bag.add(new PlaneGeometry(2.6, 2.6)), c.bag.add(glowMat)));
+      const glow = (glowRef = new Mesh(c.bag.add(new CircleGeometry(1.3 * HALO_K, 12)), c.bag.add(glowMat)));
       glow.position.z = -0.18;
       rig.add(glow);
 
@@ -2803,6 +2806,8 @@ export function createOpeningScene(): OpeningScene {
       const tint = U.glowColor as unknown as N;
       const vig = smoothstep(1.2, 0.3, screenUV.sub(0.5).length().mul(1.6));
       let col: N;
+      /** (E4-08) ordinateur : l'image composée AVANT l'aberration chromatique */
+      let colDirect: N | null = null;
       if (!mobile) {
         // flare anamorphique (légendaire et mieux), comme 018
         const fl = pl.own(anamorphicFlare(pl.emissive!, (n) => bloom(n, 1, 0, 0.12) as unknown as N)) as unknown as N;
@@ -2810,6 +2815,7 @@ export function createOpeningScene(): OpeningScene {
         // fl × teinte × 0 = 0 quel que soit le contenu de sa texture → ses ~12 passes ne sont plus recalculées
         onDemand(fl, () => !fxForce && (U.flare.value as number) === 0);
         col = pl.color.sample(warped).rgb.add(bl.rgb).add(fl.rgb.mul(tint).mul(U.flare)).add(tint.mul(sring.mul(0.3)));
+        colDirect = col;
         col = (chromaticAberration(vec4(col, 1), U.ca, U.center, float(1.06)) as unknown as N).rgb;
       } else {
         /*
@@ -2830,11 +2836,26 @@ export function createOpeningScene(): OpeningScene {
         const streak = exp(dy.div(0.0035).negate()).mul(0.9).add(exp(dy.div(0.03).negate()).mul(0.22)).mul(exp(dx.mul(-1.5)));
         col = base.add(bl.rgb).add(tint.mul(streak.mul(U.flare).mul(1.6))).add(tint.mul(sring.mul(0.3)));
       }
-      // inversion éclair (30 ms, mythique seulement)
-      col = mix(col, vec3(luminance(col)).oneMinus().mul(vec3(1, 0.9, 0.85)), U.invert);
-      col = col.add(color('#fff4e6').mul(U.flash.mul(0.25)));
-      col = col.mul(mix(float(0.8), float(1), vig)).mul(float(1).sub(U.dark.mul(0.6).mul(smoothstep(0.1, 0.6, length(d0)))));
-      pl.output = vec4(col, 1);
+      const finish = (x: N): N => {
+        // inversion éclair (30 ms, mythique seulement)
+        let o = mix(x, vec3(luminance(x)).oneMinus().mul(vec3(1, 0.9, 0.85)), U.invert) as N;
+        o = o.add(color('#fff4e6').mul(U.flash.mul(0.25)));
+        return o.mul(mix(float(0.8), float(1), vig)).mul(float(1).sub(U.dark.mul(0.6).mul(smoothstep(0.1, 0.6, length(d0)))));
+      };
+      pl.output = vec4(finish(col), 1);
+      /**
+       * (audit 12/11, S17 / E4-08) Ordinateur : `chromaticAberration` recopie toute l'image composée dans une texture
+       * plein écran (RGBA 16 bits) et la relit 3 fois, à chaque image, même quand l'aberration vaut 0 (vitrine, pile au
+       * repos, presque tout le temps). 2e sortie, même passe de scène et mêmes nœuds, sans cette recopie : utilisée
+       * tant que U.ca = 0 (à aberration nulle les deux sorties lisent le même pixel).
+       */
+      let direct: RenderPipeline | null = null;
+      if (colDirect) {
+        direct = new RenderPipeline(c.renderer);
+        direct.outputNode = vec4(finish(colDirect), 1);
+        const dp = direct;
+        c.bag.fn(() => dp.dispose());
+      }
       /**
        * Téléphone, vitrine : le booster seul n'émet aucune lumière (pas de braise, pas de fuite) → bloom, choc, éclair
        * et aberration y valent 0. Une 2e sortie (même passe de scène, mêmes pipelines GPU) se contente de l'image et
@@ -2851,6 +2872,7 @@ export function createOpeningScene(): OpeningScene {
         render: () => {
           if (lite && phase === 'display') return lite.render();
           blStrength.value = 0.28 + S.flash * 1.2 * fxk('flash') + S.glow * 0.25 * fxk('glow');
+          if (direct && !fxForce && (U.ca.value as number) === 0) return direct.render();
           pl.render();
         },
       };
@@ -2917,7 +2939,8 @@ export function createOpeningScene(): OpeningScene {
         post.render();
         if (eclMesh) eclMesh.visible = false;
         fxForce = false;
-        if (mobile) {
+        // (2e sortie : « lite » du téléphone, sortie sans aberration de l'ordinateur — E4-08)
+        if (mobile || direct) {
           phase = 'display';
           post.render();
         }
@@ -3155,7 +3178,8 @@ export function createOpeningScene(): OpeningScene {
       if (glowRef) glowRef.visible = (U.glow.value as number) > 0.003 && !(ctx.quality === 'mobile' && phase === 'display');
       U.bt.value = S.bt;
       // (vie max d'une particule ≈ 4,4 s : au-delà, plus rien de visible)
-      if (partsRef && ctx.quality === 'mobile') partsRef.visible = S.bt < 4.6 && (U.count.value as number) > 0;
+      // (audit 12/11, S17 / E4-19) aussi sur ordinateur : 2 200 sprites transparents étaient soumis à chaque image, même éteints
+      if (partsRef) partsRef.visible = S.bt < 4.6 && (U.count.value as number) > 0;
       U.flare.value = S.flare * fxk('flare');
       U.shock.value = S.shock;
       U.invert.value = fxLow ? 0 : S.invert;

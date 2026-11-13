@@ -605,8 +605,10 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
       cvx = P.vx * k;
       cvy = P.vy * k;
     } else {
-      cvx *= 0.88;
-      cvy *= 0.88;
+      // (audit 12/11, S17 / A9-15) extinction au temps : même durée à 60, 120 ou 144 Hz
+      const fade = Math.pow(0.88, dt * 60);
+      cvx *= fade;
+      cvy *= fade;
     }
     field += ((inside ? 1 : 0) - field) * Math.min(1, dt * (inside ? 6 : 3));
     const spd = Math.hypot(cvx, cvy);

@@ -1259,14 +1259,18 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     // pendant un glisser au doigt, le navigateur ne doit plus faire défiler la page (écouteur non passif)
     g.addEventListener('touchmove', (e) => drag && e.cancelable && e.preventDefault(), { passive: false });
     g.addEventListener('contextmenu', (e) => e.preventDefault());
-    const edge = () => {
+    // (audit 12/11, S17 / A9-09) vitesse au TEMPS (4 à 18 px par image à 60 Hz) : à 120 / 144 Hz le classeur filait 2 à 2,4 fois plus vite
+    let edgeAt = 0;
+    const edge = (now: number = performance.now()) => {
       edgeRaf = 0;
-      if (!drag || !last) return;
+      if (!drag || !last) return void (edgeAt = 0);
       const zone = 80;
       const dy = last.y < zone ? -1 : last.y > innerHeight - zone ? 1 : 0;
-      if (!dy) return;
+      if (!dy) return void (edgeAt = 0);
       const k = dy < 0 ? (zone - last.y) / zone : (last.y - (innerHeight - zone)) / zone;
-      el.scrollBy(0, dy * Math.ceil(4 + 14 * Math.min(1, k)));
+      const frames = edgeAt ? Math.min(3, Math.max(0, (now - edgeAt) / (1000 / 60))) : 1;
+      edgeAt = now;
+      el.scrollBy(0, dy * Math.ceil((4 + 14 * Math.min(1, k)) * frames));
       hover(last.x, last.y);
       edgeRaf = requestAnimationFrame(edge);
     };
