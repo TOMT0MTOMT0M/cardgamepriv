@@ -531,4 +531,59 @@ export const fr = {
 
   // ───── src/game/ui.ts (à la main) ─────
   'card.replayShort': 'Rejouer',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'ms.open': { one: 'Ouvre {n} booster', other: 'Ouvre {n} boosters' },
+  'ms.openPack': 'Ouvre {n} {pack}',
+  'ms.rare': 'Obtiens {n} cartes ★★★ ou mieux',
+  'ms.epic': 'Obtiens une carte ★★★★ ou mieux',
+  'ms.legendary': 'Obtiens une carte ★★★★★ ou mieux',
+  'ms.newCards': 'Trouve {n} nouvelles cartes',
+  'ms.subtheme': 'Obtiens {n} cartes {sub}',
+  'ms.dups': 'Obtiens {n} doublons',
+  'ms.contract': 'Signe un contrat',
+  'ms.trade': 'Propose ou accepte un échange',
+  'wk.open': 'Ouvre {n} boosters',
+  'wk.epic': 'Obtiens {n} cartes ★★★★ ou mieux',
+  'wk.contract': { one: 'Signe {n} contrat', other: 'Signe {n} contrats' },
+  'wk.trade': { one: 'Conclus ou propose {n} échange', other: 'Conclus ou propose {n} échanges' },
+  'wk.game': 'Joue {n} parties dans l’espace Jeux',
+  'wk.win': { one: 'Gagne {n} bataille (Pack Battle ou Royale)', other: 'Gagne {n} batailles (Pack Battle ou Royale)' },
+  'wk.burn': 'Brûle {n} doublons contre des pièces',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'dk.t6': 'une 6★',
+  'dk.t5': 'une 5★ ou mieux',
+  'dk.first': 'Premier à',
+  'dk.firstGoal': 'Le premier à tirer {what} gagne',
+  'dk.pulled': 'tirée',
+  'dk.new': 'Nouvelles cartes',
+  'dk.newGoal': 'Le plus de nouvelles cartes pour sa collection',
+  'dk.newUnit': { one: '{n} nouvelle', other: '{n} nouvelles' },
+  'dk.stars': 'Étoiles',
+  'dk.starsGoal': 'Le plus d’étoiles tirées en boosters',
+  'dk.3days': '3 jours',
+
+  // ───── src/core/haptics.ts ─────
+  'hap.hidden': 'onglet caché',
+  'hap.waiting': 'en attente du premier toucher',
+  'hap.refused': 'refusée (geste requis par le navigateur, ou navigateur intégré)',
+  'hap.none': 'appareil sans vibreur accessible',
+
+  // ───── src/game/main.ts (à la main) ─────
+  'vol.hapWhy': 'Vibrations : {why}.',
+
+  // ───── src/core/events.ts ─────
+  'ev.cardsApart': { one: '{n} carte à part', other: '{n} cartes à part' },
+  'ev.demoBlurb': 'Les armes et leurs skins, quelques jours seulement',
+
+  // ───── src/core/net/client.ts ─────
+  'auth.notInServer': 'Ton compte Discord n’est pas sur le serveur des potes : demande une invitation, puis reconnecte-toi.',
+  'auth.tokenFailed': 'Discord n’a pas confirmé la connexion. Réessaie.',
+  'auth.userFailed': 'Discord n’a pas répondu. Réessaie dans un instant.',
+  'auth.guildFailed': 'Impossible de vérifier ton serveur Discord. Réessaie.',
+  'auth.cancelled': 'Connexion annulée.',
+  'auth.expired': 'Ta session a expiré : reconnecte-toi.',
+  'auth.newSeason': 'Nouvelle saison : les compteurs sont remis à zéro, crée ton compte pour jouer.',
+  'auth.failed': 'Connexion impossible ({err}). Réessaie.',
 } as const satisfies Record<string, string | { one?: string; other: string }>;

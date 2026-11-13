@@ -30,10 +30,29 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- (version anglaise) langue choisie AVANT le premier dessin (même règle que src/game/lang.ts ; liste des langues
+         françaises injectée au build depuis src/core/i18n.ts) : <html lang>, titre de l'onglet, écran de chargement -->
+    <script>
+      (function () {
+        try {
+          var L = '__BEBOU_FR_DEVICE_LANGS__'.split(',');
+          var q = new URLSearchParams(location.search).get('lang');
+          var st = null;
+          try { st = localStorage.getItem('bebou.lang'); } catch (e) {}
+          var d = ((navigator.languages && navigator.languages[0]) || navigator.language || '').trim().toLowerCase().replace('_', '-');
+          var l = q === 'en' || q === 'fr' ? q : st === 'en' || st === 'fr' ? st : L.indexOf(d) >= 0 ? 'fr' : 'en';
+          document.documentElement.lang = l;
+          if (l === 'en') document.title = 'Bébou — cards';
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <!-- écran de chargement visible dès la première image, pendant que le jeu (3D) se télécharge ; main.ts le reprend -->
     <div id="app"><div class="loader"><div class="l-logo">BÉBOU</div><div class="l-bar"><i style="width: 5%"></i></div><div class="l-txt">chargement…</div><div class="l-tip"></div></div></div>
+    <script>
+      if (document.documentElement.lang === 'en') document.querySelector('.l-txt').textContent = 'loading…';
+    </script>
     <script>
       // Barre de chargement « vivante » (retours de Tom, 4 nov. : sur téléphone elle restait figée). Animée par le
       // compositeur (transform, Web Animations) : elle avance même quand le téléchargement / l'analyse du jeu occupe
@@ -86,8 +105,9 @@
                 seen[e.name] = 1; got += s; net += e.transferSize || 0;
               });
               // (main.ts reprend le texte dès qu'il démarre : on ne touche qu'au texte d'attente)
-              if (net > 20000 && got < total && /^(chargement|téléchargement)/.test(txt.textContent)) {
-                txt.textContent = 'téléchargement du jeu · ' + Math.min(99, Math.round((got / total) * 100)) + ' %';
+              if (net > 20000 && got < total && /^(chargement|téléchargement|loading|downloading)/.test(txt.textContent)) {
+                var en = document.documentElement.lang === 'en';
+                txt.textContent = (en ? 'downloading the game · ' : 'téléchargement du jeu · ') + Math.min(99, Math.round((got / total) * 100)) + (en ? '%' : ' %');
               }
             }
             add(performance.getEntriesByType('resource'));

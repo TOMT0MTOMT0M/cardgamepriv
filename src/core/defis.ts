@@ -12,6 +12,7 @@
  *  - « Premier à… » se tranche dès la carte tirée.
  * Les défis ne vendent aucune carte : ils redistribuent les pièces misées.
  */
+import { t } from './i18n';
 import type { RarityId } from './rarity';
 import { CARD_STARS } from './economy';
 
@@ -28,12 +29,13 @@ export interface DefiKindInfo {
 }
 
 export const DEFI_TARGETS: RarityId[] = ['legendary', 'mythic'];
-const targetLabel = (r?: RarityId) => (r === 'mythic' ? 'une 6★' : 'une 5★ ou mieux');
+const targetLabel = (r?: RarityId) => (r === 'mythic' ? t('dk.t6') : t('dk.t5'));
 
+// (version anglaise) libellés lus à l'affichage (getters) : la langue peut changer après le chargement
 export const DEFI_KINDS: DefiKindInfo[] = [
-  { id: 'first', label: 'Premier à', goal: (t) => `Le premier à tirer ${targetLabel(t)} gagne`, unit: (n) => (n ? 'tirée' : '—') },
-  { id: 'new', label: 'Nouvelles cartes', goal: () => 'Le plus de nouvelles cartes pour sa collection', unit: (n) => `${n} nouvelle${n > 1 ? 's' : ''}` },
-  { id: 'stars', label: 'Étoiles', goal: () => 'Le plus d’étoiles tirées en boosters', unit: (n) => `${n}★` },
+  { id: 'first', get label() { return t('dk.first'); }, goal: (tg) => t('dk.firstGoal', { what: targetLabel(tg) }), unit: (n) => (n ? t('dk.pulled') : '—') },
+  { id: 'new', get label() { return t('dk.new'); }, goal: () => t('dk.newGoal'), unit: (n) => t('dk.newUnit', { n }) },
+  { id: 'stars', get label() { return t('dk.stars'); }, goal: () => t('dk.starsGoal'), unit: (n) => `${n}★` },
 ];
 export const defiKind = (k: DefiKind) => DEFI_KINDS.find((x) => x.id === k) ?? DEFI_KINDS[0];
 
@@ -41,7 +43,7 @@ export const HOUR = 3600_000;
 export const DEFI_DURATIONS: Array<{ ms: number; label: string }> = [
   { ms: HOUR, label: '1 h' },
   { ms: 24 * HOUR, label: '24 h' },
-  { ms: 72 * HOUR, label: '3 jours' },
+  { ms: 72 * HOUR, get label() { return t('dk.3days'); } },
 ];
 /** délai pour accepter */
 export const DEFI_ACCEPT_MS = 6 * HOUR;

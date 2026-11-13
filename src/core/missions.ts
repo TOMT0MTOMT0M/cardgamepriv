@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { BEBOU_PACK, THEMES, catalogEntry, inSubthemeScope, subthemeViews, themeOpen } from './sets/themes';
 
 /**
@@ -86,7 +87,7 @@ function rand(seed: string) {
   };
 }
 
-const packKeys = () => [{ key: 'bebou', label: BEBOU_PACK.label }, ...THEMES.filter(themeOpen).map((t) => ({ key: t.id, label: `${t.label} Pack` }))];
+const packKeys = () => [{ key: 'bebou', label: BEBOU_PACK.label }, ...THEMES.filter(themeOpen).map((t) => ({ key: t.id, label: `${t.label} Pack` }))]; // i18n-ok
 // les 177 familles « Jeux vidéo » comptent pour UN sous-thème (`group:jeux-video`) : sinon presque chaque mission
 // tomberait sur une petite famille (« 4 cartes Ace Attorney ») quasi impossible à remplir
 const liveSubthemes = () => THEMES.flatMap((t) => subthemeViews(t).filter((v) => v.cards.length).map((v) => ({ id: v.id, label: v.label })));
@@ -221,28 +222,27 @@ export function rerollMission(s: MissionsState, id: string, userKey: string): Mi
 /** Texte d'une mission (« Ouvre 3 boosters »). */
 export function missionLabel(m: Mission): string {
   const n = m.target;
-  const s = n > 1 ? 's' : '';
   switch (m.kind) {
     case 'open':
-      return `Ouvre ${n} booster${s}`;
+      return t('ms.open', { n });
     case 'openPack':
-      return `Ouvre ${n} ${packKeys().find((p) => p.key === m.param)?.label ?? 'booster'}`;
+      return t('ms.openPack', { n, pack: packKeys().find((p) => p.key === m.param)?.label ?? 'booster' }); // i18n-ok (« booster » pareil)
     case 'rare':
-      return `Obtiens ${n} cartes ★★★ ou mieux`;
+      return t('ms.rare', { n });
     case 'epic':
-      return 'Obtiens une carte ★★★★ ou mieux';
+      return t('ms.epic');
     case 'legendary':
-      return 'Obtiens une carte ★★★★★ ou mieux';
+      return t('ms.legendary');
     case 'newCards':
-      return `Trouve ${n} nouvelles cartes`;
+      return t('ms.newCards', { n });
     case 'subtheme':
-      return `Obtiens ${n} cartes ${liveSubthemes().find((x) => x.id === m.param)?.label ?? ''}`.trim();
+      return t('ms.subtheme', { n, sub: liveSubthemes().find((x) => x.id === m.param)?.label ?? '' }).trim();
     case 'dups':
-      return `Obtiens ${n} doublons`;
+      return t('ms.dups', { n });
     case 'contract':
-      return 'Signe un contrat';
+      return t('ms.contract');
     case 'trade':
-      return 'Propose ou accepte un échange';
+      return t('ms.trade');
   }
 }
 

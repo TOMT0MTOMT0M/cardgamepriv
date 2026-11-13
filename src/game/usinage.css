@@ -385,3 +385,11 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
   .me-menu .icon.lang-sw .mm-l { color: var(--ink); }
   .me-menu .lang-sw .ls-p { font-size: 12px; }
 }
+
+/* ───────────── (version anglaise) les 6 textes posés par le CSS (content:) — en anglais quand <html lang="en"> ───────────── */
+:lang(en) .sleeve.special::before { content: 'SIGNATURE PACK'; }
+:lang(en) .sleeve.soon .sl-name::after { content: ' · soon'; }
+:lang(en) .cs.new::after { content: 'new'; }
+:lang(en) .me-menu .vol-pop::before { content: 'Sound'; }
+:lang(en) .pf-ghost.out::after { content: 'Remove'; }
+:lang(en) .df-p.df-win .df-pn::after { content: ' — winner'; }

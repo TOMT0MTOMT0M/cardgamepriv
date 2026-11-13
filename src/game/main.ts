@@ -529,7 +529,7 @@ function renderMe() {
     b.setAttribute('aria-checked', String(haptics.enabled));
     b.querySelector('i')!.textContent = haptics.enabled ? tr('common.yes') : tr('common.no');
     haptics.pulse([40, 60, 40]); // (allumées : on les sent tout de suite ; coupées : rien)
-    if (haptics.enabled && haptics.why) toast(`Vibrations : ${haptics.why}.`, 'info');
+    if (haptics.enabled && haptics.why) toast(tr('vol.hapWhy', { why: haptics.why }), 'info');
   });
   const toggle = (sel: string, read: () => boolean, write: (on: boolean) => void, apply: (on: boolean) => void) =>
     meEl.querySelector(sel)?.addEventListener('click', (e) => {

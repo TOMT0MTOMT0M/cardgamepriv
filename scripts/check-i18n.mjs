@@ -151,7 +151,7 @@ const per = [];
     if (f.endsWith('.css')) {
       lines.forEach((l, k) => {
         const m = /content:\s*(['"])(.*?)\1/.exec(l);
-        if (m && /[A-Za-zÀ-ÿ]{2}/.test(m[2]) && !l.includes('i18n-ok')) hits.push({ line: k + 1, text: m[2] });
+        if (m && /[A-Za-zÀ-ÿ]{2}/.test(m[2]) && !l.includes('i18n-ok') && !l.includes(':lang(en)')) hits.push({ line: k + 1, text: m[2] });
       });
     } else {
       for (const s of strings(src)) {

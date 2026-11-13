@@ -592,4 +592,59 @@ export const en: Dict = {
 
   // ───── src/game/ui.ts (à la main) ─────
   'card.replayShort': 'Replay',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'ms.open': { one: 'Open {n} booster', other: 'Open {n} boosters' },
+  'ms.openPack': 'Open {n} {pack}',
+  'ms.rare': 'Get {n} ★★★ cards or better',
+  'ms.epic': 'Get a ★★★★ card or better',
+  'ms.legendary': 'Get a ★★★★★ card or better',
+  'ms.newCards': 'Find {n} new cards',
+  'ms.subtheme': 'Get {n} {sub} cards',
+  'ms.dups': 'Get {n} duplicates',
+  'ms.contract': 'Sign a contract',
+  'ms.trade': 'Offer or accept a trade',
+  'wk.open': 'Open {n} boosters',
+  'wk.epic': 'Get {n} ★★★★ cards or better',
+  'wk.contract': { one: 'Sign {n} contract', other: 'Sign {n} contracts' },
+  'wk.trade': { one: 'Complete or offer {n} trade', other: 'Complete or offer {n} trades' },
+  'wk.game': 'Play {n} games in Games',
+  'wk.win': { one: 'Win {n} battle (Pack Battle or Royale)', other: 'Win {n} battles (Pack Battle or Royale)' },
+  'wk.burn': 'Burn {n} duplicates for coins',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'dk.t6': 'a 6★',
+  'dk.t5': 'a 5★ or better',
+  'dk.first': 'First to',
+  'dk.firstGoal': 'The first to pull {what} wins',
+  'dk.pulled': 'pulled',
+  'dk.new': 'New cards',
+  'dk.newGoal': 'The most new cards for their collection',
+  'dk.newUnit': { one: '{n} new', other: '{n} new' },
+  'dk.stars': 'Stars',
+  'dk.starsGoal': 'The most stars pulled in boosters',
+  'dk.3days': '3 days',
+
+  // ───── src/core/haptics.ts ─────
+  'hap.hidden': 'tab hidden',
+  'hap.waiting': 'waiting for the first touch',
+  'hap.refused': 'refused (gesture required by the browser, or in-app browser)',
+  'hap.none': 'device without an accessible vibrator',
+
+  // ───── src/game/main.ts (à la main) ─────
+  'vol.hapWhy': 'Vibrations: {why}.',
+
+  // ───── src/core/events.ts ─────
+  'ev.cardsApart': { one: '{n} separate card', other: '{n} separate cards' },
+  'ev.demoBlurb': 'The weapons and their skins, for a few days only',
+
+  // ───── src/core/net/client.ts ─────
+  'auth.notInServer': 'Your Discord account isn’t on the mates’ server: ask for an invite, then log in again.',
+  'auth.tokenFailed': 'Discord didn’t confirm the login. Try again.',
+  'auth.userFailed': 'Discord didn’t answer. Try again in a moment.',
+  'auth.guildFailed': 'Couldn’t check your Discord server. Try again.',
+  'auth.cancelled': 'Login cancelled.',
+  'auth.expired': 'Your session has expired: log in again.',
+  'auth.newSeason': 'New season: the counters have been reset, create your account to play.',
+  'auth.failed': 'Couldn’t log in ({err}). Try again.',
 };

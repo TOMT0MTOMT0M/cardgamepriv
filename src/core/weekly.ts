@@ -6,6 +6,7 @@
  *  - Missions de la SEMAINE (ici) : 3 par joueur et par semaine (lundi → dimanche, heure de Paris), ~200 pièces chacune.
  *    Tirage déterministe (joueur + semaine) : rien n'est écrit tant qu'on ne progresse pas.
  */
+import { t } from './i18n';
 import { missionDay, type Mission } from './missions';
 
 /** Pièces d'une mission du jour, en plus de ses boosters : 40 / 50 / 60 selon sa difficulté. */
@@ -145,24 +146,23 @@ export function claimWeekly(s: WeeklyState, id: string): { state: WeeklyState; r
 
 export function weeklyLabel(m: WeeklyMission): string {
   const n = m.target;
-  const s = n > 1 ? 's' : '';
   switch (m.kind) {
     case 'open':
-      return `Ouvre ${n} boosters`;
+      return t('wk.open', { n });
     case 'epic':
-      return `Obtiens ${n} cartes ★★★★ ou mieux`;
+      return t('wk.epic', { n });
     case 'newCards':
-      return `Trouve ${n} nouvelles cartes`;
+      return t('ms.newCards', { n });
     case 'contract':
-      return `Signe ${n} contrat${s}`;
+      return t('wk.contract', { n });
     case 'trade':
-      return `Conclus ou propose ${n} échange${s}`;
+      return t('wk.trade', { n });
     case 'game':
-      return `Joue ${n} parties dans l’espace Jeux`;
+      return t('wk.game', { n });
     case 'win':
-      return `Gagne ${n} bataille${s} (Pack Battle ou Royale)`;
+      return t('wk.win', { n });
     case 'burn':
-      return `Brûle ${n} doublons contre des pièces`;
+      return t('wk.burn', { n });
   }
 }
 

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import { FR_DEVICE_LANGS } from './src/core/i18n';
 
 // `npm run dev:mobile` → HTTPS + LAN : WebGPU et le gyroscope exigent un contexte sécurisé sur téléphone.
 // Trois pages : le labo (/), le jeu (/jeu/) et le dashboard de l'équipe (/admin/, src/admin/).
@@ -22,6 +23,8 @@ export default defineConfig(({ mode }) => {
       stylesFirst(),
       catalogCoreOnly(),
       versionJson(buildId, canal),
+      // (version anglaise) la liste des langues françaises (une seule source : src/core/i18n.ts) dans le script de jeu/index.html
+      { name: 'bebou-lang', transformIndexHtml: (html: string) => html.replace('__BEBOU_FR_DEVICE_LANGS__', FR_DEVICE_LANGS.join(',')) } satisfies Plugin,
       precacheManifest(buildId, !!env.VITE_CONVEX_URL?.trim()),
     ],
     // Catalogue en deux temps (perf, lot chargement 1) : le client lit le NOYAU du catalogue (sans les 4 gros sets) ;

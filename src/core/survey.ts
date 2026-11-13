@@ -1,3 +1,4 @@
+import { tData } from './i18n';
 /**
  * SONDAGE « PROCHAINES MISES À JOUR » (v1.0.10, 10/11) — la définition, partagée par le jeu (game/survey.ts) et le
  * serveur (convex/survey.ts, qui refuse toute réponse hors de ces listes).
@@ -11,30 +12,42 @@ export interface SurveyOption {
   hint: string;
 }
 
+/** (version anglaise) libellés lus à l'affichage : le français ici (réponses, admin), l'anglais dans i18n/en/data.ts */
+const O = (k: string, id: string, label: string, hint: string): SurveyOption => ({
+  id,
+  get label() {
+    return tData(`sv.${k}.${id}`, label);
+  },
+  get hint() {
+    return tData(`sv.${k}.${id}.hint`, hint);
+  },
+});
 /** Q1 — quels univers ajouter (choix multiples) */
+// i18n-data:début
 export const SURVEY_UNIVERSES: SurveyOption[] = [
-  { id: 'anime', label: 'Animes & mangas', hint: 'nouvelles séries, persos' },
-  { id: 'jv', label: 'Jeux vidéo', hint: 'licences, héros, skins' },
-  { id: 'ecran', label: 'Films & séries', hint: 'ciné, séries, dessins animés' },
-  { id: 'sport', label: 'Sport', hint: 'clubs, joueurs, légendes' },
-  { id: 'musique', label: 'Musique', hint: 'artistes, albums' },
-  { id: 'esport', label: 'Esport & streamers', hint: 'équipes, créateurs' },
-  { id: 'monde', label: 'Le Monde', hint: 'lieux, animaux, plats' },
-  { id: 'nous', label: 'Nos cartes', hint: 'plus de cartes de la bande' },
+  O('u', 'anime', 'Animes & mangas', 'nouvelles séries, persos'),
+  O('u', 'jv', 'Jeux vidéo', 'licences, héros, skins'),
+  O('u', 'ecran', 'Films & séries', 'ciné, séries, dessins animés'),
+  O('u', 'sport', 'Sport', 'clubs, joueurs, légendes'),
+  O('u', 'musique', 'Musique', 'artistes, albums'),
+  O('u', 'esport', 'Esport & streamers', 'équipes, créateurs'),
+  O('u', 'monde', 'Le Monde', 'lieux, animaux, plats'),
+  O('u', 'nous', 'Nos cartes', 'plus de cartes de la bande'),
 ];
 
 /** Q2 — quelles nouveautés de jeu (3 au plus) */
 export const SURVEY_FEATURES: SurveyOption[] = [
-  { id: 'jeux', label: 'Nouveaux mini-jeux', hint: 'dans l’espace Jeux' },
-  { id: 'events', label: 'Événements limités', hint: 'boosters et cartes du moment' },
-  { id: 'defis', label: 'Défis entre amis', hint: 'paris, objectifs à plusieurs' },
-  { id: 'echanges', label: 'Échanges & marché', hint: 'plus simple, plus rapide' },
-  { id: 'saisons', label: 'Saisons & classements', hint: 'récompenses de fin de saison' },
-  { id: 'missions', label: 'Missions & succès', hint: 'plus d’objectifs' },
-  { id: 'profil', label: 'Personnaliser son profil', hint: 'cadres, titres, vitrine' },
-  { id: 'ouvertures', label: 'Animations d’ouverture', hint: 'à débloquer' },
-  { id: 'appli', label: 'Appli & notifications', hint: 'comme une vraie appli' },
+  O('f', 'jeux', 'Nouveaux mini-jeux', 'dans l’espace Jeux'),
+  O('f', 'events', 'Événements limités', 'boosters et cartes du moment'),
+  O('f', 'defis', 'Défis entre amis', 'paris, objectifs à plusieurs'),
+  O('f', 'echanges', 'Échanges & marché', 'plus simple, plus rapide'),
+  O('f', 'saisons', 'Saisons & classements', 'récompenses de fin de saison'),
+  O('f', 'missions', 'Missions & succès', 'plus d’objectifs'),
+  O('f', 'profil', 'Personnaliser son profil', 'cadres, titres, vitrine'),
+  O('f', 'ouvertures', 'Animations d’ouverture', 'à débloquer'),
+  O('f', 'appli', 'Appli & notifications', 'comme une vraie appli'),
 ];
+// i18n-data:fin
 
 export const SURVEY_MAX_FEATURES = 3;
 
