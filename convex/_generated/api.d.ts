@@ -39,6 +39,7 @@ import type * as market from "../market.js";
 import type * as migrations from "../migrations.js";
 import type * as missions from "../missions.js";
 import type * as packs from "../packs.js";
+import type * as presence from "../presence.js";
 import type * as presse from "../presse.js";
 import type * as profiles from "../profiles.js";
 import type * as purgedCards from "../purgedCards.js";
@@ -51,6 +52,7 @@ import type * as suggestions from "../suggestions.js";
 import type * as survey from "../survey.js";
 import type * as trades from "../trades.js";
 import type * as users from "../users.js";
+import type * as wishes from "../wishes.js";
 
 import type {
   ApiFromModules,
@@ -90,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   missions: typeof missions;
   packs: typeof packs;
+  presence: typeof presence;
   presse: typeof presse;
   profiles: typeof profiles;
   purgedCards: typeof purgedCards;
@@ -102,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   survey: typeof survey;
   trades: typeof trades;
   users: typeof users;
+  wishes: typeof wishes;
 }>;
 
 /**

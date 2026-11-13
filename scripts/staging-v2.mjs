@@ -42,6 +42,17 @@ const stamp = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/
  */
 function protectProd(fn) {
   const before = readFileSync(PROD_ENV, 'utf8');
+  // (13/11) `fail()` quitte le processus (process.exit) : le `finally` ci-dessous ne tourne alors PAS, et .env.local
+  // restait réécrit sur le staging après un `convex dev` en échec (vu le 13/11 : erreur de types au déploiement).
+  // On le remet donc aussi à la sortie du processus, quoi qu'il arrive.
+  const restoreOnExit = () => {
+    try {
+      if (existsSync(PROD_ENV) && readFileSync(PROD_ENV, 'utf8') !== before) writeFileSync(PROD_ENV, before);
+    } catch {
+      /* rien de plus à faire en quittant */
+    }
+  };
+  process.on('exit', restoreOnExit);
   let out;
   try {
     out = fn();
@@ -51,6 +62,7 @@ function protectProd(fn) {
       writeFileSync(PROD_ENV, before);
       console.log('      (.env.local avait été réécrit par convex : remis à l\'identique)');
     }
+    process.off('exit', restoreOnExit);
     if (readFileSync(PROD_ENV, 'utf8') !== before) fail('.env.local n\'a pas pu être restauré !');
   }
   return out;
