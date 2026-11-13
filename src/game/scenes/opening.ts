@@ -2938,6 +2938,42 @@ export function createOpeningScene(): OpeningScene {
       queueMicrotask(() => api.onWheelReady?.());
       // retirées de la scène mais gardées en vie : leurs pipelines restent en cache pour les vraies cartes
       dummies.forEach((m) => stage.scene.remove(m));
+      // (audit 12/11, S09 / E4-23) cartes à DEUX illustrations (double face, lenticulaire — des Bébous secrets) : leur
+      // graphe de face n'était préchauffé nulle part, son pipeline naissait à la première révélation. Préparé APRÈS
+      // l'affichage de la boutique (rien d'ajouté au chargement), vitrine au repos, une face à la fois, hors champ.
+      {
+        let off = false;
+        c.bag.fn(() => (off = true));
+        const two = async (lenticular: boolean) => {
+          const art2 = { ...dummyArt, bg2: dummyArt.bg, subject2: dummyArt.subject, ...(lenticular ? { lenticular: true } : {}) } as typeof dummyArt;
+          const face = buildFace(art2, 5, true);
+          const { edge } = buildEdge('#ffffff', TEASE_GOLD);
+          warm.push(face.holo.material, edge);
+          const m = new Mesh(cardGeo, [face.holo.material, backMat, edge]);
+          m.frustumCulled = false;
+          m.position.z = camBase + 10; // derrière la caméra : soumis au rendu (nœuds, pipelines), aucun pixel
+          m.updateMatrixWorld(true);
+          stage.scene.add(m);
+          try {
+            await compileReal();
+            await nextFrame();
+            await nextFrame();
+          } finally {
+            stage.scene.remove(m);
+          }
+        };
+        const later = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+        void (async () => {
+          await later(9000);
+          for (const lenticular of [false, true]) {
+            // seulement en vitrine, hors ouverture ; sinon on repasse plus tard
+            while (!off && (phase !== 'display' || document.hidden || c.overlay.hidden)) await later(4000);
+            if (off) return;
+            await two(lenticular).catch((e) => console.warn('[opening] préchauffage double face', e));
+            await later(1500);
+          }
+        })();
+      }
       // déchirure : compilée avec le reste (visible pendant le préchauffage), cachée ensuite
       tearBody.visible = tearStrip.visible = false;
       if (bakedBody && bakedStrip) bakedBody.visible = bakedStrip.visible = false;
