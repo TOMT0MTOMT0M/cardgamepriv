@@ -1,3 +1,6 @@
+import { t as tr } from '../core/i18n';
+import '../core/i18n/fr/game.localBackend'; // (textes de ce module, version anglaise)
+import { fe } from '../core/errors';
 import { rollPack, rollPackEx, type PackRequest } from '../core/packRoll';
 import { demoEvent, eventLive, type PackEvent } from '../core/events';
 import { SURVEY_FEATURES, SURVEY_UNIVERSES, cleanSurvey, surveyFilled, type SurveyAnswer } from '../core/survey';
@@ -28,6 +31,7 @@ import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon,
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
 import { createLocalChat } from './chatLocal';
+import { feedMsg, fm, type Msg, type MsgParams } from '../core/msgs';
 import { BOARD_HOURS, BOARD_MAX_ITEMS, BOARD_MAX_OPEN, listingLive, type BoardState, type MarketBoard, type MarketItem, type ListingOfferView, type ListingView } from './backend';
 import type { SuggestionView } from './backend';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
@@ -102,7 +106,7 @@ interface Saved {
   /** pièces, compteurs de l'économie, parties de l'espace Jeux (ecoLocal.ts) */
   eco?: LocalEcoSave;
   /** fil d'activité perso (gros drops, échanges, contrats) */
-  activity?: Array<{ id: string; kind: string; message: string; cardId?: string; cardName?: string; rarity?: RarityId; mintNumber?: number; createdAt: number }>;
+  activity?: Array<{ id: string; kind: string; message: string; msgKey?: string; msgParams?: MsgParams; cardId?: string; cardName?: string; rarity?: RarityId; mintNumber?: number; createdAt: number }>;
   /** AMIS (lot A2) : liens avec les robots (`from` / `to` : 'me' ou id de robot) */
   friendships?: Array<{ id: string; from: string; to: string; status: 'pending' | 'accepted' | 'declined'; createdAt: number; respondedAt?: number }>;
   /** un robot t'a déjà envoyé sa demande d'ami (une seule fois par partie de démo) */
@@ -135,7 +139,7 @@ function remove(inv: Inv, it: TradeItem): boolean {
 
 function freshSave(): Saved {
   // trois amis robots, chacun avec ~30 boosters ouverts (tirage déterministe)
-  const bots: Bot[] = ['Léa', 'Malo', 'Inès'].map((n, i) => {
+  const bots: Bot[] = ['Léa', 'Malo', 'Inès'].map((n, i) => { // i18n-ok (prénoms)
     const r = rng(9000 + i * 77);
     const inv: Inv = {};
     for (let p = 0; p < 30; p++) for (const s of rollPack({ kind: 'bebou' }, r)) if (s.rarity !== 'secret') add(inv, s.card.id, s.rarity, 1, 50 + p);
@@ -228,7 +232,7 @@ export function createLocalBackend(): GameBackend {
     const now = Date.now();
     state.user = {
       id: 'me',
-      name: 'Toi',
+      name: tr('chat.me'),
       packBalance: applyRegen(save.packBalance, save.regenAt ?? now, now).balance,
       packStored: save.packBalance,
       packRegenAt: save.regenAt ?? now,
@@ -242,7 +246,7 @@ export function createLocalBackend(): GameBackend {
     state.binders = [...(save.binders ?? [])].sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
     state.covers = save.covers ?? {};
     state.collection = Object.values(save.inv);
-    state.friends = save.bots.map<Friend>((b, i) => ({ id: b.id, name: b.name, online: i !== 2, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30, bot: true }));
+    state.friends = save.bots.map<Friend>((b, i) => ({ id: b.id, name: b.name, online: i !== 2, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30, bot: true })); // i18n-ok
     state.feed = save.feed.slice(0, 20);
     state.bigPulls = (save.bigPulls ?? []).slice(0, 30);
     state.sealed = save.sealed;
@@ -260,10 +264,13 @@ export function createLocalBackend(): GameBackend {
     }
   }
 
-  const feed = (kind: string, message: string, rarity?: RarityId, card?: { id: string; name: string; mint?: number }) => {
-    save.feed.unshift({ id: `f${save.seq++}`, kind, message, rarity, createdAt: Date.now() });
+  const feed = (kind: string, m: string | Msg, rarity?: RarityId, card?: { id: string; name: string; mint?: number }) => {
+    // (version anglaise, lot 4) texte français + code : le fil s'affiche dans la langue active (src/core/msgs.ts)
+    const message = typeof m === 'string' ? m : m.text;
+    const coded = typeof m === 'string' ? {} : { msgKey: m.key, ...(m.params ? { msgParams: m.params } : {}) };
+    save.feed.unshift({ id: `f${save.seq++}`, kind, message, ...coded, rarity, createdAt: Date.now() });
     save.feed.length = Math.min(save.feed.length, 30);
-    (save.activity ??= []).unshift({ id: `a${save.seq++}`, kind, message, rarity, cardId: card?.id, cardName: card?.name, mintNumber: card?.mint, createdAt: Date.now() });
+    (save.activity ??= []).unshift({ id: `a${save.seq++}`, kind, message, ...coded, rarity, cardId: card?.id, cardName: card?.name, mintNumber: card?.mint, createdAt: Date.now() });
     save.activity.length = Math.min(save.activity.length, 60);
   };
   const myStats = () => statsFrom(Object.values(save.inv), { packsOpened: save.opened, tradesDone: save.trades_done ?? 0, contractsSigned: save.contracts_done ?? 0, streak: save.streak?.count ?? 0, burned: (save.eco?.econ ?? emptyEcon()).burned });
@@ -292,8 +299,8 @@ export function createLocalBackend(): GameBackend {
       const last = (save.bigPulls ?? []).find((p) => p.userId === b.id);
       out.friends.push({
         id: l.id, userId: b.id, name: b.name, bot: true, since: l.respondedAt ?? l.createdAt,
-        lastSeenAt: i === 2 ? now - 3 * 3600_000 : now, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30 + i * 12,
-        lastActivity: last ? { kind: last.rarity === 'mythic' ? 'mythic_pull' : 'pull', message: `${b.name} a obtenu ${last.cardName} [${rarityOf(last.rarity).label} #${last.mintNumber ?? 1}] !`, createdAt: last.createdAt } : null,
+        lastSeenAt: i === 2 ? now - 3 * 3600_000 : now, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30 + i * 12, // i18n-ok
+        lastActivity: last ? { kind: last.rarity === 'mythic' ? 'mythic_pull' : 'pull', ...feedMsg(fm('f.pull', { name: b.name, card: last.cardName, cardId: last.cardId, rarity: rarityOf(last.rarity).label, rarityId: last.rarity, mint: last.mintNumber ?? 1 })), createdAt: last.createdAt } : null,
       });
     }
     out.friends.sort((a, b) => b.lastSeenAt - a.lastSeenAt);
@@ -337,7 +344,7 @@ export function createLocalBackend(): GameBackend {
     const give = theirDup[Math.floor(Math.random() * theirDup.length)];
     const want = mineDup.find((c) => c.rarity === give.rarity)!;
     save.trades.push({
-      id: `t${save.seq++}`, fromId: bot.id, toId: 'me', fromName: bot.name, toName: 'Toi',
+      id: `t${save.seq++}`, fromId: bot.id, toId: 'me', fromName: bot.name, toName: tr('chat.me'),
       offered: [{ cardId: give.cardId, rarity: give.rarity, count: 1 }],
       requested: [{ cardId: want.cardId, rarity: want.rarity, count: 1 }],
       createdAt: Date.now(), status: 'pending', quick: true,
@@ -377,7 +384,7 @@ export function createLocalBackend(): GameBackend {
   const O = () => (save.listingOffers ??= []);
   const ACTIVE_OFFER = (o: DemoOffer) => o.status === 'pending' || o.status === 'countered';
   const invOf = (id: string) => (id === 'me' ? save.inv : save.bots.find((b) => b.id === id)?.inv);
-  const userName = (id: string) => (id === 'me' ? 'Toi' : (save.bots.find((b) => b.id === id)?.name ?? '?'));
+  const userName = (id: string) => (id === 'me' ? tr('chat.me') : (save.bots.find((b) => b.id === id)?.name ?? '?'));
   const cardName = (id: string) => catalogEntry(id)?.name ?? id;
   const listingOfferView = (o: DemoOffer): ListingOfferView => ({ ...o });
   const viewOf = (l: DemoListing): ListingView => {
@@ -394,13 +401,13 @@ export function createLocalBackend(): GameBackend {
   const myFree = (it: TradeItem, except?: DemoOffer) => (save.inv[cardKey(it)]?.count ?? 0) - (lockedCards(state).get(cardKey(it)) ?? 0) + (except?.offered.find((x) => cardKey(x) === cardKey(it))?.count ?? 0);
   const checkMine = (items: TradeItem[], except?: DemoOffer) => {
     for (const it of items) {
-      if ((save.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`Tu ne possèdes pas assez d’exemplaires de ${cardName(it.cardId)}.`);
-      if (myFree(it, except) < it.count) throw new Error(`${cardName(it.cardId)} est déjà engagée dans un échange, une annonce ou une offre en cours.`);
+      if ((save.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(fe('listings.7', { p0: cardName(it.cardId) }));
+      if (myFree(it, except) < it.count) throw new Error(fe('listings.9', { p0: cardName(it.cardId) }));
     }
   };
   const checkList = (items: TradeItem[], what: string, allowEmpty = false) => {
-    if (!allowEmpty && !items.length) throw new Error(`Choisis au moins une carte (${what}).`);
-    if (items.length > BOARD_MAX_ITEMS) throw new Error(`${BOARD_MAX_ITEMS} cartes différentes au maximum (${what}).`);
+    if (!allowEmpty && !items.length) throw new Error(fe('listings.1', { p0: what }));
+    if (items.length > BOARD_MAX_ITEMS) throw new Error(fe('listings.2', { p0: BOARD_MAX_ITEMS, p1: what }));
   };
   function closeOffersOf(l: DemoListing, now: number, keep?: string) {
     for (const o of O()) if (o.listingId === l.id && ACTIVE_OFFER(o) && o.id !== keep) ((o.status = 'closed'), (o.resolvedAt = now));
@@ -426,9 +433,9 @@ export function createLocalBackend(): GameBackend {
   /** l'échange lui-même : tout ou rien (vérifié avant de bouger quoi que ce soit) */
   function boardConclude(l: DemoListing, o: DemoOffer, give: TradeItem[], want: TradeItem[]) {
     const a = invOf(l.userId), b = invOf(o.fromId);
-    if (!a || !b) throw new Error('Joueur introuvable.');
-    for (const it of give) if ((a[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${userName(l.userId)} n’a plus ${cardName(it.cardId)}.`);
-    for (const it of want) if ((b[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${userName(o.fromId)} n’a plus ${cardName(it.cardId)}.`);
+    if (!a || !b) throw new Error(fe('challenges.3'));
+    for (const it of give) if ((a[cardKey(it)]?.count ?? 0) < it.count) throw new Error(fe('listings.10', { p0: userName(l.userId), p1: cardName(it.cardId) }));
+    for (const it of want) if ((b[cardKey(it)]?.count ?? 0) < it.count) throw new Error(fe('listings.10', { p0: userName(o.fromId), p1: cardName(it.cardId) }));
     if (o.fromId === 'me') checkMine(want, o);
     const now = Date.now();
     give.forEach((it) => (remove(a, it), add(b, it.cardId, it.rarity, it.count)));
@@ -438,12 +445,12 @@ export function createLocalBackend(): GameBackend {
     l.status = 'closed';
     l.resolvedAt = now;
     closeOffersOf(l, now, o.id);
-    save.trades.push({ id: `t${save.seq++}`, fromId: l.userId, toId: o.fromId, fromName: userName(l.userId), toName: userName(o.fromId), offered: give, requested: want, note: 'Tableau d’offres', createdAt: o.createdAt, status: 'accepted', resolvedAt: now });
+    save.trades.push({ id: `t${save.seq++}`, fromId: l.userId, toId: o.fromId, fromName: userName(l.userId), toName: userName(o.fromId), offered: give, requested: want, note: tr('lb.boardNote'), createdAt: o.createdAt, status: 'accepted', resolvedAt: now });
     save.trades_done = (save.trades_done ?? 0) + 1;
     eco.hooks.onTrade();
     bump({ type: 'trade' });
     const other = l.userId === 'me' ? o.fromId : l.userId;
-    feed('trade', `Échange conclu avec ${userName(other)} sur le tableau d’offres !`);
+    feed('trade', fm('f.dBoard', { name: userName(other) }));
   }
   /** un robot compose une offre d'environ `target` en valeur avec ses cartes (de préférence celles qui me manquent) */
   function botCards(bot: Bot, target: number): TradeItem[] {
@@ -469,7 +476,7 @@ export function createLocalBackend(): GameBackend {
     if (!bot) return;
     const offered = botCards(bot, cardsValue(l.items) * (0.6 + Math.random() * 0.7));
     if (!offered.length) return;
-    const notes = ['ça te va ?', 'je peux monter un peu', 'échange rapide ?', undefined];
+    const notes = [tr('lb.noteOk'), tr('lb.noteUp'), tr('lb.noteQuick'), undefined];
     O().push({ id: `lo${save.seq++}`, listingId: l.id, listingUserId: l.userId, fromId: bot.id, fromName: bot.name, offered, note: notes[Math.floor(Math.random() * notes.length)], status: 'pending', createdAt: Date.now() });
     sync();
   }
@@ -485,7 +492,7 @@ export function createLocalBackend(): GameBackend {
     const mineDups = Object.values(save.inv).filter((c) => !bot.inv[cardKey(c)] && c.rarity !== 'secret');
     const wanted = mineDups.sort((a, b) => Number(b.count >= 2) - Number(a.count >= 2) || Math.random() - 0.5).slice(0, Math.floor(Math.random() * 3)).map((c) => ({ cardId: c.cardId, rarity: c.rarity }));
     const hours = BOARD_HOURS[Math.floor(Math.random() * BOARD_HOURS.length)];
-    const notes = ['doublons à échanger', 'je complète mon classeur', 'faites vos offres !', undefined];
+    const notes = [tr('lb.noteDupes'), tr('lb.noteBinder'), tr('lb.noteOffers'), undefined];
     L().push({ id: `ls${save.seq++}`, userId: bot.id, userName: bot.name, items, wanted, note: notes[Math.floor(Math.random() * notes.length)], status: 'open', createdAt: at, expiresAt: at + hours * 3600_000 });
   }
   if (!L().some((l) => l.userId !== 'me')) {
@@ -610,13 +617,13 @@ export function createLocalBackend(): GameBackend {
     let ev: PackEvent | null = null;
     if (req.event) {
       ev = demoEv && demoEv.id === req.event.id ? demoEv : null;
-      if (!ev) throw new Error('Ce booster du moment n’existe plus.');
-      if (now < ev.startAt) throw new Error('Ce booster du moment n’est pas encore sorti.');
-      if (now >= ev.endAt) throw new Error(`Le booster ${ev.name} est terminé : il n’était là que pour un temps.`);
+      if (!ev) throw new Error(fe('events.1'));
+      if (now < ev.startAt) throw new Error(fe('events.2'));
+      if (now >= ev.endAt) throw new Error(fe('events.3', { p0: ev.name }));
       req = { kind: 'theme', event: { id: ev.id, subthemes: ev.subthemes, cards: ev.cards } };
     }
     const regen = applyRegen(save.packBalance, save.regenAt ?? now, now);
-    if (regen.balance <= 0) throw new Error(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
+    if (regen.balance <= 0) throw new Error(fe('packs.2', { p0: fmtCountdown((regen.nextAt ?? now) - now) }));
     save.packBalance = regen.balance - 1;
     save.regenAt = regen.regenAt;
     let rand: () => number = Math.random;
@@ -726,11 +733,11 @@ export function createLocalBackend(): GameBackend {
       if (!p || p.id !== id) return;
       for (const c of p.cards) {
         add(save.inv, c.cardId, c.rarity, 1, c.mintNumber);
-        if (BIG_PULL_RARITIES.includes(c.rarity)) bigPull({ id: 'me', name: 'Toi' }, { id: c.cardId, name: c.cardName }, c.rarity, c.mintNumber);
+        if (BIG_PULL_RARITIES.includes(c.rarity)) bigPull({ id: 'me', name: tr('chat.me') }, { id: c.cardId, name: c.cardName }, c.rarity, c.mintNumber);
         if (RANK[c.rarity] >= RANK.epic) {
           feed(
             c.rarity === 'secret' ? 'secret_pull' : c.rarity === 'mythic' ? 'mythic_pull' : 'pull',
-            c.rarity === 'secret' ? `✷ Tu as tiré une CARTE SECRÈTE : ${c.cardName} !` : `Tu as obtenu ${c.cardName} [${rarityOf(c.rarity).label} #${c.mintNumber}] !`,
+            c.rarity === 'secret' ? fm('f.dSecret', { card: c.cardName, cardId: c.cardId }) : fm('f.dPull', { card: c.cardName, cardId: c.cardId, rarity: rarityOf(c.rarity).label, rarityId: c.rarity, mint: c.mintNumber }),
             c.rarity,
             { id: c.cardId, name: c.cardName, mint: c.mintNumber },
           );
@@ -740,7 +747,7 @@ export function createLocalBackend(): GameBackend {
       // série : le booster scellé suivant prend la place
       save.sealed = save.queue?.shift() ?? null;
       bump({ type: 'pack', packKey: p.eventId ? 'event' : p.packKind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: p.cards });
-      eco.hooks.onPack(p.packKind, p.eventName ? `Booster ${p.eventName}` : p.packKind === 'theme' && p.themeId ? themeById(p.themeId)?.label ?? 'booster' : BEBOU_PACK.label, p.cards);
+      eco.hooks.onPack(p.packKind, p.eventName ? fm('c.openEvent', { event: p.eventName }) : p.packKind === 'theme' && p.themeId ? fm('c.openTheme', { theme: themeById(p.themeId)?.label ?? 'booster', themeId: p.themeId }) : fm('c.openTheme', { theme: BEBOU_PACK.label }), p.cards);
       maybeBotOffer();
       sync();
     },
@@ -760,15 +767,15 @@ export function createLocalBackend(): GameBackend {
     },
     async proposeTrade(toId, offered, requested, note) {
       const bot = save.bots.find((b) => b.id === toId);
-      if (!bot) throw new Error('Joueur introuvable.');
-      if (!offered.length && !requested.length) throw new Error('Échange vide.');
+      if (!bot) throw new Error(fe('challenges.3'));
+      if (!offered.length && !requested.length) throw new Error(fe('deals.3'));
       const locked = lockedCards(state);
       for (const it of offered) {
         if ((save.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`Tu n’as pas assez de ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
         if ((save.inv[cardKey(it)]?.count ?? 0) - (locked.get(cardKey(it)) ?? 0) < it.count) throw new Error(`${catalogEntry(it.cardId)?.name ?? it.cardId} est déjà engagée dans un autre échange en attente.`);
       }
       for (const it of requested) if ((bot.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${bot.name} n’a pas ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
-      const t = { id: `t${save.seq++}`, fromId: 'me', toId, fromName: 'Toi', toName: bot.name, offered, requested, note, createdAt: Date.now(), status: 'pending' as const };
+      const t = { id: `t${save.seq++}`, fromId: 'me', toId, fromName: tr('chat.me'), toName: bot.name, offered, requested, note, createdAt: Date.now(), status: 'pending' as const };
       save.trades.push(t);
       bump({ type: 'trade' });
       sync();
@@ -785,26 +792,26 @@ export function createLocalBackend(): GameBackend {
           requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
           save.trades_done = (save.trades_done ?? 0) + 1;
           eco.hooks.onTrade();
-          feed('trade', `${bot.name} a accepté ton échange !`);
+          feed('trade', fm('f.dAccepted', { name: bot.name }));
         } else {
           cur.status = 'declined';
-          feed('trade', `${bot.name} a refusé ton échange (pas assez équilibré).`);
+          feed('trade', fm('f.dRefusedUnfair', { name: bot.name }));
         }
         sync();
       }, 2000);
     },
     async respondTrade(id, accept) {
       const t = save.trades.find((x) => x.id === id && x.status === 'pending');
-      if (!t) throw new Error('Échange introuvable ou déjà traité.');
+      if (!t) throw new Error(fe('deals.12'));
       const bot = save.bots.find((b) => b.id === t.fromId)!;
       if (accept) {
-        if (!t.requested.every((it) => (save.inv[cardKey(it)]?.count ?? 0) >= it.count)) throw new Error('Tu n’as plus les cartes demandées.');
+        if (!t.requested.every((it) => (save.inv[cardKey(it)]?.count ?? 0) >= it.count)) throw new Error(fe('trades.23'));
         if (!t.offered.every((it) => (bot.inv[cardKey(it)]?.count ?? 0) >= it.count)) throw new Error(`${bot.name} n’a plus les cartes proposées.`);
         t.offered.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
         t.requested.forEach((it) => (remove(save.inv, it), add(bot.inv, it.cardId, it.rarity, it.count)));
         save.trades_done = (save.trades_done ?? 0) + 1;
           eco.hooks.onTrade();
-        feed('trade', `Échange conclu avec ${bot.name} !`);
+        feed('trade', fm('f.dTrade', { name: bot.name }));
         bump({ type: 'trade' });
       }
       t.status = accept ? 'accepted' : 'declined';
@@ -818,15 +825,15 @@ export function createLocalBackend(): GameBackend {
     },
     async counterTrade(id, offered, requested, note) {
       const t = save.trades.find((x) => x.id === id && x.status === 'pending' && x.toId === 'me');
-      if (!t) throw new Error('Échange introuvable ou déjà traité.');
+      if (!t) throw new Error(fe('deals.12'));
       const bot = save.bots.find((b) => b.id === t.fromId)!;
-      if (!offered.length && !requested.length) throw new Error('Échange vide.');
+      if (!offered.length && !requested.length) throw new Error(fe('deals.3'));
       const locked = lockedCards(state);
       for (const it of offered) if ((save.inv[cardKey(it)]?.count ?? 0) - (locked.get(cardKey(it)) ?? 0) < it.count) throw new Error(`Tu n’as pas (ou plus) ${catalogEntry(it.cardId)?.name ?? it.cardId} de libre.`);
       for (const it of requested) if ((bot.inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${bot.name} n’a pas ${catalogEntry(it.cardId)?.name ?? it.cardId}.`);
       t.status = 'countered';
       t.resolvedAt = Date.now();
-      const nt = { id: `t${save.seq++}`, fromId: 'me', toId: bot.id, fromName: 'Toi', toName: bot.name, offered, requested, note, createdAt: Date.now(), status: 'pending' as const, counterOf: t.id };
+      const nt = { id: `t${save.seq++}`, fromId: 'me', toId: bot.id, fromName: tr('chat.me'), toName: bot.name, offered, requested, note, createdAt: Date.now(), status: 'pending' as const, counterOf: t.id };
       save.trades.push(nt);
       bump({ type: 'trade' });
       sync();
@@ -843,10 +850,10 @@ export function createLocalBackend(): GameBackend {
           requested.forEach((it) => (remove(bot.inv, it), add(save.inv, it.cardId, it.rarity, it.count)));
           save.trades_done = (save.trades_done ?? 0) + 1;
           eco.hooks.onTrade();
-          feed('trade', `${bot.name} a accepté ta contre-proposition !`);
+          feed('trade', fm('f.dCounterOk', { name: bot.name }));
         } else {
           cur.status = 'declined';
-          feed('trade', `${bot.name} a refusé ta contre-proposition.`);
+          feed('trade', fm('f.dCounterNo', { name: bot.name }));
         }
         sync();
       }, 2500);
@@ -906,27 +913,27 @@ export function createLocalBackend(): GameBackend {
     async quickTrade(toId, get, give) {
       await delay(80);
       const bot = save.bots.find((b) => b.id === toId);
-      if (!bot) throw new Error('Joueur introuvable.');
+      if (!bot) throw new Error(fe('challenges.3'));
       const r = (get ?? give)?.rarity;
-      if (!r) throw new Error('Échange vide.');
-      if (get && give && get.rarity !== give.rarity) throw new Error('Échange en un toucher : deux cartes de même étoile.');
-      const star = r === 'secret' ? 'Bébou' : `${RANK[r] + 1}★`;
+      if (!r) throw new Error(fe('deals.3'));
+      if (get && give && get.rarity !== give.rarity) throw new Error(fe('deals.6'));
+      const star = r === 'secret' ? 'Bébou' : `${RANK[r] + 1}★`; // i18n-ok
       const locked = lockedCards(state);
       if (!give) {
         const guard = { protected: save.tradeProtected, wishlist: save.wishlist };
         const c = rankGives(Object.values(save.inv).filter((c) => c.rarity === r && c.cardId !== get!.cardId && proposable(c, locked.get(cardKey(c)) ?? 0, guard) > 0 && !bot.inv[cardKey(c)]), new Set(botWish(bot.id)))[0];
-        if (!c) throw new Error(`Tu n’as pas de doublon ${star} libre qui manque à ${bot.name} : compose l’échange toi-même.`);
+        if (!c) throw new Error(fe('deals.7', { p0: star, p1: bot.name }));
         give = { cardId: c.cardId, rarity: c.rarity };
       }
       if (!get) {
         const c = rankGives(Object.values(bot.inv).filter((c) => c.rarity === r && c.count >= 2 && c.cardId !== give!.cardId && !save.inv[cardKey(c)]), new Set(save.wishlist ?? []))[0];
-        if (!c) throw new Error(`${bot.name} n’a pas de doublon ${star} libre qui te manque.`);
+        if (!c) throw new Error(fe('deals.8', { p0: bot.name, p1: star }));
         get = { cardId: c.cardId, rarity: c.rarity };
       }
-      if ((save.inv[cardKey(give)]?.count ?? 0) - (locked.get(cardKey(give)) ?? 0) < 1) throw new Error(`${catalogEntry(give.cardId)?.name ?? give.cardId} n’est plus libre chez toi.`);
-      if (!bot.inv[cardKey(get)]) throw new Error(`${bot.name} n’a pas (ou plus) ${catalogEntry(get.cardId)?.name ?? get.cardId}.`);
-      if (save.trades.some((t) => t.status === 'pending' && t.fromId === 'me' && t.toId === bot.id && t.requested.some((it) => it.cardId === get!.cardId))) throw new Error(`Tu as déjà demandé ${catalogEntry(get.cardId)?.name} à ${bot.name}.`);
-      const t = { id: `t${save.seq++}`, fromId: 'me', toId: bot.id, fromName: 'Toi', toName: bot.name, offered: [{ ...give, count: 1 }], requested: [{ ...get, count: 1 }], createdAt: Date.now(), status: 'pending' as const, quick: true };
+      if ((save.inv[cardKey(give)]?.count ?? 0) - (locked.get(cardKey(give)) ?? 0) < 1) throw new Error(fe('deals.9', { p0: catalogEntry(give.cardId)?.name ?? give.cardId }));
+      if (!bot.inv[cardKey(get)]) throw new Error(fe('deals.10', { p0: bot.name, p1: catalogEntry(get.cardId)?.name ?? get.cardId }));
+      if (save.trades.some((t) => t.status === 'pending' && t.fromId === 'me' && t.toId === bot.id && t.requested.some((it) => it.cardId === get!.cardId))) throw new Error(fe('deals.11', { p0: catalogEntry(get.cardId)?.name ?? get.cardId, p1: bot.name }));
+      const t = { id: `t${save.seq++}`, fromId: 'me', toId: bot.id, fromName: tr('chat.me'), toName: bot.name, offered: [{ ...give, count: 1 }], requested: [{ ...get, count: 1 }], createdAt: Date.now(), status: 'pending' as const, quick: true };
       save.trades.push(t);
       bump({ type: 'trade' });
       sync();
@@ -953,10 +960,10 @@ export function createLocalBackend(): GameBackend {
           add(save.inv, want.cardId, want.rarity, 1);
           save.trades_done = (save.trades_done ?? 0) + 1;
           eco.hooks.onTrade();
-          feed('trade', changed ? `${bot.name} a accepté ton échange en choisissant ${cardName(mine.cardId)}.` : `${bot.name} a accepté ton échange !`);
+          feed('trade', changed ? fm('f.dAcceptedPick', { name: bot.name, card: cardName(mine.cardId), cardId: mine.cardId }) : fm('f.dAccepted', { name: bot.name }));
         } else {
           cur.status = 'declined';
-          feed('trade', `${bot.name} a refusé ton échange.`);
+          feed('trade', fm('f.dRefused', { name: bot.name }));
         }
         sync();
       }, 3000);
@@ -964,12 +971,12 @@ export function createLocalBackend(): GameBackend {
     },
     async swapTradeGive(tradeId, cardId) {
       const t = save.trades.find((x) => x.id === tradeId && x.status === 'pending' && x.fromId === 'me' && x.quick);
-      if (!t) throw new Error('Échange introuvable ou déjà traité.');
+      if (!t) throw new Error(fe('deals.12'));
       const r = t.offered[0].rarity;
       if (catalogEntry(cardId)?.rarity !== r) throw new Error('Il faut une carte de même étoile.');
       const c = { cardId, rarity: r };
       const busy = (lockedCards(state).get(cardKey(c)) ?? 0) - (cardKey(t.offered[0]) === cardKey(c) ? 1 : 0);
-      if ((save.inv[cardKey(c)]?.count ?? 0) - busy < 1) throw new Error(`${cardName(cardId)} n’est pas libre chez toi.`);
+      if ((save.inv[cardKey(c)]?.count ?? 0) - busy < 1) throw new Error(fe('deals.16', { p0: cardName(cardId) }));
       t.offered = [{ ...c, count: 1 }];
       sync();
     },
@@ -985,11 +992,11 @@ export function createLocalBackend(): GameBackend {
     },
     async acceptTradePick(tradeId, cardId) {
       const t = save.trades.find((x) => x.id === tradeId && x.status === 'pending' && x.toId === 'me' && x.quick);
-      if (!t) throw new Error('Échange introuvable ou déjà traité.');
+      if (!t) throw new Error(fe('deals.12'));
       const bot = save.bots.find((b) => b.id === t.fromId)!;
       const c = { cardId, rarity: t.offered[0].rarity, count: 1 };
       const changed = cardId !== t.offered[0].cardId;
-      if (changed && (bot.inv[cardKey(c)]?.count ?? 0) < 2) throw new Error(`${bot.name} garde ${cardName(cardId)} : choisis-en une autre.`);
+      if (changed && (bot.inv[cardKey(c)]?.count ?? 0) < 2) throw new Error(fe('deals.20', { p0: bot.name, p1: cardName(cardId) }));
       t.offered = [c];
       await this.respondTrade(tradeId, true);
       return { changed };
@@ -1040,7 +1047,7 @@ export function createLocalBackend(): GameBackend {
       if (userId === 'me') {
         const st = myStats();
         const top = bestCard(Object.values(save.inv));
-        return { id: 'me', name: 'Toi', ...demoMedia(), bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, pinnedBinders: (save.binders ?? []).filter((b) => b.pinned).slice(0, BINDER_PINS_MAX), cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: ACHIEVEMENTS.length } };
+        return { id: 'me', name: tr('chat.me'), ...demoMedia(), bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, pinnedBinders: (save.binders ?? []).filter((b) => b.pinned).slice(0, BINDER_PINS_MAX), cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: ACHIEVEMENTS.length } };
       }
       const i = save.bots.findIndex((b) => b.id === userId);
       if (i < 0) return null;
@@ -1048,11 +1055,11 @@ export function createLocalBackend(): GameBackend {
       const st = botStats(b, i);
       const top = bestCard(Object.values(b.inv));
       const cos: CosmeticChoice[] = [{ banner: 'night', frame: 'bronze', title: 'opener', badges: ['first', 'trade'] }, { banner: 'forest', frame: 'none', title: 'rookie', badges: ['first'] }, { banner: 'plum', frame: 'none', badges: [] }];
-      return { id: userId, name: b.name, bio: ['Je collectionne les brillantes ✨', 'Toujours partant pour un échange', ''][i] || undefined, showcase: [], packsOpened: 30 + i * 12, cosmetics: cleanCosmetics(cos[i] ?? {}, st), stats: st, streakDay: ((st.streak - 1) % 7) + 1, bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(b.inv), achievements: { done: doneCount(st, emptyEcon()), total: ACHIEVEMENTS.length } };
+      return { id: userId, name: b.name, bio: [tr('lb.bio1'), tr('lb.bio2'), ''][i] || undefined, showcase: [], packsOpened: 30 + i * 12, cosmetics: cleanCosmetics(cos[i] ?? {}, st), stats: st, streakDay: ((st.streak - 1) % 7) + 1, bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(b.inv), achievements: { done: doneCount(st, emptyEcon()), total: ACHIEVEMENTS.length } };
     },
     async setShowcase(cards) {
       if (cards.length > 12) throw new Error('12 cartes au maximum dans la vitrine.');
-      for (const c of cards) if (!save.inv[cardKey(c)]) throw new Error(`Tu n’as pas ${catalogEntry(c.cardId)?.name ?? 'cette carte'}.`);
+      for (const c of cards) if (!save.inv[cardKey(c)]) throw new Error(fe('binders.3', { p0: catalogEntry(c.cardId)?.name ?? tr('lb.thisCard') }));
       save.showcase = cards;
       sync();
     },
@@ -1067,8 +1074,8 @@ export function createLocalBackend(): GameBackend {
     },
     async setOpening(style) {
       const o = OPENINGS.find((x) => x.id === style);
-      if (!o) throw new Error('Animation d’ouverture inconnue.');
-      if (!o.unlock(myStats())) throw new Error(`Pas encore débloquée. ${o.how}`);
+      if (!o) throw new Error(fe('profiles.5'));
+      if (!o.unlock(myStats())) throw new Error(fe('profiles.6', { p0: o.how }));
       save.opening = o.id === 'tear' ? undefined : o.id;
       sync();
     },
@@ -1085,7 +1092,7 @@ export function createLocalBackend(): GameBackend {
         return undefined;
       }
       const bad = profileMediaProblem(file.size, file.type, PROFILE_MEDIA_DEMO_MAX);
-      if (bad) throw new Error(`${bad}${file.size > PROFILE_MEDIA_DEMO_MAX ? ' (démo ; 2 Mo en ligne)' : ''}`);
+      if (bad) throw new Error(`${bad}${file.size > PROFILE_MEDIA_DEMO_MAX ? tr('lb.demoSize') : ''}`);
       const url = await new Promise<string>((ok, ko) => {
         const r = new FileReader();
         r.onload = () => ok(String(r.result));
@@ -1101,7 +1108,7 @@ export function createLocalBackend(): GameBackend {
     },
     async leaderboard() {
       const row = (id: string, name: string, st: ReturnType<typeof myStats>, cosmetics: CosmeticChoice) => ({ id, name, cosmetics: cleanCosmetics(cosmetics, st), uniques: st.uniques, total: st.total, pct: st.total ? (st.uniques / st.total) * 100 : 0, mythics: st.mythics, secrets: st.secrets, packsOpened: st.packsOpened, tradesDone: st.tradesDone, streak: st.streak, achievements: doneCount(st, id === 'me' ? myEcon() : emptyEcon()) });
-      return [row('me', 'Toi', myStats(), save.cosmetics ?? {}), ...save.bots.map((b, i) => row(b.id, b.name, botStats(b, i), {}))];
+      return [row('me', tr('chat.me'), myStats(), save.cosmetics ?? {}), ...save.bots.map((b, i) => row(b.id, b.name, botStats(b, i), {}))];
     },
     // (11/11) démo : la saison du mois en cours, départ à zéro pour tout le monde (pas de cron, pas d'historique)
     async seasonBoard() {
@@ -1121,7 +1128,7 @@ export function createLocalBackend(): GameBackend {
       const now = Date.now();
       (save.suggestions ??= []).unshift({
         id: `s${now}`, kind: o.kind, text: o.text.trim(), cardId: o.cardId, imageUrl: o.imageUrl, category: o.category, page: o.page,
-        screenshotUrl: file ? URL.createObjectURL(file) : undefined, status: 'nouvelle', author: 'Toi (démo)', createdAt: now, updatedAt: now,
+        screenshotUrl: file ? URL.createObjectURL(file) : undefined, status: 'nouvelle', author: tr('lb.meDemo'), createdAt: now, updatedAt: now,
       });
       persist();
     },
@@ -1145,7 +1152,7 @@ export function createLocalBackend(): GameBackend {
     },
     async submitSurvey(id, answer) {
       const a = cleanSurvey(answer);
-      if (!surveyFilled(a)) throw new Error('Coche au moins une réponse.');
+      if (!surveyFilled(a)) throw new Error(fe('survey.1'));
       (save.surveys ??= {})[id] ??= { ...a, createdAt: Date.now() };
       persist();
     },
@@ -1154,7 +1161,7 @@ export function createLocalBackend(): GameBackend {
       const universes = Object.fromEntries(SURVEY_UNIVERSES.map((o) => [o.id, a?.universes.includes(o.id) ? 1 : 0]));
       const features = Object.fromEntries(SURVEY_FEATURES.map((o) => [o.id, a?.features.includes(o.id) ? 1 : 0]));
       const ratings = [1, 2, 3, 4, 5].map((n) => (a?.rating === n ? 1 : 0));
-      return { surveyId: id, total: a ? 1 : 0, universes, features, ratings, texts: a && (a.names || a.comment) ? [{ author: 'Toi (démo)', names: a.names, comment: a.comment, rating: a.rating, createdAt: a.createdAt }] : [] };
+      return { surveyId: id, total: a ? 1 : 0, universes, features, ratings, texts: a && (a.names || a.comment) ? [{ author: tr('lb.meDemo'), names: a.names, comment: a.comment, rating: a.rating, createdAt: a.createdAt }] : [] };
     },
     async toggleWish(cardId) {
       const list = save.wishlist ?? [];
@@ -1173,7 +1180,7 @@ export function createLocalBackend(): GameBackend {
       const covers = { ...(save.covers ?? {}) };
       if (cardId) {
         const e = catalogEntry(cardId);
-        if (!e || !save.inv[cardKey({ cardId, rarity: e.rarity as RarityId })]) throw new Error(`Tu n’as pas ${e?.name ?? 'cette carte'}.`);
+        if (!e || !save.inv[cardKey({ cardId, rarity: e.rarity as RarityId })]) throw new Error(fe('binders.3', { p0: e?.name ?? tr('lb.thisCard') }));
         covers[subthemeId] = cardId;
       } else delete covers[subthemeId];
       save.covers = covers;
@@ -1181,9 +1188,9 @@ export function createLocalBackend(): GameBackend {
     },
     async createBinder(name, cards) {
       const n = name.replace(/\s+/g, ' ').trim().slice(0, BINDER_NAME_MAX);
-      if (!n) throw new Error('Donne un nom à ton classeur.');
-      if ((save.binders ?? []).length >= BINDER_MAX) throw new Error(`${BINDER_MAX} classeurs au maximum.`);
-      if ((cards ?? []).length > BINDER_CARDS_MAX) throw new Error(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
+      if (!n) throw new Error(fe('binders.4'));
+      if ((save.binders ?? []).length >= BINDER_MAX) throw new Error(fe('binders.5', { p0: BINDER_MAX }));
+      if ((cards ?? []).length > BINDER_CARDS_MAX) throw new Error(fe('binders.6', { p0: BINDER_CARDS_MAX }));
       const b: Binder = { id: `b${save.seq++}`, name: n, cards: cards ?? [], pinned: false, createdAt: Date.now() };
       (save.binders ??= []).push(b);
       sync();
@@ -1191,7 +1198,7 @@ export function createLocalBackend(): GameBackend {
     },
     async renameBinder(id, name) {
       const b = (save.binders ?? []).find((x) => x.id === id);
-      if (!b) throw new Error('Classeur introuvable.');
+      if (!b) throw new Error(fe('binders.12'));
       b.name = name.replace(/\s+/g, ' ').trim().slice(0, BINDER_NAME_MAX) || b.name;
       sync();
     },
@@ -1201,22 +1208,22 @@ export function createLocalBackend(): GameBackend {
     },
     async setBinderCards(id, cards) {
       const b = (save.binders ?? []).find((x) => x.id === id);
-      if (!b) throw new Error('Classeur introuvable.');
-      if (cards.length > BINDER_CARDS_MAX) throw new Error(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
-      for (const c of cards) if (!save.inv[cardKey(c)]) throw new Error(`Tu n’as pas ${catalogEntry(c.cardId)?.name ?? 'cette carte'}.`);
+      if (!b) throw new Error(fe('binders.12'));
+      if (cards.length > BINDER_CARDS_MAX) throw new Error(fe('binders.6', { p0: BINDER_CARDS_MAX }));
+      for (const c of cards) if (!save.inv[cardKey(c)]) throw new Error(fe('binders.3', { p0: catalogEntry(c.cardId)?.name ?? tr('lb.thisCard') }));
       b.cards = cards;
       if (b.coverCardId && !cards.some((c) => c.cardId === b.coverCardId)) b.coverCardId = undefined;
       sync();
     },
     async toggleBinderCard(id, card) {
       const b = (save.binders ?? []).find((x) => x.id === id);
-      if (!b) throw new Error('Classeur introuvable.');
+      if (!b) throw new Error(fe('binders.12'));
       const k = cardKey(card);
       const has = b.cards.some((c) => cardKey(c) === k);
       if (has) b.cards = b.cards.filter((c) => cardKey(c) !== k);
       else {
-        if (!save.inv[k]) throw new Error(`Tu n’as pas ${catalogEntry(card.cardId)?.name ?? 'cette carte'}.`);
-        if (b.cards.length >= BINDER_CARDS_MAX) throw new Error(`${BINDER_CARDS_MAX} cartes au maximum par classeur.`);
+        if (!save.inv[k]) throw new Error(fe('binders.3', { p0: catalogEntry(card.cardId)?.name ?? tr('lb.thisCard') }));
+        if (b.cards.length >= BINDER_CARDS_MAX) throw new Error(fe('binders.6', { p0: BINDER_CARDS_MAX }));
         b.cards = [...b.cards, card];
       }
       if (b.coverCardId && !b.cards.some((c) => c.cardId === b.coverCardId)) b.coverCardId = undefined;
@@ -1225,15 +1232,15 @@ export function createLocalBackend(): GameBackend {
     },
     async setBinderCover(id, cardId) {
       const b = (save.binders ?? []).find((x) => x.id === id);
-      if (!b) throw new Error('Classeur introuvable.');
+      if (!b) throw new Error(fe('binders.12'));
       b.coverCardId = cardId;
       sync();
     },
     async pinBinder(id, on) {
       const list = save.binders ?? [];
       const b = list.find((x) => x.id === id);
-      if (!b) throw new Error('Classeur introuvable.');
-      if (on && !b.pinned && list.filter((x) => x.pinned).length >= BINDER_PINS_MAX) throw new Error(`${BINDER_PINS_MAX} classeurs au plus sur ton profil : retires-en un d’abord.`);
+      if (!b) throw new Error(fe('binders.12'));
+      if (on && !b.pinned && list.filter((x) => x.pinned).length >= BINDER_PINS_MAX) throw new Error(fe('binders.11', { p0: BINDER_PINS_MAX }));
       b.pinned = on;
       sync();
     },
@@ -1252,13 +1259,13 @@ export function createLocalBackend(): GameBackend {
       await delay(120);
       let bot: Bot | undefined;
       if (to.userId) {
-        if (to.userId === 'me') throw new Error('C’est toi ! Choisis quelqu’un d’autre.');
+        if (to.userId === 'me') throw new Error(fe('friends.5'));
         bot = save.bots.find((b) => b.id === to.userId);
-        if (!bot) throw new Error('Joueur introuvable.');
+        if (!bot) throw new Error(fe('challenges.3'));
       } else {
         const want = foldName(to.name ?? '');
-        if (!want) throw new Error('Écris le pseudo exact de ton ami.');
-        if (want === 'toi') throw new Error('C’est toi ! Choisis quelqu’un d’autre.');
+        if (!want) throw new Error(fe('friends.2'));
+        if (want === 'toi') throw new Error(fe('friends.5'));
         // « Léa » ou « Léa (robot) »
         bot = save.bots.find((b) => foldName(b.name) === want || foldName(b.name.replace(/\s*\(robot\)$/, '')) === want);
         if (!bot) throw new Error(`Personne ne s’appelle « ${(to.name ?? '').trim()} » ici. En démo : Léa, Malo ou Inès.`);
@@ -1266,16 +1273,16 @@ export function createLocalBackend(): GameBackend {
       const now = Date.now();
       const links = (save.friendships ??= []);
       const link = links.find((l) => (l.from === 'me' && l.to === bot!.id) || (l.from === bot!.id && l.to === 'me'));
-      if (link?.status === 'accepted') throw new Error(`${bot.name} est déjà ton ami.`);
+      if (link?.status === 'accepted') throw new Error(fe('friends.6', { p0: bot.name }));
       if (link?.status === 'pending') {
-        if (link.from === 'me') throw new Error(`Demande déjà envoyée à ${bot.name}.`);
+        if (link.from === 'me') throw new Error(fe('friends.7', { p0: bot.name }));
         link.status = 'accepted';
         link.respondedAt = now;
         sync();
         return { status: 'accepted', name: bot.name };
       }
-      if (link?.status === 'declined' && link.from === 'me' && now - (link.respondedAt ?? link.createdAt) < DEMO_DECLINE_COOLDOWN) throw new Error(`${bot.name} a décliné ta demande il y a peu : réessaie demain.`);
-      if (links.filter((l) => l.from === 'me' && l.status === 'pending').length >= DEMO_MAX_PENDING) throw new Error(`${DEMO_MAX_PENDING} demandes en attente au maximum : attends des réponses (ou annules-en).`);
+      if (link?.status === 'declined' && link.from === 'me' && now - (link.respondedAt ?? link.createdAt) < DEMO_DECLINE_COOLDOWN) throw new Error(fe('friends.8', { p0: bot.name }));
+      if (links.filter((l) => l.from === 'me' && l.status === 'pending').length >= DEMO_MAX_PENDING) throw new Error(fe('friends.9', { p0: DEMO_MAX_PENDING }));
       const id = link?.id ?? `fr${save.seq++}`;
       if (link) Object.assign(link, { from: 'me', to: bot.id, status: 'pending', createdAt: now, respondedAt: undefined });
       else links.push({ id, from: 'me', to: bot.id, status: 'pending', createdAt: now });
@@ -1292,27 +1299,27 @@ export function createLocalBackend(): GameBackend {
     },
     async acceptFriend(id) {
       const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'pending' && x.to === 'me');
-      if (!l) throw new Error('Demande introuvable (déjà traitée ?).');
+      if (!l) throw new Error(fe('friends.10'));
       l.status = 'accepted';
       l.respondedAt = Date.now();
       sync();
     },
     async declineFriend(id) {
       const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'pending' && x.to === 'me');
-      if (!l) throw new Error('Demande introuvable (déjà traitée ?).');
+      if (!l) throw new Error(fe('friends.10'));
       l.status = 'declined';
       l.respondedAt = Date.now();
       sync();
     },
     async cancelFriend(id) {
       const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'pending' && x.from === 'me');
-      if (!l) throw new Error('Demande introuvable (déjà traitée ?).');
+      if (!l) throw new Error(fe('friends.10'));
       save.friendships = (save.friendships ?? []).filter((x) => x !== l);
       sync();
     },
     async removeFriend(id) {
       const l = (save.friendships ?? []).find((x) => x.id === id && x.status === 'accepted');
-      if (!l) throw new Error('Vous n’êtes pas (ou plus) amis.');
+      if (!l) throw new Error(fe('friends.14'));
       save.friendships = (save.friendships ?? []).filter((x) => x !== l);
       sync();
     },
@@ -1326,12 +1333,12 @@ export function createLocalBackend(): GameBackend {
       await delay(120);
       const problem = marketProblem(r, price);
       if (problem) throw new Error(problem);
-      if (M().filter((m) => m.sellerId === 'me' && m.status === 'open').length >= MARKET_MAX_OPEN) throw new Error(`${MARKET_MAX_OPEN} cartes en vente au maximum : retires-en une d’abord.`);
+      if (M().filter((m) => m.sellerId === 'me' && m.status === 'open').length >= MARKET_MAX_OPEN) throw new Error(fe('market.2', { p0: MARKET_MAX_OPEN }));
       const it = { cardId, rarity: r, count: 1 };
       if ((save.inv[cardKey(it)]?.count ?? 0) - (lockedCards(state).get(cardKey(it)) ?? 0) < 1) throw new Error(`${cardName(cardId)} n’est pas libre (engagée dans un échange ou une annonce).`);
       const mint = save.inv[cardKey(it)]?.bestMintNumber ?? 999;
       remove(save.inv, it);
-      M().push({ id: `mk${save.seq++}`, sellerId: 'me', sellerName: 'Toi', cardId, rarity: r, mintNumber: mint, price, status: 'open', createdAt: Date.now() });
+      M().push({ id: `mk${save.seq++}`, sellerId: 'me', sellerName: tr('chat.me'), cardId, rarity: r, mintNumber: mint, price, status: 'open', createdAt: Date.now() });
       sync();
       // un robot achète parfois (pas tout de suite, et seulement à un prix raisonnable)
       const id = M()[M().length - 1].id;
@@ -1344,14 +1351,14 @@ export function createLocalBackend(): GameBackend {
           m.buyerId = bot.id;
           m.resolvedAt = Date.now();
           add(bot.inv, m.cardId, m.rarity, 1, m.mintNumber);
-          eco.hooks.onMarket(m.price, `Marché : vente de ${cardName(m.cardId)}`);
+          eco.hooks.onMarket(m.price, fm('c.marketSell', { card: cardName(m.cardId), cardId: m.cardId }));
           sync();
         }, 8000 + Math.random() * 12000);
     },
     async marketCancel(id) {
       const m = M().find((x) => x.id === id && x.sellerId === 'me');
-      if (!m) throw new Error('Annonce introuvable.');
-      if (m.status !== 'open') throw new Error('Cette carte n’est plus en vente.');
+      if (!m) throw new Error(fe('market.11'));
+      if (m.status !== 'open') throw new Error(fe('market.3'));
       m.status = 'cancelled';
       m.resolvedAt = Date.now();
       add(save.inv, m.cardId, m.rarity, 1, m.mintNumber);
@@ -1360,10 +1367,10 @@ export function createLocalBackend(): GameBackend {
     async marketBuy(id, price) {
       await delay(120);
       const m = M().find((x) => x.id === id);
-      if (!m || m.status !== 'open') throw new Error('Trop tard : cette carte vient d’être vendue (ou retirée).');
-      if (m.sellerId === 'me') throw new Error('C’est ta propre annonce.');
-      if (m.price !== price) throw new Error('Le prix a changé : regarde de nouveau l’annonce.');
-      eco.hooks.onMarket(-m.price, `Marché : achat de ${cardName(m.cardId)}`);
+      if (!m || m.status !== 'open') throw new Error(fe('market.4'));
+      if (m.sellerId === 'me') throw new Error(fe('market.5'));
+      if (m.price !== price) throw new Error(fe('market.6'));
+      eco.hooks.onMarket(-m.price, fm('c.marketBuy', { card: cardName(m.cardId), cardId: m.cardId }));
       m.status = 'sold';
       m.buyerId = 'me';
       m.resolvedAt = Date.now();
@@ -1385,12 +1392,12 @@ export function createLocalBackend(): GameBackend {
     },
     async createListing(items, wanted, note, hours) {
       await delay(120);
-      if (!(BOARD_HOURS as readonly number[]).includes(hours)) throw new Error('Durée invalide (24 ou 48 h).');
-      checkList(items, 'proposées');
-      if (L().filter((l) => l.userId === 'me' && listingLive(l)).length >= BOARD_MAX_OPEN) throw new Error(`${BOARD_MAX_OPEN} annonces ouvertes au maximum : retires-en une d’abord.`);
+      if (!(BOARD_HOURS as readonly number[]).includes(hours)) throw new Error(fe('listings.15'));
+      checkList(items, tr('lb.whatOffered'));
+      if (L().filter((l) => l.userId === 'me' && listingLive(l)).length >= BOARD_MAX_OPEN) throw new Error(fe('listings.19', { p0: BOARD_MAX_OPEN }));
       checkMine(items);
       const now = Date.now();
-      const l: DemoListing = { id: `ls${save.seq++}`, userId: 'me', userName: 'Toi', items, wanted, note: note?.trim().slice(0, 140) || undefined, status: 'open', createdAt: now, expiresAt: now + hours * 3600_000 };
+      const l: DemoListing = { id: `ls${save.seq++}`, userId: 'me', userName: tr('chat.me'), items, wanted, note: note?.trim().slice(0, 140) || undefined, status: 'open', createdAt: now, expiresAt: now + hours * 3600_000 };
       L().push(l);
       sync();
       // les robots s'y intéressent (pas tous, pas tout de suite)
@@ -1399,7 +1406,7 @@ export function createLocalBackend(): GameBackend {
     },
     async cancelListing(id) {
       const l = L().find((x) => x.id === id && x.userId === 'me' && x.status === 'open');
-      if (!l) throw new Error('Annonce introuvable ou déjà terminée.');
+      if (!l) throw new Error(fe('listings.12'));
       l.status = 'cancelled';
       l.resolvedAt = Date.now();
       closeOffersOf(l, l.resolvedAt);
@@ -1408,14 +1415,14 @@ export function createLocalBackend(): GameBackend {
     async makeOffer(listingId, offered, note) {
       await delay(120);
       const l = L().find((x) => x.id === listingId);
-      if (!l || !listingLive(l)) throw new Error(l?.status === 'open' ? 'Cette annonce a expiré.' : 'Annonce introuvable ou déjà terminée.');
-      if (l.userId === 'me') throw new Error('C’est ton annonce : tu ne peux pas y faire d’offre.');
+      if (!l || !listingLive(l)) throw new Error(l?.status === 'open' ? fe('listings.11') : fe('listings.12'));
+      if (l.userId === 'me') throw new Error(fe('listings.22'));
       checkList(offered, 'offertes');
       const prev = O().find((o) => o.listingId === l.id && o.fromId === 'me' && ACTIVE_OFFER(o));
       checkMine(offered, prev);
       const now = Date.now();
       if (prev) ((prev.status = 'withdrawn'), (prev.resolvedAt = now));
-      const o: DemoOffer = { id: `lo${save.seq++}`, listingId: l.id, listingUserId: l.userId, fromId: 'me', fromName: 'Toi', offered, note: note?.trim().slice(0, 140) || undefined, status: 'pending', createdAt: now };
+      const o: DemoOffer = { id: `lo${save.seq++}`, listingId: l.id, listingUserId: l.userId, fromId: 'me', fromName: tr('chat.me'), offered, note: note?.trim().slice(0, 140) || undefined, status: 'pending', createdAt: now };
       O().push(o);
       sync();
       // le robot répond : accepte dès 0,8× la valeur, sinon contre-offre (moins de cartes de son annonce), sinon refus
@@ -1425,14 +1432,14 @@ export function createLocalBackend(): GameBackend {
         try {
           if (mine >= theirs * 0.8) {
             boardConclude(l, o, l.items, offered);
-            feed('trade', `${l.userName} a accepté ton offre !`);
+            feed('trade', fm('f.dOfferOk', { name: l.userName }));
           } else {
             const give: TradeItem[] = [];
             for (const it of [...l.items].sort((a, b) => cardsValue([a]) - cardsValue([b]))) if (cardsValue([...give, it]) <= mine * 1.25) give.push(it);
             if (give.length && give.length < l.items.length) {
               o.status = 'countered';
-              o.counter = { give, want: offered, note: 'je te donne seulement ça pour ton offre', at: Date.now() };
-            } else ((o.status = 'declined'), (o.resolvedAt = Date.now()), feed('trade', `${l.userName} a refusé ton offre (pas assez équilibrée).`));
+              o.counter = { give, want: offered, note: tr('lb.counterNote'), at: Date.now() };
+            } else ((o.status = 'declined'), (o.resolvedAt = Date.now()), feed('trade', fm('f.dOfferNo', { name: l.userName })));
           }
         } catch {
           ((o.status = 'declined'), (o.resolvedAt = Date.now()));
@@ -1442,36 +1449,36 @@ export function createLocalBackend(): GameBackend {
     },
     async withdrawOffer(id) {
       const o = O().find((x) => x.id === id && x.fromId === 'me' && ACTIVE_OFFER(x));
-      if (!o) throw new Error('Offre introuvable ou déjà traitée.');
+      if (!o) throw new Error(fe('listings.24'));
       ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()));
       sync();
     },
     async acceptOffer(id) {
       await delay(120);
       const o = O().find((x) => x.id === id && x.listingUserId === 'me' && x.status === 'pending');
-      if (!o) throw new Error('Offre introuvable ou déjà traitée.');
+      if (!o) throw new Error(fe('listings.24'));
       const l = L().find((x) => x.id === o.listingId);
-      if (!l || !listingLive(l)) throw new Error('Cette annonce a expiré.');
+      if (!l || !listingLive(l)) throw new Error(fe('listings.11'));
       boardConclude(l, o, l.items, o.offered);
       sync();
     },
     async declineOffer(id) {
       const o = O().find((x) => x.id === id && x.listingUserId === 'me' && ACTIVE_OFFER(x));
-      if (!o) throw new Error('Offre introuvable ou déjà traitée.');
+      if (!o) throw new Error(fe('listings.24'));
       ((o.status = 'declined'), (o.resolvedAt = Date.now()));
       sync();
     },
     async counterOffer(id, give, want, note) {
       await delay(120);
       const o = O().find((x) => x.id === id && x.listingUserId === 'me' && ACTIVE_OFFER(x));
-      if (!o) throw new Error('Offre introuvable ou déjà traitée.');
+      if (!o) throw new Error(fe('listings.24'));
       const l = L().find((x) => x.id === o.listingId);
-      if (!l || !listingLive(l)) throw new Error('Cette annonce a expiré.');
-      checkList(give, 'données');
-      checkList(want, 'demandées', true);
-      for (const it of give) if ((l.items.find((x) => cardKey(x) === cardKey(it))?.count ?? 0) < it.count) throw new Error(`${cardName(it.cardId)} ne fait pas partie de ton annonce : une contre-offre ne donne que des cartes de l’annonce.`);
+      if (!l || !listingLive(l)) throw new Error(fe('listings.11'));
+      checkList(give, tr('lb.whatGiven'));
+      checkList(want, tr('lb.whatAsked'), true);
+      for (const it of give) if ((l.items.find((x) => cardKey(x) === cardKey(it))?.count ?? 0) < it.count) throw new Error(fe('listings.28', { p0: cardName(it.cardId) }));
       const inv = invOf(o.fromId) ?? {};
-      for (const it of want) if ((inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(`${o.fromName} n’a pas (ou plus) ${cardName(it.cardId)}.`);
+      for (const it of want) if ((inv[cardKey(it)]?.count ?? 0) < it.count) throw new Error(fe('deals.10', { p0: o.fromName, p1: cardName(it.cardId) }));
       o.status = 'countered';
       o.counter = { give, want, note: note?.trim().slice(0, 140) || undefined, at: Date.now() };
       sync();
@@ -1481,24 +1488,24 @@ export function createLocalBackend(): GameBackend {
         if (cardsValue(give) >= cardsValue(want) * 0.8) {
           try {
             boardConclude(l, o, give, want);
-            feed('trade', `${o.fromName} a accepté ta contre-offre !`);
+            feed('trade', fm('f.dCounterOfferOk', { name: o.fromName }));
           } catch {
             ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()));
           }
-        } else ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()), feed('trade', `${o.fromName} a refusé ta contre-offre.`));
+        } else ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()), feed('trade', fm('f.dCounterOfferNo', { name: o.fromName })));
         sync();
       }, 2500);
     },
     async respondCounter(id, accept) {
       await delay(120);
       const o = O().find((x) => x.id === id && x.fromId === 'me' && x.status === 'countered' && x.counter);
-      if (!o) throw new Error('Contre-offre introuvable ou déjà traitée.');
+      if (!o) throw new Error(fe('listings.31'));
       if (!accept) {
         ((o.status = 'withdrawn'), (o.resolvedAt = Date.now()));
         return sync();
       }
       const l = L().find((x) => x.id === o.listingId);
-      if (!l || !listingLive(l)) throw new Error('Cette annonce a expiré.');
+      if (!l || !listingLive(l)) throw new Error(fe('listings.11'));
       boardConclude(l, o, o.counter!.give, o.counter!.want);
       sync();
     },
@@ -1518,7 +1525,7 @@ export function createLocalBackend(): GameBackend {
       bump({ type: 'contract' });
       eco.hooks.onContract();
       save.contracts_done = (save.contracts_done ?? 0) + 1;
-      feed('contract', `Contrat signé : ${card.name} [${rarityOf(target).label} #${mint}] !`, target, { id: card.id, name: card.name, mint });
+      feed('contract', fm('f.dContract', { card: card.name, cardId: card.id, rarity: rarityOf(target).label, rarityId: target, mint }), target, { id: card.id, name: card.name, mint });
       sync();
       return { cardId: card.id, cardName: card.name, rarity: target, mintNumber: mint, isNew: !ownedIds.has(card.id) };
     },

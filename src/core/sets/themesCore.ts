@@ -1,5 +1,6 @@
 import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11, RERATE_11_11 } from './curation';
 import { artV } from '../artRev';
+import { msgRef, str } from '../msgRefs';
 /**
  * Registre des THÈMES — données pures, sans three.js : partagé par le client (boutique, collection, échanges) et par
  * convex/ (catalogue du serveur). Une seule source de vérité pour « quelles cartes existent, dans quel booster ».
@@ -574,3 +575,6 @@ export const wonderCapturePath = (id: string) => artV(`art/merveilles/cartes3d/$
 export function thumbPath(e: CatalogEntry): string {
   return artV(`${artDirOf(e)}/thumbs/${e.file.replace(/\.(png|jpe?g)$/i, '.webp')}`);
 }
+
+// (version anglaise, lot 4) thème des messages stockés, relu dans la langue active
+msgRef('theme', (p) => { const id = str(p.themeId); return id ? themeById(id)?.label : undefined; });

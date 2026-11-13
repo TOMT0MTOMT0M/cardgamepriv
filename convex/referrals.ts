@@ -6,6 +6,7 @@ import { getUserByToken, requireUser } from './auth';
 import { notify, scheduleReserveFull } from './push';
 import { applyRegen } from '../src/core/packRegen';
 import { REFERRAL } from '../src/core/referral';
+import { fm } from '../src/core/msgs';
 
 /**
  * PARRAINAGE (retours live 02, §10). Chaque joueur a un lien d'invitation au site (`/jeu/?ref=CODE`) :
@@ -145,7 +146,7 @@ export async function payReferrer(ctx: MutationCtx, userId: Id<'users'>) {
   await ctx.db.patch(u._id, { referralPaid: true });
   await addPacks(ctx, u.referredBy, REFERRAL.packs);
   await ctx.db.patch(u.referredBy, { referralNoticeAt: Date.now() }); // (V2) pastille Amis : parrainage payé
-  await notify(ctx, u.referredBy, { kind: 'referral', title: `${u.displayName} a ouvert ses boosters : +${REFERRAL.packs} pour toi`, body: 'Ton parrainage est payé. Merci !', url: '#/amis' });
+  await notify(ctx, u.referredBy, { kind: 'referral', title: fm('n.referral', { name: u.displayName, n: REFERRAL.packs }), body: fm('n.referralBody'), url: '#/amis' });
 }
 
 /**

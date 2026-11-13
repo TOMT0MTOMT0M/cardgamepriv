@@ -12,6 +12,7 @@ import { addPacks } from './referrals';
 import { applyRegen } from '../src/core/packRegen';
 import { SURVEY_ID } from '../src/core/survey';
 import { seenAtAll, syncPresence } from './presence';
+import { fm } from '../src/core/msgs';
 
 /**
  * DASHBOARD ADMIN (V2, 10/11) — page /admin/ (src/admin/), réservée à l'équipe : Tom et Hugo (users.isAdmin ou
@@ -216,7 +217,7 @@ export const giveCoins = mutation({
     if (!k || Math.abs(k) > 100_000) throw new ConvexError('Un montant entre -100 000 et 100 000 (pas 0).');
     const u = await player(ctx, id);
     if (k < 0 && (u.coins ?? 0) + k < 0) throw new ConvexError(`${u.displayName} n’a que ${u.coins ?? 0} pièces.`);
-    const total = await addCoins(ctx, id, k, 'admin', label?.trim().slice(0, 80) || 'Ajustement de l’équipe');
+    const total = await addCoins(ctx, id, k, 'admin', label?.trim().slice(0, 80) || fm('c.team'));
     await log(ctx, me, 'pieces', `${k > 0 ? '+' : ''}${k} pièces (total : ${total})`, u.displayName);
     return `${k > 0 ? '+' : ''}${k} pièces pour ${u.displayName} (total : ${total}).`;
   },

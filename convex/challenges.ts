@@ -9,6 +9,7 @@ import { rarityValidator, type RarityId } from './cardsCatalog';
 import { addCoins, bumpWeekly, coinsOf, patchEcon, recordFlow } from './econLib';
 import { fmtCoins } from '../src/core/economy';
 import { DEFI_ACCEPT_MS, DEFI_MAX_OPEN, defiGain, defiKind, defiProblem, defiWinner, type DefiKind } from '../src/core/defis';
+import { fm, feedMsg, type Msg } from '../src/core/msgs';
 
 /**
  * DÉFIS ENTRE AMIS (V2, 11/11) — règles : src/core/defis.ts.
@@ -28,6 +29,8 @@ async function areFriends(ctx: QueryCtx, a: Id<'users'>, b: Id<'users'>) {
   return false;
 }
 
+/** (version anglaise, lot 4) identifiants du but, pour le relire dans la langue du joueur (src/core/msgs.ts) */
+const goalRef = (c: Pick<Challenge, 'kind' | 'target'>) => ({ defiKind: c.kind, ...(c.target ? { defiTarget: c.target } : {}) });
 const goalOf = (c: Pick<Challenge, 'kind' | 'target'>) => defiKind(c.kind as DefiKind).goal(c.target as RarityId | undefined);
 
 async function setPhase(ctx: MutationCtx, c: Challenge, phase: (userId: Id<'users'>) => 'pending' | 'live' | 'over') {
@@ -39,14 +42,14 @@ async function setPhase(ctx: MutationCtx, c: Challenge, phase: (userId: Id<'user
 }
 
 /** Rend la mise de chaque inscrit. */
-async function refundAll(ctx: MutationCtx, c: Challenge, why: string) {
+async function refundAll(ctx: MutationCtx, c: Challenge, why: 'c.defiRefundNobody' | 'c.defiRefundCancel' | 'c.defiRefundTie' | 'c.defiRefundZero') {
   if (!c.stake) return;
-  for (const p of c.players) if (p.state === 'in') await addCoins(ctx, p.userId, c.stake, 'challenge', `Défi — mise rendue (${why})`);
+  for (const p of c.players) if (p.state === 'in') await addCoins(ctx, p.userId, c.stake, 'challenge', fm(why));
 }
 
-async function feed(ctx: MutationCtx, userId: Id<'users'>, message: string) {
+async function feed(ctx: MutationCtx, userId: Id<'users'>, m: Msg) {
   const u = await ctx.db.get(userId);
-  if (u) await ctx.db.insert('activityFeed', { userId: u._id, displayName: u.displayName, avatarUrl: u.avatarUrl, kind: 'game', message, createdAt: Date.now() });
+  if (u) await ctx.db.insert('activityFeed', { userId: u._id, displayName: u.displayName, avatarUrl: u.avatarUrl, kind: 'game', ...feedMsg(m), createdAt: Date.now() });
 }
 
 export const create = mutation({
@@ -88,11 +91,11 @@ export const create = mutation({
       createdAt: now,
       acceptBy: now + DEFI_ACCEPT_MS,
     });
-    if (stake) await addCoins(ctx, u._id, -stake, 'challenge', `Défi — mise en séquestre (${invited.map((x) => x.displayName).join(', ')})`);
+    if (stake) await addCoins(ctx, u._id, -stake, 'challenge', fm('c.defiEscrow', { names: invited.map((x) => x.displayName).join(', ') }));
     for (const x of [u, ...invited]) await ctx.db.insert('challengeSeats', { userId: x._id, challengeId: id, phase: 'pending', createdAt: now });
     const goal = goalOf({ kind, target });
     for (const x of invited) {
-      await notify(ctx, x._id, { kind: 'game', title: `${u.displayName} te lance un défi`, body: `${goal}${stake ? ` · mise ${fmtCoins(stake)} pièces` : ''}. Accepte dans l’espace Jeux.`, url: URL, tag: `defi-${id}` });
+      await notify(ctx, x._id, { kind: 'game', title: fm('n.defiInvite', { name: u.displayName }), body: stake ? fm('n.defiInviteBodyStake', { goal, ...goalRef({ kind, target }), coins: stake }) : fm('n.defiInviteBody', { goal, ...goalRef({ kind, target }) }), url: URL, tag: `defi-${id}` });
       await ctx.db.patch(x._id, { gamesNoticeAt: now });
     }
     await ctx.scheduler.runAt(now + DEFI_ACCEPT_MS, internal.challenges.expire, { challengeId: id });
@@ -113,17 +116,17 @@ async function goLive(ctx: MutationCtx, c: Challenge, by: Id<'users'> | null) {
   const now = Date.now();
   if (inn.length < 2) {
     const cc = { ...c, players };
-    await refundAll(ctx, cc, 'personne n’a accepté');
+    await refundAll(ctx, cc, 'c.defiRefundNobody');
     await ctx.db.patch(c._id, { status: 'cancelled', players, resolvedAt: now, outcome: 'alone' });
     await setPhase(ctx, cc, () => 'over');
-    if (by !== c.creatorId) await notify(ctx, c.creatorId, { kind: 'game', title: 'Défi annulé', body: `Personne n’a relevé ton défi${c.stake ? ' : ta mise t’est rendue' : ''}.`, url: URL, tag: `defi-${c._id}` });
+    if (by !== c.creatorId) await notify(ctx, c.creatorId, { kind: 'game', title: fm('n.defiCancelled'), body: fm(c.stake ? 'n.defiNobodyStake' : 'n.defiNobody'), url: URL, tag: `defi-${c._id}` });
     return;
   }
   const endsAt = now + c.durationMs;
   await ctx.db.patch(c._id, { status: 'live', players, startedAt: now, endsAt });
   const live = new Set(inn.map((p) => p.userId as string));
   await setPhase(ctx, c, (uid) => (live.has(uid) ? 'live' : 'over'));
-  for (const p of inn) if (p.userId !== by) await notify(ctx, p.userId, { kind: 'game', title: 'Le défi commence', body: `${goalOf(c)} — à toi d’ouvrir des boosters !`, url: URL, tag: `defi-${c._id}` });
+  for (const p of inn) if (p.userId !== by) await notify(ctx, p.userId, { kind: 'game', title: fm('n.defiStart'), body: fm('n.defiStartBody', { goal: goalOf(c), ...goalRef(c) }), url: URL, tag: `defi-${c._id}` });
   await ctx.scheduler.runAt(endsAt, internal.challenges.finish, { challengeId: c._id });
 }
 
@@ -136,7 +139,7 @@ export const respond = mutation({
     if (i < 0 || c.players[i].state !== 'invited') throw new ConvexError(fe('challenges.6'));
     if (accept && c.stake) {
       if (c.stake > coinsOf(u)) throw new ConvexError(fe('challenges.7', { p0: fmtCoins(c.stake - coinsOf(u)) }));
-      await addCoins(ctx, u._id, -c.stake, 'challenge', `Défi — mise en séquestre (défi de ${c.players[0].name})`);
+      await addCoins(ctx, u._id, -c.stake, 'challenge', fm('c.defiEscrowOf', { name: c.players[0].name }));
     }
     const players = c.players.map((p, k) => (k === i ? { ...p, state: accept ? ('in' as const) : ('out' as const) } : p));
     await ctx.db.patch(c._id, { players });
@@ -146,7 +149,7 @@ export const respond = mutation({
     }
     // tout le monde a répondu : départ (ou annulation si tout le monde a refusé)
     if (!players.some((p) => p.state === 'invited')) await goLive(ctx, { ...c, players }, u._id);
-    else if (accept) await notify(ctx, c.creatorId, { kind: 'game', title: `${u.displayName} relève ton défi`, body: 'Lance-le quand tu veux, ou attends les autres.', url: URL, tag: `defi-${c._id}` });
+    else if (accept) await notify(ctx, c.creatorId, { kind: 'game', title: fm('n.defiAccepted', { name: u.displayName }), body: fm('n.defiAcceptedBody'), url: URL, tag: `defi-${c._id}` });
   },
 });
 
@@ -169,10 +172,10 @@ export const cancel = mutation({
     const u = await requireUser(ctx, sessionToken);
     const c = await pendingOf(ctx, challengeId);
     if (c.creatorId !== u._id) throw new ConvexError(fe('challenges.10'));
-    await refundAll(ctx, c, 'défi annulé');
+    await refundAll(ctx, c, 'c.defiRefundCancel');
     await ctx.db.patch(c._id, { status: 'cancelled', resolvedAt: Date.now() });
     await setPhase(ctx, c, () => 'over');
-    for (const p of c.players) if (p.userId !== u._id && p.state !== 'out') await notify(ctx, p.userId, { kind: 'game', title: 'Défi annulé', body: `${u.displayName} a annulé son défi${c.stake && p.state === 'in' ? ' : ta mise t’est rendue' : ''}.`, url: URL, tag: `defi-${c._id}` });
+    for (const p of c.players) if (p.userId !== u._id && p.state !== 'out') await notify(ctx, p.userId, { kind: 'game', title: fm('n.defiCancelled'), body: fm(c.stake && p.state === 'in' ? 'n.defiCancelByStake' : 'n.defiCancelBy', { name: u.displayName }), url: URL, tag: `defi-${c._id}` });
   },
 });
 
@@ -206,9 +209,9 @@ async function resolve(ctx: MutationCtx, c: Challenge, forced: number | null) {
   const outcome = w !== null ? 'win' : inn.some((x) => x.p.score > 0) ? 'tie' : 'nobody';
   if (w !== null) {
     const winner = c.players[w];
-    if (pot) await addCoins(ctx, winner.userId, pot, 'challenge', `Défi gagné — ${goalOf(c)}`, { earned: true });
+    if (pot) await addCoins(ctx, winner.userId, pot, 'challenge', fm('c.defiWon', { goal: goalOf(c), ...goalRef(c) }), { earned: true });
     for (const x of inn) if (x.i !== w) await recordFlow(ctx, x.p.userId, winner.userId, c.stake, 'challenge');
-  } else await refundAll(ctx, c, outcome === 'tie' ? 'égalité' : 'personne n’a marqué');
+  } else await refundAll(ctx, c, outcome === 'tie' ? 'c.defiRefundTie' : 'c.defiRefundZero');
   await ctx.db.patch(c._id, { status: 'done', resolvedAt: now, outcome, ...(w !== null ? { winnerId: c.players[w].userId } : {}) });
   await setPhase(ctx, c, () => 'over');
   for (const x of inn) {
@@ -218,13 +221,13 @@ async function resolve(ctx: MutationCtx, c: Challenge, forced: number | null) {
     await ctx.db.patch(x.p.userId, { gamesNoticeAt: now });
     const body =
       w === null
-        ? `${outcome === 'tie' ? 'Égalité en tête' : 'Personne n’a marqué'}${c.stake ? ' : chacun récupère sa mise' : ''}.`
+        ? fm(outcome === 'tie' ? (c.stake ? 'n.defiTieStake' : 'n.defiTie') : c.stake ? 'n.defiZeroStake' : 'n.defiZero')
         : won
-          ? `Tu remportes le défi${pot ? ` et ${fmtCoins(pot)} pièces` : ''} !`
-          : `${c.players[w].name} remporte le défi${pot ? ` (${fmtCoins(pot)} pièces)` : ''}.`;
-    await notify(ctx, x.p.userId, { kind: 'game', title: 'Défi terminé', body, url: URL, tag: `defi-${c._id}` });
+          ? pot ? fm('n.defiYouWonPot', { coins: pot }) : fm('n.defiYouWon')
+          : pot ? fm('n.defiTheyWonPot', { name: c.players[w].name, coins: pot }) : fm('n.defiTheyWon', { name: c.players[w].name });
+    await notify(ctx, x.p.userId, { kind: 'game', title: fm('n.defiOver'), body, url: URL, tag: `defi-${c._id}` });
   }
-  if (w !== null) await feed(ctx, c.players[w].userId, `${c.players[w].name} remporte un défi contre ${inn.filter((x) => x.i !== w).map((x) => x.p.name).join(', ')} : ${goalOf(c).toLowerCase()}${pot ? ` (${fmtCoins(pot)} pièces)` : ''} !`);
+  if (w !== null) await feed(ctx, c.players[w].userId, fm(pot ? 'f.defiWinPot' : 'f.defiWin', { name: c.players[w].name, others: inn.filter((x) => x.i !== w).map((x) => x.p.name).join(', '), goalLc: goalOf(c).toLowerCase(), ...goalRef(c), ...(pot ? { coins: pot } : {}) }));
 }
 
 /**

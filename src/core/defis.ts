@@ -13,9 +13,10 @@
  * Les défis ne vendent aucune carte : ils redistribuent les pièces misées.
  */
 import { fe } from './errors';
-import { t } from './i18n';
+import { lang, t } from './i18n';
 import type { RarityId } from './rarity';
 import { CARD_STARS } from './economy';
+import { msgRef, str } from './msgRefs';
 
 export type DefiKind = 'first' | 'new' | 'stars';
 
@@ -92,3 +93,8 @@ export function defiWinner(scores: number[]): number | null {
   const top = scores.map((s, i) => (s === best ? i : -1)).filter((i) => i >= 0);
   return top.length === 1 ? top[0] : null;
 }
+
+// (version anglaise, lot 4) but d'un défi des messages stockés, relu dans la langue active
+const goalRef = (p: Record<string, unknown>) => { const k = str(p.defiKind); return k ? defiKind(k as DefiKind).goal((str(p.defiTarget) as RarityId | undefined)) : undefined; };
+msgRef('goal', goalRef);
+msgRef('goalLc', (p) => goalRef(p)?.toLocaleLowerCase(lang() === 'fr' ? 'fr-FR' : 'en-GB'));

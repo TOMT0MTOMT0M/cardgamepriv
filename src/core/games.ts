@@ -19,6 +19,7 @@ import type { RarityId } from './rarity';
 import { THEMES, catalogEntry, themeOpen, BEBOU_PACK, type CatalogEntry } from './sets/themes';
 import { starsOf, stakeValue, type StakeItem } from './economy';
 import { missionDay } from './missions';
+import { msgRef, str } from './msgRefs';
 
 /** Un booster misé : le bébou pack ou celui d'un thème ouvert. */
 export interface PackChoice {
@@ -26,6 +27,8 @@ export interface PackChoice {
   themeId?: string;
 }
 
+/** (version anglaise, lot 4) identifiants du booster pour les messages stockés (src/core/msgs.ts) */
+export const packRef = (p: PackChoice) => ({ packKind: p.kind, ...(p.themeId ? { packTheme: p.themeId } : {}) });
 export const packChoiceLabel = (p: PackChoice) => (p.kind === 'bebou' ? BEBOU_PACK.label : `${THEMES.find((t) => t.id === p.themeId)?.label ?? '?'} Pack`); // i18n-ok
 export const validPackChoice = (p: PackChoice) => p.kind === 'bebou' || (p.kind === 'theme' && THEMES.some((t) => t.id === p.themeId && themeOpen(t)));
 /** Les boosters qu'on peut miser (ordre d'affichage). */
@@ -229,3 +232,6 @@ export const cardName = (id: string) => catalogEntry(id)?.name ?? id;
  * admins — et la démo hors-ligne — y ont déjà accès). Passer à true le jour de l'ouverture.
  */
 export const GAMES_OPEN = true;
+
+// (version anglaise, lot 4) booster des messages stockés, relu dans la langue active
+msgRef('pack', (p) => { const k = str(p.packKind); return k === 'bebou' || (k === 'theme' && str(p.packTheme)) ? packChoiceLabel({ kind: k, themeId: str(p.packTheme) } as PackChoice) : undefined; });

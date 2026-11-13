@@ -52,6 +52,7 @@ export const en: PartOf<typeof fr> = {
   'chat.searchColl': 'Search my collection…',
   'chat.searchCard': 'Search for a card',
   'chat.noCard': 'No card by that name in your collection.',
+  'chat.emptyColl': 'Empty collection',
   'chat.openFirst': 'Open a booster: you’ll be able to show your cards here.',
   'chat.cardOf': '{name}’s card',
   'chat.mutedToast': 'Conversation muted: no more badge or notification.',

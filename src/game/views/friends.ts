@@ -3,6 +3,8 @@ import '../../core/i18n/fr/game.views.friends'; // (textes de ce module, version
 import { friendState, isOnline, type FriendLink, type FriendRequest, type GameBackend, type Social } from '../backend';
 import type { Shell } from '../shell';
 import { busyButton, errMsg, esc, h, loginPrompt, navigate, plural, toast } from '../ui';
+import { feedText } from '../msgView';
+import { statusText } from '../../core/msgRefs';
 import { confirmTap, guarded } from './safety';
 import { REFERRAL, referralLink } from '../../core/referral';
 
@@ -214,9 +216,9 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
   function friendRow(f: FriendLink, now: number): HTMLElement {
     const on = isOnline(f, now);
     const row = h('div', `am-row am-friend${on ? ' is-on' : ''}`);
-    const seen = on ? `<span class="am-live">${tr('am.online')}</span>${f.status ? ` · ${esc(f.status)}` : ''}` : tr('am.seen', { when: ago(f.lastSeenAt, now) });
+    const seen = on ? `<span class="am-live">${tr('am.online')}</span>${f.status ? ` · ${esc(statusText(f.status))}` : ''}` : tr('am.seen', { when: ago(f.lastSeenAt, now) });
     const a = f.lastActivity;
-    row.innerHTML = `<a class="am-who" href="${profileHref(f.userId)}" aria-label="${tr('am.profileOfOn', { name: esc(f.name), on: on ? tr('am.onlineSuffix') : '' })}">${ava(f, on)}<span class="am-txt"><b>${esc(f.name)}</b><small class="am-seen">${seen}</small>${a ? `<small class="am-act"><i aria-hidden="true">${ACT_ICON[a.kind] ?? '•'}</i> ${esc(a.message)} · ${ago(a.createdAt, now)}</small>` : `<small class="am-act">${plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small>`}</span></a>
+    row.innerHTML = `<a class="am-who" href="${profileHref(f.userId)}" aria-label="${tr('am.profileOfOn', { name: esc(f.name), on: on ? tr('am.onlineSuffix') : '' })}">${ava(f, on)}<span class="am-txt"><b>${esc(f.name)}</b><small class="am-seen">${seen}</small>${a ? `<small class="am-act"><i aria-hidden="true">${ACT_ICON[a.kind] ?? '•'}</i> ${esc(feedText(a))} · ${ago(a.createdAt, now)}</small>` : `<small class="am-act">${plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small>`}</span></a>
       <span class="am-acts"><a class="btn-ghost am-prof" href="${profileHref(f.userId)}">${tr('am.profile')}</a><button class="btn-ghost am-rm" aria-label="${tr('am.removeTitle', { name: esc(f.name) })}">${tr('am.remove')}</button></span>`;
     const rm = row.querySelector<HTMLElement>('.am-rm')!;
     rm.addEventListener('click', () => {

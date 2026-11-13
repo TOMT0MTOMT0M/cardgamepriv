@@ -72,6 +72,21 @@ export function installLang(l: Lang, d: Dict | null): void {
   dict = l === 'fr' || !d ? (frAll as Dict) : d;
 }
 
+/**
+ * (version anglaise, lot 4) SERVEUR : rend un texte dans une autre langue le temps d'un appel synchrone (notifications,
+ * MP Discord dans la langue du joueur), puis remet tout comme avant. Jamais côté client (src/game/lang.ts s'en charge).
+ */
+export function withLang<T>(l: Lang, d: Dict | null, extra: Record<string, string>, fn: () => T): T {
+  const was = { cur, dict, data };
+  installLang(l, d);
+  data = extra;
+  try {
+    return fn();
+  } finally {
+    ({ cur, dict, data } = was);
+  }
+}
+
 function plural(l: Lang): Intl.PluralRules {
   let p = plurals.get(l);
   if (!p) plurals.set(l, (p = new Intl.PluralRules(locale(l))));

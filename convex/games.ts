@@ -12,7 +12,7 @@ import { applyRegen, fmtCountdown } from '../src/core/packRegen';
 import { isValidPackRequest, rollPack, type PackRequest } from '../src/core/packRoll';
 import { pityAfter, pityForces } from '../src/core/pity';
 import { themeById } from '../src/core/sets/themes';
-import { cardsValue, fmtCoins, rollPackCoins, stakeValue } from '../src/core/economy';
+import { cardsValue, rollPackCoins, stakeValue } from '../src/core/economy';
 import {
   DUEL_MAX_PACKS,
   ROYALE_MAX,
@@ -26,6 +26,7 @@ import {
   houseCard,
   nextRouletteDraw,
   packChoiceLabel,
+  packRef,
   rouletteSlot,
   royaleResult,
   validPackChoice,
@@ -34,6 +35,7 @@ import {
   type Stake,
 } from '../src/core/games';
 import { syncPresence } from './presence';
+import { fm, feedMsg, type Msg } from '../src/core/msgs';
 
 /**
  * ESPACE JEUX (V1) : 1v1 Pack Battle · Pack Battle Royale · Roulette à cartes. Règles : src/core/games.ts.
@@ -80,12 +82,12 @@ async function openGamePack(ctx: MutationCtx, userId: Id<'users'>, choice: PackC
   }
   await ctx.db.patch(userId, { pityCount: pityAfter(pity, cards.map((c) => c.rarity)), totalPacksOpened: u.totalPacksOpened + 1 });
   const coins = rollPackCoins(choice.kind, secureRandom);
-  await addCoins(ctx, userId, coins, 'pack', `Ouverture — ${packChoiceLabel(choice)} (jeu)`, { earned: true });
+  await addCoins(ctx, userId, coins, 'pack', fm('c.openGame', { pack: packChoiceLabel(choice), ...packRef(choice) }), { earned: true });
   return cards;
 }
 
 /** Les belles cartes tirées en jeu passent aussi dans le fil (6★ et secrètes). */
-async function announcePulls(ctx: MutationCtx, opener: Doc<'users'>, cards: GameCard[], where: string) {
+async function announcePulls(ctx: MutationCtx, opener: Doc<'users'>, cards: GameCard[], where: 'f.pullBattle' | 'f.pullRoyale') {
   const now = Date.now();
   for (const c of cards) {
     if (RARITY_TIER[c.rarity] < RARITY_TIER.mythic) continue;
@@ -99,14 +101,14 @@ async function announcePulls(ctx: MutationCtx, opener: Doc<'users'>, cards: Game
       cardName: c.cardName,
       rarity: c.rarity,
       mintNumber: c.mintNumber,
-      message: `${opener.displayName} a tiré ${c.cardName} [${c.rarity === 'secret' ? 'Secrète' : 'Mythique'} #${c.mintNumber}] dans ${where} !`,
+      ...feedMsg(fm(where, { name: opener.displayName, card: c.cardName, cardId: c.cardId, rarity: c.rarity === 'secret' ? 'Secrète' : 'Mythique', rarityId: c.rarity, mint: c.mintNumber })), // i18n-ok
       createdAt: now,
     });
   }
 }
 
-async function feedGame(ctx: MutationCtx, u: Doc<'users'>, message: string) {
-  await ctx.db.insert('activityFeed', { userId: u._id, displayName: u.displayName, avatarUrl: u.avatarUrl, kind: 'game', message, createdAt: Date.now() });
+async function feedGame(ctx: MutationCtx, u: Doc<'users'>, m: Msg) {
+  await ctx.db.insert('activityFeed', { userId: u._id, displayName: u.displayName, avatarUrl: u.avatarUrl, kind: 'game', ...feedMsg(m), createdAt: Date.now() });
 }
 
 const sideOf = (u: Doc<'users'>, packs: PackChoice[], stake: Stake): Side => ({
@@ -136,7 +138,7 @@ export const createDuel = mutation({
     const open = await ctx.db.query('duels').withIndex('by_creator', (q) => q.eq('creatorId', u._id)).filter((q) => q.eq(q.field('status'), 'open')).collect();
     if (open.length >= 3) throw new ConvexError(fe('games.8'));
     if (invitedId) {
-      await notify(ctx, invitedId, { kind: 'game', title: `${u.displayName} te défie en Pack Battle`, body: 'Relève le défi dans l’espace Jeux.', url: '#/jeux' });
+      await notify(ctx, invitedId, { kind: 'game', title: fm('n.battleInvite', { name: u.displayName }), body: fm('n.battleInviteBody'), url: '#/jeux' });
       await ctx.db.patch(invitedId, { gamesNoticeAt: Date.now() }); // pastille de l'onglet Jeux
     }
     return await ctx.db.insert('duels', {
@@ -228,7 +230,7 @@ async function resolveDuel(ctx: MutationCtx, d: Doc<'duels'>) {
   const escrow: Array<{ coins: number; cards: Array<{ cardId: string; rarity: RarityId; count: number; mintNumber: number }> }> = [];
   for (const [k, s] of d.sides.entries()) {
     await debitPacks(ctx, s.userId, s.packs.length);
-    if (s.stake.coins) await addCoins(ctx, s.userId, -s.stake.coins, 'duel', `Side pot — Pack Battle contre ${d.sides[1 - k].name}`);
+    if (s.stake.coins) await addCoins(ctx, s.userId, -s.stake.coins, 'duel', fm('c.sidePot', { name: d.sides[1 - k].name }));
     escrow.push({ coins: s.stake.coins, cards: await takeCards(ctx, s.userId, s.stake.cards) });
   }
   // 3. ouverture simultanée
@@ -244,14 +246,14 @@ async function resolveDuel(ctx: MutationCtx, d: Doc<'duels'>) {
   if (winner === null) {
     for (const [k, s] of d.sides.entries()) {
       await giveCards(ctx, s.userId, [...packs[k].flat(), ...escrow[k].cards]);
-      if (escrow[k].coins) await addCoins(ctx, s.userId, escrow[k].coins, 'duel', 'Side pot rendu (égalité parfaite)');
+      if (escrow[k].coins) await addCoins(ctx, s.userId, escrow[k].coins, 'duel', fm('c.sidePotBack'));
     }
   } else {
     const w = d.sides[winner];
     const l = d.sides[1 - winner];
     await giveCards(ctx, w.userId, [...packs.flat(2), ...escrow[0].cards, ...escrow[1].cards]);
     const coins = escrow[0].coins + escrow[1].coins;
-    if (coins) await addCoins(ctx, w.userId, coins, 'duel', `Side pot gagné — Pack Battle contre ${l.name}`, { earned: true });
+    if (coins) await addCoins(ctx, w.userId, coins, 'duel', fm('c.sidePotWon', { name: l.name }), { earned: true });
     const lost = cardsValue(packs[1 - winner].flat().map((c) => ({ rarity: c.rarity, count: 1 }))) + stakeValue({ coins: escrow[1 - winner].coins, cards: escrow[1 - winner].cards });
     await recordFlow(ctx, l.userId, w.userId, lost, 'duel');
   }
@@ -264,7 +266,7 @@ async function resolveDuel(ctx: MutationCtx, d: Doc<'duels'>) {
     const u = (await ctx.db.get(s.userId))!;
     for (const [j, p] of s.packs.entries())
       await bumpMissions(ctx, u, { type: 'pack', packKey: p.kind === 'theme' && p.themeId ? p.themeId : 'bebou', cards: keep ? packs[k][j].map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: false })) : [] });
-    await announcePulls(ctx, u, packs[k].flat(), 'un Pack Battle');
+    await announcePulls(ctx, u, packs[k].flat(), 'f.pullBattle');
     await ctx.db.patch(s.userId, { lastSeenAt: now, gamesNoticeAt: now, statusText: won ? 'Vient de gagner un Pack Battle' : winner === null ? 'Égalité parfaite en Pack Battle' : 'Vient de perdre un Pack Battle' });
     await syncPresence(ctx, s.userId);
   }
@@ -273,8 +275,8 @@ async function resolveDuel(ctx: MutationCtx, d: Doc<'duels'>) {
     ctx,
     winner === null ? a : winner === 0 ? a : b,
     winner === null
-      ? `Pack Battle ${a.displayName} contre ${b.displayName} : égalité parfaite (${stars[0]}★ partout), chacun repart avec ses cartes !`
-      : `${(winner === 0 ? a : b).displayName} remporte un Pack Battle contre ${(winner === 0 ? b : a).displayName} : ${stars[winner]}★ contre ${stars[1 - winner]}★ (${n} booster${n > 1 ? 's' : ''} chacun) et repart avec ${n * 10} cartes !`,
+      ? fm('f.battleTie', { name: a.displayName, other: b.displayName, stars: stars[0] })
+      : fm('f.battleWin', { name: (winner === 0 ? a : b).displayName, other: (winner === 0 ? b : a).displayName, stars: stars[winner], stars2: stars[1 - winner], n, cards: n * 10 }),
   );
   await ctx.db.patch(d._id, {
     status: 'done',
@@ -376,7 +378,7 @@ async function resolveRoyale(ctx: MutationCtx, r: Doc<'royales'>) {
     // missions : un « booster ouvert » par booster misé (les cartes gardées comptent une fois, sur le premier)
     for (let k = 0; k < n; k++)
       await bumpMissions(ctx, u, { type: 'pack', packKey: p.pack.kind === 'theme' && p.pack.themeId ? p.pack.themeId : 'bebou', cards: k === 0 ? res.awarded[i].map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: false })) : [] });
-    await announcePulls(ctx, u, packs[i], 'une Battle Royale');
+    await announcePulls(ctx, u, packs[i], 'f.pullRoyale');
     await ctx.db.patch(p.userId, { lastSeenAt: now, gamesNoticeAt: now, statusText: won ? 'Vient de gagner une Battle Royale' : 'Sort d’une Battle Royale' });
     await syncPresence(ctx, p.userId);
   }
@@ -387,8 +389,8 @@ async function resolveRoyale(ctx: MutationCtx, r: Doc<'royales'>) {
     ctx,
     winnerDoc,
     names.length === 1
-      ? `${names[0]} remporte la Battle Royale à ${r.players.length} joueurs${n > 1 ? ` (${n} boosters chacun)` : ''} (${best}★) et rafle ${packs.flat().length} cartes !`
-      : `Battle Royale à ${r.players.length}${n > 1 ? ` (${n} boosters chacun)` : ''} : ex æquo à ${best}★ entre ${names.join(' et ')}, le pot est partagé au hasard !`,
+      ? fm(n > 1 ? 'f.royaleWinN' : 'f.royaleWin', { name: names[0], players: r.players.length, n, best, cards: packs.flat().length })
+      : fm(n > 1 ? 'f.royaleTieN' : 'f.royaleTie', { players: r.players.length, n, best, names }),
   );
   await ctx.db.patch(r._id, { status: 'done', result: { packs, stars: res.stars, winners: res.winners, awarded: res.awarded }, resolvedAt: now });
 }
@@ -463,7 +465,7 @@ export const placeBet = mutation({
     const mine = r.bets.find((b) => b.userId === u._id);
     const problem = betProblem(numbers, stake, taken, mine ? 1 : 0);
     if (problem) throw new ConvexError(problem);
-    if (stake.coins) await addCoins(ctx, u._id, -stake.coins, 'roulette', `Roulette — ${numbers.length} numéro${numbers.length > 1 ? 's' : ''}`);
+    if (stake.coins) await addCoins(ctx, u._id, -stake.coins, 'roulette', fm('c.roulette', { n: numbers.length }));
     const cards = await takeCards(ctx, u._id, stake.cards);
     const merged = { userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, createdAt: now };
     await ctx.db.patch(r._id, { bets: [...r.bets, merged] });
@@ -498,7 +500,7 @@ export const rouletteTick = internalMutation({
 /** Passage aux nouvelles règles (retours live 02) : chaque joueur récupère sa mise, le pot accumulé est conservé. */
 async function retireLegacyRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number) {
   for (const b of r.bets) {
-    if (b.coins) await addCoins(ctx, b.userId, b.coins, 'roulette', 'Roulette — mise remboursée (nouvelles règles : 36 numéros, 10 h et 20 h)');
+    if (b.coins) await addCoins(ctx, b.userId, b.coins, 'roulette', fm('c.rouletteRefund'));
     if (b.cards.length) await giveCards(ctx, b.userId, b.cards);
   }
   const house = r.houseCards.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: 1, mintNumber: c.mintNumber }));
@@ -523,12 +525,12 @@ async function drawRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number
   const bet = r.bets.find((b) => b.numbers.includes(number));
   if (bet) {
     await giveCards(ctx, bet.userId, pot.cards);
-    if (pot.coins) await addCoins(ctx, bet.userId, pot.coins, 'roulette', `Roulette — pot du ${r.day} (n° ${number})`, { earned: true });
+    if (pot.coins) await addCoins(ctx, bet.userId, pot.coins, 'roulette', fm('c.roulettePot', { day: r.day, number }), { earned: true });
     await patchEcon(ctx, bet.userId, (e) => ({ ...e, rouletteWins: e.rouletteWins + 1 }));
-    await notify(ctx, bet.userId, { kind: 'game', title: 'Roulette : tu as gagné !', body: `Le n° ${number} est sorti : le pot est à toi.`, url: '#/jeux' });
+    await notify(ctx, bet.userId, { kind: 'game', title: fm('n.rouletteWon'), body: fm('n.rouletteWonBody', { number }), url: '#/jeux' });
     for (const b of r.bets) if (b.userId !== bet.userId) await recordFlow(ctx, b.userId, bet.userId, b.coins + cardsValue(b.cards), 'roulette');
     const w = await ctx.db.get(bet.userId);
-    if (w) await feedGame(ctx, w, `🎡 Le ${number} sort à la roulette : ${w.displayName} remporte tout le pot — ${fmtCoins(pot.coins)} pièces et ${pot.cards.reduce((a, c) => a + c.count, 0)} cartes (${fmtCoins(pot.value)} de valeur) !`);
+    if (w) await feedGame(ctx, w, fm('f.roulette', { number, name: w.displayName, coins: pot.coins, cards: pot.cards.reduce((a, c) => a + c.count, 0), value: pot.value }));
   }
   // pastille de l'onglet Jeux chez chaque joueur qui avait misé (le résultat est à voir)
   for (const id of new Set(r.bets.map((b) => b.userId))) await ctx.db.patch(id, { gamesNoticeAt: now });

@@ -12,6 +12,7 @@ import type { StarRarityId } from '../src/core/dropRates';
 import { lockedCards } from './trades';
 import { invRev } from './invRev';
 import { syncPresence } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -100,7 +101,7 @@ export const sign = mutation({
         cardName: card.name,
         rarity: target,
         mintNumber,
-        message: `${user.displayName} a brûlé ${CONTRACT_COST[rarity as StarRarityId]} doublons et signé un contrat : ${card.name} [${RARITY_LABEL[target]} #${mintNumber}] !`,
+        ...feedMsg(fm('f.contract', { name: user.displayName, n: CONTRACT_COST[rarity as StarRarityId] ?? 0, card: card.name, cardId: card.id, rarity: RARITY_LABEL[target], rarityId: target, mint: mintNumber })),
         createdAt: now,
       });
     }

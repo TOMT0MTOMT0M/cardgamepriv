@@ -5,6 +5,9 @@ import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import { requireUser } from './auth';
 import { fullAt } from '../src/core/packRegen';
+import { fm, type Msg } from '../src/core/msgs';
+import { msgIn, userLang } from './i18nServer';
+import { msgParamsValidator } from './schema';
 
 /**
  * NOTIFICATIONS PUSH (V2, docs/IDEES-V2.md §1) — côté base. L'envoi réel (Web Push, bibliothèque `web-push`,
@@ -21,8 +24,9 @@ const kindValidator = v.union(...KINDS.map((k) => v.literal(k)));
 
 export interface Payload {
   kind: Kind;
-  title: string;
-  body: string;
+  /** (version anglaise, lot 4) texte fixe, ou message codé (src/core/msgs.ts) rendu dans la langue du joueur */
+  title: string | Msg;
+  body: string | Msg;
   /** page à ouvrir (hash) : #/echanges, #/amis, #/ … */
   url: string;
   /** même tag = la nouvelle remplace l'ancienne dans le centre de notifications */
@@ -138,7 +142,7 @@ export async function notify(ctx: MutationCtx, userId: Id<'users'>, p: Payload, 
     const delay = Math.max(0, at - Date.now()) + (opts.at ? 0 : 90_000);
     await ctx.scheduler.runAfter(delay, internal.pushSend.send, {
       subs: subs.map((s) => ({ endpoint: s.endpoint, keys: s.keys })),
-      payload: { ...p, tag: p.tag ?? `${p.kind}` },
+      payload: { ...p, title: msgIn(userLang(user), p.title), body: msgIn(userLang(user), p.body), tag: p.tag ?? `${p.kind}` },
     });
   } catch (e) {
     console.warn('[push] notify', e);
@@ -182,14 +186,23 @@ export const reserveFull = internalMutation({
     const u = await ctx.db.get(userId);
     if (!u || u.packBalance !== balance || (u.packRegenAt ?? u.lastSeenAt) !== regenAt) return;
     await ctx.db.patch(userId, { notifFullJob: undefined, notifFullKey: undefined });
-    await notify(ctx, userId, { kind: 'reserve', title: 'Réserve pleine : 15 boosters', body: 'Ta réserve est au maximum, elle ne se recharge plus. Viens ouvrir !', url: '#/' }, { at: Date.now() });
+    await notify(ctx, userId, { kind: 'reserve', title: fm('n.reserveFull'), body: fm('n.reserveFullBody'), url: '#/' }, { at: Date.now() });
   },
 });
 
 /** Annonce de l'équipe à tout le monde (lanceur : `npx convex run push:announce '{"title":…,"body":…}'`). */
 export const announce = internalMutation({
-  args: { title: v.string(), body: v.string(), url: v.optional(v.string()) },
-  handler: async (ctx, { title, body, url }) => {
+  args: {
+    title: v.string(),
+    body: v.string(),
+    url: v.optional(v.string()),
+    /** (version anglaise, lot 4) annonce automatique (booster du moment) : messages codés, rendus dans la langue de chacun */
+    titleMsg: v.optional(v.object({ key: v.string(), params: v.optional(msgParamsValidator) })),
+    bodyMsg: v.optional(v.object({ key: v.string(), params: v.optional(msgParamsValidator) })),
+  },
+  handler: async (ctx, { title: t0, body: b0, url, titleMsg, bodyMsg }) => {
+    const title = titleMsg ? ({ text: t0, ...titleMsg } as Msg) : t0;
+    const body = bodyMsg ? ({ text: b0, ...bodyMsg } as Msg) : b0;
     const subs = await ctx.db.query('pushSubs').collect();
     const byUser = new Map<string, Doc<'pushSubs'>[]>();
     for (const s of subs) byUser.set(s.userId, [...(byUser.get(s.userId) ?? []), s]);

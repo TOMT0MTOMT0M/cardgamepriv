@@ -2,6 +2,7 @@ import { tData } from './i18n';
 import { artV } from './artRev';
 import type { RarityId } from './rarity';
 import { siteUrl } from './siteRoot';
+import { msgRef, str } from './msgRefs';
 import type { UniverseId } from './universes';
 import { POKEMON_151, POKEMON_151_INFO, pokemonCardId, pokemonFile, pokemonGen } from './sets/pokemon151';
 import { BEBOUS, BEBOUS_INFO, KCDQ, KCDQ_INFO, bebouCardId, bebouFile, kcdqCardId } from './sets/bebous';
@@ -422,3 +423,8 @@ export function cardForRarity(r: RarityId, offset = 0): CardData {
   const pool = list.length ? list : CARDS;
   return pool[offset % pool.length];
 }
+
+// (version anglaise, lot 4) nom de carte des messages stockés, relu dans la langue active
+const cardRef = (v: unknown) => { const id = str(v); if (!id) return undefined; try { const c = cardById(id); return c.id === id ? c.name || undefined : undefined; } catch { return undefined; } };
+msgRef('card', (p) => cardRef(p.cardId));
+msgRef('card2', (p) => cardRef(p.cardId2));

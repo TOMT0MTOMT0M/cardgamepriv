@@ -345,7 +345,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     let sig = '';
     unsubs.push(
       backend.eco.watchDuel(id, (d) => {
-        if (!d) return void (room.innerHTML = '<div class="muted">Duel introuvable.</div>');
+        if (!d) return void (room.innerHTML = `<div class="muted">${tr('gm.duelGone')}</div>`);
         const s = JSON.stringify([d.status, d.sides.map((x) => [x.userId, x.ready, x.packs, x.stake])]);
         if (s === sig) return;
         sig = s;
@@ -637,7 +637,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     let sig = '';
     unsubs.push(
       backend.eco.watchRoyale(id, (r) => {
-        if (!r) return void (room.innerHTML = '<div class="muted">Partie introuvable.</div>');
+        if (!r) return void (room.innerHTML = `<div class="muted">${tr('gm.gameGone')}</div>`);
         const s = JSON.stringify([r.status, r.players.map((p) => [p.userId, p.pack])]);
         if (s === sig) return;
         sig = s;

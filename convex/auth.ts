@@ -6,6 +6,7 @@ import { internal } from './_generated/api';
 import { STARTER_PACKS, assertOpen } from './launch';
 import { BOOST_MS } from '../src/core/packRegen';
 import { syncPresence } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 /** Places du club (variable Convex MAX_PLAYERS pour l'agrandir, comptes de l'équipe compris). */
 export const maxPlayers = () => {
@@ -150,7 +151,7 @@ export async function createUser(
     displayName: f.displayName,
     avatarUrl: f.avatarUrl,
     kind: 'joined',
-    message: `${f.displayName} a rejoint le club avec ${STARTER_PACKS} boosters de départ !`,
+    ...feedMsg(fm('f.joined', { name: f.displayName, n: STARTER_PACKS })),
     createdAt: now,
   });
   return userId;

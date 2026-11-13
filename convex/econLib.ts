@@ -8,6 +8,7 @@ import { cleanEcon, emptyEcon, type EconState } from '../src/core/economy';
 import { applyWeeklyEvent, cleanWeekly, currentWeekly, type WeeklyEvent, type WeeklyState } from '../src/core/weekly';
 import { lockedCards } from './trades';
 import { dropInv, invRev } from './invRev';
+import type { Msg } from '../src/core/msgs';
 
 /**
  * Briques serveur de l'économie (pièces, inventaire, journaux), partagées par convex/economy.ts et convex/games.ts.
@@ -28,7 +29,7 @@ export const coinsOf = (u: Doc<'users'>) => u.coins ?? 0;
  * (succès Tirelire) — vrai pour les sources de pièces et les gains de jeu, faux pour les remboursements.
  * Relit le joueur : sûr après d'autres écritures dans la même mutation.
  */
-export async function addCoins(ctx: MutationCtx, userId: Id<'users'>, amount: number, reason: string, label: string, opts: { earned?: boolean; econ?: Partial<EconState> } = {}) {
+export async function addCoins(ctx: MutationCtx, userId: Id<'users'>, amount: number, reason: string, label: string | Msg, opts: { earned?: boolean; econ?: Partial<EconState> } = {}) {
   const u = await ctx.db.get(userId);
   if (!u) throw new ConvexError(fe('econLib.1'));
   amount = Math.round(amount);
@@ -37,7 +38,11 @@ export async function addCoins(ctx: MutationCtx, userId: Id<'users'>, amount: nu
   const econ = { ...econOf(u), ...(opts.econ ?? {}) };
   if (opts.earned && amount > 0) econ.earned += amount;
   await ctx.db.patch(userId, { coins, econ: cleanEcon(econ) });
-  if (amount !== 0) await ctx.db.insert('coinTx', { userId, amount, reason, label, createdAt: Date.now() });
+  if (amount !== 0)
+    await ctx.db.insert('coinTx', {
+      userId, amount, reason, createdAt: Date.now(),
+      ...(typeof label === 'string' ? { label } : { label: label.text, labelKey: label.key, ...(label.params ? { labelParams: label.params } : {}) }),
+    });
   return coins;
 }
 

@@ -27,6 +27,7 @@ import {
 } from '../src/core/deals';
 import { seenAtAll, seenAtOf } from './presence';
 import { wishersOf, wishesReady } from './wishes';
+import { fm } from '../src/core/msgs';
 
 /**
  * REFONTE DES ÉCHANGES (11/11) — règles : src/core/deals.ts.
@@ -331,7 +332,7 @@ export const quick = mutation({
       createdAt: Date.now(),
     });
     await bumpMissions(ctx, me, { type: 'trade' });
-    await notify(ctx, other._id, { kind: 'trade', title: `${me.displayName} te demande ${cardName(get.cardId)}`, body: `Contre ${cardName(give.cardId)} (${starOf(rarity)}). Accepter, choisir autre chose ou refuser : dans Échanges.`, url: '#/echanges' });
+    await notify(ctx, other._id, { kind: 'trade', title: fm('n.dealAsk', { name: me.displayName, card: cardName(get.cardId), cardId: get.cardId }), body: fm('n.dealAskBody', { card2: cardName(give.cardId), cardId2: give.cardId, stars: starOf(rarity) }), url: '#/echanges' });
     return { id: id as string, give, get };
   },
 });
@@ -401,7 +402,7 @@ export const acceptPick = mutation({
     await ctx.db.patch(t._id, { offered: trade.offered });
     await concludeTrade(ctx, trade, me);
     const changed = cardId !== before.cardId;
-    await notify(ctx, from._id, { kind: 'trade', title: `${me.displayName} a accepté ton échange !`, body: changed ? `Il a choisi ${cardName(cardId)} au lieu de ${cardName(before.cardId)}.` : 'Les cartes sont dans ta collection.', url: '#/echanges' });
+    await notify(ctx, from._id, { kind: 'trade', title: fm('n.tradeAccepted', { name: me.displayName }), body: changed ? fm('n.dealChanged', { card: cardName(cardId), cardId, card2: cardName(before.cardId), cardId2: before.cardId }) : fm('n.cardsIn'), url: '#/echanges' });
     return { status: 'accepted' as const, changed };
   },
 });

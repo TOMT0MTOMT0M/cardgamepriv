@@ -9,7 +9,7 @@ import type { BoardState, ListingOfferView, ListingView } from './backend';
 import { api } from '../../convex/_generated/api';
 import type { Doc } from '../../convex/_generated/dataModel';
 import type { ChatInbox, ChatMsg } from '../core/chat';
-import type { PackEvent } from '../core/events';
+import { localEvent, type PackEvent } from '../core/events';
 
 /** demande de booster → arguments du serveur (booster du moment : l'id de l'événement suffit, le serveur relit le reste) */
 const packArgs = (req: PackRequest) => (req.event ? { packKind: 'theme' as const, eventId: req.event.id as Id<'packEvents'> } : { packKind: req.kind, themeId: req.themeId });
@@ -156,7 +156,7 @@ export function createOnlineBackend(): GameBackend {
         .filter((f) => f._id !== n.user?._id)
         .map((f) => ({ id: f._id, name: f.displayName, avatarUrl: f.avatarUrl, online: f.online, status: f.statusText, packsOpened: f.totalPacksOpened }));
     const feedChanged = changed('feed', n.feed);
-    if (feedChanged) state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, rarity: f.rarity, createdAt: f.createdAt }));
+    if (feedChanged) state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, msgKey: f.msgKey, msgParams: f.msgParams, rarity: f.rarity, createdAt: f.createdAt }));
     if (changed('bigPulls', n.bigPulls) || (n.bigPulls === null && feedChanged) || userChanged) {
       const rows = n.bigPulls ?? n.feed.filter((f) => f.cardId && f.rarity && BIG_PULL_RARITIES.includes(f.rarity));
       state.bigPulls = rows.map(
@@ -209,7 +209,7 @@ export function createOnlineBackend(): GameBackend {
       };
     },
     // (11/11) booster du moment : abonnement léger (quelques lignes, relancé seulement quand un événement change)
-    watchEvents: (cb) => net.watch(api.events.current, {}, (rows) => cb((rows ?? []) as PackEvent[]), false, () => cb([])),
+    watchEvents: (cb) => net.watch(api.events.current, {}, (rows) => cb(((rows ?? []) as PackEvent[]).map(localEvent)), false, () => cb([])),
     async revealPack(id) {
       await net.revealPack(id as Id<'packOpens'>);
       shootRevealed([id]);
@@ -383,7 +383,7 @@ export function createOnlineBackend(): GameBackend {
       return await net.seasonBoard();
     },
     async activity(userId) {
-      return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
+      return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, msgKey: a.msgKey, msgParams: a.msgParams, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
     },
     async signContract(rarity, items) {
       return await net.signContract(rarity, items);

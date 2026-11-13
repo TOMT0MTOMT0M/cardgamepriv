@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from 'convex-test';
 import { describe, expect, test } from 'vitest';
-import { api } from './_generated/api';
+import { api, internal } from './_generated/api';
 import schema from './schema';
 import { fr as frCore } from '../src/core/i18n/fr';
 import { en } from '../src/core/i18n/en';
@@ -9,6 +9,10 @@ import { compare, format, installLang, langFromDevice, t as tr } from '../src/co
 import { enData } from '../src/core/i18n/en/data';
 import { enErrors } from '../src/core/i18n/en/errors';
 import { ERR_FR } from '../src/core/i18n/errFr';
+import { MSG_FR, type MsgTpl } from '../src/core/i18n/msgFr';
+import { enMsgs } from '../src/core/i18n/en/msgs';
+import { fm, parseMsg, renderMsg, statusText, type MsgParams } from '../src/core/msgs';
+import { msgIn } from './i18nServer';
 import { errText, fe } from '../src/core/errors';
 import { installData } from '../src/core/i18n';
 import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS } from '../src/core/economy';
@@ -108,5 +112,74 @@ describe('version anglaise : langue du compte (users.lang)', () => {
     expect(await read()).toMatchObject({ lang: 'en', langSet: true, _creationTime: at });
     const me = await t.query(api.users.me, { sessionToken: 'tok' });
     expect(me).toMatchObject({ lang: 'en', langSet: true });
+  });
+});
+
+describe('version anglaise : messages stockés (fil, pièces, notifications — lot 4)', () => {
+  const ph = (s: string) => [...new Set([...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]))].sort().join(',');
+  const forms = (x: MsgTpl) => (typeof x === 'string' ? [x] : [x.one, x.other]);
+  test('chaque modèle a son anglais, avec les mêmes paramètres', () => {
+    for (const [k, fr] of Object.entries(MSG_FR) as [keyof typeof MSG_FR, MsgTpl][]) {
+      const e = enMsgs[k];
+      expect(e, k).toBeTruthy();
+      const p = ph(forms(fr).join(' '));
+      for (const f of forms(e)) expect(ph(f), k).toBe(p.split(',').filter((x) => f.includes(`{${x}}`)).join(','));
+      expect(ph(forms(e).join(' ')), k).toBe(p);
+    }
+  });
+  test('fm garde le français mot pour mot ; msgText le rend dans la langue, refs comprises', () => {
+    const m = fm('f.pull', { name: 'Léa', card: 'Pikachu', cardId: 'x', rarity: 'Mythique', rarityId: 'mythic', mint: 1234 });
+    expect(m.text).toBe('Léa a obtenu Pikachu [Mythique #1234] !');
+    expect(fm('c.shop', { n: 1 }).text).toBe('Achat de 1 booster');
+    expect(fm('c.shop', { n: 3 }).text).toBe('Achat de 3 boosters');
+    expect(fm('f.roulette', { number: 7, name: 'Tom', coins: 12000, cards: 4, value: 15500 }).text).toBe('🎡 Le 7 sort à la roulette : Tom remporte tout le pot — 12 000 pièces et 4 cartes (15 500 de valeur) !');
+    installLang('en', en);
+    installData({ 'rar.mythic': 'Mythic' });
+    expect(renderMsg('f.pull', m.params, 'en', enMsgs)).toBe('Léa got Pikachu [Mythic #1234]!');
+    expect(renderMsg('f.royaleTie', { players: 4, best: 9, names: ['A', 'B', 'C'] }, 'en', enMsgs)).toBe('4-player Battle Royale: tied at 9★ between A, B and C, the pot is split at random!');
+    expect(renderMsg('c.shop', { n: 1 }, 'en', enMsgs)).toBe('Bought 1 booster');
+    installLang('fr', fr);
+    installData({});
+  });
+  test('la migration reconnaît chaque modèle (les anciennes lignes retrouvent leur code)', () => {
+    const sample = (k: string): MsgParams => {
+      const p: MsgParams = {};
+      for (const f of forms(MSG_FR[k as keyof typeof MSG_FR])) for (const [, x] of f.matchAll(/\{(\w+)\}/g)) p[x!] = x === 'n' ? 2 : `«${x}»`;
+      return p;
+    };
+    for (const k of Object.keys(MSG_FR)) {
+      const m = fm(k as keyof typeof MSG_FR, sample(k));
+      const back = parseMsg(m.text, k.slice(0, 2) as 'f.' | 'c.' | 's.');
+      expect(back?.key, `${k} : ${m.text}`).toBe(k);
+    }
+    expect(parseMsg('Texte inconnu', 'f.')).toBeNull();
+    expect(statusText('Contemple son tirage')).toBe('Contemple son tirage'); // (français : tel quel)
+  });
+  test('migrations:i18nMessages code les anciennes lignes, une seule fois', async () => {
+    const t = convexTest(schema, modules);
+    const ids = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert('users', { discordId: '1', username: 'tom', displayName: 'tom', packBalance: 1, lastDailyClaimAt: 0, totalPacksOpened: 0, lastSeenAt: 1 });
+      const f1 = await ctx.db.insert('activityFeed', { userId, displayName: 'tom', kind: 'trade', message: 'tom et Léa ont conclu un échange !', createdAt: 1 });
+      const f2 = await ctx.db.insert('activityFeed', { userId, displayName: 'tom', kind: 'game', message: 'Un texte que personne ne reconnaît', createdAt: 2 });
+      const c1 = await ctx.db.insert('coinTx', { userId, amount: -300, reason: 'shop', label: 'Achat de 3 boosters', createdAt: 3 });
+      const c2 = await ctx.db.insert('coinTx', { userId, amount: 1000, reason: 'calendar', label: 'Calendrier — jour 30', createdAt: 4 });
+      return { f1, f2, c1, c2 };
+    });
+    await t.mutation(internal.migrations.i18nMessages, {});
+    await t.finishAllScheduledFunctions(() => {});
+    const rows = await t.run(async (ctx) => Promise.all([ctx.db.get(ids.f1), ctx.db.get(ids.f2), ctx.db.get(ids.c1), ctx.db.get(ids.c2)]));
+    expect(rows[0]).toMatchObject({ msgKey: 'f.trade', msgParams: { name: 'tom', other: 'Léa' } });
+    expect(rows[1]?.msgKey).toBeUndefined();
+    expect(rows[2]).toMatchObject({ labelKey: 'c.shop', labelParams: { n: 3 } });
+    expect(rows[3]).toMatchObject({ labelKey: 'c.calendar', labelParams: { day: 30 } });
+    const again = await t.mutation(internal.migrations.i18nMessages, { part: 'coins' });
+    expect(again.done).toBe(0);
+  });
+  test('notification dans la langue du joueur (users.lang)', () => {
+    expect(msgIn('fr', fm('n.tradeOffer', { name: 'Léa' }))).toBe('Léa te propose un échange');
+    expect(msgIn('en', fm('n.tradeOffer', { name: 'Léa' }))).toBe('Léa offers you a trade');
+    expect(msgIn('en', fm('n.tradeOfferBody', { n: 1, m: 2 }))).toBe('1 card for 2: see Trades.');
+    expect(msgIn('en', 'Texte libre')).toBe('Texte libre');
+    expect(tr('title.shop' as never)).not.toBe(''); // (rien n'a fui : la langue active est restée le français)
   });
 });

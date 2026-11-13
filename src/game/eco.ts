@@ -3,6 +3,7 @@ import type { AchievementStats, EconState, StakeItem } from '../core/economy';
 import type { WeeklyState } from '../core/weekly';
 import type { GameCard, PackChoice, Stake } from '../core/games';
 import type { JeuxBackend } from './ecoJeux';
+import type { MsgParams } from '../core/msgRefs';
 
 /**
  * ÉCONOMIE + ESPACE JEUX côté client : même interface en ligne (ecoOnline.ts, serveur Convex) et en démo
@@ -103,6 +104,9 @@ export interface CoinTx {
   reason: string;
   label: string;
   createdAt: number;
+  /** (version anglaise, lot 4) code + paramètres du libellé (src/core/msgs.ts) */
+  labelKey?: string;
+  labelParams?: MsgParams;
 }
 
 export interface AbuseAlertView {

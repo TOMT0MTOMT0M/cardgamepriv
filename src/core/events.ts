@@ -8,7 +8,8 @@
  * Décisions (11/11) : pas de carte secrète dans un booster du moment (les Bébous restent au Bebou Pack) ; les cartes
  * de l'événement restent aussi dans les boosters normaux (pas d'exclusivité) ; un seul événement à la fois.
  */
-import { t as tr } from './i18n';
+import { lang, t as tr } from './i18n';
+import { msgRef, str } from './msgRefs';
 import { ALL_THEMES, catalogEntry, catalogInstalled, inSubthemeScope, scopeLabel, type CatalogEntry } from './sets/themes';
 
 export interface EventContent {
@@ -24,6 +25,9 @@ export interface PackEvent extends EventContent {
   name: string;
   /** phrase courte sous le nom (fiche, bandeau) */
   blurb?: string;
+  /** (version anglaise, lot 4) nom et phrase en anglais, remplis dans le dashboard (facultatifs) */
+  nameEn?: string;
+  blurbEn?: string;
   startAt: number;
   endAt: number;
   /** couleur du sachet et des filets (#rrggbb) */
@@ -112,10 +116,10 @@ export function checkEvent(e: { name: string; startAt: number; endAt: number; ac
   if (name.length < 2) return 'Donne un nom à l’événement (2 lettres au moins).'; // i18n-ok
   if (name.length > EVENT_LIMITS.name) return `Nom trop long (${EVENT_LIMITS.name} caractères au plus : il est moulé sur le sachet).`; // i18n-ok
   if ((e.blurb ?? '').length > EVENT_LIMITS.blurb) return `Phrase trop longue (${EVENT_LIMITS.blurb} caractères au plus).`; // i18n-ok
-  if (!Number.isFinite(e.startAt) || !Number.isFinite(e.endAt)) return 'Dates invalides.';
+  if (!Number.isFinite(e.startAt) || !Number.isFinite(e.endAt)) return 'Dates invalides.'; // i18n-ok
   if (e.endAt <= e.startAt) return 'La fin doit venir après le début.'; // i18n-ok
   if (e.endAt - e.startAt > EVENT_LIMITS.maxDays * 86_400_000) return `${EVENT_LIMITS.maxDays} jours au plus.`; // i18n-ok
-  if (!isHex(e.accent)) return 'Couleur invalide (#rrggbb).';
+  if (!isHex(e.accent)) return 'Couleur invalide (#rrggbb).'; // i18n-ok
   if ((e.subthemes?.length ?? 0) > EVENT_LIMITS.subthemes) return `${EVENT_LIMITS.subthemes} sous-thèmes au plus.`; // i18n-ok
   if ((e.cards?.length ?? 0) > EVENT_LIMITS.cards) return `${EVENT_LIMITS.cards} cartes à part au plus (sinon, choisis un sous-thème).`; // i18n-ok
   if (!eventCards(e).length) return 'Le booster serait vide : choisis au moins un sous-thème ou une carte.'; // i18n-ok
@@ -143,3 +147,20 @@ export function demoEvent(now = Date.now()): PackEvent {
   const start = Math.floor(now / h) * h - 2 * h;
   return { id: 'demo-valorant', name: 'Valorant', blurb: tr('ev.demoBlurb'), startAt: start, endAt: start + 56 * h, accent: '#c026d3', subthemes: ['group:valorant'] };
 }
+
+/**
+ * (version anglaise, lot 4) Événement reçu du serveur : `name` et `blurb` suivent la langue active (l'anglais s'il a été
+ * rempli dans le dashboard, sinon le français).
+ */
+export function localEvent(e: PackEvent): PackEvent {
+  const { name, blurb, ...rest } = e;
+  return Object.defineProperties({ ...rest } as PackEvent, {
+    name: { get: () => (lang() === 'en' && e.nameEn) || name, enumerable: true },
+    blurb: { get: () => (lang() === 'en' && e.blurbEn) || blurb, enumerable: true },
+  });
+}
+// (messages stockés : nom et phrase de l'événement, et durée restante, dans la langue active)
+msgRef('event', (p) => (lang() === 'en' ? str(p.eventEn) : undefined));
+msgRef('blurb', (p) => (lang() === 'en' ? str(p.blurbEn) : undefined));
+msgRef('left', (p) => (typeof p.leftMs === 'number' ? fmtLeft(p.leftMs).replace(/ /g, '\u00a0') : undefined));
+

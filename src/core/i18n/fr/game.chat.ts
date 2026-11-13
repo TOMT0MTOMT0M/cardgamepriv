@@ -51,6 +51,7 @@ export const fr = {
   'chat.searchColl': 'Chercher dans ma collection…',
   'chat.searchCard': 'Chercher une carte',
   'chat.noCard': 'Aucune carte à ce nom dans ta collection.',
+  'chat.emptyColl': 'Collection vide',
   'chat.openFirst': 'Ouvre un booster : tu pourras montrer tes cartes ici.',
   'chat.cardOf': 'Carte de {name}',
   'chat.mutedToast': 'Conversation en sourdine : plus de pastille ni de notification.',

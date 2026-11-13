@@ -10,6 +10,7 @@ import { bumpWeekly, recordFlow } from './econLib';
 import { cardsValue } from '../src/core/economy';
 import { dropInv, invRev } from './invRev';
 import { seenAtOf } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 const tradeItemValidator = v.object({
   cardId: v.string(),
@@ -196,7 +197,7 @@ export const propose = mutation({
     }
 
     await bumpMissions(ctx, user, { type: 'trade' });
-    await notify(ctx, toUserId, { kind: 'trade', title: `${user.displayName} te propose un échange`, body: `${offered.length} carte(s) contre ${requested.length} : à voir dans Échanges.`, url: '#/echanges' });
+    await notify(ctx, toUserId, { kind: 'trade', title: fm('n.tradeOffer', { name: user.displayName }), body: fm('n.tradeOfferBody', { n: offered.length, m: requested.length }), url: '#/echanges' });
     return await ctx.db.insert('trades', {
       fromUserId: user._id,
       toUserId,
@@ -228,11 +229,11 @@ export const respond = mutation({
     const now = Date.now();
     if (!accept) {
       await ctx.db.patch(trade._id, { status: 'declined', resolvedAt: now });
-      await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} a décliné ton échange`, body: 'Tu peux lui en proposer un autre.', url: '#/echanges' });
+      await notify(ctx, trade.fromUserId, { kind: 'trade', title: fm('n.tradeDeclined', { name: user.displayName }), body: fm('n.tradeDeclinedBody'), url: '#/echanges' });
       return { status: 'declined' as const };
     }
 
-    await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} a accepté ton échange !`, body: 'Les cartes sont dans ta collection.', url: '#/echanges' });
+    await notify(ctx, trade.fromUserId, { kind: 'trade', title: fm('n.tradeAccepted', { name: user.displayName }), body: fm('n.cardsIn'), url: '#/echanges' });
     await concludeTrade(ctx, trade, user);
     return { status: 'accepted' as const };
   },
@@ -256,7 +257,7 @@ export const counter = mutation({
     if (!trade || trade.status !== 'pending') throw new ConvexError(fe('trades.13'));
     if (trade.toUserId !== user._id) throw new ConvexError(fe('trades.14'));
     if (!offered.length && !requested.length) throw new ConvexError(fe('trades.15'));
-    await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} te fait une contre-proposition`, body: 'À voir dans Échanges.', url: '#/echanges' });
+    await notify(ctx, trade.fromUserId, { kind: 'trade', title: fm('n.tradeCounter', { name: user.displayName }), body: fm('n.tradeCounterBody'), url: '#/echanges' });
     checkItems(offered, 'proposée');
     checkItems(requested, 'demandée');
     const other = await ctx.db.get(trade.fromUserId);
@@ -407,7 +408,7 @@ export async function concludeTrade(ctx: MutationCtx, trade: Doc<'trades'>, user
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
     kind: 'trade',
-    message: `${user.displayName} et ${fromUser.displayName} ont conclu un échange !`,
+    ...feedMsg(fm('f.trade', { name: user.displayName, other: fromUser.displayName })),
     createdAt: now,
   });
 

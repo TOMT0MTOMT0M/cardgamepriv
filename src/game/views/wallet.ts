@@ -5,6 +5,7 @@ import type { EcoSnapshot } from '../eco';
 import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_PACKS, CALENDAR_MONTH_TOTAL, achievementReward, calendarReward, fmtCoins } from '../../core/economy';
 import { GAMES_OPEN } from '../../core/games';
 import { CLOSE_X, busyButton, errMsg, esc, fmtN, h, keepFocus, loginPrompt, panelHidden, panelShown, toast } from '../ui';
+import { txText } from '../msgView';
 import { forgeCount } from './forge';
 import '../games.css';
 
@@ -71,7 +72,7 @@ export function createWallet(backend: GameBackend, shell: Shell) {
         ${games ? `<div class="w-row"><span>${tr('wal.burn', { x: forgeN ? ` · ${fmtN(forgeN)}` : '' })}</span><a class="w-link" href="#/collection/forge">${tr('wal.forge')}</a></div>` : ''}
       </div>
       <div class="w-sec"><div class="w-h"><b>Derniers mouvements</b>${hist && hist.length > 7 ? `<button class="w-link w-all" aria-expanded="${histAll}">${histAll ? 'moins' : 'tout'}</button>` : ''}</div><div class="w-hist">${
-        hist ? (hist.length ? hist.slice(0, histAll ? hist.length : 7).map((t) => `<div class="w-tx"><span>${esc(t.label)}</span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">' + tr('wal.empty') + '</div>') : '<div class="muted">…</div>'
+        hist ? (hist.length ? hist.slice(0, histAll ? hist.length : 7).map((t) => `<div class="w-tx"><span>${esc(txText(t))}</span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">' + tr('wal.empty') + '</div>') : '<div class="muted">…</div>'
       }</div></div>`;
     pop.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => toggle(false)));
     // tout l'historique des pièces ici (il était dans l'espace Jeux, qui ne garde que les jeux)

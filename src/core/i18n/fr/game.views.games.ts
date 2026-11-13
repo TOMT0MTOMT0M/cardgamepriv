@@ -3,6 +3,8 @@ import { addFr } from '../../i18n';
 
 export const fr = {
   'gm.noSidePot': 'pas de pot annexe',
+  'gm.duelGone': 'Duel introuvable.',
+  'gm.gameGone': 'Partie introuvable.',
   'gm.stake': 'Enjeu',
   'gm.win': 'Victoire',
   'gm.winD': 'les {n} cartes ouvertes{pots}',

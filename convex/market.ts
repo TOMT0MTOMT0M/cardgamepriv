@@ -8,6 +8,7 @@ import { addCoins, giveCards, recordFlow, takeCards } from './econLib';
 import { MARKET_MAX_OPEN, marketProblem } from '../src/core/market';
 import { CARD_VALUE } from '../src/core/economy';
 import { presenceOf } from './presence';
+import { fm } from '../src/core/msgs';
 
 /**
  * MARCHÉ (retours Hugo 10/11) : des cartes à prix fixe, en pièces, entre joueurs. Règles : src/core/market.ts.
@@ -90,8 +91,8 @@ export const buy = mutation({
     // le prix affiché est celui payé : une annonce modifiée entre-temps n'est jamais achetée à l'aveugle
     if (m.price !== price) throw new ConvexError(fe('market.6'));
     const now = Date.now();
-    await addCoins(ctx, me._id, -m.price, 'market-buy', `Marché : achat de ${nameOf(m.cardId)}`);
-    await addCoins(ctx, m.sellerId, m.price, 'market-sell', `Marché : vente de ${nameOf(m.cardId)}`);
+    await addCoins(ctx, me._id, -m.price, 'market-buy', fm('c.marketBuy', { card: nameOf(m.cardId), cardId: m.cardId }));
+    await addCoins(ctx, m.sellerId, m.price, 'market-sell', fm('c.marketSell', { card: nameOf(m.cardId), cardId: m.cardId }));
     await ctx.db.patch(id, { status: 'sold', buyerId: me._id, resolvedAt: now });
     await giveCards(ctx, me._id, [{ cardId: m.cardId, rarity: m.rarity, mintNumber: m.mintNumber }]);
     // anti-abus : les deux sens du flux de valeur (comme un échange)

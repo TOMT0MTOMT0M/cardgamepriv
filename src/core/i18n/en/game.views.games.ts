@@ -4,6 +4,8 @@ import type { fr } from '../fr/game.views.games';
 
 export const en: PartOf<typeof fr> = {
   'gm.noSidePot': 'no side pot',
+  'gm.duelGone': 'Duel not found.',
+  'gm.gameGone': 'Game not found.',
   'gm.stake': 'Stake',
   'gm.win': 'Win',
   'gm.winD': 'the {n} cards opened{pots}',

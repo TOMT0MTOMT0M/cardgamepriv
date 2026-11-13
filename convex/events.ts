@@ -20,6 +20,8 @@ const pub = (e: Doc<'packEvents'>): PackEvent => ({
   id: e._id,
   name: e.name,
   ...(e.blurb ? { blurb: e.blurb } : {}),
+  ...(e.nameEn ? { nameEn: e.nameEn } : {}),
+  ...(e.blurbEn ? { blurbEn: e.blurbEn } : {}),
   startAt: e.startAt,
   endAt: e.endAt,
   accent: e.accent,
@@ -97,6 +99,9 @@ export const adminSave = mutation({
     id: v.optional(v.id('packEvents')),
     name: v.string(),
     blurb: v.optional(v.string()),
+    /** (version anglaise, lot 4) facultatifs */
+    nameEn: v.optional(v.string()),
+    blurbEn: v.optional(v.string()),
     startAt: v.number(),
     endAt: v.number(),
     accent: v.string(),
@@ -113,12 +118,16 @@ export const adminSave = mutation({
     const accent = a.accent.trim().toLowerCase();
     const err = checkEvent({ name, blurb, startAt: a.startAt, endAt: a.endAt, accent, subthemes, cards });
     if (err) throw new ConvexError(err);
+    const nameEn = a.nameEn?.trim().replace(/\s+/g, ' ') || undefined;
+    const blurbEn = a.blurbEn?.trim().replace(/\s+/g, ' ') || undefined;
+    const errEn = nameEn || blurbEn ? checkEvent({ name: nameEn ?? name, blurb: blurbEn, startAt: a.startAt, endAt: a.endAt, accent, subthemes, cards }) : null;
+    if (errEn) throw new ConvexError(errEn);
     const prev = a.id ? await ctx.db.get(a.id) : null;
     if (a.id && !prev) throw new ConvexError(fe('events.7'));
     if (!prev && a.endAt <= now) throw new ConvexError(fe('events.8'));
     if (!prev && a.startAt < now - DAY) throw new ConvexError(fe('events.9'));
     await assertNoOverlap(ctx, a.startAt, a.endAt, a.id);
-    const fields = { name, blurb, startAt: a.startAt, endAt: a.endAt, accent, subthemes, cards, updatedAt: now };
+    const fields = { name, blurb, nameEn, blurbEn, startAt: a.startAt, endAt: a.endAt, accent, subthemes, cards, updatedAt: now };
     let id: Id<'packEvents'>;
     if (prev) {
       await ctx.db.patch(prev._id, fields);
@@ -202,6 +211,11 @@ export const tick = internalMutation({
       await ctx.runMutation(internal.push.announce, {
         title: `Booster du moment : ${e.name}`,
         body: `${e.blurb ? `${e.blurb.replace(/[.!…\s]+$/, '')}. ` : ''}À la boutique pendant ${fmtLeft(e.endAt - now).replace(/ /g, ' ')} seulement.`,
+        // (version anglaise, lot 4) la même chose, rendue dans la langue de chacun (nom et phrase anglais s'ils existent)
+        titleMsg: { key: 'n.event', params: { event: e.name, ...(e.nameEn ? { eventEn: e.nameEn } : {}) } },
+        bodyMsg: e.blurb
+          ? { key: 'n.eventBodyBlurb', params: { blurb: e.blurb.replace(/[.!…\s]+$/, ''), ...(e.blurbEn ? { blurbEn: e.blurbEn.replace(/[.!…\s]+$/, '') } : {}), left: fmtLeft(e.endAt - now).replace(/ /g, '\u00a0'), leftMs: e.endAt - now } }
+          : { key: 'n.eventBody', params: { left: fmtLeft(e.endAt - now).replace(/ /g, '\u00a0'), leftMs: e.endAt - now } },
         url: '#/boutique/event', // (la fiche du booster du moment s'ouvre : shop.ts enter)
       });
     } catch (err) {

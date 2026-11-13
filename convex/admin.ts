@@ -6,6 +6,7 @@ import { applyRegen } from '../src/core/packRegen';
 import { addCoins } from './econLib';
 import { invRev } from './invRev';
 import { syncPresence } from './presence';
+import { fm } from '../src/core/msgs';
 
 /**
  * OUTILS DE TEST (admin) — fonctions INTERNES : impossibles à appeler depuis le site, seulement depuis la ligne de
@@ -188,7 +189,7 @@ export const grantCoins = internalMutation({
   args: { name: v.string(), amount: v.number(), label: v.optional(v.string()) },
   handler: async (ctx, { name, amount, label }) => {
     const user = await findUser(ctx, name);
-    const coins = await addCoins(ctx, user._id, amount, 'admin', label ?? 'Ajustement admin');
+    const coins = await addCoins(ctx, user._id, amount, 'admin', label ?? fm('c.admin'));
     return { joueur: user.displayName, pièces: coins };
   },
 });

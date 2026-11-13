@@ -5,6 +5,10 @@ import type { Doc, Id } from './_generated/dataModel';
 import { getUserIdByToken, requireUser } from './auth';
 import { notify } from './push';
 import { presenceOf } from './presence';
+import { fm } from '../src/core/msgs';
+
+/** (version anglaise, lot 4) code du message + ce qu'il faut pour relire la carte et la rareté dans la langue du joueur */
+const msgOf = (a: Doc<'activityFeed'>) => (a.msgKey ? { msgKey: a.msgKey, msgParams: { ...a.msgParams, ...(a.cardId ? { cardId: a.cardId } : {}), ...(a.rarity ? { rarityId: a.rarity } : {}) } } : {});
 
 /**
  * AMIS (retours live 02, point 8) — un vrai lien d'amitié, À PART de `users.friends` (qui reste la liste de TOUS les
@@ -78,7 +82,7 @@ export const request = mutation({
       if (link.requesterId === me._id) throw new ConvexError(fe('friends.7', { p0: target.displayName }));
       // il m'avait demandé : on devient amis
       await ctx.db.patch(link._id, { status: 'accepted', respondedAt: now });
-      await notify(ctx, target._id, { kind: 'friend', title: `${me.displayName} a accepté ta demande d’ami`, body: 'Vous pouvez échanger des cartes.', url: '#/amis' });
+      await notify(ctx, target._id, { kind: 'friend', title: fm('n.friendAccepted', { name: me.displayName }), body: fm('n.friendAcceptedBody'), url: '#/amis' });
       return { status: 'accepted' as const, name: target.displayName };
     }
     if (link?.status === 'declined' && link.requesterId === me._id && now - (link.respondedAt ?? link.createdAt) < DECLINE_COOLDOWN_MS)
@@ -90,7 +94,7 @@ export const request = mutation({
     if (pendingOut.length >= MAX_PENDING_OUT) throw new ConvexError(fe('friends.9', { p0: MAX_PENDING_OUT }));
     if (link) await ctx.db.patch(link._id, { requesterId: me._id, addresseeId: target._id, status: 'pending', createdAt: now, respondedAt: undefined });
     else await ctx.db.insert('friendships', { requesterId: me._id, addresseeId: target._id, status: 'pending', createdAt: now });
-    await notify(ctx, target._id, { kind: 'friend', title: `${me.displayName} te demande en ami`, body: 'Accepte dans Amis pour échanger des cartes.', url: '#/amis' });
+    await notify(ctx, target._id, { kind: 'friend', title: fm('n.friendAsk', { name: me.displayName }), body: fm('n.friendAskBody'), url: '#/amis' });
     return { status: 'pending' as const, name: target.displayName };
   },
 });
@@ -195,7 +199,7 @@ export const mine = query({
         lastSeenAt: u.lastSeenAt,
         statusText: u.statusText,
         packsOpened: u.totalPacksOpened,
-        lastActivity: last ? { kind: last.kind, message: last.message, createdAt: last.createdAt } : null,
+        lastActivity: last ? { kind: last.kind, message: last.message, createdAt: last.createdAt, ...msgOf(last) } : null,
       });
     }
     friends.sort((a, b) => b.lastSeenAt - a.lastSeenAt);

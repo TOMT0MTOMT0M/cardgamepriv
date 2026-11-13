@@ -84,7 +84,7 @@ export interface FriendLink {
   lastSeenAt: number;
   status?: string;
   packsOpened: number;
-  lastActivity?: { kind: string; message: string; createdAt: number } | null;
+  lastActivity?: { kind: string; message: string; createdAt: number; msgKey?: string; msgParams?: MsgParams } | null;
   bot?: boolean;
 }
 export interface Social {
@@ -113,6 +113,9 @@ export interface FeedItem {
   id: string;
   kind: string;
   message: string;
+  /** (version anglaise, lot 4) code + paramètres du message (src/core/msgs.ts) */
+  msgKey?: string;
+  msgParams?: MsgParams;
   rarity?: RarityId;
   createdAt: number;
 }
@@ -386,6 +389,8 @@ export interface ActivityItem {
   id: string;
   kind: string;
   message: string;
+  msgKey?: string;
+  msgParams?: MsgParams;
   cardId?: string;
   cardName?: string;
   rarity?: RarityId;
@@ -569,6 +574,7 @@ export interface ContractResult {
 
 import type { SurveyAnswer, SurveyResults } from '../core/survey';
 import type { CardPanel, DealCard, ForYou, PickOption } from '../core/deals';
+import type { MsgParams } from '../core/msgRefs';
 
 /** Suggestions des joueurs (onglet Suggestions, convex/suggestions.ts) */
 export type SuggestionKind = 'bug' | 'design' | 'ajout' | 'autre';

@@ -31,6 +31,9 @@ import type { fr as p_game_survey } from './fr/game.survey';
 import type { fr as p_game_views_defis } from './fr/game.views.defis';
 import type { fr as p_game_views_presse } from './fr/game.views.presse';
 import type { fr as p_game_views_showcaseEditor } from './fr/game.views.showcaseEditor';
+import type { fr as p_game_localBackend } from './fr/game.localBackend';
+import type { fr as p_game_chatLocal } from './fr/game.chatLocal';
+import type { fr as p_game_ecoLocal } from './fr/game.ecoLocal';
 // <imports>
 
 export type AllFr = typeof core &
@@ -62,5 +65,8 @@ export type AllFr = typeof core &
   typeof p_game_views_defis &
   typeof p_game_views_presse &
   typeof p_game_views_showcaseEditor &
+  typeof p_game_localBackend &
+  typeof p_game_chatLocal &
+  typeof p_game_ecoLocal &
   // <parts>
   Record<never, never>;

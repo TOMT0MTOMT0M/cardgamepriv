@@ -1,3 +1,4 @@
+import '../core/i18n/fr/game.ecoLocal'; // (textes de ce module, version anglaise)
 import type { RarityId } from '../core/rarity';
 import type { PlayerStats } from '../core/cosmetics';
 import type { Mission } from '../core/missions';
@@ -24,6 +25,7 @@ import {
 } from '../core/economy';
 import { applyWeeklyEvent, claimWeekly, currentWeekly, dailyMissionCoins, nextWeekReset, type WeeklyEvent, type WeeklyState } from '../core/weekly';
 import {
+  packRef,
   ROYALE_MAX,
   ROYALE_MIN,
   betProblem,
@@ -44,6 +46,9 @@ import {
 } from '../core/games';
 import type { CoinTx, DuelView, EcoBackend, EcoSnapshot, LobbyView, PotCard, RoyaleView, RouletteView } from './eco';
 import { createLocalJeux, type LocalJeuxSave } from './ecoLocalJeux';
+import { fm, type Msg } from '../core/msgs';
+import { fe } from '../core/errors';
+import { t as tr } from '../core/i18n';
 
 /**
  * Économie + espace Jeux du MODE DÉMO : tout dans ce navigateur, avec les amis robots comme adversaires
@@ -82,7 +87,7 @@ export interface LocalEcoHost {
   streak(): StreakState | undefined;
   setStreak(s: StreakState): void;
   bots(): Array<{ id: string; name: string }>;
-  feed(message: string): void;
+  feed(message: string | Msg): void;
   changed(): void;
 }
 
@@ -127,14 +132,14 @@ export function createLocalEco(host: LocalEcoHost) {
     watchers.forEach((fn) => fn());
   }
 
-  function coins(amount: number, reason: string, label: string, earned = false) {
+  function coins(amount: number, reason: string, label: string | Msg, earned = false) {
     const s = d();
     amount = Math.round(amount);
-    if (s.coins + amount < 0) throw new Error(`Pas assez de pièces (il t’en manque ${-(s.coins + amount)}).`);
+    if (s.coins + amount < 0) throw new Error(fe('econLib.2', { p0: -(s.coins + amount) }));
     s.coins += amount;
     if (earned && amount > 0) s.econ.earned += amount;
     if (amount) {
-      s.tx.unshift({ id: id('tx'), amount, reason, label, createdAt: Date.now() });
+      s.tx.unshift({ id: id('tx'), amount, reason, createdAt: Date.now(), ...(typeof label === 'string' ? { label } : { label: label.text, labelKey: label.key, ...(label.params ? { labelParams: label.params } : {}) }) });
       s.tx.length = Math.min(s.tx.length, 80);
     }
   }
@@ -147,12 +152,12 @@ export function createLocalEco(host: LocalEcoHost) {
 
   // ───────────────────── mises (cartes du joueur)
   function checkStake(stake: Stake) {
-    if (!Number.isInteger(stake.coins) || stake.coins < 0) throw new Error('Montant invalide.');
+    if (!Number.isInteger(stake.coins) || stake.coins < 0) throw new Error(fe('econLib.15'));
     if (stake.coins > d().coins) throw new Error('Tu n’as pas assez de pièces pour cette mise.');
     for (const c of stake.cards) if (host.owned(c.cardId, c.rarity).free < c.count) throw new Error('Une carte de la mise n’est plus disponible.');
   }
   function takeStake(stake: Stake): PotCard[] {
-    if (stake.coins) coins(-stake.coins, 'game', 'Mise');
+    if (stake.coins) coins(-stake.coins, 'game', tr('el.bet'));
     return stake.cards.map((c) => {
       if (!host.removeCard(c.cardId, c.rarity, c.count)) throw new Error('Carte indisponible.');
       return { ...c, mintNumber: 999 };
@@ -167,31 +172,31 @@ export function createLocalEco(host: LocalEcoHost) {
     if (a.userId === ME) checkStake(a.stake);
     if (b.userId === ME) checkStake(b.stake);
     const mine = du.sides.find((s) => s.userId === ME)!;
-    if (host.packsAvailable() < mine.packs.length) throw new Error(`Il te faut ${mine.packs.length} boosters en réserve.`);
+    if (host.packsAvailable() < mine.packs.length) throw new Error(fe('games.17', { p0: mine.packs.length }));
     host.debitPacks(mine.packs.length);
     const escrow = du.sides.map((s) => (s.userId === ME ? { coins: s.stake.coins, cards: takeStake(s.stake) } : { coins: s.stake.coins, cards: [] as PotCard[] }));
     const packs = du.sides.map((s) => s.packs.map((p) => {
       const cards = host.roll(p, s.userId);
-      if (s.userId === ME) coins(rollPackCoins(p.kind, Math.random), 'pack', `Ouverture — ${packChoiceLabel(p)} (jeu)`, true);
+      if (s.userId === ME) coins(rollPackCoins(p.kind, Math.random), 'pack', fm('c.openGame', { pack: packChoiceLabel(p), ...packRef(p) }), true);
       return cards;
     }));
     const { stars, winner } = duelWinner(packs);
     if (winner === null) {
       du.sides.forEach((s, k) => {
         giveAll(s.userId, [...packs[k].flat(), ...escrow[k].cards]);
-        if (s.userId === ME && escrow[k].coins) coins(escrow[k].coins, 'duel', 'Side pot rendu (égalité parfaite)');
+        if (s.userId === ME && escrow[k].coins) coins(escrow[k].coins, 'duel', fm('c.sidePotBack'));
       });
     } else {
       const w = du.sides[winner];
       giveAll(w.userId, [...packs.flat(2), ...escrow[0].cards, ...escrow[1].cards]);
-      if (w.userId === ME && escrow[0].coins + escrow[1].coins) coins(escrow[0].coins + escrow[1].coins, 'duel', `Side pot gagné — Pack Battle contre ${du.sides[1 - winner].name}`, true);
+      if (w.userId === ME && escrow[0].coins + escrow[1].coins) coins(escrow[0].coins + escrow[1].coins, 'duel', fm('c.sidePotWon', { name: du.sides[1 - winner].name }), true);
     }
     const won = winner !== null && du.sides[winner].userId === ME;
     const s = d();
     s.econ.gamesPlayed++;
     if (won) s.econ.gamesWon++;
     weekly({ type: 'game', won });
-    host.feed(winner === null ? `Pack Battle : égalité parfaite (${stars[0]}★ partout)` : `${du.sides[winner].name} remporte un Pack Battle (${stars[winner]}★ contre ${stars[1 - winner]}★)`);
+    host.feed(winner === null ? fm('f.battleTie', { name: du.sides[0].name, other: du.sides[1].name, stars: stars[0] }) : fm('f.battleWin', { name: du.sides[winner].name, other: du.sides[1 - winner].name, stars: stars[winner], stars2: stars[1 - winner], n: du.sides[0].packs.length, cards: du.sides[0].packs.length * 10 }));
     Object.assign(du, { status: 'done', result: { packs, stars, ...(winner === null ? {} : { winner }) }, resolvedAt: Date.now() });
   }
 
@@ -200,13 +205,13 @@ export function createLocalEco(host: LocalEcoHost) {
     const n = royalePackCount(r);
     const meIdx = r.players.findIndex((p) => p.userId === ME);
     if (meIdx >= 0) {
-      if (host.packsAvailable() < n) throw new Error(n > 1 ? `Il te faut ${n} boosters en réserve.` : 'Il te faut un booster en réserve.');
+      if (host.packsAvailable() < n) throw new Error(n > 1 ? fe('games.17', { p0: n }) : fe('games.18'));
       host.debitPacks(n);
     }
     const packs = r.players.map((p) =>
       Array.from({ length: n }, () => {
         const c = host.roll(p.pack, p.userId);
-        if (p.userId === ME) coins(rollPackCoins(p.pack.kind, Math.random), 'pack', `Ouverture — ${packChoiceLabel(p.pack)} (jeu)`, true);
+        if (p.userId === ME) coins(rollPackCoins(p.pack.kind, Math.random), 'pack', fm('c.openGame', { pack: packChoiceLabel(p.pack), ...packRef(p.pack) }), true);
         return c;
       }).flat(),
     );
@@ -218,7 +223,7 @@ export function createLocalEco(host: LocalEcoHost) {
       if (won) d().econ.gamesWon++;
       weekly({ type: 'game', won });
     }
-    host.feed(`Battle Royale à ${r.players.length} : ${res.winners.map((i) => r.players[i].name).join(' et ')} (${Math.max(...res.stars)}★)`);
+    host.feed(res.winners.length === 1 ? fm('f.royaleWin', { name: r.players[res.winners[0]].name, players: r.players.length, best: Math.max(...res.stars), cards: r.players.length * 10 }) : fm('f.royaleTie', { players: r.players.length, best: Math.max(...res.stars), names: res.winners.map((i) => r.players[i].name) }));
     Object.assign(r, { status: 'done', result: { packs, ...res }, resolvedAt: Date.now() });
   }
 
@@ -268,10 +273,10 @@ export function createLocalEco(host: LocalEcoHost) {
     if (bet) {
       giveAll(bet.userId, r.pot.cards);
       if (bet.userId === ME) {
-        coins(r.pot.coins, 'roulette', `Roulette — pot (n° ${number})`, true);
+        coins(r.pot.coins, 'roulette', fm('c.roulettePot', { day: missionDay(Date.now()), number }), true);
         d().econ.rouletteWins++;
       }
-      host.feed(`🎡 Le ${number} sort à la roulette : ${bet.name} remporte tout le pot !`);
+      host.feed(fm('f.roulette', { number, name: bet.name, coins: r.pot.coins, cards: r.pot.cards.reduce((a, c) => a + c.count, 0), value: r.pot.value }));
     }
     d().past.unshift({ id: r.id, day: r.day, result: { number, potValue: r.pot.value, ...(bet ? { winnerId: bet.userId, winnerName: bet.name } : {}) }, drawnAt: Date.now(), bets: r.bets.map((b) => ({ userId: b.userId, name: b.name, numbers: b.numbers })) });
     d().past.length = Math.min(d().past.length, 10);
@@ -334,8 +339,8 @@ export function createLocalEco(host: LocalEcoHost) {
     claimCalendar: () =>
       act(() => {
         const snap = snapshot();
-        if (snap.calendar.claimed) throw new Error('Cadeau du jour déjà pris : reviens demain.');
-        coins(snap.calendar.reward.coins, 'calendar', `Calendrier — jour ${snap.calendar.day}`, true);
+        if (snap.calendar.claimed) throw new Error(fe('economy.1'));
+        coins(snap.calendar.reward.coins, 'calendar', fm('c.calendar', { day: snap.calendar.day }), true);
         d().econ.calendarDay = snap.calendar.today;
         if (snap.calendar.reward.packs) host.grantPacks(snap.calendar.reward.packs);
         return { day: snap.calendar.day, ...snap.calendar.reward };
@@ -357,7 +362,7 @@ export function createLocalEco(host: LocalEcoHost) {
         const r = claimWeekly(currentWeekly(d().weekly, ME, Date.now()), mid);
         if (typeof r === 'string') throw new Error(r);
         d().weekly = r.state;
-        coins(r.reward, 'weekly', 'Mission de la semaine', true);
+        coins(r.reward, 'weekly', fm('c.weekly'), true);
         return r.reward;
       }),
     burn: (items) =>
@@ -372,27 +377,27 @@ export function createLocalEco(host: LocalEcoHost) {
           n += it.count;
         }
         d().econ.burned += n;
-        coins(total, 'burn', `Brûlage de ${n} doublon${n > 1 ? 's' : ''}`, true);
+        coins(total, 'burn', fm('c.burn', { n }), true);
         weekly({ type: 'burn', count: n });
         return { coins: total, count: n };
       }),
     claimCompletions: () =>
       act(() => {
         const sets = claimableCompletions(new Set(host.ownedIds()), d().econ.completions);
-        if (!sets.length) throw new Error('Aucune prime de complétion en attente.');
+        if (!sets.length) throw new Error(fe('economy.3'));
         const total = sets.reduce((a, x) => a + x.reward, 0);
         d().econ.completions.push(...sets.map((x) => x.id));
-        coins(total, 'completion', sets.length === 1 ? `Complétion — ${sets[0].label}` : `Complétion — ${sets.length} ensembles`, true);
+        coins(total, 'completion', sets.length === 1 ? fm('c.compl', { set: sets[0].label, setId: sets[0].id }) : fm('c.complN', { n: sets.length }), true);
         return { coins: total, sets: sets.map((x) => ({ id: x.id, label: x.label, reward: x.reward })) };
       }),
     claimAchievements: () =>
       act(() => {
         const list = claimableAchievements(achievementStats(host.stats(), d().econ), d().econ.achievements);
-        if (!list.length) throw new Error('Aucun succès à réclamer.');
+        if (!list.length) throw new Error(fe('economy.4'));
         const total = list.reduce((a, x) => a + achievementReward(x), 0);
         const packs = list.reduce((a, x) => a + achievementPacks(x), 0);
         d().econ.achievements.push(...list.map((a) => a.id));
-        coins(total, 'achievement', list.length === 1 ? `Succès — ${list[0].label}` : `${list.length} succès`, true);
+        coins(total, 'achievement', list.length === 1 ? fm('c.ach', { ach: list[0].label, achId: list[0].id }) : fm('c.achN', { n: list.length }), true);
         if (packs) host.grantPacks(packs);
         return { coins: total, packs, ids: list.map((a) => a.id) };
       }),
@@ -401,7 +406,7 @@ export function createLocalEco(host: LocalEcoHost) {
     friendsAchievements: async () => {
       const me = achievementStats(host.stats(), d().econ);
       const bot = (seed: number) => Object.fromEntries(Object.entries(me).map(([k, v], i) => [k, Math.max(0, Math.round((v + 3) * (0.4 + ((seed * 7 + i * 13) % 17) / 10)))])) as unknown as typeof me;
-      return [{ userId: ME, name: 'Toi', me: true, stats: me }, ...host.bots().map((b, i) => ({ userId: b.id, name: b.name, me: false, stats: bot(i + 1) }))];
+      return [{ userId: ME, name: tr('chat.me'), me: true, stats: me }, ...host.bots().map((b, i) => ({ userId: b.id, name: b.name, me: false, stats: bot(i + 1) }))];
     },
 
     watchLobby: (cb) => watch<LobbyView>(() => ({ duels: d().duels.filter((x) => x.status === 'open'), royales: d().royales.filter((x) => x.status === 'open'), me: ME }), cb),
@@ -413,10 +418,10 @@ export function createLocalEco(host: LocalEcoHost) {
     createDuel: (packs, stake, invitedId) =>
       act(() => {
         const p = duelProblem({ packs, stake }, null);
-        if (p && !p.startsWith('En attente')) throw new Error(p);
+        if (p && !p.startsWith('En attente')) throw new Error(p); // i18n-ok (code d'erreur : texte français + étiquette)
         checkStake(stake);
-        if (host.packsAvailable() < packs.length) throw new Error(`Tu n’as pas ${packs.length} boosters en réserve.`);
-        const du: DuelView = { id: id('du'), creatorId: ME, ...(invitedId ? { invitedId } : {}), status: 'open', sides: [{ userId: ME, name: 'Toi', packs, stake, ready: false }], createdAt: Date.now() };
+        if (host.packsAvailable() < packs.length) throw new Error(fe('games.7', { p0: packs.length }));
+        const du: DuelView = { id: id('du'), creatorId: ME, ...(invitedId ? { invitedId } : {}), status: 'open', sides: [{ userId: ME, name: tr('chat.me'), packs, stake, ready: false }], createdAt: Date.now() };
         d().duels.push(du);
         // un robot accepte le défi (même nombre de boosters, mise équivalente) puis valide
         const bots = host.bots();
@@ -436,7 +441,7 @@ export function createLocalEco(host: LocalEcoHost) {
     setDuelSide: (did, packs, stake) =>
       act(() => {
         const du = d().duels.find((x) => x.id === did);
-        if (!du || du.status !== 'open') throw new Error('Ce duel n’est plus ouvert.');
+        if (!du || du.status !== 'open') throw new Error(fe('games.9'));
         checkStake(stake);
         du.sides = du.sides.map((s) => ({ ...s, ready: false }));
         const mine = du.sides.find((s) => s.userId === ME);
@@ -456,7 +461,7 @@ export function createLocalEco(host: LocalEcoHost) {
     readyDuel: (did) =>
       act(() => {
         const du = d().duels.find((x) => x.id === did);
-        if (!du || du.status !== 'open') throw new Error('Ce duel n’est plus ouvert.');
+        if (!du || du.status !== 'open') throw new Error(fe('games.9'));
         const p = duelProblem({ packs: du.sides[0].packs, stake: du.sides[0].stake }, du.sides[1] ? { packs: du.sides[1].packs, stake: du.sides[1].stake } : null);
         if (p) throw new Error(p);
         du.sides.find((s) => s.userId === ME)!.ready = true;
@@ -466,10 +471,10 @@ export function createLocalEco(host: LocalEcoHost) {
       }),
     createRoyale: (pack, packCount) =>
       act(() => {
-        if (!validPackChoice(pack)) throw new Error('Booster inconnu.');
+        if (!validPackChoice(pack)) throw new Error(fe('games.42'));
         const n = royalePackCount({ packCount });
-        if (host.packsAvailable() < n) throw new Error(n > 1 ? `Il te faut ${n} boosters en réserve.` : 'Il te faut un booster en réserve.');
-        const r: RoyaleView = { id: id('ro'), creatorId: ME, status: 'open', ...(n > 1 ? { packCount: n } : {}), players: [{ userId: ME, name: 'Toi', pack }], createdAt: Date.now() };
+        if (host.packsAvailable() < n) throw new Error(n > 1 ? fe('games.17', { p0: n }) : fe('games.18'));
+        const r: RoyaleView = { id: id('ro'), creatorId: ME, status: 'open', ...(n > 1 ? { packCount: n } : {}), players: [{ userId: ME, name: tr('chat.me'), pack }], createdAt: Date.now() };
         d().royales.push(r);
         host.bots().forEach((b, i) =>
           setTimeout(() => {
@@ -489,8 +494,8 @@ export function createLocalEco(host: LocalEcoHost) {
     startRoyale: (rid) =>
       act(() => {
         const r = d().royales.find((x) => x.id === rid);
-        if (!r || r.status !== 'open') throw new Error('Cette Battle Royale n’est plus ouverte.');
-        if (r.players.length < ROYALE_MIN) throw new Error(`Il faut au moins ${ROYALE_MIN} joueurs.`);
+        if (!r || r.status !== 'open') throw new Error(fe('games.20'));
+        if (r.players.length < ROYALE_MIN) throw new Error(fe('games.27', { p0: ROYALE_MIN }));
         resolveRoyale(r);
       }),
     placeBet: (numbers, stake) =>
@@ -502,7 +507,7 @@ export function createLocalEco(host: LocalEcoHost) {
         if (p) throw new Error(p);
         checkStake(stake);
         const cards = takeStake(stake);
-        r.bets.push({ userId: ME, name: 'Toi', numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards });
+        r.bets.push({ userId: ME, name: tr('chat.me'), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards });
         d().econ.gamesPlayed++;
         weekly({ type: 'game', won: false });
         potOf(r);
@@ -511,10 +516,10 @@ export function createLocalEco(host: LocalEcoHost) {
       {
         key: 'demo',
         kind: 'flow',
-        title: 'Exemple (démo) : Malo (robot) → Léa (robot) : flux net de 6 200 en 30 jours',
-        detail: 'En ligne, les alertes sont calculées sur les vrais flux (duels, royales, roulette, échanges). Aucun blocage automatique.',
+        title: tr('el.abuseTitle'),
+        detail: tr('el.abuseDetail'),
         value: 6200,
-        users: ['Malo (robot)', 'Léa (robot)'],
+        users: [tr('el.botMalo'), tr('el.botLea')],
       },
     ],
     review: async () => {},
@@ -523,8 +528,8 @@ export function createLocalEco(host: LocalEcoHost) {
 
   /** Crochets du mode démo : pièces des boosters, missions (jour + semaine). */
   const hooks = {
-    onPack(kind: 'bebou' | 'theme', label: string, cards: Array<{ rarity: string; isNew: boolean }>) {
-      coins(rollPackCoins(kind, Math.random), 'pack', `Ouverture — ${label}`, true);
+    onPack(kind: 'bebou' | 'theme', label: Msg, cards: Array<{ rarity: string; isNew: boolean }>) {
+      coins(rollPackCoins(kind, Math.random), 'pack', label, true);
       weekly({ type: 'pack', cards });
       jeux.onPack(cards);
       emit();
@@ -538,13 +543,13 @@ export function createLocalEco(host: LocalEcoHost) {
       emit();
     },
     /** (retours Hugo 10/11) marché : pièces payées (négatif) ou reçues ; lève une erreur s'il en manque */
-    onMarket(amount: number, label: string) {
+    onMarket(amount: number, label: Msg) {
       coins(amount, amount < 0 ? 'market-buy' : 'market-sell', label);
       emit();
     },
     onMission(m: Mission) {
       const c = dailyMissionCoins(m);
-      coins(c, 'mission', 'Mission du jour', true);
+      coins(c, 'mission', fm('c.mission'), true);
       emit();
       return c;
     },

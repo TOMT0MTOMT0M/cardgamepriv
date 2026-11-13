@@ -102,6 +102,8 @@ export async function viewEvenements(v: HTMLElement, x: AdminCtx) {
           <div class="ev-fields">
             <label>Nom (moulé sur le sachet)<input name="name" maxlength="${ev.EVENT_LIMITS.name}" required value="${esc(e?.name ?? '')}" placeholder="ex. Coupe du monde"></label>
             <label>Phrase (facultative)<input name="blurb" maxlength="${ev.EVENT_LIMITS.blurb}" value="${esc(e?.blurb ?? '')}" placeholder="ex. Les 48 sélections, pour 3 jours"></label>
+            <div class="row"><label class="grow">Nom en anglais (facultatif)<input name="nameEn" maxlength="${ev.EVENT_LIMITS.name}" value="${esc(e?.nameEn ?? '')}" placeholder="ex. World Cup"></label><label class="grow">Phrase en anglais<input name="blurbEn" maxlength="${ev.EVENT_LIMITS.blurb}" value="${esc(e?.blurbEn ?? '')}" placeholder="ex. All 48 teams, for 3 days"></label></div>
+            <p class="small muted">Vides : les joueurs en anglais voient le nom et la phrase en français.</p>
             <div class="row"><label class="grow">Début<input name="start" type="datetime-local" value="${toLocal(start0)}"></label><label class="grow">Fin<input name="end" type="datetime-local" value="${toLocal(end0)}"></label></div>
             <div class="chips small ev-dur">${[24, 48, 72, 168].map((h) => `<button class="chip" type="button" data-h="${h}">${h < 168 ? `${h / 24} j` : '1 semaine'}</button>`).join('')}</div>
             <div class="ev-colors"><span class="small muted">Couleur du sachet</span>${ev.EVENT_ACCENTS.map(([c, n]) => `<button type="button" class="ev-c" data-c="${c}" title="${esc(n)}" aria-label="${esc(n)}" style="--c:${c}"></button>`).join('')}<input type="color" name="accent" value="${esc(st.accent)}" title="Autre couleur"></div>
@@ -130,7 +132,7 @@ export async function viewEvenements(v: HTMLElement, x: AdminCtx) {
     const cardsEl = sheet.querySelector<HTMLElement>('[data-cards]')!;
     const sq = sheet.querySelector<HTMLInputElement>('[data-sq]')!;
     const sh = sheet.querySelector<HTMLElement>('[data-sh]')!;
-    const draft = () => ({ name: val('name').trim(), blurb: val('blurb').trim() || undefined, startAt: fromLocal(val('start')), endAt: fromLocal(val('end')), accent: st.accent, subthemes: st.subthemes, cards: st.cards });
+    const draft = () => ({ name: val('name').trim(), blurb: val('blurb').trim() || undefined, nameEn: val('nameEn').trim() || undefined, blurbEn: val('blurbEn').trim() || undefined, startAt: fromLocal(val('start')), endAt: fromLocal(val('end')), accent: st.accent, subthemes: st.subthemes, cards: st.cards });
 
     function paintChosen() {
       subsEl.innerHTML = st.subthemes.map((s) => `<button type="button" class="chip on" data-rm="${esc(s)}">${esc(cat.scopeLabel(s) || s)} ✕</button>`).join('') || '<span class="small muted">Aucun</span>';

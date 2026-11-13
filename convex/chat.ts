@@ -7,6 +7,7 @@ import { getUserByToken, getUserIdByToken, requireUser } from './auth';
 import { isNightParis, notify } from './push';
 import { rarityValidator } from './cardsCatalog';
 import { catalogEntry } from '../src/core/sets/themes';
+import { fm } from '../src/core/msgs';
 import {
   CHAT_BURST_MAX,
   CHAT_BURST_WINDOW_MS,
@@ -295,7 +296,7 @@ export const send = mutation({
       const r = await myReads(ctx, uid);
       await ctx.db.patch(r._id, { mentionN: n });
       if (!(r.muted ?? []).includes(CHAT_GENERAL))
-        await notify(ctx, uid, { kind: 'chat', title: `${me.displayName} t’a mentionné`, body: preview, url: `#/chat/${CHAT_GENERAL}`, tag: 'chat-mention' }, { at: now });
+        await notify(ctx, uid, { kind: 'chat', title: fm('n.chatMention', { name: me.displayName }), body: preview, url: `#/chat/${CHAT_GENERAL}`, tag: 'chat-mention' }, { at: now });
     }
     if (peer && pushPeer) {
       const r = await readsOf(ctx, peer._id);
@@ -320,7 +321,7 @@ export const generalWake = internalMutation({
       const r = await readsOf(ctx, uid);
       if ((r?.muted ?? []).includes(CHAT_GENERAL)) continue;
       if (r?.generalAt && now - r.generalAt < 60_000) continue; // en train de lire le chat général
-      await notify(ctx, uid, { kind: 'chat', title: `Général · ${name}`, body, url: `#/chat/${CHAT_GENERAL}`, tag: 'chat-general' }, { at: now });
+      await notify(ctx, uid, { kind: 'chat', title: fm('n.chatGeneral', { name }), body, url: `#/chat/${CHAT_GENERAL}`, tag: 'chat-general' }, { at: now });
       players++;
     }
     return { players };

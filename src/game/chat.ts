@@ -583,7 +583,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
             t.dataset.pick = `${c.cardId}|${c.rarity}|${c.bestMintNumber}`;
             return t;
           })
-        : [h('div', 'chat-empty', qy ? '<span>' + tr('chat.noCard') + '</span>' : '<b>Collection vide</b><span>' + tr('chat.openFirst') + '</span>')]),
+        : [h('div', 'chat-empty', qy ? '<span>' + tr('chat.noCard') + '</span>' : '<b>' + tr('chat.emptyColl') + '</b><span>' + tr('chat.openFirst') + '</span>')]),
     );
   }
   function openZoom(spec: string) {

@@ -5,11 +5,11 @@ import type { Doc, Id } from './_generated/dataModel';
 import { getUserIdByToken, requireUser } from './auth';
 import { packChoiceValidator } from './schema';
 import { addCoins, bumpWeekly, coinsOf, patchEcon, secureRandom } from './econLib';
-import { fmtCoins } from '../src/core/economy';
 import { nextMissionReset } from '../src/core/missions';
-import { validPackChoice, packChoiceLabel, type PackChoice } from '../src/core/games';
+import { validPackChoice, packChoiceLabel, packRef, type PackChoice } from '../src/core/games';
 import { PRESSE_DAILY, PRESSE_STRIKES, presseBetProblem, presseCracks, presseStrip, presseValue } from '../src/core/presse';
 import { syncPresence } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 /**
  * LA PRESSE (V2, 11/11) — mini-jeu contre la maison, règles : src/core/presse.ts.
@@ -48,7 +48,7 @@ async function close(ctx: MutationCtx, r: Run, status: 'cashed' | 'cracked') {
   const shown = r.shown;
   const payout = status === 'cashed' ? presseValue(r.bet, r.strip.slice(0, shown)) : 0;
   if (payout) {
-    await addCoins(ctx, r.userId, payout, 'presse', `La Presse — pièce encaissée (${shown} frappe${shown > 1 ? 's' : ''})`);
+    await addCoins(ctx, r.userId, payout, 'presse', fm('c.presseWin', { n: shown }));
     // « pièces gagnées » (succès Tirelire) : seulement le bénéfice, pas la mise qui revient
     if (payout > r.bet) await patchEcon(ctx, r.userId, (e) => ({ ...e, earned: e.earned + payout - r.bet }));
   }
@@ -58,7 +58,7 @@ async function close(ctx: MutationCtx, r: Run, status: 'cashed' | 'cracked') {
   await bumpWeekly(ctx, r.userId, { type: 'game', won });
   if (payout >= 4 * r.bet) {
     const u = await ctx.db.get(r.userId);
-    if (u) await ctx.db.insert('activityFeed', { userId: u._id, displayName: u.displayName, avatarUrl: u.avatarUrl, kind: 'game', message: `${u.displayName} sort de La Presse une pièce à ${fmtCoins(payout)} pièces (${shown} frappes, mise ${r.bet}) !`, createdAt: now });
+    if (u) await ctx.db.insert('activityFeed', { userId: u._id, displayName: u.displayName, avatarUrl: u.avatarUrl, kind: 'game', ...feedMsg(fm('f.presse', { name: u.displayName, coins: payout, shown, bet: r.bet })), createdAt: now });
   }
   return { ...r, status, payout, endedAt: now };
 }
@@ -73,7 +73,7 @@ export const start = mutation({
     const now = Date.now();
     const problem = presseBetProblem(bet, coinsOf(u), await playedToday(ctx, u._id, now));
     if (problem) throw new ConvexError(problem);
-    await addCoins(ctx, u._id, -bet, 'presse', `La Presse — mise (${packChoiceLabel(album as PackChoice)})`);
+    await addCoins(ctx, u._id, -bet, 'presse', fm('c.presseBet', { pack: packChoiceLabel(album as PackChoice), ...packRef(album as PackChoice) }));
     const a = album.kind === 'theme' ? { kind: 'theme' as const, themeId: album.themeId } : { kind: 'bebou' as const };
     const id = await ctx.db.insert('presseRuns', { userId: u._id, bet, album: a, strip: presseStrip(a, secureRandom), shown: 1, status: 'live', createdAt: now });
     await ctx.db.patch(u._id, { statusText: 'Fait tourner La Presse' });

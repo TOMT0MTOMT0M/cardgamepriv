@@ -9,6 +9,7 @@ import { bumpWeekly, recordFlow } from './econLib';
 import { lockedCards } from './trades';
 import { cardsValue } from '../src/core/economy';
 import { dropInv, invRev } from './invRev';
+import { fm, feedMsg } from '../src/core/msgs';
 
 /**
  * TABLEAU D'OFFRES (retours live 02, point 4) — ouvert à TOUS les joueurs (pas seulement aux amis).
@@ -158,7 +159,7 @@ async function conclude(ctx: MutationCtx, listing: Doc<'listings'>, offer: Doc<'
     displayName: author.displayName,
     avatarUrl: author.avatarUrl,
     kind: 'trade',
-    message: `${author.displayName} et ${offerer.displayName} ont conclu un échange sur le tableau d’offres !`,
+    ...feedMsg(fm('f.listing', { name: author.displayName, other: offerer.displayName })),
     createdAt: now,
   });
   return { status: 'accepted' as const };

@@ -16,6 +16,7 @@ import { offlinePanel } from '../offline';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
+import { feedText } from '../msgView';
 
 /**
  * PROFIL (refonte complète, retours du 3 nov.) — le mien (avatar de l'en-tête) ou celui d'un ami.
@@ -900,7 +901,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       const rr = a.rarity ? rarity(a.rarity) : null;
       const row = h('div', `pf-act k-${a.kind}${rr ? ` r-${a.rarity}` : ''}`);
       if (rr) row.style.setProperty('--rc', rr.hex);
-      row.innerHTML = `<span class="pa-ico">${ICON[a.kind] ?? '•'}</span>${e && a.rarity !== 'secret' ? `<img class="pa-img" alt="" loading="lazy" src="${thumbUrl(e)}">` : ''}<span class="pa-txt">${esc(a.message)}</span><span class="pa-when">${ago(a.createdAt)}</span>`;
+      row.innerHTML = `<span class="pa-ico">${ICON[a.kind] ?? '•'}</span>${e && a.rarity !== 'secret' ? `<img class="pa-img" alt="" loading="lazy" src="${thumbUrl(e)}">` : ''}<span class="pa-txt">${esc(feedText(a))}</span><span class="pa-when">${ago(a.createdAt)}</span>`;
       if (e && a.rarity) row.addEventListener('click', () => void openCard(e.id, a.rarity!));
       activityEl.append(row);
     }

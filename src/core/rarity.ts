@@ -1,6 +1,7 @@
 import { tData } from './i18n';
 import { Color } from 'three/webgpu';
 import { SLOT_WEIGHTS } from './dropRates';
+import { msgRef, str } from './msgRefs';
 
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'secret';
 
@@ -92,3 +93,6 @@ export function rollRarity(rand: () => number = Math.random): RarityId {
   }
   return 'common';
 }
+
+// (version anglaise, lot 4) libellé de rareté des messages stockés, relu dans la langue active
+msgRef('rarity', (p) => { const id = str(p.rarityId); return id && isRarityId(id) ? RARITY_BY_ID[id].label : undefined; });

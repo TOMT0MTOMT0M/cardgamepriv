@@ -14,6 +14,7 @@ import { fe } from './errors';
 import { tData } from './i18n';
 import type { RarityId } from './rarity';
 import { THEMES, subthemeViews, type CatalogEntry } from './sets/themes';
+import { msgRef, str } from './msgRefs';
 
 // ───────────────────────────────────────────── table de valeur
 
@@ -496,3 +497,7 @@ export function achievementStats(
   s.bebouLevel = ACHIEVEMENTS.filter((a) => !ECON_ONLY.has(a.stat) && achievementDone(a, s)).length;
   return s;
 }
+
+// (version anglaise, lot 4) succès et ensembles des messages stockés, relus dans la langue active
+msgRef('ach', (p) => { const id = str(p.achId); return id ? ACHIEVEMENTS.find((a) => a.id === id)?.label : undefined; });
+msgRef('set', (p) => { const id = str(p.setId); return id ? completionSets().find((s) => s.id === id)?.label : undefined; });

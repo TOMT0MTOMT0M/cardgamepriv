@@ -18,11 +18,12 @@ import { maxPlayers } from './auth';
  * Aperçu sur soi :  npx convex run discordBot:testDm '{"name":"tom"}'
  */
 const API = 'https://discord.com/api/v10';
-type Dm = { discordId: string; name: string; code: string };
+const userLang = (u: { lang?: string }): 'fr' | 'en' => (u.lang === 'en' ? 'en' : 'fr');
+type Dm = { discordId: string; name: string; code: string; lang: 'fr' | 'en' };
 
 export const prepareDm = internalMutation({
   args: { userId: v.optional(v.id('users')), name: v.optional(v.string()), force: v.optional(v.boolean()) },
-  handler: async (ctx, { userId, name, force }): Promise<{ discordId: string; name: string; code: string } | null> => {
+  handler: async (ctx, { userId, name, force }): Promise<Dm | null> => {
     let u = userId ? await ctx.db.get(userId) : null;
     if (!u && name) {
       const q = name.trim().toLowerCase();
@@ -32,12 +33,30 @@ export const prepareDm = internalMutation({
     if (u.welcomeDmAt && !force) return null;
     if (!force) await ctx.db.patch(u._id, { welcomeDmAt: Date.now() });
     const code = await ensureCode(ctx, u);
-    return { discordId: u.discordId, name: u.displayName, code };
+    return { discordId: u.discordId, name: u.displayName, code, lang: userLang(u) };
   },
 });
 
-function message(name: string, link: string) {
+function message(name: string, link: string, lang: 'fr' | 'en' = 'fr') {
   const cap = maxPlayers();
+  // (version anglaise, lot 4) le MP part dans la langue du joueur (users.lang, posée par le jeu à la connexion)
+  if (lang === 'en')
+    return {
+      content: [
+        `🎴 **Welcome to the Bébou club, ${name}!**`,
+        '',
+        `Your personal invite link 👇`,
+        link,
+        '',
+        `Send it to your close friends:`,
+        `• **they** get **${REFERRAL.packs} free boosters** as soon as they sign up`,
+        `• **you** earn **${REFERRAL.packs} boosters** for every friend who opens their first ${REFERRAL.packsToPay} boosters`,
+        '',
+        `The club is limited to ${cap} players: spots go fast. You can find your link anytime in the **Friends** tab.`,
+      ].join('\n'),
+      components: [{ type: 1, components: [{ type: 2, style: 5, label: 'Open the game', url: link }] }],
+      allowed_mentions: { parse: [] },
+    };
   return {
     content: [
       `🎴 **Bienvenue dans le club Bébou, ${name} !**`,
@@ -76,7 +95,7 @@ export const welcomeDm = internalAction({
     if (!token) return 'pas de DISCORD_BOT_TOKEN : MP non envoyé';
     const t: Dm | null = await ctx.runMutation(internal.discordBot.prepareDm, { userId });
     if (!t) return 'rien à envoyer (déjà fait, ou compte sans Discord)';
-    const r = await send(token, t.discordId, message(t.name, referralLink(siteOrigin(), t.code)));
+    const r = await send(token, t.discordId, message(t.name, referralLink(siteOrigin(), t.code), t.lang));
     console.log(`[bot] MP de bienvenue → ${t.name} : ${r}`);
     return r;
   },
@@ -89,6 +108,6 @@ export const testDm = internalAction({
     if (!token) return 'pose d’abord DISCORD_BOT_TOKEN (npx convex env set DISCORD_BOT_TOKEN …)';
     const t: Dm | null = await ctx.runMutation(internal.discordBot.prepareDm, { name, force: true });
     if (!t) return `aucun compte Discord pour « ${name} »`;
-    return await send(token, t.discordId, message(t.name, referralLink(siteOrigin(), t.code)));
+    return await send(token, t.discordId, message(t.name, referralLink(siteOrigin(), t.code), t.lang));
   },
 });

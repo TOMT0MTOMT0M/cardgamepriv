@@ -3,6 +3,9 @@ import type { Dict } from '../i18n';
 /** tables de données (succès, cosmétiques, missions…) : voir tData dans ../i18n.ts */
 export { enData } from './en/data';
 export { enErrors } from './en/errors';
+export { enMsgs } from './en/msgs';
+/** (lot 4) lecture des statuts français des amis : les modèles français arrivent avec l'anglais */
+export { parseMsg } from '../msgs';
 import { en as p_game_v2gate } from './en/game.v2gate';
 import { en as p_game_chatStore } from './en/game.chatStore';
 import { en as p_game_offline } from './en/game.offline';
@@ -31,6 +34,9 @@ import { en as p_game_survey } from './en/game.survey';
 import { en as p_game_views_defis } from './en/game.views.defis';
 import { en as p_game_views_presse } from './en/game.views.presse';
 import { en as p_game_views_showcaseEditor } from './en/game.views.showcaseEditor';
+import { en as p_game_localBackend } from './en/game.localBackend';
+import { en as p_game_chatLocal } from './en/game.chatLocal';
+import { en as p_game_ecoLocal } from './en/game.ecoLocal';
 // <imports>
 
 export const en: Dict = {
@@ -63,6 +69,9 @@ export const en: Dict = {
   ...p_game_views_defis,
   ...p_game_views_presse,
   ...p_game_views_showcaseEditor,
+  ...p_game_localBackend,
+  ...p_game_chatLocal,
+  ...p_game_ecoLocal,
   // <parts>
 
   // ───── language (header switch) ─────
