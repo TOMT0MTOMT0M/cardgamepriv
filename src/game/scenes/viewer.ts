@@ -243,8 +243,9 @@ export function createViewerScene(): ViewerScene {
         pm.frustumCulled = false;
         pm.position.z = camBase + 10;
         stage.scene.add(pm);
-        await nextFrame();
-        await nextFrame();
+        // (deux VRAIES images : `nextFrame` de core/art rend seulement la main, sans attendre un rendu ; 120 ms au plus,
+        // pour ne pas rester en attente quand rien n'est dessiné — onglet caché)
+        await Promise.race([new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))), new Promise<void>((r) => setTimeout(r, 120))]);
         stage.scene.remove(pm);
         pm.position.z = 0;
         if (my !== token) {

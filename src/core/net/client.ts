@@ -548,6 +548,7 @@ class GameNetClient {
         this.emit();
       });
     };
+    let afterFull = false;
     const follow = (since: number) => {
       if (!live()) return;
       this.invUnsub?.();
@@ -563,7 +564,10 @@ class GameNetClient {
             this.emit();
             return;
           }
-          if (d.more) return void queueMicrotask(full);
+          // trop de changements pour une différence : lecture complète — une seule fois de suite (plus de 300 lignes
+          // écrites dans la même demi-minute, par une migration : la différence resterait trop grosse, en boucle)
+          if (d.more) return void queueMicrotask(afterFull ? legacy : full);
+          afterFull = false;
           if (this.inv.apply(d)) publish();
           // la réponse grossit à chaque booster : au-delà de quelques dizaines de lignes, on repart d'une révision récente
           // (hors du rappel : l'abonnement en cours est remplacé une fois son rappel terminé)
@@ -581,6 +585,7 @@ class GameNetClient {
           this.invFullAt = Date.now();
           publish();
           keep();
+          afterFull = true;
           follow(this.inv.since());
         },
         () => legacy(),
@@ -593,7 +598,8 @@ class GameNetClient {
       const mirror = this.inv;
       void loadInv(invKey).then(
         (kept) => {
-          if (!live() || this.inv !== mirror || mirror.loaded) return;
+          if (!live() || this.inv !== mirror) return;
+          if (mirror.loaded) return follow(mirror.since()); // (déjà chargé par une série précédente : on suit)
           if (!kept) return full();
           mirror.reset(kept.rows);
           this.invFullAt = kept.at; // (la copie garde la date de SA lecture complète : au plus 24 h sans tout relire)

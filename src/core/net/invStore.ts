@@ -13,6 +13,7 @@ import type { InvRow } from './invDiff';
 const DB = 'bebou-collection';
 const STORE = 'miroir';
 const MAX_AGE_MS = 24 * 3600 * 1000;
+const LOAD_WAIT_MS = 1500;
 
 interface Saved {
   key: string;
@@ -44,7 +45,11 @@ function open(): Promise<IDBDatabase | null> {
 }
 
 /** Copie gardée pour cette session, ou null (absente, autre session, autre version, trop ancienne, illisible). */
-export async function loadInv(key: string): Promise<{ rows: InvRow[]; at: number } | null> {
+export function loadInv(key: string): Promise<{ rows: InvRow[]; at: number } | null> {
+  // (IndexedDB peut ne jamais répondre — base verrouillée, Safari : au-delà de 1,5 s, lecture complète comme avant)
+  return Promise.race([read(key), new Promise<null>((r) => setTimeout(() => r(null), LOAD_WAIT_MS))]);
+}
+async function read(key: string): Promise<{ rows: InvRow[]; at: number } | null> {
   const db = await open();
   if (!db) return null;
   return new Promise((done) => {
