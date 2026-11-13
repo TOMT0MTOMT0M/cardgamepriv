@@ -674,6 +674,9 @@ export function createOpeningScene(): OpeningScene {
   const tearNodes: Array<Record<'front' | 'back' | 'masks', { value: Texture }>> = [];
   const TP = uniform(0); // progression de la déchirure (0..1.08)
   const TFLY = uniform(0); // envol de la bande arrachée
+  /** (13/11) intérieur du film : la teinte du sachet (PackArt.tint), métal brut gris sur les autres visuels */
+  const TEAR_INNER = '#cbcbc8';
+  const tearInner = uniform(new Color(TEAR_INNER));
   const fly = { t: 0 };
   let tearTarget = 0;
   let tearProgress = 0;
@@ -1006,8 +1009,7 @@ export function createOpeningScene(): OpeningScene {
     const make = (col: N, cr: N, side: 0 | 1) => {
       const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
       const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
-      const silver = color(0.6, 0.6, 0.58);
-      m.colorNode = mix(select(frontFacing, col.rgb, silver), color(0.94, 0.93, 0.91), whiten.mul(0.85));
+      m.colorNode = mix(select(frontFacing, col.rgb, tearInner as unknown as N), color(0.94, 0.93, 0.91), whiten.mul(0.85));
       // (07/11) aluminium lisse, grands plis, double reflet métal + vernis PET (core/pack.ts aluminiumSurface) ;
       // l'intérieur (face arrière) reste métal brut plus mat, la coupe blanchit (film étiré)
       aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.4, side === 0 ? nF : nB);
@@ -1054,6 +1056,7 @@ export function createOpeningScene(): OpeningScene {
       n.masks.value = a.masks;
     }
     applySwaps(tearSwaps, a);
+    (tearInner.value as Color).set(a.tint ?? TEAR_INNER);
   }
 
   function spawnShreds(u: number, n: number) {

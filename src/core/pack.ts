@@ -172,6 +172,11 @@ export interface PackArt {
   masks: Texture;
   /** dos entièrement métallisé (sachet simple du jeu) */
   metalBack?: boolean;
+  /**
+   * (13/11) teinte de l'alliage du sachet simple (sRGB), aussi celle de l'INTÉRIEUR du film dans la déchirure : avec
+   * un gris fixe, les lèvres de la soudure vues de face (sous les crans) faisaient une bande grise sur les packs teintés
+   */
+  tint?: string;
   /** `crinkle` est la carte du sachet entier (UV 0..1, pas une tuile répétée) */
   fullCrease?: boolean;
   /** (07/11 soir) carte de NORMALES des plis (espace tangent, calculée en flottants) : à préférer au bumpMap de `crinkle` */
@@ -353,12 +358,13 @@ async function simplePackArt(style: PackStyle, release = false): Promise<PackArt
   // (arêtes tendues entre points), micro-plis secondaires, bombé du coussin et soudures crantées.
   const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
   const base = style.ground;
+  const alloy = mixHex(base, '#eceef1', 0.66);
   const ch = (PACK.crimp / PACK.h) * PH;
   const faces: Array<[Ctx, number]> = [[F.g, 1], [B.g, 2]];
   for (const [g, seed] of faces) {
     const rr = lcg(seed * 7919);
     // alliage teinté : la couleur du pack posée sur l'alu
-    g.fillStyle = mixHex(base, '#eceef1', 0.66);
+    g.fillStyle = alloy;
     g.fillRect(0, 0, PW, PH);
     // (07/11) aluminium LISSE : à peine un voile de laminage vertical (le reflet, lui, vient du matériau et de
     // l'environnement — rien de peint : un reflet peint ne bouge pas avec la lumière)
@@ -423,7 +429,7 @@ async function simplePackArt(style: PackStyle, release = false): Promise<PackArt
   // ordre d'envoi : les paires (face + sa normale), (dos + masques), (plis + normale des plis)
   const gpuTextures = [front, ...(frontNormal ? [frontNormal] : []), back, masks, crinkle, creaseNormal];
   return {
-    front, back, masks, crinkle, creaseNormal, frontNormal, thumbFront: molded?.thumb, metalBack: true, fullCrease: true, gpuTextures,
+    front, back, masks, crinkle, creaseNormal, frontNormal, thumbFront: molded?.thumb, metalBack: true, fullCrease: true, tint: alloy, gpuTextures,
     dispose: () => {
       all.forEach((t) => t.dispose());
       if (release) [F.c, B.c, M.c, C.c, C.n, FN, molded?.thumb].forEach(releaseCanvas);
