@@ -11,7 +11,6 @@
  * La langue EFFECTIVE part au serveur à la connexion et à chaque changement (push et messages privés Discord).
  */
 import { LANG_STORAGE_KEY, installLang, isLang, lang, langFromDevice, t, type Dict, type Lang } from '../core/i18n';
-import { fr } from '../core/i18n/fr';
 
 export { lang, t };
 
@@ -46,8 +45,8 @@ let manualPick = fromStorage() !== null;
 let picked = forced !== null || manualPick;
 const listeners = new Set<(l: Lang) => void>();
 
-let enP: Promise<Dict> | null = null;
-const loadDict = (l: Lang): Promise<Dict> => (l === 'fr' ? Promise.resolve(fr) : (enP ??= import('../core/i18n/en').then((m) => m.en, (e: unknown) => ((enP = null), Promise.reject(e)))));
+let enP: Promise<Dict | null> | null = null;
+const loadDict = (l: Lang): Promise<Dict | null> => (l === 'fr' ? Promise.resolve(null) : (enP ??= import('../core/i18n/en').then((m) => m.en, (e: unknown) => ((enP = null), Promise.reject(e)))));
 
 function applyDoc(l: Lang) {
   document.documentElement.lang = l;
@@ -83,7 +82,7 @@ export async function setLang(l: Lang, manual = true): Promise<boolean> {
     }
   }
   if (l === lang()) return true;
-  let d: Dict;
+  let d: Dict | null;
   try {
     d = await loadDict(l);
   } catch (e) {

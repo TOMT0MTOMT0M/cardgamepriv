@@ -12,6 +12,7 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "verify": "node scripts/verify.cjs",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "test:rolls": "esbuild scripts/test-rolls.mts --bundle --platform=node --format=esm --outfile=.cache/test-rolls.mjs --log-level=warning && node .cache/test-rolls.mjs",
     "test:server": "vitest run",
     "test:sound": "esbuild scripts/test-sound.mts --bundle --platform=node --format=esm --outfile=.cache/test-sound.mjs --log-level=warning && node .cache/test-sound.mjs",

@@ -3,10 +3,13 @@ import { convexTest } from 'convex-test';
 import { describe, expect, test } from 'vitest';
 import { api } from './_generated/api';
 import schema from './schema';
-import { fr } from '../src/core/i18n/fr';
+import { fr as frCore } from '../src/core/i18n/fr';
 import { en } from '../src/core/i18n/en';
 import { compare, format, installLang, langFromDevice, t as tr } from '../src/core/i18n';
 
+// toutes les parties françaises (fr.ts + fr/*.ts des modules chargés à la demande)
+const parts = import.meta.glob<{ fr: Record<string, unknown> }>('../src/core/i18n/fr/*.ts', { eager: true });
+const fr = Object.assign({}, frCore, ...Object.values(parts).map((p) => p.fr)) as typeof frCore;
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
 
 describe('version anglaise : règle de langue et dictionnaires', () => {

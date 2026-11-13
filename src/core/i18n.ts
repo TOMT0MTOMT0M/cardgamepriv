@@ -11,6 +11,7 @@
  *   `src/game/lang.ts` ne l'a pas changée.
  */
 import { fr } from './i18n/fr';
+import type { AllFr } from './i18n/keys';
 
 export type Lang = 'fr' | 'en';
 export const LANGS: readonly Lang[] = ['fr', 'en'];
@@ -21,9 +22,12 @@ export const LANG_STORAGE_KEY = 'bebou.lang';
 
 export type PluralMsg = { zero?: string; one?: string; two?: string; few?: string; many?: string; other: string };
 export type Msg = string | PluralMsg;
-export type MsgKey = keyof typeof fr;
-/** Forme d'un dictionnaire : exactement les clés de `fr.ts`. */
+/** Toutes les clés : `fr.ts` (textes du premier téléchargement) + `fr/*.ts` (textes des modules chargés à la demande). */
+export type MsgKey = keyof AllFr;
+/** Forme d'un dictionnaire complet : exactement toutes les clés. */
 export type Dict = { readonly [K in MsgKey]: Msg };
+/** Forme d'une partie anglaise : exactement les clés de sa partie française. */
+export type PartOf<F> = { readonly [K in keyof F]: Msg };
 export type Params = Record<string, string | number>;
 
 /** Langue d'appareil (navigator.languages[0], sinon navigator.language) → langue du jeu. */
@@ -34,7 +38,16 @@ export function langFromDevice(tag: string | null | undefined): Lang {
 export const isLang = (x: unknown): x is Lang => x === 'fr' || x === 'en';
 
 let cur: Lang = 'fr';
-let dict: Dict = fr;
+/**
+ * Français : `fr.ts` + les parties `fr/*.ts` enregistrées par leur module à son chargement (`addFr`) — les textes d'une
+ * page arrivent avec elle (le premier téléchargement ne grossit pas). L'anglais arrive en un seul fichier (en.ts).
+ */
+const frAll: Record<string, Msg> = { ...fr };
+let dict: Dict = frAll as Dict;
+/** (fr/*.ts) une partie française arrive avec son module. */
+export function addFr(part: Record<string, Msg>): void {
+  Object.assign(frAll, part);
+}
 const plurals = new Map<Lang, Intl.PluralRules>();
 
 /** Langue active. */
@@ -43,9 +56,9 @@ export const lang = (): Lang => cur;
 export const locale = (l: Lang = cur): string => (l === 'fr' ? 'fr-FR' : 'en-GB');
 
 /** (src/game/lang.ts) installe la langue et son dictionnaire. */
-export function installLang(l: Lang, d: Dict): void {
+export function installLang(l: Lang, d: Dict | null): void {
   cur = l;
-  dict = d;
+  dict = l === 'fr' || !d ? (frAll as Dict) : d;
 }
 
 function plural(l: Lang): Intl.PluralRules {
@@ -56,7 +69,7 @@ function plural(l: Lang): Intl.PluralRules {
 
 /** Message `key` dans un dictionnaire donné (le serveur choisira celui du joueur). */
 export function format(d: Dict, l: Lang, key: MsgKey, params?: Params): string {
-  const m = d[key] ?? fr[key];
+  const m = d[key] ?? frAll[key] ?? key;
   let s: string;
   if (typeof m === 'string') s = m;
   else {

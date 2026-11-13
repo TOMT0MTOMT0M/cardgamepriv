@@ -195,7 +195,7 @@ const tileStats = new Map<string, { n: number; bytes: number }>();
 let noWebp = false;
 /** Formats des tuiles peintes depuis le démarrage (pour le rapport ?diag) : « image/webp ×42 (18 Ko en moyenne) ». */
 export function tileFormats(): string {
-  if (!tileStats.size) return 'aucune tuile peinte';
+  if (!tileStats.size) return 'aucune tuile peinte'; // i18n-ok
   return [...tileStats].map(([t, f]) => `${t || 'type inconnu'} ×${f.n} (${Math.round(f.bytes / f.n / 1024)} Ko en moyenne)`).join(', ');
 }
 async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnType<typeof cardById>, thumb: string | undefined): Promise<string | null> {

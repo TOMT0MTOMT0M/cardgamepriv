@@ -22,7 +22,7 @@ import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
 import { boardAttention } from './backend';
 import { PACK_CAP, PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
-import { initLang, lang, onLang, setLang, t } from './lang';
+import { initLang, lang, onLang, setLang, t as tr } from './lang';
 import type { MsgKey } from '../core/i18n';
 import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, panelShown, setToastSound, syncPanelTriggers, toast } from './ui';
 import { preloadOwned } from './preload';
@@ -74,24 +74,24 @@ const viewHost = h('main', 'views');
 // l'écran de chargement est déjà dans la page (jeu/index.html) : on le reprend tel quel, sans le recréer
 const loader =
   app.querySelector<HTMLElement>('.loader') ??
-  h('div', 'loader', '<div class="l-logo">BÉBOU</div><div class="l-bar"><i></i></div><div class="l-txt">préparation des effets…</div><div class="l-tip"></div>');
+  h('div', 'loader', '<div class="l-logo">' + tr('boot.logo') + '</div><div class="l-bar"><i></i></div><div class="l-txt">' + tr('boot.fx') + '</div><div class="l-tip"></div>');
 // chargement un peu long (téléphone modeste, première visite) : une astuce s'affiche, puis une autre
-const TIPS = [
-  'Astuce : maintiens, glisse ou touche le booster : chaque pochette s’ouvre à sa façon.',
-  'Une carte secrète se cache peut-être dans le Bebou Pack…',
-  'Tes doublons valent de l’or : brûle-les en contrat ou échange-les.',
-  'Un nouveau booster toutes les 5 minutes, jusqu’à 15 en réserve.',
-  'Touche une carte de ta collection pour la voir en grand et la faire tourner.',
-  'La lumière qui fuit de l’emballage annonce la meilleure carte du paquet.',
+const TIPS = () => [
+  tr('boot.tip1'),
+  tr('boot.tip2'),
+  tr('boot.tip3'),
+  tr('boot.tip4'),
+  tr('boot.tip5'),
+  tr('boot.tip6'),
 ];
 {
   const tip = loader.querySelector<HTMLElement>('.l-tip')!;
-  let i = Math.floor(Math.random() * TIPS.length);
+  let i = Math.floor(Math.random() * TIPS().length);
   const next = () => {
     if (!loader.isConnected || loader.classList.contains('done')) return;
     tip.classList.remove('on');
     setTimeout(() => {
-      tip.textContent = TIPS[i++ % TIPS.length];
+      tip.textContent = TIPS()[i++ % TIPS().length]; // (fonction : l'astuce suit la langue, arrivée pendant le chargement)
       tip.classList.add('on');
     }, 250);
     setTimeout(next, 4200);
@@ -180,32 +180,32 @@ backend.onChange((st) => {
       } catch {
         /* rien */
       }
-      if (r.status === 'ok') toast(`Bienvenue ! ${r.referrer ?? 'Ton parrain'} t’a invité : +${r.packs ?? 10} boosters offerts 🎁`, 'ok');
+      if (r.status === 'ok') toast(tr('ref.welcome', { name: r.referrer ?? tr('ref.yourSponsor'), n: r.packs ?? 10 }), 'ok');
       // (07/11) un lien refusé ne disparaît plus en silence (sauf « déjà parrainé », sans intérêt à l'arrivée)
-      else if (r.status === 'tooLate') toast('Lien de parrainage : ton compte n’est plus assez récent pour être parrainé.', 'info');
-      else if (r.status === 'invalid') toast('Lien de parrainage invalide : demande à ton pote de te le renvoyer (onglet Amis).', 'err');
+      else if (r.status === 'tooLate') toast(tr('ref.tooLate'), 'info');
+      else if (r.status === 'invalid') toast(tr('ref.invalid'), 'err');
     })
     .catch(() => {})
     .finally(() => (refBusy = false));
 });
 
 top.innerHTML = `
-  <button class="skip">Aller au contenu</button>
-  <a class="logo" href="#/">BÉBOU<span>cartes</span></a>
-  <nav aria-label="Pages du jeu">
-    <a href="#/" data-r="">Boutique</a>
+  <button class="skip">${tr('nav.skip')}</button>
+  <a class="logo" href="#/">${tr('boot.logo')}<span>cartes</span></a>
+  <nav aria-label="${tr('nav.aria')}">
+    <a href="#/" data-r="">${tr('nav.shop')}</a>
     <a href="#/collection" data-r="collection">Collection</a>
-    <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>
-    <a href="#/jeux" data-r="jeux">Jeux</a>
-    <a href="#/classement" data-r="classement">Classement</a>
-    <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
-    <a href="#/amis" data-r="amis">Amis<b class="badge am-badge" hidden></b></a>
+    <a href="#/echanges" data-r="echanges">${tr('nav.trades')}<b class="badge" hidden></b></a>
+    <a href="#/jeux" data-r="jeux">${tr('nav.games')}</a>
+    <a href="#/classement" data-r="classement">${tr('nav.ranking')}</a>
+    <a href="#/succes" data-r="succes">${tr('nav.achievements')}<b class="badge ach-badge" hidden></b></a>
+    <a href="#/amis" data-r="amis">${tr('nav.friends')}<b class="badge am-badge" hidden></b></a>
     <i class="nav-pill" aria-hidden="true"></i>
     <button class="nav-more" tabindex="-1" aria-hidden="true">›</button>
   </nav>
-  <div class="nav-extra" role="group" aria-label="Infos du jeu">
-    <a href="#/maj" data-r="maj" title="Mises à jour" aria-label="Mises à jour"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
-    <a href="#/tuto" data-r="tuto" title="Tutoriel" aria-label="Tutoriel"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
+  <div class="nav-extra" role="group" aria-label="${tr('nav.extraAria')}">
+    <a href="#/maj" data-r="maj" title="${tr('nav.updates')}" aria-label="${tr('nav.updates')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
+    <a href="#/tuto" data-r="tuto" title="${tr('nav.tutorial')}" aria-label="${tr('nav.tutorial')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
     <a href="#/suggestions" data-r="suggestions" title="Suggestions" aria-label="Suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><b class="badge sg-badge" hidden></b></a>
   </div>
   <div class="me"></div>`;
@@ -219,9 +219,28 @@ const tradeBadge = top.querySelector<HTMLElement>('.badge')!;
 // cartes obtenues depuis la dernière visite de la collection : pastille dorée sur l'onglet
 const freshBadge = h('b', 'badge fresh-badge');
 freshBadge.hidden = true;
-freshBadge.title = 'Nouvelles cartes depuis ta dernière visite';
+freshBadge.title = tr('nav.freshCards');
 top.querySelector('nav a[data-r="collection"]')!.append(freshBadge);
 
+/** (version anglaise) libellés de l'en-tête refaits en place (les pastilles et écouteurs restent) au changement de langue */
+function relabelTop() {
+  const NAV: Record<string, MsgKey> = { '': 'nav.shop', echanges: 'nav.trades', jeux: 'nav.games', classement: 'nav.ranking', succes: 'nav.achievements', amis: 'nav.friends' };
+  top.querySelectorAll<HTMLElement>('nav a[data-r]').forEach((a) => {
+    const k = NAV[a.dataset.r ?? ''];
+    if (k && a.firstChild?.nodeType === Node.TEXT_NODE) a.firstChild.textContent = tr(k);
+  });
+  top.querySelector('.skip')!.textContent = tr('nav.skip');
+  navEl.setAttribute('aria-label', tr('nav.aria'));
+  top.querySelector('.nav-extra')?.setAttribute('aria-label', tr('nav.extraAria'));
+  for (const [r, k] of [['maj', 'nav.updates'], ['tuto', 'nav.tutorial']] as const) {
+    const a = top.querySelector<HTMLElement>(`.nav-extra a[data-r="${r}"]`);
+    a?.setAttribute('title', tr(k));
+    a?.setAttribute('aria-label', tr(k));
+  }
+  freshBadge.title = tr('nav.freshCards');
+  placePill(false);
+  syncNavMore();
+}
 // l'indicateur d'onglet glisse d'une page à l'autre (au lieu de sauter)
 const navEl = top.querySelector<HTMLElement>('nav')!;
 const pill = top.querySelector<HTMLElement>('.nav-pill')!;
@@ -333,16 +352,16 @@ function switchLang(to: 'fr' | 'en') {
   window.clearInterval(langWait);
   langWait = 0;
   if (langBusy()) {
-    toast(t('lang.later'), 'info');
+    toast(tr('lang.later'), 'info');
     langWait = window.setInterval(() => {
       if (langBusy()) return;
       window.clearInterval(langWait);
       langWait = 0;
-      void setLang(to).then((ok) => ok || toast(t('lang.failed'), 'err'));
+      void setLang(to).then((ok) => ok || toast(tr('lang.failed'), 'err'));
     }, 400);
     return;
   }
-  void setLang(to).then((ok) => ok || toast(t('lang.failed'), 'err'));
+  void setLang(to).then((ok) => ok || toast(tr('lang.failed'), 'err'));
 }
 let lastIncoming = -1;
 let lastBoard = -1;
@@ -372,13 +391,13 @@ const fmtCoinsShort = (n: number) => {
  * branché sur `haptics.enabled` (core/haptics.ts, mémorisé `bebou.haptics`) — indépendant du son.
  */
 const HAPTIC_UI = matchMedia('(pointer: coarse)').matches;
-const HAP_NOTE = haptics.support === 'ios' ? ' · iPhone : au toucher seulement' : haptics.support === 'none' ? ' · indisponibles ici' : '';
-const hapBtn = () => `<button class="vol-hap" role="switch" aria-checked="${haptics.enabled}" title="Toucher pour tester${haptics.support === 'ios' ? ' (iPhone : le navigateur ne vibre que pendant un toucher, jamais pendant une animation)' : ''}">Vibrations<small>${HAP_NOTE}</small><i aria-hidden="true">${haptics.enabled ? 'oui' : 'non'}</i></button>`;
+const HAP_NOTE = () => haptics.support === 'ios' ? tr('vol.hapIos') : haptics.support === 'none' ? tr('vol.hapNone') : '';
+const hapBtn = () => `<button class="vol-hap" role="switch" aria-checked="${haptics.enabled}" title="${tr('vol.hapTitle', { ios: haptics.support === 'ios' ? tr('vol.hapIosNote') : '' })}">${tr('vol.haptics')}<small>${HAP_NOTE()}</small><i aria-hidden="true">${haptics.enabled ? tr('common.yes') : tr('common.no')}</i></button>`;
 /** (son V2, 11/11) « Nappe des menus » : un accord feutré, très discret, sous les pages — désactivé par défaut. */
-const padBtn = () => `<button class="vol-hap vol-pad" role="switch" aria-checked="${padOn()}" title="Une nappe très discrète sous les menus (elle se tait pendant les ouvertures)">Nappe des menus<i aria-hidden="true">${padOn() ? 'oui' : 'non'}</i></button>`;
+const padBtn = () => `<button class="vol-hap vol-pad" role="switch" aria-checked="${padOn()}" title="${tr('vol.padTitle')}">${tr('vol.pad')}<i aria-hidden="true">${padOn() ? tr('common.yes') : tr('common.no')}</i></button>`;
 /** (son V2, 11/11) « Son même en mode silencieux (iPhone) » : seulement là où le navigateur le permet (Safari 17+). */
-const silentBtn = () => (Sfx.silentSupported() ? `<button class="vol-hap vol-ios" role="switch" aria-checked="${silentOn()}" title="Son même en mode silencieux (iPhone)">Même en silencieux<small> · iPhone</small><i aria-hidden="true">${silentOn() ? 'oui' : 'non'}</i></button>` : '');
-const DEMO_TXT = 'Mode démo : pas de serveur, ta collection est stockée dans ce navigateur et les amis sont des robots.';
+const silentBtn = () => (Sfx.silentSupported() ? `<button class="vol-hap vol-ios" role="switch" aria-checked="${silentOn()}" title="${tr('vol.silentTitle')}">${tr('vol.silent')}<small> · iPhone</small><i aria-hidden="true">${silentOn() ? tr('common.yes') : tr('common.no')}</i></button>` : '');
+const DEMO_TXT = () => tr('demo.txt');
 // clic n'importe où ailleurs, ou Échap : le panneau du volume se ferme
 document.addEventListener('click', () => volOpen && setVolOpen(false));
 window.addEventListener('keydown', (e) => e.key === 'Escape' && volOpen && setVolOpen(false));
@@ -464,27 +483,27 @@ function renderMe() {
   if (sig === meSig) return;
   meSig = sig;
   // démo : un petit « démo » reste visible au téléphone ; le toucher explique (le `title` n'existe pas au doigt)
-  const demo = s.mode === 'demo' ? `<button class="demo" title="${DEMO_TXT}" aria-label="${DEMO_TXT}"><span class="d-l">démo hors-ligne</span><span class="d-s">démo</span></button>` : '';
+  const demo = s.mode === 'demo' ? `<button class="demo" title="${DEMO_TXT()}" aria-label="${DEMO_TXT()}"><span class="d-l">${tr('demo.offline')}</span><span class="d-s">${tr('demo.short')}</span></button>` : '';
   // son (correctif retours live n°1) : l'icône ouvre / ferme le panneau du volume (curseur + couper / activer) ; un clic
   // ailleurs ou Échap le ferme aussi. Plus d'ouverture au survol : c'est ce qui l'empêchait de se refermer.
-  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="Son et volume" aria-label="Son et volume" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? 'Couper' : 'Activer'}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}${padBtn()}${silentBtn()}</span></span>`;
+  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="${tr('vol.title')}" aria-label="${tr('vol.title')}" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? tr('vol.mute') : tr('vol.unmute')}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}${padBtn()}${silentBtn()}</span></span>`;
   // (version anglaise) langue : pastille FR | EN collée au son, même taille ; la langue active en blanc (usinage.css)
-  const ls = `<button class="icon lang-sw" title="${t('lang.title')}" aria-label="${t('lang.aria')}"><span class="ls-p" aria-hidden="true"><b${lang() === 'fr' ? ' class="on"' : ''}>FR</b><i>|</i><b${lang() === 'en' ? ' class="on"' : ''}>EN</b></span><span class="mm-l">${t('lang.label')}</span></button>`;
+  const ls = `<button class="icon lang-sw" title="${tr('lang.title')}" aria-label="${tr('lang.aria')}"><span class="ls-p" aria-hidden="true"><b${lang() === 'fr' ? ' class="on"' : ''}>FR</b><i>|</i><b${lang() === 'en' ? ' class="on"' : ''}>EN</b></span><span class="mm-l">${tr('lang.label')}</span></button>`;
   // deux groupes : l'état du joueur (réserve, pièces, missions, série, pity) et l'identité (démo, son, profil). Sur
   // ordinateur ils se suivent sur une ligne ; au téléphone (`.me { display: contents }`) l'identité monte à côté du logo
   // et l'état prend toute la 2e rangée (style.css, lot A)
   if (!u) {
     // en ligne, tant que le serveur n'a pas répondu : « connexion… » (pas « Connexion Discord » à un joueur connecté)
-    const login = s.mode !== 'online' ? '' : s.ready ? `<button class="btn-primary login">Se connecter</button>` : `<span class="conn" role="status">connexion…</span>`;
+    const login = s.mode !== 'online' ? '' : s.ready ? `<button class="btn-primary login">${tr('auth.login')}</button>` : `<span class="conn" role="status">${tr('hdr.connecting')}</span>`;
     meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${ls}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${ls}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Vide les caches du jeu et recharge la dernière version (tu restes connecté)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Réparer et mettre à jour</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Mises à jour</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Tutoriel</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
+    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="${tr('hdr.packsTitle', { min: PACK_REGEN_MS / 60000, cap: PACK_CAP })}">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="${tr('hdr.walletTitle')}" aria-label="${tr('hdr.wallet')}" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="${tr('hdr.missions')}" aria-label="${tr('hdr.missions')}" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="${tr('hdr.streakTitle')}" aria-label="${tr('hdr.streakTitle')}" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">${tr('hdr.streak')}</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${ls}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="${tr('hdr.profileTitle', { name: esc(u.name) })}" aria-label="${tr('hdr.profile')}" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="${tr('hdr.profileMenu')}" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>${tr('hdr.seeProfile')}</em></span></a><button class="icon mm-reload" title="${tr('hdr.repairTitle')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">${tr('hdr.repair')}</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">${tr('nav.updates')}</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">${tr('nav.tutorial')}</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
     tickPacks();
     navDots?.sync(); // (le menu du profil vient d'être refait : sa pastille « Mises à jour » aussi)
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
-  meEl.querySelector('.demo')?.addEventListener('click', () => toast(DEMO_TXT, 'info'));
+  meEl.querySelector('.demo')?.addEventListener('click', () => toast(DEMO_TXT(), 'info'));
   meEl.querySelector('.lang-sw')?.addEventListener('click', () => switchLang(lang() === 'fr' ? 'en' : 'fr'));
   const sndWrap = meEl.querySelector<HTMLElement>('.snd-wrap');
   const sndBtn = meEl.querySelector<HTMLElement>('.snd');
@@ -497,7 +516,7 @@ function renderMe() {
     sndBtn?.classList.toggle('off', !on); // les ondes s'effacent, la croix apparaît (et l'inverse)
     const m = meEl.querySelector<HTMLButtonElement>('.vol-mute');
     if (m) {
-      m.textContent = on ? 'Couper' : 'Activer';
+      m.textContent = on ? tr('vol.mute') : tr('vol.unmute');
       m.setAttribute('aria-pressed', String(!on));
     }
   };
@@ -507,7 +526,7 @@ function renderMe() {
     const b = e.currentTarget as HTMLElement;
     haptics.enabled = !haptics.enabled;
     b.setAttribute('aria-checked', String(haptics.enabled));
-    b.querySelector('i')!.textContent = haptics.enabled ? 'oui' : 'non';
+    b.querySelector('i')!.textContent = haptics.enabled ? tr('common.yes') : tr('common.no');
     haptics.pulse([40, 60, 40]); // (allumées : on les sent tout de suite ; coupées : rien)
     if (haptics.enabled && haptics.why) toast(`Vibrations : ${haptics.why}.`, 'info');
   });
@@ -516,7 +535,7 @@ function renderMe() {
       const b = e.currentTarget as HTMLElement;
       write(!read());
       b.setAttribute('aria-checked', String(read()));
-      b.querySelector('i')!.textContent = read() ? 'oui' : 'non';
+      b.querySelector('i')!.textContent = read() ? tr('common.yes') : tr('common.no');
       apply(read());
     });
   toggle('.vol-pad', padOn, setPadOn, (on) => shell?.sfx.setPad(on));
@@ -553,7 +572,7 @@ function renderMe() {
   // + le tableau d'offres (lot T) : offres reçues sur mes annonces, contre-offres reçues sur mes offres
   const nb = boardAttention(s);
   const n = s.trades.incoming.length + nb;
-  if (lastBoard >= 0 && nb > lastBoard && currentRoute !== 'echanges') toast('Du nouveau sur le tableau d’offres (offre ou contre-offre) → Échanges', 'info');
+  if (lastBoard >= 0 && nb > lastBoard && currentRoute !== 'echanges') toast(tr('hdr.boardNews'), 'info');
   lastBoard = nb;
   const badgeChanged = tradeBadge.hidden !== (n === 0) || tradeBadge.textContent !== String(n);
   tradeBadge.hidden = n === 0;
@@ -562,7 +581,7 @@ function renderMe() {
   // un ami vient de proposer un échange (et on n'est pas déjà sur la page des échanges) : petit message
   if (lastIncoming >= 0 && n - nb > lastIncoming && currentRoute !== 'echanges') {
     const t = s.trades.incoming[s.trades.incoming.length - 1];
-    toast(`${t?.fromName ?? 'Un ami'} te propose un échange → Échanges`, 'info');
+    toast(tr('hdr.tradeOffer', { name: t?.fromName ?? tr('hdr.aFriend') }), 'info');
   }
   lastIncoming = n - nb;
 }
@@ -576,7 +595,7 @@ function syncMissionBadge() {
   b.textContent = String(n);
   const btn = meEl.querySelector<HTMLElement>('.msn-btn');
   btn?.classList.toggle('ready', n > 0);
-  btn?.setAttribute('aria-label', n ? `Missions : ${n} à réclamer` : 'Missions du jour');
+  btn?.setAttribute('aria-label', n ? tr('hdr.missionsReady', { n }) : tr('hdr.missions'));
   syncMenuDot();
 }
 backend.onChange(syncMissionBadge);
@@ -594,7 +613,7 @@ function syncFriendLink() {
   const b = a.querySelector<HTMLElement>('.am-badge')!;
   if (b.hidden !== (n === 0)) b.hidden = n === 0;
   if (b.textContent !== String(n)) b.textContent = String(n);
-  const label = n ? `Amis : ${n} demande${n > 1 ? 's' : ''} d’ami reçue${n > 1 ? 's' : ''}` : 'Amis';
+  const label = n ? tr('hdr.friendReqs', { n }) : tr('nav.friends.aria');
   if (a.getAttribute('aria-label') !== label) (a.setAttribute('aria-label', label), (a.title = label));
   a.classList.toggle('ready', n > 0);
   placePill(false);
@@ -608,8 +627,8 @@ backend.onChange((st) => {
   friendSeen = { inc: new Set(so.incoming.map((r) => r.id)), out: new Map(so.outgoing.map((r) => [r.userId, r.name])), friends: new Set(so.friends.map((f) => f.userId)) };
   if (!prev || currentRoute === 'amis') return;
   const fresh = so.incoming.find((r) => !prev.inc.has(r.id));
-  if (fresh) toast(`${fresh.name} te demande en ami → Amis`, 'info');
-  for (const [userId, name] of prev.out) if (friendSeen.friends.has(userId) && !prev.friends.has(userId)) toast(`${name} a accepté ta demande d’ami !`, 'ok');
+  if (fresh) toast(tr('hdr.friendAsks', { name: fresh.name }), 'info');
+  for (const [userId, name] of prev.out) if (friendSeen.friends.has(userId) && !prev.friends.has(userId)) toast(tr('hdr.friendAccepted', { name }), 'ok');
 });
 /** pastille sur l'onglet SUCCÈS : succès atteints à encaisser */
 const achBadge = top.querySelector<HTMLElement>('.ach-badge')!;
@@ -643,8 +662,8 @@ function syncCoins() {
   setText(b.querySelector('b')!, fmtCoinsShort(snap.coins));
   const ready = wallet?.ready() ?? 0;
   b.querySelector<HTMLElement>('.w-dot')!.hidden = ready === 0;
-  b.title = ready ? 'Portefeuille : quelque chose à prendre (calendrier, primes, succès) !' : 'Portefeuille : pièces, calendrier, primes';
-  b.setAttribute('aria-label', `Portefeuille : ${fmtCoins(snap.coins)} pièces${ready ? ', quelque chose à prendre' : ''}`);
+  b.title = ready ? tr('hdr.walletReady') : tr('hdr.walletIdle');
+  b.setAttribute('aria-label', tr('hdr.walletCoins', { coins: fmtCoins(snap.coins), ready: ready ? tr('hdr.walletSomething') : '' }));
   // (animations réduites : le solde change, sans « +N » qui s'envole)
   if (lastCoins >= 0 && snap.coins !== lastCoins && document.visibilityState === 'visible' && !lessMotion.matches) {
     const d = snap.coins - lastCoins;
@@ -679,7 +698,7 @@ function syncStatus() {
   // flamme = panneau CONNEXION (retours live 02, §11) : elle bat s'il y a la série OU le cadeau du calendrier à prendre
   const ready = sk.claimable || sk.calendar;
   st.classList.toggle('ready', ready);
-  st.title = sk.claimable ? 'Série de 7 jours : récompense à réclamer !' : sk.calendar ? 'Connexion : cadeau du jour à prendre !' : `Connexion · série jour ${sk.day}/7 · calendrier`;
+  st.title = sk.claimable ? tr('hdr.streak7') : sk.calendar ? tr('hdr.dailyGift') : tr('hdr.streakDay', { day: sk.day });
   st.setAttribute('aria-label', st.title);
   syncMenuDot();
   // pity (retours live 02, §11) : compteur « X/200 » toujours visible, sans clic
@@ -693,7 +712,7 @@ function syncStatus() {
   pt.querySelector('.pt-n')!.textContent = `${n}/${PITY_LIMIT}`;
   pt.classList.toggle('near', left <= 20 && left > 0);
   pt.classList.toggle('ready', left === 0);
-  pt.title = left === 0 ? 'Pity 6★ : ton prochain booster contient un 6★ sûr !' : `Pity 6★ : ${n} booster${n > 1 ? 's' : ''} sans 6★ · au ${PITY_LIMIT}e, un 6★ garanti (remis à zéro au premier 6★)`;
+  pt.title = left === 0 ? tr('hdr.pityNext') : tr('hdr.pity', { n, limit: PITY_LIMIT });
   pt.setAttribute('aria-label', pt.title);
 }
 backend.eco.onChange(syncStatus);
@@ -725,7 +744,7 @@ function tickPacks() {
   // (retours live 02, lot G) état « régénération en cours » distinct de « réserve pleine » (pilule violet/bleu, CSS)
   el.classList.toggle('regen', r.nextAt !== null);
   el.classList.toggle('empty', r.balance <= 0);
-  setText(el.querySelector<HTMLElement>('.p-next')!, r.nextAt === null ? 'réserve pleine' : `+1 dans ${fmtCountdown(r.nextAt - now)}`);
+  setText(el.querySelector<HTMLElement>('.p-next')!, r.nextAt === null ? tr('hdr.full') : tr('hdr.nextIn', { time: fmtCountdown(r.nextAt - now) }));
   const fill = el.querySelector<HTMLElement>('.p-bar > i')!;
   const gained = lastBalance >= 0 && r.balance > lastBalance;
   // un booster vient d'arriver (ou l'en-tête vient d'être refait) : la barre se place d'un coup, sans animation
@@ -741,7 +760,7 @@ function tickPacks() {
     if (left > 0) {
       const m = Math.ceil(left / 60000);
       setText(boost, `×2 · ${m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` : `${m} min`}`);
-      boost.title = `Recharge ×2 : 1 booster toutes les 2 min 30 pendant encore ${m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`}`;
+      boost.title = tr('hdr.boost', { left: m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min` });
     }
   }
   if (snap) {
@@ -753,7 +772,7 @@ function tickPacks() {
     void el.offsetWidth;
     el.classList.add('gain'); // petit pop quand un booster arrive
     // on attendait (réserve vide) : on le dit, même depuis une autre page
-    if (lastBalance === 0 && document.visibilityState === 'visible') toast('Un booster vient d’arriver : il t’attend à la boutique !', 'ok');
+    if (lastBalance === 0 && document.visibilityState === 'visible') toast(tr('hdr.packArrived'), 'ok');
   }
   if (r.balance !== lastBalance) {
     lastBalance = r.balance;
@@ -771,22 +790,22 @@ let shell: Shell;
 
 // plus de réseau (métro, avion…) : un bandeau discret le dit, au lieu d'erreurs incompréhensibles ; même bandeau
 // quand le réseau marche mais que le serveur ne répond pas (panne, déploiement en cours) : « serveur injoignable »
-const offlinePill = h('div', 'offline-pill', 'Pas de réseau · on reprend dès que ça revient');
+const offlinePill = h('div', 'offline-pill', tr('net.offline'));
 offlinePill.setAttribute('role', 'status');
 document.body.append(offlinePill);
 let wasDown = false;
 const syncOnline = () => {
   const off = !navigator.onLine;
   const down = !off && backend.state.mode === 'online' && serverDown();
-  const txt = off ? 'Pas de réseau · on reprend dès que ça revient' : 'Serveur injoignable · on réessaie…';
+  const txt = off ? tr('net.offline') : tr('net.serverDown');
   if ((off || down) && offlinePill.textContent !== txt) offlinePill.textContent = txt;
   document.body.classList.toggle('offline', off);
   document.body.classList.toggle('server-down', down);
   offlinePill.setAttribute('aria-hidden', String(!off && !down));
-  if (wasDown && !down && !off) toast('Serveur retrouvé', 'ok');
+  if (wasDown && !down && !off) toast(tr('net.serverBack'), 'ok');
   wasDown = down;
 };
-window.addEventListener('online', () => (syncOnline(), toast('Réseau retrouvé', 'ok')));
+window.addEventListener('online', () => (syncOnline(), toast(tr('net.back'), 'ok')));
 window.addEventListener('offline', syncOnline);
 backend.onChange(syncOnline);
 
@@ -803,7 +822,7 @@ function updateTitle() {
 }
 /** Titre de l'onglet du navigateur selon la page (fr.ts / en.ts : `title.*`). */
 const TITLE_PAGES = new Set(['collection', 'contrats', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
-const pageTitle = (r: string) => t((TITLE_PAGES.has(r) ? `title.${r}` : 'title.shop') as MsgKey);
+const pageTitle = (r: string) => tr((TITLE_PAGES.has(r) ? `title.${r}` : 'title.shop') as MsgKey);
 
 /** Page du jeu : son élément et ses entrées / sorties (route()). */
 interface View {
@@ -913,17 +932,17 @@ async function boot() {
     bar.parentElement!.classList.toggle('busy', busy);
     loader.querySelector<HTMLElement>('.l-txt')!.textContent = txt;
   };
-  step(15, 'démarrage de la 3D…', true);
+  step(15, tr('boot.start3d'), true);
   // visionneuse (collection, gros tirages, fiche…) : son module se télécharge pendant le démarrage de la 3D
   const viewerMod = import('./scenes/viewer');
   viewerMod.catch(() => undefined); // (échec : getViewer() réessaie)
   shell = await shellP;
   setBubbleSound(() => shell.sfx.ui('pop'));
   setToastSound((kind) => (kind === 'err' ? shell.sfx.decline(0.07) : kind === 'ok' ? shell.sfx.note(5, 0.05, 0.4) : shell.sfx.note(2, 0.04, 0.35)));
-  step(35, 'impression des boosters…', true);
+  step(35, tr('boot.printing'), true);
   // scène d'ouverture = vitrine de la boutique : montée (et ses shaders compilés pour toutes les raretés) avant tout
   const opening = await openingP;
-  step(85, 'mise en place…');
+  step(85, tr('boot.setup'));
 
   let viewerP: Promise<ViewerScene> | null = null;
   let viewerModP: Promise<typeof import('./scenes/viewer')> | null = viewerMod;
@@ -981,7 +1000,7 @@ async function boot() {
   // (pas de « Réessayer » : le navigateur garde en mémoire l'échec d'un module pour la session — seul recharger marche)
   waitEl.addEventListener('click', (e) => (e.target as Element).closest('.vw-reload') && location.reload());
   const failMsg = () =>
-    navigator.onLine ? 'Cette page n’a pas pu se charger (réseau coupé un instant, ou nouvelle version du jeu en ligne) : recharge la page.' : 'Pas de réseau : cette page n’a pas pu se charger. Recharge dès que le réseau revient.';
+    navigator.onLine ? tr('page.failed') : tr('page.offline');
   let current = '';
   let routeGen = 0;
 
@@ -1045,7 +1064,7 @@ async function boot() {
     if (shop.busy() && key !== '') {
       // pas de fuite au milieu d'une ouverture : le pack est déjà tiré, on le finit
       history.replaceState(history.state, '', '#/');
-      toast('Termine d’abord ton booster !', 'info');
+      toast(tr('shop.finishFirst'), 'info');
       return;
     }
     const changed = current !== key;
@@ -1126,7 +1145,7 @@ async function boot() {
     if (!isPage(key)) return;
     shell.show(null); // page 100 % DOM : la vitrine ne tourne pas dessous (comme chaque page à son entrée)
     shell.setDimmed(true);
-    waitEl.innerHTML = '<div class="vw-box" role="status"><i class="vw-spin" aria-hidden="true"></i><span>chargement…</span></div>';
+    waitEl.innerHTML = '<div class="vw-box" role="status"><i class="vw-spin" aria-hidden="true"></i><span>' + tr('common.loading') + '</span></div>';
     waitEl.classList.remove('failed');
     viewHost.replaceChildren(waitEl);
     loadPage(key).then(
@@ -1136,7 +1155,7 @@ async function boot() {
         if (gen !== routeGen) return;
         // réseau coupé, ou nouvelle version du jeu en ligne (les anciens fichiers n'existent plus) : recharger règle tout
         waitEl.classList.add('failed');
-        waitEl.innerHTML = `<div class="vw-box" role="alert"><span class="vw-msg">${failMsg()}</span><span class="vw-acts"><button class="btn-primary vw-reload">Recharger</button></span></div>`;
+        waitEl.innerHTML = `<div class="vw-box" role="alert"><span class="vw-msg">${failMsg()}</span><span class="vw-acts"><button class="btn-primary vw-reload">${tr('common.reload')}</button></span></div>`;
       },
     );
   }
@@ -1147,6 +1166,7 @@ async function boot() {
    * suite. La boutique (3D) garde son instance.
    */
   onLang(() => {
+    relabelTop();
     meSig = '';
     renderMe();
     updateTitle();
@@ -1169,13 +1189,13 @@ async function boot() {
   // (visionneuse : PAS montée sous l'écran de chargement : l'attendre ici allongerait le chargement. Son module est
   // déjà téléchargé (début de boot) ; elle est montée 1,5 s après l'affichage de la boutique, et compile alors ses
   // pipelines dans la vraie passe (post.ts, `compile({ real: true })`).)
-  step(100, 'c’est prêt');
+  step(100, tr('boot.ready'));
   // démo : on le dit une fois (collection locale, amis robots)
   if (backend.state.mode === 'demo') {
     try {
       if (!localStorage.getItem('bebou.demoVu')) {
         localStorage.setItem('bebou.demoVu', '1');
-        setTimeout(() => toast(DEMO_TXT, 'info'), 900);
+        setTimeout(() => toast(DEMO_TXT(), 'info'), 900);
       }
     } catch {
       /* stockage indisponible : tant pis */
@@ -1248,9 +1268,9 @@ function showFailure(e: unknown) {
   // un fichier du jeu qui n'arrive pas (réseau coupé, nouvelle version en ligne) n'est pas un souci de 3D
   const net = /dynamically imported module|importing a module script failed|error loading dynamically|failed to fetch|preload/i.test(String(e));
   const msg = net
-    ? 'Le jeu n’a pas pu finir de se télécharger.<br>Vérifie ta connexion, puis recharge la page.'
-    : 'Ton navigateur n’arrive pas à démarrer la 3D.<br>Essaie Chrome, Edge ou Safari à jour, puis recharge la page.';
-  loader.querySelector<HTMLElement>('.l-txt')!.innerHTML = `${msg}<span class="l-acts"><button class="btn-primary l-reload">Recharger</button>${onGl || net ? '' : `<a class="btn-ghost l-gl" href="${esc(glHref)}">Forcer WebGL</a>`}</span><small>${esc(String(e)).slice(0, 220)}</small>`;
+    ? '' + tr('boot.dlFailed') + '<br>' + tr('boot.checkNet') + ''
+    : '' + tr('boot.no3d') + '<br>' + tr('boot.tryBrowser') + '';
+  loader.querySelector<HTMLElement>('.l-txt')!.innerHTML = `${msg}<span class="l-acts"><button class="btn-primary l-reload">${tr('common.reload')}</button>${onGl || net ? '' : `<a class="btn-ghost l-gl" href="${esc(glHref)}">Forcer WebGL</a>`}</span><small>${esc(String(e)).slice(0, 220)}</small>`;
   loader.querySelector('.l-reload')?.addEventListener('click', () => location.reload());
   // (le lien change la recherche de l'URL : c'est un vrai rechargement, pas une page du jeu)
   loader.querySelector('.l-gl')?.addEventListener('click', (ev) => {

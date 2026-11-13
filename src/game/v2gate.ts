@@ -1,3 +1,5 @@
+import '../core/i18n/fr/game.v2gate'; // (textes de ce module, version anglaise)
+import { t } from '../core/i18n';
 import type { GameBackend } from './backend';
 import { h } from './ui';
 import { CANAL, BUILD_ID } from '../core/canal';
@@ -23,11 +25,11 @@ export function createV2Gate(backend: GameBackend) {
     el.setAttribute('aria-labelledby', 'lc-k');
     el.innerHTML = `<i class="lc-scan" aria-hidden="true"></i>
       <div class="lc-in">
-        <div class="lc-logo" aria-hidden="true">BÉBOU</div>
+        <div class="lc-logo" aria-hidden="true">${t('boot.logo')}</div>
         <p class="lc-k" id="lc-k">V2 — test</p>
-        <p class="lc-v2-t">Réservé à l’équipe</p>
-        <p class="lc-when">Ce lien est la version de test : connecte-toi avec un compte de l’équipe.<br>Le jeu, c’est <a href="https://cardgamepriv.pages.dev/jeu/">cardgamepriv.pages.dev</a>.</p>
-        <button class="lc-v2-login" type="button">Connexion équipe</button>
+        <p class="lc-v2-t">${t('v2gate.title')}</p>
+        <p class="lc-when">${t('v2gate.body')}<br>${t('v2gate.real')} <a href="https://cardgamepriv.pages.dev/jeu/">cardgamepriv.pages.dev</a>.</p>
+        <button class="lc-v2-login" type="button">${t('v2gate.login')}</button>
         <small class="lc-v2-build">build ${BUILD_ID}</small>
       </div>`;
     el.querySelector('.lc-v2-login')!.addEventListener('click', () => backend.login());
