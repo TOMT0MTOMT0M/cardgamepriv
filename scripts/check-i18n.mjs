@@ -12,7 +12,9 @@ import { dirname, join, relative, resolve } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 // (musicPreviews.data.ts : titres et artistes, en version originale)
-const SKIP = [/src[\\/]core[\\/]sets[\\/]/, /src[\\/]core[\\/]i18n[\\/]/, /src[\\/]core[\\/]i18n\.ts$/, /\.test\.ts$/, /\.d\.ts$/, /musicPreviews\.data\.ts$/, /src[\\/]game[\\/]diag\.ts$/];
+const SKIP = [/src[\\/]core[\\/]sets[\\/]/, /src[\\/]core[\\/]i18n[\\/]/, /src[\\/]core[\\/]i18n\.ts$/, /\.test\.ts$/, /\.d\.ts$/, /musicPreviews\.data\.ts$/, /src[\\/]game[\\/]diag\.ts$/,
+  // (lot 7) notes de patch : le français est la donnée, l'anglais est dans updates.en.ts (même structure, vérifié par le test)
+  /src[\\/]game[\\/]updates\.data\.ts$/, /\.en\.ts$/];
 const ONLY_COUNT = process.argv.includes('--count');
 
 const ACCENT = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒ’«»]/;

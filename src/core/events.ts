@@ -132,6 +132,11 @@ export function fmtLeft(ms: number): string {
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
+  // (version anglaise) « 2 j 4 h » → « 2d 4h » (le serveur, pour les notifications, passe aussi par lang() : inLang)
+  if (lang() === 'en') {
+    if (d > 0) return h ? `${d}d ${h}h` : `${d}d`;
+    if (h > 0) return m ? `${h}h ${String(m).padStart(2, '0')}m` : `${h}h`;
+  }
   if (d > 0) return h ? `${d} j ${h} h` : `${d} j`;
   if (h > 0) return m ? `${h} h ${String(m).padStart(2, '0')} min` : `${h} h`;
   if (m > 0) return `${m} min`;

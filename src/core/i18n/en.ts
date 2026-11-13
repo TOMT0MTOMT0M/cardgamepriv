@@ -37,6 +37,7 @@ import { en as p_game_views_showcaseEditor } from './en/game.views.showcaseEdito
 import { en as p_game_localBackend } from './en/game.localBackend';
 import { en as p_game_chatLocal } from './en/game.chatLocal';
 import { en as p_game_ecoLocal } from './en/game.ecoLocal';
+import { en as p_game_views_infos } from './en/game.views.infos';
 // <imports>
 
 export const en: Dict = {
@@ -72,6 +73,7 @@ export const en: Dict = {
   ...p_game_localBackend,
   ...p_game_chatLocal,
   ...p_game_ecoLocal,
+  ...p_game_views_infos,
   // <parts>
 
   // ───── language (header switch) ─────

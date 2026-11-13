@@ -34,6 +34,7 @@ import type { fr as p_game_views_showcaseEditor } from './fr/game.views.showcase
 import type { fr as p_game_localBackend } from './fr/game.localBackend';
 import type { fr as p_game_chatLocal } from './fr/game.chatLocal';
 import type { fr as p_game_ecoLocal } from './fr/game.ecoLocal';
+import type { fr as p_game_views_infos } from './fr/game.views.infos';
 // <imports>
 
 export type AllFr = typeof core &
@@ -68,5 +69,6 @@ export type AllFr = typeof core &
   typeof p_game_localBackend &
   typeof p_game_chatLocal &
   typeof p_game_ecoLocal &
+  typeof p_game_views_infos &
   // <parts>
   Record<never, never>;

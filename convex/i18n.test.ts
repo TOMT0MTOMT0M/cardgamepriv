@@ -16,6 +16,8 @@ import { msgIn } from './i18nServer';
 import { catalogEntry, frNameOf, setCatalogLang, subthemeById } from '../src/core/sets/themes';
 import { CATALOG_EN } from '../src/core/sets/catalog.en';
 import { searchCatalog } from '../src/core/cardSearch';
+import { UPDATES } from '../src/game/updates.data';
+import { UPDATES_EN } from '../src/game/updates.en';
 import { errText, fe } from '../src/core/errors';
 import { installData } from '../src/core/i18n';
 import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS } from '../src/core/economy';
@@ -203,5 +205,20 @@ describe('version anglaise : catalogue (lot 5)', () => {
     // (chaque id anglais existe dans le catalogue)
     for (const id of Object.keys(CATALOG_EN.cards)) expect(catalogEntry(id), id).toBeTruthy();
     for (const id of Object.keys(CATALOG_EN.subs)) expect(subthemeById(id), id).toBeTruthy();
+  });
+});
+
+describe('version anglaise : notes de patch (lot 7)', () => {
+  test('updates.en.ts a exactement la structure de updates.data.ts', () => {
+    expect(UPDATES_EN.length).toBe(UPDATES.length);
+    UPDATES.forEach((m, i) => {
+      const e = UPDATES_EN[i]!;
+      expect(e.entries.length, m.month).toBe(m.entries.length);
+      m.entries.forEach((x, j) => {
+        expect(e.entries[j]!.tag).toBe(x.tag);
+        expect(e.entries[j]!.points.length, x.title).toBe(x.points.length);
+        x.points.forEach((p, k) => expect(e.entries[j]!.points[k]!.includes('{CARTES}'), p).toBe(p.includes('{CARTES}')));
+      });
+    });
   });
 });
