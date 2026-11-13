@@ -190,7 +190,7 @@ top.innerHTML = `
   <nav aria-label="Pages du jeu">
     <a href="#/" data-r="">Boutique</a>
     <a href="#/collection" data-r="collection">Collection</a>
-    <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>
+    <a href="#/echanges" data-r="echanges">Marché<b class="badge" hidden></b></a>
     <a href="#/jeux" data-r="jeux">Jeux</a>
     <a href="#/classement" data-r="classement">Classement</a>
     <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
@@ -524,7 +524,7 @@ function renderMe() {
   // + le tableau d'offres (lot T) : offres reçues sur mes annonces, contre-offres reçues sur mes offres
   const nb = boardAttention(s);
   const n = s.trades.incoming.length + nb;
-  if (lastBoard >= 0 && nb > lastBoard && currentRoute !== 'echanges') toast('Du nouveau sur le tableau d’offres (offre ou contre-offre) → Échanges', 'info');
+  if (lastBoard >= 0 && nb > lastBoard && currentRoute !== 'echanges') toast('Du nouveau sur le tableau d’offres (offre ou contre-offre) → Marché, Vendre · Échanger', 'info');
   lastBoard = nb;
   const badgeChanged = tradeBadge.hidden !== (n === 0) || tradeBadge.textContent !== String(n);
   tradeBadge.hidden = n === 0;
@@ -533,7 +533,7 @@ function renderMe() {
   // un ami vient de proposer un échange (et on n'est pas déjà sur la page des échanges) : petit message
   if (lastIncoming >= 0 && n - nb > lastIncoming && currentRoute !== 'echanges') {
     const t = s.trades.incoming[s.trades.incoming.length - 1];
-    toast(`${t?.fromName ?? 'Un ami'} te propose un échange → Échanges`, 'info');
+    toast(`${t?.fromName ?? 'Un ami'} te propose un échange → Marché`, 'info');
   }
   lastIncoming = n - nb;
 }

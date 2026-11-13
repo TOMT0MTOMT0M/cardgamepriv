@@ -135,12 +135,14 @@ describe('boosters', () => {
     await t.run(async (ctx) => ctx.db.patch(alice.userId, { coins: 5000 }));
     const before = (await t.query(api.users.me, { sessionToken: alice.token }))!.packBalance;
     const r = await t.mutation(api.economy.buyPacks, { sessionToken: alice.token, count: 5 });
-    expect(r.left).toBe(5);
+    expect(r.left).toBe(10);
     const me = await t.query(api.users.me, { sessionToken: alice.token });
     expect(me?.packBalance).toBe(before + 5);
     const eco = await t.query(api.economy.state, { sessionToken: alice.token });
     expect(eco?.coins).toBe(5000 - 5 * 250);
-    await expect(t.mutation(api.economy.buyPacks, { sessionToken: alice.token, count: 6 })).rejects.toThrow(/Plus que 5/);
+    // (13/11) plus de plafond quotidien : 10 de plus passent, seule la quantité par achat est bornée
+    await t.mutation(api.economy.buyPacks, { sessionToken: alice.token, count: 10 });
+    await expect(t.mutation(api.economy.buyPacks, { sessionToken: alice.token, count: 11 })).rejects.toThrow(/Quantité invalide/);
   });
 
   test.skipIf(BEBOU_SECRETS_LOCKED)('bébou pack gagnant : la dernière carte est un Bébou, annoncé dans le fil', async () => {

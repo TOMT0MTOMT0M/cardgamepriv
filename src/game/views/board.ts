@@ -532,7 +532,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
     const live = listingLive(l);
     const offers = l.offers ?? [];
     side.innerHTML = `<h4>${live ? `Offres reçues <small>${offers.length || 'aucune pour l’instant'}</small>` : 'Résultat'}</h4>`;
-    if (!offers.length) side.insertAdjacentHTML('beforeend', `<p class="muted">${live ? 'Les offres des autres joueurs arriveront ici (pastille sur l’onglet Échanges).' : l.status === 'expired' ? 'Expirée sans échange : tes cartes sont libres.' : 'Retirée : tes cartes sont libres.'}</p>`);
+    if (!offers.length) side.insertAdjacentHTML('beforeend', `<p class="muted">${live ? 'Les offres des autres joueurs arriveront ici (pastille sur l’onglet Vendre · Échanger).' : l.status === 'expired' ? 'Expirée sans échange : tes cartes sont libres.' : 'Retirée : tes cartes sont libres.'}</p>`);
     for (const o of offers) {
       const f = deps.fairness(l.items, o.offered);
       const r = h('div', `ob-of ${o.status}`);

@@ -360,6 +360,16 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 .mk-step { min-width: 44px; min-height: 44px; padding: 0; font-size: 18px; }
 .mk-pbtns { display: flex; flex-wrap: wrap; gap: 10px; }
 .mk-note { margin: 0; font-size: 12px; }
+/* (13/11, retours Hugo) deux usages : « Chercher » (acheter) et « Vendre · Échanger » (mettre une carte, mes ventes) */
+.mk-sell > :is(.mk-tools, .mk-g-open, .mk-empty) { display: none !important; }
+.mk-sell .mk-mine { border-bottom: 0; }
+.mk-item > .tile { cursor: pointer; }
+.mk-item > .tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mk-how { align-self: flex-start; }
+.mk-how button, .mk-dur button { min-height: 40px; padding: 0 16px; }
+.mk-sellf, .mk-tradef { display: flex; flex-direction: column; gap: 12px; }
+.mk-sellf[hidden], .mk-tradef[hidden] { display: none; }
+.mk-tnote { margin: 0; font-size: 13px; color: var(--ink-2); }
 @media (max-width: 860px) {
   .mk-grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 12px; }
   .mk-acts { width: 100%; justify-content: space-between; }

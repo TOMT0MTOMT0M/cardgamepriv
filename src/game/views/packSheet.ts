@@ -281,7 +281,7 @@ export function createPackSheet(
         if (!b.dataset.busy) b.innerHTML = `+${n} · ${COIN_ICON}${fmtCoins(n * price)}`;
         b.disabled = n > left || eco.coins < n * price;
       }
-      buyEl.querySelector('.ps-buy-s')!.textContent = left ? `${left} achat${left > 1 ? 's' : ''} possible${left > 1 ? 's' : ''} aujourd’hui · solde ${fmtCoins(eco.coins)}` : 'limite du jour atteinte · reviens demain';
+      buyEl.querySelector('.ps-buy-s')!.textContent = `sans limite · solde ${fmtCoins(eco.coins)}`;
     }
     qtyEl.hidden = !!current.soon || needLogin || !!s.sealed;
     for (const b of qtyEl.querySelectorAll<HTMLButtonElement>('button')) {

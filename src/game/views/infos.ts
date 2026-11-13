@@ -2,7 +2,7 @@ import type { Shell } from '../shell';
 import { esc, h } from '../ui';
 import { UPDATES } from '../updates.data';
 import { PACK_CAP, PACK_REGEN_MS } from '../../core/packRegen';
-import { PACK_BUY_DAILY, PACK_PRICE, fmtCoins } from '../../core/economy';
+import { PACK_PRICE, fmtCoins } from '../../core/economy';
 import { CONTRACT_COST } from '../../core/contracts';
 import { PITY_LIMIT } from '../../core/pity';
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS } from '../../core/dropRates';
@@ -80,7 +80,7 @@ export function createTutorialView(shell: Shell): InfoView {
       <li><b>5 packs</b> : le <b>Bebou Pack</b> (toutes les cartes des 4 thèmes) et ${THEMES.map((t) => `le <b>${esc(t.label)} Pack</b>`).join(', ')}.</li>
       <li>Un booster = <b>5 cartes</b>, dont au moins une <b>3★</b> ou mieux.</li>
       <li>Ta réserve se recharge toute seule : <b>1 booster toutes les ${PACK_REGEN_MS / 60000} minutes</b>, jusqu’à <b>${PACK_CAP}</b>.</li>
-      <li>Tu peux aussi en <b>acheter</b> dans la fiche du booster : ${fmtCoins(PACK_PRICE)} pièces l’unité, ${PACK_BUY_DAILY} par jour au maximum.</li>
+      <li>Tu peux aussi en <b>acheter</b> dans la fiche du booster : ${fmtCoins(PACK_PRICE)} pièces l’unité, autant que tu veux.</li>
       <li><b>5 ou 10 boosters d’un coup</b> : un seul gros booster de 25 ou 50 cartes, avec exactement les mêmes chances.</li>
       <li>« <b>Tout révéler</b> » retourne les cartes tout seul ; « <b>4★ et plus</b> » ne s’arrête que sur les belles.</li>
       <li><b>Pity</b> : après ${PITY_LIMIT - 1} boosters sans 6★, le suivant en contient une à coup sûr.</li>

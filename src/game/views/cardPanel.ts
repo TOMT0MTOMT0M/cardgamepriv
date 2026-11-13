@@ -111,6 +111,8 @@ export function panelStrip(backend: GameBackend, cardId: string, r: RarityId): H
         const dups = p.owners.filter((o) => o.dup).length;
         parts.push(p.owners.length ? `<b>${p.owners.length}</b> l’${p.owners.length > 1 ? 'ont' : 'a'}${dups ? ` · <em class="cp-ok">${dups} en doublon</em>` : ''}` : 'personne d’autre ne l’a');
         if (p.sellers.length) parts.push(`en vente dès <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sellers[0].price)}</b></span>`);
+        // (13/11, retours Hugo) prix de référence : la moyenne des ventes
+        if (p.sold) parts.push(`vendue en moyenne <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span>`);
         if (p.wanters.length) parts.push(`<em class="cp-want">${p.wanters.length} la veu${p.wanters.length > 1 ? 'lent' : 't'}</em>`);
         el.innerHTML = `<span class="cp-s-txt">${parts.join('<i class="cp-sep"></i>')}</span>${me.line ? `<span class="cp-s-me">${esc(me.line)}</span>` : ''}<span class="cp-s-go" aria-hidden="true">›</span>`;
       })
@@ -129,7 +131,7 @@ export async function askFor(backend: GameBackend, to: { userId: string; name: s
     const p = backend.quickTrade(to.userId, card, give);
     const r = await (btn ? busyButton(btn, p) : p);
     invalidatePanel(card.cardId);
-    toast(`Demande envoyée à ${to.name} : ${nameOf(r.get.cardId)} contre ${nameOf(r.give.cardId)}. À suivre dans Échanges › En cours.`, 'ok');
+    toast(`Demande envoyée à ${to.name} : ${nameOf(r.get.cardId)} contre ${nameOf(r.give.cardId)}. À suivre dans Marché › En cours.`, 'ok');
     return true;
   } catch (e) {
     const m = errMsg(e);
@@ -238,6 +240,8 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
       }
       list.append(row(o.dup ? 'dup' : '', esc(o.name), o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? `${o.count} exemplaires · gardés` : 'son seul exemplaire', o.online, btn));
     }
+    // (13/11, retours Hugo) prix de référence : la moyenne des dernières ventes
+    if (p.sold) list.append(h('p', 'cp-avg', `Prix moyen des ventes : <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span> <small>sur ${p.sold.n} vente${p.sold.n > 1 ? 's' : ''} · dernière ${fmtCoins(p.sold.last)}</small>`));
     // en vente
     if (p.sellers.length) {
       sec('En vente', p.sellers.length);

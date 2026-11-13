@@ -11,6 +11,8 @@
 .cp-s-me { grid-column: 1; color: var(--ink-3); font-size: 11px; }
 .cp-s-go { grid-column: 2; grid-row: 1 / span 2; font: 500 20px var(--title); color: var(--ink-3); }
 .cp-s-load { color: var(--ink-3); }
+.cp-avg { margin: 6px 18px 2px; font: 500 12px/1.4 var(--mono); color: var(--ink-2); }
+.cp-avg small { color: var(--ink-3); }
 /* (13/11, retours Hugo « mal aligné ») visionneuse sur ordinateur : la bande partageait la ligne des boutons et ses
    marges automatiques les repoussaient au bord droit. Boutons centrés sur une ligne, puis « chez les joueurs » et la
    date d'obtention centrés sur la ligne d'en dessous */
@@ -44,6 +46,7 @@
 .cp-sell .ow-who b { font-family: var(--mono); }
 
 @media (max-width: 860px) {
+  .ex-tl2 { display: none; }
   .cp-strip { margin-inline: 4px; }
   .cp-g { min-height: 46px; }
 }

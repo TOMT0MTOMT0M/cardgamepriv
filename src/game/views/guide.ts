@@ -24,7 +24,7 @@ const STEPS = (name: string): Step[] => [
   { target: ['.me .packs'], label: 'Ta réserve', text: '15 boosters pour commencer. Un nouveau toutes les 5 min, et ×2 pendant tes 24 premières heures.' },
   { target: ['.packs-row', '.open-btn'], label: 'Les boosters', text: 'Choisis ton thème ici. Le Bebou Pack contient tout… et les cartes secrètes de la bande.' },
   { nav: 'collection', label: 'Ta collection', text: 'Touche une carte pour la faire tourner en 3D. Tes doublons se recyclent en contrats.' },
-  { nav: 'echanges', label: 'Échanges', text: 'Des échanges prêts pour toi : tes envies contre tes doublons, en un toucher.' },
+  { nav: 'echanges', label: 'Marché', text: 'Des échanges prêts pour toi, et le marché : vendre, échanger, acheter des cartes.' },
   { nav: 'jeux', label: 'Jeux', text: 'Pack Battle, Battle Royale et la roulette : un pot de départ t’y attend (tirages à 10 h et 20 h).' },
   { nav: 'amis', label: 'Amis', text: `Ton lien d’invitation est ici : ${REFERRAL.packs} boosters offerts à chaque pote, et ${REFERRAL.packs} pour toi.` },
   { nav: '', target: ['.me .msn-btn', '.me .st-btn'], label: 'Chaque jour', text: 'Missions, série de connexion et calendrier : des pièces et des boosters tous les jours.' },

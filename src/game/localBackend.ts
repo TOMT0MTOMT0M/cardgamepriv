@@ -6,7 +6,7 @@ import { applyRegen, fmtCountdown } from '../core/packRegen';
 import { contractProblem, contractTarget, rollContract } from '../core/contracts';
 import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
 import { MARKET_MAX_OPEN, marketMax, marketProblem, marketSuggested } from '../core/market';
-import { DEAL_ALTS, DEALS_MAX, PICK_MAX, THEY_WANT_MAX, proposable, rankGives, type CardPanel, type Deal, type TheyWant } from '../core/deals';
+import { DEAL_ALTS, DEALS_MAX, PICK_MAX, THEY_WANT_MAX, proposable, rankGives, soldStats, type CardPanel, type Deal, type TheyWant } from '../core/deals';
 import { POKEMON_151, pokemonCardId } from '../core/sets/pokemon151';
 import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
@@ -871,7 +871,8 @@ export function createLocalBackend(): GameBackend {
         .map((m) => ({ id: m.id, sellerId: m.sellerId, name: m.sellerName, price: m.price, mintNumber: m.mintNumber }))
         .sort((a, b) => a.price - b.price);
       const wanters = save.bots.map((b, i) => ({ b, i })).filter(({ b }) => botWish(b.id).includes(cardId)).map(({ b, i }) => ({ userId: b.id, name: b.name, online: botOnline(i) }));
-      return { owners, sellers, wanters, protected: (save.tradeProtected ?? []).includes(cardId), reads: 0 } satisfies CardPanel;
+      const sold = soldStats(M().filter((m) => m.status === 'sold' && m.cardId === cardId).sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0)).map((m) => m.price));
+      return { owners, sellers, wanters, protected: (save.tradeProtected ?? []).includes(cardId), ...(sold ? { sold } : {}), reads: 0 } satisfies CardPanel;
     },
     async forYou() {
       await delay(120);
