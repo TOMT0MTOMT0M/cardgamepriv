@@ -1,9 +1,8 @@
 import type { GameBackend } from '../backend';
 import { h, toast } from '../ui';
-import { REFERRAL } from '../../core/referral';
 
 /**
- * ÉCRAN D'OUVERTURE (07/11) — « ouverture dans 02h14 » tant que l'heure posée par `launch:setLaunch` n'est pas passée.
+ * ÉCRAN D'OUVERTURE (07/11) — (13/11) texte de la sortie V2 : « Grosse mise à jour », « réouverture dans 02h14 » tant que l'heure posée par `launch:setLaunch` n'est pas passée.
  * Couvre tout le jeu (qui continue de se charger dessous : à l'heure pile, il est prêt), sauf pour l'équipe
  * (admin / modérateur : Tom et Hugo jouent et vérifient avant tout le monde). À zéro : « C'est ouvert », l'écran
  * s'efface et la fenêtre de création de compte s'ouvre.
@@ -34,13 +33,14 @@ export function createLaunchGate(backend: GameBackend) {
     el.innerHTML = `<i class="lc-scan" aria-hidden="true"></i>
       <div class="lc-in">
         <div class="lc-logo" aria-hidden="true">BÉBOU</div>
-        <p class="lc-k" id="lc-k">Ouverture dans</p>
+        <p class="lc-v2-t">Grosse mise à jour</p>
+        <p class="lc-k" id="lc-k">Réouverture dans</p>
         <div class="lc-time" role="timer" aria-live="off"><span class="lc-a"></span><i class="lc-u"></i><span class="lc-b"></span><small class="lc-c"></small></div>
         <p class="lc-when"></p>
         <ul class="lc-pts">
-          <li><b>Nouvelle saison.</b> Collections, succès, stats et classement repartent de zéro.</li>
-          <li><b>Ton compte</b> se crée à l’ouverture, avec Discord ou un simple pseudo : 15 boosters offerts et recharge ×2 pendant 24 h.</li>
-          <li><b>Invite tes potes</b> : ${REFERRAL.packs} boosters offerts à chacun, ${REFERRAL.packs} pour toi.</li>
+          <li><b>Ta collection est gardée</b> : cartes, pièces, boosters, succès, rien ne se perd.</li>
+          <li><b>La V2 arrive</b> : chat, marché, échanges simplifiés, saisons, notifications.</li>
+          <li>Le jeu se met à jour tout seul à la réouverture.</li>
         </ul>
       </div>
       <button class="lc-staff" type="button">Accès équipe</button>`;
@@ -91,7 +91,7 @@ export function createLaunchGate(backend: GameBackend) {
       set('lc-c', '');
     }
     const label = d > 0 ? `${d} j ${hh} h ${mm} min` : hh > 0 ? `${hh} h ${mm} min` : `${mm} min ${ss} s`;
-    el.querySelector('.lc-time')!.setAttribute('aria-label', `Ouverture dans ${label}`);
+    el.querySelector('.lc-time')!.setAttribute('aria-label', `Réouverture dans ${label}`);
     if (left <= 0) opened();
   }
 
@@ -109,7 +109,7 @@ export function createLaunchGate(backend: GameBackend) {
       if (app) app.inert = false;
       setTimeout(() => gate.remove(), 700);
       if (!backend.state.user) backend.login();
-      else toast('C’est ouvert : bonne ouverture 🎴', 'ok');
+      else toast('C’est rouvert : bienvenue dans la V2 🎴', 'ok');
     }, 1400);
   }
 
