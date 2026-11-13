@@ -46,6 +46,13 @@ export interface LabContext {
   width: number;
   height: number;
   sfx: Sfx;
+  /**
+   * (audit 12/11, S09 / E4-14) Préchauffage SUR LE CANVAS, fourni par le jeu (game/shell.ts), absent au labo. Appelle
+   * `draw` (une image de la scène en cours de montage, vers le canvas) puis redessine aussitôt la scène affichée,
+   * dans la même tâche : rien de l'image de préchauffage n'est présenté. Rend false sans rien dessiner quand ce n'est
+   * pas possible (pas de WebGPU, aucune scène affichée à redessiner) : préchauffer alors hors écran, comme avant.
+   */
+  warmOnCanvas?: (draw: () => void) => boolean;
 }
 
 export interface Experiment {

@@ -430,6 +430,9 @@ export function createViewerScene(): ViewerScene {
       }
       await pl.compile({ real: true });
       pl.warm();
+      // (E4-14) préchauffée sur le canvas, la passe a alloué ses cibles en pleine définition : rendues tout de suite sur
+      // téléphone (recréées à la première carte, mêmes formats → mêmes pipelines, comme après `suspend`)
+      if (c.quality === 'mobile') pl.releaseTargets();
       warmMeshes.forEach((m) => stage.scene.remove(m));
       c.bag.fn(() => {
         warmMeshes.forEach((m) => m.dispatchEvent({ type: 'dispose' } as never));

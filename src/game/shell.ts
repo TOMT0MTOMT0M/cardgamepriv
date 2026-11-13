@@ -461,6 +461,8 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   let rawAvg = 1000 / 60;
   let rawN = 0;
   let lastPace: string = 'busy';
+  /** horloge de la dernière image (pour redessiner la scène affichée hors de la boucle, voir `warmOnCanvas`) */
+  let lastT = 0;
   /** ordinateur : dernier geste (souris, molette, clavier) — la vitrine « au repos » suit la souris, pleine cadence alors */
   let lastGesture = 0;
   if (!mobile) for (const ev of ['pointermove', 'pointerdown', 'wheel', 'keydown'] as const) window.addEventListener(ev, () => (lastGesture = performance.now()), { passive: true });
@@ -477,6 +479,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     timer.update();
     const dt = Math.min(timer.getDelta(), 1 / 20);
     const t = timer.getElapsed();
+    lastT = t;
     input.update(dt);
     const m = current ? scenes.get(current) : null;
     const now = performance.now();
@@ -591,6 +594,28 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         width: w,
         height: h,
         sfx,
+        warmOnCanvas: (draw) => {
+          // seulement s'il y a une scène affichée, prête, pour repasser par-dessus tout de suite (et pas la scène
+          // en cours de montage elle-même)
+          const shown = current && current !== key ? scenes.get(current) : null;
+          if (ctx.isWebGPU !== true || !shown?.ready || dimmed || document.hidden) return false;
+          let ok = true;
+          try {
+            renderer.setRenderTarget(null);
+            draw();
+          } catch (e) {
+            ok = false;
+            console.warn('[jeu] préchauffage sur le canvas', key, e);
+          }
+          try {
+            renderer.setRenderTarget(null);
+            applyRendererDefaults(renderer);
+            shown.exp.update(0.001, lastT); // (durée infime, pas 0 : rien ne divise par zéro)
+          } catch (e) {
+            console.warn('[jeu] redessin après préchauffage', current, e);
+          }
+          return ok;
+        },
       };
       const m: Mounted = { exp, ctx, overlay, ready: false };
       scenes.set(key, m);

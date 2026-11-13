@@ -104,6 +104,14 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
     warm() {
       checkDepth();
       const r = ctx.renderer;
+      // (audit 12/11, S09 / E4-14) dans une cible 4×4 (RGBA 8 bits, sans espace de couleur), le quad de la sortie finale
+      // n'a pas la même clé de pipeline que sur le canvas : son pipeline naissait quand même à la première image
+      // affichée. Le jeu sait préchauffer sur le canvas sans rien montrer (`warmOnCanvas`) ; sinon, comme avant.
+      const onCanvas = ctx.warmOnCanvas?.(() => {
+        scene.updateMatrixWorld();
+        pipeline.render();
+      });
+      if (onCanvas) return;
       const target = new RenderTarget(4, 4);
       const prevRT = r.getRenderTarget();
       try {

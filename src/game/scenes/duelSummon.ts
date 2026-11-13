@@ -798,17 +798,24 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
        * image affichée — plusieurs secondes de noir sur un GPU mobile. Une image « à blanc », rendue hors écran pendant la
        * préparation (l'ouverture du booster, le voile de la visionneuse), les crée ici, invisible.
        */
-      const warm = new RenderTarget(4, 4);
-      const prevRT = c.renderer.getRenderTarget();
-      try {
+      // (audit 12/11, S09 / E4-14) sur le canvas quand le jeu le permet (même clé de pipeline que la vraie sortie)
+      const onCanvas = c.warmOnCanvas?.(() => {
         stage.scene.updateMatrixWorld();
-        c.renderer.setRenderTarget(warm);
         post.render();
-      } catch (e) {
-        console.warn('[duel] image de préchauffage', e);
-      } finally {
-        c.renderer.setRenderTarget(prevRT);
-        warm.dispose();
+      });
+      if (!onCanvas) {
+        const warm = new RenderTarget(4, 4);
+        const prevRT = c.renderer.getRenderTarget();
+        try {
+          stage.scene.updateMatrixWorld();
+          c.renderer.setRenderTarget(warm);
+          post.render();
+        } catch (e) {
+          console.warn('[duel] image de préchauffage', e);
+        } finally {
+          c.renderer.setRenderTarget(prevRT);
+          warm.dispose();
+        }
       }
       c.bag.fn(c.input.onTap(onTap));
       // captures (scripts Playwright) : état de la séquence
