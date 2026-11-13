@@ -606,11 +606,16 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
           } catch (e) {
             ok = false;
             console.warn('[jeu] préchauffage sur le canvas', key, e);
+            // (une passe interrompue laisse son MRT sur le moteur)
+            (renderer as unknown as { setMRT(m: unknown): void }).setMRT(null);
           }
           try {
             renderer.setRenderTarget(null);
             applyRendererDefaults(renderer);
+            // DEUX fois : une scène au calme ne rend qu'une image sur deux (vitrine, visionneuse au repos) — si la
+            // première tombait sur l'image sautée, l'image de préchauffage restait à l'écran jusqu'à la suivante
             shown.exp.update(0.001, lastT); // (durée infime, pas 0 : rien ne divise par zéro)
+            shown.exp.update(0.001, lastT);
           } catch (e) {
             console.warn('[jeu] redessin après préchauffage', current, e);
           }

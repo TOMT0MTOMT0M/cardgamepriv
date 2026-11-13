@@ -2944,8 +2944,12 @@ export function createOpeningScene(): OpeningScene {
       {
         let off = false;
         c.bag.fn(() => (off = true));
+        // seconde illustration : des textures À ELLE (three fusionne deux lectures de la même texture en une seule
+        // liaison — le shader ne serait pas celui d'une vraie carte, qui en a quatre distinctes)
+        let second: typeof dummyArt | null = null;
         const two = async (lenticular: boolean) => {
-          const art2 = { ...dummyArt, bg2: dummyArt.bg, subject2: dummyArt.subject, ...(lenticular ? { lenticular: true } : {}) } as typeof dummyArt;
+          second ??= c.bag.add(generateCardArt(LAB_CARDS[1] ?? LAB_CARDS[0], 'common', { scale: 0.25 }));
+          const art2 = { ...dummyArt, bg2: second.bg, subject2: second.subject, ...(lenticular ? { lenticular: true } : {}) } as typeof dummyArt;
           const face = buildFace(art2, 5, true);
           const { edge } = buildEdge('#ffffff', TEASE_GOLD);
           warm.push(face.holo.material, edge);
