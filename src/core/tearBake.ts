@@ -1,8 +1,7 @@
 import { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } from 'three/webgpu';
-import type { TearBakeHeader } from './tearBakeFormat';
+import { TEAR_BAKE_FORMAT, type TearBakeHeader } from './tearBakeFormat';
 import { PACK } from './packCrease';
 import { siteUrl } from './siteRoot';
-import { decodeTearBake, fetchAndDecode } from './tearBakeDecode';
 
 /**
  * REJEU de la déchirure simulée hors-ligne (10/11, scripts/bake-tear/bake.mts) : le sachet est un film alu / PET
@@ -30,51 +29,51 @@ const N_VARIANTS = 3;
 export const BAKE_REV = 2;
 let loading: Promise<TearBake | null>[] | null = null;
 
-/**
- * (audit 12/11, S06 / A1-02) TÉLÉCHARGEMENT ET DÉCODAGE DANS UN WORKER. Le décodage (≈ 3 millions d'additions par
- * variante) tournait sur le fil principal pendant le chargement : c'était la tâche la plus longue du démarrage sur
- * téléphone (579 et 725 ms relevés par le rapport « Chargement », Android, 11 et 12/11). Les tableaux reviennent
- * transférés, sans copie. Pas de worker, ou worker en échec : même travail sur le fil principal, comme avant.
- */
-let worker: Worker | null = null;
-let workerDead = false;
-const waiting = new Map<number, (b: TearBake | null) => void>();
-function viaWorker(i: number, url: string): Promise<TearBake | null> | null {
-  if (workerDead || typeof Worker === 'undefined') return null;
+async function fetchBake(i: number): Promise<TearBake | null> {
   try {
-    if (!worker) {
-      worker = new Worker(new URL('./tearBake.worker.ts', import.meta.url), { type: 'module' });
-      worker.onmessage = (e: MessageEvent<{ i: number; bake: TearBake | null }>) => {
-        waiting.get(e.data.i)?.(e.data.bake);
-        waiting.delete(e.data.i);
-      };
-      worker.onerror = () => {
-        workerDead = true;
-        worker?.terminate();
-        worker = null;
-        // les demandes en cours repartent sur le fil principal
-        for (const [k, done] of [...waiting]) (waiting.delete(k), void fetchBakeMain(k).then(done));
-      };
-      worker.onmessageerror = worker.onerror as () => void; // (réponse illisible : même repli)
+    const res = await fetch(siteUrl(`bake/tear-${i}.tear?v=${BAKE_REV}`));
+    if (!res.ok || !res.body) return null;
+    let buf = new Uint8Array(await res.arrayBuffer());
+    // gzip (1f 8b) — sauf si le serveur l'a déjà décompressé (Content-Encoding)
+    if (buf[0] === 0x1f && buf[1] === 0x8b) {
+      if (typeof DecompressionStream === 'undefined') return null;
+      const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+      buf = new Uint8Array(await new Response(ds).arrayBuffer());
     }
-    const p = new Promise<TearBake | null>((r) => waiting.set(i, r));
-    worker.postMessage({ i, url });
-    return p;
+    return decode(buf);
   } catch {
-    workerDead = true;
     return null;
   }
 }
-const bakeUrl = (i: number) => new URL(siteUrl(`bake/tear-${i}.tear?v=${BAKE_REV}`), location.href).href;
-const fetchBakeMain = (i: number) => fetchAndDecode(bakeUrl(i));
-async function fetchBake(i: number): Promise<TearBake | null> {
-  const b = await (viaWorker(i, bakeUrl(i)) ?? fetchBakeMain(i));
-  // dernière variante arrivée : le worker ne sert plus
-  if (i === N_VARIANTS - 1 && !waiting.size) (worker?.terminate(), (worker = null));
-  return b;
-}
 
-export const decode = decodeTearBake;
+export function decode(buf: Uint8Array): TearBake | null {
+  if (String.fromCharCode(buf[0], buf[1], buf[2], buf[3]) !== 'TEAR') return null;
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const hl = dv.getUint32(4, true);
+  const header = JSON.parse(new TextDecoder().decode(buf.subarray(8, 8 + hl))) as TearBakeHeader;
+  if (header.format !== TEAR_BAKE_FORMAT) return null;
+  let o = 8 + hl;
+  o += (4 - (o % 4)) % 4;
+  const n = header.verts;
+  // copie alignée (le tampon décompressé peut ne pas l'être)
+  const rest = new Float32Array(buf.slice(o, o + n * 12).buffer);
+  o += n * 12;
+  const F = header.nTear + header.nExit;
+  const deltas = new Int16Array(buf.slice(o, o + F * n * 6).buffer);
+  // écarts → valeurs absolues, et plans x / y / z → entrelacés
+  const frames = new Int16Array(F * n * 3);
+  const acc = new Int32Array(n * 3);
+  for (let f = 0; f < F; f++) {
+    const src = f * n * 3;
+    for (let a = 0; a < 3; a++)
+      for (let v = 0; v < n; v++) {
+        const k = v * 3 + a;
+        acc[k] += deltas[src + a * n + v];
+        frames[src + k] = acc[k];
+      }
+  }
+  return { header, rest, frames };
+}
 
 /** variantes arrivées (dans l'ordre d'arrivée) */
 const loaded: TearBake[] = [];
@@ -86,11 +85,8 @@ export function loadTearBakes(): Promise<TearBake | null> {
   const first = fetchBake(0).then(keep);
   loading = [first];
   let chain: Promise<unknown> = first;
-  // (A1-02) les variantes suivantes ne servent qu'à varier les ouvertures d'après : elles attendent que le navigateur
-  // soit inoccupé (au plus 8 s) au lieu de s'enchaîner pendant le chargement
-  const calm = () => new Promise<void>((r) => ('requestIdleCallback' in globalThis ? requestIdleCallback(() => r(), { timeout: 8000 }) : setTimeout(r, 2500)));
   for (let i = 1; i < N_VARIANTS; i++) {
-    const p = chain.then(calm).then(() => fetchBake(i)).then(keep);
+    const p = chain.then(() => fetchBake(i)).then(keep);
     loading.push(p);
     chain = p;
   }
