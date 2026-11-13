@@ -36,7 +36,6 @@ async function setup(n = 6) {
   });
   return { t, ids };
 }
-const strip = <T extends { friendshipId?: unknown }>(x: T) => x;
 
 describe('décision 8 — table de présence', () => {
   test('avant la migration : rien ne change ; après : mêmes réponses, lectures allégées', async () => {
@@ -52,7 +51,7 @@ describe('décision 8 — table de présence', () => {
 
     const noAge = (l: typeof clubBefore) => l.map(({ seenAgo: _a, ...f }) => f); // l'âge dépend de l'instant de l'appel
     expect(noAge(await t.query(api.users.friends, {}))).toEqual(noAge(clubBefore));
-    expect(strip(await t.query(api.friends.mine, me))).toEqual(mineBefore);
+    expect(await t.query(api.friends.mine, me)).toEqual(mineBefore);
     const ra = { club: (await countReads(t as never, users.friends, {})).reads, mine: (await countReads(t as never, friends.mine, me)).reads };
     // plus aucun document `users` lu
     expect(ra.mine.gets.filter((id) => ids.some((x) => x.userId === id))).toHaveLength(0);

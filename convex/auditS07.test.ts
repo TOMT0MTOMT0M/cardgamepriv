@@ -90,7 +90,7 @@ describe('S07 — collections relues en entier', () => {
       for (const c of THEMES.flatMap((x) => x.cards).filter((c) => c.rarity === target)) await ctx.db.insert('inventory', { userId, cardId: c.id, rarity: target as never, count: 1, bestMintNumber: 1, foilSeed: 1, firstPulledAt: 1, lastPulledAt: 1 });
     });
     const total = await t.run(async (ctx) => (await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect()).length);
-    let need = CONTRACT_COST.common;
+    let need = CONTRACT_COST.common ?? 0;
     const items = commons.slice(0, 12).map((c) => ({ cardId: c.id, count: 0 }));
     for (const it of items) {
       it.count = Math.min(8, need);
