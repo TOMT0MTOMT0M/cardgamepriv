@@ -21,14 +21,14 @@ describe('animation d’ouverture à débloquer', () => {
     const { t, alice } = await setup();
     const me = () => t.query(api.users.me, { sessionToken: alice.token });
     expect((await me())?.openingStyle).toBeUndefined();
-    await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'burn' })).rejects.toThrow(/débloquée/);
+    await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'burn' })).rejects.toThrow(/⟦(profiles\.6)[⟧{]/);
     await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'nope' })).rejects.toThrow(/inconnue/);
     // « Braise » : 250 doublons brûlés à la forge
     await t.run((ctx) => ctx.db.patch(alice.userId, { econ: { earned: 0, burned: 250, gamesPlayed: 0, gamesWon: 0, rouletteWins: 0, completions: [], achievements: [] } }));
     expect(await t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'burn' })).toEqual({ style: 'burn' });
     expect((await me())?.openingStyle).toBe('burn');
     // l'éventail (150 cartes World) reste verrouillé
-    await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'fan' })).rejects.toThrow(/débloquée/);
+    await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'fan' })).rejects.toThrow(/⟦(profiles\.6)[⟧{]/);
     // enregistrer le profil ne fait pas perdre l'animation choisie
     await t.mutation(api.profiles.setCosmetics, { sessionToken: alice.token, title: 'rookie' });
     expect((await me())?.openingStyle).toBe('burn');

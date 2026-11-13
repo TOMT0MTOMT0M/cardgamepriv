@@ -315,12 +315,12 @@ describe('recharge des boosters (1 / 5 min, 15 max)', () => {
   test('serveur : réserve vide et minuteur pas fini → refus avec le compte à rebours', async () => {
     const { t, alice } = await setup();
     await t.run((ctx) => ctx.db.patch(alice.userId, { packBalance: 0, packRegenAt: Date.now() }));
-    await expect(t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' })).rejects.toThrow(/prochain arrive dans/);
+    await expect(t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' })).rejects.toThrow(/⟦(packs\.2)[⟧{]/);
   });
 
   test('l’ancien « +2 toutes les 12 h » est désactivé', async () => {
     const { t, alice } = await setup();
-    await expect(t.mutation(api.users.claimDailyBooster, { sessionToken: alice.token })).rejects.toThrow(/rechargent tout seuls/);
+    await expect(t.mutation(api.users.claimDailyBooster, { sessionToken: alice.token })).rejects.toThrow(/⟦(users\.5)[⟧{]/);
   });
 });
 
@@ -352,7 +352,7 @@ describe('contrats (façon CS:GO)', () => {
     const ids = commons(5);
     await give(t, alice.userId, ids, 2); // 1 doublon chacune seulement
     await expect(t.mutation(api.contracts.sign, { sessionToken: alice.token, rarity: 'common', items: ids.map((cardId) => ({ cardId, count: 1 })) })).rejects.toThrow(/exactement 10/);
-    await expect(t.mutation(api.contracts.sign, { sessionToken: alice.token, rarity: 'common', items: ids.map((cardId) => ({ cardId, count: 2 })) })).rejects.toThrow(/doublons/);
+    await expect(t.mutation(api.contracts.sign, { sessionToken: alice.token, rarity: 'common', items: ids.map((cardId) => ({ cardId, count: 2 })) })).rejects.toThrow(/⟦(contracts\.5|economy\.13)[⟧{]/);
     const inv = await t.query(api.inventory.myCollection, { sessionToken: alice.token });
     expect(inv.every((c) => c.count === 2)).toBe(true); // rien n'a bougé
   });
@@ -364,7 +364,7 @@ describe('contrats (façon CS:GO)', () => {
     const leg = CATALOG_CARDS.find((c) => c.baseRarity === 'legendary')!.id;
     await give(t, alice.userId, ids, 4);
     await give(t, alice.userId, [leg], 4, 'legendary');
-    await expect(t.mutation(api.contracts.sign, { sessionToken: alice.token, rarity: 'common', items: [...ids.map((cardId) => ({ cardId, count: 2 })), { cardId: leg, count: 2 }] })).rejects.toThrow(/même étoile/);
+    await expect(t.mutation(api.contracts.sign, { sessionToken: alice.token, rarity: 'common', items: [...ids.map((cardId) => ({ cardId, count: 2 })), { cardId: leg, count: 2 }] })).rejects.toThrow(/⟦(contracts\.4|deals\.6)[⟧{]/);
   });
 
   test('coûts : 10 / 10 / 20 / 20 / 50 selon l’étoile brûlée', () => {
@@ -524,7 +524,7 @@ describe('retours du 3 nov. : verrouillage, contre-proposition, historique', () 
     await give(t, bob.userId, 'pkm-salameche', 1);
     await t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [{ cardId: 'pkm-bulbizarre', rarity: 'common', count: 1 }], requested: [] });
     // le 2e exemplaire est libre, pas un 3e
-    await expect(t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [{ cardId: 'pkm-bulbizarre', rarity: 'common', count: 2 }], requested: [] })).rejects.toThrow(/engagée/);
+    await expect(t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [{ cardId: 'pkm-bulbizarre', rarity: 'common', count: 2 }], requested: [] })).rejects.toThrow(/⟦(econLib\.13|econLib\.6|listings\.8|listings\.9|trades\.21|trades\.6)[⟧{]/);
     // contrat : 10 doublons 1★ nécessaires, dont le seul doublon libre est engagé → refusé
     const dups = Array.from({ length: 10 }, (_, i) => `pkm-dup${i}`);
     await Promise.all(dups.map((id) => give(t, alice.userId, id, 2)));

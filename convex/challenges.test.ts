@@ -137,11 +137,11 @@ describe('défis', () => {
 
     const c = await t.mutation(api.challenges.create, { sessionToken: u.alice.token, kind: 'stars', durationMs: HOUR, stake: 300, invitedIds: [u.bob.userId, u.carl.userId] });
     await t.mutation(api.challenges.respond, { sessionToken: u.bob.token, challengeId: c, accept: true });
-    await expect(t.mutation(api.challenges.start, { sessionToken: u.bob.token, challengeId: c })).rejects.toThrow(/créateur/);
+    await expect(t.mutation(api.challenges.start, { sessionToken: u.bob.token, challengeId: c })).rejects.toThrow(/⟦(challenges\.10|challenges\.8|games\.26)[⟧{]/);
     await t.mutation(api.challenges.cancel, { sessionToken: u.alice.token, challengeId: c });
     expect(await coins(t, u.alice.userId)).toBe(1000);
     expect(await coins(t, u.bob.userId)).toBe(1000);
-    await expect(t.mutation(api.challenges.respond, { sessionToken: u.carl.token, challengeId: c, accept: true })).rejects.toThrow(/plus de réponse/);
+    await expect(t.mutation(api.challenges.respond, { sessionToken: u.carl.token, challengeId: c, accept: true })).rejects.toThrow(/⟦(challenges\.5)[⟧{]/);
   });
 
   test('départ anticipé par le créateur, délai expiré avec un inscrit : le défi démarre sans les retardataires', async () => {
@@ -157,7 +157,7 @@ describe('défis', () => {
 
   test('garde-fous : amis seulement, solde, 3 défis à la fois', async () => {
     const { t, u } = await setup();
-    await expect(t.mutation(api.challenges.create, { sessionToken: u.bob.token, kind: 'stars', durationMs: HOUR, stake: 0, invitedIds: [u.carl.userId] })).rejects.toThrow(/pas dans tes amis/);
+    await expect(t.mutation(api.challenges.create, { sessionToken: u.bob.token, kind: 'stars', durationMs: HOUR, stake: 0, invitedIds: [u.carl.userId] })).rejects.toThrow(/⟦(challenges\.4)[⟧{]/);
     await expect(t.mutation(api.challenges.create, { sessionToken: u.alice.token, kind: 'stars', durationMs: HOUR, stake: 2000, invitedIds: [u.bob.userId] })).rejects.toThrow(/manque/);
     for (let i = 0; i < 3; i++) await t.mutation(api.challenges.create, { sessionToken: u.alice.token, kind: 'stars', durationMs: HOUR, stake: 0, invitedIds: [u.bob.userId] });
     await expect(t.mutation(api.challenges.create, { sessionToken: u.alice.token, kind: 'stars', durationMs: HOUR, stake: 0, invitedIds: [u.bob.userId] })).rejects.toThrow(/3 défis/);

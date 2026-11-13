@@ -31,7 +31,7 @@ describe('classeurs épinglés', () => {
     expect(p!.pinnedBinders.map((b) => b.name)).toEqual(['c0', 'c1', 'c2']);
     expect(p!.pinnedBinder!.name).toBe('c0');
     // le 4e est refusé, rien ne bouge
-    await expect(t.mutation(api.binders.pin, { sessionToken: token, binderId: ids[3], on: true })).rejects.toThrow(/au plus sur ton profil/);
+    await expect(t.mutation(api.binders.pin, { sessionToken: token, binderId: ids[3], on: true })).rejects.toThrow(/⟦(binders\.11)[⟧{]/);
     // ré-épingler un classeur déjà épinglé ne compte pas comme un 4e
     await t.mutation(api.binders.pin, { sessionToken: token, binderId: ids[1], on: true });
     // en retirer un libère une place

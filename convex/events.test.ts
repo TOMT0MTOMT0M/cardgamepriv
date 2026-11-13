@@ -108,13 +108,13 @@ describe('booster du moment : serveur', () => {
   test('accès : seulement Tom et Hugo', async () => {
     const { t, alice, hugo } = await setup();
     const now = Date.now();
-    await expect(t.query(api.events.adminList, { sessionToken: alice.token })).rejects.toThrow(/équipe/);
-    await expect(t.mutation(api.events.adminSave, { sessionToken: alice.token, ...base(now, now + 24 * H) })).rejects.toThrow(/équipe/);
-    await expect(t.mutation(api.events.adminSave, { sessionToken: 'faux', ...base(now, now + 24 * H) })).rejects.toThrow(/connecté/);
+    await expect(t.query(api.events.adminList, { sessionToken: alice.token })).rejects.toThrow(/⟦(events\.5)[⟧{]/);
+    await expect(t.mutation(api.events.adminSave, { sessionToken: alice.token, ...base(now, now + 24 * H) })).rejects.toThrow(/⟦(events\.5)[⟧{]/);
+    await expect(t.mutation(api.events.adminSave, { sessionToken: 'faux', ...base(now, now + 24 * H) })).rejects.toThrow(/⟦(auth\.1|events\.4)[⟧{]/);
     const { id } = await t.mutation(api.events.adminSave, { sessionToken: hugo.token, ...base(now + H, now + 24 * H) });
-    await expect(t.mutation(api.events.adminStartNow, { sessionToken: alice.token, id })).rejects.toThrow(/équipe/);
-    await expect(t.mutation(api.events.adminEndNow, { sessionToken: alice.token, id })).rejects.toThrow(/équipe/);
-    await expect(t.mutation(api.events.adminRemove, { sessionToken: alice.token, id })).rejects.toThrow(/équipe/);
+    await expect(t.mutation(api.events.adminStartNow, { sessionToken: alice.token, id })).rejects.toThrow(/⟦(events\.5)[⟧{]/);
+    await expect(t.mutation(api.events.adminEndNow, { sessionToken: alice.token, id })).rejects.toThrow(/⟦(events\.5)[⟧{]/);
+    await expect(t.mutation(api.events.adminRemove, { sessionToken: alice.token, id })).rejects.toThrow(/⟦(events\.5)[⟧{]/);
     const log = await t.run((ctx) => ctx.db.query('adminLog').collect());
     expect(log.map((l) => [l.byName, l.action])).toEqual([['hugo', 'evenement']]);
   });
@@ -125,7 +125,7 @@ describe('booster du moment : serveur', () => {
     const now = Date.now();
     const { id } = await t.mutation(api.events.adminSave, { sessionToken: tom.token, ...base(now + 5 * H, now + 48 * H) });
     expect(await t.query(api.events.current, {})).toEqual([]);
-    await expect(t.mutation(api.packs.preparePack, { sessionToken: alice.token, eventId: id })).rejects.toThrow(/pas encore sorti/);
+    await expect(t.mutation(api.packs.preparePack, { sessionToken: alice.token, eventId: id })).rejects.toThrow(/⟦(events\.2)[⟧{]/);
     expect((await t.run((ctx) => ctx.db.get(alice.userId)))!.packBalance).toBe(10); // rien débité
 
     await t.mutation(api.events.adminStartNow, { sessionToken: tom.token, id });
@@ -187,7 +187,7 @@ describe('booster du moment : serveur', () => {
     const { t, tom } = await setup();
     const now = Date.now();
     const { id } = await t.mutation(api.events.adminSave, { sessionToken: tom.token, ...base(now + H, now + 24 * H) });
-    await expect(t.mutation(api.events.adminSave, { sessionToken: tom.token, ...base(now + 10 * H, now + 30 * H), name: 'Autre' })).rejects.toThrow(/un seul booster du moment/);
+    await expect(t.mutation(api.events.adminSave, { sessionToken: tom.token, ...base(now + 10 * H, now + 30 * H), name: 'Autre' })).rejects.toThrow(/⟦(events\.6)[⟧{]/);
     const b = await t.mutation(api.events.adminSave, { sessionToken: tom.token, ...base(now + 24 * H, now + 40 * H), name: 'Ensuite' });
     await t.mutation(api.events.adminSave, { sessionToken: tom.token, id, ...base(now + 2 * H, now + 20 * H), name: 'Coupe 2' });
     const list = await t.query(api.events.adminList, { sessionToken: tom.token });
@@ -195,6 +195,6 @@ describe('booster du moment : serveur', () => {
     expect(list[1].count).toBe(eventCards(content).length);
     await t.mutation(api.events.adminRemove, { sessionToken: tom.token, id: b.id });
     expect(await t.query(api.events.adminList, { sessionToken: tom.token })).toHaveLength(1);
-    await expect(t.mutation(api.events.adminSave, { sessionToken: tom.token, ...base(now - 3 * 24 * H, now - 24 * H), name: 'Passé' })).rejects.toThrow(/déjà fini/);
+    await expect(t.mutation(api.events.adminSave, { sessionToken: tom.token, ...base(now - 3 * 24 * H, now - 24 * H), name: 'Passé' })).rejects.toThrow(/⟦(events\.8)[⟧{]/);
   });
 });

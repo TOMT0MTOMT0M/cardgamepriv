@@ -34,7 +34,7 @@ describe('sondage', () => {
   });
   test('réponses inconnues retirées, 3 nouveautés au plus, note bornée ; réponse vide refusée', async () => {
     const { t, bob } = await setup();
-    await expect(t.mutation(api.survey.submit, { sessionToken: bob.token, surveyId: SURVEY_ID, answer: { universes: ['pirate'], features: [], comment: '   ' } })).rejects.toThrow(/au moins une réponse/);
+    await expect(t.mutation(api.survey.submit, { sessionToken: bob.token, surveyId: SURVEY_ID, answer: { universes: ['pirate'], features: [], comment: '   ' } })).rejects.toThrow(/⟦(survey\.1)[⟧{]/);
     await t.mutation(api.survey.submit, { sessionToken: bob.token, surveyId: SURVEY_ID, answer: { universes: ['anime', 'anime', 'pirate'], features: ['jeux', 'events', 'defis', 'profil'], rating: 9, names: '  One Piece  ' } });
     const [row] = await t.run((ctx) => ctx.db.query('surveyAnswers').collect());
     expect(row).toMatchObject({ universes: ['anime'], features: ['jeux', 'events', 'defis'], names: 'One Piece' });
@@ -44,7 +44,7 @@ describe('sondage', () => {
     const { t, alice, bob, tom } = await setup();
     await t.mutation(api.survey.submit, { sessionToken: alice.token, surveyId: SURVEY_ID, answer: { universes: ['anime', 'jv'], features: ['jeux'], rating: 5, comment: 'Top' } });
     await t.mutation(api.survey.submit, { sessionToken: bob.token, surveyId: SURVEY_ID, answer: { universes: ['anime'], features: ['events'], rating: 3 } });
-    await expect(t.query(api.survey.results, { sessionToken: alice.token, surveyId: SURVEY_ID })).rejects.toThrow(/modérateurs/);
+    await expect(t.query(api.survey.results, { sessionToken: alice.token, surveyId: SURVEY_ID })).rejects.toThrow(/⟦(suggestions\.2|suggestions\.3|survey\.2)[⟧{]/);
     const r = await t.query(api.survey.results, { sessionToken: tom.token, surveyId: SURVEY_ID });
     expect(r.total).toBe(2);
     expect(r.universes.anime).toBe(2);

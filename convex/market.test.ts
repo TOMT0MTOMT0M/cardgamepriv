@@ -34,8 +34,8 @@ describe('marché', () => {
   test('vente : la carte quitte la collection, l’annonce est visible de tous ; prix bornés ; retrait = la carte revient', async () => {
     const { t, alice, bob } = await setup();
     await give(t, alice.userId, A, 1);
-    await expect(t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 0 })).rejects.toThrow(/Prix invalide/);
-    await expect(t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 51 })).rejects.toThrow(/trop élevé/);
+    await expect(t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 0 })).rejects.toThrow(/⟦(market\.9)[⟧{]/);
+    await expect(t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 51 })).rejects.toThrow(/⟦(market\.10)[⟧{]/);
     await t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 8 });
     expect(await countOf(t, alice.token)).toBe(0);
     const b = await t.query(api.market.board, { sessionToken: bob.token });
@@ -54,15 +54,15 @@ describe('marché', () => {
     await give(t, alice.userId, A, 2);
     await t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 9 });
     const [m] = (await t.query(api.market.board, {})).open;
-    await expect(t.mutation(api.market.buy, { sessionToken: alice.token, id: m.id, price: 9 })).rejects.toThrow(/propre annonce/);
-    await expect(t.mutation(api.market.buy, { sessionToken: carol.token, id: m.id, price: 9 })).rejects.toThrow(/Pas assez de pièces/);
-    await expect(t.mutation(api.market.buy, { sessionToken: bob.token, id: m.id, price: 5 })).rejects.toThrow(/prix a changé/);
+    await expect(t.mutation(api.market.buy, { sessionToken: alice.token, id: m.id, price: 9 })).rejects.toThrow(/⟦(market\.5)[⟧{]/);
+    await expect(t.mutation(api.market.buy, { sessionToken: carol.token, id: m.id, price: 9 })).rejects.toThrow(/⟦(econLib\.2|economy\.8)[⟧{]/);
+    await expect(t.mutation(api.market.buy, { sessionToken: bob.token, id: m.id, price: 5 })).rejects.toThrow(/⟦(market\.6)[⟧{]/);
     await t.mutation(api.market.buy, { sessionToken: bob.token, id: m.id, price: 9 });
     expect(await coinsOf(t, bob.userId)).toBe(91);
     expect(await coinsOf(t, alice.userId)).toBe(9);
     expect(await countOf(t, bob.token)).toBe(1);
     expect(await countOf(t, alice.token)).toBe(1);
-    await expect(t.mutation(api.market.buy, { sessionToken: bob.token, id: m.id, price: 9 })).rejects.toThrow(/Trop tard/);
+    await expect(t.mutation(api.market.buy, { sessionToken: bob.token, id: m.id, price: 9 })).rejects.toThrow(/⟦(market\.4)[⟧{]/);
     const ab = await t.query(api.market.board, { sessionToken: alice.token });
     expect(ab.open).toHaveLength(0);
     expect(ab.sold).toHaveLength(1);
@@ -73,8 +73,8 @@ describe('marché', () => {
     const { t, alice, bob } = await setup();
     await give(t, alice.userId, A, 1);
     await t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [{ cardId: A, rarity: 'common', count: 1 }], requested: [] });
-    await expect(t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 5 })).rejects.toThrow(/engagée/);
+    await expect(t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 5 })).rejects.toThrow(/⟦(econLib\.13|econLib\.6|listings\.8|listings\.9|trades\.21|trades\.6)[⟧{]/);
     const bebou = CATALOG_CARDS.find((c) => c.baseRarity === 'secret');
-    if (bebou) await expect(t.mutation(api.market.sell, { sessionToken: alice.token, cardId: bebou.id, rarity: 'secret', price: 5 })).rejects.toThrow(/Bébou/);
+    if (bebou) await expect(t.mutation(api.market.sell, { sessionToken: alice.token, cardId: bebou.id, rarity: 'secret', price: 5 })).rejects.toThrow(/⟦(deals\.5|market\.7)[⟧{]/);
   });
 });
