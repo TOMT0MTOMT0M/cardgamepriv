@@ -1,3 +1,4 @@
+import { locale } from '../../core/i18n';
 import type { PresseRunView, PresseState } from '../ecoJeux';
 import { fmtCoins } from '../../core/economy';
 import { packChoiceLabel, packChoices, type PackChoice } from '../../core/games';
@@ -138,7 +139,7 @@ export function pressePage({ body, backend, unsubs, sfx }: JeuxPageCtx) {
       }
       drawCtl();
       body.querySelector<HTMLElement>('.ps-past')!.innerHTML = s.past.length
-        ? s.past.map((p) => `<div class="gm-item"><span class="gm-it"><span class="gm-tag">${p.shown}/${PRESSE_STRIKES}</span>mise ${fmtCoins(p.bet)} · ${p.status === 'cracked' ? '<b class="minus">fendue</b>' : `<b class="${p.payout >= p.bet ? 'plus' : ''}">${fmtCoins(p.payout)}</b>`}</span><span class="gm-it-r muted">${new Date(p.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span></div>`).join('')
+        ? s.past.map((p) => `<div class="gm-item"><span class="gm-it"><span class="gm-tag">${p.shown}/${PRESSE_STRIKES}</span>mise ${fmtCoins(p.bet)} · ${p.status === 'cracked' ? '<b class="minus">fendue</b>' : `<b class="${p.payout >= p.bet ? 'plus' : ''}">${fmtCoins(p.payout)}</b>`}</span><span class="gm-it-r muted">${new Date(p.createdAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}</span></div>`).join('')
         : '<div class="muted">Pas encore de pièce.</div>';
     }),
     backend.eco.onChange(() => body.isConnected && run?.status !== 'live' && !ctl.contains(document.activeElement) && drawCtl()),

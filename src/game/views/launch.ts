@@ -1,3 +1,4 @@
+import { locale } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import { h, toast } from '../ui';
 
@@ -14,8 +15,8 @@ export function createLaunchGate(backend: GameBackend) {
   const parts: Record<string, string> = {};
   const two = (n: number) => String(n).padStart(2, '0');
   const when = (ms: number) => {
-    const d = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' }).format(ms);
-    const t = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(ms).replace(':', ' h ');
+    const d = new Intl.DateTimeFormat(locale(), { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' }).format(ms);
+    const t = new Intl.DateTimeFormat(locale(), { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(ms).replace(':', ' h ');
     return `${d} · ${t}`;
   };
 

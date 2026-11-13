@@ -1,3 +1,4 @@
+import { locale } from '../../core/i18n';
 import type { ActivityItem, GameBackend, PlayerCard, Profile } from '../backend';
 import { createLeaderboard } from './leaderboard';
 import { friendBtn } from './friends';
@@ -39,9 +40,9 @@ const best = (a: PlayerCard, b: PlayerCard) => RANK[b.rarity] - RANK[a.rarity] |
 /** le mot seul, accordé (« doublon » / « doublons ») : le nombre est affiché à part, formaté par fmtN (audit UX3-05 :
  *  retirer le nombre de `plural()` par regex cassait dès 1 000, à cause de l'espace insécable des milliers) */
 const word = (n: number, one: string, many = `${one}s`) => (n > 1 ? many : one);
-const fmtDate = (t: number) => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const fmtDate = (t: number) => new Date(t).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 /** « nov. 2026 » (en-tête compact) */
-const fmtMonth = (t: number) => new Date(t).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+const fmtMonth = (t: number) => new Date(t).toLocaleDateString(locale(), { month: 'short', year: 'numeric' });
 /**
  * Photo / bannière importées (GIF, retours live 02) : un <img> — le GIF se lit tout seul, en boucle, sans son. En
  * « mouvements réduits » : une image FIXE, la 1re image peinte dans un <canvas> (affichable même si le fichier vient
@@ -809,7 +810,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const needle = fold(allQ.value.trim());
     const list = owned
       .filter((c) => (!allR || c.rarity === allR) && (!needle || fold(catalogEntry(c.cardId)?.name ?? '').includes(needle)))
-      .sort((a, b) => rarity(b.rarity).rank - rarity(a.rarity).rank || (catalogEntry(a.cardId)?.name ?? '').localeCompare(catalogEntry(b.cardId)?.name ?? '', 'fr'));
+      .sort((a, b) => rarity(b.rarity).rank - rarity(a.rarity).rank || (catalogEntry(a.cardId)?.name ?? '').localeCompare(catalogEntry(b.cardId)?.name ?? '', locale()));
     q('.pf-all-n').textContent = `${fmtN(list.length)} carte${list.length > 1 ? 's' : ''}`;
     const g = q('.pf-all');
     g.replaceChildren();

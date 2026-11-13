@@ -1,3 +1,4 @@
+import { locale } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, type Achievement, type AchievementLadder, type AchievementStats } from '../../core/economy';
@@ -149,7 +150,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
 
   /** Bascule « Amis » : par mécanique, le classement de mes amis (et moi), le plus avancé en tête. */
   function friendsCard(l: AchievementLadder, list: FriendAch[]): HTMLElement {
-    const rows = [...list].sort((a, b) => (b.stats[l.stat] ?? 0) - (a.stats[l.stat] ?? 0) || a.name.localeCompare(b.name, 'fr'));
+    const rows = [...list].sort((a, b) => (b.stats[l.stat] ?? 0) - (a.stats[l.stat] ?? 0) || a.name.localeCompare(b.name, locale()));
     const c = h('div', 'sc-c sc-ladder sc-fr');
     const top = rows[0];
     c.innerHTML = `<div class="sc-top"><span class="sc-tier">${l.steps.length} paliers</span>${top && (top.stats[l.stat] ?? 0) > 0 ? `<span class="sc-lead">👑 ${esc(top.me ? 'Toi' : top.name)}</span>` : ''}</div>

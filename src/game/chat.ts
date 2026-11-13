@@ -1,3 +1,4 @@
+import { locale } from '../core/i18n';
 import './chat.css';
 import type { BigPull, GameBackend } from './backend';
 import { CHAT_GENERAL, CHAT_MENTIONS_MAX, CHAT_REACTS, CHAT_TEXT_MAX, chatSnippet, cleanChatText, dmKey, dmPeer, type ChatMsg } from '../core/chat';
@@ -32,7 +33,7 @@ const RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3,
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,;:!?)\]}'"»])/g;
 const GROUP_MS = 5 * 60 * 1000;
 const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const hhmm = (t: number) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const hhmm = (t: number) => new Date(t).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 const dayKey = (t: number) => {
   const d = new Date(t);
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -42,7 +43,7 @@ function dayLabel(t: number): string {
   if (dayKey(t) === today) return 'Aujourd’hui';
   if (dayKey(t) === dayKey(Date.now() - 86400000)) return 'Hier';
   const d = new Date(t);
-  return `${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')} ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return `${d.toLocaleDateString(locale(), { weekday: 'short' }).replace('.', '')} ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 function ago(t: number): string {
   const m = Math.floor((Date.now() - t) / 60000);
@@ -199,10 +200,10 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   function mentionsIn(text: string): string[] {
     const meId = backend.state.user?.id;
     const out: string[] = [];
-    const low = text.toLocaleLowerCase('fr');
+    const low = text.toLocaleLowerCase(locale());
     for (const p of [...players().values()].sort((a, b) => b.name.length - a.name.length)) {
       if (p.id === meId || !p.name) continue;
-      const i = low.indexOf(`@${p.name.toLocaleLowerCase('fr')}`);
+      const i = low.indexOf(`@${p.name.toLocaleLowerCase(locale())}`);
       if (i < 0) continue;
       const next = text[i + 1 + p.name.length];
       if (next && /[\p{L}\p{N}_]/u.test(next)) continue;
@@ -299,7 +300,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
       const last = d.lastText === '' ? 'message supprimé' : (d.lastText ?? '');
       html += `<button type="button" class="cl-row${un ? ' unread' : ''}" data-key="${esc(d.key)}">${ava(pid, name, true)}<span class="cl-m"><b>${esc(name)}</b><em>${d.lastUserId === meId ? '<i>Toi :</i> ' : ''}${esc(last)}</em></span><span class="cl-r"><time>${esc(ago(d.lastAt))}</time>${un ? `<b class="badge">${un > 99 ? '99+' : un}</b>` : inbox!.muted.includes(d.key) ? '<small>sourdine</small>' : ''}</span></button>`;
     }
-    const others = [...players().values()].filter((p) => p.id !== meId && !withDm.has(p.id)).sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, 'fr'));
+    const others = [...players().values()].filter((p) => p.id !== meId && !withDm.has(p.id)).sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, locale()));
     if (others.length) html += `<div class="cl-k">${rows.length ? 'Autres joueurs' : 'Écrire à un joueur'}</div>`;
     for (const p of others)
       html += `<button type="button" class="cl-row new" data-peer="${esc(p.id)}">${ava(p.id, p.name, true)}<span class="cl-m"><b>${esc(p.name)}</b><em>${p.online ? 'en ligne' : 'hors ligne'}</em></span><span class="cl-r"><i class="cl-go">→</i></span></button>`;
@@ -528,7 +529,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const meId = backend.state.user?.id;
     acItems = [...players().values()]
       .filter((p) => p.id !== meId && fold(p.name).includes(qy))
-      .sort((a, b) => Number(fold(b.name).startsWith(qy)) - Number(fold(a.name).startsWith(qy)) || Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, 'fr'))
+      .sort((a, b) => Number(fold(b.name).startsWith(qy)) - Number(fold(a.name).startsWith(qy)) || Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, locale()))
       .slice(0, 5);
     if (!acItems.length) return closeAc();
     acFrom = pos - m[2].length - 1;

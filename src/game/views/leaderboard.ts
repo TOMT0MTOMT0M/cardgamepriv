@@ -1,3 +1,4 @@
+import { locale } from '../../core/i18n';
 import type { GameBackend, LeaderRow } from '../backend';
 import type { Shell } from '../shell';
 import { frameOf, titleOf } from '../../core/cosmetics';
@@ -107,7 +108,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     requestAnimationFrame(markOvf);
     renderSeason();
     const b = BOARDS.find((x) => x.id === board)!;
-    const sorted = [...(rows ?? [])].sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, 'fr'));
+    const sorted = [...(rows ?? [])].sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, locale()));
     const me = backend.state.user?.id;
     podiumEl.replaceChildren();
     listEl.replaceChildren();

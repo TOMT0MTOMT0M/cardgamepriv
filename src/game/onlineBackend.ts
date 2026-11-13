@@ -3,6 +3,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { BIG_PULL_RARITIES, EMPTY_MARKET, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
 import { createOnlineEco } from './ecoOnline';
+import { adoptAccountLang, lang as curLang, langPicked, onLang } from './lang';
 import type { Social } from './backend';
 import type { BoardState, ListingOfferView, ListingView } from './backend';
 import { api } from '../../convex/_generated/api';
@@ -88,6 +89,29 @@ export function createOnlineBackend(): GameBackend {
    */
   let src: Partial<Record<'user' | 'collection' | 'binders' | 'friends' | 'feed' | 'bigPulls' | 'sealed' | 'trades', unknown>> = {};
   const changed = (k: keyof typeof src, v: unknown) => (src[k] === v ? false : ((src[k] = v), true));
+  /**
+   * (version anglaise) langue : à l'arrivée du joueur, celle choisie sur son compte s'applique si rien n'est choisi sur
+   * cet appareil ; puis la langue effective part au serveur (push, messages privés Discord) — seulement si elle diffère.
+   */
+  let langUser: { lang?: string; langSet?: boolean } | null = null;
+  let langAdopted = false;
+  let langSent = '';
+  const syncLang = () => {
+    const u = langUser;
+    if (!u) return;
+    if (!langAdopted) {
+      langAdopted = true;
+      adoptAccountLang(u.lang, u.langSet);
+    }
+    const want = curLang();
+    const manual = langPicked();
+    if ((u.lang ?? 'fr') === want && (!manual || u.langSet === true)) return;
+    const k = `${want}|${manual}`;
+    if (k === langSent) return;
+    langSent = k;
+    void net.setLang(want, manual);
+  };
+  onLang(syncLang);
   net.onChange((n) => {
     // `ready` : le serveur a répondu au moins une fois (avant : « connexion… », pas « Connexion Discord »)
     state.ready = n.connected;
@@ -116,6 +140,8 @@ export function createOnlineBackend(): GameBackend {
             openingStyle: n.user.openingStyle === 'burn' || n.user.openingStyle === 'fan' ? n.user.openingStyle : undefined,
           }
         : null;
+      langUser = n.user ? { lang: n.user.lang, langSet: n.user.langSet } : null;
+      syncLang();
       state.wishlist = n.user?.wishlist ?? [];
       state.tradeProtected = n.user?.tradeProtected ?? [];
       state.covers = n.user?.covers ?? {};

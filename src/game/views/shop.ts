@@ -1,3 +1,4 @@
+import { fmtPct as fmtPctI } from '../../core/i18n';
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
 import { playAmbience, playMusicPreview, prefetchAmbience, prefetchMusicPreview, stopAmbience, stopMusicPreview } from '../musicPreview';
 import { isEclipsePack } from '../eclipse';
@@ -49,7 +50,7 @@ const WILD_LOOP = { loopStart: 20, loopEnd: 51.3475 };
 /** carte dont la révélation est la rencontre sauvage (Pokémon 6★) */
 const isWild = (c: PackCard) => c.rarity === 'mythic' && c.cardId.startsWith('pkm-');
 /** « 62,4 % » (chiffres à la française) */
-const fmtPct = (x: number) => `${(Math.round(x * 1000) / 10).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+const fmtPct = (x: number) => fmtPctI(x); // (version anglaise) « 62,4 % » / « 62.4% » selon la langue
 /** indication affichée tant que le booster est fermé (dépend de sa mise en scène : brûler, déchirer, toucher) */
 let sealedHint = HINT.hold;
 

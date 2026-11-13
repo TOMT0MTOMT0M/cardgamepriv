@@ -10,6 +10,7 @@
  * Cosmétiques : finir dans les 3 premiers → succès « Sur le podium » (cadre « Podium de saison ») ; premier → succès
  * « Champion de saison » (titre) — src/core/economy.ts et src/core/cosmetics.ts.
  */
+import { locale } from './i18n';
 
 /** boosters donnés selon le rang final : 1er, 2e, 3e ; puis 4e – 10e ; puis tout joueur qui a gagné au moins une carte */
 export const SEASON_PACKS = [10, 6, 4] as const;
@@ -102,7 +103,7 @@ export function seasonStandings(players: SeasonPlayer[], bases: SeasonBase[]): S
     if (!b) continue;
     out.push({ userId: p.userId, name: p.name, avatarUrl: p.avatarUrl, gained: Math.max(0, p.uniques - b.uniques), packs: Math.max(0, p.packsOpened - b.packs), rank: 0 });
   }
-  out.sort((x, y) => y.gained - x.gained || y.packs - x.packs || x.name.localeCompare(y.name, 'fr'));
+  out.sort((x, y) => y.gained - x.gained || y.packs - x.packs || x.name.localeCompare(y.name, locale()));
   let r = 0;
   for (const s of out) if (s.gained > 0) s.rank = ++r;
   return out;

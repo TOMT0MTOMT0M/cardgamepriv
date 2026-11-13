@@ -1,3 +1,4 @@
+import { locale } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import { liveRegen } from '../backend';
 import type { Shell } from '../shell';
@@ -1000,7 +1001,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           return `<span class="gm-tag">Royale</span> à ${r.players.length} · ${r.result!.stars[k] ?? 0}★ · ${won ? '<b class="plus">victoire</b>' : `gagnant : ${esc(r.result!.winners.map((w) => r.players[w].name).join(', '))}`}`;
         })() })),
       ].sort((a, b) => b.at - a.at);
-      body.querySelector<HTMLElement>('.gm-hg')!.innerHTML = rows.length ? rows.map((r) => `<a class="gm-item" href="${r.href}"><span class="gm-it">${r.html}</span><span class="gm-it-r muted">${new Date(r.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a>`).join('') : '<div class="muted">Aucune partie terminée.</div>';
+      body.querySelector<HTMLElement>('.gm-hg')!.innerHTML = rows.length ? rows.map((r) => `<a class="gm-item" href="${r.href}"><span class="gm-it">${r.html}</span><span class="gm-it-r muted">${new Date(r.at).toLocaleDateString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a>`).join('') : '<div class="muted">Aucune partie terminée.</div>';
     } catch (e) {
       body.querySelector<HTMLElement>('.gm-hg')!.textContent = errMsg(e);
     }

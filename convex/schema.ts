@@ -77,6 +77,10 @@ export default defineSchema({
     missions: v.optional(missionsValidator),
     /** vitrine du profil : jusqu'à 6 cartes choisies (vide = ses meilleures cartes, automatiquement) */
     showcase: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator }))),
+    /** (version anglaise) langue EFFECTIVE du joueur, envoyée par le client : push et messages privés Discord. Absente = français */
+    lang: v.optional(v.union(v.literal('fr'), v.literal('en'))),
+    /** (version anglaise) cette langue est un choix manuel : ses autres appareils la reprennent */
+    langSet: v.optional(v.boolean()),
     /** notifications push (V2) : types voulus (absent = tout), et le job programmé « réserve pleine » (pour l'annuler) */
     notifPrefs: v.optional(v.array(v.string())),
     notifFullJob: v.optional(v.id('_scheduled_functions')),

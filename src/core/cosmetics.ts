@@ -4,6 +4,7 @@
  * Règle du groupe (3 nov.) : tout se débloque EN JOUANT, rien ne s'achète. Bannières, cadres d'avatar, titres et badges
  * sont des récompenses de SUCCÈS (les 36 de src/core/economy.ts) — calculées à la volée sur les stats, rien à stocker.
  */
+import { locale } from './i18n';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, catalogEntry } from './sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from './economy';
 
@@ -378,7 +379,7 @@ export const PROFILE_MEDIA_MAX = 2 * 1024 * 1024;
 export const PROFILE_MEDIA_DEMO_MAX = 700 * 1024;
 export const PROFILE_MEDIA_TYPES = ['image/gif', 'image/png', 'image/jpeg', 'image/webp'];
 /** « 2,4 Mo » */
-export const fmtMo = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`;
+export const fmtMo = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString(locale(), { maximumFractionDigits: 1 })} Mo`;
 /** Motif de refus (vide = accepté) : le même texte au client (avant l'envoi) et au serveur. */
 export function profileMediaProblem(size: number, type: string | undefined, max = PROFILE_MEDIA_MAX): string {
   if (!PROFILE_MEDIA_TYPES.includes(type ?? '')) return 'Format refusé : GIF, PNG, JPEG ou WebP seulement.';

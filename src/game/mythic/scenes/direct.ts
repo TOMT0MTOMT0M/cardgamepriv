@@ -3,6 +3,7 @@
  * spectateurs qui s'emballe, des messages anonymes qui défilent en colonne (« ????? », « LÀ LÀ LÀ », « 6 ÉTOILES ?! »),
  * puis tout se fige : la carte entre par le bas, « pose » au centre — et le compteur explose.
  */
+import { locale } from '../../../core/i18n';
 import type { SceneCtx } from '../kit';
 
 const MSGS = ['?????', 'attends attends', 'LÀ LÀ LÀ', 'c pas possible', 'non non non', 'il l’a', '6 ÉTOILES ?!', 'CLIP CLIP CLIP', 'jsuis pas prêt', 'OMG', 'le sang', 'regarde regarde'];
@@ -22,8 +23,8 @@ export default function direct(k: SceneCtx) {
   k.at(0.1, () => sfx.notif(0.1));
   tl.to(viewers, { opacity: 1, duration: 0.25 }, 0.3);
   const v = { n: 1200 + Math.floor(k.rand() * 4000) };
-  const bump = (to: number, at: number, d: number) => tl.to(v, { n: to, duration: d, ease: 'power2.inOut', onUpdate: () => (viewers.textContent = `${Math.round(v.n).toLocaleString('fr-FR')} 👁`.replace(' 👁', '')) }, at);
-  viewers.textContent = v.n.toLocaleString('fr-FR');
+  const bump = (to: number, at: number, d: number) => tl.to(v, { n: to, duration: d, ease: 'power2.inOut', onUpdate: () => (viewers.textContent = `${Math.round(v.n).toLocaleString(locale())} 👁`.replace(' 👁', '')) }, at);
+  viewers.textContent = v.n.toLocaleString(locale());
   bump(v.n * 1.4, 0.4, 0.8);
   bump(v.n * 3.5, 1.3, 0.7);
   // les messages tombent de plus en plus vite

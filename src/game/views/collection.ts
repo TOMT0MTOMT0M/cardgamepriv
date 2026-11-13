@@ -1,3 +1,4 @@
+import { locale } from '../../core/i18n';
 import { collectionSig, lockedCards, type Binder, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
@@ -64,7 +65,7 @@ const setOn = (b: HTMLElement, on: boolean) => {
   b.setAttribute('aria-pressed', String(on));
 };
 
-const fmtDate = (t: number) => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const fmtDate = (t: number) => new Date(t).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 /** teinte stable par sous-thème (barres de progression « colorées par sous-thème ») */
 function hueOf(id: string): number {
   let hsh = 0;
@@ -683,7 +684,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         const x = stv(v);
         return !x.total ? 3 : x.have === 0 ? 2 : x.have === x.total ? 1 : 0;
       };
-      const sorted = albumSort === 'alpha' || albumSort === 'group' ? [...views].sort((a, b) => a.label.localeCompare(b.label, 'fr'))
+      const sorted = albumSort === 'alpha' || albumSort === 'group' ? [...views].sort((a, b) => a.label.localeCompare(b.label, locale()))
         : albumSort === 'completion' ? [...views].sort((a, b) => stv(b).pct - stv(a).pct || stv(b).have - stv(a).have)
         : [...views].sort((a, b) => stage(a) - stage(b) || stv(b).have - stv(a).have || 0);
       q('.al-count').textContent = plural(views.length, 'famille');
@@ -703,10 +704,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       const x = st(s);
       return !x.total ? 3 : x.have === 0 ? 2 : x.have === x.total ? 1 : 0;
     };
-    if (albumSort === 'progress') subs = [...subs].sort((a, b) => stage(a) - stage(b) || (stage(a) === 0 ? st(b).have - st(a).have || st(b).pct - st(a).pct : stage(a) === 1 ? st(b).total - st(a).total : 0) || a.label.localeCompare(b.label, 'fr'));
-    else if (albumSort === 'completion') subs = [...subs].sort((a, b) => st(b).pct - st(a).pct || st(b).have - st(a).have || a.label.localeCompare(b.label, 'fr'));
-    else if (albumSort === 'alpha') subs = [...subs].sort((a, b) => a.label.localeCompare(b.label, 'fr'));
-    else subs = [...subs].sort((a, b) => grpLabel(a).localeCompare(grpLabel(b), 'fr') || a.label.localeCompare(b.label, 'fr'));
+    if (albumSort === 'progress') subs = [...subs].sort((a, b) => stage(a) - stage(b) || (stage(a) === 0 ? st(b).have - st(a).have || st(b).pct - st(a).pct : stage(a) === 1 ? st(b).total - st(a).total : 0) || a.label.localeCompare(b.label, locale()));
+    else if (albumSort === 'completion') subs = [...subs].sort((a, b) => st(b).pct - st(a).pct || st(b).have - st(a).have || a.label.localeCompare(b.label, locale()));
+    else if (albumSort === 'alpha') subs = [...subs].sort((a, b) => a.label.localeCompare(b.label, locale()));
+    else subs = [...subs].sort((a, b) => grpLabel(a).localeCompare(grpLabel(b), locale()) || a.label.localeCompare(b.label, locale()));
     q('.al-count').textContent = `${plural(subs.filter((s) => s.cards.length).length, 'album')}`;
     albumIo?.disconnect();
     alGrid.replaceChildren();
@@ -907,7 +908,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       else more++;
     }
     const subLabel = (e: CatalogEntry) => subthemeById(e.subthemeId)?.label ?? '';
-    out.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), 'fr') || a.num - b.num);
+    out.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), locale()) || a.num - b.num);
     return { list: out, more };
   }
   /** VUE CARTES (défaut, retours live n°1) : toutes mes cartes, les plus rares en haut ; tri, étoile, thème, recherche. */
@@ -926,10 +927,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     }
     const date = (e: CatalogEntry) => mine.get(e.id)?.firstPulledAt ?? 0;
     const subLabel = (e: CatalogEntry) => subthemeById(e.subthemeId)?.label ?? '';
-    if (cSort === 'rarity') list.sort((a, b) => RANK[b.rarity] - RANK[a.rarity] || date(b) - date(a) || a.name.localeCompare(b.name, 'fr'));
+    if (cSort === 'rarity') list.sort((a, b) => RANK[b.rarity] - RANK[a.rarity] || date(b) - date(a) || a.name.localeCompare(b.name, locale()));
     else if (cSort === 'date') list.sort((a, b) => date(b) - date(a) || RANK[b.rarity] - RANK[a.rarity]);
-    else if (cSort === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-    else list.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), 'fr') || a.num - b.num);
+    else if (cSort === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name, locale()));
+    else list.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), locale()) || a.num - b.num);
     const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${page}`;
     if (key !== lastKey) {
       if (lastKey) {

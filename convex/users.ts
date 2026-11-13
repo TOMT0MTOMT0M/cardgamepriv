@@ -65,6 +65,9 @@ export function meView(user: Doc<'users'>, now: number) {
     /** compte pseudo (sans Discord) */
     pwAccount: user.discordId.startsWith('pw:'),
     /** (ouverture 07/11) visite guidée automatique déjà jouée */
+    /** (version anglaise) langue du compte : `langSet` = choix manuel, repris sur un nouvel appareil (src/game/lang.ts) */
+    lang: user.lang ?? 'fr',
+    langSet: user.langSet === true,
     guideSeen: !!user.guideSeenAt,
     /** (13/11) tour des nouveautés V2 déjà joué */
     v2TourSeen: !!user.v2TourSeenAt,
@@ -221,6 +224,20 @@ export const markGuideSeen = mutation({
     const u = await requireUser(ctx, sessionToken);
     // (13/11) un compte tout neuf a sa visite guidée : le tour des nouveautés V2 ne le concerne pas
     if (!u.guideSeenAt) await ctx.db.patch(u._id, { guideSeenAt: Date.now(), v2TourSeenAt: u.v2TourSeenAt ?? Date.now() });
+  },
+});
+
+/**
+ * (version anglaise) Langue effective du joueur (envoyée à la connexion et à chaque changement) : push et messages privés
+ * Discord partent dans cette langue. Rien n'est écrit si elle ne change pas (une écriture sur le joueur ré-exécute ses requêtes).
+ */
+export const setLang = mutation({
+  args: { sessionToken: v.string(), lang: v.union(v.literal('fr'), v.literal('en')), manual: v.optional(v.boolean()) },
+  handler: async (ctx, { sessionToken, lang, manual }) => {
+    const u = await requireUser(ctx, sessionToken);
+    const langSet = manual === true || (u.langSet === true && (u.lang ?? 'fr') === lang);
+    if ((u.lang ?? 'fr') === lang && (u.langSet === true) === langSet) return;
+    await ctx.db.patch(u._id, { lang, langSet });
   },
 });
 

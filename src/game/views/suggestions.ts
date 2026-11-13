@@ -1,3 +1,4 @@
+import { locale } from '../../core/i18n';
 import type { GameBackend, SuggestionKind, SuggestionStatus, SuggestionView } from '../backend';
 import type { Shell } from '../shell';
 import { THEMES, catalogEntry, subthemeById } from '../../core/sets/themes';
@@ -217,7 +218,7 @@ export function createSuggestionsView(backend: GameBackend, shell: Shell): Sugge
     if (t === 'admin') void loadAdmin();
   }
 
-  const when = (ms: number) => new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const when = (ms: number) => new Date(ms).toLocaleDateString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   function itemHtml(s: SuggestionView, admin: boolean) {
     const e = s.cardId ? catalogEntry(s.cardId) : undefined;
     const kindL = KINDS.find((k) => k[0] === s.kind)?.[1] ?? s.kind;

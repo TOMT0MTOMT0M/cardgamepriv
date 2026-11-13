@@ -1,3 +1,4 @@
+import { locale } from './i18n';
 import './fonts.css';
 // libellés, chiffres, boutons : Inter, sous-ensemble latin seulement — les accents français y sont (audit 06/11 —
 // Bold Frame en capitales est illisible sous 14 px : R → A, X → H)
@@ -37,8 +38,8 @@ export const FONT_LABEL = '"Inter", "IBM Plex Mono", system-ui, -apple-system, "
  * en forme mot par mot et chaque mot en capitales reprendrait une volute.
  */
 export function displayCase(text: string): string {
-  const t = text.toLocaleLowerCase('fr');
-  return t.charAt(0).toLocaleUpperCase('fr') + t.slice(1);
+  const t = text.toLocaleLowerCase(locale());
+  return t.charAt(0).toLocaleUpperCase(locale()) + t.slice(1);
 }
 
 /** Pose les variables CSS (le CSS garde un repli identique en dur). */

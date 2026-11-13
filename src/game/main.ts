@@ -22,6 +22,8 @@ import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
 import { boardAttention } from './backend';
 import { PACK_CAP, PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
+import { initLang, lang, onLang, setLang, t } from './lang';
+import type { MsgKey } from '../core/i18n';
 import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, panelShown, setToastSound, syncPanelTriggers, toast } from './ui';
 import { preloadOwned } from './preload';
 import { bindHapticGestures, haptics } from '../core/haptics';
@@ -35,6 +37,8 @@ import { installNavDots } from './navDots';
 
 // polices du jeu (retours 05/11) : une seule source, src/core/fonts.ts
 applyFontVars();
+// (version anglaise) langue du jeu : en anglais, le dictionnaire arrive pendant le chargement du reste (rien en français)
+const langP = initLang();
 import { bindMotionVars } from '../core/motion';
 bindMotionVars();
 import { installMorph } from '../core/morph';
@@ -117,6 +121,7 @@ import { syncPush } from './notif';
 import { setBubbleSound, watchBubbles } from './bubble';
 // (V2) toutes les pastilles grandissent et éclatent en bulle de savon (bubble.ts) — rien à changer dans les pages
 watchBubbles();
+await langP;
 const backend: GameBackend = await backendP.catch((e: unknown) => {
   showFailure(e);
   throw e;
@@ -318,6 +323,27 @@ const SND_ICON = `<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="t
 const PACK_ICON = `<svg class="p-ico" viewBox="0 0 16 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-linejoin="round"><path d="M3 4h10v12H3z" fill="currentColor" fill-opacity=".16" stroke-width="1.2"/><path d="M3 4l1.25-2L5.5 4l1.25-2L8 4l1.25-2L10.5 4l1.25-2L13 4M3 16l1.25 2 1.25-2 1.25 2L8 16l1.25 2 1.25-2 1.25 2L13 16" stroke-width="1.05"/><circle cx="8" cy="10" r="2.1" fill="currentColor" stroke="none"/></svg>`;
 
 let meSig = '';
+/**
+ * (version anglaise) Changer de langue depuis la pastille : tout de suite, sauf pendant une ouverture (le booster est
+ * dessiné dans la langue de départ) — alors à la fin. Le rendu est refait par l'abonné `onLang` (plus bas, après les pages).
+ */
+let langBusy: () => boolean = () => false;
+let langWait = 0;
+function switchLang(to: 'fr' | 'en') {
+  window.clearInterval(langWait);
+  langWait = 0;
+  if (langBusy()) {
+    toast(t('lang.later'), 'info');
+    langWait = window.setInterval(() => {
+      if (langBusy()) return;
+      window.clearInterval(langWait);
+      langWait = 0;
+      void setLang(to).then((ok) => ok || toast(t('lang.failed'), 'err'));
+    }, 400);
+    return;
+  }
+  void setLang(to).then((ok) => ok || toast(t('lang.failed'), 'err'));
+}
 let lastIncoming = -1;
 let lastBoard = -1;
 let lastAuthError: string | null = null;
@@ -388,7 +414,7 @@ function layoutMenu() {
   if (!menu) return;
   const st = meEl.querySelector<HTMLElement>('.me-st')!;
   const id = meEl.querySelector<HTMLElement>('.me-id')!;
-  const items = ['.msn-btn', '.st-btn', '.snd-wrap', '.demo'].map((q) => meEl.querySelector<HTMLElement>(q)).filter((x): x is HTMLElement => !!x);
+  const items = ['.msn-btn', '.st-btn', '.lang-sw', '.snd-wrap', '.demo'].map((q) => meEl.querySelector<HTMLElement>(q)).filter((x): x is HTMLElement => !!x);
   if (phoneHead.matches) {
     for (const x of items) menu.append(x);
     // « Relancer le jeu » toujours en dernier (l'appli installée n'a pas de bouton recharger)
@@ -400,7 +426,7 @@ function layoutMenu() {
     for (const x of items) {
       if (x.parentElement !== menu) continue;
       if (x.matches('.msn-btn, .st-btn')) st.insertBefore(x, pity);
-      else id.insertBefore(x, x.matches('.demo') ? (id.querySelector('.snd-wrap') ?? id.querySelector('.user')) : id.querySelector('.user'));
+      else id.insertBefore(x, x.matches('.demo') ? (id.querySelector('.lang-sw') ?? id.querySelector('.snd-wrap') ?? id.querySelector('.user')) : id.querySelector('.user'));
     }
     if (menuOpen) setMenuOpen(false);
   }
@@ -442,21 +468,24 @@ function renderMe() {
   // son (correctif retours live n°1) : l'icône ouvre / ferme le panneau du volume (curseur + couper / activer) ; un clic
   // ailleurs ou Échap le ferme aussi. Plus d'ouverture au survol : c'est ce qui l'empêchait de se refermer.
   const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="Son et volume" aria-label="Son et volume" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? 'Couper' : 'Activer'}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}${padBtn()}${silentBtn()}</span></span>`;
+  // (version anglaise) langue : pastille FR | EN collée au son, même taille ; la langue active en blanc (usinage.css)
+  const ls = `<button class="icon lang-sw" title="${t('lang.title')}" aria-label="${t('lang.aria')}"><span class="ls-p" aria-hidden="true"><b${lang() === 'fr' ? ' class="on"' : ''}>FR</b><i>|</i><b${lang() === 'en' ? ' class="on"' : ''}>EN</b></span><span class="mm-l">${t('lang.label')}</span></button>`;
   // deux groupes : l'état du joueur (réserve, pièces, missions, série, pity) et l'identité (démo, son, profil). Sur
   // ordinateur ils se suivent sur une ligne ; au téléphone (`.me { display: contents }`) l'identité monte à côté du logo
   // et l'état prend toute la 2e rangée (style.css, lot A)
   if (!u) {
     // en ligne, tant que le serveur n'a pas répondu : « connexion… » (pas « Connexion Discord » à un joueur connecté)
     const login = s.mode !== 'online' ? '' : s.ready ? `<button class="btn-primary login">Se connecter</button>` : `<span class="conn" role="status">connexion…</span>`;
-    meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${snd}${login}</div>`;
+    meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${ls}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Vide les caches du jeu et recharge la dernière version (tu restes connecté)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Réparer et mettre à jour</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Mises à jour</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Tutoriel</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
+    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${ls}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Vide les caches du jeu et recharge la dernière version (tu restes connecté)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Réparer et mettre à jour</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Mises à jour</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Tutoriel</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
     tickPacks();
     navDots?.sync(); // (le menu du profil vient d'être refait : sa pastille « Mises à jour » aussi)
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
   meEl.querySelector('.demo')?.addEventListener('click', () => toast(DEMO_TXT, 'info'));
+  meEl.querySelector('.lang-sw')?.addEventListener('click', () => switchLang(lang() === 'fr' ? 'en' : 'fr'));
   const sndWrap = meEl.querySelector<HTMLElement>('.snd-wrap');
   const sndBtn = meEl.querySelector<HTMLElement>('.snd');
   sndBtn?.addEventListener('click', (e) => {
@@ -769,24 +798,12 @@ queueMicrotask(() => (navDots = installNavDots(backend, top, meEl, { route: () =
 function updateTitle() {
   const u = backend.state.user;
   const n = u ? liveRegen(u).balance : 0;
-  const t = `${n > 0 ? `(${n}) ` : ''}${TITLES[currentRoute] ?? TITLES['']}`;
-  if (document.title !== t) document.title = t;
+  const title = `${n > 0 ? `(${n}) ` : ''}${pageTitle(currentRoute)}`;
+  if (document.title !== title) document.title = title;
 }
-/** Titre de l'onglet du navigateur selon la page. */
-const TITLES: Record<string, string> = {
-  '': 'Bébou — boutique',
-  collection: 'Bébou — collection',
-  contrats: 'Bébou — contrats',
-  echanges: 'Bébou — échanges',
-  amis: 'Bébou — amis',
-  profil: 'Bébou — profil',
-  jeux: 'Bébou — jeux',
-  classement: 'Bébou — classement',
-  succes: 'Bébou — succès',
-  suggestions: 'Bébou — suggestions',
-  maj: 'Bébou — mises à jour',
-  tuto: 'Bébou — tutoriel',
-};
+/** Titre de l'onglet du navigateur selon la page (fr.ts / en.ts : `title.*`). */
+const TITLE_PAGES = new Set(['collection', 'contrats', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
+const pageTitle = (r: string) => t((TITLE_PAGES.has(r) ? `title.${r}` : 'title.shop') as MsgKey);
 
 /** Page du jeu : son élément et ses entrées / sorties (route()). */
 interface View {
@@ -925,6 +942,7 @@ async function boot() {
 
   const shop = createShopView(backend, shell, opening, (r) => (location.hash = `#/${r}`), getViewer);
   setUpdateBusy(() => shop.busy()); // (v1.0.12) la mise à jour forcée attend la fin d'une ouverture
+  langBusy = () => shop.busy(); // (version anglaise) et le changement de langue aussi
   missions = createMissions(backend, shell);
   wallet = createWallet(backend, shell);
   status = createStatus(backend, shell);
@@ -1123,6 +1141,23 @@ async function boot() {
     );
   }
   window.addEventListener('hashchange', route);
+  /**
+   * (version anglaise) nouvelle langue : en-tête, titre de l'onglet et pages refaits sans recharger. Les pages DOM déjà
+   * créées sont oubliées (recréées à leur prochaine visite, dans la nouvelle langue) ; celle affichée est recréée tout de
+   * suite. La boutique (3D) garde son instance.
+   */
+  onLang(() => {
+    meSig = '';
+    renderMe();
+    updateTitle();
+    for (const k of Object.keys(views)) {
+      if (k === '') continue;
+      if (k === current) views[k]!.leave();
+      delete views[k];
+      pending.delete(k as PageKey);
+    }
+    if (current !== '') route();
+  });
   // réseau revenu pendant qu'une page affichait l'échec : le message le dit
   window.addEventListener('online', () => {
     const m = waitEl.querySelector('.vw-msg');

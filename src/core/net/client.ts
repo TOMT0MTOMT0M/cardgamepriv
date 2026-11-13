@@ -74,6 +74,9 @@ export interface MeProfile {
   referralNoticeAt?: number;
   /** (11/11) animation d'ouverture choisie ; absente : la déchirure */
   openingStyle?: string;
+  /** (version anglaise) langue du compte ; `langSet` : choisie à la main (reprise sur un nouvel appareil) */
+  lang?: 'fr' | 'en';
+  langSet?: boolean;
 }
 
 /** (ouverture 07/11, convex/launch.ts) heure d'ouverture, dernière remise à zéro, code du club demandé à l'inscription */
@@ -851,6 +854,10 @@ class GameNetClient {
   /** (ouverture 07/11) visite guidée lancée : plus jamais rejouée sur ce compte */
   public async markGuideSeen() {
     if (this.client && this.sessionToken) await this.client.mutation(api.users.markGuideSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
+  }
+  /** (version anglaise) langue effective du joueur (push, messages privés Discord) ; `manual` : choisie par le joueur */
+  public async setLang(lang: 'fr' | 'en', manual: boolean) {
+    if (this.client && this.sessionToken) await this.client.mutation(api.users.setLang, { sessionToken: this.sessionToken, lang, manual }).catch(() => undefined);
   }
   /** (13/11) tour des nouveautés V2 lancé : plus jamais rejoué sur ce compte */
   public async markV2TourSeen() {
