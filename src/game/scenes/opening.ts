@@ -1861,6 +1861,45 @@ export function createOpeningScene(): OpeningScene {
   }
 
   /**
+   * (13/11, retours de Tom) « Direct 4★ » pour l'ÉVENTAIL (World Pack) aussi : avant, il gardait le défilement carte par
+   * carte. Toutes les cartes sous le seuil, de la carte en attente jusqu'à la première belle carte, se retournent
+   * ENSEMBLE à leur place dans l'éventail (cascade serrée) ; la belle carte suit avec sa révélation habituelle (pilotage
+   * auto). Aucune carte de rang ≥ seuil : l'éventail final, tout de suite.
+   */
+  function jumpFan() {
+    let k = cursor;
+    while (k < order.length && fastCard(order[k])) k++;
+    phase = 'busy';
+    queued = false;
+    kill();
+    if (k >= order.length) {
+      for (const si of order) slots[si].U.lit.value = 6;
+      finish(0);
+      return;
+    }
+    const lays = fanLayout();
+    const move = sideline(gsap.timeline());
+    const dE = DUR.emphatique() / 1000, dS = DUR.standard() / 1000, st = STAGGER.serre / 1000;
+    move.call(() => ctx.sfx.whoosh(dE, 0.06, false, EASE.glide), [], 0);
+    // la carte montrée avant (s'il y en a une) reprend sa place dans l'éventail
+    const from = cursor > 0 ? cursor - 1 : cursor;
+    for (let j = from; j < k; j++) {
+      const sl = slots[order[j]];
+      const l = lays[j];
+      sl.U.lit.value = 6;
+      move.to(sl.p, { x: l.x, y: l.y, z: l.z, s: l.s, rz: l.rz, flip: 0, holo: 1, duration: dE, ease: EASE.glide }, Math.max(0, j - cursor) * st);
+    }
+    move.to(S, { glow: 0, duration: dS }, 0);
+    cursor = k;
+    focusSlot = -1;
+    events.onJump?.(cursor, order.length);
+    move.call(() => {
+      phase = 'opened';
+      flushQueued();
+    }, [], dE + Math.max(0, k - from - 1) * st);
+  }
+
+  /**
    * Place de la j-ième carte déjà révélée (style pile). (Retours live 02) Quand l'interface occupe le bas de l'écran
    * (téléphone en portrait, ordinateur), la rangée passe EN HAUT, juste sous le compteur : avant, elle était collée au bas
    * de l'écran, sous les boutons « 4★ et + / Tout révéler / Tout passer ». La carte montrée passe devant elle.
@@ -3159,7 +3198,7 @@ export function createOpeningScene(): OpeningScene {
         const admired = performance.now() >= autoHoldUntil;
         // (retours live 02, anti-spoil) « 4★ et + » : TOUTES les cartes se retournent seules, et la scène s'arrête APRÈS
         // une belle carte (avant : elle s'arrêtait face cachée devant une 4★+, ce qui l'annonçait)
-        if (phase === 'opened' && !autoWait && auto.jump && !auto.reveal && style !== 'fan' && fastCard(cur)) jumpAhead();
+        if (phase === 'opened' && !autoWait && auto.jump && !auto.reveal && fastCard(cur)) (style === 'fan' ? jumpFan : jumpAhead)();
         else if (phase === 'opened' && !autoWait && (auto.reveal ? admired : auto.minRank > 0)) {
           if (style === 'fan') revealFan();
           else revealCurrent();

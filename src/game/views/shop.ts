@@ -136,6 +136,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   let secretExp: { replay?(): void } | null = null;
   /** cinématique d'invocation (6★ Yu-Gi-Oh) préparée pour ce booster : carte concernée + scène montée */
   let duel: { cardId: string; exp: { replay?(): void } | null } | null = null;
+  /** le morceau a-t-il une carte de rang ≥ HI_RANK (4★ ou mieux) ? */
+  const hasHi = (p: SealedPack) => p.cards.some((c) => rarity(c.rarity).rank >= HI_RANK);
   const newBatch = (req: PackRequest, total: number, current: SealedPack, hi: boolean, all: boolean): Batch => ({ req, total, done: [], current, hi, all, skipping: false, revealing: null, pending: null, queue: [] });
   /**
    * Départ d'une série (retours de Tom, 4 nov. : « plusieurs boosters d'un coup = temps d'attente ») : TOUS les
@@ -150,6 +152,24 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     pack = got;
     batch = newBatch(req, packs.length, got, hi, all);
     batch.queue = packs.slice(1);
+    // (13/11, retours de Tom) « Direct 4★ » déjà actif (« Encore ×10 ») : les premiers morceaux sans 4★ sont crédités
+    // tout de suite, sans être montrés ; la série démarre au premier qui en a une (aucun : au dernier, le meilleur)
+    if (hi && !all && packs.length > 1) {
+      let k = packs.findIndex(hasHi);
+      if (k < 0) k = packs.length - 1;
+      const b = batch;
+      for (let i = 0; i < k; i++) {
+        if (!(await credit(b, packs[i]))) {
+          b.pending = null; // il reste à montrer : son crédit sera retenté normalement
+          k = i;
+          break;
+        }
+      }
+      b.current = pack = packs[k];
+      b.queue = packs.slice(k + 1);
+      if (packs.length < n) toast(`Réserve : ${packs.length} booster${packs.length > 1 ? 's' : ''} sur ${n} ouverts.`, 'info');
+      return packs[k];
+    }
     if (packs.length < n) toast(`Réserve : ${packs.length} booster${packs.length > 1 ? 's' : ''} sur ${n} ouverts.`, 'info');
     return got;
   }
@@ -1097,7 +1117,82 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     batch.hi = !batch.hi;
     haptics.pulse(8);
     applyAuto();
+    // (13/11, retours de Tom) gros booster ×5 / ×10 : le morceau à l'écran n'a aucune 4★ → on ne le montre pas, on
+    // reprend directement au premier morceau qui en a une
+    if (batch.hi && !batch.all && batch.total > 1 && batch.current && !hasHi(batch.current) && !batch.skipping) void skipToHi(batch);
   });
+  /**
+   * (13/11, retours de Tom) « Direct 4★ » en série : les morceaux du gros booster SANS 4★ (ou mieux) sont crédités sans
+   * être montrés, la scène reprend au premier qui en a une ; plus aucun → le récap. `next` est le prochain morceau
+   * (pas encore crédité) ; renvoie celui à montrer, ou null (récap affiché, ou « Tout passer » a pris la main).
+   */
+  async function nextShown(b: Batch, next: SealedPack): Promise<SealedPack | null> {
+    while (b.hi && !b.all && !hasHi(next)) {
+      if (b.done.some((d) => d.id === next.id)) {
+        showSummary();
+        return null;
+      }
+      hint.hidden = false;
+      hintTxt.textContent = 'Direct 4★…';
+      b.current = next; // (« Tout passer » pendant ce temps le crédite avec le reste)
+      const ok = await credit(b, next);
+      if (batch !== b || b.skipping) return null;
+      b.current = null;
+      if (!ok) {
+        toast(pendingMsg(b.pending?.err), 'err');
+        showSummary();
+        return null;
+      }
+      if (b.done.length >= b.total) {
+        showSummary();
+        return null;
+      }
+      try {
+        next = b.queue.shift() ?? (await backend.preparePack(b.req));
+      } catch (e) {
+        toast(errMsg(e), 'err');
+        showSummary();
+        return null;
+      }
+      if (batch !== b || b.skipping) return null;
+    }
+    return next;
+  }
+  /** « Direct 4★ » touché pendant un morceau sans 4★ : il est arrêté, crédité, et la série saute au bon morceau */
+  async function skipToHi(b: Batch) {
+    const cur = b.current;
+    if (!cur) return;
+    stopMusicPreview();
+    opening.reset();
+    info.classList.remove('in');
+    mythicVeil.hidden = true;
+    hideFanBadges();
+    hint.hidden = false;
+    hintTxt.textContent = 'Direct 4★…';
+    if (b.revealing) await b.revealing;
+    if (batch !== b || b.skipping) return;
+    const ok = await credit(b, cur);
+    if (batch !== b || b.skipping) return;
+    b.current = null;
+    if (!ok) {
+      toast(pendingMsg(b.pending?.err), 'err');
+      return showSummary();
+    }
+    if (b.done.length >= b.total) return showSummary();
+    let next: SealedPack;
+    try {
+      next = b.queue.shift() ?? (await backend.preparePack(b.req));
+    } catch (e) {
+      toast(errMsg(e), 'err');
+      return showSummary();
+    }
+    if (batch !== b || b.skipping) return;
+    const n = await nextShown(b, next);
+    if (!n || batch !== b || b.skipping) return;
+    b.current = n;
+    pack = n;
+    start(n, true);
+  }
   skipReveal.addEventListener('click', () => {
     if (!batch || mode !== 'opening') return;
     batch.all = !batch.all;
@@ -1631,6 +1726,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         return showSummary();
       }
       if (batch !== b || b.skipping) return;
+      // (13/11) « Direct 4★ » : les morceaux suivants sans 4★ sont crédités sans être montrés
+      const shownNext = await nextShown(b, next);
+      if (!shownNext || batch !== b || b.skipping) return;
+      next = shownNext;
       // garde : jamais rejouer un booster déjà montré et compté
       if (b.done.some((d) => d.id === next.id)) return showSummary();
       b.current = next;
