@@ -272,6 +272,7 @@ interface OffThread {
 }
 type JobBody = ImageJob extends infer J ? (J extends { id: number } ? Omit<J, 'id'> : never) : never;
 let offP: Promise<OffThread | null> | null = null;
+let offRetried = false;
 function offThread(): Promise<OffThread | null> {
   return (offP ??= (async () => {
     // bouton de secours (mesure / diagnostic) : localStorage['bebou.noImgWorker'] = '1'
@@ -324,7 +325,13 @@ function offThread(): Promise<OffThread | null> {
     if (!pr?.ok) {
       dead = true;
       w.terminate();
-      console.info('[art] worker d’images indisponible ou trop lent : peinture sur le fil principal pour cette session');
+      // (audit 12/11, S15 / A2-11) première visite sur réseau lent : le fichier du worker n'était peut-être pas encore
+      // arrivé. UN nouvel essai, 10 s plus tard (avant : fil principal pour toute la session).
+      if (!offRetried) {
+        offRetried = true;
+        setTimeout(() => (offP = null), 10_000);
+      }
+      console.info('[art] worker d’images indisponible ou trop lent : peinture sur le fil principal pour l’instant');
       return null;
     }
     return {

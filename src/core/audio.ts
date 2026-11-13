@@ -335,7 +335,7 @@ export class Sfx {
   }
 
   // ─────────────────────────────────────────── musique (fichier) : bus à part, en boucle
-  private music: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+  private music: { src: AudioBufferSourceNode; gain: GainNode; url: string } | null = null;
   private musicBufs = new Map<string, Promise<AudioBuffer | null>>();
   /** charge et décode une musique (mise en cache) ; null si indisponible (pas de son, réseau, format) */
   loadMusic(url: string): Promise<AudioBuffer | null> {
@@ -382,7 +382,7 @@ export class Sfx {
     gain.gain.exponentialRampToValueAtTime(vol, t + Math.max(0.02, o.fade ?? 0.05));
     src.connect(gain).connect(this.master!);
     src.start(t);
-    this.music = { src, gain };
+    this.music = { src, gain, url };
     this.padSync(); // (la nappe des menus se tait sous une musique)
     // tant que la musique joue, le contexte ne se met pas en veille
     const keep = window.setInterval(() => (this.music?.src === src ? this.wake() : clearInterval(keep)), 4000);
@@ -392,6 +392,9 @@ export class Sfx {
     const m = this.music;
     if (!m || !this.ctx) return;
     this.music = null;
+    // (audit 12/11, S16 / A2-07) musique arrêtée : son tampon décodé (≈ 10 Mo pour 53 s) n'est plus gardé à vie ; la
+    // prochaine rencontre le recharge (fichier en cache) pendant l'ouverture du booster, comme la première fois
+    this.musicBufs.delete(m.url);
     queueMicrotask(() => this.padSync());
     const t = this.ctx.currentTime;
     m.gain.gain.cancelScheduledValues(t);

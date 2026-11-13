@@ -19,8 +19,14 @@ export default function piegePhoto(k: SceneCtx) {
   off.height = gh;
   const og = off.getContext('2d')!;
   const img = og.createImageData(gw, gh);
+  // (audit 12/11, S18 / A3-11) passé 2,1 s : la toile est vidée UNE fois, plus à chaque image jusqu'à la fin
+  let cleared = false;
   cv.loop((t) => {
-    if (t > 2.1) return cv.c.clearRect(0, 0, w, h);
+    if (t > 2.1) {
+      if (!cleared) cv.c.clearRect(0, 0, w, h);
+      cleared = true;
+      return;
+    }
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
       const v = Math.random() * 90;
@@ -49,9 +55,13 @@ export default function piegePhoto(k: SceneCtx) {
   const cross = el('div', '', `position:absolute;left:50%;top:50%;width:${u * 12}px;height:${u * 12}px;border:1px solid rgba(216,255,216,.55);border-radius:50%;`, hud);
   k.pin(cross);
   const hh = 2 + Math.floor(k.rand() * 3), mm = Math.floor(k.rand() * 60);
+  // (audit 12/11, S18 / A3-10) écrits seulement quand ils changent (10 fois et 2,5 fois par seconde, pas à chaque image)
+  let lastStamp = '', lastRec = '';
   k.loop((t) => {
-    stamp.textContent = `0${hh}:${String(mm).padStart(2, '0')}:${String(14 + Math.floor(t)).padStart(2, '0')}.${Math.floor(t * 10) % 10}`;
-    (rec.firstElementChild as HTMLElement).style.opacity = Math.floor(t * 2.5) % 2 ? '0.2' : '1';
+    const s = `0${hh}:${String(mm).padStart(2, '0')}:${String(14 + Math.floor(t)).padStart(2, '0')}.${Math.floor(t * 10) % 10}`;
+    if (s !== lastStamp) stamp.textContent = lastStamp = s;
+    const o = Math.floor(t * 2.5) % 2 ? '0.2' : '1';
+    if (o !== lastRec) (rec.firstElementChild as HTMLElement).style.opacity = lastRec = o;
   });
   k.at(0.02, () => sfx.ambience(amb, 2.6, 0.14));
   tl.fromTo(hud, { opacity: 0, scale: 1.06 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power3.out' }, 0);

@@ -451,7 +451,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   function renderTabs(mine: Map<string, PlayerCard>) {
     tabs.innerHTML = '';
     for (const t of ALL_THEMES) {
-      const n = t.cards.filter((c) => mine.has(c.id)).length;
+      // (audit 12/11, A4-03) compté sans tableau intermédiaire (≈ 37 000 cartes par rendu)
+      let n = 0;
+      for (const c of t.cards) if (mine.has(c.id)) n++;
       const on = (mode === 'albums' || mode === 'grid') && t === theme;
       const b = h('button', `tab${on ? ' on' : ''}${t.secret ? ' secret' : ''}${t.cards.length ? '' : ' soon'}`, `${esc(t.label)} <span>${t.cards.length ? `${fmtN(n)}/${fmtN(t.cards.length)}` : 'bientôt'}</span>`);
       b.addEventListener('click', () => {
@@ -497,14 +499,23 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const st = !inCards && subId ? subthemeById(subId) : null;
     const label = inCards ? (ct ? ct.label : 'au total') : st ? st.label : theme.label;
     const total = cards.length;
-    const have = cards.filter((c) => mine.has(c.id)).length;
-    const dups = cards.reduce((a, c) => a + Math.max(0, (mine.get(c.id)?.count ?? 0) - 1), 0);
+    // (audit 12/11, A4-03) UN passage sur les cartes (jusqu'à 37 000) au lieu de 14 : possédées, doublons, et par étoile
+    let have = 0, dups = 0;
+    const starTot = new Map<string, number>(), starHave = new Map<string, number>();
+    for (const c of cards) {
+      const m = mine.get(c.id);
+      starTot.set(c.rarity, (starTot.get(c.rarity) ?? 0) + 1);
+      if (!m) continue;
+      have++;
+      dups += Math.max(0, (m.count ?? 0) - 1);
+      starHave.set(c.rarity, (starHave.get(c.rarity) ?? 0) + 1);
+    }
     const pct = total ? (have / total) * 100 : 0;
     const per = (inCards ? ct?.secret : theme.secret)
       ? ''
       : STAR_ORDER.map((r) => {
-          const cs = cards.filter((c) => c.rarity === r);
-          const n = cs.filter((c) => mine.has(c.id)).length;
+          const cs = { length: starTot.get(r) ?? 0 };
+          const n = starHave.get(r) ?? 0;
           const full = cs.length > 0 && n === cs.length;
           return `<div class="ps${full ? ' done' : ''}" style="--rc:${rarity(r).hex};--rt:${rcText(r)}" title="${rarity(r).label}${full ? ' · toutes trouvées !' : ''}"><b>${rarity(r).rank + 1}★</b><span class="bar"><i data-w="${cs.length ? (n / cs.length) * 100 : 0}"></i></span><em>${fmtN(n)}/${fmtN(cs.length)}${full ? ' ✓' : ''}</em></div>`;
         }).join('');

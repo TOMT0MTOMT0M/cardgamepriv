@@ -179,6 +179,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       b.setAttribute('aria-selected', String(on));
     });
     for (const t of ['tableau', 'collection', 'activite', 'classement'] as Tab[]) q(`.p-${t}`).hidden = t !== tab;
+    if (tab === 'collection' && allStale) renderAllCards();
     requestAnimationFrame(markTabsOvf);
   }
   // onglets qui débordent à 360 px (« CLASSEMENT » coupé) : fondu au bord droit tant qu'il reste à voir (audit UX3-12)
@@ -795,7 +796,12 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   let allR = '';
   const allQ = q<HTMLInputElement>('.pf-all-q');
   const fold = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  // (audit 12/11, S14 / M-07) la grille « Toute la collection » (tri complet + 60 tuiles) n'est construite que si son
+  // onglet est affiché ; sinon elle est marquée à refaire et se construit à l'ouverture de l'onglet
+  let allStale = false;
   function renderAllCards() {
+    if (tab !== 'collection') return void (allStale = true);
+    allStale = false;
     const owned = ownedOf();
     const rEl = q('.pf-all-r');
     const ranks = [...new Set(owned.map((c) => c.rarity))].sort((a, b) => rarity(b).rank - rarity(a).rank);
