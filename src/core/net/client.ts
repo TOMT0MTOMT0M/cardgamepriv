@@ -7,6 +7,7 @@ import type { RarityId } from '../rarity';
 import type { MissionsState } from '../missions';
 import type { StreakState } from '../streak';
 import { INV_REBASE_ROWS, InvMirror } from './invDiff';
+import { clearInv, invKeyOf, loadInv, saveInv } from './invStore';
 
 const LS_SESSION_TOKEN = 'cardlab.session_token';
 /** page (hash compris) d'où l'on part se connecter : le serveur écrase le hash au retour de Discord */
@@ -506,6 +507,9 @@ class GameNetClient {
   private invUnsub: (() => void) | null = null;
   /** série d'abonnements en cours (une réponse d'une ancienne série est ignorée) */
   private invGen = 0;
+  private invSaveT: ReturnType<typeof setTimeout> | undefined = undefined;
+  /** date de la dernière lecture complète de la collection (celle de la copie, quand elle vient de l'appareil) */
+  private invFullAt = 0;
 
   private subscribeInventory(tokenArg: { sessionToken?: string }, resuming: boolean) {
     const client = this.client!;
@@ -522,9 +526,17 @@ class GameNetClient {
       this.inv = new InvMirror();
       this.invToken = tokenArg.sessionToken;
     }
+    // (audit 12/11, S15 / A6-07) copie gardée sur l'appareil (invStore.ts) : écrite 3 s après le dernier changement
+    const invKey = invKeyOf(tokenArg.sessionToken);
+    const keep = () => {
+      if (!tokenArg.sessionToken) return;
+      clearTimeout(this.invSaveT);
+      this.invSaveT = setTimeout(() => live() && this.inv.loaded && void saveInv(invKey, this.inv.dump(), this.invFullAt), 3000);
+    };
     const publish = () => {
       if (this.state.collection === this.inv.cards) return;
       this.state.collection = this.inv.cards as NetState['collection'];
+      keep();
       this.emit();
     };
     // repli : serveur sans le suivi par différence (pas encore redéployé) → l'ancien abonnement complet
@@ -566,14 +578,31 @@ class GameNetClient {
         (rows) => {
           if (!live()) return;
           this.inv.reset(rows ?? []);
+          this.invFullAt = Date.now();
           publish();
+          keep();
           follow(this.inv.since());
         },
         () => legacy(),
       );
     };
     if (resuming && this.inv.loaded) follow(this.inv.since());
-    else full();
+    else if (!tokenArg.sessionToken) full();
+    else {
+      // copie de cette session, de cette version, de moins de 24 h : on repart de sa révision au lieu de tout relire
+      const mirror = this.inv;
+      void loadInv(invKey).then(
+        (kept) => {
+          if (!live() || this.inv !== mirror || mirror.loaded) return;
+          if (!kept) return full();
+          mirror.reset(kept.rows);
+          this.invFullAt = kept.at; // (la copie garde la date de SA lecture complète : au plus 24 h sans tout relire)
+          publish();
+          follow(mirror.since());
+        },
+        () => live() && this.inv === mirror && !mirror.loaded && full(),
+      );
+    }
   }
 
   private subscribeMembers() {
@@ -769,6 +798,8 @@ class GameNetClient {
     this.state.user = null;
     this.state.collection = [];
     this.inv = new InvMirror();
+    clearTimeout(this.invSaveT);
+    void clearInv();
     this.state.sealedPack = null;
     this.setupSubscriptions();
     this.emit();

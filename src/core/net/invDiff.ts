@@ -77,6 +77,11 @@ export class InvMirror {
     return changed;
   }
 
+  /** lignes complètes (avec leur révision), pour la copie gardée sur l'appareil — à rendre à `reset` */
+  dump(): InvRow[] {
+    return [...this.rows.values()];
+  }
+
   /** révision à partir de laquelle suivre les changements */
   since(): number {
     return this.maxRev - INV_MARGIN_MS;

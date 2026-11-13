@@ -99,4 +99,20 @@ describe('collection par différence', () => {
     expect(m.apply({ rows: [], gone: [{ cardId: 'x', rarity: 'common', rev: 600 }] })).toBe(true);
     expect(m.cards).toEqual([]);
   });
+  // (audit 12/11, S15 / A6-07) copie gardée sur l'appareil : reprise par dump() → reset(), puis suivie depuis since()
+  test('une copie reprise de l\'appareil rattrape écritures et suppressions faites entre-temps', () => {
+    const row = (cardId: string, count: number, rev: number) => ({ cardId, rarity: 'common', count, bestMintNumber: 1, firstPulledAt: 0, rev });
+    const a = new InvMirror();
+    a.reset([row('x', 1, 100), row('y', 2, 200), row('z', 1, 300)]);
+    // dernière chose vue avant la fermeture : une suppression, plus récente que toutes les lignes
+    a.apply({ rows: [], gone: [{ cardId: 'z', rarity: 'common', rev: 400 }] });
+    const b = new InvMirror();
+    b.reset(JSON.parse(JSON.stringify(a.dump())));
+    expect(b.cards).toEqual(a.cards);
+    expect(b.since()).toBeLessThanOrEqual(a.since());
+    // pendant l'absence : y supprimée, x passée à 3, w gagnée ; le serveur renvoie tout ce qui suit since()
+    const d = { rows: [row('x', 3, 500), row('w', 1, 520)], gone: [{ cardId: 'z', rarity: 'common', rev: 400 }, { cardId: 'y', rarity: 'common', rev: 510 }] };
+    expect(b.apply(d)).toBe(true);
+    expect(Object.fromEntries(b.cards.map((c) => [c.cardId, c.count]))).toEqual({ x: 3, w: 1 });
+  });
 });

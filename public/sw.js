@@ -12,7 +12,7 @@
         moins d'appels à la fonction R2, jamais plus ; celles de « Tout télécharger » (bebou-garde-v1) d'abord ;
       - /models/* (Merveilles 3D, palier 3 du manifeste) : cache d'abord ;
       - /bake/*?v=… (déchirure simulée, versionnée) : cache d'abord ;
-      - la page /jeu/ : RÉSEAU d'abord (3 s max), copie locale en repli → un patch est vu tout de suite ; la requête
+      - la page /jeu/ : RÉSEAU d'abord (1,5 s max), copie locale en repli → un patch est vu tout de suite ; la requête
         réseau part pendant le réveil de ce fichier (Navigation Preload : `preloadResponse`, une seule requête) ;
       - /version.json, /precache.json, /sw.js, le labo, les requêtes partielles (Range) et tout le reste : jamais touchés
         (les autres PAGES, labo compris, ne font que reprendre la réponse du préchargement de navigation, sans rien garder).
@@ -29,17 +29,31 @@ const ART_MAX = 8000;
 const ART_GUESS = 60 * 1024; // (entrée rangée avant ce changement, sans poids noté)
 const KEEP = 'bebou-garde-v1'; // (V2) illustrations téléchargées pour jouer hors connexion (src/game/offline.ts)
 const SCOPE = new URL(self.registration.scope);
+// (audit 12/11, S15 / A1-04) 1,5 s au lieu de 3 : sur réseau très lent, la copie locale part plus tôt (écran blanc
+// raccourci) ; le patch est alors vu au lancement suivant, et la mise à jour forcée (maj.ts) reste le filet
+const PAGE_WAIT_MS = 1500;
 const PAGE = new URL('jeu/index.html', SCOPE).href;
+
+// (audit 12/11, S15 / A1-07) poignées de cache ouvertes une fois par vie du worker (une image /art en ouvrait jusqu'à 3)
+const opened = new Map();
+const openCache = (name) => {
+  let p = opened.get(name);
+  if (!p) {
+    p = caches.open(name);
+    opened.set(name, p);
+    p.catch(() => opened.delete(name));
+  }
+  return p;
+};
 
 const storable = (res, html) => res && res.ok && res.status === 200 && res.type === 'basic' && /text\/html/.test(res.headers.get('content-type') || '') === html;
 const stash = (name, key, res) =>
-  caches
-    .open(name)
+  openCache(name)
     .then((c) => c.put(key, res))
     .catch(() => {}); // (quota plein, stockage refusé : on continue sur le réseau)
 
 async function cacheFirst(name, req) {
-  const cache = await caches.open(name);
+  const cache = await openCache(name);
   const hit = await cache.match(req.url);
   if (hit) return hit;
   const res = await fetch(req);
@@ -53,7 +67,7 @@ async function cacheFirst(name, req) {
 /** (V2) « Tout télécharger » (src/game/offline.ts) range les illustrations de la collection dans KEEP, jamais élagué :
  *  servies de là d'abord, sinon le cache ordinaire (plafonné). */
 async function keepThen(name, req) {
-  const hit = await caches.open(KEEP).then((c) => c.match(req.url)).catch(() => undefined);
+  const hit = await openCache(KEEP).then((c) => c.match(req.url)).catch(() => undefined);
   return hit || cacheFirst(name, req);
 }
 
@@ -73,13 +87,15 @@ async function stashArt(key, res) {
 }
 
 let trimming = false;
-let sinceTrim = 0;
+// (A1-08) le navigateur arrête ce worker après ~30 s d'inactivité et ce compteur repart : parti de 59, le premier
+// rangement de chaque vie fait un ménage (avant : une session courte, < 60 images par vie, n'en faisait jamais)
+let sinceTrim = 59;
 async function trimArt() {
   if (trimming || ++sinceTrim < 60) return;
   trimming = true;
   sinceTrim = 0;
   try {
-    const cache = await caches.open(ART);
+    const cache = await openCache(ART);
     // (les plus anciennes d'abord : keys() et matchAll() rendent l'ordre d'insertion ; matchAll ne lit que les en-têtes)
     const [keys, all] = await Promise.all([cache.keys(), cache.matchAll()]);
     const bytes = all.map((r) => +(r.headers.get('x-bytes') || r.headers.get('content-length') || 0) || ART_GUESS);
@@ -104,19 +120,19 @@ async function trimArt() {
 
 async function pageNetworkFirst(req, preload) {
   // (preload : requête réseau déjà partie pendant le réveil du service worker — Navigation Preload ; `undefined` s'il
-  // n'y en a pas. On la consomme au lieu d'en refaire une : une seule requête. Elle ne s'annule pas : le délai de 3 s
+  // n'y en a pas. On la consomme au lieu d'en refaire une : une seule requête. Elle ne s'annule pas : le délai de 1,5 s
   // se fait donc par une course, et le signal ne sert qu'à la requête que nous aurions lancée nous-mêmes.)
   const ctl = new AbortController();
   const net = Promise.resolve(preload)
     .catch(() => undefined)
     .then((pre) => pre || fetch(req, { signal: ctl.signal }));
   net.catch(() => {}); // (si le délai l'emporte, l'échec tardif n'est pas une erreur non gérée)
-  const have = await caches.open(APP).then((c) => c.match(PAGE)).catch(() => undefined);
+  const have = await openCache(APP).then((c) => c.match(PAGE)).catch(() => undefined);
   // (pas de copie locale : rien à servir en repli → le réseau, sans délai imposé, comme sans service worker)
   let timer;
   try {
     const res = await (have
-      ? Promise.race([net, new Promise((_, no) => (timer = setTimeout(() => (ctl.abort(), no(new Error('lent'))), 3000)))])
+      ? Promise.race([net, new Promise((_, no) => (timer = setTimeout(() => (ctl.abort(), no(new Error('lent'))), PAGE_WAIT_MS)))])
       : net);
     clearTimeout(timer);
     // (la copie locale de la page est rangée par bundle.ts, APRÈS les fichiers qu'elle nomme : rangée ici dès la

@@ -102,12 +102,33 @@ async function fromCache(key: string): Promise<string | null> {
     return null;
   }
 }
+/** (audit 12/11, S15 / A2-04) tuiles gardées au plus : au-delà, les plus anciennement peintes sortent */
+const TILE_CACHE_MAX = 4000;
+let pruned = false;
+/**
+ * Ce cache n'avait ni plafond ni ménage : une illustration remplacée (nouvelle adresse `?v=`) ou un autre écran laissait
+ * son ancienne tuile pour toujours. Un ménage par session, à la première tuile rangée, quand le navigateur est libre.
+ */
+function pruneTiles(c: Cache) {
+  if (pruned) return;
+  pruned = true;
+  idle(() => {
+    void c
+      .keys()
+      .then(async (keys) => {
+        // (keys() rend l'ordre d'insertion : les plus anciennes d'abord)
+        for (let i = 0; i < keys.length - TILE_CACHE_MAX; i++) await c.delete(keys[i]);
+      })
+      .catch(() => undefined);
+  });
+}
 async function toCache(key: string, blob: Blob) {
   const url = cacheUrl(key);
   const c = url && (await cacheStore());
   if (!c || !url) return;
   try {
     await c.put(url, new Response(blob, { headers: { 'content-type': blob.type || 'image/webp' } }));
+    pruneTiles(c);
   } catch {
     /* quota plein : tant pis, on repeindra */
   }
