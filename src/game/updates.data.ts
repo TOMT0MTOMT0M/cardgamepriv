@@ -31,12 +31,21 @@ export const CARDS_TOKEN = '{CARTES}';
  * Annonce du moment : à la PROCHAINE visite (une seule fois par appareil), le jeu ouvre la page des mises à jour
  * (src/game/announce.ts). Changer cet identifiant à chaque nouvelle annonce qui mérite d'être montrée d'office.
  */
-export const ANNOUNCE_ID = 'patch-2026-11-08';
+export const ANNOUNCE_ID = 'v2-ce-soir-2026-11-13';
 
 export const UPDATES: UpdateMonth[] = [
   {
     month: 'Novembre 2026',
     entries: [
+      {
+        date: '13 nov.', title: 'La V2 arrive ce soir — et quelques corrections en attendant', tag: 'nouveau',
+        points: [
+          'La V2 : grosse mise à jour prévue ce soir, dans 2 à 3 heures. Ta collection, tes pièces et tes succès sont gardés, et 50 boosters sont offerts à tout le monde à la sortie.',
+          'Star Wars et The Mandalorian : Grogu, le Mandalorien, Cobb Vanth et Koska Reeves rejoignent l’album The Mandalorian.',
+          'Oner et ShowMaker passent 6★.',
+          'Nouvelles images : Iron Man recadré, 15 cartes The Walking Dead (les autres restent), Will Smith, Captain America, Soldat de l’Hiver, Scarlet Witch, Joey Tribbiani, Jeff Tuche, Rex, Ben 10, Boruto, Subaru, ZywOo, Vatira, Glutonny, Oner, ShowMaker, Dembélé, Fernando Alonso, Florent Manaudou, Roberto Carlos, Ballon d’Or, LaLiga, Zelda, Alan Wake II, PNL, Phil Collins, Idol et d’autres.',
+        ],
+      },
       {
         date: '12 nov.', title: 'Plus de 6★ en pleine illustration, nouvelles images et vrais taux des boosters', tag: 'amélioré',
         points: [

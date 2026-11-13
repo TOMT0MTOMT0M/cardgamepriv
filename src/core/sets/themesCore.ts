@@ -1,4 +1,4 @@
-import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11, RERATE_11_11 } from './curation';
+import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11, RERATE_11_11, RERATE_13_11, RESUB_13_11 } from './curation';
 import { artV } from '../artRev';
 /**
  * Registre des THÈMES — données pures, sans three.js : partagé par le client (boutique, collection, échanges) et par
@@ -376,12 +376,25 @@ function applyCuration() {
     const before = s.cards.length;
     const kept = s.cards.filter((c) => !purge.has(c.id));
     for (const c of kept) {
-      const r = RERATE_11_11[c.id] ?? RERATE_08_11[c.id];
+      const r = RERATE_13_11[c.id] ?? RERATE_11_11[c.id] ?? RERATE_08_11[c.id];
       if (r) c.rarity = r;
     }
     if (kept.length !== before) {
       s.cards.length = 0;
       s.cards.push(...kept);
+    }
+  }  // (13/11) cartes rangées dans un autre sous-thème que celui de l'Excel (RESUB_13_11 : Star Wars → The Mandalorian)
+  const byId = new Map(SUBTHEMES.map((s) => [s.id, s]));
+  for (const s of SUBTHEMES) {
+    const moving = s.cards.filter((c) => RESUB_13_11[c.id] && RESUB_13_11[c.id] !== s.id && byId.has(RESUB_13_11[c.id]!));
+    if (!moving.length) continue;
+    const keep = s.cards.filter((c) => !moving.includes(c));
+    s.cards.length = 0;
+    s.cards.push(...keep);
+    for (const c of moving) {
+      const to = byId.get(RESUB_13_11[c.id]!)!;
+      (c as { subthemeId: string }).subthemeId = to.id;
+      to.cards.push(c);
     }
   }
 }

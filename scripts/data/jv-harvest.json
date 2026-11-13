@@ -180,10 +180,9 @@
 },
 "jv-alan-wake-control-alan-wake-ii": {
 "art": "c",
-"file": "alan-wake-control--alan-wake-ii.jpg",
-"ok2": 1,
-"src": "wiki:Alan Wake 2",
-"t": 1793638624
+"file": "alan-wake-control--alan-wake-ii-r2611132242.jpg",
+"src": "reillustre:jv-alan-wake-control-alan-wake-ii.jpg",
+"t": 1794609745
 },
 "jv-alan-wake-control-control": {
 "art": "c",
@@ -19471,9 +19470,9 @@
 },
 "jv-summoners-war-zaiross-dragon-feu": {
 "art": "c",
-"file": "summoners-war--zaiross-dragon-feu.jpg",
-"src": "fill:piste:https://static.wikia.nocookie.net/summoners-war-sky-arena/images/3/3a/Zaiross_front.png/revision/latest?cb=2015051820060",
-"t": 1793914149
+"file": "summoners-war--zaiross-dragon-feu-r2611132242.jpg",
+"src": "reillustre:jv-summoners-war-zaiross-dragon-feu.jpg",
+"t": 1794609745
 },
 "jv-summoners-war-zeratu-chimere-tenebres": {
 "art": "c",
@@ -22743,11 +22742,10 @@
 "t": 1793638516
 },
 "jv-zelda-zelda": {
-"art": "i",
-"file": "zelda--zelda.png",
-"ok2": 1,
-"src": "wiki:zeldawiki.wiki:Princess Zelda",
-"t": 1793638492
+"art": "c",
+"file": "zelda--zelda-r2611132242.jpg",
+"src": "reillustre:jv-zelda-zelda.jpg",
+"t": 1794609745
 },
 "jv-zelda-zelda-ii-the-adventure-of-link": {
 "art": "c",
