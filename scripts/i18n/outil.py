@@ -111,6 +111,9 @@ def items(src):
                     lead = len(seg) - len(seg.lstrip()); trail = len(seg) - len(seg.rstrip())
                     out.append(dict(kind='G', start=base + pos + lead, end=base + pos + len(seg) - trail, text=seg.strip(), exprs=[], before=before, inner='concat', quote=L.quote))
                 if m.group(0) == '': break
+                for at in re.finditer(r"\b(%s)=\"([^\"]*)\"" % '|'.join(ATTRS), m.group(0)):
+                    if french(at.group(2)):
+                        out.append(dict(kind='A', start=base + m.start() + at.start(2), end=base + m.start() + at.end(2), text=at.group(2), exprs=[], before=before, inner='concat', quote=L.quote))
                 pos = m.end()
             continue
         # gabarit : texte plat (avec ${i}) + positions
@@ -143,6 +146,8 @@ def items(src):
             pos = m.end()
         add_seg(out, flat, pos, flat[pos:], exprs, src_pos, before)
     out.sort(key=lambda d: d['start'])
+    lines = src.split('\n')
+    out = [d for d in out if 'i18n-ok' not in lines[lineno(src, d['start']) - 1]]
     for k, d in enumerate(out):
         d['id'] = k + 1; d['line'] = lineno(src, d['start'])
     return out
@@ -336,13 +341,17 @@ def cmd_apply(f, mapf):
     # un texte DANS l'expression d'un autre (ex. `${x ? 'Ton parrain' : …}`) : celui du dehors l'emporte (paramètre explicite)
     edits = [e for e in edits if not any(o is not e and o[0] <= e[0] and e[1] <= o[1] for o in edits)]
     if okl:
+        # fin de ligne DANS un gabarit (texte affiché) : commentaire HTML ; sinon commentaire JS
+        tpls = [(L.start, L.end) for L in scan(src) if L.kind == 'tpl']
         ls = src.split('\n')
-        for ln in okl:
-            if 'i18n-ok' not in ls[ln - 1]: ls[ln - 1] += ' // i18n-ok'
-        new = '\n'.join(ls)
         delta = []  # (les positions des remplacements suivent l'ajout des commentaires)
         for ln in sorted(okl):
-            delta.append((sum(len(x) + 1 for x in src.split('\n')[:ln - 1]) + len(src.split('\n')[ln - 1]), len(' // i18n-ok')))
+            if 'i18n-ok' in ls[ln - 1]: continue
+            eol = sum(len(x) + 1 for x in ls[:ln - 1]) + len(ls[ln - 1])
+            mark = ' <!-- i18n-ok -->' if any(a < eol < b for a, b in tpls) else ' // i18n-ok'
+            ls[ln - 1] += mark
+            delta.append((eol, len(mark)))
+        new = '\n'.join(ls)
         def shift(p): return p + sum(dl for (at, dl) in delta if at <= p)
         edits = [(shift(a), shift(b), r) for (a, b, r) in edits]
         src = new

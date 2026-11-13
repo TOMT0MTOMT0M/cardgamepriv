@@ -103,7 +103,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
       <div class="seg chat-tabs" data-seg-key="chat-tabs" role="tablist"><button type="button" data-tab="general" role="tab" data-t="chat.general">${tr('chat.general')}<b class="badge" hidden></b></button><button type="button" data-tab="dms" role="tab" data-t="chat.dms">${tr('chat.dms')}<b class="badge" hidden></b></button></div>
     </header>
     <div class="chat-body">
-      <div class="chat-thread" role="log" aria-label="Messages" tabindex="-1"></div> // i18n-ok
+      <div class="chat-thread" role="log" aria-label="Messages" tabindex="-1"></div> <!-- i18n-ok -->
       <div class="chat-list" hidden></div>
       <button class="chat-jump" type="button" hidden></button>
       <div class="chat-picker" hidden></div>
@@ -114,7 +114,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
       <div class="chat-ctx" hidden></div>
       <div class="chat-row">
         <button class="chat-add" type="button" title="${tr('chat.showCardTitle')}" data-t-title="chat.showCardTitle" aria-label="${tr('chat.showCard')}" data-t-aria="chat.showCard">+</button>
-        <textarea class="chat-in" rows="1" maxlength="${CHAT_TEXT_MAX}" enterkeyhint="send" autocomplete="off" aria-label="Message"></textarea> // i18n-ok
+        <textarea class="chat-in" rows="1" maxlength="${CHAT_TEXT_MAX}" enterkeyhint="send" autocomplete="off" aria-label="Message"></textarea> <!-- i18n-ok -->
         <span class="chat-cnt" hidden></span>
         <button class="chat-send" type="button" aria-label="${tr('chat.send')}" data-t-aria="chat.send" disabled><i>→</i></button>
       </div>
@@ -255,7 +255,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const inbox = store.inbox;
     const peerId = view === 'dm' && dmCur ? dmPeer(dmCur, backend.state.user?.id ?? '') : null;
     const peer = peerId ? players().get(peerId) : null;
-    kickEl.innerHTML = view === 'general' ? 'Chat <i>/</i> ' + tr('chat.kGeneral') + '' : 'Chat <i>/</i> ' + tr('chat.kDms') + '';
+    kickEl.innerHTML = view === 'general' ? 'Chat <i>/</i> ' + tr('chat.kGeneral') + '' : 'Chat <i>/</i> ' + tr('chat.kDms') + ''; // i18n-ok (« Chat » pareil en anglais)
     titleEl.textContent = view === 'general' ? tr('chat.general') : view === 'dms' ? tr('chat.dms') : (peer?.name ?? nameOf(peerId ?? undefined));
     backBtn.hidden = view !== 'dm';
     const n = onlineCount();

@@ -76,7 +76,6 @@ export const en: PartOf<typeof fr> = {
   'pf.whatTo': 'What to customize',
   'pf.unlocked': { one: '{hint} · {n}/{total} unlocked', other: '{hint} · {n}/{total} unlocked' },
   'pf.unsaved': 'not saved',
-  'pf.cancel': 'Cancel',
   'pf.save': 'Save',
   'pf.badgeOrder': 'Badge order',
   'pf.after': 'After',

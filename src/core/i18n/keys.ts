@@ -14,6 +14,8 @@ import type { fr as p_game_views_picker } from './fr/game.views.picker';
 import type { fr as p_game_views_friends } from './fr/game.views.friends';
 import type { fr as p_game_chat } from './fr/game.chat';
 import type { fr as p_game_views_profile } from './fr/game.views.profile';
+import type { fr as p_game_views_collection } from './fr/game.views.collection';
+import type { fr as p_game_views_trades } from './fr/game.views.trades';
 // <imports>
 
 export type AllFr = typeof core &
@@ -28,5 +30,7 @@ export type AllFr = typeof core &
   typeof p_game_views_friends &
   typeof p_game_chat &
   typeof p_game_views_profile &
+  typeof p_game_views_collection &
+  typeof p_game_views_trades &
   // <parts>
   Record<never, never>;

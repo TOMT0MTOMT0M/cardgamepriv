@@ -250,7 +250,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     <div class="shop-home">
       <div class="shop-left">
         <div class="shop-title"><span class="kicker" data-t="shop.kicker">${tr('shop.kicker')}</span><h2 data-t="shop.pick">${tr('shop.pick')}</h2><p class="shop-hint"></p></div>
-        <div class="packs-row" role="listbox" aria-label="Boosters"></div> // i18n-ok
+        <div class="packs-row" role="listbox" aria-label="Boosters"></div> <!-- i18n-ok -->
       </div>
       <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary" data-t="shop.open">${tr('shop.open')}</button></div>
       <div class="tap-hint" hidden aria-hidden="true"><i class="th-dot"></i><span class="th-t"></span></div>

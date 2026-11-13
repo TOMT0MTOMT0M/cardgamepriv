@@ -195,7 +195,7 @@ top.innerHTML = `
   <a class="logo" href="#/">${tr('boot.logo')}<span>cartes</span></a>
   <nav aria-label="${tr('nav.aria')}">
     <a href="#/" data-r="">${tr('nav.shop')}</a>
-    <a href="#/collection" data-r="collection">Collection</a> // i18n-ok
+    <a href="#/collection" data-r="collection">Collection</a> <!-- i18n-ok -->
     <a href="#/echanges" data-r="echanges">${tr('nav.trades')}<b class="badge" hidden></b></a>
     <a href="#/jeux" data-r="jeux">${tr('nav.games')}</a>
     <a href="#/classement" data-r="classement">${tr('nav.ranking')}</a>
@@ -207,7 +207,7 @@ top.innerHTML = `
   <div class="nav-extra" role="group" aria-label="${tr('nav.extraAria')}">
     <a href="#/maj" data-r="maj" title="${tr('nav.updates')}" aria-label="${tr('nav.updates')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
     <a href="#/tuto" data-r="tuto" title="${tr('nav.tutorial')}" aria-label="${tr('nav.tutorial')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
-    <a href="#/suggestions" data-r="suggestions" title="Suggestions" aria-label="Suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><b class="badge sg-badge" hidden></b></a> // i18n-ok
+    <a href="#/suggestions" data-r="suggestions" title="Suggestions" aria-label="Suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><b class="badge sg-badge" hidden></b></a> <!-- i18n-ok -->
   </div>
   <div class="me"></div>`;
 // (retours live 6, C8) navigation à 7 onglets : Boutique · Collection · Échanges · Jeux · Classement · Succès · Amis.

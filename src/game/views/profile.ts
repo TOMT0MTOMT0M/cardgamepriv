@@ -81,7 +81,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       <div class="pf-head"></div>
       <div class="pf-cosm" hidden></div>
       <div class="pf-tabs" role="tablist">
-        <button role="tab" data-t="tableau" class="on">${tr('pf.board')}</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">${tr('pf.activity')}</button><button role="tab" data-t="classement">${tr('pf.ranking')}</button> // i18n-ok
+        <button role="tab" data-t="tableau" class="on">${tr('pf.board')}</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">${tr('pf.activity')}</button><button role="tab" data-t="classement">${tr('pf.ranking')}</button> <!-- i18n-ok -->
       </div>
       <div class="pf-pane p-tableau">
         <div class="pf-sec pf-case-sec">
@@ -101,7 +101,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         <div class="pf-keys"></div>
         <div class="pf-panels pf-stats">
           <section class="pf-panel pf-p-act" aria-label="${tr('pf.activity')}"></section>
-          <section class="pf-panel pf-p-coll" aria-label="Collection"></section> // i18n-ok
+          <section class="pf-panel pf-p-coll" aria-label="Collection"></section> <!-- i18n-ok -->
           <section class="pf-panel pf-p-rar" aria-label="${tr('pf.rarities')}"></section>
           <section class="pf-panel pf-p-th" aria-label="${tr('pf.universes')}"></section>
         </div>

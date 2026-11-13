@@ -398,4 +398,5 @@ export const fr = {
 
   // ───── src/game/views/status.ts ─────
   'st.day': 'Jour',
+  'pf.cancel': 'Annuler',
 } as const satisfies Record<string, string | { one?: string; other: string }>;

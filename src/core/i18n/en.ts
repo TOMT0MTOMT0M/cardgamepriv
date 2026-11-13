@@ -11,6 +11,8 @@ import { en as p_game_views_picker } from './en/game.views.picker';
 import { en as p_game_views_friends } from './en/game.views.friends';
 import { en as p_game_chat } from './en/game.chat';
 import { en as p_game_views_profile } from './en/game.views.profile';
+import { en as p_game_views_collection } from './en/game.views.collection';
+import { en as p_game_views_trades } from './en/game.views.trades';
 // <imports>
 
 export const en: Dict = {
@@ -26,6 +28,8 @@ export const en: Dict = {
   ...p_game_views_friends,
   ...p_game_chat,
   ...p_game_views_profile,
+  ...p_game_views_collection,
+  ...p_game_views_trades,
   // <parts>
 
   // ───── language (header switch) ─────
@@ -423,4 +427,5 @@ export const en: Dict = {
 
   // ───── src/game/views/status.ts ─────
   'st.day': 'Day',
+  'pf.cancel': 'Cancel',
 };

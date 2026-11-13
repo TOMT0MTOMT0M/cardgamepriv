@@ -48,7 +48,8 @@ export const fmtN = (n: number) => (lang() === 'fr' ? String(Math.round(n)).repl
 export const fmtDec = (n: number) => (lang() === 'fr' ? String(n).replace('.', ',') : String(n));
 
 /** Pourcentage à la française : « 9,3 % », « 42 % » (une décimale sous 10 %). */
-export const fmtPct = (p: number) => `${p > 0 && p < 10 ? p.toFixed(1).replace('.', ',') : Math.floor(p)}\u00a0%`;
+// (version anglaise) « 2,5 % » / « 2.5% »
+export const fmtPct = (p: number) => (lang() === 'fr' ? `${p > 0 && p < 10 ? p.toFixed(1).replace('.', ',') : Math.floor(p)}\u00a0%` : `${p > 0 && p < 10 ? p.toFixed(1) : Math.floor(p)}%`);
 
 /** Recherche sans accents ni majuscules : « pokemon » trouve « Pokémon », « hericendre » trouve « Héricendre ». */
 export const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();

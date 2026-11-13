@@ -75,7 +75,6 @@ export const fr = {
   'pf.whatTo': 'Que personnaliser',
   'pf.unlocked': { one: '{hint} · {n}/{total} débloqué', other: '{hint} · {n}/{total} débloqués' },
   'pf.unsaved': 'non enregistré',
-  'pf.cancel': 'Annuler',
   'pf.save': 'Enregistrer',
   'pf.badgeOrder': 'Ordre des badges',
   'pf.after': 'Après',

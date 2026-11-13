@@ -154,9 +154,21 @@ const per = [];
           continue;
         }
         // HTML : chaque texte entre balises, et les attributs lus (title, aria-label, placeholder, alt)
-        const parts = s.text.split(/<[^>]*>/);
-        for (const m of s.text.matchAll(/\b(?:title|aria-label|placeholder|alt|data-tip)="([^"]*)"/g)) parts.push(m[1]);
-        for (const p of parts) if (looksFrench(p.trim())) hits.push({ ...s, text: p.trim() });
+        // (ligne de chaque morceau : un gabarit peut couvrir plusieurs lignes, et `// i18n-ok` marque la ligne du texte)
+        const parts = [];
+        let at = 0;
+        for (const p of s.text.split(/<[^>]*>/)) {
+          const i = s.text.indexOf(p, at);
+          parts.push([p, i]);
+          at = i + p.length;
+        }
+        for (const m of s.text.matchAll(/\b(?:title|aria-label|placeholder|alt|data-tip)="([^"]*)"/g)) parts.push([m[1], m.index]);
+        for (const [p, i] of parts) {
+          if (!looksFrench(p.trim())) continue;
+          const line = s.line + (s.text.slice(0, i).match(/\n/g)?.length ?? 0);
+          if ((lines[line - 1] ?? '').includes('i18n-ok')) continue;
+          hits.push({ ...s, line, text: p.trim() });
+        }
       }
     }
     if (!hits.length) continue;
