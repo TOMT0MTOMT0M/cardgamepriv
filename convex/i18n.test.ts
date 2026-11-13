@@ -69,7 +69,7 @@ describe('version anglaise : règle de langue et dictionnaires', () => {
     expect(format(d, 'en', 'x.n' as never, { n: 0 })).toBe('0 cartes');
     installLang('en', en);
     expect(tr('title.shop')).toBe('Bébou — shop');
-    installLang('fr', fr);
+    installLang('fr', null);
     expect(tr('title.shop')).toBe('Bébou — boutique');
     expect(['é', 'e', 'f'].sort(compare)).toEqual(['e', 'é', 'f']);
   });
@@ -93,7 +93,7 @@ describe('version anglaise : erreurs à code (lot 4)', () => {
     installData(Object.fromEntries(Object.entries(enErrors).map(([k, v]) => [`err.${k}`, v])));
     expect(errText(m)).toBe('Price too high: 300 coins max for this star.');
     expect(errText('Ancien message sans code')).toBe('Ancien message sans code');
-    installLang('fr', fr);
+    installLang('fr', null);
   });
 });
 
@@ -143,7 +143,7 @@ describe('version anglaise : messages stockés (fil, pièces, notifications — 
     expect(renderMsg('f.pull', m.params, 'en', enMsgs)).toBe('Léa got Pikachu [Mythic #1234]!');
     expect(renderMsg('f.royaleTie', { players: 4, best: 9, names: ['A', 'B', 'C'] }, 'en', enMsgs)).toBe('4-player Battle Royale: tied at 9★ between A, B and C, the pot is split at random!');
     expect(renderMsg('c.shop', { n: 1 }, 'en', enMsgs)).toBe('Bought 1 booster');
-    installLang('fr', fr);
+    installLang('fr', null);
     installData({});
   });
   test('la migration reconnaît chaque modèle (les anciennes lignes retrouvent leur code)', () => {
