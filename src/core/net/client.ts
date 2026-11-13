@@ -9,6 +9,9 @@ import type { StreakState } from '../streak';
 import { INV_REBASE_ROWS, InvMirror } from './invDiff';
 import { clearInv, invKeyOf, loadInv, saveInv } from './invStore';
 
+/** réponse de `economy.state` */
+export type EcoRaw = NonNullable<(typeof api.economy.state)['_returnType']>;
+
 const LS_SESSION_TOKEN = 'cardlab.session_token';
 /** page (hash compris) d'où l'on part se connecter : le serveur écrase le hash au retour de Discord */
 const SS_RETURN_HASH = 'bebou.returnHash';
@@ -328,29 +331,64 @@ class GameNetClient {
 
     const tokenArg: { sessionToken?: string } = this.sessionToken ? { sessionToken: this.sessionToken } : {};
 
-    // 1. Current user profile & pack balance
-    this.unsubscribers.push(
-      this.client.onUpdate(api.users.me, tokenArg, (me) => {
-        const first = !this.state.connected;
-        this.state.connected = true;
-        this.serverUp();
-        // jeton gardé mais le serveur ne le reconnaît plus (session de 30 jours expirée, déconnexion ailleurs) :
-        // on l'oublie, on le dit, et on se réabonne sans lui
-        let expired = false;
-        if (!me && tokenArg.sessionToken && this.sessionToken === tokenArg.sessionToken) {
-          expired = true;
-          this.saveStoredToken(null);
-          this.state.authError = this.seasonChanged ? NEW_SEASON : SESSION_EXPIRED;
-          queueMicrotask(() => this.setupSubscriptions());
-        }
-        const before = this.userSig;
-        this.state.user = me ?? null;
-        this.userSig = userSig(this.state.user);
-        // (propre battement de cœur : le document utilisateur change, `nextDailyClaimAt` = maintenant quand la réserve est
-        // pleine, mais rien de ce qu'on affiche → état tenu à jour sans réveiller tout le jeu, audit PERF2-08)
-        if (first || expired || this.userSig !== before) this.emit();
-      }),
-    );
+    // 1. Le joueur, son économie et ses missions — (audit 12/11, E1-08) UNE requête (`session.get`) au lieu de trois
+    // abonnements qui lisaient le même document joueur et repartaient tous les trois à chaque écriture dessus.
+    // Serveur sans cette requête (pas encore redéployé) : les trois anciennes, comme avant.
+    const gen = ++this.subGen;
+    const live = () => gen === this.subGen;
+    const onMe = (me: (typeof api.users.me)['_returnType']) => {
+      const first = !this.state.connected;
+      this.state.connected = true;
+      this.serverUp();
+      // jeton gardé mais le serveur ne le reconnaît plus (session de 30 jours expirée, déconnexion ailleurs) :
+      // on l'oublie, on le dit, et on se réabonne sans lui
+      let expired = false;
+      if (!me && tokenArg.sessionToken && this.sessionToken === tokenArg.sessionToken) {
+        expired = true;
+        this.saveStoredToken(null);
+        this.state.authError = this.seasonChanged ? NEW_SEASON : SESSION_EXPIRED;
+        queueMicrotask(() => this.setupSubscriptions());
+      }
+      const before = this.userSig;
+      this.state.user = me ?? null;
+      this.userSig = userSig(this.state.user);
+      // (propre battement de cœur : le document utilisateur change, `nextDailyClaimAt` = maintenant quand la réserve est
+      // pleine, mais rien de ce qu'on affiche → état tenu à jour sans réveiller tout le jeu, audit PERF2-08)
+      if (first || expired || this.userSig !== before) this.emit();
+    };
+    const onMissions = (m: (typeof api.missions.mine)['_returnType']) => {
+      this.state.missions = (m as NetState['missions']) ?? null;
+      this.emit();
+    };
+    const onEco = (e: EcoRaw | null | undefined) => {
+      this.ecoRaw = e ?? null;
+      this.ecoKnown = true;
+      this.ecoCbs.forEach((cb) => cb(this.ecoRaw));
+    };
+    const hasToken = !!tokenArg.sessionToken;
+    const three = () => {
+      if (!live() || !this.client) return;
+      this.unsubscribers.push(this.client.onUpdate(api.users.me, tokenArg, onMe));
+      if (hasToken) this.unsubscribers.push(this.client.onUpdate(api.missions.mine, tokenArg, onMissions));
+      this.unsubscribers.push(this.client.onUpdate(api.economy.state, tokenArg, onEco));
+    };
+    {
+      const u = this.client.onUpdate(
+        api.session.get,
+        tokenArg,
+        (x) => {
+          if (!live()) return;
+          onMe(x?.me ?? null);
+          if (hasToken) onMissions(x?.missions ?? null);
+          onEco(x?.eco ?? null);
+        },
+        () => {
+          u();
+          three();
+        },
+      );
+      this.unsubscribers.push(u);
+    }
 
     // 2. Pre-rolled sealed booster (0ms tear/light-leak ready in RAM)
     this.unsubscribers.push(
@@ -391,14 +429,7 @@ class GameNetClient {
       }),
     );
 
-    // 6 bis. Missions du jour
-    if (this.sessionToken)
-      this.unsubscribers.push(
-        this.client.onUpdate(api.missions.mine, tokenArg, (m) => {
-          this.state.missions = (m as NetState['missions']) ?? null;
-          this.emit();
-        }),
-      );
+    // 6 bis. Missions du jour : arrivent avec `session.get` (voir 1.)
 
     // 6 quater. Amis (lot A2) : battement de cœur d'un ami = `lastSeenAt` gardé à jour SANS émettre (la page Amis relit
     // l'état toutes les 30 s) ; on n'émet que si une demande, un ami ou un statut en ligne / hors ligne change
@@ -499,6 +530,19 @@ class GameNetClient {
     if (sig === this.friendsSig) return;
     this.friendsSig = sig;
     this.emit();
+  }
+
+  /** série d'abonnements en cours (un repli demandé par une ancienne série est ignoré) */
+  private subGen = 0;
+  /** (audit 12/11, E1-08) économie reçue avec `session.get` (ou par `economy.state` en repli) */
+  private ecoRaw: EcoRaw | null = null;
+  private ecoKnown = false;
+  private ecoCbs = new Set<(e: EcoRaw | null) => void>();
+  /** Économie du joueur connecté (portefeuille, calendrier, missions de la semaine…), tenue à jour ; rend de quoi se désabonner. */
+  public watchEco(cb: (e: EcoRaw | null) => void): () => void {
+    this.ecoCbs.add(cb);
+    if (this.ecoKnown) cb(this.ecoRaw);
+    return () => void this.ecoCbs.delete(cb);
   }
 
   /** (V2 fluidité) copie locale de la collection, tenue par différence */

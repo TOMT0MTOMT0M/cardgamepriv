@@ -227,7 +227,16 @@ export default defineSchema({
     revealedAt: v.optional(v.number()),
   })
     .index('by_user_status', ['userId', 'status'])
-    .index('by_userId', ['userId']),
+    .index('by_userId', ['userId'])
+    // (audit 12/11, A8-08) les boosters encore scellés, sans parcourir la table (convex/migrations.ts)
+    .index('by_status', ['status']),
+
+  /**
+   * (audit 12/11, A8-08) tampon « déjà appliqué » des migrations relancées à chaque mise en ligne : la signature de
+   * leur entrée (étoiles du catalogue, liste des cartes supprimées), la date du dernier passage complet, et si les
+   * boosters scellés à ce moment-là étaient tous à jour (`clean`).
+   */
+  migStamps: defineTable({ key: v.string(), sig: v.string(), at: v.number(), clean: v.boolean() }).index('by_key', ['key']),
 
   /**
    * Player card collection (powers the 019-binder BatchedMesh & trading).
@@ -251,7 +260,9 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_card_rarity', ['userId', 'cardId', 'rarity'])
     .index('by_card_rarity', ['cardId', 'rarity'])
-    .index('by_user_rev', ['userId', 'rev']),
+    .index('by_user_rev', ['userId', 'rev'])
+    // (audit 12/11, A7-21) les cartes d'un joueur d'une étoile donnée (contrepartie d'un échange en un toucher)
+    .index('by_user_rarity', ['userId', 'rarity']),
 
   /**
    * (V2 fluidité) trace d'une ligne d'inventaire supprimée (dernier exemplaire donné, vendu, misé) : le client qui suit

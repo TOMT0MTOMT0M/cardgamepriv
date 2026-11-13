@@ -40,23 +40,21 @@ export function createOnlineEco(): EcoBackend {
     started = true;
     // (audit 12/11, A5-01) `net.watch` fige le jeton du moment : après une connexion par mot de passe (pas de
     // rechargement de page), l'abonnement posé sans jeton renvoyait `null` pour toujours → pièces et pastilles vides.
+    // (audit 12/11, E1-08) l'économie arrive maintenant avec le joueur et ses missions (`session.get`, une requête) :
+    // le client réseau la tient à jour et se réabonne lui-même au changement de jeton
     let epoch = net.tokenEpoch;
-    let unsub = () => {};
-    const sub = () => {
-      unsub();
-      unsub = net.watch(api.economy.state, {}, (s) => {
-        raw = s ?? null;
-        publish();
-      });
-    };
-    sub();
+    net.watchEco((s) => {
+      raw = s;
+      epoch = net.tokenEpoch;
+      publish();
+    });
     // la collection change (booster, échange, brûlage) : on recalcule les primes sans attendre le serveur
     net.onChange((st) => {
       if (net.tokenEpoch !== epoch) {
+        // connexion / déconnexion : plus rien de l'ancien compte en attendant la réponse du nouveau
         epoch = net.tokenEpoch;
         raw = null;
         publish();
-        sub();
       } else if (raw && st.collection !== rawColl) publish();
     });
   };

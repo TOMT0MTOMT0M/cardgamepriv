@@ -85,7 +85,11 @@ async function invRow(ctx: QueryCtx, userId: Id<'users'>, c: DealCard) {
 
 /** Mes doublons proposables d'une étoile (inventaire complet : seulement le mien, ou au toucher). */
 async function proposableOf(ctx: QueryCtx, u: Doc<'users'>, rarity?: RarityId, except?: Id<'trades'>): Promise<DealCard[]> {
-  const inv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
+  // (audit 12/11, A7-21) une étoile demandée : seules les lignes de cette étoile sont lues (avant : tout l'inventaire
+  // du joueur à chaque toucher, jusqu'à 1,2 Mo chez un grand collectionneur)
+  const inv = rarity
+    ? await ctx.db.query('inventory').withIndex('by_user_rarity', (q) => q.eq('userId', u._id).eq('rarity', rarity)).collect()
+    : await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
   const locked = await lockedCards(ctx, u._id, except);
   const g = guardOf(u);
   return inv

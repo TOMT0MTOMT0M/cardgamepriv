@@ -25,11 +25,14 @@ export const mine = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
     const user = await getUserByToken(ctx, sessionToken);
-    if (!user) return null;
-    const now = Date.now();
-    return { ...stateOf(user, now), resetAt: nextMissionReset(now) };
+    return user ? missionsView(user, Date.now()) : null;
   },
 });
+
+/** Ce que `missions.mine` renvoie d'un joueur (aussi dans `session.get`, audit 12/11 E1-08). */
+export function missionsView(user: Doc<'users'>, now: number) {
+  return { ...stateOf(user, now), resetAt: nextMissionReset(now) };
+}
 
 /** Appelé par les ouvertures, contrats et échanges : fait avancer les missions du jour. */
 export async function bumpMissions(ctx: MutationCtx, user: Doc<'users'>, ev: MissionEvent) {

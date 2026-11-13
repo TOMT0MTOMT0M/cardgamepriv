@@ -60,33 +60,35 @@ function calendarOf(u: Doc<'users'>, now: number) {
 }
 
 /** Tout ce que l'interface affiche de l'économie (portefeuille, calendrier, missions de la semaine, primes en attente). */
+export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
+  const econ = econOf(u);
+  // (perf 07/11) PLUS de lecture de l'inventaire ici : cette requête était ré-exécutée à chaque écriture sur le joueur
+  // (pièces, missions, battement de cœur) et relisait toute sa collection (2e poste de lecture de base du mois).
+  // Primes de complétion et succès sont recalculés par le client avec la collection qu'il a déjà (inventory.myCollection)
+  // et `achInput` (src/game/ecoOnline.ts) ; les mutations d'encaissement revérifient tout côté serveur.
+  const achInput = { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econ.burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 };
+  return {
+    achInput,
+    coins: coinsOf(u),
+    econ,
+    calendar: calendarOf(u, now),
+    weekly: { ...currentWeekly(u.weekly as WeeklyState | undefined, u._id, now), resetAt: nextWeekReset(now) },
+    // onglet resté ouvert sur l'ancien client : des valeurs sûres (le nouveau client recalcule les vraies)
+    completions: [] as Array<{ id: string; label: string; kind: string; size: number; reward: number }>,
+    achievements: { stats: achievementStats(statsFrom([], achInput), econ), claimable: [] as string[] },
+    isAdmin: !!u.isAdmin,
+    // (retours 06/11) modération des suggestions : nombre de nouvelles (pastille du menu)
+    isModerator: canModerate(u),
+    suggestionsNew: canModerate(u) ? (await ctx.db.query('suggestions').withIndex('by_status', (q) => q.eq('status', 'nouvelle')).take(99)).length : 0,
+    packShop: { price: PACK_PRICE, left: packBuysLeft(econ, missionDay(now)) },
+  };
+}
+
 export const state = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
     const u = await getUserByToken(ctx, sessionToken);
-    if (!u) return null;
-    const now = Date.now();
-    const econ = econOf(u);
-    // (perf 07/11) PLUS de lecture de l'inventaire ici : cette requête était ré-exécutée à chaque écriture sur le joueur
-    // (pièces, missions, battement de cœur) et relisait toute sa collection (2e poste de lecture de base du mois).
-    // Primes de complétion et succès sont recalculés par le client avec la collection qu'il a déjà (inventory.myCollection)
-    // et `achInput` (src/game/ecoOnline.ts) ; les mutations d'encaissement revérifient tout côté serveur.
-    const achInput = { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econ.burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 };
-    return {
-      achInput,
-      coins: coinsOf(u),
-      econ,
-      calendar: calendarOf(u, now),
-      weekly: { ...currentWeekly(u.weekly as WeeklyState | undefined, u._id, now), resetAt: nextWeekReset(now) },
-      // onglet resté ouvert sur l'ancien client : des valeurs sûres (le nouveau client recalcule les vraies)
-      completions: [] as Array<{ id: string; label: string; kind: string; size: number; reward: number }>,
-      achievements: { stats: achievementStats(statsFrom([], achInput), econ), claimable: [] as string[] },
-      isAdmin: !!u.isAdmin,
-      // (retours 06/11) modération des suggestions : nombre de nouvelles (pastille du menu)
-      isModerator: canModerate(u),
-      suggestionsNew: canModerate(u) ? (await ctx.db.query('suggestions').withIndex('by_status', (q) => q.eq('status', 'nouvelle')).take(99)).length : 0,
-      packShop: { price: PACK_PRICE, left: packBuysLeft(econ, missionDay(now)) },
-    };
+    return u ? await ecoView(ctx, u, Date.now()) : null;
   },
 });
 

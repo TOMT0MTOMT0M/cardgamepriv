@@ -212,11 +212,16 @@ export const saveRanks = internalMutation({
   handler: async (ctx, { rows, drop }) => {
     const now = Date.now();
     for (const id of drop) await ctx.db.delete(id);
+    // (audit 12/11, A8-03) le « Numéro un » ne peut changer que si une ligne a bougé en cartes différentes (ou a
+    // disparu) : sinon la table n'est pas relue en entier à chaque passage qui écrit
+    let moved = drop.length > 0;
     for (const { userId, row, sig, stats } of rows) {
       const old = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', userId)).first();
+      if (!old || (old.row as RankRow | undefined)?.uniques !== (row as RankRow).uniques) moved = true;
       if (old) await ctx.db.patch(old._id, { row, sig, stats, updatedAt: now });
       else await ctx.db.insert('rankRows', { userId, row, sig, stats, updatedAt: now });
     }
+    if (!moved) return { saved: rows.length, dropped: drop.length };
     // (retours live 6, C15) titre « Numéro un » : le premier en cartes différentes est marqué, définitivement
     let best: { userId: string; n: number } | null = null;
     for (const r of await ctx.db.query('rankRows').collect()) {

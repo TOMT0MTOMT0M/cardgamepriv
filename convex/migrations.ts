@@ -2,7 +2,8 @@ import { v } from 'convex/values';
 import { internalMutation } from './_generated/server';
 import { internal } from './_generated/api';
 import type { Doc } from './_generated/dataModel';
-import { catalogCard } from './cardsCatalog';
+import type { MutationCtx } from './_generated/server';
+import { CATALOG_CARDS, catalogCard } from './cardsCatalog';
 import type { RarityId } from './cardsCatalog';
 import { PURGED_CARD_IDS } from './purgedCards';
 import { isBigPull } from './feed';
@@ -23,11 +24,55 @@ import { markWishesReady, syncWishes } from './wishes';
  */
 const BATCH = 200;
 
+/**
+ * (audit 12/11, A8-08) TAMPON « DÉJÀ APPLIQUÉ ». resyncRarities et purgeCards relisaient TOUTE la table `inventory` à
+ * chaque mise en ligne (≈ 26 Mo chacune à 80 000 lignes), même quand rien n'avait changé. Elles sont sautées quand :
+ *  - leur entrée n'a pas changé depuis le dernier passage complet (signature des étoiles du catalogue / de la liste
+ *    des cartes supprimées) ;
+ *  - ET les boosters encore scellés au début de ce passage étaient tous à jour (`clean`). Un booster scellé garde les
+ *    étoiles et les cartes du jour de son tirage et les verse à l'inventaire à son ouverture : c'est le seul chemin
+ *    par lequel une ligne périmée peut arriver après un passage complet, et c'est pour lui que ces migrations étaient
+ *    relancées. Les boosters tirés ensuite le sont avec le catalogue en place.
+ * `force: true` : passage complet quoi qu'il arrive.
+ */
+const fnv = (parts: Iterable<string>): string => {
+  let h = 0x811c9dc5;
+  let n = 0;
+  for (const p of parts) {
+    for (let i = 0; i < p.length; i++) h = Math.imul(h ^ p.charCodeAt(i), 0x01000193) >>> 0;
+    h = Math.imul(h ^ 0x7c, 0x01000193) >>> 0;
+    n++;
+  }
+  return `${n}-${h.toString(36)}`;
+};
+let raritySig: string | null = null;
+const rarityStamp = () => (raritySig ??= fnv(CATALOG_CARDS.map((c) => `${c.id}:${c.baseRarity}`)));
+let purgeSig: string | null = null;
+const purgeStamp = () => (purgeSig ??= fnv(PURGED_CARD_IDS));
+export async function stampFresh(ctx: MutationCtx, key: string, sig: string): Promise<boolean> {
+  const st = await ctx.db.query('migStamps').withIndex('by_key', (q) => q.eq('key', key)).unique();
+  return !!st && st.sig === sig && st.clean;
+}
+/** Les boosters encore scellés (un par joueur au plus, en pratique) sont-ils tous conformes à `ok` ? */
+async function sealedAll(ctx: MutationCtx, ok: (c: { cardId: string; rarity: RarityId }) => boolean): Promise<boolean> {
+  const sealed = await ctx.db.query('packOpens').withIndex('by_status', (q) => q.eq('status', 'sealed')).take(301);
+  return sealed.length <= 300 && sealed.every((p) => p.cards.every((c) => ok(c)));
+}
+async function stampSet(ctx: MutationCtx, key: string, sig: string, at: number, clean: boolean) {
+  const st = await ctx.db.query('migStamps').withIndex('by_key', (q) => q.eq('key', key)).unique();
+  if (st) await ctx.db.patch(st._id, { sig, at, clean });
+  else await ctx.db.insert('migStamps', { key, sig, at, clean });
+}
+
 const truth = (cardId: string, r: RarityId): RarityId => catalogCard(cardId)?.baseRarity ?? r;
 
 export const resyncRarities = internalMutation({
-  args: { cursor: v.optional(v.union(v.string(), v.null())), fixed: v.optional(v.number()) },
-  handler: async (ctx, { cursor, fixed = 0 }) => {
+  args: { cursor: v.optional(v.union(v.string(), v.null())), fixed: v.optional(v.number()), startedAt: v.optional(v.number()), clean: v.optional(v.boolean()), force: v.optional(v.boolean()) },
+  handler: async (ctx, { cursor, fixed = 0, startedAt, clean, force }) => {
+    // (A8-08) premier appel : rien à faire si le catalogue n'a pas changé et qu'aucun vieux booster scellé ne traîne
+    if (cursor == null && !force && (await stampFresh(ctx, 'resyncRarities', rarityStamp()))) return { done: true, fixed: 0, skipped: true };
+    const began = startedAt ?? Date.now();
+    const wasClean = clean ?? (await sealedAll(ctx, (c) => truth(c.cardId, c.rarity) === c.rarity));
     const page = await ctx.db.query('inventory').paginate({ cursor: cursor ?? null, numItems: BATCH });
     const users = new Set<Doc<'users'>['_id']>();
     for (const row of page.page) {
@@ -66,9 +111,10 @@ export const resyncRarities = internalMutation({
       }
     }
     if (!page.isDone) {
-      await ctx.scheduler.runAfter(0, internal.migrations.resyncRarities, { cursor: page.continueCursor, fixed });
+      await ctx.scheduler.runAfter(0, internal.migrations.resyncRarities, { cursor: page.continueCursor, fixed, startedAt: began, clean: wasClean });
       return { done: false, fixed };
     }
+    await stampSet(ctx, 'resyncRarities', rarityStamp(), began, wasClean);
     return { done: true, fixed };
   },
 });
@@ -178,8 +224,12 @@ const PURGED = new Set(PURGED_CARD_IDS);
 const purged = (c: { cardId: string }) => PURGED.has(c.cardId);
 
 export const purgeCards = internalMutation({
-  args: { cursor: v.optional(v.union(v.string(), v.null())), removed: v.optional(v.number()) },
-  handler: async (ctx, { cursor, removed = 0 }) => {
+  args: { cursor: v.optional(v.union(v.string(), v.null())), removed: v.optional(v.number()), startedAt: v.optional(v.number()), clean: v.optional(v.boolean()), force: v.optional(v.boolean()) },
+  handler: async (ctx, { cursor, removed = 0, startedAt, clean, force }) => {
+    // (A8-08) même tampon : liste des cartes supprimées inchangée et aucun booster scellé d'avant le dernier passage
+    if (cursor == null && !force && (await stampFresh(ctx, 'purgeCards', purgeStamp()))) return { done: true, removed: 0, skipped: true };
+    const began = startedAt ?? Date.now();
+    const wasClean = clean ?? (await sealedAll(ctx, (c) => !PURGED.has(c.cardId)));
     const page = await ctx.db.query('inventory').paginate({ cursor: cursor ?? null, numItems: BATCH });
     const users = new Set<Doc<'users'>['_id']>();
     for (const row of page.page) {
@@ -199,9 +249,10 @@ export const purgeCards = internalMutation({
       }
     }
     if (!page.isDone) {
-      await ctx.scheduler.runAfter(0, internal.migrations.purgeCards, { cursor: page.continueCursor, removed });
+      await ctx.scheduler.runAfter(0, internal.migrations.purgeCards, { cursor: page.continueCursor, removed, startedAt: began, clean: wasClean });
       return { done: false, removed };
     }
+    await stampSet(ctx, 'purgeCards', purgeStamp(), began, wasClean);
     await ctx.scheduler.runAfter(0, internal.migrations.purgeCardsDeals, {});
     return { done: true, removed };
   },

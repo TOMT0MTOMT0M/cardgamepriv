@@ -1,5 +1,6 @@
 import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import type { Doc } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
 import { PACK_CAP, PACK_REGEN_MS, applyRegen } from '../src/core/packRegen';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakClaimable, touchStreak } from '../src/core/streak';
@@ -17,62 +18,64 @@ export const WISHLIST_MAX = 300;
 export const SEEN_EVERY_MS = 4 * 60 * 1000;
 const ONLINE_WINDOW_MS = 6 * 60 * 1000;
 
+/** Ce que `users.me` renvoie d'un joueur (aussi dans `session.get`, audit 12/11 E1-08). */
+export function meView(user: Doc<'users'>, now: number) {
+  // recharge : 1 booster / 5 min, 15 max (calcul paresseux, rien n'est écrit ici ; le client refait le calcul chaque seconde)
+  const packRegenAt = user.packRegenAt ?? user.lastSeenAt;
+  const regen = applyRegen(user.packBalance, packRegenAt, now, user.regenBoostUntil);
+
+  // (perf : plus de lecture de tout l'inventaire ici — cette requête est ré-exécutée à chaque battement de cœur et
+  // à chaque carte gagnée ; les compteurs « cartes uniques / au total » du HUD du labo viennent de myCollection)
+
+  return {
+    _id: user._id,
+    discordId: user.discordId,
+    username: user.username,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    packBalance: regen.balance,
+    /** réserve stockée + départ de la recharge : le client recalcule avec applyRegen() */
+    packStored: user.packBalance,
+    packRegenAt,
+    /** (ouverture 07/11) recharge ×2 jusqu'à cet instant (absent : pas de boost) */
+    boostUntil: user.regenBoostUntil && user.regenBoostUntil > now ? user.regenBoostUntil : undefined,
+    packCap: PACK_CAP,
+    packRegenMs: PACK_REGEN_MS,
+    nextPackAt: regen.nextAt,
+    totalPacksOpened: user.totalPacksOpened,
+    /** ancien « +2 toutes les 12 h » : remplacé par la recharge (gardé pour le HUD du labo) */
+    canClaimDaily: false,
+    // (audit 12/11, E1-10) réserve pleine : valeur stable (avant : `now`, donc un résultat différent à chaque ré-exécution)
+    nextDailyClaimAt: regen.nextAt ?? packRegenAt,
+    /** pity 6★ (src/core/pity.ts) */
+    pityCount: user.pityCount ?? 0,
+    wishlist: user.wishlist ?? [],
+    /** (refonte des échanges 11/11) cartes protégées : jamais proposées (convex/deals.ts) */
+    tradeProtected: user.tradeProtected ?? [],
+    /** série de connexion (src/core/streak.ts) — telle qu'enregistrée ; le client affiche aussi « aujourd'hui » via touchStreak */
+    streak: user.streak ?? null,
+    streakClaimable: streakClaimable(user.streak),
+    /** pochettes de sous-thème épinglées (vue Albums) */
+    covers: user.covers ?? {},
+    /** (ouverture 07/11) équipe (admin / modérateur) : passe le compte à rebours */
+    staff: !!(user.isAdmin || user.isModerator),
+    /** (V2, bulles) derniers événements Jeux / parrainage (pastilles de la navigation) */
+    gamesNoticeAt: user.gamesNoticeAt,
+    referralNoticeAt: user.referralNoticeAt,
+    /** compte pseudo (sans Discord) */
+    pwAccount: user.discordId.startsWith('pw:'),
+    /** (ouverture 07/11) visite guidée automatique déjà jouée */
+    guideSeen: !!user.guideSeenAt,
+    /** (11/11) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) ; absente : la déchirure */
+    openingStyle: user.cosmetics?.opening,
+  };
+}
+
 export const me = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
     const user = await getUserByToken(ctx, sessionToken);
-    if (!user) return null;
-
-    const now = Date.now();
-    // recharge : 1 booster / 5 min, 15 max (calcul paresseux, rien n'est écrit ici ; le client refait le calcul chaque seconde)
-    const packRegenAt = user.packRegenAt ?? user.lastSeenAt;
-    const regen = applyRegen(user.packBalance, packRegenAt, now, user.regenBoostUntil);
-
-    // (perf : plus de lecture de tout l'inventaire ici — cette requête est ré-exécutée à chaque battement de cœur et
-    // à chaque carte gagnée ; les compteurs « cartes uniques / au total » du HUD du labo viennent de myCollection)
-
-    return {
-      _id: user._id,
-      discordId: user.discordId,
-      username: user.username,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      packBalance: regen.balance,
-      /** réserve stockée + départ de la recharge : le client recalcule avec applyRegen() */
-      packStored: user.packBalance,
-      packRegenAt,
-      /** (ouverture 07/11) recharge ×2 jusqu'à cet instant (absent : pas de boost) */
-      boostUntil: user.regenBoostUntil && user.regenBoostUntil > now ? user.regenBoostUntil : undefined,
-      packCap: PACK_CAP,
-      packRegenMs: PACK_REGEN_MS,
-      nextPackAt: regen.nextAt,
-      totalPacksOpened: user.totalPacksOpened,
-      /** ancien « +2 toutes les 12 h » : remplacé par la recharge (gardé pour le HUD du labo) */
-      canClaimDaily: false,
-      // (audit 12/11, E1-10) réserve pleine : valeur stable (avant : `now`, donc un résultat différent à chaque ré-exécution)
-      nextDailyClaimAt: regen.nextAt ?? packRegenAt,
-      /** pity 6★ (src/core/pity.ts) */
-      pityCount: user.pityCount ?? 0,
-      wishlist: user.wishlist ?? [],
-      /** (refonte des échanges 11/11) cartes protégées : jamais proposées (convex/deals.ts) */
-      tradeProtected: user.tradeProtected ?? [],
-      /** série de connexion (src/core/streak.ts) — telle qu'enregistrée ; le client affiche aussi « aujourd'hui » via touchStreak */
-      streak: user.streak ?? null,
-      streakClaimable: streakClaimable(user.streak),
-      /** pochettes de sous-thème épinglées (vue Albums) */
-      covers: user.covers ?? {},
-      /** (ouverture 07/11) équipe (admin / modérateur) : passe le compte à rebours */
-      staff: !!(user.isAdmin || user.isModerator),
-      /** (V2, bulles) derniers événements Jeux / parrainage (pastilles de la navigation) */
-      gamesNoticeAt: user.gamesNoticeAt,
-      referralNoticeAt: user.referralNoticeAt,
-      /** compte pseudo (sans Discord) */
-      pwAccount: user.discordId.startsWith('pw:'),
-      /** (ouverture 07/11) visite guidée automatique déjà jouée */
-      guideSeen: !!user.guideSeenAt,
-      /** (11/11) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) ; absente : la déchirure */
-      openingStyle: user.cosmetics?.opening,
-    };
+    return user ? meView(user, Date.now()) : null;
   },
 });
 
