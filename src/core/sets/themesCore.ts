@@ -462,6 +462,7 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
   WORLD_SECRET_CHANCE = worldSecretChance();
   (BEBOU_PACK as { tagline: string }).tagline = bebouTagline();
   VIEWS = new WeakMap(); // (vues de sous-thèmes calculées avant : à refaire)
+  if (catLang) applyCatalogLang(); // (anglais déjà installé : les gros sets arrivent traduits)
   if (!opts.keepRaw) releaseRaw(big);
 }
 
@@ -578,3 +579,58 @@ export function thumbPath(e: CatalogEntry): string {
 
 // (version anglaise, lot 4) thème des messages stockés, relu dans la langue active
 msgRef('theme', (p) => { const id = str(p.themeId); return id ? themeById(id)?.label : undefined; });
+
+// ───── (version anglaise, lot 5) CATALOGUE DANS LA LANGUE ACTIVE ─────
+/**
+ * Noms anglais des cartes, sous-thèmes, groupes et types (src/core/sets/*.en.ts, générés par scripts/make-catalogue-en.py),
+ * installés par le jeu SEULEMENT en anglais (src/game/lang.ts). On réécrit les objets du catalogue sur place (`name`,
+ * `label`) et on garde le français à côté : tout ce qui lit le catalogue suit, et la recherche trouve les deux langues.
+ * Les identifiants ne changent jamais. Une carte sans nom anglais garde son nom.
+ */
+export interface CatalogLang {
+  /** id de carte → nom anglais */
+  cards: Record<string, string>;
+  /** id de sous-thème → libellé anglais */
+  subs: Record<string, string>;
+  /** id de groupe → libellé anglais */
+  groups: Record<string, string>;
+  /** type imprimé sur la carte (`CatalogEntry.label`, en français) → anglais */
+  types: Record<string, string>;
+}
+let catLang: CatalogLang | null = null;
+const FR_OF = new WeakMap<object, Record<string, string | undefined>>();
+const catHooks: Array<() => void> = [];
+/** (cardData, recherche…) refaire ce qui a copié un nom quand la langue du catalogue change */
+export const onCatalogLang = (fn: () => void) => void catHooks.push(fn);
+function swapField<T extends object>(o: T, field: keyof T & string, en: string | undefined) {
+  let fr = FR_OF.get(o);
+  if (!fr) FR_OF.set(o, (fr = {}));
+  if (!(field in fr)) {
+    if (en === undefined) return; // (jamais traduit : rien à faire)
+    fr[field] = (o as Record<string, unknown>)[field] as string | undefined;
+  }
+  (o as Record<string, unknown>)[field] = en ?? fr[field];
+}
+/** Nom français d'une carte (recherche dans les deux langues). */
+export const frNameOf = (e: CatalogEntry): string => FR_OF.get(e)?.name ?? e.name;
+/** Libellé français d'un sous-thème. */
+export const frLabelOf = (s: SubTheme): string => FR_OF.get(s)?.label ?? s.label;
+function applyCatalogLang() {
+  const L = catLang;
+  for (const e of BY_ID.values()) {
+    swapField(e, 'name', L?.cards[e.id]);
+    if (e.label) swapField(e, 'label', L ? L.types[FR_OF.get(e)?.label ?? e.label] : undefined);
+  }
+  for (const s of SUB_BY_ID.values()) {
+    swapField(s, 'label', L?.subs[s.id]);
+    if (s.group) swapField(s.group, 'label', L?.groups[s.group.id]);
+  }
+  VIEWS = new WeakMap();
+  for (const fn of catHooks) fn();
+}
+/** Installe (anglais) ou retire (français : `null`) les noms anglais du catalogue. */
+export function setCatalogLang(d: CatalogLang | null): void {
+  if (d === catLang) return;
+  catLang = d;
+  applyCatalogLang();
+}

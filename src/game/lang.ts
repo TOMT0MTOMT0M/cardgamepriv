@@ -11,6 +11,7 @@
  * La langue EFFECTIVE part au serveur à la connexion et à chaque changement (push et messages privés Discord).
  */
 import { installMsgs } from '../core/msgRefs';
+import { setCatalogLang, type CatalogLang } from '../core/sets/themes';
 import { LANG_STORAGE_KEY, installData, installLang, isLang, lang, langFromDevice, t, type Dict, type Lang } from '../core/i18n';
 
 export { lang, t };
@@ -47,7 +48,25 @@ let picked = forced !== null || manualPick;
 const listeners = new Set<(l: Lang) => void>();
 
 let enP: Promise<Dict | null> | null = null;
-const loadDict = (l: Lang): Promise<Dict | null> => (l === 'fr' ? Promise.resolve(null) : (enP ??= import('../core/i18n/en').then((m) => (installMsgs(m.enMsgs, (s) => m.parseMsg(s, 's.')), installData({ ...m.enData, ...Object.fromEntries(Object.entries(m.enErrors).map(([k, v]) => [`err.${k}`, v])) }), m.en), (e: unknown) => ((enP = null), Promise.reject(e)))));
+let catEn: CatalogLang | null = null;
+// (lot 5) le catalogue anglais (noms des cartes, sous-thèmes, types) arrive avec le dictionnaire, en parallèle
+const loadDict = (l: Lang): Promise<Dict | null> =>
+  l === 'fr'
+    ? Promise.resolve(null)
+    : (enP ??= Promise.all([import('../core/i18n/en'), import('../core/sets/catalog.en')]).then(
+        ([m, c]) => (
+          installMsgs(m.enMsgs, (s) => m.parseMsg(s, 's.')),
+          installData({ ...m.enData, ...Object.fromEntries(Object.entries(m.enErrors).map(([k, v]) => [`err.${k}`, v])) }),
+          (catEn = c.CATALOG_EN),
+          m.en
+        ),
+        (e: unknown) => ((enP = null), Promise.reject(e)),
+      ));
+/** Dictionnaire + catalogue dans la langue `l`. */
+function install(l: Lang, d: Dict | null) {
+  installLang(l, d);
+  setCatalogLang(l === 'en' ? catEn : null);
+}
 
 function applyDoc(l: Lang) {
   document.documentElement.lang = l;
@@ -58,7 +77,7 @@ export async function initLang(): Promise<void> {
   const want = forced ?? fromStorage() ?? fromDevice();
   if (want === 'en') {
     try {
-      installLang('en', await loadDict('en'));
+      install('en', await loadDict('en'));
     } catch (e) {
       console.warn('[jeu] dictionnaire anglais indisponible, le jeu reste en français', e);
     }
@@ -90,7 +109,7 @@ export async function setLang(l: Lang, manual = true): Promise<boolean> {
     console.warn('[jeu] changement de langue impossible', e);
     return false;
   }
-  installLang(l, d);
+  install(l, d);
   applyDoc(l);
   for (const fn of listeners) fn(l);
   return true;

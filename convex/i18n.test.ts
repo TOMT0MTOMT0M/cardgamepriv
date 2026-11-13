@@ -13,6 +13,9 @@ import { MSG_FR, type MsgTpl } from '../src/core/i18n/msgFr';
 import { enMsgs } from '../src/core/i18n/en/msgs';
 import { fm, parseMsg, renderMsg, statusText, type MsgParams } from '../src/core/msgs';
 import { msgIn } from './i18nServer';
+import { catalogEntry, frNameOf, setCatalogLang, subthemeById } from '../src/core/sets/themes';
+import { CATALOG_EN } from '../src/core/sets/catalog.en';
+import { searchCatalog } from '../src/core/cardSearch';
 import { errText, fe } from '../src/core/errors';
 import { installData } from '../src/core/i18n';
 import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS } from '../src/core/economy';
@@ -181,5 +184,24 @@ describe('version anglaise : messages stockés (fil, pièces, notifications — 
     expect(msgIn('en', fm('n.tradeOfferBody', { n: 1, m: 2 }))).toBe('1 card for 2: see Trades.');
     expect(msgIn('en', 'Texte libre')).toBe('Texte libre');
     expect(tr('title.shop' as never)).not.toBe(''); // (rien n'a fui : la langue active est restée le français)
+  });
+});
+
+describe('version anglaise : catalogue (lot 5)', () => {
+  test('noms anglais installés et retirés sur place ; la recherche trouve les deux langues ; ids intacts', () => {
+    const e = catalogEntry('pkm-bulbizarre')!;
+    expect(e.name).toBe('Bulbizarre');
+    setCatalogLang(CATALOG_EN);
+    expect(e.name).toBe('Bulbasaur');
+    expect(frNameOf(e)).toBe('Bulbizarre');
+    expect(searchCatalog('bulbasaur').some((x) => x.id === e.id)).toBe(true);
+    expect(searchCatalog('bulbizarre').some((x) => x.id === e.id)).toBe(true);
+    expect(subthemeById('pkm-unys')?.label).toBe('Unova');
+    setCatalogLang(null);
+    expect(e.name).toBe('Bulbizarre');
+    expect(subthemeById('pkm-unys')?.label).toBe('Unys');
+    // (chaque id anglais existe dans le catalogue)
+    for (const id of Object.keys(CATALOG_EN.cards)) expect(catalogEntry(id), id).toBeTruthy();
+    for (const id of Object.keys(CATALOG_EN.subs)) expect(subthemeById(id), id).toBeTruthy();
   });
 });

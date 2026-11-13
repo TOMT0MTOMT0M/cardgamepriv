@@ -10,7 +10,7 @@ import { VALORANT, VALORANT_INFO, valorantCardId, valorantClass, valorantFile } 
 import { LOL, LOL_INFO, lolCardId, lolFile, lolIsChampion } from './sets/lol';
 import { lolLine } from './sets/lolLines';
 import { CS, CS_INFO, csCardId, csClass, csFile } from './sets/cs';
-import { artPath, catalogEntry, hasArt, subthemeById } from './sets/themes';
+import { artPath, catalogEntry, hasArt, onCatalogLang, subthemeById } from './sets/themes';
 
 /** `image` = illustration bitmap (champ `image`), les autres sont peints procéduralement (art/subjects.ts). */
 export type SubjectKind = 'monolith' | 'moth' | 'sigil' | 'tower' | 'serpent' | 'bloom' | 'eye' | 'stag' | 'image' | 'jvtitle';
@@ -358,8 +358,26 @@ const indexed = new Set<CardSetId>();
 function indexSet(id: CardSetId) {
   if (indexed.has(id)) return;
   indexed.add(id);
-  for (const c of CARD_SETS[id].cards) CARD_BY_ID.set(c.id, c);
+  for (const c of CARD_SETS[id].cards) {
+    CARD_BY_ID.set(c.id, c);
+    LAB_IDS.add(c.id);
+    const e = catNameLang ? catalogEntry(c.id) : undefined;
+    if (e) c.name = e.name;
+  }
 }
+// (version anglaise, lot 5) cartes du labo : leur nom suit celui du catalogue ; cartes bâties depuis le catalogue : à refaire
+const LAB_IDS = new Set<string>();
+let catNameLang = false;
+onCatalogLang(() => {
+  catNameLang = true;
+  for (const [id, cd] of CARD_BY_ID) {
+    if (!LAB_IDS.has(id)) CARD_BY_ID.delete(id);
+    else {
+      const e = catalogEntry(id);
+      if (e) cd.name = e.name;
+    }
+  }
+});
 // (les ids ne se recoupent pas d'un set à l'autre : préfixes propres à chaque set)
 for (const id of Object.keys(CARD_SETS) as CardSetId[]) if (!LAZY_SETS.includes(id)) indexSet(id);
 /** Groupe du catalogue (`SubTheme.group.id`) → set du labo qui a sa propre version de la carte. */

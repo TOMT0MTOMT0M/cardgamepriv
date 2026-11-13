@@ -1,4 +1,4 @@
-import { ALL_THEMES, cardFamily, subthemeById, themeById, type CatalogEntry } from './sets/themesCore';
+import { ALL_THEMES, cardFamily, frLabelOf, frNameOf, onCatalogLang, subthemeById, themeById, type CatalogEntry } from './sets/themesCore';
 
 /**
  * RECHERCHE DE CARTES (v1.0.9, retours 09/11 — « faciliter les échanges ») : une seule règle pour la collection, le
@@ -25,14 +25,16 @@ export const searchFold = (s: string) =>
 const STAR_RANK: Record<string, number> = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5, mythic: 6, secret: 7 };
 
 const hayCache = new Map<string, { name: string; rest: string }>();
+onCatalogLang(() => hayCache.clear());
 function hay(e: CatalogEntry) {
   let h = hayCache.get(e.id);
   if (!h) {
     const st = subthemeById(e.subthemeId);
     const th = themeById(e.themeId);
     h = {
-      name: searchFold(e.name),
-      rest: searchFold([st?.label ?? '', st?.group?.label ?? '', st?.group?.id ?? '', st?.code ?? '', th?.label ?? '', th?.booster ?? '', e.artist ?? '', e.label ?? ''].join(' ')),
+      // (version anglaise, lot 5) les deux langues : « bulbizarre » et « bulbasaur » trouvent la même carte
+      name: searchFold(frNameOf(e) === e.name ? e.name : `${e.name} ${frNameOf(e)}`),
+      rest: searchFold([st?.label ?? '', st && frLabelOf(st) !== st.label ? frLabelOf(st) : '', st?.group?.label ?? '', st?.group?.id ?? '', st?.code ?? '', th?.label ?? '', th?.booster ?? '', e.artist ?? '', e.label ?? ''].join(' ')),
     };
     hayCache.set(e.id, h);
   }
