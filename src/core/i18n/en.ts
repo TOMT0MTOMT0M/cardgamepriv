@@ -34,6 +34,7 @@ import { en as p_game_survey } from './en/game.survey';
 import { en as p_game_views_defis } from './en/game.views.defis';
 import { en as p_game_views_presse } from './en/game.views.presse';
 import { en as p_game_views_showcaseEditor } from './en/game.views.showcaseEditor';
+import { en as p_game_views_atelier } from './en/game.views.atelier';
 import { en as p_game_localBackend } from './en/game.localBackend';
 import { en as p_game_chatLocal } from './en/game.chatLocal';
 import { en as p_game_ecoLocal } from './en/game.ecoLocal';
@@ -70,6 +71,7 @@ export const en: Dict = {
   ...p_game_views_defis,
   ...p_game_views_presse,
   ...p_game_views_showcaseEditor,
+  ...p_game_views_atelier,
   ...p_game_localBackend,
   ...p_game_chatLocal,
   ...p_game_ecoLocal,
@@ -495,6 +497,8 @@ export const en: Dict = {
   // ───── src/game/ui.ts (à la main) ─────
   'cos.kind.Cadre': 'Frame',
   'cos.kind.Vitrine': 'Showcase',
+  'cos.kind.Fond': 'Background',
+  'cos.kind.Style': 'Title lettering',
   'cos.kind.Bannière': 'Banner',
   'cos.kind.Badge': 'Badge',
   'cos.kind.Titre': 'Title',

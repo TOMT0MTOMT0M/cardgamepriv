@@ -422,6 +422,8 @@ export const fr = {
   // ───── src/game/ui.ts (à la main) ─────
   'cos.kind.Cadre': 'Cadre',
   'cos.kind.Vitrine': 'Vitrine',
+  'cos.kind.Fond': 'Fond',
+  'cos.kind.Style': 'Écriture du titre',
   'cos.kind.Bannière': 'Bannière',
   'cos.kind.Badge': 'Badge',
   'cos.kind.Titre': 'Titre',

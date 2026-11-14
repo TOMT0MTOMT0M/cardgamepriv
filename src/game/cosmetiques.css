@@ -1,0 +1,94 @@
+/*
+ * COSMÉTIQUES DU PROFIL (14/11, refonte de la personnalisation) — ce qui se voit d'un élément équipé, partout où un
+ * profil apparaît. Chargé par src/game/cosmeticArt.ts. Ici la couleur et l'effet sont permis : c'est l'univers du
+ * joueur (l'interface qui les présente — atelier.css — reste dans la direction « usinage »).
+ * Boucles d'ambiance : jetons `--amb-*` de src/core/motion.ts (AMBIANCE), jamais une durée en dur.
+ */
+
+/* ── polices des styles de titre : fichiers du site (latin), téléchargés seulement si le style est affiché ── */
+@font-face { font-family: 'Special Elite'; src: url('../core/fonts/titres/special-elite-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Silkscreen'; src: url('../core/fonts/titres/silkscreen-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Fredoka'; src: url('../core/fonts/titres/fredoka-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Barlow Condensed'; src: url('../core/fonts/titres/barlow-condensed-latin-800-italic.woff2') format('woff2'); font-weight: 800; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Tilt Neon'; src: url('../core/fonts/titres/tilt-neon-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Dela Gothic One'; src: url('../core/fonts/titres/dela-gothic-one-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Space Mono'; src: url('../core/fonts/titres/space-mono-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Cinzel'; src: url('../core/fonts/titres/cinzel-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+
+/* ── icônes au trait ── */
+.ic { flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.18em; }
+
+/* ── photo + cadre : `.cf` a la taille de la photo ; le dessin déborde autour (120 / 68 de la photo) ── */
+.cf { --fc: var(--pa, #ffffff); position: relative; display: inline-block; flex: none; border-radius: 50%; isolation: isolate; }
+.cf-ph { position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: #1a1a1a; }
+.cf-ph img, .cf-ph canvas { width: 100%; height: 100%; object-fit: cover; }
+.cf-svg { position: absolute; left: 50%; top: 50%; width: 176.47%; height: 176.47%; translate: -50% -50%; overflow: visible; pointer-events: none; }
+.cf-svg path { stroke-linecap: round; stroke-linejoin: round; }
+@keyframes cf-spin { to { rotate: 360deg; } }
+@keyframes cf-flick { 0%, 40%, 100% { opacity: 1; } 43% { opacity: 0.3; } 46% { opacity: 1; } 70% { opacity: 0.85; } 72% { opacity: 0.35; } 75% { opacity: 1; } }
+@keyframes cf-breath { 0%, 100% { scale: 1; } 50% { scale: 1.05; } }
+@keyframes cf-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -2.5px; } }
+@keyframes cf-tw { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.cf-spin { animation: cf-spin var(--amb-tour) linear infinite; }
+.cf-tick { animation: cf-spin var(--amb-cadran) steps(60) infinite; }
+.cf-flick { animation: cf-flick var(--amb-neon) linear infinite; }
+.cf-breath { animation: cf-breath var(--amb-souffle) ease-in-out infinite; }
+.cf-float { animation: cf-float var(--amb-flotte) ease-in-out infinite; }
+.cf-tw { animation: cf-tw var(--amb-scintille) ease-in-out infinite; }
+
+/* ── le titre, dans son style d'écriture (`.ts-<id>`, TITLE_STYLES) ; `--pa` = couleur du profil ── */
+/* couleurs par variables (`--t-col`, `--t-bd`) : une seule règle les applique, plus forte que l'ancienne teinte du titre (`.profile.has-accent .pf-title`) */
+.pf-title.ts { --tc: var(--pa, #ffffff); --t-col: #ffffff; --t-bd: transparent; display: inline-block; margin: 0; line-height: 1.25; white-space: nowrap; border: 1px solid; }
+.pf-title.ts, .profile.has-accent .pf-title.ts, .pf-tline .pf-title.ts { border-color: var(--t-bd); color: var(--t-col); }
+.pf-title.ts.ts-usine { padding: 3px 10px; border-radius: var(--r-pill); --t-bd: var(--tc); --t-col: var(--tc); font: 600 12px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
+.pf-title.ts.ts-capitales { padding: 3px 0 5px; border-width: 0; border-radius: 0; box-shadow: 0 1px 0 var(--tc); --t-col: #ffffff; font: 300 12px var(--mono); letter-spacing: 0.46em; text-transform: uppercase; }
+.pf-title.ts.ts-machine { padding: 2px 0; border-width: 0; border-radius: 0; box-shadow: 0 1px 0 rgba(239, 231, 210, 0.4); --t-col: #efe7d2; font: 400 15px 'Special Elite', ui-monospace, monospace; letter-spacing: 0.02em; text-transform: none; }
+.pf-title.ts.ts-pixel { padding: 2px 0; border-width: 0; border-radius: 0; --t-col: var(--tc); font: 400 13px 'Silkscreen', ui-monospace, monospace; letter-spacing: 0.02em; text-transform: uppercase; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.9); }
+.pf-title.ts.ts-bulle { padding: 2px 12px; border-width: 2px; --t-bd: #ffffff; border-radius: var(--r-pill); background: var(--tc); --t-col: #111111; font: 600 14px 'Fredoka', system-ui, sans-serif; letter-spacing: 0.01em; text-transform: none; }
+.pf-title.ts.ts-maillot { padding: 0 2px 0 20px; border-width: 0; border-radius: 0; background: linear-gradient(100deg, var(--tc) 0 7px, transparent 7px 10px, var(--tc) 10px 13px, transparent 13px); --t-col: #ffffff; font: italic 800 19px 'Barlow Condensed', system-ui, sans-serif; letter-spacing: 0.03em; text-transform: uppercase; }
+.pf-title.ts.ts-neon { padding: 2px 4px; border-width: 0; border-radius: 0; --t-col: #ffffff; font: 400 17px 'Tilt Neon', system-ui, sans-serif; letter-spacing: 0.04em; text-transform: none; text-shadow: 0 0 2px #ffffff, 0 0 9px var(--tc), 0 0 20px var(--tc); animation: cf-flick var(--amb-neon) linear infinite; }
+.pf-title.ts.ts-manga { padding: 2px 4px; border-width: 0; border-radius: 0; --t-col: #ffffff; font: 400 14px 'Dela Gothic One', system-ui, sans-serif; letter-spacing: 0; text-transform: none; text-shadow: 2px 2px 0 #000000, 3px 3px 0 var(--tc); transform: skew(-8deg) rotate(-3deg); }
+@keyframes ts-glitch { 0%, 46%, 54%, 100% { text-shadow: -1.5px 0 #ff2d6b, 1.5px 0 #2de2ff; translate: 0 0; } 48% { text-shadow: 3px 0 #ff2d6b, -3px 0 #2de2ff; translate: 1.5px 0; } 51% { text-shadow: -4px 0 #ff2d6b, 4px 0 #2de2ff; translate: -1.5px 0; } }
+.pf-title.ts.ts-glitch { padding: 2px 0; border-width: 0; border-radius: 0; --t-col: #ffffff; font: 700 13px 'Space Mono', ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: -1.5px 0 #ff2d6b, 1.5px 0 #2de2ff; animation: ts-glitch var(--amb-neon) linear infinite; }
+.pf-title.ts.ts-grave { padding: 4px 12px; border-width: 1px; --t-bd: #5c6066; border-radius: 3px; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 3px), linear-gradient(180deg, #d4d6d9, #8b8f95); --t-col: #1c1c1c; font: 700 11.5px 'Cinzel', Georgia, serif; letter-spacing: 0.2em; text-transform: uppercase; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55); }
+/* version LÉGÈRE (listes : classement, chat, amis) : la typo et la couleur, aucun effet ni mouvement */
+span.pf-title.ts.ts-light { --t-col: var(--tc); padding: 0; border-width: 0; background: none; box-shadow: none; text-shadow: none; transform: none; animation: none; font-size: 11.5px; }
+
+/* ── le plus d'un accord : éléments animés derrière la photo (accordFx) ── */
+.ac-fx { position: absolute; left: 50%; top: 50%; z-index: -1; width: 300px; height: 300px; margin: -150px 0 0 -150px; pointer-events: none; }
+.ac-fx i { position: absolute; display: block; }
+@keyframes ac-rise-a { 0% { translate: 0 0; opacity: 0; } 12% { opacity: 1; } 100% { translate: 14px -170px; opacity: 0; } }
+@keyframes ac-rise-b { 0% { translate: 0 0; opacity: 0; } 12% { opacity: 1; } 100% { translate: -12px -150px; opacity: 0; } }
+@keyframes ac-fall { 0% { translate: 0 -10px; rotate: 0deg; opacity: 0; } 10% { opacity: 1; } 100% { translate: 8px 210px; rotate: 320deg; opacity: 0; } }
+@keyframes ac-streak { 0% { translate: -70px -35px; opacity: 0; } 12% { opacity: 1; } 60% { opacity: 1; } 100% { translate: 210px 105px; opacity: 0; } }
+@keyframes ac-flash { 0%, 86%, 100% { opacity: 0; } 88% { opacity: 1; } 90% { opacity: 0.15; } 93% { opacity: 0.9; } 96% { opacity: 0; } }
+@keyframes ac-ripple { 0% { scale: 0.55; opacity: 0; } 20% { opacity: 0.7; } 100% { scale: 1.25; opacity: 0; } }
+@keyframes ac-burst { 0%, 100% { scale: 0.97; opacity: 0.45; } 50% { scale: 1.04; opacity: 0.9; } }
+@keyframes ac-scan { to { background-position: 0 8px; } }
+@keyframes ac-drift { from { translate: -14px 0; } to { translate: 14px 0; } }
+@keyframes ac-flick { 0%, 40%, 100% { opacity: 1; } 43% { opacity: 0.3; } 46% { opacity: 1; } 70% { opacity: 0.85; } 72% { opacity: 0.35; } 75% { opacity: 1; } }
+
+/* ── badges : une icône au trait à la place du glyphe ── */
+.pf-badge .ic { color: var(--ink-2); }
+
+/* ── page Profil : la photo et son cadre dessiné (remplace l'anneau en `box-shadow` et le calque `.pf-fx`) ── */
+.pf-ava-wrap .pf-ring.cf { display: block; width: 92px; height: 92px; margin: 14px 26px 14px 22px; }
+.pf-ava-wrap .cf-ph { font: 600 34px var(--title); color: #ffffff; }
+@media (max-width: 720px) { .pf-ava-wrap .pf-ring.cf { width: 64px; height: 64px; margin: 10px 18px 10px 14px; } .pf-ava-wrap .cf-ph { font-size: 26px; } }
+
+/* ── page Profil : le FOND (généré), derrière le haut du profil, qui s'efface vers le bas pour laisser les chiffres lisibles ── */
+.pf-wrap { position: relative; isolation: isolate; }
+.pf-bg { --bgc: var(--pa, #ffffff); position: absolute; left: 0; right: 0; top: 0; z-index: -1; height: min(760px, 100%); pointer-events: none; border-radius: var(--r-box); -webkit-mask-image: linear-gradient(180deg, #000 0, #000 46%, transparent 100%); mask-image: linear-gradient(180deg, #000 0, #000 46%, transparent 100%); }
+.pf-bg[hidden] { display: none; }
+.pf-accord { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font: var(--gm-label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--pa, var(--ink-2)); }
+
+/* ── classement : photo + cadre en version légère, dans la place de l'ancien avatar (l'ornement déborde peu) ── */
+.lb-ava-w { display: contents; }
+.cf.lb-ava { display: inline-block; overflow: visible; border: 0; background: none; box-shadow: none; scale: 0.8; }
+.cf.lb-ava .cf-ph { font: inherit; color: #ffffff; }
+.lb-name small .pf-title.ts-light { font-size: inherit; }
+
+/* ── vitrine « Galerie » (mur clair) : cases vides et consigne lisibles sur le clair ── */
+.pf-case[data-vit='galerie'] { color: #2a2a2a; }
+.pf-case[data-vit='galerie'] .pf-empty { border-color: rgba(0, 0, 0, 0.18); }
+.pf-case[data-vit='galerie'] .muted, .pf-case[data-vit='galerie'] .pf-case-empty { color: #3a3a3a; }
