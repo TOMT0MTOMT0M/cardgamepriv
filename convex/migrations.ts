@@ -11,6 +11,7 @@ import { dropInv, invRev } from './invRev';
 import { ensurePresence } from './presence';
 import { markWishesReady, syncWishes } from './wishes';
 import { parseMsg } from '../src/core/msgs';
+import { FAM_ROW } from '../src/core/wishFams';
 
 /**
  * RARETÉS — une seule source de vérité : le catalogue (src/core/sets/*).
@@ -361,7 +362,7 @@ export const backfillWishes = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())), written: v.optional(v.number()) },
   handler: async (ctx, { cursor, written = 0 }): Promise<{ done: boolean; written: number }> => {
     const page = await ctx.db.query('users').paginate({ cursor: cursor ?? null, numItems: 10 });
-    for (const u of page.page) written += await syncWishes(ctx, u._id, u.wishlist ?? []);
+    for (const u of page.page) written += await syncWishes(ctx, u._id, [...(u.wishlist ?? []), ...(u.wishFams ?? []).map((k) => FAM_ROW + k)]); // (v2.1) + ses familles voulues
     if (!page.isDone) {
       await ctx.scheduler.runAfter(0, internal.migrations.backfillWishes, { cursor: page.continueCursor, written });
       return { done: false, written };

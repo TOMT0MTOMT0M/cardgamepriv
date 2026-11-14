@@ -26,6 +26,11 @@ export const fr = {
   'fy.offered': 'Proposé',
   'fy.offer': 'Proposer',
   'fy.ready': { one: '{n} échange prêt · mis à jour {ago}', other: '{n} échanges prêts · mis à jour {ago}' },
+  'fy.pfDup': 'Ses doublons',
+  'fy.pfAll': 'Toutes ses cartes',
+  'fy.pfSearch': 'Chercher une carte…',
+  'fy.pfNone': 'Aucune carte à cette étoile.',
+  'fy.pfMore': { one: 'et {n} autre : affine avec la recherche', other: 'et {n} autres : affine avec la recherche' },
   'fy.online': 'en ligne',
   'fy.offline': 'hors ligne',
 } as const satisfies Record<string, string | { one?: string; other: string }>;

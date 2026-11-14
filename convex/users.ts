@@ -8,6 +8,7 @@ import { STREAK_REWARD, claimStreak as claimStreakState, streakClaimable, touchS
 import { catalogEntry } from '../src/core/sets/themes';
 import { presenceOf, syncPresence } from './presence';
 import { setWish } from './wishes';
+import { FAM_ROW, WISH_FAMS_MAX, famKeyValid } from '../src/core/wishFams';
 
 /** Taille maximale de la liste d'envies. */
 export const WISHLIST_MAX = 300;
@@ -51,6 +52,7 @@ export function meView(user: Doc<'users'>, now: number) {
     /** pity 6★ (src/core/pity.ts) */
     pityCount: user.pityCount ?? 0,
     wishlist: user.wishlist ?? [],
+    wishFams: user.wishFams ?? [],
     /** (refonte des échanges 11/11) cartes protégées : jamais proposées (convex/deals.ts) */
     tradeProtected: user.tradeProtected ?? [],
     /** série de connexion (src/core/streak.ts) — telle qu'enregistrée ; le client affiche aussi « aujourd'hui » via touchStreak */
@@ -116,6 +118,21 @@ export const toggleWish = mutation({
     if (next.length > WISHLIST_MAX) throw new ConvexError(fe('users.4', { p0: WISHLIST_MAX }));
     await ctx.db.patch(user._id, { wishlist: next });
     await setWish(ctx, user._id, cardId, next.includes(cardId)); // index inversé des envies (convex/wishes.ts)
+    return next;
+  },
+});
+
+/** (v2.1) Marque / retire une FAMILLE des envies (un album ou une famille d'albums) : une seule ligne. Renvoie la liste. */
+export const toggleWishFam = mutation({
+  args: { sessionToken: v.string(), key: v.string() },
+  handler: async (ctx, { sessionToken, key }) => {
+    const user = await requireUser(ctx, sessionToken);
+    if (!famKeyValid(key)) throw new ConvexError(fe('users.3'));
+    const list = user.wishFams ?? [];
+    const next = list.includes(key) ? list.filter((k) => k !== key) : [...list, key];
+    if (next.length > WISH_FAMS_MAX) throw new ConvexError(fe('users.4', { p0: WISH_FAMS_MAX }));
+    await ctx.db.patch(user._id, { wishFams: next });
+    await setWish(ctx, user._id, FAM_ROW + key, next.includes(key)); // même index inversé que les cartes
     return next;
   },
 });

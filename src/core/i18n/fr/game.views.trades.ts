@@ -11,6 +11,8 @@ export const fr = {
   'tr.fair.bitLess': 'Tu donnes un peu plus que tu ne reçois.',
   'tr.youGive': 'tu donnes',
   'tr.title': 'Marché',
+  'tr.askTag': 'à valider par {from}',
+  'tr.askSent': 'Contre-proposition envoyée à {from} : tu demandes {card}. L’échange se fera s’il accepte.',
   'tr.sell': 'Vendre',
   'tr.sellTrade': ' · Échanger',
   'tr.sellA': 'Vendre ou échanger',

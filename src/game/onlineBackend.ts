@@ -1,4 +1,6 @@
 import { deviceId, net, type NetState } from '../core/net/client';
+import { famCards } from '../core/wishFams';
+const RARITY_RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5 };
 import type { Id } from '../../convex/_generated/dataModel';
 import { BIG_PULL_RARITIES, EMPTY_MARKET, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
@@ -49,6 +51,7 @@ export function createOnlineBackend(): GameBackend {
     trades: { incoming: [], outgoing: [] },
     missions: null,
     wishlist: [],
+    wishFams: [],
     tradeProtected: [],
     binders: [],
     covers: {},
@@ -143,6 +146,7 @@ export function createOnlineBackend(): GameBackend {
       langUser = n.user ? { lang: n.user.lang, langSet: n.user.langSet } : null;
       syncLang();
       state.wishlist = n.user?.wishlist ?? [];
+      state.wishFams = n.user?.wishFams ?? [];
       state.tradeProtected = n.user?.tradeProtected ?? [];
       state.covers = n.user?.covers ?? {};
     }
@@ -270,7 +274,19 @@ export function createOnlineBackend(): GameBackend {
         .sort((x, y) => y.count - x.count)
         .slice(0, 600)
         .map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count }));
-      return await net.ask(api.deals.forYou, { give });
+      // (v2.1) cartes de mes familles voulues qui me manquent (60 au plus, les plus rares d'abord) : le jeu connaît ma
+      // collection, le serveur n'a rien à relire
+      let want: string[] | undefined;
+      if (state.wishFams.length) {
+        const have = new Set(net.state.collection.filter((c) => c.count > 0).map((c) => c.cardId));
+        want = state.wishFams
+          .flatMap((k) => famCards(k))
+          .filter((c) => !have.has(c.id))
+          .sort((a, b) => (RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0))
+          .slice(0, 60)
+          .map((c) => c.id);
+      }
+      return await net.ask(api.deals.forYou, want?.length ? { give, want } : { give });
     },
     async quickTrade(toId, get, give) {
       const r = await net.call(api.deals.quick, { toUserId: toId as Id<'users'>, get, give });
@@ -387,6 +403,10 @@ export function createOnlineBackend(): GameBackend {
     },
     async signContract(rarity, items) {
       return await net.signContract(rarity, items);
+    },
+    async toggleWishFam(key) {
+      state.wishFams = await net.toggleWishFam(key);
+      listeners.forEach((fn) => fn(state));
     },
     async toggleWish(cardId) {
       // réponse immédiate (la souscription `me` confirme juste après)

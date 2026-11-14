@@ -548,6 +548,30 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           load: async () =>
             (await backend.tradePickOptions(t.id)).map((o) => ({ cardId: o.cardId, rarity: o.rarity, on: o.cardId === it.cardId, tag: o.cardId === it.cardId ? tr('tr.proposed') : o.lacking ? 'te manque' : tr('tr.haveIt') })),
           empty: tr('tr.noOtherDup', { from: t.fromName, star }),
+          // (v2.0.8, retour de Hugo) tout choisir : n'importe quelle carte de l'autre joueur, par étoile — hors de ses
+          // doublons proposés, ce n'est plus un échange immédiat mais une contre-proposition qu'il valide
+          all: {
+            star: it.rarity,
+            askTag: tr('tr.askTag', { from: t.fromName }),
+            load: async () => {
+              const mine = new Set(backend.state.collection.filter((c) => c.count > 0).map((c) => c.cardId));
+              return (await backend.friendCollection(t.fromId))
+                .filter((c) => c.count > 0 && c.rarity !== 'secret')
+                .map((c) => ({ cardId: c.cardId, rarity: c.rarity, tag: mine.has(c.cardId) ? tr('tr.haveIt') : 'te manque' })); // i18n-ok
+            },
+            onAsk: async (c) => {
+              try {
+                await backend.counterTrade(t.id, t.requested, [{ cardId: c.cardId, rarity: c.rarity, count: 1 }]);
+                shell.sfx.chime(3, 0.08);
+                toast(tr('tr.askSent', { from: t.fromName, card: name(c.cardId) }), 'ok');
+                void loadHistory();
+                return true;
+              } catch (e) {
+                toast(errMsg(e), 'err');
+                return false;
+              }
+            },
+          },
           onPick: async (c) => {
             try {
               const res = await backend.acceptTradePick(t.id, c.cardId);

@@ -268,6 +268,8 @@ export const fr = {
   'shop.myNew': 'Mes nouvelles',
   'shop.myColl': 'Ma collection',
   'shop.credited': 'Booster crédité.',
+  'shop.toAlbum': 'Collection',
+  'shop.toAlbumT': 'Voir l’album {name} : ce qu’il te manque',
   'shop.cardSub2': '{pre}n°{n}\u00a0imprimé',
 
   // ───── src/game/views/shop.ts (à la main) ─────

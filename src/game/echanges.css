@@ -169,3 +169,11 @@
   .fy-card img, .fy-q { width: 84px; }
   .fy-pg { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* (v2.0.8, retour de Hugo) « Choisir autre chose » : filtres (ses doublons / toutes ses cartes, étoile, recherche) */
+.fy-pf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px 18px 0; }
+.fy-pf .fy-pf-q { flex: 1 1 160px; min-width: 0; }
+.fy-pf [hidden] { display: none; }
+.fy-pc.ask { border-style: dashed; }
+.fy-pc.ask em { color: var(--ink-2); }
+.fy-pf-more { grid-column: 1 / -1; }

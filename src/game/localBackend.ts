@@ -93,6 +93,7 @@ interface Saved {
   /** pity 6★ (src/core/pity.ts) */
   pity?: number;
   wishlist?: string[];
+  wishFams?: string[];
   /** (refonte des échanges 11/11) cartes protégées */
   tradeProtected?: string[];
   streak?: StreakState;
@@ -196,6 +197,7 @@ export function createLocalBackend(): GameBackend {
     trades: { incoming: [], outgoing: [] },
     missions: null,
     wishlist: [],
+    wishFams: [],
     tradeProtected: [],
     binders: [],
     covers: {},
@@ -242,6 +244,7 @@ export function createLocalBackend(): GameBackend {
       ...(save.opening && save.opening !== 'tear' ? { openingStyle: save.opening } : {}),
     };
     state.wishlist = save.wishlist ?? [];
+    state.wishFams = save.wishFams ?? [];
     state.tradeProtected = save.tradeProtected ?? [];
     state.binders = [...(save.binders ?? [])].sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
     state.covers = save.covers ?? {};
@@ -1163,6 +1166,11 @@ export function createLocalBackend(): GameBackend {
       const features = Object.fromEntries(SURVEY_FEATURES.map((o) => [o.id, a?.features.includes(o.id) ? 1 : 0]));
       const ratings = [1, 2, 3, 4, 5].map((n) => (a?.rating === n ? 1 : 0));
       return { surveyId: id, total: a ? 1 : 0, universes, features, ratings, texts: a && (a.names || a.comment) ? [{ author: tr('lb.meDemo'), names: a.names, comment: a.comment, rating: a.rating, createdAt: a.createdAt }] : [] };
+    },
+    async toggleWishFam(key) {
+      const list = save.wishFams ?? [];
+      save.wishFams = list.includes(key) ? list.filter((k) => k !== key) : [...list, key].slice(0, 10);
+      sync();
     },
     async toggleWish(cardId) {
       const list = save.wishlist ?? [];

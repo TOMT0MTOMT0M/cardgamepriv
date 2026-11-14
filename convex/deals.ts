@@ -28,7 +28,8 @@ import {
   type TheyWant,
 } from '../src/core/deals';
 import { seenAtAll, seenAtOf } from './presence';
-import { wishersOf, wishesReady } from './wishes';
+import { wishersOfCard, wishesReady } from './wishes';
+import { wantsCard } from '../src/core/wishFams';
 import { fm } from '../src/core/msgs';
 
 /**
@@ -161,11 +162,14 @@ export const cardPanel = query({
     const sold = soldStats(soldRows.map((m) => m.price));
     // qui la veut : par l'index des envies (avant : la liste d'envies de tous les joueurs)
     const wishers: Person[] = [];
-    if (lazy) for (const id of await wishersOf(ctx, cardId)) {
+    // (v2.1) + ceux qui veulent sa FAMILLE et ne l'ont pas encore (une lecture indexée par joueur concerné)
+    const base = catalogCard(cardId)!.baseRarity;
+    const lacks = async (p: Person) => (p.u.wishlist ?? []).includes(cardId) || ((await invRow(ctx, p.u._id, { cardId, rarity: base }))?.count ?? 0) < 1;
+    if (lazy) for (const id of await wishersOfCard(ctx, cardId)) {
       const p = await people.get(id);
-      if (p && (p.u.wishlist ?? []).includes(cardId)) wishers.push(p);
+      if (p && wantsCard(p.u.wishlist, p.u.wishFams, cardId) && (await lacks(p))) wishers.push(p);
     }
-    else wishers.push(...(await people.all()).filter((p) => (p.u.wishlist ?? []).includes(cardId)));
+    else for (const p of await people.all()) if (wantsCard(p.u.wishlist, p.u.wishFams, cardId) && (await lacks(p))) wishers.push(p);
     const wanters = wishers
       .filter((p) => p.u._id !== me?._id)
       .map((p) => ({ userId: p.u._id as string, name: p.u.displayName, avatarUrl: p.u.avatarUrl, online: p.online }))
@@ -186,8 +190,10 @@ export const forYou = query({
    * serveur ne relit plus toute ma collection (≈ 4 700 lignes) à chaque ouverture de la vue. Rien n'est cru sur parole :
    * ce ne sont que des suggestions, `quick` / `propose` revérifient l'inventaire réel. Sans `give` (client V1) : comme avant.
    */
-  args: { sessionToken: v.optional(v.string()), give: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() }))) },
-  handler: async (raw, { sessionToken, give }): Promise<ForYou> => {
+  // (v2.1) `want` : cartes de mes FAMILLES voulues qui me manquent, calculées par le jeu (il connaît ma collection) —
+  // traitées comme des envies de plus, après ma liste ; 60 au plus, simples suggestions revérifiées par `quick`.
+  args: { sessionToken: v.optional(v.string()), give: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() }))), want: v.optional(v.array(v.string())) },
+  handler: async (raw, { sessionToken, give, want }): Promise<ForYou> => {
     const { ctx, reads } = counting(raw);
     const now = Date.now();
     const me = await getUserByToken(ctx, sessionToken);
@@ -233,7 +239,8 @@ export const forYou = query({
 
     const deals: Deal[] = [];
     const wishes: string[] = [];
-    for (const id of me.wishlist ?? []) {
+    const famWant = (want ?? []).slice(0, DEALS_WISH_SCAN).filter((id) => wantsCard(undefined, me.wishFams, id));
+    for (const id of [...new Set([...(me.wishlist ?? []), ...famWant])]) {
       if (wishes.length >= DEALS_WISH_SCAN) break;
       const c = catalogCard(id);
       if (c && c.baseRarity !== 'secret' && gives.get(c.baseRarity)?.length && !(await iHave({ cardId: id, rarity: c.baseRarity }))) wishes.push(id);
@@ -270,11 +277,11 @@ export const forYou = query({
     const pairs: Array<{ p: Person; id: string }> = [];
     if (lazy) {
       for (const id of [...myProp.keys()].slice(0, THEY_WANT_SCAN))
-        for (const uid of await wishersOf(ctx, id)) {
+        for (const uid of await wishersOfCard(ctx, id)) {
           const p = await other(uid);
-          if (p && (p.u.wishlist ?? []).includes(id)) pairs.push({ p, id });
+          if (p && wantsCard(p.u.wishlist, p.u.wishFams, id)) pairs.push({ p, id });
         }
-    } else for (const p of await people.all()) if (p.u._id !== me._id) for (const id of p.u.wishlist ?? []) if (myProp.has(id)) pairs.push({ p, id });
+    } else for (const p of await people.all()) if (p.u._id !== me._id) for (const id of myProp.keys()) if (wantsCard(p.u.wishlist, p.u.wishFams, id)) pairs.push({ p, id });
     pairs.sort((a, b) => Number(b.p.online) - Number(a.p.online) || a.p.u._creationTime - b.p.u._creationTime || (a.p.u.wishlist ?? []).indexOf(a.id) - (b.p.u.wishlist ?? []).indexOf(b.id));
     for (const { p, id } of pairs) {
       if (theyWant.length >= THEY_WANT_MAX) break;

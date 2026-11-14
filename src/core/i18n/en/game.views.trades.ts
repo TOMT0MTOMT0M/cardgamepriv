@@ -12,6 +12,8 @@ export const en: PartOf<typeof fr> = {
   'tr.fair.bitLess': 'You give a bit more than you get.',
   'tr.youGive': 'you give',
   'tr.title': 'Market',
+  'tr.askTag': '{from} must approve',
+  'tr.askSent': 'Counter-offer sent to {from}: you’re asking for {card}. The trade goes through if they accept.',
   'tr.sell': 'Sell',
   'tr.sellTrade': ' · Trade',
   'tr.sellA': 'Sell or trade',

@@ -27,6 +27,11 @@ export const en: PartOf<typeof fr> = {
   'fy.offered': 'Offered',
   'fy.offer': 'Offer',
   'fy.ready': { one: '{n} trade ready · updated {ago}', other: '{n} trades ready · updated {ago}' },
+  'fy.pfDup': 'Their duplicates',
+  'fy.pfAll': 'All their cards',
+  'fy.pfSearch': 'Search a card…',
+  'fy.pfNone': 'No card with these stars.',
+  'fy.pfMore': { one: 'and {n} more: narrow it with the search', other: 'and {n} more: narrow it with the search' },
   'fy.online': 'online',
   'fy.offline': 'offline',
 };

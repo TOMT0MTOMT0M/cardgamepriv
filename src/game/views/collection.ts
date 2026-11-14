@@ -1,4 +1,5 @@
 import '../../core/i18n/fr/game.views.collection'; // (textes de ce module, version anglaise)
+import { WISH_FAMS_MAX, famCards, famKeyValid } from '../../core/wishFams';
 import { lang, locale, t as tr } from '../../core/i18n';
 import { collectionSig, lockedCards, type Binder, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
@@ -83,6 +84,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let cStar: RarityId | null = null;
   let cTheme = '';
   let cQuery = '';
+  /** (v2.0.7) vue Cartes : seulement mes doublons */
+  let cDups = false;
   /** album (sous-thème) ouvert */
   let subId: string | null = null;
   /**
@@ -135,7 +138,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     <div class="coll-head">
       <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="${tr('coll.viewAria')}"><button role="tab" data-v="cards">${tr('coll.cards')}</button><button role="tab" data-v="albums">${tr('coll.albums')}</button><button role="tab" data-v="binders">${tr('coll.binders')}</button><button role="tab" data-v="forge">${tr('coll.forge')}</button><button role="tab" data-v="contrats">${tr('coll.contracts')}</button></div></div>
       <div class="tabs"></div>
-      <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-name"></span></div>
+      <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-name"></span><button class="va crumb-wish" hidden></button></div>
       <div class="progress"></div>
     </div>
     <div class="albums" hidden>
@@ -157,6 +160,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     <div class="cards-bar" hidden>
       <div class="seg cb-theme" aria-label="${tr('coll.theme')}"></div>
       <div class="starf cb-stars"></div>
+      <button class="chip cb-dups" aria-pressed="false" title="${tr('coll.dupsT')}">${tr('coll.dups')}</button>
       <div class="seg cb-sort" aria-label="${tr('coll.sort')}"><button data-s="rarity">${tr('coll.rarity')}</button><button data-s="date">Date</button><button data-s="alpha">A → Z</button><button data-s="album">${tr('coll.byAlbum')}</button></div>
       <input class="search cb-search" type="search" placeholder="${tr('coll.searchAllPh')}" autocomplete="off" spellcheck="false" aria-label="${tr('coll.searchAllA')}">
     </div>
@@ -286,6 +290,65 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       filtersEl.classList.toggle('stuck', y > headEl.offsetTop + headEl.offsetHeight - 48);
     });
   }, { passive: true });
+  /**
+   * (v2.0.7, retour de Tom) MOLETTE = UNE RANGÉE : sur la grille des cartes, un cran de molette fait défiler exactement
+   * d'une rangée (carte + écart), d'un mouvement — plus de défilement libre « corrigé » ensuite par le cran. Pavé
+   * tactile (petits mouvements continus), Ctrl + molette et visionneuse ouverte : comportement normal.
+   */
+  /** (v2.1) envies affichées sur les tuiles : mes cartes voulues + les cartes qui me manquent dans mes familles voulues */
+  const wishSet = (): Set<string> => {
+    const s = new Set(backend.state.wishlist);
+    if (backend.state.wishFams.length) {
+      const mine = owned();
+      for (const k of backend.state.wishFams) for (const c of famCards(k)) if (!mine.has(c.id)) s.add(c.id);
+    }
+    return s;
+  };
+  let famKey: string | null = null;
+  q('.crumb-wish').addEventListener('click', async () => {
+    if (!famKey) return;
+    const wasOn = backend.state.wishFams.includes(famKey);
+    try {
+      await backend.toggleWishFam(famKey);
+      shell.sfx.tick(wasOn ? 0.9 : 1.3, 0.05);
+      toast(wasOn ? tr('coll.famWantOff') : tr('coll.famWantOn'), 'ok');
+      render();
+    } catch (err) {
+      toast(errMsg(err), 'err');
+    }
+  });
+  let wheelTo: number | null = null;
+  let wheelT = 0;
+  el.addEventListener('wheel', (e) => {
+    const first = grid.firstElementChild as HTMLElement | null;
+    if (e.ctrlKey || grid.hidden || !first?.classList.contains('tile') || el.classList.contains('viewing') || Math.abs(e.deltaY) < 40 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    if ((e.target as HTMLElement).closest?.('.binder-pick, .viewer-ui')) return;
+    const cs = getComputedStyle(el);
+    const pad = parseFloat(cs.scrollPaddingTop) || 0;
+    // pas d'une rangée = écart entre le haut de deux rangées (la rangée peut être plus haute que la carte)
+    let rowH = first.offsetHeight + (parseFloat(getComputedStyle(grid).rowGap) || 0);
+    for (let i = 1; i < Math.min(grid.children.length, 12); i++) {
+      const d = (grid.children[i] as HTMLElement).offsetTop - first.offsetTop;
+      if (d > 4) {
+        rowH = d;
+        break;
+      }
+    }
+    if (rowH < 40) return;
+    const max = el.scrollHeight - el.clientHeight;
+    const row0 = Math.max(0, grid.offsetTop - pad);
+    // crans : le haut de la page, puis chaque rangée calée sous la barre, puis le bas
+    const from = wheelTo ?? el.scrollTop;
+    const k = from < row0 - 2 ? -1 : Math.round((from - row0) / rowH);
+    const nk = k + (e.deltaY > 0 ? 1 : -1);
+    const to = Math.max(0, Math.min(max, nk < 0 ? 0 : row0 + nk * rowH));
+    e.preventDefault();
+    if (Math.abs(to - el.scrollTop) < 1) return;
+    wheelTo = to;
+    el.scrollTo({ top: to, behavior: 'smooth' });
+    clearTimeout(wheelT);
+    wheelT = window.setTimeout(() => (wheelTo = null), 450);
+  }, { passive: false });
   q('.crumb-back').addEventListener('click', () => {
     if (mode === 'binder') return goBinders();
     // niveau d'une famille → les familles du thème ; un album → sa famille (famId déjà posé) ou les familles
@@ -357,6 +420,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       sb.append(b);
     }
     el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => b.addEventListener('click', () => ((cSort = b.dataset.s as CardSort), (page = 0), render())));
+    q('.cb-dups').addEventListener('click', () => ((cDups = !cDups), (page = 0), render()));
     const inp = q<HTMLInputElement>('.cb-search');
     let t = 0;
     inp.addEventListener('input', () => {
@@ -832,7 +896,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     }
     const pages = Math.max(1, Math.ceil(list.length / PAGE));
     if (page >= pages) page = pages - 1;
-    const wish = new Set(backend.state.wishlist);
+    const wish = wishSet();
     const frag = document.createDocumentFragment();
     for (const e of list.slice(page * PAGE, (page + 1) * PAGE)) frag.append(tileFor(e, mine, wish));
     grid.replaceChildren(frag);
@@ -878,6 +942,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       cTheme = '';
       cStar = null;
       cQuery = '';
+      cDups = false;
       q<HTMLInputElement>('.cb-search').value = '';
     } else {
       if (filter === 'fresh') fresh.clear();
@@ -925,6 +990,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     q('.cb-theme').querySelectorAll<HTMLButtonElement>('button').forEach((b) => setOn(b, b.dataset.th === cTheme));
     q('.cb-stars').querySelectorAll<HTMLElement>('.chip').forEach((b) => setOn(b, b.dataset.r === cStar));
     el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => setOn(b, b.dataset.s === cSort));
+    q('.cb-dups').classList.toggle('on', cDups);
+    q('.cb-dups').setAttribute('aria-pressed', String(cDups));
     let list: CatalogEntry[] = [];
     for (const id of mine.keys()) {
       const e = catalogEntry(id);
@@ -932,6 +999,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       if (cTheme && e.themeId !== cTheme) continue;
       if (cStar && e.rarity !== cStar) continue;
       if (cQuery && !cardHit(e)) continue;
+      if (cDups && (mine.get(id)?.count ?? 0) < 2) continue;
       list.push(e);
     }
     const date = (e: CatalogEntry) => mine.get(e.id)?.firstPulledAt ?? 0;
@@ -940,7 +1008,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     else if (cSort === 'date') list.sort((a, b) => date(b) - date(a) || RANK[b.rarity] - RANK[a.rarity]);
     else if (cSort === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name, locale()));
     else list.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), locale()) || a.num - b.num);
-    const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${page}`;
+    const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${cDups}|${page}`;
     if (key !== lastKey) {
       if (lastKey) {
         grid.classList.remove('swap');
@@ -978,7 +1046,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const searching = cQuery.length >= 2 || /^\d+$/.test(cQuery);
     const cat = searching && page >= pages - 1 ? catalogMatches(mine) : null;
     if (cat?.list.length) {
-      const wish = new Set(backend.state.wishlist);
+      const wish = wishSet();
       frag.append(h('h4', 'cards-sub cards-cat', `${tr('coll.inCatalog')}<small>${cat.more ? tr('coll.firstOf', { n: fmtN(CATALOG_CAP), total: fmtN(CATALOG_CAP + cat.more) }) : plural(cat.list.length, 'carte')}</small>`));
       let lastCat = '';
       for (const e of cat.list) {
@@ -1385,6 +1453,18 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       // le nom est déjà le grand titre du classeur : pas de doublon dans le fil d'Ariane (audit UX3-15)
       q('.crumb-name').textContent = '';
     }
+    // (v2.1) « Je veux l'album » / « Je veux la famille » : une seule envie pour toutes les cartes qui manquent
+    famKey = inAlbums && famId && !albumQuery ? `g:${famId}` : inGrid && subId && !theme.secret ? `s:${subId}` : null;
+    const wb = q<HTMLButtonElement>('.crumb-wish');
+    wb.hidden = !famKey || !backend.state.user || !famKeyValid(famKey);
+    if (!wb.hidden && famKey) {
+      const on = backend.state.wishFams.includes(famKey);
+      const grp = famKey.startsWith('g:');
+      wb.classList.toggle('on', on);
+      wb.setAttribute('aria-pressed', String(on));
+      wb.innerHTML = `♥ <span>${on ? tr(grp ? 'coll.famWanted' : 'coll.albumWanted') : tr(grp ? 'coll.famWant' : 'coll.albumWant')}</span>`;
+      wb.title = tr('coll.famWantT', { n: WISH_FAMS_MAX });
+    }
     for (const row of [tabs]) {
       const on = row.querySelector<HTMLElement>('.on');
       if (on && row.scrollWidth > row.clientWidth) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.clientWidth) / 2;
@@ -1625,7 +1705,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let viewerDirty = false;
   backend.onChange((st) => {
     // (+ exemplaires engagés : la forge et son compteur en dépendent)
-    const now = `${collectionSig(st)}|${st.wishlist.length}|${JSON.stringify(st.binders)}|${JSON.stringify(st.covers)}|${JSON.stringify([...lockedCards(st)])}|${st.ready}`;
+    const now = `${collectionSig(st)}|${st.wishlist.length}|${st.wishFams.join(',')}|${JSON.stringify(st.binders)}|${JSON.stringify(st.covers)}|${JSON.stringify([...lockedCards(st)])}|${st.ready}`;
     if (now === sig) return;
     sig = now;
     if (el.isConnected && !open) render();
