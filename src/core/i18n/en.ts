@@ -172,7 +172,7 @@ export const en: Dict = {
   'hdr.seeProfile': 'See my profile',
   'hdr.repairTitle': 'Clears the game caches and reloads the latest version (you stay logged in)',
   'hdr.repair': 'Repair and update',
-  'hdr.boardNews': 'Something new on the offer board (offer or counter-offer) → Market, Sell · Trade',
+  'hdr.boardNews': 'Something new on the offer board (offer or counter-offer) → Market, For you',
   'hdr.tradeOffer': '{name} is offering you a trade → Market',
   'hdr.aFriend': 'A friend',
   'hdr.missionsReady': 'Missions: {n} to claim',

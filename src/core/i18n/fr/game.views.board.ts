@@ -94,7 +94,7 @@ export const fr = {
   'bd.received': 'Offres reçues',
   'bd.noneYetW': 'aucune pour l’instant',
   'bd.result': 'Résultat',
-  'bd.arriveHere': 'Les offres des autres joueurs arriveront ici (pastille sur l’onglet Vendre · Échanger).',
+  'bd.arriveHere': 'Les offres des autres joueurs arriveront ici (pastille sur l’onglet Pour toi).',
   'bd.expiredFree': 'Expirée sans échange : tes cartes sont libres.',
   'bd.withdrawnFree': 'Retirée : tes cartes sont libres.',
   'bd.counterSent': 'contre-offre envoyée',

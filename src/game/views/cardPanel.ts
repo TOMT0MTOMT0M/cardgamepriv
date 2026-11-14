@@ -243,7 +243,7 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
       list.append(row(o.dup ? 'dup' : '', esc(o.name), o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? tr('cp.kept', { n: o.count }) : tr('cp.theirOnly'), o.online, btn));
     }
     // (13/11, retours Hugo) prix de référence : la moyenne des dernières ventes
-    if (p.sold) list.append(h('p', 'cp-avg', `Prix moyen des ventes : <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span> <small>sur ${p.sold.n} vente${p.sold.n > 1 ? 's' : ''} · dernière ${fmtCoins(p.sold.last)}</small>`));
+    if (p.sold) list.append(h('p', 'cp-avg', `${tr('cp.avgT')} <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span> <small>${tr('cp.avgD', { n: p.sold.n, last: fmtCoins(p.sold.last) })}</small>`));
     // en vente
     if (p.sellers.length) {
       sec(tr('cp.forSaleT'), p.sellers.length);

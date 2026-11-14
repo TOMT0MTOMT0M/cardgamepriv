@@ -7,6 +7,8 @@ import { esc, h, navigate, popLayer, pushLayer } from '../ui';
 import { haptics } from '../../core/haptics';
 import { createRouletteWheel } from './rouletteWheel';
 import '../casino.css';
+import { t as tr } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.games'; // (textes de ce module, version anglaise)
 
 /**
  * (13/11, retours Hugo) REJEU DU DERNIER TIRAGE À LA CONNEXION : « tu te connectes, ça te montre le dernier tirage (une
@@ -63,15 +65,15 @@ export function startRouletteReplay(backend: GameBackend, shell: Shell, o: { rou
     const veil = h('div', 'rr-veil');
     veil.setAttribute('role', 'dialog');
     veil.setAttribute('aria-modal', 'true');
-    veil.setAttribute('aria-label', `Roulette : le tirage de ${at || 'tout à l’heure'}`);
+    veil.setAttribute('aria-label', tr('rr.aria', { at: at || tr('rr.earlier') }));
     veil.innerHTML = `<div class="rr-box">
-      <button class="rr-x" aria-label="Fermer">✕</button>
-      <span class="rr-k">Roulette · ${p.bets.length ? `${p.bets.length} joueur${p.bets.length > 1 ? 's' : ''} en jeu` : 'personne n’avait misé'}</span>
-      <h2 class="rr-h">Le tirage de ${esc(at || 'tout à l’heure')}</h2>
+      <button class="rr-x" aria-label="${tr('common.close')}">✕</button>
+      <span class="rr-k">Roulette · ${p.bets.length ? tr('rr.players', { n: p.bets.length }) : tr('rr.nobodyBet')}</span>
+      <h2 class="rr-h">${tr('rr.title', { at: esc(at || tr('rr.earlier')) })}</h2>
       <div class="rr-w"></div>
-      <div class="rr-res" aria-live="polite">${mine ? `Tes numéros : <b>${mine.numbers.join(', ')}</b>` : '&nbsp;'}</div>
+      <div class="rr-res" aria-live="polite">${mine ? `${tr('rr.yours')} <b>${mine.numbers.join(', ')}</b>` : '&nbsp;'}</div>
       <div class="rr-next" hidden></div>
-      <div class="rr-acts" hidden><a class="btn-primary rr-go" href="#/jeux/roulette">Miser au prochain tirage</a><button class="btn-ghost rr-later">Plus tard</button></div>
+      <div class="rr-acts" hidden><a class="btn-primary rr-go" href="#/jeux/roulette">${tr('rr.betNext')}</a><button class="btn-ghost rr-later">${tr('rr.later')}</button></div>
     </div>`;
     document.body.append(veil);
     const wheel = createRouletteWheel(ROULETTE_NUMBERS);
@@ -103,12 +105,12 @@ export function startRouletteReplay(backend: GameBackend, shell: Shell, o: { rou
         haptics.pulse(won ? [20, 40, 30] : 12);
         shell.sfx.chime(won ? 7 : 3, won ? 0.14 : 0.08);
         veil.querySelector('.rr-res')!.innerHTML = res.winnerName
-          ? `Le <b>${res.number}</b> sort : ${won ? '<b>tu remportes tout le pot</b>' : `<b>${esc(res.winnerName)}</b> remporte tout le pot`} (${fmtCoins(res.potValue)} de valeur).`
-          : `Le <b>${res.number}</b> sort : personne ne l’avait. Le pot (${fmtCoins(res.potValue)} de valeur) est reporté.${mine ? ' Raté de peu ?' : ''}`;
+          ? tr(won ? 'rr.youWin' : 'rr.theyWin', { n: res.number, name: esc(res.winnerName), v: fmtCoins(res.potValue) })
+          : tr('rr.noWinner', { n: res.number, v: fmtCoins(res.potValue) }) + (mine ? tr('rr.close') : '');
         const next = veil.querySelector<HTMLElement>('.rr-next')!;
         if (r.round) {
           next.hidden = false;
-          next.textContent = `Prochain tirage : ${hourOf(r.round.day) || 'bientôt'} · pot ${fmtCoins(r.round.pot.value)} de valeur · ${r.round.bets.length ? `${r.round.bets.length} déjà en jeu` : 'personne n’a encore misé'}`;
+          next.textContent = tr('rr.next', { at: hourOf(r.round.day) || tr('rr.soon'), v: fmtCoins(r.round.pot.value), who: r.round.bets.length ? tr('rr.already', { n: r.round.bets.length }) : tr('rr.nobodyYet') });
         }
         veil.querySelector<HTMLElement>('.rr-acts')!.hidden = false;
       });

@@ -48,9 +48,9 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
   el.innerHTML = `
     <div class="mk-head">
       ${mode === 'sell'
-        ? '<div class="mk-intro"><span class="kicker">Vendre · Échanger</span><p class="muted">Choisis une de tes cartes : vends-la à prix fixe en pièces, ou propose-la à l’échange (les autres te font leurs offres).</p></div>'
-        : '<div class="mk-intro"><span class="kicker">Au marché</span><p class="muted">Des cartes à prix fixe, en pièces. Pas d’enchères : le premier qui achète l’a.</p></div>'}
-      <div class="mk-acts"><span class="mk-wallet" title="${tr('mk.coinsA')}"></span>${mode === 'sell' ? '<button class="btn-primary mk-sell-btn">Choisir une carte</button>' : ''}</div>
+        ? `<div class="mk-intro"><span class="kicker">${tr('mk.sellK')}</span><p class="muted">${tr('mk.sellIntro')}</p></div>`
+        : `<div class="mk-intro"><span class="kicker">${tr('mk.buyK')}</span><p class="muted">${tr('mk.buyIntro')}</p></div>`}
+      <div class="mk-acts"><span class="mk-wallet" title="${tr('mk.coinsA')}"></span>${mode === 'sell' ? `<button class="btn-primary mk-sell-btn">${tr('mk.pick')}</button>` : ''}</div>
     </div>
     <div class="mk-mine" hidden><h3 class="mk-h">${tr('mk.mine')} <small class="mk-mine-n"></small></h3><div class="mk-grid mk-g-mine"></div><div class="mk-recent"></div></div>
     <div class="mk-tools">
@@ -62,7 +62,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     <div class="mk-empty muted" hidden></div>
     <div class="mk-sheet" hidden role="dialog" aria-label="${tr('mk.sell')}">
       <div class="mk-sheet-b">
-        <div class="mk-sh-top"><h3 class="mk-h">Vendre ou échanger une carte</h3><button class="mk-x" aria-label="${tr('common.close')}">✕</button></div>
+        <div class="mk-sh-top"><h3 class="mk-h">${tr('mk.sellOrTrade')}</h3><button class="mk-x" aria-label="${tr('common.close')}">✕</button></div>
         <div class="mk-pick">
           <div class="mk-tools"><input class="search mk-pq" type="search" placeholder="${tr('mk.searchColl')}" autocomplete="off" spellcheck="false" aria-label="${tr('mk.searchMine')}"><label class="tr-tog"><input type="checkbox" class="mk-dups" checked><span>${tr('mk.dupsOnly')}</span></label></div>
           <div class="mk-grid mini mk-g-pick"></div>
@@ -70,20 +70,20 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
         <div class="mk-price" hidden>
           <div class="mk-chosen"></div>
           <div class="mk-pform">
-            <div class="seg mk-how" role="radiogroup" aria-label="Que faire de cette carte"><button role="radio" data-how="sell" class="on" aria-checked="true">Vendre</button><button role="radio" data-how="trade" aria-checked="false">Échanger</button></div>
+            <div class="seg mk-how" role="radiogroup" aria-label="${tr('mk.howA')}"><button role="radio" data-how="sell" class="on" aria-checked="true">${tr('mk.howSell')}</button><button role="radio" data-how="trade" aria-checked="false">${tr('mk.howTrade')}</button></div>
             <div class="mk-sellf">
             <label class="mk-pl">${tr('mk.price')} <span class="mk-hint"></span></label>
-            <div class="mk-prow"><button class="btn-ghost mk-step" data-d="-1" aria-label="Moins cher">−</button><input class="mk-pin" type="number" inputmode="numeric" min="1" step="1" aria-label="${tr('mk.priceA')}"><button class="btn-ghost mk-step" data-d="1" aria-label="Plus cher">+</button></div>
+            <div class="mk-prow"><button class="btn-ghost mk-step" data-d="-1" aria-label="${tr('mk.cheaper')}">−</button><input class="mk-pin" type="number" inputmode="numeric" min="1" step="1" aria-label="${tr('mk.priceA')}"><button class="btn-ghost mk-step" data-d="1" aria-label="${tr('mk.dearer')}">+</button></div>
             <div class="mk-cmp"></div>
             <div class="mk-pbtns"><button class="btn-ghost mk-back">${tr('mk.another')}</button><button class="btn-primary mk-go">${tr('mk.list')}</button></div>
             <p class="muted mk-note">${tr('mk.leaves')}</p>
             </div>
             <div class="mk-tradef" hidden>
-              <p class="mk-tnote">Elle part au tableau des échanges : les autres joueurs te proposent leurs cartes, tu acceptes celle qui te plaît (ou rien).</p>
-              <div class="mk-pl">Durée</div>
-              <div class="seg mk-dur" role="radiogroup" aria-label="Durée de l’annonce">${BOARD_HOURS.map((x, i) => `<button role="radio" data-h="${x}" class="${i === BOARD_HOURS.length - 1 ? 'on' : ''}" aria-checked="${i === BOARD_HOURS.length - 1}">${x} h</button>`).join('')}</div>
-              <div class="mk-pbtns"><button class="btn-ghost mk-back2">${tr('mk.another')}</button><button class="btn-primary mk-trade-go">Proposer à l’échange</button></div>
-              <p class="muted mk-note">Elle reste dans ta collection, verrouillée 🔒 tant que l’annonce est ouverte. Tes annonces et les offres reçues sont juste en dessous.</p>
+              <p class="mk-tnote">${tr('mk.tradeNote')}</p>
+              <div class="mk-pl">${tr('mk.dur')}</div>
+              <div class="seg mk-dur" role="radiogroup" aria-label="${tr('mk.durA')}">${BOARD_HOURS.map((x, i) => `<button role="radio" data-h="${x}" class="${i === BOARD_HOURS.length - 1 ? 'on' : ''}" aria-checked="${i === BOARD_HOURS.length - 1}">${x} h</button>`).join('')}</div>
+              <div class="mk-pbtns"><button class="btn-ghost mk-back2">${tr('mk.another')}</button><button class="btn-primary mk-trade-go">${tr('mk.tradeGo')}</button></div>
+              <p class="muted mk-note">${tr('mk.tradeKeep')}</p>
             </div>
           </div>
         </div>
@@ -119,7 +119,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     // (13/11, retours Hugo) toute la carte se touche : sa fiche (qui l'a, prix moyen, qui la veut)
     t.setAttribute('role', 'button');
     t.tabIndex = 0;
-    t.setAttribute('aria-label', `${nameOf(m.cardId)} : voir la fiche`);
+    t.setAttribute('aria-label', tr('mk.seeCard', { name: nameOf(m.cardId) }));
     t.addEventListener('click', () => showCardPanel(backend, m.cardId));
     w.append(t);
     const meta = h('div', 'mk-meta', `<div class="mk-pr">${coin(m.price)}${cmpHtml(m.rarity, m.price)}</div><div class="mk-sub">${starsHtml(m.rarity)} · n°${m.mintNumber} · ${isMine(m) ? 'toi' : `par ${esc(m.sellerName)}`}</div>`);
@@ -221,7 +221,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     void loadPanel(backend, cardId)
       .then((p) => {
         if (!p.sold || chosen?.cardId !== cardId) return;
-        q('.mk-hint').innerHTML += ` · vendue en moyenne ${coin(p.sold.avg)} (${p.sold.n} vente${p.sold.n > 1 ? 's' : ''})`;
+        q('.mk-hint').innerHTML += tr('mk.soldAvg', { avg: coin(p.sold.avg), n: p.sold.n });
       })
       .catch(() => undefined);
     setHow('sell');
@@ -273,10 +273,10 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
   );
   q('.mk-trade-go').addEventListener('click', async () => {
     if (!chosen) return;
-    if (backend.state.mode === 'online' && !backend.state.user) return toast('Connecte-toi pour proposer une carte.', 'info');
+    if (backend.state.mode === 'online' && !backend.state.user) return toast(tr('mk.loginTrade'), 'info');
     try {
       await busyButton(q('.mk-trade-go'), backend.createListing([{ cardId: chosen.cardId, rarity: chosen.rarity, count: 1 }], [], undefined, hours));
-      toast(`${nameOf(chosen.cardId)} est proposée à l’échange pour ${hours} h.`, 'ok');
+      toast(tr('mk.tradeListed', { name: nameOf(chosen.cardId), h: hours }), 'ok');
       closeSheet();
       o.onListed?.();
     } catch (e) {

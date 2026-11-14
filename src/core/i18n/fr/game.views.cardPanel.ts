@@ -51,5 +51,7 @@ export const fr = {
   'cp.asDup': '{n} en doublon',
   'cp.online': 'en ligne',
   'cp.forSaleT': 'En vente',
+  'cp.avgT': 'Prix moyen des ventes :',
+  'cp.avgD': { one: 'sur {n} vente · dernière {last}', other: 'sur {n} ventes · dernière {last}' },
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

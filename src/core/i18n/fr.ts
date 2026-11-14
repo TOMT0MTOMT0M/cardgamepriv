@@ -99,7 +99,7 @@ export const fr = {
   'hdr.seeProfile': 'Voir mon profil',
   'hdr.repairTitle': 'Vide les caches du jeu et recharge la dernière version (tu restes connecté)',
   'hdr.repair': 'Réparer et mettre à jour',
-  'hdr.boardNews': 'Du nouveau sur le tableau d’offres (offre ou contre-offre) → Marché, Vendre · Échanger',
+  'hdr.boardNews': 'Du nouveau sur le tableau d’offres (offre ou contre-offre) → Marché, Pour toi',
   'hdr.tradeOffer': '{name} te propose un échange → Marché',
   'hdr.aFriend': 'Un ami',
   'hdr.missionsReady': 'Missions : {n} à réclamer',

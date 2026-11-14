@@ -108,13 +108,11 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       <span class="kicker">${tr('tr.title')}</span>
       <div class="ex-tabs" role="tablist" aria-label="${tr('tr.title')}">
         <button role="tab" data-z="pour" class="on" aria-selected="true">${tr('tr.forYou')}<b class="badge ex-b-pour" hidden></b></button>
-        <button role="tab" data-z="vendre" aria-selected="false" aria-label="${tr('tr.sellA')}">${tr('tr.sell')}<span class="ex-tl2">${tr('tr.sellTrade')}</span><b class="badge ex-b-vendre" hidden></b></button>
         <button role="tab" data-z="cherche" aria-selected="false">${tr('tr.search')}</button>
         <button role="tab" data-z="cours" aria-selected="false">${tr('tr.ongoing')}<b class="badge ex-b-cours" hidden></b></button>
       </div>
     </header>
-    <div class="ex-zone ex-pour" data-z="pour"></div>
-    <div class="ex-zone ex-vendre" data-z="vendre" hidden></div>
+    <div class="ex-zone ex-pour" data-z="pour"><div class="ex-vendre"></div></div>
     <div class="ex-zone ex-cherche" data-z="cherche" hidden>
       <div class="ex-search">
         <input class="search ex-q" type="search" placeholder="${tr('tr.searchPh')}" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="${tr('tr.searchA')}">
@@ -221,8 +219,9 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       board.enter();
     },
   });
-  q('.ex-vendre').prepend(sellMk.el);
-  q('.ex-vendre').append(board.el);
+  // (v2.0.1) dans « Pour toi » : vendre / échanger en tête, les échanges tout faits, puis mes annonces et leurs offres
+  q('.ex-vendre').append(sellMk.el);
+  q('.ex-pour').append(board.el);
 
   type Zone = 'pour' | 'vendre' | 'cherche' | 'cours' | 'compose';
   let zone: Zone = 'pour';
@@ -242,7 +241,8 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     el.querySelectorAll<HTMLElement>('.ex-zone').forEach((x) => (x.hidden = x.dataset.z !== z));
     if (z === 'cherche') market.enter();
     else market.leave();
-    if (z === 'vendre') {
+    // (v2.0.1, retours Hugo) vendre / échanger une carte se fait directement dans « Pour toi » (plus d'onglet à part)
+    if (z === 'pour') {
       sellMk.enter();
       board.enter();
     } else {
@@ -273,10 +273,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     bc.textContent = String(ni);
     // offres reçues sur mes annonces, contre-offres : sur l'onglet du tableau
     const nb = board.attention();
-    const bv = q('.ex-b-vendre');
-    bv.hidden = !nb;
-    bv.textContent = String(nb);
-    const np = forYou.count();
+    const np = forYou.count() + nb;
     const bp = q('.ex-b-pour');
     bp.hidden = !np;
     bp.textContent = String(np);
@@ -1155,12 +1152,12 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       const z: Zone = toCompose
         ? 'compose'
         : sub === 'tableau' || sub === 'vendre'
-          ? 'vendre'
+          ? 'pour'
           : sub === 'pour' || sub === 'chercher' || sub === 'cours'
             ? (sub === 'chercher' ? 'cherche' : sub)
             : backend.state.trades.incoming.length > 0
               ? 'cours'
-              : last === 'cherche' || last === 'cours' || last === 'vendre'
+              : last === 'cherche' || last === 'cours'
                 ? last
                 : 'pour';
       setZone(z);
