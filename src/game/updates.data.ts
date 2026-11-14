@@ -61,6 +61,17 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '15 nov.', title: 'Profil : construis ton univers', tag: 'nouveau',
+        points: [
+          '🎨 Personnaliser : un atelier plein écran, avec l’aperçu de ton profil en direct. Sur téléphone il reste collé en haut, sur PC il est à côté des choix.',
+          '🖼️ 41 nouveautés : 13 fonds (certains animés), 13 cadres dessinés, 9 écritures pour ton titre et 6 vitrines. Ta couleur les teinte tous.',
+          '🔗 Accords : un cadre et un fond de la même matière se répondent. Feu + Braise, Néon + Synthwave, Pixel + Damier… il y en a 10.',
+          '🔒 Verrouillé ne veut plus dire caché : tu vois l’élément en vrai, ce qu’il faut faire et où tu en es. Touche-le pour l’essayer.',
+          '🎖️ Succès : 49 paliers de plus (137 en tout), du très facile au très long, et une nouvelle échelle « Tous les thèmes ». Toutes les nouveautés s’y gagnent.',
+          '💬 Ton cadre et ton titre s’affichent aussi dans le chat, chez tes amis et au classement.',
+        ],
+      },
+      {
         date: '14 nov.', title: 'v2.0.1 à v2.0.8 : les retouches de la sortie', tag: 'amélioré',
         points: [
           'Notifications : le jeu te propose de les activer à chaque connexion, et tous les types sont actifs par défaut (réglables dans ton profil).',

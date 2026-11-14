@@ -1315,27 +1315,6 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .pf-drop span i { font-style: italic; color: var(--ink); }
 .pf-th > i > i { background: var(--rc, var(--rose)); }
 /* personnalisation */
-.pf-cosm { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: var(--r-box); border: 1px solid rgba(255, 255, 255, 0.4); background: var(--panel); animation: view-in 0.3s var(--ease-entree); }
-.cs-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
-.cs-head b { font: 500 20px var(--title); font-style: italic; }
-.cs-group { display: flex; flex-direction: column; gap: 8px; }
-.cs-t { font: 500 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
-.cs-t small { letter-spacing: 0.06em; text-transform: none; }
-.cs-list { display: flex; flex-wrap: wrap; gap: 6px; }
-.cs { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 84px; padding: 8px 10px; border-radius: var(--r-box); border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); color: var(--ink-2); font: 500 12px var(--mono); transition: border-color var(--dur-rapide), background-color var(--dur-rapide); }
-.cs b { font-weight: 600; color: var(--ink); }
-.cs small { font-size: 12px; color: var(--ink-3); max-width: 150px; text-align: center; line-height: 1.3; }
-.cs:not(.locked):hover { border-color: rgba(255, 255, 255, 0.3); }
-.cs.on { border-color: var(--rose); background: rgba(255, 255, 255, 0.12); }
-.cs.locked { opacity: 0.5; cursor: not-allowed; border-style: dashed; }
-.cs-sw { width: 64px; height: 28px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.1); }
-.cs-ring { width: 30px; height: 30px; border-radius: 50%; background: #1f1f1f; box-shadow: 0 0 0 3px var(--frame); margin: 3px 0; }
-.cs-g { font-size: 18px; }
-.cs-order { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.cs-ord { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 10px; border-radius: var(--r-pill); border: 1px solid var(--line-2); font: 500 12px var(--mono); }
-.cs-ord button { border: 0; background: none; color: var(--ink-3); font-size: 12px; padding: 2px 4px; }
-.cs-ord button:not(:disabled):hover { color: var(--ink); }
-.cs-actions { display: flex; justify-content: flex-end; gap: 8px; }
 /* activité */
 .pf-activity { display: flex; flex-direction: column; gap: 6px; }
 .pf-act { display: grid; grid-template-columns: 28px auto 1fr auto; gap: 10px; align-items: center; padding: 9px 12px; border-radius: var(--r-box); border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); font-size: 13px; }
@@ -1796,29 +1775,6 @@ body.offline .offline-pill, body.server-down .offline-pill { opacity: 1; transfo
   .bd-tools button::after, .bd-tools .bd-grip::after { content: ''; position: absolute; inset: -5px; }
 }
 /* UX3-08 : personnalisation du profil — aperçu collant, un onglet par famille, barre d'actions collante, verrouillés lisibles */
-.cs-preview { position: sticky; top: -12px; /* (v2.0.3) même correction : compté depuis le contenu du profil */ z-index: 4; display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 10px 14px; border-radius: var(--r-box); overflow: hidden; border: 1px solid var(--line-2); background: var(--panel-solid); box-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.95); }
-.cs-pv-bn { position: absolute; inset: 0; opacity: 0.95; }
-.cs-pv-bn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.7)); }
-.cs-preview .pf-ava-wrap { z-index: 1; }
-.cs-preview .pf-ava-wrap .pf-ava { width: 52px; height: 52px; border-width: 3px; font-size: 20px; }
-.cs-preview .pf-ava-wrap.frame-mythic::before { top: -3px; width: 58px; height: 58px; margin-left: -29px; }
-.cs-pv-id { position: relative; z-index: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
-.cs-pv-id b { font: 500 18px/1.1 var(--title); font-style: italic; color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cs-pv-id .pf-title { margin: 0; }
-.cs-pv-badges { display: flex; gap: 4px; font-size: 14px; }
-.cs-pv-badges i { font-style: normal; }
-.cs-tabs { align-self: flex-start; }
-.cs-tabs button { padding: 9px 14px; }
-.cs-tabs button em { font-style: normal; color: var(--ink-3); margin-left: 3px; }
-.cs.locked { opacity: 1; }
-.cs.locked .cs-sw, .cs.locked .cs-ring, .cs.locked .cs-g, .cs.locked b { opacity: 0.45; }
-.cs.locked small { font-size: 12px; color: var(--ink-2); max-width: 170px; }
-.cs.locked small em { display: block; margin-top: 2px; font-style: normal; color: var(--gold); font-variant-numeric: tabular-nums; }
-.pf-cosm .cs-actions { position: sticky; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 4; align-items: center; flex-wrap: wrap; padding: 10px; border-radius: var(--r-box); border: 1px solid var(--line-2); background: var(--panel-solid); box-shadow: 0 -10px 30px -12px #000; }
-.cs-sum { flex: 1 1 160px; min-width: 0; display: flex; align-items: center; gap: 8px; font: 400 12px/1.35 var(--mono); color: var(--ink-3); }
-.cs-sum b { color: var(--gold); font-weight: 600; }
-.cs-dirty { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
-.cs-actions .cs-save:disabled { opacity: 0.5; }
 /* UX3-11 : pagination — « 1–60 sur 6 584 » ouvre « aller à la page », la grille ne remonte plus sous l'en-tête */
 .collection .grid { scroll-margin-top: calc(var(--top) + env(safe-area-inset-top) + 12px); }
 button.pg-info { border: 0; background: none; padding: 8px 6px; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
@@ -1833,7 +1789,6 @@ button.pg-info:hover { color: var(--ink); }
   .collection .chip { padding-inline: 11px; }
   .collection .seg, .succes .seg, .lb-boards { align-items: stretch; }
   .pf-tabs button { min-height: 40px; }
-  .cs-ord button { min-width: 36px; min-height: 36px; }
   .pf-x { width: 32px; height: 32px; }
   .pf-x::after { content: ''; position: absolute; inset: -5px; }
 }
@@ -1851,8 +1806,6 @@ button.pg-info:hover { color: var(--ink); }
 .sc-recap-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-2); background: none; color: var(--ink-2); }
 .sc-cos.ok b { font-weight: 600; color: var(--ok); margin-left: 2px; }
 .pf-new { margin-left: 6px; padding: 1px 7px; border-radius: var(--r-pill); background: var(--gold); color: #000000; font: 700 12px var(--mono); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; }
-.pf-new-dot { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 50%; background: var(--gold); vertical-align: middle; }
-.cs.new { position: relative; border-color: var(--gold); }
 .cs.new::after { content: 'nouveau'; position: absolute; top: -7px; right: 6px; padding: 0 6px; border-radius: var(--r-pill); background: var(--gold); color: #000000; font: 700 12px/14px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; } /* i18n-ok : anglais dans usinage.css (:lang(en)) */
 /* UX3-20 : sélecteur de vitrine — filtre étoiles, troncature annoncée */
 .pf-pick-stars { flex-wrap: wrap; margin: 0 0 10px; }
@@ -2215,13 +2168,6 @@ body[data-route='amis'] .me .icon.fr-link { color: var(--ink); box-shadow: 0 0 0
   .pf-empty { border-radius: 7px; }
 }
 /* « Personnaliser » : photo et bannière importées (GIF) */
-.cs-preview .cs-pv-bn { overflow: hidden; }
-.cs-media { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--r-box); border: 1px dashed var(--line-2); }
-.cs-md-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.cs-md-l { margin-right: auto; font: 500 13px var(--title); }
-.cs-md-l b { font: 500 12px var(--mono); color: var(--ok); }
-.cs-md-b, .cs-md-x { min-height: 36px; padding: 6px 12px; font-size: 12px; }
-.cs-md-x { color: var(--ink-3); }
 /* page Succès : primes de complétion (sorties de l'espace Jeux) */
 .sc-primes { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: var(--r-box); border: 1px solid var(--line); background: var(--panel); scroll-margin-top: calc(var(--top) + env(safe-area-inset-top) + 12px); }
 .sc-primes[hidden] { display: none; }
@@ -2774,18 +2720,11 @@ body.wild-on .card-ghost, body.duel-on .card-ghost { visibility: hidden; }
 }
 
 /* ── Couleur du profil (retours 04/11, chantier 5) : --pa posé sur .profile par applyAccent() */
-.cs-dot { position: relative; width: 30px; height: 30px; margin: 3px 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.16); box-shadow: inset 0 -6px 10px rgba(0, 0, 0, 0.25); }
-.cs.locked .cs-dot { opacity: 0.45; }
-.cs-accent.on .cs-dot { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor; }
-.cs-custom { cursor: pointer; }
-.cs-dot-pick { overflow: hidden; }
-.cs-dot-pick input { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); opacity: 0; cursor: pointer; border: 0; padding: 0; }
 .profile.has-accent .pf-title { border-color: var(--pa); color: var(--pa); }
 .profile.has-accent .pf-ava-wrap.frame-none .pf-ava { box-shadow: 0 0 0 2px var(--pa), 0 0 26px -6px var(--pa), 0 14px 34px -14px rgba(0, 0, 0, 0.95); }
 .profile.has-accent .pf-stat, .profile.has-accent .pf-tabs, .profile.has-accent .pf-badge { border-color: color-mix(in srgb, var(--pa) 30%, transparent); }
 .profile.has-accent .pf-tabs button.on { color: var(--pa-ink); }
 .profile.has-accent .btn-primary { background: linear-gradient(180deg, color-mix(in srgb, var(--pa) 80%, #fff), var(--pa)); color: var(--pa-ink); box-shadow: 0 6px 20px -8px color-mix(in srgb, var(--pa) 80%, transparent); }
-.profile.has-accent .cs.on { border-color: var(--pa); }
 
 /* ── ÉCHANGES en un seul écran (retours 05/11) : tableau d'offres en haut (≈ la moitié de l'écran, grille qui défile
    vers la droite), échanges directs en dessous. Les anciens onglets sont masqués. */
@@ -2869,9 +2808,6 @@ h2, h3 { font-weight: 700; }
 :root { --vc: #ffffff; }
 .pf-case.has-vc { border-color: color-mix(in srgb, var(--vc) 38%, transparent); box-shadow: inset 0 -14px 24px -18px color-mix(in srgb, var(--vc) 55%, transparent), 0 18px 40px -28px color-mix(in srgb, var(--vc) 60%, transparent); }
 .pf-case.has-vc::after { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--vc) 60%, transparent), transparent); }
-.cs-vit { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vc) 45%, transparent); }
-.cs-vc.on .cs-dot { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor; }
-.cs-t small { font-weight: 400; color: var(--ink-3); }
 
 /* ── collection : niveau des FAMILLES (retours 05/11) — une tuile « famille » se distingue par une pile de pochettes */
 .album.fam .al-cover { box-shadow: 4px -4px 0 -1px color-mix(in srgb, hsl(var(--h, 20) 45% 40%) 45%, #141414), 8px -8px 0 -2px color-mix(in srgb, hsl(var(--h, 20) 45% 30%) 35%, #141110); }
@@ -3106,8 +3042,6 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .pf-banner.has-media { background: #000 !important; }
 /* (C13) bannière GIF / image + couleur : la couleur l'ENTOURE (contour) ; « Aucune couleur » = pas de contour */
 .pf-banner.has-media.bn-color::after, .cs-pv-bn.bn-color::after { background: none; border: 4px solid var(--bnc); border-radius: inherit; z-index: 1; }
-.cs-pv-bn::after { background: rgba(0, 0, 0, 0.3); }
-.cs-sw.cs-none { background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, 0.25) 6px 7px) !important; border: 1px dashed var(--line-2); }
 
 /* (B4) cadre autour de la photo : l'anneau `--frame` (une couleur) posé sur l'anneau `.pf-ring` (plus dans un
    box-shadow d'un dégradé, que le navigateur ignorait) ; (C14) cadres ANIMÉS sur le calque `.pf-fx` */
@@ -3119,46 +3053,13 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .pf-ava-wrap.frame-mythic::before { display: none; }
 .pf-ava-wrap.frame-mythic .pf-ring::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: conic-gradient(from 0deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a); animation: bp-spin 6s linear infinite; z-index: -1; }
 .lb-ava, .pd-ava { background: #1a1a1a; }
-.cs-ring { position: relative; background: #1a1a1a; }
-.pf-fx { position: absolute; inset: -16%; border-radius: 50%; pointer-events: none; z-index: 2; }
-.pf-fx::before, .pf-fx::after { content: ''; position: absolute; pointer-events: none; }
-.cs-ring.anim { overflow: visible; }
-.cs-ring.anim .pf-fx { inset: -30%; }
 /* Éclairs : anneau électrique qui grésille + deux éclairs qui frappent tour à tour */
-.frame-a-eclairs .pf-fx { border: 2px solid #8fd6ff; inset: -9%; box-shadow: 0 0 10px #8fd6ff, inset 0 0 8px rgba(143, 214, 255, 0.6); animation: fx-zap 2.2s steps(1) infinite; }
-.frame-a-eclairs .pf-fx::before, .frame-a-eclairs .pf-fx::after { width: 34%; height: 46%; background: #e8f7ff; clip-path: polygon(55% 0, 15% 55%, 45% 55%, 30% 100%, 85% 38%, 52% 38%, 70% 0); filter: drop-shadow(0 0 4px #8fd6ff); opacity: 0; }
-.frame-a-eclairs .pf-fx::before { top: -22%; right: -6%; animation: fx-bolt 2.2s infinite; }
-.frame-a-eclairs .pf-fx::after { bottom: -20%; left: -8%; transform: rotate(160deg); animation: fx-bolt 2.2s 1.1s infinite; }
-@keyframes fx-zap { 0%, 100% { opacity: 1; } 47% { opacity: 0.55; } 49% { opacity: 1; } 51% { opacity: 0.4; } 53% { opacity: 1; } }
-@keyframes fx-bolt { 0%, 40%, 62%, 100% { opacity: 0; } 44%, 50% { opacity: 1; } 46% { opacity: 0.2; } }
 /* Feu : anneau incandescent, langues de flammes qui montent autour de la photo */
-.frame-a-feu .pf-fx { inset: -10%; border: 2px solid #ff7a2a; box-shadow: 0 0 14px #ff7a2a, 0 -6px 18px rgba(255, 180, 60, 0.55); animation: fx-flicker 0.9s ease-in-out infinite alternate; }
-.frame-a-feu .pf-fx::before, .frame-a-feu .pf-fx::after { left: 50%; bottom: 72%; width: 30%; height: 42%; margin-left: -15%; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; background: #ff7a2a; transform-origin: 50% 100%; animation: fx-flame 1.1s ease-in-out infinite alternate; }
-.frame-a-feu .pf-fx::after { width: 18%; height: 28%; margin-left: -9%; bottom: 74%; background: #ffd36b; animation-duration: 0.8s; }
-@keyframes fx-flicker { from { box-shadow: 0 0 10px #ff7a2a, 0 -4px 14px rgba(255, 180, 60, 0.45); } to { box-shadow: 0 0 20px #ff7a2a, 0 -10px 24px rgba(255, 180, 60, 0.7); } }
-@keyframes fx-flame { from { transform: scaleY(0.85) rotate(-6deg); } to { transform: scaleY(1.15) rotate(6deg); } }
 /* Ange : anneau blanc, auréole qui flotte au-dessus, deux ailes de chaque côté */
-.frame-a-ange .pf-fx { inset: -8%; border: 2px solid #fff; box-shadow: 0 0 12px rgba(255, 255, 255, 0.7); z-index: auto; }
 /* (les ailes passent DERRIÈRE la photo : l'anneau isole sa pile, le calque d'effets n'en crée pas pour l'ange) */
-.frame-a-ange .pf-fx::before { left: 22%; right: 22%; top: -16%; height: 14%; border: 3px solid #fff8d6; border-radius: 50%; box-shadow: 0 0 10px #fff8d6; animation: fx-halo 2.6s ease-in-out infinite; }
-.frame-a-ange .pf-fx::after { left: -24%; right: -24%; top: 22%; height: 46%; background: #fff; opacity: 0.85; z-index: -1; clip-path: polygon(0 10%, 30% 30%, 50% 45%, 70% 30%, 100% 10%, 92% 55%, 70% 80%, 50% 62%, 30% 80%, 8% 55%); animation: fx-wings 2.6s ease-in-out infinite; }
-@keyframes fx-halo { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes fx-wings { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(1.06); } }
 /* Cœurs : anneau rose et cœurs qui tournent autour en battant */
-.frame-a-coeurs .pf-fx { inset: -9%; border: 2px solid #ff5d8f; animation: bp-spin 9s linear infinite; }
-.frame-a-coeurs .pf-fx::before, .frame-a-coeurs .pf-fx::after { width: 20%; height: 20%; background: #ff5d8f; clip-path: path('M10 18 L2 10 A5 5 0 0 1 10 3 A5 5 0 0 1 18 10 Z'); clip-path: polygon(50% 100%, 6% 52%, 4% 26%, 18% 10%, 36% 10%, 50% 26%, 64% 10%, 82% 10%, 96% 26%, 94% 52%); animation: fx-beat 0.9s ease-in-out infinite; }
-.frame-a-coeurs .pf-fx::before { top: -10%; left: 40%; }
-.frame-a-coeurs .pf-fx::after { bottom: -10%; right: 40%; animation-delay: 0.45s; }
-@keyframes fx-beat { 0%, 100% { transform: scale(0.85); } 30% { transform: scale(1.15); } }
 /* Galaxie : une couronne d'étoiles qui tourne lentement */
-.frame-a-galaxie .pf-fx { inset: -12%; border: 2px dotted #b59cff; animation: bp-spin 14s linear infinite; }
-.frame-a-galaxie .pf-fx::before, .frame-a-galaxie .pf-fx::after { width: 14%; height: 14%; background: #fff; clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%); animation: fx-twinkle 1.6s ease-in-out infinite; }
-.frame-a-galaxie .pf-fx::before { top: 4%; right: 8%; }
-.frame-a-galaxie .pf-fx::after { bottom: 6%; left: 6%; animation-delay: 0.8s; }
-@keyframes fx-twinkle { 0%, 100% { opacity: 0.3; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.1); } }
 /* Néon : tube lumineux dont la couleur tourne */
-.frame-a-neon .pf-fx { inset: -8%; border: 3px solid #39ffd2; box-shadow: 0 0 12px #39ffd2, inset 0 0 10px #39ffd2; animation: fx-neon 4s linear infinite; }
-@keyframes fx-neon { to { filter: hue-rotate(360deg); } }
 @media not all { .pf-fx, .pf-fx::before, .pf-fx::after { animation: none !important; } }
 @media not all { .pf-fx, .pf-fx::before, .pf-fx::after { animation: none !important; } }
 

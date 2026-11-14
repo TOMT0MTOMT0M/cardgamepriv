@@ -26,6 +26,17 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '15 Nov', title: 'Profile: build your own world', tag: 'nouveau',
+        points: [
+          '🎨 Customise: a full-screen workshop with a live preview of your profile. On phones it stays pinned at the top, on PC it sits beside the choices.',
+          '🖼️ 41 new items: 13 backgrounds (some animated), 13 drawn frames, 9 letterings for your title and 6 showcases. Your colour tints them all.',
+          '🔗 Matches: a frame and a background of the same kind react to each other. Fire + Ember, Neon + Synthwave, Pixel + Checkerboard… there are 10.',
+          '🔒 Locked no longer means hidden: you see the real item, what to do and how far along you are. Tap it to try it on.',
+          '🎖️ Achievements: 49 more tiers (137 in all), from very easy to very long, and a new “Every theme” ladder. Every new item is earned there.',
+          '💬 Your frame and title also show in the chat, on your friends’ lists and in the ranking.',
+        ],
+      },
+      {
         date: '14 Nov', title: 'v2.0.1 to v2.0.8: launch touch-ups', tag: 'amélioré',
         points: [
           'Notifications: the game offers to turn them on at each login, and every type is on by default (adjust them in your profile).',
