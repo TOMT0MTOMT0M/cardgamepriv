@@ -63,6 +63,7 @@ export const UPDATES: UpdateMonth[] = [
       {
         date: '14 nov.', title: 'v2.0.1 à v2.0.4 : les retouches de la sortie', tag: 'amélioré',
         points: [
+          'Cartes 5★ : le cadre « Suisse » est de retour sur les 5★ à photo horizontale.',
           'Battle Royale : sur ordinateur, les cartes s’affichent en grand sur toute la largeur.',
           'Collection : les 5★ et 6★ ne sont plus floues dans la grille.',
           'Extraits : un curseur de volume dans l’étiquette du morceau, retenu sur ton appareil.',
