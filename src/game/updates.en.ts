@@ -26,8 +26,9 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 Nov', title: 'v2.0.1 to v2.0.3: launch touch-ups', tag: 'amélioré',
+        date: '14 Nov', title: 'v2.0.1 to v2.0.4: launch touch-ups', tag: 'amélioré',
         points: [
+          'Battle Royale: on desktop, cards now show large across the full width.',
           'Collection: 5★ and 6★ cards are no longer blurry in the grid.',
           'Clips: a volume slider in the track label, remembered on your device.',
           'Card viewer: “Replay” at the top, buttons tidied under the card, and they fade out when you zoom.',

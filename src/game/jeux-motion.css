@@ -189,3 +189,17 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
 .games .gm-dot, .games .gm-cd::before, .games .gm-rp.empty .gm-ava { animation: none; }
 .games .armed { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4); animation: none; }
 .games .gm-battle.suspense .gm-slot:not(.up):last-child .gm-back-face, .games .gm-royal.suspense .gm-rrow .gm-slot:not(.up):last-child .gm-back-face { box-shadow: 0 0 0 1px #fff; }
+
+/* (v2.0.4, retour de Tom) BATTLE ROYALE sur ordinateur : la jauge prenait la 2e colonne et les cartes tombaient dans la
+   1re (240 px) : minuscules, avec un grand vide à droite. Les cartes prennent toute la largeur, 10 par ligne
+   (2 boosters par ligne), sous le nom et la jauge. */
+@media (min-width: 701px) {
+  .games .gm-rrow { row-gap: 16px; padding: 18px 20px 20px; }
+  .games .gm-rrow .gm-slots { grid-column: 1 / -1; max-width: none; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+}
+@media (min-width: 1000px) {
+  .games .gm-rrow .gm-slots { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 12px; }
+  /* un filet d'air entre deux boosters d'une même ligne */
+  .games .gm-rrow .gm-slot:nth-child(10n + 6) { margin-left: 8px; }
+  .games .gm-rrow .gm-slot:nth-child(10n + 5) { margin-right: 8px; }
+}
