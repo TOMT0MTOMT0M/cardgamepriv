@@ -112,6 +112,8 @@ export const fr = {
   'coll.albumCoverOff': 'Couverture de l’album {name} : retirer',
   'coll.cover': 'Couverture',
   'coll.gotOn': 'obtenue le {date}',
+  'coll.dups': 'Doublons',
+  'coll.dupsT': 'Seulement les cartes que tu as en plusieurs exemplaires',
   'coll.albumWant': 'Je veux l’album',
   'coll.albumWanted': 'Album voulu',
   'coll.famWant': 'Je veux la famille',

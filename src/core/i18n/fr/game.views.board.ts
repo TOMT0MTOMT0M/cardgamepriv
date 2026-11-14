@@ -78,6 +78,7 @@ export const fr = {
   'bd.sumH': { one: '{n} carte · ≈ {v} · {h} h', other: '{n} cartes · ≈ {v} · {h} h' },
   'bd.pickOne': 'Choisis au moins une carte.',
   'bd.toOffer': 'Cartes à proposer',
+  'bd.dups': 'Doublons',
   'bd.toOfferD': 'Seules tes cartes libres (pas déjà engagées) sont là. Tu peux proposer ton dernier exemplaire.',
   'bd.wantedD': 'Indicatif : les autres verront ce que tu cherches.',
   'bd.wishesIn': 'Tes envies sont déjà toutes dedans.',

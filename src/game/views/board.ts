@@ -285,10 +285,12 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
       const picked = new Map<string, TradeItem>(o.current.map((c) => [cardKey(c), { ...c }]));
       let qq = '';
       let rf: RarityId | '' = '';
+      /** (v2.0.7) seulement mes doublons (au moins 2 exemplaires libres) */
+      let dupOnly = false;
       const m = modal('ob-pick', o.title);
       m.box.innerHTML = `<div class="ob-mh"><b>${esc(o.title)}</b><button class="ob-x" aria-label="${tr('common.close')}">✕</button></div>
         ${o.hint ? `<p class="muted ob-hint">${esc(o.hint)}</p>` : ''}
-        <div class="ob-pt"><input type="search" class="ob-pq" placeholder="${o.catalog ? tr('bd.searchWanted') : tr('bd.searchCard')}" autocomplete="off" spellcheck="false"><div class="ob-pr"><button class="chip on" data-r="">${tr('coll.f.all')}</button>${STARS.filter((r) => o.rows.some((c) => c.rarity === r)).map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}">${starLbl(r)}</button>`).join('')}</div></div>
+        <div class="ob-pt"><input type="search" class="ob-pq" placeholder="${o.catalog ? tr('bd.searchWanted') : tr('bd.searchCard')}" autocomplete="off" spellcheck="false"><div class="ob-pr"><button class="chip on" data-r="">${tr('coll.f.all')}</button>${STARS.filter((r) => o.rows.some((c) => c.rarity === r)).map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}">${starLbl(r)}</button>`).join('')}</div>${o.catalog ? '' : `<button class="chip ob-pdup" aria-pressed="false">${tr('bd.dups')}</button>`}</div>
         <div class="ob-pg grid mini"></div>
         <div class="ob-psel"></div>
         <div class="ob-pf"><span class="ob-pv"></span><button class="btn-ghost ob-pclear">${tr('bd.clear')}</button><button class="btn-primary ob-pok">${tr('bd.ok')}</button></div>`;
@@ -300,6 +302,13 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
         if (!b) return;
         rf = b.dataset.r as RarityId | '';
         rbar.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b));
+        drawGrid();
+      });
+      m.box.querySelector<HTMLElement>('.ob-pdup')?.addEventListener('click', (e) => {
+        dupOnly = !dupOnly;
+        const b = e.currentTarget as HTMLElement;
+        b.classList.toggle('on', dupOnly);
+        b.setAttribute('aria-pressed', String(dupOnly));
         drawGrid();
       });
       let t = 0;
@@ -319,7 +328,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
           return;
         }
         const rows = o.rows
-          .filter((c) => (!rf || c.rarity === rf) && (!qq || fold(nameOf(c.cardId)).includes(qq)))
+          .filter((c) => (!rf || c.rarity === rf) && (!dupOnly || c.max > 1) && (!qq || fold(nameOf(c.cardId)).includes(qq)))
           .sort((a, b) => Number(!!o.first?.(b)) - Number(!!o.first?.(a)) || rarity(b.rarity).rank - rarity(a.rarity).rank || nameOf(a.cardId).localeCompare(nameOf(b.cardId)));
         rows.slice(0, LIMIT).forEach((r) => grid.append(tile(r)));
         if (rows.length > LIMIT) grid.insertAdjacentHTML('beforeend', `<div class="muted ob-gl">${tr('bd.andMore', { n: rows.length - LIMIT })}</div>`);

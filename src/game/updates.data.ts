@@ -66,7 +66,7 @@ export const UPDATES: UpdateMonth[] = [
           'Échanges : dans « Choisir autre chose », tu peux demander n’importe quelle carte de l’autre joueur (filtres par étoile et recherche) ; hors de ses doublons, il valide.',
           'Envies : « Je veux l’album » (ou toute une famille) en un toucher, depuis l’album dans la Collection.',
           'Carte tirée : un bouton « Collection » vers son album, et où tu en es (15/235 · 2,4 %).',
-          'Collection : sur ordinateur, un cran de molette = une rangée de cartes.',
+          'Collection : sur ordinateur, 2 rangées de 6 cartes, un cran de molette = une rangée, et un bouton « Doublons ».',
           'Animations : elles sont toujours actives, même si ton appareil demande de les réduire (skins CS en 3D compris).',
           'Collection : le défilement s’arrête rangée par rangée, deux rangées entières toujours visibles sur ordinateur.',
           'Couleurs : une teinte par jeu, des barres de classement colorées, et les succès colorés selon leur avancement.',

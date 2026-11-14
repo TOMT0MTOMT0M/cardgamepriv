@@ -113,6 +113,8 @@ export const en: PartOf<typeof fr> = {
   'coll.albumCoverOff': 'Cover of the {name} album: remove',
   'coll.cover': 'Cover',
   'coll.gotOn': 'obtained on {date}',
+  'coll.dups': 'Duplicates',
+  'coll.dupsT': 'Only cards you own more than once',
   'coll.albumWant': 'I want the album',
   'coll.albumWanted': 'Album wanted',
   'coll.famWant': 'I want the family',

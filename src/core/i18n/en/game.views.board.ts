@@ -79,6 +79,7 @@ export const en: PartOf<typeof fr> = {
   'bd.sumH': { one: '{n} card · ≈ {v} · {h} h', other: '{n} cards · ≈ {v} · {h} h' },
   'bd.pickOne': 'Pick at least one card.',
   'bd.toOffer': 'Cards to offer',
+  'bd.dups': 'Duplicates',
   'bd.toOfferD': 'Only your free cards (not already committed) are here. You can offer your last copy.',
   'bd.wantedD': 'For info: the others will see what you’re looking for.',
   'bd.wishesIn': 'Your wishes are all in already.',

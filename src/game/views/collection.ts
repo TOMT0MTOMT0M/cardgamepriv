@@ -84,6 +84,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let cStar: RarityId | null = null;
   let cTheme = '';
   let cQuery = '';
+  /** (v2.0.7) vue Cartes : seulement mes doublons */
+  let cDups = false;
   /** album (sous-thème) ouvert */
   let subId: string | null = null;
   /**
@@ -158,6 +160,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     <div class="cards-bar" hidden>
       <div class="seg cb-theme" aria-label="${tr('coll.theme')}"></div>
       <div class="starf cb-stars"></div>
+      <button class="chip cb-dups" aria-pressed="false" title="${tr('coll.dupsT')}">${tr('coll.dups')}</button>
       <div class="seg cb-sort" aria-label="${tr('coll.sort')}"><button data-s="rarity">${tr('coll.rarity')}</button><button data-s="date">Date</button><button data-s="alpha">A → Z</button><button data-s="album">${tr('coll.byAlbum')}</button></div>
       <input class="search cb-search" type="search" placeholder="${tr('coll.searchAllPh')}" autocomplete="off" spellcheck="false" aria-label="${tr('coll.searchAllA')}">
     </div>
@@ -322,7 +325,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if ((e.target as HTMLElement).closest?.('.binder-pick, .viewer-ui')) return;
     const cs = getComputedStyle(el);
     const pad = parseFloat(cs.scrollPaddingTop) || 0;
-    const rowH = first.offsetHeight + (parseFloat(getComputedStyle(grid).rowGap) || 0);
+    // pas d'une rangée = écart entre le haut de deux rangées (la rangée peut être plus haute que la carte)
+    let rowH = first.offsetHeight + (parseFloat(getComputedStyle(grid).rowGap) || 0);
+    for (let i = 1; i < Math.min(grid.children.length, 12); i++) {
+      const d = (grid.children[i] as HTMLElement).offsetTop - first.offsetTop;
+      if (d > 4) {
+        rowH = d;
+        break;
+      }
+    }
     if (rowH < 40) return;
     const max = el.scrollHeight - el.clientHeight;
     const row0 = Math.max(0, grid.offsetTop - pad);
@@ -409,6 +420,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       sb.append(b);
     }
     el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => b.addEventListener('click', () => ((cSort = b.dataset.s as CardSort), (page = 0), render())));
+    q('.cb-dups').addEventListener('click', () => ((cDups = !cDups), (page = 0), render()));
     const inp = q<HTMLInputElement>('.cb-search');
     let t = 0;
     inp.addEventListener('input', () => {
@@ -930,6 +942,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       cTheme = '';
       cStar = null;
       cQuery = '';
+      cDups = false;
       q<HTMLInputElement>('.cb-search').value = '';
     } else {
       if (filter === 'fresh') fresh.clear();
@@ -977,6 +990,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     q('.cb-theme').querySelectorAll<HTMLButtonElement>('button').forEach((b) => setOn(b, b.dataset.th === cTheme));
     q('.cb-stars').querySelectorAll<HTMLElement>('.chip').forEach((b) => setOn(b, b.dataset.r === cStar));
     el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => setOn(b, b.dataset.s === cSort));
+    q('.cb-dups').classList.toggle('on', cDups);
+    q('.cb-dups').setAttribute('aria-pressed', String(cDups));
     let list: CatalogEntry[] = [];
     for (const id of mine.keys()) {
       const e = catalogEntry(id);
@@ -984,6 +999,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       if (cTheme && e.themeId !== cTheme) continue;
       if (cStar && e.rarity !== cStar) continue;
       if (cQuery && !cardHit(e)) continue;
+      if (cDups && (mine.get(id)?.count ?? 0) < 2) continue;
       list.push(e);
     }
     const date = (e: CatalogEntry) => mine.get(e.id)?.firstPulledAt ?? 0;
@@ -992,7 +1008,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     else if (cSort === 'date') list.sort((a, b) => date(b) - date(a) || RANK[b.rarity] - RANK[a.rarity]);
     else if (cSort === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name, locale()));
     else list.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), locale()) || a.num - b.num);
-    const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${page}`;
+    const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${cDups}|${page}`;
     if (key !== lastKey) {
       if (lastKey) {
         grid.classList.remove('swap');
