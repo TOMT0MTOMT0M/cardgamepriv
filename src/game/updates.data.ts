@@ -61,8 +61,10 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 nov.', title: 'v2.0.1 à v2.0.4 : les retouches de la sortie', tag: 'amélioré',
+        date: '14 nov.', title: 'v2.0.1 à v2.0.6 : les retouches de la sortie', tag: 'amélioré',
         points: [
+          'Jeux : une règle graduée bien visible pour les scores du Pack Battle et du Battle Royale, sans effet de lumière à la fin.',
+          'Grosses collections : au-delà de 8 000 cartes différentes, la collection et le profil s’affichent de nouveau.',
           'Cartes 5★ : le cadre « Suisse » est de retour sur les 5★ à photo horizontale.',
           'Battle Royale : sur ordinateur, les cartes s’affichent en grand sur toute la largeur.',
           'Collection : les 5★ et 6★ ne sont plus floues dans la grille.',

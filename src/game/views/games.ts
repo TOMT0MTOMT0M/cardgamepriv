@@ -42,7 +42,7 @@ import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
 import { mountGridArt } from './gridArt';
 import { yieldToMain } from '../../core/yieldMain';
-import { cardBeat, flash, flyGain, liquidGauge, shake, stamp } from './gameFx';
+import { cardBeat, flash, flyGain, ruleGauge, shake, stamp } from './gameFx';
 import '../jeux-motion.css';
 
 /**
@@ -500,7 +500,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       res.packs[i].flat().forEach((card) => slots.append(slot(card)));
       // (14/11) le total vit dans une jauge de fluide (pleine ≈ 4★ de moyenne par carte)
       const count = c.querySelector<HTMLElement>('.gm-count')!;
-      const gauge = liquidGauge(count, res.packs[i].flat().length * 4);
+      const gauge = ruleGauge(count, res.packs[i].flat().length * 4);
       c.querySelector('.gm-bh')!.after(gauge.el);
       return { el: c, count, gauge, slots: [...slots.children] as HTMLElement[], total: 0 };
     });
@@ -577,11 +577,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     }
     bat.classList.remove('suspense');
     room.querySelector('.gm-skip')?.remove();
-    // (14/11) fin : la lumière de la règle part entière du côté du gagnant
-    if (res.winner !== undefined) {
-      tug.classList.add('final');
-      tugBar.style.setProperty('--p', res.winner === 0 ? '1' : '0');
-    }
+    // (v2.0.6) fin : la règle garde le vrai rapport de force (elle ne file plus d'un côté), l'étiquette « En tête » s'efface
+    if (res.winner !== undefined) tug.classList.add('final');
     const v = room.querySelector<HTMLElement>('.gm-verdict')!;
     if (res.winner === undefined) {
       v.innerHTML = `<b><span>${tr('gm.perfectDraw')}</span></b> ${tr('gm.drawBack', { n: res.stars[0] })}`;
@@ -746,7 +743,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       res.packs[i].forEach((c) => sl.append(slot(c)));
       g.append(row);
       const count = row.querySelector<HTMLElement>('.gm-count')!;
-      const gauge = liquidGauge(count, res.packs[i].length * 4);
+      const gauge = ruleGauge(count, res.packs[i].length * 4);
       row.querySelector('.gm-bh')!.after(gauge.el);
       return { row, count, gauge, rank: row.querySelector<HTMLElement>('.gm-rank')!, slots: [...sl.children] as HTMLElement[], total: 0 };
     });

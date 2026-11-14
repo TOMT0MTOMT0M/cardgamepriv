@@ -26,8 +26,10 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 Nov', title: 'v2.0.1 to v2.0.4: launch touch-ups', tag: 'amélioré',
+        date: '14 Nov', title: 'v2.0.1 to v2.0.6: launch touch-ups', tag: 'amélioré',
         points: [
+          'Games: a clearly visible graduated rule for Pack Battle and Battle Royale scores, with no light effect at the end.',
+          'Big collections: beyond 8,000 different cards, the collection and profile show again.',
           '5★ cards: the “Swiss” frame is back on 5★ cards with a landscape photo.',
           'Battle Royale: on desktop, cards now show large across the full width.',
           'Collection: 5★ and 6★ cards are no longer blurry in the grid.',
