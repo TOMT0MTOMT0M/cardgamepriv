@@ -741,7 +741,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
         .overlay > .dz-hint.on { opacity: .55; }
         .overlay > .dz-skip { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; min-width: 44px; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid rgba(160,220,255,.25); background: rgba(6,12,24,.45); color: #cfe6ff; font: 600 12px var(--mono, "Inter", sans-serif); letter-spacing: .1em; text-transform: uppercase; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); cursor: pointer; }
         .overlay > .dz-skip:focus-visible { outline: 2px solid ${HOLO}; outline-offset: 2px; }
-        @media (prefers-reduced-motion: reduce) { .dz-title .dz-name span { transition: opacity .4s; transform: none; filter: none; } }`;
+        @media not all { .dz-title .dz-name span { transition: opacity .4s; transform: none; filter: none; } }`;
       textEl = document.createElement('div');
       textEl.className = 'dz-title';
       textEl.setAttribute('aria-live', 'polite');

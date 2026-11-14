@@ -136,8 +136,12 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const ready = l.steps.some((a) => claimable.has(a.id));
     const all = lvl === l.steps.length;
     const open = openLadders.has(l.stat + l.label);
-    const c = h('div', `sc-c sc-ladder sc-pill${all ? ' got' : ready ? ' ready' : ''}${open ? ' open' : ''}`);
     const pct = next ? Math.min(1, (cur - prevT) / Math.max(1, next.target - prevT)) : 1;
+    // (v2.0.6, demande de Tom) couleur selon l'avancement de TOUT le succès (paliers faits + palier en cours) :
+    // terminé (or) · presque (vert, ≥ 75 %) · à moitié (bleu, ≥ 40 %) · début (gris) · pas commencé
+    const whole = all ? 1 : (lvl + pct) / l.steps.length;
+    const stage = all ? 'done' : whole >= 0.75 ? 'near' : whole >= 0.4 ? 'half' : whole > 0 ? 'start' : 'none';
+    const c = h('div', `sc-c sc-ladder sc-pill st-${stage}${all ? ' got' : ready ? ' ready' : ''}${open ? ' open' : ''}`);
     const left = next ? Math.max(0, next.target - cur) : 0;
     c.innerHTML = `
       <button class="sc-pl-h" aria-expanded="${open}">

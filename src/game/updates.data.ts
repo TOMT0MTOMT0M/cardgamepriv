@@ -63,6 +63,9 @@ export const UPDATES: UpdateMonth[] = [
       {
         date: '14 nov.', title: 'v2.0.1 à v2.0.6 : les retouches de la sortie', tag: 'amélioré',
         points: [
+          'Animations : elles sont toujours actives, même si ton appareil demande de les réduire (skins CS en 3D compris).',
+          'Collection : le défilement s’arrête rangée par rangée, deux rangées entières toujours visibles sur ordinateur.',
+          'Couleurs : une teinte par jeu, des barres de classement colorées, et les succès colorés selon leur avancement.',
           'Jeux : une règle graduée bien visible pour les scores du Pack Battle et du Battle Royale, sans effet de lumière à la fin.',
           'Grosses collections : au-delà de 8 000 cartes différentes, la collection et le profil s’affichent de nouveau.',
           'Cartes 5★ : le cadre « Suisse » est de retour sur les 5★ à photo horizontale.',

@@ -99,4 +99,9 @@
   .lb-mine-v { grid-column: 2; }
   .lb-pd-step { margin-inline: -4px; }
 }
-@media (prefers-reduced-motion: reduce) { .lb-bar { animation: none; } }
+@media not all { .lb-bar { animation: none; } }
+
+/* (v2.0.6, demande de Tom) CLASSEMENT : les barres prennent de la couleur — un dégradé qui se réchauffe avec le score
+   (bleu → violet → corail), la mienne en or. `--w` = part du score du premier. */
+.lb-bar { background: linear-gradient(90deg, rgba(79, 140, 255, 0.1), rgba(154, 134, 255, 0.22) 55%, rgba(255, 107, 87, 0.34)); background-size: calc(100% * 100 / max(1, var(--wn, 100))) 100%; border-right: 2px solid rgba(255, 140, 120, 0.9); }
+.lb-row.is-me .lb-bar { background: linear-gradient(90deg, rgba(240, 192, 74, 0.1), rgba(240, 192, 74, 0.38)); border-right-color: #f0c04a; }

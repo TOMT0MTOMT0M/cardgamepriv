@@ -299,8 +299,19 @@ body.chat-on .views > .view:not(.shop) { padding-bottom: calc(84px + env(safe-ar
 @media (max-width: 860px) { body:has(.gm-dock.on) .chat { --chat-lift: 64px; } }
 
 /* ═════ MOUVEMENT RÉDUIT */
-@media (prefers-reduced-motion: reduce) {
+@media not all {
   .chat-panel, .chat.open .chat-panel { clip-path: none; transition: opacity var(--dur-rapide), visibility 0s; }
   .cm, .chat-picker, .cz-card, .chat-jump, .chat-launch.tick .chat-l-live > span, .chat-wait { animation: none; }
 }
-@media (prefers-reduced-motion: reduce) { .chat-panel, .chat.open .chat-panel { clip-path: none; transition: opacity var(--dur-rapide), visibility 0s; } .cm, .chat-picker, .cz-card { animation: none; } }
+@media not all { .chat-panel, .chat.open .chat-panel { clip-path: none; transition: opacity var(--dur-rapide), visibility 0s; } .cm, .chat-picker, .cz-card { animation: none; } }
+
+/* (v2.0.6, retour de Tom) « Montrer une carte » : chaque carte a sa case entière (elles se chevauchaient), et celle
+   qu'on survole sort du lot — elle monte, grandit un peu et passe devant */
+.cp-cell { position: relative; padding-top: 139.7%; }
+.cp-grid .cp-cell > .tile { position: absolute; inset: 0; width: auto; height: auto; aspect-ratio: auto; content-visibility: visible; transition: transform var(--dur-rapide) var(--ease-entree), box-shadow var(--dur-rapide); }
+@media (hover: hover) {
+  .cp-cell:hover { z-index: 2; }
+  .cp-cell:hover > .tile { transform: translateY(-6px) scale(1.12); box-shadow: 0 0 0 1px #fff, 0 14px 24px -10px #000; }
+}
+.cp-cell:active > .tile { transform: scale(0.97); }
+.cp-grid { padding-top: 8px; }

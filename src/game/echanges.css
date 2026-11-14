@@ -66,7 +66,7 @@
 .ex-h small { font: 500 11px var(--mono); letter-spacing: 0; text-transform: none; color: var(--ink-3); }
 .ex-none { padding: 14px 0; font-size: 13px; }
 .ex-zone { padding-top: 16px; }
-@media (prefers-reduced-motion: no-preference) {
+@media all {
   .ex-zone:not([hidden]) { animation: ex-in var(--dur-standard) var(--ease-entree) both; }
 }
 @keyframes ex-in { from { opacity: 0; transform: translateY(6px); } }
@@ -139,7 +139,7 @@
 .fy-rw small { display: flex; align-items: center; gap: 6px; font: 500 11px var(--mono); color: var(--rose); }
 .fy-row.sent { opacity: 0.55; }
 .fy-foot { margin: 18px 0 0; font: 500 11px var(--mono); }
-@media (prefers-reduced-motion: no-preference) {
+@media all {
   .fy-deal:not(.skel) { animation: ex-in var(--dur-standard) var(--ease-entree) both; }
   .fy-deal:nth-child(2) { animation-delay: 40ms; }
   .fy-deal:nth-child(3) { animation-delay: 80ms; }

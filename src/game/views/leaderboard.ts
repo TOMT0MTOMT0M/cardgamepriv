@@ -163,7 +163,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       const line = h('a', `lb-row${r.id === me ? ' is-me' : ''}${i < 3 ? ` top${i + 1}` : ''}`);
       line.href = `#/profil/${encodeURIComponent(r.id)}`;
       const t = titleOf(r.cosmetics.title);
-      line.innerHTML = `<i class="lb-bar" style="--w:${pctOf(r)}%" aria-hidden="true"></i><span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small>${esc(t.label)}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
+      line.innerHTML = `<i class="lb-bar" style="--w:${pctOf(r)}%;--wn:${pctOf(r)}" aria-hidden="true"></i><span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small>${esc(t.label)}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
       // bouton ami (lot A2) à côté de la ligne — pas dedans : un bouton dans un lien n'est ni valide ni accessible
       const fb = friendBtn(backend, r.id, r.name, 'row');
       if (!fb) listEl.append(line);

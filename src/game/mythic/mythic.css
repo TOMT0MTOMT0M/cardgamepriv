@@ -47,4 +47,4 @@ body.myth-on .card-ghost { visibility: hidden; }
 .mp-txt { position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; font-family: var(--title); font-weight: 700; color: #fff; }
 .mp-mono { font-family: var(--mono); font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; }
 .mp-rainbow { background: linear-gradient(100deg, #ff6b9a, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b9a) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: mp-shine 2.4s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .mp-stars, .mp-rainbow { animation: none; } }
+@media not all { .mp-stars, .mp-rainbow { animation: none; } }

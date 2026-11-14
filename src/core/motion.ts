@@ -105,9 +105,12 @@ export const TEASE_LAST_EXTRA = 0.2;
  */
 export const ECLIPSE = { teinte: 2.4, lever: 3.2, onde: 2.8, coucher: 1.2, suite: 1.1 } as const;
 
-const motionQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+const motionQuery = typeof matchMedia === 'function' ? matchMedia('not all') : null;
 /**
- * Vrai si les mouvements doivent être réduits : réglage « réduire les animations » de l'APPAREIL, seul signal depuis
+ * (v2.0.6, décision de Tom) TOUJOURS FAUX : les animations du jeu ne suivent plus le réglage « réduire les animations »
+ * de l'appareil (il coupait aussi les skins CS en 3D et les dessins animés des Jeux). Partout, la requête
+ * `(prefers-reduced-motion: reduce)` est remplacée par `not all` (jamais vraie), en CSS comme en code.
+ * AVANT : vrai si les mouvements doivent être réduits : réglage « réduire les animations » de l'APPAREIL, seul signal depuis
  * la suppression du mode « Effets réduits » du jeu (audit 12/11, décision 4 de Tom).
  */
 export const reducedMotion = (): boolean => !!motionQuery?.matches;

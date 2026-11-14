@@ -315,6 +315,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
 
   // ── bascule Cartes / Albums / Classeurs + barre de la vue Cartes
   const cardsBar = q('.cards-bar');
+  // (v2.0.6, retour de Tom) hauteur de la barre collée (1 ou 2 lignes selon la largeur) : la grille s'y cale — deux
+  // rangées entières sous la barre, et le défilement s'arrête au cran d'une rangée (style.css, --bar-h)
+  if (typeof ResizeObserver !== 'undefined') {
+    const syncBar = () => el.style.setProperty('--bar-h', `${Math.max(cardsBar.offsetHeight, filtersEl.offsetHeight) || 60}px`);
+    const ro = new ResizeObserver(syncBar);
+    ro.observe(cardsBar);
+    ro.observe(filtersEl);
+  }
   el.querySelectorAll<HTMLButtonElement>('.coll-views button').forEach((b) =>
     b.addEventListener('click', () => {
       const v = b.dataset.v!;
