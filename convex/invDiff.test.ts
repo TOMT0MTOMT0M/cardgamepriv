@@ -12,6 +12,9 @@ import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS } from './cardsCatalog';
 import { InvMirror } from '../src/core/net/invDiff';
 
+/** (v2.0.5) la collection arrive en tranches (`parts: true`) : remise à plat */
+const flatRows = <T,>(r: T[] | { parts: T[][] }): T[] => (Array.isArray(r) ? r : r.parts.flat());
+
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
 async function setup() {
   const t = convexTest(schema, modules);
@@ -43,7 +46,7 @@ describe('collection par différence', () => {
     const { t, alice } = await setup();
     await legacy(t, alice.userId, 300);
     const mirror = new InvMirror();
-    mirror.reset((await t.query(api.inventory.collectionFull, { sessionToken: alice.token }))!);
+    mirror.reset(flatRows((await t.query(api.inventory.collectionFull, { sessionToken: alice.token, parts: true }))!));
     const since = mirror.since();
     let fullBytes = 0, diffBytes = 0;
     for (let i = 0; i < 6; i++) {
@@ -70,8 +73,8 @@ describe('collection par différence', () => {
       await ctx.db.insert('inventory', { userId: bob.userId, cardId: B, rarity: 'common', count: 1, bestMintNumber: 3, foilSeed: 1, firstPulledAt: 0, lastPulledAt: 0 });
     });
     const ma = new InvMirror(), mb = new InvMirror();
-    ma.reset((await t.query(api.inventory.collectionFull, { sessionToken: alice.token }))!);
-    mb.reset((await t.query(api.inventory.collectionFull, { sessionToken: bob.token }))!);
+    ma.reset(flatRows((await t.query(api.inventory.collectionFull, { sessionToken: alice.token, parts: true }))!));
+    mb.reset(flatRows((await t.query(api.inventory.collectionFull, { sessionToken: bob.token, parts: true }))!));
     const id = await t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [{ cardId: A, rarity: 'common', count: 1 }], requested: [{ cardId: B, rarity: 'common', count: 1 }] });
     await t.mutation(api.trades.respond, { sessionToken: bob.token, tradeId: id, accept: true });
     for (const [m, tok] of [[ma, alice.token], [mb, bob.token]] as const) {
