@@ -90,11 +90,28 @@ export function liquidGauge(count: HTMLElement, max: number): { el: HTMLElement;
   el.append(count);
   // (chaque jauge a sa propre phase : deux jauges côte à côte ne respirent jamais ensemble)
   el.style.setProperty('--ph', `${-Math.random() * 6}s`);
+  // version shader (three.js TSL, gaugeGL.ts) : chargée à la demande, branchée quand la jauge est à l'écran ; sans
+  // elle (mouvement réduit, moteur indisponible) la jauge CSS ci-dessus reste
+  let gl: { set(level: number): void; end(win: boolean): void } | null = null;
+  let lvl = 0;
+  let ended: boolean | null = null;
+  if (!reducedMotion())
+    requestAnimationFrame(() =>
+      void import('./gaugeGL').then((m) => m.attachGauge(el)).then(
+        (g) => {
+          gl = g;
+          gl?.set(lvl);
+          if (ended !== null) gl?.end(ended);
+        },
+        () => undefined,
+      ),
+    );
   const set = (total: number) => {
-    const lvl = Math.max(0, Math.min(1, total / Math.max(1, max)));
+    lvl = Math.max(0, Math.min(1, total / Math.max(1, max)));
     el.style.setProperty('--lvl', lvl.toFixed(3));
     el.classList.toggle('full', lvl >= 1);
+    gl?.set(lvl);
   };
   set(0);
-  return { el, set, end: (win) => el.classList.add(win ? 'win' : 'lose') };
+  return { el, set, end: (win) => ((ended = win), el.classList.add(win ? 'win' : 'lose'), gl?.end(win)) };
 }
