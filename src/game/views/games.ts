@@ -42,7 +42,7 @@ import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
 import { mountGridArt } from './gridArt';
 import { yieldToMain } from '../../core/yieldMain';
-import { cardBeat, flash, flyGain, ruleGauge, shake, stamp } from './gameFx';
+import { cardBeat, flyGain, ruleGauge, stamp } from './gameFx';
 import '../jeux-motion.css';
 
 /**
@@ -555,10 +555,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       if (stars >= 5) sl.classList.add('hot');
       if (skip) return;
       if (stars >= 3) void flyGain(big, tugN[k], `+${stars}★`, hex);
-      if (stars >= 6) {
-        flash(hex);
-        shake(bat.querySelector('.gm-stage')!, 6);
-      }
+      // (v2.0.6, décision de Tom) plus de flash ni de secousse sur une 6★
       if (beat.hold) await wait(beat.hold);
     };
     for (let i = 0; i < n; i++) {
@@ -755,8 +752,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         g.classList.add('suspense');
         await wait(1400);
       }
-      let best = 0;
-      let bestHex = '';
       rows.forEach((x, k) => {
         const c = res.packs[k][i];
         if (!c) return;
@@ -778,13 +773,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
             void x.row.offsetWidth;
             x.row.classList.add('rare');
           }
-          if (stars > best) ((best = stars), (bestHex = hex));
         }
       });
-      if (!skip && best >= 6) {
-        flash(bestHex);
-        shake(g, 4);
-      }
       const leadBefore = rows.findIndex((x) => x.row.classList.contains('lead'));
       // classement en direct : les rangées GLISSENT à leur nouvelle place (FLIP)
       const order = rows.map((x, k) => [x.total, k]).sort((a, b) => b[0] - a[0]);
