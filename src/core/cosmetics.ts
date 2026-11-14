@@ -53,7 +53,14 @@ export interface Cosmetic {
   glyph?: string;
   /** (retours live 6, C14) cadre ANIMÉ : nom de l'animation (style.css, `.frame-a-…`) */
   anim?: string;
+  /** (14/11, refonte de la personnalisation) cadre DESSINÉ : nom du dessin (src/game/cosmeticArt.ts) */
+  art?: string;
+  /** (14/11) matière(s) de l'élément : un cadre et un fond de la même matière forment un ACCORD (`accordOf`) */
+  tags?: Matter[];
 }
+
+/** (14/11) matières des accords : cadre + fond de la même matière = un petit plus visible sur le profil */
+export type Matter = 'feu' | 'foudre' | 'cosmos' | 'neon' | 'retro' | 'sport' | 'manga' | 'doux' | 'monde' | 'ombre';
 
 /**
  * Retours live n°1 (03/11) : « tout cosmétique se débloque via les succès ». Chaque cosmétique pointe vers un des
@@ -136,22 +143,44 @@ export const BANNERS: Cosmetic[] = [C({ id: 'none', label: 'Aucune couleur', css
  */
 // i18n-data:début
 const ANIMATED_FRAMES: Cosmetic[] = [
-  C({ id: 'a-eclairs', label: 'Éclairs', need: 'leg-5', css: '#8fd6ff', anim: 'eclairs' }),
-  C({ id: 'a-feu', label: 'Feu', need: 'leg-50', css: '#ff7a2a', anim: 'feu' }),
-  C({ id: 'a-ange', label: 'Ange', need: 'full-25', css: '#ffffff', anim: 'ange' }),
-  C({ id: 'a-coeurs', label: 'Cœurs', need: 'trade-25', css: '#ff5d8f', anim: 'coeurs' }),
-  C({ id: 'a-galaxie', label: 'Galaxie', need: 'uniq-1000', css: '#b59cff', anim: 'galaxie' }),
-  C({ id: 'a-neon', label: 'Néon', need: 'contract-25', css: '#39ffd2', anim: 'neon' }),
+  C({ id: 'a-eclairs', label: 'Éclairs', need: 'leg-5', css: '#8fd6ff', anim: 'eclairs', art: 'eclairs', tags: ['foudre'] }),
+  C({ id: 'a-feu', label: 'Feu', need: 'leg-50', css: '#ff7a2a', anim: 'feu', art: 'feu', tags: ['feu'] }),
+  C({ id: 'a-ange', label: 'Ange', need: 'full-25', css: '#ffffff', anim: 'ange', art: 'ange' }),
+  C({ id: 'a-coeurs', label: 'Cœurs', need: 'trade-25', css: '#ff5d8f', anim: 'coeurs', art: 'coeurs', tags: ['doux'] }),
+  C({ id: 'a-galaxie', label: 'Galaxie', need: 'uniq-1000', css: '#b59cff', anim: 'galaxie', art: 'galaxie', tags: ['cosmos'] }),
+  C({ id: 'a-neon', label: 'Néon', need: 'contract-25', css: '#39ffd2', anim: 'neon', art: 'neon', tags: ['neon'] }),
 ];
 // i18n-data:fin
 /** (11/11, saisons) cadre gagné en finissant une saison sur le podium (convex/seasons.ts) — doré : la couleur dit le rang */
 // i18n-data:début
-const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison', need: 'season-podium', css: '#ffc94a' })];
+const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison', need: 'season-podium', css: '#ffc94a', art: 'podium' })];
 
 // i18n-data:fin
-/** Cadres d'avatar : aucun, un par couleur de la palette, puis les cadres animés et celui des saisons. */
+/**
+ * (14/11, refonte de la personnalisation) cadres DESSINÉS au trait et à l'aplat (src/game/cosmeticArt.ts), teintés par
+ * la couleur du profil : 5 libres, 8 à gagner — chacun sur un palier de succès qui ne donnait que des pièces (le
+ * palier garde ses pièces). `css` absent : la couleur du profil.
+ */
 // i18n-data:début
-export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => derive(a, { id: `c-${a.id}`, css: frameCss(a.css!) })), ...ANIMATED_FRAMES, ...SEASON_FRAMES];
+export const DRAWN_FRAMES: Cosmetic[] = [
+  C({ id: 'n-filet', label: 'Double filet', art: 'filet' }),
+  C({ id: 'n-points', label: 'Pointillé', art: 'points' }),
+  C({ id: 'n-crans', label: 'Crans', art: 'crans' }),
+  C({ id: 'n-pixel', label: 'Pixel', art: 'pixel', tags: ['retro'] }),
+  C({ id: 'n-petales', label: 'Pétales', art: 'petales', tags: ['doux'] }),
+  C({ id: 'n-engrenage', label: 'Engrenage', need: 'packs-50', art: 'engrenage' }),
+  C({ id: 'n-vague', label: 'Vague', need: 'uniq-100', art: 'vague', tags: ['monde'] }),
+  C({ id: 'n-confettis', label: 'Confettis', need: 'bebou-5', art: 'confettis' }),
+  C({ id: 'n-chat', label: 'Oreilles de chat', need: 'trade-5', art: 'chat', tags: ['doux'] }),
+  C({ id: 'n-ronces', label: 'Ronces', need: 'burn-500', art: 'ronces', tags: ['ombre'] }),
+  C({ id: 'n-laurier', label: 'Laurier', need: 'sport-3000', art: 'laurier', tags: ['sport'] }),
+  C({ id: 'n-impact', label: 'Impact', need: 'pop-6000', art: 'impact', tags: ['manga'] }),
+  C({ id: 'n-orbite', label: 'Orbite', need: 'uniq-7500', art: 'orbite', tags: ['cosmos'] }),
+];
+// i18n-data:fin
+/** Cadres d'avatar : aucun, un par couleur de la palette, les cadres dessinés, puis les cadres animés et celui des saisons. */
+// i18n-data:début
+export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => derive(a, { id: `c-${a.id}`, css: frameCss(a.css!) })), ...DRAWN_FRAMES, ...ANIMATED_FRAMES, ...SEASON_FRAMES];
 
 // i18n-data:fin
 // i18n-data:début
@@ -267,14 +296,71 @@ export const VITRINES: Cosmetic[] = [
   C({ id: 'nuit', label: 'Nuit étoilée', css: 'radial-gradient(1.5px 1.5px at 12% 22%, #fff9, transparent), radial-gradient(1px 1px at 68% 14%, #fff8, transparent), radial-gradient(1.5px 1.5px at 84% 62%, #fff7, transparent), radial-gradient(1px 1px at 34% 78%, #fff6, transparent), radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--vc) 30%, transparent), transparent 60%), linear-gradient(180deg, #0b1020, #05070e)' }),
   C({ id: 'feutre', label: 'Feutrine', css: 'radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--vc) 20%, #12382a), #071a12 75%)' }),
   C({ id: 'papier', label: 'Papier kraft', css: 'radial-gradient(ellipse at 30% 0%, #ffffff14, transparent 50%), linear-gradient(180deg, #3a2a1c, #21170f)' }),
-  C({ id: 'neon', label: 'Néon', css: 'repeating-linear-gradient(90deg, color-mix(in srgb, var(--vc) 18%, transparent) 0 1px, transparent 1px 44px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--vc) 14%, transparent) 0 1px, transparent 1px 44px), linear-gradient(180deg, #0d0a14, #07060b)' }),
+  C({ id: 'neon', label: 'Néon', tags: ['neon'], css: 'repeating-linear-gradient(90deg, color-mix(in srgb, var(--vc) 18%, transparent) 0 1px, transparent 1px 44px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--vc) 14%, transparent) 0 1px, transparent 1px 44px), linear-gradient(180deg, #0d0a14, #07060b)' }),
   C({ id: 'beton', label: 'Béton', css: 'radial-gradient(ellipse at 50% 0%, #ffffff12, transparent 60%), linear-gradient(180deg, #2a2a2c, #161617)' }),
   C({ id: 'or', label: 'Écrin doré', need: 'packs-500', css: 'radial-gradient(ellipse at 50% 0%, #ffd77a33, transparent 60%), linear-gradient(180deg, #3a2a0c, #1a1206)' }),
   C({ id: 'aurore', label: 'Aurore', need: 'streak-60', css: 'radial-gradient(ellipse at 20% 0%, #6bffb833, transparent 55%), radial-gradient(ellipse at 80% 10%, #c86bff33, transparent 55%), linear-gradient(180deg, #0c1418, #06090c)' }),
   C({ id: 'prisme', label: 'Prisme', need: 'myth-25', css: 'linear-gradient(120deg, #ff6b9a1f, #ffd36b26, #6bffb826, #6bc8ff26, #c86bff26), linear-gradient(180deg, #1a1420, #0d0a10)' }),
   C({ id: 'secret', label: 'Un de nous', need: 'secret-3', css: 'radial-gradient(ellipse at 50% 0%, #e8927c44, transparent 60%), linear-gradient(180deg, #2a0f0e, #120607)' }),
+  // (14/11, refonte de la personnalisation) 6 décors de plus : 3 libres, 3 à gagner
+  C({ id: 'galerie', label: 'Galerie', css: 'linear-gradient(180deg, #ebe8e1 0 82%, #c9c4b8 82% 83%, #d9d5cc 83%)' }),
+  C({ id: 'arcade', label: 'Arcade', tags: ['retro'], css: 'repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--vc) 22%, transparent), transparent 60%), linear-gradient(180deg, #0f0620, #05030a)' }),
+  C({ id: 'vestiaire', label: 'Vestiaire', tags: ['sport'], css: 'repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0 2px, transparent 2px 16.66%), linear-gradient(180deg, color-mix(in srgb, var(--vc) 34%, #20262d), color-mix(in srgb, var(--vc) 18%, #0e1114))' }),
+  C({ id: 'biblio', label: 'Bibliothèque', need: 'full-5', css: 'repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 5px), linear-gradient(180deg, #3b2616 0 86%, #6a4526 86% 91%, #1a0f08 91%)' }),
+  C({ id: 'atlas', label: 'Atlas', need: 'world-2000', tags: ['monde'], css: 'repeating-radial-gradient(circle at 16% 30%, transparent 0 11px, color-mix(in srgb, var(--vc) 22%, transparent) 11px 12px), repeating-radial-gradient(circle at 84% 82%, transparent 0 15px, color-mix(in srgb, var(--vc) 15%, transparent) 15px 16px), linear-gradient(180deg, #12161a, #0b0e11)' }),
+  C({ id: 'coffre', label: 'Coffre-fort', need: 'leg-100', tags: ['ombre'], css: 'radial-gradient(circle at 12px 12px, #d5d8dc 0 3px, transparent 3.6px), radial-gradient(circle at calc(100% - 12px) 12px, #d5d8dc 0 3px, transparent 3.6px), radial-gradient(circle at 12px calc(100% - 12px), #d5d8dc 0 3px, transparent 3.6px), radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #d5d8dc 0 3px, transparent 3.6px), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px), linear-gradient(180deg, #5b5f66, #2c2f34)' }),
 ];
 // i18n-data:fin
+
+/**
+ * (14/11, refonte de la personnalisation) FOND DU PROFIL — derrière tout le profil. Jamais une image importée : du
+ * généré par le navigateur (dégradés, trames, motifs), teinté par la couleur du profil (`--bgc`, posée par le client).
+ * 6 libres, 7 à gagner (paliers de succès qui ne donnaient que des pièces). Rangé dans `users.cosmetics.background`.
+ */
+const bgA = (p: number) => `color-mix(in srgb, var(--bgc) ${p}%, transparent)`;
+const bgM = (p: number, base = '#000000') => `color-mix(in srgb, var(--bgc) ${p}%, ${base})`;
+// i18n-data:début
+export const BACKGROUNDS: Cosmetic[] = [
+  C({ id: 'none', label: 'Aucun', css: '' }),
+  C({ id: 'trame', label: 'Trame', tags: ['manga'], css: `radial-gradient(circle, ${bgA(40)} 1px, transparent 1.5px) 0 0/9px 9px, radial-gradient(circle, ${bgA(20)} 1.6px, transparent 2.2px) 4.5px 4.5px/9px 9px, linear-gradient(160deg, ${bgM(22)}, #050505 70%)` }),
+  C({ id: 'hachures', label: 'Hachures', css: `repeating-linear-gradient(135deg, ${bgA(22)} 0 1px, transparent 1px 7px), linear-gradient(180deg, ${bgM(14)}, #050505)` }),
+  C({ id: 'grille', label: 'Grille', css: `linear-gradient(${bgA(25)} 1px, transparent 1px) 0 0/100% 96px, linear-gradient(90deg, ${bgA(25)} 1px, transparent 1px) 0 0/96px 100%, linear-gradient(${bgA(11)} 1px, transparent 1px) 0 0/100% 24px, linear-gradient(90deg, ${bgA(11)} 1px, transparent 1px) 0 0/24px 100%, #06080a` }),
+  C({ id: 'fondu', label: 'Fondu', css: `linear-gradient(155deg, ${bgM(46)} 0%, ${bgM(14)} 45%, #030303 85%)` }),
+  C({ id: 'grain', label: 'Grain', css: `radial-gradient(rgba(255, 255, 255, 0.12) 0.6px, transparent 0.8px) 0 0/3px 3px, radial-gradient(rgba(255, 255, 255, 0.08) 0.6px, transparent 0.8px) 1px 2px/5px 5px, radial-gradient(rgba(0, 0, 0, 0.4) 0.7px, transparent 0.9px) 2px 1px/7px 7px, linear-gradient(180deg, ${bgM(20)}, ${bgM(8)})` }),
+  C({ id: 'damier', label: 'Damier', tags: ['retro'], css: `conic-gradient(${bgA(18)} 25%, transparent 0 50%, ${bgA(18)} 0 75%, transparent 0) 0 0/32px 32px, #070707` }),
+  C({ id: 'braise', label: 'Braise', need: 'burn-50', tags: ['feu'], css: 'radial-gradient(ellipse at 50% 118%, rgba(255, 106, 26, 0.66), transparent 58%), radial-gradient(ellipse at 18% 110%, rgba(255, 178, 60, 0.34), transparent 45%), linear-gradient(180deg, #0a0403, #1a0704)' }),
+  C({ id: 'nuages', label: 'Nuages', need: 'streak-3', tags: ['doux'], css: `radial-gradient(ellipse 120px 44px at 22% 30%, rgba(255, 255, 255, 0.24), transparent 70%), radial-gradient(ellipse 160px 52px at 70% 18%, rgba(255, 255, 255, 0.2), transparent 70%), radial-gradient(ellipse 140px 48px at 48% 62%, rgba(255, 255, 255, 0.17), transparent 70%), radial-gradient(ellipse 180px 60px at 88% 78%, rgba(255, 255, 255, 0.15), transparent 70%), linear-gradient(180deg, ${bgM(35, '#27406e')}, ${bgM(35, '#5a3a66')})` }),
+  C({ id: 'orage', label: 'Orage', need: 'leg-25', tags: ['foudre', 'ombre'], css: 'repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 14px), radial-gradient(ellipse at 30% 0%, rgba(91, 107, 130, 0.66), transparent 60%), radial-gradient(ellipse at 80% 10%, rgba(58, 68, 86, 0.66), transparent 55%), linear-gradient(180deg, #11151c, #06080b)' }),
+  C({ id: 'topo', label: 'Topographie', need: 'world-300', tags: ['monde'], css: `repeating-radial-gradient(circle at 22% 28%, transparent 0 13px, ${bgA(24)} 13px 14px), repeating-radial-gradient(circle at 80% 85%, transparent 0 17px, ${bgA(17)} 17px 18px), linear-gradient(180deg, #0b0f10, #060808)` }),
+  C({ id: 'synth', label: 'Synthwave', need: 'gaming-400', tags: ['neon', 'retro'], css: `linear-gradient(180deg, transparent 0 60%, var(--bgc) 60% 60.5%, transparent 60.5% 69%, ${bgA(60)} 69% 69.4%, transparent 69.4% 82%, ${bgA(47)} 82% 82.5%, transparent 82.5%), radial-gradient(circle at 50% 44%, #ffd36b 0 9%, #ff7ab8 15%, transparent 15.5%), linear-gradient(180deg, #1a0b2e 0 60%, transparent 60%), repeating-conic-gradient(from 0deg at 50% 60%, ${bgA(47)} 0 0.5deg, transparent 0.5deg 10deg), #0d0518` }),
+  C({ id: 'terrain', label: 'Terrain', need: 'sport-400', tags: ['sport'], css: `linear-gradient(90deg, transparent 49.8%, rgba(255, 255, 255, 0.4) 49.8% 50.2%, transparent 50.2%), radial-gradient(circle at 50% 50%, transparent 0 17%, rgba(255, 255, 255, 0.4) 17% 17.6%, transparent 18%), repeating-linear-gradient(90deg, ${bgM(26, '#0b2a17')} 0 12.5%, ${bgM(16, '#0b2a17')} 12.5% 25%)` }),
+  C({ id: 'nebuleuse', label: 'Nébuleuse', need: 'uniq-2000', tags: ['cosmos'], css: `radial-gradient(1.2px 1.2px at 14% 22%, #ffffff, transparent), radial-gradient(1px 1px at 66% 12%, rgba(255, 255, 255, 0.8), transparent), radial-gradient(1.4px 1.4px at 82% 58%, #ffffff, transparent), radial-gradient(1px 1px at 36% 76%, rgba(255, 255, 255, 0.7), transparent), radial-gradient(1px 1px at 52% 40%, rgba(255, 255, 255, 0.6), transparent), radial-gradient(ellipse at 25% 35%, ${bgA(33)}, transparent 55%), radial-gradient(ellipse at 78% 70%, rgba(91, 59, 209, 0.34), transparent 55%), radial-gradient(ellipse at 60% 20%, rgba(31, 182, 201, 0.27), transparent 50%), #05040b` }),
+];
+// i18n-data:fin
+/** fond du profil (« Aucun » par défaut, et pour un ancien choix inconnu) */
+export const backgroundOf = (id?: string) => find(BACKGROUNDS, id) ?? BACKGROUNDS[0];
+
+/**
+ * (14/11) STYLE DU TITRE — la façon d'écrire le titre porté (n'importe lequel des TITLES) : typo et traitement, dessinés
+ * côté client (src/game/atelier.css, `.ts-<id>`), teintés par la couleur du profil. 6 libres, 4 à gagner. Rangé dans
+ * `users.cosmetics.titleStyle` (absent = « Usiné », l'écriture d'avant).
+ */
+// i18n-data:début
+export const TITLE_STYLES: Cosmetic[] = [
+  C({ id: 'usine', label: 'Usiné' }),
+  C({ id: 'capitales', label: 'Capitales' }),
+  C({ id: 'machine', label: 'Machine à écrire' }),
+  C({ id: 'pixel', label: 'Pixel', tags: ['retro'] }),
+  C({ id: 'bulle', label: 'Bulle', tags: ['doux'] }),
+  C({ id: 'maillot', label: 'Maillot', tags: ['sport'] }),
+  C({ id: 'neon', label: 'Néon', need: 'contract-5', tags: ['neon'] }),
+  C({ id: 'manga', label: 'Manga', need: 'pop-800', tags: ['manga'] }),
+  C({ id: 'glitch', label: 'Glitch', need: 'gaming-3000', tags: ['retro'] }),
+  C({ id: 'grave', label: 'Gravé', need: 'packs-1500' }),
+];
+// i18n-data:fin
+export const titleStyleOf = (id?: string) => find(TITLE_STYLES, id) ?? TITLE_STYLES[0];
+
 export const vitrineOf = (id?: string) => find(VITRINES, id) ?? VITRINES[0];
 
 /** couleur libre du sélecteur : « #rrggbb » (gratuite pour tout le monde) */
@@ -287,10 +373,10 @@ export function accentColor(id?: string): string | undefined {
 }
 
 /** Cosmétiques débloqués par un succès (page Succès : « récompenses »). */
-export type CosmeticKind = 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine' | 'Ouverture'; // i18n-ok (genres : identifiants)
+export type CosmeticKind = 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine' | 'Ouverture' | 'Fond' | 'Style'; // i18n-ok (genres : identifiants)
 export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; c: Cosmetic }> {
   const out: Array<{ kind: CosmeticKind; c: Cosmetic }> = [];
-  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES], ['Ouverture', OPENINGS]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c }); // i18n-ok (genres : identifiants)
+  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES], ['Ouverture', OPENINGS], ['Fond', BACKGROUNDS], ['Style', TITLE_STYLES]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c }); // i18n-ok (genres : identifiants)
   return out;
 }
 
@@ -362,6 +448,9 @@ export interface CosmeticChoice {
   /** vitrine : fond (VITRINES) et couleur (id d'ACCENTS ou « #rrggbb ») */
   vitrine?: string;
   vitrineColor?: string;
+  /** (14/11) fond du profil (BACKGROUNDS) et style d'écriture du titre (TITLE_STYLES) */
+  background?: string;
+  titleStyle?: string;
 }
 
 const find = (list: Cosmetic[], id: string | undefined) => (id ? list.find((c) => c.id === id) : undefined);
@@ -386,11 +475,14 @@ export function cleanCosmetics(choice: CosmeticChoice, stats: PlayerStats): Cosm
   const accent = color(choice.accent);
   const vitrine = ok(VITRINES, choice.vitrine);
   const vitrineColor = color(choice.vitrineColor);
+  // (14/11) fond et style de titre : le choix par défaut (« Aucun », « Usiné ») n'est pas rangé
+  const background = ok(BACKGROUNDS, choice.background);
+  const titleStyle = ok(TITLE_STYLES, choice.titleStyle);
   const pick = (list: Cosmetic[], legacy: Cosmetic[], v?: string) => {
     const a = (v ?? '').toLowerCase();
     return CUSTOM_ACCENT.test(a) ? a : ok(list, v) ?? ok(legacy, v);
   };
-  return { banner: pick(BANNERS, LEGACY_BANNERS, choice.banner), frame: pick(FRAMES, LEGACY_FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}), ...(vitrine ? { vitrine } : {}), ...(vitrineColor ? { vitrineColor } : {}) };
+  return { banner: pick(BANNERS, LEGACY_BANNERS, choice.banner), frame: pick(FRAMES, LEGACY_FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}), ...(vitrine ? { vitrine } : {}), ...(vitrineColor ? { vitrineColor } : {}), ...(background && background !== BACKGROUNDS[0].id ? { background } : {}), ...(titleStyle && titleStyle !== TITLE_STYLES[0].id ? { titleStyle } : {}) };
 }
 
 /** Ce que le joueur a débloqué (pour la galerie et pour le fil « succès » à venir). */
@@ -405,6 +497,19 @@ export const bannerOf = (id?: string) => find(BANNERS, id) ?? find(LEGACY_BANNER
 const legacyFrame = (c: Cosmetic | undefined) => (c && c.id !== 'mythic' ? { ...c, css: c.css?.match(/#[0-9a-f]{6}/i)?.[0] ?? c.css } : c);
 export const frameOf = (id?: string) => find(FRAMES, id) ?? legacyFrame(find(LEGACY_FRAMES, id)) ?? customOf(id, frameCss) ?? FRAMES[0];
 export const titleOf = (id?: string) => find(TITLES, id);
+
+/**
+ * (14/11) ACCORD — le cadre et le fond partagent une matière : le profil gagne un petit plus (src/game/cosmeticArt.ts).
+ * `full` : le style du titre ou la vitrine est de la même matière (l'entrée de la vitrine s'anime aussi). Calculé à
+ * l'affichage sur ce qui est porté : rien à ranger, rien à demander au serveur.
+ */
+export function accordOf(c: CosmeticChoice): { matter: Matter; full: boolean } | null {
+  const bg = backgroundOf(c.background).tags ?? [];
+  const matter = (frameOf(c.frame).tags ?? []).find((m) => bg.includes(m));
+  if (!matter) return null;
+  const has = (x?: Cosmetic) => !!x?.tags?.includes(matter);
+  return { matter, full: has(titleStyleOf(c.titleStyle)) || has(c.vitrine ? vitrineOf(c.vitrine) : undefined) };
+}
 export const badgeOf = (id: string) => find(BADGES, id);
 
 /**

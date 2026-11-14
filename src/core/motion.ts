@@ -30,6 +30,26 @@ export const DUR = {
   ceremonie: 2500,
 } as const;
 
+/**
+ * (14/11, personnalisation du profil) BOUCLES D'AMBIANCE des éléments équipés (cadres, titres, accords) — en ms. Ce ne
+ * sont pas des transitions : des mouvements lents qui tournent tant que l'élément est à l'écran (`--amb-*` en CSS).
+ */
+export const AMBIANCE = {
+  /** rotation lente d'un cadre (pointillé, engrenage, galaxie) : un tour */
+  tour: 48000,
+  /** aiguille des « Crans » : un tour, cran par cran */
+  cadran: 60000,
+  /** respiration d'une flamme */
+  souffle: 1200,
+  /** flottement (auréole) et scintillement (étoiles, confettis) */
+  flotte: 3200,
+  scintille: 2400,
+  /** tube néon qui grésille, titre qui se dérègle */
+  neon: 3400,
+  /** particule d'un accord qui traverse la photo (braise, étoile, confetti) */
+  particule: 2600,
+} as const;
+
 /** Cascade : délai entre deux éléments (ms) et plafond total. */
 export const STAGGER = { serre: 20, normal: 40, large: 60, max: 300 } as const;
 
@@ -139,6 +159,7 @@ export function bindMotionVars(): void {
     r.setProperty('--ease-entree', EASING.entree);
     r.setProperty('--ease-sortie', EASING.sortie);
     r.setProperty('--ease-anticipation', EASING.anticipation);
+    for (const [k, v] of Object.entries(AMBIANCE)) r.setProperty(`--amb-${k}`, `${v}ms`);
   };
   apply();
   if (typeof matchMedia === 'function') matchMedia('(pointer: coarse)').addEventListener?.('change', apply);

@@ -104,6 +104,8 @@ export default defineSchema({
     covers: v.optional(v.record(v.string(), v.string())),
     /** cosmétiques du profil (src/core/cosmetics.ts) : bannière, cadre d'avatar, titre, badges — tout se débloque en jouant */
     cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()),
+      /** (14/11, refonte de la personnalisation) fond du profil et style d'écriture du titre (src/core/cosmetics.ts : BACKGROUNDS, TITLE_STYLES) */
+      background: v.optional(v.string()), titleStyle: v.optional(v.string()),
       /** (11/11, chantier ouvertures-saisons) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) — absente : la déchirure */
       opening: v.optional(v.string()) })),
     /** photo de profil / bannière importées par le joueur (GIF animé ou image, ≤ 2 Mo, convex/profiles.ts) — sinon l'avatar Discord */
