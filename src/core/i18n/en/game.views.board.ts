@@ -95,7 +95,7 @@ export const en: PartOf<typeof fr> = {
   'bd.received': 'Offers received',
   'bd.noneYetW': 'none yet',
   'bd.result': 'Result',
-  'bd.arriveHere': 'Other players’ offers will arrive here (badge on the Trades tab).',
+  'bd.arriveHere': 'Other players’ offers will arrive here (badge on the For you tab).',
   'bd.expiredFree': 'Expired without a trade: your cards are free.',
   'bd.withdrawnFree': 'Withdrawn: your cards are free.',
   'bd.counterSent': 'counter-offer sent',

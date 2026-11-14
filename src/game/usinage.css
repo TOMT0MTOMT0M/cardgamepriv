@@ -102,8 +102,8 @@ a.btn-ghost, a.btn-ghost:visited { color: var(--ink); }
 
 /* ───────────── contrôles segmentés, onglets, jetons */
 .seg { border-color: var(--gm-line-2); padding: 3px; gap: 0; }
-.seg button, .seg a { border-radius: var(--r-ctl); }
-.seg-ind { border-radius: var(--r-ctl); box-shadow: none; }
+.seg button, .seg a { border-radius: var(--r-pill); } /* (v2.0.1) même forme que la pastille qui les porte (rayons concentriques) */
+.seg-ind { border-radius: var(--r-pill); box-shadow: none; }
 .seg button.on, .seg a.on { background: #fff; color: #000; }
 /* onglets de page : capitales espacées */
 .seg.coll-views button, .seg.coll-views a, .pf-tabs button, .tr-tabs button, .lb-boards button, .sg-tabs button { padding: 8px 14px; font: 500 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
@@ -262,7 +262,7 @@ select, textarea { border-radius: var(--gm-r); }
 .bp-row { border-radius: var(--r-ctl); }
 .sleeve, .sleeve.special { border-radius: var(--gm-r); }
 .qty { background: none; border-color: var(--gm-line-2); padding: 3px; }
-.qty button { border-radius: var(--r-ctl); }
+.qty button { border-radius: var(--r-pill); }
 .sealed-banner, .sum-warn { border-radius: var(--gm-r); }
 
 /* ───────────── connexion, accès V2, sondage, « qui a cette carte » */
@@ -360,6 +360,16 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 .mk-step { min-width: 44px; min-height: 44px; padding: 0; font-size: 18px; }
 .mk-pbtns { display: flex; flex-wrap: wrap; gap: 10px; }
 .mk-note { margin: 0; font-size: 12px; }
+/* (13/11, retours Hugo) deux usages : « Chercher » (acheter) et « Vendre · Échanger » (mettre une carte, mes ventes) */
+.mk-sell > :is(.mk-tools, .mk-g-open, .mk-empty) { display: none !important; }
+.mk-sell .mk-mine { border-bottom: 0; }
+.mk-item > .tile { cursor: pointer; }
+.mk-item > .tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mk-how { align-self: flex-start; }
+.mk-how button, .mk-dur button { min-height: 40px; padding: 0 16px; }
+.mk-sellf, .mk-tradef { display: flex; flex-direction: column; gap: 12px; }
+.mk-sellf[hidden], .mk-tradef[hidden] { display: none; }
+.mk-tnote { margin: 0; font-size: 13px; color: var(--ink-2); }
 @media (max-width: 860px) {
   .mk-grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 12px; }
   .mk-acts { width: 100%; justify-content: space-between; }
@@ -369,6 +379,23 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
   .mk-chosen { max-width: 170px; margin: 0 auto; }
 }
 
+/* (13/11, retours Hugo) SUCCÈS en pastilles : nom, palier, progression ; un toucher déplie le détail */
+.sc-grid:has(> .sc-pill) { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; align-items: start; }
+.sc-pill { padding: 0; gap: 0; }
+.sc-pl-h { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 12px 14px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.sc-pl-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sc-pill .sc-name { font: 600 13px/1.2 var(--title); letter-spacing: 0.06em; text-transform: uppercase; }
+.sc-pill .sc-tier { flex: none; font: 600 13px var(--mono); color: var(--ink); }
+.sc-pill .sc-n { font-size: 12px; }
+.sc-more { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 12px; border-top: 1px solid var(--gm-line); padding-top: 10px; }
+.sc-more[hidden] { display: none; }
+.sc-more .sc-how b { color: var(--ink); }
+.sc-rw-l { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 500 12px var(--mono); color: var(--ink-3); }
+.sc-pill.open { grid-column: span 2; }
+@media (max-width: 860px) {
+  .sc-grid:has(> .sc-pill) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sc-pill.open { grid-column: 1 / -1; }
+}
 /* ───────────── (version anglaise) pastille de langue FR | EN : collée au son, même hauteur, même style d'icône ;
    Inter en capitales, la langue active en blanc, l'autre en gris (ni icône ni drapeau) ───────────── */
 .me .icon.lang-sw { display: grid; place-items: center; height: 27px; min-width: 27px; padding: 0 7px; color: var(--ink-3); transition: background-color var(--dur-rapide), transform var(--dur-rapide), color var(--dur-rapide); }

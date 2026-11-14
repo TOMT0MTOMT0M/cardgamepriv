@@ -163,6 +163,16 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     prepare(key: string) {
       texturize(slot(key));
     },
+    /**
+     * (13/11) oublie la pochette `key` (booster du moment remplacé par un autre événement) : la prochaine fois, elle
+     * est refaite d'après le nouveau visuel (appeler `prepare` dès qu'il est prêt, avant son envoi au GPU)
+     */
+    forget(key: string) {
+      const s = slots.get(key);
+      if (!s) return;
+      group.remove(s.body);
+      slots.delete(key);
+    },
     /** crée d'avance les matériaux (préchauffage des shaders sous l'écran de chargement) */
     warm(keys: string[]) {
       for (const k of keys) texturize(slot(k));

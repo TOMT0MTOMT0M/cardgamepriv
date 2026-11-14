@@ -24,7 +24,8 @@ export const fr = {
   'cp.forSale': 'en vente dès',
   'cp.wanters': { one: '{n} la veut', other: '{n} la veulent' },
   'cp.playersGo': 'Chez les joueurs ›',
-  'cp.reqSent': 'Demande envoyée à {to} : {get} contre {give}. À suivre dans Échanges › En cours.',
+  'cp.reqSent': 'Demande envoyée à {to} : {get} contre {give}. À suivre dans Marché › En cours.',
+  'cp.soldAvg': 'vendue en moyenne',
   'cp.openComposer': '{msg}. On ouvre le composeur.',
   'cp.offered': 'Proposé à {to} : {give} contre {get}.',
   'cp.playersH': 'Chez les joueurs',
@@ -46,9 +47,11 @@ export const fr = {
   'cp.offerTitle': 'Lui proposer ton doublon : on choisit en échange un de ses doublons de même étoile qui te manque',
   'cp.seeksDup': 'la cherche · tu as un doublon',
   'cp.seeks': 'la cherche',
-  'cp.owners': { one: '<b>{n}</b> l’a', other: '<b>{n}</b> l’ont' },
+  'cp.owners': { one: '<b>{n}</b> 👤', other: '<b>{n}</b> 👥' },
   'cp.asDup': '{n} en doublon',
   'cp.online': 'en ligne',
   'cp.forSaleT': 'En vente',
+  'cp.avgT': 'Prix moyen des ventes :',
+  'cp.avgD': { one: 'sur {n} vente · dernière {last}', other: 'sur {n} ventes · dernière {last}' },
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

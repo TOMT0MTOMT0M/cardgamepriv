@@ -18,7 +18,11 @@ import { msgParamsValidator } from './schema';
  * absent = tout). Garde-fous : rien entre 23 h et 8 h (heure de Paris) sauf `trade` / `friend` / `game` reportés à 8 h ;
  * un même type regroupé : au plus une notification par type et par joueur toutes les 2 minutes (la dernière gagne).
  */
-export const KINDS = ['reserve', 'trade', 'friend', 'referral', 'game', 'streak', 'news', 'chat'] as const;
+export const KINDS = ['reserve', 'trade', 'friend', 'referral', 'game', 'streak', 'news', 'chat', 'roulette'] as const;
+/** (13/11, retours Hugo) types À LA DEMANDE : envoyés seulement si le joueur les a cochés (absent ≠ tout) */
+export const OPT_IN: readonly Kind[] = ['roulette'];
+/** préférences effectives : celles du joueur, ou tout sauf les types à la demande */
+export const prefsOf = (u: { notifPrefs?: string[] }): string[] => u.notifPrefs ?? KINDS.filter((k) => !OPT_IN.includes(k));
 export type Kind = (typeof KINDS)[number];
 const kindValidator = v.union(...KINDS.map((k) => v.literal(k)));
 
@@ -64,7 +68,7 @@ export const status = query({
       configured: !!process.env.VAPID_PUBLIC_KEY,
       devices: subs.length,
       thisDevice: !!endpoint && subs.some((s) => s.endpoint === endpoint),
-      prefs: user.notifPrefs ?? [...KINDS],
+      prefs: prefsOf(user),
     };
   },
 });
@@ -129,7 +133,7 @@ export async function notify(ctx: MutationCtx, userId: Id<'users'>, p: Payload, 
     if (!process.env.VAPID_PUBLIC_KEY) return;
     const user = await ctx.db.get(userId);
     if (!user) return;
-    if (user.notifPrefs && !user.notifPrefs.includes(p.kind)) return;
+    if (!prefsOf(user).includes(p.kind)) return;
     const subs = await ctx.db.query('pushSubs').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
     if (!subs.length) return;
     let at = opts.at ?? Date.now();

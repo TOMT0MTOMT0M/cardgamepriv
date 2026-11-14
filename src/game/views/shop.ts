@@ -1,4 +1,5 @@
 import { fmtPct as fmtPctI, t as tr } from '../../core/i18n';
+import { onLang } from '../lang';
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
 import { playAmbience, playMusicPreview, prefetchAmbience, prefetchMusicPreview, stopAmbience, stopMusicPreview } from '../musicPreview';
 import { isEclipsePack } from '../eclipse';
@@ -433,6 +434,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     },
   });
   el.append(sheet.el);
+  // (v2.0.1) la boutique garde son instance au changement de langue (main.ts) : textes des boosters et fiche refaits
+  onLang(() => {
+    for (const f of shopPacks()) {
+      const i = sheetList.findIndex((x) => x.key === f.key);
+      if (i >= 0) sheetList[i] = f;
+    }
+    const i = sheetList.findIndex((x) => x.key === EVENT_KEY);
+    if (ev && i >= 0) sheetList[i] = eventPack(ev);
+    sheet.relang();
+  });
   /**
    * (07/11, retours de Tom) ORDINATEUR : plus de liste des boosters à droite — la fiche du booster choisi y est posée en
    * permanence, en panneau fluide (packSheet.ts dock/show) ; elle se déforme et se reforme quand la roue change de
@@ -477,8 +488,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    */
   const WHEEL = matchMedia('(max-width: 860px)');
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
-  for (const b of list) {
-    const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}`, `
+  const makeSleeve = (b: SheetPack) => {
+    const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}${b.key === EVENT_KEY ? ' event' : ''}`, `
       <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">' + tr('common.soonCaps') + '</span>' : ''}<i class="sl-shade"></i><i class="sl-shine"></i></span>
       <span class="sl-name">${esc(b.name)}</span>
       <span class="sl-desc">${esc(b.desc)}</span>
@@ -492,9 +503,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       haptics.pulse(6);
       sheet.open(b.key);
     });
-    rowEl.append(btn);
-  }
-  const sleeves = [...rowEl.querySelectorAll<HTMLElement>('.sleeve')];
+    return btn;
+  };
+  for (const b of list) rowEl.append(makeSleeve(b));
+  let sleeves = [...rowEl.querySelectorAll<HTMLElement>('.sleeve')];
+  /** signature de la collection au dernier calcul des filets de progression des pochettes (plus bas) */
+  let progSig = '';
   const sleeveOf = (k: string) => sleeves.find((b) => b.dataset.key === k) ?? null;
   // cadran gradué sous la roue (téléphone)
   const dial = h('div', 'wheel-dial', '<i></i>');
@@ -524,7 +538,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
 
   function select(k: string, o: { dir?: 1 | -1; scroll?: boolean } = {}) {
     if (mode !== 'pick') return;
-    if (k === EVENT_KEY) return selectEvent();
+    if (k === EVENT_KEY) return selectEvent(o);
     // sens de rotation du booster : vers la droite si on avance dans la liste, vers la gauche si on recule
     const from = list.findIndex((b) => b.key === selected);
     const to = list.findIndex((b) => b.key === k);
@@ -562,15 +576,17 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   }
 
   /** (11/11) le booster du moment au centre (pas de cran dans la roue : aucune pochette n'est « choisie ») */
-  function selectEvent() {
+  function selectEvent(o: { scroll?: boolean } = {}) {
     if (!ev || mode !== 'pick') return;
     const from = selected;
     selected = EVENT_KEY;
     if (DOCK.matches) sheet.show(EVENT_KEY);
+    // (13/11, retours Hugo) il a sa pochette dans la roue : elle s'allume, la roue tourne jusqu'à elle
     for (const b of sleeves) {
-      b.classList.remove('on');
-      b.setAttribute('aria-selected', 'false');
+      b.classList.toggle('on', b.dataset.key === EVENT_KEY);
+      b.setAttribute('aria-selected', String(b.dataset.key === EVENT_KEY));
     }
+    if (o.scroll !== false && WHEEL.matches && list[mod(Math.round(target ?? pos))]?.key !== EVENT_KEY) spinToIndex(list.findIndex((b) => b.key === EVENT_KEY));
     band.classList.add('on');
     const sp = backend.state.sealed;
     if (sp && keyOf(sp) !== EVENT_KEY) {
@@ -578,13 +594,19 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       syncCta();
       return;
     }
-    if (from !== EVENT_KEY) opening.setBooster(EVENT_KEY, true, -1);
+    // ordinateur : la roue verticale tourne jusqu'à lui (le grand booster change à son arrivée, onReelCommit)
+    if (o.scroll !== false && from !== EVENT_KEY && opening.reelTo(EVENT_KEY)) {
+      opening.setBoosterSoon(false);
+      syncState();
+      return;
+    }
+    opening.setBooster(EVENT_KEY, !opening.reelActive(), -1);
     opening.setBoosterSoon(false);
     syncState();
   }
 
   // ── la roue (téléphone)
-  const N = list.length;
+  let N = list.length;
   const TAU = Math.PI * 2;
   /** distance signée la plus courte d'une pochette au milieu, dans [-N/2, N/2] */
   const near = (d: number) => d - N * Math.round(d / N);
@@ -915,6 +937,34 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   // ── (11/11) booster du moment : abonnement, bandeau, compte à rebours, annonce
   let evSig = '';
   const bootAt = performance.now();
+  /**
+   * (13/11, retours Hugo « il n'est pas dans la roue des boosters, seulement quand on appuie sur le texte ») le booster
+   * du moment a sa pochette EN TÊTE de la roue (téléphone) et de la roue verticale (ordinateur) tant qu'il dure ;
+   * elle part avec lui. La roue se recale sur le booster choisi.
+   */
+  function syncEventSleeve() {
+    const at = list.findIndex((b) => b.key === EVENT_KEY);
+    if (at >= 0) list.splice(at, 1);
+    const evp = ev ? sheetList.find((x) => x.key === EVENT_KEY) : undefined;
+    if (evp) list.unshift(evp);
+    for (const b of sleeves) b.remove();
+    sleeves = list.map(makeSleeve);
+    rowEl.prepend(...sleeves);
+    for (const b of sleeves) {
+      const on = b.dataset.key === selected;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', String(on));
+    }
+    N = list.length;
+    target = null;
+    vel = 0;
+    pos = indexOfKey(selected);
+    detent = Math.round(pos);
+    progSig = '';
+    opening.setReelKeys(list.map((b) => b.key));
+    paintSleeves();
+    requestAnimationFrame(relayout);
+  }
   function setEvents(rows: PackEvent[]) {
     const next = liveEvent(rows);
     const sig = next ? `${next.id}|${next.name}|${next.accent}|${next.endAt}|${next.blurb ?? ''}|${contentSig(next)}` : '';
@@ -926,6 +976,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (ev) sheetList.unshift(eventPack(ev));
     thumbs.delete(EVENT_KEY);
     opening.setEventBooster(ev);
+    syncEventSleeve();
     band.hidden = !ev;
     if (ev) {
       band.style.setProperty('--ev', ev.accent);
@@ -1031,7 +1082,6 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
   });
   // sous chaque pochette, un filet : la part de ses cartes déjà dans ta collection
-  let progSig = '';
   backend.onChange((st) => {
     const sig = collectionSig(st);
     if (sig === progSig) return;

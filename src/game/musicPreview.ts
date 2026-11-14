@@ -134,7 +134,11 @@ export async function playMusicPreview(cardId: string, rarity: string, volume = 
   if (!src || my !== token) return;
   stopMusicPreview(0.2);
   current = cardId;
-  const a = new Audio(src);
+  const a = new Audio();
+  // (13/11) les aperçus Apple autorisent la lecture depuis un autre site (CORS) : on peut en lire le spectre (barres
+  // de la visionneuse). Deezer : lecture simple, barres animées sans analyse.
+  if (/\.itunes\.apple\.com\//.test(src)) a.crossOrigin = 'anonymous';
+  a.src = src;
   a.preload = 'auto';
   a.volume = 0;
   audio = a;
@@ -147,6 +151,7 @@ export async function playMusicPreview(cardId: string, rarity: string, volume = 
     return;
   }
   if (audio !== a) return void a.pause();
+  tapSpectrum(a);
   stopAmbience(0.4); // l'extrait d'une carte passe devant la musique d'ambiance
   showChip(p, host);
   fade(a, 0.6 * Math.min(1, volume), 1400);
@@ -239,6 +244,82 @@ function release(a: HTMLAudioElement) {
   } catch {
     /* rien */
   }
+}
+
+// ───────────────────────────────────────────── (13/11, retours Hugo) SPECTRE pour les barres de la visionneuse
+/**
+ * Le son de l'extrait n'est PAS détourné : on écoute une copie du flux (`captureStream`, Chrome / Firefox / Android)
+ * dans un contexte d'analyse à part, sans sortie. Safari, Deezer, contexte audio pas encore autorisé : pas de spectre,
+ * `musicLevels` anime alors les barres sur un battement régulier (≈ 118 bpm) — jamais de silence ni de coupure.
+ */
+let anCtx: AudioContext | null = null;
+let an: { el: HTMLAudioElement; node: AnalyserNode; bins: Uint8Array<ArrayBuffer> } | null = null;
+function tapSpectrum(a: HTMLAudioElement) {
+  an = null;
+  if (!a.crossOrigin) return;
+  const cap = (a as HTMLAudioElement & { captureStream?(): MediaStream; mozCaptureStream?(): MediaStream }).captureStream?.bind(a) ?? (a as HTMLAudioElement & { mozCaptureStream?(): MediaStream }).mozCaptureStream?.bind(a);
+  if (!cap || typeof AudioContext === 'undefined') return;
+  const hook = () => {
+    try {
+      if (audio !== a || an?.el === a) return;
+      const stream = cap();
+      if (!stream.getAudioTracks().length) return;
+      anCtx ??= new AudioContext();
+      void anCtx.resume().catch(() => undefined);
+      const node = anCtx.createAnalyser();
+      node.fftSize = 128;
+      node.smoothingTimeConstant = 0.72;
+      anCtx.createMediaStreamSource(stream).connect(node);
+      an = { el: a, node, bins: new Uint8Array(node.frequencyBinCount) };
+    } catch {
+      an = null;
+    }
+  };
+  hook();
+  if (!an) a.addEventListener('playing', hook, { once: true });
+}
+/** un extrait joue (avec sa courbe de volume, 0..1) : la visionneuse montre ses barres */
+export function musicLevel(): number {
+  const a = audio;
+  return a && !a.paused ? Math.min(1, a.volume / 0.6) : 0;
+}
+/**
+ * Remplit `out` (N barres, 0..1) : le spectre de l'extrait en cours, graves au centre, aigus vers les bords (en miroir),
+ * ou un battement de repli. Retourne false si rien ne joue.
+ */
+export function musicLevels(out: Float32Array, t: number): boolean {
+  const a = audio;
+  if (!a || a.paused) return false;
+  const n = out.length, half = n / 2;
+  let live = false;
+  if (an && an.el === a) {
+    an.node.getByteFrequencyData(an.bins);
+    let sum = 0;
+    for (let i = 0; i < an.bins.length; i++) sum += an.bins[i];
+    if (sum > 0) {
+      live = true;
+      // échelle logarithmique sur les 2/3 bas du spectre (au-delà : presque rien dans un aperçu compressé)
+      const nb = Math.floor(an.bins.length * 0.66);
+      for (let k = 0; k < half; k++) {
+        const f0 = Math.floor(Math.pow(nb, k / half)), f1 = Math.max(f0 + 1, Math.floor(Math.pow(nb, (k + 1) / half)));
+        let m = 0;
+        for (let f = f0; f < f1 && f < nb; f++) m = Math.max(m, an.bins[f]);
+        const v = Math.pow(m / 255, 1.6);
+        out[half - 1 - k] = v;
+        out[half + k] = v;
+      }
+    }
+  }
+  if (!live) {
+    const beat = Math.pow(Math.max(0, Math.cos(((t * 118) / 60) * Math.PI)), 6);
+    for (let k = 0; k < half; k++) {
+      const w = 0.25 + 0.2 * Math.sin(t * (2.1 + k * 0.37) + k * 1.7) + 0.15 * Math.sin(t * (5.3 + k * 0.11) + k);
+      const v = Math.max(0.04, Math.min(1, (w + beat * (0.55 - k * 0.012)) * (1 - k / (half * 1.4))));
+      out[half - 1 - k] = v;
+      out[half + k] = v;
+    }
+  }
+  return true;
 }
 
 export function stopMusicPreview(fadeS = 0.6): void {

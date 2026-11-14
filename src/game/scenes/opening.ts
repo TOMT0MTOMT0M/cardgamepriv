@@ -916,7 +916,8 @@ export function createOpeningScene(): OpeningScene {
       if (styles[k] !== st) return; // (booster du moment changé ou retiré pendant la génération)
       arts.set(k, a);
       // la roue en réduit les toiles tout de suite : elles sont vidées à l'envoi des grandes textures au GPU
-      if (k !== EVENT_KEY) wheel3d?.prepare(k);
+      // (13/11) le booster du moment aussi : il a sa pochette dans la roue (shop.ts syncEventSleeve)
+      wheel3d?.prepare(k);
       api.onThumb?.(k);
       if (wantKey === k) {
         wantKey = null;
@@ -945,6 +946,7 @@ export function createOpeningScene(): OpeningScene {
     // nouveau visuel (autre événement) : l'ancien n'est plus proposé, ni sa vignette ; s'il est affiché, il le reste
     if (prev && boosterKey !== EVENT_KEY) {
       arts.delete(EVENT_KEY);
+      wheel3d?.forget(EVENT_KEY);
       for (const [ck, u] of thumbCache) if (ck.startsWith(`${EVENT_KEY}|`)) (u && URL.revokeObjectURL(u), thumbCache.delete(ck));
     }
     if (artsLoopDone && !arts.has(EVENT_KEY)) void genArt(EVENT_KEY);

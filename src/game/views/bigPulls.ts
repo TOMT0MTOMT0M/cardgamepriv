@@ -98,7 +98,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
       </button>
       <div class="bp-info">
         <a class="bp-who" href="#/profil/${encodeURIComponent(p.userId)}"${clone ? ' tabindex="-1"' : ''}><span class="bp-ava">${ava}</span><span class="bp-user">${esc(p.userName || '?')}${p.mine ? ' <em>(moi)</em>' : ''}</span></a>
-        <span class="bp-time" data-t="${p.createdAt}">${ago(p.createdAt)}</span>
+        <span class="bp-time" data-ts="${p.createdAt}">${ago(p.createdAt)}</span>
       </div>`;
     if (e) {
       const card = it.querySelector<HTMLElement>('.bp-card')!;
@@ -354,7 +354,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   // passé les 24 h (sinon seules les heures changent)
   setInterval(() => {
     if (!el.isConnected || el.hidden || document.hidden) return;
-    for (const t of el.querySelectorAll<HTMLElement>('.bp-time')) t.textContent = ago(Number(t.dataset.t));
+    for (const t of el.querySelectorAll<HTMLElement>('.bp-time')) t.textContent = ago(Number(t.dataset.ts));
     const now = Date.now();
     if (backend.state.bigPulls.some((p) => now - p.createdAt >= DAY && sig.includes(p.id))) render();
   }, 30_000);

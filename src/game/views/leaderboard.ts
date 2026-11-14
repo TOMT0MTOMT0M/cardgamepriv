@@ -19,14 +19,17 @@ const SLOT = '<span class="lb-pd-slot" aria-hidden="true"></span>';
 type Board = 'pct' | 'season' | 'mythic' | 'packs' | 'trades' | 'streak';
 /** (11/11) saison en cours : cartes différentes gagnées depuis le début du mois, par joueur (rempli au chargement) */
 const seasonGain = new Map<string, number>();
-const BOARDS = (): Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; crown?: boolean }> => [
-  { id: 'pct', label: tr('lb.completion'), crown: true, value: (r) => r.pct, unit: (r) => tr('lb.pctUnit', { pct: fmtPct(r.pct), n: fmtN(r.uniques) }) },
-  { id: 'season', label: tr('lb.season'), value: (r) => seasonGain.get(r.id) ?? 0, unit: (r) => `+${plural(seasonGain.get(r.id) ?? 0, 'carte')}` },
-  { id: 'mythic', label: tr('lb.mythics'), value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${fmtN(r.mythics)} × 6★${r.secrets ? ` · ✷ ${fmtN(r.secrets)}` : ''}` },
-  { id: 'packs', label: 'Boosters', value: (r) => r.packsOpened, unit: (r) => plural(r.packsOpened, 'booster') }, // i18n-ok
-  { id: 'trades', label: tr('lb.trades'), value: (r) => r.tradesDone, unit: (r) => plural(r.tradesDone, 'échange', 'échanges') }, // i18n-ok
-  { id: 'streak', label: tr('lb.streak'), value: (r) => r.streak, unit: (r) => plural(r.streak, 'jour') },
+/** `gap(a, b)` : ce qui sépare `b` de `a` (13/11, retours Hugo : carte « ta place » au-dessus du podium) */
+const BOARDS = (): Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; gap: (a: LeaderRow, b: LeaderRow) => string; crown?: boolean }> => [
+  { id: 'pct', label: tr('lb.completion'), crown: true, value: (r) => r.pct, unit: (r) => tr('lb.pctUnit', { pct: fmtPct(r.pct), n: fmtN(r.uniques) }), gap: (a, b) => plural(Math.max(1, a.uniques - b.uniques), 'carte') },
+  { id: 'season', label: tr('lb.season'), value: (r) => seasonGain.get(r.id) ?? 0, unit: (r) => `+${plural(seasonGain.get(r.id) ?? 0, 'carte')}`, gap: (a, b) => plural(Math.max(1, (seasonGain.get(a.id) ?? 0) - (seasonGain.get(b.id) ?? 0)), 'carte') },
+  { id: 'mythic', label: tr('lb.mythics'), value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${fmtN(r.mythics)} × 6★${r.secrets ? ` · ✷ ${fmtN(r.secrets)}` : ''}`, gap: (a, b) => `${fmtN(Math.max(1, a.mythics + a.secrets * 10 - (b.mythics + b.secrets * 10)))} × 6★` },
+  { id: 'packs', label: 'Boosters', value: (r) => r.packsOpened, unit: (r) => plural(r.packsOpened, 'booster'), gap: (a, b) => plural(Math.max(1, a.packsOpened - b.packsOpened), 'booster') }, // i18n-ok
+  { id: 'trades', label: tr('lb.trades'), value: (r) => r.tradesDone, unit: (r) => plural(r.tradesDone, 'échange', 'échanges'), gap: (a, b) => plural(Math.max(1, a.tradesDone - b.tradesDone), 'échange', 'échanges') }, // i18n-ok
+  { id: 'streak', label: tr('lb.streak'), value: (r) => r.streak, unit: (r) => plural(r.streak, 'jour'), gap: (a, b) => plural(Math.max(1, a.streak - b.streak), 'jour') },
 ];
+/** 1er, 2e… */
+const ord = (n: number) => `${n}<sup>${n === 1 ? 'er' : 'e'}</sup>`;
 
 export interface Leaderboard {
   el: HTMLElement;
@@ -39,10 +42,12 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
   el.innerHTML = `
     <div class="seg lb-boards">${BOARDS().map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.label}</button>`).join('')}</div>
     <div class="lb-season" hidden></div>
+    <div class="lb-mine" hidden></div>
     <div class="lb-podium"></div>
     <div class="lb-list"></div>
     <div class="lb-past" hidden></div>`;
   const podiumEl = el.querySelector<HTMLElement>('.lb-podium')!;
+  const mineEl = el.querySelector<HTMLElement>('.lb-mine')!;
   const listEl = el.querySelector<HTMLElement>('.lb-list')!;
   let board: Board = 'pct';
   let rows: LeaderRow[] | null = null;
@@ -113,7 +118,21 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     const me = backend.state.user?.id;
     podiumEl.replaceChildren();
     listEl.replaceChildren();
+    mineEl.hidden = true;
     if (!rows) return void (podiumEl.innerHTML = '<div class="muted">' + tr('common.loading2') + '</div>');
+    // (13/11) ta place, et ce qu'il manque pour passer devant le joueur juste au-dessus
+    const mi = me ? sorted.findIndex((r) => r.id === me) : -1;
+    if (mi >= 0 && sorted.length > 1 && !(board === 'season' && !season?.current)) {
+      const r = sorted[mi];
+      const ahead = sorted[mi - 1];
+      const behind = sorted[mi + 1];
+      mineEl.hidden = false;
+      mineEl.innerHTML = `<span class="lb-mine-r">${ord(mi + 1)}</span><span class="lb-mine-t"><b>${mi === 0 ? tr('lb.youLead') : tr('lb.youAre', { r: ord(mi + 1), n: sorted.length })}</b><small>${
+        ahead ? tr('lb.toPass', { gap: b.gap(ahead, r), name: esc(ahead.name) }) : behind ? tr('lb.behind', { name: esc(behind.name), gap: b.gap(r, behind) }) : ''
+      }</small></span><span class="lb-mine-v">${b.unit(r)}</span>`;
+    }
+    const topV = Math.max(1e-9, b.value(sorted[0]));
+    const pctOf = (r: LeaderRow) => Math.max(2, Math.min(100, (b.value(r) / topV) * 100)).toFixed(1);
     if (!sorted.length) return void (podiumEl.innerHTML = '<div class="muted">' + tr('lb.nobody') + '</div>');
     // podium : toujours 3 places de même gabarit, dans l'ordre 2e – 1er – 3e (places vides si moins de 3 joueurs)
     const row = h('div', 'lb-pd-row');
@@ -128,7 +147,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       }
       const a = h('a', `lb-pd p${i + 1}${r.id === me ? ' is-me' : ''}`);
       a.href = `#/profil/${encodeURIComponent(r.id)}`;
-      a.innerHTML = `<span class="lb-pd-rank">${i + 1}</span>${ava(r)}<b>${esc(r.name)}</b>${r.id === me ? '<span class="lb-you">toi</span>' : '<span class="lb-you none">&nbsp;</span>'}<span class="lb-pd-v">${b.unit(r)}</span>`;
+      a.innerHTML = `<span class="lb-pd-rank">${i + 1}</span>${ava(r)}<b>${esc(r.name)}</b>${r.id === me ? '<span class="lb-you">toi</span>' : '<span class="lb-you none">&nbsp;</span>'}<span class="lb-pd-v">${b.unit(r)}</span><i class="lb-pd-step" aria-hidden="true"></i>`;
       // bouton ami (lot A2) sous la place du podium, hors du lien
       // retours live 02 (bug 3) : TOUTES les places ont la même case sous la carte — le bouton « + Ami » ou, pour moi
       // (on ne s'ajoute pas soi-même) / hors connexion, un emplacement vide de même hauteur → podium toujours aligné
@@ -144,7 +163,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       const line = h('a', `lb-row${r.id === me ? ' is-me' : ''}${i < 3 ? ` top${i + 1}` : ''}`);
       line.href = `#/profil/${encodeURIComponent(r.id)}`;
       const t = titleOf(r.cosmetics.title);
-      line.innerHTML = `<span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small>${esc(t.label)}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
+      line.innerHTML = `<i class="lb-bar" style="--w:${pctOf(r)}%" aria-hidden="true"></i><span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small>${esc(t.label)}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
       // bouton ami (lot A2) à côté de la ligne — pas dedans : un bouton dans un lien n'est ni valide ni accessible
       const fb = friendBtn(backend, r.id, r.name, 'row');
       if (!fb) listEl.append(line);

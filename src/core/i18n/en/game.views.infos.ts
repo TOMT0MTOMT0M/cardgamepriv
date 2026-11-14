@@ -36,7 +36,7 @@ export const en: PartOf<typeof fr> = {
   'if.upTo': ', up to',
   'if.canAlso': 'You can also',
   'if.buy': 'buy more',
-  'if.buyBody': 'from the booster page: {p} coins each, up to {d} per day.',
+  'if.buyBody': 'from the booster page: {p} coins each, as many as you want.',
   'if.bulk': '5 or 10 boosters at once',
   'if.bulkBody': ': a single big booster of 25 or 50 cards, with exactly the same odds.',
   'if.revealAll': 'Reveal all',

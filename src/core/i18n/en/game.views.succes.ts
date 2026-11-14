@@ -5,7 +5,12 @@ import type { fr } from '../fr/game.views.succes';
 export const en: PartOf<typeof fr> = {
   'sc.kicker': 'ACHIEVEMENTS',
   'sc.title': 'Your achievements',
-  'sc.intro': 'Each tier gives ONE reward: coins (and boosters), or a title, a badge, a frame, a showcase for your profile, or a booster opening animation. Nothing is for sale: everything is earned by playing.',
+  'sc.intro': 'Each tier gives a reward. Tap an achievement to see what you’re missing.',
+  'sc.plReady': '★ to collect',
+  'sc.done': 'done ✓',
+  'sc.missing': '<b>{n} to go</b> for “{label}”: {how}',
+  'sc.reward': 'Reward:',
+  'sc.plAllDone': 'All tiers done. Last one: {label}',
   'sc.see': 'See',
   'sc.me': 'Me',
   'sc.filterA': 'Filter achievements',

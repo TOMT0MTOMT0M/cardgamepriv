@@ -26,6 +26,7 @@ export function relabel(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-t]').forEach((e) => {
     // (le texte seulement : une pastille <b> dans le bouton reste)
     const v = tr(e.dataset.t as MsgKey);
+    if (v === e.dataset.t) return; // (v2.0.1) pas une clé connue : on ne remplace jamais un texte par sa clé brute
     const tn = [...e.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim());
     if (tn) tn.textContent = v;
     else if (!e.children.length) e.textContent = v;

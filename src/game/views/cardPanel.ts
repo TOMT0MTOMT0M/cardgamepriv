@@ -113,6 +113,8 @@ export function panelStrip(backend: GameBackend, cardId: string, r: RarityId): H
         const dups = p.owners.filter((o) => o.dup).length;
         parts.push(p.owners.length ? `${tr('cp.owners', { n: p.owners.length })}${dups ? ` · <em class="cp-ok">${tr('cp.asDup', { n: dups })}</em>` : ''}` : tr('cp.nobody'));
         if (p.sellers.length) parts.push(`${tr('cp.forSale')} <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sellers[0].price)}</b></span>`);
+        // (13/11, retours Hugo) prix de référence : la moyenne des ventes
+        if (p.sold) parts.push(`${tr('cp.soldAvg')} <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span>`);
         if (p.wanters.length) parts.push(`<em class="cp-want">${tr('cp.wanters', { n: p.wanters.length })}</em>`);
         el.innerHTML = `<span class="cp-s-txt">${parts.join('<i class="cp-sep"></i>')}</span>${me.line ? `<span class="cp-s-me">${esc(me.line)}</span>` : ''}<span class="cp-s-go" aria-hidden="true">›</span>`;
       })
@@ -240,6 +242,8 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
       }
       list.append(row(o.dup ? 'dup' : '', esc(o.name), o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? tr('cp.kept', { n: o.count }) : tr('cp.theirOnly'), o.online, btn));
     }
+    // (13/11, retours Hugo) prix de référence : la moyenne des dernières ventes
+    if (p.sold) list.append(h('p', 'cp-avg', `${tr('cp.avgT')} <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span> <small>${tr('cp.avgD', { n: p.sold.n, last: fmtCoins(p.sold.last) })}</small>`));
     // en vente
     if (p.sellers.length) {
       sec(tr('cp.forSaleT'), p.sellers.length);

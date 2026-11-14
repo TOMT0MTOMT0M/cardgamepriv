@@ -492,10 +492,25 @@ export const rouletteTick = internalMutation({
       await retireLegacyRound(ctx, r, now);
       return;
     }
+    // (13/11, retours Hugo) « tirage dans 10 minutes » aux joueurs qui l'ont demandé (notification à la demande)
+    if (!r.warned && now < drawInstant(r) && now >= drawInstant(r) - ROULETTE_WARN_MS) await warnRoulette(ctx, r);
     if (now < drawInstant(r)) return;
     await drawRound(ctx, r, now);
   },
 });
+
+/** avance de la notification avant un tirage (le cron passe toutes les 5 min : elle part 5 à 10 min avant) */
+const ROULETTE_WARN_MS = 10 * 60_000;
+async function warnRoulette(ctx: MutationCtx, r: Doc<'rouletteRounds'>) {
+  await ctx.db.patch(r._id, { warned: true });
+  const subs = await ctx.db.query('pushSubs').collect();
+  const users = new Set(subs.map((s) => s.userId as string));
+  const at = new Date(drawInstant(r));
+  const hour = Number(new Intl.DateTimeFormat('fr-FR', { hour: 'numeric', hour12: false, timeZone: 'Europe/Paris' }).format(at)) % 24;
+  const pot = r.carriedCoins + r.bets.reduce((a, b) => a + b.coins, 0);
+  for (const id of users)
+    await notify(ctx, id as Id<'users'>, { kind: 'roulette', title: `Roulette : tirage de ${hour} h dans 10 min`, body: `${r.bets.length ? `${r.bets.length} joueur${r.bets.length > 1 ? 's' : ''} déjà en jeu` : 'Personne n’a encore misé'}${pot ? ` · ${pot} pièces au pot` : ''}. Viens miser ou regarder la bille tomber.`, url: '#/jeux/roulette', tag: 'roulette' }, { at: Date.now() });
+}
 
 /** Passage aux nouvelles règles (retours live 02) : chaque joueur récupère sa mise, le pot accumulé est conservé. */
 async function retireLegacyRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number) {

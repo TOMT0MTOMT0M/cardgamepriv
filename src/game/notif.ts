@@ -20,6 +20,7 @@ export const KIND_LABELS = (): Array<[string, string, string]> => [
   ['referral', t('notif.k.referral'), t('notif.k.referralD')],
   ['game', t('notif.k.games'), t('notif.k.gamesD')],
   ['chat', t('notif.k.chat'), t('notif.k.chatD')],
+  ['roulette', t('notif.k.roulette'), t('notif.k.rouletteD')],
   ['news', t('notif.k.news'), t('notif.k.newsD')],
 ];
 

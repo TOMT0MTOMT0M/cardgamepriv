@@ -93,7 +93,20 @@ export interface CardPanel {
   wanters: Array<{ userId: string; name: string; avatarUrl?: string; online: boolean }>;
   /** je l'ai protégée */
   protected: boolean;
+  /**
+   * (13/11, retours Hugo) prix de référence : la MOYENNE des dernières ventes de cette carte au marché (jusqu'à
+   * SOLD_AVG_N), avec leur nombre et la dernière ; absent tant qu'elle ne s'est jamais vendue
+   */
+  sold?: { avg: number; n: number; last: number };
   reads: number;
+}
+/** ventes prises en compte dans le prix moyen d'une carte */
+export const SOLD_AVG_N = 20;
+/** moyenne arrondie des prix de vente (les plus récentes d'abord) */
+export function soldStats(prices: number[]): CardPanel['sold'] {
+  const l = prices.slice(0, SOLD_AVG_N);
+  if (!l.length) return undefined;
+  return { avg: Math.round(l.reduce((a, b) => a + b, 0) / l.length), n: l.length, last: l[0] };
 }
 export const EMPTY_PANEL: CardPanel = { owners: [], sellers: [], wanters: [], protected: false, reads: 0 };
 

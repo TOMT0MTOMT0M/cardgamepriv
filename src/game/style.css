@@ -403,7 +403,7 @@ body.card-open .views { pointer-events: none; }
 .filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; max-width: 1220px; margin: 0 auto 8px; padding: 8px 10px; border-radius: var(--r-box); transition: background-color var(--dur-standard), box-shadow var(--dur-standard); }
 /* longue grille (ordinateur) : la barre de filtres reste en haut, sur un fond qui n'apparaît qu'une fois collée */
 @media (min-width: 601px) {
-  .filters { position: sticky; top: calc(var(--top) + env(safe-area-inset-top) + 8px); z-index: 6; }
+  .filters { position: sticky; top: calc(var(--top) + env(safe-area-inset-top)); z-index: 6; }
   .filters.stuck { background: rgba(0, 0, 0, 0.96); box-shadow: 0 14px 34px -16px rgba(0, 0, 0, 0.85), inset 0 0 0 1px var(--line); }
 }
 /* revenir en haut d'une longue grille */
@@ -1517,7 +1517,7 @@ a.pf-ach:hover { border-color: var(--gold); }
 .cards-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; max-width: 1220px; margin: 0 auto 8px; padding: 8px 10px; border-radius: var(--r-box); }
 .cards-bar[hidden] { display: none; }
 @media (min-width: 601px) {
-  .cards-bar { position: sticky; top: calc(var(--top) + env(safe-area-inset-top) + 8px); z-index: 6; background: rgba(0, 0, 0, 0.88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px var(--line); }
+  .cards-bar { position: sticky; top: calc(var(--top) + env(safe-area-inset-top)); /* (v2.0.1) collée au header */ z-index: 6; background: rgba(0, 0, 0, 0.88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px var(--line); }
 }
 .cards-bar .cb-search { margin-left: auto; }
 /* tri « Par album » : un bloc par album (titre + ses cartes), les petits albums côte à côte */
@@ -3803,3 +3803,28 @@ body.pf-dragging, body.pf-dragging * { cursor: grabbing !important; -webkit-user
   .pf-picker .pf-pick-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 }
 @media (prefers-reduced-motion: reduce) { .pf-hole { animation: none; } }
+
+/* ───────────── (v2.0.1, retours de Tom) VISIONNEUSE : « Rejouer » en haut au milieu, la carte dessous ; en bas
+   Protéger · Couverture · Classeur, puis Je la veux · joueurs · Image à revoir. Les boutons et la fiche s'effacent
+   avec le zoom (molette, double toucher) : --vz = 0 au zoom de base, 1 au zoom max (scenes/viewer.ts). ───────────── */
+.viewer-ui .v-actions, body .viewer-ui .v-info { opacity: calc(1 - var(--vz, 0)); transition: opacity var(--dur-standard); }
+body.viewer-zoomed .viewer-ui .v-info { opacity: calc(1 - var(--vz, 0)); }
+body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: none; }
+.viewer-ui .v-actions .va-replay { position: fixed; top: calc(46px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 2; }
+.viewer-ui .v-actions .va-replay:active { transform: translateX(-50%) scale(0.96); }
+.view.collection .v-actions { row-gap: 8px; }
+.view.collection .v-actions .va-protect { order: 1; }
+.view.collection .v-actions .va-cover { order: 2; }
+.view.collection .v-actions .va-binder { order: 3; }
+.view.collection .v-actions::before, .view.collection .v-actions:has(> .cp-strip)::before { content: ''; order: 4; flex-basis: 100%; height: 0; }
+.view.collection .v-actions .va-wish { order: 5; }
+.view.collection .v-actions > .cp-strip { order: 6; margin: 0; }
+.view.collection .v-actions .va-img { order: 7; }
+.view.collection .v-actions > .va-date { order: 8; flex-basis: 100%; }
+
+/* (v2.0.1) MISES À JOUR : la grosse mise à jour (featured) en tête, mise en avant, toujours dépliée */
+.if-maj .if-entry.if-feat { border-color: var(--gm-line-2); background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015)); }
+.if-maj .if-feat h3 { font-size: 26px; line-height: 1.15; }
+.if-maj .if-feat .if-lead { margin: 0 20px 14px; padding: 12px 14px; border: 1px solid var(--gm-line-2); border-radius: var(--r-box); color: var(--ink); font-size: 15px; font-weight: 500; line-height: 1.5; }
+.if-maj .if-feat .if-p { padding-block: 3px; }
+.if-maj .if-feat .if-p-k { font-size: 1.02em; }

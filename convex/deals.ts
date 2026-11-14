@@ -18,6 +18,8 @@ import {
   THEY_WANT_MAX,
   proposable,
   rankGives,
+  SOLD_AVG_N,
+  soldStats,
   type CardPanel,
   type Deal,
   type DealCard,
@@ -154,6 +156,9 @@ export const cardPanel = query({
       if (p) sellers.push({ id: m._id as string, sellerId: m.sellerId as string, name: p.u.displayName, price: m.price, mintNumber: m.mintNumber });
     }
     sellers.sort((a, b) => a.price - b.price);
+    // (13/11) prix de référence : moyenne des dernières ventes de la carte (≤ SOLD_AVG_N lectures, même index)
+    const soldRows = await ctx.db.query('market').withIndex('by_card_status', (q) => q.eq('cardId', cardId).eq('status', 'sold')).order('desc').take(SOLD_AVG_N);
+    const sold = soldStats(soldRows.map((m) => m.price));
     // qui la veut : par l'index des envies (avant : la liste d'envies de tous les joueurs)
     const wishers: Person[] = [];
     if (lazy) for (const id of await wishersOf(ctx, cardId)) {
@@ -165,7 +170,7 @@ export const cardPanel = query({
       .filter((p) => p.u._id !== me?._id)
       .map((p) => ({ userId: p.u._id as string, name: p.u.displayName, avatarUrl: p.u.avatarUrl, online: p.online }))
       .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
-    return { owners, sellers, wanters, protected: !!me?.tradeProtected?.includes(cardId), reads: reads() };
+    return { owners, sellers, wanters, protected: !!me?.tradeProtected?.includes(cardId), ...(sold ? { sold } : {}), reads: reads() };
   },
 });
 

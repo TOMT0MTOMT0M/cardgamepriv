@@ -4,7 +4,12 @@ import { addFr } from '../../i18n';
 export const fr = {
   'sc.kicker': 'SUCCÈS',
   'sc.title': 'Tes succès',
-  'sc.intro': 'Chaque palier donne UNE récompense : des pièces (et des boosters), ou un titre, un badge, un cadre, une vitrine pour ton profil, ou une animation d’ouverture des boosters. Rien ne s’achète : tout se gagne en jouant.',
+  'sc.intro': 'Chaque palier donne une récompense. Touche un succès pour voir ce qu’il te manque.',
+  'sc.plReady': '★ à encaisser',
+  'sc.done': 'terminé ✓',
+  'sc.missing': '<b>Il te manque {n}</b> pour « {label} » : {how}',
+  'sc.reward': 'Récompense :',
+  'sc.plAllDone': 'Tous les paliers sont faits. Dernier : {label}',
   'sc.see': 'Voir',
   'sc.me': 'Moi',
   'sc.filterA': 'Filtrer les succès',

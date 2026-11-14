@@ -4,7 +4,7 @@ import type { Shell } from '../shell';
 import { esc, fmtN, h } from '../ui';
 import { CARDS_TOKEN, UPDATES, type UpdateMonth } from '../updates.data';
 import { PACK_CAP, PACK_REGEN_MS } from '../../core/packRegen';
-import { PACK_BUY_DAILY, PACK_PRICE, fmtCoins } from '../../core/economy';
+import { PACK_PRICE, fmtCoins } from '../../core/economy';
 import { CONTRACT_COST } from '../../core/contracts';
 import { PITY_LIMIT } from '../../core/pity';
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS } from '../../core/dropRates';
@@ -54,9 +54,10 @@ export function createUpdatesView(shell: Shell): InfoView {
         .map((e) => {
           const tag = e.tag === 'amélioré' ? 'up' : e.tag === 'corrigé' ? 'fix' : 'new'; // i18n-ok (valeurs de données)
           const nb = e.points.length;
-          return `<details class="if-entry"${n++ < OPEN_ENTRIES ? ' open' : ''}>
+          return `<details class="if-entry${e.featured ? ' if-feat' : ''}"${n++ < OPEN_ENTRIES || e.featured ? ' open' : ''}>
             <summary><span class="if-e-h"><span class="if-date">${esc(e.date)}</span><span class="if-tag t-${tag}">${TAG_LABEL()[e.tag]}</span></span>
               <span class="if-e-t"><h3>${esc(e.title)}</h3><span class="if-e-n">${nb} ${tr('if.changeWord', { n: nb })}</span></span></summary>
+            ${e.lead ? `<p class="if-lead">${esc(nbsp(e.lead.split(CARDS_TOKEN).join(fmtN(PUBLIC_CARD_COUNT))))}</p>` : ''}
             <ul class="if-points">${e.points.map((x) => point(x.split(CARDS_TOKEN).join(fmtN(PUBLIC_CARD_COUNT)))).join('')}</ul>
           </details>`;
         })
@@ -88,7 +89,7 @@ export function createTutorialView(shell: Shell): InfoView {
       <li><b>5 packs</b>${tr('if.packsA')} <b>Bebou Pack</b> ${tr('if.packsB', { list: THEMES.map((t) => `${tr('if.the')} <b>${tr('if.packName', { n: esc(t.label) })}</b>`).join(', ') })}</li>
       <li>${tr('if.boosterEq')} <b>${tr('if.fiveCards')}</b>${tr('if.atLeastOne')} <b>3★</b> ${tr('if.orBetter')}</li>
       <li>${tr('if.reserveRefill')} <b>${tr('if.reserveRate', { m: PACK_REGEN_MS / 60000 })}</b>${tr('if.upTo')} <b>${PACK_CAP}</b>.</li>
-      <li>${tr('if.canAlso')} <b>${tr('if.buy')}</b> ${tr('if.buyBody', { p: fmtCoins(PACK_PRICE), d: PACK_BUY_DAILY })}</li>
+      <li>${tr('if.canAlso')} <b>${tr('if.buy')}</b> ${tr('if.buyBody', { p: fmtCoins(PACK_PRICE) })}</li>
       <li><b>${tr('if.bulk')}</b>${tr('if.bulkBody')}</li>
       <li>${tr('if.lq')}<b>${tr('if.revealAll')}</b>${tr('if.revealMid')} <b>${tr('if.fourUp')}</b>${tr('if.revealEnd')}</li>
       <li><b>${tr('if.pity')}</b>${tr('if.pityBody', { n: PITY_LIMIT - 1 })}</li>

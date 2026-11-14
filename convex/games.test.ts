@@ -319,6 +319,21 @@ describe('Roulette', () => {
     expect(r.round!.carriedCards.some((c) => c.cardId === leg.id)).toBe(true);
     expect(r.round!.bets).toHaveLength(0);
   });
+
+  test('(13/11) « tirage dans 10 min » : une seule fois par manche, pas avant la fenêtre', async () => {
+    const { t } = await setup();
+    await t.mutation(internal.games.rouletteTick, {});
+    const open = async () => t.run(async (ctx) => (await ctx.db.query('rouletteRounds').collect()).find((x) => x.status === 'open')!);
+    let r = await open();
+    expect(r.warned).toBeUndefined();
+    // la manche est avancée à 7 min du tirage : le passage suivant prévient (une fois)
+    await t.run(async (ctx) => ctx.db.patch(r._id, { drawAt: Date.now() + 7 * 60_000 }));
+    await t.mutation(internal.games.rouletteTick, {});
+    r = await open();
+    expect(r.warned).toBe(true);
+    await t.mutation(internal.games.rouletteTick, {});
+    expect((await open()).status).toBe('open');
+  });
 });
 
 describe('anti-abus', () => {
