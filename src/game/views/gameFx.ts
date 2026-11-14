@@ -61,7 +61,7 @@ export function flash(hex = '#fff'): void {
   f.className = 'gm-flash';
   f.style.setProperty('--rc', hex);
   document.body.append(f);
-  f.animate([{ opacity: reducedMotion() ? 0.25 : 0.55 }, { opacity: 0 }], { duration: reducedMotion() ? 400 : 650, easing: EASING.sortie }).finished.then(
+  f.animate([{ opacity: reducedMotion() ? 0.12 : 0.28 }, { opacity: 0 }], { duration: reducedMotion() ? 300 : 420, easing: EASING.sortie }).finished.then(
     () => f.remove(),
     () => f.remove(),
   );
@@ -86,7 +86,7 @@ export const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export function liquidGauge(count: HTMLElement, max: number): { el: HTMLElement; set(total: number): void; end(win: boolean): void } {
   const el = document.createElement('div');
   el.className = 'gm-gauge';
-  el.innerHTML = `<div class="gm-liq"><i class="gm-front a"></i><i class="gm-front b"></i><i class="gm-bub"></i><i class="gm-bub"></i><i class="gm-bub"></i></div>`;
+  el.innerHTML = `<div class="gm-liq"></div>`;
   el.append(count);
   // (chaque jauge a sa propre phase : deux jauges côte à côte ne respirent jamais ensemble)
   el.style.setProperty('--ph', `${-Math.random() * 6}s`);
