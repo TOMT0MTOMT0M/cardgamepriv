@@ -1,4 +1,4 @@
-import { t as tr } from '../core/i18n';
+import { lang, t as tr } from '../core/i18n';
 import type { MusicPreview } from './musicPreviews.data';
 import { catalogEntry, subthemeById } from '../core/sets/themes';
 import type { Shell } from './shell';
@@ -12,23 +12,27 @@ import type { ViewerScene } from './scenes/viewer';
  * suivante, à la fermeture, ou au bout des 30 s. Rien à précharger : la table (≈ 200 cartes) arrive à la 1re 6★.
  * Muet si le volume du jeu est à 0 ; suit le volume général.
  */
-type Tables = { cards: Record<string, MusicPreview>; anime: Record<string, MusicPreview>; ambience: Record<string, MusicPreview> };
+type Tables = { cards: Record<string, MusicPreview>; anime: Record<string, MusicPreview>; cartoon: Record<string, MusicPreview>; cartoonEn: Record<string, MusicPreview>; ambience: Record<string, MusicPreview> };
 let table: Promise<Tables> | null = null;
 const load = () =>
   (table ??= import('./musicPreviews.data')
-    .then((m) => ({ cards: m.MUSIC_PREVIEWS, anime: m.ANIME_OPENINGS, ambience: m.AMBIENCE_PREVIEWS }))
-    .catch(() => ({ cards: {}, anime: {}, ambience: {} }) as Tables));
+    .then((m) => ({ cards: m.MUSIC_PREVIEWS, anime: m.ANIME_OPENINGS, cartoon: m.CARTOON_THEMES, cartoonEn: m.CARTOON_THEMES_EN, ambience: m.AMBIENCE_PREVIEWS }))
+    .catch(() => ({ cards: {}, anime: {}, cartoon: {}, cartoonEn: {}, ambience: {} }) as Tables));
 
 /**
  * (retours Hugo 10/11) Extrait d'une carte : le sien (cartes Musique), sinon — 6★ d'un ANIMÉ — l'opening de son animé,
  * en fond. Berserk (ambiance « Éclipse ») et Yu-Gi-Oh (invocation) gardent leur propre musique : absents de la table.
+ * (15/11, Tom) 6★ d'un DESSIN ANIMÉ (Marge Simpson…) : le générique de son dessin animé — la version anglaise dans le
+ * jeu en anglais quand elle diffère de la française.
  */
 async function previewOf(cardId: string): Promise<MusicPreview | null> {
   const t = await load();
   if (t.cards[cardId]) return t.cards[cardId];
   const e = catalogEntry(cardId);
-  if (!e || subthemeById(e.subthemeId)?.group?.id !== 'anime') return null;
-  return t.anime[e.subthemeId] ?? null;
+  const g = e && subthemeById(e.subthemeId)?.group?.id;
+  if (g === 'anime') return t.anime[e!.subthemeId] ?? null;
+  if (g === 'dessins') return (lang() === 'en' ? t.cartoonEn[e!.subthemeId] : undefined) ?? t.cartoon[e!.subthemeId] ?? null;
+  return null;
 }
 
 /**

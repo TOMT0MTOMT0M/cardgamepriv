@@ -1,4 +1,4 @@
-"""(retours Hugo 10/11) Résout les extraits choisis à la main (scripts/data/previews-curated.json) en aperçus de 30 s :
+"""(retours Hugo 10/11 ; génériques de dessins animés 15/11) Résout les extraits choisis à la main (scripts/data/previews-curated.json) en aperçus de 30 s :
 iTunes d'abord (adresse fixe, comme harvest-music-previews.py), sinon Deezer (on garde l'id du morceau : son adresse
 d'aperçu est signée et expire, le jeu la redemande au moment de jouer — src/game/musicPreview.ts).
 Sortie : scripts/data/previews-curated-resolved.json. Relançable : reprend où il s'est arrêté (argument = budget en s).
@@ -42,16 +42,36 @@ def deezer(t, a):
             return {'deezer': r['id'], 'track': r['title'], 'artist': r['artist']['name'], 'link': r.get('link', '')}
         time.sleep(0.4)
     return False
+def exact(ref):
+    """(15/11) morceau choisi à la main : « itunes:<id> » (adresse fixe ; boutique FR, sinon US) ou « deezer:<id> »."""
+    src, _, i = ref.partition(':')
+    if src == 'deezer':
+        r = get(f'https://api.deezer.com/track/{int(i)}')
+        if r is None: return None
+        return {'deezer': r['id'], 'track': r['title'], 'artist': r['artist']['name'], 'link': r.get('link', '')} if r.get('preview') else False
+    for cc in ('FR', 'US'):
+        d = get(f'https://itunes.apple.com/lookup?id={int(i)}&country={cc}')
+        if d is None: return None
+        rs = [r for r in d.get('results', []) if r.get('previewUrl')]
+        if rs: return {'url': rs[0]['previewUrl'], 'track': rs[0]['trackName'], 'artist': rs[0]['artistName'], 'link': rs[0].get('trackViewUrl', '')}
+        time.sleep(3.1)
+    return False
 budget = time.time() + float(sys.argv[1] if len(sys.argv) > 1 else 160)
-for kind in ('cards', 'anime', 'ambience'):
-    for key, (t, a) in SRC[kind].items():
+KINDS = ('cards', 'anime', 'cartoon', 'cartoon-en', 'ambience')
+for kind in KINDS:
+    for key, (t, a, *ref) in SRC.get(kind, {}).items():
         k = f'{kind}:{key}'
         if k in res or time.time() > budget: continue
-        p = itunes(t, a)
+        if ref:
+            p = exact(ref[0])
+            if p is None: continue  # réseau : on réessaiera à la prochaine passe
+            p = p or None
+        else:
+            p = itunes(t, a)
+            if not p: p = deezer(t, a) or None
         time.sleep(3.1)
-        if not p: p = deezer(t, a) or None
         res[k] = p
         json.dump(res, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
         print(k, '→', (p or {}).get('track'), '—', (p or {}).get('artist'), '(deezer)' if p and 'deezer' in p else '')
-total = sum(len(SRC[k]) for k in ('cards', 'anime', 'ambience'))
+total = sum(len(SRC.get(k, {})) for k in KINDS)
 print('fait', len(res), '/', total, 'trouvés', sum(1 for v in res.values() if v))

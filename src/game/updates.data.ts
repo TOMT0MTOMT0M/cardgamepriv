@@ -61,6 +61,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '15 nov.', title: 'Dessins animés : le générique des 6★', tag: 'nouveau',
+        points: [
+          '📺 Une 6★ de dessin animé (Marge Simpson, Bob l’éponge, Albator, Heidi…) joue maintenant le générique de son dessin animé, à l’ouverture comme dans la Collection : 52 cartes, 46 dessins animés. En français quand le générique français existe, sinon l’original.',
+        ],
+      },
+      {
         date: '15 nov.', title: 'Collection : choisis ton affichage', tag: 'amélioré',
         points: [
           '🔲 Cartes et albums : choisis la taille de la grille à côté de la recherche. Sur PC, 2 rangées de 6, 4 rangées de 8 ou 6 rangées de 10, toujours entières à l’écran. Sur téléphone, de plus en plus de cartes par rangée.',

@@ -1,0 +1,27 @@
+{
+ "_doc": "(12/11) corrections faites à la main, appliquées en dernier par make-music-previews.py (elles remplacent la récolte) : American Idiot (c'était « 21 Guns » de la comédie musicale), Pump It (c'était « Pump It Harder »), Bande organisée (c'était « Bande organisée 2 ») et Francis Poulenc : extraits iTunes retrouvés dans la discographie. Clé = « cards:<id de carte> », « anime:<sous-thème> », « cartoon:<sous-thème> » ou « ambience:<nom> ».",
+ "cards:pop-american-idiot": {
+  "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/34/b9/2e/34b92efa-89ca-4447-608b-85e9ae427e01/mzaf_3359739146386600154.plus.aac.p.m4a",
+  "track": "American Idiot",
+  "artist": "Green Day",
+  "link": "https://music.apple.com/fr/album/american-idiot/1161539183?i=1161539471&uo=4"
+ },
+ "cards:pop-pump-it": {
+  "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/46/29/73/46297309-8f93-b90a-90e4-0b7ca2f7f204/mzaf_1791853766625018832.plus.aac.p.m4a",
+  "track": "Pump It",
+  "artist": "Black Eyed Peas",
+  "link": "https://music.apple.com/fr/album/pump-it/1440632347?i=1440632348&uo=4"
+ },
+ "cards:pop-bande-organisee": {
+  "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/de/2c/d1/de2cd121-766d-cf68-bb50-40d6d703e074/mzaf_12894448565688904442.plus.aac.p.m4a",
+  "track": "Bande organisée",
+  "artist": "Jul, SCH, Naps, Kofs, Elams, Solda, Houari & Soso Maness",
+  "link": "https://music.apple.com/fr/album/bande-organis%C3%A9e/1527333866?i=1527333872&uo=4"
+ },
+ "cards:pop-francis-poulenc": {
+  "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/71/9e/d4/719ed475-28e5-e927-1d19-04730a734137/mzaf_8756146898140432573.plus.aac.p.m4a",
+  "track": "Concerto for Two Pianos and Orchestra in D Minor (1932): I. Allegro ma non troppo",
+  "artist": "Francis Poulenc, Orchestre de la Société des Concerts du Conservatoire, Jacques Fevrier & Pierre Dervaux",
+  "link": "https://music.apple.com/fr/album/concerto-for-two-pianos-and-orchestra-in-d-minor-1932/698851542?i=698853570&uo=4"
+ }
+}

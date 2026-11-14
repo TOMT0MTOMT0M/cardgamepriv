@@ -1,5 +1,5 @@
 {
-  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts).",
+  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id> ou deezer:<id>), choisi à la main. Pas d'enregistrement officiel trouvé, reprise fidèle : Ben 10, Molang, The Owl House, Big City Greens, Dexter, Doug, Franklin, La Cour de récré, Oui-Oui, Tintin, Phinéas et Ferb (FR), Jayce (EN). Sans générique (rien de fiable) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace.",
   "cards": {
     "pop-au-dd": [
       "Au DD",
@@ -1506,6 +1506,255 @@
     "yu-gi-oh-5d-s": [
       "Believe in Nexus",
       "Masaaki Endo"
+    ]
+  },
+  "cartoon": {
+    "adventure-time": [
+      "Adventure Time Main Title",
+      "Adventure Time",
+      "itunes:1512848777"
+    ],
+    "albator": [
+      "Albator, le corsaire de l'espace",
+      "Eric Charden",
+      "itunes:537264810"
+    ],
+    "amphibia": [
+      "Welcome to Amphibia",
+      "Celica Gray",
+      "itunes:1459905304"
+    ],
+    "avatar-le-dernier-maitre-de-l-air": [
+      "Avatar: The Last Airbender Main Title",
+      "Jeremy Zuckerman",
+      "itunes:1825186550"
+    ],
+    "babar": [
+      "Les aventures de Babar",
+      "André Popp",
+      "itunes:1484515110"
+    ],
+    "barbapapa": [
+      "Voici venir les Barbapapa",
+      "Ricet Barrier",
+      "itunes:1044596187"
+    ],
+    "ben-10": [
+      "Ben 10 (Theme Song)",
+      "Kids Superstars",
+      "itunes:1826512032"
+    ],
+    "big-city-greens": [
+      "Big City Greens Main Theme",
+      "Geek Music",
+      "itunes:1650260983"
+    ],
+    "bluey": [
+      "Bluey Theme Tune (Extended)",
+      "Bluey & Joff Bush",
+      "itunes:1572744278"
+    ],
+    "bob-l-eponge": [
+      "SpongeBob SquarePants Theme Song",
+      "SpongeBob SquarePants",
+      "itunes:283379766"
+    ],
+    "capitaine-flam": [
+      "Capitaine Flam (Générique TV Version 1987)",
+      "Bernard Minet",
+      "itunes:1444618723"
+    ],
+    "castlevania-netflix": [
+      "Main Title",
+      "Trevor Morris",
+      "itunes:1252170566"
+    ],
+    "catdog": [
+      "CatDog Theme Song",
+      "Catdog & Nickelodeon",
+      "itunes:1888272558"
+    ],
+    "dexter-da": [
+      "Dexter's Laboratory Main Theme",
+      "Geek Music",
+      "itunes:1524648430"
+    ],
+    "dora-l-exploratrice": [
+      "Dora the Explorer Theme",
+      "Dora the Explorer",
+      "itunes:281871271"
+    ],
+    "doug": [
+      "Doug",
+      "Geek Music",
+      "itunes:1522288791"
+    ],
+    "foot-2-rue": [
+      "Street Football",
+      "Akhenaton",
+      "itunes:362633495"
+    ],
+    "franklin": [
+      "Hey It's Franklin",
+      "Geek Music",
+      "itunes:1571934819"
+    ],
+    "galactik-football": [
+      "Générique Galactik Football",
+      "Marc Tomasi & Mehdi Elmorabit",
+      "itunes:348033789"
+    ],
+    "heidi": [
+      "La chanson d'Heidi",
+      "Alexandra",
+      "itunes:979550481"
+    ],
+    "invincible": [
+      "Invincible",
+      "John Paesano",
+      "itunes:1794864037"
+    ],
+    "jayce": [
+      "Jayce et les conquérants de la lumière",
+      "Nick Carr",
+      "itunes:1255591803"
+    ],
+    "jimmy-neutron": [
+      "Jimmy Neutron Theme",
+      "Bowling for Soup",
+      "itunes:322693445"
+    ],
+    "la-cour-de-recre": [
+      "Recess Main Theme",
+      "Geek Music",
+      "itunes:1535986150"
+    ],
+    "le-monde-magique-de-disney": [
+      "Mickey Mouse Club March",
+      "Mickey Mouse",
+      "itunes:1660550789"
+    ],
+    "les-animaniacs": [
+      "Animaniacs (Opening Title)",
+      "Animaniacs",
+      "itunes:1538239354"
+    ],
+    "les-maitres-de-l-univers": [
+      "Les maîtres de l'univers",
+      "H. Saban & S. Levy",
+      "itunes:1267260992"
+    ],
+    "les-simpson": [
+      "The Simpsons Main Title Theme (Extended Version)",
+      "The Simpsons",
+      "itunes:1598044819"
+    ],
+    "les-teletubbies": [
+      "Teletubbies Theme",
+      "Teletubbies",
+      "itunes:1799229650"
+    ],
+    "lucky-luke": [
+      "I'm a Poor Lonesome Cowboy",
+      "Claude Bolling & Pat Woods",
+      "itunes:1853831495"
+    ],
+    "masha-et-michka": [
+      "Main Title Theme",
+      "Masha and the Bear",
+      "itunes:1874236524"
+    ],
+    "maya-l-abeille": [
+      "Maya: Main Theme",
+      "Fabrice Aboulker",
+      "itunes:1179835389"
+    ],
+    "molang": [
+      "Molang Theme Song",
+      "Kids Superstars",
+      "itunes:1500952489"
+    ],
+    "oggy-et-les-cafards": [
+      "Générique",
+      "Hugues Le Bars",
+      "itunes:1296321569"
+    ],
+    "oui-oui": [
+      "Make Way for Noddy",
+      "Kids Now",
+      "itunes:284756322"
+    ],
+    "peppa-pig": [
+      "New Peppa Pig Theme Song",
+      "Peppa Pig",
+      "itunes:1810205269"
+    ],
+    "phineas-et-ferb": [
+      "Phinéas et Ferb (Chanson générique)",
+      "Marty",
+      "deezer:434555252"
+    ],
+    "princesse-sarah": [
+      "Princesse Sarah",
+      "Claude Lombard",
+      "itunes:1596550596"
+    ],
+    "sam-le-pompier": [
+      "Fireman Sam Theme Song",
+      "Fireman Sam & Mattel",
+      "itunes:1809325178"
+    ],
+    "scooby-doo": [
+      "Scooby Doo Theme Song",
+      "Best Coast",
+      "itunes:1512008927"
+    ],
+    "south-park": [
+      "South Park Theme",
+      "Primus",
+      "deezer:2576770162"
+    ],
+    "steven-universe": [
+      "We Are The Crystal Gems (Full Theme Song)",
+      "Steven Universe",
+      "itunes:1511215902"
+    ],
+    "t-choupi": [
+      "T'choupi, le générique",
+      "T'choupi",
+      "itunes:376152766"
+    ],
+    "the-owl-house": [
+      "The Owl House Main Theme",
+      "Kids Superstars",
+      "itunes:1701151510"
+    ],
+    "tintin": [
+      "Les Aventures de Tintin (Thème du générique)",
+      "Ciné-Trio",
+      "itunes:684699202"
+    ],
+    "zig-et-sharko": [
+      "Zig et Sharko générique début",
+      "Vincent Artaud",
+      "itunes:1474241695"
+    ]
+  },
+  "cartoon-en": {
+    "phineas-et-ferb": [
+      "Today Is Gonna Be a Great Day",
+      "Bowling for Soup",
+      "itunes:714727690"
+    ],
+    "jayce": [
+      "Jayce and the Wheeled Warriors - Main Theme",
+      "Geek Music",
+      "itunes:1437854508"
+    ],
+    "les-maitres-de-l-univers": [
+      "He-Man and the Masters of the Universe (instrumental)",
+      "H. Saban & S. Levy",
+      "itunes:1279576472"
     ]
   },
   "ambience": {
