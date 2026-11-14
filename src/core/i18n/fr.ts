@@ -529,6 +529,7 @@ export const fr = {
 
   // ───── src/game/musicPreview.ts ─────
   'mp.mute': 'Couper l’extrait',
+  'mp.vol': 'Volume de l’extrait',
 
   // ───── src/game/ui.ts (à la main) ─────
   'card.replayShort': 'Rejouer',

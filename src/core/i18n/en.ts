@@ -602,6 +602,7 @@ export const en: Dict = {
 
   // ───── src/game/musicPreview.ts ─────
   'mp.mute': 'Mute the clip',
+  'mp.vol': 'Clip volume',
 
   // ───── src/game/ui.ts (à la main) ─────
   'card.replayShort': 'Replay',

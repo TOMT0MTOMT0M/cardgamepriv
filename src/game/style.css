@@ -3810,7 +3810,7 @@ body.pf-dragging, body.pf-dragging * { cursor: grabbing !important; -webkit-user
 .viewer-ui .v-actions, body .viewer-ui .v-info { opacity: calc(1 - var(--vz, 0)); transition: opacity var(--dur-standard); }
 body.viewer-zoomed .viewer-ui .v-info { opacity: calc(1 - var(--vz, 0)); }
 body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: none; }
-.viewer-ui .v-actions .va-replay { position: fixed; top: calc(46px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 2; }
+.viewer-ui .v-actions .va-replay { position: fixed; top: calc(var(--top) + env(safe-area-inset-top) + 52px); /* sous le compteur « 2 / 6 514 » */ left: 50%; transform: translateX(-50%); z-index: 2; }
 .viewer-ui .v-actions .va-replay:active { transform: translateX(-50%) scale(0.96); }
 .view.collection .v-actions { row-gap: 8px; }
 .view.collection .v-actions .va-protect { order: 1; }
@@ -3828,3 +3828,7 @@ body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: n
 .if-maj .if-feat .if-lead { margin: 0 20px 14px; padding: 12px 14px; border: 1px solid var(--gm-line-2); border-radius: var(--r-box); color: var(--ink); font-size: 15px; font-weight: 500; line-height: 1.5; }
 .if-maj .if-feat .if-p { padding-block: 3px; }
 .if-maj .if-feat .if-p-k { font-size: 1.02em; }
+
+/* (v2.0.2) volume de l'extrait, dans son étiquette (retenu sur l'appareil) */
+.mp-vol { flex: none; width: 84px; height: 20px; margin: 0; accent-color: #fff; cursor: pointer; }
+@media (max-width: 600px) { .mp-vol { width: 64px; } }

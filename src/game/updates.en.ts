@@ -26,8 +26,9 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 Nov', title: 'v2.0.1: launch touch-ups', tag: 'amélioré',
+        date: '14 Nov', title: 'v2.0.1 and v2.0.2: launch touch-ups', tag: 'amélioré',
         points: [
+          'Clips: a volume slider in the track label, remembered on your device.',
           'Card viewer: “Replay” at the top, buttons tidied under the card, and they fade out when you zoom.',
           'Collection: the filter bar stays stuck at the top when you scroll.',
           'General chat: messages only, drops stay in Big pulls.',
