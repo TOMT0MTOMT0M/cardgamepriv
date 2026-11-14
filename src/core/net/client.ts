@@ -71,6 +71,8 @@ export interface MeProfile {
   /** (13/11) tour des nouveautés V2 déjà joué ; testeur du lien V2 */
   v2TourSeen?: boolean;
   tester?: boolean;
+  /** (15/11) déjà amené d'office à « Personnaliser mon profil » ; absent : serveur d'avant, on ne force rien */
+  atelierSeen?: boolean;
   /** (V2, bulles) derniers événements Jeux / parrainage (game/navDots.ts) */
   gamesNoticeAt?: number;
   referralNoticeAt?: number;
@@ -868,6 +870,10 @@ class GameNetClient {
   /** (13/11) tour des nouveautés V2 lancé : plus jamais rejoué sur ce compte */
   public async markV2TourSeen() {
     if (this.client && this.sessionToken) await this.client.mutation(api.users.markV2TourSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
+  }
+  /** (15/11) amené d'office à « Personnaliser mon profil » : plus jamais sur ce compte */
+  public async markAtelierSeen() {
+    if (this.client && this.sessionToken) await this.client.mutation(api.users.markAtelierSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
   }
 
   private adoptToken(token: string) {

@@ -279,3 +279,16 @@ export const resetV2Tour = internalMutation({
     return `${u.displayName} : le tour des nouveautés V2 se relancera à sa prochaine visite.`;
   },
 });
+
+/**
+ * (15/11) Ramener un joueur d'office à « Personnaliser mon profil » à sa prochaine visite :
+ *   npx convex run admin:resetAtelier '{"name":"magizz"}'
+ */
+export const resetAtelier = internalMutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const u = await findUser(ctx, name);
+    await ctx.db.patch(u._id, { atelierSeenAt: undefined });
+    return `${u.displayName} : « Personnaliser mon profil » s'ouvrira à sa prochaine visite.`;
+  },
+});

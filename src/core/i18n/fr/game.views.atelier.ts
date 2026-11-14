@@ -3,6 +3,7 @@ import { addFr } from '../../i18n';
 
 export const fr = {
   'at.title': 'Personnaliser',
+  'at.forced': 'Nouveau : ton profil se construit ici. Fonds, cadres, styles de titre.',
   'at.sub': 'Tout se débloque en jouant',
   'at.preview': 'Aperçu de ton profil',
   'at.close': 'Fermer',

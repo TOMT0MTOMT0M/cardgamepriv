@@ -74,6 +74,8 @@ export function meView(user: Doc<'users'>, now: number) {
     guideSeen: !!user.guideSeenAt,
     /** (13/11) tour des nouveautés V2 déjà joué */
     v2TourSeen: !!user.v2TourSeenAt,
+    /** (15/11) déjà amené d'office à « Personnaliser mon profil » */
+    atelierSeen: !!user.atelierSeenAt,
     /** (13/11) testeur du lien V2 (variable V2_TESTERS du staging : pseudos séparés par des virgules) — pas l'équipe */
     tester: v2Testers().has(user.username.toLowerCase()),
     /** (11/11) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) ; absente : la déchirure */
@@ -244,7 +246,8 @@ export const markGuideSeen = mutation({
   handler: async (ctx, { sessionToken }) => {
     const u = await requireUser(ctx, sessionToken);
     // (13/11) un compte tout neuf a sa visite guidée : le tour des nouveautés V2 ne le concerne pas
-    if (!u.guideSeenAt) await ctx.db.patch(u._id, { guideSeenAt: Date.now(), v2TourSeenAt: u.v2TourSeenAt ?? Date.now() });
+    // (15/11) ni le passage d'office par « Personnaliser » : il n'a encore rien à équiper
+    if (!u.guideSeenAt) await ctx.db.patch(u._id, { guideSeenAt: Date.now(), v2TourSeenAt: u.v2TourSeenAt ?? Date.now(), atelierSeenAt: u.atelierSeenAt ?? Date.now() });
   },
 });
 
@@ -268,6 +271,15 @@ export const markV2TourSeen = mutation({
   handler: async (ctx, { sessionToken }) => {
     const u = await requireUser(ctx, sessionToken);
     if (!u.v2TourSeenAt) await ctx.db.patch(u._id, { v2TourSeenAt: Date.now() });
+  },
+});
+
+/** (15/11) Le joueur vient d'être amené d'office à « Personnaliser mon profil » : plus jamais sur ce compte. */
+export const markAtelierSeen = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await requireUser(ctx, sessionToken);
+    if (!u.atelierSeenAt) await ctx.db.patch(u._id, { atelierSeenAt: Date.now() });
   },
 });
 

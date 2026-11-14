@@ -1321,7 +1321,9 @@ async function boot() {
   // (patch 08/11) annonce du patch : la page des mises à jour s'ouvre une fois, à la prochaine visite (announce.ts)
   void import('./announce').then((m) => m.armAnnounce(backend));
   // (13/11) + le tour des nouveautés V2 pour les joueurs d'avant la V2 (une fois, d'office)
-  void import('./views/guide').then((m) => (m.armGuide(backend), m.armV2Tour(backend)));
+  // (15/11) + le passage d'office par « Personnaliser mon profil » (atelierOnce.ts), armé AVANT les tours : il doit voir
+  // le compte tel qu'il arrive (tour V2 pas encore marqué « vu ») pour leur laisser la place
+  void Promise.all([import('./atelierOnce'), import('./views/guide')]).then(([a, m]) => (a.armAtelierOnce(backend), m.armGuide(backend), m.armV2Tour(backend)));
 
   // en tâche de fond : miniatures de la collection, puis les modules des autres pages (navigation instantanée)
   setTimeout(() => {

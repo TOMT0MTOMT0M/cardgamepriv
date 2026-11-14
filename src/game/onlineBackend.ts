@@ -137,6 +137,7 @@ export function createOnlineBackend(): GameBackend {
             staff: !!n.user.staff,
             guideSeen: !!n.user.guideSeen,
             v2TourSeen: !!n.user.v2TourSeen,
+            atelierSeen: n.user.atelierSeen,
             tester: !!n.user.tester,
             gamesNoticeAt: n.user.gamesNoticeAt,
             referralNoticeAt: n.user.referralNoticeAt,
@@ -198,6 +199,7 @@ export function createOnlineBackend(): GameBackend {
     login: () => void import('./views/login').then((m) => m.openLogin()),
     markGuideSeen: () => net.markGuideSeen(),
     markV2TourSeen: () => net.markV2TourSeen(),
+    markAtelierSeen: () => net.markAtelierSeen(),
     logout: () => net.logout(),
     async preparePack(req: PackRequest) {
       const p = await net.preparePack(packArgs(req));
