@@ -137,3 +137,66 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
   .gm-big.charge .gm-big-back { animation: none; box-shadow: 0 0 0 1px var(--rc); }
   .gm-rrow.rare::before { animation-duration: 1ms; }
 }
+
+/* ═══ JAUGE D'ÉTOILES : fluide bleu clair bioluminescent (gameFx.ts liquidGauge) ═══
+   Le niveau (--lvl) monte avec un ressort (linear() : il dépasse un peu, ballotte, se pose). Deux surfaces de vague
+   à 3,1 s et 4,7 s (jamais en phase) + une lueur qui respire sur deux rythmes (5,3 s et 2,9 s) : le mouvement ne se
+   répète jamais à l'identique. Gagnant : plus vif et plus rapide ; perdant : la lumière s'éteint presque. */
+@property --glow { syntax: '<number>'; inherits: true; initial-value: 1; }
+.gm-gauge {
+  --bio: #8ee9ff; --bio-2: #3fb6ff; --bio-deep: #0a3a5c;
+  position: relative; height: 34px; margin: 2px 0 12px; border: 1px solid var(--gm-line-2); border-radius: var(--r-ctl); overflow: hidden;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 10%), #030608;
+  isolation: isolate;
+}
+.gm-liq {
+  position: absolute; inset: 0 auto 0 0; width: calc(var(--lvl, 0) * 100%); min-width: 0;
+  transition: width 1.25s linear(0, 0.22 6%, 0.6 16%, 0.92 27%, 1.06 36%, 1.09 42%, 1.05 52%, 0.99 64%, 1.005 76%, 1);
+  background: linear-gradient(90deg, var(--bio-deep), color-mix(in srgb, var(--bio-2) 75%, var(--bio-deep)) 55%, var(--bio-2));
+  box-shadow: inset -2px 0 10px -2px var(--bio), 0 0 calc(14px * var(--glow)) calc(1px * var(--glow)) color-mix(in srgb, var(--bio) 55%, transparent);
+  filter: brightness(calc(0.9 + 0.22 * var(--glow))) saturate(1.15);
+  animation: gm-bio-a 5.3s ease-in-out var(--ph, 0s) infinite alternate, gm-bio-b 2.9s ease-in-out var(--ph, 0s) infinite alternate;
+}
+/* front du fluide : deux lobes dont la forme se déforme sans cesse (border-radius qui respire, périodes premières
+   entre elles) — un bord vivant, pas une ligne droite */
+.gm-front { position: absolute; top: -20%; right: -10px; width: 20px; height: 140%; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(60% 50% at 40% 50%, #e8fcff, var(--bio) 45%, transparent 75%); filter: blur(0.6px); }
+.gm-front.a { animation: gm-blob 3.1s ease-in-out var(--ph, 0s) infinite alternate, gm-bob 2.3s ease-in-out var(--ph, 0s) infinite alternate; }
+.gm-front.b { right: -4px; width: 14px; opacity: 0.55; animation: gm-blob 4.7s ease-in-out calc(var(--ph, 0s) * 0.7) infinite alternate-reverse, gm-bob 3.7s ease-in-out infinite alternate-reverse; }
+@keyframes gm-blob {
+  0% { border-radius: 60% 40% 55% 45% / 45% 60% 40% 55%; scale: 1 1; }
+  33% { border-radius: 40% 60% 45% 55% / 60% 40% 55% 45%; scale: 1.25 0.92; }
+  66% { border-radius: 55% 45% 60% 40% / 40% 55% 45% 60%; scale: 0.85 1.06; }
+  100% { border-radius: 45% 55% 40% 60% / 55% 45% 60% 40%; scale: 1.1 0.97; }
+}
+@keyframes gm-bob { from { translate: 0 -6%; } to { translate: 2px 6%; } }
+/* lueur interne qui ondule (bioluminescence) */
+.gm-liq::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: calc(0.35 + 0.35 * var(--glow));
+  background: radial-gradient(40% 120% at 20% 50%, color-mix(in srgb, var(--bio) 70%, transparent), transparent 70%),
+              radial-gradient(30% 140% at 70% 40%, color-mix(in srgb, #c9f7ff 55%, transparent), transparent 70%);
+  background-size: 200% 100%; animation: gm-bio-drift 7.3s ease-in-out var(--ph, 0s) infinite alternate;
+}
+/* bulles qui remontent vers la surface */
+.gm-bub { position: absolute; bottom: -6px; width: 4px; height: 4px; border-radius: 50%; background: #dffaff; box-shadow: 0 0 6px 1px var(--bio); opacity: 0;
+  animation: gm-bub 3.4s ease-in var(--ph, 0s) infinite; }
+.gm-bub:nth-child(3) { left: 22%; } .gm-bub:nth-child(4) { left: 55%; animation-duration: 4.6s; animation-delay: -1.3s; width: 3px; height: 3px; }
+.gm-bub:nth-child(5) { left: 78%; animation-duration: 2.7s; animation-delay: -2.1s; }
+@keyframes gm-bub { 0% { opacity: 0; translate: 0 0; } 20% { opacity: 0.9; } 100% { opacity: 0; translate: 6px -42px; } }
+@keyframes gm-bio-a { 0% { --glow: 0.7; } 37% { --glow: 1.25; } 61% { --glow: 0.95; } 100% { --glow: 1.4; } }
+@keyframes gm-bio-b { from { opacity: 0.93; } to { opacity: 1; } }
+@keyframes gm-bio-drift { to { background-position: 100% 0; } }
+/* le total, en grand, posé sur le fluide */
+.gm-gauge .gm-count { position: absolute; right: 10px; top: 50%; translate: 0 -50%; z-index: 2; font: 600 24px/1 var(--title); color: #fff;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--bio) 70%, transparent), 0 1px 0 #000; }
+.gm-gauge.full .gm-liq { border-radius: 0; }
+/* fin de partie */
+.gm-gauge.win { border-color: color-mix(in srgb, var(--bio) 70%, #fff); box-shadow: 0 0 22px -4px var(--bio); }
+.gm-gauge.win .gm-liq { animation-duration: 2.6s, 1.4s; }
+.gm-gauge.win .gm-front.a { animation-duration: 1.7s, 1.3s; }
+.gm-gauge.lose .gm-liq { filter: brightness(0.45) saturate(0.4); animation-play-state: paused; transition: width 1.25s, filter var(--dur-lente, 1.2s) var(--ease-standard); }
+.gm-gauge.lose .gm-bub, .gm-gauge.lose .gm-front { animation-play-state: paused; opacity: 0.15; }
+@media (prefers-reduced-motion: reduce) {
+  .gm-liq { transition: width var(--dur-standard) var(--ease-standard); }
+  .gm-liq, .gm-liq::before, .gm-front, .gm-bub { animation: none; }
+}

@@ -40,7 +40,7 @@ import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
 import { mountGridArt } from './gridArt';
 import { yieldToMain } from '../../core/yieldMain';
-import { cardBeat, flash, flyGain, shake, stamp } from './gameFx';
+import { cardBeat, flash, flyGain, liquidGauge, shake, stamp } from './gameFx';
 import '../jeux-motion.css';
 
 /**
@@ -496,7 +496,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       c.innerHTML = `<div class="gm-bh">${ava(s.name, s.avatarUrl)}<b>${esc(s.name)}</b><span class="gm-count">0★</span></div><div class="gm-slots"></div>`;
       const slots = c.querySelector<HTMLElement>('.gm-slots')!;
       res.packs[i].flat().forEach((card) => slots.append(slot(card)));
-      return { el: c, count: c.querySelector<HTMLElement>('.gm-count')!, slots: [...slots.children] as HTMLElement[], total: 0 };
+      // (14/11) le total vit dans une jauge de fluide (pleine ≈ 4★ de moyenne par carte)
+      const count = c.querySelector<HTMLElement>('.gm-count')!;
+      const gauge = liquidGauge(count, res.packs[i].flat().length * 4);
+      c.querySelector('.gm-bh')!.after(gauge.el);
+      return { el: c, count, gauge, slots: [...slots.children] as HTMLElement[], total: 0 };
     });
     bat.append(cols[0].el, cols[1].el);
     let skip = !animate;
@@ -540,6 +544,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const before = cols[k].total;
       cols[k].total += stars;
       rollNumber(cols[k].count, before, cols[k].total, (x) => `${Math.round(x)}★`, 420);
+      cols[k].gauge.set(cols[k].total);
       updTug(k, before, hex, stars >= 5);
       updLead();
       cols[k].count.classList.remove('pop');
@@ -584,6 +589,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const iWon = w.userId === myId();
       cols[res.winner].el.classList.add('win');
       cols[1 - res.winner].el.classList.add('lose');
+      cols[res.winner].gauge.end(true);
+      cols[1 - res.winner].gauge.end(false);
       const pots = stakeValue(d.sides[0].stake) + stakeValue(d.sides[1].stake);
       v.innerHTML = `<b><span>${iWon ? tr('gm.youWinAll') : tr('gm.winsAll', { name: esc(w.name) })}</span></b> ${tr('gm.score', { a: res.stars[res.winner], b: res.stars[1 - res.winner], n: n * 2, pots: pots ? tr('gm.andPots', { v: fmtCoins(pots) }) : '', name: iWon ? 'toi' : esc(w.name) })}`;
       // bilan personnel (UX4-22) : ce que JE gagne ou perds, pas seulement le verdict
@@ -736,7 +743,10 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const sl = row.querySelector<HTMLElement>('.gm-slots')!;
       res.packs[i].forEach((c) => sl.append(slot(c)));
       g.append(row);
-      return { row, count: row.querySelector<HTMLElement>('.gm-count')!, rank: row.querySelector<HTMLElement>('.gm-rank')!, slots: [...sl.children] as HTMLElement[], total: 0 };
+      const count = row.querySelector<HTMLElement>('.gm-count')!;
+      const gauge = liquidGauge(count, res.packs[i].length * 4);
+      row.querySelector('.gm-bh')!.after(gauge.el);
+      return { row, count, gauge, rank: row.querySelector<HTMLElement>('.gm-rank')!, slots: [...sl.children] as HTMLElement[], total: 0 };
     });
     let skip = !animate;
     room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
@@ -757,6 +767,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         if (stars >= 5) x.slots[i].classList.add('hot');
         const before = x.total;
         x.total += stars;
+        x.gauge.set(x.total);
         if (skip) x.count.textContent = `${x.total}★`;
         else {
           rollNumber(x.count, before, x.total, (n) => `${Math.round(n)}★`, 420);
@@ -797,6 +808,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     g.classList.remove('suspense');
     room.querySelector('.gm-skip')?.remove();
     res.winners.forEach((w) => rows[w].row.classList.add('win'));
+    rows.forEach((x, k) => x.gauge.end(res.winners.includes(k)));
     // (14/11) podium : les trois premières places se marquent
     [...rows].sort((a, b) => b.total - a.total).slice(0, 3).forEach((x, p) => {
       x.row.classList.add(`pod-${p + 1}`);

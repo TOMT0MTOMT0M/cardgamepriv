@@ -77,3 +77,24 @@ export function stamp(el: HTMLElement): void {
 }
 
 export const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * (14/11) JAUGE D'ÉTOILES — un fluide bleu clair bioluminescent qui monte avec le total : deux surfaces de vague à des
+ * périodes qui ne tombent jamais juste (mouvement organique), une lueur dont l'intensité respire, quelques bulles. Le
+ * total s'écrit en grand dans la jauge. `set(total)` : le niveau monte avec un léger ballottement (ressort CSS).
+ */
+export function liquidGauge(count: HTMLElement, max: number): { el: HTMLElement; set(total: number): void; end(win: boolean): void } {
+  const el = document.createElement('div');
+  el.className = 'gm-gauge';
+  el.innerHTML = `<div class="gm-liq"><i class="gm-front a"></i><i class="gm-front b"></i><i class="gm-bub"></i><i class="gm-bub"></i><i class="gm-bub"></i></div>`;
+  el.append(count);
+  // (chaque jauge a sa propre phase : deux jauges côte à côte ne respirent jamais ensemble)
+  el.style.setProperty('--ph', `${-Math.random() * 6}s`);
+  const set = (total: number) => {
+    const lvl = Math.max(0, Math.min(1, total / Math.max(1, max)));
+    el.style.setProperty('--lvl', lvl.toFixed(3));
+    el.classList.toggle('full', lvl >= 1);
+  };
+  set(0);
+  return { el, set, end: (win) => el.classList.add(win ? 'win' : 'lose') };
+}
