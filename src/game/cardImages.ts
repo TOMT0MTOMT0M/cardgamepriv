@@ -5,7 +5,15 @@ import { FONT_VERSION } from '../core/fonts';
 import { canvasToBlob, loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
-import { catalogEntry, hasArt, isWonderId, numberingSize, subthemeById, thumbPath, wonderCapturePath } from '../core/sets/themes';
+import { artPath, catalogEntry, hasArt, isWonderId, numberingSize, subthemeById, thumbPath, wonderCapturePath } from '../core/sets/themes';
+import type { CatalogEntry } from '../core/sets/themes';
+
+/**
+ * (v2.0.2, retours de Tom « dans la collection les images sont floues, pas sur la carte 3D ») source de la tuile : la
+ * miniature (256 px de haut) suffit au petit cadre des 1★–4★, mais les 5★ / 6★ sont en pleine illustration (~390 px de
+ * haut peints) : elle y était agrandie ×1,5. Elles sont peintes depuis l'image entière (une fois : la tuile reste en cache).
+ */
+const tileArt = (e: CatalogEntry, rarity: string) => (rarity === 'mythic' || rarity === 'legendary' ? artPath(e) : thumbPath(e));
 import { siteUrl } from '../core/siteRoot';
 
 
@@ -29,7 +37,7 @@ const SCALE = Math.max(0.36, Math.min(0.5, Math.ceil(((170 * Math.min(3, Math.ma
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
-const CACHE = 'bebou-cartes-v12'; // v12 (10/11, retours Hugo) : 5★ toujours en pleine illustration, tuiles plus grandes · v11 (08/11) : visages recadrés (art/faceFocus.json) · v10 (07/11) : 6★ toujours en pleine illustration · v9 (retours live 6) : adresses d'images versionnées (?v=, clé = adresse de la miniature), même gabarit que la 3D (Merveilles), Suisse pour toutes les photos non portrait, zéro effet, sans emblème · v8 (07/11 soir) : full-art sans bordure, Suisse paysage sans filets (numéro noir, étoiles 6★ en alu) · v7 (07/11) : cartes horizontales au gabarit Suisse (labo 035) · v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
+const CACHE = 'bebou-cartes-v13'; // v13 (14/11) : gabarit Suisse de retour sur les 5★ à photo horizontale, 5★ / 6★ peintes depuis l'image entière · v12 (10/11, retours Hugo) : 5★ toujours en pleine illustration, tuiles plus grandes · v11 (08/11) : visages recadrés (art/faceFocus.json) · v10 (07/11) : 6★ toujours en pleine illustration · v9 (retours live 6) : adresses d'images versionnées (?v=, clé = adresse de la miniature), même gabarit que la 3D (Merveilles), Suisse pour toutes les photos non portrait, zéro effet, sans emblème · v8 (07/11 soir) : full-art sans bordure, Suisse paysage sans filets (numéro noir, étoiles 6★ en alu) · v7 (07/11) : cartes horizontales au gabarit Suisse (labo 035) · v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
 // (bug du « placeholder fantôme » : une carte peinte en design typographique avant d'avoir son illustration restait
 // figée ainsi dans le cache du joueur, même après l'ajout de l'image)
 /**
@@ -96,7 +104,7 @@ function cacheUrl(key: string): string | null {
   // l'illustration ACTUELLE fait partie de la clé : quand une carte reçoit (ou change d')image, l'ancienne version peinte
   // n'est plus jamais servie — la carte est repeinte depuis la fiche du catalogue
   // (retours live 6, B2) l'ADRESSE versionnée de la miniature (`?v=`) : une image remplacée = une autre clé
-  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}${lang() === 'fr' ? '' : `|${lang()}`}`)}`; // (version anglaise) la langue dans la clé : en français, clés inchangées
+  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? tileArt(e, key.split('|')[1] ?? '') : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}${lang() === 'fr' ? '' : `|${lang()}`}`)}`; // (version anglaise) la langue dans la clé : en français, clés inchangées
 }
 async function fromCache(key: string): Promise<string | null> {
   const url = cacheUrl(key);
@@ -163,7 +171,7 @@ async function paint(key: string): Promise<string | null> {
   }
   const cd = cardById(id);
   // (carte Jeux vidéo sans illustration : rien à télécharger, le design typographique est peint directement)
-  const thumb = hasArt(e) ? siteUrl(thumbPath(e)) : undefined;
+  const thumb = hasArt(e) ? siteUrl(tileArt(e, rarity)) : undefined;
   if (thumb) painting.set(thumb, (painting.get(thumb) ?? 0) + 1);
   try {
     return await paintWith(key, id, rarity, cd, thumb);

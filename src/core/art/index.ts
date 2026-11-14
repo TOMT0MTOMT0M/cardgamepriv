@@ -236,8 +236,9 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   // (retours 05/11, préparé) photo HORIZONTALE : un autre gabarit pour ces cartes, dès que LANDSCAPE.design est rempli
   // (07/11, décision Tom & Hugo) les 6★ restent TOUJOURS en pleine illustration, quel que soit le format de la photo :
   // leurs images non portrait sont remplacées à la main par des photos verticales (doc claude/retours-live-06-avancement.md)
-  // (retours Hugo 10/11) les 5★ aussi : plus aucune 5★ au gabarit Suisse, toutes en pleine illustration
-  const dz = rarityId === 'mythic' || rarityId === 'legendary' ? dz0 : landscapeDesign(card, im, dz0);
+  // (10/11, retours Hugo) les 5★ étaient passées elles aussi en pleine illustration ; (14/11, décision de Tom après la
+  // sortie V2) le gabarit Suisse revient sur les 5★ à photo horizontale. Seules les 6★ restent toujours en plein cadre.
+  const dz = rarityId === 'mythic' ? dz0 : landscapeDesign(card, im, dz0);
 
   const bg = makeCanvas(W, H), subj = makeCanvas(W, H), fg = makeCanvas(W, H), fx = makeCanvas(W, H);
   const frame = makeCanvas(W, H), masks = makeCanvas(W, H);
