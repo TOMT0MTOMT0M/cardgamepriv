@@ -6,26 +6,41 @@ export const UPDATES_EN: UpdateMonth[] = [
     month: 'November 2026',
     entries: [
       {
+        date: '14 Nov', title: '🚀 Version 2: the biggest update yet', tag: 'nouveau', featured: true,
+        lead: 'Your collection is safe: cards, coins, boosters, achievements, binders – nothing was lost. And to celebrate: 🎁 50 free boosters for everyone.',
+        points: [
+          '💬 Chat: the lounge for everyone and private messages. Type @ and the first letter of a name to mention someone: they get a notification.',
+          '🛒 Market: sell a card at a fixed price in coins or put it up for trade, right in “For you”. Buy other players’ cards: first to buy gets it.',
+          '🤝 Trades: under each card, see who has it, who sells it, who wants it and its average price. “For you” sets up ready-made trades from your wishes, in one tap.',
+          '🏆 Seasons: every month, a ranking of the new cards you win, with boosters for everyone at the end. The first one ends on 30 November.',
+          '⏳ Booster of the moment: a limited edition, with its countdown at the top of the shop.',
+          '🪙 Boosters for coins: buy as many as you want, still 250 coins each.',
+          '🃏 New cards: over 3,000 more, {CARTES} to collect.',
+          '✨ 6★ cards: each has its own staging, 6★ Music and anime cards play their clip, and nearly all are full art.',
+          '🎲 Games: Pack Battle, Battle Royale and the Roulette, with its wheel, a replay of the draw and a reminder 10 min before.',
+          '🎖️ Achievements: as badges, “2/7” and your progress; one tap shows what you’re missing.',
+          '📊 Leaderboard: your rank, and what you need to pass the player just above you.',
+          '🔊 Sound and opening: brand-new, softer sound and a more real booster tear.',
+          '🔔 Notifications: full reserve, trades, friends, chat. On iPhone, add the game to your home screen first.',
+          '🌍 English: the game switches to English on its own if your phone or PC isn’t in French (FR | EN button next to the sound).',
+        ],
+      },
+      {
+        date: '14 Nov', title: 'v2.0.1: launch touch-ups', tag: 'amélioré',
+        points: [
+          'Card viewer: “Replay” at the top, buttons tidied under the card, and they fade out when you zoom.',
+          'Collection: the filter bar stays stuck at the top when you scroll.',
+          'General chat: messages only, drops stay in Big pulls.',
+          'Images: 95 more 6★ cards in full art.',
+          'English: the big pulls time and a few tabs were displayed wrong, now fixed.',
+        ],
+      },
+      {
         date: '13 Nov', title: 'Fixes: Star Wars and The Mandalorian, Oner and ShowMaker, new images', tag: 'corrigé',
         points: [
           'Star Wars and The Mandalorian: Grogu, the Mandalorian, Cobb Vanth and Koska Reeves move to The Mandalorian album.',
           'Oner and ShowMaker are now 6★.',
           'New images: Iron Man reframed, 15 The Walking Dead cards, Will Smith, Captain America, Winter Soldier, Scarlet Witch, Joey Tribbiani, Jeff Tuche, Rex, Ben 10, ZywOo, Oner, ShowMaker, Dembélé, Fernando Alonso, Ballon d’Or, LaLiga, Zelda, Alan Wake II, PNL, Idol and more.',
-        ],
-      },
-      {
-        date: '14 Nov', title: 'Version 2: chat, the market and seasons', tag: 'nouveau',
-        points: [
-          'Your collection is safe: cards, coins, boosters, achievements, binders – nothing was lost.',
-          'Chat: the lounge for everyone and private messages, with mentions.',
-          'Market: sell a card at a fixed price in coins, and buy other players’ cards. First to buy gets it.',
-          'Simpler trades: under each card, see who has it, who is selling it and who wants it. “For you” sets up ready-made trades based on your wishes, in one tap.',
-          'Seasons: every month, a ranking of the new cards you win, with boosters for everyone at the end. The first one ends on 30 November.',
-          'Booster of the moment: a limited edition, with its countdown at the top of the shop.',
-          'Boosters for coins: buy as many as you want, still 250 coins each.',
-          'Over 3,000 new cards ({CARTES} in total) and a new star sort: some of your cards have changed stars.',
-          'Every 6★ has its own staging, 6★ Music and anime cards play their clip, the sound is brand new and the booster tear feels more real.',
-          'Notifications: full reserve, trades, friends. On iPhone, add the game to your home screen first.',
         ],
       },
       {

@@ -54,9 +54,10 @@ export function createUpdatesView(shell: Shell): InfoView {
         .map((e) => {
           const tag = e.tag === 'amélioré' ? 'up' : e.tag === 'corrigé' ? 'fix' : 'new'; // i18n-ok (valeurs de données)
           const nb = e.points.length;
-          return `<details class="if-entry"${n++ < OPEN_ENTRIES ? ' open' : ''}>
+          return `<details class="if-entry${e.featured ? ' if-feat' : ''}"${n++ < OPEN_ENTRIES || e.featured ? ' open' : ''}>
             <summary><span class="if-e-h"><span class="if-date">${esc(e.date)}</span><span class="if-tag t-${tag}">${TAG_LABEL()[e.tag]}</span></span>
               <span class="if-e-t"><h3>${esc(e.title)}</h3><span class="if-e-n">${nb} ${tr('if.changeWord', { n: nb })}</span></span></summary>
+            ${e.lead ? `<p class="if-lead">${esc(nbsp(e.lead.split(CARDS_TOKEN).join(fmtN(PUBLIC_CARD_COUNT))))}</p>` : ''}
             <ul class="if-points">${e.points.map((x) => point(x.split(CARDS_TOKEN).join(fmtN(PUBLIC_CARD_COUNT)))).join('')}</ul>
           </details>`;
         })

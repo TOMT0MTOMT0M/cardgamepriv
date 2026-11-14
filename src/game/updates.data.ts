@@ -8,6 +8,9 @@ export interface UpdateEntry {
   date: string;
   title: string;
   tag: 'nouveau' | 'amélioré' | 'corrigé';
+  /** (v2.0.1) grosse mise à jour : mise en avant, toujours dépliée, avec un chapeau */
+  featured?: boolean;
+  lead?: string;
   points: string[];
 }
 export interface UpdateMonth {
@@ -38,26 +41,41 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '14 nov.', title: '🚀 Version 2 : la plus grosse mise à jour du jeu', tag: 'nouveau', featured: true,
+        lead: 'Ta collection est gardée : cartes, pièces, boosters, succès, classeurs, rien ne s’est perdu. Et pour fêter ça : 🎁 50 boosters offerts à tout le monde.',
+        points: [
+          '💬 Chat : le salon de tout le monde et les messages privés. Tape @ et la première lettre d’un pseudo pour le citer : il reçoit une notification.',
+          '🛒 Marché : vends une carte à prix fixe en pièces ou propose-la à l’échange, directement dans « Pour toi ». Achète celles des autres : le premier qui achète l’a.',
+          '🤝 Échanges : sous chaque carte, qui l’a, qui la vend, qui la veut et son prix moyen. « Pour toi » prépare des échanges tout faits avec tes envies, en un toucher.',
+          '🏆 Saisons : chaque mois, le classement des nouvelles cartes gagnées et des boosters pour tout le monde à la fin. La première se termine le 30 novembre.',
+          '⏳ Booster du moment : une édition limitée, avec son compte à rebours en tête de la boutique.',
+          '🪙 Boosters en pièces : achète-en autant que tu veux, toujours 250 pièces l’unité.',
+          '🃏 Nouvelles cartes : plus de 3 000 cartes en plus, {CARTES} à collectionner.',
+          '✨ Les 6★ : chacune a sa mise en scène, les 6★ Musique et d’animés jouent leur extrait, et presque toutes sont en pleine illustration.',
+          '🎲 Jeux : Pack Battle, Battle Royale et la Roulette, avec sa roue, la rediffusion du tirage et un rappel 10 min avant.',
+          '🎖️ Succès : en pastilles, « 2/7 » et ta progression ; un toucher montre ce qu’il te manque.',
+          '📊 Classement : ta place, et ce qu’il te manque pour passer devant le joueur juste au-dessus.',
+          '🔊 Son et ouverture : un son tout neuf, plus doux, et une déchirure du booster plus vraie.',
+          '🔔 Notifications : réserve pleine, échanges, amis, chat. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.',
+          '🌍 English : le jeu passe en anglais tout seul si ton téléphone ou ton PC n’est pas en français (bouton FR | EN à côté du son).',
+        ],
+      },
+      {
+        date: '14 nov.', title: 'v2.0.1 : les retouches de la sortie', tag: 'amélioré',
+        points: [
+          'Visionneuse : « Rejouer » en haut, les boutons rangés sous la carte, et ils s’effacent quand tu zoomes.',
+          'Collection : la barre des filtres reste collée en haut quand tu descends.',
+          'Chat général : seulement les messages, les drops restent dans Gros tirages.',
+          'Images : 95 cartes 6★ de plus en pleine illustration.',
+          'Anglais : l’heure des gros tirages et quelques onglets s’affichaient mal, c’est réglé.',
+        ],
+      },
+      {
         date: '13 nov.', title: 'Corrections : Star Wars et The Mandalorian, Oner et ShowMaker, nouvelles images', tag: 'corrigé',
         points: [
           'Star Wars et The Mandalorian : Grogu, le Mandalorien, Cobb Vanth et Koska Reeves rejoignent l’album The Mandalorian.',
           'Oner et ShowMaker passent 6★.',
           'Nouvelles images : Iron Man recadré, 15 cartes The Walking Dead, Will Smith, Captain America, Soldat de l’Hiver, Scarlet Witch, Joey Tribbiani, Jeff Tuche, Rex, Ben 10, ZywOo, Oner, ShowMaker, Dembélé, Fernando Alonso, Ballon d’Or, LaLiga, Zelda, Alan Wake II, PNL, Idol et d’autres.',
-        ],
-      },
-      {
-        date: '14 nov.', title: 'Version 2 : le chat, le marché, les saisons', tag: 'nouveau',
-        points: [
-          'Ta collection est gardée : cartes, pièces, boosters, succès, classeurs, rien ne s’est perdu.',
-          'Chat : le salon de tout le monde et les messages privés, avec les mentions.',
-          'Marché : vends une carte à prix fixe en pièces, achète celles des autres. Le premier qui achète l’a.',
-          'Échanges simplifiés : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies, en un toucher.',
-          'Saisons : chaque mois, le classement des nouvelles cartes gagnées et des boosters pour tout le monde à la fin. La première se termine le 30 novembre.',
-          'Booster du moment : une édition limitée, avec son compte à rebours en tête de la boutique.',
-          'Boosters en pièces : achète-en autant que tu veux, toujours 250 pièces l’unité.',
-          `Plus de 3 000 nouvelles cartes ({CARTES} en tout) et un nouveau tri des étoiles : certaines de tes cartes ont changé d’étoile.`,
-          'Les 6★ ont chacune leur mise en scène, les 6★ Musique et d’animés jouent leur extrait, le son est tout neuf et la déchirure du booster plus vraie.',
-          'Notifications : réserve pleine, échanges, amis. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.',
         ],
       },
       {
