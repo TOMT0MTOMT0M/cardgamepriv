@@ -69,6 +69,7 @@ export const UPDATES: UpdateMonth[] = [
           '🔒 Verrouillé ne veut plus dire caché : tu vois l’élément en vrai, ce qu’il faut faire et où tu en es. Touche-le pour l’essayer.',
           '🎖️ Succès : 49 paliers de plus (137 en tout), du très facile au très long, et une nouvelle échelle « Tous les thèmes ». Toutes les nouveautés s’y gagnent.',
           '💬 Ton cadre et ton titre s’affichent aussi dans le chat, chez tes amis et au classement.',
+          '🪙 Pièces : pendant une ouverture, plus de « +N » à chaque booster. Elles arrivent toutes à la fin, une fois les cartes révélées, et remplissent le compteur.',
         ],
       },
       {

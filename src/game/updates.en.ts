@@ -34,6 +34,7 @@ export const UPDATES_EN: UpdateMonth[] = [
           '🔒 Locked no longer means hidden: you see the real item, what to do and how far along you are. Tap it to try it on.',
           '🎖️ Achievements: 49 more tiers (137 in all), from very easy to very long, and a new “Every theme” ladder. Every new item is earned there.',
           '💬 Your frame and title also show in the chat, on your friends’ lists and in the ranking.',
+          '🪙 Coins: no more “+N” on every booster while opening. They all arrive at the end, once the cards are revealed, and fill up the counter.',
         ],
       },
       {

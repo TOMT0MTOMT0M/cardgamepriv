@@ -40,7 +40,7 @@ import { installNavDots } from './navDots';
 applyFontVars();
 // (version anglaise) langue du jeu : en anglais, le dictionnaire arrive pendant le chargement du reste (rien en français)
 const langP = initLang();
-import { bindMotionVars } from '../core/motion';
+import { DUR, EASING, bindMotionVars } from '../core/motion';
 bindMotionVars();
 import { installMorph } from '../core/morph';
 installMorph();
@@ -663,20 +663,122 @@ backend.eco.onChange((snap) => {
 /** Portefeuille (pièces) : solde dans l'en-tête, « +N » qui s'envole à chaque gain, pastille s'il y a quelque chose à prendre. */
 let wallet: ReturnType<typeof createWallet> | null = null;
 let lastCoins = -1;
+/**
+ * (14/11) PIÈCES EN FIN D'OUVERTURE — tant qu'on révèle des cartes (1 ou 10 boosters), le compteur ne bouge pas et
+ * rien ne s'envole : les gains (pièces de chaque booster, succès, le reste) s'additionnent en silence. Quand TOUTES les
+ * cartes sont révélées (récapitulatif), ils arrivent d'un coup : `payCoins`. Plus de « +N » à chaque booster.
+ * Hors ouverture, un gain (succès encaissé, vente, cadeau) arrive de la même façon, tout de suite.
+ * `coinHeld` : le solde affiché, figé pendant la révélation (null = rien de retenu) ; `shopMode` : phase de la boutique.
+ */
+let coinHeld: number | null = null;
+let shopMode: 'pick' | 'opening' | 'summary' = 'pick';
+/** une arrivée de pièces est en cours (le compteur est à elle) */
+let coinPaying = false;
+/**
+ * L'arrivée : des pièces filent du récapitulatif vers le compteur, qui se REMPLIT (jauge dorée + chiffre qui monte) ;
+ * à chaque pièce posée, un tintement un degré plus haut dans la gamme, puis la note finale. Durée : `DUR.dramatique`.
+ */
+function payCoins() {
+  const b = meEl.querySelector<HTMLElement>('.coin-btn');
+  const from = coinHeld;
+  coinHeld = null;
+  const to = backend.eco.snapshot?.coins ?? 0;
+  if (!b || from === null || to <= from || document.visibilityState !== 'visible' || coinPaying) return void syncCoins();
+  coinPaying = true;
+  const gain = to - from;
+  const label = b.querySelector('b')!;
+  const r = b.getBoundingClientRect();
+  const src = document.querySelector<HTMLElement>('.sum-line')?.getBoundingClientRect();
+  const ox = src && src.width ? src.left + src.width / 2 : innerWidth / 2, oy = src && src.width ? src.top + src.height / 2 : innerHeight * 0.6;
+  const tx = r.left + r.height / 2, ty = r.top + r.height / 2;
+  const n = Math.max(6, Math.min(16, 5 + Math.round(Math.log2(Math.max(1, gain / 8)))));
+  const flight = DUR.dramatique * 0.5, spread = DUR.dramatique * 0.6;
+  b.classList.add('paying');
+  setText(label, fmtCoinsShort(from));
+  const fill = h('i', 'coin-fill');
+  b.prepend(fill);
+  const tag = h('div', 'coin-fly hold', `+${fmtCoins(gain)}`);
+  tag.style.left = `${r.left + r.width / 2 - 20}px`;
+  tag.style.top = `${r.bottom + 4}px`;
+  document.body.append(tag);
+  let landed = 0;
+  const land = () => {
+    landed++;
+    // le compteur suit les pièces posées ; la cible est relue à chaque fois (un dernier crédit peut encore arriver)
+    const goal = Math.max(to, backend.eco.snapshot?.coins ?? to);
+    setText(label, fmtCoinsShort(Math.round(from + ((goal - from) * landed) / n)));
+    fill.style.transform = `scaleX(${landed / n})`;
+    b.classList.remove('bump');
+    void b.offsetWidth;
+    b.classList.add('bump');
+    if (landed < n) return;
+    lastCoins = backend.eco.snapshot?.coins ?? goal;
+    setText(label, fmtCoinsShort(lastCoins));
+    fill.animate([{ opacity: 1 }, { opacity: 0 }], { duration: DUR.emphatique(), easing: EASING.sortie, fill: 'forwards' }).onfinish = () => {
+      fill.remove();
+      tag.remove();
+      b.classList.remove('paying');
+      coinPaying = false;
+      syncCoins();
+    };
+  };
+  for (let i = 0; i < n; i++) {
+    const c = h('i', 'coin-drop');
+    const sx = ox + ((i * 53) % 90) - 45, sy = oy + ((i * 31) % 26) - 13;
+    c.style.left = `${sx}px`;
+    c.style.top = `${sy}px`;
+    document.body.append(c);
+    const dx = tx - sx, dy = ty - sy, lift = 40 + ((i * 17) % 50);
+    const a = c.animate(
+      [
+        { transform: 'translate(-50%, -50%) scale(0.3)', opacity: 0 },
+        { transform: `translate(calc(-50% + ${dx * 0.35}px), calc(-50% + ${dy * 0.35 - lift}px)) scale(1)`, opacity: 1, offset: 0.35 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.6)`, opacity: 1 },
+      ],
+      { duration: flight, delay: (spread * i) / n, easing: EASING.standard, fill: 'both' },
+    );
+    a.onfinish = () => {
+      c.remove();
+      land();
+    };
+  }
+  // la montée sonore, programmée d'un coup sur l'horloge audio : une pièce = un degré de plus, puis le « ting » final
+  if (shell) {
+    for (let i = 0; i < n; i++) shell.sfx.coin(i, 0.055 + 0.02 * (i / n), (flight + (spread * i) / n) / 1000);
+    shell.sfx.note(10, 0.09, 0.6, (flight + spread) / 1000 + 0.05);
+  }
+}
+// (développement seulement) rejouer l'arrivée sans ouvrir de booster : __payCoins(120) verse 120 pièces « retenues »
+if (import.meta.env.DEV) (window as unknown as { __payCoins?: (gain: number) => void }).__payCoins = (gain) => {
+  coinHeld = Math.max(0, (backend.eco.snapshot?.coins ?? 0) - gain);
+  payCoins();
+};
+/** regroupe les gains qui se suivent (5 crédits d'un « Tout passer », un succès encaissé) en UNE arrivée */
+let payTimer = 0;
+function schedulePay() {
+  clearTimeout(payTimer);
+  // (pendant une révélation, rien ne part : la boutique relance à la fin, `shop.onMode`)
+  payTimer = window.setTimeout(() => shopMode !== 'opening' && payCoins(), DUR.emphatique());
+}
 function syncCoins() {
   const b = meEl.querySelector<HTMLElement>('.coin-btn');
   const snap = backend.eco.snapshot;
-  if (!b || !snap) return;
-  setText(b.querySelector('b')!, fmtCoinsShort(snap.coins));
+  if (!b || !snap || coinPaying) return;
+  // un GAIN : retenu (le compteur garde le solde d'avant), puis versé d'un coup — tout de suite hors ouverture, à la fin
+  // de la révélation pendant une ouverture. Onglet caché : le solde change simplement.
+  if (lastCoins >= 0 && snap.coins > lastCoins && document.visibilityState === 'visible') {
+    if (coinHeld === null) coinHeld = lastCoins;
+    if (shopMode !== 'opening') schedulePay();
+  }
+  setText(b.querySelector('b')!, fmtCoinsShort(coinHeld ?? snap.coins));
   const ready = wallet?.ready() ?? 0;
   b.querySelector<HTMLElement>('.w-dot')!.hidden = ready === 0;
   b.title = ready ? tr('hdr.walletReady') : tr('hdr.walletIdle');
   b.setAttribute('aria-label', tr('hdr.walletCoins', { coins: fmtCoins(snap.coins), ready: ready ? tr('hdr.walletSomething') : '' }));
-  // (animations réduites : le solde change, sans « +N » qui s'envole)
-  if (lastCoins >= 0 && snap.coins !== lastCoins && document.visibilityState === 'visible' && !lessMotion.matches) {
-    const d = snap.coins - lastCoins;
+  // une DÉPENSE : « −N » sous le compteur, tout de suite
+  if (coinHeld === null && lastCoins >= 0 && snap.coins < lastCoins && document.visibilityState === 'visible' && !lessMotion.matches) {
     const r = b.getBoundingClientRect();
-    const fly = h('div', `coin-fly${d < 0 ? ' neg' : ''}`, `${d > 0 ? '+' : '−'}${fmtCoins(Math.abs(d))}`);
+    const fly = h('div', 'coin-fly neg', `−${fmtCoins(lastCoins - snap.coins)}`);
     fly.style.left = `${r.left + r.width / 2 - 20}px`;
     fly.style.top = `${r.bottom + 4}px`;
     document.body.append(fly);
@@ -684,13 +786,6 @@ function syncCoins() {
     b.classList.remove('bump');
     void b.offsetWidth;
     b.classList.add('bump');
-    // gain : tics de pièces dont la hauteur monte dans la gamme (3 à 8 selon le montant), puis un « ting » final
-    if (d > 0 && shell) {
-      const n = Math.min(8, 3 + Math.floor(Math.log10(Math.max(1, d))));
-      // (son V2) la rafale est programmée d'un coup sur l'horloge audio : régulière à l'échantillon près
-      for (let i = 0; i < n; i++) shell.sfx.coin(i, 0.07, i * 0.055);
-      shell.sfx.note(10, 0.08, 0.5, n * 0.055 + 0.06);
-    }
   }
   lastCoins = snap.coins;
 }
@@ -968,6 +1063,12 @@ async function boot() {
   };
 
   const shop = createShopView(backend, shell, opening, (r) => (location.hash = `#/${r}`), getViewer);
+  // (14/11) pièces retenues pendant la révélation, versées quand tout est révélé (ou si on quitte l'ouverture)
+  shop.onMode = (m) => {
+    shopMode = m;
+    // (le récapitulatif s'installe d'abord ; si le joueur a déjà relancé un booster, les pièces attendent la fin suivante)
+    if (m !== 'opening' && coinHeld !== null) schedulePay();
+  };
   setUpdateBusy(() => shop.busy()); // (v1.0.12) la mise à jour forcée attend la fin d'une ouverture
   langBusy = () => shop.busy(); // (version anglaise) et le changement de langue aussi
   missions = createMissions(backend, shell);
