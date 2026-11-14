@@ -403,7 +403,7 @@ body.card-open .views { pointer-events: none; }
 .filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; max-width: 1220px; margin: 0 auto 8px; padding: 8px 10px; border-radius: var(--r-box); transition: background-color var(--dur-standard), box-shadow var(--dur-standard); }
 /* longue grille (ordinateur) : la barre de filtres reste en haut, sur un fond qui n'apparaît qu'une fois collée */
 @media (min-width: 601px) {
-  .filters { position: sticky; top: calc(var(--top) + env(safe-area-inset-top)); z-index: 6; }
+  .filters { position: sticky; top: -18px; z-index: 6; }
   .filters.stuck { background: rgba(0, 0, 0, 0.96); box-shadow: 0 14px 34px -16px rgba(0, 0, 0, 0.85), inset 0 0 0 1px var(--line); }
 }
 /* revenir en haut d'une longue grille */
@@ -1517,7 +1517,9 @@ a.pf-ach:hover { border-color: var(--gold); }
 .cards-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; max-width: 1220px; margin: 0 auto 8px; padding: 8px 10px; border-radius: var(--r-box); }
 .cards-bar[hidden] { display: none; }
 @media (min-width: 601px) {
-  .cards-bar { position: sticky; top: calc(var(--top) + env(safe-area-inset-top)); /* (v2.0.1) collée au header */ z-index: 6; background: rgba(0, 0, 0, 0.88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px var(--line); }
+  /* (v2.0.3, mesuré dans Chrome) le décalage d'un « sticky » se compte depuis le haut du CONTENU de la page qui défile :
+     .collection est déjà décalée de la hauteur du header + 18 px. top: --top la posait 56 px trop bas ; −18 px = collée au header */
+  .cards-bar { position: sticky; top: -18px; z-index: 6; background: rgba(0, 0, 0, 0.88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px var(--line); }
 }
 .cards-bar .cb-search { margin-left: auto; }
 /* tri « Par album » : un bloc par album (titre + ses cartes), les petits albums côte à côte */
@@ -1794,7 +1796,7 @@ body.offline .offline-pill, body.server-down .offline-pill { opacity: 1; transfo
   .bd-tools button::after, .bd-tools .bd-grip::after { content: ''; position: absolute; inset: -5px; }
 }
 /* UX3-08 : personnalisation du profil — aperçu collant, un onglet par famille, barre d'actions collante, verrouillés lisibles */
-.cs-preview { position: sticky; top: calc(var(--top) + env(safe-area-inset-top) + 6px); z-index: 4; display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 10px 14px; border-radius: var(--r-box); overflow: hidden; border: 1px solid var(--line-2); background: var(--panel-solid); box-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.95); }
+.cs-preview { position: sticky; top: -12px; /* (v2.0.3) même correction : compté depuis le contenu du profil */ z-index: 4; display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 10px 14px; border-radius: var(--r-box); overflow: hidden; border: 1px solid var(--line-2); background: var(--panel-solid); box-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.95); }
 .cs-pv-bn { position: absolute; inset: 0; opacity: 0.95; }
 .cs-pv-bn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.7)); }
 .cs-preview .pf-ava-wrap { z-index: 1; }
