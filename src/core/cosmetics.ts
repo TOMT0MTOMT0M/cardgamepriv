@@ -158,23 +158,24 @@ const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison'
 // i18n-data:fin
 /**
  * (14/11, refonte de la personnalisation) cadres DESSINÉS au trait et à l'aplat (src/game/cosmeticArt.ts), teintés par
- * la couleur du profil : 5 libres, 8 à gagner — chacun sur un palier de succès qui ne donnait que des pièces (le
- * palier garde ses pièces). `css` absent : la couleur du profil.
+ * la couleur du profil. (14/11, soir) TOUS se gagnent dans les succès, du facile au très long — et pas « le plus beau
+ * pour le plus dur » : de beaux éléments sur des paliers faciles, des sobres sur des paliers longs. `css` absent : la
+ * couleur du profil.
  */
 // i18n-data:début
 export const DRAWN_FRAMES: Cosmetic[] = [
-  C({ id: 'n-filet', label: 'Double filet', art: 'filet' }),
-  C({ id: 'n-points', label: 'Pointillé', art: 'points' }),
-  C({ id: 'n-crans', label: 'Crans', art: 'crans' }),
-  C({ id: 'n-pixel', label: 'Pixel', art: 'pixel', tags: ['retro'] }),
-  C({ id: 'n-petales', label: 'Pétales', art: 'petales', tags: ['doux'] }),
+  C({ id: 'n-filet', label: 'Double filet', need: 'streak-45', art: 'filet' }),
+  C({ id: 'n-points', label: 'Pointillé', need: 'pop-1500', art: 'points' }),
+  C({ id: 'n-crans', label: 'Crans', need: 'world-600', art: 'crans' }),
+  C({ id: 'n-pixel', label: 'Pixel', need: 'leg-10', art: 'pixel', tags: ['retro'] }),
+  C({ id: 'n-petales', label: 'Pétales', need: 'streak-5', art: 'petales', tags: ['doux'] }),
   C({ id: 'n-engrenage', label: 'Engrenage', need: 'packs-50', art: 'engrenage' }),
   C({ id: 'n-vague', label: 'Vague', need: 'uniq-100', art: 'vague', tags: ['monde'] }),
   C({ id: 'n-confettis', label: 'Confettis', need: 'bebou-5', art: 'confettis' }),
   C({ id: 'n-chat', label: 'Oreilles de chat', need: 'trade-5', art: 'chat', tags: ['doux'] }),
   C({ id: 'n-ronces', label: 'Ronces', need: 'burn-500', art: 'ronces', tags: ['ombre'] }),
   C({ id: 'n-laurier', label: 'Laurier', need: 'sport-3000', art: 'laurier', tags: ['sport'] }),
-  C({ id: 'n-impact', label: 'Impact', need: 'pop-6000', art: 'impact', tags: ['manga'] }),
+  C({ id: 'n-impact', label: 'Impact', need: 'myth-3', art: 'impact', tags: ['manga'] }),
   C({ id: 'n-orbite', label: 'Orbite', need: 'uniq-7500', art: 'orbite', tags: ['cosmos'] }),
 ];
 // i18n-data:fin
@@ -302,10 +303,10 @@ export const VITRINES: Cosmetic[] = [
   C({ id: 'aurore', label: 'Aurore', need: 'streak-60', css: 'radial-gradient(ellipse at 20% 0%, #6bffb833, transparent 55%), radial-gradient(ellipse at 80% 10%, #c86bff33, transparent 55%), linear-gradient(180deg, #0c1418, #06090c)' }),
   C({ id: 'prisme', label: 'Prisme', need: 'myth-25', css: 'linear-gradient(120deg, #ff6b9a1f, #ffd36b26, #6bffb826, #6bc8ff26, #c86bff26), linear-gradient(180deg, #1a1420, #0d0a10)' }),
   C({ id: 'secret', label: 'Un de nous', need: 'secret-3', css: 'radial-gradient(ellipse at 50% 0%, #e8927c44, transparent 60%), linear-gradient(180deg, #2a0f0e, #120607)' }),
-  // (14/11, refonte de la personnalisation) 6 décors de plus : 3 libres, 3 à gagner
-  C({ id: 'galerie', label: 'Galerie', css: 'linear-gradient(180deg, #ebe8e1 0 82%, #c9c4b8 82% 83%, #d9d5cc 83%)' }),
-  C({ id: 'arcade', label: 'Arcade', tags: ['retro'], css: 'repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--vc) 22%, transparent), transparent 60%), linear-gradient(180deg, #0f0620, #05030a)' }),
-  C({ id: 'vestiaire', label: 'Vestiaire', tags: ['sport'], css: 'repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0 2px, transparent 2px 16.66%), linear-gradient(180deg, color-mix(in srgb, var(--vc) 34%, #20262d), color-mix(in srgb, var(--vc) 18%, #0e1114))' }),
+  // (14/11, refonte de la personnalisation) 6 décors de plus, tous à gagner dans les succès
+  C({ id: 'galerie', label: 'Galerie', need: 'all-25', css: 'linear-gradient(180deg, #ebe8e1 0 82%, #c9c4b8 82% 83%, #d9d5cc 83%)' }),
+  C({ id: 'arcade', label: 'Arcade', need: 'gaming-800', tags: ['retro'], css: 'repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--vc) 22%, transparent), transparent 60%), linear-gradient(180deg, #0f0620, #05030a)' }),
+  C({ id: 'vestiaire', label: 'Vestiaire', need: 'sport-800', tags: ['sport'], css: 'repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0 2px, transparent 2px 16.66%), linear-gradient(180deg, color-mix(in srgb, var(--vc) 34%, #20262d), color-mix(in srgb, var(--vc) 18%, #0e1114))' }),
   C({ id: 'biblio', label: 'Bibliothèque', need: 'full-5', css: 'repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 5px), linear-gradient(180deg, #3b2616 0 86%, #6a4526 86% 91%, #1a0f08 91%)' }),
   C({ id: 'atlas', label: 'Atlas', need: 'world-2000', tags: ['monde'], css: 'repeating-radial-gradient(circle at 16% 30%, transparent 0 11px, color-mix(in srgb, var(--vc) 22%, transparent) 11px 12px), repeating-radial-gradient(circle at 84% 82%, transparent 0 15px, color-mix(in srgb, var(--vc) 15%, transparent) 15px 16px), linear-gradient(180deg, #12161a, #0b0e11)' }),
   C({ id: 'coffre', label: 'Coffre-fort', need: 'leg-100', tags: ['ombre'], css: 'radial-gradient(circle at 12px 12px, #d5d8dc 0 3px, transparent 3.6px), radial-gradient(circle at calc(100% - 12px) 12px, #d5d8dc 0 3px, transparent 3.6px), radial-gradient(circle at 12px calc(100% - 12px), #d5d8dc 0 3px, transparent 3.6px), radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #d5d8dc 0 3px, transparent 3.6px), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px), linear-gradient(180deg, #5b5f66, #2c2f34)' }),
@@ -315,19 +316,19 @@ export const VITRINES: Cosmetic[] = [
 /**
  * (14/11, refonte de la personnalisation) FOND DU PROFIL — derrière tout le profil. Jamais une image importée : du
  * généré par le navigateur (dégradés, trames, motifs), teinté par la couleur du profil (`--bgc`, posée par le client).
- * 6 libres, 7 à gagner (paliers de succès qui ne donnaient que des pièces). Rangé dans `users.cosmetics.background`.
+ * Tous se gagnent dans les succès (14/11, soir). Rangé dans `users.cosmetics.background`.
  */
 const bgA = (p: number) => `color-mix(in srgb, var(--bgc) ${p}%, transparent)`;
 const bgM = (p: number, base = '#000000') => `color-mix(in srgb, var(--bgc) ${p}%, ${base})`;
 // i18n-data:début
 export const BACKGROUNDS: Cosmetic[] = [
   C({ id: 'none', label: 'Aucun', css: '' }),
-  C({ id: 'trame', label: 'Trame', tags: ['manga'], css: `radial-gradient(circle, ${bgA(40)} 1px, transparent 1.5px) 0 0/9px 9px, radial-gradient(circle, ${bgA(20)} 1.6px, transparent 2.2px) 4.5px 4.5px/9px 9px, linear-gradient(160deg, ${bgM(22)}, #050505 70%)` }),
-  C({ id: 'hachures', label: 'Hachures', css: `repeating-linear-gradient(135deg, ${bgA(22)} 0 1px, transparent 1px 7px), linear-gradient(180deg, ${bgM(14)}, #050505)` }),
-  C({ id: 'grille', label: 'Grille', css: `linear-gradient(${bgA(25)} 1px, transparent 1px) 0 0/100% 96px, linear-gradient(90deg, ${bgA(25)} 1px, transparent 1px) 0 0/96px 100%, linear-gradient(${bgA(11)} 1px, transparent 1px) 0 0/100% 24px, linear-gradient(90deg, ${bgA(11)} 1px, transparent 1px) 0 0/24px 100%, #06080a` }),
-  C({ id: 'fondu', label: 'Fondu', css: `linear-gradient(155deg, ${bgM(46)} 0%, ${bgM(14)} 45%, #030303 85%)` }),
-  C({ id: 'grain', label: 'Grain', css: `radial-gradient(rgba(255, 255, 255, 0.12) 0.6px, transparent 0.8px) 0 0/3px 3px, radial-gradient(rgba(255, 255, 255, 0.08) 0.6px, transparent 0.8px) 1px 2px/5px 5px, radial-gradient(rgba(0, 0, 0, 0.4) 0.7px, transparent 0.9px) 2px 1px/7px 7px, linear-gradient(180deg, ${bgM(20)}, ${bgM(8)})` }),
-  C({ id: 'damier', label: 'Damier', tags: ['retro'], css: `conic-gradient(${bgA(18)} 25%, transparent 0 50%, ${bgA(18)} 0 75%, transparent 0) 0 0/32px 32px, #070707` }),
+  C({ id: 'trame', label: 'Trame', need: 'contract-3', tags: ['manga'], css: `radial-gradient(circle, ${bgA(40)} 1px, transparent 1.5px) 0 0/9px 9px, radial-gradient(circle, ${bgA(20)} 1.6px, transparent 2.2px) 4.5px 4.5px/9px 9px, linear-gradient(160deg, ${bgM(22)}, #050505 70%)` }),
+  C({ id: 'hachures', label: 'Hachures', need: 'packs-25', css: `repeating-linear-gradient(135deg, ${bgA(22)} 0 1px, transparent 1px 7px), linear-gradient(180deg, ${bgM(14)}, #050505)` }),
+  C({ id: 'grille', label: 'Grille', need: 'full-3', css: `linear-gradient(${bgA(25)} 1px, transparent 1px) 0 0/100% 96px, linear-gradient(90deg, ${bgA(25)} 1px, transparent 1px) 0 0/96px 100%, linear-gradient(${bgA(11)} 1px, transparent 1px) 0 0/100% 24px, linear-gradient(90deg, ${bgA(11)} 1px, transparent 1px) 0 0/24px 100%, #06080a` }),
+  C({ id: 'fondu', label: 'Fondu', need: 'all-100', css: `linear-gradient(155deg, ${bgM(46)} 0%, ${bgM(14)} 45%, #030303 85%)` }),
+  C({ id: 'grain', label: 'Grain', need: 'burn-10', css: `radial-gradient(rgba(255, 255, 255, 0.12) 0.6px, transparent 0.8px) 0 0/3px 3px, radial-gradient(rgba(255, 255, 255, 0.08) 0.6px, transparent 0.8px) 1px 2px/5px 5px, radial-gradient(rgba(0, 0, 0, 0.4) 0.7px, transparent 0.9px) 2px 1px/7px 7px, linear-gradient(180deg, ${bgM(20)}, ${bgM(8)})` }),
+  C({ id: 'damier', label: 'Damier', need: 'pop-300', tags: ['retro'], css: `conic-gradient(${bgA(18)} 25%, transparent 0 50%, ${bgA(18)} 0 75%, transparent 0) 0 0/32px 32px, #070707` }),
   C({ id: 'braise', label: 'Braise', need: 'burn-50', tags: ['feu'], css: 'radial-gradient(ellipse at 50% 118%, rgba(255, 106, 26, 0.66), transparent 58%), radial-gradient(ellipse at 18% 110%, rgba(255, 178, 60, 0.34), transparent 45%), linear-gradient(180deg, #0a0403, #1a0704)' }),
   C({ id: 'nuages', label: 'Nuages', need: 'streak-3', tags: ['doux'], css: `radial-gradient(ellipse 120px 44px at 22% 30%, rgba(255, 255, 255, 0.24), transparent 70%), radial-gradient(ellipse 160px 52px at 70% 18%, rgba(255, 255, 255, 0.2), transparent 70%), radial-gradient(ellipse 140px 48px at 48% 62%, rgba(255, 255, 255, 0.17), transparent 70%), radial-gradient(ellipse 180px 60px at 88% 78%, rgba(255, 255, 255, 0.15), transparent 70%), linear-gradient(180deg, ${bgM(35, '#27406e')}, ${bgM(35, '#5a3a66')})` }),
   C({ id: 'orage', label: 'Orage', need: 'leg-25', tags: ['foudre', 'ombre'], css: 'repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 14px), radial-gradient(ellipse at 30% 0%, rgba(91, 107, 130, 0.66), transparent 60%), radial-gradient(ellipse at 80% 10%, rgba(58, 68, 86, 0.66), transparent 55%), linear-gradient(180deg, #11151c, #06080b)' }),
@@ -342,17 +343,17 @@ export const backgroundOf = (id?: string) => find(BACKGROUNDS, id) ?? BACKGROUND
 
 /**
  * (14/11) STYLE DU TITRE — la façon d'écrire le titre porté (n'importe lequel des TITLES) : typo et traitement, dessinés
- * côté client (src/game/atelier.css, `.ts-<id>`), teintés par la couleur du profil. 6 libres, 4 à gagner. Rangé dans
+ * côté client (src/game/cosmetiques.css, `.ts-<id>`), teintés par la couleur du profil. « Usiné » d'office, les 9 autres à gagner. Rangé dans
  * `users.cosmetics.titleStyle` (absent = « Usiné », l'écriture d'avant).
  */
 // i18n-data:début
 export const TITLE_STYLES: Cosmetic[] = [
   C({ id: 'usine', label: 'Usiné' }),
-  C({ id: 'capitales', label: 'Capitales' }),
-  C({ id: 'machine', label: 'Machine à écrire' }),
-  C({ id: 'pixel', label: 'Pixel', tags: ['retro'] }),
-  C({ id: 'bulle', label: 'Bulle', tags: ['doux'] }),
-  C({ id: 'maillot', label: 'Maillot', tags: ['sport'] }),
+  C({ id: 'capitales', label: 'Capitales', need: 'all-500' }),
+  C({ id: 'machine', label: 'Machine à écrire', need: 'uniq-250' }),
+  C({ id: 'pixel', label: 'Pixel', need: 'gaming-150', tags: ['retro'] }),
+  C({ id: 'bulle', label: 'Bulle', need: 'trade-3', tags: ['doux'] }),
+  C({ id: 'maillot', label: 'Maillot', need: 'sport-150', tags: ['sport'] }),
   C({ id: 'neon', label: 'Néon', need: 'contract-5', tags: ['neon'] }),
   C({ id: 'manga', label: 'Manga', need: 'pop-800', tags: ['manga'] }),
   C({ id: 'glitch', label: 'Glitch', need: 'gaming-3000', tags: ['retro'] }),
