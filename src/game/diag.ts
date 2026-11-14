@@ -10,6 +10,8 @@
 import type { Shell } from './shell';
 import { net } from '../core/net/client';
 import { perfLongTasks, perfMarks, perfSlowFrames, type SlowFrame } from '../core/perfLog';
+import { hasTransientAttachment } from '../core/post';
+import { tileFormats } from './cardImages';
 
 const WATCH = /^(duel|duel-view|wild|wild-view)$/;
 const logs: string[] = [];
@@ -57,6 +59,7 @@ export function installDiag(shell: Shell) {
       `scène ${scene} (${why}) · ${secs.toFixed(1)} s · ${frames} images (${(frames / Math.max(0.1, secs)).toFixed(0)} i/s, pire ${worst.toFixed(0)} ms)`,
       `${be} · ${window.innerWidth}×${window.innerHeight} @${devicePixelRatio} · canvas ${shell.renderer.domElement.width}×${shell.renderer.domElement.height}`,
       limits,
+      gpuMemLine(shell),
       ...logs.slice(-35),
     ].join('\n').slice(0, 1990);
     void net
@@ -83,8 +86,10 @@ export function installDiag(shell: Shell) {
       if (last) worst = Math.max(worst, now - last);
       if (now - since > 15000) report('15 s');
     }
-    last = now;
-    requestAnimationFrame(tick);
+    last = watching ? now : 0;
+    // (V2 fluidité, lot 3) hors scène surveillée, plus de rappel à chaque image : un coup d'œil dix fois par seconde
+    if (watching) requestAnimationFrame(tick);
+    else setTimeout(() => tick(performance.now()), 100);
   };
   requestAnimationFrame(tick);
 }
@@ -95,9 +100,19 @@ export function installDiag(shell: Shell) {
  * Envoyé UNE fois par appareil et par version du rapport (sinon avec `?diag` dans l'adresse), 6 s après la boutique,
  * dans les retours du labo (entrée « Chargement », une ligne par appareil). Aucune donnée personnelle.
  */
-const LOAD_REPORT_V = 'charge-2'; // (07/11) v2 : jalons du démarrage, images lentes avec leurs scripts, rapport d'usage
+const LOAD_REPORT_V = 'charge-5'; // (07/11) v2 : jalons du démarrage, images lentes avec leurs scripts, rapport d'usage
 /** au-delà de cette durée après la boutique, le rapport d'USAGE part (images lentes pendant qu'on joue) */
 const USAGE_REPORT_MS = 150_000;
+
+/** (audit 12/11) mémoire GPU déclarée par le moteur (textures, cibles de rendu, tampons) : ce que three a alloué, pas ce que la puce consomme vraiment */
+export function gpuMemLine(shell: Shell): string {
+  const m = (shell.renderer.info as unknown as { memory?: Record<string, number> }).memory;
+  if (!m) return 'mémoire GPU : inconnue';
+  const mo = (b = 0) => (b / 1048576).toFixed(1);
+  // (décision 2) lissage : ×4 seulement avec les attachements transitoires (src/core/post.ts)
+  const stray = (window as unknown as { __strayFrames?: () => number }).__strayFrames?.() ?? 0;
+  return `programmes GPU ${m.programs ?? "?"} · cibles de rendu ${m.renderTargets ?? "?"} · images parties dans une cible de passe ${stray} · mémoire GPU déclarée ${mo(m.total)} Mo (textures ${m.textures ?? 0} = ${mo(m.texturesSize)} Mo) · attachement transitoire ${hasTransientAttachment() ? 'oui' : 'non'} (téléphone en WebGPU : lissage ${hasTransientAttachment() ? '×4' : '×1'})`;
+}
 
 const frameLine = (f: SlowFrame) => `${(f.at / 1000).toFixed(1)}s ${f.ms} ms${f.layout > 20 ? ` (style+mise en page ${f.layout})` : ''} ${f.view} ← ${f.scripts.join(' | ') || 'scripts inconnus'}`;
 export function reportLoad(shell: Shell) {
@@ -139,8 +154,15 @@ export function reportLoad(shell: Shell) {
       console.info('[chargement]\n' + note);
       // (v2) RAPPORT D'USAGE : 2 min 30 de jeu plus tard, les images lentes APRÈS la boutique (roue, ouvertures,
       // collection…), chacune avec la page affichée et ses scripts — ce qui ralentit pendant qu'on joue
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
+          let storageLine = 'stockage : inconnu';
+          try {
+            const e = await navigator.storage?.estimate?.();
+            if (e) storageLine = `stockage utilisé ${((e.usage ?? 0) / 1048576).toFixed(0)} Mo sur ${((e.quota ?? 0) / 1048576).toFixed(0)} Mo permis`;
+          } catch {
+            /* pas d'estimation sur ce navigateur */
+          }
           const after = perfSlowFrames().filter((f) => f.at > shop);
           const byView = new Map<string, number>();
           for (const f of after) byView.set(f.view, (byView.get(f.view) ?? 0) + 1);
@@ -148,6 +170,10 @@ export function reportLoad(shell: Shell) {
           const usage = [
             `usage ${((performance.now() - shop) / 1000).toFixed(0)} s après la boutique · tâches longues ${lt2.length} (${sum(lt2)} ms) · images > 80 ms : ${after.length} (${[...byView].map(([v, n]) => `${v} ${n}`).join(', ') || '—'})`,
             `${be} · ${shell.quality} · ${window.innerWidth}×${window.innerHeight} @${devicePixelRatio}`,
+            // (audit 12/11) décision 3 : format des tuiles ; décision 9 : stockage utilisé ; S02 : mémoire GPU
+            `tuiles peintes : ${tileFormats()}`,
+            storageLine,
+            gpuMemLine(shell),
             ...[...after].sort((a, b) => b.ms - a.ms).slice(0, 10).map(frameLine),
           ].join('\n').slice(0, 1990);
           void net

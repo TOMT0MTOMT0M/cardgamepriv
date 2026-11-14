@@ -4,6 +4,9 @@
  * Règle du groupe (3 nov.) : tout se débloque EN JOUANT, rien ne s'achète. Bannières, cadres d'avatar, titres et badges
  * sont des récompenses de SUCCÈS (les 36 de src/core/economy.ts) — calculées à la volée sur les stats, rien à stocker.
  */
+import { fe } from './errors';
+import { tData } from './i18n';
+import { locale } from './i18n';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, catalogEntry } from './sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from './economy';
 
@@ -31,6 +34,9 @@ export interface PlayerStats {
   burned?: number;
   /** 1 = a déjà été n°1 du classement (convex/profiles.ts, markLeader) */
   wasTop?: number;
+  /** (11/11, saisons — convex/seasons.ts) saisons finies dans les 3 premiers / premier */
+  seasonPodiums?: number;
+  seasonWins?: number;
 }
 
 export interface Cosmetic {
@@ -57,11 +63,22 @@ export interface Cosmetic {
 const ach = (id: string) => ACHIEVEMENTS.find((a) => a.id === id)!;
 const fromStats = (s: PlayerStats) => achievementStats(s, emptyEcon());
 type Partial0 = Omit<Cosmetic, 'how' | 'unlock'>;
+/**
+ * (version anglaise) libellé lu à l'affichage : le français est la clé (`cos.<libellé>`), l'anglais dans i18n/en/data.ts.
+ * `derive` garde ces lectures (un `{ ...a }` les figerait dans la langue du chargement).
+ */
+const labelOf = (fr: string) => () => tData(`cos.${fr}`, fr);
+const derive = <T extends Cosmetic>(a: T, o: Partial<Cosmetic>): T =>
+  Object.defineProperty({ ...a, ...o }, 'label', { get: () => a.label, enumerable: true, configurable: true }) as T;
 function C(c: Partial0): Cosmetic {
-  if (!c.need) return { ...c, how: '', unlock: () => true };
+  const label = labelOf(c.label);
+  if (!c.need) return Object.defineProperty({ ...c, how: '', unlock: () => true }, 'label', { get: label, enumerable: true, configurable: true }) as Cosmetic;
   const a = ach(c.need);
   if (!a) throw new Error(`succès inconnu : ${c.need}`);
-  return { ...c, how: `Succès « ${a.label} » : ${a.how}`, unlock: (s) => achievementDone(a, fromStats(s)) };
+  const out = { ...c, how: '', unlock: (s: PlayerStats) => achievementDone(a, fromStats(s)) } as Cosmetic;
+  Object.defineProperty(out, 'label', { get: label, enumerable: true, configurable: true });
+  Object.defineProperty(out, 'how', { get: () => tData('cos.howFmt', 'Succès « {l} » : {h}').replace('{l}', a.label).replace('{h}', a.how), enumerable: true, configurable: true }); // i18n-ok
+  return out;
 }
 
 /**
@@ -71,6 +88,7 @@ function C(c: Partial0): Cosmetic {
  */
 // (retours live 6, C10) toutes les couleurs sont libres (le sélecteur « #rrggbb » l'était déjà) : un palier de succès
 // ne débloque plus qu'UNE récompense, les couleurs ne sont plus des récompenses
+// i18n-data:début
 export const ACCENTS: Cosmetic[] = [
   C({ id: 'blanc', label: 'Blanc', css: '#ffffff' }),
   C({ id: 'rose', label: 'Bébou', css: '#e8927c' }),
@@ -91,6 +109,7 @@ export const ACCENTS: Cosmetic[] = [
   C({ id: 'foudre', label: 'Foudre', css: '#c86bff' }),
   C({ id: 'secret', label: 'Un de nous', css: '#ffb4a2' }),
 ];
+// i18n-data:fin
 
 /**
  * (retours 06/11 : « bannière, cadre, couleur, vitrine : les mêmes couleurs disponibles ») — la bannière et le cadre
@@ -107,11 +126,15 @@ const frameCss = (hex: string) => hex;
  * Bannières (fond du haut du profil) : « Aucune couleur » (C13 — par défaut, et pour une bannière GIF sans contour),
  * puis une par couleur de la palette.
  */
-export const BANNERS: Cosmetic[] = [C({ id: 'none', label: 'Aucune couleur', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: bannerCss(a.css!) }))];
+// i18n-data:début
+export const BANNERS: Cosmetic[] = [C({ id: 'none', label: 'Aucune couleur', css: 'transparent' }), ...ACCENTS.map((a) => derive(a, { id: `c-${a.id}`, css: bannerCss(a.css!) }))];
+
+// i18n-data:fin
 /**
  * (retours live 6, C14) cadres ANIMÉS autour de la photo (style.css, `.frame-a-…`) : récompenses de succès. `css` = la
  * couleur de l'anneau (classement, aperçus).
  */
+// i18n-data:début
 const ANIMATED_FRAMES: Cosmetic[] = [
   C({ id: 'a-eclairs', label: 'Éclairs', need: 'leg-5', css: '#8fd6ff', anim: 'eclairs' }),
   C({ id: 'a-feu', label: 'Feu', need: 'leg-50', css: '#ff7a2a', anim: 'feu' }),
@@ -120,8 +143,18 @@ const ANIMATED_FRAMES: Cosmetic[] = [
   C({ id: 'a-galaxie', label: 'Galaxie', need: 'uniq-1000', css: '#b59cff', anim: 'galaxie' }),
   C({ id: 'a-neon', label: 'Néon', need: 'contract-25', css: '#39ffd2', anim: 'neon' }),
 ];
-/** Cadres d'avatar : aucun, un par couleur de la palette, puis les cadres animés. */
-export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => ({ ...a, id: `c-${a.id}`, css: frameCss(a.css!) })), ...ANIMATED_FRAMES];
+// i18n-data:fin
+/** (11/11, saisons) cadre gagné en finissant une saison sur le podium (convex/seasons.ts) — doré : la couleur dit le rang */
+// i18n-data:début
+const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison', need: 'season-podium', css: '#ffc94a' })];
+
+// i18n-data:fin
+/** Cadres d'avatar : aucun, un par couleur de la palette, puis les cadres animés et celui des saisons. */
+// i18n-data:début
+export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => derive(a, { id: `c-${a.id}`, css: frameCss(a.css!) })), ...ANIMATED_FRAMES, ...SEASON_FRAMES];
+
+// i18n-data:fin
+// i18n-data:début
 const LEGACY_BANNERS: Cosmetic[] = [
   C({ id: 'ember', label: 'Braise', css: 'linear-gradient(120deg, #2a1410, #5a2a22 45%, #1a0d0b)' }),
   C({ id: 'night', label: 'Nuit', css: 'linear-gradient(120deg, #0c1118, #16314a 50%, #0a0f16)' }),
@@ -132,6 +165,8 @@ const LEGACY_BANNERS: Cosmetic[] = [
   C({ id: 'prism', label: 'Prisme', need: 'myth-1', css: 'linear-gradient(120deg, #ff6b9a22, #ffd36b33, #6bffb833, #6bc8ff33, #c86bff33), linear-gradient(120deg, #1a1420, #2a2433)' }),
   C({ id: 'secret', label: 'Un de nous', need: 'secret-1', css: 'radial-gradient(ellipse at 30% 50%, #e8927c55, transparent 60%), linear-gradient(120deg, #2a0f0e, #4a1f1a 50%, #120607)' }),
 ];
+// i18n-data:fin
+// i18n-data:début
 const LEGACY_FRAMES: Cosmetic[] = [
   C({ id: 'none', label: 'Aucun', css: 'transparent' }),
   C({ id: 'bronze', label: 'Bronze', need: 'packs-100', css: 'linear-gradient(135deg, #b87333, #e0a070, #8a5020)' }),
@@ -143,11 +178,13 @@ const LEGACY_FRAMES: Cosmetic[] = [
   C({ id: 'trader', label: 'Négociant', need: 'trade-10', css: 'linear-gradient(135deg, #6f9a74, #c4dcb8, #3a5a40)' }),
   C({ id: 'flame', label: 'Flamme', need: 'streak-7', css: 'linear-gradient(135deg, #ff7a2a, #ffd36b, #c03010)' }),
 ];
+// i18n-data:fin
 
 /**
  * Titres (sous le pseudo) — (retours live 6, C15, liste tranchée) liés à l'univers du jeu, un par palier de succès.
  * Anciens titres (« Ouvreur compulsif »…) retirés : un joueur qui en portait un repasse sans titre.
  */
+// i18n-data:début
 export const TITLES: Cosmetic[] = [
   C({ id: 'rookie', label: 'Bébou débutant' }),
   C({ id: 't-bebou-2', label: 'Bébou confirmé', need: 'bebou-15' }),
@@ -183,9 +220,29 @@ export const TITLES: Cosmetic[] = [
   C({ id: 't-star-2', label: 'Chasseur de légendes', need: 'myth-10' }),
   C({ id: 't-star-3', label: 'Arc-en-ciel', need: 'myth-50' }),
   C({ id: 't-top', label: 'Numéro un', need: 'top-1' }),
+  // (11/11, saisons) premier d'une saison mensuelle du classement (convex/seasons.ts)
+  C({ id: 't-season-1', label: 'Champion de saison', need: 'season-1' }),
 ];
+// i18n-data:fin
+
+/**
+ * (11/11, sondage : « animations d'ouverture à débloquer ») ANIMATIONS D'OUVERTURE — décision de Tom du 07/11 : la
+ * déchirure pour tout le monde, les autres se GAGNENT (un succès chacune). Le choix vaut pour tous les boosters ; il est
+ * gardé au serveur (`users.cosmetics.opening`, convex/profiles.ts `setOpening`, refusé si verrouillé). Mise en scène :
+ * src/game/scenes/opening.ts (`openStyleOf`).
+ */
+export type OpeningId = 'tear' | 'burn' | 'fan';
+// i18n-data:début
+export const OPENINGS: Array<Cosmetic & { id: OpeningId; blurb: string }> = [
+  Object.defineProperty(derive(C({ id: 'tear', label: 'Déchirure' }), { id: 'tear' }), 'blurb', { get: () => tData('cos.blurb.tear', 'Glisse le doigt pour déchirer le haut du booster.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
+  Object.defineProperty(derive(C({ id: 'burn', label: 'Brûlure', need: 'burn-250' }), { id: 'burn' }), 'blurb', { get: () => tData('cos.blurb.burn', 'Maintiens pour brûler l’emballage depuis le centre.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
+  Object.defineProperty(derive(C({ id: 'fan', label: 'Éventail', need: 'world-150' }), { id: 'fan' }), 'blurb', { get: () => tData('cos.blurb.fan', 'Un toucher arrache le haut, les cartes s’ouvrent en éventail.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
+];
+// i18n-data:fin
+export const DEFAULT_OPENING: OpeningId = 'tear';
 
 /** Badges (petites médailles sous le pseudo, plusieurs à la fois, ordonnables). */
+// i18n-data:début
 export const BADGES: Cosmetic[] = [
   C({ id: 'first', label: '10 boosters', need: 'packs-10', glyph: '🎴' }),
   C({ id: 'p100', label: '100 boosters', need: 'packs-100', glyph: '💯' }),
@@ -198,11 +255,13 @@ export const BADGES: Cosmetic[] = [
   C({ id: 'streak', label: '7 jours', need: 'streak-7', glyph: '🔥7' }),
   C({ id: 'half', label: '5 000 cartes', need: 'uniq-5000', glyph: '📚' }),
 ];
+// i18n-data:fin
 
 /**
  * FOND DE VITRINE (retours 05/11 : « pouvoir changer la couleur et le fond de notre vitrine »). `css` = le fond, qui
  * peut utiliser `--vc` (la couleur de vitrine choisie : bordure, lueur, étagère). Quelques fonds à débloquer.
  */
+// i18n-data:début
 export const VITRINES: Cosmetic[] = [
   C({ id: 'velours', label: 'Velours', css: 'radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--vc) 16%, transparent), transparent 62%), linear-gradient(180deg, rgba(30, 23, 20, 0.92), rgba(12, 10, 9, 0.96))' }),
   C({ id: 'nuit', label: 'Nuit étoilée', css: 'radial-gradient(1.5px 1.5px at 12% 22%, #fff9, transparent), radial-gradient(1px 1px at 68% 14%, #fff8, transparent), radial-gradient(1.5px 1.5px at 84% 62%, #fff7, transparent), radial-gradient(1px 1px at 34% 78%, #fff6, transparent), radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--vc) 30%, transparent), transparent 60%), linear-gradient(180deg, #0b1020, #05070e)' }),
@@ -215,6 +274,7 @@ export const VITRINES: Cosmetic[] = [
   C({ id: 'prisme', label: 'Prisme', need: 'myth-25', css: 'linear-gradient(120deg, #ff6b9a1f, #ffd36b26, #6bffb826, #6bc8ff26, #c86bff26), linear-gradient(180deg, #1a1420, #0d0a10)' }),
   C({ id: 'secret', label: 'Un de nous', need: 'secret-3', css: 'radial-gradient(ellipse at 50% 0%, #e8927c44, transparent 60%), linear-gradient(180deg, #2a0f0e, #120607)' }),
 ];
+// i18n-data:fin
 export const vitrineOf = (id?: string) => find(VITRINES, id) ?? VITRINES[0];
 
 /** couleur libre du sélecteur : « #rrggbb » (gratuite pour tout le monde) */
@@ -227,16 +287,17 @@ export function accentColor(id?: string): string | undefined {
 }
 
 /** Cosmétiques débloqués par un succès (page Succès : « récompenses »). */
-export function cosmeticsOf(achievementId: string): Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine'; c: Cosmetic }> {
-  const out: Array<{ kind: 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine'; c: Cosmetic }> = [];
-  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c });
+export type CosmeticKind = 'Bannière' | 'Cadre' | 'Titre' | 'Badge' | 'Couleur' | 'Vitrine' | 'Ouverture'; // i18n-ok (genres : identifiants)
+export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; c: Cosmetic }> {
+  const out: Array<{ kind: CosmeticKind; c: Cosmetic }> = [];
+  for (const [kind, list] of [['Bannière', BANNERS], ['Cadre', FRAMES], ['Titre', TITLES], ['Badge', BADGES], ['Couleur', ACCENTS], ['Vitrine', VITRINES], ['Ouverture', OPENINGS]] as const) for (const c of list) if (c.need === achievementId) out.push({ kind, c }); // i18n-ok (genres : identifiants)
   return out;
 }
 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(
   collection: Array<{ cardId: string; rarity: string; count: number }>,
-  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number },
+  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number },
 ): PlayerStats {
   const ids = new Set<string>();
   let mythics = 0, legendaries = 0, secrets = 0;
@@ -356,10 +417,10 @@ export const PROFILE_MEDIA_MAX = 2 * 1024 * 1024;
 export const PROFILE_MEDIA_DEMO_MAX = 700 * 1024;
 export const PROFILE_MEDIA_TYPES = ['image/gif', 'image/png', 'image/jpeg', 'image/webp'];
 /** « 2,4 Mo » */
-export const fmtMo = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`;
+export const fmtMo = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString(locale(), { maximumFractionDigits: 1 })} Mo`;
 /** Motif de refus (vide = accepté) : le même texte au client (avant l'envoi) et au serveur. */
 export function profileMediaProblem(size: number, type: string | undefined, max = PROFILE_MEDIA_MAX): string {
-  if (!PROFILE_MEDIA_TYPES.includes(type ?? '')) return 'Format refusé : GIF, PNG, JPEG ou WebP seulement.';
-  if (size > max) return `Fichier trop lourd (${fmtMo(size)}) : ${max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`} au maximum.`;
+  if (!PROFILE_MEDIA_TYPES.includes(type ?? '')) return fe('cosmetics.1');
+  if (size > max) return fe('cosmetics.2', { p0: fmtMo(size), p1: max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko` });
   return '';
 }

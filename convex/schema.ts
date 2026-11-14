@@ -36,6 +36,8 @@ export const missionsValidator = v.object({
 export const stakeCardValidator = v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() });
 export const stakeValidator = v.object({ coins: v.number(), cards: v.array(stakeCardValidator) });
 export const packChoiceValidator = v.object({ kind: v.union(v.literal('theme'), v.literal('bebou')), themeId: v.optional(v.string()) });
+/** (version anglaise, lot 4) paramètres d'un message stocké (src/core/msgs.ts) */
+export const msgParamsValidator = v.record(v.string(), v.union(v.string(), v.number(), v.array(v.string())));
 /** Carte tirée dans un jeu (Pack Battle, Battle Royale) ou offerte par le site (roulette). */
 export const gameCardValidator = v.object({ cardId: v.string(), cardName: v.string(), rarity: rarityValidator, mintNumber: v.number(), foilSeed: v.number() });
 
@@ -77,18 +79,31 @@ export default defineSchema({
     missions: v.optional(missionsValidator),
     /** vitrine du profil : jusqu'à 6 cartes choisies (vide = ses meilleures cartes, automatiquement) */
     showcase: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator }))),
+    /** (version anglaise) langue EFFECTIVE du joueur, envoyée par le client : push et messages privés Discord. Absente = français */
+    lang: v.optional(v.union(v.literal('fr'), v.literal('en'))),
+    /** (version anglaise) cette langue est un choix manuel : ses autres appareils la reprennent */
+    langSet: v.optional(v.boolean()),
+    /** notifications push (V2) : types voulus (absent = tout), et le job programmé « réserve pleine » (pour l'annuler) */
+    notifPrefs: v.optional(v.array(v.string())),
+    notifFullJob: v.optional(v.id('_scheduled_functions')),
+    /** (audit 12/11, S11) ce que vise ce job (« instant:réserve:départ ») : identique → on ne le reprogramme pas */
+    notifFullKey: v.optional(v.string()),
     /** petite devise affichée sur le profil */
     bio: v.optional(v.string()),
     /** pity 6★ : boosters d'affilée sans Mythique (src/core/pity.ts) — absent = 0 */
     pityCount: v.optional(v.number()),
     /** « envies » : ids de cartes marquées (fiche booster, échanges) */
     wishlist: v.optional(v.array(v.string())),
+    /** (refonte des échanges 11/11, convex/deals.ts) cartes PROTÉGÉES : leurs doublons ne sont jamais proposés (absent = aucune) */
+    tradeProtected: v.optional(v.array(v.string())),
     /** série de connexion (src/core/streak.ts) */
     streak: v.optional(v.object({ count: v.number(), day: v.string(), rewardedAt: v.number() })),
     /** pochettes de sous-thème choisies à la main (vue Albums) : sous-thème → carte épinglée */
     covers: v.optional(v.record(v.string(), v.string())),
     /** cosmétiques du profil (src/core/cosmetics.ts) : bannière, cadre d'avatar, titre, badges — tout se débloque en jouant */
-    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()) })),
+    cosmetics: v.optional(v.object({ banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()),
+      /** (11/11, chantier ouvertures-saisons) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) — absente : la déchirure */
+      opening: v.optional(v.string()) })),
     /** photo de profil / bannière importées par le joueur (GIF animé ou image, ≤ 2 Mo, convex/profiles.ts) — sinon l'avatar Discord */
     avatarMedia: v.optional(v.id('_storage')),
     bannerMedia: v.optional(v.id('_storage')),
@@ -107,6 +122,9 @@ export default defineSchema({
     isModerator: v.optional(v.boolean()),
     /** (retours live 6, C15) a déjà été n°1 du classement (complétion) : débloque le titre « Numéro un » */
     wasTop: v.optional(v.boolean()),
+    /** (11/11, chantier ouvertures-saisons — convex/seasons.ts) saisons finies dans les 3 premiers / à la 1re place */
+    seasonPodiums: v.optional(v.number()),
+    seasonWins: v.optional(v.number()),
     /** appareils vus (id tiré au hasard et gardé dans le navigateur) : signal « deux comptes sur le même appareil » */
     devices: v.optional(v.array(v.string())),
     /** PARRAINAGE (retours live 02, §10 — convex/referrals.ts) : mon code d'invitation (lien `?ref=CODE`) */
@@ -127,11 +145,18 @@ export default defineSchema({
     pwLockUntil: v.optional(v.number()),
     /** (ouverture 07/11) recharge des boosters ×2 jusqu'à cet instant (24 h après l'arrivée — src/core/packRegen.ts) */
     regenBoostUntil: v.optional(v.number()),
+    /** (V2, bulles) dernier événement de l'espace Jeux pour ce joueur (défi reçu, partie jouée, tirage de roulette) :
+     *  le client compare à sa dernière visite de #/jeux (pastille de l'onglet). Écrit avec ce qui touche déjà le joueur. */
+    gamesNoticeAt: v.optional(v.number()),
+    /** (V2, bulles) dernier événement de parrainage (filleul inscrit, parrainage payé) : pastille de l'onglet Amis */
+    referralNoticeAt: v.optional(v.number()),
     /** (ouverture 07/11) BANNI (admin:ban) : sessions fermées, reconnexion refusée, caché des listes, place libérée */
     bannedAt: v.optional(v.number()),
     banReason: v.optional(v.string()),
     /** (ouverture 07/11) visite guidée automatique déjà jouée (une seule fois par compte — views/guide.ts) */
     guideSeenAt: v.optional(v.number()),
+    /** (13/11) tour des nouveautés V2 déjà joué (joueurs d'avant la V2 — views/guide.ts, armV2Tour) */
+    v2TourSeenAt: v.optional(v.number()),
     /** MP de bienvenue du bot Discord (lien de parrainage) déjà tenté : une seule fois, à la première connexion */
     welcomeDmAt: v.optional(v.number()),
   })
@@ -203,11 +228,23 @@ export default defineSchema({
     coins: v.optional(v.number()),
     /** (08/11) god pack (1 sur 1 000) : toutes les cartes 4★+, au moins une 5★ et une 6★ — animation dédiée */
     god: v.optional(v.boolean()),
+    /** (11/11, événements limités) booster du moment : l'événement et son nom au moment du tirage (packKind 'theme', sans themeId) */
+    eventId: v.optional(v.id('packEvents')),
+    eventName: v.optional(v.string()),
     createdAt: v.number(),
     revealedAt: v.optional(v.number()),
   })
     .index('by_user_status', ['userId', 'status'])
-    .index('by_userId', ['userId']),
+    .index('by_userId', ['userId'])
+    // (audit 12/11, A8-08) les boosters encore scellés, sans parcourir la table (convex/migrations.ts)
+    .index('by_status', ['status']),
+
+  /**
+   * (audit 12/11, A8-08) tampon « déjà appliqué » des migrations relancées à chaque mise en ligne : la signature de
+   * leur entrée (étoiles du catalogue, liste des cartes supprimées), la date du dernier passage complet, et si les
+   * boosters scellés à ce moment-là étaient tous à jour (`clean`).
+   */
+  migStamps: defineTable({ key: v.string(), sig: v.string(), at: v.number(), clean: v.boolean(), runs: v.optional(v.number()) }).index('by_key', ['key']),
 
   /**
    * Player card collection (powers the 019-binder BatchedMesh & trading).
@@ -221,10 +258,30 @@ export default defineSchema({
     foilSeed: v.number(),
     firstPulledAt: v.number(),
     lastPulledAt: v.number(),
+    /**
+     * (V2 fluidité) instant de la dernière écriture de la ligne (convex/invRev.ts) : le client suit sa collection PAR
+     * DIFFÉRENCE (`inventory.mineSince`) au lieu de la recevoir en entier à chaque booster. Absent sur les lignes jamais
+     * réécrites depuis : elles arrivent par la lecture complète du démarrage. Aucune migration nécessaire.
+     */
+    rev: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_user_card_rarity', ['userId', 'cardId', 'rarity'])
-    .index('by_card_rarity', ['cardId', 'rarity']),
+    .index('by_card_rarity', ['cardId', 'rarity'])
+    .index('by_user_rev', ['userId', 'rev'])
+    // (audit 12/11, A7-21) les cartes d'un joueur d'une étoile donnée (contrepartie d'un échange en un toucher)
+    .index('by_user_rarity', ['userId', 'rarity']),
+
+  /**
+   * (V2 fluidité) trace d'une ligne d'inventaire supprimée (dernier exemplaire donné, vendu, misé) : le client qui suit
+   * sa collection par différence l'efface aussi. Une ligne par suppression, rien d'autre.
+   */
+  invGone: defineTable({
+    userId: v.id('users'),
+    cardId: v.string(),
+    rarity: rarityValidator,
+    rev: v.number(),
+  }).index('by_user_rev', ['userId', 'rev']),
 
   /**
    * Global sequential serial counter (#1, #2, #3...) per (cardId, rarity).
@@ -247,7 +304,9 @@ export default defineSchema({
     pinned: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index('by_user', ['userId']),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_pinned', ['userId', 'pinned']),
 
   /**
    * Peer-to-peer card trades between friends.
@@ -284,6 +343,9 @@ export default defineSchema({
     counteredBy: v.optional(v.id('trades')),
     /** conclu depuis le TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : l'annonce d'origine */
     listingId: v.optional(v.id('listings')),
+    /** (refonte des échanges 11/11, convex/deals.ts) demande en un toucher : 1 carte contre 1 de même étoile ; le
+     *  destinataire peut « choisir autre chose » parmi les doublons proposables du demandeur */
+    quick: v.optional(v.boolean()),
     createdAt: v.number(),
     resolvedAt: v.optional(v.number()),
   })
@@ -343,9 +405,17 @@ export default defineSchema({
     mintNumber: v.optional(v.number()),
     message: v.string(),
     createdAt: v.number(),
+    /** (V2 fluidité, lot 4) vrai sur les tirages Légendaire / Mythique / Secrète : « Gros tirages » lit ces lignes par
+     *  l'index `by_big` au lieu de parcourir les 400 dernières entrées du fil. Absent ailleurs. */
+    big: v.optional(v.boolean()),
+    /** (version anglaise, lot 4) code + paramètres de `message` (src/core/i18n/msgFr.ts) : le client le réécrit dans
+     *  la langue du joueur. Absent sur les anciennes lignes non reconnues (migrations:i18nMessages). */
+    msgKey: v.optional(v.string()),
+    msgParams: v.optional(msgParamsValidator),
   })
     .index('by_createdAt', ['createdAt'])
-    .index('by_userId', ['userId', 'createdAt']),
+    .index('by_userId', ['userId', 'createdAt'])
+    .index('by_big', ['big', 'createdAt']),
 
   /** Journal des pièces (historique du portefeuille, contrôles admin). Montant positif = gain, négatif = dépense / mise. */
   coinTx: defineTable({
@@ -355,6 +425,9 @@ export default defineSchema({
     reason: v.string(),
     label: v.string(),
     createdAt: v.number(),
+    /** (version anglaise, lot 4) code + paramètres de `label` (voir activityFeed.msgKey) */
+    labelKey: v.optional(v.string()),
+    labelParams: v.optional(msgParamsValidator),
   }).index('by_user', ['userId', 'createdAt']),
 
   /**
@@ -475,6 +548,29 @@ export default defineSchema({
     .index('by_pair', ['requesterId', 'addresseeId']),
 
   /**
+   * MARCHÉ (retours Hugo 10/11 — convex/market.ts) : une carte mise en vente à PRIX FIXE en pièces (pas d'enchères).
+   * La carte quitte l'inventaire du vendeur à la mise en vente (séquestre) : elle revient s'il retire l'annonce, part
+   * chez l'acheteur sinon. Table nouvelle : rien ne change pour la V1.
+   */
+  market: defineTable({
+    sellerId: v.id('users'),
+    cardId: v.string(),
+    rarity: rarityValidator,
+    /** n° d'impression de l'exemplaire mis en vente (le meilleur du vendeur à ce moment) */
+    mintNumber: v.number(),
+    price: v.number(),
+    status: v.union(v.literal('open'), v.literal('sold'), v.literal('cancelled')),
+    createdAt: v.number(),
+    buyerId: v.optional(v.id('users')),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index('by_status_created', ['status', 'createdAt'])
+    .index('by_seller_status', ['sellerId', 'status'])
+    .index('by_buyer', ['buyerId', 'resolvedAt'])
+    /** (audit 12/11, décision 10) annonces d'UNE carte (fiche carte) sans relire les 300 dernières annonces */
+    .index('by_card_status', ['cardId', 'status']),
+
+  /**
    * TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : une ANNONCE = des cartes proposées (verrouillées
    * tant qu'elle est ouverte) + des cartes recherchées (indicatives) ; ouverte à TOUS les joueurs ; expire après 24/48 h.
    */
@@ -549,15 +645,56 @@ export default defineSchema({
     .index('by_user', ['userId', 'createdAt']),
 
   /**
+   * NOTIFICATIONS PUSH (V2) : un abonnement par appareil (navigateur), lié au joueur. `prefs` = ce que le joueur veut
+   * recevoir (absent = tout). `failures` : échecs d'envoi consécutifs (abonnement retiré à 3, ou tout de suite sur 404 / 410).
+   */
+  pushSubs: defineTable({
+    userId: v.id('users'),
+    endpoint: v.string(),
+    keys: v.object({ p256dh: v.string(), auth: v.string() }),
+    ua: v.optional(v.string()),
+    createdAt: v.number(),
+    lastOkAt: v.optional(v.number()),
+    failures: v.optional(v.number()),
+  })
+    .index('by_user', ['userId'])
+    .index('by_endpoint', ['endpoint']),
+
+  /**
    * SONDAGE « prochaines mises à jour » (v1.0.10, 10/11) : une réponse par joueur et par sondage (convex/survey.ts,
    * définition dans src/core/survey.ts). Table nouvelle : rien ne change pour le code d'avant le patch.
    */
   /** (v1.0.11) classement : une ligne par joueur, recalculée par profiles:refreshRanks (lire toutes les collections à
    *  chaque affichage dépassait la limite de Convex). `row` = la ligne telle que `profiles:leaderboard` la renvoie. */
+  /** (audit perf 12/11, décision 10) index inversé des envies : qui veut cette carte ? (convex/wishes.ts) */
+  wishes: defineTable({
+    userId: v.id('users'),
+    cardId: v.string(),
+  })
+    .index('by_card', ['cardId'])
+    .index('by_user', ['userId', 'cardId']),
+  /**
+   * (audit perf 12/11, décision 8) carte publique d'un joueur, hors de son document (convex/presence.ts) : écrite par
+   * le battement de cœur et les gestes de jeu, lue par la liste du club et « mes amis ». Une ligne par joueur.
+   */
+  presence: defineTable({
+    userId: v.id('users'),
+    lastSeenAt: v.number(),
+    displayName: v.string(),
+    username: v.string(),
+    totalPacksOpened: v.number(),
+    avatarUrl: v.optional(v.string()),
+    statusText: v.optional(v.string()),
+    bannedAt: v.optional(v.number()),
+  }).index('by_user', ['userId']),
   rankRows: defineTable({
     userId: v.id('users'),
     row: v.any(),
     updatedAt: v.number(),
+    /** (audit 12/11, S05) signature de ce dont dépend la ligne (profiles.ts, rankSigOf) : inchangée → pas de recalcul */
+    sig: v.optional(v.string()),
+    /** (audit 12/11, S05) statistiques complètes du joueur à cette signature (PlayerStats) : évite de relire sa collection */
+    stats: v.optional(v.any()),
   }).index('by_user', ['userId']),
   surveyAnswers: defineTable({
     userId: v.id('users'),
@@ -588,6 +725,71 @@ export default defineSchema({
     storageId: v.optional(v.id('_storage')),
     postedAt: v.optional(v.number()),
   }).index('by_user_card', ['userId', 'cardId', 'mintNumber']),
+
+  /**
+   * CHAT (V2, 10/11 — convex/chat.ts). `conv` = « general » (chat général) ou « dm:<idA>:<idB> » (ids triés). `n` = numéro d'ordre du
+   * message dans sa conversation ; `touchedAt` = dernier changement (envoi, réaction, suppression) : le fil ouvert ne
+   * relit que ce qui a bougé depuis T. Le nom de l'auteur est recopié (aucune lecture de `users` à l'affichage).
+   */
+  chatMessages: defineTable({
+    conv: v.string(),
+    n: v.number(),
+    userId: v.id('users'),
+    name: v.string(),
+    text: v.string(),
+    createdAt: v.number(),
+    touchedAt: v.number(),
+    card: v.optional(v.object({ cardId: v.string(), rarity: rarityValidator, mintNumber: v.optional(v.number()) })),
+    reply: v.optional(v.object({ id: v.id('chatMessages'), name: v.string(), text: v.string() })),
+    reacts: v.optional(v.array(v.object({ k: v.string(), by: v.array(v.id('users')) }))),
+    mentions: v.optional(v.array(v.id('users'))),
+    deletedAt: v.optional(v.number()),
+    clientId: v.optional(v.string()),
+  })
+    .index('by_conv_created', ['conv', 'createdAt'])
+    .index('by_conv_touched', ['conv', 'touchedAt']),
+
+  /**
+   * En-tête d'une conversation : compteur de messages, dernier message (aperçu), et pour un privé ses deux joueurs
+   * (`a` < `b`), jusqu'où chacun a lu (`seenA` / `seenB`, pour les non-lus et « Vu ») et la dernière notification
+   * envoyée à chacun. C'est tout ce que lit la pastille : jamais les messages.
+   */
+  chatConvs: defineTable({
+    key: v.string(),
+    a: v.optional(v.id('users')),
+    b: v.optional(v.id('users')),
+    n: v.number(),
+    lastAt: v.number(),
+    lastUserId: v.optional(v.id('users')),
+    lastName: v.optional(v.string()),
+    lastText: v.optional(v.string()),
+    seenA: v.optional(v.number()),
+    seenB: v.optional(v.number()),
+    seenAtA: v.optional(v.number()),
+    seenAtB: v.optional(v.number()),
+    pushAtA: v.optional(v.number()),
+    pushAtB: v.optional(v.number()),
+    /** général : dernière notification « le chat général se réveille » */
+    wakeAt: v.optional(v.number()),
+  })
+    .index('by_key', ['key'])
+    .index('by_a', ['a'])
+    .index('by_b', ['b']),
+
+  /**
+   * Ma ligne de chat (une par joueur, À PART de `users` : y écrire relancerait toutes les requêtes du joueur) :
+   * jusqu'où j'ai lu le chat général, dernière mention reçue, conversations en sourdine, anti-rafale.
+   */
+  chatReads: defineTable({
+    userId: v.id('users'),
+    generalN: v.number(),
+    generalAt: v.optional(v.number()),
+    mentionN: v.optional(v.number()),
+    muted: v.optional(v.array(v.string())),
+    sentAt: v.optional(v.number()),
+    burstStart: v.optional(v.number()),
+    burstCount: v.optional(v.number()),
+  }).index('by_user', ['userId']),
 
   /**
    * (V2, 10/11) DASHBOARD ADMIN (/admin/, convex/adminDash.ts) — journal de tout ce que Tom et Hugo font depuis le
@@ -626,4 +828,116 @@ export default defineSchema({
     byName: v.string(),
     at: v.number(),
   }).index('by_user', ['userId', 'at']),
+
+  // ─────────────── (V2, 11/11) ÉVÉNEMENTS LIMITÉS — chantier « événements » (convex/events.ts, src/core/events.ts)
+  /**
+   * Un « booster du moment » : ouvrable seulement entre `startAt` et `endAt`. Contenu = sous-thèmes (ou `group:<id>`)
+   * et / ou cartes une à une. Créé et réglé depuis le dashboard admin (Tom et Hugo). `startJob` / `endJob` : tâches
+   * programmées au début (notification à tous, l'événement apparaît chez les joueurs) et à la fin (il disparaît).
+   */
+  packEvents: defineTable({
+    name: v.string(),
+    blurb: v.optional(v.string()),
+    /** (version anglaise, lot 4) nom et phrase en anglais (dashboard) ; absents : le français s'affiche */
+    nameEn: v.optional(v.string()),
+    blurbEn: v.optional(v.string()),
+    startAt: v.number(),
+    endAt: v.number(),
+    accent: v.string(),
+    subthemes: v.array(v.string()),
+    cards: v.array(v.string()),
+    byName: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startJob: v.optional(v.id('_scheduled_functions')),
+    endJob: v.optional(v.id('_scheduled_functions')),
+    /** notification de début envoyée (une fois par événement) */
+    notifiedAt: v.optional(v.number()),
+    /** dernier passage d'une tâche (début / fin) : réécrire la ligne relance `events:current` chez tout le monde */
+    tickAt: v.optional(v.number()),
+  }).index('by_end', ['endAt']),
+
+  // ───────────────────────────── (11/11) chantier « ouvertures-saisons » : SAISONS MENSUELLES du classement
+  /**
+   * Une saison = un mois (heure de Paris, clé « 2026-11 »). Une seule est `open` : `bases` garde, pour chaque joueur,
+   * ses cartes différentes et ses boosters au début de la saison (score = cartes différentes gagnées depuis). À la fin
+   * du mois, `convex/seasons.ts` (cron horaire) la fige : `results` (classement final, récompenses données), `podium`
+   * (3 premiers, affichés dans Classement), puis ouvre la suivante. Rejouer le cron ne redonne rien (status `closed`).
+   */
+  seasons: defineTable({
+    key: v.string(),
+    status: v.union(v.literal('open'), v.literal('closed')),
+    startAt: v.number(),
+    closedAt: v.optional(v.number()),
+    bases: v.array(v.object({ userId: v.id('users'), uniques: v.number(), packs: v.number() })),
+    results: v.optional(v.array(v.object({ userId: v.id('users'), name: v.string(), avatarUrl: v.optional(v.string()), rank: v.number(), gained: v.number(), packs: v.number(), boosters: v.number() }))),
+  })
+    .index('by_status', ['status'])
+    .index('by_key', ['key']),
+
+  // ═══════════════ chantier « défis + mini-jeu » (V2, 11/11) — tables nouvelles, rien ne change pour la V1
+  /**
+   * DÉFIS ENTRE AMIS (convex/challenges.ts, règles : src/core/defis.ts) : objectif mesuré par le serveur sur une durée,
+   * mise facultative en pièces (la même pour tous) en séquestre jusqu'à la fin.
+   */
+  challenges: defineTable({
+    creatorId: v.id('users'),
+    kind: v.union(v.literal('first'), v.literal('new'), v.literal('stars')),
+    /** « premier à » : rareté minimale à tirer */
+    target: v.optional(rarityValidator),
+    durationMs: v.number(),
+    /** mise de chaque joueur, en pièces (0 = pour l'honneur) */
+    stake: v.number(),
+    status: v.union(v.literal('pending'), v.literal('live'), v.literal('done'), v.literal('cancelled')),
+    players: v.array(
+      v.object({
+        userId: v.id('users'),
+        name: v.string(),
+        avatarUrl: v.optional(v.string()),
+        /** invited : pas encore répondu · in : inscrit (mise en séquestre) · out : a refusé / pas répondu */
+        state: v.union(v.literal('invited'), v.literal('in'), v.literal('out')),
+        score: v.number(),
+        /** dernier point marqué (affichage) */
+        at: v.optional(v.number()),
+      }),
+    ),
+    createdAt: v.number(),
+    acceptBy: v.number(),
+    startedAt: v.optional(v.number()),
+    endsAt: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+    winnerId: v.optional(v.id('users')),
+    /** win : un gagnant · tie : égalité en tête (rendu) · nobody : personne n'a marqué (rendu) · alone : personne n'a accepté */
+    outcome: v.optional(v.union(v.literal('win'), v.literal('tie'), v.literal('nobody'), v.literal('alone'))),
+  })
+    .index('by_status', ['status', 'createdAt'])
+    .index('by_creator', ['creatorId', 'status']),
+  /** une ligne par joueur et par défi : le crochet d'ouverture de booster ne lit QUE les défis en cours du joueur */
+  challengeSeats: defineTable({
+    userId: v.id('users'),
+    challengeId: v.id('challenges'),
+    phase: v.union(v.literal('pending'), v.literal('live'), v.literal('over')),
+    createdAt: v.number(),
+  })
+    .index('by_user_phase', ['userId', 'phase'])
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_challenge', ['challengeId']),
+  /**
+   * LA PRESSE (convex/presse.ts, règles : src/core/presse.ts) : une partie = une bande de 6 cartes gravée au départ,
+   * dévoilée frappe par frappe. La bande n'est jamais envoyée au joueur avant d'être frappée.
+   */
+  presseRuns: defineTable({
+    userId: v.id('users'),
+    bet: v.number(),
+    album: v.object({ kind: v.union(v.literal('bebou'), v.literal('theme')), themeId: v.optional(v.string()) }),
+    strip: v.array(v.object({ cardId: v.string(), cardName: v.string(), rarity: rarityValidator })),
+    /** frappes dévoilées (1 à 6) */
+    shown: v.number(),
+    status: v.union(v.literal('live'), v.literal('cashed'), v.literal('cracked')),
+    payout: v.optional(v.number()),
+    createdAt: v.number(),
+    endedAt: v.optional(v.number()),
+  })
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_user_status', ['userId', 'status']),
 });

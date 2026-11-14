@@ -1,3 +1,4 @@
+import { locale } from './i18n';
 import './fonts.css';
 // libellés, chiffres, boutons : Inter, sous-ensemble latin seulement — les accents français y sont (audit 06/11 —
 // Bold Frame en capitales est illisible sous 14 px : R → A, X → H)
@@ -14,18 +15,32 @@ import '@fontsource/ibm-plex-mono/500.css';
  * par `applyFontVars`) ET les cartes peintes sur toile (src/core/art) lisent ces chaînes. Changer de police = changer ce
  * fichier et fonts.css ; `FONT_VERSION` entre dans la clé du cache des cartes peintes (src/game/cardImages.ts) : les
  * anciennes cartes sont repeintes toutes seules.
- *  - Matcha World : gros titres ; Bold Frame : titres, noms, texte courant EN CASSE MIXTE (ses capitales R et X se
+ *  - Atsuka Montreal (V2, remplace Matcha World) : gros titres ; Bold Frame : titres, noms, texte courant EN CASSE MIXTE (ses capitales R et X se
  *    confondent avec A et H en petit) ; Inter : tout ce qui informe en petit — libellés, capitales espacées, chiffres
  *    (tabulaires), boutons.
  */
 // (retours live 04) 'in2' : étoiles 6★ arc-en-ciel et étoiles remontées (Suisse paysage) → cartes repeintes
+// (V2, 08/11) inchangé au passage Matcha World → Atsuka Montreal : aucune carte peinte n'utilise FONT_DISPLAY
 export const FONT_VERSION = 'in2';
 /** gros titres seulement (logo, titres de page, moments forts) */
-export const FONT_DISPLAY = '"Matcha World", "Bold Frame", "Inter", system-ui, sans-serif';
+/** (11/11) plus d'Atsuka Montreal : les gros titres sont en Bold Frame grasse (graisse 800 dans le CSS) */
+export const FONT_DISPLAY = '"Bold Frame", "Inter", system-ui, sans-serif'; // i18n-ok
+/** (retours Hugo 10/11) nom moulé des sachets : la police ronde d'origine (« elle était mieux, tout rond ») */
+export const FONT_PACK = '"Matcha World", "Bold Frame", "Inter", system-ui, sans-serif'; // i18n-ok
 /** titres, noms, texte courant en casse mixte (graisse 400 / 600 / 700 = les 3 Bold Frame) */
-export const FONT_TEXT = '"Bold Frame", "Inter", system-ui, sans-serif';
+export const FONT_TEXT = '"Bold Frame", "Inter", system-ui, sans-serif'; // i18n-ok
 /** libellés en capitales, chiffres, boutons, petits corps */
-export const FONT_LABEL = '"Inter", "IBM Plex Mono", system-ui, -apple-system, "Segoe UI", sans-serif';
+export const FONT_LABEL = '"Inter", "IBM Plex Mono", system-ui, -apple-system, "Segoe UI", sans-serif'; // i18n-ok
+
+/**
+ * (V2, 08/11) Casse des gros titres PEINTS SUR TOILE en Atsuka Montreal : capitale (à volutes) en première lettre, le
+ * reste en minuscules (= petites capitales sans volute). En HTML la police le fait seule ; sur toile le navigateur met
+ * en forme mot par mot et chaque mot en capitales reprendrait une volute.
+ */
+export function displayCase(text: string): string {
+  const t = text.toLocaleLowerCase(locale());
+  return t.charAt(0).toLocaleUpperCase(locale()) + t.slice(1);
+}
 
 /** Pose les variables CSS (le CSS garde un repli identique en dur). */
 export function applyFontVars(root: HTMLElement = document.documentElement) {

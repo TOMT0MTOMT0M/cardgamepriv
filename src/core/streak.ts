@@ -1,3 +1,4 @@
+import { fe } from './errors';
 import { missionDay } from './missions';
 
 /**
@@ -43,6 +44,6 @@ export const streakClaimable = (s: StreakState | undefined): boolean =>
 
 /** État après réclamation (ou message d'erreur). */
 export function claimStreak(s: StreakState | undefined): StreakState | string {
-  if (!streakClaimable(s)) return 'Rien à réclamer pour le moment : reviens chaque jour jusqu’au 7e.';
+  if (!streakClaimable(s)) return fe('streak.1');
   return { ...s!, rewardedAt: s!.count };
 }

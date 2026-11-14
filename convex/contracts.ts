@@ -1,12 +1,18 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { bumpMissions } from './missions';
 import { bumpWeekly } from './econLib';
 import { mutation } from './_generated/server';
 import { requireUser } from './auth';
 import { RARITY_LABEL, RARITY_TIER, rarityValidator, type RarityId } from './cardsCatalog';
-import { CONTRACT_COST, contractProblem, contractTarget, rollContract } from '../src/core/contracts';
+import { CONTRACT_COST, contractOdds, contractProblem, contractTarget, rollContract } from '../src/core/contracts';
+import { SUBTHEMES } from '../src/core/sets/themes';
+import type { Doc } from './_generated/dataModel';
 import type { StarRarityId } from '../src/core/dropRates';
 import { lockedCards } from './trades';
+import { invRev } from './invRev';
+import { syncPresence } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -27,27 +33,32 @@ export const sign = mutation({
   handler: async (ctx, { sessionToken, rarity, items }) => {
     const user = await requireUser(ctx, sessionToken);
     const target = contractTarget(rarity) as RarityId | null;
-    if (!target || items.length > 60) throw new ConvexError('Contrat invalide.');
+    if (!target || items.length > 60) throw new ConvexError(fe('contracts.7'));
 
-    const inv = await ctx.db
-      .query('inventory')
-      .withIndex('by_user', (q) => q.eq('userId', user._id))
-      .collect();
-    const row = (cardId: string, r: RarityId) => inv.find((c) => c.cardId === cardId && c.rarity === r);
+    // (audit 12/11, S07 / A7-04) seulement les lignes du contrat (≤ 60, par l'index), plus la collection entière
+    const mine = (cardId: string) => ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', user._id).eq('cardId', cardId));
+    const lineOf = (cardId: string, r: RarityId) => ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', user._id).eq('cardId', cardId).eq('rarity', r)).first();
+    const rows = new Map<string, Doc<'inventory'> | null>();
+    for (const it of items) if (!rows.has(it.cardId)) rows.set(it.cardId, await lineOf(it.cardId, rarity));
+    /** ligne d'une carte DU CONTRAT (à la rareté brûlée) */
+    const row = (cardId: string) => rows.get(cardId) ?? undefined;
     // une carte engagée dans un échange en attente n'est pas brûlable (verrouillage, retours du 3 nov.)
     const locked = await lockedCards(ctx, user._id);
-    const problem = contractProblem(rarity, items, (id) => Math.max(0, (row(id, rarity)?.count ?? 0) - 1 - (locked.get(`${id}:${rarity}`) ?? 0)));
+    const problem = contractProblem(rarity, items, (id) => Math.max(0, (row(id)?.count ?? 0) - 1 - (locked.get(`${id}:${rarity}`) ?? 0)));
     if (problem) throw new ConvexError(problem);
 
     const now = Date.now();
     // 1. on brûle (jamais le dernier exemplaire : vérifié par contractProblem)
     for (const it of items) {
-      const r = row(it.cardId, rarity)!;
-      await ctx.db.patch(r._id, { count: r.count - it.count });
+      const r = row(it.cardId)!;
+      await ctx.db.patch(r._id, { count: r.count - it.count, rev: invRev() });
     }
 
     // 2. la carte reçue (nouvelle si possible dans le sous-thème tiré)
-    const ownedIds = new Set(inv.map((c) => c.cardId));
+    // « déjà possédée ? » : seulement pour les cartes que le contrat peut donner (sous-thèmes tirables, rareté visée)
+    const subs = new Set(contractOdds(rarity, items).map((o) => o.subthemeId));
+    const ownedIds = new Set<string>();
+    for (const st of SUBTHEMES) if (subs.has(st.id)) for (const c of st.cards) if (c.rarity === target && (await mine(c.id).first())) ownedIds.add(c.id);
     const card = rollContract(rarity, items, (id) => ownedIds.has(id), secureRandomFloat);
 
     const mintDoc = await ctx.db
@@ -58,10 +69,10 @@ export const sign = mutation({
     if (mintDoc) await ctx.db.patch(mintDoc._id, { lastMintNumber: mintNumber });
     else await ctx.db.insert('cardMints', { cardId: card.id, rarity: target, lastMintNumber: mintNumber });
 
-    const existing = row(card.id, target);
+    const existing = await lineOf(card.id, target); // la carte reçue : sa ligne à la rareté visée, lue à part
     const isNew = !ownedIds.has(card.id);
     if (existing) {
-      await ctx.db.patch(existing._id, { count: existing.count + 1, bestMintNumber: Math.min(existing.bestMintNumber, mintNumber), lastPulledAt: now });
+      await ctx.db.patch(existing._id, { count: existing.count + 1, bestMintNumber: Math.min(existing.bestMintNumber, mintNumber), lastPulledAt: now, rev: invRev() });
     } else {
       await ctx.db.insert('inventory', {
         userId: user._id,
@@ -72,10 +83,12 @@ export const sign = mutation({
         foilSeed: Math.floor(secureRandomFloat() * 900000) + 100000,
         firstPulledAt: now,
         lastPulledAt: now,
+        rev: invRev(),
       });
     }
 
     await ctx.db.patch(user._id, { lastSeenAt: now, statusText: 'Vient de signer un contrat', totalContracts: (user.totalContracts ?? 0) + 1 });
+    await syncPresence(ctx, user._id);
     await bumpMissions(ctx, user, { type: 'contract' });
     await bumpWeekly(ctx, user._id, { type: 'contract' });
     if (RARITY_TIER[target] >= RARITY_TIER.epic) {
@@ -88,7 +101,7 @@ export const sign = mutation({
         cardName: card.name,
         rarity: target,
         mintNumber,
-        message: `${user.displayName} a brûlé ${CONTRACT_COST[rarity as StarRarityId]} doublons et signé un contrat : ${card.name} [${RARITY_LABEL[target]} #${mintNumber}] !`,
+        ...feedMsg(fm('f.contract', { name: user.displayName, n: CONTRACT_COST[rarity as StarRarityId] ?? 0, card: card.name, cardId: card.id, rarity: RARITY_LABEL[target], rarityId: target, mint: mintNumber })),
         createdAt: now,
       });
     }

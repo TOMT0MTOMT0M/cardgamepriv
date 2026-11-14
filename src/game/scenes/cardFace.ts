@@ -1,13 +1,12 @@
 import { clamp, color, cos, float, floor, mix, positionLocal, sin, step, time, uniform, vec3 } from 'three/tsl';
 import { Color } from 'three/webgpu';
-import type { Material } from 'three/webgpu';
+import type { Material, Texture } from 'three/webgpu';
 import { gameDesignId, generateBackArt, generateCardArt, generateCardArtAsync, starColor, type ArtOptions, type CardArt } from '../../core/art';
 import { ALU_BACK, type BackStyle } from '../../core/art/back';
 import type { CardData } from '../../core/cardData';
 import type { RarityId } from '../../core/rarity';
 import { catalogEntry, themeById } from '../../core/sets/themes';
-import { createHoloMaterial, holoFx, setHoloReduced } from '../../core/holo';
-import { bindFxReduced, onFxReducedChange } from '../../core/fxPref';
+import { HOLO_GLINT_ON, createHoloMaterial, holoFx } from '../../core/holo';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import type { N } from '../../core/tsl';
 
@@ -19,9 +18,6 @@ import type { N } from '../../core/tsl';
  */
 /** Qualité des faces (posée par le shell) : téléphone → variante « lite » du holo, même aspect, ≈ −40 % d'ALU par pixel. */
 let faceLite = false;
-// option « Effets réduits » (core/fxPref.ts) : plafonds du holo de toutes les faces du jeu, à chaud, PC comme téléphone
-bindFxReduced();
-onFxReducedChange(setHoloReduced);
 export function setFaceQuality(q: 'high' | 'mobile') {
   faceLite = q === 'mobile';
 }
@@ -35,7 +31,9 @@ export function buildFace(art: CardArt, tier: number, photo: boolean, cut = true
   const idx = floor(b.mul(255 / 32).add(0.5)).sub(1);
   const on = clamp(lit.sub(idx), 0, 1).mul(step(0.06, b));
   const glow = on.mul(float(0.3 + tier * 0.2).add(flash.mul(0.8 + tier * 0.4)));
-  holo.material.emissiveNode = (holo.material.emissiveNode as N).add(color(starColor(tier)).mul(glow)).add(holo.film.mul(holo.foil).mul(flash).mul(0.5).mul(holoFx.glint));
+  const starGlow = (holo.material.emissiveNode as N).add(color(starColor(tier)).mul(glow));
+  // (audit 12/11, E4-04) l'éclat du foil au flash est multiplié par le plafond des paillettes (0) : pas construit tant qu'il vaut 0
+  holo.material.emissiveNode = HOLO_GLINT_ON ? starGlow.add(holo.film.mul(holo.foil).mul(flash).mul(0.5).mul(holoFx.glint)) : starGlow;
   return { holo, lit, flash };
 }
 
@@ -103,12 +101,18 @@ function tintAlu(hex: string): string {
 }
 export function themedBacks(bag: { add<T extends { dispose(): void }>(o: T): T }, scale: number) {
   const cache = new Map<string, Material>();
+  // (perf) les deux textures (couleur, masques) de chaque dos : à envoyer au GPU avant la première image qui le montre
+  const texs = new Map<Material, Texture[]>();
+  const sent = new WeakSet<Material>();
   const make = (key: string, style: BackStyle) => {
-    const m = bag.add(createBackMaterial(bag.add(generateBackArt(style, scale, true))));
+    const art = bag.add(generateBackArt(style, scale, true));
+    const m = bag.add(createBackMaterial(art));
     cache.set(key, m);
+    texs.set(m, [art.color, art.masks]);
     return m;
   };
   const fallback = make('default', ALU_BACK);
+  sent.add(fallback); // préchauffé avec la scène (dos des cartes d'essai)
   return {
     fallback,
     /** dos d'une carte du catalogue (par id) */
@@ -118,6 +122,15 @@ export function themedBacks(bag: { add<T extends { dispose(): void }>(o: T): T }
       if (!t) return fallback;
       // alliage légèrement teinté par le thème (une nuance, pas une couleur) ; (07/11) plus rien de gravé (no brand)
       return cache.get(t.id) ?? make(t.id, { ...ALU_BACK, ground: tintAlu(t.style.accent), label: t.label.toUpperCase() });
+    },
+    /**
+     * Textures du dos `m` pas encore envoyées au GPU (celles du dos déjà montré ne reviennent pas : liste vide). Le
+     * dos est marqué « envoyé » : l'appelant les envoie tout de suite (`renderer.initTexture`), en une image.
+     */
+    toSend(m: Material): Texture[] {
+      if (sent.has(m)) return [];
+      sent.add(m);
+      return texs.get(m) ?? [];
     },
   };
 }

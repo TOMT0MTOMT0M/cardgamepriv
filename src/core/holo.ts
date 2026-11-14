@@ -27,12 +27,13 @@ import {
   mx_noise_float,
   hash,
   color,
+  varying,
 } from 'three/tsl';
 import type { CardArt } from './art';
 import { cardLayers } from './cardMaterial';
 import { CARD } from './cardModel';
 import { noiseTexel, saturate3, thinFilm, thinFilmLUT, voronoi, type N } from './tsl';
-import { pokeFaceColor, pokeFx } from './pokeHolo/face';
+import { pokeFaceColor } from './pokeHolo/face';
 
 /**
  * Matériau holo réutilisable (version condensée de 001) : couche mince spectrale, grain de foil,
@@ -62,15 +63,20 @@ export interface HoloOptions {
  * couleurs d'origine »). L'effet est porté par le cadre, le liseré, une bande de bordure et les paillettes ; sur
  * l'illustration (fenêtre du cadre : fond + sujet) le foil ne remplace jamais plus de `image` de la couleur d'origine
  * (avant : jusqu'à 70 % en visionneuse, 90 % à l'ouverture, sur tout le fond dès épique). Uniforms uniques → changer
- * une valeur agit sur toutes les cartes sans recompiler. `setHoloReduced` (option « Effets réduits ») les baisse.
+ * une valeur agit sur toutes les cartes sans recompiler. (L'option « Effets réduits » qui les baissait a été supprimée le 12/11.)
  */
 export const HOLO_LIMITS = {
   // (retours 06/11 : « réduire les effets sur les cartes, les bleues / rouges c'est trop ») : plafonds baissés
   // (retours live 6, C6 « zéro effet sur les cartes, l'image clean ») : plus aucun foil sur l'illustration ni de
   // paillettes / éclats ; seul le cadre garde la couleur de sa rareté (code couleur, 6★ arc-en-ciel)
   full: { image: 0, border: 0.72, glint: 0 },
-  reduced: { image: 0, border: 0.55, glint: 0 },
 } as const;
+/**
+ * (audit 12/11, S03 / E4-04) Paillettes et éclats : leurs plafonds valent 0 depuis les retours
+ * live 6 — le shader les calculait quand même à chaque pixel (cellules de Voronoï, 2 tirages, reflet à la puissance 80)
+ * pour les multiplier par 0. La branche n'est construite que si un plafond redevient positif.
+ */
+export const HOLO_GLINT_ON = HOLO_LIMITS.full.glint > 0;
 export const holoFx = {
   /** part maximale de couleur remplacée par le foil sur l'illustration (0..1) */
   image: uniform(HOLO_LIMITS.full.image),
@@ -79,17 +85,6 @@ export const holoFx = {
   /** intensité des paillettes et des éclats émissifs (0..1) */
   glint: uniform(HOLO_LIMITS.full.glint),
 };
-let holoReduced = false;
-/** Option « Effets réduits » (core/fxPref.ts) : plafonds abaissés pour toutes les faces holo, à chaud. */
-export function setHoloReduced(on: boolean) {
-  holoReduced = on;
-  const L = on ? HOLO_LIMITS.reduced : HOLO_LIMITS.full;
-  holoFx.image.value = L.image;
-  holoFx.border.value = L.border;
-  holoFx.glint.value = L.glint;
-  pokeFx.k.value = on ? 0.5 : 1;
-}
-export const isHoloReduced = () => holoReduced;
 
 /**
  * Bande de bordure (bord de la carte → liseré intérieur) : présente à TOUS les paliers (retours live 02, §12 : code
@@ -133,7 +128,10 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   const edgeDist = length(max(cq, 0)).add(min(max(cq.x, cq.y), 0)).sub(CARD.r).negate(); // 0 au bord, > 0 vers l'intérieur
   // (retours 07/11) gabarit « Pleine illustration » : plus de bande de bordure métallique — l'image va jusqu'au bord
   const rimK = art.designId === 'full-art' ? 0 : BORDER_FOIL[Math.min(5, Math.max(0, tier))];
-  const rim = smoothstep(float(BORDER_W), float(BORDER_W * 0.55), edgeDist).mul(rimK);
+  // (V2 fluidité, lot 3) en uniform : la valeur n'est plus écrite en dur dans le shader. Avant, une carte « Pleine
+  // illustration » (0) et la carte de préchauffage (gabarit classique) donnaient deux shaders différents : le
+  // préchauffage ne servait pas aux vraies cartes, dont les pipelines naissaient à la première révélation (gel).
+  const rim = smoothstep(float(BORDER_W), float(BORDER_W * 0.55), edgeDist).mul(uniform(rimK));
   const frameFoil = clamp(L.masks.r.mul(L.window.oneMinus()).add(rim), 0, 1).mul(holoFx.border);
   const inner = rim.oneMinus();
   const imageFoil = clamp(winFoil.add(subjFoil), 0, 1).mul(inner);
@@ -150,7 +148,7 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
   // ── paillettes : disques ronds anti-crénelés, orientation propre, disparaissent si trop petites à l'écran
   let disk: N = float(0);
   let nFlake: N = vec3(0, 0, 1);
-  if (!(lite && tier <= 1)) {
+  if (HOLO_GLINT_ON && !(lite && tier <= 1)) {
     const FQ = fuv.mul(95);
     const vo = voronoi(FQ, float(0.9)) as N;
     const fq = max(fwidth(FQ.x), fwidth(FQ.y));
@@ -207,8 +205,11 @@ export function createHoloMaterial(art: CardArt, tier: number, opts: HoloOptions
     m.clearcoatNode = float(0.08);
     m.clearcoatRoughnessNode = float(0.5);
   }
-  const Lobj = normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz);
-  const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
-  m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5)).add(film.mul(foil).mul(U.extraEmissive));
+  const subjectGlow = L.subject.rgb.mul(L.fx.r).mul(L.subject.a).mul(L.window).mul(0.5).add(film.mul(foil).mul(U.extraEmissive));
+  if (HOLO_GLINT_ON) {
+    const Lobj = varying(normalize(modelWorldMatrixInverse.mul(vec4(U.lightDir, 0)).xyz)); // (E4-06) par sommet, pas par pixel
+    const glint = pow(max(dot(reflect(V.negate(), nFlake), Lobj), 0), 80).mul(disk).mul(metal).mul(U.glint).mul(holoFx.glint);
+    m.emissiveNode = (rainbow ? film : frameCol).mul(glint).mul(3.5).add(subjectGlow);
+  } else m.emissiveNode = subjectGlow; // le terme des paillettes valait exactement 0
   return { material: m, layers: L, uniforms: U, film, foil, cut: cutU };
 }

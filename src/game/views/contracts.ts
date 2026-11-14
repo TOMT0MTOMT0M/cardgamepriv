@@ -1,3 +1,5 @@
+import { t as tr } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.contracts'; // (textes de ce module, version anglaise)
 import { cardKey, collectionSig, lockedCards, type GameBackend, type PlayerCard } from '../backend';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
@@ -12,7 +14,7 @@ import { PROTECT_LEGEND, protectIcons, protection as protectionOf } from './safe
 import { GAMES_OPEN } from '../../core/games';
 
 /**
- * CONTRATS (façon CS:GO) : on choisit une étoile, on remplit le contrat avec ses doublons (10 / 20 / 50 cartes),
+ * CONTRATS (façon CS:GO) : on choisit une étoile, on remplit le contrat avec ses doublons (10 cartes, quelle que soit l'étoile),
  * on voit d'où viendra la carte (au prorata des sous-thèmes brûlés), on signe : les cartes BRÛLENT dans leurs cases
  * (retours du 3 nov. : combustion, braises, flammes), puis la carte obtenue émerge des flammes — mini-révélation dans
  * la visionneuse 3D, fond dynamique si elle est 5★ / 6★. Règles : src/core/contracts.ts.
@@ -41,13 +43,12 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   let open = false;
   // (retours live 6, C8) les contrats sont un onglet de la COLLECTION, à côté de la Forge : même bascule en tête
   el.innerHTML = `
-    <div class="coll-switch ct-switch"><div class="seg coll-views" role="tablist" aria-label="Vue de la collection"><a role="tab" href="#/collection">Cartes</a><a role="tab" href="#/collection/albums">Albums</a><a role="tab" href="#/collection/classeurs">Classeurs</a><a role="tab" href="#/collection/forge" class="ct-forge">Forge</a><a role="tab" class="on" aria-selected="true" href="#/collection/contrats">Contrats</a></div></div>
+    <div class="coll-switch ct-switch"><div class="seg coll-views" role="tablist" aria-label="${tr('coll.viewAria')}"><a role="tab" href="#/collection">${tr('coll.cards')}</a><a role="tab" href="#/collection/albums">${tr('coll.albums')}</a><a role="tab" href="#/collection/classeurs">${tr('coll.binders')}</a><a role="tab" href="#/collection/forge" class="ct-forge">${tr('coll.forge')}</a><a role="tab" class="on" aria-selected="true" href="#/collection/contrats">${tr('coll.contracts')}</a></div></div>
     <div class="ct-wrap">
       <header class="ct-head">
-        <div class="eyebrow">Contrats</div>
-        <h1>Brûle tes doublons</h1>
-        <p>Des doublons d’une même étoile contre <b>une carte de l’étoile au-dessus</b>. Tu ne brûles jamais ton dernier exemplaire,
-        et si le sous-thème tiré a des cartes que tu n’as pas, tu reçois forcément une nouvelle.</p>
+        <div class="eyebrow">${tr('ct.eyebrow')}</div>
+        <h1>${tr('ct.title')}</h1>
+        <p>${tr('ct.intro')}</p>
       </header>
       <div class="ct-tiers"></div>
       <div class="ct-sheet">
@@ -57,18 +58,18 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
         <div class="ct-recap" hidden></div>
         <div class="ct-actions">
           <button class="ghost auto">Remplir automatiquement</button>
-          <button class="ghost clear">Vider</button>
-          <button class="btn-primary sign">Signer le contrat</button>
+          <button class="ghost clear">${tr('ct.clear')}</button>
+          <button class="btn-primary sign">${tr('ct.sign')}</button>
         </div>
       </div>
-      <div class="ct-pick-t">Tes doublons <span></span></div>
+      <div class="ct-pick-t">${tr('ct.yourDups')} <span></span></div>
       <div class="ct-legend" hidden>${esc(PROTECT_LEGEND)}</div>
       <div class="grid mini ct-dups"></div>
       <div class="empty" hidden></div>
     </div>
     <div class="ct-flames" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="sum-bg ct-bg" hidden><div class="sum-rays"></div><div class="sum-parts"></div></div>
-    <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
+    <div class="viewer-ui" hidden><button class="close" aria-label="${tr('common.close')}">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">${tr('shop.spinHint')}</div></div>`;
   const tiersEl = el.querySelector<HTMLElement>('.ct-tiers')!;
   const titleEl = el.querySelector<HTMLElement>('.ct-title')!;
   const fillEl = el.querySelector<HTMLElement>('.ct-fill')!;
@@ -138,8 +139,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       // « possible » = ce que le remplissage auto peut vraiment faire (cartes protégées à part, UX4-07) ; libellé court (UX4-18)
       const b = h('button', `ct-tier${r === tier ? ' on' : ''}${have >= need ? ' ready' : ''}`,
         `<span class="ct-tr"><b style="color:${rarity(r).hex}">${stars(r)}</b> → <b style="color:${rarity(to).hex}">${stars(to)}</b></span>
-         <span class="ct-tc">${need} cartes</span><span class="ct-th">${plural(have, 'doublon')}</span><span class="ct-tp${possible ? ' ok' : ''}">${possible ? `×${possible} possible${possible > 1 ? 's' : ''}` : extra ? `×${extra} à la main` : 'pas encore'}</span>`);
-      b.title = `${possible ? plural(possible, 'contrat possible', 'contrats possibles') : 'Aucun contrat en remplissage auto'}${extra ? ` · +${extra} en ajoutant à la main tes cartes protégées (envies, classeurs, pochettes)` : ''}`;
+         <span class="ct-tc">${need} cartes</span><span class="ct-th">${plural(have, 'doublon')}</span><span class="ct-tp${possible ? ' ok' : ''}">${possible ? `×${possible} possible${possible > 1 ? 's' : ''}` : extra ? tr('ct.byHand', { n: extra }) : tr('ct.notYet')}</span>`);
+      b.title = `${possible ? plural(possible, 'contrat possible', 'contrats possibles') : tr('ct.noAuto')}${extra ? tr('ct.extraHint', { n: extra }) : ''}`;
       b.style.setProperty('--rc', rarity(to).hex);
       b.addEventListener('click', () => {
         if (busy || tier === r) return;
@@ -207,8 +208,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
         if (id) {
           const e = catalogEntry(id)!;
           const real = paintedCard(id, tier);
-          s.title = `${e.name} — retirer`;
-          s.setAttribute('aria-label', `Retirer ${e.name}`);
+          s.title = tr('ct.removeName', { name: e.name });
+          s.setAttribute('aria-label', tr('ct.removeA', { name: e.name }));
           s.innerHTML = real ? `<img class="sreal" alt="" src="${real}">` : `<img alt="" src="${thumbUrl(e)}">`;
         } else {
           s.removeAttribute('title');
@@ -229,14 +230,14 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     const short = cost() - spareTotal;
     if (undo && (seq.length >= cost() || Date.now() - undo.t > 4000)) undo = null;
     oddsEl.innerHTML = undo
-      ? `${esc(catalogEntry(undo.id)?.name ?? '')} retirée du contrat · <button class="linkish ct-undo">Annuler</button>`
+      ? `${tr('ct.removed', { name: esc(catalogEntry(undo.id)?.name ?? '') })} <button class="linkish ct-undo">${tr('pf.cancel')}</button>`
       : n
-      ? `Carte reçue : ${starsHtml(to)} · ${oddsText(odds)}`
+      ? tr('ct.receive', { stars: starsHtml(to), odds: oddsText(odds) })
       : short > 0
         ? spareTotal
-          ? `Il faut ${cost()} doublons ${stars(tier)} : tu en as ${spareTotal}, encore ${short} à trouver dans les boosters.`
-          : `Il faut ${cost()} doublons ${stars(tier)} pour ce contrat : tu n’en as pas encore.`
-        : `Choisis ${cost()} doublons ${stars(tier)} ci-dessous, ou laisse-moi remplir.`;
+          ? tr('ct.need', { n: cost(), stars: stars(tier), have: spareTotal, short })
+          : tr('ct.needNone', { n: cost(), stars: stars(tier) })
+        : tr('ct.pick', { n: cost(), stars: stars(tier) });
     signBtn.disabled = busy || n !== cost();
     // « Remplir » n'a de sens que s'il reste de la place et des doublons ; « Vider » que s'il y a quelque chose
     autoBtn.disabled = busy || n >= cost() || spareTotal <= n;
@@ -246,14 +247,14 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     // second toucher : armé tant que le contrat ne change pas (3 s)
     if (armed && (armed.sig !== sheetSig() || n !== cost() || busy)) (armed = null), clearTimeout(armT);
     signBtn.classList.toggle('armed', !!armed);
-    signBtn.textContent = armed ? `Confirmer : brûler ${cost()} cartes ${stars(tier)} ?` : 'Signer le contrat';
-    signBtn.title = n === cost() ? '' : `Encore ${cost() - n} carte${cost() - n > 1 ? 's' : ''} à choisir`;
+    signBtn.textContent = armed ? tr('ct.confirm', { n: cost(), stars: stars(tier) }) : tr('ct.sign');
+    signBtn.title = n === cost() ? '' : tr('ct.left', { n: cost() - n });
     // récapitulatif de ce qui part au feu, lisible (les cases font ~30 px au téléphone)
     recapEl.hidden = n !== cost() || busy;
     if (!recapEl.hidden) {
       const list = items().sort((a, b) => b.count - a.count);
       const names = list.map((it) => `${it.count}× ${esc(catalogEntry(it.cardId)?.name ?? it.cardId)}`);
-      recapEl.innerHTML = `<b>Tu brûles :</b> ${names.slice(0, 8).join(', ')}${names.length > 8 ? ` et ${names.length - 8} autres` : ''} · tu gardes 1 exemplaire de chacune.`;
+      recapEl.innerHTML = `<b>${tr('ct.burning')}</b> ${tr('ct.burnList', { names: names.slice(0, 8).join(', '), more: names.length > 8 ? tr('ct.andMore', { n: names.length - 8 }) : '' })}`;
     }
   }
   oddsEl.addEventListener('click', (e) => {
@@ -277,16 +278,16 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       t.classList.add('ct-dup');
       t.insertAdjacentHTML('beforeend', `<span class="count"></span>`);
       // protégée (envie, classeur, pochette) : laissée de côté par le remplissage automatique, mais brûlable à la main
-      if (c.protect.length) t.insertAdjacentHTML('beforeend', `<span class="ct-prot" title="Protégée du remplissage automatique : ${esc(c.protect.join(', '))}" aria-label="Protégée : ${esc(c.protect.join(', '))}">${protectIcons(c.protect)}</span>`);
-      if (c.locked) t.insertAdjacentHTML('beforeend', `<span class="ct-lock" title="${c.locked} exemplaire${c.locked > 1 ? 's' : ''} engagé${c.locked > 1 ? 's' : ''} dans un échange en attente">🔒</span>`);
+      if (c.protect.length) t.insertAdjacentHTML('beforeend', `<span class="ct-prot" title="${tr('ct.protectedAuto', { why: esc(c.protect.join(', ')) })}" aria-label="${tr('ct.protectedA', { why: esc(c.protect.join(', ')) })}">${protectIcons(c.protect)}</span>`);
+      if (c.locked) t.insertAdjacentHTML('beforeend', `<span class="ct-lock" title="${tr('ct.locked', { n: c.locked })}">🔒</span>`);
       t.addEventListener('click', () => {
         if (busy) return;
-        if (c.spare - countOf(c.cardId) <= 0) return toast(c.locked ? 'Engagée dans un échange en attente : attends la réponse.' : 'Tu gardes toujours un exemplaire de chaque carte.', 'info');
-        if (total() >= cost()) return toast('Le contrat est plein : signe-le, ou retire une carte.', 'info');
+        if (c.spare - countOf(c.cardId) <= 0) return toast(c.locked ? tr('ct.busy') : tr('ct.keepOne'), 'info');
+        if (total() >= cost()) return toast(tr('ct.full'), 'info');
         // au doigt, pas de survol : on explique la protection la première fois qu'on brûle une telle carte
         if (c.protect.length && !protHinted.has(c.cardId)) {
           protHinted.add(c.cardId);
-          toast(`Protégée (${c.protect.join(', ')}) : ajoutée quand même.`, 'info');
+          toast(tr('ct.addedAnyway', { why: c.protect.join(', ') }), 'info');
         }
         undo = null;
         seq.push(c.cardId);
@@ -303,7 +304,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     for (const c of list) syncDup(c.cardId);
     empty.hidden = list.length > 0;
     legendEl.hidden = !list.some((c) => c.protect.length || c.locked);
-    empty.innerHTML = `Pas encore de doublons ${stars(tier)} : <a href="#/">ouvre des boosters →</a>, ils arrivent vite.`;
+    empty.innerHTML = `${tr('ct.noDups', { stars: stars(tier) })} <a href="#/">${tr('ct.openBoosters')}</a>, ils arrivent vite.`;
   }
 
   /** doublons disponibles de chaque carte de la grille affichée */
@@ -343,7 +344,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     if (seq.length === cost()) shell.sfx.chime(2, 0.06);
     if (total() < cost()) {
       const skipped = all.length - free.length;
-      toast(`Pas assez de doublons ${stars(tier)} libres (${total()} sur ${cost()})${skipped ? ` · ${skipped} carte${skipped > 1 ? 's' : ''} protégée${skipped > 1 ? 's' : ''} laissée${skipped > 1 ? 's' : ''} de côté (envies, classeurs, pochettes)` : ''}.`, 'info');
+      toast(tr('ct.notEnough', { stars: stars(tier), n: total(), need: cost(), skip: skipped ? tr('ct.skipped', { n: skipped }) : '' }), 'info');
     }
     renderSheet();
     syncDups();
@@ -391,7 +392,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       popAt = -1;
       if (!el.isConnected) {
         // on a quitté la page pendant la cérémonie : la carte est dans la collection, on le dit simplement
-        toast(`Contrat signé : ${res.cardName} rejoint ta collection`, 'ok');
+        toast(tr('ct.signed', { name: res.cardName }), 'ok');
         return;
       }
       const viewer = await viewerP;
@@ -403,9 +404,9 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       viewerUi.hidden = false;
       vInfo.className = `v-info r-${res.rarity}`;
       vInfo.style.setProperty('--ra', rr.accentHex);
-      vInfo.innerHTML = `<div class="ci-new">${res.isNew ? 'NOUVELLE CARTE' : 'CONTRAT SIGNÉ'}</div><div class="ci-name">${esc(res.cardName)}</div>
+      vInfo.innerHTML = `<div class="ci-new">${res.isNew ? tr('ct.newCaps') : tr('ct.signedCaps')}</div><div class="ci-name">${esc(res.cardName)}</div>
         <div class="ci-meta">${starsHtml(res.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div>
-        <div class="ci-sub">n°${fmtN(res.mintNumber)}\u00a0imprimé · contre ${CONTRACT_COST[from]} doublons ${stars(from)}</div>`;
+        <div class="ci-sub">${tr('ct.mint', { n: fmtN(res.mintNumber), cost: CONTRACT_COST[from] ?? '', stars: stars(from) })}</div>`;
       viewerUi.querySelector('.v-actions')!.replaceChildren(imageReportButton(backend, res.cardId, 'contrats/carte'));
       haptics.pulse(rr.tier >= 4 ? [50, 30, 90] : 40);
       // fond dynamique (5★ / 6★ obtenue) : lueur radiale de la rareté, rayons, particules de braise
@@ -462,7 +463,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     };
     el.addEventListener('pointerdown', onSkip);
     const prevOdds = oddsEl.innerHTML;
-    window.setTimeout(() => el.classList.contains('burning') && (oddsEl.innerHTML = '<span class="ct-skip">touche l’écran pour passer</span>'), 800);
+    window.setTimeout(() => el.classList.contains('burning') && (oddsEl.innerHTML = '<span class="ct-skip">' + tr('ct.tapSkip') + '</span>'), 800);
     const waitOrSkip = (ms: number) =>
       new Promise<void>((res) => {
         const end = performance.now() + ms;

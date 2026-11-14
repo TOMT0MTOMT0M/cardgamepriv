@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 /**
  * Nouveau tri Monde + Sport (11/11) : une carte qui change d'étoiles est réalignée PARTOUT — inventaire, vitrine,
- * classeurs (resyncRarities) et ce qui est en cours : échanges, annonces, offres (resyncRaritiesOpen).
+ * classeurs (resyncRarities) et ce qui est en cours : échanges, annonces, offres, marché (resyncRaritiesOpen).
  *   npm run test:server
  */
 import { convexTest } from 'convex-test';
@@ -27,13 +27,14 @@ describe('nouveau tri : cartes déjà tombées', () => {
       await ctx.db.insert('trades', { fromUserId: a, toUserId: b, offered: [{ cardId: card.id, rarity: old, count: 1 }], requested: [{ cardId: other.id, rarity: other.baseRarity, count: 1 }], status: 'pending', createdAt: 0 });
       await ctx.db.insert('trades', { fromUserId: a, toUserId: b, offered: [{ cardId: card.id, rarity: old, count: 1 }], requested: [], status: 'declined', createdAt: 0 });
       await ctx.db.insert('listings', { userId: a, items: [{ cardId: card.id, rarity: old, count: 1 }], wanted: [{ cardId: card.id, rarity: old }], status: 'open', createdAt: 0, expiresAt: Date.now() + 86400000 });
+      await ctx.db.insert('market', { sellerId: a, cardId: card.id, rarity: old, mintNumber: 4, price: 100, status: 'open', createdAt: 0 });
       return { a, b };
     });
     await t.mutation(internal.migrations.resyncRarities, {});
     const r = await t.mutation(internal.migrations.resyncRaritiesOpen, {});
-    expect(r).toEqual({ trades: 1, listings: 1, offers: 0 });
+    expect(r).toEqual({ trades: 1, listings: 1, offers: 0, market: 1 });
     // idempotente
-    expect(await t.mutation(internal.migrations.resyncRaritiesOpen, {})).toEqual({ trades: 0, listings: 0, offers: 0 });
+    expect(await t.mutation(internal.migrations.resyncRaritiesOpen, {})).toEqual({ trades: 0, listings: 0, offers: 0, market: 0 });
     await t.run(async (ctx) => {
       const inv = await ctx.db.query('inventory').collect();
       expect(inv.map((x) => x.rarity)).toEqual(['mythic']);
@@ -44,6 +45,7 @@ describe('nouveau tri : cartes déjà tombées', () => {
       const l = (await ctx.db.query('listings').collect())[0];
       expect(l.items[0].rarity).toBe('mythic');
       expect(l.wanted![0].rarity).toBe('mythic');
+      expect((await ctx.db.query('market').collect())[0].rarity).toBe('mythic');
       void b;
     });
   });

@@ -1,5 +1,7 @@
 import { cardHasCutout } from '../../core/pokeHolo/face';
-import { AdditiveBlending, Color, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, Vector3, type Material } from 'three/webgpu';
+import { AdditiveBlending, Color, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, Vector3, type Material, CircleGeometry } from 'three/webgpu';
+/** rayon du dodécagone circonscrit / rayon du cercle inscrit */
+const HALO_K = 1 / Math.cos(Math.PI / 12);
 import gsap from 'gsap';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { createStage } from '../../core/stage';
@@ -13,8 +15,8 @@ import { LAB_CARDS, cardById } from '../../core/cardData';
 import { rarity, type RarityId } from '../../core/rarity';
 import { CARD, createCardGeometry } from '../../core/cardModel';
 import { EASE, springCurve } from '../../core/ease';
-import { buildEdge, buildFace, gameCardArt, gameCardArtAsync, themedBacks } from './cardFace';
-import { isHoloReduced } from '../../core/holo';
+import { reducedMotion, DUR } from '../../core/motion';
+import { buildEdge, buildFace, gameCardArtAsync, themedBacks } from './cardFace';
 import type { WonderVisualInstance } from '../../core/wonderDiorama';
 
 /**
@@ -38,15 +40,35 @@ const loadWonder = () => {
 /** Même test que `isWonderCard` (core/wonderDiorama.ts), sans charger le module. */
 const isWonderCard = (cardId: string) => cardId.startsWith('mrv-');
 
+/** (11/11) Skins CS 6★ en 3D dans la carte (core/csPortal) : module chargé à la première carte concernée. */
+let csMod: Promise<typeof import('../../core/csPortal')> | null = null;
+const loadCs = () => {
+  if (!csMod) {
+    csMod = import('../../core/csPortal');
+    csMod.catch(() => (csMod = null));
+  }
+  return csMod;
+};
+
 /**
  * Visionneuse de la collection : la carte en grand, en vrai 3D (holo, parallaxe), inclinable au doigt / à la souris,
  * qu'on fait tourner en la glissant. À l'ouverture : un tour sur elle-même, puis ses étoiles s'allument une à une.
  */
 export interface ViewerScene extends Experiment {
   /** `dir` : on passe à la carte suivante (1) ou précédente (-1) → courte rotation latérale au lieu du grand tour */
-  show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1; quiet?: boolean }): Promise<void>;
+  /**
+   * `hold` (10/11, scènes 6★ — game/mythicEncounter.ts) : la carte se prépare, puis ATTEND cette promesse de dos, au
+   * centre de l'écran, à la largeur `fromW` (px CSS : celle de la doublure 2D de la scène, qui se fond sur elle) ;
+   * ensuite elle se retourne en venant à sa place de repos (au lieu du tour d'entrée habituel).
+   */
+  show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1; quiet?: boolean; hold?: Promise<void>; fromW?: number }): Promise<void>;
   /** Vrai si le point (NDC −1..1) est sur la carte : un toucher ailleurs ferme la visionneuse (« clic hors zone »). */
   hits(ndcX: number, ndcY: number): boolean;
+  /**
+   * (V2 fluidité, lot 6) où la carte se pose à l'écran une fois arrivée (au repos, sans zoom), en coordonnées
+   * normalisées (−1..1, y vers le haut) : cible de la tuile qui « grandit » vers la carte 3D. null avant le montage.
+   */
+  restRect(): { x0: number; y0: number; x1: number; y1: number } | null;
 }
 
 export function createViewerScene(): ViewerScene {
@@ -61,9 +83,11 @@ export function createViewerScene(): ViewerScene {
   let geo: ReturnType<typeof createCardGeometry>;
   let face: ReturnType<typeof buildFace> | null = null;
   let wonderInstance: WonderVisualInstance | null = null;
+  /** carte-fenêtre d'un skin CS 6★ (même rôle que wonderInstance) */
+  let csInstance: import('../../core/csPortal').CsVisualInstance | null = null;
   let tl: gsap.core.Timeline | null = null;
   let token = 0;
-  const st = { spin: Math.PI, s: 0.85, z: -0.3, x: 0 };
+  const st = { spin: Math.PI, s: 0.85, z: -0.3, x: 0, y: 0 };
   /**
    * (11/11) carte HORIZONTALE (art.landscape, KCDQ Teto) : après son entrée, la carte se couche d'un quart de tour
    * (`rz`) pendant que la caméra recule un peu (`cam`, multiple de sa distance) puis se repose à la distance où la
@@ -90,6 +114,9 @@ export function createViewerScene(): ViewerScene {
   const haloColor = new Color('#ffffff');
   /** zoom d'inspection (molette, ou deux touchers rapides) : cible et valeur lissée */
   let zoomT = 1;
+  /** gros plan des skins CS 6★ (×CS_CLOSE, en douceur) */
+  const CS_CLOSE = 1.22;
+  let csClose = 1;
   let zoom = 1;
   let lastTap = 0;
   const lastTilt = { x: 0, y: 0 };
@@ -112,10 +139,26 @@ export function createViewerScene(): ViewerScene {
     return nx >= x0 - m && nx <= x1 + m && ny >= y0 - m && ny <= y1 + m;
   }
 
+  function restRect() {
+    if (!stage) return null;
+    stage.camera.updateMatrixWorld();
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      // (pose de repos : centre légèrement relevé, cf. `lift` dans la boucle)
+      corner.set((cx * 0.63) / 2, (cy * 0.88) / 2 + 0.05, 0).project(stage.camera);
+      x0 = Math.min(x0, corner.x); y0 = Math.min(y0, corner.y); x1 = Math.max(x1, corner.x); y1 = Math.max(y1, corner.y);
+    }
+    return Number.isFinite(x0 + y0 + x1 + y1) ? { x0, y0, x1, y1 } : null;
+  }
+
   function clear() {
     if (wonderInstance) {
       wonderInstance.dispose();
       wonderInstance = null;
+    }
+    if (csInstance) {
+      csInstance.dispose();
+      csInstance = null;
     }
     if (mesh) {
       rig.remove(mesh);
@@ -133,8 +176,11 @@ export function createViewerScene(): ViewerScene {
 
   return {
     hits,
+    restRect,
     // définition native de l'écran (×3 sur iPhone) : une seule carte, scène légère — c'est l'écran où l'on inspecte
     dprCap: 3,
+    /** pour le shell : au repos tant que la carte n'est ni touchée, ni animée, ni zoomée (changement de définition 3D permis) */
+    pacing: () => (tl?.isActive() || ctx.input.down || ctx.input.dragging || Math.abs(zoomT - zoom) > 0.002 ? 'busy' : 'rest'),
     async show(cardId, rarityId, opts) {
       const my = ++token;
       setZoom(1); // nouvelle carte : on repart sans zoom
@@ -144,15 +190,25 @@ export function createViewerScene(): ViewerScene {
       if (!opts?.dir) {
         rig.visible = false;
         haloT.k = 0;
+        // (audit 12/11, E3-08) l'ancienne carte est libérée TOUT DE SUITE (elle est déjà cachée) : la nouvelle se peignait
+        // et partait au GPU avant, deux cartes en mémoire pendant ≈ 4 images (82 Mo sur iPhone). En glissé, les deux
+        // cartes se voient : l'ordre d'avant est gardé.
+        tl?.kill();
+        clear();
       }
       // Merveille : on n'attend plus le modèle 3D (≈ 1–2 Mo) — le diorama montre le monument procédural puis le
       // remplace dès que le modèle arrive (avant : visionneuse figée le temps du téléchargement en 4G)
       const wonder = isWonderCard(cardId) ? loadWonder() : null;
       void wonder?.then((w) => w.preloadWonderModel(cardId), () => undefined);
+      // skin CS 6★ : modèle + textures (~300 Ko) chargés avec les illustrations ; échec réseau / animations réduites sur l'appareil → carte normale
+      const csAssets = rarityId === 'mythic' && !reducedMotion() && cardId.startsWith('cs-')
+        ? loadCs().then((m) => (m.isCs3dCard(cardId) ? m.preloadCs3d(cardId).then((a) => ({ m, a })) : null)).catch(() => null)
+        : null;
       await ensureCardImages([cd]);
       if (my !== token) return;
       // (le module du diorama arrive en parallèle des illustrations ; en cas d'échec réseau, la carte s'affiche sans)
       const W = wonder ? await wonder.catch(() => null) : null;
+      const CS = csAssets ? await csAssets : null;
       if (my !== token) return;
       const rr = rarity(rarityId);
       // mobile : calques à la taille réelle de la carte à l'écran, zoom d'inspection compris (×1,6 → jusqu'à ×1,25 de la
@@ -160,7 +216,8 @@ export function createViewerScene(): ViewerScene {
       const lowMem = ((navigator as { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
       const scale = mobile ? mobileArtScale(ctx.width, ctx.height, 0.8 * 1.6, lowMem ? 1 : 1.25, 3) : 1;
       let nextArt: CardArt;
-      if (mobile) {
+      // (audit 12/11, S17 / A9-08) même voie sur ordinateur : peinture en étapes, textures envoyées deux par image
+      {
         // téléphone : calques peints en 4 étapes (plus de pic de 20–80 ms), puis envoyés au GPU AVANT le tour d'entrée
         // (avant : 6 textures + mipmaps dans la 1re image du tour → à-coup) ; les toiles sont vidées aussitôt (release)
         nextArt = await gameCardArtAsync(cd, rarityId, scale);
@@ -173,11 +230,44 @@ export function createViewerScene(): ViewerScene {
           await nextFrame();
           if (my !== token) return nextArt.dispose();
         }
-      } else nextArt = gameCardArt(cd, rarityId, scale);
+      }
+      // (audit 12/11, S09 / E4-22) carte ordinaire : face, tranche et dos préparés AVANT le tour d'entrée. Le maillage
+      // passe une image hors champ (derrière la caméra, rien n'est dessiné) : three y construit ses nœuds et ses
+      // pipelines, et le dos neuf d'un thème y envoie ses 2 textures — plus dans la 1re image du tour d'entrée.
+      let pre: { face: ReturnType<typeof buildFace>; edge: Material; mesh: Mesh } | null = null;
+      if (!W && !CS) {
+        const back = backs.forCard(cardId);
+        if (mobile) {
+          const send = backs.toSend(back);
+          if (send.length) {
+            send.forEach((t) => ctx.renderer.initTexture(t));
+            await nextFrame();
+            if (my !== token) return nextArt.dispose();
+          }
+        }
+        const pf = buildFace(nextArt, rr.tier, !!cd.photo, cardHasCutout(cd));
+        const { edge: pe } = buildEdge(rr.hex);
+        const pm = new Mesh(geo, [pf.holo.material, back, pe]);
+        pm.frustumCulled = false;
+        pm.position.z = camBase + 10;
+        stage.scene.add(pm);
+        // (deux VRAIES images : `nextFrame` de core/art rend seulement la main, sans attendre un rendu ; 120 ms au plus,
+        // pour ne pas rester en attente quand rien n'est dessiné — onglet caché)
+        await Promise.race([new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))), new Promise<void>((r) => setTimeout(r, 120))]);
+        stage.scene.remove(pm);
+        pm.position.z = 0;
+        if (my !== token) {
+          pm.dispatchEvent({ type: 'dispose' } as never);
+          pf.holo.material.dispose();
+          pe.dispose();
+          return nextArt.dispose();
+        }
+        pre = { face: pf, edge: pe, mesh: pm };
+      }
       clear();
       rig.visible = true;
       art = nextArt;
-      face = buildFace(art, rr.tier, !!cd.photo, cardHasCutout(cd));
+      face = pre ? pre.face : buildFace(art, rr.tier, !!cd.photo, cardHasCutout(cd));
       face.holo.uniforms.strength.value = 0.7;
 
       if (W) {
@@ -201,16 +291,36 @@ export function createViewerScene(): ViewerScene {
         mats = [edge];
         rig.add(mesh);
         haloColor.set('#f5c662');
-      } else {
+      } else if (CS) {
         const { edge } = buildEdge(rr.hex);
+        csInstance = CS.m.createCsCardInstance(cardId, CS.a, art, backs.forCard(cardId), edge, geo, stage.camera, ctx.quality, ctx.renderer);
+        mesh = csInstance.cardMesh;
+        // la face est à l'instance (libérée par csInstance.dispose()), le dos est partagé : seule la tranche est à nous
+        mats = [edge];
+        rig.add(mesh);
+        haloColor.set(rr.hex);
+      } else {
+        const edge = pre ? pre.edge : buildEdge(rr.hex).edge;
         mats = [face.holo.material, edge];
-        mesh = new Mesh(geo, [face.holo.material, backs.forCard(cardId), edge]);
+        mesh = pre ? pre.mesh : new Mesh(geo, [face.holo.material, backs.forCard(cardId), edge]);
         rig.add(mesh);
         haloColor.set(rr.secret ? '#e8927c' : rr.tier === 0 ? '#ffffff' : rr.hex);
       }
 
       tl?.kill();
       const f = face;
+      // (10/11) une scène 6★ se joue au-dessus : la carte attend de dos, déjà à sa place ; le calque se fond dessus
+      const held = !!opts?.hold && !opts.dir;
+      if (held) {
+        // même taille et même place que la doublure : centre de l'écran (le repos est 0,05 plus haut), largeur fromW
+        const r = restRect();
+        const restW = r ? ((r.x1 - r.x0) / 2) * ctx.width : 0;
+        const s0 = restW > 0 && opts!.fromW ? Math.min(1.15, Math.max(0.4, opts!.fromW / restW)) : 1;
+        Object.assign(st, { spin: Math.PI, s: s0, z: 0, x: 0, y: -0.05 });
+        haloT.k = 0;
+        await opts!.hold;
+        if (my !== token) return;
+      }
       tl = gsap.timeline();
       // halo : il prend la couleur de la carte et monte doucement (presque rien pour une commune)
       if (!opts?.dir) halo.color.value.copy(haloColor); // nouvelle ouverture : couleur posée ; carte voisine : fondu
@@ -225,11 +335,18 @@ export function createViewerScene(): ViewerScene {
       let at = 0.9;
       if (dir) {
         // carte voisine : elle arrive de côté en pivotant d'un quart de tour (feuilleter un classeur)
-        Object.assign(st, { spin: -dir * Math.PI * 0.5, s: 0.94, z: -0.08, x: dir * 0.32 });
+        Object.assign(st, { spin: -dir * Math.PI * 0.5, s: 0.94, z: -0.08, x: dir * 0.32, y: 0 });
         tl.to(st, { spin: 0, x: 0, z: 0, s: 1, duration: 0.5, ease: EASE.glide, onStart: () => sfx?.whoosh(0.22, 0.05) }, 0);
         at = 0.3;
+      } else if (held) {
+        // le calque de la scène finit de se fondre (0,4 s) sur la carte de dos ; elle se retourne en venant à sa place
+        const lead = (DUR.emphatique() / 1000) * 0.85; // (le fondu du calque dure « emphatique », core/motion.ts)
+        tl.to(st, { s: 1, y: 0, duration: 0.8, ease: EASE.glide }, lead)
+          .to(st, { spin: Math.PI * 2, duration: 1.0, ease: springCurve(0.55, 11), onStart: () => sfx?.whoosh(0.35, 0.08) }, lead + 0.04)
+          .call(() => (st.spin = 0), [], lead + 1.04);
+        at = lead + 0.82;
       } else {
-        Object.assign(st, { spin: Math.PI, s: 0.85, z: -0.3, x: 0 });
+        Object.assign(st, { spin: Math.PI, s: 0.85, z: -0.3, x: 0, y: 0 });
         tl.to(st, { z: 0, s: 1, duration: 0.7, ease: EASE.glide }, 0)
           .to(st, { spin: Math.PI * 2, duration: 1.0, ease: springCurve(0.55, 11), onStart: () => sfx?.whoosh(0.35, 0.08) }, 0.1)
           .call(() => (st.spin = 0), [], 1.1);
@@ -275,13 +392,14 @@ export function createViewerScene(): ViewerScene {
       rig.add(mesh);
       // halo derrière la carte (ne tourne pas avec elle)
       const hm = c.bag.add(new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending }));
-      const hd = length(uv().sub(0.5).mul(2));
+      // (audit 12/11, S17 / E4-20) dodécagone circonscrit au lieu du carré (voir opening.ts)
+      const hd = length(uv().sub(0.5).mul(2 * HALO_K));
       hm.colorNode = vec4(halo.color.mul(smoothstep(1, 0, hd).pow(2.4).mul(halo.k)), 1);
-      const haloMesh = new Mesh(c.bag.add(new PlaneGeometry(2.4, 2.4)), hm);
+      const haloMesh = new Mesh(c.bag.add(new CircleGeometry(1.2 * HALO_K, 12)), hm);
       haloMesh.position.set(0, 0.05, -0.32);
       stage.scene.add(haloMesh);
       // bloom sur l'émissif : les étoiles, les paillettes et le foil brillent vraiment (comme à l'ouverture)
-      const pl = (pipe = createPipeline(c, stage.scene, stage.camera, { emissive: true }));
+      const pl = (pipe = createPipeline(c, stage.scene, stage.camera, { emissive: true, lean: true }));
       const bl = pl.own(bloom(pl.emissive!, 0.3, 0.45, 0.0)) as unknown as N;
       // téléphone : bloom au ¼ de la résolution (au lieu de ½) — l'émissif est épars (étoiles, paillettes) : halo un
       // peu plus doux, −75 % de pixels de bloom en permanence dans la visionneuse
@@ -289,14 +407,38 @@ export function createViewerScene(): ViewerScene {
       bloomStrength = (bl as unknown as { strength: { value: number } }).strength;
       pl.output = vec4((pl.color as N).rgb.add(bl.rgb), 1);
       render = () => {
-        if (bloomStrength && face) bloomStrength.value = (isHoloReduced() ? 0.2 : 0.3) + (face.flash.value as number) * (isHoloReduced() ? 0.45 : 0.9);
+        if (bloomStrength && face) bloomStrength.value = (reducedMotion() ? 0.2 : 0.3) + (face.flash.value as number) * (reducedMotion() ? 0.45 : 0.9);
         pl.render();
       };
       // matériaux compilés, puis une image à blanc hors écran : les VRAIS pipelines (MRT émissif, MSAA, HalfFloat) sont
       // créés ici et non dans la première image affichée (à-coup de 100 à 400 ms au premier zoom de carte — la face holo
       // pèse ≈ 470 nœuds). La carte factice est encore dans le rig : c'est elle qui sert.
-      await pl.compile();
+      // (audit 12/11, S09 / E2-09) UNE FACE PAR PALIER (0 à 5, + photo) gardée en vie, comme à l'ouverture. Mesuré au banc
+      // (WebGL2) : chaque carte ouverte recompilait et reliait son shader de face (28 Ko) — le palier y est écrit en
+      // constantes, et three jette un programme dès que plus aucun matériau ne s'en sert (le factice de palier 2 était
+      // libéré à la première carte). Ces 7 matériaux ne sont jamais affichés : ils gardent programmes et pipelines en cache.
+      const warmArt = generateCardArt(LAB_CARDS[0], 'rare', { scale: 0.25 });
+      const warmMats: Material[] = [];
+      const warmMeshes: Mesh[] = [];
+      for (let t = 0; t <= 6; t++) {
+        const wf = buildFace(warmArt, Math.min(5, t), t === 6);
+        warmMats.push(wf.holo.material);
+        const wm = new Mesh(geo, [wf.holo.material, backMat, edge]);
+        wm.position.set((t - 3) * 0.1, 0, -0.4);
+        warmMeshes.push(wm);
+        stage.scene.add(wm);
+      }
+      await pl.compile({ real: true });
       pl.warm();
+      // (E4-14) préchauffée sur le canvas, la passe a alloué ses cibles en pleine définition : rendues tout de suite sur
+      // téléphone (recréées à la première carte, mêmes formats → mêmes pipelines, comme après `suspend`)
+      if (c.quality === 'mobile') pl.releaseTargets();
+      warmMeshes.forEach((m) => stage.scene.remove(m));
+      c.bag.fn(() => {
+        warmMeshes.forEach((m) => m.dispatchEvent({ type: 'dispose' } as never));
+        warmMats.forEach((m) => m.dispose());
+        warmArt.dispose();
+      });
       c.bag.fn(() => (tl?.kill(), clear()));
       // inspecter une carte de près : molette (ordinateur) ou deux touchers rapides (téléphone, souris)
       const wheel = (e: WheelEvent) => {
@@ -319,8 +461,8 @@ export function createViewerScene(): ViewerScene {
     },
     update(dt, t) {
       halo.color.value.lerp(haloColor, 1 - Math.exp(-dt * 5));
-      // « Effets réduits » (core/fxPref.ts) : halo plus faible et immobile
-      const red = isHoloReduced();
+      // « réduire les animations » de l'appareil : halo plus faible et immobile
+      const red = reducedMotion();
       halo.k.value = haloT.k * (red ? 0.45 : 1 + haloT.pulse * Math.sin(t * 1.6) * 0.18);
       ctx.input.spinEnabled = true; // ici on fait tourner la carte en la glissant (l'ouverture, elle, le coupe)
       // curseur « main » : on attrape la carte pour la faire tourner ; l'indication s'efface après le premier tour
@@ -329,15 +471,25 @@ export function createViewerScene(): ViewerScene {
       if (ctx.input.dragging && !document.body.classList.contains('viewer-spun')) document.body.classList.add('viewer-spun');
       const p = ctx.input.pose(0.38);
       const idle = ctx.input.inside ? 0 : 1;
+      // (11/11) skin CS 6★ : la carte reste de face, en gros plan ; le geste et le gyroscope tournent le skin dedans
+      csClose += ((csInstance ? CS_CLOSE : 1) - csClose) * (1 - Math.exp(-dt * 4));
+      if (csInstance) {
+        const q = ctx.input.pose(0.9);
+        csInstance.inspect.yaw = q.y;
+        csInstance.inspect.pitch = q.x;
+        csInstance.inspect.idle += ((ctx.input.inside || ctx.input.down ? 0 : 1) - csInstance.inspect.idle) * (1 - Math.exp(-dt * 3));
+      }
       // un peu au-dessus du centre (la fiche texte se lit dessous) ; zoomée, la carte se recentre : la fiche s'est effacée
       const lift = 0.05 * Math.max(0, 1 - (zoom - 1) / 0.6);
-      rig.position.set(st.x, lift + Math.sin(t * 0.9) * 0.006, st.z);
-      rig.rotation.set(p.x + Math.sin(t * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(t * 0.37) * 0.18 * idle, 0);
+      rig.position.set(st.x, lift + st.y + Math.sin(t * 0.9) * 0.006, st.z);
+      if (csInstance) rig.rotation.set(0, st.spin, 0);
+      else rig.rotation.set(p.x + Math.sin(t * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(t * 0.37) * 0.18 * idle, 0);
       zoom += (zoomT - zoom) * (1 - Math.exp(-dt * 10));
-      rig.scale.setScalar(st.s * zoom);
+      rig.scale.setScalar(st.s * zoom * csClose);
       if (mesh) mesh.rotation.z = pose.rz;
       if (camBase) stage.camera.position.z = camBase * pose.cam;
       wonderInstance?.update(dt, t);
+      csInstance?.update(dt, t);
       /*
        * (audit 06/11) téléphone, carte au repos (personne ne la touche, pas de zoom en cours, pas d'animation d'entrée,
        * gyroscope immobile) : une image sur deux — la définition native (×3) coûte ≈ ×2,25 de pixels, et une visionneuse
@@ -348,7 +500,7 @@ export function createViewerScene(): ViewerScene {
       const tiltMoving = Math.abs(tx - lastTilt.x) + Math.abs(ty - lastTilt.y) > 0.004;
       lastTilt.x = tx;
       lastTilt.y = ty;
-      const calm = ctx.quality === 'mobile' && !ctx.input.down && !ctx.input.dragging && !tiltMoving && !tl?.isActive() && Math.abs(zoomT - zoom) < 0.002 && !wonderInstance;
+      const calm = ctx.quality === 'mobile' && !ctx.input.down && !ctx.input.dragging && !tiltMoving && !tl?.isActive() && Math.abs(zoomT - zoom) < 0.002 && !wonderInstance && !csInstance;
       if (!calm) calmSkip = 0;
       if (!calm || (calmSkip++ & 1) === 0) render();
     },
@@ -359,8 +511,16 @@ export function createViewerScene(): ViewerScene {
       if (art?.landscape && !tl?.isActive()) pose.cam = landscapeCam();
     },
     /** Téléphone, visionneuse fermée (appelé par le shell) : ses cibles plein écran (~100 Mo) sont rendues au GPU. */
-    suspend() {
+    suspend(next?: string | null) {
       pipe?.releaseTargets();
+      // (audit 12/11, E3-04) retour à la boutique ou à une page : la carte regardée (6 calques + mipmaps, diorama,
+      // skin 3D) part avec — `show` la reconstruit à chaque ouverture ; une préparation en cours est abandonnée.
+      // PAS vers une scène jouée par-dessus la visionneuse (invocation, rencontre, prélude 6★) : elles y reviennent
+      // sans repasser par `show`, la carte doit les attendre.
+      if (next !== 'opening' && next != null) return;
+      token++;
+      clear();
+      rig.visible = false;
     },
     dispose() {},
   } as ViewerScene;

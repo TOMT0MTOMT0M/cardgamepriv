@@ -1,0 +1,395 @@
+/* ═════════════ DIRECTION « USINAGE » — TOUT LE JEU (V2, 10/11)
+   La direction de l'espace Jeux (casino.css) et du chat (chat.css), étendue à chaque page : noir, filets blancs au
+   pixel, repères d'angle sur les pièces encadrées, coins RONDS depuis les retours de Hugo (10/11 : jetons --r-*, repères d'angle éteints), étiquettes techniques en capitales espacées,
+   chiffres tabulaires, blanc plein = actif, aucun dégradé ni halo décoratif. Seule couleur : l'information (raretés
+   --rc, états, erreurs). Chargé après style.css et panneaux.css (main.ts) : ce bloc l'emporte sur ce qui précède.
+
+   Ne touche pas : les cartes (tuiles, 3D, effets de rareté), les sachets, l'ouverture, les scènes 6★.
+   Les rayons viennent des jetons --r-* (style.css / games.css les lisent partout, cartes exceptées). */
+
+@property --cs { syntax: '<length>'; inherits: false; initial-value: 9px; }
+
+:root {
+  /* rayons : pastilles, boîtes, petits contrôles */
+  /* (retours Hugo 10/11) « tout est trop carré, je préférais le truc tout rond » : retour aux formes rondes de la V1 */
+  --r-pill: 999px;
+  --r-box: 16px;
+  --r-ctl: 10px;
+  /* filets et repères (mêmes valeurs que l'espace Jeux, qui les lisait sur .games) */
+  --gm-line: rgba(255, 255, 255, 0.11);
+  --gm-line-2: rgba(255, 255, 255, 0.24);
+  /* repères d'angle éteints : un angle arrondi les couperait (retours Hugo 10/11) */
+  --gm-k: transparent;
+  --gm-fill: rgba(255, 255, 255, 0.018);
+  --gm-r: var(--r-box);
+  --gm-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --gm-spring: cubic-bezier(0.34, 1.45, 0.5, 1);
+  --gm-label: 500 10.5px/1.2 var(--mono);
+  /* les filets du reste du site s'alignent sur ceux de l'espace Jeux */
+  --line: rgba(255, 255, 255, 0.11);
+  --line-2: rgba(255, 255, 255, 0.24);
+}
+
+/* ───────────── socle */
+html, body { font-variant-numeric: tabular-nums; }
+::-webkit-scrollbar-thumb { border-radius: var(--r-pill); }
+:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+
+/* pages : aplat noir + trame de points au pas de 22 px qui s'efface vers le bas (plan de travail), comme .games::before.
+   Un pseudo-élément de 760 px sous le contenu, qui défile avec lui : rien à repeindre sur toute la hauteur de la page. */
+.collection, .trades, .contracts, .profile, .ranking, .succes, .suggestions, .infos, .amis { background: #000; isolation: isolate; }
+.collection::before, .trades::before, .contracts::before, .profile::before, .ranking::before, .succes::before, .suggestions::before, .infos::before, .amis::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 760px; z-index: -1; pointer-events: none;
+  background: radial-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1.3px) 0 0 / 22px 22px;
+  -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent);
+}
+/* une carte ouverte en grand / un contrat qui brûle : la page s'efface devant la 3D, la trame aussi */
+.collection.viewing::before, .trades.viewing::before, .contracts.viewing::before, .profile.viewing::before, .contracts.recycling::before { display: none; }
+
+/* pièces encadrées : filet + 8 repères d'angle de 1 px (longueur --cs, animable ; couleur --uk).
+   Posés en `background-image` seulement : une teinte d'information en `background-color` reste en place. */
+.progress, .ct-sheet, .ct-tier, .ct-recap, .sc-c, .sc-primes, .sc-recap, .am-card, .am-login, .if-entry, .if-sec, .sg-form, .sg-item, .sg-survey,
+.ob-card, .ob-empty, .ob-modal, .pf-panel, .pf-stat, .pf-key, .pf-lb, .pf-cosm, .pf-picker, .lb-pd, .pd, .trade, .matches, .tr-filters, .filters.stuck,
+.missions-pop, .status-pop, .me-menu, .user-menu, .pack-sheet, .ps-block, .pc-sec, .bd-card, .al-sec, .ow, .lg, .sv, .gpu-lost-box, .gd-tip, .binder-pick {
+  --uk: var(--gm-k);
+  border-radius: var(--gm-r);
+  border-color: var(--gm-line);
+  /* (retours Hugo 10/11) pièces arrondies : plus de repères d'angle (--uk ne colore plus que le filet des états actifs) */
+  box-shadow: none;
+}
+
+/* ───────────── typographie : étiquettes techniques, titres de page */
+.kicker, .pf-eyebrow, .ct-head .eyebrow { display: inline-flex; align-items: center; gap: 8px; font: var(--gm-label); letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
+.kicker::before, .pf-eyebrow::before, .ct-head .eyebrow::before { content: ''; width: 6px; height: 6px; flex: none; border: 1px solid currentColor; }
+
+/* en-tête de page : étiquette, grand titre Bold Frame, filet + règle graduée (comme « Espace Jeux ») */
+.ct-head, .rk-head, .sc-head, .am-head, .sg-head, .if-head { position: relative; padding-bottom: 18px; margin-bottom: 24px; border-bottom: 1px solid var(--gm-line); }
+.ct-head::after, .rk-head::after, .sc-head::after, .am-head::after, .sg-head::after, .if-head::after, .tr-sec-h::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 6px; pointer-events: none;
+  background: repeating-linear-gradient(90deg, var(--gm-line-2) 0 1px, transparent 1px 22px);
+  -webkit-mask: linear-gradient(90deg, #000 60%, transparent); mask: linear-gradient(90deg, #000 60%, transparent);
+}
+.ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1, .if-head h1 { margin: 12px 0 10px; font: 600 clamp(36px, 5.6vw, 66px)/0.9 var(--title); font-style: normal; letter-spacing: -0.015em; text-wrap: balance; }
+.ct-head .muted, .rk-head .muted, .sc-head .muted, .am-head .muted, .sg-head .muted, .if-head .muted { max-width: 66ch; font: 400 12.5px/1.6 var(--mono); }
+@media (max-width: 860px) {
+  .ct-head, .rk-head, .sc-head, .am-head, .sg-head, .if-head { padding-bottom: 14px; margin-bottom: 18px; }
+  .ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1, .if-head h1 { font-size: clamp(32px, 9vw, 44px); }
+}
+
+/* ───────────── en-tête du site */
+.topbar { background: #000; border-bottom: 1px solid var(--gm-line); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.topbar nav a { font: 500 11px var(--mono); letter-spacing: 0.16em; }
+.topbar nav .badge, .nav-extra .badge, .me-menu .mm-link .badge, .tr-tabs .badge, .tr-sec-h .badge { border-radius: var(--r-ctl); }
+.me .packs, .me .coin-btn, .me .pt-cnt, .coin-btn { background: none; border-color: var(--gm-line-2); box-shadow: none; }
+.me .packs:hover, .coin-btn:hover { background: rgba(255, 255, 255, 0.04); border-color: #fff; }
+.me .packs.full { border-color: #fff; }
+.me .icon, .me .user, .me .user img, .me .ava { border-radius: var(--r-pill); }
+.me .user img, .me .ava { border: 1px solid var(--gm-line-2); background: #0d0d0d; }
+.me .user:hover, .me .user.on { box-shadow: 0 0 0 1px #fff; }
+.um-veil { background: rgba(0, 0, 0, 0.6); }
+
+/* avatars des listes : carrés, comme dans l'espace Jeux et le chat (l'avatar du profil garde son cadre gagné) */
+.lb-ava, .pd-ava, .bp-ava, .am-ava { border-radius: 50%; }
+.lb-ava img, .pd-ava img, .bp-ava img, .am-ava img { border-radius: 50%; }
+
+/* ───────────── boutons */
+.btn-primary, .open-btn, .m-go { letter-spacing: 0.16em; box-shadow: none; transition: background-color var(--dur-rapide), transform var(--dur-rapide), opacity var(--dur-rapide); }
+@media (hover: hover) { .btn-primary:not(:disabled):hover, .open-btn:not(:disabled):hover { background: #dcdcdc; filter: none; box-shadow: none; } }
+.btn-ghost, .ghost, button.ghost, .crumb-back { background: none; border: 1px solid var(--gm-line-2); letter-spacing: 0.14em; }
+@media (hover: hover) { .btn-ghost:not(:disabled):hover, .ghost:not(:disabled):hover, .crumb-back:hover { border-color: #fff; background: rgba(255, 255, 255, 0.04); } }
+.btn-ghost.danger { border-color: rgba(255, 77, 77, 0.5); color: var(--err); }
+a.btn-ghost, a.btn-ghost:visited { color: var(--ink); }
+
+/* ───────────── contrôles segmentés, onglets, jetons */
+.seg { border-color: var(--gm-line-2); padding: 3px; gap: 0; }
+.seg button, .seg a { border-radius: var(--r-ctl); }
+.seg-ind { border-radius: var(--r-ctl); box-shadow: none; }
+.seg button.on, .seg a.on { background: #fff; color: #000; }
+/* onglets de page : capitales espacées */
+.seg.coll-views button, .seg.coll-views a, .pf-tabs button, .tr-tabs button, .lb-boards button, .sg-tabs button { padding: 8px 14px; font: 500 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
+.tab, .chip, .pg, .search, .note, .pc-search, .fam-select { background: none; }
+.tab { border-color: var(--gm-line-2); font: 500 11.5px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.tab span { letter-spacing: 0.04em; }
+.tab.on { background: #fff; border-color: #fff; color: #000; }
+.tab.on span { color: rgba(0, 0, 0, 0.6); }
+.chip.sub { font: 500 11.5px var(--mono); letter-spacing: 0.06em; }
+.chip.sub.on { background: #fff; border-color: #fff; color: #000; }
+.chip.sub.on em { color: rgba(0, 0, 0, 0.6); }
+.pg.on { background: #fff; border-color: #fff; color: #000; }
+.search, .note, .pc-search, input.search { border-color: var(--gm-line-2); font-family: var(--mono); }
+.search:focus, .note:focus { border-color: #fff; }
+select, textarea { border-radius: var(--gm-r); }
+
+/* ───────────── notifications, panneaux de l'en-tête, fenêtres */
+.toast { border-radius: var(--gm-r); border-color: var(--gm-line-2); background: #000; box-shadow: none; letter-spacing: 0.04em; }
+.toast::before { width: 6px; height: 6px; border-radius: 50%; box-shadow: none; }
+.toast.ok::before, .toast.err::before { box-shadow: none; }
+.toast.ok { border-color: #fff; }
+.toast.err { border-color: rgba(255, 77, 77, 0.6); }
+.missions-pop, .status-pop, .me-menu, .user-menu { background-color: #000; border: 1px solid var(--gm-line-2); }
+.ob-modal, .pack-sheet, .ow, .sv, .lg { background-color: #000; border: 1px solid var(--gm-line-2); --cs: 12px; }
+.gm-modal-veil, .ob-veil { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgba(0, 0, 0, 0.82); }
+
+/* ───────────── barres de progression : droites, graduées par le fond */
+.p-bar, .p-bar i, .msn-bar, .msn-bar i, .sc-pb, .sc-pb > i, .pf-k-bar, .pf-rbar, .ps-pb, .ps-pb i, .ps-bb, .ps-bb i, .gauge-bar, .gm-bar, .al-bar, .al-bar i, .sum-prog i, .pf-ach-bar, .pf-ach-bar > i, .l-bar { border-radius: var(--r-pill); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sc-c, .if-entry, .ob-card, .am-card, .pf-stat, .ct-tier, .lb-pd, .pd, .sg-item { transition: --cs var(--dur-emphatique) var(--gm-soft), border-color var(--dur-standard); }
+}
+@media (hover: hover) {
+  .sc-c:hover, .if-entry:hover, .ob-card:hover, .am-card:hover, .pf-stat:hover, .ct-tier:hover, .lb-pd:hover, .pd:hover, .sg-item:hover { --cs: 18px; border-color: var(--gm-line-2); }
+}
+
+/* ───────────── textes : Inter pour ce qui se lit, Bold Frame pour ce qui se nomme (titres, chiffres)
+   (posé sur les pages et les panneaux, pas sur <body> : la boutique 3D, l'ouverture et les scènes gardent leur police) */
+.collection, .trades, .contracts, .profile, .ranking, .succes, .suggestions, .infos, .amis,
+.missions-pop, .status-pop, .me-menu, .ob-modal, .gm-modal, .pack-sheet, .ow, .sv, .lg { font-family: var(--mono); font-size: 13.5px; line-height: 1.5; }
+
+/* ───────────── ÉCHANGES */
+.tr-sec-h, .trades > .ob .ob-intro h3 { font: 600 clamp(26px, 3vw, 34px)/1 var(--title); font-style: normal; letter-spacing: -0.01em; }
+.tr-sec-h { border-top-color: var(--gm-line); position: relative; }
+.tr-sec-h::after { top: -1px; bottom: auto; }
+.tr-sec-h small { font: var(--gm-label); letter-spacing: 0.2em; text-transform: uppercase; }
+.ob-intro p, .trades > .ob .ob-intro p { font: 400 12.5px/1.6 var(--mono); font-style: normal; color: var(--ink-3); }
+.ob-seg button, .trades > .ob .ob-seg button { border-radius: var(--r-ctl); border-color: var(--gm-line-2); font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.ob-seg button.on, .trades > .ob .ob-seg button.on { background: #fff; border-color: #fff; color: #000; }
+.ob-seg button.on .ob-n { color: rgba(0, 0, 0, 0.6); }
+
+/* ───────────── PROFIL */
+.pf-id h1 { font-family: var(--title); font-weight: 600; letter-spacing: -0.01em; }
+.pf-bio { font: 400 12.5px/1.5 var(--mono); font-style: normal; color: var(--ink-3); }
+.pf-bio-in { font: 400 14px var(--mono); background: none; }
+.pf-banner { background: #000; border-color: var(--gm-line); }
+.pf-banner-btn { background: #000; }
+.pf-title, .pf-badge, .pf-count { border-radius: var(--r-ctl); background: none; }
+.pf-case { border-color: var(--gm-line); box-shadow: none; background: var(--gm-fill); }
+.pf-case::after { display: none; }
+.pf-stat b, .pf-stat.big b { font-family: var(--title); font-style: normal; font-weight: 600; text-shadow: none; }
+/* chiffres clés : le filet et les repères prennent la couleur du code (progression, succès, 6★) */
+.pf-key { --uk: var(--c); border-color: color-mix(in srgb, var(--c) 32%, transparent); }
+.pf-panel { background-color: var(--gm-fill); }
+
+/* ───────────── en-tête : icônes de droite (mises à jour, tutoriel, suggestions) */
+.nav-extra a { border-radius: var(--r-ctl); }
+.nav-extra .nb-dot { box-shadow: 0 0 0 2px #000; }
+.msn-n { box-shadow: none; }
+
+/* ───────────── CLASSEMENT */
+.lb-pd, .pd { background-color: var(--gm-fill); border-color: var(--gm-line); }
+.lb-pd.p1, .pd.p1 { --uk: #fff; --cs: 18px; background-color: var(--gm-fill); border-color: #fff; box-shadow: none; }
+.lb-pd.is-me, .lb-pd.p1.is-me { box-shadow: none; }
+.lb-pd-rank, .pd-rank { font: 600 26px/1 var(--title); letter-spacing: 0; }
+.lb-pd.p1 .lb-pd-rank { font-size: 44px; }
+.lb-pd b, .pd b { font: 600 15px/1.2 var(--title); font-style: normal; }
+.lb-you { border-radius: var(--r-ctl); letter-spacing: 0.2em; }
+.pd-ava, .lb-ava { border-radius: 50%; }
+.lb-row { border-radius: var(--r-ctl); border-color: var(--gm-line); transition: border-color var(--dur-rapide), background-color var(--dur-rapide), transform var(--dur-standard) var(--gm-soft); }
+@media (hover: hover) { .lb-row:hover { transform: translateX(3px); border-color: var(--gm-line-2); background: rgba(255, 255, 255, 0.03); } }
+.lb-row.is-me { border-color: #fff; background: rgba(255, 255, 255, 0.05); }
+
+/* ───────────── MISSIONS, CONNEXION (panneaux de l'en-tête) */
+.msn { border-radius: var(--r-ctl); }
+.msn-head b { font: 600 18px var(--title); font-style: normal; }
+.msn-t { font: 500 13px/1.35 var(--mono); }
+.msn-bonus { border-radius: var(--r-ctl); }
+.msn-bonus.ready { background: rgba(255, 255, 255, 0.05); border-color: #fff; }
+.msn-head .pop-x { border-radius: var(--r-ctl); }
+
+/* ───────────── SUGGESTIONS */
+.sg-kind { border-radius: var(--r-ctl); border-color: var(--gm-line-2); }
+.sg-kind b { font: 600 15px var(--title); font-style: normal; }
+.sg-kind.on { border-color: #fff; background: rgba(255, 255, 255, 0.07); }
+.sg-kinds legend, .sg-f > label, .sg-f legend { font: var(--gm-label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-3); }
+.sg-f textarea, .sg-f input[type='search'], .sg-f input[type='url'], .sg-f select, .sg-note-in { font-family: var(--mono); background: none; border-color: var(--gm-line-2); }
+.sg-f textarea:focus, .sg-f input:focus { border-color: #fff; }
+.sg-item p { font: 400 13px/1.55 var(--mono); }
+.sg-st { border-radius: var(--r-ctl); }
+
+/* ───────────── MISES À JOUR / TUTORIEL */
+.if-tag { border-radius: var(--r-ctl); background: none; border: 1px solid var(--gm-line-2); color: var(--ink-2); font: 500 9.5px var(--mono); letter-spacing: 0.2em; padding: 2px 6px; }
+.if-tag.t-new { background: #fff; border-color: #fff; color: #000; }
+.if-toc a { border-radius: var(--r-ctl); }
+
+/* ───────────── CONTRATS */
+.ct-head p { max-width: 66ch; margin: 0; font: 400 12.5px/1.6 var(--mono); color: var(--ink-3); }
+.ct-head p b { color: var(--ink-2); font-weight: 500; }
+.ct-tier { background-color: var(--gm-fill); }
+.ct-tier:not(.on):hover { transform: none; }
+.ct-tier.on { --uk: var(--rc); --cs: 18px; border-color: var(--rc); box-shadow: none; }
+.ct-tier .ct-tp, .ct-prot { border-radius: var(--r-ctl); }
+.ct-tier .ct-tp.ok { background: none; }
+.ct-sheet { background-color: var(--gm-fill); }
+.ct-actions .ghost { letter-spacing: 0.04em; }
+
+/* ───────────── AMIS */
+.am-card { background-color: var(--gm-fill); }
+.am-card h2 { font: var(--gm-label); letter-spacing: 0.28em; color: var(--ink-3); }
+.am-in.has { --uk: #fff; --cs: 18px; border-color: var(--gm-line-2); box-shadow: none; }
+.am-row, .fr-row, .friend { border-radius: var(--r-ctl); border-color: var(--gm-line); background: none; }
+
+/* ───────────── SUCCÈS */
+.sc-c { background-color: var(--gm-fill); }
+.sc-c.t4 { background: var(--gm-fill); }
+.sc-c.ready { --uk: #fff; --cs: 18px; border-color: #fff; box-shadow: none; }
+.sc-cos, .sc-pr, .sc-frl li { border-radius: var(--r-ctl); }
+.sc-primes { background-color: var(--gm-fill); }
+
+/* ───────────── COLLECTION */
+.progress { background-color: var(--gm-fill); }
+.album { border-radius: var(--gm-r); background: var(--gm-fill); border-color: var(--gm-line); }
+.album:not(:disabled):hover { transform: none; border-color: var(--gm-line-2); box-shadow: none; }
+.al-fam-n, .al-soon { border-radius: var(--r-ctl); }
+.al-name { font: 600 14px var(--title); }
+.bd-card { background-color: var(--gm-fill); }
+.cards-bar, .tray { border-color: var(--gm-line-2); box-shadow: none; }
+
+/* ───────────── boutons ronds de fermeture / retour : touches carrées */
+.to-top, .ps-close, .pc-back, .bp-x, .msn-head .pop-x, .sc-recap-x, .ob-mh .ob-x, .sg-file-x, .pf-x, .trades.composing .tr-back { border-radius: var(--r-ctl); }
+.ob-mh .ob-x, .ps-close, .pc-back, .to-top { background: none; border: 1px solid var(--gm-line-2); box-shadow: none; }
+@media (hover: hover) { .ob-mh .ob-x:hover, .ps-close:hover, .pc-back:hover, .to-top:hover { border-color: #fff; background: rgba(255, 255, 255, 0.04); } }
+
+/* ───────────── fenêtres des échanges (annonce, offre, contre-proposition) */
+.ob-modal h3, .ob-modal h4 { font-family: var(--title); font-weight: 600; }
+.ob-mf { border-top: 1px solid var(--gm-line); background: none; }
+.ob-note-in, .lg-f input, .sv-field input, .sv-comment, .bd-name-f input, .pg-go input { background: none; border-color: var(--gm-line-2); font-family: var(--mono); }
+.ob-note-in:focus, .lg-f input:focus, .sv-field input:focus, .sv-comment:focus { border-color: #fff; }
+
+/* ───────────── BOUTIQUE : colonne du booster, gros tirages, fiche */
+.ps-name, .pc-name { font-family: var(--title); font-weight: 600; letter-spacing: -0.01em; }
+.ps-bt { font: var(--gm-label); letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-3); }
+.ps-bt small { letter-spacing: 0.04em; text-transform: none; }
+.bp-item, .shop-home .bp-item { border-radius: var(--gm-r); }
+.bp-row { border-radius: var(--r-ctl); }
+.sleeve, .sleeve.special { border-radius: var(--gm-r); }
+.qty { background: none; border-color: var(--gm-line-2); padding: 3px; }
+.qty button { border-radius: var(--r-ctl); }
+.sealed-banner, .sum-warn { border-radius: var(--gm-r); }
+
+/* ───────────── connexion, accès V2, sondage, « qui a cette carte » */
+.lg-t, .lc-v2-t, .sv h2 { font-family: var(--title); font-weight: 600; letter-spacing: -0.01em; }
+.lg-tabs button { border-radius: var(--r-ctl); }
+.sv-chip, .sv-rword { border-radius: var(--r-ctl); }
+.canal-badge, .offline-pill, .maj-pill { border-radius: var(--r-ctl); box-shadow: none; }
+
+/* ───────────── menu du profil (son, vibrations, effets réduits) */
+.vol-pop, .vol-pop:has(.vol-pad), .vol-pop:has(.vol-hap) { border-radius: var(--gm-r); box-shadow: none; }
+.vol-hap, .vol-mute { border-radius: var(--r-ctl); background: none; border-color: var(--gm-line-2); }
+.me-menu .icon.mm-link, .me-menu .icon.msn-btn, .me-menu .icon.st-btn, .me-menu .icon.mm-reload { border-radius: var(--r-ctl); }
+
+/* ───────────── touches de couleur (retours Hugo 10/11 : « le noir et blanc est bien mieux, mais n'hésite pas à
+   rajouter des touches de couleur ») — la base reste noir / blanc ; chaque page a UNE couleur repère, prise dans le
+   code des raretés, posée seulement sur de petits signes : pastille de l'étiquette, filet de l'onglet actif, règle
+   graduée de l'en-tête. */
+body { --accent: #fff; }
+body[data-route='shop'] { --accent: #d9982a; }
+body[data-route='collection'] { --accent: #4c7cc2; }
+body[data-route='echanges'], body[data-route='marche'] { --accent: #6f9a74; }
+body[data-route='jeux'] { --accent: #b5344f; }
+body[data-route='classement'], body[data-route='succes'] { --accent: #d9982a; }
+body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
+.kicker::before, .pf-eyebrow::before, .ct-head .eyebrow::before { border-radius: 50%; border-color: var(--accent); background: var(--accent); }
+.ct-head::after, .rk-head::after, .sc-head::after, .am-head::after, .sg-head::after, .if-head::after, .tr-sec-h::after {
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent) 0 1px, transparent 1px 22px);
+}
+.nav-pill { box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* (10/11) profil : toute la collection d'un joueur (recherche + étoiles), mêmes grandes tuiles que la Collection */
+.pf-all-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 14px; }
+.pf-all-q { flex: 1 1 220px; max-width: 360px; }
+.pf-all-r { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-all-r .chip.on { border-color: var(--rc, #fff); color: #fff; }
+.pf-all { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.pf-all-more { display: block; margin: 16px auto 0; }
+@media (max-width: 860px) { .pf-all { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; } }
+
+/* ───────────── ÉCHANGES en trois onglets (retours Hugo 10/11) : Marché · Avec un ami · Offres — un seul écran à la fois */
+.trades > .tr-tabs.tr-tabs3 { display: inline-flex !important; grid-column: 1 / -1; justify-self: start; }
+.trades[data-v='market'] > :is(.ob, .tr-sec-direct, .tr-col) { display: none !important; }
+.trades[data-v='board'] > :is(.mk, .tr-sec-direct, .tr-col) { display: none !important; }
+.trades[data-v='direct'] > :is(.mk, .ob) { display: none !important; }
+.trades.composing > .tr-tabs.tr-tabs3 { display: none !important; }
+@media (max-width: 860px) { .trades > .tr-tabs.tr-tabs3 { display: flex !important; justify-self: stretch; } }
+
+/* ───────────── MARCHÉ (views/market.ts) : grandes cartes, un prix, un bouton */
+.trades > .mk { grid-column: 1 / -1; min-width: 0; }
+.mk-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; margin: 6px 0 18px; }
+.mk-intro p { margin: 8px 0 0; font-size: 13px; }
+.mk-acts { display: flex; align-items: center; gap: 12px; }
+.mk-c { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.mk-c .coin-ico { width: 15px; height: 15px; flex: none; }
+.mk-wallet { padding: 7px 12px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); font: 600 13px var(--mono); }
+.mk-h { margin: 0 0 12px; font: 600 15px/1.2 var(--title); letter-spacing: 0; }
+.mk-h small { margin-left: 6px; color: var(--ink-3); font: 500 11px var(--mono); }
+.mk-mine { margin-bottom: 26px; padding-bottom: 18px; border-bottom: 1px solid var(--gm-line); }
+.mk-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.mk-tools .search { flex: 1 1 220px; max-width: 380px; }
+.mk-stars { display: flex; flex-wrap: wrap; gap: 6px; }
+.mk-stars .chip.on { border-color: var(--rc); background: color-mix(in srgb, var(--rc) 22%, transparent); color: #fff; }
+.mk-sort { min-height: 38px; padding: 0 12px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: #000; color: var(--ink); font: 500 12px var(--mono); }
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 16px; }
+.mk-grid.mini { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.mk-item { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mk-meta { display: flex; flex-direction: column; gap: 3px; padding: 0 2px; }
+.mk-pr { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 600 16px var(--mono); }
+.mk-sub { color: var(--ink-3); font: 500 11px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-sub .stars { color: var(--rc); }
+.mk-tag { padding: 2px 7px; border-radius: var(--r-pill); font: 600 10.5px var(--mono); letter-spacing: 0.04em; border: 1px solid currentColor; }
+.mk-tag.low { color: #6f9a74; }
+.mk-tag.fair { color: var(--ink-3); }
+.mk-tag.up { color: #d9982a; }
+.mk-tag.high { color: #b5344f; }
+.mk-buy, .mk-cancel { width: 100%; min-height: 40px; }
+.mk-empty { padding: 40px 0; text-align: center; }
+.mk-rl { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; font: 500 12px var(--mono); color: var(--ink-2); }
+.mk-rl li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mk-rl li b { color: var(--ink); }
+.mk-rl li.in span { color: #6f9a74; }
+.mk-rl li.out span { color: var(--ink-3); }
+/* feuille « Vendre une carte » */
+.mk-sheet { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.72); }
+.mk-sheet[hidden] { display: none; }
+.mk-sheet-b { width: min(760px, 100%); max-height: min(86dvh, 820px); overflow: auto; padding: 18px; border: 1px solid var(--gm-line-2); border-radius: var(--r-box); background: #050505; }
+.mk-sh-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.mk-x { width: 36px; height: 36px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: none; color: var(--ink); }
+.mk-price { display: grid; grid-template-columns: minmax(140px, 210px) 1fr; gap: 20px; align-items: start; }
+.mk-pform { display: flex; flex-direction: column; gap: 12px; }
+.mk-pl { font: 600 14px var(--title); }
+.mk-hint { display: block; margin-top: 4px; color: var(--ink-3); font: 500 11.5px var(--mono); }
+.mk-prow { display: flex; align-items: center; gap: 8px; }
+.mk-pin { width: 140px; min-height: 44px; padding: 0 14px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: #000; color: #fff; font: 600 18px var(--mono); text-align: center; }
+.mk-step { min-width: 44px; min-height: 44px; padding: 0; font-size: 18px; }
+.mk-pbtns { display: flex; flex-wrap: wrap; gap: 10px; }
+.mk-note { margin: 0; font-size: 12px; }
+@media (max-width: 860px) {
+  .mk-grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 12px; }
+  .mk-acts { width: 100%; justify-content: space-between; }
+  .mk-sheet { place-items: end stretch; padding: 0; }
+  .mk-sheet-b { width: 100%; max-height: 92dvh; border-radius: var(--r-box) var(--r-box) 0 0; padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); }
+  .mk-price { grid-template-columns: 1fr; }
+  .mk-chosen { max-width: 170px; margin: 0 auto; }
+}
+
+/* ───────────── (version anglaise) pastille de langue FR | EN : collée au son, même hauteur, même style d'icône ;
+   Inter en capitales, la langue active en blanc, l'autre en gris (ni icône ni drapeau) ───────────── */
+.me .icon.lang-sw { display: grid; place-items: center; height: 27px; min-width: 27px; padding: 0 7px; color: var(--ink-3); transition: background-color var(--dur-rapide), transform var(--dur-rapide), color var(--dur-rapide); }
+.me .lang-sw .ls-p { display: flex; align-items: center; gap: 3px; font: 600 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1; }
+.me .lang-sw .ls-p i { font-style: normal; opacity: 0.5; }
+.me .lang-sw .ls-p b { font-weight: 600; transition: color var(--dur-rapide); }
+.me .lang-sw .ls-p b.on { color: #fff; }
+.me .lang-sw:hover { color: var(--ink-2); }
+@media (max-width: 600px) {
+  .me .icon.lang-sw { height: 40px; min-width: 40px; padding: 0 8px; }
+  /* dans le menu du profil (téléphone) : une ligne comme Missions / Connexion, la pastille puis « Langue » */
+  .me-menu .icon.lang-sw { width: 100%; height: 46px; display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 0 12px; border-radius: var(--r-box); border: 0; background: rgba(255, 255, 255, 0.03); color: var(--ink-3); }
+  .me-menu .icon.lang-sw:active { background: rgba(255, 255, 255, 0.08); }
+  .me-menu .icon.lang-sw .mm-l { color: var(--ink); }
+  .me-menu .lang-sw .ls-p { font-size: 12px; }
+}
+
+/* ───────────── (version anglaise) les 6 textes posés par le CSS (content:) — en anglais quand <html lang="en"> ───────────── */
+:lang(en) .sleeve.special::before { content: 'SIGNATURE PACK'; }
+:lang(en) .sleeve.soon .sl-name::after { content: ' · soon'; }
+:lang(en) .cs.new::after { content: 'new'; }
+:lang(en) .me-menu .vol-pop::before { content: 'Sound'; }
+:lang(en) .pf-ghost.out::after { content: 'Remove'; }
+:lang(en) .df-p.df-win .df-pn::after { content: ' — winner'; }

@@ -1,8 +1,11 @@
 /**
  * NOM DU PACK THERMOFORMÉ (retours de Tom, 07/11) : plus d'encre noire plaquée sur le sachet — les lettres sont EN
- * RELIEF dans le film d'aluminium, comme moulées à chaud (épaules arrondies, même matière, même teinte). Les petits
- * REFLETS dessinés dans la police Matcha World (traits et points clairs sur les arrondis) sont COMBLÉS : la lettre est
- * lisse (ils ont été creusés en rainures un temps — `LABEL_RELIEF.groove` > 0 les remet).
+ * RELIEF dans le film d'aluminium, comme moulées à chaud (épaules arrondies, même matière, même teinte).
+ * (retours Hugo 10/11) retour à MATCHA WORLD (la police ronde d'origine), réglages de la V1 ci-dessous.
+ * (V2, 08/11, abandonné) Police Atsuka Montreal graissée : pas de reflets dessinés, pleins ≈ 12 % de la taille, déliés ≈ 5 %
+ * → `highlightMax` 0 (aucun trou comblé : la boucle de la volute est une vraie contre-forme) et épaule un peu plus
+ * étroite pour que les déliés montent presque au plateau. Du temps de Matcha World, les petits REFLETS dessinés
+ * dans la police étaient comblés (ou creusés en rainures — `groove` > 0, avec `highlightMax` 0,04).
  *
  * Dans la police, ces reflets sont des TROUS fins à l'intérieur des lettres (comme les contre-formes de « O », « A »,
  * « P »… mais minces) : on rastérise le texte, on repère les trous fermés, et on les trie par épaisseur — un trou dont
@@ -17,11 +20,11 @@
 export const LABEL_RELIEF = {
   /** sur-échantillonnage de la rastérisation (les reflets font ~2,5 % de la taille de police) */
   ss: 2,
-  /** rayon de l'épaule arrondie (le film épouse le moule sur cette largeur) */
+  /** rayon de l'épaule arrondie (le film épouse le moule sur cette largeur) — (retours Hugo 10/11) Matcha World : 0,05 */
   shoulder: 0.05,
   /** hauteur du plateau, en fraction du rayon d’épaule (0,7 → mur à ≈ 40°, plateau net) */
   height: 0.7,
-  /** cercle inscrit maximal d'un trou pour être un REFLET (sinon : contre-forme) */
+  /** cercle inscrit maximal d'un trou pour être un REFLET (sinon : contre-forme) — Matcha World : ses reflets sont comblés */
   highlightMax: 0.04,
   /**
    * profondeur des rainures des reflets, en fraction du plateau — (07/11, retours de Tom) 0 : plus de reflets gravés,

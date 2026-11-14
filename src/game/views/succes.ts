@@ -1,3 +1,7 @@
+import '../../core/i18n/fr/game.views.succes'; // (textes de ce module, version anglaise)
+import { locale, t, type MsgKey, t as tr } from '../../core/i18n';
+/** (version anglaise) genre de cosmétique affiché (« Cadre » → « Frame ») ; le genre lui-même reste l'identifiant français */
+const kindLabel = (k: string) => t(`cos.kind.${k}` as MsgKey);
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, type Achievement, type AchievementLadder, type AchievementStats } from '../../core/economy';
@@ -30,17 +34,17 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
   el.innerHTML = `
     <div class="sc-wrap">
       <header class="sc-head">
-        <div><span class="kicker">SUCCÈS</span><h1>Tes succès</h1>
-        <p class="muted">Chaque palier donne UNE récompense : des pièces (et des boosters), ou un titre, un badge, un cadre ou une vitrine pour ton profil. Rien ne s’achète : tout se gagne en jouant.</p></div>
+        <div><span class="kicker">${t('sc.kicker')}</span><h1>${t('sc.title')}</h1>
+        <p class="muted">${t('sc.intro')}</p></div>
         <div class="sc-score"></div>
       </header>
       <div class="sc-bar">
-        <div class="seg sc-who" aria-label="Voir"><button data-w="me" class="on" aria-pressed="true">Moi</button><button data-w="friends" aria-pressed="false">Amis</button></div>
-        <div class="seg sc-filters" aria-label="Filtrer les succès"><button data-f="all" class="on" aria-pressed="true">Tous</button><button data-f="ready" aria-pressed="false">À encaisser</button><button data-f="got" aria-pressed="false">Obtenus</button><button data-f="todo" aria-pressed="false">En cours</button></div>
+        <div class="seg sc-who" aria-label="${t('sc.see')}"><button data-w="me" class="on" aria-pressed="true">${t('sc.me')}</button><button data-w="friends" aria-pressed="false">${t('nav.friends.aria')}</button></div>
+        <div class="seg sc-filters" aria-label="${t('sc.filterA')}"><button data-f="all" class="on" aria-pressed="true">${t('sc.all')}</button><button data-f="ready" aria-pressed="false">${t('sc.toCollect')}</button><button data-f="got" aria-pressed="false">${t('sc.earned')}</button><button data-f="todo" aria-pressed="false">${t('sc.ongoing')}</button></div>
         <button class="btn-primary sc-claim" hidden></button>
       </div>
       <div class="sc-recap" role="status" hidden></div>
-      <section class="sc-primes" id="primes" aria-label="Primes de complétion"></section>
+      <section class="sc-primes" id="primes" aria-label="${t('sc.primesA')}"></section>
       <div class="sc-grid"></div>
     </div>`;
   const score = el.querySelector<HTMLElement>('.sc-score')!;
@@ -86,10 +90,14 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     try {
       const r = await busyButton(claimBtn, backend.eco.claimAchievements());
       shell.sfx.chime(4, 0.1);
-      toast(r.coins || r.packs ? `Succès : +${fmtCoins(r.coins)} pièces${r.packs ? ` et ${plural(r.packs, 'booster')}` : ''} !` : 'Succès encaissés !', 'ok');
-      const cos = ACHIEVEMENTS.filter((a) => before.has(a.id)).flatMap((a) => cosmeticsOf(a.id));
+      toast(r.coins || r.packs ? t('sc.toast', { coins: fmtCoins(r.coins), packs: r.packs ? t('sc.andPacks', { packs: plural(r.packs, 'booster') }) : '' }) : t('sc.collected'), 'ok');
+      const all = ACHIEVEMENTS.filter((a) => before.has(a.id)).flatMap((a) => cosmeticsOf(a.id));
+      // (11/11) une animation d'ouverture débloquée se choisit dans la fiche d'un booster, pas sur le profil
+      const opens = all.filter((c) => c.kind === 'Ouverture'); // i18n-ok
+      const cos = all.filter((c) => c.kind !== 'Ouverture'); // i18n-ok
+      if (opens.length) toast(t('sc.openUnlocked', { list: opens.map((c) => `« ${c.c.label} »`).join(', ') }), 'ok');
       recap.hidden = false;
-      recap.innerHTML = `<b>${r.coins ? `+${fmtCoins(r.coins)} ${COIN_ICON}` : ''}${r.packs ? `${r.coins ? ' · ' : ''}+${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>Débloqué pour ton profil : ${cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${c.kind} « ${esc(c.c.label)} »`).join(', ')}</span><a class="btn-primary sc-equip" href="#/profil">Équiper →</a>` : '<span>Pièces ajoutées à ta bourse.</span>'}<button class="sc-recap-x" aria-label="Fermer">✕</button>`;
+      recap.innerHTML = `<b>${r.coins ? `+${fmtCoins(r.coins)} ${COIN_ICON}` : ''}${r.packs ? `${r.coins ? ' · ' : ''}+${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>${t('sc.unlockedFor', { list: cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${kindLabel(c.kind)} « ${esc(c.c.label)} »`).join(', ') })}</span><a class="btn-primary sc-equip" href="#/profil">${t('sc.equip')}</a>` : '<span>' + t('sc.coinsAdded') + '</span>'}<button class="sc-recap-x" aria-label="${t('common.close')}">✕</button>`; // i18n-ok
       recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem('bebou.openCosm', '1'));
       recap.querySelector('.sc-recap-x')!.addEventListener('click', () => (recap.hidden = true));
     } catch (e) {
@@ -101,14 +109,14 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
    * (retours live 6, C10) UNE récompense par palier, en une puce sur une ligne : les pièces (+ boosters) OU le
    * cosmétique (titre, badge, cadre, vitrine) — plus le pavé bannière + cadre + titre + badge + couleur + vitrine.
    */
-  const KIND_CLS: Record<string, string> = { Bannière: 'banner', Cadre: 'frame', Titre: 'title', Couleur: 'frame', Vitrine: 'banner', Badge: 'badge' };
+  const KIND_CLS: Record<string, string> = { Bannière: 'banner', Cadre: 'frame', Titre: 'title', Couleur: 'frame', Vitrine: 'banner', Badge: 'badge', Ouverture: 'open' };
   const rewardHtml = (a: Achievement, ok = false) => {
     if (a.cos) {
       const r = cosmeticsOf(a.id)[0];
       if (!r) return '';
-      const sw = r.kind === 'Cadre' || r.kind === 'Vitrine' || r.kind === 'Bannière' ? ` style="--sw:${r.c.css}"` : '';
-      const ico = r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Titre' ? '«' : '<i></i>';
-      return `<span class="sc-cos${ok ? ' ok' : ''} k-${KIND_CLS[r.kind]}${r.c.anim ? ' anim' : ''}"${sw} title="${esc(`${r.kind} « ${r.c.label} »`)}">${ico} ${r.kind === 'Titre' ? '' : `${r.kind} · `}${esc(r.c.label)}${r.kind === 'Titre' ? ' »' : ''}</span>`;
+      const sw = r.kind === 'Cadre' || r.kind === 'Vitrine' || r.kind === 'Bannière' ? ` style="--sw:${r.c.css}"` : ''; // i18n-ok
+      const ico = r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Titre' ? '«' : '<i></i>'; // i18n-ok
+      return `<span class="sc-cos${ok ? ' ok' : ''} k-${KIND_CLS[r.kind]}${r.c.anim ? ' anim' : ''}"${sw} title="${esc(`${kindLabel(r.kind)} « ${r.c.label} »`)}">${ico} ${r.kind === 'Titre' ? '' : `${kindLabel(r.kind)} · `}${esc(r.c.label)}${r.kind === 'Titre' ? ' »' : ''}</span>`; // i18n-ok
     }
     const packs = achievementPacks(a);
     return `<span class="sc-coins">${COIN_ICON}${fmtCoins(achievementReward(a))}${packs ? ` <span class="sc-pk">+${plural(packs, 'booster')}</span>` : ''}</span>`;
@@ -125,11 +133,11 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const c = h('div', `sc-c sc-ladder${all ? ' got' : ready ? ' ready' : ''}`);
     const pct = next ? Math.min(1, (cur - prevT) / Math.max(1, next.target - prevT)) : 1;
     c.innerHTML = `
-      <div class="sc-top"><span class="sc-tier">Palier ${lvl}/${l.steps.length}</span>${next ? rewardHtml(next) : '<span class="sc-n">tous les paliers ✓</span>'}</div>
+      <div class="sc-top"><span class="sc-tier">${t('sc.tier', { n: lvl, total: l.steps.length })}</span>${next ? rewardHtml(next) : '<span class="sc-n">' + t('sc.allTiers') + '</span>'}</div>
       <b class="sc-name">${all ? '✓ ' : ''}${esc(l.label)}</b>
-      <span class="sc-how">${next ? `Prochain : ${esc(next.label)} — ${esc(next.how)}` : `Dernier palier : ${esc(l.steps[l.steps.length - 1].label)}`}</span>
+      <span class="sc-how">${next ? t('sc.next', { label: esc(next.label), how: esc(next.how) }) : t('sc.lastTier', { label: esc(l.steps[l.steps.length - 1].label) })}</span>
       <i class="sc-pb"><i style="width:${(pct * 100).toFixed(1)}%"></i></i>
-      <em class="sc-n">${ready ? 'palier atteint · prime à encaisser' : next ? `${fmtCoins(Math.min(cur, next.target))} / ${fmtCoins(next.target)}` : `${fmtCoins(cur)}`}</em>
+      <em class="sc-n">${ready ? t('sc.tierReady') : next ? `${fmtCoins(Math.min(cur, next.target))} / ${fmtCoins(next.target)}` : `${fmtCoins(cur)}`}</em>
       <ol class="sc-steps">${l.steps
         // (retours 05/11) paliers révélés UN PAR UN : ceux atteints + le prochain ; les suivants restent cachés
         // (seuil, nom et récompenses compris) jusqu'à ce que le précédent soit atteint
@@ -139,22 +147,22 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
           const rd = claimable.has(a.id);
           return `<li class="${got ? 'got' : rd ? 'ready' : achievementDone(a, st) ? 'ready' : ''}"><span class="sc-st-t">${got ? '✓' : rd ? '★' : '○'} ${fmtCoins(a.target)}</span><span class="sc-st-l">${esc(a.label)}</span>${rewardHtml(a, got || rd)}</li>`;
         })
-        .join('')}${l.steps.length > lvl + 1 ? `<li class="sc-hidden"><span class="sc-st-t">🔒</span><span class="sc-st-l">${l.steps.length - lvl - 1 > 1 ? `${l.steps.length - lvl - 1} paliers à découvrir` : '1 palier à découvrir'}</span><span class="sc-st-h">se dévoile au palier précédent</span></li>` : ''}</ol>`;
+        .join('')}${l.steps.length > lvl + 1 ? `<li class="sc-hidden"><span class="sc-st-t">🔒</span><span class="sc-st-l">${l.steps.length - lvl - 1 > 1 ? t('sc.toDiscover', { n: l.steps.length - lvl - 1 }) : t('sc.oneToDiscover')}</span><span class="sc-st-h">${t('sc.reveal')}</span></li>` : ''}</ol>`;
     return c;
   }
 
   /** Bascule « Amis » : par mécanique, le classement de mes amis (et moi), le plus avancé en tête. */
   function friendsCard(l: AchievementLadder, list: FriendAch[]): HTMLElement {
-    const rows = [...list].sort((a, b) => (b.stats[l.stat] ?? 0) - (a.stats[l.stat] ?? 0) || a.name.localeCompare(b.name, 'fr'));
+    const rows = [...list].sort((a, b) => (b.stats[l.stat] ?? 0) - (a.stats[l.stat] ?? 0) || a.name.localeCompare(b.name, locale()));
     const c = h('div', 'sc-c sc-ladder sc-fr');
     const top = rows[0];
-    c.innerHTML = `<div class="sc-top"><span class="sc-tier">${l.steps.length} paliers</span>${top && (top.stats[l.stat] ?? 0) > 0 ? `<span class="sc-lead">👑 ${esc(top.me ? 'Toi' : top.name)}</span>` : ''}</div>
+    c.innerHTML = `<div class="sc-top"><span class="sc-tier">${l.steps.length} paliers</span>${top && (top.stats[l.stat] ?? 0) > 0 ? `<span class="sc-lead">👑 ${esc(top.me ? t('chat.me') : top.name)}</span>` : ''}</div>
       <b class="sc-name">${esc(l.label)}</b>
       <ol class="sc-frl">${rows
         .map((f, i) => {
           const v = f.stats[l.stat] ?? 0;
           const lv = ladderLevel(l, f.stats);
-          return `<li class="${f.me ? 'me' : ''}"><span class="sc-fr-i">${i + 1}</span><span class="sc-fr-n">${esc(f.me ? 'Toi' : f.name)}</span><span class="sc-fr-l">palier ${lv}/${l.steps.length}</span><b>${fmtCoins(v)}</b></li>`;
+          return `<li class="${f.me ? 'me' : ''}"><span class="sc-fr-i">${i + 1}</span><span class="sc-fr-n">${esc(f.me ? t('chat.me') : f.name)}</span><span class="sc-fr-l">${tr('sc.tierLow', { n: lv, total: l.steps.length })}</span><b>${fmtCoins(v)}</b></li>`;
         })
         .join('')}</ol>`;
     return c;
@@ -168,15 +176,15 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const total = s.completions.reduce((a, c) => a + c.reward, 0);
     const done = s.econ.completions.length;
     primesEl.classList.toggle('ready', s.completions.length > 0);
-    primesEl.innerHTML = `<div class="sc-pr-h"><b>Primes de complétion</b><span class="muted">5 pièces × cartes de chaque album, groupe ou thème bouclé${done ? ` · ${plural(done, 'prime déjà encaissée', 'primes déjà encaissées')}` : ''}</span>${s.completions.length ? `<button class="btn-primary sc-pr-claim"${isPending('claim') ? ' disabled' : ''}>Encaisser · +${fmtCoins(total)} ${COIN_ICON}</button>` : ''}</div>
-      ${s.completions.length ? `<div class="sc-pr-list">${s.completions.map((c) => `<span class="sc-pr">${esc(c.label)} · ${c.size} cartes · <b>+${fmtCoins(c.reward)}</b></span>`).join('')}</div>` : '<div class="muted sc-pr-none">Rien à encaisser pour l’instant : boucle un album dans ta <a href="#/collection/albums">collection</a> (famille de 30 cartes = 150 pièces).</div>'}`;
+    primesEl.innerHTML = `<div class="sc-pr-h"><b>${t('sc.primesA')}</b><span class="muted">${t('sc.primesD', { done: done ? ` · ${plural(done, 'prime déjà encaissée', 'primes déjà encaissées')}` : '' })}</span>${s.completions.length ? `<button class="btn-primary sc-pr-claim"${isPending('claim') ? ' disabled' : ''}>Encaisser · +${fmtCoins(total)} ${COIN_ICON}</button>` : ''}</div> <!-- i18n-ok -->
+      ${s.completions.length ? `<div class="sc-pr-list">${s.completions.map((c) => `<span class="sc-pr">${t('sc.primeRow', { label: esc(c.label), n: c.size })} <b>+${fmtCoins(c.reward)}</b></span>`).join('')}</div>` : `<div class="muted sc-pr-none">${t('sc.nothingAlbum')}</div>`}`;
     primesEl.querySelector<HTMLElement>('.sc-pr-claim')?.addEventListener('click', (e) => {
       const btn = e.currentTarget as HTMLElement;
       void guarded('claim', btn, async () => {
         try {
           const r = await busyButton(btn, backend.eco.claimCompletions());
           shell.sfx.chime(6, 0.12);
-          toast(`Complétion : +${fmtCoins(r.coins)} pièces (${r.sets.map((x) => x.label).join(', ')})`, 'ok');
+          toast(t('sc.compToast', { coins: fmtCoins(r.coins), sets: r.sets.map((x) => x.label).join(', ') }), 'ok');
         } catch (err) {
           toast(errMsg(err), 'err');
         }
@@ -190,7 +198,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     if (!s) {
       score.innerHTML = '';
       claimBtn.hidden = true;
-      grid.innerHTML = `<div class="muted">${backend.state.mode === 'online' && !backend.state.user ? 'Connecte-toi pour voir tes succès.' : 'Chargement…'}</div>`;
+      grid.innerHTML = `<div class="muted">${backend.state.mode === 'online' && !backend.state.user ? t('sc.login') : t('common.loading2')}</div>`;
       return;
     }
     const claimed = new Set(s.econ.achievements);
@@ -199,16 +207,16 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const pending = ACHIEVEMENTS.filter((a) => claimable.has(a.id));
     const total = pending.reduce((n, a) => n + achievementReward(a), 0);
     const packsN = pending.reduce((n, a) => n + achievementPacks(a), 0);
-    score.innerHTML = `<div class="sc-big"><b>${done}</b><span>/ ${ACHIEVEMENTS.length}</span></div><div class="muted">paliers de succès débloqués</div><i class="sc-pb big"><i style="width:${((done / ACHIEVEMENTS.length) * 100).toFixed(1)}%"></i></i>`;
+    score.innerHTML = `<div class="sc-big"><b>${done}</b><span>/ ${ACHIEVEMENTS.length}</span></div><div class="muted">${t('sc.unlockedTiers')}</div><i class="sc-pb big"><i style="width:${((done / ACHIEVEMENTS.length) * 100).toFixed(1)}%"></i></i>`;
     claimBtn.hidden = !pending.length;
-    claimBtn.innerHTML = `Encaisser ${plural(pending.length, 'palier', 'paliers')}${total ? ` · +${fmtCoins(total)} ${COIN_ICON}` : ''}${packsN ? ` + ${plural(packsN, 'booster')}` : ''}`;
+    claimBtn.innerHTML = t('sc.claim', { tiers: plural(pending.length, 'palier', 'paliers'), coins: total ? ` · +${fmtCoins(total)} ${COIN_ICON}` : '', packs: packsN ? ` + ${plural(packsN, 'booster')}` : '' });
     if (who === 'friends') {
       if (!friends) {
-        grid.innerHTML = '<div class="muted">Chargement des succès de tes amis…</div>';
+        grid.innerHTML = '<div class="muted">' + t('sc.loadingFriends') + '</div>';
         return;
       }
       if (friends.length <= 1) {
-        grid.innerHTML = '<div class="muted">Ajoute des amis (onglet <a href="#/amis">Amis</a>) pour comparer vos succès.</div>';
+        grid.innerHTML = `<div class="muted">${t('sc.addFriends')}</div>`;
         return;
       }
       grid.replaceChildren(...ACHIEVEMENT_LADDERS.map((l) => friendsCard(l, friends!)));
@@ -229,7 +237,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     };
     list.sort((a, b) => rank(a) - rank(b) || prog(b) - prog(a));
     grid.replaceChildren(...list.map((l) => ladderCard(l, st, claimed, claimable)));
-    if (!list.length) grid.innerHTML = `<div class="muted">${filter === 'ready' ? 'Rien à encaisser pour l’instant.' : filter === 'got' ? 'Pas encore de succès obtenu : ouvre des boosters !' : 'Tout est fait. Chapeau.'}</div>`;
+    if (!list.length) grid.innerHTML = `<div class="muted">${filter === 'ready' ? t('sc.nothing') : filter === 'got' ? t('sc.noneYet') : t('sc.allDone')}</div>`;
   }
   backend.eco.onChange(() => el.isConnected && render());
   backend.onChange(() => el.isConnected && !backend.eco.snapshot && render());

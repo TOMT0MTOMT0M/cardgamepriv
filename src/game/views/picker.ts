@@ -1,3 +1,5 @@
+import { t as tr } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.picker'; // (textes de ce module, version anglaise)
 import type { GameBackend } from '../backend';
 import { cardKey, lockedCards } from '../backend';
 import { CARD_VALUE, cardsValue, fmtCoins, type StakeItem } from '../../core/economy';
@@ -5,6 +7,7 @@ import { catalogEntry } from '../../core/sets/themes';
 import { rarity, starCount, type RarityId } from '../../core/rarity';
 import { cardTile, esc, fold, h, popLayer, pushLayer } from '../ui';
 import { COIN_ICON } from './wallet';
+import { leave } from '../../core/morph';
 
 const RARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'secret'];
 
@@ -13,7 +16,7 @@ const RARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'my
  * échange en attente) ; une mise peut inclure le dernier exemplaire (c'est un pari : elle peut revenir).
  * `onlyDups` : ne proposer que les doublons (la forge).
  */
-export function pickCards(backend: GameBackend, current: StakeItem[], o: { title: string; hint?: string; onlyDups?: boolean; onlyRarity?: RarityId } = { title: 'Choisis tes cartes' }): Promise<StakeItem[] | null> {
+export function pickCards(backend: GameBackend, current: StakeItem[], o: { title: string; hint?: string; onlyDups?: boolean; onlyRarity?: RarityId } = { title: tr('pick.title') }): Promise<StakeItem[] | null> {
   return new Promise((resolve) => {
     const picked = new Map<string, StakeItem>(current.map((c) => [cardKey(c), { ...c }]));
     const locked = lockedCards(backend.state);
@@ -28,18 +31,18 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
     box.setAttribute('aria-modal', 'true');
     box.setAttribute('aria-label', o.title);
     const opener = document.activeElement as HTMLElement | null;
-    box.innerHTML = `<div class="pk-head"><b>${esc(o.title)}</b><button class="icon pk-x" aria-label="Fermer">✕</button></div>
+    box.innerHTML = `<div class="pk-head"><b>${esc(o.title)}</b><button class="icon pk-x" aria-label="${tr('common.close')}">✕</button></div>
       ${o.hint ? `<div class="muted">${esc(o.hint)}</div>` : ''}
-      <div class="pk-tools"><input type="search" class="pk-q" placeholder="Chercher une carte…"><div class="pk-r"></div></div>
+      <div class="pk-tools"><input type="search" class="pk-q" placeholder="${tr('pick.search')}"><div class="pk-r"></div></div>
       <div class="pk-grid"></div>
       <div class="pk-sel"></div>
-      <div class="pk-foot"><span class="pk-v"></span><button class="btn-ghost pk-clear">Vider</button><button class="btn-primary pk-ok">Valider</button></div>`;
+      <div class="pk-foot"><span class="pk-v"></span><button class="btn-ghost pk-clear">${tr('pick.clear')}</button><button class="btn-primary pk-ok">${tr('pick.ok')}</button></div>`;
     veil.append(box);
     document.body.append(veil);
     const grid = box.querySelector<HTMLElement>('.pk-grid')!;
     const sel = box.querySelector<HTMLElement>('.pk-sel')!;
     const rbar = box.querySelector<HTMLElement>('.pk-r')!;
-    rbar.innerHTML = `<button class="chip on" data-r="">Toutes</button>${RARS.filter((r) => rows.some((c) => c.rarity === r)).map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}">${r === 'secret' ? '✷' : `${starCount(r)}★`}</button>`).join('')}`;
+    rbar.innerHTML = `<button class="chip on" data-r="">${tr('pick.all')}</button>${RARS.filter((r) => rows.some((c) => c.rarity === r)).map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}">${r === 'secret' ? '✷' : `${starCount(r)}★`}</button>`).join('')}`;
     rbar.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-r]');
       if (!b) return;
@@ -47,9 +50,12 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
       rbar.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b));
       drawGrid();
     });
+    // (audit 12/11, S14 / A4-05) saisie temporisée : chaque frappe refiltrait, retriait et recréait jusqu'à 180 tuiles
+    let qT = 0;
     box.querySelector<HTMLInputElement>('.pk-q')!.addEventListener('input', (e) => {
       q = fold((e.target as HTMLInputElement).value.trim());
-      drawGrid();
+      clearTimeout(qT);
+      qT = window.setTimeout(() => box.isConnected && drawGrid(), 150); // (fenêtre refermée entre-temps : rien)
     });
 
     function drawGrid() {
@@ -60,7 +66,7 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
         .slice(0, 180);
       for (const c of list) {
         const left = free(c) - (picked.get(cardKey(c))?.count ?? 0);
-        const t = cardTile(c.cardId, c.rarity, { mini: true, count: left, label: left <= 0 ? 'misée' : `${CARD_VALUE[c.rarity]}` });
+        const t = cardTile(c.cardId, c.rarity, { mini: true, count: left, label: left <= 0 ? tr('pick.bet') : `${CARD_VALUE[c.rarity]}` });
         t.classList.toggle('gone', left <= 0);
         t.addEventListener('click', () => {
           if (left <= 0) return;
@@ -73,14 +79,14 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
         });
         grid.append(t);
       }
-      if (!list.length) grid.innerHTML = `<div class="muted">${rows.length ? 'Aucune carte ne correspond.' : o.onlyDups ? 'Aucun doublon libre.' : 'Aucune carte disponible.'}</div>`;
+      if (!list.length) grid.innerHTML = `<div class="muted">${rows.length ? tr('pick.noMatch') : o.onlyDups ? tr('pick.noDup') : tr('pick.none')}</div>`;
     }
     function drawSel() {
       const items = [...picked.values()].filter((p) => p.count > 0);
-      sel.innerHTML = items.length ? '' : '<span class="muted">Touche une carte pour l’ajouter ; touche-la ici pour la retirer.</span>';
+      sel.innerHTML = items.length ? '' : '<span class="muted">' + tr('pick.help') + '</span>';
       for (const p of items) {
         const t = cardTile(p.cardId, p.rarity, { mini: true, count: p.count });
-        t.title = 'Retirer un exemplaire';
+        t.title = tr('pick.removeOne');
         t.addEventListener('click', () => {
           p.count--;
           if (p.count <= 0) picked.delete(cardKey(p));
@@ -103,7 +109,7 @@ export function pickCards(backend: GameBackend, current: StakeItem[], o: { title
       done = true;
       popLayer(layer);
       window.removeEventListener('keydown', onKey, true);
-      veil.remove();
+      void leave(veil).then(() => veil.remove());
       if (opener?.isConnected) opener.focus({ preventScroll: true });
       resolve(v);
     };

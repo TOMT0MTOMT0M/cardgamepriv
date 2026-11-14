@@ -5,6 +5,7 @@ import type { DuelView, EcoBackend, EcoSnapshot, RoyaleView, RouletteView } from
 import type { WeeklyState } from '../core/weekly';
 import { achievementStats, claimableAchievements, claimableCompletions } from '../core/economy';
 import { statsFrom } from '../core/cosmetics';
+import { onlineJeux } from './ecoOnlineJeux';
 
 /** Économie + jeux en ligne (serveur Convex, temps réel). */
 export function createOnlineEco(): EcoBackend {
@@ -37,13 +38,24 @@ export function createOnlineEco(): EcoBackend {
   const start = () => {
     if (started || !net.state.configured) return;
     started = true;
-    net.watch(api.economy.state, {}, (s) => {
-      raw = s ?? null;
+    // (audit 12/11, A5-01) `net.watch` fige le jeton du moment : après une connexion par mot de passe (pas de
+    // rechargement de page), l'abonnement posé sans jeton renvoyait `null` pour toujours → pièces et pastilles vides.
+    // (audit 12/11, E1-08) l'économie arrive maintenant avec le joueur et ses missions (`session.get`, une requête) :
+    // le client réseau la tient à jour et se réabonne lui-même au changement de jeton
+    let epoch = net.tokenEpoch;
+    net.watchEco((s) => {
+      raw = s;
+      epoch = net.tokenEpoch;
       publish();
     });
     // la collection change (booster, échange, brûlage) : on recalcule les primes sans attendre le serveur
     net.onChange((st) => {
-      if (raw && st.collection !== rawColl) publish();
+      if (net.tokenEpoch !== epoch) {
+        // connexion / déconnexion : plus rien de l'ancien compte en attendant la réponse du nouveau
+        epoch = net.tokenEpoch;
+        raw = null;
+        publish();
+      } else if (raw && st.collection !== rawColl) publish();
     });
   };
 
@@ -60,6 +72,7 @@ export function createOnlineEco(): EcoBackend {
   const royale = (r: Doc<'royales'>): RoyaleView => ({ id: r._id, creatorId: r.creatorId, status: r.status, ...(r.packCount ? { packCount: r.packCount } : {}), players: r.players, result: r.result, createdAt: r.createdAt, resolvedAt: r.resolvedAt });
 
   return {
+    ...onlineJeux(), // (V2, 11/11) défis entre amis + La Presse
     get snapshot() {
       return snapshot;
     },
@@ -76,7 +89,7 @@ export function createOnlineEco(): EcoBackend {
     claimCompletions: () => net.call(api.economy.claimCompletions, {}),
     claimAchievements: () => net.call(api.economy.claimAchievements, {}),
     friendsAchievements: async () => (await net.ask(api.economy.friendsAchievements, {})) ?? [],
-    coinHistory: async () => (await net.ask(api.economy.history, { limit: 60 })).map((t) => ({ id: t._id, amount: t.amount, reason: t.reason, label: t.label, createdAt: t.createdAt })),
+    coinHistory: async () => (await net.ask(api.economy.history, { limit: 60 })).map((t) => ({ id: t._id, amount: t.amount, reason: t.reason, label: t.label, labelKey: t.labelKey, labelParams: t.labelParams, createdAt: t.createdAt })),
     watchLobby: (cb) => net.watch(api.games.lobby, {}, (l) => cb(l ? { duels: l.duels.map(duel), royales: l.royales.map(royale), me: l.me } : null)),
     watchDuel: (id, cb) => net.watch(api.games.duel, { duelId: id as Id<'duels'> }, (d) => cb(d ? duel(d) : null), false),
     watchRoyale: (id, cb) => net.watch(api.games.royale, { royaleId: id as Id<'royales'> }, (r) => cb(r ? royale(r) : null), false),

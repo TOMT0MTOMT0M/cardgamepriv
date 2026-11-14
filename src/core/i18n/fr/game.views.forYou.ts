@@ -1,0 +1,32 @@
+/** Textes de src/game/views/forYou.ts : chargés avec lui (module à la demande), enregistrés par addFr. */
+import { addFr } from '../../i18n';
+
+export const fr = {
+  'fy.intro': 'Tes envies chez ceux qui en ont un doublon, contre un de tes doublons de même étoile qui leur manque. Un toucher pour demander.',
+  'fy.refreshA': 'Chercher de nouveau',
+  'fy.refresh': 'Actualiser',
+  'fy.theyWant': 'Ils cherchent tes doublons',
+  'fy.hasDup': 'a un doublon de ta carte voulue',
+  'fy.youGet': 'Tu reçois',
+  'fy.inWishes': 'dans tes envies',
+  'fy.youGive': 'Tu donnes',
+  'fy.theyWantIt': 'il la cherche',
+  'fy.theyLack': 'elle lui manque',
+  'fy.giveOther': 'Donner une autre carte',
+  'fy.asked': 'Demandé',
+  'fy.ask': 'Demander',
+  'fy.whatGive': 'Ce que tu donnes',
+  'fy.oneOfYours': 'Un de tes doublons {stars} qui manque à {name}',
+  'fy.noOther': 'Aucune autre carte.',
+  'fy.none': 'Aucun échange prêt pour l’instant : personne n’a de doublon libre de tes envies, ou tu n’as pas de doublon de même étoile à donner en échange.',
+  'fy.howTo': 'Marque les cartes que tu veux (♥ Je la veux, dans la Collection ou sous une carte cherchée) : on trouve pour toi qui en a un doublon, et contre quoi.',
+  'fy.search': 'Chercher une carte',
+  'fy.myColl': 'Ma collection',
+  'fy.seeks': '{name} la cherche · {stars}',
+  'fy.offered': 'Proposé',
+  'fy.offer': 'Proposer',
+  'fy.ready': { one: '{n} échange prêt · mis à jour {ago}', other: '{n} échanges prêts · mis à jour {ago}' },
+  'fy.online': 'en ligne',
+  'fy.offline': 'hors ligne',
+} as const satisfies Record<string, string | { one?: string; other: string }>;
+addFr(fr);

@@ -35,8 +35,9 @@ BASE = 7708
 # (11/11) Patch-sport-v2-tri.xlsx : nouveau tri des 7 708 cartes de base (« Tri-etoiles-sport_2.xlsx ») — 293 cartes changent
 # d'étoiles ; les 4 promotions 6★ de Patch-sport-v1 (Dupont, Inoue, Nakamura, Pogačar) suivent aussi le nouveau tri. Cartes déjà tombées :
 # migrations:resyncRarities + resyncRaritiesOpen à la mise en ligne.
-PATCHES = ['Patch-sport-v1.xlsx', 'Patch-sport-v2-tri.xlsx']
-TOTAL = 7986
+# (11/11) Patch-sport-v3-ajouts.xlsx : rééquilibrage (6★ ≈ 5 %) — 45 joueurs de Ligue 1 en 1★–3★ (N° 7987 → 8031)
+PATCHES = ['Patch-sport-v1.xlsx', 'Patch-sport-v2-tri.xlsx', 'Patch-sport-v3-ajouts.xlsx']
+TOTAL = 8031
 
 # groupe d'affichage → (libellé, sous-thèmes dans l'ordre d'affichage). Chaque sous-thème reste un vrai sous-thème
 # (filtres, contrats, libellé imprimé en grand sur la carte) ; le groupe ne sert qu'à l'affichage (boutique, albums).

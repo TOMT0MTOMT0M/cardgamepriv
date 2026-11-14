@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ConvexClient } from 'convex/browser';
 import type { SurveyAnswer } from '../survey';
 import type { FunctionReference } from 'convex/server';
@@ -6,6 +7,11 @@ import type { Doc, Id } from '../../../convex/_generated/dataModel';
 import type { RarityId } from '../rarity';
 import type { MissionsState } from '../missions';
 import type { StreakState } from '../streak';
+import { INV_REBASE_ROWS, InvMirror } from './invDiff';
+import { clearInv, invKeyOf, loadInv, saveInv } from './invStore';
+
+/** réponse de `economy.state` */
+export type EcoRaw = NonNullable<(typeof api.economy.state)['_returnType']>;
 
 const LS_SESSION_TOKEN = 'cardlab.session_token';
 /** page (hash compris) d'où l'on part se connecter : le serveur écrase le hash au retour de Discord */
@@ -14,16 +20,16 @@ const SS_RETURN_HASH = 'bebou.returnHash';
 const SERVER_DOWN_MS = 8000;
 
 /** Codes d'erreur du retour Discord (convex/http.ts) → phrases. */
-const AUTH_ERRORS: Record<string, string> = {
-  not_in_discord_server: 'Ton compte Discord n’est pas sur le serveur des potes : demande une invitation, puis reconnecte-toi.',
-  token_exchange_failed: 'Discord n’a pas confirmé la connexion. Réessaie.',
-  user_fetch_failed: 'Discord n’a pas répondu. Réessaie dans un instant.',
-  guild_check_failed: 'Impossible de vérifier ton serveur Discord. Réessaie.',
-  missing_code: 'Connexion annulée.',
-};
-export const SESSION_EXPIRED = 'Ta session a expiré : reconnecte-toi.';
+const AUTH_ERRORS = (): Record<string, string> => ({
+  not_in_discord_server: t('auth.notInServer'),
+  token_exchange_failed: t('auth.tokenFailed'),
+  user_fetch_failed: t('auth.userFailed'),
+  guild_check_failed: t('auth.guildFailed'),
+  missing_code: t('auth.cancelled'),
+});
+export const SESSION_EXPIRED = () => t('auth.expired');
 /** (ouverture 07/11) la saison de test a été remise à zéro : l'ancien compte n'existe plus */
-export const NEW_SEASON = 'Nouvelle saison : les compteurs sont remis à zéro, crée ton compte pour jouer.';
+export const NEW_SEASON = () => t('auth.newSeason');
 /** clés du stockage local liées à la progression : vidées après une remise à zéro (les réglages restent) */
 const SEASON_KEYS = ['bebou.vues.v1', 'bebou.cosm.seen', 'bebou.roueVue', 'bebou.booster', 'bebou.qty'];
 const LS_EPOCH = 'bebou.saison';
@@ -48,6 +54,8 @@ export interface MeProfile {
   pityCount?: number;
   /** envies (ids de cartes) */
   wishlist?: string[];
+  /** (refonte des échanges 11/11) cartes protégées */
+  tradeProtected?: string[];
   /** série de connexion (src/core/streak.ts) */
   streak?: StreakState | null;
   streakClaimable?: boolean;
@@ -59,6 +67,17 @@ export interface MeProfile {
   pwAccount?: boolean;
   /** (ouverture 07/11) visite guidée automatique déjà jouée */
   guideSeen?: boolean;
+  /** (13/11) tour des nouveautés V2 déjà joué ; testeur du lien V2 */
+  v2TourSeen?: boolean;
+  tester?: boolean;
+  /** (V2, bulles) derniers événements Jeux / parrainage (game/navDots.ts) */
+  gamesNoticeAt?: number;
+  referralNoticeAt?: number;
+  /** (11/11) animation d'ouverture choisie ; absente : la déchirure */
+  openingStyle?: string;
+  /** (version anglaise) langue du compte ; `langSet` : choisie à la main (reprise sur un nouvel appareil) */
+  lang?: 'fr' | 'en';
+  langSet?: boolean;
 }
 
 /** (ouverture 07/11, convex/launch.ts) heure d'ouverture, dernière remise à zéro, code du club demandé à l'inscription */
@@ -77,6 +96,8 @@ export interface FriendPresence {
   online: boolean;
   statusText?: string;
   lastSeenAt: number;
+  /** âge de la dernière visite à l'horloge du serveur, au moment du calcul (absent : serveur d'avant le 12/11) */
+  seenAgo?: number;
 }
 
 export interface TradeItem {
@@ -90,6 +111,8 @@ export type TradeDoc = Doc<'trades'> & { fromName: string; toName: string };
 export interface PackRequestArgs {
   packKind: 'theme' | 'bebou';
   themeId?: string;
+  /** (11/11) booster du moment */
+  eventId?: Id<'packEvents'>;
 }
 
 export interface NetState {
@@ -139,6 +162,8 @@ type Listener = (state: NetState) => void;
 /** Profil sans les champs qui changent à chaque battement de cœur sans rien changer à l'écran. */
 const userSig = (u: MeProfile | null) => (u ? JSON.stringify({ ...u, nextDailyClaimAt: 0 }) : '');
 /** Amis sans `lastSeenAt` (change à chaque battement) ni l'ordre qui en découle. */
+/** « en ligne » = vu depuis moins de 6 min (même fenêtre que convex/users.ts, ONLINE_WINDOW_MS) */
+const ONLINE_WINDOW_MS = 6 * 60 * 1000;
 const friendsSig = (fs: FriendPresence[]) =>
   fs
     .map((f) => JSON.stringify([f._id, f.displayName, f.username, f.avatarUrl ?? '', f.totalPacksOpened, f.online, f.statusText ?? '']))
@@ -150,6 +175,10 @@ const friendsSig = (fs: FriendPresence[]) =>
  * Keeps collection, friend presence, live pull feed, and pre-rolled ("sealed")
  * boosters in local memory so the Three.js WebGPU loop runs with 0ms network wait.
  */
+/** nombre d'émissions réellement faites (mesure : `window.__netEmits()` avec ?diag) */
+let emitCount = 0;
+if (typeof window !== 'undefined') (window as unknown as { __netEmits?: () => number }).__netEmits = () => emitCount;
+
 class GameNetClient {
   private client: ConvexClient | null = null;
   private sessionToken: string | null = null;
@@ -158,6 +187,16 @@ class GameNetClient {
   private feedWanted = false;
   /** abonné au fil dans la série d'abonnements en cours (remise à zéro par setupSubscriptions) */
   private feedOn = false;
+  /**
+   * (V2 fluidité, lot 5) liste du club (`users.friends`) : la requête la plus souvent relancée (elle relit tous les
+   * joueurs à chaque écriture sur n'importe lequel). Suivie en temps réel seulement sur les pages qui l'affichent
+   * (`watchMembers`) ; ailleurs, une lecture simple au démarrage suffit.
+   */
+  private membersWanted = false;
+  private membersOn = false;
+  /** abonnements coupés parce que l'onglet est caché depuis un moment (repris au retour) */
+  private paused = false;
+  private pauseTimer: number | null = null;
   private heartbeatTimer: number | null = null;
   private listeners = new Set<Listener>();
   /** ce qui compte pour l'affichage dans `user` / `friends` (comparé avant d'émettre) */
@@ -200,6 +239,7 @@ class GameNetClient {
     this.setupSubscriptions();
     this.startHeartbeat();
     this.watchConnection();
+    this.watchVisibility();
   }
 
   private downTimer: number | null = null;
@@ -249,6 +289,12 @@ class GameNetClient {
   }
 
   private saveStoredToken(token: string | null) {
+    if (token !== this.sessionToken) {
+      this.tokenEpoch++;
+      // (E1-08) plus rien de l'économie de l'ancien compte pour un abonné qui arriverait avant la réponse du nouveau
+      this.ecoRaw = null;
+      this.ecoKnown = false;
+    }
     this.sessionToken = token;
     try {
       if (token) localStorage.setItem(LS_SESSION_TOKEN, token);
@@ -280,7 +326,7 @@ class GameNetClient {
     } else {
       const err = decodeURIComponent(hash.slice('#auth_error='.length));
       // code technique → phrase (le code inconnu reste visible entre parenthèses, pour nous aider)
-      this.state.authError = AUTH_ERRORS[err] ?? `Connexion impossible (${err.slice(0, 60)}). Réessaie.`;
+      this.state.authError = AUTH_ERRORS()[err] ?? t('auth.failed', { err: err.slice(0, 60) });
     }
     history.replaceState(null, '', window.location.pathname + window.location.search + back);
   }
@@ -291,32 +337,84 @@ class GameNetClient {
     for (const unsub of this.unsubscribers) unsub();
     this.unsubscribers = [];
     this.feedOn = false;
+    this.membersOn = false;
+    const resuming = this.paused;
+    this.paused = false;
 
     const tokenArg: { sessionToken?: string } = this.sessionToken ? { sessionToken: this.sessionToken } : {};
 
-    // 1. Current user profile & pack balance
-    this.unsubscribers.push(
-      this.client.onUpdate(api.users.me, tokenArg, (me) => {
-        const first = !this.state.connected;
-        this.state.connected = true;
-        this.serverUp();
-        // jeton gardé mais le serveur ne le reconnaît plus (session de 30 jours expirée, déconnexion ailleurs) :
-        // on l'oublie, on le dit, et on se réabonne sans lui
-        let expired = false;
-        if (!me && tokenArg.sessionToken && this.sessionToken === tokenArg.sessionToken) {
-          expired = true;
-          this.saveStoredToken(null);
-          this.state.authError = this.seasonChanged ? NEW_SEASON : SESSION_EXPIRED;
-          queueMicrotask(() => this.setupSubscriptions());
-        }
-        const before = this.userSig;
-        this.state.user = me ?? null;
-        this.userSig = userSig(this.state.user);
-        // (propre battement de cœur : le document utilisateur change, `nextDailyClaimAt` = maintenant quand la réserve est
-        // pleine, mais rien de ce qu'on affiche → état tenu à jour sans réveiller tout le jeu, audit PERF2-08)
-        if (first || expired || this.userSig !== before) this.emit();
-      }),
-    );
+    // 1. Le joueur, son économie et ses missions — (audit 12/11, E1-08) UNE requête (`session.get`) au lieu de trois
+    // abonnements qui lisaient le même document joueur et repartaient tous les trois à chaque écriture dessus.
+    // Serveur sans cette requête (pas encore redéployé) : les trois anciennes, comme avant.
+    const gen = ++this.subGen;
+    const live = () => gen === this.subGen;
+    const onMe = (me: (typeof api.users.me)['_returnType']) => {
+      const first = !this.state.connected;
+      this.state.connected = true;
+      this.serverUp();
+      // jeton gardé mais le serveur ne le reconnaît plus (session de 30 jours expirée, déconnexion ailleurs) :
+      // on l'oublie, on le dit, et on se réabonne sans lui
+      let expired = false;
+      if (!me && tokenArg.sessionToken && this.sessionToken === tokenArg.sessionToken) {
+        expired = true;
+        this.saveStoredToken(null);
+        this.state.authError = this.seasonChanged ? NEW_SEASON() : SESSION_EXPIRED();
+        queueMicrotask(() => this.setupSubscriptions());
+      }
+      const before = this.userSig;
+      this.state.user = me ?? null;
+      this.userSig = userSig(this.state.user);
+      // (propre battement de cœur : le document utilisateur change, `nextDailyClaimAt` = maintenant quand la réserve est
+      // pleine, mais rien de ce qu'on affiche → état tenu à jour sans réveiller tout le jeu, audit PERF2-08)
+      if (first || expired || this.userSig !== before) this.emit();
+    };
+    // (la requête fusionnée répond dès que l'une des trois parties change : chaque partie n'est publiée que si ELLE a
+    // changé, comme quand chacune avait son abonnement — sinon tout le jeu se réveillait pour rien)
+    let missionsSig: string | null = null;
+    const onMissions = (m: (typeof api.missions.mine)['_returnType'], merged = false) => {
+      if (merged) {
+        const sig = JSON.stringify(m ?? null);
+        if (sig === missionsSig) return;
+        missionsSig = sig;
+      }
+      this.state.missions = (m as NetState['missions']) ?? null;
+      this.emit();
+    };
+    let ecoSig: string | null = null;
+    const onEco = (e: EcoRaw | null | undefined, merged = false) => {
+      if (merged) {
+        const sig = JSON.stringify(e ?? null);
+        if (this.ecoKnown && sig === ecoSig) return;
+        ecoSig = sig;
+      }
+      this.ecoRaw = e ?? null;
+      this.ecoKnown = true;
+      this.ecoCbs.forEach((cb) => cb(this.ecoRaw));
+    };
+    const hasToken = !!tokenArg.sessionToken;
+    const three = () => {
+      if (!live() || !this.client) return;
+      this.unsubscribers.push(this.client.onUpdate(api.users.me, tokenArg, onMe));
+      if (hasToken) this.unsubscribers.push(this.client.onUpdate(api.missions.mine, tokenArg, onMissions));
+      this.unsubscribers.push(this.client.onUpdate(api.economy.state, tokenArg, onEco));
+    };
+    {
+      const u = this.client.onUpdate(
+        api.session.get,
+        tokenArg,
+        (x) => {
+          if (!live()) return;
+          onMe(x?.me ?? null);
+          onMissions(x?.missions ?? null, true);
+          onEco(x?.eco ?? null, true);
+        },
+        () => {
+          u();
+          three();
+        },
+      );
+      this.unsubscribers.push(u);
+    }
 
     // 2. Pre-rolled sealed booster (0ms tear/light-leak ready in RAM)
     this.unsubscribers.push(
@@ -341,26 +439,13 @@ class GameNetClient {
       ),
     );
 
-    // 3. Player card inventory (instant BatchedMesh 019-binder loading)
-    this.unsubscribers.push(
-      this.client.onUpdate(api.inventory.myCollection, tokenArg, (cards) => {
-        this.state.collection = cards ?? [];
-        this.emit();
-      }),
-    );
+    // 3. Collection du joueur — (V2 fluidité) lue en entier une fois, puis suivie PAR DIFFÉRENCE (inventory.mineSince) :
+    // après un booster, ~5 lignes reçues au lieu de toute la collection. Reprise après pause : on repart de la copie.
+    this.subscribeInventory(tokenArg, resuming);
 
-    // 4. Online friends list (20 max)
-    this.unsubscribers.push(
-      this.client.onUpdate(api.users.friends, {}, (friends) => {
-        this.state.friends = friends ?? [];
-        // battement de cœur d'un ami (toutes les 35 s chacun) : seuls `lastSeenAt` et l'ordre bougent → pas d'émission
-        // (avant : tout l'état du jeu remappé et les signatures de collection recalculées ~toutes les 2 s à 20 amis)
-        const sig = friendsSig(this.state.friends);
-        if (sig === this.friendsSig) return;
-        this.friendsSig = sig;
-        this.emit();
-      }),
-    );
+    // 4. Liste du club : en temps réel seulement si une page l'affiche, sinon une lecture simple (lot 5)
+    if (this.membersWanted) this.subscribeMembers();
+    else void this.client.query(api.users.friends, {}).then((f) => !this.membersOn && this.applyMembers(f), () => undefined);
 
     // 5. Échanges en attente (reçus / envoyés)
     this.unsubscribers.push(
@@ -370,19 +455,15 @@ class GameNetClient {
       }),
     );
 
-    // 6 bis. Missions du jour
-    if (this.sessionToken)
-      this.unsubscribers.push(
-        this.client.onUpdate(api.missions.mine, tokenArg, (m) => {
-          this.state.missions = (m as NetState['missions']) ?? null;
-          this.emit();
-        }),
-      );
+    // 6 bis. Missions du jour : arrivent avec `session.get` (voir 1.)
 
     // 6 quater. Amis (lot A2) : battement de cœur d'un ami = `lastSeenAt` gardé à jour SANS émettre (la page Amis relit
     // l'état toutes les 30 s) ; on n'émet que si une demande, un ami ou un statut en ligne / hors ligne change
-    this.state.social = null;
-    this.socialSig = '';
+    // (reprise après une pause onglet caché : on garde l'affichage en place, la réponse le rafraîchit)
+    if (!resuming) {
+      this.state.social = null;
+      this.socialSig = '';
+    }
     if (this.sessionToken)
       this.unsubscribers.push(
         this.client.onUpdate(
@@ -448,6 +529,213 @@ class GameNetClient {
     );
   }
 
+  /** (audit 12/11, E1-13) liste du club telle que reçue, et l'instant local où chaque « en ligne » expire */
+  private membersRaw: FriendPresence[] = [];
+  private onlineUntil = new Map<string, number>();
+  private onlineTimer: number | null = null;
+
+  private applyMembers(friends: NetState['friends'] | null | undefined) {
+    // (audit 12/11, E1-13) AVANT : « en ligne » était figé à l'heure de la dernière exécution de la requête côté serveur,
+    // et ne retombait que si une écriture la relançait. MAINTENANT : le client le fait retomber lui-même, 6 min après
+    // la dernière visite (même fenêtre que le serveur). L'âge vient de l'horloge du serveur (`seenAgo`) : un téléphone
+    // mal réglé ne fausse rien.
+    this.membersRaw = friends ?? [];
+    const t0 = Date.now();
+    this.onlineUntil.clear();
+    for (const f of this.membersRaw) if (f.online) this.onlineUntil.set(f._id, t0 + Math.max(30_000, ONLINE_WINDOW_MS - (f.seenAgo ?? 0)));
+    if (this.onlineTimer === null) this.onlineTimer = window.setInterval(() => this.membersRaw.length && this.refreshOnline(), 30_000);
+    this.refreshOnline();
+  }
+
+  private refreshOnline() {
+    const now = Date.now();
+    this.state.friends = this.membersRaw.map((f) => (f.online && now >= (this.onlineUntil.get(f._id) ?? 0) ? { ...f, online: false } : f));
+    // battement de cœur d'un ami : seuls `lastSeenAt` et l'ordre bougent → pas d'émission
+    // (avant : tout l'état du jeu remappé et les signatures de collection recalculées ~toutes les 2 s à 20 amis)
+    const sig = friendsSig(this.state.friends);
+    if (sig === this.friendsSig) return;
+    this.friendsSig = sig;
+    this.emit();
+  }
+
+  /** série d'abonnements en cours (un repli demandé par une ancienne série est ignoré) */
+  private subGen = 0;
+  /** (audit 12/11, E1-08) économie reçue avec `session.get` (ou par `economy.state` en repli) */
+  private ecoRaw: EcoRaw | null = null;
+  private ecoKnown = false;
+  private ecoCbs = new Set<(e: EcoRaw | null) => void>();
+  /** Économie du joueur connecté (portefeuille, calendrier, missions de la semaine…), tenue à jour ; rend de quoi se désabonner. */
+  public watchEco(cb: (e: EcoRaw | null) => void): () => void {
+    this.ecoCbs.add(cb);
+    if (this.ecoKnown) cb(this.ecoRaw);
+    return () => void this.ecoCbs.delete(cb);
+  }
+
+  /** (V2 fluidité) copie locale de la collection, tenue par différence */
+  private inv = new InvMirror();
+  private invToken: string | undefined = undefined;
+  private invUnsub: (() => void) | null = null;
+  /** série d'abonnements en cours (une réponse d'une ancienne série est ignorée) */
+  private invGen = 0;
+  private invSaveT: ReturnType<typeof setTimeout> | undefined = undefined;
+  /** date de la dernière lecture complète de la collection (celle de la copie, quand elle vient de l'appareil) */
+  private invFullAt = 0;
+
+  private subscribeInventory(tokenArg: { sessionToken?: string }, resuming: boolean) {
+    const client = this.client!;
+    const gen = ++this.invGen;
+    const live = () => gen === this.invGen && !this.paused;
+    // abonnement unique, remplaçable (nouvelle révision de départ) sans toucher aux autres
+    this.invUnsub = null;
+    this.unsubscribers.push(() => {
+      this.invGen++;
+      this.invUnsub?.();
+      this.invUnsub = null;
+    });
+    if (this.invToken !== tokenArg.sessionToken) {
+      this.inv = new InvMirror();
+      this.invToken = tokenArg.sessionToken;
+    }
+    // (audit 12/11, S15 / A6-07) copie gardée sur l'appareil (invStore.ts) : écrite 3 s après le dernier changement
+    const invKey = invKeyOf(tokenArg.sessionToken);
+    const keep = () => {
+      if (!tokenArg.sessionToken) return;
+      clearTimeout(this.invSaveT);
+      this.invSaveT = setTimeout(() => live() && this.inv.loaded && void saveInv(invKey, this.inv.dump(), this.invFullAt), 3000);
+    };
+    const publish = () => {
+      if (this.state.collection === this.inv.cards) return;
+      this.state.collection = this.inv.cards as NetState['collection'];
+      keep();
+      this.emit();
+    };
+    // repli : serveur sans le suivi par différence (pas encore redéployé) → l'ancien abonnement complet
+    const legacy = () => {
+      if (!live()) return;
+      this.invUnsub?.();
+      this.invUnsub = client.onUpdate(api.inventory.myCollection, tokenArg, (cards) => {
+        this.state.collection = cards ?? [];
+        this.emit();
+      });
+    };
+    let afterFull = false;
+    const follow = (since: number) => {
+      if (!live()) return;
+      this.invUnsub?.();
+      this.invUnsub = client.onUpdate(
+        api.inventory.mineSince,
+        { ...tokenArg, since },
+        (d) => {
+          if (!live()) return;
+          if (!d) {
+            // pas (ou plus) connecté
+            this.inv = new InvMirror();
+            this.state.collection = [];
+            this.emit();
+            return;
+          }
+          // trop de changements pour une différence : lecture complète — une seule fois de suite (plus de 300 lignes
+          // écrites dans la même demi-minute, par une migration : la différence resterait trop grosse, en boucle)
+          if (d.more) return void queueMicrotask(afterFull ? legacy : full);
+          afterFull = false;
+          if (this.inv.apply(d)) publish();
+          // la réponse grossit à chaque booster : au-delà de quelques dizaines de lignes, on repart d'une révision récente
+          // (hors du rappel : l'abonnement en cours est remplacé une fois son rappel terminé)
+          if (d.rows.length + d.gone.length > INV_REBASE_ROWS && this.inv.since() > since) queueMicrotask(() => follow(this.inv.since()));
+        },
+        () => legacy(),
+      );
+    };
+    const full = () => {
+      if (!live()) return;
+      client.query(api.inventory.collectionFull, tokenArg).then(
+        (rows) => {
+          if (!live()) return;
+          this.inv.reset(rows ?? []);
+          this.invFullAt = Date.now();
+          publish();
+          keep();
+          afterFull = true;
+          follow(this.inv.since());
+        },
+        () => legacy(),
+      );
+    };
+    if (resuming && this.inv.loaded) follow(this.inv.since());
+    else if (!tokenArg.sessionToken) full();
+    else {
+      // copie de cette session, de cette version, de moins de 24 h : on repart de sa révision au lieu de tout relire
+      const mirror = this.inv;
+      void loadInv(invKey).then(
+        (kept) => {
+          if (!live() || this.inv !== mirror) return;
+          if (mirror.loaded) return follow(mirror.since()); // (déjà chargé par une série précédente : on suit)
+          if (!kept) return full();
+          mirror.reset(kept.rows);
+          this.invFullAt = kept.at; // (la copie garde la date de SA lecture complète : au plus 24 h sans tout relire)
+          publish();
+          follow(mirror.since());
+        },
+        () => live() && this.inv === mirror && !mirror.loaded && full(),
+      );
+    }
+  }
+
+  private subscribeMembers() {
+    if (this.membersOn || !this.client || this.paused) return;
+    this.membersOn = true;
+    const unsub = this.client.onUpdate(api.users.friends, {}, (f) => this.applyMembers(f));
+    this.membersUnsub = unsub;
+    this.unsubscribers.push(unsub);
+  }
+  private membersUnsub: (() => void) | null = null;
+  private membersBy = new Set<string>();
+
+  /** Une page qui affiche la liste du club (Jeux, Échanges, Amis, Profil, Classement) est à l'écran, ou ne l'est plus. */
+  public watchMembers(on: boolean, who = 'page') {
+    // (plusieurs demandeurs : la page à l'écran, le chat ouvert — suivie tant qu'il en reste un)
+    if (on) this.membersBy.add(who);
+    else this.membersBy.delete(who);
+    on = this.membersBy.size > 0;
+    if (this.membersWanted === on) return;
+    this.membersWanted = on;
+    if (on) return this.subscribeMembers();
+    if (!this.membersOn) return;
+    this.membersOn = false;
+    const u = this.membersUnsub;
+    this.membersUnsub = null;
+    if (u) {
+      u();
+      this.unsubscribers = this.unsubscribers.filter((x) => x !== u);
+    }
+  }
+
+  /**
+   * (V2 fluidité, lot 5) onglet caché depuis 60 s : tous les abonnements permanents sont coupés — un onglet oublié en
+   * arrière-plan ne fait plus tourner aucune requête. Au retour, ils reprennent tout de suite (l'état affiché reste
+   * en place en attendant la réponse). Les notifications passent par le push : elles n'en dépendent pas.
+   */
+  private watchVisibility() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        if (this.pauseTimer === null && !this.paused)
+          this.pauseTimer = window.setTimeout(() => {
+            this.pauseTimer = null;
+            if (document.visibilityState !== 'hidden') return;
+            for (const unsub of this.unsubscribers) unsub();
+            this.unsubscribers = [];
+            this.feedOn = this.membersOn = false;
+            this.membersUnsub = null;
+            this.paused = true;
+          }, 60_000);
+        return;
+      }
+      if (this.pauseTimer !== null) clearTimeout(this.pauseTimer);
+      this.pauseTimer = null;
+      if (this.paused) this.setupSubscriptions();
+    });
+  }
+
   /** Abonnement au fil d'activité (`feed.recent`, 20 derniers), une fois par série d'abonnements. */
   private subscribeFeed() {
     if (this.feedOn || !this.client) return;
@@ -466,18 +754,32 @@ class GameNetClient {
     this.subscribeFeed();
   }
 
+  /** (audit 12/11, A5-01) change à chaque connexion / déconnexion : les abonnements posés hors de ce fichier
+   *  (`watch`) gardent le jeton du moment où ils ont été créés ; ils se reposent quand ce compteur bouge. */
+  public tokenEpoch = 0;
+  private beatNow: (() => void) | null = null;
+
   private startHeartbeat() {
     if (this.heartbeatTimer !== null) clearInterval(this.heartbeatTimer);
+    let lastBeat = 0;
     const beat = () => {
       if (this.client && this.sessionToken && document.visibilityState === 'visible') {
+        lastBeat = Date.now();
         void this.client.mutation(api.users.heartbeat, { sessionToken: this.sessionToken, deviceId: deviceId() }).catch(() => {});
       }
     };
-    // tout de suite (la série de connexion compte la visite du jour), puis toutes les 35 s
+    // tout de suite (la série de connexion compte la visite du jour), puis toutes les 110 s.
+    // (V2 fluidité, lot 4) avant : toutes les 35 s, alors que le serveur n'écrit `lastSeenAt` qu'au plus toutes les
+    // 4 min (convex/users.ts, SEEN_EVERY_MS) — 6 appels sur 7 ne servaient à rien. « En ligne » = vu depuis moins de
+    // 6 min : il faut un battement au plus toutes les 6 − 4 = 2 min pour qu'un joueur actif ne paraisse jamais
+    // hors ligne (une ouverture de booster décale l'écriture suivante) → 110 s, 3 fois moins d'appels.
     beat();
-    this.heartbeatTimer = window.setInterval(beat, 35_000);
+    this.beatNow = beat;
+    this.heartbeatTimer = window.setInterval(beat, 110_000);
     // retour sur l'onglet après minuit : la série avance sans attendre le prochain battement
-    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && beat());
+    // (audit 12/11, S11 / A5-08) pas plus d'un battement par demi-minute sur les retours d'onglet (avant : un appel à
+    // chaque retour, même après 3 secondes)
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && Date.now() - lastBeat > 30_000 && beat());
   }
 
   public onChange(fn: Listener): () => void {
@@ -486,8 +788,22 @@ class GameNetClient {
     return () => this.listeners.delete(fn);
   }
 
+  /**
+   * (audit 12/11, S10 / E2-05) ÉMISSIONS REGROUPÉES. Convex livre toutes les requêtes changées par une mutation dans
+   * une seule tâche et appelle chaque abonnement à la suite : un booster révélé donnait 4 à 5 émissions, donc 4 à 5
+   * passages dans tous les `onChange` du jeu (33 côté pages, 14 côté économie). L'état est écrit tout de suite ; les
+   * écouteurs sont prévenus UNE fois, à la fin de la tâche en cours (micro-tâche : avant toute peinture, et avant la
+   * suite de tout `await` déjà en attente).
+   */
+  private emitQueued = false;
   private emit() {
-    for (const fn of this.listeners) fn(this.state);
+    if (this.emitQueued) return;
+    this.emitQueued = true;
+    queueMicrotask(() => {
+      this.emitQueued = false;
+      emitCount++;
+      for (const fn of this.listeners) fn(this.state);
+    });
   }
 
   /**
@@ -496,7 +812,7 @@ class GameNetClient {
   public loginWithDiscord() {
     const siteUrl = this.convexSiteUrl;
     if (!siteUrl) {
-      alert('Configure d’abord VITE_CONVEX_URL dans ton fichier .env.local');
+      alert('Configure d’abord VITE_CONVEX_URL dans ton fichier .env.local'); // i18n-ok
       return;
     }
     // retour sur la page d'où l'on vient (le labo à la racine, ou le jeu dans /jeu/) ; le serveur remplace le hash,
@@ -540,11 +856,21 @@ class GameNetClient {
   public async markGuideSeen() {
     if (this.client && this.sessionToken) await this.client.mutation(api.users.markGuideSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
   }
+  /** (version anglaise) langue effective du joueur (push, messages privés Discord) ; `manual` : choisie par le joueur */
+  public async setLang(lang: 'fr' | 'en', manual: boolean) {
+    if (this.client && this.sessionToken) await this.client.mutation(api.users.setLang, { sessionToken: this.sessionToken, lang, manual }).catch(() => undefined);
+  }
+  /** (13/11) tour des nouveautés V2 lancé : plus jamais rejoué sur ce compte */
+  public async markV2TourSeen() {
+    if (this.client && this.sessionToken) await this.client.mutation(api.users.markV2TourSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
+  }
 
   private adoptToken(token: string) {
     this.saveStoredToken(token);
     this.state.authError = null;
     this.setupSubscriptions();
+    // (audit 12/11, A5-09) premier battement utile tout de suite (série du jour, appareil) : celui du démarrage est parti sans jeton
+    this.beatNow?.();
     this.emit();
   }
 
@@ -555,6 +881,9 @@ class GameNetClient {
     this.saveStoredToken(null);
     this.state.user = null;
     this.state.collection = [];
+    this.inv = new InvMirror();
+    clearTimeout(this.invSaveT);
+    void clearInv();
     this.state.sealedPack = null;
     this.setupSubscriptions();
     this.emit();
@@ -578,6 +907,8 @@ class GameNetClient {
     packKind: 'theme' | 'bebou';
     themeId?: string;
     god?: boolean;
+    eventId?: string;
+    eventName?: string;
   }> {
     const shape = (p: Doc<'packOpens'>) => ({
       packId: p._id,
@@ -586,6 +917,7 @@ class GameNetClient {
       packKind: p.packKind ?? ('bebou' as const),
       themeId: p.themeId,
       ...(p.god ? { god: true } : {}),
+      ...(p.eventId ? { eventId: p.eventId as string, eventName: p.eventName } : {}),
     });
     // un pack scellé non ouvert est rendu tel quel (anti-reroll côté serveur aussi)
     if (this.state.sealedPack) return shape(this.state.sealedPack);
@@ -644,9 +976,9 @@ class GameNetClient {
   }
 
   /** Collection d'un ami (pour composer un échange). */
-  public async userCollection(userId: Id<'users'>): Promise<Doc<'inventory'>[]> {
+  public async userCollection(userId: Id<'users'>) {
     if (!this.client) return [];
-    return await this.client.query(api.inventory.userCollection, { userId });
+    return await this.client.query(api.inventory.userCollectionSlim, { userId });
   }
 
   /** (v1.0.9) « Chercher un propriétaire » : joueurs qui possèdent la carte (hors moi). */
@@ -695,9 +1027,9 @@ class GameNetClient {
   public async rerollMission(missionId: string) {
     return await this.client!.mutation(api.missions.reroll, { sessionToken: this.requireToken(), missionId });
   }
-  public async profile(userId: Id<'users'>) {
+  public async profile(userId: Id<'users'>, withCollection = false) {
     if (!this.client) return null;
-    return await this.client.query(api.profiles.profile, { userId });
+    return await this.client.query(api.profiles.profile, withCollection ? { userId, withCollection } : { userId });
   }
   public async setShowcase(cards: Array<{ cardId: string; rarity: RarityId }>) {
     return await this.client!.mutation(api.profiles.setShowcase, { sessionToken: this.requireToken(), cards });
@@ -707,6 +1039,10 @@ class GameNetClient {
   }
   public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[]; accent?: string; vitrine?: string; vitrineColor?: string }) {
     return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...c });
+  }
+  /** (11/11) animation d'ouverture des boosters (refusée si verrouillée) */
+  public async setOpening(style: string) {
+    return await this.client!.mutation(api.profiles.setOpening, { sessionToken: this.requireToken(), style });
   }
   /** Photo / bannière importées (GIF, retours live 02) : envoi au stockage Convex puis enregistrement ; `null` = retirer. */
   public async setProfileMedia(kind: 'avatar' | 'banner', file: Blob | null): Promise<string | undefined> {
@@ -744,6 +1080,25 @@ class GameNetClient {
     const { page, ...rest } = o;
     await this.client!.mutation(api.suggestions.submit, { sessionToken, ...rest, screenshot, meta: { page, ua: navigator.userAgent } });
   }
+  // ─── notifications push (V2) ───
+  public async pushStatus(endpoint?: string) {
+    return await this.client!.query(api.push.status, { sessionToken: this.requireToken(), endpoint });
+  }
+  public async pushPublicKey(): Promise<string | null> {
+    return (await this.client!.query(api.push.vapidPublicKey, {})) ?? null;
+  }
+  public async pushSubscribe(sub: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+    await this.client!.mutation(api.push.subscribe, { sessionToken: this.requireToken(), ...sub, ua: navigator.userAgent });
+  }
+  public async pushUnsubscribe(endpoint: string) {
+    await this.client!.mutation(api.push.unsubscribe, { sessionToken: this.requireToken(), endpoint });
+  }
+  public async pushSetPrefs(prefs: string[]) {
+    await this.client!.mutation(api.push.setPrefs, { sessionToken: this.requireToken(), prefs: prefs as never });
+  }
+  public async pushTest() {
+    return await this.client!.mutation(api.push.sendTest, { sessionToken: this.requireToken() });
+  }
   public async mySuggestions() {
     return await this.client!.query(api.suggestions.mine, { sessionToken: this.requireToken() });
   }
@@ -762,11 +1117,23 @@ class GameNetClient {
   public async setSuggestionStatus(id: string, status: 'nouvelle' | 'vue' | 'acceptee' | 'refusee' | 'traitee', adminNote?: string) {
     await this.client!.mutation(api.suggestions.setStatus, { sessionToken: this.requireToken(), id: id as Id<'suggestions'>, status, adminNote });
   }
-  public async leaderboard() {
+  public async leaderboard(onFresh?: (rows: Awaited<ReturnType<GameNetClient['leaderboardRows']>>) => void) {
     if (!this.client) return [];
-    // (v1.0.11) ma ligne recalculée d'abord (les autres le sont toutes les 5 min côté serveur) : je m'y vois à jour
-    if (this.sessionToken) await this.client.mutation(api.profiles.refreshMyRank, { sessionToken: this.sessionToken }).catch(() => undefined);
-    return await this.client.query(api.profiles.leaderboard, {});
+    // (v1.0.11) ma ligne recalculée (les autres le sont toutes les 5 min côté serveur) : je m'y vois à jour.
+    // (audit 12/11, S05 / A6-03) le classement s'affiche SANS attendre ce recalcul (p95 5 s en prod) ; il n'est relu
+    // que si ma ligne a réellement bougé.
+    const refresh = this.sessionToken ? this.client.mutation(api.profiles.refreshMyRank, { sessionToken: this.sessionToken }).catch(() => undefined) : Promise.resolve(undefined);
+    if (!onFresh) await refresh;
+    else void refresh.then(async (r) => r?.changed && onFresh(await this.leaderboardRows())).catch(() => undefined);
+    return await this.leaderboardRows();
+  }
+  public async leaderboardRows() {
+    return await this.client!.query(api.profiles.leaderboard, {});
+  }
+  /** (11/11) saisons du classement */
+  public async seasonBoard() {
+    if (!this.client) return { current: null, past: [] };
+    return await this.client.query(api.seasons.board, {});
   }
   public async activity(userId: Id<'users'>) {
     if (!this.client) return [];

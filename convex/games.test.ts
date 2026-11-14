@@ -117,8 +117,8 @@ describe('sources de pièces', () => {
     const bebou = CATALOG_CARDS.find((c) => c.baseRarity === 'secret')!;
     await give(t, u.alice.userId, epic.id, 'epic', 3);
     await give(t, u.alice.userId, bebou.id, 'secret', 2);
-    await expect(t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: epic.id, rarity: 'epic', count: 3 }] })).rejects.toThrow(/doublons/);
-    await expect(t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: bebou.id, rarity: 'secret', count: 1 }] })).rejects.toThrow(/secrètes/);
+    await expect(t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: epic.id, rarity: 'epic', count: 3 }] })).rejects.toThrow(/⟦(contracts\.5|economy\.13)[⟧{]/);
+    await expect(t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: bebou.id, rarity: 'secret', count: 1 }] })).rejects.toThrow(/⟦(economy\.11)[⟧{]/);
     const r = await t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: epic.id, rarity: 'epic', count: 2 }] });
     expect(r.coins).toBe(200);
     expect((await inv(t, u.alice.userId)).find((c) => c.cardId === epic.id)?.count).toBe(1);
@@ -133,7 +133,7 @@ describe('sources de pièces', () => {
     for (const c of cards) await give(t, u.alice.userId, c.id, c.baseRarity, 1);
     const r = await t.mutation(api.economy.claimCompletions, { sessionToken: u.alice.token });
     expect(r.coins).toBeGreaterThanOrEqual(cards.length * 5);
-    await expect(t.mutation(api.economy.claimCompletions, { sessionToken: u.alice.token })).rejects.toThrow(/Aucune/);
+    await expect(t.mutation(api.economy.claimCompletions, { sessionToken: u.alice.token })).rejects.toThrow(/⟦(economy\.3)[⟧{]/);
   });
 
   test('mission du jour : boosters ET pièces', async () => {
@@ -154,7 +154,7 @@ describe('1v1 Pack Battle', () => {
     const pk = [{ kind: 'bebou' as const }, { kind: 'bebou' as const }];
     const id = await t.mutation(api.games.createDuel, { sessionToken: u.alice.token, packs: pk, stake: { coins: 200, cards: [] } });
     await t.mutation(api.games.setDuelSide, { sessionToken: u.bob.token, duelId: id, packs: pk, stake: { coins: 100, cards: [] } });
-    await expect(t.mutation(api.games.readyDuel, { sessionToken: u.alice.token, duelId: id })).rejects.toThrow(/±5 %/);
+    await expect(t.mutation(api.games.readyDuel, { sessionToken: u.alice.token, duelId: id })).rejects.toThrow(/⟦(games\.33)[⟧{]/);
     await t.mutation(api.games.setDuelSide, { sessionToken: u.bob.token, duelId: id, packs: pk, stake: { coins: 195, cards: [] } });
     expect((await t.mutation(api.games.readyDuel, { sessionToken: u.alice.token, duelId: id })).locked).toBe(false);
     expect((await t.mutation(api.games.readyDuel, { sessionToken: u.bob.token, duelId: id })).locked).toBe(true);
@@ -175,6 +175,23 @@ describe('1v1 Pack Battle', () => {
     // boosters débités des deux côtés, pas de recharge en 0 s
     const left = await t.run(async (ctx) => [(await ctx.db.get(u.alice.userId))!.packBalance, (await ctx.db.get(u.bob.userId))!.packBalance]);
     expect(left).toEqual([13, 13]);
+  });
+
+  test('(V2, bulles) défi reçu puis partie jouée : pastille Jeux (gamesNoticeAt) chez les bons joueurs', async () => {
+    const { t, u } = await setup(['alice', 'bob', 'carol']);
+    const notice = (id: Id<'users'>) => t.run(async (ctx) => (await ctx.db.get(id))!.gamesNoticeAt);
+    const pk = [{ kind: 'bebou' as const }];
+    const id = await t.mutation(api.games.createDuel, { sessionToken: u.alice.token, packs: pk, stake: { coins: 0, cards: [] }, invitedId: u.bob.userId });
+    expect(await notice(u.bob.userId)).toBeGreaterThan(0); // défié
+    expect(await notice(u.alice.userId)).toBeFalsy();
+    expect(await notice(u.carol.userId)).toBeFalsy();
+    const me = await t.query(api.users.me, { sessionToken: u.bob.token });
+    expect(me!.gamesNoticeAt).toBeGreaterThan(0);
+    await t.mutation(api.games.setDuelSide, { sessionToken: u.bob.token, duelId: id, packs: pk, stake: { coins: 0, cards: [] } });
+    await t.mutation(api.games.readyDuel, { sessionToken: u.alice.token, duelId: id });
+    await t.mutation(api.games.readyDuel, { sessionToken: u.bob.token, duelId: id });
+    expect(await notice(u.alice.userId)).toBeGreaterThan(0); // partie jouée
+    expect(await notice(u.carol.userId)).toBeFalsy();
   });
 
   test('changer sa mise remet les validations à zéro', async () => {
@@ -258,8 +275,8 @@ describe('Roulette', () => {
     await t.mutation(internal.games.rouletteTick, {});
     await expect(t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [1, 2], stake: { coins: 300, cards: [] } })).rejects.toThrow(/600 pièces/);
     await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [1], stake: { coins: 300, cards: [] } });
-    await expect(t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [2], stake: { coins: 300, cards: [] } })).rejects.toThrow(/déjà misé/);
-    await expect(t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [1, 4], stake: { coins: 600, cards: [] } })).rejects.toThrow(/déjà pris/);
+    await expect(t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [2], stake: { coins: 300, cards: [] } })).rejects.toThrow(/⟦(games\.34)[⟧{]/);
+    await expect(t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [1, 4], stake: { coins: 600, cards: [] } })).rejects.toThrow(/⟦(accounts\.2|economy\.1|games\.39)[⟧{]/);
     const leg = CATALOG_CARDS.find((c) => c.baseRarity === 'legendary')!;
     await give(t, u.bob.userId, leg.id, 'legendary', 1);
     // 2 numéros = 1 carte 5★ (le dernier exemplaire peut être misé)
@@ -307,7 +324,7 @@ describe('Roulette', () => {
 describe('anti-abus', () => {
   test('flux net > 5 000 → alerte dans le panneau admin, réservé aux admins', async () => {
     const { t, u } = await setup();
-    await expect(t.query(api.abuse.alerts, { sessionToken: u.alice.token })).rejects.toThrow(/admins/);
+    await expect(t.query(api.abuse.alerts, { sessionToken: u.alice.token })).rejects.toThrow(/⟦(econLib\.14)[⟧{]/);
     await t.run(async (ctx) => {
       await ctx.db.patch(u.alice.userId, { isAdmin: true });
       await ctx.db.insert('valueFlows', { fromUserId: u.bob.userId, toUserId: u.alice.userId, value: 6000, source: 'duel', createdAt: Date.now() });

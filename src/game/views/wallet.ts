@@ -1,9 +1,11 @@
+import { t as tr } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import type { EcoSnapshot } from '../eco';
 import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_PACKS, CALENDAR_MONTH_TOTAL, achievementReward, calendarReward, fmtCoins } from '../../core/economy';
 import { GAMES_OPEN } from '../../core/games';
 import { CLOSE_X, busyButton, errMsg, esc, fmtN, h, keepFocus, loginPrompt, panelHidden, panelShown, toast } from '../ui';
+import { txText } from '../msgView';
 import { forgeCount } from './forge';
 import '../games.css';
 
@@ -25,17 +27,17 @@ export function calendarHtml(s: EcoSnapshot) {
   for (let d = 1; d <= CALENDAR_DAYS; d++) {
     const r = calendarReward(d);
     const st = d < c.day ? 'past' : d === c.day ? (c.claimed ? 'today taken' : 'today') : 'next';
-    cells += `<i class="cal-d ${st}${CALENDAR_DOUBLE.includes(d) ? ' x2' : ''}${d === CALENDAR_DAYS ? ' big' : ''}" title="Jour ${d} : ${fmtCoins(r.coins)} pièces${r.packs ? ` + ${r.packs} booster${r.packs > 1 ? 's' : ''}` : ''}${CALENDAR_DOUBLE.includes(d) ? ' (×2)' : ''}">${d === CALENDAR_DAYS ? '★' : d}</i>`;
+    cells += `<i class="cal-d ${st}${CALENDAR_DOUBLE.includes(d) ? ' x2' : ''}${d === CALENDAR_DAYS ? ' big' : ''}" title="${tr('wal.calDayTitle', { d, coins: fmtCoins(r.coins), packs: r.packs ? tr('wal.plusPacks', { n: r.packs }) : '', x2: CALENDAR_DOUBLE.includes(d) ? ' (×2)' : '' })}">${d === CALENDAR_DAYS ? '★' : d}</i>`;
   }
-  return `<div class="w-sec"><div class="w-h"><b>Calendrier · jour ${c.day}/${CALENDAR_DAYS}</b><span>mois parfait ≈ ${fmtCoins(CALENDAR_MONTH_TOTAL)} + ${CALENDAR_MONTH_PACKS} boosters</span></div>
+  return `<div class="w-sec"><div class="w-h"><b>${tr('wal.calHead', { day: c.day, days: CALENDAR_DAYS })}</b><span>${tr('wal.calPerfect', { coins: fmtCoins(CALENDAR_MONTH_TOTAL), packs: CALENDAR_MONTH_PACKS })}</span></div>
     <div class="cal">${cells}</div>
-    ${c.claimed ? `<div class="muted">Cadeau du jour pris ✓ — demain : ${fmtCoins(calendarReward(Math.min(CALENDAR_DAYS, c.day + 1)).coins)} pièces. Un jour manqué = retour au jour 1.</div>` : `<button class="btn-primary w-cal">Prendre le cadeau · +${fmtCoins(c.reward.coins)}${c.reward.packs ? ` + ${c.reward.packs} booster${c.reward.packs > 1 ? 's' : ''}` : ''}</button>`}</div>`;
+    ${c.claimed ? `<div class="muted">${tr('wal.calTaken', { coins: fmtCoins(calendarReward(Math.min(CALENDAR_DAYS, c.day + 1)).coins) })}</div>` : `<button class="btn-primary w-cal">${tr('wal.calTake', { coins: fmtCoins(c.reward.coins), packs: c.reward.packs ? tr('wal.plusPacks', { n: c.reward.packs }) : '' })}</button>`}</div>`;
 }
 
 export function createWallet(backend: GameBackend, shell: Shell) {
   const pop = h('div', 'missions-pop wallet-pop');
   pop.setAttribute('role', 'dialog');
-  pop.setAttribute('aria-label', 'Portefeuille');
+  pop.setAttribute('aria-label', tr('hdr.wallet.label'));
   pop.id = 'pop-wallet';
   pop.inert = true; // fermé : ni focus ni lecteur d'écran
   const veil = h('div', 'um-veil');
@@ -51,7 +53,7 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     if (!on) return;
     const s = backend.eco.snapshot;
     if (!s) {
-      pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi pour gagner des pièces.')}`;
+      pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.wallet.label')}</b>${CLOSE_X()}</div>${loginPrompt(backend, tr('wal.login'))}`;
       return;
     }
     const compTotal = s.completions.reduce((a, c) => a + c.reward, 0);
@@ -62,15 +64,15 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     // la forge n'est plus dans l'espace Jeux (retours live 02) : elle est dans la collection, ouverte en même temps
     // que les jeux (admins seulement d'ici là, comme avant)
     const forgeN = forgeCount(backend.state);
-    pop.innerHTML = `<div class="msn-head"><b>Portefeuille</b>${games ? '<a href="#/jeux" class="w-link">Espace Jeux →</a>' : ''}${CLOSE_X}</div>
-      <div class="w-bal">${coinsHtml(s.coins, 'big')}<span class="muted">pièces 100 % virtuelles · jamais échangeables contre des cartes</span></div>
-      <div class="w-sec"><div class="w-h"><b>À encaisser</b></div>
-        <div class="w-row"><span>Complétion${s.completions.length ? ` · ${esc(s.completions.slice(0, 2).map((c) => c.label).join(', '))}${s.completions.length > 2 ? '…' : ''}` : ' : 5 pièces × cartes de chaque album bouclé'}</span>${s.completions.length ? `<button class="btn-primary w-comp">+${fmtCoins(compTotal)}</button>` : '<span class="muted">rien</span>'}</div>
-        <div class="w-row"><span>Succès${ach.length ? ` · ${esc(ach.slice(0, 2).map((a) => a.label).join(', '))}${ach.length > 2 ? '…' : ''}` : ` : ${s.econ.achievements.length}/${ACHIEVEMENTS.length} obtenus`}</span>${ach.length ? `<button class="btn-primary w-ach">+${fmtCoins(achTotal)}</button>` : '<a class="w-link" href="#/succes">voir</a>'}</div>
-        ${games ? `<div class="w-row"><span>Doublons à brûler${forgeN ? ` · ${fmtN(forgeN)}` : ''}</span><a class="w-link" href="#/collection/forge">la forge →</a></div>` : ''}
+    pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.wallet.label')}</b>${games ? '<a href="#/jeux" class="w-link">' + tr('wal.games') + '</a>' : ''}${CLOSE_X()}</div>
+      <div class="w-bal">${coinsHtml(s.coins, 'big')}<span class="muted">${tr('wal.virtual')}</span></div>
+      <div class="w-sec"><div class="w-h"><b>${tr('wal.toCollect')}</b></div>
+        <div class="w-row"><span>${tr('wal.completion', { x: s.completions.length ? ` · ${esc(s.completions.slice(0, 2).map((c) => c.label).join(', '))}${s.completions.length > 2 ? '…' : ''}` : tr('wal.completionHint') })}</span>${s.completions.length ? `<button class="btn-primary w-comp">+${fmtCoins(compTotal)}</button>` : '<span class="muted">' + tr('wal.nothing') + '</span>'}</div>
+        <div class="w-row"><span>${tr('wal.ach', { x: ach.length ? ` · ${esc(ach.slice(0, 2).map((a) => a.label).join(', '))}${ach.length > 2 ? '…' : ''}` : tr('wal.achCount', { n: s.econ.achievements.length, total: ACHIEVEMENTS.length }) })}</span>${ach.length ? `<button class="btn-primary w-ach">+${fmtCoins(achTotal)}</button>` : '<a class="w-link" href="#/succes">' + tr('wal.see') + '</a>'}</div>
+        ${games ? `<div class="w-row"><span>${tr('wal.burn', { x: forgeN ? ` · ${fmtN(forgeN)}` : '' })}</span><a class="w-link" href="#/collection/forge">${tr('wal.forge')}</a></div>` : ''}
       </div>
       <div class="w-sec"><div class="w-h"><b>Derniers mouvements</b>${hist && hist.length > 7 ? `<button class="w-link w-all" aria-expanded="${histAll}">${histAll ? 'moins' : 'tout'}</button>` : ''}</div><div class="w-hist">${
-        hist ? (hist.length ? hist.slice(0, histAll ? hist.length : 7).map((t) => `<div class="w-tx"><span>${esc(t.label)}</span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">Aucun mouvement pour l’instant.</div>') : '<div class="muted">…</div>'
+        hist ? (hist.length ? hist.slice(0, histAll ? hist.length : 7).map((t) => `<div class="w-tx"><span>${esc(txText(t))}</span><b class="${t.amount > 0 ? 'plus' : 'minus'}">${t.amount > 0 ? '+' : '−'}${fmtCoins(Math.abs(t.amount))}</b></div>`).join('') : '<div class="muted">' + tr('wal.empty') + '</div>') : '<div class="muted">…</div>'
       }</div></div>`;
     pop.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => toggle(false)));
     // tout l'historique des pièces ici (il était dans l'espace Jeux, qui ne garde que les jeux)
@@ -90,11 +92,11 @@ export function createWallet(backend: GameBackend, shell: Shell) {
     };
     bind('.w-comp', async () => {
       const r = await backend.eco.claimCompletions();
-      return `Complétion : +${fmtCoins(r.coins)} pièces (${r.sets.map((x) => x.label).join(', ')})`;
+      return tr('wal.compToast', { coins: fmtCoins(r.coins), sets: r.sets.map((x) => x.label).join(', ') });
     });
     bind('.w-ach', async () => {
       const r = await backend.eco.claimAchievements();
-      return `Succès : +${fmtCoins(r.coins)} pièces !`;
+      return tr('wal.achToast', { coins: fmtCoins(r.coins) });
     });
   }
 

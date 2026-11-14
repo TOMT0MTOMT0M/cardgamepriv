@@ -11,4 +11,4 @@ export const REFERRAL = {
 } as const;
 
 /** Lien d'invitation au site. */
-export const referralLink = (origin: string, code: string) => `${origin}/jeu/?ref=${encodeURIComponent(code)}`;
+export const referralLink = (origin: string, code: string) => `${origin}/jeu/?ref=${encodeURIComponent(code)}`; // i18n-ok

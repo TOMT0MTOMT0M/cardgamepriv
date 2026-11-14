@@ -5,7 +5,54 @@ admin, base Convex séparée) et sort en une fois vers la prod.
 
 ---
 
-## 1. Notifications comme une vraie appli (téléphone et PC) — à faire
+## 0. Fait sur la branche v2 (08/11) — casino « pro » + tout ce qui change de taille s'anime
+
+- **Espace Jeux en « casino noir »** (`src/game/casino.css`, `views/games.ts`) : grand titre, solde en jeton qui
+  ROULE quand il change, onglets dont la pastille glisse ; accueil en trois tables (dessins au trait, lumière qui suit
+  la souris, filet qui s'allume, flèche) ; panneaux laqués ; jetons de booster monochromes ; dos des petites cartes en
+  acier brossé avec « B » gravé.
+- **Pack Battle** : barre de rapport de force entre les deux joueurs (flash couleur de rareté à partir de 5★), totaux
+  qui roulent, cartes du centre qui arrivent avec élan + reflet, rayons fins derrière les 5★/6★, suspense (salle qui
+  s'assombrit, battement), guirlande de lumière qui court autour du gagnant, verdict en grand titre.
+- **Battle Royale** : rang #1…#8, le classement se réordonne en GLISSANT, trait lumineux sur le meneur.
+- **Roulette** : jetons posés sur les cases, bille qui ralentit en continu et s'arrête pile sur le numéro (deux tours),
+  traîne, puis grosse bille du résultat par-dessus la table. Le tout premier tirage s'anime aussi.
+- **Partout dans l'appli** (`src/core/morph.ts`, `src/game/panneaux.css`) : un bloc qui change de hauteur se
+  déplie / se replie au lieu de sauter (panneaux de l'en-tête, panneaux des jeux, contrats…) ; les panneaux de l'en-tête
+  s'ouvrent en rideau avec leur contenu en cascade ; les fenêtres (sélecteur de cartes, tableau d'échanges) montent et
+  REDESCENDENT avant de disparaître ; tous les contrôles segmentés ont une pastille qui glisse.
+- Mouvement réduit / « Effets réduits » : rien ne tourne en boucle, les dépliages sont instantanés.
+- **Puis (08/11, 2e passe) : direction « usinage »** — fini la laque et les typos rondes : filets au pixel, repères
+  d'angle (qui s'allongent au survol et sur le gagnant), coins droits (3 px), trame de points, règle graduée sous le titre,
+  étiquettes techniques en capitales espacées, Bold Frame pour les titres (plus de Matcha dans l'espace Jeux), Inter pour
+  les textes longs, plus aucun emblème (⚔ ♛ ◎ retirés). Jetons et bille en acier tourné, numéro gravé.
+  UX : fil d'Ariane « Jeux / 03 Roulette », fiches techniques des 3 jeux (joueurs · mise · gain), enjeu en fiche
+  Enjeu / Victoire / Défaite / Égalité, compteur de boosters « 1/10 », mise de la roulette en 3 étapes, compte à
+  rebours 06:48:44, jauge de couverture graduée (36 crans), barre « Miser » collante au téléphone.
+- **Puis (08/11, 3e passe) : dessins « courant »** (`views/gridArt.ts`) — les trois dessins de l'accueil sont des
+  circuits posés SUR les points de la trame de fond (au pixel près, recalés au redimensionnement). Un courant épais et
+  visqueux les trace (tête en goutte, coulée qui fusionne aux angles via un filtre gluant sur ordinateur, soudures qui
+  s'allument), puis une impulsion repasse de temps en temps ; au survol, le circuit s'emballe. Ordinateur : platine en
+  haut de la carte, texte dessous ; téléphone : fragment dans le coin, sans filtre, impulsions plus rares. Rien ne tourne
+  quand la carte est hors écran ou l'onglet caché ; mouvement réduit = circuit immobile déjà tracé.
+  Retouche (« plus fluide, moins géométrique, plus fondu, presque organique ») : angles arrondis en grandes courbes
+  (un carré d'une case devient un cercle, l'octogone devient une roue, les rayons de la Royale s'enroulent en turbine),
+  coulée effilée en trois épaisseurs fondues + lueur floue, avancée de fluide épais (départ lent, poussée, étirement),
+  tête qui respire, gouttes qui gonflent aux extrémités ; les points de départ / d'arrivée restent sur la grille.
+
+---
+
+## 1. Notifications comme une vraie appli (téléphone et PC) — FAIT (08/11, v2)
+
+**Livré** : `public/sw.js` (service worker, réception + clic → bonne page), `convex/push.ts` (abonnements par appareil,
+préférences par type, garde-fous nuit 23 h–8 h et regroupement 90 s, « réserve pleine » programmée à l'instant exact
+avec `ctx.scheduler.runAt` et annulée / reprogrammée à chaque ouverture ou gain de boosters), `convex/pushSend.ts`
+(Node, bibliothèque `web-push`, abonnements expirés retirés), fiche « Notifications » dans Profil › Compte
+(`src/game/notif.ts` : Activer / Couper, cases par type, « M'envoyer un test », guide iPhone en 2 étapes).
+Branché sur : échanges (proposition, contre-proposition, accepté, décliné), amis (demande, acceptée), parrainage payé,
+défi Pack Battle reçu, gain à la roulette, réserve pleine, annonces (`push:announce`).
+**À faire par Tom** : `lanceurs\activer-notifications.cmd` (clés VAPID sur le staging ; `prod` en argument au patch),
+puis `mettre-en-ligne-v2.cmd`. Pas encore fait : rappel de série (cron par joueur), tirage de la roulette 10 h / 20 h.
 
 **Le principe.** Le jeu a déjà un manifeste d'appli (`public/manifest.webmanifest` : nom « Bébou », icônes, plein
 écran). Il manque le « service worker » (le fichier qui reçoit les notifications même jeu fermé) et l'envoi côté
@@ -44,7 +91,21 @@ serveur. Notifications Web Push : gratuites, sans service tiers.
 
 ---
 
-## 1 bis. Bulles de notification animées (dans le jeu) — à faire
+## 1 bis. Bulles de notification animées (dans le jeu) — FAIT (08/11, v2)
+
+**Livré** : `src/game/bubble.ts`, un observateur unique : rien à changer dans les pages. Apparition 420 ms avec
+dépassement et écrasement cartoon, chiffre qui roule au changement, éclatement en bulle de savon (gonflement + reflet,
+pop, 6–8 gouttelettes, anneau), décalage de 60 ms entre bulles, fondu simple en « Effets réduits », petit « pop » sonore.
+Couvre toutes les pastilles existantes (`.badge`, `.msn-n`, `.w-dot`, `.u-dot`, `.fr-n`, `.pf-new-dot`, `.fresh-badge`).
+**Puis (10/11) les bulles « à AJOUTER »** (`src/game/navDots.ts`, point doré `.nb-dot` animé par bubble.ts) :
+- Boutique : réserve pleine (recharge à l'arrêt), sauf quand on y est ;
+- Jeux : défi Pack Battle reçu, partie jouée (duel, Battle Royale), tirage de roulette où on avait misé — depuis la
+  dernière visite de l'espace Jeux. Serveur : champ `gamesNoticeAt` du joueur (optionnel), écrit avec ce qui touche
+  déjà le joueur, lu par `users:me` déjà suivi → aucune requête en plus ;
+- Amis : filleul inscrit, parrainage payé (`referralNoticeAt`, même principe) ;
+- Mises à jour : entrée du journal pas encore lue (lien de l'en-tête, menu du profil, pastille de l'avatar).
+Laissés tels quels : calendrier / série (flamme dorée qui bat + pastille du portefeuille), missions (`.msn-n`),
+contrats (solos : rien de « reçu »), classement (bruit, toujours à discuter).
 
 **Demande de Tom (07/11)** : TOUTES les pastilles de notification (bulles en haut à droite des boutons) apparaissent
 en bulle qui grandit de façon fluide, bien placée sur le bon axe, et quand elle disparaît elle EXPLOSE comme une
@@ -94,7 +155,14 @@ par type pour les deux.
 
 ---
 
-## 1 ter. Gros cache au premier lancement → démarrage et navigation plus rapides — à faire
+## 1 ter. Gros cache au premier lancement → démarrage et navigation plus rapides — FAIT (09–10/11, v2)
+
+**Livré** : le jeu s'installe (fluidité lot 1, `bundle.ts`, `/precache.json`, `storage.persist()`), puis (10/11,
+`src/game/offline.ts`) : miniatures des 300 cartes possédées les plus récentes en fond, une fois par appareil ; fiche
+« Hors connexion » dans Profil › Compte : « Tout télécharger » (jeu entier dont les Merveilles 3D, nouveau palier 3 du
+manifeste ; miniatures de toute la collection ; cartes 4★+ en pleine définition, dans `bebou-garde-v1` jamais élagué),
+barre de progression, « Arrêter ». Pas fait : illustrations « des boosters les plus ouverts » (cartes NON possédées :
+écarté, données mobiles).
 
 **Demande de Tom (07/11)** : au premier chargement, télécharger sur le téléphone un maximum de choses pour que les
 démarrages suivants (et tout le reste) soient plus rapides.

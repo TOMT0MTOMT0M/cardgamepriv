@@ -1,0 +1,46 @@
+/* Dashboard — onglet Événements (booster du moment, 11/11) : src/admin/events.ts. Une couleur : celle de l'événement (--ev). */
+.ev-head { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.ev-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.ev-row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; }
+.ev-row .actions { margin-left: auto; }
+.ev-sw { flex: 0 0 12px; width: 12px; height: 12px; margin-top: 4px; border-radius: 50%; background: var(--ev); }
+.ev-st { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); vertical-align: 1px; }
+.ev-st-live { border-color: var(--ev); color: #fff; }
+.ev-st-soon { color: var(--ink-2, #bbb); }
+.ev-st-done { opacity: 0.6; }
+
+.sheet-in.ev-sheet { width: min(920px, 100%); }
+.ev-sheet .sheet-head { margin-bottom: 14px; }
+.ev-form { display: grid; gap: 12px; }
+.ev-form label { display: grid; gap: 4px; font-size: 13px; }
+.ev-cols { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.ev-form input:not([type=color]):not([type=checkbox]) { width: 100%; min-width: 0; box-sizing: border-box; }
+.ev-form .row { flex-wrap: wrap; }
+.ev-form .row label { flex: 1 1 150px; min-width: 0; }
+@media (min-width: 900px) { .ev-cols { grid-template-columns: minmax(0, 1fr) 300px; } }
+.ev-fields { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.ev-colors { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ev-c { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; background: var(--c); cursor: pointer; padding: 0; box-shadow: inset 0 0 0 2px #000; }
+.ev-c.on { border-color: #fff; }
+.ev-colors input[type=color] { width: 36px; height: 28px; padding: 0; border-radius: 8px; }
+.ev-scope { display: grid; gap: 6px; }
+.ev-chosen { display: flex; gap: 6px; flex-wrap: wrap; }
+.ev-cards { display: grid; gap: 4px; }
+.ev-card { display: flex; gap: 6px; align-items: center; }
+.ev-card .cardline { flex: 1; min-width: 0; }
+
+.ev-preview { --ev: #888; display: grid; gap: 10px; align-content: start; padding: 14px; border: 1px solid var(--line); border-radius: 14px; }
+.ev-sachet { position: relative; width: 140px; height: 200px; margin: 4px auto; border-radius: 10px; display: grid; place-items: center;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--ev) 70%, #fff) 0%, var(--ev) 38%, color-mix(in srgb, var(--ev) 70%, #000) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 10px 30px rgba(0, 0, 0, 0.5); }
+.ev-sachet::before, .ev-sachet::after { content: ''; position: absolute; left: 0; right: 0; height: 12px; background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 5px); }
+.ev-sachet::before { top: 0; border-radius: 10px 10px 0 0; }
+.ev-sachet::after { bottom: 0; border-radius: 0 0 10px 10px; }
+.ev-sachet-n { max-width: 120px; text-align: center; font: 700 18px/1.05 'Inter', system-ui, sans-serif; color: #111; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); overflow-wrap: anywhere; }
+.ev-pv-band { display: flex; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--ev); background: #000; }
+.ev-pv-band small { display: block; font-size: 9px; letter-spacing: 0.2em; color: #aaa; }
+.ev-pv-band b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev-pv-left { text-align: right; }
+.ev-pv-left b { font-size: 12px; font-variant-numeric: tabular-nums; }
+.ev-pv-stats { font-size: 13px; }
+.ev-pv-cards { display: grid; gap: 4px; }

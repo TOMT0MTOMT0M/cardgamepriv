@@ -11,7 +11,8 @@
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS, rollStar, type StarRarityId } from './dropRates';
 import { planPack, type PackKind } from './packRules';
 import { PITY_LIMIT } from './pity';
-import { BEBOU_SECRET_CHANCE, BEBOU_THEME, THEMES, WORLD_SECRET_CHANCE, themeById, themeOpen, type CatalogEntry, type CatalogRarity } from './sets/themes';
+import { BEBOU_SECRET_CHANCE, BEBOU_THEME, THEMES, WORLD_SECRET_CHANCE, catalogInstalled, themeById, themeOpen, type CatalogEntry, type CatalogRarity } from './sets/themes';
+import { contentSig, eventCards, type EventContent } from './events';
 
 export interface RolledSlot {
   card: CatalogEntry;
@@ -26,6 +27,11 @@ export interface PackRequest {
   forceMythic?: boolean;
   /** tests / démo (`?god`) : ce booster est un god pack */
   forceGod?: boolean;
+  /**
+   * (11/11) BOOSTER DU MOMENT (src/core/events.ts) : le pool = le contenu de l'événement (le serveur le relit en base,
+   * jamais celui du client). `kind` vaut alors 'theme' (pièces d'un booster de thème) ; pas de carte secrète.
+   */
+  event?: EventContent & { id: string };
 }
 
 /**
@@ -38,6 +44,19 @@ export const GOD_WEIGHTS: Record<StarRarityId, number> = { common: 0, uncommon: 
 const poolCache = new Map<string, Map<StarRarityId, CatalogEntry[]>>();
 
 function poolFor(req: PackRequest): Map<StarRarityId, CatalogEntry[]> {
+  if (req.event) {
+    const key = `ev:${contentSig(req.event)}`;
+    let pool = poolCache.get(key);
+    if (pool) return pool;
+    pool = new Map();
+    for (const c of eventCards(req.event)) {
+      const list = pool.get(c.rarity as StarRarityId) ?? [];
+      list.push(c);
+      pool.set(c.rarity as StarRarityId, list);
+    }
+    if (catalogInstalled()) poolCache.set(key, pool);
+    return pool;
+  }
   const key = req.kind === 'bebou' ? '*bebou' : themeById(req.themeId ?? '')?.id ?? '';
   let pool = poolCache.get(key);
   if (pool) return pool;
@@ -56,6 +75,7 @@ function poolFor(req: PackRequest): Map<StarRarityId, CatalogEntry[]> {
 
 /** Vrai si la demande désigne un booster existant. */
 export function isValidPackRequest(req: PackRequest): boolean {
+  if (req.event) return eventCards(req.event).length > 0;
   if (req.kind === 'bebou') return THEMES.some(themeOpen);
   const t = themeById(req.themeId ?? '');
   return !!t && !t.secret && themeOpen(t);
@@ -74,10 +94,11 @@ export function rollPack(req: PackRequest, rand: () => number = Math.random): Ro
 export function rollPackEx(req: PackRequest, rand: () => number = Math.random): { slots: RolledSlot[]; god: boolean } {
   if (!isValidPackRequest(req)) throw new Error('Ce booster n’est pas encore disponible.');
   const pool = poolFor(req);
-  const theme = req.kind === 'theme' ? themeById(req.themeId ?? '') : undefined;
+  const theme = req.kind === 'theme' && !req.event ? themeById(req.themeId ?? '') : undefined;
   const themeSecrets = theme ? theme.cards.filter((c) => c.rarity === 'secret') : [];
 
-  const secretChance = req.kind === 'bebou'
+  // booster du moment : jamais de secrète (le tirage du plan est quand même consommé, comme à chance nulle)
+  const secretChance = req.event ? 0 : req.kind === 'bebou'
     ? BEBOU_SECRET_CHANCE
     : (themeSecrets.length > 0 ? (theme!.id === 'monde' ? WORLD_SECRET_CHANCE : 1 / theme!.cards.length) : 0);
 
@@ -162,7 +183,8 @@ type Out = StarRarityId | 'secret';
 const oddsCache = new Map<string, PackTrueOdds>();
 
 export function packTrueOdds(req: PackRequest, pityLimit = PITY_LIMIT): PackTrueOdds {
-  const key = `${req.kind}:${req.themeId ?? ''}:${pityLimit}`;
+  // (fusion 13/11) le booster du moment a son propre contenu : sa clé de cache aussi
+  const key = req.event ? `ev:${contentSig(req.event)}:${pityLimit}` : `${req.kind}:${req.themeId ?? ''}:${pityLimit}`;
   const hit = oddsCache.get(key);
   if (hit) return hit;
   const pool = poolFor(req);

@@ -1,3 +1,4 @@
+import { tData } from '../../i18n';
 import { alpha, linear } from '../canvas';
 import { setInfo } from '../../cardData';
 import { type CardDesign, type DesignCtx, FONT_MONO, FONT_TITLE, H, TAU, W, eightStar, fitFont, grainAtop, spaced } from './common';
@@ -75,7 +76,7 @@ export function paintBebouFrame(f: CanvasRenderingContext2D, m: CanvasRenderingC
   seal(f, C.rose, C.light, true, SEAL);
   f.font = `600 30px ${FONT_MONO}`; // (audit 06/11) lisible sur téléphone
   f.fillStyle = alpha(C.cream, 0.9);
-  if (!d.mini) spaced(f, 'CARTE SECRÈTE', W / 2, 198, 4, 'center');
+  if (!d.mini) spaced(f, tData('bb.secretCard', 'CARTE SECRÈTE'), W / 2, 198, 4, 'center'); // i18n-ok
 
   // filet + surnom + numéro
   f.strokeStyle = alpha(C.rose, 0.8);
@@ -101,7 +102,7 @@ export function paintBebouFrame(f: CanvasRenderingContext2D, m: CanvasRenderingC
   f.restore();
   f.font = `500 30px ${FONT_MONO}`;
   f.fillStyle = alpha(C.light, 0.85);
-  spaced(f, d.mini ? String(card.num).padStart(2, '0') : `${card.set === 'kcdq' ? 'KCDQ' : 'LES BÉBOUS'} · ${String(card.num).padStart(2, '0')}/${String(size).padStart(2, '0')}`, W / 2, H - 50, 3, 'center');
+  spaced(f, d.mini ? String(card.num).padStart(2, '0') : `${card.set === 'kcdq' ? 'KCDQ' : tData('bb.theBebous', 'LES BÉBOUS')} · ${String(card.num).padStart(2, '0')}/${String(size).padStart(2, '0')}`, W / 2, H - 50, 3, 'center'); // i18n-ok
   grainAtop(f, card.seed, 0.07, 24);
 
   // ── masques (composite 'lighter')
@@ -144,7 +145,7 @@ export function paintBebouFrame(f: CanvasRenderingContext2D, m: CanvasRenderingC
 
 export const bebou: CardDesign = {
   id: 'bebou',
-  title: 'Bébou (secret)',
+  title: 'Bébou (secret)', // i18n-ok (labo)
   // pas de recadrage : le sujet portrait est déjà composé pour la carte entière
   art: { k: 1, to: [384, 379] },
   paint(f, m, d) {

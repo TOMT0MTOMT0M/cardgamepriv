@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import { FR_DEVICE_LANGS } from './src/core/i18n';
 
 // `npm run dev:mobile` → HTTPS + LAN : WebGPU et le gyroscope exigent un contexte sécurisé sur téléphone.
 // Trois pages : le labo (/), le jeu (/jeu/) et le dashboard de l'équipe (/admin/, src/admin/).
@@ -13,6 +14,8 @@ export default defineConfig(({ mode }) => {
     define: { __BUILD_ID__: JSON.stringify(buildId) },
     plugins: [
       ...(mode === 'https' ? [basicSsl()] : []),
+      // (V2) aperçu de lien : sur le site de test, l'image et l'adresse partagées pointent vers v2.… (l'image n'existe pas encore en prod)
+      ...(canal === 'v2' ? [{ name: 'og-v2', transformIndexHtml: (html: string) => html.replaceAll('https://cardgamepriv.pages.dev/', 'https://v2.cardgamepriv.pages.dev/') } satisfies Plugin] : []),
       // (BEBOU_CATALOG_JSON=0 pour comparer avec les littéraux d'origine)
       ...(process.env.BEBOU_CATALOG_JSON === '0' ? [] : [catalogJson()]),
       preloadBackend(!!env.VITE_CONVEX_URL?.trim()),
@@ -20,6 +23,9 @@ export default defineConfig(({ mode }) => {
       stylesFirst(),
       catalogCoreOnly(),
       versionJson(buildId, canal),
+      // (version anglaise) la liste des langues françaises (une seule source : src/core/i18n.ts) dans le script de jeu/index.html
+      { name: 'bebou-lang', transformIndexHtml: (html: string) => html.replace('__BEBOU_FR_DEVICE_LANGS__', FR_DEVICE_LANGS.join(',')) } satisfies Plugin,
+      precacheManifest(buildId, !!env.VITE_CONVEX_URL?.trim()),
     ],
     // Catalogue en deux temps (perf, lot chargement 1) : le client lit le NOYAU du catalogue (sans les 4 gros sets) ;
     // le jeu installe les gros sets par import() pendant le démarrage de la 3D (main.ts), le labo au lancement.
@@ -287,6 +293,89 @@ function preloadFonts(): Plugin {
         const links = files.map((f) => `<link rel="preload" as="font" type="font/woff2" crossorigin href="${prefix}${f}">`).join('\n    ');
         return links ? html.replace('</head>', `    ${links}\n  </head>`) : html;
       },
+    },
+  };
+}
+
+/**
+ * (V2 fluidité, lot 1) `precache.json` à la racine du site : la liste versionnée de ce que le jeu installe sur
+ * l'appareil (src/game/bundle.ts + public/sw.js), par PALIER, avec les tailles (progression réelle) :
+ *   0 = socle : la page du jeu et tout ce qu'elle demande pour afficher la boutique (JS, CSS, polices, catalogue) ;
+ *   1 = le reste du jeu : pages chargées à la demande, scènes 6★, autres polices ;
+ *   2 = médias lourds des scènes spéciales (public/fx, public/audio) — pas les Merveilles (20 Mo : à l'usage).
+ * Les fichiers de /assets/ portent une empreinte dans leur nom : un patch ne fait retélécharger que ceux qui ont changé.
+ * Rien du labo, rien de la démo quand le build est en ligne : aucun octet servi pour rien.
+ */
+function precacheManifest(id: string, online: boolean): Plugin {
+  let outDir = 'dist';
+  return {
+    name: 'bebou-precache-manifest',
+    apply: 'build',
+    configResolved(c) {
+      outDir = c.build.outDir;
+    },
+    async writeBundle(_o, bundle) {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const all = Object.values(bundle);
+      const chunks = all.filter((c) => c.type === 'chunk');
+      const byFile = new Map(chunks.map((c) => [c.fileName, c]));
+      const htmlFile = path.resolve(outDir, 'jeu/index.html');
+      if (!fs.existsSync(htmlFile)) return;
+      const html = fs.readFileSync(htmlFile, 'utf8');
+      const tier = new Map<string, number>();
+      const put = (f: string, t: number) => {
+        if (!tier.has(f) || tier.get(f)! > t) tier.set(f, t);
+      };
+      const norm = (id?: string | null) => id?.replace(/\\/g, '/') ?? '';
+      const skip = (c: { facadeModuleId?: string | null }) => norm(c.facadeModuleId).endsWith(online ? '/src/game/localBackend.ts' : '/src/game/onlineBackend.ts');
+      const meta = (c: unknown) => (c as { viteMetadata?: { importedCss?: Set<string>; importedAssets?: Set<string> } }).viteMetadata;
+      const okAsset = (f: string) => !/\.woff$/.test(f) && !/-(cyrillic|cyrillic-ext|greek|greek-ext|vietnamese|latin-ext)-/.test(f);
+      // parcours du graphe depuis l'entrée du jeu : imports statiques au palier du parent, import() au palier 1
+      const walk = (file: string, t: number, seen: Set<string>) => {
+        const key = `${file}|${t}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const c = byFile.get(file);
+        if (!c || skip(c)) return;
+        put(file, t);
+        meta(c)?.importedCss?.forEach((f) => put(f, t));
+        meta(c)?.importedAssets?.forEach((f) => okAsset(f) && put(f, t));
+        c.imports.forEach((f) => walk(f, t, seen));
+        c.dynamicImports.forEach((f) => walk(f, 1, seen));
+      };
+      const seen = new Set<string>();
+      // palier 0 : tout ce que le HTML du jeu nomme (script d'entrée, modulepreload, feuilles de style, polices)
+      put('jeu/index.html', 0);
+      for (const m of html.matchAll(/(?:href|src)="(?:\.\.\/)?(assets\/[^"]+)"/g)) {
+        put(m[1], 0);
+        if (byFile.has(m[1])) walk(m[1], 0, seen);
+      }
+      // (les gros sets du catalogue arrivent par import() mais le démarrage les attend : socle)
+      for (const c of chunks) if (norm(c.facadeModuleId).endsWith('/src/core/sets/catalogBig.ts')) walk(c.fileName, 0, seen);
+      for (const f of ['manifest.webmanifest', 'manifest.en.webmanifest', 'icons/bebou-fav-32.png', 'icons/bebou-192.png']) if (fs.existsSync(path.resolve(outDir, f))) put(f, 0);
+      // les workers (new Worker(new URL(…))) sont des fichiers à part : palier 1
+      for (const a of all) if (a.type === 'asset' && /^assets\/[^/]*[wW]orker[^/]*\.js$/.test(a.fileName)) put(a.fileName, 1);
+      // palier 2 : médias des scènes spéciales (public/)
+      const dir = (rel: string, t = 2, only?: RegExp) => {
+        const abs = path.resolve(outDir, rel);
+        if (!fs.existsSync(abs)) return;
+        for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+          if (e.isDirectory()) dir(`${rel}/${e.name}`, t, only);
+          else if (!only || only.test(e.name)) put(`${rel}/${e.name}`, t);
+        }
+      };
+      ['fx', 'audio'].forEach((d) => dir(d));
+      // palier 3 : modèles 3D des Merveilles (~20 Mo) — jamais d'office, seulement par « Tout télécharger » (game/offline.ts)
+      // ou à leur première vue (service worker) ; gardés à jour à chaque patch une fois sur l'appareil
+      dir('models', 3, /\.(glb|gltf|bin|ktx2|webp|png|jpe?g)$/i);
+      const files = [...tier]
+        .filter(([f]) => fs.existsSync(path.resolve(outDir, f)))
+        .map(([f, t]) => [f, fs.statSync(path.resolve(outDir, f)).size, t] as const)
+        .sort((a, b) => a[2] - b[2] || a[0].localeCompare(b[0]));
+      fs.writeFileSync(path.resolve(outDir, 'precache.json'), JSON.stringify({ id, files }));
+      const sum = (t: number) => files.filter((f) => f[2] === t).reduce((n, f) => n + f[1], 0);
+      console.log(`\nprecache.json : ${files.length} fichiers — socle ${(sum(0) / 1e6).toFixed(2)} Mo · jeu ${(sum(1) / 1e6).toFixed(2)} Mo · médias ${(sum(2) / 1e6).toFixed(2)} Mo · Merveilles 3D ${(sum(3) / 1e6).toFixed(2)} Mo (brut)`);
     },
   };
 }

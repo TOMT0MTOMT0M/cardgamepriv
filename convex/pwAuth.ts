@@ -1,4 +1,5 @@
 'use node';
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { action, internalAction } from './_generated/server';
@@ -31,12 +32,12 @@ const DUMMY = hashPassword('pas-de-compte');
 
 function cleanName(raw: string) {
   const name = raw.normalize('NFC').replace(/\s+/g, ' ').trim();
-  if (!NAME_RE.test(name)) throw new ConvexError('Pseudo : 3 à 20 caractères (lettres, chiffres, espace, _ . - \').');
+  if (!NAME_RE.test(name)) throw new ConvexError(fe('pwAuth.1'));
   return name;
 }
 function checkLen(password: string) {
-  if (password.length < 6) throw new ConvexError('Mot de passe : 6 caractères minimum.');
-  if (password.length > 100) throw new ConvexError('Mot de passe trop long (100 caractères maximum).');
+  if (password.length < 6) throw new ConvexError(fe('pwAuth.2'));
+  if (password.length > 100) throw new ConvexError(fe('pwAuth.3'));
 }
 
 export const signup = action({
@@ -45,7 +46,7 @@ export const signup = action({
     const name = cleanName(a.name);
     checkLen(a.password);
     const code = (process.env.CLUB_CODE ?? '').trim();
-    if (code && (a.clubCode ?? '').trim().toLowerCase() !== code.toLowerCase()) throw new ConvexError('Code du club incorrect : demande-le à Tom ou Hugo.');
+    if (code && (a.clubCode ?? '').trim().toLowerCase() !== code.toLowerCase()) throw new ConvexError(fe('pwAuth.4'));
     const device = a.device && /^[a-z0-9-]{8,64}$/i.test(a.device) ? a.device : undefined;
     return await ctx.runMutation(internal.accounts.createPw, { loginKey: loginKey(name), displayName: name, pwHash: hashPassword(a.password), ...(device ? { device } : {}) });
   },
@@ -56,11 +57,11 @@ export const login = action({
   handler: async (ctx, a): Promise<{ token: string }> => {
     const key = loginKey(a.name);
     const found = await ctx.runQuery(internal.accounts.findPw, { loginKey: key });
-    if (found && found.lockedUntil > Date.now()) throw new ConvexError('Trop d’essais ratés : réessaie dans 10 minutes.');
+    if (found && found.lockedUntil > Date.now()) throw new ConvexError(fe('pwAuth.5'));
     const ok = checkPassword(a.password, found?.pwHash ?? DUMMY) && !!found;
-    if (!found) throw new ConvexError('Pseudo ou mot de passe incorrect.');
+    if (!found) throw new ConvexError(fe('pwAuth.6'));
     const r = await ctx.runMutation(internal.accounts.pwAttempt, { userId: found.userId, ok });
-    if (!r.token) throw new ConvexError('Pseudo ou mot de passe incorrect.');
+    if (!r.token) throw new ConvexError(fe('pwAuth.7'));
     return { token: r.token };
   },
 });

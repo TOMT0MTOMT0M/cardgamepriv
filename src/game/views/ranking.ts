@@ -1,3 +1,5 @@
+import { t } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.ranking'; // (textes de ce module, version anglaise)
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import { h } from '../ui';
@@ -12,7 +14,7 @@ export interface RankingView {
 
 export function createRankingView(backend: GameBackend, shell: Shell): RankingView {
   const el = h('section', 'view ranking');
-  el.innerHTML = `<div class="rk-wrap"><header class="rk-head"><span class="kicker">CLASSEMENT</span><h1>Entre nous</h1><p class="muted">Complétion de la collection (le classement roi), 6★ & secrets, boosters ouverts, échanges conclus, série de connexion.</p></header></div>`;
+  el.innerHTML = `<div class="rk-wrap"><header class="rk-head"><span class="kicker">${t('rk.kicker')}</span><h1>Entre nous</h1><p class="muted">${t('rk.sub')}</p></header></div>`;
   const lb = createLeaderboard(backend, shell);
   el.querySelector('.rk-wrap')!.append(lb.el);
   return {

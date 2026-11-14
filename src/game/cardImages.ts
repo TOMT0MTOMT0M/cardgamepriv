@@ -1,14 +1,13 @@
+import { lang } from '../core/i18n';
+import { onLang } from './lang';
 import { ensureCardFonts, gameDesignId, generateCardArtAsync, releaseCardImage } from '../core/art';
 import { FONT_VERSION } from '../core/fonts';
-import { loadCardImage } from '../core/art/images';
+import { canvasToBlob, loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
 import { catalogEntry, hasArt, isWonderId, numberingSize, subthemeById, thumbPath, wonderCapturePath } from '../core/sets/themes';
 import { siteUrl } from '../core/siteRoot';
-import { bindFxReduced } from '../core/fxPref';
 
-// option « Effets réduits » : classe `fx-reduced` sur <body> pour les vignettes (style.css, lot K)
-bindFxReduced();
 
 /**
  * Vraies cartes en 2D pour les grilles (collection, récap d'ouverture, échanges) : le MÊME gabarit que la carte 3D
@@ -23,13 +22,14 @@ bindFxReduced();
  * 276 px elle était agrandie ×1,22 (floue). 0,36 = 276 px (DPR ≤ 2, réduite = nette) · 0,45 (DPR 2,6) · 0,5 = 384 px
  * (DPR 3). Entre dans la clé du cache.
  */
-const SCALE = Math.max(0.36, Math.min(0.5, Math.ceil(((120 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))) / 768) * 20) / 20));
+// (retours Hugo 10/11) tuiles de collection plus grandes (~170 px au lieu de 120) : définition peinte en rapport
+const SCALE = Math.max(0.36, Math.min(0.5, Math.ceil(((170 * Math.min(3, Math.max(1, window.devicePixelRatio || 1))) / 768) * 20) / 20));
 /**
  * Cache persistant (Cache Storage du navigateur) : une carte peinte une fois s'affiche instantanément aux visites
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
-const CACHE = 'bebou-cartes-v11'; // v11 (08/11) : visages recadrés (art/faceFocus.json) · v10 (07/11) : 6★ toujours en pleine illustration · v9 (retours live 6) : adresses d'images versionnées (?v=, clé = adresse de la miniature), même gabarit que la 3D (Merveilles), Suisse pour toutes les photos non portrait, zéro effet, sans emblème · v8 (07/11 soir) : full-art sans bordure, Suisse paysage sans filets (numéro noir, étoiles 6★ en alu) · v7 (07/11) : cartes horizontales au gabarit Suisse (labo 035) · v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
+const CACHE = 'bebou-cartes-v12'; // v12 (10/11, retours Hugo) : 5★ toujours en pleine illustration, tuiles plus grandes · v11 (08/11) : visages recadrés (art/faceFocus.json) · v10 (07/11) : 6★ toujours en pleine illustration · v9 (retours live 6) : adresses d'images versionnées (?v=, clé = adresse de la miniature), même gabarit que la 3D (Merveilles), Suisse pour toutes les photos non portrait, zéro effet, sans emblème · v8 (07/11 soir) : full-art sans bordure, Suisse paysage sans filets (numéro noir, étoiles 6★ en alu) · v7 (07/11) : cartes horizontales au gabarit Suisse (labo 035) · v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
 // (bug du « placeholder fantôme » : une carte peinte en design typographique avant d'avoir son illustration restait
 // figée ainsi dans le cache du joueur, même après l'ajout de l'image)
 /**
@@ -37,6 +37,11 @@ const CACHE = 'bebou-cartes-v11'; // v11 (08/11) : visages recadrés (art/faceFo
  * les plus anciennes non affichées sont oubliées (URL révoquée) ; elles reviennent du Cache Storage si on y repasse.
  */
 const done = new Map<string, string>();
+/** (version anglaise) changement de langue : les cartes peintes (noms, types, mentions) le sont à nouveau dans la nouvelle langue */
+onLang(() => {
+  for (const u of done.values()) URL.revokeObjectURL(u);
+  done.clear();
+});
 const DONE_MAX = matchMedia('(pointer: coarse)').matches ? 240 : 600;
 /** lu = remis en fin de file (le plus récent) */
 function recall(key: string): string | undefined {
@@ -91,7 +96,7 @@ function cacheUrl(key: string): string | null {
   // l'illustration ACTUELLE fait partie de la clé : quand une carte reçoit (ou change d')image, l'ancienne version peinte
   // n'est plus jamais servie — la carte est repeinte depuis la fiche du catalogue
   // (retours live 6, B2) l'ADRESSE versionnée de la miniature (`?v=`) : une image remplacée = une autre clé
-  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}`)}`;
+  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}${lang() === 'fr' ? '' : `|${lang()}`}`)}`; // (version anglaise) la langue dans la clé : en français, clés inchangées
 }
 async function fromCache(key: string): Promise<string | null> {
   const url = cacheUrl(key);
@@ -104,12 +109,33 @@ async function fromCache(key: string): Promise<string | null> {
     return null;
   }
 }
+/** (audit 12/11, S15 / A2-04) tuiles gardées au plus : au-delà, les plus anciennement peintes sortent */
+const TILE_CACHE_MAX = 4000;
+let pruned = false;
+/**
+ * Ce cache n'avait ni plafond ni ménage : une illustration remplacée (nouvelle adresse `?v=`) ou un autre écran laissait
+ * son ancienne tuile pour toujours. Un ménage par session, à la première tuile rangée, quand le navigateur est libre.
+ */
+function pruneTiles(c: Cache) {
+  if (pruned) return;
+  pruned = true;
+  idle(() => {
+    void c
+      .keys()
+      .then(async (keys) => {
+        // (keys() rend l'ordre d'insertion : les plus anciennes d'abord)
+        for (let i = 0; i < keys.length - TILE_CACHE_MAX; i++) await c.delete(keys[i]);
+      })
+      .catch(() => undefined);
+  });
+}
 async function toCache(key: string, blob: Blob) {
   const url = cacheUrl(key);
   const c = url && (await cacheStore());
   if (!c || !url) return;
   try {
-    await c.put(url, new Response(blob, { headers: { 'content-type': 'image/webp' } }));
+    await c.put(url, new Response(blob, { headers: { 'content-type': blob.type || 'image/webp' } }));
+    pruneTiles(c);
   } catch {
     /* quota plein : tant pis, on repeindra */
   }
@@ -153,7 +179,32 @@ async function paint(key: string): Promise<string | null> {
     }
   }
 }
+/** aperçus à retirer une fois le fondu de la vraie carte terminé : [tuile, échéance] */
+const strip: Array<[HTMLElement, number]> = [];
+let stripT: number | null = null;
+function stripDue() {
+  stripT = null;
+  const now = performance.now() + 20; // (celles qui arrivent à échéance dans la même image partent avec)
+  let next = Infinity;
+  for (let i = strip.length - 1; i >= 0; i--) {
+    const [tile, due] = strip[i];
+    if (due > now) {
+      next = Math.min(next, due);
+      continue;
+    }
+    strip.splice(i, 1);
+    if (tile.isConnected && tile.classList.contains('real-on')) tile.querySelectorAll(':scope > .art, :scope > .meta').forEach((n) => n.remove());
+  }
+  if (strip.length) stripT = window.setTimeout(stripDue, Math.max(0, next - performance.now()));
+}
 const idleYield = () => new Promise<void>((r) => idle(() => r()));
+const tileStats = new Map<string, { n: number; bytes: number }>();
+let noWebp = false;
+/** Formats des tuiles peintes depuis le démarrage (pour le rapport ?diag) : « image/webp ×42 (18 Ko en moyenne) ». */
+export function tileFormats(): string {
+  if (!tileStats.size) return 'aucune tuile peinte'; // i18n-ok
+  return [...tileStats].map(([t, f]) => `${t || 'type inconnu'} ×${f.n} (${Math.round(f.bytes / f.n / 1024)} Ko en moyenne)`).join(', '); // i18n-ok
+}
 async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnType<typeof cardById>, thumb: string | undefined): Promise<string | null> {
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre
   await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, { key: !(cd.photo || cd.cover) }).catch(() => undefined) : undefined]);
@@ -162,7 +213,22 @@ async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnTy
   const design = gameDesignId(cd);
   // (mesure 07/11 : tâches de 316 ms sur Android) peinture découpée en étapes, la main rendue entre chacune
   const art = await generateCardArtAsync(thumb ? { ...cd, image: thumb } : cd, rarity, { scale: SCALE, flatOnly: true, mini: true, ...(design ? { design } : {}) }, idleYield);
-  const blob = await new Promise<Blob | null>((r) => art.canvases.flat.toBlob(r, 'image/webp', 0.86));
+  let blob = await canvasToBlob(art.canvases.flat, noWebp ? 'image/jpeg' : 'image/webp', noWebp ? 0.9 : 0.86);
+  // (audit 12/11, décision 3 / E3-07) navigateur qui n'encode pas le WebP (Safari) : `toBlob` rend alors un PNG, 5 à 17
+  // fois plus lourd (mémoire, stockage, compression sur le fil principal). Repli : JPEG 0,9 — la tuile a un fond opaque
+  // et ses coins sont arrondis par la page. Constaté une fois, retenu pour toutes les tuiles suivantes.
+  if (blob && !noWebp && blob.type !== 'image/webp') {
+    noWebp = true;
+    blob = (await canvasToBlob(art.canvases.flat, 'image/jpeg', 0.9)) ?? blob;
+  }
+  // (audit 12/11, décision 3 / E3-07) format RÉELLEMENT rendu : un navigateur qui n'encode pas le WebP rend du PNG,
+  // bien plus lourd — noté pour le rapport ?diag avant de décider d'un repli JPEG
+  if (blob) {
+    const f = tileStats.get(blob.type) ?? { n: 0, bytes: 0 };
+    f.n++;
+    f.bytes += blob.size;
+    tileStats.set(blob.type, f);
+  }
   art.dispose();
   // la mémoire d'un canvas n'est rendue qu'au ramasse-miettes… sauf si on le vide (iOS plafonne le total : PERF1-01)
   for (const c of Object.values(art.canvases)) {
@@ -195,9 +261,10 @@ function apply(tile: HTMLElement, url: string, instant = false) {
     tile.classList.add('real-on', ...(instant ? ['real-now'] : []));
     // (audit 06/11) l'aperçu (dégradé + miniature filtrée + méta) ne sert plus : retiré du DOM après le fondu
     // (≈ 10 nœuds et un calque `drop-shadow` de moins par tuile)
-    setTimeout(() => {
-      if (tile.isConnected && tile.classList.contains('real-on')) tile.querySelectorAll(':scope > .art, :scope > .meta').forEach((n) => n.remove());
-    }, instant ? 0 : 500);
+    // (audit 12/11, S10 / M-05) un seul minuteur pour toutes les tuiles en attente (avant : un par tuile, soit 60
+    // minuteries et 60 petites mutations étalées quand une page de collection se peint)
+    strip.push([tile, performance.now() + (instant ? 0 : 500)]);
+    if (stripT === null) stripT = window.setTimeout(stripDue, instant ? 0 : 500);
   };
   img.onload = show;
   img.src = url;

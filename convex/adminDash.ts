@@ -11,6 +11,8 @@ import { give } from './admin';
 import { addPacks } from './referrals';
 import { applyRegen } from '../src/core/packRegen';
 import { SURVEY_ID } from '../src/core/survey';
+import { seenAtAll, syncPresence } from './presence';
+import { fm } from '../src/core/msgs';
 
 /**
  * DASHBOARD ADMIN (V2, 10/11) — page /admin/ (src/admin/), réservée à l'équipe : Tom et Hugo (users.isAdmin ou
@@ -97,12 +99,13 @@ export const overview = query({
     const launch = await ctx.db.query('appConfig').withIndex('by_key', (q) => q.eq('key', 'launch')).unique();
     const survey = await ctx.db.query('surveyAnswers').withIndex('by_survey', (q) => q.eq('surveyId', SURVEY_ID)).take(1000);
     const feed = await ctx.db.query('activityFeed').withIndex('by_createdAt').order('desc').take(15);
+    const seen = await seenAtAll(ctx);
     return {
       players: live.length,
       banned: users.length - live.length,
-      online: live.filter((u) => now - u.lastSeenAt < ONLINE_MS).length,
-      active24h: live.filter((u) => now - u.lastSeenAt < DAY).length,
-      active7d: live.filter((u) => now - u.lastSeenAt < 7 * DAY).length,
+      online: live.filter((u) => now - seen(u) < ONLINE_MS).length,
+      active24h: live.filter((u) => now - seen(u) < DAY).length,
+      active7d: live.filter((u) => now - seen(u) < 7 * DAY).length,
       new7d: live.filter((u) => now - u._creationTime < 7 * DAY).length,
       packsOpened: live.reduce((a, u) => a + u.totalPacksOpened, 0),
       packsWaiting: live.reduce((a, u) => a + packsNow(u, now), 0),
@@ -125,16 +128,17 @@ export const players = query({
     await requireStaff(ctx, sessionToken);
     const now = Date.now();
     const users = await ctx.db.query('users').collect();
+    const seen = await seenAtAll(ctx);
     const name = new Map(users.map((u) => [u._id as string, u.displayName]));
     return users
-      .sort((a, b) => b.lastSeenAt - a.lastSeenAt)
+      .sort((a, b) => seen(b) - seen(a))
       .map((u) => ({
         id: u._id as string,
         name: u.displayName,
         username: u.username,
         avatarUrl: u.avatarUrl,
         createdAt: u._creationTime,
-        lastSeenAt: u.lastSeenAt,
+        lastSeenAt: seen(u),
         status: u.statusText,
         packs: packsNow(u, now),
         opened: u.totalPacksOpened,
@@ -213,7 +217,7 @@ export const giveCoins = mutation({
     if (!k || Math.abs(k) > 100_000) throw new ConvexError('Un montant entre -100 000 et 100 000 (pas 0).');
     const u = await player(ctx, id);
     if (k < 0 && (u.coins ?? 0) + k < 0) throw new ConvexError(`${u.displayName} n’a que ${u.coins ?? 0} pièces.`);
-    const total = await addCoins(ctx, id, k, 'admin', label?.trim().slice(0, 80) || 'Ajustement de l’équipe');
+    const total = await addCoins(ctx, id, k, 'admin', label?.trim().slice(0, 80) || fm('c.team'));
     await log(ctx, me, 'pieces', `${k > 0 ? '+' : ''}${k} pièces (total : ${total})`, u.displayName);
     return `${k > 0 ? '+' : ''}${k} pièces pour ${u.displayName} (total : ${total}).`;
   },
@@ -266,6 +270,7 @@ export const unban = mutation({
     const u = await player(ctx, id);
     if (!u.bannedAt) return `${u.displayName} n’est pas banni.`;
     await ctx.db.patch(id, { bannedAt: undefined, banReason: undefined });
+    await syncPresence(ctx, id);
     await log(ctx, me, 'unban', 'rétabli', u.displayName);
     return `${u.displayName} rétabli : il peut se reconnecter.`;
   },
@@ -533,7 +538,8 @@ export const giftAll = mutation({
     const label = a.label.trim().slice(0, 80) || 'Cadeau de l’équipe';
     const now = Date.now();
     const since = a.activeDays ? now - a.activeDays * DAY : 0;
-    const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt && u.lastSeenAt >= since);
+    const seen = await seenAtAll(ctx);
+    const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt && seen(u) >= since);
     for (const u of users) {
       if (packs) await addPacks(ctx, u._id, packs);
       if (coins) await addCoins(ctx, u._id, coins, 'admin', label);

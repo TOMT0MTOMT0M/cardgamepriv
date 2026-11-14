@@ -1,3 +1,4 @@
+import { tData, t as tr } from '../../core/i18n';
 import {
   AdditiveBlending,
   Color,
@@ -153,7 +154,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
   const qBebou = Number(new URLSearchParams(location.search).get('bebou')); // `?bebou=3` : Bébou imposé
   // `?coeur=auto` : battements automatiques (comparaison, captures sans interaction)
   const qHeart: Heart = new URLSearchParams(location.search).get('coeur') === 'auto' ? 'auto' : 'doigt';
-  const params = { scénario: 'secret' as Mode, bébou: BEBOU_CARDS[qBebou - 1]?.name ?? 'au hasard', vitesse: qSpeed > 0 ? qSpeed : 1, cœur: qHeart };
+  const params = { scénario: 'secret' as Mode, bébou: BEBOU_CARDS[qBebou - 1]?.name ?? 'au hasard', vitesse: qSpeed > 0 ? qSpeed : 1, cœur: qHeart }; // i18n-ok (labo)
 
   // ── phase « cœur au doigt » : c'est le joueur qui fait battre le cœur, et qui décide du payoff
   const heart = { on: false, beats: 0, last: 0 };
@@ -171,7 +172,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
   }
   function showText(rr: Rarity) {
     const secret = !!rr.secret;
-    const title = secret ? 'CARTE SECRÈTE' : rr.label.toUpperCase();
+    const title = secret ? tData('bb.secretCard', 'CARTE SECRÈTE') : rr.label.toUpperCase(); // i18n-ok
     const letters = [...title].map((ch, i) => `<span style="transition-delay:${(i * 0.055).toFixed(3)}s">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
     textRoot.innerHTML = `
       <div class="b-title" style="color:${secret ? ROSE_LIGHT : rr.accentHex}">${letters}</div>
@@ -240,7 +241,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
   function pickCard(): { cd: CardData; rid: RarityId } {
     if (opts.card) return { cd: opts.card, rid: 'secret' };
     if (params.scénario === 'shell' && !shellRar.secret) return { cd: cardForRarity(shellRar.id), rid: shellRar.id };
-    if (params.bébou !== 'au hasard') return { cd: BEBOU_CARDS.find((c) => c.name === params.bébou) ?? BEBOU_CARDS[0], rid: 'secret' };
+    if (params.bébou !== 'au hasard') return { cd: BEBOU_CARDS.find((c) => c.name === params.bébou) ?? BEBOU_CARDS[0], rid: 'secret' }; // i18n-ok (labo)
     // au hasard, mais jamais deux fois de suite le même
     const pool = BEBOU_CARDS.filter((c) => c !== current);
     return { cd: pool[Math.floor(Math.random() * pool.length)], rid: 'secret' };
@@ -490,7 +491,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
       textRoot.className = 'bebou-text';
       textRoot.innerHTML = '';
       const style = document.createElement('style');
-      style.textContent = `
+      style.textContent = `/* i18n-ok (CSS) */
         .overlay > .bebou-text { pointer-events: none; position: absolute; left: 0; right: 0; top: 3%; text-align: center; font-family: "Fraunces Variable", Georgia, serif; }
         .bebou-text .b-title { font: 500 13px "IBM Plex Mono", monospace; letter-spacing: .5em; margin-bottom: 10px; }
         .bebou-text .b-title span { display: inline-block; opacity: 0; transform: translateY(8px); filter: blur(6px); transition: opacity .5s, transform .7s cubic-bezier(.16,1,.3,1), filter .6s; }
@@ -504,7 +505,7 @@ export default function create(opts: SecretOptions = {}): Experiment {
         @keyframes bebou-hint { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.06); } 26% { transform: scale(1); } 38% { transform: scale(1.03); } }`;
       hintEl = document.createElement('div');
       hintEl.className = 'bebou-hint';
-      hintEl.textContent = 'touche · fais battre son cœur';
+      hintEl.textContent = tr('bb.heartHint');
       c.overlay.append(style, textRoot, hintEl);
 
       // ── carte de départ
@@ -654,10 +655,10 @@ export default function create(opts: SecretOptions = {}): Experiment {
         idle?.kill();
       });
       c.bag.fn(c.input.onTap(onTap));
-      c.gui.add(params, 'scénario', { 'carte secrète (Bébou)': 'secret', 'rareté de la barre d’outils': 'shell' }).name('scénario').onChange(() => void play(true));
-      c.gui.add(params, 'bébou', ['au hasard', ...BEBOU_CARDS.map((b) => b.name)]).name('bébou').onChange(() => void play(true));
-      c.gui.add(params, 'cœur', { 'au doigt (tap = battement)': 'doigt', automatique: 'auto' }).name('cœur').onChange(() => void play(false));
-      c.gui.add(params, 'vitesse', 0.25, 2, 0.01).name('vitesse de la séquence').onChange((v: number) => tl?.timeScale(v));
+      c.gui.add(params, 'scénario', { 'carte secrète (Bébou)': 'secret', 'rareté de la barre d’outils': 'shell' }).name('scénario').onChange(() => void play(true)); // i18n-ok (labo)
+      c.gui.add(params, 'bébou', ['au hasard', ...BEBOU_CARDS.map((b) => b.name)]).name('bébou').onChange(() => void play(true)); // i18n-ok (labo)
+      c.gui.add(params, 'cœur', { 'au doigt (tap = battement)': 'doigt', automatique: 'auto' }).name('cœur').onChange(() => void play(false)); // i18n-ok (labo)
+      c.gui.add(params, 'vitesse', 0.25, 2, 0.01).name('vitesse de la séquence').onChange((v: number) => tl?.timeScale(v)); // i18n-ok (labo)
       if (opts.autoStart !== false) warm = 3;
     },
     replay() {

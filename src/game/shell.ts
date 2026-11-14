@@ -1,3 +1,4 @@
+import { t as tr } from '../core/i18n';
 import { Timer, type WebGPURenderer } from 'three/webgpu';
 import type GUI from 'lil-gui';
 import gsap from 'gsap';
@@ -9,6 +10,10 @@ import { applyRendererDefaults, backendName, createRenderer, isTouch, preferredB
 import type { RarityId } from '../core/rarity';
 import { configureArt } from '../core/art';
 import { setFaceQuality } from './scenes/cardFace';
+import { perfMark } from '../core/perfLog';
+import { padOn, silentOn } from '../core/soundPrefs';
+/** `?diag` dans l'adresse : compteurs de mesure activés (rapports de src/game/diag.ts) */
+const DIAG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('diag');
 
 /**
  * Configuration du canvas WebGPU, gardée pour la RE-poser au retour d'une autre appli (shell.ts, reviveSurface) :
@@ -27,6 +32,41 @@ const gpuCfg = new WeakMap<object, unknown>();
     P.__bebouCfg = true;
   }
 }
+/**
+ * ARRÊTS MÉMOIRE (iOS : la page est tuée puis rechargée par le système SANS aucun événement côté JavaScript).
+ * Au démarrage, on note « page démarrée, pas encore quittée proprement » (`bebou.boot`, sessionStorage : survit au
+ * rechargement automatique du même onglet) ; `pagehide` la marque « quittée proprement ». Une page retrouvée « pas
+ * quittée proprement » moins de 2 min après son démarrage = un arrêt brutal (mémoire) : on le compte. Avec les
+ * rechargements dus à une perte du GPU (`bebou.gpuReload`, souvent le même manque de mémoire), 2 rapprochés ou plus →
+ * cette session-là démarre avec une définition 3D plus basse d'un palier (0,25) par rechargement de plus, au plus 2.
+ * Un démarrage normal (aucun incident récent) ne change rien.
+ */
+const BOOT_KEY = 'bebou.boot';
+const KILLS_KEY = 'bebou.memKills';
+const CRASH_WINDOW_MS = 120_000;
+export function bootPressure(store: Pick<Storage, 'getItem' | 'setItem'>, gpuReloads: number, now = Date.now()): { level: number; kills: number } {
+  let kills: number[] = [];
+  try {
+    const prev = JSON.parse(store.getItem(BOOT_KEY) ?? 'null') as { t?: number; clean?: boolean } | null;
+    const list = JSON.parse(store.getItem(KILLS_KEY) ?? '[]');
+    kills = Array.isArray(list) ? list.filter((t): t is number => typeof t === 'number' && now - t < CRASH_WINDOW_MS) : [];
+    if (prev && typeof prev.t === 'number' && prev.clean === false && now - prev.t < CRASH_WINDOW_MS) kills.push(now);
+    store.setItem(KILLS_KEY, JSON.stringify(kills));
+    store.setItem(BOOT_KEY, JSON.stringify({ t: now, clean: false }));
+  } catch {
+    /* stockage indisponible (navigation privée…) : démarrage normal */
+  }
+  return { level: Math.max(0, Math.min(2, kills.length + gpuReloads - 1)), kills: kills.length };
+}
+const RELOADS = 'bebou.gpuReload';
+const recentReloads = (): number[] => {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(RELOADS) ?? '[]');
+    return Array.isArray(v) ? v.filter((t) => typeof t === 'number' && Date.now() - t < 120_000) : [];
+  } catch {
+    return [];
+  }
+};
 /** `fn` dès que la page est visible (tout de suite si elle l'est déjà). */
 function whenVisible(fn: () => void) {
   if (!document.hidden) return fn();
@@ -70,6 +110,8 @@ export interface Shell {
   requestGyro(): void;
   /** Atténue le canvas (pages DOM pleines : collection, échanges) et coupe le rendu pour économiser la batterie. */
   setDimmed(on: boolean): void;
+  /** Démarrage prudent après des arrêts mémoire rapprochés : 0 = normal, 1-2 = paliers de définition 3D retirés pour cette session. */
+  readonly safeLevel: number;
 }
 
 export async function createShell(host: HTMLElement, overlayHost: HTMLElement): Promise<Shell> {
@@ -85,12 +127,34 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   // appli relancée en arrière-plan (rechargement après une veille, appli changée entre-temps) : on attend d'être
   // visible pour demander le GPU — un GPU obtenu en arrière-plan est souvent retiré aussitôt par le système
   if (document.hidden) await new Promise<void>((r) => whenVisible(r));
+  // (avant la création du GPU : un arrêt pendant l'initialisation compte aussi)
+  const safe = (() => {
+    try {
+      return bootPressure(sessionStorage, recentReloads().length);
+    } catch {
+      return { level: 0, kills: 0 };
+    }
+  })();
+  // (posé AVANT la création du GPU : un rechargement pendant un démarrage lent n'est pas un arrêt brutal)
+  // quittée proprement (rechargement, fermeture) : le prochain démarrage n'y verra pas un arrêt brutal ; page revenue du
+  // cache de navigation : de nouveau « en cours »
+  const bootMark = (clean: boolean) => {
+    try {
+      sessionStorage.setItem('bebou.boot', JSON.stringify({ t: Date.now(), clean }));
+    } catch {
+      /* ignore */
+    }
+  };
+  window.addEventListener('pagehide', () => bootMark(true));
+  window.addEventListener('pageshow', (e) => e.persisted && bootMark(false));
   const renderer = await createRenderer(preferredBackend(), { mobile });
   const canvas = renderer.domElement;
   canvas.className = 'gl';
   host.append(canvas);
   const input = new Input(canvas);
   const sfx = new Sfx();
+  // (son V2) tout ce qui se touche rend un « toc » feutré, placé en stéréo sous le doigt (audio.ts `bindUi`)
+  sfx.bindUi();
   // les scènes du labo ajoutent leurs réglages (lil-gui) : dans le jeu, jamais affichés → un bouchon qui accepte tout
   // (chaînage .add().name().onChange()…) au lieu d'embarquer lil-gui et un panneau DOM caché par scène
   const gui = guiStub();
@@ -111,6 +175,9 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   } catch {
     /* ignore */
   }
+  // (son V2, 11/11) réglages désactivés par défaut : nappe des menus, son même en mode silencieux (iPhone)
+  if (silentOn()) sfx.setPlayThroughSilent(true);
+  if (padOn()) sfx.setPad(true);
   const needsGyroPermission = () =>
     typeof (window.DeviceOrientationEvent as unknown as { requestPermission?: unknown } | undefined)?.requestPermission === 'function';
   /*
@@ -145,6 +212,10 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
    * demande la définition native de l'écran (×3 sur iPhone — le canvas rendu à ×2 était étiré ×1,5 par le navigateur :
    * bords, texte et foil lissés) ; l'ouverture reste à ×2. Les paliers perdus quand l'appareil peine (`slowSteps`)
    * suivent d'une scène à l'autre.
+   * (V2 fluidité 2) Un changement de palier n'est plus appliqué sur-le-champ : `resize()` réalloue toutes les cibles de
+   * rendu (à-coup + saut de netteté) — il attend un moment calme de la scène (`Experiment.pacing()` = 'rest' : vitrine,
+   * fin d'ouverture, visionneuse au repos), au plus 60 s ; les fenêtres de mesure ne comptent pas pendant la
+   * préparation d'un booster (peinture CPU des calques : ce n'est pas le GPU qui rame).
    */
   const nativeDpr = mobile ? Math.min(window.devicePixelRatio || 1, 3) : resolveDpr('auto', quality);
   const capFor = (key: string | null) => {
@@ -152,25 +223,53 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     return Math.min(nativeDpr, cap ?? (mobile ? 2 : nativeDpr));
   };
   let maxDpr = Math.min(nativeDpr, mobile ? 2 : nativeDpr);
-  let dpr = maxDpr;
+  /**
+   * Arrêts mémoire rapprochés (voir bootPressure) : cette session démarre `safe.level` paliers plus bas, et la
+   * définition ne remonte pas au-dessus — ce qui a tué la page ne doit pas revenir tout de suite.
+   */
   /** paliers de 0,25 retirés par l'adaptatif (0 = plein) */
-  let slowSteps = 0;
+  let slowSteps = safe.level;
   const minDpr = mobile ? Math.min(nativeDpr, 1.25) : Math.min(nativeDpr, 1);
   const applyDpr = () => Math.max(minDpr, Math.round((maxDpr - slowSteps * 0.25) * 4) / 4);
+  let dpr = applyDpr();
+  if (safe.level > 0) {
+    console.warn(`[jeu] démarrage prudent (niveau ${safe.level}) : ${safe.kills} arrêt(s) brutal(aux) + ${recentReloads().length} perte(s) du GPU récents → définition 3D ×${dpr} pour cette session`);
+    perfMark(`démarrage-prudent-${safe.level}-k${safe.kills}-g${recentReloads().length}`);
+  }
   /** fenêtres consécutives bien en dessous du budget : la définition REMONTE (avant : une seule baisse — pendant
    *  une ouverture chargée, par exemple — laissait tout le reste de la session flou) */
   let fast = 0;
   const WINDOW_MS = mobile ? 2500 : 3000;
   const SLOW_MS = mobile ? 22 : 25;
-  let perf = { acc: 0, frames: 0, slow: 0, capped: 0, last: performance.now() };
-  const FAST_MS = mobile ? 15 : 14;
+  let perf = { acc: 0, frames: 0, slow: 0, capped: 0, over: 0, last: performance.now() };
+  // (V2 fluidité, lot 3) « ça respire » = la scène tient la cadence de l'écran. L'ancien seuil (15 ms) était sous
+  // l'intervalle d'un écran 60 Hz (16,7 ms) : la définition ne remontait jamais. Maintenant : moyenne à la cadence
+  // (≤ 17,6 ms) ET moins de 5 % d'images en retard, sur 3 fenêtres ; et si une remontée est suivie d'une rechute
+  // dans les 5 min, on ne retente plus pendant 10 min (pas de yo-yo, chaque changement réalloue les cibles de rendu).
+  // Les fenêtres d'une scène ne comptent pas pour la suivante (resetPerf).
+  const FAST_MS = 17.6;
+  let raisedAt = -1e9;
+  let noRaiseUntil = 0;
   /**
    * Cadence de l'écran mesurée quand rien n'est rendu (chargement, pages DOM) : si le téléphone livre ~30 i/s même à
    * vide, c'est le système qui bride (économie d'énergie), pas la 3D.
    */
   const idle: number[] = [];
   let osCapped30 = false;
-  const resetPerf = () => (perf = { acc: 0, frames: 0, slow: 0, capped: 0, last: performance.now() });
+  const resetPerf = () => ((fast = 0), (perf = { acc: 0, frames: 0, slow: 0, capped: 0, over: 0, last: performance.now() }));
+  /** instant où un changement de palier est en attente d'un moment calme */
+  let pendingSince = 0;
+  /** applique le palier voulu (`applyDpr`) s'il diffère de la définition courante */
+  const flushDpr = (now: number) => {
+    const want = applyDpr();
+    if (Math.abs(want - dpr) < 0.01) return;
+    const up = want > dpr;
+    if (up) raisedAt = now;
+    dpr = want;
+    resize();
+    resetPerf(); // la nouvelle définition se mesure à neuf
+    console.info(`[jeu] définition 3D ${up ? 'remontée' : 'ramenée'} à ×${dpr} (moment calme)`); // i18n-ok
+  };
   function resize() {
     const { w, h } = size();
     renderer.setPixelRatio(dpr);
@@ -199,22 +298,13 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   const isWebGPU = backendName(renderer) === 'WebGPU';
   const gpu = renderer.backend as unknown as { device?: GPUDevice; gl?: WebGL2RenderingContext };
   let gpuLost = false;
-  const RELOADS = 'bebou.gpuReload';
-  const recentReloads = (): number[] => {
-    try {
-      const v = JSON.parse(sessionStorage.getItem(RELOADS) ?? '[]');
-      return Array.isArray(v) ? v.filter((t) => typeof t === 'number' && Date.now() - t < 120_000) : [];
-    } catch {
-      return [];
-    }
-  };
   const showRelaunch = () => {
     if (document.querySelector('.gpu-lost-box')) return;
     document.body.classList.add('gpu-lost');
     const box = document.createElement('div');
     box.className = 'gpu-lost-box';
     box.setAttribute('role', 'alertdialog');
-    box.innerHTML = '<p>La 3D s’est arrêtée pendant que l’appli était en arrière-plan.</p><button class="btn-primary">Relancer</button>';
+    box.innerHTML = '<p>' + tr('gpu.lostBg') + '</p><button class="btn-primary">' + tr('gpu.relaunch') + '</button>';
     box.querySelector('button')!.addEventListener('click', () => {
       try {
         sessionStorage.removeItem(RELOADS);
@@ -274,18 +364,19 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       if (q) {
         let answered = false;
         q.onSubmittedWorkDone().then(() => (answered = true), () => {});
-        setTimeout(() => !answered && !document.hidden && recoverGpu('le GPU ne répond plus'), 4000);
+        setTimeout(() => !answered && !document.hidden && recoverGpu('le GPU ne répond plus'), 4000); // i18n-ok
       }
-    } else if (gpu.gl?.isContextLost()) recoverGpu('webgl perdu');
+    } else if (gpu.gl?.isContextLost()) recoverGpu('webgl perdu'); // i18n-ok
     // la boucle d'images doit repartir
     const since = performance.now();
     clearTimeout(wakeT);
     wakeT = window.setTimeout(() => {
-      if (document.hidden || gpuLost || lastFrame >= since) return;
+      // (boucle à la demande : sans scène affichée, ne pas avoir d'images est normal)
+      if (document.hidden || gpuLost || lastFrame >= since || !needFrames()) return;
       console.warn('[jeu] plus d’images depuis le retour : boucle relancée');
-      renderer.setAnimationLoop(null);
-      renderer.setAnimationLoop(loop);
-      wakeT = window.setTimeout(() => !document.hidden && lastFrame < since && recoverGpu('plus aucune image'), 2500);
+      stopLoop();
+      startLoop();
+      wakeT = window.setTimeout(() => !document.hidden && lastFrame < since && recoverGpu('plus aucune image'), 2500); // i18n-ok
     }, 1500);
   };
   // retour sur l'appli : surface reconfigurée, tailles et mesures de cadence repartent de zéro (une veille fausse la
@@ -295,10 +386,12 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     if (document.hidden) {
       hiddenAt = performance.now();
       clearTimeout(wakeT);
+      stopLoop();
       return;
     }
     resetPerf();
     resize();
+    reconcileLoop();
     if (hiddenAt && performance.now() - hiddenAt > 400) reviveSurface();
     hiddenAt = 0;
     setTimeout(resize, 150);
@@ -308,16 +401,86 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
   window.addEventListener('pageshow', (e) => {
     if (!e.persisted) return;
     resize();
+    reconcileLoop();
     reviveSurface();
   });
 
+  /**
+   * BOUCLE À LA DEMANDE (V2 fluidité 2) : elle ne tourne que si une scène est affichée et le canvas non atténué. Sur
+   * une page DOM (collection, échanges…), onglet caché ou avant la première scène, elle s'arrête vraiment (plus de
+   * rappel d'animation, plus de timer/input à vide). Téléphone : elle tourne d'abord ~30 images à vide pour mesurer la
+   * cadence de l'écran (`osCapped30`, mode économie d'énergie), puis s'arrête ; chaque retour sur une page DOM refait
+   * ce court sondage. Le flottement du booster / de la carte n'est PAS touché : tant qu'une scène est affichée, la
+   * boucle tourne comme avant.
+   */
+  let running = false;
+  let loopSince = 0;
+  let idleN = 0;
+  /** scènes en cours de montage : leurs images d'échauffement ne dépendent pas de la boucle, on ne la coupe pas */
+  let mounting = 0;
+  const animation = () => (renderer as unknown as { _animation?: { stop?: () => void } })._animation;
+  /** three r187 : `setAnimationLoop(null)` laisse tourner le requestAnimationFrame interne (rappel à vide, 60/s), et tout
+   *  `renderer.render()` le relance → on l'arrête explicitement (détection : absent = on garde l'ancien comportement) */
+  const parkRaf = () => {
+    try {
+      animation()?.stop?.();
+    } catch {
+      /* ignore */
+    }
+  };
+  const startLoop = () => {
+    if (running) return;
+    running = true;
+    loopSince = performance.now();
+    idleN = 0;
+    perf.last = loopSince; // (le premier intervalle après un arrêt n'est pas une mesure)
+    void renderer.setAnimationLoop(loop);
+  };
+  const stopLoop = () => {
+    running = false;
+    void renderer.setAnimationLoop(null);
+    parkRaf();
+  };
+  /** une scène doit-elle produire des images ? */
+  const needFrames = () => !!current && !dimmed;
+  const reconcileLoop = () => {
+    if (document.hidden) return;
+    if (needFrames() || mobile) startLoop(); // téléphone sans scène : sondage de cadence, puis la boucle s'arrête seule
+    else if (!mounting) stopLoop();
+    else if (!running) parkRaf();
+  };
   let updErrors = 0;
+  let strayFrames = 0;
+  (window as unknown as { __strayFrames?: () => number }).__strayFrames = () => strayFrames;
+  /**
+   * (audit 12/11, décision 5 / E4-18) ÉCRANS À PLUS DE 60 Hz. Téléphone : la 3D est plafonnée à ~60 images/s (un
+   * écran 120 Hz doublait le travail du GPU, et « une image sur deux au repos » y donnait 60 au lieu de 30).
+   * Ordinateur : plafonnée seulement au repos, la pleine cadence revient dès qu'on touche ou qu'une animation joue.
+   * On rend une image sur `div` de l'écran : 120 Hz → 2 (60 i/s), 144 Hz → 2 (72), 165 Hz → 3 (55), 90 Hz → 1 (90).
+   */
+  let rawLast = 0;
+  let rawAvg = 1000 / 60;
+  let rawN = 0;
+  let lastPace: string = 'busy';
+  /** horloge de la dernière image (pour redessiner la scène affichée hors de la boucle, voir `warmOnCanvas`) */
+  let lastT = 0;
+  /** ordinateur : dernier geste (souris, molette, clavier) — la vitrine « au repos » suit la souris, pleine cadence alors */
+  let lastGesture = 0;
+  if (!mobile) for (const ev of ['pointermove', 'pointerdown', 'wheel', 'keydown'] as const) window.addEventListener(ev, () => (lastGesture = performance.now()), { passive: true });
   const loop = () => {
-    if (document.hidden) return; // onglet caché : rien (certains navigateurs servent encore quelques images)
+    if (document.hidden) return stopLoop(); // onglet caché : rien (certains navigateurs servent encore quelques images)
     lastFrame = performance.now();
+    const rawDt = lastFrame - rawLast;
+    rawLast = lastFrame;
+    if (rawDt > 2 && rawDt < 50) rawAvg += (rawDt - rawAvg) * 0.1;
+    if (current && scenes.get(current)?.ready && !dimmed && (mobile || (lastPace === 'rest' && lastFrame - lastGesture > 800))) {
+      const div = Math.floor(1000 / rawAvg / 60 + 0.25);
+      if (div > 1 && ++rawN % div !== 0) return;
+    }
     timer.update();
     const dt = Math.min(timer.getDelta(), 1 / 20);
     const t = timer.getElapsed();
+    lastT = t;
     input.update(dt);
     const m = current ? scenes.get(current) : null;
     const now = performance.now();
@@ -328,34 +491,51 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         idle.push(real);
         if (idle.length > 30) idle.shift();
         // (régulier autour de 33 ms : un chargement qui rame donne des intervalles irréguliers, pas ce motif)
+        idleN++;
         if (idle.length >= 12) osCapped30 = idle.filter((x) => x > 30 && x < 37.5).length > idle.length * 0.7;
       }
+      // rien à rendre (page DOM / aucune scène) : cadence mesurée (téléphone) ou tout de suite (ordinateur) → la boucle s'arrête
+      if ((!m || dimmed) && !mounting && (!mobile || idleN >= 30 || now - loopSince > 4000)) stopLoop();
       return;
     }
-    if (real < 250 && document.visibilityState === 'visible') {
+    // (audit 12/11, S09 / protocole E4-03 b) mesure seulement, avec ?diag : une image qui DÉMARRE alors que le moteur
+    // pointe encore une cible de passe (précompilation en cours) part dans cette cible — on les compte pour le rapport
+    if (DIAG && (renderer.getRenderTarget() !== null || renderer.getMRT() !== null)) strayFrames++;
+    const pace = m.exp.pacing?.() ?? 'rest';
+    lastPace = m.exp.pacing ? pace : 'busy'; // scène sans `pacing` : jamais considérée « au repos » pour le plafond
+    // un changement de définition en attente part dès que la scène est au calme (au plus 60 s d'attente)
+    if (Math.abs(applyDpr() - dpr) > 0.01 && (pace === 'rest' || now - pendingSince > 60_000)) flushDpr(now);
+    // préparation d'un booster (peinture CPU des calques) : images lentes qui ne disent rien du GPU → fenêtre non comptée
+    if (pace === 'prepare') perf.acc = perf.frames = perf.capped = perf.over = 0;
+    else if (real < 250 && document.visibilityState === 'visible') {
       perf.acc += real;
       perf.frames++;
       // image « bridée » à 30 i/s : intervalle régulier autour de 33 ms
       if (real > 30 && real < 37.5) perf.capped++;
+      if (real > SLOW_MS) perf.over++;
       if (perf.acc > WINDOW_MS) {
         const avg = perf.acc / perf.frames;
         const throttled = mobile && osCapped30 && avg > 30 && avg < 36 && perf.capped > perf.frames * 0.8;
         perf.slow = avg > SLOW_MS && !throttled ? perf.slow + 1 : 0;
-        perf.acc = perf.frames = perf.capped = 0;
-        fast = avg < FAST_MS && !throttled ? fast + 1 : 0;
-        if (perf.slow >= 2 && dpr > minDpr + 0.01) {
-          slowSteps++;
-          dpr = applyDpr();
+        const late = perf.over / perf.frames;
+        perf.acc = perf.frames = perf.capped = perf.over = 0;
+        fast = avg < FAST_MS && late < 0.05 && !throttled ? fast + 1 : 0;
+        if (Math.abs(applyDpr() - dpr) > 0.01) {
+          // un changement attend déjà son moment calme : pas de décision de plus tant qu'il n'est pas appliqué
           perf.slow = 0;
           fast = 0;
-          resize();
-          console.info(`[jeu] appareil un peu juste (${Math.round(1000 / avg)} i/s) : définition 3D ramenée à ×${dpr}`);
-        } else if (fast >= 3 && slowSteps > 0) {
-          slowSteps--;
-          dpr = applyDpr();
+        } else if (perf.slow >= 2 && dpr > minDpr + 0.01) {
+          slowSteps++;
+          perf.slow = 0;
           fast = 0;
-          resize();
-          console.info(`[jeu] ça respire (${Math.round(1000 / avg)} i/s) : définition 3D remontée à ×${dpr}`);
+          pendingSince = now;
+          if (now - raisedAt < 300_000) noRaiseUntil = now + 600_000;
+          console.info(`[jeu] appareil un peu juste (${Math.round(1000 / avg)} i/s) : définition 3D à ×${applyDpr()} au prochain moment calme`);
+        } else if (fast >= 3 && slowSteps > safe.level && now > noRaiseUntil) {
+          slowSteps--;
+          fast = 0;
+          pendingSince = now;
+          console.info(`[jeu] ça respire (${Math.round(1000 / avg)} i/s) : définition 3D à ×${applyDpr()} au prochain moment calme`);
         }
       }
     }
@@ -375,19 +555,19 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       // (avant : la scène s'arrêtait pour de bon à la 1re erreur — après une veille, le booster ne revenait jamais)
       if (++updErrors >= 3) {
         m.ready = false;
-        recoverGpu('erreurs de rendu répétées');
+        recoverGpu('erreurs de rendu répétées'); // i18n-ok
       }
     }
     if (dev)
       void Promise.all([dev.popErrorScope(), dev.popErrorScope(), dev.popErrorScope()]).then(
         (errs) => {
           const err = errs.find(Boolean);
-          if (err) recoverGpu(`après le retour : ${err.message}`);
+          if (err) recoverGpu(`après le retour : ${err.message}`); // i18n-ok
         },
         () => {},
       );
   };
-  renderer.setAnimationLoop(loop);
+  startLoop();
 
   const shell: Shell = {
     renderer,
@@ -415,10 +595,44 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         width: w,
         height: h,
         sfx,
+        warmOnCanvas: (draw) => {
+          // seulement s'il y a une scène affichée, prête, pour repasser par-dessus tout de suite (et pas la scène
+          // en cours de montage elle-même)
+          const shown = current && current !== key ? scenes.get(current) : null;
+          if (ctx.isWebGPU !== true || !shown?.ready || dimmed || document.hidden) return false;
+          let ok = true;
+          try {
+            renderer.setRenderTarget(null);
+            draw();
+          } catch (e) {
+            ok = false;
+            console.warn('[jeu] préchauffage sur le canvas', key, e);
+            // (une passe interrompue laisse son MRT sur le moteur)
+            (renderer as unknown as { setMRT(m: unknown): void }).setMRT(null);
+          }
+          try {
+            renderer.setRenderTarget(null);
+            applyRendererDefaults(renderer);
+            // DEUX fois : une scène au calme ne rend qu'une image sur deux (vitrine, visionneuse au repos) — si la
+            // première tombait sur l'image sautée, l'image de préchauffage restait à l'écran jusqu'à la suivante
+            shown.exp.update(0.001, lastT); // (durée infime, pas 0 : rien ne divise par zéro)
+            shown.exp.update(0.001, lastT);
+          } catch (e) {
+            console.warn('[jeu] redessin après préchauffage', current, e);
+          }
+          return ok;
+        },
       };
       const m: Mounted = { exp, ctx, overlay, ready: false };
       scenes.set(key, m);
-      await exp.setup(ctx);
+      mounting++;
+      try {
+        await exp.setup(ctx);
+      } finally {
+        mounting--;
+        // (l'échauffement des shaders appelle renderer.render(), qui relance le rappel interne de three)
+        if (!running) parkRaf();
+      }
       m.ready = true;
       return exp;
     },
@@ -432,7 +646,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         // → mêmes pipelines) — sinon chaque scène déjà vue garde ~100 Mo de GPU
         if (mobile) {
           try {
-            (prev.exp as Experiment & { suspend?(): void }).suspend?.();
+            (prev.exp as Experiment & { suspend?(next: string | null): void }).suspend?.(key ?? null);
           } catch (e) {
             console.warn('[jeu] suspend', current, e);
           }
@@ -440,6 +654,8 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       }
       canvas.style.cursor = ''; // chaque scène remet le sien
       current = key;
+      // (son V2) la nappe des menus se tait dans la visionneuse et les rencontres (l'ouverture la coupe elle-même)
+      sfx.padHold('scene', !!key && key !== 'opening');
       if (key) {
         const m = scenes.get(key)!;
         m.overlay.hidden = false;
@@ -452,12 +668,16 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
         dpr = want;
         resize();
       }
+      reconcileLoop();
     },
     active: () => current,
     unmount(key) {
       const m = scenes.get(key);
       if (!m) return;
-      if (current === key) current = null;
+      if (current === key) {
+        current = null;
+        reconcileLoop();
+      }
       try {
         m.exp.dispose();
       } catch (e) {
@@ -477,7 +697,9 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       dimmed = on;
       canvas.classList.toggle('dim', on);
       resetPerf();
+      reconcileLoop();
     },
+    safeLevel: safe.level,
   };
 
   // sons : préférence mémorisée, bascule depuis l'en-tête

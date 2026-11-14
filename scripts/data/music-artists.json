@@ -8824,14 +8824,10 @@
 ]
 },
 "pop-just-the-way-you-are": {
-"artist": "Milky",
-"conf": "sûr",
-"why": "Deezer + MusicBrainz",
-"pistes": [
-"Milky (MusicBrainz, Deezer)",
-"倖田來未 (MusicBrainz (2e))",
-"Bruno Mars (Deezer (2e))"
-]
+"artist": "Bruno Mars",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-l-aigle-noir": {
 "artist": "Barbara",
@@ -9279,13 +9275,10 @@
 ]
 },
 "pop-sapes-comme-jamais": {
-"artist": "Niska",
-"conf": "sûr",
-"why": "MusicBrainz + Wikidata",
-"pistes": [
-"Maître Gims (MusicBrainz, Wikidata)",
-"GIMS (Deezer)"
-]
+"artist": "GIMS",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-saving-all-my-love-for-you": {
 "artist": "Whitney Houston",
@@ -9316,15 +9309,10 @@
 ]
 },
 "pop-someone-like-you": {
-"artist": "Van Morrison",
-"conf": "sûr",
-"why": "Deezer + Wikidata",
-"pistes": [
-"Van Morrison (Deezer, Wikidata)",
-"Sylvester (MusicBrainz)",
-"Bang Tango (MusicBrainz (2e))",
-"Adele (Deezer (2e))"
-]
+"artist": "Adele",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-song-2": {
 "artist": "Blur",
@@ -9908,14 +9896,10 @@
 ]
 },
 "pop-crazy-in-love": {
-"artist": "The Baseballs",
-"conf": "douteux",
-"why": "sources en désaccord",
-"pistes": [
-"The Baseballs (MusicBrainz)",
-"Beyoncé (Deezer)",
-"Julio Iglesias (MusicBrainz (2e))"
-]
+"artist": "Beyoncé",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-cruise": {
 "artist": "Roya",
@@ -10776,14 +10760,10 @@
 ]
 },
 "pop-rockstar": {
-"artist": "Terminal Choice",
-"conf": "douteux",
-"why": "sources en désaccord",
-"pistes": [
-"Terminal Choice (MusicBrainz)",
-"LISA (Deezer)",
-"T-Spoon (MusicBrainz (2e))"
-]
+"artist": "Post Malone",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-roll-over-beethoven": {
 "artist": "Chuck Berry & His Combo",
@@ -11208,16 +11188,10 @@
 ]
 },
 "pop-without-you": {
-"artist": "Wess & The Airedales",
-"conf": "douteux",
-"why": "sources en désaccord",
-"pistes": [
-"Wess & The Airedales (Wikidata)",
-"Heart (MusicBrainz)",
-"David Guetta (Deezer)",
-"Busted (MusicBrainz (2e))",
-"Avicii (Deezer (2e))"
-]
+"artist": "Mariah Carey",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-yesterday": {
 "artist": "The Beatles",
@@ -11470,13 +11444,10 @@
 ]
 },
 "pop-bad": {
-"artist": "Giant Sand",
-"conf": "douteux",
-"why": "sources en désaccord",
-"pistes": [
-"Giant Sand (Deezer)",
-"Michael Jackson (Wikidata)"
-]
+"artist": "Michael Jackson",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-bad-bad-leroy-brown": {
 "artist": "Jim Croce",
@@ -12860,15 +12831,10 @@
 ]
 },
 "pop-my-heart-will-go-on": {
-"artist": "Thorleifs",
-"conf": "douteux",
-"why": "sources en désaccord",
-"pistes": [
-"Thorleifs (Wikidata)",
-"宮本笑里 (MusicBrainz)",
-"Céline Dion (Deezer)",
-"Deja Vu (MusicBrainz (2e))"
-]
+"artist": "Céline Dion",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-my-name-is": {
 "artist": "Eminem",
@@ -14452,14 +14418,10 @@
 ]
 },
 "pop-beggin": {
-"artist": "Madcon",
-"conf": "sûr",
-"why": "Deezer + MusicBrainz",
-"pistes": [
-"Madcon (MusicBrainz, Deezer (présent))",
-"Måneskin (Deezer)",
-"The Four Seasons (Wikidata)"
-]
+"artist": "Måneskin",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-begin-the-beguine": {
 "artist": "Artie Shaw & His Orchestra",
@@ -14804,15 +14766,10 @@
 ]
 },
 "pop-cry-me-a-river": {
-"artist": "Mari Wilson",
-"conf": "douteux",
-"why": "sources en désaccord",
-"pistes": [
-"Mari Wilson (MusicBrainz)",
-"Ella Fitzgerald (Deezer)",
-"Skin (MusicBrainz (2e))",
-"Justin Timberlake (Deezer (2e))"
-]
+"artist": "Justin Timberlake",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-d-a-n-c-e": {
 "artist": "Justice",
@@ -17102,12 +17059,10 @@
 ]
 },
 "pop-thrift-shop": {
-"artist": "Wanz",
-"conf": "sûr",
-"why": "MusicBrainz + Wikidata",
-"pistes": [
-"Macklemore & Ryan Lewis (MusicBrainz, Wikidata)"
-]
+"artist": "Macklemore & Ryan Lewis",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-time-after-time": {
 "artist": "Jonah Baker",
@@ -20847,13 +20802,10 @@
 ]
 },
 "pop-september": {
-"artist": "Earth",
-"conf": "sûr",
-"why": "Deezer + Wikidata",
-"pistes": [
-"Earth (Deezer, Wikidata)",
-"Sparky Deathcap (Deezer (2e))"
-]
+"artist": "Earth, Wind & Fire",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 },
 "pop-sexual-healing": {
 "artist": "Marvin Gaye",
@@ -21872,5 +21824,341 @@
 "pistes": [
 "Grégory Lemarchal (Deezer, Wikidata)"
 ]
+},
+"pop-give-me-the-night": {
+"artist": "George Benson",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-plus-pres-des-etoiles": {
+"artist": "Gold",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-temperature": {
+"artist": "Sean Paul",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-international-love": {
+"artist": "Pitbull",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-caravane": {
+"artist": "Raphaël",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-lettre-a-elise": {
+"artist": "Ludwig van Beethoven",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-sonate-au-clair-de-lune": {
+"artist": "Ludwig van Beethoven",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-le-lac-des-cygnes": {
+"artist": "Piotr Ilitch Tchaïkovski",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-la-chevauchee-des-walkyries": {
+"artist": "Richard Wagner",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-eine-kleine-nachtmusik": {
+"artist": "Wolfgang Amadeus Mozart",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-suite-pour-violoncelle-n-1": {
+"artist": "Jean-Sébastien Bach",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-il-est-libre-max": {
+"artist": "Hervé Cristiani",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-le-temps-des-cathedrales": {
+"artist": "Bruno Pelletier",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-je-ne-suis-pas-un-heros": {
+"artist": "Daniel Balavoine",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-partenaire-particulier": {
+"artist": "Partenaire Particulier",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-on-va-s-aimer": {
+"artist": "Gilbert Montagné",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-laisse-pas-trainer-ton-fils": {
+"artist": "Suprême NTM",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-grave-dans-la-roche": {
+"artist": "Sniper",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-le-bilan": {
+"artist": "Neg' Marrons",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-du-ferme": {
+"artist": "La Fouine",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-pitbull-chansons": {
+"artist": "Booba",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-la-haine": {
+"artist": "Cut Killer",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-suicide-social": {
+"artist": "Orelsan",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-mwaka-moon": {
+"artist": "Kalash & Damso",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-desaccorde": {
+"artist": "Vald",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-or-noir": {
+"artist": "Kaaris",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-92i-veyron": {
+"artist": "Booba",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-fusil": {
+"artist": "SCH",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-est-ce-que-tu-m-aimes": {
+"artist": "GIMS",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-le-monde-ou-rien": {
+"artist": "PNL",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-awa": {
+"artist": "Lacrim",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-zoo": {
+"artist": "Kaaris",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-mosaique-solitaire": {
+"artist": "Damso",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-asalto": {
+"artist": "Jul",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-avant-la-douane": {
+"artist": "Jul",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-j-me-tire": {
+"artist": "GIMS",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-unravel": {
+"artist": "TK from Ling tosite sigure",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-kick-back": {
+"artist": "Kenshi Yonezu",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-again": {
+"artist": "YUI",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-kaikai-kitan": {
+"artist": "Eve",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-guren-no-yumiya": {
+"artist": "Linked Horizon",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-the-world": {
+"artist": "Nightmare",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-fly-high": {
+"artist": "BURNOUT SYNDROMES",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-sign": {
+"artist": "FLOW",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-crossing-field": {
+"artist": "LiSA",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-peace-sign": {
+"artist": "Kenshi Yonezu",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-let-me-hear": {
+"artist": "Fear, and Loathing in Las Vegas",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-asphyxia": {
+"artist": "Cö shu Nie",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-idol": {
+"artist": "YOASOBI",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-history-maker": {
+"artist": "DEAN FUJIOKA",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-black-rover": {
+"artist": "Vickeblanka",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-snow-fairy": {
+"artist": "FUNKIST",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-rise": {
+"artist": "MADKID",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-black-catcher": {
+"artist": "Vickeblanka",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-closer-joe-inoue": {
+"artist": "Joe Inoue",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
+},
+"pop-brave-shine": {
+"artist": "Aimer",
+"conf": "main",
+"why": "corrigé à la main",
+"pistes": []
 }
 }

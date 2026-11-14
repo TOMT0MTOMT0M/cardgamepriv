@@ -1,13 +1,13 @@
 import { BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshPhysicalNodeMaterial, NoColorSpace, SRGBColorSpace, type Texture } from 'three/webgpu';
 import { bumpMap, float, mix, normalMap, positionLocal, texture, uv, vec2, vec3, smoothstep, sin } from 'three/tsl';
-import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, type Ctx } from './art/canvas';
+import { makeCanvas, applyGrain, alpha, roundRect, linear, radial, releaseCanvas, type Ctx } from './art/canvas';
 import { FONT_MONO, FONT_TITLE } from './art/frame';
-import { FONT_DISPLAY } from './fonts';
+import { FONT_PACK } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
 import { LABEL_RELIEF, moldFront, reliefFromCoverage, type ReliefMap } from './packLabel';
-import { CRH, CRW, PACK, PH, PW, creaseMapData, creaseRidge, creaseSigned, lcg } from './packCrease';
+import { CRH, CRW, PACK, PH, PW, creaseMapData, creaseRidge, creaseSigned, lcg, packRestZ } from './packCrease';
 
 /**
  * Booster : un peu plus grand qu'une carte, coussin bombé, soudures crantées haut/bas.
@@ -16,12 +16,7 @@ import { CRH, CRW, PACK, PH, PW, creaseMapData, creaseRidge, creaseSigned, lcg }
  * paraît 15 % plus grand, les cartes gardent leur taille.
  */
 export { PACK } from './packCrease';
-/**
- * (07/11) La pile des 5 cartes rangée dans le sachet (style « déchirure », scenes/opening.ts) : demi-largeur et
- * demi-hauteur à l'échelle 0,92, centre vertical. Le plateau du sachet en suit l'empreinte ; `bulge` = sa demi-épaisseur
- * (5 cartes de 1,2 mm espacées de 0,72 mm → ± 20 mm) + le film et un peu de jeu.
- */
-export const PACK_STACK = { hw: (0.63 * 0.92) / 2, hh: (0.88 * 0.92) / 2, cy: -0.03, s: 0.92 };
+export { PACK_STACK } from './packCrease';
 /** cadrage historique des scènes (taille de l'ancien booster) : la caméra et la taille des cartes à l'écran n'ont pas bougé */
 export const PACK_FRAME = { w: 0.78, h: 1.18 };
 
@@ -67,8 +62,8 @@ export interface PackStyle {
 }
 
 export const PACK_STYLES: Record<string, PackStyle> = {
-  ember: { name: 'Braise', ground: '#1a1513', ground2: '#3a1f17', ink: '#f1e4cf', foil: '#c98a4b', accent: '#e8643a' },
-  tide: { name: 'Marée', ground: '#0f1c1c', ground2: '#16342f', ink: '#e8e3d3', foil: '#c7b27a', accent: '#5fa58f' },
+  ember: { name: 'Braise', ground: '#1a1513', ground2: '#3a1f17', ink: '#f1e4cf', foil: '#c98a4b', accent: '#e8643a' }, // i18n-ok
+  tide: { name: 'Marée', ground: '#0f1c1c', ground2: '#16342f', ink: '#e8e3d3', foil: '#c7b27a', accent: '#5fa58f' }, // i18n-ok
   bone: { name: 'Os', ground: '#e7e0d0', ground2: '#cfc5ae', ink: '#1d1a17', foil: '#8a7a5c', accent: '#b4442f' },
 };
 
@@ -87,13 +82,10 @@ export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean
   // (07/11) `folds: false` : pas de grands plis FIXES dans la géométrie — la scène d'ouverture déplace les sommets avec
   // la carte de hauteur du sachet affiché (packCreaseLift), propre à chaque booster
   const folds = opts.folds ?? true;
-  const { w, h, bulge, crimp } = PACK;
+  const { w, h } = PACK;
   const pos: number[] = [];
   const uvs: number[] = [];
   const idx: number[] = [];
-  const cv = crimp / h;
-  const sideSeam = 0.028; // marge thermoscellée sur les côtés (unités carte)
-  const su = sideSeam / w;
   // (07/11) plus de plis aléatoires : les GRANDS PLIS partagés avec la carte de hauteur, en relief large et doux
   const ax = w / h;
   const foldZ = (u: number, v: number) => {
@@ -108,18 +100,9 @@ export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean
   // (07/11, retours de Tom) le film ÉPOUSE LA PILE de 5 cartes au lieu de gonfler en ballon : un plateau plat de
   // l'épaisseur de la pile (PACK.bulge = demi-pile + épaisseur du film + un peu de jeu) sur toute l'empreinte des
   // cartes (+ 12 mm de jeu), puis le film, mi-souple mi-rigide, retombe en S jusqu'aux soudures — net, horizontal,
-  // comme un vrai sachet de cartes. Les coins se pincent (produit des deux chutes).
-  const box = { x: PACK_STACK.hw + 0.012, yb: PACK_STACK.cy - PACK_STACK.hh - 0.012, yt: PACK_STACK.cy + PACK_STACK.hh + 0.012 };
-  const seamX = w / 2 - sideSeam, seamY = h / 2 - crimp;
-  const fall = (t: number) => (t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * t * (t * (t * 6 - 15) + 10));
-  const prof = (u: number, v: number) => {
-    const x = Math.abs((u - 0.5) * w), y = (v - 0.5) * h;
-    if (x >= seamX || Math.abs(y) >= seamY) return 0;
-    const fx = fall((x - box.x) / (seamX - box.x));
-    const fy = y > box.yt ? fall((y - box.yt) / (seamY - box.yt)) : y < box.yb ? fall((box.yb - y) / (seamY + box.yb)) : 1;
-    return fx * fy;
-  };
-  for (const side of [1, -1]) {
+  // comme un vrai sachet de cartes. Les coins se pincent (produit des deux chutes). (10/11) profil dans packCrease.ts
+  // (packRestZ), partagé avec le simulateur de déchirure.
+  for (const side of [1, -1] as const) {
     const base = pos.length / 3;
     for (let j = 0; j <= segY; j++) {
       const v = j / segY;
@@ -127,15 +110,7 @@ export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean
         const u = i / segX;
         const x = (u - 0.5) * w;
         const y = (v - 0.5) * h;
-        const inCrimp = v < cv || v > 1 - cv;
-        const p = prof(u, v);
-        // soudures crantées : ondulation des crans + léger rabat vers l'arrière
-        const crimpZ = inCrimp ? 0.0012 * Math.sin(x * 260) - 0.003 * (1 - p) : 0;
-        // marge scellée latérale : les faces se touchent (une demi-épaisseur de film), légère ondulation
-        const eu = Math.min(u, 1 - u);
-        const seamWave = eu < su ? 0.0003 * Math.sin(y * 90) : 0;
-        const fold = inCrimp || !folds ? 0 : foldZ(u, v) * Math.min(1, p * 1.5);
-        const z = side * (bulge * p + 0.0005 + crimpZ + seamWave + fold);
+        const z = packRestZ(u, v, side, folds ? foldZ(u, v) : 0);
         pos.push(x, y, z);
         uvs.push(side > 0 ? u : 1 - u, v);
       }
@@ -197,6 +172,11 @@ export interface PackArt {
   masks: Texture;
   /** dos entièrement métallisé (sachet simple du jeu) */
   metalBack?: boolean;
+  /**
+   * (13/11) teinte de l'alliage du sachet simple (sRGB), aussi celle de l'INTÉRIEUR du film dans la déchirure : avec
+   * un gris fixe, les lèvres de la soudure vues de face (sous les crans) faisaient une bande grise sur les packs teintés
+   */
+  tint?: string;
   /** `crinkle` est la carte du sachet entier (UV 0..1, pas une tuile répétée) */
   fullCrease?: boolean;
   /** (07/11 soir) carte de NORMALES des plis (espace tangent, calculée en flottants) : à préférer au bumpMap de `crinkle` */
@@ -208,13 +188,29 @@ export interface PackArt {
    * toutes (lumière en haut à gauche) — sans elle, le nom moulé serait presque invisible en 2D.
    */
   thumbFront?: HTMLCanvasElement;
+  /**
+   * (perf) les textures d'un sachet à envoyer au GPU, dans l'ordre où `renderer.initTexture` les prend (deux par image
+   * au plus : l'envoi + les mipmaps de chacune). Les envoyer d'avance, au repos, évite que les 6 partent d'un bloc au
+   * moment où le joueur change de booster.
+   */
+  gpuTextures: Texture[];
   dispose(): void;
 }
 
+export interface PackArtOptions {
+  /**
+   * (perf, iOS plafonne la mémoire des toiles) vide chaque toile source dès que sa texture est sur le GPU, comme les
+   * calques des cartes (`ArtOptions.release`) : ≈ 12 Mo de toiles par sachet. La face avant et sa vignette 2D
+   * (`thumbFront`, relue à la demande par `packThumb`) : seule la vignette est gardée. À n'activer que si personne
+   * d'autre ne relit les toiles après l'envoi (la roue 3D les réduit AVANT : `createWheel3D.prepare`).
+   */
+  releaseSources?: boolean;
+}
+
 /** Visuel procédural du booster (marque inventée « Card Lab »). */
-export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Promise<PackArt> {
+export async function generatePackArt(style: PackStyle = PACK_STYLES.ember, o: PackArtOptions = {}): Promise<PackArt> {
   await ensureFonts();
-  if (style.simple) return simplePackArt(style);
+  if (style.simple) return simplePackArt(style, !!o.releaseSources);
   const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
   const g = F.g;
   g.fillStyle = linear(g, 0, 0, PW, PH, [[0, style.ground2], [0.55, style.ground], [1, style.ground]]);
@@ -265,11 +261,11 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   g.font = titleFont;
   g.fillText(title, cx, PH * 0.74);
   // (audit 06/11) ≥ 28 px de base : le booster fait ≈ 176 px CSS sur téléphone (1 px CSS = 3,6 px de texture)
-  g.font = fitFont(g, style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, 600, 40, PW - 80, FONT_MONO);
+  g.font = fitFont(g, style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, 600, 40, PW - 80, FONT_MONO); // i18n-ok
   g.fillStyle = alpha(style.ink, 0.8);
-  g.fillText(style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, cx, PH * 0.785);
-  g.font = fitFont(g, style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', 500, 32, PW - 80, FONT_MONO);
-  g.fillText(style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', cx, PH * 0.845);
+  g.fillText(style.series ?? `SÉRIE I · ${style.name.toUpperCase()}`, cx, PH * 0.785); // i18n-ok
+  g.font = fitFont(g, style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', 500, 32, PW - 80, FONT_MONO); // i18n-ok
+  g.fillText(style.tagline ?? '5 CARTES · DONT 1 RARE OU MIEUX', cx, PH * 0.845); // i18n-ok
   // ligne de déchirure
   const ch = (PACK.crimp / PACK.h) * PH;
   const tearY = PH - ch - 40;
@@ -283,7 +279,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   g.setLineDash([]);
   g.font = `500 26px ${FONT_MONO}`;
   g.textAlign = 'left';
-  g.fillText('✂ DÉCHIRER ICI', 28, PH - tearY - 12);
+  g.fillText('✂ DÉCHIRER ICI', 28, PH - tearY - 12); // i18n-ok
   crimpBands(g, style.foil);
   applyGrain(g, PW, PH, 0.08, 9, 40);
 
@@ -300,7 +296,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   b.fillStyle = alpha(style.ink, 0.8);
   b.textAlign = 'center';
   b.font = `500 24px ${FONT_MONO}`;
-  (style.backLines ?? ['Ne convient pas aux dragons de moins de trois ans.', 'Illustrations entièrement procédurales.', 'Fabriqué dans un laboratoire. Avec soin.']).forEach((l, i) =>
+  (style.backLines ?? ['Ne convient pas aux dragons de moins de trois ans.', 'Illustrations entièrement procédurales.', 'Fabriqué dans un laboratoire. Avec soin.']).forEach((l, i) => // i18n-ok
     b.fillText(l, PW / 2, PH * 0.68 + i * 36),
   );
   for (let i = 0; i < 46; i++) b.fillRect(PW / 2 - 120 + i * 5.3, PH * 0.82, i % 3 ? 2 : 3.5, 60);
@@ -348,7 +344,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
   };
   const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false);
   crinkle.wrapS = crinkle.wrapT = 1000; // RepeatWrapping
-  return { front, back, masks, crinkle, dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
+  return { front, back, masks, crinkle, gpuTextures: [front, back, masks, crinkle], dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
 }
 
 /**
@@ -356,18 +352,19 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember): Pro
  * simple » — couleur unie avec un reflet doux, logo et nom au centre (le logo et les soudures en foil), aucune autre
  * écriture. Dos : métal brossé de la même teinte, le logo en petit (le matériau le rend entièrement métallique).
  */
-async function simplePackArt(style: PackStyle): Promise<PackArt> {
+async function simplePackArt(style: PackStyle, release = false): Promise<PackArt> {
   // (06/11, ultra-réalisme) sachet NU : la couleur de l'aluminium, rien d'écrit. Le froissé est propre au sachet
   // (une carte de hauteur pleine taille, pas une tuile répétée), avec de vrais plis : réseau de plis principaux
   // (arêtes tendues entre points), micro-plis secondaires, bombé du coussin et soudures crantées.
   const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
   const base = style.ground;
+  const alloy = mixHex(base, '#eceef1', 0.66);
   const ch = (PACK.crimp / PACK.h) * PH;
   const faces: Array<[Ctx, number]> = [[F.g, 1], [B.g, 2]];
   for (const [g, seed] of faces) {
     const rr = lcg(seed * 7919);
     // alliage teinté : la couleur du pack posée sur l'alu
-    g.fillStyle = mixHex(base, '#eceef1', 0.66);
+    g.fillStyle = alloy;
     g.fillRect(0, 0, PW, PH);
     // (07/11) aluminium LISSE : à peine un voile de laminage vertical (le reflet, lui, vient du matériau et de
     // l'environnement — rien de peint : un reflet peint ne bouge pas avec la lumière)
@@ -380,13 +377,15 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
     applyGrain(g, PW, PH, 0.012, 8, 20);
   }
   // (retours de Tom, 07/11) face avant : le NOM DU PACK n'est plus imprimé en noir — il est MOULÉ dans le film
-  // (relief thermoformé, même matière) et les reflets dessinés dans Matcha World y sont creusés. Le relief passe par
+  // (relief thermoformé, même matière) (V2 : police Atsuka Montreal, sans reflets dessinés). Le relief passe par
   // les normales de la face avant (plus bas, une fois la carte des plis prête) ; ici on ne garde que sa mise en page.
   let label: { text: string; px: number } | null = null;
   if (style.label) {
-    await Promise.race([document.fonts.load(`400 120px ${FONT_DISPLAY}`).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
-    const font = fitFont(F.g, style.label, 400, 132, PW - 120, FONT_DISPLAY);
-    label = { text: style.label, px: parseFloat(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? '132') };
+    await Promise.race([document.fonts.load(`400 120px ${FONT_PACK}`).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
+    // (retours Hugo 10/11) retour à Matcha World, la police ronde d'origine, avec la casse du nom tel quel (comme en V1)
+    const text = style.label;
+    const font = fitFont(F.g, text, 400, 132, PW - 120, FONT_PACK);
+    label = { text, px: parseFloat(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? '132') };
   }
   // ── masques : R = zones plus lisses (soudures), G = relief des soudures, B = ligne de déchirure (découpe)
   const m = M.g;
@@ -408,19 +407,34 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
   const molded = label ? await moldedLabel(F, C.n, label.text, label.px) : null;
   const FN = molded?.normal ?? null;
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
-  const tex = (c: HTMLCanvasElement, color: boolean) => {
+  // `keep` : toile à ne pas vider (la face avant sert encore de vignette si le nom moulé n'a pas fourni la sienne)
+  const tex = (c: HTMLCanvasElement, color: boolean, keep = false) => {
     const t = new CanvasTexture(c);
     t.colorSpace = color ? SRGBColorSpace : NoColorSpace;
     t.anisotropy = aniso;
+    if (release && !keep)
+      t.onUpdate = () => {
+        // appelé juste après l'envoi et la génération des mipmaps (synchrones) : le CPU n'a plus besoin de la toile
+        t.onUpdate = null;
+        releaseCanvas(c);
+      };
     return t;
   };
-  const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false), creaseNormal = tex(C.n, false);
+  const front = tex(F.c, true, !molded?.thumb), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false), creaseNormal = tex(C.n, false);
   const frontNormal = FN ? tex(FN, false) : undefined;
   crinkle.wrapS = crinkle.wrapT = 1001; // ClampToEdgeWrapping : la carte est celle du sachet entier (pas répétée)
   creaseNormal.wrapS = creaseNormal.wrapT = 1001;
   if (frontNormal) frontNormal.wrapS = frontNormal.wrapT = 1001;
   const all = [front, back, masks, crinkle, creaseNormal, ...(frontNormal ? [frontNormal] : [])];
-  return { front, back, masks, crinkle, creaseNormal, frontNormal, thumbFront: molded?.thumb, metalBack: true, fullCrease: true, dispose: () => all.forEach((t) => t.dispose()) };
+  // ordre d'envoi : les paires (face + sa normale), (dos + masques), (plis + normale des plis)
+  const gpuTextures = [front, ...(frontNormal ? [frontNormal] : []), back, masks, crinkle, creaseNormal];
+  return {
+    front, back, masks, crinkle, creaseNormal, frontNormal, thumbFront: molded?.thumb, metalBack: true, fullCrease: true, tint: alloy, gpuTextures,
+    dispose: () => {
+      all.forEach((t) => t.dispose());
+      if (release) [F.c, B.c, M.c, C.c, C.n, FN, molded?.thumb].forEach(releaseCanvas);
+    },
+  };
 }
 
 /**
@@ -434,7 +448,9 @@ async function simplePackArt(style: PackStyle): Promise<PackArt> {
  * visite à l'autre dans le Cache Storage, en flottants bruts (exact au bit près) — comme la carte des plis. La clé
  * contient le texte, la taille, les réglages de LABEL_RELIEF et LABEL_VERSION : à CHANGER si packLabel.ts change.
  */
-const LABEL_VERSION = 'nom-v1';
+// (V2, 08/11) 'nom-v2' : police Atsuka Montreal — la police n'est pas dans la clé, les reliefs Matcha en cache partent
+// (retours Hugo 10/11) 'nom-v4' : retour à Matcha World sur les sachets
+const LABEL_VERSION = 'nom-v4';
 const LABEL_STORE = 'bebou-nom-moule';
 const labelKey = (text: string, px: number) => `/__nom/${LABEL_VERSION}-${PW}x${PH}-${px}-${encodeURIComponent(text)}-${encodeURIComponent(JSON.stringify(LABEL_RELIEF))}.bin`;
 async function labelFromCache(text: string, px: number): Promise<ReliefMap | null> {
@@ -472,7 +488,7 @@ function labelToCache(text: string, px: number, r: ReliefMap) {
 async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasElement, text: string, px: number): Promise<{ normal: HTMLCanvasElement; thumb: HTMLCanvasElement }> {
   const t0 = performance.now();
   const ss = LABEL_RELIEF.ss;
-  F.g.font = `400 ${px}px ${FONT_DISPLAY}`;
+  F.g.font = `400 ${px}px ${FONT_PACK}`;
   const tw = F.g.measureText(text).width;
   const pad = Math.round(px * 0.3);
   const w = Math.min(PW, Math.ceil(tw + 2 * pad)), h = Math.ceil(px * 1.5 + 2 * pad);
@@ -485,7 +501,7 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
   if (!relief) {
     const L = makeCanvas(w * ss, h * ss);
     L.g.fillStyle = '#fff';
-    L.g.font = `400 ${px * ss}px ${FONT_DISPLAY}`;
+    L.g.font = `400 ${px * ss}px ${FONT_PACK}`;
     L.g.textAlign = 'center';
     L.g.textBaseline = 'middle';
     L.g.fillText(text, (PW / 2 - x0) * ss, (PH * 0.5 - y0) * ss);
@@ -885,5 +901,4 @@ export function createPackMesh(art: PackArt, opts?: { crinkle?: number }) {
   return mesh;
 }
 
-/** Ligne "déchirer ici" en UV (v), cohérente avec le visuel. */
-export const TEAR_V = 1 - ((PACK.crimp / PACK.h) * PH + 40) / PH;
+export { TEAR_V } from './packCrease';

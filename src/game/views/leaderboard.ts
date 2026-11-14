@@ -1,8 +1,12 @@
+import '../../core/i18n/fr/game.views.leaderboard'; // (textes de ce module, version anglaise)
+import { locale, t as tr } from '../../core/i18n';
 import type { GameBackend, LeaderRow } from '../backend';
 import type { Shell } from '../shell';
 import { frameOf, titleOf } from '../../core/cosmetics';
+import { SEASON_PACKS, SEASON_PLAYED_PACKS, SEASON_TOP10_PACKS, seasonEndAt, seasonLabel, seasonOf, seasonStandings, type SeasonBoard } from '../../core/seasons';
 import { errMsg, esc, fmtN, fmtPct, h, plural, toast } from '../ui';
 import { friendBtn } from './friends';
+import '../progression.css';
 
 /**
  * CLASSEMENT entre nous — composant partagé par la page #/classement (onglet de la navigation) et l'onglet Classement
@@ -12,13 +16,16 @@ import { friendBtn } from './friends';
  */
 /** case vide sous une place du podium (même hauteur que le bouton « + Ami ») */
 const SLOT = '<span class="lb-pd-slot" aria-hidden="true"></span>';
-type Board = 'pct' | 'mythic' | 'packs' | 'trades' | 'streak';
-const BOARDS: Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; crown?: boolean }> = [
-  { id: 'pct', label: 'Complétion', crown: true, value: (r) => r.pct, unit: (r) => `${fmtPct(r.pct)} · ${fmtN(r.uniques)} cartes` },
-  { id: 'mythic', label: '6★ & secrets', value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${fmtN(r.mythics)} × 6★${r.secrets ? ` · ✷ ${fmtN(r.secrets)}` : ''}` },
-  { id: 'packs', label: 'Boosters', value: (r) => r.packsOpened, unit: (r) => plural(r.packsOpened, 'booster') },
-  { id: 'trades', label: 'Échanges', value: (r) => r.tradesDone, unit: (r) => plural(r.tradesDone, 'échange', 'échanges') },
-  { id: 'streak', label: 'Série', value: (r) => r.streak, unit: (r) => plural(r.streak, 'jour') },
+type Board = 'pct' | 'season' | 'mythic' | 'packs' | 'trades' | 'streak';
+/** (11/11) saison en cours : cartes différentes gagnées depuis le début du mois, par joueur (rempli au chargement) */
+const seasonGain = new Map<string, number>();
+const BOARDS = (): Array<{ id: Board; label: string; unit: (r: LeaderRow) => string; value: (r: LeaderRow) => number; crown?: boolean }> => [
+  { id: 'pct', label: tr('lb.completion'), crown: true, value: (r) => r.pct, unit: (r) => tr('lb.pctUnit', { pct: fmtPct(r.pct), n: fmtN(r.uniques) }) },
+  { id: 'season', label: tr('lb.season'), value: (r) => seasonGain.get(r.id) ?? 0, unit: (r) => `+${plural(seasonGain.get(r.id) ?? 0, 'carte')}` },
+  { id: 'mythic', label: tr('lb.mythics'), value: (r) => r.mythics + r.secrets * 10, unit: (r) => `${fmtN(r.mythics)} × 6★${r.secrets ? ` · ✷ ${fmtN(r.secrets)}` : ''}` },
+  { id: 'packs', label: 'Boosters', value: (r) => r.packsOpened, unit: (r) => plural(r.packsOpened, 'booster') }, // i18n-ok
+  { id: 'trades', label: tr('lb.trades'), value: (r) => r.tradesDone, unit: (r) => plural(r.tradesDone, 'échange', 'échanges') }, // i18n-ok
+  { id: 'streak', label: tr('lb.streak'), value: (r) => r.streak, unit: (r) => plural(r.streak, 'jour') },
 ];
 
 export interface Leaderboard {
@@ -30,13 +37,19 @@ export interface Leaderboard {
 export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderboard {
   const el = h('div', 'lb-wrap');
   el.innerHTML = `
-    <div class="seg lb-boards">${BOARDS.map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.label}</button>`).join('')}</div>
+    <div class="seg lb-boards">${BOARDS().map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.label}</button>`).join('')}</div>
+    <div class="lb-season" hidden></div>
     <div class="lb-podium"></div>
-    <div class="lb-list"></div>`;
+    <div class="lb-list"></div>
+    <div class="lb-past" hidden></div>`;
   const podiumEl = el.querySelector<HTMLElement>('.lb-podium')!;
   const listEl = el.querySelector<HTMLElement>('.lb-list')!;
   let board: Board = 'pct';
   let rows: LeaderRow[] | null = null;
+  /** (11/11) saisons mensuelles : la saison en cours et l'historique des podiums */
+  let season: SeasonBoard | null = null;
+  const seasonEl = el.querySelector<HTMLElement>('.lb-season')!;
+  const pastEl = el.querySelector<HTMLElement>('.lb-past')!;
 
   // catégories qui débordent (« Échanges », « Série » cachés à 360 px) : fondu au bord droit (audit UX3-12)
   const boardsRow = el.querySelector<HTMLElement>('.lb-boards')!;
@@ -58,15 +71,50 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     return `<span class="lb-ava frame-${f.id}" style="--frame:${f.css ?? 'transparent'}">${r.avatarUrl ? `<img src="${esc(r.avatarUrl)}" alt="">` : `<span>${esc(r.name.slice(0, 1))}</span>`}</span>`;
   };
 
+  /** « dans 19 j 4 h » / « dans 3 h 12 min » */
+  const until = (ms: number) => {
+    const m = Math.max(0, Math.round(ms / 60000));
+    const d = Math.floor(m / 1440), hh = Math.floor((m % 1440) / 60), mm = m % 60;
+    return d ? `${d}\u00a0j ${hh}\u00a0h` : hh ? `${hh}\u00a0h ${mm}\u00a0min` : `${mm}\u00a0min`;
+  };
+  /** En-tête de l'onglet Saison (nom, fin, récompenses) et historique des podiums. */
+  function renderSeason() {
+    const on = board === 'season';
+    seasonEl.hidden = pastEl.hidden = !on;
+    if (!on) return;
+    const cur = season?.current;
+    const me = backend.state.user?.id;
+    const inIt = !!cur && !!me && cur.bases.some((b) => b.userId === me);
+    seasonEl.innerHTML = cur
+      ? `<div class="lb-ss-h"><span class="lb-ss-k">${tr('lb.season')}</span><b>${esc(seasonLabel(cur.key))}</b><span class="lb-ss-end">${tr('lb.endsIn', { t: until(seasonEndAt(Date.now()) - Date.now()) })}</span></div>` +
+        `<p class="lb-ss-rule">${tr('lb.rule', { joining: me && !inIt ? tr('lb.joining') : '' })}</p>` +
+        `<ol class="lb-ss-rw"><li class="g1"><span>1<sup>er</sup></span>${tr('lb.first', { packs: plural(SEASON_PACKS[0], 'booster') })}</li><li class="g2"><span>2<sup>e</sup> · 3<sup>e</sup></span>${tr('lb.second', { a: SEASON_PACKS[1], b: plural(SEASON_PACKS[2], 'booster') })}</li><li><span>4<sup>e</sup> – 10<sup>e</sup></span>${plural(SEASON_TOP10_PACKS, 'booster')}</li><li><span>${tr('lb.others')}</span>${tr('lb.played', { packs: plural(SEASON_PLAYED_PACKS, 'booster') })}</li></ol>`
+      : '<p class="muted lb-ss-rule">' + tr('lb.firstSoon') + '</p>';
+    const past = season?.past ?? [];
+    if (!past.length) return void (pastEl.innerHTML = '<div class="lb-ss-t">' + tr('lb.past') + '</div><p class="muted">' + tr('lb.noPast') + '</p>');
+    pastEl.innerHTML =
+      '<div class="lb-ss-t">' + tr('lb.past') + '</div>' +
+      past
+        .map((p) => {
+          const mine = me ? p.results.find((r) => r.userId === me) : undefined;
+          const pod = [0, 1, 2].map((i) => p.results[i]);
+          return `<section class="lb-ps"><header><b>${tr('lb.seasonOf', { s: esc(seasonOf(p.key)) })}</b><span>${esc(seasonLabel(p.key).split(' ')[1] ?? '')}</span></header><ol class="lb-ps-pod">${pod
+            .map((r, i) => (r ? `<li class="p${i + 1}"><span class="lb-ps-r">${i + 1}</span><a href="#/profil/${encodeURIComponent(r.userId)}">${esc(r.name)}</a><em>+${plural(r.gained, 'carte')}</em></li>` : `<li class="p${i + 1} empty"><span class="lb-ps-r">${i + 1}</span><span>—</span></li>`))
+            .join('')}</ol>${mine ? `<p class="lb-ps-me">${tr('lb.you', { rank: mine.rank })}<sup>${mine.rank === 1 ? 'er' : 'e'}</sup> ${tr('lb.gained', { cards: plural(mine.gained, 'carte'), packs: plural(mine.boosters, 'booster'), n: mine.boosters })}</p>` : ''}</section>`;
+        })
+        .join('');
+  }
+
   function render() {
     requestAnimationFrame(markOvf);
-    const b = BOARDS.find((x) => x.id === board)!;
-    const sorted = [...(rows ?? [])].sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, 'fr'));
+    renderSeason();
+    const b = BOARDS().find((x) => x.id === board)!;
+    const sorted = [...(rows ?? [])].sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, locale()));
     const me = backend.state.user?.id;
     podiumEl.replaceChildren();
     listEl.replaceChildren();
-    if (!rows) return void (podiumEl.innerHTML = '<div class="muted">Chargement…</div>');
-    if (!sorted.length) return void (podiumEl.innerHTML = '<div class="muted">Personne au classement pour l’instant.</div>');
+    if (!rows) return void (podiumEl.innerHTML = '<div class="muted">' + tr('common.loading2') + '</div>');
+    if (!sorted.length) return void (podiumEl.innerHTML = '<div class="muted">' + tr('lb.nobody') + '</div>');
     // podium : toujours 3 places de même gabarit, dans l'ordre 2e – 1er – 3e (places vides si moins de 3 joueurs)
     const row = h('div', 'lb-pd-row');
     for (const i of [1, 0, 2]) {
@@ -107,21 +155,42 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
         listEl.append(wrap);
       }
     }
-    if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">Le classement roi : la complétion globale de la collection. Le premier gagne le titre « Numéro un ».</div>');
+    if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">' + tr('lb.king') + '</div>');
+    if (b.id === 'season' && !season?.current) listEl.replaceChildren();
   }
 
+  let loadId = 0;
   return {
     el,
     async load() {
       rows = null;
       render();
+      const my = ++loadId;
+      const show = () => {
+        seasonGain.clear();
+        if (season?.current && rows) for (const st of seasonStandings(rows.map((x) => ({ userId: x.id, name: x.name, avatarUrl: x.avatarUrl, uniques: x.uniques, packsOpened: x.packsOpened })), season.current.bases)) seasonGain.set(st.userId, st.gained);
+        render();
+      };
       try {
-        rows = await backend.leaderboard();
+        // (11/11) les saisons à côté : une panne de ce côté ne prive pas du classement
+        // (audit 12/11, A6-03) affiché tout de suite ; ma ligne recalculée arrive ensuite, seulement si elle a bougé
+        let freshRows: LeaderRow[] | null = null;
+        const fresh = (r: LeaderRow[]) => {
+          if (my !== loadId) return;
+          freshRows = r; // arrivée avant la première lecture (saisons lentes) : c'est elle qui sera affichée
+          if (!rows) return;
+          rows = r;
+          show();
+        };
+        const [r, s] = await Promise.all([backend.leaderboard(fresh), backend.seasonBoard().catch(() => null)]);
+        if (my !== loadId) return;
+        rows = freshRows ?? r;
+        season = s;
       } catch (e) {
         rows = [];
         toast(errMsg(e), 'err');
       }
-      render();
+      show();
     },
   };
 }

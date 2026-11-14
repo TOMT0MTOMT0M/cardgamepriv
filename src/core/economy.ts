@@ -3,14 +3,18 @@
  * convex/games.ts), le mode démo et l'interface.
  *
  * Règles d'or (non négociables) :
- *  - les pièces ne servent JAMAIS à acheter des cartes : pas de boutique de cartes, pas de jeu qui échange des cartes
- *    contre des pièces ; pas de marché (échanges oui, vente non) ;
+ *  - les pièces ne servent JAMAIS à acheter des cartes au JEU : pas de boutique de cartes, pas de jeu qui échange des
+ *    cartes contre des pièces ; (retours Hugo 10/11, décision de Tom) seule exception : le MARCHÉ entre joueurs, à prix
+ *    fixe (src/core/market.ts) ;
  *  - monnaie 100 % virtuelle, aucun achat en argent réel.
  *
  * Une seule table de valeur, utilisée PARTOUT : brûlage, équivalence des mises en duel, roulette.
  */
+import { fe } from './errors';
+import { tData } from './i18n';
 import type { RarityId } from './rarity';
 import { THEMES, subthemeViews, type CatalogEntry } from './sets/themes';
+import { msgRef, str } from './msgRefs';
 
 // ───────────────────────────────────────────── table de valeur
 
@@ -94,10 +98,10 @@ export const PACK_BUY_DAILY = 10;
 /** achats encore possibles aujourd'hui (jour de Paris, comme le calendrier) */
 export const packBuysLeft = (e: EconState, today: string) => Math.max(0, PACK_BUY_DAILY - (e.shopDay === today ? e.shopBought ?? 0 : 0));
 export function packBuyProblem(count: number, coins: number, e: EconState, today: string): string | null {
-  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_DAILY) return 'Quantité invalide.';
+  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_DAILY) return fe('economy.5');
   const left = packBuysLeft(e, today);
-  if (count > left) return left ? `Plus que ${left} booster${left > 1 ? 's' : ''} à acheter aujourd’hui.` : `Limite de ${PACK_BUY_DAILY} boosters achetés par jour atteinte : reviens demain.`;
-  if (coins < count * PACK_PRICE) return `Pas assez de pièces (il t’en manque ${count * PACK_PRICE - coins}).`;
+  if (count > left) return left ? fe('economy.6', { p0: left, p1: left > 1 ? 's' : '' }) : fe('economy.7', { p0: PACK_BUY_DAILY });
+  if (coins < count * PACK_PRICE) return fe('economy.8', { p0: count * PACK_PRICE - coins });
   return null;
 }
 
@@ -105,15 +109,15 @@ export function packBuyProblem(count: number, coins: number, e: EconState, today
 
 /** Pièces rendues par un brûlage (valeur de la table). Vérifie : doublons seulement, pas de secrète. */
 export function burnProblem(items: StakeItem[], spare: (it: StakeItem) => number): string | null {
-  if (!items.length) return 'Choisis au moins une carte.';
+  if (!items.length) return fe('economy.9');
   const seen = new Set<string>();
   for (const it of items) {
-    if (!Number.isInteger(it.count) || it.count < 1) return 'Quantité invalide.';
-    if (!burnable(it.rarity)) return 'Les cartes secrètes ne se brûlent pas.';
+    if (!Number.isInteger(it.count) || it.count < 1) return fe('economy.10');
+    if (!burnable(it.rarity)) return fe('economy.11');
     const k = `${it.cardId}:${it.rarity}`;
-    if (seen.has(k)) return 'Même carte en double dans la liste.';
+    if (seen.has(k)) return fe('economy.12');
     seen.add(k);
-    if (spare(it) < it.count) return 'On ne brûle que des doublons libres (on garde toujours 1 exemplaire).';
+    if (spare(it) < it.count) return fe('economy.13');
   }
   return null;
 }
@@ -127,7 +131,7 @@ export interface CompletionSet {
   /** `sub:<sous-thème>` · `grp:<groupe>` · `theme:<thème>` */
   id: string;
   label: string;
-  kind: 'album' | 'groupe' | 'thème';
+  kind: 'album' | 'groupe' | 'thème'; // i18n-ok (identifiant)
   cards: CatalogEntry[];
   reward: number;
 }
@@ -147,7 +151,8 @@ export function completionSets(): CompletionSet[] {
         out.push({ id: `grp:${v.id.replace(/^group:/, '')}`, label: v.label, kind: 'groupe', cards: v.cards, reward: v.cards.length * COMPLETION_RATE });
       } else out.push({ id: `sub:${v.id}`, label: v.label, kind: 'album', cards: v.cards, reward: v.cards.length * COMPLETION_RATE });
     }
-    out.push({ id: `theme:${t.id}`, label: `${t.label} (thème entier)`, kind: 'thème', cards: t.cards, reward: t.cards.length * COMPLETION_RATE });
+    out.push({ id: `theme:${t.id}`, get label() { return tData('compl.theme', '{p0} (thème entier)').replace('{p0}', t.label); }, kind: 'thème', // i18n-ok
+      cards: t.cards, reward: t.cards.length * COMPLETION_RATE });
   }
   SETS = out;
   return out;
@@ -190,6 +195,9 @@ export interface AchievementStats {
   sportUniques: number;
   /** a déjà été n°1 du classement (1 = oui) — posé par le serveur (convex/profiles.ts, `markLeader`) */
   wasTop: number;
+  /** (11/11, saisons — convex/seasons.ts) saisons finies sur le podium (top 3) / à la première place */
+  seasonPodiums: number;
+  seasonWins: number;
   /** BÉBOU : paliers obtenus dans les autres succès du profil (le « niveau » du joueur) */
   bebouLevel: number;
 }
@@ -209,7 +217,20 @@ export interface Achievement {
   cos?: true;
 }
 
-const A = (id: string, label: string, how: string, tier: Achievement['tier'], stat: keyof AchievementStats, target: number, cos = false): Achievement => ({ id, label, how, tier, stat, target, ...(cos ? { cos: true as const } : {}) });
+// (version anglaise) libellé et consigne lus à l'affichage : le français ici (serveur, joueurs francophones), l'anglais dans i18n/en/data.ts
+const A = (id: string, label: string, how: string, tier: Achievement['tier'], stat: keyof AchievementStats, target: number, cos = false): Achievement => ({
+  id,
+  get label() {
+    return tData(`ach.${id}`, label);
+  },
+  get how() {
+    return tData(`ach.${id}.how`, how);
+  },
+  tier,
+  stat,
+  target,
+  ...(cos ? { cos: true as const } : {}),
+});
 /** palier « cosmétique » (la récompense est un titre, un badge, un cadre ou une vitrine) */
 const K = true;
 
@@ -218,6 +239,7 @@ const K = true;
  * titres (C15) et les cadres animés (C14), plus de paliers et de nouveaux succès (cartes par thème, niveau Bébou,
  * classement). Les ids existants ne changent pas (paliers déjà encaissés).
  */
+// i18n-data:début (anglais dans i18n/en/data.ts, vérifié par convex/i18n.test.ts)
 export const ACHIEVEMENTS: Achievement[] = [
   // Boosters
   A('packs-10', 'Premiers pas', 'Ouvre 10 boosters', 1, 'packsOpened', 10, K),
@@ -238,6 +260,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('uniq-10000', 'Roi de la collection', 'Possède 10 000 cartes différentes', 4, 'uniques', 10000, K),
   // Thèmes
   A('world-50', 'Explorateur', 'Possède 50 cartes World différentes', 1, 'worldUniques', 50, K),
+  // (11/11, ouvertures) palier « cosmétique » : débloque l'ouverture en éventail (src/core/cosmetics.ts, OPENINGS)
+  A('world-150', 'Cartographe', 'Possède 150 cartes World différentes', 2, 'worldUniques', 150, K),
   A('world-300', 'Voyageur', 'Possède 300 cartes World différentes', 2, 'worldUniques', 300),
   A('world-1000', 'Globe-trotteur', 'Possède 1 000 cartes World différentes', 3, 'worldUniques', 1000, K),
   A('world-2000', 'Grand voyageur', 'Possède 2 000 cartes World différentes', 3, 'worldUniques', 2000),
@@ -290,6 +314,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Forge
   A('burn-50', 'Allumette', 'Brûle 50 doublons à la forge', 1, 'burned', 50),
   A('burn-100', 'Pyromane', 'Brûle 100 doublons à la forge', 2, 'burned', 100, K),
+  // (11/11, ouvertures) palier « cosmétique » : débloque l'ouverture qui brûle l'emballage (OPENINGS)
+  A('burn-250', 'Braise', 'Brûle 250 doublons à la forge', 2, 'burned', 250, K),
   A('burn-500', 'Incendiaire', 'Brûle 500 doublons', 2, 'burned', 500),
   A('burn-1000', 'Maître de la forge', 'Brûle 1 000 doublons', 3, 'burned', 1000, K),
   // Série de connexion
@@ -300,6 +326,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('streak-60', 'Aurore', '60 jours de connexion d’affilée', 4, 'streak', 60, K),
   // Classement
   A('top-1', 'Numéro un', 'Sois premier du classement (complétion)', 4, 'wasTop', 1, K),
+  // (11/11) saisons mensuelles (convex/seasons.ts) : le podium donne un cadre, la victoire un titre
+  A('season-podium', 'Sur le podium', 'Finis une saison dans les 3 premiers', 3, 'seasonPodiums', 1, K),
+  A('season-1', 'Champion de saison', 'Gagne une saison du classement', 4, 'seasonWins', 1, K),
   // Bébou : le niveau (paliers obtenus dans les succès du profil)
   A('bebou-5', 'Bébou en herbe', 'Obtiens 5 paliers de succès', 1, 'bebouLevel', 5),
   A('bebou-15', 'Bébou confirmé', 'Obtiens 15 paliers de succès', 2, 'bebouLevel', 15, K),
@@ -316,6 +345,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('coins-10k', 'Tirelire', 'Gagne 10 000 pièces au total', 2, 'coinsEarned', 10000),
   A('coins-100k', 'Coffre-fort', 'Gagne 100 000 pièces au total', 3, 'coinsEarned', 100000),
 ];
+// i18n-data:fin
 
 /** palier « cosmétique » : 0 pièce (C10 : une seule récompense, le cosmétique) */
 export const achievementReward = (a: Achievement) => (a.cos ? 0 : ACHIEVEMENT_TIERS[a.tier - 1]);
@@ -336,6 +366,7 @@ export interface AchievementLadder {
   /** paliers, du plus facile au plus dur */
   steps: Achievement[];
 }
+// i18n-data:début
 const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   packsOpened: 'Ouvrir des boosters',
   uniques: 'Collection',
@@ -352,16 +383,19 @@ const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   burned: 'Forge',
   streak: 'Série de connexion',
   wasTop: 'Classement',
+  seasonPodiums: 'Podiums de saison',
+  seasonWins: 'Saisons gagnées',
   bebouLevel: 'Niveau Bébou',
   gamesPlayed: 'Parties jouées',
   gamesWon: 'Batailles gagnées',
   rouletteWins: 'Roulette',
   coinsEarned: 'Pièces gagnées',
 };
+// i18n-data:fin
 export const ACHIEVEMENT_LADDERS: AchievementLadder[] = (() => {
   const m = new Map<keyof AchievementStats, Achievement[]>();
   for (const a of ACHIEVEMENTS) m.set(a.stat, [...(m.get(a.stat) ?? []), a]);
-  return [...m].map(([stat, steps]) => ({ stat, label: LADDER_LABEL[stat], steps: steps.sort((x, y) => x.target - y.target) }));
+  return [...m].map(([stat, steps]) => ({ stat, get label() { return tData(`ach.stat.${stat}`, LADDER_LABEL[stat]); }, steps: steps.sort((x, y) => x.target - y.target) }));
 })();
 /** Paliers atteints d'une échelle (0 = aucun). */
 export const ladderLevel = (l: AchievementLadder, s: AchievementStats) => l.steps.filter((a) => achievementDone(a, s)).length;
@@ -431,6 +465,7 @@ export function achievementStats(
   p: {
     packsOpened: number; uniques: number; mythics: number; legendaries: number; secrets: number; fullSubthemes: number; tradesDone: number; contractsSigned: number; streak: number;
     worldUniques?: number; gamingUniques?: number; popUniques?: number; sportUniques?: number; burned?: number; wasTop?: number;
+    seasonPodiums?: number; seasonWins?: number;
   },
   e: EconState,
 ): AchievementStats {
@@ -455,8 +490,14 @@ export function achievementStats(
     popUniques: p.popUniques ?? 0,
     sportUniques: p.sportUniques ?? 0,
     wasTop: p.wasTop ?? 0,
+    seasonPodiums: p.seasonPodiums ?? 0,
+    seasonWins: p.seasonWins ?? 0,
     bebouLevel: 0,
   };
   s.bebouLevel = ACHIEVEMENTS.filter((a) => !ECON_ONLY.has(a.stat) && achievementDone(a, s)).length;
   return s;
 }
+
+// (version anglaise, lot 4) succès et ensembles des messages stockés, relus dans la langue active
+msgRef('ach', (p) => { const id = str(p.achId); return id ? ACHIEVEMENTS.find((a) => a.id === id)?.label : undefined; });
+msgRef('set', (p) => { const id = str(p.setId); return id ? completionSets().find((s) => s.id === id)?.label : undefined; });

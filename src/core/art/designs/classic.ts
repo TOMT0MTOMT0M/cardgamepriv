@@ -2,7 +2,7 @@ import { alpha } from '../canvas';
 import { setInfo } from '../../cardData';
 import { type CardDesign, FONT_MONO, FONT_TITLE, H, TAU, W, cut, fitFont, grainAtop, num3, paper, spaced, starColor, starRow } from './common';
 import type { Ctx } from '../canvas';
-import { COUNTRY_NAMES, countryOf, drawFlag, type CountryCode } from '../flags';
+import { countryName, countryOf, drawFlag, type CountryCode } from '../flags';
 
 /** Fenêtre du gabarit par défaut (coordonnées 768×1072) — sert aussi à `WINDOW_UV` / `windowSDF`. */
 export const CLASSIC_WIN = { x: 46, y: 116, w: 676, h: 778, r: 14 };
@@ -64,7 +64,7 @@ function corner(g: Ctx, x: number, y: number, sx: number, sy: number, s: number)
  */
 export const classic: CardDesign = {
   id: 'classic',
-  title: 'Classique',
+  title: 'Classique', // i18n-ok
   art: { k: 1.25, to: [384, 505] },
   paint(f, m, d) {
     const { card, uni, tier } = d;
@@ -146,7 +146,7 @@ export const classic: CardDesign = {
       // (audit 06/11) ≥ 30 px de base sur la carte : lisible sur téléphone
       f.font = `600 30px ${FONT_MONO}`;
       f.fillStyle = ink;
-      spaced(f, COUNTRY_NAMES[country].toUpperCase(), 136, 962, 2.5);
+      spaced(f, countryName(country).toUpperCase(), 136, 962, 2.5);
       if (!d.mini) {
         f.font = `500 30px ${FONT_MONO}`;
         f.fillStyle = alpha(ink, 0.8);

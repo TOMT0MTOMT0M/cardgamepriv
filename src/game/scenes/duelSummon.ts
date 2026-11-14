@@ -1,3 +1,4 @@
+import { tData, t as tr } from '../../core/i18n';
 import {
   AdditiveBlending,
   AnimationMixer,
@@ -67,7 +68,7 @@ import { createStage } from '../../core/stage';
 import { cardArtFor } from '../../core/art';
 import type { CardData } from '../../core/cardData';
 import { rarity } from '../../core/rarity';
-import { createPipeline } from '../../core/post';
+import { createPipeline, isWebGPURenderer } from '../../core/post';
 import { createHoloMaterial } from '../../core/holo';
 import { createBackMaterial, createEdgeMaterial } from '../../core/cardMaterial';
 import { createCardMesh, CARD } from '../../core/cardModel';
@@ -75,7 +76,7 @@ import { EASE, Spring } from '../../core/ease';
 import type { N } from '../../core/tsl';
 import { mobileArtScale } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
-import { fxReduced } from '../../core/fxPref';
+import { reducedMotion } from '../../core/motion';
 import { siteUrl } from '../../core/siteRoot';
 import type { DuelMonster } from './duelMonsters';
 // Fraunces ne sert qu'au nom du monstre de cette scène (audit 06/11) : chargée ici, pas au premier écran
@@ -181,6 +182,18 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     trans: uniform(0), field: uniform(0), wave: uniform(0), beam: uniform(0), rise: uniform(0), tex: uniform(0),
     glow: uniform(0), ground: uniform(0), glitch: uniform(0), flash: uniform(0), ca: uniform(0), motes: uniform(0),
     accent: uniform(new Color(M.accent)), center: uniform(new Vector2(0.5, 0.5)),
+  };
+
+  // (audit 12/11, S17 / A10-16) minuteurs annulés au démontage (ils gardaient le mixer et le cri en mémoire jusqu'à échéance)
+  const pending = new Set<number>();
+  let pendingHooked = false;
+  const later = (fn: () => void, ms: number) => {
+    if (!pendingHooked) {
+      pendingHooked = true;
+      ctx.bag.fn(() => (pending.forEach((id) => clearTimeout(id)), pending.clear(), (pendingHooked = false)));
+    }
+    const id = window.setTimeout(() => (pending.delete(id), fn()), ms);
+    pending.add(id);
   };
 
   // ───────────────────────────────────────────── carte : face du jeu, dos qui se métamorphose
@@ -545,7 +558,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
             const a = mx.clipAction(summon).setLoop(LoopOnce, 1);
             a.clampWhenFinished = true;
             a.reset().play();
-            window.setTimeout(() => {
+            later(() => {
               a.fadeOut(0.35);
               loopIdle();
             }, Math.max(200, summon.duration * 1000 - 350));
@@ -561,7 +574,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
 
   // ───────────────────────────────────────────── texte
   function showTitle() {
-    const name = M.fr ?? opts.card.name; // nom français de la carte (retour de Tom)
+    const name = (M.fr ? tData(`duel.${opts.card.id}`, M.fr) : undefined) ?? opts.card.name; // nom français de la carte (retour de Tom) ; (version anglaise) le nom officiel anglais
     let i = 0;
     const letters = name.toUpperCase().split(' ').map((w) => `<b>${[...w].map((ch) => `<span style="transition-delay:${(0.25 + i++ * 0.035).toFixed(3)}s">${ch.replace(/[&<>"]/g, '')}</span>`).join('')}</b>`).join(' ');
     textEl.innerHTML = `<div class="dz-kicker">invocation · 6★ mythique</div><div class="dz-name">${letters}</div><div class="dz-sub">${(opts.card.uniName ?? 'Yu-Gi-Oh').replace(/[&<>"]/g, '')}</div>`;
@@ -629,7 +642,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
     t.call(() => {
       if (cryBuf) {
         const h = sfx.playSample(cryBuf, 0.9, 0.3);
-        if (cryBuf.duration > 5) window.setTimeout(() => h?.fade(0.8), 4200);
+        if (cryBuf.duration > 5) later(() => h?.fade(0.8), 4200);
       }
       else sfx.creature(M.cry, 0.55);
       shake.impulse(11 * k);
@@ -697,9 +710,12 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
   }
 
   return {
+    // (V2 fluidité, 11/11) un changement de définition 3D attend la fin de l'invocation (shell : moment calme), comme à
+    // l'ouverture et dans la visionneuse — avant, il réallouait les cibles de rendu en pleine scène (à-coup + saut de netteté)
+    pacing: () => (tl?.isActive() ? 'busy' : 'rest'),
     async setup(c) {
       ctx = c;
-      calm = fxReduced();
+      calm = reducedMotion();
       stage = createStage(c, { bg: ['#0b1222', '#020305'], env: 'studio', envIntensity: 0.35, fill: 0.62 });
       D0 = stage.camera.position.z;
       aspect = c.width / c.height;
@@ -710,7 +726,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
 
       // texte + indication + bouton « passer » (HTML au-dessus du canvas)
       const style = document.createElement('style');
-      style.textContent = `
+      style.textContent = `/* i18n-ok (CSS) */
         .overlay > .dz-title { pointer-events: none; position: absolute; left: 0; right: 0; bottom: max(9%, 64px); text-align: center; padding: 0 16px; }
         @media (min-aspect-ratio: 1/1) { .overlay > .dz-title { left: 6vw; right: auto; max-width: 42vw; bottom: 14%; text-align: left; padding: 0; } }
         .dz-title .dz-kicker { font: 600 12px var(--mono, "Inter", sans-serif); letter-spacing: .14em; text-transform: uppercase; color: ${HOLO}; opacity: 0; transform: translateY(6px); transition: opacity .6s, transform .8s cubic-bezier(.16,1,.3,1); }
@@ -731,11 +747,11 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       textEl.setAttribute('aria-live', 'polite');
       hintEl = document.createElement('div');
       hintEl.className = 'dz-hint';
-      hintEl.textContent = matchMedia('(pointer: coarse)').matches ? 'touche pour continuer' : 'clique pour continuer';
+      hintEl.textContent = matchMedia('(pointer: coarse)').matches ? tr('duel.tapCont') : tr('duel.clickCont');
       skipEl = document.createElement('button');
       skipEl.className = 'dz-skip';
       skipEl.type = 'button';
-      skipEl.textContent = 'Passer';
+      skipEl.textContent = tr('gd.skip2');
       skipEl.addEventListener('click', (e) => {
         e.stopPropagation();
         end();
@@ -749,7 +765,11 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
         ctx.sfx.loadSample(siteUrl(`${FX_DIR}sfx/duel.mp3`)).then((b) => (duelBuf = b)),
         // un cri, pas une musique : au-delà de 12 s, le fichier n'est pas un cri → cri synthétisé (sinon il est joué,
         // et coupé en fondu après ~4,5 s s'il est long)
-        ctx.sfx.loadSample(siteUrl(`${FX_DIR}sfx/${M.file}.mp3`)).then((b) => (cryBuf = b && b.duration <= 12 ? b : null)),
+        ctx.sfx.loadSample(siteUrl(`${FX_DIR}sfx/${M.file}.mp3`)).then((b) => {
+          cryBuf = b && b.duration <= 12 ? b : null;
+          // (audit 12/11, A2-06) fichier refusé (une musique de 24 s ≈ 4 Mo décodés) : pas gardé en mémoire pour rien
+          if (b && !cryBuf) ctx.sfx.dropSample?.(siteUrl(`${FX_DIR}sfx/${M.file}.mp3`));
+        }),
       ]);
       if (!(hasGlb && (await buildGlb(glbUrl)))) await buildHolo2D();
       await buildCard();
@@ -757,7 +777,7 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       buildFx();
 
       // post : bloom sur l'émissif, aberration chromatique (cri), flash, vignette
-      post = createPipeline(c, stage.scene, stage.camera, { emissive: true });
+      post = createPipeline(c, stage.scene, stage.camera, { emissive: true, lean: true });
       const bl = post.own(bloom(post.emissive!, 0.55, 0.45, 0.0)) as unknown as N;
       bloomRef = bl;
       const off = screenUV.sub(U.center);
@@ -769,25 +789,34 @@ export default function createDuelSummon(opts: DuelSummonOptions): Experiment & 
       col = col.mul(mix(float(0.62), float(1), vig));
       col = mix(col, vec3(0.86, 0.95, 1), U.flash);
       post.output = vec4(col, 1);
-      await stage.compile();
-      await post.compile();
+      // (audit 12/11, S08 / E4-01) WebGPU : seulement la vraie configuration de la passe ; la « variante canvas »
+      // (stage.compile, post.compile sans `real`) compilait des pipelines inutiles et allouait la cible interne du moteur
+      if (!isWebGPURenderer(c.renderer)) await stage.compile();
+      await post.compile({ real: true });
       /*
        * (téléphone, retour de Tom 4 nov. : « écran noir au début de l'animation ») la compilation ci-dessus ne prépare que
        * les variantes « canvas » ; les vrais pipelines (passe MRT émissif + MSAA, squelettes, sprites) se créaient à la 1re
        * image affichée — plusieurs secondes de noir sur un GPU mobile. Une image « à blanc », rendue hors écran pendant la
        * préparation (l'ouverture du booster, le voile de la visionneuse), les crée ici, invisible.
        */
-      const warm = new RenderTarget(4, 4);
-      const prevRT = c.renderer.getRenderTarget();
-      try {
+      // (audit 12/11, S09 / E4-14) sur le canvas quand le jeu le permet (même clé de pipeline que la vraie sortie)
+      const onCanvas = c.warmOnCanvas?.(() => {
         stage.scene.updateMatrixWorld();
-        c.renderer.setRenderTarget(warm);
         post.render();
-      } catch (e) {
-        console.warn('[duel] image de préchauffage', e);
-      } finally {
-        c.renderer.setRenderTarget(prevRT);
-        warm.dispose();
+      });
+      if (!onCanvas) {
+        const warm = new RenderTarget(4, 4);
+        const prevRT = c.renderer.getRenderTarget();
+        try {
+          stage.scene.updateMatrixWorld();
+          c.renderer.setRenderTarget(warm);
+          post.render();
+        } catch (e) {
+          console.warn('[duel] image de préchauffage', e);
+        } finally {
+          c.renderer.setRenderTarget(prevRT);
+          warm.dispose();
+        }
       }
       c.bag.fn(c.input.onTap(onTap));
       // captures (scripts Playwright) : état de la séquence

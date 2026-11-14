@@ -4,6 +4,9 @@ import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS, type RarityId } from './cardsCatalog';
 import { applyRegen } from '../src/core/packRegen';
 import { addCoins } from './econLib';
+import { invRev } from './invRev';
+import { syncPresence } from './presence';
+import { fm } from '../src/core/msgs';
 
 /**
  * OUTILS DE TEST (admin) — fonctions INTERNES : impossibles à appeler depuis le site, seulement depuis la ligne de
@@ -47,7 +50,7 @@ export async function give(ctx: MutationCtx, userId: Id<'users'>, cardId: string
     .query('inventory')
     .withIndex('by_user_card_rarity', (q) => q.eq('userId', userId).eq('cardId', cardId).eq('rarity', rarity))
     .unique();
-  if (inv) await ctx.db.patch(inv._id, { count: inv.count + count, bestMintNumber: Math.min(inv.bestMintNumber, first), lastPulledAt: now });
+  if (inv) await ctx.db.patch(inv._id, { count: inv.count + count, bestMintNumber: Math.min(inv.bestMintNumber, first), lastPulledAt: now, rev: invRev() });
   else
     await ctx.db.insert('inventory', {
       userId,
@@ -58,6 +61,7 @@ export async function give(ctx: MutationCtx, userId: Id<'users'>, cardId: string
       foilSeed: Math.floor(rand() * 900000) + 100000,
       firstPulledAt: now,
       lastPulledAt: now,
+      rev: invRev(),
     });
 }
 
@@ -185,7 +189,7 @@ export const grantCoins = internalMutation({
   args: { name: v.string(), amount: v.number(), label: v.optional(v.string()) },
   handler: async (ctx, { name, amount, label }) => {
     const user = await findUser(ctx, name);
-    const coins = await addCoins(ctx, user._id, amount, 'admin', label ?? 'Ajustement admin');
+    const coins = await addCoins(ctx, user._id, amount, 'admin', label ?? fm('c.admin'));
     return { joueur: user.displayName, pièces: coins };
   },
 });
@@ -208,6 +212,7 @@ export const ban = internalMutation({
     if (u.isAdmin || u.isModerator) throw new ConvexError(`${u.displayName} est de l'équipe : retire-lui d'abord ses droits.`);
     const now = Date.now();
     await ctx.db.patch(u._id, { bannedAt: now, banReason: reason ?? 'banni', statusText: undefined });
+    await syncPresence(ctx, u._id);
     const n = { sessions: 0, echanges: 0, annonces: 0, offres: 0, amis: 0 };
     for (const s of await ctx.db.query('sessions').withIndex('by_userId', (q) => q.eq('userId', u._id)).collect()) (await ctx.db.delete(s._id), n.sessions++);
     const pending = [
@@ -236,6 +241,7 @@ export const unban = internalMutation({
     const u = await findUser(ctx, name);
     if (!u.bannedAt) return `${u.displayName} n'est pas banni.`;
     await ctx.db.patch(u._id, { bannedAt: undefined, banReason: undefined });
+    await syncPresence(ctx, u._id);
     return `${u.displayName} (@${u.username}) rétabli : il peut se reconnecter.`;
   },
 });
@@ -258,5 +264,18 @@ export const resetGuide = internalMutation({
     const u = await findUser(ctx, name);
     await ctx.db.patch(u._id, { guideSeenAt: undefined });
     return `${u.displayName} : la visite guidée se relancera à sa prochaine visite.`;
+  },
+});
+
+/**
+ * (13/11) Rejouer le tour des nouveautés V2 :
+ *   npx convex run admin:resetV2Tour '{"name":"magizz"}'
+ */
+export const resetV2Tour = internalMutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const u = await findUser(ctx, name);
+    await ctx.db.patch(u._id, { v2TourSeenAt: undefined });
+    return `${u.displayName} : le tour des nouveautés V2 se relancera à sa prochaine visite.`;
   },
 });

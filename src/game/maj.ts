@@ -1,3 +1,4 @@
+import { t } from '../core/i18n';
 import { BUILD_ID } from '../core/canal';
 import { SITE_ROOT } from '../core/siteRoot';
 import { h } from './ui';
@@ -34,7 +35,7 @@ export const setUpdateBusy = (fn: () => boolean) => (busy = fn);
 export async function hardUpdate(target = '') {
   const veil = h('div', 'maj-veil');
   veil.setAttribute('role', 'status');
-  veil.innerHTML = '<span>Mise à jour…</span>';
+  veil.innerHTML = '<span>' + t('maj.updating') + '</span>';
   document.body.append(veil);
   requestAnimationFrame(() => veil.classList.add('on'));
   const step = async () => {
@@ -67,7 +68,7 @@ export function watchUpdates() {
     if (pill) return;
     pill = h('div', 'maj-pill');
     pill.setAttribute('role', 'status');
-    pill.innerHTML = `<span>Mise à jour disponible</span><button type="button">Recharger</button>`;
+    pill.innerHTML = `<span>${t('maj.available')}</span><button type="button">${t('common.reload')}</button>`;
     pill.querySelector('button')!.addEventListener('click', () => void hardUpdate(newId));
     document.body.append(pill);
     requestAnimationFrame(() => pill?.classList.add('on'));

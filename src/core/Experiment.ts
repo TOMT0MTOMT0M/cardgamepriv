@@ -11,7 +11,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   A: 'A · Visualisation de la carte',
   B: 'B · Ouverture de pack',
   C: 'C · Rareté',
-  D: 'D · Designs de cartes',
+  D: 'D · Designs de cartes', // i18n-ok
 };
 
 export interface ExperimentMeta {
@@ -46,6 +46,13 @@ export interface LabContext {
   width: number;
   height: number;
   sfx: Sfx;
+  /**
+   * (audit 12/11, S09 / E4-14) Préchauffage SUR LE CANVAS, fourni par le jeu (game/shell.ts), absent au labo. Appelle
+   * `draw` (une image de la scène en cours de montage, vers le canvas) puis redessine aussitôt la scène affichée,
+   * dans la même tâche : rien de l'image de préchauffage n'est présenté. Rend false sans rien dessiner quand ce n'est
+   * pas possible (pas de WebGPU, aucune scène affichée à redessiner) : préchauffer alors hors écran, comme avant.
+   */
+  warmOnCanvas?: (draw: () => void) => boolean;
 }
 
 export interface Experiment {
@@ -59,6 +66,15 @@ export interface Experiment {
    * (5 cartes + particules + bloom) ; la visionneuse demande 3 — l'écran ×3 n'étire plus l'image ×1,5 (audit 06/11).
    */
   dprCap?: number;
+  /**
+   * État de la scène pour la boucle du shell (game/shell.ts), lu à chaque image. Absent = 'rest'.
+   * - 'rest' : rien d'important ne s'anime (vitrine, fin d'ouverture, visionneuse au repos) : le moment pour changer la
+   *   définition 3D (`resize()` réalloue les cibles de rendu : à-coup + saut de netteté si on le fait en pleine révélation) ;
+   * - 'busy' : animation en cours — la mesure des images/s compte, mais tout changement de définition attend ;
+   * - 'prepare' : préparation CPU (peinture des calques d'un booster) — images lentes sans rapport avec le GPU : la
+   *   fenêtre de mesure ne compte pas.
+   */
+  pacing?(): 'rest' | 'busy' | 'prepare';
   replay?(): void;
   /** Changement de rareté à chaud. Si absent, le shell reconstruit l'expérience. */
   setRarity?(r: RarityId): void;

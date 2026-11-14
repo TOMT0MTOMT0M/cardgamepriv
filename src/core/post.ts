@@ -7,7 +7,13 @@ import type { N } from './tsl';
  * Petit utilitaire autour de RenderPipeline (r183+) : passe de scène avec MRT {output, emissive},
  * et suivi des nœuds à libérer (RenderPipeline.dispose ne libère pas les PassNode / BloomNode).
  */
-export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, opts: { emissive?: boolean; samples?: number } = {}) {
+/** Le navigateur expose-t-il les attachements transitoires de WebGPU (échantillons MSAA jamais écrits en mémoire) ? */
+export function hasTransientAttachment(): boolean {
+  const usage = (globalThis as { GPUTextureUsage?: object }).GPUTextureUsage;
+  return !!usage && 'TRANSIENT_ATTACHMENT' in usage;
+}
+
+export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, opts: { emissive?: boolean; samples?: number; lean?: boolean } = {}) {
   const pipeline = new RenderPipeline(ctx.renderer);
   const passOpts: Record<string, unknown> = {};
   if (opts.samples != null) passOpts.samples = opts.samples;
@@ -18,7 +24,10 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
   // écrites en mémoire : 4× la bande passante). Une scène peut imposer la sienne (`opts.samples`).
   // (perf 06/11, décision de Tom) WebGPU ne connaît pas ×2 (1 ou 4) : ×4 en WebGPU — le rendu lissé validé avant l'audit,
   // échantillons résolus sur la puce puis jetés (storeOp discard, valide avec de vrais échantillons) ; WebGL2 garde ×2
-  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = ctx.isWebGPU ? 4 : 2;
+  // (audit 12/11, décision 2 de Tom / E3-02) ×4 seulement si le navigateur sait garder les échantillons sur la puce
+  // (attachement transitoire) : sans lui, « échantillons jetés » n'économise que de la bande passante et les textures
+  // ×4 restent en mémoire (+237 Mo à la visionneuse d'un iPhone ×3). Dans ce cas : ×1 à la définition native.
+  if (ctx.quality === 'mobile' && opts.samples == null) passOpts.samples = ctx.isWebGPU ? (hasTransientAttachment() ? 4 : 1) : 2;
   /*
    * (perf 06/11, correctif) WebGPU ne connaît que 1 ou 4 échantillons : three ramène ×2 à ×1 (WebGPUUtils.getSampleCount)
    * mais gardait « jeter les échantillons » → la cible de la passe (sans MSAA, donc la VRAIE image) était jetée en fin de
@@ -27,7 +36,11 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
    */
   const requested = (passOpts.samples as number | undefined) ?? ctx.renderer.samples;
   const msaa = (ctx.isWebGPU ? (requested >= 4 ? 4 : 1) : requested) > 1;
-  if (ctx.quality === 'mobile' && msaa) passOpts.storeMultisampledColorBuffer = false;
+  // (audit 12/11, S17 / E4-10) aussi sur ordinateur : une fois résolus, les échantillons ne sont relus par personne —
+  // aucun pixel ne change ; sur un GPU à tuiles classé « ordinateur » (Mac Apple Silicon) c'est le même gain que sur iPhone
+  // `lean` : demandé par les scènes du jeu (le labo garde son réglage : téléphone seulement).
+  const lean = ctx.quality === 'mobile' || opts.lean === true;
+  if (lean && msaa) passOpts.storeMultisampledColorBuffer = false;
   const scenePass = pass(scene, camera, Object.keys(passOpts).length ? passOpts : undefined);
   if (opts.emissive) scenePass.setMRT(mrt({ output, emissive: vec4(emissive, output.a) }));
   const color = scenePass.getTextureNode('output');
@@ -47,7 +60,8 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
   const checkDepth = () => {
     if (depthChecked) return;
     depthChecked = true;
-    if (ctx.quality !== 'mobile' || !msaa) return;
+    // (E4-10) aussi sur ordinateur : profondeur ni gardée ni résolue quand la scène ne la lit pas
+    if (!lean || !msaa) return;
     const reads = !!(scenePass as unknown as { _textureNodes?: Record<string, unknown> })._textureNodes?.depth;
     if (reads) return;
     Object.assign(scenePass.renderTarget, { storeMultisampledDepthBuffer: false, storeMultisampledStencilBuffer: false, resolveDepthBuffer: false, resolveStencilBuffer: false });
@@ -71,13 +85,16 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
       pipeline.render();
     },
     /**
-     * Pré-compile les matériaux de la scène POUR LA VRAIE CIBLE de la passe (MRT émissif, MSAA, HalfFloat) —
-     * `stage.compile()` les prépare pour le canvas, et la vraie variante était créée à la 1re image (à-coup de
-     * 100 à 400 ms sur téléphone). À appeler une fois la scène peuplée (et après setMRT / getTextureNode).
+     * Pré-compile les matériaux de la scène. Par défaut : variante « canvas » (comme `stage.compile()`). Avec
+     * `real: true` (WebGPU seulement, repli automatique sinon) : dans la configuration RÉELLE de la passe — cible
+     * HalfFloat, MRT {output, emissive}, MSAA ×4, profondeur — via `PassNode.compileAsync` (three r187) : les pipelines
+     * que la 1re image utiliserait sont créés en asynchrone et en parallèle, à la place de la variante « canvas » qui ne
+     * servait à rien et de la création synchrone dans l'image de préchauffage. À appeler une fois la scène peuplée
+     * (et après setMRT / getTextureNode).
      */
-    async compile() {
+    async compile(opts: { real?: boolean } = {}) {
       checkDepth();
-      await compilePassAsync(ctx.renderer, scenePass);
+      await compilePassAsync(ctx.renderer, scenePass, opts.real === true && ctx.isWebGPU);
     },
     /**
      * (audit 06/11) Une image rendue hors écran (cible 4×4) : crée les VRAIS pipelines de la passe (MRT émissif, MSAA,
@@ -87,6 +104,14 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
     warm() {
       checkDepth();
       const r = ctx.renderer;
+      // (audit 12/11, S09 / E4-14) dans une cible 4×4 (RGBA 8 bits, sans espace de couleur), le quad de la sortie finale
+      // n'a pas la même clé de pipeline que sur le canvas : son pipeline naissait quand même à la première image
+      // affichée. Le jeu sait préchauffer sur le canvas sans rien montrer (`warmOnCanvas`) ; sinon, comme avant.
+      const onCanvas = ctx.warmOnCanvas?.(() => {
+        scene.updateMatrixWorld();
+        pipeline.render();
+      });
+      if (onCanvas) return;
       const target = new RenderTarget(4, 4);
       const prevRT = r.getRenderTarget();
       try {
@@ -119,14 +144,87 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
 
 type RT = { dispose(): void };
 
+type RendererPriv = {
+  _beginPreCompile?: (st: PreState) => unknown;
+  _finishPreCompile?: () => unknown;
+  _precompilationState?: PreState | null;
+  getRenderTarget(): unknown;
+  getMRT(): unknown;
+  setRenderTarget(rt: unknown): void;
+  setMRT(m: unknown): void;
+};
+type PreState = { renderTarget?: unknown };
+
+/** cibles de passe en cours de précompilation réelle → état du moteur à leur rendre à chaque pause */
+const guarded = new WeakMap<object, { rt: unknown; mrt: unknown; n: number }>();
+const guardInstalled = new WeakSet<object>();
+
 /**
- * Compile les matériaux de la scène (variante « canvas », comme `stage.compile()`). Les VRAIS pipelines de la passe
- * (MRT émissif + MSAA + HalfFloat) ne se créent qu'au premier rendu dans sa cible : c'est le rôle de `warm()`.
- * (audit 06/11 : l'ancienne tentative de compiler « sur la vraie cible » via `_beginPreCompile` produisait en WebGL2 des
- * programmes sans sorties MRT ; elle est remplacée par l'image à blanc, déjà éprouvée dans duelSummon.)
+ * `PassNode.compileAsync` (three r187) laisse la cible et le MRT de la passe actifs sur le moteur pendant que la
+ * compilation rend la main au navigateur (toutes les ~8 ms) : `_finishPreCompile` restaure « l'état de sortie » copié
+ * au départ, qui EST la cible de la passe. Une image rendue pendant l'attente (vitrine, autre scène) partait alors dans
+ * la cible de la passe (pipelines invalides, écran noir : constaté sur le banc). On enveloppe donc les deux crochets que
+ * three appelle à chaque pause / reprise (états de la passe ET de chaque pipeline en file), UNIQUEMENT pour les
+ * précompilations dont la cible est une passe gardée : à la pause on rend au moteur son état d'avant, à la reprise on
+ * remet celui de la passe. Détection de fonctionnalité :
+ * si ces crochets privés n'existent pas (autre version de three), renvoie false → l'appelant garde l'ancien chemin.
  */
-export async function compilePassAsync(renderer: LabContext['renderer'], passNode: unknown): Promise<void> {
-  const pn = passNode as { scene: unknown; camera: unknown };
+function installPreCompileGuard(renderer: RendererPriv): boolean {
+  if (guardInstalled.has(renderer)) return true;
+  const begin = renderer._beginPreCompile;
+  const finish = renderer._finishPreCompile;
+  if (typeof begin !== 'function' || typeof finish !== 'function' || !('_precompilationState' in renderer)) return false;
+  renderer._beginPreCompile = function (this: RendererPriv, st: PreState) {
+    const out = begin.call(this, st);
+    if (st && st.renderTarget && guarded.has(st.renderTarget as object)) this.setRenderTarget(st.renderTarget);
+    return out;
+  };
+  renderer._finishPreCompile = function (this: RendererPriv) {
+    const st = this._precompilationState;
+    const out = finish.call(this);
+    const g = st && st.renderTarget ? guarded.get(st.renderTarget as object) : undefined;
+    if (g) {
+      this.setRenderTarget(g.rt);
+      this.setMRT(g.mrt);
+    }
+    return out;
+  };
+  guardInstalled.add(renderer);
+  return true;
+}
+
+/**
+ * Compile les matériaux de la scène. `real` (WebGPU) : dans la configuration réelle de la passe, en asynchrone et en
+ * parallèle (`PassNode.compileAsync`, voir `compile()`), sans laisser l'état de la passe sur le moteur pendant les pauses.
+ * Sinon (WebGL2, ou `real` absent) : variante « canvas » comme `stage.compile()`.
+ * (audit 06/11 : l'ancienne tentative de compiler « sur la vraie cible » via `_beginPreCompile` produisait en WebGL2 des
+ * programmes sans sorties MRT — d'où le repli WebGL2 inchangé ; en WebGPU, la 1re image de `warm()` crée ce qui reste :
+ * chaîne de post-traitement.)
+ */
+/** Le moteur tourne-t-il sur WebGPU (et pas sur le repli WebGL2) ? */
+export function isWebGPURenderer(renderer: unknown): boolean {
+  return !!(renderer as { backend?: { isWebGPUBackend?: boolean } } | null)?.backend?.isWebGPUBackend;
+}
+
+export async function compilePassAsync(renderer: LabContext['renderer'], passNode: unknown, real = false): Promise<void> {
+  const pn = passNode as { scene: unknown; camera: unknown; renderTarget?: object; compileAsync?: (r: unknown) => Promise<void> };
+  const r = renderer as unknown as RendererPriv;
+  if (real && typeof pn.compileAsync === 'function' && pn.renderTarget && installPreCompileGuard(r)) {
+    const key = pn.renderTarget;
+    const g = guarded.get(key) ?? { rt: r.getRenderTarget(), mrt: r.getMRT(), n: 0 };
+    g.n++;
+    guarded.set(key, g);
+    try {
+      await pn.compileAsync(renderer);
+      return;
+    } catch (e) {
+      console.warn('[post] compilation réelle de la passe', e);
+    } finally {
+      r.setRenderTarget(g.rt);
+      r.setMRT(g.mrt);
+      if (--g.n <= 0) guarded.delete(key);
+    }
+  }
   try {
     await (renderer as unknown as { compileAsync(s: unknown, c: unknown): Promise<void> }).compileAsync(pn.scene, pn.camera);
   } catch (e) {

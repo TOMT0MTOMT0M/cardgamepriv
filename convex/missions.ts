@@ -16,6 +16,7 @@ import {
   type MissionEvent,
   type MissionsState,
 } from '../src/core/missions';
+import { fm } from '../src/core/msgs';
 
 /** Missions du jour (3 tirées au hasard par joueur et par jour) : cf. src/core/missions.ts. */
 
@@ -25,11 +26,14 @@ export const mine = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
     const user = await getUserByToken(ctx, sessionToken);
-    if (!user) return null;
-    const now = Date.now();
-    return { ...stateOf(user, now), resetAt: nextMissionReset(now) };
+    return user ? missionsView(user, Date.now()) : null;
   },
 });
+
+/** Ce que `missions.mine` renvoie d'un joueur (aussi dans `session.get`, audit 12/11 E1-08). */
+export function missionsView(user: Doc<'users'>, now: number) {
+  return { ...stateOf(user, now), resetAt: nextMissionReset(now) };
+}
 
 /** Appelé par les ouvertures, contrats et échanges : fait avancer les missions du jour. */
 export async function bumpMissions(ctx: MutationCtx, user: Doc<'users'>, ev: MissionEvent) {
@@ -56,7 +60,7 @@ export const claim = mutation({
     // spec économie : les missions du jour rapportent aussi des pièces (boosters + pièces, décision du 3 nov.)
     const m = r.state.list.find((x) => x.id === missionId)!;
     const coins = dailyMissionCoins(m);
-    await addCoins(ctx, user._id, coins, 'mission', 'Mission du jour', { earned: true });
+    await addCoins(ctx, user._id, coins, 'mission', fm('c.mission'), { earned: true });
     return { reward: r.reward, coins };
   },
 });

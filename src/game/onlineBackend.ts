@@ -1,12 +1,18 @@
 import { deviceId, net, type NetState } from '../core/net/client';
 import type { Id } from '../../convex/_generated/dataModel';
-import { BIG_PULL_RARITIES, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
+import { BIG_PULL_RARITIES, EMPTY_MARKET, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
 import { createOnlineEco } from './ecoOnline';
+import { adoptAccountLang, lang as curLang, langPicked, onLang } from './lang';
 import type { Social } from './backend';
 import type { BoardState, ListingOfferView, ListingView } from './backend';
 import { api } from '../../convex/_generated/api';
 import type { Doc } from '../../convex/_generated/dataModel';
+import type { ChatInbox, ChatMsg } from '../core/chat';
+import { localEvent, type PackEvent } from '../core/events';
+
+/** demande de booster → arguments du serveur (booster du moment : l'id de l'événement suffit, le serveur relit le reste) */
+const packArgs = (req: PackRequest) => (req.event ? { packKind: 'theme' as const, eventId: req.event.id as Id<'packEvents'> } : { packKind: req.kind, themeId: req.themeId });
 
 /** Le vrai serveur : Convex (temps réel) + Discord ou pseudo, via le client partagé avec le labo (core/net/client.ts). */
 /**
@@ -43,6 +49,7 @@ export function createOnlineBackend(): GameBackend {
     trades: { incoming: [], outgoing: [] },
     missions: null,
     wishlist: [],
+    tradeProtected: [],
     binders: [],
     covers: {},
     // AMIS (lot A2) : relu à chaque accès (mémorisé par réponse du serveur) — les battements de cœur des amis mettent
@@ -59,6 +66,7 @@ export function createOnlineBackend(): GameBackend {
     themeId: p.themeId,
     maxRarity: p.maxRarity,
     cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
+    ...(p.eventId ? { eventId: p.eventId, eventName: p.eventName } : {}),
   });
   const toTrade = (t: NetState['trades']['incoming'][number]): TradeView => ({
     id: t._id,
@@ -71,6 +79,7 @@ export function createOnlineBackend(): GameBackend {
     note: t.note,
     createdAt: t.createdAt,
     counterOf: t.counterOf,
+    quick: t.quick,
   });
 
   /**
@@ -80,6 +89,29 @@ export function createOnlineBackend(): GameBackend {
    */
   let src: Partial<Record<'user' | 'collection' | 'binders' | 'friends' | 'feed' | 'bigPulls' | 'sealed' | 'trades', unknown>> = {};
   const changed = (k: keyof typeof src, v: unknown) => (src[k] === v ? false : ((src[k] = v), true));
+  /**
+   * (version anglaise) langue : à l'arrivée du joueur, celle choisie sur son compte s'applique si rien n'est choisi sur
+   * cet appareil ; puis la langue effective part au serveur (push, messages privés Discord) — seulement si elle diffère.
+   */
+  let langUser: { lang?: string; langSet?: boolean } | null = null;
+  let langAdopted = false;
+  let langSent = '';
+  const syncLang = () => {
+    const u = langUser;
+    if (!u) return;
+    if (!langAdopted) {
+      langAdopted = true;
+      adoptAccountLang(u.lang, u.langSet);
+    }
+    const want = curLang();
+    const manual = langPicked();
+    if ((u.lang ?? 'fr') === want && (!manual || u.langSet === true)) return;
+    const k = `${want}|${manual}`;
+    if (k === langSent) return;
+    langSent = k;
+    void net.setLang(want, manual);
+  };
+  onLang(syncLang);
   net.onChange((n) => {
     // `ready` : le serveur a répondu au moins une fois (avant : « connexion… », pas « Connexion Discord »)
     state.ready = n.connected;
@@ -101,9 +133,17 @@ export function createOnlineBackend(): GameBackend {
             streak: n.user.streak ?? undefined,
             staff: !!n.user.staff,
             guideSeen: !!n.user.guideSeen,
+            v2TourSeen: !!n.user.v2TourSeen,
+            tester: !!n.user.tester,
+            gamesNoticeAt: n.user.gamesNoticeAt,
+            referralNoticeAt: n.user.referralNoticeAt,
+            openingStyle: n.user.openingStyle === 'burn' || n.user.openingStyle === 'fan' ? n.user.openingStyle : undefined,
           }
         : null;
+      langUser = n.user ? { lang: n.user.lang, langSet: n.user.langSet } : null;
+      syncLang();
       state.wishlist = n.user?.wishlist ?? [];
+      state.tradeProtected = n.user?.tradeProtected ?? [];
       state.covers = n.user?.covers ?? {};
     }
     if (changed('collection', n.collection))
@@ -116,7 +156,7 @@ export function createOnlineBackend(): GameBackend {
         .filter((f) => f._id !== n.user?._id)
         .map((f) => ({ id: f._id, name: f.displayName, avatarUrl: f.avatarUrl, online: f.online, status: f.statusText, packsOpened: f.totalPacksOpened }));
     const feedChanged = changed('feed', n.feed);
-    if (feedChanged) state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, rarity: f.rarity, createdAt: f.createdAt }));
+    if (feedChanged) state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, msgKey: f.msgKey, msgParams: f.msgParams, rarity: f.rarity, createdAt: f.createdAt }));
     if (changed('bigPulls', n.bigPulls) || (n.bigPulls === null && feedChanged) || userChanged) {
       const rows = n.bigPulls ?? n.feed.filter((f) => f.cardId && f.rarity && BIG_PULL_RARITIES.includes(f.rarity));
       state.bigPulls = rows.map(
@@ -153,9 +193,10 @@ export function createOnlineBackend(): GameBackend {
     // (ouverture 07/11) fenêtre de connexion : Discord OU pseudo + mot de passe (views/login.ts)
     login: () => void import('./views/login').then((m) => m.openLogin()),
     markGuideSeen: () => net.markGuideSeen(),
+    markV2TourSeen: () => net.markV2TourSeen(),
     logout: () => net.logout(),
     async preparePack(req: PackRequest) {
-      const p = await net.preparePack({ packKind: req.kind, themeId: req.themeId });
+      const p = await net.preparePack(packArgs(req));
       keepSealed(p.packId, p.cards);
       return {
         id: p.packId,
@@ -164,14 +205,17 @@ export function createOnlineBackend(): GameBackend {
         maxRarity: p.maxRarity,
         cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
         ...(p.god ? { god: true } : {}),
+        ...(p.eventId ? { eventId: p.eventId, eventName: p.eventName } : {}),
       };
     },
+    // (11/11) booster du moment : abonnement léger (quelques lignes, relancé seulement quand un événement change)
+    watchEvents: (cb) => net.watch(api.events.current, {}, (rows) => cb(((rows ?? []) as PackEvent[]).map(localEvent)), false, () => cb([])),
     async revealPack(id) {
       await net.revealPack(id as Id<'packOpens'>);
       shootRevealed([id]);
     },
     async preparePacks(req, count) {
-      const packs = await net.preparePacks({ packKind: req.kind, themeId: req.themeId }, count);
+      const packs = await net.preparePacks(packArgs(req), count);
       for (const p of packs) keepSealed(p._id, p.cards);
       return packs.map((p) => ({
         id: p._id,
@@ -180,6 +224,7 @@ export function createOnlineBackend(): GameBackend {
         maxRarity: p.maxRarity,
         cards: p.cards.map((c) => ({ cardId: c.cardId, cardName: c.cardName, rarity: c.rarity, mintNumber: c.mintNumber, isNew: c.isNew, themeId: c.themeId })),
         ...(p.god ? { god: true } : {}),
+        ...(p.eventId ? { eventId: p.eventId as string, eventName: p.eventName } : {}),
       }));
     },
     async revealPacks(ids) {
@@ -214,6 +259,38 @@ export function createOnlineBackend(): GameBackend {
     async friendWishlist(friendId) {
       return await net.wishlistOf(friendId as Id<'users'>);
     },
+    // refonte des échanges (11/11, convex/deals.ts)
+    async cardPanel(cardId) {
+      return await net.ask(api.deals.cardPanel, { cardId });
+    },
+    async forYou() {
+      // (audit 12/11, décision 10) mes lignes en double, déjà connues ici : le serveur ne relit plus toute ma collection
+      const give = net.state.collection
+        .filter((c) => c.count > 1)
+        .sort((x, y) => y.count - x.count)
+        .slice(0, 600)
+        .map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count }));
+      return await net.ask(api.deals.forYou, { give });
+    },
+    async quickTrade(toId, get, give) {
+      const r = await net.call(api.deals.quick, { toUserId: toId as Id<'users'>, get, give });
+      return { get: r.get, give: r.give };
+    },
+    async swapTradeGive(tradeId, cardId) {
+      await net.call(api.deals.swapGive, { tradeId: tradeId as Id<'trades'>, cardId });
+    },
+    async tradePickOptions(tradeId) {
+      return (await net.ask(api.deals.pickOptions, { tradeId: tradeId as Id<'trades'> })).options;
+    },
+    async acceptTradePick(tradeId, cardId) {
+      const r = await net.call(api.deals.acceptPick, { tradeId: tradeId as Id<'trades'>, cardId });
+      return { changed: r.changed };
+    },
+    async setTradeProtect(cardId, on) {
+      // réponse immédiate (la souscription `me` confirme juste après)
+      state.tradeProtected = await net.call(api.deals.setProtect, { cardId, on });
+      listeners.forEach((fn) => fn(state));
+    },
     async claimMission(id) {
       return (await net.claimMission(id)).reward;
     },
@@ -223,9 +300,16 @@ export function createOnlineBackend(): GameBackend {
     async rerollMission(id) {
       await net.rerollMission(id);
     },
+    // (audit 12/11, S07 / A4-02) profil d'un ami : le profil et sa collection en une seule lecture serveur
+    async friendProfile(userId) {
+      const r = await net.profile(userId as Id<'users'>, true);
+      if (!r) return { profile: null, cards: [] };
+      const { collection, ...p } = r;
+      return { profile: { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null, pinnedBinders: p.pinnedBinders?.map((b) => ({ ...b, id: b.id as string })) }, cards: collection ?? [] };
+    },
     async profile(userId) {
       const p = await net.profile(userId as Id<'users'>);
-      return p ? { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null } : null;
+      return p ? { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null, pinnedBinders: p.pinnedBinders?.map((b) => ({ ...b, id: b.id as string })) } : null;
     },
     async setShowcase(cards) {
       await net.setShowcase(cards);
@@ -236,8 +320,39 @@ export function createOnlineBackend(): GameBackend {
     async setCosmetics(choice) {
       return await net.setCosmetics(choice);
     },
+    async setOpening(style) {
+      await net.setOpening(style);
+    },
     async setProfileMedia(kind, file) {
       return await net.setProfileMedia(kind, file);
+    },
+    push: {
+      status: (endpoint) => net.pushStatus(endpoint),
+      publicKey: () => net.pushPublicKey(),
+      subscribe: (sub) => net.pushSubscribe(sub),
+      unsubscribe: (endpoint) => net.pushUnsubscribe(endpoint),
+      setPrefs: (prefs) => net.pushSetPrefs(prefs),
+      test: () => net.pushTest(),
+    },
+    // chat (V2, 10/11 — convex/chat.ts). Serveur pas encore redéployé → erreur → « pas connecté » (lanceur sans pastille)
+    chat: {
+      // (audit 12/11, S04) `lean` : la requête ne lit plus le document joueur ; `staff` vient de users.me
+      watchInbox: (cb) => net.watch(api.chat.inbox, { lean: true }, (v) => cb(v ? ({ ...v, staff: !!net.state.user?.staff } as ChatInbox) : null), true, () => cb(null)),
+      page: async (conv, before) => (await net.ask(api.chat.page, { conv, before })) as { msgs: ChatMsg[]; done: boolean },
+      watchTail: (conv, after, cb) => net.watch(api.chat.tail, { conv, after }, (v) => cb((v as { msgs: ChatMsg[]; more: boolean } | null) ?? null), true, () => cb(null)),
+      send: async (conv, o) =>
+        await net.call(api.chat.send, {
+          conv,
+          text: o.text,
+          card: o.card as { cardId: string; rarity: Doc<'inventory'>['rarity'] } | undefined,
+          replyTo: o.replyTo as Id<'chatMessages'> | undefined,
+          mentions: o.mentions as Id<'users'>[] | undefined,
+          clientId: o.clientId,
+        }),
+      react: async (id, k) => void (await net.call(api.chat.react, { id: id as Id<'chatMessages'>, k })),
+      remove: async (id) => void (await net.call(api.chat.remove, { id: id as Id<'chatMessages'> })),
+      markRead: async (conv, n) => void (await net.call(api.chat.markRead, { conv, n })),
+      mute: async (conv, on) => void (await net.call(api.chat.mute, { conv, on })),
     },
     async submitSuggestion(o, file) {
       await net.submitSuggestion(o, file);
@@ -260,11 +375,15 @@ export function createOnlineBackend(): GameBackend {
     async surveyResults(id) {
       return await net.surveyResults(id);
     },
-    async leaderboard() {
-      return (await net.leaderboard()).map((r) => ({ ...r, id: r.id as string }));
+    async leaderboard(onFresh) {
+      const view = (rows: Awaited<ReturnType<typeof net.leaderboardRows>>) => rows.map((r) => ({ ...r, id: r.id as string }));
+      return view(await net.leaderboard(onFresh && ((rows) => onFresh(view(rows)))));
+    },
+    async seasonBoard() {
+      return await net.seasonBoard();
     },
     async activity(userId) {
-      return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
+      return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, msgKey: a.msgKey, msgParams: a.msgParams, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
     },
     async signContract(rarity, items) {
       return await net.signContract(rarity, items);
@@ -329,7 +448,28 @@ export function createOnlineBackend(): GameBackend {
       await net.friendAction('remove', id as Id<'friendships'>);
     },
     // tableau d'offres (lot T, convex/listings.ts)
+    watchMembers: (on, who) => net.watchMembers(on, who),
     watchBoard: (cb) => net.watch(api.listings.open, {}, (rows) => cb((rows ?? []).map((l) => listingOf(l))), true, () => cb([])),
+    watchMarket: (cb) =>
+      net.watch(
+        api.market.board,
+        {},
+        (b) => {
+          const conv = (l: NonNullable<typeof b>['open']) => l.map((m) => ({ ...m, id: m.id as string, sellerId: m.sellerId as string, buyerId: m.buyerId as string | undefined }));
+          cb(b ? { open: conv(b.open), sold: conv(b.sold), bought: conv(b.bought) } : EMPTY_MARKET);
+        },
+        true,
+        () => cb(EMPTY_MARKET),
+      ),
+    async marketSell(cardId, rarity, price) {
+      await net.call(api.market.sell, { cardId, rarity, price });
+    },
+    async marketCancel(id) {
+      await net.call(api.market.cancel, { id: id as Id<'market'> });
+    },
+    async marketBuy(id, price) {
+      await net.call(api.market.buy, { id: id as Id<'market'>, price });
+    },
     async createListing(items, wanted, note, hours) {
       await net.call(api.listings.create, { items, wanted, note, hours });
     },

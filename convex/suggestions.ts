@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -53,7 +54,7 @@ export const submit = mutation({
     if (a.kind === 'design' && a.cardId && !catalogCard(a.cardId)) await drop('Carte inconnue.');
     if (a.screenshot) {
       const meta = await ctx.db.system.get(a.screenshot);
-      if (!meta) throw new ConvexError('Le fichier n’est pas arrivé : réessaie.');
+      if (!meta) throw new ConvexError(fe('suggestions.1'));
       if (!/^image\//.test(meta.contentType ?? '') || meta.size > IMG_MAX) await drop('Image refusée : une capture (PNG, JPG, WebP, GIF) de 6 Mo au plus.');
     }
     const now = Date.now();
@@ -108,7 +109,7 @@ export const adminList = query({
   args: { sessionToken: v.string(), status: v.optional(statusV) },
   handler: async (ctx, { sessionToken, status }) => {
     const user = await requireUser(ctx, sessionToken);
-    if (!canModerate(user)) throw new ConvexError('Réservé aux modérateurs.');
+    if (!canModerate(user)) throw new ConvexError(fe('suggestions.2'));
     const rows = status
       ? await ctx.db.query('suggestions').withIndex('by_status', (q) => q.eq('status', status)).order('desc').take(200)
       : await ctx.db.query('suggestions').order('desc').take(200);
@@ -125,9 +126,9 @@ export const setStatus = mutation({
   args: { sessionToken: v.string(), id: v.id('suggestions'), status: statusV, adminNote: v.optional(v.string()) },
   handler: async (ctx, { sessionToken, id, status, adminNote }) => {
     const user = await requireUser(ctx, sessionToken);
-    if (!canModerate(user)) throw new ConvexError('Réservé aux modérateurs.');
+    if (!canModerate(user)) throw new ConvexError(fe('suggestions.3'));
     const s = await ctx.db.get(id);
-    if (!s) throw new ConvexError('Suggestion introuvable.');
+    if (!s) throw new ConvexError(fe('suggestions.4'));
     await ctx.db.patch(id, { status, updatedAt: Date.now(), ...(adminNote !== undefined ? { adminNote: adminNote.trim().slice(0, 500) || undefined } : {}) });
   },
 });

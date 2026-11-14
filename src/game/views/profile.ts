@@ -1,3 +1,6 @@
+import { errText } from '../../core/errors';
+import '../../core/i18n/fr/game.views.profile'; // (textes de ce module, version anglaise)
+import { locale, t as tr } from '../../core/i18n';
 import type { ActivityItem, GameBackend, PlayerCard, Profile } from '../backend';
 import { createLeaderboard } from './leaderboard';
 import { friendBtn } from './friends';
@@ -7,9 +10,13 @@ import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes'
 import { rarity, type RarityId } from '../../core/rarity';
 import { ACCENTS, BADGES, BANNERS, FRAMES, VITRINES, accentColor, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { guarded, isPending } from './safety';
+import { createShowcaseEditor } from './showcaseEditor';
+import { notifPanel } from '../notif';
+import { offlinePanel } from '../offline';
 import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
 import { STREAK_CYCLE } from '../../core/streak';
-import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
+import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
+import { feedText } from '../msgView';
 
 /**
  * PROFIL (refonte complète, retours du 3 nov.) — le mien (avatar de l'en-tête) ou celui d'un ami.
@@ -35,10 +42,9 @@ const STARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'm
 const best = (a: PlayerCard, b: PlayerCard) => RANK[b.rarity] - RANK[a.rarity] || a.bestMintNumber - b.bestMintNumber || (catalogEntry(a.cardId)?.num ?? 0) - (catalogEntry(b.cardId)?.num ?? 0);
 /** le mot seul, accordé (« doublon » / « doublons ») : le nombre est affiché à part, formaté par fmtN (audit UX3-05 :
  *  retirer le nombre de `plural()` par regex cassait dès 1 000, à cause de l'espace insécable des milliers) */
-const word = (n: number, one: string, many = `${one}s`) => (n > 1 ? many : one);
-const fmtDate = (t: number) => new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const fmtDate = (t: number) => new Date(t).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 /** « nov. 2026 » (en-tête compact) */
-const fmtMonth = (t: number) => new Date(t).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+const fmtMonth = (t: number) => new Date(t).toLocaleDateString(locale(), { month: 'short', year: 'numeric' });
 /**
  * Photo / bannière importées (GIF, retours live 02) : un <img> — le GIF se lit tout seul, en boucle, sans son. En
  * « mouvements réduits » : une image FIXE, la 1re image peinte dans un <canvas> (affichable même si le fichier vient
@@ -61,11 +67,11 @@ function hydrateStills(root: HTMLElement) {
 }
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
-  if (s < 60) return 'à l’instant';
-  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  if (s < 60) return tr('time.justNow');
+  if (s < 3600) return tr('time.agoMin', { n: Math.floor(s / 60) });
+  if (s < 86400) return tr('time.agoH', { n: Math.floor(s / 3600) });
   const d = Math.round(s / 86400);
-  return d === 1 ? 'hier' : `il y a ${d} j`;
+  return d === 1 ? 'hier' : tr('time.agoD', { n: d });
 };
 type Tab = 'tableau' | 'collection' | 'activite' | 'classement';
 
@@ -73,51 +79,65 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const el = h('section', 'view profile');
   el.innerHTML = `
     <div class="pf-wrap">
-      <div class="pf-banner"><button class="btn-ghost pf-banner-btn" hidden>Personnaliser</button></div>
+      <div class="pf-banner"><button class="btn-ghost pf-banner-btn" hidden>${tr('pf.customizeBtn')}</button></div>
       <div class="pf-head"></div>
       <div class="pf-cosm" hidden></div>
       <div class="pf-tabs" role="tablist">
-        <button role="tab" data-t="tableau" class="on">Tableau</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">Activité</button><button role="tab" data-t="classement">Classement</button>
+        <button role="tab" data-t="tableau" class="on">${tr('pf.board')}</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">${tr('pf.activity')}</button><button role="tab" data-t="classement">${tr('pf.ranking')}</button> <!-- i18n-ok -->
       </div>
       <div class="pf-pane p-tableau">
         <div class="pf-sec pf-case-sec">
-          <div class="pf-sec-t"><h2>Vitrine</h2><span class="pf-auto"></span><span class="pf-tools"></span></div>
-          <div class="pf-case all"></div>
+          <div class="pf-tray">
+            <div class="pf-sec-t"><h2>${tr('pf.vitrine')}</h2><span class="pf-count" hidden></span><span class="pf-auto"></span><span class="pf-tools"></span></div>
+            <div class="pf-case all"></div>
+            <div class="pf-edit-bar" hidden><span class="pf-edit-hint"></span><span class="pf-edit-more"><button type="button" class="pf-link pf-fill">${tr('pf.autoFill')}</button><button type="button" class="pf-link pf-clear">${tr('pf.removeAll')}</button></span></div>
+          </div>
           <div class="pf-picker" hidden>
-            <div class="pf-pick-t"><span>Choisis une carte pour la case <b class="pf-slot-n">1</b></span><input class="search pf-search" type="search" placeholder="Chercher…" autocomplete="off" spellcheck="false" aria-label="Chercher une de mes cartes"></div>
-            <div class="starf pf-pick-stars" aria-label="Filtrer par étoiles"></div>
+            <div class="pf-pick-t"><span class="pf-pick-h">${tr('pf.myColl')}</span><input class="search pf-search" type="search" placeholder="${tr('pf.search')}" autocomplete="off" spellcheck="false" aria-label="${tr('pf.searchMine')}"></div>
+            <div class="pf-pick-hint"></div>
+            <div class="starf pf-pick-stars" aria-label="${tr('pf.filterStars')}"></div>
             <div class="grid mini pf-pick-grid"></div>
             <div class="muted pf-pick-more" hidden></div>
           </div>
         </div>
         <div class="pf-keys"></div>
-        <div class="pf-stats"></div>
-        <div class="pf-sec"><div class="pf-sec-t"><h2>Raretés</h2></div><div class="pf-rar"></div></div>
+        <div class="pf-panels pf-stats">
+          <section class="pf-panel pf-p-act" aria-label="${tr('pf.activity')}"></section>
+          <section class="pf-panel pf-p-coll" aria-label="Collection"></section> <!-- i18n-ok -->
+          <section class="pf-panel pf-p-rar" aria-label="${tr('pf.rarities')}"></section>
+          <section class="pf-panel pf-p-th" aria-label="${tr('pf.universes')}"></section>
+        </div>
       </div>
       <div class="pf-pane p-collection" hidden>
-        <div class="pf-sec pf-binder-sec" hidden><div class="pf-sec-t"><h2 class="pf-binder-t">Classeur</h2><span class="pf-auto">· épinglé</span><span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs" hidden>Mes classeurs</a></span></div><div class="grid mini pf-binder"></div></div>
+        <div class="pf-binders"></div>
         <div class="pf-nobinder muted" hidden></div>
+        <div class="pf-sec pf-all-sec"><div class="pf-sec-t"><h2>${tr('pf.wholeColl')}</h2><span class="pf-count pf-all-n"></span></div>
+          <div class="pf-all-tools"><input class="search pf-all-q" type="search" placeholder="${tr('pf.search')}" autocomplete="off" spellcheck="false" aria-label="${tr('pf.searchThis')}"><div class="pf-all-r" role="group" aria-label="${tr('pf.stars')}"></div></div>
+          <div class="grid pf-all"></div><button class="btn-ghost pf-all-more" hidden>${tr('pf.more')}</button></div>
       </div>
       <div class="pf-pane p-activite" hidden><div class="pf-activity"></div></div>
       <div class="pf-pane p-classement" hidden></div>
-      <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>Les autres</h2><span class="pf-tools"><a class="btn-ghost pf-amis-go" href="#/amis">Mes amis</a></span></div><div class="pf-friends"></div></div>
-      <div class="pf-sec pf-account" hidden><div class="pf-sec-t"><h2>Compte</h2></div><div class="pf-account-b"></div></div>
+      <div class="pf-sec pf-friends-sec"><div class="pf-sec-t"><h2>${tr('pf.others')}</h2><span class="pf-tools"><a class="btn-ghost pf-amis-go" href="#/amis">${tr('pf.myFriends')}</a></span></div><div class="pf-friends"></div></div>
+      <div class="pf-sec pf-account" hidden><div class="pf-sec-t"><h2>${tr('pf.account')}</h2></div><div class="pf-account-b"></div></div>
     </div>
-    <div class="viewer-ui" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
+    <div class="viewer-ui" hidden><button class="close" aria-label="${tr('pf.close')}">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">${tr('pf.spin')}</div></div>`;
   const q = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
   const banner = q('.pf-banner');
   const head = q('.pf-head');
   const cosm = q('.pf-cosm');
-  const stats = q('.pf-stats');
   const keysEl = q('.pf-keys');
+  const pActEl = q('.pf-p-act');
+  const pCollEl = q('.pf-p-coll');
+  const pThEl = q('.pf-p-th');
   const account = q('.pf-account');
+  const caseSec = q('.pf-case-sec');
   const caseEl = q('.pf-case');
   const autoEl = q('.pf-case-sec .pf-auto');
+  const countEl = q('.pf-case-sec .pf-count');
   const tools = q('.pf-case-sec .pf-tools');
+  const editBar = q('.pf-edit-bar');
   const picker = q('.pf-picker');
-  const pickGrid = q('.pf-pick-grid');
-  const pickSearch = q<HTMLInputElement>('.pf-search');
-  const rarEl = q('.pf-rar');
+  const rarEl = q('.pf-p-rar');
   const friendsEl = q('.pf-friends');
   const activityEl = q('.pf-activity');
   const leaderboard = createLeaderboard(backend, shell);
@@ -128,9 +148,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   let who = '';
   let prof: Profile | null = null;
   let cards: PlayerCard[] = [];
-  let editing = false;
-  let draft: Array<{ cardId: string; rarity: RarityId } | null> = [];
-  let slot = 0;
   let token = 0;
   let open = false;
   let tab: Tab = 'tableau';
@@ -165,6 +182,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       b.setAttribute('aria-selected', String(on));
     });
     for (const t of ['tableau', 'collection', 'activite', 'classement'] as Tab[]) q(`.p-${t}`).hidden = t !== tab;
+    if (tab === 'collection' && allStale) renderAllCards();
     requestAnimationFrame(markTabsOvf);
   }
   // onglets qui débordent à 360 px (« CLASSEMENT » coupé) : fondu au bord droit tant qu'il reste à voir (audit UX3-12)
@@ -218,30 +236,39 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const bb = q<HTMLButtonElement>('.pf-banner-btn');
     bb.hidden = !me;
     const fresh = me && !cosmOpen ? newCosmetics().size : 0;
-    bb.innerHTML = cosmOpen ? 'Fermer' : `Personnaliser${fresh ? ` <i class="pf-new">${fresh} nouveau${fresh > 1 ? 'x' : ''}</i>` : ''}`;
+    bb.innerHTML = cosmOpen ? tr('pf.close') : tr('pf.customizeNew', { x: fresh ? ` <i class="pf-new" title="${tr('pf.newTitle', { n: fresh })}">${fresh}<span> ${tr('pf.newWord', { n: fresh })}</span></i>` : '' });
     const ava = avaHtml(name);
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     // en-tête compact (retours live 02) : pseudo, puis titre + badges sur UNE ligne, puis devise · « depuis » sur une ligne
-    head.innerHTML = `${avaRing(fr, ava)}${fr.id !== 'none' ? `<span class="pf-frame-l">${esc(fr.label)}</span>` : ''}</div>
+    head.innerHTML = `${avaRing(fr, ava)}</div>
       <div class="pf-id">
-        <div class="pf-eyebrow">${me ? 'Mon profil' : 'Profil'}</div>
+        <div class="pf-eyebrow">${me ? tr('pf.myProfile') : tr('pf.profile')}</div>
         <h1>${esc(name)}</h1>
         ${title || badges.length ? `<div class="pf-tline">${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${b.glyph ?? '●'} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
-        <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>Pas encore d’informations.</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="Joue depuis le ${fmtDate(prof.joinedAt)}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
+        <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>' + tr('pf.noInfo') + '</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="${tr('pf.since', { date: fmtDate(prof.joinedAt) })}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="Modifier mes informations">✎ Informations</button>` : `<a class="btn-primary pf-trade" href="#/echanges">Proposer un échange</a>${friendBtn(backend, who, name)}`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="${tr('pf.editInfo')}" title="${tr('pf.editInfo')}">✎<span> ${tr('pf.info')}</span></button>` : `<button class="btn-primary pf-see-coll">${tr('pf.seeColl')}</button><a class="btn-ghost pf-trade" href="#/echanges">${tr('pf.offerTrade')}</a>${friendBtn(backend, who, name)}`}</div>`;
     hydrateStills(head);
+    head.querySelector('.pf-see-coll')?.addEventListener('click', () => {
+      tab = 'collection';
+      syncTabs();
+      q('.pf-tabs').scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
     head.querySelector('.pf-bio-edit')?.addEventListener('click', editBio);
     // action de compte (déconnexion / remise à zéro de la démo) : en bas de page, plus sous le pseudo (audit UX3-16)
     account.hidden = !me;
     const accB = q('.pf-account-b');
-    const outLabel = backend.state.mode === 'demo' ? 'Remettre la démo à zéro' : 'Se déconnecter';
-    accB.innerHTML = me ? `<button class="btn-ghost pf-out">${outLabel}</button><span class="muted">${backend.state.mode === 'demo' ? 'Efface toute la collection de démo de ce navigateur.' : 'Tu pourras te reconnecter quand tu veux : ta collection reste sur le serveur.'}</span>` : '';
+    const outLabel = backend.state.mode === 'demo' ? tr('pf.resetDemo') : tr('pf.logout');
+    accB.innerHTML = me ? `<button class="btn-ghost pf-out">${outLabel}</button><span class="muted">${backend.state.mode === 'demo' ? tr('pf.resetDemoD') : tr('pf.logoutD')}</span>` : '';
+    // (V2) notifications push : fiche au-dessus de la déconnexion (notif.ts)
+    if (me) accB.prepend(notifPanel(backend));
+    // (V2) hors connexion : tout télécharger (offline.ts), juste sous les notifications
+    if (me) accB.querySelector('.nf-box')?.after(offlinePanel(backend));
     const out = accB.querySelector<HTMLButtonElement>('.pf-out');
     let armed = 0;
     out?.addEventListener('click', () => {
       if (!armed) {
-        out.textContent = backend.state.mode === 'demo' ? 'Sûr ? Tout est effacé' : 'Sûr ? Se déconnecter';
+        out.textContent = backend.state.mode === 'demo' ? tr('pf.resetSure') : tr('pf.logoutSure');
         out.classList.add('danger');
         // la confirmation se désarme seule au bout de 4 s
         armed = window.setTimeout(() => {
@@ -270,7 +297,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       ...unlockedIds(TITLES, st).map((id) => `title:${id}`),
       ...unlockedIds(BADGES, st).map((id) => `badge:${id}`),
       ...unlockedIds(ACCENTS, st).map((id) => `accent:${id}`),
-      ...unlockedIds(VITRINES, st).map((id) => `vitrine:${id}`),
+      ...unlockedIds(VITRINES, st).map((id) => `vitrine:${id}`), // i18n-ok
     ];
   };
   /**
@@ -364,8 +391,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   function mediaBlock() {
     const max = backend.state.mode === 'demo' ? PROFILE_MEDIA_DEMO_MAX : PROFILE_MEDIA_MAX;
     const row = (kind: ProfileMediaKind, label: string, has: boolean) =>
-      `<div class="cs-md-row"><span class="cs-md-l">${label}${has ? ' <b>✓ importée</b>' : ''}</span><button class="btn-ghost cs-md-b" data-media="${kind}"${isPending(`media-${kind}`) ? ' disabled' : ''}>${has ? 'Remplacer' : 'Importer un GIF'}</button>${has ? `<button class="btn-ghost cs-md-x" data-media="${kind}" data-rm="1"${isPending(`media-${kind}`) ? ' disabled' : ''} aria-label="Retirer ${kind === 'avatar' ? 'la photo' : 'la bannière'} importée">Retirer</button>` : ''}</div>`;
-    return `<div class="cs-media"><div class="cs-t">Photo et bannière à toi <small>GIF animé (ou PNG, JPEG, WebP) · ${max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`} max · enregistré tout de suite · ${lessMotion.matches ? 'image fixe : « mouvements réduits » est activé' : 'lu en boucle, sans son'}</small></div>${row('avatar', 'Photo de profil', !!prof?.avatarMedia)}${row('banner', 'Bannière', !!prof?.bannerMedia)}</div>`;
+      `<div class="cs-md-row"><span class="cs-md-l">${label}${has ? ' <b>' + tr('pf.imported') + '</b>' : ''}</span><button class="btn-ghost cs-md-b" data-media="${kind}"${isPending(`media-${kind}`) ? ' disabled' : ''}>${has ? tr('pf.replace') : 'Importer un GIF'}</button>${has ? `<button class="btn-ghost cs-md-x" data-media="${kind}" data-rm="1"${isPending(`media-${kind}`) ? ' disabled' : ''} aria-label="${tr('pf.removeImported', { what: kind === 'avatar' ? tr('pf.thePhoto') : tr('pf.theBanner') })}">${tr('pf.remove')}</button>` : ''}</div>`;
+    return `<div class="cs-media"><div class="cs-t">${tr('pf.mediaTitle')} <small>${tr('pf.mediaRules', { max: max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`, how: lessMotion.matches ? tr('pf.reducedMotion') : tr('pf.looped') })}</small></div>${row('avatar', tr('pf.avatar'), !!prof?.avatarMedia)}${row('banner', tr('pf.banner'), !!prof?.bannerMedia)}</div>`;
   }
   function mediaAction(btn: HTMLButtonElement) {
     const kind = btn.dataset.media as ProfileMediaKind;
@@ -375,7 +402,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         try {
           const url = await busyButton(btn, backend.setProfileMedia(kind, file));
           prof = prof ? { ...prof, [field]: url } : prof;
-          toast(file ? (kind === 'avatar' ? 'Photo de profil enregistrée' : 'Bannière enregistrée') : kind === 'avatar' ? 'Photo retirée : ton avatar Discord revient' : 'Bannière importée retirée', 'ok');
+          toast(file ? (kind === 'avatar' ? tr('pf.avatarSaved') : tr('pf.bannerSaved')) : kind === 'avatar' ? tr('pf.avatarRemoved') : tr('pf.bannerRemoved'), 'ok');
           shell.sfx.chime(2, 0.06);
         } catch (e) {
           toast(errMsg(e), 'err');
@@ -392,7 +419,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       if (!f) return;
       // refus clair AVANT l'envoi (le serveur revérifie)
       const bad = profileMediaProblem(f.size, f.type, backend.state.mode === 'demo' ? PROFILE_MEDIA_DEMO_MAX : PROFILE_MEDIA_MAX);
-      if (bad) return void toast(bad, 'err');
+      if (bad) return void toast(errText(bad), 'err');
       send(f);
     });
     inp.click();
@@ -408,12 +435,12 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       return `🔒 ${esc(c.how)}${a ? ` <em>${fmtN(cur)}/${fmtN(a.target)}</em>` : ''}`;
     };
     const TABS: Array<{ id: CosmTab; label: string; hint: string; items: Cosmetic[]; okSet: Set<string>; cls: string; sel: (c: Cosmetic) => boolean }> = [
-      { id: 'banner', label: 'Bannière', hint: 'le fond du haut', items: BANNERS, okSet: ok.banner, cls: 'cs-banner', sel: (c) => (cosmDraft.banner ?? BANNERS[0].id) === c.id },
-      { id: 'frame', label: 'Cadre', hint: 'autour de ta photo', items: FRAMES, okSet: ok.frame, cls: 'cs-frame', sel: (c) => (cosmDraft.frame ?? 'none') === c.id },
-      { id: 'title', label: 'Titre', hint: 'sous ton pseudo (touche encore pour l’enlever)', items: TITLES, okSet: ok.title, cls: 'cs-title', sel: (c) => cosmDraft.title === c.id },
-      { id: 'accent', label: 'Couleur', hint: 'les accents de ton profil (cadre, titre, onglets, bordures)', items: ACCENTS, okSet: ok.accent, cls: 'cs-accent', sel: (c) => (cosmDraft.accent ?? ACCENTS[0].id) === c.id },
-      { id: 'vitrine', label: 'Vitrine', hint: 'le fond et la couleur de ta vitrine de cartes', items: VITRINES, okSet: ok.vitrine, cls: 'cs-vitrine', sel: (c) => (cosmDraft.vitrine ?? VITRINES[0].id) === c.id },
-      { id: 'badge', label: 'Badges', hint: 'jusqu’à 5, dans l’ordre où tu les choisis', items: BADGES, okSet: ok.badge, cls: 'cs-badge', sel: (c) => (cosmDraft.badges ?? []).includes(c.id) },
+      { id: 'banner', label: tr('pf.banner'), hint: tr('pf.hint.banner'), items: BANNERS, okSet: ok.banner, cls: 'cs-banner', sel: (c) => (cosmDraft.banner ?? BANNERS[0].id) === c.id },
+      { id: 'frame', label: tr('pf.tab.frame'), hint: tr('pf.hint.frame'), items: FRAMES, okSet: ok.frame, cls: 'cs-frame', sel: (c) => (cosmDraft.frame ?? 'none') === c.id },
+      { id: 'title', label: tr('pf.tab.title'), hint: tr('pf.hint.title'), items: TITLES, okSet: ok.title, cls: 'cs-title', sel: (c) => cosmDraft.title === c.id },
+      { id: 'accent', label: tr('pf.tab.color'), hint: tr('pf.hint.accent'), items: ACCENTS, okSet: ok.accent, cls: 'cs-accent', sel: (c) => (cosmDraft.accent ?? ACCENTS[0].id) === c.id },
+      { id: 'vitrine', label: tr('pf.vitrine'), hint: tr('pf.hint.vitrine'), items: VITRINES, okSet: ok.vitrine, cls: 'cs-vitrine', sel: (c) => (cosmDraft.vitrine ?? VITRINES[0].id) === c.id },
+      { id: 'badge', label: 'Badges', hint: tr('pf.hint.badges'), items: BADGES, okSet: ok.badge, cls: 'cs-badge', sel: (c) => (cosmDraft.badges ?? []).includes(c.id) }, // i18n-ok
     ];
     const tabDef = TABS.find((t) => t.id === cosmTab)!;
     // débloqués d'abord (l'ordre du catalogue est gardé à l'intérieur de chaque moitié)
@@ -430,7 +457,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       ? (() => {
           const v = cosmDraft[pf];
           const custom = /^#[0-9a-f]{6}$/i.test(v ?? '') ? v! : '';
-          return `<label class="cs ${cls} cs-custom${custom ? ' on' : ''}" title="Choisis n’importe quelle couleur"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || accentColor(cosmDraft.accent) || ACCENTS[0].css}" aria-label="Couleur libre"></span><b>${custom ? esc(custom.toUpperCase()) : 'Libre…'}</b></label>`;
+          return `<label class="cs ${cls} cs-custom${custom ? ' on' : ''}" title="${tr('pf.anyColor')}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || accentColor(cosmDraft.accent) || ACCENTS[0].css}" aria-label="Couleur libre"></span><b>${custom ? esc(custom.toUpperCase()) : tr('pf.free')}</b></label>`;
         })()
       : '';
     if (pickCell) cells.splice(items.filter((c) => okSet.has(c.id)).length, 0, pickCell);
@@ -438,10 +465,10 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (cosmTab === 'vitrine') {
       const vc = cosmDraft.vitrineColor;
       const custom = /^#[0-9a-f]{6}$/i.test(vc ?? '') ? vc! : '';
-      cells.push(`</div><div class="cs-t">Couleur de la vitrine <small>bordure, lueur et étagère</small></div><div class="cs-list cs-vcl">` +
-        `<button class="cs cs-vc${!vc ? ' on' : ''}" data-vc=""><span class="cs-dot" style="background:conic-gradient(var(--rose) 0 50%, #2a2220 0)"></span><b>Comme mon profil</b></button>` +
+      cells.push(`</div><div class="cs-t">${tr('pf.vitColor')} <small>${tr('pf.vitColorD')}</small></div><div class="cs-list cs-vcl">` +
+        `<button class="cs cs-vc${!vc ? ' on' : ''}" data-vc=""><span class="cs-dot" style="background:conic-gradient(var(--rose) 0 50%, #2a2220 0)"></span><b>${tr('pf.likeProfile')}</b></button>` +
         ACCENTS.filter((a) => ok.accent.has(a.id)).map((a) => `<button class="cs cs-vc${vc === a.id ? ' on' : ''}" data-vc="${esc(a.id)}"><span class="cs-dot" style="background:${a.css}"></span><b>${esc(a.label)}</b></button>`).join('') +
-        `<label class="cs cs-vc cs-custom-vc${custom ? ' on' : ''}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || '#e8927c'}" aria-label="Couleur libre de la vitrine"></span><b>${custom ? esc(custom.toUpperCase()) : 'Libre…'}</b></label>`);
+        `<label class="cs cs-vc cs-custom-vc${custom ? ' on' : ''}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || '#e8927c'}" aria-label="${tr('pf.vitFree')}"></span><b>${custom ? esc(custom.toUpperCase()) : tr('pf.free')}</b></label>`);
     }
     const list = cells.join('');
     // aperçu (collant) : bannière, avatar + cadre, pseudo, titre, badges
@@ -453,14 +480,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const ava = avaHtml(name);
     const dirty = cosmKey(cosmDraft) !== cosmSaved;
     const acc = ACCENTS.find((a) => a.id === cosmDraft.accent);
-    const summary = [bn.label, fr.id !== 'none' ? `Cadre ${fr.label}` : '', cosmDraft.accent && cosmDraft.accent !== ACCENTS[0].id ? `Couleur ${acc ? acc.label : cosmDraft.accent.toUpperCase()}` : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
+    const summary = [bn.label, fr.id !== 'none' ? tr('pf.sumFrame', { name: fr.label }) : '', cosmDraft.accent && cosmDraft.accent !== ACCENTS[0].id ? tr('pf.sumColor', { name: acc ? acc.label : cosmDraft.accent.toUpperCase() }) : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
     cosm.innerHTML =
-      `<div class="cs-head"><b>Personnaliser mon profil</b><span class="muted">Tout se débloque en jouant — rien ne s’achète.</span></div>` +
-      `<div class="cs-preview" aria-label="Aperçu"><div class="cs-pv-bn${prof?.bannerMedia && bannerColor(cosmDraft.banner) ? ' bn-color' : ''}" style="background:${bn.css ?? ''};--bnc:${bannerColor(cosmDraft.banner) ?? 'transparent'}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div>${avaRing(fr, ava)}</div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
+      `<div class="cs-head"><b>${tr('pf.customize')}</b><span class="muted">${tr('pf.customizeD')}</span></div>` +
+      `<div class="cs-preview" aria-label="${tr('pf.preview')}"><div class="cs-pv-bn${prof?.bannerMedia && bannerColor(cosmDraft.banner) ? ' bn-color' : ''}" style="background:${bn.css ?? ''};--bnc:${bannerColor(cosmDraft.banner) ?? 'transparent'}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div>${avaRing(fr, ava)}</div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
       mediaBlock() +
-      `<div class="seg cs-tabs" role="tablist" aria-label="Que personnaliser">${TABS.map((t) => `<button role="tab" data-tab="${t.id}" class="${t.id === cosmTab ? 'on' : ''}" aria-selected="${t.id === cosmTab}">${t.label} <em>${t.okSet.size}/${t.items.length}</em>${[...cosmNew].some((k) => k.startsWith(`${t.id}:`)) ? '<i class="pf-new-dot" aria-label="nouveau"></i>' : ''}</button>`).join('')}</div>` +
-      `<div class="cs-group"><div class="cs-t">${tabDef.label} <small>${tabDef.hint} · ${okSet.size}/${tabDef.items.length} débloqué${okSet.size > 1 ? 's' : ''}</small></div><div class="cs-list">${list}</div></div>` +
-      `<div class="cs-order"></div><div class="cs-actions"><span class="cs-sum">${dirty ? '<i class="cs-dirty" aria-hidden="true"></i>' : ''}<span>${esc(summary)}${dirty ? ' · <b>non enregistré</b>' : ''}</span></span><button class="btn-ghost cs-cancel">Annuler</button><button class="btn-primary cs-save"${dirty ? '' : ' disabled'}>Enregistrer</button></div>`;
+      `<div class="seg cs-tabs" role="tablist" aria-label="${tr('pf.whatTo')}">${TABS.map((t) => `<button role="tab" data-tab="${t.id}" class="${t.id === cosmTab ? 'on' : ''}" aria-selected="${t.id === cosmTab}">${t.label} <em>${t.okSet.size}/${t.items.length}</em>${[...cosmNew].some((k) => k.startsWith(`${t.id}:`)) ? `<i class="pf-new-dot" aria-label="${tr('pf.newDot')}"></i>` : ''}</button>`).join('')}</div>` +
+      `<div class="cs-group"><div class="cs-t">${tabDef.label} <small>${tr('pf.unlocked', { hint: tabDef.hint, n: okSet.size, total: tabDef.items.length })}</small></div><div class="cs-list">${list}</div></div>` +
+      `<div class="cs-order"></div><div class="cs-actions"><span class="cs-sum">${dirty ? '<i class="cs-dirty" aria-hidden="true"></i>' : ''}<span>${esc(summary)}${dirty ? ' · <b>' + tr('pf.unsaved') + '</b>' : ''}</span></span><button class="btn-ghost cs-cancel">${tr('pf.cancel')}</button><button class="btn-primary cs-save"${dirty ? '' : ' disabled'}>${tr('pf.save')}</button></div>`;
     hydrateStills(cosm);
     cosm.querySelectorAll<HTMLButtonElement>('[data-media]').forEach((b) => b.addEventListener('click', () => mediaAction(b)));
     cosm.querySelectorAll<HTMLButtonElement>('.cs-tabs button').forEach((b) =>
@@ -473,7 +500,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const renderOrder = () => {
       const o = cosm.querySelector<HTMLElement>('.cs-order')!;
       const list = cosmDraft.badges ?? [];
-      o.innerHTML = cosmTab === 'badge' && list.length ? `<span class="cs-t">Ordre des badges</span>${list.map((id, i) => `<span class="cs-ord">${badgeOf(id)?.glyph ?? '●'} ${esc(badgeOf(id)?.label ?? id)}<button data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Avant">◀</button><button data-mv="1" data-i="${i}" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Après">▶</button></span>`).join('')}` : '';
+      o.innerHTML = cosmTab === 'badge' && list.length ? `<span class="cs-t">${tr('pf.badgeOrder')}</span>${list.map((id, i) => `<span class="cs-ord">${badgeOf(id)?.glyph ?? '●'} ${esc(badgeOf(id)?.label ?? id)}<button data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${tr('pf.before')}">◀</button><button data-mv="1" data-i="${i}" ${i === list.length - 1 ? 'disabled' : ''} aria-label="${tr('pf.after')}">▶</button></span>`).join('')}` : '';
       o.querySelectorAll<HTMLButtonElement>('button[data-mv]').forEach((b) =>
         b.addEventListener('click', () => {
           const i = Number(b.dataset.i), d = Number(b.dataset.mv);
@@ -487,7 +514,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     cosm.querySelectorAll<HTMLButtonElement>('.cs:not(.cs-custom):not(.cs-vc)').forEach((b) =>
       b.addEventListener('click', () => {
         const id = b.dataset.id!;
-        if (b.classList.contains('locked')) return toast(`Verrouillé : ${b.title.split(' · ')[1] ?? ''}`, 'info');
+        if (b.classList.contains('locked')) return toast(tr('pf.locked', { how: b.title.split(' · ')[1] ?? '' }), 'info');
         if (b.classList.contains('cs-banner')) cosmDraft.banner = id;
         else if (b.classList.contains('cs-frame')) cosmDraft.frame = id;
         else if (b.classList.contains('cs-title')) cosmDraft.title = cosmDraft.title === id ? undefined : id;
@@ -496,7 +523,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         else {
           const l = (cosmDraft.badges ??= []);
           if (l.includes(id)) l.splice(l.indexOf(id), 1);
-          else if (l.length >= 5) return toast('5 badges au maximum.', 'info');
+          else if (l.length >= 5) return toast(tr('pf.max5'), 'info');
           else l.push(id);
         }
         shell.sfx.tick(1.2, 0.04);
@@ -566,7 +593,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         cosmOpen = false;
         cosm.hidden = true;
         shell.sfx.chime(2, 0.06);
-        toast('Profil enregistré', 'ok');
+        toast(tr('pf.saved'), 'ok');
         renderHead();
       } catch (e) {
         toast(errMsg(e), 'err');
@@ -576,7 +603,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
 
   function editBio() {
     const box = head.querySelector<HTMLElement>('.pf-bio')!;
-    box.innerHTML = `<input class="pf-bio-in" maxlength="80" placeholder="Tes informations (80 caractères)" value="${esc(prof?.bio ?? '')}">`;
+    box.innerHTML = `<input class="pf-bio-in" maxlength="80" placeholder="${tr('pf.infoField')}" value="${esc(prof?.bio ?? '')}">`;
     const inp = box.querySelector<HTMLInputElement>('input')!;
     inp.focus();
     let done = false;
@@ -586,7 +613,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       try {
         await backend.setBio(inp.value);
         prof = prof ? { ...prof, bio: inp.value.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined } : prof;
-        toast('Informations enregistrées', 'ok');
+        toast(tr('pf.infoSaved'), 'ok');
       } catch (e) {
         toast(errMsg(e), 'err');
       }
@@ -599,206 +626,262 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     inp.addEventListener('blur', () => void save());
   }
 
-  // ── TABLEAU : stats enrichies
+  // ── TABLEAU : 3 chiffres clés, puis 4 panneaux courts (Activité · Collection · Raretés · Univers)
+  /**
+   * (V2 lisibilité) Un CODE COULEUR fixe, tiré des raretés (la seule couleur de la DA) et le même partout :
+   *  bleu (3★) = progression de la collection · doré (5★) = succès · arc-en-ciel (6★) / corail (secrète) = prestige ·
+   *  vert (2★) = activité. Les zéros sont estompés : l'œil va aux vrais chiffres.
+   */
+  const panelHead = (title: string, c: string, extra = '') => `<h3 class="pf-ph" style="--c:${c}"><i aria-hidden="true"></i>${title}${extra}</h3>`;
+  const row = (glyph: string, label: string, v: number, shown = fmtN(v), c = '', sub = '') =>
+    `<div class="pf-row${v ? '' : ' zero'}"${c ? ` style="--c:${c}"` : ''}><span class="pf-ri" aria-hidden="true">${glyph}</span><span class="pf-rl">${label}${sub ? ` <small>${sub}</small>` : ''}</span><b class="pf-rv">${shown}</b></div>`;
+  const barPct = (have: number, of: number) => (have ? Math.max(1.5, (have / Math.max(1, of)) * 100) : 0).toFixed(1);
   function renderStats() {
     const mine = ownedOf();
     const st = statsOf();
     const total = mine.reduce((a, c) => a + c.count, 0);
     const dups = mine.reduce((a, c) => a + Math.max(0, c.count - 1), 0);
-    const pct = (st.uniques / Math.max(1, st.total || PUBLIC_CARD_COUNT)) * 100;
+    const all = st.total || PUBLIC_CARD_COUNT;
+    const pct = (st.uniques / Math.max(1, all)) * 100;
     const sd = prof?.streakDay ?? ((st.streak - 1) % STREAK_CYCLE) + 1;
-    const cell = (v: string, l: string, cls = '') => `<div class="pf-stat ${cls}"><b>${v}</b><span>${l}</span></div>`;
-    // les 3 chiffres clés (complétion, 6★, succès) juste APRÈS la vitrine (retours live 02 : la vitrine d'abord), puis le détail
-    keysEl.innerHTML =
-      cell(fmtPct(pct), `${fmtN(st.uniques)} / ${fmtN(st.total || PUBLIC_CARD_COUNT)} cartes uniques`, 'big') +
-      cell(`✺ ${fmtN(st.mythics)}`, `${word(st.mythics, 'carte')} 6★`, 'mythic');
-    stats.innerHTML =
-      cell(fmtN(st.packsOpened), 'boosters ouverts') +
-      (st.secrets ? cell(`✷ ${fmtN(st.secrets)}`, word(st.secrets, 'secrète'), 'secret') : '') +
-      cell(st.streak ? `🔥 ${fmtN(st.streak)}` : '—', st.streak ? `jour${st.streak > 1 ? 's' : ''} d’affilée · ${Math.max(1, sd)}/${STREAK_CYCLE}` : 'série de connexion', 'streak') +
-      cell(fmtN(st.tradesDone), word(st.tradesDone, 'échange conclu', 'échanges conclus')) +
-      cell(fmtN(st.contractsSigned), word(st.contractsSigned, 'contrat signé', 'contrats signés')) +
-      cell(fmtN(total), 'cartes en tout') +
-      cell(fmtN(dups), word(dups, 'doublon')) +
-      cell(fmtN(st.fullSubthemes), `album${st.fullSubthemes > 1 ? 's' : ''} à 100 %`);
-    // succès débloqués (les 36 de l'espace Jeux) — remplace le « plus gros drop » (retours live n°1)
+    // succès débloqués (les succès de l'espace Jeux) — remplace le « plus gros drop » (retours live n°1)
     // (perf : `eco.snapshot` est un calcul complet en démo — lu UNE fois, pas une fois par succès)
     const mySnap = () => (isMe() ? backend.eco.snapshot : null);
     const ach = prof?.achievements ?? ((snap) => (snap ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, snap.achievements.stats)).length, total: ACHIEVEMENTS.length } : null))(mySnap());
-    if (ach) {
-      const sc = h('a', 'pf-stat pf-ach');
-      sc.href = '#/succes';
-      sc.innerHTML = `<b>🏅 ${ach.done}<small>/${ach.total}</small></b><span>succès débloqués${isMe() ? ' · voir' : ''}</span><i class="pf-ach-bar"><i style="width:${((ach.done / ach.total) * 100).toFixed(1)}%"></i></i>`;
-      if (!isMe()) sc.removeAttribute('href');
-      keysEl.append(sc);
-    }
-    // complétion par thème
+    // les 3 chiffres clés juste APRÈS la vitrine (retours live 02 : la vitrine d'abord)
+    keysEl.innerHTML =
+      `<div class="pf-key k-prog"><span class="pf-k-l">${tr('pf.completion')}</span><b class="pf-k-v">${fmtPct(pct)}</b><span class="pf-k-s">${tr('pf.cardsOf', { n: fmtN(st.uniques), total: fmtN(all) })}</span><i class="pf-k-bar"><i style="width:${barPct(st.uniques, all)}%"></i></i></div>` +
+      `<div class="pf-key k-myth${st.mythics ? '' : ' zero'}"><span class="pf-k-l">${tr('pf.mythics')}</span><b class="pf-k-v">${fmtN(st.mythics)}</b><span class="pf-k-s${st.secrets ? ' has-secret' : ''}">${st.secrets ? `+ ${fmtN(st.secrets)} ${tr('pf.w.secret', { n: st.secrets })} ✷` : tr('pf.rarest')}</span></div>` +
+      (ach
+        ? `<${isMe() ? 'a href="#/succes"' : 'div'} class="pf-key k-ach"><span class="pf-k-l">${tr('pf.achievements')}</span><b class="pf-k-v">${ach.done}<small>/${ach.total}</small></b><span class="pf-k-s">${isMe() ? tr('pf.seeAch') : tr('pf.unlockedW')}</span><i class="pf-k-bar"><i style="width:${barPct(ach.done, ach.total)}%"></i></i></${isMe() ? 'a' : 'div'}>`
+        : '');
+    pActEl.innerHTML =
+      panelHead(tr('pf.activity'), 'var(--pc-act)') +
+      row('▣', 'Boosters ouverts', st.packsOpened) +
+      row('🔥', tr('pf.streak'), st.streak, st.streak ? `${fmtN(st.streak)} j` : '—', 'var(--pc-fire)', st.streak ? tr('pf.cycleDay', { d: Math.max(1, sd), n: STREAK_CYCLE }) : '') +
+      row('⇄', tr('pf.w.trades', { n: st.tradesDone }), st.tradesDone) +
+      row('⚖', tr('pf.w.contracts', { n: st.contractsSigned }), st.contractsSigned);
+    pCollEl.innerHTML =
+      panelHead('Collection', 'var(--pc-coll)') + // i18n-ok
+      row('▤', tr('pf.cardsTotal'), total, fmtN(total), '', tr('pf.distinct', { n: fmtN(mine.length) })) +
+      row('⧉', tr('pf.w.dups', { n: dups }), dups) +
+      row('✓', tr('pf.w.albums', { n: st.fullSubthemes }), st.fullSubthemes) +
+      row('✷', tr('pf.w.secretCards', { n: st.secrets }), st.secrets, fmtN(st.secrets), 'var(--pc-secret)');
+    // complétion par univers : barre à la couleur de l'univers, triée du plus avancé au moins avancé
     const ids = new Set(mine.filter((c) => c.rarity !== 'secret').map((c) => c.cardId));
     const themes = (prof?.themes ?? THEMES.map((t) => ({ id: t.id, have: t.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: t.cards.length })))
       .filter((t) => t.total)
+      .sort((a, b) => b.have / b.total - a.have / a.total)
       .map((t) => {
         const th = THEMES.find((x) => x.id === t.id);
-        return `<div class="pf-th" style="--rc:${th?.style.accent ?? 'var(--rose)'}"><span>${esc(th?.label ?? t.id)}</span><i><i style="width:${((t.have / t.total) * 100).toFixed(1)}%"></i></i><em>${fmtN(t.have)}/${fmtN(t.total)}</em></div>`;
+        return `<div class="pf-th${t.have ? '' : ' zero'}" style="--rc:${th?.style.accent ?? '#fff'}"><span class="pf-th-l"><i aria-hidden="true"></i>${esc(th?.label ?? t.id)}</span><i class="pf-th-bar"><i style="width:${barPct(t.have, t.total)}%"></i></i><em><b>${fmtN(t.have)}</b> / ${fmtN(t.total)}</em></div>`;
       })
       .join('');
-    stats.insertAdjacentHTML('beforeend', `<div class="pf-themes">${themes}</div>`);
+    pThEl.innerHTML = panelHead(tr('pf.universes'), 'var(--pc-coll)', '<small>' + tr('pf.distinctW') + '</small>') + `<div class="pf-themes">${themes}</div>`;
   }
 
+  /** Raretés : une barre de répartition (une couleur par rareté) + la légende chiffrée */
   function renderRarities() {
     const mine = ownedOf();
     const rows = [...STARS, ...(mine.some((c) => c.rarity === 'secret') ? (['secret'] as RarityId[]) : [])];
-    const max = Math.max(1, ...rows.map((r) => mine.filter((c) => c.rarity === r).length));
-    rarEl.innerHTML = rows
-      .map((r) => {
-        const n = mine.filter((c) => c.rarity === r).length;
-        return `<div class="pf-r" style="--rc:${rarity(r).hex}"><span class="pf-r-l">${starsHtml(r)}</span><i><i style="width:${((n / max) * 100).toFixed(1)}%"></i></i><em>${fmtN(n)}</em></div>`;
-      })
-      .join('');
+    const n = Object.fromEntries(rows.map((r) => [r, mine.filter((c) => c.rarity === r).length])) as Record<RarityId, number>;
+    const sum = Math.max(1, rows.reduce((a, r) => a + n[r], 0));
+    const seg = (r: RarityId) => (n[r] ? `<i class="pf-rs r-${r}" style="--rc:${rarity(r).hex};flex-grow:${n[r]}" title="${esc(rarity(r).label)} : ${fmtN(n[r])}"></i>` : '');
+    rarEl.innerHTML =
+      panelHead(tr('pf.rarities'), 'var(--pc-gold)', '<small>' + tr('pf.distinctW') + '</small>') +
+      `<div class="pf-rbar" role="img" aria-label="${tr('pf.byRarity')}">${mine.length ? rows.map(seg).join('') : ''}</div>` +
+      `<div class="pf-rlist">${rows
+        .map((r) => `<div class="pf-rr r-${r}${n[r] ? '' : ' zero'}" style="--rc:${rarity(r).hex};--rt:${r === 'epic' ? '#e0607a' : r === 'rare' ? '#6f9be0' : rarity(r).hex}"><span class="pf-rr-s">${r === 'secret' ? '✷' : `${rarity(r).rank + 1}★`}</span><span class="pf-rr-l">${esc(rarity(r).label)}</span><b>${fmtN(n[r])}</b><em>${n[r] ? fmtPct((n[r] / sum) * 100) : ''}</em></div>`)
+        .join('')}</div>`;
   }
 
-  // ── COLLECTION : vitrine + classeur épinglé
-  function renderCase() {
-    const me = isMe();
-    const sc = showcase();
-    const list = editing ? draft : sc.list;
-    autoEl.textContent = editing ? 'touche une case pour la changer' : sc.auto && list.length ? me ? '· tes meilleures cartes (automatique)' : '· ses meilleures cartes' : '';
-    tools.innerHTML = me ? (editing ? `<button class="btn-ghost pf-cancel">Annuler</button><button class="btn-primary pf-save">Enregistrer</button>` : `<button class="btn-ghost pf-edit">Choisir mes cartes</button>`) : '';
-    caseEl.innerHTML = '';
-    caseEl.classList.toggle('editing', editing);
-    // retours live 02 : les 12 cases toujours (plus de « Voir les 12 » au téléphone), au premier écran
-    for (let i = 0; i < SLOTS; i++) {
-      const c = list[i];
-      const wrap = h('div', `pf-slot${editing && i === slot ? ' sel' : ''}`);
-      wrap.style.setProperty('--i', String(i));
-      if (c) {
-        const t = cardTile(c.cardId, c.rarity);
-        wrap.append(t);
-        if (editing) wrap.insertAdjacentHTML('beforeend', `<button class="pf-x" aria-label="Retirer">✕</button>`);
-        wrap.addEventListener('click', (e) => {
-          if ((e.target as HTMLElement).closest('.pf-x')) {
-            draft[i] = null;
-            renderCase();
-            renderPicker();
-            return;
-          }
-          if (editing) selectSlot(i);
-          else void openCard(c.cardId, c.rarity);
-        });
-      } else {
-        wrap.innerHTML = `<div class="pf-empty">${editing ? '+' : ''}</div>`;
-        if (editing) wrap.addEventListener('click', () => selectSlot(i));
-      }
-      caseEl.append(wrap);
-    }
-    if (!list.length && !editing) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? 'Ouvre des boosters : tes plus belles cartes s’afficheront ici.' : 'Pas encore de carte.'}</div>`);
-    tools.querySelector('.pf-edit')?.addEventListener('click', () => {
-      editing = true;
-      draft = Array.from({ length: SLOTS }, (_, i) => sc.list[i] ?? null);
-      slot = draft.findIndex((x) => !x) >= 0 ? draft.findIndex((x) => !x) : 0;
-      picker.hidden = false;
-      renderCase();
-      renderPicker();
-    });
-    tools.querySelector('.pf-cancel')?.addEventListener('click', stopEditing);
-    const saveBtn = tools.querySelector<HTMLButtonElement>('.pf-save');
-    saveBtn?.addEventListener('click', async () => {
-      const cardsOut = draft.filter((x): x is { cardId: string; rarity: RarityId } => !!x);
+
+  // ── VITRINE : affichage (lecture) ; l'édition (choix, retrait, glisser-déposer) est dans showcaseEditor.ts
+  const editor = createShowcaseEditor({
+    slots: SLOTS,
+    caseEl,
+    pickerEl: picker,
+    owned: ownedOf,
+    sort: best,
+    sfx: shell.sfx,
+    onChange: renderEditTools,
+  });
+  /** en édition : compteur « 8/12 », consigne, Annuler / Enregistrer (actif seulement s'il y a un changement) */
+  function renderEditTools() {
+    if (!editor.active) return;
+    const n = editor.value().length;
+    countEl.hidden = false;
+    countEl.innerHTML = `<b>${n}</b>/${SLOTS}`;
+    countEl.classList.toggle('full', n >= SLOTS);
+    const save = tools.querySelector<HTMLButtonElement>('.pf-save');
+    if (save) save.disabled = !editor.dirty();
+    editBar.querySelector<HTMLElement>('.pf-edit-hint')!.textContent = n ? (coarseQ.matches ? tr('pf.vit.dragTouch') : tr('pf.vit.dragMouse')) : tr('pf.vit.empty');
+    editBar.querySelector<HTMLButtonElement>('.pf-fill')!.disabled = n >= SLOTS;
+    editBar.querySelector<HTMLButtonElement>('.pf-clear')!.disabled = !n;
+  }
+  const coarseQ = matchMedia('(pointer: coarse)');
+  editBar.querySelector('.pf-fill')!.addEventListener('click', () => editor.fill());
+  editBar.querySelector('.pf-clear')!.addEventListener('click', () => editor.clear());
+
+  function startEditing() {
+    if (open) closeViewer();
+    caseSec.classList.add('editing');
+    el.classList.add('pf-editing');
+    editBar.hidden = false;
+    autoEl.textContent = '';
+    tools.innerHTML = `<button class="btn-ghost pf-cancel">${tr('pf.cancel')}</button><button class="btn-primary pf-save" disabled>${tr('pf.save')}</button>`;
+    tools.querySelector('.pf-cancel')!.addEventListener('click', stopEditing);
+    const saveBtn = tools.querySelector<HTMLButtonElement>('.pf-save')!;
+    saveBtn.addEventListener('click', async () => {
+      const cardsOut = editor.value();
       try {
         await busyButton(saveBtn, backend.setShowcase(cardsOut));
         prof = prof ? { ...prof, showcase: cardsOut } : prof;
-        toast(cardsOut.length ? 'Vitrine enregistrée' : 'Vitrine automatique : tes meilleures cartes', 'ok');
+        toast(cardsOut.length ? tr('pf.vit.saved') : tr('pf.vit.auto'), 'ok');
         shell.sfx.chime(2, 0.06);
         stopEditing();
       } catch (e) {
         toast(errMsg(e), 'err');
       }
     });
+    editor.start(showcase().list);
+    // bouton « retour » du téléphone : quitte l'édition (sans enregistrer) au lieu de quitter la page
+    pushLayer(stopEditing);
+    caseSec.scrollIntoView({ block: 'start', behavior: lessMotion.matches ? 'auto' : 'smooth' });
   }
   function stopEditing() {
-    editing = false;
-    picker.hidden = true;
-    pickSearch.value = '';
+    if (!editor.active) return;
+    popLayer(stopEditing);
+    editor.stop();
+    caseSec.classList.remove('editing');
+    el.classList.remove('pf-editing');
+    editBar.hidden = true;
+    countEl.hidden = true;
     renderCase();
   }
-  function selectSlot(i: number) {
-    slot = i;
-    renderCase();
-    q('.pf-slot-n').textContent = String(i + 1);
-    picker.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }
-  function renderPicker() {
-    q('.pf-slot-n').textContent = String(slot + 1);
-    const qq = fold(pickSearch.value.trim());
-    const used = new Set(draft.filter(Boolean).map((c) => `${c!.cardId}:${c!.rarity}`));
-    pickStarsEl.querySelectorAll<HTMLElement>('.chip').forEach((b) => (b.classList.toggle('on', b.dataset.r === pickStar), b.setAttribute('aria-pressed', String(b.dataset.r === pickStar))));
-    const all = [...ownedOf()].sort(best).filter((c) => (!pickStar || c.rarity === pickStar) && (!qq || fold(catalogEntry(c.cardId)?.name ?? '').includes(qq)));
-    const list = all.slice(0, PICK_CAP);
-    // liste tronquée : on le dit (audit UX3-20)
-    pickMore.hidden = all.length <= PICK_CAP;
-    pickMore.textContent = `${fmtN(PICK_CAP)} sur ${fmtN(all.length)} · affine ta recherche ou filtre par étoiles`;
-    pickGrid.replaceChildren(
-      ...list.map((c) => {
-        const t = cardTile(c.cardId, c.rarity, { mini: true, count: c.count });
-        if (used.has(`${c.cardId}:${c.rarity}`)) t.classList.add('picked');
-        t.addEventListener('click', () => {
-          if (used.has(`${c.cardId}:${c.rarity}`)) return toast('Déjà dans ta vitrine.', 'info');
-          draft[slot] = { cardId: c.cardId, rarity: c.rarity };
-          shell.sfx.tick(1.3, 0.05);
-          const nextEmpty = draft.findIndex((x) => !x);
-          slot = nextEmpty >= 0 ? nextEmpty : slot;
-          renderCase();
-          renderPicker();
-        });
-        return t;
-      }),
-    );
-    if (!list.length) pickGrid.innerHTML = '<div class="muted">Aucune carte.</div>';
-  }
-  const PICK_CAP = 240;
-  const pickStarsEl = q('.pf-pick-stars');
-  const pickMore = q('.pf-pick-more');
-  let pickStar: RarityId | null = null;
-  for (const r of [...STARS, 'secret'] as RarityId[]) {
-    const b = h('button', 'chip', r === 'secret' ? '✷' : `${rarity(r).rank + 1}★`);
-    b.dataset.r = r;
-    b.title = rarity(r).label;
-    b.style.setProperty('--rc', rarity(r).hex);
-    // texte lisible pour Rare / Épique (UX5-09), la teinte de la carte ne change pas
-    b.style.setProperty('--rt', r === 'epic' ? '#e0607a' : r === 'rare' ? '#6f9be0' : rarity(r).hex);
-    b.setAttribute('aria-pressed', 'false');
-    b.addEventListener('click', () => ((pickStar = pickStar === r ? null : r), renderPicker()));
-    pickStarsEl.append(b);
-  }
-  let searchT = 0;
-  pickSearch.addEventListener('input', () => {
-    clearTimeout(searchT);
-    searchT = window.setTimeout(renderPicker, 150);
+  // Échap : quitte l'édition sans enregistrer (pendant un glissé, l'éditeur annule le glissé et arrête l'événement)
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !editor.active || !el.isConnected || open) return;
+    if ((e.target as HTMLElement)?.closest?.('.pf-search') && (e.target as HTMLInputElement).value) return;
+    stopEditing();
   });
-  function renderBinder() {
-    const sec = q('.pf-binder-sec');
-    const b = isMe() ? backend.state.binders.find((x) => x.pinned) ?? null : prof?.pinnedBinder ?? null;
-    sec.hidden = !b;
-    q('.pf-binder-go').hidden = !isMe();
-    const nob = q('.pf-nobinder');
-    nob.hidden = !!b;
-    nob.innerHTML = isMe() ? 'Pas de classeur épinglé. Crée un classeur dans <a class="p-link" href="#/collection/classeurs">ta collection</a> et épingle-le : il s’affichera ici, visible des potes.' : 'Pas de classeur épinglé.';
-    if (!b) return;
-    q('.pf-binder-t').textContent = b.name;
-    const g = q('.pf-binder');
+
+  function renderCase() {
+    if (editor.active) return;
+    const me = isMe();
+    const sc = showcase();
+    const list = sc.list;
+    autoEl.textContent = sc.auto && list.length ? (me ? tr('pf.vit.bestMine') : tr('pf.vit.bestTheirs')) : '';
+    tools.innerHTML = me && ownedOf().length ? `<button class="btn-ghost pf-edit">${sc.auto ? tr('pf.vit.pick') : tr('pf.edit')}</button>` : '';
+    tools.querySelector('.pf-edit')?.addEventListener('click', startEditing);
+    caseEl.replaceChildren();
+    caseEl.classList.toggle('is-empty', !list.length);
+    // retours live 02 : les 12 cases toujours (plus de « Voir les 12 » au téléphone), au premier écran
+    for (let i = 0; i < SLOTS; i++) {
+      const c = list[i];
+      const wrap = h('div', `pf-slot${c ? ' filled' : ' free'}`);
+      wrap.style.setProperty('--i', String(i));
+      if (c) {
+        const t = cardTile(c.cardId, c.rarity);
+        wrap.append(t);
+        t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+      } else wrap.innerHTML = `<div class="pf-empty"></div>`;
+      caseEl.append(wrap);
+    }
+    if (!list.length) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? tr('pf.vit.openSome') : tr('pf.noCardYet')}</div>`);
+  }
+  /**
+   * (retours Hugo et Tom, 10/11) TOUTE LA COLLECTION d'un joueur, pas seulement son classeur épinglé : recherche par nom,
+   * filtre par étoiles, de la plus rare à la moins rare, par paquets de 60 (« Voir plus »). Toucher = la carte en grand.
+   */
+  const ALL_STEP = 60;
+  let allShown = ALL_STEP;
+  let allR = '';
+  const allQ = q<HTMLInputElement>('.pf-all-q');
+  const fold = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  // (audit 12/11, S14 / M-07) la grille « Toute la collection » (tri complet + 60 tuiles) n'est construite que si son
+  // onglet est affiché ; sinon elle est marquée à refaire et se construit à l'ouverture de l'onglet
+  let allStale = false;
+  function renderAllCards() {
+    if (tab !== 'collection') return void (allStale = true);
+    allStale = false;
+    const owned = ownedOf();
+    const rEl = q('.pf-all-r');
+    const ranks = [...new Set(owned.map((c) => c.rarity))].sort((a, b) => rarity(b).rank - rarity(a).rank);
+    rEl.innerHTML = `<button class="chip${allR ? '' : ' on'}" data-r="">${tr('pf.all')}</button>${ranks.map((r) => `<button class="chip${allR === r ? ' on' : ''}" data-r="${r}" style="--rc:${rarity(r).hex}">${starsHtml(r)}</button>`).join('')}`;
+    const needle = fold(allQ.value.trim());
+    const list = owned
+      .filter((c) => (!allR || c.rarity === allR) && (!needle || fold(catalogEntry(c.cardId)?.name ?? '').includes(needle)))
+      .sort((a, b) => rarity(b.rarity).rank - rarity(a.rarity).rank || (catalogEntry(a.cardId)?.name ?? '').localeCompare(catalogEntry(b.cardId)?.name ?? '', locale()));
+    q('.pf-all-n').textContent = `${fmtN(list.length)} carte${list.length > 1 ? 's' : ''}`;
+    const g = q('.pf-all');
     g.replaceChildren();
-    const have = new Map(ownedOf().map((c) => [`${c.cardId}:${c.rarity}`, c]));
-    for (const c of b.cards.slice(0, 24)) {
-      const row = have.get(`${c.cardId}:${c.rarity}`);
-      const t = cardTile(c.cardId, c.rarity, { owned: !!row, count: row?.count });
-      if (row) t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+    for (const c of list.slice(0, allShown)) {
+      const t = cardTile(c.cardId, c.rarity, { count: c.count });
+      t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
       g.append(t);
     }
-    if (b.cards.length > 24) g.append(h('div', 'muted', `+ ${fmtN(b.cards.length - 24)} autres`));
+    if (!list.length) g.append(h('div', 'muted', owned.length ? tr('pf.noMatch') : tr('pf.noCardYet')));
+    q('.pf-all-more').hidden = list.length <= allShown;
+  }
+  q('.pf-all-r').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-r]');
+    if (!b) return;
+    allR = b.dataset.r ?? '';
+    allShown = ALL_STEP;
+    renderAllCards();
+  });
+  // (audit 12/11, S14 / A4-06) recherche temporisée (tri complet de la collection à chaque frappe sinon)
+  let allQT = 0;
+  allQ.addEventListener('input', () => {
+    allShown = ALL_STEP;
+    clearTimeout(allQT);
+    allQT = window.setTimeout(renderAllCards, 150);
+  });
+  q('.pf-all-more').addEventListener('click', () => {
+    allShown += ALL_STEP * 2;
+    renderAllCards();
+  });
+
+  /** Classeurs épinglés : un bloc par classeur, 3 au plus (sondage 11/11). Seul : 24 cartes ; à plusieurs : 12 chacun, « + N autres » déplie. */
+  function renderBinder() {
+    const box = q('.pf-binders');
+    const list = isMe() ? backend.state.binders.filter((x) => x.pinned).slice(0, 3) : prof?.pinnedBinders ?? (prof?.pinnedBinder ? [prof.pinnedBinder] : []);
+    box.replaceChildren();
+    const nob = q('.pf-nobinder');
+    nob.hidden = list.length > 0;
+    nob.innerHTML = isMe() ? tr('pf.noBinderMine') : tr('pf.noBinder');
+    if (!list.length) return;
+    const have = new Map(ownedOf().map((c) => [`${c.cardId}:${c.rarity}`, c]));
+    const first = list.length > 1 ? 12 : 24;
+    list.forEach((b, i) => {
+      const sec = h('div', 'pf-sec pf-binder-sec');
+      sec.innerHTML = `<div class="pf-sec-t"><h2 class="pf-binder-t"></h2><span class="pf-auto">${tr('pf.pinned')}</span>${isMe() && i === 0 ? '<span class="pf-tools"><a class="btn-ghost pf-binder-go" href="#/collection/classeurs">' + tr('pf.myBinders') + '</a></span>' : ''}</div><div class="grid mini pf-binder"></div>`;
+      sec.querySelector('.pf-binder-t')!.textContent = b.name;
+      const g = sec.querySelector<HTMLElement>('.pf-binder')!;
+      const fill = (n: number) => {
+        g.replaceChildren();
+        for (const c of b.cards.slice(0, n)) {
+          const row = have.get(`${c.cardId}:${c.rarity}`);
+          const t = cardTile(c.cardId, c.rarity, { owned: !!row, count: row?.count });
+          if (row) t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+          g.append(t);
+        }
+        if (b.cards.length > n) {
+          const more = h('button', 'btn-ghost pf-binder-more');
+          more.textContent = `+ ${fmtN(b.cards.length - n)} autres`;
+          more.addEventListener('click', () => fill(n + 48));
+          g.append(more);
+        }
+      };
+      fill(first);
+      box.append(sec);
+    });
   }
 
   // ── ACTIVITÉ
   async function loadActivity() {
-    activityEl.innerHTML = '<div class="muted">Chargement…</div>';
+    activityEl.innerHTML = '<div class="muted">' + tr('common.loading2') + '</div>';
     try {
       activity = await backend.activity(isMe() ? (backend.state.user?.id ?? 'me') : who);
     } catch (e) {
@@ -811,14 +894,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (tab !== 'activite') return;
     const list = activity ?? [];
     activityEl.replaceChildren();
-    if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? 'Rien pour l’instant : tes gros tirages (5★ et +), échanges conclus et contrats signés apparaîtront ici.' : 'Rien à montrer pour l’instant.'}</div>`);
+    if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? tr('pf.nothingMine') : tr('pf.nothing')}</div>`);
     const ICON: Record<string, string> = { pull: '✦', mythic_pull: '✺', secret_pull: '✷', trade: '⇄', contract: '⚖', joined: '👋', achievement: '🏅' };
     for (const a of list) {
       const e = a.cardId ? catalogEntry(a.cardId) : undefined;
       const rr = a.rarity ? rarity(a.rarity) : null;
       const row = h('div', `pf-act k-${a.kind}${rr ? ` r-${a.rarity}` : ''}`);
       if (rr) row.style.setProperty('--rc', rr.hex);
-      row.innerHTML = `<span class="pa-ico">${ICON[a.kind] ?? '•'}</span>${e && a.rarity !== 'secret' ? `<img class="pa-img" alt="" loading="lazy" src="${thumbUrl(e)}">` : ''}<span class="pa-txt">${esc(a.message)}</span><span class="pa-when">${ago(a.createdAt)}</span>`;
+      row.innerHTML = `<span class="pa-ico">${ICON[a.kind] ?? '•'}</span>${e && a.rarity !== 'secret' ? `<img class="pa-img" alt="" loading="lazy" src="${thumbUrl(e)}">` : ''}<span class="pa-txt">${esc(feedText(a))}</span><span class="pa-when">${ago(a.createdAt)}</span>`;
       if (e && a.rarity) row.addEventListener('click', () => void openCard(e.id, a.rarity!));
       activityEl.append(row);
     }
@@ -839,6 +922,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     renderRarities();
     renderCase();
     renderBinder();
+    renderAllCards();
     renderFriends();
     syncTabs();
     renderActivity();
@@ -846,11 +930,15 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
 
   async function load(id: string) {
     const my = ++token;
+    if (who !== id) {
+      allShown = ALL_STEP;
+      allR = '';
+      allQ.value = '';
+    }
     who = id;
-    editing = false;
+    stopEditing();
     cosmOpen = false;
     cosm.hidden = true;
-    picker.hidden = true;
     activity = null;
     leaderLoaded = false;
     const me = backend.state.user;
@@ -859,7 +947,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     el.classList.add('loading');
     renderAll();
     try {
-      const [p, c] = await Promise.all([backend.profile(isMe() ? me?.id ?? 'me' : id), isMe() ? Promise.resolve(backend.state.collection) : backend.friendCollection(id)]);
+      // (audit 12/11, A4-02) profil d'un ami : une seule lecture de sa collection côté serveur (avant : deux)
+      const [p, c] = isMe() ? [await backend.profile(me?.id ?? 'me'), backend.state.collection] : await backend.friendProfile(id).then((r) => [r.profile, r.cards] as const);
       if (my !== token) return;
       if (p) prof = p;
       cards = c;
@@ -876,7 +965,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       cosm.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
     if (tab === 'activite') void loadActivity();
-    if (tab === 'classement') ((leaderLoaded = true), void leaderboard.load());
+    // (audit 12/11, A5-11) un re-rendu du profil (collection, amis, classeurs) ne recharge plus le classement déjà affiché
+    if (tab === 'classement' && !leaderLoaded) ((leaderLoaded = true), void leaderboard.load());
   }
 
   // ── une carte en grand ; un toucher à côté la referme (audit UX3-09, même règle que la boutique)
@@ -921,7 +1011,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
 
   let sig = '';
   backend.onChange((st) => {
-    if (!el.isConnected || !isMe() || editing || open || cosmOpen) return;
+    if (!el.isConnected || !isMe() || editor.active || open || cosmOpen) return;
     const s = `${st.collection.length}:${st.user?.totalPacksOpened}:${st.friends.length}:${st.binders.length}`;
     if (s === sig) return;
     sig = s;
@@ -942,11 +1032,13 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         location.replace('#/classement');
         return;
       }
+      // (10/11) #/profil/<id>/collection : directement l'onglet Collection (bouton « Sa collection » des amis, du classement)
+      if (parts[1] === 'collection') tab = 'collection';
       void load(id);
     },
     leave() {
       if (open) closeViewer();
-      editing = false;
+      stopEditing();
       cosmOpen = false;
       cosm.hidden = true;
     },

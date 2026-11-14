@@ -2,6 +2,7 @@
  * Petits outils TSL partagés : hash 2D, voronoï avec identifiant de cellule,
  * interférence de couche mince spectrale, rotation 2D, courbes.
  */
+import { NOISE_PERIOD, NOISE_SIZE, burnNoiseValues, noisePixels } from './noiseData';
 import { Fn, Loop, cos, dot, float, floor, fract, hash, length, min, mix, sin, vec2, vec3, sqrt, max, clamp, luminance, texture } from 'three/tsl';
 import { ClampToEdgeWrapping, DataTexture, DataUtils, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, RGBAFormat, RepeatWrapping, UnsignedByteType } from 'three/webgpu';
 
@@ -166,8 +167,7 @@ export const thinFilmLUT = (thicknessNm: N, cosI: N): N =>
   // (coordonnées ramenées aux centres des texels : texel i ↔ épaisseur i / 511 × MAX, incidence j ↔ 0,05 + j / 15 × 0,95)
   texture(filmLUT(), vec2(thicknessNm.abs().div(FILM_LUT_MAX).mul(511 / 512).add(0.5 / 512), cosI.sub(0.05).div(0.95).mul(15 / 16).add(0.5 / 16))).rgb;
 
-/** Période (en unités de bruit) de la texture de bruit répétable. */
-export const NOISE_PERIOD = 64;
+export { NOISE_PERIOD };
 let noiseTex: DataTexture | null = null;
 /**
  * Bruit de gradient 2D **répétable** (période 64 cellules, 8 texels par cellule), 3 tirages indépendants en R, G, B
@@ -175,43 +175,84 @@ let noiseTex: DataTexture | null = null;
  * Lire avec `noiseTexel(p)` : p en unités de bruit, comme l'argument de `mx_noise_float`.
  */
 export function noiseTexture(): DataTexture {
-  if (noiseTex) return noiseTex;
-  const P = NOISE_PERIOD, RES = 8, W = P * RES;
-  const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
-  const data = new Uint8Array(W * W * 4);
-  for (let ch = 0; ch < 3; ch++) {
-    // gradients pseudo-aléatoires par sommet du réseau (périodiques)
-    const gx = new Float32Array(P * P), gy = new Float32Array(P * P);
-    let a = 0x9e3779b9 ^ (ch * 0x85ebca6b);
-    for (let i = 0; i < P * P; i++) {
-      a = (Math.imul(a ^ (a >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) >>> 0;
-      const ang = (a / 4294967296) * Math.PI * 2;
-      gx[i] = Math.cos(ang);
-      gy[i] = Math.sin(ang);
-    }
-    const dotG = (ix: number, iy: number, x: number, y: number) => {
-      const k = ((iy % P) * P + (ix % P)) | 0;
-      return gx[k] * x + gy[k] * y;
-    };
-    for (let j = 0; j < W; j++)
-      for (let i = 0; i < W; i++) {
-        const x = (i + 0.5) / RES, y = (j + 0.5) / RES;
-        const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-        const u = fade(xf), v = fade(yf);
-        const n00 = dotG(xi, yi, xf, yf), n10 = dotG(xi + 1, yi, xf - 1, yf);
-        const n01 = dotG(xi, yi + 1, xf, yf - 1), n11 = dotG(xi + 1, yi + 1, xf - 1, yf - 1);
-        const n = (n00 + (n10 - n00) * u + (n01 - n00 + (n00 - n10 - n01 + n11) * u) * v) * 1.4; // ≈ [-1, 1]
-        data[(j * W + i) * 4 + ch] = Math.round(Math.min(1, Math.max(0, n * 0.5 + 0.5)) * 255);
-      }
-  }
-  for (let i = 3; i < data.length; i += 4) data[i] = 255;
-  const t = new DataTexture(data, W, W, RGBAFormat, UnsignedByteType);
+  return (noiseTex ??= wrapNoise(noisePixels()));
+}
+function wrapNoise(data: Uint8Array): DataTexture {
+  const t = new DataTexture(data, NOISE_SIZE, NOISE_SIZE, RGBAFormat, UnsignedByteType);
   t.wrapS = t.wrapT = RepeatWrapping;
   t.magFilter = LinearFilter;
   t.minFilter = LinearMipmapLinearFilter;
   t.generateMipmaps = true;
   t.needsUpdate = true;
-  return (noiseTex = t);
+  return t;
+}
+
+let noiseReady: Promise<void> | null = null;
+/**
+ * (audit 12/11, S06 / E2-01) PIXELS DU BRUIT CALCULÉS DANS UN WORKER, pour le jeu : 68 ms sur PC au profil du démarrage,
+ * sur le fil principal, pendant le montage de la vitrine. À appeler tôt (main.ts) ; la texture existe tout de suite
+ * (noire), la promesse se résout quand ses pixels sont là — le montage de la vitrine l'attend avant sa première image.
+ * Pas de worker, worker en échec ou muet : calcul sur le fil principal, comme avant. Sans cet appel (labo) : rien ne change.
+ */
+export function preloadNoise(): Promise<void> {
+  if (noiseReady) return noiseReady;
+  if (noiseTex || typeof Worker === 'undefined') return (noiseReady = Promise.resolve(void noiseTexture()));
+  const t = (noiseTex = wrapNoise(new Uint8Array(NOISE_SIZE * NOISE_SIZE * 4)));
+  return (noiseReady = new Promise<void>((done) => {
+    let filled = false;
+    let w: Worker | null = null;
+    let guard = 0;
+    const fill = (d: Uint8Array) => {
+      clearTimeout(guard);
+      w?.terminate();
+      w = null;
+      if (filled) return;
+      filled = true;
+      (t.image.data as Uint8Array).set(d);
+      t.needsUpdate = true;
+      done();
+    };
+    const local = () => void (filled || fill(noisePixels()));
+    try {
+      w = new Worker(new URL('./noise.worker.ts', import.meta.url), { type: 'module' });
+      w.onmessage = (e: MessageEvent<Uint8Array>) => fill(e.data);
+      w.onerror = w.onmessageerror = local;
+      w.postMessage(0);
+      guard = window.setTimeout(local, 5000);
+    } catch {
+      local();
+    }
+  }));
+}
+
+/**
+ * (audit 12/11, S06 / E2-01) Valeurs du bruit de brûlure du sachet, calculées dans un worker (repli : fil principal).
+ */
+export function burnNoise(W: number, H: number, packW: number, packH: number): Promise<Float64Array> {
+  return new Promise<Float64Array>((done) => {
+    let settled = false;
+    let w: Worker | null = null;
+    let guard = 0;
+    const finish = (d: Float64Array) => {
+      clearTimeout(guard);
+      w?.terminate();
+      w = null;
+      if (settled) return;
+      settled = true;
+      done(d);
+    };
+    const local = () => void (settled || finish(burnNoiseValues(W, H, packW, packH)));
+    try {
+      if (typeof Worker === 'undefined') return local();
+      w = new Worker(new URL('./noise.worker.ts', import.meta.url), { type: 'module' });
+      w.onmessage = (e: MessageEvent<Float64Array>) => finish(e.data);
+      w.onerror = w.onmessageerror = local;
+      w.postMessage({ burn: [W, H, packW, packH] });
+      guard = window.setTimeout(local, 5000);
+    } catch {
+      local();
+    }
+  });
 }
 
 /** Bruit cuit en `p` (unités de bruit) → vec3 de 3 tirages indépendants dans ≈ [-1, 1]. */

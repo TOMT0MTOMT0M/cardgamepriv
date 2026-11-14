@@ -18,6 +18,7 @@ import {
   uv,
   vec2,
   vec4,
+  varying,
 } from 'three/tsl';
 import { CARD } from './cardModel';
 import type { N } from './tsl';
@@ -29,7 +30,8 @@ import { FRAME_WIN as WIN, BASE_W, BASE_H } from './art';
 
 /** Direction de vue en espace objet (surface → caméra). Pour la face avant, c'est l'espace tangent. */
 export const viewDirObject = Fn(() => {
-  const camObj = modelWorldMatrixInverse.mul(vec4(cameraPosition, 1)).xyz;
+  // (audit 12/11, E4-06) la caméra dans le repère de la carte ne dépend pas du pixel : calculée par sommet
+  const camObj = varying(modelWorldMatrixInverse.mul(vec4(cameraPosition, 1)).xyz);
   return normalize(camObj.sub(positionLocal));
 });
 

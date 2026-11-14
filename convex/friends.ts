@@ -1,7 +1,14 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
-import { getUserByToken, requireUser } from './auth';
+import { getUserIdByToken, requireUser } from './auth';
+import { notify } from './push';
+import { presenceOf } from './presence';
+import { fm } from '../src/core/msgs';
+
+/** (version anglaise, lot 4) code du message + ce qu'il faut pour relire la carte et la rareté dans la langue du joueur */
+const msgOf = (a: Doc<'activityFeed'>) => (a.msgKey ? { msgKey: a.msgKey, msgParams: { ...a.msgParams, ...(a.cardId ? { cardId: a.cardId } : {}), ...(a.rarity ? { rarityId: a.rarity } : {}) } } : {});
 
 /**
  * AMIS (retours live 02, point 8) — un vrai lien d'amitié, À PART de `users.friends` (qui reste la liste de TOUS les
@@ -44,18 +51,18 @@ async function linkBetween(ctx: QueryCtx | MutationCtx, a: Id<'users'>, b: Id<'u
 async function findTarget(ctx: MutationCtx, userId: Id<'users'> | undefined, name: string | undefined): Promise<Doc<'users'>> {
   if (userId) {
     const u = await ctx.db.get(userId);
-    if (!u) throw new ConvexError('Joueur introuvable.');
+    if (!u) throw new ConvexError(fe('friends.1'));
     return u;
   }
   const want = foldName((name ?? '').slice(0, PSEUDO_MAX));
-  if (!want) throw new ConvexError('Écris le pseudo exact de ton ami.');
+  if (!want) throw new ConvexError(fe('friends.2'));
   const users = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
   const byUsername = users.filter((u) => foldName(u.username) === want);
   if (byUsername.length === 1) return byUsername[0];
   const byName = users.filter((u) => foldName(u.displayName) === want);
   if (byName.length === 1) return byName[0];
-  if (byName.length > 1) throw new ConvexError(`Plusieurs joueurs s’appellent « ${name!.trim()} » : passe par son profil (classement, gros tirages).`);
-  throw new ConvexError(`Personne ne s’appelle « ${name!.trim()} » ici. Vérifie le pseudo (en entier).`);
+  if (byName.length > 1) throw new ConvexError(fe('friends.3', { p0: name!.trim() }));
+  throw new ConvexError(fe('friends.4', { p0: name!.trim() }));
 }
 
 /**
@@ -67,25 +74,27 @@ export const request = mutation({
   handler: async (ctx, { sessionToken, userId, name }) => {
     const me = await requireUser(ctx, sessionToken);
     const target = await findTarget(ctx, userId, name);
-    if (target._id === me._id) throw new ConvexError('C’est toi ! Choisis quelqu’un d’autre.');
+    if (target._id === me._id) throw new ConvexError(fe('friends.5'));
     const now = Date.now();
     const link = await linkBetween(ctx, me._id, target._id);
-    if (link?.status === 'accepted') throw new ConvexError(`${target.displayName} est déjà ton ami.`);
+    if (link?.status === 'accepted') throw new ConvexError(fe('friends.6', { p0: target.displayName }));
     if (link?.status === 'pending') {
-      if (link.requesterId === me._id) throw new ConvexError(`Demande déjà envoyée à ${target.displayName}.`);
+      if (link.requesterId === me._id) throw new ConvexError(fe('friends.7', { p0: target.displayName }));
       // il m'avait demandé : on devient amis
       await ctx.db.patch(link._id, { status: 'accepted', respondedAt: now });
+      await notify(ctx, target._id, { kind: 'friend', title: fm('n.friendAccepted', { name: me.displayName }), body: fm('n.friendAcceptedBody'), url: '#/amis' });
       return { status: 'accepted' as const, name: target.displayName };
     }
     if (link?.status === 'declined' && link.requesterId === me._id && now - (link.respondedAt ?? link.createdAt) < DECLINE_COOLDOWN_MS)
-      throw new ConvexError(`${target.displayName} a décliné ta demande il y a peu : réessaie demain.`);
+      throw new ConvexError(fe('friends.8', { p0: target.displayName }));
     const pendingOut = await ctx.db
       .query('friendships')
       .withIndex('by_requester', (q) => q.eq('requesterId', me._id).eq('status', 'pending'))
       .collect();
-    if (pendingOut.length >= MAX_PENDING_OUT) throw new ConvexError(`${MAX_PENDING_OUT} demandes en attente au maximum : attends des réponses (ou annules-en).`);
+    if (pendingOut.length >= MAX_PENDING_OUT) throw new ConvexError(fe('friends.9', { p0: MAX_PENDING_OUT }));
     if (link) await ctx.db.patch(link._id, { requesterId: me._id, addresseeId: target._id, status: 'pending', createdAt: now, respondedAt: undefined });
     else await ctx.db.insert('friendships', { requesterId: me._id, addresseeId: target._id, status: 'pending', createdAt: now });
+    await notify(ctx, target._id, { kind: 'friend', title: fm('n.friendAsk', { name: me.displayName }), body: fm('n.friendAskBody'), url: '#/amis' });
     return { status: 'pending' as const, name: target.displayName };
   },
 });
@@ -93,7 +102,7 @@ export const request = mutation({
 async function mineLink(ctx: MutationCtx, sessionToken: string, friendshipId: Id<'friendships'>) {
   const me = await requireUser(ctx, sessionToken);
   const link = await ctx.db.get(friendshipId);
-  if (!link || (link.requesterId !== me._id && link.addresseeId !== me._id)) throw new ConvexError('Demande introuvable (déjà traitée ?).');
+  if (!link || (link.requesterId !== me._id && link.addresseeId !== me._id)) throw new ConvexError(fe('friends.10'));
   return { me, link };
 }
 
@@ -102,8 +111,9 @@ export const accept = mutation({
   args: { sessionToken: v.string(), friendshipId: v.id('friendships') },
   handler: async (ctx, { sessionToken, friendshipId }) => {
     const { me, link } = await mineLink(ctx, sessionToken, friendshipId);
-    if (link.status !== 'pending' || link.addresseeId !== me._id) throw new ConvexError('Demande introuvable (déjà traitée ?).');
+    if (link.status !== 'pending' || link.addresseeId !== me._id) throw new ConvexError(fe('friends.11'));
     await ctx.db.patch(link._id, { status: 'accepted', respondedAt: Date.now() });
+    await notify(ctx, link.requesterId, { kind: 'friend', title: `${me.displayName} a accepté ta demande d’ami`, body: 'Vous pouvez échanger des cartes.', url: '#/amis' });
     return { ok: true };
   },
 });
@@ -113,7 +123,7 @@ export const decline = mutation({
   args: { sessionToken: v.string(), friendshipId: v.id('friendships') },
   handler: async (ctx, { sessionToken, friendshipId }) => {
     const { me, link } = await mineLink(ctx, sessionToken, friendshipId);
-    if (link.status !== 'pending' || link.addresseeId !== me._id) throw new ConvexError('Demande introuvable (déjà traitée ?).');
+    if (link.status !== 'pending' || link.addresseeId !== me._id) throw new ConvexError(fe('friends.12'));
     await ctx.db.patch(link._id, { status: 'declined', respondedAt: Date.now() });
     return { ok: true };
   },
@@ -124,7 +134,7 @@ export const cancel = mutation({
   args: { sessionToken: v.string(), friendshipId: v.id('friendships') },
   handler: async (ctx, { sessionToken, friendshipId }) => {
     const { me, link } = await mineLink(ctx, sessionToken, friendshipId);
-    if (link.status !== 'pending' || link.requesterId !== me._id) throw new ConvexError('Demande introuvable (déjà traitée ?).');
+    if (link.status !== 'pending' || link.requesterId !== me._id) throw new ConvexError(fe('friends.13'));
     await ctx.db.delete(link._id);
     return { ok: true };
   },
@@ -135,7 +145,7 @@ export const remove = mutation({
   args: { sessionToken: v.string(), friendshipId: v.id('friendships') },
   handler: async (ctx, { sessionToken, friendshipId }) => {
     const { link } = await mineLink(ctx, sessionToken, friendshipId);
-    if (link.status !== 'accepted') throw new ConvexError('Vous n’êtes pas (ou plus) amis.');
+    if (link.status !== 'accepted') throw new ConvexError(fe('friends.14'));
     await ctx.db.delete(link._id);
     return { ok: true };
   },
@@ -148,13 +158,22 @@ export const remove = mutation({
 export const mine = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
-    const me = await getUserByToken(ctx, sessionToken);
+    // (audit 12/11, S04) id seul : la requête ne lit plus le document joueur, donc ne repart plus à chacune de ses écritures
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    const me = meId ? { _id: meId } : null;
     if (!me) return null;
     const [outAll, inAll] = await Promise.all([
       ctx.db.query('friendships').withIndex('by_requester', (q) => q.eq('requesterId', me._id)).collect(),
       ctx.db.query('friendships').withIndex('by_addressee', (q) => q.eq('addresseeId', me._id)).collect(),
     ]);
-    const person = (u: Doc<'users'>) => ({ userId: u._id, name: u.displayName, username: u.username, avatarUrl: u.avatarUrl });
+    type Pub = { _id: Id<'users'>; displayName: string; username: string; avatarUrl?: string; lastSeenAt: number; statusText?: string; totalPacksOpened: number };
+    // (audit 12/11, décision 8) la carte publique de l'ami (convex/presence.ts), pas son document : « mes amis » ne
+    // repart plus à chacune de ses écritures privées. Sans carte (avant la migration) : son document, comme avant.
+    const pub = async (id: Id<'users'>): Promise<Pub | null> => {
+      const p = await presenceOf(ctx, id);
+      return p ? { ...p, _id: p.userId } : await ctx.db.get(id);
+    };
+    const person = (u: Pub) => ({ userId: u._id, name: u.displayName, username: u.username, avatarUrl: u.avatarUrl });
     type Req = ReturnType<typeof person> & { friendshipId: Id<'friendships'>; createdAt: number };
     const friends = [];
     const incoming: Req[] = [];
@@ -162,7 +181,7 @@ export const mine = query({
     for (const f of [...outAll, ...inAll]) {
       if (f.status === 'declined') continue;
       const otherId = f.requesterId === me._id ? f.addresseeId : f.requesterId;
-      const u = await ctx.db.get(otherId);
+      const u = await pub(otherId);
       if (!u) continue;
       if (f.status === 'pending') {
         (f.requesterId === me._id ? outgoing : incoming).push({ friendshipId: f._id, ...person(u), createdAt: f.createdAt });
@@ -180,7 +199,7 @@ export const mine = query({
         lastSeenAt: u.lastSeenAt,
         statusText: u.statusText,
         packsOpened: u.totalPacksOpened,
-        lastActivity: last ? { kind: last.kind, message: last.message, createdAt: last.createdAt } : null,
+        lastActivity: last ? { kind: last.kind, message: last.message, createdAt: last.createdAt, ...msgOf(last) } : null,
       });
     }
     friends.sort((a, b) => b.lastSeenAt - a.lastSeenAt);

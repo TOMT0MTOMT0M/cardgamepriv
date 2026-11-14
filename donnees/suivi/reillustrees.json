@@ -134,6 +134,11 @@
   "image": "miam-philippe-etchebest.jpg",
   "t": 1794498875
  },
+ "miam-raclette-savoyarde": {
+  "file": "001-raclette-savoyarde-r2611131907.jpg",
+  "image": "miam-raclette-savoyarde.jpg",
+  "t": 1794596834
+ },
  "miam-tapas": {
   "file": "plats-du-monde--tapas-r2611121558.jpg",
   "image": "miam-tapas.jpg",
@@ -554,6 +559,11 @@
   "image": "pop-fall-out-boy.jpg",
   "t": 1794499118
  },
+ "pop-femto": {
+  "file": "femto-r2611110159.jpg",
+  "image": "pop-femto.jpg",
+  "t": 1794362382
+ },
  "pop-fernand-naudin": {
   "file": "fernand-naudin-r2611110028.jpg",
   "image": "fernand naudin.jpg",
@@ -623,6 +633,11 @@
   "file": "gregory-lemarchal-r2611121558.jpg",
   "image": "pop-gregory-lemarchal.jpg",
   "t": 1794499118
+ },
+ "pop-guts-armure-du-berserker": {
+  "file": "guts-armure-du-berserker-r2611110159.jpg",
+  "image": "pop-guts-armure-du-berserker.jpg",
+  "t": 1794362382
  },
  "pop-hallelujah": {
   "file": "hallelujah-r2611132242.jpg",

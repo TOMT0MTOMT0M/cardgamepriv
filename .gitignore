@@ -26,6 +26,7 @@ _to_delete/
 
 # fichiers de travail de Claude (aperçus, captures) — hors git
 .claude-tmp/
+_hors-site/
 .discord-bot-token
 .annonce-*.fait
 

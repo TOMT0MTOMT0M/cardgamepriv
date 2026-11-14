@@ -1,8 +1,10 @@
+import { fe } from '../src/core/errors';
 import { payReferrer } from './referrals';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserIdByToken, requireUser } from './auth';
+import { scheduleReserveFull } from './push';
 import { RARITY_LABEL, RARITY_TIER, packKindValidator, rarityValidator, type RarityId } from './cardsCatalog';
 import { isValidPackRequest, rollPackEx, type PackRequest } from '../src/core/packRoll';
 import { artPath, bebouOddsLabel, catalogEntry, hasArt, subthemeById, themeById, BEBOU_PACK } from '../src/core/sets/themes';
@@ -12,6 +14,11 @@ import { pityAfter, pityForces } from '../src/core/pity';
 import { rollPackCoins } from '../src/core/economy';
 import { addCoins, bumpWeekly } from './econLib';
 import { queueDropShot } from './dropShots';
+import { liveEventOrThrow } from './events';
+import { bumpChallenges } from './challenges';
+import { invRev } from './invRev';
+import { syncPresence } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -53,7 +60,13 @@ export const getSealedPack = query({
  * Prépare (scelle) UN booster pour `user` — cœur de `preparePack` et de `preparePacks`. Débite la réserve, tire les cartes,
  * attribue les n° d'impression, avance le pity. `allowExisting` : rend le booster déjà scellé s'il y en a un (anti-reroll).
  */
-async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme' | 'bebou' | undefined, themeId: string | undefined, allowExisting = true) {
+/** (version anglaise, lot 4) nom anglais de l'événement, pour le journal des pièces dans la langue du joueur */
+async function eventEn(ctx: MutationCtx, id: Id<'packEvents'> | undefined): Promise<Record<string, string>> {
+  const e = id ? await ctx.db.get(id) : null;
+  return e?.nameEn ? { eventEn: e.nameEn } : {};
+}
+
+async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme' | 'bebou' | undefined, themeId: string | undefined, allowExisting = true, eventId?: Id<'packEvents'>) {
 
   const existingSealed = await ctx.db
     .query('packOpens')
@@ -64,28 +77,34 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     return existingSealed;
   }
 
+  // (11/11) booster du moment : seulement pendant l'événement, pool relu en base (convex/events.ts, src/core/events.ts)
+  const ev = eventId ? await liveEventOrThrow(ctx, eventId) : null;
   // anciens identifiants (« pokemon ») ramenés à leur thème (« gaming »)
-  const req: PackRequest = { kind: packKind ?? 'bebou', themeId: packKind === 'theme' ? themeById(themeId ?? '')?.id ?? themeId : undefined };
+  const req: PackRequest = ev
+    ? { kind: 'theme', event: { id: ev._id, subthemes: ev.subthemes, cards: ev.cards } }
+    : { kind: packKind ?? 'bebou', themeId: packKind === 'theme' ? themeById(themeId ?? '')?.id ?? themeId : undefined };
   // pity : 200 boosters secs → celui-ci contient une Mythique (src/core/pity.ts)
   const pity = user.pityCount ?? 0;
   req.forceMythic = pityForces(pity);
   if (!isValidPackRequest(req)) {
-    throw new ConvexError('Ce booster n’existe pas.');
+    throw new ConvexError(fe('packs.1'));
   }
 
   // recharge accumulée depuis la dernière fois (1 booster / 5 min, 15 max), puis on dépense
   const now = Date.now();
   const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
   if (regen.balance <= 0) {
-    throw new ConvexError(`Plus de boosters ! Le prochain arrive dans ${fmtCountdown((regen.nextAt ?? now) - now)}.`);
+    throw new ConvexError(fe('packs.2', { p0: fmtCountdown((regen.nextAt ?? now) - now) }));
   }
 
   await ctx.db.patch(user._id, {
     packBalance: regen.balance - 1,
     packRegenAt: regen.regenAt,
     lastSeenAt: now,
-    statusText: `Ouvre un ${req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
+    statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
   });
+  await syncPresence(ctx, user._id);
+  await scheduleReserveFull(ctx, user._id);
 
   const rolledCards: Array<{
     cardId: string;
@@ -162,6 +181,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     // pièces d'ouverture (spec économie) : tirées ici avec le booster, créditées au dévoilement
     coins: rollPackCoins(req.kind, secureRandomFloat),
     ...(rolled.god ? { god: true } : {}),
+    ...(ev ? { eventId: ev._id, eventName: ev.name } : {}),
   });
 
   return (await ctx.db.get(packId))!;
@@ -173,10 +193,12 @@ export const preparePack = mutation({
     /** 'theme' = booster d'un des 4 thèmes (themeId : gaming | pop | sport | monde) · 'bebou' = bébou pack. Absent = bébou pack. */
     packKind: v.optional(packKindValidator),
     themeId: v.optional(v.string()),
+    /** (11/11) booster du moment : l'événement en cours (src/core/events.ts) — packKind / themeId ignorés */
+    eventId: v.optional(v.id('packEvents')),
   },
-  handler: async (ctx, { sessionToken, packKind, themeId }) => {
+  handler: async (ctx, { sessionToken, packKind, themeId, eventId }) => {
     const user = await requireUser(ctx, sessionToken);
-    return await prepareOne(ctx, user, packKind, themeId);
+    return await prepareOne(ctx, user, packKind, themeId, true, eventId);
   },
 });
 
@@ -195,7 +217,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
   const pack = await ctx.db.get(packId);
 
   if (!pack || pack.userId !== user._id) {
-    throw new ConvexError('Booster introuvable.');
+    throw new ConvexError(fe('packs.3'));
   }
   if (pack.status === 'revealed') {
     return pack;
@@ -212,13 +234,14 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
     lastSeenAt: now,
     statusText: pack.god ? 'Vient d’ouvrir un GOD PACK' : 'Contemple son tirage',
   });
+  await syncPresence(ctx, user._id);
   if (pack.god)
     await ctx.db.insert('activityFeed', {
       userId: user._id,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       kind: 'pull',
-      message: `✦ ${user.displayName} a ouvert un GOD PACK ! (1 booster sur 1 000)`,
+      ...feedMsg(fm('f.god', { name: user.displayName })),
       createdAt: now,
     });
   // parrainage (retours live 02, §10) : au 10e booster du filleul, 10 boosters pour son parrain
@@ -237,6 +260,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
         count: existing.count + 1,
         bestMintNumber: Math.min(existing.bestMintNumber, c.mintNumber),
         lastPulledAt: now,
+        rev: invRev(),
       });
     } else {
       await ctx.db.insert('inventory', {
@@ -248,6 +272,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
         foilSeed: c.foilSeed,
         firstPulledAt: now,
         lastPulledAt: now,
+        rev: invRev(),
       });
     }
 
@@ -258,8 +283,8 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
       const kind = c.rarity === 'secret' ? 'secret_pull' : c.rarity === 'mythic' ? 'mythic_pull' : 'pull';
       const msg =
         c.rarity === 'secret'
-          ? `✷ ${user.displayName} a tiré une CARTE SECRÈTE : ${c.cardName} ! (${bebouOddsLabel().replace(/^1 /, '1 chance ')})`
-          : `${user.displayName} a obtenu ${c.cardName} [${label} #${c.mintNumber}] !`;
+          ? fm('f.secret', { name: user.displayName, card: c.cardName, cardId: c.cardId, odds: bebouOddsLabel().replace(/^1 sur /, '') })
+          : fm('f.pull', { name: user.displayName, card: c.cardName, cardId: c.cardId, rarity: label, rarityId: c.rarity, mint: c.mintNumber });
 
       await ctx.db.insert('activityFeed', {
         userId: user._id,
@@ -270,8 +295,9 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
         cardName: c.cardName,
         rarity: c.rarity,
         mintNumber: c.mintNumber,
-        message: msg,
+        ...feedMsg(msg),
         createdAt: now,
+        ...(tier >= RARITY_TIER.legendary ? { big: true } : {}),
       });
 
       // Discord : uniquement avant-dernier tier (Mythique 6★) et dernier tier (Secrète Bébou ✷)
@@ -283,15 +309,18 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
   }
 
   // pièces d'ouverture + missions de la semaine (src/core/economy.ts, src/core/weekly.ts)
-  if (pack.coins) await addCoins(ctx, user._id, pack.coins, 'pack', `Ouverture — ${pack.packKind === 'theme' && pack.themeId ? themeById(pack.themeId)?.label ?? 'booster' : BEBOU_PACK.label}`, { earned: true });
+  if (pack.coins) await addCoins(ctx, user._id, pack.coins, 'pack', pack.eventName ? fm('c.openEvent', { event: pack.eventName, ...(await eventEn(ctx, pack.eventId)) }) : pack.packKind === 'theme' && pack.themeId ? fm('c.openTheme', { theme: themeById(pack.themeId)?.label ?? 'booster', themeId: pack.themeId }) : fm('c.openTheme', { theme: BEBOU_PACK.label }), { earned: true });
   await bumpWeekly(ctx, user._id, { type: 'pack', cards: pack.cards.map((c) => ({ rarity: c.rarity, isNew: c.isNew })) });
 
   // missions du jour (ouvrir, raretés, nouvelles cartes, doublons…)
   await bumpMissions(ctx, user, {
     type: 'pack',
-    packKey: pack.packKind === 'theme' && pack.themeId ? pack.themeId : 'bebou',
+    // (booster du moment : clé à part, il ne compte pas pour « ouvre un Bebou Pack »)
+    packKey: pack.eventId ? 'event' : pack.packKind === 'theme' && pack.themeId ? pack.themeId : 'bebou',
     cards: pack.cards.map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: c.isNew })),
   });
+  // défis entre amis en cours (convex/challenges.ts) : seulement les boosters scellés après le départ du défi
+  await bumpChallenges(ctx, user._id, pack.createdAt, pack.cards.map((c) => ({ rarity: c.rarity, isNew: c.isNew })));
 
   return (await ctx.db.get(pack._id))!;
 }
@@ -321,15 +350,16 @@ export const preparePacks = mutation({
     sessionToken: v.string(),
     packKind: v.optional(packKindValidator),
     themeId: v.optional(v.string()),
+    eventId: v.optional(v.id('packEvents')),
     count: v.number(),
   },
-  handler: async (ctx, { sessionToken, packKind, themeId, count }) => {
+  handler: async (ctx, { sessionToken, packKind, themeId, eventId, count }) => {
     let user = await requireUser(ctx, sessionToken);
     const n = Math.max(1, Math.min(10, Math.floor(count)));
     const out = (await ctx.db.query('packOpens').withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'sealed')).take(n)) as Doc<'packOpens'>[];
     while (out.length < n) {
       try {
-        out.push(await prepareOne(ctx, user, packKind, themeId, false));
+        out.push(await prepareOne(ctx, user, packKind, themeId, false, eventId));
       } catch (e) {
         if (!out.length) throw e;
         break; // réserve épuisée en cours de série : on garde ce qui est scellé

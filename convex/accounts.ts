@@ -1,6 +1,8 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
 import { createUser, issueSession } from './auth';
+import { syncPresence } from './presence';
 
 /**
  * COMPTES SANS DISCORD (ouverture 07/11) — la partie base de données ; le hachage du mot de passe (scrypt, Node) est
@@ -30,11 +32,11 @@ export const createPw = internalMutation({
   handler: async (ctx, { loginKey, displayName, pwHash, device }) => {
     const all = await ctx.db.query('users').collect();
     // appareil d'un compte banni : pas de nouveau compte depuis ce téléphone / navigateur
-    if (device && all.some((u) => u.bannedAt && (u.devices ?? []).includes(device))) throw new ConvexError('Impossible de créer un compte depuis cet appareil.');
+    if (device && all.some((u) => u.bannedAt && (u.devices ?? []).includes(device))) throw new ConvexError(fe('accounts.1'));
     // pseudo déjà pris — par un compte pseudo OU par le nom d'un joueur Discord (les commandes admin cherchent par nom)
     const k = fold(displayName);
     if (all.some((u) => u.discordId === PW_PREFIX + loginKey || fold(u.displayName) === k || fold(u.username) === k))
-      throw new ConvexError('Ce pseudo est déjà pris : choisis-en un autre.');
+      throw new ConvexError(fe('accounts.2'));
     const userId = await createUser(ctx, { discordId: PW_PREFIX + loginKey, username: displayName, displayName, pwHash });
     if (device) await ctx.db.patch(userId, { devices: [device] });
     return { token: await issueSession(ctx, userId) };
@@ -46,8 +48,8 @@ export const pwAttempt = internalMutation({
   args: { userId: v.id('users'), ok: v.boolean() },
   handler: async (ctx, { userId, ok }) => {
     const u = await ctx.db.get(userId);
-    if (!u) throw new ConvexError('Compte introuvable.');
-    if (u.bannedAt) throw new ConvexError('Ce compte a été banni du club.');
+    if (!u) throw new ConvexError(fe('accounts.5'));
+    if (u.bannedAt) throw new ConvexError(fe('accounts.3'));
     const now = Date.now();
     if (!ok) {
       const fails = (u.pwFails ?? 0) + 1;
@@ -55,6 +57,7 @@ export const pwAttempt = internalMutation({
       return { token: null };
     }
     await ctx.db.patch(userId, { pwFails: 0, pwLockUntil: undefined, lastSeenAt: now });
+    await syncPresence(ctx, userId);
     return { token: await issueSession(ctx, userId) };
   },
 });
@@ -66,7 +69,7 @@ export const setPwHash = internalMutation({
       .query('users')
       .withIndex('by_discordId', (q) => q.eq('discordId', PW_PREFIX + loginKey))
       .unique();
-    if (!u) throw new ConvexError(`Aucun compte pseudo « ${loginKey} ».`);
+    if (!u) throw new ConvexError(fe('accounts.4', { p0: loginKey }));
     await ctx.db.patch(u._id, { pwHash, pwFails: 0, pwLockUntil: undefined });
     for (const s of await ctx.db.query('sessions').withIndex('by_userId', (q) => q.eq('userId', u._id)).collect()) await ctx.db.delete(s._id);
     return `Mot de passe de ${u.displayName} remis à zéro (sessions fermées).`;

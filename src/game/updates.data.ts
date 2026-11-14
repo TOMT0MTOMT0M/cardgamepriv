@@ -31,19 +31,32 @@ export const CARDS_TOKEN = '{CARTES}';
  * Annonce du moment : à la PROCHAINE visite (une seule fois par appareil), le jeu ouvre la page des mises à jour
  * (src/game/announce.ts). Changer cet identifiant à chaque nouvelle annonce qui mérite d'être montrée d'office.
  */
-export const ANNOUNCE_ID = 'v2-ce-soir-2026-11-13';
+export const ANNOUNCE_ID = 'v2-0-2026-11-14';
 
 export const UPDATES: UpdateMonth[] = [
   {
     month: 'Novembre 2026',
     entries: [
       {
-        date: '13 nov.', title: 'La V2 arrive ce soir — et quelques corrections en attendant', tag: 'nouveau',
+        date: '13 nov.', title: 'Corrections : Star Wars et The Mandalorian, Oner et ShowMaker, nouvelles images', tag: 'corrigé',
         points: [
-          'La V2 : grosse mise à jour prévue ce soir, dans 2 à 3 heures. Ta collection, tes pièces et tes succès sont gardés, et 50 boosters sont offerts à tout le monde à la sortie.',
           'Star Wars et The Mandalorian : Grogu, le Mandalorien, Cobb Vanth et Koska Reeves rejoignent l’album The Mandalorian.',
           'Oner et ShowMaker passent 6★.',
-          'Nouvelles images : Iron Man recadré, 15 cartes The Walking Dead (les autres restent), Will Smith, Captain America, Soldat de l’Hiver, Scarlet Witch, Joey Tribbiani, Jeff Tuche, Rex, Ben 10, Boruto, Subaru, ZywOo, Vatira, Glutonny, Oner, ShowMaker, Dembélé, Fernando Alonso, Florent Manaudou, Roberto Carlos, Ballon d’Or, LaLiga, Zelda, Alan Wake II, PNL, Phil Collins, Idol et d’autres.',
+          'Nouvelles images : Iron Man recadré, 15 cartes The Walking Dead, Will Smith, Captain America, Soldat de l’Hiver, Scarlet Witch, Joey Tribbiani, Jeff Tuche, Rex, Ben 10, ZywOo, Oner, ShowMaker, Dembélé, Fernando Alonso, Ballon d’Or, LaLiga, Zelda, Alan Wake II, PNL, Idol et d’autres.',
+        ],
+      },
+      {
+        date: '14 nov.', title: 'Version 2 : le chat, le marché, les saisons', tag: 'nouveau',
+        points: [
+          'Ta collection est gardée : cartes, pièces, boosters, succès, classeurs, rien ne s’est perdu.',
+          'Chat : le salon de tout le monde et les messages privés, avec les mentions.',
+          'Marché : vends une carte à prix fixe en pièces, achète celles des autres. Le premier qui achète l’a.',
+          'Échanges simplifiés : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies, en un toucher.',
+          'Saisons : chaque mois, le classement des nouvelles cartes gagnées et des boosters pour tout le monde à la fin. La première se termine le 30 novembre.',
+          'Booster du moment : une édition limitée, avec son compte à rebours en tête de la boutique.',
+          `Plus de 3 000 nouvelles cartes ({CARTES} en tout) et un nouveau tri des étoiles : certaines de tes cartes ont changé d’étoile.`,
+          'Les 6★ ont chacune leur mise en scène, les 6★ Musique et d’animés jouent leur extrait, le son est tout neuf et la déchirure du booster plus vraie.',
+          'Notifications : réserve pleine, échanges, amis. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.',
         ],
       },
       {
@@ -58,12 +71,44 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '12 nov.', title: '56 chansons en 6★, Finn d’Adventure Time, et la musique des 6★', tag: 'nouveau',
+        date: '12 nov.', title: 'Les nouvelles 6★ Musique ont leur extrait', tag: 'nouveau',
         points: [
-          'Nouvelles 6★ : Give Me the Night, Temperature, Plus près des étoiles, Caravane, Lettre à Élise et une cinquantaine d’autres chansons, plus Finn l’Humain (Adventure Time).',
-          'Passent en 6★ : Locked Out of Heaven, Take on Me, Wonderwall, In the End, Dream On, Every Breath You Take, Californication, L’Aziza, Ne me quitte pas, Petite Marie, La Boulette… Les exemplaires déjà tirés suivent tout seuls.',
-          'Les 6★ Musique jouent leur extrait de 30 s quand on les tire et dans la visionneuse, et les 6★ d’animés jouent l’opening de leur animé.',
-          'Gérard Depardieu est retiré du jeu.',
+          'Les chansons, artistes et albums passés en 6★ jouent maintenant leur extrait de 30 s quand on les tire et dans la visionneuse.',
+        ],
+      },
+      {
+        date: '11 nov.', title: 'Pop Culture et Sport : 3 024 nouvelles cartes', tag: 'nouveau',
+        points: [
+          'Animés : 1 843 nouveaux personnages dans les séries déjà présentes (Toji Fushiguro, Himiko Toga, Bokuto, Akaza, Escanor, Echidna, Dabi…), de 1★ à 4★.',
+          'Musique : 1 136 nouvelles chansons des artistes déjà dans le jeu, de 1★ à 4★.',
+          'Sport : 45 joueurs de Ligue 1 (Kvaratskhelia, Désiré Doué, João Neves, Lucas Hernandez…).',
+          'Les 5★ et 6★ ne changent pas : la collection est juste plus fournie.',
+        ],
+      },
+      {
+        date: '11 nov.', title: 'Échanges repensés, booster du moment et saisons', tag: 'nouveau',
+        points: [
+          'Échanges : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies : on demande en un toucher, l’autre accepte, choisit une autre carte ou refuse. Ton bouton « Protéger » garde une carte hors des propositions.',
+          'Booster du moment : un booster en édition limitée, avec son compte à rebours en tête de la boutique.',
+          'Saisons : chaque mois, un classement des nouvelles cartes gagnées, des boosters pour tout le monde à la fin, un cadre et un titre pour le podium.',
+          'Animations d’ouverture à gagner : la brûlure (succès Braise) et l’éventail (succès Cartographe), à choisir dans la fiche d’un booster.',
+          'Aussi : les cartes que tu n’as pas montrent leur illustration floutée, les gants et un sticker CS 6★ en 3D, des apôtres dans l’Éclipse, de nouveaux sons pour les 6★, une collection plus rapide à mettre à jour.',
+        ],
+      },
+      {
+        date: '11 nov.', title: '56 chansons en 6★, Finn d’Adventure Time', tag: 'nouveau',
+        points: [
+          'Nouvelles 6★ : Give Me the Night, Temperature, Plus près des étoiles, Caravane, Le Temps des cathédrales, Je ne suis pas un héros, Laisse pas traîner ton fils, Gravé dans la roche, Suicide social, Le monde ou rien, Mosaïque solitaire, Avant la douane, et les grands classiques (Lettre à Élise, Le Lac des cygnes, La Chevauchée des Walkyries…).',
+          'Openings d’animés en 6★ : Unravel, KICK BACK, Kaikai Kitan, Guren no Yumiya, Sign, crossing field, Peace Sign, Idol, Black Rover, Brave Shine, Snow Fairy, Fly High!! et d’autres.',
+          'Passent en 6★ : Locked Out of Heaven, Take on Me, Wonderwall, In the End, Dream On, Every Breath You Take, Californication, L’Aziza, Ne me quitte pas, Petite Marie, La Boulette… Chaque 6★ joue son extrait.',
+          'Finn l’Humain (Adventure Time) arrive en 6★. Gérard Depardieu est retiré du jeu.',
+        ],
+      },
+      {
+        date: '11 nov.', title: 'Skins CS 6★ en 3D et Éclipse pour Berserk', tag: 'nouveau',
+        points: [
+          'Dans la visionneuse, les skins Counter-Strike 6★ apparaissent en 3D dans la carte : la caméra zoome, puis le doigt, la souris ou le gyroscope font tourner l’arme.',
+          'Les 6★ Berserk ont leur propre animation, l’Éclipse, à l’ouverture comme dans la visionneuse.',
         ],
       },
       {
@@ -92,6 +137,44 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '10 nov.', title: 'Retours de Hugo : le Marché, des cartes plus grandes, l’ouverture plus rapide', tag: 'nouveau',
+        points: [
+          'Nouveau Marché dans Échanges : mets une carte en vente à prix fixe, en pièces, et achète celles des autres en un geste (pas d’enchères : le premier qui achète l’a).',
+          'Échanges en trois onglets clairs : Marché, Avec un ami, Offres.',
+          'Ouverture : « Direct 4★ » va droit à ta première 4★ (ou ouvre tout le booster s’il n’y en a pas), sans faire défiler les autres ; la déchirure fait beaucoup moins de bruit.',
+          'La pity en haut à droite ne bouge plus qu’une fois le booster fini : plus de spoil.',
+          'Contrats : 10 cartes pour chaque étoile, de 1★ à 5★.',
+          'Collection : cartes plus grandes, moins par rangée. Et tu peux voir la collection complète des autres depuis leur profil.',
+          'Retour des formes rondes et de la police ronde sur les boosters, avec des touches de couleur.',
+          'Toutes les 5★ en pleine illustration ; les 6★ d’animés jouent l’opening de leur animé, et les extraits manquants des 6★ Musique sont arrivés (Au DD…).',
+        ],
+      },
+      {
+        date: '10 nov.', title: 'Tout le jeu passe au style de l’espace Jeux', tag: 'amélioré',
+        points: [
+          'Collection, Échanges, Classement, Succès, Amis, Profil, Suggestions : même dessin que l’espace Jeux — noir, traits fins, coins droits, repères aux angles.',
+          'Grands titres de page, étiquettes en capitales, textes plus lisibles (surtout au téléphone).',
+          'Boutons, onglets, menus et fenêtres identiques d’une page à l’autre. Les cartes, les boosters et l’ouverture ne changent pas.',
+        ],
+      },
+      {
+        date: '10 nov.', title: 'Nouveau son : plus doux, plus proche, plus précis', tag: 'amélioré',
+        points: [
+          'Tous les sons courants sont refaits en « matière » : carton, feutre, bois, alu froissé — fini les bips aigus.',
+          'Tout ce qui se touche répond par un petit « toc » feutré, placé là où tu touches.',
+          'Les souffles suivent la vitesse des animations, et les impacts tombent pile sur l’image.',
+          'Plus léger pour le téléphone : les sons sont fabriqués une fois au lancement, puis simplement relus.',
+        ],
+      },
+      {
+        date: '10 nov.', title: 'Profil : vitrine au glisser-déposer, page plus lisible', tag: 'amélioré',
+        points: [
+          'Vitrine : touche une carte de ta collection pour l’ajouter, touche-la encore pour la retirer. Glisse-la sur une case pour la placer, glisse les cartes de la vitrine pour changer leur ordre, ou hors de la vitrine pour les retirer (au téléphone : maintiens la carte, puis glisse).',
+          'Pendant que tu choisis, la vitrine reste en haut de l’écran ; « Compléter auto » remplit les cases vides avec tes meilleures cartes.',
+          'Tableau du profil rangé : trois chiffres clés, puis Activité, Collection, Raretés et Univers, avec un code couleur (bleu = progression, vert = activité, doré = succès, arc-en-ciel = 6★).',
+        ],
+      },
+      {
         date: '10 nov.', title: 'Vos suggestions traitées plus vite', tag: 'amélioré',
         points: [
           'Tom et Hugo ont un nouvel outil pour lire vos suggestions et vos cartes signalées, et régler vos soucis (boosters manquants, parrainage, échange bloqué) en quelques secondes. Continuez à tout signaler dans l’onglet Suggestions !',
@@ -116,6 +199,20 @@ export const UPDATES: UpdateMonth[] = [
         points: [
           'Un petit sondage d’une minute s’ouvre à la connexion : les univers que tu veux collectionner, les nouveautés de jeu qui te tentent, ta note du jeu et un mot libre. Les réponses décident de ce qui arrive en premier.',
           '« Plus tard » le referme : il revient une heure après, tant qu’il n’est pas rempli.',
+        ],
+      },
+      {
+        date: '10 nov.', title: 'Cartes 6★ : leur scène partout', tag: 'amélioré',
+        points: [
+          'Ouvrir une carte 6★ dans la Collection, les Échanges, les Contrats, le Profil ou les Gros tirages rejoue la scène de sa famille (cartouche, vinyle, case de manga, tunnel…), puis la carte se retourne. Un toucher passe la scène ; « Rejouer » relance la version complète.',
+          'Les 26 scènes ont été retravaillées : la carte de la scène est le vrai dos en aluminium brossé, elle se raccorde à la carte sans à-coup, et les textes sont plus lisibles sur téléphone.',
+        ],
+      },
+      {
+        date: '10 nov.', title: 'Berserk : six nouvelles cartes', tag: 'nouveau',
+        points: [
+          'Six nouvelles cartes Berserk au-delà de l’Âge d’or, dans le booster Pop Culture : Femto, le Chevalier Squelette et Guts (Armure du Berserker) en 6★, Schierke, Farnese et Serpico en 5★.',
+          'L’Éclipse : un booster qui cache une carte Berserk 5★ ou 6★ se trahit — sa lueur vire au rouge sang, puis, une fois ouvert, le soleil noir se lève au-dessus d’un lac pendant que « Behelit » joue en fond.',
         ],
       },
       {

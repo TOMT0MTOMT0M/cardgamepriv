@@ -1,8 +1,11 @@
+import { fmtPct as fmtPctI, t as tr } from '../../core/i18n';
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
-import { playMusicPreview, stopMusicPreview } from '../musicPreview';
+import { playAmbience, playMusicPreview, prefetchAmbience, prefetchMusicPreview, stopAmbience, stopMusicPreview } from '../musicPreview';
+import { isEclipsePack } from '../eclipse';
+import { ECLIPSE } from '../../core/motion';
 import { fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
-import { openStyleOf, type OpeningScene } from '../scenes/opening';
+import { openStyleOf, setOpeningChoice, type OpeningScene } from '../scenes/opening';
 import type { WheelItem3D } from '../scenes/packWheel3d';
 import type { ViewerScene } from '../scenes/viewer';
 import type { PackRequest } from '../../core/packRoll';
@@ -17,23 +20,38 @@ import { markDuelSeen } from '../duelEncounter';
 import type { WildExperiment } from '../../experiments/041-pokemon-wild/index';
 import { rarity } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast, imageReportButton } from '../ui';
-import { createPackSheet, shopPacks } from './packSheet';
+import { createPackSheet, shopPacks, type SheetPack } from './packSheet';
+import { EVENT_KEY, contentLabel, contentSig, eventCards, fmtLeft, liveEvent, type PackEvent } from '../../core/events';
+import '../evenements.css';
 import { preloadArt } from '../preload';
 import { isTouch } from '../../core/renderer';
 import { haptics } from '../../core/haptics';
 import { createBigPulls } from './bigPulls';
 import { duelMonster } from '../scenes/duelMonsters';
+import { abortMythic, mythicFamily, playMythicPrelude, prepareMythic } from '../mythic';
 import { clearGod, playGodIntro } from '../godPack';
 
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
 const TOUCH = isTouch();
 const HINT = {
-  hold: TOUCH ? 'Maintiens pour ouvrir' : 'Maintiens le clic (ou Espace) pour ouvrir',
-  tear: TOUCH ? 'Glisse vers la droite pour déchirer' : 'Glisse vers la droite (ou clique) pour déchirer',
-  tap: TOUCH ? 'Touche pour ouvrir' : 'Clique pour ouvrir',
-  reveal: TOUCH ? 'Touche pour révéler' : 'Clique pour révéler',
-  next: TOUCH ? 'Touche pour la suivante' : 'Clique pour la suivante',
-  last: 'Dernière carte…',
+  get hold() {
+    return TOUCH ? tr('shop.hint.holdTouch') : tr('shop.hint.holdMouse');
+  },
+  get tear() {
+    return TOUCH ? tr('shop.hint.tearTouch') : tr('shop.hint.tearMouse');
+  },
+  get tap() {
+    return TOUCH ? tr('shop.hint.tapTouch') : tr('shop.hint.tapMouse');
+  },
+  get reveal() {
+    return TOUCH ? tr('shop.hint.revealTouch') : tr('shop.hint.revealMouse');
+  },
+  get next() {
+    return TOUCH ? tr('shop.hint.nextTouch') : tr('shop.hint.nextMouse');
+  },
+  get last() {
+    return tr('shop.hint.last');
+  },
 };
 
 /** Seuil de « Passer jusqu'aux 4★ » : rang 3 = Épique (★★★★), puis Légendaire, Mythique, Secrète. */
@@ -44,7 +62,7 @@ const WILD_LOOP = { loopStart: 20, loopEnd: 51.3475 };
 /** carte dont la révélation est la rencontre sauvage (Pokémon 6★) */
 const isWild = (c: PackCard) => c.rarity === 'mythic' && c.cardId.startsWith('pkm-');
 /** « 62,4 % » (chiffres à la française) */
-const fmtPct = (x: number) => `${(Math.round(x * 1000) / 10).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+const fmtPct = (x: number) => fmtPctI(x); // (version anglaise) « 62,4 % » / « 62.4% » selon la langue
 /** indication affichée tant que le booster est fermé (dépend de sa mise en scène : brûler, déchirer, toucher) */
 let sealedHint = HINT.hold;
 
@@ -82,7 +100,22 @@ interface Batch {
   queue: SealedPack[];
 }
 
-const keyOf = (p: SealedPack) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? 'gaming');
+const keyOfBase = (p: SealedPack) => (p.packKind === 'bebou' ? 'bebou' : themeById(p.themeId ?? '')?.id ?? 'gaming');
+
+/** (11/11) le booster du moment dans la fiche (même tirage que les autres, pool de l'événement) */
+function eventPack(e: PackEvent): SheetPack {
+  return {
+    key: EVENT_KEY,
+    req: { kind: 'theme', event: { id: e.id, subthemes: e.subthemes, cards: e.cards } },
+    name: e.name,
+    tagline: tr('shop.eventTagline'),
+    desc: e.blurb ?? contentLabel(e),
+    accent: e.accent,
+    cards: eventCards(e),
+    event: { endAt: e.endAt, label: contentLabel(e) },
+  };
+}
+const EV_SEEN = 'bebou.evenement-vu';
 
 export function createShopView(backend: GameBackend, shell: Shell, opening: OpeningScene, go: (route: string) => void, getViewer: () => Promise<ViewerScene>): ShopView {
   const el = h('section', 'view shop');
@@ -95,6 +128,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
   })();
   if (!list.some((b) => b.key === selected)) selected = 'bebou';
+  /**
+   * (11/11) BOOSTER DU MOMENT : la fiche connaît les 5 boosters + celui de l'événement en cours (EN TÊTE). Il n'entre
+   * ni dans la roue (téléphone) ni dans la colonne (ordinateur) : il a son bandeau en haut de la boutique, avec le
+   * compte à rebours ; le toucher le montre au centre (sachet à la couleur de l'événement) et ouvre sa fiche.
+   */
+  const sheetList: SheetPack[] = [...list];
+  const packOf = (k: string) => sheetList.find((x) => x.key === k);
+  let ev: PackEvent | null = null;
+  // (booster du moment tiré puis événement fini : on le range avec le Bebou Pack, le serveur le rend tel quel)
+  const keyOf = (p: SealedPack) => (p.eventId ? (packOf(EVENT_KEY) ? EVENT_KEY : 'bebou') : keyOfBase(p));
   let mode: 'pick' | 'opening' | 'summary' = 'pick';
   let pack: SealedPack | null = null;
   /**
@@ -106,6 +149,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   let secretExp: { replay?(): void } | null = null;
   /** cinématique d'invocation (6★ Yu-Gi-Oh) préparée pour ce booster : carte concernée + scène montée */
   let duel: { cardId: string; exp: { replay?(): void } | null } | null = null;
+  /** le morceau a-t-il une carte de rang ≥ HI_RANK (4★ ou mieux) ? */
+  const hasHi = (p: SealedPack) => p.cards.some((c) => rarity(c.rarity).rank >= HI_RANK);
   const newBatch = (req: PackRequest, total: number, current: SealedPack, hi: boolean, all: boolean): Batch => ({ req, total, done: [], current, hi, all, skipping: false, revealing: null, pending: null, queue: [] });
   /**
    * Départ d'une série (retours de Tom, 4 nov. : « plusieurs boosters d'un coup = temps d'attente ») : TOUS les
@@ -120,7 +165,25 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     pack = got;
     batch = newBatch(req, packs.length, got, hi, all);
     batch.queue = packs.slice(1);
-    if (packs.length < n) toast(`Réserve : ${packs.length} booster${packs.length > 1 ? 's' : ''} sur ${n} ouverts.`, 'info');
+    // (13/11, retours de Tom) « Direct 4★ » déjà actif (« Encore ×10 ») : les premiers morceaux sans 4★ sont crédités
+    // tout de suite, sans être montrés ; la série démarre au premier qui en a une (aucun : au dernier, le meilleur)
+    if (hi && !all && packs.length > 1) {
+      let k = packs.findIndex(hasHi);
+      if (k < 0) k = packs.length - 1;
+      const b = batch;
+      for (let i = 0; i < k; i++) {
+        if (!(await credit(b, packs[i]))) {
+          b.pending = null; // il reste à montrer : son crédit sera retenté normalement
+          k = i;
+          break;
+        }
+      }
+      b.current = pack = packs[k];
+      b.queue = packs.slice(k + 1);
+      if (packs.length < n) toast(tr('shop.reserveOpened', { got: packs.length, n: packs.length > 1 ? 's' : '' }), 'info');
+      return packs[k];
+    }
+    if (packs.length < n) toast(tr('shop.reserveOpened', { got: packs.length, n: packs.length > 1 ? 's' : '' }), 'info');
     return got;
   }
 
@@ -165,7 +228,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
           }
           if (i === 0 && mode === 'opening') {
             hint.hidden = false;
-            hintTxt.textContent = 'Enregistrement des cartes…';
+            hintTxt.textContent = tr('shop.saving');
           }
           await new Promise<void>((r) => {
             const done = () => (clearTimeout(t), window.removeEventListener('online', done), r());
@@ -181,18 +244,18 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   }
   /** Message exact quand un booster n'a pas pu être crédité (il n'est PAS perdu : il reste scellé, à rouvrir). */
   const pendingMsg = (e: unknown) =>
-    `${typeof navigator !== 'undefined' && navigator.onLine === false ? 'Pas de réseau' : `Enregistrement impossible (${errMsg(e)})`} : ce booster n’est pas encore crédité. Tu le retrouveras tel quel à la boutique (bouton Ouvrir).`;
+    tr('shop.pending', { why: typeof navigator !== 'undefined' && navigator.onLine === false ? tr('shop.noNet') : tr('shop.saveFailed', { err: errMsg(e) }) });
 
   el.innerHTML = `
     <div class="shop-home">
       <div class="shop-left">
-        <div class="shop-title"><span class="kicker">BOUTIQUE</span><h2>Choisis ton booster</h2><p class="shop-hint"></p></div>
-        <div class="packs-row" role="listbox" aria-label="Boosters"></div>
+        <div class="shop-title"><span class="kicker" data-t="shop.kicker">${tr('shop.kicker')}</span><h2 data-t="shop.pick">${tr('shop.pick')}</h2><p class="shop-hint"></p></div>
+        <div class="packs-row" role="listbox" aria-label="Boosters"></div> <!-- i18n-ok -->
       </div>
-      <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary">Ouvrir</button></div>
+      <div class="sealed-banner home-banner" hidden><span></span><button class="btn-primary" data-t="shop.open">${tr('shop.open')}</button></div>
       <div class="tap-hint" hidden aria-hidden="true"><i class="th-dot"></i><span class="th-t"></span></div>
       <div class="tap-ghost" hidden aria-hidden="true"><i></i></div>
-      <div class="home-cta" hidden><button class="btn-primary"><span class="hc-t">Ouvrir</span><small class="hc-s"></small></button><p class="hc-tip"></p></div>
+      <div class="home-cta" hidden><button class="btn-primary"><span class="hc-t" data-t="shop.open">${tr('shop.open')}</span><small class="hc-s"></small></button><p class="hc-tip"></p></div>
       <div class="shop-right"></div>
     </div>
     <div class="hud" hidden>
@@ -202,16 +265,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       <div class="hud-bottom">
         <div class="card-info" hidden></div>
         <div class="hud-hint"><span class="ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" pathLength="100"/><circle class="p" cx="18" cy="18" r="15.5" pathLength="100"/></svg></span><span class="txt"></span></div>
-        <div class="hud-skip"><button class="skip-hi" title="Les cartes de moins de 4 étoiles défilent toutes seules">⏭ 4★ et +</button><button class="skip-reveal" title="Les cartes se retournent toutes seules (une 6★ garde son plein écran)">Tout révéler</button><button class="skip-all" title="Aller directement au récap (tout est crédité)">Tout passer</button></div>
+        <div class="hud-skip"><button class="skip-hi" title="${tr('shop.revealTitle')}" data-t-title="shop.revealTitle">⏭ Direct 4★</button><button class="skip-reveal" title="${tr('shop.autoTitle')}" data-t-title="shop.autoTitle" data-t="shop.revealAll">${tr('shop.revealAll')}</button><button class="skip-all" title="${tr('shop.skipTitle')}" data-t-title="shop.skipTitle" data-t="shop.skipAll">${tr('shop.skipAll')}</button></div>
       </div>
       <div class="mythic-veil" hidden><div class="mv-kicker">✺ MYTHIQUE ✺</div><div class="mv-stars">★★★★★★</div><div class="mv-name"></div><div class="mv-hint"></div></div>
     </div>
     <div class="sum-bg" hidden><div class="sum-rays"></div><div class="sum-parts"></div></div>
     <div class="fan-badges" hidden></div>
     <div class="summary" hidden></div>
-    <div class="secret-continue" hidden><button class="btn-primary">Continuer</button></div>
-    <div class="secret-continue wild-continue" hidden><button class="btn-primary">Continuer</button></div>
-    <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="Fermer">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint">glisse pour la faire tourner</div></div>`;
+    <div class="secret-continue" hidden><button class="btn-primary" data-t="common.continue">${tr('common.continue')}</button></div>
+    <div class="secret-continue wild-continue" hidden><button class="btn-primary" data-t="common.continue">${tr('common.continue')}</button></div>
+    <div class="viewer-ui shop-viewer" hidden><button class="close" aria-label="${tr('common.close')}" data-t-aria="common.close">✕</button><div class="v-info"></div><div class="v-actions"></div><div class="v-hint" data-t="shop.spinHint">${tr('shop.spinHint')}</div></div>`;
   const rowEl = el.querySelector<HTMLElement>('.packs-row')!;
   const hintEl = el.querySelector<HTMLElement>('.shop-hint')!;
   const banner = el.querySelector<HTMLElement>('.home-banner')!;
@@ -234,13 +297,19 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const mythicVeil = el.querySelector<HTMLElement>('.mythic-veil')!;
   const sumBg = el.querySelector<HTMLElement>('.sum-bg')!;
   const fanBadges = el.querySelector<HTMLElement>('.fan-badges')!;
-  hintEl.textContent = TOUCH ? 'Touche une pochette pour voir ce qu’elle contient' : 'Clique sur un pack pour voir ce qu’il contient · ↑ ↓ pour changer';
+  hintEl.textContent = TOUCH ? tr('shop.pickTouch') : tr('shop.pickMouse');
   const hudBottom = el.querySelector<HTMLElement>('.hud-bottom')!;
   const coach = el.querySelector<HTMLElement>('.coach')!;
   const cta = el.querySelector<HTMLElement>('.home-cta')!;
   const ctaBtn = cta.querySelector<HTMLButtonElement>('button')!;
   const tapHint = el.querySelector<HTMLElement>('.tap-hint')!;
   const tapGhost = el.querySelector<HTMLElement>('.tap-ghost')!;
+  /** (11/11) bandeau du booster du moment (evenements.css) : rien du tout quand aucun événement n'est en cours */
+  const band = h('button', 'ev-band', `<i class="ev-dot" aria-hidden="true"></i><span class="ev-txt"><span class="ev-k" data-t="shop.eventLabel">${tr('shop.eventLabel')}</span><b class="ev-n"></b></span><span class="ev-left"><small data-t="shop.evLeft">${tr('shop.evLeft')}</small><b data-ev-left="0"></b></span>`);
+  band.type = 'button';
+  band.hidden = true;
+  el.querySelector('.shop-left')!.prepend(band);
+  let wantEventSheet = false;
 
   /**
    * (audit UX2-06) Zone libre pour la carte montrée : hauteur de l'en-tête + compteur en haut, et du panneau du bas
@@ -268,12 +337,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const show = mode === 'pick' && !s.sealed && !(s.mode === 'online' && !u);
     cta.hidden = !show;
     if (!show) return;
-    const b = list.find((x) => x.key === selected);
+    const b = packOf(selected);
     const bal = u ? liveRegen(u).balance : 0;
-    cta.querySelector('.hc-t')!.textContent = b?.soon ? `Voir le ${b.name}` : bal > 0 ? `Ouvrir le ${b?.name ?? 'booster'}` : `Voir le ${b?.name ?? 'booster'}`;
+    cta.querySelector('.hc-t')!.textContent = b?.soon ? tr('shop.see', { name: b.name }) : bal > 0 ? tr('shop.openName', { name: b?.name ?? 'booster' }) : tr('shop.see', { name: b?.name ?? 'booster' });
     // premier booster jamais ouvert : la 2e ligne du bouton le dit (une phrase de plus ne tient pas sous le booster en 360×740)
     const first = !!u && u.totalPacksOpened === 0 && bal > 0 && !b?.soon;
-    cta.querySelector('.hc-s')!.textContent = b?.soon ? 'bientôt' : first ? `ton premier booster t’attend · ${bal} en réserve` : bal > 0 ? `${bal} en réserve` : 'réserve vide · en recharge';
+    cta.querySelector('.hc-s')!.textContent = b?.soon ? tr('common.soon') : first ? tr('shop.firstPack', { n: bal }) : bal > 0 ? tr('shop.inReserve', { n: bal }) : tr('shop.reserveEmpty');
     cta.querySelector<HTMLElement>('.hc-tip')!.hidden = true;
     syncHint();
   }
@@ -295,10 +364,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     tapHint.hidden = !on;
     if (!on) return void (tapGhost.hidden = true);
     const s = backend.state;
-    const b = list.find((x) => x.key === selected);
+    const b = packOf(selected);
     const bal = s.user ? liveRegen(s.user).balance : 0;
     tapHint.classList.toggle('idle', !!b?.soon || bal <= 0);
-    tapHint.querySelector('.th-t')!.textContent = b?.soon ? 'bientôt disponible' : bal > 0 ? 'touche le booster pour l’ouvrir' : 'réserve vide · en recharge';
+    tapHint.querySelector('.th-t')!.textContent = b?.soon ? tr('shop.soonAvail') : bal > 0 ? tr('shop.tapToOpen') : tr('shop.reserveEmpty');
     placeHint();
   }
   function placeHint() {
@@ -352,7 +421,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   // ── fiche du booster (overlay)
   // visuels des pochettes (face du vrai booster, rendue par la scène) : capturés une fois, dès qu'ils existent
   const thumbs = new Map<string, string>();
-  const sheet = createPackSheet(backend, shell, list, {
+  const sheet = createPackSheet(backend, shell, sheetList, {
     thumb: (k, size) => thumbs.get(k) ?? opening.packThumb(k, size),
     onSelect: (k) => select(k, { scroll: true }),
     viewCard: (c) => void viewCard(c),
@@ -381,7 +450,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   if (import.meta.env.DEV)
     (window as unknown as { __shop: unknown }).__shop = {
       async open(key: string) {
-        const p = list.find((x) => x.key === key);
+        const p = packOf(key);
         if (!p || mode !== 'pick') return false;
         const got = await backend.preparePack(p.req);
         pack = got;
@@ -410,7 +479,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
   for (const b of list) {
     const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}`, `
-      <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">BIENTÔT</span>' : ''}<i class="sl-shade"></i><i class="sl-shine"></i></span>
+      <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">' + tr('common.soonCaps') + '</span>' : ''}<i class="sl-shade"></i><i class="sl-shine"></i></span>
       <span class="sl-name">${esc(b.name)}</span>
       <span class="sl-desc">${esc(b.desc)}</span>
       <span class="sl-prog"><i></i></span>`);
@@ -455,11 +524,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
 
   function select(k: string, o: { dir?: 1 | -1; scroll?: boolean } = {}) {
     if (mode !== 'pick') return;
+    if (k === EVENT_KEY) return selectEvent();
     // sens de rotation du booster : vers la droite si on avance dans la liste, vers la gauche si on recule
     const from = list.findIndex((b) => b.key === selected);
     const to = list.findIndex((b) => b.key === k);
     const dir = o.dir ?? (to >= from ? 1 : -1);
     selected = k;
+    band.classList.remove('on');
     if (DOCK.matches) sheet.show(k);
     try {
       localStorage.setItem('bebou.booster', k);
@@ -487,6 +558,28 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
     opening.setBooster(k, !opening.reelActive(), dir);
     opening.setBoosterSoon(!!list.find((b) => b.key === k)?.soon);
+    syncState();
+  }
+
+  /** (11/11) le booster du moment au centre (pas de cran dans la roue : aucune pochette n'est « choisie ») */
+  function selectEvent() {
+    if (!ev || mode !== 'pick') return;
+    const from = selected;
+    selected = EVENT_KEY;
+    if (DOCK.matches) sheet.show(EVENT_KEY);
+    for (const b of sleeves) {
+      b.classList.remove('on');
+      b.setAttribute('aria-selected', 'false');
+    }
+    band.classList.add('on');
+    const sp = backend.state.sealed;
+    if (sp && keyOf(sp) !== EVENT_KEY) {
+      sheet.sync();
+      syncCta();
+      return;
+    }
+    if (from !== EVENT_KEY) opening.setBooster(EVENT_KEY, true, -1);
+    opening.setBoosterSoon(false);
     syncState();
   }
 
@@ -819,28 +912,111 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   opening.onWheelReady = () => requestAnimationFrame(relayout);
   WHEEL.addEventListener('change', relayout);
 
+  // ── (11/11) booster du moment : abonnement, bandeau, compte à rebours, annonce
+  let evSig = '';
+  const bootAt = performance.now();
+  function setEvents(rows: PackEvent[]) {
+    const next = liveEvent(rows);
+    const sig = next ? `${next.id}|${next.name}|${next.accent}|${next.endAt}|${next.blurb ?? ''}|${contentSig(next)}` : '';
+    if (sig === evSig) return;
+    evSig = sig;
+    ev = next;
+    const i = sheetList.findIndex((x) => x.key === EVENT_KEY);
+    if (i >= 0) sheetList.splice(i, 1);
+    if (ev) sheetList.unshift(eventPack(ev));
+    thumbs.delete(EVENT_KEY);
+    opening.setEventBooster(ev);
+    band.hidden = !ev;
+    if (ev) {
+      band.style.setProperty('--ev', ev.accent);
+      band.querySelector('.ev-n')!.textContent = ev.name;
+      band.querySelector<HTMLElement>('[data-ev-left]')!.dataset.evLeft = String(ev.endAt);
+      band.setAttribute('aria-label', tr('shop.eventNow', { name: ev.name }));
+      tickEvent();
+      announceEvent(ev);
+      if (wantEventSheet && mode === 'pick') {
+        wantEventSheet = false;
+        sheet.open(EVENT_KEY);
+      }
+    } else if (selected === EVENT_KEY) {
+      // fini pendant qu'on le regardait : retour au Bebou Pack (un booster déjà tiré reste ouvrable)
+      if (sheet.isOpen()) sheet.close();
+      selected = 'bebou';
+      band.classList.remove('on');
+      if (mode === 'pick') select('bebou', { scroll: true });
+    }
+    if (mode === 'pick') {
+      sheet.sync();
+      syncCta();
+    }
+  }
+  /** compte à rebours (bandeau + fiche) ; à la fin, l'événement disparaît sans attendre le serveur */
+  function tickEvent() {
+    const now = Date.now();
+    if (ev && now >= ev.endAt) return setEvents([]);
+    for (const b of el.querySelectorAll<HTMLElement>('[data-ev-left]')) {
+      const end = Number(b.dataset.evLeft);
+      if (end > 0) b.textContent = fmtLeft(end - now);
+    }
+  }
+  window.setInterval(() => ev && el.isConnected && !document.hidden && tickEvent(), 1000);
+  /**
+   * Notification dans le jeu au début d'un événement (en plus de la notification push envoyée par le serveur) : un
+   * message une fois par appareil et par événement, et le bandeau marqué « nouveau » jusqu'au premier toucher.
+   */
+  function seenEvents(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem(EV_SEEN) ?? '[]') as string[];
+    } catch {
+      return [];
+    }
+  }
+  function announceEvent(e: PackEvent) {
+    const seen = seenEvents();
+    if (seen.includes(e.id)) return void band.classList.remove('new');
+    band.classList.add('new');
+    // sorti pendant qu'on joue : un message en plus (au chargement, le bandeau en tête de la boutique suffit)
+    if (performance.now() - bootAt > 15_000) toast(tr('shop.eventNew', { name: e.name, left: fmtLeft(e.endAt - Date.now()) }), 'info');
+    try {
+      localStorage.setItem(EV_SEEN, JSON.stringify([...seen, e.id].slice(-20)));
+    } catch {
+      /* stockage bloqué : le message reviendra */
+    }
+  }
+  band.addEventListener('click', () => {
+    if (!ev || mode !== 'pick') return;
+    haptics.pulse(6);
+    band.classList.remove('new');
+    if (DOCK.matches) select(EVENT_KEY);
+    else sheet.open(EVENT_KEY); // (la fiche appelle onSelect → select : le booster passe au centre)
+  });
+  backend.watchEvents?.(setEvents);
+
   // ── état (booster scellé pas encore ouvert : bandeau + bouton direct)
   function syncState() {
     const s = backend.state;
     if (mode !== 'pick') return;
     if (s.sealed) {
       const t = themeById(s.sealed.themeId ?? '');
-      const name = s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster';
+      const name = s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster'; // i18n-ok
       banner.hidden = false;
-      banner.querySelector('span')!.textContent = `Tu as un ${name} déjà tiré, pas encore ouvert.`;
+      banner.querySelector('span')!.textContent = tr('shop.alreadyDrawn', { name });
       if (keyOf(s.sealed) !== selected) select(keyOf(s.sealed));
     } else banner.hidden = true;
     sheet.sync();
     syncCta();
   }
   backend.onChange(syncState);
+  // (11/11) animation d'ouverture choisie (fiche booster) : suit `users.me`
+  setOpeningChoice(backend.state.user?.openingStyle);
+  backend.onChange((st) => setOpeningChoice(st.user?.openingStyle));
   const bannerBtn = banner.querySelector<HTMLButtonElement>('button')!;
   bannerBtn.addEventListener('click', async () => {
     shell.requestGyro();
     const sp = backend.state.sealed;
     // (audit UX2-20) double toucher pendant la latence de preparePack : un seul départ
     if (!sp || mode !== 'pick' || bannerBtn.disabled) return;
-    const p = list.find((b) => b.key === keyOf(sp)) ?? list.find((b) => b.key === 'bebou') ?? list[0];
+    const p = packOf(keyOf(sp)) ?? list.find((b) => b.key === 'bebou') ?? list[0];
     bannerBtn.disabled = true;
     try {
       const got = await busyButton(bannerBtn, backend.preparePack(p.req));
@@ -868,7 +1044,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       if (!btn) continue;
       btn.style.setProperty('--pct', `${(have / b.cards.length) * 100}%`);
       btn.classList.add('has-prog');
-      btn.title = `${fmtN(have)} / ${fmtN(b.cards.length)} cartes déjà dans ta collection`;
+      btn.title = tr('shop.alreadyHave', { have: fmtN(have), total: fmtN(b.cards.length) });
     }
   });
 
@@ -892,7 +1068,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   let tapBusy = false;
   opening.onBoosterTap = async () => {
     if (mode !== 'pick' || !el.isConnected || sheet.isOpen() || tapBusy) return;
-    const p = list.find((b) => b.key === selected);
+    const p = packOf(selected);
     const s = backend.state;
     const bal = s.user ? liveRegen(s.user).balance : 0;
     if (!p || p.soon || s.sealed || bal <= 0) return void setTimeout(() => mode === 'pick' && !sheet.isOpen() && sheet.open(selected), 0);
@@ -937,7 +1113,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     skipReveal.classList.toggle('on', all);
     skipReveal.setAttribute('aria-pressed', String(all));
     // (audit UX2-02) une fois actif, le bouton reste cliquable pour couper la révélation auto (au lieu d'être grisé)
-    skipReveal.textContent = all ? 'Révélation auto ✓' : 'Tout révéler';
+    skipReveal.textContent = all ? tr('shop.autoOn') : tr('shop.revealAll');
     // série : à partir du 2e booster l'emballage se brûle tout seul ; « 4★ et + » / « Tout révéler » : dès le premier
     // (retours 05/11) en série (×5, ×10), CHAQUE booster rejoue son ouverture (avant : seul le 1er, les suivants
     // brûlaient tout seuls et on avait l'impression que tout s'ouvrait d'un coup) ; « 4★ et + » / « Tout révéler » : auto
@@ -945,7 +1121,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     // « Tout révéler » : tout défile tout seul SAUF une mythique (rang 5) ou une secrète (6), qui gardent leur plein écran
     // (une légendaire défile à vitesse modérée, ralenti compris : voir fastSpeed dans opening.ts)
     // (retours 05/11) « Tout révéler » : une 5★ (rang 4) joue aussi sa version complète, ralenti compris
-    opening.setAuto({ burn, minRank: all ? 4 : hi ? HI_RANK : 0, reveal: all });
+    // (retours Hugo 10/11) « 4★ et + » ne fait plus défiler : il va DIRECT à la première 4★ (ou ouvre tout s'il n'y en a pas)
+    opening.setAuto({ burn, minRank: all ? 4 : hi ? HI_RANK : 0, reveal: all, jump: hi && !all });
     if (opening.phase === 'sealed') hintTxt.textContent = burn ? 'Ouverture…' : sealedHint;
   }
   skipHi.addEventListener('click', () => {
@@ -953,7 +1130,82 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     batch.hi = !batch.hi;
     haptics.pulse(8);
     applyAuto();
+    // (13/11, retours de Tom) gros booster ×5 / ×10 : le morceau à l'écran n'a aucune 4★ → on ne le montre pas, on
+    // reprend directement au premier morceau qui en a une
+    if (batch.hi && !batch.all && batch.total > 1 && batch.current && !hasHi(batch.current) && !batch.skipping) void skipToHi(batch);
   });
+  /**
+   * (13/11, retours de Tom) « Direct 4★ » en série : les morceaux du gros booster SANS 4★ (ou mieux) sont crédités sans
+   * être montrés, la scène reprend au premier qui en a une ; plus aucun → le récap. `next` est le prochain morceau
+   * (pas encore crédité) ; renvoie celui à montrer, ou null (récap affiché, ou « Tout passer » a pris la main).
+   */
+  async function nextShown(b: Batch, next: SealedPack): Promise<SealedPack | null> {
+    while (b.hi && !b.all && !hasHi(next)) {
+      if (b.done.some((d) => d.id === next.id)) {
+        showSummary();
+        return null;
+      }
+      hint.hidden = false;
+      hintTxt.textContent = 'Direct 4★…';
+      b.current = next; // (« Tout passer » pendant ce temps le crédite avec le reste)
+      const ok = await credit(b, next);
+      if (batch !== b || b.skipping) return null;
+      b.current = null;
+      if (!ok) {
+        toast(pendingMsg(b.pending?.err), 'err');
+        showSummary();
+        return null;
+      }
+      if (b.done.length >= b.total) {
+        showSummary();
+        return null;
+      }
+      try {
+        next = b.queue.shift() ?? (await backend.preparePack(b.req));
+      } catch (e) {
+        toast(errMsg(e), 'err');
+        showSummary();
+        return null;
+      }
+      if (batch !== b || b.skipping) return null;
+    }
+    return next;
+  }
+  /** « Direct 4★ » touché pendant un morceau sans 4★ : il est arrêté, crédité, et la série saute au bon morceau */
+  async function skipToHi(b: Batch) {
+    const cur = b.current;
+    if (!cur) return;
+    stopMusicPreview();
+    opening.reset();
+    info.classList.remove('in');
+    mythicVeil.hidden = true;
+    hideFanBadges();
+    hint.hidden = false;
+    hintTxt.textContent = 'Direct 4★…';
+    if (b.revealing) await b.revealing;
+    if (batch !== b || b.skipping) return;
+    const ok = await credit(b, cur);
+    if (batch !== b || b.skipping) return;
+    b.current = null;
+    if (!ok) {
+      toast(pendingMsg(b.pending?.err), 'err');
+      return showSummary();
+    }
+    if (b.done.length >= b.total) return showSummary();
+    let next: SealedPack;
+    try {
+      next = b.queue.shift() ?? (await backend.preparePack(b.req));
+    } catch (e) {
+      toast(errMsg(e), 'err');
+      return showSummary();
+    }
+    if (batch !== b || b.skipping) return;
+    const n = await nextShown(b, next);
+    if (!n || batch !== b || b.skipping) return;
+    b.current = n;
+    pack = n;
+    start(n, true);
+  }
   skipReveal.addEventListener('click', () => {
     if (!batch || mode !== 'opening') return;
     batch.all = !batch.all;
@@ -969,7 +1221,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    */
   const disarmSkip = () => {
     skipAll.classList.remove('armed');
-    skipAll.textContent = 'Tout passer';
+    skipAll.textContent = tr('shop.skipAll');
   };
   skipAll.addEventListener('click', () => {
     if (!batch || batch.skipping || mode !== 'opening') return;
@@ -985,7 +1237,9 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   async function skipEverything() {
     if (!batch || batch.skipping || mode !== 'opening') return;
     stopMusicPreview();
+    stopAmbience();
     batch.skipping = true;
+    abortMythic();
     skipAll.disabled = skipHi.disabled = true;
     opening.setAuto({ burn: false, minRank: 0, reveal: false });
     info.classList.remove('in');
@@ -997,7 +1251,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     sumBg.hidden = true;
     setMode('summary');
     summary.classList.remove('multi', 'pending');
-    summary.innerHTML = `<div class="sum-line sum-wait" role="status"><span class="sum-k">Enregistrement des cartes… <b class="sw-n">${Math.min(b.total, b.done.length + 1)}</b> / ${b.total}</span></div>`;
+    summary.innerHTML = `<div class="sum-line sum-wait" role="status"><span class="sum-k">${tr('shop.saving')} <b class="sw-n">${Math.min(b.total, b.done.length + 1)}</b> / ${b.total}</span></div>`;
     const waitN = summary.querySelector<HTMLElement>('.sw-n');
     syncSummaryInset();
     try {
@@ -1131,6 +1385,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     dropDuel();
     const duelCard = p.cards.find((c) => rarity(c.rarity).rank === 5 && duelMonster(c.cardId));
     if (duelCard) void prepareDuel(duelCard);
+    // 6★ des autres familles : moteur et scène téléchargés pendant la déchirure
+    for (const c of p.cards) {
+      prepareMythic(c.cardId, c.rarity, shell.sfx);
+      prefetchMusicPreview(c.cardId, c.rarity);
+    }
+    // ambiance « Éclipse » (Berserk 5★ / 6★ — game/eclipse.ts) : la scène 3D s'en charge (opening.open) ; ici, sa musique
+    // — demandée d'avance, lancée quand le sachet est descellé (onOpened), coupée au booster suivant s'il n'en est pas
+    const eclipse = isEclipsePack(p.cards);
+    if (eclipse) prefetchAmbience('eclipse');
+    else stopAmbience(ECLIPSE.coucher);
     // Pokémon 6★ : musique décodée et scène montée (carte, décor) pendant que le joueur ouvre le booster
     // (plusieurs Pokémon 6★ dans le même booster : chacun aura sa rencontre ; la 1re est préparée maintenant, les
     // suivantes à la fin de la précédente — ou, au pire, pendant le noir de leur propre transition)
@@ -1144,6 +1408,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         ring.style.strokeDashoffset = String(100 - v * 100);
       },
       onOpened() {
+        if (eclipse) void playAmbience('eclipse', shell.sfx.volume, ECLIPSE.lever);
         // série : le booster suivant se prépare (cartes construites) pendant qu'on regarde celui-ci
         if (batch?.queue[0]) opening.preload(batch.queue[0]);
         if (coachOn) coachDone(coachSt);
@@ -1164,6 +1429,15 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         hint.hidden = i < total - 1 ? false : true;
         hintTxt.textContent = i < total - 1 ? HINT.next : '';
         showInfo(card);
+      },
+      onJump(to, total) {
+        // « Direct 4★ » : les petites cartes sont rangées d'un coup, la belle carte attend face cachée
+        shown = to - 1;
+        info.classList.remove('in');
+        mythicVeil.hidden = true;
+        hint.hidden = false;
+        hintTxt.textContent = HINT.reveal;
+        setCount(`${series}${off + to + 1} / ${batch && batch.total > 1 ? all : total}`);
       },
       onNext() {
         stopMusicPreview();
@@ -1189,7 +1463,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         // 6★ du bloc Musique : son extrait de 30 s (retours 05/11)
         void playMusicPreview(card.cardId, card.rarity, shell.sfx.volume, 'opening', mythicVeil);
         mythicVeil.classList.add('shown');
-        mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = last ? (TOUCH ? 'Touche pour continuer' : 'Clique pour continuer') : HINT.next;
+        mythicVeil.querySelector<HTMLElement>('.mv-hint')!.textContent = last ? (TOUCH ? tr('shop.contTouch') : tr('shop.contMouse')) : HINT.next;
       },
       onLast() {
         info.classList.remove('in');
@@ -1208,6 +1482,27 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         void runSecret();
       },
       onCinematic(card) {
+        // (08/11) toutes les autres 6★ : indices + scène de leur famille (game/mythic), puis la révélation habituelle
+        if (mythicFamily(card.cardId, card.rarity)) {
+          hud.hidden = true;
+          info.hidden = true;
+          info.classList.remove('in');
+          mythicVeil.hidden = true;
+          // (10/11) `target` : la doublure 2D de la scène finit à la taille et à la place exactes de la carte 3D
+          const run = playMythicPrelude(shell, card.cardId, card.rarity, 'opening', {
+            quick: !!batch?.all,
+            target: () => {
+              const r = opening.revealRect();
+              return r && r.w > 8 ? { cx: r.x + r.w / 2, cy: r.y + r.h / 2, w: r.w } : null;
+            },
+          });
+          void run.done.then(() => {
+            if (mode !== 'opening' || batch?.skipping) return;
+            hud.hidden = false;
+            opening.resumeReveal();
+          });
+          return true;
+        }
         // la scène d'invocation n'est pas prête (téléphone lent) : séquence mythique habituelle, rien n'attend
         if (!duel || duel.cardId !== card.cardId || !duel.exp || !shell.has('duel')) return false;
         hud.hidden = true;
@@ -1253,10 +1548,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     // exemplaires déjà possédés (la collection n'est créditée qu'à la fin de l'ouverture)
     const had = backend.state.collection.find((c) => c.cardId === card.cardId && c.rarity === card.rarity)?.count ?? 0;
     info.innerHTML = `
-      ${card.isNew ? '<span class="new">NOUVELLE\u00a0!</span>' : `<span class="dup">${had ? `déjà ${had}× dans ta collection` : 'en double dans ce booster'}</span>`}
+      ${card.isNew ? `<span class="new">${tr('shop.newBang')}</span>` : `<span class="dup">${had ? tr('shop.dupHave', { n: had }) : tr('shop.dupPack')}</span>`}
       <div class="ci-name">${esc(card.cardName)}</div>
       <div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r">${rr.label}</span></div>
-      <div class="ci-sub">${subt ? esc(subt.label) : ''}${theme && !theme.secret ? ` · ${esc(theme.label)}` : ''} · n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
+      <div class="ci-sub">${tr('shop.cardSub', { sub: subt ? esc(subt.label) : '', theme: theme && !theme.secret ? ` · ${esc(theme.label)}` : '', n: fmtN(card.mintNumber) })}</div>`;
     void info.offsetWidth;
     info.classList.add('in');
     // hauteur réelle du panneau : la carte suivante se placera au-dessus (UX2-06)
@@ -1444,6 +1739,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         return showSummary();
       }
       if (batch !== b || b.skipping) return;
+      // (13/11) « Direct 4★ » : les morceaux suivants sans 4★ sont crédités sans être montrés
+      const shownNext = await nextShown(b, next);
+      if (!shownNext || batch !== b || b.skipping) return;
+      next = shownNext;
       // garde : jamais rejouer un booster déjà montré et compté
       if (b.done.some((d) => d.id === next.id)) return showSummary();
       b.current = next;
@@ -1456,20 +1755,24 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
     showSummary();
   }
-  const openingReq = (p: SealedPack): PackRequest => (p.packKind === 'bebou' ? { kind: 'bebou' } : { kind: 'theme', themeId: p.themeId });
+  const openingReq = (p: SealedPack): PackRequest => (p.eventId ? packOf(EVENT_KEY)?.req ?? { kind: 'bebou' } : p.packKind === 'bebou' ? { kind: 'bebou' } : { kind: 'theme', themeId: p.themeId });
 
   /** Compteur de collection du booster : « World : 143/924 » (thème), « Collection : 1 234/13 888 » (Bebou Pack). */
   function collectionCounter(req: PackRequest): { label: string; have: number; total: number } {
     const mine = new Set(backend.state.collection.map((c) => c.cardId));
+    if (req.event) {
+      const ec = eventCards(req.event);
+      return { label: ev?.name ?? tr('shop.eventLabel'), have: ec.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: ec.length };
+    }
     const t = req.kind === 'theme' ? themeById(req.themeId ?? '') : undefined;
     const cards = t ? t.cards : THEMES.flatMap((x) => x.cards);
-    return { label: t ? t.label : 'Collection', have: cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: cards.length };
+    return { label: t ? t.label : 'Collection', have: cards.reduce((a, c) => a + (mine.has(c.id) ? 1 : 0), 0), total: cards.length }; // i18n-ok
   }
 
   /** Fond du récap selon le meilleur drop : lueur radiale de la couleur de la rareté, rayons et particules aux couleurs du pack. */
   function paintSummaryBg(best: PackCard, req: PackRequest) {
     const rr = rarity(best.rarity);
-    const accent = req.kind === 'bebou' ? BEBOU_PACK.style.accent : themeById(req.themeId ?? '')?.style.accent ?? rr.hex;
+    const accent = req.event ? packOf(EVENT_KEY)?.accent ?? rr.hex : req.kind === 'bebou' ? BEBOU_PACK.style.accent : themeById(req.themeId ?? '')?.style.accent ?? rr.hex;
     sumBg.className = `sum-bg r-${best.rarity}`;
     sumBg.style.setProperty('--rc', rr.secret ? '#e8927c' : rr.hex);
     sumBg.style.setProperty('--ra', rr.accentHex);
@@ -1503,7 +1806,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     for (const c of cards) {
       const k = `${c.cardId}:${c.rarity}:${c.mintNumber}`;
       const n = counts.get(`${c.cardId}:${c.rarity}`) ?? 0;
-      const b = h('span', `fb ${c.isNew ? 'fb-new' : 'fb-dup'}`, c.isNew ? 'NOUVELLE' : `DOUBLON${n > 1 ? ` ×${n}` : ''}`);
+      const b = h('span', `fb ${c.isNew ? 'fb-new' : 'fb-dup'}`, c.isNew ? tr('shop.newCaps') : `DOUBLON${n > 1 ? ` ×${n}` : ''}`);
       b.style.opacity = '0';
       fanBadges.append(b);
       byKey.set(k, b);
@@ -1558,20 +1861,20 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const again = u ? Math.min(liveRegen(u).balance, packs.length) : 0;
     const bal = u ? liveRegen(u).balance : 0;
     summary.innerHTML = `
-      ${pend ? `<div class="sum-warn" role="alert">${credited.length ? `Le booster ${credited.length + 1}/${batch?.total ?? 1} n’est pas encore crédité` : 'Ce booster n’est pas encore crédité'} : il reste tel quel à la boutique (bouton Ouvrir), rien n’est perdu.</div>` : ''}
+      ${pend ? `<div class="sum-warn" role="alert">${tr('shop.notCredited', { what: credited.length ? tr('shop.batchPending', { i: credited.length + 1, n: batch?.total ?? 1 }) : tr('shop.onePending') })}</div>` : ''}
       <div class="sum-line">
-        ${multi ? `<span class="sum-k"><b>${packs.length}</b> boosters${hiN ? ` · <b>${hiN}</b> 4★ et +` : ''}</span>` : ''}
-        <span class="sum-k${fresh ? ' hi' : ''}"><b>${fresh}</b> nouvelle${fresh > 1 ? 's' : ''}</span>
-        <span class="sum-k"><b>${dups}</b> doublon${dups > 1 ? 's' : ''}</span>
-        ${best && br ? `<span class="sum-best r-${best.rarity}" style="--rc:${br.hex};--ra:${br.accentHex}">meilleure ${starsHtml(best.rarity)} <i class="sum-rl">${br.secret ? 'secrète' : `${br.rank + 1}★`}</i> <b>${esc(best.cardName)}</b></span>` : ''}
-        <span class="sum-coll" title="${esc(cc.label)} : cartes uniques dans ta collection">${esc(cc.label)} : <b>${fmtN(cc.have)}</b>/${fmtN(cc.total)}</span>
+        ${multi ? `<span class="sum-k"><b>${packs.length}</b> boosters${hiN ? ` · <b>${hiN}</b> ${tr('shop.fourPlus')}` : ''}</span>` : ''}
+        <span class="sum-k${fresh ? ' hi' : ''}"><b>${fresh}</b> ${tr('shop.newWord', { n: fresh })}</span>
+        <span class="sum-k"><b>${dups}</b> ${tr('shop.dupWord', { n: dups })}</span>
+        ${best && br ? `<span class="sum-best r-${best.rarity}" style="--rc:${br.hex};--ra:${br.accentHex}">${tr('shop.best')} ${starsHtml(best.rarity)} <i class="sum-rl">${br.secret ? tr('shop.secretWord') : `${br.rank + 1}★`}</i> <b>${esc(best.cardName)}</b></span>` : ''}
+        <span class="sum-coll" title="${tr('shop.uniqueTitle', { label: esc(cc.label) })}">${esc(cc.label)} : <b>${fmtN(cc.have)}</b>/${fmtN(cc.total)}</span>
       </div>
       ${cc.total > 0 ? `<div class="sum-prog" aria-hidden="true" style="--from:${((Math.max(0, cc.have - fresh) / cc.total) * 100).toFixed(2)}%;--to:${((cc.have / cc.total) * 100).toFixed(2)}%"><i></i><span>${fmtPct(Math.max(0, cc.have - fresh) / cc.total)}${fresh ? ` → <b>${fmtPct(cc.have / cc.total)}</b>` : ''}</span></div>` : ''}
       ${grid ? '<div class="sum-cards"></div>' : ''}
       <div class="sum-actions">
-        ${pend ? '<button class="btn-primary retry">Réessayer l’enregistrement</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? `Encore ×${again}` : 'Encore un'}<small>${bal} en réserve</small></button>` : u ? `<span class="muted next-pack">prochain booster dans ${fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now())}</span>` : ''}
-        <button class="btn-ghost coll">${fresh ? 'Mes nouvelles' : dups === all.length ? 'Contrats' : 'Ma collection'}</button>
-        <button class="btn-ghost back">Boutique</button>
+        ${pend ? '<button class="btn-primary retry">' + tr('shop.retrySave') + '</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? tr('shop.againN', { n: again }) : tr('shop.againOne')}<small>${tr('shop.inReserve', { n: bal })}</small></button>` : u ? `<span class="muted next-pack">${tr('shop.nextIn', { time: fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now()) })}</span>` : ''}
+        <button class="btn-ghost coll">${fresh ? tr('shop.myNew') : dups === all.length ? tr('shop.contracts') : tr('shop.myColl')}</button>
+        <button class="btn-ghost back">${tr('nav.shop')}</button>
       </div>`;
     if (best) paintSummaryBg(best, req);
     // règle pic-fin (réf. motion §1.6 / §7.4) : la barre d'album progresse sous les yeux du joueur (600 ms), avec un tic
@@ -1585,14 +1888,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       retry.disabled = true;
       const ok = await busyButton(retry, credit(b, b.pending.pack));
       if (batch !== b || mode !== 'summary') return;
-      if (ok) toast('Booster crédité.', 'ok');
+      if (ok) toast(tr('shop.credited'), 'ok');
       else toast(pendingMsg(b.pending?.err), 'err');
       showSummary();
     });
     if (grid) {
       const cards = summary.querySelector<HTMLElement>('.sum-cards')!;
       for (const [k, c] of sorted.entries()) {
-        const tile = cardTile(c.cardId, c.rarity, { mini: true, label: c.isNew ? 'NOUVELLE' : undefined });
+        const tile = cardTile(c.cardId, c.rarity, { mini: true, label: c.isNew ? tr('shop.newCaps') : undefined });
         tile.style.setProperty('--i', String(k)); // arrivée en cascade
         tile.addEventListener('click', () => void viewCard(c));
         cards.append(tile);
@@ -1605,7 +1908,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       btn.disabled = true; // double toucher : un seul départ
       shell.requestGyro();
       const n = Number(btn.dataset.n) || 1;
-      const p = list.find((b) => b.key === (req.kind === 'bebou' ? 'bebou' : themeById(req.themeId ?? '')?.id)) ?? list.find((b) => b.key === 'bebou') ?? list[0];
+      // (booster du moment terminé entre-temps : « Encore un » repart sur le Bebou Pack)
+      const p = (req.event ? packOf(EVENT_KEY) : list.find((b) => b.key === (req.kind === 'bebou' ? 'bebou' : themeById(req.themeId ?? '')?.id))) ?? list.find((b) => b.key === 'bebou') ?? list[0];
       const hi = batch?.hi ?? false;
       const all = batch?.all ?? false; // (audit UX2-02) « Tout révéler » suit, comme « 4★ et + »
       back();
@@ -1644,7 +1948,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const vi = viewerUi.querySelector<HTMLElement>('.v-info')!;
     vi.className = `v-info r-${card.rarity}`;
     vi.style.setProperty('--ra', rr.accentHex);
-    vi.innerHTML = `${card.isNew ? '<div class="ci-new">NOUVELLE</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${e?.artist ? `<div class="ci-by">${esc(e.artist)}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : ''}n°${fmtN(card.mintNumber)}\u00a0imprimé</div>`;
+    vi.innerHTML = `${card.isNew ? '<div class="ci-new">' + tr('shop.newCaps') + '</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${e?.artist ? `<div class="ci-by">${esc(e.artist)}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${tr('shop.cardSub2', { pre: st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : '', n: fmtN(card.mintNumber) })}</div>`;
     viewerUi.querySelector('.v-actions')!.replaceChildren(imageReportButton(backend, card.cardId, 'ouverture/zoom'));
     viewerUi.hidden = false;
     summary.hidden = true;
@@ -1688,11 +1992,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     mythicVeil.hidden = true;
     pack = null;
     batch = null;
+    stopAmbience(ECLIPSE.coucher);
     opening.setAuto({ burn: false, minRank: 0, reveal: false });
     opening.reset();
     endWild();
     dropWild();
     dropDuel();
+    abortMythic();
     setMode('pick');
     syncState();
   }
@@ -1711,10 +2017,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       syncState();
       requestAnimationFrame(syncDock);
       // lien direct vers une fiche (missions « Go », #/boutique/bebou)
-      if (sub && list.some((b) => b.key === sub)) sheet.open(sub);
+      if (sub && sheetList.some((b) => b.key === sub)) sheet.open(sub);
+      // (lien de la notification de début : l'événement peut arriver juste après la boutique)
+      else if (sub === EVENT_KEY) wantEventSheet = true;
     },
     leave() {
       stopMusicPreview(0.3);
+      stopAmbience(0.3);
       sheet.close();
       sheet.dock(false);
       if (mode === 'summary') back();

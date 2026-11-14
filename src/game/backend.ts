@@ -3,8 +3,11 @@ import type { PackRequest } from '../core/packRoll';
 import { applyRegen, type RegenState } from '../core/packRegen';
 import type { MissionsState } from '../core/missions';
 import type { StreakState } from '../core/streak';
-import type { CosmeticChoice, PlayerStats } from '../core/cosmetics';
+import type { CosmeticChoice, OpeningId, PlayerStats } from '../core/cosmetics';
+import type { SeasonBoard } from '../core/seasons';
 import type { EcoBackend } from './eco';
+import type { ChatApi } from '../core/chat';
+import type { PackEvent } from '../core/events';
 
 /** Une ligne de collection : (carte, rareté) → nombre d'exemplaires. */
 export interface PlayerCard {
@@ -43,6 +46,9 @@ export interface SealedPack {
   cards: PackCard[];
   /** (08/11) god pack : 1 sur 1 000, que des 4★+ dont une 5★ et une 6★ — l'ouverture a son animation */
   god?: boolean;
+  /** (11/11) booster du moment (src/core/events.ts) : l'événement et son nom au tirage */
+  eventId?: string;
+  eventName?: string;
 }
 
 export interface Friend {
@@ -78,7 +84,7 @@ export interface FriendLink {
   lastSeenAt: number;
   status?: string;
   packsOpened: number;
-  lastActivity?: { kind: string; message: string; createdAt: number } | null;
+  lastActivity?: { kind: string; message: string; createdAt: number; msgKey?: string; msgParams?: MsgParams } | null;
   bot?: boolean;
 }
 export interface Social {
@@ -107,6 +113,9 @@ export interface FeedItem {
   id: string;
   kind: string;
   message: string;
+  /** (version anglaise, lot 4) code + paramètres du message (src/core/msgs.ts) */
+  msgKey?: string;
+  msgParams?: MsgParams;
   rarity?: RarityId;
   createdAt: number;
 }
@@ -159,6 +168,8 @@ export interface TradeView {
   createdAt: number;
   /** contre-proposition d'un échange précédent */
   counterOf?: string;
+  /** (refonte 11/11) demande en un toucher : 1 contre 1, même étoile — « Choisir autre chose » possible */
+  quick?: boolean;
 }
 
 /** Échange terminé (historique). */
@@ -181,6 +192,29 @@ export function lockedCards(s: GameState): Map<string, number> {
   for (const o of s.board.offers) if ((o.status === 'pending' || o.status === 'countered') && o.listing && listingLive(o.listing, now)) o.offered.forEach(lock);
   return out;
 }
+
+// ─────────────────────────────── MARCHÉ (retours Hugo 10/11 — convex/market.ts, src/core/market.ts)
+export interface MarketItem {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  sellerAvatar?: string;
+  cardId: string;
+  rarity: RarityId;
+  mintNumber: number;
+  price: number;
+  status: 'open' | 'sold' | 'cancelled';
+  createdAt: number;
+  resolvedAt?: number;
+  buyerId?: string;
+}
+export interface MarketBoard {
+  open: MarketItem[];
+  /** mes ventes / achats des 7 derniers jours */
+  sold: MarketItem[];
+  bought: MarketItem[];
+}
+export const EMPTY_MARKET: MarketBoard = { open: [], sold: [], bought: [] };
 
 // ─────────────────────────────── TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts)
 
@@ -257,6 +291,16 @@ export interface Me {
   staff?: boolean;
   /** (ouverture 07/11) visite guidée automatique déjà jouée (une fois par compte) */
   guideSeen?: boolean;
+  /** (13/11) tour des nouveautés V2 déjà joué (une fois par compte) */
+  v2TourSeen?: boolean;
+  /** (13/11) testeur du lien V2 (pas l'équipe) : passe l'écran « Réservé à l'équipe » */
+  tester?: boolean;
+  /** (V2, bulles) dernier événement Jeux (défi reçu, partie jouée, tirage où j'avais misé) — game/navDots.ts */
+  gamesNoticeAt?: number;
+  /** (V2, bulles) dernier événement de parrainage (filleul inscrit, parrainage payé) */
+  referralNoticeAt?: number;
+  /** (11/11) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) ; absente : la déchirure */
+  openingStyle?: OpeningId;
 }
 
 /** Réserve de boosters à l'instant présent (le compte à rebours de l'en-tête l'appelle chaque seconde). */
@@ -282,6 +326,8 @@ export interface GameState {
   missions: (MissionsState & { resetAt: number }) | null;
   /** « envies » : ids de cartes marquées (ordre d'ajout) */
   wishlist: string[];
+  /** (refonte des échanges 11/11) cartes protégées : leurs doublons ne sont jamais proposés (src/core/deals.ts) */
+  tradeProtected: string[];
   /** classeurs perso (épinglé en premier) */
   binders: Binder[];
   /** pochettes de sous-thème épinglées (vue Albums) : sous-thème → carte */
@@ -305,8 +351,10 @@ export interface Profile {
   showcase: Array<{ cardId: string; rarity: RarityId }>;
   packsOpened: number;
   joinedAt?: number;
-  /** classeur épinglé (visible des potes) */
+  /** classeur épinglé (visible des potes) — le premier de `pinnedBinders`, gardé pour un serveur pas encore à jour */
   pinnedBinder?: { id: string; name: string; cards: Array<{ cardId: string; rarity: RarityId }>; coverCardId?: string } | null;
+  /** classeurs épinglés, 3 au plus (sondage 11/11) */
+  pinnedBinders?: Array<{ id: string; name: string; cards: Array<{ cardId: string; rarity: RarityId }>; coverCardId?: string }>;
   /** bannière, cadre, titre, badges (déjà filtrés : seulement du débloqué) */
   cosmetics?: CosmeticChoice;
   stats?: PlayerStats;
@@ -341,6 +389,8 @@ export interface ActivityItem {
   id: string;
   kind: string;
   message: string;
+  msgKey?: string;
+  msgParams?: MsgParams;
   cardId?: string;
   cardName?: string;
   rarity?: RarityId;
@@ -359,6 +409,21 @@ export interface ReferralInfo {
   canClaim?: boolean;
 }
 
+export interface PushStatus {
+  configured: boolean;
+  devices: number;
+  thisDevice: boolean;
+  prefs: string[];
+}
+export interface PushApi {
+  status(endpoint?: string): Promise<PushStatus>;
+  publicKey(): Promise<string | null>;
+  subscribe(sub: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<void>;
+  unsubscribe(endpoint: string): Promise<void>;
+  setPrefs(prefs: string[]): Promise<void>;
+  test(): Promise<{ devices: number }>;
+}
+
 export interface GameBackend {
   readonly state: GameState;
   /** pièces, sources de pièces et espace Jeux (eco.ts) */
@@ -367,9 +432,16 @@ export interface GameBackend {
   login(): void;
   /** (ouverture 07/11) la visite guidée a démarré : ne plus la proposer (absent en démo) */
   markGuideSeen?(): Promise<void>;
+  /** (13/11) le tour des nouveautés V2 a démarré : ne plus le proposer (absent en démo) */
+  markV2TourSeen?(): Promise<void>;
   logout(): Promise<void>;
   /** Tire (ou rend, s'il y en a un non ouvert) un booster scellé. */
   preparePack(req: PackRequest): Promise<SealedPack>;
+  /**
+   * (11/11) BOOSTER DU MOMENT : l'événement en cours (0 ou 1 en pratique ; vide quand il n'y en a pas). En ligne :
+   * abonnement léger à `events:current` ; démo : un événement d'exemple (src/core/events.ts, demoEvent).
+   */
+  watchEvents?(cb: (events: PackEvent[]) => void): () => void;
   /** ouverture en série : `count` boosters scellés d'un coup (les déjà scellés d'abord ; moins si la réserve manque) */
   preparePacks(req: PackRequest, count: number): Promise<SealedPack[]>;
   /** « Tout passer » : crédite plusieurs boosters montrés en un seul appel ; renvoie les ids crédités */
@@ -388,19 +460,42 @@ export interface GameBackend {
   tradeHistory(): Promise<TradeHistoryItem[]>;
   /** Envies d'un ami (ids de cartes). */
   friendWishlist(friendId: string): Promise<string[]>;
+  // ── REFONTE DES ÉCHANGES (11/11, convex/deals.ts, règles src/core/deals.ts)
+  /** sous une carte : qui l'a, qui la vend et à quel prix, qui la veut */
+  cardPanel(cardId: string): Promise<CardPanel>;
+  /** recoupement à la demande : échanges prêts + « ils cherchent tes doublons » */
+  forYou(): Promise<ForYou>;
+  /** « Demander » en un toucher (1 contre 1, même étoile) : le côté absent est choisi par le serveur */
+  quickTrade(toId: string, get?: DealCard, give?: DealCard): Promise<{ get: DealCard; give: DealCard }>;
+  /** le demandeur change sa contrepartie tant que l'autre n'a pas répondu */
+  swapTradeGive(tradeId: string, cardId: string): Promise<void>;
+  /** « Choisir autre chose » : les doublons proposables du demandeur, même étoile */
+  tradePickOptions(tradeId: string): Promise<PickOption[]>;
+  /** le destinataire choisit une autre carte et l'échange est conclu */
+  acceptTradePick(tradeId: string, cardId: string): Promise<{ changed: boolean }>;
+  /** protéger (jamais proposée) / proposer de nouveau une carte */
+  setTradeProtect(cardId: string, on: boolean): Promise<void>;
   claimMission(id: string): Promise<number>;
   claimMissionBonus(): Promise<number>;
   rerollMission(id: string): Promise<void>;
   /** profil d'un joueur (moi : state.user.id) */
   profile(userId: string): Promise<Profile | null>;
+  /** Profil d'un autre joueur ET sa collection, en une seule lecture. */
+  friendProfile(userId: string): Promise<{ profile: Profile | null; cards: PlayerCard[] }>;
   setShowcase(cards: Array<{ cardId: string; rarity: RarityId }>): Promise<void>;
   setBio(bio: string): Promise<void>;
   /** Cosmétiques du profil (seulement du débloqué : le serveur filtre) ; renvoie le choix retenu. */
   setCosmetics(choice: CosmeticChoice): Promise<CosmeticChoice>;
+  /** (11/11) animation d'ouverture des boosters (refusée si pas débloquée : Error au message clair) */
+  setOpening(style: OpeningId): Promise<void>;
   /** Photo de profil / bannière importées (GIF ≤ 2 Mo ; démo ≤ 700 Ko) ; `null` = retirer. Renvoie l'adresse à afficher. Refus : Error au message clair. */
   setProfileMedia(kind: 'avatar' | 'banner', file: Blob | null): Promise<string | undefined>;
   /** Suggestions (onglet) : envoyer (capture / image facultative), les miennes, la file admin, changer un statut. */
   submitSuggestion(o: SuggestionInput, file: Blob | null): Promise<void>;
+  /** notifications push (V2, en ligne seulement) : absent en démo */
+  push?: PushApi;
+  /** chat (V2, 10/11) : le Club et les privés (src/game/chat.ts) */
+  chat?: ChatApi;
   mySuggestions(): Promise<SuggestionView[]>;
   adminSuggestions(status?: SuggestionStatus): Promise<{ items: SuggestionView[]; counts: Record<SuggestionStatus, number> }>;
   setSuggestionStatus(id: string, status: SuggestionStatus, adminNote?: string): Promise<void>;
@@ -408,8 +503,10 @@ export interface GameBackend {
   surveyAnswered(surveyId: string): Promise<boolean>;
   submitSurvey(surveyId: string, answer: SurveyAnswer): Promise<void>;
   surveyResults(surveyId: string): Promise<SurveyResults>;
-  /** Classement entre nous. */
-  leaderboard(): Promise<LeaderRow[]>;
+  /** Classement entre nous. `onFresh` : rappelé si ma ligne vient d'être recalculée (le premier retour n'attend pas). */
+  leaderboard(onFresh?: (rows: LeaderRow[]) => void): Promise<LeaderRow[]>;
+  /** (11/11) saisons mensuelles du classement : la saison en cours (points de départ) et les saisons passées */
+  seasonBoard(): Promise<SeasonBoard>;
   /** Fil d'activité d'un joueur. */
   activity(userId: string): Promise<ActivityItem[]>;
   /** Contrat : brûle des doublons d'une étoile contre une carte de l'étoile au-dessus. */
@@ -444,8 +541,17 @@ export interface GameBackend {
   /** je suis arrivé par ce lien (ou je colle le lien / le pseudo de mon parrain) : je deviens filleul, si mon compte est neuf */
   referralClaim(code: string): Promise<{ status: 'ok' | 'already' | 'invalid' | 'self' | 'tooLate'; packs?: number; referrer?: string }>;
   // tableau d'offres (lot T) — ouvert à tous les joueurs
+  /** (lot fluidité 5) la page à l'écran affiche la liste du club → suivie en temps réel ; sinon non. Absent en démo. */
+  watchMembers?(on: boolean, who?: string): void;
   /** Annonces ouvertes de tout le monde (temps réel) ; renvoie de quoi se désabonner. */
   watchBoard(cb: (listings: ListingView[]) => void): () => void;
+  /** MARCHÉ (retours Hugo 10/11) : cartes à prix fixe, en pièces (temps réel) */
+  watchMarket(cb: (b: MarketBoard) => void): () => void;
+  /** met UNE carte en vente (elle quitte la collection jusqu'à la vente ou au retrait) */
+  marketSell(cardId: string, rarity: RarityId, price: number): Promise<void>;
+  marketCancel(id: string): Promise<void>;
+  /** `price` : le prix affiché (refusé s'il a changé entre-temps) */
+  marketBuy(id: string, price: number): Promise<void>;
   createListing(items: TradeItem[], wanted: Array<{ cardId: string; rarity: RarityId }>, note: string | undefined, hours: number): Promise<void>;
   cancelListing(id: string): Promise<void>;
   /** Faire (ou refaire : remplace la précédente) une offre sur l'annonce d'un autre. */
@@ -467,6 +573,8 @@ export interface ContractResult {
 }
 
 import type { SurveyAnswer, SurveyResults } from '../core/survey';
+import type { CardPanel, DealCard, ForYou, PickOption } from '../core/deals';
+import type { MsgParams } from '../core/msgRefs';
 
 /** Suggestions des joueurs (onglet Suggestions, convex/suggestions.ts) */
 export type SuggestionKind = 'bug' | 'design' | 'ajout' | 'autre';

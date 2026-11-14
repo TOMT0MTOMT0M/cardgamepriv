@@ -1,0 +1,1517 @@
+{
+  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts).",
+  "cards": {
+    "pop-au-dd": [
+      "Au DD",
+      "PNL"
+    ],
+    "pop-aux-champs-elysees": [
+      "Les Champs-Élysées",
+      "Joe Dassin"
+    ],
+    "pop-bande-organisee": [
+      "Bande organisée",
+      "Jul"
+    ],
+    "pop-bruxellesvie": [
+      "BruxellesVie",
+      "Damso"
+    ],
+    "pop-dans-l-espace": [
+      "Dans l'espace",
+      "Gambi"
+    ],
+    "pop-die": [
+      "Die",
+      "Gazo"
+    ],
+    "pop-je-t-aimais-je-t-aime-et-je-t-aimerai": [
+      "Je t'aimais, je t'aime, je t'aimerai",
+      "Francis Cabrel"
+    ],
+    "pop-je-t-emmene-au-vent": [
+      "J't'emmène au vent",
+      "Louise Attaque"
+    ],
+    "pop-jefe": [
+      "Jefe",
+      "Ninho"
+    ],
+    "pop-lettre-a-une-femme": [
+      "Lettre à une femme",
+      "Ninho"
+    ],
+    "pop-maman-ne-le-sait-pas": [
+      "Maman ne le sait pas",
+      "Ninho"
+    ],
+    "pop-mon-soleil": [
+      "Mon soleil",
+      "Dadju"
+    ],
+    "pop-naha": [
+      "Naha",
+      "PNL"
+    ],
+    "pop-reseaux": [
+      "Réseaux",
+      "Niska"
+    ],
+    "pop-seine-saint-denis-style": [
+      "Seine Saint-Denis Style",
+      "Suprême NTM"
+    ],
+    "pop-plugged-in": [
+      "I Hear You Knocking",
+      "Dave Edmunds"
+    ],
+    "pop-arthur-honegger": [
+      "Pacific 231",
+      "Honegger"
+    ],
+    "pop-coppelia": [
+      "Coppélia",
+      "Delibes"
+    ],
+    "pop-darius-milhaud": [
+      "Le bœuf sur le toit",
+      "Milhaud"
+    ],
+    "pop-don-carlos": [
+      "Don Carlo",
+      "Verdi"
+    ],
+    "pop-francis-poulenc": [
+      "Les Biches",
+      "Poulenc"
+    ],
+    "pop-giselle": [
+      "Giselle",
+      "Adolphe Adam"
+    ],
+    "pop-jean-baptiste-lully": [
+      "Cérémonie des Turcs",
+      ""
+    ],
+    "pop-palais-garnier": [
+      "Habanera",
+      "Maria Callas"
+    ],
+    "pop-paris-opera": [
+      "Galop infernal",
+      ""
+    ],
+    "pop-rudolf-nureyev": [
+      "Dance of the Knights",
+      "Prokofiev"
+    ],
+    "pop-theatre-des-champs-elysees": [
+      "Le Sacre du printemps",
+      "Stravinsky"
+    ],
+    "pop-andy-warhol": [
+      "Sunday Morning",
+      "The Velvet Underground"
+    ],
+    "pop-metropolitan-opera": [
+      "Nessun dorma",
+      "Pavarotti"
+    ],
+    "pop-richard-strauss": [
+      "Zarathustra",
+      "Karajan"
+    ],
+    "pop-give-me-the-night": [
+      "Give Me the Night",
+      "George Benson"
+    ],
+    "pop-plus-pres-des-etoiles": [
+      "Plus près des étoiles",
+      "Gold"
+    ],
+    "pop-temperature": [
+      "Temperature",
+      "Sean Paul"
+    ],
+    "pop-international-love": [
+      "International Love",
+      "Pitbull"
+    ],
+    "pop-caravane": [
+      "Caravane",
+      "Raphael"
+    ],
+    "pop-lettre-a-elise": [
+      "Für Elise",
+      "Beethoven"
+    ],
+    "pop-sonate-au-clair-de-lune": [
+      "Moonlight Sonata",
+      "Beethoven"
+    ],
+    "pop-le-lac-des-cygnes": [
+      "Swan Lake, Op. 20, Act 2: No. 10, Moderato",
+      "London Symphony Orchestra"
+    ],
+    "pop-la-chevauchee-des-walkyries": [
+      "Ride of the Valkyries",
+      "Wagner"
+    ],
+    "pop-eine-kleine-nachtmusik": [
+      "Eine kleine Nachtmusik",
+      "Mozart"
+    ],
+    "pop-suite-pour-violoncelle-n-1": [
+      "Cello Suite No. 1 in G Major, BWV 1007: I. Prélude",
+      "Yo-Yo Ma"
+    ],
+    "pop-il-est-libre-max": [
+      "Il est libre Max",
+      "Hervé Cristiani"
+    ],
+    "pop-le-temps-des-cathedrales": [
+      "Le temps des cathédrales",
+      "Bruno Pelletier"
+    ],
+    "pop-je-ne-suis-pas-un-heros": [
+      "Je ne suis pas un héros",
+      "Daniel Balavoine"
+    ],
+    "pop-partenaire-particulier": [
+      "Partenaire particulier",
+      "Partenaire Particulier"
+    ],
+    "pop-on-va-s-aimer": [
+      "On va s'aimer",
+      "Gilbert Montagné"
+    ],
+    "pop-laisse-pas-trainer-ton-fils": [
+      "Laisse pas traîner ton fils",
+      "Suprême NTM"
+    ],
+    "pop-grave-dans-la-roche": [
+      "Gravé dans la roche",
+      "Sniper"
+    ],
+    "pop-le-bilan": [
+      "Le bilan",
+      "Neg' Marrons"
+    ],
+    "pop-du-ferme": [
+      "Du ferme",
+      "La Fouine"
+    ],
+    "pop-pitbull-chansons": [
+      "Pitbull",
+      "Booba"
+    ],
+    "pop-la-haine": [
+      "La Haine",
+      "Cut Killer"
+    ],
+    "pop-suicide-social": [
+      "Suicide social",
+      "Orelsan"
+    ],
+    "pop-mwaka-moon": [
+      "Mwaka Moon",
+      "Kalash"
+    ],
+    "pop-desaccorde": [
+      "Désaccordé",
+      "Vald"
+    ],
+    "pop-or-noir": [
+      "Or noir",
+      "Kaaris"
+    ],
+    "pop-92i-veyron": [
+      "92i Veyron",
+      "Booba"
+    ],
+    "pop-fusil": [
+      "Fusil",
+      "SCH"
+    ],
+    "pop-est-ce-que-tu-m-aimes": [
+      "Est-ce que tu m'aimes",
+      "GIMS"
+    ],
+    "pop-le-monde-ou-rien": [
+      "Le monde ou rien",
+      "PNL"
+    ],
+    "pop-awa": [
+      "Awa",
+      "Lacrim"
+    ],
+    "pop-zoo": [
+      "Zoo",
+      "Kaaris"
+    ],
+    "pop-mosaique-solitaire": [
+      "Mosaïque solitaire",
+      "Damso"
+    ],
+    "pop-asalto": [
+      "Asalto",
+      "Jul"
+    ],
+    "pop-avant-la-douane": [
+      "Avant la douane",
+      "Jul"
+    ],
+    "pop-j-me-tire": [
+      "J'me tire",
+      "GIMS"
+    ],
+    "pop-unravel": [
+      "unravel",
+      "TK from Ling tosite sigure"
+    ],
+    "pop-kick-back": [
+      "KICK BACK",
+      "Kenshi Yonezu"
+    ],
+    "pop-again": [
+      "Again",
+      "YUI"
+    ],
+    "pop-kaikai-kitan": [
+      "Kaikai Kitan",
+      "Eve"
+    ],
+    "pop-guren-no-yumiya": [
+      "Guren no Yumiya",
+      "Linked Horizon"
+    ],
+    "pop-the-world": [
+      "the WORLD",
+      "NIGHTMARE"
+    ],
+    "pop-fly-high": [
+      "FLY HIGH",
+      "BURNOUT SYNDROMES"
+    ],
+    "pop-sign": [
+      "Sign",
+      "FLOW"
+    ],
+    "pop-crossing-field": [
+      "crossing field",
+      "LiSA"
+    ],
+    "pop-peace-sign": [
+      "Peace Sign",
+      "Kenshi Yonezu"
+    ],
+    "pop-let-me-hear": [
+      "Let Me Hear",
+      "Fear, and Loathing in Las Vegas"
+    ],
+    "pop-asphyxia": [
+      "asphyxia",
+      "Cö shu Nie"
+    ],
+    "pop-idol": [
+      "Idol",
+      "YOASOBI"
+    ],
+    "pop-history-maker": [
+      "History Maker",
+      "DEAN FUJIOKA"
+    ],
+    "pop-black-rover": [
+      "Black Rover",
+      "VK Blanka"
+    ],
+    "pop-snow-fairy": [
+      "Snow Fairy",
+      "FUNKIST"
+    ],
+    "pop-rise": [
+      "RISE",
+      "MADKID"
+    ],
+    "pop-black-catcher": [
+      "Black Catcher",
+      "VK Blanka"
+    ],
+    "pop-closer-joe-inoue": [
+      "Closer",
+      "Joe Inoue"
+    ],
+    "pop-brave-shine": [
+      "Brave Shine",
+      "Aimer"
+    ],
+    "pop-locked-out-of-heaven": [
+      "Locked Out of Heaven",
+      "Bruno Mars"
+    ],
+    "pop-running-up-that-hill": [
+      "Running Up That Hill",
+      "Kate Bush"
+    ],
+    "pop-take-on-me": [
+      "Take On Me",
+      "a-ha"
+    ],
+    "pop-wonderwall": [
+      "Wonderwall",
+      "Oasis"
+    ],
+    "pop-in-the-end": [
+      "In the End",
+      "Linkin Park"
+    ],
+    "pop-californication": [
+      "Californication",
+      "Red Hot Chili Peppers"
+    ],
+    "pop-uprising": [
+      "Uprising",
+      "Muse"
+    ],
+    "pop-dream-on": [
+      "Dream On",
+      "Aerosmith"
+    ],
+    "pop-every-breath-you-take": [
+      "Every Breath You Take",
+      "The Police"
+    ],
+    "pop-l-aziza": [
+      "L'Aziza",
+      "Daniel Balavoine"
+    ],
+    "pop-face-a-la-mer": [
+      "Face à la mer",
+      "Calogero"
+    ],
+    "pop-petite-marie": [
+      "Petite Marie",
+      "Francis Cabrel"
+    ],
+    "pop-cette-annee-la": [
+      "Cette année-là",
+      "Claude François"
+    ],
+    "pop-ne-me-quitte-pas": [
+      "Ne me quitte pas",
+      "Jacques Brel"
+    ],
+    "pop-la-boulette": [
+      "La Boulette",
+      "Diam's"
+    ],
+    "pop-on-verra": [
+      "On verra",
+      "Nekfeu"
+    ],
+    "pop-booba": [
+      "DKR",
+      "Booba"
+    ],
+    "pop-claude-francois": [
+      "Comme d'habitude",
+      "Claude François"
+    ],
+    "pop-georges-brassens": [
+      "Les copains d'abord",
+      "Georges Brassens"
+    ],
+    "pop-gojira": [
+      "Stranded",
+      "Gojira"
+    ],
+    "pop-m83": [
+      "Midnight City",
+      "M83"
+    ],
+    "pop-manu-chao": [
+      "Me Gustas Tu",
+      "Manu Chao"
+    ],
+    "pop-francis-cabrel": [
+      "Je t'aimais, je t'aime, je t'aimerai",
+      "Francis Cabrel"
+    ],
+    "pop-iam": [
+      "Petit frère",
+      "IAM"
+    ],
+    "pop-indochine": [
+      "L'aventurier",
+      "Indochine"
+    ],
+    "pop-jul": [
+      "Tchikita",
+      "Jul"
+    ],
+    "pop-mc-solaar": [
+      "Caroline",
+      "MC Solaar"
+    ],
+    "pop-orelsan": [
+      "Basique",
+      "Orelsan"
+    ],
+    "pop-bigflo-oli": [
+      "Picasso",
+      "Bigflo & Oli"
+    ],
+    "pop-daniel-balavoine": [
+      "Le chanteur",
+      "Daniel Balavoine"
+    ],
+    "pop-gregory-lemarchal": [
+      "Écris l'histoire",
+      "Grégory Lemarchal"
+    ],
+    "pop-sexion-d-assaut": [
+      "Wati by Night",
+      "Sexion d'Assaut"
+    ],
+    "pop-supreme-ntm": [
+      "Laisse pas traîner ton fils",
+      "Suprême NTM"
+    ],
+    "pop-tryo": [
+      "L'hymne de nos campagnes",
+      "Tryo"
+    ],
+    "pop-pnl": [
+      "Au DD",
+      "PNL"
+    ],
+    "pop-blink-182": [
+      "All the Small Things",
+      "blink-182"
+    ],
+    "pop-bob-marley": [
+      "Could You Be Loved",
+      "Bob Marley & The Wailers"
+    ],
+    "pop-earth-wind-fire": [
+      "September",
+      "Earth, Wind & Fire"
+    ],
+    "pop-enrique-iglesias": [
+      "Hero",
+      "Enrique Iglesias"
+    ],
+    "pop-fall-out-boy": [
+      "Centuries",
+      "Fall Out Boy"
+    ],
+    "pop-flo-rida": [
+      "Right Round",
+      "Flo Rida"
+    ],
+    "pop-freddie-mercury": [
+      "Living On My Own",
+      "Freddie Mercury"
+    ],
+    "pop-linkin-park": [
+      "In the End",
+      "Linkin Park"
+    ],
+    "pop-my-chemical-romance": [
+      "Welcome to the Black Parade",
+      "My Chemical Romance"
+    ],
+    "pop-one-direction": [
+      "What Makes You Beautiful",
+      "One Direction"
+    ],
+    "pop-sean-paul": [
+      "Temperature",
+      "Sean Paul"
+    ],
+    "pop-twenty-one-pilots": [
+      "Stressed Out",
+      "Twenty One Pilots"
+    ],
+    "pop-6ix9ine": [
+      "GUMMO",
+      "6ix9ine"
+    ],
+    "pop-bullet-for-my-valentine": [
+      "Your Betrayal",
+      "Bullet for My Valentine"
+    ],
+    "pop-alexandrie-alexandra": [
+      "Alexandrie Alexandra",
+      "Claude François"
+    ],
+    "pop-alors-on-danse": [
+      "Alors on danse",
+      "Stromae"
+    ],
+    "pop-amsterdam": [
+      "Amsterdam",
+      "Jacques Brel"
+    ],
+    "pop-apologize": [
+      "Apologize",
+      "OneRepublic"
+    ],
+    "pop-bella": [
+      "Bella",
+      "GIMS"
+    ],
+    "pop-billie-jean": [
+      "Billie Jean",
+      "Michael Jackson"
+    ],
+    "pop-bohemian-rhapsody": [
+      "Bohemian Rhapsody",
+      "Queen"
+    ],
+    "pop-comme-d-habitude": [
+      "Comme d'habitude",
+      "Claude François"
+    ],
+    "pop-complicated": [
+      "Complicated",
+      "Avril Lavigne"
+    ],
+    "pop-derniere-danse": [
+      "Dernière danse",
+      "Indila"
+    ],
+    "pop-diamonds": [
+      "Diamonds",
+      "Rihanna"
+    ],
+    "pop-don-t-stop-me-now": [
+      "Don't Stop Me Now",
+      "Queen"
+    ],
+    "pop-dynamite": [
+      "Dynamite",
+      "BTS"
+    ],
+    "pop-e-t": [
+      "E.T.",
+      "Katy Perry"
+    ],
+    "pop-earth-song": [
+      "Earth Song",
+      "Michael Jackson"
+    ],
+    "pop-ella-elle-l-a": [
+      "Ella, elle l'a",
+      "France Gall"
+    ],
+    "pop-emmenez-moi": [
+      "Emmenez-moi",
+      "Charles Aznavour"
+    ],
+    "pop-empire-state-of-mind": [
+      "Empire State of Mind",
+      "JAŸ-Z"
+    ],
+    "pop-en-apesanteur": [
+      "En apesanteur",
+      "Calogero"
+    ],
+    "pop-envole-moi": [
+      "Envole-moi",
+      "Jean-Jacques Goldman"
+    ],
+    "pop-i-m-still-standing": [
+      "I'm Still Standing",
+      "Elton John"
+    ],
+    "pop-j-ai-demande-a-la-lune": [
+      "J'ai demandé à la lune",
+      "Indochine"
+    ],
+    "pop-je-danse-le-mia": [
+      "Je danse le Mia",
+      "IAM"
+    ],
+    "pop-je-te-donne": [
+      "Je te donne",
+      "Michael Jones"
+    ],
+    "pop-joe-le-taxi": [
+      "Joe le taxi",
+      "Vanessa Paradis"
+    ],
+    "pop-just-the-way-you-are": [
+      "Just the Way You Are",
+      "Bruno Mars"
+    ],
+    "pop-l-aventurier": [
+      "L'Aventurier",
+      "Indochine"
+    ],
+    "pop-la-boheme": [
+      "La Bohème",
+      "Charles Aznavour"
+    ],
+    "pop-la-vie-en-rose": [
+      "La Vie en rose",
+      "Édith Piaf"
+    ],
+    "pop-last-friday-night": [
+      "Last Friday Night",
+      "Katy Perry"
+    ],
+    "pop-les-demons-de-minuit": [
+      "Les Démons de minuit",
+      "Images"
+    ],
+    "pop-les-lacs-du-connemara": [
+      "Les Lacs du Connemara",
+      "Michel Sardou"
+    ],
+    "pop-lose-yourself": [
+      "Lose Yourself",
+      "Eminem"
+    ],
+    "pop-ma-benz": [
+      "Ma Benz",
+      "Suprême NTM"
+    ],
+    "pop-macarena": [
+      "Macarena",
+      "Los del Río"
+    ],
+    "pop-mamma-mia": [
+      "Mamma Mia",
+      "ABBA"
+    ],
+    "pop-mistral-gagnant": [
+      "Mistral gagnant",
+      "Renaud"
+    ],
+    "pop-never-gonna-give-you-up": [
+      "Never Gonna Give You Up",
+      "Rick Astley"
+    ],
+    "pop-nothing-else-matters": [
+      "Nothing Else Matters",
+      "Metallica"
+    ],
+    "pop-papaoutai": [
+      "Papaoutai",
+      "Stromae"
+    ],
+    "pop-quand-la-musique-est-bonne": [
+      "Quand la musique est bonne",
+      "Jean-Jacques Goldman"
+    ],
+    "pop-rock-around-the-clock": [
+      "Rock Around the Clock",
+      "Bill Haley & His Comets"
+    ],
+    "pop-sapes-comme-jamais": [
+      "Sapés comme jamais",
+      "GIMS"
+    ],
+    "pop-shake-it-off": [
+      "Shake It Off",
+      "Taylor Swift"
+    ],
+    "pop-somebody-that-i-used-to-know": [
+      "Somebody That I Used to Know",
+      "Gotye"
+    ],
+    "pop-someone-like-you": [
+      "Someone like You",
+      "Adele"
+    ],
+    "pop-the-show-must-go-on": [
+      "The Show Must Go On",
+      "Queen"
+    ],
+    "pop-thriller": [
+      "Thriller",
+      "Michael Jackson"
+    ],
+    "pop-titanium": [
+      "Titanium",
+      "Sia"
+    ],
+    "pop-tous-les-cris-les-sos": [
+      "Tous les cris les SOS",
+      "Daniel Balavoine"
+    ],
+    "pop-voyage-voyage": [
+      "Voyage voyage",
+      "Desireless"
+    ],
+    "pop-without-me": [
+      "Without Me",
+      "Eminem"
+    ],
+    "pop-zombie": [
+      "Zombie",
+      "The Cranberries"
+    ],
+    "pop-american-idiot": [
+      "American Idiot",
+      "Green Day"
+    ],
+    "pop-another-brick-in-the-wall": [
+      "Another Brick in the Wall",
+      "Pink Floyd"
+    ],
+    "pop-beat-it": [
+      "Beat It",
+      "Michael Jackson"
+    ],
+    "pop-boulevard-of-broken-dreams": [
+      "Boulevard of Broken Dreams",
+      "Green Day"
+    ],
+    "pop-crazy-in-love": [
+      "Crazy in Love",
+      "Beyoncé"
+    ],
+    "pop-gangsta-s-paradise": [
+      "Gangsta's Paradise",
+      "Coolio"
+    ],
+    "pop-hallelujah": [
+      "Hallelujah",
+      "Leonard Cohen"
+    ],
+    "pop-i-will-survive": [
+      "I Will Survive",
+      "Gloria Gaynor"
+    ],
+    "pop-numb": [
+      "Numb",
+      "Linkin Park"
+    ],
+    "pop-pump-it": [
+      "Pump It",
+      "Black Eyed Peas"
+    ],
+    "pop-rockstar": [
+      "Rockstar",
+      "Post Malone"
+    ],
+    "pop-they-don-t-care-about-us": [
+      "They Don't Care About Us",
+      "Michael Jackson"
+    ],
+    "pop-we-will-rock-you": [
+      "We Will Rock You",
+      "Queen"
+    ],
+    "pop-without-you": [
+      "Without You",
+      "Mariah Carey"
+    ],
+    "pop-ai-se-eu-te-pego": [
+      "Ai Se Eu Te Pego",
+      "Michel Teló"
+    ],
+    "pop-bad": [
+      "Bad",
+      "Michael Jackson"
+    ],
+    "pop-call-me-maybe": [
+      "Call Me Maybe",
+      "Carly Rae Jepsen"
+    ],
+    "pop-creep": [
+      "Creep",
+      "Radiohead"
+    ],
+    "pop-eye-of-the-tiger": [
+      "Eye of the Tiger",
+      "Survivor"
+    ],
+    "pop-hotel-california": [
+      "Hotel California",
+      "Eagles"
+    ],
+    "pop-i-was-made-for-lovin-you": [
+      "I Was Made for Lovin' You",
+      "Kiss"
+    ],
+    "pop-in-the-air-tonight": [
+      "In the Air Tonight",
+      "Phil Collins"
+    ],
+    "pop-my-heart-will-go-on": [
+      "My Heart Will Go On",
+      "Céline Dion"
+    ],
+    "pop-rolling-in-the-deep": [
+      "Rolling in the Deep",
+      "Adele"
+    ],
+    "pop-seven-nation-army": [
+      "Seven Nation Army",
+      "The White Stripes"
+    ],
+    "pop-99-luftballons": [
+      "99 Luftballons",
+      "Nena"
+    ],
+    "pop-africa": [
+      "Africa",
+      "Toto"
+    ],
+    "pop-beggin": [
+      "Beggin'",
+      "Måneskin"
+    ],
+    "pop-cry-me-a-river": [
+      "Cry Me a River",
+      "Justin Timberlake"
+    ],
+    "pop-dragostea-din-tei": [
+      "Dragostea din tei",
+      "O-Zone"
+    ],
+    "pop-radioactive": [
+      "Radioactive",
+      "Imagine Dragons"
+    ],
+    "pop-thrift-shop": [
+      "Thrift Shop",
+      "Macklemore & Ryan Lewis"
+    ],
+    "pop-viva-la-vida": [
+      "Viva la Vida",
+      "Coldplay"
+    ],
+    "pop-freed-from-desire": [
+      "Freed from Desire",
+      "Gala"
+    ],
+    "pop-la-groupie-du-pianiste": [
+      "La Groupie du pianiste",
+      "Michel Berger"
+    ],
+    "pop-la-tribu-de-dana": [
+      "La Tribu de Dana",
+      "Manau"
+    ],
+    "pop-le-paradis-blanc": [
+      "Le Paradis blanc",
+      "Michel Berger"
+    ],
+    "pop-les-rois-du-monde": [
+      "Les Rois du monde",
+      "Damien Sargue"
+    ],
+    "pop-mr-saxobeat": [
+      "Mr. Saxobeat",
+      "Alexandra Stan"
+    ],
+    "pop-september": [
+      "September",
+      "Earth, Wind & Fire"
+    ],
+    "pop-sexual-healing": [
+      "Sexual Healing",
+      "Marvin Gaye"
+    ],
+    "pop-stressed-out": [
+      "Stressed Out",
+      "Twenty One Pilots"
+    ],
+    "pop-sultans-of-swing": [
+      "Sultans of Swing",
+      "Dire Straits"
+    ],
+    "pop-wavin-flag": [
+      "Wavin' Flag",
+      "K'Naan"
+    ],
+    "pop-where-is-my-mind": [
+      "Where Is My Mind?",
+      "Pixies"
+    ],
+    "pop-ecris-l-histoire": [
+      "Écris l'histoire",
+      "Grégory Lemarchal"
+    ],
+    "pop-montero": [
+      "Montero",
+      "Lil Nas X"
+    ],
+    "pop-paramore": [
+      "Misery Business",
+      "Paramore"
+    ]
+  },
+  "anime": {
+    "86": [
+      "Kyoukaisen",
+      "amazarashi"
+    ],
+    "a-silent-voice": [
+      "Koi wo Shita no wa",
+      "aiko"
+    ],
+    "akame-ga-kill": [
+      "Skyreach",
+      "Sora Amamiya"
+    ],
+    "angel-beats": [
+      "My Soul, Your Beats!",
+      "Lia"
+    ],
+    "angels-of-death": [
+      "Vital",
+      "Masaaki Endoh"
+    ],
+    "assassination-classroom": [
+      "Seishun Satsubatsuron",
+      "3-nen E-gumi"
+    ],
+    "banana-fish": [
+      "found & lost",
+      "Survive Said The Prophet"
+    ],
+    "beastars": [
+      "Wild Side",
+      "ALI"
+    ],
+    "black-butler": [
+      "Monochrome no Kiss",
+      "SID"
+    ],
+    "black-clover": [
+      "Haruka Mirai",
+      "Kankaku Piero"
+    ],
+    "black-lagoon": [
+      "Red Fraction",
+      "MELL"
+    ],
+    "bleach": [
+      "Asterisk",
+      "ORANGE RANGE"
+    ],
+    "blue-box": [
+      "Same Blue",
+      "Official HIGE DANdism"
+    ],
+    "blue-exorcist": [
+      "Core Pride",
+      "UVERworld"
+    ],
+    "blue-lock": [
+      "Chaos ga Kiwamaru",
+      "UNISON SQUARE GARDEN"
+    ],
+    "bocchi-the-rock": [
+      "Seishun Complex",
+      "Kessoku Band"
+    ],
+    "bungo-stray-dogs": [
+      "TRASH CANDY",
+      "GRANRODEO"
+    ],
+    "cardcaptor-sakura": [
+      "Catch You Catch Me",
+      "Gumi"
+    ],
+    "carnet-de-l-apothicaire": [
+      "Hana ni Natte",
+      "Ryokuoushoku Shakai"
+    ],
+    "chainsaw-man": [
+      "KICK BACK",
+      "Kenshi Yonezu"
+    ],
+    "charlotte": [
+      "Bravely You",
+      "Lia"
+    ],
+    "city-hunter": [
+      "Get Wild",
+      "TM NETWORK"
+    ],
+    "clannad": [
+      "Mag Mell",
+      "eufonius"
+    ],
+    "classroom-of-the-elite": [
+      "Caste Room",
+      "ZAQ"
+    ],
+    "code-geass": [
+      "COLORS",
+      "FLOW"
+    ],
+    "cowboy-bebop": [
+      "Tank!",
+      "SEATBELTS"
+    ],
+    "cyberpunk-edgerunners": [
+      "This Fffire",
+      "Franz Ferdinand"
+    ],
+    "d-gray-man": [
+      "Innocent Sorrow",
+      "abingdon boys school"
+    ],
+    "dandadan": [
+      "Otonoke",
+      "Creepy Nuts"
+    ],
+    "danmachi": [
+      "Hey World",
+      "Yuka Iguchi"
+    ],
+    "death-note": [
+      "the WORLD",
+      "NIGHTMARE"
+    ],
+    "death-parade": [
+      "Flyers",
+      "BRADIO"
+    ],
+    "delicious-in-dungeon": [
+      "Sleep Walking Orchestra",
+      "BUMP OF CHICKEN"
+    ],
+    "demon-slayer": [
+      "Gurenge",
+      "LiSA"
+    ],
+    "devilman-crybaby": [
+      "MAN HUMAN",
+      "Denki Groove"
+    ],
+    "doraemon": [
+      "Yume wo Kanaete Doraemon",
+      "mao"
+    ],
+    "dorohedoro": [
+      "Welcome to Chaos",
+      "(K)NoW_NAME"
+    ],
+    "dororo": [
+      "Kaen",
+      "Queen Bee"
+    ],
+    "dr-stone": [
+      "Good Morning World!",
+      "BURNOUT SYNDROMES"
+    ],
+    "dragon-ball": [
+      "CHA-LA HEAD-CHA-LA",
+      "Hironobu Kageyama"
+    ],
+    "durarara": [
+      "Uragiri no Yuuyake",
+      "THEATRE BROOK"
+    ],
+    "erased": [
+      "Re:Re:",
+      "ASIAN KUNG-FU GENERATION"
+    ],
+    "evangelion": [
+      "A Cruel Angel's Thesis",
+      "Yoko Takahashi"
+    ],
+    "fairy-tail": [
+      "Snow Fairy",
+      "FUNKIST"
+    ],
+    "fire-force": [
+      "Inferno",
+      "Mrs. GREEN APPLE"
+    ],
+    "food-wars": [
+      "Kibou no Uta",
+      "ultra tower"
+    ],
+    "free": [
+      "Rage on",
+      "OLDCODEX"
+    ],
+    "frieren": [
+      "Yuusha",
+      "YOASOBI"
+    ],
+    "fruits-basket": [
+      "For Fruits Basket",
+      "Ritsuko Okazaki"
+    ],
+    "fullmetal-alchemist": [
+      "again",
+      "YUI"
+    ],
+    "ghost-in-the-shell-film": [
+      "Making of Cyborg",
+      "Kenji Kawai"
+    ],
+    "gintama": [
+      "Pray",
+      "Tommy heavenly6"
+    ],
+    "goblin-slayer": [
+      "Rightfully",
+      "Mili"
+    ],
+    "golden-kamuy": [
+      "Winter Wind",
+      "MAN WITH A MISSION"
+    ],
+    "goldorak": [
+      "Goldorak",
+      ""
+    ],
+    "gto": [
+      "DRIVER'S HIGH",
+      "L'Arc-en-Ciel"
+    ],
+    "gurren-lagann": [
+      "Sorairo Days",
+      "Shoko Nakagawa"
+    ],
+    "haikyu": [
+      "Imagination",
+      "SPYAIR"
+    ],
+    "hajime-no-ippo": [
+      "Under Star",
+      "Shocking Lemon"
+    ],
+    "hell-s-paradise": [
+      "W●RK",
+      "Ringo Sheena"
+    ],
+    "hellsing": [
+      "Logos Naki World",
+      "Yasushi Ishii"
+    ],
+    "high-school-dxd": [
+      "Trip -innocent of D-",
+      "Larval Stage Planning"
+    ],
+    "horimiya": [
+      "Iro Kousui",
+      "Yoh Kamiyama"
+    ],
+    "hunter-x-hunter": [
+      "departure!",
+      "Masatoshi Ono"
+    ],
+    "jojo-s-bizarre-adventure": [
+      "Sono Chi no Sadame",
+      "Tominaga"
+    ],
+    "jujutsu-kaisen": [
+      "Kaikai Kitan",
+      "Eve"
+    ],
+    "kaguya-sama": [
+      "Love Dramatic",
+      "Masayuki Suzuki"
+    ],
+    "kaiji": [
+      "Mirai wa Ore no Te no Naka",
+      "Hakuryu"
+    ],
+    "kenshin-le-vagabond": [
+      "Sobakasu",
+      "JUDY AND MARY"
+    ],
+    "kill-la-kill": [
+      "Sirius",
+      "Eir Aoi"
+    ],
+    "konosuba": [
+      "fantastic dreamer",
+      "Machico"
+    ],
+    "kuroko-no-basket": [
+      "Can Do",
+      "GRANRODEO"
+    ],
+    "l-attaque-des-titans": [
+      "Guren no Yumiya",
+      "Linked Horizon"
+    ],
+    "lady-oscar": [
+      "Bara wa Utsukushiku Chiru",
+      "Hiroko Suzuki"
+    ],
+    "lycoris-recoil": [
+      "ALIVE",
+      "ClariS"
+    ],
+    "march-comes-in-like-a-lion": [
+      "Answer",
+      "BUMP OF CHICKEN"
+    ],
+    "mashle": [
+      "Bling-Bang-Bang-Born",
+      "Creepy Nuts"
+    ],
+    "mirai-nikki": [
+      "Kuusou Mesorogiwi",
+      "Yousei Teikoku"
+    ],
+    "mob-psycho-100": [
+      "99",
+      "MOB CHOIR"
+    ],
+    "moi-quand-je-me-reincarne-en-slime": [
+      "Nameless Story",
+      "Takuma Terashima"
+    ],
+    "monogatari": [
+      "Renai Circulation",
+      "Kana Hanazawa"
+    ],
+    "pop-monster": [
+      "Grain",
+      "Kuniaki Haishima"
+    ],
+    "moriarty-the-patriot": [
+      "DYING WISH",
+      ""
+    ],
+    "mushoku-tensei": [
+      "Tabibito no Uta",
+      "Yuiko Ohara"
+    ],
+    "my-dress-up-darling": [
+      "Sansan Days",
+      "spira spica"
+    ],
+    "my-hero-academia": [
+      "THE DAY",
+      "Porno Graffitti"
+    ],
+    "nana": [
+      "Rose",
+      "BLACK STONES"
+    ],
+    "naruto": [
+      "Blue Bird",
+      "Ikimonogakari"
+    ],
+    "no-game-no-life": [
+      "This Game",
+      "Konomi Suzuki"
+    ],
+    "noragami": [
+      "Goya no Machiawase",
+      "Hello Sleepwalkers"
+    ],
+    "one-piece": [
+      "We Are!",
+      "Hiroshi Kitadani"
+    ],
+    "one-punch-man": [
+      "THE HERO!!",
+      "JAM Project"
+    ],
+    "oshi-no-ko": [
+      "Idol",
+      "YOASOBI"
+    ],
+    "overlord": [
+      "Clattanoia",
+      "OxT"
+    ],
+    "panty-stocking": [
+      "D City Rock",
+      "TeddyLoid"
+    ],
+    "parasite": [
+      "Let Me Hear",
+      "Fear, and Loathing in Las Vegas"
+    ],
+    "pokemon-anime": [
+      "Pokémon Theme",
+      "Jason Paige"
+    ],
+    "psycho-pass": [
+      "abnormalize",
+      "Ling tosite sigure"
+    ],
+    "ranking-of-kings": [
+      "BOY",
+      "King Gnu"
+    ],
+    "re-zero": [
+      "Redo",
+      "Konomi Suzuki"
+    ],
+    "rent-a-girlfriend": [
+      "Centimeter",
+      "the peggies"
+    ],
+    "saga-of-tanya-the-evil": [
+      "JINGO JUNGLE",
+      "MYTH & ROID"
+    ],
+    "samurai-champloo": [
+      "Battlecry",
+      "Nujabes"
+    ],
+    "seraph-of-the-end": [
+      "X.U.",
+      "SawanoHiroyuki[nZk]"
+    ],
+    "seven-deadly-sins": [
+      "Netsujou no Spectrum",
+      "Ikimonogakari"
+    ],
+    "sk8-the-infinity": [
+      "Paradise",
+      "Rude-α"
+    ],
+    "slam-dunk": [
+      "Kimi ga Suki da to Sakebitai",
+      "BAAD"
+    ],
+    "solo-leveling": [
+      "LEveL",
+      "SawanoHiroyuki[nZk]"
+    ],
+    "soul-eater": [
+      "Resonance",
+      "T.M.Revolution"
+    ],
+    "spy-x-family": [
+      "Mixed Nuts",
+      "Official HIGE DANdism"
+    ],
+    "steins-gate": [
+      "Hacking to the Gate",
+      "Kanako Itou"
+    ],
+    "sword-art-online": [
+      "crossing field",
+      "LiSA"
+    ],
+    "sword-art-online-alicization": [
+      "ADAMAS",
+      "LiSA"
+    ],
+    "the-case-study-of-vanitas": [
+      "Sora to Utsuro",
+      "SawanoHiroyuki[nZk]"
+    ],
+    "the-eminence-in-shadow": [
+      "HIGHEST",
+      "OxT"
+    ],
+    "the-god-of-high-school": [
+      "CONTRADICTION",
+      "KSUKE"
+    ],
+    "the-promised-neverland": [
+      "Touch Off",
+      "UVERworld"
+    ],
+    "the-quintessential-quintuplets": [
+      "Gotoubun no Kimochi",
+      "Nakano Family Quintuplets"
+    ],
+    "the-rising-of-the-shield-hero": [
+      "RISE",
+      "MADKID"
+    ],
+    "tokyo-ghoul": [
+      "unravel",
+      "TK from Ling tosite sigure"
+    ],
+    "tokyo-revengers": [
+      "Cry Baby",
+      "Official HIGE DANdism"
+    ],
+    "toradora": [
+      "Pre-Parade",
+      "Rie Kugimiya"
+    ],
+    "tower-of-god": [
+      "TOP",
+      "Stray Kids"
+    ],
+    "trigun": [
+      "H.T.",
+      "Tsuneo Imahori"
+    ],
+    "vinland-saga": [
+      "MUKANJYO",
+      "Survive Said The Prophet"
+    ],
+    "violet-evergarden": [
+      "Sincerely",
+      "TRUE"
+    ],
+    "your-lie-in-april": [
+      "Hikaru Nara",
+      "Goose house"
+    ],
+    "your-name": [
+      "Zenzenzense",
+      "RADWIMPS"
+    ],
+    "yu-yu-hakusho": [
+      "Hohoemi no Bakudan",
+      "Matsuko Mawatari"
+    ],
+    "yuri-on-ice": [
+      "History Maker",
+      "DEAN FUJIOKA"
+    ],
+    "akira": [
+      "Kaneda",
+      "Geinoh Yamashirogumi"
+    ],
+    "baki": [
+      "Beastful",
+      "GRANRODEO"
+    ],
+    "boruto": [
+      "Baton Road",
+      "KANA-BOON"
+    ],
+    "detective-conan": [
+      "Meitantei Conan Main Theme",
+      "Katsuo Ohno"
+    ],
+    "eyeshield-21": [
+      "Breakthrough",
+      "Coming Century"
+    ],
+    "inazuma-eleven": [
+      "Tachiagari Youth",
+      "T-Pistonz+KMC"
+    ],
+    "olive-et-tom": [
+      "Olive et Tom",
+      "Bernard Minet"
+    ],
+    "space-dandy": [
+      "Viva Namida",
+      "Okamura Yasuyuki"
+    ],
+    "world-trigger": [
+      "Glorious Days",
+      "Three Lights Down Kings"
+    ],
+    "yu-gi-oh-5d-s": [
+      "Believe in Nexus",
+      "Masaaki Endo"
+    ]
+  },
+  "ambience": {
+    "eclipse": [
+      "Behelit",
+      "Susumu Hirasawa"
+    ]
+  }
+}

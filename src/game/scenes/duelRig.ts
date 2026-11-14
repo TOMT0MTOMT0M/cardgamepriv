@@ -323,8 +323,19 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
     const both = r[b.role] ?? 0;
     return b.side > 0 ? both : -both;
   };
+  // (audit 12/11, S17 / A10-02) réponses gardées par os : elles ne dépendent que de la spec et du nom de l'os, et étaient
+  // recalculées à chaque image pour chaque os (une RegExp par clé de spec, un filtre, une recherche)
+  const perBone = <T,>(fn: (b: B) => T) => {
+    const m = new Map<B, T>();
+    return (b: B): T => {
+      if (m.has(b)) return m.get(b) as T;
+      const v = fn(b);
+      m.set(b, v);
+      return v;
+    };
+  };
   const rotKeys = Object.keys(spec.rot ?? {});
-  const rotFor = (b: B): V3 | null => {
+  const rotFor = perBone((b: B): V3 | null => {
     const r = spec.rot;
     if (!r) return null;
     const pick = (k: string): V3 | null => {
@@ -347,16 +358,21 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
       if (new RegExp(`^${k.toLowerCase()}\\d*$`).test(b.bare) && (!best || k.length > best.length)) best = k;
     }
     return best ? pick(best) : null;
+  });
+  const chainLens = new Map<Role, number>();
+  const chainLen = (r: Role) => {
+    let n = chainLens.get(r);
+    if (n === undefined) chainLens.set(r, (n = Math.max(1, by(r).length)));
+    return n;
   };
-  const chainLen = (r: Role) => Math.max(1, by(r).length);
   const curlKeys = spec.curl ?? [];
-  const curlFor = (b: B) => curlKeys.some((k) => (b.role && k === b.role) || new RegExp(`^${k.toLowerCase()}\\d*$`).test(b.bare));
+  const curlFor = perBone((b: B) => curlKeys.some((k) => (b.role && k === b.role) || new RegExp(`^${k.toLowerCase()}\\d*$`).test(b.bare)));
   const levelKeys = Object.keys(spec.level ?? {});
-  const levelFor = (b: B): number => {
+  const levelFor = perBone((b: B): number => {
     let best: string | null = null;
     for (const k of levelKeys) if (new RegExp(`^${k.toLowerCase()}\\d*$`).test(b.bare) && (!best || k.length > best.length)) best = k;
     return best ? spec.level![best] : 0;
-  };
+  });
   const byObj = new Map<Object3D, B>(list.map((b) => [b.o, b]));
   /** cap (lacet) des os remis à l'horizontale, pour l'appliquer aux membres qui en dépendent */
   const heading = new Map<B, Quaternion>();
@@ -408,7 +424,7 @@ export function createAutoPose(root: Object3D, spec: PoseSpec = {}): AutoPose | 
     return new Quaternion().setFromRotationMatrix(m);
   };
   // directions visées (avec souffle), pour lire le plan de flexion depuis le segment supérieur
-  const lowerOf = (b: B) => list.find((c) => c.role === CHAIN_CHILD[b.role!]![0] && c.side === b.side);
+  const lowerOf = perBone((b: B) => list.find((c) => c.role === CHAIN_CHILD[b.role!]![0] && c.side === b.side));
 
   const pose = (t: number, mouth: number, life: number) => {
     for (const b of list) b.o.quaternion.copy(b.rest);

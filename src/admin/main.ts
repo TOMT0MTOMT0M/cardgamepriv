@@ -10,6 +10,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { CANAL } from '../core/canal';
 import { SURVEY_FEATURES, SURVEY_ID, SURVEY_UNIVERSES } from '../core/survey';
 import { siteUrl } from '../core/siteRoot';
+import { viewEvenements } from './events';
 
 /**
  * DASHBOARD ADMIN (V2, 10/11) — /admin/, réservé à Tom et Hugo (vérifié côté serveur : convex/adminDash.ts).
@@ -63,7 +64,7 @@ function errMsg(e: unknown) {
   const d = (e as { data?: unknown })?.data;
   if (typeof d === 'string') return d;
   const m = (e as Error)?.message ?? String(e);
-  return m.replace(/^.*Uncaught ConvexError: /s, '').replace(/\n.*$/s, '').slice(0, 300);
+  return m.replace(/^.*Uncaught ConvexError: /s, '').replace(/\n.*$/s, '').replace(/\s*⟦[^⟧]*⟧/, '').slice(0, 300); // (repère de code des erreurs : retiré)
 }
 let toastT = 0;
 function toast(msg: string, kind: 'ok' | 'err' = 'ok') {
@@ -193,6 +194,7 @@ const TABS = [
   ['retours', 'Retours'],
   ['cartes', 'Cartes à corriger'],
   ['joueurs', 'Joueurs'],
+  ['evenements', 'Événements'],
   ['alertes', 'Alertes'],
   ['outils', 'Outils'],
   ['journal', 'Journal'],
@@ -1010,6 +1012,27 @@ const VIEWS: Record<Tab, (v: HTMLElement, sub: string) => Promise<void>> = {
   retours: viewRetours,
   cartes: viewCartes,
   joueurs: viewJoueurs,
+  // (11/11) booster du moment : src/admin/events.ts
+  evenements: (v) =>
+    viewEvenements(v, {
+      ask: (f, a) => ask(f as Q, a),
+      call: (f, a) => call(f as M, a),
+      busy,
+      esc,
+      fullDate,
+      catalog,
+      cardPicker,
+      hydrateCards,
+      openSheet(html) {
+        const s = $('#sheet');
+        s.hidden = false;
+        document.body.classList.add('locked');
+        s.innerHTML = `<div class="sheet-bg"></div><div class="sheet-in ev-sheet">${html}</div>`;
+        $('.sheet-bg', s).addEventListener('click', closeSheet);
+        return $('.sheet-in', s);
+      },
+      closeSheet,
+    }),
   alertes: viewAlertes,
   outils: viewOutils,
   journal: viewJournal,

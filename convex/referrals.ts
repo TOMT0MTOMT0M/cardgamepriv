@@ -1,9 +1,12 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
+import { notify, scheduleReserveFull } from './push';
 import { applyRegen } from '../src/core/packRegen';
 import { REFERRAL } from '../src/core/referral';
+import { fm } from '../src/core/msgs';
 
 /**
  * PARRAINAGE (retours live 02, §10). Chaque joueur a un lien d'invitation au site (`/jeu/?ref=CODE`) :
@@ -32,7 +35,7 @@ export async function ensureCode(ctx: MutationCtx, u: Doc<'users'>): Promise<str
     await ctx.db.patch(u._id, { refCode: code });
     return code;
   }
-  throw new ConvexError('Impossible de créer ton lien, réessaie.');
+  throw new ConvexError(fe('referrals.1'));
 }
 
 /**
@@ -60,6 +63,7 @@ export async function addPacks(ctx: MutationCtx, userId: Id<'users'>, n: number)
   const now = Date.now();
   const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil);
   await ctx.db.patch(userId, { packBalance: regen.balance + n, packRegenAt: regen.regenAt });
+  await scheduleReserveFull(ctx, userId);
 }
 
 /** Mon lien (créé à la première demande), le nombre de clics et mes filleuls. */
@@ -130,6 +134,7 @@ export const claim = mutation({
     const dev = device && DEVICE_RE.test(device) ? device : undefined;
     await ctx.db.patch(u._id, { referredBy: owner._id, referredAt: now, ...(dev ? { referredDevice: dev } : {}) });
     await addPacks(ctx, u._id, REFERRAL.packs);
+    await ctx.db.patch(owner._id, { referralNoticeAt: now }); // (V2) pastille Amis du parrain : un filleul est arrivé
     return { status: 'ok' as const, packs: REFERRAL.packs, referrer: owner.displayName };
   },
 });
@@ -140,6 +145,8 @@ export async function payReferrer(ctx: MutationCtx, userId: Id<'users'>) {
   if (!u?.referredBy || u.referralPaid || u.totalPacksOpened < REFERRAL.packsToPay) return;
   await ctx.db.patch(u._id, { referralPaid: true });
   await addPacks(ctx, u.referredBy, REFERRAL.packs);
+  await ctx.db.patch(u.referredBy, { referralNoticeAt: Date.now() }); // (V2) pastille Amis : parrainage payé
+  await notify(ctx, u.referredBy, { kind: 'referral', title: fm('n.referral', { name: u.displayName, n: REFERRAL.packs }), body: fm('n.referralBody'), url: '#/amis' });
 }
 
 /**

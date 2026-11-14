@@ -8,7 +8,7 @@
  *
  * « Effets réduits » / « réduire les animations » : pas de clignotement (WCAG 2.3.1), la spirale seule.
  */
-import { fxReduced } from '../../core/fxPref';
+import { reducedMotion } from '../../core/motion';
 
 export interface GbcTransition {
   /** résolu quand l'écran est entièrement noir */
@@ -46,7 +46,7 @@ export function gbcTransition(o: { flashes?: boolean } = {}): GbcTransition {
     if (x0 < x1) for (let y = y1 - 1; y > y0; y--) order.push([x0, y]);
     x0++, y0++, x1--, y1--;
   }
-  const flashes = (o.flashes ?? true) && !fxReduced();
+  const flashes = (o.flashes ?? true) && !reducedMotion();
   const FLASH_MS = flashes ? 520 : 0;
   const WIPE_MS = 900;
   const FRAME = 1000 / 30;

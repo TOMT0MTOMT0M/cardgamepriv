@@ -29,7 +29,16 @@ call npm install --no-audit --no-fund >> "%LOG%" 2>&1 || goto :err
 echo [2/5] serveur Convex de staging (%V2%)...
 call node scripts\staging-v2.mjs deploy >> "%LOG%" 2>&1 || goto :err
 call npx convex run --deployment %V2% migrations:resyncRarities >> "%LOG%" 2>&1 || goto :err
+call npx convex run --deployment %V2% migrations:resyncRaritiesOpen >> "%LOG%" 2>&1 || goto :err
 call npx convex run --deployment %V2% migrations:purgeCards >> "%LOG%" 2>&1 || goto :err
+rem (V2 fluidite, lot 4) gros tirages marques pour l'index by_big (idempotent)
+call npx convex run --deployment %V2% migrations:markBigPulls >> "%LOG%" 2>&1 || goto :err
+rem (audit perf 12/11) presence : une carte publique par joueur (idempotent)
+call npx convex run --deployment %V2% migrations:backfillPresence >> "%LOG%" 2>&1 || goto :err
+rem (audit perf 12/11) envies par carte : index inverse des listes d'envies (idempotent, par lots)
+call npx convex run --deployment %V2% migrations:backfillWishes >> "%LOG%" 2>&1 || goto :err
+rem (version anglaise, lot 4) anciens messages du fil et du journal des pieces : code + parametres (idempotent, par lots)
+call npx convex run --deployment %V2% migrations:i18nMessages >> "%LOG%" 2>&1 || goto :err
 call npx convex run --deployment %V2% admin:setModerators >> "%LOG%" 2>&1
 echo [3/5] build (mode v2)...
 for /f "usebackq delims=" %%s in (`git rev-parse --short HEAD`) do set BEBOU_SHA=%%s

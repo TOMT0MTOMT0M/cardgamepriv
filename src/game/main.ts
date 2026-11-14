@@ -1,4 +1,7 @@
+import { preloadNoise } from '../core/tsl';
 import './style.css';
+import './panneaux.css';
+import './usinage.css';
 import { applyFontVars } from '../core/fonts';
 import { createShell, soundOn, soundVolume, type Shell } from './shell';
 import { createOpeningScene } from './scenes/opening';
@@ -6,6 +9,8 @@ import type { ViewerScene } from './scenes/viewer';
 import { withWildEncounter } from './wildEncounter';
 import { withMusicPreview } from './musicPreview';
 import { withDuelSummon } from './duelEncounter';
+import { enableMythicReplay } from './mythic';
+import { withMythicPrelude } from './mythicEncounter';
 import { installDiag, reportLoad } from './diag';
 import { perfMark } from '../core/perfLog';
 import { createShopView } from './views/shop';
@@ -17,19 +22,28 @@ import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
 import { boardAttention } from './backend';
 import { PACK_CAP, PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
+import { initLang, lang, onLang, setLang, t as tr } from './lang';
+import type { MsgKey } from '../core/i18n';
+import { relabel } from './ui';
 import { closeLayers, closePanels, esc, h, loadSeen, navigate, panelHidden, panelShown, setToastSound, syncPanelTriggers, toast } from './ui';
 import { preloadOwned } from './preload';
 import { bindHapticGestures, haptics } from '../core/haptics';
 bindHapticGestures();
-import { fxReduced, setFxReduced } from '../core/fxPref';
+import { Sfx } from '../core/audio';
+import { padOn, setPadOn, setSilentOn, silentOn } from '../core/soundPrefs';
 import { installCatalog } from '../core/sets/themes';
 import { CANAL, mountCanalBadge } from '../core/canal';
 import { hardUpdate, setUpdateBusy, watchUpdates } from './maj';
+import { installNavDots } from './navDots';
 
 // polices du jeu (retours 05/11) : une seule source, src/core/fonts.ts
 applyFontVars();
+// (version anglaise) langue du jeu : en anglais, le dictionnaire arrive pendant le chargement du reste (rien en français)
+const langP = initLang();
 import { bindMotionVars } from '../core/motion';
 bindMotionVars();
+import { installMorph } from '../core/morph';
+installMorph();
 
 /**
  * LE JEU (page /jeu/) : boutique + ouverture 3D, collection, échanges.
@@ -61,24 +75,24 @@ const viewHost = h('main', 'views');
 // l'écran de chargement est déjà dans la page (jeu/index.html) : on le reprend tel quel, sans le recréer
 const loader =
   app.querySelector<HTMLElement>('.loader') ??
-  h('div', 'loader', '<div class="l-logo">BÉBOU</div><div class="l-bar"><i></i></div><div class="l-txt">préparation des effets…</div><div class="l-tip"></div>');
+  h('div', 'loader', '<div class="l-logo">' + tr('boot.logo') + '</div><div class="l-bar"><i></i></div><div class="l-txt">' + tr('boot.fx') + '</div><div class="l-tip"></div>');
 // chargement un peu long (téléphone modeste, première visite) : une astuce s'affiche, puis une autre
-const TIPS = [
-  'Astuce : maintiens, glisse ou touche le booster : chaque pochette s’ouvre à sa façon.',
-  'Une carte secrète se cache peut-être dans le Bebou Pack…',
-  'Tes doublons valent de l’or : brûle-les en contrat ou échange-les.',
-  'Un nouveau booster toutes les 5 minutes, jusqu’à 15 en réserve.',
-  'Touche une carte de ta collection pour la voir en grand et la faire tourner.',
-  'La lumière qui fuit de l’emballage annonce la meilleure carte du paquet.',
+const TIPS = () => [
+  tr('boot.tip1'),
+  tr('boot.tip2'),
+  tr('boot.tip3'),
+  tr('boot.tip4'),
+  tr('boot.tip5'),
+  tr('boot.tip6'),
 ];
 {
   const tip = loader.querySelector<HTMLElement>('.l-tip')!;
-  let i = Math.floor(Math.random() * TIPS.length);
+  let i = Math.floor(Math.random() * TIPS().length);
   const next = () => {
     if (!loader.isConnected || loader.classList.contains('done')) return;
     tip.classList.remove('on');
     setTimeout(() => {
-      tip.textContent = TIPS[i++ % TIPS.length];
+      tip.textContent = TIPS()[i++ % TIPS().length]; // (fonction : l'astuce suit la langue, arrivée pendant le chargement)
       tip.classList.add('on');
     }, 250);
     setTimeout(next, 4200);
@@ -95,11 +109,32 @@ viewHost.tabIndex = -1;
 
 // la 3D démarre (adaptateur WebGPU, appareil…) pendant que le backend se télécharge ; `boot()` l'attend
 const shellP = createShell(glHost, sceneOverlays);
+void preloadNoise(); // (audit 12/11, S06 / E2-01) bruit des matériaux calculé dans un worker pendant le démarrage de la 3D
 shellP.catch(() => undefined); // (l'échec est traité par boot())
+// (audit 12/11, S06 / E2-02) la vitrine se monte SANS attendre le catalogue ni le backend : son montage (visuel du
+// sachet, matériaux, pipelines) ne lit rien du catalogue — les 5 sachets sont « simples », sans le texte qui en dépend —
+// et il attendait pour rien la fin du téléchargement et de l'analyse du catalogue (boot() démarrait 2,4 à 4 s après le
+// lancement sur le téléphone de Tom, la 3D déjà prête). `boot()` attend les deux.
+const openingP = shellP.then((s) => (installDiag(s), s.mount('opening', createOpeningScene())));
+openingP.catch(() => undefined); // (l'échec est traité par boot())
+void shellP.then(enableMythicReplay, () => undefined); // (08/11) « Rejouer » des 6★ dans les visionneuses
+import { syncPush } from './notif';
+import { setBubbleSound, watchBubbles } from './bubble';
+// (V2) toutes les pastilles grandissent et éclatent en bulle de savon (bubble.ts) — rien à changer dans les pages
+watchBubbles();
+await langP;
 const backend: GameBackend = await backendP.catch((e: unknown) => {
   showFailure(e);
   throw e;
 });
+// (V2) notifications push : si cet appareil est abonné, on resynchronise l'abonnement (clés, compte)
+if (backend.state.mode === 'online') backend.onChange((st) => void (st.ready && st.user && syncPushOnce()));
+let pushSynced = false;
+function syncPushOnce() {
+  if (pushSynced) return;
+  pushSynced = true;
+  void syncPush(backend);
+}
 // (ouverture 07/11) compte à rebours jusqu'à l'ouverture officielle (convex/launch.ts) — par-dessus le chargement
 if (backend.state.mode === 'online') void import('./views/launch').then((m) => m.createLaunchGate(backend));
 // (V2) lien admin : badge « V2 — test » + jeu réservé à l'équipe ; prod : rien (src/core/canal.ts)
@@ -146,33 +181,33 @@ backend.onChange((st) => {
       } catch {
         /* rien */
       }
-      if (r.status === 'ok') toast(`Bienvenue ! ${r.referrer ?? 'Ton parrain'} t’a invité : +${r.packs ?? 10} boosters offerts 🎁`, 'ok');
+      if (r.status === 'ok') toast(tr('ref.welcome', { name: r.referrer ?? tr('ref.yourSponsor'), n: r.packs ?? 10 }), 'ok');
       // (07/11) un lien refusé ne disparaît plus en silence (sauf « déjà parrainé », sans intérêt à l'arrivée)
-      else if (r.status === 'tooLate') toast('Lien de parrainage : ton compte n’est plus assez récent pour être parrainé.', 'info');
-      else if (r.status === 'invalid') toast('Lien de parrainage invalide : demande à ton pote de te le renvoyer (onglet Amis).', 'err');
+      else if (r.status === 'tooLate') toast(tr('ref.tooLate'), 'info');
+      else if (r.status === 'invalid') toast(tr('ref.invalid'), 'err');
     })
     .catch(() => {})
     .finally(() => (refBusy = false));
 });
 
 top.innerHTML = `
-  <button class="skip">Aller au contenu</button>
-  <a class="logo" href="#/">BÉBOU<span>cartes</span></a>
-  <nav aria-label="Pages du jeu">
-    <a href="#/" data-r="">Boutique</a>
-    <a href="#/collection" data-r="collection">Collection</a>
-    <a href="#/echanges" data-r="echanges">Échanges<b class="badge" hidden></b></a>
-    <a href="#/jeux" data-r="jeux">Jeux</a>
-    <a href="#/classement" data-r="classement">Classement</a>
-    <a href="#/succes" data-r="succes">Succès<b class="badge ach-badge" hidden></b></a>
-    <a href="#/amis" data-r="amis">Amis<b class="badge am-badge" hidden></b></a>
+  <button class="skip">${tr('nav.skip')}</button>
+  <a class="logo" href="#/">${tr('boot.logo')}<span>cartes</span></a>
+  <nav aria-label="${tr('nav.aria')}">
+    <a href="#/" data-r="">${tr('nav.shop')}</a>
+    <a href="#/collection" data-r="collection">Collection</a> <!-- i18n-ok -->
+    <a href="#/echanges" data-r="echanges">${tr('nav.trades')}<b class="badge" hidden></b></a>
+    <a href="#/jeux" data-r="jeux">${tr('nav.games')}</a>
+    <a href="#/classement" data-r="classement">${tr('nav.ranking')}</a>
+    <a href="#/succes" data-r="succes">${tr('nav.achievements')}<b class="badge ach-badge" hidden></b></a>
+    <a href="#/amis" data-r="amis">${tr('nav.friends')}<b class="badge am-badge" hidden></b></a>
     <i class="nav-pill" aria-hidden="true"></i>
     <button class="nav-more" tabindex="-1" aria-hidden="true">›</button>
   </nav>
-  <div class="nav-extra" role="group" aria-label="Infos du jeu">
-    <a href="#/maj" data-r="maj" title="Mises à jour" aria-label="Mises à jour"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
-    <a href="#/tuto" data-r="tuto" title="Tutoriel" aria-label="Tutoriel"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
-    <a href="#/suggestions" data-r="suggestions" title="Suggestions" aria-label="Suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><b class="badge sg-badge" hidden></b></a>
+  <div class="nav-extra" role="group" aria-label="${tr('nav.extraAria')}">
+    <a href="#/maj" data-r="maj" title="${tr('nav.updates')}" aria-label="${tr('nav.updates')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
+    <a href="#/tuto" data-r="tuto" title="${tr('nav.tutorial')}" aria-label="${tr('nav.tutorial')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
+    <a href="#/suggestions" data-r="suggestions" title="Suggestions" aria-label="Suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><b class="badge sg-badge" hidden></b></a> <!-- i18n-ok -->
   </div>
   <div class="me"></div>`;
 // (retours live 6, C8) navigation à 7 onglets : Boutique · Collection · Échanges · Jeux · Classement · Succès · Amis.
@@ -185,9 +220,28 @@ const tradeBadge = top.querySelector<HTMLElement>('.badge')!;
 // cartes obtenues depuis la dernière visite de la collection : pastille dorée sur l'onglet
 const freshBadge = h('b', 'badge fresh-badge');
 freshBadge.hidden = true;
-freshBadge.title = 'Nouvelles cartes depuis ta dernière visite';
+freshBadge.title = tr('nav.freshCards');
 top.querySelector('nav a[data-r="collection"]')!.append(freshBadge);
 
+/** (version anglaise) libellés de l'en-tête refaits en place (les pastilles et écouteurs restent) au changement de langue */
+function relabelTop() {
+  const NAV: Record<string, MsgKey> = { '': 'nav.shop', echanges: 'nav.trades', jeux: 'nav.games', classement: 'nav.ranking', succes: 'nav.achievements', amis: 'nav.friends' };
+  top.querySelectorAll<HTMLElement>('nav a[data-r]').forEach((a) => {
+    const k = NAV[a.dataset.r ?? ''];
+    if (k && a.firstChild?.nodeType === Node.TEXT_NODE) a.firstChild.textContent = tr(k);
+  });
+  top.querySelector('.skip')!.textContent = tr('nav.skip');
+  navEl.setAttribute('aria-label', tr('nav.aria'));
+  top.querySelector('.nav-extra')?.setAttribute('aria-label', tr('nav.extraAria'));
+  for (const [r, k] of [['maj', 'nav.updates'], ['tuto', 'nav.tutorial']] as const) {
+    const a = top.querySelector<HTMLElement>(`.nav-extra a[data-r="${r}"]`);
+    a?.setAttribute('title', tr(k));
+    a?.setAttribute('aria-label', tr(k));
+  }
+  freshBadge.title = tr('nav.freshCards');
+  placePill(false);
+  syncNavMore();
+}
 // l'indicateur d'onglet glisse d'une page à l'autre (au lieu de sauter)
 const navEl = top.querySelector<HTMLElement>('nav')!;
 const pill = top.querySelector<HTMLElement>('.nav-pill')!;
@@ -289,6 +343,27 @@ const SND_ICON = `<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="t
 const PACK_ICON = `<svg class="p-ico" viewBox="0 0 16 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-linejoin="round"><path d="M3 4h10v12H3z" fill="currentColor" fill-opacity=".16" stroke-width="1.2"/><path d="M3 4l1.25-2L5.5 4l1.25-2L8 4l1.25-2L10.5 4l1.25-2L13 4M3 16l1.25 2 1.25-2 1.25 2L8 16l1.25 2 1.25-2 1.25 2L13 16" stroke-width="1.05"/><circle cx="8" cy="10" r="2.1" fill="currentColor" stroke="none"/></svg>`;
 
 let meSig = '';
+/**
+ * (version anglaise) Changer de langue depuis la pastille : tout de suite, sauf pendant une ouverture (le booster est
+ * dessiné dans la langue de départ) — alors à la fin. Le rendu est refait par l'abonné `onLang` (plus bas, après les pages).
+ */
+let langBusy: () => boolean = () => false;
+let langWait = 0;
+function switchLang(to: 'fr' | 'en') {
+  window.clearInterval(langWait);
+  langWait = 0;
+  if (langBusy()) {
+    toast(tr('lang.later'), 'info');
+    langWait = window.setInterval(() => {
+      if (langBusy()) return;
+      window.clearInterval(langWait);
+      langWait = 0;
+      void setLang(to).then((ok) => ok || toast(tr('lang.failed'), 'err'));
+    }, 400);
+    return;
+  }
+  void setLang(to).then((ok) => ok || toast(tr('lang.failed'), 'err'));
+}
 let lastIncoming = -1;
 let lastBoard = -1;
 let lastAuthError: string | null = null;
@@ -317,11 +392,13 @@ const fmtCoinsShort = (n: number) => {
  * branché sur `haptics.enabled` (core/haptics.ts, mémorisé `bebou.haptics`) — indépendant du son.
  */
 const HAPTIC_UI = matchMedia('(pointer: coarse)').matches;
-const HAP_NOTE = haptics.support === 'ios' ? ' · iPhone : au toucher seulement' : haptics.support === 'none' ? ' · indisponibles ici' : '';
-const hapBtn = () => `<button class="vol-hap" role="switch" aria-checked="${haptics.enabled}" title="Toucher pour tester${haptics.support === 'ios' ? ' (iPhone : le navigateur ne vibre que pendant un toucher, jamais pendant une animation)' : ''}">Vibrations<small>${HAP_NOTE}</small><i aria-hidden="true">${haptics.enabled ? 'oui' : 'non'}</i></button>`;
-/** Interrupteur « Effets réduits » (retours live 02 §7, core/fxPref.ts) : holo / reflets / halos des cartes encore plus discrets, partout (PC et téléphone). */
-const fxBtn = () => `<button class="vol-hap vol-fx" role="switch" aria-checked="${fxReduced()}" title="Holo, reflets et halos des cartes plus discrets">Effets réduits<i aria-hidden="true">${fxReduced() ? 'oui' : 'non'}</i></button>`;
-const DEMO_TXT = 'Mode démo : pas de serveur, ta collection est stockée dans ce navigateur et les amis sont des robots.';
+const HAP_NOTE = () => haptics.support === 'ios' ? tr('vol.hapIos') : haptics.support === 'none' ? tr('vol.hapNone') : '';
+const hapBtn = () => `<button class="vol-hap" role="switch" aria-checked="${haptics.enabled}" title="${tr('vol.hapTitle', { ios: haptics.support === 'ios' ? tr('vol.hapIosNote') : '' })}">${tr('vol.haptics')}<small>${HAP_NOTE()}</small><i aria-hidden="true">${haptics.enabled ? tr('common.yes') : tr('common.no')}</i></button>`;
+/** (son V2, 11/11) « Nappe des menus » : un accord feutré, très discret, sous les pages — désactivé par défaut. */
+const padBtn = () => `<button class="vol-hap vol-pad" role="switch" aria-checked="${padOn()}" title="${tr('vol.padTitle')}">${tr('vol.pad')}<i aria-hidden="true">${padOn() ? tr('common.yes') : tr('common.no')}</i></button>`;
+/** (son V2, 11/11) « Son même en mode silencieux (iPhone) » : seulement là où le navigateur le permet (Safari 17+). */
+const silentBtn = () => (Sfx.silentSupported() ? `<button class="vol-hap vol-ios" role="switch" aria-checked="${silentOn()}" title="${tr('vol.silentTitle')}">${tr('vol.silent')}<small> · iPhone</small><i aria-hidden="true">${silentOn() ? tr('common.yes') : tr('common.no')}</i></button>` : '');
+const DEMO_TXT = () => tr('demo.txt');
 // clic n'importe où ailleurs, ou Échap : le panneau du volume se ferme
 document.addEventListener('click', () => volOpen && setVolOpen(false));
 window.addEventListener('keydown', (e) => e.key === 'Escape' && volOpen && setVolOpen(false));
@@ -357,7 +434,7 @@ function layoutMenu() {
   if (!menu) return;
   const st = meEl.querySelector<HTMLElement>('.me-st')!;
   const id = meEl.querySelector<HTMLElement>('.me-id')!;
-  const items = ['.msn-btn', '.st-btn', '.snd-wrap', '.demo'].map((q) => meEl.querySelector<HTMLElement>(q)).filter((x): x is HTMLElement => !!x);
+  const items = ['.msn-btn', '.st-btn', '.lang-sw', '.snd-wrap', '.demo'].map((q) => meEl.querySelector<HTMLElement>(q)).filter((x): x is HTMLElement => !!x);
   if (phoneHead.matches) {
     for (const x of items) menu.append(x);
     // « Relancer le jeu » toujours en dernier (l'appli installée n'a pas de bouton recharger)
@@ -369,7 +446,7 @@ function layoutMenu() {
     for (const x of items) {
       if (x.parentElement !== menu) continue;
       if (x.matches('.msn-btn, .st-btn')) st.insertBefore(x, pity);
-      else id.insertBefore(x, x.matches('.demo') ? (id.querySelector('.snd-wrap') ?? id.querySelector('.user')) : id.querySelector('.user'));
+      else id.insertBefore(x, x.matches('.demo') ? (id.querySelector('.lang-sw') ?? id.querySelector('.snd-wrap') ?? id.querySelector('.user')) : id.querySelector('.user'));
     }
     if (menuOpen) setMenuOpen(false);
   }
@@ -387,7 +464,7 @@ function layoutMenu() {
 function syncMenuDot() {
   const d = meEl.querySelector<HTMLElement>('.u-dot');
   if (!d) return;
-  const n = (missions?.ready() ?? 0) + (status ? Number(status.streak().claimable || status.streak().calendar) : 0);
+  const n = (missions?.ready() ?? 0) + (status ? Number(status.streak().claimable || status.streak().calendar) : 0) + Number(navDots?.majUnread() ?? false);
   d.hidden = !phoneHead.matches || n === 0;
 }
 phoneHead.addEventListener('change', () => layoutMenu());
@@ -407,24 +484,28 @@ function renderMe() {
   if (sig === meSig) return;
   meSig = sig;
   // démo : un petit « démo » reste visible au téléphone ; le toucher explique (le `title` n'existe pas au doigt)
-  const demo = s.mode === 'demo' ? `<button class="demo" title="${DEMO_TXT}" aria-label="${DEMO_TXT}"><span class="d-l">démo hors-ligne</span><span class="d-s">démo</span></button>` : '';
+  const demo = s.mode === 'demo' ? `<button class="demo" title="${DEMO_TXT()}" aria-label="${DEMO_TXT()}"><span class="d-l">${tr('demo.offline')}</span><span class="d-s">${tr('demo.short')}</span></button>` : '';
   // son (correctif retours live n°1) : l'icône ouvre / ferme le panneau du volume (curseur + couper / activer) ; un clic
   // ailleurs ou Échap le ferme aussi. Plus d'ouverture au survol : c'est ce qui l'empêchait de se refermer.
-  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="Son et volume" aria-label="Son et volume" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? 'Couper' : 'Activer'}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}${fxBtn()}</span></span>`;
+  const snd = `<span class="snd-wrap${volOpen ? ' open' : ''}"><button class="icon snd${soundOn() ? '' : ' off'}" title="${tr('vol.title')}" aria-label="${tr('vol.title')}" aria-controls="pop-vol" aria-expanded="${volOpen}">${SND_ICON}</button><span class="vol-pop" id="pop-vol" role="dialog" aria-label="Volume"${volOpen ? '' : ' inert'}><button class="vol-mute" aria-pressed="${!soundOn()}">${soundOn() ? tr('vol.mute') : tr('vol.unmute')}</button><input class="vol" type="range" min="0" max="100" step="5" value="${Math.round(soundVolume() * 100)}" aria-label="Volume"><b class="vol-n">${Math.round(soundVolume() * 100)}</b>${HAPTIC_UI ? hapBtn() : ''}${padBtn()}${silentBtn()}</span></span>`; // i18n-ok
+  // (version anglaise) langue : pastille FR | EN collée au son, même taille ; la langue active en blanc (usinage.css)
+  const ls = `<button class="icon lang-sw" title="${tr('lang.title')}" aria-label="${tr('lang.aria')}"><span class="ls-p" aria-hidden="true"><b${lang() === 'fr' ? ' class="on"' : ''}>FR</b><i>|</i><b${lang() === 'en' ? ' class="on"' : ''}>EN</b></span><span class="mm-l">${tr('lang.label')}</span></button>`;
   // deux groupes : l'état du joueur (réserve, pièces, missions, série, pity) et l'identité (démo, son, profil). Sur
   // ordinateur ils se suivent sur une ligne ; au téléphone (`.me { display: contents }`) l'identité monte à côté du logo
   // et l'état prend toute la 2e rangée (style.css, lot A)
   if (!u) {
     // en ligne, tant que le serveur n'a pas répondu : « connexion… » (pas « Connexion Discord » à un joueur connecté)
-    const login = s.mode !== 'online' ? '' : s.ready ? `<button class="btn-primary login">Se connecter</button>` : `<span class="conn" role="status">connexion…</span>`;
-    meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${snd}${login}</div>`;
+    const login = s.mode !== 'online' ? '' : s.ready ? `<button class="btn-primary login">${tr('auth.login')}</button>` : `<span class="conn" role="status">${tr('hdr.connecting')}</span>`;
+    meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${ls}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="1 booster toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP} en réserve · ouvrir à la boutique">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="Portefeuille : pièces, primes, mouvements" aria-label="Portefeuille" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="Missions du jour" aria-label="Missions du jour" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="Connexion : série et calendrier" aria-label="Connexion : série et calendrier" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">Connexion</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="Mon profil · ${esc(u.name)}" aria-label="Mon profil" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="Menu du profil" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>Voir mon profil</em></span></a><button class="icon mm-reload" title="Vide les caches du jeu et recharge la dernière version (tu restes connecté)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">Réparer et mettre à jour</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Mises à jour</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">Tutoriel</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`;
+    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="${tr('hdr.packsTitle', { min: PACK_REGEN_MS / 60000, cap: PACK_CAP })}">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="${tr('hdr.walletTitle')}" aria-label="${tr('hdr.wallet')}" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="${tr('hdr.missions')}" aria-label="${tr('hdr.missions')}" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="${tr('hdr.streakTitle')}" aria-label="${tr('hdr.streakTitle')}" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">${tr('hdr.streak')}</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${ls}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="${tr('hdr.profileTitle', { name: esc(u.name) })}" aria-label="${tr('hdr.profile')}" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="${tr('hdr.profileMenu')}" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>${tr('hdr.seeProfile')}</em></span></a><button class="icon mm-reload" title="${tr('hdr.repairTitle')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">${tr('hdr.repair')}</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">${tr('nav.updates')}</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">${tr('nav.tutorial')}</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`; // i18n-ok
     tickPacks();
+    navDots?.sync(); // (le menu du profil vient d'être refait : sa pastille « Mises à jour » aussi)
   }
   meEl.querySelector('.login')?.addEventListener('click', () => backend.login());
-  meEl.querySelector('.demo')?.addEventListener('click', () => toast(DEMO_TXT, 'info'));
+  meEl.querySelector('.demo')?.addEventListener('click', () => toast(DEMO_TXT(), 'info'));
+  meEl.querySelector('.lang-sw')?.addEventListener('click', () => switchLang(lang() === 'fr' ? 'en' : 'fr'));
   const sndWrap = meEl.querySelector<HTMLElement>('.snd-wrap');
   const sndBtn = meEl.querySelector<HTMLElement>('.snd');
   sndBtn?.addEventListener('click', (e) => {
@@ -436,25 +517,30 @@ function renderMe() {
     sndBtn?.classList.toggle('off', !on); // les ondes s'effacent, la croix apparaît (et l'inverse)
     const m = meEl.querySelector<HTMLButtonElement>('.vol-mute');
     if (m) {
-      m.textContent = on ? 'Couper' : 'Activer';
+      m.textContent = on ? tr('vol.mute') : tr('vol.unmute');
       m.setAttribute('aria-pressed', String(!on));
     }
   };
   meEl.querySelector('.vol-mute')?.addEventListener('click', () => setSoundOn(!soundOn()));
-  meEl.querySelector('.vol-hap')?.addEventListener('click', (e) => {
+  // (11/11) le sélecteur visait le premier `.vol-hap` : sans vibrations (ordinateur), c'était « Effets réduits »
+  meEl.querySelector('.vol-hap:not(.vol-pad):not(.vol-ios)')?.addEventListener('click', (e) => {
     const b = e.currentTarget as HTMLElement;
     haptics.enabled = !haptics.enabled;
     b.setAttribute('aria-checked', String(haptics.enabled));
-    b.querySelector('i')!.textContent = haptics.enabled ? 'oui' : 'non';
+    b.querySelector('i')!.textContent = haptics.enabled ? tr('common.yes') : tr('common.no');
     haptics.pulse([40, 60, 40]); // (allumées : on les sent tout de suite ; coupées : rien)
-    if (haptics.enabled && haptics.why) toast(`Vibrations : ${haptics.why}.`, 'info');
+    if (haptics.enabled && haptics.why) toast(tr('vol.hapWhy', { why: haptics.why }), 'info');
   });
-  meEl.querySelector('.vol-fx')?.addEventListener('click', (e) => {
-    const b = e.currentTarget as HTMLElement;
-    setFxReduced(!fxReduced()); // → matériaux holo (uniforms) + classe fx-reduced du <body> (vignettes)
-    b.setAttribute('aria-checked', String(fxReduced()));
-    b.querySelector('i')!.textContent = fxReduced() ? 'oui' : 'non';
-  });
+  const toggle = (sel: string, read: () => boolean, write: (on: boolean) => void, apply: (on: boolean) => void) =>
+    meEl.querySelector(sel)?.addEventListener('click', (e) => {
+      const b = e.currentTarget as HTMLElement;
+      write(!read());
+      b.setAttribute('aria-checked', String(read()));
+      b.querySelector('i')!.textContent = read() ? tr('common.yes') : tr('common.no');
+      apply(read());
+    });
+  toggle('.vol-pad', padOn, setPadOn, (on) => shell?.sfx.setPad(on));
+  toggle('.vol-ios', silentOn, setSilentOn, (on) => shell?.sfx.setPlayThroughSilent(on));
   const vol = meEl.querySelector<HTMLInputElement>('.vol');
   vol?.style.setProperty('--v', vol.value);
   vol?.addEventListener('input', () => {
@@ -487,7 +573,7 @@ function renderMe() {
   // + le tableau d'offres (lot T) : offres reçues sur mes annonces, contre-offres reçues sur mes offres
   const nb = boardAttention(s);
   const n = s.trades.incoming.length + nb;
-  if (lastBoard >= 0 && nb > lastBoard && currentRoute !== 'echanges') toast('Du nouveau sur le tableau d’offres (offre ou contre-offre) → Échanges', 'info');
+  if (lastBoard >= 0 && nb > lastBoard && currentRoute !== 'echanges') toast(tr('hdr.boardNews'), 'info');
   lastBoard = nb;
   const badgeChanged = tradeBadge.hidden !== (n === 0) || tradeBadge.textContent !== String(n);
   tradeBadge.hidden = n === 0;
@@ -496,7 +582,7 @@ function renderMe() {
   // un ami vient de proposer un échange (et on n'est pas déjà sur la page des échanges) : petit message
   if (lastIncoming >= 0 && n - nb > lastIncoming && currentRoute !== 'echanges') {
     const t = s.trades.incoming[s.trades.incoming.length - 1];
-    toast(`${t?.fromName ?? 'Un ami'} te propose un échange → Échanges`, 'info');
+    toast(tr('hdr.tradeOffer', { name: t?.fromName ?? tr('hdr.aFriend') }), 'info');
   }
   lastIncoming = n - nb;
 }
@@ -510,7 +596,7 @@ function syncMissionBadge() {
   b.textContent = String(n);
   const btn = meEl.querySelector<HTMLElement>('.msn-btn');
   btn?.classList.toggle('ready', n > 0);
-  btn?.setAttribute('aria-label', n ? `Missions : ${n} à réclamer` : 'Missions du jour');
+  btn?.setAttribute('aria-label', n ? tr('hdr.missionsReady', { n }) : tr('hdr.missions'));
   syncMenuDot();
 }
 backend.onChange(syncMissionBadge);
@@ -528,7 +614,7 @@ function syncFriendLink() {
   const b = a.querySelector<HTMLElement>('.am-badge')!;
   if (b.hidden !== (n === 0)) b.hidden = n === 0;
   if (b.textContent !== String(n)) b.textContent = String(n);
-  const label = n ? `Amis : ${n} demande${n > 1 ? 's' : ''} d’ami reçue${n > 1 ? 's' : ''}` : 'Amis';
+  const label = n ? tr('hdr.friendReqs', { n }) : tr('nav.friends.aria');
   if (a.getAttribute('aria-label') !== label) (a.setAttribute('aria-label', label), (a.title = label));
   a.classList.toggle('ready', n > 0);
   placePill(false);
@@ -542,8 +628,8 @@ backend.onChange((st) => {
   friendSeen = { inc: new Set(so.incoming.map((r) => r.id)), out: new Map(so.outgoing.map((r) => [r.userId, r.name])), friends: new Set(so.friends.map((f) => f.userId)) };
   if (!prev || currentRoute === 'amis') return;
   const fresh = so.incoming.find((r) => !prev.inc.has(r.id));
-  if (fresh) toast(`${fresh.name} te demande en ami → Amis`, 'info');
-  for (const [userId, name] of prev.out) if (friendSeen.friends.has(userId) && !prev.friends.has(userId)) toast(`${name} a accepté ta demande d’ami !`, 'ok');
+  if (fresh) toast(tr('hdr.friendAsks', { name: fresh.name }), 'info');
+  for (const [userId, name] of prev.out) if (friendSeen.friends.has(userId) && !prev.friends.has(userId)) toast(tr('hdr.friendAccepted', { name }), 'ok');
 });
 /** pastille sur l'onglet SUCCÈS : succès atteints à encaisser */
 const achBadge = top.querySelector<HTMLElement>('.ach-badge')!;
@@ -577,8 +663,8 @@ function syncCoins() {
   setText(b.querySelector('b')!, fmtCoinsShort(snap.coins));
   const ready = wallet?.ready() ?? 0;
   b.querySelector<HTMLElement>('.w-dot')!.hidden = ready === 0;
-  b.title = ready ? 'Portefeuille : quelque chose à prendre (calendrier, primes, succès) !' : 'Portefeuille : pièces, calendrier, primes';
-  b.setAttribute('aria-label', `Portefeuille : ${fmtCoins(snap.coins)} pièces${ready ? ', quelque chose à prendre' : ''}`);
+  b.title = ready ? tr('hdr.walletReady') : tr('hdr.walletIdle');
+  b.setAttribute('aria-label', tr('hdr.walletCoins', { coins: fmtCoins(snap.coins), ready: ready ? tr('hdr.walletSomething') : '' }));
   // (animations réduites : le solde change, sans « +N » qui s'envole)
   if (lastCoins >= 0 && snap.coins !== lastCoins && document.visibilityState === 'visible' && !lessMotion.matches) {
     const d = snap.coins - lastCoins;
@@ -594,8 +680,9 @@ function syncCoins() {
     // gain : tics de pièces dont la hauteur monte dans la gamme (3 à 8 selon le montant), puis un « ting » final
     if (d > 0 && shell) {
       const n = Math.min(8, 3 + Math.floor(Math.log10(Math.max(1, d))));
-      for (let i = 0; i < n; i++) setTimeout(() => shell.sfx.coin(i, 0.07), i * 55);
-      setTimeout(() => shell.sfx.note(10, 0.08, 0.5), n * 55 + 60);
+      // (son V2) la rafale est programmée d'un coup sur l'horloge audio : régulière à l'échantillon près
+      for (let i = 0; i < n; i++) shell.sfx.coin(i, 0.07, i * 0.055);
+      shell.sfx.note(10, 0.08, 0.5, n * 0.055 + 0.06);
     }
   }
   lastCoins = snap.coins;
@@ -612,20 +699,33 @@ function syncStatus() {
   // flamme = panneau CONNEXION (retours live 02, §11) : elle bat s'il y a la série OU le cadeau du calendrier à prendre
   const ready = sk.claimable || sk.calendar;
   st.classList.toggle('ready', ready);
-  st.title = sk.claimable ? 'Série de 7 jours : récompense à réclamer !' : sk.calendar ? 'Connexion : cadeau du jour à prendre !' : `Connexion · série jour ${sk.day}/7 · calendrier`;
+  st.title = sk.claimable ? tr('hdr.streak7') : sk.calendar ? tr('hdr.dailyGift') : tr('hdr.streakDay', { day: sk.day });
   st.setAttribute('aria-label', st.title);
   syncMenuDot();
   // pity (retours live 02, §11) : compteur « X/200 » toujours visible, sans clic
+  // (retours Hugo 10/11, anti-spoil) le serveur remet le compteur à zéro dès le TIRAGE : pendant l'ouverture (et tant
+  // qu'un booster tiré attend d'être ouvert) le compteur reste figé, il ne bouge qu'une fois le booster fini
+  if (document.body.classList.contains('opening') || backend.state.sealed) {
+    if (pt.querySelector('.pt-n')!.textContent) return;
+  }
   const n = status.pityCount();
   const left = status.pityLeft();
   pt.querySelector('.pt-n')!.textContent = `${n}/${PITY_LIMIT}`;
   pt.classList.toggle('near', left <= 20 && left > 0);
   pt.classList.toggle('ready', left === 0);
-  pt.title = left === 0 ? 'Pity 6★ : ton prochain booster contient un 6★ sûr !' : `Pity 6★ : ${n} booster${n > 1 ? 's' : ''} sans 6★ · au ${PITY_LIMIT}e, un 6★ garanti (remis à zéro au premier 6★)`;
+  pt.title = left === 0 ? tr('hdr.pityNext') : tr('hdr.pity', { n, limit: PITY_LIMIT });
   pt.setAttribute('aria-label', pt.title);
 }
 backend.eco.onChange(syncStatus);
 backend.onChange(syncStatus);
+// fin de l'ouverture (la classe « opening » du body tombe) : la pity se met enfin à jour
+{
+  let wasOpening = false;
+  new MutationObserver(() => {
+    const on = document.body.classList.contains('opening');
+    if (on !== wasOpening && !(wasOpening = on)) syncStatus();
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+}
 /** N'écrit dans le DOM que si le texte change (le compteur tourne chaque seconde). */
 const setText = (e: Element, t: string) => {
   if (e.textContent !== t) e.textContent = t;
@@ -645,7 +745,7 @@ function tickPacks() {
   // (retours live 02, lot G) état « régénération en cours » distinct de « réserve pleine » (pilule violet/bleu, CSS)
   el.classList.toggle('regen', r.nextAt !== null);
   el.classList.toggle('empty', r.balance <= 0);
-  setText(el.querySelector<HTMLElement>('.p-next')!, r.nextAt === null ? 'réserve pleine' : `+1 dans ${fmtCountdown(r.nextAt - now)}`);
+  setText(el.querySelector<HTMLElement>('.p-next')!, r.nextAt === null ? tr('hdr.full') : tr('hdr.nextIn', { time: fmtCountdown(r.nextAt - now) }));
   const fill = el.querySelector<HTMLElement>('.p-bar > i')!;
   const gained = lastBalance >= 0 && r.balance > lastBalance;
   // un booster vient d'arriver (ou l'en-tête vient d'être refait) : la barre se place d'un coup, sans animation
@@ -661,7 +761,7 @@ function tickPacks() {
     if (left > 0) {
       const m = Math.ceil(left / 60000);
       setText(boost, `×2 · ${m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` : `${m} min`}`);
-      boost.title = `Recharge ×2 : 1 booster toutes les 2 min 30 pendant encore ${m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`}`;
+      boost.title = tr('hdr.boost', { left: m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min` });
     }
   }
   if (snap) {
@@ -673,7 +773,7 @@ function tickPacks() {
     void el.offsetWidth;
     el.classList.add('gain'); // petit pop quand un booster arrive
     // on attendait (réserve vide) : on le dit, même depuis une autre page
-    if (lastBalance === 0 && document.visibilityState === 'visible') toast('Un booster vient d’arriver : il t’attend à la boutique !', 'ok');
+    if (lastBalance === 0 && document.visibilityState === 'visible') toast(tr('hdr.packArrived'), 'ok');
   }
   if (r.balance !== lastBalance) {
     lastBalance = r.balance;
@@ -691,54 +791,91 @@ let shell: Shell;
 
 // plus de réseau (métro, avion…) : un bandeau discret le dit, au lieu d'erreurs incompréhensibles ; même bandeau
 // quand le réseau marche mais que le serveur ne répond pas (panne, déploiement en cours) : « serveur injoignable »
-const offlinePill = h('div', 'offline-pill', 'Pas de réseau · on reprend dès que ça revient');
+const offlinePill = h('div', 'offline-pill', tr('net.offline'));
 offlinePill.setAttribute('role', 'status');
 document.body.append(offlinePill);
 let wasDown = false;
 const syncOnline = () => {
   const off = !navigator.onLine;
   const down = !off && backend.state.mode === 'online' && serverDown();
-  const txt = off ? 'Pas de réseau · on reprend dès que ça revient' : 'Serveur injoignable · on réessaie…';
+  const txt = off ? tr('net.offline') : tr('net.serverDown');
   if ((off || down) && offlinePill.textContent !== txt) offlinePill.textContent = txt;
   document.body.classList.toggle('offline', off);
   document.body.classList.toggle('server-down', down);
   offlinePill.setAttribute('aria-hidden', String(!off && !down));
-  if (wasDown && !down && !off) toast('Serveur retrouvé', 'ok');
+  if (wasDown && !down && !off) toast(tr('net.serverBack'), 'ok');
   wasDown = down;
 };
-window.addEventListener('online', () => (syncOnline(), toast('Réseau retrouvé', 'ok')));
+window.addEventListener('online', () => (syncOnline(), toast(tr('net.back'), 'ok')));
 window.addEventListener('offline', syncOnline);
 backend.onChange(syncOnline);
 
 let currentRoute = '';
+/** (V2) pastilles ajoutées : réserve pleine, Jeux, parrainage, mises à jour (game/navDots.ts) */
+let navDots: ReturnType<typeof installNavDots> | null = null;
+queueMicrotask(() => (navDots = installNavDots(backend, top, meEl, { route: () => currentRoute, onChange: () => syncMenuDot() })));
 /** Titre de l'onglet : la page, précédée du nombre de boosters prêts (« (3) Bébou — boutique »). */
 function updateTitle() {
   const u = backend.state.user;
   const n = u ? liveRegen(u).balance : 0;
-  const t = `${n > 0 ? `(${n}) ` : ''}${TITLES[currentRoute] ?? TITLES['']}`;
-  if (document.title !== t) document.title = t;
+  const title = `${n > 0 ? `(${n}) ` : ''}${pageTitle(currentRoute)}`;
+  if (document.title !== title) document.title = title;
 }
-/** Titre de l'onglet du navigateur selon la page. */
-const TITLES: Record<string, string> = {
-  '': 'Bébou — boutique',
-  collection: 'Bébou — collection',
-  contrats: 'Bébou — contrats',
-  echanges: 'Bébou — échanges',
-  amis: 'Bébou — amis',
-  profil: 'Bébou — profil',
-  jeux: 'Bébou — jeux',
-  classement: 'Bébou — classement',
-  succes: 'Bébou — succès',
-  suggestions: 'Bébou — suggestions',
-  maj: 'Bébou — mises à jour',
-  tuto: 'Bébou — tutoriel',
-};
+/** Titre de l'onglet du navigateur selon la page (fr.ts / en.ts : `title.*`). */
+const TITLE_PAGES = new Set(['collection', 'contrats', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
+const pageTitle = (r: string) => tr((TITLE_PAGES.has(r) ? `title.${r}` : 'title.shop') as MsgKey);
 
 /** Page du jeu : son élément et ses entrées / sorties (route()). */
 interface View {
   el: HTMLElement;
   enter(sub?: string): void;
   leave(): void;
+}
+/**
+ * (V2 fluidité, lot « nav ») CHANGEMENT DE PAGE DOM ↔ DOM par View Transitions — ACTIF par défaut depuis le 11/11 (validé par Tom ;
+ * `?vt=0` dans l'adresse le coupe). Fondu enchaîné sobre : l'ancienne page s'efface pendant que la nouvelle apparaît, mêmes jeton
+ * de durée (emphatique) et même courbe (entrée) que `view-in`, sans le petit déplacement (bloc « VIEW TRANSITIONS » en
+ * fin de style.css). Jamais quand la boutique / la 3D est d'un côté (capture du canvas WebGPU) ni en « Effets réduits ».
+ * Coupe-circuit : une erreur, ou une mise à jour qui tarde (> 600 ms) ou une transition qui s'éternise (> durée + 800 ms)
+ * la coupe pour le reste de la session — le changement de page se fait alors comme avant.
+ */
+const VT_FLAG = (() => {
+  try {
+    return new URLSearchParams(location.search).get('vt') !== '0';
+  } catch {
+    return true;
+  }
+})();
+let vtDead = false;
+/** Fait `apply` (le vrai changement de page) sous transition ; `canVT()` d'abord (sinon `apply` direct, avec `view-in`). */
+const canVT = () => VT_FLAG && !vtDead && !document.hidden && typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+function swapPage(apply: () => void): void {
+  const root = document.documentElement;
+  let ran = false;
+  const run = () => {
+    if (ran) return;
+    ran = true;
+    apply();
+  };
+  const trip = (why: unknown) => {
+    if (!vtDead) console.warn('[jeu] View Transitions coupées pour la session :', why);
+    vtDead = true;
+  };
+  try {
+    root.classList.add('vt-pages');
+    const t = document.startViewTransition(run);
+    // mise à jour qui n'arrive pas (fil principal pris) : on change de page quand même, et on coupe
+    const late = window.setTimeout(() => (trip('mise à jour tardive'), run()), 600);
+    // transition qui s'éternise : on la saute
+    const stuck = window.setTimeout(() => (trip('transition trop longue'), t.skipTransition()), 800 + parseFloat(getComputedStyle(root).getPropertyValue('--dur-emphatique') || '400'));
+    t.updateCallbackDone.then(() => clearTimeout(late), (e: unknown) => (clearTimeout(late), console.error(e), trip(e)));
+    t.ready.catch(() => undefined); // (transition sautée : normal)
+    void t.finished.catch(() => undefined).then(() => (clearTimeout(late), clearTimeout(stuck), root.classList.remove('vt-pages')));
+  } catch (e) {
+    trip(e);
+    root.classList.remove('vt-pages');
+    run();
+  }
 }
 /**
  * Pages chargées à leur première visite (PERF2-05) : hors du premier téléchargement, préchargées en tâche de fond une
@@ -761,6 +898,17 @@ const PAGE_MODULES = {
 type PageKey = keyof typeof PAGE_MODULES;
 const isPage = (k: string): k is PageKey => k in PAGE_MODULES;
 /** Précharge (sans les créer) les modules des pages, un par un quand le navigateur est libre ; rien en économie de données. */
+// (V2 fluidité, lot 2) dès que le doigt se pose sur un lien du menu, le module de la page part : il est là au lâcher,
+// même dans les premières secondes (avant le préchargement de fond)
+document.addEventListener(
+  'pointerdown',
+  (e) => {
+    const r = (e.target as Element | null)?.closest?.('a[data-r]')?.getAttribute('data-r');
+    if (r && r in PAGE_MODULES) void PAGE_MODULES[r as keyof typeof PAGE_MODULES]().catch(() => undefined);
+  },
+  { passive: true, capture: true },
+);
+
 function prefetchPages() {
   const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
   if (conn?.saveData || /2g/.test(conn?.effectiveType ?? '')) return;
@@ -785,17 +933,17 @@ async function boot() {
     bar.parentElement!.classList.toggle('busy', busy);
     loader.querySelector<HTMLElement>('.l-txt')!.textContent = txt;
   };
-  step(15, 'démarrage de la 3D…', true);
+  step(15, tr('boot.start3d'), true);
   // visionneuse (collection, gros tirages, fiche…) : son module se télécharge pendant le démarrage de la 3D
   const viewerMod = import('./scenes/viewer');
   viewerMod.catch(() => undefined); // (échec : getViewer() réessaie)
   shell = await shellP;
-  installDiag(shell); // (diagnostic à distance des scènes 6★ sur téléphone, voir diag.ts)
+  setBubbleSound(() => shell.sfx.ui('pop'));
   setToastSound((kind) => (kind === 'err' ? shell.sfx.decline(0.07) : kind === 'ok' ? shell.sfx.note(5, 0.05, 0.4) : shell.sfx.note(2, 0.04, 0.35)));
-  step(35, 'impression des boosters…', true);
+  step(35, tr('boot.printing'), true);
   // scène d'ouverture = vitrine de la boutique : montée (et ses shaders compilés pour toutes les raretés) avant tout
-  const opening = await shell.mount('opening', createOpeningScene());
-  step(85, 'mise en place…');
+  const opening = await openingP;
+  step(85, tr('boot.setup'));
 
   let viewerP: Promise<ViewerScene> | null = null;
   let viewerModP: Promise<typeof import('./scenes/viewer')> | null = viewerMod;
@@ -805,7 +953,8 @@ async function boot() {
       viewerModP = null;
       // Pokémon 6★ : la visionneuse (collection, gros tirages, échanges…) rejoue la rencontre sauvage (wildEncounter.ts) ;
       // Yu-Gi-Oh 6★ : l'invocation (duelEncounter.ts)
-      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withMusicPreview(shell, withDuelSummon(shell, withWildEncounter(shell, v))));
+      // (10/11) les autres 6★ : la scène de leur famille (mythicEncounter.ts), et le bouton « Rejouer » (ui.ts)
+      viewerP = mod.then((m) => shell.mount('viewer', m.createViewerScene())).then((v) => withMythicPrelude(shell, withMusicPreview(shell, withDuelSummon(shell, withWildEncounter(shell, v)))));
       viewerP.catch(() => (viewerP = null)); // (échec : nouvel essai au prochain appel, si le navigateur ne garde pas l'échec)
     }
     return viewerP;
@@ -813,6 +962,7 @@ async function boot() {
 
   const shop = createShopView(backend, shell, opening, (r) => (location.hash = `#/${r}`), getViewer);
   setUpdateBusy(() => shop.busy()); // (v1.0.12) la mise à jour forcée attend la fin d'une ouverture
+  langBusy = () => shop.busy(); // (version anglaise) et le changement de langue aussi
   missions = createMissions(backend, shell);
   wallet = createWallet(backend, shell);
   status = createStatus(backend, shell);
@@ -851,12 +1001,60 @@ async function boot() {
   // (pas de « Réessayer » : le navigateur garde en mémoire l'échec d'un module pour la session — seul recharger marche)
   waitEl.addEventListener('click', (e) => (e.target as Element).closest('.vw-reload') && location.reload());
   const failMsg = () =>
-    navigator.onLine ? 'Cette page n’a pas pu se charger (réseau coupé un instant, ou nouvelle version du jeu en ligne) : recharge la page.' : 'Pas de réseau : cette page n’a pas pu se charger. Recharge dès que le réseau revient.';
+    navigator.onLine ? tr('page.failed') : tr('page.offline');
   let current = '';
   let routeGen = 0;
 
+  /**
+   * (V2, 10/11) CHAT : lanceur en bas à droite, sur toutes les pages (chat.ts) — hors du premier téléchargement,
+   * monté une fois la boutique affichée. `#/chat/<conversation>` (notification touchée) ouvre le panneau sur la bonne
+   * conversation sans changer de page.
+   */
+  let chatP: Promise<import('./chat').ChatWidget | null> | null = null;
+  const getChat = () =>
+    (chatP ??= import('./chat').then((m) =>
+      m.createChat(backend, { sound: (k) => (k === 'in' ? shell.sfx.note(4, 0.04, 0.3) : k === 'out' ? shell.sfx.tick(1.45, 0.045) : shell.sfx.tick(1.1, 0.035)) }),
+    ));
+  let routed = false;
+
+  /**
+   * (V2 fluidité, lot « nav ») DÉFILEMENT RESTAURÉ AU RETOUR (bouton / geste « retour » ou « avancer » du navigateur) :
+   * chaque entrée d'historique de page reçoit un repère (`bebouPg`, ajouté à `history.state` par ÉTALEMENT : la pile
+   * des couches de ui.ts y garde `bebouLayer`). Une entrée qui porte déjà un repère à l'arrivée = traversée de
+   * l'historique ; un clic dans le menu crée une entrée neuve, sans repère : remise à zéro comme avant.
+   * On garde le `scrollTop` de la page quittée, par entrée ; les vues, elles, restent détachées (leurs
+   * `el.isConnected` pilotent le travail de fond : elles ne peuvent pas rester dans le DOM).
+   */
+  const scrollMemo = new Map<string, number>();
+  let navStamp = '';
+  let stampSeq = 0;
+  const restoreScroll = (el: HTMLElement, top: number, gen: number) => {
+    let tries = 0;
+    let cancelled = false;
+    const stop = () => (cancelled = true);
+    el.addEventListener('wheel', stop, { once: true, passive: true });
+    el.addEventListener('touchstart', stop, { once: true, passive: true });
+    el.addEventListener('keydown', stop, { once: true });
+    const step = () => {
+      if (cancelled || gen !== routeGen || !el.isConnected) return;
+      el.scrollTop = top;
+      // contenu encore trop court (rendu / images en route) : on réessaie quelques images
+      if (el.scrollTop < top - 2 && el.scrollHeight - el.clientHeight < top && ++tries < 12) requestAnimationFrame(step);
+    };
+    step();
+  };
+
   function route() {
-    const [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/');
+    let [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/') as [string?, string?];
+    if (r === 'chat') {
+      const conv = sub;
+      history.replaceState(history.state, '', current ? `#/${current}` : '#/');
+      void getChat().then((c) => c?.open(conv), () => undefined);
+      if (routed) return;
+      r = '';
+      sub = undefined;
+    }
+    routed = true;
     // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
     // primes de complétion dans la page Succès
     const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' ? '#/collection/contrats' : undefined;
@@ -866,11 +1064,20 @@ async function boot() {
     const key = page in views || isPage(page) ? page : '';
     if (shop.busy() && key !== '') {
       // pas de fuite au milieu d'une ouverture : le pack est déjà tiré, on le finit
-      history.replaceState(null, '', '#/');
-      toast('Termine d’abord ton booster !', 'info');
+      history.replaceState(history.state, '', '#/');
+      toast(tr('shop.finishFirst'), 'info');
       return;
     }
     const changed = current !== key;
+    const from = current;
+    // traversée de l'historique ? (entrée déjà repérée, et pas celle qu'on quitte) → le défilement mémorisé sera rendu
+    const arrived = (history.state as { bebouPg?: string } | null)?.bebouPg;
+    const wantTop = arrived && arrived !== navStamp ? scrollMemo.get(arrived) : undefined;
+    const leaving = views[current];
+    if (navStamp && leaving?.el.isConnected) {
+      scrollMemo.set(navStamp, leaving.el.scrollTop);
+      if (scrollMemo.size > 60) scrollMemo.delete(scrollMemo.keys().next().value!);
+    }
     const gen = ++routeGen;
     // changement de page : aucun panneau de l'en-tête ni aucune couche ne reste ouvert par-dessus la nouvelle page
     // (avant que la page quittée ne ferme ses propres visionneuses)
@@ -883,9 +1090,21 @@ async function boot() {
     if (changed && shell) shell.sfx.tick(1.15, 0.025); // changement de page : un tic à peine audible
     if (changed) haptics.pulse(6); // (audit 06/11) et une vibration très courte sous le doigt, comme les apps natives
     current = key;
+    if (arrived) navStamp = arrived;
+    else {
+      navStamp = `${Date.now().toString(36)}.${++stampSeq}`;
+      try {
+        history.replaceState({ ...(history.state as object | null), bebouPg: navStamp }, '');
+      } catch {
+        /* historique refusé : pas de repère, pas de restauration */
+      }
+    }
+    // (V2 fluidité, lot 5) la liste du club n'est suivie en temps réel que sur les pages qui l'affichent
+    backend.watchMembers?.(key === 'jeux' || key === 'echanges' || key === 'amis' || key === 'profil' || key === 'classement');
     document.body.dataset.route = key || 'shop';
     currentRoute = key;
     updateTitle();
+    navDots?.sync();
     // (C8) les Contrats vivent dans la Collection : c'est son onglet qui reste allumé
     const navKey = key === 'contrats' ? 'collection' : key;
     top.querySelectorAll<HTMLElement>('nav a, .nav-extra a').forEach((a) => {
@@ -899,24 +1118,35 @@ async function boot() {
     showActiveTab(changed);
     syncNavMore();
     meEl.querySelector('.user')?.classList.toggle('on', key === 'profil');
-    const show = (v: View, fade: boolean) => {
-      viewHost.replaceChildren(v.el);
-      // la page arrive en fondu (pas de saut sec d'un écran à l'autre)
-      if (fade) {
-        v.el.classList.remove('view-in');
-        void v.el.offsetWidth;
-        v.el.classList.add('view-in');
-      }
-      v.enter(sub);
-      updateFresh(true); // on vient (peut-être) de quitter la collection : ce qu'on y a vu est vu
+    const show = (v: View, fade: boolean, vtWanted = false) => {
+      const vt = vtWanted && canVT();
+      const apply = () => {
+        if (vt && gen !== routeGen) return; // (sous transition la mise à jour arrive une image plus tard : une autre page a pris la main)
+        viewHost.replaceChildren(v.el);
+        // la page arrive en fondu (pas de saut sec d'un écran à l'autre) — sous View Transitions, c'est elle qui fond
+        // (audit 12/11, S10 / E2-07) la page est remplie AVANT le recalcul qui relance le fondu : une mise en page au
+        // lieu de deux (avant : recalcul forcé sur la page vide, puis de nouveau une fois remplie)
+        if (fade && !vt) v.el.classList.remove('view-in');
+        v.enter(sub);
+        if (fade && !vt) {
+          void v.el.offsetWidth;
+          v.el.classList.add('view-in');
+        } else if (vt) v.el.classList.remove('view-in'); // (la classe ne doit pas doubler le fondu de la transition)
+        // retour arrière / avant du navigateur : la page retrouve son défilement (après `enter`, qui le remet à zéro)
+        if (wantTop) restoreScroll(v.el, wantTop, gen);
+        updateFresh(true); // on vient (peut-être) de quitter la collection : ce qu'on y a vu est vu
+      };
+      if (vt) swapPage(apply);
+      else apply();
     };
     const ready = views[key];
-    if (ready) return show(ready, changed);
+    // fondu enchaîné (essai `?vt=1`) : seulement entre deux pages 100 % DOM, jamais depuis / vers la boutique (3D)
+    if (ready) return show(ready, changed, changed && from !== '' && key !== '' && !!views[from]);
     // première visite de cette page : son module arrive (souvent déjà préchargé : quelques ms)
     if (!isPage(key)) return;
     shell.show(null); // page 100 % DOM : la vitrine ne tourne pas dessous (comme chaque page à son entrée)
     shell.setDimmed(true);
-    waitEl.innerHTML = '<div class="vw-box" role="status"><i class="vw-spin" aria-hidden="true"></i><span>chargement…</span></div>';
+    waitEl.innerHTML = '<div class="vw-box" role="status"><i class="vw-spin" aria-hidden="true"></i><span>' + tr('common.loading') + '</span></div>';
     waitEl.classList.remove('failed');
     viewHost.replaceChildren(waitEl);
     loadPage(key).then(
@@ -926,11 +1156,30 @@ async function boot() {
         if (gen !== routeGen) return;
         // réseau coupé, ou nouvelle version du jeu en ligne (les anciens fichiers n'existent plus) : recharger règle tout
         waitEl.classList.add('failed');
-        waitEl.innerHTML = `<div class="vw-box" role="alert"><span class="vw-msg">${failMsg()}</span><span class="vw-acts"><button class="btn-primary vw-reload">Recharger</button></span></div>`;
+        waitEl.innerHTML = `<div class="vw-box" role="alert"><span class="vw-msg">${failMsg()}</span><span class="vw-acts"><button class="btn-primary vw-reload">${tr('common.reload')}</button></span></div>`;
       },
     );
   }
   window.addEventListener('hashchange', route);
+  /**
+   * (version anglaise) nouvelle langue : en-tête, titre de l'onglet et pages refaits sans recharger. Les pages DOM déjà
+   * créées sont oubliées (recréées à leur prochaine visite, dans la nouvelle langue) ; celle affichée est recréée tout de
+   * suite. La boutique (3D) garde son instance.
+   */
+  onLang(() => {
+    relabelTop();
+    relabel(); // (éléments durables marqués data-t : boutique, couches de l'ouverture…)
+    meSig = '';
+    renderMe();
+    updateTitle();
+    for (const k of Object.keys(views)) {
+      if (k === '') continue;
+      if (k === current) views[k]!.leave();
+      delete views[k];
+      pending.delete(k as PageKey);
+    }
+    if (current !== '') route();
+  });
   // réseau revenu pendant qu'une page affichait l'échec : le message le dit
   window.addEventListener('online', () => {
     const m = waitEl.querySelector('.vw-msg');
@@ -939,16 +1188,16 @@ async function boot() {
   backend.onChange(renderMe);
   backend.onChange(() => updateFresh());
   route();
-  // (visionneuse : PAS montée sous l'écran de chargement — sa compilation ne vise plus la vraie cible de la passe
-  // (post.ts, TARGET_PRECOMPILE coupé) : l'attendre ici allongerait le chargement pour rien. Son module est déjà
-  // téléchargé (début de boot) ; elle est montée 1,5 s après l'affichage de la boutique, comme avant.)
-  step(100, 'c’est prêt');
+  // (visionneuse : PAS montée sous l'écran de chargement : l'attendre ici allongerait le chargement. Son module est
+  // déjà téléchargé (début de boot) ; elle est montée 1,5 s après l'affichage de la boutique, et compile alors ses
+  // pipelines dans la vraie passe (post.ts, `compile({ real: true })`).)
+  step(100, tr('boot.ready'));
   // démo : on le dit une fois (collection locale, amis robots)
   if (backend.state.mode === 'demo') {
     try {
       if (!localStorage.getItem('bebou.demoVu')) {
         localStorage.setItem('bebou.demoVu', '1');
-        setTimeout(() => toast(DEMO_TXT, 'info'), 900);
+        setTimeout(() => toast(DEMO_TXT(), 'info'), 900);
       }
     } catch {
       /* stockage indisponible : tant pis */
@@ -959,18 +1208,34 @@ async function boot() {
   reportLoad(shell);
   setTimeout(() => loader.remove(), 700);
   // (ouverture 07/11) visite guidée automatique : une seule fois par compte (`?guide` pour la revoir)
-  // (patch 08/11) annonce du patch : la page des mises à jour s'ouvre une fois, à la prochaine visite (announce.ts)
-  void import('./announce').then((m) => m.armAnnounce(backend));
   // (v1.0.10) sondage « prochaines mises à jour » : à la connexion, puis toutes les heures tant qu'il n'est pas rempli
   void import('./survey').then((m) => m.armSurvey(backend));
-  void import('./views/guide').then((m) => m.armGuide(backend));
+  // (patch 08/11) annonce du patch : la page des mises à jour s'ouvre une fois, à la prochaine visite (announce.ts)
+  void import('./announce').then((m) => m.armAnnounce(backend));
+  // (13/11) + le tour des nouveautés V2 pour les joueurs d'avant la V2 (une fois, d'office)
+  void import('./views/guide').then((m) => (m.armGuide(backend), m.armV2Tour(backend)));
 
   // en tâche de fond : miniatures de la collection, puis les modules des autres pages (navigation instantanée)
   setTimeout(() => {
-    void getViewer();
     preloadOwned(backend.state.collection.map((c) => c.cardId));
+    // (audit 12/11, S06 / E2-06) la visionneuse (module + scène + compilation de ses shaders) se monte quand la
+    // boutique est au calme et le navigateur inoccupé — plus à heure fixe, où elle tombait sur le 1er booster ouvert.
+    // Une carte touchée avant la monte tout de suite (getViewer est appelé à la demande).
+    const mountViewer = (tries = 0) => {
+      if (shop.busy() && tries < 40) return void setTimeout(() => mountViewer(tries + 1), 750);
+      if ('requestIdleCallback' in window) requestIdleCallback(() => void getViewer(), { timeout: 4000 });
+      else void getViewer();
+    };
+    mountViewer();
   }, 1500);
   setTimeout(prefetchPages, 3000);
+  setTimeout(() => void getChat().catch(() => (chatP = null)), 900);
+  // (V2 fluidité) le jeu s'installe sur l'appareil en tâche de fond (bundle.ts) : démarrages suivants sans réseau
+  setTimeout(() => void import('./bundle').then((m) => m.installBundle(() => shop.busy())), 4500);
+  // (V2) puis, en fond, les miniatures des cartes possédées (game/offline.ts) — une fois la collection arrivée
+  const artSoon = (tries = 0) =>
+    setTimeout(() => (backend.state.collection.length ? void import('./offline').then((m) => m.prefetchCollectionArt(backend, () => shop.busy())) : tries < 6 && artSoon(tries + 1)), 20000);
+  artSoon();
 
   // crochet de test (Playwright)
   (window as unknown as { __jeu: unknown }).__jeu = {
@@ -1005,9 +1270,9 @@ function showFailure(e: unknown) {
   // un fichier du jeu qui n'arrive pas (réseau coupé, nouvelle version en ligne) n'est pas un souci de 3D
   const net = /dynamically imported module|importing a module script failed|error loading dynamically|failed to fetch|preload/i.test(String(e));
   const msg = net
-    ? 'Le jeu n’a pas pu finir de se télécharger.<br>Vérifie ta connexion, puis recharge la page.'
-    : 'Ton navigateur n’arrive pas à démarrer la 3D.<br>Essaie Chrome, Edge ou Safari à jour, puis recharge la page.';
-  loader.querySelector<HTMLElement>('.l-txt')!.innerHTML = `${msg}<span class="l-acts"><button class="btn-primary l-reload">Recharger</button>${onGl || net ? '' : `<a class="btn-ghost l-gl" href="${esc(glHref)}">Forcer WebGL</a>`}</span><small>${esc(String(e)).slice(0, 220)}</small>`;
+    ? '' + tr('boot.dlFailed') + '<br>' + tr('boot.checkNet') + ''
+    : '' + tr('boot.no3d') + '<br>' + tr('boot.tryBrowser') + '';
+  loader.querySelector<HTMLElement>('.l-txt')!.innerHTML = `${msg}<span class="l-acts"><button class="btn-primary l-reload">${tr('common.reload')}</button>${onGl || net ? '' : `<a class="btn-ghost l-gl" href="${esc(glHref)}">Forcer WebGL</a>`}</span><small>${esc(String(e)).slice(0, 220)}</small>`;
   loader.querySelector('.l-reload')?.addEventListener('click', () => location.reload());
   // (le lien change la recherche de l'URL : c'est un vrai rechargement, pas une page du jeu)
   loader.querySelector('.l-gl')?.addEventListener('click', (ev) => {

@@ -11,7 +11,6 @@
  *  - mouvement réduit (réglage de l'appareil ou du joueur) : déplacements remplacés par des fondus courts, secousses
  *    et ralentis supprimés, couleurs / lumières / sons conservés.
  */
-import { fxReduced } from './fxPref';
 
 const mobile = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 
@@ -97,8 +96,28 @@ export const MYTHIC_TURN = 0.5;
 export const TEASE_STAGGER = 0.09;
 export const TEASE_LAST_EXTRA = 0.2;
 
-/** Vrai si les mouvements doivent être réduits (réglage de l'appareil, ou choix du joueur « Effets réduits »). */
-export const reducedMotion = () => fxReduced();
+/**
+ * Ambiance « Éclipse » (Berserk 5★ / 6★, 11/11 — game/eclipse.ts) : des temps LENTS, en secondes. `teinte` : l'aura du
+ * sachet fermé vire au cramoisi et la scène s'assombrit · `lever` : le soleil noir et le lac montent une fois le sachet
+ * ouvert · `onde` : le cercle qui court sur le lac quand une carte se pose · `coucher` : tout s'efface · `suite` : gros
+ * booster (×5 / ×10), le morceau qui contient la carte arrive sans sachet : la pénombre tombe et l'horizon rougeoit
+ * (temps 1 condensé) avant le lever.
+ */
+export const ECLIPSE = { teinte: 2.4, lever: 3.2, onde: 2.8, coucher: 1.2, suite: 1.1 } as const;
+
+const motionQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+/**
+ * Vrai si les mouvements doivent être réduits : réglage « réduire les animations » de l'APPAREIL, seul signal depuis
+ * la suppression du mode « Effets réduits » du jeu (audit 12/11, décision 4 de Tom).
+ */
+export const reducedMotion = (): boolean => !!motionQuery?.matches;
+/** S'abonne au réglage de l'appareil ; `f` est appelé tout de suite avec la valeur actuelle. Renvoie la désinscription. */
+export function onReducedMotionChange(f: (on: boolean) => void): () => void {
+  f(reducedMotion());
+  const h = () => f(reducedMotion());
+  motionQuery?.addEventListener?.('change', h);
+  return () => motionQuery?.removeEventListener?.('change', h);
+}
 
 /**
  * Pose les jetons en variables CSS sur <html> (`--dur-instant`, `--dur-rapide`, `--dur-standard`, `--dur-emphatique`,

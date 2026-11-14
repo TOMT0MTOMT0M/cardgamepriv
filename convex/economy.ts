@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
@@ -26,6 +27,10 @@ import {
   type StakeItem,
 } from '../src/core/economy';
 import { claimWeekly as claimWeeklyState, cleanWeekly, currentWeekly, nextWeekReset, type WeeklyState } from '../src/core/weekly';
+import { invRev } from './invRev';
+import { syncPresence } from './presence';
+import { statsCached } from './profiles';
+import { fm } from '../src/core/msgs';
 
 /**
  * ÉCONOMIE — portefeuille et sources de pièces (spec du 3 nov., src/core/economy.ts) :
@@ -38,8 +43,13 @@ async function collectionOf(ctx: QueryCtx, u: Doc<'users'>) {
 }
 
 async function achStats(ctx: QueryCtx, u: Doc<'users'>, inv?: Doc<'inventory'>[]) {
-  const coll = inv ?? (await collectionOf(ctx, u));
-  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0 });
+  // (audit 12/11, S07 / A6-06, A6-10) sans collection fournie : statistiques stockées avec la ligne de classement
+  // (convex/profiles.ts, statsCached — collection relue seulement si elle a changé depuis). AVANT : la collection
+  // entière de chaque ami dans une seule requête (Succès > Amis), au risque de dépasser la limite de lecture.
+  // Seule différence avec le profil : ici la série est celle enregistrée, pas la série « encore vivante ».
+  if (!inv) return achievementStats({ ...(await statsCached(ctx, u)), streak: u.streak?.count ?? 0 }, econOf(u));
+  const coll = inv;
+  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 });
   return achievementStats(p, econOf(u));
 }
 
@@ -52,33 +62,35 @@ function calendarOf(u: Doc<'users'>, now: number) {
 }
 
 /** Tout ce que l'interface affiche de l'économie (portefeuille, calendrier, missions de la semaine, primes en attente). */
+export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
+  const econ = econOf(u);
+  // (perf 07/11) PLUS de lecture de l'inventaire ici : cette requête était ré-exécutée à chaque écriture sur le joueur
+  // (pièces, missions, battement de cœur) et relisait toute sa collection (2e poste de lecture de base du mois).
+  // Primes de complétion et succès sont recalculés par le client avec la collection qu'il a déjà (inventory.myCollection)
+  // et `achInput` (src/game/ecoOnline.ts) ; les mutations d'encaissement revérifient tout côté serveur.
+  const achInput = { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econ.burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 };
+  return {
+    achInput,
+    coins: coinsOf(u),
+    econ,
+    calendar: calendarOf(u, now),
+    weekly: { ...currentWeekly(u.weekly as WeeklyState | undefined, u._id, now), resetAt: nextWeekReset(now) },
+    // onglet resté ouvert sur l'ancien client : des valeurs sûres (le nouveau client recalcule les vraies)
+    completions: [] as Array<{ id: string; label: string; kind: string; size: number; reward: number }>,
+    achievements: { stats: achievementStats(statsFrom([], achInput), econ), claimable: [] as string[] },
+    isAdmin: !!u.isAdmin,
+    // (retours 06/11) modération des suggestions : nombre de nouvelles (pastille du menu)
+    isModerator: canModerate(u),
+    suggestionsNew: canModerate(u) ? (await ctx.db.query('suggestions').withIndex('by_status', (q) => q.eq('status', 'nouvelle')).take(99)).length : 0,
+    packShop: { price: PACK_PRICE, left: packBuysLeft(econ, missionDay(now)) },
+  };
+}
+
 export const state = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, { sessionToken }) => {
     const u = await getUserByToken(ctx, sessionToken);
-    if (!u) return null;
-    const now = Date.now();
-    const econ = econOf(u);
-    // (perf 07/11) PLUS de lecture de l'inventaire ici : cette requête était ré-exécutée à chaque écriture sur le joueur
-    // (pièces, missions, battement de cœur) et relisait toute sa collection (2e poste de lecture de base du mois).
-    // Primes de complétion et succès sont recalculés par le client avec la collection qu'il a déjà (inventory.myCollection)
-    // et `achInput` (src/game/ecoOnline.ts) ; les mutations d'encaissement revérifient tout côté serveur.
-    const achInput = { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econ.burned, wasTop: u.wasTop ? 1 : 0 };
-    return {
-      achInput,
-      coins: coinsOf(u),
-      econ,
-      calendar: calendarOf(u, now),
-      weekly: { ...currentWeekly(u.weekly as WeeklyState | undefined, u._id, now), resetAt: nextWeekReset(now) },
-      // onglet resté ouvert sur l'ancien client : des valeurs sûres (le nouveau client recalcule les vraies)
-      completions: [] as Array<{ id: string; label: string; kind: string; size: number; reward: number }>,
-      achievements: { stats: achievementStats(statsFrom([], achInput), econ), claimable: [] as string[] },
-      isAdmin: !!u.isAdmin,
-      // (retours 06/11) modération des suggestions : nombre de nouvelles (pastille du menu)
-      isModerator: canModerate(u),
-      suggestionsNew: canModerate(u) ? (await ctx.db.query('suggestions').withIndex('by_status', (q) => q.eq('status', 'nouvelle')).take(99)).length : 0,
-      packShop: { price: PACK_PRICE, left: packBuysLeft(econ, missionDay(now)) },
-    };
+    return u ? await ecoView(ctx, u, Date.now()) : null;
   },
 });
 
@@ -93,7 +105,7 @@ export const buyPacks = mutation({
     const problem = packBuyProblem(count, coinsOf(u), econ, today);
     if (problem) throw new ConvexError(problem);
     const bought = (econ.shopDay === today ? econ.shopBought ?? 0 : 0) + count;
-    await addCoins(ctx, u._id, -count * PACK_PRICE, 'shop', `Achat de ${count} booster${count > 1 ? 's' : ''}`, { econ: { shopDay: today, shopBought: bought } });
+    await addCoins(ctx, u._id, -count * PACK_PRICE, 'shop', fm('c.shop', { n: count }), { econ: { shopDay: today, shopBought: bought } });
     const fresh = (await ctx.db.get(u._id))!;
     const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil);
     await ctx.db.patch(u._id, { packBalance: regen.balance + count, packRegenAt: regen.regenAt });
@@ -122,10 +134,10 @@ export const claimCalendar = mutation({
     const u = await requireUser(ctx, sessionToken);
     const now = Date.now();
     const cal = calendarOf(u, now);
-    if (cal.claimed) throw new ConvexError('Cadeau du jour déjà pris : reviens demain.');
+    if (cal.claimed) throw new ConvexError(fe('economy.1'));
     const streak = touchStreak(u.streak, now);
     if (streak) await ctx.db.patch(u._id, { streak });
-    await addCoins(ctx, u._id, cal.reward.coins, 'calendar', `Calendrier — jour ${cal.day}`, { earned: true, econ: { calendarDay: cal.today } });
+    await addCoins(ctx, u._id, cal.reward.coins, 'calendar', fm('c.calendar', { day: cal.day }), { earned: true, econ: { calendarDay: cal.today } });
     if (cal.reward.packs) {
       const fresh = (await ctx.db.get(u._id))!;
       const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil);
@@ -143,7 +155,7 @@ export const claimWeekly = mutation({
     const r = claimWeeklyState(currentWeekly(u.weekly as WeeklyState | undefined, u._id, Date.now()), missionId);
     if (typeof r === 'string') throw new ConvexError(r);
     await ctx.db.patch(u._id, { weekly: cleanWeekly(r.state) });
-    await addCoins(ctx, u._id, r.reward, 'weekly', 'Mission de la semaine', { earned: true });
+    await addCoins(ctx, u._id, r.reward, 'weekly', fm('c.weekly'), { earned: true });
     return { reward: r.reward };
   },
 });
@@ -153,9 +165,14 @@ export const burn = mutation({
   args: { sessionToken: v.string(), items: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })) },
   handler: async (ctx, { sessionToken, items }) => {
     const u = await requireUser(ctx, sessionToken);
-    if (items.length > 200) throw new ConvexError('Trop de cartes d’un coup.');
-    const inv = await collectionOf(ctx, u);
-    const row = (it: StakeItem) => inv.find((c) => c.cardId === it.cardId && c.rarity === it.rarity);
+    if (items.length > 200) throw new ConvexError(fe('economy.2'));
+    // (audit 12/11, S07 / A6-09) seulement les lignes brûlées (≤ 200, par l'index), plus la collection entière
+    const rows = new Map<string, Doc<'inventory'> | null>();
+    for (const it of items) {
+      const k = `${it.cardId}:${it.rarity}`;
+      if (!rows.has(k)) rows.set(k, await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', u._id).eq('cardId', it.cardId).eq('rarity', it.rarity)).first());
+    }
+    const row = (it: StakeItem) => rows.get(`${it.cardId}:${it.rarity}`) ?? undefined;
     const locked = await lockedCards(ctx, u._id);
     const problem = burnProblem(items as StakeItem[], (it) => Math.max(0, (row(it)?.count ?? 0) - 1 - (locked.get(`${it.cardId}:${it.rarity}`) ?? 0)));
     if (problem) throw new ConvexError(problem);
@@ -163,14 +180,15 @@ export const burn = mutation({
     let n = 0;
     for (const it of items) {
       const r = row(it as StakeItem)!;
-      await ctx.db.patch(r._id, { count: r.count - it.count });
+      await ctx.db.patch(r._id, { count: r.count - it.count, rev: invRev() });
       coins += CARD_VALUE[it.rarity as RarityId] * it.count;
       n += it.count;
     }
     const econ = econOf(u);
-    await addCoins(ctx, u._id, coins, 'burn', `Brûlage de ${n} doublon${n > 1 ? 's' : ''}`, { earned: true, econ: { burned: econ.burned + n } });
+    await addCoins(ctx, u._id, coins, 'burn', fm('c.burn', { n }), { earned: true, econ: { burned: econ.burned + n } });
     await bumpWeekly(ctx, u._id, { type: 'burn', count: n });
     await ctx.db.patch(u._id, { lastSeenAt: Date.now(), statusText: 'Fait chauffer la forge à doublons' });
+    await syncPresence(ctx, u._id);
     return { coins, count: n };
   },
 });
@@ -183,9 +201,9 @@ export const claimCompletions = mutation({
     const inv = await collectionOf(ctx, u);
     const econ = econOf(u);
     const sets = claimableCompletions(new Set(inv.map((c) => c.cardId)), econ.completions);
-    if (!sets.length) throw new ConvexError('Aucune prime de complétion en attente.');
+    if (!sets.length) throw new ConvexError(fe('economy.3'));
     const total = sets.reduce((a, s) => a + s.reward, 0);
-    await addCoins(ctx, u._id, total, 'completion', sets.length === 1 ? `Complétion — ${sets[0].label}` : `Complétion — ${sets.length} ensembles`, {
+    await addCoins(ctx, u._id, total, 'completion', sets.length === 1 ? fm('c.compl', { set: sets[0].label, setId: sets[0].id }) : fm('c.complN', { n: sets.length }), {
       earned: true,
       econ: { completions: [...econ.completions, ...sets.map((s) => s.id)] },
     });
@@ -200,10 +218,10 @@ export const claimAchievements = mutation({
     const u = await requireUser(ctx, sessionToken);
     const econ = econOf(u);
     const list = claimableAchievements(await achStats(ctx, u), econ.achievements);
-    if (!list.length) throw new ConvexError('Aucun succès à réclamer.');
+    if (!list.length) throw new ConvexError(fe('economy.4'));
     const total = list.reduce((a, x) => a + achievementReward(x), 0);
     const packs = list.reduce((a, x) => a + achievementPacks(x), 0);
-    await addCoins(ctx, u._id, total, 'achievement', list.length === 1 ? `Succès — ${list[0].label}` : `${list.length} succès`, {
+    await addCoins(ctx, u._id, total, 'achievement', list.length === 1 ? fm('c.ach', { ach: list[0].label, achId: list[0].id }) : fm('c.achN', { n: list.length }), {
       earned: true,
       econ: { achievements: [...econ.achievements, ...list.map((a) => a.id)] },
     });
