@@ -24,6 +24,18 @@ export const myCollection = query({
   },
 });
 
+/**
+ * (v2.0.5, compte de Magizz « disparu ») Convex refuse un tableau de plus de 8 192 éléments : au-delà de 8 192 lignes de
+ * collection, toute requête qui renvoyait la collection en UN tableau échouait (collection vide chez le joueur, profil
+ * en erreur chez les autres). Avec `parts: true` (clients ≥ v2.0.5), elle part en tranches : `{ parts: [[…], […]] }`.
+ */
+export const INV_PART = 4000;
+export function inParts<T>(rows: T[]): { parts: T[][] } {
+  const parts: T[][] = [];
+  for (let i = 0; i < rows.length; i += INV_PART) parts.push(rows.slice(i, i + INV_PART));
+  return { parts };
+}
+
 /** ligne renvoyée au jeu : les 5 champs lus par le client + la révision (suivi par différence) */
 const slim = (c: Doc<'inventory'>) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber, firstPulledAt: c.firstPulledAt, rev: c.rev ?? 0 });
 
@@ -35,15 +47,15 @@ const SINCE_MAX = 300;
  * révision de chaque ligne : le client suit ensuite seulement ce qui change (`mineSince`).
  */
 export const collectionFull = query({
-  args: { sessionToken: v.optional(v.string()) },
-  handler: async (ctx, { sessionToken }) => {
+  args: { sessionToken: v.optional(v.string()), parts: v.optional(v.boolean()) },
+  handler: async (ctx, { sessionToken, parts }) => {
     const userId = await getUserIdByToken(ctx, sessionToken);
     if (!userId) return null;
     const rows = await ctx.db
       .query('inventory')
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .collect();
-    return rows.map(slim);
+    return parts ? inParts(rows.map(slim)) : rows.map(slim);
   },
 });
 
@@ -76,13 +88,14 @@ export const mineSince = query({
 
 /** (audit 12/11, S07 / A6-08) collection d'un autre joueur en 4 champs (client V2) : réponse ≈ 4 fois plus légère. */
 export const userCollectionSlim = query({
-  args: { userId: v.id('users') },
-  handler: async (ctx, { userId }) => {
+  args: { userId: v.id('users'), parts: v.optional(v.boolean()) },
+  handler: async (ctx, { userId, parts }) => {
     const rows = await ctx.db
       .query('inventory')
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .collect();
-    return rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));
+    const out = rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));
+    return parts ? inParts(out) : out;
   },
 });
 

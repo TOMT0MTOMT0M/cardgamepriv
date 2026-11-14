@@ -30,6 +30,7 @@ import { claimWeekly as claimWeeklyState, cleanWeekly, currentWeekly, nextWeekRe
 import { invRev } from './invRev';
 import { syncPresence } from './presence';
 import { statsCached } from './profiles';
+import type { PlayerStats } from '../src/core/cosmetics';
 import { fm } from '../src/core/msgs';
 
 /**
@@ -252,10 +253,27 @@ export const friendsAchievements = query({
     ]);
     const ids = [me._id, ...outA.map((f) => f.addresseeId), ...inA.map((f) => f.requesterId)];
     const out = [];
+    // (v2.0.5, alerte Convex « Nearing documents read limit ») un soir de sortie, toutes les collections viennent de
+    // changer : `statsCached` relisait alors la collection ENTIÈRE de chaque ami (8 000 lignes pour certains), au
+    // risque de dépasser la limite de lecture (erreur « le serveur a refusé l'action »). Pour un AMI, la ligne de
+    // classement suffit même si elle a quelques minutes de retard ; seule MA ligne est toujours exacte. Un ami sans
+    // ligne de classement est calculé tant que le budget de lecture le permet, sinon laissé de côté.
+    let budget = 12_000;
     for (const id of [...new Set(ids)].slice(0, 40)) {
       const u = await ctx.db.get(id);
       if (!u) continue;
-      out.push({ userId: u._id as string, name: u.displayName, avatarUrl: u.avatarUrl, me: u._id === me._id, stats: await achStats(ctx, u) });
+      let stats;
+      if (u._id === me._id) stats = await achStats(ctx, u);
+      else {
+        const row = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', u._id)).first();
+        if (row?.stats) stats = achievementStats({ ...(row.stats as PlayerStats), streak: u.streak?.count ?? 0 }, econOf(u));
+        else if (budget > 0) {
+          const inv = await collectionOf(ctx, u);
+          budget -= inv.length;
+          stats = await achStats(ctx, u, inv);
+        } else continue;
+      }
+      out.push({ userId: u._id as string, name: u.displayName, avatarUrl: u.avatarUrl, me: u._id === me._id, stats });
     }
     return out;
   },

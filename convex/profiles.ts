@@ -1,4 +1,5 @@
 import { fe } from '../src/core/errors';
+import { inParts } from './inventory';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, internalMutation, internalQuery, mutation, query, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -69,8 +70,9 @@ export async function statsOf(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: 
 export const profile = query({
   // (audit 12/11, S07 / A4-02) `withCollection` (client V2, profil d'un ami) : sa collection en 4 champs dans la même
   // réponse — une seule lecture de la collection au lieu de deux (profil + inventory.userCollection).
-  args: { userId: v.id('users'), withCollection: v.optional(v.boolean()) },
-  handler: async (ctx, { userId, withCollection }) => {
+  // (v2.0.5) `parts` : la collection en tranches (`collectionParts`), un tableau Convex ne dépassant pas 8 192 éléments
+  args: { userId: v.id('users'), withCollection: v.optional(v.boolean()), parts: v.optional(v.boolean()) },
+  handler: async (ctx, { userId, withCollection, parts }) => {
     const u = await ctx.db.get(userId);
     if (!u) return null;
     const pinned = await pinnedOf(ctx, userId);
@@ -100,7 +102,8 @@ export const profile = query({
       themes: THEMES.map((t) => ({ id: t.id, have: t.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: t.cards.length })),
       /** succès atteints (les 36 de l'espace Jeux, stats du profil + compteurs de l'économie) */
       achievements: { done: achievementsDone(stats, u), total: ACHIEVEMENTS.length },
-      ...(withCollection ? { collection: collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber })) } : {}),
+      ...(withCollection && !parts ? { collection: collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber })) } : {}),
+      ...(withCollection && parts ? { collectionParts: inParts(collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }))).parts } : {}),
     };
   },
 });
