@@ -1,3 +1,5 @@
+import { t as tr } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.cardPanel'; // (textes de ce module, version anglaise)
 import { cardKey, lockedCards, type GameBackend } from '../backend';
 import { catalogEntry, type CatalogEntry } from '../../core/sets/themes';
 import { cardWhere } from '../../core/cardSearch';
@@ -30,7 +32,7 @@ export function loadPanel(backend: GameBackend, cardId: string, force = false): 
 }
 export const invalidatePanel = (cardId?: string) => (cardId ? cache.delete(cardId) : cache.clear());
 
-const starLbl = (r: RarityId) => (r === 'secret' ? 'Bébou' : `${rarity(r).rank + 1}★`);
+const starLbl = (r: RarityId) => (r === 'secret' ? 'Bébou' : `${rarity(r).rank + 1}★`); // i18n-ok
 const nameOf = (id: string) => catalogEntry(id)?.name ?? id;
 
 /** État de mes exemplaires d'une carte, vu des échanges. */
@@ -45,16 +47,16 @@ export function myTradeState(backend: GameBackend, cardId: string, r: RarityId) 
   const line = !count
     ? ''
     : why === 'secret'
-      ? 'Bébou : jamais proposée'
+      ? tr('cp.bebouNever')
       : isProtected
-        ? 'Protégée : jamais proposée aux autres'
+        ? tr('cp.protectedNever')
         : why === 'envie'
-          ? 'Dans tes envies : tes exemplaires restent à toi'
+          ? tr('cp.inWishes')
           : n > 0
-            ? `${n} doublon${n > 1 ? 's' : ''} proposé${n > 1 ? 's' : ''} aux autres (tu gardes la tienne)`
+            ? tr('cp.dupsOffered', { n })
             : locked
-              ? 'Engagée dans un échange en attente'
-              : 'Un seul exemplaire : rien n’est proposé';
+              ? tr('cp.busy')
+              : tr('cp.single');
   return { count, locked, proposable: n, isProtected, secret: why === 'secret', line };
 }
 
@@ -63,8 +65,8 @@ export function gestureButtons(backend: GameBackend, cardId: string, r: RarityId
   const wish = backend.state.wishlist.includes(cardId);
   const me = myTradeState(backend, cardId, r);
   const out: HTMLElement[] = [];
-  const w = h('button', `${cls} va-wish cp-wish${wish ? ' on' : ''}`, `♥ <span>${wish ? 'Voulue' : 'Je la veux'}</span>`);
-  w.title = wish ? 'Retirer de mes envies' : 'Ajouter à mes envies : on te trouve des échanges (zone Pour toi)';
+  const w = h('button', `${cls} va-wish cp-wish${wish ? ' on' : ''}`, `♥ <span>${wish ? tr('cp.wanted') : tr('cp.want')}</span>`);
+  w.title = wish ? tr('cp.unwish') : tr('cp.wishTitle');
   w.setAttribute('aria-pressed', String(wish));
   w.addEventListener('click', async () => {
     haptics.pulse(8);
@@ -77,14 +79,14 @@ export function gestureButtons(backend: GameBackend, cardId: string, r: RarityId
   });
   out.push(w);
   if (me.count && !me.secret) {
-    const p = h('button', `${cls} va-protect cp-protect${me.isProtected ? ' on' : ''}`, `<span class="cp-lock" aria-hidden="true"></span><span>${me.isProtected ? 'Protégée' : 'Protéger'}</span>`);
-    p.title = me.isProtected ? 'Ne plus protéger : tes doublons seront de nouveau proposés' : 'Protéger : tes doublons ne seront jamais proposés aux autres';
+    const p = h('button', `${cls} va-protect cp-protect${me.isProtected ? ' on' : ''}`, `<span class="cp-lock" aria-hidden="true"></span><span>${me.isProtected ? tr('cp.protected') : tr('cp.protect')}</span>`);
+    p.title = me.isProtected ? tr('cp.unprotectTitle') : tr('cp.protectTitle');
     p.setAttribute('aria-pressed', String(me.isProtected));
     p.addEventListener('click', async () => {
       haptics.pulse(8);
       try {
         await backend.setTradeProtect(cardId, !me.isProtected);
-        toast(me.isProtected ? 'Plus protégée : tes doublons sont de nouveau proposés.' : 'Protégée : jamais proposée aux autres.', 'ok');
+        toast(me.isProtected ? tr('cp.unprotectedToast') : tr('cp.protectedToast'), 'ok');
         onChange();
       } catch (e) {
         toast(errMsg(e), 'err');
@@ -97,8 +99,8 @@ export function gestureButtons(backend: GameBackend, cardId: string, r: RarityId
 
 /** Résumé en une ligne (« 3 l'ont · dès 40 · 2 la veulent »), sous la carte de la visionneuse ; un toucher ouvre la fiche. */
 export function panelStrip(backend: GameBackend, cardId: string, r: RarityId): HTMLElement {
-  const el = h('button', 'cp-strip', '<span class="cp-s-load">Chez les joueurs…</span>');
-  el.setAttribute('aria-label', 'Chez les joueurs : qui l’a, qui la vend, qui la veut');
+  const el = h('button', 'cp-strip', '<span class="cp-s-load">' + tr('cp.players') + '</span>');
+  el.setAttribute('aria-label', tr('cp.playersTitle'));
   el.addEventListener('click', () => showCardPanel(backend, cardId));
   // (la visionneuse fait défiler les cartes : on attend 0,6 s sur la même carte avant de demander au serveur)
   const t = window.setTimeout(() => {
@@ -109,14 +111,14 @@ export function panelStrip(backend: GameBackend, cardId: string, r: RarityId): H
         const me = myTradeState(backend, cardId, r);
         const parts: string[] = [];
         const dups = p.owners.filter((o) => o.dup).length;
-        parts.push(p.owners.length ? `<b>${p.owners.length}</b> l’${p.owners.length > 1 ? 'ont' : 'a'}${dups ? ` · <em class="cp-ok">${dups} en doublon</em>` : ''}` : 'personne d’autre ne l’a');
-        if (p.sellers.length) parts.push(`en vente dès <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sellers[0].price)}</b></span>`);
+        parts.push(p.owners.length ? `${tr('cp.owners', { n: p.owners.length })}${dups ? ` · <em class="cp-ok">${tr('cp.asDup', { n: dups })}</em>` : ''}` : tr('cp.nobody'));
+        if (p.sellers.length) parts.push(`${tr('cp.forSale')} <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sellers[0].price)}</b></span>`);
         // (13/11, retours Hugo) prix de référence : la moyenne des ventes
-        if (p.sold) parts.push(`vendue en moyenne <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span>`);
-        if (p.wanters.length) parts.push(`<em class="cp-want">${p.wanters.length} la veu${p.wanters.length > 1 ? 'lent' : 't'}</em>`);
+        if (p.sold) parts.push(`${tr('cp.soldAvg')} <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span>`);
+        if (p.wanters.length) parts.push(`<em class="cp-want">${tr('cp.wanters', { n: p.wanters.length })}</em>`);
         el.innerHTML = `<span class="cp-s-txt">${parts.join('<i class="cp-sep"></i>')}</span>${me.line ? `<span class="cp-s-me">${esc(me.line)}</span>` : ''}<span class="cp-s-go" aria-hidden="true">›</span>`;
       })
-      .catch(() => el.isConnected && (el.innerHTML = '<span class="cp-s-load">Chez les joueurs ›</span>'));
+      .catch(() => el.isConnected && (el.innerHTML = '<span class="cp-s-load">' + tr('cp.playersGo') + '</span>'));
   }, 600);
   el.addEventListener('pointerdown', () => clearTimeout(t), { once: true });
   return el;
@@ -131,12 +133,12 @@ export async function askFor(backend: GameBackend, to: { userId: string; name: s
     const p = backend.quickTrade(to.userId, card, give);
     const r = await (btn ? busyButton(btn, p) : p);
     invalidatePanel(card.cardId);
-    toast(`Demande envoyée à ${to.name} : ${nameOf(r.get.cardId)} contre ${nameOf(r.give.cardId)}. À suivre dans Marché › En cours.`, 'ok');
+    toast(tr('cp.reqSent', { to: to.name, get: nameOf(r.get.cardId), give: nameOf(r.give.cardId) }), 'ok');
     return true;
   } catch (e) {
     const m = errMsg(e);
     if (/compose/i.test(m)) {
-      toast(`${m.replace(/ : compose.*$/, '')}. On ouvre le composeur.`, 'info');
+      toast(tr('cp.openComposer', { msg: m.replace(/ : compose.*$/, '') }), 'info');
       openComposer(to.userId, card);
     } else toast(m, 'err');
     return false;
@@ -148,7 +150,7 @@ export async function offerTo(backend: GameBackend, to: { userId: string; name: 
     const p = backend.quickTrade(to.userId, undefined, card);
     const r = await (btn ? busyButton(btn, p) : p);
     invalidatePanel(card.cardId);
-    toast(`Proposé à ${to.name} : ${nameOf(r.give.cardId)} contre ${nameOf(r.get.cardId)}.`, 'ok');
+    toast(tr('cp.offered', { to: to.name, give: nameOf(r.give.cardId), get: nameOf(r.get.cardId) }), 'ok');
     return true;
   } catch (e) {
     toast(errMsg(e), 'err');
@@ -178,12 +180,12 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
     <div class="ow-h">
       ${!rr.secret ? `<img class="ow-img" alt="" src="${thumbUrl(e)}">` : '<span class="ow-img ow-sec">?</span>'}
       <div class="ow-id">
-        <span class="ow-k">Chez les joueurs</span>
+        <span class="ow-k">${tr('cp.playersH')}</span>
         <b id="cp-t">${esc(e.name)}</b>
         <span class="ow-sub">${esc(cardWhere(e))} · <i>${starLbl(r)}</i></span>
         <span class="ow-me cp-me"></span>
       </div>
-      <button class="ow-x" aria-label="Fermer">✕</button>
+      <button class="ow-x" aria-label="${tr('common.close')}">✕</button>
     </div>
     <div class="cp-gestures"></div>
     <div class="ow-list cp-list" aria-live="polite"><div class="ow-row skel"></div><div class="ow-row skel"></div><div class="ow-row skel"></div></div>
@@ -210,14 +212,14 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
 
   const renderHead = () => {
     const me = myTradeState(backend, cardId, r);
-    veil.querySelector('.cp-me')!.textContent = hint ?? (me.count ? `Tu en as ${me.count}${me.line ? ` · ${me.line}` : ''}` : 'Pas encore dans ta collection');
+    veil.querySelector('.cp-me')!.textContent = hint ?? (me.count ? tr('cp.youHave', { n: me.count, line: me.line ? ` · ${me.line}` : '' }) : tr('cp.notYet'));
     gest.replaceChildren(...gestureButtons(backend, cardId, r, 'cp-g', () => ((hint = undefined), renderHead())));
   };
   renderHead();
 
   const row = (cls: string, who: string, sub: string, online: boolean | null, action?: HTMLElement) => {
     const w = h('div', `ow-row ${cls}`);
-    w.innerHTML = `${online === null ? '<span class="dot cp-dot-none"></span>' : `<span class="dot${online ? ' on' : ''}" title="${online ? 'en ligne' : 'hors ligne'}"></span>`}<span class="ow-who"><b>${who}</b><small>${sub}</small></span>`;
+    w.innerHTML = `${online === null ? '<span class="dot cp-dot-none"></span>' : `<span class="dot${online ? ' on' : ''}" title="${online ? tr('cp.online') : 'hors ligne'}"></span>`}<span class="ow-who"><b>${who}</b><small>${sub}</small></span>`;
     if (action) w.append(action);
     return w;
   };
@@ -227,32 +229,32 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
     list.replaceChildren();
     const sec = (title: string, n: number) => list.append(h('h4', 'cp-h', `${title}${n ? ` <small>${n}</small>` : ''}`));
     // qui l'a
-    sec('Qui l’a', p.owners.length);
-    if (!p.owners.length) list.append(h('p', 'ow-empty', me.count ? 'Personne d’autre ne l’a pour l’instant.' : 'Personne d’autre ne l’a pour l’instant. ♥ Je la veux : on te préviendra dans Pour toi dès qu’un doublon apparaît.'));
+    sec(tr('cp.whoHas'), p.owners.length);
+    if (!p.owners.length) list.append(h('p', 'ow-empty', me.count ? tr('cp.nobodyYet') : tr('cp.nobodyWish')));
     for (const o of p.owners) {
       let btn: HTMLElement | undefined;
       if (!me.count && !rr.secret) {
-        btn = h('button', `${o.dup ? 'btn-primary' : 'btn-ghost'} ow-go cp-ask`, 'Demander');
-        btn.title = o.dup ? 'Un toucher : on choisit pour toi un de tes doublons de même étoile qui lui manque' : 'Son seul exemplaire : il décidera';
+        btn = h('button', `${o.dup ? 'btn-primary' : 'btn-ghost'} ow-go cp-ask`, tr('cp.ask'));
+        btn.title = o.dup ? tr('cp.askTitle') : tr('cp.onlyTheirs');
         btn.addEventListener('click', async () => {
           if (await askFor(backend, { userId: o.userId, name: o.name }, card, btn)) close();
         });
       }
-      list.append(row(o.dup ? 'dup' : '', esc(o.name), o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? `${o.count} exemplaires · gardés` : 'son seul exemplaire', o.online, btn));
+      list.append(row(o.dup ? 'dup' : '', esc(o.name), o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? tr('cp.kept', { n: o.count }) : tr('cp.theirOnly'), o.online, btn));
     }
     // (13/11, retours Hugo) prix de référence : la moyenne des dernières ventes
     if (p.sold) list.append(h('p', 'cp-avg', `Prix moyen des ventes : <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span> <small>sur ${p.sold.n} vente${p.sold.n > 1 ? 's' : ''} · dernière ${fmtCoins(p.sold.last)}</small>`));
     // en vente
     if (p.sellers.length) {
-      sec('En vente', p.sellers.length);
+      sec(tr('cp.forSaleT'), p.sellers.length);
       for (const m of p.sellers) {
-        const b = h('button', 'btn-primary ow-go cp-buy', `Acheter`);
+        const b = h('button', 'btn-primary ow-go cp-buy', tr('cp.buy'));
         b.addEventListener('click', async () => {
-          if (!confirmTap(b, `${fmtCoins(m.price)} : sûr ?`, 3500, `cp-buy-${m.id}`)) return;
+          if (!confirmTap(b, tr('cp.buySure', { price: fmtCoins(m.price) }), 3500, `cp-buy-${m.id}`)) return;
           try {
             await busyButton(b, backend.marketBuy(m.id, m.price));
             invalidatePanel(cardId);
-            toast(`${e.name} est dans ta collection.`, 'ok');
+            toast(tr('cp.got', { name: e.name }), 'ok');
             close();
           } catch (err) {
             toast(errMsg(err), 'err');
@@ -263,17 +265,17 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
     }
     // qui la veut
     if (p.wanters.length) {
-      sec('Qui la veut', p.wanters.length);
+      sec(tr('cp.whoWants'), p.wanters.length);
       for (const w of p.wanters) {
         let b: HTMLElement | undefined;
         if (me.proposable > 0) {
-          b = h('button', 'btn-ghost ow-go cp-offer', 'Proposer');
-          b.title = 'Lui proposer ton doublon : on choisit en échange un de ses doublons de même étoile qui te manque';
+          b = h('button', 'btn-ghost ow-go cp-offer', tr('cp.offer'));
+          b.title = tr('cp.offerTitle');
           b.addEventListener('click', async () => {
             if (await offerTo(backend, { userId: w.userId, name: w.name }, card, b)) close();
           });
         }
-        list.append(row('cp-wants', esc(w.name), me.proposable > 0 ? 'la cherche · tu as un doublon' : 'la cherche', w.online, b));
+        list.append(row('cp-wants', esc(w.name), me.proposable > 0 ? tr('cp.seeksDup') : tr('cp.seeks'), w.online, b));
       }
     }
   };

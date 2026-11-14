@@ -38,7 +38,8 @@ export function armAnnounce(backend: GameBackend) {
     if (!forced && s.mode !== 'online') return;
     if (!s.user) return; // pas encore connecté : on attend
     // compte tout neuf : la visite guidée d'abord, l'annonce ne le concerne pas
-    if (!forced && (!s.user.guideSeen || document.querySelector('.gd'))) return finish();
+    // (13/11) joueur d'avant la V2 : le tour des nouveautés (views/guide.ts) finit sur la page des mises à jour
+    if (!forced && (!s.user.guideSeen || !s.user.v2TourSeen || document.querySelector('.gd'))) return finish();
     // connexion, ouverture d'un booster : on réessaie un peu plus tard
     if (document.querySelector('.lc, .lg-veil') || document.body.classList.contains('opening')) {
       clearTimeout(timer);

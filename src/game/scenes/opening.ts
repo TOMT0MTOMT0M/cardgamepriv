@@ -1,3 +1,4 @@
+import { t as tr } from '../../core/i18n';
 import { cardHasCutout } from '../../core/pokeHolo/face';
 import { cameraScale, createWheel3D, type Wheel3D, type WheelItem3D } from './packWheel3d';
 import { createReel, type Reel } from './packReel';
@@ -388,13 +389,13 @@ interface Slot {
 /** couleur du sachet de chaque booster (retours 06/11) */
 const SACHET: Record<string, string> = { bebou: '#9ea2aa', gaming: '#6a4fc4', pop: '#d8742e', sport: '#3a9a66', monde: '#3c73c8' };
 /** (retours live 6, C1) le nom imprimé en noir sur chaque sachet (validé par Hugo) */
-const SACHET_LABEL: Record<string, string> = { bebou: 'Bebou', gaming: 'Gaming', pop: 'Popculture', sport: 'Sport', monde: 'World' };
+const SACHET_LABEL: Record<string, string> = { bebou: 'Bebou', gaming: 'Gaming', pop: 'Popculture', sport: 'Sport', monde: 'World' }; // i18n-ok
 function boosterStyles(): Record<string, PackStyle> {
   const out: Record<string, PackStyle> = {};
   // mentions au dos des boosters du jeu (celles du labo parlent d'illustrations procédurales)
-  const backLines = ['5 cartes, dont une rare ou mieux.', 'Ne convient pas aux dragons de moins de trois ans.', 'Fabriqué entre nous. Avec soin.'];
+  const backLines = [tr('op.back1'), tr('op.back2'), tr('op.back3')];
   for (const t of THEMES) out[t.id] = { name: t.label, ...t.style, title: t.booster, series: `S É R I E   I  ·  ${t.label.toUpperCase()}`, tagline: themeTagline(t), backLines };
-  out.bebou = { name: 'Bébou', ...BEBOU_PACK.style, title: BEBOU_PACK.booster, series: 'P A C K   D E   B A S E', tagline: BEBOU_PACK.tagline, backLines: [...backLines.slice(0, 2), 'Une carte secrète s’y cache peut-être.'] };
+  out.bebou = { name: 'Bébou', ...BEBOU_PACK.style, title: BEBOU_PACK.booster, series: 'P A C K   D E   B A S E', tagline: BEBOU_PACK.tagline, backLines: [...backLines.slice(0, 2), tr('op.backSecret')] }; // i18n-ok
   // (retours 06/11) sachets SIMPLES : une couleur par pack (gris, violet, orange, vert, bleu), le logo et le nom
   for (const [k, c] of Object.entries(SACHET)) if (out[k]) Object.assign(out[k], { simple: true, ground: c, label: SACHET_LABEL[k] });
   return out;
@@ -402,7 +403,7 @@ function boosterStyles(): Record<string, PackStyle> {
 
 /** (11/11) sachet du booster du moment : comme les 5 autres (alu teinté, nom moulé), à la couleur de l'événement */
 function eventBoosterStyle(ev: { name: string; accent: string }): PackStyle {
-  return { name: ev.name, ...BEBOU_PACK.style, accent: ev.accent, title: ev.name.toUpperCase(), series: 'B O O S T E R   D U   M O M E N T', tagline: 'Édition limitée', backLines: ['5 cartes, dont une rare ou mieux.', 'Là pour un temps seulement.', 'Fabriqué entre nous. Avec soin.'], simple: true, ground: ev.accent, label: ev.name };
+  return { name: ev.name, ...BEBOU_PACK.style, accent: ev.accent, title: ev.name.toUpperCase(), series: 'B O O S T E R   D U   M O M E N T', tagline: tr('op.limited'), backLines: [tr('op.back1'), tr('op.backTime'), tr('op.back3')], simple: true, ground: ev.accent, label: ev.name };
 }
 
 /**
@@ -1863,6 +1864,45 @@ export function createOpeningScene(): OpeningScene {
   }
 
   /**
+   * (13/11, retours de Tom) « Direct 4★ » pour l'ÉVENTAIL (World Pack) aussi : avant, il gardait le défilement carte par
+   * carte. Toutes les cartes sous le seuil, de la carte en attente jusqu'à la première belle carte, se retournent
+   * ENSEMBLE à leur place dans l'éventail (cascade serrée) ; la belle carte suit avec sa révélation habituelle (pilotage
+   * auto). Aucune carte de rang ≥ seuil : l'éventail final, tout de suite.
+   */
+  function jumpFan() {
+    let k = cursor;
+    while (k < order.length && fastCard(order[k])) k++;
+    phase = 'busy';
+    queued = false;
+    kill();
+    if (k >= order.length) {
+      for (const si of order) slots[si].U.lit.value = 6;
+      finish(0);
+      return;
+    }
+    const lays = fanLayout();
+    const move = sideline(gsap.timeline());
+    const dE = DUR.emphatique() / 1000, dS = DUR.standard() / 1000, st = STAGGER.serre / 1000;
+    move.call(() => ctx.sfx.whoosh(dE, 0.06, false, EASE.glide), [], 0);
+    // la carte montrée avant (s'il y en a une) reprend sa place dans l'éventail
+    const from = cursor > 0 ? cursor - 1 : cursor;
+    for (let j = from; j < k; j++) {
+      const sl = slots[order[j]];
+      const l = lays[j];
+      sl.U.lit.value = 6;
+      move.to(sl.p, { x: l.x, y: l.y, z: l.z, s: l.s, rz: l.rz, flip: 0, holo: 1, duration: dE, ease: EASE.glide }, Math.max(0, j - cursor) * st);
+    }
+    move.to(S, { glow: 0, duration: dS }, 0);
+    cursor = k;
+    focusSlot = -1;
+    events.onJump?.(cursor, order.length);
+    move.call(() => {
+      phase = 'opened';
+      flushQueued();
+    }, [], dE + Math.max(0, k - from - 1) * st);
+  }
+
+  /**
    * Place de la j-ième carte déjà révélée (style pile). (Retours live 02) Quand l'interface occupe le bas de l'écran
    * (téléphone en portrait, ordinateur), la rangée passe EN HAUT, juste sous le compteur : avant, elle était collée au bas
    * de l'écran, sous les boutons « 4★ et + / Tout révéler / Tout passer ». La carte montrée passe devant elle.
@@ -2528,7 +2568,7 @@ export function createOpeningScene(): OpeningScene {
         perfMark(`ouv:${name}`, now - lapAt, now);
         lapAt = now;
       };
-      lap('scène');
+      lap('scène'); // i18n-ok
       await ensureFonts();
       lap('polices');
 
@@ -2546,7 +2586,7 @@ export function createOpeningScene(): OpeningScene {
       }
       allKeys = Object.keys(styles).filter((k) => k !== EVENT_KEY);
       arts.set(boosterKey, c.bag.add(await generatePackArt(styles[boosterKey], { releaseSources: true })));
-      lap('visuel du booster');
+      lap('visuel du booster'); // i18n-ok
       startArts = async () => {
         await nextFrame();
         await nextFrame();
@@ -2613,7 +2653,7 @@ export function createOpeningScene(): OpeningScene {
         const first = loadTearBakes();
         lap('sachet');
         const b0 = await Promise.race([first, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
-        lap(`attente déchirure${b0 ? '' : ' (pas arrivée)'}`);
+        lap(`attente déchirure${b0 ? '' : ' (pas arrivée)'}`); // i18n-ok
         // arrivé à temps : visible pendant le préchauffage (pipelines créés avec le reste), caché ensuite ; sinon
         // monté caché, compilé à sa première déchirure
         if (b0 && mount(b0)) bakedBody!.visible = bakedStrip!.visible = true;
@@ -2912,7 +2952,7 @@ export function createOpeningScene(): OpeningScene {
       // (MRT émissif, HalfFloat, MSAA ×4 — PassNode.compileAsync, voir post.ts) ; WebGL2 : variante « canvas » comme avant
       await preloadNoise(); // (E2-01) pixels du bruit arrivés du worker avant la 1re image (déjà là en pratique)
       if (burnTex) await burnNoiseReady();
-      lap('matériaux');
+      lap('matériaux'); // i18n-ok
       await compileReal();
       lap('pipelines');
       {
@@ -3161,7 +3201,7 @@ export function createOpeningScene(): OpeningScene {
         const admired = performance.now() >= autoHoldUntil;
         // (retours live 02, anti-spoil) « 4★ et + » : TOUTES les cartes se retournent seules, et la scène s'arrête APRÈS
         // une belle carte (avant : elle s'arrêtait face cachée devant une 4★+, ce qui l'annonçait)
-        if (phase === 'opened' && !autoWait && auto.jump && !auto.reveal && style !== 'fan' && fastCard(cur)) jumpAhead();
+        if (phase === 'opened' && !autoWait && auto.jump && !auto.reveal && fastCard(cur)) (style === 'fan' ? jumpFan : jumpAhead)();
         else if (phase === 'opened' && !autoWait && (auto.reveal ? admired : auto.minRank > 0)) {
           if (style === 'fan') revealFan();
           else revealCurrent();

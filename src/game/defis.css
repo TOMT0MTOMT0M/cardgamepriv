@@ -56,7 +56,7 @@
 .df-p.df-me .df-pn { color: #fff; font-weight: 600; }
 .df-p.df-out { opacity: 0.45; }
 .df-p.df-win .df-ps { color: #fff; font-weight: 600; }
-.df-p.df-win .df-pn::after { content: ' — gagnant'; color: #fff; }
+.df-p.df-win .df-pn::after { content: ' — gagnant'; color: #fff; } /* i18n-ok : anglais dans usinage.css (:lang(en)) */
 .df-ps { font: 600 14px var(--title); color: #fff; white-space: nowrap; }
 .df-bar { display: block; height: 4px; border-radius: var(--r-pill); background: var(--gm-line); overflow: hidden; }
 .df-bar::after { content: ''; display: block; height: 100%; width: 100%; border-radius: inherit; background: #fff; transform-origin: left; transform: scaleX(var(--k, 0)); transition: transform var(--dur-emphatique) var(--ease-standard); }

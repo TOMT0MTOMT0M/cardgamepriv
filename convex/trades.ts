@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -9,6 +10,7 @@ import { bumpWeekly, recordFlow } from './econLib';
 import { cardsValue } from '../src/core/economy';
 import { dropInv, invRev } from './invRev';
 import { seenAtOf } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 const tradeItemValidator = v.object({
   cardId: v.string(),
@@ -21,13 +23,13 @@ const MAX_ITEMS_PER_SIDE = 12;
 type TradeItem = { cardId: string; rarity: RarityId; count: number };
 
 function checkItems(items: TradeItem[], side: string) {
-  if (items.length > MAX_ITEMS_PER_SIDE) throw new ConvexError(`${MAX_ITEMS_PER_SIDE} cartes différentes au maximum par côté.`);
+  if (items.length > MAX_ITEMS_PER_SIDE) throw new ConvexError(fe('trades.1', { p0: MAX_ITEMS_PER_SIDE }));
   const seen = new Set<string>();
   for (const it of items) {
-    if (!Number.isInteger(it.count) || it.count < 1 || it.count > 99) throw new ConvexError('Quantité invalide.');
-    if (!catalogCard(it.cardId)) throw new ConvexError(`Carte inconnue (${side}) : ${it.cardId}`);
+    if (!Number.isInteger(it.count) || it.count < 1 || it.count > 99) throw new ConvexError(fe('trades.2'));
+    if (!catalogCard(it.cardId)) throw new ConvexError(fe('trades.3', { p0: side, p1: it.cardId }));
     const k = `${it.cardId}:${it.rarity}`;
-    if (seen.has(k)) throw new ConvexError('Même carte en double dans la liste.');
+    if (seen.has(k)) throw new ConvexError(fe('trades.4'));
     seen.add(k);
   }
 }
@@ -76,9 +78,9 @@ async function checkOffered(ctx: QueryCtx, userId: Id<'users'>, offered: TradeIt
   for (const item of offered) {
     const have = await ownedCount(ctx, userId, item);
     const name = catalogCard(item.cardId)?.name ?? item.cardId;
-    if (have < item.count) throw new ConvexError(`Tu ne possèdes pas assez d’exemplaires de ${name}.`);
+    if (have < item.count) throw new ConvexError(fe('trades.5', { p0: name }));
     const busy = locked.get(`${item.cardId}:${item.rarity}`) ?? 0;
-    if (have - busy < item.count) throw new ConvexError(`${name} est déjà engagée dans un autre échange en attente ou une annonce.`);
+    if (have - busy < item.count) throw new ConvexError(fe('trades.6', { p0: name }));
   }
 }
 
@@ -179,23 +181,23 @@ export const propose = mutation({
   handler: async (ctx, { sessionToken, toUserId, offered, requested, note }) => {
     const user = await requireUser(ctx, sessionToken);
     if (user._id === toUserId) {
-      throw new ConvexError('Impossible d’échanger avec soi-même.');
+      throw new ConvexError(fe('trades.7'));
     }
     const target = await ctx.db.get(toUserId);
-    if (!target) throw new ConvexError('Joueur introuvable.');
-    if (!offered.length && !requested.length) throw new ConvexError('Échange vide.');
+    if (!target) throw new ConvexError(fe('trades.8'));
+    if (!offered.length && !requested.length) throw new ConvexError(fe('trades.9'));
     checkItems(offered, 'proposée');
     checkItems(requested, 'demandée');
 
     await checkOffered(ctx, user._id, offered);
     for (const item of requested) {
       if ((await ownedCount(ctx, toUserId, item)) < item.count) {
-        throw new ConvexError(`${target.displayName} n’a pas (ou plus) ${catalogCard(item.cardId)?.name ?? item.cardId}.`);
+        throw new ConvexError(fe('trades.10', { p0: target.displayName, p1: catalogCard(item.cardId)?.name ?? item.cardId }));
       }
     }
 
     await bumpMissions(ctx, user, { type: 'trade' });
-    await notify(ctx, toUserId, { kind: 'trade', title: `${user.displayName} te propose un échange`, body: `${offered.length} carte(s) contre ${requested.length} : à voir dans Échanges.`, url: '#/echanges' });
+    await notify(ctx, toUserId, { kind: 'trade', title: fm('n.tradeOffer', { name: user.displayName }), body: fm('n.tradeOfferBody', { n: offered.length, m: requested.length }), url: '#/echanges' });
     return await ctx.db.insert('trades', {
       fromUserId: user._id,
       toUserId,
@@ -218,20 +220,20 @@ export const respond = mutation({
     const user = await requireUser(ctx, sessionToken);
     const trade = await ctx.db.get(tradeId);
     if (!trade || trade.status !== 'pending') {
-      throw new ConvexError('Échange introuvable ou déjà traité.');
+      throw new ConvexError(fe('trades.11'));
     }
     if (trade.toUserId !== user._id) {
-      throw new ConvexError('Seul le destinataire peut répondre à cet échange.');
+      throw new ConvexError(fe('trades.12'));
     }
 
     const now = Date.now();
     if (!accept) {
       await ctx.db.patch(trade._id, { status: 'declined', resolvedAt: now });
-      await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} a décliné ton échange`, body: 'Tu peux lui en proposer un autre.', url: '#/echanges' });
+      await notify(ctx, trade.fromUserId, { kind: 'trade', title: fm('n.tradeDeclined', { name: user.displayName }), body: fm('n.tradeDeclinedBody'), url: '#/echanges' });
       return { status: 'declined' as const };
     }
 
-    await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} a accepté ton échange !`, body: 'Les cartes sont dans ta collection.', url: '#/echanges' });
+    await notify(ctx, trade.fromUserId, { kind: 'trade', title: fm('n.tradeAccepted', { name: user.displayName }), body: fm('n.cardsIn'), url: '#/echanges' });
     await concludeTrade(ctx, trade, user);
     return { status: 'accepted' as const };
   },
@@ -252,17 +254,17 @@ export const counter = mutation({
   handler: async (ctx, { sessionToken, tradeId, offered, requested, note }) => {
     const user = await requireUser(ctx, sessionToken);
     const trade = await ctx.db.get(tradeId);
-    if (!trade || trade.status !== 'pending') throw new ConvexError('Échange introuvable ou déjà traité.');
-    if (trade.toUserId !== user._id) throw new ConvexError('Seul le destinataire peut contre-proposer.');
-    if (!offered.length && !requested.length) throw new ConvexError('Échange vide.');
-    await notify(ctx, trade.fromUserId, { kind: 'trade', title: `${user.displayName} te fait une contre-proposition`, body: 'À voir dans Échanges.', url: '#/echanges' });
+    if (!trade || trade.status !== 'pending') throw new ConvexError(fe('trades.13'));
+    if (trade.toUserId !== user._id) throw new ConvexError(fe('trades.14'));
+    if (!offered.length && !requested.length) throw new ConvexError(fe('trades.15'));
+    await notify(ctx, trade.fromUserId, { kind: 'trade', title: fm('n.tradeCounter', { name: user.displayName }), body: fm('n.tradeCounterBody'), url: '#/echanges' });
     checkItems(offered, 'proposée');
     checkItems(requested, 'demandée');
     const other = await ctx.db.get(trade.fromUserId);
-    if (!other) throw new ConvexError('Joueur introuvable.');
+    if (!other) throw new ConvexError(fe('trades.16'));
     await checkOffered(ctx, user._id, offered);
     for (const item of requested) {
-      if ((await ownedCount(ctx, other._id, item)) < item.count) throw new ConvexError(`${other.displayName} n’a pas (ou plus) ${catalogCard(item.cardId)?.name ?? item.cardId}.`);
+      if ((await ownedCount(ctx, other._id, item)) < item.count) throw new ConvexError(fe('trades.17', { p0: other.displayName, p1: catalogCard(item.cardId)?.name ?? item.cardId }));
     }
     const now = Date.now();
     const id = await ctx.db.insert('trades', {
@@ -287,8 +289,8 @@ export const cancel = mutation({
   handler: async (ctx, { sessionToken, tradeId }) => {
     const user = await requireUser(ctx, sessionToken);
     const trade = await ctx.db.get(tradeId);
-    if (!trade || trade.status !== 'pending') throw new ConvexError('Échange introuvable ou déjà traité.');
-    if (trade.fromUserId !== user._id) throw new ConvexError('Seul l’auteur peut annuler cette proposition.');
+    if (!trade || trade.status !== 'pending') throw new ConvexError(fe('trades.18'));
+    if (trade.fromUserId !== user._id) throw new ConvexError(fe('trades.19'));
     await ctx.db.patch(trade._id, { status: 'cancelled', resolvedAt: Date.now() });
     return { status: 'cancelled' as const };
   },
@@ -301,14 +303,14 @@ export const cancel = mutation({
 export async function concludeTrade(ctx: MutationCtx, trade: Doc<'trades'>, user: Doc<'users'>) {
   const now = Date.now();
   const fromUser = await ctx.db.get(trade.fromUserId);
-  if (!fromUser) throw new ConvexError('Joueur expéditeur introuvable.');
+  if (!fromUser) throw new ConvexError(fe('trades.20'));
   // verrouillage (retours live 02) : je ne peux pas donner une carte engagée dans MON annonce ou MON offre en cours
   {
     const mineLocked = await lockedCards(ctx, user._id);
     for (const item of trade.requested) {
       const busy = mineLocked.get(`${item.cardId}:${item.rarity}`) ?? 0;
       if (busy && (await ownedCount(ctx, user._id, item)) - busy < item.count)
-        throw new ConvexError(`${catalogCard(item.cardId)?.name ?? item.cardId} est engagée dans une de tes annonces ou offres en cours : retire-la d’abord.`);
+        throw new ConvexError(fe('trades.21', { p0: catalogCard(item.cardId)?.name ?? item.cardId }));
     }
   }
 
@@ -321,7 +323,7 @@ export async function concludeTrade(ctx: MutationCtx, trade: Doc<'trades'>, user
       )
       .unique();
     if (!src || src.count < item.count) {
-      throw new ConvexError(`${fromUser.displayName} n'a plus les cartes proposées.`);
+      throw new ConvexError(fe('trades.22', { p0: fromUser.displayName }));
     }
     if (src.count === item.count) {
       await dropInv(ctx, src);
@@ -361,7 +363,7 @@ export async function concludeTrade(ctx: MutationCtx, trade: Doc<'trades'>, user
       )
       .unique();
     if (!src || src.count < item.count) {
-      throw new ConvexError('Tu n’as plus les cartes demandées.');
+      throw new ConvexError(fe('trades.23'));
     }
     if (src.count === item.count) {
       await dropInv(ctx, src);
@@ -406,7 +408,7 @@ export async function concludeTrade(ctx: MutationCtx, trade: Doc<'trades'>, user
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
     kind: 'trade',
-    message: `${user.displayName} et ${fromUser.displayName} ont conclu un échange !`,
+    ...feedMsg(fm('f.trade', { name: user.displayName, other: fromUser.displayName })),
     createdAt: now,
   });
 

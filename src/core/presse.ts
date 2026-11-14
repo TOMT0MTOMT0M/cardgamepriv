@@ -10,6 +10,7 @@
  *    puits de pièces. Aucune carte n'est gagnée ni vendue : les cartes frappées ne font que montrer l'album
  *    (« manquante » quand tu ne l'as pas encore), les pièces gagnées servent aux boosters.
  */
+import { fe } from './errors';
 import type { RarityId } from './rarity';
 import { SLOT_WEIGHTS, rollStar } from './dropRates';
 import { CARD_STARS } from './economy';
@@ -32,9 +33,9 @@ export const presseRisk = (last: RarityId | string | undefined) => (last ? (SLOT
 export const presseCracks = (strip: Array<{ rarity: string }>, i: number) => i > 0 && strip[i].rarity === strip[i - 1].rarity;
 
 export function presseBetProblem(bet: number, coins: number, playedToday: number): string | null {
-  if (!(PRESSE_BETS as readonly number[]).includes(bet)) return `Mise de ${PRESSE_BETS.join(', ')} pièces.`;
-  if (bet > coins) return `Il te manque ${bet - coins} pièces.`;
-  if (playedToday >= PRESSE_DAILY) return `${PRESSE_DAILY} parties par jour : la presse refroidit jusqu’à demain.`;
+  if (!(PRESSE_BETS as readonly number[]).includes(bet)) return fe('presse.2', { p0: PRESSE_BETS.join(', ') });
+  if (bet > coins) return fe('presse.3', { p0: bet - coins });
+  if (playedToday >= PRESSE_DAILY) return fe('presse.4', { p0: PRESSE_DAILY });
   return null;
 }
 

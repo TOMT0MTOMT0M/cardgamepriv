@@ -7,13 +7,14 @@
  * (10/11) Le moteur ne dépend plus du jeu : il reçoit un « hôte » minimal (qualité, sons) — le jeu lui passe son
  * shell et sa pile de couches (retour du téléphone), le labo (045) seulement la qualité et les sons.
  */
+import { locale, t } from '../../core/i18n';
 import gsap from 'gsap';
 import type { Sfx } from '../../core/audio';
 import { haptics } from '../../core/haptics';
 import { applyFontVars, displayCase } from '../../core/fonts';
 
 /** (11/11) « VICTOIRE » → « Victoire » ; « League of Legends », « MCU » (sigle court) restent tels quels */
-const sentenceIfCaps = (t: string) => (t.length > 3 && t === t.toLocaleUpperCase('fr') && t !== t.toLocaleLowerCase('fr') ? displayCase(t) : t);
+const sentenceIfCaps = (t: string) => (t.length > 3 && t === t.toLocaleUpperCase(locale()) && t !== t.toLocaleLowerCase(locale()) ? displayCase(t) : t);
 import { DUR } from '../../core/motion';
 import { ALU_BACK, paintBack } from '../../core/art/back';
 import { BASE_H, BASE_W } from '../../core/art/subjects';
@@ -84,7 +85,7 @@ export function runPrelude(o: PreludeRun): PreludeHandle {
   flash.className = 'mp-flash';
   const hint = document.createElement('div');
   hint.className = 'mp-hint';
-  hint.textContent = 'Toucher pour passer';
+  hint.textContent = t('myth.skip');
   root.append(stage, clueBox, flash, hint);
   if (o.mount) root.classList.add('in-mount');
   applyFontVars(root); // (le labo n'a pas les variables de polices du jeu)

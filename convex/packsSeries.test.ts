@@ -30,5 +30,5 @@ test('série : preparePacks scelle tout d’un coup, revealPacks crédite en un 
   expect(u!.packBalance).toBe(0);
   const inv = await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
   expect(inv.reduce((a, c) => a + c.count, 0)).toBe(20);
-  await expect(t.mutation(api.packs.preparePacks, { sessionToken: token, packKind: 'bebou', count: 3 })).rejects.toThrow(/Plus de boosters/);
+  await expect(t.mutation(api.packs.preparePacks, { sessionToken: token, packKind: 'bebou', count: 3 })).rejects.toThrow(/⟦(packs\.2)[⟧{]/);
 });

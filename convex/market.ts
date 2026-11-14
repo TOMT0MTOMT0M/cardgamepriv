@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -7,6 +8,7 @@ import { addCoins, giveCards, recordFlow, takeCards } from './econLib';
 import { MARKET_MAX_OPEN, marketProblem } from '../src/core/market';
 import { CARD_VALUE } from '../src/core/economy';
 import { presenceOf } from './presence';
+import { fm } from '../src/core/msgs';
 
 /**
  * MARCHÉ (retours Hugo 10/11) : des cartes à prix fixe, en pièces, entre joueurs. Règles : src/core/market.ts.
@@ -57,11 +59,11 @@ export const sell = mutation({
   handler: async (ctx, { sessionToken, cardId, rarity, price }) => {
     const me = await requireUser(ctx, sessionToken);
     const card = catalogCard(cardId);
-    if (!card) throw new ConvexError('Carte inconnue.');
+    if (!card) throw new ConvexError(fe('market.1'));
     const problem = marketProblem(rarity, price);
     if (problem) throw new ConvexError(problem);
     const mine = await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', me._id).eq('status', 'open')).collect();
-    if (mine.length >= MARKET_MAX_OPEN) throw new ConvexError(`${MARKET_MAX_OPEN} cartes en vente au maximum : retires-en une d’abord.`);
+    if (mine.length >= MARKET_MAX_OPEN) throw new ConvexError(fe('market.2', { p0: MARKET_MAX_OPEN }));
     const [taken] = await takeCards(ctx, me._id, [{ cardId, rarity, count: 1 }]);
     await ctx.db.insert('market', { sellerId: me._id, cardId, rarity, mintNumber: taken.mintNumber, price, status: 'open', createdAt: Date.now() });
   },
@@ -72,8 +74,8 @@ export const cancel = mutation({
   handler: async (ctx, { sessionToken, id }) => {
     const me = await requireUser(ctx, sessionToken);
     const m = await ctx.db.get(id);
-    if (!m || m.sellerId !== me._id) throw new ConvexError('Annonce introuvable.');
-    if (m.status !== 'open') throw new ConvexError('Cette carte n’est plus en vente.');
+    if (!m || m.sellerId !== me._id) throw new ConvexError(fe('market.11'));
+    if (m.status !== 'open') throw new ConvexError(fe('market.3'));
     await ctx.db.patch(id, { status: 'cancelled', resolvedAt: Date.now() });
     await giveCards(ctx, me._id, [{ cardId: m.cardId, rarity: m.rarity, mintNumber: m.mintNumber }]);
   },
@@ -84,13 +86,13 @@ export const buy = mutation({
   handler: async (ctx, { sessionToken, id, price }) => {
     const me = await requireUser(ctx, sessionToken);
     const m = await ctx.db.get(id);
-    if (!m || m.status !== 'open') throw new ConvexError('Trop tard : cette carte vient d’être vendue (ou retirée).');
-    if (m.sellerId === me._id) throw new ConvexError('C’est ta propre annonce.');
+    if (!m || m.status !== 'open') throw new ConvexError(fe('market.4'));
+    if (m.sellerId === me._id) throw new ConvexError(fe('market.5'));
     // le prix affiché est celui payé : une annonce modifiée entre-temps n'est jamais achetée à l'aveugle
-    if (m.price !== price) throw new ConvexError('Le prix a changé : regarde de nouveau l’annonce.');
+    if (m.price !== price) throw new ConvexError(fe('market.6'));
     const now = Date.now();
-    await addCoins(ctx, me._id, -m.price, 'market-buy', `Marché : achat de ${nameOf(m.cardId)}`);
-    await addCoins(ctx, m.sellerId, m.price, 'market-sell', `Marché : vente de ${nameOf(m.cardId)}`);
+    await addCoins(ctx, me._id, -m.price, 'market-buy', fm('c.marketBuy', { card: nameOf(m.cardId), cardId: m.cardId }));
+    await addCoins(ctx, m.sellerId, m.price, 'market-sell', fm('c.marketSell', { card: nameOf(m.cardId), cardId: m.cardId }));
     await ctx.db.patch(id, { status: 'sold', buyerId: me._id, resolvedAt: now });
     await giveCards(ctx, me._id, [{ cardId: m.cardId, rarity: m.rarity, mintNumber: m.mintNumber }]);
     // anti-abus : les deux sens du flux de valeur (comme un échange)

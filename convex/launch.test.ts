@@ -180,4 +180,26 @@ describe('ouverture 07/11 : bannissement, pot de la roulette, visite guidée', (
     await t.mutation(internal.admin.resetGuide, { name: 'neo' });
     expect((await t.query(api.users.me, { sessionToken: token }))!.guideSeen).toBe(false);
   });
+
+  test('(13/11) tour V2 : compte neuf = visite guidée seule ; joueur d\'avant = tour une fois ; testeurs du lien V2', async () => {
+    const t = convexTest(schema, modules);
+    const { token } = await t.mutation(internal.accounts.createPw, { loginKey: 'neo', displayName: 'Neo', pwHash: 's1$a$b' });
+    await t.mutation(api.users.markGuideSeen, { sessionToken: token });
+    // compte neuf : la visite guidée marque aussi le tour V2 (rien à lui présenter)
+    expect((await t.query(api.users.me, { sessionToken: token }))!.v2TourSeen).toBe(true);
+    // joueur d'avant la V2 : visite déjà vue, tour pas encore
+    await player(t, 'magizz', { guideSeenAt: 1 });
+    const me = async () => (await t.query(api.users.me, { sessionToken: 'tok-magizz' }))!;
+    expect((await me()).v2TourSeen).toBe(false);
+    await t.mutation(api.users.markV2TourSeen, { sessionToken: 'tok-magizz' });
+    expect((await me()).v2TourSeen).toBe(true);
+    await t.mutation(internal.admin.resetV2Tour, { name: 'magizz' });
+    expect((await me()).v2TourSeen).toBe(false);
+    // testeur : seulement s'il est dans V2_TESTERS (pas l'équipe pour autant)
+    expect((await me()).tester).toBe(false);
+    vi.stubEnv('V2_TESTERS', 'autre, Magizz');
+    expect((await me()).tester).toBe(true);
+    expect((await me()).staff).toBe(false);
+    vi.unstubAllEnvs();
+  });
 });

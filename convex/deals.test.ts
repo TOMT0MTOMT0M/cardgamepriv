@@ -135,7 +135,7 @@ describe('Demander en un toucher', () => {
     expect(r.give.cardId).toBe(C);
     const mine = await t.query(api.trades.myTrades, { sessionToken: bob.token });
     expect(mine.incoming[0]).toMatchObject({ quick: true, offered: [{ cardId: C, count: 1 }], requested: [{ cardId: A, count: 1 }] });
-    await expect(t.mutation(api.deals.quick, { sessionToken: alice.token, toUserId: bob.userId, get: { cardId: A, rarity: 'common' } })).rejects.toThrow(/déjà demandé/);
+    await expect(t.mutation(api.deals.quick, { sessionToken: alice.token, toUserId: bob.userId, get: { cardId: A, rarity: 'common' } })).rejects.toThrow(/⟦(deals\.11)[⟧{]/);
   });
   test('le demandeur change sa contrepartie ; le destinataire choisit autre chose et c’est conclu', async () => {
     const { t, alice, bob } = await scene();
@@ -144,7 +144,7 @@ describe('Demander en un toucher', () => {
     await t.mutation(api.deals.swapGive, { sessionToken: alice.token, tradeId, cardId: B });
     const opts = await t.query(api.deals.pickOptions, { sessionToken: bob.token, tradeId });
     expect(opts.options.map((o) => o.cardId).sort()).toEqual([B, C].sort()); // D : son seul exemplaire, pas proposé
-    await expect(t.mutation(api.deals.acceptPick, { sessionToken: bob.token, tradeId, cardId: D })).rejects.toThrow(/garde/);
+    await expect(t.mutation(api.deals.acceptPick, { sessionToken: bob.token, tradeId, cardId: D })).rejects.toThrow(/⟦(contracts\.5|deals\.20|economy\.13|market\.6)[⟧{]/);
     const done = await t.mutation(api.deals.acceptPick, { sessionToken: bob.token, tradeId, cardId: C });
     expect(done).toEqual({ status: 'accepted', changed: true });
     expect(await countOf(t, alice.userId, A)).toBe(1);
@@ -165,11 +165,11 @@ describe('Demander en un toucher', () => {
     const r = await t.mutation(api.deals.quick, { sessionToken: alice.token, toUserId: bob.userId, give: { cardId: C, rarity: 'common' } });
     expect(r.get.cardId).toBe(A);
     // carol n'a aucun doublon : rien à recevoir d'elle
-    await expect(t.mutation(api.deals.quick, { sessionToken: bob.token, toUserId: carol.userId, give: { cardId: A, rarity: 'common' } })).rejects.toThrow(/doublon/);
+    await expect(t.mutation(api.deals.quick, { sessionToken: bob.token, toUserId: carol.userId, give: { cardId: A, rarity: 'common' } })).rejects.toThrow(/⟦(contracts\.5|deals\.7|deals\.8|economy\.13)[⟧{]/);
   });
   test('étoiles différentes refusées', async () => {
     const { t, alice, bob } = await scene();
     await give(t, alice.userId, R1, 2, 'rare');
-    await expect(t.mutation(api.deals.quick, { sessionToken: alice.token, toUserId: bob.userId, get: { cardId: A, rarity: 'common' }, give: { cardId: R1, rarity: 'rare' } })).rejects.toThrow(/même étoile/);
+    await expect(t.mutation(api.deals.quick, { sessionToken: alice.token, toUserId: bob.userId, get: { cardId: A, rarity: 'common' }, give: { cardId: R1, rarity: 'rare' } })).rejects.toThrow(/⟦(contracts\.4|deals\.6)[⟧{]/);
   });
 });

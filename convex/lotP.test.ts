@@ -88,7 +88,7 @@ describe('profil : GIF importé (photo / bannière)', () => {
     const { t, u } = await setup();
     const a = await store(t, gif(1500));
     await t.mutation(api.profiles.setProfileMedia, { sessionToken: u.alice.token, kind: 'avatar', storageId: a });
-    await expect(t.mutation(api.profiles.setProfileMedia, { sessionToken: u.bob.token, kind: 'avatar', storageId: a })).rejects.toThrow(/appartient pas/);
+    await expect(t.mutation(api.profiles.setProfileMedia, { sessionToken: u.bob.token, kind: 'avatar', storageId: a })).rejects.toThrow(/⟦(profiles\.8)[⟧{]/);
     expect(await exists(t, a)).toBe(true);
     expect((await t.query(api.profiles.profile, { userId: u.alice.userId }))?.avatarMedia).toBeTruthy();
   });

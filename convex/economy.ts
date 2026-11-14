@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query, type QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
@@ -29,6 +30,7 @@ import { claimWeekly as claimWeeklyState, cleanWeekly, currentWeekly, nextWeekRe
 import { invRev } from './invRev';
 import { syncPresence } from './presence';
 import { statsCached } from './profiles';
+import { fm } from '../src/core/msgs';
 
 /**
  * ÉCONOMIE — portefeuille et sources de pièces (spec du 3 nov., src/core/economy.ts) :
@@ -103,7 +105,7 @@ export const buyPacks = mutation({
     const problem = packBuyProblem(count, coinsOf(u), econ, today);
     if (problem) throw new ConvexError(problem);
     const bought = (econ.shopDay === today ? econ.shopBought ?? 0 : 0) + count;
-    await addCoins(ctx, u._id, -count * PACK_PRICE, 'shop', `Achat de ${count} booster${count > 1 ? 's' : ''}`, { econ: { shopDay: today, shopBought: bought } });
+    await addCoins(ctx, u._id, -count * PACK_PRICE, 'shop', fm('c.shop', { n: count }), { econ: { shopDay: today, shopBought: bought } });
     const fresh = (await ctx.db.get(u._id))!;
     const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil);
     await ctx.db.patch(u._id, { packBalance: regen.balance + count, packRegenAt: regen.regenAt });
@@ -132,10 +134,10 @@ export const claimCalendar = mutation({
     const u = await requireUser(ctx, sessionToken);
     const now = Date.now();
     const cal = calendarOf(u, now);
-    if (cal.claimed) throw new ConvexError('Cadeau du jour déjà pris : reviens demain.');
+    if (cal.claimed) throw new ConvexError(fe('economy.1'));
     const streak = touchStreak(u.streak, now);
     if (streak) await ctx.db.patch(u._id, { streak });
-    await addCoins(ctx, u._id, cal.reward.coins, 'calendar', `Calendrier — jour ${cal.day}`, { earned: true, econ: { calendarDay: cal.today } });
+    await addCoins(ctx, u._id, cal.reward.coins, 'calendar', fm('c.calendar', { day: cal.day }), { earned: true, econ: { calendarDay: cal.today } });
     if (cal.reward.packs) {
       const fresh = (await ctx.db.get(u._id))!;
       const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil);
@@ -153,7 +155,7 @@ export const claimWeekly = mutation({
     const r = claimWeeklyState(currentWeekly(u.weekly as WeeklyState | undefined, u._id, Date.now()), missionId);
     if (typeof r === 'string') throw new ConvexError(r);
     await ctx.db.patch(u._id, { weekly: cleanWeekly(r.state) });
-    await addCoins(ctx, u._id, r.reward, 'weekly', 'Mission de la semaine', { earned: true });
+    await addCoins(ctx, u._id, r.reward, 'weekly', fm('c.weekly'), { earned: true });
     return { reward: r.reward };
   },
 });
@@ -163,7 +165,7 @@ export const burn = mutation({
   args: { sessionToken: v.string(), items: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })) },
   handler: async (ctx, { sessionToken, items }) => {
     const u = await requireUser(ctx, sessionToken);
-    if (items.length > 200) throw new ConvexError('Trop de cartes d’un coup.');
+    if (items.length > 200) throw new ConvexError(fe('economy.2'));
     // (audit 12/11, S07 / A6-09) seulement les lignes brûlées (≤ 200, par l'index), plus la collection entière
     const rows = new Map<string, Doc<'inventory'> | null>();
     for (const it of items) {
@@ -183,7 +185,7 @@ export const burn = mutation({
       n += it.count;
     }
     const econ = econOf(u);
-    await addCoins(ctx, u._id, coins, 'burn', `Brûlage de ${n} doublon${n > 1 ? 's' : ''}`, { earned: true, econ: { burned: econ.burned + n } });
+    await addCoins(ctx, u._id, coins, 'burn', fm('c.burn', { n }), { earned: true, econ: { burned: econ.burned + n } });
     await bumpWeekly(ctx, u._id, { type: 'burn', count: n });
     await ctx.db.patch(u._id, { lastSeenAt: Date.now(), statusText: 'Fait chauffer la forge à doublons' });
     await syncPresence(ctx, u._id);
@@ -199,9 +201,9 @@ export const claimCompletions = mutation({
     const inv = await collectionOf(ctx, u);
     const econ = econOf(u);
     const sets = claimableCompletions(new Set(inv.map((c) => c.cardId)), econ.completions);
-    if (!sets.length) throw new ConvexError('Aucune prime de complétion en attente.');
+    if (!sets.length) throw new ConvexError(fe('economy.3'));
     const total = sets.reduce((a, s) => a + s.reward, 0);
-    await addCoins(ctx, u._id, total, 'completion', sets.length === 1 ? `Complétion — ${sets[0].label}` : `Complétion — ${sets.length} ensembles`, {
+    await addCoins(ctx, u._id, total, 'completion', sets.length === 1 ? fm('c.compl', { set: sets[0].label, setId: sets[0].id }) : fm('c.complN', { n: sets.length }), {
       earned: true,
       econ: { completions: [...econ.completions, ...sets.map((s) => s.id)] },
     });
@@ -216,10 +218,10 @@ export const claimAchievements = mutation({
     const u = await requireUser(ctx, sessionToken);
     const econ = econOf(u);
     const list = claimableAchievements(await achStats(ctx, u), econ.achievements);
-    if (!list.length) throw new ConvexError('Aucun succès à réclamer.');
+    if (!list.length) throw new ConvexError(fe('economy.4'));
     const total = list.reduce((a, x) => a + achievementReward(x), 0);
     const packs = list.reduce((a, x) => a + achievementPacks(x), 0);
-    await addCoins(ctx, u._id, total, 'achievement', list.length === 1 ? `Succès — ${list[0].label}` : `${list.length} succès`, {
+    await addCoins(ctx, u._id, total, 'achievement', list.length === 1 ? fm('c.ach', { ach: list[0].label, achId: list[0].id }) : fm('c.achN', { n: list.length }), {
       earned: true,
       econ: { achievements: [...econ.achievements, ...list.map((a) => a.id)] },
     });

@@ -1,3 +1,5 @@
+import { lang } from '../core/i18n';
+import { onLang } from './lang';
 import { ensureCardFonts, gameDesignId, generateCardArtAsync, releaseCardImage } from '../core/art';
 import { FONT_VERSION } from '../core/fonts';
 import { canvasToBlob, loadCardImage } from '../core/art/images';
@@ -35,6 +37,11 @@ const CACHE = 'bebou-cartes-v12'; // v12 (10/11, retours Hugo) : 5★ toujours e
  * les plus anciennes non affichées sont oubliées (URL révoquée) ; elles reviennent du Cache Storage si on y repasse.
  */
 const done = new Map<string, string>();
+/** (version anglaise) changement de langue : les cartes peintes (noms, types, mentions) le sont à nouveau dans la nouvelle langue */
+onLang(() => {
+  for (const u of done.values()) URL.revokeObjectURL(u);
+  done.clear();
+});
 const DONE_MAX = matchMedia('(pointer: coarse)').matches ? 240 : 600;
 /** lu = remis en fin de file (le plus récent) */
 function recall(key: string): string | undefined {
@@ -89,7 +96,7 @@ function cacheUrl(key: string): string | null {
   // l'illustration ACTUELLE fait partie de la clé : quand une carte reçoit (ou change d')image, l'ancienne version peinte
   // n'est plus jamais servie — la carte est repeinte depuis la fiche du catalogue
   // (retours live 6, B2) l'ADRESSE versionnée de la miniature (`?v=`) : une image remplacée = une autre clé
-  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}`)}`;
+  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}${lang() === 'fr' ? '' : `|${lang()}`}`)}`; // (version anglaise) la langue dans la clé : en français, clés inchangées
 }
 async function fromCache(key: string): Promise<string | null> {
   const url = cacheUrl(key);
@@ -195,8 +202,8 @@ const tileStats = new Map<string, { n: number; bytes: number }>();
 let noWebp = false;
 /** Formats des tuiles peintes depuis le démarrage (pour le rapport ?diag) : « image/webp ×42 (18 Ko en moyenne) ». */
 export function tileFormats(): string {
-  if (!tileStats.size) return 'aucune tuile peinte';
-  return [...tileStats].map(([t, f]) => `${t || 'type inconnu'} ×${f.n} (${Math.round(f.bytes / f.n / 1024)} Ko en moyenne)`).join(', ');
+  if (!tileStats.size) return 'aucune tuile peinte'; // i18n-ok
+  return [...tileStats].map(([t, f]) => `${t || 'type inconnu'} ×${f.n} (${Math.round(f.bytes / f.n / 1024)} Ko en moyenne)`).join(', '); // i18n-ok
 }
 async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnType<typeof cardById>, thumb: string | undefined): Promise<string | null> {
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre

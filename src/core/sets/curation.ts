@@ -21,8 +21,9 @@ export const PURGE_08_11: readonly string[] = ["jv-battlefield-battlefield-6", "
  * Vincent Larchet (son rôle dans « Le Prénom », avec sa photo). Même traitement que la purge : catalogue + collections.
  * + (10/11) Pierre Ménès (Commentateurs, 5★).
  * + (11/11) Gérard Depardieu (Acteurs).
+ * + (12/11, demande de Tom) Norman fait des vidéos (YouTube FR, 6★).
  */
-export const PURGE_BRUEL: readonly string[] = ['pop-patrick-bruel', 'pop-casser-la-voix', 'pop-alors-regarde', 'pop-place-des-grands-hommes', 'pop-qui-a-le-droit', 'pop-vincent-larchet', 'spt-pierre-menes', 'pop-gerard-depardieu'];
+export const PURGE_BRUEL: readonly string[] = ['pop-patrick-bruel', 'pop-casser-la-voix', 'pop-alors-regarde', 'pop-place-des-grands-hommes', 'pop-qui-a-le-droit', 'pop-vincent-larchet', 'spt-pierre-menes', 'pop-gerard-depardieu', 'pop-norman-fait-des-videos'];
 
 export const RERATE_08_11: Readonly<Record<string, CatalogRarity>> = {"pop-asha-bhosle": "rare", "pop-k-j-yesudas": "uncommon", "pop-p-susheela": "uncommon", "pop-s-janaki": "uncommon", "pop-s-p-balasubrahmanyam": "uncommon", "pop-a-r-rahman": "rare", "pop-alka-yagnik": "uncommon", "pop-amitabh-bachchan": "rare", "pop-hariharan": "uncommon", "pop-ilaiyaraaja": "uncommon", "pop-kamal-haasan": "uncommon", "pop-karthik": "common", "pop-kishore-kumar": "uncommon", "pop-lata-mangeshkar": "rare", "pop-mano": "common", "pop-mohammed-rafi": "uncommon", "pop-sonu-nigam": "uncommon", "pop-sunidhi-chauhan": "uncommon", "pop-udit-narayan": "uncommon", "pop-anuradha-sriram": "common", "pop-jagathy-sreekumar": "common", "pop-kumar-sanu": "uncommon", "pop-m-s-viswanathan": "common", "pop-malaysia-vasudevan": "common", "pop-p-jayachandran": "common", "pop-sadhana-sargam": "common", "pop-shaan": "common", "pop-sujatha-mohan": "common", "pop-swarnalatha": "common", "pop-t-m-soundararajan": "common", "pop-tippu": "common", "pop-vani-jairam": "common", "pop-yuvan-shankar-raja": "common", "pop-priyanka-chopra": "rare", "pop-akb48": "uncommon", "pop-super-junior": "uncommon", "pop-girls-generation-musique-monde": "uncommon", "pop-boa": "uncommon", "pop-akshay-kumar": "uncommon", "pop-mammootty": "uncommon", "pop-mohanlal": "uncommon", "pop-rajinikanth": "rare", "pop-salman-khan": "uncommon", "pop-shah-rukh-khan": "rare", "pop-aamir-khan": "uncommon", "pop-andy-lau": "rare", "pop-anil-kapoor": "rare", "pop-anupam-kher": "uncommon", "pop-ayumi-hamasaki": "uncommon", "pop-brahmanandam": "common", "pop-chiranjeevi": "common", "pop-deva": "common", "pop-dharmendra": "common", "pop-m-g-ramachandran": "common", "pop-manorama": "common", "pop-mithun-chakraborty": "uncommon", "pop-naseeruddin-shah": "uncommon", "pop-nassar": "common", "pop-nedumudi-venu": "common", "pop-prakash-raj": "common", "pop-prem-nazir": "common", "pop-shakti-kapoor": "common", "pop-sivaji-ganesan": "common", "pop-sridevi": "uncommon", "pop-sukumari": "common", "pop-abhishek-bachchan": "common", "pop-akkineni-nageswara-rao": "common", "pop-ashok-kumar": "common", "pop-jackie-shroff": "common", "pop-jacky-cheung": "uncommon", "pop-javed-akhtar": "common", "pop-karan-johar": "common", "pop-kolkata-knight-riders": "common", "pop-kota-srinivasa-rao": "common", "pop-nagesh": "common", "pop-om-puri": "uncommon", "pop-sankaradi": "common", "pop-sathyaraj": "common", "pop-tanikella-bharani": "common", "pop-namie-amuro": "uncommon", "pop-madhubala-ek-ishq-ek-junoon": "common", "pop-green": "uncommon", "pop-wonder-boy": "uncommon", "pop-san": "uncommon", "pop-felipe-neto": "uncommon", "pop-whindersson-nunes": "uncommon", "spt-sachin-tendulkar": "epic", "spt-virat-kohli": "rare", "spt-kumar-sangakkara": "rare", "spt-rahul-dravid": "uncommon", "spt-muttiah-muralitharan": "uncommon", "spt-shahid-afridi": "uncommon", "geo-chongqing": "rare", "geo-chengdu": "rare", "geo-canton": "epic", "geo-shenzhen": "epic", "geo-tianjin": "rare", "geo-wuhan": "rare", "geo-xian": "epic", "geo-hangzhou": "rare", "geo-harbin": "rare", "geo-dongguan": "uncommon", "geo-hefei": "uncommon", "geo-weifang": "uncommon", "geo-nankin": "rare", "geo-shenyang": "uncommon", "geo-foshan": "uncommon", "geo-lahore": "rare", "geo-karachi": "rare", "geo-ho-chi-minh-ville": "epic", "geo-bombay-mumbai": "epic", "geo-delhi": "epic", "spt-saina-nehwal": "rare", "spt-hendra-setiawan": "rare", "spt-lee-yong-dae": "rare", "spt-greysia-polii": "uncommon", "spt-feng-tianwei": "rare", "spt-kasumi-ishikawa": "rare", "spt-ding-ning": "rare", "spt-xu-xin": "rare", "spt-kakuryu-rikisaburo": "rare", "spt-raiden-tameimon": "rare", "spt-tanikaze-kajinosuke": "uncommon"};
 
@@ -46,4 +47,22 @@ export const RERATE_11_11: Readonly<Record<string, CatalogRarity>> = {
   'pop-cette-annee-la': 'mythic',
   'pop-ne-me-quitte-pas': 'mythic',
   'pop-la-boulette': 'mythic',
+};
+
+/** (13/11, demande de Tom) Oner et ShowMaker (LoL esport) passent 6★. Inventaires : migrations:resyncRarities. */
+export const RERATE_13_11: Readonly<Record<string, CatalogRarity>> = {
+  'spt-oner': 'mythic',
+  'spt-showmaker': 'mythic',
+};
+
+/**
+ * (13/11, demande de Tom) Star Wars et The Mandalorian sont deux univers distincts : les personnages nés dans la série
+ * (Grogu, le Mandalorien, Cobb Vanth, Koska Reeves) quittent l'album Star Wars pour The Mandalorian. Ids, numéros et
+ * images inchangés ; seul l'album (et donc la complétion) change.
+ */
+export const RESUB_13_11: Readonly<Record<string, string>> = {
+  'pop-grogu': 'the-mandalorian',
+  'pop-le-mandalorien': 'the-mandalorian',
+  'pop-cobb-vanth': 'the-mandalorian',
+  'pop-koska-reeves': 'the-mandalorian',
 };

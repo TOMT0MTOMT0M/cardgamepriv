@@ -27,7 +27,7 @@ export async function playDuelSummon(shell: Shell, cardId: string, back: string)
   document.body.classList.add('duel-on');
   // voile noir pendant le chargement (modèle, textures, compilation) : on ne voit jamais la scène se monter
   const veil = document.createElement('div');
-  veil.style.cssText = 'position:fixed;inset:0;z-index:59;background:#020305;opacity:0;transition:opacity .35s;display:flex;align-items:center;justify-content:center;font:600 12px var(--mono,"Inter",sans-serif);letter-spacing:.14em;text-transform:uppercase;color:#7fd6ff;pointer-events:none;';
+  veil.style.cssText = 'position:fixed;inset:0;z-index:59;background:#020305;opacity:0;transition:opacity .35s;display:flex;align-items:center;justify-content:center;font:600 12px var(--mono,"Inter",sans-serif);letter-spacing:.14em;text-transform:uppercase;color:#7fd6ff;pointer-events:none;'; // i18n-ok
   veil.textContent = 'invocation…';
   document.body.append(veil);
   requestAnimationFrame(() => (veil.style.opacity = '1'));

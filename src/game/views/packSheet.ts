@@ -1,3 +1,4 @@
+import { t as tr, lang } from '../../core/i18n';
 import { collectionSig, liveRegen, type GameBackend, type PackCard } from '../backend';
 import { PACK_CAP, PACK_REGEN_MS, fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
@@ -5,10 +6,10 @@ import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, BEBOU_SECRETS_LOCKED, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeById, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
 import { EVENT_KEY, fmtLeft } from '../../core/events';
 import { rarity, type RarityId } from '../../core/rarity';
-import { STAR_RARITIES, packOdds, slotShare } from '../../core/dropRates';
-import { cardPackChance } from '../../core/packRoll';
+import { STAR_RARITIES } from '../../core/dropRates';
+import { cardPackChance, packTrueOdds } from '../../core/packRoll';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
-import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, toast } from '../ui';
+import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, toast, fmtDec } from '../ui';
 import { haptics } from '../../core/haptics';
 import { ACHIEVEMENTS, achievementDone, fmtCoins } from '../../core/economy';
 import { DEFAULT_OPENING, OPENINGS, type OpeningId } from '../../core/cosmetics';
@@ -35,6 +36,8 @@ export interface PackSheet {
    */
   dock(on: boolean): void;
   show(key: string): void;
+  /** (v2.0.1) changement de langue : refaire la fiche affichée */
+  relang(): void;
 }
 
 export interface SheetPack {
@@ -55,7 +58,7 @@ export interface SheetPack {
 export function shopPacks(): SheetPack[] {
   const theme = (id: string, desc: string): SheetPack => {
     const t = themeById(id)!;
-    return { key: t.id, req: { kind: 'theme', themeId: t.id }, name: `${t.label} Pack`, tagline: t.booster, desc, accent: t.style.accent, soon: !themeOpen(t), cards: t.cards };
+    return { key: t.id, req: { kind: 'theme', themeId: t.id }, name: `${t.label} Pack`, tagline: t.booster, desc, accent: t.style.accent, soon: !themeOpen(t), cards: t.cards }; // i18n-ok
   };
   // (retours live 02) le Bebou Pack en PREMIER : en haut de la liste verticale (ordinateur), premier du carrousel
   // (téléphone, où il reste sélectionné par défaut)
@@ -65,14 +68,14 @@ export function shopPacks(): SheetPack[] {
       req: { kind: 'bebou' },
       name: BEBOU_PACK.label,
       tagline: BEBOU_PACK.booster,
-      desc: 'Toutes les cartes + les Bébous',
+      desc: tr('ps.d.bebou'),
       accent: BEBOU_PACK.style.accent,
       cards: [...THEMES.flatMap((t) => t.cards), ...BEBOU_THEME.cards],
     },
-    theme('gaming', 'Jeux vidéo'),
-    theme('pop', 'Mangas, films, séries, musique'),
-    theme('sport', 'Tous les sports'),
-    theme('monde', 'La vie, tout simplement'),
+    theme('gaming', tr('ps.d.gaming')),
+    theme('pop', tr('ps.d.pop')),
+    theme('sport', tr('ps.d.sport')),
+    theme('monde', tr('ps.d.world')),
   ];
 }
 
@@ -80,7 +83,7 @@ const QTYS = [1, 5, 10] as const;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 /** (07/11, retours de Tom) TÉLÉPHONE : la fiche prend le style de l'ordinateur (texte seul, filets, nom qui se forme), sans vignette 2D */
 const MOBILE_SHEET = matchMedia('(max-width: 860px)');
-const STAR_LABEL: Record<string, string> = { common: 'Commune', uncommon: 'Peu commune', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire', mythic: 'Mythique' };
+const STAR_LABEL = (): Record<string, string> => ({ common: tr('rar.common'), uncommon: tr('rar.uncommon'), rare: tr('rar.rare'), epic: tr('rar.epic'), legendary: tr('rar.legendary'), mythic: tr('rar.mythic') });
 
 export function createPackSheet(
   backend: GameBackend,
@@ -101,13 +104,13 @@ export function createPackSheet(
   el.innerHTML = `
     <svg class="ps-fx-defs" width="0" height="0" aria-hidden="true" focusable="false"><filter id="ps-liquid" x="-25%" y="-8%" width="150%" height="116%" color-interpolation-filters="sRGB"><feTurbulence class="psl-noise" type="fractalNoise" baseFrequency="0.0035 0.045" numOctaves="2" seed="3" result="n"/><feDisplacementMap class="psl-disp" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" result="d"/><feOffset class="psl-r" in="d" dx="0" dy="0" result="r"/><feColorMatrix in="r" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rr"/><feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb"/><feBlend in="rr" in2="gb" mode="screen"/></filter></svg>
     <div class="ps-backdrop"></div>
-    <aside class="pack-sheet" role="dialog" aria-modal="true" aria-label="Fiche du booster">
-      <button class="ps-close" aria-label="Fermer">✕</button>
+    <aside class="pack-sheet" role="dialog" aria-modal="true" aria-label="${tr('ps.aria')}">
+      <button class="ps-close" aria-label="${tr('common.close')}" data-t-aria="common.close">✕</button>
       <div class="ps-scroll">
         <div class="ps-head"><div class="ps-thumb"></div><div class="ps-titles"><span class="kicker">BOOSTER</span><h2 class="ps-name"></h2><p class="ps-desc"></p></div></div>
         <div class="ps-facts"></div>
         <div class="ps-block ps-ev" hidden></div>
-        <div class="ps-block ps-odds"><div class="ps-bt">Chances par carte <small>· les vrais taux du tirage · la chance de chaque carte est écrite sous elle dans « Cartes du booster »</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
+        <div class="ps-block ps-odds"><div class="ps-bt"><span data-t="ps.odds">${tr('ps.odds')}</span> <small data-t="ps.oddsD">${tr('ps.oddsD')}</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
         <div class="ps-block ps-secret" hidden></div>
         <div class="ps-block ps-pity"></div>
         <div class="ps-block ps-anim" hidden></div>
@@ -117,17 +120,17 @@ export function createPackSheet(
       <div class="ps-open">
         <div class="sealed-banner" hidden></div>
         <div class="qty" role="radiogroup" aria-label="Nombre de boosters">${QTYS.map((n) => `<button data-n="${n}" role="radio">×${n}</button>`).join('')}</div>
-        <button class="open-btn">OUVRIR</button>
+        <button class="open-btn">${tr('ps.openCaps')}</button>
         <div class="open-sub"></div>
-        <div class="ps-buy" hidden><span class="ps-buy-l">Acheter</span><button class="btn-ghost sm" data-buy="1"></button><button class="btn-ghost sm" data-buy="5"></button><span class="ps-buy-s"></span></div>
+        <div class="ps-buy" hidden><span class="ps-buy-l" data-t="ps.buy">${tr('ps.buy')}</span><button class="btn-ghost sm" data-buy="1"></button><button class="btn-ghost sm" data-buy="5"></button><span class="ps-buy-s"></span></div>
       </div>
     </aside>
-    <div class="pack-cards" role="dialog" aria-modal="true" aria-label="Cartes du booster" hidden>
+    <div class="pack-cards" role="dialog" aria-modal="true" aria-label="${tr('ps.cardsA')}" hidden>
       <header class="pc-head">
-        <button class="pc-back" aria-label="Retour">←</button>
+        <button class="pc-back" aria-label="${tr('ps.back')}" data-t-aria="ps.back">←</button>
         <div class="pc-titles"><h3 class="pc-name"></h3><div class="pc-sub"></div></div>
-        <input class="pc-search" type="search" placeholder="Chercher une carte…" autocomplete="off">
-        <div class="pc-filters" role="radiogroup"><button data-f="all" class="on">Toutes</button><button data-f="missing">Manquantes</button><button data-f="wish">Envies</button></div>
+        <input class="pc-search" type="search" placeholder="${tr('pf.search')}" autocomplete="off">
+        <div class="pc-filters" role="radiogroup"><button data-f="all" class="on" data-t="coll.f.all">${tr('coll.f.all')}</button><button data-f="missing" data-t="coll.f.missing">${tr('coll.f.missing')}</button><button data-f="wish" data-t="ps.wishes">${tr('ps.wishes')}</button></div>
       </header>
       <div class="pc-list"></div>
     </div>`;
@@ -158,7 +161,7 @@ export function createPackSheet(
         await busyButton(b, backend.eco.buyPacks(n));
         haptics.pulse(10);
         shell.sfx.chime(2, 0.06);
-        toast(`+${n} booster${n > 1 ? 's' : ''} dans ta réserve`, 'ok');
+        toast(tr('ps.bought', { n }), 'ok');
       } catch (e) {
         toast(errMsg(e), 'err');
       }
@@ -196,23 +199,29 @@ export function createPackSheet(
     return m;
   };
 
-  // ── barres de chance (une fois : les taux ne bougent pas)
-  {
-    const share = slotShare();
-    const max = Math.max(...Object.values(share));
-    barsEl.innerHTML = STAR_RARITIES.map((r) => {
+  // ── barres de chance : les VRAIS taux du booster affiché (12/11 : calcul exact, god pack, pity et secrètes compris ;
+  // arrondis qui tombent juste — la somme fait 100 %, au lieu de 98,5 % avec les anciens arrondis par défaut)
+  const fmtShare = (v: number) => `${v.toFixed(1).replace('.', ',')}\u00a0%`;
+  function renderOdds(p: SheetPack) {
+    const o = packTrueOdds(p.req);
+    const raw = STAR_RARITIES.map((r) => o.share[r] * 100);
+    // arrondi au dixième « au plus fort reste » : la somme affichée tombe pile sur le total (100 % moins les secrètes)
+    const tenths = raw.map((v) => Math.floor(v * 10));
+    let left = Math.round((100 - o.share.secret * 100) * 10) - tenths.reduce((a, v) => a + v, 0);
+    for (const i of raw.map((v, i) => i).sort((x, y) => (raw[y] * 10 - tenths[y]) - (raw[x] * 10 - tenths[x]))) if (left-- > 0) tenths[i]++;
+    const shown = tenths.map((t) => t / 10);
+    const max = Math.max(...raw);
+    barsEl.innerHTML = STAR_RARITIES.map((r, i) => {
       const rr = rarity(r as RarityId);
-      return `<div class="ps-bar r-${r}" style="--rc:${rr.hex};--ra:${rr.accentHex}"><span class="ps-bl">${starsHtml(r as RarityId)}</span><span class="ps-bb"><i style="width:${((share[r] / max) * 100).toFixed(1)}%"></i></span><span class="ps-bp">${fmtPct(share[r])}</span><span class="ps-bn">${STAR_LABEL[r]}</span></div>`;
+      return `<div class="ps-bar r-${r}" style="--rc:${rr.hex};--ra:${rr.accentHex}"><span class="ps-bl">${starsHtml(r as RarityId)}</span><span class="ps-bb"><i style="width:${((raw[i] / max) * 100).toFixed(1)}%"></i></span><span class="ps-bp">${fmtShare(shown[i])}</span><span class="ps-bn">${STAR_LABEL()[r]}</span></div>`;
     }).join('');
-    // (audit UX2-17) le joueur raisonne en boosters : « 6★ : 1 booster sur 40 » (chance d'au moins une carte de ce rang ou mieux)
-    const odds = packOdds();
-    const one = (r: string) => {
-      const p = odds[r as keyof typeof odds];
+    // (audit UX2-17) le joueur raisonne en boosters : « 6★ : 1 booster sur 38 » (chance d'au moins une carte de ce rang ou mieux)
+    const one = (p: number) => {
       const n = p > 0 ? 1 / p : Infinity;
-      return n < 1.05 ? 'presque toujours' : `1 sur ${n < 10 ? n.toFixed(1).replace('.', ',').replace(',0', '') : fmtN(n)}`;
+      return n < 1.05 ? tr('ps.almostAlways') : tr('ps.oneIn', { n: n < 100 ? fmtDec(Number(n.toFixed(1))) : fmtN(Math.round(n)) });
     };
-    const lab: Array<[string, string]> = [['epic', '4★ et +'], ['legendary', '5★ et +'], ['mythic', '6★']];
-    el.querySelector<HTMLElement>('.ps-per-pack')!.innerHTML = `<b>Par booster</b> · ${lab.filter(([r]) => r in odds).map(([r, l]) => `${l}\u00a0: <b>${one(r)}</b>`).join(' · ')}`;
+    const lab: Array<[keyof typeof o.atLeast, string]> = [['epic', tr('ps.four')], ['legendary', tr('ps.five')], ['mythic', '6★']];
+    el.querySelector<HTMLElement>('.ps-per-pack')!.innerHTML = `<b>${tr('ps.perPack')}</b> · ${lab.map(([r, l]) => `${l}${lang() === 'fr' ? '\u00a0:' : ':'} <b>${one(o.atLeast[r])}</b>`).join(' · ')}<br><small>${tr('ps.god')} <b>${one(o.god)}</b> ${tr('ps.realRates')}</small>`;
   }
 
   /** quantité réellement ouvrable maintenant */
@@ -244,32 +253,32 @@ export function createPackSheet(
     const sealedOther = !!s.sealed && sealedKey !== current.key;
     sealedTarget = sealedOther ? packs.find((x) => x.key === sealedKey) ?? null : null;
     if (current.soon) {
-      openBtn.textContent = 'BIENTÔT';
+      openBtn.textContent = tr('common.soonCaps');
       openBtn.disabled = true;
-      openSub.textContent = 'Ses cartes arrivent bientôt · en attendant, le Bebou Pack contient tout';
+      openSub.textContent = tr('ps.soonD');
     } else if (needLogin) {
-      openBtn.textContent = 'SE CONNECTER';
+      openBtn.textContent = tr('ps.loginCaps');
       openBtn.disabled = false;
-      openSub.textContent = 'Connexion Discord ou pseudo · accès réservé au groupe';
+      openSub.textContent = tr('ps.loginD');
     } else if (sealedOther) {
       // (audit UX2-09) un autre booster est déjà tiré : on propose de l'ouvrir lui, au lieu d'un bouton grisé sans issue
-      openBtn.textContent = sealedTarget ? `OUVRIR MON ${sealedTarget.name.toUpperCase()}` : 'OUVRIR';
+      openBtn.textContent = sealedTarget ? tr('ps.openMy', { name: sealedTarget.name.toUpperCase() }) : tr('ps.openCaps');
       openBtn.disabled = !sealedTarget;
       openSub.textContent = '';
     } else if (s.sealed) {
-      openBtn.textContent = 'OUVRIR';
+      openBtn.textContent = tr('ps.openCaps');
       openBtn.disabled = false;
-      openSub.textContent = 'Booster déjà tiré, pas encore ouvert';
+      openSub.textContent = tr('ps.drawn');
     } else if (u && liveRegen(u).balance <= 0) {
       const r = liveRegen(u);
-      openBtn.textContent = 'EN RECHARGE';
+      openBtn.textContent = tr('ps.recharging');
       openBtn.disabled = true;
-      openSub.textContent = `Le prochain arrive dans ${fmtCountdown((r.nextAt ?? Date.now()) - Date.now())} · 1 toutes les ${PACK_REGEN_MS / 60000} min`;
+      openSub.textContent = tr('ps.next', { time: fmtCountdown((r.nextAt ?? Date.now()) - Date.now()), min: PACK_REGEN_MS / 60000 });
     } else {
       const n = u ? liveRegen(u).balance : 0;
-      openBtn.textContent = effQty() > 1 ? `OUVRIR ×${effQty()}` : 'OUVRIR';
+      openBtn.textContent = effQty() > 1 ? tr('ps.openN', { n: effQty() }) : tr('ps.openCaps');
       openBtn.disabled = !u;
-      openSub.textContent = u ? `${n} booster${n > 1 ? 's' : ''} en réserve${n <= PACK_CAP ? ` · ${PACK_CAP} max` : ''}` : '';
+      openSub.textContent = u ? tr('ps.inReserve', { n, max: n <= PACK_CAP ? ` · ${PACK_CAP} max` : '' }) : '';
     }
     const bal = u ? liveRegen(u).balance : 0;
     const eco = backend.eco.snapshot;
@@ -281,7 +290,7 @@ export function createPackSheet(
         if (!b.dataset.busy) b.innerHTML = `+${n} · ${COIN_ICON}${fmtCoins(n * price)}`;
         b.disabled = n > left || eco.coins < n * price;
       }
-      buyEl.querySelector('.ps-buy-s')!.textContent = `sans limite · solde ${fmtCoins(eco.coins)}`;
+      buyEl.querySelector('.ps-buy-s')!.textContent = tr('ps.noLimit', { coins: fmtCoins(eco.coins) });
     }
     qtyEl.hidden = !!current.soon || needLogin || !!s.sealed;
     for (const b of qtyEl.querySelectorAll<HTMLButtonElement>('button')) {
@@ -293,15 +302,15 @@ export function createPackSheet(
     if (sealedOther && s.sealed) {
       const t = themeById(s.sealed.themeId ?? '');
       banner.hidden = false;
-      banner.textContent = `Tu as un ${s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster'} déjà tiré, pas encore ouvert : ouvre-le d’abord (bouton ci-dessous).`;
+      banner.textContent = tr('ps.sealed', { what: s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster' }); // i18n-ok
     } else banner.hidden = true;
     // pity (compteur du joueur, tous boosters confondus)
     const left = u ? pityLeft(u.pityCount) : PITY_LIMIT - 1;
     const pct = ((PITY_LIMIT - 1 - left) / (PITY_LIMIT - 1)) * 100;
     pityEl.classList.toggle('ready', left === 0);
     pityEl.innerHTML = left === 0
-      ? `<div class="ps-bt">Pity 6★</div><div class="ps-pity-l"><b>Ton prochain booster contient un 6★ sûr&nbsp;!</b></div><span class="ps-pb"><i style="width:100%"></i></span>`
-      : `<div class="ps-bt">Pity 6★ <small>· ${PITY_LIMIT} boosters secs max</small></div><div class="ps-pity-l"><b>${fmtN(left)}</b> booster${left > 1 ? 's' : ''} avant un 6★ sûr</div><span class="ps-pb"><i style="width:${pct.toFixed(1)}%"></i></span>`;
+      ? `<div class="ps-bt">Pity 6★</div><div class="ps-pity-l"><b>${tr('ps.pitySure')}</b></div><span class="ps-pb"><i style="width:100%"></i></span>`
+      : `<div class="ps-bt">Pity 6★ <small>${tr('ps.dryMax', { n: PITY_LIMIT })}</small></div><div class="ps-pity-l">${tr('ps.pityLeft', { n: left, nf: fmtN(left) })}</div><span class="ps-pb"><i style="width:${pct.toFixed(1)}%"></i></span>`;
     renderWish();
     renderCardsBtn();
     renderAnim();
@@ -322,13 +331,13 @@ export function createPackSheet(
       const a = o.need ? ACHIEVEMENTS.find((x) => x.id === o.need) : undefined;
       const ok = !a || (!!st && achievementDone(a, st));
       const prog = a && st ? ` · ${fmtN(Math.min(st[a.stat] ?? 0, a.target))}/${fmtN(a.target)}` : '';
-      return { o, ok, on: o.id === cur, sub: ok ? o.blurb : `${a ? `Succès « ${a.label} » : ${a.how}` : ''}${prog}` };
+      return { o, ok, on: o.id === cur, sub: ok ? o.blurb : `${a ? tr('ps.achHow', { label: a.label, how: a.how }) : ''}${prog}` };
     });
     const sig = JSON.stringify(rows.map((r) => [r.o.id, r.ok, r.on, r.sub]));
     animEl.hidden = false;
     if (sig === animSig) return;
     animSig = sig;
-    animEl.innerHTML = `<div class="ps-bt">Animation d’ouverture <small>· pour tous tes boosters · les autres se gagnent avec les succès</small></div><div class="ps-an-row" role="radiogroup" aria-label="Animation d’ouverture">${rows
+    animEl.innerHTML = `<div class="ps-bt">${tr('ps.anim')} <small>${tr('ps.animD')}</small></div><div class="ps-an-row" role="radiogroup" aria-label="${tr('ps.anim')}">${rows
       .map((r) => `<button class="ps-an${r.on ? ' on' : ''}${r.ok ? '' : ' locked'}" role="radio" aria-checked="${r.on}" data-o="${r.o.id}"${r.ok ? '' : ' aria-disabled="true"'}><b>${esc(r.o.label)}</b><small>${esc(r.sub)}</small></button>`)
       .join('')}</div>`;
   }
@@ -337,13 +346,13 @@ export function createPackSheet(
     if (!b || animBusy || b.classList.contains('on')) return;
     const o = OPENINGS.find((x) => x.id === b.dataset.o);
     if (!o) return;
-    if (b.classList.contains('locked')) return void toast(`Verrouillée · ${o.how}`, 'info');
+    if (b.classList.contains('locked')) return void toast(tr('ps.lockedHow', { how: o.how }), 'info');
     animBusy = true;
     try {
       await busyButton(b, backend.setOpening(o.id as OpeningId));
       haptics.pulse(6);
       shell.sfx.tick(1.2, 0.04);
-      toast(`Animation d’ouverture : ${o.label}`, 'ok');
+      toast(tr('ps.animIs', { name: o.label }), 'ok');
     } catch (err) {
       toast(errMsg(err), 'err');
     } finally {
@@ -366,7 +375,7 @@ export function createPackSheet(
       const e = catalogEntry(id);
       return e ? cardTile(id, e.rarity, { mini: true, owned: false }) : null;
     }).filter((x): x is HTMLElement => !!x);
-    wishEl.innerHTML = `<div class="ps-bt">Tes envies</div><div class="ps-wish-l">${wish.length ? `<b>${plural(wish.length, 'de tes envies', 'de tes envies')}</b> dans ce booster` : 'Aucune de tes envies ici · marque des cartes avec ♥ pour les suivre'}</div><div class="ps-wish-row"></div>`;
+    wishEl.innerHTML = `<div class="ps-bt">${tr('ps.yourWishes')}</div><div class="ps-wish-l">${wish.length ? tr('ps.wishIn', { n: wish.length }) : tr('ps.noWish')}</div><div class="ps-wish-row"></div>`; // i18n-ok
     const row = wishEl.querySelector<HTMLElement>('.ps-wish-row')!;
     for (const t of thumbs) {
       t.addEventListener('click', () => void showCards('wish'));
@@ -385,7 +394,8 @@ export function createPackSheet(
     cardsSig = sig;
     const owned = ownedIds();
     const have = current.cards.reduce((a, c) => a + (owned.has(c.id) ? 1 : 0), 0);
-    cardsBtn.innerHTML = `<span>Voir les ${fmtN(current.cards.length)} cartes</span><small>${fmtN(have)} possédée${have > 1 ? 's' : ''} · ${fmtPct((have / Math.max(1, current.cards.length)) * 100)}</small>`;
+    const locked = BEBOU_SECRETS_LOCKED ? current.cards.filter((c) => c.themeId === 'bebous').length : 0;
+    cardsBtn.innerHTML = `<span>${tr('ps.seeAll', { n: fmtN(current.cards.length - locked), b: locked ? tr('ps.plusBebous') : '' })}</span><small>${tr('ps.owned', { n: have, nf: fmtN(have), pct: fmtPct((have / Math.max(1, current.cards.length)) * 100) })}</small>`;
   }
 
   function fill(p: SheetPack) {
@@ -415,19 +425,26 @@ export function createPackSheet(
       nameEl.textContent = p.name;
     }
     descEl.textContent = p.desc;
-    kickerEl.textContent = p.event ? 'BOOSTER DU MOMENT' : 'BOOSTER';
+    kickerEl.textContent = p.event ? tr('shop.eventTagline') : 'BOOSTER';
     sheet.classList.toggle('ps-event', !!p.event);
     const t = p.key !== 'bebou' && !p.event ? themeById(p.key) : null;
     const live = t ? subthemeViews(t).filter((v) => v.cards.length).length : THEMES.filter(themeOpen).length;
+    // (12/11) on compte les cartes qui peuvent VRAIMENT tomber de ce booster (les Bébous verrouillées n'en font pas partie)
+    const droppable = p.cards.filter((c) => !(BEBOU_SECRETS_LOCKED && c.themeId === 'bebous')).length;
     // (11/11) booster du moment : son contenu et le temps qui reste (shop.ts met [data-ev-left] à jour chaque seconde)
     factsEl.innerHTML = p.event
-      ? `<span><b>5</b> cartes par booster</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(p.cards.length)}</b> cartes · ${esc(p.event.label)}</span><span class="ps-ev-left">se termine dans <b data-ev-left="${p.event.endAt}">${fmtLeft(p.event.endAt - Date.now())}</b></span>`
-      : `<span><b>5</b> cartes par booster</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(p.cards.length)}</b> cartes${p.soon ? ' en préparation' : t ? ` · ${live} sous-thème${live > 1 ? 's' : ''}` : ' · les 4 thèmes'}</span>`;
+      ? `<span><b>5</b> ${tr('ps.perBooster')}</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(droppable)}</b> ${tr('ps.cardsOf', { label: esc(p.event.label) })}</span><span class="ps-ev-left">${tr('ps.endsIn')} <b data-ev-left="${p.event.endAt}">${fmtLeft(p.event.endAt - Date.now())}</b></span>`
+      : `<span><b>5</b> ${tr('ps.perBooster')}</span><span>${starsHtml('rare')} <b>minimum garantie</b></span><span><b>${fmtN(droppable)}</b> cartes${p.soon ? tr('ps.inPrep') : t ? tr('ps.subthemes', { n: live }) : tr('ps.fourThemes')}</span>`;
     evEl.hidden = !p.event;
-    if (p.event) evEl.innerHTML = `<div class="ps-bt">Édition limitée</div><div class="ps-ev-l">Ce booster disparaît à la fin de l’événement. Ses cartes restent ensuite dans les boosters habituels.</div>`;
-    if (p.key === 'bebou') {
+    if (p.event) evEl.innerHTML = `<div class="ps-bt">${tr('ps.limited')}</div><div class="ps-ev-l">${tr('ps.limitedD')}</div>`;
+    renderOdds(p);
+    const worldSecrets = t ? t.cards.filter((c) => c.rarity === 'secret').length : 0;
+    if (t && worldSecrets && !p.soon) {
       secretEl.hidden = false;
-      secretEl.innerHTML = BEBOU_SECRETS_LOCKED ? `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>Les Bébous sont verrouillées pour l’instant</b> <small>· elles ne tombent d’aucun booster, leur retour sera annoncé</small></div>` : `<div class="ps-bt">Cartes secrètes</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>1 chance sur ${esc(bebouOddsLabel().replace(/^1 sur /, ''))}</b> par booster de tirer une des <b>8 Bébous</b> <small>· 1 / nombre de cartes du jeu : plus il y a de cartes, plus c’est rare</small></div>`;
+      secretEl.innerHTML = `<div class="ps-bt">${tr('ps.secrets')}</div><div class="ps-secret-l"><span class="stars secret">✷</span> ${tr('ps.secretWorld', { n: fmtN(Math.round(1 / packTrueOdds(p.req).secret)), w: worldSecrets })}</div>`;
+    } else if (p.key === 'bebou') {
+      secretEl.hidden = false;
+      secretEl.innerHTML = BEBOU_SECRETS_LOCKED ? `<div class="ps-bt">${tr('ps.secrets')}</div><div class="ps-secret-l"><span class="stars secret">✷</span> <b>${tr('ps.bebousLocked')}</b> <small>${tr('ps.bebousLockedD')}</small></div>` : `<div class="ps-bt">${tr('ps.secrets')}</div><div class="ps-secret-l"><span class="stars secret">✷</span> ${tr('ps.secretBebou', { n: esc(bebouOddsLabel().replace(/^1 (sur|in) /, '')) })}</div>`;
     } else secretEl.hidden = true;
     sync();
   }
@@ -443,7 +460,7 @@ export function createPackSheet(
       return [...by].map(([id, cards]) => ({ id, label: subthemeById(id)?.label ?? id, subs: [], cards, group: false }));
     }
     if (p.key !== 'bebou') return subthemeViews(themeById(p.key)!);
-    return [...THEMES.flatMap(subthemeViews), { id: 'bebous', label: 'Les Bébous · secrètes', subs: BEBOU_THEME.subthemes, cards: BEBOU_THEME.cards, group: false }];
+    return [...THEMES.flatMap(subthemeViews), { id: 'bebous', label: tr('ps.bebousSecret'), subs: BEBOU_THEME.subthemes, cards: BEBOU_THEME.cards, group: false }];
   }
   function matches(c: CatalogEntry, owned: Set<string>, wish: Set<string>, needle: string): boolean {
     if (filter === 'missing' && owned.has(c.id)) return false;
@@ -473,7 +490,7 @@ export function createPackSheet(
     }
     if (n <= 0 && c.rarity !== 'secret') {
       const b = h('button', `wish-btn${wish.has(c.id) ? ' on' : ''}`, '♥');
-      b.title = wish.has(c.id) ? 'Retirer de mes envies' : 'Ajouter à mes envies';
+      b.title = wish.has(c.id) ? tr('coll.unwish') : tr('coll.wish');
       b.setAttribute('aria-pressed', String(wish.has(c.id)));
       t.append(b);
     }
@@ -492,7 +509,7 @@ export function createPackSheet(
     let more = sec.querySelector<HTMLButtonElement>('.pc-more');
     if (left > 0) {
       if (!more) sec.append((more = h('button', 'pc-more')));
-      more.textContent = `Voir ${fmtN(Math.min(SECTION_PAGE, left))} de plus · ${fmtN(left)} restante${left > 1 ? 's' : ''}`;
+      more.textContent = tr('ps.more', { m: fmtN(Math.min(SECTION_PAGE, left)), left: fmtN(left), n: left });
     } else more?.remove();
   }
   pcList.addEventListener('click', (e) => {
@@ -559,10 +576,10 @@ export function createPackSheet(
       if (sec.open) paintSection(sec);
       shown += list.length;
     }
-    if (!shown) pcList.append(h('div', 'pc-empty', filter === 'wish' ? 'Aucune envie dans ce booster pour l’instant.' : filter === 'missing' ? 'Tu as toutes les cartes de cette sélection !' : 'Aucune carte ne correspond.'));
-    else if (narrow && capped) pcList.prepend(h('div', 'pc-cap', `${plural(shown, 'résultat')} · les premières sections sont dépliées, touche une section pour voir la suite${needle ? ' (ou affine la recherche)' : ''}`));
+    if (!shown) pcList.append(h('div', 'pc-empty', filter === 'wish' ? tr('ps.noWishHere') : filter === 'missing' ? tr('ps.allOwned') : tr('ps.noMatch')));
+    else if (narrow && capped) pcList.prepend(h('div', 'pc-cap', tr('ps.sections', { res: plural(shown, 'résultat'), refine: needle ? tr('ps.refine') : '' }))); // i18n-ok
     if (keep) pcList.scrollTop = scroll;
-    q('.pc-sub').textContent = `${fmtN(current.cards.length)} cartes · ${fmtN(current.cards.filter((c) => owned.has(c.id)).length)} possédées`;
+    q('.pc-sub').textContent = tr('ps.count', { n: fmtN(current.cards.length), have: fmtN(current.cards.filter((c) => owned.has(c.id)).length) });
   }
   function showCards(f: typeof filter = 'all') {
     if (!current) return;
@@ -804,5 +821,13 @@ export function createPackSheet(
     }
   }
 
-  return { el, open, close, isOpen: () => opened || cardsOpen, sync, dock, show };
+  /** (v2.0.1) changement de langue : la fiche (créée une fois) se refait sur le booster affiché, dans la nouvelle langue */
+  function relang() {
+    sheet.setAttribute('aria-label', tr('ps.aria'));
+    q<HTMLInputElement>('.pc-search').placeholder = tr('pf.search');
+    const np = current && packs.find((x) => x.key === current!.key);
+    if (np) fill(np);
+    sync();
+  }
+  return { el, open, close, isOpen: () => opened || cardsOpen, sync, dock, show, relang };
 }

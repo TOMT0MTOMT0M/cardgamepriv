@@ -3,7 +3,6 @@
  * Pour ajouter une mise à jour : une entrée en tête du mois en cours (ou un nouveau mois en tête de la liste).
  * `tag` : nouveau · amélioré · corrigé.
  */
-import { PUBLIC_CARD_COUNT } from '../core/sets/themes';
 
 export interface UpdateEntry {
   date: string;
@@ -17,8 +16,12 @@ export interface UpdateMonth {
   entries: UpdateEntry[];
 }
 
-/** nombre total de cartes à collectionner (lu dans le catalogue : il suit les ajouts) */
-const CARDS = String(PUBLIC_CARD_COUNT).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+/**
+ * `{CARTES}` dans un point = le nombre total de cartes à collectionner, lu dans le catalogue AU MOMENT DE L'AFFICHAGE
+ * (src/game/views/infos.ts) : il suit les ajouts et les retraits. (12/11) Avant, il était lu au chargement de ce fichier,
+ * avant l'arrivée des 4 gros thèmes : la page affichait 5 247 cartes au lieu du vrai total.
+ */
+export const CARDS_TOKEN = '{CARTES}';
 
 /**
  * (retours live 6, C11) pour l'instant UN SEUL post : la V1, datée du 8 novembre 2026 — le nombre de cartes, les grosses
@@ -28,12 +31,46 @@ const CARDS = String(PUBLIC_CARD_COUNT).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0
  * Annonce du moment : à la PROCHAINE visite (une seule fois par appareil), le jeu ouvre la page des mises à jour
  * (src/game/announce.ts). Changer cet identifiant à chaque nouvelle annonce qui mérite d'être montrée d'office.
  */
-export const ANNOUNCE_ID = 'patch-2026-11-08';
+export const ANNOUNCE_ID = 'v2-0-2026-11-14';
 
 export const UPDATES: UpdateMonth[] = [
   {
     month: 'Novembre 2026',
     entries: [
+      {
+        date: '13 nov.', title: 'Corrections : Star Wars et The Mandalorian, Oner et ShowMaker, nouvelles images', tag: 'corrigé',
+        points: [
+          'Star Wars et The Mandalorian : Grogu, le Mandalorien, Cobb Vanth et Koska Reeves rejoignent l’album The Mandalorian.',
+          'Oner et ShowMaker passent 6★.',
+          'Nouvelles images : Iron Man recadré, 15 cartes The Walking Dead, Will Smith, Captain America, Soldat de l’Hiver, Scarlet Witch, Joey Tribbiani, Jeff Tuche, Rex, Ben 10, ZywOo, Oner, ShowMaker, Dembélé, Fernando Alonso, Ballon d’Or, LaLiga, Zelda, Alan Wake II, PNL, Idol et d’autres.',
+        ],
+      },
+      {
+        date: '14 nov.', title: 'Version 2 : le chat, le marché, les saisons', tag: 'nouveau',
+        points: [
+          'Ta collection est gardée : cartes, pièces, boosters, succès, classeurs, rien ne s’est perdu.',
+          'Chat : le salon de tout le monde et les messages privés, avec les mentions.',
+          'Marché : vends une carte à prix fixe en pièces, achète celles des autres. Le premier qui achète l’a.',
+          'Échanges simplifiés : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies, en un toucher.',
+          'Saisons : chaque mois, le classement des nouvelles cartes gagnées et des boosters pour tout le monde à la fin. La première se termine le 30 novembre.',
+          'Booster du moment : une édition limitée, avec son compte à rebours en tête de la boutique.',
+          'Boosters en pièces : achète-en autant que tu veux, toujours 250 pièces l’unité.',
+          `Plus de 3 000 nouvelles cartes ({CARTES} en tout) et un nouveau tri des étoiles : certaines de tes cartes ont changé d’étoile.`,
+          'Les 6★ ont chacune leur mise en scène, les 6★ Musique et d’animés jouent leur extrait, le son est tout neuf et la déchirure du booster plus vraie.',
+          'Notifications : réserve pleine, échanges, amis. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.',
+        ],
+      },
+      {
+        date: '12 nov.', title: 'Plus de 6★ en pleine illustration, nouvelles images et vrais taux des boosters', tag: 'amélioré',
+        points: [
+          'Pleine illustration : 208 cartes 6★ dont la photo était posée en bande passent en plein cadre (photos recadrées sur le visage ; pochettes, voitures et groupes gardés en entier sur un fond tiré de l’image).',
+          'Nouvelles images pour 77 cartes : Gojo, Kaneki, Aizen, Byakuya, Lelouch, Minato, Shikamaru, Mulan, Neo, John Wick, Indiana Jones, Louis de Funès, François Pignon, Pierre Brochant, Perceval, Arthur (Kaamelott), Kanye West, Orelsan, Stevie Wonder, One Direction, Thomas Müller, Gerrard, Kanté, Neuer, s1mple, apEX, Keria, Neon, Tracer, Séphiroth, Heineken, la Nissan GT-R, la Skyline R34…',
+          'Norman fait des vidéos est retiré du jeu.',
+          'Fiche booster : les vrais taux. Les pourcentages par carte tombent juste (100 % au total), le god pack et la pity sont comptés (6★ : 1 booster sur 38,6), la chance de chaque carte aussi, et le World Pack affiche la chance de ses Merveilles secrètes.',
+          'Le nombre de cartes affiché suit le vrai catalogue : {CARTES} cartes à collectionner (les Bébous verrouillées ne sont plus comptées).',
+          'Extraits : American Idiot joue enfin American Idiot (c’était 21 Guns), Pump It et Bande organisée le bon morceau, et Francis Poulenc a le sien. 20 chansons ont aussi le bon artiste imprimé (Bad → Michael Jackson, Someone Like You → Adele…).',
+        ],
+      },
       {
         date: '12 nov.', title: 'Les nouvelles 6★ Musique ont leur extrait', tag: 'nouveau',
         points: [
@@ -50,13 +87,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '11 nov.', title: 'Échanges repensés, booster du moment, saisons, défis et La Presse', tag: 'nouveau',
+        date: '11 nov.', title: 'Échanges repensés, booster du moment et saisons', tag: 'nouveau',
         points: [
           'Échanges : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies : on demande en un toucher, l’autre accepte, choisit une autre carte ou refuse. Ton bouton « Protéger » garde une carte hors des propositions.',
           'Booster du moment : un booster en édition limitée, avec son compte à rebours en tête de la boutique.',
           'Saisons : chaque mois, un classement des nouvelles cartes gagnées, des boosters pour tout le monde à la fin, un cadre et un titre pour le podium.',
           'Animations d’ouverture à gagner : la brûlure (succès Braise) et l’éventail (succès Cartographe), à choisir dans la fiche d’un booster.',
-          'Jeux : défie tes amis (premier à tirer une 5★, le plus de nouvelles cartes…) avec ou sans mise, et La Presse, un nouveau mini-jeu en pièces.',
           'Aussi : les cartes que tu n’as pas montrent leur illustration floutée, les gants et un sticker CS 6★ en 3D, des apôtres dans l’Éclipse, de nouveaux sons pour les 6★, une collection plus rapide à mettre à jour.',
         ],
       },
@@ -211,7 +247,7 @@ export const UPDATES: UpdateMonth[] = [
         points: [
           'Saison 1 : tout le monde repart de zéro. Compte avec Discord ou un simple pseudo, 15 boosters offerts et recharge ×2 pendant tes 24 premières heures.',
           'La roulette démarre avec un pot de base : des pièces et une carte 6★ offertes par le club.',
-          `${CARDS} cartes à collectionner dans 4 thèmes — Gaming, Pop Culture, Sport et World — plus des cartes secrètes.`,
+          '{CARTES} cartes à collectionner dans 4 thèmes — Gaming, Pop Culture, Sport et World — plus des cartes secrètes.',
           '5 boosters (Bebou, Gaming, Popculture, Sport, World), 1 booster offert toutes les 5 minutes (jusqu’à 15 en réserve), ouvertures par 5 ou 10.',
           'Collection par familles et albums, classeurs, la Forge et les Contrats pour transformer tes doublons.',
           'Échanges directs entre amis et tableau d’offres ouvert à tous.',

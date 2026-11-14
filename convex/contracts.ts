@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { bumpMissions } from './missions';
 import { bumpWeekly } from './econLib';
@@ -11,6 +12,7 @@ import type { StarRarityId } from '../src/core/dropRates';
 import { lockedCards } from './trades';
 import { invRev } from './invRev';
 import { syncPresence } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -31,7 +33,7 @@ export const sign = mutation({
   handler: async (ctx, { sessionToken, rarity, items }) => {
     const user = await requireUser(ctx, sessionToken);
     const target = contractTarget(rarity) as RarityId | null;
-    if (!target || items.length > 60) throw new ConvexError('Contrat invalide.');
+    if (!target || items.length > 60) throw new ConvexError(fe('contracts.7'));
 
     // (audit 12/11, S07 / A7-04) seulement les lignes du contrat (≤ 60, par l'index), plus la collection entière
     const mine = (cardId: string) => ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', user._id).eq('cardId', cardId));
@@ -99,7 +101,7 @@ export const sign = mutation({
         cardName: card.name,
         rarity: target,
         mintNumber,
-        message: `${user.displayName} a brûlé ${CONTRACT_COST[rarity as StarRarityId]} doublons et signé un contrat : ${card.name} [${RARITY_LABEL[target]} #${mintNumber}] !`,
+        ...feedMsg(fm('f.contract', { name: user.displayName, n: CONTRACT_COST[rarity as StarRarityId] ?? 0, card: card.name, cardId: card.id, rarity: RARITY_LABEL[target], rarityId: target, mint: mintNumber })),
         createdAt: now,
       });
     }

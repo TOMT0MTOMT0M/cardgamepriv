@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
@@ -65,7 +66,14 @@ export function meView(user: Doc<'users'>, now: number) {
     /** compte pseudo (sans Discord) */
     pwAccount: user.discordId.startsWith('pw:'),
     /** (ouverture 07/11) visite guidée automatique déjà jouée */
+    /** (version anglaise) langue du compte : `langSet` = choix manuel, repris sur un nouvel appareil (src/game/lang.ts) */
+    lang: user.lang ?? 'fr',
+    langSet: user.langSet === true,
     guideSeen: !!user.guideSeenAt,
+    /** (13/11) tour des nouveautés V2 déjà joué */
+    v2TourSeen: !!user.v2TourSeenAt,
+    /** (13/11) testeur du lien V2 (variable V2_TESTERS du staging : pseudos séparés par des virgules) — pas l'équipe */
+    tester: v2Testers().has(user.username.toLowerCase()),
     /** (11/11) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) ; absente : la déchirure */
     openingStyle: user.cosmetics?.opening,
   };
@@ -87,9 +95,9 @@ export const setSubthemeCover = mutation({
     const covers = { ...(user.covers ?? {}) };
     if (cardId) {
       const e = catalogEntry(cardId);
-      if (!e) throw new ConvexError('Carte inconnue.');
+      if (!e) throw new ConvexError(fe('users.1'));
       const inv = await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', user._id).eq('cardId', cardId).eq('rarity', e.rarity)).unique();
-      if (!inv || inv.count < 1) throw new ConvexError(`Tu n’as pas ${e.name}.`);
+      if (!inv || inv.count < 1) throw new ConvexError(fe('users.2', { p0: e.name }));
       covers[subthemeId] = cardId;
     } else delete covers[subthemeId];
     await ctx.db.patch(user._id, { covers });
@@ -102,10 +110,10 @@ export const toggleWish = mutation({
   args: { sessionToken: v.string(), cardId: v.string() },
   handler: async (ctx, { sessionToken, cardId }) => {
     const user = await requireUser(ctx, sessionToken);
-    if (!catalogEntry(cardId)) throw new ConvexError('Carte inconnue.');
+    if (!catalogEntry(cardId)) throw new ConvexError(fe('users.3'));
     const list = user.wishlist ?? [];
     const next = list.includes(cardId) ? list.filter((id) => id !== cardId) : [...list, cardId];
-    if (next.length > WISHLIST_MAX) throw new ConvexError(`${WISHLIST_MAX} envies au maximum : fais un peu de tri.`);
+    if (next.length > WISHLIST_MAX) throw new ConvexError(fe('users.4', { p0: WISHLIST_MAX }));
     await ctx.db.patch(user._id, { wishlist: next });
     await setWish(ctx, user._id, cardId, next.includes(cardId)); // index inversé des envies (convex/wishes.ts)
     return next;
@@ -172,7 +180,7 @@ export const claimDailyBooster = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
     await requireUser(ctx, sessionToken);
-    throw new ConvexError(`Les boosters se rechargent tout seuls : 1 toutes les ${PACK_REGEN_MS / 60000} minutes, jusqu'à ${PACK_CAP}.`);
+    throw new ConvexError(fe('users.5', { p0: PACK_REGEN_MS / 60000, p1: PACK_CAP }));
   },
 });
 
@@ -215,6 +223,35 @@ export const markGuideSeen = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
     const u = await requireUser(ctx, sessionToken);
-    if (!u.guideSeenAt) await ctx.db.patch(u._id, { guideSeenAt: Date.now() });
+    // (13/11) un compte tout neuf a sa visite guidée : le tour des nouveautés V2 ne le concerne pas
+    if (!u.guideSeenAt) await ctx.db.patch(u._id, { guideSeenAt: Date.now(), v2TourSeenAt: u.v2TourSeenAt ?? Date.now() });
   },
 });
+
+/**
+ * (version anglaise) Langue effective du joueur (envoyée à la connexion et à chaque changement) : push et messages privés
+ * Discord partent dans cette langue. Rien n'est écrit si elle ne change pas (une écriture sur le joueur ré-exécute ses requêtes).
+ */
+export const setLang = mutation({
+  args: { sessionToken: v.string(), lang: v.union(v.literal('fr'), v.literal('en')), manual: v.optional(v.boolean()) },
+  handler: async (ctx, { sessionToken, lang, manual }) => {
+    const u = await requireUser(ctx, sessionToken);
+    const langSet = manual === true || (u.langSet === true && (u.lang ?? 'fr') === lang);
+    if ((u.lang ?? 'fr') === lang && (u.langSet === true) === langSet) return;
+    await ctx.db.patch(u._id, { lang, langSet });
+  },
+});
+
+/** (13/11) Le tour des nouveautés V2 a démarré : il ne se rejouera plus sur ce compte. */
+export const markV2TourSeen = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const u = await requireUser(ctx, sessionToken);
+    if (!u.v2TourSeenAt) await ctx.db.patch(u._id, { v2TourSeenAt: Date.now() });
+  },
+});
+
+/** (13/11) testeurs du lien V2 : variable V2_TESTERS du déploiement (pseudos, virgules) ; absente = personne */
+function v2Testers(): Set<string> {
+  return new Set((process.env.V2_TESTERS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+}

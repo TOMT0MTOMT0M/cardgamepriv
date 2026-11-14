@@ -16,6 +16,7 @@ import {
   type MissionEvent,
   type MissionsState,
 } from '../src/core/missions';
+import { fm } from '../src/core/msgs';
 
 /** Missions du jour (3 tirées au hasard par joueur et par jour) : cf. src/core/missions.ts. */
 
@@ -59,7 +60,7 @@ export const claim = mutation({
     // spec économie : les missions du jour rapportent aussi des pièces (boosters + pièces, décision du 3 nov.)
     const m = r.state.list.find((x) => x.id === missionId)!;
     const coins = dailyMissionCoins(m);
-    await addCoins(ctx, user._id, coins, 'mission', 'Mission du jour', { earned: true });
+    await addCoins(ctx, user._id, coins, 'mission', fm('c.mission'), { earned: true });
     return { reward: r.reward, coins };
   },
 });

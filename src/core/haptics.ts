@@ -1,3 +1,4 @@
+import { t as tr } from './i18n';
 /**
  * Retour haptique multi-plateforme — et POURQUOI « ça ne vibre pas » (diagnostic du 4 nov.) :
  *  - Android / Chrome : `navigator.vibrate(pattern)`. Conditions : la page a reçu AU MOINS UN toucher (activation
@@ -99,7 +100,7 @@ class Haptics {
     try {
       if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
         if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
-          this.why = 'onglet caché';
+          this.why = tr('hap.hidden');
           return;
         }
         // (08/11) avant le tout premier toucher, Chrome refuse la vibration ET l'écrit en rouge dans la console
@@ -108,7 +109,7 @@ class Haptics {
         const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
         if (ua && !ua.hasBeenActive && !this.inGesture) {
           this.pending = { pattern, at: performance.now() };
-          this.why = 'en attente du premier toucher';
+          this.why = tr('hap.waiting');
           return;
         }
         // segments « vibre » ≥ 12 ms (sous ~10 ms, beaucoup de vibrateurs ne font rien)
@@ -117,11 +118,11 @@ class Haptics {
         // comme sur iPhone — jamais en boucle (gesture() appelle pulse() avec inGesture vrai)
         const okv = navigator.vibrate(steps);
         if (!okv && !this.inGesture) this.pending = { pattern, at: performance.now() };
-        this.why = okv ? '' : 'refusée (geste requis par le navigateur, ou navigateur intégré)';
+        this.why = okv ? '' : tr('hap.refused');
         return;
       }
       if (this.support !== 'ios') {
-        this.why = 'appareil sans vibreur accessible';
+        this.why = tr('hap.none');
         return;
       }
       if (!this.inGesture) {

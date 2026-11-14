@@ -10,8 +10,11 @@
  *
  * Une seule table de valeur, utilisée PARTOUT : brûlage, équivalence des mises en duel, roulette.
  */
+import { fe } from './errors';
+import { tData } from './i18n';
 import type { RarityId } from './rarity';
 import { THEMES, subthemeViews, type CatalogEntry } from './sets/themes';
+import { msgRef, str } from './msgRefs';
 
 // ───────────────────────────────────────────── table de valeur
 
@@ -89,8 +92,8 @@ export function rollPackCoins(kind: 'bebou' | 'theme' | 'special', rand: () => n
  * sur l'économie : un booster rapporte ≈ 25-30 pièces à l'ouverture + ≈ 160 pièces de cartes au brûlage (valeur
  * moyenne des 5 cartes), donc 250 > ce qu'il rend (pas de boucle « acheter → brûler → racheter ») ; ≈ une journée de
  * calendrier ou ~8 boosters ouverts.
- * (13/11, retours Hugo) plus de plafond quotidien : achats illimités, au même prix (jamais moins cher). Seule limite :
- * 10 boosters par achat (les boutons +1 / +5).
+ * (13/11, retours Hugo ; v2.0.1) plus de plafond quotidien : achats illimités, au même prix (jamais moins cher). Seule
+ * limite : 10 boosters par achat (les boutons +1 / +5).
  */
 export const PACK_PRICE = 250;
 /** boosters au plus par achat */
@@ -98,8 +101,8 @@ export const PACK_BUY_MAX = 10;
 /** (compatibilité : `packShop.left` des clients) un achat peut toujours aller jusqu'à PACK_BUY_MAX */
 export const packBuysLeft = (_e: EconState, _today: string) => PACK_BUY_MAX;
 export function packBuyProblem(count: number, coins: number, _e: EconState, _today: string): string | null {
-  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_MAX) return 'Quantité invalide.';
-  if (coins < count * PACK_PRICE) return `Pas assez de pièces (il t’en manque ${count * PACK_PRICE - coins}).`;
+  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_MAX) return fe('economy.5');
+  if (coins < count * PACK_PRICE) return fe('economy.8', { p0: count * PACK_PRICE - coins });
   return null;
 }
 
@@ -107,15 +110,15 @@ export function packBuyProblem(count: number, coins: number, _e: EconState, _tod
 
 /** Pièces rendues par un brûlage (valeur de la table). Vérifie : doublons seulement, pas de secrète. */
 export function burnProblem(items: StakeItem[], spare: (it: StakeItem) => number): string | null {
-  if (!items.length) return 'Choisis au moins une carte.';
+  if (!items.length) return fe('economy.9');
   const seen = new Set<string>();
   for (const it of items) {
-    if (!Number.isInteger(it.count) || it.count < 1) return 'Quantité invalide.';
-    if (!burnable(it.rarity)) return 'Les cartes secrètes ne se brûlent pas.';
+    if (!Number.isInteger(it.count) || it.count < 1) return fe('economy.10');
+    if (!burnable(it.rarity)) return fe('economy.11');
     const k = `${it.cardId}:${it.rarity}`;
-    if (seen.has(k)) return 'Même carte en double dans la liste.';
+    if (seen.has(k)) return fe('economy.12');
     seen.add(k);
-    if (spare(it) < it.count) return 'On ne brûle que des doublons libres (on garde toujours 1 exemplaire).';
+    if (spare(it) < it.count) return fe('economy.13');
   }
   return null;
 }
@@ -129,7 +132,7 @@ export interface CompletionSet {
   /** `sub:<sous-thème>` · `grp:<groupe>` · `theme:<thème>` */
   id: string;
   label: string;
-  kind: 'album' | 'groupe' | 'thème';
+  kind: 'album' | 'groupe' | 'thème'; // i18n-ok (identifiant)
   cards: CatalogEntry[];
   reward: number;
 }
@@ -149,7 +152,8 @@ export function completionSets(): CompletionSet[] {
         out.push({ id: `grp:${v.id.replace(/^group:/, '')}`, label: v.label, kind: 'groupe', cards: v.cards, reward: v.cards.length * COMPLETION_RATE });
       } else out.push({ id: `sub:${v.id}`, label: v.label, kind: 'album', cards: v.cards, reward: v.cards.length * COMPLETION_RATE });
     }
-    out.push({ id: `theme:${t.id}`, label: `${t.label} (thème entier)`, kind: 'thème', cards: t.cards, reward: t.cards.length * COMPLETION_RATE });
+    out.push({ id: `theme:${t.id}`, get label() { return tData('compl.theme', '{p0} (thème entier)').replace('{p0}', t.label); }, kind: 'thème', // i18n-ok
+      cards: t.cards, reward: t.cards.length * COMPLETION_RATE });
   }
   SETS = out;
   return out;
@@ -214,7 +218,20 @@ export interface Achievement {
   cos?: true;
 }
 
-const A = (id: string, label: string, how: string, tier: Achievement['tier'], stat: keyof AchievementStats, target: number, cos = false): Achievement => ({ id, label, how, tier, stat, target, ...(cos ? { cos: true as const } : {}) });
+// (version anglaise) libellé et consigne lus à l'affichage : le français ici (serveur, joueurs francophones), l'anglais dans i18n/en/data.ts
+const A = (id: string, label: string, how: string, tier: Achievement['tier'], stat: keyof AchievementStats, target: number, cos = false): Achievement => ({
+  id,
+  get label() {
+    return tData(`ach.${id}`, label);
+  },
+  get how() {
+    return tData(`ach.${id}.how`, how);
+  },
+  tier,
+  stat,
+  target,
+  ...(cos ? { cos: true as const } : {}),
+});
 /** palier « cosmétique » (la récompense est un titre, un badge, un cadre ou une vitrine) */
 const K = true;
 
@@ -223,6 +240,7 @@ const K = true;
  * titres (C15) et les cadres animés (C14), plus de paliers et de nouveaux succès (cartes par thème, niveau Bébou,
  * classement). Les ids existants ne changent pas (paliers déjà encaissés).
  */
+// i18n-data:début (anglais dans i18n/en/data.ts, vérifié par convex/i18n.test.ts)
 export const ACHIEVEMENTS: Achievement[] = [
   // Boosters
   A('packs-10', 'Premiers pas', 'Ouvre 10 boosters', 1, 'packsOpened', 10, K),
@@ -328,6 +346,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('coins-10k', 'Tirelire', 'Gagne 10 000 pièces au total', 2, 'coinsEarned', 10000),
   A('coins-100k', 'Coffre-fort', 'Gagne 100 000 pièces au total', 3, 'coinsEarned', 100000),
 ];
+// i18n-data:fin
 
 /** palier « cosmétique » : 0 pièce (C10 : une seule récompense, le cosmétique) */
 export const achievementReward = (a: Achievement) => (a.cos ? 0 : ACHIEVEMENT_TIERS[a.tier - 1]);
@@ -348,6 +367,7 @@ export interface AchievementLadder {
   /** paliers, du plus facile au plus dur */
   steps: Achievement[];
 }
+// i18n-data:début
 const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   packsOpened: 'Ouvrir des boosters',
   uniques: 'Collection',
@@ -372,10 +392,11 @@ const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   rouletteWins: 'Roulette',
   coinsEarned: 'Pièces gagnées',
 };
+// i18n-data:fin
 export const ACHIEVEMENT_LADDERS: AchievementLadder[] = (() => {
   const m = new Map<keyof AchievementStats, Achievement[]>();
   for (const a of ACHIEVEMENTS) m.set(a.stat, [...(m.get(a.stat) ?? []), a]);
-  return [...m].map(([stat, steps]) => ({ stat, label: LADDER_LABEL[stat], steps: steps.sort((x, y) => x.target - y.target) }));
+  return [...m].map(([stat, steps]) => ({ stat, get label() { return tData(`ach.stat.${stat}`, LADDER_LABEL[stat]); }, steps: steps.sort((x, y) => x.target - y.target) }));
 })();
 /** Paliers atteints d'une échelle (0 = aucun). */
 export const ladderLevel = (l: AchievementLadder, s: AchievementStats) => l.steps.filter((a) => achievementDone(a, s)).length;
@@ -477,3 +498,7 @@ export function achievementStats(
   s.bebouLevel = ACHIEVEMENTS.filter((a) => !ECON_ONLY.has(a.stat) && achievementDone(a, s)).length;
   return s;
 }
+
+// (version anglaise, lot 4) succès et ensembles des messages stockés, relus dans la langue active
+msgRef('ach', (p) => { const id = str(p.achId); return id ? ACHIEVEMENTS.find((a) => a.id === id)?.label : undefined; });
+msgRef('set', (p) => { const id = str(p.setId); return id ? completionSets().find((s) => s.id === id)?.label : undefined; });

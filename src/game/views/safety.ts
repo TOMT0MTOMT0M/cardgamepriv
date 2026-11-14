@@ -1,3 +1,4 @@
+import { t } from '../../core/i18n';
 import type { GameState } from '../backend';
 
 /**
@@ -82,4 +83,4 @@ export function protection(st: Pick<GameState, 'wishlist' | 'binders' | 'covers'
 /** Icônes des protections (toutes, dans l'ordre) : ♥ envie · ▤ classeur · ⌂ pochette. */
 export const protectIcons = (p: string[]) => p.map((x) => (x === 'envie' ? '♥' : x === 'classeur' ? '▤' : '⌂')).join('');
 /** Légende d'une ligne, lisible au doigt (les `title` ne s'affichent qu'au survol). */
-export const PROTECT_LEGEND = '♥ envie · ▤ classeur · ⌂ pochette : gardées hors des sélections automatiques (brûlables à la main) · 🔒 engagée dans un échange en attente';
+export const PROTECT_LEGEND = t('safe.legend');

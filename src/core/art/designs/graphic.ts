@@ -11,7 +11,7 @@ import { type CardDesign, FONT_MONO, FONT_SANS, FONT_TITLE, H, TAU, W, cut, fitF
  */
 export const suisse: CardDesign = {
   id: 'suisse',
-  title: 'Suisse (typographique)',
+  title: 'Suisse (typographique)', // i18n-ok (labo)
   art: { k: 1.0, to: [384, 600] },
   paint(f, m, d) {
     const { card, uni, tier } = d;
@@ -96,7 +96,7 @@ export function suisseLandscapeBand(aspect: number) {
 }
 export const suissePaysage: CardDesign = {
   id: 'suisse-paysage',
-  title: 'Suisse · paysage',
+  title: 'Suisse · paysage', // i18n-ok (labo)
   art: { k: 1.0, to: [384, 600] },
   paint(f, m, d) {
     const { card, uni, tier } = d;
@@ -175,7 +175,7 @@ export const suissePaysage: CardDesign = {
  */
 export const estampe: CardDesign = {
   id: 'estampe',
-  title: 'Estampe (sceau)',
+  title: 'Estampe (sceau)', // i18n-ok (labo)
   art: { k: 1.62, to: [318, 470] },
   paint(f, m, d) {
     const { card, uni, tier } = d;
@@ -271,7 +271,7 @@ export const estampe: CardDesign = {
  */
 export const celeste: CardDesign = {
   id: 'celeste',
-  title: 'Carte céleste',
+  title: 'Carte céleste', // i18n-ok (labo)
   art: { k: 1.12, to: [384, 400] },
   paint(f, m, d) {
     const { card, uni, tier } = d;

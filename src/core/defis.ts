@@ -12,8 +12,11 @@
  *  - « Premier à… » se tranche dès la carte tirée.
  * Les défis ne vendent aucune carte : ils redistribuent les pièces misées.
  */
+import { fe } from './errors';
+import { lang, t } from './i18n';
 import type { RarityId } from './rarity';
 import { CARD_STARS } from './economy';
+import { msgRef, str } from './msgRefs';
 
 export type DefiKind = 'first' | 'new' | 'stars';
 
@@ -28,12 +31,13 @@ export interface DefiKindInfo {
 }
 
 export const DEFI_TARGETS: RarityId[] = ['legendary', 'mythic'];
-const targetLabel = (r?: RarityId) => (r === 'mythic' ? 'une 6★' : 'une 5★ ou mieux');
+const targetLabel = (r?: RarityId) => (r === 'mythic' ? t('dk.t6') : t('dk.t5'));
 
+// (version anglaise) libellés lus à l'affichage (getters) : la langue peut changer après le chargement
 export const DEFI_KINDS: DefiKindInfo[] = [
-  { id: 'first', label: 'Premier à', goal: (t) => `Le premier à tirer ${targetLabel(t)} gagne`, unit: (n) => (n ? 'tirée' : '—') },
-  { id: 'new', label: 'Nouvelles cartes', goal: () => 'Le plus de nouvelles cartes pour sa collection', unit: (n) => `${n} nouvelle${n > 1 ? 's' : ''}` },
-  { id: 'stars', label: 'Étoiles', goal: () => 'Le plus d’étoiles tirées en boosters', unit: (n) => `${n}★` },
+  { id: 'first', get label() { return t('dk.first'); }, goal: (tg) => t('dk.firstGoal', { what: targetLabel(tg) }), unit: (n) => (n ? t('dk.pulled') : '—') },
+  { id: 'new', get label() { return t('dk.new'); }, goal: () => t('dk.newGoal'), unit: (n) => t('dk.newUnit', { n }) },
+  { id: 'stars', get label() { return t('dk.stars'); }, goal: () => t('dk.starsGoal'), unit: (n) => `${n}★` },
 ];
 export const defiKind = (k: DefiKind) => DEFI_KINDS.find((x) => x.id === k) ?? DEFI_KINDS[0];
 
@@ -41,7 +45,7 @@ export const HOUR = 3600_000;
 export const DEFI_DURATIONS: Array<{ ms: number; label: string }> = [
   { ms: HOUR, label: '1 h' },
   { ms: 24 * HOUR, label: '24 h' },
-  { ms: 72 * HOUR, label: '3 jours' },
+  { ms: 72 * HOUR, get label() { return t('dk.3days'); } },
 ];
 /** délai pour accepter */
 export const DEFI_ACCEPT_MS = 6 * HOUR;
@@ -61,15 +65,15 @@ export interface DefiDraft {
 
 /** Message d'erreur si le défi ne peut pas être lancé (null : il peut). */
 export function defiProblem(d: DefiDraft, me: string): string | null {
-  if (!DEFI_KINDS.some((k) => k.id === d.kind)) return 'Objectif inconnu.';
-  if (d.kind === 'first' && !DEFI_TARGETS.includes(d.target as RarityId)) return 'Choisis la rareté à tirer (5★ ou 6★).';
-  if (!DEFI_DURATIONS.some((x) => x.ms === d.durationMs)) return 'Durée inconnue.';
-  if (!Number.isInteger(d.stake) || d.stake < 0 || d.stake > DEFI_MAX_STAKE) return `Mise de 0 à ${DEFI_MAX_STAKE} pièces.`;
+  if (!DEFI_KINDS.some((k) => k.id === d.kind)) return fe('defis.8');
+  if (d.kind === 'first' && !DEFI_TARGETS.includes(d.target as RarityId)) return fe('defis.1');
+  if (!DEFI_DURATIONS.some((x) => x.ms === d.durationMs)) return fe('defis.2');
+  if (!Number.isInteger(d.stake) || d.stake < 0 || d.stake > DEFI_MAX_STAKE) return fe('defis.3', { p0: DEFI_MAX_STAKE });
   const ids = new Set(d.invited);
-  if (ids.size !== d.invited.length) return 'Un ami est invité deux fois.';
-  if (ids.has(me)) return 'Tu ne peux pas te défier toi-même.';
-  if (!ids.size) return 'Invite au moins un ami.';
-  if (ids.size > DEFI_MAX_FRIENDS) return `${DEFI_MAX_FRIENDS} amis au plus.`;
+  if (ids.size !== d.invited.length) return fe('defis.4');
+  if (ids.has(me)) return fe('defis.5');
+  if (!ids.size) return fe('defis.6');
+  if (ids.size > DEFI_MAX_FRIENDS) return fe('defis.7', { p0: DEFI_MAX_FRIENDS });
   return null;
 }
 
@@ -89,3 +93,8 @@ export function defiWinner(scores: number[]): number | null {
   const top = scores.map((s, i) => (s === best ? i : -1)).filter((i) => i >= 0);
   return top.length === 1 ? top[0] : null;
 }
+
+// (version anglaise, lot 4) but d'un défi des messages stockés, relu dans la langue active
+const goalRef = (p: Record<string, unknown>) => { const k = str(p.defiKind); return k ? defiKind(k as DefiKind).goal((str(p.defiTarget) as RarityId | undefined)) : undefined; };
+msgRef('goal', goalRef);
+msgRef('goalLc', (p) => goalRef(p)?.toLocaleLowerCase(lang() === 'fr' ? 'fr-FR' : 'en-GB'));

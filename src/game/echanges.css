@@ -92,7 +92,7 @@
 .ex-legacy-t { color: var(--ink-2); text-decoration: none; font: 500 12px var(--mono); letter-spacing: 0.08em; }
 .ex-legacy-t .badge { display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-pill); background: var(--rose); color: #000; font: 600 10px/16px var(--mono); text-align: center; }
 .ex-legacy-b { margin-top: 12px; }
-.ob.ob-legacy :is(.ob-new, .ob-new2, .ob-filters, .ob-rule, .ob-intro), .ob.ob-legacy .ob-seg [data-t='all'] { display: none !important; }
+.ob.ob-legacy :is(.ob-new, .ob-new2, .ob-filters, .ob-rule, .ob-intro), .ob.ob-legacy .ob-seg [data-tab='all'] { display: none !important; }
 .ex-compose-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--gm-line); }
 .ex-compose-cta small { font: 500 12px var(--mono); color: var(--ink-3); }
 .trades[data-z='compose'] .ex-back { display: inline-block; margin-bottom: 14px; color: var(--ink-2); text-decoration: none; font: 500 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }

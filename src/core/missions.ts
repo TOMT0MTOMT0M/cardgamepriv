@@ -1,3 +1,5 @@
+import { fe } from './errors';
+import { t } from './i18n';
 import { BEBOU_PACK, THEMES, catalogEntry, inSubthemeScope, subthemeViews, themeOpen } from './sets/themes';
 
 /**
@@ -86,7 +88,7 @@ function rand(seed: string) {
   };
 }
 
-const packKeys = () => [{ key: 'bebou', label: BEBOU_PACK.label }, ...THEMES.filter(themeOpen).map((t) => ({ key: t.id, label: `${t.label} Pack` }))];
+const packKeys = () => [{ key: 'bebou', label: BEBOU_PACK.label }, ...THEMES.filter(themeOpen).map((t) => ({ key: t.id, label: `${t.label} Pack` }))]; // i18n-ok
 // les 177 familles « Jeux vidéo » comptent pour UN sous-thème (`group:jeux-video`) : sinon presque chaque mission
 // tomberait sur une petite famille (« 4 cartes Ace Attorney ») quasi impossible à remplir
 const liveSubthemes = () => THEMES.flatMap((t) => subthemeViews(t).filter((v) => v.cards.length).map((v) => ({ id: v.id, label: v.label })));
@@ -192,24 +194,24 @@ export function applyMissionEvent(s: MissionsState, ev: MissionEvent): { state: 
 /** Réclamer une mission terminée : renvoie l'état et le nombre de boosters gagnés (ou un message d'erreur). */
 export function claimMission(s: MissionsState, id: string): { state: MissionsState; reward: number } | string {
   const m = s.list.find((x) => x.id === id);
-  if (!m) return 'Mission introuvable (un nouveau jour a commencé ?).';
-  if (m.claimed) return 'Déjà réclamée.';
-  if (m.progress < m.target) return 'Mission pas encore terminée.';
+  if (!m) return fe('missions.1');
+  if (m.claimed) return fe('missions.2');
+  if (m.progress < m.target) return fe('missions.3');
   return { state: { ...s, list: s.list.map((x) => (x.id === id ? { ...x, claimed: true } : x)) }, reward: m.reward };
 }
 
 export function claimMissionBonus(s: MissionsState): { state: MissionsState; reward: number } | string {
-  if (s.bonusClaimed) return 'Bonus déjà réclamé.';
-  if (!s.list.every((m) => m.claimed)) return 'Réclame d’abord les 3 missions.';
+  if (s.bonusClaimed) return fe('missions.4');
+  if (!s.list.every((m) => m.claimed)) return fe('missions.5');
   return { state: { ...s, bonusClaimed: true }, reward: MISSION_BONUS };
 }
 
 /** Changer une mission (1 fois par jour, pas une mission terminée). */
 export function rerollMission(s: MissionsState, id: string, userKey: string): MissionsState | string {
-  if (s.rerolled) return 'Tu as déjà changé une mission aujourd’hui.';
+  if (s.rerolled) return fe('missions.6');
   const i = s.list.findIndex((x) => x.id === id);
-  if (i < 0) return 'Mission introuvable.';
-  if (s.list[i].claimed || s.list[i].progress >= s.list[i].target) return 'Cette mission est déjà terminée.';
+  if (i < 0) return fe('missions.8');
+  if (s.list[i].claimed || s.list[i].progress >= s.list[i].target) return fe('missions.7');
   const r = rand(`${userKey}|${s.day}|reroll`);
   const used = new Set(s.list.map((m) => m.kind));
   const k = drawKind(r, used);
@@ -221,28 +223,27 @@ export function rerollMission(s: MissionsState, id: string, userKey: string): Mi
 /** Texte d'une mission (« Ouvre 3 boosters »). */
 export function missionLabel(m: Mission): string {
   const n = m.target;
-  const s = n > 1 ? 's' : '';
   switch (m.kind) {
     case 'open':
-      return `Ouvre ${n} booster${s}`;
+      return t('ms.open', { n });
     case 'openPack':
-      return `Ouvre ${n} ${packKeys().find((p) => p.key === m.param)?.label ?? 'booster'}`;
+      return t('ms.openPack', { n, pack: packKeys().find((p) => p.key === m.param)?.label ?? 'booster' }); // i18n-ok (« booster » pareil)
     case 'rare':
-      return `Obtiens ${n} cartes ★★★ ou mieux`;
+      return t('ms.rare', { n });
     case 'epic':
-      return 'Obtiens une carte ★★★★ ou mieux';
+      return t('ms.epic');
     case 'legendary':
-      return 'Obtiens une carte ★★★★★ ou mieux';
+      return t('ms.legendary');
     case 'newCards':
-      return `Trouve ${n} nouvelles cartes`;
+      return t('ms.newCards', { n });
     case 'subtheme':
-      return `Obtiens ${n} cartes ${liveSubthemes().find((x) => x.id === m.param)?.label ?? ''}`.trim();
+      return t('ms.subtheme', { n, sub: liveSubthemes().find((x) => x.id === m.param)?.label ?? '' }).trim();
     case 'dups':
-      return `Obtiens ${n} doublons`;
+      return t('ms.dups', { n });
     case 'contract':
-      return 'Signe un contrat';
+      return t('ms.contract');
     case 'trade':
-      return 'Propose ou accepte un échange';
+      return t('ms.trade');
   }
 }
 

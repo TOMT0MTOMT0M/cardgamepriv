@@ -5,6 +5,7 @@
  *  - golf : la carte roule (de chant) au ralenti vers le trou, s'arrête au bord… et tombe ;
  *  - fléchettes, billard, pétanque… : cercles concentriques, la carte file au centre et se plante.
  */
+import { lang } from '../../../core/i18n';
 import type { SceneCtx } from '../kit';
 
 export default function precision(k: SceneCtx) {
@@ -24,7 +25,7 @@ function chess(k: SceneCtx) {
   k.gsap.set(board, { xPercent: -50, transformPerspective: u * 70, rotationX: 62 });
   const king = k.svg(`<svg viewBox="0 0 60 120" width="${u * 22}" height="${u * 44}" style="position:absolute;left:50%;top:${h * 0.66}px;overflow:visible"><g fill="#f4f1ea" stroke="#111" stroke-width="2" stroke-linejoin="round"><path d="M26 4h8v8h8v8h-8v8h-8v-8h-8v-8h8z"/><path d="M14 36q16-10 32 0l-4 12h-24z"/><path d="M18 48h24l6 44h-36z"/><path d="M10 92h40l4 14q-24 6-48 0z"/></g></svg>`);
   k.gsap.set(king, { xPercent: -50, yPercent: -100, transformOrigin: '50% 100%' });
-  const txt = k.word('ÉCHEC ET MAT', h * 0.16, u * 10);
+  const txt = k.word(lang() === 'fr' ? 'ÉCHEC ET MAT' : 'CHECKMATE', h * 0.16, u * 10); // i18n-ok
   txt.style.opacity = '0';
   tl.fromTo(board, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0);
   tl.fromTo(king, { opacity: 0, y: -u * 10 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out' }, 0.15);

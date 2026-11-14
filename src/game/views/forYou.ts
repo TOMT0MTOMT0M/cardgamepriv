@@ -1,3 +1,5 @@
+import { t as tr } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.forYou'; // (textes de ce module, version anglaise)
 import { collectionSig, type GameBackend } from '../backend';
 import { catalogEntry } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
@@ -25,7 +27,7 @@ const nameOf = (id: string) => catalogEntry(id)?.name ?? id;
 const shortName = (n: string) => n.replace(/ \(robot\)$/, '');
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
-  return s < 60 ? 'à l’instant' : s < 3600 ? `il y a ${Math.floor(s / 60)} min` : `il y a ${Math.floor(s / 3600)} h`;
+  return s < 60 ? tr('time.justNow') : s < 3600 ? tr('time.agoMin', { n: Math.floor(s / 60) }) : tr('time.agoH', { n: Math.floor(s / 3600) });
 };
 
 /** Vignette de carte (toucher = la voir en grand : `[data-zoom]`, géré par la page Échanges). */
@@ -42,7 +44,7 @@ export function cardChip(c: DealCard, label: string, extra = '') {
 export function pickCardSheet(o: { title: string; sub: string; load: () => Promise<Array<DealCard & { tag?: string; on?: boolean }>>; empty: string; onPick: (c: DealCard) => Promise<boolean> | boolean }) {
   const veil = h('div', 'ow-veil fy-veil');
   veil.innerHTML = `<div class="ow fy-pick" role="dialog" aria-modal="true" aria-label="${esc(o.title)}">
-    <div class="ow-h"><div class="ow-id"><span class="ow-k">${esc(o.title)}</span><span class="ow-me">${esc(o.sub)}</span></div><button class="ow-x" aria-label="Fermer">✕</button></div>
+    <div class="ow-h"><div class="ow-id"><span class="ow-k">${esc(o.title)}</span><span class="ow-me">${esc(o.sub)}</span></div><button class="ow-x" aria-label="${tr('common.close')}">✕</button></div>
     <div class="fy-pg" aria-live="polite">${'<span class="fy-pc skel"></span>'.repeat(6)}</div></div>`;
   let closed = false;
   const close = () => {
@@ -93,9 +95,9 @@ export function pickCardSheet(o: { title: string; sub: string; load: () => Promi
 export function createForYou(backend: GameBackend, o: { chime(): void; search(): void }): ForYouView {
   const el = h('section', 'fy');
   el.innerHTML = `
-    <div class="fy-head"><p class="fy-intro">Tes envies chez ceux qui en ont un doublon, contre un de tes doublons de même étoile qui leur manque. Un toucher pour demander.</p><button class="btn-ghost fy-refresh" aria-label="Chercher de nouveau">Actualiser</button></div>
+    <div class="fy-head"><p class="fy-intro">${tr('fy.intro')}</p><button class="btn-ghost fy-refresh" aria-label="${tr('fy.refreshA')}">${tr('fy.refresh')}</button></div>
     <div class="fy-deals" aria-live="polite"></div>
-    <div class="fy-want" hidden><h3 class="fy-h">Ils cherchent tes doublons <small class="fy-want-n"></small></h3><div class="fy-want-list"></div></div>
+    <div class="fy-want" hidden><h3 class="fy-h">${tr('fy.theyWant')} <small class="fy-want-n"></small></h3><div class="fy-want-list"></div></div>
     <p class="fy-foot muted"></p>`;
   const q = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
   const dealsEl = q('.fy-deals');
@@ -142,9 +144,9 @@ export function createForYou(backend: GameBackend, o: { chime(): void; search():
     const draw = () => {
       const sent = done.has(dKey(d));
       w.classList.toggle('sent', sent);
-      w.innerHTML = `<div class="fy-who"><span class="dot${d.online ? ' on' : ''}" title="${d.online ? 'en ligne' : 'hors ligne'}"></span><b>${esc(shortName(d.name))}</b><span class="fy-dup">a un doublon de ta carte voulue</span></div>
-        <div class="fy-swap">${cardChip(d.get, 'Tu reçois', '<em class="fy-wish">dans tes envies</em>')}<span class="fy-arrow" aria-hidden="true">⇄</span>${cardChip(d.give, 'Tu donnes', d.theyWish ? '<em class="fy-wish">il la cherche</em>' : '<em class="fy-lack">elle lui manque</em>')}</div>
-        <div class="fy-act">${d.alts.length && !sent ? `<button class="linkish fy-change">Donner une autre carte <small>(${d.alts.length})</small></button>` : '<span></span>'}<button class="${sent ? 'btn-ghost' : 'btn-primary'} fy-ask"${sent ? ' disabled' : ''}>${sent ? 'Demandé' : 'Demander'}</button></div>`;
+      w.innerHTML = `<div class="fy-who"><span class="dot${d.online ? ' on' : ''}" title="${d.online ? tr('fy.online') : tr('fy.offline')}"></span><b>${esc(shortName(d.name))}</b><span class="fy-dup">${tr('fy.hasDup')}</span></div>
+        <div class="fy-swap">${cardChip(d.get, tr('fy.youGet'), '<em class="fy-wish">' + tr('fy.inWishes') + '</em>')}<span class="fy-arrow" aria-hidden="true">⇄</span>${cardChip(d.give, tr('fy.youGive'), d.theyWish ? '<em class="fy-wish">' + tr('fy.theyWantIt') + '</em>' : '<em class="fy-lack">' + tr('fy.theyLack') + '</em>')}</div>
+        <div class="fy-act">${d.alts.length && !sent ? `<button class="linkish fy-change">${tr('fy.giveOther')} <small>(${d.alts.length})</small></button>` : '<span></span>'}<button class="${sent ? 'btn-ghost' : 'btn-primary'} fy-ask"${sent ? ' disabled' : ''}>${sent ? tr('fy.asked') : tr('fy.ask')}</button></div>`;
       w.querySelector('.fy-ask')?.addEventListener('click', async (e) => {
         const b = e.currentTarget as HTMLElement;
         if (await askFor(backend, { userId: d.userId, name: shortName(d.name) }, d.get, b, d.give)) {
@@ -156,10 +158,10 @@ export function createForYou(backend: GameBackend, o: { chime(): void; search():
       w.querySelector('.fy-change')?.addEventListener('click', () => {
         const all = [d.give.cardId, ...d.alts];
         pickCardSheet({
-          title: 'Ce que tu donnes',
-          sub: `Un de tes doublons ${starsTxt(d.give.rarity)} qui manque à ${shortName(d.name)}`,
+          title: tr('fy.whatGive'),
+          sub: tr('fy.oneOfYours', { stars: starsTxt(d.give.rarity), name: shortName(d.name) }),
           load: async () => all.map((id) => ({ cardId: id, rarity: d.give.rarity, on: id === d.give.cardId, tag: id === d.give.cardId ? 'choisie' : undefined })),
-          empty: 'Aucune autre carte.',
+          empty: tr('fy.noOther'),
           onPick: (c) => {
             const was = d.give.cardId;
             d.give = c;
@@ -183,9 +185,9 @@ export function createForYou(backend: GameBackend, o: { chime(): void; search():
       const wishes = backend.state.wishlist.length;
       dealsEl.innerHTML = `<div class="fy-empty"><p>${
         wishes
-          ? 'Aucun échange prêt pour l’instant : personne n’a de doublon libre de tes envies, ou tu n’as pas de doublon de même étoile à donner en échange.'
-          : 'Marque les cartes que tu veux (♥ Je la veux, dans la Collection ou sous une carte cherchée) : on trouve pour toi qui en a un doublon, et contre quoi.'
-      }</p><div class="fy-empty-acts"><button class="btn-primary fy-go-search">Chercher une carte</button>${wishes ? '' : '<button class="btn-ghost fy-go-coll">Ma collection</button>'}</div></div>`;
+          ? tr('fy.none')
+          : tr('fy.howTo')
+      }</p><div class="fy-empty-acts"><button class="btn-primary fy-go-search">${tr('fy.search')}</button>${wishes ? '' : '<button class="btn-ghost fy-go-coll">' + tr('fy.myColl') + '</button>'}</div></div>`;
       dealsEl.querySelector('.fy-go-search')!.addEventListener('click', () => o.search());
       dealsEl.querySelector('.fy-go-coll')?.addEventListener('click', () => navigate('#/collection'));
     }
@@ -198,7 +200,7 @@ export function createForYou(backend: GameBackend, o: { chime(): void; search():
         const r = h('div', `fy-row${sent ? ' sent' : ''}`);
         r.style.setProperty('--rc', rarity(w.card.rarity).hex);
         const e = catalogEntry(w.card.cardId);
-        r.innerHTML = `${e ? `<img alt="" loading="lazy" decoding="async" data-zoom="${esc(`${w.card.cardId}|${w.card.rarity}`)}" src="${thumbUrl(e)}">` : ''}<span class="fy-rw"><b>${esc(nameOf(w.card.cardId))}</b><small><span class="dot${w.online ? ' on' : ''}"></span>${esc(shortName(w.name))} la cherche · ${starsTxt(w.card.rarity)}</small></span><button class="${sent ? 'btn-ghost' : 'btn-ghost'} fy-offer"${sent ? ' disabled' : ''}>${sent ? 'Proposé' : 'Proposer'}</button>`;
+        r.innerHTML = `${e ? `<img alt="" loading="lazy" decoding="async" data-zoom="${esc(`${w.card.cardId}|${w.card.rarity}`)}" src="${thumbUrl(e)}">` : ''}<span class="fy-rw"><b>${esc(nameOf(w.card.cardId))}</b><small><span class="dot${w.online ? ' on' : ''}"></span>${tr('fy.seeks', { name: esc(shortName(w.name)), stars: starsTxt(w.card.rarity) })}</small></span><button class="${sent ? 'btn-ghost' : 'btn-ghost'} fy-offer"${sent ? ' disabled' : ''}>${sent ? tr('fy.offered') : tr('fy.offer')}</button>`;
         r.querySelector('.fy-offer')!.addEventListener('click', async (ev) => {
           if (await offerTo(backend, { userId: w.userId, name: shortName(w.name) }, w.card, ev.currentTarget as HTMLElement)) {
             done.add(wKey(w));
@@ -210,7 +212,7 @@ export function createForYou(backend: GameBackend, o: { chime(): void; search():
         return r;
       }),
     );
-    q('.fy-foot').textContent = `${deals.length} échange${deals.length > 1 ? 's' : ''} prêt${deals.length > 1 ? 's' : ''} · mis à jour ${ago(data.at)}`;
+    q('.fy-foot').textContent = tr('fy.ready', { n: deals.length, ago: ago(data.at) });
   }
 
   return {
@@ -223,4 +225,4 @@ export function createForYou(backend: GameBackend, o: { chime(): void; search():
   };
 }
 
-const starsTxt = (r: RarityId) => (r === 'secret' ? 'Bébou' : `${rarity(r).rank + 1}★`);
+const starsTxt = (r: RarityId) => (r === 'secret' ? 'Bébou' : `${rarity(r).rank + 1}★`); // i18n-ok

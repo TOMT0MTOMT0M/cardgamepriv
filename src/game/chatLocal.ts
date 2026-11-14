@@ -1,3 +1,6 @@
+import { t } from '../core/i18n';
+import '../core/i18n/fr/game.chatLocal'; // (textes de ce module, version anglaise)
+import { fe } from '../core/errors';
 import { CHAT_GENERAL, CHAT_PAGE, CHAT_REACTS, chatSnippet, cleanChatText, dmKey, dmPeer, type ChatApi, type ChatHead, type ChatInbox, type ChatMsg } from '../core/chat';
 
 /**
@@ -16,7 +19,7 @@ interface Saved {
   muted: string[];
   seq: number;
 }
-const BOT_LINES = ['GG !', 'Pas mal du tout.', 'Tu l’échanges contre quoi ?', 'J’ouvre mes boosters et je te dis.', 'Elle est où cette 6★ ?', 'On fait un Pack Battle ?', 'Je garde mes doublons pour la forge.', 'Bien vu.'];
+const BOT_LINES = () => ['GG !', t('cl.l1'), t('cl.l2'), t('cl.l3'), t('cl.l4'), t('cl.l5'), t('cl.l6'), t('cl.l7')];
 
 export function createLocalChat(bots: () => Array<{ id: string; name: string }>, hasCard: (cardId: string, rarity: string) => number | null): ChatApi {
   let save: Saved;
@@ -50,16 +53,16 @@ export function createLocalChat(bots: () => Array<{ id: string; name: string }>,
   if (!save.convs[CHAT_GENERAL]) {
     const b = bots();
     const t0 = Date.now() - 42 * 60 * 1000;
-    if (b[0]) post(CHAT_GENERAL, b[0], 'Bienvenue dans le chat général. Ici on montre ses cartes et on négocie.', {}, t0);
-    if (b[1]) post(CHAT_GENERAL, b[1], 'Quelqu’un a des doublons Pokémon 4★ ?', {}, t0 + 9 * 60 * 1000);
-    if (b[2]) post(CHAT_GENERAL, b[2], 'Moi, mais je veux une 5★ en face.', { reacts: b[0] ? [{ k: 'LOL', by: [b[0].id] }] : undefined }, t0 + 11 * 60 * 1000);
+    if (b[0]) post(CHAT_GENERAL, b[0], t('cl.welcome'), {}, t0);
+    if (b[1]) post(CHAT_GENERAL, b[1], t('cl.ask'), {}, t0 + 9 * 60 * 1000);
+    if (b[2]) post(CHAT_GENERAL, b[2], t('cl.reply'), { reacts: b[0] ? [{ k: 'LOL', by: [b[0].id] }] : undefined }, t0 + 11 * 60 * 1000);
     flush();
   }
 
   const head = (key: string): ChatHead => {
     const c = conv(key);
     const last = c.msgs.at(-1);
-    return { key, peerId: dmPeer(key, ME) ?? undefined, n: c.n, lastAt: last?.at ?? 0, lastUserId: last?.userId, lastName: last?.name, lastText: last ? (last.deleted ? '' : chatSnippet(last.text || 'Carte')) : undefined, seenN: c.seen, peerSeenN: dmPeer(key, ME) ? c.n : undefined };
+    return { key, peerId: dmPeer(key, ME) ?? undefined, n: c.n, lastAt: last?.at ?? 0, lastUserId: last?.userId, lastName: last?.name, lastText: last ? (last.deleted ? '' : chatSnippet(last.text || t('cl.card'))) : undefined, seenN: c.seen, peerSeenN: dmPeer(key, ME) ? c.n : undefined };
   };
   const inbox = (): ChatInbox => ({
     me: ME,
@@ -90,7 +93,8 @@ export function createLocalChat(bots: () => Array<{ id: string; name: string }>,
     const who = peer ? b.find((x) => x.id === peer) : b[Math.floor(Math.random() * b.length)];
     if (!who) return;
     setTimeout(() => {
-      post(key, who, BOT_LINES[Math.floor(Math.random() * BOT_LINES.length)]);
+      const lines = BOT_LINES();
+      post(key, who, lines[Math.floor(Math.random() * lines.length)]);
       emit(key);
     }, 1400 + Math.random() * 2600);
   }
@@ -113,8 +117,8 @@ export function createLocalChat(bots: () => Array<{ id: string; name: string }>,
     },
     async send(key, o) {
       const text = cleanChatText(o.text);
-      if (!text && !o.card) throw new Error('Message vide.');
-      if (key !== CHAT_GENERAL && key !== dmKey(ME, dmPeer(key, ME) ?? '')) throw new Error('Conversation introuvable.');
+      if (!text && !o.card) throw new Error(fe('chat.11'));
+      if (key !== CHAT_GENERAL && key !== dmKey(ME, dmPeer(key, ME) ?? '')) throw new Error(fe('chat.8'));
       let card: ChatMsg['card'];
       if (o.card) {
         const mint = hasCard(o.card.cardId, o.card.rarity);
@@ -122,7 +126,7 @@ export function createLocalChat(bots: () => Array<{ id: string; name: string }>,
         card = { ...o.card, mintNumber: mint };
       }
       const src = o.replyTo ? find(o.replyTo)?.m : undefined;
-      const m = post(key, { id: ME, name: 'Toi' }, text, { card, clientId: o.clientId, reply: src ? { id: src.id, name: src.name, text: chatSnippet(src.text || 'une carte', 80) } : undefined });
+      const m = post(key, { id: ME, name: t('chat.me') }, text, { card, clientId: o.clientId, reply: src ? { id: src.id, name: src.name, text: chatSnippet(src.text || t('cl.aCard'), 80) } : undefined });
       emit(key);
       botReply(key);
       return { id: m.id, n: m.n, at: m.at };

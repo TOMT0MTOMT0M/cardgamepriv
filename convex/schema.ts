@@ -36,6 +36,8 @@ export const missionsValidator = v.object({
 export const stakeCardValidator = v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() });
 export const stakeValidator = v.object({ coins: v.number(), cards: v.array(stakeCardValidator) });
 export const packChoiceValidator = v.object({ kind: v.union(v.literal('theme'), v.literal('bebou')), themeId: v.optional(v.string()) });
+/** (version anglaise, lot 4) paramètres d'un message stocké (src/core/msgs.ts) */
+export const msgParamsValidator = v.record(v.string(), v.union(v.string(), v.number(), v.array(v.string())));
 /** Carte tirée dans un jeu (Pack Battle, Battle Royale) ou offerte par le site (roulette). */
 export const gameCardValidator = v.object({ cardId: v.string(), cardName: v.string(), rarity: rarityValidator, mintNumber: v.number(), foilSeed: v.number() });
 
@@ -77,6 +79,10 @@ export default defineSchema({
     missions: v.optional(missionsValidator),
     /** vitrine du profil : jusqu'à 6 cartes choisies (vide = ses meilleures cartes, automatiquement) */
     showcase: v.optional(v.array(v.object({ cardId: v.string(), rarity: rarityValidator }))),
+    /** (version anglaise) langue EFFECTIVE du joueur, envoyée par le client : push et messages privés Discord. Absente = français */
+    lang: v.optional(v.union(v.literal('fr'), v.literal('en'))),
+    /** (version anglaise) cette langue est un choix manuel : ses autres appareils la reprennent */
+    langSet: v.optional(v.boolean()),
     /** notifications push (V2) : types voulus (absent = tout), et le job programmé « réserve pleine » (pour l'annuler) */
     notifPrefs: v.optional(v.array(v.string())),
     notifFullJob: v.optional(v.id('_scheduled_functions')),
@@ -149,6 +155,8 @@ export default defineSchema({
     banReason: v.optional(v.string()),
     /** (ouverture 07/11) visite guidée automatique déjà jouée (une seule fois par compte — views/guide.ts) */
     guideSeenAt: v.optional(v.number()),
+    /** (13/11) tour des nouveautés V2 déjà joué (joueurs d'avant la V2 — views/guide.ts, armV2Tour) */
+    v2TourSeenAt: v.optional(v.number()),
     /** MP de bienvenue du bot Discord (lien de parrainage) déjà tenté : une seule fois, à la première connexion */
     welcomeDmAt: v.optional(v.number()),
   })
@@ -400,6 +408,10 @@ export default defineSchema({
     /** (V2 fluidité, lot 4) vrai sur les tirages Légendaire / Mythique / Secrète : « Gros tirages » lit ces lignes par
      *  l'index `by_big` au lieu de parcourir les 400 dernières entrées du fil. Absent ailleurs. */
     big: v.optional(v.boolean()),
+    /** (version anglaise, lot 4) code + paramètres de `message` (src/core/i18n/msgFr.ts) : le client le réécrit dans
+     *  la langue du joueur. Absent sur les anciennes lignes non reconnues (migrations:i18nMessages). */
+    msgKey: v.optional(v.string()),
+    msgParams: v.optional(msgParamsValidator),
   })
     .index('by_createdAt', ['createdAt'])
     .index('by_userId', ['userId', 'createdAt'])
@@ -413,6 +425,9 @@ export default defineSchema({
     reason: v.string(),
     label: v.string(),
     createdAt: v.number(),
+    /** (version anglaise, lot 4) code + paramètres de `label` (voir activityFeed.msgKey) */
+    labelKey: v.optional(v.string()),
+    labelParams: v.optional(msgParamsValidator),
   }).index('by_user', ['userId', 'createdAt']),
 
   /**
@@ -825,6 +840,9 @@ export default defineSchema({
   packEvents: defineTable({
     name: v.string(),
     blurb: v.optional(v.string()),
+    /** (version anglaise, lot 4) nom et phrase en anglais (dashboard) ; absents : le français s'affiche */
+    nameEn: v.optional(v.string()),
+    blurbEn: v.optional(v.string()),
     startAt: v.number(),
     endAt: v.number(),
     accent: v.string(),

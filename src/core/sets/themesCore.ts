@@ -1,5 +1,6 @@
-import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11, RERATE_11_11 } from './curation';
+import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11, RERATE_11_11, RERATE_13_11, RESUB_13_11 } from './curation';
 import { artV } from '../artRev';
+import { msgRef, str } from '../msgRefs';
 /**
  * Registre des THÈMES — données pures, sans three.js : partagé par le client (boutique, collection, échanges) et par
  * convex/ (catalogue du serveur). Une seule source de vérité pour « quelles cartes existent, dans quel booster ».
@@ -257,13 +258,16 @@ function bigSubthemes(B: typeof BigSets, cur: Curation): SubTheme[] {
     const id = e.id;
     if (purge.has(id)) continue;
     if (e.sub !== key) list = popLists.get((key = e.sub));
-    if (!list) continue;
+    // (13/11) carte rangée dans un autre sous-thème que celui de l'Excel (curation.ts, RESUB_13_11)
+    const sub = RESUB_13_11[id] ?? e.sub;
+    const into = sub === e.sub ? list : popLists.get(sub);
+    if (!into) continue;
     const artist = artists.get(id);
     // (deux littéraux plutôt qu'un spread : même clés dans le même ordre, `artist` en dernier et seulement s'il existe)
-    list.push(
+    into.push(
       artist
-        ? { id, themeId: 'pop', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label, artist }
-        : { id, themeId: 'pop', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label },
+        ? { id, themeId: 'pop', subthemeId: sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label, artist }
+        : { id, themeId: 'pop', subthemeId: sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label },
     );
   }
   const popCulture: SubTheme[] = B.POP_SUBS.map((s) => ({
@@ -442,7 +446,7 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
   if (installed) return;
   installed = true;
   const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL]);
-  const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11 }));
+  const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11, ...RERATE_13_11 }));
   applyCuration(purge, rerate);
   for (const s of bigSubthemes(big, { purge, rerate })) SUBTHEMES.push(s);
   for (const t of THEMES) {
@@ -461,6 +465,7 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
   WORLD_SECRET_CHANCE = worldSecretChance();
   (BEBOU_PACK as { tagline: string }).tagline = bebouTagline();
   VIEWS = new WeakMap(); // (vues de sous-thèmes calculées avant : à refaire)
+  if (catLang) applyCatalogLang(); // (anglais déjà installé : les gros sets arrivent traduits)
   if (!opts.keepRaw) releaseRaw(big);
 }
 
@@ -568,9 +573,69 @@ export function artPath(e: CatalogEntry): string {
  * outils/capture-merveilles.html), à la place de la photo du vrai lieu. La vue détail garde la 3D interactive.
  */
 export const isWonderId = (id: string) => id.startsWith('mrv-');
-export const wonderCapturePath = (id: string) => artV(`art/merveilles/cartes3d/${id.replace(/^mrv-/, '')}.webp`);
+export const wonderCapturePath = (id: string) => artV(`art/merveilles/cartes3d/${catLang && WONDER_CAPTURES_EN ? 'en/' : ''}${id.replace(/^mrv-/, '')}.webp`);
+/** (version anglaise, lot 6) captures anglaises posées dans public/art/merveilles/cartes3d/en/ (outils/capture-merveilles.html?lang=en) */
+const WONDER_CAPTURES_EN = true;
 
 /** Miniature WebP (grilles de collection, échanges) — générée par scripts/make-thumbs.mjs. */
 export function thumbPath(e: CatalogEntry): string {
   return artV(`${artDirOf(e)}/thumbs/${e.file.replace(/\.(png|jpe?g)$/i, '.webp')}`);
+}
+
+// (version anglaise, lot 4) thème des messages stockés, relu dans la langue active
+msgRef('theme', (p) => { const id = str(p.themeId); return id ? themeById(id)?.label : undefined; });
+
+// ───── (version anglaise, lot 5) CATALOGUE DANS LA LANGUE ACTIVE ─────
+/**
+ * Noms anglais des cartes, sous-thèmes, groupes et types (src/core/sets/*.en.ts, générés par scripts/make-catalogue-en.py),
+ * installés par le jeu SEULEMENT en anglais (src/game/lang.ts). On réécrit les objets du catalogue sur place (`name`,
+ * `label`) et on garde le français à côté : tout ce qui lit le catalogue suit, et la recherche trouve les deux langues.
+ * Les identifiants ne changent jamais. Une carte sans nom anglais garde son nom.
+ */
+export interface CatalogLang {
+  /** id de carte → nom anglais */
+  cards: Record<string, string>;
+  /** id de sous-thème → libellé anglais */
+  subs: Record<string, string>;
+  /** id de groupe → libellé anglais */
+  groups: Record<string, string>;
+  /** type imprimé sur la carte (`CatalogEntry.label`, en français) → anglais */
+  types: Record<string, string>;
+}
+let catLang: CatalogLang | null = null;
+const FR_OF = new WeakMap<object, Record<string, string | undefined>>();
+const catHooks: Array<() => void> = [];
+/** (cardData, recherche…) refaire ce qui a copié un nom quand la langue du catalogue change */
+export const onCatalogLang = (fn: () => void) => void catHooks.push(fn);
+function swapField<T extends object>(o: T, field: keyof T & string, en: string | undefined) {
+  let fr = FR_OF.get(o);
+  if (!fr) FR_OF.set(o, (fr = {}));
+  if (!(field in fr)) {
+    if (en === undefined) return; // (jamais traduit : rien à faire)
+    fr[field] = (o as Record<string, unknown>)[field] as string | undefined;
+  }
+  (o as Record<string, unknown>)[field] = en ?? fr[field];
+}
+/** Nom français d'une carte (recherche dans les deux langues). */
+export const frNameOf = (e: CatalogEntry): string => FR_OF.get(e)?.name ?? e.name;
+/** Libellé français d'un sous-thème. */
+export const frLabelOf = (s: SubTheme): string => FR_OF.get(s)?.label ?? s.label;
+function applyCatalogLang() {
+  const L = catLang;
+  for (const e of BY_ID.values()) {
+    swapField(e, 'name', L?.cards[e.id]);
+    if (e.label) swapField(e, 'label', L ? L.types[FR_OF.get(e)?.label ?? e.label] : undefined);
+  }
+  for (const s of SUB_BY_ID.values()) {
+    swapField(s, 'label', L?.subs[s.id]);
+    if (s.group) swapField(s.group, 'label', L?.groups[s.group.id]);
+  }
+  VIEWS = new WeakMap();
+  for (const fn of catHooks) fn();
+}
+/** Installe (anglais) ou retire (français : `null`) les noms anglais du catalogue. */
+export function setCatalogLang(d: CatalogLang | null): void {
+  if (d === catLang) return;
+  catLang = d;
+  applyCatalogLang();
 }

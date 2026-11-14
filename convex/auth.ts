@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -5,6 +6,7 @@ import { internal } from './_generated/api';
 import { STARTER_PACKS, assertOpen } from './launch';
 import { BOOST_MS } from '../src/core/packRegen';
 import { syncPresence } from './presence';
+import { fm, feedMsg } from '../src/core/msgs';
 
 /** Places du club (variable Convex MAX_PLAYERS pour l'agrandir, comptes de l'équipe compris). */
 export const maxPlayers = () => {
@@ -48,7 +50,7 @@ export async function requireUser(
 ): Promise<Doc<'users'>> {
   const user = await getUserByToken(ctx, sessionToken);
   if (!user) {
-    throw new ConvexError('Non connecté : connecte-toi (Discord ou pseudo).');
+    throw new ConvexError(fe('auth.1'));
   }
   return user;
 }
@@ -79,7 +81,7 @@ export const upsertDiscordUser = internalMutation({
           .filter(Boolean),
       );
       if (!allowedSet.has(args.discordId)) {
-        throw new ConvexError('Ton compte Discord ne fait pas partie de la liste privée des 20 amis.');
+        throw new ConvexError(fe('auth.2'));
       }
     }
 
@@ -94,7 +96,7 @@ export const upsertDiscordUser = internalMutation({
       await ctx.scheduler.runAfter(4000, internal.discordBot.welcomeDm, { userId });
       user = (await ctx.db.get(userId))!;
     } else {
-      if (user.bannedAt) throw new ConvexError('Ce compte a été banni du club.');
+      if (user.bannedAt) throw new ConvexError(fe('auth.3'));
       await ctx.db.patch(user._id, {
         username: args.username,
         displayName: args.displayName,
@@ -131,7 +133,7 @@ export async function createUser(
   await assertOpen(ctx);
   const cap = maxPlayers();
   const allUsers = (await ctx.db.query('users').collect()).filter((u) => !u.bannedAt);
-  if (allUsers.length >= cap) throw new ConvexError(`Le club est complet (${cap}/${cap} joueurs).`);
+  if (allUsers.length >= cap) throw new ConvexError(fe('auth.4', { p0: cap, p1: cap }));
   const now = Date.now();
   const userId = await ctx.db.insert('users', {
     ...f,
@@ -149,7 +151,7 @@ export async function createUser(
     displayName: f.displayName,
     avatarUrl: f.avatarUrl,
     kind: 'joined',
-    message: `${f.displayName} a rejoint le club avec ${STARTER_PACKS} boosters de départ !`,
+    ...feedMsg(fm('f.joined', { name: f.displayName, n: STARTER_PACKS })),
     createdAt: now,
   });
   return userId;

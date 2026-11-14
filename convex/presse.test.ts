@@ -64,7 +64,7 @@ describe('La Presse', () => {
     const s = await t.mutation(api.presse.strike, { sessionToken: token, runId: run._id });
     expect(s.status).toBe('live');
     expect(s.value).toBe(38 * 7);
-    await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 50, album: { kind: 'bebou' } })).rejects.toThrow(/déjà sous la presse/);
+    await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 50, album: { kind: 'bebou' } })).rejects.toThrow(/⟦(presse\.1)[⟧{]/);
     const end = await t.mutation(api.presse.cashOut, { sessionToken: token, runId: run._id });
     expect(end.status).toBe('cashed');
     expect(end.payout).toBe(266);
@@ -99,15 +99,15 @@ describe('La Presse', () => {
 
   test('mises permises, solde, 20 parties par jour', async () => {
     const { t, userId, token } = await setup();
-    await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 75, album: { kind: 'bebou' } })).rejects.toThrow(/Mise/);
-    await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 50, album: { kind: 'theme', themeId: 'nope' } })).rejects.toThrow(/Album/);
+    await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 75, album: { kind: 'bebou' } })).rejects.toThrow(/⟦(defis\.3|games\.10|games\.30|presse\.2)[⟧{]/);
+    await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 50, album: { kind: 'theme', themeId: 'nope' } })).rejects.toThrow(/⟦(presse\.5)[⟧{]/);
     await t.run(async (ctx) => ctx.db.patch(userId, { coins: 10 }));
     await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 50, album: { kind: 'bebou' } })).rejects.toThrow(/manque/);
     await t.run(async (ctx) => {
       await ctx.db.patch(userId, { coins: 100000 });
       for (let i = 0; i < PRESSE_DAILY; i++) await ctx.db.insert('presseRuns', { userId, bet: 50, album: { kind: 'bebou' }, strip: [], shown: 1, status: 'cracked', createdAt: Date.now() - i });
     });
-    await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 50, album: { kind: 'bebou' } })).rejects.toThrow(/par jour/);
+    await expect(t.mutation(api.presse.start, { sessionToken: token, bet: 50, album: { kind: 'bebou' } })).rejects.toThrow(/⟦(economy\.7|presse\.4)[⟧{]/);
     const cur = await t.query(api.presse.current, { sessionToken: token });
     expect(cur?.today).toBe(PRESSE_DAILY);
   });

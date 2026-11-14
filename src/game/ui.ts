@@ -1,3 +1,5 @@
+import { errText } from '../core/errors';
+import { fmtNum, lang, t as tr, type MsgKey } from '../core/i18n';
 import { rarity, type RarityId } from '../core/rarity';
 import { siteUrl } from '../core/siteRoot';
 import { artPath, catalogEntry, hasArt, isWonderId, subthemeById, thumbPath, wonderCapturePath, type CatalogEntry } from '../core/sets/themes';
@@ -16,19 +18,40 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, h
   return e;
 }
 
+/**
+ * (version anglaise) Éléments durables (créés une fois, jamais refaits) : `data-t="clé"` (texte), `data-t-title`,
+ * `data-t-aria` — `relabel()` les remet dans la nouvelle langue au changement (main.ts, onLang).
+ */
+export function relabel(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>('[data-t]').forEach((e) => {
+    // (le texte seulement : une pastille <b> dans le bouton reste)
+    const v = tr(e.dataset.t as MsgKey);
+    if (v === e.dataset.t) return; // (v2.0.1) pas une clé connue : on ne remplace jamais un texte par sa clé brute
+    const tn = [...e.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim());
+    if (tn) tn.textContent = v;
+    else if (!e.children.length) e.textContent = v;
+  });
+  root.querySelectorAll<HTMLElement>('[data-t-title]').forEach((e) => (e.title = tr(e.dataset.tTitle as MsgKey)));
+  root.querySelectorAll<HTMLElement>('[data-t-aria]').forEach((e) => e.setAttribute('aria-label', tr(e.dataset.tAria as MsgKey)));
+}
+
 /** ★★★☆☆☆ (la secrète : le sceau ✷). */
 export function starsHtml(r: RarityId): string {
   const rr = rarity(r);
-  if (rr.secret) return `<span class="stars secret">✷ SECRÈTE</span>`;
+  if (rr.secret) return `<span class="stars secret">${tr('rarity.secretStamp')}</span>`;
   const n = rr.rank + 1;
   return `<span class="stars">${'★'.repeat(n)}<i>${'★'.repeat(6 - n)}</i></span>`;
 }
 
 /** 2020 → « 2 020 » (espace insécable : l'espace fine n'existe pas dans la police des titres). */
-export const fmtN = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+// (version anglaise) en français, inchangé (« 12 345 », espace insécable) ; en anglais « 12,345 »
+export const fmtN = (n: number) => (lang() === 'fr' ? String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') : fmtNum(Math.round(n)));
+/** Nombre à une décimale au plus, dans la langue (« 12,5 » / « 12.5 »). */
+export const fmtDec = (n: number) => (lang() === 'fr' ? String(n).replace('.', ',') : String(n));
 
 /** Pourcentage à la française : « 9,3 % », « 42 % » (une décimale sous 10 %). */
-export const fmtPct = (p: number) => `${p > 0 && p < 10 ? p.toFixed(1).replace('.', ',') : Math.floor(p)}\u00a0%`;
+// (version anglaise) « 2,5 % » / « 2.5% »
+export const fmtPct = (p: number) => (lang() === 'fr' ? `${p > 0 && p < 10 ? p.toFixed(1).replace('.', ',') : Math.floor(p)}\u00a0%` : `${p > 0 && p < 10 ? p.toFixed(1) : Math.floor(p)}%`);
 
 /** Recherche sans accents ni majuscules : « pokemon » trouve « Pokémon », « hericendre » trouve « Héricendre ». */
 export const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -40,7 +63,15 @@ export const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g
 export const fr = (s: string) => s.replace(/ ([!?:;»])/g, ' $1').replace(/« /g, '« ');
 
 /** « 1 doublon », « 2 doublons » */
-export const plural = (n: number, one: string, many = `${one}s`) => `${fmtN(n)} ${n > 1 ? many : one}`;
+/**
+ * « 3 boosters » : nombre + mot accordé. (version anglaise) Le mot français sert de clé : `plural.<mot>` (fr.ts / en.ts)
+ * donne les deux formes dans la langue active ; un mot sans clé reste en français.
+ */
+export const plural = (n: number, one: string, many = `${one}s`) => {
+  const k = `plural.${one}` as MsgKey;
+  if (lang() !== 'fr' && tr(k) !== k) return tr(k, { n: fmtN(n) });
+  return `${fmtN(n)} ${n > 1 ? many : one}`;
+};
 
 /** Cartes vues lors de la dernière visite de la collection (navigateur) : sert à repérer les nouvelles. */
 export const SEEN_KEY = 'bebou.vues.v1';
@@ -105,9 +136,9 @@ export function cardTile(cardId: string, r: RarityId, o: { count?: number; owned
     if (im.complete && im.naturalWidth) im.classList.add('in');
     else im.addEventListener('load', () => (thumbSeen.add(im.getAttribute('src') ?? ''), im.classList.add('in')), { once: true });
   }
-  if (!owned) t.title = hideArt ? 'Carte secrète' : `${e?.name ?? cardId} · pas encore trouvée`;
+  if (!owned) t.title = hideArt ? tr('card.secret') : tr('card.notFound', { name: e?.name ?? cardId });
   if (owned && e) {
-    t.title = `${e.name} · ${rr.label}${o.fresh ? ' · nouvelle depuis ta dernière visite' : ''}`;
+    t.title = `${e.name} · ${rr.label}${o.fresh ? tr('card.newSince') : ''}`;
     // au clavier : Tab pour aller de carte en carte, Entrée pour l'ouvrir en grand
     t.tabIndex = 0;
     t.setAttribute('role', 'button');
@@ -285,7 +316,7 @@ document.addEventListener('click', (e) => {
  * panneau a plusieurs contenus) : son `aria-expanded` suit.
  */
 /** bouton ✕ des panneaux de l'en-tête (missions, portefeuille, série / pity) */
-export const CLOSE_X = '<button class="icon pop-x" aria-label="Fermer">✕</button>';
+export const CLOSE_X = () => `<button class="icon pop-x" aria-label="${tr('common.close')}">✕</button>`;
 const openPanels = new Map<() => void, { pop: HTMLElement; opener: HTMLElement | null }>();
 export function panelShown(pop: HTMLElement, close: () => void) {
   for (const c of [...openPanels.keys()]) if (c !== close) c();
@@ -319,8 +350,8 @@ export function panelHidden(pop: HTMLElement, close: () => void) {
  * à brancher sur `backend.login()`). En démo : le texte seul.
  */
 export function loginPrompt(b: { state: { mode: string; ready: boolean } }, text: string): string {
-  if (b.state.mode === 'online' && !b.state.ready) return '<div class="muted login-wait">Connexion au serveur…</div>';
-  return `<div class="muted">${esc(text)}</div>${b.state.mode === 'online' ? '<button class="btn-primary login-cta">Se connecter</button>' : ''}`;
+  if (b.state.mode === 'online' && !b.state.ready) return '<div class="muted login-wait">' + tr('net.connecting') + '</div>';
+  return `<div class="muted">${esc(text)}</div>${b.state.mode === 'online' ? '<button class="btn-primary login-cta">' + tr('auth.login') + '</button>' : ''}`;
 }
 
 /** Un panneau se redessine (données qui changent) : le focus clavier qui y était n'est pas perdu. */
@@ -377,10 +408,10 @@ export async function busyButton<T>(btn: HTMLElement, p: Promise<T>, o: { timeou
         swallow = (e) => {
           e.preventDefault();
           e.stopImmediatePropagation();
-          toast('Ta demande est encore en route : elle partira dès que le serveur répond.', 'info');
+          toast(tr('net.pending'), 'info');
         };
         btn.addEventListener('click', swallow, true);
-        toast('Le serveur ne répond pas… Ta demande partira dès que la connexion revient : inutile de recliquer.', 'err');
+        toast(tr('net.noAnswer'), 'err');
       }, limit)
     : 0;
   try {
@@ -479,13 +510,14 @@ export function toast(msg: string, kind: 'ok' | 'err' | 'info' = 'info') {
  */
 export const errMsg = (e: unknown) => {
   const m = String((e as { data?: string; message?: string })?.data ?? (e as Error)?.message ?? String(e));
-  if (/ConvexError:/.test(m)) return m.replace(/^[\s\S]*ConvexError:\s*/, '').replace(/\s*at [\s\S]*$/, '').trim();
+  // (version anglaise, lot 4) erreurs à code : le repère ⟦code⟧ est retiré, et traduit en anglais (core/errors.ts)
+  if (/ConvexError:/.test(m)) return errText(m.replace(/^[\s\S]*ConvexError:\s*/, '').replace(/\s*⟧[\s\S]*$/, '⟧').replace(/\s*at [^⟦]*$/, '').trim());
   if (/\[CONVEX |\[Request ID|Server Error|Uncaught \w*Error/.test(m)) {
     console.warn(e);
-    return 'Le serveur a refusé l’action, réessaie dans un instant.';
+    return tr('net.refused');
   }
-  if (/Failed to fetch|NetworkError|WebSocket/i.test(m)) return 'Connexion au serveur impossible, réessaie dans un instant.';
-  return m.replace(/^Uncaught Error:\s*/, '');
+  if (/Failed to fetch|NetworkError|WebSocket/i.test(m)) return tr('net.unreachable');
+  return errText(m.replace(/^Uncaught Error:\s*/, ''));
 };
 
 /** « 12 min », « 3 h 05 », « 5 j 11 h » (au-delà de 48 h : personne ne lit « 131 h 48 »). */
@@ -515,8 +547,8 @@ export function imageReportButton(backend: GameBackend, cardId: string, page: st
   const wrap = h('span', 'va-pair');
   wrap.style.display = 'contents';
   const r = h('button', 'va va-replay');
-  r.title = 'Rejouer l’animation de la carte';
-  r.innerHTML = '▶ <span>Rejouer</span>';
+  r.title = tr('card.replay');
+  r.innerHTML = `▶ <span>${tr('card.replayShort')}</span>`;
   r.addEventListener('click', (ev) => {
     ev.stopPropagation();
     haptics.pulse(8);
@@ -528,26 +560,26 @@ export function imageReportButton(backend: GameBackend, cardId: string, page: st
 function reportButton(backend: GameBackend, cardId: string, page: string): HTMLElement {
   const done = imgReported.has(cardId);
   const b = h('button', `va va-img${done ? ' on' : ''}`);
-  b.title = done ? 'Image déjà signalée, merci' : 'Signaler une image buguée ou absente (on la corrigera)';
+  b.title = done ? tr('img.alreadyReported') : tr('img.reportTitle');
   b.setAttribute('aria-pressed', String(done));
-  b.innerHTML = `🖼 <span>${done ? 'Image signalée ✓' : 'Image à revoir'}</span>`;
+  b.innerHTML = `🖼 <span>${done ? tr('img.reported') : tr('img.report')}</span>`;
   b.addEventListener('click', async (ev) => {
     ev.stopPropagation();
-    if (imgReported.has(cardId)) return toast('Déjà signalée : on s’en occupe.', 'info');
+    if (imgReported.has(cardId)) return toast(tr('img.alreadyToast'), 'info');
     haptics.pulse(8);
     try {
-      await backend.submitSuggestion({ kind: 'design', cardId, text: `Image à revoir (buguée ou absente) — ${catalogEntry(cardId)?.name ?? cardId}`, page }, null);
+      await backend.submitSuggestion({ kind: 'design', cardId, text: tr('img.reportLabel', { name: catalogEntry(cardId)?.name ?? cardId }), page }, null);
       imgReported.add(cardId);
       try {
         localStorage.setItem(IMG_REPORTED_KEY, JSON.stringify([...imgReported]));
       } catch {
         /* stockage indisponible */
       }
-      toast('Image signalée, merci : elle sera corrigée.', 'ok');
+      toast(tr('img.reportedToast'), 'ok');
       b.classList.add('on');
       b.setAttribute('aria-pressed', 'true');
-      b.title = 'Image déjà signalée, merci';
-      b.querySelector('span')!.textContent = 'Image signalée ✓';
+      b.title = tr('img.alreadyReported');
+      b.querySelector('span')!.textContent = tr('img.reported');
     } catch (err) {
       toast(errMsg(err), 'err');
     }

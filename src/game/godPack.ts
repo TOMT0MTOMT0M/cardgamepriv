@@ -1,3 +1,4 @@
+import { t } from '../core/i18n';
 import type { Shell } from './shell';
 import { haptics } from '../core/haptics';
 
@@ -15,9 +16,9 @@ export function playGodIntro(shell: Shell): Promise<void> {
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', 'assertive');
   const word = 'GOD PACK';
-  el.innerHTML = `<i class="gi-scan" aria-hidden="true"></i><div class="gi-in"><p class="gi-k">1 booster sur 1 000</p><h2 class="gi-t" aria-label="${word}">${[...word]
+  el.innerHTML = `<i class="gi-scan" aria-hidden="true"></i><div class="gi-in"><p class="gi-k">${t('god.odds')}</p><h2 class="gi-t" aria-label="${word}">${[...word]
     .map((ch, i) => `<span style="--i:${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`)
-    .join('')}</h2><p class="gi-s">que des 4★ et plus · au moins une 5★ et une 6★</p></div><i class="gi-flash" aria-hidden="true"></i>`;
+    .join('')}</h2><p class="gi-s">${t('god.sub')}</p></div><i class="gi-flash" aria-hidden="true"></i>`;
   document.body.append(el);
   document.body.classList.add('god');
   requestAnimationFrame(() => el.classList.add('on'));

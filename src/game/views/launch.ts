@@ -1,9 +1,10 @@
+import '../../core/i18n/fr/game.views.launch'; // (textes de ce module, version anglaise)
+import { locale, t as tr } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import { h, toast } from '../ui';
-import { REFERRAL } from '../../core/referral';
 
 /**
- * ÉCRAN D'OUVERTURE (07/11) — « ouverture dans 02h14 » tant que l'heure posée par `launch:setLaunch` n'est pas passée.
+ * ÉCRAN D'OUVERTURE (07/11) — (13/11) texte de la sortie V2 : « Grosse mise à jour », « réouverture dans 02h14 » tant que l'heure posée par `launch:setLaunch` n'est pas passée.
  * Couvre tout le jeu (qui continue de se charger dessous : à l'heure pile, il est prêt), sauf pour l'équipe
  * (admin / modérateur : Tom et Hugo jouent et vérifient avant tout le monde). À zéro : « C'est ouvert », l'écran
  * s'efface et la fenêtre de création de compte s'ouvre.
@@ -15,8 +16,8 @@ export function createLaunchGate(backend: GameBackend) {
   const parts: Record<string, string> = {};
   const two = (n: number) => String(n).padStart(2, '0');
   const when = (ms: number) => {
-    const d = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' }).format(ms);
-    const t = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(ms).replace(':', ' h ');
+    const d = new Intl.DateTimeFormat(locale(), { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' }).format(ms);
+    const t = new Intl.DateTimeFormat(locale(), { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(ms).replace(':', ' h ');
     return `${d} · ${t}`;
   };
 
@@ -33,17 +34,18 @@ export function createLaunchGate(backend: GameBackend) {
     el.setAttribute('aria-labelledby', 'lc-k');
     el.innerHTML = `<i class="lc-scan" aria-hidden="true"></i>
       <div class="lc-in">
-        <div class="lc-logo" aria-hidden="true">BÉBOU</div>
-        <p class="lc-k" id="lc-k">Ouverture dans</p>
+        <div class="lc-logo" aria-hidden="true">${tr('boot.logo')}</div>
+        <p class="lc-v2-t">${tr('launch.big')}</p>
+        <p class="lc-k" id="lc-k">${tr('launch.reopen')}</p>
         <div class="lc-time" role="timer" aria-live="off"><span class="lc-a"></span><i class="lc-u"></i><span class="lc-b"></span><small class="lc-c"></small></div>
         <p class="lc-when"></p>
         <ul class="lc-pts">
-          <li><b>Nouvelle saison.</b> Collections, succès, stats et classement repartent de zéro.</li>
-          <li><b>Ton compte</b> se crée à l’ouverture, avec Discord ou un simple pseudo : 15 boosters offerts et recharge ×2 pendant 24 h.</li>
-          <li><b>Invite tes potes</b> : ${REFERRAL.packs} boosters offerts à chacun, ${REFERRAL.packs} pour toi.</li>
+          <li><b>${tr('launch.kept')}</b> ${tr('launch.keptD')}</li>
+          <li><b>${tr('launch.v2')}</b> ${tr('launch.v2D')}</li>
+          <li>${tr('launch.auto')}</li>
         </ul>
       </div>
-      <button class="lc-staff" type="button">Accès équipe</button>`;
+      <button class="lc-staff" type="button">${tr('launch.team')}</button>`;
     el.querySelector('.lc-staff')!.addEventListener('click', () => backend.login());
     document.body.append(el);
     const app = document.getElementById('app');
@@ -91,7 +93,7 @@ export function createLaunchGate(backend: GameBackend) {
       set('lc-c', '');
     }
     const label = d > 0 ? `${d} j ${hh} h ${mm} min` : hh > 0 ? `${hh} h ${mm} min` : `${mm} min ${ss} s`;
-    el.querySelector('.lc-time')!.setAttribute('aria-label', `Ouverture dans ${label}`);
+    el.querySelector('.lc-time')!.setAttribute('aria-label', tr('launch.reopenIn', { label }));
     if (left <= 0) opened();
   }
 
@@ -102,14 +104,14 @@ export function createLaunchGate(backend: GameBackend) {
     const gate = el;
     el = null;
     gate.classList.add('lc-open');
-    gate.querySelector('.lc-k')!.textContent = 'C’est ouvert';
+    gate.querySelector('.lc-k')!.textContent = tr('launch.open');
     setTimeout(() => {
       gate.classList.add('out');
       const app = document.getElementById('app');
       if (app) app.inert = false;
       setTimeout(() => gate.remove(), 700);
       if (!backend.state.user) backend.login();
-      else toast('C’est ouvert : bonne ouverture 🎴', 'ok');
+      else toast(tr('launch.reopened'), 'ok');
     }, 1400);
   }
 

@@ -1,7 +1,9 @@
+import '../core/i18n/fr/game.offline'; // (textes de ce module, version anglaise)
+import { t } from '../core/i18n';
 import { rarity } from '../core/rarity';
 import { catalogEntry, hasArt, isWonderId } from '../core/sets/themes';
 import type { GameBackend, PlayerCard } from './backend';
-import { artUrl, errMsg, fmtN, h, thumbUrl, toast } from './ui';
+import { artUrl, errMsg, fmtDec, fmtN, h, thumbUrl, toast } from './ui';
 import { bundleStatus, downloadBundle } from './bundle';
 
 /**
@@ -92,12 +94,13 @@ export function prefetchCollectionArt(backend: GameBackend, busy: () => boolean 
 export function offlinePanel(backend: GameBackend): HTMLElement {
   const box = h('div', 'nf-box off-box');
   if (!usable()) {
-    box.innerHTML = '<span class="muted">Hors connexion : disponible sur le site du jeu (pas en démo locale).</span>';
+    box.innerHTML = '<span class="muted">' + t('off.demo') + '</span>';
     return box;
   }
   let running = false;
   let stopAsked = false;
-  const mo = (b: number) => `${fmtN(Math.max(0, b) / 1e6 >= 10 ? Math.round(b / 1e6) : Math.round(b / 1e5) / 10)} Mo`.replace('.', ',');
+  // (version anglaise) « 12,5 Mo » / « 12.5 MB »
+  const mo = (b: number) => t('unit.mb', { n: fmtDec(Math.max(0, b) / 1e6 >= 10 ? Math.round(b / 1e6) : Math.round(b / 1e5) / 10) });
 
   async function measure() {
     const urls = artOf(backend.state.collection, true);
@@ -112,15 +115,15 @@ export function offlinePanel(backend: GameBackend): HTMLElement {
 
   async function render() {
     if (running) return;
-    box.innerHTML = '<div class="nf-row"><b class="off-t">Hors connexion</b><span class="muted">calcul…</span></div>';
+    box.innerHTML = '<div class="nf-row"><b class="off-t">' + t('off.title') + '</b><span class="muted">calcul…</span></div>';
     const m = await measure();
     const done = !m.missing.length && (!m.game || m.game.have >= m.game.total);
     box.innerHTML = `
-      <div class="nf-row"><b class="off-t">Hors connexion</b><span class="muted">Le jeu s’ouvre déjà sans réseau. Pour voir aussi tes cartes partout (métro, avion) :</span></div>
-      <div class="off-l"><span>Jeu installé</span><b>${m.game ? `${mo(m.game.have)} / ${mo(m.game.total)}` : '—'}</b></div>
-      <div class="off-l"><span>Illustrations de ta collection</span><b>${fmtN(m.have)} / ${fmtN(m.urls.length)}</b></div>
-      <div class="nf-row">${done ? '<span class="off-ok">Tout est sur l’appareil ✓</span>' : `<button class="btn-primary off-go">Tout télécharger · environ ${mo(m.est)}</button>`}
-        <span class="muted">Miniatures de toute ta collection, cartes 4★ et plus en pleine définition, Merveilles en 3D, sons et effets. De préférence en Wi-Fi.</span></div>`;
+      <div class="nf-row"><b class="off-t">${t('off.title')}</b><span class="muted">${t('off.intro')}</span></div>
+      <div class="off-l"><span>${t('off.game')}</span><b>${m.game ? `${mo(m.game.have)} / ${mo(m.game.total)}` : '—'}</b></div>
+      <div class="off-l"><span>${t('off.art')}</span><b>${fmtN(m.have)} / ${fmtN(m.urls.length)}</b></div>
+      <div class="nf-row">${done ? '<span class="off-ok">' + t('off.allHere') + '</span>' : `<button class="btn-primary off-go">${t('off.dlAll', { size: mo(m.est) })}</button>`}
+        <span class="muted">${t('off.what')}</span></div>`;
     box.querySelector<HTMLButtonElement>('.off-go')?.addEventListener('click', (ev) => void run(ev.currentTarget as HTMLButtonElement, m));
   }
 
@@ -131,7 +134,7 @@ export function offlinePanel(backend: GameBackend): HTMLElement {
     const total = Math.max(1, m.est);
     let got = 0;
     const row = btn.parentElement!;
-    row.innerHTML = `<div class="off-bar" role="progressbar" aria-label="Téléchargement hors connexion" aria-valuemin="0" aria-valuemax="100"><i></i></div><button class="btn-ghost off-stop">Arrêter</button><span class="muted off-p"></span>`;
+    row.innerHTML = `<div class="off-bar" role="progressbar" aria-label="${t('off.aria')}" aria-valuemin="0" aria-valuemax="100"><i></i></div><button class="btn-ghost off-stop">${t('off.stop')}</button><span class="muted off-p"></span>`;
     const bar = row.querySelector<HTMLElement>('.off-bar')!;
     const fill = bar.querySelector<HTMLElement>('i')!;
     const label = row.querySelector<HTMLElement>('.off-p')!;
@@ -161,16 +164,16 @@ export function offlinePanel(backend: GameBackend): HTMLElement {
             } catch (e) {
               if ((e as Error)?.name === 'QuotaExceededError') {
                 stopAsked = true;
-                toast('Plus de place sur l’appareil : téléchargement arrêté.', 'err');
+                toast(t('off.noSpace'), 'err');
               } else if (!navigator.onLine) {
                 stopAsked = true;
-                toast('Réseau coupé : reprends plus tard, rien n’est perdu.', 'info');
+                toast(t('off.netCut'), 'info');
               }
             }
           }
         }),
       );
-      if (!stopAsked) toast('Tout est sur l’appareil : tes cartes s’affichent même sans réseau.', 'ok');
+      if (!stopAsked) toast(t('off.done'), 'ok');
     } catch (e) {
       toast(errMsg(e), 'err');
     }

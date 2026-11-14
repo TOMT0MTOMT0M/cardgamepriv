@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { ConvexError } from 'convex/values';
 import type { MutationCtx, QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -7,6 +8,7 @@ import { cleanEcon, emptyEcon, type EconState } from '../src/core/economy';
 import { applyWeeklyEvent, cleanWeekly, currentWeekly, type WeeklyEvent, type WeeklyState } from '../src/core/weekly';
 import { lockedCards } from './trades';
 import { dropInv, invRev } from './invRev';
+import type { Msg } from '../src/core/msgs';
 
 /**
  * Briques serveur de l'économie (pièces, inventaire, journaux), partagées par convex/economy.ts et convex/games.ts.
@@ -27,16 +29,20 @@ export const coinsOf = (u: Doc<'users'>) => u.coins ?? 0;
  * (succès Tirelire) — vrai pour les sources de pièces et les gains de jeu, faux pour les remboursements.
  * Relit le joueur : sûr après d'autres écritures dans la même mutation.
  */
-export async function addCoins(ctx: MutationCtx, userId: Id<'users'>, amount: number, reason: string, label: string, opts: { earned?: boolean; econ?: Partial<EconState> } = {}) {
+export async function addCoins(ctx: MutationCtx, userId: Id<'users'>, amount: number, reason: string, label: string | Msg, opts: { earned?: boolean; econ?: Partial<EconState> } = {}) {
   const u = await ctx.db.get(userId);
-  if (!u) throw new ConvexError('Joueur introuvable.');
+  if (!u) throw new ConvexError(fe('econLib.1'));
   amount = Math.round(amount);
   const coins = coinsOf(u) + amount;
-  if (coins < 0) throw new ConvexError(`Pas assez de pièces (il t’en manque ${-coins}).`);
+  if (coins < 0) throw new ConvexError(fe('econLib.2', { p0: -coins }));
   const econ = { ...econOf(u), ...(opts.econ ?? {}) };
   if (opts.earned && amount > 0) econ.earned += amount;
   await ctx.db.patch(userId, { coins, econ: cleanEcon(econ) });
-  if (amount !== 0) await ctx.db.insert('coinTx', { userId, amount, reason, label, createdAt: Date.now() });
+  if (amount !== 0)
+    await ctx.db.insert('coinTx', {
+      userId, amount, reason, createdAt: Date.now(),
+      ...(typeof label === 'string' ? { label } : { label: label.text, labelKey: label.key, ...(label.params ? { labelParams: label.params } : {}) }),
+    });
   return coins;
 }
 
@@ -75,13 +81,13 @@ export async function takeCards(ctx: MutationCtx, userId: Id<'users'>, items: Ar
   const seen = new Set<string>();
   for (const it of items) {
     const k = `${it.cardId}:${it.rarity}`;
-    if (seen.has(k)) throw new ConvexError('Même carte en double dans la mise.');
+    if (seen.has(k)) throw new ConvexError(fe('econLib.3'));
     seen.add(k);
-    if (!Number.isInteger(it.count) || it.count < 1) throw new ConvexError('Quantité invalide.');
+    if (!Number.isInteger(it.count) || it.count < 1) throw new ConvexError(fe('econLib.4'));
     const name = catalogCard(it.cardId)?.name ?? it.cardId;
     const { row, have, free } = await freeCount(ctx, userId, it.cardId, it.rarity, locked);
-    if (have < it.count) throw new ConvexError(`Tu n’as pas assez d’exemplaires de ${name}.`);
-    if (free < it.count) throw new ConvexError(`${name} est engagée dans un échange en attente.`);
+    if (have < it.count) throw new ConvexError(fe('econLib.5', { p0: name }));
+    if (free < it.count) throw new ConvexError(fe('econLib.6', { p0: name }));
     if (row!.count === it.count) await dropInv(ctx, row!);
     else await ctx.db.patch(row!._id, { count: row!.count - it.count, rev: invRev() });
     out.push({ ...it, mintNumber: row!.bestMintNumber });
@@ -91,21 +97,21 @@ export async function takeCards(ctx: MutationCtx, userId: Id<'users'>, items: Ar
 
 /** Vérifie qu'une mise est disponible, sans rien retirer (composition d'un duel avant verrouillage). */
 export async function checkStake(ctx: QueryCtx, u: Doc<'users'>, stake: { coins: number; cards: Array<{ cardId: string; rarity: RarityId; count: number }> }) {
-  if (!Number.isInteger(stake.coins) || stake.coins < 0) throw new ConvexError('Montant invalide.');
-  if (stake.coins > coinsOf(u)) throw new ConvexError(`${u.displayName} n’a pas assez de pièces pour sa mise.`);
-  if (stake.cards.length > 12) throw new ConvexError('12 cartes différentes au maximum dans un pot annexe.');
+  if (!Number.isInteger(stake.coins) || stake.coins < 0) throw new ConvexError(fe('econLib.15'));
+  if (stake.coins > coinsOf(u)) throw new ConvexError(fe('econLib.7', { p0: u.displayName }));
+  if (stake.cards.length > 12) throw new ConvexError(fe('econLib.8'));
   const locked = await lockedCards(ctx, u._id);
   const seen = new Set<string>();
   for (const it of stake.cards) {
     const k = `${it.cardId}:${it.rarity}`;
-    if (seen.has(k)) throw new ConvexError('Même carte en double dans la mise.');
+    if (seen.has(k)) throw new ConvexError(fe('econLib.9'));
     seen.add(k);
-    if (!catalogCard(it.cardId)) throw new ConvexError('Carte inconnue.');
-    if (!Number.isInteger(it.count) || it.count < 1) throw new ConvexError('Quantité invalide.');
+    if (!catalogCard(it.cardId)) throw new ConvexError(fe('econLib.10'));
+    if (!Number.isInteger(it.count) || it.count < 1) throw new ConvexError(fe('econLib.11'));
     const { have, free } = await freeCount(ctx, u._id, it.cardId, it.rarity, locked);
     const name = catalogCard(it.cardId)?.name ?? it.cardId;
-    if (have < it.count) throw new ConvexError(`${u.displayName} n’a pas assez d’exemplaires de ${name}.`);
-    if (free < it.count) throw new ConvexError(`${name} est engagée dans un échange en attente.`);
+    if (have < it.count) throw new ConvexError(fe('econLib.12', { p0: u.displayName, p1: name }));
+    if (free < it.count) throw new ConvexError(fe('econLib.13', { p0: name }));
   }
 }
 
@@ -158,5 +164,5 @@ export async function recordFlow(ctx: MutationCtx, from: Id<'users'>, to: Id<'us
 
 /** Admin : pour le panneau d'alertes. */
 export async function requireAdmin(u: Doc<'users'>) {
-  if (!u.isAdmin) throw new ConvexError('Réservé aux admins.');
+  if (!u.isAdmin) throw new ConvexError(fe('econLib.14'));
 }

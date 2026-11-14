@@ -21,7 +21,7 @@ export function landscapeBand(aspect: number) {
 
 export const paysage: CardDesign = {
   id: 'paysage',
-  title: 'Paysage',
+  title: 'Paysage', // i18n-ok
   art: { k: 1.62, to: [384, 470] },
   paint(f, m, d) {
     const { card, uni, tier } = d;

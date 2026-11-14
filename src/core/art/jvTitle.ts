@@ -1,3 +1,4 @@
+import { tData } from '../i18n';
 import { alpha, linear, radial } from './canvas';
 import { BASE_H, BASE_W, WIN, type PaintTarget } from './subjects';
 import { FONT_MONO, FONT_TITLE } from './designs/common';
@@ -36,7 +37,8 @@ export function jvMonogram(name: string): string {
   return out.slice(0, 4);
 }
 
-const KIND_LABEL: Record<string, string> = { cover: 'JEU', character: 'PERSONNAGE', object: 'OBJET' };
+// (version anglaise) mention imprimée sur la carte, dans la langue du moment (anglais : i18n/en/data.ts)
+const KIND_LABEL = (): Record<string, string> => ({ cover: tData('jv.cover', 'JEU'), character: tData('jv.character', 'PERSONNAGE'), object: tData('jv.object', 'OBJET') }); // i18n-ok
 
 /** Zone visible avec le gabarit « Pleine illustration » (même calcul que imageSubject.ts). */
 const K = 1.62;
@@ -111,7 +113,7 @@ export function paintTitleSubject(t: PaintTarget, o: { name: string; family: str
   subj.restore();
 
   // ── étiquette : JEU · 1996 / PERSONNAGE / OBJET, encadrée comme une cartouche de console
-  const label = [(o.label ?? KIND_LABEL[o.kind ?? ''] ?? '').toUpperCase(), o.year ? String(o.year) : ''].filter(Boolean).join('  ·  ');
+  const label = [(o.label ?? KIND_LABEL()[o.kind ?? ''] ?? '').toUpperCase(), o.year ? String(o.year) : ''].filter(Boolean).join('  ·  ');
   if (label) {
     const ly = ty + size * 0.5 + depth + 52;
     subj.font = `500 26px ${FONT_MONO}`;

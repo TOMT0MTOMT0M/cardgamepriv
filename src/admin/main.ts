@@ -64,7 +64,7 @@ function errMsg(e: unknown) {
   const d = (e as { data?: unknown })?.data;
   if (typeof d === 'string') return d;
   const m = (e as Error)?.message ?? String(e);
-  return m.replace(/^.*Uncaught ConvexError: /s, '').replace(/\n.*$/s, '').slice(0, 300);
+  return m.replace(/^.*Uncaught ConvexError: /s, '').replace(/\n.*$/s, '').replace(/\s*⟦[^⟧]*⟧/, '').slice(0, 300); // (repère de code des erreurs : retiré)
 }
 let toastT = 0;
 function toast(msg: string, kind: 'ok' | 'err' = 'ok') {

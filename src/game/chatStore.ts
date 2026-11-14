@@ -1,3 +1,5 @@
+import '../core/i18n/fr/game.chatStore'; // (textes de ce module, version anglaise)
+import { t as tr } from '../core/i18n';
 import { CHAT_GENERAL, CHAT_TAIL_OVERLAP_MS, chatSnippet, type ChatApi, type ChatHead, type ChatInbox, type ChatMsg } from '../core/chat';
 
 /**
@@ -58,7 +60,7 @@ export interface ChatStore {
 const errText = (e: unknown) => {
   const m = String((e as { data?: string; message?: string })?.data ?? (e as Error)?.message ?? e);
   if (/ConvexError:/.test(m)) return m.replace(/^[\s\S]*ConvexError:\s*/, '').replace(/\s*at [\s\S]*$/, '').trim();
-  if (/\[CONVEX |Server Error|Request ID/.test(m)) return 'Le serveur a refusé le message, réessaie.';
+  if (/\[CONVEX |Server Error|Request ID/.test(m)) return tr('chat.refused');
   return m;
 };
 
@@ -166,7 +168,7 @@ export function createChatStore(api: ChatApi, me: () => { id: string; name: stri
       first = false;
       const fresh = merge(key, r.msgs, live);
       emit({ type: 'conv', key });
-      for (const m of fresh) emit({ type: 'incoming', key, name: m.name, text: m.text || 'Carte', userId: m.userId });
+      for (const m of fresh) emit({ type: 'incoming', key, name: m.name, text: m.text || tr('chat.card'), userId: m.userId });
       // le fil suivi grossit : on repart de plus près (la prochaine relecture ne porte que sur quelques lignes)
       if (r.msgs.length >= ROLL_AT) {
         const t = maxTouched(conv(key)) - CHAT_TAIL_OVERLAP_MS;
@@ -334,7 +336,7 @@ export function createChatStore(api: ChatApi, me: () => { id: string; name: stri
         at,
         touchedAt: 0,
         card: o.card,
-        reply: o.replyTo ? { id: o.replyTo.id, name: o.replyTo.name, text: chatSnippet(o.replyTo.text || 'une carte', 80) } : undefined,
+        reply: o.replyTo ? { id: o.replyTo.id, name: o.replyTo.name, text: chatSnippet(o.replyTo.text || tr('chat.aCard'), 80) } : undefined,
         clientId,
         pending: true,
       });

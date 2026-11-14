@@ -1,3 +1,4 @@
+import { t as tr } from '../core/i18n';
 import { Timer, type WebGPURenderer } from 'three/webgpu';
 import type GUI from 'lil-gui';
 import gsap from 'gsap';
@@ -267,7 +268,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     dpr = want;
     resize();
     resetPerf(); // la nouvelle définition se mesure à neuf
-    console.info(`[jeu] définition 3D ${up ? 'remontée' : 'ramenée'} à ×${dpr} (moment calme)`);
+    console.info(`[jeu] définition 3D ${up ? 'remontée' : 'ramenée'} à ×${dpr} (moment calme)`); // i18n-ok
   };
   function resize() {
     const { w, h } = size();
@@ -303,7 +304,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
     const box = document.createElement('div');
     box.className = 'gpu-lost-box';
     box.setAttribute('role', 'alertdialog');
-    box.innerHTML = '<p>La 3D s’est arrêtée pendant que l’appli était en arrière-plan.</p><button class="btn-primary">Relancer</button>';
+    box.innerHTML = '<p>' + tr('gpu.lostBg') + '</p><button class="btn-primary">' + tr('gpu.relaunch') + '</button>';
     box.querySelector('button')!.addEventListener('click', () => {
       try {
         sessionStorage.removeItem(RELOADS);
@@ -363,9 +364,9 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       if (q) {
         let answered = false;
         q.onSubmittedWorkDone().then(() => (answered = true), () => {});
-        setTimeout(() => !answered && !document.hidden && recoverGpu('le GPU ne répond plus'), 4000);
+        setTimeout(() => !answered && !document.hidden && recoverGpu('le GPU ne répond plus'), 4000); // i18n-ok
       }
-    } else if (gpu.gl?.isContextLost()) recoverGpu('webgl perdu');
+    } else if (gpu.gl?.isContextLost()) recoverGpu('webgl perdu'); // i18n-ok
     // la boucle d'images doit repartir
     const since = performance.now();
     clearTimeout(wakeT);
@@ -375,7 +376,7 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       console.warn('[jeu] plus d’images depuis le retour : boucle relancée');
       stopLoop();
       startLoop();
-      wakeT = window.setTimeout(() => !document.hidden && lastFrame < since && recoverGpu('plus aucune image'), 2500);
+      wakeT = window.setTimeout(() => !document.hidden && lastFrame < since && recoverGpu('plus aucune image'), 2500); // i18n-ok
     }, 1500);
   };
   // retour sur l'appli : surface reconfigurée, tailles et mesures de cadence repartent de zéro (une veille fausse la
@@ -554,14 +555,14 @@ export async function createShell(host: HTMLElement, overlayHost: HTMLElement): 
       // (avant : la scène s'arrêtait pour de bon à la 1re erreur — après une veille, le booster ne revenait jamais)
       if (++updErrors >= 3) {
         m.ready = false;
-        recoverGpu('erreurs de rendu répétées');
+        recoverGpu('erreurs de rendu répétées'); // i18n-ok
       }
     }
     if (dev)
       void Promise.all([dev.popErrorScope(), dev.popErrorScope(), dev.popErrorScope()]).then(
         (errs) => {
           const err = errs.find(Boolean);
-          if (err) recoverGpu(`après le retour : ${err.message}`);
+          if (err) recoverGpu(`après le retour : ${err.message}`); // i18n-ok
         },
         () => {},
       );

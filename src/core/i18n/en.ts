@@ -1,0 +1,690 @@
+/** Game texts in English — loaded only when the game runs in English (src/game/lang.ts). Keys: see fr.ts. */
+import type { Dict } from '../i18n';
+/** tables de données (succès, cosmétiques, missions…) : voir tData dans ../i18n.ts */
+export { enData } from './en/data';
+export { enErrors } from './en/errors';
+export { enMsgs } from './en/msgs';
+/** (lot 4) lecture des statuts français des amis : les modèles français arrivent avec l'anglais */
+export { parseMsg } from '../msgs';
+import { en as p_game_v2gate } from './en/game.v2gate';
+import { en as p_game_chatStore } from './en/game.chatStore';
+import { en as p_game_offline } from './en/game.offline';
+import { en as p_game_views_launch } from './en/game.views.launch';
+import { en as p_game_views_ranking } from './en/game.views.ranking';
+import { en as p_game_views_gridArt } from './en/game.views.gridArt';
+import { en as p_game_views_owners } from './en/game.views.owners';
+import { en as p_game_views_picker } from './en/game.views.picker';
+import { en as p_game_views_friends } from './en/game.views.friends';
+import { en as p_game_chat } from './en/game.chat';
+import { en as p_game_views_profile } from './en/game.views.profile';
+import { en as p_game_views_collection } from './en/game.views.collection';
+import { en as p_game_views_trades } from './en/game.views.trades';
+import { en as p_game_views_cardPanel } from './en/game.views.cardPanel';
+import { en as p_game_views_contracts } from './en/game.views.contracts';
+import { en as p_game_views_succes } from './en/game.views.succes';
+import { en as p_game_views_guide } from './en/game.views.guide';
+import { en as p_game_views_suggestions } from './en/game.views.suggestions';
+import { en as p_game_views_games } from './en/game.views.games';
+import { en as p_game_views_board } from './en/game.views.board';
+import { en as p_game_views_market } from './en/game.views.market';
+import { en as p_game_views_forYou } from './en/game.views.forYou';
+import { en as p_game_views_leaderboard } from './en/game.views.leaderboard';
+import { en as p_game_views_login } from './en/game.views.login';
+import { en as p_game_survey } from './en/game.survey';
+import { en as p_game_views_defis } from './en/game.views.defis';
+import { en as p_game_views_presse } from './en/game.views.presse';
+import { en as p_game_views_showcaseEditor } from './en/game.views.showcaseEditor';
+import { en as p_game_localBackend } from './en/game.localBackend';
+import { en as p_game_chatLocal } from './en/game.chatLocal';
+import { en as p_game_ecoLocal } from './en/game.ecoLocal';
+import { en as p_game_views_infos } from './en/game.views.infos';
+// <imports>
+
+export const en: Dict = {
+  // (parties des modules chargés à la demande)
+  ...p_game_v2gate,
+  ...p_game_chatStore,
+  ...p_game_offline,
+  ...p_game_views_launch,
+  ...p_game_views_ranking,
+  ...p_game_views_gridArt,
+  ...p_game_views_owners,
+  ...p_game_views_picker,
+  ...p_game_views_friends,
+  ...p_game_chat,
+  ...p_game_views_profile,
+  ...p_game_views_collection,
+  ...p_game_views_trades,
+  ...p_game_views_cardPanel,
+  ...p_game_views_contracts,
+  ...p_game_views_succes,
+  ...p_game_views_guide,
+  ...p_game_views_suggestions,
+  ...p_game_views_games,
+  ...p_game_views_board,
+  ...p_game_views_market,
+  ...p_game_views_forYou,
+  ...p_game_views_leaderboard,
+  ...p_game_views_login,
+  ...p_game_survey,
+  ...p_game_views_defis,
+  ...p_game_views_presse,
+  ...p_game_views_showcaseEditor,
+  ...p_game_localBackend,
+  ...p_game_chatLocal,
+  ...p_game_ecoLocal,
+  ...p_game_views_infos,
+  // <parts>
+
+  // ───── language (header switch) ─────
+  'lang.label': 'Language',
+  'lang.aria': 'Language: English. Switch to French',
+  'lang.title': 'Game language: English (tap to switch to French)',
+  'lang.later': 'The language will change once this opening is over.',
+  'lang.failed': 'Couldn’t change the language (network?). Try again in a moment.',
+
+  // ───── browser tab titles ─────
+  'title.shop': 'Bébou — shop',
+  'title.collection': 'Bébou — collection',
+  'title.contrats': 'Bébou — contracts',
+  'title.echanges': 'Bébou — trades',
+  'title.amis': 'Bébou — friends',
+  'title.profil': 'Bébou — profile',
+  'title.jeux': 'Bébou — games',
+  'title.classement': 'Bébou — leaderboard',
+  'title.succes': 'Bébou — achievements',
+  'title.suggestions': 'Bébou — suggestions',
+  'title.maj': 'Bébou — updates',
+  'title.tuto': 'Bébou — tutorial',
+
+  // ───── src/game/ui.ts ─────
+  'rarity.secretStamp': '✷ SECRET',
+  'card.secret': 'Secret card',
+  'card.notFound': '{name} · not found yet',
+  'card.newSince': ' · new since your last visit',
+  'net.connecting': 'Connecting to the server…',
+  'net.pending': 'Your request is on its way: it’ll go through as soon as the server answers.',
+  'net.noAnswer': 'The server isn’t answering… Your request will go through once the connection is back: no need to tap again.',
+  'net.refused': 'The server refused the action, try again in a moment.',
+  'net.unreachable': 'Can’t reach the server, try again in a moment.',
+  'card.replay': 'Replay the card animation',
+  'img.alreadyReported': 'Image already reported, thanks',
+  'img.reportTitle': 'Report a broken or missing image (we’ll fix it)',
+  'img.reported': 'Image reported ✓',
+  'img.report': 'Image looks wrong',
+  'img.alreadyToast': 'Already reported: we’re on it.',
+  'img.reportLabel': 'Image to check (broken or missing) — {name}',
+  'img.reportedToast': 'Image reported, thanks: it’ll be fixed.',
+
+  // ───── src/game/ui.ts ─────
+  'auth.login': 'Log in',
+
+
+  // ───── src/game/main.ts ─────
+  'boot.logo': 'BÉBOU',
+  'boot.fx': 'getting the effects ready…',
+  'boot.tip1': 'Tip: hold, swipe or tap the booster: each pack opens its own way.',
+  'boot.tip2': 'A secret card might be hiding in the Bebou Pack…',
+  'boot.tip3': 'Your duplicates are worth gold: burn them in a contract or trade them.',
+  'boot.tip4': 'A new booster every 5 minutes, up to 15 in reserve.',
+  'boot.tip5': 'Tap a card in your collection to see it big and spin it around.',
+  'boot.tip6': 'The light leaking from the wrapper hints at the best card in the pack.',
+  'ref.welcome': 'Welcome! {name} invited you: +{n} free boosters 🎁',
+  'ref.yourSponsor': 'Your sponsor',
+  'ref.tooLate': 'Invite link: your account is no longer new enough to be sponsored.',
+  'ref.invalid': 'Invalid invite link: ask your friend to send it again (Friends tab).',
+  'nav.skip': 'Skip to content',
+  'nav.aria': 'Game pages',
+  'nav.shop': 'Shop',
+  'nav.trades': 'Market',
+  'nav.games': 'Games',
+  'nav.ranking': 'Leaderboard',
+  'nav.achievements': 'Achievements',
+  'nav.friends': 'Friends',
+  'nav.extraAria': 'Game info',
+  'nav.updates': 'Updates',
+  'nav.freshCards': 'New cards since your last visit',
+  'vol.hapIos': ' · iPhone: on touch only',
+  'vol.hapNone': ' · not available here',
+  'vol.hapTitle': 'Tap to test{ios}',
+  'vol.hapIosNote': ' (iPhone: the browser only vibrates during a touch, never during an animation)',
+  'vol.haptics': 'Vibrations',
+  'common.yes': 'yes',
+  'common.no': 'no',
+  'vol.padTitle': 'A very discreet ambient pad under the menus (it goes quiet during openings)',
+  'vol.pad': 'Menu ambience',
+  'vol.silentTitle': 'Sound even in silent mode (iPhone)',
+  'vol.silent': 'Even when silent',
+  'demo.txt': 'Demo mode: no server, your collection is stored in this browser and your friends are robots.',
+  'demo.offline': 'offline demo',
+  'demo.short': 'demo',
+  'vol.mute': 'Mute',
+  'vol.unmute': 'Unmute',
+  'hdr.connecting': 'connecting…',
+  'hdr.packsTitle': '1 booster every {min} minutes, up to {cap} in reserve · open it in the shop',
+  'hdr.walletTitle': 'Wallet: coins, bonuses, history',
+  'hdr.missions': 'Daily missions',
+  'hdr.streakTitle': 'Login: streak and calendar',
+  'hdr.streak': 'Login',
+  'hdr.profileTitle': 'My profile · {name}',
+  'hdr.profile': 'My profile',
+  'hdr.profileMenu': 'Profile menu',
+  'hdr.seeProfile': 'See my profile',
+  'hdr.repairTitle': 'Clears the game caches and reloads the latest version (you stay logged in)',
+  'hdr.repair': 'Repair and update',
+  'hdr.boardNews': 'Something new on the offer board (offer or counter-offer) → Market, Sell · Trade',
+  'hdr.tradeOffer': '{name} is offering you a trade → Market',
+  'hdr.aFriend': 'A friend',
+  'hdr.missionsReady': 'Missions: {n} to claim',
+  'hdr.friendReqs': { one: 'Friends: {n} friend request', other: 'Friends: {n} friend requests' },
+  'nav.friends.aria': 'Friends',
+  'hdr.friendAsks': '{name} sent you a friend request → Friends',
+  'hdr.friendAccepted': '{name} accepted your friend request!',
+  'hdr.walletReady': 'Wallet: something to collect (calendar, bonuses, achievements)!',
+  'hdr.walletIdle': 'Wallet: coins, calendar, bonuses',
+  'hdr.walletCoins': 'Wallet: {coins} coins{ready}',
+  'hdr.walletSomething': ', something to collect',
+  'hdr.streak7': '7-day streak: reward to claim!',
+  'hdr.dailyGift': 'Login: today’s gift to collect!',
+  'hdr.streakDay': 'Login · streak day {day}/7 · calendar',
+  'hdr.pityNext': '6★ pity: your next booster has a guaranteed 6★!',
+  'hdr.pity': { one: '6★ pity: {n} booster without a 6★ · by booster {limit}, a guaranteed 6★ (resets at your first 6★)', other: '6★ pity: {n} boosters without a 6★ · by booster {limit}, a guaranteed 6★ (resets at your first 6★)' },
+  'hdr.full': 'reserve full',
+  'hdr.nextIn': '+1 in {time}',
+  'hdr.boost': 'Recharge ×2: 1 booster every 2 min 30 for another {left}',
+  'hdr.packArrived': 'A booster just arrived: it’s waiting for you in the shop!',
+  'net.offline': 'No network · we’ll pick up as soon as it’s back',
+  'net.serverDown': 'Server unreachable · retrying…',
+  'net.serverBack': 'Server is back',
+  'net.back': 'Network is back',
+  'boot.start3d': 'starting the 3D…',
+  'boot.printing': 'printing the boosters…',
+  'boot.setup': 'setting up…',
+  'page.failed': 'This page couldn’t load (network dropped for a moment, or a new version of the game is online): reload the page.',
+  'page.offline': 'No network: this page couldn’t load. Reload as soon as the network is back.',
+  'shop.finishFirst': 'Finish your booster first!',
+  'common.reload': 'Reload',
+  'boot.ready': 'ready',
+  'boot.dlFailed': 'The game couldn’t finish downloading.',
+  'boot.checkNet': 'Check your connection, then reload the page.',
+  'boot.no3d': 'Your browser can’t start the 3D.',
+  'boot.tryBrowser': 'Try an up-to-date Chrome, Edge or Safari, then reload the page.',
+
+  // ───── src/game/main.ts ─────
+  'nav.tutorial': 'Tutorial',
+  'vol.title': 'Sound and volume',
+  'hdr.wallet': 'Wallet',
+  'common.loading': 'loading…',
+
+  // ───── src/game/shell.ts ─────
+  'gpu.lostBg': 'The 3D stopped while the app was in the background.',
+  'gpu.relaunch': 'Relaunch',
+
+  // ───── src/game/navDots.ts ─────
+  'dot.reserveFull': 'Booster reserve full: the recharge has stopped',
+  'dot.games': 'Something new in Games (challenge, match, roulette)',
+  'dot.referral': 'Referrals: a friend you invited joined or earned you boosters',
+  'dot.update': 'New update to read',
+
+  // ───── src/game/maj.ts ─────
+  'maj.updating': 'Updating…',
+  'maj.available': 'Update available',
+
+  // ───── src/game/notif.ts ─────
+  'notif.k.reserve': 'Reserve full',
+  'notif.k.reserveD': '15 boosters: come and open them',
+  'nav.trades.label': 'Market',
+  'notif.k.tradeD': 'offer, counter-offer, reply',
+  'notif.k.friendD': 'request received, request accepted',
+  'notif.k.referralD': 'your invitee opened their boosters',
+  'notif.k.games': 'Games',
+  'notif.k.gamesD': 'Pack Battle challenge, roulette win',
+  'notif.k.chatD': 'private message, mention, the main chat waking up',
+  'notif.k.roulette': 'Roulette',
+  'notif.k.rouletteD': '10 min before each draw (10 am, 8 pm) — opt in',
+  'notif.k.news': 'Team announcements',
+  'notif.k.newsD': 'new patch, event',
+  'notif.demo': 'Notifications: online only (not in the demo).',
+  'notif.unsupported': 'This browser doesn’t support notifications.',
+  'notif.unavailable': 'Notifications unavailable for now.',
+  'notif.off': 'Turn off on this device',
+  'notif.on': 'Turn on notifications',
+  'notif.notConfigured': 'Not enabled on the server yet.',
+  'notif.thisDevice': 'This device receives notifications{total}.',
+  'notif.total': ' ({n} devices in total)',
+  'notif.others': { one: '{n} other device subscribed — not this one.', other: '{n} other devices subscribed — not this one.' },
+  'notif.pitch': 'Trades, friends, full reserve… even with the game closed.',
+  'notif.test': 'Send me a test',
+  'notif.quiet': 'No notifications between 11 pm and 8 am.',
+  'notif.offToast': 'Notifications turned off on this device.',
+  'notif.onToast': 'Notifications turned on!',
+  'notif.testSent': { one: 'Test sent to {n} device (a few seconds).', other: 'Test sent to {n} devices (a few seconds).' },
+
+  // ───── src/game/godPack.ts ─────
+  'god.odds': '1 booster in 1,000',
+  'god.sub': 'only 4★ and up · at least one 5★ and one 6★',
+
+  // ───── src/game/notif.ts (HTML) ─────
+  'notif.ios.title': 'On iPhone, notifications only work once the game is added to the Home Screen:',
+  'notif.ios.step1': 'In Safari: <b>Share</b> (the square with the arrow) → <b>Add to Home Screen</b>.',
+  'notif.ios.step2': 'Open <b>Bébou</b> from the Home Screen, come back here and tap <b>Turn on</b>.',
+  'notif.k.referral': 'Referrals',
+  'notif.k.chat': 'Chat',
+
+  // ───── unités ─────
+  'unit.mb': '{n} MB',
+  'unit.kb': '{n} KB',
+
+
+  // ───── src/game/views/shop.ts ─────
+  'shop.hint.holdTouch': 'Hold to open',
+  'shop.hint.holdMouse': 'Hold the click (or Space) to open',
+  'shop.hint.tearTouch': 'Swipe right to tear',
+  'shop.hint.tearMouse': 'Swipe right (or click) to tear',
+  'shop.hint.tapTouch': 'Tap to open',
+  'shop.hint.tapMouse': 'Click to open',
+  'shop.hint.revealTouch': 'Tap to reveal',
+  'shop.hint.revealMouse': 'Click to reveal',
+  'shop.hint.nextTouch': 'Tap for the next one',
+  'shop.hint.nextMouse': 'Click for the next one',
+  'shop.hint.last': 'Last card…',
+  'shop.eventTagline': 'BOOSTER OF THE MOMENT',
+  'shop.reserveOpened': { one: 'Reserve: {got} booster of {n} opened.', other: 'Reserve: {got} boosters of {n} opened.' },
+  'shop.saving': 'Saving the cards…',
+  'shop.pending': '{why}: this booster isn’t credited yet. You’ll find it as is in the shop (Open button).',
+  'shop.noNet': 'No network',
+  'shop.kicker': 'SHOP',
+  'shop.pick': 'Pick your booster',
+  'shop.open': 'Open',
+  'shop.revealTitle': 'Straight to the first 4★ or better — if there isn’t one, the whole booster opens at once',
+  'shop.autoTitle': 'The cards flip by themselves (a 6★ keeps its full screen)',
+  'shop.revealAll': 'Reveal all',
+  'shop.skipTitle': 'Go straight to the recap (everything is credited)',
+  'shop.skipAll': 'Skip all',
+  'common.continue': 'Continue',
+  'common.close': 'Close',
+  'shop.spinHint': 'swipe to spin it',
+  'shop.pickTouch': 'Tap a pack to see what’s inside',
+  'shop.pickMouse': 'Click a pack to see what’s inside · ↑ ↓ to switch',
+  'shop.eventLabel': 'Booster of the moment',
+  'shop.see': 'See the {name}',
+  'shop.openName': 'Open the {name}',
+  'common.soon': 'soon',
+  'shop.firstPack': 'your first booster is waiting · {n} in reserve',
+  'shop.inReserve': '{n} in reserve',
+  'shop.reserveEmpty': 'reserve empty · recharging',
+  'shop.soonAvail': 'coming soon',
+  'shop.tapToOpen': 'tap the booster to open it',
+  'common.soonCaps': 'SOON',
+  'shop.eventNow': 'Booster of the moment: {name}',
+  'shop.eventNew': 'New: the {name} booster, in the shop for only {left}',
+  'shop.alreadyDrawn': 'You have a {name} already drawn, not opened yet.',
+  'shop.alreadyHave': '{have} / {total} cards already in your collection',
+  'shop.autoOn': 'Auto reveal ✓',
+  'shop.contTouch': 'Tap to continue',
+  'shop.contMouse': 'Click to continue',
+  'shop.dupHave': 'already {n}× in your collection',
+  'shop.dupPack': 'duplicate in this booster',
+  'shop.cardSub': '{sub}{theme} · print #{n}',
+  'shop.newCaps': 'NEW',
+  'shop.notCredited': '{what}: it stays as is in the shop (Open button), nothing is lost.',
+  'shop.batchPending': 'Booster {i}/{n} isn’t credited yet',
+  'shop.onePending': 'This booster isn’t credited yet',
+  'shop.fourPlus': '4★ and up',
+  'shop.newWord': { one: 'new', other: 'new' },
+  'shop.secretWord': 'secret',
+  'shop.uniqueTitle': '{label}: unique cards in your collection',
+  'shop.retrySave': 'Retry saving',
+  'shop.againN': 'Again ×{n}',
+  'shop.againOne': 'One more',
+  'shop.nextIn': 'next booster in {time}',
+  'shop.myNew': 'My new cards',
+  'shop.myColl': 'My collection',
+  'shop.credited': 'Booster credited.',
+  'shop.cardSub2': '{pre}print #{n}',
+
+  // ───── src/game/views/shop.ts (à la main) ─────
+  'shop.saveFailed': 'Couldn’t save ({err})',
+  'shop.dupWord': { one: 'duplicate', other: 'duplicates' },
+  'shop.best': 'best',
+  'shop.contracts': 'Contracts',
+  'shop.newBang': 'NEW!',
+
+  // ───── src/game/views/shop.ts (à la main) ─────
+  'shop.evLeft': 'left',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'plural.booster': { one: '{n} booster', other: '{n} boosters' },
+  'plural.carte': { one: '{n} card', other: '{n} cards' },
+  'plural.numéro': { one: '{n} number', other: '{n} numbers' },
+  'plural.doublon': { one: '{n} duplicate', other: '{n} duplicates' },
+  'plural.album': { one: '{n} album', other: '{n} albums' },
+  'plural.jour': { one: '{n} day', other: '{n} days' },
+  'plural.exemplaire': { one: '{n} copy', other: '{n} copies' },
+  'plural.ami': { one: '{n} friend', other: '{n} friends' },
+  'plural.échange': { one: '{n} trade', other: '{n} trades' },
+  'plural.résultat': { one: '{n} result', other: '{n} results' },
+  'plural.réponse': { one: '{n} answer', other: '{n} answers' },
+  'plural.prime déjà encaissée': { one: '{n} bonus already collected', other: '{n} bonuses already collected' },
+  'plural.personne a cliqué': { one: '{n} person clicked', other: '{n} people clicked' },
+  'plural.partie': { one: '{n} match', other: '{n} matches' },
+  'plural.palier': { one: '{n} tier', other: '{n} tiers' },
+  'plural.note': { one: '{n} rating', other: '{n} ratings' },
+  'plural.filleul': { one: '{n} invitee', other: '{n} invitees' },
+  'plural.famille': { one: '{n} family', other: '{n} families' },
+  'plural.exemplaire brûlable': { one: '{n} burnable copy', other: '{n} burnable copies' },
+  'plural.duel ouvert': { one: '{n} open duel', other: '{n} open duels' },
+  'plural.de tes envies': { one: '{n} of your wishes', other: '{n} of your wishes' },
+  'plural.contrat possible': { one: '{n} possible contract', other: '{n} possible contracts' },
+  'plural.booster ouvert': { one: '{n} booster opened', other: '{n} boosters opened' },
+  'plural.badge': { one: '{n} badge', other: '{n} badges' },
+  'plural.ami invité': { one: '{n} friend invited', other: '{n} friends invited' },
+
+  // ───── src/game/views/missions.ts ─────
+  'msn.reward': 'Reward',
+  'msn.claimed': 'claimed ✓',
+  'msn.claim': 'Claim',
+  'msn.rerollTitle': 'Change this mission (once a day)',
+  'msn.goTitle': 'Go where it happens',
+  'msn.claimedToast': '+{packs} in your reserve and +{coins} coins!',
+  'msn.login': 'Log in to get your missions.',
+  'msn.newIn': 'new ones in {time}',
+  'msn.bonusDone': 'Daily bonus claimed ✓ · come back tomorrow',
+  'msn.allDone': 'All 3 missions are done!',
+  'msn.bonusHint': 'Bonus: +{n} boosters once all 3 are claimed',
+  'msn.rerollFoot': 'Don’t like a mission? You can change one per day.',
+  'msn.week': 'This week',
+  'msn.weekToast': 'Weekly mission: +{coins} coins!',
+  'msn.doneToast': 'Mission complete: {label} → claim +{packs} (target at the top)',
+
+  // ───── src/game/views/missions.ts (à la main) ─────
+  'msn.reroll': 'change',
+  'msn.bonusBtn': 'Bonus +{n}',
+  'msn.bonusToast': 'Bonus: +{packs}!',
+
+  // ───── src/game/views/status.ts (à la main) ─────
+  'st.pityCount': { one: '{nf} booster without a 6★', other: '{nf} boosters without a 6★' },
+  'st.pityLeft': { one: '<b>{nf}</b> more booster without a 6★, then the next one has one, <b>guaranteed</b>.', other: '<b>{nf}</b> more boosters without a 6★, then the next one has one, <b>guaranteed</b>.' },
+
+  // ───── src/game/views/status.ts ─────
+  'st.hint': 'Log in every day: on day 7, a reward.',
+  'st.inARow': '{days} in a row',
+  'st.streak7': 'Streak · 7 days',
+  'st.weekly': '+{n} boosters every week',
+  'st.day7': 'Day 7 reached!',
+  'st.waiting': 'Your reward is waiting.',
+  'st.claimedCont': 'Reward claimed ✓ · the streak goes on tomorrow',
+  'st.outOf': 'out of {n} · come back tomorrow to keep going',
+  'st.reset': 'Missing a day resets the streak and the calendar.',
+  'st.calToast': 'Day {day}: +{coins} coins{extra}!',
+  'st.calPerfect': ' and {n} boosters — perfect month 🏆',
+  'st.calOne': ' and 1 free booster',
+  'st.streakToast': '7-day streak: +{packs}!',
+  'st.loginPity': 'Log in to track your counter.',
+  'st.pityNext': 'Your next booster has a guaranteed 6★!',
+  'st.pityRule': '{n} boosters in a row without a Mythic: number {m} has one. The counter resets as soon as a 6★ drops, across all boosters.',
+
+  // ───── src/game/views/wallet.ts ─────
+  'wal.calDayTitle': 'Day {d}: {coins} coins{packs}{x2}',
+  'wal.calHead': 'Calendar · day {day}/{days}',
+  'wal.calPerfect': 'perfect month ≈ {coins} + {packs} boosters',
+  'wal.calTaken': 'Today’s gift taken ✓ — tomorrow: {coins} coins. Miss a day = back to day 1.',
+  'wal.calTake': 'Take the gift · +{coins}{packs}',
+  'hdr.wallet.label': 'Wallet',
+  'wal.login': 'Log in to earn coins.',
+  'wal.games': 'Games →',
+  'wal.virtual': '100% virtual coins · never exchangeable for cards',
+  'wal.toCollect': 'To collect',
+  'wal.completion': 'Completion{x}',
+  'wal.completionHint': ': 5 coins × cards of each completed album',
+  'wal.nothing': 'nothing',
+  'wal.ach': 'Achievements{x}',
+  'wal.see': 'see',
+  'wal.burn': 'Duplicates to burn{x}',
+  'wal.forge': 'the forge →',
+  'wal.empty': 'No transactions yet.',
+  'wal.compToast': 'Completion: +{coins} coins ({sets})',
+  'wal.achToast': 'Achievements: +{coins} coins!',
+
+  // ───── src/game/views/wallet.ts (à la main) ─────
+  'wal.plusPacks': { one: ' + {n} booster', other: ' + {n} boosters' },
+  'wal.achCount': ': {n}/{total} earned',
+
+  // ───── src/game/views/bigPulls.ts ─────
+  'time.justNow': 'just now',
+  'time.agoMin': '{n} min ago',
+  'time.agoH': '{n} h ago',
+  'time.agoD': '{n} d ago',
+  'bp.title': 'Big pulls',
+  'bp.sub': 'the group’s 5★+ · today',
+  'bp.empty': 'Nobody has pulled a Legendary yet… your turn.',
+  'bp.see': 'See {name} big',
+  'bp.subLatest': 'the group’s 5★+ · latest',
+
+  // ───── src/game/views/safety.ts ─────
+  'safe.legend': '♥ wish · ▤ binder · ⌂ sleeve: kept out of automatic picks (burnable by hand) · 🔒 committed to a pending trade',
+
+  // ───── src/game/views/bigPulls.ts (à la main) ─────
+  'time.yesterday': 'yesterday',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'common.loading2': 'Loading…',
+  'chat.aCard': 'a card',
+
+  // ───── src/game/views/status.ts ─────
+  'st.day': 'Day',
+  'pf.cancel': 'Cancel',
+  'coll.viewAria': 'Collection view',
+  'coll.cards': 'Cards',
+  'coll.albums': 'Albums',
+  'coll.binders': 'Binders',
+  'coll.forge': 'Forge',
+  'coll.contracts': 'Contracts',
+  'chat.me': 'You',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'cos.kind.Cadre': 'Frame',
+  'cos.kind.Vitrine': 'Showcase',
+  'cos.kind.Bannière': 'Banner',
+  'cos.kind.Badge': 'Badge',
+  'cos.kind.Titre': 'Title',
+  'cos.kind.Ouverture': 'Opening',
+  'sc.andPacks': ' and {packs}',
+  'pf.search': 'Search for a card…',
+  'coll.f.all': 'All',
+  'coll.f.missing': 'Missing',
+  'coll.unwish': 'Remove from my wishes',
+  'coll.wish': 'Add to my wishes',
+
+  // ───── src/game/views/packSheet.ts ─────
+  'ps.d.bebou': 'All the cards + the Bébous',
+  'ps.d.gaming': 'Video games',
+  'ps.d.pop': 'Manga, movies, series, music',
+  'ps.d.sport': 'Every sport',
+  'ps.d.world': 'Life, simply',
+  'rar.common': 'Common',
+  'rar.rare': 'Rare',
+  'rar.epic': 'Epic',
+  'rar.legendary': 'Legendary',
+  'rar.mythic': 'Mythic',
+  'ps.aria': 'Booster sheet',
+  'ps.odds': 'Odds per card',
+  'ps.oddsD': '· the real draw rates · each card’s chance is written under it in “Booster cards”',
+  'ps.openCaps': 'OPEN',
+  'ps.buy': 'Buy',
+  'ps.cardsA': 'Booster cards',
+  'ps.back': 'Back',
+  'ps.wishes': 'Wishes',
+  'ps.bought': { one: '+{n} booster in your reserve', other: '+{n} boosters in your reserve' },
+  'ps.four': '4★ and up',
+  'ps.five': '5★ and up',
+  'ps.perPack': 'Per booster',
+  'ps.god': 'God pack (only 4★ and up, at least one 5★ and one 6★):',
+  'ps.realRates': '· real rates, god pack and pity included',
+  'ps.soonD': 'Its cards are coming soon · meanwhile, the Bebou Pack has everything',
+  'ps.loginCaps': 'LOG IN',
+  'ps.loginD': 'Discord login or username · access reserved to the group',
+  'ps.openMy': 'OPEN MY {name}',
+  'ps.drawn': 'Booster already drawn, not opened yet',
+  'ps.next': 'The next one arrives in {time} · 1 every {min} min',
+  'ps.openN': 'OPEN ×{n}',
+  'ps.inReserve': { one: '{n} booster in reserve{max}', other: '{n} boosters in reserve{max}' },
+  'ps.noLimit': 'no limit · balance {coins}',
+  'ps.pitySure': 'Your next booster has a guaranteed 6★!',
+  'ps.achHow': 'Achievement “{label}”: {how}',
+  'ps.anim': 'Opening animation',
+  'ps.animD': '· for all your boosters · the others are earned with achievements',
+  'ps.lockedHow': 'Locked · {how}',
+  'ps.animIs': 'Opening animation: {name}',
+  'ps.yourWishes': 'Your wishes',
+  'ps.noWish': 'None of your wishes here · mark cards with ♥ to follow them',
+  'ps.seeAll': 'See the {n} cards{b}',
+  'ps.plusBebous': ' + the Bébous',
+  'ps.owned': { one: '{nf} owned · {pct}', other: '{nf} owned · {pct}' },
+  'ps.perBooster': 'cards per booster',
+  'ps.cardsOf': 'cards · {label}',
+  'ps.endsIn': 'ends in',
+  'ps.inPrep': ' in preparation',
+  'ps.subthemes': { one: '· {n} subtheme', other: '· {n} subthemes' },
+  'ps.fourThemes': ' · all 4 themes',
+  'ps.limited': 'Limited edition',
+  'ps.limitedD': 'This booster disappears at the end of the event. Its cards then stay in the usual boosters.',
+  'ps.secrets': 'Secret cards',
+  'ps.bebousLocked': 'The Bébous are locked for now',
+  'ps.bebousLockedD': '· they don’t drop from any booster, their return will be announced',
+  'ps.bebousSecret': 'The Bébous · secret',
+  'ps.more': { one: 'See {m} more · {left} left', other: 'See {m} more · {left} left' },
+  'ps.noWishHere': 'No wishes in this booster for now.',
+  'ps.allOwned': 'You have every card in this selection!',
+  'ps.noMatch': 'No card matches.',
+  'ps.sections': '{res} · the first sections are unfolded, tap a section to see the rest{refine}',
+  'ps.refine': ' (or refine your search)',
+  'ps.count': '{n} cards · {have} owned',
+
+  // ───── src/game/views/packSheet.ts (à la main) ─────
+  'ps.almostAlways': 'almost always',
+  'ps.oneIn': '1 in {n}',
+  'ps.sealed': 'You have a {what} already drawn, not opened yet: open it first (button below).',
+  'ps.dryMax': '· {n} dry boosters max',
+  'ps.pityLeft': { one: '<b>{nf}</b> booster before a guaranteed 6★', other: '<b>{nf}</b> boosters before a guaranteed 6★' },
+  'ps.wishIn': { one: '<b>{n} of your wishes</b> in this booster', other: '<b>{n} of your wishes</b> in this booster' },
+  'ps.secretWorld': '<b>1 chance in {n}</b> per booster to pull one of the <b>{w} Wonders of the World</b> <small>· 1 / number of cards in the theme</small>',
+  'ps.secretBebou': '<b>1 chance in {n}</b> per booster to pull one of the <b>8 Bébous</b> <small>· 1 / number of cards in the game: the more cards, the rarer</small>',
+  'rar.uncommon': 'Uncommon',
+
+  // ───── src/game/views/forge.ts ─────
+  'fg.protectedTitle': 'Protected, never burned: the last copy of each card, secrets, ♥ wishes, ▤ binders, ⌂ sleeves and 🔒 committed copies (pending trade, listing)',
+  'fg.login': 'Log in to burn your duplicates.',
+  'fg.title': 'The forge',
+  'fg.count': { one: '{nf} burnable duplicate{locked} · we always keep 1 copy · secrets are never burned', other: '{nf} burnable duplicates{locked} · we always keep 1 copy · secrets are never burned' },
+  'fg.locked': { one: '· {nf} committed 🔒', other: '· {nf} committed 🔒' },
+  'fg.values': '1★ = 5 · 2★ = 15 · 3★ = 40 · 4★ = 100 · 5★ = 300 · 6★ = 1,000 coins',
+  'fg.allOf': 'All {stars} ({n} · {v}){prot}',
+  'fg.protLeft': { one: '· {n} protected left out', other: '· {n} protected left out' },
+  'fg.nothing': 'Nothing',
+  'fg.cancelQuick': 'Cancel the quick selection',
+  'fg.tapHint': 'Tap duplicates to put them in the fire (tap again to add another copy).',
+  'fg.burn': 'Burn{x}',
+  'fg.none': 'No duplicates to burn for now{x}.',
+  'fg.othersLocked': ' (your other duplicates are committed 🔒)',
+  'fg.openBoosters': 'Open boosters →',
+  'fg.lockedN': { one: '{n} committed', other: '{n} committed' },
+  'fg.andMore': '… and {n} others (quick selections take them too).',
+  'fg.confirm': 'Burn {cards} ({list})?',
+  'fg.burned': { one: '{dups} burned: +{coins} coins!', other: '{dups} burned: +{coins} coins!' },
+  'chat.card': 'Card',
+
+  // ───── src/game/views/packSheet.ts ─────
+  'ps.recharging': 'RECHARGING',
+
+  // ───── src/game/wildEncounter.ts ─────
+  'wild.continue': 'Continue',
+
+  // ───── src/game/musicPreview.ts ─────
+  'mp.mute': 'Mute the clip',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'card.replayShort': 'Replay',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'ms.open': { one: 'Open {n} booster', other: 'Open {n} boosters' },
+  'ms.openPack': 'Open {n} {pack}',
+  'ms.rare': 'Get {n} ★★★ cards or better',
+  'ms.epic': 'Get a ★★★★ card or better',
+  'ms.legendary': 'Get a ★★★★★ card or better',
+  'ms.newCards': 'Find {n} new cards',
+  'ms.subtheme': 'Get {n} {sub} cards',
+  'ms.dups': 'Get {n} duplicates',
+  'ms.contract': 'Sign a contract',
+  'ms.trade': 'Offer or accept a trade',
+  'wk.open': 'Open {n} boosters',
+  'wk.epic': 'Get {n} ★★★★ cards or better',
+  'wk.contract': { one: 'Sign {n} contract', other: 'Sign {n} contracts' },
+  'wk.trade': { one: 'Complete or offer {n} trade', other: 'Complete or offer {n} trades' },
+  'wk.game': 'Play {n} games in Games',
+  'wk.win': { one: 'Win {n} battle (Pack Battle or Royale)', other: 'Win {n} battles (Pack Battle or Royale)' },
+  'wk.burn': 'Burn {n} duplicates for coins',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'dk.t6': 'a 6★',
+  'dk.t5': 'a 5★ or better',
+  'dk.first': 'First to',
+  'dk.firstGoal': 'The first to pull {what} wins',
+  'dk.pulled': 'pulled',
+  'dk.new': 'New cards',
+  'dk.newGoal': 'The most new cards for their collection',
+  'dk.newUnit': { one: '{n} new', other: '{n} new' },
+  'dk.stars': 'Stars',
+  'dk.starsGoal': 'The most stars pulled in boosters',
+  'dk.3days': '3 days',
+
+  // ───── src/core/haptics.ts ─────
+  'hap.hidden': 'tab hidden',
+  'hap.waiting': 'waiting for the first touch',
+  'hap.refused': 'refused (gesture required by the browser, or in-app browser)',
+  'hap.none': 'device without an accessible vibrator',
+
+  // ───── src/game/main.ts (à la main) ─────
+  'vol.hapWhy': 'Vibrations: {why}.',
+
+  // ───── src/core/events.ts ─────
+  'ev.cardsApart': { one: '{n} separate card', other: '{n} separate cards' },
+  'ev.demoBlurb': 'The weapons and their skins, for a few days only',
+
+  // ───── src/core/net/client.ts ─────
+  'auth.notInServer': 'Your Discord account isn’t on the mates’ server: ask for an invite, then log in again.',
+  'auth.tokenFailed': 'Discord didn’t confirm the login. Try again.',
+  'auth.userFailed': 'Discord didn’t answer. Try again in a moment.',
+  'auth.guildFailed': 'Couldn’t check your Discord server. Try again.',
+  'auth.cancelled': 'Login cancelled.',
+  'auth.expired': 'Your session has expired: log in again.',
+  'auth.newSeason': 'New season: the counters have been reset, create your account to play.',
+  'auth.failed': 'Couldn’t log in ({err}). Try again.',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'myth.skip': 'Tap to skip',
+  'myth.ring': 'In the ring…',
+  'myth.red': 'In the red corner…',
+  'myth.blue': 'In the blue corner…',
+  'myth.six': 'The six-star!',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'duel.tapCont': 'tap to continue',
+  'duel.clickCont': 'click to continue',
+  'gd.skip2': 'Skip',
+
+  // ───── src/game/scenes/opening.ts ─────
+  'op.back1': '5 cards, including one rare or better.',
+  'op.back2': 'Not suitable for dragons under three years old.',
+  'op.back3': 'Made between us. With care.',
+  'op.backSecret': 'A secret card might be hiding in it.',
+  'op.limited': 'Limited edition',
+  'op.backTime': 'Here for a limited time only.',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'wild.appears': 'A wild {name} appeared!',
+  'bb.heartHint': 'tap · make its heart beat',
+
+  // ───── src/game/ui.ts (à la main) ─────
+  'wild.sub': '{type} type · ★★★★★★ MYTHIC',
+};

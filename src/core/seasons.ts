@@ -10,6 +10,7 @@
  * Cosmétiques : finir dans les 3 premiers → succès « Sur le podium » (cadre « Podium de saison ») ; premier → succès
  * « Champion de saison » (titre) — src/core/economy.ts et src/core/cosmetics.ts.
  */
+import { lang, locale } from './i18n';
 
 /** boosters donnés selon le rang final : 1er, 2e, 3e ; puis 4e – 10e ; puis tout joueur qui a gagné au moins une carte */
 export const SEASON_PACKS = [10, 6, 4] as const;
@@ -39,14 +40,17 @@ export function seasonKey(now: number): string {
   return new Date(now + 3600_000).toISOString().slice(0, 7);
 }
 
-const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']; // i18n-ok (anglais : Intl)
 /** « novembre 2026 » */
 export function seasonLabel(key: string): string {
   const [y, m] = key.split('-').map(Number);
+  // (version anglaise) « November 2026 »
+  if (lang() !== 'fr' && m >= 1 && m <= 12) return new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(Date.UTC(y, m - 1, 1));
   return MONTHS[(m || 1) - 1] ? `${MONTHS[m - 1]} ${y}` : key;
 }
 /** « de novembre » / « d’octobre » (élision devant une voyelle) */
 export function seasonOf(key: string): string {
+  if (lang() !== 'fr') return seasonLabel(key);
   const l = seasonLabel(key).split(' ')[0];
   return /^[aeiouyéè]/i.test(l) ? `d’${l}` : `de ${l}`;
 }
@@ -102,7 +106,7 @@ export function seasonStandings(players: SeasonPlayer[], bases: SeasonBase[]): S
     if (!b) continue;
     out.push({ userId: p.userId, name: p.name, avatarUrl: p.avatarUrl, gained: Math.max(0, p.uniques - b.uniques), packs: Math.max(0, p.packsOpened - b.packs), rank: 0 });
   }
-  out.sort((x, y) => y.gained - x.gained || y.packs - x.packs || x.name.localeCompare(y.name, 'fr'));
+  out.sort((x, y) => y.gained - x.gained || y.packs - x.packs || x.name.localeCompare(y.name, locale()));
   let r = 0;
   for (const s of out) if (s.gained > 0) s.rank = ++r;
   return out;

@@ -26,6 +26,7 @@
  *  - le curseur qui bouge près d'une piste y fait naître une perle au point le plus proche.
  * Mouvement réduit / « Effets réduits » : dessin tracé, immobile, sans canvas.
  */
+import '../../core/i18n/fr/game.views.gridArt'; // (textes de ce module, version anglaise)
 import { reducedMotion } from '../../core/motion';
 import { pathLength, samplePath } from './pathSample';
 
@@ -294,7 +295,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     }
     const trace = st.ghost ? null : mk(gTrace, st.dim ? 'dim' : 'line');
     const dots = (st.dots ?? []).map(([x, y, f, r]) => {
-      const el = svgEl('circle', { cx: x, cy: y, r: (r ?? 3.4) * 0.75, transform: st.transform, class: still ? 'drop on' : 'drop' });
+      const el = svgEl('circle', { cx: x, cy: y, r: (r ?? 3.4) * 0.75, transform: st.transform, class: still ? 'drop on' : 'drop' }); // i18n-ok
       gDots.append(el);
       return { el, f };
     });

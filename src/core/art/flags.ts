@@ -2,14 +2,19 @@
  * Drapeaux nationaux dessinés au Canvas 2D (aucune image externe), pour les cartes « Monde réel » : le pays où se
  * trouve (ou se trouvait) chaque Merveille. Emblèmes simplifiés à la taille d'une étiquette (≈ 56 × 37 px).
  */
+import { tData } from '../i18n';
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 export type CountryCode = 'EG' | 'IQ' | 'GR' | 'TR' | 'CN' | 'JO' | 'BR' | 'PE' | 'MX' | 'IT' | 'IN';
 
+// i18n-data:début
 export const COUNTRY_NAMES: Record<CountryCode, string> = {
   EG: 'Égypte', IQ: 'Irak', GR: 'Grèce', TR: 'Turquie', CN: 'Chine', JO: 'Jordanie',
   BR: 'Brésil', PE: 'Pérou', MX: 'Mexique', IT: 'Italie', IN: 'Inde',
 };
+// i18n-data:fin
+/** (version anglaise) nom du pays imprimé sur la carte, dans la langue du moment */
+export const countryName = (c: CountryCode) => tData(`country.${c}`, COUNTRY_NAMES[c]);
 
 /** Pays de chaque Merveille (site actuel). */
 export const WONDER_COUNTRY: Record<string, CountryCode> = {
@@ -79,7 +84,7 @@ export function drawFlag(g: Ctx, code: CountryCode, x: number, y: number, w: num
     case 'IQ': {
       bands(g, x, y, w, h, ['#ce1126', '#ffffff', '#000000']);
       g.fillStyle = '#007a3d';
-      g.font = `700 ${Math.round(h * 0.22)}px "Noto Naskh Arabic", "Arial", sans-serif`;
+      g.font = `700 ${Math.round(h * 0.22)}px "Noto Naskh Arabic", "Arial", sans-serif`; // i18n-ok
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillText('الله أكبر', cx, cy + h * 0.01);

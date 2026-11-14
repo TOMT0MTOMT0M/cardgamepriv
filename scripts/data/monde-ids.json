@@ -1140,8 +1140,8 @@
 "id": "geo-paramaribo"
 },
 "Capitales|Paris": {
-"dir": "art/lieux",
-"file": "001-paris.png",
+"dir": "art/monde",
+"file": "",
 "id": "geo-paris"
 },
 "Capitales|Phnom Penh": {
@@ -2170,8 +2170,8 @@
 "id": "zoo-majungasaure"
 },
 "Dinosaures & préhistoire|Mammouth laineux": {
-"dir": "art/animaux",
-"file": "036-mammouth-laineux.png",
+"dir": "art/monde",
+"file": "",
 "id": "zoo-mammouth-laineux"
 },
 "Dinosaures & préhistoire|Mastodonte": {
@@ -2355,8 +2355,8 @@
 "id": "zoo-utahraptor"
 },
 "Dinosaures & préhistoire|Vélociraptor": {
-"dir": "art/animaux",
-"file": "086-velociraptor.png",
+"dir": "art/monde",
+"file": "",
 "id": "zoo-velociraptor"
 },
 "Départements|Département d'Eure-et-Loir": {
@@ -9090,8 +9090,8 @@
 "id": "auto-nissan-240z-fairlady"
 },
 "Modèles iconiques|Nissan 350Z": {
-"dir": "art/voitures",
-"file": "120-nissan-350z.png",
+"dir": "art/monde",
+"file": "",
 "id": "auto-nissan-350z"
 },
 "Modèles iconiques|Nissan Cube": {
@@ -15671,8 +15671,8 @@
 "id": "miam-quiche-lorraine"
 },
 "Plats français|Raclette savoyarde": {
-"dir": "art/nourriture",
-"file": "001-raclette-savoyarde.png",
+"dir": "art/monde",
+"file": "",
 "id": "miam-raclette-savoyarde"
 },
 "Plats français|Ratatouille niçoise": {
@@ -19181,8 +19181,8 @@
 "id": "auto-nissan-skyline-gt-r-r32"
 },
 "Sportives japonaises|Nissan Skyline GT-R R34": {
-"dir": "art/voitures",
-"file": "009-nissan-skyline-gt-r-r34.png",
+"dir": "art/monde",
+"file": "",
 "id": "auto-nissan-skyline-gt-r-r34"
 },
 "Sportives japonaises|Subaru BRZ": {
@@ -19881,8 +19881,8 @@
 "id": "zoo-balaou-atlantique"
 },
 "Vie marine|Baleine bleue": {
-"dir": "art/animaux",
-"file": "021-baleine-bleue.png",
+"dir": "art/monde",
+"file": "",
 "id": "zoo-baleine-bleue"
 },
 "Vie marine|Baleine à bosse": {
@@ -21476,8 +21476,8 @@
 "id": "zoo-raie-leopard"
 },
 "Vie marine|Raie manta": {
-"dir": "art/animaux",
-"file": "065-raie-manta.png",
+"dir": "art/monde",
+"file": "",
 "id": "zoo-raie-manta"
 },
 "Vie marine|Raie radiée": {

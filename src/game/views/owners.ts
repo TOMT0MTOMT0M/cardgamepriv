@@ -1,3 +1,5 @@
+import { t } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.owners'; // (textes de ce module, version anglaise)
 import type { CardOwner, GameBackend } from '../backend';
 import { catalogEntry } from '../../core/sets/themes';
 import { cardWhere } from '../../core/cardSearch';
@@ -20,12 +22,12 @@ export function showOwners(backend: GameBackend, cardId: string, onTrade?: (o: C
     <div class="ow-h">
       ${e.rarity !== 'secret' ? `<img class="ow-img" alt="" src="${thumbUrl(e)}">` : '<span class="ow-img ow-sec">?</span>'}
       <div class="ow-id">
-        <span class="ow-k">Chercher un propriétaire</span>
+        <span class="ow-k">${t('own.title')}</span>
         <b id="ow-t">${esc(e.name)}</b>
         <span class="ow-sub">${esc(cardWhere(e))} · <i>${r.rank + 1}★</i></span>
-        <span class="ow-me">${esc(hint ?? (mine ? `Tu en as ${mine}` : 'Pas encore dans ta collection'))}</span>
+        <span class="ow-me">${esc(hint ?? (mine ? t('own.youHave', { n: mine }) : t('own.notYet')))}</span>
       </div>
-      <button class="ow-x" aria-label="Fermer">✕</button>
+      <button class="ow-x" aria-label="${t('common.close')}">✕</button>
     </div>
     <div class="ow-list" aria-live="polite"><div class="ow-row skel"></div><div class="ow-row skel"></div><div class="ow-row skel"></div></div>
   </div>`;
@@ -65,15 +67,15 @@ export function showOwners(backend: GameBackend, cardId: string, onTrade?: (o: C
     .then((owners) => {
       if (closed) return;
       if (!owners.length) {
-        list.innerHTML = `<p class="ow-empty">Personne d’autre ne l’a pour l’instant.${mine ? '' : ' ♥ Ajoute-la à tes envies : tes amis la verront.'}</p>`;
+        list.innerHTML = `<p class="ow-empty">${t('own.nobody', { wish: mine ? '' : t('own.wishHint') })}</p>`;
         return;
       }
       list.innerHTML = '';
       for (const o of owners) {
-        const what = o.free <= 0 ? 'déjà engagée ailleurs' : o.free >= 2 ? `${o.free} exemplaires · doublon` : o.count > 1 ? '1 exemplaire libre' : 'son seul exemplaire';
+        const what = o.free <= 0 ? t('own.busy') : o.free >= 2 ? `${o.free} exemplaires · doublon` : o.count > 1 ? '1 exemplaire libre' : t('own.only');
         const row = h('div', `ow-row${o.free >= 2 ? ' dup' : ''}${o.free <= 0 ? ' busy' : ''}`);
-        row.innerHTML = `<span class="dot${o.online ? ' on' : ''}" title="${o.online ? 'en ligne' : 'hors ligne'}"></span><span class="ow-who"><b>${esc(o.name)}</b><small>${what}</small></span>
-          <button class="btn-primary ow-go"${o.free <= 0 ? ' disabled' : ''}>Échanger</button>`;
+        row.innerHTML = `<span class="dot${o.online ? ' on' : ''}" title="${o.online ? t('own.online') : 'hors ligne'}"></span><span class="ow-who"><b>${esc(o.name)}</b><small>${what}</small></span>
+          <button class="btn-primary ow-go"${o.free <= 0 ? ' disabled' : ''}>${t('own.trade')}</button>`;
         row.querySelector('.ow-go')!.addEventListener('click', () => {
           close();
           go(o);

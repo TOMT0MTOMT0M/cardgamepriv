@@ -7,6 +7,7 @@
  * changer chez elles. Ne se rejoue pas quand on fait défiler les cartes (flèches / glisser) ni pour une carte dont la
  * rencontre vient d'être vue (moins d'une minute : l'ouverture du booster puis le récap).
  */
+import { t } from '../core/i18n';
 import type { Shell } from './shell';
 import type { ViewerScene } from './scenes/viewer';
 import type { RarityId } from '../core/rarity';
@@ -44,7 +45,7 @@ export async function playWildEncounter(shell: Shell, cardId: string, back: stri
   const btn = document.createElement('div');
   btn.className = 'wild-view-continue';
   btn.hidden = true;
-  btn.innerHTML = '<button class="btn-primary">Continuer</button>';
+  btn.innerHTML = '<button class="btn-primary">' + t('wild.continue') + '</button>';
   btn.style.cssText = 'position:fixed;left:0;right:0;bottom:calc(40px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:60;';
   document.body.append(btn);
   let over = false;

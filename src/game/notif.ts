@@ -6,23 +6,25 @@
  * iPhone : les notifications web n'existent que pour une appli ajoutée à l'écran d'accueil (iOS 16.4+) → on
  * l'explique en 2 étapes tant que le jeu tourne dans Safari.
  */
+import { t } from '../core/i18n';
 import type { GameBackend } from './backend';
 import { siteUrl } from '../core/siteRoot';
 import { busyButton, errMsg, esc, h, toast } from './ui';
 import { haptics } from '../core/haptics';
 
-export const KIND_LABELS: Array<[string, string, string]> = [
-  ['reserve', 'Réserve pleine', '15 boosters : viens ouvrir'],
-  ['trade', 'Échanges', 'proposition, contre-proposition, réponse'],
-  ['friend', 'Amis', 'demande reçue, demande acceptée'],
-  ['referral', 'Parrainage', 'ton filleul a ouvert ses boosters'],
-  ['game', 'Jeux', 'défi Pack Battle, gain à la roulette'],
-  ['chat', 'Chat', 'message privé, mention, le chat général qui se réveille'],
-  ['roulette', 'Roulette', '10 min avant chaque tirage (10 h, 20 h) — à cocher'],
-  ['news', 'Annonces de l’équipe', 'nouveau patch, événement'],
+/** (fonction : les libellés suivent la langue) */
+export const KIND_LABELS = (): Array<[string, string, string]> => [
+  ['reserve', t('notif.k.reserve'), t('notif.k.reserveD')],
+  ['trade', t('nav.trades.label'), t('notif.k.tradeD')],
+  ['friend', t('nav.friends.aria'), t('notif.k.friendD')],
+  ['referral', t('notif.k.referral'), t('notif.k.referralD')],
+  ['game', t('notif.k.games'), t('notif.k.gamesD')],
+  ['chat', t('notif.k.chat'), t('notif.k.chatD')],
+  ['roulette', t('notif.k.roulette'), t('notif.k.rouletteD')],
+  ['news', t('notif.k.news'), t('notif.k.newsD')],
 ];
 
-const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; // i18n-ok
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 
@@ -105,25 +107,25 @@ async function disable(backend: GameBackend): Promise<void> {
 export function notifPanel(backend: GameBackend): HTMLElement {
   const box = h('div', 'nf-box');
   if (!backend.push) {
-    box.innerHTML = '<span class="muted">Notifications : seulement en ligne (pas en démo).</span>';
+    box.innerHTML = '<span class="muted">' + t('notif.demo') + '</span>';
     return box;
   }
   if (!supported()) {
     box.innerHTML = isIOS() && !standalone()
-      ? `<div class="nf-ios"><b>Sur iPhone, les notifications marchent seulement une fois le jeu ajouté à l’écran d’accueil :</b><ol><li>Dans Safari : <b>Partager</b> (le carré avec la flèche) → <b>Sur l’écran d’accueil</b>.</li><li>Ouvre <b>Bébou</b> depuis l’écran d’accueil, reviens ici et touche <b>Activer</b>.</li></ol></div>`
-      : '<span class="muted">Ce navigateur ne gère pas les notifications.</span>';
+      ? `<div class="nf-ios"><b>${t('notif.ios.title')}</b><ol><li>${t('notif.ios.step1')}</li><li>${t('notif.ios.step2')}</li></ol></div>`
+      : '<span class="muted">' + t('notif.unsupported') + '</span>';
     return box;
   }
   const render = async () => {
     const s = await currentSub().catch(() => null);
     const st = await backend.push!.status(s?.endpoint ?? undefined).catch(() => null);
-    if (!st) return (box.innerHTML = '<span class="muted">Notifications indisponibles pour l’instant.</span>');
+    if (!st) return (box.innerHTML = '<span class="muted">' + t('notif.unavailable') + '</span>');
     const on = st.thisDevice && Notification.permission === 'granted';
     box.innerHTML = `
-      <div class="nf-row"><button class="${on ? 'btn-ghost' : 'btn-primary'} nf-toggle">${on ? 'Couper sur cet appareil' : 'Activer les notifications'}</button>
-        <span class="muted">${!st.configured ? 'Pas encore activées côté serveur.' : on ? `Cet appareil reçoit les notifications${st.devices > 1 ? ` (${st.devices} appareils au total)` : ''}.` : st.devices ? `${st.devices} autre${st.devices > 1 ? 's' : ''} appareil${st.devices > 1 ? 's' : ''} abonné${st.devices > 1 ? 's' : ''} — pas celui-ci.` : 'Échanges, amis, réserve pleine… même jeu fermé.'}</span></div>
-      ${st.devices ? `<div class="nf-prefs">${KIND_LABELS.map(([k, l, d]) => `<label class="nf-k"><input type="checkbox" data-k="${k}" ${st.prefs.includes(k) ? 'checked' : ''}><span><b>${esc(l)}</b><small>${esc(d)}</small></span></label>`).join('')}</div>
-      <div class="nf-row"><button class="btn-ghost nf-test">M’envoyer un test</button><span class="muted">Pas de notification entre 23 h et 8 h.</span></div>` : ''}`;
+      <div class="nf-row"><button class="${on ? 'btn-ghost' : 'btn-primary'} nf-toggle">${on ? t('notif.off') : t('notif.on')}</button>
+        <span class="muted">${!st.configured ? t('notif.notConfigured') : on ? t('notif.thisDevice', { total: st.devices > 1 ? t('notif.total', { n: st.devices }) : '' }) : st.devices ? t('notif.others', { n: st.devices }) : t('notif.pitch')}</span></div>
+      ${st.devices ? `<div class="nf-prefs">${KIND_LABELS().map(([k, l, d]) => `<label class="nf-k"><input type="checkbox" data-k="${k}" ${st.prefs.includes(k) ? 'checked' : ''}><span><b>${esc(l)}</b><small>${esc(d)}</small></span></label>`).join('')}</div>
+      <div class="nf-row"><button class="btn-ghost nf-test">${t('notif.test')}</button><span class="muted">${t('notif.quiet')}</span></div>` : ''}`;
     const tg = box.querySelector<HTMLButtonElement>('.nf-toggle')!;
     tg.addEventListener('click', () =>
       busyButton(tg, (async () => {
@@ -131,10 +133,10 @@ export function notifPanel(backend: GameBackend): HTMLElement {
         try {
           if (on) {
             await disable(backend);
-            toast('Notifications coupées sur cet appareil.', 'info');
+            toast(t('notif.offToast'), 'info');
           } else {
             await enable(backend);
-            toast('Notifications activées !', 'ok');
+            toast(t('notif.onToast'), 'ok');
           }
         } catch (e) {
           toast(errMsg(e), 'err');
@@ -157,7 +159,7 @@ export function notifPanel(backend: GameBackend): HTMLElement {
       busyButton(test, (async () => {
         try {
           const r = await backend.push!.test();
-          toast(`Test envoyé à ${r.devices} appareil${r.devices > 1 ? 's' : ''} (quelques secondes).`, 'ok');
+          toast(t('notif.testSent', { n: r.devices }), 'ok');
         } catch (e) {
           toast(errMsg(e), 'err');
         }

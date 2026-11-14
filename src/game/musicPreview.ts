@@ -1,3 +1,4 @@
+import { t as tr } from '../core/i18n';
 import type { MusicPreview } from './musicPreviews.data';
 import { catalogEntry, subthemeById } from '../core/sets/themes';
 import type { Shell } from './shell';
@@ -100,7 +101,7 @@ function makeChip(p: MusicPreview, onClose: () => void, host?: HTMLElement | nul
   c.className = host ? 'mp-chip mp-inline' : 'mp-chip';
   c.setAttribute('role', 'status');
   const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
-  c.innerHTML = `<span class="mp-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="mp-t"><b>${esc(p.track)}</b> — ${esc(p.artist)}<small>extrait · ${p.deezer && !p.url ? 'Deezer' : 'Apple Music'}</small></span><button class="mp-x" aria-label="Couper l’extrait">✕</button>`;
+  c.innerHTML = `<span class="mp-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="mp-t"><b>${esc(p.track)}</b> — ${esc(p.artist)}<small>extrait · ${p.deezer && !p.url ? 'Deezer' : 'Apple Music'}</small></span><button class="mp-x" aria-label="${tr('mp.mute')}">✕</button>`; // i18n-ok
   c.querySelector('.mp-x')!.addEventListener('click', (e) => {
     e.stopPropagation();
     onClose();

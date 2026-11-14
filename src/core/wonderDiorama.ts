@@ -15,6 +15,7 @@
  * - **perf** : la passe portail est limitée par scissor au rectangle écran de la carte (au lieu de tout l'écran),
  *   résolution 0,8 en mobile ; aucune passe en plus par rapport à 010.
  */
+import { tData } from './i18n';
 import {
   BoxGeometry,
   ClippingGroup,
@@ -100,95 +101,127 @@ export interface WonderAtmosphere {
   terrainType: 'dunes' | 'marble' | 'mountains' | 'water' | 'canyon';
 }
 
+// i18n-data:début
 export const WONDER_ATMOSPHERES: Record<string, WonderAtmosphere> = {
   // 1. Grande Pyramide de Khéops
   'mrv-grande-pyramide-de-kheops': {
-    name: 'Khéops (Gizeh)', coords: '29°58′45″N 31°08′03″E',
+    get name() {
+      return tData('wonder.mrv-grande-pyramide-de-kheops', 'Khéops (Gizeh)');
+    }, coords: '29°58′45″N 31°08′03″E',
     top: '#181008', horizon: '#e69a38', fog: '#9c5a1a', sun: '#fff3d1', ground: '#d99a4c', accent: '#ffe494',
     sunY: 0.35, light: 2.2, stars: false, terrainType: 'dunes',
   },
   // 2. Jardins suspendus de Babylone
   'mrv-jardins-suspendus-de-babylone': {
-    name: 'Jardins de Babylone', coords: '32°32′11″N 44°25′15″E',
+    get name() {
+      return tData('wonder.mrv-jardins-suspendus-de-babylone', 'Jardins de Babylone');
+    }, coords: '32°32′11″N 44°25′15″E',
     top: '#0a1a12', horizon: '#3d784a', fog: '#204d2e', sun: '#ffdfa0', ground: '#2e4a36', accent: '#72e098',
     sunY: 0.28, light: 1.8, stars: false, terrainType: 'marble',
   },
   // 3. Statue de Zeus à Olympie
   'mrv-statue-de-zeus-a-olympie': {
-    name: 'Statue de Zeus', coords: '37°38′16″N 21°37′48″E',
+    get name() {
+      return tData('wonder.mrv-statue-de-zeus-a-olympie', 'Statue de Zeus');
+    }, coords: '37°38′16″N 21°37′48″E',
     top: '#0d0f24', horizon: '#3b2f5c', fog: '#22193b', sun: '#f7d070', ground: '#3e3852', accent: '#ffd269',
     sunY: 0.45, light: 2.0, stars: true, terrainType: 'marble',
   },
   // 4. Temple d'Artémis à Éphèse
   'mrv-temple-d-artemis-a-ephese': {
-    name: 'Temple d’Artémis', coords: '37°56′59″N 27°21′50″E',
+    get name() {
+      return tData('wonder.mrv-temple-d-artemis-a-ephese', 'Temple d’Artémis');
+    }, coords: '37°56′59″N 27°21′50″E',
     top: '#081424', horizon: '#254a6e', fog: '#152d47', sun: '#d6ecff', ground: '#344657', accent: '#a6d8ff',
     sunY: 0.22, light: 1.5, stars: true, terrainType: 'marble',
   },
   // 5. Mausolée d'Halicarnasse
   'mrv-mausolee-d-halicarnasse': {
-    name: 'Mausolée d’Halicarnasse', coords: '37°02′16″N 27°25′27″E',
+    get name() {
+      return tData('wonder.mrv-mausolee-d-halicarnasse', 'Mausolée d’Halicarnasse');
+    }, coords: '37°02′16″N 27°25′27″E',
     top: '#101c2e', horizon: '#466c8a', fog: '#2c4b63', sun: '#ffeed6', ground: '#4a5b6d', accent: '#ffd9aa',
     sunY: 0.3, light: 1.7, stars: false, terrainType: 'marble',
   },
   // 6. Colosse de Rhodes
   'mrv-colosse-de-rhodes': {
-    name: 'Colosse de Rhodes', coords: '36°27′04″N 28°13′40″E',
+    get name() {
+      return tData('wonder.mrv-colosse-de-rhodes', 'Colosse de Rhodes');
+    }, coords: '36°27′04″N 28°13′40″E',
     top: '#0b1629', horizon: '#c4662d', fog: '#63301a', sun: '#ffb26b', ground: '#1a334d', accent: '#ff974d',
     sunY: 0.12, light: 2.0, stars: false, terrainType: 'water',
   },
   // 7. Phare d'Alexandrie
   'mrv-phare-d-alexandrie': {
-    name: 'Phare d’Alexandrie', coords: '31°12′50″N 29°53′08″E',
+    get name() {
+      return tData('wonder.mrv-phare-d-alexandrie', 'Phare d’Alexandrie');
+    }, coords: '31°12′50″N 29°53′08″E',
     top: '#060e1a', horizon: '#162e4a', fog: '#0d1e33', sun: '#fff4cc', ground: '#162e45', accent: '#ffe680',
     sunY: 0.4, light: 2.5, stars: true, terrainType: 'water',
   },
   // 8. Grande Muraille de Chine
   'mrv-grande-muraille-de-chine': {
-    name: 'Grande Muraille', coords: '40°25′00″N 116°34′00″E',
+    get name() {
+      return tData('wonder.mrv-grande-muraille-de-chine', 'Grande Muraille');
+    }, coords: '40°25′00″N 116°34′00″E',
     top: '#240f13', horizon: '#a8432a', fog: '#5c2217', sun: '#ffd185', ground: '#453832', accent: '#ff8a5c',
     sunY: 0.18, light: 1.9, stars: false, terrainType: 'mountains',
   },
   // 9. Pétra (Khazneh)
   'mrv-petra-khazneh': {
-    name: 'Pétra (Khazneh)', coords: '30°19′21″N 35°27′06″E',
+    get name() {
+      return tData('wonder.mrv-petra-khazneh', 'Pétra (Khazneh)');
+    }, coords: '30°19′21″N 35°27′06″E',
     top: '#240b09', horizon: '#a83c27', fog: '#691e10', sun: '#ffd59e', ground: '#853e31', accent: '#ffa07a',
     sunY: 0.25, light: 2.1, stars: false, terrainType: 'canyon',
   },
   // 10. Christ Rédempteur (Rio)
   'mrv-christ-redempteur-rio': {
-    name: 'Christ Rédempteur', coords: '22°57′06″S 43°12′39″W',
+    get name() {
+      return tData('wonder.mrv-christ-redempteur-rio', 'Christ Rédempteur');
+    }, coords: '22°57′06″S 43°12′39″W',
     top: '#091c36', horizon: '#3a72a8', fog: '#1e4873', sun: '#ffffff', ground: '#264832', accent: '#c2e4ff',
     sunY: 0.55, light: 2.2, stars: false, terrainType: 'mountains',
   },
   // 11. Machu Picchu
   'mrv-machu-picchu': {
-    name: 'Machu Picchu', coords: '13°09′48″S 72°32′44″W',
+    get name() {
+      return tData('wonder.mrv-machu-picchu', 'Machu Picchu');
+    }, coords: '13°09′48″S 72°32′44″W',
     top: '#0c211e', horizon: '#447d71', fog: '#25544b', sun: '#fff4cf', ground: '#2b4d3d', accent: '#9de8d4',
     sunY: 0.32, light: 1.9, stars: false, terrainType: 'mountains',
   },
   // 12. Chichén Itzá
   'mrv-chichen-itza': {
-    name: 'Chichén Itzá', coords: '20°40′58″N 88°34′07″W',
+    get name() {
+      return tData('wonder.mrv-chichen-itza', 'Chichén Itzá');
+    }, coords: '20°40′58″N 88°34′07″W',
     top: '#0a1c10', horizon: '#36693a', fog: '#1c4220', sun: '#ffedb3', ground: '#384f33', accent: '#a5e070',
     sunY: 0.38, light: 2.0, stars: false, terrainType: 'marble',
   },
   // 13. Colisée de Rome
   'mrv-colisee-de-rome': {
-    name: 'Colisée de Rome', coords: '41°53′25″N 12°29′32″E',
+    get name() {
+      return tData('wonder.mrv-colisee-de-rome', 'Colisée de Rome');
+    }, coords: '41°53′25″N 12°29′32″E',
     top: '#211018', horizon: '#ad582e', fog: '#6e301b', sun: '#ffd07a', ground: '#5e4c45', accent: '#ffae61',
     sunY: 0.15, light: 1.8, stars: false, terrainType: 'marble',
   },
   // 14. Taj Mahal
   'mrv-taj-mahal': {
-    name: 'Taj Mahal', coords: '27°10′30″N 78°02′31″E',
+    get name() {
+      return tData('wonder.mrv-taj-mahal', 'Taj Mahal');
+    }, coords: '27°10′30″N 78°02′31″E',
     top: '#18172e', horizon: '#8f5c75', fog: '#523041', sun: '#fff0e0', ground: '#4a4254', accent: '#ffd9eb',
     sunY: 0.2, light: 1.9, stars: true, terrainType: 'water',
   },
 };
+// i18n-data:fin
 
 const DEFAULT_ATMOSPHERE: WonderAtmosphere = {
-  name: 'Merveille du Monde',
+  get name() {
+    return tData('wonder.default', 'Merveille du Monde'); // i18n-ok
+  },
   coords: '00°00′00″N 00°00′00″E',
   top: '#0f0f24', horizon: '#573d75', fog: '#2e1e45', sun: '#ffd980', ground: '#3a344d', accent: '#f5c662',
   sunY: 0.3, light: 1.8, stars: true, terrainType: 'marble',

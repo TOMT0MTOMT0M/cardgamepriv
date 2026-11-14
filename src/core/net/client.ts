@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ConvexClient } from 'convex/browser';
 import type { SurveyAnswer } from '../survey';
 import type { FunctionReference } from 'convex/server';
@@ -19,16 +20,16 @@ const SS_RETURN_HASH = 'bebou.returnHash';
 const SERVER_DOWN_MS = 8000;
 
 /** Codes d'erreur du retour Discord (convex/http.ts) → phrases. */
-const AUTH_ERRORS: Record<string, string> = {
-  not_in_discord_server: 'Ton compte Discord n’est pas sur le serveur des potes : demande une invitation, puis reconnecte-toi.',
-  token_exchange_failed: 'Discord n’a pas confirmé la connexion. Réessaie.',
-  user_fetch_failed: 'Discord n’a pas répondu. Réessaie dans un instant.',
-  guild_check_failed: 'Impossible de vérifier ton serveur Discord. Réessaie.',
-  missing_code: 'Connexion annulée.',
-};
-export const SESSION_EXPIRED = 'Ta session a expiré : reconnecte-toi.';
+const AUTH_ERRORS = (): Record<string, string> => ({
+  not_in_discord_server: t('auth.notInServer'),
+  token_exchange_failed: t('auth.tokenFailed'),
+  user_fetch_failed: t('auth.userFailed'),
+  guild_check_failed: t('auth.guildFailed'),
+  missing_code: t('auth.cancelled'),
+});
+export const SESSION_EXPIRED = () => t('auth.expired');
 /** (ouverture 07/11) la saison de test a été remise à zéro : l'ancien compte n'existe plus */
-export const NEW_SEASON = 'Nouvelle saison : les compteurs sont remis à zéro, crée ton compte pour jouer.';
+export const NEW_SEASON = () => t('auth.newSeason');
 /** clés du stockage local liées à la progression : vidées après une remise à zéro (les réglages restent) */
 const SEASON_KEYS = ['bebou.vues.v1', 'bebou.cosm.seen', 'bebou.roueVue', 'bebou.booster', 'bebou.qty'];
 const LS_EPOCH = 'bebou.saison';
@@ -66,11 +67,17 @@ export interface MeProfile {
   pwAccount?: boolean;
   /** (ouverture 07/11) visite guidée automatique déjà jouée */
   guideSeen?: boolean;
+  /** (13/11) tour des nouveautés V2 déjà joué ; testeur du lien V2 */
+  v2TourSeen?: boolean;
+  tester?: boolean;
   /** (V2, bulles) derniers événements Jeux / parrainage (game/navDots.ts) */
   gamesNoticeAt?: number;
   referralNoticeAt?: number;
   /** (11/11) animation d'ouverture choisie ; absente : la déchirure */
   openingStyle?: string;
+  /** (version anglaise) langue du compte ; `langSet` : choisie à la main (reprise sur un nouvel appareil) */
+  lang?: 'fr' | 'en';
+  langSet?: boolean;
 }
 
 /** (ouverture 07/11, convex/launch.ts) heure d'ouverture, dernière remise à zéro, code du club demandé à l'inscription */
@@ -319,7 +326,7 @@ class GameNetClient {
     } else {
       const err = decodeURIComponent(hash.slice('#auth_error='.length));
       // code technique → phrase (le code inconnu reste visible entre parenthèses, pour nous aider)
-      this.state.authError = AUTH_ERRORS[err] ?? `Connexion impossible (${err.slice(0, 60)}). Réessaie.`;
+      this.state.authError = AUTH_ERRORS()[err] ?? t('auth.failed', { err: err.slice(0, 60) });
     }
     history.replaceState(null, '', window.location.pathname + window.location.search + back);
   }
@@ -351,7 +358,7 @@ class GameNetClient {
       if (!me && tokenArg.sessionToken && this.sessionToken === tokenArg.sessionToken) {
         expired = true;
         this.saveStoredToken(null);
-        this.state.authError = this.seasonChanged ? NEW_SEASON : SESSION_EXPIRED;
+        this.state.authError = this.seasonChanged ? NEW_SEASON() : SESSION_EXPIRED();
         queueMicrotask(() => this.setupSubscriptions());
       }
       const before = this.userSig;
@@ -805,7 +812,7 @@ class GameNetClient {
   public loginWithDiscord() {
     const siteUrl = this.convexSiteUrl;
     if (!siteUrl) {
-      alert('Configure d’abord VITE_CONVEX_URL dans ton fichier .env.local');
+      alert('Configure d’abord VITE_CONVEX_URL dans ton fichier .env.local'); // i18n-ok
       return;
     }
     // retour sur la page d'où l'on vient (le labo à la racine, ou le jeu dans /jeu/) ; le serveur remplace le hash,
@@ -848,6 +855,14 @@ class GameNetClient {
   /** (ouverture 07/11) visite guidée lancée : plus jamais rejouée sur ce compte */
   public async markGuideSeen() {
     if (this.client && this.sessionToken) await this.client.mutation(api.users.markGuideSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
+  }
+  /** (version anglaise) langue effective du joueur (push, messages privés Discord) ; `manual` : choisie par le joueur */
+  public async setLang(lang: 'fr' | 'en', manual: boolean) {
+    if (this.client && this.sessionToken) await this.client.mutation(api.users.setLang, { sessionToken: this.sessionToken, lang, manual }).catch(() => undefined);
+  }
+  /** (13/11) tour des nouveautés V2 lancé : plus jamais rejoué sur ce compte */
+  public async markV2TourSeen() {
+    if (this.client && this.sessionToken) await this.client.mutation(api.users.markV2TourSeen, { sessionToken: this.sessionToken }).catch(() => undefined);
   }
 
   private adoptToken(token: string) {

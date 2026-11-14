@@ -1,12 +1,14 @@
+import { lang, t as tr } from '../../core/i18n';
+import '../../core/i18n/fr/game.views.infos'; // (textes de ce module, version anglaise)
 import type { Shell } from '../shell';
-import { esc, h } from '../ui';
-import { UPDATES } from '../updates.data';
+import { esc, fmtN, h } from '../ui';
+import { CARDS_TOKEN, UPDATES, type UpdateMonth } from '../updates.data';
 import { PACK_CAP, PACK_REGEN_MS } from '../../core/packRegen';
 import { PACK_PRICE, fmtCoins } from '../../core/economy';
 import { CONTRACT_COST } from '../../core/contracts';
 import { PITY_LIMIT } from '../../core/pity';
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS } from '../../core/dropRates';
-import { BEBOU_SECRETS_LOCKED, GAME_CARD_COUNT, THEMES, fmtCount } from '../../core/sets/themes';
+import { BEBOU_SECRETS_LOCKED, GAME_CARD_COUNT, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 
 /**
  * Deux pages d'information (retours 06/11) :
@@ -19,16 +21,17 @@ export interface InfoView {
   leave(): void;
 }
 
-const TAG_LABEL = { nouveau: 'Nouveau', amélioré: 'Amélioré', corrigé: 'Corrigé' } as const;
+const TAG_LABEL = () => ({ nouveau: tr('if.tagNew'), amélioré: tr('if.tagUp'), corrigé: tr('if.tagFix') }) as const;
 
 /**
  * Un point « Libellé : texte » → libellé en titre court + texte lisible dessous (retours 11/11 : « pas lisible »).
  * Seulement si le libellé est court (sinon c'est une phrase qui contient « : »).
  */
 function point(p: string): string {
-  const i = p.indexOf(' : ');
+  const sep = lang() === 'fr' ? ' : ' : ': '; // (anglais : « Market: … »)
+  const i = p.indexOf(sep);
   if (i > 0 && i <= 32) {
-    const t = p.slice(i + 3);
+    const t = p.slice(i + sep.length);
     return `<li class="if-p"><b class="if-p-k">${esc(nbsp(p.slice(0, i)))}</b><span class="if-p-t">${esc(nbsp(t.charAt(0).toUpperCase() + t.slice(1)))}</span></li>`;
   }
   return `<li class="if-p"><span class="if-p-t">${esc(nbsp(p))}</span></li>`;
@@ -41,83 +44,88 @@ const OPEN_ENTRIES = 2;
 
 export function createUpdatesView(shell: Shell): InfoView {
   const el = h('section', 'view infos');
+  // (version anglaise, lot 7) notes en anglais : fichier à part (updates.en.ts), téléchargé seulement en anglais
+  const render = (list: UpdateMonth[]) => {
   let n = 0;
   el.innerHTML = `<div class="if-wrap if-maj">
-    <header class="if-head"><span class="kicker">MISES À JOUR</span><h1>Quoi de neuf</h1><p class="muted">Tout ce qui change sur le site. Le plus récent en haut.</p></header>
-    ${UPDATES.map((m) => `<section class="if-month"><h2>${esc(m.month)}</h2>${m.intro ? `<p class="if-intro">${esc(m.intro)}</p>` : ''}
+    <header class="if-head"><span class="kicker">${tr('if.updKicker')}</span><h1>${tr('if.whatsNew')}</h1><p class="muted">${tr('if.updSub')}</p></header>
+    ${list.map((m) => `<section class="if-month"><h2>${esc(m.month)}</h2>${m.intro ? `<p class="if-intro">${esc(m.intro)}</p>` : ''}
       ${m.entries
         .map((e) => {
-          const tag = e.tag === 'amélioré' ? 'up' : e.tag === 'corrigé' ? 'fix' : 'new';
+          const tag = e.tag === 'amélioré' ? 'up' : e.tag === 'corrigé' ? 'fix' : 'new'; // i18n-ok (valeurs de données)
           const nb = e.points.length;
           return `<details class="if-entry"${n++ < OPEN_ENTRIES ? ' open' : ''}>
-            <summary><span class="if-e-h"><span class="if-date">${esc(e.date)}</span><span class="if-tag t-${tag}">${TAG_LABEL[e.tag]}</span></span>
-              <span class="if-e-t"><h3>${esc(e.title)}</h3><span class="if-e-n">${nb} ${nb > 1 ? 'nouveautés' : 'nouveauté'}</span></span></summary>
-            <ul class="if-points">${e.points.map(point).join('')}</ul>
+            <summary><span class="if-e-h"><span class="if-date">${esc(e.date)}</span><span class="if-tag t-${tag}">${TAG_LABEL()[e.tag]}</span></span>
+              <span class="if-e-t"><h3>${esc(e.title)}</h3><span class="if-e-n">${nb} ${tr('if.changeWord', { n: nb })}</span></span></summary>
+            <ul class="if-points">${e.points.map((x) => point(x.split(CARDS_TOKEN).join(fmtN(PUBLIC_CARD_COUNT)))).join('')}</ul>
           </details>`;
         })
         .join('')}
     </section>`).join('')}
   </div>`;
+  };
+  render(UPDATES);
+  if (lang() === 'en') void import('../updates.en').then((m) => lang() === 'en' && render(m.UPDATES_EN));
   return { el, enter: () => (shell.show(null), shell.setDimmed(true)), leave() {} };
 }
 
 export function createTutorialView(shell: Shell): InfoView {
   const el = h('section', 'view infos');
-  const pct = (v: number) => `${String(v).replace('.', ',')} %`;
+  const pct = (v: number) => (lang() === 'fr' ? `${String(v).replace('.', ',')} %` : `${v}%`);
   const rows = (['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as const)
     .map((r, i) => `<tr><td>${'★'.repeat(i + 1)}</td><td>${pct(SLOT_WEIGHTS[r])}</td><td>${GUARANTEED_WEIGHTS[r] ? pct(GUARANTEED_WEIGHTS[r]) : '—'}</td></tr>`)
     .join('');
   const sec = (id: string, title: string, body: string) => `<section class="if-sec" id="tuto-${id}"><h2>${title}</h2>${body}</section>`;
   const toc: Array<[string, string]> = [
-    ['principe', 'Le principe'], ['boosters', 'Les boosters'], ['rarete', 'Les raretés'], ['pieces', 'Les pièces'],
-    ['collection', 'La collection'], ['contrats', 'Contrats et forge'], ['echanges', 'Les échanges'], ['jeux', 'Les jeux'], ['profil', 'Ton profil'], ['aide', 'Un souci ?'],
+    ['principe', tr('if.principle')], ['boosters', tr('if.boosters')], ['rarete', tr('if.rarities')], ['pieces', tr('if.coins')],
+    ['collection', tr('if.collection')], ['contrats', tr('if.contractsForge')], ['echanges', tr('if.trades')], ['jeux', tr('if.games')], ['profil', tr('if.profile')], ['aide', tr('if.help')],
   ];
   el.innerHTML = `<div class="if-wrap">
-    <header class="if-head"><span class="kicker">TUTORIEL</span><h1>Comment ça marche</h1><p class="muted">Les grandes règles du site, en deux minutes de lecture.</p></header>
-    <nav class="if-toc" aria-label="Sommaire">${toc.map(([id, t]) => `<a href="#/tuto" data-to="${id}">${t}</a>`).join('')}</nav>
-    ${sec('principe', 'Le principe', `<p>Bébou Cartes, c’est notre jeu de cartes à collectionner, entre nous. On ouvre des boosters, on complète sa collection et on s’échange les doublons. Pas de combat : tout est dans l’ouverture et la collection. Il y a aujourd’hui <b>${fmtCount(GAME_CARD_COUNT)}</b> cartes à trouver.</p>`)}
-    ${sec('boosters', 'Les boosters', `<ul>
-      <li><b>5 packs</b> : le <b>Bebou Pack</b> (toutes les cartes des 4 thèmes) et ${THEMES.map((t) => `le <b>${esc(t.label)} Pack</b>`).join(', ')}.</li>
-      <li>Un booster = <b>5 cartes</b>, dont au moins une <b>3★</b> ou mieux.</li>
-      <li>Ta réserve se recharge toute seule : <b>1 booster toutes les ${PACK_REGEN_MS / 60000} minutes</b>, jusqu’à <b>${PACK_CAP}</b>.</li>
-      <li>Tu peux aussi en <b>acheter</b> dans la fiche du booster : ${fmtCoins(PACK_PRICE)} pièces l’unité, autant que tu veux.</li>
-      <li><b>5 ou 10 boosters d’un coup</b> : un seul gros booster de 25 ou 50 cartes, avec exactement les mêmes chances.</li>
-      <li>« <b>Tout révéler</b> » retourne les cartes tout seul ; « <b>4★ et plus</b> » ne s’arrête que sur les belles.</li>
-      <li><b>Pity</b> : après ${PITY_LIMIT - 1} boosters sans 6★, le suivant en contient une à coup sûr.</li>
+    <header class="if-head"><span class="kicker">${tr('if.tutoKicker')}</span><h1>${tr('if.tutoTitle')}</h1><p class="muted">${tr('if.tutoSub')}</p></header>
+    <nav class="if-toc" aria-label="${tr('if.toc')}">${toc.map(([id, t]) => `<a href="#/tuto" data-to="${id}">${t}</a>`).join('')}</nav>
+    ${sec('principe', tr('if.principle'), `<p>${tr('if.principleBody')} <b>${fmtN(BEBOU_SECRETS_LOCKED ? PUBLIC_CARD_COUNT : GAME_CARD_COUNT)}</b> ${tr('if.cardsToFind')}</p>`)}
+    ${sec('boosters', tr('if.boosters'), `<ul>
+      <li><b>5 packs</b>${tr('if.packsA')} <b>Bebou Pack</b> ${tr('if.packsB', { list: THEMES.map((t) => `${tr('if.the')} <b>${tr('if.packName', { n: esc(t.label) })}</b>`).join(', ') })}</li>
+      <li>${tr('if.boosterEq')} <b>${tr('if.fiveCards')}</b>${tr('if.atLeastOne')} <b>3★</b> ${tr('if.orBetter')}</li>
+      <li>${tr('if.reserveRefill')} <b>${tr('if.reserveRate', { m: PACK_REGEN_MS / 60000 })}</b>${tr('if.upTo')} <b>${PACK_CAP}</b>.</li>
+      <li>${tr('if.canAlso')} <b>${tr('if.buy')}</b> ${tr('if.buyBody', { p: fmtCoins(PACK_PRICE) })}</li>
+      <li><b>${tr('if.bulk')}</b>${tr('if.bulkBody')}</li>
+      <li>${tr('if.lq')}<b>${tr('if.revealAll')}</b>${tr('if.revealMid')} <b>${tr('if.fourUp')}</b>${tr('if.revealEnd')}</li>
+      <li><b>${tr('if.pity')}</b>${tr('if.pityBody', { n: PITY_LIMIT - 1 })}</li>
     </ul>`)}
-    ${sec('rarete', 'Les raretés', `<p>Chaque carte a de <b>1★ à 6★</b>. Les chances, pour chaque carte d’un booster :</p>
-      <table class="if-table"><thead><tr><th>Étoiles</th><th>Cartes 1 à 4</th><th>Carte 5 (garantie)</th></tr></thead><tbody>${rows}</tbody></table>
-      <p>Dans la fiche d’un booster, la chance exacte de <b>chaque carte</b> est écrite sous elle. Au-dessus de tout : les cartes <b>secrètes</b> (les Merveilles du monde dans le World Pack${BEBOU_SECRETS_LOCKED ? ', et les Bébous, verrouillées pour l’instant' : ', et les Bébous dans le Bebou Pack'}).</p>`)}
-    ${sec('pieces', 'Les pièces', `<ul>
-      <li>Chaque booster ouvert rapporte quelques pièces.</li>
-      <li>Le <b>calendrier</b> (la flamme en haut) : un cadeau par jour de connexion, de plus en plus gros sur 30 jours. <b>10 boosters</b> chaque semaine d’affilée, et <b>50 boosters</b> en plus pour un mois parfait.</li>
-      <li>Les <b>missions</b> du jour et de la semaine, les <b>succès</b>, et les <b>primes de complétion</b> (5 pièces par carte d’un album bouclé).</li>
-      <li>On les dépense en boosters, en mises dans l’espace Jeux et dans les échanges.</li>
+    ${sec('rarete', tr('if.rarities'), `<p>${tr('if.rarA')} <b>${tr('if.starRange')}</b>${tr('if.rarB')}</p>
+      <table class="if-table"><thead><tr><th>${tr('if.stars')}</th><th>${tr('if.cards14')}</th><th>${tr('if.card5')}</th></tr></thead><tbody>${rows}</tbody></table>
+      <p>${tr('if.exactA')} <b>${tr('if.eachCard')}</b> ${tr('if.exactB')} <b>${tr('if.secret')}</b> ${tr('if.secretBody', { x: BEBOU_SECRETS_LOCKED ? tr('if.bebouLocked') : tr('if.bebouPack') })}</p>`)}
+    ${sec('pieces', tr('if.coins'), `<ul>
+      <li>${tr('if.coinsOpen')}</li>
+      <li>${tr('if.theCap')} <b>${tr('if.calendar')}</b> ${tr('if.calendarBody')} <b>10 boosters</b> ${tr('if.weekly')} <b>50 boosters</b> ${tr('if.monthly')}</li>
+      <li>${tr('if.missionsA')} <b>${tr('if.missions')}</b> ${tr('if.missionsB')} <b>${tr('if.achievements')}</b>${tr('if.andThe')} <b>${tr('if.completion')}</b> ${tr('if.completionBody')}</li>
+      <li>${tr('if.spend')}</li>
     </ul>`)}
-    ${sec('collection', 'La collection', `<ul>
-      <li><b>Cartes</b> : toutes tes cartes, les plus rares d’abord. <b>Albums</b> : un thème, puis ses familles (Pokémon, Jeux vidéo…), puis les albums et leurs cartes.</li>
-      <li>Touche une carte pour la voir en grand ; ♥ l’ajoute à tes <b>envies</b>.</li>
-      <li>Les <b>classeurs</b> rangent tes cartes comme tu veux ; épingles-en jusqu’à 3 sur ton profil.</li>
+    ${sec('collection', tr('if.collection'), `<ul>
+      <li><b>${tr('if.cardsTab')}</b>${tr('if.cardsTabBody')} <b>${tr('if.albums')}</b>${tr('if.albumsBody')}</li>
+      <li>${tr('if.tapCard')} <b>${tr('if.wishlist')}</b>.</li>
+      <li>${tr('if.binderA')} <b>${tr('if.binders')}</b> ${tr('if.binderB')}</li>
     </ul>`)}
-    ${sec('contrats', 'Contrats et forge', `<ul>
-      <li><b>Contrat</b> : brûle des doublons d’une même étoile contre <b>une carte de l’étoile au-dessus</b> — 1★ et 2★ : ${CONTRACT_COST.common} cartes · 3★ et 4★ : ${CONTRACT_COST.rare} · 5★ : ${CONTRACT_COST.legendary}. Elle vient des mêmes familles que les cartes brûlées, et c’est une nouvelle carte si tu peux en avoir une.</li>
-      <li><b>Forge</b> : brûle des doublons contre des pièces.</li>
-      <li>On ne perd jamais le dernier exemplaire d’une carte.</li>
+    ${sec('contrats', tr('if.contractsForge'), `<ul>
+      <li><b>${tr('if.contract')}</b>${tr('if.contractA')} <b>${tr('if.contractNext')}</b> ${tr('if.contractBody', { a: CONTRACT_COST.common ?? 0, b: CONTRACT_COST.rare ?? 0, c: CONTRACT_COST.legendary ?? 0 })}</li>
+      <li><b>${tr('if.forge')}</b>${tr('if.forgeBody')}</li>
+      <li>${tr('if.neverLast')}</li>
     </ul>`)}
-    ${sec('echanges', 'Les échanges', `<ul>
-      <li><b>Pour toi</b> : des échanges prêts. Marque les cartes que tu veux (♥ Je la veux) : le jeu trouve qui en a un doublon et ce que tu peux donner en échange (un de tes doublons de même étoile qui lui manque). Un toucher : Demander.</li>
-      <li>Tes <b>doublons</b> sont proposés aux autres par défaut (tu gardes toujours un exemplaire). « Protéger » sur une carte : elle n’est jamais proposée.</li>
-      <li>Une demande reçue : <b>Accepter</b>, <b>Choisir autre chose</b> parmi ses doublons de même étoile, ou <b>Refuser</b>.</li>
-      <li><b>Chercher</b> : n’importe quelle carte — qui l’a, qui la vend et à quel prix (marché), qui la veut. <b>Composer moi-même</b> (dans En cours) pour un échange sur mesure.</li>
-      <li>Une carte engagée dans un échange en cours est <b>verrouillée</b> jusqu’à la fin.</li>
+    ${sec('echanges', tr('if.trades'), `<ul>
+      <li><b>${tr('if.forYou')}</b>${tr('if.forYouBody')}</li>
+      <li>${tr('if.yourA')} <b>${tr('if.duplicates')}</b> ${tr('if.dupBody')}</li>
+      <li>${tr('if.request')} <b>${tr('if.accept')}</b>, <b>${tr('if.chooseElse')}</b> ${tr('if.fromTheirDups')} <b>${tr('if.decline')}</b>.</li>
+      <li><b>${tr('if.search')}</b>${tr('if.searchBody')} <b>${tr('if.compose')}</b> ${tr('if.composeBody')}</li>
+      <li>${tr('if.lockedA')} <b>${tr('if.locked')}</b> ${tr('if.lockedB')}</li>
     </ul>`)}
-    ${sec('jeux', 'Les jeux', `<ul>
-      <li><b>1v1 Pack Battle</b> : chacun mise le même nombre de boosters ; on ouvre côte à côte, le plus gros total d’étoiles rafle toutes les cartes.</li>
-      <li><b>Battle Royale</b> : de 3 à 8 joueurs, un booster chacun, le meilleur total gagne tout.</li>
-      <li><b>Roulette</b> : mise sur des numéros, deux tirages par jour.</li>
+    ${sec('jeux', tr('if.games'), `<ul>
+      <li><b>1v1 Pack Battle</b>${tr('if.battleBody')}</li>
+      <li><b>Battle Royale</b>${tr('if.royaleBody')}</li>
+      <li><b>${tr('if.roulette')}</b>${tr('if.rouletteBody')}</li>
     </ul>`)}
-    ${sec('profil', 'Ton profil', `<p>« <b>Personnaliser</b> » : bannière, cadre, couleur, vitrine, titre et badges. Une palette de couleurs commune à tout, plus la couleur libre ; certaines couleurs se débloquent avec les <b>succès</b>. La vitrine montre tes plus belles cartes.</p>`)}
-    ${sec('aide', 'Un souci ?', `<p>Un bug, une carte à refaire, une idée : l’onglet <a href="#/suggestions">Suggestions</a>. Hugo et Tom les reçoivent et te répondent là-bas. Les nouveautés sont dans <a href="#/maj">Mises à jour</a>.</p>`)}
+    ${sec('profil', tr('if.profile'), `<p>${tr('if.lq')}<b>${tr('if.customise')}</b>${tr('if.customiseBody')} <b>${tr('if.achievements')}</b>${tr('if.showcaseBody')}</p>`)}
+    ${sec('aide', tr('if.help'), `<p>${tr('if.helpA')} <a href="#/suggestions">${tr('if.suggestions')}</a>${tr('if.helpB')} <a href="#/maj">${tr('if.updates')}</a>.</p>`)}
   </div>`;
   el.querySelectorAll<HTMLAnchorElement>('.if-toc a').forEach((a) =>
     a.addEventListener('click', (e) => {

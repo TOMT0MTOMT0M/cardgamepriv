@@ -15,25 +15,49 @@
     <meta property="og:site_name" content="Bébou" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:url" content="https://cardgamepriv.pages.dev/jeu/" />
-    <meta property="og:image" content="https://cardgamepriv.pages.dev/og-booster.jpg" />
+    <meta property="og:image" content="https://cardgamepriv.pages.dev/og-bebou.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://cardgamepriv.pages.dev/og-booster.jpg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="../icons/booster-fav-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="../icons/booster-fav-16.png" />
-    <link rel="icon" type="image/png" sizes="48x48" href="../icons/booster-fav-48.png" />
-    <link rel="apple-touch-icon" href="../icons/booster-180.png" />
+    <meta name="twitter:image" content="https://cardgamepriv.pages.dev/og-bebou.jpg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="../icons/bebou-fav-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../icons/bebou-fav-16.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="../icons/bebou-fav-48.png" />
+    <link rel="apple-touch-icon" href="../icons/bebou-180.png" />
     <link rel="manifest" href="../manifest.webmanifest" />
     <meta name="apple-mobile-web-app-title" content="Bébou" />
     <!-- ajouté à l'écran d'accueil : plein écran (plus de barre d'URL ni de geste « page précédente » de Safari) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- (version anglaise) langue choisie AVANT le premier dessin (même règle que src/game/lang.ts ; liste des langues
+         françaises injectée au build depuis src/core/i18n.ts) : <html lang>, titre de l'onglet, écran de chargement -->
+    <script>
+      (function () {
+        try {
+          var L = '__BEBOU_FR_DEVICE_LANGS__'.split(',');
+          var q = new URLSearchParams(location.search).get('lang');
+          var st = null;
+          try { st = localStorage.getItem('bebou.lang'); } catch (e) {}
+          var d = ((navigator.languages && navigator.languages[0]) || navigator.language || '').trim().toLowerCase().replace('_', '-');
+          var l = q === 'en' || q === 'fr' ? q : st === 'en' || st === 'fr' ? st : L.indexOf(d) >= 0 ? 'fr' : 'en';
+          document.documentElement.lang = l;
+          if (l === 'en') {
+            document.title = 'Bébou — cards';
+            // (version anglaise, lot 6) installation sur l'écran d'accueil : nom et description en anglais
+            var mf = document.querySelector('link[rel=manifest]');
+            if (mf) mf.setAttribute('href', '../manifest.en.webmanifest');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <!-- écran de chargement visible dès la première image, pendant que le jeu (3D) se télécharge ; main.ts le reprend -->
     <div id="app"><div class="loader"><div class="l-logo">BÉBOU</div><div class="l-bar"><i style="width: 5%"></i></div><div class="l-txt">chargement…</div><div class="l-tip"></div></div></div>
+    <script>
+      if (document.documentElement.lang === 'en') document.querySelector('.l-txt').textContent = 'loading…';
+    </script>
     <script>
       // Barre de chargement « vivante » (retours de Tom, 4 nov. : sur téléphone elle restait figée). Animée par le
       // compositeur (transform, Web Animations) : elle avance même quand le téléchargement / l'analyse du jeu occupe
@@ -86,8 +110,9 @@
                 seen[e.name] = 1; got += s; net += e.transferSize || 0;
               });
               // (main.ts reprend le texte dès qu'il démarre : on ne touche qu'au texte d'attente)
-              if (net > 20000 && got < total && /^(chargement|téléchargement)/.test(txt.textContent)) {
-                txt.textContent = 'téléchargement du jeu · ' + Math.min(99, Math.round((got / total) * 100)) + ' %';
+              if (net > 20000 && got < total && /^(chargement|téléchargement|loading|downloading)/.test(txt.textContent)) {
+                var en = document.documentElement.lang === 'en';
+                txt.textContent = (en ? 'downloading the game · ' : 'téléchargement du jeu · ') + Math.min(99, Math.round((got / total) * 100)) + (en ? '%' : ' %');
               }
             }
             add(performance.getEntriesByType('resource'));

@@ -3,16 +3,18 @@
  * spectateurs qui s'emballe, des messages anonymes qui défilent en colonne (« ????? », « LÀ LÀ LÀ », « 6 ÉTOILES ?! »),
  * puis tout se fige : la carte entre par le bas, « pose » au centre — et le compteur explose.
  */
+import { lang } from '../../../core/i18n';
+import { locale } from '../../../core/i18n';
 import type { SceneCtx } from '../kit';
 
-const MSGS = ['?????', 'attends attends', 'LÀ LÀ LÀ', 'c pas possible', 'non non non', 'il l’a', '6 ÉTOILES ?!', 'CLIP CLIP CLIP', 'jsuis pas prêt', 'OMG', 'le sang', 'regarde regarde'];
+const MSGS = () => lang() === 'fr' ? ['?????', 'attends attends', 'LÀ LÀ LÀ', 'c pas possible', 'non non non', 'il l’a', '6 ÉTOILES ?!', 'CLIP CLIP CLIP', 'jsuis pas prêt', 'OMG', 'le sang', 'regarde regarde'] : ['?????', 'wait wait', 'NO WAY NO WAY', 'that’s not possible', 'no no no', 'he got it', '6 STARS ?!', 'CLIP CLIP CLIP', 'i’m not ready', 'OMG', 'bro', 'look look']; // i18n-ok
 
 export default function direct(k: SceneCtx) {
   const { tl, u, el, sfx, actor, accent, w, h } = k;
   el('div', '', 'position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 40%,#111113,#040405 75%);');
   const live = el('div', 'mp-label', `left:${u * 5}px;top:${u * 6}px;font-size:${u * 3.6}px;color:#fff;display:flex;align-items:center;gap:${u * 1.5}px;opacity:0;`);
   const dot = el('i', '', `display:inline-block;width:${u * 2.2}px;height:${u * 2.2}px;border-radius:50%;background:${accent};box-shadow:0 0 ${u * 2}px ${accent};`, live);
-  live.append('EN DIRECT');
+  live.append(lang() === 'fr' ? 'EN DIRECT' : 'LIVE'); // i18n-ok
   void dot;
   const viewers = el('div', '', `position:absolute;right:${u * 5}px;top:${u * 5.4}px;font:700 ${u * 6.4}px var(--mono);color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.02em;opacity:0;`);
   const col = el('div', '', `position:absolute;left:${u * 5}px;bottom:${Math.max(u * 12, 64)}px;width:88%;display:flex;flex-direction:column;gap:${u * 2}px;mask-image:linear-gradient(180deg,transparent,#000 40%);-webkit-mask-image:linear-gradient(180deg,transparent,#000 40%);`);
@@ -22,12 +24,12 @@ export default function direct(k: SceneCtx) {
   k.at(0.1, () => sfx.notif(0.1));
   tl.to(viewers, { opacity: 1, duration: 0.25 }, 0.3);
   const v = { n: 1200 + Math.floor(k.rand() * 4000) };
-  const bump = (to: number, at: number, d: number) => tl.to(v, { n: to, duration: d, ease: 'power2.inOut', onUpdate: () => (viewers.textContent = `${Math.round(v.n).toLocaleString('fr-FR')} 👁`.replace(' 👁', '')) }, at);
-  viewers.textContent = v.n.toLocaleString('fr-FR');
+  const bump = (to: number, at: number, d: number) => tl.to(v, { n: to, duration: d, ease: 'power2.inOut', onUpdate: () => (viewers.textContent = `${Math.round(v.n).toLocaleString(locale())} 👁`.replace(' 👁', '')) }, at);
+  viewers.textContent = v.n.toLocaleString(locale());
   bump(v.n * 1.4, 0.4, 0.8);
   bump(v.n * 3.5, 1.3, 0.7);
   // les messages tombent de plus en plus vite
-  const order = [...MSGS].sort(() => k.rand() - 0.5);
+  const order = [...MSGS()].sort(() => k.rand() - 0.5);
   order.forEach((m, i) => {
     const at = 0.4 + Math.pow(i / order.length, 1.6) * 1.5;
     tl.call(() => {

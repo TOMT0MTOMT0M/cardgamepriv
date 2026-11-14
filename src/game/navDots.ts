@@ -1,3 +1,4 @@
+import { t } from '../core/i18n';
 import { liveRegen, type GameBackend } from './backend';
 import { UPDATES } from './updates.data';
 
@@ -77,17 +78,17 @@ export function installNavDots(backend: GameBackend, top: HTMLElement, me: HTMLE
     if (route === 'maj') set(K('maj', 'all'), latestUpdate());
 
     const full = !!u && liveRegen(u).nextAt === null;
-    show(dot(top.querySelector('nav a[data-r=""]'), 'Réserve de boosters pleine : la recharge est à l’arrêt'), full && route !== '');
+    show(dot(top.querySelector('nav a[data-r=""]'), t('dot.reserveFull')), full && route !== '');
 
     const games = !!u && (u.gamesNoticeAt ?? 0) > seenAt('jeux', u.id) && route !== 'jeux';
-    show(dot(top.querySelector('nav a[data-r="jeux"]'), 'Du nouveau dans l’espace Jeux (défi, partie, roulette)'), games);
+    show(dot(top.querySelector('nav a[data-r="jeux"]'), t('dot.games')), games);
 
     const ref = !!u && (u.referralNoticeAt ?? 0) > seenAt('amis', u.id) && route !== 'amis';
-    show(dot(top.querySelector('nav a[data-r="amis"]'), 'Parrainage : un filleul est arrivé ou t’a rapporté des boosters'), ref);
+    show(dot(top.querySelector('nav a[data-r="amis"]'), t('dot.referral')), ref);
 
     const unread = !!u && latestUpdate() !== '' && get(K('maj', 'all')) !== latestUpdate() && route !== 'maj';
-    show(dot(top.querySelector('.nav-extra a[data-r="maj"]'), 'Nouvelle mise à jour à lire'), unread);
-    show(dot(me.querySelector('.mm-link[data-r="maj"]'), 'Nouvelle mise à jour à lire'), unread);
+    show(dot(top.querySelector('.nav-extra a[data-r="maj"]'), t('dot.update')), unread);
+    show(dot(me.querySelector('.mm-link[data-r="maj"]'), t('dot.update')), unread);
     if (unread !== majUnread) {
       majUnread = unread;
       opts.onChange();

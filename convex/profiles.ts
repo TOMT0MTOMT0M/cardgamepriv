@@ -1,3 +1,4 @@
+import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, internalMutation, internalQuery, mutation, query, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -279,14 +280,14 @@ export const setShowcase = mutation({
   args: { sessionToken: v.string(), cards: v.array(v.object({ cardId: v.string(), rarity: rarityValidator })) },
   handler: async (ctx, { sessionToken, cards }) => {
     const user = await requireUser(ctx, sessionToken);
-    if (cards.length > MAX_SHOWCASE) throw new ConvexError(`${MAX_SHOWCASE} cartes au maximum dans la vitrine.`);
+    if (cards.length > MAX_SHOWCASE) throw new ConvexError(fe('profiles.1', { p0: MAX_SHOWCASE }));
     for (const c of cards) {
-      if (!catalogCard(c.cardId)) throw new ConvexError('Carte inconnue.');
+      if (!catalogCard(c.cardId)) throw new ConvexError(fe('profiles.2'));
       const inv = await ctx.db
         .query('inventory')
         .withIndex('by_user_card_rarity', (q) => q.eq('userId', user._id).eq('cardId', c.cardId).eq('rarity', c.rarity))
         .unique();
-      if (!inv || inv.count < 1) throw new ConvexError(`Tu n’as pas (ou plus) ${catalogCard(c.cardId)?.name ?? 'cette carte'}.`);
+      if (!inv || inv.count < 1) throw new ConvexError(fe('profiles.4', { p0: catalogCard(c.cardId)?.name ?? 'cette carte' }));
     }
     await ctx.db.patch(user._id, { showcase: cards });
     return { ok: true };
@@ -327,10 +328,10 @@ export const setOpening = mutation({
   handler: async (ctx, { sessionToken, style }) => {
     const user = await requireUser(ctx, sessionToken);
     const o = OPENINGS.find((x) => x.id === style);
-    if (!o) throw new ConvexError('Animation d’ouverture inconnue.');
+    if (!o) throw new ConvexError(fe('profiles.5'));
     if (o.need) {
       const stats = await statsCached(ctx, user);
-      if (!o.unlock(stats)) throw new ConvexError(`Pas encore débloquée. ${o.how}`);
+      if (!o.unlock(stats)) throw new ConvexError(fe('profiles.6', { p0: o.how }));
     }
     const { opening: _old, ...rest } = user.cosmetics ?? {};
     await ctx.db.patch(user._id, { cosmetics: o.id === DEFAULT_OPENING ? rest : { ...rest, opening: o.id } });
@@ -359,9 +360,9 @@ export const setProfileMedia = mutation({
     const old = user[field];
     if (storageId && storageId !== old) {
       const meta = await ctx.db.system.get(storageId);
-      if (!meta) throw new ConvexError('Fichier introuvable : renvoie-le.');
+      if (!meta) throw new ConvexError(fe('profiles.7'));
       const owner = await ctx.db.query('profileMedia').withIndex('by_storage', (q) => q.eq('storageId', storageId)).unique();
-      if (owner && owner.userId !== user._id) throw new ConvexError('Ce fichier ne t’appartient pas.');
+      if (owner && owner.userId !== user._id) throw new ConvexError(fe('profiles.8'));
       const bad = profileMediaProblem(meta.size, meta.contentType);
       if (bad) {
         if (!owner) await ctx.storage.delete(storageId);

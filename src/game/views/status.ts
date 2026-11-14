@@ -1,3 +1,4 @@
+import { t as tr } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import { STREAK_CYCLE, STREAK_REWARD, streakClaimable, streakDay, touchStreak } from '../../core/streak';
@@ -37,27 +38,27 @@ export function createStatus(backend: GameBackend, shell: Shell) {
   function renderStreak() {
     const u = backend.state.user;
     const s = streakNow();
-    pop.setAttribute('aria-label', 'Connexion : série et calendrier');
+    pop.setAttribute('aria-label', tr('hdr.streakTitle'));
     if (!u || !s) {
-      pop.innerHTML = `<div class="msn-head"><b>Connexion</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi chaque jour : au 7e, une récompense.')}`;
+      pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.streak')}</b>${CLOSE_X()}</div>${loginPrompt(backend, tr('st.hint'))}`;
       return;
     }
     const eco = backend.eco.snapshot;
     const day = streakDay(s);
     const claimable = streakClaimable(s);
     const dots = Array.from({ length: STREAK_CYCLE }, (_, i) => `<span class="st-d${i < day ? ' on' : ''}${i === day - 1 ? ' now' : ''}${i === STREAK_CYCLE - 1 ? ' gift' : ''}"><i>${i + 1}</i></span>`).join('');
-    pop.innerHTML = `<div class="msn-head"><b>Connexion</b><span>${plural(s.count, 'jour')} d’affilée</span>${CLOSE_X}</div>
-      <div class="w-sec"><div class="w-h"><b>Série · 7 jours</b><span>+${STREAK_REWARD} boosters chaque semaine</span></div>
+    pop.innerHTML = `<div class="msn-head"><b>${tr('hdr.streak')}</b><span>${tr('st.inARow', { days: plural(s.count, 'jour') })}</span>${CLOSE_X()}</div>
+      <div class="w-sec"><div class="w-h"><b>${tr('st.streak7')}</b><span>${tr('st.weekly', { n: STREAK_REWARD })}</span></div>
       <div class="st-days">${dots}</div>
-      <div class="st-txt">${claimable ? `<b>Jour 7 atteint !</b> Ta récompense t’attend.` : day === STREAK_CYCLE ? 'Récompense réclamée ✓ · la série continue demain' : `Jour <b>${day}</b> sur ${STREAK_CYCLE} · reviens demain pour continuer`}</div>
-      ${claimable ? `<div class="msn-bonus ready"><span>+${STREAK_REWARD} boosters</span><button class="btn-primary st-claim">Réclamer</button></div>` : ''}</div>
+      <div class="st-txt">${claimable ? `<b>${tr('st.day7')}</b> ${tr('st.waiting')}` : day === STREAK_CYCLE ? tr('st.claimedCont') : `${tr('st.day')} <b>${day}</b> ${tr('st.outOf', { n: STREAK_CYCLE })}`}</div>
+      ${claimable ? `<div class="msn-bonus ready"><span>+${STREAK_REWARD} boosters</span><button class="btn-primary st-claim">${tr('msn.claim')}</button></div>` : ''}</div>
       ${eco ? calendarHtml(eco) : ''}
-      <div class="msn-foot">Un jour sauté remet la série et le calendrier à zéro.</div>`;
+      <div class="msn-foot">${tr('st.reset')}</div>`;
     pop.querySelector<HTMLButtonElement>('.w-cal')?.addEventListener('click', async (e) => {
       try {
         const r = await busyButton(e.currentTarget as HTMLElement, backend.eco.claimCalendar());
         shell.sfx.chime(4, 0.09);
-        toast(`Jour ${r.day} : +${fmtCoins(r.coins)} pièces${r.packs > 1 ? ` et ${r.packs} boosters — mois parfait 🏆` : r.packs ? ' et 1 booster offert' : ''} !`, 'ok');
+        toast(tr('st.calToast', { day: r.day, coins: fmtCoins(r.coins), extra: r.packs > 1 ? tr('st.calPerfect', { n: r.packs }) : r.packs ? tr('st.calOne') : '' }), 'ok');
       } catch (err) {
         toast(errMsg(err), 'err');
       }
@@ -66,7 +67,7 @@ export function createStatus(backend: GameBackend, shell: Shell) {
       try {
         const n = await busyButton(e.currentTarget as HTMLElement, backend.claimStreak());
         shell.sfx.chime(4, 0.1);
-        toast(`Série de 7 jours : +${plural(n, 'booster')} !`, 'ok');
+        toast(tr('st.streakToast', { packs: plural(n, 'booster') }), 'ok');
         renderStreak();
       } catch (err) {
         toast(errMsg(err), 'err');
@@ -78,15 +79,15 @@ export function createStatus(backend: GameBackend, shell: Shell) {
     const u = backend.state.user;
     pop.setAttribute('aria-label', 'Pity 6★');
     if (!u) {
-      pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b>${CLOSE_X}</div>${loginPrompt(backend, 'Connecte-toi pour suivre ton compteur.')}`;
+      pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b>${CLOSE_X()}</div>${loginPrompt(backend, tr('st.loginPity'))}`;
       return;
     }
     const left = pityLeft(u.pityCount);
     const pct = ((PITY_LIMIT - 1 - left) / (PITY_LIMIT - 1)) * 100;
-    pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b><span>${fmtN(u.pityCount)} booster${u.pityCount > 1 ? 's' : ''} sans 6★</span>${CLOSE_X}</div>
+    pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b><span>${tr('st.pityCount', { n: u.pityCount, nf: fmtN(u.pityCount) })}</span>${CLOSE_X()}</div>
       <div class="msn-bar"><i style="width:${pct.toFixed(1)}%"></i></div>
-      <div class="st-txt">${left === 0 ? '<b>Ton prochain booster contient un 6★ sûr !</b>' : `Encore <b>${fmtN(left)}</b> booster${left > 1 ? 's' : ''} sans 6★ et le suivant en contient un, <b>garanti</b>.`}</div>
-      <div class="msn-foot">${PITY_LIMIT} boosters d’affilée sans Mythique : le ${PITY_LIMIT}e en a une. Le compteur repart à zéro dès qu’un 6★ tombe, tous boosters confondus.</div>`;
+      <div class="st-txt">${left === 0 ? '<b>' + tr('st.pityNext') + '</b>' : tr('st.pityLeft', { n: left, nf: fmtN(left) })}</div>
+      <div class="msn-foot">${tr('st.pityRule', { n: PITY_LIMIT, m: PITY_LIMIT })}</div>`;
   }
 
   const render = () => on && keepFocus(pop, on === 'streak' ? renderStreak : renderPity);

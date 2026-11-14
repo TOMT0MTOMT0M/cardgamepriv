@@ -36,9 +36,9 @@ describe('tableau d’offres', () => {
   test('création : visible de TOUS (pas seulement des amis), 24 ou 48 h, cartes possédées et libres', async () => {
     const { t, alice, bob, carol } = await setup();
     await give(t, alice.userId, A, 2);
-    await expect(t.mutation(api.listings.create, { sessionToken: alice.token, items: [one(A)], hours: 12 })).rejects.toThrow(/24 ou 48/);
+    await expect(t.mutation(api.listings.create, { sessionToken: alice.token, items: [one(A)], hours: 12 })).rejects.toThrow(/⟦(listings\.15)[⟧{]/);
     await expect(t.mutation(api.listings.create, { sessionToken: alice.token, items: [one(A, 3)], hours: 24 })).rejects.toThrow(/assez/);
-    await expect(t.mutation(api.listings.create, { sessionToken: alice.token, items: [], hours: 24 })).rejects.toThrow(/au moins une/);
+    await expect(t.mutation(api.listings.create, { sessionToken: alice.token, items: [], hours: 24 })).rejects.toThrow(/⟦(economy\.9|listings\.1|survey\.1)[⟧{]/);
     const id = await t.mutation(api.listings.create, { sessionToken: alice.token, items: [one(A)], wanted: [{ cardId: B, rarity: 'common' }], note: 'qui veut ?', hours: 48 });
     for (const who of [bob, carol, alice]) {
       const board = await t.query(api.listings.open, { sessionToken: who.token });
@@ -61,16 +61,16 @@ describe('tableau d’offres', () => {
     // contrat : il faudrait 2 doublons de ids[0], un seul est libre
     await expect(t.mutation(api.contracts.sign, { sessionToken: alice.token, rarity: 'common', items: ids.map((cardId) => ({ cardId, count: 2 })) })).rejects.toThrow();
     // forge : idem (3 exemplaires − 1 gardé − 1 annoncé = 1 brûlable)
-    await expect(t.mutation(api.economy.burn, { sessionToken: alice.token, items: [one(ids[0], 2)] })).rejects.toThrow(/doublons libres/);
+    await expect(t.mutation(api.economy.burn, { sessionToken: alice.token, items: [one(ids[0], 2)] })).rejects.toThrow(/⟦(economy\.13)[⟧{]/);
     await t.mutation(api.economy.burn, { sessionToken: alice.token, items: [one(ids[0], 1)] }); // le libre, oui
     // échange direct : le dernier exemplaire libre est déjà brûlé → plus rien à proposer
-    await expect(t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [one(ids[0], 2)], requested: [] })).rejects.toThrow(/engagée/);
+    await expect(t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [one(ids[0], 2)], requested: [] })).rejects.toThrow(/⟦(econLib\.13|econLib\.6|listings\.8|listings\.9|trades\.21|trades\.6)[⟧{]/);
     // autre annonce avec la même carte : refusée (1 seul exemplaire libre restant : le dernier)
-    await expect(t.mutation(api.listings.create, { sessionToken: alice.token, items: [one(ids[0], 2)], hours: 24 })).rejects.toThrow(/engagée/);
+    await expect(t.mutation(api.listings.create, { sessionToken: alice.token, items: [one(ids[0], 2)], hours: 24 })).rejects.toThrow(/⟦(econLib\.13|econLib\.6|listings\.8|listings\.9|trades\.21|trades\.6)[⟧{]/);
     // un échange reçu qui demande la carte annoncée : refusé à l'acceptation
     await give(t, bob.userId, D, 1);
     const tr = await t.mutation(api.trades.propose, { sessionToken: bob.token, toUserId: alice.userId, offered: [one(D)], requested: [one(ids[0], 2)] });
-    await expect(t.mutation(api.trades.respond, { sessionToken: alice.token, tradeId: tr, accept: true })).rejects.toThrow(/annonces ou offres/);
+    await expect(t.mutation(api.trades.respond, { sessionToken: alice.token, tradeId: tr, accept: true })).rejects.toThrow(/⟦(trades\.21)[⟧{]/);
   });
 
   test('offre puis acceptation : échange atomique, annonce close, autres offres closes, historique et anti-abus', async () => {
@@ -79,16 +79,16 @@ describe('tableau d’offres', () => {
     await give(t, bob.userId, B, 2);
     await give(t, carol.userId, C, 1);
     const lid = await t.mutation(api.listings.create, { sessionToken: alice.token, items: [one(A)], hours: 24 });
-    await expect(t.mutation(api.listings.offer, { sessionToken: alice.token, listingId: lid, offered: [one(A)] })).rejects.toThrow(/ton annonce/);
+    await expect(t.mutation(api.listings.offer, { sessionToken: alice.token, listingId: lid, offered: [one(A)] })).rejects.toThrow(/⟦(listings\.22|listings\.28)[⟧{]/);
     const ob = await t.mutation(api.listings.offer, { sessionToken: bob.token, listingId: lid, offered: [one(B, 2)], note: 'deux pour une' });
     const oc = await t.mutation(api.listings.offer, { sessionToken: carol.token, listingId: lid, offered: [one(C)] });
     // les cartes offertes sont verrouillées chez l'offrant
-    await expect(t.mutation(api.economy.burn, { sessionToken: bob.token, items: [one(B, 1)] })).rejects.toThrow(/doublons libres/);
+    await expect(t.mutation(api.economy.burn, { sessionToken: bob.token, items: [one(B, 1)] })).rejects.toThrow(/⟦(economy\.13)[⟧{]/);
     const mine = await t.query(api.listings.mine, { sessionToken: alice.token });
     expect(mine.listings[0].offers.map((o) => o.fromName).sort()).toEqual(['bob', 'carol']);
     expect((await t.query(api.listings.open, { sessionToken: bob.token }))[0].myOffer?._id).toBe(ob);
     // seul l'auteur accepte
-    await expect(t.mutation(api.listings.accept, { sessionToken: carol.token, offerId: ob })).rejects.toThrow(/auteur/);
+    await expect(t.mutation(api.listings.accept, { sessionToken: carol.token, offerId: ob })).rejects.toThrow(/⟦(listings\.21|listings\.25|listings\.27|listings\.32|trades\.19)[⟧{]/);
     await t.mutation(api.listings.accept, { sessionToken: alice.token, offerId: ob });
     expect(await countOf(t, alice.token, A)).toBe(0);
     expect(await countOf(t, alice.token, B)).toBe(2);
@@ -139,7 +139,7 @@ describe('tableau d’offres', () => {
     expect(mine.offers[0].counter?.want).toHaveLength(2);
     // l'auteur ne peut plus accepter l'offre d'origine pendant la contre-offre ; seul l'offrant répond
     await expect(t.mutation(api.listings.accept, { sessionToken: alice.token, offerId: ob })).rejects.toThrow();
-    await expect(t.mutation(api.listings.respondCounter, { sessionToken: alice.token, offerId: ob, accept: true })).rejects.toThrow(/auteur de l’offre/);
+    await expect(t.mutation(api.listings.respondCounter, { sessionToken: alice.token, offerId: ob, accept: true })).rejects.toThrow(/⟦(listings\.25|listings\.32)[⟧{]/);
     await t.mutation(api.listings.respondCounter, { sessionToken: bob.token, offerId: ob, accept: true });
     expect(await countOf(t, bob.token, A)).toBe(1);
     expect(await countOf(t, bob.token, C)).toBe(0);
@@ -176,8 +176,8 @@ describe('tableau d’offres', () => {
     const ob = await t.mutation(api.listings.offer, { sessionToken: bob.token, listingId: lid, offered: [one(B)] });
     await t.run((ctx) => ctx.db.patch(lid, { expiresAt: Date.now() - 1 }));
     expect(await t.query(api.listings.open, { sessionToken: bob.token })).toHaveLength(0);
-    await expect(t.mutation(api.listings.accept, { sessionToken: alice.token, offerId: ob })).rejects.toThrow(/expiré/);
-    await expect(t.mutation(api.listings.offer, { sessionToken: bob.token, listingId: lid, offered: [one(B)] })).rejects.toThrow(/expiré/);
+    await expect(t.mutation(api.listings.accept, { sessionToken: alice.token, offerId: ob })).rejects.toThrow(/⟦(listings\.11)[⟧{]/);
+    await expect(t.mutation(api.listings.offer, { sessionToken: bob.token, listingId: lid, offered: [one(B)] })).rejects.toThrow(/⟦(listings\.11)[⟧{]/);
     // plus de verrou (même avant la tâche planifiée)
     await t.mutation(api.trades.propose, { sessionToken: alice.token, toUserId: bob.userId, offered: [one(A)], requested: [] });
     await t.mutation(api.trades.propose, { sessionToken: bob.token, toUserId: alice.userId, offered: [one(B)], requested: [] });

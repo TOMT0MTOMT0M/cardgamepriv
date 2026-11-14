@@ -180,10 +180,9 @@
 },
 "jv-alan-wake-control-alan-wake-ii": {
 "art": "c",
-"file": "alan-wake-control--alan-wake-ii.jpg",
-"ok2": 1,
-"src": "wiki:Alan Wake 2",
-"t": 1793638624
+"file": "alan-wake-control--alan-wake-ii-r2611132242.jpg",
+"src": "reillustre:jv-alan-wake-control-alan-wake-ii.jpg",
+"t": 1794609745
 },
 "jv-alan-wake-control-control": {
 "art": "c",
@@ -4913,11 +4912,10 @@
 "t": 1793771527
 },
 "jv-final-fantasy-sephiroth": {
-"art": "i",
-"file": "final-fantasy--sephiroth.png",
-"ok2": 1,
-"src": "wiki:Sephiroth (Final Fantasy)",
-"t": 1793635849
+"art": "c",
+"file": "final-fantasy--sephiroth-r2611121554.jpg",
+"src": "reillustre:jv-final-fantasy-sephiroth.jpg",
+"t": 1794498872
 },
 "jv-final-fantasy-shiva": {
 "art": "i",
@@ -6245,10 +6243,9 @@
 },
 "jv-gta-michael-de-santa": {
 "art": "c",
-"file": "gta--michael-de-santa.jpg",
-"fx": 1,
-"src": "wiki:Grand Theft Auto V",
-"t": 1793639907
+"file": "gta--michael-de-santa-r2611121554.jpg",
+"src": "reillustre:jv-gta-michael-de-santa.jpg",
+"t": 1794498872
 },
 "jv-gta-niko-bellic": {
 "art": "i",
@@ -11551,10 +11548,9 @@
 },
 "jv-overwatch-tracer": {
 "art": "c",
-"file": "overwatch--tracer.jpg",
-"s2": 1,
-"src": "wikidata:Q25204271:P18",
-"t": 1793636789
+"file": "overwatch--tracer-r2611121554.jpg",
+"src": "reillustre:jv-overwatch-tracer.jpg",
+"t": 1794498872
 },
 "jv-overwatch-venture": {
 "art": "i",
@@ -19474,9 +19470,9 @@
 },
 "jv-summoners-war-zaiross-dragon-feu": {
 "art": "c",
-"file": "summoners-war--zaiross-dragon-feu.jpg",
-"src": "fill:piste:https://static.wikia.nocookie.net/summoners-war-sky-arena/images/3/3a/Zaiross_front.png/revision/latest?cb=2015051820060",
-"t": 1793914149
+"file": "summoners-war--zaiross-dragon-feu-r2611132242.jpg",
+"src": "reillustre:jv-summoners-war-zaiross-dragon-feu.jpg",
+"t": 1794609745
 },
 "jv-summoners-war-zeratu-chimere-tenebres": {
 "art": "c",
@@ -22746,11 +22742,10 @@
 "t": 1793638516
 },
 "jv-zelda-zelda": {
-"art": "i",
-"file": "zelda--zelda.png",
-"ok2": 1,
-"src": "wiki:zeldawiki.wiki:Princess Zelda",
-"t": 1793638492
+"art": "c",
+"file": "zelda--zelda-r2611132242.jpg",
+"src": "reillustre:jv-zelda-zelda.jpg",
+"t": 1794609745
 },
 "jv-zelda-zelda-ii-the-adventure-of-link": {
 "art": "c",

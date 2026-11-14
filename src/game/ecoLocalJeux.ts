@@ -1,7 +1,10 @@
+import { fe } from '../core/errors';
 import type { RarityId } from '../core/rarity';
-import { DEFI_ACCEPT_MS, defiGain, defiProblem, defiWinner } from '../core/defis';
+import { DEFI_ACCEPT_MS, defiGain, defiKind, defiProblem, defiWinner } from '../core/defis';
 import { PRESSE_STRIKES, presseBetProblem, presseCracks, presseStrip, presseValue } from '../core/presse';
-import { validPackChoice } from '../core/games';
+import { packChoiceLabel, packRef, validPackChoice } from '../core/games';
+import { fm, type Msg } from '../core/msgs';
+import { t as tr } from '../core/i18n';
 import { missionDay } from '../core/missions';
 import type { DefiView, JeuxBackend, PresseCard, PresseRunView, PresseState } from './ecoJeux';
 
@@ -18,10 +21,10 @@ export interface LocalJeuxSave {
 
 export interface LocalJeuxHost {
   save(): LocalJeuxSave & { coins: number; seq: number };
-  coins(amount: number, reason: string, label: string, earned?: boolean): void;
+  coins(amount: number, reason: string, label: string | Msg, earned?: boolean): void;
   game(won: boolean): void;
   bots(): Array<{ id: string; name: string }>;
-  feed(message: string): void;
+  feed(message: string | Msg): void;
   emit(): void;
   watch<T>(get: () => T, cb: (v: T) => void): () => void;
   act<T>(fn: () => T): Promise<T>;
@@ -43,7 +46,7 @@ export function createLocalJeux(host: LocalJeuxHost) {
   function goLive(c: DefiView) {
     c.players = c.players.map((p) => (p.state === 'invited' ? { ...p, state: 'out' } : p));
     if (c.players.filter((p) => p.state === 'in').length < 2) {
-      if (c.stake) host.coins(c.stake, 'challenge', 'Défi — mise rendue (personne n’a accepté)');
+      if (c.stake) host.coins(c.stake, 'challenge', fm('c.defiRefundNobody'));
       Object.assign(c, { status: 'cancelled', outcome: 'alone', resolvedAt: Date.now() });
       return;
     }
@@ -58,11 +61,11 @@ export function createLocalJeux(host: LocalJeuxHost) {
     const pot = c.stake * inn.length;
     const outcome = w !== null ? 'win' : inn.some((x) => x.p.score > 0) ? 'tie' : 'nobody';
     const me = c.players.find((p) => p.userId === ME && p.state === 'in');
-    if (w !== null && c.players[w].userId === ME && pot) host.coins(pot, 'challenge', 'Défi gagné', true);
-    if (w === null && me && c.stake) host.coins(c.stake, 'challenge', `Défi — mise rendue (${outcome === 'tie' ? 'égalité' : 'personne n’a marqué'})`);
+    if (w !== null && c.players[w].userId === ME && pot) host.coins(pot, 'challenge', fm('c.defiWon', { goal: defiKind(c.kind).goal(c.target), defiKind: c.kind, ...(c.target ? { defiTarget: c.target } : {}) }), true);
+    if (w === null && me && c.stake) host.coins(c.stake, 'challenge', fm(outcome === 'tie' ? 'c.defiRefundTie' : 'c.defiRefundZero'));
     if (me) host.game(w !== null && c.players[w].userId === ME);
     Object.assign(c, { status: 'done', outcome, resolvedAt: Date.now(), ...(w !== null ? { winnerId: c.players[w].userId } : {}) });
-    if (w !== null) host.feed(`${c.players[w].name} remporte un défi${pot ? ` (${pot} pièces)` : ''} !`);
+    if (w !== null) host.feed(fm(pot ? 'f.defiWinPot' : 'f.defiWin', { name: c.players[w].name, others: inn.filter((x) => x.i !== w).map((x) => x.p.name).join(', '), goalLc: defiKind(c.kind).goal(c.target).toLowerCase(), defiKind: c.kind, ...(c.target ? { defiTarget: c.target } : {}), ...(pot ? { coins: pot } : {}) }));
   }
 
   /** fin des défis dont l'heure est passée (la démo n'a pas de planificateur) */
@@ -84,7 +87,7 @@ export function createLocalJeux(host: LocalJeuxHost) {
       host.act(() => {
         const p = defiProblem(d, ME);
         if (p) throw new Error(p);
-        if (d.stake > s().coins) throw new Error(`Il te manque ${d.stake - s().coins} pièces pour cette mise.`);
+        if (d.stake > s().coins) throw new Error(fe('challenges.1', { p0: d.stake - s().coins }));
         const bots = new Map(host.bots().map((b) => [b.id, b.name]));
         const now = Date.now();
         const c: DefiView = {
@@ -95,11 +98,11 @@ export function createLocalJeux(host: LocalJeuxHost) {
           durationMs: d.durationMs,
           stake: d.stake,
           status: 'pending',
-          players: [{ userId: ME, name: 'Toi', state: 'in', score: 0 }, ...d.invited.map((id) => ({ userId: id, name: bots.get(id) ?? id, state: 'invited' as const, score: 0 }))],
+          players: [{ userId: ME, name: tr('chat.me'), state: 'in', score: 0 }, ...d.invited.map((id) => ({ userId: id, name: bots.get(id) ?? id, state: 'invited' as const, score: 0 }))],
           createdAt: now,
           acceptBy: now + DEFI_ACCEPT_MS,
         };
-        if (d.stake) host.coins(-d.stake, 'challenge', 'Défi — mise en séquestre');
+        if (d.stake) host.coins(-d.stake, 'challenge', fm('c.defiEscrow', { names: d.invited.map((id) => bots.get(id) ?? id).join(', ') }));
         defis().push(c);
         // les robots répondent au bout d'un instant (un sur quatre refuse)
         setTimeout(() => {
@@ -114,23 +117,23 @@ export function createLocalJeux(host: LocalJeuxHost) {
       host.act(() => {
         const c = find(id);
         const i = c.players.findIndex((p) => p.userId === ME && p.state === 'invited');
-        if (c.status !== 'pending' || i < 0) throw new Error('Ce défi n’attend plus de réponse.');
-        if (accept && c.stake) host.coins(-c.stake, 'challenge', 'Défi — mise en séquestre');
+        if (c.status !== 'pending' || i < 0) throw new Error(fe('challenges.5'));
+        if (accept && c.stake) host.coins(-c.stake, 'challenge', fm('c.defiEscrowOf', { name: c.players[0].name }));
         c.players[i] = { ...c.players[i], state: accept ? 'in' : 'out' };
         if (!c.players.some((p) => p.state === 'invited')) goLive(c);
       }),
     startDefi: (id) =>
       host.act(() => {
         const c = find(id);
-        if (c.status !== 'pending') throw new Error('Ce défi n’attend plus de réponse.');
-        if (c.players.filter((p) => p.state === 'in').length < 2) throw new Error('Aucun ami n’a encore accepté.');
+        if (c.status !== 'pending') throw new Error(fe('challenges.5'));
+        if (c.players.filter((p) => p.state === 'in').length < 2) throw new Error(fe('challenges.9'));
         goLive(c);
       }),
     cancelDefi: (id) =>
       host.act(() => {
         const c = find(id);
-        if (c.status !== 'pending') throw new Error('Ce défi n’attend plus de réponse.');
-        if (c.stake) host.coins(c.stake, 'challenge', 'Défi — mise rendue (défi annulé)');
+        if (c.status !== 'pending') throw new Error(fe('challenges.5'));
+        if (c.stake) host.coins(c.stake, 'challenge', fm('c.defiRefundCancel'));
         Object.assign(c, { status: 'cancelled', resolvedAt: Date.now() });
       }),
     demoDefiEnd: (id) =>
@@ -154,12 +157,12 @@ export function createLocalJeux(host: LocalJeuxHost) {
       }, cb),
     presseStart: (bet, album) =>
       host.act(() => {
-        if (!validPackChoice(album)) throw new Error('Album inconnu.');
-        if (runs().some((r) => r.status === 'live')) throw new Error('Une pièce est déjà sous la presse : frappe ou encaisse-la.');
+        if (!validPackChoice(album)) throw new Error(fe('presse.5'));
+        if (runs().some((r) => r.status === 'live')) throw new Error(fe('presse.1'));
         const today = missionDay(Date.now());
         const p = presseBetProblem(bet, s().coins, runs().filter((r) => missionDay(r.createdAt) === today).length);
         if (p) throw new Error(p);
-        host.coins(-bet, 'presse', 'La Presse — mise');
+        host.coins(-bet, 'presse', fm('c.presseBet', { pack: packChoiceLabel(album), ...packRef(album) }));
         const strip = presseStrip(album, Math.random);
         const r = { id: nid('presse'), bet, album, strip, cards: strip.slice(0, 1), shown: 1, status: 'live' as const, value: presseValue(bet, strip.slice(0, 1)), createdAt: Date.now() };
         runs().push(r);
@@ -188,13 +191,13 @@ export function createLocalJeux(host: LocalJeuxHost) {
   const view = ({ strip: _s, ...r }: PresseRunView & { strip: PresseCard[] }): PresseRunView => (void _s, structuredClone(r));
   function runOf(id: string) {
     const r = runs().find((x) => x.id === id);
-    if (!r) throw new Error('Partie introuvable.');
+    if (!r) throw new Error(fe('presse.6'));
     return r;
   }
   function close(r: PresseRunView & { strip: PresseCard[] }, status: 'cashed' | 'cracked') {
     r.status = status;
     r.payout = status === 'cashed' ? presseValue(r.bet, r.cards) : 0;
-    if (r.payout) host.coins(r.payout, 'presse', `La Presse — pièce encaissée (${r.shown} frappes)`, r.payout > r.bet);
+    if (r.payout) host.coins(r.payout, 'presse', fm('c.presseWin', { n: r.shown }), r.payout > r.bet);
     host.game(r.payout > r.bet);
   }
 

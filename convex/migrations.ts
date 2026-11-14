@@ -10,6 +10,7 @@ import { isBigPull } from './feed';
 import { dropInv, invRev } from './invRev';
 import { ensurePresence } from './presence';
 import { markWishesReady, syncWishes } from './wishes';
+import { parseMsg } from '../src/core/msgs';
 
 /**
  * RARETÉS — une seule source de vérité : le catalogue (src/core/sets/*).
@@ -367,5 +368,57 @@ export const backfillWishes = internalMutation({
     }
     await markWishesReady(ctx);
     return { done: true, written };
+  },
+});
+
+/**
+ * (version anglaise, lot 4) ANCIENS MESSAGES : les lignes du fil (`activityFeed.message`) et du journal des pièces
+ * (`coinTx.label`) écrites avant le lot 4 n'ont que le texte français. On retrouve leur code et leurs paramètres à
+ * partir des modèles (src/core/i18n/msgFr.ts) pour que le jeu les affiche en anglais ; une ligne non reconnue reste en
+ * français. Idempotente : seules les lignes sans code sont lues, par lots de 200.
+ *
+ *   npx convex run migrations:i18nMessages
+ */
+export const i18nMessages = internalMutation({
+  args: {
+    part: v.optional(v.union(v.literal('feed'), v.literal('coins'))),
+    cursor: v.optional(v.union(v.string(), v.null())),
+    done: v.optional(v.number()),
+    left: v.optional(v.number()),
+  },
+  handler: async (ctx, { part = 'feed', cursor, done = 0, left = 0 }): Promise<{ part: string; done: number; left: number; finished: boolean }> => {
+    const PAGE = 200;
+    let isDone: boolean, next: string;
+    if (part === 'feed') {
+      const page = await ctx.db.query('activityFeed').paginate({ cursor: cursor ?? null, numItems: PAGE });
+      for (const r of page.page) {
+        if (r.msgKey) continue;
+        const m = parseMsg(r.message, 'f.');
+        if (!m) { left++; continue; }
+        await ctx.db.patch(r._id, { msgKey: m.key, msgParams: m.params });
+        done++;
+      }
+      ({ isDone, continueCursor: next } = page);
+    } else {
+      const page = await ctx.db.query('coinTx').paginate({ cursor: cursor ?? null, numItems: PAGE });
+      for (const r of page.page) {
+        if (r.labelKey) continue;
+        const m = parseMsg(r.label, 'c.');
+        if (!m) { left++; continue; }
+        await ctx.db.patch(r._id, { labelKey: m.key, labelParams: m.params });
+        done++;
+      }
+      ({ isDone, continueCursor: next } = page);
+    }
+    if (!isDone) {
+      await ctx.scheduler.runAfter(0, internal.migrations.i18nMessages, { part, cursor: next, done, left });
+      return { part, done, left, finished: false };
+    }
+    if (part === 'feed') {
+      await ctx.scheduler.runAfter(0, internal.migrations.i18nMessages, { part: 'coins', cursor: null, done, left });
+      return { part, done, left, finished: false };
+    }
+    console.log(`[migrations] i18nMessages : ${done} lignes codées, ${left} restées en français`);
+    return { part, done, left, finished: true };
   },
 });

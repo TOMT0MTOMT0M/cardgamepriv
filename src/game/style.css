@@ -922,7 +922,7 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .sleeve.on { border-color: var(--rose); background: rgba(0, 0, 0, 0.9); box-shadow: 0 16px 40px -18px rgba(255, 255, 255, 0.7); }
 .sleeve.special { width: 176px; border-color: rgba(255, 255, 255, 0.45); }
 .sleeve.special.on { box-shadow: 0 20px 50px -18px rgba(255, 255, 255, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.3); }
-.sleeve.special::before { content: 'PACK SIGNATURE'; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 2; padding: 2px 8px; border-radius: 999px; background: var(--gold); color: #000000; font: 700 12px var(--mono); letter-spacing: 0.16em; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+.sleeve.special::before { content: 'PACK SIGNATURE'; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 2; padding: 2px 8px; border-radius: 999px; background: var(--gold); color: #000000; font: 700 12px var(--mono); letter-spacing: 0.16em; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); } /* i18n-ok : anglais dans usinage.css (:lang(en)) */
 .sl-art { position: relative; width: 100%; aspect-ratio: 5 / 7; display: grid; place-items: center; border-radius: 10px; overflow: hidden; }
 .sl-art img, .sl-ph { width: 78%; height: auto; border-radius: 6px; box-shadow: 0 14px 24px -12px rgba(0, 0, 0, 0.95), 0 0 30px -10px var(--acc, transparent); transition: transform var(--dur-emphatique) var(--ease-entree), filter var(--dur-standard); }
 .sl-ph { aspect-ratio: 2.7 / 4; background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 40%, #141414), #0a0a0a 70%); }
@@ -1578,7 +1578,7 @@ a.pf-ach:hover { border-color: var(--gold); }
   .sl-name, .sleeve.special .sl-name { margin: 0; align-self: end; font-size: 17px; white-space: normal; }
   .sl-desc { align-self: start; }
   .sleeve.special::before { top: 7px; left: auto; right: 8px; transform: none; padding: 1px 6px; font-size: 12px; letter-spacing: 0.12em; }
-  .sleeve.soon .sl-name::after { content: ' · bientôt'; font: 500 12px var(--mono); letter-spacing: 0.14em; color: var(--gold); text-transform: uppercase; }
+  .sleeve.soon .sl-name::after { content: ' · bientôt'; font: 500 12px var(--mono); letter-spacing: 0.14em; color: var(--gold); text-transform: uppercase; } /* i18n-ok : anglais dans usinage.css (:lang(en)) */
   /* fil vertical des gros tirages */
   .shop-right .bigpulls { flex: 1 1 auto; min-height: 0; flex-direction: column; gap: 10px; padding: 0; }
   .shop-right .bp-head { width: auto; padding: 0 6px; }
@@ -1851,7 +1851,7 @@ button.pg-info:hover { color: var(--ink); }
 .pf-new { margin-left: 6px; padding: 1px 7px; border-radius: var(--r-pill); background: var(--gold); color: #000000; font: 700 12px var(--mono); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; }
 .pf-new-dot { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 50%; background: var(--gold); vertical-align: middle; }
 .cs.new { position: relative; border-color: var(--gold); }
-.cs.new::after { content: 'nouveau'; position: absolute; top: -7px; right: 6px; padding: 0 6px; border-radius: var(--r-pill); background: var(--gold); color: #000000; font: 700 12px/14px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.cs.new::after { content: 'nouveau'; position: absolute; top: -7px; right: 6px; padding: 0 6px; border-radius: var(--r-pill); background: var(--gold); color: #000000; font: 700 12px/14px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; } /* i18n-ok : anglais dans usinage.css (:lang(en)) */
 /* UX3-20 : sélecteur de vitrine — filtre étoiles, troncature annoncée */
 .pf-pick-stars { flex-wrap: wrap; margin: 0 0 10px; }
 .pf-pick-stars .chip:not(.on) { color: var(--rt, var(--rc)); }
@@ -2560,7 +2560,7 @@ button.ob-w { min-height: 36px; }
   .me-menu .snd-wrap .snd { display: none; }
   .me-menu .vol-pop { position: static; visibility: visible; opacity: 1; transform: none; pointer-events: auto; flex-wrap: wrap; width: auto; margin: 0; box-shadow: none; border: 0; border-radius: 0; background: none; padding: 4px 2px 2px; }
   .me-menu .vol-pop .vol { flex: 1 1 120px; }
-  .me-menu .vol-pop::before { content: 'Son'; display: block; width: 100%; margin: 0 0 6px 10px; font: 500 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .me-menu .vol-pop::before { content: 'Son'; display: block; width: 100%; margin: 0 0 6px 10px; font: 500 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); } /* i18n-ok : anglais dans usinage.css (:lang(en)) */
   .me-menu .demo { align-self: flex-start; margin: 4px 0 0 8px; }
   .me-menu .icon.mm-reload { order: 9; margin-top: 4px; color: var(--ink-2); font-size: 14px; }
   .me-menu .icon.mm-reload svg { flex: none; }
@@ -3746,7 +3746,7 @@ a.pf-key.k-ach:hover { border-color: var(--c); transform: translateY(-1px); }
 .pf-case.dragging .pf-x { display: none !important; }
 .pf-ghost { position: fixed !important; left: 0; top: 0; z-index: 1000; margin: 0; pointer-events: none; transform-origin: 0 0; will-change: transform; content-visibility: visible; box-shadow: 0 26px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 2px #fff; transition: box-shadow var(--dur-rapide), opacity var(--dur-rapide); }
 .pf-ghost.out { opacity: 0.8; box-shadow: 0 26px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 2px var(--err); }
-.pf-ghost.out::after { content: 'Retirer'; display: block !important; position: absolute; left: 50%; top: 50%; z-index: 5; transform: translate(-50%, -50%); padding: 3px 9px; border-radius: var(--r-pill); background: var(--err); color: #fff; font: 600 12px var(--mono); white-space: nowrap; }
+.pf-ghost.out::after { content: 'Retirer'; display: block !important; position: absolute; left: 50%; top: 50%; z-index: 5; transform: translate(-50%, -50%); padding: 3px 9px; border-radius: var(--r-pill); background: var(--err); color: #fff; font: 600 12px var(--mono); white-space: nowrap; } /* i18n-ok : anglais dans usinage.css (:lang(en)) */
 body.pf-dragging, body.pf-dragging * { cursor: grabbing !important; -webkit-user-select: none !important; user-select: none !important; }
 .pf-edit-bar { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; font: 400 12px/1.35 var(--mono); color: var(--ink-3); }
 .pf-edit-hint { flex: 1 1 240px; min-width: 0; }

@@ -11,7 +11,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   A: 'A · Visualisation de la carte',
   B: 'B · Ouverture de pack',
   C: 'C · Rareté',
-  D: 'D · Designs de cartes',
+  D: 'D · Designs de cartes', // i18n-ok
 };
 
 export interface ExperimentMeta {

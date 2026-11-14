@@ -3,12 +3,13 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { BIG_PULL_RARITIES, EMPTY_MARKET, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
 import { createOnlineEco } from './ecoOnline';
+import { adoptAccountLang, lang as curLang, langPicked, onLang } from './lang';
 import type { Social } from './backend';
 import type { BoardState, ListingOfferView, ListingView } from './backend';
 import { api } from '../../convex/_generated/api';
 import type { Doc } from '../../convex/_generated/dataModel';
 import type { ChatInbox, ChatMsg } from '../core/chat';
-import type { PackEvent } from '../core/events';
+import { localEvent, type PackEvent } from '../core/events';
 
 /** demande de booster → arguments du serveur (booster du moment : l'id de l'événement suffit, le serveur relit le reste) */
 const packArgs = (req: PackRequest) => (req.event ? { packKind: 'theme' as const, eventId: req.event.id as Id<'packEvents'> } : { packKind: req.kind, themeId: req.themeId });
@@ -88,6 +89,29 @@ export function createOnlineBackend(): GameBackend {
    */
   let src: Partial<Record<'user' | 'collection' | 'binders' | 'friends' | 'feed' | 'bigPulls' | 'sealed' | 'trades', unknown>> = {};
   const changed = (k: keyof typeof src, v: unknown) => (src[k] === v ? false : ((src[k] = v), true));
+  /**
+   * (version anglaise) langue : à l'arrivée du joueur, celle choisie sur son compte s'applique si rien n'est choisi sur
+   * cet appareil ; puis la langue effective part au serveur (push, messages privés Discord) — seulement si elle diffère.
+   */
+  let langUser: { lang?: string; langSet?: boolean } | null = null;
+  let langAdopted = false;
+  let langSent = '';
+  const syncLang = () => {
+    const u = langUser;
+    if (!u) return;
+    if (!langAdopted) {
+      langAdopted = true;
+      adoptAccountLang(u.lang, u.langSet);
+    }
+    const want = curLang();
+    const manual = langPicked();
+    if ((u.lang ?? 'fr') === want && (!manual || u.langSet === true)) return;
+    const k = `${want}|${manual}`;
+    if (k === langSent) return;
+    langSent = k;
+    void net.setLang(want, manual);
+  };
+  onLang(syncLang);
   net.onChange((n) => {
     // `ready` : le serveur a répondu au moins une fois (avant : « connexion… », pas « Connexion Discord »)
     state.ready = n.connected;
@@ -109,11 +133,15 @@ export function createOnlineBackend(): GameBackend {
             streak: n.user.streak ?? undefined,
             staff: !!n.user.staff,
             guideSeen: !!n.user.guideSeen,
+            v2TourSeen: !!n.user.v2TourSeen,
+            tester: !!n.user.tester,
             gamesNoticeAt: n.user.gamesNoticeAt,
             referralNoticeAt: n.user.referralNoticeAt,
             openingStyle: n.user.openingStyle === 'burn' || n.user.openingStyle === 'fan' ? n.user.openingStyle : undefined,
           }
         : null;
+      langUser = n.user ? { lang: n.user.lang, langSet: n.user.langSet } : null;
+      syncLang();
       state.wishlist = n.user?.wishlist ?? [];
       state.tradeProtected = n.user?.tradeProtected ?? [];
       state.covers = n.user?.covers ?? {};
@@ -128,7 +156,7 @@ export function createOnlineBackend(): GameBackend {
         .filter((f) => f._id !== n.user?._id)
         .map((f) => ({ id: f._id, name: f.displayName, avatarUrl: f.avatarUrl, online: f.online, status: f.statusText, packsOpened: f.totalPacksOpened }));
     const feedChanged = changed('feed', n.feed);
-    if (feedChanged) state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, rarity: f.rarity, createdAt: f.createdAt }));
+    if (feedChanged) state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, msgKey: f.msgKey, msgParams: f.msgParams, rarity: f.rarity, createdAt: f.createdAt }));
     if (changed('bigPulls', n.bigPulls) || (n.bigPulls === null && feedChanged) || userChanged) {
       const rows = n.bigPulls ?? n.feed.filter((f) => f.cardId && f.rarity && BIG_PULL_RARITIES.includes(f.rarity));
       state.bigPulls = rows.map(
@@ -165,6 +193,7 @@ export function createOnlineBackend(): GameBackend {
     // (ouverture 07/11) fenêtre de connexion : Discord OU pseudo + mot de passe (views/login.ts)
     login: () => void import('./views/login').then((m) => m.openLogin()),
     markGuideSeen: () => net.markGuideSeen(),
+    markV2TourSeen: () => net.markV2TourSeen(),
     logout: () => net.logout(),
     async preparePack(req: PackRequest) {
       const p = await net.preparePack(packArgs(req));
@@ -180,7 +209,7 @@ export function createOnlineBackend(): GameBackend {
       };
     },
     // (11/11) booster du moment : abonnement léger (quelques lignes, relancé seulement quand un événement change)
-    watchEvents: (cb) => net.watch(api.events.current, {}, (rows) => cb((rows ?? []) as PackEvent[]), false, () => cb([])),
+    watchEvents: (cb) => net.watch(api.events.current, {}, (rows) => cb(((rows ?? []) as PackEvent[]).map(localEvent)), false, () => cb([])),
     async revealPack(id) {
       await net.revealPack(id as Id<'packOpens'>);
       shootRevealed([id]);
@@ -354,7 +383,7 @@ export function createOnlineBackend(): GameBackend {
       return await net.seasonBoard();
     },
     async activity(userId) {
-      return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
+      return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, msgKey: a.msgKey, msgParams: a.msgParams, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
     },
     async signContract(rarity, items) {
       return await net.signContract(rarity, items);
