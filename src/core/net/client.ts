@@ -648,9 +648,11 @@ class GameNetClient {
     };
     const full = () => {
       if (!live()) return;
-      client.query(api.inventory.collectionFull, tokenArg).then(
-        (rows) => {
+      client.query(api.inventory.collectionFull, { ...tokenArg, parts: true }).then(
+        (r) => {
           if (!live()) return;
+          // (v2.0.5) en tranches : un tableau Convex ne dépasse pas 8 192 éléments
+          const rows = r && 'parts' in r ? r.parts.flat() : r;
           this.inv.reset(rows ?? []);
           this.invFullAt = Date.now();
           publish();
@@ -978,7 +980,8 @@ class GameNetClient {
   /** Collection d'un ami (pour composer un échange). */
   public async userCollection(userId: Id<'users'>) {
     if (!this.client) return [];
-    return await this.client.query(api.inventory.userCollectionSlim, { userId });
+    const r = await this.client.query(api.inventory.userCollectionSlim, { userId, parts: true });
+    return 'parts' in r ? r.parts.flat() : r;
   }
 
   /** (v1.0.9) « Chercher un propriétaire » : joueurs qui possèdent la carte (hors moi). */
@@ -1029,7 +1032,11 @@ class GameNetClient {
   }
   public async profile(userId: Id<'users'>, withCollection = false) {
     if (!this.client) return null;
-    return await this.client.query(api.profiles.profile, withCollection ? { userId, withCollection } : { userId });
+    const p = await this.client.query(api.profiles.profile, withCollection ? { userId, withCollection, parts: true } : { userId });
+    // (v2.0.5) collection reçue en tranches (`collectionParts`), remise à plat ici
+    if (!p || !p.collectionParts) return p;
+    const { collectionParts, ...rest } = p;
+    return { ...rest, collection: collectionParts.flat() };
   }
   public async setShowcase(cards: Array<{ cardId: string; rarity: RarityId }>) {
     return await this.client!.mutation(api.profiles.setShowcase, { sessionToken: this.requireToken(), cards });
