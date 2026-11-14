@@ -126,4 +126,22 @@ describe('personnalisation du profil — carte publique (chat, amis)', () => {
     await t.mutation(api.profiles.setCosmetics, { sessionToken: 'tok' });
     expect((await t.query(api.users.friends, {}))[0].cos).toBeUndefined();
   });
+  test('(15/11) passage d\'office par « Personnaliser » : une fois par compte, pas pour un compte tout neuf', async () => {
+    const t = convexTest(schema, modules);
+    // compte tout neuf : la visite guidée le marque aussi (il n'a rien à équiper)
+    const { token } = await t.mutation(internal.accounts.createPw, { loginKey: 'neo', displayName: 'Neo', pwHash: 's1$a$b' });
+    const me = async () => (await t.query(api.users.me, { sessionToken: token }))!;
+    expect((await me()).atelierSeen).toBe(false);
+    await t.mutation(api.users.markGuideSeen, { sessionToken: token });
+    expect((await me()).atelierSeen).toBe(true);
+    // joueur déjà là : pas encore amené, puis marqué une fois pour toutes (la date ne bouge plus)
+    await t.mutation(internal.admin.resetAtelier, { name: 'neo' });
+    expect((await me()).atelierSeen).toBe(false);
+    await t.mutation(api.users.markAtelierSeen, { sessionToken: token });
+    expect((await me()).atelierSeen).toBe(true);
+    const at = async () => (await t.run((ctx) => ctx.db.query('users').collect()))[0]!.atelierSeenAt;
+    const first = await at();
+    await t.mutation(api.users.markAtelierSeen, { sessionToken: token });
+    expect(await at()).toBe(first);
+  });
 });

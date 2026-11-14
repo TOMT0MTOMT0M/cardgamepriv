@@ -161,6 +161,8 @@ export default defineSchema({
     guideSeenAt: v.optional(v.number()),
     /** (13/11) tour des nouveautés V2 déjà joué (joueurs d'avant la V2 — views/guide.ts, armV2Tour) */
     v2TourSeenAt: v.optional(v.number()),
+    /** (15/11) amené d'office, une fois, à « Personnaliser mon profil » (src/game/atelierOnce.ts) ; absent = pas encore */
+    atelierSeenAt: v.optional(v.number()),
     /** MP de bienvenue du bot Discord (lien de parrainage) déjà tenté : une seule fois, à la première connexion */
     welcomeDmAt: v.optional(v.number()),
   })

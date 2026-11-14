@@ -11,6 +11,7 @@ import { badgeIcon } from '../cosmeticArt';
 import { COIN_ICON } from './wallet';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
 import { guarded, isPending } from './safety';
+import { OPEN_COSM } from '../atelierOnce';
 
 /**
  * SUCCÈS (#/succes, onglet de la navigation — retours live n°1) : les 36 succès de l'espace Jeux (src/core/economy.ts),
@@ -99,7 +100,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       if (opens.length) toast(t('sc.openUnlocked', { list: opens.map((c) => `« ${c.c.label} »`).join(', ') }), 'ok');
       recap.hidden = false;
       recap.innerHTML = `<b>${r.coins ? `+${fmtCoins(r.coins)} ${COIN_ICON}` : ''}${r.packs ? `${r.coins ? ' · ' : ''}+${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>${t('sc.unlockedFor', { list: cos.map((c) => `${c.kind === 'Badge' ? `${badgeIcon(c.c.id)} ` : ''}${kindLabel(c.kind)} « ${esc(c.c.label)} »`).join(', ') })}</span><a class="btn-primary sc-equip" href="#/profil">${t('sc.equip')}</a>` : '<span>' + t('sc.coinsAdded') + '</span>'}<button class="sc-recap-x" aria-label="${t('common.close')}">✕</button>`; // i18n-ok
-      recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem('bebou.openCosm', '1'));
+      recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem(OPEN_COSM, '1'));
       recap.querySelector('.sc-recap-x')!.addEventListener('click', () => (recap.hidden = true));
     } catch (e) {
       toast(errMsg(e), 'err');

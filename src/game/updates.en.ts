@@ -35,6 +35,7 @@ export const UPDATES_EN: UpdateMonth[] = [
           '🎖️ Achievements: 49 more tiers (137 in all), from very easy to very long, and a new “Every theme” ladder. Every new item is earned there.',
           '💬 Your frame and title also show in the chat, on your friends’ lists and in the ranking.',
           '🪙 Coins: no more “+N” on every booster while opening. They all arrive at the end, once the cards are revealed, and fill up the counter.',
+          '🚪 On your next visit, the game takes you once to “Customise” to show you all this. Close it whenever you like.',
         ],
       },
       {

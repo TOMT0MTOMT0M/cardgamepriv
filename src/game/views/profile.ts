@@ -10,6 +10,7 @@ import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes'
 import { rarity, type RarityId } from '../../core/rarity';
 import { ACCENTS, BACKGROUNDS, BADGES, BANNERS, FRAMES, TITLE_STYLES, VITRINES, accentColor, accordOf, backgroundOf, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { openAtelier, type Atelier, type AtelierFam } from './atelier';
+import { OPEN_COSM, OPEN_COSM_EVT } from '../atelierOnce';
 import { accordFx, badgeIcon, framed, icon, titleHtml } from '../cosmeticArt';
 import { mountBgShader } from '../bgShader';
 import type { MsgKey } from '../../core/i18n';
@@ -151,6 +152,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const vInfo = q('.v-info');
 
   let who = '';
+  /** la page est à l'écran (entre `enter` et `leave`) */
+  let shown = false;
   let prof: Profile | null = null;
   let cards: PlayerCard[] = [];
   let token = 0;
@@ -409,6 +412,13 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     renderHead();
   };
   q('.pf-banner-btn').addEventListener('click', openCosm);
+  /** « Équiper → » des succès, passage d'office (atelierOnce.ts) : l'atelier s'ouvre dès que MON profil est affiché */
+  const openCosmIfAsked = () => {
+    if (!shown || !isMe() || el.classList.contains('loading') || !sessionStorage.getItem(OPEN_COSM)) return;
+    sessionStorage.removeItem(OPEN_COSM);
+    openCosm();
+  };
+  window.addEventListener(OPEN_COSM_EVT, openCosmIfAsked);
 
   /**
    * Photo de profil / bannière À TOI (retours live 02) : GIF animé (ou image) importé, ≤ 2 Mo (démo : 700 Ko),
@@ -804,11 +814,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (my !== token) return;
     el.classList.remove('loading');
     renderAll();
-    // « Équiper → » depuis les succès : le panneau de personnalisation s'ouvre tout de suite
-    if (isMe() && sessionStorage.getItem('bebou.openCosm')) {
-      sessionStorage.removeItem('bebou.openCosm');
-      openCosm();
-    }
+    // « Équiper → » depuis les succès, passage d'office : le panneau de personnalisation s'ouvre tout de suite
+    openCosmIfAsked();
     if (tab === 'activite') void loadActivity();
     // (audit 12/11, A5-11) un re-rendu du profil (collection, amis, classeurs) ne recharge plus le classement déjà affiché
     if (tab === 'classement' && !leaderLoaded) ((leaderLoaded = true), void leaderboard.load());
@@ -867,6 +874,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   return {
     el,
     enter(sub) {
+      shown = true;
       shell.show(null);
       shell.setDimmed(true);
       el.scrollTo({ top: 0 });
@@ -882,6 +890,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       void load(id);
     },
     leave() {
+      shown = false;
       if (open) closeViewer();
       stopEditing();
       atelier?.close();

@@ -3,6 +3,7 @@ import type { PartOf } from '../../i18n';
 import type { fr } from '../fr/game.views.atelier';
 
 export const en: PartOf<typeof fr> = {
+  'at.forced': 'New: build your profile here. Backgrounds, frames, title styles.',
   'at.title': 'Customise',
   'at.sub': 'Everything unlocks by playing',
   'at.preview': 'Preview of your profile',
