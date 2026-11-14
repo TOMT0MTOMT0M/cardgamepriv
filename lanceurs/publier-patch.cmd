@@ -64,7 +64,7 @@ echo [3/4] sauvegarde de la base des joueurs...
 for /f "usebackq delims=" %%d in (`powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd-HHmm"`) do set STAMP=%%d
 set SAVE=sauvegardes\avant-patch-%TAG%-%STAMP%.zip
 call npx convex export --include-file-storage --path "%SAVE%" >> "%LOG%" 2>&1 || goto :err
-echo      -> %SAVE%
+echo      -^> %SAVE%
 echo.
 set /p OK=Tape PUBLIER puis Entree pour mettre %TAG% en ligne chez les joueurs (autre chose = annuler) : 
 if /i not "%OK%"=="PUBLIER" (
@@ -73,7 +73,7 @@ if /i not "%OK%"=="PUBLIER" (
   pause
   exit /b 0
 )
-echo [4/4] mise en ligne puis fusion v2 -> master...
+echo [4/4] mise en ligne puis fusion v2 -^> master...
 rem (13/11) master vit dans .wt-master : la mise en ligne part d'ICI (branche v2, node_modules a jour), dont le contenu
 rem est celui de master apres la fusion (v2 contient deja tout master, controle plus haut). Fusion et tag ensuite.
 set SANS_PAUSE=1
