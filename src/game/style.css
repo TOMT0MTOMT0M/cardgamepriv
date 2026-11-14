@@ -3844,13 +3844,12 @@ body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: n
 .view.collection > .pager { scroll-snap-align: end; scroll-margin-bottom: 40px; }
 @media (min-width: 861px) {
   .view.collection:has(> .grid:not([hidden]) > .tile) { scroll-snap-type: y mandatory; }
-  /* (v2.0.7, demande de Tom) 2 rangées de 6 : six colonnes, la carte aussi large que possible sans que les deux
-     rangées dépassent la hauteur sous la barre (écran bas : cartes plus étroites, grille centrée) */
+  /* (v2.0.7, demande de Tom) 2 rangées de 6 qui REMPLISSENT l'espace sous la barre : la carte prend toute la hauteur
+     d'une demi-zone (2 rangées + 1 écart = la hauteur visible), la grille s'élargit pour ses 6 colonnes (plus de
+     largeur maxi de 1 200 px). Écran étroit : la largeur limite, les cartes rétrécissent. */
   .view.collection > .grid {
     --tile-w: min(calc((100% - 70px) / 6), calc((100dvh - var(--top) - var(--bar-h, 60px) - 26px) / 2 * 63 / 88));
-    grid-template-columns: repeat(6, var(--tile-w)); justify-content: center;
-    /* chaque rangée occupe la moitié de la hauteur sous la barre : la 3e commence juste sous l'écran, jamais coupée */
-    grid-auto-rows: calc((100dvh - var(--top) - var(--bar-h, 60px) - 26px) / 2); align-items: start;
+    max-width: none; grid-template-columns: repeat(6, var(--tile-w)); justify-content: center;
   }
 }
 
@@ -3865,3 +3864,10 @@ body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: n
 
 .cards-bar .cb-dups.on, .ob-pdup.on { background: #fff; color: #000; border-color: #fff; }
 .ob-pt .ob-pdup { flex: none; }
+
+/* (v2.0.7) demande d'activation des notifications au lancement */
+.nf-ask-b { display: flex; flex-direction: column; gap: 12px; padding: 14px 18px 18px; }
+.nf-ask-b p { margin: 0; color: var(--ink); font-size: 15px; line-height: 1.5; }
+.nf-ask-a { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.nf-ask-a .nf-ask-no { margin-left: auto; }
+.nf-denied { margin: 8px 0 0; }

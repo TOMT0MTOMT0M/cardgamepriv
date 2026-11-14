@@ -168,7 +168,7 @@ export const fr = {
   'notif.k.gamesD': 'défi Pack Battle, gain à la roulette',
   'notif.k.chatD': 'message privé, mention, le chat général qui se réveille',
   'notif.k.roulette': 'Roulette',
-  'notif.k.rouletteD': '10 min avant chaque tirage (10 h, 20 h) — à cocher',
+  'notif.k.rouletteD': '10 min avant chaque tirage (10 h, 20 h)',
   'notif.k.news': 'Annonces de l’équipe',
   'notif.k.newsD': 'nouveau patch, événement',
   'notif.demo': 'Notifications : seulement en ligne (pas en démo).',
@@ -185,6 +185,14 @@ export const fr = {
   'notif.quiet': 'Pas de notification entre 23 h et 8 h.',
   'notif.offToast': 'Notifications coupées sur cet appareil.',
   'notif.onToast': 'Notifications activées !',
+  'notif.ask.k': 'Notifications',
+  'notif.ask.title': 'Ne rate rien',
+  'notif.ask.body': 'Réserve pleine, échanges, messages, tirages de la roulette, annonces : le jeu te prévient, même fermé.',
+  'notif.ask.later': 'Plus tard',
+  'notif.ask.no': 'Non merci',
+  'notif.ask.where': 'Tu peux les activer, les couper ou choisir lesquelles recevoir dans ton profil, section Notifications.',
+  'notif.ask.noToast': 'D’accord. Tu peux les activer quand tu veux depuis ton profil.',
+  'notif.denied': 'Ton navigateur bloque les notifications de ce site. Pour les rouvrir : le cadenas à gauche de l’adresse → Notifications → Autoriser, puis recharge la page.',
   'notif.testSent': { one: 'Test envoyé à {n} appareil (quelques secondes).', other: 'Test envoyé à {n} appareils (quelques secondes).' },
 
   // ───── src/game/godPack.ts ─────

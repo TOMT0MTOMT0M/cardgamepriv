@@ -20,7 +20,8 @@ import { msgParamsValidator } from './schema';
  */
 export const KINDS = ['reserve', 'trade', 'friend', 'referral', 'game', 'streak', 'news', 'chat', 'roulette'] as const;
 /** (13/11, retours Hugo) types À LA DEMANDE : envoyés seulement si le joueur les a cochés (absent ≠ tout) */
-export const OPT_IN: readonly Kind[] = ['roulette'];
+// (v2.0.7, décision de Tom) plus aucun type « à cocher » : tout est actif par défaut, le joueur décoche ce qu'il ne veut pas
+export const OPT_IN: readonly Kind[] = [];
 /** préférences effectives : celles du joueur, ou tout sauf les types à la demande */
 export const prefsOf = (u: { notifPrefs?: string[] }): string[] => u.notifPrefs ?? KINDS.filter((k) => !OPT_IN.includes(k));
 export type Kind = (typeof KINDS)[number];
