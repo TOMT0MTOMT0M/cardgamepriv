@@ -1,0 +1,139 @@
+/* ═══ ESPACE JEUX — MOTION ET PRIORITÉ D'AFFICHAGE (14/11) ═══════════════════════════════════════════════════════
+   Même DA « usinage » (noir / blanc, filets, coins nets) : rien de décoratif en plus, seulement du mouvement qui dit
+   où l'on va et ce qui compte. Jetons de motion.ts uniquement (--dur-*, --ease-*). Techniques récentes, toutes en
+   amélioration progressive (sans elles : l'affichage d'avant) :
+   - View Transitions (games.ts `go`) : le corps de la page glisse dans le sens de la navigation (onglet suivant →
+     depuis la droite, précédent ← depuis la gauche, entrer dans une partie ↓, en ressortir ↑) ; l'en-tête et la
+     pastille des onglets ne bougent pas (elle glisse déjà seule, morph.ts) ;
+   - @starting-style + sibling-index() : les lignes (duels, parties, mises, historique) entrent en cascade serrée ;
+   - animations pilotées par le défilement (animation-timeline: view()) : les tables de l'accueil se posent quand
+     elles arrivent à l'écran ;
+   - :has() : une liste qui contient des parties passe AVANT le formulaire de création au téléphone (on rejoint
+     d'abord, on crée ensuite).
+   Mouvement réduit : fondus courts seulement. */
+
+/* ── 1. transitions entre les écrans des Jeux ── */
+html.gm-vt .games .gm-body { view-transition-name: gm-body; }
+html.gm-vt::view-transition-group(gm-body) { animation-duration: var(--dur-emphatique); animation-timing-function: var(--ease-entree); }
+html.gm-vt::view-transition-old(gm-body) { animation: gm-vt-out var(--dur-rapide) var(--ease-sortie) both; }
+html.gm-vt::view-transition-new(gm-body) { animation: gm-vt-in var(--dur-emphatique) var(--ease-entree) both; }
+/* (la page entière reste fixe pendant ce temps : seule la capture nommée bouge) */
+html.gm-vt::view-transition-old(root), html.gm-vt::view-transition-new(root) { animation: none; }
+html.gm-vt .gm-body > *, html.gm-vt .gm-cols > * { animation: none; }
+html.gm-vt { --gm-dx: 0px; --gm-dy: 0px; }
+html.gm-vt[data-gm-dir='next'] { --gm-dx: 28px; }
+html.gm-vt[data-gm-dir='prev'] { --gm-dx: -28px; }
+html.gm-vt[data-gm-dir='in'] { --gm-dy: 18px; }
+html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
+@keyframes gm-vt-out { to { opacity: 0; transform: translate(calc(var(--gm-dx) * -0.4), calc(var(--gm-dy) * -0.4)); } }
+@keyframes gm-vt-in { from { opacity: 0; transform: translate(var(--gm-dx), var(--gm-dy)); } }
+@media (prefers-reduced-motion: reduce) {
+  html.gm-vt { --gm-dx: 0px !important; --gm-dy: 0px !important; }
+}
+
+/* ── 2. priorité d'affichage : rejoindre avant créer (téléphone, une seule colonne) ── */
+@media (max-width: 760px) {
+  .games .gm-cols > .gm-panel:has(.gm-list .gm-item) { order: -1; }
+  .games .gm-cols > .gm-panel:has(.gm-list .gm-item) .gm-ph b::after {
+    content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 8px; vertical-align: middle; background: #fff;
+    animation: gm-blink 1.6s steps(2, jump-none) infinite;
+  }
+}
+
+/* ── 3. lignes : entrée en cascade serrée (duels ouverts, parties en attente, mes parties) ── */
+.games .gm-item {
+  transition: opacity var(--dur-standard) var(--ease-entree), translate var(--dur-standard) var(--ease-entree), background-color var(--dur-rapide), border-color var(--dur-rapide), scale var(--dur-instant);
+  transition-delay: calc(min(var(--gm-i, 0), 7) * 40ms);
+}
+@supports (width: calc(sibling-index() * 1px)) {
+  .games .gm-item { --gm-i: calc(sibling-index() - 1); }
+}
+@starting-style {
+  .games .gm-item { opacity: 0; translate: 0 8px; }
+}
+
+/* ── 4. réponse au doigt : tout ce qui se touche s'enfonce un peu (jamais de rebond : ce n'est pas une récompense) ── */
+.games :is(.gm-game, .gm-item, .gm-num, .gm-pack-b, .btn-primary, .btn-ghost, .gm-back) { -webkit-tap-highlight-color: transparent; }
+.games :is(.gm-game, .gm-item) { transition: scale var(--dur-instant) var(--ease-standard), border-color var(--dur-rapide), background-color var(--dur-rapide); }
+.games :is(.gm-game, .gm-item):active { scale: 0.985; }
+.games :is(.gm-num, .gm-pack-b, .btn-primary, .btn-ghost):active { scale: 0.96; transition: scale var(--dur-instant) var(--ease-standard); }
+@media (hover: hover) {
+  .games .gm-item:hover { border-color: var(--gm-line-2); background: rgba(255, 255, 255, 0.03); }
+}
+
+/* ── 5. roulette : un numéro choisi s'allume net, le tien se souligne ── */
+.games .gm-num { transition: background-color var(--dur-rapide) var(--ease-standard), color var(--dur-rapide), border-color var(--dur-rapide), scale var(--dur-instant); }
+.games .gm-num.sel { animation: gm-num-on var(--dur-standard) var(--ease-entree); }
+@keyframes gm-num-on { from { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55); } to { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); } }
+
+/* ── 6. accueil : les tables se posent quand elles arrivent à l'écran (défilement) ── */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .games .gm-hub .gm-game {
+      animation: gm-table-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+}
+@keyframes gm-table-in { from { opacity: 0.2; translate: 0 22px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .games .gm-item { transition-delay: 0ms; }
+  @starting-style { .games .gm-item { translate: none; } }
+  .games .gm-num.sel { animation: none; }
+}
+
+/* ═══ PENDANT LES PARTIES (14/11) — gameFx.ts + games.ts ═══ */
+
+/* « +n★ » qui file vers le total (position fixe : il traverse la page) */
+.gm-gain { position: fixed; z-index: 60; pointer-events: none; padding: 3px 9px; border: 1px solid var(--rc, #fff); border-radius: var(--r-pill);
+  background: #000; color: #fff; font: 600 13px/1 var(--mono); letter-spacing: 0.04em; white-space: nowrap;
+  box-shadow: 0 0 18px -2px color-mix(in srgb, var(--rc, #fff) 70%, transparent); }
+/* éclair des 6★ */
+.gm-flash { position: fixed; inset: 0; z-index: 59; pointer-events: none; opacity: 0;
+  background: radial-gradient(80% 70% at 50% 45%, #fff, color-mix(in srgb, var(--rc, #fff) 60%, #fff) 45%, transparent 100%); mix-blend-mode: screen; }
+
+/* ── Pack Battle : la carte rare se fait attendre (dos qui palpite à la couleur de la rareté) ── */
+.gm-big-back { aspect-ratio: 63 / 88; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.16);
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px), linear-gradient(90deg, #191919, #282828 30%, #151515 55%, #242424 80%, #181818); }
+.gm-big.charge .gm-big-back { animation: gm-charge 0.38s var(--ease-standard) infinite alternate; }
+@keyframes gm-charge {
+  from { box-shadow: 0 0 0 1px color-mix(in srgb, var(--rc) 40%, transparent), 0 0 10px 0 color-mix(in srgb, var(--rc) 25%, transparent); scale: 1; }
+  to { box-shadow: 0 0 0 1px var(--rc), 0 0 36px 4px color-mix(in srgb, var(--rc) 60%, transparent); scale: 1.02; }
+}
+/* durée du retournement selon la rareté (games.ts : --fd) */
+.gm-big.in .tile { animation-duration: var(--fd, 0.75s); }
+.gm-big.in::after { animation-duration: calc(var(--fd, 0.75s) * 1.2); }
+
+/* qui mène : l'étiquette glisse du côté du meneur ; à la fin, la lumière part entière chez le gagnant */
+.gm-lead { position: absolute; top: 12px; left: 50%; translate: -50% 0; padding: 2px 8px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill);
+  font: 500 9.5px/1.4 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-2); font-style: normal; opacity: 0;
+  transition: left var(--dur-emphatique) var(--ease-entree), opacity var(--dur-standard) var(--ease-standard), color var(--dur-rapide); }
+.gm-tug[data-lead='l'] .gm-lead { left: 12%; opacity: 1; color: #fff; }
+.gm-tug[data-lead='r'] .gm-lead { left: 88%; opacity: 1; color: #fff; }
+.gm-tug.final .gm-tug-bar > i { transition: width 1.1s var(--ease-entree); }
+.gm-tug.final .gm-lead { opacity: 0; }
+
+/* ── Battle Royale : une 5★/6★ allume sa rangée (balayage de la couleur de la rareté) ; podium à la fin ── */
+.gm-rrow.rare::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(100deg, transparent 0 30%, color-mix(in srgb, var(--rc) 34%, transparent) 50%, transparent 70%) -120% 0 / 220% 100% no-repeat;
+  animation: gm-row-sweep 0.9s var(--ease-entree) both; }
+@keyframes gm-row-sweep { to { background-position: 120% 0; } }
+.gm-rrow.pod-1 .gm-rank { background: #fff; color: #000; }
+.gm-rrow.pod-2 .gm-rank, .gm-rrow.pod-3 .gm-rank { border: 1px solid var(--gm-line-2); color: #fff; }
+.gm-rrow .gm-rank { display: inline-grid; place-items: center; min-width: 30px; padding: 2px 6px; border-radius: var(--r-ctl); transition: background-color var(--dur-standard), color var(--dur-standard); }
+.gm-rrow.lead .gm-rank { color: #fff; }
+
+/* ── Roulette : onde carrée qui part de la case gagnante, le reste de la table s'éteint un instant ── */
+.gm-wheel { position: relative; }
+.gm-wheel.boom::after { content: ''; position: absolute; left: var(--bx); top: var(--by); width: 20px; height: 20px; translate: -50% -50%; pointer-events: none; z-index: 3;
+  border: 1px solid #fff; animation: gm-boom 1.1s var(--ease-entree) forwards; }
+@keyframes gm-boom { from { opacity: 1; width: 20px; height: 20px; } to { opacity: 0; width: 220%; height: 220%; } }
+.gm-wheel.boom .gm-num:not(.landed) { animation: gm-dim 1.2s var(--ease-standard); }
+@keyframes gm-dim { 20% { opacity: 0.35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-big.charge .gm-big-back { animation: none; box-shadow: 0 0 0 1px var(--rc); }
+  .gm-rrow.rare::before { animation-duration: 1ms; }
+}

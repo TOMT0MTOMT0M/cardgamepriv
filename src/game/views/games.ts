@@ -40,6 +40,8 @@ import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
 import { mountGridArt } from './gridArt';
 import { yieldToMain } from '../../core/yieldMain';
+import { cardBeat, flash, flyGain, shake, stamp } from './gameFx';
+import '../jeux-motion.css';
 
 /**
  * ESPACE JEUX (#/jeux) : les vrais jeux seulement — 1v1 Pack Battle, Pack Battle Royale, Roulette à cartes —, avec
@@ -117,6 +119,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
    */
   const open = () => GAMES_OPEN || !!snap()?.isAdmin;
   let wasOpen = false;
+  /** la page des Jeux est déjà à l'écran (pour animer d'un écran des Jeux à l'autre, pas l'arrivée sur la page) */
+  let active = false;
   const packsLeft = () => (backend.state.user ? liveRegen(backend.state.user).balance : 0);
   const sfx = (k: 'tick' | 'chime' | 'big') => {
     try {
@@ -291,7 +295,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   /** « Remiser un booster » : la mise et l'adversaire du duel qui vient de finir, repris par le lobby */
   let rematch: { opp?: string; packs: PackChoice[] } | null = null;
   function duelLobby() {
-    body.innerHTML = `<div class="gm-cols"><div class="gm-panel gm-create"></div><div class="gm-panel"><div class="gm-ph"><b>Duels ouverts</b></div><div class="gm-list"></div></div></div>
+    body.innerHTML = `<div class="gm-cols"><div class="gm-panel gm-create"></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.openDuels')}</b></div><div class="gm-list"></div></div></div>
       <div class="gm-rules muted">${tr('gm.duelRules')}</div>`;
     const cr = body.querySelector<HTMLElement>('.gm-create')!;
     const edHost = h('div');
@@ -469,7 +473,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   async function playDuel(room: HTMLElement, d: DuelView, animate: boolean) {
     const res = d.result!;
     const n = res.packs[0].length * 5;
-    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">' + tr('gm.skip') + '</button>' : ''}</div><div class="gm-battle"><div class="gm-tug" aria-hidden="true"><span><b>0</b><small>★</small></span><div class="gm-tug-bar"><i></i></div><span><b>0</b><small>★</small></span></div><div class="gm-stage"><div class="gm-big" data-k="0"></div><div class="gm-vs-x">VS</div><div class="gm-big" data-k="1"></div></div></div><div class="gm-verdict"></div>`;
+    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">' + tr('gm.skip') + '</button>' : ''}</div><div class="gm-battle"><div class="gm-tug" aria-hidden="true"><span><b>0</b><small>★</small></span><div class="gm-tug-bar"><i></i><em class="gm-lead">${tr('gm.lead')}</em></div><span><b>0</b><small>★</small></span></div><div class="gm-stage"><div class="gm-big" data-k="0"></div><div class="gm-vs-x">VS</div><div class="gm-big" data-k="1"></div></div></div><div class="gm-verdict"></div>`;
     const bat = room.querySelector<HTMLElement>('.gm-battle')!;
     const bigs = [...bat.querySelectorAll<HTMLElement>('.gm-big')];
     // rapport de force (barre partagée selon les étoiles) + totaux qui roulent
@@ -497,26 +501,58 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     bat.append(cols[0].el, cols[1].el);
     let skip = !animate;
     room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
-    const flip = (k: number, i: number) => {
+    // (14/11) qui mène : l'étiquette « En tête » glisse du côté du meneur, et frappe quand le meneur change
+    const lead = tug.querySelector<HTMLElement>('.gm-lead')!;
+    let leader = -1;
+    const updLead = () => {
+      const a = cols[0].total;
+      const b = cols[1].total;
+      const now = a === b ? -1 : a > b ? 0 : 1;
+      if (now === leader) return;
+      leader = now;
+      tug.dataset.lead = now < 0 ? '' : now ? 'r' : 'l';
+      if (now >= 0 && !skip) stamp(lead);
+    };
+    /** une carte : (rare) le dos palpite à la couleur de la rareté, puis retournement d'autant plus long que la carte est rare */
+    const flip = async (k: number, i: number) => {
       const card = res.packs[k].flat()[i];
+      const stars = CARD_STARS[card.rarity];
+      const hex = rarity(card.rarity).hex;
+      const beat = skip ? { pre: 0, flip: 0, hold: 0 } : cardBeat(stars);
       const sl = cols[k].slots[i];
+      const big = bigs[k];
+      big.style.setProperty('--rc', hex);
+      if (beat.pre) {
+        big.replaceChildren(h('div', 'gm-big-back'));
+        big.classList.remove('in', 'hot');
+        big.classList.add('charge');
+        await wait(beat.pre);
+        big.classList.remove('charge');
+      }
       sl.classList.add('up');
       // la carte du tirage en grand, au centre (une nouvelle carte remplace la précédente en se retournant)
-      const big = bigs[k];
       big.replaceChildren(cardTile(card.cardId, card.rarity));
-      big.style.setProperty('--rc', rarity(card.rarity).hex);
-      big.classList.toggle('hot', CARD_STARS[card.rarity] >= 5);
+      big.style.setProperty('--fd', `${beat.flip || 750}ms`);
+      big.classList.toggle('hot', stars >= 5);
       big.classList.remove('in');
       void big.offsetWidth;
       big.classList.add('in');
       const before = cols[k].total;
-      cols[k].total += CARD_STARS[card.rarity];
+      cols[k].total += stars;
       rollNumber(cols[k].count, before, cols[k].total, (x) => `${Math.round(x)}★`, 420);
-      updTug(k, before, rarity(card.rarity).hex, CARD_STARS[card.rarity] >= 5);
+      updTug(k, before, hex, stars >= 5);
+      updLead();
       cols[k].count.classList.remove('pop');
       void cols[k].count.offsetWidth;
       cols[k].count.classList.add('pop');
-      if (CARD_STARS[card.rarity] >= 5) sl.classList.add('hot');
+      if (stars >= 5) sl.classList.add('hot');
+      if (skip) return;
+      if (stars >= 3) void flyGain(big, tugN[k], `+${stars}★`, hex);
+      if (stars >= 6) {
+        flash(hex);
+        shake(bat.querySelector('.gm-stage')!, 6);
+      }
+      if (beat.hold) await wait(beat.hold);
     };
     for (let i = 0; i < n; i++) {
       const last = i === n - 1;
@@ -525,7 +561,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         await wait(DUEL_TEMPO.suspense);
       }
       for (const k of [0, 1]) {
-        flip(k, i);
+        await flip(k, i);
         if (!skip) {
           sfx(CARD_STARS[res.packs[k].flat()[i].rarity] >= 5 ? 'chime' : 'tick');
           await wait(last ? DUEL_TEMPO.derniere : i >= n - 5 ? DUEL_TEMPO.finale : DUEL_TEMPO.carte);
@@ -534,6 +570,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     }
     bat.classList.remove('suspense');
     room.querySelector('.gm-skip')?.remove();
+    // (14/11) fin : la lumière de la règle part entière du côté du gagnant
+    if (res.winner !== undefined) {
+      tug.classList.add('final');
+      tugBar.style.setProperty('--p', res.winner === 0 ? '1' : '0');
+    }
     const v = room.querySelector<HTMLElement>('.gm-verdict')!;
     if (res.winner === undefined) {
       v.innerHTML = `<b><span>${tr('gm.perfectDraw')}</span></b> ${tr('gm.drawBack', { n: res.stars[0] })}`;
@@ -705,16 +746,36 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         g.classList.add('suspense');
         await wait(1400);
       }
+      let best = 0;
+      let bestHex = '';
       rows.forEach((x, k) => {
         const c = res.packs[k][i];
         if (!c) return;
+        const stars = CARD_STARS[c.rarity];
+        const hex = rarity(c.rarity).hex;
         x.slots[i].classList.add('up');
-        if (CARD_STARS[c.rarity] >= 5) x.slots[i].classList.add('hot');
+        if (stars >= 5) x.slots[i].classList.add('hot');
         const before = x.total;
-        x.total += CARD_STARS[c.rarity];
+        x.total += stars;
         if (skip) x.count.textContent = `${x.total}★`;
-        else rollNumber(x.count, before, x.total, (n) => `${Math.round(n)}★`, 420);
+        else {
+          rollNumber(x.count, before, x.total, (n) => `${Math.round(n)}★`, 420);
+          // (14/11) les belles cartes se voient : « +n★ » vers le total, la rangée s'allume à la couleur de la rareté
+          if (stars >= 4) void flyGain(x.slots[i], x.count, `+${stars}★`, hex);
+          if (stars >= 5) {
+            x.row.style.setProperty('--rc', hex);
+            x.row.classList.remove('rare');
+            void x.row.offsetWidth;
+            x.row.classList.add('rare');
+          }
+          if (stars > best) ((best = stars), (bestHex = hex));
+        }
       });
+      if (!skip && best >= 6) {
+        flash(bestHex);
+        shake(g, 4);
+      }
+      const leadBefore = rows.findIndex((x) => x.row.classList.contains('lead'));
       // classement en direct : les rangées GLISSENT à leur nouvelle place (FLIP)
       const order = rows.map((x, k) => [x.total, k]).sort((a, b) => b[0] - a[0]);
       const apply = () =>
@@ -725,6 +786,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         });
       if (skip) apply();
       else flip(rows.map((x) => x.row), apply);
+      const leadNow = rows.findIndex((x) => x.row.classList.contains('lead'));
+      if (!skip && leadNow >= 0 && leadNow !== leadBefore) stamp(rows[leadNow].rank);
       if (!skip) {
         sfx('tick');
         // plusieurs boosters : rythme un peu plus soutenu (jusqu'à 25 cartes par joueur)
@@ -734,6 +797,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     g.classList.remove('suspense');
     room.querySelector('.gm-skip')?.remove();
     res.winners.forEach((w) => rows[w].row.classList.add('win'));
+    // (14/11) podium : les trois premières places se marquent
+    [...rows].sort((a, b) => b.total - a.total).slice(0, 3).forEach((x, p) => {
+      x.row.classList.add(`pod-${p + 1}`);
+      if (!skip) stamp(x.rank);
+    });
     const names = res.winners.map((w) => r.players[w].name);
     const iWon = res.winners.some((w) => r.players[w].userId === myId());
     room.querySelector<HTMLElement>('.gm-verdict')!.innerHTML =
@@ -959,11 +1027,35 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         };
         requestAnimationFrame(step);
       });
+      // (14/11) la bille dépasse d'une case, hésite, et retombe sur le numéro (pas en mouvement réduit)
+      if (T && wheel.isConnected) {
+        const at0 = cells[number - 1];
+        const over = cells[number % N];
+        at0.classList.remove('ball');
+        over.classList.add('ball');
+        sfx('tick');
+        await new Promise((r) => setTimeout(r, 190));
+        over.classList.remove('ball');
+        at0.classList.add('ball');
+        sfx('tick');
+        await new Promise((r) => setTimeout(r, 120));
+      }
       wheel.classList.remove('spinning');
       spinning = false;
       if (!wheel.isConnected) return;
       const cell = cells[number - 1];
       cell.classList.add('ball', 'landed');
+      // onde carrée qui part de la case (même géométrie que la grille), les autres cases s'éteignent un instant
+      if (!reducedMotion()) {
+        const r0 = cell.getBoundingClientRect();
+        const w0 = wheel.getBoundingClientRect();
+        wheel.style.setProperty('--bx', `${r0.left - w0.left + r0.width / 2}px`);
+        wheel.style.setProperty('--by', `${r0.top - w0.top + r0.height / 2}px`);
+        wheel.classList.remove('boom');
+        void wheel.offsetWidth;
+        wheel.classList.add('boom');
+        setTimeout(() => wheel.classList.remove('boom'), 1400);
+      }
       sfx(winner ? 'big' : 'chime');
       const panel = wheel.closest<HTMLElement>('.gm-panel');
       const r = panel?.getBoundingClientRect();
@@ -996,13 +1088,13 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         ...g.duels.map((d) => ({ at: d.resolvedAt ?? d.createdAt, href: `#/jeux/duel/${d.id}`, html: (() => {
           const k = d.sides.findIndex((s) => s.userId === uid);
           const res = d.result!;
-          const out = res.winner === undefined ? tr('gm.tieW') : res.winner === k ? '<b class="plus">victoire</b>' : '<b class="minus">' + tr('gm.lossW') + '</b>';
-          return `<span class="gm-tag">Pack Battle</span> contre ${esc(d.sides[1 - Math.max(0, k)]?.name ?? '?')} · ${res.stars[Math.max(0, k)]}★ / ${res.stars[1 - Math.max(0, k)]}★ · ${out}`;
+          const out = res.winner === undefined ? tr('gm.tieW') : res.winner === k ? '<b class="plus">' + tr('gm.winW') + '</b>' : '<b class="minus">' + tr('gm.lossW') + '</b>';
+          return `<span class="gm-tag">Pack Battle</span> ${tr('gm.vsName', { name: esc(d.sides[1 - Math.max(0, k)]?.name ?? '?') })} · ${res.stars[Math.max(0, k)]}★ / ${res.stars[1 - Math.max(0, k)]}★ · ${out}`;
         })() })),
         ...g.royales.map((r) => ({ at: r.resolvedAt ?? r.createdAt, href: `#/jeux/royale/${r.id}`, html: (() => {
           const k = r.players.findIndex((p) => p.userId === uid);
           const won = r.result!.winners.includes(k);
-          return `<span class="gm-tag">Royale</span> à ${r.players.length} · ${r.result!.stars[k] ?? 0}★ · ${won ? '<b class="plus">victoire</b>' : `gagnant : ${esc(r.result!.winners.map((w) => r.players[w].name).join(', '))}`}`; // i18n-ok
+          return `<span class="gm-tag">Royale</span> ${tr('gm.atN', { n: r.players.length })} · ${r.result!.stars[k] ?? 0}★ · ${won ? '<b class="plus">' + tr('gm.winW') + '</b>' : `${tr('gm.winnerIs')} ${esc(r.result!.winners.map((w) => r.players[w].name).join(', '))}`}`; // i18n-ok
         })() })),
       ].sort((a, b) => b.at - a.at);
       body.querySelector<HTMLElement>('.gm-hg')!.innerHTML = rows.length ? rows.map((r) => `<a class="gm-item" href="${r.href}"><span class="gm-it">${r.html}</span><span class="gm-it-r muted">${new Date(r.at).toLocaleDateString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></a>`).join('') : '<div class="muted">' + tr('gm.noneDone') + '</div>';
@@ -1081,11 +1173,29 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       shell.setDimmed(true);
       // (13/11) anciennes adresses de Défis et de La Presse (retirés) : l'accueil des Jeux
       if (parts[1] === 'defis' || parts[1] === 'presse') return void location.replace('#/jeux');
+      const prev = { sub, arg, shown: active && !document.documentElement.classList.contains('vt-pages') };
+      active = true;
       sub = (['duel', 'royale', 'roulette', 'historique', 'admin'].includes(parts[1] ?? '') ? parts[1] : '') as Sub;
       arg = parts[2] ?? '';
-      draw();
+      // (14/11) d'un écran des Jeux à l'autre : le corps glisse dans le sens de la navigation (View Transitions ;
+      // sans elles, ou en mouvement réduit : comme avant). Onglet suivant → depuis la droite ; entrer dans une partie ↓
+      const ORDER: string[] = ['', 'duel', 'royale', 'roulette', 'historique', 'admin'];
+      const dir = !prev.shown || (prev.sub === sub && prev.arg === arg) ? '' : prev.sub === sub ? (arg ? 'in' : 'out') : ORDER.indexOf(sub) > ORDER.indexOf(prev.sub) ? 'next' : 'prev';
+      const root = document.documentElement;
+      if (dir && typeof document.startViewTransition === 'function' && !reducedMotion() && !document.hidden) {
+        root.classList.add('gm-vt');
+        root.dataset.gmDir = dir;
+        try {
+          const t = document.startViewTransition(() => draw());
+          void t.finished.catch(() => undefined).then(() => (root.classList.remove('gm-vt'), delete root.dataset.gmDir));
+        } catch {
+          root.classList.remove('gm-vt');
+          draw();
+        }
+      } else draw();
     },
     leave() {
+      active = false;
       cleanup();
     },
   };
