@@ -158,7 +158,7 @@ export function createOnlineBackend(): GameBackend {
     if (changed('friends', n.friends) || userChanged)
       state.friends = n.friends
         .filter((f) => f._id !== n.user?._id)
-        .map((f) => ({ id: f._id, name: f.displayName, avatarUrl: f.avatarUrl, online: f.online, status: f.statusText, packsOpened: f.totalPacksOpened }));
+        .map((f) => ({ id: f._id, name: f.displayName, avatarUrl: f.avatarUrl, online: f.online, status: f.statusText, packsOpened: f.totalPacksOpened, ...(f.cos ? { cos: f.cos } : {}) }));
     const feedChanged = changed('feed', n.feed);
     if (feedChanged) state.feed = n.feed.map((f) => ({ id: f._id, kind: f.kind, message: f.message, msgKey: f.msgKey, msgParams: f.msgParams, rarity: f.rarity, createdAt: f.createdAt }));
     if (changed('bigPulls', n.bigPulls) || (n.bigPulls === null && feedChanged) || userChanged) {

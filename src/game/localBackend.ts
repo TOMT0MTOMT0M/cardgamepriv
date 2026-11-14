@@ -249,7 +249,7 @@ export function createLocalBackend(): GameBackend {
     state.binders = [...(save.binders ?? [])].sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt - b.createdAt);
     state.covers = save.covers ?? {};
     state.collection = Object.values(save.inv);
-    state.friends = save.bots.map<Friend>((b, i) => ({ id: b.id, name: b.name, online: i !== 2, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30, bot: true })); // i18n-ok
+    state.friends = save.bots.map<Friend>((b, i) => ({ id: b.id, name: b.name, online: i !== 2, status: i === 0 ? 'Trie ses doublons' : undefined, packsOpened: 30, bot: true, cos: [{ frame: 'n-crans', title: 'rookie', accent: 'lagon' }, { frame: 'a-feu', title: 'rookie', titleStyle: 'bulle', accent: 'fuchsia' }, { frame: 'n-petales', accent: 'citron' }][i % 3] })); // i18n-ok
     state.feed = save.feed.slice(0, 20);
     state.bigPulls = (save.bigPulls ?? []).slice(0, 30);
     state.sealed = save.sealed;

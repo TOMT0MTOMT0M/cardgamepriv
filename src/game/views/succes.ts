@@ -7,6 +7,7 @@ import type { Shell } from '../shell';
 import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, type Achievement, type AchievementLadder, type AchievementStats } from '../../core/economy';
 import type { FriendAch } from '../eco';
 import { cosmeticsOf } from '../../core/cosmetics';
+import { badgeIcon } from '../cosmeticArt';
 import { COIN_ICON } from './wallet';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
 import { guarded, isPending } from './safety';
@@ -97,7 +98,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       const cos = all.filter((c) => c.kind !== 'Ouverture'); // i18n-ok
       if (opens.length) toast(t('sc.openUnlocked', { list: opens.map((c) => `« ${c.c.label} »`).join(', ') }), 'ok');
       recap.hidden = false;
-      recap.innerHTML = `<b>${r.coins ? `+${fmtCoins(r.coins)} ${COIN_ICON}` : ''}${r.packs ? `${r.coins ? ' · ' : ''}+${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>${t('sc.unlockedFor', { list: cos.map((c) => `${c.kind === 'Badge' ? `${c.c.glyph ?? '●'} ` : ''}${kindLabel(c.kind)} « ${esc(c.c.label)} »`).join(', ') })}</span><a class="btn-primary sc-equip" href="#/profil">${t('sc.equip')}</a>` : '<span>' + t('sc.coinsAdded') + '</span>'}<button class="sc-recap-x" aria-label="${t('common.close')}">✕</button>`; // i18n-ok
+      recap.innerHTML = `<b>${r.coins ? `+${fmtCoins(r.coins)} ${COIN_ICON}` : ''}${r.packs ? `${r.coins ? ' · ' : ''}+${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>${t('sc.unlockedFor', { list: cos.map((c) => `${c.kind === 'Badge' ? `${badgeIcon(c.c.id)} ` : ''}${kindLabel(c.kind)} « ${esc(c.c.label)} »`).join(', ') })}</span><a class="btn-primary sc-equip" href="#/profil">${t('sc.equip')}</a>` : '<span>' + t('sc.coinsAdded') + '</span>'}<button class="sc-recap-x" aria-label="${t('common.close')}">✕</button>`; // i18n-ok
       recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem('bebou.openCosm', '1'));
       recap.querySelector('.sc-recap-x')!.addEventListener('click', () => (recap.hidden = true));
     } catch (e) {
@@ -109,17 +110,20 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
    * (retours live 6, C10) UNE récompense par palier, en une puce sur une ligne : les pièces (+ boosters) OU le
    * cosmétique (titre, badge, cadre, vitrine) — plus le pavé bannière + cadre + titre + badge + couleur + vitrine.
    */
-  const KIND_CLS: Record<string, string> = { Bannière: 'banner', Cadre: 'frame', Titre: 'title', Couleur: 'frame', Vitrine: 'banner', Badge: 'badge', Ouverture: 'open' };
+  const KIND_CLS: Record<string, string> = { Bannière: 'banner', Cadre: 'frame', Titre: 'title', Couleur: 'frame', Vitrine: 'banner', Badge: 'badge', Ouverture: 'open', Fond: 'banner', Style: 'title' };
+  /** puce d'un cosmétique gagné (titre, badge, cadre, vitrine, fond, écriture du titre) */
+  const cosChip = (a: Achievement, ok: boolean) => {
+    const r = cosmeticsOf(a.id)[0];
+    if (!r) return '';
+    const sw = r.kind === 'Cadre' || r.kind === 'Vitrine' || r.kind === 'Bannière' ? ` style="--sw:${r.c.css ?? 'var(--ink-2)'}"` : ''; // i18n-ok
+    const ico = r.kind === 'Badge' ? badgeIcon(r.c.id) : r.kind === 'Titre' ? '«' : '<i></i>'; // i18n-ok
+    return `<span class="sc-cos${ok ? ' ok' : ''} k-${KIND_CLS[r.kind]}${r.c.anim ? ' anim' : ''}"${sw} title="${esc(`${kindLabel(r.kind)} « ${r.c.label} »`)}">${ico} ${r.kind === 'Titre' ? '' : `${kindLabel(r.kind)} · `}${esc(r.c.label)}${r.kind === 'Titre' ? ' »' : ''}</span>`; // i18n-ok
+  };
   const rewardHtml = (a: Achievement, ok = false) => {
-    if (a.cos) {
-      const r = cosmeticsOf(a.id)[0];
-      if (!r) return '';
-      const sw = r.kind === 'Cadre' || r.kind === 'Vitrine' || r.kind === 'Bannière' ? ` style="--sw:${r.c.css}"` : ''; // i18n-ok
-      const ico = r.kind === 'Badge' ? r.c.glyph ?? '●' : r.kind === 'Titre' ? '«' : '<i></i>'; // i18n-ok
-      return `<span class="sc-cos${ok ? ' ok' : ''} k-${KIND_CLS[r.kind]}${r.c.anim ? ' anim' : ''}"${sw} title="${esc(`${kindLabel(r.kind)} « ${r.c.label} »`)}">${ico} ${r.kind === 'Titre' ? '' : `${kindLabel(r.kind)} · `}${esc(r.c.label)}${r.kind === 'Titre' ? ' »' : ''}</span>`; // i18n-ok
-    }
+    if (a.cos) return cosChip(a, ok);
     const packs = achievementPacks(a);
-    return `<span class="sc-coins">${COIN_ICON}${fmtCoins(achievementReward(a))}${packs ? ` <span class="sc-pk">+${plural(packs, 'booster')}</span>` : ''}</span>`;
+    // (14/11, refonte de la personnalisation) un palier « pièces » peut porter EN PLUS un fond, un cadre, une écriture ou une vitrine
+    return `<span class="sc-coins">${COIN_ICON}${fmtCoins(achievementReward(a))}${packs ? ` <span class="sc-pk">+${plural(packs, 'booster')}</span>` : ''}</span>${cosChip(a, ok)}`;
   };
 
   /**

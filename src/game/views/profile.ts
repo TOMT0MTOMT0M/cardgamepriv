@@ -8,12 +8,17 @@ import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { ACCENTS, BADGES, BANNERS, FRAMES, VITRINES, accentColor, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, fmtMo, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
-import { guarded, isPending } from './safety';
+import { ACCENTS, BACKGROUNDS, BADGES, BANNERS, FRAMES, TITLE_STYLES, VITRINES, accentColor, accordOf, backgroundOf, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
+import { openAtelier, type Atelier, type AtelierFam } from './atelier';
+import { accordFx, badgeIcon, framed, icon, titleHtml } from '../cosmeticArt';
+import { mountBgShader } from '../bgShader';
+import type { MsgKey } from '../../core/i18n';
+import { guarded } from './safety';
 import { createShowcaseEditor } from './showcaseEditor';
 import { notifPanel } from '../notif';
 import { offlinePanel } from '../offline';
-import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from '../../core/economy';
+import { ACHIEVEMENTS, achievementDone } from '../../core/economy';
+import '../../core/i18n/fr/game.views.atelier'; // (« Accord … » sous les badges)
 import { STREAK_CYCLE } from '../../core/streak';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
 import { feedText } from '../msgView';
@@ -79,9 +84,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const el = h('section', 'view profile');
   el.innerHTML = `
     <div class="pf-wrap">
+      <i class="pf-bg" hidden aria-hidden="true"></i>
       <div class="pf-banner"><button class="btn-ghost pf-banner-btn" hidden>${tr('pf.customizeBtn')}</button></div>
       <div class="pf-head"></div>
-      <div class="pf-cosm" hidden></div>
       <div class="pf-tabs" role="tablist">
         <button role="tab" data-tab="tableau" class="on">${tr('pf.board')}</button><button role="tab" data-tab="collection">Collection</button><button role="tab" data-tab="activite">${tr('pf.activity')}</button><button role="tab" data-tab="classement">${tr('pf.ranking')}</button> <!-- i18n-ok -->
       </div>
@@ -124,7 +129,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   const q = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
   const banner = q('.pf-banner');
   const head = q('.pf-head');
-  const cosm = q('.pf-cosm');
+  const bgEl = q('.pf-bg');
   const keysEl = q('.pf-keys');
   const pActEl = q('.pf-p-act');
   const pCollEl = q('.pf-p-coll');
@@ -154,7 +159,11 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   let leaderLoaded = false;
   let activity: ActivityItem[] | null = null;
   let cosmOpen = false;
-  let cosmDraft: CosmeticChoice = {};
+  /** (14/11) l'atelier « Personnaliser » (./atelier.ts), ouvert par-dessus la page */
+  let atelier: Atelier | null = null;
+  /** shader du fond du profil (../bgShader.ts) : ce qui tourne, et de quoi l'arrêter */
+  let bgShown = '';
+  let bgStop: () => void = () => {};
 
   const isMe = () => !who || who === backend.state.user?.id;
   /** avatar : la photo importée (GIF) d'abord, sinon l'avatar Discord, sinon l'initiale */
@@ -203,8 +212,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
    * animé, son calque d'effets (`.pf-fx` : éclairs, flammes, auréole, cœurs, étoiles, néon — style.css). Ouvre
    * `.pf-ava-wrap` (à refermer par l'appelant, après l'étiquette éventuelle).
    */
-  const avaRing = (fr: Cosmetic, ava: string) =>
-    `<div class="pf-ava-wrap frame-${/^#/.test(fr.id) ? 'custom' : fr.id}${fr.anim ? ' anim' : ''}" style="--frame:${fr.css ?? 'transparent'}"><div class="pf-ring"><div class="pf-ava">${ava}</div>${fr.anim ? '<i class="pf-fx" aria-hidden="true"></i>' : ''}</div>`;
+  const avaRing = (fr: Cosmetic, ava: string, under = '') =>
+    `<div class="pf-ava-wrap frame-${/^#/.test(fr.id) ? 'custom' : fr.id}">${framed(fr, ava, { cls: 'pf-ring', under })}`;
 
   // ── bannière + identité
   function renderHead() {
@@ -222,6 +231,20 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     banner.classList.toggle('bn-color', !!bc);
     applyAccent(cos.accent);
     applyVitrine(cos.vitrine, cos.vitrineColor);
+    // (14/11) fond du profil : généré par le navigateur, teinté par la couleur du profil (`--bgc`, cosmetiques.css)
+    const bgc = backgroundOf(cos.background);
+    bgEl.hidden = bgc.id === 'none';
+    bgEl.style.background = bgc.css ?? '';
+    bgEl.dataset.bg = bgc.id;
+    // shader du fond (Braise, Orage, Nébuleuse, Synthwave) : un seul canevas, reposé seulement s'il change ; coupé sous l'atelier
+    const bgKey = cosmOpen || bgc.id === 'none' ? '' : `${bgc.id}|${accentColor(cos.accent) ?? '#ffffff'}`;
+    if (bgKey !== bgShown) {
+      bgShown = bgKey;
+      bgStop();
+      bgStop = bgKey ? mountBgShader(bgEl, bgc.id, accentColor(cos.accent) ?? '#ffffff') : () => {};
+    }
+    // (14/11) accord : cadre + fond de la même matière → un plus derrière la photo, et la mention sous les badges
+    const acc = accordOf(cos);
     // bannière importée (GIF ou image, retours live 02) : par-dessus la bannière cosmétique, sous le dégradé
     const bUrl = prof?.bannerMedia ?? '';
     const bm = banner.querySelector<HTMLElement>('.pf-bn-media');
@@ -236,18 +259,19 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const bb = q<HTMLButtonElement>('.pf-banner-btn');
     bb.hidden = !me;
     const fresh = me && !cosmOpen ? newCosmetics().size : 0;
-    bb.innerHTML = cosmOpen ? tr('pf.close') : tr('pf.customizeNew', { x: fresh ? ` <i class="pf-new" title="${tr('pf.newTitle', { n: fresh })}">${fresh}<span> ${tr('pf.newWord', { n: fresh })}</span></i>` : '' });
+    bb.innerHTML = tr('pf.customizeNew', { x: fresh ? ` <i class="pf-new" title="${tr('pf.newTitle', { n: fresh })}">${fresh}<span> ${tr('pf.newWord', { n: fresh })}</span></i>` : '' });
     const ava = avaHtml(name);
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     // en-tête compact (retours live 02) : pseudo, puis titre + badges sur UNE ligne, puis devise · « depuis » sur une ligne
-    head.innerHTML = `${avaRing(fr, ava)}</div>
+    head.innerHTML = `${avaRing(fr, ava, acc ? accordFx(acc.matter) : '')}</div>
       <div class="pf-id">
         <div class="pf-eyebrow">${me ? tr('pf.myProfile') : tr('pf.profile')}</div>
         <h1>${esc(name)}</h1>
-        ${title || badges.length ? `<div class="pf-tline">${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${b.glyph ?? '●'} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
+        ${title || badges.length ? `<div class="pf-tline">${title ? titleHtml(title.label, cos.titleStyle) : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${badgeIcon(b.id)} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
+        ${acc ? `<div class="pf-accord" title="${esc(tr(`at.d.${acc.matter}` as MsgKey))}">${icon('link', 13)}<span>${tr('at.accordOn', { name: tr(`at.m.${acc.matter}` as MsgKey) })}</span></div>` : ''}
         <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>' + tr('pf.noInfo') + '</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="${tr('pf.since', { date: fmtDate(prof.joinedAt) })}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="${tr('pf.editInfo')}" title="${tr('pf.editInfo')}">✎<span> ${tr('pf.info')}</span></button>` : `<button class="btn-primary pf-see-coll">${tr('pf.seeColl')}</button><a class="btn-ghost pf-trade" href="#/echanges">${tr('pf.offerTrade')}</a>${friendBtn(backend, who, name)}`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="${tr('pf.editInfo')}" title="${tr('pf.editInfo')}">${icon('pen', 14)}<span> ${tr('pf.info')}</span></button>` : `<button class="btn-primary pf-see-coll">${tr('pf.seeColl')}</button><a class="btn-ghost pf-trade" href="#/echanges">${tr('pf.offerTrade')}</a>${friendBtn(backend, who, name)}`}</div>`;
     hydrateStills(head);
     head.querySelector('.pf-see-coll')?.addEventListener('click', () => {
       tab = 'collection';
@@ -288,7 +312,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
    * `famille:id` (« gold » existe en bannière ET en cadre). Première visite : tout ce qui est déjà débloqué est « vu ».
    */
   const COSM_SEEN = 'bebou.cosm.seen';
-  let cosmNew = new Set<string>();
   const unlockedKeys = () => {
     const st = statsOf();
     return [
@@ -298,6 +321,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       ...unlockedIds(BADGES, st).map((id) => `badge:${id}`),
       ...unlockedIds(ACCENTS, st).map((id) => `accent:${id}`),
       ...unlockedIds(VITRINES, st).map((id) => `vitrine:${id}`), // i18n-ok
+      ...unlockedIds(BACKGROUNDS, st).map((id) => `background:${id}`),
+      ...unlockedIds(TITLE_STYLES, st).map((id) => `tstyle:${id}`),
     ];
   };
   /**
@@ -322,11 +347,10 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const c = accentColor(color);
     box.style.background = id || c ? v.css ?? '' : '';
     box.classList.toggle('has-vc', !!(id || c));
+    box.dataset.vit = v.id;
     if (c) box.style.setProperty('--vc', c);
     else box.style.removeProperty('--vc');
   }
-  /** onglet → champ choisi par la couleur libre */
-  const pickField = (t: CosmTab): 'accent' | 'banner' | 'frame' | null => (t === 'accent' || t === 'banner' || t === 'frame' ? t : null);
   function newCosmetics(): Set<string> {
     const all = unlockedKeys();
     try {
@@ -349,53 +373,49 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       /* stockage bloqué */
     }
   };
-  const openCosm = () => {
-    cosmOpen = true;
-    cosmNew = newCosmetics();
-    markCosmSeen();
-    cosmDraft = { ...(prof?.cosmetics ?? {}), badges: [...(prof?.cosmetics?.badges ?? [])] };
-    cosmSaved = cosmKey(cosmDraft);
-    // l'onglet du premier nouveau cosmétique s'ouvre directement
-    const first = [...cosmNew][0]?.split(':')[0] as CosmTab | undefined;
-    if (first) cosmTab = first;
-    cosm.hidden = false;
-    renderHead();
-    renderCosm();
-  };
-  q('.pf-banner-btn').addEventListener('click', () => {
-    if (!cosmOpen) return openCosm();
-    // « Fermer » sans enregistrer : comme Annuler (l'aperçu ne doit pas faire croire que c'est enregistré)
-    const dirty = cosmKey(cosmDraft) !== cosmSaved;
-    cosmOpen = false;
-    cosm.hidden = true;
-    if (dirty) void load(who);
-    else renderHead();
-  });
-
   /**
-   * Panneau de personnalisation : bannières, cadres, titres, badges (verrouillé = grisé avec la condition).
-   * Audit UX3-08 : un onglet par famille (au lieu de 4 groupes empilés sur 2 400 px), aperçu collant en haut du panneau,
-   * barre « Annuler / Enregistrer » collante en bas avec un résumé et un point « non enregistré », débloqués d'abord,
-   * condition des verrouillés lisible avec la progression (« 180/500 »).
+   * (14/11) « Personnaliser » ouvre l'ATELIER (./atelier.ts) : aperçu vivant, tuiles, essai des éléments verrouillés.
+   * Il travaille sur un brouillon ; la page ne change qu'à l'enregistrement (`closed(kept)`).
    */
-  type CosmTab = 'banner' | 'frame' | 'title' | 'badge' | 'accent' | 'vitrine';
-  let cosmTab: CosmTab = 'banner';
-  /** état enregistré à l'ouverture du panneau (pour le point « modifications non enregistrées ») */
-  let cosmSaved = '';
-  const cosmKey = (c: CosmeticChoice) => JSON.stringify([c.banner ?? BANNERS[0].id, c.frame ?? 'none', c.title ?? '', c.badges ?? [], c.accent ?? ACCENTS[0].id, c.vitrine ?? VITRINES[0].id, c.vitrineColor ?? '']);
+  const openCosm = () => {
+    if (atelier) return;
+    const fresh = newCosmetics();
+    markCosmSeen();
+    const name = prof?.name ?? backend.state.user?.name ?? '';
+    const f0 = [...fresh][0]?.split(':')[0] ?? '';
+    const first = f0 === 'tstyle' ? 'title' : (['background', 'banner', 'frame', 'title', 'accent', 'vitrine', 'badge'].includes(f0) ? (f0 as AtelierFam) : undefined);
+    cosmOpen = true;
+    atelier = openAtelier({
+      backend,
+      shell,
+      name,
+      avaHtml: () => avaHtml(name),
+      avaUrl: () => prof?.avatarMedia ?? prof?.avatarUrl ?? '',
+      hasAvatar: () => !!prof?.avatarMedia,
+      bannerUrl: () => prof?.bannerMedia ?? '',
+      cosmetics: prof?.cosmetics ?? {},
+      stats: statsOf(),
+      showcase: showcase().list,
+      fresh,
+      first,
+      media: mediaAction,
+      closed: (kept) => {
+        atelier = null;
+        cosmOpen = false;
+        if (kept) prof = prof ? { ...prof, cosmetics: kept } : prof;
+        renderHead();
+      },
+    });
+    renderHead();
+  };
+  q('.pf-banner-btn').addEventListener('click', openCosm);
+
   /**
    * Photo de profil / bannière À TOI (retours live 02) : GIF animé (ou image) importé, ≤ 2 Mo (démo : 700 Ko),
    * enregistré tout de suite (indépendant d'« Enregistrer » : ce n'est pas un cosmétique à débloquer). Sans fichier :
-   * l'avatar Discord et la bannière choisie ci-dessous.
+   * l'avatar Discord et la bannière choisie. (14/11) Lancé par les crayons posés sur la photo et la bannière de l'atelier.
    */
-  function mediaBlock() {
-    const max = backend.state.mode === 'demo' ? PROFILE_MEDIA_DEMO_MAX : PROFILE_MEDIA_MAX;
-    const row = (kind: ProfileMediaKind, label: string, has: boolean) =>
-      `<div class="cs-md-row"><span class="cs-md-l">${label}${has ? ' <b>' + tr('pf.imported') + '</b>' : ''}</span><button class="btn-ghost cs-md-b" data-media="${kind}"${isPending(`media-${kind}`) ? ' disabled' : ''}>${has ? tr('pf.replace') : 'Importer un GIF'}</button>${has ? `<button class="btn-ghost cs-md-x" data-media="${kind}" data-rm="1"${isPending(`media-${kind}`) ? ' disabled' : ''} aria-label="${tr('pf.removeImported', { what: kind === 'avatar' ? tr('pf.thePhoto') : tr('pf.theBanner') })}">${tr('pf.remove')}</button>` : ''}</div>`;
-    return `<div class="cs-media"><div class="cs-t">${tr('pf.mediaTitle')} <small>${tr('pf.mediaRules', { max: max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko`, how: lessMotion.matches ? tr('pf.reducedMotion') : tr('pf.looped') })}</small></div>${row('avatar', tr('pf.avatar'), !!prof?.avatarMedia)}${row('banner', tr('pf.banner'), !!prof?.bannerMedia)}</div>`;
-  }
-  function mediaAction(btn: HTMLButtonElement) {
-    const kind = btn.dataset.media as ProfileMediaKind;
+  function mediaAction(kind: ProfileMediaKind, remove: boolean, btn: HTMLButtonElement) {
     const field = kind === 'avatar' ? 'avatarMedia' : 'bannerMedia';
     const send = (file: File | null) =>
       void guarded(`media-${kind}`, btn, async () => {
@@ -408,9 +428,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
           toast(errMsg(e), 'err');
         }
         renderHead();
-        if (cosmOpen) renderCosm();
+        atelier?.refresh();
       });
-    if (btn.dataset.rm) return send(null);
+    if (remove) return send(null);
     const inp = document.createElement('input');
     inp.type = 'file';
     inp.accept = PROFILE_MEDIA_TYPES.join(',');
@@ -423,182 +443,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       send(f);
     });
     inp.click();
-  }
-  function renderCosm() {
-    const st = statsOf();
-    const achS = achievementStats(st, emptyEcon());
-    const ok = { banner: new Set(unlockedIds(BANNERS, st)), frame: new Set(unlockedIds(FRAMES, st)), title: new Set(unlockedIds(TITLES, st)), badge: new Set(unlockedIds(BADGES, st)), accent: new Set(unlockedIds(ACCENTS, st)), vitrine: new Set(unlockedIds(VITRINES, st)) };
-    /** « 🔒 Succès « … » : ouvre 500 boosters · 180/500 » */
-    const lockLine = (c: Cosmetic) => {
-      const a = c.need ? ACHIEVEMENTS.find((x) => x.id === c.need) : undefined;
-      const cur = a ? Math.min(achS[a.stat] ?? 0, a.target) : 0;
-      return `🔒 ${esc(c.how)}${a ? ` <em>${fmtN(cur)}/${fmtN(a.target)}</em>` : ''}`;
-    };
-    const TABS: Array<{ id: CosmTab; label: string; hint: string; items: Cosmetic[]; okSet: Set<string>; cls: string; sel: (c: Cosmetic) => boolean }> = [
-      { id: 'banner', label: tr('pf.banner'), hint: tr('pf.hint.banner'), items: BANNERS, okSet: ok.banner, cls: 'cs-banner', sel: (c) => (cosmDraft.banner ?? BANNERS[0].id) === c.id },
-      { id: 'frame', label: tr('pf.tab.frame'), hint: tr('pf.hint.frame'), items: FRAMES, okSet: ok.frame, cls: 'cs-frame', sel: (c) => (cosmDraft.frame ?? 'none') === c.id },
-      { id: 'title', label: tr('pf.tab.title'), hint: tr('pf.hint.title'), items: TITLES, okSet: ok.title, cls: 'cs-title', sel: (c) => cosmDraft.title === c.id },
-      { id: 'accent', label: tr('pf.tab.color'), hint: tr('pf.hint.accent'), items: ACCENTS, okSet: ok.accent, cls: 'cs-accent', sel: (c) => (cosmDraft.accent ?? ACCENTS[0].id) === c.id },
-      { id: 'vitrine', label: tr('pf.vitrine'), hint: tr('pf.hint.vitrine'), items: VITRINES, okSet: ok.vitrine, cls: 'cs-vitrine', sel: (c) => (cosmDraft.vitrine ?? VITRINES[0].id) === c.id },
-      { id: 'badge', label: 'Badges', hint: tr('pf.hint.badges'), items: BADGES, okSet: ok.badge, cls: 'cs-badge', sel: (c) => (cosmDraft.badges ?? []).includes(c.id) }, // i18n-ok
-    ];
-    const tabDef = TABS.find((t) => t.id === cosmTab)!;
-    // débloqués d'abord (l'ordre du catalogue est gardé à l'intérieur de chaque moitié)
-    const items = [...tabDef.items].sort((a, b) => Number(tabDef.okSet.has(b.id)) - Number(tabDef.okSet.has(a.id)));
-    const { okSet, cls, sel } = tabDef;
-    const cells = items
-      .map((c) => `<button class="cs ${cls}${sel(c) ? ' on' : ''}${okSet.has(c.id) ? '' : ' locked'}${cosmNew.has(`${cosmTab}:${c.id}`) ? ' new' : ''}" data-id="${esc(c.id)}" title="${esc(okSet.has(c.id) ? c.label : `${c.label} · ${c.how}`)}" aria-pressed="${sel(c)}" ${okSet.has(c.id) ? '' : 'aria-disabled="true"'}>${
-        cls === 'cs-banner' ? `<span class="cs-sw${c.id === 'none' ? ' cs-none' : ''}" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-frame' ? `<span class="cs-ring${c.anim ? ` frame-${c.id} anim` : ''}" style="--frame:${c.css}">${c.anim ? '<i class="pf-fx" aria-hidden="true"></i>' : ''}</span><b>${esc(c.label)}</b>` : cls === 'cs-badge' ? `<span class="cs-g">${c.glyph ?? '●'}</span><b>${esc(c.label)}</b>` : cls === 'cs-accent' ? `<span class="cs-dot" style="background:${c.css}"></span><b>${esc(c.label)}</b>` : cls === 'cs-vitrine' ? `<span class="cs-sw cs-vit" style="background:${c.css};--vc:${accentColor(cosmDraft.vitrineColor) ?? accentColor(cosmDraft.accent) ?? '#e8927c'}"></span><b>${esc(c.label)}</b>` : `<b>${esc(c.label)}</b>`
-      }${okSet.has(c.id) ? '' : `<small>${lockLine(c)}</small>`}</button>`)
-    // couleur libre : juste après les couleurs débloquées (avant les verrouillées)
-    // (retours 06/11) la couleur libre partout où on choisit une couleur : bannière, cadre, couleur du profil
-    const pf = pickField(cosmTab);
-    const pickCell = pf
-      ? (() => {
-          const v = cosmDraft[pf];
-          const custom = /^#[0-9a-f]{6}$/i.test(v ?? '') ? v! : '';
-          return `<label class="cs ${cls} cs-custom${custom ? ' on' : ''}" title="${tr('pf.anyColor')}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || accentColor(cosmDraft.accent) || ACCENTS[0].css}" aria-label="Couleur libre"></span><b>${custom ? esc(custom.toUpperCase()) : tr('pf.free')}</b></label>`;
-        })()
-      : '';
-    if (pickCell) cells.splice(items.filter((c) => okSet.has(c.id)).length, 0, pickCell);
-    // vitrine : sa couleur, juste sous les fonds (couleurs débloquées + couleur libre)
-    if (cosmTab === 'vitrine') {
-      const vc = cosmDraft.vitrineColor;
-      const custom = /^#[0-9a-f]{6}$/i.test(vc ?? '') ? vc! : '';
-      cells.push(`</div><div class="cs-t">${tr('pf.vitColor')} <small>${tr('pf.vitColorD')}</small></div><div class="cs-list cs-vcl">` +
-        `<button class="cs cs-vc${!vc ? ' on' : ''}" data-vc=""><span class="cs-dot" style="background:conic-gradient(var(--rose) 0 50%, #2a2220 0)"></span><b>${tr('pf.likeProfile')}</b></button>` +
-        ACCENTS.filter((a) => ok.accent.has(a.id)).map((a) => `<button class="cs cs-vc${vc === a.id ? ' on' : ''}" data-vc="${esc(a.id)}"><span class="cs-dot" style="background:${a.css}"></span><b>${esc(a.label)}</b></button>`).join('') +
-        `<label class="cs cs-vc cs-custom-vc${custom ? ' on' : ''}"><span class="cs-dot cs-dot-pick" style="background:${custom || 'conic-gradient(#ff6b6b, #ffd36b, #6bffb8, #6bc8ff, #c86bff, #ff6b6b)'}"><input type="color" value="${custom || '#e8927c'}" aria-label="${tr('pf.vitFree')}"></span><b>${custom ? esc(custom.toUpperCase()) : tr('pf.free')}</b></label>`);
-    }
-    const list = cells.join('');
-    // aperçu (collant) : bannière, avatar + cadre, pseudo, titre, badges
-    const name = prof?.name ?? backend.state.user?.name ?? '';
-    const bn = bannerOf(cosmDraft.banner);
-    const fr = frameOf(cosmDraft.frame);
-    const title = titleOf(cosmDraft.title);
-    const badges = (cosmDraft.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
-    const ava = avaHtml(name);
-    const dirty = cosmKey(cosmDraft) !== cosmSaved;
-    const acc = ACCENTS.find((a) => a.id === cosmDraft.accent);
-    const summary = [bn.label, fr.id !== 'none' ? tr('pf.sumFrame', { name: fr.label }) : '', cosmDraft.accent && cosmDraft.accent !== ACCENTS[0].id ? tr('pf.sumColor', { name: acc ? acc.label : cosmDraft.accent.toUpperCase() }) : '', title ? `« ${title.label} »` : '', badges.length ? plural(badges.length, 'badge') : ''].filter(Boolean).join(' · ');
-    cosm.innerHTML =
-      `<div class="cs-head"><b>${tr('pf.customize')}</b><span class="muted">${tr('pf.customizeD')}</span></div>` +
-      `<div class="cs-preview" aria-label="${tr('pf.preview')}"><div class="cs-pv-bn${prof?.bannerMedia && bannerColor(cosmDraft.banner) ? ' bn-color' : ''}" style="background:${bn.css ?? ''};--bnc:${bannerColor(cosmDraft.banner) ?? 'transparent'}">${prof?.bannerMedia ? mediaHtml(prof.bannerMedia) : ''}</div>${avaRing(fr, ava)}</div><div class="cs-pv-id"><b>${esc(name)}</b>${title ? `<span class="pf-title">${esc(title.label)}</span>` : ''}${badges.length ? `<span class="cs-pv-badges">${badges.map((b) => `<i title="${esc(b.label)}">${b.glyph ?? '●'}</i>`).join('')}</span>` : ''}</div></div>` +
-      mediaBlock() +
-      `<div class="seg cs-tabs" role="tablist" aria-label="${tr('pf.whatTo')}">${TABS.map((t) => `<button role="tab" data-tab="${t.id}" class="${t.id === cosmTab ? 'on' : ''}" aria-selected="${t.id === cosmTab}">${t.label} <em>${t.okSet.size}/${t.items.length}</em>${[...cosmNew].some((k) => k.startsWith(`${t.id}:`)) ? `<i class="pf-new-dot" aria-label="${tr('pf.newDot')}"></i>` : ''}</button>`).join('')}</div>` +
-      `<div class="cs-group"><div class="cs-t">${tabDef.label} <small>${tr('pf.unlocked', { hint: tabDef.hint, n: okSet.size, total: tabDef.items.length })}</small></div><div class="cs-list">${list}</div></div>` +
-      `<div class="cs-order"></div><div class="cs-actions"><span class="cs-sum">${dirty ? '<i class="cs-dirty" aria-hidden="true"></i>' : ''}<span>${esc(summary)}${dirty ? ' · <b>' + tr('pf.unsaved') + '</b>' : ''}</span></span><button class="btn-ghost cs-cancel">${tr('pf.cancel')}</button><button class="btn-primary cs-save"${dirty ? '' : ' disabled'}>${tr('pf.save')}</button></div>`;
-    hydrateStills(cosm);
-    cosm.querySelectorAll<HTMLButtonElement>('[data-media]').forEach((b) => b.addEventListener('click', () => mediaAction(b)));
-    cosm.querySelectorAll<HTMLButtonElement>('.cs-tabs button').forEach((b) =>
-      b.addEventListener('click', () => {
-        cosmTab = b.dataset.tab as CosmTab;
-        shell.sfx.tick(1.2, 0.04);
-        renderCosm();
-      }),
-    );
-    const renderOrder = () => {
-      const o = cosm.querySelector<HTMLElement>('.cs-order')!;
-      const list = cosmDraft.badges ?? [];
-      o.innerHTML = cosmTab === 'badge' && list.length ? `<span class="cs-t">${tr('pf.badgeOrder')}</span>${list.map((id, i) => `<span class="cs-ord">${badgeOf(id)?.glyph ?? '●'} ${esc(badgeOf(id)?.label ?? id)}<button data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${tr('pf.before')}">◀</button><button data-mv="1" data-i="${i}" ${i === list.length - 1 ? 'disabled' : ''} aria-label="${tr('pf.after')}">▶</button></span>`).join('')}` : '';
-      o.querySelectorAll<HTMLButtonElement>('button[data-mv]').forEach((b) =>
-        b.addEventListener('click', () => {
-          const i = Number(b.dataset.i), d = Number(b.dataset.mv);
-          const l = cosmDraft.badges!;
-          [l[i], l[i + d]] = [l[i + d], l[i]];
-          renderCosm();
-        }),
-      );
-    };
-    renderOrder();
-    cosm.querySelectorAll<HTMLButtonElement>('.cs:not(.cs-custom):not(.cs-vc)').forEach((b) =>
-      b.addEventListener('click', () => {
-        const id = b.dataset.id!;
-        if (b.classList.contains('locked')) return toast(tr('pf.locked', { how: b.title.split(' · ')[1] ?? '' }), 'info');
-        if (b.classList.contains('cs-banner')) cosmDraft.banner = id;
-        else if (b.classList.contains('cs-frame')) cosmDraft.frame = id;
-        else if (b.classList.contains('cs-title')) cosmDraft.title = cosmDraft.title === id ? undefined : id;
-        else if (b.classList.contains('cs-accent')) cosmDraft.accent = id === ACCENTS[0].id ? undefined : id;
-        else if (b.classList.contains('cs-vitrine')) cosmDraft.vitrine = id === VITRINES[0].id ? undefined : id;
-        else {
-          const l = (cosmDraft.badges ??= []);
-          if (l.includes(id)) l.splice(l.indexOf(id), 1);
-          else if (l.length >= 5) return toast(tr('pf.max5'), 'info');
-          else l.push(id);
-        }
-        shell.sfx.tick(1.2, 0.04);
-        // aperçu immédiat
-        prof = prof ? { ...prof, cosmetics: { ...cosmDraft, badges: [...(cosmDraft.badges ?? [])] } } : prof;
-        renderHead();
-        renderCosm();
-      }),
-    );
-    // couleur de la vitrine
-    const vcPreview = () => {
-      prof = prof ? { ...prof, cosmetics: { ...cosmDraft, badges: [...(cosmDraft.badges ?? [])] } } : prof;
-      renderHead();
-    };
-    cosm.querySelectorAll<HTMLButtonElement>('button.cs-vc').forEach((b) =>
-      b.addEventListener('click', () => {
-        cosmDraft.vitrineColor = b.dataset.vc || undefined;
-        shell.sfx.tick(1.2, 0.04);
-        vcPreview();
-        renderCosm();
-      }),
-    );
-    const vcPick = cosm.querySelector<HTMLInputElement>('.cs-custom-vc input');
-    vcPick?.addEventListener('input', () => {
-      cosmDraft.vitrineColor = vcPick.value.toLowerCase();
-      applyVitrine(cosmDraft.vitrine, cosmDraft.vitrineColor);
-      const dot = cosm.querySelector<HTMLElement>('.cs-custom-vc .cs-dot-pick');
-      if (dot) dot.style.background = vcPick.value;
-    });
-    vcPick?.addEventListener('change', () => {
-      cosmDraft.vitrineColor = vcPick.value.toLowerCase();
-      vcPreview();
-      renderCosm();
-    });
-    // couleur libre : aperçu en direct pendant qu'on glisse (sans reconstruire le panneau, sinon le sélecteur se ferme)
-    const pick = cosm.querySelector<HTMLInputElement>('.cs-custom input');
-    const pfield = pickField(cosmTab);
-    pick?.addEventListener('input', () => {
-      if (!pfield) return;
-      cosmDraft[pfield] = pick.value.toLowerCase();
-      if (pfield === 'accent') applyAccent(cosmDraft.accent);
-      else {
-        prof = prof ? { ...prof, cosmetics: { ...cosmDraft, badges: [...(cosmDraft.badges ?? [])] } } : prof;
-        renderHead();
-      }
-      const dot = cosm.querySelector<HTMLElement>('.cs-custom .cs-dot-pick');
-      if (dot) dot.style.background = pick.value;
-    });
-    pick?.addEventListener('change', () => {
-      if (!pfield) return;
-      cosmDraft[pfield] = pick.value.toLowerCase();
-      shell.sfx.tick(1.2, 0.04);
-      prof = prof ? { ...prof, cosmetics: { ...cosmDraft, badges: [...(cosmDraft.badges ?? [])] } } : prof;
-      renderHead();
-      renderCosm();
-    });
-    cosm.querySelector('.cs-cancel')!.addEventListener('click', () => {
-      cosmOpen = false;
-      cosm.hidden = true;
-      void load(who); // on recharge le vrai état
-    });
-    const save = cosm.querySelector<HTMLButtonElement>('.cs-save')!;
-    save.addEventListener('click', async () => {
-      try {
-        const kept = await busyButton(save, backend.setCosmetics(cosmDraft));
-        prof = prof ? { ...prof, cosmetics: kept } : prof;
-        cosmOpen = false;
-        cosm.hidden = true;
-        shell.sfx.chime(2, 0.06);
-        toast(tr('pf.saved'), 'ok');
-        renderHead();
-      } catch (e) {
-        toast(errMsg(e), 'err');
-      }
-    });
   }
 
   function editBio() {
@@ -940,8 +784,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     }
     who = id;
     stopEditing();
-    cosmOpen = false;
-    cosm.hidden = true;
+    atelier?.close();
     activity = null;
     leaderLoaded = false;
     const me = backend.state.user;
@@ -965,7 +808,6 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (isMe() && sessionStorage.getItem('bebou.openCosm')) {
       sessionStorage.removeItem('bebou.openCosm');
       openCosm();
-      cosm.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
     if (tab === 'activite') void loadActivity();
     // (audit 12/11, A5-11) un re-rendu du profil (collection, amis, classeurs) ne recharge plus le classement déjà affiché
@@ -1042,8 +884,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     leave() {
       if (open) closeViewer();
       stopEditing();
-      cosmOpen = false;
-      cosm.hidden = true;
+      atelier?.close();
+      bgStop();
+      bgShown = '';
     },
   };
 }

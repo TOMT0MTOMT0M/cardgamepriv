@@ -1,3 +1,5 @@
+import { accentColor, frameOf, titleOf } from '../../core/cosmetics';
+import { framed, titleHtml } from '../cosmeticArt';
 import { t as tr } from '../../core/i18n';
 import '../../core/i18n/fr/game.views.friends'; // (textes de ce module, version anglaise)
 import { friendState, isOnline, type FriendLink, type FriendRequest, type GameBackend, type Social } from '../backend';
@@ -196,8 +198,19 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     });
   });
 
-  const ava = (p: { name: string; avatarUrl?: string }, online?: boolean) =>
-    `<span class="am-ava${online ? ' on' : ''}">${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="" loading="lazy">` : `<span>${esc(p.name.slice(0, 1).toUpperCase() || '?')}</span>`}${online === undefined ? '' : `<i class="am-dot" aria-hidden="true"></i>`}</span>`;
+  // (14/11, refonte de la personnalisation) photo + cadre du joueur en version légère : lu dans la liste du club déjà chargée
+  const cosOfUser = (userId?: string) => (userId ? backend.state.friends.find((x) => x.id === userId)?.cos : undefined);
+  const ava = (p: { name: string; avatarUrl?: string; userId?: string }, online?: boolean) => {
+    const cos = cosOfUser(p.userId);
+    const c = accentColor(cos?.accent);
+    return `<span class="am-ava am-ava-f${online ? ' on' : ''}"${c ? ` style="--pa:${c}"` : ''}>${framed(frameOf(cos?.frame), p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="" loading="lazy">` : `<span>${esc(p.name.slice(0, 1).toUpperCase() || '?')}</span>`, { light: true })}${online === undefined ? '' : `<i class="am-dot" aria-hidden="true"></i>`}</span>`;
+  };
+  /** le titre porté, à côté du pseudo (écriture du joueur, sans effet) */
+  const ttl = (userId?: string) => {
+    const cos = cosOfUser(userId);
+    const t = cos?.title ? titleOf(cos.title) : undefined;
+    return t ? ` <span class="am-ttl"${accentColor(cos?.accent) ? ` style="--pa:${accentColor(cos?.accent)}"` : ''}>${titleHtml(t.label, cos?.titleStyle, 'ts-light')}</span>` : '';
+  };
   const profileHref = (userId: string) => `#/profil/${encodeURIComponent(userId)}`;
 
   function reqRow(r: FriendRequest, kind: 'in' | 'out'): HTMLElement {
@@ -218,7 +231,7 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     const row = h('div', `am-row am-friend${on ? ' is-on' : ''}`);
     const seen = on ? `<span class="am-live">${tr('am.online')}</span>${f.status ? ` · ${esc(statusText(f.status))}` : ''}` : tr('am.seen', { when: ago(f.lastSeenAt, now) });
     const a = f.lastActivity;
-    row.innerHTML = `<a class="am-who" href="${profileHref(f.userId)}" aria-label="${tr('am.profileOfOn', { name: esc(f.name), on: on ? tr('am.onlineSuffix') : '' })}">${ava(f, on)}<span class="am-txt"><b>${esc(f.name)}</b><small class="am-seen">${seen}</small>${a ? `<small class="am-act"><i aria-hidden="true">${ACT_ICON[a.kind] ?? '•'}</i> ${esc(feedText(a))} · ${ago(a.createdAt, now)}</small>` : `<small class="am-act">${plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small>`}</span></a>
+    row.innerHTML = `<a class="am-who" href="${profileHref(f.userId)}" aria-label="${tr('am.profileOfOn', { name: esc(f.name), on: on ? tr('am.onlineSuffix') : '' })}">${ava(f, on)}<span class="am-txt"><b>${esc(f.name)}${ttl(f.userId)}</b><small class="am-seen">${seen}</small>${a ? `<small class="am-act"><i aria-hidden="true">${ACT_ICON[a.kind] ?? '•'}</i> ${esc(feedText(a))} · ${ago(a.createdAt, now)}</small>` : `<small class="am-act">${plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small>`}</span></a>
       <span class="am-acts"><a class="btn-ghost am-prof" href="${profileHref(f.userId)}">${tr('am.profile')}</a><button class="btn-ghost am-rm" aria-label="${tr('am.removeTitle', { name: esc(f.name) })}">${tr('am.remove')}</button></span>`;
     const rm = row.querySelector<HTMLElement>('.am-rm')!;
     rm.addEventListener('click', () => {

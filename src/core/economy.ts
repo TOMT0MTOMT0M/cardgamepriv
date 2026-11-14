@@ -201,6 +201,8 @@ export interface AchievementStats {
   seasonWins: number;
   /** BÉBOU : paliers obtenus dans les autres succès du profil (le « niveau » du joueur) */
   bebouLevel: number;
+  /** (14/11) TOUS LES THÈMES : le plus petit des quatre compteurs par thème (cartes différentes dans CHAQUE thème) */
+  allThemes: number;
 }
 
 export interface Achievement {
@@ -345,6 +347,61 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('roulette-1', 'Jackpot', 'Remporte le pot de la roulette', 3, 'rouletteWins', 1),
   A('coins-10k', 'Tirelire', 'Gagne 10 000 pièces au total', 2, 'coinsEarned', 10000),
   A('coins-100k', 'Coffre-fort', 'Gagne 100 000 pièces au total', 3, 'coinsEarned', 100000),
+  /**
+   * (14/11, soir — « tout le monde est déjà à la moitié ») 49 PALIERS DE PLUS : des faciles (nouveaux premiers pas), des
+   * intermédiaires et de très longs (5 000 boosters, 20 000 cartes, 100 jours). Nouvelle échelle « Tous les thèmes » (le
+   * plus petit des quatre compteurs par thème). Les paliers `K` portent un élément de personnalisation du profil
+   * (src/core/cosmetics.ts) ; les autres donnent pièces + boosters selon leur difficulté. Aucun id existant ne change.
+   */
+  A('packs-25', 'Échauffement', 'Ouvre 25 boosters', 1, 'packsOpened', 25, K),
+  A('packs-750', 'À la chaîne', 'Ouvre 750 boosters', 3, 'packsOpened', 750),
+  A('packs-3000', 'Grossiste', 'Ouvre 3 000 boosters', 4, 'packsOpened', 3000),
+  A('packs-5000', 'Légende du sachet', 'Ouvre 5 000 boosters', 4, 'packsOpened', 5000),
+  A('uniq-250', 'Classeur rempli', 'Possède 250 cartes différentes', 1, 'uniques', 250, K),
+  A('uniq-3500', 'Conservateur', 'Possède 3 500 cartes différentes', 3, 'uniques', 3500),
+  A('uniq-15000', 'Archives nationales', 'Possède 15 000 cartes différentes', 4, 'uniques', 15000),
+  A('uniq-20000', 'La moitié du monde', 'Possède 20 000 cartes différentes', 4, 'uniques', 20000),
+  A('world-600', 'Routard', 'Possède 600 cartes World différentes', 2, 'worldUniques', 600, K),
+  A('gaming-150', 'Manette en main', 'Possède 150 cartes Gaming différentes', 1, 'gamingUniques', 150, K),
+  A('gaming-800', 'Salle d’arcade', 'Possède 800 cartes Gaming différentes', 2, 'gamingUniques', 800, K),
+  A('pop-300', 'Zappeur', 'Possède 300 cartes Pop Culture différentes', 1, 'popUniques', 300, K),
+  A('pop-1500', 'Vidéoclub', 'Possède 1 500 cartes Pop Culture différentes', 2, 'popUniques', 1500, K),
+  A('sport-150', 'Remplaçant', 'Possède 150 cartes Sport différentes', 1, 'sportUniques', 150, K),
+  A('sport-800', 'Vestiaire', 'Possède 800 cartes Sport différentes', 2, 'sportUniques', 800, K),
+  A('leg-10', 'Dix en or', 'Possède 10 cartes 5★', 1, 'legendaries', 10, K),
+  A('leg-200', 'Coffre plein', 'Possède 200 cartes 5★', 4, 'legendaries', 200),
+  A('leg-400', 'Banque centrale', 'Possède 400 cartes 5★', 4, 'legendaries', 400),
+  A('myth-3', 'Triplé', 'Possède 3 cartes 6★', 2, 'mythics', 3, K),
+  A('myth-100', 'Voie lactée', 'Possède 100 cartes 6★', 4, 'mythics', 100),
+  A('secret-2', 'Duo secret', 'Possède 2 cartes secrètes Bébou', 4, 'secrets', 2),
+  A('secret-5', 'Cercle fermé', 'Possède 5 cartes secrètes Bébou', 4, 'secrets', 5),
+  A('full-3', 'Trois de bouclés', 'Complète 3 albums', 1, 'fullSubthemes', 3, K),
+  A('full-15', 'Rayonnage', 'Complète 15 albums', 2, 'fullSubthemes', 15),
+  A('full-100', 'Grand bibliothécaire', 'Complète 100 albums', 4, 'fullSubthemes', 100),
+  A('trade-3', 'Bon voisin', 'Conclus 3 échanges', 1, 'tradesDone', 3, K),
+  A('trade-100', 'Place du marché', 'Conclus 100 échanges', 4, 'tradesDone', 100),
+  A('contract-3', 'Stylo en main', 'Signe 3 contrats', 1, 'contractsSigned', 3, K),
+  A('contract-100', 'Cabinet d’affaires', 'Signe 100 contrats', 4, 'contractsSigned', 100),
+  A('burn-10', 'Étincelle', 'Brûle 10 doublons à la forge', 1, 'burned', 10, K),
+  A('burn-2500', 'Haut fourneau', 'Brûle 2 500 doublons', 3, 'burned', 2500),
+  A('burn-5000', 'Cœur de volcan', 'Brûle 5 000 doublons', 4, 'burned', 5000),
+  A('streak-5', 'Bien parti', '5 jours de connexion d’affilée', 1, 'streak', 5, K),
+  A('streak-21', 'Trois semaines', '21 jours de connexion d’affilée', 2, 'streak', 21),
+  A('streak-45', 'Métronome', '45 jours de connexion d’affilée', 3, 'streak', 45, K),
+  A('streak-100', 'Cent jours', '100 jours de connexion d’affilée', 4, 'streak', 100),
+  A('season-podium-3', 'Habitué du podium', 'Finis 3 saisons dans les 3 premiers', 4, 'seasonPodiums', 3),
+  A('season-3', 'Dynastie', 'Gagne 3 saisons du classement', 4, 'seasonWins', 3),
+  A('bebou-75', 'Bébou légendaire', 'Obtiens 75 paliers de succès', 4, 'bebouLevel', 75),
+  A('bebou-100', 'Bébou éternel', 'Obtiens 100 paliers de succès', 4, 'bebouLevel', 100),
+  A('all-25', 'Touche-à-tout', 'Possède 25 cartes différentes dans chaque thème', 1, 'allThemes', 25, K),
+  A('all-100', 'Polyvalent', 'Possède 100 cartes différentes dans chaque thème', 2, 'allThemes', 100, K),
+  A('all-500', 'Équilibriste', 'Possède 500 cartes différentes dans chaque thème', 3, 'allThemes', 500, K),
+  A('all-1500', 'Encyclopédiste', 'Possède 1 500 cartes différentes dans chaque thème', 4, 'allThemes', 1500),
+  A('games-10', 'Échauffé', 'Joue 10 parties', 1, 'gamesPlayed', 10),
+  A('games-250', 'Vétéran du casino', 'Joue 250 parties', 4, 'gamesPlayed', 250),
+  A('wins-25', 'Conquérant', 'Gagne 25 batailles', 2, 'gamesWon', 25),
+  A('wins-100', 'Imbattable', 'Gagne 100 batailles', 4, 'gamesWon', 100),
+  A('roulette-3', 'Trois jackpots', 'Remporte 3 fois le pot de la roulette', 4, 'rouletteWins', 3),
 ];
 // i18n-data:fin
 
@@ -387,6 +444,7 @@ const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   seasonPodiums: 'Podiums de saison',
   seasonWins: 'Saisons gagnées',
   bebouLevel: 'Niveau Bébou',
+  allThemes: 'Tous les thèmes',
   gamesPlayed: 'Parties jouées',
   gamesWon: 'Batailles gagnées',
   rouletteWins: 'Roulette',
@@ -494,6 +552,7 @@ export function achievementStats(
     seasonPodiums: p.seasonPodiums ?? 0,
     seasonWins: p.seasonWins ?? 0,
     bebouLevel: 0,
+    allThemes: Math.min(p.worldUniques ?? 0, p.gamingUniques ?? 0, p.popUniques ?? 0, p.sportUniques ?? 0),
   };
   s.bebouLevel = ACHIEVEMENTS.filter((a) => !ECON_ONLY.has(a.stat) && achievementDone(a, s)).length;
   return s;

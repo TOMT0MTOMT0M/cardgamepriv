@@ -80,6 +80,11 @@ export interface ShopView {
   leave(): void;
   /** vrai pendant une ouverture (la navigation est alors bloquée) */
   busy(): boolean;
+  /**
+   * (14/11) phase de la boutique : `pick` (choix), `opening` (on révèle des cartes), `summary` (tout est révélé). Le jeu
+   * s'en sert pour retenir les gains de pièces pendant la révélation et les verser d'un coup à la fin (main.ts).
+   */
+  onMode?: (m: 'pick' | 'opening' | 'summary') => void;
 }
 
 /**
@@ -140,6 +145,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   // (booster du moment tiré puis événement fini : on le range avec le Bebou Pack, le serveur le rend tel quel)
   const keyOf = (p: SealedPack) => (p.eventId ? (packOf(EVENT_KEY) ? EVENT_KEY : 'bebou') : keyOfBase(p));
   let mode: 'pick' | 'opening' | 'summary' = 'pick';
+  /** la vue rendue (pour prévenir `onMode`) */
+  let self: ShopView | null = null;
   let pack: SealedPack | null = null;
   /**
    * Ouverture en série : boosters déjà ouverts (et crédités) + celui en cours. Chaque booster n'est crédité côté
@@ -1372,8 +1379,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   new MutationObserver(() => (placeFocus(), syncHint())).observe(sheet.el, { attributes: true, attributeFilter: ['class', 'hidden'] });
 
   function setMode(m: typeof mode) {
+    const was = mode;
     mode = m;
     el.dataset.mode = m;
+    if (m !== was) self?.onMode?.(m);
     big.setVisible(m === 'pick');
     placeFocus();
     hud.hidden = m !== 'opening';
@@ -2074,7 +2083,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   }
 
   setMode('pick');
-  return {
+  self = {
     el,
     enter(sub) {
       paintSleeves();
@@ -2100,4 +2109,5 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     },
     busy: () => mode === 'opening',
   };
+  return self;
 }

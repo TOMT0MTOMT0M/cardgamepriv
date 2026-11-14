@@ -12,7 +12,7 @@ import { streakDay, touchStreak } from '../src/core/streak';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
 import { econOf } from './econLib';
-import { seenAtOf } from './presence';
+import { seenAtOf, syncPresence } from './presence';
 
 /**
  * PROFIL (refonte retours du 3 nov.) : identité + cosmétiques (bannière, cadre, titre, badges — débloqués en jouant),
@@ -309,14 +309,18 @@ export const setBio = mutation({
 
 /** Cosmétiques : seulement ce qui est débloqué (un choix verrouillé est ignoré, sans erreur). */
 export const setCosmetics = mutation({
-  args: { sessionToken: v.string(), banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()) },
-  handler: async (ctx, { sessionToken, banner, frame, title, badges, accent, vitrine, vitrineColor }) => {
+  args: { sessionToken: v.string(), banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()),
+    // (14/11, refonte de la personnalisation) fond du profil, style d'écriture du titre
+    background: v.optional(v.string()), titleStyle: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken, banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle }) => {
     const user = await requireUser(ctx, sessionToken);
     const stats = await statsCached(ctx, user); // (audit 12/11, A6-11) sans relire l'inventaire si la ligne de classement est à jour
-    const clean = cleanCosmetics({ banner, frame, title, badges, accent, vitrine, vitrineColor }, stats);
+    const clean = cleanCosmetics({ banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle }, stats);
     // (11/11) l'animation d'ouverture se choisit ailleurs (fiche booster, `setOpening`) : on la garde telle quelle
     const opening = user.cosmetics?.opening;
     await ctx.db.patch(user._id, { cosmetics: opening ? { ...clean, opening } : clean });
+    // (14/11) cadre, titre et couleur suivent dans la carte publique (chat, amis) : une écriture, seulement à l'enregistrement
+    await syncPresence(ctx, user._id);
     return clean;
   },
 });
