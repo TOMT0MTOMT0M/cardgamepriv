@@ -47,7 +47,7 @@ export const fr = {
   'cp.offerTitle': 'Lui proposer ton doublon : on choisit en échange un de ses doublons de même étoile qui te manque',
   'cp.seeksDup': 'la cherche · tu as un doublon',
   'cp.seeks': 'la cherche',
-  'cp.owners': { one: '<b>{n}</b> l’a', other: '<b>{n}</b> l’ont' },
+  'cp.owners': { one: '<b>{n}</b> 👤', other: '<b>{n}</b> 👥' },
   'cp.asDup': '{n} en doublon',
   'cp.online': 'en ligne',
   'cp.forSaleT': 'En vente',

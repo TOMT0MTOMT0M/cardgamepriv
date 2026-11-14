@@ -102,8 +102,8 @@ a.btn-ghost, a.btn-ghost:visited { color: var(--ink); }
 
 /* ───────────── contrôles segmentés, onglets, jetons */
 .seg { border-color: var(--gm-line-2); padding: 3px; gap: 0; }
-.seg button, .seg a { border-radius: var(--r-ctl); }
-.seg-ind { border-radius: var(--r-ctl); box-shadow: none; }
+.seg button, .seg a { border-radius: var(--r-pill); } /* (v2.0.1) même forme que la pastille qui les porte (rayons concentriques) */
+.seg-ind { border-radius: var(--r-pill); box-shadow: none; }
 .seg button.on, .seg a.on { background: #fff; color: #000; }
 /* onglets de page : capitales espacées */
 .seg.coll-views button, .seg.coll-views a, .pf-tabs button, .tr-tabs button, .lb-boards button, .sg-tabs button { padding: 8px 14px; font: 500 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
@@ -262,7 +262,7 @@ select, textarea { border-radius: var(--gm-r); }
 .bp-row { border-radius: var(--r-ctl); }
 .sleeve, .sleeve.special { border-radius: var(--gm-r); }
 .qty { background: none; border-color: var(--gm-line-2); padding: 3px; }
-.qty button { border-radius: var(--r-ctl); }
+.qty button { border-radius: var(--r-pill); }
 .sealed-banner, .sum-warn { border-radius: var(--gm-r); }
 
 /* ───────────── connexion, accès V2, sondage, « qui a cette carte » */

@@ -48,7 +48,7 @@ export const en: PartOf<typeof fr> = {
   'cp.offerTitle': 'Offer them your duplicate: in return we pick one of their same-star duplicates that you’re missing',
   'cp.seeksDup': 'is looking for it · you have a duplicate',
   'cp.seeks': 'is looking for it',
-  'cp.owners': { one: '<b>{n}</b> has it', other: '<b>{n}</b> have it' },
+  'cp.owners': { one: '<b>{n}</b> 👤', other: '<b>{n}</b> 👥' },
   'cp.asDup': '{n} as a duplicate',
   'cp.online': 'online',
   'cp.forSaleT': 'For sale',

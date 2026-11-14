@@ -140,6 +140,8 @@ export function createViewerScene(): ViewerScene {
   const setZoom = (z: number) => {
     zoomT = Math.min(1.85, Math.max(1, z));
     document.body.classList.toggle('viewer-zoomed', zoomT > 1.04);
+    // (v2.0.1) les boutons s'effacent avec le zoom : 0 = zoom de base, 1 = zoom max
+    document.body.style.setProperty('--vz', ((zoomT - 1) / 0.85).toFixed(3));
   };
 
   const corner = new Vector3();
@@ -389,7 +391,7 @@ export function createViewerScene(): ViewerScene {
     },
     async setup(c) {
       ctx = c;
-      stage = createStage(c, { bg: ['#000000', '#000000'] /* (C4) noir profond */, env: 'studio', envIntensity: 1.2, fill: 0.6, fillPortrait: 0.66 });
+      stage = createStage(c, { bg: ['#000000', '#000000'] /* (C4) noir profond */, env: 'studio', envIntensity: 1.2, fill: 0.52, fillPortrait: 0.58 }); // (v2.0.1) carte un peu plus petite : Rejouer au-dessus, les boutons dessous
       const key = new DirectionalLight(0xfff0e0, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);
