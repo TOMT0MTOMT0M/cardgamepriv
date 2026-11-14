@@ -28,6 +28,7 @@ import {
   type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind,
 } from '../../core/cosmetics';
 import { accordFx, badgeIcon, framed, icon, titleHtml, type IconName } from '../cosmeticArt';
+import { mountBgShader } from '../bgShader';
 import { busyButton, errMsg, esc, fmtN, popLayer, pushLayer, thumbUrl, toast } from '../ui';
 
 export type AtelierFam = 'background' | 'banner' | 'frame' | 'title' | 'accent' | 'vitrine' | 'badge';
@@ -96,7 +97,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
   el.innerHTML = `
     <header class="at-bar"><h2>${tr('at.title')}</h2><span class="at-sub">${tr('at.sub')}</span><span class="at-state" aria-live="polite"></span><span class="at-acts"></span></header>
     <div class="at-body">
-      <div class="at-left"><div class="at-pv" aria-label="${tr('at.preview')}"></div><div class="at-views" role="tablist"></div></div>
+      <div class="at-left"><div class="at-pv" aria-label="${tr('at.preview')}"><i class="at-pv-bg"></i><i class="at-pv-veil"></i><div class="at-pv-in"></div></div><div class="at-views" role="tablist"></div></div>
       <div class="at-side">
         <nav class="at-fams" aria-label="${tr('at.title')}"></nav>
         <div class="at-line"><p class="at-hint"></p><div class="at-filters" role="group"></div></div>
@@ -104,7 +105,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
       </div>
     </div>`;
   const q = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
-  const pv = q('.at-pv'), grid = q('.at-grid'), famsEl = q('.at-fams'), hintEl = q('.at-hint'), filtersEl = q('.at-filters'), actsEl = q('.at-acts'), stateEl = q('.at-state'), viewsEl = q('.at-views');
+  const pv = q('.at-pv'), pvIn = q('.at-pv-in'), pvBg = q('.at-pv-bg'), grid = q('.at-grid'), famsEl = q('.at-fams'), hintEl = q('.at-hint'), filtersEl = q('.at-filters'), actsEl = q('.at-acts'), stateEl = q('.at-state'), viewsEl = q('.at-views');
 
   // ── lecture du brouillon (valeurs par défaut comprises)
   const cur = (k: Kind, c: CosmeticChoice = draft): string =>
@@ -194,6 +195,8 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
   };
 
   // ── aperçu vivant
+  let bgShown = '';
+  let bgStop: () => void = () => {};
   function renderPreview() {
     applyColors();
     const fr = frameOf(draft.frame), bn = bannerOf(draft.banner), bg = backgroundOf(draft.background), vit = vitrineOf(draft.vitrine);
@@ -207,8 +210,16 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
       `<span class="at-menu" data-menu="${kind}" hidden><button type="button" data-media="${kind}">${icon('swapImg', 15)}<span>${has ? tr('at.replace') : tr('at.import')}</span></button>${has ? `<button type="button" data-media="${kind}" data-rm="1">${icon('trash', 15)}<span>${tr('at.remove')}</span></button>` : ''}</span>`;
     const max = ctx.backend.state.mode === 'demo' ? PROFILE_MEDIA_DEMO_MAX : PROFILE_MEDIA_MAX;
     pv.dataset.view = view;
-    pv.innerHTML = `
-      <i class="at-pv-bg" style="background:${bg.css || 'none'}"></i><i class="at-pv-veil"></i>
+    // le fond : le CSS (fixe) et, pour Braise / Orage / Nébuleuse / Synthwave, son shader — reposé seulement s'il change
+    const bgKey = `${bg.id}|${accentHex()}`;
+    if (bgKey !== bgShown) {
+      bgShown = bgKey;
+      bgStop();
+      pvBg.style.background = bg.css || 'none';
+      pvBg.dataset.bg = bg.id;
+      bgStop = mountBgShader(pvBg, bg.id, accentHex());
+    }
+    pvIn.innerHTML = `
       <div class="at-pv-profil">
         <div class="at-bn${bUrl && bc ? ' bn-color' : ''}" style="background:${bn.css ?? ''};--bnc:${bc ?? 'transparent'}">${bUrl ? `<img src="${esc(bUrl)}" alt="" decoding="async">` : ''}
           <button type="button" class="at-pen" data-pen="banner" aria-label="${tr('at.editBanner')}" aria-expanded="false">${icon('pen')}</button>${menu('banner', !!bUrl)}</div>
@@ -276,7 +287,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
     return `<button type="button" class="at-tile at-k-${k}${sel ? ' on' : ''}${eq ? ' eq' : ''}${locked ? ' locked' : ''}" data-kind="${k}" data-id="${esc(c.id)}" aria-pressed="${sel}" title="${esc(locked ? `${c.label} · ${c.how}` : c.label)}">
       <span class="at-no">${String(i + 1).padStart(2, '0')}</span>${links(k, c) ? `<span class="at-link" title="${tr('at.linkTip')}">${icon('link', 14)}</span>` : ''}
       <span class="at-art">${art(k, c)}</span>
-      <span class="at-lab"><span class="at-nm">${esc(c.label)}</span>${pr ? `${icon('lock', 13)}<span class="at-pg">${pr.text}</span>` : ''}${tag ? `<em${sel ? ' class="sel"' : ''}>${tag}</em>` : ''}${eq ? icon('check', 15) : ''}</span>
+      <span class="at-lab"><span class="at-nm">${esc(c.label)}</span>${pr ? `<span class="at-lk">${icon('lock', 13)}<span class="at-pg">${pr.text}</span></span>` : ''}${tag ? `<em${sel ? ' class="sel"' : ''}>${tag}</em>` : ''}${eq ? icon('check', 15) : ''}</span>
       ${pr ? `<i class="at-bar-p" style="width:${Math.round(pr.part * 100)}%"></i>` : ''}</button>`;
   }
   /** couleur libre (bannière, anneau, couleur du profil, couleur de la vitrine) : une tuile comme les autres */
@@ -422,6 +433,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
     if (done) return;
     done = true;
     popLayer(layerClose);
+    bgStop();
     document.documentElement.classList.remove('at-open');
     el.remove();
     ctx.closed(kept);

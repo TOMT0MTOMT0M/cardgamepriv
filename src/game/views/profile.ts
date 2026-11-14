@@ -11,6 +11,7 @@ import { rarity, type RarityId } from '../../core/rarity';
 import { ACCENTS, BACKGROUNDS, BADGES, BANNERS, FRAMES, TITLE_STYLES, VITRINES, accentColor, accordOf, backgroundOf, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { openAtelier, type Atelier, type AtelierFam } from './atelier';
 import { accordFx, badgeIcon, framed, icon, titleHtml } from '../cosmeticArt';
+import { mountBgShader } from '../bgShader';
 import type { MsgKey } from '../../core/i18n';
 import { guarded } from './safety';
 import { createShowcaseEditor } from './showcaseEditor';
@@ -160,6 +161,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   let cosmOpen = false;
   /** (14/11) l'atelier « Personnaliser » (./atelier.ts), ouvert par-dessus la page */
   let atelier: Atelier | null = null;
+  /** shader du fond du profil (../bgShader.ts) : ce qui tourne, et de quoi l'arrêter */
+  let bgShown = '';
+  let bgStop: () => void = () => {};
 
   const isMe = () => !who || who === backend.state.user?.id;
   /** avatar : la photo importée (GIF) d'abord, sinon l'avatar Discord, sinon l'initiale */
@@ -231,6 +235,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const bgc = backgroundOf(cos.background);
     bgEl.hidden = bgc.id === 'none';
     bgEl.style.background = bgc.css ?? '';
+    bgEl.dataset.bg = bgc.id;
+    // shader du fond (Braise, Orage, Nébuleuse, Synthwave) : un seul canevas, reposé seulement s'il change ; coupé sous l'atelier
+    const bgKey = cosmOpen || bgc.id === 'none' ? '' : `${bgc.id}|${accentColor(cos.accent) ?? '#ffffff'}`;
+    if (bgKey !== bgShown) {
+      bgShown = bgKey;
+      bgStop();
+      bgStop = bgKey ? mountBgShader(bgEl, bgc.id, accentColor(cos.accent) ?? '#ffffff') : () => {};
+    }
     // (14/11) accord : cadre + fond de la même matière → un plus derrière la photo, et la mention sous les badges
     const acc = accordOf(cos);
     // bannière importée (GIF ou image, retours live 02) : par-dessus la bannière cosmétique, sous le dégradé
@@ -873,6 +885,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       if (open) closeViewer();
       stopEditing();
       atelier?.close();
+      bgStop();
+      bgShown = '';
     },
   };
 }

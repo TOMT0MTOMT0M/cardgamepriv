@@ -23,7 +23,8 @@ html.at-open { overflow: hidden; }
 .at-left { min-height: 0; display: flex; flex-direction: column; }
 
 /* ── aperçu vivant ── */
-.at-pv { position: relative; isolation: isolate; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding-bottom: 18px; overflow: hidden auto; scrollbar-width: none; border: 1px solid var(--gm-line); border-radius: var(--r-box); background: #050505; }
+.at-pv { position: relative; isolation: isolate; flex: 1; min-height: 0; overflow: hidden auto; scrollbar-width: none; border: 1px solid var(--gm-line); border-radius: var(--r-box); background: #050505; }
+.at-pv-in { display: flex; flex-direction: column; gap: 16px; min-height: 100%; padding-bottom: 18px; }
 .at-pv-bg, .at-pv-veil { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .at-pv-veil { background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.25) 38%, rgba(0, 0, 0, 0.72) 100%); }
 .at-bn { position: relative; height: 116px; margin: 12px 12px 0; border: 1px solid var(--gm-line); border-radius: var(--r-ctl); }
@@ -119,6 +120,7 @@ html.at-open { overflow: hidden; }
 .at-dash { display: block; width: 22px; height: 1px; background: var(--gm-line-2); }
 .at-lab { display: flex; align-items: center; gap: 6px; flex: none; height: 34px; padding: 0 10px; border-top: 1px solid var(--gm-line); font: 600 11.5px var(--mono); color: #ffffff; transition: background-color var(--dur-rapide) var(--ease-standard), color var(--dur-rapide) var(--ease-standard); }
 .at-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-lk { display: inline-flex; align-items: center; gap: 5px; flex: none; }
 .at-pg { font: 500 10.5px var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .at-lab em { font: 600 9.5px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap; color: var(--pa); }
 .at-lab em.sel { color: #ffffff; }
@@ -146,7 +148,8 @@ html.at-open { overflow: hidden; }
   .at-close { width: 44px; justify-content: center; padding: 0; border-radius: var(--r-pill); }
   .at-body { display: flex; flex-direction: column; gap: 0; padding: 0; }
   .at-left { flex: none; padding: 0 12px; }
-  .at-pv { flex: none; height: 244px; gap: 0; padding: 0; overflow: hidden; }
+  .at-pv { flex: none; height: 244px; overflow: hidden; }
+  .at-pv-in { gap: 0; padding: 0; }
   .at-pv[data-view='profil'] .at-pv-vit, .at-pv[data-view='profil'] .at-pv-list, .at-pv[data-view='vitrine'] .at-pv-profil, .at-pv[data-view='vitrine'] .at-pv-list, .at-pv[data-view='liste'] .at-pv-profil, .at-pv[data-view='liste'] .at-pv-vit { display: none; }
   .at-bn { height: 66px; margin: 8px 8px 0; }
   .at-pen { right: 4px; top: 4px; }
@@ -184,6 +187,9 @@ html.at-open { overflow: hidden; }
   /* « Nouveau » : la place manque pour le mot, un carré de la couleur du profil le dit */
   .at-lab em { flex: none; width: 5px; height: 5px; overflow: hidden; background: currentColor; font-size: 0; letter-spacing: 0; }
   .at-lab { gap: 5px; padding: 0 8px; font-size: 11px; }
+  /* tuile étroite : le cadenas et l'avancement montent dans le coin, le nom garde toute la ligne */
+  .at-lk { position: absolute; right: 8px; top: 7px; z-index: 2; color: var(--ink-2); }
+  .at-link { top: 26px; }
 }
 /* écritures larges : resserrées dans une tuile pour tenir entières */
 .at-art .pf-title.ts.ts-capitales { letter-spacing: 0.26em; }

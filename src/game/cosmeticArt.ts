@@ -176,9 +176,11 @@ function arts(): Record<string, Art> {
     vague: { d: poly(180, (_, a) => 44 + 2.4 * Math.sin(9 * a)), sw: 1.6, m: poly(180, (_, a) => 44 + 2.4 * Math.sin(9 * a + Math.PI)), ms: 'color-mix(in srgb, var(--fc) 45%, transparent)', msw: 1, an: 'spin' },
     confettis: { d: circ(38.8), sw: 1, f: conf1, m: conf2, mf: '#ffffff', an: 'tw' },
     chat: { d: circ(40.5), sw: 2.2, f: chat1, m: chat2, mf: 'rgba(0,0,0,0.4)' },
-    ronces: { d: poly(180, (_, a) => 43 + 1.8 * Math.sin(7 * a)) + poly(180, (_, a) => 45 + 1.8 * Math.sin(7 * a + 2.4)), sw: 1.1, f: epines },
+    // (les deux tiges se croisent lentement : la seconde tourne)
+    ronces: { d: poly(180, (_, a) => 43 + 1.8 * Math.sin(7 * a)), sw: 1.1, f: epines, m: poly(180, (_, a) => 45 + 1.8 * Math.sin(7 * a + 2.4)), ms: FC, msw: 1.1, an: 'spin' },
     laurier: { d: circ(39), sw: 0.8, f: laurier },
-    impact: { d: circ(39), sw: 1.5, f: impact, fc: '#ffffff' },
+    // (l'éclat respire)
+    impact: { d: circ(39), sw: 1.5, m: impact, mf: '#ffffff', an: 'breath' },
     orbite: { d: circ(39.5) + orbite, sw: 1.1, m: sat, mf: '#ffffff', an: 'tw' },
     // cadres animés d'avant (retours live 6, C14), redessinés au trait : l'anneau prend la couleur du profil
     eclairs: { d: circ(40.5), sw: 1.6, m: eclairs, mf: '#bfe6ff', an: 'flick' },
@@ -198,7 +200,7 @@ const ownColor = (f: Cosmetic) => (f.art || f.id === 'none' ? undefined : f.css 
 /** Le <svg> d'un cadre. `light` : fixe (listes). */
 export function frameSvg(f: Cosmetic, light = false): string {
   const a = arts()[f.art ?? (f.id === 'none' ? 'none' : 'ring')] ?? arts().ring;
-  const g = a.m ? `<g${light || !a.an ? '' : ` class="cf-a cf-${a.an}"`}><path d="${a.m}" fill="${a.mf ?? 'none'}" stroke="${a.ms ?? 'none'}" stroke-width="${a.msw ?? 1}"/></g>` : '';
+  const g = a.m ? `<g${light || !a.an ? '' : ` class="cf-a cf-${a.an}"`}><path d="${a.m}" fill="${a.mf ?? 'none'}" fill-rule="evenodd" stroke="${a.ms ?? 'none'}" stroke-width="${a.msw ?? 1}"/></g>` : '';
   return `<svg class="cf-svg" viewBox="-60 -60 120 120" aria-hidden="true">${a.d ? `<path d="${a.d}" fill="none" stroke="${a.c ?? FC}" stroke-width="${a.sw ?? 1}"/>` : ''}${a.f ? `<path d="${a.f}" fill="${a.fc ?? FC}" fill-rule="evenodd"/>` : ''}${g}</svg>`;
 }
 
@@ -235,7 +237,7 @@ export function accordFx(m: Matter): string {
   if (m === 'cosmos') for (let i = 0; i < 6; i++) p(`left:${i * 44}px;top:${16 + ((i * 53) % 200)}px;width:46px;height:1px;background:linear-gradient(90deg,transparent,#ffffff);rotate:26.5deg`, 'streak', 1.45, i * 0.24);
   if (m === 'neon') {
     p(`left:30px;top:30px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,transparent 0 66%,${A} 66.5% 68%,transparent 68.5%)`, 'burst', 0.6, 0);
-    p(`left:0;top:248px;width:300px;height:2px;background:${A}`, 'flick', 1.1, 0);
+    p(`left:52px;top:52px;width:196px;height:196px;border-radius:50%;background:radial-gradient(circle,transparent 0 67%,#ffffff 67.5% 68.2%,transparent 68.7%)`, 'flick', 1.3, 0);
   }
   if (m === 'retro') p('left:-300px;top:-250px;width:900px;height:900px;background:repeating-linear-gradient(0deg,rgba(255,255,255,0.09) 0 1px,transparent 1px 4px)', 'scan', 0.2, 0);
   if (m === 'sport') for (let i = 0; i < 16; i++) p(`left:${18 + ((i * 53) % 264)}px;top:0;width:4px;height:8px;background:${i % 2 ? A : '#ffffff'}`, 'fall', 1.1 + (i % 3) * 0.15, i * 0.085);
