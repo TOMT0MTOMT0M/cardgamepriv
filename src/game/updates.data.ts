@@ -61,8 +61,9 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 nov.', title: 'v2.0.1 à v2.0.7 : les retouches de la sortie', tag: 'amélioré',
+        date: '14 nov.', title: 'v2.0.1 à v2.0.8 : les retouches de la sortie', tag: 'amélioré',
         points: [
+          'Notifications : le jeu te propose de les activer à chaque connexion, et tous les types sont actifs par défaut (réglables dans ton profil).',
           'Échanges : dans « Choisir autre chose », tu peux demander n’importe quelle carte de l’autre joueur (filtres par étoile et recherche) ; hors de ses doublons, il valide.',
           'Envies : « Je veux l’album » (ou toute une famille) en un toucher, depuis l’album dans la Collection.',
           'Carte tirée : un bouton « Collection » vers son album, et où tu en es (15/235 · 2,4 %).',

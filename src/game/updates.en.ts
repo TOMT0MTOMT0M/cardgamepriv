@@ -26,8 +26,9 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 Nov', title: 'v2.0.1 to v2.0.7: launch touch-ups', tag: 'amélioré',
+        date: '14 Nov', title: 'v2.0.1 to v2.0.8: launch touch-ups', tag: 'amélioré',
         points: [
+          'Notifications: the game offers to turn them on at each login, and every type is on by default (adjust them in your profile).',
           'Trades: in “Pick something else”, you can ask for any of the other player’s cards (star filters and search); outside their duplicates, they approve.',
           'Wishes: “I want the album” (or a whole family) in one tap, from the album in your Collection.',
           'Pulled card: a “Collection” button to its album, and your progress (15/235 · 2.4%).',

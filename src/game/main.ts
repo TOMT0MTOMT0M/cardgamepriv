@@ -118,7 +118,7 @@ shellP.catch(() => undefined); // (l'échec est traité par boot())
 const openingP = shellP.then((s) => (installDiag(s), s.mount('opening', createOpeningScene())));
 openingP.catch(() => undefined); // (l'échec est traité par boot())
 void shellP.then(enableMythicReplay, () => undefined); // (08/11) « Rejouer » des 6★ dans les visionneuses
-import { syncPush } from './notif';
+import { promptPush, syncPush } from './notif';
 import { setBubbleSound, watchBubbles } from './bubble';
 // (V2) toutes les pastilles grandissent et éclatent en bulle de savon (bubble.ts) — rien à changer dans les pages
 watchBubbles();
@@ -134,6 +134,13 @@ function syncPushOnce() {
   if (pushSynced) return;
   pushSynced = true;
   void syncPush(backend);
+  // (v2.0.7) demande d'activation à chaque connexion — une fois le jeu affiché, jamais par-dessus le verrou ou la visite guidée
+  let tries = 0;
+  const ask = () => {
+    if (document.querySelector('.gd, .lc, .ow-veil') || document.body.classList.contains('sheet-open')) return void (++tries < 24 && setTimeout(ask, 5000));
+    void promptPush(backend);
+  };
+  setTimeout(ask, 6000);
 }
 // (ouverture 07/11) compte à rebours jusqu'à l'ouverture officielle (convex/launch.ts) — par-dessus le chargement
 if (backend.state.mode === 'online') void import('./views/launch').then((m) => m.createLaunchGate(backend));

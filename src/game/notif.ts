@@ -9,7 +9,7 @@
 import { t } from '../core/i18n';
 import type { GameBackend } from './backend';
 import { siteUrl } from '../core/siteRoot';
-import { busyButton, errMsg, esc, h, toast } from './ui';
+import { busyButton, errMsg, esc, h, popLayer, pushLayer, toast } from './ui';
 import { haptics } from '../core/haptics';
 
 /** (fonction : les libellés suivent la langue) */
@@ -94,6 +94,85 @@ async function enable(backend: GameBackend): Promise<void> {
   let s = await reg.pushManager.getSubscription();
   if (!s) s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(key) as BufferSource });
   await backend.push!.subscribe(subJson(s));
+  flag(OFF_KEY, false);
+  flag(NO_KEY, false);
+}
+
+/** (v2.0.7) choix retenus sur l'appareil : « coupées ici » (bouton du profil) et « non merci » (fiche de demande) */
+const OFF_KEY = 'bebou.pushOff';
+const NO_KEY = 'bebou.pushNo';
+function flag(key: string, on?: boolean): boolean {
+  try {
+    if (on === undefined) return localStorage.getItem(key) === '1';
+    if (on) localStorage.setItem(key, '1');
+    else localStorage.removeItem(key);
+  } catch {
+    /* stockage bloqué */
+  }
+  return !!on;
+}
+
+/**
+ * (v2.0.7, demande de Tom) DEMANDE D'ACTIVATION À CHAQUE CONNEXION : tant que le joueur n'a ni accepté ni refusé, le
+ * jeu lui propose d'activer les notifications à chaque lancement (le navigateur n'affiche sa propre demande qu'après un
+ * toucher : d'où la fiche et son bouton). Déjà autorisé mais pas abonné sur cet appareil : abonné tout seul, sans fiche.
+ * « Non merci », notifications coupées depuis le profil, ou refus dans le navigateur : plus de demande — tout se
+ * réactive depuis la fiche « Notifications » du profil. iPhone hors écran d'accueil : la fiche explique les 2 étapes.
+ */
+let asked = false;
+export async function promptPush(backend: GameBackend): Promise<void> {
+  if (asked || !backend.push || !backend.state.user || flag(NO_KEY) || flag(OFF_KEY)) return;
+  const ios = isIOS() && !standalone();
+  if (!supported() && !ios) return;
+  asked = true;
+  if (supported()) {
+    if (Notification.permission === 'denied') return;
+    if (Notification.permission === 'granted') {
+      if (!(await currentSub().catch(() => null))) await enable(backend).catch(() => undefined);
+      return;
+    }
+    if (!(await backend.push.publicKey().catch(() => null))) return; // pas configurées côté serveur : rien à demander
+  }
+  const veil = h('div', 'ow-veil nf-ask');
+  veil.innerHTML = `<div class="ow" role="dialog" aria-modal="true" aria-label="${t('notif.on')}">
+    <div class="ow-h"><div class="ow-id"><span class="ow-k">${t('notif.ask.k')}</span><span class="ow-me">${t('notif.ask.title')}</span></div><button class="ow-x" aria-label="${t('common.close')}">✕</button></div>
+    <div class="nf-ask-b">
+      <p>${t('notif.ask.body')}</p>
+      ${ios ? `<div class="nf-ios"><b>${t('notif.ios.title')}</b><ol><li>${t('notif.ios.step1')}</li><li>${t('notif.ios.step2')}</li></ol></div>` : ''}
+      <div class="nf-ask-a">${ios ? '' : `<button class="btn-primary nf-ask-ok">${t('notif.on')}</button>`}<button class="btn-ghost nf-ask-later">${t('notif.ask.later')}</button><button class="linkish nf-ask-no">${t('notif.ask.no')}</button></div>
+      <small class="muted">${t('notif.ask.where')}</small>
+    </div></div>`;
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    popLayer(close);
+    veil.classList.remove('on');
+    setTimeout(() => veil.remove(), 260);
+  };
+  document.body.append(veil);
+  pushLayer(close);
+  requestAnimationFrame(() => veil.classList.add('on'));
+  veil.addEventListener('click', (e) => e.target === veil && close());
+  veil.querySelector('.ow-x')!.addEventListener('click', close);
+  veil.querySelector('.nf-ask-later')!.addEventListener('click', close);
+  veil.querySelector('.nf-ask-no')!.addEventListener('click', () => {
+    flag(NO_KEY, true);
+    toast(t('notif.ask.noToast'), 'info');
+    close();
+  });
+  const ok = veil.querySelector<HTMLButtonElement>('.nf-ask-ok');
+  ok?.addEventListener('click', () =>
+    busyButton(ok, (async () => {
+      try {
+        await enable(backend);
+        toast(t('notif.onToast'), 'ok');
+      } catch (e) {
+        toast(errMsg(e), 'err');
+      }
+      close();
+    })()),
+  );
 }
 
 async function disable(backend: GameBackend): Promise<void> {
@@ -101,6 +180,7 @@ async function disable(backend: GameBackend): Promise<void> {
   if (!s) return;
   await backend.push!.unsubscribe(s.endpoint).catch(() => undefined);
   await s.unsubscribe();
+  flag(OFF_KEY, true); // coupées exprès sur cet appareil : la demande du lancement ne revient pas
 }
 
 /** La fiche « Notifications » du profil (section Compte). */
@@ -126,6 +206,8 @@ export function notifPanel(backend: GameBackend): HTMLElement {
         <span class="muted">${!st.configured ? t('notif.notConfigured') : on ? t('notif.thisDevice', { total: st.devices > 1 ? t('notif.total', { n: st.devices }) : '' }) : st.devices ? t('notif.others', { n: st.devices }) : t('notif.pitch')}</span></div>
       ${st.devices ? `<div class="nf-prefs">${KIND_LABELS().map(([k, l, d]) => `<label class="nf-k"><input type="checkbox" data-k="${k}" ${st.prefs.includes(k) ? 'checked' : ''}><span><b>${esc(l)}</b><small>${esc(d)}</small></span></label>`).join('')}</div>
       <div class="nf-row"><button class="btn-ghost nf-test">${t('notif.test')}</button><span class="muted">${t('notif.quiet')}</span></div>` : ''}`;
+    // (v2.0.7) refusées dans le navigateur : lui seul peut les rouvrir — on dit où
+    if (Notification.permission === 'denied') box.insertAdjacentHTML('beforeend', `<p class="muted nf-denied">${t('notif.denied')}</p>`);
     const tg = box.querySelector<HTMLButtonElement>('.nf-toggle')!;
     tg.addEventListener('click', () =>
       busyButton(tg, (async () => {

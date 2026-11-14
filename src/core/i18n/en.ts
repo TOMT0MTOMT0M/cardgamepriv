@@ -241,7 +241,7 @@ export const en: Dict = {
   'notif.k.gamesD': 'Pack Battle challenge, roulette win',
   'notif.k.chatD': 'private message, mention, the main chat waking up',
   'notif.k.roulette': 'Roulette',
-  'notif.k.rouletteD': '10 min before each draw (10 am, 8 pm) — opt in',
+  'notif.k.rouletteD': '10 min before each draw (10 am, 8 pm)',
   'notif.k.news': 'Team announcements',
   'notif.k.newsD': 'new patch, event',
   'notif.demo': 'Notifications: online only (not in the demo).',
@@ -258,6 +258,14 @@ export const en: Dict = {
   'notif.quiet': 'No notifications between 11 pm and 8 am.',
   'notif.offToast': 'Notifications turned off on this device.',
   'notif.onToast': 'Notifications turned on!',
+  'notif.ask.k': 'Notifications',
+  'notif.ask.title': 'Don’t miss a thing',
+  'notif.ask.body': 'Full reserve, trades, messages, roulette draws, announcements: the game lets you know, even when closed.',
+  'notif.ask.later': 'Later',
+  'notif.ask.no': 'No thanks',
+  'notif.ask.where': 'You can turn them on or off, or pick which ones you get, in your profile under Notifications.',
+  'notif.ask.noToast': 'Okay. You can turn them on any time from your profile.',
+  'notif.denied': 'Your browser is blocking notifications for this site. To allow them again: the padlock left of the address → Notifications → Allow, then reload the page.',
   'notif.testSent': { one: 'Test sent to {n} device (a few seconds).', other: 'Test sent to {n} devices (a few seconds).' },
 
   // ───── src/game/godPack.ts ─────
