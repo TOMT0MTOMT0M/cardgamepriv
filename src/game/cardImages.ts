@@ -5,7 +5,15 @@ import { FONT_VERSION } from '../core/fonts';
 import { canvasToBlob, loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
 import type { RarityId } from '../core/rarity';
-import { catalogEntry, hasArt, isWonderId, numberingSize, subthemeById, thumbPath, wonderCapturePath } from '../core/sets/themes';
+import { artPath, catalogEntry, hasArt, isWonderId, numberingSize, subthemeById, thumbPath, wonderCapturePath } from '../core/sets/themes';
+import type { CatalogEntry } from '../core/sets/themes';
+
+/**
+ * (v2.0.2, retours de Tom « dans la collection les images sont floues, pas sur la carte 3D ») source de la tuile : la
+ * miniature (256 px de haut) suffit au petit cadre des 1★–4★, mais les 5★ / 6★ sont en pleine illustration (~390 px de
+ * haut peints) : elle y était agrandie ×1,5. Elles sont peintes depuis l'image entière (une fois : la tuile reste en cache).
+ */
+const tileArt = (e: CatalogEntry, rarity: string) => (rarity === 'mythic' || rarity === 'legendary' ? artPath(e) : thumbPath(e));
 import { siteUrl } from '../core/siteRoot';
 
 
@@ -96,7 +104,7 @@ function cacheUrl(key: string): string | null {
   // l'illustration ACTUELLE fait partie de la clé : quand une carte reçoit (ou change d')image, l'ancienne version peinte
   // n'est plus jamais servie — la carte est repeinte depuis la fiche du catalogue
   // (retours live 6, B2) l'ADRESSE versionnée de la miniature (`?v=`) : une image remplacée = une autre clé
-  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? thumbPath(e) : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}${lang() === 'fr' ? '' : `|${lang()}`}`)}`; // (version anglaise) la langue dans la clé : en français, clés inchangées
+  return `${location.origin}/__cartes/${encodeURIComponent(`${key}|${e.num}/${size}|${e.name}|${isWonderId(id) ? wonderCapturePath(id) : hasArt(e) ? tileArt(e, key.split('|')[1] ?? '') : ''}|${e.art ?? ''}|${SCALE}|${FONT_VERSION}${lang() === 'fr' ? '' : `|${lang()}`}`)}`; // (version anglaise) la langue dans la clé : en français, clés inchangées
 }
 async function fromCache(key: string): Promise<string | null> {
   const url = cacheUrl(key);
@@ -163,7 +171,7 @@ async function paint(key: string): Promise<string | null> {
   }
   const cd = cardById(id);
   // (carte Jeux vidéo sans illustration : rien à télécharger, le design typographique est peint directement)
-  const thumb = hasArt(e) ? siteUrl(thumbPath(e)) : undefined;
+  const thumb = hasArt(e) ? siteUrl(tileArt(e, rarity)) : undefined;
   if (thumb) painting.set(thumb, (painting.get(thumb) ?? 0) + 1);
   try {
     return await paintWith(key, id, rarity, cd, thumb);
