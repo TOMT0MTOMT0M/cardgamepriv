@@ -333,7 +333,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const tb = q('.cb-theme');
     for (const [id, label] of [['', tr('coll.all')], ...ALL_THEMES.filter((t) => t.cards.length).map((t) => [t.id, t.label])] as Array<[string, string]>) {
       const b = h('button', '', esc(label));
-      b.dataset.t = id;
+      b.dataset.th = id;
       b.addEventListener('click', () => ((cTheme = id), (page = 0), render()));
       tb.append(b);
     }
@@ -914,7 +914,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }
   /** VUE CARTES (défaut, retours live n°1) : toutes mes cartes, les plus rares en haut ; tri, étoile, thème, recherche. */
   function renderCards(mine: Map<string, PlayerCard>) {
-    q('.cb-theme').querySelectorAll<HTMLButtonElement>('button').forEach((b) => setOn(b, b.dataset.t === cTheme));
+    q('.cb-theme').querySelectorAll<HTMLButtonElement>('button').forEach((b) => setOn(b, b.dataset.th === cTheme));
     q('.cb-stars').querySelectorAll<HTMLElement>('.chip').forEach((b) => setOn(b, b.dataset.r === cStar));
     el.querySelectorAll<HTMLButtonElement>('.cb-sort button').forEach((b) => setOn(b, b.dataset.s === cSort));
     let list: CatalogEntry[] = [];

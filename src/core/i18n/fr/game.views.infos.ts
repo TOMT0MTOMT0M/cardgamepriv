@@ -35,7 +35,7 @@ export const fr = {
   'if.upTo': ', jusqu’à',
   'if.canAlso': 'Tu peux aussi en',
   'if.buy': 'acheter',
-  'if.buyBody': 'dans la fiche du booster : {p} pièces l’unité, {d} par jour au maximum.',
+  'if.buyBody': 'dans la fiche du booster : {p} pièces l’unité, autant que tu veux.',
   'if.bulk': '5 ou 10 boosters d’un coup',
   'if.bulkBody': ' : un seul gros booster de 25 ou 50 cartes, avec exactement les mêmes chances.',
   'if.revealAll': 'Tout révéler',

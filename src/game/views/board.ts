@@ -83,9 +83,9 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
       <div class="ob-intro"><h3>${tr('bd.title')}</h3><p>${tr('bd.intro')}</p></div>
       <button class="btn-primary ob-new">${tr('bd.post')}</button>
       <div class="ob-seg" role="tablist" aria-label="${tr('bd.listingsA')}">
-        <button role="tab" data-t="all" class="on" aria-selected="true">${tr('bd.all')} <i class="ob-n n-all"></i></button>
-        <button role="tab" data-t="mine" aria-selected="false">${tr('bd.mine')} <i class="ob-n n-mine"></i><b class="ob-dot d-mine" hidden></b></button>
-        <button role="tab" data-t="offers" aria-selected="false">${tr('bd.myOffers')} <i class="ob-n n-offers"></i><b class="ob-dot d-offers" hidden></b></button>
+        <button role="tab" data-tab="all" class="on" aria-selected="true">${tr('bd.all')} <i class="ob-n n-all"></i></button>
+        <button role="tab" data-tab="mine" aria-selected="false">${tr('bd.mine')} <i class="ob-n n-mine"></i><b class="ob-dot d-mine" hidden></b></button>
+        <button role="tab" data-tab="offers" aria-selected="false">${tr('bd.myOffers')} <i class="ob-n n-offers"></i><b class="ob-dot d-offers" hidden></b></button>
       </div>
       <div class="ob-filters">
         <input class="ob-q" type="search" placeholder="${tr('bd.searchPh')}" autocomplete="off" spellcheck="false" aria-label="${tr('bd.searchA')}">
@@ -118,7 +118,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
   function setTab(t: Tab) {
     tab = t;
     segBtns.forEach((b) => {
-      const on = b.dataset.t === t;
+      const on = b.dataset.tab === t;
       b.classList.toggle('on', on);
       b.setAttribute('aria-selected', String(on));
     });
@@ -130,7 +130,7 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
     }
     render();
   }
-  segBtns.forEach((b) => b.addEventListener('click', () => setTab(b.dataset.t as Tab)));
+  segBtns.forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab as Tab)));
   let qT = 0;
   q<HTMLInputElement>('.ob-q').addEventListener('input', (e) => {
     clearTimeout(qT);

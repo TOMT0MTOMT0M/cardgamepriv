@@ -22,6 +22,7 @@ export const UPDATES_EN: UpdateMonth[] = [
           'Simpler trades: under each card, see who has it, who is selling it and who wants it. “For you” sets up ready-made trades based on your wishes, in one tap.',
           'Seasons: every month, a ranking of the new cards you win, with boosters for everyone at the end. The first one ends on 30 November.',
           'Booster of the moment: a limited edition, with its countdown at the top of the shop.',
+          'Boosters for coins: buy as many as you want, still 250 coins each.',
           'Over 3,000 new cards ({CARTES} in total) and a new star sort: some of your cards have changed stars.',
           'Every 6★ has its own staging, 6★ Music and anime cards play their clip, the sound is brand new and the booster tear feels more real.',
           'Notifications: full reserve, trades, friends. On iPhone, add the game to your home screen first.',

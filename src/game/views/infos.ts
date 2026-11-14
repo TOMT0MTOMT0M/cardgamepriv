@@ -4,7 +4,7 @@ import type { Shell } from '../shell';
 import { esc, fmtN, h } from '../ui';
 import { CARDS_TOKEN, UPDATES, type UpdateMonth } from '../updates.data';
 import { PACK_CAP, PACK_REGEN_MS } from '../../core/packRegen';
-import { PACK_BUY_DAILY, PACK_PRICE, fmtCoins } from '../../core/economy';
+import { PACK_PRICE, fmtCoins } from '../../core/economy';
 import { CONTRACT_COST } from '../../core/contracts';
 import { PITY_LIMIT } from '../../core/pity';
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS } from '../../core/dropRates';
@@ -88,7 +88,7 @@ export function createTutorialView(shell: Shell): InfoView {
       <li><b>5 packs</b>${tr('if.packsA')} <b>Bebou Pack</b> ${tr('if.packsB', { list: THEMES.map((t) => `${tr('if.the')} <b>${tr('if.packName', { n: esc(t.label) })}</b>`).join(', ') })}</li>
       <li>${tr('if.boosterEq')} <b>${tr('if.fiveCards')}</b>${tr('if.atLeastOne')} <b>3★</b> ${tr('if.orBetter')}</li>
       <li>${tr('if.reserveRefill')} <b>${tr('if.reserveRate', { m: PACK_REGEN_MS / 60000 })}</b>${tr('if.upTo')} <b>${PACK_CAP}</b>.</li>
-      <li>${tr('if.canAlso')} <b>${tr('if.buy')}</b> ${tr('if.buyBody', { p: fmtCoins(PACK_PRICE), d: PACK_BUY_DAILY })}</li>
+      <li>${tr('if.canAlso')} <b>${tr('if.buy')}</b> ${tr('if.buyBody', { p: fmtCoins(PACK_PRICE) })}</li>
       <li><b>${tr('if.bulk')}</b>${tr('if.bulkBody')}</li>
       <li>${tr('if.lq')}<b>${tr('if.revealAll')}</b>${tr('if.revealMid')} <b>${tr('if.fourUp')}</b>${tr('if.revealEnd')}</li>
       <li><b>${tr('if.pity')}</b>${tr('if.pityBody', { n: PITY_LIMIT - 1 })}</li>

@@ -1,4 +1,5 @@
 import { fmtPct as fmtPctI, t as tr } from '../../core/i18n';
+import { onLang } from '../lang';
 import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
 import { playAmbience, playMusicPreview, prefetchAmbience, prefetchMusicPreview, stopAmbience, stopMusicPreview } from '../musicPreview';
 import { isEclipsePack } from '../eclipse';
@@ -433,6 +434,16 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     },
   });
   el.append(sheet.el);
+  // (v2.0.1) la boutique garde son instance au changement de langue (main.ts) : textes des boosters et fiche refaits
+  onLang(() => {
+    for (const f of shopPacks()) {
+      const i = sheetList.findIndex((x) => x.key === f.key);
+      if (i >= 0) sheetList[i] = f;
+    }
+    const i = sheetList.findIndex((x) => x.key === EVENT_KEY);
+    if (ev && i >= 0) sheetList[i] = eventPack(ev);
+    sheet.relang();
+  });
   /**
    * (07/11, retours de Tom) ORDINATEUR : plus de liste des boosters à droite — la fiche du booster choisi y est posée en
    * permanence, en panneau fluide (packSheet.ts dock/show) ; elle se déforme et se reforme quand la roue change de

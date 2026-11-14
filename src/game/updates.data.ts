@@ -54,6 +54,7 @@ export const UPDATES: UpdateMonth[] = [
           'Échanges simplifiés : sous chaque carte, qui l’a, qui la vend et qui la veut. « Pour toi » prépare des échanges tout faits avec tes envies, en un toucher.',
           'Saisons : chaque mois, le classement des nouvelles cartes gagnées et des boosters pour tout le monde à la fin. La première se termine le 30 novembre.',
           'Booster du moment : une édition limitée, avec son compte à rebours en tête de la boutique.',
+          'Boosters en pièces : achète-en autant que tu veux, toujours 250 pièces l’unité.',
           `Plus de 3 000 nouvelles cartes ({CARTES} en tout) et un nouveau tri des étoiles : certaines de tes cartes ont changé d’étoile.`,
           'Les 6★ ont chacune leur mise en scène, les 6★ Musique et d’animés jouent leur extrait, le son est tout neuf et la déchirure du booster plus vraie.',
           'Notifications : réserve pleine, échanges, amis. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.',

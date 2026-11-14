@@ -22,7 +22,7 @@ export const fr = {
   'chat.dmOff': 'hors ligne · il le lira à son retour',
   'chat.muted': 'Conversation en sourdine : ni pastille ni notification. Toucher pour réactiver.',
   'chat.unmuted': 'Notifications actives pour cette conversation. Toucher pour la mettre en sourdine.',
-  'chat.phAll': 'Message à tout le monde…',
+  'chat.phAll': 'Message à tout le monde · @ pour citer',
   'chat.phOne': 'Message à {name}…',
   'chat.deleted': 'message supprimé',
   'chat.you': 'Toi :',

@@ -83,7 +83,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       <div class="pf-head"></div>
       <div class="pf-cosm" hidden></div>
       <div class="pf-tabs" role="tablist">
-        <button role="tab" data-t="tableau" class="on">${tr('pf.board')}</button><button role="tab" data-t="collection">Collection</button><button role="tab" data-t="activite">${tr('pf.activity')}</button><button role="tab" data-t="classement">${tr('pf.ranking')}</button> <!-- i18n-ok -->
+        <button role="tab" data-tab="tableau" class="on">${tr('pf.board')}</button><button role="tab" data-tab="collection">Collection</button><button role="tab" data-tab="activite">${tr('pf.activity')}</button><button role="tab" data-tab="classement">${tr('pf.ranking')}</button> <!-- i18n-ok -->
       </div>
       <div class="pf-pane p-tableau">
         <div class="pf-sec pf-case-sec">
@@ -169,7 +169,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   // ── onglets
   el.querySelectorAll<HTMLButtonElement>('.pf-tabs button').forEach((b) =>
     b.addEventListener('click', () => {
-      tab = b.dataset.t as Tab;
+      tab = b.dataset.tab as Tab;
       syncTabs();
       if (tab === 'activite' && !activity) void loadActivity();
       if (tab === 'classement' && !leaderLoaded) ((leaderLoaded = true), void leaderboard.load());
@@ -177,7 +177,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   );
   function syncTabs() {
     el.querySelectorAll<HTMLButtonElement>('.pf-tabs button').forEach((b) => {
-      const on = b.dataset.t === tab;
+      const on = b.dataset.tab === tab;
       b.classList.toggle('on', on);
       b.setAttribute('aria-selected', String(on));
     });

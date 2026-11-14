@@ -23,7 +23,7 @@ export const en: PartOf<typeof fr> = {
   'chat.dmOff': 'offline · they’ll read it when they’re back',
   'chat.muted': 'Conversation muted: no badge or notification. Tap to unmute.',
   'chat.unmuted': 'Notifications on for this conversation. Tap to mute it.',
-  'chat.phAll': 'Message to everyone…',
+  'chat.phAll': 'Message to everyone · @ to mention',
   'chat.phOne': 'Message to {name}…',
   'chat.deleted': 'message deleted',
   'chat.you': 'You:',

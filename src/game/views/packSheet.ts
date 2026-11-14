@@ -36,6 +36,8 @@ export interface PackSheet {
    */
   dock(on: boolean): void;
   show(key: string): void;
+  /** (v2.0.1) changement de langue : refaire la fiche affichée */
+  relang(): void;
 }
 
 export interface SheetPack {
@@ -103,12 +105,12 @@ export function createPackSheet(
     <svg class="ps-fx-defs" width="0" height="0" aria-hidden="true" focusable="false"><filter id="ps-liquid" x="-25%" y="-8%" width="150%" height="116%" color-interpolation-filters="sRGB"><feTurbulence class="psl-noise" type="fractalNoise" baseFrequency="0.0035 0.045" numOctaves="2" seed="3" result="n"/><feDisplacementMap class="psl-disp" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" result="d"/><feOffset class="psl-r" in="d" dx="0" dy="0" result="r"/><feColorMatrix in="r" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rr"/><feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb"/><feBlend in="rr" in2="gb" mode="screen"/></filter></svg>
     <div class="ps-backdrop"></div>
     <aside class="pack-sheet" role="dialog" aria-modal="true" aria-label="${tr('ps.aria')}">
-      <button class="ps-close" aria-label="${tr('common.close')}">✕</button>
+      <button class="ps-close" aria-label="${tr('common.close')}" data-t-aria="common.close">✕</button>
       <div class="ps-scroll">
         <div class="ps-head"><div class="ps-thumb"></div><div class="ps-titles"><span class="kicker">BOOSTER</span><h2 class="ps-name"></h2><p class="ps-desc"></p></div></div>
         <div class="ps-facts"></div>
         <div class="ps-block ps-ev" hidden></div>
-        <div class="ps-block ps-odds"><div class="ps-bt">${tr('ps.odds')} <small>${tr('ps.oddsD')}</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
+        <div class="ps-block ps-odds"><div class="ps-bt"><span data-t="ps.odds">${tr('ps.odds')}</span> <small data-t="ps.oddsD">${tr('ps.oddsD')}</small></div><div class="ps-bars"></div><div class="ps-per-pack"></div></div>
         <div class="ps-block ps-secret" hidden></div>
         <div class="ps-block ps-pity"></div>
         <div class="ps-block ps-anim" hidden></div>
@@ -120,15 +122,15 @@ export function createPackSheet(
         <div class="qty" role="radiogroup" aria-label="Nombre de boosters">${QTYS.map((n) => `<button data-n="${n}" role="radio">×${n}</button>`).join('')}</div>
         <button class="open-btn">${tr('ps.openCaps')}</button>
         <div class="open-sub"></div>
-        <div class="ps-buy" hidden><span class="ps-buy-l">${tr('ps.buy')}</span><button class="btn-ghost sm" data-buy="1"></button><button class="btn-ghost sm" data-buy="5"></button><span class="ps-buy-s"></span></div>
+        <div class="ps-buy" hidden><span class="ps-buy-l" data-t="ps.buy">${tr('ps.buy')}</span><button class="btn-ghost sm" data-buy="1"></button><button class="btn-ghost sm" data-buy="5"></button><span class="ps-buy-s"></span></div>
       </div>
     </aside>
     <div class="pack-cards" role="dialog" aria-modal="true" aria-label="${tr('ps.cardsA')}" hidden>
       <header class="pc-head">
-        <button class="pc-back" aria-label="${tr('ps.back')}">←</button>
+        <button class="pc-back" aria-label="${tr('ps.back')}" data-t-aria="ps.back">←</button>
         <div class="pc-titles"><h3 class="pc-name"></h3><div class="pc-sub"></div></div>
         <input class="pc-search" type="search" placeholder="${tr('pf.search')}" autocomplete="off">
-        <div class="pc-filters" role="radiogroup"><button data-f="all" class="on">${tr('coll.f.all')}</button><button data-f="missing">${tr('coll.f.missing')}</button><button data-f="wish">${tr('ps.wishes')}</button></div>
+        <div class="pc-filters" role="radiogroup"><button data-f="all" class="on" data-t="coll.f.all">${tr('coll.f.all')}</button><button data-f="missing" data-t="coll.f.missing">${tr('coll.f.missing')}</button><button data-f="wish" data-t="ps.wishes">${tr('ps.wishes')}</button></div>
       </header>
       <div class="pc-list"></div>
     </div>`;
@@ -288,7 +290,7 @@ export function createPackSheet(
         if (!b.dataset.busy) b.innerHTML = `+${n} · ${COIN_ICON}${fmtCoins(n * price)}`;
         b.disabled = n > left || eco.coins < n * price;
       }
-      buyEl.querySelector('.ps-buy-s')!.textContent = left ? tr('ps.buysLeft', { n: left, coins: fmtCoins(eco.coins) }) : tr('ps.limit');
+      buyEl.querySelector('.ps-buy-s')!.textContent = tr('ps.noLimit', { coins: fmtCoins(eco.coins) });
     }
     qtyEl.hidden = !!current.soon || needLogin || !!s.sealed;
     for (const b of qtyEl.querySelectorAll<HTMLButtonElement>('button')) {
@@ -819,5 +821,13 @@ export function createPackSheet(
     }
   }
 
-  return { el, open, close, isOpen: () => opened || cardsOpen, sync, dock, show };
+  /** (v2.0.1) changement de langue : la fiche (créée une fois) se refait sur le booster affiché, dans la nouvelle langue */
+  function relang() {
+    sheet.setAttribute('aria-label', tr('ps.aria'));
+    q<HTMLInputElement>('.pc-search').placeholder = tr('pf.search');
+    const np = current && packs.find((x) => x.key === current!.key);
+    if (np) fill(np);
+    sync();
+  }
+  return { el, open, close, isOpen: () => opened || cardsOpen, sync, dock, show, relang };
 }

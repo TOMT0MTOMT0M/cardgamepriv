@@ -91,16 +91,17 @@ export function rollPackCoins(kind: 'bebou' | 'theme' | 'special', rand: () => n
  * Booster acheté avec des pièces : il rejoint la réserve (n'importe quelle sorte, au choix à l'ouverture). Prix calé
  * sur l'économie : un booster rapporte ≈ 25-30 pièces à l'ouverture + ≈ 160 pièces de cartes au brûlage (valeur
  * moyenne des 5 cartes), donc 250 > ce qu'il rend (pas de boucle « acheter → brûler → racheter ») ; ≈ une journée de
- * calendrier ou ~8 boosters ouverts. Plafond quotidien pour que la recharge gratuite reste la voie normale.
+ * calendrier ou ~8 boosters ouverts.
+ * (13/11, retours Hugo ; v2.0.1) plus de plafond quotidien : achats illimités, au même prix (jamais moins cher). Seule
+ * limite : 10 boosters par achat (les boutons +1 / +5).
  */
 export const PACK_PRICE = 250;
-export const PACK_BUY_DAILY = 10;
-/** achats encore possibles aujourd'hui (jour de Paris, comme le calendrier) */
-export const packBuysLeft = (e: EconState, today: string) => Math.max(0, PACK_BUY_DAILY - (e.shopDay === today ? e.shopBought ?? 0 : 0));
-export function packBuyProblem(count: number, coins: number, e: EconState, today: string): string | null {
-  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_DAILY) return fe('economy.5');
-  const left = packBuysLeft(e, today);
-  if (count > left) return left ? fe('economy.6', { p0: left, p1: left > 1 ? 's' : '' }) : fe('economy.7', { p0: PACK_BUY_DAILY });
+/** boosters au plus par achat */
+export const PACK_BUY_MAX = 10;
+/** (compatibilité : `packShop.left` des clients) un achat peut toujours aller jusqu'à PACK_BUY_MAX */
+export const packBuysLeft = (_e: EconState, _today: string) => PACK_BUY_MAX;
+export function packBuyProblem(count: number, coins: number, _e: EconState, _today: string): string | null {
+  if (!Number.isInteger(count) || count < 1 || count > PACK_BUY_MAX) return fe('economy.5');
   if (coins < count * PACK_PRICE) return fe('economy.8', { p0: count * PACK_PRICE - coins });
   return null;
 }

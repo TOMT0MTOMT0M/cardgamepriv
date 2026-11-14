@@ -17,7 +17,7 @@ import { haptics } from '../core/haptics';
  * tampons gravés : GG, +1, ♥, LOL, RIP, ?!), blanc plein = actif. Couleur = information (rareté d'une carte, d'un drop).
  *
  *  - Général (tout le monde) · Privés (à deux, avec n'importe quel joueur) · mentions @pseudo · réponses · réactions ·
- *    montrer une carte de sa collection · drops 6★ / secrètes des joueurs dans le fil général · « Vu » en privé · sourdine.
+ *    montrer une carte de sa collection · « Vu » en privé · sourdine. (v2.0.1 : plus de drops dans le fil général)
  *  - Ordinateur : panneau flottant 392 px, reste ouvert d'une page à l'autre. Téléphone : plein écran (le bouton
  *    « retour » le ferme), le champ de saisie suit le clavier.
  *  - Caché pendant une ouverture de booster, une carte en grand, les scènes 6★ : rien ne passe devant ces moments.
@@ -386,12 +386,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
 
     type Item = { at: number; m?: ChatMsg; p?: BigPull };
     const items: Item[] = c.msgs.map((m) => ({ at: m.at, m }));
-    if (key === CHAT_GENERAL && c.loaded) {
-      // drops 6★ / secrètes des joueurs : déjà dans le jeu (fil des gros tirages), rien de plus à demander au serveur
-      const from = c.msgs.length ? (c.done ? 0 : c.msgs[0].at) : Date.now() - 24 * 3600 * 1000;
-      for (const p of backend.state.bigPulls) if ((p.rarity === 'mythic' || p.rarity === 'secret') && p.createdAt >= from) items.push({ at: p.createdAt, p });
-      items.sort((a, b) => a.at - b.at);
-    }
+    // (v2.0.1) plus de drops 6★ / secrètes dans le chat général : ils restent dans « Gros tirages ». dropEl ne sert plus.
     // « vu » : sous mon dernier message, en privé, si l'autre a lu jusque-là
     let seenId = '';
     if (view === 'dm' && head?.peerSeenN) {
