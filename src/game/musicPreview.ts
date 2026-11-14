@@ -77,6 +77,18 @@ let fadeRaf = 0;
 let token = 0;
 /** qui a lancé l'extrait : la visionneuse le coupe quand elle se ferme, pas l'ouverture de boosters */
 let owner: 'opening' | 'viewer' = 'opening';
+/** (v2.0.2, retours de Tom) VOLUME DES EXTRAITS : curseur dans l'étiquette, retenu sur l'appareil (multiplie le volume du jeu) */
+const MV_KEY = 'bebou.musicVol';
+let musicVol = (() => {
+  try {
+    const v = Number(localStorage.getItem(MV_KEY));
+    return localStorage.getItem(MV_KEY) !== null && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+  } catch {
+    return 1;
+  }
+})();
+let pvBase = 1;
+let ambBase = 1;
 
 function fade(a: HTMLAudioElement, to: number, ms: number, done?: () => void) {
   cancelAnimationFrame(fadeRaf);
@@ -101,7 +113,21 @@ function makeChip(p: MusicPreview, onClose: () => void, host?: HTMLElement | nul
   c.className = host ? 'mp-chip mp-inline' : 'mp-chip';
   c.setAttribute('role', 'status');
   const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
-  c.innerHTML = `<span class="mp-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="mp-t"><b>${esc(p.track)}</b> — ${esc(p.artist)}<small>extrait · ${p.deezer && !p.url ? 'Deezer' : 'Apple Music'}</small></span><button class="mp-x" aria-label="${tr('mp.mute')}">✕</button>`; // i18n-ok
+  c.innerHTML = `<span class="mp-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="mp-t"><b>${esc(p.track)}</b> — ${esc(p.artist)}<small>extrait · ${p.deezer && !p.url ? 'Deezer' : 'Apple Music'}</small></span><input class="mp-vol" type="range" min="0" max="100" step="1" value="${Math.round(musicVol * 100)}" aria-label="${tr('mp.vol')}"><button class="mp-x" aria-label="${tr('mp.mute')}">✕</button>`; // i18n-ok
+  const vol = c.querySelector<HTMLInputElement>('.mp-vol')!;
+  for (const ev of ['pointerdown', 'touchstart', 'wheel', 'click'] as const) vol.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
+  vol.addEventListener('input', () => {
+    musicVol = Number(vol.value) / 100;
+    try {
+      localStorage.setItem(MV_KEY, String(musicVol));
+    } catch {
+      /* stockage indisponible */
+    }
+    cancelAnimationFrame(fadeRaf);
+    cancelAnimationFrame(ambRaf);
+    if (audio) audio.volume = Math.min(1, 0.6 * pvBase * musicVol);
+    if (amb) amb.volume = Math.min(1, 0.5 * ambBase * musicVol);
+  });
   c.querySelector('.mp-x')!.addEventListener('click', (e) => {
     e.stopPropagation();
     onClose();
@@ -154,7 +180,8 @@ export async function playMusicPreview(cardId: string, rarity: string, volume = 
   tapSpectrum(a);
   stopAmbience(0.4); // l'extrait d'une carte passe devant la musique d'ambiance
   showChip(p, host);
-  fade(a, 0.6 * Math.min(1, volume), 1400);
+  pvBase = Math.min(1, volume);
+  fade(a, 0.6 * pvBase * musicVol, 1400);
 }
 
 // ───────────────────────────────────────────── musique d'AMBIANCE d'une ouverture (Éclipse — game/eclipse.ts)
@@ -204,7 +231,8 @@ export async function playAmbience(key: string, volume = 1, fadeInS = 1.4): Prom
   if (amb !== a || mine !== ambTok) return void a.pause();
   ambChip?.remove();
   ambChip = makeChip(p, () => stopAmbience());
-  ambFade(a, 0.5 * Math.min(1, volume), fadeInS * 1000);
+  ambBase = Math.min(1, volume);
+  ambFade(a, 0.5 * ambBase * musicVol, fadeInS * 1000);
 }
 /** L'adresse de la musique d'ambiance est demandée d'avance (sachet encore fermé) : pas d'attente au moment de la lancer. */
 export function prefetchAmbience(key: string): void {

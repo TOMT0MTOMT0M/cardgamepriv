@@ -391,7 +391,7 @@ export function createViewerScene(): ViewerScene {
     },
     async setup(c) {
       ctx = c;
-      stage = createStage(c, { bg: ['#000000', '#000000'] /* (C4) noir profond */, env: 'studio', envIntensity: 1.2, fill: 0.52, fillPortrait: 0.58 }); // (v2.0.1) carte un peu plus petite : Rejouer au-dessus, les boutons dessous
+      stage = createStage(c, { bg: ['#000000', '#000000'] /* (C4) noir profond */, env: 'studio', envIntensity: 1.2, fill: 0.47, fillPortrait: 0.54 }); // (v2.0.1) carte un peu plus petite : Rejouer au-dessus, les boutons dessous
       const key = new DirectionalLight(0xfff0e0, 1.2);
       key.position.set(-1, 2, 3);
       stage.scene.add(key, rig);
@@ -530,7 +530,7 @@ export function createViewerScene(): ViewerScene {
         csInstance.inspect.idle += ((ctx.input.inside || ctx.input.down ? 0 : 1) - csInstance.inspect.idle) * (1 - Math.exp(-dt * 3));
       }
       // un peu au-dessus du centre (la fiche texte se lit dessous) ; zoomée, la carte se recentre : la fiche s'est effacée
-      const lift = 0.05 * Math.max(0, 1 - (zoom - 1) / 0.6);
+      const lift = 0.1 * Math.max(0, 1 - (zoom - 1) / 0.6); // (v2.0.2) plus haut : les boutons en dessous ne la touchent plus
       rig.position.set(st.x, lift + st.y + Math.sin(t * 0.9) * 0.006, st.z);
       if (csInstance) rig.rotation.set(0, st.spin, 0);
       else rig.rotation.set(p.x + Math.sin(t * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(t * 0.37) * 0.18 * idle, 0);

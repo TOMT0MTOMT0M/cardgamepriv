@@ -61,8 +61,9 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 nov.', title: 'v2.0.1 : les retouches de la sortie', tag: 'amélioré',
+        date: '14 nov.', title: 'v2.0.1 et v2.0.2 : les retouches de la sortie', tag: 'amélioré',
         points: [
+          'Extraits : un curseur de volume dans l’étiquette du morceau, retenu sur ton appareil.',
           'Visionneuse : « Rejouer » en haut, les boutons rangés sous la carte, et ils s’effacent quand tu zoomes.',
           'Collection : la barre des filtres reste collée en haut quand tu descends.',
           'Chat général : seulement les messages, les drops restent dans Gros tirages.',
