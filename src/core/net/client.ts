@@ -54,6 +54,7 @@ export interface MeProfile {
   pityCount?: number;
   /** envies (ids de cartes) */
   wishlist?: string[];
+  wishFams?: string[];
   /** (refonte des échanges 11/11) cartes protégées */
   tradeProtected?: string[];
   /** série de connexion (src/core/streak.ts) */
@@ -1147,6 +1148,9 @@ class GameNetClient {
     return await this.client.query(api.profiles.activity, { userId, limit: 40 });
   }
   /** Envies : marque / retire une carte. */
+  public async toggleWishFam(key: string) {
+    return await this.client!.mutation(api.users.toggleWishFam, { sessionToken: this.requireToken(), key });
+  }
   public async toggleWish(cardId: string) {
     return await this.client!.mutation(api.users.toggleWish, { sessionToken: this.requireToken(), cardId });
   }

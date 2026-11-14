@@ -3854,3 +3854,7 @@ body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: n
 .ci-meta { flex-wrap: wrap; }
 .ci-done { padding-left: 8px; border-left: 1px solid var(--line-2); color: var(--ink-2); font: 500 12px var(--mono); letter-spacing: 0.04em; white-space: nowrap; }
 .shop-viewer .v-actions { justify-content: center; }
+
+/* (v2.1) « Je veux l'album » dans le fil d'Ariane de la Collection */
+.crumb .crumb-wish { margin-left: 12px; padding: 6px 12px; backdrop-filter: none; }
+.crumb .crumb-wish[hidden] { display: none; }

@@ -26,8 +26,11 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 Nov', title: 'v2.0.1 to v2.0.6: launch touch-ups', tag: 'amélioré',
+        date: '14 Nov', title: 'v2.0.1 to v2.0.7: launch touch-ups', tag: 'amélioré',
         points: [
+          'Wishes: “I want the album” (or a whole family) in one tap, from the album in your Collection.',
+          'Pulled card: a “Collection” button to its album, and your progress (15/235 · 2.4%).',
+          'Collection: on desktop, one wheel notch = one row of cards.',
           'Animations: always on, even if your device asks to reduce them (3D CS skins included).',
           'Collection: scrolling stops row by row, with two full rows always visible on desktop.',
           'Colours: one hue per game, coloured leaderboard bars, and achievements coloured by progress.',

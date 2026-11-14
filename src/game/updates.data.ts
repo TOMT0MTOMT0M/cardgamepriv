@@ -61,8 +61,11 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 nov.', title: 'v2.0.1 à v2.0.6 : les retouches de la sortie', tag: 'amélioré',
+        date: '14 nov.', title: 'v2.0.1 à v2.0.7 : les retouches de la sortie', tag: 'amélioré',
         points: [
+          'Envies : « Je veux l’album » (ou toute une famille) en un toucher, depuis l’album dans la Collection.',
+          'Carte tirée : un bouton « Collection » vers son album, et où tu en es (15/235 · 2,4 %).',
+          'Collection : sur ordinateur, un cran de molette = une rangée de cartes.',
           'Animations : elles sont toujours actives, même si ton appareil demande de les réduire (skins CS en 3D compris).',
           'Collection : le défilement s’arrête rangée par rangée, deux rangées entières toujours visibles sur ordinateur.',
           'Couleurs : une teinte par jeu, des barres de classement colorées, et les succès colorés selon leur avancement.',

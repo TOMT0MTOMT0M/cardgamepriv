@@ -326,6 +326,8 @@ export interface GameState {
   missions: (MissionsState & { resetAt: number }) | null;
   /** « envies » : ids de cartes marquées (ordre d'ajout) */
   wishlist: string[];
+  /** (v2.1) familles voulues : `s:<sous-thème>` / `g:<groupe>` (src/core/wishFams.ts) */
+  wishFams: string[];
   /** (refonte des échanges 11/11) cartes protégées : leurs doublons ne sont jamais proposés (src/core/deals.ts) */
   tradeProtected: string[];
   /** classeurs perso (épinglé en premier) */
@@ -513,6 +515,8 @@ export interface GameBackend {
   signContract(rarity: RarityId, items: Array<{ cardId: string; count: number }>): Promise<ContractResult>;
   /** Envies : marque / retire une carte (state.wishlist suit). */
   toggleWish(cardId: string): Promise<void>;
+  /** (v2.1) Envies : marque / retire une famille entière (state.wishFams suit). */
+  toggleWishFam(key: string): Promise<void>;
   /** Récompense de la série de connexion (jour 7) : boosters gagnés. */
   claimStreak(): Promise<number>;
   /** Pochette d'un sous-thème (vue Albums) : une carte possédée, ou rien = automatique. */

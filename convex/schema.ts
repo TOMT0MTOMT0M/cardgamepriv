@@ -94,6 +94,8 @@ export default defineSchema({
     pityCount: v.optional(v.number()),
     /** « envies » : ids de cartes marquées (fiche booster, échanges) */
     wishlist: v.optional(v.array(v.string())),
+    /** (v2.1) familles voulues : `s:<sous-thème>` ou `g:<groupe>` (src/core/wishFams.ts), 10 au plus */
+    wishFams: v.optional(v.array(v.string())),
     /** (refonte des échanges 11/11, convex/deals.ts) cartes PROTÉGÉES : leurs doublons ne sont jamais proposés (absent = aucune) */
     tradeProtected: v.optional(v.array(v.string())),
     /** série de connexion (src/core/streak.ts) */
