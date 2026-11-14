@@ -80,7 +80,7 @@ export function shopPacks(): SheetPack[] {
 }
 
 const QTYS = [1, 5, 10] as const;
-const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+const REDUCED = matchMedia('not all');
 /** (07/11, retours de Tom) TÉLÉPHONE : la fiche prend le style de l'ordinateur (texte seul, filets, nom qui se forme), sans vignette 2D */
 const MOBILE_SHEET = matchMedia('(max-width: 860px)');
 const STAR_LABEL = (): Record<string, string> => ({ common: tr('rar.common'), uncommon: tr('rar.uncommon'), rare: tr('rar.rare'), epic: tr('rar.epic'), legendary: tr('rar.legendary'), mythic: tr('rar.mythic') });

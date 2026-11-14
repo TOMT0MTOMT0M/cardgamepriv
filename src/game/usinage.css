@@ -133,7 +133,7 @@ select, textarea { border-radius: var(--gm-r); }
 /* ───────────── barres de progression : droites, graduées par le fond */
 .p-bar, .p-bar i, .msn-bar, .msn-bar i, .sc-pb, .sc-pb > i, .pf-k-bar, .pf-rbar, .ps-pb, .ps-pb i, .ps-bb, .ps-bb i, .gauge-bar, .gm-bar, .al-bar, .al-bar i, .sum-prog i, .pf-ach-bar, .pf-ach-bar > i, .l-bar { border-radius: var(--r-pill); }
 
-@media (prefers-reduced-motion: no-preference) {
+@media all {
   .sc-c, .if-entry, .ob-card, .am-card, .pf-stat, .ct-tier, .lb-pd, .pd, .sg-item { transition: --cs var(--dur-emphatique) var(--gm-soft), border-color var(--dur-standard); }
 }
 @media (hover: hover) {
@@ -420,3 +420,18 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 :lang(en) .me-menu .vol-pop::before { content: 'Sound'; }
 :lang(en) .pf-ghost.out::after { content: 'Remove'; }
 :lang(en) .df-p.df-win .df-pn::after { content: ' — winner'; }
+
+/* (v2.0.6, demande de Tom) SUCCÈS : une couleur par état d'avancement (information) — terminé : or · presque : vert ·
+   à moitié : bleu · début : gris. La barre, le palier « 4/5 » et le filet de la pastille la portent. */
+.sc-pill { --st: rgba(255, 255, 255, 0.45); }
+.sc-pill.st-done { --st: #f0c04a; }
+.sc-pill.st-near { --st: #5fd08a; }
+.sc-pill.st-half { --st: #5b9dff; }
+.sc-pill.st-start { --st: #9aa0a8; }
+.sc-pill.st-none { --st: rgba(255, 255, 255, 0.25); }
+.sc-pill .sc-pb > i, .sc-c.sc-pill.got .sc-pb > i { background: var(--st); }
+.sc-pill .sc-tier { color: var(--st); }
+.sc-pill:not(.st-none) { border-color: color-mix(in srgb, var(--st) 38%, var(--gm-line)); }
+.sc-pill.st-done { border-color: color-mix(in srgb, var(--st) 70%, transparent); }
+.sc-pill.st-done .sc-n { color: var(--st); }
+.sc-pill.st-none .sc-name { color: var(--ink-2); }

@@ -27,7 +27,7 @@ html.gm-vt[data-gm-dir='in'] { --gm-dy: 18px; }
 html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
 @keyframes gm-vt-out { to { opacity: 0; transform: translate(calc(var(--gm-dx) * -0.4), calc(var(--gm-dy) * -0.4)); } }
 @keyframes gm-vt-in { from { opacity: 0; transform: translate(var(--gm-dx), var(--gm-dy)); } }
-@media (prefers-reduced-motion: reduce) {
+@media not all {
   html.gm-vt { --gm-dx: 0px !important; --gm-dy: 0px !important; }
 }
 
@@ -62,7 +62,7 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
 
 /* ── 6. accueil : les tables se posent quand elles arrivent à l'écran (défilement) ── */
 @supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
+  @media all {
     .games .gm-hub .gm-game {
       animation: gm-table-in linear both;
       animation-timeline: view();
@@ -72,7 +72,7 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
 }
 @keyframes gm-table-in { from { opacity: 0.2; translate: 0 22px; } }
 
-@media (prefers-reduced-motion: reduce) {
+@media not all {
   .games .gm-item { transition-delay: 0ms; }
   @starting-style { .games .gm-item { translate: none; } }
 }
@@ -125,7 +125,7 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
 .gm-wheel.boom .gm-num:not(.landed) { animation: gm-dim 1.2s var(--ease-standard); }
 @keyframes gm-dim { 20% { opacity: 0.35; } }
 
-@media (prefers-reduced-motion: reduce) {
+@media not all {
   .gm-big.charge .gm-big-back { animation: none; box-shadow: 0 0 0 1px var(--rc); }
   .gm-rrow.rare::before { animation-duration: 1ms; }
 }
@@ -154,7 +154,7 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
 /* fin de partie */
 .gm-gauge.win { border-color: #fff; }
 .gm-gauge.lose .gm-liq { filter: grayscale(1) brightness(0.5); animation: none; }
-@media (prefers-reduced-motion: reduce) {
+@media not all {
   .gm-liq { transition: width var(--dur-standard) var(--ease-standard); }
   .gm-liq { animation: none; }
 }
@@ -203,3 +203,40 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
   .games .gm-rrow .gm-slot:nth-child(10n + 6) { margin-left: 8px; }
   .games .gm-rrow .gm-slot:nth-child(10n + 5) { margin-right: 8px; }
 }
+
+/* ═══ (v2.0.6, retours de Tom) RÈGLE DU PACK BATTLE plus lisible · même règle en jauge (Pack Battle, Battle Royale) ·
+   plus d'effet de luminosité en fin de partie ═══ */
+/* rapport de force : un vrai trait (6 px) sur une règle graduée, côté gauche en blanc plein, côté droit en gris net */
+.games .gm-tug-bar { height: 6px; background: rgba(255, 255, 255, 0.3); }
+.games .gm-tug-bar::before { top: 12px; height: 6px; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.45) 0 1px, transparent 1px 10%); }
+.games .gm-tug-bar::after { top: -8px; width: 2px; height: 22px; margin-left: -1px; background: rgba(255, 255, 255, 0.55); }
+.games .gm-tug-bar > i::after { right: -2px; width: 4px; height: 26px; background: #fff; box-shadow: 0 0 0 2px #000; }
+.games .gm-tug > span small { color: var(--ink-2); }
+/* jauge « règle » d'un joueur */
+.gm-rule { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; margin: 2px 0 12px; min-height: 34px; }
+.gm-rule-bar { position: relative; height: 6px; background: rgba(255, 255, 255, 0.18); }
+.gm-rule-bar::before { content: ''; position: absolute; left: 0; right: 0; top: 12px; height: 5px; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.35) 0 1px, transparent 1px 10%); }
+.gm-rule-bar > i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--lvl, 0) * 100%); background: #fff; transition: width var(--dur-emphatique) var(--ease-entree); }
+.gm-rule-bar > i::after { content: ''; position: absolute; right: -2px; top: 50%; width: 4px; height: 22px; transform: translateY(-50%); background: #fff; box-shadow: 0 0 0 2px #000; }
+.gm-rule .gm-count { min-width: 3.2ch; text-align: right; font: 600 26px/1 var(--title); color: #fff; }
+.gm-rule.lose .gm-rule-bar > i, .gm-rule.lose .gm-rule-bar > i::after { background: rgba(255, 255, 255, 0.5); }
+@media not all { .gm-rule-bar > i { transition: none; } }
+/* fin de partie : plus de perdant assombri ni grisé, plus de halo — le gagnant garde seulement son filet blanc */
+.games .gm-bcol.lose, .games .gm-rrow.lose { opacity: 1; filter: none; }
+.games .gm-bcol.lose { border-color: var(--gm-line); }
+
+/* ═══ (v2.0.6, demande de Tom) UNE COULEUR PAR JEU sur l'accueil des Jeux — discrète : le tracé du dessin, le repère
+   « 01 — 1v1 », le point d'état et le filet au survol ; des nuances de la même teinte, jamais un aplat. ═══ */
+.gm-game.duel { --ga: #ff6b57; }      /* Pack Battle : corail */
+.gm-game.royale { --ga: #9a86ff; }    /* Battle Royale : violet */
+.gm-game.roulette { --ga: #f0c04a; }  /* Roulette : or */
+.games .gm-game[class] .gm-idx { color: color-mix(in srgb, var(--ga, #fff) 78%, #fff); }
+.games .gm-game .gm-art .trace .line { stroke: color-mix(in srgb, var(--ga, #fff) 82%, #fff); }
+.games .gm-game .gm-art .trace .dim { stroke: color-mix(in srgb, var(--ga, #fff) 48%, transparent); }
+.games .gm-game .gm-art .groove .line { stroke: color-mix(in srgb, var(--ga, #fff) 22%, rgba(255, 255, 255, 0.08)); }
+.games .gm-game .gm-art .groove .halo { stroke: color-mix(in srgb, var(--ga, #fff) 7%, transparent); }
+.games .gm-game .gm-art .drop { fill: var(--ga, #fff); }
+.games .gm-game::after { background: radial-gradient(220px circle at var(--mx) var(--my), var(--ga, #fff), transparent 70%); }
+.games .gm-game .gm-spec { border-top-color: color-mix(in srgb, var(--ga, #fff) 30%, var(--gm-line)); }
+.games .gm-game .gm-live { color: color-mix(in srgb, var(--ga, #fff) 55%, var(--ink-2)); }
+@media (hover: hover) { .games .gm-game:hover { border-color: color-mix(in srgb, var(--ga, #fff) 45%, var(--gm-line-2)); } }

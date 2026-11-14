@@ -163,7 +163,7 @@ document.addEventListener('keydown', (e) => {
  * demande moins d'animations. Le CSS lit --tx / --ty (de -0,5 à 0,5).
  */
 const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
-const lessMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const lessMotion = matchMedia('not all');
 let tiltEl: HTMLElement | null = null;
 let tiltRect: DOMRect | null = null;
 let tiltRaf = 0;

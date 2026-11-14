@@ -10,7 +10,7 @@ import { haptics } from '../core/haptics';
  * Mouvement réduit : la même chose en simple fondu.
  */
 export function playGodIntro(shell: Shell): Promise<void> {
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced = matchMedia('not all').matches;
   const el = document.createElement('div');
   el.className = `god-intro${reduced ? ' reduced' : ''}`;
   el.setAttribute('role', 'status');

@@ -26,8 +26,13 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
-        date: '14 Nov', title: 'v2.0.1 to v2.0.4: launch touch-ups', tag: 'amélioré',
+        date: '14 Nov', title: 'v2.0.1 to v2.0.6: launch touch-ups', tag: 'amélioré',
         points: [
+          'Animations: always on, even if your device asks to reduce them (3D CS skins included).',
+          'Collection: scrolling stops row by row, with two full rows always visible on desktop.',
+          'Colours: one hue per game, coloured leaderboard bars, and achievements coloured by progress.',
+          'Games: a clearly visible graduated rule for Pack Battle and Battle Royale scores, with no light effect at the end.',
+          'Big collections: beyond 8,000 different cards, the collection and profile show again.',
           '5★ cards: the “Swiss” frame is back on 5★ cards with a landscape photo.',
           'Battle Royale: on desktop, cards now show large across the full width.',
           'Collection: 5★ and 6★ cards are no longer blurry in the grid.',

@@ -50,7 +50,7 @@ const fmtMonth = (t: number) => new Date(t).toLocaleDateString(locale(), { month
  * « mouvements réduits » : une image FIXE, la 1re image peinte dans un <canvas> (affichable même si le fichier vient
  * d'un autre domaine : on ne relit jamais ses pixels).
  */
-const lessMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const lessMotion = matchMedia('not all');
 const mediaHtml = (url: string) =>
   lessMotion.matches ? `<canvas class="pf-media pf-still" data-src="${esc(url)}" aria-hidden="true"></canvas>` : `<img class="pf-media" src="${esc(url)}" alt="" decoding="async">`;
 function hydrateStills(root: HTMLElement) {
@@ -769,10 +769,13 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   function renderCase() {
     if (editor.active) return;
     const me = isMe();
-    const sc = showcase();
+    // (v2.0.6, retour de Tom) profil en cours de chargement : cases vides, pas une vitrine provisoire (mes meilleures
+    // cartes ou l'ancienne vitrine s'affichaient une seconde avant la vraie)
+    const loading = el.classList.contains('loading');
+    const sc = loading ? { list: [], auto: false } : showcase();
     const list = sc.list;
     autoEl.textContent = sc.auto && list.length ? (me ? tr('pf.vit.bestMine') : tr('pf.vit.bestTheirs')) : '';
-    tools.innerHTML = me && ownedOf().length ? `<button class="btn-ghost pf-edit">${sc.auto ? tr('pf.vit.pick') : tr('pf.edit')}</button>` : '';
+    tools.innerHTML = me && !loading && ownedOf().length ? `<button class="btn-ghost pf-edit">${sc.auto ? tr('pf.vit.pick') : tr('pf.edit')}</button>` : '';
     tools.querySelector('.pf-edit')?.addEventListener('click', startEditing);
     caseEl.replaceChildren();
     caseEl.classList.toggle('is-empty', !list.length);
@@ -788,7 +791,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       } else wrap.innerHTML = `<div class="pf-empty"></div>`;
       caseEl.append(wrap);
     }
-    if (!list.length) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? tr('pf.vit.openSome') : tr('pf.noCardYet')}</div>`);
+    if (!list.length && !loading) caseEl.insertAdjacentHTML('beforeend', `<div class="pf-none">${me ? tr('pf.vit.openSome') : tr('pf.noCardYet')}</div>`);
   }
   /**
    * (retours Hugo et Tom, 10/11) TOUTE LA COLLECTION d'un joueur, pas seulement son classeur épinglé : recherche par nom,

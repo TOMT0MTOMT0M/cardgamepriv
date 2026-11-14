@@ -49,7 +49,7 @@ type Item = ShowcaseCard | 'ph' | null;
 const STARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'secret'];
 const PICK_CAP = 240;
 const LONG_PRESS = 260;
-const lessMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const lessMotion = matchMedia('not all');
 const coarse = matchMedia('(pointer: coarse)');
 
 export function createShowcaseEditor(o: Opts): ShowcaseEditor {

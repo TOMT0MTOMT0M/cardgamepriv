@@ -108,8 +108,8 @@
 }
 
 /* ── mouvement réduit / Effets réduits */
-@media (prefers-reduced-motion: reduce) { .ps-slot.hit { animation: none; } .df-bar::after { transition: none; } }
-@media (prefers-reduced-motion: reduce) { .ps-slot.hit { animation: none; } .df-bar::after { transition: none; } }
+@media not all { .ps-slot.hit { animation: none; } .df-bar::after { transition: none; } }
+@media not all { .ps-slot.hit { animation: none; } .df-bar::after { transition: none; } }
 
 /* l'accueil des jeux est une grille de 3 : la deuxième rangée la traverse ; sa carte garde un en-tête normal
    (pas de platine de dessin de 200 px au-dessus, réservée aux trois premières tables) */

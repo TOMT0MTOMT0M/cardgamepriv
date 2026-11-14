@@ -262,7 +262,7 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 /* bouton armé (second toucher) : il change de couleur pour qu'on voie qu'il attend une confirmation */
 .games .armed { background: linear-gradient(180deg, #ffffff, #ffffff) !important; color: #000000 !important; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 10px 26px -10px rgba(255, 255, 255, 0.9); animation: gm-armed 0.9s ease-in-out infinite alternate; }
 @keyframes gm-armed { to { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.18), 0 10px 26px -10px rgba(255, 255, 255, 0.9); } }
-@media (prefers-reduced-motion: reduce) { .games .armed { animation: none; } }
+@media not all { .games .armed { animation: none; } }
 /* forge : protections visibles et légende, puce « Tous les X★ » active, petit texte des puces */
 .gm-forge .gm-prot { width: auto; min-width: 20px; padding: 0 4px; border-radius: var(--r-pill); letter-spacing: 0.08em; }
 .gm-forge .tile .badge { top: auto; bottom: 22px; left: 5px; }

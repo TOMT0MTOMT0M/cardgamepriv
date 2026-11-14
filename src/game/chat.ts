@@ -576,7 +576,10 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
         ? rows.map(({ c }) => {
             const t = cardTile(c.cardId, c.rarity, { mini: true });
             t.dataset.pick = `${c.cardId}|${c.rarity}|${c.bestMintNumber}`;
-            return t;
+            // (v2.0.6) cellule à hauteur garantie : les tuiles s'empilaient les unes sur les autres (on n'en voyait qu'une bande)
+            const cell = h('div', 'cp-cell');
+            cell.append(t);
+            return cell;
           })
         : [h('div', 'chat-empty', qy ? '<span>' + tr('chat.noCard') + '</span>' : '<b>' + tr('chat.emptyColl') + '</b><span>' + tr('chat.openFirst') + '</span>')]),
     );

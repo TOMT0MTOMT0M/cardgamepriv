@@ -79,6 +79,21 @@ export function stamp(el: HTMLElement): void {
 export const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * (v2.0.6, retour de Tom) JAUGE « RÈGLE » : la même règle graduée que le rapport de force du Pack Battle — un trait
+ * blanc plein qui avance sur une règle, un curseur net au bout, le total en grand à droite. Remplace la jauge de fluide
+ * bleu dans le Pack Battle et le Battle Royale (même interface que `liquidGauge`). Aucun halo, aucun effet de fin.
+ */
+export function ruleGauge(count: HTMLElement, max: number): { el: HTMLElement; set(total: number): void; end(win: boolean): void } {
+  const el = document.createElement('div');
+  el.className = 'gm-rule';
+  el.innerHTML = '<div class="gm-rule-bar"><i></i></div>';
+  el.append(count);
+  const set = (total: number) => el.style.setProperty('--lvl', Math.max(0, Math.min(1, total / Math.max(1, max))).toFixed(3));
+  set(0);
+  return { el, set, end: (win) => el.classList.add(win ? 'win' : 'lose') };
+}
+
+/**
  * (14/11) JAUGE D'ÉTOILES — un fluide bleu clair bioluminescent qui monte avec le total : deux surfaces de vague à des
  * périodes qui ne tombent jamais juste (mouvement organique), une lueur dont l'intensité respire, quelques bulles. Le
  * total s'écrit en grand dans la jauge. `set(total)` : le niveau monte avec un léger ballottement (ressort CSS).

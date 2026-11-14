@@ -257,7 +257,7 @@ function placePill(animate = true) {
     pill.style.transition = '';
   }
 }
-const lessMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const lessMotion = matchMedia('not all');
 
 /**
  * Nav qui défile (téléphone, 7 onglets) : un vrai indicateur « › » à droite tant qu'il reste des onglets cachés (il
@@ -848,7 +848,7 @@ const VT_FLAG = (() => {
 })();
 let vtDead = false;
 /** Fait `apply` (le vrai changement de page) sous transition ; `canVT()` d'abord (sinon `apply` direct, avec `view-in`). */
-const canVT = () => VT_FLAG && !vtDead && !document.hidden && typeof document.startViewTransition === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canVT = () => VT_FLAG && !vtDead && !document.hidden && typeof document.startViewTransition === 'function' && !matchMedia('not all').matches;
 function swapPage(apply: () => void): void {
   const root = document.documentElement;
   let ran = false;

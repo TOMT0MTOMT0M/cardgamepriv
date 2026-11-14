@@ -487,7 +487,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
    * Sur ordinateur, rien ne change (liste verticale).
    */
   const WHEEL = matchMedia('(max-width: 860px)');
-  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+  const REDUCED = matchMedia('not all');
   const makeSleeve = (b: SheetPack) => {
     const btn = h('button', `sleeve${b.soon ? ' soon' : ''}${b.key === 'bebou' ? ' special' : ''}${b.key === EVENT_KEY ? ' event' : ''}`, `
       <span class="sl-art" style="--acc:${b.accent}"><span class="sl-ph"></span>${b.soon ? '<span class="sl-seal">' + tr('common.soonCaps') + '</span>' : ''}<i class="sl-shade"></i><i class="sl-shine"></i></span>

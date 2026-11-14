@@ -308,7 +308,7 @@ export interface OpeningScene extends Experiment {
 type Phase = 'display' | 'sealed' | 'opened' | 'busy' | 'shown' | 'mythicHold' | 'done' | 'scene';
 
 /** Réglage « réduire les animations » du téléphone / de l'ordinateur : pas de flash négatif, secousses atténuées. */
-const CALM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const CALM = typeof matchMedia === 'function' && matchMedia('not all').matches;
 const CARD_W = 0.63;
 const CARD_H = 0.88;
 /**

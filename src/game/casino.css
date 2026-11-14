@@ -413,11 +413,11 @@
 @media (max-width: 420px) { .gm-kick { letter-spacing: 0.22em; } }
 
 /* ═════ MOUVEMENT RÉDUIT */
-@media (prefers-reduced-motion: reduce) {
+@media not all {
   .gm-top, .gm-body > *, .gm-cols > *, .gm-rp, .gm-pot .tile { animation: none; }
   .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-dot, .gm-cd::before, .gm-battle.suspense .gm-stage, .gm-rp.empty .gm-ava { animation: none; }
 }
-@media (prefers-reduced-motion: reduce) { .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-battle.suspense .gm-stage { animation: none; } .gm-big.in::after { display: none; } }
+@media not all { .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-battle.suspense .gm-stage { animation: none; } .gm-big.in::after { display: none; } }
 
 /* (13/11, retours Hugo) LA ROUE de la roulette (views/rouletteWheel.ts) : cylindre noir / gris, bille d'acier, numéro
    sorti allumé ; la page Roulette et le rejeu du dernier tirage à la connexion */

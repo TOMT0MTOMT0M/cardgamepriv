@@ -42,7 +42,7 @@ import { flip, leave, rollNumber } from '../../core/morph';
 import { reducedMotion } from '../../core/motion';
 import { mountGridArt } from './gridArt';
 import { yieldToMain } from '../../core/yieldMain';
-import { cardBeat, flash, flyGain, liquidGauge, shake, stamp } from './gameFx';
+import { cardBeat, flyGain, ruleGauge, stamp } from './gameFx';
 import '../jeux-motion.css';
 
 /**
@@ -500,7 +500,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       res.packs[i].flat().forEach((card) => slots.append(slot(card)));
       // (14/11) le total vit dans une jauge de fluide (pleine ≈ 4★ de moyenne par carte)
       const count = c.querySelector<HTMLElement>('.gm-count')!;
-      const gauge = liquidGauge(count, res.packs[i].flat().length * 4);
+      const gauge = ruleGauge(count, res.packs[i].flat().length * 4);
       c.querySelector('.gm-bh')!.after(gauge.el);
       return { el: c, count, gauge, slots: [...slots.children] as HTMLElement[], total: 0 };
     });
@@ -555,10 +555,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       if (stars >= 5) sl.classList.add('hot');
       if (skip) return;
       if (stars >= 3) void flyGain(big, tugN[k], `+${stars}★`, hex);
-      if (stars >= 6) {
-        flash(hex);
-        shake(bat.querySelector('.gm-stage')!, 6);
-      }
+      // (v2.0.6, décision de Tom) plus de flash ni de secousse sur une 6★
       if (beat.hold) await wait(beat.hold);
     };
     for (let i = 0; i < n; i++) {
@@ -577,11 +574,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     }
     bat.classList.remove('suspense');
     room.querySelector('.gm-skip')?.remove();
-    // (14/11) fin : la lumière de la règle part entière du côté du gagnant
-    if (res.winner !== undefined) {
-      tug.classList.add('final');
-      tugBar.style.setProperty('--p', res.winner === 0 ? '1' : '0');
-    }
+    // (v2.0.6) fin : la règle garde le vrai rapport de force (elle ne file plus d'un côté), l'étiquette « En tête » s'efface
+    if (res.winner !== undefined) tug.classList.add('final');
     const v = room.querySelector<HTMLElement>('.gm-verdict')!;
     if (res.winner === undefined) {
       v.innerHTML = `<b><span>${tr('gm.perfectDraw')}</span></b> ${tr('gm.drawBack', { n: res.stars[0] })}`;
@@ -746,7 +740,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       res.packs[i].forEach((c) => sl.append(slot(c)));
       g.append(row);
       const count = row.querySelector<HTMLElement>('.gm-count')!;
-      const gauge = liquidGauge(count, res.packs[i].length * 4);
+      const gauge = ruleGauge(count, res.packs[i].length * 4);
       row.querySelector('.gm-bh')!.after(gauge.el);
       return { row, count, gauge, rank: row.querySelector<HTMLElement>('.gm-rank')!, slots: [...sl.children] as HTMLElement[], total: 0 };
     });
@@ -758,8 +752,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         g.classList.add('suspense');
         await wait(1400);
       }
-      let best = 0;
-      let bestHex = '';
       rows.forEach((x, k) => {
         const c = res.packs[k][i];
         if (!c) return;
@@ -781,13 +773,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
             void x.row.offsetWidth;
             x.row.classList.add('rare');
           }
-          if (stars > best) ((best = stars), (bestHex = hex));
         }
       });
-      if (!skip && best >= 6) {
-        flash(bestHex);
-        shake(g, 4);
-      }
       const leadBefore = rows.findIndex((x) => x.row.classList.contains('lead'));
       // classement en direct : les rangées GLISSENT à leur nouvelle place (FLIP)
       const order = rows.map((x, k) => [x.total, k]).sort((a, b) => b[0] - a[0]);
