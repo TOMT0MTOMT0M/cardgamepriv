@@ -3849,3 +3849,8 @@ body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: n
     grid-template-columns: repeat(auto-fill, var(--tile-w)); justify-content: center;
   }
 }
+
+/* (v2.0.6) carte tirée, en grand : avancement de son album à côté des étoiles et de la rareté ; boutons centrés */
+.ci-meta { flex-wrap: wrap; }
+.ci-done { padding-left: 8px; border-left: 1px solid var(--line-2); color: var(--ink-2); font: 500 12px var(--mono); letter-spacing: 0.04em; white-space: nowrap; }
+.shop-viewer .v-actions { justify-content: center; }

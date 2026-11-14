@@ -341,6 +341,8 @@ export const en: Dict = {
   'shop.myNew': 'My new cards',
   'shop.myColl': 'My collection',
   'shop.credited': 'Booster credited.',
+  'shop.toAlbum': 'Collection',
+  'shop.toAlbumT': 'See the {name} album: what you’re missing',
   'shop.cardSub2': '{pre}print #{n}',
 
   // ───── src/game/views/shop.ts (à la main) ─────

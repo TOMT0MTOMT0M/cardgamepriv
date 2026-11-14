@@ -1996,10 +1996,30 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const e = catalogEntry(card.cardId);
     const st = e ? subthemeById(e.subthemeId) : null;
     const vi = viewerUi.querySelector<HTMLElement>('.v-info')!;
+    // (v2.0.6, demande de Tom) où j'en suis dans l'album de la carte : « 15/235 · 2,4 % », à côté des étoiles et de la rareté
+    let done = '';
+    if (st && e && !rr.secret) {
+      const ids = new Set((themeById(e.themeId)?.cards ?? []).filter((c) => c.subthemeId === st.id).map((c) => c.id));
+      const have = new Set(backend.state.collection.filter((c) => c.count > 0 && ids.has(c.cardId)).map((c) => c.cardId));
+      have.add(card.cardId); // la carte qu'on vient de tirer compte, même si la collection n'est pas encore à jour
+      if (ids.size) done = `<span class="ci-done" title="${esc(st.label)}">${fmtN(have.size)}/${fmtN(ids.size)} · ${fmtPctI(have.size / ids.size)}</span>`;
+    }
     vi.className = `v-info r-${card.rarity}`;
     vi.style.setProperty('--ra', rr.accentHex);
-    vi.innerHTML = `${card.isNew ? '<div class="ci-new">' + tr('shop.newCaps') + '</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${e?.artist ? `<div class="ci-by">${esc(e.artist)}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span></div><div class="ci-sub">${tr('shop.cardSub2', { pre: st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : '', n: fmtN(card.mintNumber) })}</div>`;
-    viewerUi.querySelector('.v-actions')!.replaceChildren(imageReportButton(backend, card.cardId, 'ouverture/zoom'));
+    vi.innerHTML = `${card.isNew ? '<div class="ci-new">' + tr('shop.newCaps') + '</div>' : ''}<div class="ci-name">${esc(card.cardName)}</div>${e?.artist ? `<div class="ci-by">${esc(e.artist)}</div>` : ''}<div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r" style="color:${rr.accentHex}">${rr.label}</span>${done}</div><div class="ci-sub">${tr('shop.cardSub2', { pre: st && e && !rr.secret ? `${esc(st.label)} ${String(e.num).padStart(3, '0')}/${numberingSize(st)} · ` : '', n: fmtN(card.mintNumber) })}</div>`;
+    const acts: HTMLElement[] = [imageReportButton(backend, card.cardId, 'ouverture/zoom')];
+    // (v2.0.6) « Collection » : l'album exact de la carte, pour voir ce qu'il manque
+    if (st && e && !rr.secret && st.themeId !== 'bebous') {
+      const b = h('button', 'va va-coll', `▦ <span>${tr('shop.toAlbum')}</span>`);
+      b.title = tr('shop.toAlbumT', { name: st.label });
+      b.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        closeViewer();
+        go(`collection/${st.id}`);
+      });
+      acts.unshift(b);
+    }
+    viewerUi.querySelector('.v-actions')!.replaceChildren(...acts);
     viewerUi.hidden = false;
     summary.hidden = true;
     fanBadges.hidden = true;
