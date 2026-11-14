@@ -63,6 +63,7 @@ export const UPDATES: UpdateMonth[] = [
       {
         date: '14 nov.', title: 'v2.0.1 à v2.0.7 : les retouches de la sortie', tag: 'amélioré',
         points: [
+          'Échanges : dans « Choisir autre chose », tu peux demander n’importe quelle carte de l’autre joueur (filtres par étoile et recherche) ; hors de ses doublons, il valide.',
           'Envies : « Je veux l’album » (ou toute une famille) en un toucher, depuis l’album dans la Collection.',
           'Carte tirée : un bouton « Collection » vers son album, et où tu en es (15/235 · 2,4 %).',
           'Collection : sur ordinateur, un cran de molette = une rangée de cartes.',

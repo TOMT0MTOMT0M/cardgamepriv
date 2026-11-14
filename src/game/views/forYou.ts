@@ -41,10 +41,29 @@ export function cardChip(c: DealCard, label: string, extra = '') {
  * Choisir une carte dans une petite feuille (contrepartie « changer », « Choisir autre chose » d'une demande reçue).
  * `load` peut être lent (serveur) : squelette en attendant.
  */
-export function pickCardSheet(o: { title: string; sub: string; load: () => Promise<Array<DealCard & { tag?: string; on?: boolean }>>; empty: string; onPick: (c: DealCard) => Promise<boolean> | boolean }) {
+export interface PickAll {
+  /** étoile de la demande (présélectionnée) */
+  star: RarityId;
+  /** toutes les cartes de l'autre joueur (chargées au premier passage sur « Toutes ses cartes ») */
+  load: () => Promise<Array<DealCard & { tag?: string }>>;
+  /** libellé d'une carte hors échange immédiat (« à valider par TOM ») */
+  askTag: string;
+  /** une carte hors des doublons proposés : contre-proposition. Vrai = feuille fermée. */
+  onAsk: (c: DealCard) => Promise<boolean> | boolean;
+}
+type PickCard = DealCard & { tag?: string; on?: boolean };
+export function pickCardSheet(o: { title: string; sub: string; load: () => Promise<PickCard[]>; empty: string; onPick: (c: DealCard) => Promise<boolean> | boolean; all?: PickAll }): () => void {
   const veil = h('div', 'ow-veil fy-veil');
+  // (v2.0.8, retour de Hugo) filtres : « Ses doublons » (échange immédiat, même étoile) ou « Toutes ses cartes » par
+  // étoile, avec une recherche — une carte hors doublons part en contre-proposition (l'autre joueur valide)
+  const STARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+  const filters = o.all
+    ? `<div class="fy-pf"><div class="seg fy-pf-m" role="radiogroup"><button role="radio" data-m="dup" class="on" aria-checked="true">${tr('fy.pfDup')}</button><button role="radio" data-m="all" aria-checked="false">${tr('fy.pfAll')}</button></div>
+      <div class="starf fy-pf-s" hidden>${STARS.map((r, i) => `<button class="chip${r === o.all!.star ? ' on' : ''}" data-r="${r}" style="--rc:${rarity(r).hex}">${i + 1}★</button>`).join('')}</div>
+      <input class="search fy-pf-q" type="search" placeholder="${tr('fy.pfSearch')}" autocomplete="off" hidden></div>`
+    : '';
   veil.innerHTML = `<div class="ow fy-pick" role="dialog" aria-modal="true" aria-label="${esc(o.title)}">
-    <div class="ow-h"><div class="ow-id"><span class="ow-k">${esc(o.title)}</span><span class="ow-me">${esc(o.sub)}</span></div><button class="ow-x" aria-label="${tr('common.close')}">✕</button></div>
+    <div class="ow-h"><div class="ow-id"><span class="ow-k">${esc(o.title)}</span><span class="ow-me">${esc(o.sub)}</span></div><button class="ow-x" aria-label="${tr('common.close')}">✕</button></div>${filters}
     <div class="fy-pg" aria-live="polite">${'<span class="fy-pc skel"></span>'.repeat(6)}</div></div>`;
   let closed = false;
   const close = () => {
@@ -64,30 +83,77 @@ export function pickCardSheet(o: { title: string; sub: string; load: () => Promi
   pushLayer(close);
   requestAnimationFrame(() => veil.classList.add('on'));
   const pg = veil.querySelector<HTMLElement>('.fy-pg')!;
+  const SHOW_MAX = 120;
+  let dupList: PickCard[] | null = null;
+  let allList: Array<DealCard & { tag?: string }> | null = null;
+  let mode: 'dup' | 'all' = 'dup';
+  let star: RarityId | undefined = o.all?.star;
+  let qy = '';
+  const fold = (x: string) => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const skel = () => (pg.innerHTML = '<span class="fy-pc skel"></span>'.repeat(6));
+  function paint() {
+    if (closed) return;
+    const instant = new Set((dupList ?? []).map((c) => `${c.cardId}|${c.rarity}`));
+    let list: Array<PickCard & { ask?: boolean }>;
+    if (mode === 'dup') list = dupList ?? [];
+    else {
+      const byKey = new Map((dupList ?? []).map((c) => [`${c.cardId}|${c.rarity}`, c]));
+      list = (allList ?? [])
+        .filter((c) => c.rarity === star && (!qy || fold(nameOf(c.cardId)).includes(qy)))
+        .map((c): PickCard & { ask?: boolean } => (instant.has(`${c.cardId}|${c.rarity}`) ? { ...byKey.get(`${c.cardId}|${c.rarity}`)! } : { ...c, ask: true }))
+        .sort((x, y) => Number(!!x.ask) - Number(!!y.ask) || nameOf(x.cardId).localeCompare(nameOf(y.cardId)));
+    }
+    if (!list.length) return void (pg.innerHTML = `<p class="ow-empty">${esc(mode === 'dup' ? o.empty : tr('fy.pfNone'))}</p>`);
+    pg.replaceChildren();
+    for (const c of list.slice(0, SHOW_MAX)) {
+      const e = catalogEntry(c.cardId);
+      const rr = rarity(c.rarity);
+      const tag = c.ask ? [c.tag, o.all!.askTag].filter(Boolean).join(' · ') : c.tag;
+      const b = h('button', `fy-pc${c.on ? ' on' : ''}${c.ask ? ' ask' : ''}`, `${e ? `<img alt="" loading="lazy" decoding="async" src="${thumbUrl(e)}">` : ''}<b>${esc(nameOf(c.cardId))}</b>${tag ? `<em>${esc(tag)}</em>` : ''}`);
+      b.style.setProperty('--rc', rr.hex);
+      b.addEventListener('click', async () => {
+        if (b.dataset.busy) return;
+        b.dataset.busy = '1';
+        b.classList.add('busy');
+        try {
+          if (await (c.ask ? o.all!.onAsk(c) : o.onPick(c))) close();
+        } finally {
+          delete b.dataset.busy;
+          b.classList.remove('busy');
+        }
+      });
+      pg.append(b);
+    }
+    if (list.length > SHOW_MAX) pg.insertAdjacentHTML('beforeend', `<p class="ow-empty fy-pf-more">${tr('fy.pfMore', { n: list.length - SHOW_MAX })}</p>`);
+  }
+  if (o.all) {
+    const sBar = veil.querySelector<HTMLElement>('.fy-pf-s')!;
+    const qEl = veil.querySelector<HTMLInputElement>('.fy-pf-q')!;
+    veil.querySelectorAll<HTMLButtonElement>('.fy-pf-m button').forEach((b) =>
+      b.addEventListener('click', () => {
+        mode = b.dataset.m as 'dup' | 'all';
+        veil.querySelectorAll<HTMLButtonElement>('.fy-pf-m button').forEach((x) => (x.classList.toggle('on', x === b), x.setAttribute('aria-checked', String(x === b))));
+        sBar.hidden = qEl.hidden = mode !== 'all';
+        if (mode === 'all' && !allList) {
+          skel();
+          o.all!.load().then(
+            (l) => ((allList = l), paint()),
+            (err) => !closed && (pg.innerHTML = `<p class="ow-empty err">${esc(errMsg(err))}</p>`),
+          );
+        } else paint();
+      }),
+    );
+    sBar.querySelectorAll<HTMLButtonElement>('button').forEach((b) =>
+      b.addEventListener('click', () => {
+        star = b.dataset.r as RarityId;
+        sBar.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+        paint();
+      }),
+    );
+    qEl.addEventListener('input', () => ((qy = fold(qEl.value.trim())), paint()));
+  }
   o.load()
-    .then((list) => {
-      if (closed) return;
-      if (!list.length) return void (pg.innerHTML = `<p class="ow-empty">${esc(o.empty)}</p>`);
-      pg.replaceChildren();
-      for (const c of list) {
-        const e = catalogEntry(c.cardId);
-        const rr = rarity(c.rarity);
-        const b = h('button', `fy-pc${c.on ? ' on' : ''}`, `${e ? `<img alt="" loading="lazy" decoding="async" src="${thumbUrl(e)}">` : ''}<b>${esc(nameOf(c.cardId))}</b>${c.tag ? `<em>${esc(c.tag)}</em>` : ''}`);
-        b.style.setProperty('--rc', rr.hex);
-        b.addEventListener('click', async () => {
-          if (b.dataset.busy) return;
-          b.dataset.busy = '1';
-          b.classList.add('busy');
-          try {
-            if (await o.onPick(c)) close();
-          } finally {
-            delete b.dataset.busy;
-            b.classList.remove('busy');
-          }
-        });
-        pg.append(b);
-      }
-    })
+    .then((list) => ((dupList = list), paint()))
     .catch((err) => !closed && (pg.innerHTML = `<p class="ow-empty err">${esc(errMsg(err))}</p>`));
   return close;
 }

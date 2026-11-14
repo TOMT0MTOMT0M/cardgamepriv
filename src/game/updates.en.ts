@@ -28,6 +28,7 @@ export const UPDATES_EN: UpdateMonth[] = [
       {
         date: '14 Nov', title: 'v2.0.1 to v2.0.7: launch touch-ups', tag: 'amélioré',
         points: [
+          'Trades: in “Pick something else”, you can ask for any of the other player’s cards (star filters and search); outside their duplicates, they approve.',
           'Wishes: “I want the album” (or a whole family) in one tap, from the album in your Collection.',
           'Pulled card: a “Collection” button to its album, and your progress (15/235 · 2.4%).',
           'Collection: on desktop, one wheel notch = one row of cards.',
