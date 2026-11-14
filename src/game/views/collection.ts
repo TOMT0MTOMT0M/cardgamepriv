@@ -48,6 +48,28 @@ type CardSort = 'rarity' | 'date' | 'alpha' | 'album';
 const STAR_ORDER: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
 const RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
 const PAGE = 60;
+/**
+ * (15/11, demande de Tom) AFFICHAGE DE LA GRILLE, au choix du joueur, retenu sur l'appareil : sur ordinateur, des
+ * rangées × colonnes qui remplissent l'espace sous la barre (2×6, 4×8, 6×10 : les cartes se dimensionnent pour que ces
+ * rangées tiennent entières, style.css) ; sur téléphone, de plus en plus serré (2, 3, 4 cartes par rangée sur un téléphone).
+ * Le défilement garde ses crans d'une rangée. Une page compte au moins 60 cartes et toujours des rangées ENTIÈRES (voir
+ * `perPage`) : 60 = 5 écrans de 2×6 ou 1 écran de 6×10, 64 = 2 écrans de 4×8.
+ */
+type Dens = '2x6' | '4x8' | '6x10';
+const DENS: ReadonlyArray<{ id: Dens; rows: number; cols: number; key: 'coll.dens.l' | 'coll.dens.m' | 'coll.dens.s' }> = [
+  { id: '2x6', rows: 2, cols: 6, key: 'coll.dens.l' },
+  { id: '4x8', rows: 4, cols: 8, key: 'coll.dens.m' },
+  { id: '6x10', rows: 6, cols: 10, key: 'coll.dens.s' },
+];
+const DENS_KEY = 'bebou.coll.dens';
+const densIcon = (n: number) => {
+  const s = 14 / n;
+  let r = '';
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) r += `<rect x="${1 + x * s + 0.6}" y="${1 + y * s + 0.6}" width="${s - 1.2}" height="${s - 1.2}" rx="${n > 3 ? 0.4 : 0.8}"/>`;
+  return `<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">${r}</svg>`;
+};
+const densSeg = () =>
+  `<div class="seg cb-dens" role="group" aria-label="${tr('coll.dens')}">${DENS.map((d, i) => `<button data-d="${d.id}" aria-label="${tr(d.key)}" title="${tr('coll.densT', { r: d.rows, c: d.cols })}">${densIcon(i + 2)}<span>${d.rows}×${d.cols}</span></button>`).join('')}</div>`;
 /** plafonds des classeurs : les mêmes que le serveur (convex/binders.ts : BINDER_MAX, BINDER_CARDS_MAX, cleanName) */
 const BINDER_MAX = 30;
 const BINDER_CARDS_MAX = 500;
@@ -104,6 +126,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   let query = '';
   let albumQuery = '';
   let page = 0;
+  /** cartes par page, recalculée à chaque rendu de la grille (`perPage`) */
+  let per = PAGE;
+  let dens: Dens = '2x6';
+  try {
+    const d = localStorage.getItem(DENS_KEY);
+    if (DENS.some((x) => x.id === d)) dens = d as Dens;
+  } catch {
+    /* stockage bloqué : 2×6 */
+  }
   let open = false;
   let growBars = false;
   // préférences persistantes (filtres, tris)
@@ -155,6 +186,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       </div>
       <div class="starf"></div>
       <div class="seg sortf" aria-label="${tr('coll.sort')}"><button data-s="num">N°</button><button data-s="stars">${tr('coll.stars')}</button><button data-s="recent">${tr('coll.recent')}</button></div>
+      ${densSeg()}
       <input class="search" type="search" placeholder="${tr('coll.searchPh')}" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="${tr('coll.searchA')}" />
     </div>
     <div class="cards-bar" hidden>
@@ -162,6 +194,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       <div class="starf cb-stars"></div>
       <button class="chip cb-dups" aria-pressed="false" title="${tr('coll.dupsT')}">${tr('coll.dups')}</button>
       <div class="seg cb-sort" aria-label="${tr('coll.sort')}"><button data-s="rarity">${tr('coll.rarity')}</button><button data-s="date">Date</button><button data-s="alpha">A → Z</button><button data-s="album">${tr('coll.byAlbum')}</button></div>
+      ${densSeg()}
       <input class="search cb-search" type="search" placeholder="${tr('coll.searchAllPh')}" autocomplete="off" spellcheck="false" aria-label="${tr('coll.searchAllA')}">
     </div>
     <div class="f-active" role="status" hidden></div>
@@ -202,7 +235,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   const fActive = q('.f-active');
 
   // ── filtres / tris
-  el.querySelectorAll<HTMLButtonElement>('.filters .seg:not(.sortf) button').forEach((b) =>
+  el.querySelectorAll<HTMLButtonElement>('.filters .seg:not(.sortf, .cb-dens) button').forEach((b) =>
     b.addEventListener('click', () => {
       const f = b.dataset.f as Filter;
       if (f === 'fresh') saveSeen();
@@ -385,6 +418,71 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const ro = new ResizeObserver(syncBar);
     ro.observe(cardsBar);
     ro.observe(filtersEl);
+  }
+  // ── (15/11) affichage de la grille : 2×6, 4×8, 6×10 (voir DENS)
+  /** colonnes de la grille telle qu'affichée (ordinateur : celles du choix ; téléphone : selon la largeur) */
+  const gridCols = () => {
+    if (grid.hidden) return matchMedia('(min-width: 861px)').matches ? DENS.find((d) => d.id === dens)!.cols : 2;
+    return Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+  };
+  /** au moins 60 cartes, en rangées entières : la dernière rangée d'une page n'est jamais à moitié vide */
+  const perPage = () => {
+    const n = gridCols();
+    return Math.ceil(PAGE / n) * n;
+  };
+  const syncDens = () => {
+    el.dataset.dens = dens;
+    el.querySelectorAll<HTMLButtonElement>('.cb-dens button').forEach((b) => setOn(b, b.dataset.d === dens));
+  };
+  /** rang (dans la liste entière) de la première carte calée sous la barre ; null = la grille n'est pas encore atteinte */
+  const firstShown = (): number | null => {
+    const pad = parseFloat(getComputedStyle(el).scrollPaddingTop) || 0;
+    const top = el.getBoundingClientRect().top + pad;
+    const tiles = [...grid.querySelectorAll<HTMLElement>('.tile')].slice(0, per);
+    if (!tiles.length || tiles[0].getBoundingClientRect().top >= top - 4) return null;
+    const i = tiles.findIndex((t) => t.getBoundingClientRect().bottom > top + 4);
+    return i < 0 ? null : page * per + i;
+  };
+  const setDens = (d: Dens) => {
+    if (d === dens) return;
+    const at = firstShown();
+    dens = d;
+    try {
+      localStorage.setItem(DENS_KEY, d);
+    } catch {
+      /* stockage bloqué : le choix vaut pour cette visite */
+    }
+    syncDens(); // les colonnes changent ici (CSS) : la taille de page se lit juste après
+    shell.sfx.tick(1.2, 0.04);
+    if (at !== null) page = Math.floor(at / perPage());
+    render();
+    // la carte qui était en haut reste à l'écran : sa rangée se cale sous la barre, au cran ; sur ordinateur, sans dépasser
+    // le dernier écran plein de la page (6×10 : la page entière tient, on la montre en entier)
+    if (at === null) return;
+    const tiles = [...grid.querySelectorAll<HTMLElement>('.tile')].slice(0, per);
+    const i = at - page * per;
+    let target = tiles[i];
+    if (target && !grid.classList.contains('by-album')) {
+      const cols = gridCols();
+      let row = Math.floor(i / cols);
+      if (matchMedia('(min-width: 861px)').matches) row = Math.min(row, Math.max(0, Math.ceil(tiles.length / cols) - DENS.find((x) => x.id === dens)!.rows));
+      target = tiles[row * cols] ?? target;
+    }
+    target?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  };
+  el.querySelectorAll<HTMLButtonElement>('.cb-dens button').forEach((b) => b.addEventListener('click', () => setDens(b.dataset.d as Dens)));
+  syncDens();
+  {
+    // rotation du téléphone, fenêtre redimensionnée : le nombre de colonnes change → des pages en rangées entières
+    let t = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(t);
+      t = window.setTimeout(() => {
+        if (grid.hidden || !el.isConnected || perPage() === per) return;
+        page = Math.floor((page * per) / perPage());
+        render();
+      }, 200);
+    });
   }
   el.querySelectorAll<HTMLButtonElement>('.coll-views button').forEach((b) =>
     b.addEventListener('click', () => {
@@ -880,12 +978,12 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     fb.hidden = fresh.size === 0;
     fb.textContent = tr('coll.newN', { n: fmtN(fresh.size) });
     if (filter === 'fresh' && !fresh.size) filter = 'all';
-    el.querySelectorAll<HTMLButtonElement>('.filters .seg:not(.sortf) button').forEach((b) => setOn(b, b.dataset.f === filter));
+    el.querySelectorAll<HTMLButtonElement>('.filters .seg:not(.sortf, .cb-dens) button').forEach((b) => setOn(b, b.dataset.f === filter));
     el.querySelectorAll<HTMLButtonElement>('.sortf button').forEach((b) => setOn(b, b.dataset.s === sort));
     starf.hidden = !!theme.secret;
     starf.querySelectorAll<HTMLElement>('.chip').forEach((b) => setOn(b, b.dataset.r === star));
     const list = sortList(scope().filter((e) => matches(e, mine)), mine);
-    const key = `${theme.id}|${subId}|${filter}|${star}|${sort}|${query}|${page}`;
+    const key = `${theme.id}|${subId}|${filter}|${star}|${sort}|${query}|${page}|${dens}`;
     if (key !== lastKey) {
       if (lastKey) {
         grid.classList.remove('swap');
@@ -894,14 +992,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       }
       lastKey = key;
     }
-    const pages = Math.max(1, Math.ceil(list.length / PAGE));
+    per = perPage();
+    const pages = Math.max(1, Math.ceil(list.length / per));
     if (page >= pages) page = pages - 1;
     const wish = wishSet();
     const frag = document.createDocumentFragment();
-    for (const e of list.slice(page * PAGE, (page + 1) * PAGE)) frag.append(tileFor(e, mine, wish));
+    for (const e of list.slice(page * per, (page + 1) * per)) frag.append(tileFor(e, mine, wish));
     grid.replaceChildren(frag);
     shownList = list;
-    preloadThumbs(list.slice(page * PAGE, (page + 1) * PAGE), true); // la page affichée passe devant (PERF2-04)
+    preloadThumbs(list.slice(page * per, (page + 1) * per), true); // la page affichée passe devant (PERF2-04)
     renderPager(pages, list.length);
     const active = activeFilters();
     renderActive(active);
@@ -1008,7 +1107,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     else if (cSort === 'date') list.sort((a, b) => date(b) - date(a) || RANK[b.rarity] - RANK[a.rarity]);
     else if (cSort === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name, locale()));
     else list.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), locale()) || a.num - b.num);
-    const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${cDups}|${page}`;
+    const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${cDups}|${page}|${dens}`;
     if (key !== lastKey) {
       if (lastKey) {
         grid.classList.remove('swap');
@@ -1017,11 +1116,12 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       }
       lastKey = key;
     }
-    const pages = Math.max(1, Math.ceil(list.length / PAGE));
+    per = perPage();
+    const pages = Math.max(1, Math.ceil(list.length / per));
     if (page >= pages) page = pages - 1;
     const frag = document.createDocumentFragment();
     const tile = (e: CatalogEntry) => cardTile(e.id, e.rarity, { owned: true, count: mine.get(e.id)!.count, fresh: fresh.has(e.id) });
-    const slice = list.slice(page * PAGE, (page + 1) * PAGE);
+    const slice = list.slice(page * per, (page + 1) * per);
     if (cSort === 'album') {
       // tri par album : un bloc par album (titre au-dessus de ses cartes) ; les petits albums se rangent côte à côte
       const cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
@@ -1059,7 +1159,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     }
     grid.replaceChildren(frag);
     shownList = list;
-    preloadThumbs(list.slice(page * PAGE, (page + 1) * PAGE), true); // la page affichée passe devant (PERF2-04)
+    preloadThumbs(list.slice(page * per, (page + 1) * per), true); // la page affichée passe devant (PERF2-04)
     renderPager(pages, list.length);
     const active = activeFilters();
     renderActive(active);
@@ -1099,7 +1199,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     }
     pager.append(btn('›', page + 1, ' pg-arrow'));
     // « 61–120 sur 6 584 » : touché, il devient un champ « aller à la page » (110 pages au pouce, audit UX3-11)
-    const info = h('button', 'pg-info', tr('coll.range', { a: fmtN(page * PAGE + 1), b: fmtN(Math.min(total, (page + 1) * PAGE)), total: fmtN(total) }));
+    const info = h('button', 'pg-info', tr('coll.range', { a: fmtN(page * per + 1), b: fmtN(Math.min(total, (page + 1) * per)), total: fmtN(total) }));
     info.title = tr('coll.goPage');
     info.setAttribute('aria-label', tr('coll.pageOf', { p: page + 1, n: pages }));
     info.addEventListener('click', () => {
