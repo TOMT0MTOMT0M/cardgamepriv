@@ -6,8 +6,8 @@
  *  - chaque jauge à l'écran n'est qu'un <canvas> 2D qui recopie sa bande (drawImage) : pas de contexte 3D par jauge ;
  *  - 60 images/s pendant qu'un niveau bouge, 30 au repos ; rien quand l'onglet est caché ; tout est libéré dès que la
  *    partie quitte l'écran. Module chargé à la demande (gameFx.ts) ; s'il échoue, la jauge CSS reste.
- * Le fluide : front qui ondule et ballotte quand le niveau monte (ressort), courants internes (bruit domaine-déformé),
- * lueur dont l'intensité respire, plancton qui scintille, liseré clair à la surface et halo qui déborde un peu.
+ * Le rendu : un NUAGE de particules bleu clair qui respire (pas de l'eau) — brume déformée par du bruit, front diffus,
+ * trois nappes de points nets qui filent vers le front et s'en échappent, lueur qui gonfle quand le niveau monte.
  */
 import { Mesh, MeshBasicNodeMaterial, OrthographicCamera, PlaneGeometry, Scene, Vector4, WebGPURenderer } from 'three/webgpu';
 import { Fn, abs, clamp, exp, float, floor, fract, hash, int, length, max, mix, mx_noise_float, pow, sin, smoothstep, step, uniform, uniformArray, uv, vec2, vec3, vec4 } from 'three/tsl';
@@ -62,53 +62,60 @@ const fluid = Fn(() => {
   const t: N = uTime;
   const q: N = vec2(x.mul(W / H), y);
 
-  // front : deux ondes + un bruit lent ; le ballottement (niveau qui bouge) les amplifie
-  const wave: N = sin(y.mul(5.2).add(t.mul(1.6)).add(seed))
-    .mul(0.007)
-    .add(sin(y.mul(11.0).sub(t.mul(2.3)).add(seed.mul(2.1))).mul(0.0035))
-    .add(mx_noise_float(vec3(y.mul(2.4), t.mul(0.45), seed)).mul(0.012));
-  const front: N = level.add(wave.mul(slosh.mul(7).add(1))).sub(0.004);
-  const d: N = front.sub(x); // > 0 : dans le fluide
-  const inside: N = smoothstep(0.0, 0.0035, d).mul(step(0.002, level));
+  // (14/11, retour de Tom : « on dirait de l'eau » → nuage de particules qui respire, plus futuriste)
+  // respiration : deux rythmes lents ; elle gonfle le nuage, sa lumière et le front
+  const breath: N = sin(t.mul(0.9).add(seed.mul(3))).mul(0.5).add(0.5);
+  const breath2: N = sin(t.mul(0.41).add(seed)).mul(0.5).add(0.5);
+  const pulse: N = breath.mul(0.28).add(breath2.mul(0.14)).add(0.74);
 
-  // courants internes : bruit déformé par un autre bruit, qui dérive vers le front
-  const n1: N = mx_noise_float(vec3(q.x.mul(0.55).sub(t.mul(0.12)), q.y.mul(1.7), t.mul(0.16).add(seed)));
-  const n2: N = mx_noise_float(vec3(q.x.mul(1.5).sub(t.mul(0.26)).add(n1.mul(0.9)), q.y.mul(3.1).add(n1.mul(0.6)), seed.add(t.mul(0.3))));
-  const veins: N = pow(clamp(n2.mul(0.5).add(0.5), 0, 1), 2.6);
-  // la lueur respire (deux rythmes + le bruit lent) : jamais deux fois pareil
-  const breath: N = sin(t.mul(0.83).add(seed.mul(3))).mul(0.16).add(sin(t.mul(0.37).add(seed)).mul(0.12)).add(n1.mul(0.22)).add(0.86);
+  // nuage : bruit déformé par un autre bruit, qui dérive lentement vers le front ; pas de surface nette
+  const zoom: N = breath.mul(0.06).add(0.97);
+  const n1: N = mx_noise_float(vec3(q.x.mul(0.5).mul(zoom).sub(t.mul(0.1)), q.y.mul(1.5).mul(zoom), t.mul(0.14).add(seed)));
+  const n2: N = mx_noise_float(vec3(q.x.mul(1.3).sub(t.mul(0.2)).add(n1.mul(1.1)), q.y.mul(2.8).add(n1.mul(0.7)), seed.add(t.mul(0.22))));
+  const n3: N = mx_noise_float(vec3(q.x.mul(3.4).sub(t.mul(0.34)).add(n2.mul(0.8)), q.y.mul(5.5), seed.mul(1.7).add(t.mul(0.3))));
+  const cloud: N = clamp(n1.mul(0.55).add(n2.mul(0.4)).add(n3.mul(0.18)).add(0.6), 0, 1);
 
-  const deep: N = vec3(0.012, 0.085, 0.16);
-  const mid: N = vec3(0.07, 0.5, 0.86);
-  const light: N = vec3(0.56, 0.93, 1.0);
-  // plus clair près du front (là où ça vit), plus profond vers l'origine
-  const depth: N = clamp(d.mul(2.6), 0, 1);
-  let col: N = mix(mid, deep, depth.mul(0.82));
-  col = col.add(light.mul(veins).mul(breath).mul(0.55));
-  // ménisque : bords haut et bas un peu plus sombres (volume)
-  col = col.mul(mix(0.62, 1.0, smoothstep(0.0, 0.3, y).mul(float(1).sub(smoothstep(0.7, 1.0, y)))));
+  // front diffus : large fondu, rongé par le nuage ; le ballottement l'étire quand le niveau monte
+  const front: N = level.add(n1.mul(0.035)).add(n2.mul(0.02)).add(breath.mul(0.006));
+  const d: N = front.sub(x); // > 0 : dans le nuage
+  const soft: N = slosh.mul(0.1).add(0.075);
+  const fill: N = smoothstep(soft.negate().mul(0.35), soft, d).mul(step(0.002, level));
+  // masse centrée sur l'axe de la jauge (s'effiloche vers le haut et le bas)
+  const band: N = sin(y.mul(3.14159)).pow(0.7);
+  const density: N = pow(cloud, 1.25).mul(0.82).add(0.2).mul(fill).mul(band).mul(pulse);
 
-  // plancton : points qui scintillent en dérivant
-  const pq: N = vec2(q.x.mul(3.2).sub(t.mul(0.22)), q.y.mul(3.2).add(sin(t.mul(0.4).add(q.x)).mul(0.15)));
-  const cell: N = floor(pq);
-  const h1: N = hash(cell.x.add(cell.y.mul(57.0)).add(seed.mul(13.0)));
-  const off: N = vec2(hash(cell.x.mul(3.1).add(cell.y.mul(17.0))), hash(cell.x.mul(7.7).add(cell.y.mul(5.3)))).mul(0.6).add(0.2);
-  const spark: N = smoothstep(0.16, 0.0, length(fract(pq).sub(off)))
-    .mul(step(0.8, h1))
-    .mul(sin(t.mul(2.2).add(h1.mul(40))).mul(0.5).add(0.5));
-  col = col.add(light.mul(spark).mul(0.9));
+  const deep: N = vec3(0.05, 0.16, 0.42);
+  const mid: N = vec3(0.16, 0.62, 1.0);
+  const light: N = vec3(0.5, 0.88, 1.0);
+  let col: N = mix(deep, mid, cloud).mul(density).mul(1.7);
+  // cœurs lumineux là où le nuage est dense
+  col = col.add(light.mul(pow(clamp(density.mul(1.25), 0, 1), 3.0)).mul(0.5));
 
-  // surface : liseré très clair, puis halo qui déborde hors du fluide
-  const edge: N = exp(abs(d).mul(-150)).mul(breath);
-  const halo: N = exp(max(d.negate(), 0).mul(-34)).mul(step(d, 0)).mul(0.42).mul(breath).mul(step(0.002, level));
-  col = col.add(vec3(0.85, 0.98, 1.0).mul(edge).mul(0.9));
+  // particules : trois nappes (parallaxe) de points nets qui filent vers le front, plus denses près de lui, et
+  // quelques-unes qui s'échappent en avant
+  const ahead: N = smoothstep(0.1, -0.02, d.negate()).mul(step(0.002, level)); // jusqu'à 10 % devant le front
+  const near: N = exp(abs(d).mul(-9)).mul(0.5).add(0.5);
+  const layer = (sc: number, sp: number, r: number, thr: number, salt: number): N => {
+    const pq: N = vec2(q.x.mul(sc).sub(t.mul(sp)), q.y.mul(sc).add(sin(t.mul(0.3 + salt * 0.07).add(q.x.mul(1.3))).mul(0.18)));
+    const c: N = floor(pq);
+    const h1: N = hash(c.x.add(c.y.mul(57.0)).add(seed.mul(13.0)).add(salt * 91.7));
+    const off: N = vec2(hash(c.x.mul(3.1).add(c.y.mul(17.0)).add(salt)), hash(c.x.mul(7.7).add(c.y.mul(5.3)).add(salt * 3.3))).mul(0.6).add(0.2);
+    const tw: N = sin(t.mul(1.6 + salt * 0.5).add(h1.mul(40))).mul(0.5).add(0.5);
+    return smoothstep(r, r * 0.25, length(fract(pq).sub(off))).mul(step(thr, h1)).mul(tw.mul(0.75).add(0.25));
+  };
+  const dots: N = layer(3.6, 0.16, 0.15, 0.5, 1).mul(0.8).add(layer(6.5, 0.3, 0.13, 0.45, 2)).add(layer(10.5, 0.5, 0.12, 0.5, 3).mul(1.2));
+  const parts: N = dots.mul(ahead).mul(near).mul(band.mul(0.6).add(0.4)).mul(pulse.add(0.5)).mul(1.5);
+  col = col.add(light.mul(parts));
+
+  // lueur du front (pas un trait : un voile), plus forte quand le niveau bouge
+  const veil: N = exp(abs(d).mul(-26)).mul(band).mul(pulse).mul(slosh.mul(1.6).add(0.32)).mul(step(0.002, level));
+  col = col.add(mid.mul(veil));
 
   // fin de partie : gagnant plus vif, perdant éteint et désaturé
   const lum: N = col.dot(vec3(0.3, 0.55, 0.15));
-  col = mix(vec3(lum), col, clamp(energy, 0.25, 1)).mul(mix(0.35, 1.0, clamp(energy, 0, 1))).mul(max(energy, 1).mul(0.5).add(0.5));
-  const a: N = clamp(inside.mul(0.96).add(halo), 0, 1);
-  const outCol: N = mix(light.mul(halo).mul(energy.min(1)), col, inside);
-  return vec4(outCol.mul(a.max(inside)), a); // (prémultiplié)
+  col = mix(vec3(lum), col, clamp(energy, 0.25, 1)).mul(mix(0.3, 1.0, clamp(energy, 0, 1))).mul(max(energy, 1).mul(0.5).add(0.5));
+  const a: N = clamp(density.mul(1.05).add(parts).add(veil.mul(0.6)), 0, 1).mul(clamp(energy.mul(2), 0.5, 1));
+  return vec4(col.min(vec3(1.0)).mul(a.mul(0.35).add(0.65)), a); // (prémultiplié, additif doux)
 });
 
 async function start(): Promise<boolean> {
