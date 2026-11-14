@@ -92,3 +92,16 @@ span.pf-title.ts.ts-light { --t-col: var(--tc); padding: 0; border-width: 0; bac
 .pf-case[data-vit='galerie'] { color: #2a2a2a; }
 .pf-case[data-vit='galerie'] .pf-empty { border-color: rgba(0, 0, 0, 0.18); }
 .pf-case[data-vit='galerie'] .muted, .pf-case[data-vit='galerie'] .pf-case-empty { color: #3a3a3a; }
+
+/* ── chat et page Amis : photo ronde + cadre en version légère, dans la place de l'ancien avatar ── */
+.cm-ava.cm-ava-f, .am-ava.am-ava-f { border: 0; background: none; }
+.cm-ava-f > .cf, .am-ava-f > .cf { display: block; width: 100%; height: 100%; scale: 0.8; }
+.cm-ava-f > .cf .cf-ph, .am-ava-f > .cf .cf-ph { font: inherit; color: #ffffff; }
+.cm-ava-f > .cf img, .am-ava-f > .cf img { border-radius: 50%; }
+.cm-ttl, .am-ttl { flex: none; }
+.cm-ttl .pf-title.ts-light, .am-ttl .pf-title.ts-light { font-size: 10.5px; letter-spacing: 0.02em; }
+
+/* ── fonds animés : le canevas du shader (src/game/bgShader.ts) par-dessus le fond CSS ; « Nuages » dérive en CSS ── */
+.bg-gl { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border-radius: inherit; }
+@keyframes bg-nuages { to { background-position: 140px 0, -110px 0, 90px 0, -160px 0, 0 0; } }
+.pf-bg[data-bg='nuages'], .at-pv-bg[data-bg='nuages'] { animation: bg-nuages calc(var(--amb-tour) * 2) ease-in-out infinite alternate; }

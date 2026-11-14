@@ -6,7 +6,7 @@ import { getUserByToken, requireUser } from './auth';
 import { PACK_CAP, PACK_REGEN_MS, applyRegen } from '../src/core/packRegen';
 import { STREAK_REWARD, claimStreak as claimStreakState, streakClaimable, touchStreak } from '../src/core/streak';
 import { catalogEntry } from '../src/core/sets/themes';
-import { presenceOf, syncPresence } from './presence';
+import { presenceOf, syncPresence, cosOf } from './presence';
 import { setWish } from './wishes';
 import { FAM_ROW, WISH_FAMS_MAX, famKeyValid } from '../src/core/wishFams';
 
@@ -170,6 +170,8 @@ export const friends = query({
           totalPacksOpened: p.totalPacksOpened,
           online: now - p.lastSeenAt < ONLINE_WINDOW_MS,
           statusText: p.statusText,
+          /** (14/11) cadre, titre, écriture, couleur : pour le chat et la page Amis (aucune requête de plus) */
+          cos: p.cos,
           lastSeenAt: p.lastSeenAt,
           /** (E1-13) âge de la dernière visite à l'horloge du SERVEUR : le client fait retomber « en ligne » sans dépendre de la sienne */
           seenAgo: Math.max(0, now - p.lastSeenAt),
@@ -186,6 +188,7 @@ export const friends = query({
         totalPacksOpened: u.totalPacksOpened,
         online: now - u.lastSeenAt < ONLINE_WINDOW_MS,
         statusText: u.statusText,
+        cos: cosOf(u.cosmetics),
         lastSeenAt: u.lastSeenAt,
         seenAgo: Math.max(0, now - u.lastSeenAt),
       }))

@@ -55,6 +55,8 @@ export interface Friend {
   id: string;
   name: string;
   avatarUrl?: string;
+  /** (14/11) cadre, titre, écriture du titre, couleur : ce que les listes montrent de son profil */
+  cos?: { frame?: string; title?: string; titleStyle?: string; accent?: string };
   online: boolean;
   status?: string;
   packsOpened: number;

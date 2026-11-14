@@ -20,6 +20,17 @@ import type { Doc, Id } from './_generated/dataModel';
  */
 type Card = Omit<Doc<'presence'>, '_id' | '_creationTime'>;
 
+/**
+ * (14/11, refonte de la personnalisation) ce que les LISTES montrent du profil d'un joueur — cadre, titre, écriture du
+ * titre, couleur — recopié de `users.cosmetics` (déjà nettoyé à l'enregistrement : seulement du débloqué). Lu par le
+ * chat et la page Amis dans la liste du club déjà chargée : aucune requête de plus. Absent : rien de choisi.
+ */
+export const cosOf = (c: Doc<'users'>['cosmetics']): Card['cos'] => {
+  if (!c) return undefined;
+  const out = { ...(c.frame && c.frame !== 'none' ? { frame: c.frame } : {}), ...(c.title ? { title: c.title } : {}), ...(c.titleStyle ? { titleStyle: c.titleStyle } : {}), ...(c.accent ? { accent: c.accent } : {}) };
+  return Object.keys(out).length ? out : undefined;
+};
+
 const cardOf = (u: Doc<'users'>, lastSeenAt: number): Card => ({
   userId: u._id,
   lastSeenAt,
@@ -29,10 +40,11 @@ const cardOf = (u: Doc<'users'>, lastSeenAt: number): Card => ({
   ...(u.avatarUrl !== undefined ? { avatarUrl: u.avatarUrl } : {}),
   ...(u.statusText !== undefined ? { statusText: u.statusText } : {}),
   ...(u.bannedAt !== undefined ? { bannedAt: u.bannedAt } : {}),
+  ...(cosOf(u.cosmetics) ? { cos: cosOf(u.cosmetics) } : {}),
 });
 
 const same = (a: Card, b: Doc<'presence'>) =>
-  a.lastSeenAt === b.lastSeenAt && a.displayName === b.displayName && a.username === b.username && a.totalPacksOpened === b.totalPacksOpened && a.avatarUrl === b.avatarUrl && a.statusText === b.statusText && a.bannedAt === b.bannedAt;
+  a.lastSeenAt === b.lastSeenAt && a.displayName === b.displayName && a.username === b.username && a.totalPacksOpened === b.totalPacksOpened && a.avatarUrl === b.avatarUrl && a.statusText === b.statusText && a.bannedAt === b.bannedAt && JSON.stringify(a.cos ?? null) === JSON.stringify(b.cos ?? null);
 
 export const presenceOf = (ctx: QueryCtx | MutationCtx, userId: Id<'users'>) => ctx.db.query('presence').withIndex('by_user', (q) => q.eq('userId', userId)).first();
 

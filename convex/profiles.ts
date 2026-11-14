@@ -12,7 +12,7 @@ import { streakDay, touchStreak } from '../src/core/streak';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
 import { econOf } from './econLib';
-import { seenAtOf } from './presence';
+import { seenAtOf, syncPresence } from './presence';
 
 /**
  * PROFIL (refonte retours du 3 nov.) : identité + cosmétiques (bannière, cadre, titre, badges — débloqués en jouant),
@@ -319,6 +319,8 @@ export const setCosmetics = mutation({
     // (11/11) l'animation d'ouverture se choisit ailleurs (fiche booster, `setOpening`) : on la garde telle quelle
     const opening = user.cosmetics?.opening;
     await ctx.db.patch(user._id, { cosmetics: opening ? { ...clean, opening } : clean });
+    // (14/11) cadre, titre et couleur suivent dans la carte publique (chat, amis) : une écriture, seulement à l'enregistrement
+    await syncPresence(ctx, user._id);
     return clean;
   },
 });

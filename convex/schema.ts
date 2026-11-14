@@ -692,6 +692,8 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     statusText: v.optional(v.string()),
     bannedAt: v.optional(v.number()),
+    /** (14/11, refonte de la personnalisation) ce que les listes montrent du profil : cadre, titre, écriture, couleur (chat, amis) */
+    cos: v.optional(v.object({ frame: v.optional(v.string()), title: v.optional(v.string()), titleStyle: v.optional(v.string()), accent: v.optional(v.string()) })),
   }).index('by_user', ['userId']),
   rankRows: defineTable({
     userId: v.id('users'),

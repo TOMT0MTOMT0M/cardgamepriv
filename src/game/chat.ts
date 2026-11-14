@@ -1,3 +1,6 @@
+import { accentColor, frameOf, titleOf } from '../core/cosmetics';
+import type { Friend } from './backend';
+import { framed, titleHtml } from './cosmeticArt';
 import '../core/i18n/fr/game.chat'; // (textes de ce module, version anglaise)
 import { locale, t as tr } from '../core/i18n';
 import './chat.css';
@@ -148,14 +151,16 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     name: string;
     avatarUrl?: string;
     online: boolean;
+    /** (14/11) cadre, titre, écriture, couleur du profil : version légère (liste du club, déjà chargée) */
+    cos?: Friend['cos'];
   }
   let playersMemo: { src: unknown; me: unknown; map: Map<string, P> } | null = null;
   function players(): Map<string, P> {
     const s = backend.state;
     if (playersMemo && playersMemo.src === s.friends && playersMemo.me === s.user) return playersMemo.map;
     const map = new Map<string, P>();
-    for (const f of s.friends) map.set(f.id, { id: f.id, name: f.name, avatarUrl: f.avatarUrl, online: f.online });
-    if (s.user) map.set(s.user.id, { id: s.user.id, name: s.user.name, avatarUrl: s.user.avatarUrl, online: true });
+    for (const f of s.friends) map.set(f.id, { id: f.id, name: f.name, avatarUrl: f.avatarUrl, online: f.online, cos: f.cos });
+    if (s.user) map.set(s.user.id, { id: s.user.id, name: s.user.name, avatarUrl: s.user.avatarUrl, online: true, cos: map.get(s.user.id)?.cos });
     playersMemo = { src: s.friends, me: s.user, map };
     atMemo = null;
     return map;
@@ -165,9 +170,10 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   function ava(id: string, name: string, dot = false): string {
     const p = players().get(id);
     const on = dot && p?.online ? '<i class="chat-on-dot" title="' + tr('chat.onlineW') + '"></i>' : ''; // i18n-ok
-    return p?.avatarUrl
-      ? `<span class="cm-ava"><img src="${esc(p.avatarUrl)}" alt="" loading="lazy" decoding="async">${on}</span>`
-      : `<span class="cm-ava">${esc((name.trim()[0] ?? '?').toUpperCase())}${on}</span>`;
+    // (14/11, refonte de la personnalisation) photo ronde + cadre du joueur, en version légère (fixe, sans effet)
+    const c = accentColor(p?.cos?.accent);
+    const inner = p?.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="" loading="lazy" decoding="async">` : esc((name.trim()[0] ?? '?').toUpperCase());
+    return `<span class="cm-ava cm-ava-f"${c ? ` style="--pa:${c}"` : ''}>${framed(frameOf(p?.cos?.frame), inner, { light: true })}${on}</span>`;
   }
 
   // ───────────────────────────── texte : liens, mentions
@@ -336,7 +342,9 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const t = m.deleted ? { html: '', atMe: false } : fmt(m.text);
     if (t.atMe && !f.mine) el.classList.add('at-me');
     const meId = backend.state.user?.id ?? '';
-    const head = f.cont ? '' : `<div class="cm-h"><b>${esc(f.mine ? tr('chat.me') : name)}</b><time datetime="${new Date(m.at).toISOString()}">${hhmm(m.at)}</time></div>`;
+    const pc = f.mine ? undefined : players().get(m.userId)?.cos;
+    const ttl = pc?.title ? titleOf(pc.title) : undefined;
+    const head = f.cont ? '' : `<div class="cm-h"><b>${esc(f.mine ? tr('chat.me') : name)}</b>${ttl ? `<span class="cm-ttl"${accentColor(pc?.accent) ? ` style="--pa:${accentColor(pc?.accent)}"` : ''}>${titleHtml(ttl.label, pc?.titleStyle, 'ts-light')}</span>` : ''}<time datetime="${new Date(m.at).toISOString()}">${hhmm(m.at)}</time></div>`;
     const reply = m.reply ? `<div class="cm-reply"><b>${esc(m.reply.name)}</b> ${esc(m.reply.text)}</div>` : '';
     const body = m.deleted ? '<div class="cm-t gone">' + tr('chat.deleted') + '</div>' : m.text ? `<div class="cm-t">${t.html}</div>` : '';
     const rs = (m.reacts ?? []).filter((r) => r.by.length);
@@ -418,7 +426,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
         const author = players().get(m.userId);
         rows.push({
           key: `m:${m.clientId ?? m.id}`,
-          sig: [m.id, m.touchedAt, m.pending ? 1 : 0, m.failed ? 1 : 0, cont ? 1 : 0, seen ? 1 : 0, sel ? 1 : 0, staff ? 1 : 0, author?.name ?? '', author?.avatarUrl ?? '', (m.reacts ?? []).map((r) => `${r.k}${r.by.length}${r.by.includes(meId) ? '*' : ''}`).join(''), m.deleted ? 1 : 0].join('|'),
+          sig: [m.id, m.touchedAt, m.pending ? 1 : 0, m.failed ? 1 : 0, cont ? 1 : 0, seen ? 1 : 0, sel ? 1 : 0, staff ? 1 : 0, author?.name ?? '', author?.avatarUrl ?? '', JSON.stringify(author?.cos ?? ''), (m.reacts ?? []).map((r) => `${r.k}${r.by.length}${r.by.includes(meId) ? '*' : ''}`).join(''), m.deleted ? 1 : 0].join('|'),
           make: () => msgEl(m, { cont, mine, seen, sel, staff }),
         });
       }
@@ -968,7 +976,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
         }
       }
     }
-    const sig = [...players().values()].map((p) => `${p.id}${p.online ? 1 : 0}${p.name}${p.avatarUrl ?? ''}`).join('|');
+    const sig = [...players().values()].map((p) => `${p.id}${p.online ? 1 : 0}${p.name}${p.avatarUrl ?? ''}${JSON.stringify(p.cos ?? '')}`).join('|');
     if (sig !== presenceSig) {
       presenceSig = sig;
       renderLaunch();
