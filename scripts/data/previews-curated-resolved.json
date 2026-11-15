@@ -2384,5 +2384,23 @@
 "track": "Les maîtres de l'univers (instrumental)",
 "artist": "H. Saban & S. Levy",
 "link": "https://music.apple.com/fr/album/les-ma%C3%AEtres-de-lunivers-instrumental/1279574845?i=1279576472&uo=4"
+},
+"cartoon:grizzy-et-les-lemmings": {
+"url": "audio/generiques/grizzy-et-les-lemmings.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:kaeloo": {
+"url": "audio/generiques/kaeloo.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:les-zinzins-de-l-espace": {
+"url": "audio/generiques/les-zinzins-de-l-espace.mp3",
+"track": "",
+"artist": "",
+"link": ""
 }
 }

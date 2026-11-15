@@ -43,8 +43,10 @@ def deezer(t, a):
         time.sleep(0.4)
     return False
 def exact(ref):
-    """(15/11) morceau choisi à la main : « itunes:<id> » (adresse fixe ; boutique FR, sinon US) ou « deezer:<id> »."""
+    """(15/11) morceau choisi à la main : « itunes:<id> » (adresse fixe ; boutique FR, sinon US), « deezer:<id> » ou « file:<chemin dans public/> »."""
     src, _, i = ref.partition(':')
+    if src == 'file':  # (15/11) extrait fourni par Tom, dans public/ (servi par Pages, même origine)
+        return {'url': i, 'track': '', 'artist': '', 'link': ''} if os.path.exists(os.path.join(os.path.dirname(D), '..', 'public', i)) else False
     if src == 'deezer':
         r = get(f'https://api.deezer.com/track/{int(i)}')
         if r is None: return None

@@ -1,5 +1,5 @@
 {
-  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id> ou deezer:<id>), choisi à la main. Pas d'enregistrement officiel trouvé, reprise fidèle : Ben 10, Molang, The Owl House, Big City Greens, Dexter, Doug, Franklin, La Cour de récré, Oui-Oui, Tintin, Phinéas et Ferb (FR), Jayce (EN). Sans générique (rien de fiable) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace.",
+  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. Pas d'enregistrement officiel trouvé, reprise fidèle : Ben 10, Molang, The Owl House, Big City Greens, Dexter, Doug, Franklin, La Cour de récré, Oui-Oui, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/.",
   "cards": {
     "pop-au-dd": [
       "Au DD",
@@ -1604,6 +1604,11 @@
       "Marc Tomasi & Mehdi Elmorabit",
       "itunes:348033789"
     ],
+    "grizzy-et-les-lemmings": [
+      "Générique",
+      "Grizzy & les Lemmings",
+      "file:audio/generiques/grizzy-et-les-lemmings.mp3"
+    ],
     "heidi": [
       "La chanson d'Heidi",
       "Alexandra",
@@ -1623,6 +1628,11 @@
       "Jimmy Neutron Theme",
       "Bowling for Soup",
       "itunes:322693445"
+    ],
+    "kaeloo": [
+      "Le générique de ton dessin animé",
+      "Kaeloo",
+      "file:audio/generiques/kaeloo.mp3"
     ],
     "la-cour-de-recre": [
       "Recess Main Theme",
@@ -1653,6 +1663,11 @@
       "Teletubbies Theme",
       "Teletubbies",
       "itunes:1799229650"
+    ],
+    "les-zinzins-de-l-espace": [
+      "Monster Men",
+      "Iggy Pop",
+      "file:audio/generiques/les-zinzins-de-l-espace.mp3"
     ],
     "lucky-luke": [
       "I'm a Poor Lonesome Cowboy",

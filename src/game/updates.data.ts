@@ -63,7 +63,7 @@ export const UPDATES: UpdateMonth[] = [
       {
         date: '15 nov.', title: 'Dessins animés : le générique des 6★', tag: 'nouveau',
         points: [
-          '📺 Une 6★ de dessin animé (Marge Simpson, Bob l’éponge, Albator, Heidi…) joue maintenant le générique de son dessin animé, à l’ouverture comme dans la Collection : 52 cartes, 46 dessins animés. En français quand le générique français existe, sinon l’original.',
+          '📺 Une 6★ de dessin animé (Marge Simpson, Bob l’éponge, Albator, Heidi, Grizzy…) joue maintenant le générique de son dessin animé, à l’ouverture comme dans la Collection : les 55, dans 49 dessins animés. En français quand le générique français existe, sinon l’original.',
         ],
       },
       {

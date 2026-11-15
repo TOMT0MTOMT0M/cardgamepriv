@@ -1,4 +1,5 @@
 import { lang, t as tr } from '../core/i18n';
+import { siteUrl } from '../core/siteRoot';
 import type { MusicPreview } from './musicPreviews.data';
 import { catalogEntry, subthemeById } from '../core/sets/themes';
 import type { Shell } from './shell';
@@ -64,7 +65,9 @@ function deezerUrl(id: number): Promise<string | null> {
   void url.then((u) => u || deezerUrls.delete(id));
   return url;
 }
-const urlOf = (p: MusicPreview) => (p.url ? Promise.resolve(p.url) : p.deezer ? deezerUrl(p.deezer) : Promise.resolve(null));
+/** (15/11) `url` sans « https: » = extrait servi par le site lui-même (public/audio/generiques/, fourni par Tom) */
+const isLocal = (u: string) => !!u && !/^https?:/.test(u);
+const urlOf = (p: MusicPreview) => (p.url ? Promise.resolve(isLocal(p.url) ? siteUrl(p.url) : p.url) : p.deezer ? deezerUrl(p.deezer) : Promise.resolve(null));
 
 /** À l'ouverture d'un booster : l'adresse Deezer d'une 6★ du booster est demandée pendant la déchirure (pas d'attente à la révélation). */
 export function prefetchMusicPreview(cardId: string, rarity: string): void {
@@ -117,7 +120,7 @@ function makeChip(p: MusicPreview, onClose: () => void, host?: HTMLElement | nul
   c.className = host ? 'mp-chip mp-inline' : 'mp-chip';
   c.setAttribute('role', 'status');
   const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
-  c.innerHTML = `<span class="mp-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="mp-t"><b>${esc(p.track)}</b> — ${esc(p.artist)}<small>extrait · ${p.deezer && !p.url ? 'Deezer' : 'Apple Music'}</small></span><input class="mp-vol" type="range" min="0" max="100" step="1" value="${Math.round(musicVol * 100)}" aria-label="${tr('mp.vol')}"><button class="mp-x" aria-label="${tr('mp.mute')}">✕</button>`; // i18n-ok
+  c.innerHTML = `<span class="mp-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="mp-t"><b>${esc(p.track)}</b> — ${esc(p.artist)}<small>extrait${isLocal(p.url) ? '' : ` · ${p.deezer && !p.url ? 'Deezer' : 'Apple Music'}`}</small></span><input class="mp-vol" type="range" min="0" max="100" step="1" value="${Math.round(musicVol * 100)}" aria-label="${tr('mp.vol')}"><button class="mp-x" aria-label="${tr('mp.mute')}">✕</button>`; // i18n-ok
   const vol = c.querySelector<HTMLInputElement>('.mp-vol')!;
   for (const ev of ['pointerdown', 'touchstart', 'wheel', 'click'] as const) vol.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
   vol.addEventListener('input', () => {
@@ -167,7 +170,7 @@ export async function playMusicPreview(cardId: string, rarity: string, volume = 
   const a = new Audio();
   // (13/11) les aperçus Apple autorisent la lecture depuis un autre site (CORS) : on peut en lire le spectre (barres
   // de la visionneuse). Deezer : lecture simple, barres animées sans analyse.
-  if (/\.itunes\.apple\.com\//.test(src)) a.crossOrigin = 'anonymous';
+  if (/\.itunes\.apple\.com\//.test(src) || isLocal(p.url)) a.crossOrigin = 'anonymous';
   a.src = src;
   a.preload = 'auto';
   a.volume = 0;

@@ -28,7 +28,7 @@ export const UPDATES_EN: UpdateMonth[] = [
       {
         date: '15 Nov', title: 'Cartoons: the theme song of the 6★', tag: 'nouveau',
         points: [
-          '📺 A 6★ cartoon card (Marge Simpson, SpongeBob, Captain Harlock, Heidi…) now plays its cartoon’s theme song, when opened and in the Collection: 52 cards, 46 cartoons. In English where the English theme differs.',
+          '📺 A 6★ cartoon card (Marge Simpson, SpongeBob, Captain Harlock, Heidi, Grizzy…) now plays its cartoon’s theme song, when opened and in the Collection: all 55, across 49 cartoons. In English where the English theme differs.',
         ],
       },
       {

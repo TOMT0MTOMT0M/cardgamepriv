@@ -613,6 +613,9 @@ export const CARTOON_THEMES: Record<string, MusicPreview> = {
   "phineas-et-ferb": { url: "", deezer: 434555252, track: "Phinéas et Ferb (Chanson générique)", artist: "Marty", link: "https://www.deezer.com/track/434555252" },
   "princesse-sarah": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/08/1a/dd/081adde1-b67a-f975-1474-1332affb9c55/mzaf_1876778817064649189.plus.aac.p.m4a", track: "Princesse Sarah", artist: "Claude Lombard", link: "https://music.apple.com/fr/album/princesse-sarah/1596550261?i=1596550596&uo=4" },
   "tintin": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/63/3b/da/633bdab7-318d-2496-8a15-8a3a476efb3c/mzaf_1263842326831433107.plus.aac.p.m4a", track: "Les Aventures de Tintin (Thème du générique)", artist: "Ciné-Trio", link: "https://music.apple.com/fr/album/les-aventures-de-tintin-th%C3%A8me-du-g%C3%A9n%C3%A9rique/684698826?i=684699202&uo=4" },
+  "grizzy-et-les-lemmings": { url: "audio/generiques/grizzy-et-les-lemmings.mp3", track: "Générique", artist: "Grizzy & les Lemmings", link: "" },
+  "kaeloo": { url: "audio/generiques/kaeloo.mp3", track: "Le générique de ton dessin animé", artist: "Kaeloo", link: "" },
+  "les-zinzins-de-l-espace": { url: "audio/generiques/les-zinzins-de-l-espace.mp3", track: "Monster Men", artist: "Iggy Pop", link: "" },
 };
 
 /** (15/11) version anglaise du générique, jouée à la place dans le jeu en anglais — seulement quand elle diffère */
