@@ -12,6 +12,8 @@ auto = json.load(open(f'{D}/music-previews.json', encoding='utf-8'))
 cur = json.load(open(f'{D}/previews-curated-resolved.json', encoding='utf-8'))
 src = json.load(open(f'{D}/previews-curated.json', encoding='utf-8'))
 fix = {k: v for k, v in json.load(open(f'{D}/previews-overrides.json', encoding='utf-8')).items() if not k.startswith('_')}
+# (15/11) départ au refrain des extraits Musique (scripts/music-starts.py) ; openings et génériques : du début
+starts = json.load(open(f'{D}/music-starts.json', encoding='utf-8')) if os.path.exists(f'{D}/music-starts.json') else {}
 def fixed(kind, rows):
     """corrections à la main : remplacent l'entrée à sa place, ou s'ajoutent à la fin"""
     rows = [(k, fix.get(f'{kind}:{k}', v)) for k, v in rows]
@@ -22,11 +24,20 @@ def entry(k, p):
     parts = [f'url: {js(p.get("url", ""))}']
     if p.get('deezer'): parts.append(f'deezer: {int(p["deezer"])}')
     parts += [f'track: {js(p["track"])}', f'artist: {js(p["artist"])}', f'link: {js(p.get("link", ""))}']
+    if p.get('start'): parts.append(f'start: {p["start"]}')
     return f'  {js(k)}: {{ {", ".join(parts)} }},'
-cards = [(k, v) for k, v in auto.items() if v]
-cards += [(k.split(':', 1)[1], v) for k, v in cur.items() if k.startswith('cards:') and v and not auto.get(k.split(':', 1)[1])]
-cards = fixed('cards', cards)
-anime = fixed('anime', [(k.split(':', 1)[1], v) for k, v in cur.items() if k.startswith('anime:') and v])
+def picked(kind, key):
+    """(15/11) choix à la main avec le morceau exact (3e élément) : passe avant la récolte, titre / interprète écrits à la main"""
+    e = src.get(kind, {}).get(key)
+    return e if e and len(e) >= 3 else None
+def named(kind, key, v):
+    e = picked(kind, key)
+    return {**v, 'track': e[0], 'artist': e[1]} if e else v
+cards = [(k, v) for k, v in auto.items() if v and not (picked('cards', k) and cur.get('cards:' + k))]
+cards += [(k.split(':', 1)[1], named('cards', k.split(':', 1)[1], v)) for k, v in cur.items()
+          if k.startswith('cards:') and v and (not auto.get(k.split(':', 1)[1]) or picked('cards', k.split(':', 1)[1]))]
+cards = [(k, {**v, 'start': starts[k]} if k in starts else v) for k, v in fixed('cards', cards)]
+anime = fixed('anime', [(k.split(':', 1)[1], named('anime', k.split(':', 1)[1], v)) for k, v in cur.items() if k.startswith('anime:') and v])
 # dessins animés : titre et interprète tels qu'écrits à la main (ceux des boutiques débordent de l'étiquette : 9 interprètes pour les Barbapapa)
 def hand(kind):
     return fixed(kind, [(k.split(':', 1)[1], {**v, 'track': src[kind][k.split(':', 1)[1]][0], 'artist': src[kind][k.split(':', 1)[1]][1]})
@@ -47,6 +58,8 @@ out = ['/**',
  '  track: string;',
  '  artist: string;',
  '  link: string;',
+ '  /** (15/11) secondes : l’extrait démarre là (au refrain, scripts/music-starts.py) — cartes Musique seulement */',
+ '  start?: number;',
  '}',
  '',
  '/** cartes Musique 6★ (artistes, chansons, albums), par id de carte */',

@@ -1,5 +1,6 @@
 import { lang, t as tr } from '../core/i18n';
 import { siteUrl } from '../core/siteRoot';
+import { DUR } from '../core/motion';
 import type { MusicPreview } from './musicPreviews.data';
 import { catalogEntry, subthemeById } from '../core/sets/themes';
 import type { Shell } from './shell';
@@ -10,7 +11,7 @@ import type { ViewerScene } from './scenes/viewer';
  * pour les 6★ d'animés : quand une 6★ du bloc Musique (artiste, chanson, album) est
  * révélée à l'ouverture ou regardée dans la visionneuse, son aperçu officiel de 30 s (iTunes, lu depuis Apple) monte en
  * fondu, avec une petite étiquette « ♪ titre — artiste » et un bouton pour couper. Il s'arrête en fondu à la carte
- * suivante, à la fermeture, ou au bout des 30 s. Rien à précharger : la table (≈ 200 cartes) arrive à la 1re 6★.
+ * suivante ou à la fermeture ; (15/11) tant qu'on reste sur la carte, il tourne en boucle. Rien à précharger : la table (≈ 200 cartes) arrive à la 1re 6★.
  * Muet si le volume du jeu est à 0 ; suit le volume général.
  */
 type Tables = { cards: Record<string, MusicPreview>; anime: Record<string, MusicPreview>; cartoon: Record<string, MusicPreview>; cartoonEn: Record<string, MusicPreview>; ambience: Record<string, MusicPreview> };
@@ -171,11 +172,30 @@ export async function playMusicPreview(cardId: string, rarity: string, volume = 
   // (13/11) les aperçus Apple autorisent la lecture depuis un autre site (CORS) : on peut en lire le spectre (barres
   // de la visionneuse). Deezer : lecture simple, barres animées sans analyse.
   if (/\.itunes\.apple\.com\//.test(src) || isLocal(p.url)) a.crossOrigin = 'anonymous';
-  a.src = src;
+  // (15/11, Tom) cartes Musique : départ au refrain (`start`, fragment #t=) ; openings et génériques : du début
+  a.src = p.start ? `${src}#t=${p.start}` : src;
   a.preload = 'auto';
   a.volume = 0;
   audio = a;
-  a.addEventListener('ended', () => audio === a && stopMusicPreview(0));
+  // (15/11, Tom) la musique tourne tant qu'on reste sur la 6★ : fondu de sortie juste avant la fin des 30 s, puis l'extrait
+  // repart du début en fondu d'entrée (au 2e tour, l'extrait entier, couplet compris)
+  let tail = false;
+  a.addEventListener('timeupdate', () => {
+    if (audio !== a || tail || !Number.isFinite(a.duration)) return;
+    if (a.duration - a.currentTime < DUR.dramatique / 1000) {
+      tail = true;
+      fade(a, 0, DUR.dramatique);
+    }
+  });
+  a.addEventListener('ended', () => {
+    if (audio !== a) return;
+    tail = false;
+    a.currentTime = 0;
+    void a
+      .play()
+      .then(() => audio === a && fade(a, 0.6 * pvBase * musicVol, DUR.dramatique))
+      .catch(() => audio === a && stopMusicPreview(0));
+  });
   try {
     await a.play();
   } catch {

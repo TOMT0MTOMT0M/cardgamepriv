@@ -944,6 +944,71 @@
     "pop-paramore": [
       "Misery Business",
       "Paramore"
+    ],
+    "pop-bruno-mars": [
+      "Locked Out of Heaven",
+      "Bruno Mars",
+      "itunes:572179973"
+    ],
+    "pop-belle-ile-en-mer": [
+      "Belle-Île-en-Mer, Marie-Galante",
+      "Laurent Voulzy",
+      "itunes:1540550629"
+    ],
+    "spt-faker": [
+      "GODS",
+      "NewJeans",
+      "itunes:1833057828"
+    ],
+    "spt-zeus": [
+      "GODS",
+      "NewJeans",
+      "itunes:1833057828"
+    ],
+    "spt-oner": [
+      "GODS",
+      "NewJeans",
+      "itunes:1833057828"
+    ],
+    "spt-keria": [
+      "GODS",
+      "NewJeans",
+      "itunes:1833057828"
+    ],
+    "spt-gumayusi": [
+      "GODS",
+      "NewJeans",
+      "itunes:1833057828"
+    ],
+    "pop-ulquiorra-cifer": [
+      "Fiesta de Guerra",
+      "Shiro Sagisu",
+      "itunes:1645826027"
+    ],
+    "pop-seijuurou-akashi": [
+      "Rakuzan Shingeki",
+      "Yoshihiro Ike",
+      "itunes:1021901532"
+    ],
+    "pop-yuuri-katsuki": [
+      "Yuri on ICE",
+      "Taro Umebayashi",
+      "itunes:1164345998"
+    ],
+    "pop-neo": [
+      "Clubbed to Death",
+      "Rob Dougan",
+      "itunes:1857320"
+    ],
+    "pop-brian-o-conner": [
+      "See You Again (feat. Charlie Puth)",
+      "Wiz Khalifa",
+      "itunes:1029609244"
+    ],
+    "pop-dominic-toretto": [
+      "See You Again (feat. Charlie Puth)",
+      "Wiz Khalifa",
+      "itunes:1029609244"
     ]
   },
   "anime": {
@@ -977,7 +1042,8 @@
     ],
     "beastars": [
       "Wild Side",
-      "ALI"
+      "ALI",
+      "itunes:1537780574"
     ],
     "black-butler": [
       "Monochrome no Kiss",
@@ -992,8 +1058,9 @@
       "MELL"
     ],
     "bleach": [
-      "Asterisk",
-      "ORANGE RANGE"
+      "Ranbu no Melody",
+      "SID",
+      "itunes:1536385067"
     ],
     "blue-box": [
       "Same Blue",
@@ -1257,7 +1324,8 @@
     ],
     "mirai-nikki": [
       "Kuusou Mesorogiwi",
-      "Yousei Teikoku"
+      "Yousei Teikoku",
+      "itunes:479474683"
     ],
     "mob-psycho-100": [
       "99",
@@ -1385,7 +1453,8 @@
     ],
     "spy-x-family": [
       "Mixed Nuts",
-      "Official HIGE DANdism"
+      "Official HIGE DANdism",
+      "itunes:1616586639"
     ],
     "steins-gate": [
       "Hacking to the Gate",
@@ -1441,7 +1510,8 @@
     ],
     "trigun": [
       "H.T.",
-      "Tsuneo Imahori"
+      "Tsuneo Imahori",
+      "itunes:969897525"
     ],
     "vinland-saga": [
       "MUKANJYO",
@@ -1640,9 +1710,9 @@
       "itunes:1535986150"
     ],
     "le-monde-magique-de-disney": [
-      "Mickey Mouse Club March",
-      "Mickey Mouse",
-      "itunes:1660550789"
+      "La Maison de Mickey, le générique",
+      "Georges et Michel Costa",
+      "itunes:713237257"
     ],
     "les-animaniacs": [
       "Animaniacs (Opening Title)",
@@ -1770,6 +1840,11 @@
       "He-Man and the Masters of the Universe (instrumental)",
       "H. Saban & S. Levy",
       "itunes:1279576472"
+    ],
+    "le-monde-magique-de-disney": [
+      "Mickey Mouse Club March",
+      "Mickey Mouse",
+      "itunes:1660550789"
     ]
   },
   "ambience": {

@@ -155,12 +155,6 @@
 "artist": "Survive Said The Prophet",
 "link": "https://music.apple.com/fr/album/found-lost/1538283055?i=1538283060&uo=4"
 },
-"anime:beastars": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/33/da/fa/33dafac9-f074-3710-150e-02901c3caf47/mzaf_14121325399056589844.plus.aac.p.m4a",
-"track": "Wild Side (2023 ver.)",
-"artist": "ALI",
-"link": "https://music.apple.com/fr/album/wild-side-2023-ver/1661623943?i=1661623953&uo=4"
-},
 "anime:black-butler": {
 "deezer": 1881735187,
 "track": "Monochrome No Kiss - [Kuroshitsuji] OP Version 1",
@@ -538,7 +532,6 @@
 "artist": "Creepy Nuts",
 "link": "https://music.apple.com/fr/album/bling-bang-bang-born/1720332180?i=1720332181&uo=4"
 },
-"anime:mirai-nikki": null,
 "anime:mob-psycho-100": {
 "deezer": 4381040161,
 "track": "99",
@@ -699,18 +692,6 @@
 "artist": "Masaaki Endoh",
 "link": "https://music.apple.com/fr/album/vital/1857554631?i=1857554636&uo=4"
 },
-"anime:bleach": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/6a/9f/dd/6a9fdd25-7877-a537-ebfb-f43380aa60fb/mzaf_4149670565722899510.plus.aac.p.m4a",
-"track": "*-Asterisk- (Live at Nippon Budokan, 2/25/2017)",
-"artist": "Orange Range",
-"link": "https://music.apple.com/fr/album/asterisk-live-at-nippon-budokan-2-25-2017/1617581177?i=1617581183&uo=4"
-},
-"anime:spy-x-family": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/52/c5/91/52c591fe-a218-6a9c-be9f-121fd383267f/mzaf_10392828354709706472.plus.aac.p.m4a",
-"track": "Mixed Nuts (Live)",
-"artist": "OFFICIAL HIGE DANDISM",
-"link": "https://music.apple.com/fr/album/mixed-nuts-live/1854328811?i=1854328956&uo=4"
-},
 "anime:the-eminence-in-shadow": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/84/a7/c1/84a7c15a-325f-4103-4c38-9c557703c67c/mzaf_6943122479575443560.plus.aac.p.m4a",
 "track": "HIGHEST",
@@ -759,12 +740,6 @@
 "track": "TOP (\"Tower of God\" OP)",
 "artist": "Stray Kids",
 "link": "https://music.apple.com/fr/album/top-tower-of-god-op/1608256891?i=1608257046&uo=4"
-},
-"anime:trigun": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/c7/37/9c/c7379c95-c60b-f165-e54b-77af400d8011/mzaf_3477463872553612363.plus.aac.p.m4a",
-"track": "H.T. In \"Badlands Rumble\"",
-"artist": "Tsuneo Imahori",
-"link": "https://music.apple.com/fr/album/h-t-in-badlands-rumble/370520863?i=370521529&uo=4"
 },
 "anime:vinland-saga": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/b9/67/c8/b967c8b8-ca52-3469-3f1a-faf20d321620/mzaf_7848474847111835671.plus.aac.p.m4a",
@@ -2199,12 +2174,6 @@
 "artist": "Bowling for Soup",
 "link": "https://music.apple.com/fr/album/jimmy-neutron-theme/322693444?i=322693445&uo=4"
 },
-"cartoon:le-monde-magique-de-disney": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/86/6a/78/866a7899-7bfa-e9d6-6e82-93239852b8f6/mzaf_8471889901735069609.plus.aac.p.m4a",
-"track": "Mickey Mouse Club March",
-"artist": "Mickey Mouse, Minnie Mouse, Donald Duck, Daisy Duck, Goofy & The Wonderful World of Mickey Mouse - Cast",
-"link": "https://music.apple.com/fr/album/mickey-mouse-club-march/1660550780?i=1660550789&uo=4"
-},
 "cartoon:les-animaniacs": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/08/a6/c5/08a6c58d-7ff8-1d21-7d85-da8ec0beb254/mzaf_17882411046389358003.plus.aac.p.m4a",
 "track": "Animaniacs  (Opening Title)",
@@ -2402,5 +2371,125 @@
 "track": "",
 "artist": "",
 "link": ""
+},
+"cards:pop-bruno-mars": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/2a/c4/63/2ac46392-5607-f9c9-3825-3899dad926ba/mzaf_10428618746478086475.plus.aac.p.m4a",
+"track": "Locked Out of Heaven",
+"artist": "Bruno Mars",
+"link": "https://music.apple.com/fr/album/locked-out-of-heaven/572179738?i=572179973&uo=4"
+},
+"cards:pop-belle-ile-en-mer": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/5a/f6/5d/5af65d62-5ee7-fb4c-b5c5-813f6dca652e/mzaf_15622223558445897113.plus.aac.p.m4a",
+"track": "Belle-Île-en-Mer, Marie-Galante",
+"artist": "Laurent Voulzy",
+"link": "https://music.apple.com/fr/album/belle-%C3%AEle-en-mer-marie-galante/1540550210?i=1540550629&uo=4"
+},
+"cards:spt-faker": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/98/f8/6c/98f86c06-431b-1112-52a2-f2222bece13e/mzaf_5836013213479843390.plus.aac.p.m4a",
+"track": "GODS",
+"artist": "League of Legends Music & NewJeans",
+"link": "https://music.apple.com/fr/album/gods/1833057824?i=1833057828&uo=4"
+},
+"cards:spt-zeus": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/98/f8/6c/98f86c06-431b-1112-52a2-f2222bece13e/mzaf_5836013213479843390.plus.aac.p.m4a",
+"track": "GODS",
+"artist": "League of Legends Music & NewJeans",
+"link": "https://music.apple.com/fr/album/gods/1833057824?i=1833057828&uo=4"
+},
+"cards:spt-oner": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/98/f8/6c/98f86c06-431b-1112-52a2-f2222bece13e/mzaf_5836013213479843390.plus.aac.p.m4a",
+"track": "GODS",
+"artist": "League of Legends Music & NewJeans",
+"link": "https://music.apple.com/fr/album/gods/1833057824?i=1833057828&uo=4"
+},
+"cards:spt-keria": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/98/f8/6c/98f86c06-431b-1112-52a2-f2222bece13e/mzaf_5836013213479843390.plus.aac.p.m4a",
+"track": "GODS",
+"artist": "League of Legends Music & NewJeans",
+"link": "https://music.apple.com/fr/album/gods/1833057824?i=1833057828&uo=4"
+},
+"cards:spt-gumayusi": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/98/f8/6c/98f86c06-431b-1112-52a2-f2222bece13e/mzaf_5836013213479843390.plus.aac.p.m4a",
+"track": "GODS",
+"artist": "League of Legends Music & NewJeans",
+"link": "https://music.apple.com/fr/album/gods/1833057824?i=1833057828&uo=4"
+},
+"cards:pop-ulquiorra-cifer": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/38/c2/27/38c227bd-fb46-5963-ac4a-b4e0950d5a00/mzaf_3377626654830267492.plus.aac.p.m4a",
+"track": "Fiesta de guerra.",
+"artist": "Shiro SAGISU",
+"link": "https://music.apple.com/fr/album/fiesta-de-guerra/1645825811?i=1645826027&uo=4"
+},
+"cards:pop-seijuurou-akashi": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/Music7/v4/81/a4/1c/81a41cdf-e93b-63d0-556c-5f4265fde59d/mzaf_1057620247551894956.plus.aac.p.m4a",
+"track": "洛山進撃",
+"artist": "池頼広",
+"link": "https://music.apple.com/jp/album/%E6%B4%9B%E5%B1%B1%E9%80%B2%E6%92%83/1021901084?i=1021901532&uo=4"
+},
+"cards:pop-yuuri-katsuki": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/48/24/cc/4824cc27-3842-7630-f0b6-435256f5ad60/mzaf_2447426097764789988.plus.aac.p.m4a",
+"track": "Yuri on ICE",
+"artist": "梅林太郎",
+"link": "https://music.apple.com/fr/album/yuri-on-ice/1164345976?i=1164345998&uo=4"
+},
+"cards:pop-neo": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/cc/81/ab/cc81ab1f-978b-e170-b773-3d2ec5cb6043/mzaf_6735656694933035279.plus.aac.p.m4a",
+"track": "Clubbed to Death",
+"artist": "Rob Dougan",
+"link": "https://music.apple.com/us/album/clubbed-to-death/1857322?i=1857320&uo=4"
+},
+"cards:pop-brian-o-conner": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e1/8d/26/e18d2691-b431-976b-74ea-9cff049b7a2b/mzaf_8014632113540255498.plus.aac.p.m4a",
+"track": "See You Again (feat. Charlie Puth)",
+"artist": "Wiz Khalifa",
+"link": "https://music.apple.com/fr/album/see-you-again-feat-charlie-puth/1029607120?i=1029609244&uo=4"
+},
+"cards:pop-dominic-toretto": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e1/8d/26/e18d2691-b431-976b-74ea-9cff049b7a2b/mzaf_8014632113540255498.plus.aac.p.m4a",
+"track": "See You Again (feat. Charlie Puth)",
+"artist": "Wiz Khalifa",
+"link": "https://music.apple.com/fr/album/see-you-again-feat-charlie-puth/1029607120?i=1029609244&uo=4"
+},
+"anime:beastars": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/42/2a/61/422a6104-4564-a479-47c6-fc68e5d6521d/mzaf_6068950879761787855.plus.aac.p.m4a",
+"track": "Wild Side",
+"artist": "ALI",
+"link": "https://music.apple.com/fr/album/wild-side/1537780573?i=1537780574&uo=4"
+},
+"anime:bleach": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/d5/5c/13/d55c132c-ceb2-0a52-bb62-4e1a7a711e4f/mzaf_6680746622162130123.plus.aac.p.m4a",
+"track": "乱舞のメロディ",
+"artist": "Sid",
+"link": "https://music.apple.com/fr/album/%E4%B9%B1%E8%88%9E%E3%81%AE%E3%83%A1%E3%83%AD%E3%83%87%E3%82%A3/1536385066?i=1536385067&uo=4"
+},
+"anime:mirai-nikki": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/Music2/v4/36/e4/85/36e48529-63d0-dc47-472f-592ecfe74683/mzaf_3554105437429730361.plus.aac.p.m4a",
+"track": "空想メソロギヰ",
+"artist": "妖精帝國",
+"link": "https://music.apple.com/jp/album/%E7%A9%BA%E6%83%B3%E3%83%A1%E3%82%BD%E3%83%AD%E3%82%AE%E3%83%B0/479474681?i=479474683&uo=4"
+},
+"anime:spy-x-family": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/30/64/fd/3064fd37-4b3d-5701-ff4b-0b0f104cc972/mzaf_15083708845954640504.plus.aac.p.m4a",
+"track": "ミックスナッツ",
+"artist": "OFFICIAL HIGE DANDISM",
+"link": "https://music.apple.com/fr/album/%E3%83%9F%E3%83%83%E3%82%AF%E3%82%B9%E3%83%8A%E3%83%83%E3%83%84/1616586638?i=1616586639&uo=4"
+},
+"anime:trigun": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/92/45/cc/9245ccfd-1aa8-758d-b2fd-5beec08463a3/mzaf_4904447427618936545.plus.aac.p.m4a",
+"track": "H.T",
+"artist": "Dr.Donuts",
+"link": "https://music.apple.com/fr/album/h-t/969897468?i=969897525&uo=4"
+},
+"cartoon:le-monde-magique-de-disney": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/80/e0/2c/80e02cca-43d2-6145-f3be-76208888ced5/mzaf_1709704638033246770.plus.aac.p.m4a",
+"track": "La maison de Mickey, le générique",
+"artist": "Georges Costa, Michel Costa, Marie-Charlotte Leclaire & Carine Costa",
+"link": "https://music.apple.com/fr/album/la-maison-de-mickey-le-g%C3%A9n%C3%A9rique/713237210?i=713237257&uo=4"
+},
+"cartoon-en:le-monde-magique-de-disney": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/86/6a/78/866a7899-7bfa-e9d6-6e82-93239852b8f6/mzaf_8471889901735069609.plus.aac.p.m4a",
+"track": "Mickey Mouse Club March",
+"artist": "Mickey Mouse, Minnie Mouse, Donald Duck, Daisy Duck, Goofy & The Wonderful World of Mickey Mouse - Cast",
+"link": "https://music.apple.com/fr/album/mickey-mouse-club-march/1660550780?i=1660550789&uo=4"
 }
 }
