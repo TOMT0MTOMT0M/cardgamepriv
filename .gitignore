@@ -35,3 +35,6 @@ _hors-site/
 /6etoiles-images-*
 
 # (V2) configuration du staging Convex : .env.v2.local est couvert par .env.*.local ci-dessus
+
+# brouillons de Gemini (Antigravity)
+.gemini-tmp/
