@@ -32,6 +32,7 @@ export const UPDATES_EN: UpdateMonth[] = [
           '🎶 New music: GODS for Faker, Zeus, Oner and Keria, Ranbu no Melody for Bleach, See You Again for Fast & Furious, Clubbed to Death for Neo… and covers replaced by the original.',
           '⚔️ Demon Slayer: Tengen, Muichirou, Mitsuri, Gyoumei, Obanai and Sanemi become 6★.',
           '⚽ Inazuma Eleven: the European names (Mark Evans, Axel Blaze…).',
+          '🎮 Gumayusi becomes 6★. Carlos Ruiz moves to baseball, and “Balde de Ubaldis”, a duplicate of Marion Bartoli, is removed.',
           '🖼️ 79 cards in full art, and better-framed faces.',
           '👤 A roomier profile.',
         ],

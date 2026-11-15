@@ -1,4 +1,4 @@
-import { PURGE_08_11, PURGE_BRUEL, RENAME_15_11, RERATE_08_11, RERATE_11_11, RERATE_13_11, RERATE_15_11, RESUB_13_11 } from './curation';
+import { PURGE_08_11, PURGE_15_11, PURGE_BRUEL, RENAME_15_11, RERATE_08_11, RERATE_11_11, RERATE_13_11, RERATE_15_11, RESUB_13_11, RESUB_15_11 } from './curation';
 import { artV } from '../artRev';
 import { msgRef, str } from '../msgRefs';
 /**
@@ -239,7 +239,10 @@ function bigSubthemes(B: typeof BigSets, cur: Curation): SubTheme[] {
     const id = e.id;
     if (purge.has(id)) continue;
     if (e.sub !== key) list = sportLists.get((key = e.sub));
-    if (list) list.push({ id, themeId: 'sport', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label });
+    // (15/11) carte rangée dans un autre sous-thème que celui de l'Excel (curation.ts, RESUB_15_11)
+    const sub = RESUB_15_11[id] ?? e.sub;
+    const into = sub === e.sub ? list : sportLists.get(sub);
+    if (into) into.push({ id, themeId: 'sport', subthemeId: sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label });
   }
   const sport: SubTheme[] = B.SPORT_SUBS.map((s) => ({
     id: s.id, label: s.label, themeId: 'sport', code: s.code, artDir: 'art/sport', cards: sportLists.get(s.id)!, group: { id: s.group, label: B.SPORT_GROUPS[s.group] }, size: B.SPORT_SIZE,
@@ -445,7 +448,7 @@ export interface InstallOptions {
 export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): void {
   if (installed) return;
   installed = true;
-  const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL]);
+  const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL, ...PURGE_15_11]);
   const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11, ...RERATE_13_11, ...RERATE_15_11 }));
   applyCuration(purge, rerate);
   for (const s of bigSubthemes(big, { purge, rerate })) SUBTHEMES.push(s);

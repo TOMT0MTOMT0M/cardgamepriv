@@ -78,6 +78,8 @@ export const RERATE_15_11: Readonly<Record<string, CatalogRarity>> = {
   'pop-gyoumei-himejima': 'mythic',
   'pop-obanai-iguro': 'mythic',
   'pop-sanemi-shinazugawa': 'mythic',
+  // (15/11, demande de Tom) Gumayusi rejoint Faker, Zeus, Oner et Keria en 6★ (musique GODS)
+  'spt-gumayusi': 'mythic',
 };
 
 /**
@@ -85,10 +87,8 @@ export const RERATE_15_11: Readonly<Record<string, CatalogRarity>> = {
  * français comme en anglais : ces noms sont ceux des deux versions).
  * - Inazuma Eleven : les noms de la version française (ceux de la version européenne : Mark Evans, Axel Blaze…), quand
  *   ils sont sûrs ; les autres gardent leur nom japonais.
- * - « Balde de Ubaldis » (tennis) était en fait Marion Bartoli (même photo).
  */
 export const RENAME_15_11: Readonly<Record<string, string>> = {
-  'spt-balde-de-ubaldis': 'Marion Bartoli',
   'pop-mamoru-endou': 'Mark Evans',
   'pop-shuuya-gouenji': 'Axel Blaze',
   'pop-yuuto-kidou': 'Jude Sharp',
@@ -146,4 +146,16 @@ export const RENAME_15_11: Readonly<Record<string, string>> = {
   'pop-taichi-sangoku': 'Samguk Han',
   'pop-ryouma-nishiki': 'Wanli Chang',
   'pop-norihito-kurama': 'Michael Ballzack',
+};
+
+/**
+ * (15/11, demande de Tom) « Balde de Ubaldis » (tennis) était un doublon de Marion Bartoli (même photo) : retirée du
+ * catalogue et des collections (migrations:purgeCards, liste dans convex/purgedCards.ts). La carte Marion Bartoli
+ * (`spt-marion-bartoli`) reste. Ne pas réutiliser cet id.
+ */
+export const PURGE_15_11: readonly string[] = ['spt-balde-de-ubaldis'];
+
+/** (15/11, demande de Tom) Carlos Ruiz est le joueur de baseball (photo fournie) : il quitte le football pour le baseball. */
+export const RESUB_15_11: Readonly<Record<string, string>> = {
+  'spt-carlos-ruiz': 'baseball',
 };
