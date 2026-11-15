@@ -3748,11 +3748,56 @@ body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: n
   /* (v2.0.7, demande de Tom) 2 rangées de 6 qui REMPLISSENT l'espace sous la barre : la carte prend toute la hauteur
      d'une demi-zone (2 rangées + 1 écart = la hauteur visible), la grille s'élargit pour ses 6 colonnes (plus de
      largeur maxi de 1 200 px). Écran étroit : la largeur limite, les cartes rétrécissent. */
+  /* (15/11, demande de Tom) le joueur choisit 2×6, 4×8 ou 6×10 (collection.ts, DENS) : --rows rangées de --cols cartes,
+     même calcul. 2×6 donne exactement la taille d'avant. */
   .view.collection > .grid {
-    --tile-w: min(calc((100% - 70px) / 6), calc((100dvh - var(--top) - var(--bar-h, 60px) - 26px) / 2 * 63 / 88));
-    max-width: none; grid-template-columns: repeat(6, var(--tile-w)); justify-content: center;
+    --rows: 2; --cols: 6; --g: 14px; gap: var(--g);
+    --tile-w: min(calc((100% - (var(--cols) - 1) * var(--g)) / var(--cols)), calc((100dvh - var(--top) - var(--bar-h, 60px) - 12px - (var(--rows) - 1) * var(--g)) / var(--rows) * 63 / 88));
+    max-width: none; grid-template-columns: repeat(var(--cols), var(--tile-w)); justify-content: center;
   }
+  .view.collection[data-dens="4x8"] > .grid { --rows: 4; --cols: 8; --g: 10px; }
+  .view.collection[data-dens="6x10"] > .grid { --rows: 6; --cols: 10; --g: 8px; }
+  .view.collection > .grid.by-album { row-gap: calc(var(--g) + 2px); }
 }
+/* (15/11) téléphone : la barre ne colle pas (style.css, sticky dès 601 px) → les crans se calent sous le header seul.
+   Avant, la hauteur de la barre (≈ 280 px, sur plusieurs lignes) s'y ajoutait : la rangée s'arrêtait au milieu de l'écran
+   ou passait sous le header. */
+@media (max-width: 600px) {
+  .view.collection:has(> .grid:not([hidden]) > .tile) { scroll-padding-top: calc(var(--top) + env(safe-area-inset-top) + 10px); }
+}
+/* (15/11) téléphone et tablette : de plus en plus serré (390 px de large : 2, 3, puis 4 cartes par rangée) */
+@media (max-width: 860px) {
+  .view.collection[data-dens="4x8"] > .grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .view.collection[data-dens="6x10"] > .grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+  .cb-dens button span { display: none; }
+  .view.collection[data-dens="6x10"] > .grid .wish-btn { width: 24px; height: 24px; font-size: 11px; }
+}
+/* téléphone : le sélecteur va sur la ligne de « Doublons » (de la place libre), la recherche garde toute sa ligne */
+@media (max-width: 600px) {
+  .cards-bar > :is(.cb-sort, .cb-search) { order: 1; }
+  .filters > :is(.sortf, .search) { order: 1; }
+}
+/* le sélecteur : pictogramme (+ « 2×6 » sur ordinateur) */
+.cb-dens { flex: none; }
+.cb-dens button { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.cb-dens svg { flex: none; opacity: 0.85; }
+.cb-dens button.on svg { opacity: 1; }
+.filters .cb-dens, .cards-bar .cb-dens { margin-left: auto; }
+.filters .cb-dens + .search, .cards-bar .cb-dens + .cb-search { margin-left: 0; }
+/* tuiles plus petites : textes, pastilles et cœur à l'échelle (l'image de la vraie carte, elle, se réduit seule) */
+.view.collection:is([data-dens="4x8"], [data-dens="6x10"]) > .grid .tile { padding: 4px; border-radius: 7px; }
+.view.collection:is([data-dens="4x8"], [data-dens="6x10"]) > .grid .tile .name { font-size: 10.5px; }
+.view.collection:is([data-dens="4x8"], [data-dens="6x10"]) > .grid .tile .meta { margin-top: 2px; }
+.view.collection:is([data-dens="4x8"], [data-dens="6x10"]) > .grid .tile .meta .stars { font-size: 8px; }
+.view.collection:is([data-dens="4x8"], [data-dens="6x10"]) > .grid .tile .count { top: 3px; right: 3px; padding: 0 5px; font-size: 10px; }
+.view.collection:is([data-dens="4x8"], [data-dens="6x10"]) > .grid .tile.fresh::before { top: 4px; left: 4px; width: 7px; height: 7px; }
+.view.collection[data-dens="6x10"] > .grid .tile { padding: 3px; border-radius: 6px; }
+.view.collection[data-dens="6x10"] > .grid .tile .name { font-size: 9px; }
+.view.collection[data-dens="6x10"] > .grid .tile .art .q { font-size: 22px; }
+.view.collection[data-dens="6x10"] > .grid .tile .count { font-size: 9px; padding: 0 4px; }
+.view.collection[data-dens="6x10"] > .grid .wish-btn { top: 3px; right: 3px; width: 20px; height: 20px; font-size: 10px; }
+.view.collection[data-dens="6x10"] > .grid .cards-alb .cards-sub span { font-size: 13px; }
+.view.collection[data-dens="6x10"] > .grid .cards-alb .cards-sub small { font-size: 10px; }
 
 /* (v2.0.6) carte tirée, en grand : avancement de son album à côté des étoiles et de la rareté ; boutons centrés */
 .ci-meta { flex-wrap: wrap; }

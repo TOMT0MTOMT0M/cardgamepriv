@@ -26,6 +26,19 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '15 Nov', title: 'Cartoons: the theme song of the 6★', tag: 'nouveau',
+        points: [
+          '📺 A 6★ cartoon card (Marge Simpson, SpongeBob, Captain Harlock, Heidi, Grizzy…) now plays its cartoon’s theme song, when opened and in the Collection: all 55, across 49 cartoons. In English where the English theme differs.',
+        ],
+      },
+      {
+        date: '15 Nov', title: 'Collection: choose your layout', tag: 'amélioré',
+        points: [
+          '🔲 Cards and albums: pick the grid size next to the search. On PC, 2 rows of 6, 4 rows of 8 or 6 rows of 10, always whole on screen. On phones, more and more cards per row.',
+          '↕️ Scrolling always stops on a whole row. On phones, the row lines up right under the top of the screen.',
+        ],
+      },
+      {
         date: '15 Nov', title: 'Profile: build your own world', tag: 'nouveau',
         points: [
           '🎨 Customise: a full-screen workshop with a live preview of your profile. On phones it stays pinned at the top, on PC it sits beside the choices.',

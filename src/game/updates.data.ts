@@ -61,6 +61,19 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '15 nov.', title: 'Dessins animés : le générique des 6★', tag: 'nouveau',
+        points: [
+          '📺 Une 6★ de dessin animé (Marge Simpson, Bob l’éponge, Albator, Heidi, Grizzy…) joue maintenant le générique de son dessin animé, à l’ouverture comme dans la Collection : les 55, dans 49 dessins animés. En français quand le générique français existe, sinon l’original.',
+        ],
+      },
+      {
+        date: '15 nov.', title: 'Collection : choisis ton affichage', tag: 'amélioré',
+        points: [
+          '🔲 Cartes et albums : choisis la taille de la grille à côté de la recherche. Sur PC, 2 rangées de 6, 4 rangées de 8 ou 6 rangées de 10, toujours entières à l’écran. Sur téléphone, de plus en plus de cartes par rangée.',
+          '↕️ Le défilement s’arrête toujours sur une rangée entière. Sur téléphone, la rangée se cale juste sous le haut de l’écran.',
+        ],
+      },
+      {
         date: '15 nov.', title: 'Profil : construis ton univers', tag: 'nouveau',
         points: [
           '🎨 Personnaliser : un atelier plein écran, avec l’aperçu de ton profil en direct. Sur téléphone il reste collé en haut, sur PC il est à côté des choix.',
