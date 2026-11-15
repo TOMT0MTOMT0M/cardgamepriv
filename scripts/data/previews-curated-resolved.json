@@ -347,12 +347,6 @@
 "artist": "BURNOUT SYNDROMES",
 "link": "https://music.apple.com/fr/album/good-morning-world/1538153114?i=1538153115&uo=4"
 },
-"anime:dragon-ball": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/aa/eb/91/aaeb913c-9480-ffe6-64f9-7911c2268639/mzaf_6379271539702163545.plus.aac.p.m4a",
-"track": "Cha-La Head-Cha-La (2005 Version)",
-"artist": "Hironobu Kageyama",
-"link": "https://music.apple.com/fr/album/cha-la-head-cha-la-2005-version/129251733?i=129251737&uo=4"
-},
 "anime:durarara": {
 "deezer": 976074582,
 "track": "Uragirinoyuuyake",
@@ -2050,12 +2044,6 @@
 "artist": "Coming Century",
 "link": "https://music.apple.com/fr/album/breakthrough/1848136943?i=1848136946&uo=4"
 },
-"anime:olive-et-tom": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/5a/7e/e2/5a7ee28b-0fd6-a0c9-827e-0ad966a75bba/mzaf_16929664198591144372.plus.aac.p.m4a",
-"track": "Olive et Tom",
-"artist": "Bernard Minet",
-"link": "https://music.apple.com/fr/album/olive-et-tom/1498054621?i=1498054823&uo=4"
-},
 "anime:world-trigger": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/af/d5/9d/afd59d97-3255-291b-e4d6-2c917d017b96/mzaf_14055418341009216288.plus.aac.p.m4a",
 "track": "Glorious Days",
@@ -2066,29 +2054,11 @@
 "anime:inazuma-eleven": null,
 "anime:space-dandy": null,
 "anime:yu-gi-oh-5d-s": null,
-"cartoon:adventure-time": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/96/fa/8b/96fa8b0a-ed31-d99b-a088-5e021221c00a/mzaf_13965859126858035459.plus.aac.p.m4a",
-"track": "Adventure Time Main Title (feat. Pendleton Ward)",
-"artist": "Adventure Time",
-"link": "https://music.apple.com/fr/album/adventure-time-main-title-feat-pendleton-ward/1512848770?i=1512848777&uo=4"
-},
 "cartoon:albator": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/96/dd/3f/96dd3f84-3b4e-f734-3fc0-cc08f991370d/mzaf_16017390167678006426.plus.aac.p.m4a",
 "track": "Albator, le corsaire de l'espace (Bande originale du feuilleton)",
 "artist": "Eric Charden",
 "link": "https://music.apple.com/fr/album/albator-le-corsaire-de-lespace-bande-originale-du/537264499?i=537264810&uo=4"
-},
-"cartoon:amphibia": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/52/d7/2d/52d72d8f-8a92-41fa-5857-bef3943b2da2/mzaf_7438570916129631599.plus.aac.p.m4a",
-"track": "Welcome to Amphibia (From \"Amphibia\")",
-"artist": "Celica Gray",
-"link": "https://music.apple.com/fr/album/welcome-to-amphibia-from-amphibia/1459905111?i=1459905304&uo=4"
-},
-"cartoon:avatar-le-dernier-maitre-de-l-air": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/9d/47/d4/9d47d401-9c88-f6cc-82bc-4d507be4c132/mzaf_6934268803295104027.plus.aac.p.m4a",
-"track": "Avatar: The Last Airbender Main Title (Book 2)",
-"artist": "Jeremy Zuckerman",
-"link": "https://music.apple.com/fr/album/avatar-the-last-airbender-main-title-book-2/1825186543?i=1825186550&uo=4"
 },
 "cartoon:barbapapa": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/54/b1/dc/54b1dcb3-cb06-6125-a428-d2d5b4042604/mzaf_12088774895020035081.plus.aac.p.m4a",
@@ -2096,23 +2066,11 @@
 "artist": "Ricet Barrier, Marina Vinitzki, Vanina Vinitzki, Valia Vinitzki, Barbara Boutet, Alex Legrand, Morvan Salez, Noël Lopez & Paul Vaguelsy",
 "link": "https://music.apple.com/fr/album/voici-venir-les-barbapapa/1044595533?i=1044596187&uo=4"
 },
-"cartoon:ben-10": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e3/f2/21/e3f221d1-9b1d-df9f-89d6-7c8e28333e2e/mzaf_3635572257856550404.plus.aac.p.m4a",
-"track": "Ben 10 (Theme Song)",
-"artist": "Kids Superstars",
-"link": "https://music.apple.com/fr/album/ben-10-theme-song/1826511641?i=1826512032&uo=4"
-},
 "cartoon:bluey": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/96/3a/1f/963a1f2c-1db9-a295-964e-f7ebe6185cd5/mzaf_2844575868133929401.plus.aac.p.m4a",
 "track": "Bluey Theme Tune (Extended)",
 "artist": "Bluey & Joff Bush",
 "link": "https://music.apple.com/fr/album/bluey-theme-tune-extended/1572744112?i=1572744278&uo=4"
-},
-"cartoon:bob-l-eponge": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ae/24/87/ae248798-9142-9fd2-9567-38da398542f2/mzaf_8204951448256422929.plus.aac.p.m4a",
-"track": "SpongeBob SquarePants Theme Song",
-"artist": "SpongeBob SquarePants",
-"link": "https://music.apple.com/fr/album/spongebob-squarepants-theme-song/283379708?i=283379766&uo=4"
 },
 "cartoon:capitaine-flam": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e1/27/52/e127521c-e8c1-c748-370b-967e34cfd8be/mzaf_443346885530322888.plus.aac.p.m4a",
@@ -2125,18 +2083,6 @@
 "track": "Main Title",
 "artist": "Trevor Morris",
 "link": "https://music.apple.com/fr/album/main-title/1252170563?i=1252170566&uo=4"
-},
-"cartoon:catdog": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ad/3e/4d/ad3e4dd7-ce39-6410-6570-3af78cae9427/mzaf_11521959947674406795.plus.aac.p.m4a",
-"track": "CatDog Theme Song",
-"artist": "Catdog & Nickelodeon",
-"link": "https://music.apple.com/fr/album/catdog-theme-song/1888272551?i=1888272558&uo=4"
-},
-"cartoon:dora-l-exploratrice": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/9d/74/98/9d7498cc-c96d-a753-ea64-b8760289b5bc/mzaf_4540939665097452976.plus.aac.p.m4a",
-"track": "Dora the Explorer Theme",
-"artist": "Dora the Explorer",
-"link": "https://music.apple.com/fr/album/dora-the-explorer-theme/281871264?i=281871271&uo=4"
 },
 "cartoon:foot-2-rue": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/64/61/af/6461afe7-2c99-b78b-0d08-621055254298/mzaf_11735986167533707222.plus.aac.p.m4a",
@@ -2168,18 +2114,6 @@
 "artist": "Nick Carr",
 "link": "https://music.apple.com/fr/album/jayce-et-les-conqu%C3%A9rants-de-la-lumi%C3%A8re/1255591789?i=1255591803&uo=4"
 },
-"cartoon:jimmy-neutron": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/c4/28/ae/c428ae16-a2ef-7739-9541-d036efe9bb95/mzaf_4830350779931431823.plus.aac.p.m4a",
-"track": "Jimmy Neutron Theme",
-"artist": "Bowling for Soup",
-"link": "https://music.apple.com/fr/album/jimmy-neutron-theme/322693444?i=322693445&uo=4"
-},
-"cartoon:les-animaniacs": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/08/a6/c5/08a6c58d-7ff8-1d21-7d85-da8ec0beb254/mzaf_17882411046389358003.plus.aac.p.m4a",
-"track": "Animaniacs  (Opening Title)",
-"artist": "Animaniacs",
-"link": "https://music.apple.com/fr/album/animaniacs-opening-title/1538239347?i=1538239354&uo=4"
-},
 "cartoon:les-maitres-de-l-univers": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/be/ae/d6/beaed660-6a75-6be6-1bcb-fe0342bbbf9f/mzaf_13633270590227821240.plus.aac.p.m4a",
 "track": "Les maîtres de l'univers",
@@ -2192,23 +2126,11 @@
 "artist": "The Simpsons",
 "link": "https://music.apple.com/fr/album/the-simpsons-main-title-theme-extended-version/1598044816?i=1598044819&uo=4"
 },
-"cartoon:les-teletubbies": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/91/c8/9e/91c89e8b-a24e-f20c-6c8e-a565e81ff906/mzaf_9423467236037718467.plus.aac.p.m4a",
-"track": "Teletubbies Theme",
-"artist": "Teletubbies",
-"link": "https://music.apple.com/fr/album/teletubbies-theme/1799229312?i=1799229650&uo=4"
-},
 "cartoon:lucky-luke": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/51/96/2f/51962fc5-bc42-eaef-a5e6-06c10ac0453f/mzaf_13632514510156301212.plus.aac.p.m4a",
 "track": "I'm a Poor Lonesome Cowboy",
 "artist": "Claude Bolling & Pat Woods",
 "link": "https://music.apple.com/fr/album/im-a-poor-lonesome-cowboy/1853831493?i=1853831495&uo=4"
-},
-"cartoon:masha-et-michka": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f1/70/c8/f170c8a0-049f-94fd-28cb-a3ef7a20e755/mzaf_1258876143037995264.plus.aac.p.m4a",
-"track": "Main Title Theme",
-"artist": "Masha and the Bear",
-"link": "https://music.apple.com/fr/album/main-title-theme/1874236517?i=1874236524&uo=4"
 },
 "cartoon:maya-l-abeille": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview71/v4/39/2d/78/392d78d5-47ba-d8e3-34ae-4aa6a97c6748/mzaf_2061621956265794067.plus.aac.p.m4a",
@@ -2228,47 +2150,17 @@
 "artist": "Hugues Le Bars",
 "link": "https://music.apple.com/fr/album/g%C3%A9n%C3%A9rique/1296320846?i=1296321569&uo=4"
 },
-"cartoon:peppa-pig": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/81/ac/e5/81ace59e-a9b7-5b57-73b1-f2bcb952aed2/mzaf_40134833866023783.plus.aac.p.m4a",
-"track": "New Peppa Pig Theme Song",
-"artist": "Peppa Pig",
-"link": "https://music.apple.com/fr/album/new-peppa-pig-theme-song/1810205263?i=1810205269&uo=4"
-},
-"cartoon:sam-le-pompier": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a9/22/eb/a922eb69-347a-2877-bc95-bd56012f0c06/mzaf_3052080615081361142.plus.aac.p.m4a",
-"track": "Fireman Sam Theme Song",
-"artist": "Fireman Sam & Mattel",
-"link": "https://music.apple.com/fr/album/fireman-sam-theme-song/1809325160?i=1809325178&uo=4"
-},
-"cartoon:scooby-doo": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/7d/6e/87/7d6e87bb-edfd-a393-7f74-c81d0b10ebc8/mzaf_8055009090333588045.plus.aac.p.m4a",
-"track": "Scooby Doo Theme Song",
-"artist": "Best Coast",
-"link": "https://music.apple.com/fr/album/scooby-doo-theme-song/1512008327?i=1512008927&uo=4"
-},
 "cartoon:south-park": {
 "deezer": 2576770162,
 "track": "South Park Theme",
 "artist": "Primus",
 "link": "https://www.deezer.com/track/2576770162"
 },
-"cartoon:steven-universe": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/c8/c8/ff/c8c8ff76-98e7-4c80-53ad-f74e7c0c83fe/mzaf_14972694001276501538.plus.aac.p.m4a",
-"track": "We Are The Crystal Gems[Full Theme Song] (feat. Deedee Magno Hall, Estelle, Michaela Dietz, Tom Scharpling & Zach Callison)",
-"artist": "Steven Universe",
-"link": "https://music.apple.com/fr/album/we-are-the-crystal-gems-full-theme-song-feat-deedee/1511215079?i=1511215902&uo=4"
-},
 "cartoon:t-choupi": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f2/31/5d/f2315d6f-6c0f-0f74-9d76-6e18cd990ad9/mzaf_15585356997728364818.plus.aac.p.m4a",
 "track": "T'choupi, le générique (Version originale de la série)",
 "artist": "T'choupi",
 "link": "https://music.apple.com/fr/album/tchoupi-le-g%C3%A9n%C3%A9rique-version-originale-de-la-s%C3%A9rie/376152757?i=376152766&uo=4"
-},
-"cartoon:the-owl-house": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/31/ef/c2/31efc279-19f6-b153-5ca9-94b842040905/mzaf_8703631170182505930.plus.aac.p.m4a",
-"track": "The Owl House Main Theme (From \"the Owl House\")",
-"artist": "Kids Superstars",
-"link": "https://music.apple.com/fr/album/the-owl-house-main-theme-from-the-owl-house/1701151509?i=1701151510&uo=4"
 },
 "cartoon:zig-et-sharko": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/41/23/7d/41237de1-e194-3502-7eb1-4ea0b9bf5dd1/mzaf_11358703880318885297.plus.aac.p.m4a",
@@ -2281,42 +2173,6 @@
 "track": "Les aventures de Babar",
 "artist": "André Popp",
 "link": "https://music.apple.com/fr/album/les-aventures-de-babar/1484514733?i=1484515110&uo=4"
-},
-"cartoon:big-city-greens": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/c5/26/c7/c526c7f8-0f0c-0232-2664-cfd6586136c3/mzaf_829918437999569012.plus.aac.p.m4a",
-"track": "Big City Greens Main Theme (From \"Big City Greens\")",
-"artist": "Geek Music",
-"link": "https://music.apple.com/fr/album/big-city-greens-main-theme-from-big-city-greens/1650260981?i=1650260983&uo=4"
-},
-"cartoon:dexter-da": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/71/21/a8/7121a8dd-f2e8-6def-1b17-f96755721508/mzaf_16466541620430300088.plus.aac.p.m4a",
-"track": "Dexter's Laboratory Main Theme (From \"Dexter's Laboratory\")",
-"artist": "Geek Music",
-"link": "https://music.apple.com/fr/album/dexters-laboratory-main-theme-from-dexters-laboratory/1524648429?i=1524648430&uo=4"
-},
-"cartoon:doug": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview124/v4/03/df/07/03df07cc-04d1-5d2f-0f43-9fac4bf31f6a/mzaf_9703245471038338489.plus.aac.p.m4a",
-"track": "Doug (From\"Doug\")",
-"artist": "Geek Music",
-"link": "https://music.apple.com/fr/album/doug-from-doug/1522288790?i=1522288791&uo=4"
-},
-"cartoon:franklin": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/2b/c5/c8/2bc5c860-7546-1fc6-2cf1-47b000ce48d3/mzaf_18225198499368536993.plus.aac.p.m4a",
-"track": "Hey It's Franklin (From \"Franklin\")",
-"artist": "Geek Music",
-"link": "https://music.apple.com/fr/album/hey-its-franklin-from-franklin/1571934818?i=1571934819&uo=4"
-},
-"cartoon:la-cour-de-recre": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview124/v4/9d/df/5c/9ddf5c5a-0a6a-1be0-53bf-e012c08cf4c2/mzaf_9862870952287695187.plus.aac.p.m4a",
-"track": "Recess Main Theme (From \"Recess\")",
-"artist": "Geek Music",
-"link": "https://music.apple.com/fr/album/recess-main-theme-from-recess/1535986148?i=1535986150&uo=4"
-},
-"cartoon:oui-oui": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/cb/41/f9/cb41f945-b337-ed1e-626c-38a5983290e0/mzaf_1510483632922883560.plus.aac.p.m4a",
-"track": "Make Way for Noddy",
-"artist": "Kids Now",
-"link": "https://music.apple.com/fr/album/make-way-for-noddy/284756300?i=284756322&uo=4"
 },
 "cartoon:phineas-et-ferb": {
 "deezer": 434555252,
@@ -2491,5 +2347,245 @@
 "track": "Mickey Mouse Club March",
 "artist": "Mickey Mouse, Minnie Mouse, Donald Duck, Daisy Duck, Goofy & The Wonderful World of Mickey Mouse - Cast",
 "link": "https://music.apple.com/fr/album/mickey-mouse-club-march/1660550780?i=1660550789&uo=4"
+},
+"anime:dragon-ball": {
+"url": "audio/generiques/dragon-ball.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"anime:olive-et-tom": {
+"url": "audio/generiques/olive-et-tom.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:adventure-time": {
+"url": "audio/generiques/adventure-time.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:amphibia": {
+"url": "audio/generiques/amphibia.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:avatar-le-dernier-maitre-de-l-air": {
+"url": "audio/generiques/avatar-le-dernier-maitre-de-l-air.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:ben-10": {
+"url": "audio/generiques/ben-10.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:big-city-greens": {
+"url": "audio/generiques/big-city-greens.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:bob-l-eponge": {
+"url": "audio/generiques/bob-l-eponge.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:catdog": {
+"url": "audio/generiques/catdog.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:dexter-da": {
+"url": "audio/generiques/dexter-da.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:dora-l-exploratrice": {
+"url": "audio/generiques/dora-l-exploratrice.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:doug": {
+"url": "audio/generiques/doug.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:franklin": {
+"url": "audio/generiques/franklin.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:jimmy-neutron": {
+"url": "audio/generiques/jimmy-neutron.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:la-cour-de-recre": {
+"url": "audio/generiques/la-cour-de-recre.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:les-animaniacs": {
+"url": "audio/generiques/les-animaniacs.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:les-teletubbies": {
+"url": "audio/generiques/les-teletubbies.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:masha-et-michka": {
+"url": "audio/generiques/masha-et-michka.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:oui-oui": {
+"url": "audio/generiques/oui-oui.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:peppa-pig": {
+"url": "audio/generiques/peppa-pig.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:sam-le-pompier": {
+"url": "audio/generiques/sam-le-pompier.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:scooby-doo": {
+"url": "audio/generiques/scooby-doo.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:steven-universe": {
+"url": "audio/generiques/steven-universe.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon:the-owl-house": {
+"url": "audio/generiques/the-owl-house.mp3",
+"track": "",
+"artist": "",
+"link": ""
+},
+"cartoon-en:adventure-time": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/96/fa/8b/96fa8b0a-ed31-d99b-a088-5e021221c00a/mzaf_13965859126858035459.plus.aac.p.m4a",
+"track": "Adventure Time Main Title (feat. Pendleton Ward)",
+"artist": "Adventure Time",
+"link": "https://music.apple.com/fr/album/adventure-time-main-title-feat-pendleton-ward/1512848770?i=1512848777&uo=4"
+},
+"cartoon-en:avatar-le-dernier-maitre-de-l-air": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/9d/47/d4/9d47d401-9c88-f6cc-82bc-4d507be4c132/mzaf_6934268803295104027.plus.aac.p.m4a",
+"track": "Avatar: The Last Airbender Main Title (Book 2)",
+"artist": "Jeremy Zuckerman",
+"link": "https://music.apple.com/fr/album/avatar-the-last-airbender-main-title-book-2/1825186543?i=1825186550&uo=4"
+},
+"cartoon-en:ben-10": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e3/f2/21/e3f221d1-9b1d-df9f-89d6-7c8e28333e2e/mzaf_3635572257856550404.plus.aac.p.m4a",
+"track": "Ben 10 (Theme Song)",
+"artist": "Kids Superstars",
+"link": "https://music.apple.com/fr/album/ben-10-theme-song/1826511641?i=1826512032&uo=4"
+},
+"cartoon-en:bob-l-eponge": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ae/24/87/ae248798-9142-9fd2-9567-38da398542f2/mzaf_8204951448256422929.plus.aac.p.m4a",
+"track": "SpongeBob SquarePants Theme Song",
+"artist": "SpongeBob SquarePants",
+"link": "https://music.apple.com/fr/album/spongebob-squarepants-theme-song/283379708?i=283379766&uo=4"
+},
+"cartoon-en:catdog": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ad/3e/4d/ad3e4dd7-ce39-6410-6570-3af78cae9427/mzaf_11521959947674406795.plus.aac.p.m4a",
+"track": "CatDog Theme Song",
+"artist": "Catdog & Nickelodeon",
+"link": "https://music.apple.com/fr/album/catdog-theme-song/1888272551?i=1888272558&uo=4"
+},
+"cartoon-en:dexter-da": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/71/21/a8/7121a8dd-f2e8-6def-1b17-f96755721508/mzaf_16466541620430300088.plus.aac.p.m4a",
+"track": "Dexter's Laboratory Main Theme (From \"Dexter's Laboratory\")",
+"artist": "Geek Music",
+"link": "https://music.apple.com/fr/album/dexters-laboratory-main-theme-from-dexters-laboratory/1524648429?i=1524648430&uo=4"
+},
+"cartoon-en:dora-l-exploratrice": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/9d/74/98/9d7498cc-c96d-a753-ea64-b8760289b5bc/mzaf_4540939665097452976.plus.aac.p.m4a",
+"track": "Dora the Explorer Theme",
+"artist": "Dora the Explorer",
+"link": "https://music.apple.com/fr/album/dora-the-explorer-theme/281871264?i=281871271&uo=4"
+},
+"cartoon-en:franklin": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/2b/c5/c8/2bc5c860-7546-1fc6-2cf1-47b000ce48d3/mzaf_18225198499368536993.plus.aac.p.m4a",
+"track": "Hey It's Franklin (From \"Franklin\")",
+"artist": "Geek Music",
+"link": "https://music.apple.com/fr/album/hey-its-franklin-from-franklin/1571934818?i=1571934819&uo=4"
+},
+"cartoon-en:jimmy-neutron": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/c4/28/ae/c428ae16-a2ef-7739-9541-d036efe9bb95/mzaf_4830350779931431823.plus.aac.p.m4a",
+"track": "Jimmy Neutron Theme",
+"artist": "Bowling for Soup",
+"link": "https://music.apple.com/fr/album/jimmy-neutron-theme/322693444?i=322693445&uo=4"
+},
+"cartoon-en:les-animaniacs": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/08/a6/c5/08a6c58d-7ff8-1d21-7d85-da8ec0beb254/mzaf_17882411046389358003.plus.aac.p.m4a",
+"track": "Animaniacs  (Opening Title)",
+"artist": "Animaniacs",
+"link": "https://music.apple.com/fr/album/animaniacs-opening-title/1538239347?i=1538239354&uo=4"
+},
+"cartoon-en:les-teletubbies": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/91/c8/9e/91c89e8b-a24e-f20c-6c8e-a565e81ff906/mzaf_9423467236037718467.plus.aac.p.m4a",
+"track": "Teletubbies Theme",
+"artist": "Teletubbies",
+"link": "https://music.apple.com/fr/album/teletubbies-theme/1799229312?i=1799229650&uo=4"
+},
+"cartoon-en:oui-oui": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/cb/41/f9/cb41f945-b337-ed1e-626c-38a5983290e0/mzaf_1510483632922883560.plus.aac.p.m4a",
+"track": "Make Way for Noddy",
+"artist": "Kids Now",
+"link": "https://music.apple.com/fr/album/make-way-for-noddy/284756300?i=284756322&uo=4"
+},
+"cartoon-en:peppa-pig": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/81/ac/e5/81ace59e-a9b7-5b57-73b1-f2bcb952aed2/mzaf_40134833866023783.plus.aac.p.m4a",
+"track": "New Peppa Pig Theme Song",
+"artist": "Peppa Pig",
+"link": "https://music.apple.com/fr/album/new-peppa-pig-theme-song/1810205263?i=1810205269&uo=4"
+},
+"cartoon-en:sam-le-pompier": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a9/22/eb/a922eb69-347a-2877-bc95-bd56012f0c06/mzaf_3052080615081361142.plus.aac.p.m4a",
+"track": "Fireman Sam Theme Song",
+"artist": "Fireman Sam & Mattel",
+"link": "https://music.apple.com/fr/album/fireman-sam-theme-song/1809325160?i=1809325178&uo=4"
+},
+"cartoon-en:scooby-doo": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/7d/6e/87/7d6e87bb-edfd-a393-7f74-c81d0b10ebc8/mzaf_8055009090333588045.plus.aac.p.m4a",
+"track": "Scooby Doo Theme Song",
+"artist": "Best Coast",
+"link": "https://music.apple.com/fr/album/scooby-doo-theme-song/1512008327?i=1512008927&uo=4"
+},
+"cartoon-en:steven-universe": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/c8/c8/ff/c8c8ff76-98e7-4c80-53ad-f74e7c0c83fe/mzaf_14972694001276501538.plus.aac.p.m4a",
+"track": "We Are The Crystal Gems[Full Theme Song] (feat. Deedee Magno Hall, Estelle, Michaela Dietz, Tom Scharpling & Zach Callison)",
+"artist": "Steven Universe",
+"link": "https://music.apple.com/fr/album/we-are-the-crystal-gems-full-theme-song-feat-deedee/1511215079?i=1511215902&uo=4"
 }
 }
