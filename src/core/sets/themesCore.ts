@@ -1,4 +1,4 @@
-import { PURGE_08_11, PURGE_BRUEL, RERATE_08_11, RERATE_11_11, RERATE_13_11, RESUB_13_11 } from './curation';
+import { PURGE_08_11, PURGE_BRUEL, RENAME_15_11, RERATE_08_11, RERATE_11_11, RERATE_13_11, RERATE_15_11, RESUB_13_11 } from './curation';
 import { artV } from '../artRev';
 import { msgRef, str } from '../msgRefs';
 /**
@@ -446,7 +446,7 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
   if (installed) return;
   installed = true;
   const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL]);
-  const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11, ...RERATE_13_11 }));
+  const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11, ...RERATE_13_11, ...RERATE_15_11 }));
   applyCuration(purge, rerate);
   for (const s of bigSubthemes(big, { purge, rerate })) SUBTHEMES.push(s);
   for (const t of THEMES) {
@@ -458,6 +458,8 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
       for (const c of s.cards) t.cards.push(c);
     }
   }
+  // (15/11) renommages : le nom affiché seulement (curation.ts)
+  for (const s of SUBTHEMES) for (const c of s.cards) if (RENAME_15_11[c.id]) c.name = RENAME_15_11[c.id];
   indexCatalog();
   GAME_CARD_COUNT = ALL_THEMES.reduce((a, t) => a + t.cards.length, 0);
   PUBLIC_CARD_COUNT = THEMES.reduce((a, t) => a + t.cards.length, 0);
@@ -623,7 +625,7 @@ export const frLabelOf = (s: SubTheme): string => FR_OF.get(s)?.label ?? s.label
 function applyCatalogLang() {
   const L = catLang;
   for (const e of BY_ID.values()) {
-    swapField(e, 'name', L?.cards[e.id]);
+    swapField(e, 'name', RENAME_15_11[e.id] ? undefined : L?.cards[e.id]); // (15/11) renommées : même nom dans les deux langues
     if (e.label) swapField(e, 'label', L ? L.types[FR_OF.get(e)?.label ?? e.label] : undefined);
   }
   for (const s of SUB_BY_ID.values()) {
