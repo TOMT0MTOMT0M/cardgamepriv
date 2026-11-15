@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Le jeu en bref (pour bien juger)
 
 - 4 thèmes (Gaming, Pop Culture, Sport & Esport, Le Monde), ~40 000 cartes, 1★ à 6★ par sous-thème. Une carte = un nom,

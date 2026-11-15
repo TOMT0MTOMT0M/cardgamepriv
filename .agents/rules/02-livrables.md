@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Livrables : comment rendre le travail
 
 Claude reprend tes fichiers pour les intégrer au jeu. Pour qu'il n'ait rien à deviner :

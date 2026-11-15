@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Périmètre : ce que tu peux toucher (règle absolue)
 
 Tu travailles dans le même dossier que Claude, qui commite en parallèle sur la branche `v2`.
