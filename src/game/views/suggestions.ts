@@ -233,7 +233,7 @@ export function createSuggestionsView(backend: GameBackend, shell: Shell): Sugge
       ${s.imageUrl ? `<p class="sg-link">${tr('sg.suggestedImg')} <a href="${esc(s.imageUrl)}" target="_blank" rel="noopener noreferrer nofollow">${esc(s.imageUrl.length > 70 ? s.imageUrl.slice(0, 70) + '…' : s.imageUrl)}</a></p>` : ''}
       ${s.screenshotUrl ? `<a class="sg-shot" href="${esc(s.screenshotUrl)}" target="_blank" rel="noopener"><img alt="Capture jointe" loading="lazy" src="${esc(s.screenshotUrl)}"></a>` : ''}
       ${s.adminNote ? `<p class="sg-note"><b>${tr('sg.reply')}</b> ${esc(s.adminNote)}</p>` : ''}
-      ${admin ? `<div class="sg-adm">${(Object.keys(STATUS) as SuggestionStatus[]).map((k) => `<button type="button" data-st="${k}" class="${k === s.status ? 'on' : ''}">${STATUS()[k]}</button>`).join('')}<input class="sg-note-in" placeholder="${tr('sg.replyA')}" maxlength="500" value="${esc(s.adminNote ?? '')}"></div>${s.page || s.ua ? `<small class="sg-meta">${esc(s.page ?? '')} · ${esc(s.ua ?? '')}</small>` : ''}` : ''}
+      ${admin ? `<div class="sg-adm">${(Object.keys(STATUS()) as SuggestionStatus[]).map((k) => `<button type="button" data-st="${k}" class="${k === s.status ? 'on' : ''}">${STATUS()[k]}</button>`).join('')}<input class="sg-note-in" placeholder="${tr('sg.replyA')}" maxlength="500" value="${esc(s.adminNote ?? '')}"></div>${s.page || s.ua ? `<small class="sg-meta">${esc(s.page ?? '')} · ${esc(s.ua ?? '')}</small>` : ''}` : ''}
     </article>`;
   }
   async function loadMine() {
@@ -275,7 +275,7 @@ export function createSuggestionsView(backend: GameBackend, shell: Shell): Sugge
     list.innerHTML = '<p class="muted">' + tr('common.loading2') + '</p>';
     try {
       const r = await backend.adminSuggestions(adminStatus);
-      $('.sg-filters').innerHTML = [`<button data-f="" class="${!adminStatus ? 'on' : ''}">${tr('sg.all')}</button>`, ...(Object.keys(STATUS) as SuggestionStatus[]).map((k) => `<button data-f="${k}" class="${adminStatus === k ? 'on' : ''}">${STATUS()[k]} <em>${r.counts[k]}</em></button>`)].join('');
+      $('.sg-filters').innerHTML = [`<button data-f="" class="${!adminStatus ? 'on' : ''}">${tr('sg.all')}</button>`, ...(Object.keys(STATUS()) as SuggestionStatus[]).map((k) => `<button data-f="${k}" class="${adminStatus === k ? 'on' : ''}">${STATUS()[k]} <em>${r.counts[k]}</em></button>`)].join('');
       list.innerHTML = r.items.length ? r.items.map((s) => itemHtml(s, true)).join('') : '<p class="muted sg-empty">' + tr('sg.nothingHere') + '</p>';
     } catch (err) {
       list.innerHTML = `<p class="muted">${esc(errMsg(err))}</p>`;

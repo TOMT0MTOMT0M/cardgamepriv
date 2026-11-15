@@ -26,6 +26,17 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '15 Nov', title: '6★ music, cards and profile', tag: 'amélioré',
+        points: [
+          '🎵 6★ music now loops as long as you stay on the card, and songs start at the chorus.',
+          '🎶 New music: GODS for Faker, Zeus, Oner and Keria, Ranbu no Melody for Bleach, See You Again for Fast & Furious, Clubbed to Death for Neo… and covers replaced by the original.',
+          '⚔️ Demon Slayer: Tengen, Muichirou, Mitsuri, Gyoumei, Obanai and Sanemi become 6★.',
+          '⚽ Inazuma Eleven: the European names (Mark Evans, Axel Blaze…).',
+          '🖼️ 79 cards in full art, and better-framed faces.',
+          '👤 A roomier profile.',
+        ],
+      },
+      {
         date: '15 Nov', title: 'Cartoons: the theme song of the 6★', tag: 'nouveau',
         points: [
           '📺 A 6★ cartoon card (Marge Simpson, SpongeBob, Captain Harlock, Heidi, Grizzy…) now plays its cartoon’s theme song, when opened and in the Collection: all 55, across 49 cartoons. In English where the English theme differs.',

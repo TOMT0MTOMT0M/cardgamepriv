@@ -434,3 +434,35 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 .sc-pill.st-done { border-color: color-mix(in srgb, var(--st) 70%, transparent); }
 .sc-pill.st-done .sc-n { color: var(--st); }
 .sc-pill.st-none .sc-name { color: var(--ink-2); }
+
+/* ───────────────────────── (15/11, retour de Tom) PROFIL : de l'air entre les blocs (« tout est collé ») ─────────────
+   Plus d'espace entre l'en-tête, les onglets, la vitrine, les chiffres clés et les tableaux ; tableaux plus aérés,
+   valeurs alignées à droite. La vitrine tient toujours au premier écran (son budget vertical --pf-over est rallongé
+   d'autant). */
+.pf-wrap { gap: 24px; }
+.pf-pane { gap: 20px; }
+.pf-case-sec { --pf-over: 470px; gap: 12px; }
+.pf-case-sec .pf-sec-t { align-items: center; row-gap: 8px; }
+.pf-keys { gap: 14px; margin-top: 0; }
+.pf-panels { gap: 14px; }
+.pf-panel { padding: 16px 18px 10px; }
+.pf-ph { margin-bottom: 10px; }
+.pf-row { min-height: 44px; }
+.pf-rlist { column-gap: 28px; }
+.pf-rr { padding: 9px 0; }
+.pf-rr b { text-align: right; }
+.pf-th { min-height: 42px; }
+.pf-friends-sec { padding-top: 8px; }
+.pf-friends-sec .pf-friends { margin-top: 4px; }
+.pf-account { padding-top: 8px; border-top: 1px solid var(--gm-line); }
+@media (max-width: 640px) {
+  .pf-wrap { gap: 14px; }
+  .pf-pane { gap: 14px; }
+  .pf-case-sec { gap: 10px; }
+  .pf-case { gap: 6px; padding: 8px 8px 12px; }
+  .pf-keys { gap: 8px; }
+  .pf-keys .pf-stat { padding: 12px 10px; }
+  .pf-panels { gap: 12px; }
+  .pf-panel { padding: 14px 14px 8px; }
+  .pf-rlist { column-gap: 16px; }
+}
