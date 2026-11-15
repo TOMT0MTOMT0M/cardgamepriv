@@ -66,3 +66,96 @@ export const RESUB_13_11: Readonly<Record<string, string>> = {
   'pop-cobb-vanth': 'the-mandalorian',
   'pop-koska-reeves': 'the-mandalorian',
 };
+
+/**
+ * (15/11, demande de Tom) Les 6 piliers de Demon Slayer qui n'étaient pas encore 6★ le deviennent (Shinobu l'était déjà).
+ * Inventaires : migrations:resyncRarities (lancée à chaque mise en ligne).
+ */
+export const RERATE_15_11: Readonly<Record<string, CatalogRarity>> = {
+  'pop-tengen-uzui': 'mythic',
+  'pop-muichirou-tokitou': 'mythic',
+  'pop-mitsuri-kanroji': 'mythic',
+  'pop-gyoumei-himejima': 'mythic',
+  'pop-obanai-iguro': 'mythic',
+  'pop-sanemi-shinazugawa': 'mythic',
+  // (15/11, demande de Tom) Gumayusi rejoint Faker, Zeus, Oner et Keria en 6★ (musique GODS)
+  'spt-gumayusi': 'mythic',
+};
+
+/**
+ * (15/11, demande de Tom) RENOMMAGES — ids, numéros, images et collections inchangés, seul le nom affiché change (en
+ * français comme en anglais : ces noms sont ceux des deux versions).
+ * - Inazuma Eleven : les noms de la version française (ceux de la version européenne : Mark Evans, Axel Blaze…), quand
+ *   ils sont sûrs ; les autres gardent leur nom japonais.
+ */
+export const RENAME_15_11: Readonly<Record<string, string>> = {
+  'pop-mamoru-endou': 'Mark Evans',
+  'pop-shuuya-gouenji': 'Axel Blaze',
+  'pop-yuuto-kidou': 'Jude Sharp',
+  'pop-ichirouta-kazemaru': 'Nathan Swift',
+  'pop-shirou-fubuki': 'Shawn Froste',
+  'pop-atsuya-fubuki': 'Aiden Froste',
+  'pop-terumi-afuro': 'Byron Love',
+  'pop-hiroto-kiyama': 'Xavier Foster',
+  'pop-akio-fudou': 'Caleb Stonewall',
+  'pop-jirou-sakuma': 'David Samford',
+  'pop-koujirou-genda': 'Joseph King',
+  'pop-jousuke-tsunami': 'Hurley Kane',
+  'pop-natsumi-raimon': 'Nelly Raimon',
+  'pop-ryuuji-midorikawa': 'Jordan Greenway',
+  'pop-aki-kino': 'Silvia Woods',
+  'pop-fidio-ardena': 'Paolo Bianchi',
+  'pop-fuusuke-suzuno': 'Bryce Whitingale',
+  'pop-haruna-otonashi': 'Celia Hills',
+  'pop-haruya-nagumo': 'Claude Beacons',
+  'pop-heigorou-kabeyama': 'Jack Wallside',
+  'pop-kazuya-ichinose': 'Erik Eagle',
+  'pop-ryuugo-someoka': 'Kevin Dragonfly',
+  'pop-seiya-tobitaka': 'Archer Hawkins',
+  'pop-toramaru-utsunomiya': 'Austin Hobbes',
+  'pop-touko-zaizen': 'Suzette Hartland',
+  'pop-yuuki-tachimukai': 'Darren LaChance',
+  'pop-reiji-kageyama': 'Ray Dark',
+  'pop-seigou-hibiki': 'Seymour Hillman',
+  'pop-edgar-valtinas': 'Edgar Partinus',
+  'pop-fuyuka-kudou': 'Camellia Travis',
+  'pop-michiya-kudou': 'Percival Travis',
+  'pop-yuuya-kogure': 'Scotty Banyan',
+  'pop-daisuke-endou': 'David Evans',
+  'pop-hitomiko-kira': 'Lina Schiller',
+  'pop-kageto-yamino': 'Shadow Cimmerian',
+  'pop-shinichi-handa': 'Steve Grim',
+  'pop-asuka-domon': 'Bobby Shearer',
+  'pop-kuusuke-matsuno': 'Max Carson',
+  'pop-kakeru-megane': 'Willy Glass',
+  'pop-mac-roneejo': 'Mac Robingo',
+  'pop-yuuka-gouenji': 'Julia Blaze',
+  'pop-teppei-kurimatsu': 'Todd Ironside',
+  'pop-mark-kruger': 'Mark Krueger',
+  'pop-sakichi-shishido': 'Timmy Sanders',
+  'pop-tenma-matsukaze': 'Arion Sherwind',
+  'pop-kyousuke-tsurugi': 'Victor Blade',
+  'pop-takuto-shindou': 'Riccardo Di Rigo',
+  'pop-ranmaru-kirino': 'Gabriel Garcia',
+  'pop-taiyou-amemiya': 'Sol Daystar',
+  'pop-masaki-kariya': 'Zack Avalon',
+  'pop-yuuichi-tsurugi': 'Vladimir Blade',
+  'pop-shinsuke-nishizono': 'JP Lionel',
+  'pop-hikaru-kageyama': 'Lucian Dark',
+  'pop-aoi-sorano': 'Skie Blue',
+  'pop-taichi-sangoku': 'Samguk Han',
+  'pop-ryouma-nishiki': 'Wanli Chang',
+  'pop-norihito-kurama': 'Michael Ballzack',
+};
+
+/**
+ * (15/11, demande de Tom) « Balde de Ubaldis » (tennis) était un doublon de Marion Bartoli (même photo) : retirée du
+ * catalogue et des collections (migrations:purgeCards, liste dans convex/purgedCards.ts). La carte Marion Bartoli
+ * (`spt-marion-bartoli`) reste. Ne pas réutiliser cet id.
+ */
+export const PURGE_15_11: readonly string[] = ['spt-balde-de-ubaldis'];
+
+/** (15/11, demande de Tom) Carlos Ruiz est le joueur de baseball (photo fournie) : il quitte le football pour le baseball. */
+export const RESUB_15_11: Readonly<Record<string, string>> = {
+  'spt-carlos-ruiz': 'baseball',
+};

@@ -51,7 +51,7 @@ def exact(ref):
         r = get(f'https://api.deezer.com/track/{int(i)}')
         if r is None: return None
         return {'deezer': r['id'], 'track': r['title'], 'artist': r['artist']['name'], 'link': r.get('link', '')} if r.get('preview') else False
-    for cc in ('FR', 'US'):
+    for cc in ('FR', 'US', 'JP'):  # (15/11) JP : openings et bandes originales d'animés
         d = get(f'https://itunes.apple.com/lookup?id={int(i)}&country={cc}')
         if d is None: return None
         rs = [r for r in d.get('results', []) if r.get('previewUrl')]

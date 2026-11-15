@@ -406,7 +406,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         atelier = null;
         cosmOpen = false;
         if (kept) prof = prof ? { ...prof, cosmetics: kept } : prof;
-        renderHead();
+        // (15/11, retour de Tom « la vitrine n'existe plus ») tout le profil, pas seulement l'en-tête : une collection
+        // arrivée pendant que l'atelier était ouvert (passage d'office) n'était jamais peinte dans la vitrine
+        renderAll();
       },
     });
     renderHead();
@@ -638,8 +640,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       const c = list[i];
       const wrap = h('div', `pf-slot${c ? ' filled' : ' free'}`);
       wrap.style.setProperty('--i', String(i));
-      if (c) {
-        const t = cardTile(c.cardId, c.rarity);
+      let t: HTMLElement | null = null;
+      // (15/11) une carte illisible (retirée du catalogue, renommée…) ne fait plus tomber toute la vitrine
+      try {
+        t = c && catalogEntry(c.cardId) ? cardTile(c.cardId, c.rarity) : null;
+      } catch {
+        t = null;
+      }
+      if (t && c) {
         wrap.append(t);
         t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
       } else wrap.innerHTML = `<div class="pf-empty"></div>`;

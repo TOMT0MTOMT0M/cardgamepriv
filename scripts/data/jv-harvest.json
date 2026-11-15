@@ -2777,11 +2777,10 @@
 "t": 1793635636
 },
 "jv-crash-bandicoot-crash-bandicoot": {
-"art": "i",
-"file": "crash-bandicoot--crash-bandicoot.png",
-"ok2": 1,
-"src": "wiki:Crash Bandicoot",
-"t": 1793635626
+"art": "c",
+"file": "crash-bandicoot--crash-bandicoot-r2611151732.jpg",
+"src": "reillustre:jv-crash-bandicoot-crash-bandicoot.jpg",
+"t": 1794763937
 },
 "jv-crash-bandicoot-crash-bandicoot-2": {
 "art": "c",
@@ -6134,11 +6133,10 @@
 "t": 1793771528
 },
 "jv-gta-cj": {
-"art": "i",
-"file": "gta--cj.png",
-"s2": 1,
-"src": "wikidata:Q376682:enwiki:Carl Johnson (Grand Theft Auto)",
-"t": 1793636120
+"art": "c",
+"file": "gta--cj-r2611151732.jpg",
+"src": "reillustre:jv-gta-cj.jpg",
+"t": 1794763937
 },
 "jv-gta-claude-gta-iii": {
 "art": "c",
@@ -6666,11 +6664,10 @@
 "t": 1793636196
 },
 "jv-halo-master-chief": {
-"art": "i",
-"file": "halo--master-chief.png",
-"ok2": 1,
-"src": "wiki:Master Chief (Halo)",
-"t": 1793636191
+"art": "c",
+"file": "halo--master-chief-r2611151732.jpg",
+"src": "reillustre:jv-halo-master-chief.jpg",
+"t": 1794763937
 },
 "jv-halo-noble-six": {
 "art": "",
@@ -22743,9 +22740,9 @@
 },
 "jv-zelda-zelda": {
 "art": "c",
-"file": "zelda--zelda-r2611132242.jpg",
+"file": "zelda--zelda-r2611151732.jpg",
 "src": "reillustre:jv-zelda-zelda.jpg",
-"t": 1794609745
+"t": 1794763937
 },
 "jv-zelda-zelda-ii-the-adventure-of-link": {
 "art": "c",
