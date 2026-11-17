@@ -32,6 +32,7 @@ export const UPDATES_EN: UpdateMonth[] = [
           '🦸 Marvel MCU: the 6★ play Alan Silvestri’s Avengers theme. Hellsing: “The World without Logos”.',
           '⭐ Aelita (Code Lyoko) and Palworld become 6★.',
           '🖼️ 27 cards in full art, better framed: Alucard, Sukuna, Wolverine, Jett, Reyna, Killjoy, E.T.…',
+          '🔥 Forge: your duplicates are sorted by star (1★, 2★, 3★…); with many of them, only the 1★ used to show. Nothing was lost.',
         ],
       },
       {

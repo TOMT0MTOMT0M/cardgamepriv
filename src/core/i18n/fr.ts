@@ -530,6 +530,7 @@ export const fr = {
   'fg.openBoosters': 'Ouvre des boosters →',
   'fg.lockedN': { one: '{n} engagé', other: '{n} engagés' },
   'fg.andMore': '… et {n} autres (les sélections rapides les prennent aussi).',
+  'fg.sec': '{n} cartes · {c} exemplaires en trop',
   'fg.confirm': 'Brûler {cards} ({list}) ?',
   'fg.burned': { one: '{dups} brûlé : +{coins} pièces !', other: '{dups} brûlés : +{coins} pièces !' },
   'chat.card': 'Carte',

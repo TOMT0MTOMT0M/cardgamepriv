@@ -254,6 +254,10 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 .pk-v { margin-right: auto; display: inline-flex; gap: 5px; align-items: center; font: 500 13px var(--mono); color: var(--ink-2); }
 .pk-v b { color: var(--gold); }
 .gm-fgrid > .muted, .gm-pot > .muted, .pk-grid > .muted { grid-column: 1 / -1; }
+/* (17/11) une section par étoile dans la Forge */
+.gm-fgrid > .gm-fsec { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gm-line); font: 500 12px var(--mono); letter-spacing: 0.08em; }
+.gm-fgrid > .gm-fsec:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.gm-fgrid > .gm-fmore { font: 400 12px var(--mono); }
 
 /* ==== AUDIT 03/11 — lot D (espace Jeux) ==== */
 /* enjeu affiché à côté des boutons (UX4-05) */
