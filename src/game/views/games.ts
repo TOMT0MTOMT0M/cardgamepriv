@@ -1012,11 +1012,23 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const T = reducedMotion() ? 0 : 5600;
       wheel.classList.add('spinning');
       cells.forEach((c) => c.classList.remove('ball', 'landed'));
-      void rw.spinTo(number, T);
+      // (V3, lot 11) le son suit la bille de la roue (rouletteWheel.ts) : cliquetis sur la piste, choc sec sur un
+      // losange, frettes, pose feutrée dans l'alvéole — la table ne fait plus de tic de son côté
+      void rw.spinTo(number, T, undefined, (s) => {
+        try {
+          if (s.kind === 'track') shell.sfx.tick(1.7, 0.012 + 0.02 * s.force, s.pan);
+          else if (s.kind === 'fret') shell.sfx.tick(1.05, 0.045 * s.force, s.pan);
+          // choc métal : le même « tic » cuit, plus grave et plus fort, hors du débit limité des cliquetis
+          else if (s.kind === 'deflector') {
+            if (!shell.sfx.play('tick', { rate: 0.72, vol: 0.075 * s.force, pan: s.pan, bus: 'feedback', wet: 0.06 })) shell.sfx.tick(0.72, 0.09 * s.force, s.pan);
+          } else shell.sfx.pat(0.2, s.pan);
+        } catch {
+          /* son indisponible */
+        }
+      });
       await new Promise<void>((done) => {
         const t0 = performance.now();
         let at = -1;
-        let lastTick = 0;
         const step = (t: number) => {
           if (!wheel.isConnected) return done();
           const k = T ? Math.min(1, (t - t0) / T) : 1;
@@ -1025,10 +1037,6 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
             if (at >= 0) cells[(start + at) % N].classList.remove('ball');
             at = pos;
             cells[(start + at) % N].classList.add('ball');
-            if (t - lastTick > 55) {
-              sfx('tick');
-              lastTick = t;
-            }
           }
           if (k < 1) requestAnimationFrame(step);
           else done();
@@ -1041,11 +1049,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const over = cells[number % N];
         at0.classList.remove('ball');
         over.classList.add('ball');
-        sfx('tick');
         await new Promise((r) => setTimeout(r, 190));
         over.classList.remove('ball');
         at0.classList.add('ball');
-        sfx('tick');
         await new Promise((r) => setTimeout(r, 120));
       }
       wheel.classList.remove('spinning');
