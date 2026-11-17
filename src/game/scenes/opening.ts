@@ -231,6 +231,12 @@ export interface OpeningScene extends Experiment {
    */
   fanRects(): Array<{ card: PackCard; x: number; y: number; w: number; h: number }> | null;
   /**
+   * (V3 lot 04) Éventail final : appelé par la boucle de la scène, juste après le rendu de l'image, quand le rectangle
+   * d'une carte a changé (au pixel près : inclinaison, survol, redimensionnement, replacement). Éventail immobile :
+   * plus aucun appel. Remplace la boucle requestAnimationFrame des badges de la boutique.
+   */
+  onFanMove: ((rects: Array<{ card: PackCard; x: number; y: number; w: number; h: number }>) => void) | null;
+  /**
    * Pilotage automatique (ouvertures ×5 / ×10, « passer jusqu'aux 4★ ») :
    * - `burn` : l'emballage se brûle tout seul, sans maintenir ;
    * - `minRank` : les cartes de rang inférieur se retournent et filent dans la rangée en accéléré, sans toucher ;
@@ -432,6 +438,8 @@ export function createOpeningScene(): OpeningScene {
   let cursor = 0;
   let prepared: Promise<void> | null = null;
   let tl: gsap.core.Timeline | null = null;
+  /** (V3 lot 04) derniers rectangles écran de l'éventail final envoyés à `onFanMove` (x, y, w, h par carte) */
+  const fanSig: number[] = [];
   /** timelines secondaires (sortie des cartes vers la rangée…) : jamais coupées par un tap, seulement au reset */
   const side = new Set<gsap.core.Timeline>();
   let spinTl: gsap.core.Timeline | null = null;
@@ -1315,6 +1323,35 @@ export function createOpeningScene(): OpeningScene {
     tl?.kill();
     tl = null;
   }
+  /*
+   * (V3 lot 04) HIT-STOP : la timeline gelée repart à la PREMIÈRE IMAGE où `ms` se sont écoulées depuis l'impact.
+   * Avant : un `setTimeout(ms)` hors cadence d'image, armé après le travail de l'image d'impact et servi en retard dès
+   * que le fil principal est chargé (image lourde d'une 6★) → une image de gel de plus, au hasard. Le temps est compté
+   * ici sur l'horloge qui fait avancer la timeline elle-même (le ticker GSAP, juste AVANT le rendu de la racine) :
+   * même durée nominale, même enchaînement, mais à l'image près. (Pas dans update(dt) : son dt est plafonné à 50 ms,
+   * le shell y saute des images sur les écrans 120 Hz et son ordre face au ticker GSAP varie → ±1 image.) L'écouteur
+   * n'existe que pendant le gel (au repos, GSAP se met en veille).
+   */
+  let stopTl: gsap.core.Timeline | null = null;
+  let stopLeft = 0;
+  const stopTick = (_time: number, deltaMs: number) => {
+    stopLeft -= deltaMs;
+    if (stopLeft > 0 && tl === stopTl) return;
+    gsap.ticker.remove(stopTick);
+    if (stopTl && tl === stopTl) stopTl.resume();
+    stopTl = null;
+  };
+  function hitStop(t: gsap.core.Timeline, ms: number) {
+    t.pause();
+    stopTl = t;
+    stopLeft = ms;
+    // posé à la fin du tick en cours (on est dans le rendu de la timeline : un écouteur prioritaire ajouté pendant la
+    // distribution du ticker ferait rendre la racine deux fois) ; prioritaire = compté avant le rendu de la racine, la
+    // reprise avance donc la timeline dans ce même tick, comme après le minuteur
+    queueMicrotask(() => {
+      if (stopTl === t) gsap.ticker.add(stopTick, false, true);
+    });
+  }
   function killAll() {
     kill();
     side.forEach((t) => t.kill());
@@ -1682,12 +1719,7 @@ export function createOpeningScene(): OpeningScene {
       events.onCard?.(cursor, s.data, order.length);
       eclipseRipple();
       // hit-stop : 60 / 90 / 120 ms de gel (4★ / 5★ / 6★), jamais en défilement accéléré
-      if (beat.hitStop > 0 && !CALM && curBase <= 1) {
-        main.pause();
-        window.setTimeout(() => {
-          if (tl === main) main.resume();
-        }, beat.hitStop);
-      }
+      if (beat.hitStop > 0 && !CALM && curBase <= 1) hitStop(main, beat.hitStop);
     }, [], pay);
     // la tranche s'éteint après l'impact
     main.to(s.U.rim, { value: 0, duration: mythic ? 0.6 : 0.9, ease: EASE.glide }, pay);
@@ -2380,6 +2412,7 @@ export function createOpeningScene(): OpeningScene {
       }
     },
     onThumb: null,
+    onFanMove: null,
     onBoosterTap: null,
     setFocusOffset(px, py = 0) {
       focusT = px;
@@ -3444,6 +3477,28 @@ export function createOpeningScene(): OpeningScene {
       if (!calm || wheelDirty) calmSkip = 0;
       if (!calm || wheelDirty || (calmSkip++ & 1) === 0) post.render();
       wheelDirty = false;
+      // (V3 lot 04) badges DOM de l'éventail final : prévenus seulement quand une carte a bougé à l'écran (matrices de
+      // l'image qui vient d'être rendue → badges et cartes dans la même image)
+      if (api.onFanMove && phase === 'done' && slots.length) {
+        const rects = api.fanRects();
+        if (rects) {
+          let moved = fanSig.length !== rects.length * 4;
+          for (let k = 0; k < rects.length; k++) {
+            const r = rects[k], o = k * 4;
+            if (fanSig[o] !== r.x || fanSig[o + 1] !== r.y || fanSig[o + 2] !== r.w || fanSig[o + 3] !== r.h) {
+              moved = true;
+              fanSig[o] = r.x;
+              fanSig[o + 1] = r.y;
+              fanSig[o + 2] = r.w;
+              fanSig[o + 3] = r.h;
+            }
+          }
+          if (moved) {
+            fanSig.length = rects.length * 4;
+            api.onFanMove(rects);
+          }
+        }
+      } else if (fanSig.length) fanSig.length = 0;
     },
     resize(w, h) {
       stage.fit(w, h);

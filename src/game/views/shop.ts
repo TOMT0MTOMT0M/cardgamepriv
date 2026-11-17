@@ -123,6 +123,9 @@ function eventPack(e: PackEvent): SheetPack {
 }
 const EV_SEEN = 'bebou.evenement-vu';
 
+/** (V3 lot 04) le navigateur sait-il partir d'un état @starting-style (Safari 17.5+, Chrome 117+) ? */
+const START_STYLE = typeof window !== 'undefined' && 'CSSStartingStyleRule' in window;
+
 export function createShopView(backend: GameBackend, shell: Shell, opening: OpeningScene, go: (route: string) => void, getViewer: () => Promise<ViewerScene>): ShopView {
   const el = h('section', 'view shop');
   const list = shopPacks();
@@ -334,6 +337,23 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     opening.setInsets(top, bottom);
   }
   window.addEventListener('resize', () => requestAnimationFrame(syncInsets));
+  /*
+   * (V3 lot 04) Fiche de carte affichée : sa hauteur et celle du panneau du bas sont servies par un ResizeObserver,
+   * juste après la mise en page que le navigateur fait de toute façon — rien n'est forcé, et la scène reçoit la zone
+   * libre dans l'image même où la fiche apparaît. Seulement fiche montrée (`.in`), comme l'ancienne mesure après
+   * showInfo ; même taille qu'avant (carte suivante, même hauteur de fiche) = rien à recalculer.
+   */
+  const infoRO = new ResizeObserver((entries) => {
+    if (info.hidden || !info.classList.contains('in')) return;
+    for (const e of entries) {
+      if (e.target !== info) continue;
+      const hh = Math.round(e.borderBoxSize?.[0]?.blockSize ?? info.offsetHeight);
+      if (hh) infoH = hh;
+    }
+    syncInsets();
+  });
+  infoRO.observe(info);
+  infoRO.observe(hudBottom);
 
   /**
    * (audit UX1-13) Accueil téléphone : un vrai bouton « Ouvrir » sous le booster (il ouvre la fiche du booster choisi),
@@ -1626,7 +1646,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     info.hidden = false;
     info.style.setProperty('--rc', rr.hex);
     info.style.setProperty('--ra', rr.accentHex);
-    info.className = `card-info r-${card.rarity}`;
+    // (V3 lot 04) `.in` posé d'emblée : en sortant de [hidden], la transition part de l'état @starting-style (style.css)
+    // — plus de `void info.offsetWidth` (mise en page forcée de toute la page à chaque carte) ; navigateur trop ancien
+    // pour @starting-style : l'ancien chemin
+    info.className = `card-info r-${card.rarity}${START_STYLE ? ' in' : ''}`;
     // exemplaires déjà possédés (la collection n'est créditée qu'à la fin de l'ouverture)
     const had = backend.state.collection.find((c) => c.cardId === card.cardId && c.rarity === card.rarity)?.count ?? 0;
     info.innerHTML = `
@@ -1634,13 +1657,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       <div class="ci-name">${esc(card.cardName)}</div>
       <div class="ci-meta">${starsHtml(card.rarity)} <span class="ci-r">${rr.label}</span></div>
       <div class="ci-sub">${tr('shop.cardSub', { sub: subt ? esc(subt.label) : '', theme: theme && !theme.secret ? ` · ${esc(theme.label)}` : '', n: fmtN(card.mintNumber) })}</div>`;
-    void info.offsetWidth;
-    info.classList.add('in');
-    // hauteur réelle du panneau : la carte suivante se placera au-dessus (UX2-06)
-    requestAnimationFrame(() => {
-      if (!info.hidden && info.offsetHeight) infoH = info.offsetHeight;
-      syncInsets();
-    });
+    if (!START_STYLE) {
+      void info.offsetWidth;
+      info.classList.add('in');
+    }
+    // hauteur réelle du panneau : la carte suivante se placera au-dessus (UX2-06) — (V3 lot 04) lue par `infoRO`
+    // (voir syncInsets), plus par un offsetHeight à l'image suivante (mise en page forcée, une image de retard)
   }
 
   // ─────────────────────────────────────────── Pokémon 6★ : « rencontre sauvage » (041)
@@ -1876,10 +1898,28 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     sumBg.hidden = false;
   }
 
-  /** Badges NOUVELLE / DOUBLON ×n posés sur les cartes de l'éventail 3D (suivent les cartes à chaque image). */
-  let badgeRaf = 0;
+  /**
+   * Badges NOUVELLE / DOUBLON ×n posés sur les cartes de l'éventail 3D (suivent les cartes).
+   * (V3 lot 04) plus de boucle requestAnimationFrame infinie (projection des 5 à 10 cartes + réécriture de chaque badge à
+   * chaque image, même éventail immobile) : la scène prévient quand une carte bouge à l'écran (`opening.onFanMove`,
+   * juste après son rendu) ; immobile = rien. Une pose immédiate à l'affichage et au retour de la visionneuse.
+   */
+  let badgeByKey: Map<string, HTMLElement> | null = null;
+  function placeFanBadges(rects: ReturnType<OpeningScene['fanRects']>) {
+    if (!rects || !badgeByKey || fanBadges.hidden) return;
+    for (const r of rects) {
+      const b = badgeByKey.get(`${r.card.cardId}:${r.card.rarity}:${r.card.mintNumber}`);
+      if (!b) continue;
+      // (audit UX2-18) à cheval sur le bord BAS de la carte : le haut (numéro, étoiles) reste visible
+      b.style.transform = `translate(${Math.round(r.x + r.w / 2)}px, ${Math.round(r.y + r.h - 10)}px) translateX(-50%)`;
+      if (b.style.opacity !== '1') b.style.opacity = '1';
+    }
+  }
+  /** pose tout de suite (affichage, retour de la visionneuse) ; ensuite, seulement quand l'éventail bouge */
+  function syncFanBadges() {
+    placeFanBadges(opening.fanRects());
+  }
   function showFanBadges(cards: PackCard[]) {
-    cancelAnimationFrame(badgeRaf);
     fanBadges.replaceChildren();
     fanBadges.hidden = false;
     const byKey = new Map<string, HTMLElement>();
@@ -1893,24 +1933,13 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       fanBadges.append(b);
       byKey.set(k, b);
     }
-    const tick = () => {
-      if (fanBadges.hidden) return;
-      const rects = opening.fanRects();
-      if (rects) {
-        for (const r of rects) {
-          const b = byKey.get(`${r.card.cardId}:${r.card.rarity}:${r.card.mintNumber}`);
-          if (!b) continue;
-          // (audit UX2-18) à cheval sur le bord BAS de la carte : le haut (numéro, étoiles) reste visible
-          b.style.transform = `translate(${Math.round(r.x + r.w / 2)}px, ${Math.round(r.y + r.h - 10)}px) translateX(-50%)`;
-          b.style.opacity = '1';
-        }
-      }
-      badgeRaf = requestAnimationFrame(tick);
-    };
-    badgeRaf = requestAnimationFrame(tick);
+    badgeByKey = byKey;
+    opening.onFanMove = placeFanBadges;
+    syncFanBadges();
   }
   function hideFanBadges() {
-    cancelAnimationFrame(badgeRaf);
+    opening.onFanMove = null;
+    badgeByKey = null;
     fanBadges.hidden = true;
   }
 
@@ -2078,7 +2107,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     document.body.classList.remove('card-open');
     summary.hidden = mode !== 'summary';
     sumBg.classList.remove('veiled');
-    if (mode === 'summary' && !summary.classList.contains('multi')) fanBadges.hidden = false;
+    if (mode === 'summary' && !summary.classList.contains('multi')) {
+      fanBadges.hidden = false;
+      syncFanBadges(); // (V3 lot 04) l'éventail a pu se replacer pendant le zoom (rotation de l'écran)
+    }
     big.setVisible(mode === 'pick');
     shell.show('opening');
     syncHint();

@@ -1473,6 +1473,9 @@ a.pf-ach:hover { border-color: var(--gold); }
 .hud-bottom { position: absolute; left: 0; right: 0; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 0 16px; pointer-events: none; }
 .hud-bottom .card-info { position: relative; left: auto; bottom: auto; transform: translateY(10px); }
 .hud-bottom .card-info.in { transform: none; }
+/* (V3 lot 04) fiche de carte qui sort de [hidden] : état de départ de sa transition déclaré ici (@starting-style) au lieu
+   d'une mise en page forcée en JS (shop.ts showInfo) ; mêmes valeurs que l'état sans .in juste au-dessus */
+@starting-style { .card-info.in { opacity: 0; transform: translate(-50%, 12px); } .hud-bottom .card-info.in { transform: translateY(10px); } }
 .hud-bottom .hud-hint { position: static; }
 .hud-bottom .hud-skip { position: static; flex-direction: row; justify-content: center; align-items: center; gap: 10px; pointer-events: none; }
 .shop .hud .hud-skip button { pointer-events: auto; }

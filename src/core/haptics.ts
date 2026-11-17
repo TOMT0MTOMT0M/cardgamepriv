@@ -1,4 +1,5 @@
 import { t as tr } from './i18n';
+import { DUR } from './motion';
 /**
  * Retour haptique multi-plateforme — et POURQUOI « ça ne vibre pas » (diagnostic du 4 nov.) :
  *  - Android / Chrome : `navigator.vibrate(pattern)`. Conditions : la page a reçu AU MOINS UN toucher (activation
@@ -9,13 +10,19 @@ import { t as tr } from './i18n';
  *    (`<input type="checkbox" switch>`) dont le label, cliqué, fait battre le Taptic Engine — mais UNIQUEMENT pendant un
  *    geste de l'utilisateur. Un `pulse()` appelé plus tard (fin d'une animation, impact d'une carte) ne fait donc RIEN
  *    sur iPhone : seules les vibrations déclenchées dans le gestionnaire du toucher lui-même passent. D'où `gesture()`
- *    (le shell marque chaque toucher) et le repli : un `pulse()` hors geste est gardé 400 ms et joué au prochain toucher
- *    s'il en arrive un (sinon oublié). Les motifs deviennent une suite de clics espacés.
+ *    (le shell marque chaque toucher) et le repli : un `pulse()` hors geste est gardé un instant et joué au prochain
+ *    toucher s'il tombe DANS cet instant (sinon oublié). Les motifs deviennent une suite de clics espacés.
+ *    (V3 lot 04) cet instant était de 400 ms : l'impact d'une 4★-6★ (programmé par la timeline, hors geste) vibrait
+ *    alors au toucher suivant, jusqu'à 0,4 s trop tard — sur le bouton « Fermer » ou la carte d'après. Une vibration
+ *    décalée se lit comme un bug : au-delà de `FRESH_MS`, elle est jetée. Android / Chrome n'est pas concerné (la
+ *    vibration hors geste y passe directement) ; seuls les refus (avant le 1er toucher, Firefox) suivent la même règle.
  *  - Ailleurs (ordinateur, Firefox iOS…) : rien.
  * `support` dit ce que l'appareil peut faire, pour l'afficher dans le réglage « Vibrations ».
  */
 /** réglage « Vibrations » (navigateur) : '0' = coupées ; absent = actives (audit UX2-14) */
 const PREF = 'bebou.haptics';
+/** âge maximal (ms) d'une impulsion hors geste encore rejouée au toucher suivant : imperceptible, jamais « en retard » */
+const FRESH_MS = DUR.instant;
 
 export type HapticSupport = 'vibrate' | 'ios' | 'none';
 
@@ -24,7 +31,7 @@ class Haptics {
   private timers: number[] = [];
   /** iPhone : vrai pendant le gestionnaire d'un geste (le shell appelle `gesture()`) */
   private inGesture = false;
-  /** iPhone : impulsion demandée hors geste, à rejouer si un toucher arrive dans les 400 ms */
+  /** iPhone : impulsion demandée hors geste, à rejouer si un toucher arrive dans les `FRESH_MS` */
   private pending: { pattern: number | number[]; at: number } | null = null;
   /** dernier appel ignoré, pour le diagnostic (`why`) */
   why = '';
@@ -70,7 +77,7 @@ class Haptics {
     this.inGesture = true;
     const p = this.pending;
     this.pending = null;
-    if (p && performance.now() - p.at < 400) this.pulse(p.pattern);
+    if (p && performance.now() - p.at <= FRESH_MS) this.pulse(p.pattern);
     queueMicrotask(() => (this.inGesture = false));
   }
 
@@ -126,7 +133,7 @@ class Haptics {
         return;
       }
       if (!this.inGesture) {
-        // iPhone hors geste : on retient l'impulsion ; un toucher dans les 400 ms la jouera
+        // iPhone hors geste : on retient l'impulsion ; un toucher dans les `FRESH_MS` la jouera (plus tard : jetée)
         this.pending = { pattern, at: performance.now() };
         this.why = 'iPhone : seulement pendant un toucher';
         return;
