@@ -11,6 +11,8 @@ import { gestureButtons, panelStrip, showCardPanel } from './cardPanel';
 import { cardQuery, type CardQuery } from '../../core/cardSearch';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
+import { DUR, EASING, SPRING, STAGGER } from '../../core/motion';
+import { Spring } from '../../core/ease';
 import { createForge, forgeCount } from './forge';
 import { binderShift } from './binderShift';
 import { GAMES_OPEN } from '../../core/games';
@@ -353,14 +355,23 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       toast(errMsg(err), 'err');
     }
   });
-  let wheelTo: number | null = null;
-  let wheelT = 0;
-  el.addEventListener('wheel', (e) => {
+  // ── (V3, lot 06 + S1) ÉCHAPPEMENT DE LA MOLETTE ─────────────────────────────────────────────────────────────────────
+  /*
+   * Toujours UN cran = UNE rangée (décision de Tom), mais plus de verrou de 450 ms ni de `scrollTo` « smooth » du
+   * navigateur (durée imposée, cible perdue si on retournait la molette pendant le glissement) : la position suit un
+   * ressort amorti court (SPRING.net, ζ ≈ 0,9) qu'on pilote nous-mêmes. Chaque cran ajoute une rangée à la CIBLE, tout de
+   * suite, même en plein mouvement : 10 crans rapides = 10 rangées, d'un seul jet. Toucher, clavier, barre de défilement
+   * ou un autre défilement reprennent la main à tout instant. Pendant le glissement, l'aimantation CSS (scroll-snap) est
+   * suspendue (elle recalerait chaque image) ; à l'arrêt, on est pile sur un cran : elle revient sans rien bouger.
+   * Butée : un tic par rangée posée (sons existants, débit limité par Sfx.tick), puis un fin reflet rasant passe une fois
+   * sur la rangée arrivée sous la barre.
+   */
+  const esc0 = { spring: new Spring(0, SPRING.net.stiffness, SPRING.net.damping), raf: 0, last: 0, wrote: -1, row0: 0, rowH: 0, k: 0, dir: 0 };
+  /** géométrie des crans (lue au cran, la mise en page est alors propre) ; null = pas une grille de tuiles */
+  const notchGeom = (): { row0: number; rowH: number; max: number } | null => {
     const first = grid.firstElementChild as HTMLElement | null;
-    if (e.ctrlKey || grid.hidden || !first?.classList.contains('tile') || el.classList.contains('viewing') || Math.abs(e.deltaY) < 40 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-    if ((e.target as HTMLElement).closest?.('.binder-pick, .viewer-ui')) return;
-    const cs = getComputedStyle(el);
-    const pad = parseFloat(cs.scrollPaddingTop) || 0;
+    if (grid.hidden || !first?.classList.contains('tile')) return null;
+    const pad = parseFloat(getComputedStyle(el).scrollPaddingTop) || 0;
     // pas d'une rangée = écart entre le haut de deux rangées (la rangée peut être plus haute que la carte)
     let rowH = first.offsetHeight + (parseFloat(getComputedStyle(grid).rowGap) || 0);
     for (let i = 1; i < Math.min(grid.children.length, 12); i++) {
@@ -370,21 +381,94 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         break;
       }
     }
-    if (rowH < 40) return;
+    if (rowH < 40) return null;
+    return { row0: Math.max(0, grid.offsetTop - pad), rowH, max: el.scrollHeight - el.clientHeight };
+  };
+  /** rang du cran d'une position : -1 = le haut de la page, 0 = 1re rangée calée sous la barre… */
+  const notchOf = (y: number) => (y < esc0.row0 - 2 ? -1 : Math.round((y - esc0.row0) / esc0.rowH));
+  const notchY = (k: number, max: number) => Math.max(0, Math.min(max, k < 0 ? 0 : esc0.row0 + k * esc0.rowH));
+  function escStop() {
+    if (esc0.raf) cancelAnimationFrame(esc0.raf);
+    esc0.raf = 0;
+    el.style.removeProperty('scroll-snap-type');
+  }
+  /** le reflet rasant : une fois, de gauche à droite, sur les cartes posées contre la ligne du cran */
+  function rowSheen() {
+    const line = el.getBoundingClientRect().top + (parseFloat(getComputedStyle(el).scrollPaddingTop) || 0);
+    let col = 0;
+    for (const t of grid.querySelectorAll<HTMLElement>(':scope > .tile')) {
+      const top = t.getBoundingClientRect().top;
+      if (top > line + 3) break;
+      if (top < line - 3) continue;
+      t.querySelector(':scope > .row-sheen')?.remove();
+      const s = h('i', 'row-sheen');
+      s.setAttribute('aria-hidden', 'true');
+      t.append(s);
+      const a = s.animate([{ transform: 'translateX(-60%)' }, { transform: 'translateX(60%)' }], { duration: DUR.standard(), delay: Math.min(STAGGER.max, col++ * STAGGER.serre), easing: EASING.standard, fill: 'both' });
+      a.onfinish = a.oncancel = () => s.remove();
+    }
+  }
+  function escFrame(now: number) {
+    esc0.raf = 0;
+    // quelqu'un d'autre a fait défiler (doigt, barre, clavier, « ↑ », visionneuse…) : il a la main
+    if (Math.abs(el.scrollTop - esc0.wrote) > 2 || grid.hidden || el.classList.contains('viewing') || !el.isConnected) return escStop();
+    const s = esc0.spring;
+    s.update(Math.min(0.064, Math.max(0.001, (now - esc0.last) / 1000)));
+    esc0.last = now;
     const max = el.scrollHeight - el.clientHeight;
-    const row0 = Math.max(0, grid.offsetTop - pad);
-    // crans : le haut de la page, puis chaque rangée calée sous la barre, puis le bas
-    const from = wheelTo ?? el.scrollTop;
-    const k = from < row0 - 2 ? -1 : Math.round((from - row0) / rowH);
-    const nk = k + (e.deltaY > 0 ? 1 : -1);
-    const to = Math.max(0, Math.min(max, nk < 0 ? 0 : row0 + nk * rowH));
+    s.target = Math.min(s.target, max);
+    const done = Math.abs(s.value - s.target) < 0.5 && Math.abs(s.velocity) < 20;
+    const y = done ? s.target : Math.max(0, Math.min(max, s.value));
+    el.scrollTop = y;
+    esc0.wrote = el.scrollTop;
+    // un tic quand une rangée se pose (sens du mouvement), la dernière à l'arrivée
+    const f = (y - esc0.row0) / esc0.rowH;
+    const seat = y < esc0.row0 - 2 ? -1 : esc0.dir > 0 ? Math.floor(f + 0.02) : Math.ceil(f - 0.02);
+    if (seat !== esc0.k && (seat - esc0.k) * esc0.dir > 0) {
+      esc0.k = seat;
+      shell.sfx.tick(esc0.dir > 0 ? 1.08 : 0.94, 0.05);
+    }
+    if (!done) {
+      esc0.raf = requestAnimationFrame(escFrame);
+      return;
+    }
+    escStop();
+    rowSheen();
+  }
+  el.addEventListener('wheel', (e) => {
+    // pavé tactile (petits deltas continus), Ctrl + molette, défilement horizontal : comportement normal
+    const lines = e.deltaMode !== 0; // (Firefox : crans comptés en lignes)
+    if (e.ctrlKey || el.classList.contains('viewing') || (!lines && Math.abs(e.deltaY) < 40) || !e.deltaY || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return escStop();
+    if ((e.target as HTMLElement).closest?.('.binder-pick, .viewer-ui')) return;
+    const g = notchGeom();
+    if (!g) return escStop();
     e.preventDefault();
-    if (Math.abs(to - el.scrollTop) < 1) return;
-    wheelTo = to;
-    el.scrollTo({ top: to, behavior: 'smooth' });
-    clearTimeout(wheelT);
-    wheelT = window.setTimeout(() => (wheelTo = null), 450);
+    const dir = e.deltaY > 0 ? 1 : -1;
+    const s = esc0.spring;
+    const moving = esc0.raf !== 0;
+    esc0.row0 = g.row0;
+    esc0.rowH = g.rowH;
+    // la cible avance d'un cran depuis la cible en cours (enchaînement), sinon depuis la position calée
+    const k = notchOf(moving ? s.target : el.scrollTop) + dir;
+    const to = notchY(k, g.max);
+    if (!moving) {
+      if (Math.abs(to - el.scrollTop) < 1) return;
+      s.set(el.scrollTop);
+      esc0.k = notchOf(el.scrollTop);
+      esc0.wrote = el.scrollTop;
+      esc0.last = performance.now();
+      el.style.setProperty('scroll-snap-type', 'none');
+      esc0.raf = requestAnimationFrame(escFrame);
+    } else if (dir !== esc0.dir) {
+      // demi-tour en plein glissement : les tics repartent de la rangée qu'on vient de quitter
+      const f = (s.value - esc0.row0) / esc0.rowH;
+      esc0.k = s.value < esc0.row0 - 2 ? -1 : dir > 0 ? Math.floor(f + 0.02) : Math.ceil(f - 0.02);
+    }
+    esc0.dir = dir;
+    s.target = to;
   }, { passive: false });
+  // le doigt, la souris (barre de défilement) ou le clavier reprennent la main tout de suite
+  for (const ev of ['pointerdown', 'touchstart', 'keydown'] as const) el.addEventListener(ev, () => esc0.raf && escStop(), { passive: true });
   q('.crumb-back').addEventListener('click', () => {
     if (mode === 'binder') return goBinders();
     // niveau d'une famille → les familles du thème ; un album → sa famille (famId déjà posé) ou les familles
@@ -425,6 +509,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   // ── (15/11) affichage de la grille : 2×6, 4×8, 6×10 (voir DENS)
   /** colonnes de la grille telle qu'affichée (ordinateur : celles du choix ; téléphone : selon la largeur) */
   const gridCols = () => {
+    if (flipCols !== null && !grid.hidden) return flipCols; // (V3, lot 06) lues en tête de rendu
     if (grid.hidden) return matchMedia('(min-width: 861px)').matches ? DENS.find((d) => d.id === dens)!.cols : 2;
     return Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
   };
@@ -458,6 +543,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     syncDens(); // les colonnes changent ici (CSS) : la taille de page se lit juste après
     shell.sfx.tick(1.2, 0.04);
     if (at !== null) page = Math.floor(at / perPage());
+    flipSkip = true; // (V3, lot 06) la grille se recale juste après (scrollIntoView) : le fondu, pas de FLIP
     render();
     // la carte qui était en haut reste à l'écran : sa rangée se cale sous la barre, au cran ; sur ordinateur, sans dépasser
     // le dernier écran plein de la page (6×10 : la page entière tient, on la montre en entier)
@@ -623,12 +709,29 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     toTop();
   }
 
+  /** (V3, lot 06) comptes de la collection (onglets, progression), refaits seulement quand la collection change */
+  const counts = new Map<string, unknown>();
+  let countsFor: readonly PlayerCard[] | null = null;
+  function countMemo<T>(key: string, f: () => T): T {
+    if (countsFor !== backend.state.collection) {
+      counts.clear();
+      countsFor = backend.state.collection;
+    }
+    if (counts.has(key)) return counts.get(key) as T;
+    const v = f();
+    counts.set(key, v);
+    return v;
+  }
   function renderTabs(mine: Map<string, PlayerCard>) {
     tabs.innerHTML = '';
     for (const t of ALL_THEMES) {
       // (audit 12/11, A4-03) compté sans tableau intermédiaire (≈ 37 000 cartes par rendu)
-      let n = 0;
-      for (const c of t.cards) if (mine.has(c.id)) n++;
+      // (V3, lot 06) … et une seule fois par état de la collection : un tri ou un filtre ne le refait plus
+      const n = countMemo(`tab|${t.id}|${t.cards.length}`, () => {
+        let k = 0;
+        for (const c of t.cards) if (mine.has(c.id)) k++;
+        return k;
+      });
       const on = (mode === 'albums' || mode === 'grid') && t === theme;
       const b = h('button', `tab${on ? ' on' : ''}${t.secret ? ' secret' : ''}${t.cards.length ? '' : ' soon'}`, `${esc(t.label)} <span>${t.cards.length ? `${fmtN(n)}/${fmtN(t.cards.length)}` : tr('common.soon')}</span>`);
       b.addEventListener('click', () => {
@@ -670,21 +773,26 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     progress.hidden = false;
     const inCards = mode === 'cards';
     const ct = inCards && cTheme ? ALL_THEMES.find((t) => t.id === cTheme) : null;
-    const cards = inCards ? (ct ? ct.cards : ALL_THEMES.filter((t) => !t.secret).flatMap((t) => t.cards)) : scope();
     const st = !inCards && subId ? subthemeById(subId) : null;
     const label = inCards ? (ct ? ct.label : tr('coll.inTotal')) : st ? st.label : theme.label;
-    const total = cards.length;
     // (audit 12/11, A4-03) UN passage sur les cartes (jusqu'à 37 000) au lieu de 14 : possédées, doublons, et par étoile
-    let have = 0, dups = 0;
-    const starTot = new Map<string, number>(), starHave = new Map<string, number>();
-    for (const c of cards) {
-      const m = mine.get(c.id);
-      starTot.set(c.rarity, (starTot.get(c.rarity) ?? 0) + 1);
-      if (!m) continue;
-      have++;
-      dups += Math.max(0, (m.count ?? 0) - 1);
-      starHave.set(c.rarity, (starHave.get(c.rarity) ?? 0) + 1);
-    }
+    // (V3, lot 06) mémorisé par état de la collection et par périmètre (la taille des sets suit leur chargement) : un tri
+    // ou un filtre de la grille ne repasse plus sur les 37 000 cartes
+    const scopeKey = inCards ? `c|${ct ? `${ct.id}|${ct.cards.length}` : ALL_THEMES.map((t) => (t.secret ? 0 : t.cards.length)).join(',')}` : `t|${theme.id}|${theme.cards.length}|${subId ?? ''}`;
+    const { total, have, dups, starTot, starHave } = countMemo(`prog|${scopeKey}`, () => {
+      const cards = inCards ? (ct ? ct.cards : ALL_THEMES.filter((t) => !t.secret).flatMap((t) => t.cards)) : scope();
+      let have = 0, dups = 0;
+      const starTot = new Map<string, number>(), starHave = new Map<string, number>();
+      for (const c of cards) {
+        const m = mine.get(c.id);
+        starTot.set(c.rarity, (starTot.get(c.rarity) ?? 0) + 1);
+        if (!m) continue;
+        have++;
+        dups += Math.max(0, (m.count ?? 0) - 1);
+        starHave.set(c.rarity, (starHave.get(c.rarity) ?? 0) + 1);
+      }
+      return { total: cards.length, have, dups, starTot, starHave };
+    });
     const pct = total ? (have / total) * 100 : 0;
     const per = (inCards ? ct?.secret : theme.secret)
       ? ''
@@ -973,6 +1081,102 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     }
     return t;
   }
+  // ── (V3, lot 06) TUILES RECYCLÉES + FLIP ──────────────────────────────────────────────────────────────────────────
+  /*
+   * Changer de tri, d'étoile, de thème ou de filtre refaisait les 60 tuiles : nouvelles images, vraie carte reposée
+   * après décodage (l'aperçu clignotait une ou deux images), et un `offsetWidth` forcé pour rejouer le fondu de la
+   * grille. Maintenant une carte déjà affichée GARDE sa tuile (même état : exemplaires, nouvelle, envie, langue) ; les
+   * tuiles visibles glissent de leur ancienne place à la nouvelle (FLIP), les nouvelles venues apparaissent en fondu. Un
+   * changement de page (rien en commun à l'écran) garde le fondu de la grille d'avant, sans mise en page forcée.
+   */
+  /** tuiles du dernier rendu, par carte (`id|rareté`) avec leur état ; `poolNext` : celles du rendu en cours */
+  let pool = new Map<string, { t: HTMLElement; sig: string }>();
+  let poolNext = new Map<string, { t: HTMLElement; sig: string }>();
+  /** positions à l'écran AVANT le rendu (lues en tête de `render`, la mise en page est alors propre) */
+  let flipFirst: Map<Element, DOMRect> | null = null;
+  const flipAnims = new Set<Animation>();
+  const gridTiles = () => grid.querySelectorAll<HTMLElement>(':scope > .tile, :scope > .cards-alb > .tile');
+  let flipSkip = false;
+  function flipCapture() {
+    flipFirst = null;
+    const skip = flipSkip;
+    flipSkip = false;
+    if (skip || grid.hidden || !(mode === 'cards' || mode === 'grid')) return;
+    flipCols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+    const m = new Map<Element, DOMRect>();
+    const vh = innerHeight;
+    for (const t of gridTiles()) {
+      const r = t.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < vh) m.set(t, r);
+    }
+    // un FLIP encore en cours : sa position du moment est la bonne origine, puis on le lâche
+    for (const a of flipAnims) a.cancel();
+    flipAnims.clear();
+    flipFirst = m;
+    // clavier : la tuile qui a le focus le garde si elle reste dans la grille (replaceChildren le lui ôterait)
+    const f = document.activeElement;
+    flipFocus = f instanceof HTMLElement && f.classList.contains('tile') && grid.contains(f) ? f : null;
+  }
+  let flipFocus: HTMLElement | null = null;
+  /** tuile d'une carte : celle du rendu précédent si rien n'a changé pour elle, sinon une neuve */
+  function takeTile(key: string, sig: string, make: () => HTMLElement): HTMLElement {
+    const p = pool.get(key);
+    const t = p && p.sig === sig && !poolNext.has(key) ? p.t : make();
+    if (!poolNext.has(key)) poolNext.set(key, { t, sig });
+    return t;
+  }
+  const tileSig = (e: CatalogEntry, mine: Map<string, PlayerCard>, wish: Set<string> | null) => {
+    const have = mine.get(e.id);
+    return `${lang()}|${have ? have.count : '-'}|${fresh.has(e.id) ? 1 : 0}|${wish?.has(e.id) ? 1 : 0}`;
+  };
+  /** la grille vient d'être refaite (null = pas de grille dans ce rendu) ; true = autre contenu qu'avant */
+  let flipChanged: boolean | null = null;
+  /** colonnes lues en tête de rendu (mise en page propre) : plus de style recalculé de force au milieu du rendu */
+  let flipCols: number | null = null;
+  /**
+   * En fin de `render` (tout le DOM du rendu est posé : une seule mise en page) : les tuiles visibles glissent de leur
+   * ancienne place, les nouvelles entrent en fondu.
+   */
+  function flipPlay() {
+    const first = flipFirst, changed = flipChanged;
+    flipFirst = null;
+    flipChanged = null;
+    flipCols = null;
+    const focus = flipFocus;
+    flipFocus = null;
+    if (changed === null) return;
+    pool = poolNext;
+    poolNext = new Map();
+    if (focus?.isConnected && document.activeElement !== focus && grid.contains(focus)) focus.focus({ preventScroll: true });
+    if (!changed) return;
+    const vh = innerHeight;
+    const enter: HTMLElement[] = [];
+    let kept = 0;
+    if (first?.size) {
+      for (const t of gridTiles()) {
+        const f = first.get(t);
+        const r = t.getBoundingClientRect();
+        if (r.bottom <= 0 || r.top >= vh) continue;
+        if (!f) {
+          enter.push(t);
+          continue;
+        }
+        kept++;
+        const dx = f.left - r.left, dy = f.top - r.top;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+        const a = t.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: DUR.standard(), easing: EASING.standard });
+        flipAnims.add(a);
+        a.onfinish = a.oncancel = () => flipAnims.delete(a);
+      }
+    }
+    // rien en commun à l'écran (autre page, autre album) : le fondu de la grille d'avant (style.css, grid-in)
+    if (!kept) {
+      grid.animate([{ opacity: 0.25, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: DUR.emphatique(), easing: EASING.entree });
+      return;
+    }
+    for (const t of enter) t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: DUR.standard(), easing: EASING.entree });
+  }
+
   let shownList: CatalogEntry[] = [];
   let lastKey = '';
   function renderGrid(mine: Map<string, PlayerCard>) {
@@ -987,21 +1191,17 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     starf.querySelectorAll<HTMLElement>('.chip').forEach((b) => setOn(b, b.dataset.r === star));
     const list = sortList(scope().filter((e) => matches(e, mine)), mine);
     const key = `${theme.id}|${subId}|${filter}|${star}|${sort}|${query}|${page}|${dens}`;
-    if (key !== lastKey) {
-      if (lastKey) {
-        grid.classList.remove('swap');
-        void grid.offsetWidth;
-        grid.classList.add('swap');
-      }
-      lastKey = key;
-    }
+    // (V3, lot 06) contenu changé : FLIP des tuiles gardées (flipPlay) au lieu du fondu rejoué par mise en page forcée
+    const changed = key !== lastKey && !!lastKey;
+    lastKey = key;
     per = perPage();
     const pages = Math.max(1, Math.ceil(list.length / per));
     if (page >= pages) page = pages - 1;
     const wish = wishSet();
     const frag = document.createDocumentFragment();
-    for (const e of list.slice(page * per, (page + 1) * per)) frag.append(tileFor(e, mine, wish));
+    for (const e of list.slice(page * per, (page + 1) * per)) frag.append(takeTile(`${e.id}|${e.rarity}`, tileSig(e, mine, wish), () => tileFor(e, mine, wish)));
     grid.replaceChildren(frag);
+    flipChanged = changed;
     shownList = list;
     preloadThumbs(list.slice(page * per, (page + 1) * per), true); // la page affichée passe devant (PERF2-04)
     renderPager(pages, list.length);
@@ -1111,19 +1311,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     else if (cSort === 'alpha') list.sort((a, b) => a.name.localeCompare(b.name, locale()));
     else list.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), locale()) || a.num - b.num);
     const key = `cards|${cTheme}|${cStar}|${cSort}|${cQuery}|${cDups}|${page}|${dens}`;
-    if (key !== lastKey) {
-      if (lastKey) {
-        grid.classList.remove('swap');
-        void grid.offsetWidth;
-        grid.classList.add('swap');
-      }
-      lastKey = key;
-    }
+    // (V3, lot 06) contenu changé : FLIP des tuiles gardées (flipPlay) au lieu du fondu rejoué par mise en page forcée
+    const changed = key !== lastKey && !!lastKey;
+    lastKey = key;
     per = perPage();
     const pages = Math.max(1, Math.ceil(list.length / per));
     if (page >= pages) page = pages - 1;
     const frag = document.createDocumentFragment();
-    const tile = (e: CatalogEntry) => cardTile(e.id, e.rarity, { owned: true, count: mine.get(e.id)!.count, fresh: fresh.has(e.id) });
+    const tile = (e: CatalogEntry) => takeTile(`${e.id}|${e.rarity}`, tileSig(e, mine, null), () => cardTile(e.id, e.rarity, { owned: true, count: mine.get(e.id)!.count, fresh: fresh.has(e.id) }));
     const slice = list.slice(page * per, (page + 1) * per);
     if (cSort === 'album') {
       // tri par album : un bloc par album (titre au-dessus de ses cartes) ; les petits albums se rangent côte à côte
@@ -1157,10 +1352,11 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
           lastCat = e.subthemeId;
           frag.append(h('h4', 'cards-sub cards-cat-sub', `${esc(subLabel(e))}<small>${esc(themeById(e.themeId)?.label ?? '')}</small>`));
         }
-        frag.append(tileFor(e, mine, wish));
+        frag.append(takeTile(`${e.id}|${e.rarity}`, tileSig(e, mine, wish), () => tileFor(e, mine, wish)));
       }
     }
     grid.replaceChildren(frag);
+    flipChanged = changed;
     shownList = list;
     preloadThumbs(list.slice(page * per, (page + 1) * per), true); // la page affichée passe devant (PERF2-04)
     renderPager(pages, list.length);
@@ -1524,6 +1720,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }
 
   function render() {
+    flipCapture(); // (V3, lot 06) positions des tuiles avant tout changement du DOM
     const mine = owned();
     renderTabs(mine);
     const inCards = mode === 'cards';
@@ -1579,6 +1776,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     else if (mode === 'binders') renderBinders(mine);
     else if (mode === 'forge') forge.render();
     else renderBinder(mine);
+    flipPlay(); // (V3, lot 06)
   }
 
   // ── carte focus (visionneuse 3D) + actions

@@ -466,3 +466,10 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
   .pf-panel { padding: 14px 14px 8px; }
   .pf-rlist { column-gap: 16px; }
 }
+
+/* ───────────── (V3, lot 06 + S1) COLLECTION : butée de la molette et emplacements manquants
+   Reflet rasant : une fine bande blanche passe UNE fois sur les cartes de la rangée qui vient se caler sous la barre
+   (collection.ts, rowSheen : translateX par WAAPI, durée et décalage par jetons). Manquantes : empreinte gravée en
+   creux (ombre portée vers l'intérieur, arête basse à peine éclairée), sans couleur. */
+.view.collection > .grid .tile > .row-sheen { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(100deg, transparent 42%, rgba(255, 255, 255, 0.26) 50%, transparent 58%); }
+.view.collection > .grid .tile.missing { box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), inset 0 -1px 0 rgba(255, 255, 255, 0.07); }
