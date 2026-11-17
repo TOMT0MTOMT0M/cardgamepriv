@@ -17,6 +17,7 @@ import {
   achievementReward,
   achievementStats,
   burnProblem,
+  BURN_MAX_ITEMS,
   calendarDay,
   calendarReward,
   claimableAchievements,
@@ -166,7 +167,7 @@ export const burn = mutation({
   args: { sessionToken: v.string(), items: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })) },
   handler: async (ctx, { sessionToken, items }) => {
     const u = await requireUser(ctx, sessionToken);
-    if (items.length > 200) throw new ConvexError(fe('economy.2'));
+    if (items.length > BURN_MAX_ITEMS) throw new ConvexError(fe('economy.2'));
     // (audit 12/11, S07 / A6-09) seulement les lignes brûlées (≤ 200, par l'index), plus la collection entière
     const rows = new Map<string, Doc<'inventory'> | null>();
     for (const it of items) {
