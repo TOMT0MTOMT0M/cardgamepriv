@@ -18,6 +18,7 @@ import { createMissions, MISSION_ICON } from './views/missions';
 import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
 import { PITY_LIMIT } from '../core/pity';
 import { COIN_ICON, createWallet } from './views/wallet';
+import { armPin, clearPins, payOut } from './views/coinHopper';
 import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
 import { boardAttention } from './backend';
@@ -40,7 +41,7 @@ import { installNavDots } from './navDots';
 applyFontVars();
 // (version anglaise) langue du jeu : en anglais, le dictionnaire arrive pendant le chargement du reste (rien en français)
 const langP = initLang();
-import { DUR, EASING, bindMotionVars } from '../core/motion';
+import { DUR, bindMotionVars } from '../core/motion';
 bindMotionVars();
 import { installMorph } from '../core/morph';
 installMorph();
@@ -675,78 +676,33 @@ let shopMode: 'pick' | 'opening' | 'summary' = 'pick';
 /** une arrivée de pièces est en cours (le compteur est à elle) */
 let coinPaying = false;
 /**
- * L'arrivée : des pièces filent du récapitulatif vers le compteur, qui se REMPLIT (jauge dorée + chiffre qui monte) ;
- * à chaque pièce posée, un tintement un degré plus haut dans la gamme, puis la note finale. Durée : `DUR.dramatique`.
+ * L'arrivée (V3, lot S6 — views/coinHopper.ts) : le compteur devient un compteur à rouleaux ; après un court silence, le
+ * « barillet à goupilles » joue une phrase ascendante (horloge audio) pendant que les rouleaux défilent jusqu'au solde,
+ * arrêt franc. Un toucher solde tout de suite. Avant : des pièces volaient du récapitulatif vers le compteur.
  */
 function payCoins() {
   const b = meEl.querySelector<HTMLElement>('.coin-btn');
   const from = coinHeld;
   coinHeld = null;
   const to = backend.eco.snapshot?.coins ?? 0;
-  if (!b || from === null || to <= from || document.visibilityState !== 'visible' || coinPaying) return void syncCoins();
+  if (!b || from === null || to <= from || document.visibilityState !== 'visible' || coinPaying) {
+    if (!coinPaying) clearPins(b); // (versement sans mise en scène : les goupilles armées partent avec)
+    return void syncCoins();
+  }
   coinPaying = true;
-  const gain = to - from;
-  const label = b.querySelector('b')!;
-  const r = b.getBoundingClientRect();
-  const src = document.querySelector<HTMLElement>('.sum-line')?.getBoundingClientRect();
-  const ox = src && src.width ? src.left + src.width / 2 : innerWidth / 2, oy = src && src.width ? src.top + src.height / 2 : innerHeight * 0.6;
-  const tx = r.left + r.height / 2, ty = r.top + r.height / 2;
-  const n = Math.max(6, Math.min(16, 5 + Math.round(Math.log2(Math.max(1, gain / 8)))));
-  const flight = DUR.dramatique * 0.5, spread = DUR.dramatique * 0.6;
-  b.classList.add('paying');
-  setText(label, fmtCoinsShort(from));
-  const fill = h('i', 'coin-fill');
-  b.prepend(fill);
-  const tag = h('div', 'coin-fly hold', `+${fmtCoins(gain)}`);
-  tag.style.left = `${r.left + r.width / 2 - 20}px`;
-  tag.style.top = `${r.bottom + 4}px`;
-  document.body.append(tag);
-  let landed = 0;
-  const land = () => {
-    landed++;
-    // le compteur suit les pièces posées ; la cible est relue à chaque fois (un dernier crédit peut encore arriver)
-    const goal = Math.max(to, backend.eco.snapshot?.coins ?? to);
-    setText(label, fmtCoinsShort(Math.round(from + ((goal - from) * landed) / n)));
-    fill.style.transform = `scaleX(${landed / n})`;
-    b.classList.remove('bump');
-    void b.offsetWidth;
-    b.classList.add('bump');
-    if (landed < n) return;
-    lastCoins = backend.eco.snapshot?.coins ?? goal;
-    setText(label, fmtCoinsShort(lastCoins));
-    fill.animate([{ opacity: 1 }, { opacity: 0 }], { duration: DUR.emphatique(), easing: EASING.sortie, fill: 'forwards' }).onfinish = () => {
-      fill.remove();
-      tag.remove();
-      b.classList.remove('paying');
+  payOut({
+    label: b.querySelector('b')!,
+    from,
+    // la cible est relue à chaque image (un dernier crédit peut encore arriver)
+    goal: () => Math.max(to, backend.eco.snapshot?.coins ?? to),
+    fmt: fmtCoinsShort,
+    sfx: shell?.sfx ?? null,
+    onDone: (shown) => {
+      lastCoins = shown;
       coinPaying = false;
       syncCoins();
-    };
-  };
-  for (let i = 0; i < n; i++) {
-    const c = h('i', 'coin-drop');
-    const sx = ox + ((i * 53) % 90) - 45, sy = oy + ((i * 31) % 26) - 13;
-    c.style.left = `${sx}px`;
-    c.style.top = `${sy}px`;
-    document.body.append(c);
-    const dx = tx - sx, dy = ty - sy, lift = 40 + ((i * 17) % 50);
-    const a = c.animate(
-      [
-        { transform: 'translate(-50%, -50%) scale(0.3)', opacity: 0 },
-        { transform: `translate(calc(-50% + ${dx * 0.35}px), calc(-50% + ${dy * 0.35 - lift}px)) scale(1)`, opacity: 1, offset: 0.35 },
-        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.6)`, opacity: 1 },
-      ],
-      { duration: flight, delay: (spread * i) / n, easing: EASING.standard, fill: 'both' },
-    );
-    a.onfinish = () => {
-      c.remove();
-      land();
-    };
-  }
-  // la montée sonore, programmée d'un coup sur l'horloge audio : une pièce = un degré de plus, puis le « ting » final
-  if (shell) {
-    for (let i = 0; i < n; i++) shell.sfx.coin(i, 0.055 + 0.02 * (i / n), (flight + (spread * i) / n) / 1000);
-    shell.sfx.note(10, 0.09, 0.6, (flight + spread) / 1000 + 0.05);
-  }
+    },
+  });
 }
 // (développement seulement) rejouer l'arrivée sans ouvrir de booster : __payCoins(120) verse 120 pièces « retenues »
 if (import.meta.env.DEV) (window as unknown as { __payCoins?: (gain: number) => void }).__payCoins = (gain) => {
@@ -769,6 +725,7 @@ function syncCoins() {
   if (lastCoins >= 0 && snap.coins > lastCoins && document.visibilityState === 'visible') {
     if (coinHeld === null) coinHeld = lastCoins;
     if (shopMode !== 'opening') schedulePay();
+    else armPin(b); // (V3, lot S6) une goupille armée par gain retenu : un cran sous le compteur, sans son
   }
   setText(b.querySelector('b')!, fmtCoinsShort(coinHeld ?? snap.coins));
   const ready = wallet?.ready() ?? 0;

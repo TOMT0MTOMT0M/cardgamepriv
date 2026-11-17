@@ -1,0 +1,14 @@
+/* (V3, lot S6) VERSEMENT DE FIN D'OUVERTURE — views/coinHopper.ts : compteur à rouleaux + goupilles armées.
+   Direction « usinage » : chiffres nets, aucun halo, aucune couleur en plus (le chiffre garde la couleur pièce du
+   compteur). Une colonne = une bande 0..9 + 0 déplacée en translate3d (aucune mise en page par image). */
+.odo { display: inline-flex; align-items: flex-start; white-space: nowrap; vertical-align: top; }
+.odo-c, .odo-f { display: inline-block; height: 1.3em; height: 1lh; }
+.odo-c { overflow: hidden; -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
+.odo-s { display: block; will-change: transform; }
+.odo-s > i { display: block; height: 1.3em; height: 1lh; font-style: normal; text-align: center; }
+
+/* goupilles : un cran par gain retenu pendant la révélation, sous le chiffre ; elles s'éteignent une à une au versement */
+/* (le second sélecteur passe devant `.coin-btn.paying > :not(.coin-fill):not(.w-dot)` de games.css, qui la remettrait dans le flux) */
+.coin-btn > .hop-pins, .coin-btn.paying > .hop-pins:not(.coin-fill):not(.w-dot) { position: absolute; left: 50%; bottom: 3px; z-index: 1; display: flex; gap: 2px; transform: translateX(-50%); pointer-events: none; }
+.coin-btn > .hop-pins > i { width: 2px; height: 3px; background: #fff; opacity: 0.75; transition: opacity var(--dur-rapide) var(--ease-sortie); }
+.coin-btn > .hop-pins > i.off { opacity: 0; }
