@@ -605,6 +605,7 @@ export const en: Dict = {
   'fg.openBoosters': 'Open boosters →',
   'fg.lockedN': { one: '{n} committed', other: '{n} committed' },
   'fg.andMore': '… and {n} others (quick selections take them too).',
+  'fg.sec': '{n} cards · {c} spare copies',
   'fg.confirm': 'Burn {cards} ({list})?',
   'fg.burned': { one: '{dups} burned: +{coins} coins!', other: '{dups} burned: +{coins} coins!' },
   'chat.card': 'Card',

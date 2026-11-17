@@ -31,6 +31,8 @@ const cardsSummary = (l: Array<{ rarity: RarityId; count: number }>) => {
   return [...m].sort((a, b) => CARD_VALUE[a[0]] - CARD_VALUE[b[0]]).map(([r, n]) => `${n}×${starsTxt(r)}`).join(' + ');
 };
 const LEGEND = tr('fg.protectedTitle');
+/** tuiles affichées au plus par étoile (6 × 90 : la grille reste légère, cf. audit 12/11 S14) */
+const FORGE_PER_RARITY = 90;
 
 export interface ForgeDup {
   cardId: string;
@@ -124,7 +126,28 @@ export function createForge(backend: GameBackend, shell: Shell) {
     // tuiles (et leurs images), il met à jour l'étiquette de celles qui existent déjà. Refaite si la carte a changé.
     const kept = tiles;
     tiles = new Map();
-    for (const d of dups.slice(0, 400)) {
+    // (17/11, retour de Tom) UNE SECTION PAR ÉTOILE, FORGE_PER_RARITY tuiles au plus chacune : avant, les 400 premières
+    // tuiles (triées de la moins chère à la plus chère) étaient toutes des 1★ dès qu'on en avait beaucoup, et les 2★–5★
+    // n'apparaissaient plus du tout (« j'ai perdu mes doublons »). Les sélections rapides prennent toujours tout.
+    const byRarity = new Map<RarityId, ForgeDup[]>();
+    for (const d of dups) {
+      const l = byRarity.get(d.rarity);
+      if (l) l.push(d);
+      else byRarity.set(d.rarity, [d]);
+    }
+    const shown: ForgeDup[] = [];
+    const secs = new Map<ForgeDup, HTMLElement>();
+    const tails = new Map<ForgeDup, HTMLElement>();
+    for (const [r, list] of byRarity) {
+      const head = h('div', 'gm-fsec', `<b style="color:${rarity(r).hex}">${starsTxt(r)}</b> <span class="muted">${tr('fg.sec', { n: fmtN(list.length), c: fmtN(list.reduce((a, d) => a + d.spare, 0)) })}</span>`);
+      secs.set(list[0], head);
+      const part = list.slice(0, FORGE_PER_RARITY);
+      shown.push(...part);
+      if (list.length > FORGE_PER_RARITY) tails.set(part[part.length - 1], h('div', 'muted gm-fmore', tr('fg.andMore', { n: fmtN(list.length - FORGE_PER_RARITY) })));
+    }
+    for (const d of shown) {
+      const head = secs.get(d);
+      if (head) grid.append(head);
       const k = cardKey(d);
       const inSel = sel.get(k)?.count ?? 0;
       const label = inSel ? `🔥 ${inSel}/${d.spare}` : `+${CARD_VALUE[d.rarity]}`;
@@ -137,6 +160,8 @@ export function createForge(backend: GameBackend, shell: Shell) {
         old.t.classList.toggle('burning', inSel > 0);
         tiles.set(k, old);
         grid.append(old.t);
+        const tail0 = tails.get(d);
+        if (tail0) grid.append(tail0);
         continue;
       }
       // ×N = exemplaires brûlables (on en garde toujours un ; les engagés ne comptent pas)
@@ -156,8 +181,9 @@ export function createForge(backend: GameBackend, shell: Shell) {
         render();
       });
       grid.append(t);
+      const tail = tails.get(d);
+      if (tail) grid.append(tail);
     }
-    if (dups.length > 400) grid.insertAdjacentHTML('beforeend', `<div class="muted">${tr('fg.andMore', { n: fmtN(dups.length - 400) })}</div>`);
     el.querySelectorAll<HTMLElement>('[data-q]').forEach((b) =>
       b.addEventListener('click', () => {
         if (isPending('forge')) return;
