@@ -79,15 +79,64 @@ export function createForge(backend: GameBackend, shell: Shell) {
     }
   };
 
-  let tiles = new Map<string, { t: HTMLElement; sig: string }>();
+  /**
+   * (V3, lot 08) ZÉRO RECONSTRUCTION AU TOUCHER : le panneau (en-tête, puces, grille, pied, boutons) n'est réécrit que
+   * quand la LISTE des doublons change (`build`, signature `shape`). Choisir une carte, une puce « Tous les N★ »,
+   * « Rien » ou « Annuler » ne fait que `update()` : compteurs, prix, libellés et classes `.on` / `.burning`, comparés à
+   * la dernière valeur posée (aucune lecture du DOM). Avant : `el.innerHTML` réécrit et toutes les tuiles ré-ajoutées à
+   * chaque toucher (l'animation d'entrée des tuiles rejouait, la rangée de puces revenait au début, le focus sautait).
+   */
+  let tiles = new Map<string, { t: HTMLElement; sig: string; badge: HTMLElement | null; label: string; on: boolean; d: ForgeDup }>();
+  let dups: ForgeDup[] = [];
+  let shape = '';
+  let ui: {
+    chips: Array<{ b: HTMLButtonElement; r: RarityId; html: string; on: boolean; dis: boolean }>;
+    none: HTMLButtonElement;
+    undoBtn: HTMLButtonElement;
+    full: HTMLElement;
+    hint: HTMLElement;
+    sum: HTMLElement;
+    sumTxt: HTMLElement;
+    sumCoins: HTMLElement;
+    burn: HTMLButtonElement;
+    burnHtml: string;
+    grid: HTMLElement;
+  } | null = null;
+
+  // sélection rapide : comme le remplissage auto des contrats, elle laisse de côté les cartes protégées (UX4-06)
+  // (lot 08) listes par étoile calculées une fois par rendu, plus à chaque toucher
+  let quickBy = new Map<RarityId, ForgeDup[]>();
+  let protBy = new Map<RarityId, number>();
+  const quick = (r: RarityId) => quickBy.get(r) ?? [];
+  const quickProt = (r: RarityId) => protBy.get(r) ?? 0;
+  // (17/11, Hugo) la sélection rapide s'arrête à la limite du serveur : BURN_MAX_ITEMS cartes différentes par fournée
+  // (les autres étoiles déjà choisies comptent) ; on brûle, puis on recommence pour la suite
+  const room = (r: RarityId) => BURN_MAX_ITEMS - [...sel.values()].filter((v) => v.rarity !== r).length;
+  const quickPick = (r: RarityId, rm = room(r)) => quick(r).slice(0, Math.max(0, rm));
+  const isOn = (pick: ForgeDup[]) => pick.length > 0 && pick.every((d) => sel.get(cardKey(d))?.count === d.spare);
+  const quickOn = (r: RarityId) => isOn(quickPick(r));
+  const selCount = () => [...sel.values()].reduce((a, c) => a + c.count, 0);
+
   function render() {
     const st = backend.state;
     if (st.mode === 'online' && (!st.ready || !st.user)) {
       el.innerHTML = '<div class="gm-panel gm-forge"><b>' + tr('fg.login') + '</b></div>';
       tiles = new Map();
+      ui = null;
+      shape = '';
       return;
     }
-    const dups = forgeDups(st);
+    dups = forgeDups(st);
+    quickBy = new Map();
+    protBy = new Map();
+    for (const d of dups) {
+      if (d.protect.length) protBy.set(d.rarity, (protBy.get(d.rarity) ?? 0) + 1);
+      else {
+        const l = quickBy.get(d.rarity);
+        if (l) l.push(d);
+        else quickBy.set(d.rarity, [d]);
+      }
+    }
     for (const [k, v] of sel) {
       const d = dups.find((x) => cardKey(x) === k);
       if (!d) sel.delete(k);
@@ -95,35 +144,45 @@ export function createForge(backend: GameBackend, shell: Shell) {
     }
     const lockedMap = lockedCards(st); // (audit 12/11, A4-01) une fois par rendu, plus une fois par carte de la collection
     const lockedN = st.collection.reduce((a, c) => a + (burnable(c.rarity) ? Math.min(lockedMap.get(cardKey(c)) ?? 0, Math.max(0, c.count - 1)) : 0), 0);
-    const total = cardsValue([...sel.values()]);
-    const n = [...sel.values()].reduce((a, c) => a + c.count, 0);
+    const now = `${lockedN}#${dups.map((d) => `${cardKey(d)}|${d.spare}|${d.locked}|${d.protect.join(',')}`).join(';')}`;
+    if (now !== shape || !ui || !el.contains(ui.grid)) {
+      shape = now;
+      build(lockedN);
+    }
+    update();
+  }
+
+  /** Le panneau entier : seulement quand la liste des doublons a changé (brûlage, nouvelle carte, échange…). */
+  function build(lockedN: number) {
     const rars = (['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as RarityId[]).filter((r) => dups.some((d) => d.rarity === r));
-    // sélection rapide : comme le remplissage auto des contrats, elle laisse de côté les cartes protégées (UX4-06)
-    const quick = (r: RarityId) => dups.filter((d) => d.rarity === r && !d.protect.length);
-    const quickProt = (r: RarityId) => dups.filter((d) => d.rarity === r && d.protect.length).length;
-    // (17/11, Hugo) la sélection rapide s'arrête à la limite du serveur : BURN_MAX_ITEMS cartes différentes par fournée
-    // (les autres étoiles déjà choisies comptent) ; on brûle, puis on recommence pour la suite
-    const room = (r: RarityId) => BURN_MAX_ITEMS - [...sel.values()].filter((v) => v.rarity !== r).length;
-    const quickPick = (r: RarityId) => quick(r).slice(0, Math.max(0, room(r)));
-    const quickOn = (r: RarityId) => quickPick(r).length > 0 && quickPick(r).every((d) => sel.get(cardKey(d))?.count === d.spare);
-    const full = sel.size >= BURN_MAX_ITEMS;
     const anyMark = dups.some((d) => d.protect.length || d.locked);
     const free = dups.reduce((a, d) => a + d.spare, 0);
     el.innerHTML = `<div class="gm-panel gm-forge"><div class="gm-ph"><b>${tr('fg.title')}</b><span class="muted">${tr('fg.count', { n: free, nf: fmtN(free), locked: lockedN ? tr('fg.locked', { n: lockedN, nf: fmtN(lockedN) }) : '' })}</span></div> <!-- i18n-ok -->
       <div class="muted fg-rate">${tr('fg.values')}</div>
-      <div class="gm-quick">${rars.map((r) => {
-        const q = quickPick(r);
-        const np = quickProt(r);
-        return `<button class="chip${quickOn(r) ? ' on' : ''}" data-q="${r}" style="--rc:${rarity(r).hex}"${q.length ? '' : ' disabled'} aria-pressed="${quickOn(r)}">${tr('fg.allOf', { stars: starsTxt(r), n: q.reduce((a, d) => a + d.spare, 0), v: fmtCoins(q.reduce((a, d) => a + d.spare * CARD_VALUE[r], 0)), prot: np ? ` <small>${tr('fg.protLeft', { n: np })}</small>` : '' })}</button>`;
-      }).join('')}<button class="btn-ghost sm gm-none"${n ? '' : ' disabled'}>${tr('fg.nothing')}</button>${undo ? '<button class="linkish gm-undo">' + tr('fg.cancelQuick') + '</button>' : ''}</div>
+      <div class="gm-quick">${rars.map((r) => `<button class="chip" data-q="${r}" style="--rc:${rarity(r).hex}"></button>`).join('')}<button class="btn-ghost sm gm-none"></button><button class="linkish gm-undo" hidden>${tr('fg.cancelQuick')}</button></div>
       ${anyMark ? `<div class="gm-legend-p muted">${esc(LEGEND)}</div>` : ''}
-      ${full ? `<div class="gm-legend-p muted">${tr('fg.maxItems', { n: BURN_MAX_ITEMS })}</div>` : ''}
+      <div class="gm-legend-p muted gm-full" hidden>${tr('fg.maxItems', { n: BURN_MAX_ITEMS })}</div>
       <div class="gm-fgrid"></div>
-      <div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')} (${cardsSummary([...sel.values()])}) → ${coinsHtml(total)}` : '<span class="muted">' + tr('fg.tapHint') + '</span>'}</span><button class="btn-primary gm-burn"${n && !isPending('forge') ? '' : ' disabled'}>${tr('fg.burn', { x: n ? ` · +${fmtCoins(total)}` : '' })}</button></div></div>`;
+      <div class="gm-ffoot"><span><span class="muted">${tr('fg.tapHint')}</span><span class="fg-sum" hidden><span></span> → ${coinsHtml(0)}</span></span><button class="btn-primary gm-burn"></button></div></div>`;
     const grid = el.querySelector<HTMLElement>('.gm-fgrid')!;
+    const none = el.querySelector<HTMLButtonElement>('.gm-none')!;
+    none.textContent = tr('fg.nothing');
+    ui = {
+      chips: [...el.querySelectorAll<HTMLButtonElement>('[data-q]')].map((b) => ({ b, r: b.dataset.q as RarityId, html: '', on: false, dis: false })),
+      none,
+      undoBtn: el.querySelector<HTMLButtonElement>('.gm-undo')!,
+      full: el.querySelector<HTMLElement>('.gm-full')!,
+      hint: el.querySelector<HTMLElement>('.gm-ffoot > span > .muted')!,
+      sum: el.querySelector<HTMLElement>('.fg-sum')!,
+      sumTxt: el.querySelector<HTMLElement>('.fg-sum > span')!,
+      sumCoins: el.querySelector<HTMLElement>('.fg-sum .coins-v > b')!,
+      burn: el.querySelector<HTMLButtonElement>('.gm-burn')!,
+      burnHtml: '\0',
+      grid,
+    };
     if (!dups.length) grid.innerHTML = `<div class="muted">${tr('fg.none', { x: lockedN ? tr('fg.othersLocked') : '' })} <a href="#/">${tr('fg.openBoosters')}</a></div>`;
-    // (audit 12/11, S14 / A4-01) les tuiles sont GARDÉES d'un rendu à l'autre : un toucher ne recrée plus jusqu'à 400
-    // tuiles (et leurs images), il met à jour l'étiquette de celles qui existent déjà. Refaite si la carte a changé.
+    // (audit 12/11, S14 / A4-01) les tuiles sont GARDÉES d'un rendu à l'autre : un nouveau panneau ne recrée pas jusqu'à
+    // 540 tuiles (et leurs images), il reprend celles qui existent déjà. Refaite si la carte a changé.
     const kept = tiles;
     tiles = new Map();
     // (17/11, retour de Tom) UNE SECTION PAR ÉTOILE, FORGE_PER_RARITY tuiles au plus chacune : avant, les 400 premières
@@ -135,106 +194,158 @@ export function createForge(backend: GameBackend, shell: Shell) {
       if (l) l.push(d);
       else byRarity.set(d.rarity, [d]);
     }
-    const shown: ForgeDup[] = [];
-    const secs = new Map<ForgeDup, HTMLElement>();
-    const tails = new Map<ForgeDup, HTMLElement>();
+    const frag = document.createDocumentFragment();
     for (const [r, list] of byRarity) {
-      const head = h('div', 'gm-fsec', `<b style="color:${rarity(r).hex}">${starsTxt(r)}</b> <span class="muted">${tr('fg.sec', { n: fmtN(list.length), c: fmtN(list.reduce((a, d) => a + d.spare, 0)) })}</span>`);
-      secs.set(list[0], head);
-      const part = list.slice(0, FORGE_PER_RARITY);
-      shown.push(...part);
-      if (list.length > FORGE_PER_RARITY) tails.set(part[part.length - 1], h('div', 'muted gm-fmore', tr('fg.andMore', { n: fmtN(list.length - FORGE_PER_RARITY) })));
-    }
-    for (const d of shown) {
-      const head = secs.get(d);
-      if (head) grid.append(head);
-      const k = cardKey(d);
-      const inSel = sel.get(k)?.count ?? 0;
-      const label = inSel ? `🔥 ${inSel}/${d.spare}` : `+${CARD_VALUE[d.rarity]}`;
-      const why = [...d.protect, ...(d.locked ? [tr('fg.lockedN', { n: d.locked })] : [])];
-      const sig = `${d.spare}|${why.join(',')}`;
-      const old = kept.get(k);
-      const badge = old?.sig === sig ? old.t.querySelector<HTMLElement>(':scope > .badge') : null;
-      if (old && badge) {
-        if (badge.textContent !== label) badge.textContent = label;
-        old.t.classList.toggle('burning', inSel > 0);
-        tiles.set(k, old);
-        grid.append(old.t);
-        const tail0 = tails.get(d);
-        if (tail0) grid.append(tail0);
-        continue;
-      }
-      // ×N = exemplaires brûlables (on en garde toujours un ; les engagés ne comptent pas)
-      const t = cardTile(d.cardId, d.rarity, { mini: true, count: d.spare, label });
-      tiles.set(k, { t, sig });
-      t.title = `${cardName(d.cardId)} · ${plural(d.spare, 'exemplaire brûlable', 'exemplaires brûlables')}${why.length ? ` · ${why.join(', ')}` : ''}`; // i18n-ok
-      const icons = protectIcons(d.protect) + (d.locked ? '🔒' : '');
-      if (icons) t.insertAdjacentHTML('beforeend', `<span class="ct-prot gm-prot" aria-label="${esc(why.join(', '))}">${icons}</span>`);
-      t.classList.toggle('burning', inSel > 0);
-      t.addEventListener('click', () => {
-        if (isPending('forge')) return;
-        const cur = sel.get(k)?.count ?? 0;
-        if (!cur && sel.size >= BURN_MAX_ITEMS) return toast(tr('fg.maxItems', { n: BURN_MAX_ITEMS }), 'info');
-        if (cur >= d.spare) sel.delete(k);
-        else sel.set(k, { cardId: d.cardId, rarity: d.rarity, count: cur + 1 });
-        undo = null;
-        render();
-      });
-      grid.append(t);
-      const tail = tails.get(d);
-      if (tail) grid.append(tail);
-    }
-    el.querySelectorAll<HTMLElement>('[data-q]').forEach((b) =>
-      b.addEventListener('click', () => {
-        if (isPending('forge')) return;
-        const r = b.dataset.q as RarityId;
-        undo = new Map([...sel].map(([k, v]) => [k, { ...v }]));
-        // deuxième toucher sur la même puce : on la retire (sélection rapide annulable)
-        if (quickOn(r)) for (const d of quick(r)) sel.delete(cardKey(d));
-        else {
-          for (const d of quick(r)) sel.delete(cardKey(d));
-          for (const d of quickPick(r)) sel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: d.spare });
+      frag.append(h('div', 'gm-fsec', `<b style="color:${rarity(r).hex}">${starsTxt(r)}</b> <span class="muted">${tr('fg.sec', { n: fmtN(list.length), c: fmtN(list.reduce((a, d) => a + d.spare, 0)) })}</span>`));
+      for (const d of list.slice(0, FORGE_PER_RARITY)) {
+        const k = cardKey(d);
+        const why = [...d.protect, ...(d.locked ? [tr('fg.lockedN', { n: d.locked })] : [])];
+        const sig = `${d.spare}|${why.join(',')}`;
+        const old = kept.get(k);
+        if (old && old.sig === sig && old.badge) {
+          old.d = d;
+          tiles.set(k, old);
+          frag.append(old.t);
+          continue;
         }
-        render();
-      }),
-    );
-    el.querySelector('.gm-none')?.addEventListener('click', () => {
+        // ×N = exemplaires brûlables (on en garde toujours un ; les engagés ne comptent pas)
+        const label = `+${CARD_VALUE[d.rarity]}`;
+        const t = cardTile(d.cardId, d.rarity, { mini: true, count: d.spare, label });
+        t.dataset.k = k;
+        t.title = `${cardName(d.cardId)} · ${plural(d.spare, 'exemplaire brûlable', 'exemplaires brûlables')}${why.length ? ` · ${why.join(', ')}` : ''}`; // i18n-ok
+        const icons = protectIcons(d.protect) + (d.locked ? '🔒' : '');
+        if (icons) t.insertAdjacentHTML('beforeend', `<span class="ct-prot gm-prot" aria-label="${esc(why.join(', '))}">${icons}</span>`);
+        tiles.set(k, { t, sig, badge: t.querySelector<HTMLElement>(':scope > .badge'), label, on: false, d });
+        frag.append(t);
+      }
+      if (list.length > FORGE_PER_RARITY) frag.append(h('div', 'muted gm-fmore', tr('fg.andMore', { n: fmtN(list.length - FORGE_PER_RARITY) })));
+    }
+    grid.append(frag);
+  }
+
+  /** Après un toucher : seuls les textes et classes qui ont changé sont posés (les nœuds, eux, restent). */
+  function update(only?: string) {
+    if (!ui) return;
+    const n = selCount();
+    const total = cardsValue([...sel.values()]);
+    const selBy = new Map<RarityId, number>();
+    for (const v of sel.values()) selBy.set(v.rarity, (selBy.get(v.rarity) ?? 0) + 1);
+    for (const c of ui.chips) {
+      const q = quickPick(c.r, BURN_MAX_ITEMS - (sel.size - (selBy.get(c.r) ?? 0)));
+      const np = quickProt(c.r);
+      const on = isOn(q);
+      const html = tr('fg.allOf', { stars: starsTxt(c.r), n: q.reduce((a, d) => a + d.spare, 0), v: fmtCoins(q.reduce((a, d) => a + d.spare * CARD_VALUE[c.r], 0)), prot: np ? ` <small>${tr('fg.protLeft', { n: np })}</small>` : '' });
+      if (html !== c.html) c.b.innerHTML = c.html = html;
+      if (on !== c.on) {
+        c.on = on;
+        c.b.classList.toggle('on', on);
+        c.b.setAttribute('aria-pressed', String(on));
+      }
+      if (!q.length !== c.dis) c.b.disabled = c.dis = !q.length;
+    }
+    ui.none.disabled = !n;
+    ui.undoBtn.hidden = !undo;
+    ui.full.hidden = sel.size < BURN_MAX_ITEMS;
+    // pied : « N cartes (détail) → pièces » ; seuls les textes changent (l'icône de pièce reste)
+    ui.hint.hidden = !!n;
+    ui.sum.hidden = !n;
+    if (n) {
+      const txt = `${plural(n, 'carte')} (${cardsSummary([...sel.values()])})`;
+      if (ui.sumTxt.textContent !== txt) ui.sumTxt.textContent = txt;
+      const c = fmtCoins(total);
+      if (ui.sumCoins.textContent !== c) ui.sumCoins.textContent = c;
+    }
+    const burnHtml = tr('fg.burn', { x: n ? ` · +${fmtCoins(total)}` : '' });
+    const b = ui.burn;
+    // la sélection a changé pendant un « Confirmer ? » : on désarme (on confirmerait autre chose que ce qui est affiché)
+    if (b.dataset.armedAt && burnHtml !== ui.burnHtml) {
+      delete b.dataset.armedAt;
+      delete b.dataset.label;
+      b.classList.remove('armed');
+      ui.burnHtml = '\0';
+    }
+    if (burnHtml !== ui.burnHtml && !b.dataset.armedAt) b.innerHTML = ui.burnHtml = burnHtml;
+    if (!b.dataset.busy) b.disabled = !(n && !isPending('forge'));
+    // un toucher sur une carte : seule sa tuile change ; une puce, « Rien », « Annuler », un rendu : toutes
+    const list = only ? [[only, tiles.get(only)] as const] : tiles;
+    for (const [k, x] of list) {
+      if (!x) continue;
+      const inSel = sel.get(k)?.count ?? 0;
+      const label = inSel ? `🔥 ${inSel}/${x.d.spare}` : `+${CARD_VALUE[x.d.rarity]}`;
+      if (label !== x.label && x.badge) x.badge.textContent = x.label = label;
+      if (inSel > 0 !== x.on) x.t.classList.toggle('burning', (x.on = inSel > 0));
+    }
+  }
+
+  // un seul écouteur pour tout le panneau (les nœuds survivent aux touchers, les écouteurs aussi)
+  el.addEventListener('click', (e) => {
+    if (!ui) return;
+    const target = e.target as HTMLElement;
+    const tile = target.closest<HTMLElement>('.gm-fgrid .tile');
+    if (tile) {
+      const x = tiles.get(tile.dataset.k ?? '');
+      if (!x || isPending('forge')) return;
+      const d = x.d;
+      const k = cardKey(d);
+      const cur = sel.get(k)?.count ?? 0;
+      if (!cur && sel.size >= BURN_MAX_ITEMS) return toast(tr('fg.maxItems', { n: BURN_MAX_ITEMS }), 'info');
+      if (cur >= d.spare) sel.delete(k);
+      else sel.set(k, { cardId: d.cardId, rarity: d.rarity, count: cur + 1 });
+      undo = null;
+      return update(k);
+    }
+    const chip = target.closest<HTMLButtonElement>('[data-q]');
+    if (chip) {
+      if (isPending('forge')) return;
+      const r = chip.dataset.q as RarityId;
+      undo = new Map([...sel].map(([k, v]) => [k, { ...v }]));
+      // deuxième toucher sur la même puce : on la retire (sélection rapide annulable)
+      if (quickOn(r)) for (const d of quick(r)) sel.delete(cardKey(d));
+      else {
+        for (const d of quick(r)) sel.delete(cardKey(d));
+        for (const d of quickPick(r)) sel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: d.spare });
+      }
+      return update();
+    }
+    if (target.closest('.gm-none')) {
       if (isPending('forge')) return;
       undo = new Map([...sel].map(([k, v]) => [k, { ...v }]));
       sel.clear();
-      render();
-    });
-    el.querySelector('.gm-undo')?.addEventListener('click', () => {
+      return update();
+    }
+    if (target.closest('.gm-undo')) {
       if (!undo || isPending('forge')) return;
       sel.clear();
       for (const [k, v] of undo) sel.set(k, v);
       undo = null;
-      render();
-    });
-    const burnBtn = el.querySelector<HTMLButtonElement>('.gm-burn')!;
-    burnBtn.addEventListener('click', () => {
-      // second toucher dès une 5★ (300) ou 30 cartes, avec le détail par étoile ; désarmé tout seul après 3 s
-      if ((total >= 300 || n >= 30) && !confirmTap(burnBtn, tr('fg.confirm', { cards: plural(n, 'carte'), list: cardsSummary([...sel.values()]) }))) return;
-      // la sélection est copiée puis vidée AVANT l'envoi : un 2ᵉ envoi ne pourrait plus rien brûler deux fois
-      const items = [...sel.values()].map((v) => ({ ...v }));
-      const before = new Map(sel);
-      sel.clear();
-      undo = null;
-      void guarded('forge', burnBtn, async () => {
-        try {
-          const r = await busyButton(burnBtn, backend.eco.burn(items));
-          grid.classList.add('flash');
-          sfx();
-          toast(tr('fg.burned', { n: r.count, dups: plural(r.count, 'doublon'), coins: fmtCoins(r.coins) }), 'ok');
-          setTimeout(() => el.isConnected && !el.closest('[hidden]') && render(), 400);
-        } catch (err) {
-          for (const [k, v] of before) sel.set(k, v);
-          toast(errMsg(err), 'err');
-          render();
-        }
-      }, { keepOnSuccess: true });
-    });
-  }
+      return update();
+    }
+    const burnBtn = target.closest<HTMLButtonElement>('.gm-burn');
+    if (!burnBtn || burnBtn.disabled) return;
+    const grid = ui.grid;
+    const n = selCount();
+    const total = cardsValue([...sel.values()]);
+    // second toucher dès une 5★ (300) ou 30 cartes, avec le détail par étoile ; désarmé tout seul après 3 s
+    if ((total >= 300 || n >= 30) && !confirmTap(burnBtn, tr('fg.confirm', { cards: plural(n, 'carte'), list: cardsSummary([...sel.values()]) }))) return;
+    // la sélection est copiée puis vidée AVANT l'envoi : un 2ᵉ envoi ne pourrait plus rien brûler deux fois
+    const items = [...sel.values()].map((v) => ({ ...v }));
+    const before = new Map(sel);
+    sel.clear();
+    undo = null;
+    void guarded('forge', burnBtn, async () => {
+      try {
+        const r = await busyButton(burnBtn, backend.eco.burn(items));
+        grid.classList.add('flash');
+        sfx();
+        toast(tr('fg.burned', { n: r.count, dups: plural(r.count, 'doublon'), coins: fmtCoins(r.coins) }), 'ok');
+        setTimeout(() => el.isConnected && !el.closest('[hidden]') && render(), 400);
+      } catch (err) {
+        for (const [k, v] of before) sel.set(k, v);
+        toast(errMsg(err), 'err');
+        render();
+      }
+    }, { keepOnSuccess: true });
+  });
 
   return { el, render };
 }

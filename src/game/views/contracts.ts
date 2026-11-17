@@ -12,6 +12,7 @@ import { paintedCard } from '../cardImages';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
 import { PROTECT_LEGEND, protectIcons, protection as protectionOf } from './safety';
 import { GAMES_OPEN } from '../../core/games';
+import { DUR, EASING, STAGGER } from '../../core/motion';
 
 /**
  * CONTRATS (façon CS:GO) : on choisit une étoile, on remplit le contrat avec ses doublons (10 cartes, quelle que soit l'étoile),
@@ -28,6 +29,8 @@ export interface ContractsView {
   leave(): void;
 }
 
+/** braises de la combustion : un réservoir FIXE de particules recyclées (V3, lot 08 ; avant : 5 nœuds créés par case) */
+const EMBERS = 12;
 const TIERS = STAR_RARITIES.filter((r) => CONTRACT_COST[r]) as StarRarityId[];
 const stars = (r: string) => `${rarity(r as RarityId).rank + 1}★`;
 
@@ -54,6 +57,7 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       <div class="ct-sheet">
         <div class="ct-sheet-top"><div class="ct-title"></div><div class="ct-fill"></div></div>
         <div class="ct-slots"></div>
+        <div class="ct-embers" aria-hidden="true">${'<i></i>'.repeat(EMBERS)}</div>
         <div class="ct-odds"></div>
         <div class="ct-recap" hidden></div>
         <div class="ct-actions">
@@ -98,6 +102,71 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
   const vInfo = el.querySelector<HTMLElement>('.v-info')!;
   const flamesEl = el.querySelector<HTMLElement>('.ct-flames')!;
   const bgEl = el.querySelector<HTMLElement>('.ct-bg')!;
+  const embersEl = el.querySelector<HTMLElement>('.ct-embers')!;
+  const embers = [...embersEl.children] as HTMLElement[];
+  let emberAt = 0;
+
+  /**
+   * (V3, lot 08) VOL D'UN DOUBLON VERS SON ENCOCHE : la vignette de la case part de la tuile touchée (FLIP : posée à sa
+   * place finale, puis transformée depuis la tuile), la case garde son image cachée jusqu'à l'arrivée, puis rebondit
+   * (`.pop`). Rien ne vole si la tuile est hors de l'écran (remplissage auto d'une grille défilée) : la case rebondit.
+   */
+  function flyToSlot(from: HTMLElement | null, i: number, delay = 0) {
+    const slot = slotsEl.children[i] as HTMLElement | undefined;
+    const img = slot?.querySelector('img');
+    if (!slot || !img) return;
+    const pop = () => {
+      slot.classList.remove('pop');
+      void slot.offsetWidth;
+      slot.classList.add('pop');
+    };
+    const a = from?.getBoundingClientRect();
+    const b = img.getBoundingClientRect();
+    if (!a || !a.width || a.bottom < 0 || a.top > innerHeight || !b.width) return pop();
+    const fly = img.cloneNode() as HTMLImageElement;
+    fly.className = img.classList.contains('sreal') ? 'ct-fly sreal' : 'ct-fly';
+    fly.style.cssText = `left:${b.left}px;top:${b.top}px;width:${b.width}px;height:${b.height}px`;
+    document.body.append(fly);
+    img.style.visibility = 'hidden';
+    const k = Math.max(a.width / b.width, a.height / b.height);
+    const an = fly.animate(
+      [
+        { transform: `translate(${a.left + a.width / 2 - (b.left + b.width / 2)}px, ${a.top + a.height / 2 - (b.top + b.height / 2)}px) scale(${k})`, opacity: 0.6 },
+        { transform: 'none', opacity: 1 },
+      ],
+      { duration: DUR.emphatique(), delay, easing: EASING.entree, fill: 'backwards' },
+    );
+    const done = () => {
+      fly.remove();
+      img.style.visibility = '';
+      if (img.isConnected) pop();
+    };
+    an.onfinish = done;
+    an.oncancel = done;
+  }
+
+  /**
+   * Braises d'une case qui s'allume : `n` particules du réservoir (transform / opacity seulement, aucun nœud créé), elles
+   * montent du bas de la case jusqu'à son haut et s'éteignent — comme les anciennes, que la case coupait à son bord.
+   */
+  function emberBurst(r: DOMRect, box: DOMRect, n: number) {
+    for (let k = 0; k < n; k++) {
+      const em = embers[emberAt++ % embers.length];
+      const x = r.left - box.left + r.width * (0.1 + Math.random() * 0.8);
+      const y = r.top - box.top + r.height * 0.8;
+      const rise = r.height * (0.6 + Math.random() * 0.3);
+      const drift = (Math.random() - 0.5) * r.width * 0.3;
+      em.getAnimations().forEach((x) => x.cancel());
+      em.animate(
+        [
+          { transform: `translate(${x}px, ${y}px) scale(0.6)`, opacity: 0 },
+          { transform: `translate(${x + drift * 0.2}px, ${y - rise * 0.2}px) scale(0.55)`, opacity: 1, offset: 0.2 },
+          { transform: `translate(${x + drift}px, ${y - rise}px) scale(0.2)`, opacity: 0 },
+        ],
+        { duration: DUR.dramatique * (1 + Math.random()), delay: Math.random() * DUR.emphatique(), easing: EASING.standard, fill: 'both' },
+      );
+    }
+  }
 
   /** Pourquoi une carte est protégée du remplissage automatique (envie, classeur, pochette) — vide si rien (partagé avec la forge). */
   const protection = (cardId: string) => protectionOf(backend.state, cardId);
@@ -291,11 +360,13 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
         }
         undo = null;
         seq.push(c.cardId);
-        popAt = seq.length - 1;
+        popAt = -1; // le rebond se fait à l'arrivée du vol
+
         // la note monte à mesure que le contrat se remplit ; petit carillon quand il est complet
         shell.sfx.tick(1 + (seq.length / cost()) * 0.9, 0.07);
         if (seq.length === cost()) shell.sfx.chime(2, 0.06);
         renderSheet();
+        flyToSlot(t, seq.length - 1);
         syncDup(c.cardId);
       });
       frag.append(t);
@@ -346,7 +417,12 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
       const skipped = all.length - free.length;
       toast(tr('ct.notEnough', { stars: stars(tier), n: total(), need: cost(), skip: skipped ? tr('ct.skipped', { n: skipped }) : '' }), 'info');
     }
+    const was = [...slotsEl.children].map((x) => (x as HTMLElement).dataset.id ?? '');
     renderSheet();
+    // (lot 08) chaque doublon engagé vole de sa tuile vers son encoche, en cascade (les cases déjà remplies restent)
+    const moved = seq.map((id, i) => (was[i] === id ? -1 : i)).filter((i) => i >= 0);
+    const gap = Math.min(STAGGER.normal, STAGGER.max / Math.max(1, moved.length));
+    moved.forEach((i, j) => flyToSlot(dupsEl.querySelector<HTMLElement>(`.ct-dup[data-card="${CSS.escape(seq[i])}"]`), i, j * gap));
     syncDups();
   });
   el.querySelector('.clear')!.addEventListener('click', () => {
@@ -471,18 +547,15 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
         tick();
       });
     const timers: number[] = [];
+    const box = embersEl.getBoundingClientRect();
+    const rects = slots.map((x) => x.getBoundingClientRect());
     slots.forEach((slot, i) => {
       timers.push(window.setTimeout(() => {
         slot.style.setProperty('--bx', `${(20 + Math.random() * 60).toFixed(0)}%`);
         slot.style.setProperty('--by', `${(20 + Math.random() * 60).toFixed(0)}%`);
         slot.classList.add('burn');
-        for (let k = 0; k < 5; k++) {
-          const em = h('i', 'ember');
-          em.style.setProperty('--ex', `${(10 + Math.random() * 80).toFixed(0)}%`);
-          em.style.setProperty('--ed', `${(0.9 + Math.random() * 0.9).toFixed(2)}s`);
-          em.style.setProperty('--el', `${(Math.random() * 0.6).toFixed(2)}s`);
-          slot.append(em);
-        }
+        // les EMBERS particules réparties sur les cases (10 cases : 1 ou 2 chacune) : aucune n'est reprise en plein vol
+        emberBurst(rects[i], box, Math.floor(((i + 1) * EMBERS) / slots.length) - Math.floor((i * EMBERS) / slots.length));
         if (i % 2 === 0) shell.sfx.tick(0.6 + Math.random() * 0.3, 0.05);
         if (i % 4 === 0) haptics.pulse(8);
       }, i * step * 1000));
@@ -500,10 +573,8 @@ export function createContractsView(backend: GameBackend, shell: Shell, getViewe
     el.removeEventListener('pointerdown', onSkip);
     oddsEl.innerHTML = prevOdds;
     // la fiche se vide pendant que les flammes couvrent tout
-    for (const slot of slots) {
-      slot.classList.remove('burn');
-      slot.querySelectorAll('.ember').forEach((x) => x.remove());
-    }
+    for (const slot of slots) slot.classList.remove('burn');
+    for (const em of embers) em.getAnimations().forEach((x) => x.cancel());
   }
 
   function closeViewer() {

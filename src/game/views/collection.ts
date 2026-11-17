@@ -13,6 +13,7 @@ import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
 import { reducedMotion, DUR, EASING } from '../../core/motion';
 import { createForge, forgeCount } from './forge';
+import { binderShift } from './binderShift';
 import { GAMES_OPEN } from '../../core/games';
 import { createRiffle, ndcToRect } from '../riffle';
 
@@ -1399,6 +1400,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     let press: { t: HTMLElement; x: number; y: number; id: number; timer: number } | null = null;
     let last: { x: number; y: number } | null = null;
     let edgeRaf = 0;
+    const shift = binderShift(g); // (V3, lot 08) les voisines s'écartent pendant le glisser
     const cancelPress = () => {
       if (!press) return;
       clearTimeout(press.timer);
@@ -1413,6 +1415,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       ghost.style.height = `${r.height}px`;
       document.body.append(ghost);
       drag = { el: t, from: Number(t.dataset.i), ghost, ox: e.clientX - r.left, oy: e.clientY - r.top, id: e.pointerId };
+      shift.begin(drag.from);
       t.classList.add('bd-dragging');
       g.classList.add('dragging');
       try {
@@ -1466,13 +1469,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     };
     const hover = (x: number, y: number) => {
       if (!drag) return;
-      drag.ghost.hidden = true;
-      const under = document.elementFromPoint(x, y)?.closest<HTMLElement>('.bd-cards .tile');
-      drag.ghost.hidden = false;
-      const i = under ? Number(under.dataset.i) : -1;
+      const i = shift.pick(x, y);
       if (i !== over) {
         over = i;
-        g.querySelectorAll<HTMLElement>('.tile').forEach((x) => x.classList.toggle('bd-over', Number(x.dataset.i) === i && i !== drag!.from));
+        shift.to(i);
       }
     };
     const move = (e: { clientX: number; clientY: number; pointerId: number }) => {
@@ -1499,7 +1499,6 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       d.ghost.remove();
       d.el.classList.remove('bd-dragging');
       g.classList.remove('dragging');
-      g.querySelectorAll('.bd-over').forEach((x) => x.classList.remove('bd-over'));
       try {
         g.releasePointerCapture(e.pointerId);
       } catch {
@@ -1507,7 +1506,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       }
       const to = over;
       over = -1;
-      if (e.type === 'pointercancel' || to < 0 || to === d.from) return;
+      if (e.type === 'pointercancel' || to < 0 || to === d.from) return shift.reset();
       const cards = [...b.cards];
       const [it] = cards.splice(d.from, 1);
       cards.splice(to, 0, it);
@@ -1515,6 +1514,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         await backend.setBinderCards(b.id, cards);
         shell.sfx.tick(1.1, 0.04);
       } catch (err) {
+        shift.reset();
         toast(errMsg(err), 'err');
       }
     };
