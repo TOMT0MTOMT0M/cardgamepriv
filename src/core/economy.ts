@@ -108,6 +108,9 @@ export function packBuyProblem(count: number, coins: number, _e: EconState, _tod
 
 // ───────────────────────────────────────────── brûlage de doublons
 
+/** Cartes DIFFÉRENTES au plus par fournée de la Forge (une ligne d'inventaire écrite par carte, convex/economy.ts burn). */
+export const BURN_MAX_ITEMS = 200;
+
 /** Pièces rendues par un brûlage (valeur de la table). Vérifie : doublons seulement, pas de secrète. */
 export function burnProblem(items: StakeItem[], spare: (it: StakeItem) => number): string | null {
   if (!items.length) return fe('economy.9');
