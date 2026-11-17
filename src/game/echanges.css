@@ -162,7 +162,7 @@
   .ex-head { padding-bottom: 12px; }
   .ex-head .kicker { display: none; }
   .ex-tabs { display: flex; width: 100%; }
-  .ex-tabs button { flex: 1; padding: 0 8px; letter-spacing: 0.1em; }
+  .ex-tabs button { flex: 1; min-width: 0; padding: 0 4px; letter-spacing: 0.04em; } /* (17/11) 4 onglets avec « Historique » */
   .ex-search .ex-q { flex-basis: 100%; max-width: none; font-size: 16px; }
   .ex-results, .fy-deals, .fy-want-list, .ex-cours .pending { grid-template-columns: 1fr; }
   .ex-cherche .mk-head { margin-top: 0; }
@@ -177,3 +177,17 @@
 .fy-pc.ask { border-style: dashed; }
 .fy-pc.ask em { color: var(--ink-2); }
 .fy-pf-more { grid-column: 1 / -1; }
+
+/* (17/11, Hugo) onglet HISTORIQUE : échanges, ventes et achats sur une liste datée, filtrable */
+.ex-hist .hx-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 12px; }
+.ex-hist .hx-filters .chip { min-height: 40px; padding: 0 14px; }
+.ex-hist .hx-filters .chip small { margin-left: 4px; opacity: 0.7; }
+.ex-hist .history { margin: 0; padding: 0; list-style: none; gap: 8px; }
+.ex-hist .trade.hist { opacity: 1; padding: 12px 14px; }
+.ex-hist .trade.hist .who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; font-size: 14px; }
+.ex-hist .hx-k { font: 600 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.ex-hist .hx-price { margin-left: auto; font: 600 14px var(--mono); }
+.ex-hist .hx-sale .hx-price { color: var(--ok); }
+.ex-hist .hx-buy .hx-price { color: var(--ink-2); }
+.ex-hist .hx-sum { display: flex; align-items: center; gap: 8px; padding: 4px 2px 8px; font: 500 13px var(--mono); color: var(--ink-2); }
+

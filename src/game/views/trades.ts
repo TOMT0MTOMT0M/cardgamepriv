@@ -1,6 +1,7 @@
 import { t as tr } from '../../core/i18n';
 import '../../core/i18n/fr/game.views.trades'; // (textes de ce module, version anglaise)
-import { cardKey, lockedCards, type Friend, type GameBackend, type PlayerCard, type TradeHistoryItem, type TradeItem, type TradeView } from '../backend';
+import { cardKey, lockedCards, type Friend, type GameBackend, type MarketHistoryItem, type PlayerCard, type TradeHistoryItem, type TradeItem, type TradeView } from '../backend';
+import { coinsHtml } from './wallet';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { ALL_THEMES, catalogEntry } from '../../core/sets/themes';
@@ -110,6 +111,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         <button role="tab" data-z="pour" class="on" aria-selected="true">${tr('tr.forYou')}<b class="badge ex-b-pour" hidden></b></button>
         <button role="tab" data-z="cherche" aria-selected="false">${tr('tr.search')}</button>
         <button role="tab" data-z="cours" aria-selected="false">${tr('tr.ongoing')}<b class="badge ex-b-cours" hidden></b></button>
+        <button role="tab" data-z="hist" aria-selected="false">${tr('tr.histTab')}</button>
       </div>
     </header>
     <div class="ex-zone ex-pour" data-z="pour"><div class="ex-vendre"></div></div>
@@ -124,7 +126,10 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     <div class="ex-zone ex-cours" data-z="cours" hidden>
       <div class="pending"></div>
       <div class="ex-compose-cta"><button class="btn-ghost ex-compose">${tr('tr.compose')}</button><small>${tr('tr.composeD')}</small></div>
-      <h3 class="hist-t"><button class="linkish hist-toggle">Historique ▸</button></h3><div class="history" hidden></div>
+    </div>
+    <div class="ex-zone ex-hist" data-z="hist" hidden>
+      <div class="starf hx-filters" role="group" aria-label="${tr('tr.h.filterA')}"></div>
+      <ol class="history" aria-live="polite"></ol>
     </div>
     <div class="tr-col left">
       <button class="linkish ex-back">${tr('tr.back')}</button>
@@ -223,7 +228,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   q('.ex-vendre').append(sellMk.el);
   q('.ex-pour').append(board.el);
 
-  type Zone = 'pour' | 'vendre' | 'cherche' | 'cours' | 'compose';
+  type Zone = 'pour' | 'vendre' | 'cherche' | 'cours' | 'hist' | 'compose';
   let zone: Zone = 'pour';
   const tabBtns = [...el.querySelectorAll<HTMLButtonElement>('.ex-tabs button')];
   function setZone(z: Zone) {
@@ -250,8 +255,8 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       board.leave();
     }
     if (z === 'pour') forYou.enter();
-    if (z === 'cours') {
-      renderPending();
+    if (z === 'cours') renderPending();
+    if (z === 'hist') {
       renderHistory();
       void loadHistory();
     }
@@ -630,37 +635,63 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     incoming.forEach((t) => row(t, 'in'));
     outgoing.forEach((t) => row(t, 'out'));
   }
-  let histOpen = false;
-  let history: TradeHistoryItem[] = [];
+  // (17/11, Hugo) HISTORIQUE : onglet à part (avant : un lien replié sous « En cours »), échanges + ventes + achats du
+  // Marché sur une seule liste datée, filtrable ; chaque ligne dit qui, quoi, combien et quand.
+  type HistFilter = 'all' | 'trades' | 'sales' | 'buys';
+  type HistRow = { at: number; kind: 'trade'; t: TradeHistoryItem } | { at: number; kind: 'sale' | 'buy'; m: MarketHistoryItem };
+  let histFilter: HistFilter = 'all';
+  let history: HistRow[] = [];
+  let histLoaded = false;
   async function loadHistory() {
-    try {
-      history = await backend.tradeHistory();
-    } catch {
-      history = [];
-    }
+    const me = backend.state.user?.id ?? 'me';
+    const [trades, market] = await Promise.all([backend.tradeHistory().catch(() => []), backend.marketHistory().catch(() => [])]);
+    history = [
+      ...trades.map((t): HistRow => ({ at: t.resolvedAt, kind: 'trade', t })),
+      ...market.map((m): HistRow => ({ at: m.resolvedAt ?? m.createdAt, kind: m.sellerId === me ? 'sale' : 'buy', m })),
+    ].sort((a, b) => b.at - a.at);
+    histLoaded = true;
     renderHistory();
   }
+  const histOf = (f: HistFilter) => history.filter((r) => f === 'all' || (f === 'trades' ? r.kind === 'trade' : f === 'sales' ? r.kind === 'sale' : r.kind === 'buy'));
   function renderHistory() {
-    q('.hist-toggle').textContent = tr('tr.history', { n: history.length ? `(${history.length}) ` : '', arrow: histOpen ? '▾' : '▸' });
-    historyEl.hidden = !histOpen;
-    if (!histOpen) return;
-    historyEl.innerHTML = history.length ? '' : '<div class="muted">' + tr('tr.noHistory') + '</div>';
+    const filters = q('.hx-filters');
+    const F: Array<[HistFilter, string]> = [['all', tr('tr.h.all')], ['trades', tr('tr.h.trades')], ['sales', tr('tr.h.sales')], ['buys', tr('tr.h.buys')]];
+    filters.innerHTML = F.map(([f, l]) => `<button class="chip${histFilter === f ? ' on' : ''}" data-hf="${f}" aria-pressed="${histFilter === f}">${l} <small>${histLoaded ? histOf(f).length : '…'}</small></button>`).join('');
+    const rows = histOf(histFilter);
+    if (!histLoaded) {
+      historyEl.innerHTML = `<li class="muted">${tr('common.loading')}</li>`;
+      return;
+    }
+    // ventes / achats : le total du filtre, en tête
+    const sum = histFilter === 'sales' || histFilter === 'buys' ? rows.reduce((a, r) => a + (r.kind === 'trade' ? 0 : r.m.price), 0) : 0;
+    historyEl.innerHTML = rows.length ? (sum ? `<li class="hx-sum">${tr(histFilter === 'sales' ? 'tr.h.sumSales' : 'tr.h.sumBuys', { n: rows.length })} ${coinsHtml(sum)}</li>` : '') : `<li class="muted">${tr('tr.noHistoryAll')}</li>`;
     const me = backend.state.user?.id;
     const LABEL: Record<TradeHistoryItem['status'], string> = { accepted: tr('tr.st.accepted'), declined: tr('tr.st.refused'), cancelled: tr('tr.st.cancelled'), countered: tr('tr.st.countered') };
-    for (const t of history) {
-      const out = t.fromId === me;
-      const other = out ? t.toName : t.fromName;
-      const r = h('div', `trade hist ${t.status}`);
-      r.innerHTML = `<div class="who"><b>${esc(other)}</b> · <span class="st">${LABEL[t.status]}</span> <span class="when">${ago(t.resolvedAt)}</span></div>
+    const when = (at: number) => `<time class="when" datetime="${new Date(at).toISOString()}" title="${new Date(at).toLocaleString()}">${ago(at)}</time>`;
+    for (const row of rows) {
+      const r = h('li', '');
+      if (row.kind === 'trade') {
+        const t = row.t;
+        const out = t.fromId === me;
+        r.className = `trade hist ${t.status}`;
+        r.innerHTML = `<div class="who"><span class="hx-k">${tr('tr.h.trade')}</span> <b>${esc(out ? t.toName : t.fromName)}</b> · <span class="st">${LABEL[t.status]}</span> ${when(row.at)}</div>
         <div class="hist-row"><span class="hl">${out ? tr('tr.youGave') : tr('tr.theyGave')}</span><div class="its">${itemsHtml(t.offered)}</div></div>
-        <div class="hist-row"><span class="hl">contre</span><div class="its">${itemsHtml(t.requested)}</div></div>`;
+        <div class="hist-row"><span class="hl">${tr('tr.h.against')}</span><div class="its">${itemsHtml(t.requested)}</div></div>`;
+      } else {
+        const m = row.m;
+        const sale = row.kind === 'sale';
+        r.className = `trade hist hx-mk ${sale ? 'hx-sale' : 'hx-buy'}`;
+        r.innerHTML = `<div class="who"><span class="hx-k">${sale ? tr('tr.h.sale') : tr('tr.h.buy')}</span> <b>${esc(sale ? m.buyerName : m.sellerName)}</b> ${when(row.at)}<span class="hx-price">${sale ? '+' : '−'}${coinsHtml(m.price)}</span></div>
+        <div class="hist-row"><span class="hl">${sale ? tr('tr.h.soldCard') : tr('tr.h.boughtCard')}</span><div class="its">${itemsHtml([{ cardId: m.cardId, rarity: m.rarity, count: 1 }])}</div></div>`;
+      }
       historyEl.append(r);
     }
   }
-  q('.hist-toggle').addEventListener('click', () => {
-    histOpen = !histOpen;
+  q('.hx-filters').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-hf]');
+    if (!b) return;
+    histFilter = b.dataset.hf as HistFilter;
     renderHistory();
-    if (histOpen && !history.length) void loadHistory();
   });
 
   function renderFriends() {
@@ -1177,11 +1208,11 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         ? 'compose'
         : sub === 'tableau' || sub === 'vendre'
           ? 'pour'
-          : sub === 'pour' || sub === 'chercher' || sub === 'cours'
-            ? (sub === 'chercher' ? 'cherche' : sub)
+          : sub === 'pour' || sub === 'chercher' || sub === 'cours' || sub === 'historique'
+            ? (sub === 'chercher' ? 'cherche' : sub === 'historique' ? 'hist' : sub)
             : backend.state.trades.incoming.length > 0
               ? 'cours'
-              : last === 'cherche' || last === 'cours'
+              : last === 'cherche' || last === 'cours' || last === 'hist'
                 ? last
                 : 'pour';
       setZone(z);

@@ -54,6 +54,27 @@ export const board = query({
   },
 });
 
+/**
+ * (17/11, Hugo) HISTORIQUE de mes ventes et de mes achats (les 50 + 50 derniers, sans limite de date), avec le nom de
+ * l'autre joueur. Lu à la demande (onglet « Historique » du Marché), pas d'abonnement : deux lectures par index.
+ */
+export const history = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken }) => {
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    if (!meId) return [];
+    const sold = await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', meId).eq('status', 'sold')).order('desc').take(50);
+    const bought = await ctx.db.query('market').withIndex('by_buyer', (q) => q.eq('buyerId', meId)).order('desc').take(50);
+    const users: Sellers = new Map();
+    return await Promise.all(
+      [...sold, ...bought.filter((m) => m.status === 'sold')].map(async (m) => {
+        const b = m.buyerId ? await sellerOf(ctx, users, m.buyerId) : null;
+        return { ...(await view(ctx, m, users)), buyerName: b?.displayName ?? '?' };
+      }),
+    );
+  },
+});
+
 export const sell = mutation({
   args: { sessionToken: v.string(), cardId: v.string(), rarity: rarityValidator, price: v.number() },
   handler: async (ctx, { sessionToken, cardId, rarity, price }) => {
