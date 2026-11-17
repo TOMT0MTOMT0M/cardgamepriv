@@ -2536,8 +2536,9 @@ button.ob-w { min-height: 36px; }
   .packs-row.wheel .sleeve.mid .sl-art { box-shadow: 0 20px 30px -16px rgba(0, 0, 0, 0.95), 0 0 38px -8px var(--acc, var(--rose)); }
   /* ombre (pochettes de côté, tournées vers l'arrière) et reflet qui balaie, découpés à la silhouette du booster */
   .packs-row.wheel .sl-shade, .packs-row.wheel .sl-shine { display: block; position: absolute; inset: 0; border-radius: 7px; pointer-events: none; -webkit-mask: var(--src) center / 100% 100% no-repeat; mask: var(--src) center / 100% 100% no-repeat; }
-  .packs-row.wheel .sl-shade { background: #050302; opacity: var(--shade, 0); }
-  .packs-row.wheel .sl-shine { overflow: hidden; opacity: var(--shine-a, 0); }
+  /* opacités écrites par shop.ts (paint) sur ces calques eux-mêmes */
+  .packs-row.wheel .sl-shade { background: #050302; opacity: 0; }
+  .packs-row.wheel .sl-shine { overflow: hidden; opacity: 0; }
   .packs-row.wheel .sl-shine::after { content: ''; position: absolute; top: -10%; bottom: -10%; left: 0; width: 100%; background: linear-gradient(104deg, transparent 32%, rgba(255, 255, 255, 0.34) 47%, rgba(255, 255, 255, 0.5) 50%, rgba(255, 255, 255, 0.34) 53%, transparent 68%); transform: translateX(var(--shine, 0%)); mix-blend-mode: overlay; }
   .packs-row.wheel .sleeve .sl-seal { font-size: 12px; z-index: 1; }
   .packs-row.wheel .sleeve:focus-visible { outline: none; }
@@ -2548,7 +2549,8 @@ button.ob-w { min-height: 36px; }
   .wheel-dial::after { content: ''; position: absolute; left: 50%; top: -1px; bottom: 0; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--wacc, var(--rose)); box-shadow: 0 0 8px var(--wacc, var(--rose)); transition: background var(--dur-emphatique); }
   /* boosters en 3D (packWheel3d.ts) : la roue HTML reste en place, invisible, pour les touchers ; le halo est dans la scène */
   .packs-row.wheel.gl .sl-art { box-shadow: none; -webkit-box-reflect: none; }
-  .packs-row.wheel.gl .sl-art img, .packs-row.wheel.gl .sl-ph, .packs-row.wheel.gl .sl-shade, .packs-row.wheel.gl .sl-shine { opacity: 0 !important; }
+  .packs-row.wheel.gl .sl-art img, .packs-row.wheel.gl .sl-ph { opacity: 0 !important; }
+  .packs-row.wheel.gl .sl-shade, .packs-row.wheel.gl .sl-shine { display: none; }
   .packs-row.wheel.gl .sleeve.mid .sl-art { box-shadow: none; }
   /* plus de bouton « Ouvrir » sur téléphone : on touche le booster (ou une pochette pour sa fiche) */
   .home-cta { display: none !important; }

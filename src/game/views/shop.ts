@@ -674,6 +674,20 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
   }
 
+  /**
+   * (V3, lot 03) calques d'ombre et de reflet de chaque pochette + dernières valeurs écrites. Avant, l'ombre et le reflet
+   * passaient par des variables CSS posées sur la pochette : à chaque image, tout son contenu repassait au calcul de style
+   * (≈ 35 % du temps du fil principal pendant un lancer de roue, téléphone simulé ÷ 4). Maintenant : écrits sur leurs
+   * propres calques, seulement s'ils changent, et pas du tout quand la roue HTML n'est qu'une zone de toucher (boosters 3D).
+   */
+  type SleeveFx = { shade: HTMLElement | null; shine: HTMLElement | null; z: string; o: string; sh: string; sa: string; sx: string };
+  const fxCache = new WeakMap<HTMLElement, SleeveFx>();
+  const fxOf = (b: HTMLElement): SleeveFx => {
+    let f = fxCache.get(b);
+    if (!f) fxCache.set(b, (f = { shade: b.querySelector('.sl-shade'), shine: b.querySelector('.sl-shine'), z: '', o: '', sh: '', sa: '', sx: '' }));
+    return f;
+  };
+
   /** pose les pochettes sur le cylindre pour la position `pos` (une seule écriture de style par pochette et par image) */
   function paint() {
     if (!wheelOn || geo.w < 10) return;
@@ -692,8 +706,10 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       const lift = -9 * Math.max(0, 1 - a) ** 2; // la pochette du milieu se soulève
       const rz = lean * Math.max(0, 1 - a * 0.5);
       const op = a <= 1.55 ? 1 : Math.max(0, 1 - (a - 1.55) / 0.75);
+      const fx = fxOf(b);
       b.style.transform = `translate3d(${x.toFixed(2)}px,${lift.toFixed(2)}px,${z.toFixed(2)}px) rotateY(${((th * 180) / Math.PI).toFixed(2)}deg) rotateZ(${rz.toFixed(2)}deg)`;
-      b.style.opacity = op === 1 ? '1' : op.toFixed(3);
+      const os = op === 1 ? '1' : op.toFixed(3);
+      if (fx.o !== os) b.style.opacity = fx.o = os;
       // même pose pour le booster 3D (repère : point de fuite de la caméra, px CSS)
       if (items && view3d)
         items.push({
@@ -708,12 +724,18 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
           glow: Math.max(0, 1 - a * 1.6),
           accent: list[i].accent,
         });
-      b.style.zIndex = String(20 - Math.round(a * 4));
-      b.style.setProperty('--shade', Math.min(0.78, a * 0.42).toFixed(3));
+      const zi = String(20 - Math.round(a * 4));
+      if (fx.z !== zi) b.style.zIndex = fx.z = zi;
+      // boosters 3D : la pochette HTML est invisible (zone de toucher), ombre et reflet ne servent à rien
+      if (view3d || !fx.shade || !fx.shine) continue;
+      const sh = Math.min(0.78, a * 0.42).toFixed(3);
+      if (fx.sh !== sh) fx.shade.style.opacity = fx.sh = sh;
       // le reflet glisse sur la pochette à mesure qu'elle tourne (de droite à gauche quand elle passe au milieu)
-      b.style.setProperty('--shine', `${(-d * 135).toFixed(1)}%`);
       // (seulement pendant que la pochette tourne : à l'arrêt, au milieu, pas de bande figée)
-      b.style.setProperty('--shine-a', (Math.min(1, a * 3.2 + sp * 0.08) * Math.max(0, 1 - a * 1.05)).toFixed(3));
+      const sa = (Math.min(1, a * 3.2 + sp * 0.08) * Math.max(0, 1 - a * 1.05)).toFixed(3);
+      if (fx.sa !== sa) fx.shine.style.opacity = fx.sa = sa;
+      const sx = sa === '0.000' ? fx.sx : `${(-d * 135).toFixed(1)}%`;
+      if (fx.sx !== sx) fx.shine.style.setProperty('--shine', (fx.sx = sx));
     }
     if (items) opening.setWheel(items);
     // cadran : défile avec la roue (motif périodique : un décalage modulo un cran suffit)
@@ -740,7 +762,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   function markMid() {
     const m = mod(Math.round(pos));
     sleeves.forEach((b, i) => b.classList.toggle('mid', i === m));
-    rowEl.style.setProperty('--wacc', list[m]?.accent ?? 'var(--rose)');
+    const acc = list[m]?.accent ?? 'var(--rose)';
+    if (rowEl.style.getPropertyValue('--wacc') !== acc) rowEl.style.setProperty('--wacc', acc);
   }
 
   function frame(now: number) {
