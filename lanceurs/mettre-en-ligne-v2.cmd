@@ -44,6 +44,9 @@ echo [3/5] build (mode v2)...
 for /f "usebackq delims=" %%s in (`git rev-parse --short HEAD`) do set BEBOU_SHA=%%s
 call npx tsc --noEmit >> "%LOG%" 2>&1 || goto :err
 call npx vite build --mode v2 >> "%LOG%" 2>&1 || goto :err
+rem (17/11) comparateur live / V3 (/miroir/) : copies de demo de master et de v2 ; un echec ne bloque pas la mise en ligne
+echo      comparateur live / V3...
+call node scripts\miroir\build.mjs >> "%LOG%" 2>&1 || echo      comparateur NON construit : voir logs\mettre-en-ligne-v2.log
 echo [4/5] images nouvelles vers R2...
 call node scripts/r2-sync.mjs --dist --nouvelles-seulement >> "%LOG%" 2>&1 || goto :err
 echo [5/5] Cloudflare Pages (branche v2)...
@@ -51,6 +54,7 @@ call npx --yes wrangler pages deploy dist --project-name=cardgamepriv --branch=v
 echo === OK === >> "%LOG%"
 echo.
 echo LIEN V2 MIS A JOUR : https://v2.cardgamepriv.pages.dev/jeu/  (labo : https://v2.cardgamepriv.pages.dev/)
+echo Comparateur live / V3 : https://v2.cardgamepriv.pages.dev/miroir/
 echo Connexion avec un compte equipe (Tom, Hugo). Le site des joueurs n'a pas bouge.
 pause
 exit /b 0

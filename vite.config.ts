@@ -3,7 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { FR_DEVICE_LANGS } from './src/core/i18n';
 
 // `npm run dev:mobile` → HTTPS + LAN : WebGPU et le gyroscope exigent un contexte sécurisé sur téléphone.
-// Trois pages : le labo (/), le jeu (/jeu/) et le dashboard de l'équipe (/admin/, src/admin/).
+// Trois pages : le labo (/), le jeu (/jeu/) et le dashboard de l'équipe (/admin/, src/admin/) ; + le comparateur (/miroir/) sur le lien V2.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', 'VITE_');
   // (V2) canal de build : `--mode v2` lit .env.v2.local (staging Convex) et marque le site « V2 — test » (src/core/canal.ts)
@@ -40,6 +40,8 @@ export default defineConfig(({ mode }) => {
           lab: 'index.html',
           jeu: 'jeu/index.html',
           admin: 'admin/index.html',
+          // (17/11) comparateur live / V3 (lien V2 seulement ; ses deux copies : scripts/miroir/build.mjs)
+          ...(canal === 'v2' ? { miroir: 'miroir/index.html' } : {}),
         },
       },
     },
