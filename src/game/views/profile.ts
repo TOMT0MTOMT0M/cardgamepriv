@@ -6,6 +6,7 @@ import { createLeaderboard } from './leaderboard';
 import { friendBtn } from './friends';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
+import { dropFlight, liftCard, returnCard } from '../sharedFlight';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { ACCENTS, BACKGROUNDS, BADGES, BANNERS, FRAMES, TITLE_STYLES, VITRINES, accentColor, accordOf, backgroundOf, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
@@ -651,7 +652,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       }
       if (t && c) {
         wrap.append(t);
-        t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+        t.addEventListener('click', () => void openCard(c.cardId, c.rarity, t));
       } else wrap.innerHTML = `<div class="pf-empty"></div>`;
       caseEl.append(wrap);
     }
@@ -685,7 +686,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     g.replaceChildren();
     for (const c of list.slice(0, allShown)) {
       const t = cardTile(c.cardId, c.rarity, { count: c.count });
-      t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+      t.addEventListener('click', () => void openCard(c.cardId, c.rarity, t));
       g.append(t);
     }
     if (!list.length) g.append(h('div', 'muted', owned.length ? tr('pf.noMatch') : tr('pf.noCardYet')));
@@ -731,7 +732,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         for (const c of b.cards.slice(0, n)) {
           const row = have.get(`${c.cardId}:${c.rarity}`);
           const t = cardTile(c.cardId, c.rarity, { owned: !!row, count: row?.count });
-          if (row) t.addEventListener('click', () => void openCard(c.cardId, c.rarity));
+          if (row) t.addEventListener('click', () => void openCard(c.cardId, c.rarity, t));
           g.append(t);
         }
         if (b.cards.length > n) {
@@ -838,10 +839,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (!open || !viewerRef || performance.now() - openedAt < 450 || !el.isConnected) return;
     if (!viewerRef.hits(x, y)) closeViewer();
   });
-  async function openCard(cardId: string, r: RarityId) {
+  /** (V3, lot 02) tuile d'où la carte s'est envolée : elle y revient à la fermeture (game/sharedFlight.ts) */
+  let fromTile: HTMLElement | null = null;
+  async function openCard(cardId: string, r: RarityId, tile?: HTMLElement | null) {
     const viewer = await getViewer();
     viewerRef = viewer;
     openedAt = performance.now();
+    const first = !open;
+    fromTile = tile ?? null;
     const e = catalogEntry(cardId);
     const rr = rarity(r);
     const row = ownedOf().find((c) => c.cardId === cardId && c.rarity === r);
@@ -856,10 +861,13 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     viewerUi.querySelector('.v-actions')!.replaceChildren(imageReportButton(backend, cardId, 'profil/carte'));
     shell.setDimmed(false);
     shell.show('viewer');
-    void viewer.show(cardId, r);
+    // (lot 02) la carte de la tuile se soulève jusqu'à la visionneuse ; la carte 3D prend sa place à l'identique
+    const lift = first ? liftCard(tile, viewer, shell.renderer.domElement) : undefined;
+    void viewer.show(cardId, r, { ghost: lift?.landed }).finally(() => lift?.settle());
   }
   function closeViewer() {
     if (!open) return;
+    const from = viewerRef?.cardRect() ?? null; // (avant de quitter la visionneuse : sur téléphone, elle libère la carte)
     popLayer();
     open = false;
     document.body.classList.remove('card-open');
@@ -867,6 +875,9 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     viewerUi.hidden = true;
     shell.show(null);
     shell.setDimmed(true);
+    // (lot 02) retour sur la tuile (vitrine, collection, classeur épinglé) ; tuile refaite entre-temps : fermeture sèche
+    returnCard({ tile: fromTile, from, canvas: shell.renderer.domElement });
+    fromTile = null;
   }
   viewerUi.querySelector('.close')!.addEventListener('click', closeViewer);
   window.addEventListener('keydown', (e) => e.key === 'Escape' && open && closeViewer());
@@ -901,7 +912,10 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     },
     leave() {
       shown = false;
-      if (open) closeViewer();
+      if (open) {
+        closeViewer();
+        dropFlight(); // (on quitte la page : pas de retour vers une vitrine qui s'en va)
+      }
       stopEditing();
       atelier?.close();
       bgStop();

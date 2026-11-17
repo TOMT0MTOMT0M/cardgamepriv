@@ -2,10 +2,13 @@ import { MeshPhysicalNodeMaterial, MeshStandardNodeMaterial, Color } from 'three
 import {
   Fn,
   abs,
+  atan,
   bumpMap,
   cameraPosition,
   color,
+  dot,
   float,
+  fwidth,
   length,
   max,
   min,
@@ -13,10 +16,12 @@ import {
   modelWorldMatrixInverse,
   normalize,
   positionLocal,
+  sin,
   smoothstep,
   texture,
   uv,
   vec2,
+  vec3,
   vec4,
   varying,
 } from 'three/tsl';
@@ -170,6 +175,12 @@ export function createEdgeMaterial(paper = '#e8e2d4', core = '#1d1b1a', opts: { 
 }
 
 /**
+ * (V3, lot S2) guillochis du dos : couronne de sillons radiaux entre r0 et r1 (rayons en hauteurs de carte, autour du
+ * « B » : 300 px de haut sur 1072), `n` sillons au tour (entier : pas de couture), éclat argent max `glint`.
+ */
+const GUILLOCHE = { r0: 0.15, r1: 0.31, n: 160, glint: 0.38 } as const;
+
+/**
  * Dos de carte (retours 06/11) : ALUMINIUM BROSSÉ — métal partout, reflet anisotrope (allongé dans le sens du
  * brossage), gravures CNC en creux mates (R du masque) avec leur relief (G). Aucun vernis plastique.
  * `opts.paper` : l'ancien rendu papier + or (labo).
@@ -189,7 +200,7 @@ export function createBackMaterial(back: BackArt, opts: { foil?: number; paper?:
     return m;
   }
   const cut = mk.r; // gravure
-  m.colorNode = c.rgb;
+  // (couleur : la plaque peinte, voir le guillochis plus bas)
   // (ultra-réalisme) acier brossé vertical : métal pur, reflet étiré le long des stries, plus brillant ; gravure mate
   // (métal à 0,88 : l'acier brossé diffuse un peu le long des stries — en vrai aussi — et reste lisible quand il ne
   // reflète qu'un décor sombre)
@@ -202,10 +213,31 @@ export function createBackMaterial(back: BackArt, opts: { foil?: number; paper?:
   const spot = mk.b;
   const d = uv().sub(0.5).mul(vec2(CARD.w / CARD.h, 1));
   const radial = d.div(d.length().max(1e-4));
+  /*
+   * (V3, lot S2) GUILLOCHIS : une couronne de fins sillons RADIAUX autour du « B » gravé (soleil de cadran de montre),
+   * strictement achromatique (aucune teinte ajoutée : l'acier et du blanc). Un éclat ARGENT sur les crêtes, seulement de
+   * biais : il naît avec l'inclinaison, en une barre de lumière qui tourne avec elle (là où les sillons sont en travers
+   * du regard) — à plat, les sillons se devinent à peine (creux 4 % plus sombres). Le métal lui-même (anisotropie,
+   * rugosité) ne change pas : au premier essai, un soleillé « physique » faisait un grand disque chromé (DA du dos).
+   * Calculé par pixel, sans texture (quelques opérations) ; trop petits pour être résolus (cartes de l'éventail, de la
+   * pile), les sillons se fondent en leur moyenne : pas de moiré.
+   */
+  const po = positionLocal.xy.div(CARD.h);
+  const ro = po.length().max(1e-4);
+  const ring = smoothstep(GUILLOCHE.r0, GUILLOCHE.r0 + 0.045, ro).mul(smoothstep(GUILLOCHE.r1, GUILLOCHE.r1 - 0.07, ro)).mul(float(1).sub(spot)).mul(float(1).sub(cut));
+  const crest = sin(atan(po.y, po.x).mul(GUILLOCHE.n)).mul(0.5).add(0.5).pow(4);
+  // (pixel / pas des sillons : au-delà de ~0,5 ils ne se lisent plus → leur moyenne, 35/128 pour une crête en ^4)
+  const sharp = smoothstep(0.6, 0.25, fwidth(ro).mul(GUILLOCHE.n / (2 * Math.PI)).div(ro));
+  const groove = mix(float(35 / 128), crest, sharp);
+  const vd = viewDirObject();
+  const tilt = vd.xy.length();
+  const across = abs(dot(vec2(po.y.negate(), po.x).div(ro), vd.xy.div(tilt.max(1e-4)))).pow(10);
+  m.emissiveNode = vec3(ring.mul(groove).mul(across).mul(smoothstep(0.05, 0.45, tilt)).mul(GUILLOCHE.glint));
   const dir = mix(vec2(1, 0), radial, spot);
   // (07/11) fond tourné du « B » gravé : effet un peu plus discret que l'ancien lamage (anisotropie 0,6, rugosité 0,3)
   m.anisotropyNode = dir.mul(mix(mix(float(0.85), float(0.1), cut), float(0.6), spot));
   m.roughnessNode = mix(mix(float(0.34), float(0.68), cut), float(0.3), spot);
+  m.colorNode = c.rgb.mul(float(1).sub(ring.mul(float(1).sub(groove)).mul(sharp).mul(0.04)));
   m.sheenNode = float(0.25);
   m.sheenRoughnessNode = float(0.6);
   m.sheenColor = new Color('#ffffff');

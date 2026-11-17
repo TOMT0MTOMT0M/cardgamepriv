@@ -15,8 +15,9 @@ import { ensureCardImages, ensureFonts, generateCardArt, nextFrame, type CardArt
 import { LAB_CARDS, cardById } from '../../core/cardData';
 import { rarity, type RarityId } from '../../core/rarity';
 import { CARD, createCardGeometry } from '../../core/cardModel';
-import { EASE, springCurve } from '../../core/ease';
-import { reducedMotion, DUR } from '../../core/motion';
+import { EASE, springCurve, smoothstep as smooth } from '../../core/ease';
+import { reducedMotion, DUR, SPRING } from '../../core/motion';
+import { haptics } from '../../core/haptics';
 import { buildEdge, buildFace, gameCardArtAsync, themedBacks } from './cardFace';
 import type { WonderVisualInstance } from '../../core/wonderDiorama';
 
@@ -62,7 +63,12 @@ export interface ViewerScene extends Experiment {
    * centre de l'écran, à la largeur `fromW` (px CSS : celle de la doublure 2D de la scène, qui se fond sur elle) ;
    * ensuite elle se retourne en venant à sa place de repos (au lieu du tour d'entrée habituel).
    */
-  show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1; quiet?: boolean; hold?: Promise<void>; fromW?: number }): Promise<void>;
+  /**
+   * `ghost` (V3, lot 02) : une image 2D de la carte vole depuis sa tuile jusqu'à `restRect()` (game/sharedFlight.ts) ;
+   * la carte 3D, prête, attend son arrivée puis apparaît EXACTEMENT là, de face, à l'échelle 1 (pas de tour d'entrée :
+   * c'est la tuile qui est devenue la carte). Ignoré avec `dir` ou `hold`.
+   */
+  show(cardId: string, rarityId: RarityId, opts?: { dir?: 1 | -1; quiet?: boolean; hold?: Promise<void>; fromW?: number; ghost?: Promise<void> }): Promise<void>;
   /** Vrai si le point (NDC −1..1) est sur la carte : un toucher ailleurs ferme la visionneuse (« clic hors zone »). */
   hits(ndcX: number, ndcY: number): boolean;
   /**
@@ -70,7 +76,35 @@ export interface ViewerScene extends Experiment {
    * normalisées (−1..1, y vers le haut) : cible de la tuile qui « grandit » vers la carte 3D. null avant le montage.
    */
   restRect(): { x0: number; y0: number; x1: number; y1: number } | null;
+  /**
+   * (V3, lot 02) où est la carte À CET INSTANT (NDC, boîte englobante : inclinaison, zoom, flottement compris) — départ
+   * du vol retour vers la tuile. null si rien à montrer en 2D : carte cachée, de dos (l'image de la tuile est la face),
+   * couchée (carte horizontale) ou skin CS (gros plan).
+   */
+  cardRect(): { x0: number; y0: number; x1: number; y1: number } | null;
 }
+
+/** (v2.0.2) la carte au repos est relevée de 0,1 (la fiche texte se lit dessous) : `lift` de la boucle, et `restRect` */
+const REST_LIFT = 0.1;
+/**
+ * (V3, lot S2) RETOURNEMENT TIRÉ AU DOIGT. Carte posée DE DOS dans la visionneuse (on l'a fait tourner au doigt jusqu'à
+ * son dos : le glissé s'aimante sur la face la plus proche) : on la retourne en la tirant vers la droite, autour de sa
+ * tranche DROITE (même charnière que l'ouverture, opening.ts `HINGE`) — le bord gauche se soulève vers soi, le droit
+ * reste posé. POINT DUR à HINGE_DETENT_DEG : relâchée avant, elle retombe sur le dos (« pat » sourd) ; le point franchi,
+ * déclic franc (tic + vibration) et, relâchée, elle finit de s'ouvrir. Reprise au doigt à tout instant en plein vol.
+ * Glisser vers la GAUCHE depuis le dos = la rotation libre d'avant.
+ */
+/** angle du point dur (degrés) — À RÉGLER après essai sur téléphone */
+export const HINGE_DETENT_DEG = 58;
+const HINGE_DETENT = (HINGE_DETENT_DEG * Math.PI) / 180;
+/** résistance du point dur (rad) : la carte « retient » jusqu'à HINGE_DETENT, puis rattrape d'un coup (le claquement) */
+const HINGE_HOLD = 0.1;
+/** course du doigt pour un demi-tour, en largeurs de carte à l'écran */
+const HINGE_SPAN = 1.3;
+/** coup de doigt (rad/s) qui ouvre ou referme quel que soit l'angle */
+const HINGE_FLICK = 3.6;
+/** part de la perspective visible quand le bord se soulève (même valeur que l'ouverture : HINGE_PERSP) */
+const HINGE_PERSP = 0.55;
 
 export function createViewerScene(): ViewerScene {
   let ctx: LabContext;
@@ -207,12 +241,115 @@ export function createViewerScene(): ViewerScene {
     stage.camera.updateMatrixWorld();
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-      // (pose de repos : centre légèrement relevé, cf. `lift` dans la boucle)
-      corner.set((cx * 0.63) / 2, (cy * 0.88) / 2 + 0.05, 0).project(stage.camera);
+      // (pose de repos : centre relevé de REST_LIFT, comme `lift` dans la boucle — V3 lot 02 : c'était +0,05 depuis la
+      // v2.0.2, la tuile en vol arrivait ≈ 18 px trop bas et la carte 3D « sautait » en prenant le relais)
+      corner.set((cx * 0.63) / 2, (cy * 0.88) / 2 + REST_LIFT, 0).project(stage.camera);
       x0 = Math.min(x0, corner.x); y0 = Math.min(y0, corner.y); x1 = Math.max(x1, corner.x); y1 = Math.max(y1, corner.y);
     }
     return Number.isFinite(x0 + y0 + x1 + y1) ? { x0, y0, x1, y1 } : null;
   }
+
+  function cardRect() {
+    if (!stage || !mesh || !rig.visible || csInstance || art?.landscape || Math.abs(pose.rz) > 0.01) return null;
+    // de dos (rotation libre ou retournement en cours) : la face n'est pas ce qu'on voit
+    if (Math.cos(rig.rotation.y) * Math.cos(rig.rotation.x) < 0.2) return null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      corner.set((cx * 0.63) / 2, (cy * 0.88) / 2, 0).applyMatrix4(mesh.matrixWorld).project(stage.camera);
+      x0 = Math.min(x0, corner.x); y0 = Math.min(y0, corner.y); x1 = Math.max(x1, corner.x); y1 = Math.max(y1, corner.y);
+    }
+    return Number.isFinite(x0 + y0 + x1 + y1) ? { x0, y0, x1, y1 } : null;
+  }
+
+  /*
+   * (V3, lot S2) état du retournement tiré au doigt (voir HINGE_DETENT_DEG). `a` : angle de charnière (0 = posée de
+   * dos, π = de face), `v` sa vitesse (rad/s) ; `turn` : demi-tours acquis (0 ou π) — une fois ouverte, la carte reste
+   * de face avec a = 0. `yawOff` : le glissé libre (core/input.ts) garde son angle d'une carte à l'autre ; une nouvelle
+   * carte repart de face (multiple de π le plus proche, retiré).
+   */
+  const hg = { a: 0, v: 0, turn: 0, yawOff: 0, held: false, decided: false, pressed: false, x0: 0, a0: 0, target: -1, armed: true };
+  const hingeReset = () => {
+    hg.a = hg.v = hg.turn = 0;
+    hg.held = hg.decided = false;
+    hg.target = -1;
+    hg.armed = true;
+    hg.yawOff = Math.round(ctx.input.yaw / Math.PI) * Math.PI;
+  };
+  /** (lot S2) une image du retournement tiré : prise au doigt, suivi, point dur, puis ressort vers le dos ou la face */
+  function hinge(dt: number) {
+    const inp = ctx.input;
+    // relâché : sous le point dur la carte retombe sur le dos, au-delà elle finit de s'ouvrir (un coup de doigt franc
+    // décide quel que soit l'angle)
+    if (hg.held && !inp.down) {
+      hg.held = false;
+      if (hg.decided) hg.target = (hg.a >= HINGE_DETENT && hg.v > -HINGE_FLICK) || hg.v > HINGE_FLICK ? Math.PI : 0;
+    }
+    if (!inp.down) hg.pressed = false;
+    else if (!hg.pressed) {
+      hg.pressed = true;
+      // posée de dos et immobile (tour d'entrée fini : st.spin revient à 0 ; angle libre aimanté sur un dos), ou en
+      // train de se retourner : un doigt posé SUR la carte la prend (en plein vol : à l'angle où elle est)
+      const face = st.spin + inp.yaw - hg.yawOff + hg.turn;
+      const onBack = !!mesh && rig.visible && !csInstance && st.spin === 0 && hg.a === 0 && Math.cos(face) < -0.94;
+      if ((onBack || hg.a > 0) && hits(inp.ndcX, inp.ndcY)) {
+        hg.held = true;
+        hg.decided = hg.a > 0;
+        hg.x0 = inp.ndcX;
+        // (angle « doigt » qui donne l'angle actuel à travers le point dur : pas de saut à la reprise)
+        hg.a0 = hg.a;
+        if (hg.a < HINGE_DETENT) for (let i = 0; i < 4; i++) hg.a0 = Math.min(HINGE_DETENT, hg.a + HINGE_HOLD * smooth(HINGE_DETENT - 0.4, HINGE_DETENT, hg.a0));
+        hg.v = 0;
+        hg.target = -1;
+      }
+    }
+    const prev = hg.a;
+    if (hg.held) {
+      const dx = ((inp.ndcX - hg.x0) / 2) * ctx.width; // px CSS
+      // depuis le dos, le premier mouvement décide : vers la droite = on retourne ; vers la gauche = rotation libre
+      if (!hg.decided && Math.abs(dx) > 8) {
+        if (dx > 0) hg.decided = true;
+        else hg.held = false;
+      }
+      if (hg.held && hg.decided) {
+        const r = restRect();
+        const cardPx = r ? ((r.x1 - r.x0) / 2) * ctx.width * zoom : ctx.width * 0.5;
+        const raw = Math.min(Math.PI, Math.max(0, hg.a0 + (dx / Math.max(120, cardPx * HINGE_SPAN)) * Math.PI));
+        // point dur : en approchant, la carte prend du retard sur le doigt ; le point franchi, elle rattrape d'un coup
+        hg.a = raw < HINGE_DETENT ? Math.max(0, raw - HINGE_HOLD * smooth(HINGE_DETENT - 0.4, HINGE_DETENT, raw)) : raw;
+        hg.v = hg.v * 0.6 + ((hg.a - prev) / Math.max(dt, 1 / 240)) * 0.4;
+      }
+    } else if (hg.target >= 0) {
+      // ressort de pose des cartes (motion.ts), sous-pas fixes comme core/ease Spring
+      const { stiffness: k, damping: c } = SPRING.carte;
+      const n = Math.max(1, Math.ceil(dt * 240));
+      const h = dt / n;
+      for (let i = 0; i < n; i++) {
+        hg.v += (k * (hg.target - hg.a) - c * hg.v) * h;
+        hg.a += hg.v * h;
+      }
+      if (hg.target === 0 && hg.a <= 0) {
+        // retombée contre la table : arrêt net, petit son sourd
+        hg.a = hg.v = 0;
+        hg.target = -1;
+        ctx.sfx.pat(0.28);
+      } else if (hg.target > 0 && Math.abs(hg.a - Math.PI) < 0.004 && Math.abs(hg.v) < 0.05) {
+        // ouverte : le demi-tour est acquis, la carte reste de face (même pose : turn + π ≡ a = π)
+        hg.turn = (hg.turn + Math.PI) % (Math.PI * 2);
+        hg.a = hg.v = 0;
+        hg.target = -1;
+      }
+    }
+    // le point dur franchi vers l'ouverture : déclic franc (réarmé en redescendant nettement dessous)
+    if (hg.armed && prev < HINGE_DETENT && hg.a >= HINGE_DETENT) {
+      hg.armed = false;
+      ctx.sfx.tick(1.38, 0.24);
+      haptics.pulse(12);
+    } else if (!hg.armed && hg.a < HINGE_DETENT * 0.88) hg.armed = true;
+    // carte soulevée : la tranche de la pile (game/riffle.ts, DOM au-dessus du canvas) s'efface, la carte passe devant
+    const up = hg.a > 0;
+    if (up !== hingeUp) document.body.classList.toggle('viewer-hinge', (hingeUp = up));
+  }
+  let hingeUp = false;
 
   function clear() {
     if (wonderInstance) {
@@ -241,13 +378,17 @@ export function createViewerScene(): ViewerScene {
   return {
     hits,
     restRect,
+    cardRect,
     // définition native de l'écran (×3 sur iPhone) : une seule carte, scène légère — c'est l'écran où l'on inspecte
     dprCap: 3,
     /** pour le shell : au repos tant que la carte n'est ni touchée, ni animée, ni zoomée (changement de définition 3D permis) */
-    pacing: () => (tl?.isActive() || ctx.input.down || ctx.input.dragging || Math.abs(zoomT - zoom) > 0.002 ? 'busy' : 'rest'),
+    pacing: () => (tl?.isActive() || ctx.input.down || ctx.input.dragging || hg.target >= 0 || Math.abs(zoomT - zoom) > 0.002 ? 'busy' : 'rest'),
     async show(cardId, rarityId, opts) {
       const my = ++token;
       setZoom(1); // nouvelle carte : on repart sans zoom
+      hingeReset(); // (lot S2) … et de face, sans retournement en cours
+      // (lot 02) vol depuis la tuile : seulement pour une ouverture simple (pas de carte voisine, pas de scène 6★)
+      const ghost = !opts?.dir && !opts?.hold ? opts?.ghost : undefined;
       const cd = cardById(cardId);
       const mobile = ctx.quality === 'mobile';
       // nouvelle ouverture : rien de l'ancienne carte ne s'affiche le temps de préparer la nouvelle
@@ -329,6 +470,19 @@ export function createViewerScene(): ViewerScene {
           return nextArt.dispose();
         }
         pre = { face: pf, edge: pe, mesh: pm };
+      }
+      // (lot 02) la carte est prête : elle attend que la tuile en vol soit posée à sa place (`restRect`) pour apparaître
+      // dessous, à l'identique — fermer en plein vol abandonne ici (le fantôme repart vers la tuile)
+      if (ghost) {
+        await ghost;
+        if (my !== token) {
+          if (pre) {
+            pre.mesh.dispatchEvent({ type: 'dispose' } as never);
+            pre.face.holo.material.dispose();
+            pre.edge.dispose();
+          }
+          return nextArt.dispose();
+        }
       }
       clear();
       rig.visible = true;
@@ -414,6 +568,12 @@ export function createViewerScene(): ViewerScene {
           .to(st, { spin: Math.PI * 2, duration: 1.0, ease: springCurve(0.55, 11), onStart: () => sfx?.whoosh(0.35, 0.08) }, lead + 0.04)
           .call(() => (st.spin = 0), [], lead + 1.04);
         at = lead + 0.82;
+      } else if (ghost) {
+        // (lot 02) la tuile est devenue la carte : déjà à sa place, de face, à l'échelle 1 — pas de tour d'entrée (il
+        // montrait le dos sous l'image de face qui s'efface : la « téléportation » de l'audit 3.3) ; les étoiles s'allument
+        Object.assign(st, { spin: 0, s: 1, z: 0, x: 0, y: 0 });
+        ambT = 0; // flottement à zéro (balancement nul) : la carte 3D se superpose à plat sur l'image 2D
+        at = DUR.rapide() / 1000;
       } else {
         Object.assign(st, { spin: Math.PI, s: 0.85, z: -0.3, x: 0, y: 0 });
         tl.to(st, { z: 0, s: 1, duration: 0.7, ease: EASE.glide }, 0)
@@ -423,7 +583,7 @@ export function createViewerScene(): ViewerScene {
       // (11/11) carte horizontale : elle se couche après son entrée, la caméra prend un peu de recul
       if (art.landscape) {
         const k = landscapeCam();
-        const t0 = dir ? 0.3 : 1.0;
+        const t0 = dir || ghost ? 0.3 : 1.0;
         pose.rz = 0;
         tl.to(pose, { rz: Math.PI / 2, duration: 0.9, ease: springCurve(0.62, 9), onStart: () => sfx?.whoosh(0.28, 0.06) }, t0)
           .to(pose, { cam: k * 1.12, duration: 0.45, ease: EASE.glide }, t0)
@@ -565,12 +725,14 @@ export function createViewerScene(): ViewerScene {
       // « réduire les animations » de l'appareil : halo plus faible et immobile
       const red = reducedMotion();
       halo.k.value = haloT.k * (red ? 0.45 : 1 + haloT.pulse * Math.sin(t * 1.6) * 0.18);
-      ctx.input.spinEnabled = true; // ici on fait tourner la carte en la glissant (l'ouverture, elle, le coupe)
+      // ici on fait tourner la carte en la glissant (l'ouverture, elle, le coupe) — sauf pendant un retournement tiré
+      ctx.input.spinEnabled = !hg.held;
       // curseur « main » : on attrape la carte pour la faire tourner ; l'indication s'efface après le premier tour
       const cur = ctx.input.dragging ? 'grabbing' : 'grab';
       if (ctx.canvas.style.cursor !== cur) ctx.canvas.style.cursor = cur;
       if (ctx.input.dragging && !document.body.classList.contains('viewer-spun')) document.body.classList.add('viewer-spun');
       const p = ctx.input.pose(0.38);
+      hinge(dt);
       // gestes : doigt / bouton appuyé, pointeur qui bouge, téléphone qui bouge (gyroscope), zoom, timeline, musique
       const inp = ctx.input;
       const tx = inp.tiltX, ty = inp.tiltY;
@@ -587,7 +749,7 @@ export function createViewerScene(): ViewerScene {
       const anim = !!tl?.isActive();
       const live = !!wonderInstance || !!csInstance || eqVis > 0.01;
       // (inclinaison lente : le seuil TILT_WAKE est franchi par à-coups, la pleine cadence tient 0,4 s après chacun)
-      const gesture = inp.down || inp.dragging || moved || tiltT < 0.4 || zooming || anim || live;
+      const gesture = inp.down || inp.dragging || moved || tiltT < 0.4 || zooming || anim || live || hg.target >= 0;
       ambT += dt;
       idleS += ((inp.inside ? 0 : 1) - idleS) * (1 - Math.exp((-dt * 3000) / DUR.emphatique()));
       const idle = idleS;
@@ -600,12 +762,26 @@ export function createViewerScene(): ViewerScene {
         csInstance.inspect.idle += ((ctx.input.inside || ctx.input.down ? 0 : 1) - csInstance.inspect.idle) * (1 - Math.exp(-dt * 3));
       }
       // un peu au-dessus du centre (la fiche texte se lit dessous) ; zoomée, la carte se recentre : la fiche s'est effacée
-      const lift = 0.1 * Math.max(0, 1 - (zoom - 1) / 0.6); // (v2.0.2) plus haut : les boutons en dessous ne la touchent plus
+      const lift = REST_LIFT * Math.max(0, 1 - (zoom - 1) / 0.6); // (v2.0.2) plus haut : les boutons en dessous ne la touchent plus
       rig.position.set(st.x, lift + st.y + Math.sin(ambT * 0.9) * 0.006, st.z);
       if (csInstance) rig.rotation.set(0, st.spin, 0);
-      else rig.rotation.set(p.x + Math.sin(ambT * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(ambT * 0.37) * 0.18 * idle, 0);
+      else rig.rotation.set(p.x + Math.sin(ambT * 0.5) * 0.05 * idle, st.spin + p.y - hg.yawOff + hg.turn + hg.a + Math.sin(ambT * 0.37) * 0.18 * idle, 0);
       zoom += (zoomT - zoom) * (1 - Math.exp(-dt * 10));
       rig.scale.setScalar(st.s * zoom * csClose);
+      if (hg.a > 1e-4) {
+        // (lot S2) CHARNIÈRE DROITE, même géométrie que l'ouverture (opening.ts, HINGE) : le centre décrit
+        // (w/2)(1 − cos a) en x et (w/2) sin a en z — le bord droit reste posé, le gauche se soulève vers soi ; seconde
+        // moitié : la « main » ramène la carte au centre (sinon elle atterrirait décalée d'une largeur). La perspective
+        // est en partie compensée (HINGE_PERSP) : la carte ne « gonfle » pas vers la caméra.
+        const k = rig.scale.x;
+        const w = (Math.abs(Math.cos(pose.rz)) * CARD.w + Math.abs(Math.sin(pose.rz)) * CARD.h) * k;
+        const u = Math.min(1, Math.max(0, (hg.a / Math.PI - 0.5) * 2));
+        const lz = (w / 2) * Math.sin(hg.a);
+        const depth = Math.max(0.2, stage.camera.position.z - rig.position.z);
+        rig.position.x += (w / 2) * (1 - Math.cos(hg.a)) - w * u * u * (3 - 2 * u);
+        rig.position.z += lz;
+        rig.scale.setScalar(k * (1 - HINGE_PERSP * (1 - Math.max(0.5, (depth - lz) / depth))));
+      }
       if (mesh) mesh.rotation.z = pose.rz;
       if (camBase) stage.camera.position.z = camBase * pose.cam;
       wonderInstance?.update(dt, t);

@@ -10,6 +10,8 @@
 .rf-rail .rf-edge { position: absolute; left: 0; top: 2.5%; bottom: 2.5%; border-radius: 0 3px 3px 0; background: repeating-linear-gradient(90deg, #5b5e63 0 1px, #17181a 1px 1.6px); border: 1px solid var(--gm-line); border-left: 0; }
 /* zoomée, on inspecte : la tranche s'efface avec les boutons */
 .viewer-zoomed .viewer-ui .rf-rail { opacity: 0; pointer-events: none; }
+/* (V3, lot S2) carte retournée au doigt autour de sa tranche droite (scenes/viewer.ts) : elle passe devant la tranche */
+.viewer-hinge .viewer-ui .rf-rail { opacity: 0; pointer-events: none; }
 .viewer-ui.riffling .rf-rail .rf-edge { opacity: 0; }
 
 /* pendant le geste : fond noir (celui de la visionneuse) sur la carte 3D, la fiche s'efface, le compteur reste */

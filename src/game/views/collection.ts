@@ -11,11 +11,12 @@ import { gestureButtons, panelStrip, showCardPanel } from './cardPanel';
 import { cardQuery, type CardQuery } from '../../core/cardSearch';
 import { preloadOwned, preloadThumbs } from '../preload';
 import { haptics } from '../../core/haptics';
-import { reducedMotion, DUR, EASING } from '../../core/motion';
 import { createForge, forgeCount } from './forge';
 import { binderShift } from './binderShift';
 import { GAMES_OPEN } from '../../core/games';
 import { createRiffle, ndcToRect } from '../riffle';
+import { dropFlight, liftCard, returnCard } from '../sharedFlight';
+import { paintedCard } from '../cardImages';
 
 /**
  * COLLECTION (refonte, retours du 3 nov. + retours live n°1)
@@ -1721,55 +1722,26 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     riffle.sync(true); // (V3 S4) la tranche de la pile, contre la carte
     // (V2 fluidité, lot 6) ouverture depuis la grille : la carte de la tuile grandit jusqu'à la place de la carte 3D
     // et tient l'écran pendant que celle-ci se prépare (illustration, calques, textures) — plus d'écran noir
-    const land = first ? flyGhost(b, viewer) : null;
+    // (V3, lot 02 — game/sharedFlight.ts) la carte 3D attend l'arrivée de la tuile et prend sa place à l'identique (de
+    // face, même taille, même endroit : plus de tour d'entrée de dos sous l'image) ; à la fermeture, elle y revient
+    const lift = first ? liftCard(tileOf(b), viewer, shell.renderer.domElement) : undefined;
     // (retours 06/11) pas de son quand on ouvre une carte de la collection
     // (V3 S4) rendu : l'effeuillage garde sa pile à l'écran jusqu'à ce que la carte 3D arrive
-    const shown = viewer.show(b.id, b.r, dir ? { dir, quiet: true } : { quiet: true }).finally(() => land?.());
+    const shown = viewer.show(b.id, b.r, dir ? { dir, quiet: true } : { quiet: true, ghost: lift?.landed }).finally(() => lift?.settle());
     void shown.then(() => open && at === i && riffle.sync(true), () => undefined); // (carte posée : la tranche se recale)
     return shown;
   }
-  /** carte « fantôme » en vol (une seule à la fois) */
-  let ghost: HTMLElement | null = null;
-  const dropGhost = () => {
-    ghost?.remove();
-    ghost = null;
-  };
-  function flyGhost(b: { id: string; r: RarityId }, viewer: ViewerScene): (() => void) | null {
-    dropGhost();
-    if (reducedMotion()) return null;
-    const tile = el.querySelector<HTMLElement>(`.tile.owned.real-on[data-card="${CSS.escape(b.id)}"][data-rarity="${b.r}"]`);
-    const img = tile?.querySelector<HTMLImageElement>('img.real');
-    const to = viewer.restRect();
-    if (!tile || !img?.complete || !img.naturalWidth || !to) return null;
-    const from = tile.getBoundingClientRect();
-    const host = shell.renderer.domElement.getBoundingClientRect();
-    if (!from.width || !host.width) return null;
-    const w = ((to.x1 - to.x0) / 2) * host.width;
-    const h = ((to.y1 - to.y0) / 2) * host.height;
-    const x = host.left + ((to.x0 + 1) / 2) * host.width;
-    const y = host.top + ((1 - to.y1) / 2) * host.height;
-    const g = document.createElement('img');
-    g.className = 'card-ghost';
-    g.alt = '';
-    g.src = img.currentSrc || img.src;
-    g.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px`;
-    document.body.append(g);
-    ghost = g;
-    g.animate([{ transform: 'none' }, { transform: `translate(${x - from.left}px,${y - from.top}px) scale(${w / from.width},${h / from.height})` }], { duration: DUR.emphatique(), easing: EASING.entree, fill: 'forwards' });
-    // la carte 3D est là : le fantôme s'efface (elle fait son tour d'entrée à sa place)
-    return () => {
-      if (ghost !== g) return;
-      const out = g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: DUR.rapide(), easing: 'linear', fill: 'forwards' });
-      out.onfinish = out.oncancel = () => ghost === g && dropGhost();
-    };
-  }
+  /** la tuile d'une carte dans la grille affichée (null : pas sur cette page, filtrée…) */
+  const tileOf = (b: { id: string; r: RarityId } | undefined) =>
+    b ? el.querySelector<HTMLElement>(`.tile.owned[data-card="${CSS.escape(b.id)}"][data-rarity="${b.r}"]`) : null;
   const step = (d: 1 | -1) => {
     if (!open || !browse[at + d]) return;
     void openCard(at + d, d);
   };
   function closeViewer() {
     if (!open) return;
-    dropGhost();
+    // (lot 02) où est la carte 3D, lu AVANT de quitter la visionneuse (sur téléphone, la quitter libère la carte)
+    const from = viewerRef?.cardRect() ?? null;
     popLayer();
     open = false;
     document.body.classList.remove('card-open');
@@ -1780,7 +1752,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     shell.show(null);
     shell.setDimmed(true);
     const b = browse[at];
-    const tile = b && el.querySelector<HTMLElement>(`.tile.owned[data-card="${CSS.escape(b.id)}"][data-rarity="${b.r}"]`);
+    const tile = tileOf(b);
     tile?.scrollIntoView({ block: 'nearest' });
     if (tile && document.activeElement?.closest('.viewer-ui')) tile.focus({ preventScroll: true });
     // (V2 fluidité, lot 2) la grille n'est refaite que si quelque chose a changé pendant la visionneuse (envies,
@@ -1789,6 +1761,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       viewerDirty = false;
       render();
     }
+    // (lot 02) la carte revient se poser sur sa tuile (celle de la carte montrée : ‹ › et l'effeuillage ont pu en changer) ;
+    // tuile absente de la grille affichée : elle file vers « Collection » dans l'en-tête
+    if (b) returnCard({ tile: tileOf(b), fallback: document.querySelector<HTMLElement>('nav a[data-r="collection"]'), from, canvas: shell.renderer.domElement, src: paintedCard(b.id, b.r) });
   }
   viewerUi.querySelector('.close')!.addEventListener('click', closeViewer);
   const prevBtn = viewerUi.querySelector<HTMLButtonElement>('.nav.prev')!;
@@ -1810,9 +1785,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       const to = viewerRef?.restRect();
       const host = shell.renderer.domElement.getBoundingClientRect();
       if (!to || !host.width) return null;
-      // `restRect` pose le centre à +0,05 ; la visionneuse relève la carte de 0,1 au repos (`lift`, v2.0.2) : on recale
-      const r = ndcToRect(to, host);
-      return { ...r, top: r.top - (r.height * 0.05) / 0.88 };
+      // (lot 02) `restRect` suit désormais le relèvement de la carte au repos (`REST_LIFT`) : plus de recalage ici
+      return ndcToRect(to, host);
     },
     sfx: shell.sfx,
     tap: () => {
@@ -1927,7 +1901,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       render();
     },
     leave() {
-      if (open) closeViewer();
+      if (open) {
+        closeViewer();
+        dropFlight(); // (on quitte la page : pas de retour vers une grille qui s'en va)
+      }
       saveSeen();
       fresh.clear();
       if (filter === 'fresh') filter = 'all';
