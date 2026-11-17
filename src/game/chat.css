@@ -282,6 +282,8 @@ body.chat-on .views > .view:not(.shop) { padding-bottom: calc(84px + env(safe-ar
   body.chat-full .chat { z-index: 34; }
   .chat-panel { position: fixed; left: 0; right: 0; top: 0; bottom: auto; width: auto; max-width: none; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
   .chat.open .chat-panel { clip-path: inset(0); }
+  /* (lot 13) clavier levé : plus de barre « maison », la marge basse disparaît (posée par chat.ts, `applyViewport`) */
+  .chat-panel.kb { padding-bottom: 0; }
   .chat-head { padding: 12px 12px 10px; }
   .chat-title > b { font-size: 30px; }
   .chat-x, .chat-back, .chat-mute { height: 40px; }

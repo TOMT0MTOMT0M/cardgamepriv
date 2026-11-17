@@ -6,6 +6,8 @@ import { artPath, catalogEntry, hasArt, isWonderId, subthemeById, thumbPath, won
 import { jvThumbSvg } from '../core/art/jvTitle';
 import { observeRealCard } from './cardImages';
 import { haptics } from '../core/haptics';
+import { DUR, EASING, SPRING } from '../core/motion';
+import { Spring } from '../core/ease';
 import type { GameBackend } from './backend';
 import { canReplayMythic, replayMythic } from './mythic';
 
@@ -428,80 +430,251 @@ export async function busyButton<T>(btn: HTMLElement, p: Promise<T>, o: { timeou
   }
 }
 
+// ───────────────────────────── TOASTS
 /**
- * Petits messages en haut de l'écran, UN À LA FOIS dans une file (le suivant attend que le précédent ait été lu, au
- * lieu de l'écraser) ; reste plus longtemps s'il est long, se ferme d'un toucher. Les erreurs passent devant et sont
- * annoncées tout de suite (`role="alert"`), le reste poliment (`role="status"`).
+ * (V3, lot 13) Toasts EMPILÉS : jusqu'à 3 cartes visibles l'une sous l'autre (la plus ancienne en haut, elle part la
+ * première). Quand l'une disparaît, les autres glissent à leur nouvelle place (FLIP : on mesure avant, on laisse la
+ * mise en page se refaire, puis on joue le déplacement inverse — durées et courbes de motion.ts). Une carte se ferme
+ * aussi d'un glissement du doigt (de côté ou vers le haut) : au-delà d'un seuil de distance ou, plus court mais lancé,
+ * d'une vitesse, elle part dans le sens du geste ; sinon elle revient par un ressort (SPRING.carte). Un appui court
+ * la ferme comme avant. Les lecteurs d'écran passent par deux zones fixes (état / alerte) : les cartes sont muettes.
  */
-type Toast = { msg: string; kind: 'ok' | 'err' | 'info' };
+type ToastKind = 'ok' | 'err' | 'info';
+type Toast = { msg: string; kind: ToastKind };
+interface ToastItem extends Toast {
+  el: HTMLElement;
+  at: number;
+  timer: number;
+  /** pendant un glissement ou un retour : le minuteur est suspendu */
+  busy: boolean;
+  gone: boolean;
+}
+/** cartes visibles (haut → bas) */
+const toasts: ToastItem[] = [];
+/** en attente : une place se libère, la suivante entre */
 const toastQ: Toast[] = [];
-let toastCur: (Toast & { el: HTMLElement; at: number }) | null = null;
-let toastTimer = 0;
-const toastEls: Partial<Record<'status' | 'alert', HTMLElement>> = {};
+const TOAST_VISIBLE = 3;
+const TOAST_QUEUE = 4;
+let toastBox: HTMLElement | null = null;
+const toastSr: Partial<Record<'status' | 'alert', HTMLElement>> = {};
 /** affichage 4 à 6 s selon la longueur (réf. motion : toasts) */
 const toastLife = (msg: string) => Math.min(6000, 4000 + msg.length * 25);
-function toastEl(alert: boolean) {
-  const k = alert ? 'alert' : 'status';
-  let el = toastEls[k];
-  if (!el) {
-    el = toastEls[k] = h('div', 'toast');
-    el.setAttribute('role', k);
-    if (!alert) el.setAttribute('aria-live', 'polite');
-    el.addEventListener('click', hideToast);
-    document.body.append(el);
-  }
-  return el;
-}
-function hideToast() {
-  if (!toastCur) return;
-  clearTimeout(toastTimer);
-  toastCur.el.classList.remove('on');
-  toastCur = null;
-  // le temps du fondu, puis le suivant
-  toastTimer = window.setTimeout(nextToast, toastQ.length ? 260 : 0);
-}
 /** son des toasts (branché par main.ts : information = une note douce, erreur = deux notes descendantes, jamais de buzzer) */
-export let toastSound: ((kind: 'ok' | 'err' | 'info') => void) | null = null;
+export let toastSound: ((kind: ToastKind) => void) | null = null;
 export function setToastSound(f: typeof toastSound) {
   toastSound = f;
 }
-function nextToast() {
-  const t = toastQ.shift();
-  if (!t) return;
-  const el = toastEl(t.kind === 'err');
-  el.className = `toast ${t.kind} on`;
-  toastSound?.(t.kind);
-  el.textContent = t.msg;
-  toastCur = { ...t, el, at: performance.now() };
-  clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(hideToast, toastLife(t.msg));
+function toastRoot() {
+  if (toastBox) return toastBox;
+  toastBox = h('div', 'toasts');
+  for (const k of ['status', 'alert'] as const) {
+    const sr = (toastSr[k] = h('div', 'sr-only'));
+    sr.setAttribute('role', k);
+    if (k === 'status') sr.setAttribute('aria-live', 'polite');
+    toastBox.append(sr);
+  }
+  document.body.append(toastBox);
+  return toastBox;
 }
-export function toast(msg: string, kind: 'ok' | 'err' | 'info' = 'info') {
+/** FLIP : les cartes restantes glissent de leur ancienne place à la nouvelle */
+function toastFlip(first: Map<HTMLElement, number>) {
+  for (const [el, top] of first) {
+    const dy = top - el.getBoundingClientRect().top;
+    if (Math.abs(dy) < 1) continue;
+    el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }], { duration: DUR.emphatique(), easing: EASING.standard });
+  }
+}
+const toastTops = () => new Map(toasts.map((t) => [t.el, t.el.getBoundingClientRect().top] as const));
+function toastArm(t: ToastItem, ms: number) {
+  clearTimeout(t.timer);
+  t.timer = window.setTimeout(() => hideToast(t), ms);
+}
+/** la carte quitte la pile ; `leave` joue sa sortie (par défaut : fondu + remontée), les autres se recalent en FLIP */
+function hideToast(t: ToastItem, leave?: (el: HTMLElement) => Animation | null) {
+  if (t.gone) return;
+  t.gone = true;
+  clearTimeout(t.timer);
+  const first = toastTops();
+  const i = toasts.indexOf(t);
+  if (i >= 0) toasts.splice(i, 1);
+  const el = t.el;
+  // sortie de la mise en page tout de suite (les autres remontent), la carte finit son effet sur place
+  el.style.top = `${el.offsetTop}px`;
+  el.style.left = `${el.offsetLeft}px`;
+  el.style.width = `${el.offsetWidth}px`;
+  el.classList.add('out');
+  el.classList.remove('on');
+  toastFlip(first);
+  const a = leave?.(el) ?? null;
+  const done = () => el.remove();
+  if (a) a.finished.then(done, done);
+  else window.setTimeout(done, DUR.emphatique() + 60);
+  // une place s'est libérée
+  const nx = toastQ.shift();
+  if (nx) showToast(nx);
+}
+function showToast(m: Toast) {
+  const box = toastRoot();
+  const el = h('div', `toast ${m.kind}`);
+  el.setAttribute('aria-hidden', 'true');
+  el.textContent = m.msg;
+  const t: ToastItem = { ...m, el, at: performance.now(), timer: 0, busy: false, gone: false };
+  toasts.push(t);
+  box.append(el);
+  void el.offsetWidth; // l'état de départ est posé : la transition d'entrée part de là
+  el.classList.add('on');
+  toastSound?.(m.kind);
+  // lecteurs d'écran : on vide puis on remplit (même texte répété = relu)
+  const sr = toastSr[m.kind === 'err' ? 'alert' : 'status']!;
+  sr.textContent = '';
+  window.setTimeout(() => (sr.textContent = m.msg), 30);
+  toastArm(t, toastLife(m.msg));
+  el.addEventListener('click', () => {
+    if (!dragMoved) hideToast(t);
+  });
+  toastGesture(t);
+}
+
+// glissement du doigt
+let dragMoved = false;
+/** distance (px) et vitesse projetée au-delà desquelles un glissement ferme la carte */
+const SWIPE_DIST = 80;
+const SWIPE_UP = 48;
+/** la vitesse (px/ms) est projetée sur ce temps : un geste court mais lancé ferme aussi */
+const SWIPE_FLING_MS = 100;
+function toastGesture(t: ToastItem) {
+  const el = t.el;
+  let id = -1;
+  let x0 = 0;
+  let y0 = 0;
+  let dx = 0;
+  let dy = 0;
+  const pts: Array<{ x: number; y: number; t: number }> = [];
+  let spring: { x: Spring; y: Spring; raf: number } | null = null;
+  const view = () => {
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    el.style.opacity = String(Math.max(0.25, 1 - Math.abs(dx) / (el.offsetWidth * 1.4)));
+  };
+  const stopSpring = () => {
+    if (spring) cancelAnimationFrame(spring.raf);
+    spring = null;
+  };
+  const velocity = () => {
+    // sur les ~80 dernières ms
+    const last = pts[pts.length - 1];
+    const ref = pts.find((p) => last.t - p.t <= 80) ?? pts[0];
+    const dt = Math.max(1, last.t - ref.t);
+    return { vx: (last.x - ref.x) / dt, vy: (last.y - ref.y) / dt };
+  };
+  el.addEventListener('pointerdown', (e) => {
+    if (t.gone || id !== -1 || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    stopSpring();
+    id = e.pointerId;
+    x0 = e.clientX - dx;
+    y0 = e.clientY - dy;
+    pts.length = 0;
+    pts.push({ x: e.clientX, y: e.clientY, t: e.timeStamp });
+    dragMoved = false;
+    t.busy = true;
+    clearTimeout(t.timer);
+    el.classList.add('drag');
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== id) return;
+    pts.push({ x: e.clientX, y: e.clientY, t: e.timeStamp });
+    if (pts.length > 12) pts.shift();
+    dx = e.clientX - x0;
+    dy = e.clientY - y0;
+    if (dy > 0) dy *= 0.2; // vers le bas : ça résiste
+    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) dragMoved = true;
+    if (dragMoved) view();
+  });
+  const end = (e: PointerEvent) => {
+    if (e.pointerId !== id) return;
+    id = -1;
+    if (!dragMoved) {
+      el.classList.remove('drag');
+      t.busy = false;
+      toastArm(t, Math.max(1600, toastLife(t.msg) / 2)); // un appui court : le clic ferme
+      window.setTimeout(() => (dragMoved = false), 0);
+      return;
+    }
+    window.setTimeout(() => (dragMoved = false), 0); // (le clic qui suit un glissement ne ferme pas)
+    const { vx, vy } = e.type === 'pointercancel' ? { vx: 0, vy: 0 } : velocity();
+    const projX = dx + vx * SWIPE_FLING_MS;
+    const projY = dy + vy * SWIPE_FLING_MS;
+    const sideways = Math.abs(dx) > 12 && Math.abs(projX) >= SWIPE_DIST;
+    const up = dy < -8 && projY <= -SWIPE_UP;
+    if (e.type !== 'pointercancel' && (sideways || up)) {
+      el.classList.remove('drag');
+      haptics.pulse(6);
+      const fx = sideways ? Math.sign(projX) * (innerWidth + el.offsetWidth) : dx;
+      const fy = sideways ? dy : -(el.offsetHeight + 80);
+      hideToast(t, (n) => {
+        n.style.transform = '';
+        n.style.opacity = '';
+        return n.animate(
+          [{ transform: `translate(${dx}px, ${dy}px)`, opacity: Math.max(0.25, 1 - Math.abs(dx) / (n.offsetWidth * 1.4)) }, { transform: `translate(${fx}px, ${fy}px)`, opacity: 0 }],
+          { duration: DUR.standard(), easing: EASING.sortie, fill: 'forwards' },
+        );
+      });
+      return;
+    }
+    // trop court : retour élastique (ressort de la carte, avec l'élan du doigt)
+    const sx = new Spring(dx, SPRING.carte.stiffness, SPRING.carte.damping);
+    const sy = new Spring(dy, SPRING.carte.stiffness, SPRING.carte.damping);
+    sx.target = sy.target = 0;
+    sx.impulse(vx * 1000);
+    sy.impulse(vy * 1000);
+    spring = { x: sx, y: sy, raf: 0 };
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      dx = sx.update(dt);
+      dy = sy.update(dt);
+      if (Math.abs(dx) < 0.4 && Math.abs(dy) < 0.4 && Math.abs(sx.velocity) < 8 && Math.abs(sy.velocity) < 8) {
+        dx = dy = 0;
+        el.style.transform = '';
+        el.style.opacity = '';
+        el.classList.remove('drag'); // (`drag` coupe les transitions CSS tant que le doigt ou le ressort pilote la carte)
+        spring = null;
+        t.busy = false;
+        if (!t.gone) toastArm(t, Math.max(1600, toastLife(t.msg) / 2));
+        return;
+      }
+      view();
+      spring!.raf = requestAnimationFrame(step);
+    };
+    spring.raf = requestAnimationFrame(step);
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+
+export function toast(msg: string, kind: ToastKind = 'info') {
   msg = fr(msg);
   // le même message est déjà affiché : petite secousse, et il reste un peu plus
-  if (toastCur && toastCur.msg === msg) {
-    const el = toastCur.el;
-    el.classList.remove('nudge');
-    void el.offsetWidth;
-    el.classList.add('nudge');
-    clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(hideToast, toastLife(msg));
+  const same = toasts.find((t) => t.msg === msg && !t.gone);
+  if (same) {
+    same.el.classList.remove('nudge');
+    void same.el.offsetWidth;
+    same.el.classList.add('nudge');
+    if (!same.busy) toastArm(same, toastLife(msg));
     return;
   }
   if (toastQ.some((t) => t.msg === msg)) return;
-  // une erreur passe devant les messages en attente
-  if (kind === 'err') toastQ.unshift({ msg, kind });
-  else toastQ.push({ msg, kind });
-  if (toastQ.length > 4) toastQ.splice(4); // pas d'accumulation : on garde les plus importants
-  if (!toastCur) {
-    if (!toastTimer || toastQ.length === 1) nextToast();
+  if (toasts.length < TOAST_VISIBLE) {
+    showToast({ msg, kind });
     return;
   }
-  // un message attend : celui affiché se ferme plus tôt, mais après au moins ~1,6 s de lecture (une erreur : 0,8 s)
-  const minRead = kind === 'err' ? 800 : 1600;
-  const left = Math.max(0, minRead - (performance.now() - toastCur.at));
-  clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(hideToast, left);
+  // la pile est pleine : le message attend (une erreur passe devant), la plus ancienne carte se ferme après ~1,6 s de lecture
+  if (kind === 'err') toastQ.unshift({ msg, kind });
+  else toastQ.push({ msg, kind });
+  if (toastQ.length > TOAST_QUEUE) toastQ.splice(TOAST_QUEUE); // pas d'accumulation : on garde les plus importants
+  const old = toasts.find((t) => !t.busy);
+  if (old) toastArm(old, Math.max(0, (old.kind === 'err' ? 800 : 1600) - (performance.now() - old.at)));
 }
 
 /**

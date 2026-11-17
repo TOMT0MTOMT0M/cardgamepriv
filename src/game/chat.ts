@@ -651,20 +651,79 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   }
 
   // ───────────────────────────── ouverture / fermeture
-  /** téléphone : le panneau suit la hauteur réellement visible (clavier ouvert) */
-  function syncViewport() {
+  /**
+   * (V3, lot 13) CLAVIER SUR TÉLÉPHONE. Deux familles de navigateurs :
+   *  - Android Chrome (`interactive-widget=resizes-content`, jeu/index.html) : le clavier réduit la fenêtre de mise en
+   *    page, le panneau (`100dvh`) suit tout seul. Rien à écrire : on retire nos styles.
+   *  - iOS Safari (et Chrome ancien) : seule la fenêtre VISUELLE rétrécit (et se décale : `offsetTop`). Le panneau est
+   *    alors recalé en JS : décalage par `transform` (composité, sans mise en page), hauteur écrite seulement si elle a changé
+   *    (au plus une fois par évènement du viewport, soit une par image).
+   * Dans les deux cas, le fil reste COLLÉ AU BAS tant que le joueur y était (voir `pinned` et l'observateur de taille
+   * plus bas) : plus de saut ni de dernier message caché sous la zone de saisie.
+   */
+  let vvH = '';
+  let vvY = '';
+  /** hauteur visible quand le clavier est fermé (sert à savoir si le clavier est levé) */
+  let openH = 0;
+  let openW = 0;
+  function applyViewport() {
     const vv = window.visualViewport;
     if (!isOpen || !phone.matches || !vv) {
-      panel.style.removeProperty('height');
-      panel.style.removeProperty('top');
+      if (vvH || vvY) {
+        panel.style.removeProperty('height');
+        panel.style.removeProperty('transform');
+        vvH = vvY = '';
+      }
+      panel.classList.remove('kb');
+      openH = 0;
       return;
     }
-    panel.style.height = `${Math.round(vv.height)}px`;
-    panel.style.top = `${Math.round(vv.offsetTop)}px`;
-    if (document.activeElement === input) requestAnimationFrame(() => atBottom() || (newBelow === 0 && toBottom()));
+    if (!openH || vv.width !== openW) {
+      openH = Math.max(vv.height, window.innerHeight);
+      openW = vv.width;
+    }
+    // clavier levé : la barre « maison » d'iPhone disparaît, sa marge basse ne sert plus à rien (safe-area-inset-bottom)
+    panel.classList.toggle('kb', document.activeElement === input && vv.height < openH - 120);
+    const off = Math.round(vv.offsetTop);
+    const shrunk = Math.round(window.innerHeight - vv.height) > 1; // la fenêtre de mise en page n'a pas suivi
+    const h = shrunk ? `${Math.round(vv.height)}px` : '';
+    const y = off > 0 ? `translate3d(0, ${off}px, 0)` : '';
+    if (h !== vvH) {
+      if (h) panel.style.height = h;
+      else panel.style.removeProperty('height');
+      vvH = h;
+    }
+    if (y !== vvY) {
+      if (y) panel.style.transform = y;
+      else panel.style.removeProperty('transform');
+      vvY = y;
+    }
   }
-  window.visualViewport?.addEventListener('resize', syncViewport);
-  window.visualViewport?.addEventListener('scroll', syncViewport);
+  // (les évènements du viewport tombent au plus une fois par image : on écrit tout de suite, sans image de retard)
+  const syncViewport = () => applyViewport();
+  window.visualViewport?.addEventListener('resize', () => syncViewport());
+  window.visualViewport?.addEventListener('scroll', () => syncViewport());
+  input.addEventListener('focus', () => syncViewport());
+  input.addEventListener('blur', () => syncViewport());
+
+  /**
+   * Fil collé au bas : `pinned` = le joueur lisait le bas du fil. Chaque changement de hauteur du fil (clavier, champ
+   * de saisie qui grandit, bandeau de réponse…) le recale au bas dans la même image, avant l'affichage : le dernier
+   * message ne saute jamais. Hors du bas, la lecture n'est pas touchée. Un défilement dû au redimensionnement lui-même
+   * (le navigateur borne le scroll) ne change pas `pinned`.
+   */
+  let pinned = true;
+  let resizedAt = 0;
+  let lastThreadH = 0;
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+      const hgt = thread.clientHeight;
+      if (!hgt || hgt === lastThreadH) return;
+      lastThreadH = hgt;
+      resizedAt = performance.now();
+      if (pinned) thread.scrollTop = thread.scrollHeight;
+    }).observe(thread);
+  }
 
   function open(conv?: string) {
     if (!backend.state.user) return;
@@ -761,6 +820,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   });
   thread.addEventListener('scroll', () => {
     const bottom = atBottom();
+    if (performance.now() - resizedAt > 120) pinned = bottom;
     if (bottom) {
       newBelow = 0;
       const key = curKey();
