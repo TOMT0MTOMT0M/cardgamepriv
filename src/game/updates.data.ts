@@ -81,6 +81,7 @@ export const UPDATES: UpdateMonth[] = [
           '⭐ Aelita (Code Lyoko) et Palworld passent en 6★.',
           '🖼️ 27 cartes en pleine illustration, mieux cadrées : Alucard, Sukuna, Wolverine, Jett, Reyna, Killjoy, E.T.…',
           '🔥 Forge : tes doublons sont rangés par étoile (1★, 2★, 3★…) ; quand tu en avais beaucoup, seuls les 1★ s’affichaient. Rien n’était perdu.',
+          '🛠️ Gros tirages : le bandeau ne montre plus certaines cartes en triple après un changement de menu.',
         ],
       },
       {

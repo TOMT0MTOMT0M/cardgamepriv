@@ -46,6 +46,7 @@ export const UPDATES_EN: UpdateMonth[] = [
           '⭐ Aelita (Code Lyoko) and Palworld become 6★.',
           '🖼️ 27 cards in full art, better framed: Alucard, Sukuna, Wolverine, Jett, Reyna, Killjoy, E.T.…',
           '🔥 Forge: your duplicates are sorted by star (1★, 2★, 3★…); with many of them, only the 1★ used to show. Nothing was lost.',
+          '🛠️ Big pulls: the feed no longer shows some cards three times after switching menus.',
         ],
       },
       {
