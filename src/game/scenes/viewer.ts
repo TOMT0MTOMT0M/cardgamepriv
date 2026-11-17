@@ -135,8 +135,53 @@ export function createViewerScene(): ViewerScene {
   let csClose = 1;
   let zoom = 1;
   let lastTap = 0;
-  const lastTilt = { x: 0, y: 0 };
-  let calmSkip = 0;
+  /**
+   * (V3, lot 01) RENDU À LA DEMANDE. Une image n'est calculée que si quelque chose a VRAIMENT changé à l'écran depuis
+   * la dernière : pose de la carte, caméra, halo, étoiles, barres de musique (`sig`, comparé à `drawn`, celle de la
+   * dernière image calculée). Avant : une image sur deux « au calme » — le flottement lent, le zoom qui se pose et
+   * l'inclinaison fine au gyroscope tombaient à 30 i/s (saccade), et la visionneuse ne s'arrêtait jamais (60 → 30 i/s
+   * sur la table). Maintenant : pleine cadence pendant un geste, une image sur deux quand la carte ne fait que flotter
+   * (comme avant), AUCUNE image quand plus rien ne bouge.
+   * Ce qui s'anime TOUT SEUL dans le temps (la carte ne doit jamais se figer) :
+   *  - Merveilles (diorama), skins CS 6★, barres de musique : à chaque image, toujours ;
+   *  - faces de palier ≥ 4 hors photo (reflet « Pokébox » : `time` dans pokeHolo/fx.ts) et halo qui palpite (5★, 6★,
+   *    secrète) : des variations LENTES (dérive de l'arc-en-ciel sur 21 s, pouls de ±18 % sur 4 s) — une image sur deux
+   *    une fois la carte posée, comme avant (le pas d'une image à l'autre est invisible) ;
+   *  - le flottement d'ambiance (balancement + lévitation) : il ne s'arrête jamais (DA : animations toujours actives),
+   *    une image sur deux hors geste comme avant ; une carte simple flotte donc toujours : le « 0 image » vaut pour une
+   *    carte qui ne flotte pas (zoomée tenue, etc.). Pour la batterie, on pourrait le poser après quelques secondes
+   *    sans geste : décision de Tom (changement visible).
+   * Réveil dans la même image (la boucle du shell appelle `update` à chaque image) : toucher, souris, gyroscope, zoom,
+   * timeline, musique ; et une image forcée après un redimensionnement, une autre scène dessinée sur le canvas
+   * (`renderer.info.calls` a bougé : préchauffage, scène jouée par-dessus) ou une pause de la boucle.
+   */
+  const SIG_N = 20;
+  const sig = new Float64Array(SIG_N);
+  const drawn = new Float64Array(SIG_N).fill(NaN);
+  /** plus petit écart qui compte (radians, unités de scène, couleur) : bien sous le pixel, reflets holo compris */
+  const SIG_EPS = 1e-4;
+  let drawnCalls = -1;
+  let drawnW = 0;
+  let drawnH = 0;
+  let lastUpd = 0;
+  /** une image obligatoire (redimensionnement, retour de la scène) */
+  let wake = true;
+  /** préparation hors champ en cours (`show`) : ses deux images DOIVENT être rendues (pipelines construits là) */
+  let warming = 0;
+  /** effets lents seuls (voir plus haut) : une image sur deux */
+  let slowSkip = 0;
+  /** horloge du flottement (s) */
+  let ambT = 0;
+  /** balancement : 1 = libre, 0 = doigt / souris sur la carte (lissé : il ne saute plus au toucher ni au lâcher) */
+  let idleS = 1;
+  const lastNdc = { x: 0, y: 0 };
+  /** inclinaison de référence : un écart de plus de TILT_WAKE = le téléphone a bougé (le bruit du capteur n'y suffit pas) */
+  const tiltRef = { x: 0, y: 0 };
+  const TILT_WAKE = 0.02;
+  /** secondes depuis le dernier mouvement du téléphone */
+  let tiltT = 9;
+  /** la face a un reflet animé dans le temps (palier ≥ 4, hors photo : pokeHolo) */
+  let timeFx = false;
   const setZoom = (z: number) => {
     zoomT = Math.min(1.85, Math.max(1, z));
     document.body.classList.toggle('viewer-zoomed', zoomT > 1.04);
@@ -190,6 +235,7 @@ export function createViewerScene(): ViewerScene {
     art = null;
     mats = [];
     face = null;
+    timeFx = false;
   }
 
   return {
@@ -269,9 +315,11 @@ export function createViewerScene(): ViewerScene {
         pm.frustumCulled = false;
         pm.position.z = camBase + 10;
         stage.scene.add(pm);
+        warming++; // (rendu à la demande : ces deux images sont calculées même carte immobile)
         // (deux VRAIES images : `nextFrame` de core/art rend seulement la main, sans attendre un rendu ; 120 ms au plus,
         // pour ne pas rester en attente quand rien n'est dessiné — onglet caché)
         await Promise.race([new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))), new Promise<void>((r) => setTimeout(r, 120))]);
+        warming--;
         stage.scene.remove(pm);
         pm.position.z = 0;
         if (my !== token) {
@@ -287,6 +335,9 @@ export function createViewerScene(): ViewerScene {
       art = nextArt;
       face = pre ? pre.face : buildFace(art, rr.tier, !!cd.photo, cardHasCutout(cd));
       face.holo.uniforms.strength.value = 0.7;
+      // (même règle que createHoloMaterial : reflet pokeHolo hors photo ; paliers 4–5 = illustration-rare,
+      // double-rare-placed, qui lisent `time`)
+      timeFx = !cd.photo && rr.tier >= 4;
 
       if (W) {
         const { edge } = buildEdge('#ffd27a');
@@ -520,7 +571,26 @@ export function createViewerScene(): ViewerScene {
       if (ctx.canvas.style.cursor !== cur) ctx.canvas.style.cursor = cur;
       if (ctx.input.dragging && !document.body.classList.contains('viewer-spun')) document.body.classList.add('viewer-spun');
       const p = ctx.input.pose(0.38);
-      const idle = ctx.input.inside ? 0 : 1;
+      // gestes : doigt / bouton appuyé, pointeur qui bouge, téléphone qui bouge (gyroscope), zoom, timeline, musique
+      const inp = ctx.input;
+      const tx = inp.tiltX, ty = inp.tiltY;
+      const moved = inp.ndcX !== lastNdc.x || inp.ndcY !== lastNdc.y;
+      lastNdc.x = inp.ndcX;
+      lastNdc.y = inp.ndcY;
+      const tilted = Math.abs(tx - tiltRef.x) + Math.abs(ty - tiltRef.y) > TILT_WAKE;
+      if (tilted) {
+        tiltRef.x = tx;
+        tiltRef.y = ty;
+        tiltT = 0;
+      } else tiltT += dt;
+      const zooming = Math.abs(zoomT - zoom) > 0.002;
+      const anim = !!tl?.isActive();
+      const live = !!wonderInstance || !!csInstance || eqVis > 0.01;
+      // (inclinaison lente : le seuil TILT_WAKE est franchi par à-coups, la pleine cadence tient 0,4 s après chacun)
+      const gesture = inp.down || inp.dragging || moved || tiltT < 0.4 || zooming || anim || live;
+      ambT += dt;
+      idleS += ((inp.inside ? 0 : 1) - idleS) * (1 - Math.exp((-dt * 3000) / DUR.emphatique()));
+      const idle = idleS;
       // (11/11) skin CS 6★ : la carte reste de face, en gros plan ; le geste et le gyroscope tournent le skin dedans
       csClose += ((csInstance ? CS_CLOSE : 1) - csClose) * (1 - Math.exp(-dt * 4));
       if (csInstance) {
@@ -531,9 +601,9 @@ export function createViewerScene(): ViewerScene {
       }
       // un peu au-dessus du centre (la fiche texte se lit dessous) ; zoomée, la carte se recentre : la fiche s'est effacée
       const lift = 0.1 * Math.max(0, 1 - (zoom - 1) / 0.6); // (v2.0.2) plus haut : les boutons en dessous ne la touchent plus
-      rig.position.set(st.x, lift + st.y + Math.sin(t * 0.9) * 0.006, st.z);
+      rig.position.set(st.x, lift + st.y + Math.sin(ambT * 0.9) * 0.006, st.z);
       if (csInstance) rig.rotation.set(0, st.spin, 0);
-      else rig.rotation.set(p.x + Math.sin(t * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(t * 0.37) * 0.18 * idle, 0);
+      else rig.rotation.set(p.x + Math.sin(ambT * 0.5) * 0.05 * idle, st.spin + p.y + Math.sin(ambT * 0.37) * 0.18 * idle, 0);
       zoom += (zoomT - zoom) * (1 - Math.exp(-dt * 10));
       rig.scale.setScalar(st.s * zoom * csClose);
       if (mesh) mesh.rotation.z = pose.rz;
@@ -541,20 +611,62 @@ export function createViewerScene(): ViewerScene {
       wonderInstance?.update(dt, t);
       csInstance?.update(dt, t);
       /*
-       * (audit 06/11) téléphone, carte au repos (personne ne la touche, pas de zoom en cours, pas d'animation d'entrée,
-       * gyroscope immobile) : une image sur deux — la définition native (×3) coûte ≈ ×2,25 de pixels, et une visionneuse
-       * qui tourne à 60 i/s chauffe le téléphone jusqu'à brider toute la session. Le flottement reste fluide à 30 i/s ;
-       * le moindre geste repasse à 60.
+       * (V3, lot 01 — remplace « une image sur deux au calme », audit 06/11) rendu à la demande, voir `sig` plus haut.
+       * La définition native (×3) coûte ≈ ×2,25 de pixels : une visionneuse qui tourne à 60 i/s sur la table chauffait
+       * le téléphone jusqu'à brider toute la session. Ici, posée et immobile : 0 image.
        */
-      const tx = ctx.input.tiltX, ty = ctx.input.tiltY;
-      const tiltMoving = Math.abs(tx - lastTilt.x) + Math.abs(ty - lastTilt.y) > 0.004;
-      lastTilt.x = tx;
-      lastTilt.y = ty;
-      const calm = ctx.quality === 'mobile' && !ctx.input.down && !ctx.input.dragging && !tiltMoving && !tl?.isActive() && Math.abs(zoomT - zoom) < 0.002 && !wonderInstance && !csInstance;
-      if (!calm) calmSkip = 0;
-      if (!calm || (calmSkip++ & 1) === 0) render();
+      sig[0] = rig.position.x;
+      sig[1] = rig.position.y;
+      sig[2] = rig.position.z;
+      sig[3] = rig.rotation.x;
+      sig[4] = rig.rotation.y;
+      sig[5] = rig.rotation.z;
+      sig[6] = rig.scale.x;
+      sig[7] = mesh ? mesh.rotation.z : 0;
+      sig[8] = stage.camera.position.z;
+      sig[9] = haloT.k; // (sans le pouls : il compte dans les effets lents)
+      sig[10] = halo.color.value.r;
+      sig[11] = halo.color.value.g;
+      sig[12] = halo.color.value.b;
+      sig[13] = eqK.value;
+      sig[14] = face ? (face.lit.value as number) : 0;
+      sig[15] = face ? (face.flash.value as number) : 0;
+      sig[16] = face ? (face.holo.uniforms.strength.value as number) : 0;
+      sig[17] = rig.visible ? 1 : 0;
+      sig[18] = mesh ? mesh.id : -1;
+      sig[19] = csClose;
+      let changed = false;
+      for (let i = 0; i < SIG_N; i++) {
+        // (NaN de départ : toujours « changé »)
+        if (!(Math.abs(sig[i] - drawn[i]) <= SIG_EPS)) {
+          changed = true;
+          break;
+        }
+      }
+      const now = performance.now();
+      const info = ctx.renderer.info;
+      const cv = ctx.canvas;
+      // image forcée : une autre scène (ou un préchauffage) a dessiné depuis notre dernière image, le canvas a changé de
+      // taille, ou la boucle s'est arrêtée (scène quittée puis reprise, onglet caché) — l'image affichée n'est plus la nôtre
+      const forced = wake || warming > 0 || info.calls !== drawnCalls || cv.width !== drawnW || cv.height !== drawnH || now - lastUpd > 250;
+      lastUpd = now;
+      const slow = (rig.visible && timeFx) || (haloT.pulse > 0 && haloT.k > 0.001);
+      // geste en cours : toutes les images ; carte qui ne fait que flotter (ou effets lents seuls) : une image sur deux,
+      // comme avant (le flottement est lent) ; rien ne bouge : aucune
+      let draw = forced || gesture;
+      if (draw) slowSkip = 0;
+      else if (changed || slow) draw = (slowSkip++ & 1) === 0;
+      if (draw) {
+        render();
+        drawn.set(sig);
+        drawnCalls = info.calls;
+        drawnW = cv.width;
+        drawnH = cv.height;
+        wake = false;
+      }
     },
     resize(w, h) {
+      wake = true;
       stage.fit(w, h);
       camBase = stage.camera.position.z;
       // carte couchée déjà posée : la distance suit le nouveau format d'écran
