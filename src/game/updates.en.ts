@@ -26,6 +26,19 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '17 Nov', title: 'V3: the game feels more alive under your finger', tag: 'amélioré',
+        points: [
+          '📖 Collection: tap a card and it flies up to the viewer, then lands back in its place when you close it.',
+          '👍 Riffle your binders: in the viewer, slide your thumb along the right edge to flip through cards; it slows down on 5★ and 6★.',
+          '🔄 A face-down card turns over when you drag it to the right, around its edge.',
+          '✂️ Tearing: the booster seal resists notch by notch and a slit of light opens; let go halfway and the fold stays.',
+          '🎵 End of an opening: your coins arrive all at once, with music, on a rolling counter.',
+          '🎲 Games: hold your finger down to speed up ×3.5, duel cards flip over, and the roulette ball really bounces.',
+          '⚖️ Trades: a balance tips towards the heavier side, and an accepted trade gets sealed.',
+          '⚡ Smoother everywhere: booster wheel, viewer, Forge, Workshop, market, Collection scroll wheel, chat with the keyboard, swipeable notifications.',
+        ],
+      },
+      {
         date: '17 Nov', title: 'Series theme songs and new 6★ art', tag: 'amélioré',
         points: [
           '📺 6★ cards from TV series play their theme song: Friends, Game of Thrones, Breaking Bad, Stranger Things, The Sopranos, Malcolm… 56 series and films in all.',

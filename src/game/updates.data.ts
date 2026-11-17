@@ -61,6 +61,19 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '17 nov.', title: 'V3 : le jeu plus vivant sous le doigt', tag: 'amélioré',
+        points: [
+          '📖 Collection : touche une carte, elle s’envole jusqu’à la visionneuse et revient se poser à sa place quand tu fermes.',
+          '👍 Effeuille tes classeurs : dans la visionneuse, glisse le pouce sur la tranche à droite pour passer les cartes ; ça freine sur les 5★ et 6★.',
+          '🔄 Une carte de dos se retourne en la tirant au doigt vers la droite, autour de sa tranche.',
+          '✂️ Déchirure : la soudure du booster résiste par crans, une fente de lumière s’ouvre ; lâche en route, le pli reste.',
+          '🎵 Fin d’ouverture : tes pièces arrivent d’un coup, en musique, sur un compteur à rouleaux.',
+          '🎲 Jeux : garde le doigt appuyé pour accélérer ×3,5, les cartes du duel se retournent, la bille de la roulette rebondit vraiment.',
+          '⚖️ Échanges : une balance penche du côté le plus lourd, et un échange accepté est scellé.',
+          '⚡ Plus fluide partout : roue des boosters, visionneuse, Forge, Atelier, marché, molette de la Collection, chat avec le clavier, notifications à balayer.',
+        ],
+      },
+      {
         date: '17 nov.', title: 'Génériques des séries et nouvelles images 6★', tag: 'amélioré',
         points: [
           '📺 Les 6★ de séries jouent leur générique : Friends, Game of Thrones, Breaking Bad, Stranger Things, Les Soprano, Malcolm… 56 séries et films en tout.',
