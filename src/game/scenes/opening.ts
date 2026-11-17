@@ -340,6 +340,27 @@ const LEGEND_ADMIRE_MS = 1100;
  */
 const NEUTRAL_EMBER = '#e8e2d6';
 /**
+ * (V3, lot 07 + signature S3) DÉCHIRURE À RÉSISTANCE : stick-slip DÉTERMINISTE de la soudure (avant : seuil tiré au
+ * hasard à chaque image). La bande reste accrochée tant que la tension (doigt − déchirure) n'atteint pas un seuil, puis
+ * file d'un coup jusqu'au doigt. Seuil fort sur les points de soudure (tous les ~14 % de la course, l'encoche d'abord),
+ * faible dans le film entre deux ; un geste vif l'efface presque (×0,15) : lent = crans espacés, vif = coupe nette.
+ */
+const TEAR_WELDS = [0, 0.15, 0.29, 0.43, 0.57, 0.71, 0.85];
+const TEAR_NEED = { first: 0.07, weld: 0.055, film: 0.03 };
+/** vitesse de la déchirure demandée (progression / s) : en dessous de `slow` tout accroche, au-delà de `fast` ça tranche */
+const TEAR_SPEED = { slow: 1.2, fast: 5 };
+/** direction de pelage à l'écran : vers la droite en soulevant un peu la bande (~18° vers le haut) */
+const PEEL_C = Math.cos(0.32);
+const PEEL_S = Math.sin(0.32);
+/** doigt levé passé ce point : la soudure cède d'un trait (sinon le pli reste marqué là où il est, on peut reprendre) */
+const TEAR_FINISH = 0.72;
+/** fente de lumière (S3) : s'ouvre entre ces deux points de la déchirure */
+const TEAR_SLIT = [0.33, 0.55] as const;
+const sstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+/**
  * AMBIANCE « ÉCLIPSE » (Berserk 5★ / 6★ — game/eclipse.ts). Palette relevée sur les planches : noir, bordeaux,
  * cramoisi, braise, couronne. `ember` / `aura` : la fuite de lumière et le halo du sachet fermé (temps 1) ;
  * `horizon`, `moonY` : fraction de la hauteur d'écran (0 = haut) ; `dark` : assombrissement fermé / ouvert / effets réduits ;
@@ -689,6 +710,17 @@ export function createOpeningScene(): OpeningScene {
   const fly = { t: 0 };
   let tearTarget = 0;
   let tearProgress = 0;
+  /** stick-slip (lot 07) : vitesse lissée de la cible (progression / s), cible à l'image d'avant, bande en train de
+   *  filer, prochain point de soudure (index dans TEAR_WELDS), soudure lâchée d'un trait (doigt levé passé TEAR_FINISH) */
+  let tearVel = 0;
+  let tearPrevTarget = 0;
+  let tearSlip = false;
+  let tearWeld = 0;
+  let tearFling = false;
+  /** vitesse de la bande quand elle file (progression / s) : toute la course en DUR.rapide */
+  const tearRate = 1000 / DUR.rapide();
+  /** (S3) fente de lumière rasante à l'intérieur de la coupe (0..1) */
+  const TSLIT = uniform(0);
   let autoTear: gsap.core.Tween | null = null;
   const tearShake = new Spring(0, 420, 16);
   /**
@@ -1028,7 +1060,13 @@ export function createOpeningScene(): OpeningScene {
       m.metalnessNode = float(1).mul(whiten.oneMinus());
       m.roughnessNode = select(frontFacing, m.roughnessNode as N, float(0.3)).add(whiten.mul(0.4));
       // fuite de lumière (003) : soudures + impression claire, de la couleur de la meilleure carte
-      m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)).mul(whiten.oneMinus());
+      // (S3) fente de lumière rasante : passé ~35 % (TSLIT), la lumière de l'intérieur filtre par la coupe déjà ouverte —
+      // un filet sur la tranche, et la face intérieure des lèvres éclairée en rasant près de la coupe (elle se voit quand
+      // la bande s'enroule vers nous). Même teinte neutre que la fuite (anti-spoil), aucun halo autour du sachet.
+      const dv = abs(v.sub(edge));
+      const rimL = smoothstep(0.005, 0.0, dv);
+      const slit = select(frontFacing, rimL.mul(0.5), smoothstep(0.05, 0.0, dv).pow(2).mul(0.9).add(rimL)).mul(tornCol).mul(TSLIT);
+      m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak).mul(whiten.oneMinus()).add(slit));
       // même relief des plis que le booster entier (sa carte de hauteur), sinon la coupe ne raccorde pas
       const crLift = creaseLift(tearSwaps, art, side);
       if (baked) {
@@ -1109,7 +1147,29 @@ export function createOpeningScene(): OpeningScene {
       }
     }
     events.onHold?.(Math.min(1, p));
-    if (p >= 1 && phase === 'sealed') onTorn();
+    if (p >= 1 && phase === 'sealed') {
+      // (S3) rupture : petite bouffée d'air qui s'échappe du sachet, juste avant la sortie des cartes
+      ctx.sfx.sweep(DUR.rapide() / 1000, { tex: 'air', lo: 240, hi: 1100, vol: 0.14, up: true, ease: EASE.glide });
+      onTorn();
+    }
+  }
+
+  /**
+   * (lot 07) la soudure lâche (début d'un glissement du stick-slip) : une rafale de déchirure dont la force suit la
+   * tension relâchée (plus forte sur un point de soudure), et une micro-vibration sur les points de soudure. `fastK` :
+   * geste vif (0..1) — la coupe continue garde ses grains espacés (setTearProgress, 90 ms au plus), pas de rafale.
+   */
+  function tearCatch(tension: number, weld: boolean, fastK: number) {
+    const now = performance.now();
+    if (fastK < 0.5 && now - tearSndAt >= 45) {
+      ctx.sfx.tear(0.05 + Math.min(0.12, tension * 1.6), weld ? 0.11 : 0.07);
+      tearSndAt = now;
+      tearSndAcc = 0;
+    }
+    if (weld && fastK < 0.5) {
+      hapticTear = tearProgress;
+      haptics.pulse(5);
+    }
   }
 
   function startAutoTear(duration: number) {
@@ -1466,7 +1526,9 @@ export function createOpeningScene(): OpeningScene {
     style = openStyleOf(p);
     const tearing = style !== 'burn';
     followZ = tearing ? 0 : -PACK_OPEN_Z;
-    tearTarget = tearProgress = 0;
+    tearTarget = tearProgress = tearPrevTarget = tearVel = tearWeld = 0;
+    tearSlip = tearFling = false;
+    TSLIT.value = 0;
     hapticTear = 0;
     TP.value = 0;
     fly.t = 0;
@@ -2312,7 +2374,9 @@ export function createOpeningScene(): OpeningScene {
     followZ = -PACK_OPEN_Z;
     autoTear?.kill();
     autoTear = null;
-    tearTarget = tearProgress = 0;
+    tearTarget = tearProgress = tearPrevTarget = tearVel = tearWeld = 0;
+    tearSlip = tearFling = false;
+    TSLIT.value = 0;
     TP.value = 0;
     fly.t = 0;
     focusSlot = -1;
@@ -2360,7 +2424,7 @@ export function createOpeningScene(): OpeningScene {
     },
     /** diagnostic (tests) : état de la pile */
     debug() {
-      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, eclipse: { on: eclipse, aura: +E.aura.toFixed(2), dark: +E.dark.toFixed(2), sky: +E.sky.toFixed(2), rip: +E.rip.toFixed(2) }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
+      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, eclipse: { on: eclipse, aura: +E.aura.toFixed(2), dark: +E.dark.toFixed(2), sky: +E.sky.toFixed(2), rip: +E.rip.toFixed(2) }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, weld: tearWeld, slit: +(TSLIT.value as number).toFixed(3), bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
     },
     setBooster,
     setEventBooster(ev) {
@@ -3061,20 +3125,40 @@ export function createOpeningScene(): OpeningScene {
       if (bakedBody && bakedStrip) bakedBody.visible = bakedStrip.visible = false;
       c.bag.fn(() => warm.forEach((m) => m.dispose()));
 
-      // maintenir pour ouvrir (souris, doigt, espace) ; déchirure : le glisser horizontal est suivi ici, au pixel près
+      // maintenir pour ouvrir (souris, doigt, espace) ; déchirure : le glisser est suivi ici, au pixel près
       let tearX: number | null = null;
+      let tearY = 0;
       const down = (e: Event) => {
         if (phase !== 'sealed') return;
         holding = true;
         tearX = (e as PointerEvent).clientX ?? null;
+        tearY = (e as PointerEvent).clientY ?? 0;
         e.preventDefault?.();
       };
-      const up = () => ((holding = false), (tearX = null));
+      const up = () => {
+        // (lot 07) doigt levé en pleine déchirure : passé TEAR_FINISH la soudure cède d'un trait (plus de fin de course
+        // qui patine au bord de l'écran) ; avant, la tension non relâchée retombe et le pli reste marqué à l'angle
+        // atteint (la bande ne revient pas) — on peut reprendre où on s'est arrêté
+        if (tearX !== null && phase === 'sealed' && style !== 'burn') {
+          if (tearProgress >= TEAR_FINISH) {
+            tearFling = true;
+            tearTarget = 1.08;
+          } else if (!tearSlip && tearTarget > tearProgress) tearTarget = tearProgress;
+        }
+        holding = false;
+        tearX = null;
+      };
       const move = (e: PointerEvent) => {
         if (tearX === null || phase !== 'sealed' || style === 'burn') return;
         const dx = e.clientX - tearX;
+        const dy = e.clientY - tearY;
         tearX = e.clientX;
-        if (dx > 0) tearTarget = Math.min(1.08, tearTarget + dx / ((cv.clientWidth || 800) * 0.5));
+        tearY = e.clientY;
+        // (lot 07) le geste est projeté sur la direction de pelage (droite + un peu vers le haut : un arc de pouce en
+        // diagonale compte presque entier, un geste purement horizontal compte comme avant) ; un geste vif rend
+        // jusqu'à ×1,7 par pixel — il tranche d'un trait au lieu de buter au bord de l'écran
+        const adv = (dx * PEEL_C - dy * PEEL_S) / PEEL_C;
+        if (adv > 0) tearTarget = Math.min(1.08, tearTarget + (adv * (1 + 0.7 * sstep(TEAR_SPEED.slow, TEAR_SPEED.fast, tearVel))) / ((cv.clientWidth || 800) * 0.5));
       };
       const cv = c.canvas;
       cv.addEventListener('pointerdown', down);
@@ -3177,19 +3261,43 @@ export function createOpeningScene(): OpeningScene {
         if (hold >= 1) onBurnt();
       }
       // déchirure : le doigt qui glisse vers la droite tire la bande (maintenir sans bouger = elle avance doucement) ;
-      // stick-slip : elle accroche puis cède par paquets (résistance plus forte au premier accroc)
+      // stick-slip DÉTERMINISTE (lot 07, voir TEAR_WELDS) : elle accroche, la tension monte (le sachet penche un rien),
+      // puis elle file jusqu'au doigt d'un coup — crans espacés si le geste est lent, coupe continue s'il est vif
       if (phase === 'sealed' && style !== 'burn') {
         if (auto.burn) startAutoTear(style === 'fan' ? 0.42 : 0.9);
         // maintenir sans glisser : la bande avance doucement toute seule (clavier, appui long)
         if (holding && !ctx.input.dragging) tearTarget = Math.min(1.08, tearTarget + dt * 0.45);
+        // vitesse demandée (doigt, clavier ou déchirure auto), lissée sur ~60 ms
+        const dts = Math.max(dt, 1e-3);
+        tearVel += ((tearTarget - tearPrevTarget) / dts - tearVel) * Math.min(1, dts / 0.06);
+        tearPrevTarget = tearTarget;
+        const fastK = tearFling ? 1 : sstep(TEAR_SPEED.slow, TEAR_SPEED.fast, tearVel);
         const gap = tearTarget - tearProgress;
-        const threshold = tearProgress < 0.02 ? 0.06 : 0.045 * (0.5 + Math.random());
-        if (gap > threshold) setTearProgress(Math.min(tearTarget, tearProgress + gap * (0.7 + Math.random() * 0.3)));
-        const tension = tearProgress < 0.02 ? Math.min(1, Math.max(0, gap) / 0.06) : 0;
-        S.trem = tension * 0.2;
+        let tension = 0;
+        if (!tearSlip) {
+          const weld = tearProgress >= (TEAR_WELDS[tearWeld] ?? 2) - 1e-4;
+          const need = (tearWeld === 0 ? TEAR_NEED.first : weld ? TEAR_NEED.weld : TEAR_NEED.film) * (1 - 0.85 * fastK);
+          if (gap > need) {
+            tearSlip = true;
+            if (weld) tearWeld++;
+            tearCatch(gap, weld, fastK);
+          } else tension = Math.max(0, gap) / need;
+        }
+        if (tearSlip) {
+          // la bande file (à la vitesse d'une coupe nette : toute la course en DUR.rapide) jusqu'au doigt, ou bute sur
+          // le point de soudure suivant
+          const stop = Math.min(tearTarget, TEAR_WELDS[tearWeld] ?? 2);
+          const next = Math.min(stop, tearProgress + dts * tearRate);
+          if (next >= stop) tearSlip = false;
+          if (next > tearProgress) setTearProgress(next);
+        }
+        S.trem = tension * 0.2 * (1 - fastK);
       }
       tearShake.update(dt);
       TFLY.value = fly.t;
+      // (S3) fente de lumière : s'ouvre avec la coupe (la tête de lecture de l'enregistrement si on le rejoue), s'éteint
+      // pendant que la bande s'envole
+      TSLIT.value = style === 'burn' ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
       if (useBake && bakePlayer) {
         if (bakeExit.t < 0) {
           // la tête de lecture suit le doigt (rattrapage rapide : les à-coups de la déchirure restent nets)
