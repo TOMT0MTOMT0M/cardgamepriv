@@ -178,7 +178,7 @@ export function rollNumber(el: HTMLElement, from: number, to: number, fmt: (n: n
 type Box = { x: number; y: number; w: number; h: number };
 const segDone = new WeakSet<HTMLElement>();
 const segLast = new Map<string, Box>();
-function segIndicator(seg: HTMLElement) {
+export function segIndicator(seg: HTMLElement) {
   if (segDone.has(seg)) return;
   segDone.add(seg);
   let ind: HTMLElement | null = null;

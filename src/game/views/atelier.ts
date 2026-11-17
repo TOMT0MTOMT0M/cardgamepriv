@@ -305,6 +305,34 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
   };
   const sec = (label: string, html: string) => (html ? `<h3 class="at-sec">${label}</h3>${html}` : '');
   const tiles = (k: Kind, list: Cosmetic[]) => shown(list).map((c, i) => tile(k, c, i)).join('');
+  let gridTpl: HTMLTemplateElement | null = null;
+  let gridKey = '';
+  /** pose sur `live` les différences entre les gabarits `a` (précédent) et `b` (nouveau) ; false = structure changée, on reconstruit */
+  function patchGrid(live: HTMLElement, a: DocumentFragment, b: DocumentFragment): boolean {
+    const ca = a.children, cb = b.children;
+    if (ca.length !== cb.length || live.children.length !== cb.length) return false;
+    for (let i = 0; i < cb.length; i++) if (ca[i].tagName !== cb[i].tagName || ca[i].className.split(' ')[0] !== cb[i].className.split(' ')[0]) return false;
+    for (let i = 0; i < cb.length; i++) {
+      if (ca[i].outerHTML === cb[i].outerHTML) continue;
+      const lv = live.children[i] as HTMLElement, n = cb[i] as HTMLElement, o = ca[i] as HTMLElement;
+      if (lv.classList.contains('at-tile') && o.children.length === n.children.length) {
+        // la tuile reste en place : classes (.on, .eq), aria, puis seulement les sous-éléments qui diffèrent (étiquette, coche)
+        lv.className = n.className;
+        for (const at of ['aria-pressed', 'title']) n.hasAttribute(at) ? lv.setAttribute(at, n.getAttribute(at)!) : lv.removeAttribute(at);
+        for (let j = 0; j < n.children.length; j++)
+          if (o.children[j].outerHTML !== n.children[j].outerHTML) {
+            const c = n.children[j].cloneNode(true) as HTMLElement;
+            lv.children[j].replaceWith(c);
+            hydrate(c);
+          }
+      } else {
+        const c = n.cloneNode(true) as HTMLElement;
+        lv.replaceWith(c);
+        hydrate(c);
+      }
+    }
+    return true;
+  }
   function renderGrid() {
     const top = grid.scrollTop;
     const focus = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('.at-tile');
@@ -327,8 +355,20 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
       html = tiles('badge', BADGES) + (order.length > 1 ? `<h3 class="at-sec">${tr('at.sec.order')}</h3><div class="at-order">${order.map((id, i) => `<span class="at-ord"><span class="pf-badge">${badgeIcon(id)} <i>${esc(badgeOf(id)?.label ?? id)}</i></span><button type="button" data-mv="-1" data-i="${i}"${i === 0 ? ' disabled' : ''} aria-label="${tr('at.before')}">${icon('left')}</button><button type="button" data-mv="1" data-i="${i}"${i === order.length - 1 ? ' disabled' : ''} aria-label="${tr('at.after')}">${icon('right')}</button></span>`).join('')}</div>` : '');
     }
     grid.dataset.fam = fam;
-    grid.innerHTML = html || `<p class="at-empty">${tr('at.empty')}</p>`;
-    hydrate(grid);
+    html ||= `<p class="at-empty">${tr('at.empty')}</p>`;
+    // même famille, même filtre : on ne touche qu'aux nœuds qui changent (les deux tuiles concernées), les autres gardent
+    // leurs animations d'ambiance ; on compare le nouveau gabarit à l'ancien, pas au DOM vivant (canvas déjà peints)
+    const key = `${fam}|${filter}`;
+    const next = document.createElement('template');
+    next.innerHTML = html;
+    if (gridTpl && gridKey === key && patchGrid(grid, gridTpl.content, next.content)) {
+      gridTpl = next;
+    } else {
+      grid.innerHTML = html;
+      hydrate(grid);
+      gridTpl = next;
+      gridKey = key;
+    }
     grid.scrollTop = top;
     if (fk) grid.querySelector<HTMLElement>(`.at-tile[data-kind="${fk}"][data-id="${CSS.escape(fi ?? '')}"]`)?.focus({ preventScroll: true });
   }

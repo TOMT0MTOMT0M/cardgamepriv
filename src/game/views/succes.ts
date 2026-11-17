@@ -9,6 +9,7 @@ import type { FriendAch } from '../eco';
 import { cosmeticsOf } from '../../core/cosmetics';
 import { badgeIcon } from '../cosmeticArt';
 import { COIN_ICON } from './wallet';
+import { DUR, EASING, reducedMotion } from '../../core/motion';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
 import { guarded, isPending } from './safety';
 import { OPEN_COSM } from '../atelierOnce';
@@ -30,6 +31,34 @@ export interface SuccesView {
 }
 
 type Filter = 'all' | 'ready' | 'got' | 'todo';
+
+/** Déplie / replie un bloc : la hauteur (avec ses marges internes) coulisse, le contenu fond ; reprend là où en est une animation en cours. */
+const slides = new WeakMap<HTMLElement, Animation>();
+function slide(el: HTMLElement, open: boolean): void {
+  const prev = slides.get(el);
+  const from = prev ? el.getBoundingClientRect().height : open ? 0 : el.getBoundingClientRect().height;
+  prev?.cancel();
+  if (open) el.hidden = false;
+  if (reducedMotion() || !el.isConnected || (!open && el.hidden)) return void (el.hidden = !open);
+  const cs = getComputedStyle(el);
+  const box = (h: number, k: number) => ({ height: `${h}px`, paddingTop: `${parseFloat(cs.paddingTop) * k}px`, paddingBottom: `${parseFloat(cs.paddingBottom) * k}px`, borderTopWidth: `${parseFloat(cs.borderTopWidth) * k}px`, opacity: k });
+  const H = el.getBoundingClientRect().height; // hauteur naturelle (ouverte)
+  const target = open ? box(H, 1) : box(0, 0);
+  const start = open ? box(from, H > 0 ? Math.min(1, from / H) : 0) : box(from, H > 0 ? Math.min(1, from / H) : 1);
+  const a = el.animate([start, target], { duration: DUR.standard(), easing: open ? EASING.entree : EASING.sortie });
+  el.style.overflow = 'hidden';
+  slides.set(el, a);
+  a.addEventListener('finish', () => {
+    if (slides.get(el) !== a) return;
+    slides.delete(el);
+    el.style.overflow = '';
+    el.hidden = !open;
+  });
+  a.addEventListener('cancel', () => {
+    if (slides.get(el) === a) slides.delete(el);
+    el.style.overflow = '';
+  });
+}
 
 export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView {
   const el = h('section', 'view succes');
@@ -172,7 +201,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       else openLadders.delete(k);
       c.classList.toggle('open', on);
       c.querySelector('.sc-pl-h')!.setAttribute('aria-expanded', String(on));
-      c.querySelector<HTMLElement>('.sc-more')!.hidden = !on;
+      slide(c.querySelector<HTMLElement>('.sc-more')!, on);
     });
     return c;
   }

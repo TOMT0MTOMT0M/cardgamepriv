@@ -52,3 +52,8 @@
   :where(.missions-pop, .status-pop) > * { translate: none; transition: none; }
   .gm-modal, .ob-modal, .gm-modal-veil, .ob-veil { animation-duration: 1ms !important; }
 }
+
+/* ── onglets du profil : le curseur (i.seg-ind, posé par segIndicator) prend la couleur de l'onglet actif et coulisse */
+.pf-tabs.has-ind { position: relative; isolation: isolate; }
+.pf-tabs.has-ind > button { position: relative; z-index: 1; transition: color var(--dur-standard) var(--ease-standard); }
+.pf-tabs.has-ind:not(.ind-measure) > button.on { background: transparent; }

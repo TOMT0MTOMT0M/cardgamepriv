@@ -9,6 +9,7 @@ import type { ViewerScene } from '../scenes/viewer';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { ACCENTS, BACKGROUNDS, BADGES, BANNERS, FRAMES, TITLE_STYLES, VITRINES, accentColor, accordOf, backgroundOf, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
+import { segIndicator } from '../../core/morph';
 import { openAtelier, type Atelier, type AtelierFam } from './atelier';
 import { OPEN_COSM, OPEN_COSM_EVT } from '../atelierOnce';
 import { accordFx, badgeIcon, framed, icon, titleHtml } from '../cosmeticArt';
@@ -88,7 +89,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       <i class="pf-bg" hidden aria-hidden="true"></i>
       <div class="pf-banner"><button class="btn-ghost pf-banner-btn" hidden>${tr('pf.customizeBtn')}</button></div>
       <div class="pf-head"></div>
-      <div class="pf-tabs" role="tablist">
+      <div class="pf-tabs" data-seg-key="pf-tabs" role="tablist">
         <button role="tab" data-tab="tableau" class="on">${tr('pf.board')}</button><button role="tab" data-tab="collection">Collection</button><button role="tab" data-tab="activite">${tr('pf.activity')}</button><button role="tab" data-tab="classement">${tr('pf.ranking')}</button> <!-- i18n-ok -->
       </div>
       <div class="pf-pane p-tableau">
@@ -199,6 +200,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   }
   // onglets qui débordent à 360 px (« CLASSEMENT » coupé) : fondu au bord droit tant qu'il reste à voir (audit UX3-12)
   const tabsRow = q('.pf-tabs');
+  segIndicator(tabsRow); // curseur qui coulisse d'un onglet à l'autre (morph.ts)
   const markTabsOvf = () => tabsRow.classList.toggle('ovf', tabsRow.scrollLeft + tabsRow.clientWidth < tabsRow.scrollWidth - 4);
   tabsRow.addEventListener('scroll', markTabsOvf, { passive: true });
   /** vitrine affichée : celle choisie (cartes encore possédées), sinon les 12 meilleures */
