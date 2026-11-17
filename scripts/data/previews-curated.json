@@ -1,5 +1,5 @@
 {
-  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. (15/11, soir) 24 génériques récupérés par Gemini (donnees/generiques/a-integrer/LISEZMOI.txt : sources, VF/VO) : versions françaises diffusées, génériques instrumentaux officiels, Cha-La Head-Cha-La 1989, Olive et Tom (Corbel) — servis par Pages (public/audio/generiques/) ; la version anglaise d'avant passe dans « cartoon-en ». Reste en reprise fidèle : Molang, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/.",
+  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. (15/11, soir) 24 génériques récupérés par Gemini (donnees/generiques/a-integrer/LISEZMOI.txt : sources, VF/VO) : versions françaises diffusées, génériques instrumentaux officiels, Cha-La Head-Cha-La 1989, Olive et Tom (Corbel) — servis par Pages (public/audio/generiques/) ; la version anglaise d'avant passe dans « cartoon-en ». Reste en reprise fidèle : Molang, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/. « screen » (17/11, demandes de Hugo) = générique de la série (bloc Séries TV) ou musique du film (Marvel MCU : Avengers d'Alan Silvestri), par sous-thème, joué en fond quand une 6★ tombe — interprète original seulement. Hellsing : « The World without Logos » (Yasushi Ishii).",
   "cards": {
     "pop-au-dd": [
       "Au DD",
@@ -1256,8 +1256,9 @@
       "Ringo Sheena"
     ],
     "hellsing": [
-      "Logos Naki World",
-      "Yasushi Ishii"
+      "The World without Logos",
+      "Yasushi Ishii",
+      "itunes:1828704712"
     ],
     "high-school-dxd": [
       "Trip -innocent of D-",
@@ -1933,6 +1934,288 @@
     "eclipse": [
       "Behelit",
       "Susumu Hirasawa"
+    ]
+  },
+  "screen": {
+    "arrowverse": [
+      "Setting Up the Lair (Main Theme from “Arrow”)",
+      "Blake Neely",
+      "itunes:1455249774"
+    ],
+    "bones": [
+      "Bones Theme",
+      "The Crystal Method",
+      "itunes:1502302335"
+    ],
+    "breaking-bad": [
+      "Breaking Bad (Main Title Theme)",
+      "Dave Porter",
+      "itunes:370928560"
+    ],
+    "chernobyl": [
+      "The Door",
+      "Hildur Guðnadóttir",
+      "itunes:1464507425"
+    ],
+    "cobra-kai": [
+      "Strike First",
+      "Leo Birenberg & Zach Robinson",
+      "itunes:1816012011"
+    ],
+    "columbo": [
+      "Mystery Movie Theme",
+      "Henry Mancini",
+      "itunes:1031781469"
+    ],
+    "desperate-housewives": [
+      "Desperate Housewives Theme",
+      "Danny Elfman",
+      "itunes:1443207728"
+    ],
+    "dexter": [
+      "Dexter Main Title",
+      "Rolfe Kent",
+      "itunes:1534802065"
+    ],
+    "dr-house": [
+      "Teardrop",
+      "Massive Attack",
+      "itunes:724466700"
+    ],
+    "emily-in-paris": [
+      "Main Title Theme",
+      "James Newton Howard",
+      "itunes:1600566174"
+    ],
+    "friends": [
+      "I'll Be There for You",
+      "The Rembrandts",
+      "itunes:373221221"
+    ],
+    "game-of-thrones": [
+      "Main Title",
+      "Ramin Djawadi",
+      "itunes:1440799057"
+    ],
+    "gilmore-girls": [
+      "Where You Lead I Will Follow",
+      "Carole King",
+      "itunes:1139003043"
+    ],
+    "glee": [
+      "Don't Stop Believin'",
+      "Glee Cast",
+      "itunes:347886835"
+    ],
+    "good-omens": [
+      "Good Omens Opening Title",
+      "David Arnold",
+      "itunes:1833179901"
+    ],
+    "grey-s-anatomy": [
+      "Cosy in the Rocket",
+      "Psapp",
+      "itunes:712912882"
+    ],
+    "hannah-montana": [
+      "The Best of Both Worlds",
+      "Hannah Montana",
+      "itunes:1440778789"
+    ],
+    "house-of-cards": [
+      "House of Cards Main Title Theme",
+      "Jeff Beal",
+      "itunes:1440753471"
+    ],
+    "hpi": [
+      "HPI (générique)",
+      "Yannis Dumoutiers",
+      "itunes:1570116259"
+    ],
+    "k2000": [
+      "Knight Rider (Main Title)",
+      "Stu Phillips",
+      "itunes:1528121767"
+    ],
+    "killing-eve": [
+      "Strange Effect",
+      "Unloved & Raven Violet",
+      "itunes:1508336365"
+    ],
+    "la-casa-de-papel": [
+      "My Life Is Going On",
+      "Cecilia Krull",
+      "itunes:1246764809"
+    ],
+    "le-mentalist": [
+      "The Mentalist (Main Title Theme)",
+      "Blake Neely",
+      "itunes:1455524431"
+    ],
+    "le-prince-de-bel-air": [
+      "The Fresh Prince of Bel-Air",
+      "DJ Jazzy Jeff & The Fresh Prince",
+      "itunes:309484327"
+    ],
+    "les-experts": [
+      "Who Are You",
+      "The Who",
+      "itunes:557156933"
+    ],
+    "les-soprano": [
+      "Woke Up This Morning",
+      "Alabama 3",
+      "itunes:283466475"
+    ],
+    "les-sorciers-de-waverly-place": [
+      "Everything Is Not What It Seems",
+      "Selena Gomez",
+      "itunes:1443888589"
+    ],
+    "lucifer": [
+      "Being Evil Has a Price",
+      "Heavy Young Heathens",
+      "itunes:1130719444"
+    ],
+    "magnum": [
+      "Theme from « Magnum, P.I. »",
+      "Mike Post",
+      "itunes:140787115"
+    ],
+    "maigret": [
+      "Maigret (générique)",
+      "Maigret",
+      "itunes:199231702"
+    ],
+    "malcolm": [
+      "Boss of Me",
+      "They Might Be Giants",
+      "itunes:6792838107"
+    ],
+    "maries-deux-enfants": [
+      "Love and Marriage",
+      "Frank Sinatra",
+      "itunes:1443128840"
+    ],
+    "monk": [
+      "Monk Theme",
+      "Jeff Beal",
+      "itunes:1444005114"
+    ],
+    "mr-robot": [
+      "hellofriend",
+      "Mac Quayle",
+      "itunes:1111049903"
+    ],
+    "new-girl": [
+      "Hey Girl",
+      "Zooey Deschanel",
+      "itunes:1512826305"
+    ],
+    "noob": [
+      "Générique de fin",
+      "Olydri",
+      "itunes:1717721462"
+    ],
+    "outlander": [
+      "The Skye Boat Song",
+      "Bear McCreary",
+      "itunes:903585389"
+    ],
+    "poirot": [
+      "Hercule Poirot - The Belgian Detective",
+      "Christopher Gunning",
+      "itunes:6777028036"
+    ],
+    "prison-break": [
+      "Main Title",
+      "Ramin Djawadi",
+      "itunes:1452859459"
+    ],
+    "shadow-and-bone": [
+      "Ravka",
+      "Joseph Trapanese",
+      "itunes:1658423170"
+    ],
+    "shogun": [
+      "Main Title (Shōgun)",
+      "Atticus Ross & Leopold Ross",
+      "itunes:1730619131"
+    ],
+    "squid-game": [
+      "Way Back Then",
+      "Jung Jae-il",
+      "itunes:1585115804"
+    ],
+    "stranger-things": [
+      "Stranger Things",
+      "Kyle Dixon & Michael Stein",
+      "itunes:1142771420"
+    ],
+    "succession": [
+      "Succession (Main Title Theme)",
+      "Nicholas Britell",
+      "itunes:1500926127"
+    ],
+    "ted-lasso": [
+      "Ted Lasso Theme",
+      "Marcus Mumford & Tom Howe",
+      "itunes:1534329463"
+    ],
+    "the-big-bang-theory": [
+      "The Big Bang Theory Theme",
+      "Barenaked Ladies",
+      "itunes:464675958"
+    ],
+    "the-last-kingdom": [
+      "The Last Kingdom",
+      "John Lunn & Eivør",
+      "itunes:1440074900"
+    ],
+    "the-mandalorian": [
+      "The Mandalorian",
+      "Ludwig Göransson",
+      "itunes:1486687344"
+    ],
+    "the-sandman": [
+      "The Kingdom of Dreams (Main Title Theme)",
+      "David Buckley",
+      "itunes:1636651430"
+    ],
+    "the-walking-dead": [
+      "Theme from The Walking Dead",
+      "Bear McCreary",
+      "itunes:1275301945"
+    ],
+    "true-blood": [
+      "Bad Things",
+      "Jace Everett",
+      "itunes:313613446"
+    ],
+    "twin-peaks": [
+      "Twin Peaks Theme",
+      "Angelo Badalamenti",
+      "itunes:374382372"
+    ],
+    "une-nounou-d-enfer": [
+      "The Nanny Named Fran",
+      "Ann Hampton Callaway",
+      "itunes:1841692170"
+    ],
+    "xena-la-guerriere": [
+      "Main Title",
+      "Joseph LoDuca",
+      "itunes:1444069072"
+    ],
+    "yellowstone": [
+      "Yellowstone Theme",
+      "Brian Tyler",
+      "itunes:1422861344"
+    ],
+    "marvel": [
+      "The Avengers",
+      "Alan Silvestri",
+      "itunes:1440663698"
     ]
   }
 }

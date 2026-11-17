@@ -1,4 +1,4 @@
-import { PURGE_08_11, PURGE_15_11, PURGE_BRUEL, RENAME_15_11, RERATE_08_11, RERATE_11_11, RERATE_13_11, RERATE_15_11, RESUB_13_11, RESUB_15_11 } from './curation';
+import { PURGE_08_11, PURGE_15_11, PURGE_BRUEL, RENAME_15_11, RERATE_08_11, RERATE_11_11, RERATE_13_11, RERATE_15_11, RERATE_17_11, RESUB_13_11, RESUB_15_11 } from './curation';
 import { artV } from '../artRev';
 import { msgRef, str } from '../msgRefs';
 /**
@@ -449,7 +449,7 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
   if (installed) return;
   installed = true;
   const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL, ...PURGE_15_11]);
-  const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11, ...RERATE_13_11, ...RERATE_15_11 }));
+  const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11, ...RERATE_13_11, ...RERATE_15_11, ...RERATE_17_11 }));
   applyCuration(purge, rerate);
   for (const s of bigSubthemes(big, { purge, rerate })) SUBTHEMES.push(s);
   for (const t of THEMES) {

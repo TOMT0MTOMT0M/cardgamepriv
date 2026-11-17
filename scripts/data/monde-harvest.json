@@ -4845,9 +4845,9 @@
 },
 "geo-canal-de-panama": {
 "art": "c",
-"file": "monuments-patrimoine--canal-de-panama.jpg",
-"src": "url",
-"t": 1793645436
+"file": "monuments-patrimoine--canal-de-panama-r2611171353.jpg",
+"src": "reillustre:canal du panama.jpg",
+"t": 1794923620
 },
 "geo-canberra": {
 "art": "c",
@@ -10971,8 +10971,9 @@
 },
 "geo-pays-russie": {
 "art": "c",
-"file": "143-pays-russie.png",
-"src": "v1"
+"file": "143-pays-russie-r2611171353.jpg",
+"src": "reillustre:russie.webp",
+"t": 1794923620
 },
 "geo-pays-rwanda": {
 "art": "c",

@@ -1456,7 +1456,7 @@ const RAW: Array<[number, string, string, keyof typeof R, number, string, '' | '
   [11, "geo-brooklyn-bridge", "Brooklyn Bridge", 'm', 0, "monuments-patrimoine--brooklyn-bridge.jpg", "c", "Monument emblématique"],
   [11, "geo-burj-al-arab", "Burj Al Arab", 'm', 0, "monuments-patrimoine--burj-al-arab.jpg", "c", "Monument emblématique"],
   [11, "geo-cn-tower-toronto", "CN Tower (Toronto)", 'm', 0, "monuments-patrimoine--cn-tower-toronto.jpg", "c", "Monument emblématique"],
-  [11, "geo-canal-de-panama", "Canal de Panamá", 'm', 0, "monuments-patrimoine--canal-de-panama.jpg", "c", "Monument emblématique"],
+  [11, "geo-canal-de-panama", "Canal de Panamá", 'm', 0, "monuments-patrimoine--canal-de-panama-r2611171353.jpg", "c", "Monument emblématique"],
   [11, "geo-cap-canaveral-kennedy-space-center", "Cap Canaveral (Kennedy Space Center)", 'm', 0, "monuments-patrimoine--cap-canaveral-kennedy-space-center.jpg", "c", "Monument emblématique"],
   [11, "geo-capitole-des-etats-unis", "Capitole des États-Unis", 'm', 0, "monuments-patrimoine--capitole-des-etats-unis.jpg", "c", "Monument emblématique"],
   [11, "geo-casa-batllo", "Casa Batlló", 'm', 0, "monuments-patrimoine--casa-batllo.jpg", "c", "Monument emblématique"],

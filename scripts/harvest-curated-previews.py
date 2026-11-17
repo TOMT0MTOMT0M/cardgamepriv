@@ -59,7 +59,7 @@ def exact(ref):
         time.sleep(3.1)
     return False
 budget = time.time() + float(sys.argv[1] if len(sys.argv) > 1 else 160)
-KINDS = ('cards', 'anime', 'cartoon', 'cartoon-en', 'ambience')
+KINDS = ('cards', 'anime', 'cartoon', 'cartoon-en', 'screen', 'ambience')
 for kind in KINDS:
     for key, (t, a, *ref) in SRC.get(kind, {}).items():
         k = f'{kind}:{key}'

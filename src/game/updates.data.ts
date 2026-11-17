@@ -61,6 +61,15 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '17 nov.', title: 'Génériques des séries et nouvelles images 6★', tag: 'amélioré',
+        points: [
+          '📺 Les 6★ de séries jouent leur générique : Friends, Game of Thrones, Breaking Bad, Stranger Things, Les Soprano, Malcolm… 56 séries et films en tout.',
+          '🦸 Marvel MCU : les 6★ jouent le thème des Avengers d’Alan Silvestri. Hellsing : « The World without Logos ».',
+          '⭐ Aelita (Code Lyoko) et Palworld passent en 6★.',
+          '🖼️ 27 cartes en pleine illustration, mieux cadrées : Alucard, Sukuna, Wolverine, Jett, Reyna, Killjoy, E.T.…',
+        ],
+      },
+      {
         date: '15 nov.', title: 'Musiques 6★, cartes et profil', tag: 'amélioré',
         points: [
           '🎵 Les musiques des 6★ tournent en boucle tant que tu restes sur la carte, et les chansons démarrent au refrain.',
