@@ -1,0 +1,38 @@
+/* ═════════════ EFFEUILLER AU POUCE (V3, lot S4 — game/riffle.ts)
+   Visionneuse de la collection : la tranche de la pile contre le bord droit de la carte, puis, pendant le geste, la
+   pile en 2D à la place exacte de la carte 3D. Cartes : rayon de carte (9 px, comme .card-ghost) ; tranches et ombres
+   strictement neutres (gris / carbone, aucune teinte) ; durées et courbes = jetons de motion.ts (--dur-*, --ease-*).
+   Seules propriétés animées : transform et opacity (composité, pas de mise en page pendant le geste). */
+
+/* tranche : la zone de prise déborde de la carte (pouce), le dessin reste fin */
+.viewer-ui .rf-rail { position: absolute; width: 34px; pointer-events: auto; touch-action: none; cursor: ns-resize; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: opacity var(--dur-rapide) var(--ease-standard); }
+.viewer-ui .rf-rail[hidden] { display: none; }
+.rf-rail .rf-edge { position: absolute; left: 0; top: 2.5%; bottom: 2.5%; border-radius: 0 3px 3px 0; background: repeating-linear-gradient(90deg, #5b5e63 0 1px, #17181a 1px 1.6px); border: 1px solid var(--gm-line); border-left: 0; }
+/* zoomée, on inspecte : la tranche s'efface avec les boutons */
+.viewer-zoomed .viewer-ui .rf-rail { opacity: 0; pointer-events: none; }
+.viewer-ui.riffling .rf-rail .rf-edge { opacity: 0; }
+
+/* pendant le geste : fond noir (celui de la visionneuse) sur la carte 3D, la fiche s'efface, le compteur reste */
+.rf-layer { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity var(--dur-rapide) var(--ease-standard); pointer-events: none; }
+.rf-layer.on { opacity: 1; }
+.rf-layer[hidden] { display: none; }
+.viewer-ui.riffling .v-info, .viewer-ui.riffling .v-actions, .viewer-ui.riffling .v-hint { opacity: 0; transition: opacity var(--dur-rapide); }
+
+.rf-pile { position: absolute; perspective: 900px; transform-style: preserve-3d; }
+.rf-pile i { display: block; font-style: normal; }
+.rf-card, .rf-base { position: absolute; inset: 0; border-radius: 9px; }
+.rf-card { background: #111 center / cover no-repeat; background-image: var(--img); }
+/* la pile restante : une seule boîte, ses ombres font la tranche (posées par riffle.ts) */
+.rf-base { background: #17181a; }
+.rf-shade { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(270deg, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0) 55%); opacity: 0; }
+.rf-fly { opacity: 0; transform-origin: 0 50%; backface-visibility: hidden; }
+
+/* carte du dessus : 3 bandes en charnière (50 % · 25 % · 25 %), la courbure se concentre près du pouce */
+.rf-top { position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: 0 50%; }
+.rf-s { position: absolute; top: 0; height: 100%; transform-style: preserve-3d; transform-origin: 0 50%; background: #111 no-repeat; background-image: var(--img); background-size: var(--w) var(--h); backface-visibility: hidden; }
+.rf-s0 { left: 0; width: 50%; background-position: 0 0; border-radius: 9px 0 0 9px; }
+/* (+0,5 px : pas de jour entre deux bandes inclinées) */
+.rf-s1 { left: calc(100% - 0.5px); width: calc(50% + 0.5px); background-position: calc(var(--w) * -0.5 + 0.5px) 0; }
+.rf-s2 { left: calc(100% - 0.5px); width: calc(100% + 0.5px); background-position: calc(var(--w) * -0.75 + 1px) 0; border-radius: 0 9px 9px 0; }
+/* la lumière accroche le bord qui se soulève : blanc seulement */
+.rf-hl { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.55)); opacity: 0; }

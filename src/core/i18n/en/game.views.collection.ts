@@ -138,6 +138,7 @@ export const en: PartOf<typeof fr> = {
   'coll.viewerMouse': 'drag to spin · scroll to zoom{x}',
   'coll.flip': ' · ← → to flip through',
   'coll.viewerTouch': 'drag to spin · double-tap to zoom',
+  'coll.viewerTouchRiffle': 'drag to spin · slide the edge to riffle',
   'coll.noNewSince': 'No new card since your last visit',
   'coll.best': 'best: ',
   'coll.kBinders': 'MY BINDERS',

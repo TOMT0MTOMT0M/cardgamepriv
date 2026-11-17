@@ -14,6 +14,7 @@ import { haptics } from '../../core/haptics';
 import { reducedMotion, DUR, EASING } from '../../core/motion';
 import { createForge, forgeCount } from './forge';
 import { GAMES_OPEN } from '../../core/games';
+import { createRiffle, ndcToRect } from '../riffle';
 
 /**
  * COLLECTION (refonte, retours du 3 nov. + retours live n°1)
@@ -1710,18 +1711,22 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     nextBtn.disabled = i >= browse.length - 1;
     hintEl.textContent = matchMedia('(hover: hover)').matches
       ? tr('coll.viewerMouse', { x: browse.length > 1 ? tr('coll.flip') : '' })
-      : tr('coll.viewerTouch');
+      : browse.length > 1 ? tr('coll.viewerTouchRiffle') : tr('coll.viewerTouch');
     navPos.textContent = browse.length > 1 ? `${fmtN(i + 1)} / ${fmtN(browse.length)}` : '';
     const viewer = await getViewer();
     viewerRef = viewer;
     if (!open || at !== i) return;
     shell.setDimmed(false);
     shell.show('viewer');
+    riffle.sync(true); // (V3 S4) la tranche de la pile, contre la carte
     // (V2 fluidité, lot 6) ouverture depuis la grille : la carte de la tuile grandit jusqu'à la place de la carte 3D
     // et tient l'écran pendant que celle-ci se prépare (illustration, calques, textures) — plus d'écran noir
     const land = first ? flyGhost(b, viewer) : null;
     // (retours 06/11) pas de son quand on ouvre une carte de la collection
-    void viewer.show(b.id, b.r, dir ? { dir, quiet: true } : { quiet: true }).finally(() => land?.());
+    // (V3 S4) rendu : l'effeuillage garde sa pile à l'écran jusqu'à ce que la carte 3D arrive
+    const shown = viewer.show(b.id, b.r, dir ? { dir, quiet: true } : { quiet: true }).finally(() => land?.());
+    void shown.then(() => open && at === i && riffle.sync(true), () => undefined); // (carte posée : la tranche se recale)
+    return shown;
   }
   /** carte « fantôme » en vol (une seule à la fois) */
   let ghost: HTMLElement | null = null;
@@ -1771,6 +1776,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     el.classList.remove('viewing');
     viewerUi.hidden = true;
     binderPick.hidden = true;
+    riffle.sync(false);
     shell.show(null);
     shell.setDimmed(true);
     const b = browse[at];
@@ -1791,6 +1797,32 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   const hintEl = viewerUi.querySelector<HTMLElement>('.v-hint')!;
   prevBtn.addEventListener('click', () => step(-1));
   nextBtn.addEventListener('click', () => step(1));
+  /*
+   * (V3, lot S4) EFFEUILLER AU POUCE (game/riffle.ts) : glisser le pouce sur la tranche de la pile, contre le bord droit
+   * de la carte, fait défiler les cartes du classeur / de la grille une à une (5★ / 6★ plus dures à passer) ; on relâche
+   * sur celle qu'on veut. Un toucher simple sur la tranche = un toucher à côté de la carte (ferme, comme avant).
+   */
+  const riffle = createRiffle({
+    host: viewerUi,
+    items: () => browse,
+    at: () => at,
+    rect: () => {
+      const to = viewerRef?.restRect();
+      const host = shell.renderer.domElement.getBoundingClientRect();
+      if (!to || !host.width) return null;
+      // `restRect` pose le centre à +0,05 ; la visionneuse relève la carte de 0,1 au repos (`lift`, v2.0.2) : on recale
+      const r = ndcToRect(to, host);
+      return { ...r, top: r.top - (r.height * 0.05) / 0.88 };
+    },
+    sfx: shell.sfx,
+    tap: () => {
+      if (!open || performance.now() - openedAt < 450) return;
+      if (!binderPick.hidden) binderPick.hidden = true;
+      else closeViewer();
+    },
+    pick: (i, d) => openCard(i, d),
+    onIndex: (i) => (navPos.textContent = `${fmtN(i + 1)} / ${fmtN(browse.length)}`),
+  });
   window.addEventListener('keydown', (e) => {
     if (!open) return;
     if (e.key === 'Escape') {

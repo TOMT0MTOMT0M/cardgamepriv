@@ -137,6 +137,7 @@ export const fr = {
   'coll.viewerMouse': 'glisse pour tourner · molette pour zoomer{x}',
   'coll.flip': ' · ← → pour feuilleter',
   'coll.viewerTouch': 'glisse pour tourner · touche deux fois pour zoomer',
+  'coll.viewerTouchRiffle': 'glisse pour tourner · la tranche pour effeuiller',
   'coll.noNewSince': 'Pas de nouvelle carte depuis ta dernière visite',
   'coll.best': 'meilleur : ',
   'coll.kBinders': 'CLASSEURS PERSO',
