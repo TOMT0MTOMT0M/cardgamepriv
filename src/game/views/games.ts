@@ -39,7 +39,8 @@ import '../casino.css';
 import { createRouletteWheel } from './rouletteWheel';
 import { markRouletteSeen } from './rouletteReplay';
 import { flip, leave, rollNumber } from '../../core/morph';
-import { reducedMotion } from '../../core/motion';
+import { DUR, EASING, SPRING, reducedMotion } from '../../core/motion';
+import { Spring } from '../../core/ease';
 import { mountGridArt } from './gridArt';
 import { yieldToMain } from '../../core/yieldMain';
 import { cardBeat, flyGain, ruleGauge, stamp } from './gameFx';
@@ -72,7 +73,168 @@ const cardsSummary = (l: Array<{ rarity: RarityId; count: number }>) => {
   for (const c of l) m.set(c.rarity, (m.get(c.rarity) ?? 0) + c.count);
   return [...m].sort((a, b) => CARD_VALUE[a[0]] - CARD_VALUE[b[0]]).map(([r, n]) => `${n}×${starsTxt(r)}`).join(' + ');
 };
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/**
+ * (V3, lot 10) HORLOGE DE DUEL du Pack Battle et de la Battle Royale : remplace les `await wait(...)` fixes. Les
+ * attentes comptent en temps de JEU : vitesse 1, ×3,5 tant que le joueur maintient le doigt (ou la touche Espace),
+ * retour au rythme normal dès qu'il relâche — l'attente en cours repart du temps qu'il lui restait, au nouveau rythme.
+ * Les animations confiées par `track` suivent la même vitesse (playbackRate, sans relancer l'animation). `skip`
+ * (bouton « Passer ») termine tout : attentes résolues, animations posées à leur fin.
+ */
+const HOLD_SPEED = 3.5;
+type Pending = { left: number; t0: number; timer: number; res: () => void };
+class BattleClock {
+  speed = 1;
+  skipped: boolean;
+  private pend = new Set<Pending>();
+  private anims = new Set<Animation>();
+  constructor(skipped = false) {
+    this.skipped = skipped;
+  }
+  private arm(p: Pending) {
+    p.t0 = performance.now();
+    p.timer = window.setTimeout(() => {
+      this.pend.delete(p);
+      p.res();
+    }, p.left / this.speed);
+  }
+  /** attente de `ms` en temps de jeu (immédiate après « Passer ») */
+  wait(ms: number): Promise<void> {
+    if (this.skipped || ms <= 0) return Promise.resolve();
+    return new Promise((res) => {
+      const p: Pending = { left: ms, t0: 0, timer: 0, res };
+      this.pend.add(p);
+      this.arm(p);
+    });
+  }
+  setSpeed(s: number) {
+    if (s === this.speed || this.skipped) return;
+    const now = performance.now();
+    for (const p of this.pend) {
+      clearTimeout(p.timer);
+      p.left = Math.max(0, p.left - (now - p.t0) * this.speed);
+    }
+    this.speed = s;
+    for (const p of this.pend) this.arm(p);
+    for (const a of this.anims) a.updatePlaybackRate(s);
+  }
+  /** une animation qui suit l'horloge ; la promesse se résout à sa fin (ou à son annulation) */
+  track(a: Animation): Promise<void> {
+    if (this.skipped) a.finish();
+    else if (this.speed !== 1) a.updatePlaybackRate(this.speed);
+    this.anims.add(a);
+    const done = () => void this.anims.delete(a);
+    return a.finished.then(done, done);
+  }
+  skip() {
+    if (this.skipped) return;
+    this.skipped = true;
+    for (const p of this.pend) {
+      clearTimeout(p.timer);
+      p.res();
+    }
+    this.pend.clear();
+    for (const a of [...this.anims]) a.finish();
+  }
+}
+
+/**
+ * « Maintenir pour accélérer » : doigt (ou clic) maintenu sur la scène ou sur le bouton `.gm-hold`, ou la touche
+ * Espace → ×3,5 ; relâcher (ou faire défiler la page, quitter l'onglet) → rythme normal tout de suite. Renvoie le
+ * nettoyage (écouteurs retirés, bouton enlevé).
+ */
+function holdToSpeed(room: HTMLElement, zones: HTMLElement[], clock: BattleClock): () => void {
+  const btn = room.querySelector<HTMLElement>('.gm-hold');
+  let ptr: number | null = null;
+  let key = false;
+  const sync = () => {
+    const on = (ptr !== null || key) && !clock.skipped;
+    clock.setSpeed(on ? HOLD_SPEED : 1);
+    btn?.classList.toggle('on', on);
+    btn?.setAttribute('aria-pressed', String(on));
+  };
+  const down = (e: PointerEvent) => {
+    if (!e.isPrimary || e.button > 0 || (e.target as Element).closest('a, button:not(.gm-hold), input, select')) return;
+    ptr = e.pointerId;
+    sync();
+  };
+  const up = (e: PointerEvent) => {
+    if (e.pointerId !== ptr) return;
+    ptr = null;
+    sync();
+  };
+  const isField = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('input, textarea, select, [contenteditable]');
+  const kd = (e: KeyboardEvent) => {
+    if (e.code !== 'Space' || !room.isConnected || isField(e.target)) return;
+    // (pendant la partie, l'Espace ne fait ni défiler la page ni « cliquer » le bouton qui a le focus)
+    e.preventDefault();
+    if (e.repeat || key) return;
+    key = true;
+    sync();
+  };
+  const ku = (e: KeyboardEvent) => {
+    if (e.code !== 'Space' || !key) return;
+    e.preventDefault();
+    key = false;
+    sync();
+  };
+  const reset = () => {
+    ptr = null;
+    key = false;
+    sync();
+  };
+  const menu = (e: Event) => e.preventDefault();
+  const targets = btn ? [...zones, btn] : zones;
+  for (const z of targets) {
+    z.addEventListener('pointerdown', down);
+    z.addEventListener('contextmenu', menu);
+  }
+  window.addEventListener('pointerup', up, true);
+  window.addEventListener('pointercancel', up, true);
+  window.addEventListener('keydown', kd, true);
+  window.addEventListener('keyup', ku, true);
+  window.addEventListener('blur', reset);
+  document.addEventListener('visibilitychange', reset);
+  return () => {
+    for (const z of targets) {
+      z.removeEventListener('pointerdown', down);
+      z.removeEventListener('contextmenu', menu);
+    }
+    window.removeEventListener('pointerup', up, true);
+    window.removeEventListener('pointercancel', up, true);
+    window.removeEventListener('keydown', kd, true);
+    window.removeEventListener('keyup', ku, true);
+    window.removeEventListener('blur', reset);
+    document.removeEventListener('visibilitychange', reset);
+    btn?.remove();
+  };
+}
+
+/**
+ * Retournement au ressort (SPRING.carte, dépassement ≈ 3 %) : la réponse du ressort est calculée une fois, normalisée
+ * en temps, puis jouée en images clés WAAPI (rotateY seul : composition GPU) sur la durée voulue par la rareté.
+ */
+let springCurve: Array<[t: number, x: number]> | null = null;
+function springFrames(from: number, to: number): Keyframe[] {
+  if (!springCurve) {
+    const s = new Spring(0, SPRING.carte.stiffness, SPRING.carte.damping);
+    s.target = 1;
+    const pts: Array<[number, number]> = [[0, 0]];
+    const dt = 1 / 120;
+    let t = 0;
+    while (t < 3 && !(t > 0.1 && Math.abs(1 - s.value) < 1e-3 && Math.abs(s.velocity) < 1e-2)) {
+      t += dt;
+      pts.push([t, s.update(dt)]);
+    }
+    // une image clé sur 4 suffit (≈ 30 points) ; la dernière posée exactement sur la cible
+    springCurve = pts.filter((_, i) => i % 4 === 0).map(([pt, x]) => [pt / t, x] as [number, number]);
+    springCurve.push([1, 1]);
+  }
+  return springCurve.map(([o, x]) => ({ offset: o, transform: `rotateY(${(from + (to - from) * x).toFixed(2)}deg)` }));
+}
+
+/** l'en-tête d'une partie animée : « Maintenir pour accélérer » + « Passer » */
+const playButtons = () =>
+  `<button type="button" class="btn-ghost sm gm-hold" aria-pressed="false" aria-label="${tr('gm.hold')}" title="${tr('gm.holdT')}"><span class="gm-hold-l">${tr('gm.hold')}</span><span class="gm-hold-s" aria-hidden="true">${tr('gm.holdS')}</span></button><button class="btn-ghost sm gm-skip">${tr('gm.skip')}</button>`;
 /**
  * L'enjeu en fiche lisible d'un coup d'œil (V2, 08/11) : quatre cases Enjeu / Victoire / Défaite / Égalité au lieu
  * d'une phrase à rallonge. Sert au Pack Battle et à la Battle Royale.
@@ -124,11 +286,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   /** la page des Jeux est déjà à l'écran (pour animer d'un écran des Jeux à l'autre, pas l'arrivée sur la page) */
   let active = false;
   const packsLeft = () => (backend.state.user ? liveRegen(backend.state.user).balance : 0);
-  const sfx = (k: 'tick' | 'chime' | 'big') => {
+  /** `pan` −1..1 : (V3, lot 10) en duel, le son vient du côté de la carte qui frappe */
+  const sfx = (k: 'tick' | 'chime' | 'big', pan = 0) => {
     try {
-      if (k === 'tick') shell.sfx.tick(1.3, 0.04);
-      else if (k === 'chime') shell.sfx.chime(3, 0.07);
-      else shell.sfx.chime(6, 0.12);
+      if (k === 'tick') shell.sfx.tick(1.3, 0.04, pan);
+      else if (k === 'chime') shell.sfx.chime(3, 0.07, undefined, 0, pan);
+      else shell.sfx.chime(6, 0.12, undefined, 0, pan);
     } catch {
       /* son indisponible */
     }
@@ -471,13 +634,19 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
    * aussi EN GRAND au centre (scène), les petites tuiles en dessous restent le décompte.
    */
   const DUEL_TEMPO = { carte: 480, finale: 760, derniere: 1400, suspense: 2400 };
+  /** (V3, lot 10) position stéréo d'une carte qui frappe (gauche −, droite +) : nette sans quitter l'autre oreille */
+  const DUEL_PAN = 0.6;
+  /** grande carte recto-verso : dos (acier brossé, celui des petites tuiles) et face (la carte tirée) */
+  const big3d = (k: number) => `<div class="gm-big" data-k="${k}"><div class="gm-card3d"><div class="gm-c3-back gm-big-back"></div><div class="gm-c3-face"></div></div></div>`;
 
   async function playDuel(room: HTMLElement, d: DuelView, animate: boolean) {
     const res = d.result!;
     const n = res.packs[0].length * 5;
-    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? '<button class="btn-ghost sm gm-skip">' + tr('gm.skip') + '</button>' : ''}</div><div class="gm-battle"><div class="gm-tug" aria-hidden="true"><span><b>0</b><small>★</small></span><div class="gm-tug-bar"><i></i><em class="gm-lead">${tr('gm.lead')}</em></div><span><b>0</b><small>★</small></span></div><div class="gm-stage"><div class="gm-big" data-k="0"></div><div class="gm-vs-x">VS</div><div class="gm-big" data-k="1"></div></div></div><div class="gm-verdict"></div>`;
+    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/duel" class="gm-back">← Duels</a><b>Pack Battle</b>${animate ? playButtons() : ''}</div><div class="gm-battle"><div class="gm-tug" aria-hidden="true"><span><b>0</b><small>★</small></span><div class="gm-tug-bar"><i></i><em class="gm-lead">${tr('gm.lead')}</em></div><span><b>0</b><small>★</small></span></div><div class="gm-stage">${big3d(0)}<div class="gm-vs-x">VS</div>${big3d(1)}</div></div><div class="gm-verdict"></div>`;
     const bat = room.querySelector<HTMLElement>('.gm-battle')!;
     const bigs = [...bat.querySelectorAll<HTMLElement>('.gm-big')];
+    // (V3, lot 10) la grande carte est un objet recto-verso PERSISTANT qui se retourne (0° = dos, 180° = face)
+    const c3d = bigs.map((b) => ({ el: b.querySelector<HTMLElement>('.gm-card3d')!, face: b.querySelector<HTMLElement>('.gm-c3-face')!, up: false }));
     // rapport de force (barre partagée selon les étoiles) + totaux qui roulent
     const tug = bat.querySelector<HTMLElement>('.gm-tug')!;
     const tugN = [...tug.querySelectorAll<HTMLElement>(':scope > span > b')];
@@ -486,7 +655,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const a = cols[0].total;
       const b = cols[1].total;
       tugBar.style.setProperty('--p', String(a + b ? a / (a + b) : 0.5));
-      rollNumber(tugN[k], from, cols[k].total, (x) => String(Math.round(x)), 420);
+      rollNumber(tugN[k], from, cols[k].total, (x) => String(Math.round(x)), 420 / clock.speed);
       if (!big) return;
       tug.classList.remove('hit-l', 'hit-r');
       tug.style.setProperty('--hc', hex);
@@ -505,8 +674,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       return { el: c, count, gauge, slots: [...slots.children] as HTMLElement[], total: 0 };
     });
     bat.append(cols[0].el, cols[1].el);
-    let skip = !animate;
-    room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
+    const clock = new BattleClock(!animate);
+    const skipped = () => clock.skipped;
+    room.querySelector('.gm-skip')?.addEventListener('click', () => clock.skip());
+    const unhold = animate ? holdToSpeed(room, [bat], clock) : () => undefined;
+    unsubs.push(() => (clock.skip(), unhold()));
     // (14/11) qui mène : l'étiquette « En tête » glisse du côté du meneur, et frappe quand le meneur change
     const lead = tug.querySelector<HTMLElement>('.gm-lead')!;
     let leader = -1;
@@ -517,35 +689,52 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       if (now === leader) return;
       leader = now;
       tug.dataset.lead = now < 0 ? '' : now ? 'r' : 'l';
-      if (now >= 0 && !skip) stamp(lead);
+      if (now >= 0 && !skipped()) stamp(lead);
     };
-    /** une carte : (rare) le dos palpite à la couleur de la rareté, puis retournement d'autant plus long que la carte est rare */
-    const flip = async (k: number, i: number) => {
+    /** rotation de la grande carte `k` de `from` à `to` (degrés) ; sans animation après « Passer » */
+    const turn = (k: number, from: number, to: number, ms: number, spring: boolean): Promise<void> => {
+      const el = c3d[k].el;
+      el.style.transform = `rotateY(${to % 360}deg)`;
+      if (skipped() || !ms) return Promise.resolve();
+      const a = el.animate(spring ? springFrames(from, to) : [{ transform: `rotateY(${from}deg)` }, { transform: `rotateY(${to}deg)` }], { duration: ms, easing: spring ? 'linear' : EASING.sortie });
+      return clock.track(a);
+    };
+    /**
+     * une carte : la face précédente se retourne sur le dos, (rare) le dos palpite à la couleur de la rareté, puis la
+     * nouvelle face arrive au ressort, d'autant plus lentement que la carte est rare. Renvoie le temps passé à
+     * retourner l'ancienne carte (décompté de la pause qui suit : le rythme entre deux cartes ne change pas).
+     */
+    const flip = async (k: number, i: number): Promise<number> => {
       const card = res.packs[k].flat()[i];
       const stars = CARD_STARS[card.rarity];
       const hex = rarity(card.rarity).hex;
-      const beat = skip ? { pre: 0, flip: 0, hold: 0 } : cardBeat(stars);
+      const beat = skipped() ? { pre: 0, flip: 0, hold: 0 } : cardBeat(stars);
       const sl = cols[k].slots[i];
       const big = bigs[k];
+      const c = c3d[k];
       big.style.setProperty('--rc', hex);
-      if (beat.pre) {
-        big.replaceChildren(h('div', 'gm-big-back'));
-        big.classList.remove('in', 'hot');
+      let hid = 0;
+      if (c.up) {
+        // l'ancienne face part sur le dos (sortie courte) : 180° → 360°, posé ensuite à 0°
+        hid = skipped() ? 0 : DUR.standard();
+        await turn(k, 180, 360, hid, false);
+        c.up = false;
+      }
+      big.classList.remove('hot');
+      // la face cachée reçoit la nouvelle carte pendant que le dos est tourné vers le joueur
+      c.face.replaceChildren(cardTile(card.cardId, card.rarity));
+      if (beat.pre && !skipped()) {
         big.classList.add('charge');
-        await wait(beat.pre);
+        await clock.wait(beat.pre);
         big.classList.remove('charge');
       }
       sl.classList.add('up');
-      // la carte du tirage en grand, au centre (une nouvelle carte remplace la précédente en se retournant)
-      big.replaceChildren(cardTile(card.cardId, card.rarity));
-      big.style.setProperty('--fd', `${beat.flip || 750}ms`);
       big.classList.toggle('hot', stars >= 5);
-      big.classList.remove('in');
-      void big.offsetWidth;
-      big.classList.add('in');
+      c.up = true;
+      void turn(k, 0, 180, beat.flip, true);
       const before = cols[k].total;
       cols[k].total += stars;
-      rollNumber(cols[k].count, before, cols[k].total, (x) => `${Math.round(x)}★`, 420);
+      rollNumber(cols[k].count, before, cols[k].total, (x) => `${Math.round(x)}★`, 420 / clock.speed);
       cols[k].gauge.set(cols[k].total);
       updTug(k, before, hex, stars >= 5);
       updLead();
@@ -553,25 +742,28 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       void cols[k].count.offsetWidth;
       cols[k].count.classList.add('pop');
       if (stars >= 5) sl.classList.add('hot');
-      if (skip) return;
+      if (skipped()) return hid;
       if (stars >= 3) void flyGain(big, tugN[k], `+${stars}★`, hex);
       // (v2.0.6, décision de Tom) plus de flash ni de secousse sur une 6★
-      if (beat.hold) await wait(beat.hold);
+      if (beat.hold) await clock.wait(beat.hold);
+      return hid;
     };
     for (let i = 0; i < n; i++) {
       const last = i === n - 1;
-      if (!skip && last) {
+      if (!skipped() && last) {
         bat.classList.add('suspense');
-        await wait(DUEL_TEMPO.suspense);
+        await clock.wait(DUEL_TEMPO.suspense);
       }
       for (const k of [0, 1]) {
-        await flip(k, i);
-        if (!skip) {
-          sfx(CARD_STARS[res.packs[k].flat()[i].rarity] >= 5 ? 'chime' : 'tick');
-          await wait(last ? DUEL_TEMPO.derniere : i >= n - 5 ? DUEL_TEMPO.finale : DUEL_TEMPO.carte);
+        const hid = await flip(k, i);
+        if (!skipped()) {
+          // le camp qui frappe s'entend de son côté (gauche / droite)
+          sfx(CARD_STARS[res.packs[k].flat()[i].rarity] >= 5 ? 'chime' : 'tick', k ? DUEL_PAN : -DUEL_PAN);
+          await clock.wait((last ? DUEL_TEMPO.derniere : i >= n - 5 ? DUEL_TEMPO.finale : DUEL_TEMPO.carte) - hid);
         }
       }
     }
+    unhold();
     bat.classList.remove('suspense');
     room.querySelector('.gm-skip')?.remove();
     // (v2.0.6) fin : la règle garde le vrai rapport de force (elle ne file plus d'un côté), l'étiquette « En tête » s'efface
@@ -731,7 +923,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     const res = r.result!;
     const n = royalePackCount(r);
     const per = res.packs[0]?.length ?? n * 5;
-    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>${tr('gm.royaleTitle', { n: r.players.length, each: n > 1 ? tr('gm.each', { packs: plural(n, 'booster') }) : '' })}</b>${animate ? '<button class="btn-ghost sm gm-skip">' + tr('gm.skip') + '</button>' : ''}</div><div class="gm-royal"></div><div class="gm-verdict"></div>`;
+    room.innerHTML = `<div class="gm-ph"><a href="#/jeux/royale" class="gm-back">← Battle Royale</a><b>${tr('gm.royaleTitle', { n: r.players.length, each: n > 1 ? tr('gm.each', { packs: plural(n, 'booster') }) : '' })}</b>${animate ? playButtons() : ''}</div><div class="gm-royal"></div><div class="gm-verdict"></div>`;
     const g = room.querySelector<HTMLElement>('.gm-royal')!;
     const rows = r.players.map((p, i) => {
       const row = h('div', 'gm-rrow');
@@ -744,13 +936,17 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       row.querySelector('.gm-bh')!.after(gauge.el);
       return { row, count, gauge, rank: row.querySelector<HTMLElement>('.gm-rank')!, slots: [...sl.children] as HTMLElement[], total: 0 };
     });
-    let skip = !animate;
-    room.querySelector('.gm-skip')?.addEventListener('click', () => (skip = true));
+    // (V3, lot 10) même horloge que le Pack Battle : maintenir accélère ×3,5, « Passer » va au classement final
+    const clock = new BattleClock(!animate);
+    const skipped = () => clock.skipped;
+    room.querySelector('.gm-skip')?.addEventListener('click', () => clock.skip());
+    const unhold = animate ? holdToSpeed(room, [g], clock) : () => undefined;
+    unsubs.push(() => (clock.skip(), unhold()));
     for (let i = 0; i < per; i++) {
       const last = i === per - 1;
-      if (!skip && last) {
+      if (!skipped() && last) {
         g.classList.add('suspense');
-        await wait(1400);
+        await clock.wait(1400);
       }
       rows.forEach((x, k) => {
         const c = res.packs[k][i];
@@ -762,9 +958,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const before = x.total;
         x.total += stars;
         x.gauge.set(x.total);
-        if (skip) x.count.textContent = `${x.total}★`;
+        if (skipped()) x.count.textContent = `${x.total}★`;
         else {
-          rollNumber(x.count, before, x.total, (n) => `${Math.round(n)}★`, 420);
+          rollNumber(x.count, before, x.total, (n) => `${Math.round(n)}★`, 420 / clock.speed);
           // (14/11) les belles cartes se voient : « +n★ » vers le total, la rangée s'allume à la couleur de la rareté
           if (stars >= 4) void flyGain(x.slots[i], x.count, `+${stars}★`, hex);
           if (stars >= 5) {
@@ -784,16 +980,17 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           rows[k].rank.textContent = `#${rank + 1}`;
           rows[k].row.classList.toggle('lead', rank === 0 && rows[k].total > 0);
         });
-      if (skip) apply();
-      else flip(rows.map((x) => x.row), apply);
+      if (skipped()) apply();
+      else flip(rows.map((x) => x.row), apply, clock.speed > 1 ? { duration: DUR.emphatique() / clock.speed } : {});
       const leadNow = rows.findIndex((x) => x.row.classList.contains('lead'));
-      if (!skip && leadNow >= 0 && leadNow !== leadBefore) stamp(rows[leadNow].rank);
-      if (!skip) {
+      if (!skipped() && leadNow >= 0 && leadNow !== leadBefore) stamp(rows[leadNow].rank);
+      if (!skipped()) {
         sfx('tick');
         // plusieurs boosters : rythme un peu plus soutenu (jusqu'à 25 cartes par joueur)
-        await wait(last ? 900 : per > 5 ? 420 : 650);
+        await clock.wait(last ? 900 : per > 5 ? 420 : 650);
       }
     }
+    unhold();
     g.classList.remove('suspense');
     room.querySelector('.gm-skip')?.remove();
     res.winners.forEach((w) => rows[w].row.classList.add('win'));
@@ -801,7 +998,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     // (14/11) podium : les trois premières places se marquent
     [...rows].sort((a, b) => b.total - a.total).slice(0, 3).forEach((x, p) => {
       x.row.classList.add(`pod-${p + 1}`);
-      if (!skip) stamp(x.rank);
+      if (!skipped()) stamp(x.rank);
     });
     const names = res.winners.map((w) => r.players[w].name);
     const iWon = res.winners.some((w) => r.players[w].userId === myId());

@@ -167,6 +167,14 @@
 .gm-panel { position: relative; padding: 18px; gap: 14px; counter-increment: gm-p; }
 .gm-panel > .gm-ph:first-child { margin: -18px -18px 2px; padding: 12px 18px; min-height: 50px; border-bottom: 1px solid var(--gm-line); }
 .gm-ph { gap: 10px 14px; }
+/* (V3, lot 10) « Maintenir pour accélérer » : allumé (aplat blanc) tant que la partie va ×3,5 ; à côté de « Passer » */
+.gm-ph .gm-hold + .gm-skip { margin-left: 0; }
+.gm-hold, .gm-battle, .gm-royal { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.gm-hold { touch-action: manipulation; }
+.gm-hold.on { background: #fff; border-color: #fff; color: #000; }
+/* téléphone : libellé court, pour garder « Passer » sur la même ligne */
+.gm-hold-s { display: none; }
+@media (max-width: 560px) { .gm-hold-l { display: none; } .gm-hold-s { display: inline; } }
 .gm-ph > b { display: inline-flex; align-items: baseline; gap: 10px; font: 600 15px var(--title); letter-spacing: 0.01em; }
 .gm-panel > .gm-ph:first-child > b::before { content: counter(gm-p, decimal-leading-zero); font: var(--gm-label); letter-spacing: 0.12em; color: var(--ink-3); }
 .gm-ph .muted { font: 400 12px var(--mono); }
@@ -252,15 +260,14 @@
 .gm-big { position: relative; perspective: 1100px; border-radius: 6px; }
 .gm-big:empty { border: 1px dashed var(--gm-line-2); border-radius: 6px; --cs: 12px; }
 .gm-big .tile { border-radius: 6px; box-shadow: 0 26px 46px -24px #000; transform-origin: 50% 60%; }
-.gm-big.in .tile { animation: gm-card-in 0.75s var(--gm-soft) backwards; }
-@keyframes gm-card-in {
-  0% { opacity: 0; transform: translateY(-24px) rotateY(-105deg) rotateZ(-3deg) scale(0.92); }
-  45% { opacity: 1; }
-  70% { transform: translateY(3px) rotateY(7deg) rotateZ(0.4deg) scale(1.015); }
-  100% { transform: none; }
-}
-.gm-big.in::after { content: ''; position: absolute; inset: 0; border-radius: 6px; pointer-events: none; z-index: 3; background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.32) 50%, transparent 60%) -160% 0 / 220% 100% no-repeat; mix-blend-mode: screen; animation: gm-sheen 0.9s var(--ease-standard) 0.35s both; }
-@keyframes gm-sheen { to { background-position: 160% 0; } }
+/* (V3, lot 10) carte recto-verso PERSISTANTE (games.ts big3d) : 0° = dos, 180° = face ; seul l'objet tourne (rotateY,
+   ressort SPRING.carte en WAAPI). Jamais d'overflow: hidden sur .gm-card3d ni sur ses faces : Safari iOS aplatit un
+   preserve-3d coupé (et l'anneau de rareté de la face déborde de la carte). */
+.gm-card3d { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; will-change: transform; }
+.gm-card3d > * { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.gm-c3-back { transform: rotateY(0deg); }
+.gm-c3-face { transform: rotateY(180deg); }
+.gm-c3-face:empty { display: none; }
 .gm-big.hot::before { content: ''; position: absolute; inset: -34%; z-index: -1; border-radius: 50%; pointer-events: none; background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--rc) 55%, transparent) 0deg 0.8deg, transparent 0.8deg 10deg); -webkit-mask: radial-gradient(closest-side, #000 22%, transparent 76%); mask: radial-gradient(closest-side, #000 22%, transparent 76%); animation: gm-rays-in 0.8s var(--gm-soft) backwards, gm-spin 30s linear infinite; }
 @keyframes gm-rays-in { from { opacity: 0; scale: 0.6; } }
 .gm-big.hot .tile { box-shadow: 0 0 0 1px var(--rc), 0 0 40px 0 color-mix(in srgb, var(--rc) 45%, transparent), 0 26px 46px -24px #000; }
@@ -417,7 +424,7 @@
   .gm-top, .gm-body > *, .gm-cols > *, .gm-rp, .gm-pot .tile { animation: none; }
   .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-dot, .gm-cd::before, .gm-battle.suspense .gm-stage, .gm-rp.empty .gm-ava { animation: none; }
 }
-@media not all { .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-battle.suspense .gm-stage { animation: none; } .gm-big.in::after { display: none; } }
+@media not all { .gm-vs-x::after, .gm-big.hot::before, .gm-bcol.win::after, .gm-rrow.win::after, .gm-battle.suspense .gm-stage { animation: none; } }
 
 /* (13/11, retours Hugo) LA ROUE de la roulette (views/rouletteWheel.ts) : cylindre noir / gris, bille d'acier, numéro
    sorti allumé ; la page Roulette et le rejeu du dernier tirage à la connexion */

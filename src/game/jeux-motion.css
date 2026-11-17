@@ -94,9 +94,7 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
   from { box-shadow: 0 0 0 1px color-mix(in srgb, var(--rc) 45%, transparent); scale: 1; }
   to { box-shadow: 0 0 0 3px var(--rc); scale: 1.015; }
 }
-/* durée du retournement selon la rareté (games.ts : --fd) */
-.gm-big.in .tile { animation-duration: var(--fd, 0.75s); }
-.gm-big.in::after { animation-duration: calc(var(--fd, 0.75s) * 1.2); }
+/* (V3, lot 10) durée du retournement selon la rareté : portée par l'animation WAAPI de .gm-card3d (games.ts) */
 
 /* qui mène : l'étiquette glisse du côté du meneur ; à la fin, la lumière part entière chez le gagnant */
 .gm-lead { position: absolute; top: 12px; left: 50%; translate: -50% 0; padding: 2px 8px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill);
@@ -171,7 +169,6 @@ html.gm-vt[data-gm-dir='out'] { --gm-dy: -14px; }
    dégradé conique, bordure lumineuse qui tourne, verre dépoli, vignette en dégradé radial, points « live » qui
    clignotent. À la place : filets nets (1 à 3 px), aplats blancs, couleur de rareté en trait plein. */
 .games .gm-tug-bar > i::after { box-shadow: none; }
-.games .gm-big.in::after { display: none; }
 .games .gm-big.hot::before { display: none; }
 .games .gm-big .tile { box-shadow: none; }
 .games .gm-big.hot .tile { box-shadow: 0 0 0 2px var(--rc); }

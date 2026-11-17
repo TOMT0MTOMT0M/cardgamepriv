@@ -904,12 +904,13 @@ export class Sfx {
   /**
    * Carillon de récompense : bol feutré, plus riche et plus long selon la rareté. `base` est CALÉE sur la gamme (sol
    * pentatonique, transposée pendant la 6★) ; vélocité ±2 dB, jamais de désaccord. 1★ : pas de réverbe.
+   * `pan` −1..1 (V3, lot 10) : position gauche / droite (le Pack Battle fait sonner le camp qui frappe).
    */
-  chime(tier = 2, vol = 0.22, base = 392, at = 0) {
+  chime(tier = 2, vol = 0.22, base = 392, at = 0, pan = 0) {
     const hz = quantize(base, this.transpose);
     const b = hz < 555 ? CHIME_BASES[0] : CHIME_BASES[1];
     const size = tier <= 2 ? 'S' : tier <= 4 ? 'M' : 'L';
-    const ok = this.play(`chime${size}${b}`, { rate: hz / b, vol: vol * LV[`chime${size}`] * varyDb(2), at, vary: false, bus: tier >= 5 ? 'event' : 'reward', wet: tier <= 0 ? 0 : 0.4 });
+    const ok = this.play(`chime${size}${b}`, { rate: hz / b, vol: vol * LV[`chime${size}`] * varyDb(2), at, vary: false, bus: tier >= 5 ? 'event' : 'reward', wet: tier <= 0 ? 0 : 0.4, pan });
     if (!ok) this.chimeSynth(tier, vol, base, at);
   }
 
