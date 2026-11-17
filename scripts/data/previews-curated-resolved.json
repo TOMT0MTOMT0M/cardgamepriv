@@ -450,12 +450,6 @@
 "link": "https://music.apple.com/fr/album/under-star/1772867911?i=1772867912&uo=4"
 },
 "anime:hell-s-paradise": null,
-"anime:hellsing": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/22/ba/6a/22ba6ad5-bff4-5313-540f-789df56195de/mzaf_9479575472355560343.plus.aac.p.m4a",
-"track": "Hellsing Logos Naki World (ft. Lzzy Hale)",
-"artist": "Yasushi Ishii",
-"link": "https://music.apple.com/fr/album/hellsing-logos-naki-world-ft-lzzy-hale/1834313546?i=1834313547&uo=4"
-},
 "anime:high-school-dxd": null,
 "anime:horimiya": {
 "deezer": 1212802752,
@@ -2587,5 +2581,347 @@
 "track": "We Are The Crystal Gems[Full Theme Song] (feat. Deedee Magno Hall, Estelle, Michaela Dietz, Tom Scharpling & Zach Callison)",
 "artist": "Steven Universe",
 "link": "https://music.apple.com/fr/album/we-are-the-crystal-gems-full-theme-song-feat-deedee/1511215079?i=1511215902&uo=4"
+},
+"anime:hellsing": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/54/05/9c/54059c35-f583-bc31-ab19-f3c3452f81d5/mzaf_13390200407347499770.plus.aac.p.m4a",
+"track": "The World without Logos",
+"artist": "Yasushi Ishii",
+"link": "https://music.apple.com/fr/album/the-world-without-logos/1828704708?i=1828704712&uo=4"
+},
+"screen:arrowverse": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e3/52/5a/e3525a4c-0f1f-c89c-b413-9fd33548f821/mzaf_5938568969529871860.plus.aac.p.m4a",
+"track": "Setting Up the Lair (Main Theme from “Arrow”)",
+"artist": "Blake Neely",
+"link": "https://music.apple.com/fr/album/setting-up-the-lair-main-theme-from-arrow/1455249558?i=1455249774&uo=4"
+},
+"screen:bones": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/c9/ea/be/c9eabea2-52e9-1bfb-deed-7098290dbbd8/mzaf_2931384293797315368.plus.aac.p.m4a",
+"track": "Bones Theme (From \"Bones\"/2012 Extended Mix)",
+"artist": "The Crystal Method",
+"link": "https://music.apple.com/fr/album/bones-theme-from-bones-2012-extended-mix/1502302055?i=1502302335&uo=4"
+},
+"screen:breaking-bad": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/2f/d2/4c/2fd24c76-fe15-1674-7199-dc6348b712eb/mzaf_17815772063370693887.plus.aac.p.m4a",
+"track": "Breaking Bad (Main Title Theme) [Extended Version]",
+"artist": "Dave Porter",
+"link": "https://music.apple.com/fr/album/breaking-bad-main-title-theme-extended-version/370928500?i=370928560&uo=4"
+},
+"screen:chernobyl": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/fa/ea/3f/faea3fa1-f644-d7dd-58c0-d69d35b1f574/mzaf_11744821232058050819.plus.aac.p.m4a",
+"track": "The Door",
+"artist": "Hildur Guðnadóttir",
+"link": "https://music.apple.com/fr/album/the-door/1464507422?i=1464507425&uo=4"
+},
+"screen:cobra-kai": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ed/31/09/ed31095c-b3b1-a0f8-3fc8-763b8de335e5/mzaf_1985766068183417894.plus.aac.p.m4a",
+"track": "Strike First",
+"artist": "Leo Birenberg & Zach Robinson",
+"link": "https://music.apple.com/fr/album/strike-first/1816011991?i=1816012011&uo=4"
+},
+"screen:columbo": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/e5/6e/12/e56e12b8-405b-2483-926b-829fe0d61645/mzaf_8722008016204040505.plus.aac.p.m4a",
+"track": "Mystery Movie Theme",
+"artist": "Henry Mancini",
+"link": "https://music.apple.com/fr/album/mystery-movie-theme/1031781464?i=1031781469&uo=4"
+},
+"screen:desperate-housewives": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/53/81/b3/5381b3db-86e0-c41f-ece5-2510522a39b1/mzaf_17562608105663308147.plus.aac.p.m4a",
+"track": "Desperate Housewives Theme",
+"artist": "Danny Elfman",
+"link": "https://music.apple.com/fr/album/desperate-housewives-theme/1443207506?i=1443207728&uo=4"
+},
+"screen:dexter": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/46/b1/c8/46b1c852-1f37-d103-cd40-3a79fc436bea/mzaf_5714898770336175607.plus.aac.p.m4a",
+"track": "Dexter Main Title",
+"artist": "Rolfe Kent",
+"link": "https://music.apple.com/fr/album/dexter-main-title/1534802064?i=1534802065&uo=4"
+},
+"screen:dr-house": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/a3/a6/91/a3a691b0-8e49-399d-2585-ddcd6694c9f2/mzaf_16325826545413166648.plus.aac.p.m4a",
+"track": "Teardrop",
+"artist": "Massive Attack",
+"link": "https://music.apple.com/fr/album/teardrop/724466069?i=724466700&uo=4"
+},
+"screen:emily-in-paris": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/96/85/7b/96857b62-6e6a-fd29-79d8-50dee80ccf01/mzaf_5017603080546934577.plus.aac.p.m4a",
+"track": "Main Title Theme (from \"Emily in Paris\" Soundtrack)",
+"artist": "James Newton Howard",
+"link": "https://music.apple.com/fr/album/main-title-theme-from-emily-in-paris-soundtrack/1600565618?i=1600566174&uo=4"
+},
+"screen:friends": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/d1/e4/9e/d1e49e0b-ff45-ed0e-fa77-5b6e9a5a7ecd/mzaf_10467587259594931193.plus.aac.p.m4a",
+"track": "I'll Be There for You (Theme from Friends)",
+"artist": "The Rembrandts",
+"link": "https://music.apple.com/fr/album/ill-be-there-for-you-theme-from-friends/373220996?i=373221221&uo=4"
+},
+"screen:game-of-thrones": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/61/28/ad/6128ade4-d49a-3811-df92-b231bb3b3803/mzaf_1140403213038657471.plus.aac.p.m4a",
+"track": "Main Title",
+"artist": "Ramin Djawadi",
+"link": "https://music.apple.com/fr/album/main-title/1440798940?i=1440799057&uo=4"
+},
+"screen:gilmore-girls": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/ce/09/5e/ce095e15-6eba-d704-aa7b-b06db9b6fbdd/mzaf_16152802274233562193.plus.aac.p.m4a",
+"track": "Where You Lead I Will Follow",
+"artist": "Carole King",
+"link": "https://music.apple.com/fr/album/where-you-lead-i-will-follow/1139002838?i=1139003043&uo=4"
+},
+"screen:glee": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/ff/0f/91/ff0f911f-7bb5-8f6f-73df-a7b9a79a2b24/mzaf_13098275679360889613.plus.aac.p.m4a",
+"track": "Don't Stop Believin'",
+"artist": "Glee Cast",
+"link": "https://music.apple.com/fr/album/dont-stop-believin/347886833?i=347886835&uo=4"
+},
+"screen:good-omens": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/7f/cd/dd/7fcddddf-a7ba-2bd4-e697-9e348b6a2f6a/mzaf_15346923606031752849.plus.aac.p.m4a",
+"track": "Good Omens Opening Title",
+"artist": "David Arnold",
+"link": "https://music.apple.com/fr/album/good-omens-opening-title/1833179887?i=1833179901&uo=4"
+},
+"screen:grey-s-anatomy": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/Music7/v4/43/2c/4f/432c4fe6-f75a-5b36-b7db-bc5bf68387eb/mzaf_6315104109118700012.plus.aac.p.m4a",
+"track": "Cosy In the Rocket",
+"artist": "Psapp",
+"link": "https://music.apple.com/fr/album/cosy-in-the-rocket/712912739?i=712912882&uo=4"
+},
+"screen:hannah-montana": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/b6/16/94/b61694df-5f45-954a-714e-9b13d70516ac/mzaf_714990184343669891.plus.aac.p.m4a",
+"track": "The Best of Both Worlds",
+"artist": "Hannah Montana",
+"link": "https://music.apple.com/fr/album/the-best-of-both-worlds/1440778446?i=1440778789&uo=4"
+},
+"screen:house-of-cards": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/9d/dd/05/9ddd053e-f990-4fab-2151-1ac711fefaae/mzaf_17531912362635528618.plus.aac.p.m4a",
+"track": "House of Cards Main Title Theme",
+"artist": "Jeff Beal",
+"link": "https://music.apple.com/fr/album/house-of-cards-main-title-theme/1440753201?i=1440753471&uo=4"
+},
+"screen:hpi": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/c7/2f/14/c72f140b-207c-4bc6-48b6-45308e99bf2f/mzaf_1982008884854679362.plus.aac.p.m4a",
+"track": "HPI générique",
+"artist": "Yannis Dumoutiers",
+"link": "https://music.apple.com/fr/album/hpi-g%C3%A9n%C3%A9rique/1570116250?i=1570116259&uo=4"
+},
+"screen:k2000": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f9/1d/98/f91d98d5-1077-3848-8018-1bc39a27e3b5/mzaf_14486425087492367701.plus.aac.p.m4a",
+"track": "Main Title (from the Television Series \"Knight Rider\")",
+"artist": "Stu Phillips",
+"link": "https://music.apple.com/fr/album/main-title-from-the-television-series-knight-rider/1528121613?i=1528121767&uo=4"
+},
+"screen:killing-eve": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/bd/65/b7/bd65b759-7b7a-20f9-3f51-f719c59c735c/mzaf_1681302434519391977.plus.aac.p.m4a",
+"track": "Strange Effect (Killing Eve)",
+"artist": "Unloved & Raven Violet",
+"link": "https://music.apple.com/fr/album/strange-effect-killing-eve/1508336360?i=1508336365&uo=4"
+},
+"screen:la-casa-de-papel": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/e2/6e/05/e26e0594-3ab3-e068-d81b-c2be00c1a308/mzaf_3692129303798161724.plus.aac.p.m4a",
+"track": "My Life Is Going On (Música Original de la Serie de TV \"La Casa de Papel\")",
+"artist": "Cecilia Krull",
+"link": "https://music.apple.com/fr/album/my-life-is-going-on-m%C3%BAsica-original-de-la-serie-de/1246764791?i=1246764809&uo=4"
+},
+"screen:le-mentalist": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/6a/4d/bb/6a4dbb6d-9ce4-b9bb-347a-b1667f05ce11/mzaf_15474647813999075197.plus.aac.p.m4a",
+"track": "Main Title Theme (The Mentalist) [Extended Version]",
+"artist": "Blake Neely",
+"link": "https://music.apple.com/fr/album/main-title-theme-the-mentalist-extended-version/1455524427?i=1455524431&uo=4"
+},
+"screen:le-prince-de-bel-air": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/d3/49/b9/d349b96e-a4cb-595c-d5a7-c0d04b38c57c/mzaf_17406086252815633623.plus.aac.p.m4a",
+"track": "The Fresh Prince of Bel Air (Theme from NBC's The Fresh Prince Of Bel Air)",
+"artist": "DJ Jazzy Jeff & The Fresh Prince",
+"link": "https://music.apple.com/fr/album/the-fresh-prince-of-bel-air-theme-from-nbcs-the/309484245?i=309484327&uo=4"
+},
+"screen:les-experts": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/9d/cd/39/9dcd3944-bafb-5984-851f-f2a19b464e15/mzaf_3347069016698568769.plus.aac.p.m4a",
+"track": "Who Are You (Les experts : Las Vegas)",
+"artist": "The Who",
+"link": "https://music.apple.com/fr/album/who-are-you-les-experts-las-vegas/557156894?i=557156933&uo=4"
+},
+"screen:les-soprano": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a7/43/45/a74345a1-491c-5d05-8f52-9b8fef781496/mzaf_11265081538084137760.plus.aac.p.m4a",
+"track": "Woke Up This Morning (Official Theme Tune of 'The Sopranos')",
+"artist": "Alabama 3",
+"link": "https://music.apple.com/fr/album/woke-up-this-morning-official-theme-tune-of-the-sopranos/283466470?i=283466475&uo=4"
+},
+"screen:les-sorciers-de-waverly-place": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/17/b8/ae/17b8aea9-c6ef-46b9-dea7-0f4a8665087b/mzaf_11904629059837801210.plus.aac.p.m4a",
+"track": "Everything Is Not As It Seems (Series Theme Song)",
+"artist": "Selena Gomez",
+"link": "https://music.apple.com/fr/album/everything-is-not-as-it-seems-series-theme-song/1443888461?i=1443888589&uo=4"
+},
+"screen:lucifer": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/6c/ca/fb/6ccafb72-4079-95af-dafb-117e0b416598/mzaf_915805819518895721.plus.aac.p.m4a",
+"track": "Being Evil Has a Price",
+"artist": "Heavy Young Heathens",
+"link": "https://music.apple.com/fr/album/being-evil-has-a-price/1130719431?i=1130719444&uo=4"
+},
+"screen:magnum": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview112/v4/f8/0c/35/f80c3588-e8f3-a3c2-07e6-b0c116ceafd9/mzaf_101861228178374824.plus.aac.p.m4a",
+"track": "Theme from \"Magnum, P.I.\"",
+"artist": "Mike Post Feat. Larry Carlton",
+"link": "https://music.apple.com/fr/album/theme-from-magnum-p-i/140787293?i=140787115&uo=4"
+},
+"screen:maigret": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview71/v4/2b/4a/c0/2b4ac0db-6a71-4c2a-b539-ee35f20d0301/mzaf_1943664153447216993.plus.aac.p.m4a",
+"track": "Générique (Maigret et les plaisirs de la nuit)",
+"artist": "Maigret",
+"link": "https://music.apple.com/fr/album/g%C3%A9n%C3%A9rique-maigret-et-les-plaisirs-de-la-nuit/199231697?i=199231702&uo=4"
+},
+"screen:malcolm": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/16/84/9d/16849d42-2f42-6f25-20ef-500ef01547a2/mzaf_12880215912011305474.plus.aac.p.m4a",
+"track": "Boss Of Me",
+"artist": "They Might Be Giants",
+"link": "https://music.apple.com/fr/album/boss-of-me/6792837666?i=6792838107&uo=4"
+},
+"screen:maries-deux-enfants": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/89/25/ec/8925ec95-aa53-20a3-66d6-acc5a4a15031/mzaf_204719475724991903.plus.aac.p.m4a",
+"track": "Love and Marriage (Remastered 2009)",
+"artist": "Frank Sinatra",
+"link": "https://music.apple.com/fr/album/love-and-marriage-remastered-2009/1443126690?i=1443128840&uo=4"
+},
+"screen:monk": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/25/9e/f2/259ef26a-e111-4ad5-d021-b67361a7c687/mzaf_17004940204054711633.plus.aac.p.m4a",
+"track": "Monk Theme (Series Version)",
+"artist": "Jeff Beal",
+"link": "https://music.apple.com/fr/album/monk-theme-series-version/1444004837?i=1444005114&uo=4"
+},
+"screen:mr-robot": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/94/ee/54/94ee5484-b79a-4bdd-3f51-2b2b652d8aa8/mzaf_17999719849454821616.plus.aac.p.m4a",
+"track": "1.0_1-hellofriend.wav",
+"artist": "Mac Quayle",
+"link": "https://music.apple.com/fr/album/1-0-1-hellofriend-wav/1111049508?i=1111049903&uo=4"
+},
+"screen:new-girl": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/7b/08/fd/7b08fda5-a460-9273-a3c4-ca8af86cdc63/mzaf_11402297032840330451.plus.aac.p.m4a",
+"track": "Hey Girl (From \"New Girl\"/Main Title Theme)",
+"artist": "Zooey Deschanel",
+"link": "https://music.apple.com/fr/album/hey-girl-from-new-girl-main-title-theme/1512826303?i=1512826305&uo=4"
+},
+"screen:noob": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/6b/48/fb/6b48fb5f-8dab-51ba-06e6-98bf2ec552f1/mzaf_16124207633107867084.plus.aac.p.m4a",
+"track": "Générique de fin",
+"artist": "Olydri",
+"link": "https://music.apple.com/fr/album/g%C3%A9n%C3%A9rique-de-fin/1717721283?i=1717721462&uo=4"
+},
+"screen:outlander": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f3/f7/df/f3f7dfad-b42d-2e21-c1b5-c1395bff2d05/mzaf_16345494900363033016.plus.aac.p.m4a",
+"track": "Outlander - Main Title Theme (Skye Boat Song) [feat. Raya Yarbrough]",
+"artist": "Bear McCreary",
+"link": "https://music.apple.com/fr/album/outlander-main-title-theme-skye-boat-song-feat-raya/903585323?i=903585389&uo=4"
+},
+"screen:poirot": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/18/10/c1/1810c14d-bac9-cede-6f1e-df0dae82b340/mzaf_17040932202951195374.plus.aac.p.m4a",
+"track": "Hercule Poirot - The Belgian Detective (2026 Remaster)",
+"artist": "Christopher Gunning",
+"link": "https://music.apple.com/fr/album/hercule-poirot-the-belgian-detective-2026-remaster/6777028033?i=6777028036&uo=4"
+},
+"screen:prison-break": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/bb/24/09/bb2409f8-eabf-390c-5a05-5ab2353126b3/mzaf_6696315983117286902.plus.aac.p.m4a",
+"track": "Main Title Season 3",
+"artist": "Ramin Djawadi",
+"link": "https://music.apple.com/fr/album/main-title-season-3/1452859447?i=1452859459&uo=4"
+},
+"screen:shadow-and-bone": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e5/85/72/e58572d0-5599-bfcf-073e-1863625cef3c/mzaf_8568418361640123307.plus.aac.p.m4a",
+"track": "Ravka",
+"artist": "Joseph Trapanese & Budapest Art Orchestra",
+"link": "https://music.apple.com/fr/album/ravka/1658423169?i=1658423170&uo=4"
+},
+"screen:shogun": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/95/c1/75/95c175de-55f8-5037-6d52-625e0919f101/mzaf_5635395385006636085.plus.aac.p.m4a",
+"track": "Main Title (Shōgun)",
+"artist": "Atticus Ross, Leopold Ross & Nick Chuba",
+"link": "https://music.apple.com/fr/album/main-title-sh%C5%8Dgun/1730619110?i=1730619131&uo=4"
+},
+"screen:squid-game": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/d7/20/ad/d720ad12-4218-a259-63f9-da61e54ad95d/mzaf_849333195698017388.plus.aac.p.m4a",
+"track": "Way Back then",
+"artist": "Jung Jae Il",
+"link": "https://music.apple.com/fr/album/way-back-then/1585115797?i=1585115804&uo=4"
+},
+"screen:stranger-things": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/c5/ce/6a/c5ce6acb-160b-de87-1831-e64677b11275/mzaf_17733386572512726172.plus.aac.p.m4a",
+"track": "Stranger Things",
+"artist": "Kyle Dixon & Michael Stein",
+"link": "https://music.apple.com/fr/album/stranger-things/1142771412?i=1142771420&uo=4"
+},
+"screen:succession": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/1a/56/0d/1a560db6-2ec9-e160-3bc5-bbb3bb9940ea/mzaf_10340756199296060404.plus.aac.p.m4a",
+"track": "Succession (Main Title Theme)",
+"artist": "Nicholas Britell",
+"link": "https://music.apple.com/fr/album/succession-main-title-theme/1500926125?i=1500926127&uo=4"
+},
+"screen:ted-lasso": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/25/ac/68/25ac684d-574f-3768-a767-7705bb197b45/mzaf_6143769278631126582.plus.aac.p.m4a",
+"track": "Ted Lasso Theme",
+"artist": "Marcus Mumford & Tom Howe",
+"link": "https://music.apple.com/fr/album/ted-lasso-theme/1534329356?i=1534329463&uo=4"
+},
+"screen:the-big-bang-theory": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/c4/ae/a0/c4aea056-8fc5-fff9-6c61-74fe6f7734ca/mzaf_170073029966653320.plus.aac.p.m4a",
+"track": "Big Bang Theory Theme",
+"artist": "Barenaked Ladies",
+"link": "https://music.apple.com/fr/album/big-bang-theory-theme/464675942?i=464675958&uo=4"
+},
+"screen:the-last-kingdom": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/d1/b2/c3/d1b2c3c3-edbf-4c2d-d11d-7173873b64a1/mzaf_17197873311997781995.plus.aac.p.m4a",
+"track": "The Last Kingdom",
+"artist": "John Lunn & Eivør",
+"link": "https://music.apple.com/fr/album/the-last-kingdom/1440074790?i=1440074900&uo=4"
+},
+"screen:the-mandalorian": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/7f/7f/06/7f7f0624-697c-a5a6-28ba-0315c7565139/mzaf_6538370982614567471.plus.aac.p.m4a",
+"track": "The Mandalorian",
+"artist": "Ludwig Göransson",
+"link": "https://music.apple.com/fr/album/the-mandalorian/1486687329?i=1486687344&uo=4"
+},
+"screen:the-sandman": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/eb/42/78/eb42788d-4bf7-d3f6-b8ae-1bf7da378675/mzaf_18047591923197824809.plus.aac.p.m4a",
+"track": "The Kingdom of Dreams (Main Title Theme)",
+"artist": "David Buckley",
+"link": "https://music.apple.com/fr/album/the-kingdom-of-dreams-main-title-theme/1636651236?i=1636651430&uo=4"
+},
+"screen:the-walking-dead": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/bd/d3/fe/bdd3fec9-3c46-dd6d-b916-ba94e1b95e55/mzaf_5651273616867678446.plus.aac.p.m4a",
+"track": "Theme from the Walking Dead",
+"artist": "Bear McCreary",
+"link": "https://music.apple.com/fr/album/theme-from-the-walking-dead/1275301944?i=1275301945&uo=4"
+},
+"screen:true-blood": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/3e/ea/28/3eea2809-3865-6497-ab91-af44f7f86b1e/mzaf_10533328055658829791.plus.aac.p.m4a",
+"track": "Bad Things",
+"artist": "Jace Everett",
+"link": "https://music.apple.com/fr/album/bad-things/313613416?i=313613446&uo=4"
+},
+"screen:twin-peaks": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/85/e3/3d/85e33d82-6a63-0117-5907-931677ba10e3/mzaf_17387001389429707570.plus.aac.p.m4a",
+"track": "Twin Peaks Theme",
+"artist": "Angelo Badalamenti",
+"link": "https://music.apple.com/fr/album/twin-peaks-theme/374382340?i=374382372&uo=4"
+},
+"screen:une-nounou-d-enfer": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/7f/55/78/7f55784e-f93e-d677-c0e4-bae727d0e360/mzaf_2551534467308628852.plus.aac.p.m4a",
+"track": "The Nanny Named Fran (from \"The Nanny\" Television Series)",
+"artist": "Ann Hampton Callaway",
+"link": "https://music.apple.com/fr/album/the-nanny-named-fran-from-the-nanny-television-series/1841692167?i=1841692170&uo=4"
+},
+"screen:xena-la-guerriere": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/20/a6/6c/20a66c61-2fb2-6c54-980b-2bd3e3eaabeb/mzaf_15240162272623338874.plus.aac.p.m4a",
+"track": "Main Title",
+"artist": "Joseph LoDuca",
+"link": "https://music.apple.com/fr/album/main-title/1444069062?i=1444069072&uo=4"
+},
+"screen:yellowstone": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/54/6a/58/546a5840-78b9-1083-1488-678e27553b27/mzaf_13909123979466803695.plus.aac.p.m4a",
+"track": "Yellowstone Theme",
+"artist": "Brian Tyler",
+"link": "https://music.apple.com/fr/album/yellowstone-theme/1422860790?i=1422861344&uo=4"
+},
+"screen:marvel": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/bf/a7/9f/bfa79f79-b635-0f8c-d72f-e59db79108af/mzaf_9009025771638181825.plus.aac.p.m4a",
+"track": "The Avengers",
+"artist": "Alan Silvestri",
+"link": "https://music.apple.com/fr/album/the-avengers/1440663549?i=1440663698&uo=4"
 }
 }

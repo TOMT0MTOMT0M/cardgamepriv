@@ -159,3 +159,9 @@ export const PURGE_15_11: readonly string[] = ['spt-balde-de-ubaldis'];
 export const RESUB_15_11: Readonly<Record<string, string>> = {
   'spt-carlos-ruiz': 'baseball',
 };
+
+/** (17/11, demandes de Hugo) Aelita (Code Lyoko) et le jeu Palworld passent en 6★. */
+export const RERATE_17_11: Readonly<Record<string, CatalogRarity>> = {
+  'pop-aelita': 'mythic',
+  'jv-palworld-palworld': 'mythic',
+};

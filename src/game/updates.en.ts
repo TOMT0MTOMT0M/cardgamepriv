@@ -26,6 +26,15 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '17 Nov', title: 'Series theme songs and new 6★ art', tag: 'amélioré',
+        points: [
+          '📺 6★ cards from TV series play their theme song: Friends, Game of Thrones, Breaking Bad, Stranger Things, The Sopranos, Malcolm… 56 series and films in all.',
+          '🦸 Marvel MCU: the 6★ play Alan Silvestri’s Avengers theme. Hellsing: “The World without Logos”.',
+          '⭐ Aelita (Code Lyoko) and Palworld become 6★.',
+          '🖼️ 27 cards in full art, better framed: Alucard, Sukuna, Wolverine, Jett, Reyna, Killjoy, E.T.…',
+        ],
+      },
+      {
         date: '15 Nov', title: '6★ music, cards and profile', tag: 'amélioré',
         points: [
           '🎵 6★ music now loops as long as you stay on the card, and songs start at the chorus.',

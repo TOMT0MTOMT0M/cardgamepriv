@@ -772,7 +772,7 @@ const RAW: Array<[number, string, string, keyof typeof K, keyof typeof R, number
   [41, "fifa-street-2", "FIFA Street 2", 'j', 'c', 2006, "fifa-fc--fifa-street-2.jpg", "c"],
   [42, "cloud", "Cloud", 'p', 'm', 0, "final-fantasy--cloud.png", "i"],
   [42, "final-fantasy-vi", "Final Fantasy VI", 'j', 'm', 1994, "final-fantasy--final-fantasy-vi.jpg", "c"],
-  [42, "final-fantasy-vii", "Final Fantasy VII", 'j', 'm', 1997, "final-fantasy--final-fantasy-vii.jpg", "c"],
+  [42, "final-fantasy-vii", "Final Fantasy VII", 'j', 'm', 1997, "final-fantasy--final-fantasy-vii-r2611171353.jpg", "c"],
   [42, "final-fantasy-x", "Final Fantasy X", 'j', 'm', 2001, "final-fantasy--final-fantasy-x.jpg", "c"],
   [42, "sephiroth", "Séphiroth", 'p', 'm', 0, "final-fantasy--sephiroth-r2611121554.jpg", "c"],
   [42, "aerith", "Aerith", 'p', 'l', 0, "final-fantasy--aerith.png", "i"],

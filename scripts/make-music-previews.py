@@ -42,7 +42,7 @@ anime = fixed('anime', [(k.split(':', 1)[1], named('anime', k.split(':', 1)[1], 
 def hand(kind):
     return fixed(kind, [(k.split(':', 1)[1], {**v, 'track': src[kind][k.split(':', 1)[1]][0], 'artist': src[kind][k.split(':', 1)[1]][1]})
                         for k, v in cur.items() if k.startswith(kind + ':') and v and k.split(':', 1)[1] in src.get(kind, {})])
-cartoon, cartoon_en = hand('cartoon'), hand('cartoon-en')
+cartoon, cartoon_en, screen = hand('cartoon'), hand('cartoon-en'), hand('screen')
 out = ['/**',
  ' * EXTRAITS MUSICAUX des 6★ — aperçus officiels de 30 s (lus en streaming, rien n’est stocké chez nous).',
  ' * GÉNÉRÉ par scripts/make-music-previews.py (ne pas éditer à la main) depuis la récolte iTunes',
@@ -74,10 +74,13 @@ out += [entry(k, v) for k, v in cartoon]
 out += ['};', '', '/** (15/11) version anglaise du générique, jouée à la place dans le jeu en anglais — seulement quand elle diffère */',
         'export const CARTOON_THEMES_EN: Record<string, MusicPreview> = {']
 out += [entry(k, v) for k, v in cartoon_en]
+out += ['};', '', '/** (17/11, Hugo) générique de la série (bloc Séries TV) ou musique du film, par sous-thème : joué en fond quand une 6★ tombe */',
+        'export const SCREEN_THEMES: Record<string, MusicPreview> = {']
+out += [entry(k, v) for k, v in screen]
 amb = fixed('ambience', [(k.split(':', 1)[1], v) for k, v in cur.items() if k.startswith('ambience:') and v])
 out += ['};', '', '/** musique d’une ambiance d’ouverture (eclipse : Berserk 5★ / 6★ — game/eclipse.ts), par nom d’ambiance */',
         'export const AMBIENCE_PREVIEWS: Record<string, MusicPreview> = {']
 out += [entry(k, v) for k, v in amb]
 out += ['};', '']
 open(os.path.join(ROOT, 'src', 'game', 'musicPreviews.data.ts'), 'w', encoding='utf-8', newline='\n').write('\n'.join(out))
-print('cartes', len(cards), '· animés', len(anime), '· dessins animés', len(cartoon), '(+', len(cartoon_en), 'en anglais)', '· ambiances', len(amb))
+print('cartes', len(cards), '· animés', len(anime), '· dessins animés', len(cartoon), '(+', len(cartoon_en), 'en anglais)', '· séries / films', len(screen), '· ambiances', len(amb))
