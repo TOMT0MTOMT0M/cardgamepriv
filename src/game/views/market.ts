@@ -10,6 +10,7 @@ import { COIN_ICON } from './wallet';
 import { confirmTap } from './safety';
 import { haptics } from '../../core/haptics';
 import { loadPanel, showCardPanel } from './cardPanel';
+import { DUR, EASING, STAGGER } from '../../core/motion';
 
 /**
  * MARCHÉ (retours Hugo 10/11 : « Échanges c'est complètement fouillis… on peut rajouter un marché, bien plus simple
@@ -37,6 +38,8 @@ const STARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'm
 const fold = (x: string) => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const nameOf = (id: string) => catalogEntry(id)?.name ?? id;
 const coin = (n: number) => `<span class="mk-c">${COIN_ICON}<b>${fmtCoins(n)}</b></span>`;
+/** (V3, lot 09) anti-rebond de la recherche du Marché (ms) : une frappe ne redessine plus la grille, la pause oui */
+const TYPE_DEBOUNCE = 80;
 
 /**
  * (13/11, retours Hugo) deux usages de la page Marché : `buy` (zone « Chercher » : les cartes en vente, à acheter) et
@@ -112,6 +115,69 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     return `<span class="mk-tag ${d < 0 ? 'low' : d > 60 ? 'high' : 'up'}">${d > 0 ? '+' : '−'}${Math.abs(d)} %</span>`;
   }
 
+  /**
+   * (V3, lot 09) ANNONCES RECYCLÉES : un nœud `.mk-item` par annonce, gardé d'un rendu à l'autre (clé = id + ce qui
+   * s'affiche). Filtrer, trier ou recevoir une mise à jour du serveur ne recrée plus les tuiles : les vignettes ne
+   * se rechargent plus (plus de fondu « img.in » à chaque lettre), et le « Sûr ? » d'un bouton Acheter armé survit.
+   */
+  const nodes = new Map<string, { sig: string; el: HTMLElement }>();
+  function itemFor(m: MarketItem): HTMLElement {
+    const sig = `${m.price}|${m.rarity}|${m.cardId}|${m.mintNumber}|${isMine(m) ? 1 : 0}|${m.sellerName}`;
+    const had = nodes.get(m.id);
+    if (had && had.sig === sig) return had.el;
+    const w = item(m);
+    w.dataset.mk = m.id;
+    nodes.set(m.id, { sig, el: w });
+    return w;
+  }
+  /**
+   * Remet `grid` dans l'ordre de `want` en ne déplaçant que les nœuds mal placés (un nœud bien placé n'est pas
+   * touché : pas de reflow de ses images). Les annonces VISIBLES glissent de leur ancienne place à la nouvelle (FLIP,
+   * transform seul) ; celles qui arrivent apparaissent en fondu ; celles qui partent sont simplement retirées.
+   */
+  function syncGrid(grid: HTMLElement, want: HTMLElement[]) {
+    const cur = [...grid.children] as HTMLElement[];
+    if (cur.length === want.length && cur.every((x, i) => x === want[i])) return;
+    // ce qui est à l'écran avant (la grille masquée ou hors écran n'anime rien)
+    const vh = innerHeight;
+    const live = grid.getClientRects().length > 0;
+    const first = new Map<HTMLElement, DOMRect>();
+    if (live) {
+      for (const x of cur) {
+        const r = x.getBoundingClientRect();
+        if (r.top > vh + 40) break; // (grille dans l'ordre : tout le reste est plus bas)
+        if (r.bottom > -40) first.set(x, r);
+      }
+    }
+    const keep = new Set(want);
+    for (const x of cur) if (!keep.has(x)) x.remove();
+    // pose dans l'ordre : on ne déplace un nœud que s'il n'est pas déjà à sa place
+    let at: ChildNode | null = grid.firstChild;
+    for (const x of want) {
+      if (x === at) at = at.nextSibling;
+      else grid.insertBefore(x, at);
+    }
+    if (!live) return;
+    const dur = DUR.emphatique();
+    let n = 0;
+    for (const x of want) {
+      // (un glissement encore en cours fausserait la mesure : il repart de là où l'œil le voit, `first`)
+      for (const an of x.getAnimations()) an.cancel();
+      const r = x.getBoundingClientRect();
+      if (r.top > vh + 40) break;
+      if (r.bottom < -40) continue;
+      const a = first.get(x);
+      if (a) {
+        const dx = a.left - r.left, dy = a.top - r.top;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+        x.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: dur, easing: EASING.standard });
+      } else {
+        // arrivée : fondu court, en léger décalé (plafonné)
+        x.animate([{ opacity: 0, transform: 'scale(0.96)' }, { opacity: 1, transform: 'none' }], { duration: DUR.standard(), delay: Math.min(STAGGER.max, n++ * STAGGER.serre), easing: EASING.entree, fill: 'backwards' });
+      }
+    }
+  }
+
   function item(m: MarketItem): HTMLElement {
     const w = h('div', `mk-item r-${m.rarity}`);
     w.style.setProperty('--rc', rarity(m.rarity).hex);
@@ -130,26 +196,32 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     return w;
   }
 
+  let walletN = -1;
+  let recentH = '';
   function render() {
     if (!el.isConnected) return;
     const coins = backend.eco.snapshot?.coins ?? 0;
-    q('.mk-wallet').innerHTML = coin(coins);
+    if (coins !== walletN) q('.mk-wallet').innerHTML = coin((walletN = coins));
+    // annonces disparues du tableau (vendues, retirées) : leur nœud est oublié
+    const ids = new Set(board.open.map((m) => m.id));
+    for (const id of nodes.keys()) if (!ids.has(id)) nodes.delete(id);
     // mes ventes
     const mine = board.open.filter(isMine);
     q('.mk-mine').hidden = mode !== 'sell' || (!mine.length && !board.sold.length && !board.bought.length);
     q('.mk-mine-n').textContent = mine.length ? `${mine.length}/${MARKET_MAX_OPEN}` : '';
-    gMine.replaceChildren(...mine.map(item));
+    syncGrid(gMine, mine.map(itemFor));
     const recent = [...board.sold.map((m) => ({ m, sold: true })), ...board.bought.map((m) => ({ m, sold: false }))].sort((a, b) => (b.m.resolvedAt ?? 0) - (a.m.resolvedAt ?? 0)).slice(0, 6);
-    q('.mk-recent').innerHTML = recent.length
+    const rh = recent.length
       ? `<ul class="mk-rl">${recent.map(({ m, sold }) => `<li class="${sold ? 'in' : 'out'}"><b>${sold ? tr('mk.sold') : tr('mk.bought')}</b> ${esc(nameOf(m.cardId))} ${starsHtml(m.rarity)} <span>${sold ? '+' : '−'}${coin(m.price)}</span></li>`).join('')}</ul>`
       : '';
+    if (rh !== recentH) q('.mk-recent').innerHTML = recentH = rh;
     // en vente
     const needle = fold(q<HTMLInputElement>('.mk-q').value.trim());
     const list = board.open
       .filter((m) => !isMine(m) && (!star || m.rarity === star) && (!needle || fold(nameOf(m.cardId)).includes(needle)))
       .sort((a, b) => (sort === 'cheap' ? a.price - b.price : sort === 'dear' ? b.price - a.price : b.createdAt - a.createdAt));
     shownN = list.length;
-    gOpen.replaceChildren(...list.map(item));
+    syncGrid(gOpen, list.map(itemFor));
     const empty = q('.mk-empty');
     empty.hidden = list.length > 0;
     empty.textContent = board.open.some((m) => !isMine(m)) ? tr('mk.noMatch') : tr('mk.nothing');
@@ -179,7 +251,11 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
   }
 
   // ── filtres
-  q('.mk-q').addEventListener('input', render);
+  let typeT = 0;
+  q('.mk-q').addEventListener('input', () => {
+    clearTimeout(typeT);
+    typeT = window.setTimeout(render, TYPE_DEBOUNCE);
+  });
   q('.mk-sort').addEventListener('change', (e) => ((sort = (e.target as HTMLSelectElement).value as Sort), render()));
   el.querySelectorAll<HTMLButtonElement>('.mk-stars .chip').forEach((b) =>
     b.addEventListener('click', () => {

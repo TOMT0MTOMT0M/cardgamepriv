@@ -174,4 +174,9 @@ export const en: PartOf<typeof fr> = {
   'tr.ongoing': 'Ongoing',
   'tr.lastCopyItem': 'last copy',
   'tr.theyHave': '{name} has {n}',
+  // (V3, lot 09 · S5) fléau d'équité du composeur, sceau frappé à l'acceptation
+  'tr.bal.give': 'you give',
+  'tr.bal.get': 'you get',
+  'tr.sealed': 'Trade sealed',
+  'tr.sealedBy': '{name} and you',
 };

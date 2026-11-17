@@ -173,5 +173,10 @@ export const fr = {
   'tr.ongoing': 'En cours',
   'tr.lastCopyItem': 'dernier exemplaire',
   'tr.theyHave': '{name} en a {n}',
+  // (V3, lot 09 · S5) fléau d'équité du composeur, sceau frappé à l'acceptation
+  'tr.bal.give': 'tu donnes',
+  'tr.bal.get': 'tu reçois',
+  'tr.sealed': 'Échange scellé',
+  'tr.sealedBy': '{name} et toi',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

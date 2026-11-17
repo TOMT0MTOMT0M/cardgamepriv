@@ -17,6 +17,8 @@ import { cardQuery, cardWhere, searchCatalog } from '../../core/cardSearch';
 import { createForYou, pickCardSheet } from './forYou';
 import { invalidatePanel, showCardPanel } from './cardPanel';
 import { proposable } from '../../core/deals';
+import { DUR, EASING } from '../../core/motion';
+import { createTradeBalance, type BalSide } from './tradeBalance';
 import '../echanges.css';
 
 /**
@@ -63,11 +65,13 @@ function fairness(give: TradeItem[], get: TradeItem[]): { cls: '' | 'ok' | 'info
   if (vg < vr) return { cls: 'info', txt: tr('tr.fair.bitMore') };
   return { cls: 'info', txt: tr('tr.fair.bitLess') };
 }
-/** mini-jauge (part de chaque côté en valeur) + « tu donnes 4★+5★ (≈ 400) contre 2★ (≈ 15) » */
+/** « tu donnes 4★+5★ (≈ 400) contre 2★ (≈ 15) » */
+const gaugeTxt = (give: TradeItem[], get: TradeItem[]) => `${tr('tr.youGive')} <b>${esc(starsSummary(give))}</b> (≈ ${fmtCoins(value(give))}) ${tr('tr.against')} <b>${esc(starsSummary(get))}</b> (≈ ${fmtCoins(value(get))})`;
+/** mini-jauge (part de chaque côté en valeur) + son texte — échanges reçus et tableau ; le composeur a le fléau (tradeBalance.ts) */
 function gaugeHtml(give: TradeItem[], get: TradeItem[], cls: string) {
   const vg = value(give), vr = value(get);
   const tot = vg + vr || 1;
-  return `<div class="gauge ${cls}"><div class="gauge-bar"><i class="g-give" style="width:${((vg / tot) * 100).toFixed(1)}%"></i><i class="g-get" style="width:${((vr / tot) * 100).toFixed(1)}%"></i></div><div class="gauge-txt">${tr('tr.youGive')} <b>${esc(starsSummary(give))}</b> (≈ ${fmtCoins(vg)}) contre <b>${esc(starsSummary(get))}</b> (≈ ${fmtCoins(vr)})</div></div>`;
+  return `<div class="gauge ${cls}"><div class="gauge-bar"><i class="g-give" style="width:${((vg / tot) * 100).toFixed(1)}%"></i><i class="g-get" style="width:${((vr / tot) * 100).toFixed(1)}%"></i></div><div class="gauge-txt">${gaugeTxt(give, get)}</div></div>`;
 }
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
@@ -162,12 +166,12 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         <h3 class="tray-t">${tr('tr.proposal')}</h3>
         <div class="tray-sec"><h4>${tr('tr.youGet')}</h4><div class="tray-list l-get"></div></div>
         <div class="tray-sec"><h4>${tr('tr.youGiveC')}</h4><div class="tray-list l-give"></div></div>
-        <div class="gauge" hidden></div>
+        <div class="tr-bal"></div>
         <div class="fair"></div>
         <input class="note" maxlength="140" placeholder="Un petit mot ? (optionnel)">
       </div>
       <div class="tray-bar">
-        <button class="tray-toggle" aria-expanded="false" aria-label="${tr('tr.detailA')}"><span class="tb-sum"></span><span class="tb-chev" aria-hidden="true">▴</span></button>
+        <button class="tray-toggle" aria-expanded="false" aria-label="${tr('tr.detailA')}"><span class="tb-bal"></span><span class="tb-sum"></span><span class="tb-chev" aria-hidden="true">▴</span></button>
         <button class="btn-primary send" disabled>${tr('tr.propose')}</button>
         <button class="btn-ghost counter-cancel" hidden>${tr('tr.cancelCounter')}</button>
       </div>
@@ -185,7 +189,10 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   const lGet = q('.l-get');
   const lGive = q('.l-give');
   const fair = q('.fair');
-  let gauge = q('.tray .gauge');
+  // (V3, lot 09 · S5) le fléau d'équité, créé une fois : grande balance dans le volet, petite dans sa barre
+  const bal = createTradeBalance(shell.sfx);
+  q('.tray .tr-bal').replaceWith(bal.el);
+  q('.tray-toggle .tb-bal').replaceWith(bal.mini);
   const sendBtn = q<HTMLButtonElement>('.send');
   const counterCancel = q<HTMLButtonElement>('.counter-cancel');
   const note = q<HTMLInputElement>('.note');
@@ -425,7 +432,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     plus.addEventListener('click', (e) => {
       e.stopPropagation();
       if (sd === 'give' && free <= 0) return toast(tr('tr.busy'), 'info');
-      add(sd, c, free);
+      add(sd, c, free, tile);
     });
     plus.setAttribute('aria-label', plus.title);
     tile.append(plus);
@@ -467,9 +474,43 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   let confirmingTrade: string | null = null;
   const busyTrades = new Set<string>();
   const tradeErr = new Map<string, string>();
+  /**
+   * (V3, lot 09 · moment signature S5) SCEAU FRAPPÉ : l'échange se conclut quand le second joueur accepte (le premier a
+   * déjà « tourné sa clé » en proposant). L'échange reçu que je viens d'accepter garde sa ligne le temps d'un sceau
+   * frappé à froid à la place des boutons (descente courte, coup sourd, zéro flash), puis la ligne se replie.
+   * `at` : sa place dans la liste au moment de l'accord (le serveur l'a peut-être déjà retiré des échanges en attente).
+   */
+  const sealing = new Map<string, { t: TradeView; at: number; stamped: boolean }>();
+  function stampSeal(id: string) {
+    const sl = sealing.get(id);
+    if (!sl || sl.stamped) return;
+    sl.stamped = true;
+    if (confirmingTrade === id) confirmingTrade = null;
+    renderPending();
+    const seal = pendingEl.querySelector<HTMLElement>(`[data-tid="${CSS.escape(id)}"] .t-seal`);
+    const strike = () => {
+      shell.sfx.crack(0.42);
+      shell.sfx.thump(0.55, 44, 0, 'reward');
+      haptics.pulse([14, 30, 18]);
+    };
+    // la presse descend sur le médaillon (EASING.entree), le coup tombe à l'impact
+    if (seal) void seal.animate([{ transform: 'translateY(-14px) scale(1.16)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: DUR.standard(), easing: EASING.entree }).finished.then(strike, strike);
+    else strike();
+    window.setTimeout(() => {
+      const row = pendingEl.querySelector<HTMLElement>(`[data-tid="${CSS.escape(id)}"]`);
+      const end = () => (sealing.delete(id), el.isConnected && renderPending());
+      if (!row || !row.getClientRects().length) return end();
+      const hh = row.getBoundingClientRect().height;
+      row.style.overflow = 'hidden';
+      void row.animate([{ height: `${hh}px`, opacity: 1 }, { height: '0px', opacity: 0, paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '0px' }], { duration: DUR.emphatique(), easing: EASING.sortie, fill: 'forwards' }).finished.then(end, end);
+    }, DUR.ceremonie);
+  }
   function renderPending() {
-    const { incoming, outgoing } = backend.state.trades;
+    const { outgoing } = backend.state.trades;
+    const incoming = [...backend.state.trades.incoming];
     if (confirmingTrade && !incoming.some((t) => t.id === confirmingTrade)) confirmingTrade = null;
+    // l'échange que je viens d'accepter reste à sa place le temps du sceau
+    for (const [id, sl] of sealing) if (!incoming.some((t) => t.id === id)) incoming.splice(Math.min(sl.at, incoming.length), 0, sl.t);
     pendingEl.innerHTML = '';
     if (!incoming.length && !outgoing.length) pendingEl.innerHTML = `<div class="muted ex-none">${tr('tr.noPending')}</div>`;
     const owned = mine();
@@ -485,10 +526,13 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           const have = owned.get(cardKey(it))?.count ?? 0;
           return have > 0 && have <= it.count;
         });
-        const acts = t.quick
+        const sl = sealing.get(t.id);
+        const acts = sl?.stamped
+          ? `<div class="act t-sealed"><span class="t-seal" role="status"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29"/><circle class="in" cx="32" cy="32" r="23"/><path d="M21.5 33 l7.5 7.5 l14.5 -16"/></svg><span class="t-seal-t"><b>${tr('tr.sealed')}</b><small>${tr('tr.sealedBy', { name: esc(t.fromName) })}</small></span></span></div>`
+          : t.quick
           ? `<div class="act"><button class="linkish t-decline">${tr('tr.refuse')}</button><button class="btn-ghost t-pick">${tr('tr.pickOther')}</button><button class="btn-primary t-accept">${tr('tr.accept')}</button></div>`
           : `<div class="act"><button class="linkish t-decline">${tr('tr.refuse')}</button><button class="btn-ghost ctr">Contre-proposer</button><button class="btn-primary t-accept">${tr('tr.accept')}</button></div>`;
-        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> ${t.quick ? tr('tr.asksYou') : tr('tr.offersYou')} ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">${tr('tr.against')}</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">${tr('tr.lastCopy', { names: lasts.map((it) => esc(name(it.cardId))).join(', ') })}</div>` : ''}${tradeErr.get(t.id) ? `<div class="fair warn t-err" role="alert">${esc(tradeErr.get(t.id)!)}</div>` : ''}${confirmingTrade === t.id ? `<div class="act t-confirm"><span class="cf-q">${tr('tr.confirmQ')}</span><button class="btn-ghost cf-no">${tr('pf.cancel')}</button><button class="btn-primary cf-ok">${tr('tr.yesTrade')}</button></div>` : acts}`;
+        r.innerHTML = `<div class="who"><b>${esc(t.fromName)}</b> ${t.quick ? tr('tr.asksYou') : tr('tr.offersYou')} ${tag} ${when}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">${tr('tr.against')}</div><div class="its">${itemsHtml(t.requested, lasts)}</div>${t.note ? `<div class="tnote">« ${esc(t.note)} »</div>` : ''}${gaugeHtml(t.requested, t.offered, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '')}${f.txt ? `<div class="fair ${f.cls}">${esc(f.txt)}</div>` : ''}${lasts.length ? `<div class="fair warn">${tr('tr.lastCopy', { names: lasts.map((it) => esc(name(it.cardId))).join(', ') })}</div>` : ''}${tradeErr.get(t.id) ? `<div class="fair warn t-err" role="alert">${esc(tradeErr.get(t.id)!)}</div>` : ''}${confirmingTrade === t.id && !sl?.stamped ? `<div class="act t-confirm"><span class="cf-q">${tr('tr.confirmQ')}</span><button class="btn-ghost cf-no">${tr('pf.cancel')}</button><button class="btn-primary cf-ok">${tr('tr.yesTrade')}</button></div>` : acts}`;
       } else r.innerHTML = `<div class="who">${tr('tr.toWho', { name: esc(t.toName) })} ${tr('tr.toGive', { tag, when })}</div><div class="its">${itemsHtml(t.offered)}</div><div class="who">${tr('tr.against')}</div><div class="its">${itemsHtml(t.requested)}</div><div class="act"><span class="muted">${tr('tr.waiting')}</span>${t.quick ? '<button class="btn-ghost t-swap">' + tr('tr.change') + '</button>' : ''}<button class="btn-ghost cancel">${tr('pf.cancel')}</button></div>`;
       const act = async (fn: () => Promise<void>, ok: string, btn?: HTMLElement | null) => {
         if (r.dataset.busy || busyTrades.has(t.id)) return; // (anti double-toucher : les boutons sont aussi désactivés)
@@ -534,7 +578,18 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         renderPending();
       });
       r.querySelector<HTMLElement>('.cf-ok')?.addEventListener('click', (e) => {
-        void act(async () => (await backend.respondTrade(t.id, true), shell.sfx.chime(3, 0.08)), tr('tr.done'), e.currentTarget as HTMLElement);
+        if (busyTrades.has(t.id)) return;
+        // (S5) accord du second joueur : la ligne est retenue pour le sceau, frappé seulement si le serveur confirme
+        sealing.set(t.id, { t, at: Math.max(0, backend.state.trades.incoming.findIndex((x) => x.id === t.id)), stamped: false });
+        void act(async () => {
+          try {
+            await backend.respondTrade(t.id, true);
+          } catch (err) {
+            sealing.delete(t.id);
+            throw err;
+          }
+          stampSeal(t.id);
+        }, tr('tr.done'), e.currentTarget as HTMLElement);
       });
       r.querySelector<HTMLElement>('.act .t-decline')?.addEventListener('click', (e) => {
         if (!confirmTap(e.currentTarget as HTMLElement, tr('tr.refuseQ'), 4000, `tr-no-${t.id}`)) return;
@@ -630,6 +685,9 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
           },
         });
       });
+      if (sealing.get(t.id)?.stamped) r.classList.add('sealed');
+      // (accord envoyé, réponse du serveur pas encore là) : rien à toucher en attendant
+      else if (sealing.has(t.id)) r.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = true));
       pendingEl.append(r);
     };
     incoming.forEach((t) => row(t, 'in'));
@@ -952,7 +1010,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
 
   /** exemplaires disponibles par carte choisie (pour le « + » de la proposition) */
   const maxOf = new Map<string, number>();
-  function add(sd: Side, c: PlayerCard, max: number) {
+  function add(sd: Side, c: PlayerCard, max: number, from?: HTMLElement) {
     const list = sd === 'get' ? get : give;
     const k = cardKey(c);
     const it = list.find((x) => cardKey(x) === k);
@@ -972,11 +1030,13 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     }
     lastAdded = `${sd}:${k}`;
     shell.sfx.tick(1.4, 0.05);
-    renderTray();
+    // (V3, lot 09) la carte VOLE de la grille jusqu'à son plateau de la balance ; le fléau bascule à son arrivée
+    // (avant : un rebond du volet par reflow forcé, `void tray.offsetWidth`)
+    const tier = Math.min(5, RANK[c.rarity]);
+    const flew = !!from && flyToPan(from, sd, tier);
+    renderTray(flew ? undefined : { side: sd, tier });
+    if (!flew) landSound(sd, tier);
     lastAdded = '';
-    tray.classList.remove('bump');
-    void tray.offsetWidth;
-    tray.classList.add('bump');
     if (sd === 'get' && !give.length && !giveHinted) {
       giveHinted = true;
       const b = q('.tr-side [data-s="give"]');
@@ -986,37 +1046,159 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     }
   }
 
-  function renderTray() {
+  /**
+   * (V3, lot 09) LIGNES DE LA PROPOSITION GARDÉES d'un rendu à l'autre (clé = la carte) : ajouter, retirer ou changer
+   * un exemplaire ne met à jour que la ligne concernée (avant : `box.innerHTML = ''` puis toutes les lignes et leurs
+   * vignettes recréées). Une ligne qui part s'efface ; celle qui arrive garde son entrée `.new`.
+   */
+  const trayRows: Record<Side, Map<string, HTMLElement>> = { get: new Map(), give: new Map() };
+  const boxOf = (sd: Side) => (sd === 'get' ? lGet : lGive);
+  const listOf = (sd: Side) => (sd === 'get' ? get : give);
+  function leaveRow(r: HTMLElement) {
+    r.dataset.leaving = '1';
+    const a = r.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(12px)' }], { duration: DUR.rapide(), easing: EASING.sortie, fill: 'forwards' });
+    void a.finished.then(() => r.remove(), () => r.remove());
+  }
+  function fillTray(sd: Side, list: TradeItem[], owned: Map<string, PlayerCard>, orig: { give: TradeItem[]; get: TradeItem[] } | null) {
+    const box = boxOf(sd);
+    const rows = trayRows[sd];
+    let hint = box.querySelector<HTMLElement>(':scope > .ti-hint');
+    if (!hint) box.prepend((hint = h('div', 'muted ti-hint', sd === 'get' ? tr('tr.hintAsk') : tr('tr.hintGive'))));
+    hint.hidden = list.length > 0;
+    const want: HTMLElement[] = [];
+    for (const it of list) {
+      const k = cardKey(it);
+      const have = sd === 'give' ? (owned.get(k)?.count ?? 0) : 0;
+      const last = sd === 'give' && have > 0 && it.count >= have;
+      const was = orig ? (orig[sd].find((x) => cardKey(x) === k)?.count ?? 0) : 0;
+      const diff = orig ? (was === 0 ? 'added' : was !== it.count ? 'changed' : '') : '';
+      const more = (maxOf.get(`${sd}:${k}`) ?? 1) > it.count;
+      let r = rows.get(k);
+      if (!r) {
+        const e = catalogEntry(it.cardId);
+        r = h('div', 'ti', `<span class="sw" style="background:${rarity(it.rarity).hex}"></span>${e ? `<img class="tth" alt="" data-zoom="${esc(`${it.cardId}|${it.rarity}`)}" src="${thumbUrl(e)}">` : ''}<span class="tn"></span><span class="tc"></span><button class="plus" aria-label="${tr('tr.oneMore')}">+</button><button class="minus" aria-label="${tr('tr.removeCard')}">✕</button>`); // i18n-ok
+        r.dataset.k = k;
+        rows.set(k, r);
+        if (lastAdded === `${sd}:${k}`) {
+          r.classList.add('new');
+          // (déplacée plus tard dans la liste, la ligne rejouerait son entrée)
+          r.addEventListener('animationend', () => r!.classList.remove('new'), { once: true });
+        }
+      }
+      const sig = `${it.count}|${last ? 1 : 0}|${diff}|${was}|${more ? 1 : 0}`;
+      if (r.dataset.sig !== sig) {
+        r.dataset.sig = sig;
+        r.classList.toggle('last', last);
+        r.classList.toggle('added', diff === 'added');
+        r.classList.toggle('changed', diff === 'changed');
+        r.querySelector('.tn')!.innerHTML = `${esc(name(it.cardId))}${last ? ' <i class="ti-last">' + tr('tr.yourLast') + '</i>' : ''}${diff === 'added' ? ' <i class="ti-diff">' + tr('tr.added') + '</i>' : diff === 'changed' ? ` <i class="ti-diff">${tr('tr.before', { n: was })}</i>` : ''}`;
+        r.querySelector('.tc')!.textContent = `×${it.count}`;
+        r.querySelector<HTMLElement>('.plus')!.hidden = !more;
+      }
+      want.push(r);
+    }
+    // ce qui était dans la proposition d'origine et n'y est plus : barré
+    if (orig)
+      for (const it of orig[sd]) {
+        if (list.some((x) => cardKey(x) === cardKey(it))) continue;
+        const k = `x:${cardKey(it)}`;
+        let r = rows.get(k);
+        if (!r) {
+          r = h('div', 'ti removed', `<span class="sw" style="background:${rarity(it.rarity).hex}"></span><span></span><span class="tn">${esc(name(it.cardId))} <i class="ti-diff">${tr('tr.removed')}</i></span><span class="tc">×${it.count}</span>`);
+          r.dataset.k = k;
+          rows.set(k, r);
+        }
+        want.push(r);
+      }
+    const keep = new Set(want);
+    for (const [k, r] of rows) if (!keep.has(r)) (rows.delete(k), leaveRow(r));
+    // dans l'ordre, en ne déplaçant que les lignes mal placées
+    let at: ChildNode | null = hint.nextSibling;
+    for (const r of want) {
+      while (at && (at as HTMLElement).dataset?.leaving) at = at.nextSibling;
+      if (r === at) at = at.nextSibling;
+      else box.insertBefore(r, at);
+    }
+  }
+  for (const sd of ['get', 'give'] as const)
+    boxOf(sd).addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button');
+      const r = b?.closest<HTMLElement>('.ti');
+      if (!b || !r || r.dataset.leaving) return;
+      const list = listOf(sd);
+      const it = list.find((x) => cardKey(x) === r.dataset.k);
+      if (!it) return;
+      if (b.classList.contains('minus')) {
+        it.count--;
+        if (it.count <= 0) list.splice(list.indexOf(it), 1);
+        renderTray();
+      } else if (b.classList.contains('plus')) {
+        it.count++;
+        renderTray({ side: sd, tier: Math.min(5, RANK[it.rarity]) });
+        landSound(sd, Math.min(5, RANK[it.rarity]));
+      }
+    });
+
+  /** cartes en vol vers la balance : tant qu'il en reste, le fléau attend leur arrivée pour basculer */
+  let flying = 0;
+  const tiersOf = (l: TradeItem[]) => l.flatMap((it) => Array<number>(it.count).fill(Math.min(5, RANK[it.rarity])));
+  function syncBalance(kick?: { side: BalSide; tier: number }) {
+    if (flying > 0 && !kick) return;
+    const f = fairness(give, get);
+    bal.set({ vg: value(give), vr: value(get), give: tiersOf(give), get: tiersOf(get), balanced: f.cls === 'ok' && give.length > 0 && get.length > 0 }, kick);
+  }
+  /** la carte se pose sur son plateau : coup feutré, à gauche (je donne) ou à droite (je reçois), plus plein pour une grosse étoile */
+  const landSound = (sd: Side, tier: number) => shell.sfx.thump(0.2 + tier * 0.03, 52, sd === 'give' ? -0.35 : 0.35, 'feedback');
+  /**
+   * Vol d'une carte de la grille de sélection jusqu'à son plateau (grande balance si le volet est ouvert, sinon la
+   * petite de la barre) : une copie de la tuile, transform seul, en arc léger. Faux si rien à l'écran (on pose direct).
+   */
+  function flyToPan(tile: HTMLElement, sd: Side, tier: number): boolean {
+    const target = bal.pan(sd);
+    if (!target || !tile.isConnected) return false;
+    const a = tile.getBoundingClientRect();
+    const b = target.getBoundingClientRect();
+    if (!a.width || !b.width || a.bottom < 0 || a.top > innerHeight) return false;
+    const g = tile.cloneNode(true) as HTMLElement;
+    g.querySelectorAll('.tr-plus, .wb, .badge, .tr-lock, .count').forEach((x) => x.remove());
+    g.classList.remove('picked');
+    g.classList.add('tr-fly');
+    g.removeAttribute('tabindex');
+    g.removeAttribute('role');
+    g.setAttribute('aria-hidden', 'true');
+    g.style.left = `${a.left}px`;
+    g.style.top = `${a.top}px`;
+    g.style.width = `${a.width}px`;
+    g.style.height = `${a.height}px`;
+    el.append(g);
+    const tx = b.left + b.width / 2 - (a.left + a.width / 2);
+    const ty = b.top - 5 - (a.top + a.height / 2);
+    const sc = Math.max(0.06, 9 / a.width);
+    flying++;
+    const an = g.animate(
+      [
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+        { transform: `translate(${(tx * 0.5).toFixed(1)}px, ${(ty * 0.5 - 40).toFixed(1)}px) scale(${((1 + sc) / 2).toFixed(3)})`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${sc.toFixed(3)})`, opacity: 0.25 },
+      ],
+      { duration: DUR.emphatique(), easing: EASING.standard },
+    );
+    const done = () => {
+      g.remove();
+      flying = Math.max(0, flying - 1);
+      syncBalance({ side: sd, tier });
+      landSound(sd, tier);
+    };
+    void an.finished.then(done, done);
+    return true;
+  }
+
+  function renderTray(kick?: { side: BalSide; tier: number }) {
     const owned = mine();
     /** contre-proposition : la proposition d'origine (vue de mon côté), pour marquer ce qui change (UX4-14) */
     const orig = countering ? { give: countering.requested, get: countering.offered } : null;
-    const origCount = (sd: Side, it: TradeItem) => (orig ? (orig[sd].find((x) => cardKey(x) === cardKey(it))?.count ?? 0) : 0);
-    const fill = (box: HTMLElement, list: TradeItem[], sd: Side) => {
-      box.innerHTML = list.length ? '' : `<div class="muted">${sd === 'get' ? tr('tr.hintAsk') : tr('tr.hintGive')}</div>`;
-      for (const it of list) {
-        const e = catalogEntry(it.cardId);
-        const have = sd === 'give' ? (owned.get(cardKey(it))?.count ?? 0) : 0;
-        const last = sd === 'give' && have > 0 && it.count >= have;
-        const was = origCount(sd, it);
-        const diff = orig ? (was === 0 ? ' added' : was !== it.count ? ' changed' : '') : '';
-        const r = h('div', `ti${diff}${last ? ' last' : ''}`, `<span class="sw" style="background:${rarity(it.rarity).hex}"></span>${e ? `<img class="tth" alt="" data-zoom="${esc(`${it.cardId}|${it.rarity}`)}" src="${thumbUrl(e)}">` : ''}<span class="tn">${esc(name(it.cardId))}${last ? ' <i class="ti-last">' + tr('tr.yourLast') + '</i>' : ''}${diff === ' added' ? ' <i class="ti-diff">' + tr('tr.added') + '</i>' : diff === ' changed' ? ` <i class="ti-diff">${tr('tr.before', { n: was })}</i>` : ''}</span><span class="tc">×${it.count}</span>${(maxOf.get(`${sd}:${cardKey(it)}`) ?? 1) > it.count ? '<button class="plus" aria-label="' + tr('tr.oneMore') + '">+</button>' : ''}<button class="minus" aria-label="${tr('tr.removeCard')}">✕</button>`); // i18n-ok
-        if (lastAdded === `${sd}:${cardKey(it)}`) r.classList.add('new');
-        r.querySelector('.minus')!.addEventListener('click', () => {
-          it.count--;
-          if (it.count <= 0) list.splice(list.indexOf(it), 1);
-          renderTray();
-        });
-        r.querySelector('.plus')?.addEventListener('click', () => {
-          it.count++;
-          renderTray();
-        });
-        box.append(r);
-      }
-      // ce qui était dans la proposition d'origine et n'y est plus : barré
-      if (orig) for (const it of orig[sd]) if (!list.some((x) => cardKey(x) === cardKey(it))) box.insertAdjacentHTML('beforeend', `<div class="ti removed"><span class="sw" style="background:${rarity(it.rarity).hex}"></span><span></span><span class="tn">${esc(name(it.cardId))} <i class="ti-diff">${tr('tr.removed')}</i></span><span class="tc">×${it.count}</span></div>`);
-    };
-    fill(lGet, get, 'get');
-    fill(lGive, give, 'give');
+    fillTray('get', get, owned, orig);
+    fillTray('give', give, owned, orig);
     markPicks();
     const f = fairness(give, get);
     // dernier exemplaire donné : dit en clair (UX4-12), pas seulement dans une infobulle
@@ -1026,9 +1208,10 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     });
     fair.className = `fair ${f.cls}`;
     fair.innerHTML = `${esc(f.txt)}${lasts.length ? `<span class="fair warn last-w">${tr('tr.lastWarn', { names: lasts.map((it) => esc(name(it.cardId))).join(', ') })}</span>` : ''}`;
-    gauge.hidden = !give.length && !get.length;
-    if (!gauge.hidden) gauge.outerHTML = gaugeHtml(give, get, f.cls === 'warn' ? 'warn' : f.cls === 'ok' ? 'ok' : '');
-    gauge = q('.tray .gauge');
+    // (V3, lot 09 · S5) le fléau persistant (avant : `gauge.outerHTML = gaugeHtml(…)`, l'élément recréé à chaque carte)
+    bal.text(give.length || get.length ? gaugeTxt(give, get) : '');
+    bal.el.classList.toggle('warn', f.cls === 'warn');
+    syncBalance(kick);
     const unchanged = !!orig && sameItems(orig.give, give) && sameItems(orig.get, get);
     sendBtn.disabled = sending || !friend || (!give.length && !get.length) || unchanged;
     if (countering) sendBtn.textContent = unchanged ? tr('tr.noChange') : tr('tr.resend');
@@ -1048,8 +1231,8 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         let b = t.querySelector<HTMLElement>('.badge');
         if (it && !b) t.append((b = h('span', 'badge')));
         if (b) {
-          if (it) b.textContent = `×${it.count}`;
-          else b.remove();
+          if (!it) b.remove();
+          else if (b.textContent !== `×${it.count}`) b.textContent = `×${it.count}`;
         }
       }
     }
