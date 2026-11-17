@@ -13,6 +13,10 @@
 /* (V3, lot S2) carte retournée au doigt autour de sa tranche droite (scenes/viewer.ts) : elle passe devant la tranche */
 .viewer-hinge .viewer-ui .rf-rail { opacity: 0; pointer-events: none; }
 .viewer-ui.riffling .rf-rail .rf-edge { opacity: 0; }
+/* (17/11, retour de Tom) au repos, la tranche dessinée à côté de la carte 3D faisait « artefact » (elle ne suit ni le
+   flottement, ni l'inclinaison, ni le zoom) : elle n'est plus dessinée ; la zone de prise reste (invisible, le texte
+   d'aide l'annonce) et la pile apparaît dès que le pouce s'y pose */
+.viewer-ui .rf-rail .rf-edge { display: none; }
 
 /* pendant le geste : fond noir (celui de la visionneuse) sur la carte 3D, la fiche s'efface, le compteur reste */
 .rf-layer { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity var(--dur-rapide) var(--ease-standard); pointer-events: none; }
