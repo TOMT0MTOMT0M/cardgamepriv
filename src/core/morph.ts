@@ -11,10 +11,12 @@
  *  - `flip(items, mutate)` : réordonnancement animé (First-Last-Invert-Play) — classement en direct de la Battle Royale.
  *  - `leave(el)` : joue l'animation de sortie (classe `is-leaving`) avant de retirer un calque.
  *  - `rollNumber(el, from, to, fmt)` : compteur qui roule (solde, pot, totaux d'étoiles).
+ *  - `morphSwap(from, to, closeFrom)` : (V3, lot 05) un panneau de l'en-tête se TRANSFORME en un autre (Missions →
+ *    Solde → Série) : une seule boîte glisse et se redimensionne, le contenu se croise dedans.
  *
  * Jetons : src/core/motion.ts (durées mobile ≈ +20 %, courbes M3). Mouvement réduit : tout est instantané.
  */
-import { EASING, reducedMotion } from './motion';
+import { DUR, EASING, reducedMotion } from './motion';
 import { clamp, easeOutExpo } from './ease';
 
 const coarse = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
@@ -228,4 +230,70 @@ export function segIndicator(seg: HTMLElement) {
     place(true);
   }).observe(seg, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-checked'] });
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => place(false)).observe(seg);
+}
+
+/**
+ * (V3, lot 05) PANNEAU QUI SE TRANSFORME — on passe directement d'un panneau de l'en-tête à un autre (Missions → Solde →
+ * Série) : au lieu de fermer l'un puis d'ouvrir l'autre, UNE boîte glisse et se redimensionne de l'ancien gabarit au
+ * nouveau, l'ancien contenu s'efface et le nouveau monte dedans (sa cascade habituelle).
+ *  - `from` est encore ouvert (mesuré ici, puis fermé par `closeFrom`), `to` vient d'être ouvert (classe `on`) ;
+ *  - une « coque » vide (fond, filet, rayon, ombre de `to`) porte la géométrie : left / top / width / height d'un bloc
+ *    sans contenu (aucune mise en page de texte pendant le mouvement) ;
+ *  - les deux panneaux, sans fond le temps du passage (`.pop-swap`, panneaux.css), sont découpés à la forme de la coque.
+ * Jetons : DUR.emphatique (container transform), EASING.entree. Un nouveau passage pendant le mouvement repart de la
+ * coque telle qu'elle est ; `stopSwap(to)` (fermeture pendant le mouvement) remet tout en place.
+ */
+let swapping: { from: HTMLElement; to: HTMLElement; ghost: HTMLElement; anims: Animation[] } | null = null;
+function endSwap() {
+  const s = swapping;
+  if (!s) return;
+  swapping = null;
+  s.anims.forEach((a) => a.cancel());
+  s.ghost.remove();
+  s.from.classList.remove('pop-swap');
+  s.to.classList.remove('pop-swap');
+}
+/** Arrête le passage en cours si `el` y prend part (panneau fermé pendant le mouvement). */
+export function stopSwap(el: HTMLElement): void {
+  if (swapping && (swapping.to === el || swapping.from === el)) endSwap();
+}
+export function morphSwap(from: HTMLElement, to: HTMLElement, closeFrom: () => void): void {
+  // départ : la coque d'un passage encore en cours, sinon le panneau ouvert
+  const a = (swapping?.ghost.isConnected ? swapping.ghost : from).getBoundingClientRect();
+  endSwap();
+  closeFrom();
+  if (reducedMotion() || document.hidden || a.width < 1 || a.height < 1 || typeof to.animate !== 'function') return;
+  // le nouveau panneau est tout de suite à sa place (son rideau d'ouverture ne joue pas : c'est la coque qui bouge)
+  to.getAnimations().forEach((x) => x instanceof CSSTransition && x.finish());
+  const cs = getComputedStyle(to);
+  const b = to.getBoundingClientRect();
+  if (b.width < 1 || b.height < 1) return;
+  const ghost = document.createElement('div');
+  ghost.className = 'pop-ghost';
+  ghost.setAttribute('aria-hidden', 'true');
+  const g = ghost.style;
+  g.left = `${b.left}px`;
+  g.top = `${b.top}px`;
+  g.width = `${b.width}px`;
+  g.height = `${b.height}px`;
+  g.zIndex = cs.zIndex;
+  g.background = cs.backgroundColor;
+  g.border = `${cs.borderTopWidth} ${cs.borderTopStyle} ${cs.borderTopColor}`;
+  g.borderRadius = cs.borderTopLeftRadius;
+  g.boxShadow = cs.boxShadow;
+  to.before(ghost);
+  from.classList.add('pop-swap');
+  to.classList.add('pop-swap');
+  const o = { duration: DUR.emphatique(), easing: EASING.entree };
+  const r = cs.borderTopLeftRadius;
+  /** découpe de `el` (boîte `e`) à la forme de la boîte `f` */
+  const clip = (e: DOMRect, f: DOMRect) => `inset(${f.top - e.top}px ${e.right - f.right}px ${e.bottom - f.bottom}px ${f.left - e.left}px round ${r})`;
+  const box = (x: DOMRect) => ({ left: `${x.left}px`, top: `${x.top}px`, width: `${x.width}px`, height: `${x.height}px` });
+  const anims = [
+    ghost.animate([box(a), box(b)], o),
+    to.animate([{ clipPath: clip(b, a) }, { clipPath: clip(b, b) }], o),
+    from.animate([{ clipPath: clip(a, a) }, { clipPath: clip(a, b) }], o),
+  ];
+  const s = (swapping = { from, to, ghost, anims });
+  anims[0].addEventListener('finish', () => swapping === s && endSwap());
 }

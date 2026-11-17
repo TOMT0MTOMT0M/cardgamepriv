@@ -41,7 +41,7 @@ import { installNavDots } from './navDots';
 applyFontVars();
 // (version anglaise) langue du jeu : en anglais, le dictionnaire arrive pendant le chargement du reste (rien en français)
 const langP = initLang();
-import { DUR, bindMotionVars } from '../core/motion';
+import { DUR, EASING, bindMotionVars } from '../core/motion';
 bindMotionVars();
 import { installMorph } from '../core/morph';
 installMorph();
@@ -893,8 +893,12 @@ interface View {
 /**
  * (V2 fluidité, lot « nav ») CHANGEMENT DE PAGE DOM ↔ DOM par View Transitions — ACTIF par défaut depuis le 11/11 (validé par Tom ;
  * `?vt=0` dans l'adresse le coupe). Fondu enchaîné sobre : l'ancienne page s'efface pendant que la nouvelle apparaît, mêmes jeton
- * de durée (emphatique) et même courbe (entrée) que `view-in`, sans le petit déplacement (bloc « VIEW TRANSITIONS » en
- * fin de style.css). Jamais quand la boutique / la 3D est d'un côté (capture du canvas WebGPU) ni en « Effets réduits ».
+ * de durée (emphatique) et même courbe (entrée) que `view-in` (bloc « VIEW TRANSITIONS » en fin de style.css).
+ * (V3, lot 05) DIRECTIONNEL et BOUTIQUE COMPRISE : la page glisse un peu vers la gauche / la droite selon l'ordre des
+ * onglets (`--vt-dx`). La boutique en était exclue parce que la capture de la racine prenait le canvas WebGPU (image
+ * noire ou figée sur certains Chromium). Désormais la racine n'est plus capturée (`view-transition-name: none` sur <html>
+ * pendant la transition) : seul `.views` l'est, la 3D reste rendue en direct dessous, s'efface / revient par son propre
+ * fondu (`.gl.dim`) et glisse avec la page (`slideGl`).
  * Coupe-circuit : une erreur, ou une mise à jour qui tarde (> 600 ms) ou une transition qui s'éternise (> durée + 800 ms)
  * la coupe pour le reste de la session — le changement de page se fait alors comme avant.
  */
@@ -908,7 +912,7 @@ const VT_FLAG = (() => {
 let vtDead = false;
 /** Fait `apply` (le vrai changement de page) sous transition ; `canVT()` d'abord (sinon `apply` direct, avec `view-in`). */
 const canVT = () => VT_FLAG && !vtDead && !document.hidden && typeof document.startViewTransition === 'function' && !matchMedia('not all').matches;
-function swapPage(apply: () => void): void {
+function swapPage(apply: () => void, shift = 0): ViewTransition | null {
   const root = document.documentElement;
   let ran = false;
   const run = () => {
@@ -922,6 +926,7 @@ function swapPage(apply: () => void): void {
   };
   try {
     root.classList.add('vt-pages');
+    root.style.setProperty('--vt-dx', `${shift}px`);
     const t = document.startViewTransition(run);
     // mise à jour qui n'arrive pas (fil principal pris) : on change de page quand même, et on coupe
     const late = window.setTimeout(() => (trip('mise à jour tardive'), run()), 600);
@@ -930,11 +935,38 @@ function swapPage(apply: () => void): void {
     t.updateCallbackDone.then(() => clearTimeout(late), (e: unknown) => (clearTimeout(late), console.error(e), trip(e)));
     t.ready.catch(() => undefined); // (transition sautée : normal)
     void t.finished.catch(() => undefined).then(() => (clearTimeout(late), clearTimeout(stuck), root.classList.remove('vt-pages')));
+    return t;
   } catch (e) {
     trip(e);
     root.classList.remove('vt-pages');
     run();
+    return null;
   }
+}
+/**
+ * (V3, lot 05) Sens du glissement d'une page à l'autre : l'ordre des onglets de l'en-tête (Boutique, Collection,
+ * Échanges, Jeux…, puis Mises à jour, Tuto, Suggestions). Les Contrats vivent dans la Collection, le Profil vient en
+ * dernier. +1 : la nouvelle page arrive par la droite ; -1 : par la gauche ; 0 : fondu seul.
+ */
+function navDir(from: string, to: string): number {
+  const order = [...top.querySelectorAll<HTMLElement>('nav a[data-r], .nav-extra a[data-r]')].map((a) => a.dataset.r ?? '');
+  const at = (k: string) => (k === 'contrats' ? order.indexOf('collection') + 0.5 : order.includes(k) ? order.indexOf(k) : order.length);
+  return Math.sign(at(to) - at(from));
+}
+/** Distance du glissement (px) : discrète, ≈ 6 % de la largeur, entre 16 et 40 px. */
+const vtShift = (dir: number) => dir * Math.round(Math.min(40, Math.max(16, innerWidth * 0.06)));
+/**
+ * (V3, lot 05) La vitrine 3D glisse avec la page qu'elle accompagne (même distance, même jeton, même courbe que
+ * `::view-transition-*(pages)`) : la roue du téléphone, dessinée dans le canvas, ne se décolle pas de ses étiquettes.
+ * Seulement `translate` (composition) ; l'opacité reste celle du fondu `.gl.dim` déjà en place.
+ */
+function slideGl(shift: number, entering: boolean) {
+  const c = glHost.querySelector<HTMLElement>('canvas.gl');
+  if (!c || !shift || typeof c.animate !== 'function') return;
+  c.animate(entering ? [{ translate: `${shift}px 0` }, { translate: '0 0' }] : [{ translate: '0 0' }, { translate: `${-shift}px 0` }], {
+    duration: DUR.emphatique(),
+    easing: EASING.entree,
+  });
 }
 /**
  * Pages chargées à leur première visite (PERF2-05) : hors du premier téléchargement, préchargées en tâche de fond une
@@ -1201,12 +1233,16 @@ async function boot() {
         if (wantTop) restoreScroll(v.el, wantTop, gen);
         updateFresh(true); // on vient (peut-être) de quitter la collection : ce qu'on y a vu est vu
       };
-      if (vt) swapPage(apply);
-      else apply();
+      if (!vt) return apply();
+      // (V3, lot 05) boutique d'un côté : la 3D glisse avec elle, une fois la transition prête (rendu repris)
+      const shift = vtShift(navDir(from, key));
+      const t = swapPage(apply, shift);
+      if (t && (from === '' || key === '')) void t.ready.then(() => slideGl(shift, key === ''), () => undefined);
     };
     const ready = views[key];
-    // fondu enchaîné (essai `?vt=1`) : seulement entre deux pages 100 % DOM, jamais depuis / vers la boutique (3D)
-    if (ready) return show(ready, changed, changed && from !== '' && key !== '' && !!views[from]);
+    // glissement de page (View Transitions) : entre deux pages déjà affichées, boutique comprise (V3, lot 05) — pas au
+    // premier affichage (la page quittée n'était pas à l'écran : lien direct, chargement)
+    if (ready) return show(ready, changed, changed && !!views[from] && viewHost.firstElementChild === views[from].el);
     // première visite de cette page : son module arrive (souvent déjà préchargé : quelques ms)
     if (!isPage(key)) return;
     shell.show(null); // page 100 % DOM : la vitrine ne tourne pas dessous (comme chaque page à son entrée)

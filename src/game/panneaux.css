@@ -23,6 +23,11 @@
 :where(.missions-pop, .status-pop) > :nth-child(5) { --k: 4; }
 :where(.missions-pop, .status-pop) > :nth-child(6) { --k: 5; }
 :where(.missions-pop, .status-pop) > :nth-child(n + 7) { --k: 6; }
+/* (V3, lot 05) passage DIRECT d'une pilule à l'autre (Missions → Solde → Série ; morph.ts `morphSwap`) : une coque
+   `.pop-ghost` porte le fond et glisse / se redimensionne ; les deux panneaux, sans fond ni rideau le temps du passage,
+   sont découpés à sa forme (clip-path animé) — l'ancien contenu s'efface, le nouveau monte en cascade */
+:is(.missions-pop, .status-pop).pop-swap { background: transparent; border-color: transparent; box-shadow: none; transform: none; clip-path: none; }
+.pop-ghost { position: fixed; box-sizing: border-box; pointer-events: none; }
 
 /* ── fenêtres (sélecteur de cartes, tableau d'échanges) : voile en fondu, fenêtre qui monte ; sortie jouée avant retrait */
 .gm-modal-veil, .ob-veil { animation: pn-veil-in var(--dur-standard) var(--ease-standard) both; }

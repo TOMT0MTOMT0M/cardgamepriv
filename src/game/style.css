@@ -3446,8 +3446,18 @@ html.vt-pages .views { view-transition-name: pages; }
 html.vt-pages::view-transition-group(pages) { animation: none; }
 html.vt-pages::view-transition-old(pages) { animation: vt-pages-out var(--dur-emphatique) var(--ease-entree) both; }
 html.vt-pages::view-transition-new(pages) { animation: vt-pages-in var(--dur-emphatique) var(--ease-entree) both; }
-@keyframes vt-pages-out { to { opacity: 0; } }
-@keyframes vt-pages-in { from { opacity: 0; } }
+@keyframes vt-pages-out { to { opacity: 0; transform: translateX(calc(-1 * var(--vt-dx, 0px))); } }
+@keyframes vt-pages-in { from { opacity: 0; transform: translateX(var(--vt-dx, 0px)); } }
+/* (V3, lot 05) boutique comprise : la RACINE n'est plus capturée (le reste de la page — en-tête, canvas WebGPU — est
+   rendu en direct sous la transition, plus de capture noire ou figée de la 3D) ; seul `.views` glisse. `--vt-dx` (px,
+   signé selon l'ordre des onglets) est posé par main.ts `swapPage` ; 0 = fondu seul. */
+html.vt-pages, html.vt-pages canvas.gl { view-transition-name: none; }
+/* l'en-tête passe AU-DESSUS de la page qui glisse (sinon le fond de la page, dessiné par-dessus tout pendant la
+   transition, le voilait) : son image « nouvelle » est vivante (la pastille d'onglet glisse en direct), l'ancienne est
+   inutile (même en-tête). Fond opaque, sans backdrop-filter (usinage.css) : la capture est fidèle. */
+html.vt-pages .topbar { view-transition-name: vt-topbar; }
+html.vt-pages::view-transition-group(vt-topbar), html.vt-pages::view-transition-new(vt-topbar) { animation: none; }
+html.vt-pages::view-transition-old(vt-topbar) { display: none; }
 @media not all { html.vt-pages::view-transition-group(*), html.vt-pages::view-transition-old(*), html.vt-pages::view-transition-new(*) { animation: none !important; } }
 
 /* (V2, bulles ajoutées — game/navDots.ts) point doré : réserve pleine (Boutique), du nouveau dans les Jeux, parrainage

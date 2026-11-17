@@ -8,6 +8,7 @@ import { observeRealCard } from './cardImages';
 import { haptics } from '../core/haptics';
 import { DUR, EASING, SPRING } from '../core/motion';
 import { Spring } from '../core/ease';
+import { morphSwap, stopSwap } from '../core/morph';
 import type { GameBackend } from './backend';
 import { canReplayMythic, replayMythic } from './mythic';
 
@@ -320,8 +321,19 @@ document.addEventListener('click', (e) => {
 /** bouton ✕ des panneaux de l'en-tête (missions, portefeuille, série / pity) */
 export const CLOSE_X = () => `<button class="icon pop-x" aria-label="${tr('common.close')}">✕</button>`;
 const openPanels = new Map<() => void, { pop: HTMLElement; opener: HTMLElement | null }>();
+/** Panneaux de l'en-tête qui se transforment l'un en l'autre (V3, lot 05 : morph.ts `morphSwap`). */
+const SWAP_SEL = '.missions-pop, .status-pop';
 export function panelShown(pop: HTMLElement, close: () => void) {
-  for (const c of [...openPanels.keys()]) if (c !== close) c();
+  const closeOthers = () => {
+    for (const c of [...openPanels.keys()]) if (c !== close) c();
+  };
+  // (V3, lot 05) on passe directement d'une pilule à l'autre (Missions → Solde → Série) : une seule boîte glisse et se
+  // redimensionne (au lieu de fermer l'un et d'ouvrir l'autre) ; le voile, déjà là, ne refait pas son fondu
+  const prev = pop.matches(SWAP_SEL) ? [...openPanels.entries()].find(([c, o]) => c !== close && o.pop !== pop && o.pop.matches(SWAP_SEL)) : undefined;
+  if (prev) {
+    morphSwap(prev[1].pop, pop, closeOthers);
+    document.querySelectorAll<HTMLElement>('.um-veil.on').forEach((v) => v.getAnimations().forEach((x) => x.finish()));
+  } else closeOthers();
   const f = document.activeElement as HTMLElement | null;
   // (même panneau rouvert par un autre bouton — série → pity — : le focus reviendra à ce dernier)
   const opener = f && f !== document.body && !pop.contains(f) ? f : (openPanels.get(close)?.opener ?? null);
@@ -334,6 +346,7 @@ export function panelShown(pop: HTMLElement, close: () => void) {
   });
 }
 export function panelHidden(pop: HTMLElement, close: () => void) {
+  stopSwap(pop); // (fermé pendant qu'il se transformait : tout reprend sa place, sa fermeture normale joue)
   pop.inert = true;
   const o = openPanels.get(close);
   openPanels.delete(close);
