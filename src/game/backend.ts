@@ -217,6 +217,10 @@ export interface MarketBoard {
   bought: MarketItem[];
 }
 export const EMPTY_MARKET: MarketBoard = { open: [], sold: [], bought: [] };
+/** (17/11, Hugo) une vente ou un achat terminé (historique du Marché) */
+export interface MarketHistoryItem extends MarketItem {
+  buyerName: string;
+}
 
 // ─────────────────────────────── TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts)
 
@@ -466,6 +470,8 @@ export interface GameBackend {
   counterTrade(id: string, offered: TradeItem[], requested: TradeItem[], note?: string): Promise<void>;
   /** Échanges terminés, les plus récents d'abord. */
   tradeHistory(): Promise<TradeHistoryItem[]>;
+  /** (17/11, Hugo) mes ventes et mes achats terminés, les plus récents d'abord (onglet « Historique » du Marché) */
+  marketHistory(): Promise<MarketHistoryItem[]>;
   /** Envies d'un ami (ids de cartes). */
   friendWishlist(friendId: string): Promise<string[]>;
   // ── REFONTE DES ÉCHANGES (11/11, convex/deals.ts, règles src/core/deals.ts)

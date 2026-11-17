@@ -78,6 +78,17 @@ export function createForge(backend: GameBackend, shell: Shell) {
   };
 
   let tiles = new Map<string, { t: HTMLElement; sig: string }>();
+  /** bouton « − » (garder un exemplaire de plus) sur une tuile au feu */
+  function syncMinus(t: HTMLElement, k: string, inSel: number) {
+    let m = t.querySelector<HTMLElement>(':scope > .fg-minus');
+    if (!inSel) return m?.remove();
+    if (!m) {
+      m = h('span', 'fg-minus', '−');
+      m.setAttribute('role', 'button');
+      m.setAttribute('aria-label', tr('fg.minusA', { name: cardName(k.split(':')[0]) }));
+      t.append(m);
+    }
+  }
   function render() {
     const st = backend.state;
     if (st.mode === 'online' && (!st.ready || !st.user)) {
@@ -129,6 +140,7 @@ export function createForge(backend: GameBackend, shell: Shell) {
       if (old && badge) {
         if (badge.textContent !== label) badge.textContent = label;
         old.t.classList.toggle('burning', inSel > 0);
+        syncMinus(old.t, k, inSel);
         tiles.set(k, old);
         grid.append(old.t);
         continue;
@@ -140,11 +152,17 @@ export function createForge(backend: GameBackend, shell: Shell) {
       const icons = protectIcons(d.protect) + (d.locked ? '🔒' : '');
       if (icons) t.insertAdjacentHTML('beforeend', `<span class="ct-prot gm-prot" aria-label="${esc(why.join(', '))}">${icons}</span>`);
       t.classList.toggle('burning', inSel > 0);
-      t.addEventListener('click', () => {
+      syncMinus(t, k, inSel);
+      // (17/11, Hugo) un toucher met d'un coup TOUS les exemplaires en trop au feu (avant : un exemplaire par toucher) ;
+      // un second toucher les retire, « − » en garde un de plus
+      t.addEventListener('click', (ev) => {
         if (isPending('forge')) return;
-        const cur = sel.get(k)?.count ?? 0;
-        if (cur >= d.spare) sel.delete(k);
-        else sel.set(k, { cardId: d.cardId, rarity: d.rarity, count: cur + 1 });
+        const cur = sel.get(k);
+        if ((ev.target as HTMLElement).closest('.fg-minus')) {
+          if (cur && cur.count > 1) cur.count--;
+          else sel.delete(k);
+        } else if (cur) sel.delete(k);
+        else sel.set(k, { cardId: d.cardId, rarity: d.rarity, count: d.spare });
         undo = null;
         render();
       });

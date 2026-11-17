@@ -31,6 +31,22 @@ const countOf = async (t: T, token: string) => (await t.query(api.inventory.myCo
 const coinsOf = (t: T, id: Id<'users'>) => t.run(async (ctx) => (await ctx.db.get(id))?.coins ?? 0);
 
 describe('marché', () => {
+  test('(17/11) historique : la vente chez le vendeur, l’achat chez l’acheteur, avec le nom de l’autre ; rien sans session', async () => {
+    const { t, alice, bob } = await setup();
+    await give(t, alice.userId, A, 2);
+    await t.mutation(api.market.sell, { sessionToken: alice.token, cardId: A, rarity: 'common', price: 7 });
+    const [m] = (await t.query(api.market.board, {})).open;
+    expect(await t.query(api.market.history, { sessionToken: alice.token })).toHaveLength(0); // encore en vente
+    await t.mutation(api.market.buy, { sessionToken: bob.token, id: m.id, price: 7 });
+    const ha = await t.query(api.market.history, { sessionToken: alice.token });
+    expect(ha).toHaveLength(1);
+    expect(ha[0]).toMatchObject({ cardId: A, price: 7, sellerName: 'alice', buyerName: 'bob', status: 'sold' });
+    const hb = await t.query(api.market.history, { sessionToken: bob.token });
+    expect(hb).toHaveLength(1);
+    expect(hb[0]).toMatchObject({ sellerName: 'alice', buyerName: 'bob' });
+    expect(await t.query(api.market.history, {})).toHaveLength(0);
+  });
+
   test('vente : la carte quitte la collection, l’annonce est visible de tous ; prix bornés ; retrait = la carte revient', async () => {
     const { t, alice, bob } = await setup();
     await give(t, alice.userId, A, 1);

@@ -868,6 +868,13 @@ export function createLocalBackend(): GameBackend {
         .sort((a, b) => b.resolvedAt - a.resolvedAt)
         .slice(0, 30);
     },
+    async marketHistory() {
+      return M()
+        .filter((m) => m.status === 'sold' && (m.sellerId === 'me' || m.buyerId === 'me'))
+        .map((m) => ({ ...m, buyerName: m.buyerId ? userName(m.buyerId) : '?' }))
+        .sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0))
+        .slice(0, 100);
+    },
     // ── REFONTE DES ÉCHANGES (11/11) : mêmes règles que convex/deals.ts (src/core/deals.ts), robots compris
     async cardPanel(cardId) {
       await delay(60);

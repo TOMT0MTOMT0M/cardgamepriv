@@ -262,6 +262,10 @@ export function createOnlineBackend(): GameBackend {
       const rows = await net.tradeHistory(30);
       return rows.filter((t) => t.status !== 'pending').map((t): TradeHistoryItem => ({ ...toTrade(t), status: t.status as TradeHistoryItem['status'], resolvedAt: t.resolvedAt ?? t.createdAt }));
     },
+    async marketHistory() {
+      const rows = await net.ask(api.market.history, {});
+      return rows.map((m) => ({ ...m, id: m.id as string, sellerId: m.sellerId as string, buyerId: m.buyerId as string | undefined })).sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0));
+    },
     async friendWishlist(friendId) {
       return await net.wishlistOf(friendId as Id<'users'>);
     },
