@@ -11,9 +11,10 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
 - Rendu : `npm run dev` puis `/jeu/` (`?demo` = hors-ligne), ou le lien V2 après `lanceurs/mettre-en-ligne-v2.cmd`
 
 ## Git et mise en ligne
-- Travail sur `v2` uniquement. Ne pas toucher `master` ni `.wt-master/` (worktree de master).
-- Exception, seulement à la demande de Tom (correctif urgent ou outil qui doit être en prod tout de suite) : patch `v1.0.X` commité et tagué dans `.wt-master/`, avec son lanceur `.wt-master/METTRE-EN-LIGNE-v1.0.X.cmd` (Tom le lance). Puis le même contenu reporté sur `v2` et `git merge -s ours master` sur `v2` après avoir contrôlé que tout master y est (sinon `publier-patch.cmd` refuse).
-- La prod ne sort que par `lanceurs/publier-patch.cmd`, lancé par Tom. Ne pas lancer `convex:deploy` ni `cf:deploy` à la main.
+- (17/11) **Les noms de version ont glissé d'un cran** : la version EN LIGNE chez les joueurs s'appelle « V2 » (sortie le 14/11) et vit sur `master` (worktree `.wt-master/`, tags `v2.X.Y`) ; la branche git `v2` (lien V2, badge « V3 — test ») contient la **V3** en préparation.
+- Correctif, image, carte, musique… demandé « pour le jeu » / « pour les joueurs » sans parler de V3 = **patch de la version en ligne** : commité sur `master` (`.wt-master/`), tagué `v2.X.Y`, avec son lanceur `.wt-master/METTRE-EN-LIGNE-v2.X.Y.cmd` (modèle : `METTRE-EN-LIGNE-v2.1.3.cmd`). Puis le même contenu sur `v2` et `git merge -s ours master` sur `v2` (sinon `publier-patch.cmd` refuse). Dans le doute : demander à Tom.
+- Travail V3 (nouvelles fonctions, refontes) : sur `v2`.
+- `lanceurs/publier-patch.cmd` envoie en prod TOUT `master..v2`, donc la V3 en cours : ne pas s'en servir pour un correctif tant que `v2` porte des lots V3 non validés. Ne pas lancer `convex:deploy` ni `cf:deploy` à la main.
 - Les `.cmd` de `lanceurs/` tournent chez Tom : lui dire lequel et dans quel ordre.
 - Un commit par lot, uniquement ses propres fichiers (une autre session peut commiter en parallèle sur `v2`).
 - Un patch a son entrée dans `src/game/updates.data.ts`.
