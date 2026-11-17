@@ -18,7 +18,7 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
 - Les `.cmd` de `lanceurs/` tournent chez Tom : lui dire lequel et dans quel ordre.
 - Un commit par lot, uniquement ses propres fichiers (une autre session peut commiter en parallèle sur `v2`).
 - Un patch a son entrée dans `src/game/updates.data.ts`.
-- (17/11) Comparateur live / V3 (équipe) : `https://v2.cardgamepriv.pages.dev/miroir/` — deux copies de démo (master et v2) construites par `scripts/miroir/build.mjs` dans `mettre-en-ligne-v2.cmd`, gestes rejoués d'une copie à l'autre par `src/miroir/sonde.js`. Rien à maintenir à la main.
+- (17/11) Comparateur live / V3 (équipe) : `https://v2.cardgamepriv.pages.dev/miroir/` — deux copies de démo (master et v2) construites par `scripts/miroir/build.mjs` dans `mettre-en-ligne-v2.cmd`, gestes rejoués d'une copie à l'autre par `src/miroir/sonde.js`. Chaque côté a son code ET ses fichiers de `public/` (seules les illustrations R2 sont communes). Rien à maintenir à la main.
 
 ## Convex
 - Schéma compatible avec la V1 : nouveaux champs en `v.optional`, jamais de type changé.

@@ -4,7 +4,10 @@
  *   dist/miroir/v3/    ← la V3 en préparation (le dossier de travail, comme `mettre-en-ligne-v2.cmd`)
  * Les deux sont compilées de la même façon : même config Vite que le vrai jeu (celle de leur branche), canal « prod »
  * (ni bandeau ni écran « réservé à l'équipe »), SANS serveur (aucune adresse Convex : la démo hors-ligne), page du jeu
- * seulement, sans public/ (fx, audio, icônes… viennent du site, functions/miroir), plus deux ajouts invisibles :
+ * seulement. Fichiers de public/ (fx, audio, déchirures, modèles 3D, icônes…) : chaque côté a LES SIENS. La V3 prend
+ * ceux du site (son public/) ; la live reçoit dans son dossier les fichiers de public/ de master qui diffèrent de ceux
+ * de la V3 (les autres, identiques, viennent du site via functions/miroir). Seules les illustrations (R2) sont communes.
+ * Plus deux ajouts invisibles :
  *   - la sonde (src/miroir/sonde.js) en tête de jeu/index.html : stockage cloisonné, gestes relayés, son, hasard ;
  *   - une suite de hasard à part pour chaque module de la démo qui tire au sort (boosters, robots, jeux).
  * Le comparateur lui-même (miroir/index.html) fait partie du build V3 normal.
@@ -39,18 +42,56 @@ fs.mkdirSync(emptyEnv, { recursive: true });
 function exportLive() {
   const dir = path.join(CACHE, 'live-src');
   fs.mkdirSync(dir, { recursive: true });
-  for (const p of ['src', 'jeu', 'convex']) fs.rmSync(path.join(dir, p), { recursive: true, force: true });
+  for (const p of ['src', 'jeu', 'convex', 'public']) fs.rmSync(path.join(dir, p), { recursive: true, force: true });
   // index git À PART (GIT_INDEX_FILE) : ni l'index ni les fichiers du dossier de travail ne bougent
   const env = { ...process.env, GIT_INDEX_FILE: path.join(CACHE, 'live.index') };
   const git = (args, opts = {}) => execFileSync('git', ['-C', ROOT, ...args], { env, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...opts });
   git(['read-tree', LIVE_REF]);
-  const files = git(['ls-files', '--', 'src', 'jeu', 'convex/_generated', 'vite.config.ts', 'tsconfig.json', 'package.json']);
+  const files = git(['ls-files', '--', 'src', 'jeu', 'convex/_generated', 'public', ':(exclude)public/art', 'vite.config.ts', 'tsconfig.json', 'package.json']);
   git(['checkout-index', '-f', `--prefix=${path.relative(ROOT, dir).replace(/\\/g, '/')}/`, '--stdin'], { input: files });
   // mêmes dépendances que le dossier principal (package.json identique entre les branches)
   const nm = path.join(dir, 'node_modules');
-  if (!fs.existsSync(nm)) fs.symlinkSync(path.join(ROOT, 'node_modules'), nm, 'junction');
+  let linked = true;
+  try {
+    fs.lstatSync(nm);
+  } catch {
+    linked = false;
+  }
+  if (!linked) fs.symlinkSync(path.join(ROOT, 'node_modules'), nm, 'junction');
   const sha = execFileSync('git', ['-C', ROOT, 'rev-parse', '--short', LIVE_REF], { encoding: 'utf8' }).trim();
   return { dir, sha };
+}
+
+/** fichiers de public/ de la live qui diffèrent de ceux de la V3 (ou lui manquent) → copiés dans dist/miroir/live */
+const PUB_SKIP = /^(_headers|_redirects|_routes\.json|art\/)/;
+function walk(dir, rel = '') {
+  const out = [];
+  for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
+    const r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) out.push(...walk(dir, r));
+    else if (e.isFile()) out.push(r);
+  }
+  return out;
+}
+function livePublic(liveDir, outDir) {
+  const src = path.join(liveDir, 'public');
+  const v3 = path.join(ROOT, 'public');
+  if (!fs.existsSync(src)) return;
+  let n = 0;
+  let bytes = 0;
+  for (const rel of walk(src)) {
+    if (PUB_SKIP.test(rel)) continue;
+    const a = path.join(src, rel);
+    const b = path.join(v3, rel);
+    const size = fs.statSync(a).size;
+    if (fs.existsSync(b) && fs.statSync(b).size === size && fs.readFileSync(a).equals(fs.readFileSync(b))) continue;
+    const dest = path.join(outDir, rel);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(a, dest);
+    n++;
+    bytes += size;
+  }
+  console.log(`miroir live : ${n} fichier(s) de public/ propres à la live (${(bytes / 1e6).toFixed(2)} Mo)`);
 }
 
 function miroirPlugin(side) {
@@ -76,7 +117,7 @@ function miroirPlugin(side) {
   };
 }
 
-async function buildSide(side, srcRoot, sha) {
+async function buildSide(side, srcRoot, sha, after) {
   const outDir = path.join(OUT, side);
   const prevCwd = process.cwd();
   process.chdir(srcRoot); // (vite.config.ts lit `loadEnv(mode, '.')`)
@@ -97,6 +138,7 @@ async function buildSide(side, srcRoot, sha) {
     if (cfg.build.rolldownOptions) cfg.build.rolldownOptions = { ...cfg.build.rolldownOptions, input: { jeu: path.join(srcRoot, 'jeu', 'index.html') } };
     if (sha) process.env.BEBOU_SHA = sha;
     await vite.build(cfg);
+    after?.(outDir);
     const html = fs.readFileSync(path.join(outDir, 'jeu', 'index.html'), 'utf8');
     if (!html.includes('__MIROIR_SIDE')) throw new Error(`miroir ${side} : sonde absente du HTML`);
     if (/\.convex\.cloud/.test(fs.readdirSync(path.join(outDir, 'assets')).map((f) => (f.endsWith('.js') ? fs.readFileSync(path.join(outDir, 'assets', f), 'utf8') : '')).join(''))) {
@@ -111,7 +153,7 @@ async function buildSide(side, srcRoot, sha) {
 const t0 = Date.now();
 if (!only || only === 'live') {
   const { dir, sha } = exportLive();
-  await buildSide('live', dir, `${LIVE_REF}-${sha}`);
+  await buildSide('live', dir, `${LIVE_REF}-${sha}`, (outDir) => livePublic(dir, outDir));
 }
 if (!only || only === 'v3') await buildSide('v3', ROOT, process.env.BEBOU_SHA);
 console.log(`comparateur construit en ${Math.round((Date.now() - t0) / 1000)} s`);
