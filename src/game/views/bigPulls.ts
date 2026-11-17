@@ -139,7 +139,12 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     pos = written = 0;
     setScroll(0);
     // la boucle : le fil est doublé dès qu'il déborde (la copie prend le relais sans à-coup)
+    // (17/11) deux rendus dans la même image (changement de menu : ResizeObserver + données) doublaient le fil deux
+    // fois → nombre impair de tuiles, `kids[n]` indéfini dans measure() : seul le dernier rendu pose la copie
+    const my = ++renders;
+    clones = false;
     requestAnimationFrame(() => {
+      if (my !== renders) return;
       clones = false;
       if (!reduced && pulls.length > 1 && overflow() > 4) {
         list.append(...pulls.map((p) => item(p, false, true)));
@@ -159,6 +164,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   let written = 0;
   let period = 0;
   let clones = false;
+  let renders = 0;
   let vertical = false;
   let hover = false;
   let holdUntil = 0;
@@ -170,8 +176,8 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   function measure() {
     vertical = getComputedStyle(list).flexDirection === 'column';
     const kids = list.children as HTMLCollectionOf<HTMLElement>;
-    const n = kids.length / 2;
-    period = clones && n >= 1 ? (vertical ? kids[n].offsetTop - kids[0].offsetTop : kids[n].offsetLeft - kids[0].offsetLeft) : 0;
+    const n = Math.floor(kids.length / 2);
+    period = clones && n >= 1 && kids[n] ? (vertical ? kids[n].offsetTop - kids[0].offsetTop : kids[n].offsetLeft - kids[0].offsetLeft) : 0;
     // éventail : positions mesurées une fois (offsetTop ignore les transformations), relues seulement au rendu
     fanOn = vertical && fanMq.matches;
     el.classList.toggle('bp-fan', fanOn);
