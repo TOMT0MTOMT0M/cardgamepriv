@@ -48,6 +48,7 @@ export const en: PartOf<typeof fr> = {
   'sg.replyA': 'Reply to the player (optional)',
   'sg.nothingSent': 'You haven’t sent anything yet.',
   'sg.replyW': 'reply',
+  'sg.tvShows': 'Requested TV shows',
   'sg.universes': 'Requested universes',
   'sg.features': 'Requested features',
   'sg.written': 'Written answers',

@@ -4,7 +4,9 @@ import { tData } from './i18n';
  * serveur (convex/survey.ts, qui refuse toute réponse hors de ces listes).
  * Un nouveau sondage = un nouvel `id` : tout le monde le revoit, les réponses de l'ancien restent en base.
  */
-export const SURVEY_ID = 'maj-2026-11';
+export const SURVEY_ID = 'tele-2026-12';
+/** (20/11, demande de Hugo) l'ancien sondage « prochaines mises à jour » : ses résultats restent lisibles par l'équipe */
+export const SURVEY_PREV_ID = 'maj-2026-11';
 
 export interface SurveyOption {
   id: string;
@@ -47,9 +49,48 @@ export const SURVEY_FEATURES: SurveyOption[] = [
   O('f', 'ouvertures', 'Animations d’ouverture', 'à débloquer'),
   O('f', 'appli', 'Appli & notifications', 'comme une vraie appli'),
 ];
+
+/**
+ * (20/11, demande de Hugo) MINI-SONDAGE « ÉMISSIONS TÉLÉ » : le prochain ajout de cartes (début décembre) = les émissions
+ * télé et leurs candidats / présentateurs préférés. Q1 = quelles émissions (choix multiples), Q2 = quelles 6★ (texte libre,
+ * champ `names`). Pas de nouveautés ni de note.
+ */
+export const SURVEY_TV_SHOWS: SurveyOption[] = [
+  O('t', 'koh-lanta', 'Koh-Lanta', 'aventure'),
+  O('t', 'pekin-express', 'Pékin Express', 'aventure'),
+  O('t', 'fort-boyard', 'Fort Boyard', 'jeu d’aventure'),
+  O('t', 'intervilles', 'Intervilles', 'jeu'),
+  O('t', 'top-chef', 'Top Chef', 'cuisine'),
+  O('t', 'cauchemar-en-cuisine', 'Cauchemar en cuisine', 'cuisine'),
+  O('t', 'diner-presque-parfait', 'Un dîner presque parfait', 'cuisine'),
+  O('t', 'star-academy', 'Star Academy', 'télé-crochet'),
+  O('t', 'the-voice', 'The Voice', 'télé-crochet'),
+  O('t', 'nouvelle-star', 'Nouvelle Star', 'télé-crochet'),
+  O('t', 'mask-singer', 'Mask Singer', 'divertissement'),
+  O('t', 'danse-avec-les-stars', 'Danse avec les stars', 'divertissement'),
+  O('t', 'incroyable-talent', 'La France a un incroyable talent', 'divertissement'),
+  O('t', 'qui-veut-gagner', 'Qui veut gagner des millions ?', 'jeu'),
+  O('t', 'noubliez-pas-les-paroles', 'N’oubliez pas les paroles', 'jeu'),
+  O('t', 'questions-pour-un-champion', 'Questions pour un champion', 'jeu'),
+  O('t', 'douze-coups-de-midi', 'Les 12 coups de midi', 'jeu'),
+  O('t', 'maillon-faible', 'Le Maillon faible', 'jeu'),
+  O('t', 'secret-story', 'Secret Story', 'téléréalité'),
+  O('t', 'loft-story', 'Loft Story', 'téléréalité'),
+  O('t', 'les-marseillais', 'Les Marseillais', 'téléréalité'),
+  O('t', 'amour-est-dans-le-pre', 'L’amour est dans le pré', 'téléréalité'),
+  O('t', 'tpmp', 'Touche pas à mon poste', 'talk-show'),
+  O('t', 'quotidien', 'Quotidien', 'talk-show'),
+  O('t', 'cest-pas-sorcier', 'C’est pas sorcier', 'jeunesse'),
+];
 // i18n-data:fin
 
 export const SURVEY_MAX_FEATURES = 3;
+
+/** les choix de chaque sondage (le serveur refuse tout id hors de ces listes, et tout sondage inconnu) */
+export const SURVEYS: Readonly<Record<string, { universes: SurveyOption[]; features: SurveyOption[] }>> = {
+  [SURVEY_PREV_ID]: { universes: SURVEY_UNIVERSES, features: SURVEY_FEATURES },
+  [SURVEY_ID]: { universes: SURVEY_TV_SHOWS, features: [] },
+};
 
 export interface SurveyAnswer {
   universes: string[];
@@ -75,13 +116,14 @@ export interface SurveyResults {
 }
 
 /** Ne garde que les ids connus, sans doublon (et 3 nouveautés au plus) : même règle côté jeu et serveur. */
-export function cleanSurvey(a: SurveyAnswer): SurveyAnswer {
+export function cleanSurvey(a: SurveyAnswer, surveyId: string = SURVEY_ID): SurveyAnswer {
+  const def = SURVEYS[surveyId] ?? { universes: [], features: [] };
   const keep = (ids: string[], opts: SurveyOption[], max = opts.length) => [...new Set(ids)].filter((id) => opts.some((o) => o.id === id)).slice(0, max);
   const txt = (s: string | undefined, n: number) => s?.trim().replace(/\s+\n/g, '\n').slice(0, n) || undefined;
   const r = Math.round(Number(a.rating));
   return {
-    universes: keep(a.universes ?? [], SURVEY_UNIVERSES),
-    features: keep(a.features ?? [], SURVEY_FEATURES, SURVEY_MAX_FEATURES),
+    universes: keep(a.universes ?? [], def.universes),
+    features: keep(a.features ?? [], def.features, SURVEY_MAX_FEATURES),
     names: txt(a.names, 300),
     rating: r >= 1 && r <= 5 ? r : undefined,
     comment: txt(a.comment, 1000),

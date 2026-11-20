@@ -47,6 +47,7 @@ export const fr = {
   'sg.replyA': 'Réponse au joueur (facultatif)',
   'sg.nothingSent': 'Tu n’as encore rien envoyé.',
   'sg.replyW': 'réponse',
+  'sg.tvShows': 'Émissions demandées',
   'sg.universes': 'Univers demandés',
   'sg.features': 'Nouveautés demandées',
   'sg.written': 'Réponses écrites',

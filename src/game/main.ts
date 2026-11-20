@@ -1316,7 +1316,7 @@ async function boot() {
   reportLoad(shell);
   setTimeout(() => loader.remove(), 700);
   // (ouverture 07/11) visite guidée automatique : une seule fois par compte (`?guide` pour la revoir)
-  // (v1.0.10) sondage « prochaines mises à jour » : à la connexion, puis toutes les heures tant qu'il n'est pas rempli
+  // (v1.0.10) sondage à la connexion, puis reproposé tant qu'il n'est pas rempli (20/11 : mini-sondage télé, toutes les 8 h)
   void import('./survey').then((m) => m.armSurvey(backend));
   // (patch 08/11) annonce du patch : la page des mises à jour s'ouvre une fois, à la prochaine visite (announce.ts)
   void import('./announce').then((m) => m.armAnnounce(backend));

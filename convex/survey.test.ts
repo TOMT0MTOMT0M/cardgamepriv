@@ -4,7 +4,8 @@ import { convexTest } from 'convex-test';
 import { describe, expect, test } from 'vitest';
 import { api } from './_generated/api';
 import schema from './schema';
-import { SURVEY_ID } from '../src/core/survey';
+// (20/11) l'ancien sondage « prochaines mises à jour » (univers / nouveautés / note) ; le mini-sondage télé : plus bas
+import { SURVEY_PREV_ID as SURVEY_ID, SURVEY_ID as TV_ID } from '../src/core/survey';
 
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
 async function setup() {
@@ -52,5 +53,17 @@ describe('sondage', () => {
     expect(r.features).toMatchObject({ jeux: 1, events: 1 });
     expect(r.ratings).toEqual([0, 0, 1, 0, 1]);
     expect(r.texts).toEqual([expect.objectContaining({ author: 'alice', comment: 'Top', rating: 5 })]);
+  });
+
+  test('(20/11) mini-sondage télé : émissions de la liste seulement, 6★ en texte libre ; sondage inconnu refusé', async () => {
+    const { t, alice, tom } = await setup();
+    await expect(t.mutation(api.survey.submit, { sessionToken: alice.token, surveyId: 'pas-un-sondage', answer: { universes: ['koh-lanta'], features: [] } })).rejects.toThrow(/⟦(survey\.3)[⟧{]/);
+    await t.mutation(api.survey.submit, { sessionToken: alice.token, surveyId: TV_ID, answer: { universes: ['koh-lanta', 'anime', 'top-chef'], features: ['jeux'], names: 'Denis Brogniart' } });
+    const r = await t.query(api.survey.results, { sessionToken: tom.token, surveyId: TV_ID });
+    expect(r.total).toBe(1);
+    expect(r.universes).toMatchObject({ 'koh-lanta': 1, 'top-chef': 1, 'pekin-express': 0 });
+    expect(r.universes.anime).toBeUndefined();
+    expect(r.features).toEqual({});
+    expect(r.texts).toEqual([expect.objectContaining({ author: 'alice', names: 'Denis Brogniart' })]);
   });
 });

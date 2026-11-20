@@ -3,7 +3,7 @@ import '../core/i18n/fr/game.localBackend'; // (textes de ce module, version ang
 import { fe } from '../core/errors';
 import { rollPack, rollPackEx, type PackRequest } from '../core/packRoll';
 import { demoEvent, eventLive, type PackEvent } from '../core/events';
-import { SURVEY_FEATURES, SURVEY_UNIVERSES, cleanSurvey, surveyFilled, type SurveyAnswer } from '../core/survey';
+import { SURVEYS, cleanSurvey, surveyFilled, type SurveyAnswer } from '../core/survey';
 import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
 import { contractProblem, contractTarget, rollContract } from '../core/contracts';
@@ -1162,15 +1162,16 @@ export function createLocalBackend(): GameBackend {
       return !!save.surveys?.[id];
     },
     async submitSurvey(id, answer) {
-      const a = cleanSurvey(answer);
+      const a = cleanSurvey(answer, id);
       if (!surveyFilled(a)) throw new Error(fe('survey.1'));
       (save.surveys ??= {})[id] ??= { ...a, createdAt: Date.now() };
       persist();
     },
     async surveyResults(id) {
       const a = save.surveys?.[id];
-      const universes = Object.fromEntries(SURVEY_UNIVERSES.map((o) => [o.id, a?.universes.includes(o.id) ? 1 : 0]));
-      const features = Object.fromEntries(SURVEY_FEATURES.map((o) => [o.id, a?.features.includes(o.id) ? 1 : 0]));
+      const def = SURVEYS[id] ?? { universes: [], features: [] };
+      const universes = Object.fromEntries(def.universes.map((o) => [o.id, a?.universes.includes(o.id) ? 1 : 0]));
+      const features = Object.fromEntries(def.features.map((o) => [o.id, a?.features.includes(o.id) ? 1 : 0]));
       const ratings = [1, 2, 3, 4, 5].map((n) => (a?.rating === n ? 1 : 0));
       return { surveyId: id, total: a ? 1 : 0, universes, features, ratings, texts: a && (a.names || a.comment) ? [{ author: tr('lb.meDemo'), names: a.names, comment: a.comment, rating: a.rating, createdAt: a.createdAt }] : [] };
     },

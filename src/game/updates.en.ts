@@ -26,6 +26,16 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '20 Nov', title: 'Movie and game music, new 6★', tag: 'amélioré',
+        points: [
+          '📺 The next card drop lands in early December: TV shows, with their contestants and hosts. Tell us which ones you want in the mini survey.',
+          '🎬 Movie and video game 6★ cards play the music of their movie or game: Star Wars, Harry Potter, The Godfather, Rocky, Final Fantasy, The Last of Us, Minecraft, Halo… 86 in all.',
+          '🕵️ L Lawliet plays “L no Theme” (Death Note).',
+          '⭐ Michael Scott, Suguru Getou, Haruka Nanase and Knight become 6★.',
+          '🖼️ 36 cards in full art, better framed: Kakashi, Sasuke, Sanji, L, the Joker, Dexter, Brimstone, Scooby-Doo…',
+        ],
+      },
+      {
         date: '17 Nov', title: 'Series theme songs and new 6★ art', tag: 'amélioré',
         points: [
           '📺 6★ cards from TV series play their theme song: Friends, Game of Thrones, Breaking Bad, Stranger Things, The Sopranos, Malcolm… 56 series and films in all.',

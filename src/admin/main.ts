@@ -8,7 +8,7 @@ import type { FunctionArgs, FunctionReference, FunctionReturnType } from 'convex
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { CANAL } from '../core/canal';
-import { SURVEY_FEATURES, SURVEY_ID, SURVEY_UNIVERSES } from '../core/survey';
+import { SURVEYS, SURVEY_ID, SURVEY_PREV_ID } from '../core/survey';
 import { siteUrl } from '../core/siteRoot';
 import { viewEvenements } from './events';
 
@@ -414,8 +414,15 @@ function wireSugg(el: HTMLElement, s: Sugg, reload: () => void) {
     ),
   );
 }
+/** (20/11) le mini-sondage télé en tête, puis l'ancien sondage « prochaines mises à jour » */
 async function viewSondage(v: HTMLElement, head: string) {
-  const r = await ask(api.survey.results, { surveyId: SURVEY_ID });
+  const [tv, prev] = await Promise.all([sondageHtml(SURVEY_ID), sondageHtml(SURVEY_PREV_ID)]);
+  v.innerHTML = head + tv + prev;
+}
+async function sondageHtml(surveyId: string) {
+  const r = await ask(api.survey.results, { surveyId });
+  const def = SURVEYS[surveyId] ?? { universes: [], features: [] };
+  const tv = surveyId === SURVEY_ID;
   const bars = (opts: Array<{ id: string; label: string }>, counts: Record<string, number>) => {
     const max = Math.max(1, ...Object.values(counts));
     return opts
@@ -426,17 +433,20 @@ async function viewSondage(v: HTMLElement, head: string) {
   };
   const rated = r.ratings.reduce((a, b) => a + b, 0);
   const avg = rated ? r.ratings.reduce((a, n, i) => a + n * (i + 1), 0) / rated : 0;
-  v.innerHTML = `${head}
-    <div class="panel"><h3>Sondage « ${esc(r.surveyId)} » — ${r.total} réponse${r.total > 1 ? 's' : ''}</h3>
-      <div class="cols">
-        <div><h4>Univers à ajouter</h4>${bars(SURVEY_UNIVERSES, r.universes)}</div>
-        <div><h4>Nouveautés voulues</h4>${bars(SURVEY_FEATURES, r.features)}</div>
+  return `<div class="panel"><h3>Sondage « ${esc(r.surveyId)} » — ${r.total} réponse${r.total > 1 ? 's' : ''}</h3>
+      ${
+        tv
+          ? `<h4>Émissions voulues (ajout de début décembre)</h4>${bars(def.universes, r.universes)}`
+          : `<div class="cols">
+        <div><h4>Univers à ajouter</h4>${bars(def.universes, r.universes)}</div>
+        <div><h4>Nouveautés voulues</h4>${bars(def.features, r.features)}</div>
       </div>
       <h4>Note du jeu ${rated ? `— moyenne ${avg.toFixed(1).replace('.', ',')} / 5` : ''}</h4>
-      ${bars([5, 4, 3, 2, 1].map((n) => ({ id: String(n), label: '★'.repeat(n) })), Object.fromEntries(r.ratings.map((n, i) => [String(i + 1), n])))}
+      ${bars([5, 4, 3, 2, 1].map((n) => ({ id: String(n), label: '★'.repeat(n) })), Object.fromEntries(r.ratings.map((n, i) => [String(i + 1), n])))}`
+      }
     </div>
     <h3>Réponses écrites (${r.texts.length})</h3>
-    <div class="list">${r.texts.map((t) => `<article class="item"><header><b>${esc(t.author)}</b>${t.rating ? `<span class="muted">${'★'.repeat(t.rating)}</span>` : ''}<span class="muted">${when(t.createdAt)}</span></header>${t.names ? `<p><span class="muted">Séries demandées :</span> ${esc(t.names)}</p>` : ''}${t.comment ? `<p class="text">${esc(t.comment)}</p>` : ''}</article>`).join('') || '<p class="empty">Pas encore de réponse écrite.</p>'}</div>`;
+    <div class="list">${r.texts.map((t) => `<article class="item"><header><b>${esc(t.author)}</b>${t.rating ? `<span class="muted">${'★'.repeat(t.rating)}</span>` : ''}<span class="muted">${when(t.createdAt)}</span></header>${t.names ? `<p><span class="muted">${tv ? '6★ demandées :' : 'Séries demandées :'}</span> ${esc(t.names)}</p>` : ''}${t.comment ? `<p class="text">${esc(t.comment)}</p>` : ''}</article>`).join('') || '<p class="empty">Pas encore de réponse écrite.</p>'}</div>`;
 }
 
 // ───────────────────────────── Cartes à corriger ─────────────────────────────

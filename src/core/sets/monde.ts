@@ -4151,7 +4151,7 @@ const RAW: Array<[number, string, string, keyof typeof R, number, string, '' | '
   [23, "miam-after-eight", "After Eight", 'l', 0, "snacks-marques-fast-food--after-eight.jpg", "c", "Snack & Marque"],
   [23, "miam-amora-moutarde", "Amora moutarde", 'l', 0, "snacks-marques-fast-food--amora-moutarde.jpg", "c", "Snack & Marque"],
   [23, "miam-anis-de-flavigny", "Anis de Flavigny", 'l', 0, "snacks-marques-fast-food--anis-de-flavigny.jpg", "c", "Snack & Marque"],
-  [23, "miam-arlequin", "Arlequin", 'l', 0, "snacks-marques-fast-food--arlequin.jpg", "c", "Snack & Marque"],
+  [23, "miam-arlequin", "Arlequin", 'l', 0, "snacks-marques-fast-food--arlequin-r2611201333.jpg", "c", "Snack & Marque"],
   [23, "miam-barilla", "Barilla", 'l', 0, "snacks-marques-fast-food--barilla.png", "i", "Snack & Marque"],
   [23, "miam-belin-triangolini", "Belin (Triangolini)", 'l', 0, "snacks-marques-fast-food--belin-triangolini.jpg", "c", "Snack & Marque"],
   [23, "miam-brossard-savane", "Brossard Savane", 'l', 0, "snacks-marques-fast-food--brossard-savane.jpg", "c", "Snack & Marque"],

@@ -1044,13 +1044,14 @@ export const valorantCardId = (e: ValorantEntry) => `val-${e.uuid}`;
 /**
  * Illustrations remplacées à la main (nouveau nom : aucun cache ne peut ressortir l'ancienne). Image pleine (opaque) :
  * peinte bord à bord comme les photos des autres thèmes.
- * (12/11, dossier 4 de Tom) Neon. (17/11, zip 7 de Hugo) Jett, Killjoy, Reyna.
+ * (12/11, dossier 4 de Tom) Neon. (17/11, zip 7 de Hugo) Jett, Killjoy, Reyna. (20/11, zip 8 de Hugo) Brimstone.
  */
 const VALORANT_FILE_OVERRIDE: Readonly<Record<string, string>> = {
   'bb2a4828-46eb-8cd1-e765-15848195d751': 'bb2a4828-46eb-8cd1-e765-15848195d751-r2611121554.jpg',
   'add6443a-41bd-e414-f6ad-e58d267f4e95': 'add6443a-41bd-e414-f6ad-e58d267f4e95-r2611171353.jpg',
   '1e58de9c-4950-5125-93e9-a0aee9f98746': '1e58de9c-4950-5125-93e9-a0aee9f98746-r2611171353.jpg',
   'a3bfb853-43b2-7238-a4f1-ad90e9e46bcc': 'a3bfb853-43b2-7238-a4f1-ad90e9e46bcc-r2611171353.jpg',
+  '9f0d8ba9-4140-b941-57d3-a7ad57c6b417': '9f0d8ba9-4140-b941-57d3-a7ad57c6b417-r2611201333.jpg',
 };
 export const valorantFile = (e: ValorantEntry) => VALORANT_FILE_OVERRIDE[e.uuid] ?? `${e.uuid}.png`;
 

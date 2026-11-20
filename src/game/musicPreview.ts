@@ -27,6 +27,7 @@ const load = () =>
  * (15/11, Tom) 6★ d'un DESSIN ANIMÉ (Marge Simpson…) : le générique de son dessin animé — la version anglaise dans le
  * jeu en anglais quand elle diffère de la française.
  * (17/11, Hugo) 6★ d'une SÉRIE : son générique ; 6★ d'un FILM : sa musique (Marvel MCU : Avengers d'Alan Silvestri).
+ * (20/11, Hugo) 6★ d'un JEU VIDÉO : le thème de son jeu (même table, clé = famille `jv-…`).
  */
 async function previewOf(cardId: string): Promise<MusicPreview | null> {
   const t = await load();
@@ -35,7 +36,7 @@ async function previewOf(cardId: string): Promise<MusicPreview | null> {
   const g = e && subthemeById(e.subthemeId)?.group?.id;
   if (g === 'anime') return t.anime[e!.subthemeId] ?? null;
   if (g === 'dessins') return (lang() === 'en' ? t.cartoonEn[e!.subthemeId] : undefined) ?? t.cartoon[e!.subthemeId] ?? null;
-  if (g === 'series' || g === 'films') return t.screen[e!.subthemeId] ?? null;
+  if (g === 'series' || g === 'films' || g === 'jeux-video') return t.screen[e!.subthemeId] ?? null;
   return null;
 }
 
