@@ -1,0 +1,152 @@
+/*
+ * ONGLET ÉVÉNEMENT + CALENDRIER DE L'AVENT (20/11, views/evenement.ts) — direction « usinage » : acier brossé, filets
+ * fins, noir / blanc. Une seule couleur, et elle porte une information : la LUMIÈRE CHAUDE (`--av-glow`) = une case à
+ * ouvrir ou déjà ouverte. Relief en CSS 3D (perspective + charnière sur la tranche gauche du volet), sans WebGL : la
+ * page reste légère et la vitrine 3D de la boutique dort dessous.
+ * Durées : jetons de src/core/motion.ts (`--dur-*`, `--amb-*`, et `--av-open` / `--av-stg` posés par la vue).
+ */
+.evenement { --av-glow: #ffd9a0; --av-steel-1: #2b2c2e; --av-steel-2: #1a1b1c; }
+.evt-wrap { gap: 16px; }
+.evt-pack { --ev: #fff; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px 8px 14px; border-radius: var(--r-pill); border: 1px solid color-mix(in srgb, var(--ev) 55%, var(--gm-line-2)); background: #000; color: var(--ink); text-decoration: none; transition: border-color var(--dur-rapide) var(--ease-standard), background-color var(--dur-rapide) var(--ease-standard), transform var(--dur-rapide) var(--ease-standard); }
+.evt-pack[hidden], .av-godbar[hidden], .av-dbg[hidden], .evt-none[hidden] { display: none; }
+@media (hover: hover) { .evt-pack:hover { border-color: var(--ev); background: color-mix(in srgb, var(--ev) 9%, #000); } }
+.evt-pack:active { transform: scale(0.98); }
+.evt-none { text-align: center; padding: 30px 0; font: 400 12.5px var(--mono); }
+
+/* ── le panneau du calendrier ── */
+.av { position: relative; display: flex; flex-direction: column; gap: 16px; padding: 18px; border-radius: var(--r-box); border: 1px solid var(--gm-line); background: radial-gradient(120% 80% at 50% 0%, rgba(255, 217, 160, 0.05), transparent 60%), var(--gm-fill); overflow: hidden; isolation: isolate; }
+.av-snow { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.7; }
+.av-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.av-t { display: block; font: 600 clamp(22px, 3vw, 30px)/1 var(--title); letter-spacing: -0.01em; }
+.av-sub { display: block; margin-top: 6px; font: var(--gm-label); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+.av-status { display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px; border-radius: var(--r-pill); border: 1px solid var(--gm-line-2); font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.av-status b { color: #fff; font-weight: 600; letter-spacing: 0.04em; }
+.av[data-phase='live'] .av-status { border-color: color-mix(in srgb, var(--av-glow) 60%, transparent); }
+.av[data-phase='live'] .av-status span { color: var(--av-glow); }
+
+/* god pack offert en attente : un raccourci vers la boutique */
+.av-godbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--r-box); border: 1px solid var(--av-glow); background: color-mix(in srgb, var(--av-glow) 9%, #000); color: #fff; text-decoration: none; }
+.av-godbar span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.av-godbar b { font: 600 14px var(--title); }
+.av-godbar small { font: 400 11.5px var(--mono); color: var(--ink-2); }
+.av-godbar em { font: 600 11px var(--mono); font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
+
+/* ── la scène en relief ── */
+.av-stage { perspective: 1200px; perspective-origin: 50% 40%; padding: 6px 0 2px; touch-action: pan-y; }
+.av-board { --rx: 0deg; --ry: 0deg; --lx: 50%; --ly: 30%; position: relative; max-width: 760px; margin: 0 auto; padding: 14px; border-radius: calc(var(--r-box) + 4px); transform-style: preserve-3d; transform: rotateX(var(--rx)) rotateY(var(--ry));
+  background: linear-gradient(180deg, #131313, #070707); border: 1px solid var(--gm-line-2); box-shadow: 0 40px 70px -40px #000, inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform var(--dur-emphatique) var(--gm-soft); }
+.av-board.live { transition-duration: var(--dur-rapide); }
+/* reflet qui suit le pointeur sur toute la plaque */
+.av-board::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(60% 50% at var(--lx) var(--ly), rgba(255, 255, 255, 0.07), transparent 70%); transform: translateZ(1px); }
+.av-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; transform-style: preserve-3d; }
+
+/* ── une case : niche (au fond) + volet (devant, sur charnière) ── */
+.av-door { position: relative; aspect-ratio: 1 / 1.08; padding: 0; border: 0; border-radius: var(--r-ctl); background: none; color: inherit; cursor: pointer; transform-style: preserve-3d; -webkit-tap-highlight-color: transparent; }
+.av-door:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.av-24 { grid-column: 3 / span 2; grid-row: span 1; aspect-ratio: auto; }
+.av-niche { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: inherit; background: #020202; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07), inset 0 10px 18px -6px #000, inset 0 -8px 16px -8px rgba(0, 0, 0, 0.9); overflow: hidden; }
+/* la lumière de la niche : éteinte tant que le volet est fermé */
+.av-niche::before { content: ''; position: absolute; inset: 0; background: radial-gradient(85% 75% at 50% 62%, color-mix(in srgb, var(--av-glow) 48%, transparent), transparent 72%); opacity: 0; transition: opacity var(--av-open) var(--ease-standard); }
+.av-ico { position: relative; display: grid; place-items: center; width: 26px; height: 26px; color: #fff; opacity: 0; transform: translateY(8px) scale(0.8); transition: opacity var(--dur-emphatique) var(--ease-entree) calc(var(--av-open) * 0.35), transform var(--av-open) var(--gm-spring) calc(var(--av-open) * 0.3); }
+.av-ico svg { width: 100%; height: 100%; }
+.av-ico.god { color: var(--av-glow); width: 30px; height: 30px; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--av-glow) 70%, transparent)); }
+.av-niche em { position: relative; font: 600 12.5px var(--mono); font-style: normal; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; opacity: 0; transition: opacity var(--dur-emphatique) var(--ease-entree) calc(var(--av-open) * 0.5); }
+.av-leaf { position: absolute; inset: 0; border-radius: inherit; transform-origin: 0 50%; transform-style: preserve-3d; transform: rotateY(0deg); transition: transform var(--av-open) var(--gm-soft), filter var(--dur-standard) var(--ease-standard); will-change: transform; }
+.av-front, .av-back { position: absolute; inset: 0; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+/* face avant : acier brossé vertical, numéro gravé, petit loquet à droite */
+.av-front { display: grid; place-items: center; overflow: hidden;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 7px), linear-gradient(180deg, var(--av-steel-1), var(--av-steel-2));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.6), 0 6px 12px -8px #000; }
+.av-front::after { content: ''; position: absolute; inset: 0; background: radial-gradient(90% 70% at var(--lx, 50%) var(--ly, 0%), rgba(255, 255, 255, 0.13), transparent 65%); pointer-events: none; }
+.av-front b { position: relative; font: 600 clamp(17px, 3.4vw, 27px)/1 var(--title); color: rgba(255, 255, 255, 0.34); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7), 0 -1px 0 rgba(255, 255, 255, 0.08); letter-spacing: -0.01em; transition: color var(--dur-standard) var(--ease-standard), text-shadow var(--dur-standard) var(--ease-standard); }
+.av-knob { position: absolute; right: 7%; top: 50%; width: 5px; height: 16%; min-height: 9px; translate: 0 -50%; border-radius: 3px; background: linear-gradient(90deg, #0c0c0c, #3d3d3d); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 1px 0 0 rgba(255, 255, 255, 0.12); }
+/* dos du volet (vu quand il est ouvert) : acier plus sombre, éclairé par la niche */
+.av-back { transform: rotateY(180deg); background: linear-gradient(90deg, #0d0d0d, #1b1b1b); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), inset -14px 0 22px -12px color-mix(in srgb, var(--av-glow) 45%, transparent); }
+
+/* ── états ── */
+/* pas encore : acier éteint */
+.av-door[data-s='locked'] .av-leaf, .av-door[data-s='closed'] .av-leaf { filter: brightness(0.74); }
+.av-door[data-s='locked'], .av-door[data-s='closed'] { cursor: default; }
+/* à rattraper : numéro en clair */
+.av-door[data-s='late'] .av-front b { color: #fff; text-shadow: none; }
+.av-door[data-s='late'] .av-front { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 12px -8px #000; }
+/* le jour J : la lumière filtre par les bords du volet, et respire */
+.av-door[data-s='today'] { z-index: 2; }
+.av-door[data-s='today'] .av-front b { color: #fff; text-shadow: 0 0 14px color-mix(in srgb, var(--av-glow) 80%, transparent); }
+.av-door[data-s='today'] .av-front { box-shadow: inset 0 0 0 1px var(--av-glow), inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 12px -8px #000; }
+.av-door[data-s='today'] .av-leaf { animation: av-leak var(--amb-flotte) var(--ease-standard) infinite; }
+.av-door[data-s='today'] .av-niche::before { opacity: 0.55; }
+@keyframes av-leak { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--av-glow) 0%, transparent), 0 0 14px 0 color-mix(in srgb, var(--av-glow) 35%, transparent); } 50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--av-glow) 55%, transparent), 0 0 30px 4px color-mix(in srgb, var(--av-glow) 55%, transparent); } }
+@media (hover: hover) {
+  .av-door[data-s='today']:hover .av-leaf, .av-door[data-s='late']:hover .av-leaf { transform: rotateY(-16deg); transition-duration: var(--dur-emphatique); }
+  .av-door[data-s='today']:hover .av-niche::before, .av-door[data-s='late']:hover .av-niche::before { opacity: 0.8; }
+}
+.av-door[data-s='today']:active .av-leaf, .av-door[data-s='late']:active .av-leaf { transform: rotateY(-8deg) scale(0.985); transition-duration: var(--dur-instant); }
+/* le loquet a sauté (réponse du serveur en route) : entrouvert */
+.av-door[data-s='opening'] .av-leaf { transform: rotateY(-26deg); transition-duration: var(--dur-emphatique); }
+.av-door[data-s='opening'] .av-niche::before { opacity: 0.75; }
+/* ouvert : le volet pivote sur sa tranche, la niche s'éclaire, le cadeau monte */
+.av-door[data-s='opened'] { cursor: default; }
+.av-door[data-s='opened'] .av-leaf { transform: rotateY(-104deg); }
+.av-door[data-s='opened'] .av-niche::before { opacity: 1; }
+.av-door[data-s='opened'] .av-niche { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--av-glow) 45%, transparent), inset 0 10px 18px -6px #000; }
+.av-door[data-s='opened'] .av-ico { opacity: 1; transform: none; }
+.av-door[data-s='opened'] .av-niche em { opacity: 1; }
+/* volet verrouillé qu'on force : il résiste */
+.av-door.nope .av-leaf { animation: av-nope var(--dur-emphatique) var(--ease-standard); }
+@keyframes av-nope { 20% { transform: rotateY(-7deg); } 45% { transform: rotateY(0deg); } 65% { transform: rotateY(-3deg); } 100% { transform: rotateY(0deg); } }
+
+/* la case 24 : le God Pack, plus large, lumière plus franche */
+.av-24 { min-height: 0; }
+.av-24 .av-front b { font-size: clamp(24px, 4.6vw, 40px); }
+.av-24 .av-niche { flex-direction: row; gap: 10px; }
+.av-24 .av-niche em { font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--av-glow); }
+.av-24[data-s='opened'] .av-leaf { transform: rotateY(-98deg); }
+.av-door.burst .av-niche::after { content: ''; position: absolute; left: 50%; top: 50%; width: 40%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 1px solid var(--av-glow); animation: av-burst var(--av-open) var(--ease-entree) both; }
+@keyframes av-burst { from { opacity: 1; scale: 0.3; } to { opacity: 0; scale: 4; } }
+
+/* le cadeau qui s'élève de la niche à l'ouverture */
+.av-fly { position: absolute; left: 50%; top: 0; z-index: 5; translate: -50% -40%; padding: 4px 11px; border-radius: var(--r-pill); background: #fff; color: #000; font: 600 12px var(--mono); white-space: nowrap; pointer-events: none; transform: translateZ(40px); animation: av-fly calc(var(--av-open) * 2.4) var(--ease-entree) calc(var(--av-open) * 0.45) both; }
+.av-fly.god { background: var(--av-glow); }
+@keyframes av-fly { 0% { opacity: 0; translate: -50% 60%; scale: 0.7; } 18% { opacity: 1; translate: -50% -40%; scale: 1; } 78% { opacity: 1; translate: -50% -70%; } 100% { opacity: 0; translate: -50% -110%; } }
+
+/* arrivée sur la page : les volets se posent en cascade */
+.av-grid.in .av-door { animation: av-in var(--dur-emphatique) var(--ease-entree) calc(min(var(--i), 15) * var(--av-stg)) both; }
+@keyframes av-in { from { opacity: 0; transform: translateZ(-60px) translateY(12px); } }
+
+/* ── paliers des cosmétiques de Noël ── */
+.av-rail { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding-top: 14px; }
+.av-rail-bar { position: absolute; left: 0; right: 0; top: 0; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.av-rail-bar i { position: absolute; inset: 0; transform-origin: 0 50%; scale: var(--p, 0) 1; background: var(--av-glow); transition: scale var(--av-open) var(--ease-entree); }
+.av-step { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 8px; min-width: 0; padding: 9px 11px; border-radius: var(--r-ctl); border: 1px solid var(--gm-line); color: var(--ink-3); transition: border-color var(--dur-emphatique) var(--ease-standard), color var(--dur-emphatique) var(--ease-standard); }
+.av-step i { grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--gm-line-2); }
+.av-step b { font: 600 11px var(--mono); letter-spacing: 0.14em; font-variant-numeric: tabular-nums; }
+.av-step b::after { content: ' / 24'; opacity: 0.55; }
+.av-step em { font: 500 11.5px var(--mono); font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.av-step.on { border-color: color-mix(in srgb, var(--av-glow) 60%, transparent); color: #fff; }
+.av-step.on i { border-color: var(--av-glow); color: var(--av-glow); }
+
+/* ── mode test (équipe, démo) ── */
+.av-dbg { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--r-ctl); border: 1px dashed var(--gm-line-2); font: 500 11px var(--mono); color: var(--ink-2); }
+.av-dbg > b { letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+.av-dbg.sim > b { color: var(--av-glow); }
+.av-dbg label { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px; }
+.av-dbg input { flex: 1; min-width: 80px; accent-color: #fff; }
+.av-dbg output { min-width: 34px; text-align: right; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .av { padding: 14px 12px; gap: 14px; }
+  .av-board { padding: 9px; }
+  .av-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+  /* 23 cases sur 4 colonnes : la dernière rangée en a 3, la 24 prend toute la rangée suivante */
+  .av-24 { grid-column: 1 / -1; aspect-ratio: 4 / 1.08; }
+  .av-niche em { font-size: 11.5px; }
+  .av-ico { width: 22px; height: 22px; }
+  .av-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 641px) {
+  /* 23 cases sur 6 colonnes : 3 rangées pleines + 5 cases ; la 24 (2 colonnes) ferme le calendrier, centrée dessous */
+  .av-24 { grid-column: 3 / span 2; aspect-ratio: 2 / 0.9; }
+}
+.av-godbar .av-ico { opacity: 1; transform: none; flex: none; }

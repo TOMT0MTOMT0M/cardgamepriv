@@ -1,8 +1,9 @@
 import type { RarityId } from '../core/rarity';
 import type { AchievementStats, EconState, StakeItem } from '../core/economy';
 import type { WeeklyState } from '../core/weekly';
-import type { GameCard, PackChoice, Stake } from '../core/games';
+import type { GameCard, PackChoice, RouletteColor, Stake } from '../core/games';
 import type { JeuxBackend } from './ecoJeux';
+import type { ExtrasBackend } from './ecoExtras';
 import type { MsgParams } from '../core/msgRefs';
 
 /**
@@ -25,6 +26,8 @@ export interface EcoSnapshot {
   suggestionsNew?: number;
   /** achat de boosters en pièces : prix unitaire et achats encore possibles aujourd'hui */
   packShop: { price: number; left: number };
+  /** (20/11) calendrier de l'Avent (src/core/avent.ts) : cases ouvertes cette année, god packs offerts en attente */
+  advent?: { opened: number[]; godPacks: number };
 }
 
 export interface DuelSideView {
@@ -76,6 +79,15 @@ export interface RouletteBet {
   cards: PotCard[];
 }
 
+/** (20/11) mise couleur : pièces sur rouge, noir ou vert ; `paid` = pièces rendues une fois le tirage fait */
+export interface RouletteColorBet {
+  userId: string;
+  name: string;
+  color: RouletteColor;
+  coins: number;
+  paid?: number;
+}
+
 export interface RouletteView {
   round: {
     id: string;
@@ -84,12 +96,14 @@ export interface RouletteView {
     carriedCards: PotCard[];
     houseCards: GameCard[];
     bets: RouletteBet[];
+    /** (20/11) mises couleur du tirage (pari contre la maison, hors du pot) */
+    colorBets?: RouletteColorBet[];
     pot: { coins: number; cards: PotCard[]; value: number };
     drawAt: number;
   } | null;
   nextDrawAt: number;
   me: string | null;
-  past: Array<{ id: string; day: string; result?: { number: number; winnerId?: string; winnerName?: string; potValue: number }; drawnAt?: number; bets: Array<{ userId: string; name: string; numbers: number[] }> }>;
+  past: Array<{ id: string; day: string; result?: { number: number; winnerId?: string; winnerName?: string; potValue: number }; drawnAt?: number; bets: Array<{ userId: string; name: string; numbers: number[] }>; colors?: RouletteColorBet[] }>;
 }
 
 export interface LobbyView {
@@ -128,7 +142,7 @@ export interface FriendAch {
   stats: AchievementStats;
 }
 
-export interface EcoBackend extends JeuxBackend {
+export interface EcoBackend extends JeuxBackend, ExtrasBackend {
   readonly snapshot: EcoSnapshot | null;
   onChange(fn: (s: EcoSnapshot | null) => void): () => void;
   claimCalendar(): Promise<{ day: number; coins: number; packs: number }>;
@@ -156,6 +170,8 @@ export interface EcoBackend extends JeuxBackend {
   leaveRoyale(id: string): Promise<void>;
   startRoyale(id: string): Promise<void>;
   placeBet(numbers: number[], stake: Stake): Promise<void>;
+  /** (20/11) mise couleur à la roulette : pièces sur rouge / noir (× 2) ou vert (× 10), une par tirage */
+  placeColorBet(color: RouletteColor, coins: number): Promise<void>;
   // admin
   alerts(): Promise<AbuseAlertView[]>;
   review(key: string, verdict: 'ok' | 'watch', note?: string): Promise<void>;

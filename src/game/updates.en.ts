@@ -6,6 +6,15 @@ export const UPDATES_EN: UpdateMonth[] = [
     month: 'November 2026',
     entries: [
       {
+        date: '20 Nov', title: 'V3: Event tab, unique titles, roulette in colour', tag: 'nouveau',
+        points: [
+          '🎄 New Event tab: the Advent calendar, from 1 to 24 December. One door a day (coins or boosters), missed days can be caught up until the 31st, and door 24 hides a God Pack.',
+          '❄️ Christmas cosmetics to win by opening doors: a badge, two titles and a frame.',
+          '♛ Unique titles: the first player to complete Valorant, Naruto, Pokémon or League of Legends wins a title nobody else will ever get (Radiant, Hokage, Pokémon Master, Challenger). It shows next to their name.',
+          '🎡 Roulette: the wheel and the mat are now red, black and green. You can bet coins on a colour (red or black × 2, green × 10), on top of or instead of your numbers.',
+        ],
+      },
+      {
         date: '14 Nov', title: '🚀 Version 2: the biggest update yet', tag: 'nouveau', featured: true,
         lead: 'Your collection is safe: cards, coins, boosters, achievements, binders – nothing was lost. And to celebrate: 🎁 50 free boosters for everyone.',
         points: [

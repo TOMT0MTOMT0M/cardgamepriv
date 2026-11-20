@@ -1,4 +1,5 @@
 import { t as tr } from '../../core/i18n';
+import { onUniqueTitles, utag } from '../uniqueTitle';
 import '../../core/i18n/fr/game.views.market'; // (textes de ce module, version anglaise)
 import { BOARD_HOURS, cardKey, lockedCards, type GameBackend, type MarketBoard, type MarketItem } from '../backend';
 import { catalogEntry } from '../../core/sets/themes';
@@ -122,7 +123,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
    */
   const nodes = new Map<string, { sig: string; el: HTMLElement }>();
   function itemFor(m: MarketItem): HTMLElement {
-    const sig = `${m.price}|${m.rarity}|${m.cardId}|${m.mintNumber}|${isMine(m) ? 1 : 0}|${m.sellerName}`;
+    const sig = `${m.price}|${m.rarity}|${m.cardId}|${m.mintNumber}|${isMine(m) ? 1 : 0}|${m.sellerName}|${utag(m.sellerId, { compact: true }).length}`;
     const had = nodes.get(m.id);
     if (had && had.sig === sig) return had.el;
     const w = item(m);
@@ -188,7 +189,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     t.setAttribute('aria-label', tr('mk.seeCard', { name: nameOf(m.cardId) }));
     t.addEventListener('click', () => showCardPanel(backend, m.cardId));
     w.append(t);
-    const meta = h('div', 'mk-meta', `<div class="mk-pr">${coin(m.price)}${cmpHtml(m.rarity, m.price)}</div><div class="mk-sub">${starsHtml(m.rarity)} · n°${m.mintNumber} · ${isMine(m) ? 'toi' : `par ${esc(m.sellerName)}`}</div>`);
+    const meta = h('div', 'mk-meta', `<div class="mk-pr">${coin(m.price)}${cmpHtml(m.rarity, m.price)}</div><div class="mk-sub">${starsHtml(m.rarity)} · n°${m.mintNumber} · ${isMine(m) ? 'toi' : `par ${esc(m.sellerName)}${utag(m.sellerId, { compact: true })}`}</div>`);
     w.append(meta);
     const b = h('button', isMine(m) ? 'btn-ghost mk-cancel' : 'btn-primary mk-buy', isMine(m) ? tr('mk.withdraw') : tr('mk.buy'));
     b.addEventListener('click', () => void (isMine(m) ? cancel(m, b) : buy(m, b)));
@@ -389,6 +390,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
   sheet.addEventListener('click', (e) => e.target === sheet && closeSheet());
 
   backend.eco.onChange(() => el.isConnected && render());
+  onUniqueTitles(() => el.isConnected && render());
   backend.onChange(() => el.isConnected && !sheet.hidden && !chosen && renderPick());
 
   return {

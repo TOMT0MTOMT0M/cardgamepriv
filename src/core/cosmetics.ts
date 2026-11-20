@@ -37,6 +37,8 @@ export interface PlayerStats {
   /** (11/11, saisons — convex/seasons.ts) saisons finies dans les 3 premiers / premier */
   seasonPodiums?: number;
   seasonWins?: number;
+  /** (20/11) cases ouvertes du calendrier de l'Avent 2026 (convex/avent.ts) */
+  noel26?: number;
 }
 
 export interface Cosmetic {
@@ -153,7 +155,9 @@ const ANIMATED_FRAMES: Cosmetic[] = [
 // i18n-data:fin
 /** (11/11, saisons) cadre gagné en finissant une saison sur le podium (convex/seasons.ts) — doré : la couleur dit le rang */
 // i18n-data:début
-const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison', need: 'season-podium', css: '#ffc94a', art: 'podium' })];
+const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison', need: 'season-podium', css: '#ffc94a', art: 'podium' }),
+  // (20/11) Avent 2026 : 18 cases ouvertes (src/core/avent.ts) — bleu givre : la couleur dit l'événement
+  C({ id: 's-noel26', label: 'Flocons', need: 'noel26-18', css: '#cfeaff', art: 'flocons' })];
 
 // i18n-data:fin
 /**
@@ -252,6 +256,9 @@ export const TITLES: Cosmetic[] = [
   C({ id: 't-top', label: 'Numéro un', need: 'top-1' }),
   // (11/11, saisons) premier d'une saison mensuelle du classement (convex/seasons.ts)
   C({ id: 't-season-1', label: 'Champion de saison', need: 'season-1' }),
+  // (20/11) calendrier de l'Avent 2026 (src/core/avent.ts) : 12 cases, puis les 24
+  C({ id: 't-noel26-1', label: 'Lutin de Noël', need: 'noel26-12' }),
+  C({ id: 't-noel26-2', label: 'Esprit de Noël 2026', need: 'noel26-24' }),
 ];
 // i18n-data:fin
 
@@ -284,6 +291,7 @@ export const BADGES: Cosmetic[] = [
   C({ id: 'contract', label: 'Contrat signé', need: 'contract-1', glyph: '🔥' }),
   C({ id: 'streak', label: '7 jours', need: 'streak-7', glyph: '🔥7' }),
   C({ id: 'half', label: '5 000 cartes', need: 'uniq-5000', glyph: '📚' }),
+  C({ id: 'noel26', label: 'Flocon 2026', need: 'noel26-4', glyph: '❄' }),
 ];
 // i18n-data:fin
 
@@ -384,7 +392,7 @@ export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(
   collection: Array<{ cardId: string; rarity: string; count: number }>,
-  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number },
+  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number; noel26?: number },
 ): PlayerStats {
   const ids = new Set<string>();
   let mythics = 0, legendaries = 0, secrets = 0;

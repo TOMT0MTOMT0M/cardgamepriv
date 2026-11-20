@@ -86,6 +86,10 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
   // pity : 200 boosters secs → celui-ci contient une Mythique (src/core/pity.ts)
   const pity = user.pityCount ?? 0;
   req.forceMythic = pityForces(pity);
+  // (20/11) god pack offert en attente (case 24 de l'Avent, convex/avent.ts) : ce booster en est un — relu sur le joueur
+  // (ouverture en série : `user` date du début de la mutation)
+  const godLeft = (await ctx.db.get(user._id))?.godPacks ?? 0;
+  if (godLeft > 0) req.forceGod = true;
   if (!isValidPackRequest(req)) {
     throw new ConvexError(fe('packs.1'));
   }
@@ -101,6 +105,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     packBalance: regen.balance - 1,
     packRegenAt: regen.regenAt,
     lastSeenAt: now,
+    ...(godLeft > 0 ? { godPacks: godLeft - 1 } : {}),
     statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
   });
   await syncPresence(ctx, user._id);

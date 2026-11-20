@@ -1,4 +1,5 @@
 import { accentColor, frameOf, titleOf } from '../../core/cosmetics';
+import { onUniqueTitles, utag } from '../uniqueTitle';
 import { framed, titleHtml } from '../cosmeticArt';
 import { t as tr } from '../../core/i18n';
 import '../../core/i18n/fr/game.views.friends'; // (textes de ce module, version anglaise)
@@ -209,7 +210,8 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
   const ttl = (userId?: string) => {
     const cos = cosOfUser(userId);
     const t = cos?.title ? titleOf(cos.title) : undefined;
-    return t ? ` <span class="am-ttl"${accentColor(cos?.accent) ? ` style="--pa:${accentColor(cos?.accent)}"` : ''}>${titleHtml(t.label, cos?.titleStyle, 'ts-light')}</span>` : '';
+    // (20/11) + le titre unique (« world first »), s'il en détient un
+    return `${utag(userId, { compact: true })}${t ? ` <span class="am-ttl"${accentColor(cos?.accent) ? ` style="--pa:${accentColor(cos?.accent)}"` : ''}>${titleHtml(t.label, cos?.titleStyle, 'ts-light')}</span>` : ''}`;
   };
   const profileHref = (userId: string) => `#/profil/${encodeURIComponent(userId)}`;
 
@@ -358,6 +360,7 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
 
   let tick = 0;
   backend.onChange(() => el.isConnected && (render(), void loadReferral()));
+  onUniqueTitles(() => el.isConnected && render(true));
   return {
     el,
     enter() {

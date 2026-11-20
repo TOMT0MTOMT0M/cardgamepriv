@@ -179,6 +179,44 @@ export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, 
   return null;
 }
 
+// ───────────────────────────────────────────── Roulette : COULEURS (20/11)
+/*
+ * Chaque numéro a une couleur, visible sur la roue et sur le tapis : 17 rouges, 17 noirs, 2 verts (18 et 36, face à face
+ * sur la roue). Les couleurs alternent tout autour de la roue : de 1 à 17, impair = rouge ; de 19 à 35, impair = noir.
+ * En plus de sa mise sur des numéros (le pot, inchangé), un joueur peut miser des PIÈCES sur une couleur — l'un, l'autre,
+ * ou les deux au même tirage (une mise couleur par tirage). C'est un pari contre la maison, réglé au tirage :
+ *   bonne couleur rouge ou noire = 2 × la mise · bon vert = 10 × la mise · mauvaise couleur = mise perdue.
+ * Rendement moyen : rouge / noir 94 %, vert 56 % (2 cases sur 36) — un petit puits de pièces, comme La Presse.
+ */
+export type RouletteColor = 'red' | 'black' | 'green';
+export const ROULETTE_COLORS: readonly RouletteColor[] = ['red', 'black', 'green'];
+export const ROULETTE_GREENS: readonly number[] = [18, 36];
+export function rouletteColor(n: number): RouletteColor {
+  if (ROULETTE_GREENS.includes(n)) return 'green';
+  return (n % 2 === 1) === n < 18 ? 'red' : 'black';
+}
+/** multiplicateur rendu sur la mise (mise comprise) */
+export const COLOR_PAYOUT: Record<RouletteColor, number> = { red: 2, black: 2, green: 10 };
+export const COLOR_BET_MIN = 50;
+export const COLOR_BET_MAX = 1000;
+/** jetons proposés sur le tapis */
+export const COLOR_BET_CHIPS: readonly number[] = [50, 100, 250, 500, 1000];
+/** nombre de cases d'une couleur */
+export const colorCount = (c: RouletteColor) => Array.from({ length: ROULETTE_NUMBERS }, (_, i) => i + 1).filter((n) => rouletteColor(n) === c).length;
+export const isRouletteColor = (c: unknown): c is RouletteColor => ROULETTE_COLORS.includes(c as RouletteColor);
+export const colorLabel = (c: RouletteColor) => tData(`rou.${c}`, { red: 'rouge', black: 'noir', green: 'vert' }[c]); // i18n-ok
+
+/** Problème d'une mise couleur (null : valable). `already` : j'ai déjà une mise couleur sur ce tirage. */
+export function colorBetProblem(color: unknown, coins: number, already: boolean): string | null {
+  if (!isRouletteColor(color)) return fe('games.50');
+  if (already) return fe('games.51');
+  if (!Number.isInteger(coins) || coins < COLOR_BET_MIN || coins > COLOR_BET_MAX) return fe('games.52', { p0: COLOR_BET_MIN, p1: COLOR_BET_MAX });
+  return null;
+}
+/** Pièces rendues pour une mise couleur quand `number` sort (0 : perdu). */
+export const colorPayout = (color: RouletteColor, coins: number, number: number) => (rouletteColor(number) === color ? coins * COLOR_PAYOUT[color] : 0);
+msgRef('rcolor', (p) => (isRouletteColor(p.colorId) ? colorLabel(p.colorId) : undefined));
+
 /** Formateur de l'heure de Paris, créé une seule fois (perf : `nextRouletteDraw` l'appelle minute par minute). */
 let hourFmt: Intl.DateTimeFormat | undefined;
 

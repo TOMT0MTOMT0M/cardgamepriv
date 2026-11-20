@@ -12,6 +12,7 @@ import { streakDay, touchStreak } from '../src/core/streak';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
 import { econOf } from './econLib';
+import { adventOpened } from '../src/core/avent';
 import { seenAtOf, syncPresence } from './presence';
 
 /**
@@ -45,6 +46,8 @@ export async function rankSigOf(ctx: QueryCtx, u: Doc<'users'>): Promise<string>
     u.displayName, u.avatarUrl ?? '', u.cosmetics ?? null,
     u.totalPacksOpened, u.totalTrades ?? 0, u.totalContracts ?? 0, liveStreak(u), u.wasTop ? 1 : 0, u.seasonPodiums ?? 0, u.seasonWins ?? 0,
     e.earned, e.burned, e.gamesPlayed, e.gamesWon, e.rouletteWins,
+    // (20/11) cases de l'Avent (cosmétiques de Noël) : ajouté seulement s'il y en a — la signature des autres joueurs ne bouge pas
+    ...(adventOpened(u).length ? [adventOpened(u).length] : []),
   ]);
 }
 
@@ -63,7 +66,7 @@ export async function statsOf(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: 
   const collection = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
   const streak = liveStreak(u);
   // (retours live 6) + doublons brûlés (titres de la forge) et « a été n°1 » (titre Numéro un)
-  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 });
+  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, noel26: adventOpened(u).length });
   return { stats, collection };
 }
 

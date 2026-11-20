@@ -56,8 +56,8 @@ describe('personnalisation du profil — catalogue du 14/11', () => {
   });
 
   test('49 paliers de plus (137 en tout), ids uniques, échelle « Tous les thèmes »', () => {
-    expect(ACHIEVEMENTS).toHaveLength(137);
-    expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(137);
+    expect(ACHIEVEMENTS).toHaveLength(141); // (20/11) + 4 paliers de l'Avent 2026 (noel26-…)
+    expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(141);
     const all = achievementStats({ ...zero, worldUniques: 120, gamingUniques: 30, popUniques: 400, sportUniques: 26 }, emptyEcon());
     expect(all.allThemes).toBe(26);
     expect(achievementDone(ACHIEVEMENTS.find((a) => a.id === 'all-25')!, all)).toBe(true);

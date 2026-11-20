@@ -8,6 +8,7 @@ import { SEASON_PACKS, SEASON_PLAYED_PACKS, SEASON_TOP10_PACKS, seasonEndAt, sea
 import { errMsg, esc, fmtN, fmtPct, h, plural, toast } from '../ui';
 import { friendBtn } from './friends';
 import '../progression.css';
+import { onUniqueTitles, utag } from '../uniqueTitle';
 
 /**
  * CLASSEMENT entre nous — composant partagé par la page #/classement (onglet de la navigation) et l'onglet Classement
@@ -112,6 +113,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
         .join('');
   }
 
+  onUniqueTitles(() => el.isConnected && render());
   function render() {
     requestAnimationFrame(markOvf);
     renderSeason();
@@ -149,7 +151,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       }
       const a = h('a', `lb-pd p${i + 1}${r.id === me ? ' is-me' : ''}`);
       a.href = `#/profil/${encodeURIComponent(r.id)}`;
-      a.innerHTML = `<span class="lb-pd-rank">${i + 1}</span>${ava(r)}<b>${esc(r.name)}</b>${r.id === me ? '<span class="lb-you">toi</span>' : '<span class="lb-you none">&nbsp;</span>'}<span class="lb-pd-v">${b.unit(r)}</span><i class="lb-pd-step" aria-hidden="true"></i>`;
+      a.innerHTML = `<span class="lb-pd-rank">${i + 1}</span>${ava(r)}<b>${esc(r.name)}</b>${utag(r.id, { compact: true })}${r.id === me ? '<span class="lb-you">toi</span>' : '<span class="lb-you none">&nbsp;</span>'}<span class="lb-pd-v">${b.unit(r)}</span><i class="lb-pd-step" aria-hidden="true"></i>`;
       // bouton ami (lot A2) sous la place du podium, hors du lien
       // retours live 02 (bug 3) : TOUTES les places ont la même case sous la carte — le bouton « + Ami » ou, pour moi
       // (on ne s'ajoute pas soi-même) / hors connexion, un emplacement vide de même hauteur → podium toujours aligné
@@ -165,7 +167,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       const line = h('a', `lb-row${r.id === me ? ' is-me' : ''}${i < 3 ? ` top${i + 1}` : ''}`);
       line.href = `#/profil/${encodeURIComponent(r.id)}`;
       const t = titleOf(r.cosmetics.title);
-      line.innerHTML = `<i class="lb-bar" style="--w:${pctOf(r)}%;--wn:${pctOf(r)}" aria-hidden="true"></i><span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small${accentColor(r.cosmetics.accent) ? ` style="--pa:${accentColor(r.cosmetics.accent)}"` : ''}>${titleHtml(t.label, r.cosmetics.titleStyle, 'ts-light')}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
+      line.innerHTML = `<i class="lb-bar" style="--w:${pctOf(r)}%;--wn:${pctOf(r)}" aria-hidden="true"></i><span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${utag(r.id, { compact: true })}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small${accentColor(r.cosmetics.accent) ? ` style="--pa:${accentColor(r.cosmetics.accent)}"` : ''}>${titleHtml(t.label, r.cosmetics.titleStyle, 'ts-light')}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
       // bouton ami (lot A2) à côté de la ligne — pas dedans : un bouton dans un lien n'est ni valide ni accessible
       const fb = friendBtn(backend, r.id, r.name, 'row');
       if (!fb) listEl.append(line);

@@ -163,6 +163,10 @@ export default defineSchema({
     v2TourSeenAt: v.optional(v.number()),
     /** (15/11) amené d'office, une fois, à « Personnaliser mon profil » (src/game/atelierOnce.ts) ; absent = pas encore */
     atelierSeenAt: v.optional(v.number()),
+    /** (20/11, convex/avent.ts) CALENDRIER DE L'AVENT : cases ouvertes, par année (« 2026 » → [1, 2, 5]) ; absent = aucune */
+    advent: v.optional(v.record(v.string(), v.array(v.number()))),
+    /** (20/11) GOD PACKS offerts en attente (case 24 de l'Avent) : le prochain booster scellé en est un (convex/packs.ts) */
+    godPacks: v.optional(v.number()),
     /** MP de bienvenue du bot Discord (lien de parrainage) déjà tenté : une seule fois, à la première connexion */
     welcomeDmAt: v.optional(v.number()),
   })
@@ -515,6 +519,13 @@ export default defineSchema({
         cards: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number(), mintNumber: v.number() })),
         createdAt: v.number(),
       }),
+    ),
+    /**
+     * (20/11) MISES COULEUR (src/core/games.ts) : pari en pièces contre la maison, hors du pot, une par joueur et par
+     * tirage. `paid` : pièces rendues au tirage (0 = perdu), posé par `drawRound`. Absent sur les anciens tirages.
+     */
+    colorBets: v.optional(
+      v.array(v.object({ userId: v.id('users'), name: v.string(), color: v.union(v.literal('red'), v.literal('black'), v.literal('green')), coins: v.number(), createdAt: v.number(), paid: v.optional(v.number()) })),
     ),
     result: v.optional(v.object({ number: v.number(), winnerId: v.optional(v.id('users')), winnerName: v.optional(v.string()), potValue: v.number() })),
     drawnAt: v.optional(v.number()),
@@ -950,4 +961,20 @@ export default defineSchema({
   })
     .index('by_user', ['userId', 'createdAt'])
     .index('by_user_status', ['userId', 'status']),
+
+  // ───────────────────────────── (20/11) TITRES UNIQUES (« world first », convex/titres.ts, règles : src/core/uniqueTitles.ts)
+  /**
+   * Une ligne par titre attribué — donc UNE SEULE ligne par `titleId`, pour toujours : le premier joueur qui complète
+   * la collection. L'unicité tient à la mutation `titres:claim` (lecture de l'index `by_title` + insertion dans la même
+   * transaction : deux demandes en même temps ne peuvent pas passer toutes les deux). `name` = pseudo au moment du titre.
+   */
+  uniqueTitles: defineTable({
+    titleId: v.string(),
+    setId: v.string(),
+    userId: v.id('users'),
+    name: v.string(),
+    at: v.number(),
+  })
+    .index('by_title', ['titleId'])
+    .index('by_user', ['userId']),
 });

@@ -103,7 +103,7 @@ export const en: PartOf<typeof fr> = {
   'if.battleBody': ': each player stakes the same number of boosters; you open side by side, and the biggest star total takes all the cards.',
   'if.royaleBody': ': 3 to 8 players, one booster each, the best total wins everything.',
   'if.roulette': 'Roulette',
-  'if.rouletteBody': ': bet on numbers, two spins a day.',
+  'if.rouletteBody': ': bet on numbers, on a colour, or both. Two spins a day.',
   'if.customise': 'Customise',
   'if.customiseBody': '”: banner, frame, colour, showcase, title and badges. One colour palette for everything, plus a free colour; some colours unlock with',
   'if.showcaseBody': '. The showcase shows off your best cards.',

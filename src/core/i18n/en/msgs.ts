@@ -139,4 +139,12 @@ export const enMsgs: Record<keyof typeof MSG_FR, MsgTpl> = {
   'n.event': 'Booster of the moment: {event}',
   'n.eventBody': 'In the shop for {left} only.',
   'n.eventBodyBlurb': '{blurb}. In the shop for {left} only.',
+  'f.utitle': '♛ {name} is the FIRST to complete {set}: the unique “{utitle}” title is theirs forever!',
+  'n.utitle': 'Unique title won: {utitle}',
+  'n.utitleBody': 'You’re the first to complete {set}. Nobody else will ever get it.',
+  'c.advent': 'Advent calendar — door {day}',
+  'c.rouletteColor': 'Roulette — bet on {rcolor}',
+  'c.rouletteColorWin': 'Roulette — {rcolor} comes up (no. {number}): bet × {mult}',
+  'n.rouletteColor': 'Roulette: {rcolor} came up!',
+  'n.rouletteColorBody': 'No. {number}: your colour bet pays {coins} coins.',
 };

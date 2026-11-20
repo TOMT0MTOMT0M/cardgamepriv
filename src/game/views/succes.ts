@@ -13,6 +13,9 @@ import { DUR, EASING, reducedMotion } from '../../core/motion';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
 import { guarded, isPending } from './safety';
 import { OPEN_COSM } from '../atelierOnce';
+import { UNIQUE_TITLES, uniqueTitleLabel, uniqueTitleProgress, uniqueTitleSet, type UniqueTitle } from '../../core/uniqueTitles';
+import { celebrateUniqueTitle, holderOf, onUniqueTitles } from '../uniqueTitle';
+import { fmtDate } from '../../core/i18n';
 
 /**
  * SUCCÈS (#/succes, onglet de la navigation — retours live n°1) : les 36 succès de l'espace Jeux (src/core/economy.ts),
@@ -75,6 +78,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
         <button class="btn-primary sc-claim" hidden></button>
       </div>
       <div class="sc-recap" role="status" hidden></div>
+      <section class="ut-sec" aria-label="${t('ut.sec')}"></section>
       <section class="sc-primes" id="primes" aria-label="${t('sc.primesA')}"></section>
       <div class="sc-grid"></div>
     </div>`;
@@ -224,6 +228,45 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
   }
 
   /** Primes de complétion : 5 pièces × cartes de chaque ensemble bouclé (album, groupe d'albums, thème). */
+  /**
+   * (20/11) TITRES UNIQUES (src/core/uniqueTitles.ts) : une tuile par titre — libre, pris (par qui, depuis quand) ou à
+   * moi —, avec mon avancement sur la collection. Le titre se réclame tout seul à 100 % (uniqueTitle.ts) ; le bouton
+   * « Réclamer » reste là si l'envoi automatique n'a pas pu partir (hors ligne à ce moment-là).
+   */
+  const titlesEl = el.querySelector<HTMLElement>('.ut-sec')!;
+  const CROWN = '<svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path d="M3.5 8.5l4.2 3.6L12 5l4.3 7.1 4.2-3.6-1.7 9.5H5.2z" fill="currentColor"/></svg>';
+  function renderTitles() {
+    const me = backend.state.user?.id;
+    const owned = new Set(backend.state.collection.map((c) => c.cardId));
+    titlesEl.innerHTML = `<div class="ut-sec-h"><b>${t('ut.sec')}</b><span>${t('ut.secD')}</span></div><div class="ut-grid"></div>`;
+    const grid = titlesEl.querySelector<HTMLElement>('.ut-grid')!;
+    for (const ut of UNIQUE_TITLES) {
+      const set = uniqueTitleSet(ut);
+      const pr = uniqueTitleProgress(ut, owned);
+      const by = holderOf(ut.id);
+      const mine = !!by && by.userId === me;
+      const ready = !by && pr.done;
+      const c = h('article', `ut-card ${by ? (mine ? 'mine' : 'taken') : 'free'}${ready ? ' ready' : ''}`);
+      c.style.setProperty('--ut', ut.tint);
+      c.innerHTML = `<div class="ut-top"><span>${CROWN}${esc(set?.label ?? '')}</span><span class="ut-st">${by ? (mine ? t('ut.mine') : t('ut.taken')) : t('ut.free')}</span></div>
+        <b class="ut-name">${esc(uniqueTitleLabel(ut))}</b>
+        <div class="ut-who">${by ? `<b>${esc(by.name)}</b><small>${t('ut.since', { date: fmtDate(by.at, { day: 'numeric', month: 'short' }) })}</small>` : ready ? `<button class="btn-primary ut-claim">${t('ut.claim')}</button>` : `<span>${t('ut.beFirst')}</span>`}</div>
+        <div class="ut-pr${pr.done ? ' full' : ''}" aria-label="${t('ut.progressA', { have: pr.have, total: pr.total })}"><i style="--p:${pr.total ? (pr.have / pr.total).toFixed(4) : 0}"></i><span>${fmtCoins(pr.have)} / ${fmtCoins(pr.total)}</span></div>`;
+      c.querySelector<HTMLElement>('.ut-claim')?.addEventListener('click', (e) => void claimTitle(ut, e.currentTarget as HTMLElement));
+      grid.append(c);
+    }
+  }
+  async function claimTitle(ut: UniqueTitle, btn: HTMLElement) {
+    try {
+      const won = await busyButton(btn, backend.eco.claimTitles(ut.id));
+      if (won.includes(ut.id)) celebrateUniqueTitle(ut, () => shell.sfx.chime(5, 0.14));
+    } catch (e) {
+      toast(errMsg(e), 'err');
+    }
+    if (el.isConnected) renderTitles();
+  }
+  onUniqueTitles(() => el.isConnected && renderTitles());
+
   function renderPrimes() {
     const s = backend.eco.snapshot;
     primesEl.hidden = !s;
@@ -248,6 +291,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
   }
 
   function render() {
+    renderTitles();
     renderPrimes();
     const s = backend.eco.snapshot;
     if (!s) {

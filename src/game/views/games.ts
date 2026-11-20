@@ -1,12 +1,14 @@
 import { errText } from '../../core/errors';
 import '../../core/i18n/fr/game.views.games'; // (textes de ce module, version anglaise)
-import { locale, t as tr, lang } from '../../core/i18n';
+import { locale, t as tr, lang, type MsgKey } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import { liveRegen } from '../backend';
 import type { Shell } from '../shell';
-import type { AbuseAlertView, DuelSideView, DuelView, RoyaleView, RouletteView } from '../eco';
+import type { AbuseAlertView, DuelSideView, DuelView, RoyaleView, RouletteColorBet, RouletteView } from '../eco';
 import { CARD_STARS, CARD_VALUE, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
 import {
+  COLOR_BET_CHIPS,
+  COLOR_PAYOUT,
   DUEL_MAX_PACKS,
   GAMES_OPEN,
   MAX_NUMBERS,
@@ -24,7 +26,9 @@ import {
   packChoiceLabel,
   packChoices,
   potOdds,
+  rouletteColor,
   type GameCard,
+  type RouletteColor,
   type PackChoice,
   type Stake,
 } from '../../core/games';
@@ -1010,7 +1014,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
 
   // ═════════════════════════════ Roulette
   function roulettePage() {
-    body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.table', { n: ROULETTE_NUMBERS })}</b><span class="gm-cd"></span></div><div class="gm-rw"></div><div class="gm-wheel r36"></div><div class="gm-cov" aria-hidden="true"><i></i></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.pot')}</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.lastDraws')}</b></div><div class="gm-past"></div></div>
+    body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.table', { n: ROULETTE_NUMBERS })}</b><span class="gm-cd"></span></div><div class="gm-rw"></div><div class="gm-wheel r36"></div><div class="gm-colors"></div><div class="gm-cov" aria-hidden="true"><i></i></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.pot')}</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.lastDraws')}</b></div><div class="gm-past"></div></div>
       <div class="gm-rules muted">${tr('gm.rouletteRules', { hours: ROULETTE_HOURS.map(hourLabel).join(tr('gm.and')) })}</div>`;
     const wheel = body.querySelector<HTMLElement>('.gm-wheel')!;
     // (13/11, retours Hugo) la vraie roue, au-dessus de la table des numéros : elle tourne à chaque tirage
@@ -1024,7 +1028,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     let lastPast: string | null = null;
     const cells: HTMLElement[] = [];
     for (let n = 1; n <= ROULETTE_NUMBERS; n++) {
-      const c = h('button', 'gm-num', String(n));
+      const c = h('button', `gm-num c-${rouletteColor(n)}`, String(n));
       c.dataset.n = String(n);
       c.addEventListener('click', () => {
         if (c.classList.contains('taken') || c.classList.contains('mine')) return;
@@ -1109,6 +1113,73 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       bindDraw(bet);
       syncDock();
     };
+    /**
+     * (20/11) TAPIS DES COULEURS, sous la table des numéros : rouge × 2 · vert × 10 · noir × 2. Un toucher choisit la
+     * couleur, les jetons le montant, « Miser » pose la mise (second toucher : l'enjeu part). Indépendant de la mise sur
+     * des numéros : l'un, l'autre, ou les deux au même tirage. Chaque case montre les jetons déjà posés par le club.
+     */
+    let colPick: RouletteColor | null = null;
+    let colChip = COLOR_BET_CHIPS[1];
+    const colorName = (c: RouletteColor) => tr(`gm.col.${c}` as MsgKey);
+    const myColorChip = (b?: RouletteColorBet) =>
+      b ? `<span class="gm-colres c-${b.color}${b.paid ? ' won' : ' lost'}"><i></i>${b.paid ? tr('gm.col.won', { color: colorName(b.color), coins: fmtCoins(b.paid) }) : tr('gm.col.lost', { color: colorName(b.color) })}</span>` : '';
+    function drawColors() {
+      const host = body.querySelector<HTMLElement>('.gm-colors');
+      if (!host) return;
+      const all = cur?.round?.colorBets ?? [];
+      const mine = all.find((b) => b.userId === cur?.me);
+      const bal = snap()?.coins ?? 0;
+      const cell = (c: RouletteColor) => {
+        const on = all.filter((b) => b.color === c);
+        const total = on.reduce((a, b) => a + b.coins, 0);
+        const isMine = mine?.color === c;
+        return `<button class="gm-col c-${c}${isMine ? ' mine' : ''}${!mine && colPick === c ? ' sel' : ''}" data-c="${c}"${mine ? ' disabled' : ''} aria-pressed="${!mine && colPick === c}">
+          <b>${colorName(c)}</b><em>× ${COLOR_PAYOUT[c]}</em>
+          <span class="gm-col-n">${isMine ? `<span class="gm-col-me"><i class="gm-chip"></i>${fmtCoins(mine.coins)}</span>` : ''}${on.length > (isMine ? 1 : 0) ? `<i class="gm-chip"></i>${fmtCoins(total - (isMine ? mine.coins : 0))}` : ''}</span>
+        </button>`;
+      };
+      const short = colChip > bal;
+      host.innerHTML = `<div class="gm-col-row">${cell('red')}${cell('green')}${cell('black')}</div>
+        ${mine
+          ? `<div class="gm-col-foot"><span>${tr('gm.col.mine', { coins: coinsHtml(mine.coins), color: colorName(mine.color) })}</span><b>${tr('gm.col.gain', { coins: coinsHtml(mine.coins * COLOR_PAYOUT[mine.color]) })}</b></div>`
+          : `<div class="gm-col-foot${colPick ? ' open' : ''}">
+              <div class="gm-chips" role="radiogroup" aria-label="${tr('gm.col.chipsA')}">${COLOR_BET_CHIPS.map((v) => `<button class="gm-chipb${v === colChip ? ' on' : ''}" role="radio" aria-checked="${v === colChip}" data-v="${v}"${v > bal ? ' data-short' : ''}>${v >= 1000 ? `${v / 1000}k` : v}</button>`).join('')}</div>
+              <button class="btn-primary gm-col-go"${!colPick || short || isPending('colorbet') ? ' disabled' : ''}>${colPick ? (short ? tr('gm.missing', { n: fmtCoins(colChip - bal) }) : tr('gm.col.bet', { coins: fmtCoins(colChip), color: colorName(colPick), gain: fmtCoins(colChip * COLOR_PAYOUT[colPick]) })) : tr('gm.col.pick')}</button>
+            </div>`}`;
+      host.querySelectorAll<HTMLElement>('.gm-col').forEach((b) =>
+        b.addEventListener('click', () => {
+          const c = b.dataset.c as RouletteColor;
+          colPick = colPick === c ? null : c;
+          sfx('tick');
+          drawColors();
+        }),
+      );
+      host.querySelectorAll<HTMLElement>('.gm-chipb').forEach((b) =>
+        b.addEventListener('click', () => {
+          colChip = Number(b.dataset.v);
+          sfx('tick');
+          drawColors();
+        }),
+      );
+      host.querySelector<HTMLElement>('.gm-col-go')?.addEventListener('click', (e) => {
+        const btn = e.currentTarget as HTMLElement;
+        const c = colPick;
+        const amount = colChip;
+        if (!c) return;
+        // second toucher, avec ce qui part : pas d'annulation possible avant le tirage
+        if (!confirmTap(btn, `Confirmer ? ${tr('gm.minusCoins', { n: fmtCoins(amount) })}`)) return; // i18n-ok
+        void guarded('colorbet', btn, async () => {
+          try {
+            await busyButton(btn, backend.eco.placeColorBet(c, amount));
+            sfx('chime');
+            toast(tr('gm.col.done', { color: colorName(c) }), 'ok');
+            colPick = null;
+          } catch (err) {
+            toast(errMsg(err), 'err');
+          }
+        }).then(drawColors);
+      });
+    }
     // téléphone : la table occupe tout l'écran, le panneau de mise est en dessous → une barre « Miser » collante
     const dock = h('button', 'gm-dock');
     dock.type = 'button';
@@ -1164,7 +1235,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         for (const c of cells) {
           const n = Number(c.dataset.n);
           const o = owner.get(n);
-          c.className = `gm-num${o ? (o.me ? ' mine' : ' taken') : ''}${sel.has(n) && !o ? ' sel' : ''}`;
+          c.className = `gm-num c-${rouletteColor(n)}${o ? (o.me ? ' mine' : ' taken') : ''}${sel.has(n) && !o ? ' sel' : ''}`;
           if (o && sel.has(n)) sel.delete(n);
           c.style.setProperty('--pc', o ? colors[o.i % colors.length] : '');
           c.title = o ? `${n} · ${o.name}` : `${n} · libre`;
@@ -1183,15 +1254,16 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           for (const c of [...round.carriedCards, ...round.bets.flatMap((b) => b.cards)]) pot.append(cardTile(c.cardId, c.rarity, { mini: true, count: c.count }));
         }
         body.querySelector<HTMLElement>('.gm-past')!.innerHTML = r.past.length
-          ? r.past.map((p) => `<div class="gm-pastrow"><b class="gm-ball">${p.result?.number ?? '?'}</b><span>${esc(p.day)} · ${p.result?.winnerName ? `<b>${esc(p.result.winnerName)}</b> remporte ${fmtCoins(p.result.potValue)} de valeur` : tr('gm.nobodyCarry', { pot: fmtCoins(p.result?.potValue ?? 0) })}</span></div>`).join('')
+          ? r.past.map((p) => `<div class="gm-pastrow"><b class="gm-ball${p.result?.number ? ` c-${rouletteColor(p.result.number)}` : ''}">${p.result?.number ?? '?'}</b><span>${esc(p.day)} · ${p.result?.winnerName ? `<b>${esc(p.result.winnerName)}</b> remporte ${fmtCoins(p.result.potValue)} de valeur` : tr('gm.nobodyCarry', { pot: fmtCoins(p.result?.potValue ?? 0) })}</span>${myColorChip(p.colors?.find((c) => c.userId === r.me))}</div>`).join('')
           : '<div class="muted">' + tr('gm.noDrawYet') + '</div>';
         drawBet();
+        drawColors();
         tick();
         lastPast = r.past[0]?.id ?? '';
         // tirage vu ici (en direct ou déjà passé) : pas de rejeu à la prochaine connexion (rouletteReplay.ts)
         if (lastPast) markRouletteSeen(lastPast);
         if (prevPast === null) rw.show(r.past[0]?.result?.number ?? null);
-        if (prevPast !== null && lastPast !== prevPast && r.past[0]?.result) void spin(r.past[0].result.number, r.past[0].result.winnerName);
+        if (prevPast !== null && lastPast !== prevPast && r.past[0]?.result) void spin(r.past[0].result.number, r.past[0].result.winnerName, r.past[0].colors?.find((c) => c.userId === r.me));
       }),
     );
     /**
@@ -1200,7 +1272,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
      * grand par-dessus la table.
      */
     let spinning = false;
-    async function spin(number: number, winner?: string) {
+    async function spin(number: number, winner?: string, myColor?: RouletteColorBet) {
       if (spinning) return;
       spinning = true;
       const N = ROULETTE_NUMBERS;
@@ -1273,7 +1345,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       if (panel && r && r.bottom > 0 && r.top < innerHeight) {
         const ov = h('div', 'gm-result');
         ov.setAttribute('role', 'status');
-        ov.innerHTML = `<div class="gm-result-n">${number}</div><div class="gm-result-t">${winner ? tr('gm.winsPot', { name: esc(winner) }) : tr('gm.nobodyHad')}</div><div class="gm-result-s">${winner ? tr('gm.potToWinner') : tr('gm.potCarried')}</div>`;
+        // (20/11) la bille prend la couleur du numéro ; ma mise couleur, si j'en avais une, est réglée sous le résultat
+        ov.innerHTML = `<div class="gm-result-n c-${rouletteColor(number)}">${number}</div><div class="gm-result-c c-${rouletteColor(number)}">${colorName(rouletteColor(number))}</div><div class="gm-result-t">${winner ? tr('gm.winsPot', { name: esc(winner) }) : tr('gm.nobodyHad')}</div><div class="gm-result-s">${winner ? tr('gm.potToWinner') : tr('gm.potCarried')}</div>${myColor ? `<div class="gm-result-col">${myColorChip(myColor)}</div>` : ''}`;
+        if (myColor?.paid) sfx('big');
         let gone = false;
         const close = () => {
           if (gone) return;

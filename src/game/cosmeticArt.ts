@@ -43,6 +43,7 @@ const ICONS = {
   'b-trade': 'M7 8h11l-3-3M17 16H6l3 3',
   'b-contract': 'M6 4h9l3 3v13H6zM9 12h6M9 16h4M14 4v4h4',
   'b-streak': 'M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2c.3 1.6 1 2.4 2 2.7C10.5 9 11 5.5 12 3z',
+  'b-noel26': 'M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9M12 6.5l-2.2-2M12 6.5l2.2-2M12 17.5l-2.2 2M12 17.5l2.2 2',
   'b-half': 'M4 6h4v13H4zM9 4h4v15H9zM14.5 7l3.8-1 3 12.5-3.8 1z',
 } as const;
 export type IconName = keyof typeof ICONS;
@@ -164,6 +165,15 @@ function arts(): Record<string, Art> {
   }
   let coeurs = '';
   for (let i = 0; i < 6; i++) coeurs += heart(48 * Math.cos((i / 6) * TAU), 48 * Math.sin((i / 6) * TAU), 0.85);
+  // (20/11, Avent 2026) flocons : six étoiles de givre à six branches posées sur l'anneau, une grande, une petite
+  let flocons = '';
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * TAU - TAU / 4, cx = 47 * Math.cos(a), cy = 47 * Math.sin(a), r = i % 2 ? 3.1 : 4.7;
+    for (let k = 0; k < 3; k++) {
+      const b = (k / 3) * Math.PI + a;
+      flocons += `M${(cx - r * Math.cos(b)).toFixed(1)} ${(cy - r * Math.sin(b)).toFixed(1)}L${(cx + r * Math.cos(b)).toFixed(1)} ${(cy + r * Math.sin(b)).toFixed(1)}`;
+    }
+  }
   ARTS = {
     none: { d: circ(37.5), sw: 0.6, c: 'var(--gm-line-2, rgba(255,255,255,0.24))' },
     ring: { d: circ(40.5), sw: 2.4 },
@@ -189,6 +199,7 @@ function arts(): Record<string, Art> {
     coeurs: { d: circ(40.5), sw: 1.4, m: coeurs, mf: '#ff5d8f', an: 'spin' },
     galaxie: { d: circ(40), sw: 0.8, f: star4(40, -34, 5) + star4(-44, 26, 4) + star4(-30, -44, 3) + star4(46, 28, 3), fc: '#ffffff', m: dots(40, 45, 0.75), mf: '#b59cff', an: 'spin' },
     neon: { d: circ(43), sw: 3.4, c: '#39ffd2', m: circ(43), ms: '#eafffb', msw: 1, an: 'flick' },
+    flocons: { d: circ(39.5), sw: 1, c: '#cfeaff', m: flocons, ms: '#ffffff', msw: 1.3, an: 'tw' },
     podium: { d: circ(40.5), sw: 2.2, c: '#ffc94a', f: 'M-9 46h6v7h-6ZM-3 42h6v11h-6ZM3 48h6v5h-6Z', fc: '#ffc94a' },
   };
   return ARTS;

@@ -1,4 +1,5 @@
 import { errText } from '../../core/errors';
+import { onUniqueTitles, utag } from '../uniqueTitle';
 import '../../core/i18n/fr/game.views.profile'; // (textes de ce module, version anglaise)
 import { locale, t as tr } from '../../core/i18n';
 import type { ActivityItem, GameBackend, PlayerCard, Profile } from '../backend';
@@ -267,12 +268,14 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     const fresh = me && !cosmOpen ? newCosmetics().size : 0;
     bb.innerHTML = tr('pf.customizeNew', { x: fresh ? ` <i class="pf-new" title="${tr('pf.newTitle', { n: fresh })}">${fresh}<span> ${tr('pf.newWord', { n: fresh })}</span></i>` : '' });
     const ava = avaHtml(name);
+    // (20/11) titre(s) unique(s) du joueur (« world first », uniqueTitle.ts) : juste sous le pseudo
+    const uTags = utag(prof?.id ?? (me ? backend.state.user?.id : undefined));
     const badges = (cos.badges ?? []).map((id) => badgeOf(id)).filter((b): b is Cosmetic => !!b);
     // en-tête compact (retours live 02) : pseudo, puis titre + badges sur UNE ligne, puis devise · « depuis » sur une ligne
     head.innerHTML = `${avaRing(fr, ava, acc ? accordFx(acc.matter) : '')}</div>
       <div class="pf-id">
         <div class="pf-eyebrow">${me ? tr('pf.myProfile') : tr('pf.profile')}</div>
-        <h1>${esc(name)}</h1>
+        <h1>${esc(name)}</h1>${uTags ? `<div class="pf-utags">${uTags}</div>` : ''}
         ${title || badges.length ? `<div class="pf-tline">${title ? titleHtml(title.label, cos.titleStyle) : ''}${badges.length ? `<span class="pf-badges">${badges.map((b) => `<span class="pf-badge" title="${esc(b.label)} · ${esc(b.how)}" aria-label="${esc(b.label)}">${badgeIcon(b.id)} <i>${esc(b.label)}</i></span>`).join('')}</span>` : ''}</div>` : ''}
         ${acc ? `<div class="pf-accord" title="${esc(tr(`at.d.${acc.matter}` as MsgKey))}">${icon('link', 13)}<span>${tr('at.accordOn', { name: tr(`at.m.${acc.matter}` as MsgKey) })}</span></div>` : ''}
         <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>' + tr('pf.noInfo') + '</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="${tr('pf.since', { date: fmtDate(prof.joinedAt) })}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
@@ -882,6 +885,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
   viewerUi.querySelector('.close')!.addEventListener('click', closeViewer);
   window.addEventListener('keydown', (e) => e.key === 'Escape' && open && closeViewer());
 
+  onUniqueTitles(() => el.isConnected && renderHead());
   let sig = '';
   backend.onChange((st) => {
     if (!el.isConnected || !isMe() || editor.active || open || cosmOpen) return;

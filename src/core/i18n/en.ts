@@ -7,6 +7,8 @@ export { enMsgs } from './en/msgs';
 /** (lot 4) lecture des statuts français des amis : les modèles français arrivent avec l'anglais */
 export { parseMsg } from '../msgs';
 import { en as p_game_v2gate } from './en/game.v2gate';
+import { en as p_game_views_evenement } from './en/game.views.evenement';
+import { en as p_game_titres } from './en/game.titres';
 import { en as p_game_chatStore } from './en/game.chatStore';
 import { en as p_game_offline } from './en/game.offline';
 import { en as p_game_views_launch } from './en/game.views.launch';
@@ -44,6 +46,8 @@ import { en as p_game_views_infos } from './en/game.views.infos';
 export const en: Dict = {
   // (parties des modules chargés à la demande)
   ...p_game_v2gate,
+  ...p_game_views_evenement,
+  ...p_game_titres,
   ...p_game_chatStore,
   ...p_game_offline,
   ...p_game_views_launch,
@@ -95,6 +99,7 @@ export const en: Dict = {
   'title.jeux': 'Bébou — games',
   'title.classement': 'Bébou — leaderboard',
   'title.succes': 'Bébou — achievements',
+  'title.evenement': 'Bébou — event',
   'title.suggestions': 'Bébou — suggestions',
   'title.maj': 'Bébou — updates',
   'title.tuto': 'Bébou — tutorial',
@@ -140,6 +145,7 @@ export const en: Dict = {
   'nav.shop': 'Shop',
   'nav.trades': 'Market',
   'nav.games': 'Games',
+  'nav.event': 'Event',
   'nav.ranking': 'Leaderboard',
   'nav.achievements': 'Achievements',
   'nav.friends': 'Friends',

@@ -309,5 +309,17 @@ export const ERR_FR = {
   'games.48': 'Montant invalide.',
   'games.49': '{p0} numéro{p1} = {p2}.',
   'missions.8': 'Mission introuvable.',
+  'titres.1': 'Titre inconnu.',
+  'titres.2': 'Trop tard : {p0} a déjà remporté le titre « {p1} ».',
+  'titres.3': 'Il te manque {p0} carte{p1} pour le titre « {p2} ».',
+  'avent.1': 'Case inconnue.',
+  'avent.2': 'La case {p0} est déjà ouverte.',
+  'avent.3': 'Le calendrier de l’Avent est terminé.',
+  'avent.4': 'Le calendrier de l’Avent ouvre le 1er décembre.',
+  'avent.5': 'Patience : la case {p0} s’ouvre le {p0} décembre.',
+  'avent.6': 'Mode test réservé à l’équipe.',
+  'games.50': 'Couleur inconnue.',
+  'games.51': 'Tu as déjà misé sur une couleur pour ce tirage.',
+  'games.52': 'Mise sur une couleur : entre {p0} et {p1} pièces.',
 } as const satisfies Record<string, string>;
 export type ErrCode = keyof typeof ERR_FR;

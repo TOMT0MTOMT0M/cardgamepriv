@@ -156,6 +156,14 @@ export const MSG_FR = {
   'n.event': 'Booster du moment : {event}',
   'n.eventBody': 'À la boutique pendant {left} seulement.',
   'n.eventBodyBlurb': '{blurb}. À la boutique pendant {left} seulement.',
+  'f.utitle': '♛ {name} est le PREMIER à compléter {set} : le titre unique « {utitle} » est à lui pour toujours !',
+  'n.utitle': 'Titre unique remporté : {utitle}',
+  'n.utitleBody': 'Tu es le premier à compléter {set}. Personne d’autre ne l’aura.',
+  'c.advent': 'Calendrier de l’Avent — case {day}',
+  'c.rouletteColor': 'Roulette — mise sur le {rcolor}',
+  'c.rouletteColorWin': 'Roulette — le {rcolor} sort (n° {number}) : mise × {mult}',
+  'n.rouletteColor': 'Roulette : le {rcolor} est sorti !',
+  'n.rouletteColorBody': 'N° {number} : ta mise couleur te rapporte {coins} pièces.',
 } satisfies Record<string, MsgTpl>;
 
 export type MsgCode = keyof typeof MSG_FR;

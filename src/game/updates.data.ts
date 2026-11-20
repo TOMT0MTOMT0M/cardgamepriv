@@ -41,6 +41,15 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        date: '20 nov.', title: 'V3 : onglet Événement, titres uniques, roulette en couleurs', tag: 'nouveau',
+        points: [
+          '🎄 Nouvel onglet Événement : le calendrier de l’Avent, du 1er au 24 décembre. Une case par jour (pièces ou boosters), les jours manqués se rattrapent jusqu’au 31, et la case 24 cache un God Pack.',
+          '❄️ Cosmétiques de Noël à gagner en ouvrant les cases : un badge, deux titres et un cadre.',
+          '♛ Titres uniques : le premier joueur qui complète Valorant, Naruto, Pokémon ou League of Legends remporte un titre que personne d’autre n’aura (Radiant, Hokage, Maître Pokémon, Challenger). Il s’affiche à côté de son pseudo.',
+          '🎡 Roulette : la roue et le tapis sont en rouge, noir et vert. Tu peux miser des pièces sur une couleur (rouge ou noir × 2, vert × 10), en plus ou à la place de tes numéros.',
+        ],
+      },
+      {
         date: '14 nov.', title: '🚀 Version 2 : la plus grosse mise à jour du jeu', tag: 'nouveau', featured: true,
         lead: 'Ta collection est gardée : cartes, pièces, boosters, succès, classeurs, rien ne s’est perdu. Et pour fêter ça : 🎁 50 boosters offerts à tout le monde.',
         points: [

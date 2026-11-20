@@ -1,10 +1,11 @@
 import { h } from '../ui';
 import { reducedMotion } from '../../core/motion';
+import { rouletteColor } from '../../core/games';
 import { BALL_R, DEFLECTOR_AT, DEFLECTOR_GAP, DEFLECTORS, planSpin, poseAt, restPose, soundsBetween, type BallPose, type BallSound } from './rouletteBall';
 
 /**
  * (13/11, retours Hugo « la roulette, faudrait la modéliser ») LA ROUE : un vrai cylindre de roulette en SVG, les
- * N numéros en secteurs alternés noir / gris (la couleur reste pour l'information : le numéro sorti s'allume), une bille
+ * N numéros en secteurs rouges, noirs et verts (20/11 : la couleur du numéro, sur laquelle on peut miser), une bille
  * sur la piste. `spinTo` lance la roue dans un sens, la bille dans l'autre ; elle ralentit sur une courbe continue et
  * s'arrête EXACTEMENT sous le repère, sur le numéro sorti. Utilisée par la page Roulette et par le rejeu du dernier
  * tirage à la connexion (rouletteReplay.ts).
@@ -35,7 +36,8 @@ export function createRouletteWheel(n: number): RouletteWheel {
   let sectors = '';
   for (let i = 0; i < n; i++) {
     const a0 = i * step - step / 2, a1 = a0 + step;
-    sectors += `<path class="rw-s${i % 2 ? ' alt' : ''}" data-i="${i}" d="M${pt(rIn, a0)} L${pt(R - 6, a0)} A${R - 6},${R - 6} 0 0 1 ${pt(R - 6, a1)} L${pt(rIn, a1)} A${rIn},${rIn} 0 0 0 ${pt(rIn, a0)} Z"/>`;
+    // (20/11) chaque alvéole porte la couleur de son numéro : rouge, noir ou vert (src/core/games.ts, rouletteColor)
+    sectors += `<path class="rw-s c-${rouletteColor(i + 1)}" data-i="${i}" d="M${pt(rIn, a0)} L${pt(R - 6, a0)} A${R - 6},${R - 6} 0 0 1 ${pt(R - 6, a1)} L${pt(rIn, a1)} A${rIn},${rIn} 0 0 0 ${pt(rIn, a0)} Z"/>`;
     const [x, y] = pt(rNum, i * step).split(',');
     sectors += `<text class="rw-t" data-i="${i}" x="${x}" y="${y}" transform="rotate(${(i * step).toFixed(2)} ${x} ${y})">${i + 1}</text>`;
   }
@@ -67,6 +69,7 @@ export function createRouletteWheel(n: number): RouletteWheel {
       if (num) pose = restPose(n, num, pose.wheel);
       ballG.style.opacity = num ? '1' : '0';
       out.textContent = num ? String(num) : '';
+      out.dataset.c = num ? rouletteColor(num) : '';
       set();
     },
     async spinTo(num, ms = 5600, onTick, onSound) {
@@ -108,6 +111,7 @@ export function createRouletteWheel(n: number): RouletteWheel {
       set();
       light(num - 1);
       out.textContent = String(num);
+      out.dataset.c = rouletteColor(num);
       busy = false;
     },
   };

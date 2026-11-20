@@ -6,6 +6,7 @@ import type { WeeklyState } from '../core/weekly';
 import { achievementStats, claimableAchievements, claimableCompletions } from '../core/economy';
 import { statsFrom } from '../core/cosmetics';
 import { onlineJeux } from './ecoOnlineJeux';
+import { onlineExtras } from './ecoOnlineExtras';
 
 /** Économie + jeux en ligne (serveur Convex, temps réel). */
 export function createOnlineEco(): EcoBackend {
@@ -73,6 +74,7 @@ export function createOnlineEco(): EcoBackend {
 
   return {
     ...onlineJeux(), // (V2, 11/11) défis entre amis + La Presse
+    ...onlineExtras(), // (20/11) titres uniques + calendrier de l'Avent
     get snapshot() {
       return snapshot;
     },
@@ -115,6 +117,7 @@ export function createOnlineEco(): EcoBackend {
     leaveRoyale: async (id) => void (await net.call(api.games.leaveRoyale, { royaleId: id as Id<'royales'> })),
     startRoyale: async (id) => void (await net.call(api.games.startRoyale, { royaleId: id as Id<'royales'> })),
     placeBet: async (numbers, stake) => void (await net.call(api.games.placeBet, { numbers, stake })),
+    placeColorBet: async (color, coins) => void (await net.call(api.games.placeColorBet, { color, coins })),
     alerts: () => net.ask(api.abuse.alerts, {}),
     review: async (key, verdict, note) => void (await net.call(api.abuse.review, { key, verdict, ...(note ? { note } : {}) })),
   };

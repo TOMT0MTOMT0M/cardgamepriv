@@ -33,6 +33,8 @@ import { syncPresence } from './presence';
 import { statsCached } from './profiles';
 import type { PlayerStats } from '../src/core/cosmetics';
 import { fm } from '../src/core/msgs';
+import { awardUniqueTitles } from './titres';
+import { adventOpened } from '../src/core/avent';
 
 /**
  * ÉCONOMIE — portefeuille et sources de pièces (spec du 3 nov., src/core/economy.ts) :
@@ -51,7 +53,7 @@ async function achStats(ctx: QueryCtx, u: Doc<'users'>, inv?: Doc<'inventory'>[]
   // Seule différence avec le profil : ici la série est celle enregistrée, pas la série « encore vivante ».
   if (!inv) return achievementStats({ ...(await statsCached(ctx, u)), streak: u.streak?.count ?? 0 }, econOf(u));
   const coll = inv;
-  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 });
+  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, noel26: adventOpened(u).length });
   return achievementStats(p, econOf(u));
 }
 
@@ -70,7 +72,7 @@ export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
   // (pièces, missions, battement de cœur) et relisait toute sa collection (2e poste de lecture de base du mois).
   // Primes de complétion et succès sont recalculés par le client avec la collection qu'il a déjà (inventory.myCollection)
   // et `achInput` (src/game/ecoOnline.ts) ; les mutations d'encaissement revérifient tout côté serveur.
-  const achInput = { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econ.burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0 };
+  const achInput = { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econ.burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, noel26: adventOpened(u).length };
   return {
     achInput,
     coins: coinsOf(u),
@@ -80,6 +82,8 @@ export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
     // onglet resté ouvert sur l'ancien client : des valeurs sûres (le nouveau client recalcule les vraies)
     completions: [] as Array<{ id: string; label: string; kind: string; size: number; reward: number }>,
     achievements: { stats: achievementStats(statsFrom([], achInput), econ), claimable: [] as string[] },
+    // (20/11) calendrier de l'Avent : cases ouvertes cette année, god packs offerts en attente (convex/avent.ts)
+    advent: { opened: adventOpened(u), godPacks: u.godPacks ?? 0 },
     isAdmin: !!u.isAdmin,
     // (retours 06/11) modération des suggestions : nombre de nouvelles (pastille du menu)
     isModerator: canModerate(u),
@@ -209,7 +213,9 @@ export const claimCompletions = mutation({
       earned: true,
       econ: { completions: [...econ.completions, ...sets.map((s) => s.id)] },
     });
-    return { coins: total, sets: sets.map((s) => ({ id: s.id, label: s.label, reward: s.reward })) };
+    // (20/11) titres uniques : la collection vient d'être lue, on en profite (convex/titres.ts ; rien si déjà pris)
+    const titles = await awardUniqueTitles(ctx, u, new Set(inv.map((c) => c.cardId)));
+    return { coins: total, sets: sets.map((s) => ({ id: s.id, label: s.label, reward: s.reward })), titles: titles.map((t) => t.id) };
   },
 });
 
