@@ -1,4 +1,5 @@
 import { fe } from '../src/core/errors';
+import { packCapOf } from '../src/core/abo';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -61,7 +62,7 @@ export async function addPacks(ctx: MutationCtx, userId: Id<'users'>, n: number)
   const u = await ctx.db.get(userId);
   if (!u) return;
   const now = Date.now();
-  const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil);
+  const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil, packCapOf(u, now));
   await ctx.db.patch(userId, { packBalance: regen.balance + n, packRegenAt: regen.regenAt });
   await scheduleReserveFull(ctx, userId);
 }

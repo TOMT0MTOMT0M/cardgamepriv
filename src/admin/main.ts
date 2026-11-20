@@ -11,6 +11,7 @@ import { CANAL } from '../core/canal';
 import { SURVEYS, SURVEY_ID, SURVEY_PREV_ID } from '../core/survey';
 import { siteUrl } from '../core/siteRoot';
 import { viewEvenements } from './events';
+import { viewAbonnements } from './abo';
 
 /**
  * DASHBOARD ADMIN (V2, 10/11) — /admin/, réservé à Tom et Hugo (vérifié côté serveur : convex/adminDash.ts).
@@ -195,6 +196,7 @@ const TABS = [
   ['cartes', 'Cartes à corriger'],
   ['joueurs', 'Joueurs'],
   ['evenements', 'Événements'],
+  ['abonnements', 'Abonnements'],
   ['alertes', 'Alertes'],
   ['outils', 'Outils'],
   ['journal', 'Journal'],
@@ -1043,6 +1045,8 @@ const VIEWS: Record<Tab, (v: HTMLElement, sub: string) => Promise<void>> = {
       },
       closeSheet,
     }),
+  // (20/11) abonnement à 5 € : src/admin/abo.ts
+  abonnements: (v) => viewAbonnements(v, { ask: (f, a) => ask(f as Q, a), call: (f, a) => call(f as M, a), busy, esc, fullDate }),
   alertes: viewAlertes,
   outils: viewOutils,
   journal: viewJournal,

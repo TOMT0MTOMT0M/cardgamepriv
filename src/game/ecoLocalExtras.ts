@@ -3,7 +3,8 @@ import { ADVENT_YEAR, adventDay, adventProblem, adventReward } from '../core/ave
 import { claimableUniqueTitles, uniqueTitle, uniqueTitleProgress, uniqueTitleSet, type UniqueTitleHolder } from '../core/uniqueTitles';
 import { fm, type Msg } from '../core/msgs';
 import { t as tr } from '../core/i18n';
-import type { ExtrasBackend } from './ecoExtras';
+import { SUB_EXTRA_PACKS, SUB_PRICE_EUR, bebouCardProblem, bebouMediaProblem, pollOpen, subActive, subExtend, type BebouCardStatus } from '../core/abo';
+import type { AboPoll, ExtrasBackend } from './ecoExtras';
 
 /**
  * (20/11) Titres uniques + calendrier de l'Avent en MODE DÉMO : tout dans ce navigateur, mêmes règles que le serveur
@@ -13,6 +14,11 @@ export interface LocalExtrasSave {
   titles?: UniqueTitleHolder[];
   advent?: Record<string, number[]>;
   godPacks?: number;
+  /** abonnement de démonstration (activé / arrêté par le bouton de la page) */
+  subUntil?: number;
+  subAskAt?: number;
+  bebouCard?: { title: string; idea: string; status: BebouCardStatus; mediaUrl?: string; updatedAt: number };
+  aboVote?: string;
 }
 
 export interface LocalExtrasHost {
@@ -33,7 +39,7 @@ export function createLocalExtras(host: LocalExtrasHost) {
   const titles = () => (s().titles ??= []);
   const opened = () => s().advent?.[KEY] ?? [];
 
-  const backend: ExtrasBackend = {
+  const backend = {
     watchTitles: (cb) => host.watch(() => titles(), cb),
     claimTitles: (titleId) =>
       host.act(() => {
@@ -76,10 +82,47 @@ export function createLocalExtras(host: LocalExtrasHost) {
         void _gone;
         s().advent = rest;
       }),
+  } as ExtrasBackend;
+  // vote d'exemple de la démo : toujours ouvert, encore 6 jours ; les robots ont déjà voté
+  const DEMO_POLL = { id: 'demo-poll', title: tr('ab.demoPoll'), options: [{ id: 'o1', label: tr('ab.demoO1') }, { id: 'o2', label: tr('ab.demoO2') }, { id: 'o3', label: tr('ab.demoO3') }], bots: { o1: 4, o2: 2, o3: 1 } as Record<string, number> };
+  const poll = (): AboPoll => {
+    const mine = s().aboVote;
+    const closesAt = Math.ceil(Date.now() / 86_400_000) * 86_400_000 + 6 * 86_400_000;
+    const counts = Object.fromEntries(DEMO_POLL.options.map((o) => [o.id, DEMO_POLL.bots[o.id] + (mine === o.id ? 1 : 0)]));
+    return { id: DEMO_POLL.id, title: DEMO_POLL.title, options: DEMO_POLL.options, closesAt, open: pollOpen({ closesAt }), total: 7 + (mine ? 1 : 0), ...(mine ? { mine, counts } : {}) };
   };
+  Object.assign(backend, {
+    aboPage: async () => ({ priceEur: SUB_PRICE_EUR, extraPacks: SUB_EXTRA_PACKS, weroTo: tr('ab.demoWero'), card: s().bebouCard ?? null, poll: poll() }),
+    aboAsk: () =>
+      host.act(() => {
+        s().subAskAt = Date.now();
+      }),
+    aboSubmitCard: (title, idea, image) =>
+      host.act(() => {
+        if (!subActive(s())) throw new Error(fe('abo.1'));
+        const bad = bebouCardProblem(title, idea) ?? (image && image !== 'keep' ? bebouMediaProblem(image.size, image.type) : null);
+        if (bad) throw new Error(bad);
+        // (démo : l'image n'est pas gardée d'une visite à l'autre, seulement montrée le temps de la session)
+        const mediaUrl = image === 'keep' ? s().bebouCard?.mediaUrl : image ? URL.createObjectURL(image) : undefined;
+        s().bebouCard = { title: title.trim(), idea: idea.trim(), status: 'new', updatedAt: Date.now(), ...(mediaUrl ? { mediaUrl } : {}) };
+      }),
+    aboVote: (_pollId, optionId) =>
+      host.act(() => {
+        if (!subActive(s())) throw new Error(fe('abo.1'));
+        if (!DEMO_POLL.options.some((o) => o.id === optionId)) throw new Error(fe('abo.6'));
+        s().aboVote = optionId;
+        return poll();
+      }),
+    aboDemoToggle: () =>
+      host.act(() => {
+        s().subUntil = subActive(s()) ? Date.now() : subExtend(undefined, Date.now());
+        s().subAskAt = undefined;
+      }),
+  } satisfies Partial<ExtrasBackend>);
   return {
     backend,
     opened,
+    sub: () => ({ until: s().subUntil ?? 0, askedAt: s().subAskAt ?? 0 }),
     godPacks: () => s().godPacks ?? 0,
     /** un god pack offert attend ? Le consomme (le prochain booster ouvert en est un). */
     takeGodPack(): boolean {

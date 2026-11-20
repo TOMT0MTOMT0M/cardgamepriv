@@ -1,4 +1,5 @@
 import { v, ConvexError } from 'convex/values';
+import { packCapOf } from '../src/core/abo';
 import { makeFunctionReference } from 'convex/server';
 import { action, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -69,7 +70,7 @@ async function player(ctx: QueryCtx | MutationCtx, id: Id<'users'>) {
   return u;
 }
 
-const packsNow = (u: Doc<'users'>, now: number) => applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil).balance;
+const packsNow = (u: Doc<'users'>, now: number) => applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil, packCapOf(u, now)).balance;
 
 /** Qui suis-je ? null = pas connecté ou pas de l'équipe (la page affiche alors l'écran « accès refusé »). */
 export const whoami = query({

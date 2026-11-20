@@ -1,6 +1,6 @@
 import { t as tr, lang } from '../../core/i18n';
-import { collectionSig, liveRegen, type GameBackend, type PackCard } from '../backend';
-import { PACK_CAP, PACK_REGEN_MS, fmtCountdown } from '../../core/packRegen';
+import { collectionSig, liveRegen, packCapOfMe, type GameBackend, type PackCard } from '../backend';
+import { PACK_REGEN_MS, fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, BEBOU_SECRETS_LOCKED, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeById, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
@@ -278,7 +278,7 @@ export function createPackSheet(
       const n = u ? liveRegen(u).balance : 0;
       openBtn.textContent = effQty() > 1 ? tr('ps.openN', { n: effQty() }) : tr('ps.openCaps');
       openBtn.disabled = !u;
-      openSub.textContent = u ? tr('ps.inReserve', { n, max: n <= PACK_CAP ? ` · ${PACK_CAP} max` : '' }) : '';
+      openSub.textContent = u ? tr('ps.inReserve', { n, max: n <= packCapOfMe(u) ? ` · ${packCapOfMe(u)} max` : '' }) : '';
     }
     const bal = u ? liveRegen(u).balance : 0;
     const eco = backend.eco.snapshot;

@@ -167,6 +167,15 @@ export default defineSchema({
     advent: v.optional(v.record(v.string(), v.array(v.number()))),
     /** (20/11) GOD PACKS offerts en attente (case 24 de l'Avent) : le prochain booster scellé en est un (convex/packs.ts) */
     godPacks: v.optional(v.number()),
+    /**
+     * (20/11, convex/abo.ts) ABONNEMENT : actif jusqu'à `subUntil` (activé à la main par l'équipe après un paiement Wero) ;
+     * `subSince` : premier mois ; `subAskAt` : le joueur a déclaré avoir payé (en attente d'activation) ; `subRemindJob` :
+     * le rappel programmé 5 jours avant la fin (pour l'annuler quand la date change).
+     */
+    subUntil: v.optional(v.number()),
+    subSince: v.optional(v.number()),
+    subAskAt: v.optional(v.number()),
+    subRemindJob: v.optional(v.id('_scheduled_functions')),
     /** MP de bienvenue du bot Discord (lien de parrainage) déjà tenté : une seule fois, à la première connexion */
     welcomeDmAt: v.optional(v.number()),
   })
@@ -184,6 +193,8 @@ export default defineSchema({
     launchAt: v.optional(v.number()),
     resetAt: v.optional(v.number()),
     lastReset: v.optional(v.any()),
+    /** (20/11) clé `abo` : à qui envoyer le paiement Wero (numéro ou nom, saisi dans le dashboard — jamais dans le code) */
+    weroTo: v.optional(v.string()),
   }).index('by_key', ['key']),
 
   /** Clics sur les liens d'invitation : un par appareil et par code (le compteur « X personnes ont cliqué »). */
@@ -977,4 +988,35 @@ export default defineSchema({
   })
     .index('by_title', ['titleId'])
     .index('by_user', ['userId']),
+
+  // ───────────────────────────── (20/11) ABONNEMENT (convex/abo.ts, règles : src/core/abo.ts)
+  /** Carte « Bebou » proposée par un abonné (une par joueur, modifiable tant que l'équipe ne l'a pas intégrée). */
+  bebouCards: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    title: v.string(),
+    idea: v.string(),
+    media: v.optional(v.id('_storage')),
+    /** new : à lire · ok : retenue · done : intégrée au jeu */
+    status: v.union(v.literal('new'), v.literal('ok'), v.literal('done')),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_user', ['userId']),
+  /** Vote du mois (réservé aux abonnés) : une question, 2 à 6 choix, une date de fin. */
+  aboPolls: defineTable({
+    title: v.string(),
+    options: v.array(v.object({ id: v.string(), label: v.string() })),
+    closesAt: v.number(),
+    closed: v.optional(v.boolean()),
+    byName: v.string(),
+    createdAt: v.number(),
+  }).index('by_closes', ['closesAt']),
+  aboVotes: defineTable({
+    pollId: v.id('aboPolls'),
+    userId: v.id('users'),
+    optionId: v.string(),
+    at: v.number(),
+  })
+    .index('by_poll_user', ['pollId', 'userId'])
+    .index('by_poll', ['pollId']),
 });

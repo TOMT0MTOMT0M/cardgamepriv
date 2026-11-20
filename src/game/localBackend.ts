@@ -29,6 +29,7 @@ function demoMedia(): { avatarMedia?: string; bannerMedia?: string } {
 }
 import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon, type EconState } from '../core/economy';
 import { ADVENT_YEAR } from '../core/avent';
+import { packCapOf } from '../core/abo';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
 import { createLocalChat } from './chatLocal';
@@ -231,14 +232,17 @@ export function createLocalBackend(): GameBackend {
   window.addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => document.hidden && flush());
 
+  /** (20/11) réserve maximale de la démo : 20 quand l'abonnement de démonstration est actif (src/core/abo.ts) */
+  const capNow = () => packCapOf({ subUntil: save.eco?.subUntil });
   function sync() {
     const now = Date.now();
     state.user = {
       id: 'me',
       name: tr('chat.me'),
-      packBalance: applyRegen(save.packBalance, save.regenAt ?? now, now).balance,
+      packBalance: applyRegen(save.packBalance, save.regenAt ?? now, now, 0, capNow()).balance,
       packStored: save.packBalance,
       packRegenAt: save.regenAt ?? now,
+      packCap: capNow(),
       totalPacksOpened: save.opened,
       pityCount: save.pity ?? 0,
       streak: save.streak,
@@ -519,7 +523,7 @@ export function createLocalBackend(): GameBackend {
   };
   const grant = (n: number) => {
     const now = Date.now();
-    const r = applyRegen(save.packBalance, save.regenAt ?? now, now);
+    const r = applyRegen(save.packBalance, save.regenAt ?? now, now, 0, capNow());
     save.packBalance = r.balance + n;
     save.regenAt = r.regenAt;
   };
@@ -575,10 +579,10 @@ export function createLocalBackend(): GameBackend {
       }
     },
     removeCard: (cardId, r, n) => remove(save.inv, { cardId, rarity: r, count: n }),
-    packsAvailable: () => applyRegen(save.packBalance, save.regenAt ?? Date.now(), Date.now()).balance,
+    packsAvailable: () => applyRegen(save.packBalance, save.regenAt ?? Date.now(), Date.now(), 0, capNow()).balance,
     debitPacks: (n) => {
       const now = Date.now();
-      const rg = applyRegen(save.packBalance, save.regenAt ?? now, now);
+      const rg = applyRegen(save.packBalance, save.regenAt ?? now, now, 0, capNow());
       save.packBalance = rg.balance - n;
       save.regenAt = rg.regenAt;
     },
@@ -626,7 +630,7 @@ export function createLocalBackend(): GameBackend {
       if (now >= ev.endAt) throw new Error(fe('events.3', { p0: ev.name }));
       req = { kind: 'theme', event: { id: ev.id, subthemes: ev.subthemes, cards: ev.cards } };
     }
-    const regen = applyRegen(save.packBalance, save.regenAt ?? now, now);
+    const regen = applyRegen(save.packBalance, save.regenAt ?? now, now, 0, capNow());
     if (regen.balance <= 0) throw new Error(fe('packs.2', { p0: fmtCountdown((regen.nextAt ?? now) - now) }));
     save.packBalance = regen.balance - 1;
     save.regenAt = regen.regenAt;

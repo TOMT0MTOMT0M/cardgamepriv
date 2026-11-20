@@ -28,6 +28,8 @@ export interface EcoSnapshot {
   packShop: { price: number; left: number };
   /** (20/11) calendrier de l'Avent (src/core/avent.ts) : cases ouvertes cette année, god packs offerts en attente */
   advent?: { opened: number[]; godPacks: number };
+  /** (20/11) abonnement (src/core/abo.ts) : fin du mois payé (0 : jamais abonné), demande « j'ai payé » en attente */
+  sub?: { until: number; askedAt: number };
 }
 
 export interface DuelSideView {

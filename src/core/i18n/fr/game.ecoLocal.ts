@@ -7,5 +7,10 @@ export const fr = {
   'el.abuseDetail': 'En ligne, les alertes sont calculées sur les vrais flux (duels, royales, roulette, échanges). Aucun blocage automatique.',
   'el.botMalo': 'Malo (robot)',
   'el.botLea': 'Léa (robot)',
+  'ab.demoPoll': 'Quelle collection en janvier ?',
+  'ab.demoO1': 'Cinéma culte',
+  'ab.demoO2': 'Rap français',
+  'ab.demoO3': 'Formule 1',
+  'ab.demoWero': 'Tom (numéro de démo)',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

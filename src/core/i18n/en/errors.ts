@@ -320,4 +320,11 @@ export const enErrors: { readonly [K in keyof typeof ERR_FR]: string } = {
   'games.50': 'Unknown colour.',
   'games.51': 'You already bet on a colour for this spin.',
   'games.52': 'Colour bet: between {p0} and {p1} coins.',
+  'abo.1': 'Subscribers only.',
+  'abo.2': 'You’re already subscribed until the end of the month: nothing to declare for now.',
+  'abo.3': 'Your card is already in the game: it can’t be changed any more.',
+  'abo.4': 'Image not found: send it again.',
+  'abo.5': 'This vote is over.',
+  'abo.6': 'Unknown option.',
+  'abo.7': 'Team only (Tom and Hugo).',
 };

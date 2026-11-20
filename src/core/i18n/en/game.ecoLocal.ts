@@ -8,4 +8,9 @@ export const en: PartOf<typeof fr> = {
   'el.abuseDetail': 'Online, alerts are computed from real flows (duels, royales, roulette, trades). No automatic blocking.',
   'el.botMalo': 'Malo (bot)',
   'el.botLea': 'Léa (bot)',
+  'ab.demoPoll': 'Which collection in January?',
+  'ab.demoO1': 'Cult films',
+  'ab.demoO2': 'French rap',
+  'ab.demoO3': 'Formula 1',
+  'ab.demoWero': 'Tom (demo number)',
 };

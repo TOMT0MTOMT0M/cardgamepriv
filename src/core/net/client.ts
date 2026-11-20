@@ -47,6 +47,8 @@ export interface MeProfile {
   /** recharge des boosters (src/core/packRegen.ts) : réserve stockée + départ du minuteur */
   packStored?: number;
   packRegenAt?: number;
+  /** (20/11) réserve maximale : 15, ou 20 pour un abonné (src/core/abo.ts) */
+  packCap?: number;
   /** (ouverture 07/11) recharge ×2 jusqu'à cet instant */
   boostUntil?: number;
   nextPackAt?: number | null;

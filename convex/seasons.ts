@@ -1,4 +1,5 @@
 import { v } from 'convex/values';
+import { packCapOf } from '../src/core/abo';
 import { internalAction, internalMutation, internalQuery, query } from './_generated/server';
 import { internal } from './_generated/api';
 import type { Doc } from './_generated/dataModel';
@@ -77,7 +78,7 @@ export const advance = internalMutation({
       if (!u || u.bannedAt) continue;
       const rank = results.length + 1;
       const boosters = seasonBoosters(rank);
-      const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil);
+      const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil, packCapOf(u, now));
       await ctx.db.patch(u._id, {
         packBalance: regen.balance + boosters,
         packRegenAt: regen.regenAt,

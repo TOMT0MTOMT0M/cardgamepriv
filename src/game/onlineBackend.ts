@@ -130,6 +130,7 @@ export function createOnlineBackend(): GameBackend {
             packBalance: n.user.packBalance,
             packStored: n.user.packStored ?? n.user.packBalance,
             packRegenAt: n.user.packRegenAt ?? Date.now(),
+            packCap: n.user.packCap,
             boostUntil: n.user.boostUntil,
             totalPacksOpened: n.user.totalPacksOpened,
             pityCount: n.user.pityCount ?? 0,

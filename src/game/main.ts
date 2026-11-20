@@ -20,9 +20,9 @@ import { PITY_LIMIT } from '../core/pity';
 import { COIN_ICON, createWallet } from './views/wallet';
 import { armPin, clearPins, payOut } from './views/coinHopper';
 import { fmtCoins } from '../core/economy';
-import { collectionSig, liveRegen, type GameBackend } from './backend';
+import { collectionSig, liveRegen, packCapOfMe, type GameBackend } from './backend';
 import { boardAttention } from './backend';
-import { PACK_CAP, PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
+import { PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
 import { initLang, lang, onLang, setLang, t as tr } from './lang';
 import type { MsgKey } from '../core/i18n';
 import { relabel } from './ui';
@@ -216,6 +216,7 @@ top.innerHTML = `
     <button class="nav-more" tabindex="-1" aria-hidden="true">›</button>
   </nav>
   <div class="nav-extra" role="group" aria-label="${tr('nav.extraAria')}">
+    <a href="#/abonnement" data-r="abonnement" title="${tr('nav.sub')}" aria-label="${tr('nav.sub')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20s-7-4.4-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.4C19 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></a>
     <a href="#/maj" data-r="maj" title="${tr('nav.updates')}" aria-label="${tr('nav.updates')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
     <a href="#/tuto" data-r="tuto" title="${tr('nav.tutorial')}" aria-label="${tr('nav.tutorial')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
     <a href="#/suggestions" data-r="suggestions" title="Suggestions" aria-label="Suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><b class="badge sg-badge" hidden></b></a> <!-- i18n-ok -->
@@ -510,7 +511,7 @@ function renderMe() {
     meEl.innerHTML = `<div class="me-st"></div><div class="me-id">${demo}${ls}${snd}${login}</div>`;
   } else {
     const ava = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="">` : `<span class="ava">${esc(u.name.slice(0, 1))}</span>`;
-    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="${tr('hdr.packsTitle', { min: PACK_REGEN_MS / 60000, cap: PACK_CAP })}">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/${PACK_CAP}</span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="${tr('hdr.walletTitle')}" aria-label="${tr('hdr.wallet')}" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="${tr('hdr.missions')}" aria-label="${tr('hdr.missions')}" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="${tr('hdr.streakTitle')}" aria-label="${tr('hdr.streakTitle')}" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">${tr('hdr.streak')}</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${ls}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="${tr('hdr.profileTitle', { name: esc(u.name) })}" aria-label="${tr('hdr.profile')}" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="${tr('hdr.profileMenu')}" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>${tr('hdr.seeProfile')}</em></span></a><button class="icon mm-reload" title="${tr('hdr.repairTitle')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">${tr('hdr.repair')}</span></button><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">${tr('nav.updates')}</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">${tr('nav.tutorial')}</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`; // i18n-ok
+    meEl.innerHTML = `<div class="me-st"><span class="packs-w"><a class="packs" href="#/" title="${tr('hdr.packsTitle', { min: PACK_REGEN_MS / 60000, cap: packCapOfMe(u) })}">${PACK_ICON}<span class="p-txt"><span class="p-n"><b></b>/<i class="p-cap">${packCapOfMe(u)}</i></span><span class="p-next"></span></span><i class="p-bar"><i></i></i></a><span class="p-boost" hidden></span></span><button class="coin-btn" title="${tr('hdr.walletTitle')}" aria-label="${tr('hdr.wallet')}" aria-controls="pop-wallet" aria-expanded="false">${COIN_ICON}<b>${fmtCoinsShort(backend.eco.snapshot?.coins ?? 0)}</b><i class="w-dot" hidden></i></button><button class="icon msn-btn" title="${tr('hdr.missions')}" aria-label="${tr('hdr.missions')}" aria-controls="pop-missions" aria-expanded="false">${MISSION_ICON}<b class="msn-n" hidden></b><span class="mm-l">Missions</span></button><button class="icon st-btn" title="${tr('hdr.streakTitle')}" aria-label="${tr('hdr.streakTitle')}" aria-controls="pop-status" data-which="streak" aria-expanded="false">${STREAK_ICON}<b class="st-n" aria-hidden="true"></b><span class="mm-l">${tr('hdr.streak')}</span></button><span class="pt-cnt" role="status">${PITY_ICON}<b class="pt-n"></b></span></div><div class="me-id">${demo}${ls}${snd}<button class="user${currentRoute === 'profil' ? ' on' : ''}" title="${tr('hdr.profileTitle', { name: esc(u.name) })}" aria-label="${tr('hdr.profile')}" aria-controls="pop-me" aria-expanded="false">${ava}<i class="u-dot" hidden></i></button><div class="me-menu" id="pop-me" role="dialog" aria-label="${tr('hdr.profileMenu')}" inert><a class="mm-prof" href="#/profil">${ava}<span><b>${esc(u.name)}</b><em>${tr('hdr.seeProfile')}</em></span></a><button class="icon mm-reload" title="${tr('hdr.repairTitle')}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="mm-l">${tr('hdr.repair')}</span></button><a class="icon mm-link" href="#/abonnement" data-r="abonnement"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20s-7-4.4-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.4C19 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">${tr('nav.sub')}</span></a><a class="icon mm-link" href="#/maj" data-r="maj"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">${tr('nav.updates')}</span></a><a class="icon mm-link" href="#/tuto" data-r="tuto"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="mm-l">${tr('nav.tutorial')}</span></a><a class="icon mm-link" href="#/suggestions" data-r="suggestions"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="mm-l">Suggestions</span><b class="badge mm-sg" hidden></b></a></div></div>`; // i18n-ok
     tickPacks();
     navDots?.sync(); // (le menu du profil vient d'être refait : sa pastille « Mises à jour » aussi)
   }
@@ -813,7 +814,10 @@ function tickPacks() {
   const r = liveRegen(u, now);
   setText(el.querySelector('b')!, String(r.balance));
   // au-dessus du plafond (cadeau, ancien solde) : « 40 » tout court, pas « 40/15 »
-  el.classList.toggle('over', r.balance > PACK_CAP);
+  el.classList.toggle('over', r.balance > packCapOfMe(u));
+  // (20/11) abonnement activé ou terminé pendant la session : le plafond affiché suit (15 ↔ 20)
+  const capEl = el.querySelector('.p-cap');
+  if (capEl) setText(capEl as HTMLElement, String(packCapOfMe(u)));
   el.classList.toggle('full', r.nextAt === null);
   // (retours live 02, lot G) état « régénération en cours » distinct de « réserve pleine » (pilule violet/bleu, CSS)
   el.classList.toggle('regen', r.nextAt !== null);
@@ -895,7 +899,7 @@ function updateTitle() {
   if (document.title !== title) document.title = title;
 }
 /** Titre de l'onglet du navigateur selon la page (fr.ts / en.ts : `title.*`). */
-const TITLE_PAGES = new Set(['evenement', 'collection', 'contrats', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
+const TITLE_PAGES = new Set(['evenement', 'abonnement', 'collection', 'contrats', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
 const pageTitle = (r: string) => tr((TITLE_PAGES.has(r) ? `title.${r}` : 'title.shop') as MsgKey);
 
 /** Page du jeu : son élément et ses entrées / sorties (route()). */
@@ -997,6 +1001,7 @@ const PAGE_MODULES = {
   classement: () => import('./views/ranking'),
   succes: () => import('./views/succes'),
   evenement: () => import('./views/evenement'),
+  abonnement: () => import('./views/abonnement'),
   suggestions: () => import('./views/suggestions'),
   maj: () => import('./views/infos'),
   tuto: () => import('./views/infos'),
@@ -1093,6 +1098,7 @@ async function boot() {
     classement: (m) => m.createRankingView(backend, shell),
     succes: (m) => m.createSuccesView(backend, shell),
     evenement: (m) => m.createEvenementView(backend, shell),
+    abonnement: (m) => m.createAbonnementView(backend, shell),
     suggestions: (m) => m.createSuggestionsView(backend, shell),
     maj: (m) => m.createUpdatesView(shell),
     tuto: (m) => m.createTutorialView(shell),

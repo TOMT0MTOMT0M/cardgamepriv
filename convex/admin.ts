@@ -1,4 +1,5 @@
 import { v, ConvexError } from 'convex/values';
+import { packCapOf } from '../src/core/abo';
 import { internalMutation, type MutationCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS, type RarityId } from './cardsCatalog';
@@ -124,7 +125,7 @@ export const grantTestCards = internalMutation({
     let packBalance = user.packBalance;
     if (a.packs) {
       const now = Date.now();
-      const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
+      const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil, packCapOf(user, now));
       packBalance = regen.balance + a.packs;
       await ctx.db.patch(user._id, { packBalance, packRegenAt: now });
     }

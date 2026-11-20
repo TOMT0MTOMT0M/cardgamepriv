@@ -1,4 +1,5 @@
 import { fe } from '../src/core/errors';
+import { packCapOf } from '../src/core/abo';
 import { payReferrer } from './referrals';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, mutation, query, type MutationCtx } from './_generated/server';
@@ -96,7 +97,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
 
   // recharge accumulée depuis la dernière fois (1 booster / 5 min, 15 max), puis on dépense
   const now = Date.now();
-  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
+  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil, packCapOf(user, now));
   if (regen.balance <= 0) {
     throw new ConvexError(fe('packs.2', { p0: fmtCountdown((regen.nextAt ?? now) - now) }));
   }

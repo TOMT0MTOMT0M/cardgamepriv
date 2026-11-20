@@ -33,20 +33,21 @@ const realAt = (from: number, eff: number, boostUntil: number) => {
   return eff <= 2 * boosted ? from + eff / 2 : from + boosted + (eff - 2 * boosted);
 };
 
-export function applyRegen(balance: number, regenAt: number, now: number, boostUntil = 0): RegenState {
-  if (balance >= PACK_CAP) return { balance, regenAt: now, nextAt: null };
+/** `cap` : réserve maximale du joueur (15 ; 20 pour un abonné — src/core/abo.ts, packCapOf). */
+export function applyRegen(balance: number, regenAt: number, now: number, boostUntil = 0, cap = PACK_CAP): RegenState {
+  if (balance >= cap) return { balance, regenAt: now, nextAt: null };
   const gained = Math.max(0, Math.floor(effSpan(regenAt, now, boostUntil) / PACK_REGEN_MS));
-  const b = Math.min(PACK_CAP, balance + gained);
-  if (b >= PACK_CAP) return { balance: b, regenAt: now, nextAt: null };
+  const b = Math.min(cap, balance + gained);
+  if (b >= cap) return { balance: b, regenAt: now, nextAt: null };
   const at = realAt(regenAt, gained * PACK_REGEN_MS, boostUntil);
   return { balance: b, regenAt: at, nextAt: realAt(at, PACK_REGEN_MS, boostUntil) };
 }
 
 /** Instant réel où la réserve sera PLEINE (null : déjà pleine) — notifications push « réserve pleine ». */
-export function fullAt(balance: number, regenAt: number, now: number, boostUntil = 0): number | null {
-  const r = applyRegen(balance, regenAt, now, boostUntil);
-  if (r.balance >= PACK_CAP) return null;
-  return realAt(r.regenAt, (PACK_CAP - r.balance) * PACK_REGEN_MS, boostUntil);
+export function fullAt(balance: number, regenAt: number, now: number, boostUntil = 0, cap = PACK_CAP): number | null {
+  const r = applyRegen(balance, regenAt, now, boostUntil, cap);
+  if (r.balance >= cap) return null;
+  return realAt(r.regenAt, (cap - r.balance) * PACK_REGEN_MS, boostUntil);
 }
 
 /** Boost encore actif à `now` (pour l'affichage). */

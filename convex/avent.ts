@@ -1,4 +1,5 @@
 import { fe } from '../src/core/errors';
+import { packCapOf } from '../src/core/abo';
 import { v, ConvexError } from 'convex/values';
 import { mutation } from './_generated/server';
 import { requireUser } from './auth';
@@ -35,7 +36,7 @@ export const open = mutation({
     const packs = (reward.packs ?? 0) + (reward.god ? 1 : 0);
     if (packs || reward.god) {
       const fresh = (await ctx.db.get(u._id))!;
-      const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil);
+      const regen = applyRegen(fresh.packBalance, fresh.packRegenAt ?? fresh.lastSeenAt, now, fresh.regenBoostUntil, packCapOf(fresh, now));
       await ctx.db.patch(u._id, { packBalance: regen.balance + packs, packRegenAt: regen.regenAt, ...(reward.god ? { godPacks: (fresh.godPacks ?? 0) + 1 } : {}) });
     }
     await syncPresence(ctx, u._id);

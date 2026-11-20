@@ -150,3 +150,8 @@
   .av-24 { grid-column: 3 / span 2; aspect-ratio: 2 / 0.9; }
 }
 .av-godbar .av-ico { opacity: 1; transform: none; flex: none; }
+
+/* la page : mêmes marges, même aplat noir et même trame de points que les autres pages (style.css, usinage.css) */
+.evenement { overflow-y: auto; overscroll-behavior: contain; padding: calc(var(--top) + env(safe-area-inset-top) + 18px) 20px calc(40px + env(safe-area-inset-bottom)); background: #000; isolation: isolate; }
+.evenement::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 760px; z-index: -1; pointer-events: none; background: radial-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1.3px) 0 0 / 22px 22px; -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent); }
+@media (max-width: 640px) { .evenement { padding-left: 14px; padding-right: 14px; } }

@@ -147,4 +147,12 @@ export const enMsgs: Record<keyof typeof MSG_FR, MsgTpl> = {
   'c.rouletteColorWin': 'Roulette — {rcolor} comes up (no. {number}): bet × {mult}',
   'n.rouletteColor': 'Roulette: {rcolor} came up!',
   'n.rouletteColorBody': 'No. {number}: your colour bet pays {coins} coins.',
+  'n.aboOn': 'Subscription activated',
+  'n.aboOnBody': 'Thank you! A 20-booster reserve, your Bebou card and the monthly vote are waiting.',
+  'n.aboSoon': 'Your subscription ends soon',
+  'n.aboSoonBody': 'Only 5 days left. Renew it from the Subscription page.',
+  'n.aboAsk': 'Subscription: {name} says they paid',
+  'n.aboAskBody': 'Check the Wero payment, then activate their month in the dashboard.',
+  'n.aboPoll': 'New subscriber vote',
+  'n.aboPollBody': '{title}',
 };

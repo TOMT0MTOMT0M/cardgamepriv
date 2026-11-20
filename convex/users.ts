@@ -1,4 +1,5 @@
 import { fe } from '../src/core/errors';
+import { packCapOf } from '../src/core/abo';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
@@ -24,7 +25,7 @@ const ONLINE_WINDOW_MS = 6 * 60 * 1000;
 export function meView(user: Doc<'users'>, now: number) {
   // recharge : 1 booster / 5 min, 15 max (calcul paresseux, rien n'est écrit ici ; le client refait le calcul chaque seconde)
   const packRegenAt = user.packRegenAt ?? user.lastSeenAt;
-  const regen = applyRegen(user.packBalance, packRegenAt, now, user.regenBoostUntil);
+  const regen = applyRegen(user.packBalance, packRegenAt, now, user.regenBoostUntil, packCapOf(user, now));
 
   // (perf : plus de lecture de tout l'inventaire ici — cette requête est ré-exécutée à chaque battement de cœur et
   // à chaque carte gagnée ; les compteurs « cartes uniques / au total » du HUD du labo viennent de myCollection)
@@ -41,7 +42,8 @@ export function meView(user: Doc<'users'>, now: number) {
     packRegenAt,
     /** (ouverture 07/11) recharge ×2 jusqu'à cet instant (absent : pas de boost) */
     boostUntil: user.regenBoostUntil && user.regenBoostUntil > now ? user.regenBoostUntil : undefined,
-    packCap: PACK_CAP,
+    /** (20/11) 15, ou 20 pour un abonné (src/core/abo.ts) */
+    packCap: packCapOf(user, now),
     packRegenMs: PACK_REGEN_MS,
     nextPackAt: regen.nextAt,
     totalPacksOpened: user.totalPacksOpened,
@@ -148,7 +150,7 @@ export const claimStreak = mutation({
     const streak = touchStreak(user.streak, now) ?? user.streak;
     const r = claimStreakState(streak);
     if (typeof r === 'string') throw new ConvexError(r);
-    const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
+    const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil, packCapOf(user, now));
     await ctx.db.patch(user._id, { streak: r, packBalance: regen.balance + STREAK_REWARD, packRegenAt: regen.regenAt });
     return { reward: STREAK_REWARD };
   },

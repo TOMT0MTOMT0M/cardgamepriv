@@ -1,4 +1,5 @@
 import { fe } from '../src/core/errors';
+import { packCapOf } from '../src/core/abo';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -56,7 +57,7 @@ const cleanStake = (s: Stake) => ({ coins: Math.round(s.coins), cards: s.cards.m
 
 /** Boosters disponibles maintenant (réserve + recharge). */
 function packsNow(u: Doc<'users'>, now: number) {
-  return applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil);
+  return applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil, packCapOf(u, now));
 }
 
 async function debitPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {

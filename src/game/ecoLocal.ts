@@ -127,6 +127,7 @@ export function createLocalEco(host: LocalEcoHost) {
       achievements: { stats, claimable: claimableAchievements(stats, s.econ.achievements).map((a) => a.id) },
       isAdmin: true,
       advent: { opened: extras.opened(), godPacks: extras.godPacks() },
+      sub: extras.sub(),
       packShop: { price: PACK_PRICE, left: packBuysLeft(s.econ, missionDay(now)) },
     };
   }

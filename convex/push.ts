@@ -1,4 +1,5 @@
 import { fe } from '../src/core/errors';
+import { packCapOf } from '../src/core/abo';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -165,7 +166,7 @@ export async function scheduleReserveFull(ctx: MutationCtx, userId: Id<'users'>)
     // l'instant visé, ou `null` s'il n'y a rien à programmer
     let at: number | null = null;
     if (process.env.VAPID_PUBLIC_KEY && !(u.notifPrefs && !u.notifPrefs.includes('reserve')) && (await ctx.db.query('pushSubs').withIndex('by_user', (q) => q.eq('userId', userId)).first()))
-      at = fullAt(u.packBalance, u.packRegenAt ?? u.lastSeenAt, Date.now(), u.regenBoostUntil);
+      at = fullAt(u.packBalance, u.packRegenAt ?? u.lastSeenAt, Date.now(), u.regenBoostUntil, packCapOf(u, Date.now()));
     const regenAt = u.packRegenAt ?? u.lastSeenAt;
     const key = at === null ? undefined : `${at}:${u.packBalance}:${regenAt}`;
     // (audit 12/11, S11 / E1-07) le même job attend déjà (même instant, même réserve) : AUCUNE écriture. Avant : annulé

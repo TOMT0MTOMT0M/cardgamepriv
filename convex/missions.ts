@@ -1,4 +1,5 @@
 import { v, ConvexError } from 'convex/values';
+import { packCapOf } from '../src/core/abo';
 import { mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { getUserByToken, requireUser } from './auth';
@@ -46,7 +47,7 @@ export async function bumpMissions(ctx: MutationCtx, user: Doc<'users'>, ev: Mis
 /** Ajoute des boosters à la réserve (au-dessus du plafond si besoin), recharge appliquée d'abord. */
 async function grant(ctx: MutationCtx, user: Doc<'users'>, n: number, missions: MissionsState) {
   const now = Date.now();
-  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil);
+  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil, packCapOf(user, now));
   await ctx.db.patch(user._id, { packBalance: regen.balance + n, packRegenAt: regen.regenAt, missions: cleanMissions(missions) });
 }
 

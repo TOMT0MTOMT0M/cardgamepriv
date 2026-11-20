@@ -321,5 +321,12 @@ export const ERR_FR = {
   'games.50': 'Couleur inconnue.',
   'games.51': 'Tu as déjà misé sur une couleur pour ce tirage.',
   'games.52': 'Mise sur une couleur : entre {p0} et {p1} pièces.',
+  'abo.1': 'Réservé aux abonnés.',
+  'abo.2': 'Tu es déjà abonné jusqu’au bout du mois : rien à déclarer pour l’instant.',
+  'abo.3': 'Ta carte est déjà intégrée au jeu : elle ne se modifie plus.',
+  'abo.4': 'Image introuvable : renvoie-la.',
+  'abo.5': 'Ce vote est terminé.',
+  'abo.6': 'Choix inconnu.',
+  'abo.7': 'Réservé à l’équipe (Tom et Hugo).',
 } as const satisfies Record<string, string>;
 export type ErrCode = keyof typeof ERR_FR;

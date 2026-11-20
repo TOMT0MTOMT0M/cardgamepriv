@@ -164,6 +164,14 @@ export const MSG_FR = {
   'c.rouletteColorWin': 'Roulette — le {rcolor} sort (n° {number}) : mise × {mult}',
   'n.rouletteColor': 'Roulette : le {rcolor} est sorti !',
   'n.rouletteColorBody': 'N° {number} : ta mise couleur te rapporte {coins} pièces.',
+  'n.aboOn': 'Abonnement activé',
+  'n.aboOnBody': 'Merci ! Réserve à 20 boosters, ta carte Bebou et le vote du mois t’attendent.',
+  'n.aboSoon': 'Ton abonnement se termine bientôt',
+  'n.aboSoonBody': 'Plus que 5 jours. Renouvelle-le depuis la page Abonnement.',
+  'n.aboAsk': 'Abonnement : {name} dit avoir payé',
+  'n.aboAskBody': 'Vérifie le Wero puis active son mois dans le dashboard.',
+  'n.aboPoll': 'Nouveau vote des abonnés',
+  'n.aboPollBody': '{title}',
 } satisfies Record<string, MsgTpl>;
 
 export type MsgCode = keyof typeof MSG_FR;

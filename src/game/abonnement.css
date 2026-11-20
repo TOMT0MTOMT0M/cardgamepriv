@@ -1,0 +1,115 @@
+/*
+ * ABONNEMENT (20/11, views/abonnement.ts) — direction « usinage » : filets fins, noir / blanc, peu de texte.
+ * Une seule couleur, qui porte une information : `--ab-on` (vert) = abonnement actif ; l'ambre = bientôt fini.
+ * Durées : jetons de src/core/motion.ts (`--dur-*`, `--ease-*`).
+ */
+.abonnement { --ab-on: #7fe0a3; --ab-soon: #ffc98a; }
+.ab-wrap { gap: 14px; max-width: 860px; }
+.ab-h { display: block; font: 600 12px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-2); }
+
+/* prix + état */
+.ab-hero { display: flex; align-items: center; justify-content: space-between; gap: 14px 24px; flex-wrap: wrap; padding: 20px 22px; border-radius: var(--r-box); border: 1px solid var(--gm-line-2); background: radial-gradient(90% 140% at 0% 0%, rgba(255, 255, 255, 0.06), transparent 60%), var(--gm-fill); transition: border-color var(--dur-emphatique) var(--ease-standard); }
+.ab-hero.on { border-color: color-mix(in srgb, var(--ab-on) 60%, transparent); }
+.ab-hero.soon { border-color: color-mix(in srgb, var(--ab-soon) 70%, transparent); }
+.ab-price { display: flex; align-items: baseline; gap: 6px; }
+.ab-price b { font: 600 clamp(64px, 14vw, 104px)/0.85 var(--title); letter-spacing: -0.03em; }
+.ab-price span { font: 600 clamp(26px, 5vw, 38px)/1 var(--title); }
+.ab-price em { margin-left: 6px; font: 500 12px var(--mono); font-style: normal; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+.ab-state { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; text-align: right; }
+.ab-pill { padding: 5px 13px; border-radius: var(--r-pill); border: 1px solid var(--gm-line-2); font: 600 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-2); }
+.ab-hero.on .ab-pill { border-color: var(--ab-on); color: var(--ab-on); }
+.ab-hero.soon .ab-pill { border-color: var(--ab-soon); color: var(--ab-soon); }
+.ab-until { font: 400 12.5px var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ab-until b { color: #fff; font-weight: 600; }
+.ab-asked { font: 500 11.5px var(--mono); color: var(--ab-soon); }
+
+/* les 3 avantages */
+.ab-perks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ab-perk { display: flex; flex-direction: column; gap: 7px; padding: 16px; border-radius: var(--r-box); border: 1px solid var(--gm-line); background: var(--gm-fill); }
+.ab-perk svg { width: 26px; height: 26px; color: #fff; margin-bottom: 4px; }
+.ab-perk b { font: 600 17px/1.1 var(--title); }
+.ab-perk span { font: 400 12px/1.45 var(--mono); color: var(--ink-3); }
+
+/* où va l'argent */
+.ab-where { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: var(--r-box); border: 1px solid var(--gm-line); }
+.ab-where-row { display: flex; align-items: center; gap: 12px; }
+.ab-where-row i { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--gm-line-2); color: #fff; }
+.ab-where-row span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ab-where-row b { font: 600 14px var(--title); }
+.ab-where-row small { font: 400 12px var(--mono); color: var(--ink-3); }
+.ab-fair { margin: 4px 0 0; padding-top: 10px; border-top: 1px solid var(--gm-line); font: 400 12px/1.55 var(--mono); color: var(--ink-2); }
+
+/* comment payer */
+.ab-pay { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border-radius: var(--r-box); border: 1px solid var(--gm-line-2); }
+.ab-pay[hidden], .ab-demo[hidden] { display: none; }
+.ab-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ab-steps li { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; border-top: 1px solid var(--gm-line); }
+.ab-steps li:first-child { border-top: 0; }
+.ab-steps li > i { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--gm-line-2); font: 600 12px var(--mono); font-style: normal; color: #fff; }
+.ab-steps li > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ab-steps b { font: 600 14px var(--title); }
+.ab-steps small { font: 400 12px/1.45 var(--mono); color: var(--ink-2); }
+.ab-to { color: #fff; font-weight: 600; user-select: all; -webkit-user-select: all; }
+.ab-steps .btn-primary, .ab-steps .btn-ghost { flex: none; }
+
+/* la ligne « Abonnés » */
+.ab-sep { display: flex; align-items: center; gap: 12px; margin-top: 8px; font: var(--gm-label); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-3); }
+.ab-sep::before, .ab-sep::after { content: ''; flex: 1; height: 1px; background: var(--gm-line); }
+.ab-sep span { display: inline-flex; align-items: center; gap: 7px; }
+.ab-sep svg { width: 14px; height: 14px; }
+.ab-two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+.ab-panel { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--r-box); border: 1px solid var(--gm-line); background: var(--gm-fill); transition: opacity var(--dur-emphatique) var(--ease-standard); }
+.ab-panel.locked { opacity: 0.5; }
+.ab-ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ab-ph b { display: inline-flex; align-items: center; gap: 8px; font: 600 15px var(--title); }
+.ab-ph svg { width: 18px; height: 18px; }
+.ab-chip { padding: 3px 10px; border-radius: var(--r-pill); border: 1px solid var(--gm-line-2); font: 600 10.5px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ab-chip.s-ok, .ab-chip.s-done { border-color: var(--ab-on); color: var(--ab-on); }
+
+/* carte Bebou : l'image au format carte, le nom, l'idée */
+.ab-cardform { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; }
+.ab-art { position: relative; display: grid; place-items: center; aspect-ratio: 63 / 88; border-radius: 9px; border: 1px dashed var(--gm-line-2); background: #050505; color: var(--ink-3); overflow: hidden; cursor: pointer; transition: border-color var(--dur-rapide) var(--ease-standard); }
+.ab-art.has { border-style: solid; }
+.ab-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ab-art span svg { width: 30px; height: 30px; }
+.ab-art em { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 6px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.85)); font: 500 10px/1.2 var(--mono); font-style: normal; text-align: center; color: #fff; }
+@media (hover: hover) { .ab-panel:not(.locked) .ab-art:hover { border-color: #fff; } }
+.ab-panel.locked .ab-art { cursor: default; }
+.ab-fields { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ab-in { width: 100%; padding: 10px 12px; border-radius: var(--r-ctl); border: 1px solid var(--gm-line-2); background: #000; color: #fff; font: 400 14px/1.4 var(--mono); resize: vertical; }
+.ab-in:focus-visible { outline: 0; border-color: #fff; }
+.ab-in:disabled { opacity: 0.6; }
+.ab-acts { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* vote : chaque choix est une barre qui se remplit une fois qu'on a voté */
+.ab-q { font: 600 18px/1.2 var(--title); text-wrap: balance; }
+.ab-opts { display: flex; flex-direction: column; gap: 6px; }
+.ab-opt { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; padding: 8px 14px; border-radius: var(--r-ctl); border: 1px solid var(--gm-line-2); background: #000; color: #fff; text-align: left; overflow: hidden; isolation: isolate; font: 500 13.5px var(--mono); transition: border-color var(--dur-rapide) var(--ease-standard), transform var(--dur-rapide) var(--ease-standard); -webkit-tap-highlight-color: transparent; }
+.ab-opt i { position: absolute; inset: 0; z-index: -1; transform-origin: 0 50%; scale: var(--p, 0) 1; background: rgba(255, 255, 255, 0.13); transition: scale var(--dur-emphatique) var(--ease-entree); }
+.ab-opt em { font: 600 12px var(--mono); font-style: normal; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ab-opt.mine { border-color: #fff; }
+.ab-opt.mine span::before { content: '✓ '; }
+.ab-opt.top i { background: rgba(255, 255, 255, 0.24); }
+.ab-opt:active:not(:disabled) { transform: scale(0.985); }
+.ab-opt:disabled { opacity: 1; cursor: default; }
+@media (hover: hover) { .ab-opt:hover:not(:disabled) { border-color: #fff; } }
+.ab-total, .ab-none { font: 400 12px var(--mono); color: var(--ink-3); }
+.ab-demo { align-self: center; margin-top: 6px; }
+
+@media (max-width: 720px) {
+  .ab-hero { padding: 16px; }
+  .ab-state { align-items: flex-start; text-align: left; }
+  .ab-perks { grid-template-columns: 1fr; gap: 8px; }
+  .ab-perk { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 14px; padding: 13px 14px; }
+  .ab-perk svg { grid-row: span 2; margin: 0; }
+  .ab-two { grid-template-columns: 1fr; }
+  .ab-cardform { grid-template-columns: 92px minmax(0, 1fr); }
+  .ab-steps li { flex-wrap: wrap; }
+  .ab-steps li > span { flex-basis: calc(100% - 44px); }
+  .ab-steps .btn-primary, .ab-steps .btn-ghost { margin-left: 40px; }
+}
+
+/* la page : mêmes marges, même aplat noir et même trame de points que les autres pages (style.css, usinage.css) */
+.abonnement { overflow-y: auto; overscroll-behavior: contain; padding: calc(var(--top) + env(safe-area-inset-top) + 18px) 20px calc(40px + env(safe-area-inset-bottom)); background: #000; isolation: isolate; }
+.abonnement::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 760px; z-index: -1; pointer-events: none; background: radial-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1.3px) 0 0 / 22px 22px; -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent); }
+@media (max-width: 640px) { .abonnement { padding-left: 14px; padding-right: 14px; } }

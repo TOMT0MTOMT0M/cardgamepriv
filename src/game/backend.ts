@@ -1,6 +1,6 @@
 import type { RarityId } from '../core/rarity';
 import type { PackRequest } from '../core/packRoll';
-import { applyRegen, type RegenState } from '../core/packRegen';
+import { PACK_CAP, applyRegen, type RegenState } from '../core/packRegen';
 import type { MissionsState } from '../core/missions';
 import type { StreakState } from '../core/streak';
 import type { CosmeticChoice, OpeningId, PlayerStats } from '../core/cosmetics';
@@ -286,6 +286,8 @@ export interface Me {
   /** réserve stockée et départ du minuteur de recharge (1 booster / 5 min, 15 max) */
   packStored: number;
   packRegenAt: number;
+  /** (20/11) réserve maximale : 15, ou 20 pour un abonné (src/core/abo.ts) ; absent = 15 */
+  packCap?: number;
   /** (ouverture 07/11) recharge ×2 jusqu'à cet instant */
   boostUntil?: number;
   totalPacksOpened: number;
@@ -312,7 +314,9 @@ export interface Me {
 }
 
 /** Réserve de boosters à l'instant présent (le compte à rebours de l'en-tête l'appelle chaque seconde). */
-export const liveRegen = (u: Me, now = Date.now()): RegenState => applyRegen(u.packStored, u.packRegenAt, now, u.boostUntil);
+export const liveRegen = (u: Me, now = Date.now()): RegenState => applyRegen(u.packStored, u.packRegenAt, now, u.boostUntil, u.packCap);
+/** Réserve maximale du joueur (15 ; 20 pour un abonné). */
+export const packCapOfMe = (u: Me | null | undefined): number => u?.packCap ?? PACK_CAP;
 
 export interface GameState {
   /** `online` : serveur Convex + Discord · `demo` : tout dans ce navigateur, amis robots */

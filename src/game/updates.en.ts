@@ -8,6 +8,7 @@ export const UPDATES_EN: UpdateMonth[] = [
       {
         date: '20 Nov', title: 'V3: Event tab, unique titles, roulette in colour', tag: 'nouveau',
         points: [
+          '♥ Subscription at €5 a month to support the game (servers and development): +5 booster reserve, your own Bebou card, and the monthly vote. Paid with Wero, one month at a time. No advantage on pulls.',
           '🎄 New Event tab: the Advent calendar, from 1 to 24 December. One door a day (coins or boosters), missed days can be caught up until the 31st, and door 24 hides a God Pack.',
           '❄️ Christmas cosmetics to win by opening doors: a badge, two titles and a frame.',
           '♛ Unique titles: the first player to complete Valorant, Naruto, Pokémon or League of Legends wins a title nobody else will ever get (Radiant, Hokage, Pokémon Master, Challenger). It shows next to their name.',
