@@ -61,6 +61,16 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '20 nov.', title: 'Musiques des films et des jeux, nouvelles 6★', tag: 'amélioré',
+        points: [
+          '📺 Le prochain ajout de cartes arrive début décembre : les émissions télé, avec leurs candidats et présentateurs. Dis-nous lesquelles tu veux dans le mini-sondage.',
+          '🎬 Les 6★ de films et de jeux vidéo jouent la musique de leur film ou de leur jeu : Star Wars, Harry Potter, Le Parrain, Rocky, Final Fantasy, The Last of Us, Minecraft, Halo… 86 en tout.',
+          '🕵️ L Lawliet joue « L no Theme » (Death Note).',
+          '⭐ Michael Scott, Suguru Getou, Haruka Nanase et Knight passent en 6★.',
+          '🖼️ 36 cartes en pleine illustration, mieux cadrées : Kakashi, Sasuke, Sanji, L, le Joker, Dexter, Brimstone, Scooby-Doo…',
+        ],
+      },
+      {
         date: '17 nov.', title: 'V3 : le jeu plus vivant sous le doigt', tag: 'amélioré',
         points: [
           '📖 Collection : touche une carte, elle s’envole jusqu’à la visionneuse et revient se poser à sa place quand tu fermes.',

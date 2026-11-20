@@ -14026,9 +14026,9 @@
 },
 "miam-arlequin": {
 "art": "c",
-"file": "snacks-marques-fast-food--arlequin.jpg",
-"src": "url",
-"t": 1793645516
+"file": "snacks-marques-fast-food--arlequin-r2611201333.jpg",
+"src": "reillustre:arlequin snackls.jpg",
+"t": 1795181599
 },
 "miam-armagnac": {
 "art": "c",
@@ -29122,8 +29122,9 @@
 },
 "zoo-poisson-globe-fugu": {
 "art": "c",
-"file": "136-poisson-globe-fugu.png",
-"src": "v1"
+"file": "136-poisson-globe-fugu-r2611201333.jpg",
+"src": "reillustre:poisson globe fugu.jpg",
+"t": 1795181599
 },
 "zoo-poisson-guitare-chola": {
 "art": "c",

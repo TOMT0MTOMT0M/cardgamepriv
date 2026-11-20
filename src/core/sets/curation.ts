@@ -165,3 +165,14 @@ export const RERATE_17_11: Readonly<Record<string, CatalogRarity>> = {
   'pop-aelita': 'mythic',
   'jv-palworld-palworld': 'mythic',
 };
+
+/**
+ * (20/11, demandes de Hugo) Michael Scott, Suguru Getou, Haruka Nanase et Knight (LoL esport) passent 6★
+ * (ShowMaker l'est déjà depuis RERATE_13_11). Inventaires : migrations:resyncRarities.
+ */
+export const RERATE_20_11: Readonly<Record<string, CatalogRarity>> = {
+  'pop-michael-scott': 'mythic',
+  'pop-suguru-getou': 'mythic',
+  'pop-haruka-nanase': 'mythic',
+  'spt-knight': 'mythic',
+};

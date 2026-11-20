@@ -1,5 +1,5 @@
 {
-  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. (15/11, soir) 24 génériques récupérés par Gemini (donnees/generiques/a-integrer/LISEZMOI.txt : sources, VF/VO) : versions françaises diffusées, génériques instrumentaux officiels, Cha-La Head-Cha-La 1989, Olive et Tom (Corbel) — servis par Pages (public/audio/generiques/) ; la version anglaise d'avant passe dans « cartoon-en ». Reste en reprise fidèle : Molang, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/. « screen » (17/11, demandes de Hugo) = générique de la série (bloc Séries TV) ou musique du film (Marvel MCU : Avengers d'Alan Silvestri), par sous-thème, joué en fond quand une 6★ tombe — interprète original seulement. Hellsing : « The World without Logos » (Yasushi Ishii).",
+  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. (15/11, soir) 24 génériques récupérés par Gemini (donnees/generiques/a-integrer/LISEZMOI.txt : sources, VF/VO) : versions françaises diffusées, génériques instrumentaux officiels, Cha-La Head-Cha-La 1989, Olive et Tom (Corbel) — servis par Pages (public/audio/generiques/) ; la version anglaise d'avant passe dans « cartoon-en ». Reste en reprise fidèle : Molang, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/. « screen » (17/11, demandes de Hugo) = générique de la série (bloc Séries TV) ou musique du film (Marvel MCU : Avengers d'Alan Silvestri), par sous-thème, joué en fond quand une 6★ tombe — interprète original seulement. Hellsing : « The World without Logos » (Yasushi Ishii). (20/11, demandes de Hugo) L Lawliet 6★ : « L no Theme » (Hideki Taniuchi, DEATH NOTE Original Soundtrack). « screen » couvre aussi les films 6★ et les familles Jeux vidéo 6★ (thème du film / du jeu, interprète original ; familles « divers » laissées sans musique).",
   "cards": {
     "pop-au-dd": [
       "Au DD",
@@ -1009,6 +1009,11 @@
       "See You Again (feat. Charlie Puth)",
       "Wiz Khalifa",
       "itunes:1029609244"
+    ],
+    "pop-l-lawliet": [
+      "L no Theme",
+      "Hideki Taniuchi",
+      "itunes:1611734917"
     ]
   },
   "anime": {
@@ -2216,6 +2221,364 @@
       "The Avengers",
       "Alan Silvestri",
       "itunes:1440663698"
+    ],
+    "300": [
+      "To Victory",
+      "Tyler Bates"
+    ],
+    "avatar": [
+      "Jake Enters His Avatar World",
+      "James Horner"
+    ],
+    "ca": [
+      "Every 27 Years",
+      "Benjamin Wallfisch",
+      "itunes:1454546636"
+    ],
+    "cars": [
+      "Life Is a Highway",
+      "Rascal Flatts"
+    ],
+    "casino": [
+      "Thème de Camille",
+      "Georges Delerue"
+    ],
+    "charlie-et-la-chocolaterie": [
+      "Wonka's Welcome Song",
+      "Danny Elfman"
+    ],
+    "conjuring": [
+      "The Conjuring",
+      "Joseph Bishara"
+    ],
+    "dc-films": [
+      "Why So Serious?",
+      "Hans Zimmer"
+    ],
+    "die-hard": [
+      "Let It Snow! Let It Snow! Let It Snow!",
+      "Vaughn Monroe"
+    ],
+    "e-t": [
+      "Flying Theme",
+      "John Williams"
+    ],
+    "fast-furious": [
+      "See You Again",
+      "Wiz Khalifa"
+    ],
+    "fight-club": [
+      "Where Is My Mind?",
+      "Pixies"
+    ],
+    "gremlins": [
+      "The Gremlin Rag",
+      "Jerry Goldsmith"
+    ],
+    "harry-potter": [
+      "Hedwig's Theme",
+      "John Williams"
+    ],
+    "heat": [
+      "God Moving Over the Face of the Waters",
+      "Moby"
+    ],
+    "hunger-games": [
+      "The Hanging Tree",
+      "James Newton Howard"
+    ],
+    "il-etait-une-fois-dans-l-ouest": [
+      "Once Upon a Time in the West",
+      "Ennio Morricone"
+    ],
+    "il-etait-une-fois-en-amerique": [
+      "Deborah's Theme",
+      "Ennio Morricone"
+    ],
+    "indiana-jones": [
+      "Raiders March",
+      "John Williams"
+    ],
+    "james-bond": [
+      "James Bond Theme",
+      "Monty Norman",
+      "itunes:1720641175"
+    ],
+    "john-wick": [
+      "LED Spirals",
+      "Le Castle Vania"
+    ],
+    "kill-bill": [
+      "Battle Without Honor or Humanity",
+      "Tomoyasu Hotei"
+    ],
+    "kung-fu-panda": [
+      "Oogway Ascends",
+      "Hans Zimmer"
+    ],
+    "la-ligne-verte": [
+      "The Green Mile",
+      "Thomas Newman"
+    ],
+    "la-liste-de-schindler": [
+      "Theme from Schindler's List",
+      "John Williams"
+    ],
+    "la-reine-des-neiges": [
+      "Libérée, délivrée",
+      "Anaïs Delva"
+    ],
+    "le-diner-de-cons": [
+      "Le dîner de cons",
+      "Vladimir Cosma"
+    ],
+    "le-gendarme-de-saint-tropez": [
+      "Marche des gendarmes",
+      "Raymond Lefèvre"
+    ],
+    "le-parrain": [
+      "The Godfather Waltz",
+      "Nino Rota"
+    ],
+    "le-roi-lion": [
+      "Circle of Life",
+      "Carmen Twillie"
+    ],
+    "le-seigneur-des-anneaux": [
+      "Concerning Hobbits",
+      "Howard Shore"
+    ],
+    "le-silence-des-agneaux": [
+      "Main Title",
+      "Howard Shore",
+      "itunes:1443219466"
+    ],
+    "les-affranchis": [
+      "Rags to Riches",
+      "Tony Bennett"
+    ],
+    "les-evades": [
+      "Shawshank Redemption",
+      "Thomas Newman"
+    ],
+    "les-infiltres": [
+      "I'm Shipping Up to Boston",
+      "Dropkick Murphys"
+    ],
+    "les-tontons-flingueurs": [
+      "Les tontons flingueurs",
+      "Michel Magne"
+    ],
+    "maman-j-ai-rate-l-avion": [
+      "Somewhere in My Memory",
+      "John Williams"
+    ],
+    "matrix": [
+      "Spybreak!",
+      "Propellerheads",
+      "itunes:580690942"
+    ],
+    "mon-voisin-totoro": [
+      "My Neighbor Totoro",
+      "Joe Hisaishi"
+    ],
+    "mulan": [
+      "Reflection",
+      "Lea Salonga"
+    ],
+    "pirates-des-caraibes": [
+      "He's a Pirate",
+      "Klaus Badelt"
+    ],
+    "psychose": [
+      "Prelude",
+      "Bernard Herrmann"
+    ],
+    "ratatouille": [
+      "Le festin",
+      "Camille"
+    ],
+    "retour-vers-le-futur": [
+      "The Power of Love",
+      "Huey Lewis and the News",
+      "itunes:725785116"
+    ],
+    "rocky": [
+      "Gonna Fly Now",
+      "Bill Conti"
+    ],
+    "scream": [
+      "Red Right Hand",
+      "Nick Cave & The Bad Seeds"
+    ],
+    "shining": [
+      "Main Title",
+      "Wendy Carlos"
+    ],
+    "shrek": [
+      "All Star",
+      "Smash Mouth"
+    ],
+    "spider-man-new-generation": [
+      "Sunflower",
+      "Post Malone & Swae Lee",
+      "itunes:1445949267"
+    ],
+    "star-wars": [
+      "Main Title",
+      "John Williams",
+      "itunes:1375814284"
+    ],
+    "toy-story": [
+      "You've Got a Friend in Me",
+      "Randy Newman"
+    ],
+    "transformers": [
+      "Arrival to Earth",
+      "Steve Jablonsky"
+    ],
+    "troie": [
+      "Troy",
+      "James Horner"
+    ],
+    "jv-angry-birds": [
+      "Angry Birds Theme",
+      "Ari Pulkkinen"
+    ],
+    "jv-assassin-s-creed": [
+      "Ezio's Family",
+      "Jesper Kyd"
+    ],
+    "jv-borderlands": [
+      "Ain't No Rest for the Wicked",
+      "Cage the Elephant"
+    ],
+    "jv-call-of-duty": [
+      "Main Theme",
+      "David Buckley",
+      "itunes:1542621254"
+    ],
+    "jv-dark-souls": [
+      "Gwyn, Lord of Cinder",
+      "Motoi Sakuraba"
+    ],
+    "jv-diablo": [
+      "Tristram",
+      "Matt Uelmen"
+    ],
+    "jv-fallout": [
+      "I Don't Want to Set the World on Fire",
+      "The Ink Spots"
+    ],
+    "jv-far-cry": [
+      "Far Cry",
+      "Brian Tyler"
+    ],
+    "jv-final-fantasy": [
+      "One-Winged Angel",
+      "Nobuo Uematsu"
+    ],
+    "jv-god-of-war": [
+      "God of War",
+      "Bear McCreary"
+    ],
+    "jv-gta": [
+      "Soviet Connection",
+      "Michael Hunter"
+    ],
+    "jv-halo": [
+      "Halo",
+      "Martin O'Donnell"
+    ],
+    "jv-hitman": [
+      "Hitman 2 Main Title",
+      "Jesper Kyd",
+      "itunes:1490442213"
+    ],
+    "jv-isaac-persos": [
+      "The Binding of Isaac",
+      "Danny Baranowsky",
+      "itunes:6792847465"
+    ],
+    "jv-kingdom-hearts": [
+      "Simple and Clean",
+      "Hikaru Utada",
+      "itunes:1440875056"
+    ],
+    "jv-mass-effect": [
+      "Vigil",
+      "Jack Wall"
+    ],
+    "jv-metal-gear": [
+      "Snake Eater",
+      "Cynthia Harrell"
+    ],
+    "jv-minecraft": [
+      "Sweden",
+      "C418"
+    ],
+    "jv-mortal-kombat": [
+      "Techno Syndrome",
+      "The Immortals"
+    ],
+    "jv-overwatch": [
+      "Overwatch",
+      "Derek Duke"
+    ],
+    "jv-pokemon-jeux": [
+      "Pokémon Theme",
+      "Jason Paige"
+    ],
+    "jv-portal": [
+      "Still Alive",
+      "Aperture Science Psychoacoustic Laboratories",
+      "itunes:1891395741"
+    ],
+    "jv-red-dead-redemption": [
+      "Far Away",
+      "José González"
+    ],
+    "jv-sekiro-elden-ring-activision": [
+      "Elden Ring",
+      "Tsukasa Saitoh"
+    ],
+    "jv-sonic": [
+      "Live & Learn",
+      "Crush 40"
+    ],
+    "jv-spyro": [
+      "Spyro Main Theme",
+      "Stewart Copeland",
+      "itunes:1622678609"
+    ],
+    "jv-street-fighter": [
+      "Theme of Guile",
+      "Masahiro Aoki",
+      "itunes:1341577647"
+    ],
+    "jv-the-elder-scrolls": [
+      "Dragonborn",
+      "Jeremy Soule"
+    ],
+    "jv-the-last-of-us": [
+      "The Last of Us",
+      "Gustavo Santaolalla"
+    ],
+    "jv-the-witcher": [
+      "The Trail",
+      "Marcin Przybyłowicz"
+    ],
+    "jv-tomb-raider": [
+      "Tomb Raider Theme",
+      "Nathan McCree"
+    ],
+    "jv-uncharted": [
+      "Nate's Theme",
+      "Greg Edmonson"
+    ],
+    "jv-warcraft": [
+      "Legends of Azeroth",
+      "Jason Hayes"
     ]
   }
 }

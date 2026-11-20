@@ -3,13 +3,14 @@ import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireUser } from './auth';
 import { canModerate } from './suggestions';
-import { SURVEY_FEATURES, SURVEY_UNIVERSES, cleanSurvey, surveyFilled, type SurveyResults } from '../src/core/survey';
+import { SURVEYS, cleanSurvey, surveyFilled, type SurveyResults } from '../src/core/survey';
 
 /**
  * SONDAGE « PROCHAINES MISES À JOUR » (v1.0.10, 10/11) : une réponse par joueur et par sondage (src/core/survey.ts).
  * Le jeu le propose à la connexion, puis toutes les heures tant qu'il n'est pas rempli (game/survey.ts). Les résultats
  * sont réservés aux modérateurs (Tom et Hugo), dans l'onglet Suggestions → File admin.
  * Table à part (`surveyAnswers`) : aucun champ ajouté ailleurs, le code d'avant le patch ne la voit pas.
+ * (20/11) Plusieurs sondages : les choix permis dépendent du sondage (SURVEYS) ; un sondage inconnu est refusé.
  */
 const answerV = v.object({
   universes: v.array(v.string()),
@@ -34,8 +35,8 @@ export const submit = mutation({
   handler: async (ctx, { sessionToken, surveyId, answer }) => {
     const user = await requireUser(ctx, sessionToken);
     const id = surveyId.trim().slice(0, 40);
-    if (!id) throw new ConvexError(fe('survey.3'));
-    const a = cleanSurvey(answer);
+    if (!id || !SURVEYS[id]) throw new ConvexError(fe('survey.3'));
+    const a = cleanSurvey(answer, id);
     if (!surveyFilled(a)) throw new ConvexError(fe('survey.1'));
     const prev = await ctx.db.query('surveyAnswers').withIndex('by_user', (q) => q.eq('userId', user._id).eq('surveyId', id)).first();
     // déjà répondu (deux appareils, double toucher) : on garde la première réponse
@@ -52,8 +53,9 @@ export const results = query({
     const user = await requireUser(ctx, sessionToken);
     if (!canModerate(user)) throw new ConvexError(fe('survey.2'));
     const rows = await ctx.db.query('surveyAnswers').withIndex('by_survey', (q) => q.eq('surveyId', surveyId)).order('desc').take(1000);
-    const universes = Object.fromEntries(SURVEY_UNIVERSES.map((o) => [o.id, 0]));
-    const features = Object.fromEntries(SURVEY_FEATURES.map((o) => [o.id, 0]));
+    const def = SURVEYS[surveyId] ?? { universes: [], features: [] };
+    const universes = Object.fromEntries(def.universes.map((o) => [o.id, 0]));
+    const features = Object.fromEntries(def.features.map((o) => [o.id, 0]));
     const ratings = [0, 0, 0, 0, 0];
     const texts: SurveyResults['texts'] = [];
     const names = new Map<string, string>();

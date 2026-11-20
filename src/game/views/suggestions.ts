@@ -4,7 +4,7 @@ import type { GameBackend, SuggestionKind, SuggestionStatus, SuggestionView } fr
 import type { Shell } from '../shell';
 import { THEMES, catalogEntry, subthemeById } from '../../core/sets/themes';
 import { busyButton, errMsg, esc, fold, h, plural, thumbUrl, toast } from '../ui';
-import { SURVEY_FEATURES, SURVEY_ID, SURVEY_UNIVERSES, type SurveyOption } from '../../core/survey';
+import { SURVEYS, SURVEY_ID, type SurveyOption } from '../../core/survey';
 
 /**
  * SUGGESTIONS (#/suggestions, onglet de la navigation — 04/11) : chaque joueur peut nous envoyer proprement
@@ -252,6 +252,7 @@ export function createSuggestionsView(backend: GameBackend, shell: Shell): Sugge
     try {
       const r = await backend.surveyResults(SURVEY_ID);
       $('.sg-sv-n').textContent = plural(r.total, tr('sg.replyW'));
+      const def = SURVEYS[SURVEY_ID] ?? { universes: [], features: [] };
       const voters = r.ratings.reduce((a, b) => a + b, 0);
       const avg = voters ? r.ratings.reduce((a, n, i) => a + n * (i + 1), 0) / voters : 0;
       const bars = (title: string, opts: SurveyOption[], counts: Record<string, number>) => {
@@ -260,9 +261,9 @@ export function createSuggestionsView(backend: GameBackend, shell: Shell): Sugge
         return `<h3>${title}</h3><ol class="sg-sv-bars">${rows.map(({ o, n }) => `<li><span>${esc(o.label)}</span><i style="--w:${(n / max) * 100}%"></i><b>${n}</b></li>`).join('')}</ol>`;
       };
       body.innerHTML = r.total
-        ? `<p class="sg-sv-avg">Note moyenne <b>${avg.toFixed(1).replace('.', ',')} / 5</b> <span class="muted">(${plural(voters, 'note')} · ${r.ratings.map((n, i) => `${i + 1}★ ${n}`).join(' · ')})</span></p>
-          ${bars(tr('sg.universes'), SURVEY_UNIVERSES, r.universes)}
-          ${bars(tr('sg.features'), SURVEY_FEATURES, r.features)}
+        ? `${voters ? `<p class="sg-sv-avg">Note moyenne <b>${avg.toFixed(1).replace('.', ',')} / 5</b> <span class="muted">(${plural(voters, 'note')} · ${r.ratings.map((n, i) => `${i + 1}★ ${n}`).join(' · ')})</span></p>` : ''}
+          ${def.universes.length ? bars(tr('sg.tvShows'), def.universes, r.universes) : ''}
+          ${def.features.length ? bars(tr('sg.features'), def.features, r.features) : ''}
           ${r.texts.length ? `<h3>${tr('sg.written')}</h3>${r.texts.map((x) => `<article class="sg-item"><header><span class="sg-k">${esc(x.author)}</span>${x.rating ? `<span class="sg-st">${x.rating}★</span>` : ''}<time>${when(x.createdAt)}</time></header>${x.names ? `<p><b>Noms :</b> ${esc(x.names)}</p>` : ''}${x.comment ? `<p>${esc(x.comment).replace(/\n/g, '<br>')}</p>` : ''}</article>`).join('')}` : ''}`
         : '<p class="muted sg-empty">' + tr('sg.noAnswer') + '</p>';
     } catch (err) {
