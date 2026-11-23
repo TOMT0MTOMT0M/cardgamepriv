@@ -24,6 +24,7 @@ import { DUR, STAGGER } from '../../core/motion';
 import { badgeIcon, icon } from '../cosmeticArt';
 import { busyButton, errMsg, esc, h, toast } from '../ui';
 import { COIN_ICON } from './wallet';
+import { createAventMusic } from '../aventMusic';
 
 /**
  * ONGLET ÉVÉNEMENT (#/evenement, 20/11) : ce qui est temporaire, au même endroit.
@@ -54,9 +55,9 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
       <a class="evt-pack" href="#/" hidden></a>
       <section class="av" aria-label="${tr('av.title')}">
         <canvas class="av-snow" aria-hidden="true"></canvas>
-        <div class="av-top"><div><b class="av-t">${tr('av.title')}</b><span class="av-sub">${tr('av.sub')}</span></div><div class="av-status"></div></div>
+        <div class="av-top"><div><b class="av-t">${tr('av.title')}</b><span class="av-sub">${tr('av.sub')}</span></div><div class="av-tr"><button class="av-mus" type="button" aria-pressed="false"></button><div class="av-status"></div></div></div>
         <a class="av-godbar" href="#/" hidden></a>
-        <div class="av-stage"><div class="av-board"><div class="av-grid"></div></div></div>
+        <div class="av-stage"><div class="av-board"><div class="av-grid"><i class="av-tree" aria-hidden="true"></i></div></div></div>
         <div class="av-rail" aria-label="${tr('av.rail')}"></div>
         <div class="av-dbg" hidden></div>
       </section>
@@ -94,11 +95,27 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
     r.god ? `<i class="av-ico god">${GOD}</i><em>${tr('av.god')}</em>` : r.coins ? `<i class="av-ico">${COIN_ICON}</i><em>${fmtCoins(r.coins)}</em>` : `<i class="av-ico">${PACK}</i><em>× ${r.packs ?? 0}</em>`;
   const rewardText = (r: AdventReward) => (r.god ? tr('av.god') : r.coins ? tr('av.coins', { n: fmtCoins(r.coins) }) : tr('av.packs', { n: r.packs ?? 0 }));
 
-  // ── les 24 volets, créés une fois (la grille mélangée des 23, puis la grande case 24)
-  [...ADVENT_LAYOUT, ADVENT_DAYS].forEach((day, i) => {
-    const d = h('button', `av-door${day === ADVENT_DAYS ? ' av-24' : ''}`);
+  /**
+   * (23/11, retours Tom) EN FORME DE SAPIN : l'étoile (la 24, le God Pack) au sommet, six étages de 1 à 6 cases
+   * (les 21 premières du tirage mélangé), et le tronc (2 cases). Grille de 12 colonnes, une case en prend 2 : chaque
+   * étage est centré à la demi-case près. Les volets alternent rouge, or et crème, comme des boules sur le sapin.
+   */
+  const TIERS = [1, 2, 3, 4, 5, 6];
+  const slots: Array<{ row: number; col: number; kind: 'star' | 'tree' | 'trunk' }> = [{ row: 1, col: 5, kind: 'star' }];
+  TIERS.forEach((k, r) => {
+    for (let j = 0; j < k; j++) slots.push({ row: r + 2, col: 7 - k + 2 * j, kind: 'tree' });
+  });
+  slots.push({ row: TIERS.length + 2, col: 5, kind: 'trunk' }, { row: TIERS.length + 2, col: 7, kind: 'trunk' });
+  const order = [ADVENT_DAYS, ...ADVENT_LAYOUT];
+  const BALLS = ['red', 'gold', 'cream'];
+  order.forEach((day, i) => {
+    const at = slots[i];
+    const d = h('button', `av-door av-${at.kind === 'tree' ? 'branch' : at.kind}${day === ADVENT_DAYS ? ' av-24' : ''}${at.kind === 'tree' ? ` b-${BALLS[(i + at.row) % BALLS.length]}` : ''}`);
     d.type = 'button';
     d.dataset.d = String(day);
+    d.style.gridRow = String(at.row);
+    d.style.gridColumn = `${at.col} / span ${at.kind === 'star' ? 4 : 2}`;
+    // cascade d'arrivée : du sommet vers le tronc
     d.style.setProperty('--i', String(i));
     d.innerHTML = `<span class="av-niche">${rewardHtml(adventReward(day))}</span><span class="av-leaf"><span class="av-front"><b>${day}</b><i class="av-knob" aria-hidden="true"></i></span><span class="av-back" aria-hidden="true"></span></span>`;
     d.addEventListener('click', () => void tap(day, d));
@@ -304,6 +321,36 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
     snowRaf = requestAnimationFrame(frame);
   }
 
+  // ── (23/11) petite musique de Noël tant que l'onglet est affiché ; un bouton la coupe (retenu sur l'appareil)
+  const MUS_KEY = 'av-music';
+  const music = createAventMusic(shell.sfx);
+  const musBtn = q<HTMLButtonElement>('.av-mus');
+  const musOn = () => {
+    try {
+      return localStorage.getItem(MUS_KEY) !== '0';
+    } catch {
+      return true;
+    }
+  };
+  const paintMus = () => {
+    const on = musOn();
+    musBtn.setAttribute('aria-pressed', String(on));
+    musBtn.classList.toggle('on', on);
+    musBtn.innerHTML = `<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M6 12.2V3.4l7-1.6v8.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="4.4" cy="12.3" r="1.9" fill="currentColor"/><circle cx="11.4" cy="10.6" r="1.9" fill="currentColor"/>${on ? '' : '<path d="M2 2l12 12" stroke="currentColor" stroke-width="1.4"/>'}</svg><span>${tr(on ? 'av.musOn' : 'av.musOff')}</span>`;
+    musBtn.setAttribute('aria-label', tr('av.musA'));
+  };
+  musBtn.addEventListener('click', () => {
+    const on = !musOn();
+    try {
+      localStorage.setItem(MUS_KEY, on ? '1' : '0');
+    } catch {
+      /* stockage indisponible : réglage de la visite */
+    }
+    if (on) music.start();
+    else music.stop();
+    paintMus();
+  });
+
   backend.eco.onChange(() => el.isConnected && paint());
   backend.watchEvents?.((list) => {
     events = list;
@@ -324,10 +371,13 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
       void grid.offsetWidth;
       grid.classList.add('in');
       startSnow();
+      paintMus();
+      if (musOn()) music.start();
       clearInterval(timer);
       timer = window.setInterval(() => el.isConnected && paint(), 60_000);
     },
     leave() {
+      music.stop();
       clearInterval(timer);
       cancelAnimationFrame(snowRaf);
       snowRaf = 0;

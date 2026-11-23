@@ -5,7 +5,9 @@
  * page reste légère et la vitrine 3D de la boutique dort dessous.
  * Durées : jetons de src/core/motion.ts (`--dur-*`, `--amb-*`, et `--av-open` / `--av-stg` posés par la vue).
  */
-.evenement { --av-glow: #ffd9a0; --av-steel-1: #2b2c2e; --av-steel-2: #1a1b1c; }
+.evenement { --av-glow: #ffd36e; --av-steel-1: #2b2c2e; --av-steel-2: #1a1b1c; --xm-red: #b81d2c; --xm-red-2: #7c0f1b; --xm-green: #1d6b3e; --xm-green-2: #0b3a21; --xm-gold: #e2b24a; --xm-gold-2: #9c7121; --xm-cream: #f2e9d6; --xm-cream-2: #c9bc9f; --xm-bark: #6b4428; --xm-bark-2: #3d2615; }
+/* (23/11, retours Tom) l'onglet n'était pas interactif (ni défilement ni toucher) : la couche des pages laisse passer les gestes */
+body[data-route='evenement'] .views { pointer-events: auto; }
 .evt-wrap { gap: 16px; }
 .evt-pack { --ev: #fff; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 16px 8px 14px; border-radius: var(--r-pill); border: 1px solid color-mix(in srgb, var(--ev) 55%, var(--gm-line-2)); background: #000; color: var(--ink); text-decoration: none; transition: border-color var(--dur-rapide) var(--ease-standard), background-color var(--dur-rapide) var(--ease-standard), transform var(--dur-rapide) var(--ease-standard); }
 .evt-pack[hidden], .av-godbar[hidden], .av-dbg[hidden], .evt-none[hidden] { display: none; }
@@ -14,7 +16,7 @@
 .evt-none { text-align: center; padding: 30px 0; font: 400 12.5px var(--mono); }
 
 /* ── le panneau du calendrier ── */
-.av { position: relative; display: flex; flex-direction: column; gap: 16px; padding: 18px; border-radius: var(--r-box); border: 1px solid var(--gm-line); background: radial-gradient(120% 80% at 50% 0%, rgba(255, 217, 160, 0.05), transparent 60%), var(--gm-fill); overflow: hidden; isolation: isolate; }
+.av { position: relative; display: flex; flex-direction: column; gap: 16px; padding: 18px; border-radius: var(--r-box); border: 1px solid color-mix(in srgb, var(--xm-gold) 30%, var(--gm-line)); background: radial-gradient(90% 60% at 15% 0%, color-mix(in srgb, var(--xm-red) 22%, transparent), transparent 65%), radial-gradient(90% 60% at 85% 100%, color-mix(in srgb, var(--xm-green) 30%, transparent), transparent 65%), radial-gradient(120% 80% at 50% 0%, rgba(255, 211, 110, 0.06), transparent 60%), var(--gm-fill); overflow: hidden; isolation: isolate; }
 .av-snow { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.7; }
 .av-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .av-t { display: block; font: 600 clamp(22px, 3vw, 30px)/1 var(--title); letter-spacing: -0.01em; }
@@ -155,3 +157,54 @@
 .evenement { overflow-y: auto; overscroll-behavior: contain; padding: calc(var(--top) + env(safe-area-inset-top) + 18px) 20px calc(40px + env(safe-area-inset-bottom)); background: #000; isolation: isolate; }
 .evenement::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 760px; z-index: -1; pointer-events: none; background: radial-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1.3px) 0 0 / 22px 22px; -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent); }
 @media (max-width: 640px) { .evenement { padding-left: 14px; padding-right: 14px; } }
+
+/* ═════════ (23/11, retours Tom) LE SAPIN : l'étoile (24) au sommet, six étages (1 → 6 cases), le tronc (2 cases).
+   Grille de 12 colonnes, une case en prend 2 (la place est posée par la vue : grid-row / grid-column).
+   Couleurs de Noël : sapin vert, volets rouge / or / crème comme des boules, tronc en bois, étoile dorée. */
+.av-board { max-width: 560px; padding: 16px 14px 12px; background: radial-gradient(70% 55% at 50% 38%, rgba(255, 211, 110, 0.07), transparent 70%), linear-gradient(180deg, #0b0f14, #050607); border-color: color-mix(in srgb, var(--xm-gold) 25%, var(--gm-line-2)); }
+.av-grid { position: relative; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 7px 3px; }
+.av-grid .av-door, .av-grid .av-24 { aspect-ratio: 1 / 1.02; min-height: 0; }
+/* la silhouette du sapin, derrière les étages (rangées 2 à 7) : trois pans dentelés, un vert profond */
+.av-tree { grid-column: 1 / -1; grid-row: 2 / 8; position: relative; margin: -16px -12px -6px; pointer-events: none;
+  clip-path: polygon(50% 0, 66% 30%, 60% 30%, 80% 62%, 72% 62%, 100% 100%, 0 100%, 28% 62%, 20% 62%, 40% 30%, 34% 30%);
+  background: radial-gradient(4px 4px at 30% 52%, var(--xm-gold) 50%, transparent 55%), radial-gradient(4px 4px at 69% 40%, #ff6b6b 50%, transparent 55%), radial-gradient(4px 4px at 56% 76%, var(--xm-gold) 50%, transparent 55%), radial-gradient(4px 4px at 18% 90%, #ff6b6b 50%, transparent 55%), radial-gradient(4px 4px at 84% 88%, var(--xm-gold) 50%, transparent 55%),
+    linear-gradient(180deg, var(--xm-green), var(--xm-green-2)); filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.6)); }
+/* volets : les boules (rouge, or, crème) ; numéro gravé dans la teinte opposée */
+.av-door.b-red { --v1: var(--xm-red); --v2: var(--xm-red-2); --vn: color-mix(in srgb, var(--xm-gold) 80%, #fff); }
+.av-door.b-gold { --v1: var(--xm-gold); --v2: var(--xm-gold-2); --vn: var(--xm-red-2); }
+.av-door.b-cream { --v1: var(--xm-cream); --v2: var(--xm-cream-2); --vn: var(--xm-green-2); }
+.av-door.av-trunk { --v1: var(--xm-bark); --v2: var(--xm-bark-2); --vn: color-mix(in srgb, var(--xm-gold) 70%, #fff); }
+.av-door.av-star { --v1: #ffe08a; --v2: var(--xm-gold-2); --vn: var(--xm-red-2); }
+.av-door .av-front { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px), radial-gradient(90% 80% at 30% 20%, rgba(255, 255, 255, 0.28), transparent 60%), linear-gradient(160deg, var(--v1), var(--v2)); }
+.av-door .av-front b { color: var(--vn); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18), 0 -1px 0 rgba(0, 0, 0, 0.35); font-size: clamp(15px, 3.4vw, 22px); }
+.av-door .av-knob { background: linear-gradient(90deg, var(--xm-gold-2), #ffe7a3); }
+.av-door .av-back { background: linear-gradient(90deg, var(--v2), color-mix(in srgb, var(--v1) 70%, #000)); }
+/* pas encore : la boule est éteinte, pas grise */
+.av-door[data-s='locked'] .av-leaf, .av-door[data-s='closed'] .av-leaf { filter: brightness(0.62) saturate(0.8); }
+.av-door[data-s='late'] .av-front b, .av-door[data-s='today'] .av-front b { color: var(--vn); }
+.av-door[data-s='late'] .av-front { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.75), 0 6px 12px -8px #000; }
+.av-door[data-s='today'] .av-front { box-shadow: inset 0 0 0 2px #fff, 0 0 18px color-mix(in srgb, var(--av-glow) 60%, transparent), 0 6px 12px -8px #000; }
+/* l'étoile : la 24, le God Pack, médaillon doré coiffé d'une étoile */
+.av-grid .av-star { aspect-ratio: 2.2 / 1; margin-top: 22px; }
+.av-star::before { content: ''; position: absolute; left: 50%; top: -24px; width: 34px; height: 32px; translate: -50% 0; z-index: 3; pointer-events: none; transform: translateZ(4px);
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  background: linear-gradient(180deg, #fff3c4, var(--xm-gold)); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--av-glow) 80%, transparent)); animation: av-star var(--amb-flotte) var(--ease-standard) infinite; }
+@keyframes av-star { 50% { filter: drop-shadow(0 0 16px var(--av-glow)); } }
+.av-star .av-front b { font-size: clamp(20px, 4.4vw, 30px); }
+.av-grid .av-24[data-s='opened'] .av-leaf { transform: rotateY(-98deg); }
+/* le tronc : deux cases un peu plus basses */
+.av-grid .av-trunk { aspect-ratio: 1 / 0.9; }
+/* bouton de la musique, à côté du statut */
+.av-tr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.av-mus { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--gm-line-2); background: none; color: var(--ink-3); font: 500 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; transition: color var(--dur-rapide) var(--ease-standard), border-color var(--dur-rapide) var(--ease-standard); }
+.av-mus.on { color: #fff; border-color: color-mix(in srgb, var(--xm-gold) 55%, transparent); }
+.av-t { color: #fff; }
+.av-t::before { content: '✦ '; color: var(--xm-gold); }
+@media (max-width: 640px) {
+  .av-board { padding: 12px 8px 10px; }
+  .av-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px 2px; }
+  .av-grid .av-24 { grid-column: auto; aspect-ratio: 2.2 / 1; }
+  .av-niche em { font-size: 10.5px; }
+  .av-ico { width: 18px; height: 18px; }
+}
+@media (min-width: 641px) { .av-grid .av-24 { grid-column: auto; aspect-ratio: 2.2 / 1; } }

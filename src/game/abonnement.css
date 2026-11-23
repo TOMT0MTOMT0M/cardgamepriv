@@ -4,6 +4,8 @@
  * Durées : jetons de src/core/motion.ts (`--dur-*`, `--ease-*`).
  */
 .abonnement { --ab-on: #7fe0a3; --ab-soon: #ffc98a; }
+/* (23/11) la couche des pages laisse passer les gestes sur cette page (défilement, boutons) */
+body[data-route='abonnement'] .views { pointer-events: auto; }
 .ab-wrap { gap: 14px; max-width: 860px; }
 .ab-h { display: block; font: 600 12px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-2); }
 

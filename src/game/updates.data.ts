@@ -44,10 +44,10 @@ export const UPDATES: UpdateMonth[] = [
         date: '20 nov.', title: 'V3 : onglet Événement, titres uniques, roulette en couleurs', tag: 'nouveau',
         points: [
           '♥ Abonnement à 5 € par mois pour soutenir le jeu (serveurs et développement) : +5 boosters de réserve, ta carte Bebou à ton idée, et le vote du mois. Paiement par Wero, un mois à la fois. Aucun avantage sur les tirages.',
-          '🎄 Nouvel onglet Événement : le calendrier de l’Avent, du 1er au 24 décembre. Une case par jour (pièces ou boosters), les jours manqués se rattrapent jusqu’au 31, et la case 24 cache un God Pack.',
+          '🎄 Nouvel onglet Événement : le calendrier de l’Avent en forme de sapin, avec sa petite musique, du 1er au 24 décembre. Une case par jour (pièces ou boosters), les jours manqués se rattrapent jusqu’au 31, et la case 24 cache un God Pack.',
           '❄️ Cosmétiques de Noël à gagner en ouvrant les cases : un badge, deux titres et un cadre.',
-          '♛ Titres uniques : le premier joueur qui complète Valorant, Naruto, Pokémon ou League of Legends remporte un titre que personne d’autre n’aura (Radiant, Hokage, Maître Pokémon, Challenger). Il s’affiche à côté de son pseudo.',
-          '🎡 Roulette : la roue et le tapis sont en rouge, noir et vert. Tu peux miser des pièces sur une couleur (rouge ou noir × 2, vert × 10), en plus ou à la place de tes numéros.',
+          '♛ Titres uniques : le premier joueur qui complète Valorant, Naruto, Pokémon ou League of Legends remporte un titre que personne d’autre n’aura (Radiant, Hokage, Maître Pokémon, Challenger). Il s’affiche à côté de son pseudo, et tous les titres sont dans Succès → Succès d’albums.',
+          '🎡 Roulette : la roue et le tapis sont en rouge, noir et une case verte. En payant le double, pose une couleur sur tes numéros : si personne n’a le numéro sorti, sa couleur rafle le pot.',
         ],
       },
       {
