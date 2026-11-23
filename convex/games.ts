@@ -21,11 +21,9 @@ import {
   ROYALE_MIN,
   royalePackCount,
   betProblem,
-  COLOR_PAYOUT,
-  colorBetProblem,
   colorLabel,
-  colorPayout,
-  type RouletteColor,
+  rouletteColor,
+  rouletteWinner,
   drawNumber,
   duelProblem,
   duelWinner,
@@ -459,9 +457,12 @@ function potOf(r: Doc<'rouletteRounds'>) {
   return { coins, cards, value: coins + cardsValue(cards) };
 }
 
+const colorValidator = v.union(v.literal('red'), v.literal('black'), v.literal('green'));
+
+/** Pari : 1 à 3 numéros, en cartes ou en pièces. (23/11) `color` : une couleur sur ses numéros, la mise payée deux fois. */
 export const placeBet = mutation({
-  args: { sessionToken: v.string(), numbers: v.array(v.number()), stake: stakeValidator },
-  handler: async (ctx, { sessionToken, numbers, stake }) => {
+  args: { sessionToken: v.string(), numbers: v.array(v.number()), stake: stakeValidator, color: v.optional(colorValidator) },
+  handler: async (ctx, { sessionToken, numbers, stake, color }) => {
     const u = await requireUser(ctx, sessionToken);
     const r = await ensureRound(ctx);
     const now = Date.now();
@@ -469,41 +470,17 @@ export const placeBet = mutation({
     if (now >= drawInstant(r)) throw new ConvexError(fe('games.29'));
     const taken = new Set(r.bets.flatMap((b) => b.numbers));
     const mine = r.bets.find((b) => b.userId === u._id);
-    const problem = betProblem(numbers, stake, taken, mine ? 1 : 0);
+    const problem = betProblem(numbers, stake, taken, mine ? 1 : 0, color);
     if (problem) throw new ConvexError(problem);
-    if (stake.coins) await addCoins(ctx, u._id, -stake.coins, 'roulette', fm('c.roulette', { n: numbers.length }));
+    if (stake.coins) await addCoins(ctx, u._id, -stake.coins, 'roulette', color ? fm('c.rouletteColor', { colorId: color, rcolor: colorLabel(color) }) : fm('c.roulette', { n: numbers.length }));
     const cards = await takeCards(ctx, u._id, stake.cards);
-    const merged = { userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, createdAt: now };
+    const merged = { userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, ...(color ? { color } : {}), createdAt: now };
     await ctx.db.patch(r._id, { bets: [...r.bets, merged] });
     await patchEcon(ctx, u._id, (e) => ({ ...e, gamesPlayed: e.gamesPlayed + 1 }));
     await bumpWeekly(ctx, u._id, { type: 'game', won: false });
     await ctx.db.patch(u._id, { lastSeenAt: now, statusText: 'A misé à la roulette' });
     await syncPresence(ctx, u._id);
     return { numbers: merged.numbers };
-  },
-});
-
-/**
- * (20/11) MISE COULEUR : des pièces sur rouge, noir (× 2) ou vert (× 10), en plus ou à la place d'une mise sur des
- * numéros. Pari contre la maison : la mise n'entre pas dans le pot, elle est réglée au tirage (`drawRound`).
- */
-export const placeColorBet = mutation({
-  args: { sessionToken: v.string(), color: v.string(), coins: v.number() },
-  handler: async (ctx, { sessionToken, color, coins }) => {
-    const u = await requireUser(ctx, sessionToken);
-    const r = await ensureRound(ctx);
-    const now = Date.now();
-    if (!r.drawAt) throw new ConvexError(fe('games.28'));
-    if (now >= drawInstant(r)) throw new ConvexError(fe('games.29'));
-    const all = r.colorBets ?? [];
-    const problem = colorBetProblem(color, coins, all.some((b) => b.userId === u._id));
-    if (problem) throw new ConvexError(problem);
-    const c = color as RouletteColor;
-    await addCoins(ctx, u._id, -coins, 'roulette', fm('c.rouletteColor', { colorId: c, rcolor: colorLabel(c) }));
-    await ctx.db.patch(r._id, { colorBets: [...all, { userId: u._id, name: u.displayName, color: c, coins, createdAt: now }] });
-    await ctx.db.patch(u._id, { lastSeenAt: now, statusText: 'A misé à la roulette' });
-    await syncPresence(ctx, u._id);
-    return { color: c, coins };
   },
 });
 
@@ -567,32 +544,28 @@ export const forceDraw = internalMutation({
 async function drawRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number, forced?: number) {
   const number = forced ?? drawNumber(secureRandom);
   const pot = potOf(r);
-  const bet = r.bets.find((b) => b.numbers.includes(number));
+  // (23/11) numéro exact d'abord, sinon pot de secours à la couleur (src/core/games.ts, rouletteWinner)
+  const win = rouletteWinner(r.bets, number, (b) => b.coins + cardsValue(b.cards));
+  const bet = win?.bet;
   if (bet) {
     await giveCards(ctx, bet.userId, pot.cards);
     if (pot.coins) await addCoins(ctx, bet.userId, pot.coins, 'roulette', fm('c.roulettePot', { day: r.day, number }), { earned: true });
     await patchEcon(ctx, bet.userId, (e) => ({ ...e, rouletteWins: e.rouletteWins + 1 }));
-    await notify(ctx, bet.userId, { kind: 'game', title: fm('n.rouletteWon'), body: fm('n.rouletteWonBody', { number }), url: '#/jeux' });
+    const col = rouletteColor(number);
+    await notify(ctx, bet.userId, win?.byColor ? { kind: 'game', title: fm('n.rouletteColor', { colorId: col, rcolor: colorLabel(col) }), body: fm('n.rouletteColorBody', { number }), url: '#/jeux/roulette' } : { kind: 'game', title: fm('n.rouletteWon'), body: fm('n.rouletteWonBody', { number }), url: '#/jeux' });
     for (const b of r.bets) if (b.userId !== bet.userId) await recordFlow(ctx, b.userId, bet.userId, b.coins + cardsValue(b.cards), 'roulette');
     const w = await ctx.db.get(bet.userId);
     if (w) await feedGame(ctx, w, fm('f.roulette', { number, name: w.displayName, coins: pot.coins, cards: pot.cards.reduce((a, c) => a + c.count, 0), value: pot.value }));
   }
-  // (20/11) mises couleur : réglées par la maison, hors du pot (× 2 rouge / noir, × 10 vert)
-  const colorBets = (r.colorBets ?? []).map((b) => ({ ...b, paid: colorPayout(b.color, b.coins, number) }));
-  for (const b of colorBets) {
-    if (!b.paid) continue;
-    await addCoins(ctx, b.userId, b.paid, 'roulette', fm('c.rouletteColorWin', { colorId: b.color, rcolor: colorLabel(b.color), number, mult: COLOR_PAYOUT[b.color] }));
-    // « pièces gagnées » (succès Tirelire) : seulement le bénéfice, pas la mise qui revient
-    await patchEcon(ctx, b.userId, (e) => ({ ...e, earned: e.earned + b.paid - b.coins }));
-    await notify(ctx, b.userId, { kind: 'game', title: fm('n.rouletteColor', { colorId: b.color, rcolor: colorLabel(b.color) }), body: fm('n.rouletteColorBody', { number, coins: b.paid }), url: '#/jeux/roulette' });
-  }
+  // (23/11) anciennes mises couleur (staging du 20/11, pari contre la maison retiré) : rendues telles quelles
+  for (const b of r.colorBets ?? []) if (b.paid === undefined) await addCoins(ctx, b.userId, b.coins, 'roulette', fm('c.rouletteColor', { colorId: b.color, rcolor: colorLabel(b.color) }));
   // pastille de l'onglet Jeux chez chaque joueur qui avait misé (le résultat est à voir)
-  for (const id of new Set([...r.bets.map((b) => b.userId), ...colorBets.map((b) => b.userId)])) await ctx.db.patch(id, { gamesNoticeAt: now });
+  for (const id of new Set(r.bets.map((b) => b.userId))) await ctx.db.patch(id, { gamesNoticeAt: now });
   await ctx.db.patch(r._id, {
     status: 'drawn',
     drawnAt: now,
-    ...(colorBets.length ? { colorBets } : {}),
-    result: { number, potValue: pot.value, ...(bet ? { winnerId: bet.userId, winnerName: bet.name } : {}) },
+    ...(r.colorBets?.length ? { colorBets: r.colorBets.map((b) => ({ ...b, paid: b.paid ?? b.coins })) } : {}),
+    result: { number, potValue: pot.value, ...(bet ? { winnerId: bet.userId, winnerName: bet.name, ...(win?.byColor ? { byColor: true } : {}) } : {}) },
   });
   // le pot non tombé passe au tirage suivant (cartes et pièces), avec une nouvelle carte offerte
   await newRound(ctx, bet ? 0 : pot.coins, bet ? [] : pot.cards, now + 60_000);
@@ -656,9 +629,7 @@ export const roulette = query({
       round: r ? { ...r, pot: potOf(r), drawAt: drawInstant(r) } : null,
       nextDrawAt: r ? drawInstant(r) : nextRouletteDraw(now),
       me: u?._id ?? null,
-      past: past.filter((p) => p.result?.number).map((p) => ({ _id: p._id, day: p.day, result: p.result, drawnAt: p.drawnAt, bets: p.bets.map((b) => ({ userId: b.userId, name: b.name, numbers: b.numbers })),
-        // (20/11) mises couleur réglées : qui, quoi, combien rendu
-        colors: (p.colorBets ?? []).map((b) => ({ userId: b.userId, name: b.name, color: b.color, coins: b.coins, paid: b.paid ?? 0 })) })),
+      past: past.filter((p) => p.result?.number).map((p) => ({ _id: p._id, day: p.day, result: p.result, drawnAt: p.drawnAt, bets: p.bets.map((b) => ({ userId: b.userId, name: b.name, numbers: b.numbers, ...(b.color ? { color: b.color } : {}) })) })),
     };
   },
 });

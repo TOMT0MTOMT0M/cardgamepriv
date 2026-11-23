@@ -29,10 +29,7 @@ import {
   ROYALE_MAX,
   ROYALE_MIN,
   betProblem,
-  COLOR_PAYOUT,
-  colorBetProblem,
-  colorLabel,
-  colorPayout,
+  rouletteWinner,
   drawNumber,
   duelProblem,
   duelWinner,
@@ -276,7 +273,9 @@ export function createLocalEco(host: LocalEcoHost) {
     const r = round();
     potOf(r);
     const number = forced ?? drawNumber(Math.random);
-    const bet = r.bets.find((b) => b.numbers.includes(number));
+    // (23/11) numéro exact d'abord, sinon pot de secours à la couleur
+    const win = rouletteWinner(r.bets, number, (b) => b.coins + cardsValue(b.cards));
+    const bet = win?.bet;
     if (bet) {
       giveAll(bet.userId, r.pot.cards);
       if (bet.userId === ME) {
@@ -285,14 +284,7 @@ export function createLocalEco(host: LocalEcoHost) {
       }
       host.feed(fm('f.roulette', { number, name: bet.name, coins: r.pot.coins, cards: r.pot.cards.reduce((a, c) => a + c.count, 0), value: r.pot.value }));
     }
-    // (20/11) mises couleur : réglées par la maison, hors du pot
-    const colors = (r.colorBets ?? []).map((b) => ({ ...b, paid: colorPayout(b.color, b.coins, number) }));
-    for (const b of colors)
-      if (b.paid && b.userId === ME) {
-        coins(b.paid, 'roulette', fm('c.rouletteColorWin', { colorId: b.color, rcolor: colorLabel(b.color), number, mult: COLOR_PAYOUT[b.color] }));
-        d().econ.earned += b.paid - b.coins;
-      }
-    d().past.unshift({ id: r.id, day: r.day, result: { number, potValue: r.pot.value, ...(bet ? { winnerId: bet.userId, winnerName: bet.name } : {}) }, drawnAt: Date.now(), bets: r.bets.map((b) => ({ userId: b.userId, name: b.name, numbers: b.numbers })), ...(colors.length ? { colors } : {}) });
+    d().past.unshift({ id: r.id, day: r.day, result: { number, potValue: r.pot.value, ...(bet ? { winnerId: bet.userId, winnerName: bet.name, ...(win?.byColor ? { byColor: true } : {}) } : {}) }, drawnAt: Date.now(), bets: r.bets.map((b) => ({ userId: b.userId, name: b.name, numbers: b.numbers, ...(b.color ? { color: b.color } : {}) })) });
     d().past.length = Math.min(d().past.length, 10);
     newRound(bet ? 0 : r.pot.coins, bet ? [] : r.pot.cards);
   }
@@ -524,28 +516,19 @@ export function createLocalEco(host: LocalEcoHost) {
         if (r.players.length < ROYALE_MIN) throw new Error(fe('games.27', { p0: ROYALE_MIN }));
         resolveRoyale(r);
       }),
-    placeBet: (numbers, stake) =>
+    placeBet: (numbers, stake, color) =>
       act(() => {
         const r = round();
         const mine = r.bets.find((b) => b.userId === ME);
         const taken = new Set(r.bets.flatMap((b) => b.numbers));
-        const p = betProblem(numbers, stake, taken, mine ? 1 : 0);
+        const p = betProblem(numbers, stake, taken, mine ? 1 : 0, color);
         if (p) throw new Error(p);
         checkStake(stake);
         const cards = takeStake(stake);
-        r.bets.push({ userId: ME, name: tr('chat.me'), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards });
+        r.bets.push({ userId: ME, name: tr('chat.me'), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, ...(color ? { color } : {}) });
         d().econ.gamesPlayed++;
         weekly({ type: 'game', won: false });
         potOf(r);
-      }),
-    placeColorBet: (color, amount) =>
-      act(() => {
-        const r = round();
-        const p = colorBetProblem(color, amount, (r.colorBets ?? []).some((b) => b.userId === ME));
-        if (p) throw new Error(p);
-        if (amount > d().coins) throw new Error(fe('econLib.2', { p0: amount - d().coins }));
-        coins(-amount, 'roulette', fm('c.rouletteColor', { colorId: color, rcolor: colorLabel(color) }));
-        r.colorBets = [...(r.colorBets ?? []), { userId: ME, name: tr('chat.me'), color, coins: amount }];
       }),
     alerts: async () => [
       {

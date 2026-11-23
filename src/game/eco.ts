@@ -79,15 +79,8 @@ export interface RouletteBet {
   numbers: number[];
   coins: number;
   cards: PotCard[];
-}
-
-/** (20/11) mise couleur : pièces sur rouge, noir ou vert ; `paid` = pièces rendues une fois le tirage fait */
-export interface RouletteColorBet {
-  userId: string;
-  name: string;
-  color: RouletteColor;
-  coins: number;
-  paid?: number;
+  /** (23/11) couleur posée sur ses numéros (mise payée deux fois) : pot de secours */
+  color?: RouletteColor;
 }
 
 export interface RouletteView {
@@ -98,14 +91,12 @@ export interface RouletteView {
     carriedCards: PotCard[];
     houseCards: GameCard[];
     bets: RouletteBet[];
-    /** (20/11) mises couleur du tirage (pari contre la maison, hors du pot) */
-    colorBets?: RouletteColorBet[];
     pot: { coins: number; cards: PotCard[]; value: number };
     drawAt: number;
   } | null;
   nextDrawAt: number;
   me: string | null;
-  past: Array<{ id: string; day: string; result?: { number: number; winnerId?: string; winnerName?: string; potValue: number }; drawnAt?: number; bets: Array<{ userId: string; name: string; numbers: number[] }>; colors?: RouletteColorBet[] }>;
+  past: Array<{ id: string; day: string; result?: { number: number; winnerId?: string; winnerName?: string; potValue: number; byColor?: boolean }; drawnAt?: number; bets: Array<{ userId: string; name: string; numbers: number[]; color?: RouletteColor }> }>;
 }
 
 export interface LobbyView {
@@ -171,9 +162,8 @@ export interface EcoBackend extends JeuxBackend, ExtrasBackend {
   joinRoyale(id: string, pack: PackChoice): Promise<void>;
   leaveRoyale(id: string): Promise<void>;
   startRoyale(id: string): Promise<void>;
-  placeBet(numbers: number[], stake: Stake): Promise<void>;
-  /** (20/11) mise couleur à la roulette : pièces sur rouge / noir (× 2) ou vert (× 10), une par tirage */
-  placeColorBet(color: RouletteColor, coins: number): Promise<void>;
+  /** (23/11) `color` : une couleur sur ses numéros, la mise payée deux fois (pot de secours) */
+  placeBet(numbers: number[], stake: Stake, color?: RouletteColor): Promise<void>;
   // admin
   alerts(): Promise<AbuseAlertView[]>;
   review(key: string, verdict: 'ok' | 'watch', note?: string): Promise<void>;

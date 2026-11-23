@@ -102,7 +102,7 @@ export const fr = {
   'if.battleBody': ' : chacun mise le même nombre de boosters ; on ouvre côte à côte, le plus gros total d’étoiles rafle toutes les cartes.',
   'if.royaleBody': ' : de 3 à 8 joueurs, un booster chacun, le meilleur total gagne tout.',
   'if.roulette': 'Roulette',
-  'if.rouletteBody': ' : mise sur des numéros, sur une couleur, ou les deux. Deux tirages par jour.',
+  'if.rouletteBody': ' : mise sur un numéro, et une couleur en plus si tu paies le double. Deux tirages par jour.',
   'if.customise': 'Personnaliser',
   'if.customiseBody': ' » : bannière, cadre, couleur, vitrine, titre et badges. Une palette de couleurs commune à tout, plus la couleur libre ; certaines couleurs se débloquent avec les',
   'if.showcaseBody': '. La vitrine montre tes plus belles cartes.',

@@ -494,38 +494,10 @@
 .gm-pastrow { display: flex; align-items: center; gap: 12px; }
 .gm-pastrow > span:not(.gm-colres) { flex: 1; min-width: 0; }
 
-/* le tapis des couleurs : rouge × 2 · vert × 10 · noir × 2 */
-.gm-colors { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.gm-col-row { display: grid; grid-template-columns: 1fr 0.8fr 1fr; gap: 5px; }
-.gm-col { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 8px; min-height: 62px; padding: 10px 14px; border-radius: var(--r-ctl); border: 1px solid color-mix(in srgb, var(--rc) 70%, rgba(255, 255, 255, 0.3)); background: color-mix(in srgb, var(--rc) 42%, #000); color: #fff; text-align: left; overflow: hidden;
-  transition: transform var(--dur-standard) var(--gm-spring), border-color var(--dur-rapide) var(--ease-standard), box-shadow var(--dur-standard) var(--ease-standard), filter var(--dur-rapide) var(--ease-standard); -webkit-tap-highlight-color: transparent; }
-.gm-col.c-black { border-color: var(--gm-line-2); background: #0b0b0b; }
-.gm-col b { font: 600 15px var(--title); letter-spacing: 0.02em; }
-.gm-col em { font: 600 13px var(--mono); font-style: normal; opacity: 0.85; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.gm-col-n { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; min-height: 16px; font: 500 11px var(--mono); color: rgba(255, 255, 255, 0.72); font-variant-numeric: tabular-nums; }
-.gm-col:active:not(:disabled) { transform: scale(0.97); transition-duration: var(--dur-instant); }
-@media (hover: hover) { .gm-col:hover:not(:disabled) { filter: brightness(1.18); } }
-.gm-col.sel { border-color: #fff; box-shadow: 0 0 0 1px #fff, 0 14px 30px -16px var(--rc); transform: translateY(-2px); }
-.gm-col.c-black.sel { box-shadow: 0 0 0 1px #fff, 0 14px 30px -16px rgba(255, 255, 255, 0.5); }
-.gm-col:disabled { cursor: default; opacity: 1; }
-.gm-col:disabled:not(.mine) { filter: saturate(0.5) brightness(0.62); }
-.gm-col.mine { border-color: #fff; box-shadow: 0 0 0 1px #fff; }
-/* le jeton : disque d'acier tourné, cerclé (même matière que la bille) */
-.gm-chip { flex: none; width: 12px; height: 12px; border-radius: 50%; background: repeating-radial-gradient(circle, #e9e9e9 0 0.7px, #a8a8a8 0.7px 1.4px); box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.6); }
-.gm-col-me { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 5px; border-radius: var(--r-pill); background: #fff; color: #000; font: 600 11px var(--mono); animation: gm-chip-drop var(--dur-emphatique) var(--gm-spring) both; }
-.gm-col-me .gm-chip { width: 14px; height: 14px; }
-@keyframes gm-chip-drop { from { opacity: 0; transform: translateY(-16px) scale(1.25); } }
-.gm-col-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font: 400 12px var(--mono); color: var(--ink-2); }
-.gm-col-foot b { font: 600 12px var(--mono); color: #fff; }
-.gm-chips { display: flex; gap: 6px; }
-.gm-chipb { position: relative; width: 42px; height: 42px; border-radius: 50%; border: 1px dashed var(--gm-line-2); background: rgba(255, 255, 255, 0.03); color: var(--ink-2); font: 600 11.5px var(--mono); font-variant-numeric: tabular-nums; transition: transform var(--dur-standard) var(--gm-spring), background-color var(--dur-rapide) var(--ease-standard), color var(--dur-rapide) var(--ease-standard), border-color var(--dur-rapide) var(--ease-standard); -webkit-tap-highlight-color: transparent; }
-.gm-chipb.on { border: 1px solid #fff; background: #fff; color: #000; transform: translateY(-3px); box-shadow: 0 8px 16px -10px rgba(255, 255, 255, 0.8); }
-.gm-chipb[data-short]:not(.on) { opacity: 0.4; }
-.gm-chipb:active { transform: scale(0.94); transition-duration: var(--dur-instant); }
-.gm-col-go { flex: 1; min-width: 180px; min-height: 42px; font-variant-numeric: tabular-nums; }
-@media (max-width: 640px) {
-  .gm-col { min-height: 58px; padding: 9px 10px; }
-  .gm-col b { font-size: 14px; }
-  .gm-chips { flex: 1; justify-content: space-between; }
-  .gm-col-go { flex-basis: 100%; }
-}
+/* (23/11) la couleur sur ses numéros (option à double prix) : pastille de couleur dans le sélecteur et la légende */
+.gm-cdot { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--rc); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45); vertical-align: middle; }
+.gm-lg .gm-cdot { margin-left: 6px; }
+.gm-colpick { flex-wrap: wrap; gap: 8px; }
+.gm-colpick .seg button { display: inline-flex; align-items: center; gap: 6px; }
+.gm-colhint { font-size: 12px; }
+.gm-ed-v .gm-colres, div > .gm-colres { margin-left: 8px; }

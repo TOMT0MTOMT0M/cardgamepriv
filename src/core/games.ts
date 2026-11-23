@@ -147,21 +147,26 @@ export const ROULETTE_CARD_RARITIES: RarityId[] = ['legendary', 'mythic'];
 const STARS_TXT: Record<string, string> = { epic: '4★', legendary: '5★', mythic: '6★' };
 export const priceLabel = (p: RoulettePrice) => (p.kind === 'coins' ? tData('rou.coins', '{n} pièces').replace('{n}', String(p.coins)) : tData(p.count > 1 ? 'rou.cards' : 'rou.card', p.count > 1 ? '{n} cartes {s}' : '{n} carte {s}').replace('{n}', String(p.count)).replace('{s}', STARS_TXT[p.rarity])); // i18n-ok
 
+/** (23/11) le prix multiplié (× 2 avec une couleur sur ses numéros) */
+export const scalePrice = (p: RoulettePrice, mult: number): RoulettePrice => (p.kind === 'coins' ? { ...p, coins: p.coins * mult } : { ...p, count: p.count * mult });
+
 /** La façon de payer qui correspond exactement à une mise (null : la mise ne colle à aucune ligne de la grille). */
-export function matchPrice(n: number, stake: Stake): RoulettePrice | null {
+export function matchPrice(n: number, stake: Stake, mult = 1): RoulettePrice | null {
   const opts = ROULETTE_PRICES[n as 1];
   if (!opts) return null;
   const cardsN = stake.cards.reduce((a, c) => a + c.count, 0);
   for (const p of opts) {
-    if (p.kind === 'coins' && stake.coins === p.coins && cardsN === 0) return p;
-    if (p.kind === 'cards' && stake.coins === 0 && cardsN === p.count && stake.cards.every((c) => c.rarity === p.rarity)) return p;
+    if (p.kind === 'coins' && stake.coins === p.coins * mult && cardsN === 0) return p;
+    if (p.kind === 'cards' && stake.coins === 0 && cardsN === p.count * mult && stake.cards.every((c) => c.rarity === p.rarity)) return p;
   }
   return null;
 }
 
 /** Problème d'un pari (null : valable). `taken` = numéros déjà pris par les autres joueurs ; `already` : j'ai déjà misé. */
-export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, already: number): string | null {
+export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, already: number, color?: unknown): string | null {
   if (already) return fe('games.34');
+  if (color !== undefined && color !== null && !isRouletteColor(color)) return fe('games.50');
+  const mult = color ? COLOR_STAKE_MULT : 1;
   if (!numbers.length) return fe('games.35');
   if (numbers.length > MAX_NUMBERS) return fe('games.36', { p0: MAX_NUMBERS });
   const seen = new Set<number>();
@@ -173,49 +178,47 @@ export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, 
   }
   if (stake.coins < 0 || !Number.isInteger(stake.coins)) return fe('games.48');
   if (stake.cards.some((c) => !ROULETTE_CARD_RARITIES.includes(c.rarity as RarityId))) return fe('games.40');
-  if (!matchPrice(numbers.length, stake)) {
-    const opts = ROULETTE_PRICES[numbers.length as 1].map(priceLabel).join(' ou ');
+  if (!matchPrice(numbers.length, stake, mult)) {
+    const opts = ROULETTE_PRICES[numbers.length as 1].map((p) => priceLabel(scalePrice(p, mult))).join(' ou ');
     return fe('games.49', { p0: numbers.length, p1: numbers.length > 1 ? 's' : '', p2: opts });
   }
   return null;
 }
 
-// ───────────────────────────────────────────── Roulette : COULEURS (20/11)
+// ───────────────────────────────────────────── Roulette : COULEURS (20/11, revu le 23/11)
 /*
- * Chaque numéro a une couleur, visible sur la roue et sur le tapis : 17 rouges, 17 noirs, 2 verts (18 et 36, face à face
- * sur la roue). Les couleurs alternent tout autour de la roue : de 1 à 17, impair = rouge ; de 19 à 35, impair = noir.
- * En plus de sa mise sur des numéros (le pot, inchangé), un joueur peut miser des PIÈCES sur une couleur — l'un, l'autre,
- * ou les deux au même tirage (une mise couleur par tirage). C'est un pari contre la maison, réglé au tirage :
- *   bonne couleur rouge ou noire = 2 × la mise · bon vert = 10 × la mise · mauvaise couleur = mise perdue.
- * Rendement moyen : rouge / noir 94 %, vert 56 % (2 cases sur 36) — un petit puits de pièces, comme La Presse.
+ * Chaque numéro a une couleur, visible sur la roue et sur le tapis : impair = rouge (18), pair = noir (17), et UNE seule
+ * case verte, le 36 (entre le 35 rouge et le 1 rouge : deux voisins n'ont jamais la même couleur).
+ * (23/11, retours Tom) plus de mise couleur à part : on mise comme d'habitude sur 1 à 3 numéros (cartes ou pièces), et on
+ * peut EN PLUS poser une couleur sur ses numéros en payant le double. Pot de secours : si personne n'a le numéro exact,
+ * le pot va à qui a misé la couleur sortie (plusieurs : la plus grosse mise, puis la plus ancienne) ; sinon il est reporté.
  */
 export type RouletteColor = 'red' | 'black' | 'green';
 export const ROULETTE_COLORS: readonly RouletteColor[] = ['red', 'black', 'green'];
-export const ROULETTE_GREENS: readonly number[] = [18, 36];
+export const ROULETTE_GREENS: readonly number[] = [36];
 export function rouletteColor(n: number): RouletteColor {
   if (ROULETTE_GREENS.includes(n)) return 'green';
-  return (n % 2 === 1) === n < 18 ? 'red' : 'black';
+  return n % 2 === 1 ? 'red' : 'black';
 }
-/** multiplicateur rendu sur la mise (mise comprise) */
-export const COLOR_PAYOUT: Record<RouletteColor, number> = { red: 2, black: 2, green: 10 };
-export const COLOR_BET_MIN = 50;
-export const COLOR_BET_MAX = 1000;
-/** jetons proposés sur le tapis */
-export const COLOR_BET_CHIPS: readonly number[] = [50, 100, 250, 500, 1000];
+/** une couleur sur ses numéros = la mise payée deux fois */
+export const COLOR_STAKE_MULT = 2;
 /** nombre de cases d'une couleur */
 export const colorCount = (c: RouletteColor) => Array.from({ length: ROULETTE_NUMBERS }, (_, i) => i + 1).filter((n) => rouletteColor(n) === c).length;
 export const isRouletteColor = (c: unknown): c is RouletteColor => ROULETTE_COLORS.includes(c as RouletteColor);
 export const colorLabel = (c: RouletteColor) => tData(`rou.${c}`, { red: 'rouge', black: 'noir', green: 'vert' }[c]); // i18n-ok
 
-/** Problème d'une mise couleur (null : valable). `already` : j'ai déjà une mise couleur sur ce tirage. */
-export function colorBetProblem(color: unknown, coins: number, already: boolean): string | null {
-  if (!isRouletteColor(color)) return fe('games.50');
-  if (already) return fe('games.51');
-  if (!Number.isInteger(coins) || coins < COLOR_BET_MIN || coins > COLOR_BET_MAX) return fe('games.52', { p0: COLOR_BET_MIN, p1: COLOR_BET_MAX });
-  return null;
+/**
+ * Qui rafle le pot quand `number` sort : le numéro exact d'abord ; sinon (pot de secours) la mise qui portait la couleur
+ * sortie — la plus grosse en valeur (`value`), à égalité la première posée. null : personne, le pot est reporté.
+ */
+export function rouletteWinner<B extends { numbers: number[]; color?: string }>(bets: readonly B[], number: number, value: (b: B) => number): { bet: B; byColor: boolean } | null {
+  const exact = bets.find((b) => b.numbers.includes(number));
+  if (exact) return { bet: exact, byColor: false };
+  const c = rouletteColor(number);
+  let best: B | null = null;
+  for (const b of bets) if (b.color === c && (!best || value(b) > value(best))) best = b;
+  return best ? { bet: best, byColor: true } : null;
 }
-/** Pièces rendues pour une mise couleur quand `number` sort (0 : perdu). */
-export const colorPayout = (color: RouletteColor, coins: number, number: number) => (rouletteColor(number) === color ? coins * COLOR_PAYOUT[color] : 0);
 msgRef('rcolor', (p) => (isRouletteColor(p.colorId) ? colorLabel(p.colorId) : undefined));
 
 /** Formateur de l'heure de Paris, créé une seule fois (perf : `nextRouletteDraw` l'appelle minute par minute). */

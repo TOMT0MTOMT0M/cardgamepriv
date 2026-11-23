@@ -528,17 +528,19 @@ export default defineSchema({
         numbers: v.array(v.number()),
         coins: v.number(),
         cards: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number(), mintNumber: v.number() })),
+        /** (23/11) couleur posée sur ses numéros (mise payée deux fois) : pot de secours si personne n'a le numéro exact */
+        color: v.optional(v.union(v.literal('red'), v.literal('black'), v.literal('green'))),
         createdAt: v.number(),
       }),
     ),
     /**
-     * (20/11) MISES COULEUR (src/core/games.ts) : pari en pièces contre la maison, hors du pot, une par joueur et par
+     * (23/11) RETIRÉ (gardé pour les tirages du staging) — (20/11) MISES COULEUR (src/core/games.ts) : pari en pièces contre la maison, hors du pot, une par joueur et par
      * tirage. `paid` : pièces rendues au tirage (0 = perdu), posé par `drawRound`. Absent sur les anciens tirages.
      */
     colorBets: v.optional(
       v.array(v.object({ userId: v.id('users'), name: v.string(), color: v.union(v.literal('red'), v.literal('black'), v.literal('green')), coins: v.number(), createdAt: v.number(), paid: v.optional(v.number()) })),
     ),
-    result: v.optional(v.object({ number: v.number(), winnerId: v.optional(v.id('users')), winnerName: v.optional(v.string()), potValue: v.number() })),
+    result: v.optional(v.object({ number: v.number(), winnerId: v.optional(v.id('users')), winnerName: v.optional(v.string()), potValue: v.number(), /** (23/11) gagné par la couleur (pot de secours) */ byColor: v.optional(v.boolean()) })),
     drawnAt: v.optional(v.number()),
     /** (13/11) notification « tirage dans 10 min » déjà envoyée pour cette manche */
     warned: v.optional(v.boolean()),
