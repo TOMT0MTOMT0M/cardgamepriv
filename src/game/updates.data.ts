@@ -71,6 +71,17 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '23 nov.', title: 'Roulette resserrée, nouvelles 6★', tag: 'amélioré',
+        points: [
+          '🎲 Roulette : un seul numéro par tirage. La mise : 1 500 pièces, 2 cartes 5★ ou 1 carte 6★ (les 4★ ne se misent plus).',
+          '🆕 Deux nouvelles 6★ : Rocket (Galactik Football) et Mount & Blade.',
+          '⭐ Harvey Specter et Dwayne Johnson passent en 6★.',
+          '🏀 Daiki Aomine joue « Misdirection » (Kuroko\'s Basket).',
+          '🖼️ 43 cartes en pleine illustration : Rem, Rias Gremory, Obi-Wan Kenobi, Rick Grimes, Neymar, Céline Dion, Rayman 2…',
+          '🗑️ La carte Antoine Daniel est retirée du jeu.',
+        ],
+      },
+      {
         date: '20 nov.', title: 'Musiques des films et des jeux, nouvelles 6★', tag: 'amélioré',
         points: [
           '📺 Le prochain ajout de cartes arrive début décembre : les émissions télé, avec leurs candidats et présentateurs. Dis-nous lesquelles tu veux dans le mini-sondage.',

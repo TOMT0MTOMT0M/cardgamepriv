@@ -2,7 +2,7 @@
  * Sous-thèmes « JEUX VIDÉO » (thème GAMING) — données pures, AUCUN import (partagé avec convex/cardsCatalog.ts).
  * GÉNÉRÉ par scripts/make-jeux-video.py (ne pas éditer à la main) depuis Tri-etoiles-jeux-video.xlsx (feuille « Tri étoiles »,
  * colonne « Étoiles » = rareté validée par le groupe) et le journal de récolte des images (scripts/data/jv-harvest.json).
- * 2998 cartes · 177 familles = 177 sous-thèmes (décision du 2 nov.) · clé métier (famille, carte) : 8 homonymes de
+ * 2999 cartes · 177 familles = 177 sous-thèmes (décision du 2 nov.) · clé métier (famille, carte) : 8 homonymes de
  * champions LoL (Jax, Ashe, Morgana…) sont des personnages DIFFÉRENTS, d'où l'identifiant `jv-<famille>-<carte>`.
  * Illustrations : public/art/jv/<famille>--<carte>.(jpg|png) ; sans image → design typographique (src/core/art/jvTitle.ts).
  */
@@ -34,7 +34,7 @@ export interface JvEntry {
   art: '' | 'c' | 'i';
 }
 
-export const JV_INFO = { label: 'Jeux vidéo', artDir: 'art/jv', size: 2998 } as const;
+export const JV_INFO = { label: 'Jeux vidéo', artDir: 'art/jv', size: 2999 } as const;
 
 export const JV_FAMILIES: JvFamily[] = [
   { id: "jv-ace-attorney", label: "Ace Attorney", code: "ACA" },
@@ -1136,6 +1136,7 @@ const RAW: Array<[number, string, string, keyof typeof K, keyof typeof R, number
   [64, "rogue-legacy-2", "Rogue Legacy 2", 'j', 'c', 2022, "indes-action-recents--rogue-legacy-2.jpg", "c"],
   [64, "sifu", "Sifu", 'j', 'c', 2022, "indes-action-recents--sifu.jpg", "c"],
   [64, "ultrakill", "Ultrakill", 'j', 'c', 2020, "indes-action-recents--ultrakill.jpg", "c"],
+  [64, "mount-and-blade", "Mount & Blade", 'j', 'm', 2008, "indes-action-recents--mount-and-blade-r2611231743.jpg", "c"],
   [65, "isaac", "Isaac", 'p', 'm', 0, "isaac-persos--isaac.jpg", "c"],
   [65, "satan-boi", "Satan (BoI)", 'p', 'c', 0, "isaac-persos--satan-boi.png", "i"],
   [66, "daxter", "Daxter", 'p', 'r', 0, "jak-and-daxter--daxter.png", "i"],
@@ -1921,7 +1922,7 @@ const RAW: Array<[number, string, string, keyof typeof K, keyof typeof R, number
   [107, "rivet", "Rivet", 'p', 'c', 0, "ratchet-and-clank--rivet.png", "i"],
   [107, "tools-of-destruction", "Tools of Destruction", 'j', 'c', 2007, "ratchet-and-clank--tools-of-destruction.jpg", "c"],
   [108, "rayman", "Rayman", 'p', 'l', 0, "rayman--rayman.png", "i"],
-  [108, "rayman-2", "Rayman 2", 'j', 'l', 1999, "rayman--rayman-2.jpg", "c"],
+  [108, "rayman-2", "Rayman 2", 'j', 'l', 1999, "rayman--rayman-2-r2611231743.jpg", "c"],
   [108, "lapins-cretins", "Lapins Crétins", 'p', 'r', 0, "rayman--lapins-cretins.jpg", "c"],
   [108, "rayman-legends", "Rayman Legends", 'j', 'r', 2013, "rayman--rayman-legends.jpg", "c"],
   [108, "rayman-3", "Rayman 3", 'j', 'u', 2003, "rayman--rayman-3.jpg", "c"],
@@ -3106,7 +3107,7 @@ const RAW: Array<[number, string, string, keyof typeof K, keyof typeof R, number
   [160, "josephine-paladin-eau", "Josephine (Paladin eau)", 'p', 'l', 0, "summoners-war--josephine-paladin-eau.jpg", "c"],
   [160, "juno-oracle-feu", "Juno (Oracle feu)", 'p', 'l', 0, "summoners-war--juno-oracle-feu.jpg", "c"],
   [160, "kumar-beast-monk-feu", "Kumar (Beast Monk feu)", 'p', 'l', 0, "summoners-war--kumar-beast-monk-feu.jpg", "c"],
-  [160, "lushen-joker-vent", "Lushen (Joker vent)", 'p', 'l', 0, "summoners-war--lushen-joker-vent.jpg", "c"],
+  [160, "lushen-joker-vent", "Lushen (Joker vent)", 'p', 'l', 0, "summoners-war--lushen-joker-vent-r2611231743.jpg", "c"],
   [160, "mo-long-panda-warrior-eau", "Mo Long (Panda Warrior eau)", 'p', 'l', 0, "summoners-war--mo-long-panda-warrior-eau.jpg", "c"],
   [160, "odin-lightning-emperor-vent", "Odin (Lightning Emperor vent)", 'p', 'l', 0, "summoners-war--odin-lightning-emperor-vent.jpg", "c"],
   [160, "poseidon-sea-emperor-eau", "Poseidon (Sea Emperor eau)", 'p', 'l', 0, "summoners-war--poseidon-sea-emperor-eau.jpg", "c"],

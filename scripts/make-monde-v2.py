@@ -527,9 +527,13 @@ def gen(xlsx):
         art = h.get('art', '') if f else ''
         if c['v1'] and not art:
             art = 'c'
+        d = c['dir']
+        if c['v1'] and h.get('src', '').startswith('reillustre:') and h.get('file'):
+            # (23/11) carte V1 ré-illustrée (scripts/reillustrer.py) : la nouvelle image est dans art/monde
+            f, art, d = h['file'], h.get('art') or 'c', 'art/monde'
         with_art += 1 if f else 0
         r = 's' if c['sub'] == 'Les 14 Merveilles' else R[c['stars']]
-        L.append(f"  [{sub_index[c['sub']]}, {q(c['id'])}, {q(c['name'])}, '{r}', {dirs.index(c['dir'])}, {q(f)}, {q(art)}, {q(c['type'])}],")
+        L.append(f"  [{sub_index[c['sub']]}, {q(c['id'])}, {q(c['name'])}, '{r}', {dirs.index(d)}, {q(f)}, {q(art)}, {q(c['type'])}],")
     L.append('];')
     L.append('')
     L.append('const counters: number[] = [];')

@@ -65,6 +65,27 @@ def title_ok(title, c):
 
 
 # ───────────────────────────────────────────── données
+# patchs (donnees/patchs/, feuille « Nouvelles cartes », mêmes colonnes que le tri) : ajoutés À LA FIN de leur famille,
+# aucune renumérotation (les ids `jv-<famille>-<carte>` et les numéros existants ne bougent pas)
+#   Patch-jv-ajouts-23-11.xlsx (23/11/2026) : Mount & Blade 6★ (Indés action/récents)
+PATCHES = ['Patch-jv-ajouts-23-11.xlsx']
+
+
+def patch_rows():
+    out = []
+    for name in PATCHES:
+        ws = openpyxl.load_workbook(os.path.join(ROOT, 'donnees', 'patchs', name), read_only=True, data_only=True)['Nouvelles cartes']
+        head = False
+        for r in ws.iter_rows(values_only=True):
+            if not head:
+                head = bool(r) and r[0] == 'Thème'
+                continue
+            if not r or not r[1] or not r[2]:
+                continue
+            out.append({'fam': str(r[1]).strip(), 'name': str(r[2]).strip(), 'type': str(r[3]).strip(), 'stars': int(r[4]), 'year': int(r[6]) if r[6] else 0})
+    return out
+
+
 def read_rows(xlsx):
     ws = openpyxl.load_workbook(xlsx, read_only=True, data_only=True)['Tri étoiles']
     rows = []
@@ -73,6 +94,7 @@ def read_rows(xlsx):
             continue
         rows.append({'fam': str(r[1]).strip(), 'name': str(r[2]).strip(), 'type': str(r[3]).strip(), 'stars': int(r[4]), 'year': int(r[6]) if r[6] else 0})
     assert len(rows) == 3396, f'{len(rows)} lignes (3 396 attendues)'
+    rows += patch_rows()
     fams = collections.OrderedDict()
     for r in rows:
         fams.setdefault(r['fam'], []).append(r)

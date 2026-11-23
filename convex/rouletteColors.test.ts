@@ -16,7 +16,7 @@ async function setup(names = ['alice', 'bob']) {
   const u: Record<string, { userId: Id<'users'>; token: string }> = {};
   for (const name of names)
     u[name] = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert('users', { discordId: name, username: name, displayName: name, packBalance: 15, lastDailyClaimAt: 0, totalPacksOpened: 0, lastSeenAt: Date.now(), packRegenAt: Date.now(), coins: 1000 });
+      const userId = await ctx.db.insert('users', { discordId: name, username: name, displayName: name, packBalance: 15, lastDailyClaimAt: 0, totalPacksOpened: 0, lastSeenAt: Date.now(), packRegenAt: Date.now(), coins: 2200 }); // (23/11) 1 numéro = 1500 pièces
       await ctx.db.insert('sessions', { token: `tok-${name}`, userId, createdAt: Date.now(), expiresAt: Date.now() + 86400000 });
       return { userId, token: `tok-${name}` };
     });
@@ -54,7 +54,7 @@ describe('mises couleur', () => {
   test('numéro + couleur au même tirage ; la couleur est réglée hors du pot', async () => {
     const { t, u } = await setup();
     await t.mutation(internal.games.rouletteTick, {});
-    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 300, cards: [] } });
+    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 1500, cards: [] } });
     expect(await t.mutation(api.games.placeColorBet, { sessionToken: u.alice.token, color: 'red', coins: 200 })).toEqual({ color: 'red', coins: 200 });
     await expect(t.mutation(api.games.placeColorBet, { sessionToken: u.alice.token, color: 'black', coins: 50 })).rejects.toThrow(/déjà misé sur une couleur/);
     await expect(t.mutation(api.games.placeColorBet, { sessionToken: u.bob.token, color: 'green', coins: 5000 })).rejects.toThrow(/entre 50 et 1000/);
@@ -62,14 +62,14 @@ describe('mises couleur', () => {
     expect(await coins(t, u.alice.userId)).toBe(500);
     let r = (await t.query(api.games.roulette, {}))!;
     // la mise couleur n'entre pas dans le pot
-    expect(r.round!.pot.coins).toBe(300);
+    expect(r.round!.pot.coins).toBe(1500);
     expect(r.round!.colorBets!.map((b) => [b.name, b.color, b.coins])).toEqual([['alice', 'red', 200], ['bob', 'green', 100]]);
     // le 3 (rouge) sort : Alice double sa mise couleur, perd sa mise numéro (le pot est reporté) ; Bob perd
     await t.mutation(internal.games.forceDraw, { number: 3 });
     expect(await coins(t, u.alice.userId)).toBe(900);
-    expect(await coins(t, u.bob.userId)).toBe(900);
+    expect(await coins(t, u.bob.userId)).toBe(2100);
     r = (await t.query(api.games.roulette, {}))!;
-    expect(r.round!.carriedCoins).toBe(300);
+    expect(r.round!.carriedCoins).toBe(1500);
     expect(r.round!.colorBets ?? []).toEqual([]);
     expect(r.past[0].colors).toEqual([
       { userId: u.alice.userId, name: 'alice', color: 'red', coins: 200, paid: 400 },
@@ -82,11 +82,11 @@ describe('mises couleur', () => {
   test('le vert rend 10 fois la mise ; numéro et couleur gagnants se cumulent', async () => {
     const { t, u } = await setup();
     await t.mutation(internal.games.rouletteTick, {});
-    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [36], stake: { coins: 300, cards: [] } });
+    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [36], stake: { coins: 1500, cards: [] } });
     await t.mutation(api.games.placeColorBet, { sessionToken: u.alice.token, color: 'green', coins: 50 });
     await t.mutation(internal.games.forceDraw, { number: 36 });
     // 1000 − 300 − 50 + 300 (pot) + 500 (vert × 10)
-    expect(await coins(t, u.alice.userId)).toBe(1450);
+    expect(await coins(t, u.alice.userId)).toBe(2650);
     const r = (await t.query(api.games.roulette, {}))!;
     expect(r.past[0].result?.winnerName).toBe('alice');
     expect(r.past[0].colors[0].paid).toBe(500);

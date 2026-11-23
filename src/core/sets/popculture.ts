@@ -1,8 +1,8 @@
 /**
  * POP CULTURE PACK (thème « pop ») — données pures, AUCUN import (partagé avec convex/cardsCatalog.ts).
  * GÉNÉRÉ par scripts/make-pop.py (ne pas éditer à la main) depuis Tri-etoiles-popculture.xlsx (SPEC-THEME-POP-CULTURE v5).
- * 19465 cartes · 853 sous-thèmes (libellé imprimé en grand sur la carte), regroupés à l'affichage en 7.
- * Numéro = « N° » de l'Excel, sur 20513. Ids « pop-… » figés dans scripts/data/pop-ids.json (ne JAMAIS les changer).
+ * 19466 cartes · 853 sous-thèmes (libellé imprimé en grand sur la carte), regroupés à l'affichage en 7.
+ * Numéro = « N° » de l'Excel, sur 20514. Ids « pop-… » figés dans scripts/data/pop-ids.json (ne JAMAIS les changer).
  */
 export type PopRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
@@ -18,7 +18,7 @@ export interface PopEntry {
   /** identifiant de carte — ne JAMAIS le changer */
   id: string;
   sub: string;
-  /** n° de la carte dans tout le thème (1 → 20513) */
+  /** n° de la carte dans tout le thème (1 → 20514) */
   num: number;
   name: string;
   rarity: PopRarity;
@@ -30,7 +30,7 @@ export interface PopEntry {
   label: string;
 }
 
-export const POP_SIZE = 20513;
+export const POP_SIZE = 20514;
 export const POP_GROUPS: Record<string, string> = {
   anime: "Mangas & anime",
   films: "Films",
@@ -902,7 +902,7 @@ const LABELS = ["Acteur / actrice", "Album", "Artiste", "Carte magie / piège", 
 
 // [sous-thème (index), n°, id, nom, rareté, fichier, art, type (index)]
 const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | 'c' | 'i', number]> = [
-  [0, 43, "pop-kurena-kukumila", "Kurena Kukumila", 'm', "kurena-kukumila.jpg", "c", 6],
+  [0, 43, "pop-kurena-kukumila", "Kurena Kukumila", 'm', "kurena-kukumila-r2611231743.jpg", "c", 6],
   [0, 44, "pop-shinei-nouzen", "Shinei Nouzen", 'm', "shinei-nouzen.jpg", "c", 6],
   [0, 45, "pop-vladilena-milize", "Vladilena Milizé", 'm', "vladilena-milize.jpg", "c", 6],
   [0, 46, "pop-anju-emma", "Anju Emma", 'l', "anju-emma.jpg", "c", 6],
@@ -2340,7 +2340,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [36, 5142, "pop-mimiko-sakura", "Mimiko Sakura", 'c', "mimiko-sakura.jpg", "c", 6],
   [36, 5143, "pop-moeko-sakurada", "Moeko Sakurada", 'c', "moeko-sakurada.jpg", "c", 6],
   [36, 5144, "pop-yoshirin-hatogaya", "Yoshirin Hatogaya", 'c', "yoshirin-hatogaya.jpg", "c", 6],
-  [37, 5145, "pop-david-martinez", "David Martinez", 'm', "david-martinez.jpg", "c", 6],
+  [37, 5145, "pop-david-martinez", "David Martinez", 'm', "david-martinez-r2611231743.jpg", "c", 6],
   [37, 5146, "pop-lucy", "Lucy", 'm', "lucy.jpg", "c", 6],
   [37, 5147, "pop-maine", "Maine", 'l', "maine.jpg", "c", 6],
   [37, 5148, "pop-rebecca", "Rebecca", 'l', "rebecca.jpg", "c", 6],
@@ -2411,7 +2411,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [38, 19318, "pop-malcom-c-rouvelier", "Malcom C. Rouvelier", 'c', "malcom-c-rouvelier.jpg", "c", 6],
   [39, 5303, "pop-aira-shiratori", "Aira Shiratori", 'm', "aira-shiratori.jpg", "c", 6],
   [39, 5304, "pop-ken-takakura", "Ken Takakura", 'm', "ken-takakura.jpg", "c", 6],
-  [39, 5305, "pop-momo-ayase", "Momo Ayase", 'm', "momo-ayase.jpg", "c", 6],
+  [39, 5305, "pop-momo-ayase", "Momo Ayase", 'm', "momo-ayase-r2611231743.jpg", "c", 6],
   [39, 5306, "pop-jin-enjouji", "Jin Enjouji", 'l', "jin-enjouji.jpg", "c", 6],
   [39, 5307, "pop-seiko-ayase", "Seiko Ayase", 'l', "seiko-ayase.jpg", "c", 6],
   [39, 5308, "pop-turbo-babaa", "Turbo Babaa", 'l', "turbo-babaa.jpg", "c", 6],
@@ -4394,7 +4394,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [84, 19712, "pop-peter-fargusen", "Peter Fargusen", 'u', "peter-fargusen.jpg", "c", 6],
   [84, 19713, "pop-incognito", "Incognito", 'c', "incognito.jpg", "c", 6],
   [85, 7478, "pop-akeno-himejima", "Akeno Himejima", 'm', "akeno-himejima.jpg", "c", 6],
-  [85, 7479, "pop-rias-gremory", "Rias Gremory", 'm', "rias-gremory.jpg", "c", 6],
+  [85, 7479, "pop-rias-gremory", "Rias Gremory", 'm', "rias-gremory-r2611231743.jpg", "c", 6],
   [85, 7480, "pop-issei-hyoudou", "Issei Hyoudou", 'l', "issei-hyoudou.jpg", "c", 6],
   [85, 7481, "pop-koneko-toujou", "Koneko Toujou", 'l', "koneko-toujou.jpg", "c", 6],
   [85, 7482, "pop-asia-argento-high-school-dxd", "Asia Argento", 'e', "asia-argento-high-school-dxd.jpg", "c", 6],
@@ -5300,7 +5300,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [101, 19852, "pop-wolbach", "Wolbach", 'r', "wolbach.jpg", "c", 6],
   [101, 19853, "pop-keele", "Keele", 'u', "keele.jpg", "c", 6],
   [102, 8541, "pop-tetsuya-kuroko", "Tetsuya Kuroko", 'm', "tetsuya-kuroko-r2611151732.jpg", "c", 6],
-  [102, 8542, "pop-daiki-aomine", "Daiki Aomine", 'm', "daiki-aomine.jpg", "c", 6],
+  [102, 8542, "pop-daiki-aomine", "Daiki Aomine", 'm', "daiki-aomine-r2611231743.jpg", "c", 6],
   [102, 8543, "pop-ryouta-kise", "Ryouta Kise", 'm', "ryouta-kise.jpg", "c", 6],
   [102, 8544, "pop-seijuurou-akashi", "Seijuurou Akashi", 'm', "seijuurou-akashi-r2611141725.jpg", "c", 6],
   [102, 8545, "pop-shintarou-midorima", "Shintarou Midorima", 'm', "shintarou-midorima-r2611151732.jpg", "c", 6],
@@ -7033,7 +7033,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [147, 20180, "pop-boudica-queen", "Boudica Queen", 'r', "boudica-queen.jpg", "c", 6],
   [147, 20181, "pop-yggdrajill-jill", "Yggdrajill Jill", 'r', "yggdrajill-jill.jpg", "c", 6],
   [147, 20182, "pop-myr", "Myr", 'r', "myr.jpg", "c", 6],
-  [148, 14182, "pop-bojji", "Bojji", 'm', "bojji.jpg", "c", 6],
+  [148, 14182, "pop-bojji", "Bojji", 'm', "bojji-r2611231743.jpg", "c", 6],
   [148, 14183, "pop-hiling", "Hiling", 'l', "hiling.jpg", "c", 6],
   [148, 14184, "pop-kage", "Kage", 'l', "kage.jpg", "c", 6],
   [148, 14185, "pop-despa", "Despa", 'e', "despa.jpg", "c", 6],
@@ -7099,7 +7099,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [150, 14254, "pop-solacido", "Solacido", 'c', "solacido.jpg", "c", 6],
   [150, 14255, "pop-wonderful-gocche", "Wonderful Gocche", 'c', "wonderful-gocche.jpg", "c", 6],
   [151, 14256, "pop-emilia", "Emilia", 'm', "emilia.jpg", "c", 6],
-  [151, 14257, "pop-rem", "Rem", 'm', "rem.jpg", "c", 6],
+  [151, 14257, "pop-rem", "Rem", 'm', "rem-r2611231743.jpg", "c", 6],
   [151, 14258, "pop-subaru-natsuki", "Subaru Natsuki", 'm', "subaru-natsuki-r2611141725.jpg", "c", 6],
   [151, 14259, "pop-beatrice", "Beatrice", 'l', "beatrice.jpg", "c", 6],
   [151, 14260, "pop-felix-argyle", "Felix Argyle", 'l', "felix-argyle.jpg", "c", 6],
@@ -7846,7 +7846,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [168, 20318, "pop-keith-kepler", "Keith Kepler", 'u', "keith-kepler.jpg", "c", 6],
   [168, 20319, "pop-demetrius-desmond", "Demetrius Desmond", 'c', "demetrius-desmond.jpg", "c", 6],
   [169, 15424, "pop-kurisu-makise", "Kurisu Makise", 'm', "kurisu-makise.jpg", "c", 6],
-  [169, 15425, "pop-rintarou-okabe", "Rintarou Okabe", 'm', "rintarou-okabe.jpg", "c", 6],
+  [169, 15425, "pop-rintarou-okabe", "Rintarou Okabe", 'm', "rintarou-okabe-r2611231743.jpg", "c", 6],
   [169, 15426, "pop-mayuri-shiina", "Mayuri Shiina", 'l', "mayuri-shiina.jpg", "c", 6],
   [169, 15427, "pop-suzuha-amane", "Suzuha Amane", 'l', "suzuha-amane.jpg", "c", 6],
   [169, 15428, "pop-itaru-hashida", "Itaru Hashida", 'e', "itaru-hashida.jpg", "c", 6],
@@ -9441,7 +9441,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [265, 6385, "pop-letty-ortiz", "Letty Ortiz", 'l', "letty-ortiz.jpg", "c", 6],
   [265, 6386, "pop-mia-toretto", "Mia Toretto", 'l', "mia-toretto-r2611151732.jpg", "c", 6],
   [265, 6387, "pop-roman-pearce", "Roman Pearce", 'l', "roman-pearce-r2611201333.jpg", "c", 6],
-  [265, 6388, "pop-deckard-shaw", "Deckard Shaw", 'l', "deckard-shaw.jpg", "c", 6],
+  [265, 6388, "pop-deckard-shaw", "Deckard Shaw", 'l', "deckard-shaw-r2611231743.jpg", "c", 6],
   [265, 6389, "pop-han-lue", "Han Lue", 'l', "han-lue.jpg", "c", 6],
   [265, 6390, "pop-luke-hobbs", "Luke Hobbs", 'l', "luke-hobbs-r2611151732.jpg", "c", 6],
   [265, 6391, "pop-tej-parker", "Tej Parker", 'u', "tej-parker.jpg", "c", 6],
@@ -9638,7 +9638,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [288, 7804, "pop-professeur-brand", "Professeur Brand", 'c', "professeur-brand.jpg", "c", 6],
   [289, 7805, "pop-philippe", "Philippe", 'l', "philippe.jpg", "c", 6],
   [289, 7806, "pop-driss", "Driss", 'l', "driss.jpg", "c", 6],
-  [290, 7870, "pop-james-bond", "James Bond", 'm', "james-bond.jpg", "c", 6],
+  [290, 7870, "pop-james-bond", "James Bond", 'm', "james-bond-r2611231743.jpg", "c", 6],
   [290, 7871, "pop-m", "M", 'l', "m.png", "i", 6],
   [290, 7872, "pop-miss-moneypenny", "Miss Moneypenny", 'l', "miss-moneypenny.jpg", "c", 6],
   [290, 7873, "pop-auric-goldfinger", "Auric Goldfinger", 'e', "auric-goldfinger.jpg", "c", 6],
@@ -10142,7 +10142,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [387, 9889, "pop-la-guepe", "La Guêpe", 'l', "la-guepe.jpg", "c", 6],
   [387, 9890, "pop-mantis", "Mantis", 'l', "mantis.jpg", "c", 6],
   [387, 9891, "pop-nebula", "Nebula", 'l', "nebula.jpg", "c", 6],
-  [387, 9892, "pop-rocket", "Rocket", 'l', "rocket.jpg", "c", 6],
+  [387, 9892, "pop-rocket", "Rocket", 'l', "rocket-r2611231743.jpg", "c", 6],
   [387, 9893, "pop-scarlet-witch", "Scarlet Witch", 'l', "scarlet-witch-r2611132242.jpg", "c", 6],
   [387, 9894, "pop-soldat-de-l-hiver", "Soldat de l'Hiver", 'l', "soldat-de-l-hiver-r2611132242.jpg", "c", 6],
   [387, 9895, "pop-star-lord", "Star-Lord", 'l', "star-lord.jpg", "c", 6],
@@ -10333,7 +10333,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [407, 13871, "pop-chiron", "Chiron", 'c', "chiron.jpg", "c", 6],
   [407, 13872, "pop-clarisse", "Clarisse", 'c', "clarisse.jpg", "c", 6],
   [408, 13894, "pop-peter-pan", "Peter Pan", 'l', "peter-pan.jpg", "c", 6],
-  [408, 13897, "pop-wendy-darling", "Wendy Darling", 'r', "wendy-darling.png", "i", 6],
+  [408, 13897, "pop-wendy-darling", "Wendy Darling", 'r', "wendy-darling-r2611231743.jpg", "c", 6],
   [408, 13898, "pop-john-darling", "John Darling", 'u', "john-darling.jpg", "c", 6],
   [408, 13899, "pop-michael-darling", "Michael Darling", 'u', "michael-darling.jpg", "c", 6],
   [408, 13900, "pop-monsieur-mouche", "Monsieur Mouche", 'u', "monsieur-mouche.jpg", "c", 6],
@@ -10526,7 +10526,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [450, 15301, "pop-han-solo", "Han Solo", 'm', "han-solo-r2611110028.jpg", "c", 6],
   [450, 15302, "pop-leia-organa", "Leia Organa", 'm', "leia-organa.jpg", "c", 6],
   [450, 15303, "pop-luke-skywalker", "Luke Skywalker", 'm', "luke-skywalker.jpg", "c", 6],
-  [450, 15304, "pop-obi-wan-kenobi", "Obi-Wan Kenobi", 'm', "obi-wan-kenobi.jpg", "c", 6],
+  [450, 15304, "pop-obi-wan-kenobi", "Obi-Wan Kenobi", 'm', "obi-wan-kenobi-r2611231743.jpg", "c", 6],
   [450, 15305, "pop-yoda", "Yoda", 'm', "yoda-r2611110028.jpg", "c", 6],
   [450, 15306, "pop-ahsoka-tano", "Ahsoka Tano", 'l', "ahsoka-tano.png", "i", 6],
   [450, 15307, "pop-anakin-skywalker", "Anakin Skywalker", 'l', "anakin-skywalker.jpg", "c", 6],
@@ -10674,7 +10674,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [461, 16336, "pop-gabby-gabby", "Gabby Gabby", 'c', "gabby-gabby.png", "i", 6],
   [462, 16338, "pop-alonzo-harris", "Alonzo Harris", 'l', "alonzo-harris.jpg", "c", 6],
   [463, 16341, "pop-bumblebee", "Bumblebee", 'm', "bumblebee.jpg", "c", 6],
-  [463, 16342, "pop-optimus-prime", "Optimus Prime", 'm', "optimus-prime-r2611121558.jpg", "c", 6],
+  [463, 16342, "pop-optimus-prime", "Optimus Prime", 'm', "optimus-prime-r2611231743.jpg", "c", 6],
   [463, 16343, "pop-megatron", "Megatron", 'l', "megatron.jpg", "c", 6],
   [463, 16344, "pop-sam-witwicky", "Sam Witwicky", 'r', "sam-witwicky.jpg", "c", 6],
   [463, 16345, "pop-starscream", "Starscream", 'r', "starscream.jpg", "c", 6],
@@ -10907,7 +10907,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [507, 2936, "pop-gale-boetticher", "Gale Boetticher", 'u', "gale-boetticher.jpg", "c", 6],
   [507, 2938, "pop-lydia-rodarte-quayle", "Lydia Rodarte-Quayle", 'u', "lydia-rodarte-quayle.jpg", "c", 6],
   [507, 2939, "pop-todd-alquist", "Todd Alquist", 'u', "todd-alquist.jpg", "c", 6],
-  [507, 2940, "pop-badger", "Badger", 'c', "badger.jpg", "c", 6],
+  [507, 2940, "pop-badger", "Badger", 'c', "badger-r2611231743.jpg", "c", 6],
   [507, 2941, "pop-don-eladio", "Don Eladio", 'c', "don-eladio.jpg", "c", 6],
   [507, 2942, "pop-jane-margolis", "Jane Margolis", 'c', "jane-margolis.jpg", "c", 6],
   [507, 2943, "pop-skinny-pete", "Skinny Pete", 'c', "skinny-pete.jpg", "c", 6],
@@ -11799,7 +11799,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [647, 13396, "pop-j-t", "J.T.", 'c', "j-t.jpg", "c", 6],
   [648, 13432, "pop-garrett-graham", "Garrett Graham", 'l', "garrett-graham.jpg", "c", 6],
   [648, 13433, "pop-hannah-wells-off-campus", "Hannah Wells (Off Campus)", 'e', "hannah-wells-off-campus.jpg", "c", 6],
-  [648, 13434, "pop-dean-di-laurentis", "Dean Di Laurentis", 'r', "dean-di-laurentis.jpg", "c", 6],
+  [648, 13434, "pop-dean-di-laurentis", "Dean Di Laurentis", 'r', "dean-di-laurentis-r2611231743.jpg", "c", 6],
   [648, 13435, "pop-john-logan", "John Logan", 'r', "john-logan-r2611151732.jpg", "c", 6],
   [648, 13436, "pop-allie-hayes", "Allie Hayes", 'u', "allie-hayes.jpg", "c", 6],
   [648, 13438, "pop-john-tucker", "John Tucker", 'c', "john-tucker.jpg", "c", 6],
@@ -12319,7 +12319,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [724, 15861, "pop-dr-langdon", "Dr Langdon", 'u', "dr-langdon.jpg", "c", 6],
   [724, 15862, "pop-dana-the-pitt", "Dana (The Pitt)", 'c', "dana-the-pitt.jpg", "c", 6],
   [724, 15863, "pop-dr-collins", "Dr Collins", 'c', "dr-collins.jpg", "c", 6],
-  [725, 15933, "pop-john-nolan", "John Nolan", 'm', "john-nolan.jpg", "c", 6],
+  [725, 15933, "pop-john-nolan", "John Nolan", 'm', "john-nolan-r2611231743.jpg", "c", 6],
   [725, 15934, "pop-lucy-chen", "Lucy Chen", 'e', "lucy-chen.jpg", "c", 6],
   [725, 15935, "pop-tim-bradford", "Tim Bradford", 'r', "tim-bradford.jpg", "c", 6],
   [725, 15936, "pop-nyla-harper", "Nyla Harper", 'u', "nyla-harper.jpg", "c", 6],
@@ -12344,7 +12344,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [727, 15960, "pop-lila-pitts", "Lila Pitts", 'c', "lila-pitts.jpg", "c", 6],
   [727, 15961, "pop-pogo", "Pogo", 'c', "pogo.jpg", "c", 6],
   [728, 15968, "pop-daryl-dixon", "Daryl Dixon", 'm', "daryl-dixon.jpg", "c", 6],
-  [728, 15969, "pop-rick-grimes", "Rick Grimes", 'm', "rick-grimes.jpg", "c", 6],
+  [728, 15969, "pop-rick-grimes", "Rick Grimes", 'm', "rick-grimes-r2611231743.jpg", "c", 6],
   [728, 15970, "pop-carol-peletier", "Carol Peletier", 'l', "carol-peletier.jpg", "c", 6],
   [728, 15971, "pop-glenn-rhee", "Glenn Rhee", 'm', "glenn-rhee-r2611132242.jpg", "c", 6],
   [728, 15972, "pop-maggie-greene", "Maggie Greene", 'l', "maggie-greene-r2611132242.jpg", "c", 6],
@@ -12667,6 +12667,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [782, 6759, "pop-aarch", "Aarch", 'c', "aarch.jpg", "c", 6],
   [782, 6760, "pop-artegor-nexus", "Artegor Nexus", 'c', "artegor-nexus.jpg", "c", 6],
   [782, 6761, "pop-clamp", "Clamp", 'c', "clamp.jpg", "c", 6],
+  [782, 20514, "pop-rocket-galactik-football", "Rocket (Galactik Football)", 'm', "rocket-galactik-football-r2611231743.jpg", "c", 6],
   [783, 6835, "pop-garfield", "Garfield", 'l', "garfield.png", "i", 6],
   [783, 6836, "pop-odie", "Odie", 'e', "odie.jpg", "c", 6],
   [783, 6837, "pop-jon-arbuckle", "Jon Arbuckle", 'r', "jon-arbuckle.png", "i", 6],
@@ -12992,7 +12993,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [846, 10468, "pop-jean-cocteau", "Jean Cocteau", 'm', "jean-cocteau.jpg", "c", 2],
   [846, 10469, "pop-jean-baptiste-lully", "Jean-Baptiste Lully", 'm', "jean-baptiste-lully.jpg", "c", 2],
   [846, 10470, "pop-jeanne-moreau", "Jeanne Moreau", 'm', "jeanne-moreau.jpg", "c", 2],
-  [846, 10471, "pop-johnny-hallyday", "Johnny Hallyday", 'm', "johnny-hallyday.jpg", "c", 2],
+  [846, 10471, "pop-johnny-hallyday", "Johnny Hallyday", 'm', "johnny-hallyday-r2611231743.jpg", "c", 2],
   [846, 10472, "pop-josephine-baker", "Josephine Baker", 'm', "josephine-baker.jpg", "c", 2],
   [846, 10473, "pop-lorin-maazel", "Lorin Maazel", 'm', "lorin-maazel.jpg", "c", 2],
   [846, 10474, "pop-marion-cotillard", "Marion Cotillard", 'm', "marion-cotillard.jpg", "c", 2],
@@ -13708,7 +13709,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [846, 11214, "pop-zoroastre", "Zoroastre", 'c', "zoroastre.jpg", "c", 2],
   [846, 11216, "pop-arsenik", "Ärsenik", 'c', "arsenik.jpg", "c", 2],
   [846, 11217, "pop-etienne-lainez", "Étienne Lainez", 'c', "etienne-lainez.jpg", "c", 2],
-  [847, 11218, "pop-50-cent", "50 Cent", 'm', "50-cent.jpg", "c", 2],
+  [847, 11218, "pop-50-cent", "50 Cent", 'm', "50-cent-r2611231743.jpg", "c", 2],
   [847, 11219, "pop-abba", "ABBA", 'm', "abba.jpg", "c", 2],
   [847, 11220, "pop-ac-dc", "AC/DC", 'm', "ac-dc.jpg", "c", 2],
   [847, 11221, "pop-aerosmith", "Aerosmith", 'm', "aerosmith.jpg", "c", 2],
@@ -13725,7 +13726,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [847, 11232, "pop-bruce-springsteen", "Bruce Springsteen", 'm', "bruce-springsteen.jpg", "c", 2],
   [847, 11233, "pop-bruno-mars", "Bruno Mars", 'm', "bruno-mars-r2611110028.jpg", "c", 2],
   [847, 11234, "pop-bryan-adams", "Bryan Adams", 'm', "bryan-adams.jpg", "c", 2],
-  [847, 11235, "pop-celine-dion", "Celine Dion", 'm', "celine-dion.jpg", "c", 2],
+  [847, 11235, "pop-celine-dion", "Celine Dion", 'm', "celine-dion-r2611231743.jpg", "c", 2],
   [847, 11236, "pop-cher", "Cher", 'm', "cher.jpg", "c", 2],
   [847, 11237, "pop-christina-aguilera", "Christina Aguilera", 'm', "christina-aguilera.jpg", "c", 2],
   [847, 11238, "pop-chuck-berry", "Chuck Berry", 'm', "chuck-berry.jpg", "c", 2],
@@ -13894,7 +13895,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [847, 11401, "pop-mohammed-rafi", "Mohammed Rafi", 'l', "mohammed-rafi.jpg", "c", 2],
   [847, 11402, "pop-morrissey", "Morrissey", 'l', "morrissey.jpg", "c", 2],
   [847, 11403, "pop-motorhead", "Motörhead", 'l', "motorhead.jpg", "c", 2],
-  [847, 11404, "pop-my-chemical-romance", "My Chemical Romance", 'm', "my-chemical-romance-r2611121558.jpg", "c", 2],
+  [847, 11404, "pop-my-chemical-romance", "My Chemical Romance", 'm', "my-chemical-romance-r2611231743.jpg", "c", 2],
   [847, 11405, "pop-motley-crue", "Mötley Crüe", 'l', "motley-crue.jpg", "c", 2],
   [847, 11406, "pop-nat-king-cole", "Nat King Cole", 'l', "nat-king-cole.jpg", "c", 2],
   [847, 11407, "pop-ne-yo", "Ne-Yo", 'l', "ne-yo.jpg", "c", 2],
@@ -19282,7 +19283,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [850, 108, "pop-johnny-cash", "Johnny Cash", 'm', "johnny-cash.jpg", "c", 0],
   [850, 109, "pop-johnny-depp", "Johnny Depp", 'm', "johnny-depp.jpg", "c", 0],
   [850, 110, "pop-keanu-reeves", "Keanu Reeves", 'm', "keanu-reeves.jpg", "c", 0],
-  [850, 111, "pop-ludacris", "Ludacris", 'm', "ludacris.jpg", "c", 0],
+  [850, 111, "pop-ludacris", "Ludacris", 'm', "ludacris-r2611231743.jpg", "c", 0],
   [850, 112, "pop-mammootty", "Mammootty", 'm', "mammootty.jpg", "c", 0],
   [850, 113, "pop-marlon-brando", "Marlon Brando", 'm', "marlon-brando.jpg", "c", 0],
   [850, 114, "pop-martin-scorsese", "Martin Scorsese", 'm', "martin-scorsese.jpg", "c", 0],
@@ -19319,7 +19320,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [850, 145, "pop-deva", "Deva", 'l', "deva.jpg", "c", 0],
   [850, 146, "pop-dharmendra", "Dharmendra", 'l', "dharmendra.jpg", "c", 0],
   [850, 147, "pop-dustin-hoffman", "Dustin Hoffman", 'l', "dustin-hoffman.jpg", "c", 0],
-  [850, 148, "pop-dwayne-johnson", "Dwayne Johnson", 'l', "dwayne-johnson.jpg", "c", 0],
+  [850, 148, "pop-dwayne-johnson", "Dwayne Johnson", 'l', "dwayne-johnson-r2611231743.jpg", "c", 0],
   [850, 149, "pop-eddie-murphy", "Eddie Murphy", 'l', "eddie-murphy.jpg", "c", 0],
   [850, 150, "pop-geoffrey-rush", "Geoffrey Rush", 'l', "geoffrey-rush.jpg", "c", 0],
   [850, 151, "pop-george-a-romero", "George A. Romero", 'l', "george-a-romero.jpg", "c", 0],

@@ -6,7 +6,7 @@
  *     cartes tirées par les deux + les side pots). Égalité parfaite → PUSH : chacun récupère ses cartes et sa mise.
  *  2. PACK BATTLE ROYALE : 3 à 8 joueurs, le même nombre de boosters chacun (1 à ROYALE_MAX_PACKS, fixé à la création). Le plus haut total remporte toutes les cartes ; ex æquo en
  *     tête → les cartes sont distribuées au hasard entre eux.
- *  3. ROULETTE À CARTES : 36 numéros, 1 à 3 numéros par tirage, mises en pièces ou en cartes 4★-6★ (grille fixe),
+ *  3. ROULETTE À CARTES : 36 numéros, 1 seul numéro par tirage (23/11), mise en pièces ou en cartes 5★-6★ (grille fixe),
  *     tirages à 10 h et 20 h (retours live 02).
  *     1 tirage par jour : le joueur dont le numéro sort remporte tout le pot ; sinon tout reste pour le tirage suivant.
  *     Le site ajoute chaque jour une carte 5★ ou 6★ au pot.
@@ -127,28 +127,29 @@ export function royaleResult(packs: GameCard[][], rand: () => number): { stars: 
  *  - 2 tirages par jour, 10 h et 20 h (heure de Paris) ;
  *  - pot commun (mises + report) conservé tant que personne ne gagne ; le site ajoute 1 carte 5★/6★ à CHAQUE tirage ;
  *  - le numéro exact sorti remporte tout le pot.
+ *
+ * (23/11, nerf demandé par Tom) UN SEUL numéro par joueur et par tirage, plus de mise en 4★ :
+ *      1 numéro = 1500 pièces · ou 2 cartes 5★ · ou 1 carte 6★
  */
 export const ROULETTE_NUMBERS = 36;
 /** numéros au plus par joueur et par tirage */
-export const MAX_NUMBERS = 3;
+export const MAX_NUMBERS = 1;
 /** heures des tirages (heure de Paris) */
 export const ROULETTE_HOURS = [10, 20] as const;
 
 export type RoulettePrice = { kind: 'coins'; coins: number } | { kind: 'cards'; rarity: RarityId; count: number };
 /** Grille tarifaire : 1, 2 ou 3 numéros → les façons de payer (une seule par mise). */
-export const ROULETTE_PRICES: Record<1 | 2 | 3, RoulettePrice[]> = {
-  1: [{ kind: 'cards', rarity: 'epic', count: 10 }, { kind: 'coins', coins: 300 }],
-  2: [{ kind: 'cards', rarity: 'legendary', count: 1 }, { kind: 'coins', coins: 600 }],
-  3: [{ kind: 'cards', rarity: 'legendary', count: 2 }, { kind: 'cards', rarity: 'mythic', count: 1 }, { kind: 'coins', coins: 900 }],
+export const ROULETTE_PRICES: Record<1, RoulettePrice[]> = {
+  1: [{ kind: 'coins', coins: 1500 }, { kind: 'cards', rarity: 'legendary', count: 2 }, { kind: 'cards', rarity: 'mythic', count: 1 }],
 };
 /** raretés acceptées en mise */
-export const ROULETTE_CARD_RARITIES: RarityId[] = ['epic', 'legendary', 'mythic'];
+export const ROULETTE_CARD_RARITIES: RarityId[] = ['legendary', 'mythic'];
 const STARS_TXT: Record<string, string> = { epic: '4★', legendary: '5★', mythic: '6★' };
 export const priceLabel = (p: RoulettePrice) => (p.kind === 'coins' ? tData('rou.coins', '{n} pièces').replace('{n}', String(p.coins)) : tData(p.count > 1 ? 'rou.cards' : 'rou.card', p.count > 1 ? '{n} cartes {s}' : '{n} carte {s}').replace('{n}', String(p.count)).replace('{s}', STARS_TXT[p.rarity])); // i18n-ok
 
 /** La façon de payer qui correspond exactement à une mise (null : la mise ne colle à aucune ligne de la grille). */
 export function matchPrice(n: number, stake: Stake): RoulettePrice | null {
-  const opts = ROULETTE_PRICES[n as 1 | 2 | 3];
+  const opts = ROULETTE_PRICES[n as 1];
   if (!opts) return null;
   const cardsN = stake.cards.reduce((a, c) => a + c.count, 0);
   for (const p of opts) {
@@ -173,7 +174,7 @@ export function betProblem(numbers: number[], stake: Stake, taken: Set<number>, 
   if (stake.coins < 0 || !Number.isInteger(stake.coins)) return fe('games.48');
   if (stake.cards.some((c) => !ROULETTE_CARD_RARITIES.includes(c.rarity as RarityId))) return fe('games.40');
   if (!matchPrice(numbers.length, stake)) {
-    const opts = ROULETTE_PRICES[numbers.length as 1 | 2 | 3].map(priceLabel).join(' ou ');
+    const opts = ROULETTE_PRICES[numbers.length as 1].map(priceLabel).join(' ou ');
     return fe('games.49', { p0: numbers.length, p1: numbers.length > 1 ? 's' : '', p2: opts });
   }
   return null;
