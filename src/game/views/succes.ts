@@ -72,15 +72,16 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
         <p class="muted">${t('sc.intro')}</p></div>
         <div class="sc-score"></div>
       </header>
-      <div class="sc-bar">
+      <div class="seg sc-tabs" role="tablist" aria-label="${t('sc.tabsA')}"><button role="tab" data-tab="normal" class="on" aria-selected="true">${t('sc.tabNormal')}</button><button role="tab" data-tab="albums" aria-selected="false">${t('sc.tabAlbums')}</button></div>
+      <div class="sc-bar" data-in="normal">
         <div class="seg sc-who" aria-label="${t('sc.see')}"><button data-w="me" class="on" aria-pressed="true">${t('sc.me')}</button><button data-w="friends" aria-pressed="false">${t('nav.friends.aria')}</button></div>
         <div class="seg sc-filters" aria-label="${t('sc.filterA')}"><button data-f="all" class="on" aria-pressed="true">${t('sc.all')}</button><button data-f="ready" aria-pressed="false">${t('sc.toCollect')}</button><button data-f="got" aria-pressed="false">${t('sc.earned')}</button><button data-f="todo" aria-pressed="false">${t('sc.ongoing')}</button></div>
         <button class="btn-primary sc-claim" hidden></button>
       </div>
       <div class="sc-recap" role="status" hidden></div>
-      <section class="ut-sec" aria-label="${t('ut.sec')}"></section>
-      <section class="sc-primes" id="primes" aria-label="${t('sc.primesA')}"></section>
-      <div class="sc-grid"></div>
+      <section class="ut-sec" data-in="albums" aria-label="${t('ut.sec')}" hidden></section>
+      <section class="sc-primes" data-in="albums" id="primes" aria-label="${t('sc.primesA')}" hidden></section>
+      <div class="sc-grid" data-in="normal"></div>
     </div>`;
   const score = el.querySelector<HTMLElement>('.sc-score')!;
   const grid = el.querySelector<HTMLElement>('.sc-grid')!;
@@ -88,6 +89,30 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
   const recap = el.querySelector<HTMLElement>('.sc-recap')!;
   const primesEl = el.querySelector<HTMLElement>('.sc-primes')!;
   let filter: Filter = 'all';
+  /**
+   * (23/11, retours Tom) DEUX ONGLETS : « Succès » (les succès à paliers) et « Succès d'albums » (les titres uniques et
+   * les primes de complétion : tout ce qui se gagne en bouclant un album). #/succes/albums (et l'ancien #/succes/primes).
+   */
+  let tab: 'normal' | 'albums' = 'normal';
+  const primesBlock = el.querySelector<HTMLElement>('.sc-primes')!;
+  function setTab(next: 'normal' | 'albums') {
+    tab = next;
+    el.querySelectorAll<HTMLButtonElement>('.sc-tabs button').forEach((x) => {
+      const on = x.dataset.tab === tab;
+      x.classList.toggle('on', on);
+      x.setAttribute('aria-selected', String(on));
+    });
+    el.querySelectorAll<HTMLElement>('[data-in]').forEach((x) => (x.hidden = x.dataset.in !== tab || (x === primesBlock && !backend.eco.snapshot)));
+    if (tab === 'albums') recap.hidden = true;
+  }
+  el.querySelectorAll<HTMLButtonElement>('.sc-tabs button').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (b.dataset.tab === tab) return;
+      setTab(b.dataset.tab as 'normal' | 'albums');
+      history.replaceState(null, '', tab === 'albums' ? '#/succes/albums' : '#/succes');
+      render();
+    }),
+  );
   /** bascule Moi / Amis (retours live 02, §9) */
   let who: 'me' | 'friends' = 'me';
   let friends: FriendAch[] | null = null;
@@ -269,7 +294,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
 
   function renderPrimes() {
     const s = backend.eco.snapshot;
-    primesEl.hidden = !s;
+    primesEl.hidden = !s || tab !== 'albums';
     if (!s) return;
     const total = s.completions.reduce((a, c) => a + c.reward, 0);
     const done = s.econ.completions.length;
@@ -347,8 +372,9 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       shell.show(null);
       shell.setDimmed(true);
       el.scrollTo({ top: 0 });
+      // #/succes/albums : l'onglet des succès d'albums ; #/succes/primes (ancien #/jeux/primes) : droit aux primes
+      setTab(sub === 'albums' || sub === 'primes' ? 'albums' : 'normal');
       render();
-      // #/succes/primes (ancien #/jeux/primes) : droit aux primes de complétion
       if (sub === 'primes') requestAnimationFrame(() => primesEl.scrollIntoView({ block: 'start' }));
     },
     leave() {},

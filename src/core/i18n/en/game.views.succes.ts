@@ -3,6 +3,9 @@ import type { PartOf } from '../../i18n';
 import type { fr } from '../fr/game.views.succes';
 
 export const en: PartOf<typeof fr> = {
+  'sc.tabsA': 'Achievement type',
+  'sc.tabNormal': 'Achievements',
+  'sc.tabAlbums': 'Album achievements',
   'sc.kicker': 'ACHIEVEMENTS',
   'sc.title': 'Your achievements',
   'sc.intro': 'Each tier gives a reward. Tap an achievement to see what you’re missing.',

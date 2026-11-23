@@ -2,6 +2,9 @@
 import { addFr } from '../../i18n';
 
 export const fr = {
+  'sc.tabsA': 'Type de succès',
+  'sc.tabNormal': 'Succès',
+  'sc.tabAlbums': 'Succès d’albums',
   'sc.kicker': 'SUCCÈS',
   'sc.title': 'Tes succès',
   'sc.intro': 'Chaque palier donne une récompense. Touche un succès pour voir ce qu’il te manque.',

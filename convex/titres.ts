@@ -32,7 +32,7 @@ async function award(ctx: MutationCtx, u: Doc<'users'>, t: UniqueTitle, ownedIds
   await ctx.db.insert('uniqueTitles', { titleId: t.id, setId: t.setId, userId: u._id, name: u.displayName, at: now });
   const p = { name: u.displayName, titleId: t.id, utitle: t.label, setId: t.setId, set: uniqueTitleSet(t)?.label ?? t.setId };
   await ctx.db.insert('activityFeed', { userId: u._id, displayName: u.displayName, avatarUrl: u.avatarUrl, kind: 'game', ...feedMsg(fm('f.utitle', p)), createdAt: now });
-  await notify(ctx, u._id, { kind: 'game', title: fm('n.utitle', p), body: fm('n.utitleBody', p), url: '#/succes' });
+  await notify(ctx, u._id, { kind: 'game', title: fm('n.utitle', p), body: fm('n.utitleBody', p), url: '#/succes/albums' });
   return t;
 }
 

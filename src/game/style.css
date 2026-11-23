@@ -1422,6 +1422,9 @@ a.lb-pd:hover { transform: translateY(-3px); }
 .sc-big { display: flex; align-items: baseline; gap: 6px; }
 .sc-big b { font: 500 52px/1 var(--title); font-style: italic; color: var(--gold); }
 .sc-big span { font: 500 18px var(--mono); color: var(--ink-3); }
+/* (23/11) onglets Succès / Succès d'albums */
+.sc-tabs { align-self: flex-start; margin-bottom: 12px; }
+.sc-tabs button { min-width: 130px; }
 .sc-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .sc-claim { display: inline-flex; align-items: center; gap: 6px; }
 .sc-claim svg { width: 14px; height: 14px; }
