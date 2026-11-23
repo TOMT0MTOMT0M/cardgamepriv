@@ -136,7 +136,7 @@ export function createPackGeometry(segX = 36, segY = 56, opts: { folds?: boolean
 
 
 /** Police du titre réduite jusqu'à tenir dans `maxW` (« BÉBOU PACK » est plus long que « Card Lab »). */
-function fitFont(g: Ctx, text: string, weight: number, size: number, maxW: number, family: string): string {
+export function fitFont(g: Ctx, text: string, weight: number, size: number, maxW: number, family: string): string {
   let px = size;
   g.font = `${weight} ${px}px ${family}`;
   while (px > 28 && g.measureText(text).width > maxW) {
@@ -146,7 +146,7 @@ function fitFont(g: Ctx, text: string, weight: number, size: number, maxW: numbe
   return g.font;
 }
 
-function crimpBands(g: Ctx, col: string) {
+export function crimpBands(g: Ctx, col: string) {
   const ch = (PACK.crimp / PACK.h) * PH;
   for (const y0 of [0, PH - ch]) {
     g.fillStyle = col;
@@ -332,8 +332,16 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember, o: P
   m.fillStyle = 'rgb(0,0,255)';
   m.fillRect(0, PH - tearY - 2, PW, 4);
 
-  const C = crinkleCanvas();
+  return finishPackArt(F.c, B.c, M.c);
+}
 
+/**
+ * (23/11) Fin commune des visuels « imprimés » : les trois toiles (face, dos, masques R foil · G soudures · B
+ * déchirure) deviennent les textures du sachet, avec le froissé en tuile. Utilisée par `generatePackArt` et par les
+ * sachets cartoon du labo (packCartoon.ts).
+ */
+export function finishPackArt(front0: HTMLCanvasElement, back0: HTMLCanvasElement, masks0: HTMLCanvasElement): PackArt {
+  const C = crinkleCanvas();
   // téléphone : anisotropie 4 (le booster est vu presque de face) — moitié moins de lectures par pixel filtré
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
   const tex = (c: HTMLCanvasElement, color: boolean) => {
@@ -342,7 +350,7 @@ export async function generatePackArt(style: PackStyle = PACK_STYLES.ember, o: P
     t.anisotropy = aniso;
     return t;
   };
-  const front = tex(F.c, true), back = tex(B.c, true), masks = tex(M.c, false), crinkle = tex(C.c, false);
+  const front = tex(front0, true), back = tex(back0, true), masks = tex(masks0, false), crinkle = tex(C.c, false);
   crinkle.wrapS = crinkle.wrapT = 1000; // RepeatWrapping
   return { front, back, masks, crinkle, gpuTextures: [front, back, masks, crinkle], dispose: () => [front, back, masks, crinkle].forEach((t) => t.dispose()) };
 }

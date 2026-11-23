@@ -275,4 +275,14 @@ export const registry: RegistryEntry[] = [
     hint: 'Active le son 🔈 · famille / sous-famille / version dans le panneau · toucher pendant la scène = passer, ensuite = rejouer · `?famille=musique&speed=0.25&t=1.8`',
     load: () => import('../experiments/045-mythic-scenes/index.ts'),
   },
+  {
+    id: '046-sachets-cartoon',
+    title: 'Sachets cartoon par thème (logo + Bébou Cartes)',
+    category: 'B',
+    tags: ['sachet', 'booster', 'cartoon', 'logo', 'thèmes'],
+    tech: ['toiles 2D procédurales (logos au trait, lettrage cerné)', 'même maillage et aluminium que le jeu (createPackMesh)', 'masque de dorure sur la marque'],
+    blurb: 'Refonte des sachets par thème : un logo par thème (ballon, globe, manette, pop-corn, télé, ourson) et « Bébou Cartes » sur chaque sachet. Trois pistes : autocollant, case de BD, écusson.',
+    hint: 'Touche le sachet = thème suivant · planche en haut : touche une vignette · « piste » dans le panneau · `?piste=bd&theme=tele`',
+    load: () => import('../experiments/046-sachets-cartoon/index.ts'),
+  },
 ];
