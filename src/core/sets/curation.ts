@@ -93,6 +93,8 @@ export const RENAME_15_11: Readonly<Record<string, string>> = {
   'pop-shuuya-gouenji': 'Axel Blaze',
   'pop-yuuto-kidou': 'Jude Sharp',
   'pop-ichirouta-kazemaru': 'Nathan Swift',
+  // (23/11) Rocket de Galactik Football : nommé « Rocket (Galactik Football) » dans le patch (pop-rocket = Rocket du MCU)
+  'pop-rocket-galactik-football': 'Rocket',
   'pop-shirou-fubuki': 'Shawn Froste',
   'pop-atsuya-fubuki': 'Aiden Froste',
   'pop-terumi-afuro': 'Byron Love',
@@ -176,3 +178,19 @@ export const RERATE_20_11: Readonly<Record<string, CatalogRarity>> = {
   'pop-haruka-nanase': 'mythic',
   'spt-knight': 'mythic',
 };
+
+/**
+ * (23/11, demandes de Tom) Harvey Specter (Suits) et Dwayne Johnson (acteurs) passent 6★. Inventaires : migrations:resyncRarities.
+ * Nouvelles cartes 6★ du même patch : Rocket (Galactik Football, Patch-pop-ajouts-23-11.xlsx) et Mount & Blade
+ * (Indés action/récents, Patch-jv-ajouts-23-11.xlsx).
+ */
+export const RERATE_23_11: Readonly<Record<string, CatalogRarity>> = {
+  'pop-harvey-specter': 'mythic',
+  'pop-dwayne-johnson': 'mythic',
+};
+
+/**
+ * (23/11, demande de Tom) Antoine Daniel (YouTube FR) retiré du catalogue et des collections (migrations:purgeCards, liste
+ * dans convex/purgedCards.ts). Ne pas réutiliser cet id.
+ */
+export const PURGE_23_11: readonly string[] = ['pop-antoine-daniel'];

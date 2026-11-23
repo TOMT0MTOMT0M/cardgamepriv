@@ -833,8 +833,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         if (c.classList.contains('taken') || c.classList.contains('mine')) return;
         if (cur?.round?.bets.some((b) => b.userId === cur?.me)) return void toast(tr('gm.alreadyBet'), 'info');
         if (sel.has(n)) sel.delete(n);
-        else if (sel.size >= MAX_NUMBERS) return void toast(tr('gm.maxNumbers', { n: MAX_NUMBERS }), 'info');
-        else sel.add(n);
+        else if (sel.size >= MAX_NUMBERS && MAX_NUMBERS > 1) return void toast(tr('gm.maxNumbers', { n: MAX_NUMBERS }), 'info');
+        else {
+          // un seul numéro (23/11) : toucher un autre numéro remplace le choix
+          if (sel.size >= MAX_NUMBERS) for (const o of sel) { sel.delete(o); cells[o - 1]?.classList.remove('sel'); }
+          sel.add(n);
+        }
         c.classList.toggle('sel', sel.has(n));
         pay = 0;
         stakeCards = [];
@@ -861,7 +865,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         syncDock();
         return;
       }
-      const n = sel.size as 0 | 1 | 2 | 3;
+      const n = sel.size as 0 | 1;
       const opts = n ? ROULETTE_PRICES[n] : [];
       if (pay >= opts.length) pay = 0;
       const p = opts[pay];

@@ -26,6 +26,17 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '23 Nov', title: 'Tighter Roulette, new 6★', tag: 'amélioré',
+        points: [
+          '🎲 Roulette: just one number per draw. The bet: 1,500 coins, 2 5★ cards or 1 6★ card (4★ cards can’t be bet anymore).',
+          '🆕 Two new 6★: Rocket (Galactik Football) and Mount & Blade.',
+          '⭐ Harvey Specter and Dwayne Johnson become 6★.',
+          '🏀 Daiki Aomine plays “Misdirection” (Kuroko’s Basket).',
+          '🖼️ 43 cards in full art: Rem, Rias Gremory, Obi-Wan Kenobi, Rick Grimes, Neymar, Céline Dion, Rayman 2…',
+          '🗑️ The Antoine Daniel card is removed from the game.',
+        ],
+      },
+      {
         date: '20 Nov', title: 'Movie and game music, new 6★', tag: 'amélioré',
         points: [
           '📺 The next card drop lands in early December: TV shows, with their contestants and hosts. Tell us which ones you want in the mini survey.',

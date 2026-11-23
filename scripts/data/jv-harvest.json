@@ -7324,6 +7324,12 @@
 "src": "steam:629760",
 "t": 1793636266
 },
+"jv-indes-action-recents-mount-and-blade": {
+"art": "c",
+"file": "indes-action-recents--mount-and-blade-r2611231743.jpg",
+"src": "reillustre:jv-indes-action-recents-mount-and-blade.jpg",
+"t": 1795455826
+},
 "jv-indes-action-recents-mount-and-blade-ii-bannerlord": {
 "art": "c",
 "file": "indes-action-recents--mount-and-blade-ii-bannerlord.jpg",
@@ -15358,10 +15364,9 @@
 },
 "jv-rayman-rayman-2": {
 "art": "c",
-"file": "rayman--rayman-2.jpg",
-"ok2": 1,
-"src": "wiki:Rayman (video game)",
-"t": 1793637198
+"file": "rayman--rayman-2-r2611231743.jpg",
+"src": "reillustre:jv-rayman-rayman-2.jpg",
+"t": 1795455826
 },
 "jv-rayman-rayman-3": {
 "art": "c",
@@ -19249,9 +19254,9 @@
 },
 "jv-summoners-war-lushen-joker-vent": {
 "art": "c",
-"file": "summoners-war--lushen-joker-vent.jpg",
-"src": "fill:piste:https://static.wikia.nocookie.net/summoners-war-sky-arena/images/5/59/Lushen_Front.png/revision/latest?cb=20150122092944",
-"t": 1793914151
+"file": "summoners-war--lushen-joker-vent-r2611231743.jpg",
+"src": "reillustre:jv-summoners-war-lushen-joker-vent.jpg",
+"t": 1795455826
 },
 "jv-summoners-war-mav-penguin-knight-vent": {
 "art": "",
