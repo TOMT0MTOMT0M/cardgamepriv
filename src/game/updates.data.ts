@@ -47,7 +47,7 @@ export const UPDATES: UpdateMonth[] = [
           '🎄 Nouvel onglet Événement : le calendrier de l’Avent en forme de sapin, avec sa petite musique, du 1er au 24 décembre. Une case par jour (pièces ou boosters), les jours manqués se rattrapent jusqu’au 31, et la case 24 cache un God Pack.',
           '❄️ Cosmétiques de Noël à gagner en ouvrant les cases : un badge, deux titres et un cadre.',
           '♛ Titres uniques : le premier joueur qui complète Valorant, Naruto, Pokémon ou League of Legends remporte un titre que personne d’autre n’aura (Radiant, Hokage, Maître Pokémon, Challenger). Il s’affiche à côté de son pseudo, et tous les titres sont dans Succès → Succès d’albums.',
-          '🎡 Roulette : la roue et le tapis sont en rouge, noir et une case verte. En payant le double, pose une couleur sur tes numéros : si personne n’a le numéro sorti, sa couleur rafle le pot.',
+          '🎡 Roulette : la roue et le tapis sont en rouge, noir et une case verte. En payant le double, pose une couleur sur ton numéro : si personne n’a le numéro sorti, sa couleur rafle le pot.',
         ],
       },
       {
