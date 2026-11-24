@@ -3116,6 +3116,11 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .packs-row.wheel::before { background: rgba(255, 255, 255, 0.06); }
 .tap-ghost i { background: rgba(255, 255, 255, 0.18); }
 .mp-eq i { background: #fff; }
+/* (24/11, Hugo) l’extrait en cours : graves / médiums / aigus en couleur (information : la fréquence), en direct quand le vrai spectre est lu */
+.mp-eq i:nth-child(1) { background: #ff2e63; }
+.mp-eq i:nth-child(2) { background: #ffb12a; }
+.mp-eq i:nth-child(3) { background: #2ee6ff; }
+.mp-eq.live i { animation: none; transition: none; }
 .mp-chip { background: rgba(0, 0, 0, 0.92); }
 ::selection { background: rgba(255, 255, 255, 0.3); }
 :focus-visible { outline-color: #fff; }

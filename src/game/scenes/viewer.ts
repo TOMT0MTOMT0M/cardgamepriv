@@ -1,5 +1,5 @@
 import { cardHasCutout } from '../../core/pokeHolo/face';
-import { AdditiveBlending, Color, DataTexture, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, NearestFilter, PlaneGeometry, RedFormat, UnsignedByteType, Vector3, type Material, CircleGeometry } from 'three/webgpu';
+import { AdditiveBlending, Color, DataTexture, DirectionalLight, Group, Mesh, MeshBasicNodeMaterial, NearestFilter, PlaneGeometry, RGFormat, UnsignedByteType, Vector3, type Material, CircleGeometry } from 'three/webgpu';
 /** rayon du dodécagone circonscrit / rayon du cercle inscrit */
 const HALO_K = 1 / Math.cos(Math.PI / 12);
 import gsap from 'gsap';
@@ -8,8 +8,8 @@ import { createStage } from '../../core/stage';
 import { mobileArtScale } from '../../core/renderer';
 import { createPipeline } from '../../core/post';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
-import { abs, floor, fract, length, smoothstep, step, texture, uniform, uv, vec2, vec4 } from 'three/tsl';
-import { musicLevel, musicLevels } from '../musicPreview';
+import { abs, floor, fract, length, mix, sin, smoothstep, step, texture, uniform, uv, vec2, vec4 } from 'three/tsl';
+import { musicBands, musicLevel, musicLevels } from '../musicPreview';
 import type { N } from '../../core/tsl';
 import { ensureCardImages, ensureFonts, generateCardArt, nextFrame, type CardArt } from '../../core/art';
 import { LAB_CARDS, cardById } from '../../core/cardData';
@@ -149,15 +149,26 @@ export function createViewerScene(): ViewerScene {
    * (13/11, retours Hugo) BARRES DE MUSIQUE derrière la carte quand son extrait joue (6★ Musique, openings d'animés) :
    * le spectre de l'extrait (musicPreview.ts), graves au centre, en miroir, de la couleur du halo. Un plan derrière la
    * carte, une texture de EQ_N octets mise à jour à chaque image, invisible (et non dessiné) sans musique.
+   * (24/11, Hugo) EN COULEUR et réactives, sur le vrai spectre seulement (`musicBands.live`) : chaque barre prend la
+   * couleur de sa fréquence (graves rose-rouge au centre → ambre → cyan → violet vers les aigus, un peu teintée par la
+   * rareté), une crête retombe lentement au-dessus d'elle, les graves gonflent les barres et un coup de grosse caisse
+   * fait respirer une nappe douce sous la rangée, les aigus font scintiller la pointe des barres. Texture RG : niveau,
+   * crête. Sans vrai spectre (Safari, Deezer) : les couleurs, sans réaction (pas de faux battement coloré).
    */
   const EQ_N = 48;
   const eqLv = new Float32Array(EQ_N);
   const eqSm = new Float32Array(EQ_N);
-  const eqData = new Uint8Array(EQ_N);
-  const eqTex = new DataTexture(eqData, EQ_N, 1, RedFormat, UnsignedByteType);
+  const eqPk = new Float32Array(EQ_N);
+  const eqData = new Uint8Array(EQ_N * 2);
+  const eqTex = new DataTexture(eqData, EQ_N, 1, RGFormat, UnsignedByteType);
   eqTex.magFilter = eqTex.minFilter = NearestFilter;
   eqTex.needsUpdate = true;
   const eqK = uniform(0);
+  const eqBass = uniform(0);
+  const eqKick = uniform(0);
+  const eqTreble = uniform(0);
+  const eqT = uniform(0);
+  const eqC = ['#ff2e63', '#ffb12a', '#2ee6ff', '#9b5cff'].map((h) => uniform(new Color(h)));
   let eqMesh: Mesh | null = null;
   let eqVis = 0;
   const haloT = { k: 0, pulse: 0 };
@@ -632,12 +643,30 @@ export function createViewerScene(): ViewerScene {
         const u = uv();
         const fx = u.x.mul(EQ_N);
         const cell = fract(fx);
-        const lv = texture(c.bag.add(eqTex), vec2(floor(fx).add(0.5).div(EQ_N), 0.5)).r;
+        const smp = texture(c.bag.add(eqTex), vec2(floor(fx).add(0.5).div(EQ_N), 0.5));
         const d = abs(u.y.sub(0.5)).mul(2);
-        const bar = step(0.3, cell).mul(step(cell, 0.7)).mul(step(d, lv.mul(0.8).add(0.015)));
+        // les graves gonflent toute la rangée (jusqu'à +22 %)
+        const grow = eqBass.mul(0.22).add(0.8);
+        const h = smp.r.mul(grow).add(0.015);
+        const inBar = step(0.3, cell).mul(step(cell, 0.7));
+        const bar = inBar.mul(step(d, h));
+        // crête : un trait fin qui retombe lentement au-dessus de chaque barre
+        const capY = smp.g.mul(grow).add(0.03);
+        const cap = inBar.mul(step(capY.sub(0.018), d)).mul(step(d, capY)).mul(step(0.04, smp.g));
+        // couleur par fréquence : graves au centre, aigus vers les bords (en miroir)
+        const fq = abs(u.x.sub(0.5)).mul(2);
+        const col = mix(mix(eqC[0], eqC[1], smoothstep(0, 0.35, fq)), mix(eqC[2], eqC[3], smoothstep(0.6, 1, fq)), smoothstep(0.3, 0.65, fq));
+        const tint = mix(col, halo.color, 0.18);
+        // aigus : la pointe des barres scintille, surtout vers les bords
+        const tip = smoothstep(h.mul(0.45), h, d);
+        const twinkle = sin(eqT.mul(31).add(floor(fx).mul(7.3))).mul(0.5).add(0.5);
+        const shimmer = tip.mul(twinkle).mul(eqTreble).mul(fq.mul(0.8).add(0.2)).mul(0.9);
         // les bords s'éteignent (la rangée finit en fondu), le haut des barres un peu plus clair
         const side = smoothstep(0, 0.12, u.x).mul(smoothstep(1, 0.88, u.x));
-        em.colorNode = vec4(halo.color.mul(bar.mul(side).mul(eqK).mul(d.mul(0.6).add(0.2))), 1);
+        // grosse caisse : une nappe douce respire au centre, sous les barres
+        const pool = smoothstep(1, 0, length(vec2(u.x.sub(0.5).mul(2.2), d.mul(1.6)))).pow(2).mul(eqKick.mul(0.55).add(eqBass.mul(0.12)));
+        const body = bar.mul(d.mul(0.6).add(0.2).add(shimmer)).add(cap.mul(0.9));
+        em.colorNode = vec4(tint.mul(body.mul(side)).add(eqC[0].mul(pool)).mul(eqK), 1);
         eqMesh = new Mesh(c.bag.add(new PlaneGeometry(2.6, 1.05)), em);
         eqMesh.position.set(0, 0.05, -0.36);
         // visible au préchauffage (pipeline prêt, eqK = 0 : rien ne se dessine) ; caché dès la première image
@@ -714,17 +743,28 @@ export function createViewerScene(): ViewerScene {
         if (eqVis > 0.01) {
           for (let i = 0; i < EQ_N; i++) {
             const target = playing ? eqLv[i] : 0;
-            // monte vite, retombe doucement (lecture d'un vumètre)
+            // monte vite, retombe doucement (lecture d'un vumètre) ; la crête tient puis redescend lentement
             eqSm[i] += (target - eqSm[i]) * (1 - Math.exp(-dt * (target > eqSm[i] ? 22 : 7)));
-            eqData[i] = Math.round(Math.min(1, eqSm[i]) * 255);
+            eqPk[i] = eqSm[i] >= eqPk[i] ? eqSm[i] : Math.max(0, eqPk[i] - dt * 0.35);
+            eqData[2 * i] = Math.round(Math.min(1, eqSm[i]) * 255);
+            eqData[2 * i + 1] = Math.round(Math.min(1, eqPk[i]) * 255);
           }
           eqTex.needsUpdate = true;
         }
+        // graves, coup de grosse caisse, aigus : seulement sur le vrai spectre
+        const live = playing && musicBands.live;
+        const follow = (u: { value: number }, v: number, up: number, down: number) => {
+          u.value += (v - u.value) * (1 - Math.exp(-dt * (v > u.value ? up : down)));
+        };
+        follow(eqBass, live ? musicBands.bass : 0, 18, 6);
+        follow(eqKick, live ? musicBands.kick : 0, 30, 8);
+        follow(eqTreble, live ? musicBands.treble : 0, 24, 8);
+        eqT.value = t;
         eqK.value = eqVis * (reducedMotion() ? 0.5 : 1) * 0.42;
       }
       // « réduire les animations » de l'appareil : halo plus faible et immobile
       const red = reducedMotion();
-      halo.k.value = haloT.k * (red ? 0.45 : 1 + haloT.pulse * Math.sin(t * 1.6) * 0.18);
+      halo.k.value = haloT.k * (red ? 0.45 : 1 + haloT.pulse * Math.sin(t * 1.6) * 0.18) * (1 + eqKick.value * eqVis * 0.12);
       // ici on fait tourner la carte en la glissant (l'ouverture, elle, le coupe) — sauf pendant un retournement tiré
       ctx.input.spinEnabled = !hg.held;
       // curseur « main » : on attrape la carte pour la faire tourner ; l'indication s'efface après le premier tour

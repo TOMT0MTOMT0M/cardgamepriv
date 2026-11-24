@@ -28,10 +28,13 @@ const load = () =>
  * jeu en anglais quand elle diffère de la française.
  * (17/11, Hugo) 6★ d'une SÉRIE : son générique ; 6★ d'un FILM : sa musique (Marvel MCU : Avengers d'Alan Silvestri).
  * (20/11, Hugo) 6★ d'un JEU VIDÉO : le thème de son jeu (même table, clé = famille `jv-…`).
+ * (24/11, Hugo) 6★ LEAGUE OF LEGENDS (champions et skins, ids `lol-…`) : « Classic Summoner's Rift Pt. 1 » (clé `lol`),
+ * pour toutes en attendant des exceptions par lignée ; catcheurs, joueurs et compétitions : par carte (`cards`).
  */
 async function previewOf(cardId: string): Promise<MusicPreview | null> {
   const t = await load();
   if (t.cards[cardId]) return t.cards[cardId];
+  if (cardId.startsWith('lol-')) return t.screen.lol ?? null;
   const e = catalogEntry(cardId);
   const g = e && subthemeById(e.subthemeId)?.group?.id;
   if (g === 'anime') return t.anime[e!.subthemeId] ?? null;
@@ -146,6 +149,24 @@ function makeChip(p: MusicPreview, onClose: () => void, host?: HTMLElement | nul
   (host ?? document.body).append(c);
   host?.classList.add('has-mp');
   requestAnimationFrame(() => c.classList.add('in'));
+  // (24/11, Hugo) graves / médiums / aigus en direct ; sans vrai spectre, l'animation régulière d'avant
+  const eq = c.querySelector<HTMLElement>('.mp-eq')!;
+  const bars = eq.querySelectorAll<HTMLElement>('i');
+  const sm = [0, 0, 0];
+  const tick = () => {
+    if (!c.isConnected) return;
+    const live = readSpectrum();
+    eq.classList.toggle('live', live);
+    if (live) {
+      const v = [musicBands.bass, musicBands.mid, musicBands.treble];
+      for (let i = 0; i < 3; i++) {
+        sm[i] += (v[i] - sm[i]) * (v[i] > sm[i] ? 0.6 : 0.18);
+        bars[i].style.transform = `scaleY(${(0.18 + 0.82 * Math.min(1, sm[i])).toFixed(3)})`;
+      }
+    } else if (bars[0].style.transform) for (const b of bars) b.style.transform = '';
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
   return c;
 }
 function showChip(p: MusicPreview, host?: HTMLElement | null) {
@@ -325,7 +346,8 @@ function tapSpectrum(a: HTMLAudioElement) {
       anCtx ??= new AudioContext();
       void anCtx.resume().catch(() => undefined);
       const node = anCtx.createAnalyser();
-      node.fftSize = 128;
+      // (24/11) 512 : ≈ 86 Hz par case — les graves (grosse caisse, basse) ont leurs propres barres
+      node.fftSize = 512;
       node.smoothingTimeConstant = 0.72;
       anCtx.createMediaStreamSource(stream).connect(node);
       an = { el: a, node, bins: new Uint8Array(node.frequencyBinCount) };
@@ -336,6 +358,47 @@ function tapSpectrum(a: HTMLAudioElement) {
   hook();
   if (!an) a.addEventListener('playing', hook, { once: true });
 }
+/**
+ * (24/11, Hugo) BANDES du spectre réel de l'extrait, 0..1 : graves (40–260 Hz), médiums (300–2 000 Hz), aigus
+ * (4–12 kHz) et `kick` = coup de graves au-dessus de leur moyenne récente (grosse caisse). `live` = vrai spectre lu ;
+ * sinon (Safari, Deezer, contexte audio pas encore autorisé) tout reste à 0 : rien ne réagit à un faux signal.
+ */
+export const musicBands = { bass: 0, mid: 0, treble: 0, kick: 0, live: false };
+let bandsAt = -1, bassAvg = 0;
+function band(bins: Uint8Array, hz: number, lo: number, hi: number): number {
+  const f0 = Math.max(1, Math.floor(lo / hz)), f1 = Math.min(bins.length - 1, Math.ceil(hi / hz));
+  let s = 0;
+  for (let f = f0; f <= f1; f++) s += bins[f];
+  return f1 >= f0 ? s / (f1 - f0 + 1) / 255 : 0;
+}
+/** lit le spectre une fois par image (la visionneuse et l'étiquette le partagent) ; false si pas de vrai spectre */
+function readSpectrum(): boolean {
+  const a = audio;
+  const now = performance.now();
+  if (now - bandsAt < 8) return musicBands.live;
+  const dt = bandsAt < 0 ? 0 : Math.min(0.1, (now - bandsAt) / 1000);
+  bandsAt = now;
+  musicBands.live = false;
+  if (!a || a.paused || !an || an.el !== a || !anCtx) {
+    musicBands.bass = musicBands.mid = musicBands.treble = musicBands.kick = 0;
+    return false;
+  }
+  an.node.getByteFrequencyData(an.bins);
+  let sum = 0;
+  for (let i = 0; i < an.bins.length; i++) sum += an.bins[i];
+  if (sum <= 0) return false;
+  const hz = anCtx.sampleRate / an.node.fftSize;
+  const bass = band(an.bins, hz, 40, 260);
+  musicBands.bass = bass;
+  musicBands.mid = band(an.bins, hz, 300, 2000);
+  // les aigus d'un aperçu compressé sont faibles : remis à l'échelle
+  musicBands.treble = Math.min(1, band(an.bins, hz, 4000, 12000) * 2.4);
+  bassAvg += (bass - bassAvg) * (1 - Math.exp(-dt * 2.5));
+  musicBands.kick = Math.max(0, Math.min(1, (bass - bassAvg) * 4.5));
+  musicBands.live = true;
+  return true;
+}
+
 /** un extrait joue (avec sa courbe de volume, 0..1) : la visionneuse montre ses barres */
 export function musicLevel(): number {
   const a = audio;
@@ -349,23 +412,20 @@ export function musicLevels(out: Float32Array, t: number): boolean {
   const a = audio;
   if (!a || a.paused) return false;
   const n = out.length, half = n / 2;
-  let live = false;
-  if (an && an.el === a) {
-    an.node.getByteFrequencyData(an.bins);
-    let sum = 0;
-    for (let i = 0; i < an.bins.length; i++) sum += an.bins[i];
-    if (sum > 0) {
-      live = true;
-      // échelle logarithmique sur les 2/3 bas du spectre (au-delà : presque rien dans un aperçu compressé)
-      const nb = Math.floor(an.bins.length * 0.66);
-      for (let k = 0; k < half; k++) {
-        const f0 = Math.floor(Math.pow(nb, k / half)), f1 = Math.max(f0 + 1, Math.floor(Math.pow(nb, (k + 1) / half)));
-        let m = 0;
-        for (let f = f0; f < f1 && f < nb; f++) m = Math.max(m, an.bins[f]);
-        const v = Math.pow(m / 255, 1.6);
-        out[half - 1 - k] = v;
-        out[half + k] = v;
-      }
+  const live = readSpectrum();
+  if (live && an) {
+    // 2/3 bas du spectre (au-delà : presque rien dans un aperçu compressé), répartis comme l'oreille : une case par
+    // barre dans les graves, de plus en plus larges vers les aigus — chaque barre a au moins sa case, aucune en double
+    const nb = Math.floor(an.bins.length * 0.66), span = nb - 1 - half;
+    const at = (k: number) => 1 + k + Math.floor(span * Math.pow(k / half, 2.2));
+    for (let k = 0; k < half; k++) {
+      const f0 = at(k), f1 = at(k + 1);
+      let m = 0;
+      for (let f = f0; f < f1 && f < nb; f++) m = Math.max(m, an.bins[f]);
+      // les aigus, toujours plus faibles, un peu relevés pour que les bords vivent aussi
+      const v = Math.min(1, Math.pow(m / 255, 1.6) * (0.85 + (0.55 * k) / half));
+      out[half - 1 - k] = v;
+      out[half + k] = v;
     }
   }
   if (!live) {

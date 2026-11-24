@@ -1,5 +1,5 @@
 {
-  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. (15/11, soir) 24 génériques récupérés par Gemini (donnees/generiques/a-integrer/LISEZMOI.txt : sources, VF/VO) : versions françaises diffusées, génériques instrumentaux officiels, Cha-La Head-Cha-La 1989, Olive et Tom (Corbel) — servis par Pages (public/audio/generiques/) ; la version anglaise d'avant passe dans « cartoon-en ». Reste en reprise fidèle : Molang, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/. « screen » (17/11, demandes de Hugo) = générique de la série (bloc Séries TV) ou musique du film (Marvel MCU : Avengers d'Alan Silvestri), par sous-thème, joué en fond quand une 6★ tombe — interprète original seulement. Hellsing : « The World without Logos » (Yasushi Ishii). (20/11, demandes de Hugo) L Lawliet 6★ : « L no Theme » (Hideki Taniuchi, DEATH NOTE Original Soundtrack). « screen » couvre aussi les films 6★ et les familles Jeux vidéo 6★ (thème du film / du jeu, interprète original ; familles « divers » laissées sans musique).",
+  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. (15/11, soir) 24 génériques récupérés par Gemini (donnees/generiques/a-integrer/LISEZMOI.txt : sources, VF/VO) : versions françaises diffusées, génériques instrumentaux officiels, Cha-La Head-Cha-La 1989, Olive et Tom (Corbel) — servis par Pages (public/audio/generiques/) ; la version anglaise d'avant passe dans « cartoon-en ». Reste en reprise fidèle : Molang, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/. « screen » (17/11, demandes de Hugo) = générique de la série (bloc Séries TV) ou musique du film (Marvel MCU : Avengers d'Alan Silvestri), par sous-thème, joué en fond quand une 6★ tombe — interprète original seulement. Hellsing : « The World without Logos » (Yasushi Ishii). (20/11, demandes de Hugo) L Lawliet 6★ : « L no Theme » (Hideki Taniuchi, DEATH NOTE Original Soundtrack). « screen » couvre aussi les films 6★ et les familles Jeux vidéo 6★ (thème du film / du jeu, interprète original ; familles « divers » laissées sans musique). (24/11, lot 2 de Hugo) Musiques par carte hors Musique (clé « cards », id de carte) : Griezmann / Kanté (Vegedream), Championnat du monde de LoL (RISE), ShowMaker / Canyon / Nuguri (Take Over), musique d'entrée officielle de chaque catcheur 6★ (catch), Aizen (Treachery) ; « screen » « lol » = toutes les 6★ League of Legends (Classic Summoner's Rift Pt. 1, musicPreview.ts) ; Berserk : l'ambiance Éclipse joue « Inferno » (9mm Parabellum Bullet) au lieu de « Behelit ».",
   "cards": {
     "pop-au-dd": [
       "Au DD",
@@ -534,8 +534,9 @@
       "Twenty One Pilots"
     ],
     "pop-6ix9ine": [
-      "GUMMO",
-      "6ix9ine"
+      "BILLY",
+      "6ix9ine",
+      "deezer:2495268861"
     ],
     "pop-bullet-for-my-valentine": [
       "Your Betrayal",
@@ -1019,6 +1020,126 @@
       "ミスディレクション",
       "中西亮輔",
       "itunes:878868707"
+    ],
+    "spt-antoine-griezmann": [
+      "Ramenez la coupe à la maison",
+      "Vegedream",
+      "itunes:1413335940"
+    ],
+    "spt-n-golo-kante": [
+      "Ramenez la coupe à la maison",
+      "Vegedream",
+      "itunes:1413335940"
+    ],
+    "spt-championnat-du-monde-de-lol": [
+      "RISE",
+      "League of Legends",
+      "itunes:1833059354"
+    ],
+    "spt-showmaker": [
+      "Take Over",
+      "League of Legends",
+      "itunes:1833082575"
+    ],
+    "spt-canyon": [
+      "Take Over",
+      "League of Legends",
+      "itunes:1833082575"
+    ],
+    "spt-nuguri": [
+      "Take Over",
+      "League of Legends",
+      "itunes:1833082575"
+    ],
+    "spt-a-j-styles": [
+      "Phenomenal",
+      "CFO$",
+      "itunes:1079614536"
+    ],
+    "spt-big-show": [
+      "Crank It Up",
+      "Brand New Sin",
+      "itunes:404193329"
+    ],
+    "spt-chris-jericho": [
+      "Break the Walls Down",
+      "Jim Johnston",
+      "itunes:621624922"
+    ],
+    "spt-cm-punk": [
+      "Cult of Personality",
+      "Living Colour",
+      "itunes:496422567"
+    ],
+    "spt-cody-rhodes": [
+      "Kingdom",
+      "Downstait",
+      "itunes:1143476258"
+    ],
+    "spt-hulk-hogan": [
+      "Real American",
+      "Rick Derringer",
+      "itunes:879563780"
+    ],
+    "spt-john-cena": [
+      "The Time Is Now",
+      "John Cena & Tha Trademarc",
+      "itunes:404224691"
+    ],
+    "spt-kane": [
+      "Veil of Fire",
+      "Jim Johnston",
+      "itunes:490681439"
+    ],
+    "spt-randy-orton": [
+      "Voices",
+      "Rev Theory",
+      "itunes:805079743"
+    ],
+    "spt-randy-savage": [
+      "Pomp and Circumstance",
+      "Jimmy Hart & Howard Helm",
+      "itunes:853467455"
+    ],
+    "spt-rey-mysterio": [
+      "Booyaka 619",
+      "P.O.D.",
+      "itunes:404193371"
+    ],
+    "spt-ric-flair": [
+      "Also sprach Zarathustra",
+      "Richard Strauss · Berliner Philharmoniker",
+      "deezer:66644254"
+    ],
+    "spt-roman-reigns": [
+      "Head of the Table",
+      "Def Rebel",
+      "itunes:1565889946"
+    ],
+    "spt-stone-cold-steve-austin": [
+      "Glass Shatters",
+      "Jim Johnston",
+      "itunes:443701280"
+    ],
+    "spt-the-rock": [
+      "Electrifying",
+      "Jim Johnston",
+      "itunes:630110914"
+    ],
+    "spt-the-undertaker": [
+      "Rest in Peace",
+      "Jim Johnston",
+      "itunes:857570702"
+    ],
+    "spt-triple-h": [
+      "The Game",
+      "Motörhead",
+      "itunes:857570739"
+    ],
+    "pop-sousuke-aizen": [
+      "Treachery",
+      "Shiro Sagisu",
+      "itunes:1645826766"
     ]
   },
   "anime": {
@@ -1043,8 +1164,9 @@
       "Masaaki Endoh"
     ],
     "assassination-classroom": [
-      "Seishun Satsubatsuron",
-      "3-nen E-gumi"
+      "Seishun Satsubatsu-ron",
+      "3-nen E-gumi Utatan",
+      "itunes:952233564"
     ],
     "banana-fish": [
       "found & lost",
@@ -1165,8 +1287,9 @@
       "Denki Groove"
     ],
     "doraemon": [
-      "Yume wo Kanaete Doraemon",
-      "mao"
+      "Doraemon no Uta",
+      "Kumiko Ōsugi",
+      "itunes:1465221751"
     ],
     "dorohedoro": [
       "Welcome to Chaos",
@@ -1206,8 +1329,9 @@
       "Mrs. GREEN APPLE"
     ],
     "food-wars": [
-      "Kibou no Uta",
-      "ultra tower"
+      "Kibō no Uta",
+      "ULTRA TOWER",
+      "itunes:977541838"
     ],
     "free": [
       "Rage on",
@@ -1271,8 +1395,9 @@
       "itunes:1828704712"
     ],
     "high-school-dxd": [
-      "Trip -innocent of D-",
-      "Larval Stage Planning"
+      "Switch",
+      "Minami Kuribayashi",
+      "itunes:1400226208"
     ],
     "horimiya": [
       "Iro Kousui",
@@ -1361,11 +1486,13 @@
     ],
     "mushoku-tensei": [
       "Tabibito no Uta",
-      "Yuiko Ohara"
+      "Yuiko Ōhara",
+      "itunes:1546070706"
     ],
     "my-dress-up-darling": [
-      "Sansan Days",
-      "spira spica"
+      "Ao to Kirameki",
+      "Spira Spica",
+      "itunes:1828469922"
     ],
     "my-hero-academia": [
       "THE DAY",
@@ -1420,8 +1547,9 @@
       "Ling tosite sigure"
     ],
     "ranking-of-kings": [
-      "BOY",
-      "King Gnu"
+      "Naked Hero (Hadaka no Yūsha)",
+      "Vaundy",
+      "itunes:1600223385"
     ],
     "re-zero": [
       "Redo",
@@ -1445,7 +1573,8 @@
     ],
     "seven-deadly-sins": [
       "Netsujou no Spectrum",
-      "Ikimonogakari"
+      "Ikimonogakari",
+      "itunes:1536271840"
     ],
     "sk8-the-infinity": [
       "Paradise",
@@ -1470,7 +1599,8 @@
     ],
     "steins-gate": [
       "Hacking to the Gate",
-      "Kanako Itou"
+      "Kanako Itō",
+      "itunes:1843786357"
     ],
     "sword-art-online": [
       "crossing field",
@@ -1497,8 +1627,9 @@
       "UVERworld"
     ],
     "the-quintessential-quintuplets": [
-      "Gotoubun no Kimochi",
-      "Nakano Family Quintuplets"
+      "Gotōbun no Kimochi",
+      "Nakanoke no Itsutsugo",
+      "itunes:1682466412"
     ],
     "the-rising-of-the-shield-hero": [
       "RISE",
@@ -1563,7 +1694,8 @@
     ],
     "detective-conan": [
       "Meitantei Conan Main Theme",
-      "Katsuo Ohno"
+      "Katsuo Ōno",
+      "itunes:1547554568"
     ],
     "eyeshield-21": [
       "Breakthrough",
@@ -1942,8 +2074,9 @@
   },
   "ambience": {
     "eclipse": [
-      "Behelit",
-      "Susumu Hirasawa"
+      "Inferno",
+      "9mm Parabellum Bullet",
+      "itunes:1821456121"
     ]
   },
   "screen": {
@@ -2584,6 +2717,21 @@
     "jv-warcraft": [
       "Legends of Azeroth",
       "Jason Hayes"
+    ],
+    "rambo": [
+      "Homecoming",
+      "Jerry Goldsmith",
+      "itunes:1814262506"
+    ],
+    "jv-palworld": [
+      "Theme of Palworld",
+      "Tatsuya Yano",
+      "itunes:6795289757"
+    ],
+    "lol": [
+      "Classic Summoner's Rift Pt. 1",
+      "League of Legends",
+      "itunes:1832618245"
     ]
   }
 }
