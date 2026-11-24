@@ -44,7 +44,11 @@ describe('règles pures', () => {
       expect(uniqueTitleSet(ut)!.cards.length, ut.id).toBeGreaterThan(0);
     }
     expect(new Set(UNIQUE_TITLES.map((u) => u.id)).size).toBe(UNIQUE_TITLES.length);
-    expect(UNIQUE_TITLES.map((u) => u.label)).toEqual(['Radiant', 'Hokage', 'Maître Pokémon', 'Challenger']);
+    expect(UNIQUE_TITLES.slice(0, 4).map((u) => u.label)).toEqual(['Radiant', 'Hokage', 'Maître Pokémon', 'Challenger']);
+    // (24/11) + les 79 titres de la liste de Hugo, un par univers : noms et ensembles tous différents
+    expect(UNIQUE_TITLES.length).toBe(83);
+    expect(new Set(UNIQUE_TITLES.map((u) => u.label)).size).toBe(UNIQUE_TITLES.length);
+    expect(new Set(UNIQUE_TITLES.map((u) => u.setId)).size).toBe(UNIQUE_TITLES.length);
   });
   test('complet seulement à 100 % ; un titre pris n’est plus réclamable', () => {
     const hokage = uniqueTitle('hokage')!;
