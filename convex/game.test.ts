@@ -151,7 +151,7 @@ describe('boosters', () => {
     const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
     expect(pack.packKind).toBe('bebou');
     expect(pack.cards[4].rarity).toBe('secret');
-    expect(pack.cards[4].cardId).toMatch(/^(bebou|kcdq)-/); // (24/11) Bébous et KCDQ rouverts
+    expect(pack.cards[4].cardId).toMatch(/^bebou-/);
     expect(pack.maxRarity).toBe('secret');
     await t.mutation(api.packs.revealPack, { sessionToken: alice.token, packId: pack._id });
     const feed = await t.query(api.feed.recent, {});

@@ -244,8 +244,11 @@ function bigSubthemes(B: typeof BigSets, cur: Curation): SubTheme[] {
     const into = sub === e.sub ? list : sportLists.get(sub);
     if (into) into.push({ id, themeId: 'sport', subthemeId: sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, art: e.art, label: e.label });
   }
+  // (25/11, Tom) les Paralympiques forment leur propre famille, plus rangée dans « Olympiques & athlétisme »
+  const sportGroupOf = (s: (typeof B.SPORT_SUBS)[number]) =>
+    s.id === 'paralympiques' ? { id: 'paralympiques', label: 'Paralympiques' } : { id: s.group, label: B.SPORT_GROUPS[s.group] };
   const sport: SubTheme[] = B.SPORT_SUBS.map((s) => ({
-    id: s.id, label: s.label, themeId: 'sport', code: s.code, artDir: 'art/sport', cards: sportLists.get(s.id)!, group: { id: s.group, label: B.SPORT_GROUPS[s.group] }, size: B.SPORT_SIZE,
+    id: s.id, label: s.label, themeId: 'sport', code: s.code, artDir: 'art/sport', cards: sportLists.get(s.id)!, group: sportGroupOf(s), size: B.SPORT_SIZE,
   }));
 
   // ── POP CULTURE PACK (n° 1 → 17 477 avec le patch Berserk, SPEC-THEME-POP-CULTURE v5) : 856 sous-thèmes (franchises, œuvres ou pools :
@@ -331,7 +334,7 @@ export let GAME_CARD_COUNT = ALL_THEMES.reduce((a, t) => a + t.cards.length, 0);
  * (retours 05/11) cartes Bébous / KCDQ VERROUILLÉES : elles ne tombaient plus d'aucun booster (chance 0), l'album restait
  * visible. (24/11, V3, Tom) ROUVERTES : `false` — rien d'autre à changer (serveur et démo suivent).
  */
-export const BEBOU_SECRETS_LOCKED: boolean = false;
+export const BEBOU_SECRETS_LOCKED: boolean = true; // (25/11, Tom) re-verrouillées
 const bebouSecretChance = () => (BEBOU_SECRETS_LOCKED ? 0 : GAME_CARD_COUNT > 0 ? 1 / GAME_CARD_COUNT : 0);
 export let BEBOU_SECRET_CHANCE = bebouSecretChance();
 
@@ -716,7 +719,7 @@ function applyCatalogLang() {
   }
   for (const s of SUB_BY_ID.values()) {
     swapField(s, 'label', L?.subs[s.id] ?? (L ? etoilesSubEn.get(s.id) : undefined));
-    if (s.group) swapField(s.group, 'label', L?.groups[s.group.id]);
+    if (s.group) swapField(s.group, 'label', L ? L.groups[s.group.id] ?? L.subs[s.group.id] : undefined); // (25/11) famille d'un seul album (Paralympiques) : libellé de l'album
   }
   VIEWS = new WeakMap();
   for (const fn of catHooks) fn();
