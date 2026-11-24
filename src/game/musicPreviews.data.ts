@@ -839,6 +839,7 @@ export const SCREEN_THEMES: Record<string, MusicPreview> = {
   "rambo": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/4d/6a/07/4d6a07d1-1c11-8e08-6bb0-7d1b4427e3ed/mzaf_251312441015518886.plus.aac.p.m4a", track: "Homecoming", artist: "Jerry Goldsmith", link: "https://music.apple.com/fr/album/homecoming-film-version/1814261956?i=1814262506&uo=4" },
   "jv-palworld": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/1e/44/91/1e4491eb-13ea-3f78-b297-b937a385c156/mzaf_15684316800577606103.plus.aac.p.m4a", track: "Theme of Palworld", artist: "Tatsuya Yano", link: "https://music.apple.com/fr/album/theme-of-palworld/6795289364?i=6795289757&uo=4" },
   "lol": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/8d/f3/5d/8df35dbf-8b2d-fd57-873b-f777621e6b24/mzaf_8444876684901951553.plus.aac.p.m4a", track: "Classic Summoner's Rift Pt. 1", artist: "League of Legends", link: "https://music.apple.com/fr/album/classic-summoners-rift-pt-1-from-league-of-legends-season-1/1832618165?i=1832618245&uo=4" },
+  "ghibli": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/2a/d7/6d/2ad76dba-9478-0c20-9376-7d567f029e9e/mzaf_9978677995057122884.plus.aac.p.m4a", track: "My Neighbor Totoro", artist: "Joe Hisaishi", link: "https://music.apple.com/fr/album/my-neighbor-totoro-from-my-neighbor-totoro/1680459073?i=1680460241&uo=4" },
 };
 
 /** musique d’une ambiance d’ouverture (eclipse : Berserk 5★ / 6★ — game/eclipse.ts), par nom d’ambiance */

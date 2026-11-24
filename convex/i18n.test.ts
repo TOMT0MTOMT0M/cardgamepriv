@@ -1,4 +1,6 @@
 /// <reference types="vite/client" />
+import { PURGED_CARD_IDS } from './purgedCards';
+import { ETOILES_EMPTIED } from '../src/core/sets/etoiles';
 import { convexTest } from 'convex-test';
 import { describe, expect, test } from 'vitest';
 import { api, internal } from './_generated/api';
@@ -203,8 +205,10 @@ describe('version anglaise : catalogue (lot 5)', () => {
     expect(e.name).toBe('Bulbizarre');
     expect(subthemeById('pkm-unys')?.label).toBe('Unys');
     // (chaque id anglais existe dans le catalogue)
-    for (const id of Object.keys(CATALOG_EN.cards)) expect(catalogEntry(id), id).toBeTruthy();
-    for (const id of Object.keys(CATALOG_EN.subs)) expect(subthemeById(id), id).toBeTruthy();
+    // (24/11) sauf les cartes retirées depuis la génération des noms anglais, et les albums vidés par la base Etoiles
+    const gone = new Set([...PURGED_CARD_IDS, ...ETOILES_EMPTIED]);
+    for (const id of Object.keys(CATALOG_EN.cards)) if (!gone.has(id)) expect(catalogEntry(id), id).toBeTruthy();
+    for (const id of Object.keys(CATALOG_EN.subs)) if (!gone.has(id)) expect(subthemeById(id), id).toBeTruthy();
   });
 });
 

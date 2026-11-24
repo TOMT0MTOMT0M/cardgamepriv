@@ -6,6 +6,7 @@ import type { MutationCtx } from './_generated/server';
 import { CATALOG_CARDS, catalogCard } from './cardsCatalog';
 import type { RarityId } from './cardsCatalog';
 import { PURGED_CARD_IDS } from './purgedCards';
+import { ETOILES_REMAP } from '../src/core/sets/etoiles';
 import { isBigPull } from './feed';
 import { dropInv, invRev } from './invRev';
 import { ensurePresence } from './presence';
@@ -231,7 +232,61 @@ function dedupe<T extends { cardId: string; rarity: string }>(list: T[]): T[] {
  *
  *   npx convex run migrations:purgeCards
  */
-const PURGED = new Set(PURGED_CARD_IDS);
+/**
+ * (24/11, V3) DOUBLONS DE LA BASE ETOILES — une carte retirée parce qu'elle faisait doublon (Hulk Hogan « acteur » et
+ * Hulk Hogan « catch »…) n'est pas perdue : chez chaque joueur, ses exemplaires passent sur la carte gardée
+ * (src/core/sets/etoiles.ts, ETOILES_REMAP : jamais vers une carte d'étoiles supérieures), avant la purge. Ligne fusionnée
+ * avec celle que le joueur a déjà (exemplaires additionnés, meilleur numéro gardé) ; vitrine et classeurs suivent.
+ * Idempotente : les cartes retirées n'existent plus nulle part après un passage. À lancer AVANT migrations:purgeCards.
+ *
+ *   npx convex run migrations:remapCards
+ */
+export const remapCards = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())), moved: v.optional(v.number()) },
+  handler: async (ctx, { cursor, moved = 0 }) => {
+    const page = await ctx.db.query('inventory').paginate({ cursor: cursor ?? null, numItems: BATCH });
+    const users = new Set<Doc<'users'>['_id']>();
+    for (const row of page.page) {
+      const to = ETOILES_REMAP[row.cardId];
+      if (!to) continue;
+      const rarity = truth(to, row.rarity);
+      const have = await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', row.userId).eq('cardId', to).eq('rarity', rarity)).unique();
+      if (have) {
+        await ctx.db.patch(have._id, {
+          count: have.count + row.count,
+          bestMintNumber: Math.min(have.bestMintNumber, row.bestMintNumber),
+          firstPulledAt: Math.min(have.firstPulledAt, row.firstPulledAt),
+          lastPulledAt: Math.max(have.lastPulledAt, row.lastPulledAt),
+          rev: invRev(),
+        });
+      } else {
+        await ctx.db.insert('inventory', { userId: row.userId, cardId: to, rarity, count: row.count, bestMintNumber: row.bestMintNumber, foilSeed: row.foilSeed, firstPulledAt: row.firstPulledAt, lastPulledAt: row.lastPulledAt, rev: invRev() });
+      }
+      await dropInv(ctx, row);
+      users.add(row.userId);
+      moved++;
+    }
+    const swap = <T extends { cardId: string }>(c: T): T => (ETOILES_REMAP[c.cardId] ? { ...c, cardId: ETOILES_REMAP[c.cardId], rarity: truth(ETOILES_REMAP[c.cardId], (c as unknown as { rarity: RarityId }).rarity) } : c);
+    for (const uid of users) {
+      const u = await ctx.db.get(uid);
+      if (u?.showcase?.some((c) => ETOILES_REMAP[c.cardId])) await ctx.db.patch(uid, { showcase: u.showcase.map(swap) });
+      const binders = await ctx.db.query('binders').withIndex('by_user', (q) => q.eq('userId', uid)).collect();
+      for (const b of binders) {
+        const cover = b.coverCardId && ETOILES_REMAP[b.coverCardId];
+        if (!cover && !b.cards.some((c) => ETOILES_REMAP[c.cardId])) continue;
+        await ctx.db.patch(b._id, { cards: b.cards.map(swap), ...(cover ? { coverCardId: cover } : {}) });
+      }
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.migrations.remapCards, { cursor: page.continueCursor, moved });
+      return { done: false, moved };
+    }
+    return { done: true, moved };
+  },
+});
+
+// (24/11) les doublons transférables (ETOILES_REMAP) sont laissés à migrations:remapCards, même si elle n'a pas encore fini
+const PURGED = new Set(PURGED_CARD_IDS.filter((id) => !ETOILES_REMAP[id]));
 const purged = (c: { cardId: string }) => PURGED.has(c.cardId);
 
 export const purgeCards = internalMutation({
