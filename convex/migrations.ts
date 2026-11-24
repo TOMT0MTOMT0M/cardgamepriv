@@ -286,7 +286,9 @@ export const remapCards = internalMutation({
 });
 
 // (24/11) les doublons transférables (ETOILES_REMAP) sont laissés à migrations:remapCards, même si elle n'a pas encore fini
-const PURGED = new Set(PURGED_CARD_IDS.filter((id) => !ETOILES_REMAP[id]));
+// (24/11) et une carte qui (re)existe au catalogue n'est jamais purgée : la base Etoiles réutilise des ids purgés le 04/11
+// (cartes alors sans image : Calcifer, Idéfix, Score…), redevenus de vraies cartes
+const PURGED = new Set(PURGED_CARD_IDS.filter((id) => !ETOILES_REMAP[id] && !catalogCard(id)));
 const purged = (c: { cardId: string }) => PURGED.has(c.cardId);
 
 export const purgeCards = internalMutation({

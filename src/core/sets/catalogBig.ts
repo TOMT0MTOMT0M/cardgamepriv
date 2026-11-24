@@ -9,4 +9,4 @@ export { SPORT, SPORT_GROUPS, SPORT_SIZE, SPORT_SUBS } from './sport';
 export { POP, POP_GROUPS, POP_SIZE, POP_SUBS } from './popculture';
 export { POP_ARTISTS } from './popArtists';
 // (24/11, V3) couche « Etoiles » (base maître de Hugo, GÉNÉRÉE par scripts/make-etoiles.py) : appliquée par installCatalog
-export { ETOILES_ADD, ETOILES_EMPTIED, ETOILES_PURGE, ETOILES_RENAME, ETOILES_RERATE, ETOILES_RESUB, ETOILES_SUBS } from './etoiles';
+export { ETOILES_ADD, ETOILES_EMPTIED, ETOILES_PURGE, ETOILES_RENAME, ETOILES_RERATE, ETOILES_RESUB, ETOILES_SUBMOVE, ETOILES_SUBS } from './etoiles';

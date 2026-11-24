@@ -1,0 +1,5140 @@
+{
+"jv-genshin-impact-kaedehara-kazuha": {
+"file": "genshin-impact-kaedehara-kazuha.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Kazuha.png"
+},
+"jv-genshin-impact-shogun-raiden": {
+"file": "genshin-impact-shogun-raiden.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Shougun.png"
+},
+"jv-summoners-war-artamiel": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-giana": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-ragdoll": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-zerath": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-lucifer": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-lora": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-veromos": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-seara": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-wakfu-iop": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-cra": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-sacrieur": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-ogrest": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-marie-amelie-le-fur": {
+"file": "marie-amelie-le-fur.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Marie-Am%C3%A9lie_Le_Fur_2016.jpg/960px-Marie-Am%C3%A9lie_Le_Fur_2016.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"pop-magneto": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-professeur-xavier": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"spt-nuguri": {
+"file": "nuguri.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/f6/Nuguri_Worlds_2022.jpg"
+},
+"pop-lucrecia-elite": {
+"file": "lucrecia-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/210/526011.jpg"
+},
+"pop-hayao-miyazaki": {
+"file": "hayao-miyazaki.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/f/ff/HayaoMiyazakiCCJuly09.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"jv-genshin-impact-alhaitham": {
+"file": "genshin-impact-alhaitham.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Alhatham.png"
+},
+"jv-genshin-impact-clorinde": {
+"file": "genshin-impact-clorinde.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Clorinde.png"
+},
+"jv-genshin-impact-kamisato-ayaka": {
+"file": "genshin-impact-kamisato-ayaka.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Ayaka.png"
+},
+"jv-genshin-impact-navia": {
+"file": "genshin-impact-navia.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Navia.png"
+},
+"jv-genshin-impact-sandrone": {
+"file": "genshin-impact-sandrone.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_MarionetteNew.png"
+},
+"jv-genshin-impact-skirk": {
+"file": "genshin-impact-skirk.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_SkirkNew.png"
+},
+"jv-genshin-impact-tartaglia": {
+"file": "genshin-impact-tartaglia.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Tartaglia.png"
+},
+"jv-genshin-impact-varka": {
+"file": "genshin-impact-varka.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Varka.png"
+},
+"jv-genshin-impact-wriothesley": {
+"file": "genshin-impact-wriothesley.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Wriothesley.png"
+},
+"jv-genshin-impact-xilonen": {
+"file": "genshin-impact-xilonen.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Xilonen.png"
+},
+"jv-genshin-impact-yelan": {
+"file": "genshin-impact-yelan.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Yelan.png"
+},
+"jv-genshin-impact-yoimiya": {
+"file": "genshin-impact-yoimiya.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Yoimiya.png"
+},
+"jv-genshin-impact-zibai": {
+"file": "genshin-impact-zibai.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Zibai.png"
+},
+"jv-summoners-war-zaiross": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-camilla": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-vanessa": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-leo": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-tiana": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-oliver": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-shi-hou": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-feng-yan": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-juno": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-woosa": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-rica": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-anavel": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-verad": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-nicki": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"pop-idefix": {
+"file": "idefix.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/8/86/Id%C3%A9fix.JPG?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"jv-wakfu-sram": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-eniripsa": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-ecaflip": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-xelor": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-iop": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-sacrieur": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-dofus-turquoise": {
+"file": "dofus-dofus-turquoise-e8.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23003.png"
+},
+"jv-dofus-dofus-emeraude": {
+"file": "dofus-dofus-emeraude-e8.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23002.png"
+},
+"jv-dofus-dofus-pourpre": {
+"file": "dofus-dofus-pourpre-e8.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23001.png"
+},
+"jv-dofus-dofus-ocre": {
+"file": "dofus-dofus-ocre-e8.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23012.png"
+},
+"jv-dofus-sram": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-eniripsa": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-ecaflip": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-xelor": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-osamodas": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-pandawa": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-feca": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-sadida": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-enutrof": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-dofus-ivoire": {
+"file": "dofus-dofus-ivoire-e8.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23011.png"
+},
+"jv-dofus-dofus-ebene": {
+"file": "dofus-dofus-ebene-e8.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23007.png"
+},
+"jv-dofus-dofus-vulbis": {
+"file": "dofus-dofus-vulbis-e8.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23004.png"
+},
+"jv-dofus-bworker": {
+"file": "dofus-bworker-e8.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/264.png"
+},
+"jv-dofus-chene-mou": {
+"file": "dofus-chene-mou-e8.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/147.png"
+},
+"jv-dofus-dragon-cochon": {
+"file": "dofus-dragon-cochon-e8.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/60.png"
+},
+"jv-dofus-kralamour-geant": {
+"file": "dofus-kralamour-geant.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/227.png"
+},
+"jv-dofus-gelano": {
+"file": "dofus-gelano-e8.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/9047.png"
+},
+"jv-wakfu-osamodas": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-pandawa": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-feca": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-sadida": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-enutrof": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-arthur-bauchet": {
+"file": "arthur-bauchet.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/d/d9/Arthur_Bauchet_Entrainement.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-alexis-hanquinquant": {
+"file": "alexis-hanquinquant.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1c/Alexis_Hanquinquant_Parade_Champions_Paris_2024_Place_Charles_Gaulle_-_Paris_XVI_%28FR75%29_-_2024-09-14_-_7.jpg/960px-Alexis_Hanquinquant_Parade_Champions_Paris_2024_Place_Charles_Gaulle_-_Paris_XVI_%28FR75%29_-_2024-09-14_-_7.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-alexandre-leaute": {
+"file": "alexandre-leaute.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Alexandre_L%C3%A9aut%C3%A9_-_Paris_2024_-_French_delegation_Parade_%28cropped%29.jpg/960px-Alexandre_L%C3%A9aut%C3%A9_-_Paris_2024_-_French_delegation_Parade_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"pop-cyclope": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-jean-grey": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-tornade": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-malicia": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-mystique": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"jv-genshin-impact-colombina": {
+"file": "genshin-impact-colombina.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Columbina.png"
+},
+"jv-gta-gta-vi": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-kurama-naruto": {
+"file": "kurama-naruto.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b7407-D8MYzhbuy8zu.jpg"
+},
+"jv-dofus-cra": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-vegeto": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-scream": {
+"file": "scream.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/6/65/ScreaM_at_the_Masters_Reykjav%C3%ADk_2022.jpg"
+},
+"pop-chihiro-ghibli": {
+"file": "chihiro-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b384-AoWCsQyG0WI7.png"
+},
+"jv-genshin-impact-nomade-wanderer": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-nagato": {
+"file": "nagato.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/63209.jpg"
+},
+"pop-obito-uchiha": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-broly": {
+"file": "broly.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b4945-iE59qIP7TxPu.png"
+},
+"pop-gogeta": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-beatrice-hess": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-bebe-vio": {
+"file": "bebe-vio.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/Bebe_Vio_2014_IWAS_European_Championships_FFS-IN_t173138_%28cropped%29.jpg/960px-Bebe_Vio_2014_IWAS_European_Championships_FFS-IN_t173138_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-esther-vergeer": {
+"file": "esther-vergeer.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Esther-Vergeer.jpg/960px-Esther-Vergeer.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"pop-gambit": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-fast-and-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-2-fast-2-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-fast-and-furious-tokyo-drift": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-sean-boswell": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-dodge-charger-r-t-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-toyota-supra-mk4-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-nissan-skyline-gt-r-r34-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-corejj": {
+"file": "corejj.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/e/ed/Liquid_CoreJJ_at_LCS_2026_Spring.jpg"
+},
+"spt-gorilla": {
+"file": "gorilla.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/1/1a/GorillA_LCK_Awards_2021.jpg"
+},
+"spt-sofm": {
+"file": "sofm.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/0/02/MVK_Sofm_LCP_Split_1_2026.jpg"
+},
+"spt-tarzan-lol": {
+"file": "tarzan-lol.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/7/7a/AL_Tarzan_at_Worlds_2025_Quarterfinals.jpg"
+},
+"spt-maple": {
+"file": "maple.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/0/0f/PSG_Maple_at_Worlds_2025_Swiss_Stage.jpg"
+},
+"spt-forg1ven": {
+"file": "forg1ven.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/6/60/FORG1VEN_LEC_2026_Summer.jpg"
+},
+"spt-kazuchika-okada": {
+"file": "kazuchika-okada.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Kazuchika_Okada_-_03-07-2024_EDIT-12.jpg/960px-Kazuchika_Okada_-_03-07-2024_EDIT-12.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-batista": {
+"file": "batista.jpg",
+"art": "c",
+"src": "wikipedia-en:https://upload.wikimedia.org/wikipedia/commons/4/40/Dave_Bautista_Photo_Op_GalaxyCon_Minneapolis_2019.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"pop-polo-elite": {
+"file": "polo-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/210/526017.jpg"
+},
+"pop-patrick-elite": {
+"file": "patrick-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/318/796678.jpg"
+},
+"pop-ivan-elite": {
+"file": "ivan-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/331/827928.jpg"
+},
+"pop-san-ghibli": {
+"file": "san-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b2727-eH2xoFpmfbS4.png"
+},
+"pop-kiki-ghibli": {
+"file": "kiki-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b6866-Fe38ZMNvevnF.png"
+},
+"pop-sophie": {
+"file": "sophie.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b508-ONXMgE281eHe.jpg"
+},
+"jv-genshin-impact-albedo": {
+"file": "genshin-impact-albedo.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Albedo.png"
+},
+"jv-genshin-impact-arataki-itto": {
+"file": "genshin-impact-arataki-itto.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Itto.png"
+},
+"jv-genshin-impact-bennett": {
+"file": "genshin-impact-bennett.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Bennett.png"
+},
+"jv-genshin-impact-chasca": {
+"file": "genshin-impact-chasca.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Chasca.png"
+},
+"jv-genshin-impact-citlali": {
+"file": "genshin-impact-citlali.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Citlali.png"
+},
+"jv-genshin-impact-cyno": {
+"file": "genshin-impact-cyno.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Cyno.png"
+},
+"jv-genshin-impact-durin": {
+"file": "genshin-impact-durin.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Durin.png"
+},
+"jv-genshin-impact-eula": {
+"file": "genshin-impact-eula.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Eula.png"
+},
+"jv-genshin-impact-fischl": {
+"file": "genshin-impact-fischl.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Fischl.png"
+},
+"jv-genshin-impact-flins": {
+"file": "genshin-impact-flins.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Flins.png"
+},
+"jv-genshin-impact-jean": {
+"file": "genshin-impact-jean.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Qin.png"
+},
+"jv-genshin-impact-kamisato-ayato": {
+"file": "genshin-impact-kamisato-ayato.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Ayato.png"
+},
+"jv-genshin-impact-kaveh": {
+"file": "genshin-impact-kaveh.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Kaveh.png"
+},
+"jv-genshin-impact-kinich": {
+"file": "genshin-impact-kinich.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Kinich.png"
+},
+"jv-genshin-impact-lauma": {
+"file": "genshin-impact-lauma.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Lauma.png"
+},
+"jv-genshin-impact-lyney": {
+"file": "genshin-impact-lyney.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Liney.png"
+},
+"jv-genshin-impact-mona": {
+"file": "genshin-impact-mona.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Mona.png"
+},
+"jv-genshin-impact-mualani": {
+"file": "genshin-impact-mualani.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Mualani.png"
+},
+"jv-genshin-impact-nilou": {
+"file": "genshin-impact-nilou.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Nilou.png"
+},
+"jv-genshin-impact-sangonomiya-kokomi": {
+"file": "genshin-impact-sangonomiya-kokomi.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Kokomi.png"
+},
+"jv-genshin-impact-shenhe": {
+"file": "genshin-impact-shenhe.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Shenhe.png"
+},
+"jv-genshin-impact-xianyun": {
+"file": "genshin-impact-xianyun.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Liuyun.png"
+},
+"jv-summoners-war-lushen": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-galleon": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-verdehile": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-theomars": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-velajuel": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-perna": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-bastet": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-savannah": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-masha": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-haegang": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-cheongpung": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-moore": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-dominic": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-bolverk": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-laika": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-chow": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-psamathe": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-chasun": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-hwa": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-fran": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"pop-yamato-naruto": {
+"file": "yamato-naruto.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b2006-FTCz2Eu3cXsI.png"
+},
+"pop-a-quatrieme-raikage": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-shougo-haizaki": {
+"file": "shougo-haizaki.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b66205-g7ZYp8FLh88y.png"
+},
+"pop-nash-gold-jr": {
+"file": "nash-gold-jr.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b196528-63ByndzogTtQ.png"
+},
+"pop-jason-silver": {
+"file": "jason-silver.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b196529-sov3FwQiPpaT.jpg"
+},
+"jv-dofus-roublard": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-zobal": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-steamer": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-eliotrope": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-huppermage": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-ouginak": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-forgelance": {
+"miss": [
+"rejetée à la relecture : symbole de classe, pas une illustration"
+]
+},
+"jv-dofus-dofus-nebuleux": {
+"file": "dofus-dofus-nebuleux.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23016.png"
+},
+"jv-dofus-dofus-des-veilleurs": {
+"file": "dofus-dofus-des-veilleurs.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23020.png"
+},
+"jv-dofus-dofus-des-glaces": {
+"file": "dofus-dofus-des-glaces.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23005.png"
+},
+"jv-dofus-dofus-abyssal": {
+"file": "dofus-dofus-abyssal.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23023.png"
+},
+"jv-dofus-dolmanax": {
+"file": "dofus-dolmanax.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23018.png"
+},
+"jv-dofus-minotoror": {
+"file": "dofus-minotoror.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/67.png"
+},
+"jv-dofus-skeunk": {
+"file": "dofus-skeunk.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/431.png"
+},
+"jv-dofus-moon": {
+"file": "dofus-moon.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/123.png"
+},
+"jv-dofus-maitre-corbac": {
+"file": "dofus-maitre-corbac.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/177.png"
+},
+"jv-dofus-crocabulia": {
+"file": "dofus-crocabulia.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/479.png"
+},
+"jv-dofus-obsidiantre": {
+"file": "dofus-obsidiantre.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/825.png"
+},
+"jv-dofus-royalmouth": {
+"file": "dofus-royalmouth.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/775.png"
+},
+"jv-dofus-mansot-royal": {
+"file": "dofus-mansot-royal.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/769.png"
+},
+"jv-dofus-vortex": {
+"file": "dofus-vortex.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/1208.png"
+},
+"jv-dofus-sylargh": {
+"file": "dofus-sylargh.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/986.png"
+},
+"jv-dofus-missiz-frizz": {
+"file": "dofus-missiz-frizz.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/970.png"
+},
+"jv-dofus-glourseleste": {
+"file": "dofus-glourseleste.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/785.png"
+},
+"jv-dofus-comte-harebourg": {
+"file": "dofus-comte-harebourg.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/993.png"
+},
+"jv-dofus-ilyzaelle": {
+"file": "dofus-ilyzaelle.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/1628.png"
+},
+"jv-dofus-rushu": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-bolgrot": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-djaul": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-dark-vlad": {
+"file": "dofus-dark-vlad.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/650.png"
+},
+"jv-dofus-astrub": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-bonta": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-brakmar": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-roublard": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-zobal": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-steamer": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-eliotrope": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-huppermage": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-ouginak": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-forgelance": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-magmog-le-gobbalrog": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-excarnus": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-gotenks": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-grand-pretre": {
+"file": "grand-pretre.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/127217-c4K0tjHvgL8x.jpg"
+},
+"pop-baby-dragon-ball": {
+"file": "baby-dragon-ball.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b9376-QvJayCZR9mqk.png"
+},
+"pop-omega-shenron": {
+"file": "omega-shenron.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/9761.jpg"
+},
+"spt-marie-patouillet": {
+"file": "marie-patouillet.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Marie_Patouillet_2023.jpg/960px-Marie_Patouillet_2023.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-ugo-didier": {
+"file": "ugo-didier.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/1/1f/Ugo_Didier_m%C3%A9daill%C3%A9_d%27or_Paris_2024_apr%C3%A8s_le_podium.png?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-alex-portal": {
+"file": "alex-portal.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Manchester2023.jpg/960px-Manchester2023.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-nantenin-keita": {
+"file": "nantenin-keita.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/1/18/Nantenin_Ke%C3%AFta.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-timothee-adolphe": {
+"file": "timothee-adolphe.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/Timoth%C3%A9e_Adolphe_et_Jeffrey_Lami_-_Paris_2024_-_French_delegation_Parade.jpg_05_%28cropped%29.jpg/960px-Timoth%C3%A9e_Adolphe_et_Jeffrey_Lami_-_Paris_2024_-_French_delegation_Parade.jpg_05_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-benjamin-daviet": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-mathieu-bosredon": {
+"file": "mathieu-bosredon.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/%C3%89chauffement_%C3%89preuve_Cyclisme_Route_Relais_H1-5_%C3%89quipe_Mixte_Jeux_Paralympiques_2024_Boulevard_%C3%89mile_Zola_-_Clichy-sous-Bois_%28FR93%29_-_2024-09-07_-_33.jpg/960px-%C3%89chauffement_%C3%89preuve_Cyclisme_Route_Relais_H1-5_%C3%89quipe_Mixte_Jeux_Paralympiques_2024_Boulevard_%C3%89mile_Zola_-_Clichy-sous-Bois_%28FR93%29_-_2024-09-07_-_33.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-assia-el-hannouni": {
+"file": "assia-el-hannouni.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Hassia_El_Hanouni_2008.JPG/960px-Hassia_El_Hanouni_2008.JPG?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-aurelie-aubert": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-jules-ribstein": {
+"file": "jules-ribstein.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Triathlon_at_the_2024_Summer_Paralympics_10.jpg/960px-Triathlon_at_the_2024_Summer_Paralympics_10.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-ragnhild-myklebust": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-ihar-boki": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-oksana-masters": {
+"file": "oksana-masters.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/5/58/Oksana_Masters_mixed_sculls_final_2012_crop.png/960px-Oksana_Masters_mixed_sculls_final_2012_crop.png?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"auto-jaguar-xj220": {
+"file": "jaguar-xj220.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/JaguarXJ220.jpg/960px-JaguarXJ220.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"pop-le-fauve": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-diablo-x-men": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-emma-frost": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-apocalypse-x-men": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-dents-de-sabre": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-fast-and-furious-5": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-fast-and-furious-6": {
+"file": "fast-and-furious-6.png",
+"art": "i",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/The-fast-and-the-furious-6.png/960px-The-fast-and-the-furious-6.png?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"pop-fast-and-furious-7": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-suki-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-mazda-rx-7-fd-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-mitsubishi-eclipse-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-ford-mustang-fastback-1967-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"auto-lykan-hypersport": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"auto-mitsubishi-lancer-evolution": {
+"file": "mitsubishi-lancer-evolution.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/20071001_Lancer_Evolution_X-front.jpg/960px-20071001_Lancer_Evolution_X-front.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"pop-jose-porla": {
+"file": "jose-porla.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/23844.jpg"
+},
+"spt-easyhoon": {
+"file": "easyhoon.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/3/34/T1_Easyhoon_at_Worlds_2026.jpg"
+},
+"spt-duke": {
+"file": "duke.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/8/81/IG_Duke_2018Worlds.jpg"
+},
+"spt-score": {
+"file": "score.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/d/d5/KT_Score_LCK_2025_Split_2.jpg"
+},
+"spt-cuzz": {
+"file": "cuzz.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/9/99/KT_Cuzz_at_Worlds_2025_Finals.jpg"
+},
+"spt-ghost-lol": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-perfect-lol": {
+"file": "perfect-lol.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/c/cf/KT_PerfecT_at_Worlds_2025_Finals.jpg"
+},
+"spt-ryu-lol": {
+"file": "ryu-lol.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/d/d6/GEN_Ryu_at_LCK_2026_Rounds_1-2.jpeg"
+},
+"spt-mlxg": {
+"file": "mlxg.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/9/99/RNG_Mlxg_2018MSI.jpg"
+},
+"spt-baolan": {
+"file": "baolan.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/8/84/IG_Baolan_2019MSI.jpg"
+},
+"spt-swordart": {
+"file": "swordart.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/b/b2/Vikings_SwordArt_at_LCP_2025_Season_Kickoff.jpg"
+},
+"spt-cryin": {
+"file": "cryin.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/b/b4/RNG_Cryin_MSI_2021.jpg"
+},
+"spt-shushei": {
+"file": "shushei.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/5/52/FNC_Shushei_Worlds_2011.jpg"
+},
+"spt-broxah": {
+"file": "broxah.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/8/88/TL_Broxah_2020LCS.jpg"
+},
+"spt-bo": {
+"file": "bo.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/6/6f/KC_Bo_at_LEC_2024_Winter.jpg"
+},
+"spt-jensen": {
+"file": "jensen.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/7/70/Dignitas_Jensen_at_the_LCS_2024_Summer_Split.jpg"
+},
+"spt-blaber": {
+"file": "blaber.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/9/9f/Cloud9_Blaber_at_LCS_2026_Spring.jpg"
+},
+"spt-massu": {
+"file": "massu.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/c/c6/FLY_Massu_at_Worlds_2025_Swiss_Stage.jpg"
+},
+"spt-apa": {
+"file": "apa.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/c/c6/C9_APA_at_LCS_2026_Lock-In.jpg"
+},
+"spt-berserker-lol": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-levi-lol": {
+"file": "levi-lol.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/5/50/GAM_Levi_at_EWC_2025.jpg"
+},
+"spt-gunther-catch": {
+"file": "gunther-catch.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/d/db/Gunther_August_2024_%28headshot%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-rhea-ripley": {
+"file": "rhea-ripley.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/f/fc/Rhea_Ripley%2C_April_2024_%28cropped%29_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-logan-paul-catch": {
+"file": "logan-paul-catch.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Logan_Paul_%2848086619418%29.jpg/960px-Logan_Paul_%2848086619418%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-mjf": {
+"file": "mjf.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f3/Maxwell_Jacob_Friedman%2C_July_2024_04.jpg/960px-Maxwell_Jacob_Friedman%2C_July_2024_04.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-will-ospreay": {
+"file": "will-ospreay.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c9/Will_Ospreay%2C_AEW_Revolution_2024_%28cropped%29.jpg/960px-Will_Ospreay%2C_AEW_Revolution_2024_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-bruno-sammartino": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-en (image refusée)"
+]
+},
+"pop-ander": {
+"file": "ander.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/210/526014.jpg"
+},
+"pop-omar-elite": {
+"file": "omar-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/210/526013.jpg"
+},
+"pop-haku-ghibli": {
+"file": "haku-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b385-pKGCy3oYWxRa.png"
+},
+"pop-calcifer": {
+"file": "calcifer.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b6752-T8tNirdJJ8rw.jpg"
+},
+"pop-mei-ghibli": {
+"file": "mei-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/268.jpg"
+},
+"pop-pazu": {
+"file": "pazu.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b8524-GsNaG6GxiZrP.jpg"
+},
+"pop-setsuko": {
+"file": "setsuko.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b495-vzUTVQ5RMiJN.png"
+},
+"pop-mahito-ghibli": {
+"file": "mahito-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b310139-hBndHN1tnKON.png"
+},
+"pop-le-baron": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-isao-takahata": {
+"file": "isao-takahata.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/b/b6/Isao_Takahata.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"pop-joe-hisaishi": {
+"file": "joe-hisaishi.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/6/65/Joe_Hisaishi_2011.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"jv-genshin-impact-baizhu": {
+"file": "genshin-impact-baizhu.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Baizhuer.png"
+},
+"jv-genshin-impact-beidou": {
+"file": "genshin-impact-beidou.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Beidou.png"
+},
+"jv-genshin-impact-chiori": {
+"file": "genshin-impact-chiori.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Chiori.png"
+},
+"jv-genshin-impact-dehya": {
+"file": "genshin-impact-dehya.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Dehya.png"
+},
+"jv-genshin-impact-emilie": {
+"file": "genshin-impact-emilie.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Emilie.png"
+},
+"jv-genshin-impact-escoffier": {
+"file": "genshin-impact-escoffier.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Escoffier.png"
+},
+"jv-genshin-impact-faruzan": {
+"file": "genshin-impact-faruzan.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Faruzan.png"
+},
+"jv-genshin-impact-gaming": {
+"file": "genshin-impact-gaming.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Gaming.png"
+},
+"jv-genshin-impact-ineffa": {
+"file": "genshin-impact-ineffa.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Ineffa.png"
+},
+"jv-genshin-impact-kirara": {
+"file": "genshin-impact-kirara.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Momoka.png"
+},
+"jv-genshin-impact-kuki-shinobu": {
+"file": "genshin-impact-kuki-shinobu.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Shinobu.png"
+},
+"jv-genshin-impact-layla": {
+"file": "genshin-impact-layla.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Layla.png"
+},
+"jv-genshin-impact-linnea": {
+"file": "genshin-impact-linnea.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Linnea.png"
+},
+"jv-genshin-impact-lohen": {
+"file": "genshin-impact-lohen.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Lohen.png"
+},
+"jv-genshin-impact-lynette": {
+"file": "genshin-impact-lynette.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Linette.png"
+},
+"jv-genshin-impact-nefer": {
+"file": "genshin-impact-nefer.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Nefer.png"
+},
+"jv-genshin-impact-nicole": {
+"file": "genshin-impact-nicole.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Nicole.png"
+},
+"jv-genshin-impact-ningguang": {
+"file": "genshin-impact-ningguang.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Ningguang.png"
+},
+"jv-genshin-impact-noelle": {
+"file": "genshin-impact-noelle.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Noel.png"
+},
+"jv-genshin-impact-ororon": {
+"file": "genshin-impact-ororon.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Olorun.png"
+},
+"jv-genshin-impact-qiqi": {
+"file": "genshin-impact-qiqi.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Qiqi.png"
+},
+"jv-genshin-impact-rosaria": {
+"file": "genshin-impact-rosaria.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Rosaria.png"
+},
+"jv-genshin-impact-tighnari": {
+"file": "genshin-impact-tighnari.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Tighnari.png"
+},
+"jv-genshin-impact-varesa": {
+"file": "genshin-impact-varesa.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Varesa.png"
+},
+"jv-genshin-impact-xiangling": {
+"file": "genshin-impact-xiangling.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Xiangling.png"
+},
+"jv-genshin-impact-xingqiu": {
+"file": "genshin-impact-xingqiu.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Xingqiu.png"
+},
+"jv-summoners-war-belladeon": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-raoq": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-kro": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-loren": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-sigmarus": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-teshar": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-tesarion": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-jeanne": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-riley": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-sabrina": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-shaina": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-talia": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-kaki": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-suiki": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-fuuki": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-triana": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-harmonia": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-khmun": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-orion": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-skogul": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-chiwu": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-okeanos": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"pop-hanzo-de-la-salamandre": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-muu-deuxieme-tsuchikage": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-roshi-naruto": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-han-naruto": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-delta-boruto": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-shuuzou-nijimura": {
+"file": "shuuzou-nijimura.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b81845-CbH7y0fxwLgz.jpg"
+},
+"pop-reo-mibuchi": {
+"file": "reo-mibuchi.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b66811-XdZ54nPCiSuW.png"
+},
+"pop-kotarou-hayama": {
+"file": "kotarou-hayama.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b66809-FzqrjK8x3aiN.png"
+},
+"pop-eikichi-nebuya": {
+"file": "eikichi-nebuya.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b66813-htgPu702UIUf.png"
+},
+"jv-dofus-dofawa": {
+"file": "dofus-dofawa.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/23009.png"
+},
+"jv-dofus-dofus-du-dragon-cochon": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-minotot": {
+"file": "dofus-minotot.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/459.png"
+},
+"jv-dofus-kimbo": {
+"file": "dofus-kimbo.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/569.png"
+},
+"jv-dofus-tynril": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-kolosso": {
+"file": "dofus-kolosso.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/849.png"
+},
+"jv-dofus-merkator": {
+"file": "dofus-merkator.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/1054.png"
+},
+"jv-dofus-korriandre": {
+"file": "dofus-korriandre.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/841.png"
+},
+"jv-dofus-tanukoui-san": {
+"file": "dofus-tanukoui-san.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/2040.png"
+},
+"jv-dofus-wa-wabbit": {
+"file": "dofus-wa-wabbit.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/101.png"
+},
+"jv-dofus-bouftou-royal": {
+"file": "dofus-bouftou-royal.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/74.png"
+},
+"jv-dofus-tournesol-affame": {
+"file": "dofus-tournesol-affame.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/445.png"
+},
+"jv-dofus-bworkette": {
+"file": "dofus-bworkette.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/265.png"
+},
+"jv-dofus-gourlo-le-terrible": {
+"file": "dofus-gourlo-le-terrible.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/575.png"
+},
+"jv-dofus-sphincter-cell": {
+"file": "dofus-sphincter-cell.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/523.png"
+},
+"jv-dofus-grozilla-grasmera": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-tengu-fuji-givrefoux": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-klime": {
+"file": "dofus-klime.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/964.png"
+},
+"jv-dofus-nileza": {
+"file": "dofus-nileza.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/976.png"
+},
+"jv-dofus-nidas": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-silf-le-rasboul-majeur": {
+"file": "dofus-silf-le-rasboul-majeur.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/595.png"
+},
+"jv-dofus-kerubim": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-tofu": {
+"file": "dofus-tofu.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/9.png"
+},
+"jv-dofus-bouftou": {
+"file": "dofus-bouftou.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/3.png"
+},
+"jv-dofus-chafer": {
+"file": "dofus-chafer.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/16.png"
+},
+"jv-dofus-trool": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-dragodinde": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-dora-bora": {
+"file": "dofus-dora-bora.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/16061.png"
+},
+"jv-dofus-amakna": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-incarnam": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-pandala": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-sufokia": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-frigost": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-dathura": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-mont-zinit": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-chillberg": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-kanon-endou": {
+"file": "kanon-endou.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/41071.jpg"
+},
+"pop-bayhan-garshield": {
+"file": "bayhan-garshield.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b74461-8iax0KVFClhJ.png"
+},
+"pop-fei-rune": {
+"file": "fei-rune.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b61553-wEPj5mtRehpd.jpg"
+},
+"pop-saru-inazuma": {
+"file": "saru-inazuma.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b80889-7HyKRj7KlpB8.png"
+},
+"pop-c-16": {
+"file": "c-16.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/2099.jpg"
+},
+"pop-oub": {
+"file": "oub.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/9392.jpg"
+},
+"pop-cabba": {
+"file": "cabba.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b127219-K9EvieXhNYzg.png"
+},
+"pop-kefla": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-cooler": {
+"file": "cooler.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b6304-KolzUtGZ7uF7.png"
+},
+"pop-janemba": {
+"file": "janemba.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/9776.jpg"
+},
+"pop-super-c-17": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-arnaud-assoumani": {
+"file": "arnaud-assoumani.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Arnaud_Assoumani_2024.jpg/960px-Arnaud_Assoumani_2024.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-theo-curin": {
+"file": "theo-curin.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/1/17/Th%C3%A9o_Curin_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-kylian-portal": {
+"file": "kylian-portal.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/2/21/Paralympic_Games_2024%2C_Portal_Kylian_%289%29.jpg/960px-Paralympic_Games_2024%2C_Portal_Kylian_%289%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-florian-jouanny": {
+"file": "florian-jouanny.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/European_Champion.jpg/960px-European_Champion.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-fabien-lamirault": {
+"file": "fabien-lamirault.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/LAMIRAULT_Fabien_%28FRA%29.jpg/960px-LAMIRAULT_Fabien_%28FRA%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-cecile-hernandez": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-charles-antoine-kouakou": {
+"file": "charles-antoine-kouakou.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7a/Charles-Antoine_Kouakou.jpg/960px-Charles-Antoine_Kouakou.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-dimitri-pavade": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-dorian-foulon": {
+"file": "dorian-foulon.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Dorian_foulon_2024.jpg/960px-Dorian_foulon_2024.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-lucas-mazur": {
+"file": "lucas-mazur.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/Lucas_Mazur_Paris_2024.jpg/960px-Lucas_Mazur_Paris_2024.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-emeline-pierre": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-tanguy-de-la-forest": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-alexandre-lloveras": {
+"file": "alexandre-lloveras.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Alexandre_Lloveras.jpg/960px-Alexandre_Lloveras.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-markus-rehm": {
+"file": "markus-rehm.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c7/DLV_Leichtathletik_DM_2014_Markus_REHM_by_Olaf_Kosinsky_-12.jpg/960px-DLV_Leichtathletik_DM_2014_Markus_REHM_by_Olaf_Kosinsky_-12.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-trischa-zorn": {
+"file": "trischa-zorn.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b8/Trischa_Zorn_3.JPG/960px-Trischa_Zorn_3.JPG?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-daniel-dias": {
+"file": "daniel-dias.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Daniel_Dias_and_Dilma_Rousseff.jpg/960px-Daniel_Dias_and_Dilma_Rousseff.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-sarah-storey": {
+"file": "sarah-storey.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Sarah_Storey_medals_%28cropped%29.jpg/960px-Sarah_Storey_medals_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-charles-noakes": {
+"file": "charles-noakes.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5a/Charles-Noakes.jpg/960px-Charles-Noakes.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-thomas-peyroton-dartet": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-heidi-gaugain": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-helios-latchoumanaya": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-loic-vergnaud": {
+"file": "loic-vergnaud.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1c/2024_UCI_Para-cycling_Road_World_Championships_Zurich_Men_H4%26H5_Road_Medal_Ceremony_19_%28cropped%29.jpg/960px-2024_UCI_Para-cycling_Road_World_Championships_Zurich_Men_H4%26H5_Road_Medal_Ceremony_19_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-frederic-villeroux": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-maxime-montaggioni": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-anthony-chalencon": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-vincent-gauthier-manuel": {
+"file": "vincent-gauthier-manuel.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/3/38/Vincent_Gauthier-Manuel.jpg/960px-Vincent_Gauthier-Manuel.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-claude-issorat": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-mustapha-badid": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-david-weir": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-marcel-hug": {
+"file": "marcel-hug.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Marcel_Hug_-_Paris_2014%2C_cropped.jpg/960px-Marcel_Hug_-_Paris_2014%2C_cropped.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-catherine-debrunner": {
+"file": "catherine-debrunner.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/2/23/Catherine_Debrunner_-_2013_IPC_Athletics_World_Championships_%2801%29.jpg/960px-Catherine_Debrunner_-_2013_IPC_Athletics_World_Championships_%2801%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-tatyana-mcfadden": {
+"file": "tatyana-mcfadden.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a3/T_McFadden_London_Marathon_2014_-_Wheelchair_%2865%29.jpg/960px-T_McFadden_London_Marathon_2014_-_Wheelchair_%2865%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-dylan-alcott": {
+"file": "dylan-alcott.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/XXXX15_-_Dylan_Alcott_-_3b_-_2016_Team_processing.jpg/960px-XXXX15_-_Dylan_Alcott_-_3b_-_2016_Team_processing.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-jessica-long": {
+"file": "jessica-long.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/a/a9/Jessica_Long.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"auto-mercedes-190e-evo-ii": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"auto-ferrari-275-gtb": {
+"file": "ferrari-275-gtb.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/1965_Ferrari_275_%28cropped%29.jpg/960px-1965_Ferrari_275_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"auto-chevrolet-corvette-c1": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"auto-dodge-charger-daytona": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"auto-plymouth-fury-christine": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-colossus": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-iceman": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-kitty-pryde": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-cable": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-le-fleau": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-x-23": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-vif-argent": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-mister-sinister": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-fast-and-furious-4": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-fast-and-furious-8": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-fast-and-furious-hobbs-shaw": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-fast-x": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-mr-nobody": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-elena-neves": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-hattie-shaw": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-mitsubishi-lancer-evolution-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-honda-s2000-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-mazda-rx-8-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-nissan-350z-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-lykan-hypersport-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"auto-jensen-interceptor": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-brain-zero": {
+"file": "brain-zero.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b34392-lhzXJ1s4vJuj.png"
+},
+"pop-aldoron": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-teddy": {
+"file": "teddy.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/9/95/BRO_Teddy_LCK_Cup_2026.jpg"
+},
+"spt-kuro-lol": {
+"file": "kuro-lol.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/4/42/AFS_Kuro_2018Worlds.jpg"
+},
+"spt-ssumday": {
+"file": "ssumday.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/5/5d/Ssumday_LCK_Awards_2025.jpg"
+},
+"spt-letme": {
+"file": "letme.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/8/86/RNG_Letme_2018MSI.jpg"
+},
+"spt-koro1": {
+"file": "koro1.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/8/8e/EDG_Korol_Worlds2016.jpg"
+},
+"spt-gimgoon": {
+"file": "gimgoon.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/f8/Gimgoon.png"
+},
+"spt-xiye": {
+"file": "xiye.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/0/03/TES_xiye_Worlds_2024.jpg"
+},
+"spt-mystic-lol": {
+"file": "mystic-lol.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/7/77/AF_Mystic_LCK_2020.jpg"
+},
+"spt-yagao": {
+"file": "yagao.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/d/d2/BLG_Yagao_Worlds_2023.jpg"
+},
+"spt-pdd": {
+"file": "pdd.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/3/35/Invictus_Gaming_PPD_IEM_Singapore_2013.jpeg"
+},
+"spt-xmithie": {
+"file": "xmithie.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/1/10/IMT_Xmithie_2020LCS.jpg"
+},
+"spt-pronax": {
+"file": "pronax.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/7/70/Pronax_%40_CPH_Games_2017.jpg"
+},
+"spt-teses": {
+"file": "teses.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/fe/TeSeS_at_BLAST_Open_Spring_2026.jpg"
+},
+"spt-kyousuke": {
+"file": "kyousuke.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/6/6d/Kyousuke_at_BLAST_Open_Spring_2026.jpg"
+},
+"spt-hunter": {
+"file": "hunter.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/5/52/HuNter-_at_Stake_Ranked_Episode_1.jpg"
+},
+"spt-bianca-belair": {
+"file": "bianca-belair.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Bianca_Belair_RR25_%28cropped%29.jpg/960px-Bianca_Belair_RR25_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-liv-morgan": {
+"file": "liv-morgan.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/Liv_Morgan_at_Greater_Together_2026.jpg/960px-Liv_Morgan_at_Greater_Together_2026.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-dominik-mysterio": {
+"file": "dominik-mysterio.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Dominik_Mysterio_RR25.jpg/960px-Dominik_Mysterio_RR25.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-la-knight": {
+"file": "la-knight.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/2/29/LA_Knight_RR24_%282%29_%28headshot%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-damian-priest": {
+"file": "damian-priest.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e7/Damien_Priest_Las_Vegas_Fall_20925.jpg/960px-Damien_Priest_Las_Vegas_Fall_20925.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-jey-uso": {
+"file": "jey-uso.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/Jey_Uso_RR25_%281%29_%28cropped%29.jpg/960px-Jey_Uso_RR25_%281%29_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-asuka-catch": {
+"file": "asuka-catch.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/8/85/Asuka%2C_WrestleMania_XL.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-alexa-bliss": {
+"file": "alexa-bliss.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/f/f0/Alexa_Bliss_RR25_%281%29_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-iyo-sky": {
+"file": "iyo-sky.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/Iyo_Sky_2024_%28cropped%29.jpg/960px-Iyo_Sky_2024_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-the-young-bucks": {
+"file": "the-young-bucks.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/64/WMC_AEWBUCKS-CHAMP.jpg/960px-WMC_AEWBUCKS-CHAMP.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-swerve-strickland": {
+"file": "swerve-strickland.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Swerve_Strickland_Photo_Op_GalaxyCon_Rchmond_2025.jpg/960px-Swerve_Strickland_Photo_Op_GalaxyCon_Rchmond_2025.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-toni-storm": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-darby-allin": {
+"file": "darby-allin.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/Darby_Allin_Photo_Op_GalaxyCon_Raleigh_2025.jpg/960px-Darby_Allin_Photo_Op_GalaxyCon_Raleigh_2025.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-paige": {
+"file": "paige.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Saraya_Bevis%2C_September_2022_%28cropped%29.jpg/960px-Saraya_Bevis%2C_September_2022_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-tetsuya-naito": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-jay-white": {
+"file": "jay-white.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/Jay_White_-_AEW_Dynamite_-_2023-04-26050_%28cropped%29.jpg/960px-Jay_White_-_AEW_Dynamite_-_2023-04-26050_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-zack-sabre-jr": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-ultimate-warrior": {
+"file": "ultimate-warrior.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/4/4f/The_Ultimate_Warrior_entrance_April_7th_2014_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-vader": {
+"file": "vader.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/a/a8/Vader_2014_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-yokozuna": {
+"file": "yokozuna.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/9/9e/SumoAsashoryu.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-chyna": {
+"file": "chyna.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/f/f1/Chyna_at_Slim-Fast_Fashion_Show_1.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-ricky-steamboat": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-en (image refusée)"
+]
+},
+"pop-dame-eboshi": {
+"file": "dame-eboshi.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/n4781-m7x213OVOdgm.png"
+},
+"pop-chat-bus": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-muska": {
+"file": "muska.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b8526-n5aqtiPrcbYA.png"
+},
+"pop-dola": {
+"file": "dola.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b8525-gYwQaCzrGZGp.png"
+},
+"pop-sosuke": {
+"file": "sosuke.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b15009-1FN9rnnLAinM.png"
+},
+"pop-gina-ghibli": {
+"file": "gina-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/8045.jpg"
+},
+"pop-teto-ghibli": {
+"file": "teto-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/n9091-MSDqaT9pfGsD.jpg"
+},
+"pop-sho": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-nahoko": {
+"file": "nahoko.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b75456-Gygsnz7b9r9j.jpg"
+},
+"pop-shun-ghibli": {
+"file": "shun-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b42536-Ewu6hUFWbMCB.png"
+},
+"pop-haru-ghibli": {
+"file": "haru-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/4802.jpg"
+},
+"pop-shizuku": {
+"file": "shizuku.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b37685-RTNZm8Tb7Sti.jpg"
+},
+"pop-seiji": {
+"file": "seiji.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b534-XbUoHYXF8TwS.png"
+},
+"jv-genshin-impact-aino": {
+"file": "genshin-impact-aino.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Aino.png"
+},
+"jv-genshin-impact-barbara": {
+"file": "genshin-impact-barbara.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Barbara.png"
+},
+"jv-genshin-impact-candace": {
+"file": "genshin-impact-candace.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Candace.png"
+},
+"jv-genshin-impact-charlotte": {
+"file": "genshin-impact-charlotte.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Charlotte.png"
+},
+"jv-genshin-impact-chevreuse": {
+"file": "genshin-impact-chevreuse.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Chevreuse.png"
+},
+"jv-genshin-impact-chongyun": {
+"file": "genshin-impact-chongyun.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Chongyun.png"
+},
+"jv-genshin-impact-collei": {
+"file": "genshin-impact-collei.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Collei.png"
+},
+"jv-genshin-impact-diona": {
+"file": "genshin-impact-diona.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Diona.png"
+},
+"jv-genshin-impact-freminet": {
+"file": "genshin-impact-freminet.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Freminet.png"
+},
+"jv-genshin-impact-gorou": {
+"file": "genshin-impact-gorou.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Gorou.png"
+},
+"jv-genshin-impact-iansan": {
+"file": "genshin-impact-iansan.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Iansan.png"
+},
+"jv-genshin-impact-ifa": {
+"file": "genshin-impact-ifa.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Ifa.png"
+},
+"jv-genshin-impact-illuga": {
+"file": "genshin-impact-illuga.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Illuga.png"
+},
+"jv-genshin-impact-jahoda": {
+"file": "genshin-impact-jahoda.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Jahoda.png"
+},
+"jv-genshin-impact-kaeya": {
+"file": "genshin-impact-kaeya.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Kaeya.png"
+},
+"jv-genshin-impact-kujou-sara": {
+"file": "genshin-impact-kujou-sara.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Sara.png"
+},
+"jv-genshin-impact-lan-yan": {
+"file": "genshin-impact-lan-yan.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Lanyan.png"
+},
+"jv-genshin-impact-lisa": {
+"file": "genshin-impact-lisa.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Lisa.png"
+},
+"jv-genshin-impact-razor": {
+"file": "genshin-impact-razor.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Razor.png"
+},
+"jv-genshin-impact-sethos": {
+"file": "genshin-impact-sethos.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Sethos.png"
+},
+"jv-genshin-impact-shikanoin-heizou": {
+"file": "genshin-impact-shikanoin-heizou.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Heizo.png"
+},
+"jv-genshin-impact-sigewinne": {
+"file": "genshin-impact-sigewinne.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Sigewinne.png"
+},
+"jv-genshin-impact-sucrose": {
+"file": "genshin-impact-sucrose.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Sucrose.png"
+},
+"jv-genshin-impact-thomas": {
+"file": "genshin-impact-thomas.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Tohma.png"
+},
+"jv-genshin-impact-yanfei": {
+"file": "genshin-impact-yanfei.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Feiyan.png"
+},
+"jv-genshin-impact-yaoyao": {
+"file": "genshin-impact-yaoyao.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Yaoyao.png"
+},
+"jv-genshin-impact-yumemizuki-mizuki": {
+"file": "genshin-impact-yumemizuki-mizuki.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Mizuki.png"
+},
+"jv-genshin-impact-yun-jin": {
+"file": "genshin-impact-yun-jin.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Yunjin.png"
+},
+"jv-summoners-war-bernard": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-spectra": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-mav": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-megan": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-baretta": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-tyron": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-mantura": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-basalt": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-talc": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-jultan": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-eshir": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-vigor": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-miho": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-mina": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-racuni": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-bulldozer": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-copper": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-rina": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-chloe": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-lapis": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"pop-kokuou": {
+"file": "kokuou.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/57879.jpg"
+},
+"pop-chomei": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-ginkaku-kinkaku": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-ebisu-naruto": {
+"file": "ebisu-naruto.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/n10791-YRA5IXwEQRsW.png"
+},
+"pop-mifune-naruto": {
+"file": "mifune-naruto.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b23830-2INgLdenVMy6.png"
+},
+"pop-boro": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-kenichi-okamura": {
+"file": "kenichi-okamura.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b53577-TE2DkOQAiQP9.png"
+},
+"pop-chihiro-mayuzumi": {
+"file": "chihiro-mayuzumi.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b215048-t5otyNEDm33S.png"
+},
+"pop-kensuke-fukui": {
+"file": "kensuke-fukui.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b53575-8YO3fVbSkdNJ.png"
+},
+"jv-dofus-pouchecot": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-piou": {
+"file": "dofus-piou.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/25009.png"
+},
+"jv-dofus-arakne": {
+"file": "dofus-arakne.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/15.png"
+},
+"jv-dofus-bwork": {
+"file": "dofus-bwork.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/489.png"
+},
+"jv-dofus-craqueleur": {
+"file": "dofus-craqueleur.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/4.png"
+},
+"jv-dofus-prespic": {
+"file": "dofus-prespic.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/53.png"
+},
+"jv-dofus-mulou": {
+"file": "dofus-mulou.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/52.png"
+},
+"jv-dofus-wabbit": {
+"file": "dofus-wabbit.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/25.png"
+},
+"jv-dofus-kwak": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-sanglier-dofus": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-kanniboul": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-kitsou": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-cawotte": {
+"file": "dofus-cawotte.png",
+"art": "i",
+"src": "dofusdb-monsters:https://api.dofusdb.fr/img/monsters/319.png"
+},
+"jv-dofus-chacha": {
+"file": "dofus-chacha.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/18001.png"
+},
+"jv-dofus-cape-cristalline": {
+"file": "dofus-cape-cristalline.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/17159.png"
+},
+"jv-dofus-hache-zoth": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-coiffe-kitsou": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-baguette-hique": {
+"file": "dofus-baguette-hique.png",
+"art": "i",
+"src": "dofusdb-items:https://api.dofusdb.fr/img/items/3077.png"
+},
+"jv-dofus-kamas": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-ile-de-moon": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-ile-d-otomai": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-ile-des-wabbits": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-ile-de-nowel": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-dofus-vulkania": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-royaume-de-shhhudoku": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-kelba": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-bilbiza": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-ile-calamar": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-royaume-sadida": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-pandalousie": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-chuchoteur": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-bellaphone": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-riktus": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-gobgob": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-havre-sac": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-baddap-sleed": {
+"file": "baddap-sleed.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/40611.jpg"
+},
+"pop-wonderbot": {
+"file": "wonderbot.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/67401.jpg"
+},
+"pop-alpha-inazuma": {
+"file": "alpha-inazuma.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/61691.jpg"
+},
+"pop-beta-inazuma": {
+"file": "beta-inazuma.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/67197.jpg"
+},
+"pop-gamma-inazuma": {
+"file": "gamma-inazuma.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/68677.jpg"
+},
+"pop-tapion": {
+"file": "tapion.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/9714.jpg"
+},
+"pop-bojack": {
+"file": "bojack.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/9783.jpg"
+},
+"spt-jean-baptiste-alaize": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-lucas-didier": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-souhad-ghazouani": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-sandrine-martinet": {
+"file": "sandrine-martinet.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Rio2016_0809_MARTINET_%C2%A9G-Picout_22.jpg/960px-Rio2016_0809_MARTINET_%C2%A9G-Picout_22.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-mandy-francois-elie": {
+"file": "mandy-francois-elie.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/Mandy_Fran%C3%A7ois-Elie_-_2013_IPC_Athletics_World_Championships.jpg/960px-Mandy_Fran%C3%A7ois-Elie_-_2013_IPC_Athletics_World_Championships.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-ibrahim-hamadtou": {
+"file": "ibrahim-hamadtou.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/IBRAHIM_El_Hossiny_%28EGY%29_IMG_7015_DxO.jpg/960px-IBRAHIM_El_Hossiny_%28EGY%29_IMG_7015_DxO.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-hakim-arezki": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-joseph-fritsch": {
+"file": "joseph-fritsch.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/2024_UCI_Road_World_Championships_Zurich_Mixed_Handbike_Team_Relay_56_%28Joseph_Fritsch%29.jpg/960px-2024_UCI_Road_World_Championships_Zurich_Mixed_Handbike_Team_Relay_56_%28Joseph_Fritsch%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-elie-de-carvalho": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-johan-quaile": {
+"file": "johan-quaile.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/2024_UCI_Road_World_Championships_Zurich_Mixed_Handbike_Team_Relay_63_%28Johan_Quaile%29.jpg/960px-2024_UCI_Road_World_Championships_Zurich_Mixed_Handbike_Team_Relay_63_%28Johan_Quaile%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-gatien-le-rousseau": {
+"file": "gatien-le-rousseau.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Gatien_LE_ROUSSEAU.png/960px-Gatien_LE_ROUSSEAU.png?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-hector-denayer": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-laurent-chardard": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-gloria-agblemagnon": {
+"file": "gloria-agblemagnon.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/c/c0/C%C3%A9r%C3%A9monie_des_m%C3%A9dailles_du_lancer_de_poids_F20_aux_jeux_paralympiques_de_Paris_2024_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-manon-genest": {
+"file": "manon-genest.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Manon_Genest_avant_son_quatri%C3%A8me_saut_aux_jeux_paralympiques_de_Paris_2024.jpg/960px-Manon_Genest_avant_son_quatri%C3%A8me_saut_aux_jeux_paralympiques_de_Paris_2024.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-antoine-praud": {
+"file": "antoine-praud.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Antoine_Praud_2024.jpg/960px-Antoine_Praud_2024.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-mateo-boheas": {
+"file": "mateo-boheas.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/Mateo_Boheas_2017_Slovenia_1.jpeg/960px-Mateo_Boheas_2017_Slovenia_1.jpeg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-djelika-diallo": {
+"file": "djelika-diallo.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Djelika_Diallo.jpg/960px-Djelika_Diallo.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-jason-grandry": {
+"file": "jason-grandry.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Jason_Grandry_2024.jpg/960px-Jason_Grandry_2024.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-cyril-jonard": {
+"file": "cyril-jonard.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/Cyril_Jonard_2024.jpg/960px-Cyril_Jonard_2024.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-ludovic-lemoine": {
+"file": "ludovic-lemoine.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/c/c7/Rio_12_modif.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-nelia-barbosa": {
+"file": "nelia-barbosa.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/N%C3%A9lia_Barbosa_JP_KL3_200m.jpg/960px-N%C3%A9lia_Barbosa_JP_KL3_200m.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-remy-boulle": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-thibaut-rigaudeau": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-antoine-perel": {
+"file": "antoine-perel.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c6/Antoine_Perel_-_2013_IPC_Athletics_World_Championships.jpg/960px-Antoine_Perel_-_2013_IPC_Athletics_World_Championships.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-hyacinthe-deleplace": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-frederic-francois": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-anne-floriet": {
+"file": "anne-floriet.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/2/24/Anne_Floriet%2C_1998%2C_entrainement_%C3%A0_Villard_de_Lans.jpg/960px-Anne_Floriet%2C_1998%2C_entrainement_%C3%A0_Villard_de_Lans.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-vincent-boury": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-jean-philippe-robin": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-isabelle-lafaye": {
+"file": "isabelle-lafaye.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Isabelle_Lafaye_%40_Open_Slovenia_2017.jpg/960px-Isabelle_Lafaye_%40_Open_Slovenia_2017.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-stephane-bozzolo": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-david-smetanine": {
+"file": "david-smetanine.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/d/de/David_Sm%C3%A9tanine_-_Crit%C3%A9rium_du_Dauphin%C3%A9_2010.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-matt-stutzman": {
+"file": "matt-stutzman.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/Matt_Stutzman_2012.jpg/960px-Matt_Stutzman_2012.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-mayumi-narita": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-jonas-jacobsson": {
+"file": "jonas-jacobsson.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Jonas_Jacobsson_%28skytt%29.jpg/960px-Jonas_Jacobsson_%28skytt%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"auto-pontiac-aztek": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"auto-delahaye-135": {
+"file": "delahaye-135.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Mille_Miglia_2023_-_Car_number_96_-_Delahaye_135_CS_%28right_side%29.jpg/960px-Mille_Miglia_2023_-_Car_number_96_-_Delahaye_135_CS_%28right_side%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"pop-jubile": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-psylocke": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-bishop-x-men": {
+"miss": [
+"rejetée à la relecture : photo de cosplay"
+]
+},
+"pop-havok": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-banshee": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-angel-x-men": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-polaris": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-pyro": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-le-crapaud": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-fast-and-furious-9": {
+"miss": [
+"logo seul rejeté à la relecture"
+]
+},
+"pop-twinkie": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-en (image refusée)"
+]
+},
+"pop-neela": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-dk-takashi": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-vince": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-jesse": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-leon-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-carter-verone": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-monica-fuentes": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-hernan-reyes": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-tego-leo-et-rico-santos": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-little-nobody": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-brixton-lore": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-magdalene-shaw": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-nissan-silvia-s15-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-jensen-interceptor-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-rustyrose": {
+"file": "rustyrose.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/40160.jpg"
+},
+"pop-bloodman": {
+"file": "bloodman.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b131387-eX08Ef6NKRKb.jpg"
+},
+"pop-neinhart": {
+"file": "neinhart.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b131388-MxKv9WlywhFJ.jpg"
+},
+"pop-simon-fairy-tail": {
+"file": "simon-fairy-tail.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/34457.jpg"
+},
+"pop-deliora": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-viernes": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-georg-raizen": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-duro": {
+"file": "duro.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/6/6f/GEN_Duro_at_Worlds_2026_Semifinals.jpeg"
+},
+"spt-deokdam": {
+"file": "deokdam.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/7/70/DNS_deokdam_LCK_2026.jpg"
+},
+"spt-angel-lol": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-huanfeng": {
+"file": "huanfeng.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/9/90/SN_huanfeng_Worlds_2020.jpg"
+},
+"spt-light": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-betty": {
+"file": "betty.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/7/72/GZ_Betty_LCP_2026_Split_3.jpg"
+},
+"spt-trick": {
+"file": "trick.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/d/d7/SK_Trick_2020LEC.jpg"
+},
+"spt-kobbe": {
+"file": "kobbe.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/d/dc/AST_Kobbe_2022LEC.jpg"
+},
+"spt-nukeduck": {
+"file": "nukeduck.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/f2/Heretics_Nukeduck_at_LEC_2026_Summer.jpg"
+},
+"spt-darien": {
+"file": "darien.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/d/de/Darien_EU_LCS_Spring_2014.jpg"
+},
+"spt-svenskeren": {
+"file": "svenskeren.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/f5/C9_Svenskeren_2018NALCS.jpg"
+},
+"spt-santorin-lol": {
+"file": "santorin-lol.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/4/40/TL_Santorin_Worlds_2021.jpg"
+},
+"spt-wildturtle": {
+"file": "wildturtle.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/3/33/SR_WildTurtle_at_LCS_2024_Spring.jpg"
+},
+"spt-licorice": {
+"file": "licorice.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/f1/GGS_Licorice_Worlds_2023.jpg"
+},
+"spt-vulcan": {
+"file": "vulcan.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/1/1f/C9_Vulcan_Worlds_2026.jpg"
+},
+"spt-huhi": {
+"file": "huhi.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/c/c9/SEN_huhi_at_LCS_2026_Lock-In.jpg"
+},
+"spt-stixxay": {
+"file": "stixxay.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/0/0f/GG_Stixxay_Worlds_2023.jpg"
+},
+"spt-spica": {
+"file": "spica.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/b/b8/DIG_Spica_at_LCS_2024_Summer.jpg"
+},
+"spt-evi": {
+"file": "evi.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/c/c9/SHG_Evi_Worlds_2024.jpg"
+},
+"spt-brtt": {
+"file": "brtt.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/e/e7/BrTT_at_CBLOL_2026_Split_2.jpeg"
+},
+"spt-tinowns": {
+"file": "tinowns.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/7/74/PNG_tinowns_at_CBLOL_2026_Cup.jpeg"
+},
+"spt-armut": {
+"file": "armut.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/9/94/DIG_Armut_LCS_2023_Spring.jpg"
+},
+"spt-friberg": {
+"file": "friberg.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/2/21/Friberg_at_Antwerp_Major_2022_EU_RMR.jpg"
+},
+"spt-byali": {
+"file": "byali.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/f0/Byali_at_Bets_Masters_S1.jpg"
+},
+"spt-rush-cs": {
+"file": "rush-cs.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/5/5e/RUSH_%40_PGL_Major_Antwerp_2022_Americas_RMR.jpg"
+},
+"spt-boombl4": {
+"file": "boombl4.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/0/03/Boombl4_at_Stake_Ranked_Episode_1.jpg"
+},
+"spt-fl1t": {
+"file": "fl1t.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/a/ab/FL1T_at_Esports_World_Cup_2026.jpg"
+},
+"spt-molodoy": {
+"file": "molodoy.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/4/48/Molodoy_at_IEM_Krak%C3%B3w_2026.jpg"
+},
+"spt-yekindar": {
+"file": "yekindar.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/5/50/YEKINDAR_at_BLAST_Open_Spring_2026.jpg"
+},
+"spt-npl": {
+"file": "npl.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/b/ba/Npl_at_BLAST_Open_Spring_2026.jpg"
+},
+"spt-jks": {
+"file": "jks.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/e/e9/Jks_at_IEM_Cologne_2026.jpg"
+},
+"spt-tabsen": {
+"file": "tabsen.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/5/5e/TabseN_at_CCT_Season_3_Global_Finals.jpg"
+},
+"spt-syrson": {
+"file": "syrson.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/3/36/SyrsoN_at_ESL_Pro_League_S20.jpg"
+},
+"spt-nitr0": {
+"file": "nitr0.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/2/22/Nitr0_at_BLAST_Open_Spring_2026.jpg"
+},
+"spt-amanek": {
+"file": "amanek.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/3/36/AMANEK_at_La_Coupe_2022-3.jpeg"
+},
+"spt-bron-breakker": {
+"file": "bron-breakker.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/9/95/Bron_Breakker_-_WWE_Live_RTWM_Nottingham_March_2025_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-jacob-fatu": {
+"file": "jacob-fatu.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Jacob_Fatu_RR25_%28cropped%29.jpg/960px-Jacob_Fatu_RR25_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-solo-sikoa": {
+"file": "solo-sikoa.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6a/Solo_Sikoa%2C_October_2024_%281%29.jpg/960px-Solo_Sikoa%2C_October_2024_%281%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-jade-cargill": {
+"file": "jade-cargill.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/4/47/All_Elite_Wrestling_TBS_Champion_-_Jade_Cargill_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-tiffany-stratton": {
+"file": "tiffany-stratton.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Tiffany_Stratton_Las_Vegas_2026.jpg/960px-Tiffany_Stratton_Las_Vegas_2026.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-aj-lee": {
+"file": "aj-lee.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/AJ_Lee_at_San_Diego_Comic_Con_2026-2.jpg/960px-AJ_Lee_at_San_Diego_Comic_Con_2026-2.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-penta": {
+"file": "penta.jpg",
+"art": "c",
+"src": "wikipedia-en:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Penta_RR25_%28cropped%29.jpg/960px-Penta_RR25_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-ilja-dragunov": {
+"file": "ilja-dragunov.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cf/Ilja_Dragunov_2019.jpg/960px-Ilja_Dragunov_2019.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-oba-femi": {
+"file": "oba-femi.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Oba_Femi_2024_%28cropped%29.jpg/960px-Oba_Femi_2024_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-orange-cassidy": {
+"file": "orange-cassidy.jpg",
+"art": "c",
+"src": "wikipedia-en:https://upload.wikimedia.org/wikipedia/commons/b/b8/Orange_Cassidy_Photo_Op_Nightmare_Weekend_Chicago_2025.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-britt-baker": {
+"file": "britt-baker.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/WMC_AEWBAKER-CHAMP.jpg/960px-WMC_AEWBAKER-CHAMP.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-hiromu-takahashi": {
+"file": "hiromu-takahashi.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b4/Hiromu_Takahashi_2020.02.19.jpg/960px-Hiromu_Takahashi_2020.02.19.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-joe-hendry": {
+"file": "joe-hendry.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Joe_Hendry_RR25_%28cropped%29.jpg/960px-Joe_Hendry_RR25_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-mr-perfect": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki",
+"wikipedia-fr (image refusée)"
+]
+},
+"spt-ddp": {
+"file": "ddp.jpg",
+"art": "c",
+"src": "wikipedia-en:https://upload.wikimedia.org/wikipedia/commons/2/2b/DDP_Headshot_1_Landscape.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-iron-sheik": {
+"file": "iron-sheik.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://upload.wikimedia.org/wikipedia/commons/6/63/IronSheik6.13.09ByLuigiNovi2.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"spt-british-bulldog": {
+"file": "british-bulldog.jpg",
+"art": "c",
+"src": "wikipedia-en:https://upload.wikimedia.org/wikipedia/commons/f/f6/The_British_Bulldog.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
+},
+"pop-nano-elite": {
+"file": "nano-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/246/615140.jpg"
+},
+"pop-cayetana": {
+"file": "cayetana.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/331/827899.jpg"
+},
+"pop-rebeka": {
+"file": "rebeka.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/331/827900.jpg"
+},
+"pop-valerio": {
+"file": "valerio.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/210/526019.jpg"
+},
+"pop-ari-elite": {
+"file": "ari-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/318/796680.jpg"
+},
+"pop-mencia": {
+"file": "mencia.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/318/796679.jpg"
+},
+"pop-benjamin-blanco": {
+"file": "benjamin-blanco.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/331/827902.jpg"
+},
+"pop-isadora": {
+"file": "isadora.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/331/827929.jpg"
+},
+"pop-carmen-elite": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-lin-ghibli": {
+"file": "lin-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b5465-ZWJpBoYKPbAY.png"
+},
+"pop-bou": {
+"file": "bou.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b8302-nDLFWgXoulqJ.png"
+},
+"pop-la-sorciere-des-landes": {
+"file": "la-sorciere-des-landes.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b510-jrHhYextl4o0.png"
+},
+"pop-lisa-ghibli": {
+"file": "lisa-ghibli.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b17231-J6TPZzhN61m1.png"
+},
+"pop-granmamare": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-donald-curtin": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-muta": {
+"file": "muta.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b6152-QkvRHtVoPSJt.png"
+},
+"pop-shokichi": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-takashi-yamada": {
+"file": "takashi-yamada.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/80469.jpg"
+},
+"pop-matsuko-yamada": {
+"file": "matsuko-yamada.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/80471.jpg"
+},
+"pop-taku-morisaki": {
+"file": "taku-morisaki.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b19176-EN67LRlFssZo.png"
+},
+"pop-rikako-muto": {
+"file": "rikako-muto.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b16036-4xwWcWT4bplB.png"
+},
+"pop-earwig": {
+"file": "earwig.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b211232-qd6RWtOc62Wg.png"
+},
+"pop-ged": {
+"file": "ged.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b5375-cLJdmi1gBMtP.png"
+},
+"pop-arren": {
+"file": "arren.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b5374-67x7wLhhkGOG.png"
+},
+"pop-taeko-okajima": {
+"file": "taeko-okajima.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b10055-uNGsAkzMPVDI.png"
+},
+"jv-genshin-impact-alyosha": {
+"file": "genshin-impact-alyosha.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Alyosha.png"
+},
+"jv-genshin-impact-amber": {
+"file": "genshin-impact-amber.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Ambor.png"
+},
+"jv-genshin-impact-dahlia": {
+"file": "genshin-impact-dahlia.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Dahlia.png"
+},
+"jv-genshin-impact-dori": {
+"file": "genshin-impact-dori.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Dori.png"
+},
+"jv-genshin-impact-kachina": {
+"file": "genshin-impact-kachina.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Kachina.png"
+},
+"jv-genshin-impact-manekin": {
+"miss": [
+"genshin",
+"gi.yatta.moe (image refusée)"
+]
+},
+"jv-genshin-impact-manekina": {
+"miss": [
+"genshin",
+"gi.yatta.moe (image refusée)"
+]
+},
+"jv-genshin-impact-mika": {
+"file": "genshin-impact-mika.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Mika.png"
+},
+"jv-genshin-impact-mitya": {
+"file": "genshin-impact-mitya.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Mitya.png"
+},
+"jv-genshin-impact-odette": {
+"file": "genshin-impact-odette.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Odette.png"
+},
+"jv-genshin-impact-prune": {
+"file": "genshin-impact-prune.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Prune.png"
+},
+"jv-genshin-impact-sayu": {
+"file": "genshin-impact-sayu.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Sayu.png"
+},
+"jv-genshin-impact-valeriy": {
+"file": "genshin-impact-valeriy.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Valeriy.png"
+},
+"jv-genshin-impact-vesna": {
+"file": "genshin-impact-vesna.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Vesna.png"
+},
+"jv-genshin-impact-vodyanitsa": {
+"file": "genshin-impact-vodyanitsa.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Vodyanitsa.png"
+},
+"jv-genshin-impact-voyageur-aether": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-genshin-impact-voyageuse-lumine": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-genshin-impact-xinyan": {
+"file": "genshin-impact-xinyan.png",
+"art": "i",
+"src": "gi.yatta.moe:https://gi.yatta.moe/assets/UI/UI_Gacha_AvatarImg_Xinyan.png"
+},
+"jv-summoners-war-shannon": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-elucia": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-konamiya": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-teon": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-colleen": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-sieq": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-tarq": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-sath": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-thrain": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-tatu": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-ramagos": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-dagora": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-darion": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-jubelle": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-ahman": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"jv-summoners-war-slime": {
+"miss": [
+"aucune source (icônes 102 px)"
+]
+},
+"pop-eiji-shirogane": {
+"file": "eiji-shirogane.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b215054-MjyS6EJzOtBJ.png"
+},
+"pop-koujirou-furuhashi": {
+"file": "koujirou-furuhashi.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b215047-nnNIFKjhBm3n.png"
+},
+"pop-kentarou-seto": {
+"file": "kentarou-seto.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b215052-lg6zMEYxQ6Lk.png"
+},
+"pop-wei-liu": {
+"file": "wei-liu.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b53573-2KQe1hmmZoq9.png"
+},
+"jv-dofus-larve": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-gelee": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"jv-wakfu-crobak": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-c-19": {
+"file": "c-19.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/6115.jpg"
+},
+"spt-jules-segers": {
+"file": "jules-segers.jpg",
+"art": "c",
+"src": "wikipedia-fr:https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0a/Portrait_de_Jules_Segers.jpg/960px-Portrait_de_Jules_Segers.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=thumbnail"
+},
+"spt-lou-braz-dagand": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-jordan-broisin": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-oscar-burnham": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-manoel-bourdenx": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-blob": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-hector-fast-furious": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-kamata": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-mose-jakande": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-fenix": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-kain-hikaru": {
+"file": "kain-hikaru.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/n47861-NQPumZ3oxNMy.jpg"
+},
+"pop-jet-fairy-tail": {
+"file": "jet-fairy-tail.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/29490.jpg"
+},
+"pop-droy": {
+"file": "droy.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/29491.jpg"
+},
+"pop-erigor": {
+"file": "erigor.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/27788.jpg"
+},
+"pop-jude-heartfilia": {
+"file": "jude-heartfilia.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/36685.jpg"
+},
+"pop-weisslogia": {
+"file": "weisslogia.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/n86275-HJ8zter6vFGH.jpg"
+},
+"pop-skiadrum": {
+"file": "skiadrum.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/n86277-hCOjJuQlbouO.jpg"
+},
+"pop-madmole": {
+"file": "madmole.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b154972-mDRvHp5GkvuI.png"
+},
+"pop-skullion-raider": {
+"file": "skullion-raider.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b154974-YAaez5fJ4oEn.png"
+},
+"pop-torafuzar": {
+"file": "torafuzar.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b131090-Exb3U3PLw5cO.jpg"
+},
+"pop-tempester": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-franmalth": {
+"file": "franmalth.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/n131092-zUqvufznC7pe.jpg"
+},
+"pop-ezel": {
+"file": "ezel.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/n131089-w5HJr9XoMFDO.jpg"
+},
+"spt-peter-lol": {
+"miss": [
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"spt-cyanide": {
+"file": "cyanide.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/6/6c/Cyanide_LEC_2026_Summer.jpg"
+},
+"spt-hjarnan": {
+"file": "hjarnan.png",
+"art": "i",
+"src": "liquipedia:https://liquipedia.net/commons/images/2/29/Team_GamerLegion_Hjarnan_2021.png"
+},
+"spt-fifflaren": {
+"file": "fifflaren.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/fc/Fifflaren_%40_CSS6.jpg"
+},
+"spt-mzinho": {
+"file": "mzinho.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/d/d9/Mzinho_at_Esports_World_Cup_2026_LCQ.jpg"
+},
+"spt-techno": {
+"file": "techno.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/d/d9/Techno4K_at_BLAST_Open_Spring_2026.jpg"
+},
+"spt-gob-b": {
+"file": "gob-b.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/6/61/Gob_b_at_ESL_Pro_League_S19.jpg"
+},
+"spt-snappi": {
+"file": "snappi.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/5/5c/Snappi_at_IEM_Krakow_2026.jpg"
+},
+"spt-dennis-cs": {
+"file": "dennis-cs.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/7/73/Dennis_%40_EPICENTER_2018.jpg"
+},
+"spt-misutaaa": {
+"file": "misutaaa.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/f/f1/Misutaaa_at_PGL_Bucharest_2026.jpg"
+},
+"spt-nafany": {
+"file": "nafany.jpg",
+"art": "c",
+"src": "liquipedia:https://liquipedia.net/commons/images/a/ad/Nafany_at_ESL_Pro_League_S24.jpg"
+},
+"pop-phillipe-elite": {
+"file": "phillipe-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/318/796681.jpg"
+},
+"pop-armando": {
+"file": "armando.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/331/827901.jpg"
+},
+"pop-cruz-carvalho": {
+"file": "cruz-carvalho.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/434/1086247.jpg"
+},
+"pop-chloe-elite": {
+"file": "chloe-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/528/1322397.jpg"
+},
+"pop-nico-elite": {
+"file": "nico-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/434/1086089.jpg"
+},
+"pop-sara-elite": {
+"file": "sara-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/434/1086082.jpg"
+},
+"pop-hector-elite": {
+"file": "hector-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/529/1324004.jpg"
+},
+"pop-emilia-elite": {
+"file": "emilia-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/529/1324005.jpg"
+},
+"pop-eric-elite": {
+"file": "eric-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/529/1324301.jpg"
+},
+"pop-joel-elite": {
+"file": "joel-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/528/1322399.jpg"
+},
+"pop-didac": {
+"file": "didac.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/434/1086122.jpg"
+},
+"pop-raul-elite": {
+"file": "raul-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/434/1086186.jpg"
+},
+"pop-rocio": {
+"file": "rocio.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/434/1086187.jpg"
+},
+"pop-hugo-elite": {
+"file": "hugo-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/434/1086112.jpg"
+},
+"pop-sonia-elite": {
+"file": "sonia-elite.jpg",
+"art": "c",
+"src": "tvmaze:https://static.tvmaze.com/uploads/images/original_untouched/434/1086150.jpg"
+},
+"pop-markl": {
+"file": "markl.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b509-6VwYgQtqu63T.jpg"
+},
+"pop-oroku": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-gonta": {
+"miss": [
+"anilist",
+"genshin",
+"dofus",
+"liquipedia",
+"tvmaze",
+"wiki"
+]
+},
+"pop-nonoko-yamada": {
+"file": "nonoko-yamada.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/39865.jpg"
+},
+"pop-shige-yamada": {
+"file": "shige-yamada.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/80473.jpg"
+},
+"pop-yutaka-matsuno": {
+"file": "yutaka-matsuno.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b19177-OfkBkU5xuUPL.jpg"
+},
+"pop-bella-yaga": {
+"file": "bella-yaga.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b211234-WpIgK2zPw6VF.png"
+},
+"pop-mandrake": {
+"file": "mandrake.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b211236-EZ8AqPiun4re.png"
+},
+"pop-therru": {
+"file": "therru.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b5312-B3SXAKTjnnI3.png"
+},
+"pop-cob": {
+"file": "cob.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b5377-wozK5lrTJYxL.png"
+},
+"pop-toshio": {
+"file": "toshio.jpg",
+"art": "c",
+"src": "anilist:https://s4.anilist.co/file/anilistcdn/character/large/b173635-tGSHM6OHuHDS.jpg"
+}
+}
