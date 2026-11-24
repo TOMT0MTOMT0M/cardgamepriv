@@ -10657,8 +10657,9 @@
 },
 "geo-pays-japon": {
 "art": "c",
-"file": "144-pays-japon.png",
-"src": "v1"
+"file": "144-pays-japon-r2611242027.jpg",
+"src": "reillustre:geo-pays-japon.jpg",
+"t": 1795552042
 },
 "geo-pays-jordanie": {
 "art": "c",
@@ -16432,10 +16433,10 @@
 "t": 1793646541
 },
 "miam-miel-pops": {
-"art": "i",
-"file": "snacks-marques-fast-food--miel-pops.png",
-"src": "wiki:Miel Pops",
-"t": 1793645597
+"art": "c",
+"file": "snacks-marques-fast-food--miel-pops-r2611242027.jpg",
+"src": "reillustre:miam-miel-pops.jpg",
+"t": 1795552042
 },
 "miam-miko": {
 "art": "i",

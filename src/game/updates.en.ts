@@ -26,6 +26,17 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '24 Nov', title: 'Entrance themes, colour sound waves', tag: 'amélioré',
+        points: [
+          '🎵 Sound waves in colour: bass in the middle, treble on the edges; they follow the kick drum and sparkle on the highs.',
+          '🤼 Every 6★ wrestler walks out to his entrance theme: The Undertaker, Stone Cold, The Rock, John Cena, Triple H…',
+          '🏆 “Ramenez la coupe à la maison” for Griezmann and Kanté, “RISE” for the LoL World Championship, “Take Over” for ShowMaker.',
+          '🎮 League of Legends 6★ play the Summoner’s Rift music (season 1), Palworld its theme.',
+          '📺 New openings: Assassination Classroom, Steins;Gate, Detective Conan, Doraemon, Mushoku Tensei, Seven Deadly Sins… Rambo, Aizen, and “Inferno” for the Berserk Eclipse.',
+          '🖼️ 42 cards in full art: Perceval and the Joker re-centred, Rimuru, Subaru, Michonne, Thierry Henry, Randy Orton…',
+        ],
+      },
+      {
         date: '23 Nov', title: 'Tighter Roulette, new 6★', tag: 'amélioré',
         points: [
           '🎲 Roulette: just one number per draw. The bet: 1,500 coins, 2 5★ cards or 1 6★ card (4★ cards can’t be bet anymore).',

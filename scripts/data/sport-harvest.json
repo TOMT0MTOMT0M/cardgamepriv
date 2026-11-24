@@ -6757,9 +6757,9 @@
 },
 "spt-canyon": {
 "art": "c",
-"file": "canyon.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793663541
+"file": "canyon-r2611242027.jpg",
+"src": "reillustre:spt-canyon.jpg",
+"t": 1795552041
 },
 "spt-capcom-cup": {
 "art": "i",
@@ -27013,9 +27013,9 @@
 },
 "spt-lilian-thuram": {
 "art": "c",
-"file": "lilian-thuram.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793662778
+"file": "lilian-thuram-r2611242027.jpg",
+"src": "reillustre:spt-lilian-thuram.jpg",
+"t": 1795552042
 },
 "spt-liliana-fernandez": {
 "art": "c",
@@ -31399,9 +31399,9 @@
 },
 "spt-michel-platini": {
 "art": "c",
-"file": "michel-platini.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793662787
+"file": "michel-platini-r2611242027.jpg",
+"src": "reillustre:spt-michel-platini.jpg",
+"t": 1795552042
 },
 "spt-michel-preud-homme": {
 "art": "c",
@@ -37315,9 +37315,9 @@
 },
 "spt-randy-orton": {
 "art": "c",
-"file": "randy-orton.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793662738
+"file": "randy-orton-r2611242027.jpg",
+"src": "reillustre:spt-randy-orton.jpg",
+"t": 1795552042
 },
 "spt-randy-savage": {
 "art": "c",
@@ -43644,10 +43644,10 @@
 "t": 1793664233
 },
 "spt-team-vitality": {
-"art": "i",
-"file": "team-vitality.png",
-"src": "liquipedia.net",
-"t": 1793662996
+"art": "c",
+"file": "team-vitality-r2611242027.jpg",
+"src": "reillustre:spt-team-vitality.jpg",
+"t": 1795552042
 },
 "spt-ted-dibiase": {
 "art": "c",
@@ -43999,9 +43999,9 @@
 },
 "spt-thierry-henry": {
 "art": "c",
-"file": "thierry-henry.jpg",
-"src": "commons.wikimedia.org",
-"t": 1793662784
+"file": "thierry-henry-r2611242027.jpg",
+"src": "reillustre:spt-thierry-henry.jpg",
+"t": 1795552042
 },
 "spt-thierry-lacroix": {
 "art": "",

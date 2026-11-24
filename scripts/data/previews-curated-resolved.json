@@ -354,12 +354,10 @@
 "link": "https://www.deezer.com/track/976074582"
 },
 "cards:pop-francis-poulenc": null,
-"anime:assassination-classroom": null,
 "anime:bocchi-the-rock": null,
 "anime:carnet-de-l-apothicaire": null,
 "anime:clannad": null,
 "anime:danmachi": null,
-"anime:doraemon": null,
 "anime:dororo": null,
 "anime:erased": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ba/b9/a9/bab9a9bd-b5d0-a859-9979-64e145329e44/mzaf_10623918216088308201.plus.aac.p.m4a",
@@ -385,7 +383,6 @@
 "artist": "Mrs. GREEN APPLE",
 "link": "https://music.apple.com/fr/album/inferno/1471459431?i=1471459432&uo=4"
 },
-"anime:food-wars": null,
 "anime:free": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a1/8a/2b/a18a2b11-e78a-a734-9002-2c95a6a4a714/mzaf_12951810376310759472.plus.aac.p.m4a",
 "track": "Rage on",
@@ -450,7 +447,6 @@
 "link": "https://music.apple.com/fr/album/under-star/1772867911?i=1772867912&uo=4"
 },
 "anime:hell-s-paradise": null,
-"anime:high-school-dxd": null,
 "anime:horimiya": {
 "deezer": 1212802752,
 "track": "Irokousui",
@@ -535,8 +531,6 @@
 "anime:monogatari": null,
 "anime:pop-monster": null,
 "anime:moriarty-the-patriot": null,
-"anime:mushoku-tensei": null,
-"anime:my-dress-up-darling": null,
 "anime:my-hero-academia": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/6a/5a/57/6a5a570e-6a98-f3b3-a30a-782e02f59c0c/mzaf_15658015507799278484.plus.aac.p.m4a",
 "track": "The Day",
@@ -609,12 +603,6 @@
 "artist": "Ling tosite sigure",
 "link": "https://music.apple.com/fr/album/abnormalize/1535528829?i=1535528830&uo=4"
 },
-"anime:ranking-of-kings": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/78/40/9a/78409a26-c3bb-e861-7d2f-4accb92351fb/mzaf_8803043749982004835.plus.aac.p.m4a",
-"track": "BOY",
-"artist": "King Gnu",
-"link": "https://music.apple.com/fr/album/boy/1594389374?i=1594389376&uo=4"
-},
 "anime:re-zero": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/8b/8d/69/8b8d69cd-3cec-3ce4-4d0b-b74bce836fad/mzaf_2710651149119735979.plus.aac.p.m4a",
 "track": "Redo",
@@ -645,7 +633,6 @@
 "artist": "SawanoHiroyuki[nZk]",
 "link": "https://music.apple.com/fr/album/x-u-feat-gemie/1537253796?i=1537253801&uo=4"
 },
-"anime:seven-deadly-sins": null,
 "anime:sk8-the-infinity": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/96/6b/e6/966be662-96a8-3b4f-1d4e-80fd9a385e92/mzaf_1353821373665824705.plus.aac.p.m4a",
 "track": "Paradise",
@@ -660,7 +647,6 @@
 "link": "https://music.apple.com/fr/album/level-feat-tomorrow-x-together/1718526122?i=1718526128&uo=4"
 },
 "anime:soul-eater": null,
-"anime:steins-gate": null,
 "anime:sword-art-online": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/7b/98/f8/7b98f82c-21e1-e719-88ed-a94812bf02c7/mzaf_4584398930797681924.plus.aac.p.m4a",
 "track": "crossing field",
@@ -698,7 +684,6 @@
 "artist": "UVERworld",
 "link": "https://music.apple.com/fr/album/touch-off/1538276680?i=1538276685&uo=4"
 },
-"anime:the-quintessential-quintuplets": null,
 "anime:the-rising-of-the-shield-hero": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/32/97/f7/3297f787-07bd-82a2-c8d6-36058305de65/mzaf_5879924883985778216.plus.aac.p.m4a",
 "track": "Rise",
@@ -771,12 +756,6 @@
 "track": "Rose (1st Opening Song)",
 "artist": "ANNA TSUCHIYA inspi' NANA(BLACK STONES)",
 "link": "https://music.apple.com/fr/album/rose-1st-opening-song/250046265?i=250046270&uo=4"
-},
-"ambience:eclipse": {
-"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/3b/a1/a7/3ba1a77f-0ce9-156f-a485-b6be47c4bde2/mzaf_13901538488822440811.plus.aac.p.m4a",
-"track": "Behelit",
-"artist": "Susumu Hirasawa",
-"link": "https://music.apple.com/fr/album/behelit/1652625970?i=1652625971&uo=4"
 },
 "cards:pop-give-me-the-night": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/35/54/ab/3554ab34-cf55-6b9f-5a86-dde12c2bf753/mzaf_8529875484408625468.plus.aac.p.m4a",
@@ -1389,12 +1368,6 @@
 "track": "Stressed Out",
 "artist": "twenty one pilots",
 "link": "https://music.apple.com/fr/album/stressed-out/974485462?i=974485474&uo=4"
-},
-"cards:pop-6ix9ine": {
-"deezer": 2495268871,
-"track": "GUMMO",
-"artist": "6IX9INE",
-"link": "https://www.deezer.com/track/2495268871"
 },
 "cards:pop-bullet-for-my-valentine": {
 "url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/66/35/09/66350950-05dd-7317-1c59-420cd96af8c4/mzaf_3162759846073950494.plus.aac.p.m4a",
@@ -2044,7 +2017,6 @@
 "artist": "THREE LIGHTS DOWN KINGS",
 "link": "https://music.apple.com/fr/album/glorious-days/1057930042?i=1057930050&uo=4"
 },
-"anime:detective-conan": null,
 "anime:inazuma-eleven": null,
 "anime:space-dandy": null,
 "anime:yu-gi-oh-5d-s": null,
@@ -3451,5 +3423,245 @@
 "track": "ミスディレクション",
 "artist": "中西亮輔",
 "link": "https://music.apple.com/jp/album/%E3%83%9F%E3%82%B9%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%82%B7%E3%83%A7%E3%83%B3/878868676?i=878868707&uo=4"
+},
+"cards:pop-6ix9ine": {
+"deezer": 2495268861,
+"track": "BILLY",
+"artist": "6IX9INE",
+"link": "https://www.deezer.com/track/2495268861"
+},
+"cards:spt-antoine-griezmann": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-n-golo-kante": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-championnat-du-monde-de-lol": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/99/7a/01/997a013b-ad4e-002e-d577-03c7790a0282/mzaf_446268556763871468.plus.aac.p.m4a",
+"track": "RISE (feat. The Glitch Mob)",
+"artist": "League of Legends Music, Mako & The Word Alive",
+"link": "https://music.apple.com/fr/album/rise-feat-the-glitch-mob/1833059353?i=1833059354&uo=4"
+},
+"cards:spt-showmaker": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/4a/0e/2c/4a0e2cf9-17ec-d511-9e12-fb0f4cd8c14e/mzaf_5748829773893919653.plus.aac.p.m4a",
+"track": "Take Over (feat. Jeremy McKinnon of A Day To Remember & HENRY)",
+"artist": "League of Legends Music & MAX",
+"link": "https://music.apple.com/fr/album/take-over-feat-jeremy-mckinnon-of-a-day-to-remember-henry/1833082572?i=1833082575&uo=4"
+},
+"cards:spt-canyon": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/4a/0e/2c/4a0e2cf9-17ec-d511-9e12-fb0f4cd8c14e/mzaf_5748829773893919653.plus.aac.p.m4a",
+"track": "Take Over (feat. Jeremy McKinnon of A Day To Remember & HENRY)",
+"artist": "League of Legends Music & MAX",
+"link": "https://music.apple.com/fr/album/take-over-feat-jeremy-mckinnon-of-a-day-to-remember-henry/1833082572?i=1833082575&uo=4"
+},
+"cards:spt-nuguri": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/4a/0e/2c/4a0e2cf9-17ec-d511-9e12-fb0f4cd8c14e/mzaf_5748829773893919653.plus.aac.p.m4a",
+"track": "Take Over (feat. Jeremy McKinnon of A Day To Remember & HENRY)",
+"artist": "League of Legends Music & MAX",
+"link": "https://music.apple.com/fr/album/take-over-feat-jeremy-mckinnon-of-a-day-to-remember-henry/1833082572?i=1833082575&uo=4"
+},
+"cards:spt-a-j-styles": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/3d/d6/7e/3dd67ed8-5acf-e64c-7f4a-491c36694378/mzaf_4894865062370303257.plus.aac.p.m4a",
+"track": "WWE: Phenomenal (AJ Styles)",
+"artist": "CFO$",
+"link": "https://music.apple.com/fr/album/wwe-phenomenal-aj-styles/1079614530?i=1079614536&uo=4"
+},
+"cards:spt-big-show": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/eb/8a/10/eb8a1043-3f2f-fedc-fc08-57bee1039475/mzaf_13778633091797169864.plus.aac.p.m4a",
+"track": "Crank It Up (Big Show)",
+"artist": "Brand New Sin",
+"link": "https://music.apple.com/fr/album/crank-it-up-big-show/404193254?i=404193329&uo=4"
+},
+"cards:spt-chris-jericho": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/df/0c/40/df0c40c7-0fd4-b0d4-dfb3-b79aab7f7313/mzaf_17330119972229735353.plus.aac.p.m4a",
+"track": "Break the Walls Down (Chris Jericho)",
+"artist": "Jim Johnston",
+"link": "https://music.apple.com/fr/album/break-the-walls-down-chris-jericho/621624800?i=621624922&uo=4"
+},
+"cards:spt-cm-punk": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/7f/f6/f6/7ff6f6e9-9861-ae3e-9552-01bb314caf55/mzaf_7719516825130822246.plus.aac.p.m4a",
+"track": "Cult of Personality (CM Punk Theme Song) [Re-Recorded]",
+"artist": "Living Colour",
+"link": "https://music.apple.com/fr/album/cult-of-personality-cm-punk-theme-song-re-recorded/496422566?i=496422567&uo=4"
+},
+"cards:spt-cody-rhodes": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/97/52/03/97520367-2be4-5b05-838e-2cccb7bdb43c/mzaf_10875516587182080741.plus.aac.p.m4a",
+"track": "Kingdom",
+"artist": "Downstait",
+"link": "https://music.apple.com/fr/album/kingdom/1143476214?i=1143476258&uo=4"
+},
+"cards:spt-hulk-hogan": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/b0/50/49/b05049b7-6324-dfbe-c3f6-1d2b45401bbf/mzaf_1629037088482728758.plus.aac.p.m4a",
+"track": "Real American",
+"artist": "Rick Derringer",
+"link": "https://music.apple.com/fr/album/real-american/879563721?i=879563780&uo=4"
+},
+"cards:spt-john-cena": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/89/26/b3/8926b384-5af1-549b-c9d3-dba5415383fd/mzaf_13911492292269313425.plus.aac.p.m4a",
+"track": "The Time Is Now",
+"artist": "John Cena & Tha Trademarc",
+"link": "https://music.apple.com/fr/album/the-time-is-now/404224548?i=404224691&uo=4"
+},
+"cards:spt-kane": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/4c/29/2a/4c292a01-7101-11c3-5a49-5317e0550ae5/mzaf_8917549108413521179.plus.aac.p.m4a",
+"track": "Veil of Fire (Kane)",
+"artist": "Jim Johnston",
+"link": "https://music.apple.com/fr/album/veil-of-fire-kane/490681104?i=490681439&uo=4"
+},
+"cards:spt-randy-orton": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/dc/fa/64/dcfa6429-df48-95d8-225e-7fe754b318cd/mzaf_2855348577779060180.plus.aac.p.m4a",
+"track": "Voices (Randy Orton) [feat. Rev Theory]",
+"artist": "Jim Johnston",
+"link": "https://music.apple.com/fr/album/voices-randy-orton-feat-rev-theory/805079605?i=805079743&uo=4"
+},
+"cards:spt-randy-savage": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/5b/d4/eb/5bd4eb19-0ac7-f19f-15ad-e55f2ef9160d/mzaf_5750818104106210106.plus.aac.p.m4a",
+"track": "Pomp and Circumstance (Macho Man Randy Savage)",
+"artist": "Jimmy Hart & Howard Helm",
+"link": "https://music.apple.com/fr/album/pomp-and-circumstance-macho-man-randy-savage/853467370?i=853467455&uo=4"
+},
+"cards:spt-rey-mysterio": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/dd/61/8e/dd618eb3-c57b-eaeb-e0b0-9dc0399282c0/mzaf_6830392548775862599.plus.aac.p.m4a",
+"track": "Booyaka 619 (Rey Mysterio)",
+"artist": "P.O.D.",
+"link": "https://music.apple.com/fr/album/booyaka-619-rey-mysterio/404193254?i=404193371&uo=4"
+},
+"cards:spt-ric-flair": {
+"deezer": 66644254,
+"track": "Also sprach Zarathustra, Op. 30 : R. Strauss: Also sprach Zarathustra, Op. 30: I. Prelude. Sonnenaufgang",
+"artist": "Berliner Philharmoniker",
+"link": "https://www.deezer.com/track/66644254"
+},
+"cards:spt-roman-reigns": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/93/e9/f6/93e9f6f6-a20a-8e17-02b7-8d20600793d7/mzaf_8786178220229247351.plus.aac.p.m4a",
+"track": "WWE: Head of the Table (Roman Reigns)",
+"artist": "def rebel",
+"link": "https://music.apple.com/fr/album/wwe-head-of-the-table-roman-reigns/1565889945?i=1565889946&uo=4"
+},
+"cards:spt-stone-cold-steve-austin": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f1/34/86/f134867e-5e31-16e8-d56f-bd7164780723/mzaf_3599007837244345214.plus.aac.p.m4a",
+"track": "WWE: I Won’t Do What You Tell Me (Stone Cold Steve Austin) [Original Theme]",
+"artist": "Jim Johnston",
+"link": "https://music.apple.com/fr/album/wwe-i-wont-do-what-you-tell-me-stone-cold-steve-austin/443701278?i=443701280&uo=4"
+},
+"cards:spt-the-rock": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/88/ea/0f/88ea0f6f-4d4a-fcc7-da60-3e9c9ff3dd92/mzaf_6326161714496896991.plus.aac.p.m4a",
+"track": "Electrifying (The Rock)",
+"artist": "Jim Johnston",
+"link": "https://music.apple.com/fr/album/electrifying-the-rock/630110705?i=630110914&uo=4"
+},
+"cards:spt-the-undertaker": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/20/cf/d3/20cfd313-a7ec-6a16-19a5-27909c0060a3/mzaf_10644637470975628749.plus.aac.p.m4a",
+"track": "Rest In Peace (Undertaker)",
+"artist": "Jim Johnston",
+"link": "https://music.apple.com/fr/album/rest-in-peace-undertaker/857570674?i=857570702&uo=4"
+},
+"cards:spt-triple-h": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/bf/26/85/bf268512-f608-4c9d-6688-e297fcaacdaa/mzaf_17165058747721110942.plus.aac.p.m4a",
+"track": "The Game (Triple H)",
+"artist": "Motörhead",
+"link": "https://music.apple.com/fr/album/the-game-triple-h/857570674?i=857570739&uo=4"
+},
+"cards:pop-sousuke-aizen": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/94/fc/c0/94fcc007-85f7-32c6-3963-62972496edcc/mzaf_10796593184134874622.plus.aac.p.m4a",
+"track": "Treachery",
+"artist": "Shiro SAGISU",
+"link": "https://music.apple.com/fr/album/treachery/1645826062?i=1645826766&uo=4"
+},
+"anime:assassination-classroom": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/32/e5/35/32e53581-68d6-f8b0-56b1-577fa866abe4/mzaf_5358967021245455472.plus.aac.p.m4a",
+"track": "青春サツバツ論(TVサイズ)",
+"artist": "3-nen E-gumi Utatan",
+"link": "https://music.apple.com/fr/album/%E9%9D%92%E6%98%A5%E3%82%B5%E3%83%84%E3%83%90%E3%83%84%E8%AB%96-tv%E3%82%B5%E3%82%A4%E3%82%BA/952233560?i=952233564&uo=4"
+},
+"anime:doraemon": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/3c/74/34/3c74348f-9833-cad6-f45b-43165c292d37/mzaf_2260428900975030446.plus.aac.p.m4a",
+"track": "ドラえもんのうた",
+"artist": "大杉久美子 & ドラえもん (CV: 大山のぶ代)",
+"link": "https://music.apple.com/jp/album/%E3%83%89%E3%83%A9%E3%81%88%E3%82%82%E3%82%93%E3%81%AE%E3%81%86%E3%81%9F/1465221497?i=1465221751&uo=4"
+},
+"anime:food-wars": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/83/18/9d/83189dbe-e2c8-66bb-c270-0d6d11e7a1bc/mzaf_17162660722184166606.plus.aac.p.m4a",
+"track": "希望の唄(TVアニメVer.)",
+"artist": "Ultra Tower",
+"link": "https://music.apple.com/fr/album/%E5%B8%8C%E6%9C%9B%E3%81%AE%E5%94%84-tv%E3%82%A2%E3%83%8B%E3%83%A1ver/977541837?i=977541838&uo=4"
+},
+"anime:high-school-dxd": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/bb/a7/2a/bba72ad2-07be-5b1a-612a-ce3834b688e8/mzaf_2325513338659278229.plus.aac.p.m4a",
+"track": "SWITCH (TV Size)",
+"artist": "栗林みな実",
+"link": "https://music.apple.com/jp/album/switch-tv-size/1400226172?i=1400226208&uo=4"
+},
+"anime:mushoku-tensei": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/1c/98/a5/1c98a566-9f88-f32f-8e71-8a899a264998/mzaf_4552679178481835944.plus.aac.p.m4a",
+"track": "旅人の唄",
+"artist": "Yuiko Ohara",
+"link": "https://music.apple.com/fr/album/%E6%97%85%E4%BA%BA%E3%81%AE%E5%94%84/1546070313?i=1546070706&uo=4"
+},
+"anime:my-dress-up-darling": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/3c/30/73/3c3073a0-1753-2616-fddc-56608b4b6be7/mzaf_13900905045402209325.plus.aac.p.m4a",
+"track": "アオとキラメキ (TV Size)",
+"artist": "Spira Spica",
+"link": "https://music.apple.com/fr/album/%E3%82%A2%E3%82%AA%E3%81%A8%E3%82%AD%E3%83%A9%E3%83%A1%E3%82%AD-tv-size/1828469479?i=1828469922&uo=4"
+},
+"anime:ranking-of-kings": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/d6/7b/19/d67b1925-8936-d652-085d-31bd38b46087/mzaf_15125331200186203967.plus.aac.p.m4a",
+"track": "裸の勇者",
+"artist": "Vaundy",
+"link": "https://music.apple.com/fr/album/%E8%A3%B8%E3%81%AE%E5%8B%87%E8%80%85/1600223382?i=1600223385&uo=4"
+},
+"anime:seven-deadly-sins": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/0a/bd/7e/0abd7e55-e3b3-e91d-beb6-c85c98396d0b/mzaf_11186076089191573052.plus.aac.p.m4a",
+"track": "熱情のスペクトラム",
+"artist": "Ikimonogakari",
+"link": "https://music.apple.com/fr/album/%E7%86%B1%E6%83%85%E3%81%AE%E3%82%B9%E3%83%9A%E3%82%AF%E3%83%88%E3%83%A9%E3%83%A0/1536271839?i=1536271840&uo=4"
+},
+"anime:steins-gate": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/0a/ef/37/0aef37f1-33cf-9709-a915-c6eefbaca10e/mzaf_2439740660429779137.plus.aac.p.m4a",
+"track": "Hacking to the Gate",
+"artist": "ITO KANAKO",
+"link": "https://music.apple.com/fr/album/hacking-to-the-gate/1843786356?i=1843786357&uo=4"
+},
+"anime:the-quintessential-quintuplets": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ee/1c/64/ee1c6412-9739-4dab-2856-681ad1158561/mzaf_6020906809372945873.plus.aac.p.m4a",
+"track": "五等分の気持ち (TV EDIT)",
+"artist": "中野家の五つ子(花澤香菜・竹達彩奈・伊藤美来・佐倉綾音・水瀬いのり)",
+"link": "https://music.apple.com/fr/album/%E4%BA%94%E7%AD%89%E5%88%86%E3%81%AE%E6%B0%97%E6%8C%81%E3%81%A1-tv-edit/1682466135?i=1682466412&uo=4"
+},
+"anime:detective-conan": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/7b/78/bc/7b78bc79-4a7d-b71d-0ae0-3ca3dccb4b67/mzaf_1167642714457267046.plus.aac.p.m4a",
+"track": "Detective Conan Main Theme (The Time-Bombed Skyscraper Version)",
+"artist": "Katsuo Ohno",
+"link": "https://music.apple.com/fr/album/detective-conan-main-theme-the-time-bombed-skyscraper/1547554319?i=1547554568&uo=4"
+},
+"screen:rambo": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/4d/6a/07/4d6a07d1-1c11-8e08-6bb0-7d1b4427e3ed/mzaf_251312441015518886.plus.aac.p.m4a",
+"track": "Homecoming (Film Version)",
+"artist": "Jerry Goldsmith",
+"link": "https://music.apple.com/fr/album/homecoming-film-version/1814261956?i=1814262506&uo=4"
+},
+"screen:jv-palworld": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/1e/44/91/1e4491eb-13ea-3f78-b297-b937a385c156/mzaf_15684316800577606103.plus.aac.p.m4a",
+"track": "Theme of Palworld",
+"artist": "矢野達也",
+"link": "https://music.apple.com/fr/album/theme-of-palworld/6795289364?i=6795289757&uo=4"
+},
+"screen:lol": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/8d/f3/5d/8df35dbf-8b2d-fd57-873b-f777621e6b24/mzaf_8444876684901951553.plus.aac.p.m4a",
+"track": "Classic Summoner's Rift - Pt. 1 (From League of Legends: Season 1)",
+"artist": "League of Legends Music",
+"link": "https://music.apple.com/fr/album/classic-summoners-rift-pt-1-from-league-of-legends-season-1/1832618165?i=1832618245&uo=4"
+},
+"ambience:eclipse": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/df/64/07/df6407ac-3e64-2560-fc37-92dc2484171b/mzaf_10620522999773024245.plus.aac.p.m4a",
+"track": "inferno",
+"artist": "9mm Parabellum Bullet",
+"link": "https://music.apple.com/fr/album/inferno/1821456058?i=1821456121&uo=4"
 }
 }

@@ -6,7 +6,7 @@ import { catalogEntry } from '../core/sets/themes';
  *  1. sachet fermé : l'aura passe aux couleurs de la lune rouge et la scène s'assombrit (spoil assumé — seule
  *     exception à la lueur neutre) ;
  *  2. une fois descellé : le soleil noir et sa couronne, le lac-miroir, des temps lents (scenes/opening.ts), et
- *     l'extrait « Behelit » en fond (musicPreview.ts, `playAmbience`).
+ *     l’extrait « Inferno » (9mm Parabellum Bullet, opening de 2016 ; « Behelit » avant le 24/11) en fond (musicPreview.ts, `playAmbience`).
  * 6★ Berserk : l'Éclipse remplace la case de manga des animés. À l'ouverture, l'ambiance ci-dessus tient lieu de prélude ;
  * dans la visionneuse, la scène 6★ « Éclipse » (mythic/scenes/eclipse.ts), avec « Rejouer ». « Effets réduits » : couleur et assombrissement seulement (la musique reste).
  */

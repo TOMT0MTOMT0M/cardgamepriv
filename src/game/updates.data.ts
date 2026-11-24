@@ -61,6 +61,17 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '24 nov.', title: 'Musiques d’entrée, ondes en couleur', tag: 'amélioré',
+        points: [
+          '🎵 Ondes sonores en couleur : les graves au centre, les aigus sur les bords ; elles suivent la grosse caisse et scintillent sur les aigus.',
+          '🤼 Chaque catcheur 6★ arrive sur sa musique d’entrée : The Undertaker, Stone Cold, The Rock, John Cena, Triple H…',
+          '🏆 « Ramenez la coupe à la maison » pour Griezmann et Kanté, « RISE » pour le Championnat du monde de LoL, « Take Over » pour ShowMaker.',
+          '🎮 Les 6★ League of Legends jouent la musique de la Faille de l’invocateur (saison 1), Palworld son thème.',
+          '📺 Nouveaux openings : Assassination Classroom, Steins;Gate, Detective Conan, Doraemon, Mushoku Tensei, Seven Deadly Sins… Rambo, Aizen, et « Inferno » pour l’Éclipse de Berserk.',
+          '🖼️ 42 cartes en pleine illustration : Perceval, le Joker recentrés, Rimuru, Subaru, Michonne, Thierry Henry, Randy Orton…',
+        ],
+      },
+      {
         date: '23 nov.', title: 'Roulette resserrée, nouvelles 6★', tag: 'amélioré',
         points: [
           '🎲 Roulette : un seul numéro par tirage. La mise : 1 500 pièces, 2 cartes 5★ ou 1 carte 6★ (les 4★ ne se misent plus).',
