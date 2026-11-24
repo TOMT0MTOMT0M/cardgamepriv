@@ -61,6 +61,16 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '25 nov.', title: 'Le grand rangement : 848 nouvelles cartes', tag: 'nouveau',
+        points: [
+          '🆕 848 nouvelles cartes : Dofus et Wakfu, Genshin Impact, Summoners War, Studio Ghibli, catch, esport LoL et CS, paralympiques, X-Men, Élite, Fast & Furious…',
+          '🗂️ Albums rangés autrement : le foot par poste (attaquants, milieux, défenseurs, gardiens, entraîneurs), les voitures par origine, un seul album Ghibli, Yu-Gi-Oh et Pays, régions & départements ; « Chansons » devient « Singles ».',
+          '⭐ Plus de 500 cartes changent d’étoiles (nouvelles 6★ : Roman Reigns, Nuguri, Canyon, m0NESY, NiKo, Chihiro, Totoro…).',
+          '🔁 Les cartes en double (Hulk Hogan acteur et catch…) n’en font plus qu’une : tes exemplaires passent sur la carte gardée, rien n’est perdu.',
+          '✷ Les cartes Bébous peuvent de nouveau tomber du Bébou Pack.',
+        ],
+      },
+      {
         date: '24 nov.', title: 'Musiques d’entrée, ondes en couleur', tag: 'amélioré',
         points: [
           '🎵 Ondes sonores en couleur : les graves au centre, les aigus sur les bords ; elles suivent la grosse caisse et scintillent sur les aigus.',
