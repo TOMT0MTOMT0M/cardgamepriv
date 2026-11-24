@@ -30,6 +30,8 @@ echo [2/5] serveur Convex de staging (%V2%)...
 call node scripts\staging-v2.mjs deploy >> "%LOG%" 2>&1 || goto :err
 call npx convex run --deployment %V2% migrations:resyncRarities >> "%LOG%" 2>&1 || goto :err
 call npx convex run --deployment %V2% migrations:resyncRaritiesOpen >> "%LOG%" 2>&1 || goto :err
+rem (24/11, V3) doublons de la base Etoiles : transferes sur la carte gardee avant la purge
+call npx convex run --deployment %V2% migrations:remapCards >> "%LOG%" 2>&1 || goto :err
 call npx convex run --deployment %V2% migrations:purgeCards >> "%LOG%" 2>&1 || goto :err
 rem (V2 fluidite, lot 4) gros tirages marques pour l'index by_big (idempotent)
 call npx convex run --deployment %V2% migrations:markBigPulls >> "%LOG%" 2>&1 || goto :err

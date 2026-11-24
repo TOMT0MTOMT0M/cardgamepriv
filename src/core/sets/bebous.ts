@@ -28,15 +28,16 @@ export const BEBOUS_INFO = { id: 'bebous', label: 'Les Bébous (secret)', code: 
 
 // [num, slug, surnom, fichier?] — surnoms provisoires, à remplacer par les vrais
 // (11/11) les deux premières vraies cartes : Magizz et Asluck (photos de Tom)
+// (24/11, base Etoiles 8 de Hugo) les six autres surnoms ; leurs photos restent à fournir (bebou-3.png… provisoires)
 const RAW: Array<[number, string, string, string?]> = [
   [1, 'bebou-1', 'Magizz', 'bebou-1.jpg'],
   [2, 'bebou-2', 'Asluck', 'bebou-2.jpg'],
-  [3, 'bebou-3', 'Bébou n°3'],
-  [4, 'bebou-4', 'Bébou n°4'],
-  [5, 'bebou-5', 'Bébou n°5'],
-  [6, 'bebou-6', 'Bébou n°6'],
-  [7, 'bebou-7', 'Bébou n°7'],
-  [8, 'bebou-8', 'Bébou n°8'],
+  [3, 'bebou-3', 'LeagueScoutHugo'],
+  [4, 'bebou-4', 'Tom'],
+  [5, 'bebou-5', 'Juliette'],
+  [6, 'bebou-6', 'Marge'],
+  [7, 'bebou-7', 'Dundred'],
+  [8, 'bebou-8', 'Peluche'],
 ];
 
 export const BEBOUS: BebouEntry[] = RAW.map(([num, slug, nickname, file]) => ({ num, slug, nickname, ...(file ? { file } : {}) }));

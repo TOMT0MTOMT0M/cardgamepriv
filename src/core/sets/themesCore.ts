@@ -328,10 +328,10 @@ export let GAME_CARD_COUNT = ALL_THEMES.reduce((a, t) => a + t.cards.length, 0);
  * Exemple : 2 028 cartes → 1 sur 2 028 ; 10 000 cartes → 1 sur 10 000. Recalculée à chaque build, rien à régler.
  */
 /**
- * (retours 05/11) cartes Bébous / KCDQ VERROUILLÉES pour l'instant : elles ne tombent plus d'aucun booster (chance 0),
- * l'album reste visible. Remettre à `false` pour les rouvrir — rien d'autre à changer (serveur et démo suivent).
+ * (retours 05/11) cartes Bébous / KCDQ VERROUILLÉES : elles ne tombaient plus d'aucun booster (chance 0), l'album restait
+ * visible. (24/11, V3, Tom) ROUVERTES : `false` — rien d'autre à changer (serveur et démo suivent).
  */
-export const BEBOU_SECRETS_LOCKED = true;
+export const BEBOU_SECRETS_LOCKED: boolean = false;
 const bebouSecretChance = () => (BEBOU_SECRETS_LOCKED ? 0 : GAME_CARD_COUNT > 0 ? 1 / GAME_CARD_COUNT : 0);
 export let BEBOU_SECRET_CHANCE = bebouSecretChance();
 
@@ -443,6 +443,86 @@ export interface InstallOptions {
    * (~3 Mo de tas) deviennent récupérables au lieu de rester accrochés à l'espace de noms du module pour toute la session.
    */
   keepRaw?: boolean;
+  /** (24/11) sans la couche « Etoiles » (scripts/dump-catalogue.mts --raw : l'état de départ que make-etoiles.py compare) */
+  noEtoiles?: boolean;
+}
+
+/**
+ * (24/11, V3) COUCHE « ETOILES » — la base maître de Hugo (donnees/base/Etoiles-8.xlsx), traduite par
+ * scripts/make-etoiles.py en src/core/sets/etoiles.ts et appliquée ici en dernier, sur les 4 gros sets :
+ * nouveaux albums (insérés avant leur repère), cartes déplacées (fusions : foot par poste, voitures par origine, Ghibli,
+ * Yu-Gi-Oh, lieux, Singles…), étoiles, noms, cartes retirées (doublons) et nouvelles cartes. Ids jamais changés.
+ * Numéros : Pop Culture et Sport sont numérotés sur tout le thème (« 0123/20514 ») — une carte déplacée garde le sien,
+ * une nouvelle prend la suite et la taille du thème grandit ; Jeux vidéo et World le sont par album — une carte
+ * déplacée ou nouvelle prend la suite de son nouvel album (les cartes déjà là gardent le leur).
+ * Les albums vidés par les fusions disparaissent de l'affichage.
+ */
+const ETOILES_RARITY: CatalogRarity[] = ['common', 'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+/** (installé avec les gros sets : la couche arrive avec eux, dans catalogBig — rien dans le noyau téléchargé au démarrage) */
+let etoilesRename: Readonly<Record<string, string>> = {};
+let etoilesSubEn = new Map<string, string>();
+function applyEtoiles(subs: SubTheme[], big: typeof BigSets): SubTheme[] {
+  const { ETOILES_ADD, ETOILES_EMPTIED, ETOILES_PURGE, ETOILES_RENAME, ETOILES_RERATE, ETOILES_RESUB, ETOILES_SUBS } = big;
+  etoilesRename = ETOILES_RENAME;
+  etoilesSubEn = new Map(ETOILES_SUBS.map((d) => [d[1], d[6]]));
+  const byId = new Map(subs.map((s) => [s.id, s]));
+  for (const [themeId, id, label, code, group, at] of ETOILES_SUBS) {
+    if (byId.has(id)) continue;
+    const kin = subs.find((x) => x.themeId === themeId && x.group?.id === group);
+    if (!kin) continue;
+    const st: SubTheme = { id, label, themeId, code, artDir: kin.artDir, cards: [], group: kin.group, ...(kin.size ? { size: kin.size } : {}) };
+    const i = at ? subs.findIndex((x) => x.id === at) : -1;
+    if (i >= 0) subs.splice(i, 0, st);
+    else subs.splice(subs.map((x) => x.themeId).lastIndexOf(themeId) + 1, 0, st);
+    byId.set(id, st);
+  }
+  const purge = new Set(ETOILES_PURGE);
+  const moved: Array<[CatalogEntry, SubTheme]> = [];
+  for (const st of subs) {
+    let w = 0;
+    for (const c of st.cards) {
+      if (purge.has(c.id)) continue;
+      const r = ETOILES_RERATE[c.id];
+      if (r) c.rarity = r;
+      const n = ETOILES_RENAME[c.id];
+      if (n) c.name = n;
+      const to = ETOILES_RESUB[c.id];
+      const dest = to && to !== st.id ? byId.get(to) : undefined;
+      if (dest) moved.push([c, dest]);
+      else st.cards[w++] = c;
+    }
+    st.cards.length = w;
+  }
+  // numéro suivant : par album (sans `size`) ou sur tout le thème (Pop, Sport)
+  const next = new Map<string, number>();
+  const nextNum = (st: SubTheme) => {
+    const k = st.size ? `t:${st.themeId}` : st.id;
+    if (!next.has(k)) {
+      let m = st.size ?? 0;
+      if (!st.size) for (const c of st.cards) m = Math.max(m, c.num);
+      next.set(k, m);
+    }
+    const n = next.get(k)! + 1;
+    next.set(k, n);
+    return n;
+  };
+  for (const [c, dest] of moved) {
+    c.subthemeId = dest.id;
+    if (!dest.size) c.num = nextNum(dest);
+    dest.cards.push(c);
+  }
+  for (const st of subs) if (st.size) st.cards.sort((a, b) => a.num - b.num);
+  for (const [sub, id, name, stars, file, art] of ETOILES_ADD) {
+    const st = byId.get(sub);
+    if (!st) continue;
+    const e: CatalogEntry = { id, themeId: st.themeId, subthemeId: sub, num: nextNum(st), name, rarity: ETOILES_RARITY[stars] ?? 'common', file, art };
+    if (st.themeId === 'gaming') e.kind = 'character';
+    st.cards.push(e);
+  }
+  // tailles des thèmes numérotés en entier (« /20514 » → la nouvelle taille)
+  for (const st of subs) if (st.size) st.size = Math.max(st.size, next.get(`t:${st.themeId}`) ?? 0);
+  const emptied = new Set(ETOILES_EMPTIED);
+  return subs.filter((st) => st.cards.length || !emptied.has(st.id));
 }
 
 export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): void {
@@ -451,7 +531,8 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
   const purge = new Set([...PURGE_08_11, ...PURGE_BRUEL, ...PURGE_15_11, ...PURGE_23_11]);
   const rerate = new Map(Object.entries({ ...RERATE_08_11, ...RERATE_11_11, ...RERATE_13_11, ...RERATE_15_11, ...RERATE_17_11, ...RERATE_20_11, ...RERATE_23_11 }));
   applyCuration(purge, rerate);
-  for (const s of bigSubthemes(big, { purge, rerate })) SUBTHEMES.push(s);
+  const bigs = bigSubthemes(big, { purge, rerate });
+  for (const s of opts.noEtoiles ? bigs : applyEtoiles(bigs, big)) SUBTHEMES.push(s);
   for (const t of THEMES) {
     const subs = subsOf(t.id);
     t.subthemes.length = 0;
@@ -462,7 +543,8 @@ export function installCatalog(big: typeof BigSets, opts: InstallOptions = {}): 
     }
   }
   // (15/11) renommages : le nom affiché seulement (curation.ts)
-  for (const s of SUBTHEMES) for (const c of s.cards) if (RENAME_15_11[c.id]) c.name = RENAME_15_11[c.id];
+  // (24/11) … sauf un nom fixé par la base Etoiles, qui passe en dernier
+  for (const s of SUBTHEMES) for (const c of s.cards) if (RENAME_15_11[c.id]) c.name = etoilesRename[c.id] ?? RENAME_15_11[c.id];
   indexCatalog();
   GAME_CARD_COUNT = ALL_THEMES.reduce((a, t) => a + t.cards.length, 0);
   PUBLIC_CARD_COUNT = THEMES.reduce((a, t) => a + t.cards.length, 0);
@@ -608,6 +690,7 @@ export interface CatalogLang {
   types: Record<string, string>;
 }
 let catLang: CatalogLang | null = null;
+
 const FR_OF = new WeakMap<object, Record<string, string | undefined>>();
 const catHooks: Array<() => void> = [];
 /** (cardData, recherche…) refaire ce qui a copié un nom quand la langue du catalogue change */
@@ -628,11 +711,11 @@ export const frLabelOf = (s: SubTheme): string => FR_OF.get(s)?.label ?? s.label
 function applyCatalogLang() {
   const L = catLang;
   for (const e of BY_ID.values()) {
-    swapField(e, 'name', RENAME_15_11[e.id] ? undefined : L?.cards[e.id]); // (15/11) renommées : même nom dans les deux langues
+    swapField(e, 'name', RENAME_15_11[e.id] || etoilesRename[e.id] ? undefined : L?.cards[e.id]); // (15/11) renommées : même nom dans les deux langues
     if (e.label) swapField(e, 'label', L ? L.types[FR_OF.get(e)?.label ?? e.label] : undefined);
   }
   for (const s of SUB_BY_ID.values()) {
-    swapField(s, 'label', L?.subs[s.id]);
+    swapField(s, 'label', L?.subs[s.id] ?? (L ? etoilesSubEn.get(s.id) : undefined));
     if (s.group) swapField(s.group, 'label', L?.groups[s.group.id]);
   }
   VIEWS = new WeakMap();
