@@ -203,6 +203,10 @@ export const en: PartOf<typeof fr> = {
   'gm.col.byColor': '(by colour)',
   'gm.col.hint': 'Nobody has the number that comes up but it is {color}? The pot is yours.',
   'gm.col.none': 'None',
+  'gm.free': 'Free daily bet',
+  'gm.freeSub': 'Subscriber: one free number every day, no colour.',
+  'gm.freeUsed': 'Free bet already used today.',
+  'gm.freeTag': 'free',
   'gm.col.opt': 'Colour (stake × 2)',
   'gm.col.mine': '{color} on your number',
 };

@@ -86,7 +86,7 @@ export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
     // (20/11) calendrier de l'Avent : cases ouvertes cette année, god packs offerts en attente (convex/avent.ts)
     advent: { opened: adventOpened(u), godPacks: u.godPacks ?? 0 },
     // (20/11) abonnement (convex/abo.ts) : fin du mois payé, demande « j'ai payé » en attente
-    sub: { until: u.subUntil ?? 0, askedAt: u.subAskAt ?? 0 },
+    sub: { until: u.subUntil ?? 0, askedAt: u.subAskAt ?? 0, ...(u.rouletteFreeDay ? { freeDay: u.rouletteFreeDay } : {}) },
     isAdmin: !!u.isAdmin,
     // (retours 06/11) modération des suggestions : nombre de nouvelles (pastille du menu)
     isModerator: canModerate(u),

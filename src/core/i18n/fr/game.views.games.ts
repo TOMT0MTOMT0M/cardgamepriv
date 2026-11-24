@@ -202,6 +202,10 @@ export const fr = {
   'gm.col.byColor': '(par la couleur)',
   'gm.col.hint': 'Personne n’a le numéro sorti mais il est {color} ? Le pot est à toi.',
   'gm.col.none': 'Sans',
+  'gm.free': 'Mise gratuite du jour',
+  'gm.freeSub': 'Abonné : un numéro offert chaque jour, sans couleur.',
+  'gm.freeUsed': 'Mise gratuite déjà utilisée aujourd’hui.',
+  'gm.freeTag': 'gratuite',
   'gm.col.opt': 'Couleur (mise × 2)',
   'gm.col.mine': '{color} sur ton numéro',
 } as const satisfies Record<string, string | { one?: string; other: string }>;

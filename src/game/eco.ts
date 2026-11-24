@@ -29,7 +29,7 @@ export interface EcoSnapshot {
   /** (20/11) calendrier de l'Avent (src/core/avent.ts) : cases ouvertes cette année, god packs offerts en attente */
   advent?: { opened: number[]; godPacks: number };
   /** (20/11) abonnement (src/core/abo.ts) : fin du mois payé (0 : jamais abonné), demande « j'ai payé » en attente */
-  sub?: { until: number; askedAt: number };
+  sub?: { until: number; askedAt: number; /** (25/11, V3) jour de la dernière mise gratuite à la roulette */ freeDay?: string };
 }
 
 export interface DuelSideView {
@@ -81,6 +81,8 @@ export interface RouletteBet {
   cards: PotCard[];
   /** (23/11) couleur posée sur ses numéros (mise payée deux fois) : pot de secours */
   color?: RouletteColor;
+  /** (25/11, V3) mise gratuite du jour d'un abonné */
+  free?: boolean;
 }
 
 export interface RouletteView {
@@ -163,7 +165,8 @@ export interface EcoBackend extends JeuxBackend, ExtrasBackend {
   leaveRoyale(id: string): Promise<void>;
   startRoyale(id: string): Promise<void>;
   /** (23/11) `color` : une couleur sur ses numéros, la mise payée deux fois (pot de secours) */
-  placeBet(numbers: number[], stake: Stake, color?: RouletteColor): Promise<void>;
+  /** (25/11, V3) `free` : la mise gratuite du jour d'un abonné (un numéro, sans couleur ni mise) */
+  placeBet(numbers: number[], stake: Stake, color?: RouletteColor, free?: boolean): Promise<void>;
   // admin
   alerts(): Promise<AbuseAlertView[]>;
   review(key: string, verdict: 'ok' | 'watch', note?: string): Promise<void>;

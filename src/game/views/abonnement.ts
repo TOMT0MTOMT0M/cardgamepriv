@@ -43,6 +43,7 @@ export function createAbonnementView(backend: GameBackend, shell: Shell): Abonne
         <div class="ab-perk">${ICO.packs}<b>${tr('ab.p1', { n: SUB_EXTRA_PACKS })}</b><span>${tr('ab.p1d', { a: PACK_CAP, b: PACK_CAP + SUB_EXTRA_PACKS })}</span></div>
         <div class="ab-perk">${ICO.card}<b>${tr('ab.p2')}</b><span>${tr('ab.p2d')}</span></div>
         <div class="ab-perk">${ICO.vote}<b>${tr('ab.p3')}</b><span>${tr('ab.p3d')}</span></div>
+        <div class="ab-perk">${ICO.vote}<b>${tr('ab.p4')}</b><span>${tr('ab.p4d')}</span></div>
       </div>
       <section class="ab-where">
         <b class="ab-h">${tr('ab.where', { n: SUB_PRICE_EUR })}</b>

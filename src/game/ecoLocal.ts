@@ -29,6 +29,7 @@ import {
   ROYALE_MAX,
   ROYALE_MIN,
   betProblem,
+  freeBetProblem,
   rouletteWinner,
   drawNumber,
   duelProblem,
@@ -516,16 +517,19 @@ export function createLocalEco(host: LocalEcoHost) {
         if (r.players.length < ROYALE_MIN) throw new Error(fe('games.27', { p0: ROYALE_MIN }));
         resolveRoyale(r);
       }),
-    placeBet: (numbers, stake, color) =>
+    placeBet: (numbers, stake, color, free) =>
       act(() => {
         const r = round();
         const mine = r.bets.find((b) => b.userId === ME);
         const taken = new Set(r.bets.flatMap((b) => b.numbers));
-        const p = betProblem(numbers, stake, taken, mine ? 1 : 0, color);
+        const today = missionDay(Date.now());
+        const fb = extras.freeBet();
+        const p = free ? freeBetProblem(numbers, stake, taken, mine ? 1 : 0, color, fb.sub, fb.day, today) : betProblem(numbers, stake, taken, mine ? 1 : 0, color);
         if (p) throw new Error(p);
+        if (free) extras.useFreeBet(today);
         checkStake(stake);
         const cards = takeStake(stake);
-        r.bets.push({ userId: ME, name: tr('chat.me'), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, ...(color ? { color } : {}) });
+        r.bets.push({ userId: ME, name: tr('chat.me'), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, ...(free ? { free: true } : {}), ...(color ? { color } : {}) });
         d().econ.gamesPlayed++;
         weekly({ type: 'game', won: false });
         potOf(r);

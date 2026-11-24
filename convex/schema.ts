@@ -173,6 +173,8 @@ export default defineSchema({
      * le rappel programmé 5 jours avant la fin (pour l'annuler quand la date change).
      */
     subUntil: v.optional(v.number()),
+    /** (25/11, V3) jour de Paris (AAAA-MM-JJ) de la dernière mise gratuite à la roulette d'un abonné (convex/games.ts) */
+    rouletteFreeDay: v.optional(v.string()),
     subSince: v.optional(v.number()),
     subAskAt: v.optional(v.number()),
     subRemindJob: v.optional(v.id('_scheduled_functions')),
@@ -528,6 +530,8 @@ export default defineSchema({
         numbers: v.array(v.number()),
         coins: v.number(),
         cards: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number(), mintNumber: v.number() })),
+        /** (25/11, V3) mise gratuite du jour d'un abonné : rien au pot, peut gagner le pot */
+        free: v.optional(v.boolean()),
         /** (23/11) couleur posée sur ses numéros (mise payée deux fois) : pot de secours si personne n'a le numéro exact */
         color: v.optional(v.union(v.literal('red'), v.literal('black'), v.literal('green'))),
         createdAt: v.number(),

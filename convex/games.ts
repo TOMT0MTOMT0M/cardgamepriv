@@ -1,5 +1,6 @@
 import { fe } from '../src/core/errors';
-import { packCapOf } from '../src/core/abo';
+import { packCapOf, subActive } from '../src/core/abo';
+import { missionDay } from '../src/core/missions';
 import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
@@ -37,6 +38,7 @@ import {
   type GameCard,
   type PackChoice,
   type Stake,
+  freeBetProblem,
 } from '../src/core/games';
 import { syncPresence } from './presence';
 import { fm, feedMsg, type Msg } from '../src/core/msgs';
@@ -461,8 +463,8 @@ const colorValidator = v.union(v.literal('red'), v.literal('black'), v.literal('
 
 /** Pari : 1 à 3 numéros, en cartes ou en pièces. (23/11) `color` : une couleur sur ses numéros, la mise payée deux fois. */
 export const placeBet = mutation({
-  args: { sessionToken: v.string(), numbers: v.array(v.number()), stake: stakeValidator, color: v.optional(colorValidator) },
-  handler: async (ctx, { sessionToken, numbers, stake, color }) => {
+  args: { sessionToken: v.string(), numbers: v.array(v.number()), stake: stakeValidator, color: v.optional(colorValidator), free: v.optional(v.boolean()) },
+  handler: async (ctx, { sessionToken, numbers, stake, color, free }) => {
     const u = await requireUser(ctx, sessionToken);
     const r = await ensureRound(ctx);
     const now = Date.now();
@@ -470,11 +472,14 @@ export const placeBet = mutation({
     if (now >= drawInstant(r)) throw new ConvexError(fe('games.29'));
     const taken = new Set(r.bets.flatMap((b) => b.numbers));
     const mine = r.bets.find((b) => b.userId === u._id);
-    const problem = betProblem(numbers, stake, taken, mine ? 1 : 0, color);
+    // (25/11, V3) mise gratuite du jour d'un abonné (src/core/games.ts, freeBetProblem)
+    const today = missionDay(now);
+    const problem = free ? freeBetProblem(numbers, stake, taken, mine ? 1 : 0, color, subActive(u, now), u.rouletteFreeDay, today) : betProblem(numbers, stake, taken, mine ? 1 : 0, color);
     if (problem) throw new ConvexError(problem);
+    if (free) await ctx.db.patch(u._id, { rouletteFreeDay: today });
     if (stake.coins) await addCoins(ctx, u._id, -stake.coins, 'roulette', color ? fm('c.rouletteColor', { colorId: color, rcolor: colorLabel(color) }) : fm('c.roulette', { n: numbers.length }));
     const cards = await takeCards(ctx, u._id, stake.cards);
-    const merged = { userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, ...(color ? { color } : {}), createdAt: now };
+    const merged = { userId: u._id, name: u.displayName, ...(u.avatarUrl ? { avatarUrl: u.avatarUrl } : {}), numbers: [...numbers].sort((x, y) => x - y), coins: stake.coins, cards, ...(free ? { free: true } : {}), ...(color ? { color } : {}), createdAt: now };
     await ctx.db.patch(r._id, { bets: [...r.bets, merged] });
     await patchEcon(ctx, u._id, (e) => ({ ...e, gamesPlayed: e.gamesPlayed + 1 }));
     await bumpWeekly(ctx, u._id, { type: 'game', won: false });

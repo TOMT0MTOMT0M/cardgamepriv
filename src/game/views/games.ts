@@ -1,4 +1,6 @@
 import { errText } from '../../core/errors';
+import { subActive } from '../../core/abo';
+import { missionDay } from '../../core/missions';
 import '../../core/i18n/fr/game.views.games'; // (textes de ce module, version anglaise)
 import { locale, t as tr, lang, type MsgKey } from '../../core/i18n';
 import type { GameBackend } from '../backend';
@@ -1027,6 +1029,8 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     let pay = 0; // façon de payer choisie (index dans la grille du nombre de numéros)
     /** (23/11) couleur posée sur mes numéros (option : la mise est payée deux fois, pot de secours) */
     let betColor: RouletteColor | null = null;
+    /** (25/11, V3) la mise gratuite du jour (abonné) est choisie */
+    let useFree = false;
     const colorName = (c: RouletteColor) => tr(`gm.col.${c}` as MsgKey);
     let cur: RouletteView | null = null;
     /** dernier tirage connu (null = pas encore reçu) : un NOUVEAU tirage fait tourner la bille, même le tout premier */
@@ -1073,20 +1077,28 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         return;
       }
       const n = sel.size as 0 | 1;
-      const opts = n ? ROULETTE_PRICES[n] : [];
+      // (25/11, V3) mise gratuite du jour d'un abonné : un numéro, sans couleur ni mise
+      const sb = snap()?.sub;
+      const subOn = subActive({ subUntil: sb?.until });
+      const freeLeft = subOn && sb?.freeDay !== missionDay(Date.now());
+      if (!freeLeft) useFree = false;
+      if (useFree) betColor = null;
+      const opts = n && !useFree ? ROULETTE_PRICES[n] : [];
       if (pay >= opts.length) pay = 0;
       const mult = betColor ? COLOR_STAKE_MULT : 1;
       const base = opts[pay];
       // le prix réellement payé : × 2 avec une couleur sur ses numéros
       const p = base && scalePrice(base, mult);
-      const stake = stakeOf(p);
+      const stake = useFree ? { coins: 0, cards: [] } : stakeOf(p);
       const bal = snap()?.coins ?? 0;
       const picked = stakeCards.reduce((a, c) => a + c.count, 0);
-      const ok = !!n && !!matchPrice(n, stake, mult) && (p?.kind !== 'coins' || p.coins <= bal);
+      const ok = useFree ? !!n : !!n && !!matchPrice(n, stake, mult) && (p?.kind !== 'coins' || p.coins <= bal);
+      const freeRow = subOn ? `<div class="gm-ed-row gm-free"><span>${tr('gm.free')}</span>${freeLeft ? `<button role="switch" aria-checked="${useFree}" class="btn-ghost sm gm-freebtn${useFree ? ' on' : ''}">${useFree ? '✓ ' : ''}${tr('gm.freeTag')}</button>` : `<span class="muted">${tr('gm.freeUsed')}</span>`}</div>${useFree ? `<div class="muted">${tr('gm.freeSub')}</div>` : ''}` : '';
       bet.innerHTML = `<div class="gm-ph"><b>${tr('gm.betBtn')}</b>${slot ? `<span class="muted">${tr('gm.drawOf', { slot: esc(slot) })}</span>` : ''}</div>
         <div class="gm-stepl${n ? ' done' : ' cur'}"><i>01</i><span>${n ? `${plural(n, 'numéro')} : <b>${[...sel].sort((a, b) => a - b).join(', ')}</b>` : tr('gm.tapNumbers', { n: MAX_NUMBERS })}</span></div> <!-- i18n-ok -->
         <div class="gm-stepl${n ? (ok ? ' done' : ' cur') : ''}"><i>02</i><span>${tr('gm.payment', { x: p ? ` · <b>${p.kind === 'coins' ? tr('gm.coinsN', { n: fmtCoins(p.coins) }) : esc(priceLabel(p))}</b>` : '' })}</span></div>
-        ${n ? `<div class="seg gm-pay" role="radiogroup" aria-label="${tr('gm.payWith')}">${opts.map((o0, i) => { const o = scalePrice(o0, mult); return `<button role="radio" data-i="${i}" aria-checked="${i === pay}" class="${i === pay ? 'on' : ''}">${o.kind === 'coins' ? `${COIN_ICON}${fmtCoins(o.coins)}` : esc(priceLabel(o))}</button>`; }).join('')}</div>
+        ${n ? freeRow : ''}
+        ${n && !useFree ? `<div class="seg gm-pay" role="radiogroup" aria-label="${tr('gm.payWith')}">${opts.map((o0, i) => { const o = scalePrice(o0, mult); return `<button role="radio" data-i="${i}" aria-checked="${i === pay}" class="${i === pay ? 'on' : ''}">${o.kind === 'coins' ? `${COIN_ICON}${fmtCoins(o.coins)}` : esc(priceLabel(o))}</button>`; }).join('')}</div>
         <div class="gm-ed-row gm-colpick"><span>${tr('gm.col.opt')}</span><div class="seg" role="radiogroup" aria-label="${tr('gm.col.opt')}"><button role="radio" data-c="" aria-checked="${!betColor}" class="${!betColor ? 'on' : ''}">${tr('gm.col.none')}</button>${ROULETTE_COLORS.map((c) => `<button role="radio" data-c="${c}" aria-checked="${betColor === c}" class="c-${c}${betColor === c ? ' on' : ''}"><i class="gm-cdot c-${c}"></i>${colorName(c)}</button>`).join('')}</div></div>
         ${betColor ? `<div class="muted gm-colhint">${tr('gm.col.hint', { color: colorLabel(betColor) })}</div>` : ''}` : ''}
         ${p?.kind === 'cards' ? `<div class="gm-ed-row"><span>${esc(priceLabel(p))}</span><button class="btn-ghost sm gm-pick">${picked ? `${picked}/${p.count} choisie${picked > 1 ? 's' : ''} · changer` : tr('gm.pickCards')}</button></div>${picked && picked !== p.count ? `<div class="gm-warn">${tr('gm.exactCards', { n: p.count, stars: starsTxt(p.rarity), picked: starsTxt(p.rarity) })}</div>` : ''}` : ''}
@@ -1102,6 +1114,12 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           drawBet();
         }),
       );
+      bet.querySelector('.gm-freebtn')?.addEventListener('click', () => {
+        useFree = !useFree;
+        stakeCards = [];
+        sfx('tick');
+        drawBet();
+      });
       bet.querySelectorAll<HTMLElement>('.gm-colpick [data-c]').forEach((b) =>
         b.addEventListener('click', () => {
           const c = (b.dataset.c || null) as RouletteColor | null;
@@ -1121,17 +1139,19 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       bet.querySelector<HTMLElement>('.gm-place')?.addEventListener('click', (e) => {
         const btn = e.currentTarget as HTMLElement;
         // second toucher, avec ce qui part : pas d'annulation possible avant le tirage
-        if (!confirmTap(btn, `Confirmer ? ${p?.kind === 'coins' ? tr('gm.minusCoins', { n: fmtCoins(p.coins) }) : cardsSummary(stakeCards)}`)) return;
+        if (!confirmTap(btn, `Confirmer ? ${useFree ? tr('gm.free') : p?.kind === 'coins' ? tr('gm.minusCoins', { n: fmtCoins(p.coins) }) : cardsSummary(stakeCards)}`)) return;
         const nums = [...sel];
         const col = betColor ?? undefined;
+        const free = useFree;
         void guarded('bet', btn, async () => {
           try {
-            await busyButton(btn, backend.eco.placeBet(nums, stake, col));
+            await busyButton(btn, backend.eco.placeBet(nums, stake, col, free || undefined));
             sfx('chime');
             toast(tr('gm.betDone', { nums: plural(nums.length, 'numéro'), slot }), 'ok'); // i18n-ok
             sel.clear();
             stakeCards = [];
             betColor = null;
+            useFree = false;
           } catch (err) {
             toast(errMsg(err), 'err');
           }

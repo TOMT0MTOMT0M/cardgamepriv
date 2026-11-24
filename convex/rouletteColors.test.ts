@@ -17,7 +17,7 @@ async function setup(names = ['alice', 'bob']) {
   const u: Record<string, { userId: Id<'users'>; token: string }> = {};
   for (const name of names)
     u[name] = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert('users', { discordId: name, username: name, displayName: name, packBalance: 15, lastDailyClaimAt: 0, totalPacksOpened: 0, lastSeenAt: Date.now(), packRegenAt: Date.now(), coins: 4000 }); // (23/11) 1 numéro = 1500 pièces, 3000 avec une couleur
+      const userId = await ctx.db.insert('users', { discordId: name, username: name, displayName: name, packBalance: 15, lastDailyClaimAt: 0, totalPacksOpened: 0, lastSeenAt: Date.now(), packRegenAt: Date.now(), coins: 4000 }); // (25/11) 1 numéro = 1000 pièces, 2000 avec une couleur
       await ctx.db.insert('sessions', { token: `tok-${name}`, userId, createdAt: Date.now(), expiresAt: Date.now() + 86400000 });
       return { userId, token: `tok-${name}` };
     });
@@ -34,11 +34,11 @@ describe('règles pures', () => {
   });
   test('une couleur sur ses numéros = la mise payée deux fois', () => {
     const none = new Set<number>();
-    expect(betProblem([5], { coins: 1500, cards: [] }, none, 0)).toBeNull();
-    expect(betProblem([5], { coins: 3000, cards: [] }, none, 0, 'red')).toBeNull();
-    expect(betProblem([5], { coins: 1500, cards: [] }, none, 0, 'red')).toMatch(/3000 pièces/);
-    expect(betProblem([5], { coins: 3000, cards: [] }, none, 0)).not.toBeNull();
-    expect(betProblem([5], { coins: 3000, cards: [] }, none, 0, 'bleu')).toMatch(/Couleur inconnue/);
+    expect(betProblem([5], { coins: 1000, cards: [] }, none, 0)).toBeNull();
+    expect(betProblem([5], { coins: 2000, cards: [] }, none, 0, 'red')).toBeNull();
+    expect(betProblem([5], { coins: 1000, cards: [] }, none, 0, 'red')).toMatch(/2000 pièces/);
+    expect(betProblem([5], { coins: 2000, cards: [] }, none, 0)).not.toBeNull();
+    expect(betProblem([5], { coins: 2000, cards: [] }, none, 0, 'bleu')).toMatch(/Couleur inconnue/);
   });
   test('gagnant : numéro exact d’abord, sinon la couleur sortie (la plus grosse mise, puis la première)', () => {
     const v = (b: { coins: number }) => b.coins;
@@ -60,17 +60,17 @@ describe('couleur sur ses numéros', () => {
   test('pot de secours : personne n’a le numéro, la couleur rafle le pot', async () => {
     const { t, u } = await setup();
     await t.mutation(internal.games.rouletteTick, {});
-    await expect(t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 1500, cards: [] }, color: 'black' })).rejects.toThrow(/3000 pièces/);
-    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 3000, cards: [] }, color: 'black' });
-    await t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [7], stake: { coins: 1500, cards: [] } });
-    expect(await coins(t, u.alice.userId)).toBe(1000);
+    await expect(t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 1000, cards: [] }, color: 'black' })).rejects.toThrow(/2000 pièces/);
+    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 2000, cards: [] }, color: 'black' });
+    await t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [7], stake: { coins: 1000, cards: [] } });
+    expect(await coins(t, u.alice.userId)).toBe(2000);
     let r = (await t.query(api.games.roulette, {}))!;
-    expect(r.round!.pot.coins).toBe(4500);
+    expect(r.round!.pot.coins).toBe(3000);
     expect(r.round!.bets.map((b) => b.color ?? null)).toEqual(['black', null]);
     // le 12 (noir) sort : personne ne l'a, Alice avait le noir → le pot est à elle
     await t.mutation(internal.games.forceDraw, { number: 12 });
-    expect(await coins(t, u.alice.userId)).toBe(5500);
-    expect(await coins(t, u.bob.userId)).toBe(2500);
+    expect(await coins(t, u.alice.userId)).toBe(5000);
+    expect(await coins(t, u.bob.userId)).toBe(3000);
     r = (await t.query(api.games.roulette, {}))!;
     expect(r.past[0].result).toMatchObject({ number: 12, winnerName: 'alice', byColor: true });
     expect(r.round!.carriedCoins).toBe(0);
@@ -79,18 +79,18 @@ describe('couleur sur ses numéros', () => {
   test('le numéro exact passe avant la couleur ; mauvaise couleur : le pot est reporté', async () => {
     const { t, u } = await setup();
     await t.mutation(internal.games.rouletteTick, {});
-    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 3000, cards: [] }, color: 'red' });
-    await t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [7], stake: { coins: 1500, cards: [] } });
+    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 2000, cards: [] }, color: 'red' });
+    await t.mutation(api.games.placeBet, { sessionToken: u.bob.token, numbers: [7], stake: { coins: 1000, cards: [] } });
     await t.mutation(internal.games.forceDraw, { number: 7 });
     let r = (await t.query(api.games.roulette, {}))!;
     expect(r.past[0].result).toMatchObject({ winnerName: 'bob' });
     expect(r.past[0].result?.byColor).toBeUndefined();
     await t.run(async (ctx) => ctx.db.patch(u.alice.userId, { coins: 4000 }));
-    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 3000, cards: [] }, color: 'red' });
+    await t.mutation(api.games.placeBet, { sessionToken: u.alice.token, numbers: [5], stake: { coins: 2000, cards: [] }, color: 'red' });
     await t.mutation(internal.games.forceDraw, { number: 36 });
     r = (await t.query(api.games.roulette, {}))!;
     expect(r.past[0].result?.winnerName).toBeUndefined();
-    expect(r.round!.carriedCoins).toBe(3000);
+    expect(r.round!.carriedCoins).toBe(2000);
   });
 
   test('anciennes mises couleur (staging) : rendues au tirage', async () => {

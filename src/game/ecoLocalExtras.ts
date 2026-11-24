@@ -19,6 +19,8 @@ export interface LocalExtrasSave {
   subAskAt?: number;
   bebouCard?: { title: string; idea: string; status: BebouCardStatus; mediaUrl?: string; updatedAt: number };
   aboVote?: string;
+  /** (25/11, V3) jour de la dernière mise gratuite à la roulette (abonné) */
+  rouletteFreeDay?: string;
 }
 
 export interface LocalExtrasHost {
@@ -122,7 +124,10 @@ export function createLocalExtras(host: LocalExtrasHost) {
   return {
     backend,
     opened,
-    sub: () => ({ until: s().subUntil ?? 0, askedAt: s().subAskAt ?? 0 }),
+    sub: () => ({ until: s().subUntil ?? 0, askedAt: s().subAskAt ?? 0, ...(s().rouletteFreeDay ? { freeDay: s().rouletteFreeDay } : {}) }),
+    /** (25/11, V3) mise gratuite du jour : abonné ? jour de la dernière ; la marquer */
+    freeBet: () => ({ sub: subActive(s()), day: s().rouletteFreeDay }),
+    useFreeBet: (day: string) => void (s().rouletteFreeDay = day),
     godPacks: () => s().godPacks ?? 0,
     /** un god pack offert attend ? Le consomme (le prochain booster ouvert en est un). */
     takeGodPack(): boolean {

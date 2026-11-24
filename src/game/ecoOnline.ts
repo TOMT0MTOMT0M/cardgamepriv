@@ -116,7 +116,7 @@ export function createOnlineEco(): EcoBackend {
     joinRoyale: async (id, pack) => void (await net.call(api.games.joinRoyale, { royaleId: id as Id<'royales'>, pack })),
     leaveRoyale: async (id) => void (await net.call(api.games.leaveRoyale, { royaleId: id as Id<'royales'> })),
     startRoyale: async (id) => void (await net.call(api.games.startRoyale, { royaleId: id as Id<'royales'> })),
-    placeBet: async (numbers, stake, color) => void (await net.call(api.games.placeBet, { numbers, stake, ...(color ? { color } : {}) })),
+    placeBet: async (numbers, stake, color, free) => void (await net.call(api.games.placeBet, { numbers, stake, ...(color ? { color } : {}), ...(free ? { free: true } : {}) })),
     alerts: () => net.ask(api.abuse.alerts, {}),
     review: async (key, verdict, note) => void (await net.call(api.abuse.review, { key, verdict, ...(note ? { note } : {}) })),
   };
