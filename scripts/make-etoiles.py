@@ -88,6 +88,14 @@ def main():
             im = imgs.get(k) or {}
             add.append((sb, k, n, st, im.get('file', ''), im.get('art', '')))
     gone = [k for k in A if k not in B]
+    # albums déplacés EN ENTIER (Chansons → Singles, Pays / Régions / Départements → lieux…) : une ligne par album au lieu
+    # d'une par carte (catalogue plus léger : ~3 500 lignes de moins)
+    by_sub = collections.defaultdict(set)
+    for k in A:
+        if k in B:
+            by_sub[A[k]['sub']].add(B[k][3])
+    submove = {o: next(iter(d)) for o, d in by_sub.items() if len(d) == 1 and next(iter(d)) != o}
+    resub = {k: v for k, v in resub.items() if submove.get(A[k]['sub']) != v}
     # doublons gardés : journal (« doublon de X »), même nom (même album si le nom porte une précision), à la main
     byfull, bybase = collections.defaultdict(list), collections.defaultdict(list)
     for k, (n, *_rest) in B.items():
@@ -139,7 +147,7 @@ def main():
     o = ['/**',
          ' * COUCHE « ETOILES » (base maître de Hugo) — GÉNÉRÉ par scripts/make-etoiles.py depuis donnees/base/Etoiles-8.xlsx.',
          ' * Ne pas éditer à la main : modifier la base, relancer le script. Appliquée en dernier par installCatalog (themesCore.ts).',
-         f' * {len(rerate)} étoiles · {len(rename)} noms · {len(resub)} déplacements · {len(add)} nouvelles cartes · {len(purge)} retirées ({len(remap)} transférées à leur double)',
+         f' * {len(rerate)} étoiles · {len(rename)} noms · {len(submove)} albums déplacés · {len(resub)} cartes déplacées · {len(add)} nouvelles cartes · {len(purge)} retirées ({len(remap)} transférées à leur double)',
          ' */',
          "import type { CatalogRarity } from './themesCore';",
          '',
@@ -152,7 +160,9 @@ def main():
     o += [f'  {js(k)}: {js(v)},' for k, v in sorted(rerate.items())]
     o += ['};', '', 'export const ETOILES_RENAME: Readonly<Record<string, string>> = {']
     o += [f'  {js(k)}: {js(v)},' for k, v in sorted(rename.items())]
-    o += ['};', '', 'export const ETOILES_RESUB: Readonly<Record<string, string>> = {']
+    o += ['};', '', '/** albums déplacés en entier : toutes leurs cartes vont dans ce sous-thème */', 'export const ETOILES_SUBMOVE: Readonly<Record<string, string>> = {']
+    o += [f'  {js(k)}: {js(v)},' for k, v in sorted(submove.items())]
+    o += ['};', '', '/** cartes déplacées une à une (en plus des albums entiers) */', 'export const ETOILES_RESUB: Readonly<Record<string, string>> = {']
     o += [f'  {js(k)}: {js(v)},' for k, v in sorted(resub.items())]
     o += ['};', '', '/** cartes retirées (doublons / alias) : catalogue, et collections par migrations:purgeCards */',
           f'export const ETOILES_PURGE: readonly string[] = {js(sorted(purge))};', '',
@@ -164,7 +174,7 @@ def main():
     o += [f'  {js(list(r))},' for r in add]
     o += ['];', '']
     open(OUT, 'w', encoding='utf-8', newline='\n').write('\n'.join(o))
-    print(f'{OUT} : {len(rerate)} étoiles, {len(rename)} noms, {len(resub)} déplacements, {len(add)} ajouts '
+    print(f'{OUT} : {len(rerate)} étoiles, {len(rename)} noms, {len(submove)} albums déplacés en entier, {len(resub)} cartes déplacées une à une, {len(add)} ajouts '
           f'({sum(1 for r in add if r[4])} avec image), {len(purge)} retirées dont {len(remap)} transférées, '
           f'{len(new_subs)} nouveaux albums, {len(emptied)} albums vidés')
 

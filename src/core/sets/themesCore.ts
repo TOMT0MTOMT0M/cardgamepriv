@@ -462,7 +462,7 @@ const ETOILES_RARITY: CatalogRarity[] = ['common', 'common', 'uncommon', 'rare',
 let etoilesRename: Readonly<Record<string, string>> = {};
 let etoilesSubEn = new Map<string, string>();
 function applyEtoiles(subs: SubTheme[], big: typeof BigSets): SubTheme[] {
-  const { ETOILES_ADD, ETOILES_EMPTIED, ETOILES_PURGE, ETOILES_RENAME, ETOILES_RERATE, ETOILES_RESUB, ETOILES_SUBS } = big;
+  const { ETOILES_ADD, ETOILES_EMPTIED, ETOILES_PURGE, ETOILES_RENAME, ETOILES_RERATE, ETOILES_RESUB, ETOILES_SUBMOVE, ETOILES_SUBS } = big;
   etoilesRename = ETOILES_RENAME;
   etoilesSubEn = new Map(ETOILES_SUBS.map((d) => [d[1], d[6]]));
   const byId = new Map(subs.map((s) => [s.id, s]));
@@ -486,7 +486,7 @@ function applyEtoiles(subs: SubTheme[], big: typeof BigSets): SubTheme[] {
       if (r) c.rarity = r;
       const n = ETOILES_RENAME[c.id];
       if (n) c.name = n;
-      const to = ETOILES_RESUB[c.id];
+      const to = ETOILES_RESUB[c.id] ?? ETOILES_SUBMOVE[st.id];
       const dest = to && to !== st.id ? byId.get(to) : undefined;
       if (dest) moved.push([c, dest]);
       else st.cards[w++] = c;
