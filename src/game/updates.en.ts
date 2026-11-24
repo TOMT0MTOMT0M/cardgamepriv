@@ -39,10 +39,9 @@ export const UPDATES_EN: UpdateMonth[] = [
         date: '25 Nov', title: 'The big reshuffle: 848 new cards', tag: 'nouveau',
         points: [
           '🆕 848 new cards: Dofus and Wakfu, Genshin Impact, Summoners War, Studio Ghibli, wrestling, LoL and CS esports, Paralympics, X-Men, Elite, Fast & Furious…',
-          '🗂️ Albums sorted differently: football by position (forwards, midfielders, defenders, goalkeepers, managers), cars by origin, a single Ghibli album, Yu-Gi-Oh and Countries & French regions; “Songs” becomes “Singles”.',
+          '🗂️ Albums sorted differently: football by position (forwards, midfielders, defenders, goalkeepers, managers), cars by origin, a single Ghibli album, Yu-Gi-Oh and Countries & French regions; the Paralympics get their own family; “Songs” becomes “Singles”.',
           '⭐ Over 500 cards change stars (new 6★: Roman Reigns, Nuguri, Canyon, m0NESY, NiKo, Chihiro, Totoro…).',
           '🔁 Duplicate cards (Hulk Hogan actor and wrestler…) are now one: your copies move to the card that stays, nothing is lost.',
-          '✷ Bébou cards can drop from the Bébou Pack again.',
         ],
       },
       {
