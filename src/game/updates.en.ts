@@ -26,6 +26,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Better-framed 6★ cards', tag: 'amélioré',
+        points: [
+          '🖼️ 6★ cards with a square photo (Diam’s…) are now full art, centred on the face, instead of sitting whole inside a frame.',
+        ],
+      },
+      {
         date: '26 Nov', title: '🎄 The Advent calendar', tag: 'nouveau',
         points: [
           '🎁 New Event tab: from 1 to 24 December, one door a day. A missed door can be caught up until 31 December.',

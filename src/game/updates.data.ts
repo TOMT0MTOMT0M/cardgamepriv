@@ -61,6 +61,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Des 6★ mieux cadrées', tag: 'amélioré',
+        points: [
+          '🖼️ Les 6★ dont la photo est carrée (Diam’s…) passent en plein écran, centrées sur le visage, au lieu d’être posées entières dans un cadre.',
+        ],
+      },
+      {
         date: '26 nov.', title: '🎄 Le calendrier de l’Avent', tag: 'nouveau',
         points: [
           '🎁 Nouvel onglet Événement : du 1er au 24 décembre, une case par jour. Une case oubliée se rattrape jusqu’au 31 décembre.',

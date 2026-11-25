@@ -239,6 +239,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   // (10/11, retours Hugo) les 5★ étaient passées elles aussi en pleine illustration ; (14/11, décision de Tom après la
   // sortie V2) le gabarit Suisse revient sur les 5★ à photo horizontale. Seules les 6★ restent toujours en plein cadre.
   const dz = rarityId === 'mythic' ? dz0 : landscapeDesign(card, im, dz0);
+  const fillIfFace = rarityId === 'mythic' && !LANDSCAPE.except(card);
 
   const bg = makeCanvas(W, H), subj = makeCanvas(W, H), fg = makeCanvas(W, H), fx = makeCanvas(W, H);
   const frame = makeCanvas(W, H), masks = makeCanvas(W, H);
@@ -264,7 +265,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     const zoomed2 = direct && zoomLayers(layers2, dz.art, s, W, H);
     const target2 = { bg: bg2.g, subj: subj2.g, fg: fg2.g, fx: fx2.g, pal: card.palette, r: rng(card.seed), seed: card.seed };
     if (card.photo) paintPortraitSubject(target2, im2);
-    else if (card.cover || im2.opaque) paintCoverSubject(target2, im2, { crisp: dz.id === 'suisse-paysage' });
+    else if (card.cover || im2.opaque) paintCoverSubject(target2, im2, { crisp: dz.id === 'suisse-paysage', fillIfFace });
     else paintImageSubject(target2, im2, card.fit);
     if (zoomed2) layers2.forEach(({ g }) => g.restore());
     else reframe(layers2, dz.art, s, W, H);
@@ -273,7 +274,7 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
     face2 = { bg: bg2, subj: subj2 };
   }
   if (card.photo) paintPortraitSubject(target, im);
-  else if (card.cover || (card.subject === 'image' && im?.opaque)) paintCoverSubject(target, im, { crisp: dz.id === 'suisse-paysage' });
+  else if (card.cover || (card.subject === 'image' && im?.opaque)) paintCoverSubject(target, im, { crisp: dz.id === 'suisse-paysage', fillIfFace });
   else if (card.subject === 'image') paintImageSubject(target, im, card.fit);
   else if (card.subject === 'jvtitle') paintTitleSubject(target, { name: card.name, family: card.uniName ?? '', kind: card.jvKind, label: card.typeLabel, year: card.year });
   else SUBJECTS[card.subject](target);
