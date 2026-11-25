@@ -1,7 +1,14 @@
 # cardgamepriv
 
-TCG de collection privé (≈20 joueurs), mobile d'abord. three.js r187 WebGPU + TSL, Vite, Convex, Cloudflare Pages + R2.
+TCG de collection privé (≈20-50 joueurs), mobile d'abord. three.js r187 WebGPU + TSL, Vite, Convex, Cloudflare Pages + R2.
 Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
+
+## Démarrage de session
+- Lire `docs/chantiers/EN-COURS.md` et `git log --oneline -5` avant toute action ; ne pas explorer le repo au-delà de la tâche. `docs/chantiers/` vit dans le dossier racine (branche `v2`) : depuis `.wt-master/`, c'est `../docs/chantiers/`.
+- Une session = une tâche. Patch de la version en ligne : `/patch`. Fin de session : `/cr` (EN-COURS.md + compte rendu 1 page), puis `/clear`.
+- `git` et `gh` en ligne de commande, pas de serveur MCP pour GitHub. Ne jamais installer un serveur MCP sans l'accord de Tom.
+- Vérifs bornées : « ou stop après 5 essais », puis expliquer le blocage. Le rendu visuel reste vérifié par Tom ou Hugo.
+- Méthode complète (Tom et Hugo) : `docs/GUIDE-CLAUDE.md`.
 
 ## Vérifier avant de dire « fait »
 - `npm run typecheck`
@@ -17,12 +24,14 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
 - `lanceurs/publier-patch.cmd` envoie en prod TOUT `master..v2`, donc la V3 en cours : ne pas s'en servir pour un correctif tant que `v2` porte des lots V3 non validés. Ne pas lancer `convex:deploy` ni `cf:deploy` à la main.
 - Les `.cmd` de `lanceurs/` tournent chez Tom : lui dire lequel et dans quel ordre.
 - Un commit par lot, uniquement ses propres fichiers (une autre session peut commiter en parallèle sur `v2`).
+- À deux : un dossier (worktree) et une session par personne. Avant de toucher un fichier partagé (`convex/schema.ts`, `vite.config.ts`, `src/game/updates.data.ts`), le réserver dans `docs/chantiers/EN-COURS.md`.
 - Un patch a son entrée dans `src/game/updates.data.ts`.
 - (17/11) Comparateur live / V3 (équipe) : `https://v2.cardgamepriv.pages.dev/miroir/` — deux copies de démo (master et v2) construites par `scripts/miroir/build.mjs` dans `mettre-en-ligne-v2.cmd`, gestes rejoués d'une copie à l'autre par `src/miroir/sonde.js`. Chaque côté a son code ET ses fichiers de `public/` (seules les illustrations R2 sont communes). Rien à maintenir à la main.
 
 ## Convex
 - Schéma compatible avec la V1 : nouveaux champs en `v.optional`, jamais de type changé.
 - Transformation de données = migration idempotente dans `convex/migrations.ts`, ajoutée aux deux lanceurs `mettre-en-ligne-*`, testée sur le staging.
+- Détails : `.claude/rules/convex.md` (chargé automatiquement quand on touche `convex/`).
 
 ## Lecture ciblée
 - Catalogues `src/core/sets/` (popculture, sport, monde, jeuxvideo, lolLines : 35 000+ lignes) : GÉNÉRÉS par `scripts/make-*.py` depuis `donnees/`. Ne pas les lire en entier ni les éditer à la main : grep, puis modifier la source et régénérer. L'en-tête de chaque fichier dit s'il est généré.

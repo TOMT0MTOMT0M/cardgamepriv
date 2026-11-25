@@ -41,3 +41,7 @@ _hors-site/
 # fichiers bruts déposés par Gemini (Antigravity) : intégrés par Claude, pas versionnés
 donnees/**/a-integrer/**/*.mp3
 donnees/**/a-integrer/**/*.wav
+
+# notes et réglages perso de Claude Code (chacun les siens)
+CLAUDE.local.md
+.claude/settings.local.json
