@@ -39,6 +39,8 @@ export interface PlayerStats {
   seasonWins?: number;
   /** (20/11) cases ouvertes du calendrier de l'Avent 2026 (convex/avent.ts) */
   noel26?: number;
+  season0Top?: number;
+  season0Player?: number;
 }
 
 export interface Cosmetic {
@@ -259,6 +261,9 @@ export const TITLES: Cosmetic[] = [
   // (20/11) calendrier de l'Avent 2026 (src/core/avent.ts) : 12 cases, puis les 24
   C({ id: 't-noel26-1', label: 'Lutin de Noël', need: 'noel26-12' }),
   C({ id: 't-noel26-2', label: 'Esprit de Noël 2026', need: 'noel26-24' }),
+  // (25/11) saison 0 (novembre 2026) : titres qui ne se regagnent pas
+  C({ id: 't-s0-podium', label: 'Podium de la saison 0', need: 's0-podium' }),
+  C({ id: 't-s0-joueur', label: 'Participant de la saison 0', need: 's0-joueur' }),
 ];
 // i18n-data:fin
 
@@ -392,7 +397,7 @@ export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(
   collection: Array<{ cardId: string; rarity: string; count: number }>,
-  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number; noel26?: number },
+  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number; noel26?: number; season0Top?: number; season0Player?: number },
 ): PlayerStats {
   const ids = new Set<string>();
   let mythics = 0, legendaries = 0, secrets = 0;

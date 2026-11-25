@@ -4,7 +4,7 @@ import { internalAction, internalMutation, internalQuery, query } from './_gener
 import { internal } from './_generated/api';
 import type { Doc } from './_generated/dataModel';
 import { applyRegen } from '../src/core/packRegen';
-import { seasonBoosters, seasonKey, seasonStandings } from '../src/core/seasons';
+import { SEASON0_KEY, SEASON0_PLAYER_PACKS, seasonKey, seasonReward, seasonStandings } from '../src/core/seasons';
 
 /**
  * (11/11, chantier ouvertures-saisons) SAISONS MENSUELLES DU CLASSEMENT — règles : src/core/seasons.ts.
@@ -73,19 +73,28 @@ export const advance = internalMutation({
     );
     const results: NonNullable<Doc<'seasons'>['results']> = [];
     for (const s of standings) {
-      if (!s.rank) continue;
+      // saison 0 : le titre « Participant » se gagne aux boosters ouverts, même sans être classé
+      const player = open.key === SEASON0_KEY && s.packs >= SEASON0_PLAYER_PACKS;
+      if (!s.rank && !player) continue;
       const u = await ctx.db.get(s.userId as Doc<'users'>['_id']);
       if (!u || u.bannedAt) continue;
+      if (!s.rank) {
+        await ctx.db.patch(u._id, { season0Player: 1 });
+        continue;
+      }
       const rank = results.length + 1;
-      const boosters = seasonBoosters(rank);
+      const { boosters, god } = seasonReward(open.key, rank);
       const regen = applyRegen(u.packBalance, u.packRegenAt ?? u.lastSeenAt, now, u.regenBoostUntil, packCapOf(u, now));
       await ctx.db.patch(u._id, {
         packBalance: regen.balance + boosters,
         packRegenAt: regen.regenAt,
+        ...(god ? { godPacks: (u.godPacks ?? 0) + 1 } : {}),
         ...(rank <= 3 ? { seasonPodiums: (u.seasonPodiums ?? 0) + 1 } : {}),
         ...(rank === 1 ? { seasonWins: (u.seasonWins ?? 0) + 1 } : {}),
+        ...(open.key === SEASON0_KEY && rank <= 3 ? { season0Top: 1 } : {}),
+        ...(player ? { season0Player: 1 } : {}),
       });
-      results.push({ userId: u._id, name: s.name, ...(s.avatarUrl ? { avatarUrl: s.avatarUrl } : {}), rank, gained: s.gained, packs: s.packs, boosters });
+      results.push({ userId: u._id, name: s.name, ...(s.avatarUrl ? { avatarUrl: s.avatarUrl } : {}), rank, gained: s.gained, packs: s.packs, boosters, ...(god ? { god } : {}) });
     }
     await ctx.db.patch(open._id, { status: 'closed', closedAt: now, results });
     await ctx.db.insert('seasons', { key: cur, status: 'open', startAt: now, bases: rows.map(baseOf) });

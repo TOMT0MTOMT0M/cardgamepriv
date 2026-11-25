@@ -20,6 +20,38 @@ import { calendarHtml } from './wallet';
 export const STREAK_ICON = `<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path class="fl" d="M12 3c.6 3.2 3.4 4.6 4.6 7.4 1.1 2.6.4 6-2.2 8.2a5.9 5.9 0 0 1-8.6-.6C3.6 15.3 4.3 11.6 7 9.4c-.2 1.6.4 2.7 1.5 3.4C8.2 9.6 9.6 6 12 3z" fill="currentColor" fill-opacity=".16"/><path d="M12 20a2.6 2.6 0 0 1-2.4-3.6c.4-1 1.3-1.7 2.4-2.9 1.1 1.2 2 1.9 2.4 2.9A2.6 2.6 0 0 1 12 20z" fill="currentColor" fill-opacity=".4"/></svg>`;
 export const PITY_ICON = `<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.8l2.3 5.3 5.7.6-4.3 3.9 1.3 5.7L12 15.4l-5 2.9 1.3-5.7L4 8.7l5.7-.6z" fill="currentColor" fill-opacity=".14"/><path d="M12 2.8v12.6M4 8.7l16 0M7 18.3l10-9.6M17 18.3 7 8.7" stroke-opacity=".35"/></svg>`;
 
+/** dernier compteur montré, par joueur (gardé aussi dans le navigateur : survit à un rechargement en pleine ouverture) */
+const pitySeen = new Map<string, number>();
+const pityKey = (id: string) => `bebou.pity.${id}`;
+/**
+ * Compteur pity À AFFICHER (en-tête, panneau, fiche du booster). Anti-spoil : le serveur remet le compteur à zéro dès le
+ * TIRAGE ; tant qu'un booster tiré n'est pas ouvert (ou pendant l'ouverture), on rend la dernière valeur montrée.
+ * null : pas connecté, ou aucune valeur connue pendant qu'un booster attend.
+ */
+export function shownPity(state: GameBackend['state']): number | null {
+  const u = state.user;
+  if (!u) return null;
+  if (document.body.classList.contains('opening') || state.sealed) {
+    const seen = pitySeen.get(u.id);
+    if (seen !== undefined) return seen;
+    try {
+      const kept = localStorage.getItem(pityKey(u.id));
+      return kept === null ? null : Number(kept);
+    } catch {
+      return null;
+    }
+  }
+  if (pitySeen.get(u.id) !== u.pityCount) {
+    pitySeen.set(u.id, u.pityCount);
+    try {
+      localStorage.setItem(pityKey(u.id), String(u.pityCount));
+    } catch {
+      /* stockage refusé : la valeur reste en mémoire */
+    }
+  }
+  return u.pityCount;
+}
+
 export function createStatus(backend: GameBackend, shell: Shell) {
   const pop = h('div', 'status-pop');
   pop.setAttribute('role', 'dialog');
@@ -82,9 +114,14 @@ export function createStatus(backend: GameBackend, shell: Shell) {
       pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b>${CLOSE_X()}</div>${loginPrompt(backend, tr('st.loginPity'))}`;
       return;
     }
-    const left = pityLeft(u.pityCount);
+    const count = shownPity(backend.state);
+    if (count === null) {
+      pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b>${CLOSE_X()}</div><div class="msn-foot">${tr('st.pityRule', { n: PITY_LIMIT, m: PITY_LIMIT })}</div>`;
+      return;
+    }
+    const left = pityLeft(count);
     const pct = ((PITY_LIMIT - 1 - left) / (PITY_LIMIT - 1)) * 100;
-    pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b><span>${tr('st.pityCount', { n: u.pityCount, nf: fmtN(u.pityCount) })}</span>${CLOSE_X()}</div>
+    pop.innerHTML = `<div class="msn-head"><b>Pity 6★</b><span>${tr('st.pityCount', { n: count, nf: fmtN(count) })}</span>${CLOSE_X()}</div>
       <div class="msn-bar"><i style="width:${pct.toFixed(1)}%"></i></div>
       <div class="st-txt">${left === 0 ? '<b>' + tr('st.pityNext') + '</b>' : tr('st.pityLeft', { n: left, nf: fmtN(left) })}</div>
       <div class="msn-foot">${tr('st.pityRule', { n: PITY_LIMIT, m: PITY_LIMIT })}</div>`;
@@ -124,8 +161,5 @@ export function createStatus(backend: GameBackend, shell: Shell) {
       const cal = backend.eco.snapshot?.calendar;
       return { day: streakDay(s), claimable: streakClaimable(s), calendar: !!cal && !cal.claimed };
     },
-    /** boosters d'affilée sans 6★ (le compteur « X/200 » de l'en-tête) */
-    pityCount: () => backend.state.user?.pityCount ?? 0,
-    pityLeft: () => (backend.state.user ? pityLeft(backend.state.user.pityCount) : PITY_LIMIT - 1),
   };
 }

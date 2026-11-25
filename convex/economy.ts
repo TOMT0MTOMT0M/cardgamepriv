@@ -54,7 +54,7 @@ async function achStats(ctx: QueryCtx, u: Doc<'users'>, inv?: Doc<'inventory'>[]
   // Seule différence avec le profil : ici la série est celle enregistrée, pas la série « encore vivante ».
   if (!inv) return achievementStats({ ...(await statsCached(ctx, u)), streak: u.streak?.count ?? 0 }, econOf(u));
   const coll = inv;
-  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, noel26: adventOpened(u).length });
+  const p = statsFrom(coll, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, noel26: adventOpened(u).length, season0Top: u.season0Top ?? 0, season0Player: u.season0Player ?? 0 });
   return achievementStats(p, econOf(u));
 }
 
@@ -73,7 +73,7 @@ export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
   // (pièces, missions, battement de cœur) et relisait toute sa collection (2e poste de lecture de base du mois).
   // Primes de complétion et succès sont recalculés par le client avec la collection qu'il a déjà (inventory.myCollection)
   // et `achInput` (src/game/ecoOnline.ts) ; les mutations d'encaissement revérifient tout côté serveur.
-  const achInput = { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econ.burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, noel26: adventOpened(u).length };
+  const achInput = { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: u.streak?.count ?? 0, burned: econ.burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, noel26: adventOpened(u).length, season0Top: u.season0Top ?? 0, season0Player: u.season0Player ?? 0 };
   return {
     achInput,
     coins: coinsOf(u),

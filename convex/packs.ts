@@ -107,8 +107,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     packRegenAt: regen.regenAt,
     lastSeenAt: now,
     ...(godLeft > 0 ? { godPacks: godLeft - 1 } : {}),
-    statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
-  });
+    statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,  });
   await syncPresence(ctx, user._id);
   await scheduleReserveFull(ctx, user._id);
 

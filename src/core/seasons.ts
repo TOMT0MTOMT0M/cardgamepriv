@@ -25,6 +25,24 @@ export function seasonBoosters(rank: number): number {
   return SEASON_PLAYED_PACKS;
 }
 
+/**
+ * (25/11, Tom et Hugo) SAISON 0 (novembre 2026) : récompenses spéciales. 1er : un God pack (son prochain booster, offert
+ * en réserve), 2e : 20, 3e : 15, 4e – 10e : 10, ensuite 1 comme d'habitude. Titre « Podium de la saison 0 » au top 3,
+ * « Participant de la saison 0 » à partir de SEASON0_PLAYER_PACKS boosters ouverts dans la saison.
+ */
+export const SEASON0_KEY = '2026-11';
+export const SEASON0_PACKS = [1, 20, 15] as const;
+export const SEASON0_TOP10_PACKS = 10;
+export const SEASON0_PLAYER_PACKS = 100;
+
+/** Ce que reçoit un rang final dans la saison `key` : boosters en réserve, dont éventuellement un God pack. */
+export function seasonReward(key: string, rank: number): { boosters: number; god: boolean } {
+  if (key !== SEASON0_KEY) return { boosters: seasonBoosters(rank), god: false };
+  if (rank < 1) return { boosters: 0, god: false };
+  if (rank <= SEASON0_PACKS.length) return { boosters: SEASON0_PACKS[rank - 1], god: rank === 1 };
+  return { boosters: rank <= 10 ? SEASON0_TOP10_PACKS : SEASON_PLAYED_PACKS, god: false };
+}
+
 let monthFmt: Intl.DateTimeFormat | undefined;
 /** Saison (mois de Paris) d'un instant : « 2026-11 ». */
 export function seasonKey(now: number): string {
@@ -122,6 +140,8 @@ export interface SeasonResult {
   packs: number;
   /** boosters reçus */
   boosters: number;
+  /** le booster reçu est un God pack (saison 0) */
+  god?: boolean;
 }
 
 /** Ce que l'onglet « Saison » du classement affiche. */

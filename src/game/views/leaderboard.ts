@@ -4,7 +4,7 @@ import type { GameBackend, LeaderRow } from '../backend';
 import type { Shell } from '../shell';
 import { accentColor, frameOf, titleOf } from '../../core/cosmetics';
 import { framed, titleHtml } from '../cosmeticArt';
-import { SEASON_PACKS, SEASON_PLAYED_PACKS, SEASON_TOP10_PACKS, seasonEndAt, seasonLabel, seasonOf, seasonStandings, type SeasonBoard } from '../../core/seasons';
+import { SEASON0_KEY, SEASON0_PLAYER_PACKS, seasonEndAt, seasonLabel, seasonOf, seasonReward, seasonStandings, type SeasonBoard } from '../../core/seasons';
 import { errMsg, esc, fmtN, fmtPct, h, plural, toast } from '../ui';
 import { friendBtn } from './friends';
 import '../progression.css';
@@ -85,6 +85,20 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     const d = Math.floor(m / 1440), hh = Math.floor((m % 1440) / 60), mm = m % 60;
     return d ? `${d}\u00a0j ${hh}\u00a0h` : hh ? `${hh}\u00a0h ${mm}\u00a0min` : `${mm}\u00a0min`;
   };
+  /** Lignes des récompenses de la saison en cours (la saison 0 a les siennes). */
+  function rewardRows(key: string): string {
+    const s0 = key === SEASON0_KEY;
+    const n = (rank: number) => plural(seasonReward(key, rank).boosters, 'booster');
+    const row = (cls: string, rank: string, text: string) => `<li${cls}><span>${rank}</span>${text}</li>`;
+    return (
+      row(' class="g1"', '1<sup>er</sup>', s0 ? tr('lb.s0first') : tr('lb.first', { packs: n(1) })) +
+      row(' class="g2"', s0 ? '2<sup>e</sup>' : '2<sup>e</sup> · 3<sup>e</sup>', s0 ? tr('lb.s0podium', { packs: n(2) }) : tr('lb.second', { a: seasonReward(key, 2).boosters, b: n(3) })) +
+      (s0 ? row(' class="g2"', '3<sup>e</sup>', tr('lb.s0podium', { packs: n(3) })) : '') +
+      row('', '4<sup>e</sup> – 10<sup>e</sup>', n(4)) +
+      row('', tr('lb.others'), tr('lb.played', { packs: n(11) })) +
+      (s0 ? row('', `${SEASON0_PLAYER_PACKS}+`, tr('lb.s0player', { n: SEASON0_PLAYER_PACKS })) : '')
+    );
+  }
   /** En-tête de l'onglet Saison (nom, fin, récompenses) et historique des podiums. */
   function renderSeason() {
     const on = board === 'season';
@@ -96,7 +110,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     seasonEl.innerHTML = cur
       ? `<div class="lb-ss-h"><span class="lb-ss-k">${tr('lb.season')}</span><b>${esc(seasonLabel(cur.key))}</b><span class="lb-ss-end">${tr('lb.endsIn', { t: until(seasonEndAt(Date.now()) - Date.now()) })}</span></div>` +
         `<p class="lb-ss-rule">${tr('lb.rule', { joining: me && !inIt ? tr('lb.joining') : '' })}</p>` +
-        `<ol class="lb-ss-rw"><li class="g1"><span>1<sup>er</sup></span>${tr('lb.first', { packs: plural(SEASON_PACKS[0], 'booster') })}</li><li class="g2"><span>2<sup>e</sup> · 3<sup>e</sup></span>${tr('lb.second', { a: SEASON_PACKS[1], b: plural(SEASON_PACKS[2], 'booster') })}</li><li><span>4<sup>e</sup> – 10<sup>e</sup></span>${plural(SEASON_TOP10_PACKS, 'booster')}</li><li><span>${tr('lb.others')}</span>${tr('lb.played', { packs: plural(SEASON_PLAYED_PACKS, 'booster') })}</li></ol>`
+        `<ol class="lb-ss-rw">${rewardRows(cur.key)}</ol>`
       : '<p class="muted lb-ss-rule">' + tr('lb.firstSoon') + '</p>';
     const past = season?.past ?? [];
     if (!past.length) return void (pastEl.innerHTML = '<div class="lb-ss-t">' + tr('lb.past') + '</div><p class="muted">' + tr('lb.noPast') + '</p>');
@@ -108,7 +122,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
           const pod = [0, 1, 2].map((i) => p.results[i]);
           return `<section class="lb-ps"><header><b>${tr('lb.seasonOf', { s: esc(seasonOf(p.key)) })}</b><span>${esc(seasonLabel(p.key).split(' ')[1] ?? '')}</span></header><ol class="lb-ps-pod">${pod
             .map((r, i) => (r ? `<li class="p${i + 1}"><span class="lb-ps-r">${i + 1}</span><a href="#/profil/${encodeURIComponent(r.userId)}">${esc(r.name)}</a><em>+${plural(r.gained, 'carte')}</em></li>` : `<li class="p${i + 1} empty"><span class="lb-ps-r">${i + 1}</span><span>—</span></li>`))
-            .join('')}</ol>${mine ? `<p class="lb-ps-me">${tr('lb.you', { rank: mine.rank })}<sup>${mine.rank === 1 ? 'er' : 'e'}</sup> ${tr('lb.gained', { cards: plural(mine.gained, 'carte'), packs: plural(mine.boosters, 'booster'), n: mine.boosters })}</p>` : ''}</section>`;
+            .join('')}</ol>${mine ? `<p class="lb-ps-me">${tr('lb.you', { rank: mine.rank })}<sup>${mine.rank === 1 ? 'er' : 'e'}</sup> ${tr('lb.gained', { cards: plural(mine.gained, 'carte'), packs: mine.god ? 'God pack' : plural(mine.boosters, 'booster'), n: mine.boosters })}</p>` : ''}</section>`;
         })
         .join('');
   }
