@@ -83,6 +83,7 @@
   },
   "enabledPlugins": {
     "oh-my-claudecode@omc": false,
-    "claude-mem@thedotmack": false
+    "claude-mem@thedotmack": false,
+    "superpowers@claude-plugins-official": false
   }
 }
