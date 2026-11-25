@@ -1067,7 +1067,7 @@ class GameNetClient {
     // (14/11) fond et style de titre : envoyés seulement s'ils sont choisis (un serveur pas encore à jour refuserait un champ inconnu)
     // (v2.1.13) idem pour l'animation de profil
     const { background, titleStyle, pfx, ...rest } = c;
-    return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...rest, ...(background ? { background } : {}), ...(titleStyle ? { titleStyle } : {}), ...(pfx ? { pfx } : {}) });
+    return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...rest, ...(background ? { background } : {}), ...(titleStyle ? { titleStyle } : {}), pfx: pfx ?? 'none' }); // « none » explicite : un pfx absent = vieux client, le serveur garde alors l'animation
   }
   /** (11/11) animation d'ouverture des boosters (refusée si verrouillée) */
   public async setOpening(style: string) {
