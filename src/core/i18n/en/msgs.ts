@@ -139,4 +139,5 @@ export const enMsgs: Record<keyof typeof MSG_FR, MsgTpl> = {
   'n.event': 'Booster of the moment: {event}',
   'n.eventBody': 'In the shop for {left} only.',
   'n.eventBodyBlurb': '{blurb}. In the shop for {left} only.',
+  'c.advent': 'Advent calendar — door {day}',
 };

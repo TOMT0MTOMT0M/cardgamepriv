@@ -13,6 +13,7 @@ import type * as accounts from "../accounts.js";
 import type * as admin from "../admin.js";
 import type * as adminDash from "../adminDash.js";
 import type * as auth from "../auth.js";
+import type * as avent from "../avent.js";
 import type * as binders from "../binders.js";
 import type * as cardsCatalog from "../cardsCatalog.js";
 import type * as challenges from "../challenges.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   adminDash: typeof adminDash;
   auth: typeof auth;
+  avent: typeof avent;
   binders: typeof binders;
   cardsCatalog: typeof cardsCatalog;
   challenges: typeof challenges;

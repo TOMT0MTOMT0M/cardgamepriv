@@ -3,6 +3,7 @@ import type { AchievementStats, EconState, StakeItem } from '../core/economy';
 import type { WeeklyState } from '../core/weekly';
 import type { GameCard, PackChoice, Stake } from '../core/games';
 import type { JeuxBackend } from './ecoJeux';
+import type { ExtrasBackend } from './ecoExtras';
 import type { MsgParams } from '../core/msgRefs';
 
 /**
@@ -25,6 +26,8 @@ export interface EcoSnapshot {
   suggestionsNew?: number;
   /** achat de boosters en pièces : prix unitaire et achats encore possibles aujourd'hui */
   packShop: { price: number; left: number };
+  /** (v2.1.13) calendrier de l'Avent (src/core/avent.ts) : cases ouvertes cette année, god packs offerts en attente */
+  advent?: { opened: number[]; godPacks: number };
 }
 
 export interface DuelSideView {
@@ -128,7 +131,7 @@ export interface FriendAch {
   stats: AchievementStats;
 }
 
-export interface EcoBackend extends JeuxBackend {
+export interface EcoBackend extends JeuxBackend, ExtrasBackend {
   readonly snapshot: EcoSnapshot | null;
   onChange(fn: (s: EcoSnapshot | null) => void): () => void;
   claimCalendar(): Promise<{ day: number; coins: number; packs: number }>;

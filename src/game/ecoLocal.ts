@@ -46,6 +46,7 @@ import {
 } from '../core/games';
 import type { CoinTx, DuelView, EcoBackend, EcoSnapshot, LobbyView, PotCard, RoyaleView, RouletteView } from './eco';
 import { createLocalJeux, type LocalJeuxSave } from './ecoLocalJeux';
+import { createLocalExtras, type LocalExtrasSave } from './ecoLocalExtras';
 import { fm, type Msg } from '../core/msgs';
 import { fe } from '../core/errors';
 import { t as tr } from '../core/i18n';
@@ -56,7 +57,7 @@ import { t as tr } from '../core/i18n';
  * Un bouton « Tirer maintenant » lance la roulette sans attendre 10 h / 20 h.
  */
 
-export interface LocalEcoSave extends LocalJeuxSave {
+export interface LocalEcoSave extends LocalJeuxSave, LocalExtrasSave {
   coins: number;
   econ: EconState;
   weekly?: WeeklyState;
@@ -121,6 +122,7 @@ export function createLocalEco(host: LocalEcoHost) {
       completions: claimableCompletions(owned, s.econ.completions).map((x) => ({ id: x.id, label: x.label, kind: x.kind, size: x.cards.length, reward: x.reward })),
       achievements: { stats, claimable: claimableAchievements(stats, s.econ.achievements).map((a) => a.id) },
       isAdmin: true,
+      advent: { opened: extras.opened(), godPacks: extras.godPacks() },
       packShop: { price: PACK_PRICE, left: packBuysLeft(s.econ, missionDay(now)) },
     };
   }
@@ -326,8 +328,12 @@ export function createLocalEco(host: LocalEcoHost) {
     act,
   });
 
+  // (v2.1.13) calendrier de l'Avent (ecoLocalExtras.ts)
+  const extras = createLocalExtras({ save: d, coins, grantPacks: (n) => host.grantPacks(n), act });
+
   const backend: EcoBackend = {
     ...jeux.backend,
+    ...extras.backend,
     get snapshot() {
       return snapshot();
     },
@@ -528,6 +534,9 @@ export function createLocalEco(host: LocalEcoHost) {
 
   /** Crochets du mode démo : pièces des boosters, missions (jour + semaine). */
   const hooks = {
+    /** (v2.1.13) un god pack offert (case 24 de l'Avent) attend-il ? Le consomme : ce booster en est un. */
+    takeGodPack: () => extras.takeGodPack(),
+    adventOpened: () => extras.opened(),
     onPack(kind: 'bebou' | 'theme', label: Msg, cards: Array<{ rarity: string; isNew: boolean }>) {
       coins(rollPackCoins(kind, Math.random), 'pack', label, true);
       weekly({ type: 'pack', cards });

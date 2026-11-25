@@ -11,6 +11,7 @@ import { applyRegen } from '../src/core/packRegen';
 import { touchStreak } from '../src/core/streak';
 import { missionDay } from '../src/core/missions';
 import { statsFrom } from '../src/core/cosmetics';
+import { adventOpened } from '../src/core/avent';
 import {
   CARD_VALUE,
   achievementPacks,
@@ -80,6 +81,8 @@ export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
     // onglet resté ouvert sur l'ancien client : des valeurs sûres (le nouveau client recalcule les vraies)
     completions: [] as Array<{ id: string; label: string; kind: string; size: number; reward: number }>,
     achievements: { stats: achievementStats(statsFrom([], achInput), econ), claimable: [] as string[] },
+    // (v2.1.13) calendrier de l'Avent : cases ouvertes cette année, god packs offerts en attente (convex/avent.ts)
+    advent: { opened: adventOpened(u), godPacks: u.godPacks ?? 0 },
     isAdmin: !!u.isAdmin,
     // (retours 06/11) modération des suggestions : nombre de nouvelles (pastille du menu)
     isModerator: canModerate(u),

@@ -25,6 +25,8 @@ export const fr = {
   'at.hint.vitrine': 'Le décor de tes cartes.',
   'at.hint.badge': 'Jusqu’à 5, sous ton pseudo.',
   'at.sec.drawn': 'Dessinés',
+  'at.sec.banners': 'Bannières',
+  'at.sec.pfx': 'Animation de profil',
   'at.sec.rings': 'Anneaux de couleur',
   'at.sec.style': 'Écriture',
   'at.sec.titles': 'Titre',

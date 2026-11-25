@@ -6,6 +6,7 @@ import type { WeeklyState } from '../core/weekly';
 import { achievementStats, claimableAchievements, claimableCompletions } from '../core/economy';
 import { statsFrom } from '../core/cosmetics';
 import { onlineJeux } from './ecoOnlineJeux';
+import { onlineExtras } from './ecoOnlineExtras';
 
 /** Économie + jeux en ligne (serveur Convex, temps réel). */
 export function createOnlineEco(): EcoBackend {
@@ -73,6 +74,7 @@ export function createOnlineEco(): EcoBackend {
 
   return {
     ...onlineJeux(), // (V2, 11/11) défis entre amis + La Presse
+    ...onlineExtras(), // (v2.1.13) calendrier de l'Avent
     get snapshot() {
       return snapshot;
     },

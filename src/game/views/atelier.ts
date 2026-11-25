@@ -23,17 +23,17 @@ import type { RarityId } from '../../core/rarity';
 import { catalogEntry } from '../../core/sets/themes';
 import { ACHIEVEMENTS, achievementStats, emptyEcon } from '../../core/economy';
 import {
-  ACCENTS, BACKGROUNDS, BADGES, BANNERS, DRAWN_FRAMES, FRAMES, TITLES, TITLE_STYLES, VITRINES, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX,
+  ACCENTS, BACKGROUNDS, BADGES, BANNERS, DRAWN_FRAMES, FRAMES, PROFILE_FX, TITLES, TITLE_STYLES, VITRINES, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX,
   accentColor, accordOf, backgroundOf, badgeOf, bannerColor, bannerOf, fmtMo, frameOf, titleOf, vitrineOf,
   type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind,
 } from '../../core/cosmetics';
-import { accordFx, badgeIcon, framed, icon, titleHtml, type IconName } from '../cosmeticArt';
+import { accordFx, badgeIcon, framed, icon, pfxHtml, titleHtml, type IconName } from '../cosmeticArt';
 import { mountBgShader } from '../bgShader';
 import { busyButton, errMsg, esc, fmtN, popLayer, pushLayer, thumbUrl, toast } from '../ui';
 
 export type AtelierFam = 'background' | 'banner' | 'frame' | 'title' | 'accent' | 'vitrine' | 'badge';
 /** champ modifié par une tuile (une famille peut en porter deux : titre + écriture, vitrine + sa couleur) */
-type Kind = 'background' | 'banner' | 'frame' | 'tstyle' | 'title' | 'accent' | 'vitrine' | 'vcolor' | 'badge';
+type Kind = 'background' | 'banner' | 'pfx' | 'frame' | 'tstyle' | 'title' | 'accent' | 'vitrine' | 'vcolor' | 'badge';
 
 export interface AtelierCtx {
   backend: GameBackend;
@@ -67,7 +67,8 @@ export interface Atelier {
 
 const FAMS: Array<{ id: AtelierFam; icon: IconName; kinds: Kind[] }> = [
   { id: 'background', icon: 'background', kinds: ['background'] },
-  { id: 'banner', icon: 'banner', kinds: ['banner'] },
+  // (v2.1.13) la bannière porte aussi son animation de profil (neige, aurore : calendrier de l'Avent)
+  { id: 'banner', icon: 'banner', kinds: ['banner', 'pfx'] },
   { id: 'frame', icon: 'frame', kinds: ['frame'] },
   { id: 'title', icon: 'title', kinds: ['tstyle', 'title'] },
   { id: 'accent', icon: 'accent', kinds: ['accent'] },
@@ -75,9 +76,9 @@ const FAMS: Array<{ id: AtelierFam; icon: IconName; kinds: Kind[] }> = [
   { id: 'badge', icon: 'badge', kinds: ['badge'] },
 ];
 /** clé « nouveau » (localStorage `bebou.cosm.seen`, profile.ts) d'une tuile */
-const FRESH_KEY: Record<Kind, string> = { background: 'background', banner: 'banner', frame: 'frame', tstyle: 'tstyle', title: 'title', accent: 'accent', vitrine: 'vitrine', vcolor: 'accent', badge: 'badge' };
+const FRESH_KEY: Record<Kind, string> = { background: 'background', banner: 'banner', pfx: 'pfx', frame: 'frame', tstyle: 'tstyle', title: 'title', accent: 'accent', vitrine: 'vitrine', vcolor: 'accent', badge: 'badge' };
 const HEX = /^#[0-9a-f]{6}$/i;
-const LIST: Record<Exclude<Kind, 'vcolor'>, Cosmetic[]> = { background: BACKGROUNDS, banner: BANNERS, frame: FRAMES, tstyle: TITLE_STYLES, title: TITLES, accent: ACCENTS, vitrine: VITRINES, badge: BADGES };
+const LIST: Record<Exclude<Kind, 'vcolor'>, Cosmetic[]> = { background: BACKGROUNDS, banner: BANNERS, pfx: PROFILE_FX, frame: FRAMES, tstyle: TITLE_STYLES, title: TITLES, accent: ACCENTS, vitrine: VITRINES, badge: BADGES };
 
 export function openAtelier(ctx: AtelierCtx): Atelier {
   const { shell, stats } = ctx;
@@ -109,11 +110,12 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
 
   // ── lecture du brouillon (valeurs par défaut comprises)
   const cur = (k: Kind, c: CosmeticChoice = draft): string =>
-    k === 'background' ? c.background ?? 'none' : k === 'banner' ? c.banner ?? BANNERS[0].id : k === 'frame' ? c.frame ?? 'none' : k === 'tstyle' ? c.titleStyle ?? TITLE_STYLES[0].id
+    k === 'background' ? c.background ?? 'none' : k === 'banner' ? c.banner ?? BANNERS[0].id : k === 'pfx' ? c.pfx ?? PROFILE_FX[0].id : k === 'frame' ? c.frame ?? 'none' : k === 'tstyle' ? c.titleStyle ?? TITLE_STYLES[0].id
       : k === 'title' ? c.title ?? '' : k === 'accent' ? c.accent ?? ACCENTS[0].id : k === 'vitrine' ? c.vitrine ?? VITRINES[0].id : k === 'vcolor' ? c.vitrineColor ?? '' : '';
   const put = (k: Kind, id: string) => {
     if (k === 'background') draft.background = id === 'none' ? undefined : id;
     else if (k === 'banner') draft.banner = id;
+    else if (k === 'pfx') draft.pfx = id === PROFILE_FX[0].id ? undefined : id;
     else if (k === 'frame') draft.frame = id;
     else if (k === 'tstyle') draft.titleStyle = id === TITLE_STYLES[0].id ? undefined : id;
     else if (k === 'title') draft.title = id || undefined;
@@ -133,7 +135,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
     const n = Math.min(achS[a.stat] ?? 0, a.target);
     return { text: `${fmtN(n)}/${fmtN(a.target)}`, part: a.target ? n / a.target : 0 };
   };
-  const KINDS: Kind[] = ['background', 'banner', 'frame', 'tstyle', 'title', 'accent', 'vitrine', 'vcolor'];
+  const KINDS: Kind[] = ['background', 'banner', 'pfx', 'frame', 'tstyle', 'title', 'accent', 'vitrine', 'vcolor'];
   const changes = () => {
     let n = 0, tries = 0;
     for (const k of KINDS)
@@ -149,6 +151,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
     const out: CosmeticChoice = { ...draft, badges: [...(draft.badges ?? [])] };
     if (isLocked('background', cur('background'))) out.background = saved.background;
     if (isLocked('banner', cur('banner'))) out.banner = saved.banner;
+    if (isLocked('pfx', cur('pfx'))) out.pfx = saved.pfx;
     if (isLocked('frame', cur('frame'))) out.frame = saved.frame;
     if (isLocked('tstyle', cur('tstyle'))) out.titleStyle = saved.titleStyle;
     if (isLocked('title', cur('title'))) out.title = saved.title;
@@ -222,7 +225,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
     pvIn.innerHTML = `
       <div class="at-pv-profil">
         <div class="at-bn${bUrl && bc ? ' bn-color' : ''}" style="background:${bn.css ?? ''};--bnc:${bc ?? 'transparent'}">${bUrl ? `<img src="${esc(bUrl)}" alt="" decoding="async">` : ''}
-          <button type="button" class="at-pen" data-pen="banner" aria-label="${tr('at.editBanner')}" aria-expanded="false">${icon('pen')}</button>${menu('banner', !!bUrl)}</div>
+          ${draft.pfx ? pfxHtml(draft.pfx) : ''}<button type="button" class="at-pen" data-pen="banner" aria-label="${tr('at.editBanner')}" aria-expanded="false">${icon('pen')}</button>${menu('banner', !!bUrl)}</div>
         <div class="at-id">
           <div class="at-ava">${framed(fr, ctx.avaHtml(), { under: acc ? accordFx(acc.matter) : '' })}
             <button type="button" class="at-pen" data-pen="avatar" aria-label="${tr('at.editPhoto')}" aria-expanded="false">${icon('pen')}</button>${menu('avatar', ctx.hasAvatar())}</div>
@@ -245,7 +248,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
   }
 
   // ── familles
-  const famItems = (f: AtelierFam): Cosmetic[] => (f === 'title' ? [...TITLE_STYLES, ...TITLES] : f === 'vitrine' ? VITRINES : LIST[f as Exclude<Kind, 'vcolor' | 'tstyle'>]);
+  const famItems = (f: AtelierFam): Cosmetic[] => (f === 'title' ? [...TITLE_STYLES, ...TITLES] : f === 'banner' ? [...BANNERS, ...PROFILE_FX] : f === 'vitrine' ? VITRINES : LIST[f as Exclude<Kind, 'vcolor' | 'tstyle'>]);
   function renderFams() {
     famsEl.innerHTML = FAMS.map((f) => {
       const all = famItems(f.id), ok = all.filter((c) => c.unlock(stats)).length;
@@ -262,6 +265,8 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
     if (k === 'frame') return framed(c, stillAva());
     if (k === 'background') return `<i class="at-sw" style="background:${c.css || '#050505'}"></i>`;
     if (k === 'banner') return `<i class="at-sw at-sw-bn${c.id === 'none' ? ' at-sw-0' : ''}" style="background:${c.css ?? ''}"></i>`;
+    // (v2.1.13) animation de profil : jouée sur la bannière en cours (seule la tuile survolée / choisie s'anime, atelier.css)
+    if (k === 'pfx') return `<i class="at-sw at-sw-bn at-sw-fx" style="background:${bannerOf(draft.banner).css || '#0b1020'}">${c.id === 'none' ? '' : pfxHtml(c.id)}</i>`;
     if (k === 'tstyle') return titleHtml(titleOf(draft.title)?.label ?? tr('at.sampleTitle'), c.id);
     if (k === 'title') return titleHtml(c.label, draft.titleStyle);
     if (k === 'accent' || k === 'vcolor') return `<i class="at-ac" style="--c:${c.css}"></i>`;
@@ -311,9 +316,9 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
     const fk = focus?.dataset.kind, fi = focus?.dataset.id;
     let html = '';
     if (fam === 'background') html = tiles('background', BACKGROUNDS);
-    else if (fam === 'banner') html = tiles('banner', BANNERS) + (filter === 'lock' ? '' : freeTile('banner'));
+    else if (fam === 'banner') html = sec(tr('at.sec.banners'), tiles('banner', BANNERS) + (filter === 'lock' ? '' : freeTile('banner'))) + sec(tr('at.sec.pfx'), tiles('pfx', PROFILE_FX));
     else if (fam === 'frame') {
-      const drawn = [FRAMES[0], ...DRAWN_FRAMES, ...FRAMES.filter((f) => f.anim || f.id.startsWith('s-'))];
+      const drawn = [FRAMES[0], ...DRAWN_FRAMES, ...FRAMES.filter((f) => f.anim || f.id.startsWith('s-') || f.advent)];
       html = sec(tr('at.sec.drawn'), tiles('frame', drawn)) + sec(tr('at.sec.rings'), tiles('frame', FRAMES.filter((f) => f.id.startsWith('c-'))) + (filter === 'lock' ? '' : freeTile('frame')));
     } else if (fam === 'title') {
       const none = filter === 'lock' ? '' : `<button type="button" class="at-tile at-k-title${cur('title') ? '' : ' on'}${cur('title', saved) ? '' : ' eq'}" data-kind="title" data-id="" aria-pressed="${!cur('title')}"><span class="at-no">00</span><span class="at-art"><i class="at-dash"></i></span><span class="at-lab"><span class="at-nm">${tr('at.none')}</span>${cur('title', saved) ? '' : icon('check', 15)}</span></button>`;
@@ -445,7 +450,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
     if (b.classList.contains('at-close')) return close();
     if (b.classList.contains('at-cancel')) {
       // retour à ce qui est enregistré, sans fermer : on peut continuer à choisir
-      Object.assign(draft, { background: saved.background, banner: saved.banner, frame: saved.frame, titleStyle: saved.titleStyle, title: saved.title, accent: saved.accent, vitrine: saved.vitrine, vitrineColor: saved.vitrineColor, badges: [...(saved.badges ?? [])] });
+      Object.assign(draft, { background: saved.background, banner: saved.banner, pfx: saved.pfx, frame: saved.frame, titleStyle: saved.titleStyle, title: saved.title, accent: saved.accent, vitrine: saved.vitrine, vitrineColor: saved.vitrineColor, badges: [...(saved.badges ?? [])] });
       return sync();
     }
     if (b.classList.contains('at-save')) {

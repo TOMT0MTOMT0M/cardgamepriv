@@ -28,6 +28,7 @@ function demoMedia(): { avatarMedia?: string; bannerMedia?: string } {
   }
 }
 import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon, type EconState } from '../core/economy';
+import { ADVENT_YEAR } from '../core/avent';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
 import { createLocalEco, type LocalEcoSave } from './ecoLocal';
 import { createLocalChat } from './chatLocal';
@@ -276,7 +277,7 @@ export function createLocalBackend(): GameBackend {
     (save.activity ??= []).unshift({ id: `a${save.seq++}`, kind, message, ...coded, rarity, cardId: card?.id, cardName: card?.name, mintNumber: card?.mint, createdAt: Date.now() });
     save.activity.length = Math.min(save.activity.length, 60);
   };
-  const myStats = () => statsFrom(Object.values(save.inv), { packsOpened: save.opened, tradesDone: save.trades_done ?? 0, contractsSigned: save.contracts_done ?? 0, streak: save.streak?.count ?? 0, burned: (save.eco?.econ ?? emptyEcon()).burned });
+  const myStats = () => statsFrom(Object.values(save.inv), { packsOpened: save.opened, tradesDone: save.trades_done ?? 0, contractsSigned: save.contracts_done ?? 0, streak: save.streak?.count ?? 0, burned: (save.eco?.econ ?? emptyEcon()).burned, advent: save.eco?.advent?.[String(ADVENT_YEAR)] ?? [] });
   const doneCount = (st: PlayerStats, e: EconState) => {
     const a = achievementStats(st, e);
     return ACHIEVEMENTS.reduce((n, x) => n + (achievementDone(x, a) ? 1 : 0), 0);
@@ -637,6 +638,8 @@ export function createLocalBackend(): GameBackend {
       rand = () => (first ? ((first = false), 0) : Math.random());
     }
     const seen = new Set<string>();
+    // (v2.1.13) god pack offert par la case 24 de l'Avent (ecoLocalExtras.ts) : ce booster en est un
+    if (!forceGod && eco.hooks.takeGodPack()) forceGod = true;
     const rolled = rollPackEx(forceGod ? { ...req, forceGod: true } : req, rand);
     forceGod = false;
     const cards = rolled.slots.map(({ card, rarity }) => {

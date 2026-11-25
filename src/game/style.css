@@ -3822,3 +3822,15 @@ body.viewer-zoomed .viewer-ui .v-actions :is(.va, .cp-strip) { pointer-events: n
 .nf-ask-a { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .nf-ask-a .nf-ask-no { margin-left: auto; }
 .nf-denied { margin: 8px 0 0; }
+
+/* (v2.1.13) ouvertures de Noël (scenes/opening.ts skinBurst) : un éclat par-dessus la scène quand le booster se déchire */
+.op-skin { position: absolute; left: 50%; top: 40%; width: 0; height: 0; pointer-events: none; z-index: 3; }
+.op-skin b { position: absolute; left: -120px; top: -120px; width: 240px; height: 240px; border-radius: 50%; animation: op-ring var(--dur-dramatique) var(--ease-entree) both; }
+.op-skin i { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; animation: op-fly calc(var(--dur-dramatique) * 1.6) var(--ease-entree) var(--d) both; }
+.op-skin-glace b { border: 2px solid #dff3ff; box-shadow: inset 0 0 40px #9fd8ff66; }
+.op-skin-glace i { background: #e8f7ff; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); width: 12px; height: 12px; }
+.op-skin-etoile b { border: 2px solid #ffd36b; box-shadow: inset 0 0 40px #ffb34766; }
+.op-skin-etoile i { background: #ffd36b; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); width: 14px; height: 14px; }
+@keyframes op-ring { 0% { opacity: 0.9; scale: 0.2; } 100% { opacity: 0; scale: 1.5; } }
+@keyframes op-fly { 0% { opacity: 0; transform: rotate(var(--a)) translateX(0) scale(0.4); } 15% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--r)) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .op-skin i { animation: none; opacity: 0; } .op-skin b { animation-duration: var(--dur-emphatique); } }

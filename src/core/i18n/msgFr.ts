@@ -156,6 +156,7 @@ export const MSG_FR = {
   'n.event': 'Booster du moment : {event}',
   'n.eventBody': 'À la boutique pendant {left} seulement.',
   'n.eventBodyBlurb': '{blurb}. À la boutique pendant {left} seulement.',
+  'c.advent': 'Calendrier de l’Avent — case {day}',
 } satisfies Record<string, MsgTpl>;
 
 export type MsgCode = keyof typeof MSG_FR;

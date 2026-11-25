@@ -39,6 +39,8 @@ export interface PlayerStats {
   seasonWins?: number;
   season0Top?: number;
   season0Player?: number;
+  /** (v2.1.13) cases ouvertes du calendrier de l'Avent de l'édition en cours (src/core/avent.ts) : cosmétiques de Noël */
+  advent?: number[];
 }
 
 export interface Cosmetic {
@@ -59,6 +61,11 @@ export interface Cosmetic {
   art?: string;
   /** (14/11) matière(s) de l'élément : un cadre et un fond de la même matière forment un ACCORD (`accordOf`) */
   tags?: Matter[];
+  /**
+   * (v2.1.13) cosmétique de Noël : le jour de la case du calendrier de l'Avent qui le donne (src/core/avent.ts). Débloqué
+   * dès que la case est ouverte (`PlayerStats.advent`), pour toujours ; pas de succès.
+   */
+  advent?: number;
 }
 
 /** (14/11) matières des accords : cadre + fond de la même matière = un petit plus visible sur le profil */
@@ -81,6 +88,13 @@ const derive = <T extends Cosmetic>(a: T, o: Partial<Cosmetic>): T =>
   Object.defineProperty({ ...a, ...o }, 'label', { get: () => a.label, enumerable: true, configurable: true }) as T;
 function C(c: Partial0): Cosmetic {
   const label = labelOf(c.label);
+  if (c.advent) {
+    const day = c.advent;
+    const out = { ...c, how: '', unlock: (s: PlayerStats) => !!s.advent?.includes(day) } as Cosmetic;
+    Object.defineProperty(out, 'label', { get: label, enumerable: true, configurable: true });
+    Object.defineProperty(out, 'how', { get: () => tData('cos.howAdvent', 'Case {d} du calendrier de l’Avent').replace('{d}', String(day)), enumerable: true, configurable: true }); // i18n-ok
+    return out;
+  }
   if (!c.need) return Object.defineProperty({ ...c, how: '', unlock: () => true }, 'label', { get: label, enumerable: true, configurable: true }) as Cosmetic;
   const a = ach(c.need);
   if (!a) throw new Error(`succès inconnu : ${c.need}`);
@@ -136,7 +150,11 @@ const frameCss = (hex: string) => hex;
  * puis une par couleur de la palette.
  */
 // i18n-data:début
-export const BANNERS: Cosmetic[] = [C({ id: 'none', label: 'Aucune couleur', css: 'transparent' }), ...ACCENTS.map((a) => derive(a, { id: `c-${a.id}`, css: bannerCss(a.css!) }))];
+export const BANNERS: Cosmetic[] = [C({ id: 'none', label: 'Aucune couleur', css: 'transparent' }), ...ACCENTS.map((a) => derive(a, { id: `c-${a.id}`, css: bannerCss(a.css!) })),
+  // (v2.1.13) Avent 2026 : bannières DESSINÉES en CSS (aucune image), données par leur case (src/core/avent.ts)
+  C({ id: 'x-village', label: 'Village enneigé', advent: 6, css: 'radial-gradient(2px 2px at 8% 20%, #fff, transparent), radial-gradient(1.5px 1.5px at 23% 46%, #ffffffcc, transparent), radial-gradient(2px 2px at 41% 14%, #ffffffdd, transparent), radial-gradient(1.5px 1.5px at 62% 36%, #ffffffbb, transparent), radial-gradient(2px 2px at 78% 18%, #fff, transparent), radial-gradient(1.5px 1.5px at 92% 42%, #ffffffcc, transparent), radial-gradient(3px 3px at 24% 77%, #ffd27a, transparent), radial-gradient(3px 3px at 31% 79%, #ffd27a, transparent), radial-gradient(3px 3px at 66% 74%, #ffc65a, transparent), radial-gradient(3px 3px at 74% 76%, #ffd27a, transparent), radial-gradient(ellipse 34% 22% at 20% 100%, #eef6ff 98%, transparent 100%), radial-gradient(ellipse 40% 26% at 62% 104%, #dbe9fa 98%, transparent 100%), radial-gradient(ellipse 30% 20% at 96% 100%, #eaf3ff 98%, transparent 100%), linear-gradient(180deg, #0b1838, #23407a 70%, #3a5c96)' }),
+  C({ id: 'x-atelier', label: 'Atelier du Père Noël', advent: 17, css: 'radial-gradient(4px 4px at 10% 14%, #ffd36b, transparent), radial-gradient(4px 4px at 26% 22%, #ff5a5a, transparent), radial-gradient(4px 4px at 42% 14%, #7dff9a, transparent), radial-gradient(4px 4px at 58% 22%, #ffd36b, transparent), radial-gradient(4px 4px at 74% 14%, #ff5a5a, transparent), radial-gradient(4px 4px at 90% 22%, #7dff9a, transparent), radial-gradient(ellipse at 50% 0%, #ffb34733, transparent 60%), repeating-linear-gradient(90deg, #00000033 0 2px, transparent 2px 44px), linear-gradient(180deg, transparent 0 72%, #3a1b0e 72% 74%, #5a2c16 74%), linear-gradient(180deg, #6e1414, #3d0a0a)' }),
+];
 
 // i18n-data:fin
 /**
@@ -156,6 +174,12 @@ const ANIMATED_FRAMES: Cosmetic[] = [
 /** (11/11, saisons) cadre gagné en finissant une saison sur le podium (convex/seasons.ts) — doré : la couleur dit le rang */
 // i18n-data:début
 const SEASON_FRAMES: Cosmetic[] = [C({ id: 's-podium', label: 'Podium de saison', need: 'season-podium', css: '#ffc94a', art: 'podium' })];
+/** (v2.1.13) Avent 2026 : cadres dessinés (src/game/cosmeticArt.ts), chacun donné par sa case (src/core/avent.ts) */
+const NOEL_FRAMES: Cosmetic[] = [
+  C({ id: 'x-flocon', label: 'Flocon givré', advent: 3, css: '#cfeaff', art: 'flocon' }),
+  C({ id: 'x-sucre', label: 'Sucre d’orge', advent: 13, css: '#ff4d5e', art: 'sucre' }),
+  C({ id: 'x-bonnet', label: 'Chapeau de Noël', advent: 23, css: '#e8333f', art: 'bonnet' }),
+];
 
 // i18n-data:fin
 /**
@@ -183,7 +207,7 @@ export const DRAWN_FRAMES: Cosmetic[] = [
 // i18n-data:fin
 /** Cadres d'avatar : aucun, un par couleur de la palette, les cadres dessinés, puis les cadres animés et celui des saisons. */
 // i18n-data:début
-export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => derive(a, { id: `c-${a.id}`, css: frameCss(a.css!) })), ...DRAWN_FRAMES, ...ANIMATED_FRAMES, ...SEASON_FRAMES];
+export const FRAMES: Cosmetic[] = [C({ id: 'none', label: 'Aucun', css: 'transparent' }), ...ACCENTS.map((a) => derive(a, { id: `c-${a.id}`, css: frameCss(a.css!) })), ...DRAWN_FRAMES, ...ANIMATED_FRAMES, ...SEASON_FRAMES, ...NOEL_FRAMES];
 
 // i18n-data:fin
 // i18n-data:début
@@ -266,12 +290,15 @@ export const TITLES: Cosmetic[] = [
  * gardé au serveur (`users.cosmetics.opening`, convex/profiles.ts `setOpening`, refusé si verrouillé). Mise en scène :
  * src/game/scenes/opening.ts (`openStyleOf`).
  */
-export type OpeningId = 'tear' | 'burn' | 'fan';
+export type OpeningId = 'tear' | 'burn' | 'fan' | 'glace' | 'etoile';
 // i18n-data:début
 export const OPENINGS: Array<Cosmetic & { id: OpeningId; blurb: string }> = [
   Object.defineProperty(derive(C({ id: 'tear', label: 'Déchirure' }), { id: 'tear' }), 'blurb', { get: () => tData('cos.blurb.tear', 'Glisse le doigt pour déchirer le haut du booster.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
   Object.defineProperty(derive(C({ id: 'burn', label: 'Brûlure', need: 'burn-250' }), { id: 'burn' }), 'blurb', { get: () => tData('cos.blurb.burn', 'Maintiens pour brûler l’emballage depuis le centre.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
   Object.defineProperty(derive(C({ id: 'fan', label: 'Éventail', need: 'world-150' }), { id: 'fan' }), 'blurb', { get: () => tData('cos.blurb.fan', 'Un toucher arrache le haut, les cartes s’ouvrent en éventail.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
+  // (v2.1.13) Avent 2026 : la déchirure, avec un éclat de givre ou une pluie d'étoiles (src/game/scenes/opening.ts)
+  Object.defineProperty(derive(C({ id: 'glace', label: 'Déchirure glacée', advent: 20 }), { id: 'glace' }), 'blurb', { get: () => tData('cos.blurb.glace', 'La déchirure, dans un éclat de givre.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
+  Object.defineProperty(derive(C({ id: 'etoile', label: 'Étoile de Noël', advent: 23 }), { id: 'etoile' }), 'blurb', { get: () => tData('cos.blurb.etoile', 'La déchirure, sous une pluie d’étoiles dorées.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
 ];
 // i18n-data:fin
 export const DEFAULT_OPENING: OpeningId = 'tear';
@@ -367,6 +394,20 @@ export const TITLE_STYLES: Cosmetic[] = [
 // i18n-data:fin
 export const titleStyleOf = (id?: string) => find(TITLE_STYLES, id) ?? TITLE_STYLES[0];
 
+/**
+ * (v2.1.13) ANIMATION DE PROFIL — un effet léger par-dessus la bannière du profil (src/game/cosmetiques.css,
+ * `.pfx-<id>`, coupé en « mouvements réduits »). « Aucune » d'office ; les autres viennent du calendrier de l'Avent.
+ * Rangé dans `users.cosmetics.pfx` (absent = aucune).
+ */
+// i18n-data:début
+export const PROFILE_FX: Cosmetic[] = [
+  C({ id: 'none', label: 'Aucune' }),
+  C({ id: 'neige', label: 'Chute de neige', advent: 10 }),
+  C({ id: 'aurore', label: 'Aurore boréale', advent: 22 }),
+];
+// i18n-data:fin
+export const profileFxOf = (id?: string) => find(PROFILE_FX, id) ?? PROFILE_FX[0];
+
 export const vitrineOf = (id?: string) => find(VITRINES, id) ?? VITRINES[0];
 
 /** couleur libre du sélecteur : « #rrggbb » (gratuite pour tout le monde) */
@@ -389,7 +430,7 @@ export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(
   collection: Array<{ cardId: string; rarity: string; count: number }>,
-  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number; season0Top?: number; season0Player?: number },
+  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number; season0Top?: number; season0Player?: number; advent?: number[] },
 ): PlayerStats {
   const ids = new Set<string>();
   let mythics = 0, legendaries = 0, secrets = 0;
@@ -457,6 +498,8 @@ export interface CosmeticChoice {
   /** (14/11) fond du profil (BACKGROUNDS) et style d'écriture du titre (TITLE_STYLES) */
   background?: string;
   titleStyle?: string;
+  /** (v2.1.13) animation de profil (PROFILE_FX) */
+  pfx?: string;
 }
 
 const find = (list: Cosmetic[], id: string | undefined) => (id ? list.find((c) => c.id === id) : undefined);
@@ -484,11 +527,12 @@ export function cleanCosmetics(choice: CosmeticChoice, stats: PlayerStats): Cosm
   // (14/11) fond et style de titre : le choix par défaut (« Aucun », « Usiné ») n'est pas rangé
   const background = ok(BACKGROUNDS, choice.background);
   const titleStyle = ok(TITLE_STYLES, choice.titleStyle);
+  const pfx = ok(PROFILE_FX, choice.pfx);
   const pick = (list: Cosmetic[], legacy: Cosmetic[], v?: string) => {
     const a = (v ?? '').toLowerCase();
     return CUSTOM_ACCENT.test(a) ? a : ok(list, v) ?? ok(legacy, v);
   };
-  return { banner: pick(BANNERS, LEGACY_BANNERS, choice.banner), frame: pick(FRAMES, LEGACY_FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}), ...(vitrine ? { vitrine } : {}), ...(vitrineColor ? { vitrineColor } : {}), ...(background && background !== BACKGROUNDS[0].id ? { background } : {}), ...(titleStyle && titleStyle !== TITLE_STYLES[0].id ? { titleStyle } : {}) };
+  return { banner: pick(BANNERS, LEGACY_BANNERS, choice.banner), frame: pick(FRAMES, LEGACY_FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}), ...(vitrine ? { vitrine } : {}), ...(vitrineColor ? { vitrineColor } : {}), ...(background && background !== BACKGROUNDS[0].id ? { background } : {}), ...(titleStyle && titleStyle !== TITLE_STYLES[0].id ? { titleStyle } : {}), ...(pfx && pfx !== PROFILE_FX[0].id ? { pfx } : {}) };
 }
 
 /** Ce que le joueur a débloqué (pour la galerie et pour le fil « succès » à venir). */
@@ -534,4 +578,9 @@ export function profileMediaProblem(size: number, type: string | undefined, max 
   if (!PROFILE_MEDIA_TYPES.includes(type ?? '')) return fe('cosmetics.1');
   if (size > max) return fe('cosmetics.2', { p0: fmtMo(size), p1: max >= 1024 * 1024 ? fmtMo(max) : `${Math.round(max / 1024)} Ko` });
   return '';
+}
+
+/** (v2.1.13) cosmétique de Noël donné par une case de l'Avent (src/core/avent.ts, `AdventReward.cos`) */
+export function adventCosmetic(kind: 'frame' | 'banner' | 'pfx' | 'opening', id: string): Cosmetic | undefined {
+  return find(kind === 'frame' ? FRAMES : kind === 'banner' ? BANNERS : kind === 'pfx' ? PROFILE_FX : OPENINGS, id);
 }

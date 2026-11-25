@@ -4,6 +4,7 @@
  */
 import type { fr as core } from './fr';
 import type { fr as p_game_v2gate } from './fr/game.v2gate';
+import type { fr as p_game_views_evenement } from './fr/game.views.evenement';
 import type { fr as p_game_chatStore } from './fr/game.chatStore';
 import type { fr as p_game_offline } from './fr/game.offline';
 import type { fr as p_game_views_launch } from './fr/game.views.launch';
@@ -40,6 +41,7 @@ import type { fr as p_game_views_infos } from './fr/game.views.infos';
 
 export type AllFr = typeof core &
   typeof p_game_v2gate &
+  typeof p_game_views_evenement &
   typeof p_game_chatStore &
   typeof p_game_offline &
   typeof p_game_views_launch &

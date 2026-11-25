@@ -32,6 +32,7 @@ bindHapticGestures();
 import { Sfx } from '../core/audio';
 import { padOn, setPadOn, setSilentOn, silentOn } from '../core/soundPrefs';
 import { installCatalog } from '../core/sets/themes';
+import { adventDay, adventWaiting } from '../core/avent';
 import { CANAL, mountCanalBadge } from '../core/canal';
 import { hardUpdate, setUpdateBusy, watchUpdates } from './maj';
 import { installNavDots } from './navDots';
@@ -202,6 +203,7 @@ top.innerHTML = `
   <a class="logo" href="#/">${tr('boot.logo')}<span>cartes</span></a>
   <nav aria-label="${tr('nav.aria')}">
     <a href="#/" data-r="">${tr('nav.shop')}</a>
+    <a href="#/evenement" data-r="evenement">${tr('nav.event')}<b class="badge evt-badge" hidden></b></a>
     <a href="#/collection" data-r="collection">Collection</a> <!-- i18n-ok -->
     <a href="#/echanges" data-r="echanges">${tr('nav.trades')}<b class="badge" hidden></b></a>
     <a href="#/jeux" data-r="jeux">${tr('nav.games')}</a>
@@ -232,7 +234,7 @@ top.querySelector('nav a[data-r="collection"]')!.append(freshBadge);
 
 /** (version anglaise) libellés de l'en-tête refaits en place (les pastilles et écouteurs restent) au changement de langue */
 function relabelTop() {
-  const NAV: Record<string, MsgKey> = { '': 'nav.shop', echanges: 'nav.trades', jeux: 'nav.games', classement: 'nav.ranking', succes: 'nav.achievements', amis: 'nav.friends' };
+  const NAV: Record<string, MsgKey> = { '': 'nav.shop', evenement: 'nav.event', echanges: 'nav.trades', jeux: 'nav.games', classement: 'nav.ranking', succes: 'nav.achievements', amis: 'nav.friends' };
   top.querySelectorAll<HTMLElement>('nav a[data-r]').forEach((a) => {
     const k = NAV[a.dataset.r ?? ''];
     if (k && a.firstChild?.nodeType === Node.TEXT_NODE) a.firstChild.textContent = tr(k);
@@ -647,6 +649,17 @@ backend.eco.onChange((snap) => {
   achBadge.textContent = String(n);
   if (n !== was) placePill(false);
 });
+/** (v2.1.13) pastille sur l'onglet ÉVÉNEMENT : cases du calendrier de l'Avent à ouvrir (src/core/avent.ts) */
+const evtBadge = top.querySelector<HTMLElement>('.evt-badge')!;
+function syncEvtBadge() {
+  const a = backend.eco.snapshot?.advent;
+  const n = a ? adventWaiting(adventDay(Date.now()), a.opened).length : 0;
+  const was = evtBadge.hidden ? 0 : Number(evtBadge.textContent);
+  evtBadge.hidden = n === 0;
+  evtBadge.textContent = String(n);
+  if (n !== was) placePill(false);
+}
+backend.eco.onChange(syncEvtBadge);
 backend.eco.onChange(() => syncMissionBadge());
 /** (retours 06/11) modérateurs (Hugo, Tom) : pastille des nouvelles suggestions sur l'onglet */
 const sgBadge = top.querySelector<HTMLElement>('.sg-badge');
@@ -921,7 +934,7 @@ function updateTitle() {
   if (document.title !== title) document.title = title;
 }
 /** Titre de l'onglet du navigateur selon la page (fr.ts / en.ts : `title.*`). */
-const TITLE_PAGES = new Set(['collection', 'contrats', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
+const TITLE_PAGES = new Set(['evenement', 'collection', 'contrats', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
 const pageTitle = (r: string) => tr((TITLE_PAGES.has(r) ? `title.${r}` : 'title.shop') as MsgKey);
 
 /** Page du jeu : son élément et ses entrées / sorties (route()). */
@@ -990,6 +1003,7 @@ const PAGE_MODULES = {
   jeux: () => import('./views/games'),
   classement: () => import('./views/ranking'),
   succes: () => import('./views/succes'),
+  evenement: () => import('./views/evenement'),
   suggestions: () => import('./views/suggestions'),
   maj: () => import('./views/infos'),
   tuto: () => import('./views/infos'),
@@ -1085,6 +1099,7 @@ async function boot() {
     jeux: (m) => m.createGamesView(backend, shell),
     classement: (m) => m.createRankingView(backend, shell),
     succes: (m) => m.createSuccesView(backend, shell),
+    evenement: (m) => m.createEvenementView(backend, shell),
     suggestions: (m) => m.createSuggestionsView(backend, shell),
     maj: (m) => m.createUpdatesView(shell),
     tuto: (m) => m.createTutorialView(shell),

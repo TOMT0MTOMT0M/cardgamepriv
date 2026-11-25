@@ -310,6 +310,7 @@ export const enData: Record<string, string> = {
   'ach.stat.coinsEarned': 'Coins earned',
   // ───── cosmétiques (src/core/cosmetics.ts) : clé = libellé français ─────
   'cos.howFmt': 'Achievement “{l}”: {h}',
+  'cos.howAdvent': 'Door {d} of the Advent calendar',
   // (14/11, refonte de la personnalisation) cadres dessinés, fonds, styles de titre, vitrines
   'cos.Double filet': 'Double line',
   'cos.Pointillé': 'Dotted',
@@ -426,6 +427,16 @@ export const enData: Record<string, string> = {
   'cos.Or': 'Gold',
   'cos.Papier kraft': 'Kraft paper',
   'cos.Podium de saison': 'Season podium',
+  'cos.Village enneigé': 'Snowy village',
+  'cos.Atelier du Père Noël': 'Santa’s workshop',
+  'cos.Flocon givré': 'Frosted snowflake',
+  'cos.Sucre d’orge': 'Candy cane',
+  'cos.Chapeau de Noël': 'Santa hat',
+  'cos.Déchirure glacée': 'Frozen tear',
+  'cos.Étoile de Noël': 'Christmas star',
+  'cos.Aucune': 'None',
+  'cos.Chute de neige': 'Snowfall',
+  'cos.Aurore boréale': 'Northern lights',
   'cos.Prisme': 'Prism',
   'cos.Prune': 'Plum',
   'cos.Pyromane': 'Pyromaniac',
@@ -448,6 +459,8 @@ export const enData: Record<string, string> = {
   'cos.blurb.tear': 'Swipe your finger to tear the top of the booster.',
   'cos.blurb.burn': 'Hold to burn the wrapper from the center.',
   'cos.blurb.fan': 'One tap rips off the top, the cards open in a fan.',
+  'cos.blurb.glace': 'The tear, in a burst of frost.',
+  'cos.blurb.etoile': 'The tear, under a shower of golden stars.',
   // ───── sondage (src/core/survey.ts) ─────
   'sv.u.anime': 'Anime & manga',
   'sv.u.anime.hint': 'new series, characters',

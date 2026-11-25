@@ -308,4 +308,10 @@ export const enErrors: { readonly [K in keyof typeof ERR_FR]: string } = {
   'games.48': 'Invalid amount.',
   'games.49': '{p0} number(s) = {p2}.',
   'missions.8': 'Mission not found.',
+  'avent.1': 'Unknown door.',
+  'avent.2': 'Door {p0} is already open.',
+  'avent.3': 'The Advent calendar is over.',
+  'avent.4': 'The Advent calendar opens on 1 December.',
+  'avent.5': 'Patience: door {p0} opens on {p0} December.',
+  'avent.6': 'Test mode is for the team only.',
 };

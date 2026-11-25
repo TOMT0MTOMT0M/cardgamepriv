@@ -146,6 +146,23 @@ let chosenStyle: OpenStyle = 'tear';
 /** Animation d'ouverture choisie par le joueur (déjà vérifiée débloquée par le serveur) ; inconnue → la déchirure. */
 export function setOpeningChoice(id: string | undefined) {
   chosenStyle = id === 'burn' || id === 'fan' ? id : 'tear';
+  chosenSkin = id === 'glace' || id === 'etoile' ? id : '';
+}
+/**
+ * (v2.1.13) ouvertures de Noël (calendrier de l'Avent) : la DÉCHIRURE, avec un éclat en DOM par-dessus la scène au
+ * moment où le booster se déchire (givre ou étoiles dorées, style.css `.op-skin`). Rien ne change dans la 3D.
+ */
+let chosenSkin: '' | 'glace' | 'etoile' = '';
+function skinBurst(host: HTMLElement) {
+  if (!chosenSkin) return;
+  const el = document.createElement('div');
+  el.className = `op-skin op-skin-${chosenSkin}`;
+  el.setAttribute('aria-hidden', 'true');
+  let html = '<b></b>';
+  for (let i = 0; i < 18; i++) html += `<i style="--a:${((i * 137.5) % 360).toFixed(1)}deg;--r:${(90 + ((i * 53) % 120)).toFixed(0)}px;--d:${((i % 6) * 30).toFixed(0)}ms"></i>`;
+  el.innerHTML = html;
+  host.append(el);
+  setTimeout(() => el.remove(), DUR.ceremonie);
 }
 
 export interface OpeningEvents {
@@ -1118,6 +1135,7 @@ export function createOpeningScene(): OpeningScene {
     autoTear = null;
     shake.impulse(5);
     haptics.pulse(24);
+    if (style === 'tear') skinBurst(ctx.overlay);
     void (prepared ?? Promise.resolve()).then(() => {
       if (!pack) return;
       kill();

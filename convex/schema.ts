@@ -107,7 +107,9 @@ export default defineSchema({
       /** (14/11, refonte de la personnalisation) fond du profil et style d'écriture du titre (src/core/cosmetics.ts : BACKGROUNDS, TITLE_STYLES) */
       background: v.optional(v.string()), titleStyle: v.optional(v.string()),
       /** (11/11, chantier ouvertures-saisons) animation d'ouverture choisie (src/core/cosmetics.ts, OPENINGS) — absente : la déchirure */
-      opening: v.optional(v.string()) })),
+      opening: v.optional(v.string()),
+      /** (v2.1.13) animation de profil (src/core/cosmetics.ts, PROFILE_FX) — absente : aucune */
+      pfx: v.optional(v.string()) })),
     /** photo de profil / bannière importées par le joueur (GIF animé ou image, ≤ 2 Mo, convex/profiles.ts) — sinon l'avatar Discord */
     avatarMedia: v.optional(v.id('_storage')),
     bannerMedia: v.optional(v.id('_storage')),
@@ -134,6 +136,8 @@ export default defineSchema({
     season0Player: v.optional(v.number()),
     /** (25/11) God packs offerts en attente : le prochain booster tiré en est un (convex/packs.ts) */
     godPacks: v.optional(v.number()),
+    /** (v2.1.13, convex/avent.ts) CALENDRIER DE L'AVENT : cases ouvertes, par année (« 2026 » → [1, 2, 5]) ; absent = aucune */
+    advent: v.optional(v.record(v.string(), v.array(v.number()))),
     /** appareils vus (id tiré au hasard et gardé dans le navigateur) : signal « deux comptes sur le même appareil » */
     devices: v.optional(v.array(v.string())),
     /** PARRAINAGE (retours live 02, §10 — convex/referrals.ts) : mon code d'invitation (lien `?ref=CODE`) */
