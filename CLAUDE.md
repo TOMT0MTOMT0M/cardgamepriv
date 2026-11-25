@@ -22,7 +22,11 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
 - Correctif, image, carte, musique… demandé « pour le jeu » / « pour les joueurs » sans parler de V3 = **patch de la version en ligne** : commité sur `master` (`.wt-master/`), tagué `v2.X.Y`, avec son lanceur `.wt-master/METTRE-EN-LIGNE-v2.X.Y.cmd` (modèle : `METTRE-EN-LIGNE-v2.1.3.cmd`). Puis le même contenu sur `v2` et `git merge -s ours master` sur `v2` (sinon `publier-patch.cmd` refuse). Dans le doute : demander à Tom.
 - Travail V3 (nouvelles fonctions, refontes) : sur `v2`.
 - `lanceurs/publier-patch.cmd` envoie en prod TOUT `master..v2`, donc la V3 en cours : ne pas s'en servir pour un correctif tant que `v2` porte des lots V3 non validés. Ne pas lancer `convex:deploy` ni `cf:deploy` à la main.
-- Les `.cmd` de `lanceurs/` tournent chez Tom : lui dire lequel et dans quel ordre.
+- (25/11) **Claude lance lui-même les lanceurs** depuis sa session sur le PC de Tom, toujours sous la forme exacte `cmd.exe //c "lanceurs\<nom>.cmd" < /dev/null` (depuis `.wt-master/` : `cmd.exe //c "METTRE-EN-LIGNE-v2.X.Y.cmd" < /dev/null`), en arrière-plan s'il dure plus de 2 min, puis lit le journal dans `logs\` et dit si c'est OK. `< /dev/null` passe les `pause`.
+  - Sans demander : `push.cmd`, `mettre-en-ligne-v2.cmd` (lien V3 + staging), `rafraichir-staging-v2.cmd`.
+  - **Prod** (`METTRE-EN-LIGNE-v2.X.Y.cmd`, `publier-patch.cmd`) : demander « je publie v2.X.Y chez les joueurs ? » et attendre un oui de Tom (il répond depuis son téléphone).
+  - Jamais : `NE-PAS-LANCER-*`, `mettre-en-ligne-prod.cmd` en direct, un lanceur qui ouvre un navigateur ou demande une connexion (le dire à Tom).
+  - Si la session tourne ailleurs que sur le PC de Tom (cloud, pas d'accès git) : lui dire quel lanceur lancer.
 - Un commit par lot, uniquement ses propres fichiers (une autre session peut commiter en parallèle sur `v2`).
 - À deux : un dossier (worktree) et une session par personne. Avant de toucher un fichier partagé (`convex/schema.ts`, `vite.config.ts`, `src/game/updates.data.ts`), le réserver dans `docs/chantiers/EN-COURS.md`.
 - Un patch a son entrée dans `src/game/updates.data.ts`.

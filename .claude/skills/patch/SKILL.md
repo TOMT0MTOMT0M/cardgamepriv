@@ -18,6 +18,6 @@ Rappel : version en ligne = `master` (worktree `.wt-master/`). `lanceurs/publier
 5. **Vérifs, boucle bornée (5 essais max)** : `npm run typecheck` et `npm run test:server`, plus `test:sound` / `test:rolls` / `check:images` selon ce qui change. Pas vert après 5 essais : s'arrêter et expliquer le blocage.
 6. **Commit** : un par lot, uniquement ses fichiers, message `fix|feat(...): … (patch v2.X.Y)` + lignes d'attribution.
 7. **Lanceur** : `.wt-master/METTRE-EN-LIGNE-v2.X.Y.cmd`, copié du dernier (`METTRE-EN-LIGNE-v2.1.9.cmd`), en-tête et numéros mis à jour.
-8. **Report sur v2** : cherry-pick des commits du patch sur `v2`, puis `git merge -s ours patch-v2.X.Y` sur `v2` (sinon `publier-patch.cmd` refusera plus tard). Pousser `v2` et `patch-v2.X.Y`. Ne jamais pousser `master` : le lanceur le fait.
-9. **Dire à Tom**, dans l'ordre : quel lanceur double-cliquer, puis 2-3 vérifications précises sur https://cardgamepriv.pages.dev/jeu/.
+8. **Report sur v2** : cherry-pick des commits du patch sur `v2`, puis `git merge -s ours patch-v2.X.Y` sur `v2` (sinon `publier-patch.cmd` refusera plus tard). Pousser `v2` et `patch-v2.X.Y` (`git push`). Ne jamais pousser `master` à la main : le lanceur le fait.
+9. **Mise en ligne** : demander « je publie v2.X.Y chez les joueurs ? ». Au oui de Tom, lancer `cmd.exe //c "METTRE-EN-LIGNE-v2.X.Y.cmd" < /dev/null` depuis `.wt-master/` en arrière-plan, lire `logs\mise-en-ligne-v2.X.Y.log`, puis donner à Tom 2-3 vérifications précises sur https://cardgamepriv.pages.dev/jeu/.
 10. **Fin** : appliquer la procédure de `/cr` (EN-COURS.md + compte rendu 1 page).

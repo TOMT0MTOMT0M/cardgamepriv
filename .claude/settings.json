@@ -23,7 +23,13 @@
       "Bash(gh pr view:*)",
       "Bash(gh pr list:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(git push origin v2:*)",
+      "Bash(git push origin patch-v2.:*)",
+      "Bash(git push -u origin patch-v2.:*)",
+      "Bash(cmd.exe //c \"lanceurs\\push.cmd\":*)",
+      "Bash(cmd.exe //c \"lanceurs\\mettre-en-ligne-v2.cmd\":*)",
+      "Bash(cmd.exe //c \"lanceurs\\rafraichir-staging-v2.cmd\":*)"
     ],
     "ask": [
       "Bash(git push origin master:*)",
@@ -31,7 +37,9 @@
       "Bash(git push -f:*)",
       "Bash(git reset --hard:*)",
       "Bash(npx convex run:*)",
-      "Bash(npx convex import:*)"
+      "Bash(npx convex import:*)",
+      "Bash(cmd.exe //c \"METTRE-EN-LIGNE-v2.:*)",
+      "Bash(cmd.exe //c \"lanceurs\\publier-patch.cmd\":*)"
     ],
     "deny": [
       "Read(./.env.local)",
@@ -41,7 +49,9 @@
       "Bash(npm run convex:deploy:*)",
       "Bash(npx convex deploy:*)",
       "Bash(npm run cf:deploy:*)",
-      "Bash(npx wrangler pages deploy:*)"
+      "Bash(npx wrangler pages deploy:*)",
+      "Bash(cmd.exe //c \"lanceurs\\NE-PAS-LANCER:*)",
+      "Bash(cmd.exe //c \"lanceurs\\mettre-en-ligne-prod.cmd\":*)"
     ]
   }
 }
