@@ -26,6 +26,15 @@ $gris = [System.Drawing.Color]::FromArgb(150, 150, 150)
 $bleu = [System.Drawing.Color]::FromArgb(47, 91, 255)
 $blanc = [System.Drawing.Color]::White
 
+function Ouvrir-Labo() {
+  $cmdLabo = Join-Path $racine 'outils\labo\LABO.cmd'
+  if (Get-Command wt.exe -ErrorAction SilentlyContinue) {
+    Start-Process wt.exe -ArgumentList ('-d "' + $racine + '" --title "LABO Fable" cmd /k "' + $cmdLabo + '"')
+  } else {
+    Start-Process cmd.exe -ArgumentList ('/k title LABO Fable && "' + $cmdLabo + '"')
+  }
+}
+
 $fenetre = New-Object System.Windows.Forms.Form
 $fenetre.Text = 'Claude - Bebou cartes'
 $fenetre.BackColor = $noir
@@ -73,6 +82,7 @@ if (-not $aMaster) { $detailPatch = 'Pas de dossier .wt-master sur ce PC' }
 Ajouter-Bouton 'PATCH  -  version en ligne' $detailPatch $bleu $blanc 74 { Ouvrir-Claude $master 'PATCH' '' } $aMaster
 Ajouter-Bouton 'V3  -  nouveautes' 'Fonctions, refontes, donnees - dossier racine - Opus' $blanc $noir 74 { Ouvrir-Claude $racine 'V3' '--model opus' }
 Ajouter-Bouton 'REPRENDRE la derniere session V3' 'Seulement si elle a ete coupee en plein milieu' ([System.Drawing.Color]::FromArgb(45, 45, 45)) $blanc 64 { Ouvrir-Claude $racine 'V3 (reprise)' '--continue' }
+Ajouter-Bouton 'LABO  -  Fable' 'Experiences ouvertures et 6 etoiles - credits API uniquement' ([System.Drawing.Color]::FromArgb(120, 60, 200)) $blanc 64 { Ouvrir-Labo }
 
 $script:y += 8
 Ajouter-Titre 'VOIR'

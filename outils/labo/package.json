@@ -1,0 +1,9 @@
+{
+  "name": "labo-fable",
+  "private": true,
+  "type": "module",
+  "description": "Labo d'expériences avec Fable, payé UNIQUEMENT par les crédits API mensuels (clé CLAUDE_LABO_API_KEY dans .env.local)",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest"
+  }
+}

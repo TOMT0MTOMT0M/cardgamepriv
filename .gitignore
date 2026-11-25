@@ -45,3 +45,8 @@ donnees/**/a-integrer/**/*.wav
 # notes et réglages perso de Claude Code (chacun les siens)
 CLAUDE.local.md
 .claude/settings.local.json
+
+# worktrees locaux (.wt-master, .wt-labo…) et labo Fable
+/.wt-*/
+outils/labo/node_modules/
+outils/labo/.depenses.json
