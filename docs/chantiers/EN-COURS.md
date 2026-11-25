@@ -18,7 +18,7 @@ _Mis à jour : 25/11/2026 (Hugo : labo sur le lien prod seulement, patch v2.1.10
 - [ ] V3 — Packs événement : 7 j, 1/h, réserve propre 3 (5 abonné), 2 500 pièces ; consommer SA réserve (prend un booster normal aujourd'hui) ; collection Télé + booster de lancement
 - [ ] V3 — Succès : ouvertures à gagner avec aperçu, paliers plus longs, récompenses proportionnelles
 - [ ] V3 — Sachets par thème : piste « Case de BD » choisie le 25/11 ; Tom la retouche dans Photoshop → EN ATTENTE de ses fichiers, puis vignettes, roue 3D, booster du moment
-- [ ] V3 — Marché « façon Kyara » (captures attendues de Tom et Hugo) ; passe « moins de texte » Marché / Échanges / Jeux (Pack Battle, Battle Royale : mêmes règles, plus visuels)
+- [ ] V3 — Marché « façon Kyara » (captures reçues, brief : `docs/chantiers/marche-kyara.md`) ; passe « moins de texte » Marché / Échanges / Jeux (Pack Battle, Battle Royale : mêmes règles, plus visuels)
 - [ ] V3 — Roulette : toucher le pot = carte en grand, couleurs dans le replay
 - [ ] Pity (bug, version en ligne aussi) : le compteur X/200 se remet à zéro AVANT la révélation de la 6★ → spoil ; ne le mettre à jour qu'après la révélation
 - [ ] URGENT avant le 30/11 (fin de la saison 0, version en ligne) : récompenses de saison = 1er God pack, 2e 20 boosters, 3e 15 boosters, titre + contour de cadre pour le top 3, 4e-10e 10 boosters, titre « Participant de la saison 0 » à tout joueur ayant ouvert ≥ 100 boosters dans la saison
