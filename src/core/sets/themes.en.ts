@@ -296,6 +296,7 @@ export const GROUPS: Record<string, string> = {
   "glisse": "Snow & board sports",
   "jeux-video": "Video games",
   "lieux": "Places & countries",
+  "france": "France: departments & regions",
   "lol": "League of Legends",
   "meca": "Motorsport",
   "musique": "Music",

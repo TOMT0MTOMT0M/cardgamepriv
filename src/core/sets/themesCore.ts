@@ -223,9 +223,12 @@ function bigSubthemes(B: typeof BigSets, cur: Curation): SubTheme[] {
     if (e.sub !== key) list = mondeLists.get((key = e.sub));
     if (list) list.push({ id, themeId: 'monde', subthemeId: e.sub, num: e.num, name: e.name, rarity: rerate.get(id) || e.rarity, file: e.file, dir: e.dir, art: e.art, label: e.label });
   }
+  // (25/11, Hugo) Départements et Régions (France) séparés de Pays et du reste du groupe « Lieux & pays »
+  const mondeGroupOf = (s: (typeof B.MONDE_SUBS)[number]) =>
+    s.id === 'departements' || s.id === 'regions' ? { id: 'france', label: 'France : départements & régions' } : { id: s.group!, label: B.MONDE_GROUPS[s.group!] };
   const monde: SubTheme[] = B.MONDE_SUBS.map((s) =>
     s.group
-      ? { id: s.id, label: s.label, themeId: 'monde', code: s.code, artDir: 'art/monde', cards: mondeLists.get(s.id)!, group: { id: s.group, label: B.MONDE_GROUPS[s.group] } }
+      ? { id: s.id, label: s.label, themeId: 'monde', code: s.code, artDir: 'art/monde', cards: mondeLists.get(s.id)!, group: mondeGroupOf(s) }
       : { id: s.id, label: s.label, themeId: 'monde', code: s.code, artDir: 'art/monde', cards: mondeLists.get(s.id)! },
   );
 

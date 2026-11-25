@@ -34,6 +34,14 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Artwork for over 350 cards', tag: 'amélioré',
+        points: [
+          '🖼️ Over 350 cards that had no picture now have one: Dofus, Wakfu, Genshin Impact, Summoner’s War, Fast & Furious, X-Men, esports…',
+          '✨ About a hundred pictures replaced, mostly 6★: music, football, esports, anime.',
+          '🗂️ French departments and regions now have their own family, separate from countries.',
+        ],
+      },
+      {
         date: '25 Nov', title: 'The big reshuffle: 848 new cards', tag: 'nouveau',
         points: [
           '🆕 848 new cards: Dofus and Wakfu, Genshin Impact, Summoners War, Studio Ghibli, wrestling, LoL and CS esports, Paralympics, X-Men, Elite, Fast & Furious…',

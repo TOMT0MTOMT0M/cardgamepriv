@@ -1391,9 +1391,9 @@
 },
 "auto-ford-mustang-shelby-gt500": {
 "art": "c",
-"file": "muscle-cars--ford-mustang-shelby-gt500.jpg",
-"src": "url",
-"t": 1793645833
+"file": "muscle-cars--ford-mustang-shelby-gt500-r2611252256.jpg",
+"src": "reillustre:041.webp",
+"t": 1795643819
 },
 "auto-ford-puma": {
 "art": "c",
@@ -8614,9 +8614,9 @@
 },
 "geo-loch-ness": {
 "art": "c",
-"file": "mers-fleuves-lacs--loch-ness-r2611121558.jpg",
-"src": "reillustre:geo-loch-ness.jpg",
-"t": 1794499121
+"file": "mers-fleuves-lacs--loch-ness-r2611252256.jpg",
+"src": "reillustre:072.jpg",
+"t": 1795643819
 },
 "geo-loire": {
 "art": "c",
@@ -14490,9 +14490,9 @@
 },
 "miam-cafe": {
 "art": "c",
-"file": "boissons--cafe.jpg",
-"src": "url",
-"t": 1793646189
+"file": "boissons--cafe-r2611252256.jpg",
+"src": "reillustre:019.jpg",
+"t": 1795643819
 },
 "miam-caipirinha": {
 "art": "c",
@@ -18536,9 +18536,9 @@
 },
 "miam-the": {
 "art": "c",
-"file": "boissons--the.jpg",
-"src": "url",
-"t": 1793646449
+"file": "boissons--the-r2611252256.jpg",
+"src": "reillustre:118.jpg",
+"t": 1795643819
 },
 "miam-thieboudienne": {
 "art": "c",
@@ -23335,9 +23335,9 @@
 },
 "zoo-diplodocus": {
 "art": "c",
-"file": "dinosaures-prehistoire--diplodocus.jpg",
-"src": "url",
-"t": 1793645739
+"file": "dinosaures-prehistoire--diplodocus-r2611252256.jpg",
+"src": "reillustre:030.avif",
+"t": 1795643819
 },
 "zoo-dipsade-de-catesby-la": {
 "art": "c",
@@ -30847,8 +30847,9 @@
 },
 "zoo-triceratops": {
 "art": "c",
-"file": "085-triceratops.png",
-"src": "v1"
+"file": "085-triceratops-r2611252256.jpg",
+"src": "reillustre:122.jpg",
+"t": 1795643819
 },
 "zoo-trionyx-de-chine": {
 "art": "c",

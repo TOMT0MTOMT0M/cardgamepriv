@@ -69,6 +69,14 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Des illustrations pour plus de 350 cartes', tag: 'amélioré',
+        points: [
+          '🖼️ Plus de 350 cartes qui n’avaient pas d’image en ont une : Dofus, Wakfu, Genshin Impact, Summoners War, Fast & Furious, X-Men, esport…',
+          '✨ Une centaine de visuels remplacés, surtout des 6★ : musique, foot, esport, animés.',
+          '🗂️ Les départements et régions de France ont leur propre famille, séparée des pays.',
+        ],
+      },
+      {
         date: '25 nov.', title: 'Le grand rangement : 848 nouvelles cartes', tag: 'nouveau',
         points: [
           '🆕 848 nouvelles cartes : Dofus et Wakfu, Genshin Impact, Summoners War, Studio Ghibli, catch, esport LoL et CS, paralympiques, X-Men, Élite, Fast & Furious…',
