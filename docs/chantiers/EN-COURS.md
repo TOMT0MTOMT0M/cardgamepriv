@@ -13,6 +13,7 @@ _Mis à jour : 25/11/2026 (mise en place de la méthode, `docs/GUIDE-CLAUDE.md`)
 
 ## Reste à faire
 - [ ] TEST Hugo
+- [ ] TEST Hugo 2
 - [ ] TEST Tom
 - [ ] Intégrer les mp3 des 6★ introuvables en boutique dès que Tom les fournit (Crash Bandicoot, Zelda ALttP, Inazuma Eleven VF, Yu-Gi-Oh VF, Code Lyoko, Kaamelott, South Park VF, Lucky Luke 2001)
 - [ ] Signaler à Tom les 5★/6★ de la base Etoiles 8 encore sans image
