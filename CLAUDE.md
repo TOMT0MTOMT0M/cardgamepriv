@@ -41,7 +41,7 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
 - Catalogues `src/core/sets/` (popculture, sport, monde, jeuxvideo, lolLines : 35 000+ lignes) : GÉNÉRÉS par `scripts/make-*.py` depuis `donnees/`. Ne pas les lire en entier ni les éditer à la main : grep, puis modifier la source et régénérer. L'en-tête de chaque fichier dit s'il est généré.
 - Ids de cartes figés dans `scripts/data/*-ids.json` : ne jamais les changer.
 - `docs/LAB_NOTES.md` (720 lignes) : grep la section utile.
-- `docs/historique-claude-ai/` : anciens comptes rendus du Project claude.ai (97 docs, jusqu au 25/11) — grep seulement.
+- `docs/historique-claude-ai/` : anciens comptes rendus du Project claude.ai (97 docs, jusqu'au 25/11) — grep seulement.
 - Ignorer `dist/`, `node_modules/`, `.cache/`, `archives/`, `sauvegardes/`, `imports/`, `logs/`, `convex/_generated/`.
 - Secrets (`.env.local`, `.env.v2.local`, `.discord-bot-token`, `.feedback-key`) : ne jamais afficher leur contenu.
 - Fichiers de travail (captures, aperçus) dans `.claude-tmp/`.
