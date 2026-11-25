@@ -61,7 +61,7 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
-        date: '27 nov.', title: '🎄 Le calendrier de l’Avent', tag: 'nouveau',
+        date: '26 nov.', title: '🎄 Le calendrier de l’Avent', tag: 'nouveau',
         points: [
           '🎁 Nouvel onglet Événement : du 1er au 24 décembre, une case par jour. Une case oubliée se rattrape jusqu’au 31 décembre.',
           '📦 Au total : 95 boosters, 13 000 pièces et, le 24, un God Pack avec au moins une 6★.',
