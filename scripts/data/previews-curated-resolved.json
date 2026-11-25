@@ -3669,5 +3669,215 @@
 "track": "My Neighbor Totoro (From \"My Neighbor Totoro\")",
 "artist": "Joe Hisaishi & Royal Philharmonic Orchestra",
 "link": "https://music.apple.com/fr/album/my-neighbor-totoro-from-my-neighbor-totoro/1680459073?i=1680460241&uo=4"
+},
+"cards:jv-genshin-impact-furina": {
+"deezer": 2531823471,
+"track": "La vaguelette",
+"artist": "HOYO-MiX",
+"link": "https://www.deezer.com/track/2531823471"
+},
+"cards:jv-genshin-impact-mavuika": {
+"deezer": 3151883491,
+"track": "Blazing Heart (English Version)",
+"artist": "HOYO-MiX",
+"link": "https://www.deezer.com/track/3151883491"
+},
+"cards:jv-genshin-impact-colombina": {
+"deezer": 4130175411,
+"track": "Columbina's Poem",
+"artist": "HOYO-MiX",
+"link": "https://www.deezer.com/track/4130175411"
+},
+"cards:jv-genshin-impact-zhongli": {
+"deezer": 1218100142,
+"track": "Rex Incognito",
+"artist": "Yu-Peng Chen",
+"link": "https://www.deezer.com/track/1218100142"
+},
+"cards:jv-genshin-impact-nahida": {
+"deezer": 1961063237,
+"track": "Sumeru",
+"artist": "HOYO-MiX",
+"link": "https://www.deezer.com/track/1961063237"
+},
+"cards:jv-genshin-impact-hu-tao": {
+"deezer": 1130319452,
+"track": "Liyue",
+"artist": "Yu-Peng Chen",
+"link": "https://www.deezer.com/track/1130319452"
+},
+"cards:jv-genshin-impact-neuvillette": {
+"deezer": 2496901291,
+"track": "Fontaine",
+"artist": "HOYO-MiX",
+"link": "https://www.deezer.com/track/2496901291"
+},
+"cards:jv-genshin-impact-arlecchino": {
+"deezer": 4287236362,
+"track": "Snezhnaya",
+"artist": "HOYO-MiX",
+"link": "https://www.deezer.com/track/4287236362"
+},
+"cards:jv-genshin-impact-kaedehara-kazuha": {
+"deezer": 1492487212,
+"track": "Inazuma",
+"artist": "Yu-Peng Chen",
+"link": "https://www.deezer.com/track/1492487212"
+},
+"cards:jv-genshin-impact-shogun-raiden": {
+"deezer": 1492487212,
+"track": "Inazuma",
+"artist": "Yu-Peng Chen",
+"link": "https://www.deezer.com/track/1492487212"
+},
+"cards:jv-genshin-impact-genshin-impact": {
+"deezer": 995694672,
+"track": "Genshin Impact Main Theme",
+"artist": "Yu-Peng Chen",
+"link": "https://www.deezer.com/track/995694672"
+},
+"cards:spt-thierry-henry": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-david-trezeguet": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-zinedine-zidane": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-patrick-vieira": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-lilian-thuram": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-laurent-blanc": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-bixente-lizarazu": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-fabien-barthez": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-didier-deschamps": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-aime-jacquet": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e7/40/66/e74066a0-d000-1896-cd2e-7b2bc97393ad/mzaf_6935563640938257821.plus.aac.p.m4a",
+"track": "I Will Survive",
+"artist": "Gloria Gaynor",
+"link": "https://music.apple.com/fr/album/i-will-survive/1443818103?i=1443818368&uo=4"
+},
+"cards:spt-kylian-mbappe": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-olivier-giroud": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-ousmane-dembele": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-paul-pogba": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-blaise-matuidi": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-raphael-varane": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-samuel-umtiti": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"cards:spt-hugo-lloris": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/02/0d/df/020ddf57-6d60-552f-a51a-f925d1db6757/mzaf_4552314093089602994.plus.aac.p.m4a",
+"track": "Ramenez la coupe à la maison",
+"artist": "Vegedream",
+"link": "https://music.apple.com/fr/album/ramenez-la-coupe-%C3%A0-la-maison/1413335934?i=1413335940&uo=4"
+},
+"anime:bakuman": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/0e/2c/07/0e2c074e-766c-4f0c-3d8f-da0ea5e50d64/mzaf_6542006449904900696.plus.aac.p.m4a",
+"track": "Blue Bird",
+"artist": "Kobukuro",
+"link": "https://music.apple.com/fr/album/blue-bird/1441818303?i=1441818344&uo=4"
+},
+"screen:suits": {
+"url": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/62/fd/4f/62fd4f86-fa7f-d26f-9858-10be28f2290f/mzaf_7842614131308007820.plus.aac.p.m4a",
+"track": "Greenback Boogie",
+"artist": "Ima Robot",
+"link": "https://music.apple.com/fr/album/greenback-boogie/1797146055?i=1797146377&uo=4"
+},
+"screen:jv-fortnite": {
+"deezer": 507502382,
+"track": "Fortnite Battle Royale (2017) - Main Menu Theme",
+"artist": "Geek Music",
+"link": "https://www.deezer.com/track/507502382"
+},
+"screen:jv-dofus": {
+"deezer": 1704418267,
+"track": "En Route Pour l'Aventure",
+"artist": "Guillaume Pladys",
+"link": "https://www.deezer.com/track/1704418267"
+},
+"screen:jv-wakfu": {
+"deezer": 1878987867,
+"track": "Wakfu opening song",
+"artist": "Guillaume Houzé",
+"link": "https://www.deezer.com/track/1878987867"
+},
+"screen:jv-genshin-impact": {
+"deezer": 995694672,
+"track": "Genshin Impact Main Theme",
+"artist": "Yu-Peng Chen",
+"link": "https://www.deezer.com/track/995694672"
 }
 }

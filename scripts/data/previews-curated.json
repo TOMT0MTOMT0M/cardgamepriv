@@ -1,2742 +1,2895 @@
 {
-  "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. (15/11, soir) 24 génériques récupérés par Gemini (donnees/generiques/a-integrer/LISEZMOI.txt : sources, VF/VO) : versions françaises diffusées, génériques instrumentaux officiels, Cha-La Head-Cha-La 1989, Olive et Tom (Corbel) — servis par Pages (public/audio/generiques/) ; la version anglaise d'avant passe dans « cartoon-en ». Reste en reprise fidèle : Molang, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/. « screen » (17/11, demandes de Hugo) = générique de la série (bloc Séries TV) ou musique du film (Marvel MCU : Avengers d'Alan Silvestri), par sous-thème, joué en fond quand une 6★ tombe — interprète original seulement. Hellsing : « The World without Logos » (Yasushi Ishii). (20/11, demandes de Hugo) L Lawliet 6★ : « L no Theme » (Hideki Taniuchi, DEATH NOTE Original Soundtrack). « screen » couvre aussi les films 6★ et les familles Jeux vidéo 6★ (thème du film / du jeu, interprète original ; familles « divers » laissées sans musique). (24/11, lot 2 de Hugo) Musiques par carte hors Musique (clé « cards », id de carte) : Griezmann / Kanté (Vegedream), Championnat du monde de LoL (RISE), ShowMaker / Canyon / Nuguri (Take Over), musique d'entrée officielle de chaque catcheur 6★ (catch), Aizen (Treachery) ; « screen » « lol » = toutes les 6★ League of Legends (Classic Summoner's Rift Pt. 1, musicPreview.ts) ; Berserk : l'ambiance Éclipse joue « Inferno » (9mm Parabellum Bullet) au lieu de « Behelit ». (24/11, V3) Les albums de films Ghibli fusionnent en « ghibli » (base Etoiles) : Mon voisin Totoro (Joe Hisaishi).",
-  "cards": {
-    "pop-au-dd": [
-      "Au DD",
-      "PNL"
-    ],
-    "pop-aux-champs-elysees": [
-      "Les Champs-Élysées",
-      "Joe Dassin"
-    ],
-    "pop-bande-organisee": [
-      "Bande organisée",
-      "Jul"
-    ],
-    "pop-bruxellesvie": [
-      "BruxellesVie",
-      "Damso"
-    ],
-    "pop-dans-l-espace": [
-      "Dans l'espace",
-      "Gambi"
-    ],
-    "pop-die": [
-      "Die",
-      "Gazo"
-    ],
-    "pop-je-t-aimais-je-t-aime-et-je-t-aimerai": [
-      "Je t'aimais, je t'aime, je t'aimerai",
-      "Francis Cabrel"
-    ],
-    "pop-je-t-emmene-au-vent": [
-      "J't'emmène au vent",
-      "Louise Attaque"
-    ],
-    "pop-jefe": [
-      "Jefe",
-      "Ninho"
-    ],
-    "pop-lettre-a-une-femme": [
-      "Lettre à une femme",
-      "Ninho"
-    ],
-    "pop-maman-ne-le-sait-pas": [
-      "Maman ne le sait pas",
-      "Ninho"
-    ],
-    "pop-mon-soleil": [
-      "Mon soleil",
-      "Dadju"
-    ],
-    "pop-naha": [
-      "Naha",
-      "PNL"
-    ],
-    "pop-reseaux": [
-      "Réseaux",
-      "Niska"
-    ],
-    "pop-seine-saint-denis-style": [
-      "Seine Saint-Denis Style",
-      "Suprême NTM"
-    ],
-    "pop-plugged-in": [
-      "I Hear You Knocking",
-      "Dave Edmunds"
-    ],
-    "pop-arthur-honegger": [
-      "Pacific 231",
-      "Honegger"
-    ],
-    "pop-coppelia": [
-      "Coppélia",
-      "Delibes"
-    ],
-    "pop-darius-milhaud": [
-      "Le bœuf sur le toit",
-      "Milhaud"
-    ],
-    "pop-don-carlos": [
-      "Don Carlo",
-      "Verdi"
-    ],
-    "pop-francis-poulenc": [
-      "Les Biches",
-      "Poulenc"
-    ],
-    "pop-giselle": [
-      "Giselle",
-      "Adolphe Adam"
-    ],
-    "pop-jean-baptiste-lully": [
-      "Cérémonie des Turcs",
-      ""
-    ],
-    "pop-palais-garnier": [
-      "Habanera",
-      "Maria Callas"
-    ],
-    "pop-paris-opera": [
-      "Galop infernal",
-      ""
-    ],
-    "pop-rudolf-nureyev": [
-      "Dance of the Knights",
-      "Prokofiev"
-    ],
-    "pop-theatre-des-champs-elysees": [
-      "Le Sacre du printemps",
-      "Stravinsky"
-    ],
-    "pop-andy-warhol": [
-      "Sunday Morning",
-      "The Velvet Underground"
-    ],
-    "pop-metropolitan-opera": [
-      "Nessun dorma",
-      "Pavarotti"
-    ],
-    "pop-richard-strauss": [
-      "Zarathustra",
-      "Karajan"
-    ],
-    "pop-give-me-the-night": [
-      "Give Me the Night",
-      "George Benson"
-    ],
-    "pop-plus-pres-des-etoiles": [
-      "Plus près des étoiles",
-      "Gold"
-    ],
-    "pop-temperature": [
-      "Temperature",
-      "Sean Paul"
-    ],
-    "pop-international-love": [
-      "International Love",
-      "Pitbull"
-    ],
-    "pop-caravane": [
-      "Caravane",
-      "Raphael"
-    ],
-    "pop-lettre-a-elise": [
-      "Für Elise",
-      "Beethoven"
-    ],
-    "pop-sonate-au-clair-de-lune": [
-      "Moonlight Sonata",
-      "Beethoven"
-    ],
-    "pop-le-lac-des-cygnes": [
-      "Swan Lake, Op. 20, Act 2: No. 10, Moderato",
-      "London Symphony Orchestra"
-    ],
-    "pop-la-chevauchee-des-walkyries": [
-      "Ride of the Valkyries",
-      "Wagner"
-    ],
-    "pop-eine-kleine-nachtmusik": [
-      "Eine kleine Nachtmusik",
-      "Mozart"
-    ],
-    "pop-suite-pour-violoncelle-n-1": [
-      "Cello Suite No. 1 in G Major, BWV 1007: I. Prélude",
-      "Yo-Yo Ma"
-    ],
-    "pop-il-est-libre-max": [
-      "Il est libre Max",
-      "Hervé Cristiani"
-    ],
-    "pop-le-temps-des-cathedrales": [
-      "Le temps des cathédrales",
-      "Bruno Pelletier"
-    ],
-    "pop-je-ne-suis-pas-un-heros": [
-      "Je ne suis pas un héros",
-      "Daniel Balavoine"
-    ],
-    "pop-partenaire-particulier": [
-      "Partenaire particulier",
-      "Partenaire Particulier"
-    ],
-    "pop-on-va-s-aimer": [
-      "On va s'aimer",
-      "Gilbert Montagné"
-    ],
-    "pop-laisse-pas-trainer-ton-fils": [
-      "Laisse pas traîner ton fils",
-      "Suprême NTM"
-    ],
-    "pop-grave-dans-la-roche": [
-      "Gravé dans la roche",
-      "Sniper"
-    ],
-    "pop-le-bilan": [
-      "Le bilan",
-      "Neg' Marrons"
-    ],
-    "pop-du-ferme": [
-      "Du ferme",
-      "La Fouine"
-    ],
-    "pop-pitbull-chansons": [
-      "Pitbull",
-      "Booba"
-    ],
-    "pop-la-haine": [
-      "La Haine",
-      "Cut Killer"
-    ],
-    "pop-suicide-social": [
-      "Suicide social",
-      "Orelsan"
-    ],
-    "pop-mwaka-moon": [
-      "Mwaka Moon",
-      "Kalash"
-    ],
-    "pop-desaccorde": [
-      "Désaccordé",
-      "Vald"
-    ],
-    "pop-or-noir": [
-      "Or noir",
-      "Kaaris"
-    ],
-    "pop-92i-veyron": [
-      "92i Veyron",
-      "Booba"
-    ],
-    "pop-fusil": [
-      "Fusil",
-      "SCH"
-    ],
-    "pop-est-ce-que-tu-m-aimes": [
-      "Est-ce que tu m'aimes",
-      "GIMS"
-    ],
-    "pop-le-monde-ou-rien": [
-      "Le monde ou rien",
-      "PNL"
-    ],
-    "pop-awa": [
-      "Awa",
-      "Lacrim"
-    ],
-    "pop-zoo": [
-      "Zoo",
-      "Kaaris"
-    ],
-    "pop-mosaique-solitaire": [
-      "Mosaïque solitaire",
-      "Damso"
-    ],
-    "pop-asalto": [
-      "Asalto",
-      "Jul"
-    ],
-    "pop-avant-la-douane": [
-      "Avant la douane",
-      "Jul"
-    ],
-    "pop-j-me-tire": [
-      "J'me tire",
-      "GIMS"
-    ],
-    "pop-unravel": [
-      "unravel",
-      "TK from Ling tosite sigure"
-    ],
-    "pop-kick-back": [
-      "KICK BACK",
-      "Kenshi Yonezu"
-    ],
-    "pop-again": [
-      "Again",
-      "YUI"
-    ],
-    "pop-kaikai-kitan": [
-      "Kaikai Kitan",
-      "Eve"
-    ],
-    "pop-guren-no-yumiya": [
-      "Guren no Yumiya",
-      "Linked Horizon"
-    ],
-    "pop-the-world": [
-      "the WORLD",
-      "NIGHTMARE"
-    ],
-    "pop-fly-high": [
-      "FLY HIGH",
-      "BURNOUT SYNDROMES"
-    ],
-    "pop-sign": [
-      "Sign",
-      "FLOW"
-    ],
-    "pop-crossing-field": [
-      "crossing field",
-      "LiSA"
-    ],
-    "pop-peace-sign": [
-      "Peace Sign",
-      "Kenshi Yonezu"
-    ],
-    "pop-let-me-hear": [
-      "Let Me Hear",
-      "Fear, and Loathing in Las Vegas"
-    ],
-    "pop-asphyxia": [
-      "asphyxia",
-      "Cö shu Nie"
-    ],
-    "pop-idol": [
-      "Idol",
-      "YOASOBI"
-    ],
-    "pop-history-maker": [
-      "History Maker",
-      "DEAN FUJIOKA"
-    ],
-    "pop-black-rover": [
-      "Black Rover",
-      "VK Blanka"
-    ],
-    "pop-snow-fairy": [
-      "Snow Fairy",
-      "FUNKIST"
-    ],
-    "pop-rise": [
-      "RISE",
-      "MADKID"
-    ],
-    "pop-black-catcher": [
-      "Black Catcher",
-      "VK Blanka"
-    ],
-    "pop-closer-joe-inoue": [
-      "Closer",
-      "Joe Inoue"
-    ],
-    "pop-brave-shine": [
-      "Brave Shine",
-      "Aimer"
-    ],
-    "pop-locked-out-of-heaven": [
-      "Locked Out of Heaven",
-      "Bruno Mars"
-    ],
-    "pop-running-up-that-hill": [
-      "Running Up That Hill",
-      "Kate Bush"
-    ],
-    "pop-take-on-me": [
-      "Take On Me",
-      "a-ha"
-    ],
-    "pop-wonderwall": [
-      "Wonderwall",
-      "Oasis"
-    ],
-    "pop-in-the-end": [
-      "In the End",
-      "Linkin Park"
-    ],
-    "pop-californication": [
-      "Californication",
-      "Red Hot Chili Peppers"
-    ],
-    "pop-uprising": [
-      "Uprising",
-      "Muse"
-    ],
-    "pop-dream-on": [
-      "Dream On",
-      "Aerosmith"
-    ],
-    "pop-every-breath-you-take": [
-      "Every Breath You Take",
-      "The Police"
-    ],
-    "pop-l-aziza": [
-      "L'Aziza",
-      "Daniel Balavoine"
-    ],
-    "pop-face-a-la-mer": [
-      "Face à la mer",
-      "Calogero"
-    ],
-    "pop-petite-marie": [
-      "Petite Marie",
-      "Francis Cabrel"
-    ],
-    "pop-cette-annee-la": [
-      "Cette année-là",
-      "Claude François"
-    ],
-    "pop-ne-me-quitte-pas": [
-      "Ne me quitte pas",
-      "Jacques Brel"
-    ],
-    "pop-la-boulette": [
-      "La Boulette",
-      "Diam's"
-    ],
-    "pop-on-verra": [
-      "On verra",
-      "Nekfeu"
-    ],
-    "pop-booba": [
-      "DKR",
-      "Booba"
-    ],
-    "pop-claude-francois": [
-      "Comme d'habitude",
-      "Claude François"
-    ],
-    "pop-georges-brassens": [
-      "Les copains d'abord",
-      "Georges Brassens"
-    ],
-    "pop-gojira": [
-      "Stranded",
-      "Gojira"
-    ],
-    "pop-m83": [
-      "Midnight City",
-      "M83"
-    ],
-    "pop-manu-chao": [
-      "Me Gustas Tu",
-      "Manu Chao"
-    ],
-    "pop-francis-cabrel": [
-      "Je t'aimais, je t'aime, je t'aimerai",
-      "Francis Cabrel"
-    ],
-    "pop-iam": [
-      "Petit frère",
-      "IAM"
-    ],
-    "pop-indochine": [
-      "L'aventurier",
-      "Indochine"
-    ],
-    "pop-jul": [
-      "Tchikita",
-      "Jul"
-    ],
-    "pop-mc-solaar": [
-      "Caroline",
-      "MC Solaar"
-    ],
-    "pop-orelsan": [
-      "Basique",
-      "Orelsan"
-    ],
-    "pop-bigflo-oli": [
-      "Picasso",
-      "Bigflo & Oli"
-    ],
-    "pop-daniel-balavoine": [
-      "Le chanteur",
-      "Daniel Balavoine"
-    ],
-    "pop-gregory-lemarchal": [
-      "Écris l'histoire",
-      "Grégory Lemarchal"
-    ],
-    "pop-sexion-d-assaut": [
-      "Wati by Night",
-      "Sexion d'Assaut"
-    ],
-    "pop-supreme-ntm": [
-      "Laisse pas traîner ton fils",
-      "Suprême NTM"
-    ],
-    "pop-tryo": [
-      "L'hymne de nos campagnes",
-      "Tryo"
-    ],
-    "pop-pnl": [
-      "Au DD",
-      "PNL"
-    ],
-    "pop-blink-182": [
-      "All the Small Things",
-      "blink-182"
-    ],
-    "pop-bob-marley": [
-      "Could You Be Loved",
-      "Bob Marley & The Wailers"
-    ],
-    "pop-earth-wind-fire": [
-      "September",
-      "Earth, Wind & Fire"
-    ],
-    "pop-enrique-iglesias": [
-      "Hero",
-      "Enrique Iglesias"
-    ],
-    "pop-fall-out-boy": [
-      "Centuries",
-      "Fall Out Boy"
-    ],
-    "pop-flo-rida": [
-      "Right Round",
-      "Flo Rida"
-    ],
-    "pop-freddie-mercury": [
-      "Living On My Own",
-      "Freddie Mercury"
-    ],
-    "pop-linkin-park": [
-      "In the End",
-      "Linkin Park"
-    ],
-    "pop-my-chemical-romance": [
-      "Welcome to the Black Parade",
-      "My Chemical Romance"
-    ],
-    "pop-one-direction": [
-      "What Makes You Beautiful",
-      "One Direction"
-    ],
-    "pop-sean-paul": [
-      "Temperature",
-      "Sean Paul"
-    ],
-    "pop-twenty-one-pilots": [
-      "Stressed Out",
-      "Twenty One Pilots"
-    ],
-    "pop-6ix9ine": [
-      "BILLY",
-      "6ix9ine",
-      "deezer:2495268861"
-    ],
-    "pop-bullet-for-my-valentine": [
-      "Your Betrayal",
-      "Bullet for My Valentine"
-    ],
-    "pop-alexandrie-alexandra": [
-      "Alexandrie Alexandra",
-      "Claude François"
-    ],
-    "pop-alors-on-danse": [
-      "Alors on danse",
-      "Stromae"
-    ],
-    "pop-amsterdam": [
-      "Amsterdam",
-      "Jacques Brel"
-    ],
-    "pop-apologize": [
-      "Apologize",
-      "OneRepublic"
-    ],
-    "pop-bella": [
-      "Bella",
-      "GIMS"
-    ],
-    "pop-billie-jean": [
-      "Billie Jean",
-      "Michael Jackson"
-    ],
-    "pop-bohemian-rhapsody": [
-      "Bohemian Rhapsody",
-      "Queen"
-    ],
-    "pop-comme-d-habitude": [
-      "Comme d'habitude",
-      "Claude François"
-    ],
-    "pop-complicated": [
-      "Complicated",
-      "Avril Lavigne"
-    ],
-    "pop-derniere-danse": [
-      "Dernière danse",
-      "Indila"
-    ],
-    "pop-diamonds": [
-      "Diamonds",
-      "Rihanna"
-    ],
-    "pop-don-t-stop-me-now": [
-      "Don't Stop Me Now",
-      "Queen"
-    ],
-    "pop-dynamite": [
-      "Dynamite",
-      "BTS"
-    ],
-    "pop-e-t": [
-      "E.T.",
-      "Katy Perry"
-    ],
-    "pop-earth-song": [
-      "Earth Song",
-      "Michael Jackson"
-    ],
-    "pop-ella-elle-l-a": [
-      "Ella, elle l'a",
-      "France Gall"
-    ],
-    "pop-emmenez-moi": [
-      "Emmenez-moi",
-      "Charles Aznavour"
-    ],
-    "pop-empire-state-of-mind": [
-      "Empire State of Mind",
-      "JAŸ-Z"
-    ],
-    "pop-en-apesanteur": [
-      "En apesanteur",
-      "Calogero"
-    ],
-    "pop-envole-moi": [
-      "Envole-moi",
-      "Jean-Jacques Goldman"
-    ],
-    "pop-i-m-still-standing": [
-      "I'm Still Standing",
-      "Elton John"
-    ],
-    "pop-j-ai-demande-a-la-lune": [
-      "J'ai demandé à la lune",
-      "Indochine"
-    ],
-    "pop-je-danse-le-mia": [
-      "Je danse le Mia",
-      "IAM"
-    ],
-    "pop-je-te-donne": [
-      "Je te donne",
-      "Michael Jones"
-    ],
-    "pop-joe-le-taxi": [
-      "Joe le taxi",
-      "Vanessa Paradis"
-    ],
-    "pop-just-the-way-you-are": [
-      "Just the Way You Are",
-      "Bruno Mars"
-    ],
-    "pop-l-aventurier": [
-      "L'Aventurier",
-      "Indochine"
-    ],
-    "pop-la-boheme": [
-      "La Bohème",
-      "Charles Aznavour"
-    ],
-    "pop-la-vie-en-rose": [
-      "La Vie en rose",
-      "Édith Piaf"
-    ],
-    "pop-last-friday-night": [
-      "Last Friday Night",
-      "Katy Perry"
-    ],
-    "pop-les-demons-de-minuit": [
-      "Les Démons de minuit",
-      "Images"
-    ],
-    "pop-les-lacs-du-connemara": [
-      "Les Lacs du Connemara",
-      "Michel Sardou"
-    ],
-    "pop-lose-yourself": [
-      "Lose Yourself",
-      "Eminem"
-    ],
-    "pop-ma-benz": [
-      "Ma Benz",
-      "Suprême NTM"
-    ],
-    "pop-macarena": [
-      "Macarena",
-      "Los del Río"
-    ],
-    "pop-mamma-mia": [
-      "Mamma Mia",
-      "ABBA"
-    ],
-    "pop-mistral-gagnant": [
-      "Mistral gagnant",
-      "Renaud"
-    ],
-    "pop-never-gonna-give-you-up": [
-      "Never Gonna Give You Up",
-      "Rick Astley"
-    ],
-    "pop-nothing-else-matters": [
-      "Nothing Else Matters",
-      "Metallica"
-    ],
-    "pop-papaoutai": [
-      "Papaoutai",
-      "Stromae"
-    ],
-    "pop-quand-la-musique-est-bonne": [
-      "Quand la musique est bonne",
-      "Jean-Jacques Goldman"
-    ],
-    "pop-rock-around-the-clock": [
-      "Rock Around the Clock",
-      "Bill Haley & His Comets"
-    ],
-    "pop-sapes-comme-jamais": [
-      "Sapés comme jamais",
-      "GIMS"
-    ],
-    "pop-shake-it-off": [
-      "Shake It Off",
-      "Taylor Swift"
-    ],
-    "pop-somebody-that-i-used-to-know": [
-      "Somebody That I Used to Know",
-      "Gotye"
-    ],
-    "pop-someone-like-you": [
-      "Someone like You",
-      "Adele"
-    ],
-    "pop-the-show-must-go-on": [
-      "The Show Must Go On",
-      "Queen"
-    ],
-    "pop-thriller": [
-      "Thriller",
-      "Michael Jackson"
-    ],
-    "pop-titanium": [
-      "Titanium",
-      "Sia"
-    ],
-    "pop-tous-les-cris-les-sos": [
-      "Tous les cris les SOS",
-      "Daniel Balavoine"
-    ],
-    "pop-voyage-voyage": [
-      "Voyage voyage",
-      "Desireless"
-    ],
-    "pop-without-me": [
-      "Without Me",
-      "Eminem"
-    ],
-    "pop-zombie": [
-      "Zombie",
-      "The Cranberries"
-    ],
-    "pop-american-idiot": [
-      "American Idiot",
-      "Green Day"
-    ],
-    "pop-another-brick-in-the-wall": [
-      "Another Brick in the Wall",
-      "Pink Floyd"
-    ],
-    "pop-beat-it": [
-      "Beat It",
-      "Michael Jackson"
-    ],
-    "pop-boulevard-of-broken-dreams": [
-      "Boulevard of Broken Dreams",
-      "Green Day"
-    ],
-    "pop-crazy-in-love": [
-      "Crazy in Love",
-      "Beyoncé"
-    ],
-    "pop-gangsta-s-paradise": [
-      "Gangsta's Paradise",
-      "Coolio"
-    ],
-    "pop-hallelujah": [
-      "Hallelujah",
-      "Leonard Cohen"
-    ],
-    "pop-i-will-survive": [
-      "I Will Survive",
-      "Gloria Gaynor"
-    ],
-    "pop-numb": [
-      "Numb",
-      "Linkin Park"
-    ],
-    "pop-pump-it": [
-      "Pump It",
-      "Black Eyed Peas"
-    ],
-    "pop-rockstar": [
-      "Rockstar",
-      "Post Malone"
-    ],
-    "pop-they-don-t-care-about-us": [
-      "They Don't Care About Us",
-      "Michael Jackson"
-    ],
-    "pop-we-will-rock-you": [
-      "We Will Rock You",
-      "Queen"
-    ],
-    "pop-without-you": [
-      "Without You",
-      "Mariah Carey"
-    ],
-    "pop-ai-se-eu-te-pego": [
-      "Ai Se Eu Te Pego",
-      "Michel Teló"
-    ],
-    "pop-bad": [
-      "Bad",
-      "Michael Jackson"
-    ],
-    "pop-call-me-maybe": [
-      "Call Me Maybe",
-      "Carly Rae Jepsen"
-    ],
-    "pop-creep": [
-      "Creep",
-      "Radiohead"
-    ],
-    "pop-eye-of-the-tiger": [
-      "Eye of the Tiger",
-      "Survivor"
-    ],
-    "pop-hotel-california": [
-      "Hotel California",
-      "Eagles"
-    ],
-    "pop-i-was-made-for-lovin-you": [
-      "I Was Made for Lovin' You",
-      "Kiss"
-    ],
-    "pop-in-the-air-tonight": [
-      "In the Air Tonight",
-      "Phil Collins"
-    ],
-    "pop-my-heart-will-go-on": [
-      "My Heart Will Go On",
-      "Céline Dion"
-    ],
-    "pop-rolling-in-the-deep": [
-      "Rolling in the Deep",
-      "Adele"
-    ],
-    "pop-seven-nation-army": [
-      "Seven Nation Army",
-      "The White Stripes"
-    ],
-    "pop-99-luftballons": [
-      "99 Luftballons",
-      "Nena"
-    ],
-    "pop-africa": [
-      "Africa",
-      "Toto"
-    ],
-    "pop-beggin": [
-      "Beggin'",
-      "Måneskin"
-    ],
-    "pop-cry-me-a-river": [
-      "Cry Me a River",
-      "Justin Timberlake"
-    ],
-    "pop-dragostea-din-tei": [
-      "Dragostea din tei",
-      "O-Zone"
-    ],
-    "pop-radioactive": [
-      "Radioactive",
-      "Imagine Dragons"
-    ],
-    "pop-thrift-shop": [
-      "Thrift Shop",
-      "Macklemore & Ryan Lewis"
-    ],
-    "pop-viva-la-vida": [
-      "Viva la Vida",
-      "Coldplay"
-    ],
-    "pop-freed-from-desire": [
-      "Freed from Desire",
-      "Gala"
-    ],
-    "pop-la-groupie-du-pianiste": [
-      "La Groupie du pianiste",
-      "Michel Berger"
-    ],
-    "pop-la-tribu-de-dana": [
-      "La Tribu de Dana",
-      "Manau"
-    ],
-    "pop-le-paradis-blanc": [
-      "Le Paradis blanc",
-      "Michel Berger"
-    ],
-    "pop-les-rois-du-monde": [
-      "Les Rois du monde",
-      "Damien Sargue"
-    ],
-    "pop-mr-saxobeat": [
-      "Mr. Saxobeat",
-      "Alexandra Stan"
-    ],
-    "pop-september": [
-      "September",
-      "Earth, Wind & Fire"
-    ],
-    "pop-sexual-healing": [
-      "Sexual Healing",
-      "Marvin Gaye"
-    ],
-    "pop-stressed-out": [
-      "Stressed Out",
-      "Twenty One Pilots"
-    ],
-    "pop-sultans-of-swing": [
-      "Sultans of Swing",
-      "Dire Straits"
-    ],
-    "pop-wavin-flag": [
-      "Wavin' Flag",
-      "K'Naan"
-    ],
-    "pop-where-is-my-mind": [
-      "Where Is My Mind?",
-      "Pixies"
-    ],
-    "pop-ecris-l-histoire": [
-      "Écris l'histoire",
-      "Grégory Lemarchal"
-    ],
-    "pop-montero": [
-      "Montero",
-      "Lil Nas X"
-    ],
-    "pop-paramore": [
-      "Misery Business",
-      "Paramore"
-    ],
-    "pop-bruno-mars": [
-      "Locked Out of Heaven",
-      "Bruno Mars",
-      "itunes:572179973"
-    ],
-    "pop-belle-ile-en-mer": [
-      "Belle-Île-en-Mer, Marie-Galante",
-      "Laurent Voulzy",
-      "itunes:1540550629"
-    ],
-    "spt-faker": [
-      "GODS",
-      "NewJeans",
-      "itunes:1833057828"
-    ],
-    "spt-zeus": [
-      "GODS",
-      "NewJeans",
-      "itunes:1833057828"
-    ],
-    "spt-oner": [
-      "GODS",
-      "NewJeans",
-      "itunes:1833057828"
-    ],
-    "spt-keria": [
-      "GODS",
-      "NewJeans",
-      "itunes:1833057828"
-    ],
-    "spt-gumayusi": [
-      "GODS",
-      "NewJeans",
-      "itunes:1833057828"
-    ],
-    "pop-ulquiorra-cifer": [
-      "Fiesta de Guerra",
-      "Shiro Sagisu",
-      "itunes:1645826027"
-    ],
-    "pop-seijuurou-akashi": [
-      "Rakuzan Shingeki",
-      "Yoshihiro Ike",
-      "itunes:1021901532"
-    ],
-    "pop-yuuri-katsuki": [
-      "Yuri on ICE",
-      "Taro Umebayashi",
-      "itunes:1164345998"
-    ],
-    "pop-neo": [
-      "Clubbed to Death",
-      "Rob Dougan",
-      "itunes:1857320"
-    ],
-    "pop-brian-o-conner": [
-      "See You Again (feat. Charlie Puth)",
-      "Wiz Khalifa",
-      "itunes:1029609244"
-    ],
-    "pop-dominic-toretto": [
-      "See You Again (feat. Charlie Puth)",
-      "Wiz Khalifa",
-      "itunes:1029609244"
-    ],
-    "pop-l-lawliet": [
-      "L no Theme",
-      "Hideki Taniuchi",
-      "itunes:1611734917"
-    ],
-    "pop-daiki-aomine": [
-      "ミスディレクション",
-      "中西亮輔",
-      "itunes:878868707"
-    ],
-    "spt-antoine-griezmann": [
-      "Ramenez la coupe à la maison",
-      "Vegedream",
-      "itunes:1413335940"
-    ],
-    "spt-n-golo-kante": [
-      "Ramenez la coupe à la maison",
-      "Vegedream",
-      "itunes:1413335940"
-    ],
-    "spt-championnat-du-monde-de-lol": [
-      "RISE",
-      "League of Legends",
-      "itunes:1833059354"
-    ],
-    "spt-showmaker": [
-      "Take Over",
-      "League of Legends",
-      "itunes:1833082575"
-    ],
-    "spt-canyon": [
-      "Take Over",
-      "League of Legends",
-      "itunes:1833082575"
-    ],
-    "spt-nuguri": [
-      "Take Over",
-      "League of Legends",
-      "itunes:1833082575"
-    ],
-    "spt-a-j-styles": [
-      "Phenomenal",
-      "CFO$",
-      "itunes:1079614536"
-    ],
-    "spt-big-show": [
-      "Crank It Up",
-      "Brand New Sin",
-      "itunes:404193329"
-    ],
-    "spt-chris-jericho": [
-      "Break the Walls Down",
-      "Jim Johnston",
-      "itunes:621624922"
-    ],
-    "spt-cm-punk": [
-      "Cult of Personality",
-      "Living Colour",
-      "itunes:496422567"
-    ],
-    "spt-cody-rhodes": [
-      "Kingdom",
-      "Downstait",
-      "itunes:1143476258"
-    ],
-    "spt-hulk-hogan": [
-      "Real American",
-      "Rick Derringer",
-      "itunes:879563780"
-    ],
-    "spt-john-cena": [
-      "The Time Is Now",
-      "John Cena & Tha Trademarc",
-      "itunes:404224691"
-    ],
-    "spt-kane": [
-      "Veil of Fire",
-      "Jim Johnston",
-      "itunes:490681439"
-    ],
-    "spt-randy-orton": [
-      "Voices",
-      "Rev Theory",
-      "itunes:805079743"
-    ],
-    "spt-randy-savage": [
-      "Pomp and Circumstance",
-      "Jimmy Hart & Howard Helm",
-      "itunes:853467455"
-    ],
-    "spt-rey-mysterio": [
-      "Booyaka 619",
-      "P.O.D.",
-      "itunes:404193371"
-    ],
-    "spt-ric-flair": [
-      "Also sprach Zarathustra",
-      "Richard Strauss · Berliner Philharmoniker",
-      "deezer:66644254"
-    ],
-    "spt-roman-reigns": [
-      "Head of the Table",
-      "Def Rebel",
-      "itunes:1565889946"
-    ],
-    "spt-stone-cold-steve-austin": [
-      "Glass Shatters",
-      "Jim Johnston",
-      "itunes:443701280"
-    ],
-    "spt-the-rock": [
-      "Electrifying",
-      "Jim Johnston",
-      "itunes:630110914"
-    ],
-    "spt-the-undertaker": [
-      "Rest in Peace",
-      "Jim Johnston",
-      "itunes:857570702"
-    ],
-    "spt-triple-h": [
-      "The Game",
-      "Motörhead",
-      "itunes:857570739"
-    ],
-    "pop-sousuke-aizen": [
-      "Treachery",
-      "Shiro Sagisu",
-      "itunes:1645826766"
-    ]
-  },
-  "anime": {
-    "86": [
-      "Kyoukaisen",
-      "amazarashi"
-    ],
-    "a-silent-voice": [
-      "Koi wo Shita no wa",
-      "aiko"
-    ],
-    "akame-ga-kill": [
-      "Skyreach",
-      "Sora Amamiya"
-    ],
-    "angel-beats": [
-      "My Soul, Your Beats!",
-      "Lia"
-    ],
-    "angels-of-death": [
-      "Vital",
-      "Masaaki Endoh"
-    ],
-    "assassination-classroom": [
-      "Seishun Satsubatsu-ron",
-      "3-nen E-gumi Utatan",
-      "itunes:952233564"
-    ],
-    "banana-fish": [
-      "found & lost",
-      "Survive Said The Prophet"
-    ],
-    "beastars": [
-      "Wild Side",
-      "ALI",
-      "itunes:1537780574"
-    ],
-    "black-butler": [
-      "Monochrome no Kiss",
-      "SID"
-    ],
-    "black-clover": [
-      "Haruka Mirai",
-      "Kankaku Piero"
-    ],
-    "black-lagoon": [
-      "Red Fraction",
-      "MELL"
-    ],
-    "bleach": [
-      "Ranbu no Melody",
-      "SID",
-      "itunes:1536385067"
-    ],
-    "blue-box": [
-      "Same Blue",
-      "Official HIGE DANdism"
-    ],
-    "blue-exorcist": [
-      "Core Pride",
-      "UVERworld"
-    ],
-    "blue-lock": [
-      "Chaos ga Kiwamaru",
-      "UNISON SQUARE GARDEN"
-    ],
-    "bocchi-the-rock": [
-      "Seishun Complex",
-      "Kessoku Band"
-    ],
-    "bungo-stray-dogs": [
-      "TRASH CANDY",
-      "GRANRODEO"
-    ],
-    "cardcaptor-sakura": [
-      "Catch You Catch Me",
-      "Gumi"
-    ],
-    "carnet-de-l-apothicaire": [
-      "Hana ni Natte",
-      "Ryokuoushoku Shakai"
-    ],
-    "chainsaw-man": [
-      "KICK BACK",
-      "Kenshi Yonezu"
-    ],
-    "charlotte": [
-      "Bravely You",
-      "Lia"
-    ],
-    "city-hunter": [
-      "Get Wild",
-      "TM NETWORK"
-    ],
-    "clannad": [
-      "Mag Mell",
-      "eufonius"
-    ],
-    "classroom-of-the-elite": [
-      "Caste Room",
-      "ZAQ"
-    ],
-    "code-geass": [
-      "COLORS",
-      "FLOW"
-    ],
-    "cowboy-bebop": [
-      "Tank!",
-      "SEATBELTS"
-    ],
-    "cyberpunk-edgerunners": [
-      "This Fffire",
-      "Franz Ferdinand"
-    ],
-    "d-gray-man": [
-      "Innocent Sorrow",
-      "abingdon boys school"
-    ],
-    "dandadan": [
-      "Otonoke",
-      "Creepy Nuts"
-    ],
-    "danmachi": [
-      "Hey World",
-      "Yuka Iguchi"
-    ],
-    "death-note": [
-      "the WORLD",
-      "NIGHTMARE"
-    ],
-    "death-parade": [
-      "Flyers",
-      "BRADIO"
-    ],
-    "delicious-in-dungeon": [
-      "Sleep Walking Orchestra",
-      "BUMP OF CHICKEN"
-    ],
-    "demon-slayer": [
-      "Gurenge",
-      "LiSA"
-    ],
-    "devilman-crybaby": [
-      "MAN HUMAN",
-      "Denki Groove"
-    ],
-    "doraemon": [
-      "Doraemon no Uta",
-      "Kumiko Ōsugi",
-      "itunes:1465221751"
-    ],
-    "dorohedoro": [
-      "Welcome to Chaos",
-      "(K)NoW_NAME"
-    ],
-    "dororo": [
-      "Kaen",
-      "Queen Bee"
-    ],
-    "dr-stone": [
-      "Good Morning World!",
-      "BURNOUT SYNDROMES"
-    ],
-    "dragon-ball": [
-      "CHA-LA HEAD-CHA-LA",
-      "Hironobu Kageyama",
-      "file:audio/generiques/dragon-ball.mp3"
-    ],
-    "durarara": [
-      "Uragiri no Yuuyake",
-      "THEATRE BROOK"
-    ],
-    "erased": [
-      "Re:Re:",
-      "ASIAN KUNG-FU GENERATION"
-    ],
-    "evangelion": [
-      "A Cruel Angel's Thesis",
-      "Yoko Takahashi"
-    ],
-    "fairy-tail": [
-      "Snow Fairy",
-      "FUNKIST"
-    ],
-    "fire-force": [
-      "Inferno",
-      "Mrs. GREEN APPLE"
-    ],
-    "food-wars": [
-      "Kibō no Uta",
-      "ULTRA TOWER",
-      "itunes:977541838"
-    ],
-    "free": [
-      "Rage on",
-      "OLDCODEX"
-    ],
-    "frieren": [
-      "Yuusha",
-      "YOASOBI"
-    ],
-    "fruits-basket": [
-      "For Fruits Basket",
-      "Ritsuko Okazaki"
-    ],
-    "fullmetal-alchemist": [
-      "again",
-      "YUI"
-    ],
-    "ghost-in-the-shell-film": [
-      "Making of Cyborg",
-      "Kenji Kawai"
-    ],
-    "gintama": [
-      "Pray",
-      "Tommy heavenly6"
-    ],
-    "goblin-slayer": [
-      "Rightfully",
-      "Mili"
-    ],
-    "golden-kamuy": [
-      "Winter Wind",
-      "MAN WITH A MISSION"
-    ],
-    "goldorak": [
-      "Goldorak",
-      ""
-    ],
-    "gto": [
-      "DRIVER'S HIGH",
-      "L'Arc-en-Ciel"
-    ],
-    "gurren-lagann": [
-      "Sorairo Days",
-      "Shoko Nakagawa"
-    ],
-    "haikyu": [
-      "Imagination",
-      "SPYAIR"
-    ],
-    "hajime-no-ippo": [
-      "Under Star",
-      "Shocking Lemon"
-    ],
-    "hell-s-paradise": [
-      "W●RK",
-      "Ringo Sheena"
-    ],
-    "hellsing": [
-      "The World without Logos",
-      "Yasushi Ishii",
-      "itunes:1828704712"
-    ],
-    "high-school-dxd": [
-      "Switch",
-      "Minami Kuribayashi",
-      "itunes:1400226208"
-    ],
-    "horimiya": [
-      "Iro Kousui",
-      "Yoh Kamiyama"
-    ],
-    "hunter-x-hunter": [
-      "departure!",
-      "Masatoshi Ono"
-    ],
-    "jojo-s-bizarre-adventure": [
-      "Sono Chi no Sadame",
-      "Tominaga"
-    ],
-    "jujutsu-kaisen": [
-      "Kaikai Kitan",
-      "Eve"
-    ],
-    "kaguya-sama": [
-      "Love Dramatic",
-      "Masayuki Suzuki"
-    ],
-    "kaiji": [
-      "Mirai wa Ore no Te no Naka",
-      "Hakuryu"
-    ],
-    "kenshin-le-vagabond": [
-      "Sobakasu",
-      "JUDY AND MARY"
-    ],
-    "kill-la-kill": [
-      "Sirius",
-      "Eir Aoi"
-    ],
-    "konosuba": [
-      "fantastic dreamer",
-      "Machico"
-    ],
-    "kuroko-no-basket": [
-      "Can Do",
-      "GRANRODEO"
-    ],
-    "l-attaque-des-titans": [
-      "Guren no Yumiya",
-      "Linked Horizon"
-    ],
-    "lady-oscar": [
-      "Bara wa Utsukushiku Chiru",
-      "Hiroko Suzuki"
-    ],
-    "lycoris-recoil": [
-      "ALIVE",
-      "ClariS"
-    ],
-    "march-comes-in-like-a-lion": [
-      "Answer",
-      "BUMP OF CHICKEN"
-    ],
-    "mashle": [
-      "Bling-Bang-Bang-Born",
-      "Creepy Nuts"
-    ],
-    "mirai-nikki": [
-      "Kuusou Mesorogiwi",
-      "Yousei Teikoku",
-      "itunes:479474683"
-    ],
-    "mob-psycho-100": [
-      "99",
-      "MOB CHOIR"
-    ],
-    "moi-quand-je-me-reincarne-en-slime": [
-      "Nameless Story",
-      "Takuma Terashima"
-    ],
-    "monogatari": [
-      "Renai Circulation",
-      "Kana Hanazawa"
-    ],
-    "pop-monster": [
-      "Grain",
-      "Kuniaki Haishima"
-    ],
-    "moriarty-the-patriot": [
-      "DYING WISH",
-      ""
-    ],
-    "mushoku-tensei": [
-      "Tabibito no Uta",
-      "Yuiko Ōhara",
-      "itunes:1546070706"
-    ],
-    "my-dress-up-darling": [
-      "Ao to Kirameki",
-      "Spira Spica",
-      "itunes:1828469922"
-    ],
-    "my-hero-academia": [
-      "THE DAY",
-      "Porno Graffitti"
-    ],
-    "nana": [
-      "Rose",
-      "BLACK STONES"
-    ],
-    "naruto": [
-      "Blue Bird",
-      "Ikimonogakari"
-    ],
-    "no-game-no-life": [
-      "This Game",
-      "Konomi Suzuki"
-    ],
-    "noragami": [
-      "Goya no Machiawase",
-      "Hello Sleepwalkers"
-    ],
-    "one-piece": [
-      "We Are!",
-      "Hiroshi Kitadani"
-    ],
-    "one-punch-man": [
-      "THE HERO!!",
-      "JAM Project"
-    ],
-    "oshi-no-ko": [
-      "Idol",
-      "YOASOBI"
-    ],
-    "overlord": [
-      "Clattanoia",
-      "OxT"
-    ],
-    "panty-stocking": [
-      "D City Rock",
-      "TeddyLoid"
-    ],
-    "parasite": [
-      "Let Me Hear",
-      "Fear, and Loathing in Las Vegas"
-    ],
-    "pokemon-anime": [
-      "Pokémon Theme",
-      "Jason Paige"
-    ],
-    "psycho-pass": [
-      "abnormalize",
-      "Ling tosite sigure"
-    ],
-    "ranking-of-kings": [
-      "Naked Hero (Hadaka no Yūsha)",
-      "Vaundy",
-      "itunes:1600223385"
-    ],
-    "re-zero": [
-      "Redo",
-      "Konomi Suzuki"
-    ],
-    "rent-a-girlfriend": [
-      "Centimeter",
-      "the peggies"
-    ],
-    "saga-of-tanya-the-evil": [
-      "JINGO JUNGLE",
-      "MYTH & ROID"
-    ],
-    "samurai-champloo": [
-      "Battlecry",
-      "Nujabes"
-    ],
-    "seraph-of-the-end": [
-      "X.U.",
-      "SawanoHiroyuki[nZk]"
-    ],
-    "seven-deadly-sins": [
-      "Netsujou no Spectrum",
-      "Ikimonogakari",
-      "itunes:1536271840"
-    ],
-    "sk8-the-infinity": [
-      "Paradise",
-      "Rude-α"
-    ],
-    "slam-dunk": [
-      "Kimi ga Suki da to Sakebitai",
-      "BAAD"
-    ],
-    "solo-leveling": [
-      "LEveL",
-      "SawanoHiroyuki[nZk]"
-    ],
-    "soul-eater": [
-      "Resonance",
-      "T.M.Revolution"
-    ],
-    "spy-x-family": [
-      "Mixed Nuts",
-      "Official HIGE DANdism",
-      "itunes:1616586639"
-    ],
-    "steins-gate": [
-      "Hacking to the Gate",
-      "Kanako Itō",
-      "itunes:1843786357"
-    ],
-    "sword-art-online": [
-      "crossing field",
-      "LiSA"
-    ],
-    "sword-art-online-alicization": [
-      "ADAMAS",
-      "LiSA"
-    ],
-    "the-case-study-of-vanitas": [
-      "Sora to Utsuro",
-      "SawanoHiroyuki[nZk]"
-    ],
-    "the-eminence-in-shadow": [
-      "HIGHEST",
-      "OxT"
-    ],
-    "the-god-of-high-school": [
-      "CONTRADICTION",
-      "KSUKE"
-    ],
-    "the-promised-neverland": [
-      "Touch Off",
-      "UVERworld"
-    ],
-    "the-quintessential-quintuplets": [
-      "Gotōbun no Kimochi",
-      "Nakanoke no Itsutsugo",
-      "itunes:1682466412"
-    ],
-    "the-rising-of-the-shield-hero": [
-      "RISE",
-      "MADKID"
-    ],
-    "tokyo-ghoul": [
-      "unravel",
-      "TK from Ling tosite sigure"
-    ],
-    "tokyo-revengers": [
-      "Cry Baby",
-      "Official HIGE DANdism"
-    ],
-    "toradora": [
-      "Pre-Parade",
-      "Rie Kugimiya"
-    ],
-    "tower-of-god": [
-      "TOP",
-      "Stray Kids"
-    ],
-    "trigun": [
-      "H.T.",
-      "Tsuneo Imahori",
-      "itunes:969897525"
-    ],
-    "vinland-saga": [
-      "MUKANJYO",
-      "Survive Said The Prophet"
-    ],
-    "violet-evergarden": [
-      "Sincerely",
-      "TRUE"
-    ],
-    "your-lie-in-april": [
-      "Hikaru Nara",
-      "Goose house"
-    ],
-    "your-name": [
-      "Zenzenzense",
-      "RADWIMPS"
-    ],
-    "yu-yu-hakusho": [
-      "Hohoemi no Bakudan",
-      "Matsuko Mawatari"
-    ],
-    "yuri-on-ice": [
-      "History Maker",
-      "DEAN FUJIOKA"
-    ],
-    "akira": [
-      "Kaneda",
-      "Geinoh Yamashirogumi"
-    ],
-    "baki": [
-      "Beastful",
-      "GRANRODEO"
-    ],
-    "boruto": [
-      "Baton Road",
-      "KANA-BOON"
-    ],
-    "detective-conan": [
-      "Meitantei Conan Main Theme",
-      "Katsuo Ōno",
-      "itunes:1547554568"
-    ],
-    "eyeshield-21": [
-      "Breakthrough",
-      "Coming Century"
-    ],
-    "inazuma-eleven": [
-      "Tachiagari Youth",
-      "T-Pistonz+KMC"
-    ],
-    "olive-et-tom": [
-      "Olive et Tom (générique français)",
-      "Jean-Claude Corbel",
-      "file:audio/generiques/olive-et-tom.mp3"
-    ],
-    "space-dandy": [
-      "Viva Namida",
-      "Okamura Yasuyuki"
-    ],
-    "world-trigger": [
-      "Glorious Days",
-      "Three Lights Down Kings"
-    ],
-    "yu-gi-oh-5d-s": [
-      "Believe in Nexus",
-      "Masaaki Endo"
-    ]
-  },
-  "cartoon": {
-    "adventure-time": [
-      "Adventure Time (générique français)",
-      "Adventure Time (VF)",
-      "file:audio/generiques/adventure-time.mp3"
-    ],
-    "albator": [
-      "Albator, le corsaire de l'espace",
-      "Eric Charden",
-      "itunes:537264810"
-    ],
-    "amphibia": [
-      "Amphibia (générique)",
-      "TJ Hill",
-      "file:audio/generiques/amphibia.mp3"
-    ],
-    "avatar-le-dernier-maitre-de-l-air": [
-      "Avatar, le dernier maître de l'air (générique français)",
-      "Avatar (VF)",
-      "file:audio/generiques/avatar-le-dernier-maitre-de-l-air.mp3"
-    ],
-    "babar": [
-      "Les aventures de Babar",
-      "André Popp",
-      "itunes:1484515110"
-    ],
-    "barbapapa": [
-      "Voici venir les Barbapapa",
-      "Ricet Barrier",
-      "itunes:1044596187"
-    ],
-    "ben-10": [
-      "Ben 10 (générique français)",
-      "Ben 10",
-      "file:audio/generiques/ben-10.mp3"
-    ],
-    "big-city-greens": [
-      "Big City Greens (générique)",
-      "The Mowgli's",
-      "file:audio/generiques/big-city-greens.mp3"
-    ],
-    "bluey": [
-      "Bluey Theme Tune (Extended)",
-      "Bluey & Joff Bush",
-      "itunes:1572744278"
-    ],
-    "bob-l-eponge": [
-      "Bob l'éponge (générique français)",
-      "Patrick Préjean",
-      "file:audio/generiques/bob-l-eponge.mp3"
-    ],
-    "capitaine-flam": [
-      "Capitaine Flam (Générique TV Version 1987)",
-      "Bernard Minet",
-      "itunes:1444618723"
-    ],
-    "castlevania-netflix": [
-      "Main Title",
-      "Trevor Morris",
-      "itunes:1252170566"
-    ],
-    "catdog": [
-      "Michat-Michien (générique français)",
-      "CatDog",
-      "file:audio/generiques/catdog.mp3"
-    ],
-    "dexter-da": [
-      "Le Laboratoire de Dexter (générique français)",
-      "Dexter",
-      "file:audio/generiques/dexter-da.mp3"
-    ],
-    "dora-l-exploratrice": [
-      "Dora l'exploratrice (générique français)",
-      "Lucile Boulanger",
-      "file:audio/generiques/dora-l-exploratrice.mp3"
-    ],
-    "doug": [
-      "Doug (générique)",
-      "Fred Newman & Dan Sawyer",
-      "file:audio/generiques/doug.mp3"
-    ],
-    "foot-2-rue": [
-      "Street Football",
-      "Akhenaton",
-      "itunes:362633495"
-    ],
-    "franklin": [
-      "Hé, c'est Franklin",
-      "Franklin (VF)",
-      "file:audio/generiques/franklin.mp3"
-    ],
-    "galactik-football": [
-      "Générique Galactik Football",
-      "Marc Tomasi & Mehdi Elmorabit",
-      "itunes:348033789"
-    ],
-    "grizzy-et-les-lemmings": [
-      "Générique",
-      "Grizzy & les Lemmings",
-      "file:audio/generiques/grizzy-et-les-lemmings.mp3"
-    ],
-    "heidi": [
-      "La chanson d'Heidi",
-      "Alexandra",
-      "itunes:979550481"
-    ],
-    "invincible": [
-      "Invincible",
-      "John Paesano",
-      "itunes:1794864037"
-    ],
-    "jayce": [
-      "Jayce et les conquérants de la lumière",
-      "Nick Carr",
-      "itunes:1255591803"
-    ],
-    "jimmy-neutron": [
-      "Jimmy Neutron (générique français)",
-      "Jimmy Neutron",
-      "file:audio/generiques/jimmy-neutron.mp3"
-    ],
-    "kaeloo": [
-      "Le générique de ton dessin animé",
-      "Kaeloo",
-      "file:audio/generiques/kaeloo.mp3"
-    ],
-    "la-cour-de-recre": [
-      "La Cour de récré (générique)",
-      "Disney",
-      "file:audio/generiques/la-cour-de-recre.mp3"
-    ],
-    "le-monde-magique-de-disney": [
-      "La Maison de Mickey, le générique",
-      "Georges et Michel Costa",
-      "itunes:713237257"
-    ],
-    "les-animaniacs": [
-      "Les Animaniacs (générique français)",
-      "Les Animaniacs (VF)",
-      "file:audio/generiques/les-animaniacs.mp3"
-    ],
-    "les-maitres-de-l-univers": [
-      "Les maîtres de l'univers",
-      "H. Saban & S. Levy",
-      "itunes:1267260992"
-    ],
-    "les-simpson": [
-      "The Simpsons Main Title Theme (Extended Version)",
-      "The Simpsons",
-      "itunes:1598044819"
-    ],
-    "les-teletubbies": [
-      "Les Télétubbies (générique français)",
-      "Les Télétubbies (VF)",
-      "file:audio/generiques/les-teletubbies.mp3"
-    ],
-    "les-zinzins-de-l-espace": [
-      "Monster Men",
-      "Iggy Pop",
-      "file:audio/generiques/les-zinzins-de-l-espace.mp3"
-    ],
-    "lucky-luke": [
-      "I'm a Poor Lonesome Cowboy",
-      "Claude Bolling & Pat Woods",
-      "itunes:1853831495"
-    ],
-    "masha-et-michka": [
-      "Masha et Michka (générique)",
-      "Vasily Bogatyrev",
-      "file:audio/generiques/masha-et-michka.mp3"
-    ],
-    "maya-l-abeille": [
-      "Maya: Main Theme",
-      "Fabrice Aboulker",
-      "itunes:1179835389"
-    ],
-    "molang": [
-      "Molang Theme Song",
-      "Kids Superstars",
-      "itunes:1500952489"
-    ],
-    "oggy-et-les-cafards": [
-      "Générique",
-      "Hugues Le Bars",
-      "itunes:1296321569"
-    ],
-    "oui-oui": [
-      "Oui-Oui (générique français)",
-      "Oui-Oui",
-      "file:audio/generiques/oui-oui.mp3"
-    ],
-    "peppa-pig": [
-      "Peppa Pig (générique français)",
-      "Peppa Pig",
-      "file:audio/generiques/peppa-pig.mp3"
-    ],
-    "phineas-et-ferb": [
-      "Phinéas et Ferb (Chanson générique)",
-      "Marty",
-      "deezer:434555252"
-    ],
-    "princesse-sarah": [
-      "Princesse Sarah",
-      "Claude Lombard",
-      "itunes:1596550596"
-    ],
-    "sam-le-pompier": [
-      "Sam le pompier (générique français)",
-      "Sam le pompier",
-      "file:audio/generiques/sam-le-pompier.mp3"
-    ],
-    "scooby-doo": [
-      "Scooby-Doo, où es-tu ? (générique français)",
-      "Scooby-Doo",
-      "file:audio/generiques/scooby-doo.mp3"
-    ],
-    "south-park": [
-      "South Park Theme",
-      "Primus",
-      "deezer:2576770162"
-    ],
-    "steven-universe": [
-      "Nous sommes les Gemmes de Cristal",
-      "Steven Universe (VF)",
-      "file:audio/generiques/steven-universe.mp3"
-    ],
-    "t-choupi": [
-      "T'choupi, le générique",
-      "T'choupi",
-      "itunes:376152766"
-    ],
-    "the-owl-house": [
-      "The Owl House (générique)",
-      "TJ Hill",
-      "file:audio/generiques/the-owl-house.mp3"
-    ],
-    "tintin": [
-      "Les Aventures de Tintin (Thème du générique)",
-      "Ciné-Trio",
-      "itunes:684699202"
-    ],
-    "zig-et-sharko": [
-      "Zig et Sharko générique début",
-      "Vincent Artaud",
-      "itunes:1474241695"
-    ]
-  },
-  "cartoon-en": {
-    "adventure-time": [
-      "Adventure Time Main Title",
-      "Adventure Time",
-      "itunes:1512848777"
-    ],
-    "avatar-le-dernier-maitre-de-l-air": [
-      "Avatar: The Last Airbender Main Title",
-      "Jeremy Zuckerman",
-      "itunes:1825186550"
-    ],
-    "ben-10": [
-      "Ben 10 (Theme Song)",
-      "Kids Superstars",
-      "itunes:1826512032"
-    ],
-    "bob-l-eponge": [
-      "SpongeBob SquarePants Theme Song",
-      "SpongeBob SquarePants",
-      "itunes:283379766"
-    ],
-    "catdog": [
-      "CatDog Theme Song",
-      "Catdog & Nickelodeon",
-      "itunes:1888272558"
-    ],
-    "dexter-da": [
-      "Dexter's Laboratory Main Theme",
-      "Geek Music",
-      "itunes:1524648430"
-    ],
-    "dora-l-exploratrice": [
-      "Dora the Explorer Theme",
-      "Dora the Explorer",
-      "itunes:281871271"
-    ],
-    "franklin": [
-      "Hey It's Franklin",
-      "Geek Music",
-      "itunes:1571934819"
-    ],
-    "jayce": [
-      "Jayce and the Wheeled Warriors - Main Theme",
-      "Geek Music",
-      "itunes:1437854508"
-    ],
-    "jimmy-neutron": [
-      "Jimmy Neutron Theme",
-      "Bowling for Soup",
-      "itunes:322693445"
-    ],
-    "le-monde-magique-de-disney": [
-      "Mickey Mouse Club March",
-      "Mickey Mouse",
-      "itunes:1660550789"
-    ],
-    "les-animaniacs": [
-      "Animaniacs (Opening Title)",
-      "Animaniacs",
-      "itunes:1538239354"
-    ],
-    "les-maitres-de-l-univers": [
-      "He-Man and the Masters of the Universe (instrumental)",
-      "H. Saban & S. Levy",
-      "itunes:1279576472"
-    ],
-    "les-teletubbies": [
-      "Teletubbies Theme",
-      "Teletubbies",
-      "itunes:1799229650"
-    ],
-    "oui-oui": [
-      "Make Way for Noddy",
-      "Kids Now",
-      "itunes:284756322"
-    ],
-    "peppa-pig": [
-      "New Peppa Pig Theme Song",
-      "Peppa Pig",
-      "itunes:1810205269"
-    ],
-    "phineas-et-ferb": [
-      "Today Is Gonna Be a Great Day",
-      "Bowling for Soup",
-      "itunes:714727690"
-    ],
-    "sam-le-pompier": [
-      "Fireman Sam Theme Song",
-      "Fireman Sam & Mattel",
-      "itunes:1809325178"
-    ],
-    "scooby-doo": [
-      "Scooby Doo Theme Song",
-      "Best Coast",
-      "itunes:1512008927"
-    ],
-    "steven-universe": [
-      "We Are The Crystal Gems (Full Theme Song)",
-      "Steven Universe",
-      "itunes:1511215902"
-    ]
-  },
-  "ambience": {
-    "eclipse": [
-      "Inferno",
-      "9mm Parabellum Bullet",
-      "itunes:1821456121"
-    ]
-  },
-  "screen": {
-    "arrowverse": [
-      "Setting Up the Lair (Main Theme from “Arrow”)",
-      "Blake Neely",
-      "itunes:1455249774"
-    ],
-    "bones": [
-      "Bones Theme",
-      "The Crystal Method",
-      "itunes:1502302335"
-    ],
-    "breaking-bad": [
-      "Breaking Bad (Main Title Theme)",
-      "Dave Porter",
-      "itunes:370928560"
-    ],
-    "chernobyl": [
-      "The Door",
-      "Hildur Guðnadóttir",
-      "itunes:1464507425"
-    ],
-    "cobra-kai": [
-      "Strike First",
-      "Leo Birenberg & Zach Robinson",
-      "itunes:1816012011"
-    ],
-    "columbo": [
-      "Mystery Movie Theme",
-      "Henry Mancini",
-      "itunes:1031781469"
-    ],
-    "desperate-housewives": [
-      "Desperate Housewives Theme",
-      "Danny Elfman",
-      "itunes:1443207728"
-    ],
-    "dexter": [
-      "Dexter Main Title",
-      "Rolfe Kent",
-      "itunes:1534802065"
-    ],
-    "dr-house": [
-      "Teardrop",
-      "Massive Attack",
-      "itunes:724466700"
-    ],
-    "emily-in-paris": [
-      "Main Title Theme",
-      "James Newton Howard",
-      "itunes:1600566174"
-    ],
-    "friends": [
-      "I'll Be There for You",
-      "The Rembrandts",
-      "itunes:373221221"
-    ],
-    "game-of-thrones": [
-      "Main Title",
-      "Ramin Djawadi",
-      "itunes:1440799057"
-    ],
-    "gilmore-girls": [
-      "Where You Lead I Will Follow",
-      "Carole King",
-      "itunes:1139003043"
-    ],
-    "glee": [
-      "Don't Stop Believin'",
-      "Glee Cast",
-      "itunes:347886835"
-    ],
-    "good-omens": [
-      "Good Omens Opening Title",
-      "David Arnold",
-      "itunes:1833179901"
-    ],
-    "grey-s-anatomy": [
-      "Cosy in the Rocket",
-      "Psapp",
-      "itunes:712912882"
-    ],
-    "hannah-montana": [
-      "The Best of Both Worlds",
-      "Hannah Montana",
-      "itunes:1440778789"
-    ],
-    "house-of-cards": [
-      "House of Cards Main Title Theme",
-      "Jeff Beal",
-      "itunes:1440753471"
-    ],
-    "hpi": [
-      "HPI (générique)",
-      "Yannis Dumoutiers",
-      "itunes:1570116259"
-    ],
-    "k2000": [
-      "Knight Rider (Main Title)",
-      "Stu Phillips",
-      "itunes:1528121767"
-    ],
-    "killing-eve": [
-      "Strange Effect",
-      "Unloved & Raven Violet",
-      "itunes:1508336365"
-    ],
-    "la-casa-de-papel": [
-      "My Life Is Going On",
-      "Cecilia Krull",
-      "itunes:1246764809"
-    ],
-    "le-mentalist": [
-      "The Mentalist (Main Title Theme)",
-      "Blake Neely",
-      "itunes:1455524431"
-    ],
-    "le-prince-de-bel-air": [
-      "The Fresh Prince of Bel-Air",
-      "DJ Jazzy Jeff & The Fresh Prince",
-      "itunes:309484327"
-    ],
-    "les-experts": [
-      "Who Are You",
-      "The Who",
-      "itunes:557156933"
-    ],
-    "les-soprano": [
-      "Woke Up This Morning",
-      "Alabama 3",
-      "itunes:283466475"
-    ],
-    "les-sorciers-de-waverly-place": [
-      "Everything Is Not What It Seems",
-      "Selena Gomez",
-      "itunes:1443888589"
-    ],
-    "lucifer": [
-      "Being Evil Has a Price",
-      "Heavy Young Heathens",
-      "itunes:1130719444"
-    ],
-    "magnum": [
-      "Theme from « Magnum, P.I. »",
-      "Mike Post",
-      "itunes:140787115"
-    ],
-    "maigret": [
-      "Maigret (générique)",
-      "Maigret",
-      "itunes:199231702"
-    ],
-    "malcolm": [
-      "Boss of Me",
-      "They Might Be Giants",
-      "itunes:6792838107"
-    ],
-    "maries-deux-enfants": [
-      "Love and Marriage",
-      "Frank Sinatra",
-      "itunes:1443128840"
-    ],
-    "monk": [
-      "Monk Theme",
-      "Jeff Beal",
-      "itunes:1444005114"
-    ],
-    "mr-robot": [
-      "hellofriend",
-      "Mac Quayle",
-      "itunes:1111049903"
-    ],
-    "new-girl": [
-      "Hey Girl",
-      "Zooey Deschanel",
-      "itunes:1512826305"
-    ],
-    "noob": [
-      "Générique de fin",
-      "Olydri",
-      "itunes:1717721462"
-    ],
-    "outlander": [
-      "The Skye Boat Song",
-      "Bear McCreary",
-      "itunes:903585389"
-    ],
-    "poirot": [
-      "Hercule Poirot - The Belgian Detective",
-      "Christopher Gunning",
-      "itunes:6777028036"
-    ],
-    "prison-break": [
-      "Main Title",
-      "Ramin Djawadi",
-      "itunes:1452859459"
-    ],
-    "shadow-and-bone": [
-      "Ravka",
-      "Joseph Trapanese",
-      "itunes:1658423170"
-    ],
-    "shogun": [
-      "Main Title (Shōgun)",
-      "Atticus Ross & Leopold Ross",
-      "itunes:1730619131"
-    ],
-    "squid-game": [
-      "Way Back Then",
-      "Jung Jae-il",
-      "itunes:1585115804"
-    ],
-    "stranger-things": [
-      "Stranger Things",
-      "Kyle Dixon & Michael Stein",
-      "itunes:1142771420"
-    ],
-    "succession": [
-      "Succession (Main Title Theme)",
-      "Nicholas Britell",
-      "itunes:1500926127"
-    ],
-    "ted-lasso": [
-      "Ted Lasso Theme",
-      "Marcus Mumford & Tom Howe",
-      "itunes:1534329463"
-    ],
-    "the-big-bang-theory": [
-      "The Big Bang Theory Theme",
-      "Barenaked Ladies",
-      "itunes:464675958"
-    ],
-    "the-last-kingdom": [
-      "The Last Kingdom",
-      "John Lunn & Eivør",
-      "itunes:1440074900"
-    ],
-    "the-mandalorian": [
-      "The Mandalorian",
-      "Ludwig Göransson",
-      "itunes:1486687344"
-    ],
-    "the-sandman": [
-      "The Kingdom of Dreams (Main Title Theme)",
-      "David Buckley",
-      "itunes:1636651430"
-    ],
-    "the-walking-dead": [
-      "Theme from The Walking Dead",
-      "Bear McCreary",
-      "itunes:1275301945"
-    ],
-    "true-blood": [
-      "Bad Things",
-      "Jace Everett",
-      "itunes:313613446"
-    ],
-    "twin-peaks": [
-      "Twin Peaks Theme",
-      "Angelo Badalamenti",
-      "itunes:374382372"
-    ],
-    "une-nounou-d-enfer": [
-      "The Nanny Named Fran",
-      "Ann Hampton Callaway",
-      "itunes:1841692170"
-    ],
-    "xena-la-guerriere": [
-      "Main Title",
-      "Joseph LoDuca",
-      "itunes:1444069072"
-    ],
-    "yellowstone": [
-      "Yellowstone Theme",
-      "Brian Tyler",
-      "itunes:1422861344"
-    ],
-    "marvel": [
-      "The Avengers",
-      "Alan Silvestri",
-      "itunes:1440663698"
-    ],
-    "300": [
-      "To Victory",
-      "Tyler Bates"
-    ],
-    "avatar": [
-      "Jake Enters His Avatar World",
-      "James Horner"
-    ],
-    "ca": [
-      "Every 27 Years",
-      "Benjamin Wallfisch",
-      "itunes:1454546636"
-    ],
-    "cars": [
-      "Life Is a Highway",
-      "Rascal Flatts"
-    ],
-    "casino": [
-      "Thème de Camille",
-      "Georges Delerue"
-    ],
-    "charlie-et-la-chocolaterie": [
-      "Wonka's Welcome Song",
-      "Danny Elfman"
-    ],
-    "conjuring": [
-      "The Conjuring",
-      "Joseph Bishara"
-    ],
-    "dc-films": [
-      "Why So Serious?",
-      "Hans Zimmer"
-    ],
-    "die-hard": [
-      "Let It Snow! Let It Snow! Let It Snow!",
-      "Vaughn Monroe"
-    ],
-    "e-t": [
-      "Flying Theme",
-      "John Williams"
-    ],
-    "fast-furious": [
-      "See You Again",
-      "Wiz Khalifa"
-    ],
-    "fight-club": [
-      "Where Is My Mind?",
-      "Pixies"
-    ],
-    "gremlins": [
-      "The Gremlin Rag",
-      "Jerry Goldsmith"
-    ],
-    "harry-potter": [
-      "Hedwig's Theme",
-      "John Williams"
-    ],
-    "heat": [
-      "God Moving Over the Face of the Waters",
-      "Moby"
-    ],
-    "hunger-games": [
-      "The Hanging Tree",
-      "James Newton Howard"
-    ],
-    "il-etait-une-fois-dans-l-ouest": [
-      "Once Upon a Time in the West",
-      "Ennio Morricone"
-    ],
-    "il-etait-une-fois-en-amerique": [
-      "Deborah's Theme",
-      "Ennio Morricone"
-    ],
-    "indiana-jones": [
-      "Raiders March",
-      "John Williams"
-    ],
-    "james-bond": [
-      "James Bond Theme",
-      "Monty Norman",
-      "itunes:1720641175"
-    ],
-    "john-wick": [
-      "LED Spirals",
-      "Le Castle Vania"
-    ],
-    "kill-bill": [
-      "Battle Without Honor or Humanity",
-      "Tomoyasu Hotei"
-    ],
-    "kung-fu-panda": [
-      "Oogway Ascends",
-      "Hans Zimmer"
-    ],
-    "la-ligne-verte": [
-      "The Green Mile",
-      "Thomas Newman"
-    ],
-    "la-liste-de-schindler": [
-      "Theme from Schindler's List",
-      "John Williams"
-    ],
-    "la-reine-des-neiges": [
-      "Libérée, délivrée",
-      "Anaïs Delva"
-    ],
-    "le-diner-de-cons": [
-      "Le dîner de cons",
-      "Vladimir Cosma"
-    ],
-    "le-gendarme-de-saint-tropez": [
-      "Marche des gendarmes",
-      "Raymond Lefèvre"
-    ],
-    "le-parrain": [
-      "The Godfather Waltz",
-      "Nino Rota"
-    ],
-    "le-roi-lion": [
-      "Circle of Life",
-      "Carmen Twillie"
-    ],
-    "le-seigneur-des-anneaux": [
-      "Concerning Hobbits",
-      "Howard Shore"
-    ],
-    "le-silence-des-agneaux": [
-      "Main Title",
-      "Howard Shore",
-      "itunes:1443219466"
-    ],
-    "les-affranchis": [
-      "Rags to Riches",
-      "Tony Bennett"
-    ],
-    "les-evades": [
-      "Shawshank Redemption",
-      "Thomas Newman"
-    ],
-    "les-infiltres": [
-      "I'm Shipping Up to Boston",
-      "Dropkick Murphys"
-    ],
-    "les-tontons-flingueurs": [
-      "Les tontons flingueurs",
-      "Michel Magne"
-    ],
-    "maman-j-ai-rate-l-avion": [
-      "Somewhere in My Memory",
-      "John Williams"
-    ],
-    "matrix": [
-      "Spybreak!",
-      "Propellerheads",
-      "itunes:580690942"
-    ],
-    "mon-voisin-totoro": [
-      "My Neighbor Totoro",
-      "Joe Hisaishi"
-    ],
-    "mulan": [
-      "Reflection",
-      "Lea Salonga"
-    ],
-    "pirates-des-caraibes": [
-      "He's a Pirate",
-      "Klaus Badelt"
-    ],
-    "psychose": [
-      "Prelude",
-      "Bernard Herrmann"
-    ],
-    "ratatouille": [
-      "Le festin",
-      "Camille"
-    ],
-    "retour-vers-le-futur": [
-      "The Power of Love",
-      "Huey Lewis and the News",
-      "itunes:725785116"
-    ],
-    "rocky": [
-      "Gonna Fly Now",
-      "Bill Conti"
-    ],
-    "scream": [
-      "Red Right Hand",
-      "Nick Cave & The Bad Seeds"
-    ],
-    "shining": [
-      "Main Title",
-      "Wendy Carlos"
-    ],
-    "shrek": [
-      "All Star",
-      "Smash Mouth"
-    ],
-    "spider-man-new-generation": [
-      "Sunflower",
-      "Post Malone & Swae Lee",
-      "itunes:1445949267"
-    ],
-    "star-wars": [
-      "Main Title",
-      "John Williams",
-      "itunes:1375814284"
-    ],
-    "toy-story": [
-      "You've Got a Friend in Me",
-      "Randy Newman"
-    ],
-    "transformers": [
-      "Arrival to Earth",
-      "Steve Jablonsky"
-    ],
-    "troie": [
-      "Troy",
-      "James Horner"
-    ],
-    "jv-angry-birds": [
-      "Angry Birds Theme",
-      "Ari Pulkkinen"
-    ],
-    "jv-assassin-s-creed": [
-      "Ezio's Family",
-      "Jesper Kyd"
-    ],
-    "jv-borderlands": [
-      "Ain't No Rest for the Wicked",
-      "Cage the Elephant"
-    ],
-    "jv-call-of-duty": [
-      "Main Theme",
-      "David Buckley",
-      "itunes:1542621254"
-    ],
-    "jv-dark-souls": [
-      "Gwyn, Lord of Cinder",
-      "Motoi Sakuraba"
-    ],
-    "jv-diablo": [
-      "Tristram",
-      "Matt Uelmen"
-    ],
-    "jv-fallout": [
-      "I Don't Want to Set the World on Fire",
-      "The Ink Spots"
-    ],
-    "jv-far-cry": [
-      "Far Cry",
-      "Brian Tyler"
-    ],
-    "jv-final-fantasy": [
-      "One-Winged Angel",
-      "Nobuo Uematsu"
-    ],
-    "jv-god-of-war": [
-      "God of War",
-      "Bear McCreary"
-    ],
-    "jv-gta": [
-      "Soviet Connection",
-      "Michael Hunter"
-    ],
-    "jv-halo": [
-      "Halo",
-      "Martin O'Donnell"
-    ],
-    "jv-hitman": [
-      "Hitman 2 Main Title",
-      "Jesper Kyd",
-      "itunes:1490442213"
-    ],
-    "jv-isaac-persos": [
-      "The Binding of Isaac",
-      "Danny Baranowsky",
-      "itunes:6792847465"
-    ],
-    "jv-kingdom-hearts": [
-      "Simple and Clean",
-      "Hikaru Utada",
-      "itunes:1440875056"
-    ],
-    "jv-mass-effect": [
-      "Vigil",
-      "Jack Wall"
-    ],
-    "jv-metal-gear": [
-      "Snake Eater",
-      "Cynthia Harrell"
-    ],
-    "jv-minecraft": [
-      "Sweden",
-      "C418"
-    ],
-    "jv-mortal-kombat": [
-      "Techno Syndrome",
-      "The Immortals"
-    ],
-    "jv-overwatch": [
-      "Overwatch",
-      "Derek Duke"
-    ],
-    "jv-pokemon-jeux": [
-      "Pokémon Theme",
-      "Jason Paige"
-    ],
-    "jv-portal": [
-      "Still Alive",
-      "Aperture Science Psychoacoustic Laboratories",
-      "itunes:1891395741"
-    ],
-    "jv-red-dead-redemption": [
-      "Far Away",
-      "José González"
-    ],
-    "jv-sekiro-elden-ring-activision": [
-      "Elden Ring",
-      "Tsukasa Saitoh"
-    ],
-    "jv-sonic": [
-      "Live & Learn",
-      "Crush 40"
-    ],
-    "jv-spyro": [
-      "Spyro Main Theme",
-      "Stewart Copeland",
-      "itunes:1622678609"
-    ],
-    "jv-street-fighter": [
-      "Theme of Guile",
-      "Masahiro Aoki",
-      "itunes:1341577647"
-    ],
-    "jv-the-elder-scrolls": [
-      "Dragonborn",
-      "Jeremy Soule"
-    ],
-    "jv-the-last-of-us": [
-      "The Last of Us",
-      "Gustavo Santaolalla"
-    ],
-    "jv-the-witcher": [
-      "The Trail",
-      "Marcin Przybyłowicz"
-    ],
-    "jv-tomb-raider": [
-      "Tomb Raider Theme",
-      "Nathan McCree"
-    ],
-    "jv-uncharted": [
-      "Nate's Theme",
-      "Greg Edmonson"
-    ],
-    "jv-warcraft": [
-      "Legends of Azeroth",
-      "Jason Hayes"
-    ],
-    "rambo": [
-      "Homecoming",
-      "Jerry Goldsmith",
-      "itunes:1814262506"
-    ],
-    "jv-palworld": [
-      "Theme of Palworld",
-      "Tatsuya Yano",
-      "itunes:6795289757"
-    ],
-    "lol": [
-      "Classic Summoner's Rift Pt. 1",
-      "League of Legends",
-      "itunes:1832618245"
-    ],
-    "ghibli": [
-      "My Neighbor Totoro",
-      "Joe Hisaishi",
-      "itunes:1680460241"
-    ]
-  }
+ "_doc": "(retours Hugo 10/11) extraits choisis à la main : morceau + interprète. « cards » = cartes Musique 6★ que la récolte automatique iTunes n'a pas trouvées ; « anime » = opening de l'animé (par sous-thème) joué en fond quand une 6★ de cet animé tombe. Résolus par scripts/harvest-curated-previews.py (iTunes, sinon Deezer). « ambience » = musique d'une ambiance d'ouverture (eclipse : Berserk 5★/6★, game/eclipse.ts). « cartoon » (15/11) = générique du dessin animé (par sous-thème du bloc Dessins animés) joué en fond quand une 6★ de ce dessin animé tombe : version française quand elle est éditée, sinon l'originale ; « cartoon-en » = version anglaise jouée à la place dans le jeu en anglais, seulement quand elle diffère. 3e élément = le morceau exact (itunes:<id>, deezer:<id>, ou file:<chemin dans public/> pour un extrait fourni par Tom, servi par Pages), choisi à la main. (15/11, soir) 24 génériques récupérés par Gemini (donnees/generiques/a-integrer/LISEZMOI.txt : sources, VF/VO) : versions françaises diffusées, génériques instrumentaux officiels, Cha-La Head-Cha-La 1989, Olive et Tom (Corbel) — servis par Pages (public/audio/generiques/) ; la version anglaise d'avant passe dans « cartoon-en ». Reste en reprise fidèle : Molang, Tintin, Phinéas et Ferb (FR), Jayce (EN). Extraits fournis par Tom (pas en boutique) : Grizzy et les Lemmings, Kaeloo, Les Zinzins de l'espace — public/audio/generiques/. « screen » (17/11, demandes de Hugo) = générique de la série (bloc Séries TV) ou musique du film (Marvel MCU : Avengers d'Alan Silvestri), par sous-thème, joué en fond quand une 6★ tombe — interprète original seulement. Hellsing : « The World without Logos » (Yasushi Ishii). (20/11, demandes de Hugo) L Lawliet 6★ : « L no Theme » (Hideki Taniuchi, DEATH NOTE Original Soundtrack). « screen » couvre aussi les films 6★ et les familles Jeux vidéo 6★ (thème du film / du jeu, interprète original ; familles « divers » laissées sans musique). (24/11, lot 2 de Hugo) Musiques par carte hors Musique (clé « cards », id de carte) : Griezmann / Kanté (Vegedream), Championnat du monde de LoL (RISE), ShowMaker / Canyon / Nuguri (Take Over), musique d'entrée officielle de chaque catcheur 6★ (catch), Aizen (Treachery) ; « screen » « lol » = toutes les 6★ League of Legends (Classic Summoner's Rift Pt. 1, musicPreview.ts) ; Berserk : l'ambiance Éclipse joue « Inferno » (9mm Parabellum Bullet) au lieu de « Behelit ». (24/11, V3) Les albums de films Ghibli fusionnent en « ghibli » (base Etoiles) : Mon voisin Totoro (Joe Hisaishi).",
+ "cards": {
+  "pop-au-dd": [
+   "Au DD",
+   "PNL"
+  ],
+  "pop-aux-champs-elysees": [
+   "Les Champs-Élysées",
+   "Joe Dassin"
+  ],
+  "pop-bande-organisee": [
+   "Bande organisée",
+   "Jul"
+  ],
+  "pop-bruxellesvie": [
+   "BruxellesVie",
+   "Damso"
+  ],
+  "pop-dans-l-espace": [
+   "Dans l'espace",
+   "Gambi"
+  ],
+  "pop-die": [
+   "Die",
+   "Gazo"
+  ],
+  "pop-je-t-aimais-je-t-aime-et-je-t-aimerai": [
+   "Je t'aimais, je t'aime, je t'aimerai",
+   "Francis Cabrel"
+  ],
+  "pop-je-t-emmene-au-vent": [
+   "J't'emmène au vent",
+   "Louise Attaque"
+  ],
+  "pop-jefe": [
+   "Jefe",
+   "Ninho"
+  ],
+  "pop-lettre-a-une-femme": [
+   "Lettre à une femme",
+   "Ninho"
+  ],
+  "pop-maman-ne-le-sait-pas": [
+   "Maman ne le sait pas",
+   "Ninho"
+  ],
+  "pop-mon-soleil": [
+   "Mon soleil",
+   "Dadju"
+  ],
+  "pop-naha": [
+   "Naha",
+   "PNL"
+  ],
+  "pop-reseaux": [
+   "Réseaux",
+   "Niska"
+  ],
+  "pop-seine-saint-denis-style": [
+   "Seine Saint-Denis Style",
+   "Suprême NTM"
+  ],
+  "pop-plugged-in": [
+   "I Hear You Knocking",
+   "Dave Edmunds"
+  ],
+  "pop-arthur-honegger": [
+   "Pacific 231",
+   "Honegger"
+  ],
+  "pop-coppelia": [
+   "Coppélia",
+   "Delibes"
+  ],
+  "pop-darius-milhaud": [
+   "Le bœuf sur le toit",
+   "Milhaud"
+  ],
+  "pop-don-carlos": [
+   "Don Carlo",
+   "Verdi"
+  ],
+  "pop-francis-poulenc": [
+   "Les Biches",
+   "Poulenc"
+  ],
+  "pop-giselle": [
+   "Giselle",
+   "Adolphe Adam"
+  ],
+  "pop-jean-baptiste-lully": [
+   "Cérémonie des Turcs",
+   ""
+  ],
+  "pop-palais-garnier": [
+   "Habanera",
+   "Maria Callas"
+  ],
+  "pop-paris-opera": [
+   "Galop infernal",
+   ""
+  ],
+  "pop-rudolf-nureyev": [
+   "Dance of the Knights",
+   "Prokofiev"
+  ],
+  "pop-theatre-des-champs-elysees": [
+   "Le Sacre du printemps",
+   "Stravinsky"
+  ],
+  "pop-andy-warhol": [
+   "Sunday Morning",
+   "The Velvet Underground"
+  ],
+  "pop-metropolitan-opera": [
+   "Nessun dorma",
+   "Pavarotti"
+  ],
+  "pop-richard-strauss": [
+   "Zarathustra",
+   "Karajan"
+  ],
+  "pop-give-me-the-night": [
+   "Give Me the Night",
+   "George Benson"
+  ],
+  "pop-plus-pres-des-etoiles": [
+   "Plus près des étoiles",
+   "Gold"
+  ],
+  "pop-temperature": [
+   "Temperature",
+   "Sean Paul"
+  ],
+  "pop-international-love": [
+   "International Love",
+   "Pitbull"
+  ],
+  "pop-caravane": [
+   "Caravane",
+   "Raphael"
+  ],
+  "pop-lettre-a-elise": [
+   "Für Elise",
+   "Beethoven"
+  ],
+  "pop-sonate-au-clair-de-lune": [
+   "Moonlight Sonata",
+   "Beethoven"
+  ],
+  "pop-le-lac-des-cygnes": [
+   "Swan Lake, Op. 20, Act 2: No. 10, Moderato",
+   "London Symphony Orchestra"
+  ],
+  "pop-la-chevauchee-des-walkyries": [
+   "Ride of the Valkyries",
+   "Wagner"
+  ],
+  "pop-eine-kleine-nachtmusik": [
+   "Eine kleine Nachtmusik",
+   "Mozart"
+  ],
+  "pop-suite-pour-violoncelle-n-1": [
+   "Cello Suite No. 1 in G Major, BWV 1007: I. Prélude",
+   "Yo-Yo Ma"
+  ],
+  "pop-il-est-libre-max": [
+   "Il est libre Max",
+   "Hervé Cristiani"
+  ],
+  "pop-le-temps-des-cathedrales": [
+   "Le temps des cathédrales",
+   "Bruno Pelletier"
+  ],
+  "pop-je-ne-suis-pas-un-heros": [
+   "Je ne suis pas un héros",
+   "Daniel Balavoine"
+  ],
+  "pop-partenaire-particulier": [
+   "Partenaire particulier",
+   "Partenaire Particulier"
+  ],
+  "pop-on-va-s-aimer": [
+   "On va s'aimer",
+   "Gilbert Montagné"
+  ],
+  "pop-laisse-pas-trainer-ton-fils": [
+   "Laisse pas traîner ton fils",
+   "Suprême NTM"
+  ],
+  "pop-grave-dans-la-roche": [
+   "Gravé dans la roche",
+   "Sniper"
+  ],
+  "pop-le-bilan": [
+   "Le bilan",
+   "Neg' Marrons"
+  ],
+  "pop-du-ferme": [
+   "Du ferme",
+   "La Fouine"
+  ],
+  "pop-pitbull-chansons": [
+   "Pitbull",
+   "Booba"
+  ],
+  "pop-la-haine": [
+   "La Haine",
+   "Cut Killer"
+  ],
+  "pop-suicide-social": [
+   "Suicide social",
+   "Orelsan"
+  ],
+  "pop-mwaka-moon": [
+   "Mwaka Moon",
+   "Kalash"
+  ],
+  "pop-desaccorde": [
+   "Désaccordé",
+   "Vald"
+  ],
+  "pop-or-noir": [
+   "Or noir",
+   "Kaaris"
+  ],
+  "pop-92i-veyron": [
+   "92i Veyron",
+   "Booba"
+  ],
+  "pop-fusil": [
+   "Fusil",
+   "SCH"
+  ],
+  "pop-est-ce-que-tu-m-aimes": [
+   "Est-ce que tu m'aimes",
+   "GIMS"
+  ],
+  "pop-le-monde-ou-rien": [
+   "Le monde ou rien",
+   "PNL"
+  ],
+  "pop-awa": [
+   "Awa",
+   "Lacrim"
+  ],
+  "pop-zoo": [
+   "Zoo",
+   "Kaaris"
+  ],
+  "pop-mosaique-solitaire": [
+   "Mosaïque solitaire",
+   "Damso"
+  ],
+  "pop-asalto": [
+   "Asalto",
+   "Jul"
+  ],
+  "pop-avant-la-douane": [
+   "Avant la douane",
+   "Jul"
+  ],
+  "pop-j-me-tire": [
+   "J'me tire",
+   "GIMS"
+  ],
+  "pop-unravel": [
+   "unravel",
+   "TK from Ling tosite sigure"
+  ],
+  "pop-kick-back": [
+   "KICK BACK",
+   "Kenshi Yonezu"
+  ],
+  "pop-again": [
+   "Again",
+   "YUI"
+  ],
+  "pop-kaikai-kitan": [
+   "Kaikai Kitan",
+   "Eve"
+  ],
+  "pop-guren-no-yumiya": [
+   "Guren no Yumiya",
+   "Linked Horizon"
+  ],
+  "pop-the-world": [
+   "the WORLD",
+   "NIGHTMARE"
+  ],
+  "pop-fly-high": [
+   "FLY HIGH",
+   "BURNOUT SYNDROMES"
+  ],
+  "pop-sign": [
+   "Sign",
+   "FLOW"
+  ],
+  "pop-crossing-field": [
+   "crossing field",
+   "LiSA"
+  ],
+  "pop-peace-sign": [
+   "Peace Sign",
+   "Kenshi Yonezu"
+  ],
+  "pop-let-me-hear": [
+   "Let Me Hear",
+   "Fear, and Loathing in Las Vegas"
+  ],
+  "pop-asphyxia": [
+   "asphyxia",
+   "Cö shu Nie"
+  ],
+  "pop-idol": [
+   "Idol",
+   "YOASOBI"
+  ],
+  "pop-history-maker": [
+   "History Maker",
+   "DEAN FUJIOKA"
+  ],
+  "pop-black-rover": [
+   "Black Rover",
+   "VK Blanka"
+  ],
+  "pop-snow-fairy": [
+   "Snow Fairy",
+   "FUNKIST"
+  ],
+  "pop-rise": [
+   "RISE",
+   "MADKID"
+  ],
+  "pop-black-catcher": [
+   "Black Catcher",
+   "VK Blanka"
+  ],
+  "pop-closer-joe-inoue": [
+   "Closer",
+   "Joe Inoue"
+  ],
+  "pop-brave-shine": [
+   "Brave Shine",
+   "Aimer"
+  ],
+  "pop-locked-out-of-heaven": [
+   "Locked Out of Heaven",
+   "Bruno Mars"
+  ],
+  "pop-running-up-that-hill": [
+   "Running Up That Hill",
+   "Kate Bush"
+  ],
+  "pop-take-on-me": [
+   "Take On Me",
+   "a-ha"
+  ],
+  "pop-wonderwall": [
+   "Wonderwall",
+   "Oasis"
+  ],
+  "pop-in-the-end": [
+   "In the End",
+   "Linkin Park"
+  ],
+  "pop-californication": [
+   "Californication",
+   "Red Hot Chili Peppers"
+  ],
+  "pop-uprising": [
+   "Uprising",
+   "Muse"
+  ],
+  "pop-dream-on": [
+   "Dream On",
+   "Aerosmith"
+  ],
+  "pop-every-breath-you-take": [
+   "Every Breath You Take",
+   "The Police"
+  ],
+  "pop-l-aziza": [
+   "L'Aziza",
+   "Daniel Balavoine"
+  ],
+  "pop-face-a-la-mer": [
+   "Face à la mer",
+   "Calogero"
+  ],
+  "pop-petite-marie": [
+   "Petite Marie",
+   "Francis Cabrel"
+  ],
+  "pop-cette-annee-la": [
+   "Cette année-là",
+   "Claude François"
+  ],
+  "pop-ne-me-quitte-pas": [
+   "Ne me quitte pas",
+   "Jacques Brel"
+  ],
+  "pop-la-boulette": [
+   "La Boulette",
+   "Diam's"
+  ],
+  "pop-on-verra": [
+   "On verra",
+   "Nekfeu"
+  ],
+  "pop-booba": [
+   "DKR",
+   "Booba"
+  ],
+  "pop-claude-francois": [
+   "Comme d'habitude",
+   "Claude François"
+  ],
+  "pop-georges-brassens": [
+   "Les copains d'abord",
+   "Georges Brassens"
+  ],
+  "pop-gojira": [
+   "Stranded",
+   "Gojira"
+  ],
+  "pop-m83": [
+   "Midnight City",
+   "M83"
+  ],
+  "pop-manu-chao": [
+   "Me Gustas Tu",
+   "Manu Chao"
+  ],
+  "pop-francis-cabrel": [
+   "Je t'aimais, je t'aime, je t'aimerai",
+   "Francis Cabrel"
+  ],
+  "pop-iam": [
+   "Petit frère",
+   "IAM"
+  ],
+  "pop-indochine": [
+   "L'aventurier",
+   "Indochine"
+  ],
+  "pop-jul": [
+   "Tchikita",
+   "Jul"
+  ],
+  "pop-mc-solaar": [
+   "Caroline",
+   "MC Solaar"
+  ],
+  "pop-orelsan": [
+   "Basique",
+   "Orelsan"
+  ],
+  "pop-bigflo-oli": [
+   "Picasso",
+   "Bigflo & Oli"
+  ],
+  "pop-daniel-balavoine": [
+   "Le chanteur",
+   "Daniel Balavoine"
+  ],
+  "pop-gregory-lemarchal": [
+   "Écris l'histoire",
+   "Grégory Lemarchal"
+  ],
+  "pop-sexion-d-assaut": [
+   "Wati by Night",
+   "Sexion d'Assaut"
+  ],
+  "pop-supreme-ntm": [
+   "Laisse pas traîner ton fils",
+   "Suprême NTM"
+  ],
+  "pop-tryo": [
+   "L'hymne de nos campagnes",
+   "Tryo"
+  ],
+  "pop-pnl": [
+   "Au DD",
+   "PNL"
+  ],
+  "pop-blink-182": [
+   "All the Small Things",
+   "blink-182"
+  ],
+  "pop-bob-marley": [
+   "Could You Be Loved",
+   "Bob Marley & The Wailers"
+  ],
+  "pop-earth-wind-fire": [
+   "September",
+   "Earth, Wind & Fire"
+  ],
+  "pop-enrique-iglesias": [
+   "Hero",
+   "Enrique Iglesias"
+  ],
+  "pop-fall-out-boy": [
+   "Centuries",
+   "Fall Out Boy"
+  ],
+  "pop-flo-rida": [
+   "Right Round",
+   "Flo Rida"
+  ],
+  "pop-freddie-mercury": [
+   "Living On My Own",
+   "Freddie Mercury"
+  ],
+  "pop-linkin-park": [
+   "In the End",
+   "Linkin Park"
+  ],
+  "pop-my-chemical-romance": [
+   "Welcome to the Black Parade",
+   "My Chemical Romance"
+  ],
+  "pop-one-direction": [
+   "What Makes You Beautiful",
+   "One Direction"
+  ],
+  "pop-sean-paul": [
+   "Temperature",
+   "Sean Paul"
+  ],
+  "pop-twenty-one-pilots": [
+   "Stressed Out",
+   "Twenty One Pilots"
+  ],
+  "pop-6ix9ine": [
+   "BILLY",
+   "6ix9ine",
+   "deezer:2495268861"
+  ],
+  "pop-bullet-for-my-valentine": [
+   "Your Betrayal",
+   "Bullet for My Valentine"
+  ],
+  "pop-alexandrie-alexandra": [
+   "Alexandrie Alexandra",
+   "Claude François"
+  ],
+  "pop-alors-on-danse": [
+   "Alors on danse",
+   "Stromae"
+  ],
+  "pop-amsterdam": [
+   "Amsterdam",
+   "Jacques Brel"
+  ],
+  "pop-apologize": [
+   "Apologize",
+   "OneRepublic"
+  ],
+  "pop-bella": [
+   "Bella",
+   "GIMS"
+  ],
+  "pop-billie-jean": [
+   "Billie Jean",
+   "Michael Jackson"
+  ],
+  "pop-bohemian-rhapsody": [
+   "Bohemian Rhapsody",
+   "Queen"
+  ],
+  "pop-comme-d-habitude": [
+   "Comme d'habitude",
+   "Claude François"
+  ],
+  "pop-complicated": [
+   "Complicated",
+   "Avril Lavigne"
+  ],
+  "pop-derniere-danse": [
+   "Dernière danse",
+   "Indila"
+  ],
+  "pop-diamonds": [
+   "Diamonds",
+   "Rihanna"
+  ],
+  "pop-don-t-stop-me-now": [
+   "Don't Stop Me Now",
+   "Queen"
+  ],
+  "pop-dynamite": [
+   "Dynamite",
+   "BTS"
+  ],
+  "pop-e-t": [
+   "E.T.",
+   "Katy Perry"
+  ],
+  "pop-earth-song": [
+   "Earth Song",
+   "Michael Jackson"
+  ],
+  "pop-ella-elle-l-a": [
+   "Ella, elle l'a",
+   "France Gall"
+  ],
+  "pop-emmenez-moi": [
+   "Emmenez-moi",
+   "Charles Aznavour"
+  ],
+  "pop-empire-state-of-mind": [
+   "Empire State of Mind",
+   "JAŸ-Z"
+  ],
+  "pop-en-apesanteur": [
+   "En apesanteur",
+   "Calogero"
+  ],
+  "pop-envole-moi": [
+   "Envole-moi",
+   "Jean-Jacques Goldman"
+  ],
+  "pop-i-m-still-standing": [
+   "I'm Still Standing",
+   "Elton John"
+  ],
+  "pop-j-ai-demande-a-la-lune": [
+   "J'ai demandé à la lune",
+   "Indochine"
+  ],
+  "pop-je-danse-le-mia": [
+   "Je danse le Mia",
+   "IAM"
+  ],
+  "pop-je-te-donne": [
+   "Je te donne",
+   "Michael Jones"
+  ],
+  "pop-joe-le-taxi": [
+   "Joe le taxi",
+   "Vanessa Paradis"
+  ],
+  "pop-just-the-way-you-are": [
+   "Just the Way You Are",
+   "Bruno Mars"
+  ],
+  "pop-l-aventurier": [
+   "L'Aventurier",
+   "Indochine"
+  ],
+  "pop-la-boheme": [
+   "La Bohème",
+   "Charles Aznavour"
+  ],
+  "pop-la-vie-en-rose": [
+   "La Vie en rose",
+   "Édith Piaf"
+  ],
+  "pop-last-friday-night": [
+   "Last Friday Night",
+   "Katy Perry"
+  ],
+  "pop-les-demons-de-minuit": [
+   "Les Démons de minuit",
+   "Images"
+  ],
+  "pop-les-lacs-du-connemara": [
+   "Les Lacs du Connemara",
+   "Michel Sardou"
+  ],
+  "pop-lose-yourself": [
+   "Lose Yourself",
+   "Eminem"
+  ],
+  "pop-ma-benz": [
+   "Ma Benz",
+   "Suprême NTM"
+  ],
+  "pop-macarena": [
+   "Macarena",
+   "Los del Río"
+  ],
+  "pop-mamma-mia": [
+   "Mamma Mia",
+   "ABBA"
+  ],
+  "pop-mistral-gagnant": [
+   "Mistral gagnant",
+   "Renaud"
+  ],
+  "pop-never-gonna-give-you-up": [
+   "Never Gonna Give You Up",
+   "Rick Astley"
+  ],
+  "pop-nothing-else-matters": [
+   "Nothing Else Matters",
+   "Metallica"
+  ],
+  "pop-papaoutai": [
+   "Papaoutai",
+   "Stromae"
+  ],
+  "pop-quand-la-musique-est-bonne": [
+   "Quand la musique est bonne",
+   "Jean-Jacques Goldman"
+  ],
+  "pop-rock-around-the-clock": [
+   "Rock Around the Clock",
+   "Bill Haley & His Comets"
+  ],
+  "pop-sapes-comme-jamais": [
+   "Sapés comme jamais",
+   "GIMS"
+  ],
+  "pop-shake-it-off": [
+   "Shake It Off",
+   "Taylor Swift"
+  ],
+  "pop-somebody-that-i-used-to-know": [
+   "Somebody That I Used to Know",
+   "Gotye"
+  ],
+  "pop-someone-like-you": [
+   "Someone like You",
+   "Adele"
+  ],
+  "pop-the-show-must-go-on": [
+   "The Show Must Go On",
+   "Queen"
+  ],
+  "pop-thriller": [
+   "Thriller",
+   "Michael Jackson"
+  ],
+  "pop-titanium": [
+   "Titanium",
+   "Sia"
+  ],
+  "pop-tous-les-cris-les-sos": [
+   "Tous les cris les SOS",
+   "Daniel Balavoine"
+  ],
+  "pop-voyage-voyage": [
+   "Voyage voyage",
+   "Desireless"
+  ],
+  "pop-without-me": [
+   "Without Me",
+   "Eminem"
+  ],
+  "pop-zombie": [
+   "Zombie",
+   "The Cranberries"
+  ],
+  "pop-american-idiot": [
+   "American Idiot",
+   "Green Day"
+  ],
+  "pop-another-brick-in-the-wall": [
+   "Another Brick in the Wall",
+   "Pink Floyd"
+  ],
+  "pop-beat-it": [
+   "Beat It",
+   "Michael Jackson"
+  ],
+  "pop-boulevard-of-broken-dreams": [
+   "Boulevard of Broken Dreams",
+   "Green Day"
+  ],
+  "pop-crazy-in-love": [
+   "Crazy in Love",
+   "Beyoncé"
+  ],
+  "pop-gangsta-s-paradise": [
+   "Gangsta's Paradise",
+   "Coolio"
+  ],
+  "pop-hallelujah": [
+   "Hallelujah",
+   "Leonard Cohen"
+  ],
+  "pop-i-will-survive": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "pop-numb": [
+   "Numb",
+   "Linkin Park"
+  ],
+  "pop-pump-it": [
+   "Pump It",
+   "Black Eyed Peas"
+  ],
+  "pop-rockstar": [
+   "Rockstar",
+   "Post Malone"
+  ],
+  "pop-they-don-t-care-about-us": [
+   "They Don't Care About Us",
+   "Michael Jackson"
+  ],
+  "pop-we-will-rock-you": [
+   "We Will Rock You",
+   "Queen"
+  ],
+  "pop-without-you": [
+   "Without You",
+   "Mariah Carey"
+  ],
+  "pop-ai-se-eu-te-pego": [
+   "Ai Se Eu Te Pego",
+   "Michel Teló"
+  ],
+  "pop-bad": [
+   "Bad",
+   "Michael Jackson"
+  ],
+  "pop-call-me-maybe": [
+   "Call Me Maybe",
+   "Carly Rae Jepsen"
+  ],
+  "pop-creep": [
+   "Creep",
+   "Radiohead"
+  ],
+  "pop-eye-of-the-tiger": [
+   "Eye of the Tiger",
+   "Survivor"
+  ],
+  "pop-hotel-california": [
+   "Hotel California",
+   "Eagles"
+  ],
+  "pop-i-was-made-for-lovin-you": [
+   "I Was Made for Lovin' You",
+   "Kiss"
+  ],
+  "pop-in-the-air-tonight": [
+   "In the Air Tonight",
+   "Phil Collins"
+  ],
+  "pop-my-heart-will-go-on": [
+   "My Heart Will Go On",
+   "Céline Dion"
+  ],
+  "pop-rolling-in-the-deep": [
+   "Rolling in the Deep",
+   "Adele"
+  ],
+  "pop-seven-nation-army": [
+   "Seven Nation Army",
+   "The White Stripes"
+  ],
+  "pop-99-luftballons": [
+   "99 Luftballons",
+   "Nena"
+  ],
+  "pop-africa": [
+   "Africa",
+   "Toto"
+  ],
+  "pop-beggin": [
+   "Beggin'",
+   "Måneskin"
+  ],
+  "pop-cry-me-a-river": [
+   "Cry Me a River",
+   "Justin Timberlake"
+  ],
+  "pop-dragostea-din-tei": [
+   "Dragostea din tei",
+   "O-Zone"
+  ],
+  "pop-radioactive": [
+   "Radioactive",
+   "Imagine Dragons"
+  ],
+  "pop-thrift-shop": [
+   "Thrift Shop",
+   "Macklemore & Ryan Lewis"
+  ],
+  "pop-viva-la-vida": [
+   "Viva la Vida",
+   "Coldplay"
+  ],
+  "pop-freed-from-desire": [
+   "Freed from Desire",
+   "Gala"
+  ],
+  "pop-la-groupie-du-pianiste": [
+   "La Groupie du pianiste",
+   "Michel Berger"
+  ],
+  "pop-la-tribu-de-dana": [
+   "La Tribu de Dana",
+   "Manau"
+  ],
+  "pop-le-paradis-blanc": [
+   "Le Paradis blanc",
+   "Michel Berger"
+  ],
+  "pop-les-rois-du-monde": [
+   "Les Rois du monde",
+   "Damien Sargue"
+  ],
+  "pop-mr-saxobeat": [
+   "Mr. Saxobeat",
+   "Alexandra Stan"
+  ],
+  "pop-september": [
+   "September",
+   "Earth, Wind & Fire"
+  ],
+  "pop-sexual-healing": [
+   "Sexual Healing",
+   "Marvin Gaye"
+  ],
+  "pop-stressed-out": [
+   "Stressed Out",
+   "Twenty One Pilots"
+  ],
+  "pop-sultans-of-swing": [
+   "Sultans of Swing",
+   "Dire Straits"
+  ],
+  "pop-wavin-flag": [
+   "Wavin' Flag",
+   "K'Naan"
+  ],
+  "pop-where-is-my-mind": [
+   "Where Is My Mind?",
+   "Pixies"
+  ],
+  "pop-ecris-l-histoire": [
+   "Écris l'histoire",
+   "Grégory Lemarchal"
+  ],
+  "pop-montero": [
+   "Montero",
+   "Lil Nas X"
+  ],
+  "pop-paramore": [
+   "Misery Business",
+   "Paramore"
+  ],
+  "pop-bruno-mars": [
+   "Locked Out of Heaven",
+   "Bruno Mars",
+   "itunes:572179973"
+  ],
+  "pop-belle-ile-en-mer": [
+   "Belle-Île-en-Mer, Marie-Galante",
+   "Laurent Voulzy",
+   "itunes:1540550629"
+  ],
+  "spt-faker": [
+   "GODS",
+   "NewJeans",
+   "itunes:1833057828"
+  ],
+  "spt-zeus": [
+   "GODS",
+   "NewJeans",
+   "itunes:1833057828"
+  ],
+  "spt-oner": [
+   "GODS",
+   "NewJeans",
+   "itunes:1833057828"
+  ],
+  "spt-keria": [
+   "GODS",
+   "NewJeans",
+   "itunes:1833057828"
+  ],
+  "spt-gumayusi": [
+   "GODS",
+   "NewJeans",
+   "itunes:1833057828"
+  ],
+  "pop-ulquiorra-cifer": [
+   "Fiesta de Guerra",
+   "Shiro Sagisu",
+   "itunes:1645826027"
+  ],
+  "pop-seijuurou-akashi": [
+   "Rakuzan Shingeki",
+   "Yoshihiro Ike",
+   "itunes:1021901532"
+  ],
+  "pop-yuuri-katsuki": [
+   "Yuri on ICE",
+   "Taro Umebayashi",
+   "itunes:1164345998"
+  ],
+  "pop-neo": [
+   "Clubbed to Death",
+   "Rob Dougan",
+   "itunes:1857320"
+  ],
+  "pop-brian-o-conner": [
+   "See You Again (feat. Charlie Puth)",
+   "Wiz Khalifa",
+   "itunes:1029609244"
+  ],
+  "pop-dominic-toretto": [
+   "See You Again (feat. Charlie Puth)",
+   "Wiz Khalifa",
+   "itunes:1029609244"
+  ],
+  "pop-l-lawliet": [
+   "L no Theme",
+   "Hideki Taniuchi",
+   "itunes:1611734917"
+  ],
+  "pop-daiki-aomine": [
+   "ミスディレクション",
+   "中西亮輔",
+   "itunes:878868707"
+  ],
+  "spt-antoine-griezmann": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-n-golo-kante": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-championnat-du-monde-de-lol": [
+   "RISE",
+   "League of Legends",
+   "itunes:1833059354"
+  ],
+  "spt-showmaker": [
+   "Take Over",
+   "League of Legends",
+   "itunes:1833082575"
+  ],
+  "spt-canyon": [
+   "Take Over",
+   "League of Legends",
+   "itunes:1833082575"
+  ],
+  "spt-nuguri": [
+   "Take Over",
+   "League of Legends",
+   "itunes:1833082575"
+  ],
+  "spt-a-j-styles": [
+   "Phenomenal",
+   "CFO$",
+   "itunes:1079614536"
+  ],
+  "spt-big-show": [
+   "Crank It Up",
+   "Brand New Sin",
+   "itunes:404193329"
+  ],
+  "spt-chris-jericho": [
+   "Break the Walls Down",
+   "Jim Johnston",
+   "itunes:621624922"
+  ],
+  "spt-cm-punk": [
+   "Cult of Personality",
+   "Living Colour",
+   "itunes:496422567"
+  ],
+  "spt-cody-rhodes": [
+   "Kingdom",
+   "Downstait",
+   "itunes:1143476258"
+  ],
+  "spt-hulk-hogan": [
+   "Real American",
+   "Rick Derringer",
+   "itunes:879563780"
+  ],
+  "spt-john-cena": [
+   "The Time Is Now",
+   "John Cena & Tha Trademarc",
+   "itunes:404224691"
+  ],
+  "spt-kane": [
+   "Veil of Fire",
+   "Jim Johnston",
+   "itunes:490681439"
+  ],
+  "spt-randy-orton": [
+   "Voices",
+   "Rev Theory",
+   "itunes:805079743"
+  ],
+  "spt-randy-savage": [
+   "Pomp and Circumstance",
+   "Jimmy Hart & Howard Helm",
+   "itunes:853467455"
+  ],
+  "spt-rey-mysterio": [
+   "Booyaka 619",
+   "P.O.D.",
+   "itunes:404193371"
+  ],
+  "spt-ric-flair": [
+   "Also sprach Zarathustra",
+   "Richard Strauss · Berliner Philharmoniker",
+   "deezer:66644254"
+  ],
+  "spt-roman-reigns": [
+   "Head of the Table",
+   "Def Rebel",
+   "itunes:1565889946"
+  ],
+  "spt-stone-cold-steve-austin": [
+   "Glass Shatters",
+   "Jim Johnston",
+   "itunes:443701280"
+  ],
+  "spt-the-rock": [
+   "Electrifying",
+   "Jim Johnston",
+   "itunes:630110914"
+  ],
+  "spt-the-undertaker": [
+   "Rest in Peace",
+   "Jim Johnston",
+   "itunes:857570702"
+  ],
+  "spt-triple-h": [
+   "The Game",
+   "Motörhead",
+   "itunes:857570739"
+  ],
+  "pop-sousuke-aizen": [
+   "Treachery",
+   "Shiro Sagisu",
+   "itunes:1645826766"
+  ],
+  "jv-genshin-impact-furina": [
+   "La vaguelette",
+   "HOYO-MiX",
+   "deezer:2531823471"
+  ],
+  "jv-genshin-impact-mavuika": [
+   "Blazing Heart (English Version)",
+   "HOYO-MiX",
+   "deezer:3151883491"
+  ],
+  "jv-genshin-impact-colombina": [
+   "Columbina's Poem",
+   "HOYO-MiX",
+   "deezer:4130175411"
+  ],
+  "jv-genshin-impact-zhongli": [
+   "Rex Incognito",
+   "Yu-Peng Chen",
+   "deezer:1218100142"
+  ],
+  "jv-genshin-impact-nahida": [
+   "Sumeru",
+   "HOYO-MiX",
+   "deezer:1961063237"
+  ],
+  "jv-genshin-impact-hu-tao": [
+   "Liyue",
+   "Yu-Peng Chen",
+   "deezer:1130319452"
+  ],
+  "jv-genshin-impact-neuvillette": [
+   "Fontaine",
+   "HOYO-MiX",
+   "deezer:2496901291"
+  ],
+  "jv-genshin-impact-arlecchino": [
+   "Snezhnaya",
+   "HOYO-MiX",
+   "deezer:4287236362"
+  ],
+  "jv-genshin-impact-kaedehara-kazuha": [
+   "Inazuma",
+   "Yu-Peng Chen",
+   "deezer:1492487212"
+  ],
+  "jv-genshin-impact-shogun-raiden": [
+   "Inazuma",
+   "Yu-Peng Chen",
+   "deezer:1492487212"
+  ],
+  "jv-genshin-impact-genshin-impact": [
+   "Genshin Impact Main Theme",
+   "Yu-Peng Chen",
+   "deezer:995694672"
+  ],
+  "spt-thierry-henry": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-david-trezeguet": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-zinedine-zidane": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-patrick-vieira": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-lilian-thuram": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-laurent-blanc": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-bixente-lizarazu": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-fabien-barthez": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-didier-deschamps": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-aime-jacquet": [
+   "I Will Survive",
+   "Gloria Gaynor"
+  ],
+  "spt-kylian-mbappe": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-olivier-giroud": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-ousmane-dembele": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-paul-pogba": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-blaise-matuidi": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-raphael-varane": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-samuel-umtiti": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ],
+  "spt-hugo-lloris": [
+   "Ramenez la coupe à la maison",
+   "Vegedream"
+  ]
+ },
+ "anime": {
+  "86": [
+   "Kyoukaisen",
+   "amazarashi"
+  ],
+  "a-silent-voice": [
+   "Koi wo Shita no wa",
+   "aiko"
+  ],
+  "akame-ga-kill": [
+   "Skyreach",
+   "Sora Amamiya"
+  ],
+  "angel-beats": [
+   "My Soul, Your Beats!",
+   "Lia"
+  ],
+  "angels-of-death": [
+   "Vital",
+   "Masaaki Endoh"
+  ],
+  "assassination-classroom": [
+   "Seishun Satsubatsu-ron",
+   "3-nen E-gumi Utatan",
+   "itunes:952233564"
+  ],
+  "banana-fish": [
+   "found & lost",
+   "Survive Said The Prophet"
+  ],
+  "beastars": [
+   "Wild Side",
+   "ALI",
+   "itunes:1537780574"
+  ],
+  "black-butler": [
+   "Monochrome no Kiss",
+   "SID"
+  ],
+  "black-clover": [
+   "Haruka Mirai",
+   "Kankaku Piero"
+  ],
+  "black-lagoon": [
+   "Red Fraction",
+   "MELL"
+  ],
+  "bleach": [
+   "Ranbu no Melody",
+   "SID",
+   "itunes:1536385067"
+  ],
+  "blue-box": [
+   "Same Blue",
+   "Official HIGE DANdism"
+  ],
+  "blue-exorcist": [
+   "Core Pride",
+   "UVERworld"
+  ],
+  "blue-lock": [
+   "Chaos ga Kiwamaru",
+   "UNISON SQUARE GARDEN"
+  ],
+  "bocchi-the-rock": [
+   "Seishun Complex",
+   "Kessoku Band"
+  ],
+  "bungo-stray-dogs": [
+   "TRASH CANDY",
+   "GRANRODEO"
+  ],
+  "cardcaptor-sakura": [
+   "Catch You Catch Me",
+   "Gumi"
+  ],
+  "carnet-de-l-apothicaire": [
+   "Hana ni Natte",
+   "Ryokuoushoku Shakai"
+  ],
+  "chainsaw-man": [
+   "KICK BACK",
+   "Kenshi Yonezu"
+  ],
+  "charlotte": [
+   "Bravely You",
+   "Lia"
+  ],
+  "city-hunter": [
+   "Get Wild",
+   "TM NETWORK"
+  ],
+  "clannad": [
+   "Mag Mell",
+   "eufonius"
+  ],
+  "classroom-of-the-elite": [
+   "Caste Room",
+   "ZAQ"
+  ],
+  "code-geass": [
+   "COLORS",
+   "FLOW"
+  ],
+  "cowboy-bebop": [
+   "Tank!",
+   "SEATBELTS"
+  ],
+  "cyberpunk-edgerunners": [
+   "This Fffire",
+   "Franz Ferdinand"
+  ],
+  "d-gray-man": [
+   "Innocent Sorrow",
+   "abingdon boys school"
+  ],
+  "dandadan": [
+   "Otonoke",
+   "Creepy Nuts"
+  ],
+  "danmachi": [
+   "Hey World",
+   "Yuka Iguchi"
+  ],
+  "death-note": [
+   "the WORLD",
+   "NIGHTMARE"
+  ],
+  "death-parade": [
+   "Flyers",
+   "BRADIO"
+  ],
+  "delicious-in-dungeon": [
+   "Sleep Walking Orchestra",
+   "BUMP OF CHICKEN"
+  ],
+  "demon-slayer": [
+   "Gurenge",
+   "LiSA"
+  ],
+  "devilman-crybaby": [
+   "MAN HUMAN",
+   "Denki Groove"
+  ],
+  "doraemon": [
+   "Doraemon no Uta",
+   "Kumiko Ōsugi",
+   "itunes:1465221751"
+  ],
+  "dorohedoro": [
+   "Welcome to Chaos",
+   "(K)NoW_NAME"
+  ],
+  "dororo": [
+   "Kaen",
+   "Queen Bee"
+  ],
+  "dr-stone": [
+   "Good Morning World!",
+   "BURNOUT SYNDROMES"
+  ],
+  "dragon-ball": [
+   "CHA-LA HEAD-CHA-LA",
+   "Hironobu Kageyama",
+   "file:audio/generiques/dragon-ball.mp3"
+  ],
+  "durarara": [
+   "Uragiri no Yuuyake",
+   "THEATRE BROOK"
+  ],
+  "erased": [
+   "Re:Re:",
+   "ASIAN KUNG-FU GENERATION"
+  ],
+  "evangelion": [
+   "A Cruel Angel's Thesis",
+   "Yoko Takahashi"
+  ],
+  "fairy-tail": [
+   "Snow Fairy",
+   "FUNKIST"
+  ],
+  "fire-force": [
+   "Inferno",
+   "Mrs. GREEN APPLE"
+  ],
+  "food-wars": [
+   "Kibō no Uta",
+   "ULTRA TOWER",
+   "itunes:977541838"
+  ],
+  "free": [
+   "Rage on",
+   "OLDCODEX"
+  ],
+  "frieren": [
+   "Yuusha",
+   "YOASOBI"
+  ],
+  "fruits-basket": [
+   "For Fruits Basket",
+   "Ritsuko Okazaki"
+  ],
+  "fullmetal-alchemist": [
+   "again",
+   "YUI"
+  ],
+  "ghost-in-the-shell-film": [
+   "Making of Cyborg",
+   "Kenji Kawai"
+  ],
+  "gintama": [
+   "Pray",
+   "Tommy heavenly6"
+  ],
+  "goblin-slayer": [
+   "Rightfully",
+   "Mili"
+  ],
+  "golden-kamuy": [
+   "Winter Wind",
+   "MAN WITH A MISSION"
+  ],
+  "goldorak": [
+   "Goldorak",
+   ""
+  ],
+  "gto": [
+   "DRIVER'S HIGH",
+   "L'Arc-en-Ciel"
+  ],
+  "gurren-lagann": [
+   "Sorairo Days",
+   "Shoko Nakagawa"
+  ],
+  "haikyu": [
+   "Imagination",
+   "SPYAIR"
+  ],
+  "hajime-no-ippo": [
+   "Under Star",
+   "Shocking Lemon"
+  ],
+  "hell-s-paradise": [
+   "W●RK",
+   "Ringo Sheena"
+  ],
+  "hellsing": [
+   "The World without Logos",
+   "Yasushi Ishii",
+   "itunes:1828704712"
+  ],
+  "high-school-dxd": [
+   "Switch",
+   "Minami Kuribayashi",
+   "itunes:1400226208"
+  ],
+  "horimiya": [
+   "Iro Kousui",
+   "Yoh Kamiyama"
+  ],
+  "hunter-x-hunter": [
+   "departure!",
+   "Masatoshi Ono"
+  ],
+  "jojo-s-bizarre-adventure": [
+   "Sono Chi no Sadame",
+   "Tominaga"
+  ],
+  "jujutsu-kaisen": [
+   "Kaikai Kitan",
+   "Eve"
+  ],
+  "kaguya-sama": [
+   "Love Dramatic",
+   "Masayuki Suzuki"
+  ],
+  "kaiji": [
+   "Mirai wa Ore no Te no Naka",
+   "Hakuryu"
+  ],
+  "kenshin-le-vagabond": [
+   "Sobakasu",
+   "JUDY AND MARY"
+  ],
+  "kill-la-kill": [
+   "Sirius",
+   "Eir Aoi"
+  ],
+  "konosuba": [
+   "fantastic dreamer",
+   "Machico"
+  ],
+  "kuroko-no-basket": [
+   "Can Do",
+   "GRANRODEO"
+  ],
+  "l-attaque-des-titans": [
+   "Guren no Yumiya",
+   "Linked Horizon"
+  ],
+  "lady-oscar": [
+   "Bara wa Utsukushiku Chiru",
+   "Hiroko Suzuki"
+  ],
+  "lycoris-recoil": [
+   "ALIVE",
+   "ClariS"
+  ],
+  "march-comes-in-like-a-lion": [
+   "Answer",
+   "BUMP OF CHICKEN"
+  ],
+  "mashle": [
+   "Bling-Bang-Bang-Born",
+   "Creepy Nuts"
+  ],
+  "mirai-nikki": [
+   "Kuusou Mesorogiwi",
+   "Yousei Teikoku",
+   "itunes:479474683"
+  ],
+  "mob-psycho-100": [
+   "99",
+   "MOB CHOIR"
+  ],
+  "moi-quand-je-me-reincarne-en-slime": [
+   "Nameless Story",
+   "Takuma Terashima"
+  ],
+  "monogatari": [
+   "Renai Circulation",
+   "Kana Hanazawa"
+  ],
+  "pop-monster": [
+   "Grain",
+   "Kuniaki Haishima"
+  ],
+  "moriarty-the-patriot": [
+   "DYING WISH",
+   ""
+  ],
+  "mushoku-tensei": [
+   "Tabibito no Uta",
+   "Yuiko Ōhara",
+   "itunes:1546070706"
+  ],
+  "my-dress-up-darling": [
+   "Ao to Kirameki",
+   "Spira Spica",
+   "itunes:1828469922"
+  ],
+  "my-hero-academia": [
+   "THE DAY",
+   "Porno Graffitti"
+  ],
+  "nana": [
+   "Rose",
+   "BLACK STONES"
+  ],
+  "naruto": [
+   "Blue Bird",
+   "Ikimonogakari"
+  ],
+  "no-game-no-life": [
+   "This Game",
+   "Konomi Suzuki"
+  ],
+  "noragami": [
+   "Goya no Machiawase",
+   "Hello Sleepwalkers"
+  ],
+  "one-piece": [
+   "We Are!",
+   "Hiroshi Kitadani"
+  ],
+  "one-punch-man": [
+   "THE HERO!!",
+   "JAM Project"
+  ],
+  "oshi-no-ko": [
+   "Idol",
+   "YOASOBI"
+  ],
+  "overlord": [
+   "Clattanoia",
+   "OxT"
+  ],
+  "panty-stocking": [
+   "D City Rock",
+   "TeddyLoid"
+  ],
+  "parasite": [
+   "Let Me Hear",
+   "Fear, and Loathing in Las Vegas"
+  ],
+  "pokemon-anime": [
+   "Pokémon Theme",
+   "Jason Paige"
+  ],
+  "psycho-pass": [
+   "abnormalize",
+   "Ling tosite sigure"
+  ],
+  "ranking-of-kings": [
+   "Naked Hero (Hadaka no Yūsha)",
+   "Vaundy",
+   "itunes:1600223385"
+  ],
+  "re-zero": [
+   "Redo",
+   "Konomi Suzuki"
+  ],
+  "rent-a-girlfriend": [
+   "Centimeter",
+   "the peggies"
+  ],
+  "saga-of-tanya-the-evil": [
+   "JINGO JUNGLE",
+   "MYTH & ROID"
+  ],
+  "samurai-champloo": [
+   "Battlecry",
+   "Nujabes"
+  ],
+  "seraph-of-the-end": [
+   "X.U.",
+   "SawanoHiroyuki[nZk]"
+  ],
+  "seven-deadly-sins": [
+   "Netsujou no Spectrum",
+   "Ikimonogakari",
+   "itunes:1536271840"
+  ],
+  "sk8-the-infinity": [
+   "Paradise",
+   "Rude-α"
+  ],
+  "slam-dunk": [
+   "Kimi ga Suki da to Sakebitai",
+   "BAAD"
+  ],
+  "solo-leveling": [
+   "LEveL",
+   "SawanoHiroyuki[nZk]"
+  ],
+  "soul-eater": [
+   "Resonance",
+   "T.M.Revolution"
+  ],
+  "spy-x-family": [
+   "Mixed Nuts",
+   "Official HIGE DANdism",
+   "itunes:1616586639"
+  ],
+  "steins-gate": [
+   "Hacking to the Gate",
+   "Kanako Itō",
+   "itunes:1843786357"
+  ],
+  "sword-art-online": [
+   "crossing field",
+   "LiSA"
+  ],
+  "sword-art-online-alicization": [
+   "ADAMAS",
+   "LiSA"
+  ],
+  "the-case-study-of-vanitas": [
+   "Sora to Utsuro",
+   "SawanoHiroyuki[nZk]"
+  ],
+  "the-eminence-in-shadow": [
+   "HIGHEST",
+   "OxT"
+  ],
+  "the-god-of-high-school": [
+   "CONTRADICTION",
+   "KSUKE"
+  ],
+  "the-promised-neverland": [
+   "Touch Off",
+   "UVERworld"
+  ],
+  "the-quintessential-quintuplets": [
+   "Gotōbun no Kimochi",
+   "Nakanoke no Itsutsugo",
+   "itunes:1682466412"
+  ],
+  "the-rising-of-the-shield-hero": [
+   "RISE",
+   "MADKID"
+  ],
+  "tokyo-ghoul": [
+   "unravel",
+   "TK from Ling tosite sigure"
+  ],
+  "tokyo-revengers": [
+   "Cry Baby",
+   "Official HIGE DANdism"
+  ],
+  "toradora": [
+   "Pre-Parade",
+   "Rie Kugimiya"
+  ],
+  "tower-of-god": [
+   "TOP",
+   "Stray Kids"
+  ],
+  "trigun": [
+   "H.T.",
+   "Tsuneo Imahori",
+   "itunes:969897525"
+  ],
+  "vinland-saga": [
+   "MUKANJYO",
+   "Survive Said The Prophet"
+  ],
+  "violet-evergarden": [
+   "Sincerely",
+   "TRUE"
+  ],
+  "your-lie-in-april": [
+   "Hikaru Nara",
+   "Goose house"
+  ],
+  "your-name": [
+   "Zenzenzense",
+   "RADWIMPS"
+  ],
+  "yu-yu-hakusho": [
+   "Hohoemi no Bakudan",
+   "Matsuko Mawatari"
+  ],
+  "yuri-on-ice": [
+   "History Maker",
+   "DEAN FUJIOKA"
+  ],
+  "akira": [
+   "Kaneda",
+   "Geinoh Yamashirogumi"
+  ],
+  "baki": [
+   "Beastful",
+   "GRANRODEO"
+  ],
+  "boruto": [
+   "Baton Road",
+   "KANA-BOON"
+  ],
+  "detective-conan": [
+   "Meitantei Conan Main Theme",
+   "Katsuo Ōno",
+   "itunes:1547554568"
+  ],
+  "eyeshield-21": [
+   "Breakthrough",
+   "Coming Century"
+  ],
+  "inazuma-eleven": [
+   "Tachiagari Youth",
+   "T-Pistonz+KMC"
+  ],
+  "olive-et-tom": [
+   "Olive et Tom (générique français)",
+   "Jean-Claude Corbel",
+   "file:audio/generiques/olive-et-tom.mp3"
+  ],
+  "space-dandy": [
+   "Viva Namida",
+   "Okamura Yasuyuki"
+  ],
+  "world-trigger": [
+   "Glorious Days",
+   "Three Lights Down Kings"
+  ],
+  "yu-gi-oh-5d-s": [
+   "Believe in Nexus",
+   "Masaaki Endo"
+  ],
+  "bakuman": [
+   "Blue Bird",
+   "Kobukuro"
+  ]
+ },
+ "cartoon": {
+  "adventure-time": [
+   "Adventure Time (générique français)",
+   "Adventure Time (VF)",
+   "file:audio/generiques/adventure-time.mp3"
+  ],
+  "albator": [
+   "Albator, le corsaire de l'espace",
+   "Eric Charden",
+   "itunes:537264810"
+  ],
+  "amphibia": [
+   "Amphibia (générique)",
+   "TJ Hill",
+   "file:audio/generiques/amphibia.mp3"
+  ],
+  "avatar-le-dernier-maitre-de-l-air": [
+   "Avatar, le dernier maître de l'air (générique français)",
+   "Avatar (VF)",
+   "file:audio/generiques/avatar-le-dernier-maitre-de-l-air.mp3"
+  ],
+  "babar": [
+   "Les aventures de Babar",
+   "André Popp",
+   "itunes:1484515110"
+  ],
+  "barbapapa": [
+   "Voici venir les Barbapapa",
+   "Ricet Barrier",
+   "itunes:1044596187"
+  ],
+  "ben-10": [
+   "Ben 10 (générique français)",
+   "Ben 10",
+   "file:audio/generiques/ben-10.mp3"
+  ],
+  "big-city-greens": [
+   "Big City Greens (générique)",
+   "The Mowgli's",
+   "file:audio/generiques/big-city-greens.mp3"
+  ],
+  "bluey": [
+   "Bluey Theme Tune (Extended)",
+   "Bluey & Joff Bush",
+   "itunes:1572744278"
+  ],
+  "bob-l-eponge": [
+   "Bob l'éponge (générique français)",
+   "Patrick Préjean",
+   "file:audio/generiques/bob-l-eponge.mp3"
+  ],
+  "capitaine-flam": [
+   "Capitaine Flam (Générique TV Version 1987)",
+   "Bernard Minet",
+   "itunes:1444618723"
+  ],
+  "castlevania-netflix": [
+   "Main Title",
+   "Trevor Morris",
+   "itunes:1252170566"
+  ],
+  "catdog": [
+   "Michat-Michien (générique français)",
+   "CatDog",
+   "file:audio/generiques/catdog.mp3"
+  ],
+  "dexter-da": [
+   "Le Laboratoire de Dexter (générique français)",
+   "Dexter",
+   "file:audio/generiques/dexter-da.mp3"
+  ],
+  "dora-l-exploratrice": [
+   "Dora l'exploratrice (générique français)",
+   "Lucile Boulanger",
+   "file:audio/generiques/dora-l-exploratrice.mp3"
+  ],
+  "doug": [
+   "Doug (générique)",
+   "Fred Newman & Dan Sawyer",
+   "file:audio/generiques/doug.mp3"
+  ],
+  "foot-2-rue": [
+   "Street Football",
+   "Akhenaton",
+   "itunes:362633495"
+  ],
+  "franklin": [
+   "Hé, c'est Franklin",
+   "Franklin (VF)",
+   "file:audio/generiques/franklin.mp3"
+  ],
+  "galactik-football": [
+   "Générique Galactik Football",
+   "Marc Tomasi & Mehdi Elmorabit",
+   "itunes:348033789"
+  ],
+  "grizzy-et-les-lemmings": [
+   "Générique",
+   "Grizzy & les Lemmings",
+   "file:audio/generiques/grizzy-et-les-lemmings.mp3"
+  ],
+  "heidi": [
+   "La chanson d'Heidi",
+   "Alexandra",
+   "itunes:979550481"
+  ],
+  "invincible": [
+   "Invincible",
+   "John Paesano",
+   "itunes:1794864037"
+  ],
+  "jayce": [
+   "Jayce et les conquérants de la lumière",
+   "Nick Carr",
+   "itunes:1255591803"
+  ],
+  "jimmy-neutron": [
+   "Jimmy Neutron (générique français)",
+   "Jimmy Neutron",
+   "file:audio/generiques/jimmy-neutron.mp3"
+  ],
+  "kaeloo": [
+   "Le générique de ton dessin animé",
+   "Kaeloo",
+   "file:audio/generiques/kaeloo.mp3"
+  ],
+  "la-cour-de-recre": [
+   "La Cour de récré (générique)",
+   "Disney",
+   "file:audio/generiques/la-cour-de-recre.mp3"
+  ],
+  "le-monde-magique-de-disney": [
+   "La Maison de Mickey, le générique",
+   "Georges et Michel Costa",
+   "itunes:713237257"
+  ],
+  "les-animaniacs": [
+   "Les Animaniacs (générique français)",
+   "Les Animaniacs (VF)",
+   "file:audio/generiques/les-animaniacs.mp3"
+  ],
+  "les-maitres-de-l-univers": [
+   "Les maîtres de l'univers",
+   "H. Saban & S. Levy",
+   "itunes:1267260992"
+  ],
+  "les-simpson": [
+   "The Simpsons Main Title Theme (Extended Version)",
+   "The Simpsons",
+   "itunes:1598044819"
+  ],
+  "les-teletubbies": [
+   "Les Télétubbies (générique français)",
+   "Les Télétubbies (VF)",
+   "file:audio/generiques/les-teletubbies.mp3"
+  ],
+  "les-zinzins-de-l-espace": [
+   "Monster Men",
+   "Iggy Pop",
+   "file:audio/generiques/les-zinzins-de-l-espace.mp3"
+  ],
+  "lucky-luke": [
+   "I'm a Poor Lonesome Cowboy",
+   "Claude Bolling & Pat Woods",
+   "itunes:1853831495"
+  ],
+  "masha-et-michka": [
+   "Masha et Michka (générique)",
+   "Vasily Bogatyrev",
+   "file:audio/generiques/masha-et-michka.mp3"
+  ],
+  "maya-l-abeille": [
+   "Maya: Main Theme",
+   "Fabrice Aboulker",
+   "itunes:1179835389"
+  ],
+  "molang": [
+   "Molang Theme Song",
+   "Kids Superstars",
+   "itunes:1500952489"
+  ],
+  "oggy-et-les-cafards": [
+   "Générique",
+   "Hugues Le Bars",
+   "itunes:1296321569"
+  ],
+  "oui-oui": [
+   "Oui-Oui (générique français)",
+   "Oui-Oui",
+   "file:audio/generiques/oui-oui.mp3"
+  ],
+  "peppa-pig": [
+   "Peppa Pig (générique français)",
+   "Peppa Pig",
+   "file:audio/generiques/peppa-pig.mp3"
+  ],
+  "phineas-et-ferb": [
+   "Phinéas et Ferb (Chanson générique)",
+   "Marty",
+   "deezer:434555252"
+  ],
+  "princesse-sarah": [
+   "Princesse Sarah",
+   "Claude Lombard",
+   "itunes:1596550596"
+  ],
+  "sam-le-pompier": [
+   "Sam le pompier (générique français)",
+   "Sam le pompier",
+   "file:audio/generiques/sam-le-pompier.mp3"
+  ],
+  "scooby-doo": [
+   "Scooby-Doo, où es-tu ? (générique français)",
+   "Scooby-Doo",
+   "file:audio/generiques/scooby-doo.mp3"
+  ],
+  "south-park": [
+   "South Park Theme",
+   "Primus",
+   "deezer:2576770162"
+  ],
+  "steven-universe": [
+   "Nous sommes les Gemmes de Cristal",
+   "Steven Universe (VF)",
+   "file:audio/generiques/steven-universe.mp3"
+  ],
+  "t-choupi": [
+   "T'choupi, le générique",
+   "T'choupi",
+   "itunes:376152766"
+  ],
+  "the-owl-house": [
+   "The Owl House (générique)",
+   "TJ Hill",
+   "file:audio/generiques/the-owl-house.mp3"
+  ],
+  "tintin": [
+   "Les Aventures de Tintin (Thème du générique)",
+   "Ciné-Trio",
+   "itunes:684699202"
+  ],
+  "zig-et-sharko": [
+   "Zig et Sharko générique début",
+   "Vincent Artaud",
+   "itunes:1474241695"
+  ]
+ },
+ "cartoon-en": {
+  "adventure-time": [
+   "Adventure Time Main Title",
+   "Adventure Time",
+   "itunes:1512848777"
+  ],
+  "avatar-le-dernier-maitre-de-l-air": [
+   "Avatar: The Last Airbender Main Title",
+   "Jeremy Zuckerman",
+   "itunes:1825186550"
+  ],
+  "ben-10": [
+   "Ben 10 (Theme Song)",
+   "Kids Superstars",
+   "itunes:1826512032"
+  ],
+  "bob-l-eponge": [
+   "SpongeBob SquarePants Theme Song",
+   "SpongeBob SquarePants",
+   "itunes:283379766"
+  ],
+  "catdog": [
+   "CatDog Theme Song",
+   "Catdog & Nickelodeon",
+   "itunes:1888272558"
+  ],
+  "dexter-da": [
+   "Dexter's Laboratory Main Theme",
+   "Geek Music",
+   "itunes:1524648430"
+  ],
+  "dora-l-exploratrice": [
+   "Dora the Explorer Theme",
+   "Dora the Explorer",
+   "itunes:281871271"
+  ],
+  "franklin": [
+   "Hey It's Franklin",
+   "Geek Music",
+   "itunes:1571934819"
+  ],
+  "jayce": [
+   "Jayce and the Wheeled Warriors - Main Theme",
+   "Geek Music",
+   "itunes:1437854508"
+  ],
+  "jimmy-neutron": [
+   "Jimmy Neutron Theme",
+   "Bowling for Soup",
+   "itunes:322693445"
+  ],
+  "le-monde-magique-de-disney": [
+   "Mickey Mouse Club March",
+   "Mickey Mouse",
+   "itunes:1660550789"
+  ],
+  "les-animaniacs": [
+   "Animaniacs (Opening Title)",
+   "Animaniacs",
+   "itunes:1538239354"
+  ],
+  "les-maitres-de-l-univers": [
+   "He-Man and the Masters of the Universe (instrumental)",
+   "H. Saban & S. Levy",
+   "itunes:1279576472"
+  ],
+  "les-teletubbies": [
+   "Teletubbies Theme",
+   "Teletubbies",
+   "itunes:1799229650"
+  ],
+  "oui-oui": [
+   "Make Way for Noddy",
+   "Kids Now",
+   "itunes:284756322"
+  ],
+  "peppa-pig": [
+   "New Peppa Pig Theme Song",
+   "Peppa Pig",
+   "itunes:1810205269"
+  ],
+  "phineas-et-ferb": [
+   "Today Is Gonna Be a Great Day",
+   "Bowling for Soup",
+   "itunes:714727690"
+  ],
+  "sam-le-pompier": [
+   "Fireman Sam Theme Song",
+   "Fireman Sam & Mattel",
+   "itunes:1809325178"
+  ],
+  "scooby-doo": [
+   "Scooby Doo Theme Song",
+   "Best Coast",
+   "itunes:1512008927"
+  ],
+  "steven-universe": [
+   "We Are The Crystal Gems (Full Theme Song)",
+   "Steven Universe",
+   "itunes:1511215902"
+  ]
+ },
+ "ambience": {
+  "eclipse": [
+   "Inferno",
+   "9mm Parabellum Bullet",
+   "itunes:1821456121"
+  ]
+ },
+ "screen": {
+  "arrowverse": [
+   "Setting Up the Lair (Main Theme from “Arrow”)",
+   "Blake Neely",
+   "itunes:1455249774"
+  ],
+  "bones": [
+   "Bones Theme",
+   "The Crystal Method",
+   "itunes:1502302335"
+  ],
+  "breaking-bad": [
+   "Breaking Bad (Main Title Theme)",
+   "Dave Porter",
+   "itunes:370928560"
+  ],
+  "chernobyl": [
+   "The Door",
+   "Hildur Guðnadóttir",
+   "itunes:1464507425"
+  ],
+  "cobra-kai": [
+   "Strike First",
+   "Leo Birenberg & Zach Robinson",
+   "itunes:1816012011"
+  ],
+  "columbo": [
+   "Mystery Movie Theme",
+   "Henry Mancini",
+   "itunes:1031781469"
+  ],
+  "desperate-housewives": [
+   "Desperate Housewives Theme",
+   "Danny Elfman",
+   "itunes:1443207728"
+  ],
+  "dexter": [
+   "Dexter Main Title",
+   "Rolfe Kent",
+   "itunes:1534802065"
+  ],
+  "dr-house": [
+   "Teardrop",
+   "Massive Attack",
+   "itunes:724466700"
+  ],
+  "emily-in-paris": [
+   "Main Title Theme",
+   "James Newton Howard",
+   "itunes:1600566174"
+  ],
+  "friends": [
+   "I'll Be There for You",
+   "The Rembrandts",
+   "itunes:373221221"
+  ],
+  "game-of-thrones": [
+   "Main Title",
+   "Ramin Djawadi",
+   "itunes:1440799057"
+  ],
+  "gilmore-girls": [
+   "Where You Lead I Will Follow",
+   "Carole King",
+   "itunes:1139003043"
+  ],
+  "glee": [
+   "Don't Stop Believin'",
+   "Glee Cast",
+   "itunes:347886835"
+  ],
+  "good-omens": [
+   "Good Omens Opening Title",
+   "David Arnold",
+   "itunes:1833179901"
+  ],
+  "grey-s-anatomy": [
+   "Cosy in the Rocket",
+   "Psapp",
+   "itunes:712912882"
+  ],
+  "hannah-montana": [
+   "The Best of Both Worlds",
+   "Hannah Montana",
+   "itunes:1440778789"
+  ],
+  "house-of-cards": [
+   "House of Cards Main Title Theme",
+   "Jeff Beal",
+   "itunes:1440753471"
+  ],
+  "hpi": [
+   "HPI (générique)",
+   "Yannis Dumoutiers",
+   "itunes:1570116259"
+  ],
+  "k2000": [
+   "Knight Rider (Main Title)",
+   "Stu Phillips",
+   "itunes:1528121767"
+  ],
+  "killing-eve": [
+   "Strange Effect",
+   "Unloved & Raven Violet",
+   "itunes:1508336365"
+  ],
+  "la-casa-de-papel": [
+   "My Life Is Going On",
+   "Cecilia Krull",
+   "itunes:1246764809"
+  ],
+  "le-mentalist": [
+   "The Mentalist (Main Title Theme)",
+   "Blake Neely",
+   "itunes:1455524431"
+  ],
+  "le-prince-de-bel-air": [
+   "The Fresh Prince of Bel-Air",
+   "DJ Jazzy Jeff & The Fresh Prince",
+   "itunes:309484327"
+  ],
+  "les-experts": [
+   "Who Are You",
+   "The Who",
+   "itunes:557156933"
+  ],
+  "les-soprano": [
+   "Woke Up This Morning",
+   "Alabama 3",
+   "itunes:283466475"
+  ],
+  "les-sorciers-de-waverly-place": [
+   "Everything Is Not What It Seems",
+   "Selena Gomez",
+   "itunes:1443888589"
+  ],
+  "lucifer": [
+   "Being Evil Has a Price",
+   "Heavy Young Heathens",
+   "itunes:1130719444"
+  ],
+  "magnum": [
+   "Theme from « Magnum, P.I. »",
+   "Mike Post",
+   "itunes:140787115"
+  ],
+  "maigret": [
+   "Maigret (générique)",
+   "Maigret",
+   "itunes:199231702"
+  ],
+  "malcolm": [
+   "Boss of Me",
+   "They Might Be Giants",
+   "itunes:6792838107"
+  ],
+  "maries-deux-enfants": [
+   "Love and Marriage",
+   "Frank Sinatra",
+   "itunes:1443128840"
+  ],
+  "monk": [
+   "Monk Theme",
+   "Jeff Beal",
+   "itunes:1444005114"
+  ],
+  "mr-robot": [
+   "hellofriend",
+   "Mac Quayle",
+   "itunes:1111049903"
+  ],
+  "new-girl": [
+   "Hey Girl",
+   "Zooey Deschanel",
+   "itunes:1512826305"
+  ],
+  "noob": [
+   "Générique de fin",
+   "Olydri",
+   "itunes:1717721462"
+  ],
+  "outlander": [
+   "The Skye Boat Song",
+   "Bear McCreary",
+   "itunes:903585389"
+  ],
+  "poirot": [
+   "Hercule Poirot - The Belgian Detective",
+   "Christopher Gunning",
+   "itunes:6777028036"
+  ],
+  "prison-break": [
+   "Main Title",
+   "Ramin Djawadi",
+   "itunes:1452859459"
+  ],
+  "shadow-and-bone": [
+   "Ravka",
+   "Joseph Trapanese",
+   "itunes:1658423170"
+  ],
+  "shogun": [
+   "Main Title (Shōgun)",
+   "Atticus Ross & Leopold Ross",
+   "itunes:1730619131"
+  ],
+  "squid-game": [
+   "Way Back Then",
+   "Jung Jae-il",
+   "itunes:1585115804"
+  ],
+  "stranger-things": [
+   "Stranger Things",
+   "Kyle Dixon & Michael Stein",
+   "itunes:1142771420"
+  ],
+  "succession": [
+   "Succession (Main Title Theme)",
+   "Nicholas Britell",
+   "itunes:1500926127"
+  ],
+  "ted-lasso": [
+   "Ted Lasso Theme",
+   "Marcus Mumford & Tom Howe",
+   "itunes:1534329463"
+  ],
+  "the-big-bang-theory": [
+   "The Big Bang Theory Theme",
+   "Barenaked Ladies",
+   "itunes:464675958"
+  ],
+  "the-last-kingdom": [
+   "The Last Kingdom",
+   "John Lunn & Eivør",
+   "itunes:1440074900"
+  ],
+  "the-mandalorian": [
+   "The Mandalorian",
+   "Ludwig Göransson",
+   "itunes:1486687344"
+  ],
+  "the-sandman": [
+   "The Kingdom of Dreams (Main Title Theme)",
+   "David Buckley",
+   "itunes:1636651430"
+  ],
+  "the-walking-dead": [
+   "Theme from The Walking Dead",
+   "Bear McCreary",
+   "itunes:1275301945"
+  ],
+  "true-blood": [
+   "Bad Things",
+   "Jace Everett",
+   "itunes:313613446"
+  ],
+  "twin-peaks": [
+   "Twin Peaks Theme",
+   "Angelo Badalamenti",
+   "itunes:374382372"
+  ],
+  "une-nounou-d-enfer": [
+   "The Nanny Named Fran",
+   "Ann Hampton Callaway",
+   "itunes:1841692170"
+  ],
+  "xena-la-guerriere": [
+   "Main Title",
+   "Joseph LoDuca",
+   "itunes:1444069072"
+  ],
+  "yellowstone": [
+   "Yellowstone Theme",
+   "Brian Tyler",
+   "itunes:1422861344"
+  ],
+  "marvel": [
+   "The Avengers",
+   "Alan Silvestri",
+   "itunes:1440663698"
+  ],
+  "300": [
+   "To Victory",
+   "Tyler Bates"
+  ],
+  "avatar": [
+   "Jake Enters His Avatar World",
+   "James Horner"
+  ],
+  "ca": [
+   "Every 27 Years",
+   "Benjamin Wallfisch",
+   "itunes:1454546636"
+  ],
+  "cars": [
+   "Life Is a Highway",
+   "Rascal Flatts"
+  ],
+  "casino": [
+   "Thème de Camille",
+   "Georges Delerue"
+  ],
+  "charlie-et-la-chocolaterie": [
+   "Wonka's Welcome Song",
+   "Danny Elfman"
+  ],
+  "conjuring": [
+   "The Conjuring",
+   "Joseph Bishara"
+  ],
+  "dc-films": [
+   "Why So Serious?",
+   "Hans Zimmer"
+  ],
+  "die-hard": [
+   "Let It Snow! Let It Snow! Let It Snow!",
+   "Vaughn Monroe"
+  ],
+  "e-t": [
+   "Flying Theme",
+   "John Williams"
+  ],
+  "fast-furious": [
+   "See You Again",
+   "Wiz Khalifa"
+  ],
+  "fight-club": [
+   "Where Is My Mind?",
+   "Pixies"
+  ],
+  "gremlins": [
+   "The Gremlin Rag",
+   "Jerry Goldsmith"
+  ],
+  "harry-potter": [
+   "Hedwig's Theme",
+   "John Williams"
+  ],
+  "heat": [
+   "God Moving Over the Face of the Waters",
+   "Moby"
+  ],
+  "hunger-games": [
+   "The Hanging Tree",
+   "James Newton Howard"
+  ],
+  "il-etait-une-fois-dans-l-ouest": [
+   "Once Upon a Time in the West",
+   "Ennio Morricone"
+  ],
+  "il-etait-une-fois-en-amerique": [
+   "Deborah's Theme",
+   "Ennio Morricone"
+  ],
+  "indiana-jones": [
+   "Raiders March",
+   "John Williams"
+  ],
+  "james-bond": [
+   "James Bond Theme",
+   "Monty Norman",
+   "itunes:1720641175"
+  ],
+  "john-wick": [
+   "LED Spirals",
+   "Le Castle Vania"
+  ],
+  "kill-bill": [
+   "Battle Without Honor or Humanity",
+   "Tomoyasu Hotei"
+  ],
+  "kung-fu-panda": [
+   "Oogway Ascends",
+   "Hans Zimmer"
+  ],
+  "la-ligne-verte": [
+   "The Green Mile",
+   "Thomas Newman"
+  ],
+  "la-liste-de-schindler": [
+   "Theme from Schindler's List",
+   "John Williams"
+  ],
+  "la-reine-des-neiges": [
+   "Libérée, délivrée",
+   "Anaïs Delva"
+  ],
+  "le-diner-de-cons": [
+   "Le dîner de cons",
+   "Vladimir Cosma"
+  ],
+  "le-gendarme-de-saint-tropez": [
+   "Marche des gendarmes",
+   "Raymond Lefèvre"
+  ],
+  "le-parrain": [
+   "The Godfather Waltz",
+   "Nino Rota"
+  ],
+  "le-roi-lion": [
+   "Circle of Life",
+   "Carmen Twillie"
+  ],
+  "le-seigneur-des-anneaux": [
+   "Concerning Hobbits",
+   "Howard Shore"
+  ],
+  "le-silence-des-agneaux": [
+   "Main Title",
+   "Howard Shore",
+   "itunes:1443219466"
+  ],
+  "les-affranchis": [
+   "Rags to Riches",
+   "Tony Bennett"
+  ],
+  "les-evades": [
+   "Shawshank Redemption",
+   "Thomas Newman"
+  ],
+  "les-infiltres": [
+   "I'm Shipping Up to Boston",
+   "Dropkick Murphys"
+  ],
+  "les-tontons-flingueurs": [
+   "Les tontons flingueurs",
+   "Michel Magne"
+  ],
+  "maman-j-ai-rate-l-avion": [
+   "Somewhere in My Memory",
+   "John Williams"
+  ],
+  "matrix": [
+   "Spybreak!",
+   "Propellerheads",
+   "itunes:580690942"
+  ],
+  "mon-voisin-totoro": [
+   "My Neighbor Totoro",
+   "Joe Hisaishi"
+  ],
+  "mulan": [
+   "Reflection",
+   "Lea Salonga"
+  ],
+  "pirates-des-caraibes": [
+   "He's a Pirate",
+   "Klaus Badelt"
+  ],
+  "psychose": [
+   "Prelude",
+   "Bernard Herrmann"
+  ],
+  "ratatouille": [
+   "Le festin",
+   "Camille"
+  ],
+  "retour-vers-le-futur": [
+   "The Power of Love",
+   "Huey Lewis and the News",
+   "itunes:725785116"
+  ],
+  "rocky": [
+   "Gonna Fly Now",
+   "Bill Conti"
+  ],
+  "scream": [
+   "Red Right Hand",
+   "Nick Cave & The Bad Seeds"
+  ],
+  "shining": [
+   "Main Title",
+   "Wendy Carlos"
+  ],
+  "shrek": [
+   "All Star",
+   "Smash Mouth"
+  ],
+  "spider-man-new-generation": [
+   "Sunflower",
+   "Post Malone & Swae Lee",
+   "itunes:1445949267"
+  ],
+  "star-wars": [
+   "Main Title",
+   "John Williams",
+   "itunes:1375814284"
+  ],
+  "toy-story": [
+   "You've Got a Friend in Me",
+   "Randy Newman"
+  ],
+  "transformers": [
+   "Arrival to Earth",
+   "Steve Jablonsky"
+  ],
+  "troie": [
+   "Troy",
+   "James Horner"
+  ],
+  "jv-angry-birds": [
+   "Angry Birds Theme",
+   "Ari Pulkkinen"
+  ],
+  "jv-assassin-s-creed": [
+   "Ezio's Family",
+   "Jesper Kyd"
+  ],
+  "jv-borderlands": [
+   "Ain't No Rest for the Wicked",
+   "Cage the Elephant"
+  ],
+  "jv-call-of-duty": [
+   "Main Theme",
+   "David Buckley",
+   "itunes:1542621254"
+  ],
+  "jv-dark-souls": [
+   "Gwyn, Lord of Cinder",
+   "Motoi Sakuraba"
+  ],
+  "jv-diablo": [
+   "Tristram",
+   "Matt Uelmen"
+  ],
+  "jv-fallout": [
+   "I Don't Want to Set the World on Fire",
+   "The Ink Spots"
+  ],
+  "jv-far-cry": [
+   "Far Cry",
+   "Brian Tyler"
+  ],
+  "jv-final-fantasy": [
+   "One-Winged Angel",
+   "Nobuo Uematsu"
+  ],
+  "jv-god-of-war": [
+   "God of War",
+   "Bear McCreary"
+  ],
+  "jv-gta": [
+   "Soviet Connection",
+   "Michael Hunter"
+  ],
+  "jv-halo": [
+   "Halo",
+   "Martin O'Donnell"
+  ],
+  "jv-hitman": [
+   "Hitman 2 Main Title",
+   "Jesper Kyd",
+   "itunes:1490442213"
+  ],
+  "jv-isaac-persos": [
+   "The Binding of Isaac",
+   "Danny Baranowsky",
+   "itunes:6792847465"
+  ],
+  "jv-kingdom-hearts": [
+   "Simple and Clean",
+   "Hikaru Utada",
+   "itunes:1440875056"
+  ],
+  "jv-mass-effect": [
+   "Vigil",
+   "Jack Wall"
+  ],
+  "jv-metal-gear": [
+   "Snake Eater",
+   "Cynthia Harrell"
+  ],
+  "jv-minecraft": [
+   "Sweden",
+   "C418"
+  ],
+  "jv-mortal-kombat": [
+   "Techno Syndrome",
+   "The Immortals"
+  ],
+  "jv-overwatch": [
+   "Overwatch",
+   "Derek Duke"
+  ],
+  "jv-pokemon-jeux": [
+   "Pokémon Theme",
+   "Jason Paige"
+  ],
+  "jv-portal": [
+   "Still Alive",
+   "Aperture Science Psychoacoustic Laboratories",
+   "itunes:1891395741"
+  ],
+  "jv-red-dead-redemption": [
+   "Far Away",
+   "José González"
+  ],
+  "jv-sekiro-elden-ring-activision": [
+   "Elden Ring",
+   "Tsukasa Saitoh"
+  ],
+  "jv-sonic": [
+   "Live & Learn",
+   "Crush 40"
+  ],
+  "jv-spyro": [
+   "Spyro Main Theme",
+   "Stewart Copeland",
+   "itunes:1622678609"
+  ],
+  "jv-street-fighter": [
+   "Theme of Guile",
+   "Masahiro Aoki",
+   "itunes:1341577647"
+  ],
+  "jv-the-elder-scrolls": [
+   "Dragonborn",
+   "Jeremy Soule"
+  ],
+  "jv-the-last-of-us": [
+   "The Last of Us",
+   "Gustavo Santaolalla"
+  ],
+  "jv-the-witcher": [
+   "The Trail",
+   "Marcin Przybyłowicz"
+  ],
+  "jv-tomb-raider": [
+   "Tomb Raider Theme",
+   "Nathan McCree"
+  ],
+  "jv-uncharted": [
+   "Nate's Theme",
+   "Greg Edmonson"
+  ],
+  "jv-warcraft": [
+   "Legends of Azeroth",
+   "Jason Hayes"
+  ],
+  "rambo": [
+   "Homecoming",
+   "Jerry Goldsmith",
+   "itunes:1814262506"
+  ],
+  "jv-palworld": [
+   "Theme of Palworld",
+   "Tatsuya Yano",
+   "itunes:6795289757"
+  ],
+  "lol": [
+   "Classic Summoner's Rift Pt. 1",
+   "League of Legends",
+   "itunes:1832618245"
+  ],
+  "ghibli": [
+   "My Neighbor Totoro",
+   "Joe Hisaishi",
+   "itunes:1680460241"
+  ],
+  "suits": [
+   "Greenback Boogie",
+   "Ima Robot"
+  ],
+  "jv-fortnite": [
+   "Fortnite Battle Royale (2017) - Main Menu Theme",
+   "Geek Music",
+   "deezer:507502382"
+  ],
+  "jv-dofus": [
+   "En Route Pour l'Aventure",
+   "Guillaume Pladys",
+   "deezer:1704418267"
+  ],
+  "jv-wakfu": [
+   "Wakfu opening song",
+   "Guillaume Houzé",
+   "deezer:1878987867"
+  ],
+  "jv-genshin-impact": [
+   "Genshin Impact Main Theme",
+   "Yu-Peng Chen",
+   "deezer:995694672"
+  ]
+ }
 }
