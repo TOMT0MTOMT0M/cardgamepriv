@@ -71,6 +71,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Des 5★ et 6★ en plein écran', tag: 'amélioré',
+        points: [
+          '🖼️ Environ 650 cartes 5★ et 6★ dont la photo est horizontale passent en plein écran, centrées sur le visage, au lieu d’être posées entières dans un cadre.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Des 6★ mieux cadrées', tag: 'amélioré',
         points: [
           '🖼️ Les 6★ dont la photo est carrée (Diam’s…) passent en plein écran, centrées sur le visage, au lieu d’être posées entières dans un cadre.',
