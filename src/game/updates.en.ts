@@ -36,6 +36,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Better-framed 6★ cards', tag: 'amélioré',
+        points: [
+          '🖼️ 6★ cards with a square photo (Diam’s…) are now full art, centred on the face, instead of sitting whole inside a frame.',
+        ],
+      },
+      {
         date: '25 Nov', title: 'End of season 0: the rewards', tag: 'nouveau',
         points: [
           '🏆 Season 0 ends on 30 November: 1st a God pack, 2nd 20 boosters, 3rd 15 boosters, 4th to 10th 10 boosters, and 1 booster for everyone else from one card earned.',

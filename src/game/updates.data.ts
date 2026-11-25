@@ -71,6 +71,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Des 6★ mieux cadrées', tag: 'amélioré',
+        points: [
+          '🖼️ Les 6★ dont la photo est carrée (Diam’s…) passent en plein écran, centrées sur le visage, au lieu d’être posées entières dans un cadre.',
+        ],
+      },
+      {
         date: '25 nov.', title: 'Fin de la saison 0 : les récompenses', tag: 'nouveau',
         points: [
           '🏆 La saison 0 se termine le 30 novembre : 1er un God pack, 2e 20 boosters, 3e 15 boosters, 4e à 10e 10 boosters, et 1 booster pour les autres dès une carte gagnée.',

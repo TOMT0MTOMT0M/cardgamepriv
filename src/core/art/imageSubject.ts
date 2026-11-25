@@ -165,13 +165,15 @@ export function coverBand(aspect: number) {
  * jaquette PS4 ; une jaquette DS (0,88), un album carré, une photo 4:3 vont dans le cadre.
  */
 export const PORTRAIT_MAX = 0.82;
+/** 6★ : jusqu'à ce format (largeur / hauteur) une photo à visage connu est recadrée en plein écran (≈ 70 % de la largeur gardés). */
+export const FILL_MAX = 1.25;
 
 /**
  * (retours live 6, B3 + C6 « zéro effet ») plus AUCUN flou ni fondu ni vignettage : une photo proche du portrait
  * remplit la carte (recadrée), toute autre est posée entière et nette (le gabarit Suisse l'encadre ; ailleurs — Merveilles
  * en 2D — le reste de la fenêtre est un aplat de sa couleur). `crisp` n'a plus d'effet (gardé pour les appelants).
  */
-export function paintCoverSubject(t: PaintTarget, im: CardImage | null, _o: { crisp?: boolean } = {}) {
+export function paintCoverSubject(t: PaintTarget, im: CardImage | null, o: { crisp?: boolean; fillIfFace?: boolean } = {}) {
   const { bg, fx, pal } = t;
   bg.fillStyle = pal.sky;
   bg.fillRect(0, 0, BASE_W, BASE_H);
@@ -184,7 +186,10 @@ export function paintCoverSubject(t: PaintTarget, im: CardImage | null, _o: { cr
   bg.imageSmoothingEnabled = true;
   bg.imageSmoothingQuality = 'high';
   const a = cw / ch;
-  if (a < PORTRAIT_MAX) {
+  // (26/11) 6★ : photo carrée / presque carrée (< FILL_MAX) dont le visage est connu → plein écran centré sur lui (au lieu
+  // d'une bande entière dans un décor vide) ; sans visage connu (pochettes, illustrations) elle reste entière
+  const fill = !!o.fillIfFace && a < FILL_MAX && !!faceOf(im.url);
+  if (a < PORTRAIT_MAX || fill) {
     // format portrait : l'illustration nette remplit la carte du jeu, bord à bord (point focal un peu haut)
     const k = Math.max(FULL_VIEW.w / cw, FULL_VIEW.h / ch);
     const w = cw * k, h = ch * k;
