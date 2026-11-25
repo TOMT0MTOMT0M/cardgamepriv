@@ -613,6 +613,8 @@ export const ANIME_OPENINGS: Record<string, MusicPreview> = {
   "steins-gate": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/0a/ef/37/0aef37f1-33cf-9709-a915-c6eefbaca10e/mzaf_2439740660429779137.plus.aac.p.m4a", track: "Hacking to the Gate", artist: "Kanako Itō", link: "https://music.apple.com/fr/album/hacking-to-the-gate/1843786356?i=1843786357&uo=4" },
   "the-quintessential-quintuplets": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ee/1c/64/ee1c6412-9739-4dab-2856-681ad1158561/mzaf_6020906809372945873.plus.aac.p.m4a", track: "Gotōbun no Kimochi", artist: "Nakanoke no Itsutsugo", link: "https://music.apple.com/fr/album/%E4%BA%94%E7%AD%89%E5%88%86%E3%81%AE%E6%B0%97%E6%8C%81%E3%81%A1-tv-edit/1682466135?i=1682466412&uo=4" },
   "detective-conan": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/7b/78/bc/7b78bc79-4a7d-b71d-0ae0-3ca3dccb4b67/mzaf_1167642714457267046.plus.aac.p.m4a", track: "Meitantei Conan Main Theme", artist: "Katsuo Ōno", link: "https://music.apple.com/fr/album/detective-conan-main-theme-the-time-bombed-skyscraper/1547554319?i=1547554568&uo=4" },
+  "inazuma-eleven": { url: "audio/generiques/inazuma-eleven.mp3", track: "Inazuma Eleven (générique français)", artist: "Inazuma Eleven (VF)", link: "" },
+  "yugioh": { url: "audio/generiques/yu-gi-oh.mp3", track: "Yu-Gi-Oh! (générique français)", artist: "Yu-Gi-Oh! (VF)", link: "" },
 };
 
 /** (15/11) générique du dessin animé, par sous-thème du bloc Dessins animés : joué en fond quand une 6★ de ce dessin animé tombe */
@@ -633,7 +635,7 @@ export const CARTOON_THEMES: Record<string, MusicPreview> = {
   "maya-l-abeille": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview71/v4/39/2d/78/392d78d5-47ba-d8e3-34ae-4aa6a97c6748/mzaf_2061621956265794067.plus.aac.p.m4a", track: "Maya: Main Theme", artist: "Fabrice Aboulker", link: "https://music.apple.com/fr/album/maya-main-theme/1179834677?i=1179835389&uo=4" },
   "molang": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/ab/85/f0/ab85f0f4-0d68-9793-5070-2279a5193d0a/mzaf_9313570349148254432.plus.aac.p.m4a", track: "Molang Theme Song", artist: "Kids Superstars", link: "https://music.apple.com/fr/album/molang-theme-song-from-molang/1500952488?i=1500952489&uo=4" },
   "oggy-et-les-cafards": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/88/80/1d/88801d3f-7634-44ed-bb2d-6a6fee9aa38c/mzaf_11337802126298021043.plus.aac.p.m4a", track: "Générique", artist: "Hugues Le Bars", link: "https://music.apple.com/fr/album/g%C3%A9n%C3%A9rique/1296320846?i=1296321569&uo=4" },
-  "south-park": { url: "", deezer: 2576770162, track: "South Park Theme", artist: "Primus", link: "https://www.deezer.com/track/2576770162" },
+  "south-park": { url: "audio/generiques/south-park-vf.mp3", track: "South Park (générique français)", artist: "South Park (VF)", link: "" },
   "t-choupi": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f2/31/5d/f2315d6f-6c0f-0f74-9d76-6e18cd990ad9/mzaf_15585356997728364818.plus.aac.p.m4a", track: "T'choupi, le générique", artist: "T'choupi", link: "https://music.apple.com/fr/album/tchoupi-le-g%C3%A9n%C3%A9rique-version-originale-de-la-s%C3%A9rie/376152757?i=376152766&uo=4" },
   "zig-et-sharko": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/41/23/7d/41237de1-e194-3502-7eb1-4ea0b9bf5dd1/mzaf_11358703880318885297.plus.aac.p.m4a", track: "Zig et Sharko générique début", artist: "Vincent Artaud", link: "https://music.apple.com/fr/album/zig-et-sharko-g%C3%A9n%C3%A9rique-d%C3%A9but-feat-andr%C3%A8s-fernandez/1474241694?i=1474241695&uo=4" },
   "babar": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview123/v4/fc/d6/4b/fcd64be6-5304-b661-eca1-94ef1c53b2b8/mzaf_9758835278121314987.plus.aac.p.m4a", track: "Les aventures de Babar", artist: "André Popp", link: "https://music.apple.com/fr/album/les-aventures-de-babar/1484514733?i=1484515110&uo=4" },
@@ -666,6 +668,7 @@ export const CARTOON_THEMES: Record<string, MusicPreview> = {
   "scooby-doo": { url: "audio/generiques/scooby-doo.mp3", track: "Scooby-Doo, où es-tu ? (générique français)", artist: "Scooby-Doo", link: "" },
   "steven-universe": { url: "audio/generiques/steven-universe.mp3", track: "Nous sommes les Gemmes de Cristal", artist: "Steven Universe (VF)", link: "" },
   "the-owl-house": { url: "audio/generiques/the-owl-house.mp3", track: "The Owl House (générique)", artist: "TJ Hill", link: "" },
+  "code-lyoko": { url: "audio/generiques/code-lyoko.mp3", track: "Code Lyoko (générique français)", artist: "Code Lyoko", link: "" },
 };
 
 /** (15/11) version anglaise du générique, jouée à la place dans le jeu en anglais — seulement quand elle diffère */
@@ -690,6 +693,7 @@ export const CARTOON_THEMES_EN: Record<string, MusicPreview> = {
   "sam-le-pompier": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a9/22/eb/a922eb69-347a-2877-bc95-bd56012f0c06/mzaf_3052080615081361142.plus.aac.p.m4a", track: "Fireman Sam Theme Song", artist: "Fireman Sam & Mattel", link: "https://music.apple.com/fr/album/fireman-sam-theme-song/1809325160?i=1809325178&uo=4" },
   "scooby-doo": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/7d/6e/87/7d6e87bb-edfd-a393-7f74-c81d0b10ebc8/mzaf_8055009090333588045.plus.aac.p.m4a", track: "Scooby Doo Theme Song", artist: "Best Coast", link: "https://music.apple.com/fr/album/scooby-doo-theme-song/1512008327?i=1512008927&uo=4" },
   "steven-universe": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/c8/c8/ff/c8c8ff76-98e7-4c80-53ad-f74e7c0c83fe/mzaf_14972694001276501538.plus.aac.p.m4a", track: "We Are The Crystal Gems (Full Theme Song)", artist: "Steven Universe", link: "https://music.apple.com/fr/album/we-are-the-crystal-gems-full-theme-song-feat-deedee/1511215079?i=1511215902&uo=4" },
+  "south-park": { url: "", deezer: 2576770162, track: "South Park Theme", artist: "Primus", link: "https://www.deezer.com/track/2576770162" },
 };
 
 /** (17/11, Hugo) générique de la série (bloc Séries TV) ou musique du film, par sous-thème : joué en fond quand une 6★ tombe */
@@ -840,6 +844,9 @@ export const SCREEN_THEMES: Record<string, MusicPreview> = {
   "jv-palworld": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/1e/44/91/1e4491eb-13ea-3f78-b297-b937a385c156/mzaf_15684316800577606103.plus.aac.p.m4a", track: "Theme of Palworld", artist: "Tatsuya Yano", link: "https://music.apple.com/fr/album/theme-of-palworld/6795289364?i=6795289757&uo=4" },
   "lol": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/8d/f3/5d/8df35dbf-8b2d-fd57-873b-f777621e6b24/mzaf_8444876684901951553.plus.aac.p.m4a", track: "Classic Summoner's Rift Pt. 1", artist: "League of Legends", link: "https://music.apple.com/fr/album/classic-summoners-rift-pt-1-from-league-of-legends-season-1/1832618165?i=1832618245&uo=4" },
   "ghibli": { url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/2a/d7/6d/2ad76dba-9478-0c20-9376-7d567f029e9e/mzaf_9978677995057122884.plus.aac.p.m4a", track: "My Neighbor Totoro", artist: "Joe Hisaishi", link: "https://music.apple.com/fr/album/my-neighbor-totoro-from-my-neighbor-totoro/1680459073?i=1680460241&uo=4" },
+  "kaamelott": { url: "audio/generiques/kaamelott.mp3", track: "Kaamelott (générique)", artist: "Kaamelott", link: "" },
+  "jv-crash-bandicoot": { url: "audio/generiques/crash-bandicoot.mp3", track: "Crash Bandicoot (thème)", artist: "Crash Bandicoot", link: "" },
+  "jv-zelda": { url: "audio/generiques/zelda.mp3", track: "The Legend of Zelda (thème principal)", artist: "Koji Kondo", link: "" },
 };
 
 /** musique d’une ambiance d’ouverture (eclipse : Berserk 5★ / 6★ — game/eclipse.ts), par nom d’ambiance */
