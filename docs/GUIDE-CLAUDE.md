@@ -12,7 +12,7 @@
 - `docs/chantiers/EN-COURS.md` : le fichier de passation (qui fait quoi, ce qui reste).
 - **`LANCEUR-CLAUDE.cmd`** (racine du repo) : une fenêtre à boutons qui ouvre le bon terminal au bon endroit — PATCH (version en ligne), V3, Reprendre, plus EN-COURS, lien V3 et site joueurs.
 - **Garde-fous à deux, automatiques** : au démarrage, Claude sait si l'autre a poussé et récupère ses changements ; il ne peut pas modifier un fichier que l'autre a changé sur GitHub avant de l'avoir récupéré ; le lien V3 refuse d'être publié depuis un dossier en retard.
-- **Plus de double-clic** : Claude lance lui-même les lanceurs depuis sa session sur le PC de Tom. Push, lien V3 et staging : tout seul. Mise en prod : il demande « je publie v2.X.Y chez les joueurs ? » et attend un oui (réponse possible depuis le téléphone). Il ne lance jamais `NE-PAS-LANCER-*` ni un lanceur qui demande une connexion.
+- **Plus de double-clic** : Claude lance lui-même les lanceurs depuis la session, sur ton PC (Tom ou Hugo). Push, lien V3 et staging : tout seul. Mise en prod : il demande « je publie v2.X.Y chez les joueurs ? » et attend un oui (réponse possible depuis le téléphone). Il ne lance jamais `NE-PAS-LANCER-*` ni un lanceur qui demande une connexion.
 
 ## 2. À faire une fois sur ton PC (10 min, chacun le sien)
 1. Dans un terminal : `claude update`.
@@ -36,7 +36,7 @@
 ## 4. À deux
 - Un dossier et une session par personne ; jamais deux sessions (ni Claude + Gemini) sur les mêmes fichiers en même temps.
 - Rien à réserver : les garde-fous ci-dessus empêchent d'écraser le travail de l'autre. Si un push est refusé, Claude récupère et fusionne lui-même.
-- Seul Tom dit « oui » pour une mise en prod. Hugo prépare, pousse sa branche et prévient.
+- Tom et Hugo peuvent tous les deux mettre en ligne la prod et le lien V3 : celui qui pilote la session dit « oui », puis prévient l'autre (« v2.X.Y en ligne »). Jamais deux mises en ligne en même temps : le lanceur s'arrête de toute façon si GitHub a avancé.
 - `CLAUDE.local.md` et la mémoire automatique de Claude sont **perso** (pas partagés). Une leçon utile aux deux : « ajoute-la à CLAUDE.md ».
 
 ## 5. Deux mots sur les rumeurs
@@ -49,12 +49,12 @@
    > `/patch v2.2.0` — la roulette affiche le gain avant la fin de l'animation sur iPhone. Fichiers probables : `src/game/roulette.ts`, `src/game/roulette.css`. Fini quand : type-check et tests OK, gain affiché après l'arrêt de la bille.
 3. Claude écrit le plan (10 lignes) dans `docs/chantiers/v2.2.0.md`, crée `patch-v2.2.0`, corrige, ajoute l'entrée « Mises à jour ».
 4. Il boucle seul sur les vérifs (5 essais max), commite, prépare `METTRE-EN-LIGNE-v2.2.0.cmd`, reporte sur `v2` (cherry-pick + `merge -s ours`), pousse `v2` et `patch-v2.2.0`.
-5. Il demande : « je publie v2.2.0 chez les joueurs ? ». Tom répond « oui » (même depuis le téléphone).
-6. Claude lance `METTRE-EN-LIGNE-v2.2.0.cmd` lui-même, lit le journal, puis : « En ligne. Vérifie sur iPhone : 1) le gain s'affiche après l'arrêt, 2) une mise rouge/noir passe. » Tom vérifie, dit « ok ». `/cr` → EN-COURS.md à jour + compte rendu d'une page. `/clear`.
+5. Il demande : « je publie v2.2.0 chez les joueurs ? ». Tu réponds « oui » (même depuis le téléphone).
+6. Claude lance `METTRE-EN-LIGNE-v2.2.0.cmd` lui-même, lit le journal, puis : « En ligne. Vérifie sur iPhone : 1) le gain s'affiche après l'arrêt, 2) une mise rouge/noir passe. » Tu vérifies, tu dis « ok » et tu préviens l'autre. `/cr` → EN-COURS.md à jour + compte rendu d'une page. `/clear`.
 
 **Ce qu'on gagne** : pas de relecture du repo (fichier de passation), pas de procédure réexpliquée (`/patch`), pas d'allers-retours « c'est fait / non ça casse » (vérifs bornées), un cache qui tient (modèle fixe), et la session suivante repart de zéro proprement.
 
 ## 7. Checklist
-**Chaque tâche** : `LANCEUR-CLAUDE.cmd` → bon bouton · session neuve · modèle choisi · chemins exacts + « fini quand » · plan dans un fichier · vérifs vertes · « oui » de Tom pour la prod, Claude lance · `/cr` · `/clear`.
+**Chaque tâche** : `LANCEUR-CLAUDE.cmd` → bon bouton · session neuve · modèle choisi · chemins exacts + « fini quand » · plan dans un fichier · vérifs vertes · ton « oui » pour la prod, Claude lance, tu préviens l'autre · `/cr` · `/clear`.
 **Chaque semaine** : `/usage` et `/context` · relire CLAUDE.md (supprimer ce qui ne sert plus) · archiver les vieux comptes rendus du Project claude.ai.
 **Plus tard** : un « évaluateur » séparé pour juger les animations 6★ sur une grille DA écrite ; Code Mode quand il ne sera plus expérimental.
