@@ -1,13 +1,14 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 25/11/2026 (Hugo : labo sur le lien prod seulement, patch v2.1.10)._
+_Mis à jour : 25/11/2026 (Tom : patch v2.1.11, saison 0 et pity)._
 
 ## Chantiers ouverts
 
 | Qui | Dossier / branche | Chantier | État |
 |---|---|---|---|
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.10 : labo prod = labo complet (046 sachets cartoon) ; plus de labo sur le lien V2 (racine → `/jeu/`) | en ligne (tag `v2.1.10`, `5f5a4df` ; v2 `e08b146`) — `docs/chantiers/v2.1.10.md` |
+| Tom + Claude | `.wt-master` / `master` | patch v2.1.11 : récompenses de saison 0 + pity anti-spoil | en ligne (tag `v2.1.11`, `52cfd6e` ; v2 `a0eb9ca`) — `docs/chantiers/v2.1.11.md` |
 | Tom + Claude | racine / `v2` | V3 : calendrier de l'Avent, titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
@@ -21,8 +22,9 @@ _Mis à jour : 25/11/2026 (Hugo : labo sur le lien prod seulement, patch v2.1.10
 - [ ] V3 — Sachets par thème : piste « Case de BD » choisie le 25/11 ; Tom la retouche dans Photoshop → EN ATTENTE de ses fichiers, puis vignettes, roue 3D, booster du moment
 - [ ] V3 — Marché « façon Kyara » (captures reçues, brief : `docs/chantiers/marche-kyara.md`) ; passe « moins de texte » Marché / Échanges / Jeux (Pack Battle, Battle Royale : mêmes règles, plus visuels)
 - [ ] V3 — Roulette : toucher le pot = carte en grand, couleurs dans le replay
-- [ ] Pity (bug, version en ligne aussi) : le compteur X/200 se remet à zéro AVANT la révélation de la 6★ → spoil ; ne le mettre à jour qu'après la révélation
-- [ ] URGENT avant le 30/11 (fin de la saison 0, version en ligne) : récompenses de saison = 1er God pack, 2e 20 boosters, 3e 15 boosters, titre + contour de cadre pour le top 3, 4e-10e 10 boosters, titre « Participant de la saison 0 » à tout joueur ayant ouvert ≥ 100 boosters dans la saison
+- [ ] 01/12 : vérifier en ligne la clôture de la saison 0 (cron horaire) : récompenses, titres, God pack du 1er
+- [ ] Pity (v2.1.11) : vérifier à l'écran que le compteur ne bouge qu'après la révélation (simple, ×5, « Direct 4★ »)
+- [ ] God pack ouvert dans un ×10 : l'animation peut tomber sur le mauvais morceau (cartes correctes) — mineur, `spreadSeries` dans `shop.ts`
 - [ ] Prod : MAX_PLAYERS de 30 à 50 (variable Convex de prod — accord de Tom et Hugo du 25/11)
 - [ ] V3 — Ouvertures : retirer Brûlure, Éventail et les autres, seule la Déchirure reste
 - [ ] V3 — Notifications : « ta série est en danger » + tirage de la roulette
