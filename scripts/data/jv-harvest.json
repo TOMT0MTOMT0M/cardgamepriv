@@ -4745,10 +4745,10 @@
 "t": 1793771527
 },
 "jv-final-fantasy-cloud": {
-"art": "i",
-"file": "final-fantasy--cloud.png",
-"src": "fill:fandom:finalfantasy.fandom.com/fr:Cloud Strife",
-"t": 1793768768
+"art": "c",
+"file": "final-fantasy--cloud-r2611252256.jpg",
+"src": "reillustre:022.webp",
+"t": 1795643814
 },
 "jv-final-fantasy-crisis-core": {
 "art": "c",
@@ -4816,9 +4816,9 @@
 },
 "jv-final-fantasy-final-fantasy-x": {
 "art": "c",
-"file": "final-fantasy--final-fantasy-x.jpg",
-"src": "steam:2515020",
-"t": 1793635847
+"file": "final-fantasy--final-fantasy-x-r2611252256.jpg",
+"src": "reillustre:039.jpg",
+"t": 1795643814
 },
 "jv-final-fantasy-final-fantasy-xi": {
 "art": "c",
@@ -5696,11 +5696,10 @@
 "t": 1793636058
 },
 "jv-genshin-impact-furina": {
-"art": "i",
-"file": "genshin-impact--furina.png",
-"ok2": 1,
-"src": "wiki:Furina (Genshin Impact)",
-"t": 1793636048
+"art": "c",
+"file": "genshin-impact--furina-r2611252256.jpg",
+"src": "reillustre:043.jpg",
+"t": 1795643814
 },
 "jv-genshin-impact-ganyu": {
 "art": "c",
@@ -5710,11 +5709,10 @@
 "t": 1793636052
 },
 "jv-genshin-impact-genshin-impact": {
-"art": "i",
-"file": "genshin-impact--genshin-impact.png",
-"ok2": 1,
-"src": "wiki:Genshin Impact",
-"t": 1793636044
+"art": "c",
+"file": "genshin-impact--genshin-impact-r2611252256.jpg",
+"src": "reillustre:044.webp",
+"t": 1795643814
 },
 "jv-genshin-impact-honkai-impact-3rd": {
 "art": "c",
@@ -5730,11 +5728,10 @@
 "t": 1793636049
 },
 "jv-genshin-impact-hu-tao": {
-"art": "i",
-"file": "genshin-impact--hu-tao.png",
-"ok2": 1,
-"src": "wiki:Hu Tao",
-"t": 1793636044
+"art": "c",
+"file": "genshin-impact--hu-tao-r2611252256.jpg",
+"src": "reillustre:049.webp",
+"t": 1795643814
 },
 "jv-genshin-impact-keqing": {
 "art": "c",
@@ -5750,25 +5747,22 @@
 "t": 1793768779
 },
 "jv-genshin-impact-mavuika": {
-"art": "i",
-"file": "genshin-impact--mavuika.png",
-"ok2": 1,
-"src": "wiki:Mavuika",
-"t": 1793636059
+"art": "c",
+"file": "genshin-impact--mavuika-r2611252256.jpg",
+"src": "reillustre:079.jpg",
+"t": 1795643814
 },
 "jv-genshin-impact-nahida": {
-"art": "i",
-"file": "genshin-impact--nahida.png",
-"ok2": 1,
-"src": "wiki:Nahida (Genshin Impact)",
-"t": 1793636054
+"art": "c",
+"file": "genshin-impact--nahida-r2611252256.jpg",
+"src": "reillustre:083.webp",
+"t": 1795643814
 },
 "jv-genshin-impact-neuvillette": {
-"art": "i",
-"file": "genshin-impact--neuvillette.png",
-"ok2": 1,
-"src": "wiki:Neuvillette (Genshin Impact)",
-"t": 1793636055
+"art": "c",
+"file": "genshin-impact--neuvillette-r2611252256.jpg",
+"src": "reillustre:087.jpg",
+"t": 1795643814
 },
 "jv-genshin-impact-nikke": {
 "art": "",
@@ -6215,9 +6209,9 @@
 },
 "jv-gta-jason-gta-vi": {
 "art": "c",
-"file": "gta--jason-gta-vi.jpg",
-"src": "fill:fandom:gta.fandom.com/fr:Jason Duval",
-"t": 1793771528
+"file": "gta--jason-gta-vi-r2611252256.jpg",
+"src": "reillustre:055.jpg",
+"t": 1795643814
 },
 "jv-gta-lamar": {
 "art": "c",
@@ -6234,9 +6228,9 @@
 },
 "jv-gta-lucia-gta-vi": {
 "art": "c",
-"file": "gta--lucia-gta-vi.jpg",
-"src": "fill:fandom:gta.fandom.com/fr:Lucia Caminos",
-"t": 1793771528
+"file": "gta--lucia-gta-vi-r2611252256.jpg",
+"src": "reillustre:073.avif",
+"t": 1795643814
 },
 "jv-gta-michael-de-santa": {
 "art": "c",
@@ -15401,9 +15395,9 @@
 },
 "jv-red-dead-redemption-arthur-morgan": {
 "art": "c",
-"file": "red-dead-redemption--arthur-morgan.jpg",
-"src": "fill:fandom:reddead.fandom.com/fr:Arthur Morgan",
-"t": 1793768768
+"file": "red-dead-redemption--arthur-morgan-r2611252256.jpg",
+"src": "reillustre:010.webp",
+"t": 1795643814
 },
 "jv-red-dead-redemption-bill-williamson": {
 "art": "c",
