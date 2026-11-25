@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm run typecheck)",
+      "Bash(npm run test:server:*)",
+      "Bash(npm run test:sound)",
+      "Bash(npm run test:rolls)",
+      "Bash(npm run check:i18n)",
+      "Bash(npm run check:images)",
+      "Bash(npm run verify)",
+      "Bash(npx vitest run:*)",
+      "Bash(npx tsc --noEmit:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git tag --list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(git push origin v2:*)",
+      "Bash(git push origin patch-v2.:*)",
+      "Bash(git push -u origin patch-v2.:*)",
+      "Bash(cmd.exe //c \"lanceurs\\push.cmd\":*)",
+      "Bash(cmd.exe //c \"lanceurs\\mettre-en-ligne-v2.cmd\":*)",
+      "Bash(cmd.exe //c \"lanceurs\\rafraichir-staging-v2.cmd\":*)",
+      "Bash(git pull --rebase --autostash)",
+      "Bash(git fetch:*)"
+    ],
+    "ask": [
+      "Bash(git push origin master:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(npx convex run:*)",
+      "Bash(npx convex import:*)",
+      "Bash(cmd.exe //c \"METTRE-EN-LIGNE-v2.:*)",
+      "Bash(cmd.exe //c \"lanceurs\\publier-patch.cmd\":*)"
+    ],
+    "deny": [
+      "Read(./.env.local)",
+      "Read(./.env.v2.local)",
+      "Read(./.discord-bot-token)",
+      "Read(./.feedback-key)",
+      "Bash(npm run convex:deploy:*)",
+      "Bash(npx convex deploy:*)",
+      "Bash(npm run cf:deploy:*)",
+      "Bash(npx wrangler pages deploy:*)",
+      "Bash(cmd.exe //c \"lanceurs\\NE-PAS-LANCER:*)",
+      "Bash(cmd.exe //c \"lanceurs\\mettre-en-ligne-prod.cmd\":*)"
+    ]
+  },
+  "model": "sonnet",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/au-demarrage.mjs\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/garde-conflits.mjs\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "oh-my-claudecode@omc": false,
+    "claude-mem@thedotmack": false,
+    "superpowers@claude-plugins-official": false
+  }
+}
