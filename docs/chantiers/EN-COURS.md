@@ -17,10 +17,16 @@ _Mis à jour : 25/11/2026 (Hugo : labo sur le lien prod seulement, patch v2.1.10
 - [ ] V3 — Avent (démarre le 01/12) : nouvelle grille jour par jour, cosmétiques de Noël (cadres, bannières, animations de profil, ouvertures), God Pack du 24 avec au moins 1 hit, étoile du sapin à aligner
 - [ ] V3 — Packs événement : 7 j, 1/h, réserve propre 3 (5 abonné), 2 500 pièces ; consommer SA réserve (prend un booster normal aujourd'hui) ; collection Télé + booster de lancement
 - [ ] V3 — Succès : ouvertures à gagner avec aperçu, paliers plus longs, récompenses proportionnelles
-- [ ] V3 — Sachets par thème : attendre le choix de Tom (labo 046 : Autocollant / Case de BD / Écusson + logo Bébou), puis vignettes, roue 3D, booster du moment
-- [ ] V3 — Marché « façon Kyara » (captures à demander à Tom) ; passe « moins de texte » Marché / Échanges / Jeux
+- [ ] V3 — Sachets par thème : piste « Case de BD » choisie le 25/11 ; Tom la retouche dans Photoshop → EN ATTENTE de ses fichiers, puis vignettes, roue 3D, booster du moment
+- [ ] V3 — Marché « façon Kyara » (captures attendues de Tom et Hugo) ; passe « moins de texte » Marché / Échanges / Jeux (Pack Battle, Battle Royale : mêmes règles, plus visuels)
 - [ ] V3 — Roulette : toucher le pot = carte en grand, couleurs dans le replay
-- [ ] Pity : demander à Tom dans quel cas le compteur bouge trop tôt (1 booster, ×10, Direct 4★ ?)
+- [ ] Pity (bug, version en ligne aussi) : le compteur X/200 se remet à zéro AVANT la révélation de la 6★ → spoil ; ne le mettre à jour qu'après la révélation
+- [ ] URGENT avant le 30/11 (fin de la saison 0, version en ligne) : récompenses de saison = 1er God pack, 2e 20 boosters, 3e 15 boosters, titre + contour de cadre pour le top 3, 4e-10e 10 boosters, titre « Participant de la saison 0 » à tout joueur ayant ouvert ≥ 100 boosters dans la saison
+- [ ] Prod : MAX_PLAYERS de 30 à 50 (variable Convex de prod — accord de Tom et Hugo du 25/11)
+- [ ] V3 — Ouvertures : retirer Brûlure, Éventail et les autres, seule la Déchirure reste
+- [ ] V3 — Notifications : « ta série est en danger » + tirage de la roulette
+- [ ] Portefeuille : retirer le texte « les pièces n'achètent jamais de cartes » (faux)
+- [ ] Catalogue : protéger la Citroën C15 (carte hors Excel) lors des régénérations
 - [ ] Images Etoiles 8 : 70 cartes 5★/6★ sans image (Summoners War, Wakfu, Dofus, X-Men…) ; relancer AniList pour Vegeto, Gogeta, Obito
 - [ ] Admin : destinataire Wero à saisir dans `/admin/`
 - Détail des décisions : Project claude.ai `00-etat-du-projet` et `04-regles-du-jeu` ; historique : `docs/historique-claude-ai/`
