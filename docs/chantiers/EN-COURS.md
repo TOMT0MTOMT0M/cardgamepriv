@@ -11,13 +11,14 @@ _Mis à jour : 26/11/2026 (Tom : patch v2.1.13 Avent en ligne, reporté sur v2 ;
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.11 : récompenses de saison 0 + pity anti-spoil | en ligne (tag `v2.1.11`, `52cfd6e` ; v2 `a0eb9ca`) — `docs/chantiers/v2.1.11.md` |
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.12 : images (353 + 159), musiques 6★, famille France | en ligne (tag `v2.1.12`, `40bd36e` ; v2 `73b61aa`) — `docs/chantiers/v2.1.12.md` |
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.14 : 53 6★ à photo carrée en plein écran centré sur le visage ; onglet Événement grisé sur le live jusqu'au 01/12 | en ligne (tag `v2.1.14`, `3e12cca`) — `docs/chantiers/v2.1.14.md`. Grisage = live seulement (pas reporté sur `v2`) |
+| Hugo + Claude | `.wt-master` / `master` | patchs v2.1.15 et v2.1.16 : 5★ (615) et 6★ (61 de plus) à photo horizontale en plein écran sur le visage | en ligne — `docs/chantiers/v2.1.15.md`, `v2.1.16.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.13 : calendrier de l'Avent (95 boosters, 13 000 pièces, 9 cosmétiques de Noël par case, God Pack le 24, étoile refaite) | en ligne (tag `v2.1.13`, `1faee0e` ; v2 `b2dd383`) — `docs/chantiers/v2.1.13.md` |
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
 ## Reste à faire
 - [ ] 6★ plein écran : fournir des images pour les 135 détourées et vérifier les 114 fond blanc (`donnees/suivi/6etoiles-plein-ecran-26-11.xlsx`)
-- [ ] 6★ à cadrer à la main : 101 cartes (22 carrées sans visage, 79 trop horizontales) → `donnees/suivi/6etoiles-cadre-a-changer-26-11.xlsx`
+- [ ] 6★ / 5★ à cadrer à la main : 40 6★ et 541 5★ → `donnees/suivi/5-6etoiles-cadre-a-changer-26-11.xlsx`
 - [ ] Avent : onglet Événement grisé sur le live (v2.1.14) → à rouvrir pour le 01/12 (retirer `nav-off` + renvoi dans `route()` de `main.ts`, patch sur master) ; la note v2.1.13 annonce déjà l'onglet
 - [ ] Images : Leo, Jubelle (Summoners War), Coiffe Kitsou sans fichier ; 5 Musique 6★ sans extrait (Cocteau, Niska, James Joyce, Tupac, « Je serai ta meilleure amie »)
 - [ ] Dragon Cochon (Dofus) : laissée, retrait = migration de collections (Hugo : tant pis)
