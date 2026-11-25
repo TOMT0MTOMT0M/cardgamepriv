@@ -15,6 +15,7 @@ _Mis à jour : 25/11/2026 (mise en place de la méthode, `docs/GUIDE-CLAUDE.md`)
 - [ ] TEST Hugo
 - [ ] TEST Hugo 2
 - [ ] TEST Tom
+- [ ] TEST Tom 2
 - [ ] Intégrer les mp3 des 6★ introuvables en boutique dès que Tom les fournit (Crash Bandicoot, Zelda ALttP, Inazuma Eleven VF, Yu-Gi-Oh VF, Code Lyoko, Kaamelott, South Park VF, Lucky Luke 2001)
 - [ ] Signaler à Tom les 5★/6★ de la base Etoiles 8 encore sans image
 - [ ] V3 — Avent (démarre le 01/12) : nouvelle grille jour par jour, cosmétiques de Noël (cadres, bannières, animations de profil, ouvertures), God Pack du 24 avec au moins 1 hit, étoile du sapin à aligner
