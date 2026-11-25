@@ -22,7 +22,7 @@ Remplace `ADVENT_REWARDS` de `src/core/avent.ts` (ancienne grille : 5 250 pièce
 | 15 | 2 000 pièces |
 | 16 | 5 boosters |
 | 17 | Bannière « Atelier du Père Noël » |
-| 18 | 10 boosters (palier 3 semaines) |
+| 18 | 20 boosters (palier 3 semaines ; 10 → 20 le 26/11 pour arriver à 95) |
 | 19 | 3 000 pièces |
 | 20 | Ouverture de booster « Déchirure glacée » |
 | 21 | 15 boosters + 2 500 pièces |
