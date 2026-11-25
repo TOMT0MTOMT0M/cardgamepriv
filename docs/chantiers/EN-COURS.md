@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 25/11/2026 (Tom : patch v2.1.11, saison 0 et pity)._
+_Mis à jour : 25/11/2026 (Tom : v2.1.11 vérifié, MAX_PLAYERS 50, grille de l'Avent notée ; prochaine session : patch v2.1.12 Avent)._
 
 ## Chantiers ouverts
 
