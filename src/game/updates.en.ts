@@ -36,7 +36,7 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
-        date: '27 Nov', title: '🎄 The Advent calendar', tag: 'nouveau',
+        date: '26 Nov', title: '🎄 The Advent calendar', tag: 'nouveau',
         points: [
           '🎁 New Event tab: from 1 to 24 December, one door a day. A missed door can be caught up until 31 December.',
           '📦 In total: 95 boosters, 13,000 coins and, on the 24th, a God Pack with at least one 6★.',
