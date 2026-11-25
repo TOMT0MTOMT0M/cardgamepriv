@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 25/11/2026 (Tom : v2.1.11 vérifié, MAX_PLAYERS 50, grille de l'Avent notée ; prochaine session : patch v2.1.12 Avent)._
+_Mis à jour : 26/11/2026 (Hugo : patch v2.1.12 en ligne — images, musiques, famille France ; l'Avent passe en v2.1.13)._
 
 ## Chantiers ouverts
 
@@ -9,12 +9,15 @@ _Mis à jour : 25/11/2026 (Tom : v2.1.11 vérifié, MAX_PLAYERS 50, grille de l'
 |---|---|---|---|
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.10 : labo prod = labo complet (046 sachets cartoon) ; plus de labo sur le lien V2 (racine → `/jeu/`) | en ligne (tag `v2.1.10`, `5f5a4df` ; v2 `e08b146`) — `docs/chantiers/v2.1.10.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.11 : récompenses de saison 0 + pity anti-spoil | en ligne (tag `v2.1.11`, `52cfd6e` ; v2 `a0eb9ca`) — `docs/chantiers/v2.1.11.md` |
+| Hugo + Claude | `.wt-master` / `master` | patch v2.1.12 : images (353 + 159), musiques 6★, famille France | en ligne (tag `v2.1.12`, `40bd36e` ; v2 `73b61aa`) — `docs/chantiers/v2.1.12.md`. **L'Avent devient v2.1.13.** |
 | Tom + Claude | racine / `v2` | V3 : calendrier de l'Avent, titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
 ## Reste à faire
-- [ ] Intégrer les mp3 des 6★ introuvables en boutique dès que Tom les fournit (Crash Bandicoot, Zelda ALttP, Inazuma Eleven VF, Yu-Gi-Oh VF, Code Lyoko, Kaamelott, South Park VF, Lucky Luke 2001)
-- [ ] Signaler à Tom les 5★/6★ de la base Etoiles 8 encore sans image
+- [ ] 6★ plein écran : fournir des images pour les 135 détourées et vérifier les 114 fond blanc (`donnees/suivi/6etoiles-plein-ecran-26-11.xlsx`)
+- [ ] Images : Leo, Jubelle (Summoners War), Coiffe Kitsou sans fichier ; 5 Musique 6★ sans extrait (Cocteau, Niska, James Joyce, Tupac, « Je serai ta meilleure amie »)
+- [ ] Dragon Cochon (Dofus) : laissée, retrait = migration de collections (Hugo : tant pis)
+- [ ] Lucky Luke 2001 (mp3) : ignoré à la demande de Hugo
 - [ ] V3 — Avent (démarre le 01/12) : nouvelle grille jour par jour (`docs/chantiers/avent-noel.md`), cosmétiques de Noël (cadres, bannières, animations de profil, ouvertures), God Pack du 24 avec au moins 1 hit, étoile du sapin à aligner
 - [ ] V3 — Packs événement : 7 j, 1/h, réserve propre 3 (5 abonné), 2 500 pièces ; consommer SA réserve (prend un booster normal aujourd'hui) ; collection Télé + booster de lancement
 - [ ] V3 — Succès : ouvertures à gagner avec aperçu, paliers plus longs, récompenses proportionnelles (pièces, boosters, titres, cosmétiques) ; nouveaux cosmétiques nécessaires → les demander à Tom
@@ -37,6 +40,9 @@ _Mis à jour : 25/11/2026 (Tom : v2.1.11 vérifié, MAX_PLAYERS 50, grille de l'
 
 ## Pièges connus
 - `lanceurs/publier-patch.cmd` envoie tout `master..v2` (la V3 en cours) : jamais pour un correctif de la version en ligne.
+- Régénérer `sport.ts` (`make-sport.py`, via `reillustrer.py`) renomme l'album `paralympiques` en `sport-paralympiques` : le remettre à la main (curation v2.1.9) ; les 4 gros thèmes demandent `pip install openpyxl requests pillow` et `PYTHONUTF8=1`.
+- Un patch d'images : `public/art` de `.wt-master` ne contient que les nouvelles images, `r2-sync` n'envoie que celles-là (rien n'est retiré de R2).
+- Faire `git fetch` avant de numéroter un patch : Tom avait pris v2.1.11 pendant la session.
 - Après un patch : cherry-pick sur `v2` puis `git merge -s ours patch-v2.X.Y` sur `v2`.
 - Lanceurs `METTRE-EN-LIGNE-v2.X.Y.cmd` hors git : chacun n'a que les siens (v2.1.9 chez Tom, v2.1.10 chez Hugo). Prendre le plus récent connu.
 - `.wt-master` de Hugo sans `public/art` (hors git) : le lanceur v2.1.10 crée un dossier vide (images servies par R2). Ne jamais y copier le `public/art` de la racine (images V3 → écraseraient celles des joueurs dans R2).
