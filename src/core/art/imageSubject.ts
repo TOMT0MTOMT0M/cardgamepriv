@@ -165,8 +165,15 @@ export function coverBand(aspect: number) {
  * jaquette PS4 ; une jaquette DS (0,88), un album carré, une photo 4:3 vont dans le cadre.
  */
 export const PORTRAIT_MAX = 0.82;
-/** 6★ : jusqu'à ce format (largeur / hauteur) une photo à visage connu est recadrée en plein écran (≈ 70 % de la largeur gardés). */
-export const FILL_MAX = 1.25;
+/**
+ * 5★ et 6★ : jusqu'à ce format (largeur / hauteur) une photo à visage connu (faceFocus.json) est recadrée en plein écran,
+ * centrée sur le visage (≈ 30 % de la largeur gardés au minimum). (26/11, v2.1.15) 1,25 → 2,4 : les photos plus larges
+ * ne sont dans faceFocus.json que si elles ont été validées à l'œil (6★) ou gardent ≥ 30 % (5★).
+ */
+export const FILL_MAX = 2.4;
+/** La photo est-elle recadrée en plein écran sur son visage ? (même règle que paintCoverSubject, option `fillIfFace`) */
+export const fillsOnFace = (im: Pick<CardImage, 'canvas' | 'url'> | null): boolean =>
+  !!im && im.canvas.height > 0 && im.canvas.width / im.canvas.height < FILL_MAX && !!faceOf(im.url);
 
 /**
  * (retours live 6, B3 + C6 « zéro effet ») plus AUCUN flou ni fondu ni vignettage : une photo proche du portrait

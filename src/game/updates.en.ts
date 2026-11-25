@@ -26,6 +26,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: '5★ and 6★ cards in full art', tag: 'amélioré',
+        points: [
+          '🖼️ About 650 5★ and 6★ cards with a horizontal photo are now full art, centred on the face, instead of sitting whole inside a frame.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'Better-framed 6★ cards', tag: 'amélioré',
         points: [
           '🖼️ 6★ cards with a square photo (Diam’s…) are now full art, centred on the face, instead of sitting whole inside a frame.',

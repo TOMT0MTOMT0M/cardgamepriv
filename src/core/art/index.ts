@@ -13,7 +13,7 @@ import { universe } from '../universes';
 import { cardFamily, catalogEntry } from '../sets/themes';
 import { paintBack, ALU_BACK, type BackStyle } from './back';
 import { cardImage, ensureCardImages, loadCardImage, setImageLimits } from './images';
-import { PORTRAIT_MAX, coverBand, paintCoverSubject, paintImageSubject } from './imageSubject';
+import { PORTRAIT_MAX, coverBand, fillsOnFace, paintCoverSubject, paintImageSubject } from './imageSubject';
 import { paintPortraitSubject } from './portraitSubject';
 import { paintTitleSubject } from './jvTitle';
 
@@ -238,8 +238,10 @@ function* artSteps(card: CardData, rarityId: RarityId, o: ArtOptions): Generator
   // leurs images non portrait sont remplacées à la main par des photos verticales (doc claude/retours-live-06-avancement.md)
   // (10/11, retours Hugo) les 5★ étaient passées elles aussi en pleine illustration ; (14/11, décision de Tom après la
   // sortie V2) le gabarit Suisse revient sur les 5★ à photo horizontale. Seules les 6★ restent toujours en plein cadre.
-  const dz = rarityId === 'mythic' ? dz0 : landscapeDesign(card, im, dz0);
-  const fillIfFace = rarityId === 'mythic' && !LANDSCAPE.except(card);
+  // (26/11, v2.1.15) 5★ : plein cadre aussi quand sa photo est recadrée sur le visage (faceFocus.json), sinon Suisse comme avant
+  const fillTier = (rarityId === 'mythic' || rarityId === 'legendary') && !LANDSCAPE.except(card);
+  const dz = rarityId === 'mythic' || (fillTier && fillsOnFace(im)) ? dz0 : landscapeDesign(card, im, dz0);
+  const fillIfFace = fillTier;
 
   const bg = makeCanvas(W, H), subj = makeCanvas(W, H), fg = makeCanvas(W, H), fx = makeCanvas(W, H);
   const frame = makeCanvas(W, H), masks = makeCanvas(W, H);
