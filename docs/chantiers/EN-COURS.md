@@ -23,9 +23,7 @@ _Mis à jour : 25/11/2026 (Tom : patch v2.1.11, saison 0 et pity)._
 - [ ] V3 — Marché « façon Kyara » (captures reçues, brief : `docs/chantiers/marche-kyara.md`) ; passe « moins de texte » Marché / Échanges / Jeux (Pack Battle, Battle Royale : mêmes règles, plus visuels)
 - [ ] V3 — Roulette : toucher le pot = carte en grand, couleurs dans le replay
 - [ ] 01/12 : vérifier en ligne la clôture de la saison 0 (cron horaire) : récompenses, titres, God pack du 1er
-- [ ] Pity (v2.1.11) : vérifier à l'écran que le compteur ne bouge qu'après la révélation (simple, ×5, « Direct 4★ »)
 - [ ] God pack ouvert dans un ×10 : l'animation peut tomber sur le mauvais morceau (cartes correctes) — mineur, `spreadSeries` dans `shop.ts`
-- [ ] Prod : MAX_PLAYERS de 30 à 50 (variable Convex de prod — accord de Tom et Hugo du 25/11)
 - [ ] V3 — Ouvertures : retirer Brûlure, Éventail et les autres, seule la Déchirure reste
 - [ ] V3 — Notifications : « ta série est en danger » + tirage de la roulette
 - [ ] Portefeuille : retirer le texte « les pièces n'achètent jamais de cartes » (faux)
