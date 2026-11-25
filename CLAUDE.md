@@ -63,6 +63,7 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
 - Perf : mesurer avant, re-mesurer après. Un lot sans gain mesuré est annulé.
 
 ## Façon de travailler
+- Toujours répondre en français, court : résultat d'abord.
 - Dès 3 fichiers touchés : plan en 5 lignes, puis exécuter sans attendre.
 - S'arrêter seulement pour une décision irréversible ou qui change l'expérience des joueurs.
 - Compte rendu final court : ce qui a changé, ce que Tom doit vérifier.
