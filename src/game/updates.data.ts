@@ -85,6 +85,7 @@ export const UPDATES: UpdateMonth[] = [
           '✨ Une centaine de visuels remplacés, surtout des 6★ : musique, foot, esport, animés.',
           '🗂️ Les départements et régions de France ont leur propre famille, séparée des pays.',
           '🎵 Nouvelles musiques en fond des 6★ : les génériques français de Code Lyoko, South Park, Yu-Gi-Oh! et Inazuma Eleven, Kaamelott, et les thèmes de Zelda et Crash Bandicoot.',
+          '🎶 Plus de 100 extraits ajoutés aux 6★ Musique, et de la musique pour Suits, Bakuman, Fortnite, Dofus, Wakfu, Genshin Impact et les champions du monde 1998 et 2018.',
         ],
       },
       {
