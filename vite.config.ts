@@ -3,7 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { FR_DEVICE_LANGS } from './src/core/i18n';
 
 // `npm run dev:mobile` → HTTPS + LAN : WebGPU et le gyroscope exigent un contexte sécurisé sur téléphone.
-// Trois pages : le labo (/), le jeu (/jeu/) et le dashboard de l'équipe (/admin/, src/admin/) ; + le comparateur (/miroir/) sur le lien V2.
+// Trois pages : le labo (/, lien prod seulement), le jeu (/jeu/) et le dashboard de l'équipe (/admin/, src/admin/) ; + le comparateur (/miroir/) sur le lien V2.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', 'VITE_');
   // (V2) canal de build : `--mode v2` lit .env.v2.local (staging Convex) et marque le site « V2 — test » (src/core/canal.ts)
@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => {
       // (version anglaise) la liste des langues françaises (une seule source : src/core/i18n.ts) dans le script de jeu/index.html
       { name: 'bebou-lang', transformIndexHtml: (html: string) => html.replace('__BEBOU_FR_DEVICE_LANGS__', FR_DEVICE_LANGS.join(',')) } satisfies Plugin,
       precacheManifest(buildId, !!env.VITE_CONVEX_URL?.trim()),
+      ...(canal === 'v2' ? [labV2Redirect()] : []),
     ],
     // Catalogue en deux temps (perf, lot chargement 1) : le client lit le NOYAU du catalogue (sans les 4 gros sets) ;
     // le jeu installe les gros sets par import() pendant le démarrage de la 3D (main.ts), le labo au lancement.
@@ -37,7 +38,8 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 4000,
       rollupOptions: {
         input: {
-          lab: 'index.html',
+          // (25/11) le labo n'est publié que sur le lien prod ; sur le lien V2, la racine renvoie vers /jeu/ (labV2Redirect)
+          ...(canal === 'v2' ? {} : { lab: 'index.html' }),
           jeu: 'jeu/index.html',
           admin: 'admin/index.html',
           // (17/11) comparateur live / V3 (lien V2 seulement ; ses deux copies : scripts/miroir/build.mjs)
@@ -47,6 +49,17 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
+
+/** (25/11) lien V2 sans labo : la racine (et /index.html) renvoie vers le jeu (fichier _redirects de Cloudflare Pages). */
+function labV2Redirect(): Plugin {
+  return {
+    name: 'bebou-lab-v2-redirect',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: '_redirects', source: '/ /jeu/ 302\n/index.html /jeu/ 302\n' });
+    },
+  };
+}
 
 /**
  * Catalogues (audit PERF2-01) : les gros tableaux littéraux de `src/core/sets/*.ts` (21 702 cartes, ~1,7 Mo) deviennent

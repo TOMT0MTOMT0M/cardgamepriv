@@ -60,7 +60,7 @@ echo [5/5] Cloudflare Pages (branche v2)...
 call npx --yes wrangler pages deploy dist --project-name=cardgamepriv --branch=v2 --commit-dirty=true >> "%LOG%" 2>&1 || goto :err
 echo === OK === >> "%LOG%"
 echo.
-echo LIEN V2 MIS A JOUR : https://v2.cardgamepriv.pages.dev/jeu/  (labo : https://v2.cardgamepriv.pages.dev/)
+echo LIEN V2 MIS A JOUR : https://v2.cardgamepriv.pages.dev/jeu/  (labo : lien prod seulement, https://cardgamepriv.pages.dev/)
 echo Comparateur live / V3 : https://v2.cardgamepriv.pages.dev/miroir/
 echo Connexion avec un compte equipe (Tom, Hugo). Le site des joueurs n'a pas bouge.
 pause
