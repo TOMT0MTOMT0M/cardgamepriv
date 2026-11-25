@@ -60,6 +60,7 @@ function Ajouter-Bouton([string]$texte, [string]$detail, $fond, $encre, [int]$ha
   $b.Size = New-Object System.Drawing.Size(432, $hauteur)
   $b.Cursor = 'Hand'
   $b.Enabled = $actif
+  if (-not $actif) { $b.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60); $b.ForeColor = [System.Drawing.Color]::FromArgb(130, 130, 130) }
   $b.Add_Click($action)
   $fenetre.Controls.Add($b)
   $script:y += $hauteur + 12
