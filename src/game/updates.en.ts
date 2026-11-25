@@ -40,6 +40,7 @@ export const UPDATES_EN: UpdateMonth[] = [
           '✨ About a hundred pictures replaced, mostly 6★: music, football, esports, anime.',
           '🗂️ French departments and regions now have their own family, separate from countries.',
           '🎵 New background music for 6★ cards: the French theme songs of Code Lyoko, South Park, Yu-Gi-Oh! and Inazuma Eleven, Kaamelott, plus the Zelda and Crash Bandicoot themes (South Park keeps Primus in English).',
+          '🎶 Over 100 more clips for 6★ Music cards, and music for Suits, Bakuman, Fortnite, Dofus, Wakfu, Genshin Impact and the 1998 and 2018 world champions.',
         ],
       },
       {
