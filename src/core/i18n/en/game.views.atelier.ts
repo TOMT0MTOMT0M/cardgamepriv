@@ -26,6 +26,8 @@ export const en: PartOf<typeof fr> = {
   'at.hint.vitrine': 'The backdrop for your cards.',
   'at.hint.badge': 'Up to 5, under your name.',
   'at.sec.drawn': 'Drawn',
+  'at.sec.banners': 'Banners',
+  'at.sec.pfx': 'Profile animation',
   'at.sec.rings': 'Colour rings',
   'at.sec.style': 'Lettering',
   'at.sec.titles': 'Title',

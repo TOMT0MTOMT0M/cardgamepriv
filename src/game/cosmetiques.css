@@ -105,3 +105,13 @@ span.pf-title.ts.ts-light { --t-col: var(--tc); padding: 0; border-width: 0; bac
 .bg-gl { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border-radius: inherit; }
 @keyframes bg-nuages { to { background-position: 140px 0, -110px 0, 90px 0, -160px 0, 0 0; } }
 .pf-bg[data-bg='nuages'], .at-pv-bg[data-bg='nuages'] { animation: bg-nuages calc(var(--amb-tour) * 2) ease-in-out infinite alternate; }
+
+/* (v2.1.13) ANIMATIONS DE PROFIL (src/core/cosmetics.ts PROFILE_FX, calque : cosmeticArt.ts pfxHtml) — par-dessus la
+   bannière (profil, aperçu et tuiles de l'atelier), sous les boutons ; CSS seul, coupé en « mouvements réduits » */
+.pfx { position: absolute; inset: 0; z-index: 1; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.pfx-neige i { position: absolute; left: var(--x); top: -8px; width: var(--s); height: var(--s); border-radius: 50%; background: #fff; opacity: 0.85; animation: pfx-fall calc(var(--amb-particule) * 3.4 * var(--k)) linear var(--d) infinite; }
+@keyframes pfx-fall { 0% { translate: 0 0; } 50% { translate: 7px 100px; } 100% { translate: -4px 220px; } }
+.pfx-aurore i { position: absolute; left: -25%; right: -25%; height: 70%; top: -10%; opacity: 0.55; background: linear-gradient(100deg, transparent 10%, #4dffb466 30%, #39d8ff55 50%, #b26bff44 70%, transparent 90%); mask-image: linear-gradient(180deg, transparent, #000 35%, #000 55%, transparent); -webkit-mask-image: linear-gradient(180deg, transparent, #000 35%, #000 55%, transparent); animation: pfx-aurore calc(var(--amb-tour) / 4) ease-in-out infinite alternate; }
+.pfx-aurore i + i { top: 8%; opacity: 0.4; animation-duration: calc(var(--amb-tour) / 3); animation-direction: alternate-reverse; background: linear-gradient(80deg, transparent 15%, #6bffb855 40%, #4dc8ff44 60%, transparent 85%); }
+@keyframes pfx-aurore { 0% { translate: -12% 0; skew: -8deg 0; } 100% { translate: 12% 6px; skew: 8deg 0; } }
+@media (prefers-reduced-motion: reduce) { .pfx i { animation: none; } .pfx-neige i { top: calc(var(--k) * 60%); } }

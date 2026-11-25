@@ -10,11 +10,11 @@ import type { ViewerScene } from '../scenes/viewer';
 import { dropFlight, liftCard, returnCard } from '../sharedFlight';
 import { catalogEntry, PUBLIC_CARD_COUNT, THEMES } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
-import { ACCENTS, BACKGROUNDS, BADGES, BANNERS, FRAMES, TITLE_STYLES, VITRINES, accentColor, accordOf, backgroundOf, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
+import { ACCENTS, BACKGROUNDS, BADGES, BANNERS, FRAMES, PROFILE_FX, TITLE_STYLES, VITRINES, accentColor, profileFxOf, accordOf, backgroundOf, bannerColor, vitrineOf, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX, PROFILE_MEDIA_TYPES, TITLES, badgeOf, bannerOf, frameOf, profileMediaProblem, statsFrom, titleOf, unlockedIds, type Cosmetic, type PlayerStats, type ProfileMediaKind } from '../../core/cosmetics';
 import { segIndicator } from '../../core/morph';
 import { openAtelier, type Atelier, type AtelierFam } from './atelier';
 import { OPEN_COSM, OPEN_COSM_EVT } from '../atelierOnce';
-import { accordFx, badgeIcon, framed, icon, titleHtml } from '../cosmeticArt';
+import { accordFx, badgeIcon, framed, icon, pfxHtml, titleHtml } from '../cosmeticArt';
 import { mountBgShader } from '../bgShader';
 import type { MsgKey } from '../../core/i18n';
 import { guarded } from './safety';
@@ -263,6 +263,13 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       }
     }
     banner.classList.toggle('has-media', !!bUrl);
+    // (v2.1.13) animation de profil (neige, aurore…) : un calque par-dessus la bannière, reposé seulement s'il change
+    const fx = profileFxOf(cos.pfx).id;
+    const fxEl = banner.querySelector<HTMLElement>('.pfx');
+    if ((fxEl?.dataset.fx ?? 'none') !== fx) {
+      fxEl?.remove();
+      if (fx !== 'none') banner.insertAdjacentHTML('beforeend', pfxHtml(fx));
+    }
     const bb = q<HTMLButtonElement>('.pf-banner-btn');
     bb.hidden = !me;
     const fresh = me && !cosmOpen ? newCosmetics().size : 0;
@@ -332,6 +339,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       ...unlockedIds(VITRINES, st).map((id) => `vitrine:${id}`), // i18n-ok
       ...unlockedIds(BACKGROUNDS, st).map((id) => `background:${id}`),
       ...unlockedIds(TITLE_STYLES, st).map((id) => `tstyle:${id}`),
+      ...unlockedIds(PROFILE_FX, st).map((id) => `pfx:${id}`),
     ];
   };
   /**

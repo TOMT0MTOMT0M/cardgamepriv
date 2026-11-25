@@ -332,6 +332,11 @@ export function createPackSheet(
     const cur = u.openingStyle ?? DEFAULT_OPENING;
     const rows = OPENINGS.map((o) => {
       const a = o.need ? ACHIEVEMENTS.find((x) => x.id === o.need) : undefined;
+      // (v2.1.13) ouvertures de Noël : débloquées par leur case du calendrier de l'Avent
+      if (o.advent) {
+        const ok = !!backend.eco.snapshot?.advent?.opened.includes(o.advent);
+        return { o, ok, on: o.id === cur, sub: ok ? o.blurb : o.how };
+      }
       const ok = !a || (!!st && achievementDone(a, st));
       const prog = a && st ? ` · ${fmtN(Math.min(st[a.stat] ?? 0, a.target))}/${fmtN(a.target)}` : '';
       return { o, ok, on: o.id === cur, sub: ok ? o.blurb : `${a ? tr('ps.achHow', { label: a.label, how: a.how }) : ''}${prog}` };

@@ -133,6 +133,10 @@ html.at-open { overflow: hidden; }
 /* dans la grille, seule la tuile survolée ou choisie bouge */
 .at-tile .cf-a, .at-tile .pf-title.ts { animation-play-state: paused; }
 .at-tile:hover .cf-a, .at-tile.on .cf-a, .at-tile:hover .pf-title.ts, .at-tile.on .pf-title.ts { animation-play-state: running; }
+/* (v2.1.13) animation de profil dans sa tuile : jouée seulement survolée ou choisie, comme les cadres */
+.at-sw-fx { overflow: hidden; }
+.at-tile .pfx i { animation-play-state: paused; }
+.at-tile:hover .pfx i, .at-tile.on .pfx i { animation-play-state: running; }
 .at-order { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
 .at-ord { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 8px; border: 1px solid var(--gm-line); border-radius: var(--r-pill); }
 .at-ord button { display: grid; place-items: center; width: 44px; height: 36px; padding: 0; border: 0; border-radius: var(--r-pill); background: none; color: #ffffff; cursor: pointer; }

@@ -8,11 +8,11 @@ import { requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
 import { pinnedOf } from './binders';
 import { DEFAULT_OPENING, OPENINGS, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type PlayerStats } from '../src/core/cosmetics';
+import { adventOpened } from '../src/core/avent';
 import { streakDay, touchStreak } from '../src/core/streak';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
 import { econOf } from './econLib';
-import { adventOpened } from '../src/core/avent';
 import { seenAtOf, syncPresence } from './presence';
 
 /**
@@ -50,6 +50,8 @@ export async function rankSigOf(ctx: QueryCtx, u: Doc<'users'>): Promise<string>
     ...(adventOpened(u).length ? [adventOpened(u).length] : []),
     // (ajouté seulement quand il existe : la signature des autres joueurs ne change pas, rien n'est recalculé pour eux)
     ...(u.season0Top || u.season0Player ? [u.season0Top ?? 0, u.season0Player ?? 0] : []),
+    // (v2.1.13) cases de l'Avent (cosmétiques de Noël) : même principe
+    ...(adventOpened(u).length ? [adventOpened(u).join('.')] : []),
   ]);
 }
 
@@ -68,7 +70,7 @@ export async function statsOf(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: 
   const collection = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
   const streak = liveStreak(u);
   // (retours live 6) + doublons brûlés (titres de la forge) et « a été n°1 » (titre Numéro un)
-  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, noel26: adventOpened(u).length, season0Top: u.season0Top ?? 0, season0Player: u.season0Player ?? 0 });
+  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, season0Top: u.season0Top ?? 0, season0Player: u.season0Player ?? 0, ...(adventOpened(u).length ? { advent: adventOpened(u) } : {}) });
   return { stats, collection };
 }
 
@@ -316,11 +318,13 @@ export const setBio = mutation({
 export const setCosmetics = mutation({
   args: { sessionToken: v.string(), banner: v.optional(v.string()), frame: v.optional(v.string()), title: v.optional(v.string()), badges: v.optional(v.array(v.string())), accent: v.optional(v.string()), vitrine: v.optional(v.string()), vitrineColor: v.optional(v.string()),
     // (14/11, refonte de la personnalisation) fond du profil, style d'écriture du titre
-    background: v.optional(v.string()), titleStyle: v.optional(v.string()) },
-  handler: async (ctx, { sessionToken, banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle }) => {
+    background: v.optional(v.string()), titleStyle: v.optional(v.string()),
+    // (v2.1.13) animation de profil (cosmétiques de Noël)
+    pfx: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken, banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle, pfx }) => {
     const user = await requireUser(ctx, sessionToken);
     const stats = await statsCached(ctx, user); // (audit 12/11, A6-11) sans relire l'inventaire si la ligne de classement est à jour
-    const clean = cleanCosmetics({ banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle }, stats);
+    const clean = cleanCosmetics({ banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle, pfx }, stats);
     // (11/11) l'animation d'ouverture se choisit ailleurs (fiche booster, `setOpening`) : on la garde telle quelle
     const opening = user.cosmetics?.opening;
     await ctx.db.patch(user._id, { cosmetics: opening ? { ...clean, opening } : clean });
@@ -341,7 +345,7 @@ export const setOpening = mutation({
     const user = await requireUser(ctx, sessionToken);
     const o = OPENINGS.find((x) => x.id === style);
     if (!o) throw new ConvexError(fe('profiles.5'));
-    if (o.need) {
+    if (o.need || o.advent) {
       const stats = await statsCached(ctx, user);
       if (!o.unlock(stats)) throw new ConvexError(fe('profiles.6', { p0: o.how }));
     }

@@ -7,7 +7,7 @@ import {
   ADVENT_DAYS,
   ADVENT_LAST_DAY,
   ADVENT_LAYOUT,
-  ADVENT_STEPS,
+  ADVENT_REWARDS,
   adventDay,
   adventPhase,
   adventReward,
@@ -17,11 +17,11 @@ import {
   type AdventReward,
   type DoorState,
 } from '../../core/avent';
-import { cosmeticsOf } from '../../core/cosmetics';
+import { adventCosmetic } from '../../core/cosmetics';
 import { fmtCoins } from '../../core/economy';
 import { fmtLeft, liveEvent, type PackEvent } from '../../core/events';
 import { DUR, STAGGER } from '../../core/motion';
-import { badgeIcon, icon } from '../cosmeticArt';
+import { icon, type IconName } from '../cosmeticArt';
 import { busyButton, errMsg, esc, h, toast } from '../ui';
 import { COIN_ICON } from './wallet';
 import { createAventMusic } from '../aventMusic';
@@ -91,9 +91,24 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
     }
   };
 
-  const rewardHtml = (r: AdventReward) =>
-    r.god ? `<i class="av-ico god">${GOD}</i><em>${tr('av.god')}</em>` : r.coins ? `<i class="av-ico">${COIN_ICON}</i><em>${fmtCoins(r.coins)}</em>` : `<i class="av-ico">${PACK}</i><em>× ${r.packs ?? 0}</em>`;
-  const rewardText = (r: AdventReward) => (r.god ? tr('av.god') : r.coins ? tr('av.coins', { n: fmtCoins(r.coins) }) : tr('av.packs', { n: r.packs ?? 0 }));
+  // (v2.1.13) une case peut donner boosters ET pièces (21), ou un ou deux cosmétiques de Noël (3, 6, 10…, 23)
+  const COS_ICON: Record<string, IconName> = { frame: 'frame', banner: 'banner', pfx: 'banner', opening: 'pen' };
+  const cosOf = (r: AdventReward) => (r.cos ?? []).map((x) => ({ kind: x.kind, c: adventCosmetic(x.kind, x.id) })).filter((x) => !!x.c);
+  const rewardHtml = (r: AdventReward) => {
+    if (r.god) return `<i class="av-ico god">${GOD}</i><em>${tr('av.god')}</em>`;
+    const parts: string[] = [];
+    for (const x of cosOf(r)) parts.push(`<i class="av-ico cos">${icon(COS_ICON[x.kind] ?? 'badge', 18)}</i><em class="av-cos">${esc(x.c!.label)}</em>`);
+    if (r.packs) parts.push(`<i class="av-ico">${PACK}</i><em>× ${r.packs}</em>`);
+    if (r.coins) parts.push(`<i class="av-ico">${COIN_ICON}</i><em>${fmtCoins(r.coins)}</em>`);
+    return parts.length > 1 ? `<span class="av-duo">${parts.map((p) => `<span>${p}</span>`).join('')}</span>` : parts.join('');
+  };
+  const rewardText = (r: AdventReward) => {
+    if (r.god) return tr('av.god');
+    const parts = cosOf(r).map((x) => `${tr(`av.k.${x.kind}` as MsgKey)} « ${x.c!.label} »`); // i18n-ok (guillemets)
+    if (r.packs) parts.push(tr('av.packs', { n: r.packs }));
+    if (r.coins) parts.push(tr('av.coins', { n: fmtCoins(r.coins) }));
+    return parts.join(' · ');
+  };
 
   /**
    * (23/11, retours Tom) EN FORME DE SAPIN : l'étoile (la 24, le God Pack) au sommet, six étages de 1 à 6 cases
@@ -142,13 +157,14 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
     else if (phase === 'over') statusEl.innerHTML = `<span>${tr('av.over')}</span>${count}`;
     else statusEl.innerHTML = `<span>${t <= ADVENT_DAYS ? tr('av.day', { n: t }) : tr('av.catchUp')}</span>${count}`;
     el.querySelector('.av')!.setAttribute('data-phase', phase);
-    // paliers des cosmétiques de Noël (succès `noel26-…`) : une pastille par palier, allumée une fois atteinte
-    railEl.innerHTML = `<i class="av-rail-bar"><i style="--p:${(done / ADVENT_DAYS).toFixed(4)}"></i></i>${ADVENT_STEPS.map((n) => {
-      const c = cosmeticsOf(`noel26-${n}`)[0];
-      if (!c) return '';
-      const ico = c.kind === 'Badge' ? badgeIcon(c.c.id, 14) : icon(c.kind === 'Cadre' ? 'frame' : 'title', 14); // i18n-ok (genres : identifiants)
-      return `<span class="av-step${done >= n ? ' on' : ''}" style="--at:${(n / ADVENT_DAYS).toFixed(4)}" title="${esc(`${tr(`av.k.${c.kind}` as MsgKey)} « ${c.c.label} » · ${tr('av.railN', { n })}`)}"><i>${ico}</i><b>${n}</b><em>${esc(c.c.label)}</em></span>`;
-    }).join('')}`;
+    // (v2.1.13) cosmétiques de Noël : chacun donné par SA case, allumé une fois la case ouverte
+    const got = opened();
+    railEl.innerHTML = `<i class="av-rail-bar"><i style="--p:${(done / ADVENT_DAYS).toFixed(4)}"></i></i>${ADVENT_REWARDS.flatMap((r, i) =>
+      cosOf(r).map((x) => {
+        const n = i + 1;
+        return `<span class="av-step${got.includes(n) ? ' on' : ''}" style="--at:${(n / ADVENT_DAYS).toFixed(4)}" title="${esc(`${tr(`av.k.${x.kind}` as MsgKey)} « ${x.c!.label} » · ${tr('av.railN', { n })}`)}"><i>${icon(COS_ICON[x.kind] ?? 'badge', 14)}</i><b>${n}</b><em>${esc(x.c!.label)}</em></span>`; // i18n-ok (guillemets)
+      }),
+    ).join('')}`;
     const gods = backend.eco.snapshot?.advent?.godPacks ?? 0;
     godBar.hidden = gods === 0;
     if (gods) godBar.innerHTML = `<i class="av-ico god">${GOD}</i><span><b>${tr('av.godWait', { n: gods })}</b><small>${tr('av.godD')}</small></span><em>${tr('av.godGo')} →</em>`;
@@ -220,6 +236,7 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
     });
     if (r.god) d.classList.add('burst');
     toast(`${tr('av.doorA', { n: day })} · ${rewardText(r)}`, 'ok');
+    for (const x of cosOf(r)) toast(tr('av.cosGot', { kind: tr(`av.k.${x.kind}` as MsgKey), name: x.c!.label }), 'info');
   }
 
   async function tap(day: number, d: HTMLButtonElement, quiet = false) {

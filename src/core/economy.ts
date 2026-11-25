@@ -202,8 +202,6 @@ export interface AchievementStats {
   /** (11/11, saisons — convex/seasons.ts) saisons finies sur le podium (top 3) / à la première place */
   seasonPodiums: number;
   seasonWins: number;
-  /** (20/11, calendrier de l'Avent 2026 — src/core/avent.ts) cases ouvertes : débloque les cosmétiques de Noël */
-  noel26: number;
   /** (25/11) saison 0 : top 3 / participant (≥ 100 boosters) — 1 = oui */
   season0Top: number;
   season0Player: number;
@@ -340,11 +338,6 @@ export const ACHIEVEMENTS: Achievement[] = [
   // (11/11) saisons mensuelles (convex/seasons.ts) : le podium donne un cadre, la victoire un titre
   A('season-podium', 'Sur le podium', 'Finis une saison dans les 3 premiers', 3, 'seasonPodiums', 1, K),
   A('season-1', 'Champion de saison', 'Gagne une saison du classement', 4, 'seasonWins', 1, K),
-  // (20/11) calendrier de l'Avent 2026 (src/core/avent.ts, ADVENT_STEPS) : les cosmétiques de Noël, au nombre de cases ouvertes
-  A('noel26-4', 'Premier flocon', 'Ouvre 4 cases du calendrier de l’Avent 2026', 1, 'noel26', 4, K),
-  A('noel26-12', 'Atelier des lutins', 'Ouvre 12 cases du calendrier de l’Avent 2026', 2, 'noel26', 12, K),
-  A('noel26-18', 'Nuit de givre', 'Ouvre 18 cases du calendrier de l’Avent 2026', 3, 'noel26', 18, K),
-  A('noel26-24', 'Réveillon', 'Ouvre les 24 cases du calendrier de l’Avent 2026', 4, 'noel26', 24, K),
   A('s0-podium', 'Podium de la saison 0', 'Finis la saison 0 dans les 3 premiers', 4, 'season0Top', 1, K),
   A('s0-joueur', 'Participant de la saison 0', 'Ouvre 100 boosters pendant la saison 0', 2, 'season0Player', 1, K),
   // Bébou : le niveau (paliers obtenus dans les succès du profil)
@@ -458,7 +451,6 @@ const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   wasTop: 'Classement',
   seasonPodiums: 'Podiums de saison',
   seasonWins: 'Saisons gagnées',
-  noel26: 'Avent 2026',
   season0Top: 'Saison 0 : podium',
   season0Player: 'Saison 0 : participation',
   bebouLevel: 'Niveau Bébou',
@@ -537,13 +529,12 @@ export const ABUSE = {
 
 /** Stats des succès à partir des stats du profil (src/core/cosmetics.ts) et des compteurs de l'économie. */
 /** succès du PROFIL (ni l'espace Jeux, ni le niveau Bébou lui-même) : ce que compte le niveau Bébou */
-// (20/11) l'Avent 2026 est limité dans le temps : il ne compte pas non plus (personne n'est pénalisé de l'avoir manqué)
-const ECON_ONLY = new Set<keyof AchievementStats>(['gamesPlayed', 'gamesWon', 'rouletteWins', 'coinsEarned', 'bebouLevel', 'noel26']);
+const ECON_ONLY = new Set<keyof AchievementStats>(['gamesPlayed', 'gamesWon', 'rouletteWins', 'coinsEarned', 'bebouLevel']);
 export function achievementStats(
   p: {
     packsOpened: number; uniques: number; mythics: number; legendaries: number; secrets: number; fullSubthemes: number; tradesDone: number; contractsSigned: number; streak: number;
     worldUniques?: number; gamingUniques?: number; popUniques?: number; sportUniques?: number; burned?: number; wasTop?: number;
-    seasonPodiums?: number; seasonWins?: number; noel26?: number; season0Top?: number; season0Player?: number;
+    seasonPodiums?: number; seasonWins?: number; season0Top?: number; season0Player?: number;
   },
   e: EconState,
 ): AchievementStats {
@@ -570,7 +561,6 @@ export function achievementStats(
     wasTop: p.wasTop ?? 0,
     seasonPodiums: p.seasonPodiums ?? 0,
     seasonWins: p.seasonWins ?? 0,
-    noel26: p.noel26 ?? 0,
     season0Top: p.season0Top ?? 0,
     season0Player: p.season0Player ?? 0,
     bebouLevel: 0,

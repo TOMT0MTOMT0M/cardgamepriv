@@ -43,7 +43,6 @@ const ICONS = {
   'b-trade': 'M7 8h11l-3-3M17 16H6l3 3',
   'b-contract': 'M6 4h9l3 3v13H6zM9 12h6M9 16h4M14 4v4h4',
   'b-streak': 'M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2c.3 1.6 1 2.4 2 2.7C10.5 9 11 5.5 12 3z',
-  'b-noel26': 'M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9M12 6.5l-2.2-2M12 6.5l2.2-2M12 17.5l-2.2 2M12 17.5l2.2 2',
   'b-half': 'M4 6h4v13H4zM9 4h4v15H9zM14.5 7l3.8-1 3 12.5-3.8 1z',
 } as const;
 export type IconName = keyof typeof ICONS;
@@ -165,15 +164,34 @@ function arts(): Record<string, Art> {
   }
   let coeurs = '';
   for (let i = 0; i < 6; i++) coeurs += heart(48 * Math.cos((i / 6) * TAU), 48 * Math.sin((i / 6) * TAU), 0.85);
-  // (20/11, Avent 2026) flocons : six étoiles de givre à six branches posées sur l'anneau, une grande, une petite
-  let flocons = '';
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * TAU - TAU / 4, cx = 47 * Math.cos(a), cy = 47 * Math.sin(a), r = i % 2 ? 3.1 : 4.7;
-    for (let k = 0; k < 3; k++) {
-      const b = (k / 3) * Math.PI + a;
-      flocons += `M${(cx - r * Math.cos(b)).toFixed(1)} ${(cy - r * Math.sin(b)).toFixed(1)}L${(cx + r * Math.cos(b)).toFixed(1)} ${(cy + r * Math.sin(b)).toFixed(1)}`;
+  // (v2.1.13, Avent 2026) flocon : trois branches et leurs petits « V », au trait
+  const flake = (cx: number, cy: number, r: number, rot = 0) => {
+    let s = '';
+    for (let k = 0; k < 6; k++) {
+      const b = (k / 6) * TAU + rot, ex = cx + r * Math.cos(b), ey = cy + r * Math.sin(b);
+      s += `M${f2(cx)} ${f2(cy)}L${f2(ex)} ${f2(ey)}`;
+      const mx = cx + r * 0.58 * Math.cos(b), my = cy + r * 0.58 * Math.sin(b), w = r * 0.3;
+      for (const sg of [-1, 1]) s += `M${f2(mx)} ${f2(my)}L${f2(mx + w * Math.cos(b + sg * 0.9))} ${f2(my + w * Math.sin(b + sg * 0.9))}`;
     }
+    return s;
+  };
+  let givre = '';
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * TAU + TAU / 12;
+    givre += flake(47 * Math.cos(a), 47 * Math.sin(a), i % 2 ? 3.6 : 5);
   }
+  // sucre d'orge : l'anneau rayé de rouge en biais, comme la canne
+  let sucre = '';
+  for (let i = 0; i < 20; i++) {
+    const a = (i / 20) * TAU;
+    sucre += `M${P(38.6, a)}L${P(38.6, a + 0.13)}L${P(45.4, a + 0.27)}L${P(45.4, a + 0.14)}Z`;
+  }
+  // chapeau de Noël : le bonnet posé sur le haut de la photo, sa bordure blanche et son pompon
+  let bord = '';
+  const b0 = -2.62, b1 = -0.52;
+  for (let i = 0; i <= 24; i++) bord += `${i ? 'L' : 'M'}${P(45, b0 + ((b1 - b0) * i) / 24)}`;
+  for (let i = 24; i >= 0; i--) bord += `L${P(37, b0 + ((b1 - b0) * i) / 24)}`;
+  bord += 'Z' + dot(47, -46, 5.5);
   ARTS = {
     none: { d: circ(37.5), sw: 0.6, c: 'var(--gm-line-2, rgba(255,255,255,0.24))' },
     ring: { d: circ(40.5), sw: 2.4 },
@@ -199,10 +217,26 @@ function arts(): Record<string, Art> {
     coeurs: { d: circ(40.5), sw: 1.4, m: coeurs, mf: '#ff5d8f', an: 'spin' },
     galaxie: { d: circ(40), sw: 0.8, f: star4(40, -34, 5) + star4(-44, 26, 4) + star4(-30, -44, 3) + star4(46, 28, 3), fc: '#ffffff', m: dots(40, 45, 0.75), mf: '#b59cff', an: 'spin' },
     neon: { d: circ(43), sw: 3.4, c: '#39ffd2', m: circ(43), ms: '#eafffb', msw: 1, an: 'flick' },
-    flocons: { d: circ(39.5), sw: 1, c: '#cfeaff', m: flocons, ms: '#ffffff', msw: 1.3, an: 'tw' },
     podium: { d: circ(40.5), sw: 2.2, c: '#ffc94a', f: 'M-9 46h6v7h-6ZM-3 42h6v11h-6ZM3 48h6v5h-6Z', fc: '#ffc94a' },
+    // (v2.1.13) cadres de Noël (calendrier de l'Avent) : le givre scintille, la canne et le bonnet restent fixes
+    flocon: { d: circ(40) + flake(0, -50, 8.5, -Math.PI / 2), sw: 1.2, c: '#cfeaff', m: givre, ms: '#ffffff', msw: 1, an: 'tw' },
+    sucre: { d: circ(38.6) + circ(45.4), sw: 0.8, c: '#ffffff', f: sucre, fc: '#ff3346' },
+    bonnet: { d: circ(40.5), sw: 2, c: '#e8333f', f: 'M-38 -22Q-28 -66 18 -60Q38 -57 44 -45L32 -28Q0 -44 -38 -22Z', fc: '#e8333f', m: bord, mf: '#ffffff' },
   };
   return ARTS;
+}
+
+/**
+ * (v2.1.13) ANIMATION DE PROFIL (src/core/cosmetics.ts, PROFILE_FX) : un calque posé par-dessus la bannière
+ * (`.pfx`, cosmetiques.css). Neige : 16 flocons en CSS pur ; aurore : deux voiles de dégradés qui ondulent. Rien en
+ * « mouvements réduits » (le calque reste, fixe). Aucune boucle JS, aucun canevas.
+ */
+export function pfxHtml(id: string): string {
+  let inner = '';
+  if (id === 'neige')
+    for (let i = 0; i < 16; i++) inner += `<i style="--x:${((i * 61) % 100) + 0.5}%;--d:${-((i * 37) % 90) / 10}s;--s:${2 + ((i * 7) % 4)}px;--k:${0.85 + ((i * 13) % 6) / 10}"></i>`;
+  else if (id === 'aurore') inner = '<i></i><i></i>';
+  return `<span class="pfx pfx-${esc(id)}" data-fx="${esc(id)}" aria-hidden="true">${inner}</span>`;
 }
 
 /** Couleur propre d'un cadre « anneau de couleur » (palette, couleur libre, cadres d'avant le 07/11) ; sinon celle du profil. */

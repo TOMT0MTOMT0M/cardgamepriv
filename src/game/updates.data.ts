@@ -71,6 +71,14 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 nov.', title: '🎄 Le calendrier de l’Avent', tag: 'nouveau',
+        points: [
+          '🎁 Nouvel onglet Événement : du 1er au 24 décembre, une case par jour. Une case oubliée se rattrape jusqu’au 31 décembre.',
+          '📦 Au total : 85 boosters, 13 000 pièces et, le 24, un God Pack avec au moins une 6★.',
+          '❄️ 9 cosmétiques de Noël à garder pour toujours : 3 cadres, 2 bannières, 2 animations de profil (neige, aurore boréale) et 2 ouvertures de booster.',
+        ],
+      },
+      {
         date: '25 nov.', title: 'Fin de la saison 0 : les récompenses', tag: 'nouveau',
         points: [
           '🏆 La saison 0 se termine le 30 novembre : 1er un God pack, 2e 20 boosters, 3e 15 boosters, 4e à 10e 10 boosters, et 1 booster pour les autres dès une carte gagnée.',

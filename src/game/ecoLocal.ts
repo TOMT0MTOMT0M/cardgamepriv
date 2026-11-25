@@ -552,7 +552,7 @@ export function createLocalEco(host: LocalEcoHost) {
   const hooks = {
     /** (20/11) un god pack offert (case 24 de l'Avent) attend-il ? Le consomme : ce booster en est un. */
     takeGodPack: () => extras.takeGodPack(),
-    adventOpened: () => extras.opened().length,
+    adventOpened: () => extras.opened(),
     onPack(kind: 'bebou' | 'theme', label: Msg, cards: Array<{ rarity: string; isNew: boolean }>) {
       coins(rollPackCoins(kind, Math.random), 'pack', label, true);
       weekly({ type: 'pack', cards });

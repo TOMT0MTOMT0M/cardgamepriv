@@ -5,10 +5,11 @@
  * Règles :
  *  - la case N s'ouvre à partir du N décembre ; une case manquée se RATTRAPE jusqu'au 31 décembre inclus (personne ne
  *    perd un cadeau pour un jour d'absence) ; chaque case ne s'ouvre qu'une fois ;
- *  - chaque case donne des pièces ou des boosters (`ADVENT_REWARDS`) ; la case 24 donne un GOD PACK (un booster dont
- *    toutes les cartes sont 4★ ou mieux — src/core/packRoll.ts) : le prochain booster ouvert, n'importe lequel ;
- *  - les cosmétiques de Noël se gagnent au NOMBRE de cases ouvertes (`ADVENT_STEPS` : succès `noel26-…` de
- *    src/core/economy.ts → badge, titre, cadre, titre — src/core/cosmetics.ts), et restent pour toujours ;
+ *  - chaque case donne des pièces, des boosters et/ou un COSMÉTIQUE de Noël (`ADVENT_REWARDS`, grille de Tom du 25/11 :
+ *    docs/chantiers/avent-noel.md) ; la case 24 donne un GOD PACK (un booster dont toutes les cartes sont 4★ ou mieux,
+ *    au moins une 5★ et une 6★ — src/core/packRoll.ts) : le prochain booster ouvert, n'importe lequel ;
+ *  - (v2.1.13) un cosmétique est donné PAR SA CASE : ouvrir la case le débloque pour toujours (src/core/cosmetics.ts,
+ *    champ `advent` : le jour de la case ; vérifié par les cases ouvertes rangées sur le joueur, rien d'autre à stocker) ;
  *  - l'équipe (admins) et la démo peuvent simuler un jour (`debugDay`) et refermer leurs cases pour tout tester.
  * Une nouvelle édition = changer `ADVENT_YEAR` (les cases sont rangées par année : rien à migrer).
  */
@@ -20,27 +21,35 @@ export const ADVENT_DAYS = 24;
 /** dernier jour de décembre où l'on peut encore ouvrir (rattrapage) */
 export const ADVENT_LAST_DAY = 31;
 
+/** genres de cosmétiques donnés par une case (ids : src/core/cosmetics.ts, éléments marqués `advent: <jour>`) */
+export type AdventCosKind = 'frame' | 'banner' | 'pfx' | 'opening';
 export interface AdventReward {
   coins?: number;
   packs?: number;
   /** un god pack (le prochain booster ouvert) — donné avec le booster qui le porte */
   god?: true;
+  /** cosmétique(s) de Noël débloqué(s) pour toujours par cette case */
+  cos?: ReadonlyArray<{ kind: AdventCosKind; id: string }>;
 }
 
-/** Les 24 cadeaux (index 0 = 1er décembre). Total : 5 250 pièces, 35 boosters, 1 god pack. */
+const F = (id: string) => ({ cos: [{ kind: 'frame' as const, id }] });
+const B = (id: string) => ({ cos: [{ kind: 'banner' as const, id }] });
+const P = (id: string) => ({ cos: [{ kind: 'pfx' as const, id }] });
+/**
+ * Les 24 cadeaux (index 0 = 1er décembre) — grille de Tom (25/11). Total : 85 boosters (+ celui du god pack), 13 000 pièces,
+ * 9 cosmétiques (3 cadres, 2 bannières, 2 animations de profil, 2 ouvertures), 1 god pack.
+ */
 export const ADVENT_REWARDS: readonly AdventReward[] = [
-  { coins: 150 }, { packs: 1 }, { coins: 200 }, { packs: 2 }, { coins: 250 }, { packs: 3 },
-  { coins: 300 }, { packs: 2 }, { coins: 300 }, { packs: 3 }, { coins: 350 }, { packs: 3 },
-  { coins: 400 }, { packs: 3 }, { coins: 450 }, { packs: 4 }, { coins: 500 }, { packs: 4 },
-  { coins: 600 }, { packs: 5 }, { coins: 750 }, { packs: 5 }, { coins: 1000 }, { god: true },
+  { packs: 10 }, { coins: 1250 }, F('x-flocon'), { packs: 5 }, { coins: 1250 }, B('x-village'),
+  { packs: 10 }, { coins: 1500 }, { packs: 5 }, P('neige'), { coins: 1500 }, { packs: 20 },
+  F('x-sucre'), { packs: 5 }, { coins: 2000 }, { packs: 5 }, B('x-atelier'), { packs: 10 },
+  { coins: 3000 }, { cos: [{ kind: 'opening', id: 'glace' }] }, { packs: 15, coins: 2500 }, P('aurore'),
+  { cos: [{ kind: 'frame', id: 'x-bonnet' }, { kind: 'opening', id: 'etoile' }] }, { god: true },
 ];
 /** Cases ouvertes de l'édition en cours, lues sur le joueur (`users.advent`, rangé par année). */
 export const adventOpened = (u: { advent?: Record<string, number[]> }): number[] => u.advent?.[String(ADVENT_YEAR)] ?? [];
 
 export const adventReward = (day: number): AdventReward => ADVENT_REWARDS[day - 1] ?? {};
-
-/** Paliers des cosmétiques de Noël : nombre de cases ouvertes (cibles des succès `noel26-…`). */
-export const ADVENT_STEPS = [4, 12, 18, 24] as const;
 
 /**
  * Ordre des cases sur le calendrier (mélangé, comme un vrai) : `ADVENT_LAYOUT[i]` = le jour affiché à la place i.
@@ -100,6 +109,3 @@ export function adventProblem(day: number, today: number, opened: readonly numbe
 
 /** Jour simulé par l'équipe (mode test) : 1..31, sinon refusé. */
 export const validDebugDay = (d: unknown): d is number => typeof d === 'number' && Number.isInteger(d) && d >= 0 && d <= ADVENT_LAST_DAY + 1;
-
-/** Prochain palier de cosmétique à atteindre (null : tous atteints). */
-export const nextAdventStep = (openedCount: number): number | null => ADVENT_STEPS.find((s) => s > openedCount) ?? null;

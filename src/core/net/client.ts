@@ -1063,10 +1063,11 @@ class GameNetClient {
   public async setBio(bio: string) {
     return await this.client!.mutation(api.profiles.setBio, { sessionToken: this.requireToken(), bio });
   }
-  public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[]; accent?: string; vitrine?: string; vitrineColor?: string; background?: string; titleStyle?: string }) {
+  public async setCosmetics(c: { banner?: string; frame?: string; title?: string; badges?: string[]; accent?: string; vitrine?: string; vitrineColor?: string; background?: string; titleStyle?: string; pfx?: string }) {
     // (14/11) fond et style de titre : envoyés seulement s'ils sont choisis (un serveur pas encore à jour refuserait un champ inconnu)
-    const { background, titleStyle, ...rest } = c;
-    return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...rest, ...(background ? { background } : {}), ...(titleStyle ? { titleStyle } : {}) });
+    // (v2.1.13) idem pour l'animation de profil
+    const { background, titleStyle, pfx, ...rest } = c;
+    return await this.client!.mutation(api.profiles.setCosmetics, { sessionToken: this.requireToken(), ...rest, ...(background ? { background } : {}), ...(titleStyle ? { titleStyle } : {}), ...(pfx ? { pfx } : {}) });
   }
   /** (11/11) animation d'ouverture des boosters (refusée si verrouillée) */
   public async setOpening(style: string) {
