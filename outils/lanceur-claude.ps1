@@ -1,5 +1,8 @@
 ﻿# Lanceur Claude — Bébou cartes (25/11/2026). Ouvre le bon terminal au bon endroit.
 # Lancé par LANCEUR-CLAUDE.cmd à la racine du repo. Marche chez Tom et chez Hugo (chemins relatifs).
+$ErrorActionPreference = 'Stop'
+$journal = Join-Path (Split-Path -Parent $PSScriptRoot) 'logs\lanceur-claude.log'
+try {
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -85,3 +88,10 @@ $fenetre.Controls.Add($pied)
 $fenetre.ClientSize = New-Object System.Drawing.Size(480, ($script:y + 40))
 
 [void]$fenetre.ShowDialog()
+
+} catch {
+  $msg = "$(Get-Date -Format s) ERREUR : $($_.Exception.Message) (ligne $($_.InvocationInfo.ScriptLineNumber))"
+  try { Add-Content -Path $journal -Value $msg } catch {}
+  Add-Type -AssemblyName System.Windows.Forms
+  [System.Windows.Forms.MessageBox]::Show($msg, 'Lanceur Claude') | Out-Null
+}
