@@ -29,7 +29,7 @@ Circuit de travail complet : `docs/V2.md`. Infra : `docs/INFRASTRUCTURE.md`.
   - Jamais : `NE-PAS-LANCER-*`, `mettre-en-ligne-prod.cmd` en direct, un lanceur qui ouvre un navigateur ou demande une connexion (le dire à Tom).
   - Si la session tourne ailleurs que sur le PC de Tom (cloud, pas d'accès git) : lui dire quel lanceur lancer.
 - Un commit par lot, uniquement ses propres fichiers (une autre session peut commiter en parallèle sur `v2`).
-- À deux : un dossier (worktree) et une session par personne. Avant de toucher un fichier partagé (`convex/schema.ts`, `vite.config.ts`, `src/game/updates.data.ts`), le réserver dans `docs/chantiers/EN-COURS.md`.
+- À deux, c'est automatique (hooks `.claude/hooks/`) : au démarrage on te dit si l'autre a poussé → `git pull --rebase --autostash` AVANT toute modification ; un fichier changé par l'autre sur GitHub est bloqué jusqu'au pull ; `mettre-en-ligne-v2.cmd` refuse de publier un dossier en retard. Push refusé → `git pull --rebase`, résoudre, re-vérifier, re-pousser. Un dossier et une session par personne.
 - Un patch a son entrée dans `src/game/updates.data.ts`.
 - (17/11) Comparateur live / V3 (équipe) : `https://v2.cardgamepriv.pages.dev/miroir/` — deux copies de démo (master et v2) construites par `scripts/miroir/build.mjs` dans `mettre-en-ligne-v2.cmd`, gestes rejoués d'une copie à l'autre par `src/miroir/sonde.js`. Chaque côté a son code ET ses fichiers de `public/` (seules les illustrations R2 sont communes). Rien à maintenir à la main.
 

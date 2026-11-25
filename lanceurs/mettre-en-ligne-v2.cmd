@@ -21,6 +21,11 @@ echo NOTE : tu es sur la branche "%BRANCHE%" (le lien V2 montre normalement la b
 set /p OK=Tape OUI puis Entree pour publier quand meme "%BRANCHE%" sur le lien V2 (autre chose = annuler) : 
 if /i not "%OK%"=="OUI" ( echo Annule. & pause & exit /b 0 )
 :go
+rem (25/11) garde-fou a deux : lien V3 et staging communs, on ne publie pas sans le travail deja pousse par l'autre
+git fetch origin --quiet >> "%LOG%" 2>&1
+set RETARD=0
+for /f "usebackq delims=" %%n in (`git rev-list --count HEAD..origin/%BRANCHE% 2^>nul`) do set RETARD=%%n
+if not "%RETARD%"=="0" goto :retard
 for /f "usebackq delims=" %%n in (`node scripts\staging-v2.mjs name`) do set V2=%%n
 if "%V2%"=="" ( echo Deploiement de staging introuvable (.env.v2.local) & goto :err )
 echo [staging %V2%] >> "%LOG%"
@@ -64,5 +69,12 @@ exit /b 0
 echo === ECHEC (code %errorlevel%) === >> "%LOG%"
 echo.
 echo ECHEC : voir logs\mettre-en-ligne-v2.log
+pause
+exit /b 1
+:retard
+echo GitHub a %RETARD% commit^(s^) de plus sur %BRANCHE% : git pull --rebase d'abord >> "%LOG%"
+echo.
+echo ARRET : GitHub a %RETARD% commit^(s^) de plus sur %BRANCHE% que ce dossier.
+echo Fais d'abord : git pull --rebase --autostash  -  sinon tu effaces le travail de l'autre sur le lien V3.
 pause
 exit /b 1

@@ -11,9 +11,6 @@ _Mis à jour : 25/11/2026 (mise en place de la méthode, `docs/GUIDE-CLAUDE.md`)
 | Tom + Claude | racine / `v2` | V3 : calendrier de l'Avent, titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
-## Fichiers partagés réservés
-_(aucun — une ligne « qui · fichier · pourquoi » quand on en réserve un)_
-
 ## Reste à faire
 - [ ] Intégrer les mp3 des 6★ introuvables en boutique dès que Tom les fournit (Crash Bandicoot, Zelda ALttP, Inazuma Eleven VF, Yu-Gi-Oh VF, Code Lyoko, Kaamelott, South Park VF, Lucky Luke 2001)
 - [ ] Signaler à Tom les 5★/6★ de la base Etoiles 8 encore sans image
