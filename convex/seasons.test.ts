@@ -6,7 +6,7 @@ import { convexTest } from 'convex-test';
 import { describe, expect, test } from 'vitest';
 import { api, internal } from './_generated/api';
 import schema from './schema';
-import { SEASON_PACKS, seasonBoosters, seasonEndAt, seasonKey, seasonStandings } from '../src/core/seasons';
+import { SEASON_PACKS, seasonBoosters, seasonEndAt, seasonKey, seasonReward, seasonStandings } from '../src/core/seasons';
 
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
 
@@ -88,14 +88,16 @@ describe('saisons : cron', () => {
     const a1 = await t.run(async (ctx) => (await ctx.db.get(alice.userId))!);
     expect(a1.seasonWins).toBe(1);
     expect(a1.seasonPodiums).toBe(1);
-    expect(a1.packBalance).toBeGreaterThanOrEqual(before.packBalance + SEASON_PACKS[0]);
+    expect(a1.packBalance).toBeGreaterThanOrEqual(before.packBalance + 1);
+    expect(a1.godPacks).toBe(1);
     const bob1 = await t.run(async (ctx) => (await ctx.db.get(bob.userId))!);
     expect(bob1.seasonPodiums).toBeUndefined();
     b = await t.query(api.seasons.board, {});
     expect(b.current?.key).toBe('2026-12');
     expect(b.past.length).toBe(1);
     expect(b.past[0].key).toBe('2026-11');
-    expect(b.past[0].results.map((x) => [x.name, x.rank, x.boosters])).toEqual([['alice', 1, SEASON_PACKS[0]]]);
+    expect(b.past[0].results.map((x) => [x.name, x.rank, x.boosters])).toEqual([['alice', 1, 1]]);
+    expect(b.past[0].results[0].god).toBe(true);
     expect(b.past[0].results[0].gained).toBeGreaterThan(0);
 
     // le cron repasse (même heure, puis plus tard) : rien n'est redonné, une seule saison figée
@@ -121,5 +123,48 @@ describe('saisons : cron', () => {
     });
     expect((await t.action(internal.seasons.tick, { now: paris('2026-11-20T10:00:00') })).action).toBe('none');
     expect((await t.action(internal.seasons.tick, { now: paris('2026-12-02T10:00:00') })).action).toBe('opened');
+  });
+});
+
+describe('saison 0 : récompenses spéciales', () => {
+  test('barème : saison 0 seulement', () => {
+    expect([1, 2, 3, 4, 10, 11, 0].map((r) => seasonReward('2026-11', r).boosters)).toEqual([1, 20, 15, 10, 10, 1, 0]);
+    expect([1, 2].map((r) => seasonReward('2026-11', r).god)).toEqual([true, false]);
+    expect(seasonReward('2026-12', 1)).toEqual({ boosters: SEASON_PACKS[0], god: false });
+  });
+
+  test('clôture : God pack, boosters, titres (podium, participant), God pack consommé une fois', async () => {
+    const { t, mk, alice, bob } = await setup();
+    const others = [];
+    for (let i = 0; i < 10; i++) others.push(await mk(`p${i}`));
+    const idle = await mk('idle');
+    const all = [alice, bob, ...others, idle];
+    await t.run(async (ctx) => {
+      // classement imposé : alice > bob > p0 > … > p9 (11 cartes gagnées et moins) ; idle : 100 boosters, aucune carte
+      for (const [i, p] of all.entries()) {
+        const packs = p === idle || p === alice ? 100 : p === bob ? 99 : 5;
+        await ctx.db.insert('rankRows', { userId: p.userId, row: { name: `u${i}`, uniques: p === idle ? 0 : 100 - i, packsOpened: packs }, updatedAt: 0 });
+      }
+      await ctx.db.insert('seasons', { key: '2026-11', status: 'open', startAt: 0, bases: all.map((p) => ({ userId: p.userId, uniques: 0, packs: 0 })) });
+    });
+    await t.mutation(internal.seasons.advance, { now: paris('2026-12-01T00:30:00') });
+    const get = (p: { userId: typeof alice.userId }) => t.run(async (ctx) => (await ctx.db.get(p.userId))!);
+    const got = await Promise.all(all.map(get));
+    const res = (await t.query(api.seasons.board, {})).past[0].results;
+    expect(res.map((r) => r.boosters)).toEqual([1, 20, 15, 10, 10, 10, 10, 10, 10, 10, 1, 1]);
+    expect(got.map((u) => u.godPacks ?? 0)).toEqual([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(got.map((u) => u.season0Top ?? 0)).toEqual([1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(got.map((u) => u.season0Player ?? 0)).toEqual([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+
+    const kept = await t.mutation(api.profiles.setCosmetics, { sessionToken: bob.token, title: 't-s0-podium' });
+    expect(kept.title).toBe('t-s0-podium');
+    expect((await t.mutation(api.profiles.setCosmetics, { sessionToken: idle.token, title: 't-s0-joueur' })).title).toBe('t-s0-joueur');
+    expect((await t.mutation(api.profiles.setCosmetics, { sessionToken: bob.token, title: 't-s0-joueur' })).title).toBeUndefined();
+
+    // le prochain booster d'alice est un God pack, le suivant non (forcé)
+    const first = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'bebou' });
+    expect(first.god).toBe(true);
+    expect((await get(alice)).godPacks).toBe(0);
+    await t.mutation(api.packs.revealPack, { sessionToken: alice.token, packId: first._id });
   });
 });

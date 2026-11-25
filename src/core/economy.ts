@@ -202,6 +202,9 @@ export interface AchievementStats {
   /** (11/11, saisons — convex/seasons.ts) saisons finies sur le podium (top 3) / à la première place */
   seasonPodiums: number;
   seasonWins: number;
+  /** (25/11) saison 0 : top 3 / participant (≥ 100 boosters) — 1 = oui */
+  season0Top: number;
+  season0Player: number;
   /** BÉBOU : paliers obtenus dans les autres succès du profil (le « niveau » du joueur) */
   bebouLevel: number;
   /** (14/11) TOUS LES THÈMES : le plus petit des quatre compteurs par thème (cartes différentes dans CHAQUE thème) */
@@ -335,6 +338,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   // (11/11) saisons mensuelles (convex/seasons.ts) : le podium donne un cadre, la victoire un titre
   A('season-podium', 'Sur le podium', 'Finis une saison dans les 3 premiers', 3, 'seasonPodiums', 1, K),
   A('season-1', 'Champion de saison', 'Gagne une saison du classement', 4, 'seasonWins', 1, K),
+  A('s0-podium', 'Podium de la saison 0', 'Finis la saison 0 dans les 3 premiers', 4, 'season0Top', 1, K),
+  A('s0-joueur', 'Participant de la saison 0', 'Ouvre 100 boosters pendant la saison 0', 2, 'season0Player', 1, K),
   // Bébou : le niveau (paliers obtenus dans les succès du profil)
   A('bebou-5', 'Bébou en herbe', 'Obtiens 5 paliers de succès', 1, 'bebouLevel', 5),
   A('bebou-15', 'Bébou confirmé', 'Obtiens 15 paliers de succès', 2, 'bebouLevel', 15, K),
@@ -446,6 +451,8 @@ const LADDER_LABEL: Record<keyof AchievementStats, string> = {
   wasTop: 'Classement',
   seasonPodiums: 'Podiums de saison',
   seasonWins: 'Saisons gagnées',
+  season0Top: 'Saison 0 : podium',
+  season0Player: 'Saison 0 : participation',
   bebouLevel: 'Niveau Bébou',
   allThemes: 'Tous les thèmes',
   gamesPlayed: 'Parties jouées',
@@ -527,7 +534,7 @@ export function achievementStats(
   p: {
     packsOpened: number; uniques: number; mythics: number; legendaries: number; secrets: number; fullSubthemes: number; tradesDone: number; contractsSigned: number; streak: number;
     worldUniques?: number; gamingUniques?: number; popUniques?: number; sportUniques?: number; burned?: number; wasTop?: number;
-    seasonPodiums?: number; seasonWins?: number;
+    seasonPodiums?: number; seasonWins?: number; season0Top?: number; season0Player?: number;
   },
   e: EconState,
 ): AchievementStats {
@@ -554,6 +561,8 @@ export function achievementStats(
     wasTop: p.wasTop ?? 0,
     seasonPodiums: p.seasonPodiums ?? 0,
     seasonWins: p.seasonWins ?? 0,
+    season0Top: p.season0Top ?? 0,
+    season0Player: p.season0Player ?? 0,
     bebouLevel: 0,
     allThemes: Math.min(p.worldUniques ?? 0, p.gamingUniques ?? 0, p.popUniques ?? 0, p.sportUniques ?? 0),
   };

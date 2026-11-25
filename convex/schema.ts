@@ -129,6 +129,11 @@ export default defineSchema({
     /** (11/11, chantier ouvertures-saisons — convex/seasons.ts) saisons finies dans les 3 premiers / à la 1re place */
     seasonPodiums: v.optional(v.number()),
     seasonWins: v.optional(v.number()),
+    /** (25/11) saison 0 : 1 = fini dans le top 3 / au moins 100 boosters ouverts pendant la saison (titres) */
+    season0Top: v.optional(v.number()),
+    season0Player: v.optional(v.number()),
+    /** (25/11) God packs offerts en attente : le prochain booster tiré en est un (convex/packs.ts) */
+    godPacks: v.optional(v.number()),
     /** appareils vus (id tiré au hasard et gardé dans le navigateur) : signal « deux comptes sur le même appareil » */
     devices: v.optional(v.array(v.string())),
     /** PARRAINAGE (retours live 02, §10 — convex/referrals.ts) : mon code d'invitation (lien `?ref=CODE`) */
@@ -880,7 +885,7 @@ export default defineSchema({
     startAt: v.number(),
     closedAt: v.optional(v.number()),
     bases: v.array(v.object({ userId: v.id('users'), uniques: v.number(), packs: v.number() })),
-    results: v.optional(v.array(v.object({ userId: v.id('users'), name: v.string(), avatarUrl: v.optional(v.string()), rank: v.number(), gained: v.number(), packs: v.number(), boosters: v.number() }))),
+    results: v.optional(v.array(v.object({ userId: v.id('users'), name: v.string(), avatarUrl: v.optional(v.string()), rank: v.number(), gained: v.number(), packs: v.number(), boosters: v.number(), god: v.optional(v.boolean()) }))),
   })
     .index('by_status', ['status'])
     .index('by_key', ['key']),

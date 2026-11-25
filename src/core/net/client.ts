@@ -959,7 +959,7 @@ class GameNetClient {
   public async revealPacks(packIds: Id<'packOpens'>[]): Promise<string[]> {
     if (!this.client || !this.sessionToken) throw new Error('Non connecté');
     const done = await this.client.mutation(api.packs.revealPacks, { sessionToken: this.sessionToken, packIds });
-    this.state.sealedPack = null;
+    this.forgetSealed(done);
     this.emit();
     return done;
   }
@@ -975,9 +975,17 @@ class GameNetClient {
       sessionToken: this.sessionToken,
       packId: targetId,
     });
-    this.state.sealedPack = null;
+    this.forgetSealed([targetId]);
     this.emit();
     return revealed;
+  }
+
+  /**
+   * Oublie le booster scellé s'il vient d'être crédité. Un autre booster de la série encore scellé (déjà reçu par
+   * l'abonnement) reste connu : sans lui, le compteur pity bougerait avant que sa 6★ soit montrée.
+   */
+  private forgetSealed(ids: string[]) {
+    if (this.state.sealedPack && ids.includes(this.state.sealedPack._id)) this.state.sealedPack = null;
   }
 
   // ─────────────────────────────── échanges

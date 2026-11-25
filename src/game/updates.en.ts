@@ -26,6 +26,14 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '25 Nov', title: 'End of season 0: the rewards', tag: 'nouveau',
+        points: [
+          '🏆 Season 0 ends on 30 November: 1st a God pack, 2nd 20 boosters, 3rd 15 boosters, 4th to 10th 10 boosters, and 1 booster for everyone else from one card earned.',
+          '🎖️ The top 3 get the “Season 0 podium” title and the “Season podium” frame; every player who opened at least 100 boosters during the season gets the “Season 0 player” title.',
+          '🤫 6★ pity: the counter no longer moves before the 6★ is revealed.',
+        ],
+      },
+      {
         date: '25 Nov', title: 'The big reshuffle: 848 new cards', tag: 'nouveau',
         points: [
           '🆕 848 new cards: Dofus and Wakfu, Genshin Impact, Summoners War, Studio Ghibli, wrestling, LoL and CS esports, Paralympics, X-Men, Elite, Fast & Furious…',

@@ -86,6 +86,9 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
   // pity : 200 boosters secs → celui-ci contient une Mythique (src/core/pity.ts)
   const pity = user.pityCount ?? 0;
   req.forceMythic = pityForces(pity);
+  // God pack offert (récompense de saison, convex/seasons.ts) : ce booster en est un
+  const gift = user.godPacks ?? 0;
+  if (gift > 0) req.forceGod = true;
   if (!isValidPackRequest(req)) {
     throw new ConvexError(fe('packs.1'));
   }
@@ -102,6 +105,7 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     packRegenAt: regen.regenAt,
     lastSeenAt: now,
     statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
+    ...(gift > 0 ? { godPacks: gift - 1 } : {}),
   });
   await syncPresence(ctx, user._id);
   await scheduleReserveFull(ctx, user._id);

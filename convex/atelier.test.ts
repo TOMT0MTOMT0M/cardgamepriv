@@ -55,9 +55,9 @@ describe('personnalisation du profil — catalogue du 14/11', () => {
     for (const id of ['n-orbite', 'coffre', 'grave']) expect(tierOf(id), id).toBeGreaterThanOrEqual(3);
   });
 
-  test('49 paliers de plus (137 en tout), ids uniques, échelle « Tous les thèmes »', () => {
-    expect(ACHIEVEMENTS).toHaveLength(137);
-    expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(137);
+  test('49 paliers de plus + les 2 de la saison 0 (139 en tout), ids uniques, échelle « Tous les thèmes »', () => {
+    expect(ACHIEVEMENTS).toHaveLength(139);
+    expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(139);
     const all = achievementStats({ ...zero, worldUniques: 120, gamingUniques: 30, popUniques: 400, sportUniques: 26 }, emptyEcon());
     expect(all.allThemes).toBe(26);
     expect(achievementDone(ACHIEVEMENTS.find((a) => a.id === 'all-25')!, all)).toBe(true);

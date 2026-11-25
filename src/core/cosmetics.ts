@@ -37,6 +37,8 @@ export interface PlayerStats {
   /** (11/11, saisons — convex/seasons.ts) saisons finies dans les 3 premiers / premier */
   seasonPodiums?: number;
   seasonWins?: number;
+  season0Top?: number;
+  season0Player?: number;
 }
 
 export interface Cosmetic {
@@ -252,6 +254,9 @@ export const TITLES: Cosmetic[] = [
   C({ id: 't-top', label: 'Numéro un', need: 'top-1' }),
   // (11/11, saisons) premier d'une saison mensuelle du classement (convex/seasons.ts)
   C({ id: 't-season-1', label: 'Champion de saison', need: 'season-1' }),
+  // (25/11) saison 0 (novembre 2026) : titres qui ne se regagnent pas
+  C({ id: 't-s0-podium', label: 'Podium de la saison 0', need: 's0-podium' }),
+  C({ id: 't-s0-joueur', label: 'Participant de la saison 0', need: 's0-joueur' }),
 ];
 // i18n-data:fin
 
@@ -384,7 +389,7 @@ export function cosmeticsOf(achievementId: string): Array<{ kind: CosmeticKind; 
 /** Statistiques d'un joueur à partir de sa collection et de ses compteurs (même calcul serveur / client / démo). */
 export function statsFrom(
   collection: Array<{ cardId: string; rarity: string; count: number }>,
-  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number },
+  extra: { packsOpened: number; tradesDone: number; contractsSigned: number; streak: number; burned?: number; wasTop?: number; seasonPodiums?: number; seasonWins?: number; season0Top?: number; season0Player?: number },
 ): PlayerStats {
   const ids = new Set<string>();
   let mythics = 0, legendaries = 0, secrets = 0;

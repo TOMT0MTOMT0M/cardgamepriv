@@ -15,8 +15,8 @@ import { installDiag, reportLoad } from './diag';
 import { perfMark } from '../core/perfLog';
 import { createShopView } from './views/shop';
 import { createMissions, MISSION_ICON } from './views/missions';
-import { createStatus, PITY_ICON, STREAK_ICON } from './views/status';
-import { PITY_LIMIT } from '../core/pity';
+import { createStatus, shownPity, PITY_ICON, STREAK_ICON } from './views/status';
+import { PITY_LIMIT, pityLeft } from '../core/pity';
 import { COIN_ICON, createWallet } from './views/wallet';
 import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, type GameBackend } from './backend';
@@ -805,17 +805,14 @@ function syncStatus() {
   st.setAttribute('aria-label', st.title);
   syncMenuDot();
   // pity (retours live 02, §11) : compteur « X/200 » toujours visible, sans clic
-  // (retours Hugo 10/11, anti-spoil) le serveur remet le compteur à zéro dès le TIRAGE : pendant l'ouverture (et tant
-  // qu'un booster tiré attend d'être ouvert) le compteur reste figé, il ne bouge qu'une fois le booster fini
-  if (document.body.classList.contains('opening') || backend.state.sealed) {
-    if (pt.querySelector('.pt-n')!.textContent) return;
-  }
-  const n = status.pityCount();
-  const left = status.pityLeft();
-  pt.querySelector('.pt-n')!.textContent = `${n}/${PITY_LIMIT}`;
+  // (retours Hugo 10/11, anti-spoil) le compteur ne bouge qu'une fois le booster tiré fini d'ouvrir (shownPity) — y
+  // compris quand l'en-tête vient d'être refait (la réserve change au tirage)
+  const n = shownPity(backend.state);
+  const left = n === null ? PITY_LIMIT - 1 : pityLeft(n);
+  pt.querySelector('.pt-n')!.textContent = `${n ?? (backend.state.user ? '–' : 0)}/${PITY_LIMIT}`;
   pt.classList.toggle('near', left <= 20 && left > 0);
   pt.classList.toggle('ready', left === 0);
-  pt.title = left === 0 ? tr('hdr.pityNext') : tr('hdr.pity', { n, limit: PITY_LIMIT });
+  pt.title = left === 0 ? tr('hdr.pityNext') : tr('hdr.pity', { n: n ?? 0, limit: PITY_LIMIT });
   pt.setAttribute('aria-label', pt.title);
 }
 backend.eco.onChange(syncStatus);

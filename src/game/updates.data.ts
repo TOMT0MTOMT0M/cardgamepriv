@@ -61,6 +61,14 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '25 nov.', title: 'Fin de la saison 0 : les récompenses', tag: 'nouveau',
+        points: [
+          '🏆 La saison 0 se termine le 30 novembre : 1er un God pack, 2e 20 boosters, 3e 15 boosters, 4e à 10e 10 boosters, et 1 booster pour les autres dès une carte gagnée.',
+          '🎖️ Le top 3 gagne le titre « Podium de la saison 0 » et le cadre « Podium de saison » ; tout joueur qui a ouvert au moins 100 boosters dans la saison gagne le titre « Participant de la saison 0 ».',
+          '🤫 Pity 6★ : le compteur ne bouge plus avant que la 6★ soit révélée.',
+        ],
+      },
+      {
         date: '25 nov.', title: 'Le grand rangement : 848 nouvelles cartes', tag: 'nouveau',
         points: [
           '🆕 848 nouvelles cartes : Dofus et Wakfu, Genshin Impact, Summoners War, Studio Ghibli, catch, esport LoL et CS, paralympiques, X-Men, Élite, Fast & Furious…',

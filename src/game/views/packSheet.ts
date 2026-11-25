@@ -15,6 +15,7 @@ import { ACHIEVEMENTS, achievementDone, fmtCoins } from '../../core/economy';
 import { DEFAULT_OPENING, OPENINGS, type OpeningId } from '../../core/cosmetics';
 import '../progression.css';
 import { COIN_ICON } from './wallet';
+import { shownPity } from './status';
 
 /**
  * FICHE BOOSTER (boutique) : s'ouvre en overlay quand on touche une pochette. Tout ce qu'il faut savoir avant d'ouvrir :
@@ -305,8 +306,10 @@ export function createPackSheet(
       banner.textContent = tr('ps.sealed', { what: s.sealed.eventName ? `booster ${s.sealed.eventName}` : s.sealed.packKind === 'bebou' ? BEBOU_PACK.label : t ? `${t.label} Pack` : 'booster' }); // i18n-ok
     } else banner.hidden = true;
     // pity (compteur du joueur, tous boosters confondus)
-    const left = u ? pityLeft(u.pityCount) : PITY_LIMIT - 1;
+    const count = shownPity(s);
+    const left = count === null ? PITY_LIMIT - 1 : pityLeft(count);
     const pct = ((PITY_LIMIT - 1 - left) / (PITY_LIMIT - 1)) * 100;
+    pityEl.hidden = !!u && count === null;
     pityEl.classList.toggle('ready', left === 0);
     pityEl.innerHTML = left === 0
       ? `<div class="ps-bt">Pity 6★</div><div class="ps-pity-l"><b>${tr('ps.pitySure')}</b></div><span class="ps-pb"><i style="width:100%"></i></span>`
