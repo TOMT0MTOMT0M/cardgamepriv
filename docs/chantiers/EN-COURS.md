@@ -1,13 +1,13 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 25/11/2026 (mise en place de la méthode, `docs/GUIDE-CLAUDE.md`)._
+_Mis à jour : 25/11/2026 (Hugo : labo sur le lien prod seulement, patch v2.1.10)._
 
 ## Chantiers ouverts
 
 | Qui | Dossier / branche | Chantier | État |
 |---|---|---|---|
-| Tom + Claude | `.wt-master` / `master` | patch v2.1.9 (base Etoiles 8, Paralympiques, Bébous verrouillées) | en ligne (tag `v2.1.9`) |
+| Hugo + Claude | `.wt-master` / `master` | patch v2.1.10 : labo prod = labo complet (046 sachets cartoon) ; plus de labo sur le lien V2 (racine → `/jeu/`) | en ligne (tag `v2.1.10`, `5f5a4df` ; v2 `e08b146`) — `docs/chantiers/v2.1.10.md` |
 | Tom + Claude | racine / `v2` | V3 : calendrier de l'Avent, titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
@@ -31,3 +31,6 @@ _Mis à jour : 25/11/2026 (mise en place de la méthode, `docs/GUIDE-CLAUDE.md`)
 ## Pièges connus
 - `lanceurs/publier-patch.cmd` envoie tout `master..v2` (la V3 en cours) : jamais pour un correctif de la version en ligne.
 - Après un patch : cherry-pick sur `v2` puis `git merge -s ours patch-v2.X.Y` sur `v2`.
+- Lanceurs `METTRE-EN-LIGNE-v2.X.Y.cmd` hors git : chacun n'a que les siens (v2.1.9 chez Tom, v2.1.10 chez Hugo). Prendre le plus récent connu.
+- `.wt-master` de Hugo sans `public/art` (hors git) : le lanceur v2.1.10 crée un dossier vide (images servies par R2). Ne jamais y copier le `public/art` de la racine (images V3 → écraseraient celles des joueurs dans R2).
+- Lancer un lanceur de `.wt-master` avec son chemin complet : `cmd.exe //c "C:\…\.wt-master\METTRE-EN-LIGNE-v2.X.Y.cmd"` (sinon « n'est pas reconnu »).
