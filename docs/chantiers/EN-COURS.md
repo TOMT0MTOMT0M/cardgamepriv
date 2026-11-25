@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 26/11/2026 (Hugo : patch v2.1.12 en ligne — images, musiques, famille France ; l'Avent passe en v2.1.13)._
+_Mis à jour : 26/11/2026 (Tom : patch v2.1.13 Avent en ligne, reporté sur v2 ; à vérifier sur téléphone)._
 
 ## Chantiers ouverts
 
@@ -9,8 +9,9 @@ _Mis à jour : 26/11/2026 (Hugo : patch v2.1.12 en ligne — images, musiques, f
 |---|---|---|---|
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.10 : labo prod = labo complet (046 sachets cartoon) ; plus de labo sur le lien V2 (racine → `/jeu/`) | en ligne (tag `v2.1.10`, `5f5a4df` ; v2 `e08b146`) — `docs/chantiers/v2.1.10.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.11 : récompenses de saison 0 + pity anti-spoil | en ligne (tag `v2.1.11`, `52cfd6e` ; v2 `a0eb9ca`) — `docs/chantiers/v2.1.11.md` |
-| Hugo + Claude | `.wt-master` / `master` | patch v2.1.12 : images (353 + 159), musiques 6★, famille France | en ligne (tag `v2.1.12`, `40bd36e` ; v2 `73b61aa`) — `docs/chantiers/v2.1.12.md`. **L'Avent devient v2.1.13.** |
-| Tom + Claude | racine / `v2` | V3 : calendrier de l'Avent, titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
+| Hugo + Claude | `.wt-master` / `master` | patch v2.1.12 : images (353 + 159), musiques 6★, famille France | en ligne (tag `v2.1.12`, `40bd36e` ; v2 `73b61aa`) — `docs/chantiers/v2.1.12.md` |
+| Tom + Claude | `.wt-master` / `master` | patch v2.1.13 : calendrier de l'Avent (95 boosters, 13 000 pièces, 9 cosmétiques de Noël par case, God Pack le 24, étoile refaite) | en ligne (tag `v2.1.13`, `1faee0e` ; v2 `b2dd383`) — `docs/chantiers/v2.1.13.md` |
+| Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
 ## Reste à faire
@@ -18,7 +19,7 @@ _Mis à jour : 26/11/2026 (Hugo : patch v2.1.12 en ligne — images, musiques, f
 - [ ] Images : Leo, Jubelle (Summoners War), Coiffe Kitsou sans fichier ; 5 Musique 6★ sans extrait (Cocteau, Niska, James Joyce, Tupac, « Je serai ta meilleure amie »)
 - [ ] Dragon Cochon (Dofus) : laissée, retrait = migration de collections (Hugo : tant pis)
 - [ ] Lucky Luke 2001 (mp3) : ignoré à la demande de Hugo
-- [ ] V3 — Avent (démarre le 01/12) : nouvelle grille jour par jour (`docs/chantiers/avent-noel.md`), cosmétiques de Noël (cadres, bannières, animations de profil, ouvertures), God Pack du 24 avec au moins 1 hit, étoile du sapin à aligner
+- [ ] Avent (en ligne v2.1.13) : Tom vérifie sur téléphone — étoile, cases 21/23, Chapeau de Noël, bannières, animations de profil, éclat des 2 ouvertures ; le 01/12 ouvrir la 1re case en vrai
 - [ ] V3 — Packs événement : 7 j, 1/h, réserve propre 3 (5 abonné), 2 500 pièces ; consommer SA réserve (prend un booster normal aujourd'hui) ; collection Télé + booster de lancement
 - [ ] V3 — Succès : ouvertures à gagner avec aperçu, paliers plus longs, récompenses proportionnelles (pièces, boosters, titres, cosmétiques) ; nouveaux cosmétiques nécessaires → les demander à Tom
 - [ ] Animaux : sous-thèmes mal rangés (poissons en Mammifères…) → à corriger dans la base (Etoiles 9, Hugo)
