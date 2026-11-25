@@ -80,5 +80,9 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "oh-my-claudecode@omc": false,
+    "claude-mem@thedotmack": false
   }
 }
