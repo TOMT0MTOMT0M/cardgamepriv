@@ -203,7 +203,7 @@ top.innerHTML = `
   <a class="logo" href="#/">${tr('boot.logo')}<span>cartes</span></a>
   <nav aria-label="${tr('nav.aria')}">
     <a href="#/" data-r="">${tr('nav.shop')}</a>
-    <a href="#/evenement" data-r="evenement">${tr('nav.event')}<b class="badge evt-badge" hidden></b></a>
+    <a class="nav-off" data-r="evenement" aria-disabled="true" tabindex="-1">${tr('nav.event')}<b class="badge evt-badge" hidden></b></a>
     <a href="#/collection" data-r="collection">Collection</a> <!-- i18n-ok -->
     <a href="#/echanges" data-r="echanges">${tr('nav.trades')}<b class="badge" hidden></b></a>
     <a href="#/jeux" data-r="jeux">${tr('nav.games')}</a>
@@ -1175,6 +1175,8 @@ async function boot() {
       sub = undefined;
     }
     routed = true;
+    // (26/11, patch v2.1.14) onglet Événement grisé en attendant le 1er décembre : l'adresse directe renvoie à la boutique
+    if (r === 'evenement') return void location.replace('#/');
     // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
     // primes de complétion dans la page Succès
     const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' ? '#/collection/contrats' : undefined;

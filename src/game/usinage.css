@@ -466,3 +466,7 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
   .pf-panel { padding: 14px 14px 8px; }
   .pf-rlist { column-gap: 16px; }
 }
+
+/* (26/11, patch v2.1.14) onglet Événement grisé en attendant le 1er décembre : sans lien, non cliquable, sans pastille */
+nav a.nav-off { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+nav a.nav-off .badge { display: none; }
