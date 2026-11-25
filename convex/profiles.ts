@@ -322,7 +322,7 @@ export const setCosmetics = mutation({
   handler: async (ctx, { sessionToken, banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle, pfx }) => {
     const user = await requireUser(ctx, sessionToken);
     const stats = await statsCached(ctx, user); // (audit 12/11, A6-11) sans relire l'inventaire si la ligne de classement est à jour
-    const clean = cleanCosmetics({ banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle, pfx }, stats);
+    const clean = cleanCosmetics({ banner, frame, title, badges, accent, vitrine, vitrineColor, background, titleStyle, pfx: pfx ?? user.cosmetics?.pfx }, stats); // pfx absent = onglet d'avant v2.1.13 : on garde l'animation choisie
     // (11/11) l'animation d'ouverture se choisit ailleurs (fiche booster, `setOpening`) : on la garde telle quelle
     const opening = user.cosmetics?.opening;
     await ctx.db.patch(user._id, { cosmetics: opening ? { ...clean, opening } : clean });
