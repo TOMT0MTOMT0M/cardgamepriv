@@ -184,14 +184,28 @@ body[data-route='evenement'] .views { pointer-events: auto; }
 .av-door[data-s='late'] .av-front b, .av-door[data-s='today'] .av-front b { color: var(--vn); }
 .av-door[data-s='late'] .av-front { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.75), 0 6px 12px -8px #000; }
 .av-door[data-s='today'] .av-front { box-shadow: inset 0 0 0 2px #fff, 0 0 18px color-mix(in srgb, var(--av-glow) 60%, transparent), 0 6px 12px -8px #000; }
-/* l'étoile : la 24, le God Pack, médaillon doré coiffé d'une étoile */
-.av-grid .av-star { aspect-ratio: 2.2 / 1; margin-top: 22px; }
-.av-star::before { content: ''; position: absolute; left: 50%; top: -24px; width: 34px; height: 32px; translate: -50% 0; z-index: 3; pointer-events: none; transform: translateZ(4px);
-  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-  background: linear-gradient(180deg, #fff3c4, var(--xm-gold)); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--av-glow) 80%, transparent)); animation: av-star var(--amb-flotte) var(--ease-standard) infinite; }
-@keyframes av-star { 50% { filter: drop-shadow(0 0 16px var(--av-glow)); } }
-.av-star .av-front b { font-size: clamp(20px, 4.4vw, 30px); }
-.av-grid .av-24[data-s='opened'] .av-leaf { transform: rotateY(-98deg); }
+/* (v2.1.13, retours Tom : « mal centrée, moche ») l'étoile : la 24, le God Pack, EST l'étoile au sommet du sapin —
+   une vraie étoile à cinq branches, centrée sur l'axe du sapin, qui pivote sur elle-même comme une pièce à l'ouverture */
+.av-grid .av-star { --star: polygon(50% 1%, 61.8% 36.5%, 99% 37%, 69% 59.5%, 80.5% 96%, 50% 74%, 19.5% 96%, 31% 59.5%, 1% 37%, 38.2% 36.5%);
+  aspect-ratio: 1.05 / 1; margin: 0 14% -7%; z-index: 3; border-radius: 0; }
+/* le liseré (étoile un peu plus grande, or sombre) et le halo qui respire, derrière */
+.av-star::before, .av-star::after { content: ''; position: absolute; pointer-events: none; }
+.av-star::before { inset: -3%; clip-path: var(--star); background: linear-gradient(180deg, #fff6d2, var(--xm-gold-2) 70%, #5e4110); transform: translateZ(-1px); }
+.av-star::after { inset: -32%; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--av-glow) 42%, transparent), transparent);
+  animation: av-star var(--amb-flotte) var(--ease-standard) infinite; }
+@keyframes av-star { 50% { opacity: 0.45; scale: 0.9; } }
+.av-star .av-leaf, .av-star .av-front, .av-star .av-back, .av-star .av-niche { clip-path: var(--star); border-radius: 0; }
+.av-star .av-leaf { transform-origin: 50% 50%; }
+.av-door.av-star .av-front { padding-top: 16%; box-shadow: none;
+  background: radial-gradient(60% 50% at 50% 30%, rgba(255, 255, 255, 0.55), transparent 70%), linear-gradient(160deg, #ffe9a6, var(--xm-gold) 45%, var(--xm-gold-2)); }
+.av-star .av-front b { font-size: clamp(20px, 5vw, 30px); color: var(--xm-red-2); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4); }
+.av-star .av-knob { display: none; }
+.av-star .av-niche { padding-top: 14%; gap: 2px; }
+.av-star .av-niche em { font-size: 10px; letter-spacing: 0.1em; }
+.av-door.av-star[data-s='today'] .av-front, .av-door.av-star[data-s='late'] .av-front { box-shadow: none; }
+.av-star[data-s='today']::before { background: linear-gradient(180deg, #fff, var(--av-glow)); }
+.av-grid .av-24[data-s='opened'] .av-leaf { transform: rotateY(-90deg); }
+@media (prefers-reduced-motion: reduce) { .av-star::after { animation: none; } }
 /* le tronc : deux cases un peu plus basses */
 .av-grid .av-trunk { aspect-ratio: 1 / 0.9; }
 /* bouton de la musique, à côté du statut */
@@ -203,11 +217,11 @@ body[data-route='evenement'] .views { pointer-events: auto; }
 @media (max-width: 640px) {
   .av-board { padding: 12px 8px 10px; }
   .av-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px 2px; }
-  .av-grid .av-24 { grid-column: auto; aspect-ratio: 2.2 / 1; }
+  .av-grid .av-24 { grid-column: auto; }
   .av-niche em { font-size: 10.5px; }
   .av-ico { width: 18px; height: 18px; }
 }
-@media (min-width: 641px) { .av-grid .av-24 { grid-column: auto; aspect-ratio: 2.2 / 1; } }
+@media (min-width: 641px) { .av-grid .av-24 { grid-column: auto; } }
 
 /* (v2.1.13) cases à cosmétique de Noël et cases doubles (boosters + pièces, cadre + ouverture) */
 .av-ico.cos { color: var(--av-glow); }

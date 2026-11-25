@@ -36,13 +36,13 @@ const F = (id: string) => ({ cos: [{ kind: 'frame' as const, id }] });
 const B = (id: string) => ({ cos: [{ kind: 'banner' as const, id }] });
 const P = (id: string) => ({ cos: [{ kind: 'pfx' as const, id }] });
 /**
- * Les 24 cadeaux (index 0 = 1er décembre) — grille de Tom (25/11). Total : 85 boosters (+ celui du god pack), 13 000 pièces,
+ * Les 24 cadeaux (index 0 = 1er décembre) — grille de Tom (25/11). Total : 95 boosters (+ celui du god pack), 13 000 pièces,
  * 9 cosmétiques (3 cadres, 2 bannières, 2 animations de profil, 2 ouvertures), 1 god pack.
  */
 export const ADVENT_REWARDS: readonly AdventReward[] = [
   { packs: 10 }, { coins: 1250 }, F('x-flocon'), { packs: 5 }, { coins: 1250 }, B('x-village'),
   { packs: 10 }, { coins: 1500 }, { packs: 5 }, P('neige'), { coins: 1500 }, { packs: 20 },
-  F('x-sucre'), { packs: 5 }, { coins: 2000 }, { packs: 5 }, B('x-atelier'), { packs: 10 },
+  F('x-sucre'), { packs: 5 }, { coins: 2000 }, { packs: 5 }, B('x-atelier'), { packs: 20 },
   { coins: 3000 }, { cos: [{ kind: 'opening', id: 'glace' }] }, { packs: 15, coins: 2500 }, P('aurore'),
   { cos: [{ kind: 'frame', id: 'x-bonnet' }, { kind: 'opening', id: 'etoile' }] }, { god: true },
 ];
