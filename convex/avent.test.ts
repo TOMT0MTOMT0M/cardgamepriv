@@ -29,10 +29,10 @@ type T = Awaited<ReturnType<typeof setup>>['t'];
 const user = (t: T, id: Id<'users'>) => t.run(async (ctx) => (await ctx.db.get(id))!);
 
 describe('règles pures', () => {
-  test('grille de Tom : 24 cadeaux, 85 boosters, 13 000 pièces, le 24 est un god pack ; la grille montre les 23 autres jours', () => {
+  test('grille de Tom : 24 cadeaux, 95 boosters, 13 000 pièces, le 24 est un god pack ; la grille montre les 23 autres jours', () => {
     expect(ADVENT_REWARDS).toHaveLength(ADVENT_DAYS);
     expect(ADVENT_REWARDS[23]).toEqual({ god: true });
-    expect(sum('packs')).toBe(85);
+    expect(sum('packs')).toBe(95);
     expect(sum('coins')).toBe(13000);
     expect(ADVENT_REWARDS[20]).toEqual({ packs: 15, coins: 2500 });
     expect(ADVENT_REWARDS.slice(0, 23).every((r) => !r.god && ((r.coins ?? 0) > 0 || (r.packs ?? 0) > 0 || (r.cos?.length ?? 0) > 0))).toBe(true);
@@ -160,7 +160,7 @@ describe('ouverture des cases', () => {
     const u = await user(t, userId);
     expect(u.advent![String(ADVENT_YEAR)]).toHaveLength(24);
     expect(u.coins).toBe(100 + 13000);
-    expect(u.packBalance).toBe(3 + 85 + 1);
+    expect(u.packBalance).toBe(3 + 95 + 1);
     expect(u.godPacks).toBe(1);
     await t.mutation(api.avent.debugReset, { sessionToken: token });
     expect((await user(t, userId)).advent).toEqual({});
