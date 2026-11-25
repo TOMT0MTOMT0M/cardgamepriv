@@ -19,5 +19,5 @@ Rappel : version en ligne = `master` (worktree `.wt-master/`). `lanceurs/publier
 6. **Commit** : un par lot, uniquement ses fichiers, message `fix|feat(...): … (patch v2.X.Y)` + lignes d'attribution.
 7. **Lanceur** : `.wt-master/METTRE-EN-LIGNE-v2.X.Y.cmd`, copié du dernier (`METTRE-EN-LIGNE-v2.1.9.cmd`), en-tête et numéros mis à jour.
 8. **Report sur v2** : cherry-pick des commits du patch sur `v2`, puis `git merge -s ours patch-v2.X.Y` sur `v2` (sinon `publier-patch.cmd` refusera plus tard). Pousser `v2` et `patch-v2.X.Y` (`git push`). Ne jamais pousser `master` à la main : le lanceur le fait.
-9. **Mise en ligne** : demander « je publie v2.X.Y chez les joueurs ? ». Au oui de Tom, lancer `cmd.exe //c "METTRE-EN-LIGNE-v2.X.Y.cmd" < /dev/null` depuis `.wt-master/` en arrière-plan, lire `logs\mise-en-ligne-v2.X.Y.log`, puis donner à Tom 2-3 vérifications précises sur https://cardgamepriv.pages.dev/jeu/.
+9. **Mise en ligne** : demander « je publie v2.X.Y chez les joueurs ? ». Au oui de la personne (Tom ou Hugo), lancer `cmd.exe //c "METTRE-EN-LIGNE-v2.X.Y.cmd" < /dev/null` depuis `.wt-master/` en arrière-plan, lire `logs\mise-en-ligne-v2.X.Y.log`, puis donner 2-3 vérifications précises sur https://cardgamepriv.pages.dev/jeu/.
 10. **Fin** : appliquer la procédure de `/cr` (EN-COURS.md + compte rendu 1 page).
