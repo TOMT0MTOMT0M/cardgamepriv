@@ -23,5 +23,54 @@
   "track": "Concerto for Two Pianos and Orchestra in D Minor (1932): I. Allegro ma non troppo",
   "artist": "Francis Poulenc, Orchestre de la Société des Concerts du Conservatoire, Jacques Fevrier & Pierre Dervaux",
   "link": "https://music.apple.com/fr/album/concerto-for-two-pianos-and-orchestra-in-d-minor-1932/698851542?i=698853570&uo=4"
+ },
+ "cartoon:code-lyoko": {
+  "url": "audio/generiques/code-lyoko.mp3",
+  "track": "Code Lyoko (générique français)",
+  "artist": "Code Lyoko",
+  "link": ""
+ },
+ "cartoon:south-park": {
+  "url": "audio/generiques/south-park-vf.mp3",
+  "track": "South Park (générique français)",
+  "artist": "South Park (VF)",
+  "link": ""
+ },
+ "cartoon-en:south-park": {
+  "url": "",
+  "deezer": 2576770162,
+  "track": "South Park Theme",
+  "artist": "Primus",
+  "link": "https://www.deezer.com/track/2576770162"
+ },
+ "screen:kaamelott": {
+  "url": "audio/generiques/kaamelott.mp3",
+  "track": "Kaamelott (générique)",
+  "artist": "Kaamelott",
+  "link": ""
+ },
+ "screen:jv-crash-bandicoot": {
+  "url": "audio/generiques/crash-bandicoot.mp3",
+  "track": "Crash Bandicoot (thème)",
+  "artist": "Crash Bandicoot",
+  "link": ""
+ },
+ "screen:jv-zelda": {
+  "url": "audio/generiques/zelda.mp3",
+  "track": "The Legend of Zelda (thème principal)",
+  "artist": "Koji Kondo",
+  "link": ""
+ },
+ "anime:inazuma-eleven": {
+  "url": "audio/generiques/inazuma-eleven.mp3",
+  "track": "Inazuma Eleven (générique français)",
+  "artist": "Inazuma Eleven (VF)",
+  "link": ""
+ },
+ "anime:yugioh": {
+  "url": "audio/generiques/yu-gi-oh.mp3",
+  "track": "Yu-Gi-Oh! (générique français)",
+  "artist": "Yu-Gi-Oh! (VF)",
+  "link": ""
  }
 }

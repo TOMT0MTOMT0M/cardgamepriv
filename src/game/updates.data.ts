@@ -74,6 +74,7 @@ export const UPDATES: UpdateMonth[] = [
           '🖼️ Plus de 350 cartes qui n’avaient pas d’image en ont une : Dofus, Wakfu, Genshin Impact, Summoners War, Fast & Furious, X-Men, esport…',
           '✨ Une centaine de visuels remplacés, surtout des 6★ : musique, foot, esport, animés.',
           '🗂️ Les départements et régions de France ont leur propre famille, séparée des pays.',
+          '🎵 Nouvelles musiques en fond des 6★ : les génériques français de Code Lyoko, South Park, Yu-Gi-Oh! et Inazuma Eleven, Kaamelott, et les thèmes de Zelda et Crash Bandicoot.',
         ],
       },
       {

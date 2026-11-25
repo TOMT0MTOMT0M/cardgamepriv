@@ -39,6 +39,7 @@ export const UPDATES_EN: UpdateMonth[] = [
           '🖼️ Over 350 cards that had no picture now have one: Dofus, Wakfu, Genshin Impact, Summoner’s War, Fast & Furious, X-Men, esports…',
           '✨ About a hundred pictures replaced, mostly 6★: music, football, esports, anime.',
           '🗂️ French departments and regions now have their own family, separate from countries.',
+          '🎵 New background music for 6★ cards: the French theme songs of Code Lyoko, South Park, Yu-Gi-Oh! and Inazuma Eleven, Kaamelott, plus the Zelda and Crash Bandicoot themes (South Park keeps Primus in English).',
         ],
       },
       {
