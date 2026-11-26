@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 26/11/2026 (Hugo : Convex coupé (Free dépassé) → staging vidé, forfait Starter pris, session Convex à faire ; avant : liste des licences à étoffer, `9eae34f` ; avant : agent Claude sur la clé API de Tom poussé, `42c5c21` ; avant : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
+_Mis à jour : 26/11/2026 (Hugo : rework économie proposé et validé, rien de codé, `af30625` ; liste des 122 Paralympiques sortie dans `.claude-tmp/` ; avant : Convex coupé (Free dépassé) → staging vidé, forfait Starter pris, session Convex à faire ; avant : liste des licences à étoffer, `9eae34f` ; avant : agent Claude sur la clé API de Tom poussé, `42c5c21` ; avant : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
 
 ## Chantiers ouverts
 
@@ -23,6 +23,7 @@ _Mis à jour : 26/11/2026 (Hugo : Convex coupé (Free dépassé) → staging vid
 | Hugo + Claude | racine / `v2` | QOL : liste validée (section « QOL » ci-dessous), rien de codé | à démarrer par collection 1-2-3 — `docs/chantiers/qol.md` |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 | Hugo + Claude | racine / `v2` | contenu : licences à étoffer / scraper (liste dans « Reste à faire ») | listé (`9eae34f`), rien de généré — `docs/chantiers/licences.md` |
+| Hugo + Claude | racine / `v2` | V3 : rework économie (étalon 1 booster = 250 pièces) | proposé et validé par Hugo (`af30625`), rien de codé, à valider avec Tom — `docs/chantiers/economie.md` |
 
 ## Reste à faire
 ### Avant / au 01/12

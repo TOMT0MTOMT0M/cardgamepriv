@@ -43,3 +43,10 @@ La Forge et les pièces d'ouverture grandissent avec le nombre de boosters ouver
 - Mesurer les vrais revenus par joueur (pièces gagnées, forgées, par jour, sur 7 jours) : une seule requête en lecture, avec Tom (Convex au-dessus de l'offre gratuite).
 - Décider avec Tom : seuils du point 1 (12 B / 40 B), calendrier du point 2, 3× 5★ à la roulette.
 - Change l'expérience des joueurs : en V3, note de patch FR et EN, et `npm run test:server` sur `economy` / `games`.
+
+## Compte rendu (26/11, Hugo + Claude)
+- **Fait** : chiffres relevés dans le code, proposition écrite, validée par Hugo, notée « Rework économie » dans EN-COURS (`af30625`).
+- **Vérifié** : la valeur de Forge d'un booster (≈ 162) recalculée à partir des taux de drop ; aucun code modifié, donc pas de typecheck ni de tests à lancer.
+- **À vérifier par Tom** : les seuils (3 000 / 10 000 par jour), le nouveau calendrier, 3× 5★ à la roulette.
+- **Reste** : mesurer les vrais revenus des joueurs (Convex désormais en Starter : la requête est facturée, donc la garder unique), puis coder en V3.
+- À côté : liste des 122 cartes de la famille Paralympiques dans `.claude-tmp/athletes-paralympiques.txt`. Piège : le catalogue `sport.ts` n'en a que 20, il faut y ajouter la couche `etoiles.ts` (`ETOILES_RESUB` + `ETOILES_ADD`, − Robert Citerne passé en escrime).
