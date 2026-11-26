@@ -4,6 +4,7 @@
   "description": "Card Lab — expérimentations 3D WebGPU (cartes, ouverture de packs, rareté)",
   "scripts": {
     "dev": "vite",
+    "labo:new": "node scripts/labo-new.mjs",
     "dev:mobile": "vite --host --mode https",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
