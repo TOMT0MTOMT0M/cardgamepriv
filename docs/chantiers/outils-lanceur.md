@@ -12,6 +12,8 @@ _26/11/2026 soir — Tom + Claude, racine / `v2`. Remplace la fenêtre à bouton
   - Avis en bas à droite : l'autre arrive / part / ouvre une session / laisse un mot / pousse, nouveau patch, mise en ligne.
 - **Présence** (`outils/lanceur/presence.mjs`) : chaque PC pousse un `etat.json` (nom, heure, sessions Claude ouvertes avec titre, dossier, branche, état, mot) dans `refs/presence/<nom>` sur GitHub — hors branches, aucun build, aucun coût. Tout passe par un dépôt à part `.claude-tmp/presence.git` : le dépôt de travail n'est pas touché. Un veilleur détaché bat toutes les 3 min (au plus un push par 45 s quand quelque chose change) tant qu'une session Claude ou le lanceur est ouvert ; lancé par le lanceur et par le hook `au-demarrage.mjs`. En ligne = battement de moins de 8 min.
 - Polish (même soir) : gris plus lisibles, menu en barre du haut sous 900 px de large, bouton PATCH / V3 / Reprendre qui prévient quand une session est déjà ouverte dans son dossier (deuxième clic dans les 6 s pour ouvrir quand même), dernier commit de chacun sur sa carte, fichiers modifiés comptés sans les fins de ligne, un titre par tag quand une ligne d'`EN-COURS` couvre plusieurs versions, la page se recharge seule quand `index.html` change. Essais : `node outils/lanceur/serveur.mjs --sans-fenetre` (port libre, isolé du vrai lanceur) puis l'adresse affichée avec `&fige=1&page=patchs`.
+- **Annonces d'équipe** (`ba16e58`) : `.claude/annonces/AAAA-MM-JJ-pour-<hugo|tom|tous>-<sujet>.md`, rappelées par `au-demarrage.mjs` à la personne visée jusqu'à `--vu <nom>`. Première annonce : mise à niveau du dossier de Hugo (pull bloqué par les `.cmd`, réglage `merge.renormalize`, `.wt-master`, explication du lanceur).
+- Les deux entrées « autostash » de `git stash` sont supprimées (l'une vide, l'autre identique au commit `aa785f9`).
 - Qui est qui : auteur git « Hugo » = Hugo, sinon Tom (même règle que les hooks).
 
 ## Vérifié (PC de Tom)
@@ -21,7 +23,8 @@ _26/11/2026 soir — Tom + Claude, racine / `v2`. Remplace la fenêtre à bouton
 - Captures des 4 pages en 1920×1080 : `.claude-tmp/lanceur-*.png`.
 
 ## À vérifier
-- Tom : cliquer PATCH, V3 et une « session à reprendre ».
+- Tom : fermer la fenêtre ouverte le 26/11 (ancienne version), attendre 20 s, relancer `LANCEUR-CLAUDE.cmd` ; cliquer PATCH, V3 et une « session à reprendre » (le premier clic prévient si le dossier est occupé).
+- Hugo : à sa prochaine session, son Claude doit appliquer l'annonce et lui expliquer le lanceur (simulé chez Tom seulement).
 - Hugo : `git pull`, puis `LANCEUR-CLAUDE.cmd` (ou simplement ouvrir une session Claude) → sa carte passe « en ligne » chez Tom en moins d'une minute. Si rien : `logs/lanceur-claude.log`, et `git push` doit marcher sans fenêtre de connexion.
 
 ## Limites connues
