@@ -7,7 +7,7 @@
 <style>
   :root {
     --fond: #0b0c0e; --plan: #111316; --plan-2: #171a1e; --trait: #23272d; --trait-2: #323841;
-    --encre: #eceef1; --encre-2: #a3aab4; --encre-3: #6b727d;
+    --encre: #eceef1; --encre-2: #b6bcc5; --encre-3: #878e99;
     --bleu: #3d6bff; --vert: #35c27a; --ambre: #e8a23a; --rouge: #ef5b5b;
     --tom: #5b8cff; --hugo: #f0935a;
     --r: 6px; --mono: "Cascadia Code", "Cascadia Mono", Consolas, monospace;
@@ -23,16 +23,17 @@
   .n { font-variant-numeric: tabular-nums; }
 
   /* rail */
-  nav { border-right: 1px solid var(--trait); display: flex; flex-direction: column; padding: 18px 12px 14px; gap: 4px; background: var(--plan); }
+  nav { border-right: 1px solid var(--trait); display: flex; flex-direction: column; padding: 18px 12px 14px; gap: 4px; background: var(--plan); overflow-y: auto; scrollbar-width: none; }
   .marque { padding: 2px 10px 18px; }
   .marque b { display: block; font-size: 17px; letter-spacing: -.01em; }
   .onglet { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r); color: var(--encre-2); width: 100%; }
   .onglet:hover { background: var(--plan-2); color: var(--encre); }
   .onglet[aria-current="page"] { background: var(--plan-2); color: var(--encre); box-shadow: inset 2px 0 0 var(--bleu); }
-  .onglet kbd { font: 11px var(--mono); color: var(--encre-3); margin-left: auto; }
-  .onglet .cpt { font: 11px var(--mono); color: var(--encre-3); margin-left: auto; }
+  .onglet kbd { font: 10px var(--mono); color: var(--encre-3); margin-left: auto; border: 1px solid var(--trait-2); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; line-height: 16px; }
+  .onglet .cpt { font: 600 11px var(--mono); color: var(--encre-2); margin-left: auto; background: var(--fond); border-radius: 9px; padding: 1px 7px; }
+  .onglet .cpt:empty { display: none; }
   .onglet .cpt + kbd { margin-left: 8px; }
-  .pied { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--trait); display: grid; gap: 8px; color: var(--encre-3); font-size: 12px; }
+  .pied { margin-top: auto; padding: 12px 10px 0; flex: none; border-top: 1px solid var(--trait); display: grid; gap: 8px; color: var(--encre-3); font-size: 12px; }
   #heure { font: 600 26px var(--mono); color: var(--encre); letter-spacing: -.02em; }
   .lien { color: var(--encre-2); padding: 3px 0; display: block; width: 100%; }
   .lien:hover { color: var(--encre); text-decoration: underline; }
@@ -53,7 +54,15 @@
   .g2 { grid-template-columns: 1.25fr 1fr; }
   .g4 { grid-template-columns: repeat(4, 1fr); }
   @media (max-width: 1250px) { .g4 { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 900px) { body { grid-template-columns: 1fr; } nav { display: none; } .g3, .g2, .g4 { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    nav { flex-direction: row; align-items: center; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--trait); overflow-x: auto; }
+    .marque, .pied, .onglet kbd { display: none; }
+    .onglet { width: auto; white-space: nowrap; }
+    .onglet[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--bleu); }
+    main { padding: 16px 14px 32px; }
+    .g3, .g2, .g4 { grid-template-columns: 1fr; }
+  }
 
   /* lancer */
   .lancer { border-radius: var(--r); padding: 18px 18px 16px; border: 1px solid var(--trait-2); display: grid; gap: 4px; min-height: 104px; transition: transform .12s, border-color .12s; }
@@ -66,6 +75,9 @@
   .lancer.v3 { background: var(--encre); border-color: var(--encre); color: #0b0c0e; }
   .lancer.reprise { background: var(--plan-2); }
   .lancer[disabled] { opacity: .4; cursor: not-allowed; transform: none; }
+  .lancer .garde { display: none; margin-top: 6px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent); font-size: 12.5px; font-weight: 600; opacity: 1; overflow-wrap: anywhere; }
+  .lancer.occupe .garde { display: block; }
+  .lancer.arme { outline: 2px solid var(--ambre); outline-offset: 2px; }
 
   /* équipe */
   .gens { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -81,11 +93,14 @@
   .qui small { display: block; color: var(--encre-3); font-size: 12px; }
   .on .qui small { color: var(--vert); }
   .mot { border-left: 2px solid var(--ambre); padding: 2px 10px; color: var(--encre); font-style: italic; overflow-wrap: anywhere; }
-  .session { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: start; padding: 9px 0 0; border-top: 1px solid var(--trait); }
+  .session { display: grid; grid-template-columns: 10px 1fr auto; gap: 2px 10px; align-items: start; padding: 9px 0 0; border-top: 1px solid var(--trait); }
+  .session small { grid-column: 2 / -1; }
+  .dernier { color: var(--encre-3); font-size: 12.5px; border-top: 1px solid var(--trait); padding-top: 9px; overflow-wrap: anywhere; }
+  .dernier b { color: var(--encre-2); font-weight: 600; }
   .session i { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--encre-3); }
   .session.busy i, .session.shell i { background: var(--vert); animation: pouls 1.6s infinite; }
   .session.idle i { background: var(--ambre); }
-  .session b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  .session b { font-weight: 600; overflow-wrap: anywhere; }
   .session small { color: var(--encre-3); font-size: 12px; }
   .puce { font: 600 11px var(--mono); border: 1px solid var(--trait-2); border-radius: 4px; padding: 1px 6px; color: var(--encre-2); white-space: nowrap; }
   .puce.patch { color: var(--bleu); border-color: color-mix(in srgb, var(--bleu) 50%, var(--trait)); }
@@ -102,6 +117,8 @@
   /* lignes génériques */
   .ligne { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 8px 0; border-top: 1px solid var(--trait); align-items: center; width: 100%; }
   .ligne:first-of-type { border-top: 0; padding-top: 0; }
+  button.ligne { border-radius: 4px; }
+  button.ligne:hover { background: var(--plan-2); box-shadow: 0 0 0 6px var(--plan-2); }
   button.ligne:hover b { text-decoration: underline; }
   .ligne b { font-weight: 600; overflow-wrap: anywhere; }
   .ligne small { color: var(--encre-3); font-size: 12px; display: block; }
@@ -126,7 +143,9 @@
   mark { background: color-mix(in srgb, var(--ambre) 35%, transparent); color: inherit; border-radius: 2px; }
 
   /* patchs */
-  .jours { display: flex; gap: 6px; align-items: flex-end; height: 96px; margin-bottom: 4px; }
+  .jours { display: flex; gap: 6px; align-items: flex-end; height: 108px; margin-bottom: 4px; }
+  .jour b { font: 600 10px var(--mono); color: var(--encre-2); text-align: center; flex: none; }
+  .axe span.auj { color: var(--encre); border-top-color: var(--encre-3); }
   .jour { flex: 1; display: flex; flex-direction: column-reverse; gap: 3px; min-width: 0; height: 100%; justify-content: flex-start; }
   .jour i { display: block; flex: 0 1 12px; min-height: 3px; border-radius: 2px; background: var(--tom); }
   .jour i.hugo { background: var(--hugo); }
@@ -201,9 +220,9 @@
     <div class="tete"><h1 id="bonjour">Bonjour</h1><p>Une tâche = une session.</p></div>
     <div class="bandeau" id="retard"></div>
     <div class="grille g3" style="margin-bottom:14px">
-      <button class="lancer patch" data-action="patch" id="b-patch"><span class="et">Nouvelle tâche</span><b>Patch — version en ligne</b><span>Correctif, image, musique. Dossier <span class="mono">.wt-master</span>.</span></button>
-      <button class="lancer v3" data-action="v3"><span class="et">Nouvelle tâche</span><b>V3 — nouveautés</b><span>Fonctions, refontes, données. Dossier racine, Opus.</span></button>
-      <button class="lancer reprise" data-action="continuer"><span class="et">Coupée en plein milieu ?</span><b>Reprendre la dernière V3</b><span>Ou choisis une session précise plus bas.</span></button>
+      <button class="lancer patch" data-action="patch" id="b-patch"><span class="et">Nouvelle tâche</span><b>Patch — version en ligne</b><span>Correctif, image, musique. Dossier <span class="mono">.wt-master</span>.</span><span class="garde"></span></button>
+      <button class="lancer v3" data-action="v3"><span class="et">Nouvelle tâche</span><b>V3 — nouveautés</b><span>Fonctions, refontes, données. Dossier racine, Opus.</span><span class="garde"></span></button>
+      <button class="lancer reprise" data-action="continuer"><span class="et">Coupée en plein milieu ?</span><b>Reprendre la dernière V3</b><span>Ou choisis une session précise plus bas.</span><span class="garde"></span></button>
     </div>
     <div class="grille g2" style="margin-bottom:14px">
       <div class="bloc">
@@ -271,7 +290,8 @@ const md = (t) => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*(
 const classe = (qui) => (/hugo/i.test(qui) ? 'hugo' : 'tom');
 const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const jourLong = (d) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-function ilya(d, court) {
+function ilya(d, court) { return ilyaBrut(d, court).replace(/ /g, '\u00a0'); }
+function ilyaBrut(d, court) {
   if (!d) return 'jamais';
   const m = Math.max(0, Math.round((Date.now() - d) / 60000));
   if (m < 1) return "à l'instant";
@@ -281,6 +301,7 @@ function ilya(d, court) {
   if (h < 24) return `${pre}${h} h${m % 60 && h < 6 ? ' ' + String(m % 60).padStart(2, '0') : ''}`;
   return `${pre}${Math.floor(h / 24)} j`;
 }
+const court = (t, n) => { const x = String(t).replace(/`/g, ''); return x.length > n ? x.slice(0, n).trimEnd() + '…' : x; };
 const STATUTS = { busy: 'travaille', shell: 'commande en cours', idle: 'en attente', waiting: 'attend une réponse' };
 
 let etat = null;
@@ -304,6 +325,22 @@ function avis(titre, detail, couleur = '') {
 }
 
 // ---------- rendu ----------
+function dernierCommit(e, qui) {
+  const c = e.commits.find((x) => x.qui === qui && !/^merge /i.test(x.sujet));
+  return c ? `<div class="dernier">Dernier commit ${ilya(c.date)} : <b>${esc(court(c.sujet, 110))}</b></div>` : '';
+}
+// Une seule session par dossier : la tuile prévient quand le sien est déjà occupé.
+const TUILES = { patch: '.wt-master', v3: 'racine', continuer: 'racine' };
+function rendreTuiles(e) {
+  const miennes = e.equipe.find((g) => g.moi)?.sessions || [];
+  for (const b of document.querySelectorAll('.lancer')) {
+    const ici = miennes.filter((s) => s.dossier === TUILES[b.dataset.action]);
+    b.classList.toggle('occupe', ici.length > 0);
+    const texte = ici.length ? `⚠ Déjà une session ouverte dans ce dossier : ${ici.map((s) => s.titre || s.nom).join(', ')}` : '';
+    const g = b.querySelector('.garde');
+    if (g.textContent !== texte) g.textContent = texte;
+  }
+}
 function rendreEquipe(e) {
   const autres = e.equipe.filter((g) => !g.moi);
   const enLigne = autres.filter((g) => g.enLigne);
@@ -314,8 +351,9 @@ function rendreEquipe(e) {
     return `<div class="perso ${g.enLigne ? 'on' : ''}">
       <div class="qui"><div class="pastille" style="background:var(--${classe(g.qui)})">${esc(g.qui[0])}</div><div><b>${esc(g.qui)}</b><small>${esc(quand)}</small></div></div>
       ${g.note ? `<div class="mot">« ${esc(g.note)} »</div>` : ''}
-      ${sessions.map((s) => `<div class="session ${esc(s.statut || '')}"><i></i><div><b>${esc(s.titre || s.nom || 'Session sans nom')}</b><small>${esc(STATUTS[s.statut] || s.statut || '')}${s.depuis ? ` · ouverte depuis ${ilya(s.depuis, true)}` : ''}${s.titre && s.nom ? ` · ${esc(s.nom)}` : ''}</small></div><span class="puce ${s.dossier === '.wt-master' ? 'patch' : ''}">${s.dossier === '.wt-master' ? 'PATCH' : s.dossier === 'racine' ? 'V3' : esc(s.dossier)}${s.branche ? ' · ' + esc(s.branche) : ''}</span></div>`).join('')}
+      ${sessions.map((s) => `<div class="session ${esc(s.statut || '')}"><i></i><b>${esc(s.titre || s.nom || 'Session sans nom')}</b><span class="puce ${s.dossier === '.wt-master' ? 'patch' : ''}">${s.dossier === '.wt-master' ? 'PATCH' : s.dossier === 'racine' ? 'V3' : esc(s.dossier)}${s.branche ? ' · ' + esc(s.branche) : ''}</span><small>${esc([STATUTS[s.statut] || s.statut, s.depuis ? `ouverte depuis ${ilya(s.depuis, true)}` : '', s.titre && s.nom ? s.nom : ''].filter(Boolean).join(' · '))}</small></div>`).join('')}
       ${g.enLigne && !sessions.length ? '<div class="vide">Aucune session Claude ouverte.</div>' : ''}
+      ${dernierCommit(e, g.qui)}
     </div>`;
   }).join(''));
   document.title = `${enLigne.length ? '● ' + enLigne.map((g) => g.qui).join(', ') + ' en ligne — ' : ''}Lanceur Claude`;
@@ -336,7 +374,7 @@ function rendreAccueil(e) {
       ${s.id === 'prod' && live ? `<span class="puce live">${esc(live.tag)}</span>` : ''}
       <small>${s.ok === false ? '<span class="alerte">injoignable</span>' : s.at ? 'mis en ligne ' + ilya(Date.parse(s.at)) : ''}</small></div></button>`).join(''));
   poser('recentes', e.recentes.map((s) => `<button class="ligne" data-reprendre="${esc(s.id)}" data-dossier="${esc(s.dossier)}"><div><b>${esc(s.titre)}</b><small>${ilya(s.date)}</small></div><span class="puce ${s.dossier === '.wt-master' ? 'patch' : ''}">${s.dossier === '.wt-master' ? 'PATCH' : 'V3'}</span></button>`).join('') || '<div class="vide">Aucune session fermée cette semaine.</div>');
-  poser('mini-patchs', e.patchs.slice(0, 6).map((p) => `<div class="ligne"><div><b><span class="mono">${esc(p.tag)}</span> ${p.enLigne ? '<span class="puce live">EN LIGNE</span>' : ''}</b><small>${esc(p.titre.slice(0, 90))}${p.titre.length > 90 ? '…' : ''}</small></div><div style="text-align:right"><span class="puce ${classe(p.qui)}">${esc(p.qui)}</span><small>${ilya(p.date)}</small></div></div>`).join('') || '<div class="vide">Aucun tag v2.</div>');
+  poser('mini-patchs', e.patchs.slice(0, 6).map((p) => `<div class="ligne"><div><b><span class="mono">${esc(p.tag)}</span> ${p.enLigne ? '<span class="puce live">EN LIGNE</span>' : ''}</b><small>${esc(court(p.titre, 90))}</small></div><div style="text-align:right"><span class="puce ${classe(p.qui)}">${esc(p.qui)}</span><small>${ilya(p.date)}</small></div></div>`).join('') || '<div class="vide">Aucun tag v2.</div>');
   const premiere = e.enCours.sections.find((s) => s.items.some((i) => i.type === 'tache' && !i.fait));
   poser('t-urgent', esc(premiere ? premiere.titre : 'À faire en premier'));
   poser('urgent', premiere ? premiere.items.filter((i) => i.type === 'tache' && !i.fait).slice(0, 5).map((i) => `<div class="tache"><span class="case"></span><div>${md(i.texte.length > 170 ? i.texte.slice(0, 170) + '…' : i.texte)}</div></div>`).join('') : '<div class="vide">Rien à faire. Vraiment ?</div>');
@@ -385,8 +423,11 @@ function rendrePatchs(e) {
   const jours = [];
   const minuit = new Date(); minuit.setHours(0, 0, 0, 0);
   for (let i = 13; i >= 0; i--) jours.push(minuit.getTime() - i * 86400000);
-  poser('jours', jours.map((j) => `<div class="jour" title="${esc(jourLong(j))}">${p.filter((x) => x.date >= j && x.date < j + 86400000).reverse().map((x) => `<i class="${classe(x.qui)}" title="${esc(x.tag)}"></i>`).join('')}</div>`).join(''));
-  poser('axe', jours.map((j) => `<span>${new Date(j).getDate()}</span>`).join(''));
+  poser('jours', jours.map((j) => {
+    const duJour = p.filter((x) => x.date >= j && x.date < j + 86400000).reverse();
+    return `<div class="jour" title="${esc(jourLong(j))} : ${duJour.length} patch${duJour.length > 1 ? 's' : ''}">${duJour.map((x) => `<i class="${classe(x.qui)}" title="${esc(x.tag)}"></i>`).join('')}${duJour.length ? `<b>${duJour.length}</b>` : ''}</div>`;
+  }).join(''));
+  poser('axe', jours.map((j, i) => `<span class="${i === 13 ? 'auj' : ''}">${i === 13 ? 'auj.' : new Date(j).getDate()}</span>`).join(''));
   const maxi = Math.max(1, ...p.map((x) => Math.log10(1 + x.plus + x.moins)));
   let courant = '';
   poser('fil', p.map((x) => {
@@ -396,7 +437,7 @@ function rendrePatchs(e) {
     const large = Math.round((Math.log10(1 + x.plus + x.moins) / maxi) * 100);
     const partPlus = x.plus + x.moins ? (x.plus / (x.plus + x.moins)) * large : 0;
     return `${entete}<div class="pt ${classe(x.qui)} ${x.enLigne ? 'live' : ''}">
-      <div class="tag">${esc(x.tag)}<small>${heure(x.date)} · ${esc(x.commit)}</small></div>
+      <div class="tag">${esc(x.tag)}<small>${heure(x.date)}</small><small>${esc(x.commit)}</small></div>
       <div><p>${md(x.titre)}</p>
         <span class="puce ${classe(x.qui)}">${esc(x.qui)}</span> ${x.enLigne ? '<span class="puce live">EN LIGNE CHEZ LES JOUEURS</span>' : ''}
         ${x.doc ? `<button class="puce" data-lien="doc:${esc(x.tag)}">compte rendu</button>` : ''}
@@ -442,7 +483,7 @@ function comparer(avant, apres) {
 }
 
 function rendre(e) {
-  rendreEquipe(e); rendreAccueil(e); rendreReste(e); rendrePatchs(e); rendreActivite(e);
+  rendreTuiles(e); rendreEquipe(e); rendreAccueil(e); rendreReste(e); rendrePatchs(e); rendreActivite(e);
   if (!rendre.noteMise) { const n = e.equipe.find((g) => g.moi)?.note; if (n) $('note').value = n; rendre.noteMise = true; }
 }
 
@@ -452,6 +493,7 @@ async function lire() {
     const r = await fetch('/api/etat', { headers: { 'x-jeton': K } });
     if (!r.ok) throw new Error(r.status);
     const e = await r.json();
+    if (etat && e.page && etat.page && e.page !== etat.page && !FIGE) return location.reload(); // page mise à jour (git pull)
     if (etat) comparer(etat, e);
     etat = e; echecs = 0;
     $('coupe').classList.remove('vue');
@@ -484,6 +526,13 @@ document.addEventListener('click', async (ev) => {
   if (b.dataset.action) {
     const id = b.dataset.action;
     if (id === 'rafraichir') { $('synchro').textContent = 'Lecture de GitHub…'; vus.synchro = ''; await agir(id); return lire(); }
+    if (b.classList.contains('occupe') && !(b.armeJusqua > Date.now())) {
+      b.armeJusqua = Date.now() + 6000;
+      b.classList.add('arme');
+      setTimeout(() => b.classList.remove('arme'), 6000);
+      return avis('Dossier déjà occupé', 'Deux sessions dans le même dossier se marchent dessus. Reclique dans les 6 s pour ouvrir quand même.', 'ambre');
+    }
+    b.armeJusqua = 0; b.classList.remove('arme');
     if (await agir(id)) avis('Terminal ouvert', id === 'patch' ? 'Patch, dans .wt-master.' : 'V3, dans le dossier racine.');
   }
 });

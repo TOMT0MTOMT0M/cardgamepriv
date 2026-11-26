@@ -43,7 +43,8 @@ async function etatDossier(dossier, nom) {
   if (!amont) amont = branche === 'master' || branche.startsWith('patch-') ? 'origin/master' : `origin/${branche}`;
   const compte = await git(dossier, ['rev-list', '--left-right', '--count', `HEAD...${amont}`]);
   const [avance, retard] = compte ? compte.split(/\s+/).map(Number) : [null, null];
-  const modifs = await git(dossier, ['status', '--porcelain', '--untracked-files=no']);
+  // sans les fichiers dont seules les fins de ligne diffèrent (.gitattributes : les .cmd paraissent modifiés)
+  const modifs = await git(dossier, ['diff', '--ignore-cr-at-eol', '--numstat', 'HEAD']);
   return { nom, branche, amont, avance, retard, modifs: modifs ? modifs.split('\n').length : 0 };
 }
 
@@ -114,7 +115,9 @@ async function lirePatchs() {
   });
   const table = new Map();
   for (const c of lireEnCours().chantiers) {
-    for (const v of versionsCitees(c.chantier)) if (!table.has(v)) table.set(v, c);
+    const cites = versionsCitees(c.chantier);
+    // une ligne qui couvre plusieurs versions ne donne pas le titre : chaque tag prend le sien (doc ou commit)
+    for (const v of cites) if (!table.has(v)) table.set(v, { ...c, partage: cites.length > 1 });
   }
   const liste = [];
   for (let i = 0; i < tags.length; i++) {
@@ -133,13 +136,14 @@ async function lirePatchs() {
     }
     const s = stats.get(cle) || { fichiers: 0, plus: 0, moins: 0, sujets: [] };
     const ligne = table.get(t.tag);
-    let titre = ligne ? ligne.chantier.replace(/^patchs?\s+v[\d.\- etv]+:\s*/i, '') : null;
+    let titre = ligne && !ligne.partage ? ligne.chantier.replace(/^patchs?\s+v[\d.\- etv]+:\s*/i, '') : null;
     const doc = join(racine, 'docs', 'chantiers', `${t.tag}.md`);
     const aDoc = existsSync(doc);
     if (!titre && aDoc) {
-      try { titre = readFileSync(doc, 'utf8').split(/\r?\n/)[0].replace(/^#\s*(Patch\s+)?v[\d.]+\s*[—:-]\s*/i, '').replace(/\s*\([^)]*\)\s*$/, ''); } catch {}
+      try { titre = readFileSync(doc, 'utf8').split(/\r?\n/)[0].replace(/^#\s*(Patchs?\s+)?v[\d.]+((\s+et\s+|\s*[,-]\s*)v?[\d.]+)*\s*[—:-]\s*/i, '').replace(/\s*—\s*EN LIGNE.*$/i, '').replace(/\s*\([^)]*\)\s*$/, ''); } catch {}
     }
-    if (!titre) titre = s.sujets[0] || t.tag;
+    if (!titre && s.sujets[0]) titre = s.sujets[0].replace(/\s*\(patch v[\d.]+\)\s*$/i, '').replace(/^\w+(\([^)]*\))?:\s*/, '');
+    if (!titre) titre = t.tag;
     liste.push({
       tag: t.tag, date: t.date, commit: t.commit.slice(0, 7),
       qui: ligne ? ligne.qui.replace(/\s*\+\s*Claude/i, '') : nomAuteur(t.tagueur),
@@ -200,7 +204,7 @@ function lireJournaux() {
     try {
       const fin = readFileSync(chemin, 'latin1').slice(-3000);
       if (/ECHEC|=== ERREUR/i.test(fin)) verdict = 'echec';
-      else if (/=== OK ===/.test(fin)) verdict = 'ok';
+      else if (/===[^=\r\n]*\bOK\b[^=\r\n]*===/.test(fin)) verdict = 'ok';
     } catch {}
     return { ...j, verdict };
   });
@@ -273,6 +277,9 @@ async function tourGit(avecFetch) {
   enCoursGit = false;
 }
 
+function versionPage() {
+  try { return statSync(join(ici, 'index.html')).mtimeMs; } catch { return 0; }
+}
 function etatComplet() {
   const locales = sessionsLocales();
   const ec = lireEnCours();
@@ -280,6 +287,7 @@ function etatComplet() {
   const enLigne = prod?.version ? patchs.find((p) => prod.version.endsWith(p.commit)) : null;
   return {
     maintenant: Date.now(),
+    page: versionPage(),
     moi: moi(),
     equipe: equipe(locales),
     presenceOk,
@@ -427,18 +435,18 @@ function fermer() {
 }
 
 async function demarrer() {
-  if (await dejaOuvert()) return;
+  if (!SANS_FENETRE && await dejaOuvert()) return;
   await new Promise((ok) => {
     serveur.once('error', () => { port = 0; serveur.listen(0, '127.0.0.1', ok); });
-    serveur.listen(PORT, '127.0.0.1', ok);
+    serveur.listen(SANS_FENETRE ? 0 : PORT, '127.0.0.1', ok);
   });
   port = serveur.address().port;
   mkdirSync(tmp, { recursive: true });
-  writeFileSync(etatLanceur, JSON.stringify({ pid: process.pid, port, jeton }));
-  noter(`lanceur ouvert (port ${port}, ${moi()})`);
+  if (!SANS_FENETRE) writeFileSync(etatLanceur, JSON.stringify({ pid: process.pid, port, jeton }));
+  noter(`lanceur ouvert (port ${port}, ${moi()}${SANS_FENETRE ? ', essai' : ''})`);
 
   // le veilleur pousse notre présence (sessions, note) tant que le lanceur ou une session Claude est ouvert
-  spawn(process.execPath, [join(ici, 'presence.mjs'), '--veille'], { detached: true, stdio: 'ignore', windowsHide: true, cwd: racine }).unref();
+  if (!SANS_FENETRE) spawn(process.execPath, [join(ici, 'presence.mjs'), '--veille'], { detached: true, stdio: 'ignore', windowsHide: true, cwd: racine }).unref();
 
   tourGit(false).then(() => tourGit(true));
   lireSites();
