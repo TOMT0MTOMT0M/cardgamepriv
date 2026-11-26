@@ -99,6 +99,11 @@
   "image": "jv-crash-bandicoot-crash-bandicoot.jpg",
   "t": 1794763937
  },
+ "jv-dofus-coiffe-kitsou": {
+  "file": "dofus-coiffe-kitsou-r2611262157.png",
+  "image": "jv-dofus-coiffe-kitsou.png",
+  "t": 1795726630
+ },
  "jv-final-fantasy-cloud": {
   "file": "final-fantasy--cloud-r2611252256.jpg",
   "image": "022.webp",
@@ -203,6 +208,11 @@
   "file": "red-dead-redemption--arthur-morgan-r2611252256.jpg",
   "image": "010.webp",
   "t": 1795643814
+ },
+ "jv-summoners-war-leo": {
+  "file": "summoners-war-leo-r2611262157.jpg",
+  "image": "jv-summoners-war-leo.png",
+  "t": 1795726630
  },
  "jv-summoners-war-lushen-joker-vent": {
   "file": "summoners-war--lushen-joker-vent-r2611231743.jpg",
@@ -2638,6 +2648,11 @@
   "file": "time-is-running-out-r2611252256.jpg",
   "image": "119.jpg",
   "t": 1795643817
+ },
+ "pop-tinky-winky": {
+  "file": "tinky-winky-r2611262157.jpg",
+  "image": "pop-tinky-winky.jpg",
+  "t": 1795726630
  },
  "pop-titanium": {
   "file": "titanium-r2611121558.jpg",

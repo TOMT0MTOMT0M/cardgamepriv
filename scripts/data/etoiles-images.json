@@ -180,9 +180,9 @@
 "src": "fourni-hugo:vanessa.jpg"
 },
 "jv-summoners-war-leo": {
-"miss": [
-"aucune source (icônes 102 px)"
-]
+"file": "summoners-war-leo-r2611262157.jpg",
+"art": "c",
+"src": "reillustre:jv-summoners-war-leo.png"
 },
 "jv-summoners-war-tiana": {
 "file": "summoners-war-tiana.jpg",
@@ -2865,13 +2865,9 @@
 "src": "fourni-hugo:jv-dofus-hache-zoth.png"
 },
 "jv-dofus-coiffe-kitsou": {
-"miss": [
-"genshin",
-"dofus",
-"liquipedia",
-"tvmaze",
-"wiki"
-]
+"file": "dofus-coiffe-kitsou-r2611262157.png",
+"art": "i",
+"src": "reillustre:jv-dofus-coiffe-kitsou.png"
 },
 "jv-dofus-baguette-hique": {
 "file": "dofus-baguette-hique.png",
