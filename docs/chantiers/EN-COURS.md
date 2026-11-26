@@ -52,6 +52,7 @@ _Mis à jour : 26/11/2026 (Hugo : liste des licences à étoffer, `9eae34f` ; av
 - [ ] Commit à part `git add --renormalize lanceurs/` (les `.cmd` paraissent modifiés depuis `.gitattributes`, fins de ligne seulement)
 
 ### V3
+- [ ] Économie : un seul étalon B = 1 booster = 250 pièces (proposition Hugo + Claude 26/11, rien de codé) — Forge dégressive par jour (100 % jusqu'à 3 000, 50 % jusqu'à 10 000, 25 % au-delà), connexion quotidienne relevée (jour 1 = 250 → jour 29 = 810, jour 30 = 2 000 ; mois ≈ 18 900 au lieu de 7 050), roulette inchangée (1 000 / 2 000) mais 3× 5★ au lieu de 2, prix conseillé du marché = 1,5× la Forge. D'abord : mesurer les vrais revenus par joueur, puis valider les seuils avec Tom — `docs/chantiers/economie.md`
 - [ ] Profils : revoir le visuel, mieux aligner les polices, régler le mélange bannière / GIF
 - [ ] Packs événement : 7 j, 1/h, réserve propre 3 (5 abonné), 2 500 pièces ; consommer SA réserve (prend un booster normal aujourd'hui) ; collection Télé + booster de lancement
 - [ ] Succès : ouvertures à gagner avec aperçu, paliers plus longs, récompenses proportionnelles (pièces, boosters, titres, cosmétiques) ; nouveaux cosmétiques nécessaires → les demander à Tom
