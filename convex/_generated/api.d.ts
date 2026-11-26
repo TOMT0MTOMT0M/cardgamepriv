@@ -38,6 +38,7 @@ import type * as inventory from "../inventory.js";
 import type * as labFeedback from "../labFeedback.js";
 import type * as launch from "../launch.js";
 import type * as listings from "../listings.js";
+import type * as liveUser from "../liveUser.js";
 import type * as market from "../market.js";
 import type * as migrations from "../migrations.js";
 import type * as missions from "../missions.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   labFeedback: typeof labFeedback;
   launch: typeof launch;
   listings: typeof listings;
+  liveUser: typeof liveUser;
   market: typeof market;
   migrations: typeof migrations;
   missions: typeof missions;
