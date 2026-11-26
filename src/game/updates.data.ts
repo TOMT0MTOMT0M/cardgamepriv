@@ -61,6 +61,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'God pack dans un ×5 ou un ×10', tag: 'corrigé',
+        points: [
+          '✦ Un God pack ouvert en ×5 ou en ×10 joue sa séquence « GOD PACK » juste avant ses cartes, à la fin du gros booster : elle pouvait se jouer plus tôt, sur des cartes ordinaires. Les cartes obtenues étaient déjà les bonnes.',
+        ],
+      },
+      {
         date: '26 nov.', title: '🎄 L’onglet Événement ouvre le 1er décembre', tag: 'amélioré',
         points: [
           '🎁 L’onglet Événement, grisé jusque-là, s’ouvre tout seul le 1er décembre à minuit (heure de Paris), même si le jeu est déjà ouvert : la première case du calendrier de l’Avent t’attend.',
