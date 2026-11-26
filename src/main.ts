@@ -114,6 +114,37 @@ const archOverrides: Record<string, boolean> = (() => {
   }
 })();
 const isArchived = (e: RegistryEntry) => archOverrides[e.id] ?? !!e.archived;
+const LS_MORE = 'cardlab.infoMore';
+// vignettes : prises toutes seules 2,5 s après l'ouverture d'une expérience (petit JPEG, ce navigateur seulement)
+const LS_THUMBS = 'cardlab.thumbs';
+const thumbs: Record<string, string> = (() => {
+  try {
+    return JSON.parse(lsGet(LS_THUMBS) || '{}') ?? {};
+  } catch {
+    return {};
+  }
+})();
+let thumbDue = 0;
+function takeThumb(id: string, src: HTMLCanvasElement) {
+  try {
+    const W = 192;
+    const H = 120;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const g = c.getContext('2d')!;
+    const s = Math.max(W / src.width, H / src.height);
+    const sw = W / s;
+    const sh = H / s;
+    g.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, W, H);
+    thumbs[id] = c.toDataURL('image/jpeg', 0.72);
+    lsSet(LS_THUMBS, JSON.stringify(thumbs));
+    const img = list.querySelector<HTMLElement>(`.item[data-id="${id}"] .th`);
+    if (img) img.style.backgroundImage = `url(${thumbs[id]})`;
+  } catch {
+    /* canvas illisible ou stockage plein : pas de vignette */
+  }
+}
 function toggleArchive(id: string) {
   const e = registry.find((x) => x.id === id);
   if (!e) return;
@@ -157,15 +188,23 @@ const nextNumber = () => String(Math.max(...registry.map((e) => parseInt(e.id, 1
 const SLOTS = 3;
 
 // ─────────────────────────────────────────── sidebar
-function itemEl(e: RegistryEntry, fbAll: ReturnType<typeof loadFeedback>, showCat: boolean) {
-  const a = h('a', `item${isArchived(e) ? ' is-arch' : ''}`) as HTMLAnchorElement;
+function itemEl(e: RegistryEntry, fbAll: ReturnType<typeof loadFeedback>, showCat: boolean, card = false) {
+  const arch = isArchived(e);
+  const a = h('a', `item${arch ? ' is-arch' : ''}${card ? ' card' : ''}`) as HTMLAnchorElement;
   a.href = `#/exp/${e.id}`;
   a.dataset.id = e.id;
+  a.title = e.blurb.replace(/<[^>]+>/g, '');
   const v = fbAll[e.id]?.vote;
-  const arch = isArchived(e);
-  a.innerHTML = `<div class="row"><span class="id">${e.id.slice(0, 3)}</span>${showCat ? `<span class="c c-${e.category}" title="${CATEGORY_LABELS[e.category]}">${e.category}</span>` : ''}<span class="t">${e.title}</span><span class="v">${v === 1 ? '👍' : v === -1 ? '👎' : fbAll[e.id]?.note ? '✎' : ''}</span><button class="arch" title="${arch ? 'Ressortir des archives' : 'Ranger aux archives'} (A)">${arch ? '⤒' : '⤓'}</button></div><div class="tags">${e.tags
-    .map((t) => `<span class="tag">${t}</span>`)
-    .join('')}</div>`;
+  const mark = v === 1 ? '👍' : v === -1 ? '👎' : fbAll[e.id]?.note ? '✎' : '';
+  const archB = `<button class="arch" title="${arch ? 'Ressortir des archives' : 'Ranger aux archives'} (A)">${arch ? '⤒' : '⤓'}</button>`;
+  const cat = showCat ? `<span class="c c-${e.category}" title="${CATEGORY_LABELS[e.category]}">${e.category}</span>` : '';
+  const title = e.title.replace(/^Design — /, '');
+  a.innerHTML = card
+    ? `<span class="th"${thumbs[e.id] ? ` style="background-image:url(${thumbs[e.id]})"` : ''}><span>${e.id.slice(0, 3)}</span></span><span class="body"><span class="meta"><span class="id">${e.id.slice(0, 3)}</span>${cat}<span class="v">${mark}</span>${archB}</span><span class="t">${title}</span><span class="tags">${e.tags
+        .slice(0, 3)
+        .map((t) => `<span class="tag">${t}</span>`)
+        .join('')}</span></span>`
+    : `<div class="row"><span class="id">${e.id.slice(0, 3)}</span>${cat}<span class="t">${title}</span><span class="v">${mark}</span>${archB}</div>`;
   a.querySelector('.arch')!.addEventListener('click', (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
@@ -191,7 +230,7 @@ function renderList() {
     for (const e of [...hits.filter((x) => !isArchived(x)).reverse(), ...hits.filter(isArchived)]) list.append(itemEl(e, fbAll, true));
     if (!hits.length) list.append(h('div', 'empty', 'Rien trouvé. Échap pour effacer.'));
   } else if (tab === 'actives') {
-    for (const e of act) list.append(itemEl(e, fbAll, true));
+    for (const e of act) list.append(itemEl(e, fbAll, true, true));
     if (!act.length) list.append(h('div', 'empty', 'Aucune expérience active : ressors-en une des archives (⤒).'));
     // de la place pour les prochaines
     const n = parseInt(nextNumber(), 10);
@@ -199,6 +238,7 @@ function renderList() {
     for (let i = 0; i < SLOTS; i++) {
       list.append(h('div', 'slot', `<span class="id">${String(n + i).padStart(3, '0')}</span><span>emplacement libre</span>`));
     }
+    list.append(h('div', 'slot-hint', `Nouvelle : <code>npm run labo:new -- slug "Titre" B</code>`));
   } else {
     (['A', 'B', 'C', 'D'] as Category[]).forEach((cat) => {
       const entries = arc.filter((e) => e.category === cat);
@@ -209,7 +249,7 @@ function renderList() {
     if (!arc.length) list.append(h('div', 'empty', 'Archives vides.'));
   }
   markActive();
-  sideFooter.innerHTML = `<span>${act.length} actives · ${arc.length} archivées</span><span class="keys"><kbd>←</kbd><kbd>→</kbd> naviguer · <kbd>A</kbd> archiver · <kbd>/</kbd> chercher</span>`;
+  sideFooter.innerHTML = `<span class="keys"><kbd>←</kbd><kbd>→</kbd> suivante <kbd>R</kbd> rejouer <kbd>A</kbd> archiver <kbd>/</kbd> chercher <kbd>[</kbd> liste <kbd>H</kbd> plein écran</span>`;
 }
 function markActive() {
   list.querySelectorAll('.item').forEach((el) => el.classList.toggle('active', (el as HTMLElement).dataset.id === current?.entry.id));
@@ -286,8 +326,7 @@ const sndBtn = btn('🔈', 'Son (Web Audio généré)', async () => {
   sndBtn.classList.toggle('on', sfx.enabled);
 });
 const statsHost = h('div', 'stats-host desk');
-const backendLabel = h('span', 'btn desk', '');
-backendLabel.style.pointerEvents = 'none';
+const backendLabel = h('span', '', '');
 // téléphone : masquer le panneau d'infos (bas gauche) et la pile de boutons (haut gauche) pour voir la scène en entier
 const LS_MIN = 'cardlab.mobileMin';
 const minBtn = btn('', 'Masquer / afficher les panneaux', () => setMin(!document.body.classList.contains('mobile-min')), 'min-btn');
@@ -311,7 +350,28 @@ setMin((() => {
 const gameLink = h('a', 'btn', '▶ Le jeu') as HTMLAnchorElement;
 gameLink.href = './jeu/';
 gameLink.title = 'La page de jeu : boutique, ouverture, collection, échanges';
-toolbar.append(menuBtn, minBtn, replayBtn, gameLink, rarBox, backendBtn, dprSel, mobileBtn, capBtn, gyroBtn, sndBtn, h('span', 'spacer'), backendLabel, statsHost);
+// réglages de rendu rangés dans un menu ⚙ (on ne les touche presque jamais)
+dprSel.className = 'btn';
+backendLabel.className = 'pop-label';
+const renderPop = h('div', 'pop');
+renderPop.append(backendLabel, backendBtn, dprSel, mobileBtn);
+const renderWrap = h('div', 'pop-wrap');
+const renderBtn = btn('⚙', 'Rendu : backend, DPR, preset mobile', () => renderWrap.classList.toggle('open'));
+renderWrap.append(renderBtn, renderPop);
+document.addEventListener('pointerdown', (e) => {
+  if (!renderWrap.contains(e.target as Node)) renderWrap.classList.remove('open');
+});
+// ordinateur : replier la liste pour voir la scène en grand (touche [)
+const LS_SIDE = 'cardlab.sideHidden';
+const sideBtn = btn('', 'Replier / déplier la liste ( [ )', () => setSideHidden(!document.body.classList.contains('side-hidden')), 'side-btn desk');
+function setSideHidden(on: boolean) {
+  document.body.classList.toggle('side-hidden', on);
+  sideBtn.textContent = on ? '☰' : '⟨';
+  lsSet(LS_SIDE, on ? '1' : '0');
+}
+setSideHidden(lsGet(LS_SIDE) === '1');
+const sep = () => h('span', 'sep');
+toolbar.append(menuBtn, sideBtn, minBtn, replayBtn, rarBox, sep(), capBtn, sndBtn, gyroBtn, renderWrap, sep(), gameLink, h('span', 'spacer'), statsHost);
 mountNetHud(toolbar, stage);
 
 function syncRarityButtons() {
@@ -324,8 +384,13 @@ const upB = fb.querySelector('.up') as HTMLButtonElement;
 const downB = fb.querySelector('.down') as HTMLButtonElement;
 const noteT = fb.querySelector('textarea') as HTMLTextAreaElement;
 const countS = fb.querySelector('.count') as HTMLElement;
-if (isTouch()) fb.classList.add('collapsed');
-fb.querySelector('.count')!.addEventListener('click', () => fb.classList.toggle('collapsed'));
+// avis replié par défaut (votes visibles) ; « ✎ » déplie la note, l'export et l'envoi
+const LS_FB = 'cardlab.fbOpen';
+fb.classList.toggle('collapsed', isTouch() || lsGet(LS_FB) !== '1');
+fb.querySelector('.count')!.addEventListener('click', () => {
+  fb.classList.toggle('collapsed');
+  lsSet(LS_FB, fb.classList.contains('collapsed') ? '0' : '1');
+});
 function syncFeedback() {
   if (!current) return;
   const all = loadFeedback();
@@ -458,8 +523,19 @@ async function load(id: string) {
   applyRendererDefaults(renderer);
   stage.querySelector('.error')?.remove();
   loading.style.display = 'grid';
-  info.innerHTML = `<div class="id">${entry.id.toUpperCase()} · ${entry.tech.join(' · ')}</div><div class="title">${entry.title}</div><div class="blurb">${entry.blurb}</div>${entry.hint ? `<div class="hint">${entry.hint}</div>` : ''}<button class="btn arch-btn"></button>`;
+  info.innerHTML = `<div class="head"><span class="id">${entry.id.slice(0, 3)}</span><span class="c c-${entry.category}" title="${CATEGORY_LABELS[entry.category]}">${entry.category}</span><span class="title">${entry.title.replace(/^\d{3}\s*[—-]\s*/, '')}</span></div>${entry.hint ? `<div class="hint">${entry.hint}</div>` : ''}<div class="details"><div class="blurb">${entry.blurb}</div><div class="tech">${entry.tech.map((t) => `<span class="tag">${t}</span>`).join('')}</div></div><div class="acts"><button class="btn more"></button><button class="btn arch-btn"></button></div>`;
   info.querySelector('.arch-btn')!.addEventListener('click', () => toggleArchive(entry.id));
+  const moreB = info.querySelector('.more') as HTMLButtonElement;
+  const syncMore = () => {
+    const on = lsGet(LS_MORE) === '1';
+    info.classList.toggle('open', on);
+    moreB.textContent = on ? 'ⓘ Moins' : 'ⓘ Détails';
+  };
+  moreB.addEventListener('click', () => {
+    lsSet(LS_MORE, lsGet(LS_MORE) === '1' ? '0' : '1');
+    syncMore();
+  });
+  syncMore();
   markActive();
   try {
     const mod = await entry.load();
@@ -490,6 +566,7 @@ async function load(id: string) {
     await exp.setup(ctx);
     if (token !== loadToken) return;
     current.ready = true;
+    thumbDue = performance.now() + 2500;
     if (isTouch()) gui.close();
     // expérience sans réglage : pas de dossier « Empty » ni de panneau vide
     const hasCtl = ctx.gui.controllersRecursive().length > 0;
@@ -557,6 +634,10 @@ function frame() {
       console.error('[lab] update', e);
       current.ready = false;
     }
+    if (thumbDue && performance.now() > thumbDue && current.ready) {
+      thumbDue = 0;
+      takeThumb(current.entry.id, renderer.domElement);
+    }
     if (captureRequested) {
       captureRequested = false;
       const id = current.entry.id;
@@ -608,6 +689,7 @@ async function boot() {
     else if (/^[1-9]$/.test(e.key) && RARITIES[+e.key - 1]) setRarity(RARITIES[+e.key - 1].id);
     else if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('clean');
     else if ((e.key === 'a' || e.key === 'A') && current) toggleArchive(current.entry.id);
+    else if (e.key === '[') setSideHidden(!document.body.classList.contains('side-hidden'));
     else if (e.key === '/') {
       e.preventDefault();
       sidebar.classList.add('open');
