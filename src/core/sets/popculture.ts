@@ -12808,7 +12808,7 @@ const RAW: Array<[number, number, string, string, keyof typeof R, string, '' | '
   [808, 9484, "pop-marine", "Marine", 'e', "marine.jpg", "c", 6],
   [808, 9485, "pop-sandrine", "Sandrine", 'u', "sandrine.jpg", "c", 6],
   [809, 9506, "pop-bulle", "Bulle", 'l', "bulle.jpg", "c", 6],
-  [810, 9528, "pop-tinky-winky", "Tinky Winky", 'm', "", "", 6],
+  [810, 9528, "pop-tinky-winky", "Tinky Winky", 'm', "tinky-winky-r2611262157.jpg", "c", 6],
   [811, 9536, "pop-etno", "Etno", 'm', "etno.jpg", "c", 6],
   [811, 9537, "pop-candy", "Candy", 'r', "candy.jpg", "c", 6],
   [812, 9602, "pop-bugs-bunny", "Bugs Bunny", 'l', "bugs-bunny.png", "i", 6],

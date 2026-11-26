@@ -15,6 +15,9 @@ du catalogue et le cache des cartes peintes a ce nom dans sa clé : l'ancienne i
 ni depuis le cache du navigateur, ni depuis le cache HTTP de 7 jours d'une image « même nom ».
 
 Thèmes gérés : Jeux vidéo, Pop Culture, Sport, World (save() de leur script, comme scripts/fill-images.py).
+(v2.1.29) Aussi les cartes AJOUTÉES par la base Etoiles (src/core/sets/etoiles.ts, ETOILES_ADD : Dofus, Summoners War…) :
+même save() que leur thème, illustration notée dans scripts/data/etoiles-images.json, puis etoiles.ts régénéré
+(dump-catalogue --raw + make-etoiles.py). Nommer le fichier par l'id de la carte (« jv-summoners-war-leo.jpg »).
 Pokémon, LoL, Valorant, CS, Bébous : sets écrits à la main → listés « à faire à la main ».
 Journal : donnees/suivi/reillustrees.json (id → fichier, image source, date) — sert à passer les lignes en « EN LIGNE ».
 """
@@ -23,7 +26,27 @@ import importlib.util, json, os, re, sys, time, unicodedata
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRI = os.path.join(ROOT, 'donnees', 'tri-etoiles')
 JOURNAL = os.path.join(ROOT, 'donnees', 'suivi', 'reillustrees.json')
+ET_TS = os.path.join(ROOT, 'src', 'core', 'sets', 'etoiles.ts')
+ET_LOG = os.path.join(ROOT, 'scripts', 'data', 'etoiles-images.json')
 IMG = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif', '.bmp')
+
+
+def etoiles_add():
+    """lignes de ETOILES_ADD : [sous-thème, id, nom, étoiles, fichier, art] (même lecture que scripts/etoiles-images.py)"""
+    if not os.path.exists(ET_TS):
+        return []
+    s = open(ET_TS, encoding='utf-8').read()
+    i = s.index('export const ETOILES_ADD')
+    return [json.loads(l.strip().rstrip(',')) for l in s[i:].splitlines()[1:] if l.strip().startswith('[')]
+
+
+def regen_etoiles():
+    """etoiles.ts depuis la base de Hugo + etoiles-images.json (cf. l'en-tête de scripts/make-etoiles.py)"""
+    import subprocess
+    os.makedirs(os.path.join(ROOT, '.cache'), exist_ok=True)
+    subprocess.run('npx esbuild scripts/dump-catalogue.mts --bundle --platform=node --format=esm --outfile=.cache/dump-catalogue.mjs --log-level=warning', cwd=ROOT, check=True, shell=True)
+    subprocess.run(['node', '.cache/dump-catalogue.mjs', '.cache/catalogue-brut.json', '--raw'], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, os.path.join('scripts', 'make-etoiles.py'), os.path.join('.cache', 'catalogue-brut.json')], cwd=ROOT, check=True)
 
 
 def load(name, file):
@@ -56,6 +79,11 @@ def main():
         for cid, c in FILL.cards_of(*mods[th]).items():
             cards[cid] = (th, c)
             by_name.setdefault(fold(c['name']), []).append(cid)
+    # (v2.1.29) cartes ajoutées par la couche Etoiles : absentes des Excel des 4 thèmes
+    for sub, cid, name, _st, file, _art in etoiles_add():
+        if cid not in cards and FILL.theme_of(cid) in mods:
+            cards[cid] = ('etoiles', {'id': cid, 'name': name, 'sub': sub, 'file': file})
+            by_name.setdefault(fold(name), []).append(cid)
     plan, errors, manual = {}, [], []
     for f in files:
         stem = os.path.splitext(f)[0]
@@ -102,13 +130,34 @@ def main():
             touched.add(th)
             print(f'  ✓ {cid} ← {plan[cid]}')
         mod.write_log(log)
+    # (v2.1.29) couche Etoiles : save() du thème de la carte, journal etoiles-images.json (même format que son script)
+    et_ids = [cid for cid in plan if cards[cid][0] == 'etoiles']
+    if et_ids:
+        et_log = json.load(open(ET_LOG, encoding='utf-8')) if os.path.exists(ET_LOG) else {}
+        for cid in et_ids:
+            c = cards[cid][1]
+            mod = mods[FILL.theme_of(cid)][0]
+            base = re.sub(r'(-r\d{10})?(\.(png|jpe?g|webp))?$', '', c['file'], flags=re.I) or re.sub(r'^(pop|spt|jv|auto)-', '', cid)
+            saved = mod.save({'file': f'{base}-r{stamp}', 'type': 'Personnage', 'name': c['name']}, open(os.path.join(src, plan[cid]), 'rb').read())
+            if not saved:
+                print(f'  ✗ {plan[cid]} : image illisible ou trop petite')
+                continue
+            et_log[cid] = {'file': saved[0], 'art': saved[1], 'src': f'reillustre:{plan[cid]}'}
+            journal[cid] = {'file': saved[0], 'image': plan[cid], 't': int(time.time())}
+            touched.add('etoiles')
+            print(f'  ✓ {cid} ← {plan[cid]} (couche Etoiles)')
+        json.dump(et_log, open(ET_LOG, 'w', encoding='utf-8', newline='\n'), ensure_ascii=False, indent=0)
     os.makedirs(os.path.dirname(JOURNAL), exist_ok=True)
-    json.dump(journal, open(JOURNAL, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, sort_keys=True)
+    json.dump(journal, open(JOURNAL, 'w', encoding='utf-8', newline='\n'), ensure_ascii=False, indent=1, sort_keys=True)
     if gen:
-        for th in touched:
+        for th in touched - {'etoiles'}:
             mod, xlsx = mods[th]
             mod.gen(xlsx)
             print(f'  gen {th} OK')
+        # en dernier : la couche Etoiles se calcule sur le catalogue des thèmes déjà régénérés
+        if 'etoiles' in touched:
+            regen_etoiles()
+            print('  gen etoiles OK')
     print('Suite : lanceurs\\push-et-mettre-en-ligne.cmd (envoie les images sur R2 et met en ligne).')
 
 
