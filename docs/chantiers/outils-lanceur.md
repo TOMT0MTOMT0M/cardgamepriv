@@ -1,23 +1,32 @@
-# Outils : lanceur Claude (LABO Fable supprimé)
+# Outils : lanceur Claude pleine page
 
-> 26/11 après-midi : sur demande de Tom, le LABO Fable est supprimé — `outils/labo/`, bouton du lanceur, lignes `.gitignore` et `GUIDE-CLAUDE.md`. Les mentions LABO ci-dessous sont historiques.
-
-_26/11/2026 — Tom + Claude, racine / `v2`, commit `aa785f9`._
+_26/11/2026 soir — Tom + Claude, racine / `v2`. Remplace la fenêtre à boutons PowerShell (`outils/lanceur-claude.ps1`, supprimé)._
 
 ## Fait
-- `LANCEUR-CLAUDE.cmd` ouvre `outils/lanceur-claude.vbs` (nouveau), qui lance `lanceur-claude.ps1` sans console : plus de fenêtre vide dans Windows Terminal.
-- `outils/lanceur-claude.ps1` : fonction commune `Ouvrir-Terminal` (wt.exe, sinon cmd.exe), journal `logs/lanceur-claude.log` (ouverture, boutons, erreurs). Le bouton LABO s'ouvre dans `outils/labo`.
-- `outils/labo/LABO.cmd` : titre de fenêtre, journal `logs/labo-demarrage.log`, message à la fermeture.
-- `outils/labo/labo.mjs` : lit `CLAUDE_LABO_WORKSPACE_ID` (facultatif) dans `.env.local` et envoie l'en-tête `anthropic-workspace-id`, nécessaire avec une clé d'organisation.
-- `.gitattributes` : `.cmd`, `.bat`, `.ps1`, `.vbs` toujours en CRLF.
+- `LANCEUR-CLAUDE.cmd` → `outils/lanceur-claude.vbs` → `node outils/lanceur/serveur.mjs` (sans console). Le serveur n'écoute que sur `127.0.0.1:4517`, exige un jeton tiré au lancement, ouvre Edge ou Chrome en fenêtre d'application agrandie (profil à part dans `%LOCALAPPDATA%\cardgamepriv-lanceur`) et s'arrête 20 s après la fermeture de la fenêtre. Journal : `logs/lanceur-claude.log`.
+- `outils/lanceur/index.html` : 4 pages (touches 1 à 4, `/` = chercher).
+  - **Accueil** : boutons PATCH / V3 / Reprendre, équipe en direct, mot pour l'autre, dossiers de ce PC (retard, à pousser, fichiers modifiés), version en ligne des deux sites, sessions à reprendre par leur titre, derniers patchs, premières tâches, derniers lanceurs lancés (OK / ÉCHEC).
+  - **Reste à faire** : `EN-COURS.md` découpé par section, recherche, filtres « Cite Tom / Cite Hugo ». Lecture seule (le fichier reste réécrit par `/cr`).
+  - **Patchs** : barres par jour sur 14 jours, frise des tags `v2.X.Y` (qui, heure, titre, taille du diff, commits, compte rendu), le patch en ligne chez les joueurs est repéré par `version.json`.
+  - **Chantiers et activité** : chantiers ouverts, pièges connus, 60 derniers commits de `v2` (ceux pas encore sur ce PC surlignés).
+  - Avis en bas à droite : l'autre arrive / part / ouvre une session / laisse un mot / pousse, nouveau patch, mise en ligne.
+- **Présence** (`outils/lanceur/presence.mjs`) : chaque PC pousse un `etat.json` (nom, heure, sessions Claude ouvertes avec titre, dossier, branche, état, mot) dans `refs/presence/<nom>` sur GitHub — hors branches, aucun build, aucun coût. Tout passe par un dépôt à part `.claude-tmp/presence.git` : le dépôt de travail n'est pas touché. Un veilleur détaché bat toutes les 3 min (au plus un push par 45 s quand quelque chose change) tant qu'une session Claude ou le lanceur est ouvert ; lancé par le lanceur et par le hook `au-demarrage.mjs`. En ligne = battement de moins de 8 min.
+- Qui est qui : auteur git « Hugo » = Hugo, sinon Tom (même règle que les hooks).
 
-## Vérifié
-- Commit et push sur `v2` après un pull des 24 commits de Hugo. Rien n'a été lancé en vrai.
+## Vérifié (PC de Tom)
+- Lancement réel par `LANCEUR-CLAUDE.cmd` : fenêtre Chrome ouverte, serveur encore en vie après 75 s, arrêt de l'essai sans fenêtre.
+- Push et relecture de `refs/presence/tom` sur GitHub ; mot d'équipe publié ; requêtes sans jeton ou avec un autre hôte refusées (403) ; identifiant de session invalide refusé.
+- Ouverture d'un terminal Windows Terminal par le même appel que les boutons (commande d'essai). Les boutons PATCH / V3 / Reprendre eux-mêmes n'ont pas été cliqués (ils ouvriraient une 2e session dans un dossier occupé).
+- Captures des 4 pages en 1920×1080 : `.claude-tmp/lanceur-*.png`.
 
-## À vérifier par Tom
-- Double-clic sur `LANCEUR-CLAUDE.cmd` : la fenêtre à boutons s'ouvre, sans console vide.
-- Le bouton LABO démarre le chat. En cas d'échec : `logs/labo-demarrage.log` et `logs/lanceur-claude.log`.
+## À vérifier
+- Tom : cliquer PATCH, V3 et une « session à reprendre ».
+- Hugo : `git pull`, puis `LANCEUR-CLAUDE.cmd` (ou simplement ouvrir une session Claude) → sa carte passe « en ligne » chez Tom en moins d'une minute. Si rien : `logs/lanceur-claude.log`, et `git push` doit marcher sans fenêtre de connexion.
+
+## Limites connues
+- La présence ne voit que les sessions Claude Code du PC (fichiers `~/.claude/sessions/`), pas les sessions cloud ni claude.ai.
+- Un veilleur déjà lancé garde son ancien code jusqu'à la fermeture des sessions.
+- Les titres de session partent sur GitHub (dépôt privé) : ne pas y mettre de secret.
 
 ## Reste
 - [ ] Commit à part `git add --renormalize lanceurs/` : depuis `.gitattributes`, les `.cmd` de `lanceurs/` paraissent modifiés (fins de ligne seulement), chez Tom comme chez Hugo.
-- [ ] Supprimer l'entrée « autostash » de `git stash` (sans contenu utile) quand Tom le décide.

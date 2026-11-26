@@ -1,5 +1,8 @@
 // SessionStart : dit à Claude ET à la personne si l'autre (Tom ou Hugo) a poussé des commits qu'on n'a pas encore.
-import { git, amont, fetchRecent } from './git-commun.mjs';
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { git, amont, fetchRecent, dir } from './git-commun.mjs';
 
 // systemMessage = affiché à la personne ; additionalContext = lu par Claude.
 function dire(texte) {
@@ -12,6 +15,16 @@ function dire(texte) {
 
 const branche = git('rev-parse --abbrev-ref HEAD');
 if (!branche) process.exit(0);
+
+// Présence d'équipe (lanceur Claude) : un veilleur détaché dit à l'autre qu'on est en ligne et sur quelles sessions.
+// Sans effet si le fichier n'existe pas (branche master) ou si un veilleur tourne déjà.
+try {
+  const veilleur = join(dir, 'outils', 'lanceur', 'presence.mjs');
+  if (existsSync(veilleur)) {
+    spawn(process.execPath, [veilleur, '--veille'], { detached: true, stdio: 'ignore', windowsHide: true, cwd: dir }).unref();
+  }
+} catch {}
+
 fetchRecent(true);
 const up = amont();
 if (!up) dire(`[garde-fou] Branche ${branche} : pas de branche GitHub à suivre.`);

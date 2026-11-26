@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lanceur Claude — Bébou cartes</title>
+<style>
+  :root {
+    --fond: #0b0c0e; --plan: #111316; --plan-2: #171a1e; --trait: #23272d; --trait-2: #323841;
+    --encre: #eceef1; --encre-2: #a3aab4; --encre-3: #6b727d;
+    --bleu: #3d6bff; --vert: #35c27a; --ambre: #e8a23a; --rouge: #ef5b5b;
+    --tom: #5b8cff; --hugo: #f0935a;
+    --r: 6px; --mono: "Cascadia Code", "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--fond); color: var(--encre); font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; display: grid; grid-template-columns: 216px 1fr; overflow: hidden; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--bleu); outline-offset: 2px; }
+  code { font: 12px var(--mono); background: var(--plan-2); border: 1px solid var(--trait); border-radius: 4px; padding: 0 4px; color: var(--encre-2); overflow-wrap: anywhere; }
+  .et { font: 600 11px var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--encre-3); }
+  .mono { font-family: var(--mono); }
+  .n { font-variant-numeric: tabular-nums; }
+
+  /* rail */
+  nav { border-right: 1px solid var(--trait); display: flex; flex-direction: column; padding: 18px 12px 14px; gap: 4px; background: var(--plan); }
+  .marque { padding: 2px 10px 18px; }
+  .marque b { display: block; font-size: 17px; letter-spacing: -.01em; }
+  .onglet { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r); color: var(--encre-2); width: 100%; }
+  .onglet:hover { background: var(--plan-2); color: var(--encre); }
+  .onglet[aria-current="page"] { background: var(--plan-2); color: var(--encre); box-shadow: inset 2px 0 0 var(--bleu); }
+  .onglet kbd { font: 11px var(--mono); color: var(--encre-3); margin-left: auto; }
+  .onglet .cpt { font: 11px var(--mono); color: var(--encre-3); margin-left: auto; }
+  .onglet .cpt + kbd { margin-left: 8px; }
+  .pied { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--trait); display: grid; gap: 8px; color: var(--encre-3); font-size: 12px; }
+  #heure { font: 600 26px var(--mono); color: var(--encre); letter-spacing: -.02em; }
+  .lien { color: var(--encre-2); padding: 3px 0; display: block; width: 100%; }
+  .lien:hover { color: var(--encre); text-decoration: underline; }
+
+  /* corps */
+  main { overflow: auto; padding: 22px 28px 40px; scrollbar-color: var(--trait-2) transparent; }
+  .page { display: none; max-width: 1500px; margin: 0 auto; }
+  .page.vue { display: block; animation: entre .18s ease-out; }
+  @keyframes entre { from { opacity: 0; transform: translateY(4px); } }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .tete { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .tete p { margin: 0; color: var(--encre-3); }
+  .bloc { background: var(--plan); border: 1px solid var(--trait); border-radius: var(--r); padding: 16px; min-width: 0; }
+  .bloc > .et { display: flex; justify-content: space-between; margin-bottom: 12px; }
+  .vide { color: var(--encre-3); padding: 6px 0; }
+  .grille { display: grid; gap: 14px; }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g2 { grid-template-columns: 1.25fr 1fr; }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 1250px) { .g4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 900px) { body { grid-template-columns: 1fr; } nav { display: none; } .g3, .g2, .g4 { grid-template-columns: 1fr; } }
+
+  /* lancer */
+  .lancer { border-radius: var(--r); padding: 18px 18px 16px; border: 1px solid var(--trait-2); display: grid; gap: 4px; min-height: 104px; transition: transform .12s, border-color .12s; }
+  .lancer:hover { transform: translateY(-2px); border-color: var(--encre-3); }
+  .lancer:active { transform: none; }
+  .lancer b { font-size: 19px; letter-spacing: -.01em; }
+  .lancer span { color: inherit; opacity: .72; font-size: 13px; }
+  .lancer .et { color: inherit; opacity: .6; }
+  .lancer.patch { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+  .lancer.v3 { background: var(--encre); border-color: var(--encre); color: #0b0c0e; }
+  .lancer.reprise { background: var(--plan-2); }
+  .lancer[disabled] { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* équipe */
+  .gens { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 1100px) { .gens { grid-template-columns: 1fr; } }
+  .perso { border: 1px solid var(--trait); border-radius: var(--r); padding: 14px; background: var(--plan-2); display: grid; gap: 10px; align-content: start; }
+  .perso.on { border-color: color-mix(in srgb, var(--vert) 45%, var(--trait)); }
+  .qui { display: flex; align-items: center; gap: 12px; }
+  .pastille { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #0b0c0e; position: relative; flex: none; }
+  .pastille::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--encre-3); border: 2px solid var(--plan-2); }
+  .on .pastille::after { background: var(--vert); animation: pouls 2s infinite; }
+  @keyframes pouls { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--vert) 70%, transparent); } 100% { box-shadow: 0 0 0 9px transparent; } }
+  .qui b { font-size: 16px; }
+  .qui small { display: block; color: var(--encre-3); font-size: 12px; }
+  .on .qui small { color: var(--vert); }
+  .mot { border-left: 2px solid var(--ambre); padding: 2px 10px; color: var(--encre); font-style: italic; overflow-wrap: anywhere; }
+  .session { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: start; padding: 9px 0 0; border-top: 1px solid var(--trait); }
+  .session i { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--encre-3); }
+  .session.busy i, .session.shell i { background: var(--vert); animation: pouls 1.6s infinite; }
+  .session.idle i { background: var(--ambre); }
+  .session b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  .session small { color: var(--encre-3); font-size: 12px; }
+  .puce { font: 600 11px var(--mono); border: 1px solid var(--trait-2); border-radius: 4px; padding: 1px 6px; color: var(--encre-2); white-space: nowrap; }
+  .puce.patch { color: var(--bleu); border-color: color-mix(in srgb, var(--bleu) 50%, var(--trait)); }
+  .puce.live { color: #0b0c0e; background: var(--vert); border-color: var(--vert); }
+  .puce.tom { color: var(--tom); border-color: color-mix(in srgb, var(--tom) 45%, var(--trait)); }
+  .puce.hugo { color: var(--hugo); border-color: color-mix(in srgb, var(--hugo) 45%, var(--trait)); }
+  .note { display: flex; gap: 8px; }
+  input[type="text"], input[type="search"] { flex: 1; min-width: 0; background: var(--fond); border: 1px solid var(--trait-2); border-radius: var(--r); color: var(--encre); padding: 8px 10px; font: inherit; }
+  input::placeholder { color: var(--encre-3); }
+  .bouton { border: 1px solid var(--trait-2); border-radius: var(--r); padding: 7px 12px; color: var(--encre-2); background: var(--plan-2); white-space: nowrap; }
+  .bouton:hover { color: var(--encre); border-color: var(--encre-3); }
+  .bouton.actif { color: var(--encre); border-color: var(--bleu); box-shadow: inset 0 0 0 1px var(--bleu); }
+
+  /* lignes génériques */
+  .ligne { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 8px 0; border-top: 1px solid var(--trait); align-items: center; width: 100%; }
+  .ligne:first-of-type { border-top: 0; padding-top: 0; }
+  button.ligne:hover b { text-decoration: underline; }
+  .ligne b { font-weight: 600; overflow-wrap: anywhere; }
+  .ligne small { color: var(--encre-3); font-size: 12px; display: block; }
+  .ok { color: var(--vert); } .alerte { color: var(--ambre); } .echec { color: var(--rouge); } .sourd { color: var(--encre-3); }
+  .bandeau { border: 1px solid color-mix(in srgb, var(--ambre) 55%, var(--trait)); background: color-mix(in srgb, var(--ambre) 9%, var(--plan)); border-radius: var(--r); padding: 10px 14px; margin-bottom: 14px; display: none; }
+  .bandeau.vue { display: block; }
+
+  /* reste à faire */
+  .outils { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .outils input { max-width: 360px; }
+  .colonnes { columns: 3 380px; column-gap: 14px; }
+  .colonnes .bloc { break-inside: avoid; margin-bottom: 14px; }
+  .tache { display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 8px 0; border-top: 1px solid var(--trait); overflow-wrap: anywhere; }
+  .tache:first-of-type { border-top: 0; }
+  .case { width: 14px; height: 14px; border: 1.5px solid var(--encre-3); border-radius: 3px; margin-top: 3px; }
+  .tache.fait { color: var(--encre-3); text-decoration: line-through; }
+  .tache.fait .case { background: var(--vert); border-color: var(--vert); }
+  .tache ul { margin: 6px 0 0; padding-left: 16px; color: var(--encre-2); font-size: 13px; }
+  .tache li { margin: 3px 0; }
+  .inter { font-weight: 600; color: var(--encre-2); padding: 12px 0 4px; border-top: 1px solid var(--trait); overflow-wrap: anywhere; }
+  .rem { color: var(--encre-3); font-size: 13px; padding: 6px 0 6px 26px; overflow-wrap: anywhere; }
+  mark { background: color-mix(in srgb, var(--ambre) 35%, transparent); color: inherit; border-radius: 2px; }
+
+  /* patchs */
+  .jours { display: flex; gap: 6px; align-items: flex-end; height: 96px; margin-bottom: 4px; }
+  .jour { flex: 1; display: flex; flex-direction: column-reverse; gap: 3px; min-width: 0; height: 100%; justify-content: flex-start; }
+  .jour i { display: block; flex: 0 1 12px; min-height: 3px; border-radius: 2px; background: var(--tom); }
+  .jour i.hugo { background: var(--hugo); }
+  .axe { display: flex; gap: 6px; }
+  .axe span { flex: 1; text-align: center; font: 10px var(--mono); color: var(--encre-3); border-top: 1px solid var(--trait); padding-top: 4px; min-width: 0; overflow: hidden; }
+  .fil { position: relative; margin-top: 20px; padding-left: 26px; }
+  .fil::before { content: ""; position: absolute; left: 7px; top: 6px; bottom: 0; width: 1px; background: var(--trait-2); }
+  .date { position: relative; margin: 22px 0 10px; }
+  .date::before { content: ""; position: absolute; left: -23px; top: 5px; width: 9px; height: 9px; background: var(--fond); border: 1px solid var(--encre-3); transform: rotate(45deg); }
+  .pt { position: relative; background: var(--plan); border: 1px solid var(--trait); border-radius: var(--r); padding: 12px 14px; margin-bottom: 8px; display: grid; grid-template-columns: 92px 1fr 190px; gap: 14px; align-items: start; }
+  .pt::before { content: ""; position: absolute; left: -23px; top: 18px; width: 9px; height: 9px; border-radius: 50%; background: var(--tom); }
+  .pt.hugo::before { background: var(--hugo); }
+  .pt.live { border-color: var(--vert); }
+  .pt .tag { font: 700 16px var(--mono); }
+  .pt .tag small { display: block; font: 12px var(--mono); color: var(--encre-3); margin-top: 2px; }
+  .pt p { margin: 0 0 6px; overflow-wrap: anywhere; }
+  .pt details { color: var(--encre-3); font-size: 12.5px; }
+  .pt summary { cursor: pointer; width: max-content; }
+  .pt details div { padding: 2px 0; overflow-wrap: anywhere; }
+  .diff { display: grid; gap: 5px; justify-items: end; }
+  .barre { display: flex; height: 6px; width: 100%; background: var(--plan-2); border-radius: 3px; overflow: hidden; justify-content: flex-end; }
+  .barre i { background: var(--vert); } .barre i + i { background: var(--rouge); }
+  .diff small { font: 11px var(--mono); color: var(--encre-3); }
+  @media (max-width: 1000px) { .pt { grid-template-columns: 1fr; } .diff { justify-items: start; } }
+
+  /* activité */
+  .chantier { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--trait); }
+  .chantier:first-of-type { border-top: 0; }
+  .chantier small { color: var(--encre-3); display: block; margin-top: 3px; overflow-wrap: anywhere; }
+  .commit { display: grid; grid-template-columns: 62px 58px 1fr auto; gap: 10px; padding: 6px 0; border-top: 1px solid var(--trait); align-items: baseline; font-size: 13px; }
+  .commit:first-of-type { border-top: 0; }
+  .commit .puce { justify-self: start; }
+  .commit.neuf { background: color-mix(in srgb, var(--ambre) 8%, transparent); }
+  .commit span:nth-child(3) { overflow-wrap: anywhere; }
+
+  /* avis */
+  #avis { position: fixed; right: 20px; bottom: 20px; display: grid; gap: 8px; z-index: 5; width: 340px; }
+  .avis { background: var(--plan-2); border: 1px solid var(--trait-2); border-left: 3px solid var(--bleu); border-radius: var(--r); padding: 10px 14px; box-shadow: 0 8px 30px #0009; animation: entre .2s ease-out; }
+  .avis.vert { border-left-color: var(--vert); } .avis.ambre { border-left-color: var(--ambre); }
+  .avis small { color: var(--encre-3); display: block; }
+  #coupe { position: fixed; inset: 0; background: #0b0c0eee; display: none; place-items: center; text-align: center; z-index: 9; }
+  #coupe.vue { display: grid; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<nav>
+  <div class="marque"><b>Bébou cartes</b><span class="et">Lanceur Claude</span></div>
+  <button class="onglet" data-page="accueil" aria-current="page">Accueil <kbd>1</kbd></button>
+  <button class="onglet" data-page="reste">Reste à faire <span class="cpt" id="c-reste"></span><kbd>2</kbd></button>
+  <button class="onglet" data-page="patchs">Patchs <span class="cpt" id="c-patchs"></span><kbd>3</kbd></button>
+  <button class="onglet" data-page="activite">Chantiers et activité <kbd>4</kbd></button>
+  <div class="pied">
+    <div id="heure" class="n">--:--</div>
+    <div id="synchro">Lecture de GitHub…</div>
+    <button class="bouton" data-action="rafraichir">Actualiser maintenant</button>
+    <div>
+      <button class="lien" data-lien="joueurs">Site des joueurs ↗</button>
+      <button class="lien" data-lien="v3">Lien V3 (équipe) ↗</button>
+      <button class="lien" data-lien="miroir">Comparateur live / V3 ↗</button>
+      <button class="lien" data-lien="github">GitHub ↗</button>
+      <button class="lien" data-lien="encours">EN-COURS.md</button>
+      <button class="lien" data-lien="guide">Guide Claude</button>
+      <button class="lien" data-lien="journaux">Dossier des journaux</button>
+    </div>
+    <div>Fin de tâche : <code>/cr</code> puis <code>/clear</code></div>
+  </div>
+</nav>
+
+<main>
+  <section class="page vue" id="p-accueil">
+    <div class="tete"><h1 id="bonjour">Bonjour</h1><p>Une tâche = une session.</p></div>
+    <div class="bandeau" id="retard"></div>
+    <div class="grille g3" style="margin-bottom:14px">
+      <button class="lancer patch" data-action="patch" id="b-patch"><span class="et">Nouvelle tâche</span><b>Patch — version en ligne</b><span>Correctif, image, musique. Dossier <span class="mono">.wt-master</span>.</span></button>
+      <button class="lancer v3" data-action="v3"><span class="et">Nouvelle tâche</span><b>V3 — nouveautés</b><span>Fonctions, refontes, données. Dossier racine, Opus.</span></button>
+      <button class="lancer reprise" data-action="continuer"><span class="et">Coupée en plein milieu ?</span><b>Reprendre la dernière V3</b><span>Ou choisis une session précise plus bas.</span></button>
+    </div>
+    <div class="grille g2" style="margin-bottom:14px">
+      <div class="bloc">
+        <div class="et"><span>Équipe</span><span id="etat-presence"></span></div>
+        <div class="gens" id="gens"></div>
+        <form class="note" id="f-note" style="margin-top:12px">
+          <input type="text" id="note" maxlength="140" placeholder="Un mot pour l'autre (ex. je touche market.ts jusqu'à 18 h)" aria-label="Un mot pour l'autre">
+          <button class="bouton" type="submit">Afficher</button>
+        </form>
+      </div>
+      <div class="grille" style="align-content:start">
+        <div class="bloc"><div class="et"><span>Dossiers de ce PC</span></div><div id="dossiers"></div></div>
+        <div class="bloc"><div class="et"><span>En ligne en ce moment</span></div><div id="sites"></div></div>
+      </div>
+    </div>
+    <div class="grille g4">
+      <div class="bloc"><div class="et"><span>Sessions à reprendre</span></div><div id="recentes"></div></div>
+      <div class="bloc"><div class="et"><span>Derniers patchs</span><button class="lien" style="width:auto;padding:0" data-va="patchs">tout voir</button></div><div id="mini-patchs"></div></div>
+      <div class="bloc"><div class="et"><span id="t-urgent">À faire en premier</span><button class="lien" style="width:auto;padding:0" data-va="reste">tout voir</button></div><div id="urgent"></div></div>
+      <div class="bloc"><div class="et"><span>Derniers lanceurs lancés</span></div><div id="journaux"></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-reste">
+    <div class="tete"><h1>Reste à faire</h1><p id="maj-reste"></p></div>
+    <div class="outils">
+      <input type="search" id="cherche" placeholder="Chercher (marché, Convex, forge…)" aria-label="Chercher dans le reste à faire">
+      <button class="bouton actif" data-filtre="">Tout</button>
+      <button class="bouton" data-filtre="Tom">Cite Tom</button>
+      <button class="bouton" data-filtre="Hugo">Cite Hugo</button>
+      <span class="sourd" id="compte-reste"></span>
+    </div>
+    <div class="colonnes" id="sections"></div>
+  </section>
+
+  <section class="page" id="p-patchs">
+    <div class="tete"><h1>Patchs de la version en ligne</h1><p id="resume-patchs"></p></div>
+    <div class="bloc">
+      <div class="et"><span>Patchs par jour, 14 derniers jours</span><span><span style="color:var(--tom)">■</span> Tom &nbsp; <span style="color:var(--hugo)">■</span> Hugo</span></div>
+      <div class="jours" id="jours"></div><div class="axe" id="axe"></div>
+    </div>
+    <div class="fil" id="fil"></div>
+  </section>
+
+  <section class="page" id="p-activite">
+    <div class="tete"><h1>Chantiers et activité</h1><p>Branche <span class="mono">v2</span> sur GitHub.</p></div>
+    <div class="grille g2">
+      <div class="grille" style="align-content:start">
+        <div class="bloc"><div class="et"><span>Chantiers ouverts</span><span id="n-chantiers"></span></div><div id="chantiers"></div></div>
+        <div class="bloc"><div class="et"><span>Pièges connus</span><span id="n-pieges"></span></div><div id="pieges"></div></div>
+      </div>
+      <div class="bloc"><div class="et"><span>Derniers commits</span><span id="n-commits"></span></div><div id="commits"></div></div>
+    </div>
+  </section>
+</main>
+
+<div id="avis" aria-live="polite"></div>
+<div id="coupe"><div><h1>Lanceur arrêté</h1><p class="sourd">Relance <code>LANCEUR-CLAUDE.cmd</code>.</p></div></div>
+
+<script>
+const K = new URLSearchParams(location.search).get('k') || '';
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const md = (t) => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+const classe = (qui) => (/hugo/i.test(qui) ? 'hugo' : 'tom');
+const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const jourLong = (d) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+function ilya(d, court) {
+  if (!d) return 'jamais';
+  const m = Math.max(0, Math.round((Date.now() - d) / 60000));
+  if (m < 1) return "à l'instant";
+  const pre = court ? '' : 'il y a ';
+  if (m < 60) return `${pre}${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${pre}${h} h${m % 60 && h < 6 ? ' ' + String(m % 60).padStart(2, '0') : ''}`;
+  return `${pre}${Math.floor(h / 24)} j`;
+}
+const STATUTS = { busy: 'travaille', shell: 'commande en cours', idle: 'en attente', waiting: 'attend une réponse' };
+
+let etat = null;
+const vus = {};
+function poser(id, html) { if (vus[id] !== html) { vus[id] = html; $(id).innerHTML = html; } }
+
+async function agir(id, arg) {
+  try {
+    const r = await fetch('/api/action', { method: 'POST', headers: { 'x-jeton': K, 'content-type': 'application/json' }, body: JSON.stringify({ id, arg }) });
+    const j = await r.json();
+    if (j.erreur) avis(j.erreur, '', 'ambre');
+    return !j.erreur;
+  } catch { return false; }
+}
+function avis(titre, detail, couleur = '') {
+  const d = document.createElement('div');
+  d.className = `avis ${couleur}`;
+  d.innerHTML = `<b>${esc(titre)}</b>${detail ? `<small>${esc(detail)}</small>` : ''}`;
+  $('avis').append(d);
+  setTimeout(() => d.remove(), 9000);
+}
+
+// ---------- rendu ----------
+function rendreEquipe(e) {
+  const autres = e.equipe.filter((g) => !g.moi);
+  const enLigne = autres.filter((g) => g.enLigne);
+  poser('etat-presence', e.presenceOk === false ? '<span class="alerte">GitHub injoignable</span>' : '');
+  poser('gens', e.equipe.map((g) => {
+    const quand = g.moi ? 'toi, sur ce PC' : g.enLigne ? `en ligne${g.lanceur ? ' · lanceur ouvert' : ''}` : g.jamais ? 'pas encore vu (lanceur jamais ouvert sur son PC)' : `hors ligne · vu ${ilya(g.at)}`;
+    const sessions = g.enLigne ? g.sessions : [];
+    return `<div class="perso ${g.enLigne ? 'on' : ''}">
+      <div class="qui"><div class="pastille" style="background:var(--${classe(g.qui)})">${esc(g.qui[0])}</div><div><b>${esc(g.qui)}</b><small>${esc(quand)}</small></div></div>
+      ${g.note ? `<div class="mot">« ${esc(g.note)} »</div>` : ''}
+      ${sessions.map((s) => `<div class="session ${esc(s.statut || '')}"><i></i><div><b>${esc(s.titre || s.nom || 'Session sans nom')}</b><small>${esc(STATUTS[s.statut] || s.statut || '')}${s.depuis ? ` · ouverte depuis ${ilya(s.depuis, true)}` : ''}${s.titre && s.nom ? ` · ${esc(s.nom)}` : ''}</small></div><span class="puce ${s.dossier === '.wt-master' ? 'patch' : ''}">${s.dossier === '.wt-master' ? 'PATCH' : s.dossier === 'racine' ? 'V3' : esc(s.dossier)}${s.branche ? ' · ' + esc(s.branche) : ''}</span></div>`).join('')}
+      ${g.enLigne && !sessions.length ? '<div class="vide">Aucune session Claude ouverte.</div>' : ''}
+    </div>`;
+  }).join(''));
+  document.title = `${enLigne.length ? '● ' + enLigne.map((g) => g.qui).join(', ') + ' en ligne — ' : ''}Lanceur Claude`;
+}
+
+function rendreAccueil(e) {
+  const h = new Date().getHours();
+  poser('bonjour', `${h < 18 && h >= 5 ? 'Bonjour' : 'Bonsoir'} ${esc(e.moi)}`);
+  $('b-patch').disabled = !e.aMaster;
+  const enRetard = e.dossiers.filter((d) => d.retard > 0);
+  $('retard').classList.toggle('vue', enRetard.length > 0);
+  poser('retard', enRetard.map((d) => `<b>${esc(d.nom)}</b> a ${d.retard} commit${d.retard > 1 ? 's' : ''} de retard sur <span class="mono">${esc(d.amont)}</span> — la prochaine session Claude les récupère au démarrage (sinon : <code>git pull --rebase --autostash</code>).`).join('<br>'));
+  poser('dossiers', e.dossiers.map((d) => `<div class="ligne"><div><b>${esc(d.nom)}</b><small class="mono">${esc(d.branche)}</small></div><div style="text-align:right">
+      ${d.retard == null ? '<span class="sourd">pas de branche GitHub</span>' : d.retard ? `<span class="alerte">${d.retard} en retard</span>` : '<span class="ok">à jour</span>'}
+      <small>${d.avance ? `${d.avance} à pousser · ` : ''}${d.modifs ? `${d.modifs} fichier${d.modifs > 1 ? 's' : ''} modifié${d.modifs > 1 ? 's' : ''}` : 'rien en cours'}</small></div></div>`).join('') || '<div class="vide">Lecture…</div>');
+  const live = e.patchs.find((p) => p.enLigne);
+  poser('sites', e.sites.map((s) => `<button class="ligne" data-lien="${s.id === 'prod' ? 'joueurs' : 'v3'}"><div><b>${esc(s.nom)} ↗</b><small class="mono">${esc(s.version || '…')}</small></div><div style="text-align:right">
+      ${s.id === 'prod' && live ? `<span class="puce live">${esc(live.tag)}</span>` : ''}
+      <small>${s.ok === false ? '<span class="alerte">injoignable</span>' : s.at ? 'mis en ligne ' + ilya(Date.parse(s.at)) : ''}</small></div></button>`).join(''));
+  poser('recentes', e.recentes.map((s) => `<button class="ligne" data-reprendre="${esc(s.id)}" data-dossier="${esc(s.dossier)}"><div><b>${esc(s.titre)}</b><small>${ilya(s.date)}</small></div><span class="puce ${s.dossier === '.wt-master' ? 'patch' : ''}">${s.dossier === '.wt-master' ? 'PATCH' : 'V3'}</span></button>`).join('') || '<div class="vide">Aucune session fermée cette semaine.</div>');
+  poser('mini-patchs', e.patchs.slice(0, 6).map((p) => `<div class="ligne"><div><b><span class="mono">${esc(p.tag)}</span> ${p.enLigne ? '<span class="puce live">EN LIGNE</span>' : ''}</b><small>${esc(p.titre.slice(0, 90))}${p.titre.length > 90 ? '…' : ''}</small></div><div style="text-align:right"><span class="puce ${classe(p.qui)}">${esc(p.qui)}</span><small>${ilya(p.date)}</small></div></div>`).join('') || '<div class="vide">Aucun tag v2.</div>');
+  const premiere = e.enCours.sections.find((s) => s.items.some((i) => i.type === 'tache' && !i.fait));
+  poser('t-urgent', esc(premiere ? premiere.titre : 'À faire en premier'));
+  poser('urgent', premiere ? premiere.items.filter((i) => i.type === 'tache' && !i.fait).slice(0, 5).map((i) => `<div class="tache"><span class="case"></span><div>${md(i.texte.length > 170 ? i.texte.slice(0, 170) + '…' : i.texte)}</div></div>`).join('') : '<div class="vide">Rien à faire. Vraiment ?</div>');
+  poser('journaux', e.journaux.map((j) => `<div class="ligne"><div><b class="mono" style="font-size:13px">${esc(j.nom)}</b><small>${esc(j.ou)} · ${ilya(j.date)}</small></div><span class="${j.verdict === 'ok' ? 'ok' : j.verdict === 'echec' ? 'echec' : 'sourd'}">${j.verdict === 'ok' ? 'OK' : j.verdict === 'echec' ? 'ÉCHEC' : '—'}</span></div>`).join('') || '<div class="vide">Aucun lanceur lancé cette semaine.</div>');
+  const f = e.dernierFetch;
+  poser('synchro', f ? `GitHub lu ${ilya(f)}` : 'Lecture de GitHub…');
+}
+
+let filtre = '';
+function rendreReste(e) {
+  const q = $('cherche').value.trim().toLowerCase();
+  const garde = (t) => (!q || t.toLowerCase().includes(q)) && (!filtre || new RegExp(`\\b${filtre}\\b`, 'i').test(t));
+  const surligne = (t) => {
+    let h = md(t);
+    if (q) h = h.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?![^<]*>)`, 'gi'), '<mark>$1</mark>');
+    return h;
+  };
+  let total = 0, vues = 0;
+  const html = e.enCours.sections.map((s) => {
+    const taches = s.items.filter((i) => i.type === 'tache');
+    total += taches.filter((i) => !i.fait).length;
+    const corps = s.items.map((i) => {
+      const tout = i.texte + ' ' + (i.sous || []).join(' ');
+      if (i.type === 'titre') return q || filtre ? '' : `<div class="inter">${md(i.texte)}</div>`;
+      if (!garde(tout)) return '';
+      if (i.type === 'note') return `<div class="rem">${surligne(i.texte)}</div>`;
+      if (!i.fait) vues++;
+      return `<div class="tache ${i.fait ? 'fait' : ''}"><span class="case"></span><div>${surligne(i.texte)}${i.sous.length ? `<ul>${i.sous.map((x) => `<li>${surligne(x)}</li>`).join('')}</ul>` : ''}</div></div>`;
+    }).join('');
+    if (!corps) return '';
+    const ouvertes = taches.filter((i) => !i.fait).length;
+    return `<div class="bloc"><div class="et"><span>${esc(s.titre)}</span><span>${ouvertes} à faire</span></div>${corps}</div>`;
+  }).join('');
+  poser('sections', html || '<div class="vide">Rien ne correspond.</div>');
+  poser('compte-reste', q || filtre ? `${vues} sur ${total}` : `${total} tâches ouvertes`);
+  poser('c-reste', String(total));
+  poser('maj-reste', e.enCours.maj ? `EN-COURS.md, mis à jour le ${esc(e.enCours.maj)} — réécrit par <code>/cr</code>, en lecture seule ici.` : '');
+}
+
+function rendrePatchs(e) {
+  const p = e.patchs;
+  poser('c-patchs', String(p.length));
+  const live = p.find((x) => x.enLigne);
+  const semaine = p.filter((x) => Date.now() - x.date < 7 * 86400000).length;
+  poser('resume-patchs', `${live ? `En ligne : <b class="mono">${esc(live.tag)}</b> · ` : ''}${semaine} patch${semaine > 1 ? 's' : ''} sur 7 jours`);
+  const jours = [];
+  const minuit = new Date(); minuit.setHours(0, 0, 0, 0);
+  for (let i = 13; i >= 0; i--) jours.push(minuit.getTime() - i * 86400000);
+  poser('jours', jours.map((j) => `<div class="jour" title="${esc(jourLong(j))}">${p.filter((x) => x.date >= j && x.date < j + 86400000).reverse().map((x) => `<i class="${classe(x.qui)}" title="${esc(x.tag)}"></i>`).join('')}</div>`).join(''));
+  poser('axe', jours.map((j) => `<span>${new Date(j).getDate()}</span>`).join(''));
+  const maxi = Math.max(1, ...p.map((x) => Math.log10(1 + x.plus + x.moins)));
+  let courant = '';
+  poser('fil', p.map((x) => {
+    const j = jourLong(x.date);
+    const entete = j !== courant ? `<div class="date et">${esc(j)}</div>` : '';
+    courant = j;
+    const large = Math.round((Math.log10(1 + x.plus + x.moins) / maxi) * 100);
+    const partPlus = x.plus + x.moins ? (x.plus / (x.plus + x.moins)) * large : 0;
+    return `${entete}<div class="pt ${classe(x.qui)} ${x.enLigne ? 'live' : ''}">
+      <div class="tag">${esc(x.tag)}<small>${heure(x.date)} · ${esc(x.commit)}</small></div>
+      <div><p>${md(x.titre)}</p>
+        <span class="puce ${classe(x.qui)}">${esc(x.qui)}</span> ${x.enLigne ? '<span class="puce live">EN LIGNE CHEZ LES JOUEURS</span>' : ''}
+        ${x.doc ? `<button class="puce" data-lien="doc:${esc(x.tag)}">compte rendu</button>` : ''}
+        ${x.sujets.length ? `<details style="margin-top:8px"><summary>commits</summary>${x.sujets.map((s) => `<div>${esc(s)}</div>`).join('')}</details>` : ''}</div>
+      <div class="diff"><div class="barre"><i style="width:${partPlus}%"></i><i style="width:${large - partPlus}%"></i></div>
+        <small>${x.fichiers} fichier${x.fichiers > 1 ? 's' : ''} · +${x.plus} −${x.moins}</small></div>
+    </div>`;
+  }).join('') || '<div class="vide">Aucun tag v2.</div>');
+}
+
+function rendreActivite(e) {
+  const ouverts = e.enCours.chantiers.filter((c) => !/^en ligne/i.test(c.etat));
+  poser('n-chantiers', String(ouverts.length));
+  poser('chantiers', ouverts.map((c) => `<div class="chantier"><div>${c.qui.split('+').map((q) => q.trim()).filter((q) => q && q !== 'Claude').map((q) => `<span class="puce ${classe(q)}">${esc(q)}</span>`).join(' ')}<small class="mono">${md(c.dossier)}</small></div><div>${md(c.chantier)}<small>${md(c.etat)}</small></div></div>`).join('') || '<div class="vide">Aucun chantier ouvert.</div>');
+  poser('n-pieges', String(e.enCours.pieges.length));
+  poser('pieges', `<details><summary class="sourd" style="cursor:pointer">Afficher les ${e.enCours.pieges.length} pièges</summary>${e.enCours.pieges.map((t) => `<div class="tache" style="grid-template-columns:1fr"><div>${md(t)}</div></div>`).join('')}</details>`);
+  const neufs = e.commits.filter((c) => c.nouveau).length;
+  poser('n-commits', neufs ? `<span class="alerte">${neufs} pas encore sur ce PC</span>` : '');
+  poser('commits', e.commits.map((c) => `<div class="commit ${c.nouveau ? 'neuf' : ''}"><span class="mono sourd">${esc(c.sha)}</span><span class="puce ${classe(c.qui)}">${esc(c.qui)}</span><span>${esc(c.sujet)}</span><span class="sourd">${ilya(c.date, true)}</span></div>`).join('') || '<div class="vide">Lecture…</div>');
+}
+
+// ---------- avis quand quelque chose change ----------
+function comparer(avant, apres) {
+  for (const g of apres.equipe.filter((x) => !x.moi)) {
+    const a = avant.equipe.find((x) => x.qui === g.qui);
+    if (!a) continue;
+    if (g.enLigne && !a.enLigne) avis(`${g.qui} est en ligne`, g.sessions.map((s) => s.titre || s.nom).filter(Boolean).join(' · '), 'vert');
+    if (!g.enLigne && a.enLigne) avis(`${g.qui} est hors ligne`);
+    if (g.enLigne && a.enLigne) {
+      const connus = new Set(a.sessions.map((s) => s.nom));
+      for (const s of g.sessions) if (!connus.has(s.nom)) avis(`${g.qui} ouvre une session`, `${s.titre || s.nom || ''} (${s.dossier === '.wt-master' ? 'PATCH' : 'V3'})`, 'vert');
+    }
+    if (g.note && g.note !== a.note) avis(`${g.qui} : « ${g.note} »`, '', 'ambre');
+  }
+  if (avant.commits[0] && apres.commits[0] && avant.commits[0].sha !== apres.commits[0].sha) {
+    const connus = new Set(avant.commits.map((c) => c.sha));
+    const neufs = apres.commits.filter((c) => !connus.has(c.sha) && c.qui !== apres.moi);
+    if (neufs.length) avis(`${neufs[0].qui} a poussé ${neufs.length} commit${neufs.length > 1 ? 's' : ''}`, neufs[0].sujet, 'ambre');
+  }
+  if (avant.patchs[0] && apres.patchs[0] && avant.patchs[0].tag !== apres.patchs[0].tag) avis(`Nouveau patch ${apres.patchs[0].tag}`, apres.patchs[0].titre, 'vert');
+  const pa = avant.sites.find((s) => s.id === 'prod')?.version, pb = apres.sites.find((s) => s.id === 'prod')?.version;
+  if (pa && pb && pa !== pb) avis('Mise en ligne chez les joueurs', pb, 'vert');
+}
+
+function rendre(e) {
+  rendreEquipe(e); rendreAccueil(e); rendreReste(e); rendrePatchs(e); rendreActivite(e);
+  if (!rendre.noteMise) { const n = e.equipe.find((g) => g.moi)?.note; if (n) $('note').value = n; rendre.noteMise = true; }
+}
+
+let echecs = 0;
+async function lire() {
+  try {
+    const r = await fetch('/api/etat', { headers: { 'x-jeton': K } });
+    if (!r.ok) throw new Error(r.status);
+    const e = await r.json();
+    if (etat) comparer(etat, e);
+    etat = e; echecs = 0;
+    $('coupe').classList.remove('vue');
+    rendre(e);
+  } catch {
+    if (++echecs >= 3) $('coupe').classList.add('vue');
+  }
+}
+
+// ---------- gestes ----------
+function aller(page) {
+  document.querySelectorAll('.page').forEach((p) => p.classList.toggle('vue', p.id === 'p-' + page));
+  document.querySelectorAll('.onglet').forEach((o) => (o.dataset.page === page ? o.setAttribute('aria-current', 'page') : o.removeAttribute('aria-current')));
+  document.querySelector('main').scrollTop = 0;
+  try { localStorage.setItem('page', page); } catch {}
+}
+document.addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button');
+  if (!b) return;
+  if (b.dataset.page) return aller(b.dataset.page);
+  if (b.dataset.va) return aller(b.dataset.va);
+  if (b.dataset.lien) return agir('lien', b.dataset.lien);
+  if (b.dataset.reprendre) { if (await agir('reprendre', { id: b.dataset.reprendre, dossier: b.dataset.dossier })) avis('Session rouverte', 'Le terminal arrive.'); return; }
+  if (b.dataset.filtre !== undefined) {
+    filtre = b.dataset.filtre;
+    document.querySelectorAll('[data-filtre]').forEach((x) => x.classList.toggle('actif', x === b));
+    if (etat) rendreReste(etat);
+    return;
+  }
+  if (b.dataset.action) {
+    const id = b.dataset.action;
+    if (id === 'rafraichir') { $('synchro').textContent = 'Lecture de GitHub…'; vus.synchro = ''; await agir(id); return lire(); }
+    if (await agir(id)) avis('Terminal ouvert', id === 'patch' ? 'Patch, dans .wt-master.' : 'V3, dans le dossier racine.');
+  }
+});
+$('f-note').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (await agir('note', $('note').value)) { avis($('note').value ? 'Mot affiché' : 'Mot retiré', "Visible chez l'autre dans la minute."); lire(); }
+});
+$('cherche').addEventListener('input', () => etat && rendreReste(etat));
+document.addEventListener('keydown', (ev) => {
+  if (ev.target.matches('input') || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+  const page = { 1: 'accueil', 2: 'reste', 3: 'patchs', 4: 'activite' }[ev.key];
+  if (page) aller(page);
+  if (ev.key === '/') { ev.preventDefault(); aller('reste'); $('cherche').focus(); }
+});
+
+function horloge() { $('heure').textContent = heure(Date.now()); }
+horloge(); if (!new URLSearchParams(location.search).has('fige')) setInterval(horloge, 5000);
+const PARAMS = new URLSearchParams(location.search);
+const FIGE = PARAMS.has('fige'); // capture d'essai : une seule lecture, pas de flux
+try { const p = PARAMS.get('page') || localStorage.getItem('page'); if (p && $('p-' + p)) aller(p); } catch {}
+if (!FIGE) new EventSource('/api/vie?k=' + encodeURIComponent(K)); // tient le serveur en vie tant que la fenêtre est ouverte
+lire();
+if (!FIGE) setInterval(() => lire(), 4000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) lire(); });
+</script>
+</body>
+</html>

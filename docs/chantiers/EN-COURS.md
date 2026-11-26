@@ -20,7 +20,7 @@ _Mis à jour : 26/11/2026 (Tom, soir : coût Convex — v2.1.21 classement par d
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.21 : coût Convex — classement par différence (`rankInc`), copie locale de la collection gardée entre versions, migrations tamponnées, rétention 30 j, sauvegarde du lanceur seulement si `convex/` change | en ligne (tag `v2.1.21`, `f4f28e2` ; v2 `b4d8626`) — `docs/chantiers/v2.1.21.md`, mesures : `convex-quota.md` |
 | Tom + Claude | `.wt-master` / `master` | patchs v2.1.22-23 : MP du bot Discord à l'autre après chaque mise en ligne prod (`scripts/prevenir-equipe.mjs`) | en ligne (tags `v2.1.22` `b57736c`, `v2.1.23` `6cc4856` ; v2 `bdc972b`) — `docs/chantiers/v2.1.22.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.24 : index redondants `inventory.by_user` et `packOpens.by_userId` retirés (collection entière : `invOf`) ; règles de coût (doc officielle) dans `.claude/rules/convex.md` ; `scripts/cout-convex.mjs` | en ligne (tag `v2.1.24`, `40254a3` ; v2 `2753a6a`) — `docs/chantiers/convex-quota.md` |
-| Tom + Claude | racine / `v2` | outils : lanceur Claude sans console vide (`.vbs`), journal, `.gitattributes` CRLF ; LABO Fable supprimé le 26/11 (outil + bouton) | poussé, pas testé en vrai — `docs/chantiers/outils-lanceur.md` |
+| Tom + Claude | racine / `v2` | outils : lanceur Claude pleine page (26/11 soir) — présence de l'équipe et sessions en direct (`refs/presence/*` sur GitHub), reste à faire, frise des patchs, chantiers et commits ; l'ancien `.ps1` est supprimé | poussé, lancé en vrai chez Tom ; à essayer chez Hugo — `docs/chantiers/outils-lanceur.md` |
 | Hugo + Claude | racine / `v2` | outils : agent Claude sur la clé API de Tom (100 $/mois) — images, cadrage, catalogue, traductions (Batch) + audits Convex et perf mobile, lecture seule, rapports dans `docs/rapports-agent/` | poussé (`42c5c21`), testé à blanc, attend la clé — `docs/chantiers/agent-claude.md` |
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo + Claude | racine / `v2` | QOL : liste validée (section « QOL » ci-dessous), rien de codé | à démarrer par collection 1-2-3 — `docs/chantiers/qol.md` |
@@ -51,7 +51,8 @@ _Mis à jour : 26/11/2026 (Tom, soir : coût Convex — v2.1.21 classement par d
 - [ ] Admin : destinataire Wero à saisir dans `/admin/` (bientôt)
 
 ### Outils
-- [ ] Tom : tester `LANCEUR-CLAUDE.cmd` (pas de console vide) ; retirer à la main `CLAUDE_LABO_*` de `.env.local` (LABO supprimé) — Hugo aussi, s'il les avait
+- [ ] Lanceur pleine page : Tom clique PATCH / V3 / une session à reprendre ; Hugo fait `git pull` puis ouvre `LANCEUR-CLAUDE.cmd` (ou une session Claude) → sa carte doit passer « en ligne » chez Tom en moins d'une minute
+- [ ] Tom : retirer à la main `CLAUDE_LABO_*` de `.env.local` (LABO supprimé) — Hugo aussi, s'il les avait
 - [ ] Agent Claude (Tom, ce soir) : limite 100 $ dans la console Anthropic, `AGENT_CLAUDE_KEY=` dans `.env.local` (JAMAIS `ANTHROPIC_API_KEY` en variable Windows), puis `lanceurs\agent-claude.cmd` → 7 Convex, 8 perf, puis 3-6 et le lendemain 2 (suivre). Rapports Convex / perf → une session par lot, mesuré avant / après. Mode d'emploi : `docs/AGENT-CLAUDE.md`
 - [ ] Commit à part `git add --renormalize lanceurs/` (les `.cmd` paraissent modifiés depuis `.gitattributes`, fins de ligne seulement)
 

@@ -10,7 +10,7 @@
   - `/cr` : fin de session (fichier de passation + compte rendu d'une page).
 - `.claude/settings.json` : Claude lance tout seul type-check, tests, `git add/commit` ; il **demande** avant de pousser `master`, un `reset --hard` ou un `convex run` ; il ne peut **jamais** lire les secrets ni déployer à la main.
 - `docs/chantiers/EN-COURS.md` : le fichier de passation (qui fait quoi, ce qui reste).
-- **`LANCEUR-CLAUDE.cmd`** (racine du repo) : une fenêtre à boutons qui ouvre le bon terminal au bon endroit — PATCH (version en ligne), V3, Reprendre, plus EN-COURS, lien V3 et site joueurs.
+- **`LANCEUR-CLAUDE.cmd`** (racine du repo) : le lanceur pleine page (fenêtre du navigateur, serveur local `outils/lanceur/`) — boutons PATCH (version en ligne), V3, Reprendre ; qui est en ligne et sur quelles sessions Claude (Tom et Hugo, mis à jour tout seul) ; « Reste à faire » lu dans EN-COURS ; frise des patchs ; chantiers et derniers commits ; dossiers en retard sur GitHub.
 - **Garde-fous à deux, automatiques** : au démarrage, Claude sait si l'autre a poussé et récupère ses changements ; il ne peut pas modifier un fichier que l'autre a changé sur GitHub avant de l'avoir récupéré ; le lien V3 refuse d'être publié depuis un dossier en retard.
 - **Plus de double-clic** : Claude lance lui-même les lanceurs depuis la session, sur ton PC (Tom ou Hugo). Push, lien V3 et staging : tout seul. Mise en prod : il demande « je publie v2.X.Y chez les joueurs ? » et attend un oui (réponse possible depuis le téléphone). Il ne lance jamais `NE-PAS-LANCER-*` ni un lanceur qui demande une connexion.
 
