@@ -36,6 +36,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'God pack in a ×5 or a ×10', tag: 'corrigé',
+        points: [
+          '✦ A God pack opened in a ×5 or a ×10 plays its “GOD PACK” sequence right before its cards, at the end of the big booster: it could play earlier, on ordinary cards. The cards you got were already the right ones.',
+        ],
+      },
+      {
         date: '26 Nov', title: '🎄 The Event tab opens on 1 December', tag: 'amélioré',
         points: [
           '🎁 The Event tab, greyed out until now, opens on its own on 1 December at midnight (Paris time), even if the game is already open: the first door of the Advent calendar is waiting for you.',

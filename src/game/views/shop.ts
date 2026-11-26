@@ -31,6 +31,7 @@ import { createBigPulls } from './bigPulls';
 import { duelMonster } from '../scenes/duelMonsters';
 import { abortMythic, mythicFamily, playMythicPrelude, prepareMythic } from '../mythic';
 import { clearGod, playGodIntro } from '../godPack';
+import { spreadSeries } from '../series';
 
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
 const TOUCH = isTouch();
@@ -196,24 +197,6 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     }
     if (packs.length < n) toast(tr('shop.reserveOpened', { got: packs.length, n: packs.length > 1 ? 's' : '' }), 'info');
     return got;
-  }
-
-  /**
-   * Gros booster (×5 / ×10) : les N boosters scellés, leurs cartes mises en commun et triées (moins rare → plus rare,
-   * la secrète en dernier), puis redistribuées en N morceaux montrés à la suite comme un seul booster. Chaque morceau
-   * garde l'id d'un vrai booster (crédit côté serveur) : les boosters sont pris du moins bon au meilleur, pour que le
-   * meilleur — celui qui annonce un gros tirage dans le fil — soit crédité en dernier, une fois sa carte montrée.
-   */
-  function spreadSeries(list: SealedPack[]): SealedPack[] {
-    const R: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, secret: 6 };
-    const best = (p: SealedPack) => Math.max(...p.cards.map((c) => R[c.rarity] ?? 0));
-    const real = list.map((p, i) => ({ p, i })).sort((a, b) => best(a.p) - best(b.p) || a.i - b.i).map((x) => x.p);
-    const cards = list.flatMap((p) => p.cards).map((c, i) => ({ c, i })).sort((a, b) => (R[a.c.rarity] ?? 0) - (R[b.c.rarity] ?? 0) || a.i - b.i).map((x) => x.c);
-    let at = 0;
-    return real.map((p) => {
-      const chunk = cards.slice(at, (at += p.cards.length));
-      return { ...p, cards: chunk };
-    });
   }
 
   /**
