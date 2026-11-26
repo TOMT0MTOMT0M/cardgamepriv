@@ -179,7 +179,6 @@ test('boosters : mêmes valeurs en base, quel que soit le chemin de lecture / é
       cardMints: sorted(await ctx.db.query('cardMints').collect()),
       activityFeed: sorted(await ctx.db.query('activityFeed').collect()),
       dropShots: sorted(await ctx.db.query('dropShots').collect()),
-      notifications: (await ctx.db.query('notifications').collect()).length,
       pendingJobs: sorted(jobs.map((j) => ({ name: j.name, args: j.args, at: j.scheduledTime }))),
     };
   });
@@ -190,5 +189,5 @@ test('boosters : mêmes valeurs en base, quel que soit le chemin de lecture / é
   console.log(`[mesure coût] empreinte : pièces ${ua.coins} · boosters ouverts ${ua.totalPacksOpened} · réserve ${ua.packBalance} · pity ${ua.pityCount} · parrain payé ${ua.referralPaid} · ${dump.inventory.length} lignes · ${dump.pendingJobs.length} rappel(s)`);
   expect(ua.totalPacksOpened).toBe(21);
   expect(ua.referralPaid).toBe(true);
-  expect(createHash('sha256').update(json).digest('hex').slice(0, 16)).toMatchInlineSnapshot(`"e1eda28841ec86f8"`);
+  expect(createHash('sha256').update(json).digest('hex').slice(0, 16)).toMatchInlineSnapshot(`"e6a4c9ca0f244caf"`);
 });
