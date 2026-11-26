@@ -8,7 +8,13 @@
 //   node scripts/prevenir-equipe.mjs --texte="…" → ajoute une ligne au message
 // Le lanceur d'un patch peut aussi poser `set BEBOU_NOTE=...` (ce que contient la version, sans accents) : même effet.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+// (v2.1.23) la CLI Convex par son fichier : `require.resolve('convex/bin/main.js')` est refusé par les « exports »
+// du paquet (MP non parti à la mise en ligne v2.1.22)
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const CLI = fileURLToPath(new URL('../node_modules/convex/bin/main.js', import.meta.url));
 
 const git = (...a) => {
   try {
@@ -33,11 +39,12 @@ const texte = [
 
 if (process.argv.includes('--essai')) {
   console.log(texte);
+  console.log(`\n[essai] CLI Convex : ${CLI} ${existsSync(CLI) ? '(trouvée)' : '(INTROUVABLE : npm install ?)'}`);
   process.exit(0);
 }
 try {
-  const cli = createRequire(import.meta.url).resolve('convex/bin/main.js');
-  const r = spawnSync(process.execPath, [cli, 'run', 'discordBot:prevenirEquipe', JSON.stringify({ texte, sauf: qui })], { encoding: 'utf8' });
+  if (!existsSync(CLI)) throw new Error(`CLI Convex introuvable (${CLI}) : npm install ?`);
+  const r = spawnSync(process.execPath, [CLI, 'run', 'discordBot:prevenirEquipe', JSON.stringify({ texte, sauf: qui })], { encoding: 'utf8', cwd: ROOT });
   console.log(`[prevenir-equipe] ${(r.stdout || '').trim()}${r.status ? ` (code ${r.status}) ${(r.stderr || '').trim().slice(-300)}` : ''}`);
 } catch (e) {
   console.log(`[prevenir-equipe] non envoyé : ${e instanceof Error ? e.message : e}`);
