@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 26/11/2026 (Hugo : liste des licences à étoffer, `9eae34f` ; avant : agent Claude sur la clé API de Tom poussé, `42c5c21` ; avant : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
+_Mis à jour : 26/11/2026 (Hugo : Convex coupé (Free dépassé) → staging vidé, forfait Starter pris, session Convex à faire ; avant : liste des licences à étoffer, `9eae34f` ; avant : agent Claude sur la clé API de Tom poussé, `42c5c21` ; avant : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
 
 ## Chantiers ouverts
 
@@ -31,7 +31,8 @@ _Mis à jour : 26/11/2026 (Hugo : liste des licences à étoffer, `9eae34f` ; av
 - [ ] Avent (en ligne v2.1.13) : Tom vérifie sur téléphone — étoile, cases 21/23, Chapeau de Noël, bannières, animations de profil, éclat des 2 ouvertures ; le 01/12 ouvrir la 1re case en vrai
 
 ### Version en ligne
-- [ ] IMPORTANT — Convex au-dessus de l'offre gratuite. Prod au 26/11 (mois) : Database I/O 40,6 GB pour 1 GB inclus ; appels 675 k / 1 M ; egress 1,23 GB pour 1 GB. Le 26/11 (jour, partiel) : 0,17 GB. À faire : offre Free (écritures bloquables) ou Starter (facturé) ? et trouver ce qui consomme l'I/O (`npx convex deployment usage`, `npx convex insights` : conflits sur `purgeCards` / `remapCards`, relancées à la mise en ligne — piste non vérifiée)
+- [ ] (26/11, Hugo) Déploiements Convex coupés (Free dépassé : Database Storage 512/512 MB, I/O 1/1 GB). Staging `good-gull-939` (`cardgamepriv-v2`) VIDÉ : `inventory`, `packOpens`, `activityFeed`, `coinTx` (sauvegarde `sauvegardes/staging-avant-vidage-20261126.zip`) → ~360 MB libérés. NE PLUS lancer `rafraichir-staging-v2.cmd` (copie complète de la prod = double stockage) ; prévoir un petit jeu de données de test. PROCHAINE SESSION : rétention 30 j sur `packOpens` (114 MB) et `activityFeed` (41 MB) en prod (migration + cron), après avoir vérifié que rien n'en dépend (stats, pity) ; `inventory` (187 MB) à examiner.
+- [ ] IMPORTANT — Convex au-dessus de l'offre gratuite. Prod au 26/11 (mois) : Database I/O 40,6 GB pour 1 GB inclus ; appels 675 k / 1 M ; egress 1,23 GB pour 1 GB. Le 26/11 (jour, partiel) : 0,17 GB. Forfait Starter pris le 26/11 (dépassements FACTURÉS : poser un plafond de dépenses). À faire : et trouver ce qui consomme l'I/O (`npx convex deployment usage`, `npx convex insights` : conflits sur `purgeCards` / `remapCards`, relancées à la mise en ligne — piste non vérifiée)
 - [ ] v2.1.19 : vérifier à l'écran le texte du Portefeuille
 - [ ] v2.1.20 : Tom vérifie le labo en ligne (onglets, ⤓/⤒, vignettes, menu ⚙, téléphone) (Hugo a récupéré le code le 26/11)
 - [ ] Nouveau thème via Gemini (prompt de Hugo relu le 26/11 : colonnes `N° | Sous-thème | Carte | Type | Étoiles finales | Score notoriété | Image URL`, URL d'images vérifiées ou vides, retraits Bruel / Ménès / Depardieu) : joindre la liste des cartes existantes (nom + thème) pour l'unicité
@@ -120,4 +121,5 @@ Autres écrans (audit du 26/11) — ordre conseillé : C, E, H, A, L
 - `EN-COURS.md` a des fins de ligne Windows : un script qui découpe sur `
 ` ne retrouve plus les titres.
 - `npm run check:images` contrôle les fichiers locaux, pas le site : sur un PC au `public/art` incomplet, vérifier l'adresse en ligne (réponse 200 de type image).
+- Le quota gratuit Convex est partagé par tous les projets de l'équipe : le staging copie de la prod (`rafraichir-staging-v2.cmd`) doublait le stockage et a fait couper la prod (26/11). Vider une table : `npx convex import --deployment <staging> --table <t> --replace -y vide.jsonl`.
 - Un `.gitattributes` non commité (eol=crlf) fait paraître tous les `.cmd` modifiés et bloque `git pull` (« Aborting ») : le mettre de côté le temps du pull (arrivé le 26/11).
