@@ -22,8 +22,27 @@
 - Doc « Limits » : chaque index est facturé comme une copie de la table. `inventory` 187 Mo = données (≈ 31 Mo) + 5 index ; `packOpens` 114 Mo = données + 3 index. v2.1.24 (tag `v2.1.24`, `40254a3` ; v2 `2753a6a`) retire `inventory.by_user` et `packOpens.by_userId`, doublons d'un index plus long (collection entière : `invOf`, même ordre). Attendu ≈ −60 Mo de stockage, −1/6 des écritures d'index d'inventaire. En ligne le 26/11 vers 20 h, sans erreur, MP « Hugo : envoyé ».
 - Invalidation par document (pas par champ) : toute écriture sur `users` relance chaque requête qui le lit → piste n°1 pour les boosters.
 
+## Session n°2 — boosters (26/11 nuit, Tom + Claude) : v2.1.25-26, fiche `v2.1.26.md`
+**Diagnostic** (convex-test, `reads.testlib.ts` compte lectures et écritures) : le coût venait des RELECTURES, pas des écritures. Joueur lu 3 / 6 / 31 / 61 fois par `preparePack` / `revealPack` / `preparePacks` ×10 / `revealPacks` ×10 (chaque `ctx.db.get` est facturé) ; écrit 1 fois par mutation (patchs regroupés au commit, vu dans les journaux : 9 documents écrits par `revealPack`). Requêtes abonnées relancées par un booster : `session:get` (il lui faut le joueur) et `myTrades` (2 joueurs ENTIERS par échange pour 2 noms) — 2 relances par booster (préparation + révélation).
+**Fait** : joueur lu 1 fois par mutation (copie tenue par `patchLive`, `convex/liveUser.ts`) ; `myTrades` lit les noms dans `presence`. Écarté : regrouper les patchs (0 gain), sortir des champs du joueur (`session:get` se relancerait quand même, ≈ 2 % du régime).
+
+| Prod, I/O par appel (lu + écrit) | avant (18 h 30-20 h 04 UTC, 1,6 h) | après (20 h 12-21 h 01 UTC hors mises en ligne, 0,5 h) |
+|---|---|---|
+| `packs:revealPack` | 154 appels · 38,9 Ko (lu 29,2) | 47 · 24,8 Ko (lu 14,8) |
+| `packs:preparePack` | 67 · 20,3 Ko (lu 15,4) | 13 · 17,0 Ko (lu 12,1) |
+| `packs:preparePacks` | 14 · 289 Ko (lu 263) | 5 · 136 Ko (lu 110) |
+| `packs:revealPacks` | 4 · 459 Ko (lu 401) | 1 · 177 Ko (lu 119) |
+| `trades:myTrades` | 99 · 8,6 Ko | 22 · 1,3 Ko |
+| boosters, par heure | 8,4 Mo/h ≈ 0,20 GB/jour à ce rythme | 4,6 Mo/h ≈ 0,11 GB/jour (−45 %) |
+
+- Même activité dans les deux fenêtres (≈ 97 `revealPack` / h). À activité égale (appels de la fenêtre « avant » × coût « après ») : boosters 13,2 → 7,6 Mo (−43 %), `myTrades` 0,85 → 0,13 Mo (−85 %) ; gain ≈ 4 Mo/h aux heures de jeu, au plus ≈ 0,1 GB/jour (≈ 3 GB/mois ≈ 0,65 $).
+- Total hors migrations : 45,7 → 21,2 Mo/h, mais pas comparable sur 30 min : il est fait d'appels isolés de 2 à 6 Mo (`collectionFull`, `profiles:profile`, `claimCompletions`). Sans eux : 15,8 → 10,2 Mo/h.
+- Compteur Convex le 26/11 à 22 h : jour 1,89 GB (5 mises en ligne, 1 sauvegarde, coûts uniques compris), mois 42,3 GB. Calcul (chez Tom, hors git) : `node .claude-tmp/regime-cout.mjs <relevés .jsonl> -- <début> <fin> [trou/trou]` dans `.wt-master`, sur `cout-convex-2026-11-26-19-03.jsonl` et `…-20-10.jsonl`.
+- Plus gros postes restants (par appel, journaux du 26/11) : `economy:claimCompletions` 5,7 Mo (relit toute la collection via `collectionOf`), `profiles:profile` 2,6-4,2 Mo (collection du joueur regardé), `inventory:collectionFull` 2,6-3,1 Mo (rechargements après CHAQUE mise en ligne : 5 le 26/11), `profiles:refreshMyRank` jusqu'à 1,2 Mo, `profiles:rankRow` 170-340 Ko.
+
 ## Reste
-- [ ] Boosters = 1er poste (≈ 45 % du régime) : le document joueur (2,7 Ko) est relu et réécrit plusieurs fois par booster, et chaque écriture relance `session:get` / `myTrades` (≈ 130 et 75 fois/h). Session dédiée : mesurer (`scripts/cout-convex.mjs`), comparer avant d'écrire, sortir les champs qui bougent à chaque booster dans un document à part (comme `presence`).
-- [ ] Vérifier le stockage après v2.1.24 dans le tableau de bord (≈ 325 Mo attendus au lieu de 385).
+- [x] Boosters (v2.1.25-26) : −45 % d'I/O mesuré, `myTrades` −85 % (tableau ci-dessus).
+- [ ] Session Convex n°3 : `claimCompletions`, `profiles:profile`, `collectionFull` après une mise en ligne (la copie locale gardée 72 h devrait l'éviter : à comprendre), `refreshMyRank` / `rankRow`. Même méthode : compter dans convex-test, puis `node scripts/cout-convex.mjs` avant / après.
+- [ ] Vérifier le stockage après v2.1.24 dans le tableau de bord (≈ 325 Mo attendus au lieu de 385) — la CLI ne donne pas les octets stockés.
 - [ ] Rétention `packOpens` à 7 j possible (aucun écran joueur) si le stockage approche 512 Mo.
 - [ ] Remplir le staging avec un petit jeu de test au lieu de `rafraichir-staging-v2.cmd`.
