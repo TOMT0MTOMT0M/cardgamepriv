@@ -35,6 +35,12 @@ _Mis à jour : 26/11/2026 (Hugo : agent Claude sur la clé API de Tom poussé, `
 - [ ] v2.1.20 : Tom vérifie le labo en ligne (onglets, ⤓/⤒, vignettes, menu ⚙, téléphone) (Hugo a récupéré le code le 26/11)
 - [ ] Nouveau thème via Gemini (prompt de Hugo relu le 26/11 : colonnes `N° | Sous-thème | Carte | Type | Étoiles finales | Score notoriété | Image URL`, URL d'images vérifiées ou vides, retraits Bruel / Ménès / Depardieu) : joindre la liste des cartes existantes (nom + thème) pour l'unicité
 - [ ] Licences : étoffer les licences existantes (plus de cartes par licence) et en scraper davantage — sources dans `donnees/`, puis régénérer par `scripts/make-*.py` (ids figés, curation à préserver)
+  - Jeux vidéo : Final Fantasy, Dragon Quest, Digimon, World of Warcraft, Warhammer, Zelda, Yu-Gi-Oh
+  - Mangas / animés : Blue Lock, Demon Slayer, Détective Conan, Eyeshield 21, Haikyu, My Hero Academia, Seven Deadly Sins, Sailor Moon, Solo Leveling, Sword Art Online, Tokyo Ghoul
+  - Pop culture : films DC, Harry Potter, Transformers
+  - Sport : échecs, tennis de table, rallye
+  - Monde : Ardèche (plus de villes et villages), dinosaures et préhistoire
+  - Dessins animés : trop peu de cartes par thème et mal triés → proposer un système de familles pour certains
 - [ ] Images : sans fichier = Leo 5★ et Jubelle (Summoners War), Coiffe Kitsou, Tinky Winky 6★ (les autres 5★/6★ sont servis par le site, vérifié le 26/11)
 - [ ] God pack ouvert dans un ×10 : l'animation peut tomber sur le mauvais morceau (cartes correctes) — mineur, `spreadSeries` dans `shop.ts`
 - [ ] Admin : destinataire Wero à saisir dans `/admin/` (bientôt)
