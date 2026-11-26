@@ -30,4 +30,5 @@ _26/11/2026 soir — Tom + Claude, racine / `v2`. Remplace la fenêtre à bouton
 - Les titres de session partent sur GitHub (dépôt privé) : ne pas y mettre de secret.
 
 ## Reste
-- [ ] Commit à part `git add --renormalize lanceurs/` : depuis `.gitattributes`, les `.cmd` de `lanceurs/` paraissent modifiés (fins de ligne seulement), chez Tom comme chez Hugo.
+- [x] Fins de ligne des lanceurs normalisées sur `v2` (`58d5fae`, 26/11) ; `merge.renormalize` posé par le hook de démarrage pour les reports depuis `master`.
+- [ ] Même normalisation sur `master` au prochain patch (`.gitattributes` + `git add --renormalize`).

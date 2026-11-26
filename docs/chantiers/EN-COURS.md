@@ -54,7 +54,7 @@ _Mis à jour : 26/11/2026 (Tom, soir : coût Convex — v2.1.21 classement par d
 - [ ] Lanceur pleine page : Tom clique PATCH / V3 / une session à reprendre ; Hugo fait `git pull` puis ouvre `LANCEUR-CLAUDE.cmd` (ou une session Claude) → sa carte doit passer « en ligne » chez Tom en moins d'une minute
 - [ ] Tom : retirer à la main `CLAUDE_LABO_*` de `.env.local` (LABO supprimé) — Hugo aussi, s'il les avait
 - [ ] Agent Claude (Tom, ce soir) : limite 100 $ dans la console Anthropic, `AGENT_CLAUDE_KEY=` dans `.env.local` (JAMAIS `ANTHROPIC_API_KEY` en variable Windows), puis `lanceurs\agent-claude.cmd` → 7 Convex, 8 perf, puis 3-6 et le lendemain 2 (suivre). Rapports Convex / perf → une session par lot, mesuré avant / après. Mode d'emploi : `docs/AGENT-CLAUDE.md`
-- [ ] Commit à part `git add --renormalize lanceurs/` (les `.cmd` paraissent modifiés depuis `.gitattributes`, fins de ligne seulement)
+- [ ] Fins de ligne des lanceurs : normalisées sur `v2` le 26/11 (`58d5fae`). Hugo : son premier `git pull` peut répondre « Aborting » à cause des `.cmd` qui paraissent modifiés chez lui → vérifier `git diff --ignore-cr-at-eol --stat` vide et `git rev-list --count origin/v2..HEAD` = 0, puis `git reset --hard origin/v2`. À faire au prochain patch : la même normalisation sur `master` (`.gitattributes` + `git add --renormalize`)
 
 ### V3
 - [ ] **Rework économie** (validé par Hugo le 26/11, rien de codé) — détail et chiffres : `docs/chantiers/economie.md`
@@ -130,3 +130,4 @@ Autres écrans (audit du 26/11) — ordre conseillé : C, E, H, A, L
 - `npm run check:images` contrôle les fichiers locaux, pas le site : sur un PC au `public/art` incomplet, vérifier l'adresse en ligne (réponse 200 de type image).
 - Le quota gratuit Convex est partagé par tous les projets de l'équipe : le staging copie de la prod (`rafraichir-staging-v2.cmd`) doublait le stockage et a fait couper la prod (26/11). Vider une table : `npx convex import --deployment <staging> --table <t> --replace -y vide.jsonl`.
 - Un `.gitattributes` non commité (eol=crlf) fait paraître tous les `.cmd` modifiés et bloque `git pull` (« Aborting ») : le mettre de côté le temps du pull (arrivé le 26/11).
+- (26/11) `v2` a ses `.cmd` normalisés, `master` les a encore en CRLF : reporter sur `v2` un patch de `master` qui touche un lanceur fait un conflit sur tout le fichier, sauf avec `git config merge.renormalize true` (posé tout seul par le hook de démarrage ; dans le doute : `git -c merge.renormalize=true cherry-pick …`).

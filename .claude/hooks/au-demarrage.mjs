@@ -16,6 +16,11 @@ function dire(texte) {
 const branche = git('rev-parse --abbrev-ref HEAD');
 if (!branche) process.exit(0);
 
+// Fins de ligne : `v2` garde les .cmd normalisés (58d5fae), `master` les a encore en CRLF. Sans ce réglage, reporter
+// sur v2 un patch de master qui touche un lanceur fait un conflit sur tout le fichier. Réglage local du dépôt,
+// partagé avec .wt-master ; posé une fois.
+if (git('config --get merge.renormalize') !== 'true') git('config merge.renormalize true');
+
 // Présence d'équipe (lanceur Claude) : un veilleur détaché dit à l'autre qu'on est en ligne et sur quelles sessions.
 // Sans effet si le fichier n'existe pas (branche master) ou si un veilleur tourne déjà.
 try {
