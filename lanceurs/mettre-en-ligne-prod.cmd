@@ -40,6 +40,8 @@ rem (version anglaise, lot 4) anciens messages du fil et du journal des pieces :
 call npx convex run migrations:i18nMessages >> "%LOG%" 2>&1 || goto :err
 rem (v2.1.18) photos de profil importees : recopiees dans avatarUrl, lu par tous les ecrans (idempotent)
 call npx convex run migrations:applyAvatarMedia >> "%LOG%" 2>&1 || goto :err
+rem (26/11) retention : boosters ouverts et fil d'activite de plus de 30 jours retires (idempotent, par lots ; aussi en cron)
+call npx convex run migrations:purgeOld >> "%LOG%" 2>&1 || goto :err
 call npx convex run admin:setModerators >> "%LOG%" 2>&1
 rem cle de lecture des retours du labo (fichier local .feedback-key, jamais publie) -> environnement Convex
 if exist ".feedback-key" (

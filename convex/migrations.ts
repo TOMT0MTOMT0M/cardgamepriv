@@ -270,9 +270,18 @@ function dedupe<T extends { cardId: string; rarity: string }>(list: T[]): T[] {
  *
  *   npx convex run migrations:remapCards
  */
+let remapSig: string | null = null;
+const remapStamp = () => (remapSig ??= fnv(Object.entries(ETOILES_REMAP).map(([a, b]) => `${a}>${b}`).sort()));
+
 export const remapCards = internalMutation({
-  args: { cursor: v.optional(v.union(v.string(), v.null())), moved: v.optional(v.number()) },
-  handler: async (ctx, { cursor, moved = 0 }) => {
+  args: { cursor: v.optional(v.union(v.string(), v.null())), moved: v.optional(v.number()), startedAt: v.optional(v.number()), clean: v.optional(v.boolean()), force: v.optional(v.boolean()) },
+  handler: async (ctx, { cursor, moved = 0, startedAt, clean, force }) => {
+    // (26/11, coût Convex) même tampon que purgeCards (A8-08) : AVANT, chaque mise en ligne relisait tout l'inventaire
+    // (127 000 lignes ≈ 43 Mo de Database I/O) pour ne rien déplacer. Liste des doublons inchangée, aucun booster
+    // scellé qui en contient une, deux passages complets déjà faits : rien à relire.
+    if (cursor == null && !force && (await stampFresh(ctx, 'remapCards', remapStamp()))) return { done: true, moved: 0, skipped: true };
+    const began = startedAt ?? Date.now();
+    const wasClean = clean ?? (await sealedAll(ctx, (c) => !ETOILES_REMAP[c.cardId]));
     const page = await ctx.db.query('inventory').paginate({ cursor: cursor ?? null, numItems: BATCH });
     const users = new Set<Doc<'users'>['_id']>();
     for (const row of page.page) {
@@ -307,9 +316,10 @@ export const remapCards = internalMutation({
       }
     }
     if (!page.isDone) {
-      await ctx.scheduler.runAfter(0, internal.migrations.remapCards, { cursor: page.continueCursor, moved });
+      await ctx.scheduler.runAfter(0, internal.migrations.remapCards, { cursor: page.continueCursor, moved, startedAt: began, clean: wasClean });
       return { done: false, moved };
     }
+    await stampSet(ctx, 'remapCards', remapStamp(), began, wasClean);
     return { done: true, moved };
   },
 });
@@ -408,8 +418,13 @@ export const purgeCardsDeals = internalMutation({
  * que la page affiche.
  */
 export const markBigPulls = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { force: v.optional(v.boolean()) },
+  handler: async (ctx, { force }) => {
+    // (26/11, coût Convex) les nouvelles lignes sont marquées à l'insertion : deux passages de suite sans rien à
+    // marquer suffisent (tampon A8-08, repassage complet au plus tard au bout de 7 jours). AVANT : 4 000 lignes
+    // (≈ 2 Mo) relues à chaque mise en ligne.
+    if (!force && (await stampFresh(ctx, 'markBigPulls', 'v1'))) return { scanned: 0, marked: 0, skipped: true };
+    const began = Date.now();
     const recent = await ctx.db.query('activityFeed').withIndex('by_createdAt').order('desc').take(4000);
     let marked = 0;
     for (const f of recent) {
@@ -417,6 +432,7 @@ export const markBigPulls = internalMutation({
       await ctx.db.patch(f._id, { big: true });
       marked++;
     }
+    await stampSet(ctx, 'markBigPulls', 'v1', began, marked === 0);
     return { scanned: recent.length, marked };
   },
 });
@@ -472,8 +488,15 @@ export const i18nMessages = internalMutation({
     cursor: v.optional(v.union(v.string(), v.null())),
     done: v.optional(v.number()),
     left: v.optional(v.number()),
+    startedAt: v.optional(v.number()),
+    force: v.optional(v.boolean()),
   },
-  handler: async (ctx, { part = 'feed', cursor, done = 0, left = 0 }): Promise<{ part: string; done: number; left: number; finished: boolean }> => {
+  handler: async (ctx, { part = 'feed', cursor, done = 0, left = 0, startedAt, force }): Promise<{ part: string; done: number; left: number; finished: boolean; skipped?: boolean }> => {
+    // (26/11, coût Convex) les lignes écrites depuis le lot 4 ont toutes leur code : deux passages complets de suite
+    // sans rien à coder suffisent (tampon A8-08, repassage au plus tard au bout de 7 jours). AVANT : tout le fil et
+    // tout le journal des pièces (≈ 57 000 lignes, 22 Mo) relus à chaque mise en ligne pour ne rien changer.
+    if (part === 'feed' && cursor == null && !force && (await stampFresh(ctx, 'i18nMessages', 'v1'))) return { part, done: 0, left: 0, finished: true, skipped: true };
+    const began = startedAt ?? Date.now();
     const PAGE = 200;
     let isDone: boolean, next: string;
     if (part === 'feed') {
@@ -498,14 +521,51 @@ export const i18nMessages = internalMutation({
       ({ isDone, continueCursor: next } = page);
     }
     if (!isDone) {
-      await ctx.scheduler.runAfter(0, internal.migrations.i18nMessages, { part, cursor: next, done, left });
+      await ctx.scheduler.runAfter(0, internal.migrations.i18nMessages, { part, cursor: next, done, left, startedAt: began });
       return { part, done, left, finished: false };
     }
     if (part === 'feed') {
-      await ctx.scheduler.runAfter(0, internal.migrations.i18nMessages, { part: 'coins', cursor: null, done, left });
+      await ctx.scheduler.runAfter(0, internal.migrations.i18nMessages, { part: 'coins', cursor: null, done, left, startedAt: began });
       return { part, done, left, finished: false };
     }
+    await stampSet(ctx, 'i18nMessages', 'v1', began, done === 0);
     console.log(`[migrations] i18nMessages : ${done} lignes codées, ${left} restées en français`);
     return { part, done, left, finished: true };
+  },
+});
+
+/**
+ * (26/11, coût Convex) RÉTENTION — on garde 30 jours de boosters ouverts (`packOpens`, statut « revealed ») et de fil
+ * d'activité (`activityFeed`). Rien n'en dépend au-delà : le pity, les compteurs (boosters ouverts, échanges), les
+ * statistiques, le classement et les saisons sont tenus ailleurs (`users`, `rankRows`, `seasons`) ; un booster encore
+ * scellé n'est jamais retiré ; le fil d'un profil, la dernière activité d'un ami et l'admin (10 derniers boosters)
+ * montrent alors au plus 30 jours. Par lots de PURGE_BATCH (lectures bornées), la suite programmée à la chaîne.
+ * Idempotente : cron quotidien (convex/crons.ts) et chaque mise en ligne.
+ *
+ *   npx convex run migrations:purgeOld
+ */
+export const RETENTION_DAYS = 30;
+const PURGE_BATCH = 250;
+
+export const purgeOld = internalMutation({
+  args: { part: v.optional(v.union(v.literal('packs'), v.literal('feed'))), deleted: v.optional(v.number()) },
+  handler: async (ctx, { part = 'packs', deleted = 0 }): Promise<{ part: string; deleted: number; done: boolean }> => {
+    const cutoff = Date.now() - RETENTION_DAYS * 24 * 3600_000;
+    const old =
+      part === 'packs'
+        ? await ctx.db.query('packOpens').withIndex('by_status', (q) => q.eq('status', 'revealed').lt('_creationTime', cutoff)).take(PURGE_BATCH)
+        : await ctx.db.query('activityFeed').withIndex('by_createdAt', (q) => q.lt('createdAt', cutoff)).take(PURGE_BATCH);
+    for (const d of old) await ctx.db.delete(d._id);
+    deleted += old.length;
+    if (old.length === PURGE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.migrations.purgeOld, { part, deleted });
+      return { part, deleted, done: false };
+    }
+    if (part === 'packs') {
+      await ctx.scheduler.runAfter(0, internal.migrations.purgeOld, { part: 'feed', deleted });
+      return { part, deleted, done: false };
+    }
+    if (deleted) console.log(`[migrations] purgeOld : ${deleted} lignes de plus de ${RETENTION_DAYS} jours retirées`);
+    return { part, deleted, done: true };
   },
 });
