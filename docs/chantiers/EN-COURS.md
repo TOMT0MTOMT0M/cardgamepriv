@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 26/11/2026 (Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
+_Mis à jour : 26/11/2026 (Hugo : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
 
 ## Chantiers ouverts
 
@@ -30,14 +30,14 @@ _Mis à jour : 26/11/2026 (Tom : labo refait, v2.1.20 en ligne, LABO Fable + bra
 ### Version en ligne
 - [ ] IMPORTANT — Convex au-dessus de l'offre gratuite. Prod au 26/11 (mois) : Database I/O 40,6 GB pour 1 GB inclus ; appels 675 k / 1 M ; egress 1,23 GB pour 1 GB. Le 26/11 (jour, partiel) : 0,17 GB. À faire : offre Free (écritures bloquables) ou Starter (facturé) ? et trouver ce qui consomme l'I/O (`npx convex deployment usage`, `npx convex insights` : conflits sur `purgeCards` / `remapCards`, relancées à la mise en ligne — piste non vérifiée)
 - [ ] v2.1.19 : vérifier à l'écran le texte du Portefeuille
-- [ ] v2.1.20 : Tom vérifie le labo en ligne (onglets, ⤓/⤒, vignettes, menu ⚙, téléphone) ; prévenir Hugo
+- [ ] v2.1.20 : Tom vérifie le labo en ligne (onglets, ⤓/⤒, vignettes, menu ⚙, téléphone) (Hugo a récupéré le code le 26/11)
 - [ ] Nouveau thème via Gemini (prompt de Hugo relu le 26/11 : colonnes `N° | Sous-thème | Carte | Type | Étoiles finales | Score notoriété | Image URL`, URL d'images vérifiées ou vides, retraits Bruel / Ménès / Depardieu) : joindre la liste des cartes existantes (nom + thème) pour l'unicité
 - [ ] Images : sans fichier = Leo 5★ et Jubelle (Summoners War), Coiffe Kitsou, Tinky Winky 6★ (les autres 5★/6★ sont servis par le site, vérifié le 26/11)
 - [ ] God pack ouvert dans un ×10 : l'animation peut tomber sur le mauvais morceau (cartes correctes) — mineur, `spreadSeries` dans `shop.ts`
 - [ ] Admin : destinataire Wero à saisir dans `/admin/` (bientôt)
 
 ### Outils
-- [ ] Tom : tester `LANCEUR-CLAUDE.cmd` (pas de console vide) ; retirer à la main `CLAUDE_LABO_*` de `.env.local` (LABO supprimé)
+- [ ] Tom : tester `LANCEUR-CLAUDE.cmd` (pas de console vide) ; retirer à la main `CLAUDE_LABO_*` de `.env.local` (LABO supprimé) — Hugo aussi, s'il les avait
 - [ ] Commit à part `git add --renormalize lanceurs/` (les `.cmd` paraissent modifiés depuis `.gitattributes`, fins de ligne seulement)
 
 ### V3
