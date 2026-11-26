@@ -7,8 +7,8 @@ import type { Doc, Id } from '../../../convex/_generated/dataModel';
 import type { RarityId } from '../rarity';
 import type { MissionsState } from '../missions';
 import type { StreakState } from '../streak';
-import { INV_REBASE_ROWS, InvMirror } from './invDiff';
-import { clearInv, invKeyOf, loadInv, saveInv } from './invStore';
+import { InvMirror, shouldRebase } from './invDiff';
+import { clearInv, invKeyOf, loadInv, saveInv, type InvWhy, type KeptInv } from './invStore';
 
 /** réponse de `economy.state` */
 export type EcoRaw = NonNullable<(typeof api.economy.state)['_returnType']>;
@@ -368,6 +368,9 @@ class GameNetClient {
       }
       const before = this.userSig;
       this.state.user = me ?? null;
+      // (v2.1.31) à qui est cette session : la copie de la collection gardée sur l'appareil la suit d'une session à l'autre
+      this.meOf = { token: tokenArg.sessionToken, id: me?._id ?? null };
+      for (const w of [...this.meWait]) w();
       this.userSig = userSig(this.state.user);
       // (propre battement de cœur : le document utilisateur change, `nextDailyClaimAt` = maintenant quand la réserve est
       // pleine, mais rien de ce qu'on affiche → état tenu à jour sans réveiller tout le jeu, audit PERF2-08)
@@ -585,6 +588,48 @@ class GameNetClient {
   private invSaveT: ReturnType<typeof setTimeout> | undefined = undefined;
   /** date de la dernière lecture complète de la collection (celle de la copie, quand elle vient de l'appareil) */
   private invFullAt = 0;
+  /** (v2.1.31) joueur d'une session, d'après `session.get` (null : session inconnue du serveur) */
+  private meOf: { token: string | undefined; id: string | null } | null = null;
+  private meWait = new Set<() => void>();
+  /** joueur de la copie reprise de l'appareil (gardé tant que `session.get` n'a pas répondu) */
+  private invUid: string | undefined = undefined;
+
+  /** joueur de cette session dès que `session.get` le dit (undefined au-delà de 4 s) */
+  private meFor(token: string | undefined): Promise<string | null | undefined> {
+    return new Promise((done) => {
+      const known = () => (this.meOf && this.meOf.token === token ? this.meOf : null);
+      if (known()) return done(known()!.id);
+      const t = setTimeout(() => (this.meWait.delete(w), done(undefined)), 4000);
+      const w = () => {
+        const k = known();
+        if (!k) return;
+        clearTimeout(t);
+        this.meWait.delete(w);
+        done(k.id);
+      };
+      this.meWait.add(w);
+    });
+  }
+
+  /**
+   * (v2.1.31) Remise à zéro (convex/launch.ts) : l'inventaire ET ses traces de suppression sont vidés, et les comptes
+   * gardés (Tom, Hugo) gardent leur session. La copie de l'appareil est effacée ; celle déjà reprise en mémoire (IndexedDB
+   * répond avant le serveur) est relue en entier — sinon des cartes fantômes jusqu'au filet de 30 jours.
+   */
+  private dropInvCopy(reload: boolean) {
+    clearTimeout(this.invSaveT);
+    if (reload) {
+      this.invGen++;
+      this.invUnsub?.();
+      this.invUnsub = null;
+      this.inv = new InvMirror();
+    }
+    const gen = this.invGen;
+    void clearInv().then(() => {
+      // (l'effacement passe avant la relecture de la copie : transactions IndexedDB dans l'ordre de création)
+      if (reload && gen === this.invGen && this.client && !this.paused) this.subscribeInventory(this.sessionToken ? { sessionToken: this.sessionToken } : {}, false);
+    });
+  }
 
   private subscribeInventory(tokenArg: { sessionToken?: string }, resuming: boolean) {
     const client = this.client!;
@@ -600,13 +645,18 @@ class GameNetClient {
     if (this.invToken !== tokenArg.sessionToken) {
       this.inv = new InvMirror();
       this.invToken = tokenArg.sessionToken;
+      this.invUid = undefined;
     }
     // (audit 12/11, S15 / A6-07) copie gardée sur l'appareil (invStore.ts) : écrite 3 s après le dernier changement
     const invKey = invKeyOf(tokenArg.sessionToken);
+    const uidNow = () => {
+      const m = this.meOf;
+      return m && m.token === tokenArg.sessionToken ? (m.id ?? undefined) : this.invUid;
+    };
     const keep = () => {
       if (!tokenArg.sessionToken) return;
       clearTimeout(this.invSaveT);
-      this.invSaveT = setTimeout(() => live() && this.inv.loaded && void saveInv(invKey, this.inv.dump(), this.invFullAt), 3000);
+      this.invSaveT = setTimeout(() => live() && this.inv.loaded && void saveInv(invKey, uidNow(), this.inv.dump(), this.invFullAt), 3000);
     };
     const publish = () => {
       if (this.state.collection === this.inv.cards) return;
@@ -641,19 +691,20 @@ class GameNetClient {
           }
           // trop de changements pour une différence : lecture complète — une seule fois de suite (plus de 300 lignes
           // écrites dans la même demi-minute, par une migration : la différence resterait trop grosse, en boucle)
-          if (d.more) return void queueMicrotask(afterFull ? legacy : full);
+          if (d.more) return void queueMicrotask(() => (afterFull ? legacy() : full('trop-de-changements')));
           afterFull = false;
           if (this.inv.apply(d)) publish();
-          // la réponse grossit à chaque booster : au-delà de quelques dizaines de lignes, on repart d'une révision récente
+          // la réponse grossit à chaque booster : on repart d'une révision récente dès que ça rapporte (invDiff.ts)
           // (hors du rappel : l'abonnement en cours est remplacé une fois son rappel terminé)
-          if (d.rows.length + d.gone.length > INV_REBASE_ROWS && this.inv.since() > since) queueMicrotask(() => follow(this.inv.since()));
+          if (shouldRebase(d, this.inv.since())) queueMicrotask(() => follow(this.inv.since()));
         },
         () => legacy(),
       );
     };
-    const full = () => {
+    // (v2.1.31) `why` : raison de la relecture, écrite dans les journaux Convex (2,5 à 6 Mo chacune)
+    const full = (why: InvWhy) => {
       if (!live()) return;
-      client.query(api.inventory.collectionFull, { ...tokenArg, parts: true }).then(
+      client.query(api.inventory.collectionFull, { ...tokenArg, parts: true, why }).then(
         (r) => {
           if (!live()) return;
           // (v2.0.5) en tranches : un tableau Convex ne dépasse pas 8 192 éléments
@@ -669,21 +720,35 @@ class GameNetClient {
       );
     };
     if (resuming && this.inv.loaded) follow(this.inv.since());
-    else if (!tokenArg.sessionToken) full();
+    else if (!tokenArg.sessionToken) full('sans-jeton');
     else {
-      // copie de cette session, de cette version, de moins de 24 h : on repart de sa révision au lieu de tout relire
+      // copie de ce joueur, de moins de 30 jours : on repart de sa révision au lieu de tout relire
       const mirror = this.inv;
-      void loadInv(invKey).then(
+      const ours = () => live() && this.inv === mirror;
+      const use = (kept: KeptInv) => {
+        if (!ours()) return;
+        if (mirror.loaded) return follow(mirror.since()); // (déjà chargé par une série précédente : on suit)
+        mirror.reset(kept.rows);
+        this.invFullAt = kept.at; // (la copie garde la date de SA lecture complète : au plus 30 jours sans tout relire)
+        this.invUid = kept.uid;
+        publish();
+        follow(mirror.since());
+      };
+      void loadInv().then(
         (kept) => {
-          if (!live() || this.inv !== mirror) return;
-          if (mirror.loaded) return follow(mirror.since()); // (déjà chargé par une série précédente : on suit)
-          if (!kept) return full();
-          mirror.reset(kept.rows);
-          this.invFullAt = kept.at; // (la copie garde la date de SA lecture complète : au plus 24 h sans tout relire)
-          publish();
-          follow(mirror.since());
+          if (!ours()) return;
+          if (mirror.loaded) return follow(mirror.since());
+          if (!('rows' in kept)) return full(kept.why);
+          if (kept.key === invKey) return use(kept);
+          // (v2.1.31) autre session (reconnexion, session de 30 jours expirée) : la copie reste bonne si c'est le même joueur
+          if (!kept.uid) return full('autre-compte');
+          void this.meFor(tokenArg.sessionToken).then((id) => {
+            if (!ours() || mirror.loaded) return ours() && follow(mirror.since());
+            if (id && id === kept.uid) use(kept);
+            else full('autre-compte');
+          });
         },
-        () => live() && this.inv === mirror && !mirror.loaded && full(),
+        () => ours() && !mirror.loaded && full('illisible'),
       );
     }
   }
@@ -841,6 +906,7 @@ class GameNetClient {
       if (seen === String(resetAt)) return;
       for (const k of SEASON_KEYS) localStorage.removeItem(k);
       localStorage.setItem(LS_EPOCH, String(resetAt));
+      this.dropInvCopy(seen !== null);
       if (seen !== null || this.sessionToken) this.seasonChanged = true;
     } catch {
       /* stockage indisponible */

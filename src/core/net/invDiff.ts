@@ -22,8 +22,27 @@ export interface InvGone {
  * vue peut se valider APRÈS elle (son horloge est celle de son départ). Une mutation Convex dure < 1 s.
  */
 export const INV_MARGIN_MS = 30_000;
-/** au-delà de ce nombre de lignes renvoyées à chaque changement, on repart d'une révision plus récente */
-export const INV_REBASE_ROWS = 60;
+/** (v2.1.31) lignes hors de la marge à partir desquelles on repart d'une révision récente (avant : 60 lignes en tout) */
+export const INV_REBASE_ROWS = 10;
+/** au-delà de ce nombre de lignes dans une réponse, on repart toujours d'une révision récente (serveur : 300 au plus) */
+export const INV_REBASE_MAX = 60;
+
+/**
+ * (v2.1.31, coût Convex, piste 5) Repartir d'une révision plus récente (`next`) ? L'abonnement relit, à chaque changement,
+ * TOUTES les lignes depuis sa révision de départ (avant : 36 en moyenne par booster, pour 5 cartes nouvelles). Le
+ * relancer depuis `next` relit tout de suite les lignes encore dans la marge (`keep`) et épargne ensuite, à chaque
+ * changement, celles d'avant (`drop`) : on relance dès que `drop` atteint INV_REBASE_ROWS et au moins `keep` (un ×10
+ * tout juste ouvert n'est pas relu pour rien), et toujours au-delà de INV_REBASE_MAX lignes.
+ */
+export function shouldRebase(d: { rows: Array<{ rev: number }>; gone: Array<{ rev: number }> }, next: number): boolean {
+  let drop = 0;
+  let keep = 0;
+  for (const r of [...d.rows, ...d.gone]) {
+    if ((r.rev || 0) < next) drop++;
+    else keep++;
+  }
+  return drop > 0 && ((drop >= INV_REBASE_ROWS && drop >= keep) || drop + keep > INV_REBASE_MAX);
+}
 
 const key = (c: { cardId: string; rarity: string }) => `${c.cardId}|${c.rarity}`;
 

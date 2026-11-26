@@ -53,13 +53,16 @@ const SINCE_MAX = 300;
 /**
  * (V2 fluidité) Collection complète, LUE UNE FOIS (le client l'appelle en lecture simple, pas en abonnement), avec la
  * révision de chaque ligne : le client suit ensuite seulement ce qui change (`mineSince`).
+ * (v2.1.31, coût Convex) `why` : pourquoi le client relit tout (src/core/net/invStore.ts, `InvWhy`), écrit dans les
+ * journaux (`npx convex logs`) — chaque relecture coûte 2,5 à 6 Mo. Absent = onglet d'avant v2.1.31.
  */
 export const collectionFull = query({
-  args: { sessionToken: v.optional(v.string()), parts: v.optional(v.boolean()) },
-  handler: async (ctx, { sessionToken, parts }) => {
+  args: { sessionToken: v.optional(v.string()), parts: v.optional(v.boolean()), why: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken, parts, why }) => {
     const userId = await getUserIdByToken(ctx, sessionToken);
     if (!userId) return null;
     const rows = await invOf(ctx, userId);
+    console.log(`relecture complete : ${(why ?? 'ancien-client').slice(0, 30)}, ${rows.length} lignes`);
     return parts ? inParts(rows.map(slim)) : rows.map(slim);
   },
 });
