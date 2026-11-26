@@ -5,7 +5,7 @@
  */
 import { convexTest } from 'convex-test';
 import { describe, expect, test } from 'vitest';
-import { api } from './_generated/api';
+import { api, internal } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
 import { PROFILE_MEDIA_MAX, profileMediaProblem } from '../src/core/cosmetics';
@@ -55,6 +55,8 @@ describe('profil : GIF importé (photo / bannière)', () => {
     expect(p?.avatarMedia).toBe(r.url);
     expect(p?.bannerMedia).toBeUndefined();
     expect(p?.avatarUrl).toBe('https://cdn.discord/alice.png'); // l'avatar Discord reste (repli)
+    // (v2.1.18) tous les autres écrans lisent `avatarUrl` : la photo importée doit y être
+    expect((await t.run((ctx) => ctx.db.get(u.alice.userId)))?.avatarUrl).toBe(r.url);
     const b = await store(t, gif(2000));
     await t.mutation(api.profiles.setProfileMedia, { sessionToken: u.alice.token, kind: 'avatar', storageId: b });
     expect(await exists(t, a)).toBe(false);
@@ -67,8 +69,20 @@ describe('profil : GIF importé (photo / bannière)', () => {
     await t.mutation(api.profiles.setProfileMedia, { sessionToken: u.alice.token, kind: 'avatar' });
     p = await t.query(api.profiles.profile, { userId: u.alice.userId });
     expect(p?.avatarMedia).toBeUndefined();
+    expect((await t.run((ctx) => ctx.db.get(u.alice.userId)))?.avatarUrl).toBe('https://cdn.discord/alice.png');
     expect(await exists(t, b)).toBe(false);
     expect(await exists(t, bn)).toBe(true);
+  });
+
+  test('migration : une photo importée avant le correctif est recopiée, une seule fois', async () => {
+    const { t, u } = await setup();
+    const a = await store(t, gif(1200));
+    await t.run((ctx) => ctx.db.patch(u.alice.userId, { avatarMedia: a })); // état d'avant la v2.1.18
+    expect(await t.mutation(internal.migrations.applyAvatarMedia, {})).toEqual({ fixed: 1 });
+    expect(await t.mutation(internal.migrations.applyAvatarMedia, {})).toEqual({ fixed: 0 });
+    const user = await t.run((ctx) => ctx.db.get(u.alice.userId));
+    expect(user?.avatarUrl).toBe(await t.run((ctx) => ctx.storage.getUrl(a)));
+    expect(user?.avatarDiscord).toBe('https://cdn.discord/alice.png');
   });
 
   test('refus clair au-delà de 2 Mo ou hors format : le fichier est supprimé, rien n’est enregistré', async () => {

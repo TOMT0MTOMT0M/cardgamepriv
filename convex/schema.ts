@@ -112,6 +112,8 @@ export default defineSchema({
       pfx: v.optional(v.string()) })),
     /** photo de profil / bannière importées par le joueur (GIF animé ou image, ≤ 2 Mo, convex/profiles.ts) — sinon l'avatar Discord */
     avatarMedia: v.optional(v.id('_storage')),
+    /** (v2.1.18) quand une photo est importée, `avatarUrl` (lu par tous les écrans) porte son adresse ; la photo Discord attend ici */
+    avatarDiscord: v.optional(v.string()),
     bannerMedia: v.optional(v.id('_storage')),
     /** compteurs (classement, déblocages) */
     totalTrades: v.optional(v.number()),

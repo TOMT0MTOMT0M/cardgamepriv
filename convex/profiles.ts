@@ -87,7 +87,7 @@ export const profile = query({
     return {
       id: u._id,
       name: u.displayName,
-      avatarUrl: u.avatarUrl,
+      avatarUrl: u.avatarMedia ? u.avatarDiscord : u.avatarUrl,
       /** photo / bannière importées (GIF ou image) — absentes : avatar Discord, bannière cosmétique */
       avatarMedia: (u.avatarMedia && (await ctx.storage.getUrl(u.avatarMedia))) || undefined,
       bannerMedia: (u.bannerMedia && (await ctx.storage.getUrl(u.bannerMedia))) || undefined,
@@ -384,12 +384,19 @@ export const setProfileMedia = mutation({
       }
       if (!owner) await ctx.db.insert('profileMedia', { storageId, userId: user._id, kind, createdAt: Date.now() });
     }
-    await ctx.db.patch(user._id, { [field]: storageId });
+    const url = storageId ? ((await ctx.storage.getUrl(storageId)) ?? undefined) : undefined;
+    if (kind === 'avatar') {
+      // (v2.1.18) la photo importée doit se voir partout (classement, chat, amis, marché…) : elle prend la place dans `avatarUrl`
+      const applied = !!old && user.avatarUrl === (await ctx.storage.getUrl(old));
+      const discord = applied ? user.avatarDiscord : user.avatarUrl;
+      await ctx.db.patch(user._id, { avatarMedia: storageId, avatarUrl: url ?? discord, avatarDiscord: url ? discord : undefined });
+      await syncPresence(ctx, user._id);
+    } else await ctx.db.patch(user._id, { [field]: storageId });
     if (old && old !== storageId) {
       const row = await ctx.db.query('profileMedia').withIndex('by_storage', (q) => q.eq('storageId', old)).unique();
       if (row) await ctx.db.delete(row._id);
       if (await ctx.db.system.get(old)) await ctx.storage.delete(old);
     }
-    return { url: storageId ? ((await ctx.storage.getUrl(storageId)) ?? undefined) : undefined, error: undefined as string | undefined };
+    return { url, error: undefined as string | undefined };
   },
 });

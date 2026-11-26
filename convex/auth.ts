@@ -100,7 +100,8 @@ export const upsertDiscordUser = internalMutation({
       await ctx.db.patch(user._id, {
         username: args.username,
         displayName: args.displayName,
-        avatarUrl: args.avatarUrl,
+        // photo importée : elle reste affichée, la photo Discord du jour est gardée pour le retour (convex/profiles.ts)
+        ...(user.avatarMedia ? { avatarUrl: (await ctx.storage.getUrl(user.avatarMedia)) ?? args.avatarUrl, avatarDiscord: args.avatarUrl } : { avatarUrl: args.avatarUrl }),
         lastSeenAt: now,
         ...(user.packRegenAt === undefined ? { packRegenAt: user.lastSeenAt } : {}),
       });

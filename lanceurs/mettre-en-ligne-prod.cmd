@@ -38,6 +38,8 @@ rem (audit perf 12/11) envies par carte : index inverse des listes d'envies (ide
 call npx convex run migrations:backfillWishes >> "%LOG%" 2>&1 || goto :err
 rem (version anglaise, lot 4) anciens messages du fil et du journal des pieces : code + parametres (idempotent, par lots)
 call npx convex run migrations:i18nMessages >> "%LOG%" 2>&1 || goto :err
+rem (v2.1.18) photos de profil importees : recopiees dans avatarUrl, lu par tous les ecrans (idempotent)
+call npx convex run migrations:applyAvatarMedia >> "%LOG%" 2>&1 || goto :err
 call npx convex run admin:setModerators >> "%LOG%" 2>&1
 rem cle de lecture des retours du labo (fichier local .feedback-key, jamais publie) -> environnement Convex
 if exist ".feedback-key" (

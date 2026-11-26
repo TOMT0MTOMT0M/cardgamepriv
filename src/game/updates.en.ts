@@ -26,6 +26,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Profile pictures show everywhere', tag: 'corrigé',
+        points: [
+          '🖼️ An uploaded profile picture only showed on the profile page. It now also appears in the leaderboard, chat, friends, market and games.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'The 14 Wonders of the World are now 6★ cards', tag: 'corrigé',
         points: [
           '🏛️ The 14 Wonders are no longer secret cards: they are 6★ cards like any other, found in the World Pack and the Bebou Pack. Their 3D scene stays the same.',

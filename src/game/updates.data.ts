@@ -61,6 +61,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Photos de profil visibles partout', tag: 'corrigé',
+        points: [
+          '🖼️ Une photo de profil importée ne s’affichait que sur la page profil. Elle apparaît maintenant aussi dans le classement, le chat, les amis, le marché et les jeux.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Les 14 Merveilles du monde deviennent des 6★', tag: 'corrigé',
         points: [
           '🏛️ Les 14 Merveilles ne sont plus des cartes secrètes : ce sont des 6★ comme les autres, qui tombent du pack Monde et du Bebou Pack. Leur décor en 3D ne change pas.',
