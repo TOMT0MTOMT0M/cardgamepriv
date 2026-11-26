@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 26/11/2026 (Hugo : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
+_Mis à jour : 26/11/2026 (Hugo : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
 
 ## Chantiers ouverts
 
@@ -19,6 +19,7 @@ _Mis à jour : 26/11/2026 (Hugo : dossier racine resynchronisé, reste local `ou
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.20 : labo refait (archives 001-038 + bouton ⤓/⤒, onglets, recherche, vignettes, menu ⚙, `npm run labo:new`) ; jeu inchangé, pas de note de patch | en ligne (tag `v2.1.20`, `72534f8` ; v2 `e7cebc7`) — `docs/chantiers/v2.1.20.md` |
 | Tom + Claude | racine / `v2` | outils : lanceur Claude sans console vide (`.vbs`), journal, `.gitattributes` CRLF ; LABO Fable supprimé le 26/11 (outil + bouton) | poussé, pas testé en vrai — `docs/chantiers/outils-lanceur.md` |
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
+| Hugo + Claude | racine / `v2` | QOL : liste validée (section « QOL » ci-dessous), rien de codé | à démarrer par collection 1-2-3 — `docs/chantiers/qol.md` |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
 ## Reste à faire
@@ -49,6 +50,36 @@ _Mis à jour : 26/11/2026 (Hugo : dossier racine resynchronisé, reste local `ou
 - [ ] Roulette : toucher le pot = carte en grand, couleurs dans le replay
 - [ ] Ouvertures : retirer Brûlure, Éventail et les autres ; on garde la Déchirure + les 2 de Noël, et on AJOUTE 5 nouvelles ouvertures à gagner (décision Tom 26/11 ; la branche nuit-v3 du LABO Fable a été supprimée)
 - [ ] Notifications : « ta série est en danger » + tirage de la roulette
+- [ ] Contrats : mécanique à retirer ou refondre (Hugo 26/11) — plus rentable que vendre ou échanger, donc personne ne vend ni n'échange. Doublons = forge ou vente, c'est tout. Pas de QoL sur les contrats d'ici là. Retrait propre : contrats en cours remboursés ou laissés finir sans nouveaux, migration Convex idempotente (`convex/migrations.ts`, testée sur le staging), note de patch FR + EN
+- [ ] Marché : enchères possibles sur une carte (en plus du prix fixe) — APRÈS Forge → vente (qui pose le « mettre en vente vite ») ; clôture à heure fixe par tâche programmée Convex, offre minimum, pièces bloquées pendant l'enchère
+
+### QOL (validé par Hugo le 26/11 ; rien de poussé)
+Collection (`src/game/views/collection.ts`) — ordre conseillé : 1, 2, 3 d'abord (front seul, zéro coût Convex)
+- [ ] 1. Recherche unique : la barre des albums cherche dans les 5 thèmes (aujourd'hui : l'onglet ouvert seulement) + les noms de cartes (« Goku » → album + carte), résultats groupés par thème
+- [ ] 2. « Voir l'album » dans la visionneuse d'une carte ; toucher l'intertitre d'album de la vue Cartes ouvre l'album
+- [ ] 3. Albums récents (4-5 derniers ouverts) + albums épinglés (★ sur la pochette) en haut de la vue Albums
+- [ ] 4. Albums « presque finis » (il manque 1 à 3 cartes) : filtre ou rangée dédiée
+- [ ] 6. Fil d'Ariane cliquable (thème › famille › album) au lieu du seul « ‹ Albums »
+- [ ] 7. Filtres repliés au téléphone : bouton « Filtres (n) » qui ouvre un tiroir
+- Refusé : défilement continu dans la grille (on garde les pages de 60)
+
+Autres écrans (audit du 26/11) — ordre conseillé : C, E, H, A, L
+- [ ] A. Récap d'ouverture : bouton « Forger ces doublons » dès qu'il y a des doublons (aujourd'hui renvoi aux contrats seulement si 100 % doublons, `shop.ts:2037`)
+- [ ] B. Récap, réserve vide : pistes pour regagner un booster (missions, Avent…) en plus du compte à rebours
+- [ ] C. Marché : marque « je l'ai / ♥ envie » sur les annonces + filtre « mes manquantes / mes envies » (`market.ts:222`)
+- [ ] D. Marché : nom du vendeur → son profil (`market.ts:192`)
+- [ ] E. Un nom de joueur ouvre son profil partout : chat (`chat.ts:836`), fiche carte « chez les joueurs » (`cardPanel.ts:220`), marché
+- [ ] F. « Message » et « Défier » sur un profil et sur la ligne d'un ami (`chat.open(conv)` existe, jamais appelé)
+- [ ] G. Amis : recherche avec suggestions au lieu du pseudo exact (`friends.ts:147`) ; parrainage par `navigator.share` (feuille de partage du téléphone)
+- [ ] H. Missions : « Tout récupérer » (jour + bonus + hebdo ; aujourd'hui 4 touchers ou plus, `missions.ts:54-127`)
+- [ ] J. Roulette : « même mise que la dernière fois »
+- [ ] K. Classement : toucher « tu es Xe » saute à ma ligne (`leaderboard.ts:147`) ; filtre « amis »
+- [ ] L. Barre du téléphone : la flèche « › » porte la pastille d'un onglet caché qui a un badge (`syncNavMore`, `main.ts`)
+- [ ] M. Push « missions prêtes / cadeau du jour » (avec « série en danger », cf. V3)
+- [ ] Ménage : supprimer `views/defis.ts` (plus routé : `#/jeux/defis` → `#/jeux`)
+- [ ] Forge : sélection rapide « Toutes les 4★ et moins » (aujourd'hui une puce par étoile)
+- [ ] Forge → vente (idée Hugo 26/11) : au moment de forger, si des cartes sélectionnées sont dans les envies d'autres joueurs (carte, album ou famille : `wishFams`), proposer « X aimerait compléter 3 des cartes que tu veux forger : les mettre en vente au prix minimum ? » ; les voulues partent au marché, le reste à la forge ; l'acheteur est prévenu (push). Côté serveur : une requête groupée « qui veut ces cartes » (n'existe que carte par carte dans `cardPanel`) — mesurer le coût Convex. Prix minimum proposé nettement AU-DESSUS de la valeur de forge (sinon personne n'accepte) : réglage d'économie à fixer avec Tom. Pas de retour automatique à la forge si invendue (décision Hugo)
+- [ ] C bis. Alerte à l'acheteur : « une carte de ton album / de tes envies vient d'être mise en vente » (push + pastille) — vérifier d'abord si elle existe déjà ; à faire avec C
 
 - Détail des décisions : Project claude.ai `00-etat-du-projet` et `04-regles-du-jeu` ; historique : `docs/historique-claude-ai/`
 
