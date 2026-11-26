@@ -1,0 +1,5 @@
+# Fichiers Windows : toujours en fin de ligne CRLF (sinon cmd.exe peut mal les lire)
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.vbs text eol=crlf
