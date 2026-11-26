@@ -12,13 +12,16 @@ _Mis à jour : 26/11/2026 (Hugo : patchs v2.1.17 et v2.1.18 en ligne, reportés 
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.12 : images (353 + 159), musiques 6★, famille France | en ligne (tag `v2.1.12`, `40bd36e` ; v2 `73b61aa`) — `docs/chantiers/v2.1.12.md` |
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.14 : 53 6★ à photo carrée en plein écran centré sur le visage ; onglet Événement grisé sur le live jusqu'au 01/12 | en ligne (tag `v2.1.14`, `3e12cca`) — `docs/chantiers/v2.1.14.md`. Grisage = live seulement (pas reporté sur `v2`) |
 | Hugo + Claude | `.wt-master` / `master` | patchs v2.1.15 et v2.1.16 : 5★ (615) et 6★ (61 de plus) à photo horizontale en plein écran sur le visage | en ligne — `docs/chantiers/v2.1.15.md`, `v2.1.16.md` |
-| Hugo + Claude | `.wt-master` / `master` | patch v2.1.18 : photos de profil importées visibles partout (+ publication de la v2.1.17, 14 Merveilles en 6★ ordinaires) | en ligne (tags `v2.1.17` `f45898b`, `v2.1.18` `62ba326` ; v2 `694aac4`) — `docs/chantiers/v2.1.18.md` |
+| Hugo + Claude | `.wt-master` / `master` | patch v2.1.17 : les 14 Merveilles du monde en 6★ ordinaires (Monde + Bebou Pack) | en ligne (tag `v2.1.17`, `f45898b` ; v2 `124e921`) — `docs/chantiers/v2.1.17.md` |
+| Hugo + Claude | `.wt-master` / `master` | patch v2.1.18 : photos de profil importées visibles partout | en ligne (tag `v2.1.18`, `62ba326` ; v2 `694aac4`) — `docs/chantiers/v2.1.18.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.13 : calendrier de l'Avent (95 boosters, 13 000 pièces, 9 cosmétiques de Noël par case, God Pack le 24, étoile refaite) | en ligne (tag `v2.1.13`, `1faee0e` ; v2 `b2dd383`) — `docs/chantiers/v2.1.13.md` |
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
 ## Reste à faire
 - [ ] v2.1.18 : vérifier à l'écran la photo de Judepomme dans le classement (et chat, amis, marché)
+- [ ] v2.1.17 : vérifier à l'écran les Merveilles (6★ dans le pack Monde, plus de bloc « secrètes », décor 3D, animation d'ouverture)
+- [ ] Convex : message « projects are above the Free plan limits » au déploiement du staging (26/11) → vérifier l'offre et l'usage sur le tableau de bord
 - [ ] 6★ plein écran : fournir des images pour les 135 détourées et vérifier les 114 fond blanc (`donnees/suivi/6etoiles-plein-ecran-26-11.xlsx`)
 - [ ] 6★ / 5★ à cadrer à la main : 40 6★ et 541 5★ → `donnees/suivi/5-6etoiles-cadre-a-changer-26-11.xlsx`
 - [ ] Avent : onglet Événement grisé sur le live (v2.1.14) → à rouvrir pour le 01/12 (retirer `nav-off` + renvoi dans `route()` de `main.ts`, patch sur master) ; la note v2.1.13 annonce déjà l'onglet
@@ -55,4 +58,5 @@ _Mis à jour : 26/11/2026 (Hugo : patchs v2.1.17 et v2.1.18 en ligne, reportés 
 - `.wt-master` de Hugo sans `public/art` (hors git) : le lanceur v2.1.10 crée un dossier vide (images servies par R2). Ne jamais y copier le `public/art` de la racine (images V3 → écraseraient celles des joueurs dans R2).
 - Lancer un lanceur de `.wt-master` avec son chemin complet : `cmd.exe //c "C:\…\.wt-master\METTRE-EN-LIGNE-v2.X.Y.cmd"` (sinon « n'est pas reconnu »).
 - Capture du calendrier sans la 3D (Chrome headless reste bloqué sur l'écran de chargement du jeu) : banc `.wt-master/.claude-tmp/avent.html` servi par `npm run dev`, puis `chrome --headless=new --screenshot`.
-- Deux sessions dans le dossier racine en même temps : un commit de l'une peut embarquer les fichiers indexés de l'autre (arrivé le 26/11, annulé). Une seule session par dossier.
+- Deux sessions dans le dossier racine en même temps : un commit de l'une peut embarquer les fichiers indexés de l'autre (arrivé le 26/11, annulé). Une seule session par dossier (arrivé aussi dans `.wt-master` le 26/11 : v2.1.18 construite par-dessus la v2.1.17 non publiée).
+- La prod = déploiement Convex « dev » : lire avec `npx convex run …` sans `--prod` (`--prod` renvoie une base vide).
