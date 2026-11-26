@@ -242,7 +242,9 @@ export const claimCompletions = mutation({
       econ: { completions: [...econ.completions, ...sets.map((s) => s.id)] },
     });
     // (20/11) titres uniques : la collection vient d'être lue, on en profite (convex/titres.ts ; rien si déjà pris)
-    const titles = await awardUniqueTitles(ctx, u, new Set(inv.map((c) => c.cardId)));
+    // (v2.1.32, piste 1) avec `setIds`, seules les cartes des ensembles envoyés sont connues : un titre lié à un autre
+    // ensemble n'est pas vu ici (jamais attribué à tort), `titres:claim` s'en charge
+    const titles = await awardUniqueTitles(ctx, u, owned);
     return { coins: total, sets: sets.map((s) => ({ id: s.id, label: s.label, reward: s.reward })), titles: titles.map((t) => t.id) };
   },
 });
