@@ -372,7 +372,7 @@ export const fr = {
   'hdr.wallet.label': 'Portefeuille',
   'wal.login': 'Connecte-toi pour gagner des pièces.',
   'wal.games': 'Espace Jeux →',
-  'wal.virtual': 'pièces 100 % virtuelles · jamais échangeables contre des cartes',
+  'wal.virtual': 'pièces 100 % virtuelles',
   'wal.toCollect': 'À encaisser',
   'wal.completion': 'Complétion{x}',
   'wal.completionHint': ' : 5 pièces × cartes de chaque album bouclé',

@@ -26,6 +26,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Wallet text fixed', tag: 'corrigé',
+        points: [
+          '🪙 The Wallet no longer says coins can never be exchanged for cards: with the Market, players can do it between themselves.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'Profile pictures show everywhere', tag: 'corrigé',
         points: [
           '🖼️ An uploaded profile picture only showed on the profile page. It now also appears in the leaderboard, chat, friends, market and games.',

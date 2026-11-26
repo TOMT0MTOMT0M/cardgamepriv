@@ -449,7 +449,7 @@ export const en: Dict = {
   'hdr.wallet.label': 'Wallet',
   'wal.login': 'Log in to earn coins.',
   'wal.games': 'Games →',
-  'wal.virtual': '100% virtual coins · never exchangeable for cards',
+  'wal.virtual': '100% virtual coins',
   'wal.toCollect': 'To collect',
   'wal.completion': 'Completion{x}',
   'wal.completionHint': ': 5 coins × cards of each completed album',
