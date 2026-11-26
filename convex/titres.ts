@@ -5,6 +5,7 @@ import type { Doc } from './_generated/dataModel';
 import { requireUser } from './auth';
 import { UNIQUE_TITLES, uniqueTitle, uniqueTitleProgress, uniqueTitleSet, type UniqueTitle } from '../src/core/uniqueTitles';
 import { notify } from './push';
+import { invOf } from './inventory';
 import { fm, feedMsg } from '../src/core/msgs';
 
 /**
@@ -62,7 +63,7 @@ export const claim = mutation({
       if (taken && taken.userId !== u._id) throw new ConvexError(fe('titres.2', { p0: taken.name, p1: one.label }));
       if (taken) return { won: [] as string[] };
     }
-    const inv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
+    const inv = await invOf(ctx, u._id);
     const owned = new Set(inv.map((c) => c.cardId));
     if (one) {
       const pr = uniqueTitleProgress(one, owned);
