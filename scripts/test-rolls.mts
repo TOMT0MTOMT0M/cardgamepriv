@@ -4,7 +4,7 @@
  */
 import { packTrueOdds, rollPack } from '../src/core/packRoll';
 import { packOdds, STAR_RARITIES } from '../src/core/dropRates';
-import { BEBOU_SECRET_CHANCE, BEBOU_SECRETS_LOCKED, GAME_CARD_COUNT, THEMES, WORLD_SECRET_CHANCE } from '../src/core/sets/themes';
+import { BEBOU_SECRET_CHANCE, BEBOU_SECRETS_LOCKED, GAME_CARD_COUNT, THEMES } from '../src/core/sets/themes';
 import { PITY_LIMIT, pityAfter, pityForces, pityLeft } from '../src/core/pity';
 
 const N = Number(process.argv[2] ?? 400_000);
@@ -37,13 +37,8 @@ for (const req of [...THEMES.filter((t) => t.cards.length).map((t) => ({ kind: '
   }
   check(rareGuarantee === N, 'au moins une rare (ou un Bébou) dans chaque booster');
   if (req.kind === 'theme') {
-    if (req.themeId === 'monde') {
-      const worldSecretChance = WORLD_SECRET_CHANCE;
-      const sd = Math.sqrt(worldSecretChance / N);
-      check(Math.abs(secret / N - worldSecretChance) < 4 * sd, `Merveilles secrètes ≈ 1 sur ${Math.round(1 / WORLD_SECRET_CHANCE)} par pack Monde`);
-    } else {
-      check(secret === 0, `aucune secrète dans un booster de thème sans secrètes (${req.themeId})`);
-    }
+    // (v2.1.17) les Merveilles sont des 6★ : plus aucune secrète dans un booster de thème
+    check(secret === 0, `aucune secrète dans un booster de thème (${req.themeId})`);
     check(wrongTheme === 0, 'que des cartes du thème');
     for (const r of STAR_RARITIES.slice(2)) check(Math.abs(atLeast[r] / N - th[r]) < 0.006, `${r}+ conforme à la théorie`);
   } else if (BEBOU_SECRETS_LOCKED) {

@@ -1,7 +1,7 @@
 /**
  * COUCHE « ETOILES » (base maître de Hugo) — GÉNÉRÉ par scripts/make-etoiles.py depuis donnees/base/Etoiles-8.xlsx.
  * Ne pas éditer à la main : modifier la base, relancer le script. Appliquée en dernier par installCatalog (themesCore.ts).
- * 530 étoiles · 17 noms · 35 albums déplacés · 1859 cartes déplacées · 848 nouvelles cartes · 123 retirées (44 transférées à leur double)
+ * 544 étoiles · 17 noms · 35 albums déplacés · 1859 cartes déplacées · 848 nouvelles cartes · 123 retirées (44 transférées à leur double)
  */
 import type { CatalogRarity } from './themesCore';
 
@@ -108,6 +108,20 @@ export const ETOILES_RERATE: Readonly<Record<string, CatalogRarity>> = {
   "miam-cafe": "mythic",
   "miam-heineken": "legendary",
   "miam-the": "mythic",
+  "mrv-chichen-itza": "mythic",
+  "mrv-christ-redempteur-rio": "mythic",
+  "mrv-colisee-de-rome": "mythic",
+  "mrv-colosse-de-rhodes": "mythic",
+  "mrv-grande-muraille-de-chine": "mythic",
+  "mrv-grande-pyramide-de-kheops": "mythic",
+  "mrv-jardins-suspendus-de-babylone": "mythic",
+  "mrv-machu-picchu": "mythic",
+  "mrv-mausolee-d-halicarnasse": "mythic",
+  "mrv-petra-khazneh": "mythic",
+  "mrv-phare-d-alexandrie": "mythic",
+  "mrv-statue-de-zeus-a-olympie": "mythic",
+  "mrv-taj-mahal": "mythic",
+  "mrv-temple-d-artemis-a-ephese": "mythic",
   "pop-21-guns": "mythic",
   "pop-abigail-jones": "mythic",
   "pop-acnologia": "legendary",

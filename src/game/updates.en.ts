@@ -36,6 +36,13 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'The 14 Wonders of the World are now 6★ cards', tag: 'corrigé',
+        points: [
+          '🏛️ The 14 Wonders are no longer secret cards: they are 6★ cards like any other, found in the World Pack and the Bebou Pack. Their 3D scene stays the same.',
+          '📚 If you already had one, you keep it and it becomes 6★.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'More 6★ cards in full art', tag: 'amélioré',
         points: [
           '🖼️ 26 more 6★ cards are now full art, centred on the face (Ninho, “Libérée, délivrée”…).',
