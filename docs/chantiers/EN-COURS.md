@@ -17,7 +17,7 @@ _Mis à jour : 26/11/2026 (Tom : labo refait, v2.1.20 en ligne ; avant : lanceur
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.13 : calendrier de l'Avent (95 boosters, 13 000 pièces, 9 cosmétiques de Noël par case, God Pack le 24, étoile refaite) | en ligne (tag `v2.1.13`, `1faee0e` ; v2 `b2dd383`) — `docs/chantiers/v2.1.13.md` |
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.19 : texte du Portefeuille corrigé | en ligne (tag `v2.1.19`, `b99fb79` ; v2 `89b189e`) — `docs/chantiers/v2.1.19.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.20 : labo refait (archives 001-038 + bouton ⤓/⤒, onglets, recherche, vignettes, menu ⚙, `npm run labo:new`) ; jeu inchangé, pas de note de patch | en ligne (tag `v2.1.20`, `72534f8` ; v2 `e7cebc7`) — `docs/chantiers/v2.1.20.md` |
-| Tom + Claude | racine / `v2` | outils : lanceur Claude sans console vide (`.vbs`), journal, LABO (espace de travail API), `.gitattributes` CRLF | poussé (`aa785f9`), pas testé en vrai — `docs/chantiers/outils-lanceur.md` |
+| Tom + Claude | racine / `v2` | outils : lanceur Claude sans console vide (`.vbs`), journal, `.gitattributes` CRLF ; LABO Fable supprimé le 26/11 (outil + bouton) | poussé, pas testé en vrai — `docs/chantiers/outils-lanceur.md` |
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 
@@ -36,7 +36,7 @@ _Mis à jour : 26/11/2026 (Tom : labo refait, v2.1.20 en ligne ; avant : lanceur
 - [ ] Admin : destinataire Wero à saisir dans `/admin/` (bientôt)
 
 ### Outils
-- [ ] Tom : tester `LANCEUR-CLAUDE.cmd` (pas de console vide) et le bouton LABO ; clé d'organisation → `CLAUDE_LABO_WORKSPACE_ID=` dans `.env.local`
+- [ ] Tom : tester `LANCEUR-CLAUDE.cmd` (pas de console vide) ; retirer à la main `CLAUDE_LABO_*` de `.env.local` (LABO supprimé)
 - [ ] Commit à part `git add --renormalize lanceurs/` (les `.cmd` paraissent modifiés depuis `.gitattributes`, fins de ligne seulement)
 
 ### V3

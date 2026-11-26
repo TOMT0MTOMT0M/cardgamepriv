@@ -1,4 +1,6 @@
-# Outils : lanceur Claude et LABO Fable
+# Outils : lanceur Claude (LABO Fable supprimé)
+
+> 26/11 après-midi : sur demande de Tom, le LABO Fable est supprimé — `outils/labo/`, bouton du lanceur, lignes `.gitignore` et `GUIDE-CLAUDE.md`. Les mentions LABO ci-dessous sont historiques.
 
 _26/11/2026 — Tom + Claude, racine / `v2`, commit `aa785f9`._
 

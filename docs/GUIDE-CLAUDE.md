@@ -11,7 +11,6 @@
 - `.claude/settings.json` : Claude lance tout seul type-check, tests, `git add/commit` ; il **demande** avant de pousser `master`, un `reset --hard` ou un `convex run` ; il ne peut **jamais** lire les secrets ni déployer à la main.
 - `docs/chantiers/EN-COURS.md` : le fichier de passation (qui fait quoi, ce qui reste).
 - **`LANCEUR-CLAUDE.cmd`** (racine du repo) : une fenêtre à boutons qui ouvre le bon terminal au bon endroit — PATCH (version en ligne), V3, Reprendre, plus EN-COURS, lien V3 et site joueurs.
-- **Bouton LABO (Fable)** du lanceur : un chat Claude Fable pour chercher et prototyper de nouvelles animations (ouvertures, scènes 6★) dans un dossier à part (`.wt-labo`, branche `labo`). Payé **uniquement** par les 100 $ de crédits API mensuels du forfait Max (clé `CLAUDE_LABO_API_KEY` dans `.env.local`), plafond 95 $ par mois et 5 $ par message ; il affiche le coût de chaque message. `/budget` pour voir le total, `/fin` pour quitter.
 - **Garde-fous à deux, automatiques** : au démarrage, Claude sait si l'autre a poussé et récupère ses changements ; il ne peut pas modifier un fichier que l'autre a changé sur GitHub avant de l'avoir récupéré ; le lien V3 refuse d'être publié depuis un dossier en retard.
 - **Plus de double-clic** : Claude lance lui-même les lanceurs depuis la session, sur ton PC (Tom ou Hugo). Push, lien V3 et staging : tout seul. Mise en prod : il demande « je publie v2.X.Y chez les joueurs ? » et attend un oui (réponse possible depuis le téléphone). Il ne lance jamais `NE-PAS-LANCER-*` ni un lanceur qui demande une connexion.
 
