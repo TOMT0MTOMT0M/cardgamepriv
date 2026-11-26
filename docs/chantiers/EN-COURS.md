@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 26/11/2026 (Tom : lanceur Claude + LABO poussés ; avant : Hugo, reste à faire trié, v2.1.19 en ligne, Convex au-dessus de l'offre gratuite)._
+_Mis à jour : 26/11/2026 (Tom : labo refait, v2.1.20 en ligne ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
 
 ## Chantiers ouverts
 
@@ -16,6 +16,7 @@ _Mis à jour : 26/11/2026 (Tom : lanceur Claude + LABO poussés ; avant : Hugo, 
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.18 : photos de profil importées visibles partout | en ligne (tag `v2.1.18`, `62ba326` ; v2 `694aac4`) — `docs/chantiers/v2.1.18.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.13 : calendrier de l'Avent (95 boosters, 13 000 pièces, 9 cosmétiques de Noël par case, God Pack le 24, étoile refaite) | en ligne (tag `v2.1.13`, `1faee0e` ; v2 `b2dd383`) — `docs/chantiers/v2.1.13.md` |
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.19 : texte du Portefeuille corrigé | en ligne (tag `v2.1.19`, `b99fb79` ; v2 `89b189e`) — `docs/chantiers/v2.1.19.md` |
+| Tom + Claude | `.wt-master` / `master` | patch v2.1.20 : labo refait (archives 001-038 + bouton ⤓/⤒, onglets, recherche, vignettes, menu ⚙, `npm run labo:new`) ; jeu inchangé, pas de note de patch | en ligne (tag `v2.1.20`, `72534f8` ; v2 `e7cebc7`) — `docs/chantiers/v2.1.20.md` |
 | Tom + Claude | racine / `v2` | outils : lanceur Claude sans console vide (`.vbs`), journal, LABO (espace de travail API), `.gitattributes` CRLF | poussé (`aa785f9`), pas testé en vrai — `docs/chantiers/outils-lanceur.md` |
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
@@ -29,6 +30,7 @@ _Mis à jour : 26/11/2026 (Tom : lanceur Claude + LABO poussés ; avant : Hugo, 
 ### Version en ligne
 - [ ] IMPORTANT — Convex au-dessus de l'offre gratuite. Prod au 26/11 (mois) : Database I/O 40,6 GB pour 1 GB inclus ; appels 675 k / 1 M ; egress 1,23 GB pour 1 GB. Le 26/11 (jour, partiel) : 0,17 GB. À faire : offre Free (écritures bloquables) ou Starter (facturé) ? et trouver ce qui consomme l'I/O (`npx convex deployment usage`, `npx convex insights` : conflits sur `purgeCards` / `remapCards`, relancées à la mise en ligne — piste non vérifiée)
 - [ ] v2.1.19 : vérifier à l'écran le texte du Portefeuille
+- [ ] v2.1.20 : Tom vérifie le labo en ligne (onglets, ⤓/⤒, vignettes, menu ⚙, téléphone) ; prévenir Hugo
 - [ ] Images : sans fichier = Leo 5★ et Jubelle (Summoners War), Coiffe Kitsou, Tinky Winky 6★ (les autres 5★/6★ sont servis par le site, vérifié le 26/11)
 - [ ] God pack ouvert dans un ×10 : l'animation peut tomber sur le mauvais morceau (cartes correctes) — mineur, `spreadSeries` dans `shop.ts`
 - [ ] Admin : destinataire Wero à saisir dans `/admin/` (bientôt)
@@ -44,7 +46,7 @@ _Mis à jour : 26/11/2026 (Tom : lanceur Claude + LABO poussés ; avant : Hugo, 
 - [ ] Sachets par thème : piste « Case de BD » choisie le 25/11 ; Tom la retouche dans Photoshop → EN ATTENTE de ses fichiers, puis vignettes, roue 3D, booster du moment
 - [ ] Marché « façon Kyara » (captures reçues, brief : `docs/chantiers/marche-kyara.md`) ; passe « moins de texte » Marché / Échanges / Jeux (Pack Battle, Battle Royale : mêmes règles, plus visuels)
 - [ ] Roulette : toucher le pot = carte en grand, couleurs dans le replay
-- [ ] Ouvertures : retirer Brûlure, Éventail et les autres, seule la Déchirure reste
+- [ ] Ouvertures : retirer Brûlure, Éventail et les autres ; on garde la Déchirure + les 2 de Noël, et on AJOUTE 5 nouvelles ouvertures à gagner (décision Tom 26/11, nuit LABO, branche nuit-v3)
 - [ ] Notifications : « ta série est en danger » + tirage de la roulette
 
 - Détail des décisions : Project claude.ai `00-etat-du-projet` et `04-regles-du-jeu` ; historique : `docs/historique-claude-ai/`
