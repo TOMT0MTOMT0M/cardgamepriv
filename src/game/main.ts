@@ -32,7 +32,7 @@ bindHapticGestures();
 import { Sfx } from '../core/audio';
 import { padOn, setPadOn, setSilentOn, silentOn } from '../core/soundPrefs';
 import { installCatalog } from '../core/sets/themes';
-import { adventDay, adventWaiting } from '../core/avent';
+import { adventDay, adventStartAt, adventWaiting } from '../core/avent';
 import { CANAL, mountCanalBadge } from '../core/canal';
 import { hardUpdate, setUpdateBusy, watchUpdates } from './maj';
 import { installNavDots } from './navDots';
@@ -660,6 +660,22 @@ function syncEvtBadge() {
   if (n !== was) placePill(false);
 }
 backend.eco.onChange(syncEvtBadge);
+/** (patch v2.1.27) l'onglet Événement, grisé depuis la v2.1.14, s'ouvre tout seul le 1er décembre à 0 h (heure de Paris),
+ *  y compris dans un onglet resté ouvert à minuit */
+function openEventTab() {
+  const a = evtBadge.parentElement as HTMLAnchorElement;
+  a.classList.remove('nav-off');
+  a.removeAttribute('aria-disabled');
+  a.removeAttribute('tabindex');
+  a.href = '#/evenement';
+  syncEvtBadge();
+  syncNavMore();
+}
+{
+  const wait = adventStartAt() - Date.now();
+  if (wait <= 0) openEventTab();
+  else if (wait < 2 ** 31 - 1) setTimeout(openEventTab, wait + 1000);
+}
 backend.eco.onChange(() => syncMissionBadge());
 /** (retours 06/11) modérateurs (Hugo, Tom) : pastille des nouvelles suggestions sur l'onglet */
 const sgBadge = top.querySelector<HTMLElement>('.sg-badge');
@@ -1176,7 +1192,8 @@ async function boot() {
     }
     routed = true;
     // (26/11, patch v2.1.14) onglet Événement grisé en attendant le 1er décembre : l'adresse directe renvoie à la boutique
-    if (r === 'evenement') return void location.replace('#/');
+    // (patch v2.1.27) seulement avant le 1er décembre 0 h, heure de Paris
+    if (r === 'evenement' && Date.now() < adventStartAt()) return void location.replace('#/');
     // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
     // primes de complétion dans la page Succès
     const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' ? '#/collection/contrats' : undefined;

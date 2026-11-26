@@ -61,6 +61,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: '🎄 L’onglet Événement ouvre le 1er décembre', tag: 'amélioré',
+        points: [
+          '🎁 L’onglet Événement, grisé jusque-là, s’ouvre tout seul le 1er décembre à minuit (heure de Paris), même si le jeu est déjà ouvert : la première case du calendrier de l’Avent t’attend.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Lancement plus rapide après une mise à jour', tag: 'amélioré',
         points: [
           '⚡ Après une mise à jour, ta collection n’est plus rechargée en entier au lancement : le jeu repart de la copie gardée sur ton appareil.',
