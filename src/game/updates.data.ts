@@ -61,6 +61,13 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Les 14 Merveilles du monde deviennent des 6★', tag: 'corrigé',
+        points: [
+          '🏛️ Les 14 Merveilles ne sont plus des cartes secrètes : ce sont des 6★ comme les autres, qui tombent du pack Monde et du Bebou Pack. Leur décor en 3D ne change pas.',
+          '📚 Si tu en avais déjà une, elle est gardée et passe en 6★.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Encore des 6★ en plein écran', tag: 'amélioré',
         points: [
           '🖼️ 26 cartes 6★ de plus passent en plein écran, centrées sur le visage (Ninho, « Libérée, délivrée »…).',

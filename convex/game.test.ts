@@ -113,14 +113,25 @@ describe('boosters', () => {
     expect(me?.totalPacksOpened).toBe(1);
   });
 
-  test('World Pack gagnant : une Merveille du Monde secrète (3D Diorama) en dernière carte', async () => {
+  test('Merveilles : 14 cartes 6★ ordinaires, plus aucune secrète dans le thème Monde', () => {
+    const wonders = CATALOG_CARDS.filter((c) => c.id.startsWith('mrv-'));
+    expect(wonders).toHaveLength(14);
+    expect(wonders.every((c) => c.baseRarity === 'mythic')).toBe(true);
+    expect(CATALOG_CARDS.some((c) => c.baseRarity === 'secret' && !c.id.startsWith('bebou-') && !c.id.startsWith('kcdq-'))).toBe(false);
+  });
+
+  test('Merveilles : un exemplaire possédé en « secrète » passe en 6★ (resyncRarities), sans perte', async () => {
     const { t, alice } = await setup();
-    forceRandom(0.0001); // tirage favorable (< 1/924)
-    const pack = await t.mutation(api.packs.preparePack, { sessionToken: alice.token, packKind: 'theme', themeId: 'monde' });
-    expect(pack.cards[4].rarity).toBe('secret');
-    expect(pack.cards[4].cardId).toMatch(/^mrv-/);
-    expect(pack.cards[4].subthemeId).toBe('merveilles');
-    expect(pack.maxRarity).toBe('secret');
+    const row = { userId: alice.userId, cardId: 'mrv-taj-mahal', foilSeed: 1, firstPulledAt: 1, lastPulledAt: 1 };
+    await t.run(async (ctx) => {
+      await ctx.db.insert('inventory', { ...row, rarity: 'secret', count: 2, bestMintNumber: 3 });
+      await ctx.db.patch(alice.userId, { showcase: [{ cardId: row.cardId, rarity: 'secret' }] });
+    });
+    await t.mutation(internal.migrations.resyncRarities, {});
+    const { inv, user } = await t.run(async (ctx) => ({ inv: await ctx.db.query('inventory').collect(), user: await ctx.db.get(alice.userId) }));
+    expect(inv).toHaveLength(1);
+    expect(inv[0]).toMatchObject({ cardId: row.cardId, rarity: 'mythic', count: 2, bestMintNumber: 3 });
+    expect(user?.showcase).toEqual([{ cardId: row.cardId, rarity: 'mythic' }]);
   });
 
   test.runIf(BEBOU_SECRETS_LOCKED)('Bébous verrouillées : aucun Bébou, même sur le tirage le plus favorable', async () => {

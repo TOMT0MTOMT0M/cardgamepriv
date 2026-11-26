@@ -77,8 +77,8 @@ def main():
     for k, (n, st, th, sb) in B.items():
         if k in A:
             a = A[k]
-            # (les Merveilles et les cartes secrètes restent secrètes : la base les note 6★)
-            if R[st] != a['rarity'] and a['rarity'] != 'secret':
+            # (v2.1.17, Hugo) les Merveilles ne sont plus secrètes : la base les note 6★, elles le deviennent
+            if R[st] != a['rarity']:
                 rerate[k] = R[st]
             if n != a['name']:
                 rename[k] = n
