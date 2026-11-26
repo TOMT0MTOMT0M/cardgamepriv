@@ -10,6 +10,7 @@ import { isValidPackRequest, rollPackEx, type PackRequest } from '../src/core/pa
 import { artPath, bebouOddsLabel, catalogEntry, hasArt, subthemeById, themeById, BEBOU_PACK } from '../src/core/sets/themes';
 import { applyRegen, fmtCountdown } from '../src/core/packRegen';
 import { bumpMissions } from './missions';
+import { pushBigPull } from './feed';
 import { pityAfter, pityForces } from '../src/core/pity';
 import { rollPackCoins } from '../src/core/economy';
 import { addCoins, bumpWeekly } from './econLib';
@@ -306,7 +307,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
           ? fm('f.secret', { name: user.displayName, card: c.cardName, cardId: c.cardId, odds: bebouOddsLabel().replace(/^1 sur /, '') })
           : fm('f.pull', { name: user.displayName, card: c.cardName, cardId: c.cardId, rarity: label, rarityId: c.rarity, mint: c.mintNumber });
 
-      await ctx.db.insert('activityFeed', {
+      const feedId = await ctx.db.insert('activityFeed', {
         userId: user._id,
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
@@ -319,6 +320,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
         createdAt: now,
         ...(tier >= RARITY_TIER.legendary ? { big: true } : {}),
       });
+      if (tier >= RARITY_TIER.legendary) await pushBigPull(ctx, feedId);
 
       // Discord : uniquement avant-dernier tier (Mythique 6★) et dernier tier (Secrète Bébou ✷)
       if (tier >= RARITY_TIER.mythic) {

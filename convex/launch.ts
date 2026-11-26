@@ -38,6 +38,8 @@ const WIPE: TableNames[] = [
   'invGone',
   // (26/11) compteurs du classement par différence : l'inventaire vidé ici ne laisse pas de trace de suppression
   'rankInc',
+  // (v2.1.32) résumé léger du classement : refait par le cron
+  'rankMeta',
   'binders',
   'trades',
   'listingOffers',
@@ -51,6 +53,8 @@ const WIPE: TableNames[] = [
   'friendships',
   'referralClicks',
   'activityFeed',
+  // (v2.1.32) derniers gros tirages, tirés du fil
+  'bigPullsDigest',
   'profileMedia',
 ];
 

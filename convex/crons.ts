@@ -25,6 +25,6 @@ crons.interval('classement : lignes et numero un', { minutes: 10 }, internal.pro
 crons.interval('saisons : fin du mois', { hours: 1 }, internal.seasons.tick, {});
 // (26/11, coût Convex) rétention : boosters ouverts et fil d'activité de plus de 30 jours retirés, par petits lots
 // (convex/migrations.ts, purgeOld — aussi relancée à chaque mise en ligne)
-crons.daily('retention : boosters et fil de plus de 30 jours', { hourUTC: 4, minuteUTC: 30 }, internal.migrations.purgeOld, {});
+crons.daily('retention : boosters ouverts de plus de 2 jours, fil de plus de 30 jours', { hourUTC: 4, minuteUTC: 30 }, internal.migrations.purgeOld, {});
 
 export default crons;

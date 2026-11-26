@@ -12,7 +12,8 @@ import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx } from './_generated/server';
 import { countReads } from './reads.testlib';
 import * as profiles from './profiles';
-import { statsFast, statsOf } from './profiles';
+import { profileLite, statsFast, statsOf } from './profiles';
+import { bestCard } from '../src/core/cosmetics';
 import { incOf, saveInc } from './rankInc';
 import { dropInv } from './invRev';
 import { SUBTHEMES, THEMES } from '../src/core/sets/themes';
@@ -66,7 +67,7 @@ describe('classement par différence', () => {
       const userId = await mkUser(t, `p${seed}`);
       const r = rng(seed);
       const pick = <T,>(l: readonly T[]) => l[Math.floor(r() * l.length)];
-      let checks = 0, fulls = 0, deltas = 0, fullSeen = false;
+      let checks = 0, fulls = 0, deltas = 0, fullSeen = false, liteChecks = 0;
       for (let step = 0; step < 260; step++) {
         const x = r();
         // le temps avance (parfois à peine, parfois au-delà de la marge de 30 s)
@@ -77,8 +78,18 @@ describe('classement par différence', () => {
             const u = (await ctx.db.get(userId))!;
             const had = await incOf(ctx, userId);
             const { stats, inc } = await statsFast(ctx, u);
-            const full = (await statsOf(ctx, u)).stats;
+            const { stats: full, collection } = await statsOf(ctx, u);
             expect(stats).toEqual(full);
+            // (v2.1.32, piste 3) profil sans relire la collection : mêmes statistiques, thèmes et meilleur drop
+            const lite = await profileLite(ctx, u);
+            if (lite) {
+              liteChecks++;
+              const ids = new Set(collection.map((c) => c.cardId));
+              expect(lite.stats).toEqual(full);
+              expect(lite.themes).toEqual(THEMES.map((th) => ({ id: th.id, have: th.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: th.cards.length })));
+              const best = bestCard(collection);
+              expect(lite.top ? [lite.top.cardId, lite.top.rarity, lite.top.bestMintNumber] : null).toEqual(best ? [best.cardId, best.rarity, best.bestMintNumber] : null);
+            }
             if (had && inc && inc.full === had.inc.full) deltas++;
             else fulls++;
             if (full.fullSubthemes > 0) fullSeen = true;
@@ -129,6 +140,7 @@ describe('classement par différence', () => {
       console.log(`[mesure rankInc] suite ${seed} : ${checks} calculs comparés (${deltas} par différence, ${fulls} complets)${fullSeen ? ', sous-thème complété vu' : ''}`);
       expect(checks).toBeGreaterThan(20);
       expect(deltas).toBeGreaterThan(checks / 2);
+      expect(liteChecks).toBeGreaterThan(checks / 2);
     });
   }
 

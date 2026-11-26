@@ -78,19 +78,37 @@ export const mineSince = query({
   handler: async (ctx, { sessionToken, since }) => {
     const userId = await getUserIdByToken(ctx, sessionToken);
     if (!userId) return null;
-    const rows = await ctx.db
-      .query('inventory')
-      .withIndex('by_user_rev', (q) => q.eq('userId', userId).gte('rev', since))
-      .take(SINCE_MAX + 1);
-    const gone = await ctx.db
-      .query('invGone')
-      .withIndex('by_user_rev', (q) => q.eq('userId', userId).gte('rev', since))
-      .take(SINCE_MAX + 1);
-    return {
-      rows: rows.slice(0, SINCE_MAX).map(slim),
-      gone: gone.slice(0, SINCE_MAX).map((g) => ({ cardId: g.cardId, rarity: g.rarity, rev: g.rev })),
-      more: rows.length > SINCE_MAX || gone.length > SINCE_MAX,
-    };
+    return await changesSince(ctx, userId, since);
+  },
+});
+
+async function changesSince(ctx: QueryCtx, userId: Id<'users'>, since: number) {
+  const rows = await ctx.db
+    .query('inventory')
+    .withIndex('by_user_rev', (q) => q.eq('userId', userId).gte('rev', since))
+    .take(SINCE_MAX + 1);
+  const gone = await ctx.db
+    .query('invGone')
+    .withIndex('by_user_rev', (q) => q.eq('userId', userId).gte('rev', since))
+    .take(SINCE_MAX + 1);
+  return {
+    rows: rows.slice(0, SINCE_MAX).map(slim),
+    gone: gone.slice(0, SINCE_MAX).map((g) => ({ cardId: g.cardId, rarity: g.rarity, rev: g.rev })),
+    more: rows.length > SINCE_MAX || gone.length > SINCE_MAX,
+  };
+}
+
+/**
+ * (v2.1.32, piste 3 de docs/chantiers/convex-pistes.md) collection d'un AUTRE joueur suivie par différence : lue en
+ * entier une fois (`since` absent, avec la révision de chaque ligne), puis seulement ce qui a changé depuis la copie du
+ * client (même principe que `mineSince`, lecture ponctuelle, pas d'abonnement). Rouvrir le profil d'un ami : quelques
+ * lignes au lieu de 1,8 à 4,2 Mo. Collection déjà publique (`userCollectionSlim`).
+ */
+export const userCollectionSince = query({
+  args: { userId: v.id('users'), since: v.optional(v.number()) },
+  handler: async (ctx, { userId, since }) => {
+    if (since !== undefined) return { ...(await changesSince(ctx, userId, since)), full: null };
+    return { rows: [], gone: [], more: false, full: inParts((await invOf(ctx, userId)).map(slim)).parts };
   },
 });
 

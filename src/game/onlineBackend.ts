@@ -323,11 +323,13 @@ export function createOnlineBackend(): GameBackend {
       await net.rerollMission(id);
     },
     // (audit 12/11, S07 / A4-02) profil d'un ami : le profil et sa collection en une seule lecture serveur
+    // (v2.1.32, coût Convex, piste 3) le profil sans relire la collection (compteurs du classement), et la collection
+    // suivie par différence (copie par ami, net.userCollection) : rouvrir un profil ne relit plus 1,8 à 4,2 Mo
     async friendProfile(userId) {
-      const r = await net.profile(userId as Id<'users'>, true);
-      if (!r) return { profile: null, cards: [] };
-      const { collection, ...p } = r;
-      return { profile: { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null, pinnedBinders: p.pinnedBinders?.map((b) => ({ ...b, id: b.id as string })) }, cards: collection ?? [] };
+      const [p, rows] = await Promise.all([net.profile(userId as Id<'users'>), net.userCollection(userId as Id<'users'>)]);
+      if (!p) return { profile: null, cards: [] };
+      const collection = rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));
+      return { profile: { ...p, id: p.id, pinnedBinder: p.pinnedBinder ? { ...p.pinnedBinder, id: p.pinnedBinder.id } : null, pinnedBinders: p.pinnedBinders?.map((b) => ({ ...b, id: b.id as string })) }, cards: collection };
     },
     async profile(userId) {
       const p = await net.profile(userId as Id<'users'>);

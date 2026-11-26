@@ -1,7 +1,7 @@
 import { fe } from '../src/core/errors';
 import { inParts, invOf } from './inventory';
 import { v, ConvexError } from 'convex/values';
-import { internalAction, internalMutation, internalQuery, mutation, query, type QueryCtx } from './_generated/server';
+import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
 import type { Doc } from './_generated/dataModel';
 import { requireUser } from './auth';
@@ -106,6 +106,38 @@ export async function statsFast(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats
   return { stats, inc: incFromRows(collection, gone, now) };
 }
 
+/**
+ * (v2.1.32, piste 3 de docs/chantiers/convex-pistes.md) ce que le profil tire de la collection, SANS la relire quand les
+ * compteurs du classement sont gardés (convex/rankInc.ts) : statistiques par différence, complétion par thème depuis
+ * `inc.th` (qui ne compte pas une carte possédée seulement en secrète : rajoutée à part, lignes secrètes = quelques-unes),
+ * meilleur drop par l'index `by_user_rarity` (lignes de l'étoile la plus haute seulement). Mêmes valeurs que la
+ * relecture complète (convex/rankInc.test.ts). `null` : compteurs absents ou trop vieux → relecture complète.
+ */
+const BEST_ORDER = ['secret', 'mythic', 'legendary', 'epic', 'rare', 'uncommon', 'common'] as const;
+export async function profileLite(ctx: QueryCtx, u: Doc<'users'>) {
+  const now = Date.now();
+  const kept = await incOf(ctx, u._id);
+  if (!kept || !incUsable(kept.inc, now)) return null;
+  const inc = await incDelta(ctx, u._id, kept.inc, now);
+  if (!inc) return null;
+  const stats: PlayerStats = { ...extraOf(u), total: PUBLIC_CARD_COUNT, ...collStats(inc) };
+  const byR = (r: (typeof BEST_ORDER)[number]) => ctx.db.query('inventory').withIndex('by_user_rarity', (q) => q.eq('userId', u._id).eq('rarity', r));
+  const secrets = await byR('secret').collect();
+  const onlySecret = new Set<string>();
+  for (const s of secrets) {
+    if (onlySecret.has(s.cardId)) continue;
+    const rows = await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', u._id).eq('cardId', s.cardId)).take(2);
+    if (rows.every((x) => x.rarity === 'secret')) onlySecret.add(s.cardId);
+  }
+  const themes = THEMES.map((t) => ({ id: t.id, have: (inc.th[t.id] ?? 0) + t.cards.reduce((a, c) => a + (onlySecret.has(c.id) ? 1 : 0), 0), total: t.cards.length }));
+  let top = bestCard(secrets);
+  for (const r of BEST_ORDER.slice(1)) {
+    if (top) break;
+    top = bestCard(await byR(r).take(3000));
+  }
+  return { stats, themes, top };
+}
+
 export const profile = query({
   // (audit 12/11, S07 / A4-02) `withCollection` (client V2, profil d'un ami) : sa collection en 4 champs dans la même
   // réponse — une seule lecture de la collection au lieu de deux (profil + inventory.userCollection).
@@ -115,9 +147,14 @@ export const profile = query({
     const u = await ctx.db.get(userId);
     if (!u) return null;
     const pinned = await pinnedOf(ctx, userId);
-    const { stats, collection } = await statsOf(ctx, u);
-    const top = bestCard(collection);
+    // (v2.1.32, piste 3) sans la collection demandée : compteurs gardés, collection relue seulement en repli
+    const lite = withCollection ? null : await profileLite(ctx, u);
+    const full = lite ? null : await statsOf(ctx, u);
+    const collection = full?.collection ?? [];
+    const stats = lite?.stats ?? full!.stats;
+    const top = lite ? lite.top : bestCard(collection);
     const ids = new Set(collection.map((c) => c.cardId));
+    const themes = lite?.themes ?? THEMES.map((t) => ({ id: t.id, have: t.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: t.cards.length }));
     return {
       id: u._id,
       name: u.displayName,
@@ -138,7 +175,7 @@ export const profile = query({
       streakDay: streakDay(u.streak),
       bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null,
       /** complétion par thème */
-      themes: THEMES.map((t) => ({ id: t.id, have: t.cards.reduce((a, c) => a + (ids.has(c.id) ? 1 : 0), 0), total: t.cards.length })),
+      themes,
       /** succès atteints (les 36 de l'espace Jeux, stats du profil + compteurs de l'économie) */
       achievements: { done: achievementsDone(stats, u), total: ACHIEVEMENTS.length },
       ...(withCollection && !parts ? { collection: collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber })) } : {}),
@@ -214,11 +251,21 @@ export const refreshMyRank = mutation({
     const { stats, inc } = await statsFast(ctx, u);
     const row = await rankRowOf(ctx, u, stats);
     if (old) await ctx.db.patch(old._id, { row, sig, stats, updatedAt: now });
-    else await ctx.db.insert('rankRows', { userId: u._id, row, sig, stats, updatedAt: now });
+    const rowId = old?._id ?? (await ctx.db.insert('rankRows', { userId: u._id, row, sig, stats, updatedAt: now }));
+    await putMeta(ctx, { userId: u._id, rowId, updatedAt: now, sig, hasStats: true, uniques: row.uniques });
     await saveInc(ctx, u._id, inc);
     return { ok: true, changed: true };
   },
 });
+
+/** (v2.1.32, piste 8) résumé léger d'une ligne du classement (schema.ts, `rankMeta`) ; écrit seulement s'il change */
+type RankMeta = Omit<Doc<'rankMeta'>, '_id' | '_creationTime'>;
+async function putMeta(ctx: MutationCtx, m: RankMeta) {
+  const old = await ctx.db.query('rankMeta').withIndex('by_user', (q) => q.eq('userId', m.userId)).first();
+  if (!old) await ctx.db.insert('rankMeta', m);
+  else if (old.rowId !== m.rowId || old.updatedAt !== m.updatedAt || old.sig !== m.sig || old.hasStats !== m.hasStats || old.uniques !== m.uniques) await ctx.db.patch(old._id, m);
+}
+const metaValidator = v.object({ userId: v.id('users'), rowId: v.id('rankRows'), updatedAt: v.number(), sig: v.optional(v.string()), hasStats: v.boolean(), uniques: v.number() });
 
 /** joueur vu depuis le calcul de sa ligne (battement de cœur au plus toutes les 4 min : marge de 5 min) */
 const SEEN_MARGIN_MS = 5 * 60_000;
@@ -243,7 +290,13 @@ export const rankPlan = internalQuery({
     const now = Date.now();
     const pres = await ctx.db.query('presence').collect();
     if (!all && pres.length && pres.every((p) => now - p.lastSeenAt > IDLE_MS)) return { idle: true, users: [], rows: [] };
-    const rows = await ctx.db.query('rankRows').collect();
+    // (v2.1.32, piste 8) le résumé léger des lignes (≈ 0,15 Ko chacune) au lieu des lignes (≈ 2 Ko) ; vide : relues, et
+    // le résumé est rempli par `saveRanks` (`init`)
+    const meta: RankMeta[] = (await ctx.db.query('rankMeta').collect()).map(({ _id, _creationTime, ...m }) => m);
+    const init: RankMeta[] | undefined = meta.length
+      ? undefined
+      : (await ctx.db.query('rankRows').collect()).map((r) => ({ userId: r.userId, rowId: r._id, updatedAt: r.updatedAt, sig: r.sig, hasStats: !!r.stats, uniques: (r.row as RankRow | undefined)?.uniques ?? 0 }));
+    const rows = init ?? meta;
     const by = new Map(rows.map((r) => [r.userId as string, r]));
     const seen = new Map(pres.map((p) => [p.userId as string, p]));
     // joueurs : ceux de la présence, et ceux d'une ligne sans présence (relus pour savoir s'ils existent encore) ;
@@ -256,7 +309,7 @@ export const rankPlan = internalQuery({
         const r = by.get(id);
         const p = seen.get(id);
         const at = r?.updatedAt ?? 0;
-        const rowSig = r?.stats ? (r.sig ?? '') : '';
+        const rowSig = r?.hasStats ? (r.sig ?? '') : '';
         const [inv, gone] = await lastInvOf(ctx, id);
         const changed = Math.max(inv?.rev ?? 0, gone?.rev ?? 0) >= at - INC_MARGIN_MS;
         const look = all || !p || !r || changed || now - at > 24 * 3600_000 || (p.lastSeenAt >= at - SEEN_MARGIN_MS && now - p.lastSeenAt < LOOK_MS);
@@ -270,7 +323,8 @@ export const rankPlan = internalQuery({
     return {
       idle: false,
       users: users.filter((x) => x !== null),
-      rows: rows.map((r) => ({ id: r._id, userId: r.userId })),
+      rows: rows.map((r) => ({ id: r.rowId, userId: r.userId })),
+      ...(init ? { init } : {}),
     };
   },
 });
@@ -288,10 +342,21 @@ export const rankRow = internalQuery({
 });
 
 export const saveRanks = internalMutation({
-  args: { rows: v.array(v.object({ userId: v.id('users'), row: v.any(), sig: v.optional(v.string()), stats: v.optional(v.any()), inc: v.optional(v.any()) })), drop: v.array(v.id('rankRows')) },
-  handler: async (ctx, { rows, drop }) => {
+  args: {
+    rows: v.array(v.object({ userId: v.id('users'), row: v.any(), sig: v.optional(v.string()), stats: v.optional(v.any()), inc: v.optional(v.any()) })),
+    drop: v.array(v.id('rankRows')),
+    /** (v2.1.32, piste 8) résumé léger de toutes les lignes, à créer (table `rankMeta` encore vide) */
+    init: v.optional(v.array(metaValidator)),
+  },
+  handler: async (ctx, { rows, drop, init }) => {
     const now = Date.now();
-    for (const id of drop) await ctx.db.delete(id);
+    if (init) for (const m of init) if (!drop.includes(m.rowId)) await putMeta(ctx, m);
+    for (const id of drop) {
+      const r = await ctx.db.get(id);
+      const m = r ? await ctx.db.query('rankMeta').withIndex('by_user', (q) => q.eq('userId', r.userId)).first() : (await ctx.db.query('rankMeta').collect()).find((x) => x.rowId === id);
+      if (m && m.rowId === id) await ctx.db.delete(m._id);
+      if (r) await ctx.db.delete(id);
+    }
     // (audit 12/11, A8-03) le « Numéro un » ne peut changer que si une ligne a bougé en cartes différentes (ou a
     // disparu) : sinon la table n'est pas relue en entier à chaque passage qui écrit
     let moved = drop.length > 0;
@@ -299,14 +364,16 @@ export const saveRanks = internalMutation({
       const old = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', userId)).first();
       if (!old || (old.row as RankRow | undefined)?.uniques !== (row as RankRow).uniques) moved = true;
       if (old) await ctx.db.patch(old._id, { row, sig, stats, updatedAt: now });
-      else await ctx.db.insert('rankRows', { userId, row, sig, stats, updatedAt: now });
+      const rowId = old?._id ?? (await ctx.db.insert('rankRows', { userId, row, sig, stats, updatedAt: now }));
+      await putMeta(ctx, { userId, rowId, updatedAt: now, sig, hasStats: !!stats, uniques: (row as RankRow).uniques ?? 0 });
       await saveInc(ctx, userId, inc as RankInc | null | undefined);
     }
     if (!moved) return { saved: rows.length, dropped: drop.length };
     // (retours live 6, C15) titre « Numéro un » : le premier en cartes différentes est marqué, définitivement
+    // (v2.1.32, piste 8) lu dans le résumé léger (≈ 0,15 Ko par joueur au lieu de ≈ 2 Ko)
     let best: { userId: string; n: number } | null = null;
-    for (const r of await ctx.db.query('rankRows').collect()) {
-      const n = (r.row as RankRow).uniques;
+    for (const r of await ctx.db.query('rankMeta').collect()) {
+      const n = r.uniques;
       if (n > 0 && (!best || n > best.n)) best = { userId: r.userId, n };
     }
     if (best) {
@@ -341,8 +408,8 @@ export const refreshRanks = internalAction({
       const r = await ctx.runQuery(internal.profiles.rankRow, { userId: u.id });
       if (r) rows.push({ userId: u.id, ...r });
     }
-    if (!rows.length && !drop.length) return { saved: 0, dropped: 0 };
-    return await ctx.runMutation(internal.profiles.saveRanks, { rows, drop });
+    if (!rows.length && !drop.length && !plan.init) return { saved: 0, dropped: 0 };
+    return await ctx.runMutation(internal.profiles.saveRanks, { rows, drop, ...(plan.init ? { init: plan.init } : {}) });
   },
 });
 
