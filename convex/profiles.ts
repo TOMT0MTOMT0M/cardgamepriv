@@ -14,6 +14,7 @@ import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
 import { econOf } from './econLib';
 import { seenAtOf, syncPresence } from './presence';
+import { INC_CAP, INC_MARGIN_MS, collStats, incDelta, incFromRows, incOf, incUsable, saveInc, type RankInc } from './rankInc';
 
 /**
  * PROFIL (refonte retours du 3 nov.) : identité + cosmétiques (bannière, cadre, titre, badges — débloqués en jouant),
@@ -35,10 +36,19 @@ function liveStreak(u: Doc<'users'>): number {
  * Catalogue retrié ou seuil de succès / cosmétique changé sans changer la taille du catalogue : monter le `1` en tête.
  */
 export async function rankSigOf(ctx: QueryCtx, u: Doc<'users'>): Promise<string> {
-  const [inv, gone] = await Promise.all([
-    ctx.db.query('inventory').withIndex('by_user_rev', (q) => q.eq('userId', u._id)).order('desc').first(),
-    ctx.db.query('invGone').withIndex('by_user_rev', (q) => q.eq('userId', u._id)).order('desc').first(),
+  const [inv, gone] = await lastInvOf(ctx, u._id);
+  return rankSigFrom(u, inv, gone);
+}
+
+/** dernière ligne d'inventaire écrite et dernière trace de suppression d'un joueur (2 petites lectures d'index) */
+async function lastInvOf(ctx: QueryCtx, userId: Doc<'users'>['_id']) {
+  return await Promise.all([
+    ctx.db.query('inventory').withIndex('by_user_rev', (q) => q.eq('userId', userId)).order('desc').first(),
+    ctx.db.query('invGone').withIndex('by_user_rev', (q) => q.eq('userId', userId)).order('desc').first(),
   ]);
+}
+
+function rankSigFrom(u: Doc<'users'>, inv: Doc<'inventory'> | null, gone: Doc<'invGone'> | null): string {
   const e = econOf(u);
   return JSON.stringify([
     1, PUBLIC_CARD_COUNT, SUBTHEMES.length,
@@ -62,16 +72,40 @@ export async function rankSigOf(ctx: QueryCtx, u: Doc<'users'>): Promise<string>
 export async function statsCached(ctx: QueryCtx, u: Doc<'users'>): Promise<PlayerStats> {
   const [sig, row] = await Promise.all([rankSigOf(ctx, u), ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', u._id)).first()]);
   if (row?.stats && row.sig === sig) return row.stats as PlayerStats;
-  return (await statsOf(ctx, u)).stats;
+  // (26/11) collection changée depuis la ligne : par différence (convex/rankInc.ts) plutôt qu'en la relisant entière
+  return (await statsFast(ctx, u)).stats;
 }
 
-/** Statistiques d'un joueur (déblocages, classement). */
+/** ce que les statistiques prennent du document joueur (tout sauf la collection) */
+function extraOf(u: Doc<'users'>) {
+  // (retours live 6) + doublons brûlés (titres de la forge) et « a été n°1 » (titre Numéro un)
+  return { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak: liveStreak(u), burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, season0Top: u.season0Top ?? 0, season0Player: u.season0Player ?? 0, ...(adventOpened(u).length ? { advent: adventOpened(u) } : {}) };
+}
+
+/** Statistiques d'un joueur (déblocages, classement). Relit la collection entière : le profil en a besoin. */
 export async function statsOf(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: PlayerStats; collection: Doc<'inventory'>[] }> {
   const collection = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
-  const streak = liveStreak(u);
-  // (retours live 6) + doublons brûlés (titres de la forge) et « a été n°1 » (titre Numéro un)
-  const stats = statsFrom(collection, { packsOpened: u.totalPacksOpened, tradesDone: u.totalTrades ?? 0, contractsSigned: u.totalContracts ?? 0, streak, burned: econOf(u).burned, wasTop: u.wasTop ? 1 : 0, seasonPodiums: u.seasonPodiums ?? 0, seasonWins: u.seasonWins ?? 0, season0Top: u.season0Top ?? 0, season0Player: u.season0Player ?? 0, ...(adventOpened(u).length ? { advent: adventOpened(u) } : {}) });
+  const stats = statsFrom(collection, extraOf(u));
   return { stats, collection };
+}
+
+/**
+ * (26/11, coût Convex) Statistiques d'un joueur SANS relire sa collection quand ses compteurs sont gardés
+ * (convex/rankInc.ts : seules les lignes changées depuis le dernier calcul sont relues). Sinon relecture complète, et
+ * les compteurs repartent de là. Mêmes valeurs que `statsOf(...).stats`. `inc` : à enregistrer (`saveInc`).
+ */
+export async function statsFast(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: PlayerStats; inc: RankInc | null }> {
+  const now = Date.now();
+  const kept = await incOf(ctx, u._id);
+  if (kept && incUsable(kept.inc, now)) {
+    const inc = await incDelta(ctx, u._id, kept.inc, now);
+    if (inc) return { stats: { ...extraOf(u), total: PUBLIC_CARD_COUNT, ...collStats(inc) }, inc };
+  }
+  const [{ stats, collection }, gone] = await Promise.all([
+    statsOf(ctx, u),
+    ctx.db.query('invGone').withIndex('by_user_rev', (q) => q.eq('userId', u._id).gte('rev', now - INC_MARGIN_MS)).take(INC_CAP + 1),
+  ]);
+  return { stats, inc: incFromRows(collection, gone, now) };
 }
 
 export const profile = query({
@@ -178,59 +212,97 @@ export const refreshMyRank = mutation({
     // (audit 12/11, S05 / A6-03) rien n'a changé depuis ma ligne : pas de relecture de la collection, pas d'écriture
     const sig = await rankSigOf(ctx, u);
     if (old?.stats && old.sig === sig) return { ok: true, changed: false };
-    const { stats } = await statsOf(ctx, u);
+    // (26/11) par différence (convex/rankInc.ts) : seules les lignes changées depuis le dernier calcul sont relues
+    const { stats, inc } = await statsFast(ctx, u);
     const row = await rankRowOf(ctx, u, stats);
     if (old) await ctx.db.patch(old._id, { row, sig, stats, updatedAt: now });
     else await ctx.db.insert('rankRows', { userId: u._id, row, sig, stats, updatedAt: now });
+    await saveInc(ctx, u._id, inc);
     return { ok: true, changed: true };
   },
 });
 
-/** joueurs, dernière activité, et date de leur ligne du classement (pour savoir qui recalculer) */
+/** joueur vu depuis le calcul de sa ligne (battement de cœur au plus toutes les 4 min : marge de 5 min) */
+const SEEN_MARGIN_MS = 5 * 60_000;
+/**
+ * … et vu il y a moins de 25 min : un geste fait avant de partir (au plus 4 min après sa dernière présence) est vu par
+ * un des passages du cron (toutes les 10 min) dans ce délai ; au-delà, inutile de relire son document à chaque passage.
+ */
+const LOOK_MS = 25 * 60_000;
+/** personne n'est passé depuis : le cron ne relit rien de plus (ni lignes ni joueurs) */
+const IDLE_MS = 20 * 60_000;
+
+/**
+ * Joueurs, dernière activité, et date de leur ligne du classement (pour savoir qui recalculer).
+ * (26/11, coût Convex) AVANT : les 33 documents joueurs (2,7 Ko chacun) à chaque passage, 133 Ko lus toutes les 5 min
+ * même la nuit. MAINTENANT : la carte publique (`presence`, 0,3 Ko) dit qui est passé ; seul un joueur passé depuis
+ * sa ligne, dont la collection a bougé (dernière écriture / suppression d'inventaire), sans ligne ou à la ligne de plus
+ * de 24 h est relu en entier pour sa signature. Personne depuis 20 min : rien d'autre n'est lu (`idle`).
+ */
 export const rankPlan = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    const users = await ctx.db.query('users').collect();
+  args: { all: v.optional(v.boolean()) },
+  handler: async (ctx, { all }) => {
+    const now = Date.now();
+    const pres = await ctx.db.query('presence').collect();
+    if (!all && pres.length && pres.every((p) => now - p.lastSeenAt > IDLE_MS)) return { idle: true, users: [], rows: [] };
     const rows = await ctx.db.query('rankRows').collect();
     const by = new Map(rows.map((r) => [r.userId as string, r]));
+    const seen = new Map(pres.map((p) => [p.userId as string, p]));
+    // joueurs : ceux de la présence, et ceux d'une ligne sans présence (relus pour savoir s'ils existent encore) ;
+    // table de présence vide (base neuve) : tous les documents joueurs, comme avant
+    const all0 = pres.length ? null : await ctx.db.query('users').collect();
+    const docs = new Map((all0 ?? []).map((u) => [u._id as string, u]));
+    const ids = all0 ? all0.map((u) => u._id) : [...new Set([...pres.map((p) => p.userId), ...rows.map((r) => r.userId)])];
+    const users = await Promise.all(
+      ids.map(async (id) => {
+        const r = by.get(id);
+        const p = seen.get(id);
+        const at = r?.updatedAt ?? 0;
+        const rowSig = r?.stats ? (r.sig ?? '') : '';
+        const [inv, gone] = await lastInvOf(ctx, id);
+        const changed = Math.max(inv?.rev ?? 0, gone?.rev ?? 0) >= at - INC_MARGIN_MS;
+        const look = all || !p || !r || changed || now - at > 24 * 3600_000 || (p.lastSeenAt >= at - SEEN_MARGIN_MS && now - p.lastSeenAt < LOOK_MS);
+        if (!look) return { id, banned: !!p.bannedAt, at, sig: rowSig, rowSig };
+        const u = docs.get(id) ?? (await ctx.db.get(id));
+        if (!u) return null;
+        // (audit 12/11, S05) `sig` : signature du moment ; `rowSig` : celle de sa ligne
+        return { id, banned: !!u.bannedAt, at, sig: u.bannedAt ? '' : rankSigFrom(u, inv, gone), rowSig };
+      }),
+    );
     return {
-      // (audit 12/11, S05) `sig` : signature du moment (2 petites lectures par joueur) ; `rowSig` : celle de sa ligne
-      users: await Promise.all(
-        users.map(async (u) => {
-          const r = by.get(u._id);
-          return { id: u._id, banned: !!u.bannedAt, at: r?.updatedAt ?? 0, sig: u.bannedAt ? '' : await rankSigOf(ctx, u), rowSig: r?.stats ? (r.sig ?? '') : '' };
-        }),
-      ),
+      idle: false,
+      users: users.filter((x) => x !== null),
       rows: rows.map((r) => ({ id: r._id, userId: r.userId })),
     };
   },
 });
 
-/** la ligne d'un joueur (lit SA collection seulement) */
+/** la ligne d'un joueur (par différence quand ses compteurs sont gardés, sinon sa collection seulement) */
 export const rankRow = internalQuery({
   args: { userId: v.id('users') },
   handler: async (ctx, { userId }) => {
     const u = await ctx.db.get(userId);
     if (!u || u.bannedAt) return null;
     // signature et statistiques prises dans la même lecture que la ligne : elles vont ensemble dans `rankRows`
-    const [sig, { stats }] = await Promise.all([rankSigOf(ctx, u), statsOf(ctx, u)]);
-    return { row: await rankRowOf(ctx, u, stats), sig, stats };
+    const [sig, { stats, inc }] = await Promise.all([rankSigOf(ctx, u), statsFast(ctx, u)]);
+    return { row: await rankRowOf(ctx, u, stats), sig, stats, inc };
   },
 });
 
 export const saveRanks = internalMutation({
-  args: { rows: v.array(v.object({ userId: v.id('users'), row: v.any(), sig: v.optional(v.string()), stats: v.optional(v.any()) })), drop: v.array(v.id('rankRows')) },
+  args: { rows: v.array(v.object({ userId: v.id('users'), row: v.any(), sig: v.optional(v.string()), stats: v.optional(v.any()), inc: v.optional(v.any()) })), drop: v.array(v.id('rankRows')) },
   handler: async (ctx, { rows, drop }) => {
     const now = Date.now();
     for (const id of drop) await ctx.db.delete(id);
     // (audit 12/11, A8-03) le « Numéro un » ne peut changer que si une ligne a bougé en cartes différentes (ou a
     // disparu) : sinon la table n'est pas relue en entier à chaque passage qui écrit
     let moved = drop.length > 0;
-    for (const { userId, row, sig, stats } of rows) {
+    for (const { userId, row, sig, stats, inc } of rows) {
       const old = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', userId)).first();
       if (!old || (old.row as RankRow | undefined)?.uniques !== (row as RankRow).uniques) moved = true;
       if (old) await ctx.db.patch(old._id, { row, sig, stats, updatedAt: now });
       else await ctx.db.insert('rankRows', { userId, row, sig, stats, updatedAt: now });
+      await saveInc(ctx, userId, inc as RankInc | null | undefined);
     }
     if (!moved) return { saved: rows.length, dropped: drop.length };
     // (retours live 6, C15) titre « Numéro un » : le premier en cartes différentes est marqué, définitivement
@@ -255,11 +327,13 @@ export const saveRanks = internalMutation({
 export const refreshRanks = internalAction({
   args: { all: v.optional(v.boolean()) },
   handler: async (ctx, { all }): Promise<{ saved: number; dropped: number }> => {
-    const plan = await ctx.runQuery(internal.profiles.rankPlan, {});
+    const plan = await ctx.runQuery(internal.profiles.rankPlan, { all });
+    // (26/11) personne depuis 20 min : rien à recalculer (surtout pas « retirer » les lignes d'un plan vide)
+    if (plan.idle) return { saved: 0, dropped: 0 };
     const now = Date.now();
     const live = new Set(plan.users.filter((u) => !u.banned).map((u) => u.id as string));
     const drop = plan.rows.filter((r) => !live.has(r.userId)).map((r) => r.id);
-    const rows: Array<{ userId: Doc<'users'>['_id']; row: RankRow; sig: string; stats: PlayerStats }> = [];
+    const rows: Array<{ userId: Doc<'users'>['_id']; row: RankRow; sig: string; stats: PlayerStats; inc: RankInc | null }> = [];
     for (const u of plan.users) {
       if (u.banned) continue;
       // (audit 12/11, S05 / A8-01) AVANT : tout joueur vu depuis sa ligne était recalculé toutes les 5 min, collection

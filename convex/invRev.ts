@@ -16,5 +16,6 @@ export const invRev = () => Date.now();
 /** supprime une ligne d'inventaire en laissant sa trace (le client l'efface de sa copie) */
 export async function dropInv(ctx: MutationCtx, row: Doc<'inventory'>) {
   await ctx.db.delete(row._id);
-  await ctx.db.insert('invGone', { userId: row.userId, cardId: row.cardId, rarity: row.rarity, rev: invRev() });
+  // `born` : le classement par différence (convex/rankInc.ts) sait si la ligne était déjà là à son dernier calcul
+  await ctx.db.insert('invGone', { userId: row.userId, cardId: row.cardId, rarity: row.rarity, rev: invRev(), born: row._creationTime });
 }
