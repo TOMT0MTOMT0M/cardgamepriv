@@ -71,6 +71,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Texte du Portefeuille corrigé', tag: 'corrigé',
+        points: [
+          '🪙 Le Portefeuille ne dit plus que les pièces ne s’échangent jamais contre des cartes : depuis le marché, c’est possible entre joueurs.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Photos de profil visibles partout', tag: 'corrigé',
         points: [
           '🖼️ Une photo de profil importée ne s’affichait que sur la page profil. Elle apparaît maintenant aussi dans le classement, le chat, les amis, le marché et les jeux.',
