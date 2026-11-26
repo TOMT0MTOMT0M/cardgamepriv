@@ -340,6 +340,10 @@ export const fr = {
   'msn.reroll': 'changer',
   'msn.bonusBtn': 'Bonus +{n}',
   'msn.bonusToast': 'Bonus : +{packs} !',
+  'msn.claimAll': 'Tout récupérer',
+  'msn.allReady': { one: '{n} récompense à récupérer', other: '{n} récompenses à récupérer' },
+  'msn.coinsWord': 'pièces',
+  'msn.allToast': 'Tout récupéré : {what} !',
 
   // ───── src/game/views/status.ts (à la main) ─────
   'st.pityCount': { one: '{nf} booster sans 6★', other: '{nf} boosters sans 6★' },

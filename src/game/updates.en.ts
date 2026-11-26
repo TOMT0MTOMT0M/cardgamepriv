@@ -26,6 +26,16 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Handier collection and missions', tag: 'amélioré',
+        points: [
+          '🔎 Collection → Albums: the search covers all 5 themes and card names (“Goku” shows his albums and his cards), sorted by theme.',
+          '📖 “See the album” under an open card, and in the Cards view an album name opens that album.',
+          '★ Pin your favourite albums (star on the cover): they stay at the top of the Albums view, with the last 5 you opened. Kept on this device.',
+          '🎯 Missions: “Claim all” claims the daily missions, the bonus and the weekly ones in one go.',
+          '› On phones, the arrow of the tab bar gets a dot when a hidden tab on the right has one.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'Card pictures and freshly pulled 6★', tag: 'corrigé',
         points: [
           '🖼️ Leo (Summoners War), Tinky Winky and the Coiffe Kitsou (Dofus) finally have their picture.',

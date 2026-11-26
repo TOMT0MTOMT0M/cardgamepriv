@@ -417,6 +417,10 @@ export const en: Dict = {
   'msn.reroll': 'change',
   'msn.bonusBtn': 'Bonus +{n}',
   'msn.bonusToast': 'Bonus: +{packs}!',
+  'msn.claimAll': 'Claim all',
+  'msn.allReady': { one: '{n} reward to claim', other: '{n} rewards to claim' },
+  'msn.coinsWord': 'coins',
+  'msn.allToast': 'All claimed: {what}!',
 
   // ───── src/game/views/status.ts (à la main) ─────
   'st.pityCount': { one: '{nf} booster without a 6★', other: '{nf} boosters without a 6★' },

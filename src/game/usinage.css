@@ -80,6 +80,12 @@ html, body { font-variant-numeric: tabular-nums; }
 .topbar { background: #000; border-bottom: 1px solid var(--gm-line); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .topbar nav a { font: 500 11px var(--mono); letter-spacing: 0.16em; }
 .topbar nav .badge, .nav-extra .badge, .me-menu .mm-link .badge, .tr-tabs .badge, .tr-sec-h .badge { border-radius: var(--r-ctl); }
+/* (patch v2.1.30, QOL L) la flèche « › » porte la pastille d'un onglet caché à droite qui a un badge */
+/* (la zone de toucher élargie des écrans tactiles, style.css « audit 06/11 », la passait en position: relative : la flèche
+   restait au bout des onglets au lieu de tenir le bord droit) */
+.topbar nav .nav-more { position: sticky; }
+.nav-more::before { content: ''; position: absolute; top: calc(50% - 13px); right: 2px; width: 7px; height: 7px; border-radius: var(--r-pill); background: #fff; opacity: 0; transform: scale(0.4); transition: opacity var(--dur-rapide), transform var(--dur-rapide); }
+.nav-more.dot::before { opacity: 1; transform: none; }
 .me .packs, .me .coin-btn, .me .pt-cnt, .coin-btn { background: none; border-color: var(--gm-line-2); box-shadow: none; }
 .me .packs:hover, .coin-btn:hover { background: rgba(255, 255, 255, 0.04); border-color: #fff; }
 .me .packs.full { border-color: #fff; }
@@ -193,6 +199,9 @@ select, textarea { border-radius: var(--gm-r); }
 .msn-t { font: 500 13px/1.35 var(--mono); }
 .msn-bonus { border-radius: var(--r-ctl); }
 .msn-bonus.ready { background: rgba(255, 255, 255, 0.05); border-color: #fff; }
+/* (patch v2.1.30, QOL H) « Tout récupérer » en tête du panneau */
+.msn-all { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--gm-line-2); border-radius: var(--r-ctl); font: 400 12px/1.4 var(--mono); color: var(--ink-2); }
+.msn-all .btn-primary { flex: none; padding: 6px 14px; font-size: 12px; }
 .msn-head .pop-x { border-radius: var(--r-ctl); }
 
 /* ───────────── SUGGESTIONS */
@@ -239,6 +248,28 @@ select, textarea { border-radius: var(--gm-r); }
 .album { border-radius: var(--gm-r); background: var(--gm-fill); border-color: var(--gm-line); }
 .album:not(:disabled):hover { transform: none; border-color: var(--gm-line-2); box-shadow: none; }
 .al-fam-n, .al-soon { border-radius: var(--r-ctl); }
+/* (patch v2.1.30, QOL 1-2-3) recherche tous thèmes groupée par thème, rangées Épinglés / Récents, ★ sur la pochette */
+.al-grid.searching { display: block; }
+.al-ths, .al-quick { margin: 0 0 22px; }
+.al-th { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--gm-line); }
+.al-th b { font: 600 15px var(--title); color: #fff; }
+.al-th span { font: 400 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.al-row { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 4px; scrollbar-width: none; }
+.al-row .album { flex: 0 0 132px; scroll-snap-align: start; content-visibility: visible; }
+.collection .grid.al-cards { margin-top: 12px; }
+.al-moreal, .al-allcards { display: block; margin: 10px 0 0; border-radius: var(--r-pill); }
+.al-star { position: absolute; top: 6px; right: 6px; z-index: 1; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 13px; line-height: 1; opacity: 0.7; transition: opacity var(--dur-rapide), background var(--dur-rapide), color var(--dur-rapide); }
+.al-star::after { content: ''; position: absolute; inset: -8px; }
+/* la ★ prend le coin haut droit de la pochette : le 📌 (couverture choisie) passe à gauche */
+.album .al-pin { right: auto; left: 6px; }
+@media (max-width: 600px) { .album .al-pin { right: auto; left: 1px; } }
+.al-star.on { opacity: 1; background: #fff; color: #000; border-color: #fff; }
+@media (hover: hover) { .al-star:hover { opacity: 1; } }
+.view.collection .v-actions .va-album { order: 5; } /* même rangée que « Je la veux » : pas de rangée de plus sur la carte */
+.cards-sub.to-album { cursor: pointer; }
+.cards-alb .cards-sub.to-album span::after, .cards-sub.cards-cat-sub.to-album small::after { content: ' ›'; color: var(--ink-3); }
+@media (hover: hover) { .cards-sub.to-album:hover span, .cards-sub.cards-cat-sub.to-album:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; } }
+.cards-sub.to-album:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
 .al-name { font: 600 14px var(--title); }
 .bd-card { background-color: var(--gm-fill); }
 .cards-bar, .tray { border-color: var(--gm-line-2); box-shadow: none; }

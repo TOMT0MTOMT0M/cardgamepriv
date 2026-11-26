@@ -165,6 +165,45 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     }
   };
 
+  // (patch v2.1.30, QOL 3) albums récents (les 5 derniers ouverts) et épinglés (★ sur la pochette) : gardés dans ce
+  // navigateur seulement (rien dans Convex)
+  const RECENT_KEY = 'bebou.coll.recents.v1';
+  const PINS_KEY = 'bebou.coll.pins.v1';
+  const RECENT_MAX = 5;
+  const PINS_MAX = 12;
+  const readIds = (k: string): string[] => {
+    try {
+      const v: unknown = JSON.parse(localStorage.getItem(k) ?? '[]');
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, PINS_MAX) : [];
+    } catch {
+      return [];
+    }
+  };
+  const writeIds = (k: string, ids: string[]) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(ids));
+    } catch {
+      /* stockage plein ou bloqué : gardé pour cette visite seulement */
+    }
+  };
+  let recents = readIds(RECENT_KEY);
+  let pins = readIds(PINS_KEY);
+  const noteRecent = (id: string) => {
+    if (recents[0] === id) return;
+    recents = [id, ...recents.filter((x) => x !== id)].slice(0, RECENT_MAX);
+    writeIds(RECENT_KEY, recents);
+  };
+  const togglePin = (id: string) => {
+    const on = pins.includes(id);
+    if (!on && pins.length >= PINS_MAX) return void toast(tr('coll.pinsMax', { n: PINS_MAX }), 'info');
+    pins = on ? pins.filter((x) => x !== id) : [id, ...pins];
+    writeIds(PINS_KEY, pins);
+    haptics.pulse(8);
+    shell.sfx.tick(on ? 0.9 : 1.3, 0.05);
+    albumKey = '';
+    render();
+  };
+
   el.innerHTML = `
     <div class="coll-head">
       <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="${tr('coll.viewAria')}"><button role="tab" data-v="cards">${tr('coll.cards')}</button><button role="tab" data-v="albums">${tr('coll.albums')}</button><button role="tab" data-v="binders">${tr('coll.binders')}</button><button role="tab" data-v="forge">${tr('coll.forge')}</button><button role="tab" data-v="contrats">${tr('coll.contracts')}</button></div></div>
@@ -596,6 +635,17 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     render();
     toTop();
   }
+  /** (patch v2.1.30, QOL 1-2) ouvre un album de n'importe quel thème (recherche, visionneuse, intertitre, récents) */
+  function openAlbum(id: string) {
+    const st = subthemeById(id);
+    if (!st || !st.cards.length) return;
+    const t = ALL_THEMES.find((x) => x.id === st.themeId);
+    if (t) theme = t;
+    famId = st.group?.id ?? null;
+    star = null;
+    shell.sfx.tick(1.2, 0.04);
+    goGrid(id);
+  }
   function goBinders() {
     mode = 'binders';
     binderId = null;
@@ -620,18 +670,32 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     toTop();
   }
 
+  let tabCountFor: Map<string, PlayerCard> | null = null;
+  const tabCount = new Map<string, number>();
   function renderTabs(mine: Map<string, PlayerCard>) {
     tabs.innerHTML = '';
+    // (patch v2.1.30) comptes par thème gardés tant que la collection ne change pas (≈ 40 000 cartes par rendu, donc
+    // par frappe dans la recherche)
+    if (tabCountFor !== mine) {
+      tabCountFor = mine;
+      tabCount.clear();
+    }
     for (const t of ALL_THEMES) {
       // (audit 12/11, A4-03) compté sans tableau intermédiaire (≈ 37 000 cartes par rendu)
-      let n = 0;
-      for (const c of t.cards) if (mine.has(c.id)) n++;
+      let n = tabCount.get(t.id);
+      if (n === undefined) {
+        n = 0;
+        for (const c of t.cards) if (mine.has(c.id)) n++;
+        tabCount.set(t.id, n);
+      }
       const on = (mode === 'albums' || mode === 'grid') && t === theme;
       const b = h('button', `tab${on ? ' on' : ''}${t.secret ? ' secret' : ''}${t.cards.length ? '' : ' soon'}`, `${esc(t.label)} <span>${t.cards.length ? `${fmtN(n)}/${fmtN(t.cards.length)}` : tr('common.soon')}</span>`);
       b.addEventListener('click', () => {
         theme = t;
         star = null;
         famId = null;
+        alSearch.value = '';
+        albumQuery = '';
         // les Bébous : 8 cartes, pas d'albums → directement la grille
         if (t.secret) {
           mode = 'grid';
@@ -746,6 +810,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (!coverMemo.has(s.id)) coverMemo.set(s.id, coverOf(s, mine));
     return coverMemo.get(s.id)!;
   };
+  const pinHtml = (s: SubTheme) => {
+    const on = pins.includes(s.id);
+    return `<span class="al-star${on ? ' on' : ''}" role="button" tabindex="0" aria-pressed="${on}" aria-label="${tr(on ? 'coll.unpinA' : 'coll.pinA', { name: esc(s.label) })}" title="${tr(on ? 'coll.unpinAlbum' : 'coll.pinAlbum')}">${on ? '★' : '☆'}</span>`;
+  };
   function albumTile(s: SubTheme, mine: Map<string, PlayerCard>, showGrp: boolean): HTMLElement {
     const st = albumStat(s, mine);
     const soon = !s.cards.length;
@@ -758,7 +826,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         <span class="al-name">${esc(s.label)}</span>
         ${s.group && showGrp ? `<span class="al-grp">${esc(s.group.label)}</span>` : ''}
         <span class="al-n">${soon ? tr('coll.inPrep') : `${fmtN(st.have)} / ${fmtN(st.total)}`}</span>
-        <span class="al-bar"><i style="width:${Math.max(0, st.pct) * 100}%"></i></span>`;
+        <span class="al-bar"><i style="width:${Math.max(0, st.pct) * 100}%"></i></span>${soon ? '' : pinHtml(s)}`;
     a.disabled = soon;
     a.title = soon ? tr('coll.soonOf', { label: s.label }) : tr('coll.albumOf', { label: s.label, have: fmtN(st.have), total: fmtN(st.total) });
     return a;
@@ -792,15 +860,175 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     more();
   }
   alGrid.addEventListener('click', (e) => {
-    const a = (e.target as HTMLElement).closest<HTMLButtonElement>('.album');
+    const tg = e.target as HTMLElement;
+    const pin = tg.closest<HTMLElement>('.al-star');
+    if (pin) {
+      e.stopPropagation();
+      const id = pin.closest<HTMLElement>('.album')?.dataset.sub;
+      if (id) togglePin(id);
+      return;
+    }
+    // recherche : cartes trouvées, « voir les N cartes », « + N albums »
+    if (tg.closest('.tile')) return clickTile(e, 'search');
+    const allC = tg.closest<HTMLElement>('.al-allcards');
+    if (allC) return seeAllCards(allC.dataset.th ?? '');
+    const moreA = tg.closest<HTMLElement>('.al-moreal');
+    if (moreA) return void moreA.dispatchEvent(new CustomEvent('more'));
+    const a = tg.closest<HTMLButtonElement>('.album');
     if (!a || a.disabled) return;
     if (a.dataset.fam) {
       famId = a.dataset.fam;
       shell.sfx.tick(1.2, 0.04);
       render();
       toTop();
-    } else if (a.dataset.sub) goGrid(a.dataset.sub);
+    } else if (a.dataset.sub) openAlbum(a.dataset.sub);
   });
+  alGrid.addEventListener('keydown', (e) => {
+    const pin = (e.target as HTMLElement).closest<HTMLElement>('.al-star');
+    if (!pin || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = pin.closest<HTMLElement>('.album')?.dataset.sub;
+    if (id) togglePin(id);
+  });
+  /** « Voir les N cartes » d'un thème : la vue Cartes, filtrée sur ce thème et la même recherche */
+  function seeAllCards(th: string) {
+    const inp = q<HTMLInputElement>('.cb-search');
+    inp.value = alSearch.value.trim();
+    cQuery = fold(inp.value);
+    cTheme = th;
+    cStar = null;
+    cDups = false;
+    goCards();
+  }
+
+  // (patch v2.1.30, QOL 1) RECHERCHE UNIQUE : albums des 5 thèmes (nom, famille, ou une carte dedans) + noms de cartes,
+  // groupés par thème. Index des noms repliés fait une fois (≈ 40 000 cartes), puis un seul passage par frappe.
+  const SEARCH_ALBUMS = 8;
+  const SEARCH_CARDS = 12;
+  let nameIdx: Array<{ e: CatalogEntry; n: string }> | null = null;
+  const buildIdx = () =>
+    (nameIdx ??= ALL_THEMES.filter((t) => !t.secret)
+      .flatMap((t) => t.cards)
+      .filter((e) => e.rarity !== 'secret')
+      .map((e) => ({ e, n: fold(e.name) })));
+  let collator: Intl.Collator | null = null;
+  let collatorLang = '';
+  const coll = () => (collatorLang === locale() && collator ? collator : ((collatorLang = locale()), (collator = new Intl.Collator(collatorLang))));
+  const subFold = new Map<string, string>();
+  const foldSub = (s: SubTheme) => {
+    let v = subFold.get(s.id);
+    if (v === undefined) subFold.set(s.id, (v = `${fold(s.label)}\n${s.group ? fold(s.group.label) : ''}`));
+    return v;
+  };
+  let searchShown: CatalogEntry[] = [];
+  let searchGen = 0;
+  function renderSearch(mine: Map<string, PlayerCard>) {
+    const gen = ++searchGen;
+    const qq = albumQuery;
+    const cardsOn = qq.length >= 2 || /^\d+$/.test(qq);
+    const inSub = new Map<string, number>();
+    const cardsBy = new Map<string, CatalogEntry[]>();
+    if (cardsOn) {
+      for (const { e, n } of buildIdx()) {
+        if (!n.includes(qq)) continue;
+        inSub.set(e.subthemeId, (inSub.get(e.subthemeId) ?? 0) + 1);
+        let l = cardsBy.get(e.themeId);
+        if (!l) cardsBy.set(e.themeId, (l = []));
+        l.push(e);
+      }
+    }
+    // tri de chaque thème (rapide) ; les tuiles arrivent ensuite thème par thème, une image chacun, pour que la saisie
+    // au téléphone ne bloque pas (création des tuiles ≈ 6 ms par thème au processeur ×4)
+    const found: Array<{ t: ThemeInfo; subs: SubTheme[]; cards: CatalogEntry[] }> = [];
+    let nAlb = 0;
+    let nCards = 0;
+    for (const t of ALL_THEMES) {
+      if (t.secret) continue;
+      const subs = t.subthemes.filter((s) => s.cards.length && (foldSub(s).includes(qq) || inSub.has(s.id)));
+      const cards = cardsBy.get(t.id) ?? [];
+      if (!subs.length && !cards.length) continue;
+      nAlb += subs.length;
+      nCards += cards.length;
+      // albums : nom trouvé d'abord, puis ceux qui contiennent le plus de cartes trouvées (la progression n'est calculée
+      // que pour les 8 affichés)
+      const byName = (s: SubTheme) => (foldSub(s).includes(qq) ? 0 : 1);
+      subs.sort((a, b) => byName(a) - byName(b) || (inSub.get(b.id) ?? 0) - (inSub.get(a.id) ?? 0) || coll().compare(a.label, b.label));
+      // cartes : les miennes d'abord, les plus rares devant, puis A → Z
+      cards.sort((a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id)) || RANK[b.rarity] - RANK[a.rarity] || coll().compare(a.name, b.name));
+      found.push({ t, subs, cards });
+    }
+    q('.al-count').textContent = [plural(nAlb, 'album'), cardsOn ? plural(nCards, 'carte') : ''].filter(Boolean).join(' · ');
+    albumIo?.disconnect();
+    alGrid.replaceChildren();
+    alGrid.classList.remove('grouped');
+    alGrid.classList.add('searching');
+    searchShown = [];
+    if (!found.length) {
+      alGrid.append(h('div', 'empty', tr('coll.noSearchMatch', { q: esc(alSearch.value.trim()) })));
+      return;
+    }
+    const wish = wishSet();
+    const section = ({ t, subs, cards }: (typeof found)[number]) => {
+      const sec = h('section', 'al-ths');
+      sec.append(h('h3', 'al-th', `<b>${esc(t.label)}</b><span>${[subs.length ? plural(subs.length, 'album') : '', cards.length ? plural(cards.length, 'carte') : ''].filter(Boolean).join(' · ')}</span>`));
+      if (subs.length) {
+        const box = h('div', 'al-grid al-inner');
+        for (const s of subs.slice(0, SEARCH_ALBUMS)) box.append(albumTile(s, mine, true));
+        sec.append(box);
+        if (subs.length > SEARCH_ALBUMS) {
+          const more = h('button', 'btn-ghost al-moreal', tr('coll.moreAlbums', { n: fmtN(subs.length - SEARCH_ALBUMS) }));
+          more.addEventListener('more', () => {
+            more.remove();
+            fillAlbums(box, subs.slice(SEARCH_ALBUMS), mine, true);
+          });
+          sec.append(more);
+        }
+      }
+      if (cards.length) {
+        const g = h('div', 'grid al-cards');
+        const shown = cards.slice(0, SEARCH_CARDS);
+        for (const e of shown) g.append(tileFor(e, mine, wish));
+        searchShown.push(...shown);
+        sec.append(g);
+        preloadThumbs(shown.filter((e) => mine.has(e.id)), true);
+        if (cards.length > SEARCH_CARDS) {
+          const all = h('button', 'btn-ghost al-allcards', tr('coll.allCards', { n: fmtN(cards.length) }));
+          all.dataset.th = t.id;
+          sec.append(all);
+        }
+      }
+      alGrid.append(sec);
+    };
+    section(found[0]);
+    let k = 1;
+    const next = () => {
+      if (gen !== searchGen || !alGrid.isConnected || k >= found.length) return;
+      section(found[k++]);
+      requestAnimationFrame(next);
+    };
+    requestAnimationFrame(next);
+  }
+  /** (patch v2.1.30, QOL 3) épinglés puis récents, en tête de la vue Albums (niveau des familles) */
+  function quickRow(mine: Map<string, PlayerCard>): DocumentFragment {
+    const frag = document.createDocumentFragment();
+    const ok = (id: string) => {
+      const s = subthemeById(id);
+      return s && s.cards.length && !s.themeId.startsWith('bebous') ? s : null;
+    };
+    const pinned = pins.map(ok).filter((s): s is SubTheme => !!s);
+    const recent = recents.filter((id) => !pins.includes(id)).map(ok).filter((s): s is SubTheme => !!s);
+    for (const [label, list] of [[tr('coll.pinnedAlbums'), pinned], [tr('coll.recentAlbums'), recent]] as const) {
+      if (!list.length) continue;
+      const sec = h('section', 'al-quick');
+      sec.append(h('h3', 'al-th', `<b>${label}</b>`));
+      const row = h('div', 'al-row');
+      for (const s of list) row.append(albumTile(s, mine, true));
+      sec.append(row);
+      frag.append(sec);
+    }
+    return frag;
+  }
   /** Tuile d'une FAMILLE (groupe d'albums) : la meilleure carte de la famille, ses sous-familles, sa progression. */
   function familyTile(v: SubthemeView, mine: Map<string, PlayerCard>): HTMLElement {
     let have = 0, total = 0;
@@ -833,14 +1061,19 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (sig !== albumMemoSig) ((albumMemoSig = sig), statMemo.clear(), coverMemo.clear());
     if (cSig !== coverMemoSig) ((coverMemoSig = cSig), coverMemo.clear());
     const opened = openGroups.get(theme.id);
-    const key = `${theme.id}|${famId ?? '*'}|${albumSort}|${albumQuery}|${sig}|${cSig}|${opened ? [...opened].join(',') : '-'}`;
+    const key = `${theme.id}|${famId ?? '*'}|${albumSort}|${albumQuery}|${sig}|${cSig}|${opened ? [...opened].join(',') : '-'}|${pins.join(',')}|${recents.join(',')}|${albumQuery ? backend.state.wishlist.length : ''}`;
     // rien n'a changé (une envie, un retour de la visionneuse…) : on garde la mosaïque telle quelle
     if (key === albumKey && alGrid.childElementCount) return;
     albumKey = key;
     // (retours 05/11) sans recherche ni famille ouverte : le niveau des FAMILLES (les sous-thèmes sans groupe restent
     // des albums à part entière, mêlés aux familles)
-    el.querySelector<HTMLElement>('.al-sort [data-s="group"]')!.hidden = !albumQuery;
-    if (!albumQuery && !famId) {
+    // (patch v2.1.30) « Par groupe » servait à chercher dans un thème : la recherche couvre maintenant les 5 thèmes
+    el.querySelector<HTMLElement>('.al-sort [data-s="group"]')!.hidden = true;
+    q('.al-sort').hidden = !!albumQuery;
+    alGrid.classList.remove('searching');
+    if (albumQuery) return renderSearch(mine);
+    if (!nameIdx) (window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 300)))(() => void buildIdx());
+    if (!famId) {
       const views = subthemeViews(theme).filter((v) => v.cards.length || !v.group);
       const stv = (v: SubthemeView) => {
         let have = 0, total = 0;
@@ -863,7 +1096,13 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       alGrid.replaceChildren();
       alGrid.classList.remove('grouped');
       const frag = document.createDocumentFragment();
-      for (const v of sorted) frag.append(v.group ? familyTile(v, mine) : albumTile(v.subs[0], mine, false));
+      const quick = quickRow(mine);
+      if (quick.childNodes.length) {
+        alGrid.classList.add('searching');
+        const box = h('div', 'al-grid al-inner');
+        for (const v of sorted) box.append(v.group ? familyTile(v, mine) : albumTile(v.subs[0], mine, false));
+        frag.append(quick, h('h3', 'al-th', `<b>${esc(theme.label)}</b><span>${plural(views.length, 'famille')}</span>`), box);
+      } else for (const v of sorted) frag.append(v.group ? familyTile(v, mine) : albumTile(v.subs[0], mine, false));
       alGrid.append(frag);
       return;
     }
@@ -1084,6 +1323,17 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     out.sort((a, b) => (THEME_ORDER.get(a.themeId) ?? 9) - (THEME_ORDER.get(b.themeId) ?? 9) || subLabel(a).localeCompare(subLabel(b), locale()) || a.num - b.num);
     return { list: out, more };
   }
+  /** (patch v2.1.30, QOL 2) l'intertitre d'album de la vue Cartes ouvre l'album */
+  function subHead(hd: HTMLElement, e: CatalogEntry): HTMLElement {
+    const st = subthemeById(e.subthemeId);
+    if (!st || !st.cards.length || e.themeId.startsWith('bebous')) return hd;
+    hd.dataset.sub = st.id;
+    hd.classList.add('to-album');
+    hd.setAttribute('role', 'link');
+    hd.tabIndex = 0;
+    hd.title = tr('coll.openAlbum', { name: st.label });
+    return hd;
+  }
   /** VUE CARTES (défaut, retours live n°1) : toutes mes cartes, les plus rares en haut ; tri, étoile, thème, recherche. */
   function renderCards(mine: Map<string, PlayerCard>) {
     q('.cb-theme').querySelectorAll<HTMLButtonElement>('button').forEach((b) => setOn(b, b.dataset.th === cTheme));
@@ -1133,7 +1383,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         const blk = h('div', 'cards-alb');
         blk.style.setProperty('--n', String(Math.min(n, cols)));
         const e0 = slice[i];
-        blk.append(h('h4', 'cards-sub', `<span>${esc(subLabel(e0))}</span><small>${esc(themeById(e0.themeId)?.label ?? '')} · ${n}</small>`));
+        blk.append(subHead(h('h4', 'cards-sub', `<span>${esc(subLabel(e0))}</span><small>${esc(themeById(e0.themeId)?.label ?? '')} · ${n}</small>`), e0));
         for (const e of slice.slice(i, j)) blk.append(tile(e));
         frag.append(blk);
         i = j;
@@ -1152,7 +1402,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       for (const e of cat.list) {
         if (e.subthemeId !== lastCat) {
           lastCat = e.subthemeId;
-          frag.append(h('h4', 'cards-sub cards-cat-sub', `${esc(subLabel(e))}<small>${esc(themeById(e.themeId)?.label ?? '')}</small>`));
+          frag.append(subHead(h('h4', 'cards-sub cards-cat-sub', `${esc(subLabel(e))}<small>${esc(themeById(e.themeId)?.label ?? '')}</small>`), e));
         }
         frag.append(tileFor(e, mine, wish));
       }
@@ -1537,6 +1787,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     fActive.hidden = true;
     bindersView.hidden = !inBinders;
     forgeHost.hidden = mode !== 'forge';
+    if (inGrid && subId && !theme.secret) noteRecent(subId);
     const famLabel = famId ? SUBTHEMES.find((s) => s.group?.id === famId)?.group?.label ?? '' : '';
     crumb.hidden = !((inGrid && !theme.secret) || mode === 'binder' || (inAlbums && !!famId && !albumQuery));
     if (inAlbums && famId) {
@@ -1546,7 +1797,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       // (retours 05/11) un album d'une famille revient à sa famille (« ‹ Pokémon »), sinon aux familles du thème
       const g = subId ? subthemeById(subId)?.group : undefined;
       if (g) famId = g.id;
-      q('.crumb-back').textContent = g ? `‹ ${g.label}` : `‹ Albums ${theme.label}`;
+      q('.crumb-back').textContent = albumQuery ? `‹ ${tr('coll.backSearch')}` : g ? `‹ ${g.label}` : `‹ Albums ${theme.label}`;
       q('.crumb-name').textContent = subId ? (subthemeById(subId)?.label ?? '') : tr('coll.allOf', { label: theme.label });
     } else if (mode === 'binder') {
       q('.crumb-back').textContent = '‹ Classeurs';
@@ -1582,7 +1833,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   // ── carte focus (visionneuse 3D) + actions
   let browse: Array<{ id: string; r: RarityId }> = [];
   let at = -1;
-  const clickTile = (ev: Event, from: 'grid' | 'binder') => {
+  const clickTile = (ev: Event, from: 'grid' | 'binder' | 'search') => {
+    const sh = (ev.target as HTMLElement).closest<HTMLElement>('.cards-sub[data-sub]');
+    if (sh) return openAlbum(sh.dataset.sub!);
     const miss = (ev.target as HTMLElement).closest<HTMLElement>('.tile.missing');
     if (miss) {
       if ((ev.target as HTMLElement).closest('.wish-btn')) return;
@@ -1598,7 +1851,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     if (from === 'binder' && binderEdit) return;
     shell.requestGyro();
     const mine = owned();
-    if (from === 'grid') browse = shownList.filter((e) => mine.has(e.id)).map((e) => ({ id: e.id, r: e.rarity as RarityId }));
+    if (from === 'search') browse = searchShown.filter((e) => mine.has(e.id)).map((e) => ({ id: e.id, r: e.rarity as RarityId }));
+    else if (from === 'grid') browse = shownList.filter((e) => mine.has(e.id)).map((e) => ({ id: e.id, r: e.rarity as RarityId }));
     else {
       const b = backend.state.binders.find((x) => x.id === binderId);
       browse = (b?.cards ?? []).filter((c) => mine.has(c.cardId)).map((c) => ({ id: c.cardId, r: c.rarity }));
@@ -1606,6 +1860,12 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     void openCard(browse.findIndex((b) => b.id === t.dataset.card && b.r === t.dataset.rarity));
   };
   grid.addEventListener('click', (ev) => clickTile(ev, 'grid'));
+  grid.addEventListener('keydown', (ev) => {
+    const sh = (ev.target as HTMLElement).closest<HTMLElement>('.cards-sub[data-sub]');
+    if (!sh || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    openAlbum(sh.dataset.sub!);
+  });
   bindersView.addEventListener('click', (ev) => clickTile(ev, 'binder'));
 
   function renderActions(b: { id: string; r: RarityId }) {
@@ -1620,6 +1880,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     vActions.innerHTML = `
       <button class="va va-binder${inBinders ? ' on' : ''}" title="${tr('coll.toBinder')}" aria-label="${tr('coll.toBinderX', { x: inBinders ? tr('coll.alreadyIn', { n: inBinders }) : '' })}">▤ <span>${inBinders ? `Classeur ×${inBinders}` : '+ Classeur'}</span></button>
       ${st && !e?.themeId.startsWith('bebous') ? `<button class="va va-cover${isCover ? ' on' : ''}" title="${isCover ? tr('coll.coverStop') : tr('coll.albumCoverMake', { name: esc(st.label) })}" aria-label="${isCover ? tr('coll.albumCoverOff', { name: esc(st.label) }) : tr('coll.albumCoverMake', { name: esc(st.label) })}" aria-pressed="${isCover}">📌 <span>${isCover ? 'Couverture ✓' : tr('coll.cover')}</span></button>` : ''}
+      ${st && st.cards.length && !e?.themeId.startsWith('bebous') && !(mode === 'grid' && subId === st.id) ? `<button class="va va-album" title="${tr('coll.openAlbum', { name: esc(st.label) })}">▦ <span>${tr('coll.seeAlbum')}</span></button>` : ''}
       ${have?.firstPulledAt ? `<span class="va-date">${tr('coll.gotOn', { date: fmtDate(have.firstPulledAt) })}</span>` : ''}`;
     // (07/11) signalement d'image en un geste (ui.ts imageReportButton) — avant la date d'obtention
     const vaDate = vActions.querySelector('.va-date');
@@ -1627,6 +1888,11 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     else vActions.append(imageReportButton(backend, b.id, 'collection/carte'));
     vActions.prepend(panelStrip(backend, b.id, b.r), ...gestureButtons(backend, b.id, b.r, 'va', () => renderActions(b)));
     vActions.querySelector('.va-binder')!.addEventListener('click', () => showBinderPick(b));
+    vActions.querySelector('.va-album')?.addEventListener('click', () => {
+      if (!st) return;
+      closeViewer();
+      openAlbum(st.id);
+    });
     vActions.querySelector('.va-cover')?.addEventListener('click', async () => {
       if (!st) return;
       try {

@@ -89,6 +89,16 @@ export function createMissions(backend: GameBackend, shell: Shell) {
     }
     const allClaimed = s.list.every((m) => m.claimed);
     pop.insertAdjacentHTML('beforeend', `<div class="msn-head"><b>${tr('hdr.missions')}</b><span>${tr('msn.newIn', { time: fmtDelay(s.resetAt - Date.now()) })}</span>${CLOSE_X()}</div>`);
+    // (patch v2.1.30, QOL H) « Tout récupérer » dès que 2 récompenses ou plus attendent (jour + bonus + semaine)
+    const n = claimableCount();
+    if (n >= 2 || claimingAll) {
+      const all = h('div', 'msn-all');
+      all.innerHTML = `<span>${tr('msn.allReady', { n })}</span><button class="btn-primary msn-all-b">${tr('msn.claimAll')}</button>`;
+      const b = all.querySelector<HTMLButtonElement>('.msn-all-b')!;
+      if (claimingAll) b.disabled = true;
+      b.addEventListener('click', () => void claimAll(b));
+      pop.append(all);
+    }
     for (const m of s.list) pop.append(row(m, s.rerolled));
     const bonus = h('div', `msn-bonus${allClaimed ? ' ready' : ''}${s.bonusClaimed ? ' claimed' : ''}`);
     bonus.innerHTML = s.bonusClaimed
@@ -132,6 +142,71 @@ export function createMissions(backend: GameBackend, shell: Shell) {
       }
     });
     return r;
+  }
+
+  /** récompenses à réclamer tout de suite : missions du jour finies, bonus (si les 3 le seront), missions de la semaine */
+  function claimableCount() {
+    const s = backend.state.missions;
+    const w = backend.eco.snapshot?.weekly;
+    let n = 0;
+    if (s) {
+      n += s.list.filter((m) => !m.claimed && m.progress >= m.target).length;
+      if (!s.bonusClaimed && s.list.every((m) => m.claimed || m.progress >= m.target)) n++;
+    }
+    if (w) n += w.list.filter((m) => !m.claimed && m.progress >= m.target).length;
+    return n;
+  }
+  /** enchaîne les réclamations existantes (une à une, comme les boutons), puis un seul toast récapitulatif */
+  let claimingAll = false;
+  async function claimAll(btn: HTMLButtonElement) {
+    if (claimingAll) return;
+    claimingAll = true;
+    let packs = 0;
+    let coins = 0;
+    let failed: unknown = null;
+    const run = async () => {
+      const s = backend.state.missions;
+      if (s) {
+        const daily = s.list.filter((m) => !m.claimed && m.progress >= m.target);
+        const got = new Set<string>();
+        for (const m of daily) {
+          try {
+            packs += await backend.claimMission(m.id);
+            coins += dailyMissionCoins(m);
+            got.add(m.id);
+          } catch (e) {
+            failed ??= e;
+          }
+        }
+        if (!s.bonusClaimed && s.list.every((m) => m.claimed || got.has(m.id))) {
+          try {
+            packs += await backend.claimMissionBonus();
+          } catch (e) {
+            failed ??= e;
+          }
+        }
+      }
+      const w = backend.eco.snapshot?.weekly;
+      for (const m of w?.list.filter((x) => !x.claimed && x.progress >= x.target) ?? []) {
+        try {
+          coins += await backend.eco.claimWeekly(m.id);
+        } catch (e) {
+          failed ??= e;
+        }
+      }
+    };
+    try {
+      await busyButton(btn, run());
+    } finally {
+      claimingAll = false;
+    }
+    if (packs || coins) {
+      shell.sfx.chime(4, 0.1);
+      const parts = [packs ? `+${plural(packs, 'booster')}` : '', coins ? `+${fmtCoins(coins)} ${tr('msn.coinsWord')}` : ''].filter(Boolean);
+      toast(tr('msn.allToast', { what: parts.join(' · ') }), 'ok');
+    }
+    if (failed) toast(errMsg(failed), 'err');
+    render();
   }
 
   const close = () => toggle(false);
