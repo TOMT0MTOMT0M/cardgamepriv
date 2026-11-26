@@ -28,7 +28,7 @@ test('série : preparePacks scelle tout d’un coup, revealPacks crédite en un 
   const u = await t.run((ctx) => ctx.db.get(userId));
   expect(u!.totalPacksOpened).toBe(4);
   expect(u!.packBalance).toBe(0);
-  const inv = await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+  const inv = await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', userId)).collect());
   expect(inv.reduce((a, c) => a + c.count, 0)).toBe(20);
   await expect(t.mutation(api.packs.preparePacks, { sessionToken: token, packKind: 'bebou', count: 3 })).rejects.toThrow(/⟦(packs\.2)[⟧{]/);
 });

@@ -9,6 +9,7 @@ import { internal } from './_generated/api';
 import schema from './schema';
 import { countReads } from './reads.testlib';
 import * as migrations from './migrations';
+import { invOf } from './inventory';
 import { ETOILES_REMAP } from '../src/core/sets/etoiles';
 import { catalogEntry, THEMES } from '../src/core/sets/themes';
 
@@ -106,6 +107,22 @@ describe('coût des mises en ligne', () => {
     expect(await t.mutation(internal.migrations.purgeOld, { part: 'feed' })).toMatchObject({ deleted: 0, done: true });
   });
 
+  test('invOf (v2.1.24) : toute la collection, dans l’ordre de création comme l’ancien index `by_user`', async () => {
+    const t = convexTest(schema, modules);
+    const ids = ['zz-derniere', 'aa-premiere', 'mm-milieu', 'bb-autre'];
+    const [u, other] = await t.run(async (ctx) => {
+      const mk = (n: string) => ctx.db.insert('users', { discordId: n, username: n, displayName: n, packBalance: 0, lastDailyClaimAt: 0, totalPacksOpened: 0, lastSeenAt: 0 } as never);
+      const a = await mk('a');
+      const b = await mk('b');
+      for (const id of ids) await ctx.db.insert('inventory', row(a, id, 'common'));
+      await ctx.db.insert('inventory', row(b, 'aa-premiere', 'common'));
+      return [a, b];
+    });
+    const got = await t.run(async (ctx) => (await invOf(ctx, u)).map((r) => r.cardId));
+    expect(got).toEqual(ids);
+    expect(await t.run(async (ctx) => (await invOf(ctx, other)).length)).toBe(1);
+  });
+
   test('resyncRarities : étoile corrigée = ligne supprimée (trace avec `born`) puis recréée', async () => {
     vi.useFakeTimers();
     const t = convexTest(schema, modules);
@@ -118,7 +135,7 @@ describe('coût des mises en ligne', () => {
     await t.mutation(internal.migrations.resyncRarities, { force: true });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     await t.run(async (ctx) => {
-      const inv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u)).collect();
+      const inv = await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', u)).collect();
       expect(inv.map((x) => [x.cardId, x.rarity, x.count])).toEqual([[card.id, catalogEntry(card.id)!.rarity, 1]]);
       const gone = await ctx.db.query('invGone').collect();
       expect(gone.map((g) => [g.cardId, g.rarity])).toEqual([[card.id, 'common']]);

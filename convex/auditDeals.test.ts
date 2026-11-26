@@ -40,7 +40,8 @@ async function setup() {
   return { t, ids, slice };
 }
 const dups = async (t: Awaited<ReturnType<typeof setup>>['t'], userId: Id<'users'>) =>
-  (await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect())).filter((r) => r.count > 1).sort((a, b) => b.count - a.count).map((r) => ({ cardId: r.cardId, rarity: r.rarity, count: r.count }));
+  // (v2.1.24) ordre de création, comme l'ancien index `by_user` (et `invOf` côté serveur)
+  (await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', userId)).collect())).sort((a, b) => a._creationTime - b._creationTime).filter((r) => r.count > 1).sort((a, b) => b.count - a.count).map((r) => ({ cardId: r.cardId, rarity: r.rarity, count: r.count }));
 
 describe('décision 10 — « Pour toi » et fiche carte', () => {
   test('mêmes suggestions qu’avant, lectures allégées', async () => {

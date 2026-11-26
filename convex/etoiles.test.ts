@@ -40,7 +40,7 @@ describe('base Etoiles', () => {
     await t.mutation(internal.migrations.remapCards, {});
     await t.mutation(internal.migrations.purgeCards, { force: true });
     await t.run(async (ctx) => {
-      const inv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u)).collect();
+      const inv = await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', u)).collect();
       expect(inv.map((x) => [x.cardId, x.count, x.bestMintNumber])).toEqual([['spt-hulk-hogan', 3, 3]]);
       const user = await ctx.db.get(u);
       expect((user as { showcase: { cardId: string }[] }).showcase.map((c) => c.cardId)).toEqual(['spt-hulk-hogan']);
@@ -61,7 +61,7 @@ describe('base Etoiles', () => {
     });
     await t.mutation(internal.migrations.purgeCards, { force: true });
     await t.run(async (ctx) => {
-      expect((await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u)).collect()).length).toBe(1);
+      expect((await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', u)).collect()).length).toBe(1);
     });
   });
 });

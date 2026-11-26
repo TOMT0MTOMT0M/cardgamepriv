@@ -35,7 +35,7 @@ const give = (t: Awaited<ReturnType<typeof setup>>['t'], userId: Id<'users'>, ca
   });
 
 const coins = (t: Awaited<ReturnType<typeof setup>>['t'], userId: Id<'users'>) => t.run(async (ctx) => (await ctx.db.get(userId))!.coins ?? 0);
-const inv = (t: Awaited<ReturnType<typeof setup>>['t'], userId: Id<'users'>) => t.run(async (ctx) => ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+const inv = (t: Awaited<ReturnType<typeof setup>>['t'], userId: Id<'users'>) => t.run(async (ctx) => ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', userId)).collect());
 
 afterEach(() => vi.restoreAllMocks());
 

@@ -56,7 +56,7 @@ describe('S07 — collections relues en entier', () => {
     const { reads } = await countReads(t as never, economy.burn, { sessionToken: ids[0].token, items });
     console.log(`[mesure S07] forge, 4 cartes brûlées sur une collection de 100 : ${reads.scanned.inventory} lignes d'inventaire lues`);
     expect(reads.scanned.inventory).toBe(4);
-    const rows = await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', ids[0].userId)).collect());
+    const rows = await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', ids[0].userId)).collect());
     expect(rows.filter((r) => r.count === 2)).toHaveLength(4);
     // jamais le dernier exemplaire
     await expect(t.mutation(api.economy.burn, { sessionToken: ids[0].token, items: [{ ...items[0], count: 2 }] })).rejects.toThrow();
@@ -84,12 +84,12 @@ describe('S07 — collections relues en entier', () => {
     const commons = THEMES.flatMap((x) => x.cards).filter((c) => c.rarity === 'common');
     const target = contractTarget('common')!;
     await t.run(async (ctx) => {
-      for (const r of await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect()) await ctx.db.delete(r._id);
+      for (const r of await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', userId)).collect()) await ctx.db.delete(r._id);
       // des doublons communs à brûler, et TOUTES les cartes de la rareté visée déjà possédées
       for (const c of commons.slice(0, 12)) await ctx.db.insert('inventory', { userId, cardId: c.id, rarity: 'common', count: 9, bestMintNumber: 1, foilSeed: 1, firstPulledAt: 1, lastPulledAt: 1 });
       for (const c of THEMES.flatMap((x) => x.cards).filter((c) => c.rarity === target)) await ctx.db.insert('inventory', { userId, cardId: c.id, rarity: target as never, count: 1, bestMintNumber: 1, foilSeed: 1, firstPulledAt: 1, lastPulledAt: 1 });
     });
-    const total = await t.run(async (ctx) => (await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect()).length);
+    const total = await t.run(async (ctx) => (await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', userId)).collect()).length);
     let need = CONTRACT_COST.common ?? 0;
     const items = commons.slice(0, 12).map((c) => ({ cardId: c.id, count: 0 }));
     for (const it of items) {
@@ -102,7 +102,7 @@ describe('S07 — collections relues en entier', () => {
     const { reads } = await countReads(t as never, contracts.sign, { sessionToken: ids[0].token, rarity: 'common', items: used });
     console.log(`[mesure S07] contrat (${used.length} lignes brûlées, collection de ${total} lignes) : ${reads.scanned.inventory} lignes d'inventaire lues`);
     expect(reads.scanned.inventory).toBeLessThan(total / 2);
-    const after = await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect());
+    const after = await t.run((ctx) => ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', userId)).collect());
     expect(after.length).toBe(total); // aucune ligne en double : la carte reçue a rejoint sa ligne
     expect(after.filter((r) => r.rarity === target && r.count === 2)).toHaveLength(1);
   });

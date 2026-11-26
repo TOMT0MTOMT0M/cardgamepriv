@@ -252,7 +252,7 @@ export default defineSchema({
     revealedAt: v.optional(v.number()),
   })
     .index('by_user_status', ['userId', 'status'])
-    .index('by_userId', ['userId'])
+    // (v2.1.24, coût Convex) `by_userId` retiré : doublon de `by_user_status` (≈ 28 Mo de stockage)
     // (audit 12/11, A8-08) les boosters encore scellés, sans parcourir la table (convex/migrations.ts)
     .index('by_status', ['status']),
 
@@ -282,7 +282,8 @@ export default defineSchema({
      */
     rev: v.optional(v.number()),
   })
-    .index('by_user', ['userId'])
+    // (v2.1.24, coût Convex) `by_user` retiré : doublon de `by_user_card_rarity` (même préfixe ; collection entière :
+    // `invOf` dans convex/inventory.ts). Chaque index est une copie de la table (≈ 31 Mo) réécrite à chaque écriture.
     .index('by_user_card_rarity', ['userId', 'cardId', 'rarity'])
     .index('by_card_rarity', ['cardId', 'rarity'])
     .index('by_user_rev', ['userId', 'rev'])
