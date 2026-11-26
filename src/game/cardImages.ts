@@ -1,6 +1,6 @@
 import { lang } from '../core/i18n';
 import { onLang } from './lang';
-import { ensureCardFonts, gameDesignId, generateCardArtAsync, releaseCardImage } from '../core/art';
+import { cardImage, ensureCardFonts, gameDesignId, generateCardArtAsync, releaseCardImage } from '../core/art';
 import { FONT_VERSION } from '../core/fonts';
 import { canvasToBlob, loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
@@ -37,7 +37,7 @@ const SCALE = Math.max(0.36, Math.min(0.5, Math.ceil(((170 * Math.min(3, Math.ma
  * suivantes. ⚠️ Changer ce numéro quand le gabarit des cartes change (fullart.ts, bebou.ts, polices…) : les anciennes
  * images sont alors jetées. La clé contient aussi le nom, le numéro et la taille du sous-thème (« 025 / 1025 »).
  */
-const CACHE = 'bebou-cartes-v16'; // v16 (26/11) : 26 6★ très horizontales (30-45 %) en plein écran sur le visage · v15 (26/11) : 5★ et 6★ à visage connu en plein écran, photos jusqu'à 2,4 de large · v14 (26/11) : 6★ photo carrée à visage connu en plein écran centré sur le visage · v13 (14/11) : gabarit Suisse de retour sur les 5★ à photo horizontale, 5★ / 6★ peintes depuis l'image entière · v12 (10/11, retours Hugo) : 5★ toujours en pleine illustration, tuiles plus grandes · v11 (08/11) : visages recadrés (art/faceFocus.json) · v10 (07/11) : 6★ toujours en pleine illustration · v9 (retours live 6) : adresses d'images versionnées (?v=, clé = adresse de la miniature), même gabarit que la 3D (Merveilles), Suisse pour toutes les photos non portrait, zéro effet, sans emblème · v8 (07/11 soir) : full-art sans bordure, Suisse paysage sans filets (numéro noir, étoiles 6★ en alu) · v7 (07/11) : cartes horizontales au gabarit Suisse (labo 035) · v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
+const CACHE = 'bebou-cartes-v17'; // v17 (26/11, v2.1.29) : tuiles 6★ figées en silhouette après un drop (envoi Discord qui vidait l'image) jetées · v16 (26/11) : 26 6★ très horizontales (30-45 %) en plein écran sur le visage · v15 (26/11) : 5★ et 6★ à visage connu en plein écran, photos jusqu'à 2,4 de large · v14 (26/11) : 6★ photo carrée à visage connu en plein écran centré sur le visage · v13 (14/11) : gabarit Suisse de retour sur les 5★ à photo horizontale, 5★ / 6★ peintes depuis l'image entière · v12 (10/11, retours Hugo) : 5★ toujours en pleine illustration, tuiles plus grandes · v11 (08/11) : visages recadrés (art/faceFocus.json) · v10 (07/11) : 6★ toujours en pleine illustration · v9 (retours live 6) : adresses d'images versionnées (?v=, clé = adresse de la miniature), même gabarit que la 3D (Merveilles), Suisse pour toutes les photos non portrait, zéro effet, sans emblème · v8 (07/11 soir) : full-art sans bordure, Suisse paysage sans filets (numéro noir, étoiles 6★ en alu) · v7 (07/11) : cartes horizontales au gabarit Suisse (labo 035) · v6 (06/11 soir) : vignette « mini » (nom, étoiles, numéro), textes ≥ 30 px, Inter · v5 (06/11) : gabarit Paysage, familles inversées · v4 (05/11) : famille / sous-famille / artiste imprimés, polices Bold Frame — toutes les cartes repeintes
 // (bug du « placeholder fantôme » : une carte peinte en design typographique avant d'avoir son illustration restait
 // figée ainsi dans le cache du joueur, même après l'ajout de l'image)
 /**
@@ -215,8 +215,16 @@ export function tileFormats(): string {
 }
 async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnType<typeof cardById>, thumb: string | undefined): Promise<string | null> {
   // téléchargement (en parallèle des autres), puis la peinture elle-même quand le navigateur est libre
-  await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, { key: !(cd.photo || cd.cover) }).catch(() => undefined) : undefined]);
+  const key0 = { key: !(cd.photo || cd.cover) };
+  await Promise.all([ensureCardFonts(), thumb ? loadCardImage(thumb, key0).catch(() => undefined) : undefined]);
   await new Promise<void>((r) => idle(() => r()));
+  // (v2.1.29, « une 6★ tirée apparaît en placeholder dans la collection ») l'illustration a pu sortir du cache entre son
+  // chargement et la peinture (toile vidée : mémoire du téléphone, image partagée avec la 3D) → rechargée une fois ;
+  // toujours absente : la carte est peinte en silhouette d'attente pour cette visite, mais PAS rangée dans le cache
+  // persistant (elle y restait figée pour toujours, la clé ne changeant pas)
+  const artReady = () => !thumb || (cardImage(thumb)?.canvas.width ?? 0) > 0;
+  if (!artReady()) await loadCardImage(thumb!, key0).catch(() => undefined);
+  const withArt = artReady();
   // (retours live 6, B2) même gabarit que la carte 3D de la vue détail (gameDesignId), plus jamais un gabarit à part
   const design = gameDesignId(cd);
   // (mesure 07/11 : tâches de 316 ms sur Android) peinture découpée en étapes, la main rendue entre chacune
@@ -244,7 +252,7 @@ async function paintWith(key: string, id: string, rarity: RarityId, cd: ReturnTy
     c.height = 0;
   }
   if (!blob) return null;
-  void toCache(key, blob);
+  if (withArt && artReady()) void toCache(key, blob);
   return URL.createObjectURL(blob);
 }
 

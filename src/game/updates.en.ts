@@ -36,6 +36,13 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Card pictures and freshly pulled 6★', tag: 'corrigé',
+        points: [
+          '🖼️ Leo (Summoners War), Tinky Winky and the Coiffe Kitsou (Dofus) finally have their picture.',
+          '✨ A freshly pulled 6★ could stay stuck on the placeholder picture in your collection: it now shows its real picture. Cards already affected fix themselves.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'God pack in a ×5 or a ×10', tag: 'corrigé',
         points: [
           '✦ A God pack opened in a ×5 or a ×10 plays its “GOD PACK” sequence right before its cards, at the end of the big booster: it could play earlier, on ordinary cards. The cards you got were already the right ones.',
