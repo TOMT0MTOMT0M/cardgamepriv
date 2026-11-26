@@ -52,8 +52,9 @@ export const presenceOf = (ctx: QueryCtx | MutationCtx, userId: Id<'users'>) => 
  * Recopie la carte publique du joueur dans `presence` si elle a changé. `seenAt` : vu à cet instant (battement).
  * Joueur supprimé : sa ligne aussi. Table encore vide (avant la migration) : rien.
  */
-export async function syncPresence(ctx: MutationCtx, userId: Id<'users'>, seenAt = 0): Promise<void> {
-  const [u, row] = await Promise.all([ctx.db.get(userId), presenceOf(ctx, userId)]);
+export async function syncPresence(ctx: MutationCtx, userId: Id<'users'>, seenAt = 0, live?: Doc<'users'>): Promise<void> {
+  // (26/11, coût) `live` : le joueur déjà lu et tenu à jour par la mutation (convex/liveUser.ts), pas relu
+  const [u, row] = await Promise.all([live ?? ctx.db.get(userId), presenceOf(ctx, userId)]);
   if (!u) {
     if (row) await ctx.db.delete(row._id);
     return;
