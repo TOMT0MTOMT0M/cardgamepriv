@@ -17,8 +17,13 @@
 - Demain : `npx convex deployment usage` → jour complet attendu ≈ 0,4 GB (contre 1,6). Sinon, relire les journaux (`npx convex logs --history 1000 --jsonl --success`).
 - Plafond (alerte seulement) : `npx convex deployment usage-limits set --metric databaseIoGb --window day --type warning --limit 0.5`.
 
+## Seconde passe (26/11 soir, doc officielle et forum Convex uniquement)
+- Règles retenues → `.claude/rules/convex.md` (section « Coût ») ; mesure : `node scripts/cout-convex.mjs` (I/O par fonction, chaque semaine et avant / après chaque lot).
+- Doc « Limits » : chaque index est facturé comme une copie de la table. `inventory` 187 Mo = données (≈ 31 Mo) + 5 index ; `packOpens` 114 Mo = données + 3 index. v2.1.24 (tag `v2.1.24`, `40254a3` ; v2 `2753a6a`) retire `inventory.by_user` et `packOpens.by_userId`, doublons d'un index plus long (collection entière : `invOf`, même ordre). Attendu ≈ −60 Mo de stockage, −1/6 des écritures d'index d'inventaire. En ligne le 26/11 vers 20 h, sans erreur, MP « Hugo : envoyé ».
+- Invalidation par document (pas par champ) : toute écriture sur `users` relance chaque requête qui le lit → piste n°1 pour les boosters.
+
 ## Reste
-- [ ] Boosters = 1er poste (≈ 45 % du régime) : le document joueur (2,7 Ko) est relu et réécrit plusieurs fois par booster — mesurer, puis l'alléger.
-- [ ] `inventory` 187 Mo : 1 ligne par carte possédée (pas par exemplaire : 92,5 % à 1 exemplaire, 127 346 lignes, JSON 38 Mo), le reste = 5 index (+ versions ?). Index `by_user` redondant avec `by_user_card_rarity` (10 appels) : à retirer dans un lot à part (accord Tom).
+- [ ] Boosters = 1er poste (≈ 45 % du régime) : le document joueur (2,7 Ko) est relu et réécrit plusieurs fois par booster, et chaque écriture relance `session:get` / `myTrades` (≈ 130 et 75 fois/h). Session dédiée : mesurer (`scripts/cout-convex.mjs`), comparer avant d'écrire, sortir les champs qui bougent à chaque booster dans un document à part (comme `presence`).
+- [ ] Vérifier le stockage après v2.1.24 dans le tableau de bord (≈ 325 Mo attendus au lieu de 385).
 - [ ] Rétention `packOpens` à 7 j possible (aucun écran joueur) si le stockage approche 512 Mo.
 - [ ] Remplir le staging avec un petit jeu de test au lieu de `rafraichir-staging-v2.cmd`.
