@@ -20,16 +20,18 @@ const MODELE = process.env.LABO_MODEL || 'claude-fable-5-2';
 function stop(msg) { console.log(`\n${msg}\n`); process.exit(1); }
 
 // 1. La clé API des crédits (jamais affichée).
-function lireCle() {
+function lireVar(nom) {
   const f = path.join(racine, '.env.local');
   if (!existsSync(f)) return null;
   for (const ligne of readFileSync(f, 'utf8').split(/\r?\n/)) {
-    const m = ligne.match(/^\s*CLAUDE_LABO_API_KEY\s*=\s*"?([^"#\s]+)"?/);
+    const m = ligne.match(new RegExp(`^\\s*${nom}\\s*=\\s*"?([^"#\\s]+)"?`));
     if (m) return m[1];
   }
   return null;
 }
-const cle = lireCle();
+const cle = lireVar('CLAUDE_LABO_API_KEY');
+// Clé d'organisation (non liée à un espace de travail) : l'API demande l'ID de l'espace de travail.
+const espace = lireVar('CLAUDE_LABO_WORKSPACE_ID');
 if (!cle) stop('Pas de CLAUDE_LABO_API_KEY dans .env.local.\nCrée une clé sur https://platform.claude.com (organisation liée à ton forfait Max), puis ajoute la ligne CLAUDE_LABO_API_KEY=... dans .env.local.');
 
 // 2. Le dossier d'expériences (créé au premier lancement, sur la branche « labo » partie de v2).
@@ -84,7 +86,7 @@ while (true) {
       options: {
         model: MODELE,
         cwd: labo,
-        env: { ...process.env, ANTHROPIC_API_KEY: cle, CLAUDE_CODE_OAUTH_TOKEN: undefined },
+        env: { ...process.env, ANTHROPIC_API_KEY: cle, CLAUDE_CODE_OAUTH_TOKEN: undefined, ...(espace ? { ANTHROPIC_CUSTOM_HEADERS: `anthropic-workspace-id: ${espace}` } : {}) },
         resume: session,
         settingSources: ['project'],
         permissionMode: 'acceptEdits',

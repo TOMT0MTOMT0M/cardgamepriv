@@ -12,13 +12,20 @@ $master = Join-Path $racine '.wt-master'
 $enCours = Join-Path $racine 'docs\chantiers\EN-COURS.md'
 $guide = Join-Path $racine 'docs\GUIDE-CLAUDE.md'
 
+function Noter([string]$texte) { try { Add-Content -Path $journal -Value ("$(Get-Date -Format s) " + $texte) } catch {} }
+function Ouvrir-Terminal([string]$dossier, [string]$titre, [string]$ligne) {
+  try {
+    if (Get-Command wt.exe -ErrorAction SilentlyContinue) {
+      Noter ("bouton " + $titre + " : wt.exe dans " + $dossier + " -> " + $ligne)
+      Start-Process wt.exe -ArgumentList ('-d "' + $dossier + '" --title "' + $titre + '" cmd /k ' + $ligne)
+    } else {
+      Noter ("bouton " + $titre + " : cmd.exe dans " + $dossier + " -> " + $ligne)
+      Start-Process cmd.exe -ArgumentList ('/k title ' + $titre + ' && cd /d "' + $dossier + '" && ' + $ligne)
+    }
+  } catch { Noter ("ERREUR bouton " + $titre + " : " + $_.Exception.Message) }
+}
 function Ouvrir-Claude([string]$dossier, [string]$titre, [string]$options) {
-  $ligne = ('claude ' + $options).Trim()
-  if (Get-Command wt.exe -ErrorAction SilentlyContinue) {
-    Start-Process wt.exe -ArgumentList ('-d "' + $dossier + '" --title "' + $titre + '" cmd /k ' + $ligne)
-  } else {
-    Start-Process cmd.exe -ArgumentList ('/k title ' + $titre + ' && cd /d "' + $dossier + '" && ' + $ligne)
-  }
+  Ouvrir-Terminal $dossier $titre ('claude ' + $options).Trim()
 }
 
 $noir = [System.Drawing.Color]::FromArgb(17, 17, 17)
@@ -27,14 +34,10 @@ $bleu = [System.Drawing.Color]::FromArgb(47, 91, 255)
 $blanc = [System.Drawing.Color]::White
 
 function Ouvrir-Labo() {
-  $cmdLabo = Join-Path $racine 'outils\labo\LABO.cmd'
-  if (Get-Command wt.exe -ErrorAction SilentlyContinue) {
-    Start-Process wt.exe -ArgumentList ('-d "' + $racine + '" --title "LABO Fable" cmd /k "' + $cmdLabo + '"')
-  } else {
-    Start-Process cmd.exe -ArgumentList ('/k title LABO Fable && "' + $cmdLabo + '"')
-  }
+  Ouvrir-Terminal (Join-Path $racine 'outils\labo') 'LABO Fable' 'LABO.cmd'
 }
 
+Noter 'lanceur ouvert'
 $fenetre = New-Object System.Windows.Forms.Form
 $fenetre.Text = 'Claude - Bebou cartes'
 $fenetre.BackColor = $noir
