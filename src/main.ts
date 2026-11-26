@@ -40,9 +40,11 @@ const h = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: s
 };
 
 const sidebar = h('aside', 'sidebar');
-sidebar.innerHTML = `<header><h1>CARD LAB</h1><div class="sub">three.js WebGPU · TSL</div></header><nav class="list"></nav><footer></footer>`;
+sidebar.innerHTML = `<header><div class="brand"><h1>CARD LAB</h1><span class="sub">three.js WebGPU · TSL</span></div><input class="search" type="search" placeholder="Chercher (/)…" spellcheck="false" /><div class="tabs"><button data-tab="actives">Actives <b></b></button><button data-tab="archives">Archives <b></b></button></div></header><nav class="list"></nav><footer></footer>`;
 const list = sidebar.querySelector('.list') as HTMLElement;
 const sideFooter = sidebar.querySelector('footer') as HTMLElement;
+const searchIn = sidebar.querySelector('.search') as HTMLInputElement;
+const tabBtns = [...sidebar.querySelectorAll<HTMLButtonElement>('.tabs button')];
 const stage = h('main', 'stage');
 const canvasHost = h('div');
 const overlay = h('div', 'overlay');
@@ -86,31 +88,140 @@ let fps = 0;
 let fpsAcc = 0;
 let fpsN = 0;
 
+// ─────────────────────────────────────────── archives (choix par navigateur, par-dessus le défaut du registre)
+type Tab = 'actives' | 'archives';
+const LS_ARCH = 'cardlab.archive';
+const LS_TAB = 'cardlab.tab';
+const lsGet = (k: string) => {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+};
+const lsSet = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* ignore */
+  }
+};
+const archOverrides: Record<string, boolean> = (() => {
+  try {
+    return JSON.parse(lsGet(LS_ARCH) || '{}') ?? {};
+  } catch {
+    return {};
+  }
+})();
+const isArchived = (e: RegistryEntry) => archOverrides[e.id] ?? !!e.archived;
+function toggleArchive(id: string) {
+  const e = registry.find((x) => x.id === id);
+  if (!e) return;
+  const next = !isArchived(e);
+  if (next === !!e.archived) delete archOverrides[id];
+  else archOverrides[id] = next;
+  lsSet(LS_ARCH, JSON.stringify(archOverrides));
+  renderList();
+  syncInfoArchive();
+}
+let tab: Tab = lsGet(LS_TAB) === 'archives' ? 'archives' : 'actives';
+function setTab(t: Tab) {
+  tab = t;
+  lsSet(LS_TAB, t);
+  renderList();
+  list.scrollTop = 0;
+}
+tabBtns.forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab as Tab)));
+searchIn.addEventListener('input', () => renderList());
+searchIn.addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Escape') {
+    searchIn.value = '';
+    searchIn.blur();
+    renderList();
+  } else if (e.key === 'Enter') {
+    const first = list.querySelector<HTMLAnchorElement>('.item');
+    if (first) location.hash = first.getAttribute('href')!;
+  }
+});
+/** Actives : la plus récente en haut. Archives : par catégorie, ordre de création. */
+const activeEntries = () => registry.filter((e) => !isArchived(e)).reverse();
+const archivedEntries = () => registry.filter(isArchived);
+/** Ordre de parcours ← → : l'onglet où se trouve l'expérience affichée. */
+function navOrder(): RegistryEntry[] {
+  const cur = current?.entry;
+  const inArch = cur ? isArchived(cur) : tab === 'archives';
+  return inArch ? (['A', 'B', 'C', 'D'] as Category[]).flatMap((c) => archivedEntries().filter((e) => e.category === c)) : activeEntries();
+}
+const nextNumber = () => String(Math.max(...registry.map((e) => parseInt(e.id, 10) || 0)) + 1).padStart(3, '0');
+const SLOTS = 3;
+
 // ─────────────────────────────────────────── sidebar
+function itemEl(e: RegistryEntry, fbAll: ReturnType<typeof loadFeedback>, showCat: boolean) {
+  const a = h('a', `item${isArchived(e) ? ' is-arch' : ''}`) as HTMLAnchorElement;
+  a.href = `#/exp/${e.id}`;
+  a.dataset.id = e.id;
+  const v = fbAll[e.id]?.vote;
+  const arch = isArchived(e);
+  a.innerHTML = `<div class="row"><span class="id">${e.id.slice(0, 3)}</span>${showCat ? `<span class="c c-${e.category}" title="${CATEGORY_LABELS[e.category]}">${e.category}</span>` : ''}<span class="t">${e.title}</span><span class="v">${v === 1 ? '👍' : v === -1 ? '👎' : fbAll[e.id]?.note ? '✎' : ''}</span><button class="arch" title="${arch ? 'Ressortir des archives' : 'Ranger aux archives'} (A)">${arch ? '⤒' : '⤓'}</button></div><div class="tags">${e.tags
+    .map((t) => `<span class="tag">${t}</span>`)
+    .join('')}</div>`;
+  a.querySelector('.arch')!.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    toggleArchive(e.id);
+  });
+  a.addEventListener('click', () => sidebar.classList.remove('open'));
+  return a;
+}
 function renderList() {
   const fbAll = loadFeedback();
-  list.innerHTML = '';
-  (['A', 'B', 'C', 'D'] as Category[]).forEach((cat) => {
-    const entries = registry.filter((e) => e.category === cat);
-    if (!entries.length) return;
-    list.append(h('div', 'cat', CATEGORY_LABELS[cat]));
-    for (const e of entries) {
-      const a = h('a', 'item') as HTMLAnchorElement;
-      a.href = `#/exp/${e.id}`;
-      a.dataset.id = e.id;
-      const v = fbAll[e.id]?.vote;
-      a.innerHTML = `<div class="row"><span class="id">${e.id.slice(0, 3)}</span><span class="t">${e.title}</span><span class="v">${v === 1 ? '👍' : v === -1 ? '👎' : fbAll[e.id]?.note ? '✎' : ''}</span></div><div class="tags">${e.tags
-        .map((t) => `<span class="tag">${t}</span>`)
-        .join('')}</div>`;
-      a.addEventListener('click', () => sidebar.classList.remove('open'));
-      list.append(a);
-    }
+  const act = activeEntries();
+  const arc = archivedEntries();
+  tabBtns.forEach((b) => {
+    b.classList.toggle('on', b.dataset.tab === tab);
+    b.querySelector('b')!.textContent = String(b.dataset.tab === 'actives' ? act.length : arc.length);
   });
+  list.innerHTML = '';
+  const q = searchIn.value.trim().toLowerCase();
+  if (q) {
+    // recherche : dans les deux onglets à la fois
+    const hits = registry.filter((e) => [e.id, e.title, e.blurb, ...e.tags, ...e.tech].join(' ').toLowerCase().includes(q));
+    list.append(h('div', 'cat', `${hits.length} résultat${hits.length > 1 ? 's' : ''}`));
+    for (const e of [...hits.filter((x) => !isArchived(x)).reverse(), ...hits.filter(isArchived)]) list.append(itemEl(e, fbAll, true));
+    if (!hits.length) list.append(h('div', 'empty', 'Rien trouvé. Échap pour effacer.'));
+  } else if (tab === 'actives') {
+    for (const e of act) list.append(itemEl(e, fbAll, true));
+    if (!act.length) list.append(h('div', 'empty', 'Aucune expérience active : ressors-en une des archives (⤒).'));
+    // de la place pour les prochaines
+    const n = parseInt(nextNumber(), 10);
+    list.append(h('div', 'cat', 'Prochaines'));
+    for (let i = 0; i < SLOTS; i++) {
+      list.append(h('div', 'slot', `<span class="id">${String(n + i).padStart(3, '0')}</span><span>emplacement libre</span>`));
+    }
+  } else {
+    (['A', 'B', 'C', 'D'] as Category[]).forEach((cat) => {
+      const entries = arc.filter((e) => e.category === cat);
+      if (!entries.length) return;
+      list.append(h('div', 'cat', `${CATEGORY_LABELS[cat]} <b>${entries.length}</b>`));
+      for (const e of entries) list.append(itemEl(e, fbAll, false));
+    });
+    if (!arc.length) list.append(h('div', 'empty', 'Archives vides.'));
+  }
   markActive();
-  sideFooter.textContent = `${registry.length} expériences · ← → pour naviguer`;
+  sideFooter.innerHTML = `<span>${act.length} actives · ${arc.length} archivées</span><span class="keys"><kbd>←</kbd><kbd>→</kbd> naviguer · <kbd>A</kbd> archiver · <kbd>/</kbd> chercher</span>`;
 }
 function markActive() {
   list.querySelectorAll('.item').forEach((el) => el.classList.toggle('active', (el as HTMLElement).dataset.id === current?.entry.id));
+  list.querySelector('.item.active')?.scrollIntoView({ block: 'nearest' });
+}
+/** Bouton archiver / ressortir dans le panneau d'infos de l'expérience affichée. */
+function syncInfoArchive() {
+  const b = info.querySelector<HTMLButtonElement>('.arch-btn');
+  if (!b || !current) return;
+  const arch = isArchived(current.entry);
+  b.textContent = arch ? '⤒ Ressortir des archives' : '⤓ Ranger aux archives';
+  b.classList.toggle('on', arch);
 }
 
 /** Téléphone : le panneau des réglages se place sous la barre d'outils (qui tient sur 2 ou 3 lignes selon l'écran). */
@@ -301,7 +412,7 @@ function currentId(): string {
   }
   const m = location.hash.match(/#\/exp\/([\w-]+)/);
   const id = m?.[1];
-  return registry.find((e) => e.id === id || (id && e.id.startsWith(id)))?.id ?? registry[0].id;
+  return registry.find((e) => e.id === id || (id && e.id.startsWith(id)))?.id ?? (activeEntries()[0] ?? registry[registry.length - 1]).id;
 }
 
 function size() {
@@ -347,7 +458,8 @@ async function load(id: string) {
   applyRendererDefaults(renderer);
   stage.querySelector('.error')?.remove();
   loading.style.display = 'grid';
-  info.innerHTML = `<div class="id">${entry.id.toUpperCase()} · ${entry.tech.join(' · ')}</div><div class="title">${entry.title}</div><div class="blurb">${entry.blurb}</div>${entry.hint ? `<div class="hint">${entry.hint}</div>` : ''}`;
+  info.innerHTML = `<div class="id">${entry.id.toUpperCase()} · ${entry.tech.join(' · ')}</div><div class="title">${entry.title}</div><div class="blurb">${entry.blurb}</div>${entry.hint ? `<div class="hint">${entry.hint}</div>` : ''}<button class="btn arch-btn"></button>`;
+  info.querySelector('.arch-btn')!.addEventListener('click', () => toggleArchive(entry.id));
   markActive();
   try {
     const mod = await entry.load();
@@ -369,7 +481,11 @@ async function load(id: string) {
       sfx,
     };
     current = { entry, exp, ctx, ready: false };
+    // l'onglet suit l'expérience ouverte (lien direct vers une archivée → onglet Archives)
+    const want: Tab = isArchived(entry) ? 'archives' : 'actives';
+    if (want !== tab && !searchIn.value) setTab(want);
     markActive();
+    syncInfoArchive();
     syncFeedback();
     await exp.setup(ctx);
     if (token !== loadToken) return;
@@ -414,8 +530,10 @@ function setRarity(r: RarityId) {
 }
 
 function go(delta: number) {
-  const i = registry.findIndex((e) => e.id === current?.entry.id);
-  const n = registry[(i + delta + registry.length) % registry.length];
+  const order = navOrder();
+  if (!order.length) return;
+  const i = order.findIndex((e) => e.id === current?.entry.id);
+  const n = order[i < 0 ? 0 : (i + delta + order.length) % order.length];
   location.hash = `#/exp/${n.id}`;
 }
 
@@ -489,6 +607,13 @@ async function boot() {
     else if (e.key === 'p' || e.key === 'P') captureRequested = true;
     else if (/^[1-9]$/.test(e.key) && RARITIES[+e.key - 1]) setRarity(RARITIES[+e.key - 1].id);
     else if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('clean');
+    else if ((e.key === 'a' || e.key === 'A') && current) toggleArchive(current.entry.id);
+    else if (e.key === '/') {
+      e.preventDefault();
+      sidebar.classList.add('open');
+      searchIn.focus();
+      searchIn.select();
+    }
   });
   renderer.setAnimationLoop(frame);
   await load(currentId());
