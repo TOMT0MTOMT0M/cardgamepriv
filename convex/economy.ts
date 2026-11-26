@@ -24,6 +24,7 @@ import {
   calendarReward,
   claimableAchievements,
   claimableCompletions,
+  completionSets,
   PACK_PRICE,
   packBuyProblem,
   packBuysLeft,
@@ -203,14 +204,37 @@ export const burn = mutation({
   },
 });
 
+/**
+ * (v2.1.32, piste 1 de docs/chantiers/convex-pistes.md) le client envoie les ensembles qu'il voit complets (`setIds`,
+ * calculés avec sa copie de la collection) : le serveur vérifie chaque carte de ces seuls ensembles par l'index
+ * (1 lecture par carte, ≈ 20 Ko pour quelques albums) au lieu de relire toute la collection (5,7 Mo). Même règle
+ * qu'avant (une ligne d'inventaire, n'importe quelle étoile) ; trop de cartes à vérifier (thème entier) → collection.
+ */
+const COMPLETION_CHECK_MAX = 2500;
+async function ownedAmong(ctx: QueryCtx, u: Doc<'users'>, setIds: string[] | undefined, claimed: string[]): Promise<Set<string>> {
+  if (!setIds?.length) return new Set((await collectionOf(ctx, u)).map((c) => c.cardId));
+  const want = new Set(setIds);
+  const done = new Set(claimed);
+  const ids = new Set<string>();
+  for (const s of completionSets()) if (want.has(s.id) && !done.has(s.id)) for (const c of s.cards) ids.add(c.id);
+  if (ids.size > COMPLETION_CHECK_MAX) return new Set((await collectionOf(ctx, u)).map((c) => c.cardId));
+  const owned = new Set<string>();
+  for (const id of ids) {
+    if (await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', u._id).eq('cardId', id)).first()) owned.add(id);
+  }
+  return owned;
+}
+
 /** Primes de complétion : 5 pièces × cartes de chaque album / groupe / thème complété (toutes celles en attente). */
 export const claimCompletions = mutation({
-  args: { sessionToken: v.string() },
-  handler: async (ctx, { sessionToken }) => {
+  args: { sessionToken: v.string(), setIds: v.optional(v.array(v.string())) },
+  handler: async (ctx, { sessionToken, setIds }) => {
     const u = await requireUser(ctx, sessionToken);
-    const inv = await collectionOf(ctx, u);
+    if (setIds && setIds.length > 500) throw new ConvexError(fe('economy.3'));
     const econ = econOf(u);
-    const sets = claimableCompletions(new Set(inv.map((c) => c.cardId)), econ.completions);
+    const owned = await ownedAmong(ctx, u, setIds, econ.completions);
+    const want = setIds?.length ? new Set(setIds) : null;
+    const sets = claimableCompletions(owned, econ.completions).filter((s) => !want || want.has(s.id));
     if (!sets.length) throw new ConvexError(fe('economy.3'));
     const total = sets.reduce((a, s) => a + s.reward, 0);
     await addCoins(ctx, u._id, total, 'completion', sets.length === 1 ? fm('c.compl', { set: sets[0].label, setId: sets[0].id }) : fm('c.complN', { n: sets.length }), {

@@ -135,7 +135,8 @@ export interface NetState {
   sealedPack: Doc<'packOpens'> | null;
   feed: Doc<'activityFeed'>[];
   /** gros tirages (Légendaire+) ; `null` = requête pas encore déployée sur le serveur → on les tire du fil */
-  bigPulls: Doc<'activityFeed'>[] | null;
+  /** (v2.1.32) lignes réduites aux champs lus (convex/feed.ts, `BigRow`) */
+  bigPulls: Array<Pick<Doc<'activityFeed'>, '_id' | 'userId' | 'displayName' | 'avatarUrl' | 'cardId' | 'cardName' | 'rarity' | 'mintNumber' | 'createdAt'>> | null;
   trades: { incoming: TradeDoc[]; outgoing: TradeDoc[] };
   /** missions du jour (+ instant du prochain tirage) */
   missions: (MissionsState & { resetAt: number }) | null;
@@ -1063,11 +1064,32 @@ class GameNetClient {
   }
 
   /** Collection d'un ami (pour composer un échange). */
-  public async userCollection(userId: Id<'users'>) {
+  public async userCollection(userId: Id<'users'>): Promise<Array<{ cardId: string; rarity: RarityId; count: number; bestMintNumber: number }>> {
     if (!this.client) return [];
-    const r = await this.client.query(api.inventory.userCollectionSlim, { userId, parts: true });
-    return 'parts' in r ? r.parts.flat() : r;
+    // (v2.1.32, coût Convex, piste 3) copie par ami gardée le temps de la session, suivie par différence
+    try {
+      const kept = this.friendInv.get(userId);
+      if (kept) {
+        const d = await this.client.query(api.inventory.userCollectionSince, { userId, since: kept.since() });
+        if (!d.more) {
+          kept.apply(d);
+          return kept.cards as Array<{ cardId: string; rarity: RarityId; count: number; bestMintNumber: number }>;
+        }
+      }
+      const r = await this.client.query(api.inventory.userCollectionSince, { userId });
+      const m = new InvMirror();
+      m.reset((r.full ?? []).flat());
+      this.friendInv.delete(userId);
+      this.friendInv.set(userId, m);
+      if (this.friendInv.size > 30) this.friendInv.delete(this.friendInv.keys().next().value!);
+      return m.cards as Array<{ cardId: string; rarity: RarityId; count: number; bestMintNumber: number }>;
+    } catch {
+      // serveur d'avant v2.1.32 (mise en ligne en cours)
+      const r = await this.client.query(api.inventory.userCollectionSlim, { userId, parts: true });
+      return 'parts' in r ? r.parts.flat() : r;
+    }
   }
+  private friendInv = new Map<string, InvMirror>();
 
   /** (v1.0.9) « Chercher un propriétaire » : joueurs qui possèdent la carte (hors moi). */
   public async cardOwners(cardId: string) {

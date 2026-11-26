@@ -90,6 +90,12 @@ describe('coût des mises en ligne', () => {
       await ctx.db.insert('packOpens', pack('sealed'));
       for (let i = 0; i < 40; i++) await ctx.db.insert('activityFeed', feed());
     });
+    // (v2.1.32) 5 jours : boosters ouverts retirés (gardés 2 jours), fil gardé (30 jours)
+    vi.setSystemTime(new Date('2026-11-15T10:00:00Z'));
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 4; i++) await ctx.db.insert('packOpens', pack('revealed'));
+      for (let i = 0; i < 3; i++) await ctx.db.insert('activityFeed', feed());
+    });
     vi.setSystemTime(new Date('2026-11-20T10:00:00Z'));
     await t.run(async (ctx) => {
       for (let i = 0; i < 5; i++) await ctx.db.insert('packOpens', pack('revealed'));
@@ -101,7 +107,7 @@ describe('coût des mises en ligne', () => {
       const packs = await ctx.db.query('packOpens').collect();
       expect(packs.filter((p) => p.status === 'revealed')).toHaveLength(5);
       expect(packs.filter((p) => p.status === 'sealed')).toHaveLength(1);
-      expect(await ctx.db.query('activityFeed').collect()).toHaveLength(7);
+      expect(await ctx.db.query('activityFeed').collect()).toHaveLength(10);
     });
     // relancée : rien de plus
     expect(await t.mutation(internal.migrations.purgeOld, { part: 'feed' })).toMatchObject({ deleted: 0, done: true });

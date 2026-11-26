@@ -88,7 +88,8 @@ export function createOnlineEco(): EcoBackend {
     buyPacks: (count) => net.call(api.economy.buyPacks, { count }),
     claimWeekly: async (id) => (await net.call(api.economy.claimWeekly, { missionId: id })).reward,
     burn: (items) => net.call(api.economy.burn, { items }),
-    claimCompletions: () => net.call(api.economy.claimCompletions, {}),
+    // (v2.1.32, piste 1) les ensembles vus complets : le serveur ne vérifie qu'eux (sinon toute la collection)
+    claimCompletions: () => net.call(api.economy.claimCompletions, { setIds: snapshot?.completions.map((c) => c.id).slice(0, 500) }),
     claimAchievements: () => net.call(api.economy.claimAchievements, {}),
     friendsAchievements: async () => (await net.ask(api.economy.friendsAchievements, {})) ?? [],
     coinHistory: async () => (await net.ask(api.economy.history, { limit: 60 })).map((t) => ({ id: t._id, amount: t.amount, reason: t.reason, label: t.label, labelKey: t.labelKey, labelParams: t.labelParams, createdAt: t.createdAt })),

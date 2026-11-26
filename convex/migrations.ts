@@ -545,12 +545,18 @@ export const i18nMessages = internalMutation({
  *   npx convex run migrations:purgeOld
  */
 export const RETENTION_DAYS = 30;
+/**
+ * (v2.1.32, piste 6 de docs/chantiers/convex-pistes.md) boosters OUVERTS gardés 2 jours (avant : 30) : aucun écran
+ * joueur ne les lit (l'admin : 10 derniers) ; ≈ −100 Mo de stockage, et chaque sauvegarde du lanceur relit d'autant moins.
+ * Le fil d'activité reste à 30 jours (profil, dernière activité d'un ami).
+ */
+export const PACK_RETENTION_DAYS = 2;
 const PURGE_BATCH = 250;
 
 export const purgeOld = internalMutation({
   args: { part: v.optional(v.union(v.literal('packs'), v.literal('feed'))), deleted: v.optional(v.number()) },
   handler: async (ctx, { part = 'packs', deleted = 0 }): Promise<{ part: string; deleted: number; done: boolean }> => {
-    const cutoff = Date.now() - RETENTION_DAYS * 24 * 3600_000;
+    const cutoff = Date.now() - (part === 'packs' ? PACK_RETENTION_DAYS : RETENTION_DAYS) * 24 * 3600_000;
     const old =
       part === 'packs'
         ? await ctx.db.query('packOpens').withIndex('by_status', (q) => q.eq('status', 'revealed').lt('_creationTime', cutoff)).take(PURGE_BATCH)
@@ -558,7 +564,8 @@ export const purgeOld = internalMutation({
     for (const d of old) await ctx.db.delete(d._id);
     deleted += old.length;
     if (old.length === PURGE_BATCH) {
-      await ctx.scheduler.runAfter(0, internal.migrations.purgeOld, { part, deleted });
+      // (v2.1.32) lots espacés : le premier passage retire ≈ 28 jours de boosters d'un coup
+      await ctx.scheduler.runAfter(1000, internal.migrations.purgeOld, { part, deleted });
       return { part, deleted, done: false };
     }
     if (part === 'packs') {

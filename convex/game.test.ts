@@ -12,6 +12,7 @@ import { BEBOU_SECRET_CHANCE, BEBOU_SECRETS_LOCKED } from '../src/core/sets/them
 import { PACK_CAP, PACK_REGEN_MS, applyRegen } from '../src/core/packRegen';
 import { CONTRACT_COST } from '../src/core/contracts';
 import { CATALOG_CARDS } from './cardsCatalog';
+import { pushBigPull } from './feed';
 
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
 
@@ -647,5 +648,22 @@ describe('retours du 3 nov. : profil, cosmétiques, classement, activité', () =
     expect(await t.mutation(internal.migrations.markBigPulls, {})).toEqual({ scanned: 6, marked: 0 });
     expect((await t.query(api.feed.bigPulls, { limit: 2 })).map((f) => f.cardId)).toEqual(['c5', 'c3']);
     expect((await t.query(api.feed.bigPulls, { limit: 10 })).map((f) => f.cardId)).toEqual(['c5', 'c3', 'c1']);
+  });
+
+  test('gros tirages (v2.1.32) : un seul document lu, mêmes lignes que l’index', async () => {
+    const { t, alice } = await setup();
+    const row = (i: number) => ({ userId: alice.userId, displayName: 'alice', kind: 'pull' as const, cardId: `c${i}`, cardName: `C${i}`, rarity: 'legendary' as const, mintNumber: i, message: `m${i}`, createdAt: i, big: true });
+    await t.run(async (ctx) => {
+      for (let i = 1; i <= 45; i++) await ctx.db.insert('activityFeed', row(i));
+    });
+    const before = (await t.query(api.feed.bigPulls, { limit: 30 })).map((f) => f.cardId);
+    // premier gros tirage après la mise en ligne : document construit depuis l'index, puis tenu à jour
+    for (const i of [46, 47]) await t.run(async (ctx) => pushBigPull(ctx, await ctx.db.insert('activityFeed', row(i))));
+    const digest = await t.run((ctx) => ctx.db.query('bigPullsDigest').collect());
+    expect(digest).toHaveLength(1);
+    expect(digest[0].rows).toHaveLength(40);
+    const after = await t.query(api.feed.bigPulls, { limit: 30 });
+    expect(after.map((f) => f.cardId)).toEqual(['c47', 'c46', ...before.slice(0, 28)]);
+    expect(after[0]).toMatchObject({ userId: alice.userId, displayName: 'alice', cardName: 'C47', rarity: 'legendary', mintNumber: 47, createdAt: 47 });
   });
 });

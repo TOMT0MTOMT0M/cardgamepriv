@@ -277,6 +277,28 @@ export default defineSchema({
   migStamps: defineTable({ key: v.string(), sig: v.string(), at: v.number(), clean: v.boolean(), runs: v.optional(v.number()) }).index('by_key', ['key']),
 
   /**
+   * (v2.1.32, coût Convex, piste 7) les derniers gros tirages (5★ et plus) en UN petit document, tenu à jour à chaque
+   * insertion dans le fil (convex/feed.ts, `pushBigPull`) : `feed.bigPulls`, abonnée chez chaque joueur et relancée à
+   * chaque gros tirage de n'importe qui, lit ce document au lieu de 30 lignes du fil. Un seul document (`key` 'big').
+   */
+  bigPullsDigest: defineTable({
+    key: v.string(),
+    rows: v.array(
+      v.object({
+        _id: v.id('activityFeed'),
+        userId: v.id('users'),
+        displayName: v.string(),
+        avatarUrl: v.optional(v.string()),
+        cardId: v.string(),
+        cardName: v.optional(v.string()),
+        rarity: rarityValidator,
+        mintNumber: v.optional(v.number()),
+        createdAt: v.number(),
+      }),
+    ),
+  }).index('by_key', ['key']),
+
+  /**
    * Player card collection (powers the 019-binder BatchedMesh & trading).
    */
   inventory: defineTable({
@@ -743,6 +765,19 @@ export default defineSchema({
     sig: v.optional(v.string()),
     /** (audit 12/11, S05) statistiques complètes du joueur à cette signature (PlayerStats) : évite de relire sa collection */
     stats: v.optional(v.any()),
+  }).index('by_user', ['userId']),
+  /**
+   * (v2.1.32, coût Convex, piste 8) ce que le cron du classement lit de chaque ligne (`rankRows`, ≈ 2 Ko) : sa date, sa
+   * signature, et ses cartes différentes (titre « Numéro un ») — ≈ 0,15 Ko. Tenue par `saveRanks` et `refreshMyRank` ;
+   * table vide (juste après la mise en ligne) : le cron relit `rankRows` et la remplit.
+   */
+  rankMeta: defineTable({
+    userId: v.id('users'),
+    rowId: v.id('rankRows'),
+    updatedAt: v.number(),
+    sig: v.optional(v.string()),
+    hasStats: v.boolean(),
+    uniques: v.number(),
   }).index('by_user', ['userId']),
   /**
    * (26/11, coût Convex) compteurs de collection d'un joueur pour le classement, tenus par différence (convex/rankInc.ts,

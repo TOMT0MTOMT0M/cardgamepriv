@@ -134,6 +134,21 @@ describe('sources de pièces', () => {
     await expect(t.mutation(api.economy.claimCompletions, { sessionToken: u.alice.token })).rejects.toThrow(/⟦(economy\.3)[⟧{]/);
   });
 
+  test('complétion (v2.1.32) : seulement les ensembles envoyés, vérifiés carte par carte', async () => {
+    const { t, u } = await setup();
+    const bySub = new Map<string, typeof CATALOG_CARDS>();
+    for (const c of CATALOG_CARDS) if (c.themeId !== 'bebous') bySub.set(c.subthemeId, [...(bySub.get(c.subthemeId) ?? []), c]);
+    const [[subA, cardsA], [subB, cardsB]] = [...bySub].sort((a, b) => a[1].length - b[1].length);
+    for (const c of cardsA) await give(t, u.alice.userId, c.id, c.baseRarity, 1);
+    for (const c of cardsB.slice(1)) await give(t, u.alice.userId, c.id, c.baseRarity, 1);
+    // album B incomplet : refusé ; album A complet : payé, et seulement lui
+    await expect(t.mutation(api.economy.claimCompletions, { sessionToken: u.alice.token, setIds: [`sub:${subB}`] })).rejects.toThrow(/⟦(economy\.3)[⟧{]/);
+    const r = await t.mutation(api.economy.claimCompletions, { sessionToken: u.alice.token, setIds: [`sub:${subA}`, `sub:${subB}`] });
+    expect(r.sets.map((s) => s.id)).toEqual([`sub:${subA}`]);
+    expect(r.coins).toBe(cardsA.length * 5);
+    await expect(t.mutation(api.economy.claimCompletions, { sessionToken: u.alice.token, setIds: [`sub:${subA}`] })).rejects.toThrow(/⟦(economy\.3)[⟧{]/);
+  });
+
   test('mission du jour : boosters ET pièces', async () => {
     const { t, u } = await setup();
     const m = (await t.query(api.missions.mine, { sessionToken: u.alice.token }))!;

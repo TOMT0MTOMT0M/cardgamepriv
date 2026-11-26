@@ -41,6 +41,7 @@ import {
   freeBetProblem,
 } from '../src/core/games';
 import { syncPresence } from './presence';
+import { pushBigPull } from './feed';
 import { fm, feedMsg, type Msg } from '../src/core/msgs';
 
 /**
@@ -97,7 +98,7 @@ async function announcePulls(ctx: MutationCtx, opener: Doc<'users'>, cards: Game
   const now = Date.now();
   for (const c of cards) {
     if (RARITY_TIER[c.rarity] < RARITY_TIER.mythic) continue;
-    await ctx.db.insert('activityFeed', {
+    const feedId = await ctx.db.insert('activityFeed', {
       userId: opener._id,
       displayName: opener.displayName,
       avatarUrl: opener.avatarUrl,
@@ -110,6 +111,7 @@ async function announcePulls(ctx: MutationCtx, opener: Doc<'users'>, cards: Game
       ...feedMsg(fm(where, { name: opener.displayName, card: c.cardName, cardId: c.cardId, rarity: c.rarity === 'secret' ? 'Secrète' : 'Mythique', rarityId: c.rarity, mint: c.mintNumber })), // i18n-ok
       createdAt: now,
     });
+    await pushBigPull(ctx, feedId);
   }
 }
 
