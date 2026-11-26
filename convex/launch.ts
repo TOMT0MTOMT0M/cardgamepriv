@@ -36,6 +36,8 @@ const WIPE: TableNames[] = [
   'packOpens',
   'inventory',
   'invGone',
+  // (26/11) compteurs du classement par différence : l'inventaire vidé ici ne laisse pas de trace de suppression
+  'rankInc',
   'binders',
   'trades',
   'listingOffers',

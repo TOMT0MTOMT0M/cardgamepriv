@@ -132,7 +132,11 @@ export const resyncRarities = internalMutation({
         await dropInv(ctx, row);
       } else {
         // (11/11) collection par différence : une étoile changée doit arriver chez le joueur (rev), sinon sa copie garde l'ancienne
-        await ctx.db.patch(row._id, { rarity: want, rev: invRev() });
+        // (26/11) supprimée (trace invGone) puis recréée à la bonne étoile, jamais changée sur place : la copie du joueur
+        // efface l'ancienne clé, et le classement par différence (convex/rankInc.ts) voit une carte partie, une arrivée
+        const { _id, _creationTime, ...rest } = row;
+        await dropInv(ctx, row);
+        await ctx.db.insert('inventory', { ...rest, rarity: want, rev: invRev() });
       }
     }
     // vitrines et classeurs des joueurs touchés

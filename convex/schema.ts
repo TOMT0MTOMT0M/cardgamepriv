@@ -298,6 +298,8 @@ export default defineSchema({
     cardId: v.string(),
     rarity: rarityValidator,
     rev: v.number(),
+    /** (26/11, classement par différence — convex/rankInc.ts) `_creationTime` de la ligne supprimée. Absent avant le 26/11. */
+    born: v.optional(v.number()),
   }).index('by_user_rev', ['userId', 'rev']),
 
   /**
@@ -716,6 +718,16 @@ export default defineSchema({
     sig: v.optional(v.string()),
     /** (audit 12/11, S05) statistiques complètes du joueur à cette signature (PlayerStats) : évite de relire sa collection */
     stats: v.optional(v.any()),
+  }).index('by_user', ['userId']),
+  /**
+   * (26/11, coût Convex) compteurs de collection d'un joueur pour le classement, tenus par différence (convex/rankInc.ts,
+   * RankInc) : le cron ne relit plus la collection entière à chaque booster. À part de `rankRows` (lue en entier par
+   * le classement et les saisons) pour ne pas l'alourdir. Une ligne par joueur.
+   */
+  rankInc: defineTable({
+    userId: v.id('users'),
+    inc: v.any(),
+    at: v.number(),
   }).index('by_user', ['userId']),
   surveyAnswers: defineTable({
     userId: v.id('users'),

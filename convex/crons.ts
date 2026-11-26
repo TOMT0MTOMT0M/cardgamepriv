@@ -16,7 +16,10 @@ crons.interval('annonces : expiration', { minutes: 15 }, internal.listings.expir
 // (v1.0.11) classement : lignes recalculées joueur par joueur (actifs toutes les 5 min, tout le monde toutes les 6 h) ;
 // le premier est marqué « Numéro un » (retours live 6, C15). Avant : une seule requête qui lisait toutes les
 // collections, au-delà de la limite de Convex.
-crons.interval('classement : lignes et numero un', { minutes: 5 }, internal.profiles.refreshRanks, {});
+// (26/11, coût Convex) toutes les 10 min (avant : 5) : la ligne d'un joueur qui ouvre le classement est recalculée
+// tout de suite (refreshMyRank), celles des autres ont au plus 10 min de retard ; les lignes se calculent par
+// différence (convex/rankInc.ts)
+crons.interval('classement : lignes et numero un', { minutes: 10 }, internal.profiles.refreshRanks, {});
 // (11/11, chantier ouvertures-saisons) saisons mensuelles : ouvre la saison, ajoute les nouveaux joueurs, et au changement
 // de mois (Paris) fige le classement, donne les récompenses et ouvre la suivante (idempotent — convex/seasons.ts)
 crons.interval('saisons : fin du mois', { hours: 1 }, internal.seasons.tick, {});

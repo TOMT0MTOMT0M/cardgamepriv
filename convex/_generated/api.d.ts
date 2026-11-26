@@ -48,6 +48,7 @@ import type * as purgedCards from "../purgedCards.js";
 import type * as push from "../push.js";
 import type * as pushSend from "../pushSend.js";
 import type * as pwAuth from "../pwAuth.js";
+import type * as rankInc from "../rankInc.js";
 import type * as referrals from "../referrals.js";
 import type * as seasons from "../seasons.js";
 import type * as session from "../session.js";
@@ -104,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   push: typeof push;
   pushSend: typeof pushSend;
   pwAuth: typeof pwAuth;
+  rankInc: typeof rankInc;
   referrals: typeof referrals;
   seasons: typeof seasons;
   session: typeof session;
