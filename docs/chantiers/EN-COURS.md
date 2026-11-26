@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 26/11/2026 (Hugo : agent Claude sur la clé API de Tom poussé, `42c5c21` ; avant : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
+_Mis à jour : 26/11/2026 (Hugo : liste des licences à étoffer, `9eae34f` ; avant : agent Claude sur la clé API de Tom poussé, `42c5c21` ; avant : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
 
 ## Chantiers ouverts
 
@@ -22,6 +22,7 @@ _Mis à jour : 26/11/2026 (Hugo : agent Claude sur la clé API de Tom poussé, `
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo + Claude | racine / `v2` | QOL : liste validée (section « QOL » ci-dessous), rien de codé | à démarrer par collection 1-2-3 — `docs/chantiers/qol.md` |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
+| Hugo + Claude | racine / `v2` | contenu : licences à étoffer / scraper (liste dans « Reste à faire ») | listé (`9eae34f`), rien de généré — `docs/chantiers/licences.md` |
 
 ## Reste à faire
 ### Avant / au 01/12
