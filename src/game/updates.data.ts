@@ -71,6 +71,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Collection chargée plus vite', tag: 'amélioré',
+        points: [
+          '⚡ Ta collection gardée sur cet appareil reste valable bien plus longtemps, même après une reconnexion : le jeu la recharge moins souvent en entier au démarrage.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Collection et missions plus pratiques', tag: 'amélioré',
         points: [
           '🔎 Collection → Albums : la recherche fouille les 5 thèmes et les noms de cartes (« Goku » montre ses albums et ses cartes), rangés par thème.',

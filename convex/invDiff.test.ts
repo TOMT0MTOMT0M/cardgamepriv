@@ -10,7 +10,7 @@ import { api } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS } from './cardsCatalog';
-import { InvMirror } from '../src/core/net/invDiff';
+import { InvMirror, shouldRebase, type InvRow } from '../src/core/net/invDiff';
 
 /** (v2.0.5) la collection arrive en tranches (`parts: true`) : remise à plat */
 const flatRows = <T,>(r: T[] | { parts: T[][] }): T[] => (Array.isArray(r) ? r : r.parts.flat());
@@ -117,5 +117,56 @@ describe('collection par différence', () => {
     const d = { rows: [row('x', 3, 500), row('w', 1, 520)], gone: [{ cardId: 'z', rarity: 'common', rev: 400 }, { cardId: 'y', rarity: 'common', rev: 510 }] };
     expect(b.apply(d)).toBe(true);
     expect(Object.fromEntries(b.cards.map((c) => [c.cardId, c.count]))).toEqual({ x: 3, w: 1 });
+  });
+
+  // (v2.1.31, coût Convex, piste 5) mesure : lignes relues par booster, ancienne règle (60 lignes) contre `shouldRebase`
+  test('relance de mineSince : moins de lignes relues par booster, copie toujours juste', () => {
+    const row = (cardId: string, rev: number): InvRow => ({ cardId, rarity: 'common', count: 1, bestMintNumber: 1, firstPulledAt: 0, rev });
+    type Rule = (d: { rows: InvRow[]; gone: [] }, since: number, next: number) => boolean;
+    const old: Rule = (d, since, next) => d.rows.length + d.gone.length > 60 && next > since;
+    const neu: Rule = (d, _since, next) => shouldRebase(d, next);
+    /** `n` changements espacés de `gapMs`, `per` lignes chacun ; le serveur renvoie toutes les lignes depuis `since` */
+    const run = (rule: Rule, gapMs: number, per: number, n = 60) => {
+      const t0 = 1_800_000_000_000;
+      const all: InvRow[] = Array.from({ length: 300 }, (_, i) => row(`old${i}`, t0 - 10 * 86400_000));
+      const m = new InvMirror();
+      m.reset(all.slice());
+      let since = m.since();
+      let reads = 0;
+      let calls = 0;
+      const answer = () => {
+        const d = { rows: all.filter((r) => r.rev >= since), gone: [] as [] };
+        reads += d.rows.length;
+        calls++;
+        m.apply(d);
+        return d;
+      };
+      for (let i = 0; i < n; i++) {
+        for (let k = 0; k < per; k++) all.push(row(`c${i}-${k}`, t0 + i * gapMs));
+        const d = answer(); // l'abonnement se relance
+        if (rule(d, since, m.since())) {
+          since = m.since(); // nouvel abonnement : sa première réponse relit ce qui reste dans la marge
+          answer();
+        }
+      }
+      expect(m.cards.length).toBe(all.length);
+      // + 2 documents par appel (session du jeton)
+      return { reads: reads / n, calls: calls / n, docs: (reads + 2 * calls) / n };
+    };
+    for (const [label, gap, per] of [['booster toutes les 45 s', 45_000, 5], ['booster toutes les 15 s', 15_000, 5], ['×10 toutes les 20 s', 20_000, 50]] as const) {
+      const a = run(old, gap, per);
+      const b = run(neu, gap, per);
+      console.log(`[invDiff] ${label} : avant ${a.docs.toFixed(1)} documents / changement (${a.calls.toFixed(2)} appel) · après ${b.docs.toFixed(1)} (${b.calls.toFixed(2)} appel)`);
+      expect(b.docs).toBeLessThan(a.docs);
+    }
+  });
+
+  test('collectionFull : raison `why` acceptée, et un onglet sans elle aussi', async () => {
+    const { t, alice } = await setup();
+    await legacy(t, alice.userId, 3);
+    const a = flatRows((await t.query(api.inventory.collectionFull, { sessionToken: alice.token, parts: true, why: 'expiree' }))!);
+    const b = flatRows((await t.query(api.inventory.collectionFull, { sessionToken: alice.token, parts: true }))!);
+    expect(a.length).toBe(3);
+    expect(b).toEqual(a);
   });
 });

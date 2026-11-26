@@ -36,6 +36,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Collection loads faster', tag: 'amélioré',
+        points: [
+          '⚡ The copy of your collection kept on this device now stays valid much longer, even after logging in again: the game reloads it in full less often at startup.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'Handier collection and missions', tag: 'amélioré',
         points: [
           '🔎 Collection → Albums: the search covers all 5 themes and card names (“Goku” shows his albums and his cards), sorted by theme.',

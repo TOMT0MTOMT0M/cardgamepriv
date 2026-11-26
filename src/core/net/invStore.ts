@@ -3,11 +3,13 @@
  * relisait toute la collection (`inventory.collectionFull`, ≈ 600 Ko par joueur et par lancement d'après l'audit) alors
  * que le suivi par différence (`mineSince`) sait repartir d'une révision.
  *
- * Garde-fous : la copie n'est reprise que pour la MÊME session, la MÊME époque de copie, et si elle a moins de 72 h.
- * Tout échec (stockage refusé, navigation privée) = lecture complète, comme avant.
+ * Garde-fous : la copie n'est reprise que pour le MÊME joueur (même session, ou id du joueur vérifié par le client), la
+ * MÊME époque de copie, et si sa dernière lecture complète a moins de 30 jours (filet). Tout échec (stockage refusé,
+ * navigation privée) = lecture complète, comme avant, avec sa raison (`InvWhy`, écrite dans les journaux Convex).
  * (26/11, coût Convex) AVANT : la copie était liée à la version du jeu — chaque patch (8 le 26/11) faisait relire sa
  * collection entière à chaque joueur (jusqu'à 6 Mo), et elle expirait au bout de 24 h. Depuis, toute suppression
- * d'inventaire laisse une trace (`dropInv`, migrations comprises) et toute écriture pose `rev` : la différence suffit.
+ * d'inventaire laisse une trace (`dropInv`, migrations comprises, jamais purgée) et toute écriture pose `rev` : la
+ * différence suffit. (v2.1.31, piste 2) 72 h → 30 jours, nouvelle session du même joueur acceptée, 1,5 → 4 s d'attente.
  * MONTER `EPOCH` si une migration supprime des lignes sans trace ou si le format des lignes gardées change.
  */
 import type { InvRow } from './invDiff';
@@ -15,12 +17,23 @@ import type { InvRow } from './invDiff';
 const DB = 'bebou-collection';
 const STORE = 'miroir';
 const EPOCH = 'copie-1';
-const MAX_AGE_MS = 72 * 3600 * 1000;
-const LOAD_WAIT_MS = 1500;
+const MAX_AGE_MS = 30 * 24 * 3600 * 1000;
+const LOAD_WAIT_MS = 4000;
+
+/** raison d'une lecture complète (argument `why` de `inventory.collectionFull`, écrit dans les journaux Convex) */
+export type InvWhy = 'absente' | 'expiree' | 'autre-compte' | 'lente' | 'illisible' | 'trop-de-changements' | 'sans-jeton';
 
 interface Saved {
   key: string;
+  /** (v2.1.31) id du joueur : une nouvelle session du même joueur reprend la copie */
+  uid?: string;
   build: string;
+  at: number;
+  rows: InvRow[];
+}
+export interface KeptInv {
+  key: string;
+  uid?: string;
   at: number;
   rows: InvRow[];
 }
@@ -47,37 +60,39 @@ function open(): Promise<IDBDatabase | null> {
   });
 }
 
-/** Copie gardée pour cette session, ou null (absente, autre session, autre version, trop ancienne, illisible). */
-export function loadInv(key: string): Promise<{ rows: InvRow[]; at: number } | null> {
-  // (IndexedDB peut ne jamais répondre — base verrouillée, Safari : au-delà de 1,5 s, lecture complète comme avant)
-  return Promise.race([read(key), new Promise<null>((r) => setTimeout(() => r(null), LOAD_WAIT_MS))]);
+/** Copie gardée sur l'appareil (à qui elle est : au client de le vérifier), ou la raison de s'en passer. */
+export function loadInv(): Promise<KeptInv | { why: InvWhy }> {
+  // (IndexedDB peut ne jamais répondre — base verrouillée, Safari : au-delà de 4 s, lecture complète comme avant)
+  return Promise.race([read(), new Promise<{ why: InvWhy }>((r) => setTimeout(() => r({ why: 'lente' }), LOAD_WAIT_MS))]);
 }
-async function read(key: string): Promise<{ rows: InvRow[]; at: number } | null> {
+async function read(): Promise<KeptInv | { why: InvWhy }> {
   const db = await open();
-  if (!db) return null;
+  if (!db) return { why: 'illisible' };
   return new Promise((done) => {
     try {
       const rq = db.transaction(STORE, 'readonly').objectStore(STORE).get('moi');
       rq.onsuccess = () => {
         const s = rq.result as Saved | undefined;
         db.close();
-        done(s && s.key === key && s.build === EPOCH && Array.isArray(s.rows) && Date.now() - s.at < MAX_AGE_MS && Date.now() >= s.at ? { rows: s.rows, at: s.at } : null);
+        if (!s || !Array.isArray(s.rows)) return done({ why: 'absente' });
+        if (s.build !== EPOCH || !(Date.now() - s.at < MAX_AGE_MS && Date.now() >= s.at)) return done({ why: 'expiree' });
+        done({ key: s.key, uid: s.uid, at: s.at, rows: s.rows });
       };
-      rq.onerror = () => (db.close(), done(null));
+      rq.onerror = () => (db.close(), done({ why: 'illisible' }));
     } catch {
       db.close();
-      done(null);
+      done({ why: 'illisible' });
     }
   });
 }
 
-/** `at` : date de la dernière lecture COMPLÈTE (la copie ne se rajeunit pas en étant suivie). */
-export async function saveInv(key: string, rows: InvRow[], at: number): Promise<void> {
+/** `at` : date de la dernière lecture COMPLÈTE (la copie ne se rajeunit pas en étant suivie : filet de 30 jours). */
+export async function saveInv(key: string, uid: string | undefined, rows: InvRow[], at: number): Promise<void> {
   const db = await open();
   if (!db) return;
   try {
     const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put({ key, build: EPOCH, at, rows } satisfies Saved, 'moi');
+    tx.objectStore(STORE).put({ key, uid, build: EPOCH, at, rows } satisfies Saved, 'moi');
     tx.oncomplete = tx.onerror = tx.onabort = () => db.close();
   } catch {
     db.close();
