@@ -286,3 +286,10 @@ export const registry: RegistryEntry[] = [
     load: () => import('../experiments/046-sachets-cartoon/index.ts'),
   },
 ];
+
+/**
+ * (26/11) Rangées aux archives par défaut : les pistes 001 → 038, closes ou déjà passées dans le jeu.
+ * Rien n'est supprimé : le bouton ⤓ / ⤒ du labo les ressort (choix mémorisé dans le navigateur).
+ */
+const ARCHIVED_BY_DEFAULT = ['001', '003', '004', '005', '006', '010', '011', '013', '016', '019', '023', '026', '029', '030', '031', '034', '035', '036', '037', '038'];
+for (const e of registry) if (ARCHIVED_BY_DEFAULT.includes(e.id.slice(0, 3))) e.archived = true;

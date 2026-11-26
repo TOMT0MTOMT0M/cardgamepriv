@@ -25,6 +25,8 @@ export interface ExperimentMeta {
   blurb: string;
   /** Indication d'interaction affichée en overlay. */
   hint?: string;
+  /** Rangée aux archives par défaut (le bouton du labo peut la ressortir, choix mémorisé dans le navigateur). */
+  archived?: boolean;
 }
 
 export type Quality = 'high' | 'mobile';
