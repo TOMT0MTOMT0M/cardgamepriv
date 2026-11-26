@@ -9,7 +9,7 @@ import { bumpMissions } from './missions';
 import { bumpWeekly, recordFlow } from './econLib';
 import { cardsValue } from '../src/core/economy';
 import { dropInv, invRev } from './invRev';
-import { seenAtOf } from './presence';
+import { presenceOf, seenAtOf } from './presence';
 import { fm, feedMsg } from '../src/core/msgs';
 
 const tradeItemValidator = v.object({
@@ -42,7 +42,9 @@ async function ownedCount(ctx: QueryCtx, userId: Id<'users'>, it: TradeItem): Pr
   return inv?.count ?? 0;
 }
 
-const nameOf = async (ctx: QueryCtx, id: Id<'users'>) => (await ctx.db.get(id))?.displayName ?? '?';
+// (26/11, coût) le nom affiché vient de la carte publique (`presence`, 0,3 Ko, tenue à jour par `syncPresence`) et non
+// du document joueur entier (3 à 6 Ko, réécrit à chaque booster) ; repli sur le document si la ligne manque
+const nameOf = async (ctx: QueryCtx, id: Id<'users'>) => (await presenceOf(ctx, id))?.displayName ?? (await ctx.db.get(id))?.displayName ?? '?';
 
 /**
  * VERROUILLAGE (retours du 3 nov.) : une carte engagée dans une proposition EN ATTENTE (celles que j'offre) ne peut ni
@@ -132,9 +134,16 @@ export const myTrades = query({
       .withIndex('by_fromUser_status', (q) => q.eq('fromUserId', userId).eq('status', 'pending'))
       .collect();
 
-    // noms affichés (le client n'a pas à recouper avec la liste d'amis)
+    // noms affichés (le client n'a pas à recouper avec la liste d'amis) — (26/11, coût) un nom par joueur et par appel
+    // (avant : 2 lectures par échange, dont la mienne à chaque fois)
+    const names = new Map<string, Promise<string>>();
+    const name = (id: Id<'users'>) => {
+      let p = names.get(id);
+      if (!p) names.set(id, (p = nameOf(ctx, id)));
+      return p;
+    };
     const withNames = async (list: typeof incoming) =>
-      Promise.all(list.map(async (t) => ({ ...t, fromName: await nameOf(ctx, t.fromUserId), toName: await nameOf(ctx, t.toUserId) })));
+      Promise.all(list.map(async (t) => ({ ...t, fromName: await name(t.fromUserId), toName: await name(t.toUserId) })));
     return { incoming: await withNames(incoming), outgoing: await withNames(outgoing) };
   },
 });
