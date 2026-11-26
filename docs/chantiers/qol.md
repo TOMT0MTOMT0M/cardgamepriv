@@ -17,4 +17,4 @@
 - Relire la liste QOL et les 2 décisions V3 (contrats, enchères) ; fixer avec Hugo le prix minimum de Forge → vente.
 
 ## Reste
-- Coder collection 1-2-3 (front seul), puis C, E, H, A, L. Chiffrer Forge → vente (requête groupée « qui veut ces cartes », coût Convex) avant de s'y mettre.
+- Fait en v2.1.30 (en ligne le 26/11) : collection 1-2-3, H, L — `v2.1.30.md`. Ensuite : collection 4, 6, 7, puis C, E, A. Chiffrer Forge → vente (requête groupée « qui veut ces cartes », coût Convex) avant de s'y mettre.
