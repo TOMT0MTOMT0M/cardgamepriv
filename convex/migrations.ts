@@ -9,10 +9,35 @@ import { PURGED_CARD_IDS } from './purgedCards';
 import { ETOILES_REMAP } from '../src/core/sets/etoiles';
 import { isBigPull } from './feed';
 import { dropInv, invRev } from './invRev';
-import { ensurePresence } from './presence';
+import { ensurePresence, syncPresence } from './presence';
 import { markWishesReady, syncWishes } from './wishes';
 import { parseMsg } from '../src/core/msgs';
 import { FAM_ROW } from '../src/core/wishFams';
+
+/**
+ * (v2.1.18) PHOTOS IMPORTÉES : elles n'étaient lues que par la page profil. On recopie leur adresse dans `avatarUrl`
+ * (photo Discord mise de côté dans `avatarDiscord`), la carte de présence et la ligne de classement. Idempotente.
+ *
+ *   npx convex run migrations:applyAvatarMedia
+ */
+export const applyAvatarMedia = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let fixed = 0;
+    for (const u of await ctx.db.query('users').collect()) {
+      if (!u.avatarMedia) continue;
+      const url = await ctx.storage.getUrl(u.avatarMedia);
+      if (!url || u.avatarUrl === url) continue;
+      await ctx.db.patch(u._id, { avatarUrl: url, avatarDiscord: u.avatarUrl });
+      await syncPresence(ctx, u._id);
+      const rank = await ctx.db.query('rankRows').withIndex('by_user', (q) => q.eq('userId', u._id)).first();
+      if (rank) await ctx.db.patch(rank._id, { row: { ...rank.row, avatarUrl: url } });
+      fixed++;
+    }
+    console.log(`[migrations] applyAvatarMedia : ${fixed} photos recopiées`);
+    return { fixed };
+  },
+});
 
 /**
  * RARETÉS — une seule source de vérité : le catalogue (src/core/sets/*).
