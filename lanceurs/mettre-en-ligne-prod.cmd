@@ -62,6 +62,8 @@ call node scripts/r2-sync.mjs --dist >> "%LOG%" 2>&1 || goto :err
 echo [5/5] Cloudflare Pages...
 echo [5/5] wrangler pages deploy >> "%LOG%"
 call npx --yes wrangler pages deploy dist --project-name=cardgamepriv --branch=master --commit-dirty=true >> "%LOG%" 2>&1 || goto :err
+rem (26/11) previent l'autre (Tom ou Hugo) en MP par le bot Discord ; un echec n'arrete pas la mise en ligne
+call node scripts/prevenir-equipe.mjs >> "%LOG%" 2>&1
 echo === OK === >> "%LOG%"
 echo.
 echo MISE EN LIGNE TERMINEE. Tu peux fermer cette fenetre.
