@@ -59,3 +59,6 @@ _Mis à jour : 26/11/2026 (Hugo : reste à faire trié ; v2.1.19 en ligne ; Conv
 - Capture du calendrier sans la 3D (Chrome headless reste bloqué sur l'écran de chargement du jeu) : banc `.wt-master/.claude-tmp/avent.html` servi par `npm run dev`, puis `chrome --headless=new --screenshot`.
 - Deux sessions dans le dossier racine en même temps : un commit de l'une peut embarquer les fichiers indexés de l'autre (arrivé le 26/11, annulé). Une seule session par dossier (arrivé aussi dans `.wt-master` le 26/11 : v2.1.18 construite par-dessus la v2.1.17 non publiée).
 - La prod = déploiement Convex « dev » : lire avec `npx convex run …` sans `--prod` (`--prod` renvoie une base vide).
+- `EN-COURS.md` a des fins de ligne Windows : un script qui découpe sur `
+` ne retrouve plus les titres.
+- `npm run check:images` contrôle les fichiers locaux, pas le site : sur un PC au `public/art` incomplet, vérifier l'adresse en ligne (réponse 200 de type image).
