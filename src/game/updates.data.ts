@@ -71,6 +71,13 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Lancement plus rapide après une mise à jour', tag: 'amélioré',
+        points: [
+          '⚡ Après une mise à jour, ta collection n’est plus rechargée en entier au lancement : le jeu repart de la copie gardée sur ton appareil.',
+          '📊 Classement : ta ligne est recalculée dès que tu l’ouvres, celles des autres toutes les 10 minutes.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Texte du Portefeuille corrigé', tag: 'corrigé',
         points: [
           '🪙 Le Portefeuille ne dit plus que les pièces ne s’échangent jamais contre des cartes : depuis le marché, c’est possible entre joueurs.',

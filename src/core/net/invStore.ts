@@ -3,16 +3,19 @@
  * relisait toute la collection (`inventory.collectionFull`, ≈ 600 Ko par joueur et par lancement d'après l'audit) alors
  * que le suivi par différence (`mineSince`) sait repartir d'une révision.
  *
- * Garde-fous : la copie n'est reprise que pour la MÊME session, la MÊME version du jeu, et si elle a moins de 24 h —
- * une remise à zéro ou un ménage de cartes fait par une migration ne laisse pas de trace de suppression, et sort avec
- * une nouvelle version. Tout échec (stockage refusé, navigation privée) = lecture complète, comme avant.
+ * Garde-fous : la copie n'est reprise que pour la MÊME session, la MÊME époque de copie, et si elle a moins de 72 h.
+ * Tout échec (stockage refusé, navigation privée) = lecture complète, comme avant.
+ * (26/11, coût Convex) AVANT : la copie était liée à la version du jeu — chaque patch (8 le 26/11) faisait relire sa
+ * collection entière à chaque joueur (jusqu'à 6 Mo), et elle expirait au bout de 24 h. Depuis, toute suppression
+ * d'inventaire laisse une trace (`dropInv`, migrations comprises) et toute écriture pose `rev` : la différence suffit.
+ * MONTER `EPOCH` si une migration supprime des lignes sans trace ou si le format des lignes gardées change.
  */
-import { BUILD_ID } from '../canal';
 import type { InvRow } from './invDiff';
 
 const DB = 'bebou-collection';
 const STORE = 'miroir';
-const MAX_AGE_MS = 24 * 3600 * 1000;
+const EPOCH = 'copie-1';
+const MAX_AGE_MS = 72 * 3600 * 1000;
 const LOAD_WAIT_MS = 1500;
 
 interface Saved {
@@ -58,7 +61,7 @@ async function read(key: string): Promise<{ rows: InvRow[]; at: number } | null>
       rq.onsuccess = () => {
         const s = rq.result as Saved | undefined;
         db.close();
-        done(s && s.key === key && s.build === BUILD_ID && Array.isArray(s.rows) && Date.now() - s.at < MAX_AGE_MS && Date.now() >= s.at ? { rows: s.rows, at: s.at } : null);
+        done(s && s.key === key && s.build === EPOCH && Array.isArray(s.rows) && Date.now() - s.at < MAX_AGE_MS && Date.now() >= s.at ? { rows: s.rows, at: s.at } : null);
       };
       rq.onerror = () => (db.close(), done(null));
     } catch {
@@ -74,7 +77,7 @@ export async function saveInv(key: string, rows: InvRow[], at: number): Promise<
   if (!db) return;
   try {
     const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put({ key, build: BUILD_ID, at, rows } satisfies Saved, 'moi');
+    tx.objectStore(STORE).put({ key, build: EPOCH, at, rows } satisfies Saved, 'moi');
     tx.oncomplete = tx.onerror = tx.onabort = () => db.close();
   } catch {
     db.close();

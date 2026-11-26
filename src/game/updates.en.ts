@@ -36,6 +36,13 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 Nov', title: 'Faster start after an update', tag: 'amélioré',
+        points: [
+          '⚡ After an update, your collection is no longer reloaded in full at launch: the game picks up from the copy kept on your device.',
+          '📊 Leaderboard: your row is recalculated as soon as you open it, other players’ every 10 minutes.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'Wallet text fixed', tag: 'corrigé',
         points: [
           '🪙 The Wallet no longer says coins can never be exchanged for cards: with the Market, players can do it between themselves.',
