@@ -21,6 +21,7 @@
     "check:images": "esbuild scripts/verifier-images.mts --bundle --platform=node --format=esm --outfile=.cache/verifier-images.mjs --log-level=warning && node .cache/verifier-images.mjs",
     "bake:tear": "esbuild scripts/bake-tear/bake.mts --bundle --platform=node --format=esm --outfile=.cache/bake-tear.mjs --log-level=warning && node .cache/bake-tear.mjs",
     "feedback": "node scripts/pull-feedback.mjs",
+    "agent": "esbuild scripts/agent/agent.mts --bundle --platform=node --format=esm --packages=external --outfile=.cache/agent.mjs --log-level=warning && node .cache/agent.mjs",
     "r2:sync": "node scripts/r2-sync.mjs",
     "r2:pull": "node scripts/r2-pull.mjs",
     "convert:yugioh": "node scripts/import_faithful_model.mjs"
@@ -38,10 +39,11 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "@types/web-push": "^3.6.4",
+    "@anthropic-ai/sdk": "^1.14.0",
     "@aws-sdk/client-s3": "^3.1161.0",
     "@edge-runtime/vm": "^5.0.0",
     "@types/three": "^0.187.0",
+    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "convex-test": "^0.0.66",
     "sharp": "^0.35.5",
