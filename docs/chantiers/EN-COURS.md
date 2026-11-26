@@ -46,7 +46,7 @@ _Mis à jour : 26/11/2026 (Tom : labo refait, v2.1.20 en ligne ; avant : lanceur
 - [ ] Sachets par thème : piste « Case de BD » choisie le 25/11 ; Tom la retouche dans Photoshop → EN ATTENTE de ses fichiers, puis vignettes, roue 3D, booster du moment
 - [ ] Marché « façon Kyara » (captures reçues, brief : `docs/chantiers/marche-kyara.md`) ; passe « moins de texte » Marché / Échanges / Jeux (Pack Battle, Battle Royale : mêmes règles, plus visuels)
 - [ ] Roulette : toucher le pot = carte en grand, couleurs dans le replay
-- [ ] Ouvertures : retirer Brûlure, Éventail et les autres ; on garde la Déchirure + les 2 de Noël, et on AJOUTE 5 nouvelles ouvertures à gagner (décision Tom 26/11, nuit LABO, branche nuit-v3)
+- [ ] Ouvertures : retirer Brûlure, Éventail et les autres ; on garde la Déchirure + les 2 de Noël, et on AJOUTE 5 nouvelles ouvertures à gagner (décision Tom 26/11 ; la branche nuit-v3 du LABO Fable a été supprimée)
 - [ ] Notifications : « ta série est en danger » + tirage de la roulette
 
 - Détail des décisions : Project claude.ai `00-etat-du-projet` et `04-regles-du-jeu` ; historique : `docs/historique-claude-ai/`
