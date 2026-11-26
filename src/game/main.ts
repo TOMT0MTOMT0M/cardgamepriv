@@ -284,8 +284,20 @@ function syncNavMore() {
   navEl.classList.toggle('of', of);
   navEl.classList.toggle('more-r', of && navEl.scrollLeft < max - 2);
   navEl.classList.toggle('more-l', of && navEl.scrollLeft > 2);
+  // (patch v2.1.30, QOL L) un onglet caché à droite a une pastille : la flèche la porte
+  let dot = false;
+  if (of && navEl.scrollLeft < max - 2) {
+    const edge = navEl.scrollLeft + navEl.clientWidth - navMore.offsetWidth;
+    for (const b of navEl.querySelectorAll<HTMLElement>('a .badge:not([hidden])')) {
+      const a = b.parentElement!;
+      if (a.offsetLeft + a.offsetWidth - 8 > edge) { dot = true; break; }
+    }
+  }
+  navMore.classList.toggle('dot', dot);
 }
 navEl.addEventListener('scroll', syncNavMore, { passive: true });
+// une pastille qui apparaît ou disparaît (échanges, succès, amis…) : la flèche suit
+new MutationObserver(() => syncNavMore()).observe(navEl, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
 navMore.addEventListener('click', (e) => {
   e.preventDefault();
   navEl.scrollBy({ left: navEl.clientWidth * 0.6, behavior: lessMotion.matches ? 'auto' : 'smooth' });

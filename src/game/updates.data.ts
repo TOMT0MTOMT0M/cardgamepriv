@@ -71,6 +71,16 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Collection et missions plus pratiques', tag: 'amélioré',
+        points: [
+          '🔎 Collection → Albums : la recherche fouille les 5 thèmes et les noms de cartes (« Goku » montre ses albums et ses cartes), rangés par thème.',
+          '📖 « Voir l’album » sous une carte ouverte, et dans la vue Cartes le nom d’un album ouvre cet album.',
+          '★ Épingle tes albums préférés (étoile sur la pochette) : ils restent en haut de la vue Albums, avec les 5 derniers ouverts. Gardé sur cet appareil.',
+          '🎯 Missions : « Tout récupérer » réclame d’un coup les missions du jour, le bonus et celles de la semaine.',
+          '› Au téléphone, la flèche de la barre d’onglets porte une pastille quand un onglet caché à droite en a une.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Images de cartes et 6★ tout juste tirées', tag: 'corrigé',
         points: [
           '🖼️ Leo (Summoners War), Tinky Winky et la Coiffe Kitsou (Dofus) ont enfin leur image.',
