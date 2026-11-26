@@ -1,6 +1,12 @@
 # Convex — pistes pour baisser la Database I/O (session Convex n°3, 26/11 soir) — IDÉES, rien n'est codé
 
-**Choix de Tom : en attente.**
+**Choix de Tom (26/11, 23 h) : les recommandations.** Paquet A en entier (pistes 1 à 7, et 8 allégé sans changer la cadence), en 2-3 patchs live, sans rien de visible ni de migration. D'abord 2 et 5 (code du jeu seul : pas de sauvegarde à la mise en ligne), puis 1, 3, 4, 6, 7, 8. Ensuite la piste 9 en V3. Pas encore décidé : 8 à 30 min, 10, 11, 12-14, 15 (changement de jeu, avec Hugo).
+
+## Compte rendu (26/11, Tom + Claude)
+- **Fait** : code et mesures du 26/11 relus (`claimCompletions`, `profile`, `collectionFull` / `invStore.ts`, `mineSince`, classement, boosters, présence) ; doc Convex (sauvegardes, cache, prix) ; 15 pistes chiffrées ci-dessous (`7fb5405`). Rien de codé.
+- **Vérifié** : `coutBoosters.test.ts` vert (master) ; 19 patchs ont touché `convex/` du 14 au 26/11, dont 11 le schéma ou les migrations.
+- **À vérifier par Tom** : compteur du 27/11 (`npx convex deployment usage`), pour connaître le vrai facteur jour / soirée.
+- **Reste** : patch 1 = pistes 2 + 5 (avec l'argument `why` de `collectionFull`, pour savoir pourquoi les joueurs relisent leur collection après une mise en ligne) ; patch 2 = 1, 3, 4, 6, 7, 8 allégé ; chiffres de ce document à recaler avec un relevé plus long (celui du 26/11 au soir était trop lent).
 
 Ce que Convex facture (doc officielle, `.claude/rules/convex.md`) : chaque document lu ou écrit par une fonction, index compris, sauf quand une requête est servie par le cache (rien n'a changé depuis le dernier calcul avec les mêmes arguments). Une requête abonnée est recalculée dès qu'un document qu'elle a lu change. Une sauvegarde (`convex export` ou bouton « Backup now ») relit toute la base ; Starter n'a pas de sauvegarde automatique, et aucune option ne limite l'export à quelques tables.
 

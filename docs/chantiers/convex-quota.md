@@ -40,9 +40,15 @@
 - Compteur Convex le 26/11 à 22 h : jour 1,89 GB (5 mises en ligne, 1 sauvegarde, coûts uniques compris), mois 42,3 GB. Calcul (chez Tom, hors git) : `node .claude-tmp/regime-cout.mjs <relevés .jsonl> -- <début> <fin> [trou/trou]` dans `.wt-master`, sur `cout-convex-2026-11-26-19-03.jsonl` et `…-20-10.jsonl`.
 - Plus gros postes restants (par appel, journaux du 26/11) : `economy:claimCompletions` 5,7 Mo (relit toute la collection via `collectionOf`), `profiles:profile` 2,6-4,2 Mo (collection du joueur regardé), `inventory:collectionFull` 2,6-3,1 Mo (rechargements après CHAQUE mise en ligne : 5 le 26/11), `profiles:refreshMyRank` jusqu'à 1,2 Mo, `profiles:rankRow` 170-340 Ko.
 
+## Session n°3 — pistes (26/11 soir, Tom + Claude) : `convex-pistes.md`
+- 15 pistes chiffrées, rien de codé. 1 GB/mois n'est pas tenable sans changer le jeu : au × 24, les abonnements de base coûtent déjà ≈ 40 Mo/jour. Paquets : A (rien de visible) ≈ 240 Mo/jour ≈ 1,4 $/mois ; B ≈ 145 ; C ≈ 105 ; aujourd'hui ≈ 590 (≈ 3,7 $/mois, sauvegardes comprises).
+- **Choix de Tom : paquet A** (pistes 1 à 7 + 8 allégé), patchs live ; d'abord 2 + 5 (code du jeu seul), puis 1, 3, 4, 6, 7, 8. Piste 9 (un booster = une mutation) en V3.
+
 ## Reste
 - [x] Boosters (v2.1.25-26) : −45 % d'I/O mesuré, `myTrades` −85 % (tableau ci-dessus).
-- [ ] Session Convex n°3 = IDÉES d'abord, rien codé : prompt prêt chez Tom, `.claude-tmp/prompt-session-convex-3.md` (Fable 5.2, effort medium, dossier racine). Cible : 1 GB/mois inclus (≈ 33 Mo/jour, ÷15) ; pistes qui peuvent changer le site ou le visuel, chacune avec gain chiffré, parade, risque, effort → `docs/chantiers/convex-pistes.md`, Tom choisit avant tout code. Postes à viser : `claimCompletions`, `profiles:profile`, `collectionFull` après une mise en ligne (la copie locale gardée 72 h devrait l'éviter : à comprendre), `refreshMyRank` / `rankRow`, `mineSince`, `session:get`.
+- [x] Session Convex n°3 : pistes dans `convex-pistes.md`, paquet A choisi.
+- [ ] Patch « copie locale » (pistes 2 + 5) : copie de la collection datée de la dernière synchronisation, clé par joueur, filet 30 j ; `INV_REBASE_ROWS` 60 → 5 ; argument `why` sur `collectionFull`. Mesurer avant / après (`node scripts/cout-convex.mjs`).
+- [ ] Patch « gros appels » (pistes 1, 3, 4, 6, 7, 8 allégé).
 - [ ] Vérifier le stockage après v2.1.24 dans le tableau de bord (≈ 325 Mo attendus au lieu de 385) — la CLI ne donne pas les octets stockés.
 - [ ] Rétention `packOpens` à 7 j possible (aucun écran joueur) si le stockage approche 512 Mo.
 - [ ] Remplir le staging avec un petit jeu de test au lieu de `rafraichir-staging-v2.cmd`.
