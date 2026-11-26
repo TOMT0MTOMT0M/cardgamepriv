@@ -1,7 +1,7 @@
 # En cours — fichier de passation
 
 Lu au début de chaque session (règle de CLAUDE.md), réécrit à la fin par `/cr`. Une page max.
-_Mis à jour : 26/11/2026 (Hugo : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
+_Mis à jour : 26/11/2026 (Hugo : agent Claude sur la clé API de Tom poussé, `42c5c21` ; avant : liste QOL validée — collection + audit de tous les onglets, idée Forge → vente, contrats à retirer et enchères en V3 ; avant : dossier racine resynchronisé, reste local `outils/labo/` supprimé ; Tom : labo refait, v2.1.20 en ligne, LABO Fable + branches labo/nuit-v3 supprimés, prompt Gemini « nouveau thème » relu ; avant : lanceur Claude + LABO poussés, v2.1.19, Convex au-dessus de l'offre gratuite)._
 
 ## Chantiers ouverts
 
@@ -18,6 +18,7 @@ _Mis à jour : 26/11/2026 (Hugo : liste QOL validée — collection + audit de t
 | Hugo + Claude | `.wt-master` / `master` | patch v2.1.19 : texte du Portefeuille corrigé | en ligne (tag `v2.1.19`, `b99fb79` ; v2 `89b189e`) — `docs/chantiers/v2.1.19.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.20 : labo refait (archives 001-038 + bouton ⤓/⤒, onglets, recherche, vignettes, menu ⚙, `npm run labo:new`) ; jeu inchangé, pas de note de patch | en ligne (tag `v2.1.20`, `72534f8` ; v2 `e7cebc7`) — `docs/chantiers/v2.1.20.md` |
 | Tom + Claude | racine / `v2` | outils : lanceur Claude sans console vide (`.vbs`), journal, `.gitattributes` CRLF ; LABO Fable supprimé le 26/11 (outil + bouton) | poussé, pas testé en vrai — `docs/chantiers/outils-lanceur.md` |
+| Hugo + Claude | racine / `v2` | outils : agent Claude sur la clé API de Tom (100 $/mois) — images, cadrage, catalogue, traductions (Batch) + audits Convex et perf mobile, lecture seule, rapports dans `docs/rapports-agent/` | poussé (`42c5c21`), testé à blanc, attend la clé — `docs/chantiers/agent-claude.md` |
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
 | Hugo + Claude | racine / `v2` | QOL : liste validée (section « QOL » ci-dessous), rien de codé | à démarrer par collection 1-2-3 — `docs/chantiers/qol.md` |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
@@ -39,6 +40,7 @@ _Mis à jour : 26/11/2026 (Hugo : liste QOL validée — collection + audit de t
 
 ### Outils
 - [ ] Tom : tester `LANCEUR-CLAUDE.cmd` (pas de console vide) ; retirer à la main `CLAUDE_LABO_*` de `.env.local` (LABO supprimé) — Hugo aussi, s'il les avait
+- [ ] Agent Claude (Tom, ce soir) : limite 100 $ dans la console Anthropic, `AGENT_CLAUDE_KEY=` dans `.env.local` (JAMAIS `ANTHROPIC_API_KEY` en variable Windows), puis `lanceurs\agent-claude.cmd` → 7 Convex, 8 perf, puis 3-6 et le lendemain 2 (suivre). Rapports Convex / perf → une session par lot, mesuré avant / après. Mode d'emploi : `docs/AGENT-CLAUDE.md`
 - [ ] Commit à part `git add --renormalize lanceurs/` (les `.cmd` paraissent modifiés depuis `.gitattributes`, fins de ligne seulement)
 
 ### V3
