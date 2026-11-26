@@ -61,6 +61,13 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '26 nov.', title: 'Images de cartes et 6★ tout juste tirées', tag: 'corrigé',
+        points: [
+          '🖼️ Leo (Summoners War), Tinky Winky et la Coiffe Kitsou (Dofus) ont enfin leur image.',
+          '✨ Une 6★ tout juste tirée pouvait rester affichée avec l’image d’attente dans la collection : elle montre maintenant sa vraie image. Les cartes déjà touchées se réparent toutes seules.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'God pack dans un ×5 ou un ×10', tag: 'corrigé',
         points: [
           '✦ Un God pack ouvert en ×5 ou en ×10 joue sa séquence « GOD PACK » juste avant ses cartes, à la fin du gros booster : elle pouvait se jouer plus tôt, sur des cartes ordinaires. Les cartes obtenues étaient déjà les bonnes.',

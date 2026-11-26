@@ -1,4 +1,4 @@
-import { cardImage, ensureCardFonts, gameDesignId, generateCardArtAsync, releaseCardImage } from '../core/art';
+import { ensureCardFonts, gameDesignId, generateCardArtAsync } from '../core/art';
 import { loadCardImage } from '../core/art/images';
 import { cardById } from '../core/cardData';
 import { CARD } from '../core/cardModel';
@@ -22,8 +22,10 @@ export async function paintDropShot(cardId: string, rarity: RarityId): Promise<B
   const cd = cardById(cardId);
   // l'illustration en pleine taille (pas la miniature des grilles) doit être chargée avant la peinture
   const image = cd.image;
-  // déjà en mémoire (la carte 3D qu'on vient de révéler l'utilise) : on ne la libère pas après coup
-  const had = image ? cardImage(image) : null;
+  // (v2.1.29) jamais libérée après coup : c'est la MÊME image que la carte 3D de l'ouverture et que la tuile 5★ / 6★ du
+  // récap et de la collection (cardImages.ts), peintes au même moment. La libérer vidait leur toile : la tuile était
+  // peinte en silhouette d'attente et gardée ainsi dans le cache du joueur. Le cache des illustrations (borné en
+  // octets, images.ts) la rend quand il faut de la place.
   await Promise.all([ensureCardFonts(), image ? loadCardImage(image, { key: !(cd.photo || cd.cover) }) : undefined]);
   const design = gameDesignId(cd);
   const art = await generateCardArtAsync(cd, rarity, { scale: 1, flatOnly: true, ...(design ? { design } : {}) });
@@ -46,7 +48,6 @@ export async function paintDropShot(cardId: string, rarity: RarityId): Promise<B
   } finally {
     art.dispose();
     for (const cv of Object.values(art.canvases)) cv.width = cv.height = 0;
-    if (image && !had) releaseCardImage(image);
   }
 }
 
