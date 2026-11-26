@@ -5,6 +5,7 @@ import { internalMutation, mutation, query, type MutationCtx } from './_generate
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import { requireUser } from './auth';
+import { patchLive } from './liveUser';
 import { fullAt } from '../src/core/packRegen';
 import { fm, type Msg } from '../src/core/msgs';
 import { msgIn, userLang } from './i18nServer';
@@ -159,10 +160,12 @@ export async function notify(ctx: MutationCtx, userId: Id<'users'>, p: Payload, 
  * « Réserve pleine » : calcule l'instant exact où la réserve atteindra 15/15 et programme la notification à ce
  * moment-là ; annule la précédente. À rappeler à chaque ouverture / gain de boosters / boost.
  */
-export async function scheduleReserveFull(ctx: MutationCtx, userId: Id<'users'>): Promise<void> {
+export async function scheduleReserveFull(ctx: MutationCtx, userId: Id<'users'>, live?: Doc<'users'>): Promise<void> {
   try {
-    const u = await ctx.db.get(userId);
+    // (26/11, coût) `live` : le joueur déjà lu et tenu à jour par la mutation (convex/liveUser.ts), pas relu
+    const u = live ?? (await ctx.db.get(userId));
     if (!u) return;
+    const put = (f: Partial<Doc<'users'>>) => (live ? patchLive(ctx, live, f) : ctx.db.patch(userId, f));
     // l'instant visé, ou `null` s'il n'y a rien à programmer
     let at: number | null = null;
     if (process.env.VAPID_PUBLIC_KEY && !(u.notifPrefs && !u.notifPrefs.includes('reserve')) && (await ctx.db.query('pushSubs').withIndex('by_user', (q) => q.eq('userId', userId)).first()))
@@ -175,11 +178,11 @@ export async function scheduleReserveFull(ctx: MutationCtx, userId: Id<'users'>)
     if (key && u.notifFullJob && u.notifFullKey === key && (await ctx.db.system.get(u.notifFullJob))?.state.kind === 'pending') return;
     if (u.notifFullJob) await ctx.scheduler.cancel(u.notifFullJob).catch(() => undefined);
     if (at === null) {
-      if (u.notifFullJob || u.notifFullKey) await ctx.db.patch(userId, { notifFullJob: undefined, notifFullKey: undefined });
+      if (u.notifFullJob || u.notifFullKey) await put({ notifFullJob: undefined, notifFullKey: undefined });
       return;
     }
     const job = await ctx.scheduler.runAt(at + 1000, internal.push.reserveFull, { userId, balance: u.packBalance, regenAt });
-    await ctx.db.patch(userId, { notifFullJob: job, notifFullKey: key });
+    await put({ notifFullJob: job, notifFullKey: key });
   } catch (e) {
     console.warn('[push] réserve', e);
   }

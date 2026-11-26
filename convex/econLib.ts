@@ -8,6 +8,7 @@ import { cleanEcon, emptyEcon, type EconState } from '../src/core/economy';
 import { applyWeeklyEvent, cleanWeekly, currentWeekly, type WeeklyEvent, type WeeklyState } from '../src/core/weekly';
 import { lockedCards } from './trades';
 import { dropInv, invRev } from './invRev';
+import { patchLive } from './liveUser';
 import type { Msg } from '../src/core/msgs';
 
 /**
@@ -29,15 +30,17 @@ export const coinsOf = (u: Doc<'users'>) => u.coins ?? 0;
  * (succès Tirelire) — vrai pour les sources de pièces et les gains de jeu, faux pour les remboursements.
  * Relit le joueur : sûr après d'autres écritures dans la même mutation.
  */
-export async function addCoins(ctx: MutationCtx, userId: Id<'users'>, amount: number, reason: string, label: string | Msg, opts: { earned?: boolean; econ?: Partial<EconState> } = {}) {
-  const u = await ctx.db.get(userId);
+export async function addCoins(ctx: MutationCtx, userId: Id<'users'>, amount: number, reason: string, label: string | Msg, opts: { earned?: boolean; econ?: Partial<EconState>; live?: Doc<'users'> } = {}) {
+  // (26/11, coût) `live` : le joueur déjà lu et tenu à jour par la mutation (convex/liveUser.ts), pas relu
+  const u = opts.live ?? (await ctx.db.get(userId));
   if (!u) throw new ConvexError(fe('econLib.1'));
   amount = Math.round(amount);
   const coins = coinsOf(u) + amount;
   if (coins < 0) throw new ConvexError(fe('econLib.2', { p0: -coins }));
   const econ = { ...econOf(u), ...(opts.econ ?? {}) };
   if (opts.earned && amount > 0) econ.earned += amount;
-  await ctx.db.patch(userId, { coins, econ: cleanEcon(econ) });
+  if (opts.live) await patchLive(ctx, opts.live, { coins, econ: cleanEcon(econ) });
+  else await ctx.db.patch(userId, { coins, econ: cleanEcon(econ) });
   if (amount !== 0)
     await ctx.db.insert('coinTx', {
       userId, amount, reason, createdAt: Date.now(),
@@ -54,11 +57,13 @@ export async function patchEcon(ctx: MutationCtx, userId: Id<'users'>, fn: (e: E
 }
 
 /** Missions de la semaine. */
-export async function bumpWeekly(ctx: MutationCtx, userId: Id<'users'>, ev: WeeklyEvent) {
-  const u = await ctx.db.get(userId);
+export async function bumpWeekly(ctx: MutationCtx, userId: Id<'users'>, ev: WeeklyEvent, live?: Doc<'users'>) {
+  const u = live ?? (await ctx.db.get(userId));
   if (!u) return;
   const { state, changed } = applyWeeklyEvent(currentWeekly(u.weekly as WeeklyState | undefined, u._id, Date.now()), ev);
-  if (changed) await ctx.db.patch(userId, { weekly: cleanWeekly(state) });
+  if (!changed) return;
+  if (live) await patchLive(ctx, live, { weekly: cleanWeekly(state) });
+  else await ctx.db.patch(userId, { weekly: cleanWeekly(state) });
 }
 
 /** Exemplaires possédés d'une carte, et ceux qui sont libres (pas engagés dans un échange en attente). */

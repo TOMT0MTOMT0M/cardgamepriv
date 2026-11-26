@@ -6,6 +6,7 @@ import { getUserByToken, requireUser } from './auth';
 import { applyRegen } from '../src/core/packRegen';
 import { dailyMissionCoins } from '../src/core/weekly';
 import { addCoins } from './econLib';
+import { patchLive } from './liveUser';
 import {
   applyMissionEvent,
   claimMission,
@@ -37,11 +38,14 @@ export function missionsView(user: Doc<'users'>, now: number) {
 }
 
 /** Appelé par les ouvertures, contrats et échanges : fait avancer les missions du jour. */
-export async function bumpMissions(ctx: MutationCtx, user: Doc<'users'>, ev: MissionEvent) {
-  const fresh = await ctx.db.get(user._id);
+/** `live` : `user` est la copie tenue à jour par la mutation (convex/liveUser.ts), pas relue (26/11, coût). */
+export async function bumpMissions(ctx: MutationCtx, user: Doc<'users'>, ev: MissionEvent, live = false) {
+  const fresh = live ? user : await ctx.db.get(user._id);
   if (!fresh) return;
   const { state, changed } = applyMissionEvent(stateOf(fresh, Date.now()), ev);
-  if (changed) await ctx.db.patch(user._id, { missions: cleanMissions(state) });
+  if (!changed) return;
+  if (live) await patchLive(ctx, user, { missions: cleanMissions(state) });
+  else await ctx.db.patch(user._id, { missions: cleanMissions(state) });
 }
 
 /** Ajoute des boosters à la réserve (au-dessus du plafond si besoin), recharge appliquée d'abord. */

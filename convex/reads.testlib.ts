@@ -16,7 +16,12 @@ export type Reads = {
   docs: number;
   /** taille approchée de ce qui a été lu (JSON), en octets */
   bytes: number;
+  /** (26/11, coût des boosters) écritures dans l'ordre : `patch` / `replace` / `delete` (id visé) et `insert` (table) */
+  writes: Array<{ op: 'patch' | 'replace' | 'delete' | 'insert'; id: string }>;
 };
+
+/** Nombre de lectures (`db.get`) et d'écritures d'UN document (le joueur, en général). */
+export const touches = (r: Reads, id: string) => ({ gets: r.gets.filter((g) => g === id).length, writes: r.writes.filter((w) => w.id === id).length });
 
 const isDoc = (x: unknown): x is { _id: string } => !!x && typeof x === 'object' && '_id' in (x as object);
 
@@ -58,7 +63,7 @@ export async function countReads<S extends GenericSchema, Out>(
 ): Promise<{ result: Out; reads: Reads }> {
   const handler = (fn as { _handler?: (ctx: unknown, args: unknown) => Promise<Out> })._handler;
   if (!handler) throw new Error('countReads : pas une fonction Convex enregistrée');
-  const reads: Reads = { gets: [], scanned: {}, docs: 0, bytes: 0 };
+  const reads: Reads = { gets: [], scanned: {}, docs: 0, bytes: 0, writes: [] };
   const result = await t.run(async (ctx) => {
     const db = new Proxy(ctx.db as object, {
       get(target, prop, recv) {
@@ -74,6 +79,11 @@ export async function countReads<S extends GenericSchema, Out>(
             return doc;
           };
         if (prop === 'query') return (table: string) => wrapQuery((v as (tb: string) => object).call(target, table), table, reads);
+        if (prop === 'patch' || prop === 'replace' || prop === 'delete' || prop === 'insert')
+          return (...a: unknown[]) => {
+            reads.writes.push({ op: prop, id: String(a[0]) });
+            return (v as (...x: unknown[]) => unknown).apply(target, a);
+          };
         return typeof v === 'function' ? (v as (...x: unknown[]) => unknown).bind(target) : v;
       },
     });
