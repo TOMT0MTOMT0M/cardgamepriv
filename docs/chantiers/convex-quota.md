@@ -42,7 +42,7 @@
 
 ## Reste
 - [x] Boosters (v2.1.25-26) : −45 % d'I/O mesuré, `myTrades` −85 % (tableau ci-dessus).
-- [ ] Session Convex n°3 : `claimCompletions`, `profiles:profile`, `collectionFull` après une mise en ligne (la copie locale gardée 72 h devrait l'éviter : à comprendre), `refreshMyRank` / `rankRow`. Même méthode : compter dans convex-test, puis `node scripts/cout-convex.mjs` avant / après.
+- [ ] Session Convex n°3 = IDÉES d'abord, rien codé : prompt prêt chez Tom, `.claude-tmp/prompt-session-convex-3.md` (Fable 5.2, effort medium, dossier racine). Cible : 1 GB/mois inclus (≈ 33 Mo/jour, ÷15) ; pistes qui peuvent changer le site ou le visuel, chacune avec gain chiffré, parade, risque, effort → `docs/chantiers/convex-pistes.md`, Tom choisit avant tout code. Postes à viser : `claimCompletions`, `profiles:profile`, `collectionFull` après une mise en ligne (la copie locale gardée 72 h devrait l'éviter : à comprendre), `refreshMyRank` / `rankRow`, `mineSince`, `session:get`.
 - [ ] Vérifier le stockage après v2.1.24 dans le tableau de bord (≈ 325 Mo attendus au lieu de 385) — la CLI ne donne pas les octets stockés.
 - [ ] Rétention `packOpens` à 7 j possible (aucun écran joueur) si le stockage approche 512 Mo.
 - [ ] Remplir le staging avec un petit jeu de test au lieu de `rafraichir-staging-v2.cmd`.
