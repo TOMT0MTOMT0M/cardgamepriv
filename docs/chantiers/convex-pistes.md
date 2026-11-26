@@ -6,7 +6,7 @@
 - **Fait** : code et mesures du 26/11 relus (`claimCompletions`, `profile`, `collectionFull` / `invStore.ts`, `mineSince`, classement, boosters, présence) ; doc Convex (sauvegardes, cache, prix) ; 15 pistes chiffrées ci-dessous (`7fb5405`). Rien de codé.
 - **Vérifié** : `coutBoosters.test.ts` vert (master) ; 19 patchs ont touché `convex/` du 14 au 26/11, dont 11 le schéma ou les migrations.
 - **À vérifier par Tom** : compteur du 27/11 (`npx convex deployment usage`), pour connaître le vrai facteur jour / soirée.
-- **Reste** : patch 1 = pistes 2 + 5 (avec l'argument `why` de `collectionFull`, pour savoir pourquoi les joueurs relisent leur collection après une mise en ligne) ; patch 2 = 1, 3, 4, 6, 7, 8 allégé ; chiffres de ce document à recaler avec un relevé plus long (celui du 26/11 au soir était trop lent).
+- **Reste** : ~~patch 1 = pistes 2 + 5~~ en ligne le 26/11 (v2.1.31, `docs/chantiers/v2.1.31.md` ; seuil de la piste 5 : 10 lignes hors marge, pas 5) ; patch 2 = 1, 3, 4, 6, 7, 8 allégé ; chiffres de ce document à recaler avec un relevé plus long (celui du 26/11 au soir était trop lent).
 
 Ce que Convex facture (doc officielle, `.claude/rules/convex.md`) : chaque document lu ou écrit par une fonction, index compris, sauf quand une requête est servie par le cache (rien n'a changé depuis le dernier calcul avec les mêmes arguments). Une requête abonnée est recalculée dès qu'un document qu'elle a lu change. Une sauvegarde (`convex export` ou bouton « Backup now ») relit toute la base ; Starter n'a pas de sauvegarde automatique, et aucune option ne limite l'export à quelques tables.
 
