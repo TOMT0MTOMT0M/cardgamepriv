@@ -36,6 +36,7 @@ import { statsCached } from './profiles';
 import type { PlayerStats } from '../src/core/cosmetics';
 import { fm } from '../src/core/msgs';
 import { awardUniqueTitles } from './titres';
+import { invOf } from './inventory';
 
 /**
  * ÉCONOMIE — portefeuille et sources de pièces (spec du 3 nov., src/core/economy.ts) :
@@ -44,7 +45,7 @@ import { awardUniqueTitles } from './titres';
  */
 
 async function collectionOf(ctx: QueryCtx, u: Doc<'users'>) {
-  return await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
+  return await invOf(ctx, u._id);
 }
 
 async function achStats(ctx: QueryCtx, u: Doc<'users'>, inv?: Doc<'inventory'>[]) {

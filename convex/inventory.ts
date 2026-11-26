@@ -1,7 +1,18 @@
 import { v } from 'convex/values';
-import type { Doc } from './_generated/dataModel';
-import { query } from './_generated/server';
+import type { Doc, Id } from './_generated/dataModel';
+import { query, type QueryCtx } from './_generated/server';
 import { getUserIdByToken } from './auth';
+
+/**
+ * (v2.1.24, coût Convex) Collection entière d'un joueur, dans l'ordre de l'ancien index `by_user` (date de création).
+ * `by_user` est retiré : doublon de `by_user_card_rarity` (même préfixe). D'après la doc Convex, chaque index est une
+ * copie de la table (≈ 31 Mo de stockage ici) et se réécrit à chaque écriture d'inventaire. Mêmes lignes, même ordre :
+ * le « meilleur drop » du profil (égalités) et l'ordre des propositions d'échange ne changent pas.
+ */
+export async function invOf(ctx: QueryCtx, userId: Id<'users'>): Promise<Doc<'inventory'>[]> {
+  const rows = await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', userId)).collect();
+  return rows.sort((a, b) => a._creationTime - b._creationTime);
+}
 
 /**
  * Collection du joueur (abonnement permanent du jeu, renvoyée EN ENTIER à chaque booster ouvert). Seulement les champs
@@ -16,10 +27,7 @@ export const myCollection = query({
     const userId = await getUserIdByToken(ctx, sessionToken);
     if (!userId) return [];
 
-    const rows = await ctx.db
-      .query('inventory')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
-      .collect();
+    const rows = await invOf(ctx, userId);
     return rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber, firstPulledAt: c.firstPulledAt }));
   },
 });
@@ -51,10 +59,7 @@ export const collectionFull = query({
   handler: async (ctx, { sessionToken, parts }) => {
     const userId = await getUserIdByToken(ctx, sessionToken);
     if (!userId) return null;
-    const rows = await ctx.db
-      .query('inventory')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
-      .collect();
+    const rows = await invOf(ctx, userId);
     return parts ? inParts(rows.map(slim)) : rows.map(slim);
   },
 });
@@ -90,10 +95,7 @@ export const mineSince = query({
 export const userCollectionSlim = query({
   args: { userId: v.id('users'), parts: v.optional(v.boolean()) },
   handler: async (ctx, { userId, parts }) => {
-    const rows = await ctx.db
-      .query('inventory')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
-      .collect();
+    const rows = await invOf(ctx, userId);
     const out = rows.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }));
     return parts ? inParts(out) : out;
   },
@@ -102,9 +104,6 @@ export const userCollectionSlim = query({
 export const userCollection = query({
   args: { userId: v.id('users') },
   handler: async (ctx, { userId }) => {
-    return await ctx.db
-      .query('inventory')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
-      .collect();
+    return await invOf(ctx, userId);
   },
 });

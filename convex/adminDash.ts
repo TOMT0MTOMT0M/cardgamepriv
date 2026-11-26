@@ -14,6 +14,7 @@ import { applyRegen } from '../src/core/packRegen';
 import { SURVEY_ID } from '../src/core/survey';
 import { seenAtAll, syncPresence } from './presence';
 import { fm } from '../src/core/msgs';
+import { invOf } from './inventory';
 
 /**
  * DASHBOARD ADMIN (V2, 10/11) — page /admin/ (src/admin/), réservée à l'équipe : Tom et Hugo (users.isAdmin ou
@@ -161,14 +162,22 @@ export const playerDetail = query({
   handler: async (ctx, { sessionToken, id }) => {
     await requireStaff(ctx, sessionToken);
     const u = await player(ctx, id);
-    const inv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', id)).collect();
+    const inv = await invOf(ctx, id);
     const byRarity: Record<string, number> = {};
     let copies = 0;
     for (const r of inv) {
       byRarity[r.rarity] = (byRarity[r.rarity] ?? 0) + 1;
       copies += r.count;
     }
-    const packs = await ctx.db.query('packOpens').withIndex('by_userId', (q) => q.eq('userId', id)).order('desc').take(10);
+    // (v2.1.24) `packOpens.by_userId` retiré (doublon de `by_user_status`) : scellés + ouverts, 10 plus récents
+    const packs = (
+      await Promise.all(
+        (['sealed', 'revealed'] as const).map((status) => ctx.db.query('packOpens').withIndex('by_user_status', (q) => q.eq('userId', id).eq('status', status)).order('desc').take(10)),
+      )
+    )
+      .flat()
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, 10);
     const coins = await ctx.db.query('coinTx').withIndex('by_user', (q) => q.eq('userId', id)).order('desc').take(12);
     const kids = await ctx.db.query('users').withIndex('by_referredBy', (q) => q.eq('referredBy', id)).collect();
     const sessions = await ctx.db.query('sessions').withIndex('by_userId', (q) => q.eq('userId', id)).collect();
@@ -449,7 +458,7 @@ export const playerCards = query({
   args: { sessionToken: v.string(), id: v.id('users') },
   handler: async (ctx, { sessionToken, id }) => {
     await requireStaff(ctx, sessionToken);
-    const inv = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', id)).collect();
+    const inv = await invOf(ctx, id);
     return inv.map((r) => ({ cardId: r.cardId, rarity: r.rarity, count: r.count, mint: r.bestMintNumber }));
   },
 });

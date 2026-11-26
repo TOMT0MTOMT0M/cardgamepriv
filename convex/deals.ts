@@ -31,6 +31,7 @@ import { seenAtAll, seenAtOf } from './presence';
 import { wishersOfCard, wishesReady } from './wishes';
 import { wantsCard } from '../src/core/wishFams';
 import { fm } from '../src/core/msgs';
+import { invOf } from './inventory';
 
 /**
  * REFONTE DES ÉCHANGES (11/11) — règles : src/core/deals.ts.
@@ -94,7 +95,7 @@ async function proposableOf(ctx: QueryCtx, u: Doc<'users'>, rarity?: RarityId, e
   // du joueur à chaque toucher, jusqu'à 1,2 Mo chez un grand collectionneur)
   const inv = rarity
     ? await ctx.db.query('inventory').withIndex('by_user_rarity', (q) => q.eq('userId', u._id).eq('rarity', rarity)).collect()
-    : await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
+    : await invOf(ctx, u._id);
   const locked = await lockedCards(ctx, u._id, except);
   const g = guardOf(u);
   return inv
@@ -203,7 +204,7 @@ export const forYou = query({
     const other = async (id: Id<'users'>) => (id === me._id ? null : await people.get(id));
     const myRows: Array<{ cardId: string; rarity: RarityId; count: number }> = give
       ? give.slice(0, GIVE_MAX).filter((r) => Number.isFinite(r.count) && r.count > 1)
-      : await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', me._id)).collect();
+      : await invOf(ctx, me._id);
     const mine = new Map(myRows.map((r) => [key(r), r]));
     /** ai-je déjà cette carte ? (avec `give`, seules mes lignes en double sont connues : le reste se lit par l'index) */
     const iHave = async (c: DealCard) => (mine.get(key(c))?.count ?? (give ? ((await invRow(ctx, me._id, c))?.count ?? 0) : 0)) > 0;

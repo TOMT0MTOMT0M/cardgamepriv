@@ -1,5 +1,5 @@
 import { fe } from '../src/core/errors';
-import { inParts } from './inventory';
+import { inParts, invOf } from './inventory';
 import { v, ConvexError } from 'convex/values';
 import { internalAction, internalMutation, internalQuery, mutation, query, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -84,7 +84,7 @@ function extraOf(u: Doc<'users'>) {
 
 /** Statistiques d'un joueur (déblocages, classement). Relit la collection entière : le profil en a besoin. */
 export async function statsOf(ctx: QueryCtx, u: Doc<'users'>): Promise<{ stats: PlayerStats; collection: Doc<'inventory'>[] }> {
-  const collection = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', u._id)).collect();
+  const collection = await invOf(ctx, u._id);
   const stats = statsFrom(collection, extraOf(u));
   return { stats, collection };
 }

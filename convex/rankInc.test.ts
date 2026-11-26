@@ -90,7 +90,7 @@ describe('classement par différence', () => {
           const back = pick([1_000, 8_000, 14_000, 20_000]);
           vi.setSystemTime(Date.now() - back);
           await t.run(async (ctx) => {
-            const rows = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
+            const rows = await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', userId)).collect();
             if (rows.length && r() < 0.5) await remove(ctx, pick(rows));
             else await add(ctx, userId, pick(POOL), pick(RARITIES));
           });
@@ -98,13 +98,13 @@ describe('classement par différence', () => {
         } else if (x < 0.32) {
           // retrait (doublon ou dernier exemplaire)
           await t.run(async (ctx) => {
-            const rows = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
+            const rows = await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', userId)).collect();
             if (rows.length) await remove(ctx, pick(rows));
           });
         } else if (x < 0.36) {
           // étoile corrigée par une migration : supprimée puis recréée (convex/migrations.ts, resyncRarities)
           await t.run(async (ctx) => {
-            const rows = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
+            const rows = await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', userId)).collect();
             if (!rows.length) return;
             const row = pick(rows);
             const want = pick(RARITIES.filter((z) => z !== row.rarity));

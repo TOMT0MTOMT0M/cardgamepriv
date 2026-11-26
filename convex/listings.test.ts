@@ -115,7 +115,7 @@ describe('tableau d’offres', () => {
     const lid = await t.mutation(api.listings.create, { sessionToken: alice.token, items: [one(A)], hours: 24 });
     const ob = await t.mutation(api.listings.offer, { sessionToken: bob.token, listingId: lid, offered: [one(B)] });
     await t.run(async (ctx) => {
-      const row = await ctx.db.query('inventory').withIndex('by_user', (q) => q.eq('userId', bob.userId)).first();
+      const row = await ctx.db.query('inventory').withIndex('by_user_card_rarity',(q) => q.eq('userId', bob.userId)).first();
       await ctx.db.delete(row!._id);
     });
     await expect(t.mutation(api.listings.accept, { sessionToken: alice.token, offerId: ob })).rejects.toThrow(/bob/);
