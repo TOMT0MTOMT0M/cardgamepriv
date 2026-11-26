@@ -24,10 +24,11 @@ _Mis à jour : 26/11/2026 (Tom, 23 h : session Convex n°3 — 15 pistes chiffr�
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.27 : onglet Événement ouvert tout seul le 01/12 à 0 h (Paris), y compris dans un onglet resté ouvert ; fins de ligne des lanceurs normalisées sur `master` | en ligne le 26/11 (tag `v2.1.27`, `ccb8973` ; v2 `b840e3f`) — `docs/chantiers/v2.1.27.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.28 : God pack en ×5 / ×10, séquence GOD PACK sur le dernier morceau (`spreadSeries` sorti dans `src/game/series.ts`) | en ligne le 26/11 (tag `v2.1.28`, `4e5a51b` ; v2 `1f5584f` + ours `319f512`) — `docs/chantiers/v2.1.28.md` |
 | Tom + Claude | `.wt-master` / `master` | patch v2.1.29 : images de Leo 5★, Coiffe Kitsou, Tinky Winky 6★ (`reillustrer.py` gère la couche Etoiles) ; 6★ tirée figée en image d'attente (`dropShot.ts` vidait l'image partagée, `cardImages.ts` gardait la tuile ratée), cache `bebou-cartes-v17` | en ligne le 26/11 (tag `v2.1.29`, `26ead8d` ; v2 `1b5cdb1` `dd20d74` + ours `b5b9f3d`) — `docs/chantiers/v2.1.29.md` |
+| Tom + Claude | `.wt-master` / `patch-v2.1.30` | patch v2.1.30 : QOL collection 1-2-3, Missions H, barre du téléphone L (côté navigateur, rien dans `convex/`) | prêt (`a70fd94` ; v2 `93fddac` + ours `1639a0e`), attend le oui de Tom pour `METTRE-EN-LIGNE-v2.1.30.cmd` — `docs/chantiers/v2.1.30.md` |
 | Tom + Claude | racine / `v2` | outils : lanceur Claude pleine page (26/11 soir) — présence de l'équipe et sessions en direct (`refs/presence/*` sur GitHub), reste à faire, frise des patchs, chantiers et commits ; l'ancien `.ps1` est supprimé ; fins de ligne des `.cmd` normalisées ; annonces d'équipe rappelées par le hook de démarrage | poussé (`ba16e58`), lancé en vrai chez Tom ; à essayer chez Hugo (annonce en attente pour lui) — `docs/chantiers/outils-lanceur.md` |
 | Hugo + Claude | racine / `v2` | outils : agent Claude sur la clé API de Tom (100 $/mois) — images, cadrage, catalogue, traductions (Batch) + audits Convex et perf mobile, lecture seule, rapports dans `docs/rapports-agent/` | poussé (`42c5c21`), testé à blanc, attend la clé — `docs/chantiers/agent-claude.md` |
 | Tom + Claude | racine / `v2` | V3 : titres uniques, roulette, abonnement, succès, sachets par thème, marché | en cours |
-| Hugo + Claude | racine / `v2` | QOL : liste validée (section « QOL » ci-dessous), rien de codé | à démarrer par collection 1-2-3 — `docs/chantiers/qol.md` |
+| Hugo + Claude | racine / `v2` | QOL : liste validée (section « QOL » ci-dessous) | collection 1-2-3, H, L faits en v2.1.30 ; suite conseillée : 4, 6, 7, C, E, A — `docs/chantiers/qol.md` |
 | Hugo | son dossier | contenu des cartes (base Etoiles) | — |
 | Hugo + Claude | racine / `v2` | contenu : licences à étoffer / scraper (liste dans « Reste à faire ») | listé (`9eae34f`), rien de généré — `docs/chantiers/licences.md` |
 | Hugo + Claude | racine / `v2` | V3 : rework économie (étalon 1 booster = 250 pièces) | proposé et validé par Hugo (`af30625`), rien de codé, à valider avec Tom — `docs/chantiers/economie.md` |
@@ -84,11 +85,11 @@ _Mis à jour : 26/11/2026 (Tom, 23 h : session Convex n°3 — 15 pistes chiffr�
 - [ ] Contrats : mécanique à retirer ou refondre (Hugo 26/11) — plus rentable que vendre ou échanger, donc personne ne vend ni n'échange. Doublons = forge ou vente, c'est tout. Pas de QoL sur les contrats d'ici là. Retrait propre : contrats en cours remboursés ou laissés finir sans nouveaux, migration Convex idempotente (`convex/migrations.ts`, testée sur le staging), note de patch FR + EN
 - [ ] Marché : enchères possibles sur une carte (en plus du prix fixe) — APRÈS Forge → vente (qui pose le « mettre en vente vite ») ; clôture à heure fixe par tâche programmée Convex, offre minimum, pièces bloquées pendant l'enchère
 
-### QOL (validé par Hugo le 26/11 ; rien de poussé)
+### QOL (validé par Hugo le 26/11 ; 1-2-3, H, L en v2.1.30)
 Collection (`src/game/views/collection.ts`) — ordre conseillé : 1, 2, 3 d'abord (front seul, zéro coût Convex)
-- [ ] 1. Recherche unique : la barre des albums cherche dans les 5 thèmes (aujourd'hui : l'onglet ouvert seulement) + les noms de cartes (« Goku » → album + carte), résultats groupés par thème
-- [ ] 2. « Voir l'album » dans la visionneuse d'une carte ; toucher l'intertitre d'album de la vue Cartes ouvre l'album
-- [ ] 3. Albums récents (4-5 derniers ouverts) + albums épinglés (★ sur la pochette) en haut de la vue Albums
+- [x] (v2.1.30) 1. Recherche unique : la barre des albums cherche dans les 5 thèmes (aujourd'hui : l'onglet ouvert seulement) + les noms de cartes (« Goku » → album + carte), résultats groupés par thème
+- [x] (v2.1.30) 2. « Voir l'album » dans la visionneuse d'une carte ; toucher l'intertitre d'album de la vue Cartes ouvre l'album
+- [x] (v2.1.30) 3. Albums récents (4-5 derniers ouverts) + albums épinglés (★ sur la pochette) en haut de la vue Albums
 - [ ] 4. Albums « presque finis » (il manque 1 à 3 cartes) : filtre ou rangée dédiée
 - [ ] 6. Fil d'Ariane cliquable (thème › famille › album) au lieu du seul « ‹ Albums »
 - [ ] 7. Filtres repliés au téléphone : bouton « Filtres (n) » qui ouvre un tiroir
@@ -102,10 +103,10 @@ Autres écrans (audit du 26/11) — ordre conseillé : C, E, H, A, L
 - [ ] E. Un nom de joueur ouvre son profil partout : chat (`chat.ts:836`), fiche carte « chez les joueurs » (`cardPanel.ts:220`), marché
 - [ ] F. « Message » et « Défier » sur un profil et sur la ligne d'un ami (`chat.open(conv)` existe, jamais appelé)
 - [ ] G. Amis : recherche avec suggestions au lieu du pseudo exact (`friends.ts:147`) ; parrainage par `navigator.share` (feuille de partage du téléphone)
-- [ ] H. Missions : « Tout récupérer » (jour + bonus + hebdo ; aujourd'hui 4 touchers ou plus, `missions.ts:54-127`)
+- [x] (v2.1.30) H. Missions : « Tout récupérer » (jour + bonus + hebdo ; aujourd'hui 4 touchers ou plus, `missions.ts:54-127`)
 - [ ] J. Roulette : « même mise que la dernière fois »
 - [ ] K. Classement : toucher « tu es Xe » saute à ma ligne (`leaderboard.ts:147`) ; filtre « amis »
-- [ ] L. Barre du téléphone : la flèche « › » porte la pastille d'un onglet caché qui a un badge (`syncNavMore`, `main.ts`)
+- [x] (v2.1.30) L. Barre du téléphone : la flèche « › » porte la pastille d'un onglet caché qui a un badge (`syncNavMore`, `main.ts`)
 - [ ] M. Push « missions prêtes / cadeau du jour » (avec « série en danger », cf. V3)
 - [ ] Ménage : supprimer `views/defis.ts` (plus routé : `#/jeux/defis` → `#/jeux`)
 - [ ] Forge : sélection rapide « Toutes les 4★ et moins » (aujourd'hui une puce par étoile)
