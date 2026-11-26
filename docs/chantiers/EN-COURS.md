@@ -52,7 +52,15 @@ _Mis à jour : 26/11/2026 (Hugo : liste des licences à étoffer, `9eae34f` ; av
 - [ ] Commit à part `git add --renormalize lanceurs/` (les `.cmd` paraissent modifiés depuis `.gitattributes`, fins de ligne seulement)
 
 ### V3
-- [ ] Économie : un seul étalon B = 1 booster = 250 pièces (proposition Hugo + Claude 26/11, rien de codé) — Forge dégressive par jour (100 % jusqu'à 3 000, 50 % jusqu'à 10 000, 25 % au-delà), connexion quotidienne relevée (jour 1 = 250 → jour 29 = 810, jour 30 = 2 000 ; mois ≈ 18 900 au lieu de 7 050), roulette inchangée (1 000 / 2 000) mais 3× 5★ au lieu de 2, prix conseillé du marché = 1,5× la Forge. D'abord : mesurer les vrais revenus par joueur, puis valider les seuils avec Tom — `docs/chantiers/economie.md`
+- [ ] **Rework économie** (validé par Hugo le 26/11, rien de codé) — détail et chiffres : `docs/chantiers/economie.md`
+  - Constat : Forge et pièces d'ouverture grandissent avec les boosters ouverts (presque gratuits : 1 / 5 min), le reste est fixe et petit. Revenu estimé par jour : petit joueur ≈ 2 400 (calendrier = 10 %), régulier ≈ 8 800, gros ≈ 21 700 (calendrier = 1 %). Roulette 1 000 = 0,4 jour d'un petit joueur, rien pour un gros
+  - Étalon unique : 1 booster = 250 pièces (`PACK_PRICE`) ; tous les prix et récompenses en multiples, calculés à un seul endroit (`economy.ts`)
+  - Forge dégressive par jour (heure de Paris), pièces d'ouverture comprises : 100 % jusqu'à 3 000, 50 % jusqu'à 10 000, 25 % au-delà ; écran Forge « rendement plein encore X pièces aujourd'hui » ; compteur du jour sur le joueur (`v.optional`)
+  - Connexion quotidienne relevée : jour 1 = 250, +20 / jour (jour 29 = 810), ×2 aux jours 7/14/21, jour 30 = 2 000 + 51 boosters ; mois parfait ≈ 18 900 au lieu de 7 050
+  - Roulette inchangée (1 000 / 2 000), mais mise en cartes alignée : 1 000 = 1× 6★ = 3× 5★ (au lieu de 2)
+  - Marché : prix conseillé = 1,5× la valeur de Forge (sert à Forge → vente) ; plafond 10× inchangé
+  - Garde-fou conservé : un booster rend ≈ 190 (Forge ≈ 162 + pièces ≈ 30) < 250, pas de boucle acheter → forger → racheter
+  - Avant de coder : mesurer les vrais revenus par joueur (une requête en lecture, avec Tom, Convex au-dessus de l'offre gratuite) ; valider avec Tom les seuils 3 000 / 10 000, le calendrier et les 3× 5★ ; note de patch FR + EN, `npm run test:server`
 - [ ] Profils : revoir le visuel, mieux aligner les polices, régler le mélange bannière / GIF
 - [ ] Packs événement : 7 j, 1/h, réserve propre 3 (5 abonné), 2 500 pièces ; consommer SA réserve (prend un booster normal aujourd'hui) ; collection Télé + booster de lancement
 - [ ] Succès : ouvertures à gagner avec aperçu, paliers plus longs, récompenses proportionnelles (pièces, boosters, titres, cosmétiques) ; nouveaux cosmétiques nécessaires → les demander à Tom
