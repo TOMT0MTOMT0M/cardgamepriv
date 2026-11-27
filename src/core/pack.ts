@@ -59,6 +59,11 @@ export interface PackStyle {
    * « Popculture », « Sport ») — et RIEN d'autre (plus de logo « Bébou Cartes »).
    */
   label?: string;
+  /**
+   * (27/11, labo 047) part d'aluminium clair dans l'alliage du sachet simple (défaut 0,66 : film teinté à ~20 %).
+   * Plus bas = alliage plus sombre (Bébou Pack « graphite »). Absent : rien ne change.
+   */
+  alloyMix?: number;
 }
 
 export const PACK_STYLES: Record<string, PackStyle> = {
@@ -366,7 +371,8 @@ async function simplePackArt(style: PackStyle, release = false): Promise<PackArt
   // (arêtes tendues entre points), micro-plis secondaires, bombé du coussin et soudures crantées.
   const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
   const base = style.ground;
-  const alloy = mixHex(base, '#eceef1', 0.66);
+  const alloyK = style.alloyMix ?? 0.66;
+  const alloy = mixHex(base, '#eceef1', alloyK);
   const ch = (PACK.crimp / PACK.h) * PH;
   const faces: Array<[Ctx, number]> = [[F.g, 1], [B.g, 2]];
   for (const [g, seed] of faces) {
@@ -381,7 +387,7 @@ async function simplePackArt(style: PackStyle, release = false): Promise<PackArt
       g.fillStyle = v > 0.5 ? alpha('#ffffff', (v - 0.5) * 0.025) : alpha('#000000', (0.5 - v) * 0.03);
       g.fillRect(x, 0, 1, PH);
     }
-    crimpBands(g, mixHex(base, '#d9dce1', 0.55));
+    crimpBands(g, mixHex(base, '#d9dce1', (0.55 * alloyK) / 0.66));
     applyGrain(g, PW, PH, 0.012, 8, 20);
   }
   // (retours de Tom, 07/11) face avant : le NOM DU PACK n'est plus imprimé en noir — il est MOULÉ dans le film
