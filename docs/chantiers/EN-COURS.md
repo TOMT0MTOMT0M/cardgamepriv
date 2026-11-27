@@ -139,6 +139,7 @@ Autres écrans (audit du 26/11) — ordre conseillé : C, E, H, A, L
 
 ## Pièges connus
 - (27/11, v2.1.34) Port 5199 déjà tenu par le `vite` d'une autre session (dossier racine = code `v2`) : la démo testée n'était pas celle du patch. Avant une vérif de `.wt-master`, prendre un port libre (`--strictPort` échoue sinon) et vérifier qu'un élément propre au patch est bien là. Les agents en parallèle partagent aussi le scratchpad : un sous-dossier et un port Chrome par agent.
+- (27/11) Deux sessions ont codé le même lot QOL le même jour, en le prenant dans la liste « Reste à faire » (l'une sur `v2`, l'autre en patch v2.1.34) : résolu, mais 2 versions du même code. Avant de commencer un lot, marquer la ligne « en cours (session X) » dans ce fichier, commiter et pousser ; au démarrage, `ListAgents` montre les sessions ouvertes.
 - (27/11) `push.cmd` fait `git push --all` + `--tags` : il pousse AUSSI les branches locales des autres sessions (ex. `patch-v2.1.34`, vide, préparée dans `.wt-master` et poussée par le push du lot QOL). Sans effet sur la prod, mais un tag local non voulu partirait aussi.
 - (27/11) Deux agents qui codent en parallèle dans le même dossier : un `git add` de ses propres fichiers peut embarquer les lignes qu'un agent vient d'ajouter dans un fichier partagé (`en.ts`). Relire `git diff --cached` avant chaque commit.
 - `lanceurs/publier-patch.cmd` envoie tout `master..v2` (la V3 en cours) : jamais pour un correctif de la version en ligne.
