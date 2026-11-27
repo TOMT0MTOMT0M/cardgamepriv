@@ -1,4 +1,4 @@
-import { DirectionalLight, Group, type Mesh } from 'three/webgpu';
+import { DirectionalLight, Group, RenderTarget, Scene, type Mesh } from 'three/webgpu';
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { applyPose, createStage } from '../../core/stage';
 import { createPackMesh, generatePackArt, PACK, type PackArt } from '../../core/pack';
@@ -50,11 +50,77 @@ export default function create(): Experiment {
     teinte: `#${/^[0-9a-f]{6}$/i.test(qs.get('tint') ?? '') ? qs.get('tint') : '888888'}`,
     alu: Number(qs.get('mix')) || 0.66,
   };
-  const film = () => (params.essaiTeinte ? { tint: params.teinte, alloyMix: params.alu } : {});
+  // (passe 2) habillage imprimé : `auto` = A en bandeau, B en cartouche ; `nu` = la passe 1 (stickers sur l'alu nu).
+  // matière : `legere` (passe 2, 3 lectures de texture, un reflet) ou `origine` (celle du jeu).
+  const hab = pick(qs.get('h'), ['auto', 'bandeau', 'cartouche', 'nu'] as const, 'auto');
+  const more = { habillage: hab as 'auto' | 'bandeau' | 'cartouche' | 'nu', matiere: pick(qs.get('m'), ['legere', 'origine'] as const, 'legere') as 'legere' | 'origine' };
+  const film = () => ({
+    ...(params.essaiTeinte ? { tint: params.teinte, alloyMix: params.alu } : {}),
+    ...(more.habillage !== 'auto' ? { habillage: more.habillage } : {}),
+  });
+  let measuring = false;
   let board!: HTMLElement, caption!: HTMLElement;
   let baseY = 0;
-  const flag = window as unknown as { __sachets?: { planche: boolean; pack: boolean } };
-  flag.__sachets = { planche: false, pack: false };
+  const flag = window as unknown as { __sachets?: { planche: boolean; pack: boolean; mesure?: (n?: number, w?: number) => Promise<Record<string, number | string> | null> } };
+  flag.__sachets = { planche: false, pack: false, mesure: (n, w) => mesure(n, w) };
+
+  /**
+   * MESURE (règle du projet : mesurer avant / après). Dessine le sachet plein cadre dans une cible 1080 × 1920, `n`
+   * images d'affilée, et attend que le GPU ait fini : millisecondes par image pour le sachet actuel du jeu, la matière
+   * d'origine avec autocollants (passe 1) et la matière allégée (passe 2). WebGPU seulement. Le chiffre dépend de la
+   * machine : il compare les trois matières entre elles, il ne dit pas les i/s d'un téléphone.
+   */
+  async function mesure(n = 120, w = 1080): Promise<Record<string, number | string> | null> {
+    const dev = (ctx.renderer as unknown as { backend?: { device?: { queue: { onSubmittedWorkDone(): Promise<void> } } } }).backend?.device;
+    if (!dev || !artNew || !artCur) return null;
+    measuring = true;
+    const r = ctx.renderer;
+    // (`w` plus grand = la part du calcul par pixel domine celle de l'envoi des commandes)
+    const rt = new RenderTarget(w, Math.round((w * 16) / 9));
+    const cam = stage.camera.clone();
+    cam.aspect = 1080 / 1920;
+    cam.position.set(0, 0, PACK.h / 0.98 / (2 * Math.tan(((cam.fov * Math.PI) / 180) / 2)));
+    cam.lookAt(0, 0, 0);
+    cam.updateProjectionMatrix();
+    const sc = new Scene();
+    sc.environment = stage.scene.environment;
+    const key = new DirectionalLight(0xffffff, 1.4);
+    key.position.set(-1.2, 2.2, 3);
+    sc.add(key);
+    const cand: Array<[string, Mesh]> = [
+      ['actuel', createPackMesh(artCur)],
+      ['origine', createStickerPackMesh(artNew, { matiere: 'origine' })],
+      ['legere', createStickerPackMesh(artNew, { matiere: 'legere' })],
+    ];
+    const out: Record<string, number | string> = {};
+    const burst = async (k: number) => {
+      const t0 = performance.now();
+      r.setRenderTarget(rt);
+      for (let i = 0; i < k; i++) r.render(sc, cam);
+      r.setRenderTarget(null);
+      await dev.queue.onSubmittedWorkDone();
+      return (performance.now() - t0) / k;
+    };
+    try {
+      for (const [name, mesh] of cand) {
+        sc.add(mesh);
+        await r.compileAsync(sc, cam);
+        await burst(8);
+        let best = Infinity;
+        for (let pass = 0; pass < 3; pass++) best = Math.min(best, await burst(n));
+        out[name] = Math.round(best * 1000) / 1000;
+        sc.remove(mesh);
+        disposeMesh(mesh);
+      }
+      const ad = await (navigator as unknown as { gpu?: { requestAdapter(): Promise<{ info?: { vendor?: string; architecture?: string; description?: string } } | null> } }).gpu?.requestAdapter();
+      out.gpu = `${ad?.info?.vendor ?? '?'} ${ad?.info?.architecture ?? ''} ${ad?.info?.description ?? ''}`.trim();
+    } finally {
+      r.setRenderTarget(null);
+      rt.dispose();
+      measuring = false;
+    }
+    return out;
+  }
 
   async function showPacks() {
     const my = ++token;
@@ -65,7 +131,7 @@ export default function create(): Experiment {
     disposeMesh(meshNew);
     artNew?.dispose();
     artNew = a;
-    meshNew = createStickerPackMesh(a);
+    meshNew = createStickerPackMesh(a, { matiere: more.matiere });
     rigNew.add(meshNew);
     if (curId !== params.sachet) {
       const c = await currentArt(params.sachet);
@@ -228,6 +294,14 @@ export default function create(): Experiment {
       c.gui.add(params, 'tourne').name('tourne'); // i18n-ok (labo)
       c.gui.add(params, 'angle', -180, 180, 1).name('angle si figé (°)'); // i18n-ok (labo)
       c.gui.add(params, 'planche').name('planche 80 px').onChange(() => void drawBoard()); // i18n-ok (labo)
+      c.gui.add(more, 'habillage', { 'auto (A bandeau · B cartouche)': 'auto', 'bandeau': 'bandeau', 'cartouche': 'cartouche', 'aucun (passe 1 : alu nu)': 'nu' }).name('habillage').onChange(() => void showPacks()); // i18n-ok (labo)
+      c.gui.add(more, 'matiere', { 'allégée (passe 2)': 'legere', 'd’origine (jeu)': 'origine' }).name('matière').onChange(() => void showPacks()); // i18n-ok (labo)
+      const res = { 'ms / image': '—' };
+      c.gui.add({ mesurer: () => void mesure().then((m) => {
+        res['ms / image'] = m ? `actuel ${m.actuel} · origine ${m.origine} · allégée ${m.legere}` : 'WebGPU requis'; // i18n-ok (labo)
+        c.gui.controllersRecursive().forEach((k) => k.updateDisplay());
+      }) }, 'mesurer').name('mesurer les 3 matières'); // i18n-ok (labo)
+      c.gui.add(res, 'ms / image').disable();
       c.bag.fn(c.input.onTap(() => {
         params.variante = params.variante === 'a' ? 'b' : 'a';
         c.gui.controllersRecursive().forEach((k) => k.updateDisplay());
@@ -253,7 +327,7 @@ export default function create(): Experiment {
         rig.rotation.y += turn;
         rig.position.set(x * PACK.w * 0.6, baseY + Math.sin(t * 0.9 + x) * 0.008, 0);
       }
-      ctx.renderer.render(stage.scene, stage.camera);
+      if (!measuring) ctx.renderer.render(stage.scene, stage.camera);
     },
     resize() {
       layout();

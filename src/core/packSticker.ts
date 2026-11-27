@@ -1,13 +1,13 @@
-import { CanvasTexture, Mesh, NoColorSpace, type Texture } from 'three/webgpu';
-import { float, mix, texture, uv } from 'three/tsl';
+import { CanvasTexture, Mesh, MeshStandardNodeMaterial, NoColorSpace, type Texture } from 'three/webgpu';
+import { float, mix, normalMap, positionLocal, sin, smoothstep, texture, uv, vec2, vec3 } from 'three/tsl';
 import { makeCanvas, roundRect, type Ctx } from './art/canvas';
 import { FONT_MONO } from './art/frame';
 import { ensureFonts } from './art';
-import { FONT_LABEL, FONT_TEXT } from './fonts';
+import { FONT_LABEL, FONT_PACK, FONT_TEXT } from './fonts';
 import { PACK, PH, PW, lcg } from './packCrease';
 import { createPackGeometry, createPackMaterials, generatePackArt, PLASTIC_TINT, type PackArt } from './pack';
 import { drawThemeLogo, type CartoonTheme } from './packCartoon';
-import type { N } from './tsl';
+import { encodeNormal, type N } from './tsl';
 
 /**
  * (27/11, labo 047) SACHETS « AUTOCOLLANT » — la piste retenue par Tom, sur la VRAIE matière du jeu.
@@ -38,6 +38,8 @@ export interface SachetLook {
   /** teinte du film — hors couleurs de rareté (gris, vert, bleu, rouge, doré, arc-en-ciel, rose irisé) */
   tint: string;
   alloyMix?: number;
+  /** (passe 2) encres de l'habillage imprimé : l'aplat, son ton sombre (bandes, motif) et son ton clair */
+  ink: [string, string, string];
   logo: Logo;
   /** papier des étiquettes, puis deux couleurs d'encre franches */
   paper: string;
@@ -52,38 +54,38 @@ export interface SachetLook {
 
 export const SACHETS: Record<SachetId, SachetLook> = {
   gaming: {
-    title: { fr: 'Gaming', en: 'Gaming' }, label: 'Gaming', tint: '#5a35e8', logo: 'gaming', paper: '#f6f4ff', a: '#e6ff3d', b: '#ff4d6d',
+    title: { fr: 'Gaming', en: 'Gaming' }, label: 'Gaming', tint: '#5a35e8', ink: ['#5b36ea', '#3d20bd', '#8468ff'], logo: 'gaming', paper: '#f6f4ff', a: '#e6ff3d', b: '#ff4d6d',
     mots: 'arcade · bidouille · numéroté',
     variants: { a: { name: 'Borne', by: 'Teenage Engineering' }, b: { name: 'Chambre d’ado', by: 'Brain Dead' } },
   },
   pop: {
-    title: { fr: 'Pop culture', en: 'Pop culture' }, label: 'Popculture', tint: '#ff6a1f', logo: 'pop', paper: '#fff6e3', a: '#ff4fa3', b: '#2b2bd6',
+    title: { fr: 'Pop culture', en: 'Pop culture' }, label: 'Popculture', tint: '#ff6a1f', ink: ['#ff6a1f', '#df4a06', '#ff9950'], logo: 'pop', paper: '#fff6e3', a: '#ff4fa3', b: '#2b2bd6',
     mots: 'séance · zapping · fan',
     variants: { a: { name: 'Séance', by: 'Brain Dead' }, b: { name: 'Zapping', by: 'konbini' } },
   },
   sport: {
-    title: { fr: 'Sport & esport', en: 'Sport & esport' }, label: 'Sport', tint: '#a8f00a', alloyMix: 0.5, logo: 'sport', paper: '#ffffff', a: '#ff4b1f', b: '#141016',
+    title: { fr: 'Sport & esport', en: 'Sport & esport' }, label: 'Sport', tint: '#b8ff3a', alloyMix: 0.78, ink: ['#a6ee0c', '#86cb00', '#c9ff5e'], logo: 'sport', paper: '#ffffff', a: '#ff4b1f', b: '#141016',
     mots: 'jour de match · dossard · rebond',
     variants: { a: { name: 'Dossard', by: 'Studio Feixen + Teenage Engineering' }, b: { name: 'Rebond', by: 'Studio Feixen' } },
   },
   monde: {
-    title: { fr: 'Le monde', en: 'The world' }, label: 'World', tint: '#0fb5a8', logo: 'monde', paper: '#efe1c2', a: '#ff7a1a', b: '#1c2a5e',
+    title: { fr: 'Le monde', en: 'The world' }, label: 'World', tint: '#0fb5a8', ink: ['#10b6a9', '#0a8c84', '#5ed8cd'], logo: 'monde', paper: '#efe1c2', a: '#ff7a1a', b: '#1c2a5e',
     mots: 'valise · tampon · escale',
     variants: { a: { name: 'Soute', by: 'Virgil Abloh + Teenage Engineering' }, b: { name: 'Passeport', by: 'Brain Dead' } },
   },
   bebou: {
-    title: { fr: 'Bébou pack', en: 'Bébou pack' }, label: 'Bebou', tint: '#23232b', alloyMix: 0.14, logo: 'bebou', paper: '#f1e9d8', a: '#f1e9d8', b: '#c9b99a',
+    title: { fr: 'Bébou pack', en: 'Bébou pack' }, label: 'Bebou', tint: '#b9bcc6', ink: ['#1b1b21', '#0d0d11', '#3a3a44'], logo: 'bebou', paper: '#f1e9d8', a: '#f1e9d8', b: '#c9b99a',
     mots: 'silence · sceau · rare',
     variants: { a: { name: 'Sceau', by: 'Kenya Hara' }, b: { name: 'Pastille', by: 'Nothing + Kenya Hara' } },
   },
   tele: {
-    title: { fr: 'Booster du moment · Télé', en: 'Limited booster · TV' }, label: 'Télé', tint: '#c026d3', logo: 'tele', paper: '#fffdf5', a: '#ffe500', b: '#141016',
+    title: { fr: 'Booster du moment · Télé', en: 'Limited booster · TV' }, label: 'Télé', tint: '#c026d3', ink: ['#c12ad4', '#9716a8', '#dd6cea'], logo: 'tele', paper: '#fffdf5', a: '#ffe500', b: '#141016',
     until: { fr: '02/12', en: 'DEC 2' },
     mots: 'éphémère · daté · bandeau',
     variants: { a: { name: 'Obi', by: 'konbini + Virgil Abloh' }, b: { name: 'Promo', by: 'konbini' } },
   },
   noel: {
-    title: { fr: 'Booster du moment · Noël', en: 'Limited booster · Xmas' }, label: 'Noël', tint: '#6b1d5e', alloyMix: 0.34, logo: 'noel', paper: '#fffdf5', a: '#ffe500', b: '#141016',
+    title: { fr: 'Booster du moment · Noël', en: 'Limited booster · Xmas' }, label: 'Noël', tint: '#6b1d5e', alloyMix: 0.34, ink: ['#6b1d5e', '#4c1143', '#93377f'], logo: 'noel', paper: '#fffdf5', a: '#ffe500', b: '#141016',
     until: { fr: '26/12', en: 'DEC 26' },
     mots: 'éphémère · daté · bandeau',
     variants: { a: { name: 'Obi', by: 'konbini + Virgil Abloh' }, b: { name: 'Promo', by: 'konbini' } },
@@ -122,7 +124,9 @@ const TX = {
   duMoment2: { fr: 'moment', en: 'now' }, // i18n-ok
   pasVente: { fr: 'CLUB PRIVÉ — NE SE VEND PAS', en: 'PRIVATE CLUB — NOT FOR SALE' }, // i18n-ok
 } satisfies Record<string, L2>;
-const BRAND = 'Bébou cartes'; // i18n-ok (marque)
+// (27/11, passe 2 — Tom) la marque sur les sachets : « Bebou » seul, dans la police du nom moulé (Matcha World)
+const BRAND = 'Bebou'; // i18n-ok (marque)
+const BRAND_F = { f: FONT_PACK, w: 400 } as const;
 
 // ───────────────────────────────────────────── le moteur : un autocollant = une petite toile découpée
 
@@ -319,7 +323,7 @@ const sLogoRound = (logo: Logo, r: number, bg: string) => stk(r * 2, r * 2, (g) 
 const sBrandPill = (w: number, bg = INK, fg = '#fff8ea') => stk(w, w * 0.24, (g, W, H) => {
   roundRect(g, 0, 0, W, H, H / 2);
   ink(g, bg, 0);
-  txt(g, BRAND, W / 2, H * 0.53, H * 0.5, { f: DISPLAY, w: 700, col: fg, max: W * 0.82 });
+  txt(g, BRAND, W / 2, H * 0.53, H * 0.6, { ...BRAND_F, col: fg, max: W * 0.8 });
 }, { gloss: 0.5 });
 
 /** « 5 cartes » dans une explosion de case de BD */
@@ -351,7 +355,7 @@ const sBackLabel = (k: SachetLook, L: StickerLang, seed: number) => stk(380, 190
   txt(g, `${TX.cinq[L]} · ${k.title[L].toUpperCase()}`, 22, 84, 15, { al: 'left', f: FONT_MONO, w: 500, max: 230 });
   txt(g, TX.pasVente[L], 22, 108, 13, { al: 'left', f: FONT_MONO, w: 500, max: 230 });
   txt(g, `LOT 2026-11 · N° ${String(seed).padStart(4, '0')}`, 22, 132, 13, { al: 'left', f: FONT_MONO, w: 500 });
-  txt(g, BRAND, 22, 164, 20, { al: 'left', f: DISPLAY, w: 700 });
+  txt(g, BRAND, 22, 164, 24, { al: 'left', ...BRAND_F });
   barcode(g, 272, 34, 86, 104, seed + 3);
   txt(g, '5 005 2026', 315, 152, 11, { f: FONT_MONO, w: 500 });
 }, { gloss: 0.1 });
@@ -416,17 +420,6 @@ const sStart = (L: StickerLang, w: number, k: SachetLook) => stk(w, 56, (g, W, H
   txt(g, TX.start[L], 56, H / 2 + 1, 25, { al: 'left', f: FONT_MONO, w: 500, col: k.a, max: W - 76, sp: 2 });
 }, { gloss: 0.15 });
 
-const sDpad = (r: number) => stk(r * 2, r * 2, (g) => {
-  g.beginPath();
-  g.arc(r, r, r - 3, 0, TAU);
-  ink(g, '#fff', 5);
-  const a = r * 0.24;
-  g.beginPath();
-  g.rect(r - a * 2.6, r - a, a * 5.2, a * 2);
-  g.rect(r - a, r - a * 2.6, a * 2, a * 5.2);
-  ink(g, INK, 0);
-}, { gloss: 0.8 });
-
 /** « 5 cartes » en étiquette technique : quantité, numérotation, code-barres */
 const sCinqTag = (L: StickerLang, k: SachetLook) => stk(310, 150, (g, W, H) => {
   g.beginPath();
@@ -450,7 +443,7 @@ const sBrandTech = (L: StickerLang, k: SachetLook, no: string) => stk(270, 60, (
   g.fillStyle = INK;
   g.fillRect(0, 0, H, H);
   txt(g, no, H / 2, H / 2 + 1, 24, { f: FONT_MONO, w: 500, col: k.paper });
-  txt(g, BRAND, H + 12, 22, 21, { al: 'left', f: DISPLAY, w: 700, max: W - H - 22 });
+  txt(g, BRAND, H + 12, 22, 25, { al: 'left', ...BRAND_F, max: W - H - 22 });
   txt(g, `${TX.club[L]} · ${k.title[L].toUpperCase()}`, H + 12, 45, 11.5, { al: 'left', f: FONT_MONO, w: 500, max: W - H - 22 });
 }, { gloss: 0.1 });
 
@@ -512,15 +505,9 @@ const sClap = (L: StickerLang, w: number) => stk(w, w * 0.62, (g, W, H) => {
     g.fill();
   }
   g.restore();
-  txt(g, BRAND, W / 2, bar + (H - bar) * 0.4, H * 0.22, { f: DISPLAY, w: 700, col: '#fff8ea', max: W * 0.86 });
+  txt(g, BRAND, W / 2, bar + (H - bar) * 0.4, H * 0.3, { ...BRAND_F, col: '#fff8ea', max: W * 0.86 });
   txt(g, TX.scene[L], W / 2, bar + (H - bar) * 0.76, H * 0.085, { f: FONT_MONO, w: 500, col: '#fff8ea', sp: 1, max: W * 0.86 });
 }, { cut: 5, gloss: 0.3 });
-
-const sWow = (r: number, bg: string) => stk(r * 2, r * 2, (g) => {
-  burstPath(g, r, r, r * 0.62, r * 0.98, 11, 0.3);
-  ink(g, bg, 6);
-  txt(g, 'WOW!', r, r * 1.03, r * 0.42, { f: DISPLAY, w: 800, col: '#fff', max: r * 1.1 });
-}, { cut: 5, gloss: 0.6 });
 
 const sVinyl = (r: number, col: string) => stk(r * 2, r * 2, (g) => {
   g.beginPath();
@@ -584,11 +571,6 @@ const sBulle = (L: StickerLang, w: number, k: SachetLook) => stk(w, w * 0.66, (g
   txt(g, TX.cartesBang[L], W * 0.62, H * 0.43, H * 0.24, { f: DISPLAY, w: 800, max: W * 0.5 });
 }, { cut: 6, gloss: 0.3 });
 
-const sStar = (r: number, col: string) => stk(r * 2, r * 2, (g) => {
-  burstPath(g, r, r, r * 0.42, r * 0.94, 5, -Math.PI / 2);
-  ink(g, col, 5);
-}, { cut: 4, gloss: 0.8 });
-
 const sFilm = (w: number) => stk(w, 62, (g, W, H) => {
   g.fillStyle = '#18151c';
   g.fillRect(0, 0, W, H);
@@ -609,7 +591,7 @@ const sDossard = (L: StickerLang, k: SachetLook) => stk(380, 290, (g, W, H) => {
   ink(g, '#fff', 0);
   g.fillStyle = INK;
   g.fillRect(0, 0, W, 48);
-  txt(g, BRAND, W / 2, 26, 25, { f: DISPLAY, w: 700, col: '#fff' });
+  txt(g, BRAND, W / 2, 26, 30, { ...BRAND_F, col: '#fff' });
   txt(g, '5', W / 2, 148, 208, { f: DISPLAY, w: 800 });
   g.fillStyle = k.a;
   g.fillRect(0, H - 62, W, 62);
@@ -857,7 +839,7 @@ const sOvale = (w: number, k: SachetLook) => stk(w, w * 0.56, (g, W, H) => {
   g.beginPath();
   g.ellipse(W / 2, H / 2, W / 2 - 13, H / 2 - 13, 0, 0, TAU);
   ink(g, null, 2, k.b);
-  txt(g, BRAND, W / 2, H * 0.44, H * 0.26, { f: DISPLAY, w: 700, col: k.b, max: W * 0.72 });
+  txt(g, BRAND, W / 2, H * 0.44, H * 0.32, { ...BRAND_F, col: k.b, max: W * 0.72 });
   txt(g, 'GRAND TOUR · 2026', W / 2, H * 0.7, H * 0.095, { f: FONT_MONO, w: 500, col: k.b, sp: 2 });
 }, { gloss: 0 });
 
@@ -888,11 +870,10 @@ const sSceau = (L: StickerLang, k: SachetLook) => stk(84, 310, (g, W, H) => {
   drawThemeLogo(g, 'bebou', W / 2, H - 52, 27);
 }, { gloss: 0 });
 
-const sPetite = (L: StickerLang, k: SachetLook) => stk(172, 62, (g, W, H) => {
+const sPetite = (L: StickerLang, k: SachetLook) => stk(168, 54, (g, W, H) => {
   g.fillStyle = k.paper;
   g.fillRect(0, 0, W, H);
-  txt(g, TX.cartesMin[L], 14, 23, 25, { al: 'left', f: DISPLAY, w: 600 });
-  txt(g, BRAND, 14, 46, 12.5, { al: 'left', f: FONT_MONO, w: 500 });
+  txt(g, TX.cartesMin[L], 16, H / 2 + 1, 28, { al: 'left', f: DISPLAY, w: 600 });
 }, { gloss: 0 });
 
 /** l'ourson en matrice de points, sur film transparent : seuls les points sont collés */
@@ -961,7 +942,7 @@ const sObiBack = (L: StickerLang, k: SachetLook) => stk(PW, 150, (g, W, H) => {
   g.fillStyle = k.tint;
   g.fillRect(0, 0, W, 9);
   g.fillRect(0, H - 9, W, 9);
-  txt(g, BRAND, 34, 56, 34, { al: 'left', f: DISPLAY, w: 700 });
+  txt(g, BRAND, 34, 56, 42, { al: 'left', ...BRAND_F });
   txt(g, `${TX.moment[L]} · ${TX.pasVente[L]}`, 34, 100, 13, { al: 'left', f: FONT_MONO, w: 500, max: W - 190 });
   barcode(g, W - 140, 34, 106, 70, 23);
 }, { gloss: 0.05 });
@@ -1015,10 +996,8 @@ const LAYOUTS: Record<SachetId, Record<StickerVariant, Layout>> = {
       P.put(sBrandTech(L, k, '01'), 166, 152, 0, { fix: true });
       P.put(sLogoCut('gaming', 150), 330, 300, -0.05);
       for (let i = 0; i < 3; i++) P.put(sHeart(9, k.b), 448 + i * 62, 150, 0, { fix: true });
-      P.put(sCinqTag(L, k), 186, 680, 0, { fix: true });
-      P.put(sDpad(52), 478, 655, 0, { fix: true });
-      P.put(sStart(L, 420, k), 242, 822, 0, { fix: true });
-      P.put(sCartridge(84, k), 536, 800, 0.08);
+      P.put(sCinqTag(L, k), 186, 688, 0, { fix: true });
+      P.put(sStart(L, 420, k), 242, 826, 0, { fix: true });
     },
     // Chambre d'ado (Brain Dead) : collage qui se chevauche, la manette déborde, rien n'est droit
     b: (P, L, k) => {
@@ -1026,22 +1005,17 @@ const LAYOUTS: Record<SachetId, Record<StickerVariant, Layout>> = {
       P.put(sLogoCut('gaming', 176), 372, 268, 0.2);
       P.put(sGG(150), 150, 172, -0.16);
       P.put(sHeart(15, k.b), 530, 162, 0.2);
-      P.put(sCinqBurst(L, 150, k.a), 200, 716, -0.12);
-      P.put(sDpad(64), 470, 640, 0.3);
-      P.put(sBrandPill(280), 420, 820, -0.07);
-      P.put(sHeart(8, k.b), 560, 728, -0.25);
-      P.put(sStar(34, '#fff'), 566, 420, 0.2);
+      P.put(sCinqBurst(L, 156, k.a), 204, 722, -0.12);
+      P.put(sBrandPill(230), 452, 790, -0.07);
     },
   },
   pop: {
     // Séance : le ticket fait l'encadré, le clap fait la marque
     a: (P, L, k) => {
-      P.put(sWow(86, k.a), 492, 184, 0.2);
-      P.put(sLogoCut('pop', 150), 250, 262, -0.08);
-      P.put(sStar(30, k.b), 110, 150, -0.3);
-      P.put(sTicket(L, k), 330, 664, -0.09);
-      P.put(sClap(L, 236), 440, 820, 0.06);
-      P.put(sStar(38, k.a), 122, 820, 0.25);
+      P.put(sLogoCut('pop', 156), 236, 262, -0.08);
+      P.put(sGlasses(176), 476, 196, 0.16);
+      P.put(sTicket(L, k), 322, 668, -0.09);
+      P.put(sClap(L, 220), 452, 822, 0.06);
     },
     // Zapping (konbini) : dense, joyeux, tout se touche
     b: (P, L, k) => {
@@ -1049,11 +1023,8 @@ const LAYOUTS: Record<SachetId, Record<StickerVariant, Layout>> = {
       P.put(sLogoCut('pop', 140), 420, 280, 0.1);
       P.put(sGlasses(190), 288, 146, -0.12);
       P.put(sFilm(330), 470, 600, -0.32);
-      P.put(sBulle(L, 300, k), 210, 684, 0.05);
-      P.put(sWow(74, k.b), 520, 740, -0.15);
-      P.put(sBrandPill(270, k.a, INK), 380, 848, 0.05);
-      P.put(sStar(30, k.a), 86, 846, 0.3);
-      P.put(sStar(26, '#fff'), 560, 420, -0.2);
+      P.put(sBulle(L, 310, k), 214, 690, 0.05);
+      P.put(sBrandPill(230, k.a, INK), 440, 836, 0.05);
     },
   },
   sport: {
@@ -1095,7 +1066,6 @@ const LAYOUTS: Record<SachetId, Record<StickerVariant, Layout>> = {
       P.put(sAvion(L, k), 486, 366, -0.1);
       P.put(sLosange(L, 228, k), 176, 708, -0.05);
       P.put(sOvale(280, k), 428, 780, 0.1);
-      P.put(sTampon(L, 66, k), 446, 628, 0.3);
     },
   },
   bebou: {
@@ -1135,10 +1105,200 @@ function momentB(P: Placer, L: StickerLang, k: SachetLook) {
   P.put(sBrandPill(210), 150, 610, -0.06);
 }
 
+// ───────────────────────────────────────────── l'habillage (passe 2) : le film est IMPRIMÉ, l'alu reste en réserve
+
+/**
+ * (27/11, passe 2 — retours de Tom : « réduire le côté no brand / alu, mieux habiller, moins de reflets ») Comme un
+ * vrai booster, le film est imprimé : un aplat d'encre franche avec un motif ton sur ton propre au thème (jamais de
+ * texte), une bande sombre en haut (zone de déchirure, deux repères) et en bas (le socle). L'aluminium ne reste
+ * visible qu'en RÉSERVE : les soudures, et une fenêtre derrière le nom moulé — le nom devient la seule grande pièce
+ * de métal, comme un logo doré à chaud.
+ *  - `bandeau` : la réserve traverse le sachet, son bord est dessiné selon le thème (marches de pixels, dents de
+ *    BD, biais, vagues) ;
+ *  - `cartouche` : la réserve se réduit à un cartouche arrondi autour du nom (encore moins de métal).
+ */
+export type Habillage = 'bandeau' | 'cartouche';
+const BAND_Y0 = 402, BAND_Y1 = 566, STRIP = 40;
+/** brillant de l'encre sous le film (satiné : un reflet large et doux, pas un miroir) */
+const INK_GLOSS = 0.45;
+
+/** bord de la réserve en bandeau (s = −1 bord haut, +1 bord bas) : décalage en y à l'abscisse x */
+function bandEdge(id: SachetId, x: number, s: number): number {
+  switch (id) {
+    case 'gaming':
+      return [0, 9, 0, -9, 9, 18, 9, 0][(Math.floor(x / 40) + (s > 0 ? 3 : 0)) % 8];
+    case 'pop':
+      return Math.abs(((x / 20) % 2) - 1) * 14 - 7;
+    case 'sport':
+      return (cx - x) * 0.055;
+    case 'monde':
+      return Math.sin(x / 34 + (s > 0 ? 1.6 : 0)) * 8;
+    default:
+      return 0;
+  }
+}
+
+/** tracé de la zone imprimée de la face (à remplir en `evenodd`) */
+function inkPath(g: Ctx, id: SachetId, h: Habillage) {
+  g.beginPath();
+  if (h === 'cartouche') {
+    g.rect(0, CH, PW, PH - 2 * CH);
+    const x = 34, y = BAND_Y0 + 4, w = PW - 68, hh = BAND_Y1 - BAND_Y0 - 8, r = 34;
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + hh, r);
+    g.arcTo(x + w, y + hh, x, y + hh, r);
+    g.arcTo(x, y + hh, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+    return;
+  }
+  g.moveTo(0, CH);
+  g.lineTo(PW, CH);
+  for (let x = PW; x >= 0; x -= 2) g.lineTo(x, BAND_Y0 + bandEdge(id, x, -1));
+  g.closePath();
+  g.moveTo(0, PH - CH);
+  g.lineTo(PW, PH - CH);
+  for (let x = PW; x >= 0; x -= 2) g.lineTo(x, BAND_Y1 + bandEdge(id, x, 1));
+  g.closePath();
+}
+
+/** motif ton sur ton du thème, dessiné sur toute la hauteur imprimée (l'appelant a déjà détouré la zone) */
+function motif(g: Ctx, id: SachetId, k: SachetLook) {
+  const [, dark, light] = k.ink;
+  // 1 près des bandes du haut et du bas, 0 vers la réserve : les motifs se densifient vers les bords du sachet
+  const out = (y: number) => 1 - Math.min(1, Math.min(Math.abs(y - (CH + STRIP)), Math.abs(y - (PH - CH - STRIP))) / 250);
+  switch (id) {
+    case 'gaming': {
+      // trame de pixels ordonnée (matrice de Bayer) : un dégradé fait de carrés, pas un dégradé lissé
+      const bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], s = 16;
+      g.fillStyle = dark;
+      for (let j = 0; j * s < PH; j++) for (let i = 0; i * s < PW; i++) if ((bayer[(j % 4) * 4 + (i % 4)] + 0.5) / 16 < out(j * s + s / 2) * 0.8) g.fillRect(i * s, j * s, s, s);
+      break;
+    }
+    case 'pop': {
+      // points de trame de BD, plus gros vers les bords
+      g.fillStyle = light;
+      for (let j = 0, y = CH; y < PH - CH; y += 13, j++) for (let x = j % 2 ? 13 : 0; x < PW + 13; x += 26) {
+        const r = 1.5 + 8 * out(y);
+        g.beginPath();
+        g.arc(x, y, r, 0, TAU);
+        g.fill();
+      }
+      break;
+    }
+    case 'sport': {
+      // pelouse tondue en bandes, lignes de terrain blanches
+      g.fillStyle = dark;
+      for (let x = 0; x < PW; x += 128) g.fillRect(x, 0, 64, PH);
+      g.strokeStyle = 'rgba(255,255,255,0.9)';
+      g.lineWidth = 5;
+      g.beginPath();
+      g.moveTo(0, 258);
+      g.lineTo(PW, 258);
+      g.moveTo(cx + 132, 258);
+      g.arc(cx, 258, 132, 0, TAU);
+      g.rect(96, 690, PW - 192, 400);
+      g.moveTo(cx + 96, 690);
+      g.arc(cx, 690, 96, 0, Math.PI, true);
+      g.stroke();
+      break;
+    }
+    case 'monde': {
+      // courbes de niveau d'une carte
+      g.strokeStyle = dark;
+      g.lineWidth = 2.5;
+      for (const [ox, oy, ph] of [[120, 210, 0.4], [540, 330, 2.1], [170, 790, 3.3], [520, 690, 5]] as const)
+        for (let r = 26; r < 300; r += 27) {
+          g.beginPath();
+          for (let i = 0; i <= 72; i++) {
+            const a = (i / 72) * TAU;
+            const rr = r * (1 + 0.13 * Math.sin(3 * a + ph) + 0.07 * Math.sin(5 * a + ph * 2 + r * 0.02));
+            if (i) g.lineTo(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.86);
+            else g.moveTo(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.86);
+          }
+          g.stroke();
+        }
+      break;
+    }
+    case 'bebou': {
+      // grille de points à peine visible (Nothing), rien d'autre
+      g.fillStyle = light;
+      for (let y = CH + 9; y < PH - CH; y += 16) for (let x = 8; x < PW; x += 16) {
+        g.beginPath();
+        g.arc(x, y, 1.3, 0, TAU);
+        g.fill();
+      }
+      break;
+    }
+    default: {
+      // booster du moment : hachures franches en biais (édition limitée)
+      g.fillStyle = dark;
+      for (let x = -PH; x < PW; x += 60) {
+        g.beginPath();
+        g.moveTo(x, PH);
+        g.lineTo(x + 30, PH);
+        g.lineTo(x + 30 + PH, 0);
+        g.lineTo(x + PH, 0);
+        g.closePath();
+        g.fill();
+      }
+    }
+  }
+}
+
+/** imprime une face : aplat, motif, bandes haute et basse, repères de déchirure */
+function printFace(g: Ctx, id: SachetId, k: SachetLook, path: () => void) {
+  const dark = id === 'bebou' ? '#08080b' : k.ink[1];
+  g.save();
+  path();
+  g.clip('evenodd');
+  g.fillStyle = k.ink[0];
+  g.fillRect(0, CH, PW, PH - 2 * CH);
+  motif(g, id, k);
+  g.fillStyle = dark;
+  g.fillRect(0, CH, PW, STRIP);
+  g.fillRect(0, PH - CH - STRIP, PW, STRIP);
+  // repères de déchirure : deux petits triangles de papier au bout de la ligne (pas de « déchirer ici »)
+  g.fillStyle = k.paper;
+  for (const s of [1, -1]) {
+    const x = s > 0 ? 12 : PW - 12, y = CH + STRIP;
+    g.beginPath();
+    g.moveTo(x, y - 9);
+    g.lineTo(x + s * 15, y);
+    g.lineTo(x, y + 9);
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
+}
+
+/** filet de papier le long de la réserve (Bébou Pack seulement : la seule ligne claire du sachet) */
+function keyline(g: Ctx, id: SachetId, h: Habillage, k: SachetLook) {
+  if (id !== 'bebou') return;
+  g.save();
+  g.strokeStyle = k.paper;
+  g.lineWidth = 1.5;
+  g.globalAlpha = 0.7;
+  if (h === 'cartouche') {
+    roundRect(g, 26, BAND_Y0 - 4, PW - 52, BAND_Y1 - BAND_Y0 + 8, 40);
+    g.stroke();
+  } else
+    for (const y of [BAND_Y0 - 10, BAND_Y1 + 10]) {
+      g.beginPath();
+      g.moveTo(28, y);
+      g.lineTo(PW - 28, y);
+      g.stroke();
+    }
+  g.restore();
+}
+
 // ───────────────────────────────────────────── le sachet complet
 
 export interface StickerPackArt extends PackArt {
-  /** R = autocollant sur la face · G = brillant (0 papier, 1 vinyle) · B = autocollant au dos */
+  /**
+   * R = pas de métal sur la face (encre imprimée ou autocollant) · G = brillant (0 papier · ~0,45 encre · 1 vinyle)
+   * · B = pas de métal au dos
+   */
   stickers: Texture;
   /** la face en 2D (vignettes) : relief du nom ombré + autocollants */
   thumb: HTMLCanvasElement;
@@ -1148,12 +1308,20 @@ export interface StickerPackArt extends PackArt {
  * Le visuel d'un sachet « Autocollant » : le sachet simple du jeu (même alu, mêmes plis, même nom moulé), les
  * autocollants de la variante collés par-dessus. `seed` = le booster : il tire ses plis ET la pose des autocollants.
  */
-export async function stickerPackArt(id: SachetId, variant: StickerVariant, L: StickerLang, seed = 1, film: { tint?: string; alloyMix?: number } = {}): Promise<StickerPackArt> {
-  // `film` : essai d'une autre teinte dans le labo (les étiquettes qui reprennent la teinte suivent)
+export async function stickerPackArt(
+  id: SachetId,
+  variant: StickerVariant,
+  L: StickerLang,
+  seed = 1,
+  film: { tint?: string; alloyMix?: number; habillage?: Habillage | 'nu' } = {},
+): Promise<StickerPackArt> {
+  // `film` : essais du labo — une autre teinte (les étiquettes qui la reprennent suivent), l'habillage imposé ou retiré
+  // (`nu` = la passe 1 : autocollants sur l'alu nu). Par défaut : A en bandeau, B en cartouche.
   const k: SachetLook = { ...SACHETS[id], ...(film.tint ? { tint: film.tint } : {}), ...(film.alloyMix !== undefined ? { alloyMix: film.alloyMix } : {}) };
+  const hab = film.habillage ?? (variant === 'a' ? 'bandeau' : 'cartouche');
   await ensureFonts();
   await Promise.all(
-    [`800 60px ${DISPLAY}`, `700 30px ${DISPLAY}`, `600 30px ${DISPLAY}`, `700 30px ${FONT_LABEL}`, `500 30px ${FONT_MONO}`].map((f) => document.fonts.load(f).catch(() => undefined)),
+    [`800 60px ${DISPLAY}`, `700 30px ${DISPLAY}`, `600 30px ${DISPLAY}`, `700 30px ${FONT_LABEL}`, `500 30px ${FONT_MONO}`, `400 40px ${FONT_PACK}`].map((f) => document.fonts.load(f).catch(() => undefined)),
   );
   const art = await generatePackArt({ name: `autocollant-${id}-${seed}`, ground: k.tint, ground2: k.tint, ink: INK, foil: '#ffffff', accent: k.tint, simple: true, label: k.label, alloyMix: k.alloyMix });
   const F = art.front.image as HTMLCanvasElement, B = art.back.image as HTMLCanvasElement;
@@ -1164,9 +1332,33 @@ export async function stickerPackArt(id: SachetId, variant: StickerVariant, L: S
   M.g.fillStyle = '#000';
   M.g.fillRect(0, 0, M.c.width, M.c.height);
   M.g.scale(0.5, 0.5);
-  const P = placer(fronts, B.getContext('2d') as Ctx, M.g, seed);
+  const bg = B.getContext('2d') as Ctx;
+  if (hab !== 'nu') {
+    // la face : encre partout sauf la réserve derrière le nom moulé (dont l'ombrage reste intact)
+    for (const g of fronts) {
+      printFace(g, id, k, () => inkPath(g, id, hab));
+      keyline(g, id, hab, k);
+    }
+    inkPath(M.g, id, hab);
+    M.g.fillStyle = `rgb(255,${Math.round(INK_GLOSS * 255)},0)`;
+    M.g.fill('evenodd');
+  }
+  const P = placer(fronts, bg, M.g, seed);
   LAYOUTS[id][variant](P, L, k, seed);
   if (id !== 'tele' && id !== 'noel') P.back(sBackLabel(k, L, seed), cx, PH * 0.6, id === 'bebou' ? 0 : -0.03);
+  if (hab !== 'nu') {
+    // le dos : entièrement imprimé (après les autocollants de la face : ils écrasent le canal du dos dans le masque)
+    const whole = () => {
+      bg.beginPath();
+      bg.rect(0, CH, PW, PH - 2 * CH);
+    };
+    printFace(bg, id, k, whole);
+    M.g.save();
+    M.g.globalCompositeOperation = 'lighter';
+    M.g.fillStyle = 'rgb(0,0,255)';
+    M.g.fillRect(0, CH, PW, PH - 2 * CH);
+    M.g.restore();
+  }
   P.flush();
   art.front.needsUpdate = true;
   art.back.needsUpdate = true;
@@ -1189,21 +1381,55 @@ export async function stickerPackArt(id: SachetId, variant: StickerVariant, L: S
  * teinté et le métal laissent la place à du papier (mat) ou du vinyle (satiné). Les plis du film passent dessous :
  * l'autocollant suit le sachet.
  */
-export function createStickerPackMesh(art: StickerPackArt) {
+export function createStickerPackMesh(art: StickerPackArt, o: { matiere?: 'legere' | 'origine' } = {}) {
+  const mesh = new Mesh(createPackGeometry(), o.matiere === 'origine' ? originMaterials(art) : lightMaterials(art));
+  mesh.name = 'pack';
+  return mesh;
+}
+
+/** passe 1 : la matière du jeu (physique, vernis, grain du film), le métal retiré sous l'encre et les autocollants */
+function originMaterials(art: StickerPackArt) {
   const mats = createPackMaterials(art);
   const mk = texture(art.stickers, uv());
   mats.forEach((m, side) => {
     const s: N = side === 0 ? mk.r : mk.b;
-    const gloss: N = side === 0 ? mk.g : float(0.1);
+    const gloss: N = side === 0 ? mk.g : float(INK_GLOSS);
     const col: N = texture(side === 0 ? art.front : art.back, uv()).rgb;
     m.colorNode = mix(col.mul(PLASTIC_TINT), col, s);
     m.metalnessNode = float(1).sub(s);
     m.roughnessNode = mix(m.roughnessNode as N, mix(float(0.8), float(0.36), gloss), s);
     m.clearcoatNode = mix(m.clearcoatNode as N, mix(float(0), float(0.3), gloss), s);
   });
-  const mesh = new Mesh(createPackGeometry(), mats);
-  mesh.name = 'pack';
-  return mesh;
+  return mats;
+}
+
+/**
+ * (passe 2, « mobile léger ») MATIÈRE ALLÉGÉE du sachet habillé. Par pixel : 3 lectures de texture (couleur, masque,
+ * normales) au lieu de 7 (couleur, masques, plis, normales, grain du film × 2, masque des autocollants), et un seul
+ * reflet (matériau standard) au lieu de deux (métal + vernis). Ce qui part : le vernis, le grain du film, le relief
+ * recalculé par dérivées, la texture des masques (les crans des soudures sont calculés depuis la hauteur dans le
+ * sachet) et la carte de hauteur des plis — donc 2 textures de moins à envoyer au GPU par sachet. Ce qui reste : les
+ * plis du film et le nom thermoformé (carte de normales), l'alu en réserve, plus mat qu'avant (0,3 : reflet large).
+ */
+function lightMaterials(art: StickerPackArt) {
+  const seamV = CH / PH;
+  return [0, 1].map((side) => {
+    const m = new MeshStandardNodeMaterial();
+    const u = uv();
+    const mk = texture(art.stickers, u);
+    const col: N = texture(side === 0 ? art.front : art.back, u).rgb;
+    const cover: N = side === 0 ? mk.r : mk.b;
+    const gloss: N = side === 0 ? mk.g : float(INK_GLOSS);
+    const seam: N = smoothstep(0.5 - seamV - 0.004, 0.5 - seamV, u.y.sub(0.5).abs());
+    const rx: N = sin(positionLocal.x.mul(1600)).mul(0.6).mul(seam);
+    const nt = side === 0 && art.frontNormal ? texture(art.frontNormal, u) : art.creaseNormal ? texture(art.creaseNormal, side === 0 ? u : u.mul(vec2(-1, 1)).add(vec2(1, 0))) : null;
+    const cn: N = nt ? nt.xyz.mul(2).sub(1) : vec3(0, 0, 1);
+    m.normalNode = normalMap(encodeNormal(vec3(cn.x.add(rx), cn.y, cn.z).normalize()));
+    m.colorNode = mix(col.mul(PLASTIC_TINT), col, cover);
+    m.metalnessNode = float(1).sub(cover);
+    m.roughnessNode = mix(mix(float(0.3), float(0.44), seam), mix(float(0.82), float(0.38), gloss), cover);
+    return m;
+  });
 }
 
 /** hauteur de la soudure sur la toile (pour le labo) */
