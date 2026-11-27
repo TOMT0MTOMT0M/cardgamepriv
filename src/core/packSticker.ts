@@ -1550,11 +1550,15 @@ export async function stickerPackArt(
   };
   const hab = film.habillage ?? (variant === 'a' ? 'bandeau' : 'cartouche');
   const jeu = !!film.jeu;
+  // (jeu, perf téléphone) rend la main entre les étapes (mesuré, CPU ×4 : la pire tâche par sachet passe de 51-61 ms à
+  // moins de 50) — la roue de la boutique reste fluide pendant que les sachets suivants se dessinent en tâche de fond
+  const pause = () => (jeu ? new Promise<void>((r) => setTimeout(r, 0)) : Promise.resolve());
   await ensureFonts();
   await Promise.all(
     [`800 60px ${DISPLAY}`, `700 30px ${DISPLAY}`, `600 30px ${DISPLAY}`, `700 30px ${FONT_LABEL}`, `500 30px ${FONT_MONO}`, `400 40px ${FONT_PACK}`].map((f) => document.fonts.load(f).catch(() => undefined)),
   );
   const art = await generatePackArt({ name: `autocollant-${id}-${seed}`, ground: k.tint, ground2: k.tint, ink: INK, foil: '#ffffff', accent: k.tint, simple: true, label: k.label, alloyMix: k.alloyMix }, { releaseSources: jeu });
+  await pause();
   const F = art.front.image as HTMLCanvasElement, B = art.back.image as HTMLCanvasElement;
   const thumb = art.thumbFront ?? F;
   const fronts = [F.getContext('2d') as Ctx];
@@ -1575,6 +1579,7 @@ export async function stickerPackArt(
     M.g.fillStyle = `rgb(255,${Math.round(INK_GLOSS * 255)},0)`;
     M.g.fill('evenodd');
   }
+  await pause();
   // la boîte des lettres moulées : même police et même réduction que le nom du sachet simple (pack.ts)
   const mg = fronts[0];
   mg.save();
@@ -1595,6 +1600,7 @@ export async function stickerPackArt(
     P.put(sChevron(k, -1), PW - 30, CH + STRIP, 0, { fix: true });
   }
   if (id !== 'tele' && id !== 'noel') P.back(sBackLabel(k, L, seed), cx, PH * 0.6, id === 'bebou' ? 0 : -0.03);
+  await pause();
   if (hab !== 'nu') {
     // le dos : entièrement imprimé (après les autocollants de la face : ils écrasent le canal du dos dans le masque)
     const whole = () => {
@@ -1610,6 +1616,7 @@ export async function stickerPackArt(
       M.g.restore();
     }
   }
+  await pause();
   P.flush();
   art.front.needsUpdate = true;
   art.back.needsUpdate = true;
