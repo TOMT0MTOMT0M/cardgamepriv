@@ -370,6 +370,20 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
       const tile = cardTile(m.card.cardId, m.card.rarity as RarityId, { mini: true });
       tile.dataset.zoom = `${m.card.cardId}|${m.card.rarity}|${m.card.mintNumber ?? ''}|${f.mine ? tr('chat.me') : name}`;
       cardHost.append(tile);
+      // (V3, marché « façon Kyara ») la carte d'un autre : rappel perso (« Il te manque » / « Tu l'as déjà (×N) ») et
+      // « Proposer un échange » (demande en un toucher, contrepartie choisie par le serveur — views/cardPanel.ts askFor)
+      if (!f.mine && m.card.rarity !== 'secret' && backend.state.user) {
+        const { cardId } = m.card;
+        const r = m.card.rarity as RarityId;
+        const n = backend.state.collection.filter((c) => c.cardId === cardId).reduce((a, c) => a + c.count, 0);
+        const deal = h('div', 'cm-deal', `<span class="cm-own${n ? ' has' : ''}">${n ? tr('chat.haveIt', { n }) : tr('chat.missIt')}</span>`);
+        const b = h('button', 'btn-ghost cm-ask', tr('chat.proposeTrade'));
+        (b as HTMLButtonElement).type = 'button';
+        b.addEventListener('click', () => void import('./views/cardPanel').then((cp) => cp.askFor(backend, { userId: m.userId, name }, { cardId, rarity: r }, b)));
+        deal.append(b);
+        cardHost.classList.add('with-deal');
+        cardHost.append(deal);
+      }
     } else cardHost.remove();
     return el;
   }
