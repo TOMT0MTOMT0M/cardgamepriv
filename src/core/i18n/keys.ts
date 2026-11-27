@@ -31,8 +31,6 @@ import type { fr as p_game_views_forYou } from './fr/game.views.forYou';
 import type { fr as p_game_views_leaderboard } from './fr/game.views.leaderboard';
 import type { fr as p_game_views_login } from './fr/game.views.login';
 import type { fr as p_game_survey } from './fr/game.survey';
-import type { fr as p_game_views_defis } from './fr/game.views.defis';
-import type { fr as p_game_views_presse } from './fr/game.views.presse';
 import type { fr as p_game_views_showcaseEditor } from './fr/game.views.showcaseEditor';
 import type { fr as p_game_views_atelier } from './fr/game.views.atelier';
 import type { fr as p_game_localBackend } from './fr/game.localBackend';
@@ -70,8 +68,6 @@ export type AllFr = typeof core &
   typeof p_game_views_leaderboard &
   typeof p_game_views_login &
   typeof p_game_survey &
-  typeof p_game_views_defis &
-  typeof p_game_views_presse &
   typeof p_game_views_showcaseEditor &
   typeof p_game_views_atelier &
   typeof p_game_localBackend &

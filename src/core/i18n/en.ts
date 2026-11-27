@@ -34,8 +34,6 @@ import { en as p_game_views_forYou } from './en/game.views.forYou';
 import { en as p_game_views_leaderboard } from './en/game.views.leaderboard';
 import { en as p_game_views_login } from './en/game.views.login';
 import { en as p_game_survey } from './en/game.survey';
-import { en as p_game_views_defis } from './en/game.views.defis';
-import { en as p_game_views_presse } from './en/game.views.presse';
 import { en as p_game_views_showcaseEditor } from './en/game.views.showcaseEditor';
 import { en as p_game_views_atelier } from './en/game.views.atelier';
 import { en as p_game_localBackend } from './en/game.localBackend';
@@ -74,8 +72,6 @@ export const en: Dict = {
   ...p_game_views_leaderboard,
   ...p_game_views_login,
   ...p_game_survey,
-  ...p_game_views_defis,
-  ...p_game_views_presse,
   ...p_game_views_showcaseEditor,
   ...p_game_views_atelier,
   ...p_game_localBackend,
