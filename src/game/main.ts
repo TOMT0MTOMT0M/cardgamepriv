@@ -19,7 +19,7 @@ import { createStatus, shownPity, PITY_ICON, STREAK_ICON } from './views/status'
 import { PITY_LIMIT, pityLeft } from '../core/pity';
 import { COIN_ICON, createWallet } from './views/wallet';
 import { armPin, clearPins, payOut } from './views/coinHopper';
-import { fmtCoins } from '../core/economy';
+import { contractsRetired, fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, packCapOfMe, type GameBackend } from './backend';
 import { boardAttention } from './backend';
 import { PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
@@ -83,7 +83,7 @@ const loader =
 const TIPS = () => [
   tr('boot.tip1'),
   tr('boot.tip2'),
-  tr('boot.tip3'),
+  contractsRetired(Date.now()) ? tr('boot.tip3b') : tr('boot.tip3'), // (v2.1.40) plus de contrats à partir du 01/12
   tr('boot.tip4'),
   tr('boot.tip5'),
   tr('boot.tip6'),
@@ -1188,7 +1188,9 @@ async function boot() {
     routed = true;
     // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
     // primes de complétion dans la page Succès
-    const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' ? '#/collection/contrats' : undefined;
+    // (v2.1.40) contrats retirés le 01/12 0 h (Paris) : leurs deux adresses mènent à la Forge
+    const noContracts = contractsRetired(Date.now());
+    const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' ? (noContracts ? '#/collection/forge' : '#/collection/contrats') : r === 'collection' && sub === 'contrats' && noContracts ? '#/collection/forge' : undefined;
     if (moved) return void location.replace(moved);
     // (retours live 6, C8) #/collection/contrats = la page des contrats, dans la Collection
     const page = r === 'collection' && sub === 'contrats' ? 'contrats' : r;

@@ -19,6 +19,7 @@ import { GAMES_OPEN } from '../../core/games';
 import { createRiffle, ndcToRect } from '../riffle';
 import { dropFlight, liftCard, returnCard } from '../sharedFlight';
 import { paintedCard } from '../cardImages';
+import { contractsRetired } from '../../core/economy';
 
 /**
  * COLLECTION (refonte, retours du 3 nov. + retours live n°1)
@@ -908,6 +909,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         b.innerHTML = tr('coll.forgeTab', { x: nForge ? ` <em>${fmtN(nForge)}</em>` : '' });
         b.setAttribute('aria-label', nForge ? tr('coll.forgeAria', { n: nForge, nf: fmtN(nForge) }) : 'Forge'); // i18n-ok
       }
+      // (v2.1.40) contrats retirés le 01/12 0 h (Paris) : plus d'onglet
+      if (b.dataset.v === 'contrats') b.hidden = contractsRetired(Date.now());
     });
   }
 

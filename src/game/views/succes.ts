@@ -4,7 +4,7 @@ import { locale, t, type MsgKey, t as tr } from '../../core/i18n';
 const kindLabel = (k: string) => t(`cos.kind.${k}` as MsgKey);
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
-import { ACHIEVEMENTS, ACHIEVEMENT_LADDERS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, type Achievement, type AchievementLadder, type AchievementStats } from '../../core/economy';
+import { ACHIEVEMENTS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, visibleAchievements, visibleLadders, type Achievement, type AchievementLadder, type AchievementStats } from '../../core/economy';
 import type { FriendAch } from '../eco';
 import { cosmeticsOf } from '../../core/cosmetics';
 import { badgeIcon } from '../cosmeticArt';
@@ -327,11 +327,14 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     }
     const claimed = new Set(s.econ.achievements);
     const claimable = new Set(s.achievements.claimable);
-    const done = ACHIEVEMENTS.filter((a) => achievementDone(a, s.achievements.stats)).length;
+    // (v2.1.40) succès d'une mécanique retirée (contrats) pas gagnés : ni proposés, ni comptés
+    const now = Date.now();
+    const seen = visibleAchievements(s.achievements.stats, now);
+    const done = seen.filter((a) => achievementDone(a, s.achievements.stats)).length;
     const pending = ACHIEVEMENTS.filter((a) => claimable.has(a.id));
     const total = pending.reduce((n, a) => n + achievementReward(a), 0);
     const packsN = pending.reduce((n, a) => n + achievementPacks(a), 0);
-    score.innerHTML = `<div class="sc-big"><b>${done}</b><span>/ ${ACHIEVEMENTS.length}</span></div><div class="muted">${t('sc.unlockedTiers')}</div><i class="sc-pb big"><i style="width:${((done / ACHIEVEMENTS.length) * 100).toFixed(1)}%"></i></i>`;
+    score.innerHTML = `<div class="sc-big"><b>${done}</b><span>/ ${seen.length}</span></div><div class="muted">${t('sc.unlockedTiers')}</div><i class="sc-pb big"><i style="width:${((done / seen.length) * 100).toFixed(1)}%"></i></i>`;
     claimBtn.hidden = !pending.length;
     claimBtn.innerHTML = t('sc.claim', { tiers: plural(pending.length, 'palier', 'paliers'), coins: total ? ` · +${fmtCoins(total)} ${COIN_ICON}` : '', packs: packsN ? ` + ${plural(packsN, 'booster')}` : '' });
     if (who === 'friends') {
@@ -343,11 +346,11 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
         grid.innerHTML = `<div class="muted">${t('sc.addFriends')}</div>`;
         return;
       }
-      grid.replaceChildren(...ACHIEVEMENT_LADDERS.map((l) => friendsCard(l, friends!)));
+      grid.replaceChildren(...visibleLadders(s.achievements.stats, now, true).map((l) => friendsCard(l, friends!)));
       return;
     }
     const st = s.achievements.stats;
-    const list = ACHIEVEMENT_LADDERS.filter((l) => {
+    const list = visibleLadders(st, now).filter((l) => {
       const ready = l.steps.some((a) => claimable.has(a.id));
       const all = l.steps.every((a) => claimed.has(a.id));
       const some = l.steps.some((a) => claimed.has(a.id));

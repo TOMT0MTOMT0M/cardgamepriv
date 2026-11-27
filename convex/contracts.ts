@@ -13,6 +13,7 @@ import { lockedCards } from './trades';
 import { invRev } from './invRev';
 import { syncPresence } from './presence';
 import { fm, feedMsg } from '../src/core/msgs';
+import { contractsRetired } from '../src/core/economy';
 
 function secureRandomFloat(): number {
   const arr = new Uint32Array(1);
@@ -31,6 +32,8 @@ export const sign = mutation({
     items: v.array(v.object({ cardId: v.string(), count: v.number() })),
   },
   handler: async (ctx, { sessionToken, rarity, items }) => {
+    // (v2.1.40) contrats retirés le 01/12 0 h (Paris) ; la fonction reste pour les vieux onglets, qui lisent ce refus
+    if (contractsRetired(Date.now())) throw new ConvexError(fe('contracts.8'));
     const user = await requireUser(ctx, sessionToken);
     const target = contractTarget(rarity) as RarityId | null;
     if (!target || items.length > 60) throw new ConvexError(fe('contracts.7'));

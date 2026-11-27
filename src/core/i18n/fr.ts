@@ -55,6 +55,7 @@ export const fr = {
   'boot.tip1': 'Astuce : maintiens, glisse ou touche le booster : chaque pochette s’ouvre à sa façon.',
   'boot.tip2': 'Une carte secrète se cache peut-être dans le Bebou Pack…',
   'boot.tip3': 'Tes doublons valent de l’or : brûle-les en contrat ou échange-les.',
+  'boot.tip3b': 'Tes doublons valent de l’or : forge-les contre des pièces ou vends-les au marché.', // (v2.1.40)
   'boot.tip4': 'Un nouveau booster toutes les 5 minutes, jusqu’à 15 en réserve.',
   'boot.tip5': 'Touche une carte de ta collection pour la voir en grand et la faire tourner.',
   'boot.tip6': 'La lumière qui fuit de l’emballage annonce la meilleure carte du paquet.',

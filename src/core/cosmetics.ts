@@ -8,7 +8,7 @@ import { fe } from './errors';
 import { tData } from './i18n';
 import { locale } from './i18n';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, catalogEntry } from './sets/themes';
-import { ACHIEVEMENTS, achievementDone, achievementStats, emptyEcon } from './economy';
+import { ACHIEVEMENTS, achievementDone, achievementRetired, achievementStats, emptyEcon } from './economy';
 
 export interface PlayerStats {
   packsOpened: number;
@@ -538,6 +538,15 @@ export function cleanCosmetics(choice: CosmeticChoice, stats: PlayerStats): Cosm
     return CUSTOM_ACCENT.test(a) ? a : ok(list, v) ?? ok(legacy, v);
   };
   return { banner: pick(BANNERS, LEGACY_BANNERS, choice.banner), frame: pick(FRAMES, LEGACY_FRAMES, choice.frame), title: ok(TITLES, choice.title), badges, ...(accent ? { accent } : {}), ...(vitrine ? { vitrine } : {}), ...(vitrineColor ? { vitrineColor } : {}), ...(background && background !== BACKGROUNDS[0].id ? { background } : {}), ...(titleStyle && titleStyle !== TITLE_STYLES[0].id ? { titleStyle } : {}), ...(pfx && pfx !== PROFILE_FX[0].id ? { pfx } : {}) };
+}
+
+/**
+ * (v2.1.40) cosmétique d'un succès retiré (contrats) que le joueur n'a pas : plus jamais proposé (Atelier). Celui
+ * qui l'a le garde.
+ */
+export function cosmeticGone(c: Cosmetic, stats: PlayerStats, now: number): boolean {
+  const a = c.need ? ach(c.need) : undefined;
+  return !!a && achievementRetired(a, now) && !c.unlock(stats);
 }
 
 /** Ce que le joueur a débloqué (pour la galerie et pour le fil « succès » à venir). */

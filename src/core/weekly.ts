@@ -9,6 +9,7 @@
 import { fe } from './errors';
 import { t } from './i18n';
 import { missionDay, type Mission } from './missions';
+import { ECON_V2_AT, contractsRetired } from './economy';
 
 /** Pièces d'une mission du jour, en plus de ses boosters : 40 / 50 / 60 selon sa difficulté. */
 export const dailyMissionCoins = (m: Pick<Mission, 'reward'>) => 30 + 10 * Math.max(1, m.reward);
@@ -91,10 +92,16 @@ const POOL: Array<[WeeklyKind, number[], number]> = [
   ['burn', [20, 40, 80], 1.5],
 ];
 
+/**
+ * (v2.1.40) contrats retirés le 01/12 0 h (Paris, un mardi) : plus de mission « contrat » pour les semaines qui
+ * commencent après (dès le lundi 07/12). La semaine du 30/11 garde son tirage (rien n'est rebattu).
+ */
+export const noContractWeek = (week: string) => week >= missionDay(ECON_V2_AT);
+
 /** Les 3 missions de la semaine d'un joueur (toujours les mêmes pour ce joueur cette semaine-là). */
 export function weeklyMissions(userKey: string, week: string): WeeklyState {
   const r = rand(`${userKey}|w|${week}`);
-  const used = new Set<WeeklyKind>();
+  const used = new Set<WeeklyKind>(noContractWeek(week) ? ['contract'] : []);
   const list: WeeklyMission[] = [];
   for (let i = 0; i < 3; i++) {
     const pool = POOL.filter(([k]) => !used.has(k) && !(k === 'win' && used.has('game')) && !(k === 'game' && used.has('win')));
@@ -114,7 +121,11 @@ export function weeklyMissions(userKey: string, week: string): WeeklyState {
 
 export function currentWeekly(saved: WeeklyState | null | undefined, userKey: string, now: number): WeeklyState {
   const week = missionWeek(now);
-  return saved && saved.week === week ? saved : weeklyMissions(userKey, week);
+  const s = saved && saved.week === week ? saved : weeklyMissions(userKey, week);
+  // (v2.1.40, choix de Tom le 27/11) semaine à cheval (lundi 30/11) : sa mission « contrat » ne peut plus se finir
+  // à partir du 01/12 0 h → comptée comme faite (à récupérer). Calculé à la lecture : rien n'est écrit en base.
+  if (!contractsRetired(now) || !s.list.some((m) => m.kind === 'contract' && !m.claimed && m.progress < m.target)) return s;
+  return { ...s, list: s.list.map((m) => (m.kind === 'contract' && !m.claimed ? { ...m, progress: m.target } : m)) };
 }
 
 export function applyWeeklyEvent(s: WeeklyState, ev: WeeklyEvent): { state: WeeklyState; changed: boolean } {

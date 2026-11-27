@@ -3,7 +3,8 @@
  * Audit perf 12/11, lot S07 : plus de collection relue en entier pour un affichage ou un geste.
  */
 import { convexTest } from 'convex-test';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, onTestFinished, test, vi } from 'vitest';
+import { ECON_V2_AT } from '../src/core/economy';
 import { api, internal } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
@@ -78,6 +79,10 @@ describe('S07 — collections relues en entier', () => {
   });
 
   test('contrat : seulement les lignes utiles, et une carte déjà possédée à la rareté visée s’ajoute à sa ligne (A7-04)', async () => {
+    // (v2.1.40) contrats retirés le 01/12/2026 0 h (Paris) : ce test se joue la veille
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(ECON_V2_AT - 3600_000);
+    onTestFinished(() => void vi.useRealTimers());
     const { t, ids } = await setup(1);
     const userId = ids[0].userId;
     const { CONTRACT_COST, contractTarget } = await import('../src/core/contracts');

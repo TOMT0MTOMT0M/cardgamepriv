@@ -29,6 +29,12 @@ export const PACK_PRICE = 250;
 /** (v2.1.39) la nouvelle économie démarre le 01/12/2026 à 0 h, heure de Paris (UTC+1 en hiver) */
 export const ECON_V2_AT = Date.UTC(2026, 10, 30, 23, 0, 0);
 export const econV2 = (now: number) => now >= ECON_V2_AT;
+/**
+ * (v2.1.40, décision de Hugo le 26/11 et de Tom le 27/11) les CONTRATS sont retirés en même temps : ils rapportaient
+ * plus que vendre ou échanger. Un doublon se forge ou se vend. Plus de signature (convex/contracts.ts), plus de
+ * mission « contrat » ; leurs succès déjà gagnés restent (souvenirs), les autres disparaissent (`achievementGone`).
+ */
+export const contractsRetired = (now: number) => econV2(now);
 
 // ───────────────────────────────────────────── table de valeur
 
@@ -526,6 +532,27 @@ export const ACHIEVEMENT_LADDERS: AchievementLadder[] = (() => {
 /** Paliers atteints d'une échelle (0 = aucun). */
 export const ladderLevel = (l: AchievementLadder, s: AchievementStats) => l.steps.filter((a) => achievementDone(a, s)).length;
 export const achievementDone = (a: Achievement, s: AchievementStats) => (s[a.stat] ?? 0) >= a.target;
+
+/** (v2.1.40) mécaniques retirées du jeu : leurs succès ne se gagnent plus */
+const RETIRED_STATS = new Set<keyof AchievementStats>(['contractsSigned']);
+const statRetired = (stat: keyof AchievementStats, now: number) => RETIRED_STATS.has(stat) && contractsRetired(now);
+/** (v2.1.40) succès d'une mécanique retirée ? (gagné ou non) */
+export const achievementRetired = (a: Pick<Achievement, 'stat'>, now: number) => statRetired(a.stat, now);
+/** (v2.1.40) succès d'une mécanique retirée PAS gagné : plus jamais proposé ni compté (un succès gagné reste) */
+export const achievementGone = (a: Achievement, s: AchievementStats, now: number) => statRetired(a.stat, now) && !achievementDone(a, s);
+/** (v2.1.40) les succès qu'un joueur voit : tous, moins ceux d'une mécanique retirée qu'il n'a pas gagnés */
+export const visibleAchievements = (s: AchievementStats, now: number) => ACHIEVEMENTS.filter((a) => !achievementGone(a, s, now));
+/**
+ * (v2.1.40) les échelles qu'un joueur voit : celle d'une mécanique retirée ne garde que ses paliers gagnés (terminée),
+ * et disparaît s'il n'en a aucun. `friends` : comparaison entre amis, jamais pour une mécanique retirée.
+ */
+export function visibleLadders(s: AchievementStats, now: number, friends = false): AchievementLadder[] {
+  return ACHIEVEMENT_LADDERS.flatMap((l) => {
+    if (!statRetired(l.stat, now)) return [l];
+    const steps = friends ? [] : l.steps.filter((a) => achievementDone(a, s));
+    return steps.length ? [{ stat: l.stat, label: l.label, steps }] : [];
+  });
+}
 
 /** Succès atteints pas encore réclamés. */
 export const claimableAchievements = (s: AchievementStats, claimed: string[]) => ACHIEVEMENTS.filter((a) => achievementDone(a, s) && !claimed.includes(a.id));

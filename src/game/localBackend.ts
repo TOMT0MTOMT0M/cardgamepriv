@@ -40,7 +40,7 @@ function demoMedia(): { avatarMedia?: string; bannerMedia?: string } {
     return {};
   }
 }
-import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon, type EconState } from '../core/economy';
+import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, contractsRetired, emptyEcon, visibleAchievements, type EconState } from '../core/economy';
 import { ADVENT_YEAR } from '../core/avent';
 import { packCapOf } from '../core/abo';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
@@ -300,6 +300,8 @@ export function createLocalBackend(): GameBackend {
     const a = achievementStats(st, e);
     return ACHIEVEMENTS.reduce((n, x) => n + (achievementDone(x, a) ? 1 : 0), 0);
   };
+  /** (v2.1.40) total des succès, sans ceux des contrats pas gagnés (contrats retirés le 01/12) */
+  const shownCount = (st: PlayerStats, e: EconState) => visibleAchievements(achievementStats(st, e), Date.now()).length;
   const myEcon = (): EconState => save.eco?.econ ?? emptyEcon();
   /**
    * AMIS du mode démo (lot A2) : Léa et Malo « en ligne », Inès vue il y a 3 h ; leur dernière activité = leur dernier
@@ -1079,7 +1081,7 @@ export function createLocalBackend(): GameBackend {
       if (userId === 'me') {
         const st = myStats();
         const top = bestCard(Object.values(save.inv));
-        return { id: 'me', name: tr('chat.me'), ...demoMedia(), bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, pinnedBinders: (save.binders ?? []).filter((b) => b.pinned).slice(0, BINDER_PINS_MAX), cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: ACHIEVEMENTS.length } };
+        return { id: 'me', name: tr('chat.me'), ...demoMedia(), bio: save.bio, showcase: save.showcase ?? [], packsOpened: save.opened, pinnedBinder: (save.binders ?? []).find((b) => b.pinned) ?? null, pinnedBinders: (save.binders ?? []).filter((b) => b.pinned).slice(0, BINDER_PINS_MAX), cosmetics: cleanCosmetics(save.cosmetics ?? {}, st), stats: st, streakDay: streakDay(save.streak), bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(save.inv), achievements: { done: doneCount(st, myEcon()), total: shownCount(st, myEcon()) } };
       }
       const i = save.bots.findIndex((b) => b.id === userId);
       if (i < 0) return null;
@@ -1087,7 +1089,7 @@ export function createLocalBackend(): GameBackend {
       const st = botStats(b, i);
       const top = bestCard(Object.values(b.inv));
       const cos: CosmeticChoice[] = [{ banner: 'night', frame: 'bronze', title: 'opener', badges: ['first', 'trade'] }, { banner: 'forest', frame: 'none', title: 'rookie', badges: ['first'] }, { banner: 'plum', frame: 'none', badges: [] }];
-      return { id: userId, name: b.name, bio: [tr('lb.bio1'), tr('lb.bio2'), ''][i] || undefined, showcase: [], packsOpened: 30 + i * 12, cosmetics: cleanCosmetics(cos[i] ?? {}, st), stats: st, streakDay: ((st.streak - 1) % 7) + 1, bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(b.inv), achievements: { done: doneCount(st, emptyEcon()), total: ACHIEVEMENTS.length } };
+      return { id: userId, name: b.name, bio: [tr('lb.bio1'), tr('lb.bio2'), ''][i] || undefined, showcase: [], packsOpened: 30 + i * 12, cosmetics: cleanCosmetics(cos[i] ?? {}, st), stats: st, streakDay: ((st.streak - 1) % 7) + 1, bestDrop: top ? { cardId: top.cardId, rarity: top.rarity, mintNumber: top.bestMintNumber } : null, themes: themesOf(b.inv), achievements: { done: doneCount(st, emptyEcon()), total: shownCount(st, emptyEcon()) } };
     },
     async setShowcase(cards) {
       if (cards.length > 12) throw new Error('12 cartes au maximum dans la vitrine.');
@@ -1549,6 +1551,8 @@ export function createLocalBackend(): GameBackend {
     },
     async signContract(rarity, items) {
       await delay(150);
+      // (v2.1.40) comme le serveur : plus de contrat à partir du 01/12 0 h (Paris)
+      if (contractsRetired(Date.now())) throw new Error(fe('contracts.8'));
       const target = contractTarget(rarity) as RarityId | null;
       // (verrouillage, comme le serveur : une carte engagée — échange en attente, annonce, offre — ne se brûle pas)
       const locked = lockedCards(state);

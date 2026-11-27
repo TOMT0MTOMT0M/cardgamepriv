@@ -5,7 +5,7 @@ import { MISSION_BONUS, missionLabel, missionsReady, type Mission } from '../../
 import { SUBTHEMES, subthemeById } from '../../core/sets/themes';
 import { CLOSE_X, busyButton, errMsg, esc, fmtDelay, h, keepFocus, loginPrompt, panelHidden, panelShown, plural, toast } from '../ui';
 import { dailyMissionCoins, weeklyLabel, weeklyReady, type WeeklyMission } from '../../core/weekly';
-import { fmtCoins } from '../../core/economy';
+import { contractsRetired, fmtCoins } from '../../core/economy';
 import { COIN_ICON } from './wallet';
 
 /**
@@ -27,6 +27,8 @@ function missionLink(m: Mission): { href: string; label: string } {
     }
     case 'contract':
     case 'dups':
+      // (v2.1.40) contrats retirés le 01/12 : un doublon se tire en ouvrant des boosters
+      if (contractsRetired(Date.now())) return { href: '#/boutique/bebou', label: 'Go' };
       return { href: '#/contrats', label: 'Go' };
     case 'trade':
       return { href: '#/echanges', label: 'Go' };

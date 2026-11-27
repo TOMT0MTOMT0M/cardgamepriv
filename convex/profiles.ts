@@ -11,7 +11,7 @@ import { DEFAULT_OPENING, OPENINGS, bestCard, cleanCosmetics, profileMediaProble
 import { adventOpened } from '../src/core/avent';
 import { streakDay, touchStreak } from '../src/core/streak';
 import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
-import { ACHIEVEMENTS, achievementDone, achievementStats } from '../src/core/economy';
+import { ACHIEVEMENTS, achievementDone, achievementStats, visibleAchievements } from '../src/core/economy';
 import { econOf } from './econLib';
 import { seenAtOf, syncPresence } from './presence';
 import { INC_CAP, INC_MARGIN_MS, collStats, incDelta, incFromRows, incOf, incUsable, saveInc, type RankInc } from './rankInc';
@@ -179,7 +179,8 @@ export const profile = query({
       /** complétion par thème */
       themes,
       /** succès atteints (les 36 de l'espace Jeux, stats du profil + compteurs de l'économie) */
-      achievements: { done: achievementsDone(stats, u), total: ACHIEVEMENTS.length },
+      // (v2.1.40) total sans les succès « contrat » pas gagnés (contrats retirés le 01/12)
+      achievements: { done: achievementsDone(stats, u), total: visibleAchievements(achievementStats(stats, econOf(u)), Date.now()).length },
       ...(withCollection && !parts ? { collection: collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber })) } : {}),
       ...(withCollection && parts ? { collectionParts: inParts(collection.map((c) => ({ cardId: c.cardId, rarity: c.rarity, count: c.count, bestMintNumber: c.bestMintNumber }))).parts } : {}),
     };

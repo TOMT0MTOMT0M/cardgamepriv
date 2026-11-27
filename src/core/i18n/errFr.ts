@@ -283,6 +283,7 @@ export const ERR_FR = {
   'accounts.5': 'Compte introuvable.',
   'binders.12': 'Classeur introuvable.',
   'contracts.7': 'Contrat invalide.',
+  'contracts.8': 'Les contrats ont été retirés le 1er décembre : un doublon se forge ou se vend au marché. Recharge la page.',
   'dropShots.1': 'Image introuvable.',
   'chat.8': 'Conversation introuvable.',
   'chat.9': 'Compte suspendu.',

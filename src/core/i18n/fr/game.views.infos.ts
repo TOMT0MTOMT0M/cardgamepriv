@@ -82,6 +82,11 @@ export const fr = {
   'if.forge': 'Forge',
   'if.forgeBody': ' : brûle des doublons contre des pièces.',
   'if.neverLast': 'On ne perd jamais le dernier exemplaire d’une carte.',
+  // (v2.1.40) contrats retirés le 01/12 : la section parle de la Forge et du marché
+  'if.forgeMarket': 'Forge et marché',
+  'if.market': 'Marché',
+  'if.marketBody': ' : mets un doublon en vente contre des pièces, ou échange-le contre une carte qui te manque.',
+  'if.noContracts': 'Les contrats ont été retirés le 1er décembre : un doublon se forge ou se vend.',
   'if.forYou': 'Pour toi',
   'if.forYouBody': ' : des échanges prêts. Marque les cartes que tu veux (♥ Je la veux) : le jeu trouve qui en a un doublon et ce que tu peux donner en échange (un de tes doublons de même étoile qui lui manque). Un toucher : Demander.',
   'if.yourA': 'Tes',

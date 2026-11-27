@@ -282,6 +282,7 @@ export const enErrors: { readonly [K in keyof typeof ERR_FR]: string } = {
   'accounts.5': 'Account not found.',
   'binders.12': 'Binder not found.',
   'contracts.7': 'Invalid contract.',
+  'contracts.8': 'Contracts were retired on 1 December: a duplicate can be forged or sold on the market. Reload the page.',
   'dropShots.1': 'Image not found.',
   'chat.8': 'Conversation not found.',
   'chat.9': 'Account suspended.',
