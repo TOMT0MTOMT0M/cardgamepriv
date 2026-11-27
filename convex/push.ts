@@ -10,22 +10,39 @@ import { fullAt } from '../src/core/packRegen';
 import { fm, type Msg } from '../src/core/msgs';
 import { msgIn, userLang } from './i18nServer';
 import { msgParamsValidator } from './schema';
+import { missionDay, missionsReady, type MissionsState } from '../src/core/missions';
+import { missionWeek, weeklyReady, type WeeklyState } from '../src/core/weekly';
+import { calendarDay, calendarReward } from '../src/core/economy';
+import { parisHour } from '../src/core/games';
 
 /**
  * NOTIFICATIONS PUSH (V2, docs/IDEES-V2.md §1) — côté base. L'envoi réel (Web Push, bibliothèque `web-push`,
  * runtime Node) est dans pushSend.ts. Ici : abonnements, préférences, file d'envoi avec garde-fous, et la
  * programmation de « réserve pleine ».
  *
- * Types (`kind`) : reserve · trade · friend · referral · game · streak · news · chat (convex/chat.ts). Le joueur coche ce qu'il veut (users.notifPrefs ;
+ * Types (`kind`) : reserve · trade · friend · referral · game · streak · news · chat (convex/chat.ts) · roulette · daily
+ * (V3 : streak = série en danger, daily = missions / cadeau du jour — remindTick plus bas). Le joueur coche ce qu'il veut (users.notifPrefs ;
  * absent = tout). Garde-fous : rien entre 23 h et 8 h (heure de Paris) sauf `trade` / `friend` / `game` reportés à 8 h ;
  * un même type regroupé : au plus une notification par type et par joueur toutes les 2 minutes (la dernière gagne).
  */
-export const KINDS = ['reserve', 'trade', 'friend', 'referral', 'game', 'streak', 'news', 'chat', 'roulette'] as const;
+export const KINDS = ['reserve', 'trade', 'friend', 'referral', 'game', 'streak', 'news', 'chat', 'roulette', 'daily'] as const;
 /** (13/11, retours Hugo) types À LA DEMANDE : envoyés seulement si le joueur les a cochés (absent ≠ tout) */
 // (v2.0.7, décision de Tom) plus aucun type « à cocher » : tout est actif par défaut, le joueur décoche ce qu'il ne veut pas
 export const OPT_IN: readonly Kind[] = [];
+/**
+ * (V3, notifications) types arrivés après les réglages de la V2 : « série en danger » (`streak`, déjà dans la liste mais
+ * jamais envoyé ni affiché) et « missions / cadeau du jour » (`daily`). Actifs aussi pour qui a déjà réglé ses
+ * notifications, tant qu'il n'a pas enregistré ses réglages depuis la V3 (marque `PREFS_V3` posée par `setPrefs`).
+ */
+export const NEW_KINDS: readonly Kind[] = ['streak', 'daily'];
+export const PREFS_V3 = '~v3';
 /** préférences effectives : celles du joueur, ou tout sauf les types à la demande */
-export const prefsOf = (u: { notifPrefs?: string[] }): string[] => u.notifPrefs ?? KINDS.filter((k) => !OPT_IN.includes(k));
+export const prefsOf = (u: { notifPrefs?: string[] }): string[] => {
+  const p = u.notifPrefs;
+  if (!p) return KINDS.filter((k) => !OPT_IN.includes(k));
+  if (p.includes(PREFS_V3)) return p.filter((k) => k !== PREFS_V3);
+  return [...new Set([...p, ...NEW_KINDS])];
+};
 export type Kind = (typeof KINDS)[number];
 const kindValidator = v.union(...KINDS.map((k) => v.literal(k)));
 
@@ -40,11 +57,8 @@ export interface Payload {
   tag?: string;
 }
 
-/** heure de Paris (0..23) */
-function parisHour(t: number): number {
-  const h = Number(new Intl.DateTimeFormat('fr-FR', { hour: 'numeric', hour12: false, timeZone: 'Europe/Paris' }).format(new Date(t)));
-  return h % 24;
-}
+// heure de Paris (0..23) : src/core/games.ts. (V3, lot notifications) avant, ici : `Number()` du texte français « 22 h »
+// = NaN, donc la nuit n'était jamais reconnue (rien reporté à 8 h) ; vu par les tests de convex/pushRappels.test.ts
 /** prochain 8 h (Paris) après `t` */
 function next8h(t: number): number {
   // on avance par pas d'un quart d'heure jusqu'à 8 h : simple et juste avec l'heure d'été
@@ -100,10 +114,11 @@ export const unsubscribe = mutation({
 });
 
 export const setPrefs = mutation({
-  args: { sessionToken: v.string(), prefs: v.array(kindValidator) },
-  handler: async (ctx, { sessionToken, prefs }) => {
+  // (V3) `full` : la liste vient des réglages V3 (qui montrent tous les types) → elle fait foi pour les nouveaux types aussi
+  args: { sessionToken: v.string(), prefs: v.array(kindValidator), full: v.optional(v.boolean()) },
+  handler: async (ctx, { sessionToken, prefs, full }) => {
     const user = await requireUser(ctx, sessionToken);
-    await ctx.db.patch(user._id, { notifPrefs: [...new Set(prefs)] });
+    await ctx.db.patch(user._id, { notifPrefs: [...new Set(prefs), ...(full ? [PREFS_V3] : [])] });
     return { ok: true };
   },
 });
@@ -131,19 +146,35 @@ export const markOk = internalMutation({
  * ENVOYER à un joueur (depuis les mutations du jeu). Respecte ses préférences, la nuit et le regroupement, puis
  * programme l'action Node. Ne lève jamais : une notification ne doit pas faire échouer un échange.
  */
-export async function notify(ctx: MutationCtx, userId: Id<'users'>, p: Payload, opts: { at?: number } = {}): Promise<void> {
+export async function notify(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  p: Payload,
+  /**
+   * `once` (V3) : clé « une fois par jour » — rien si un push de même clé est déjà parti aujourd'hui (jour de Paris) pour
+   * ce joueur (table `pushDaily`). Point d'entrée commun pour les autres lots (ex. `once: \`wish-${cardId}\``).
+   * `user` : le document joueur déjà lu par l'appelant (pas relu).
+   */
+  opts: { at?: number; once?: string; user?: Doc<'users'> } = {},
+): Promise<boolean> {
   try {
-    if (!process.env.VAPID_PUBLIC_KEY) return;
-    const user = await ctx.db.get(userId);
-    if (!user) return;
-    if (!prefsOf(user).includes(p.kind)) return;
+    if (!process.env.VAPID_PUBLIC_KEY) return false;
+    const user = opts.user ?? (await ctx.db.get(userId));
+    if (!user) return false;
+    if (!prefsOf(user).includes(p.kind)) return false;
     const subs = await ctx.db.query('pushSubs').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
-    if (!subs.length) return;
+    if (!subs.length) return false;
     let at = opts.at ?? Date.now();
-    // la nuit : rien d'urgent, on reporte à 8 h (sauf `news` / `reserve`, abandonnés : ce sera dépassé)
+    // la nuit : rien d'urgent, on reporte à 8 h (sauf `news` / `reserve` / rappels du jour, abandonnés : ce sera dépassé)
     if (NIGHT(parisHour(at))) {
-      if (p.kind === 'news' || p.kind === 'reserve' || p.kind === 'streak') return;
+      if (p.kind === 'news' || p.kind === 'reserve' || p.kind === 'streak' || p.kind === 'daily') return false;
       at = next8h(at);
+    }
+    if (opts.once) {
+      const day = missionDay(at);
+      const key = opts.once;
+      if (await ctx.db.query('pushDaily').withIndex('by_user_key_day', (q) => q.eq('userId', userId).eq('key', key).eq('day', day)).first()) return false;
+      await ctx.db.insert('pushDaily', { userId, key, day });
     }
     // regroupement : un même tag remplace la notification précédente ; on retarde de 90 s pour laisser les rafales se calmer
     const delay = Math.max(0, at - Date.now()) + (opts.at ? 0 : 90_000);
@@ -151,10 +182,90 @@ export async function notify(ctx: MutationCtx, userId: Id<'users'>, p: Payload, 
       subs: subs.map((s) => ({ endpoint: s.endpoint, keys: s.keys })),
       payload: { ...p, title: msgIn(userLang(user), p.title), body: msgIn(userLang(user), p.body), tag: p.tag ?? `${p.kind}` },
     });
+    return true;
   } catch (e) {
     console.warn('[push] notify', e);
+    return false;
   }
 }
+
+// ═════════════════════════════════════════════ (V3) rappels du jour : série en danger, missions / cadeau du jour
+
+/** « série en danger » : 20 h (Paris) */
+export const STREAK_HOUR = 20;
+/** « missions / cadeau du jour » : de 9 h à 21 h (Paris), jamais entre 22 h et 9 h */
+export const DAILY_FROM = 9;
+export const DAILY_TO = 21;
+const HOUR = 3600_000;
+/** joueur parti depuis au moins 1 h (sinon il est encore dans le jeu et voit déjà ses pastilles) */
+const AWAY_MS = HOUR;
+
+/** Ce que la tâche horaire fait à l'instant `now` (heure de Paris, été comme hiver). */
+export function remindSlots(now: number) {
+  const h = parisHour(now);
+  return { h, streak: h === STREAK_HOUR, daily: h >= DAILY_FROM && h <= DAILY_TO, purge: h === DAILY_FROM };
+}
+
+/**
+ * Tâche horaire (crons.ts). Coût : ne lit que les joueurs repérés par l'index `lastSeenAt` dans une fenêtre étroite
+ * (jamais les inventaires) :
+ *  - 20 h : vus hier mais pas aujourd'hui, série ≥ 2 jours → « ta série s'arrête à minuit » (type `streak`) ;
+ *  - 9 h → 21 h : partis dans l'heure précédente (à 9 h : depuis 20 h la veille), passés aujourd'hui, avec des missions
+ *    terminées non récupérées ou le cadeau du calendrier pas pris → un rappel (type `daily`).
+ * Au plus 1 push par type et par jour (`once`). Un joueur qui n'est pas passé aujourd'hui ne reçoit que la série en danger.
+ */
+export const remindTick = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const out = { read: 0, streak: 0, daily: 0, purged: 0 };
+    if (!process.env.VAPID_PUBLIC_KEY) return out;
+    const slot = remindSlots(now);
+    const base = now - (now % HOUR); // début de l'heure (Paris est à une heure pleine d'UTC)
+    const today = missionDay(now);
+    if (slot.streak) {
+      const yesterday = missionDay(base - 24 * HOUR);
+      const seen = await ctx.db.query('users').withIndex('by_lastSeenAt', (q) => q.gte('lastSeenAt', base - 48 * HOUR).lt('lastSeenAt', base - 18 * HOUR)).take(500);
+      out.read += seen.length;
+      for (const u of seen) {
+        const s = u.streak;
+        if (u.bannedAt || !s || s.day !== yesterday || s.count < 2) continue;
+        const day = calendarDay(s.count + 1);
+        if (await notify(ctx, u._id, { kind: 'streak', title: fm('n.streakRisk', { n: s.count }), body: fm('n.streakRiskBody', { day }), url: '#/', tag: 'streak' }, { at: now, once: 'streak', user: u })) out.streak++;
+      }
+    }
+    if (slot.daily) {
+      const from = slot.h === DAILY_FROM ? base - 13 * HOUR : base - 2 * HOUR;
+      const left = await ctx.db.query('users').withIndex('by_lastSeenAt', (q) => q.gte('lastSeenAt', from).lt('lastSeenAt', base - AWAY_MS)).take(500);
+      out.read += left.length;
+      const week = missionWeek(now);
+      for (const u of left) {
+        if (u.bannedAt || u.streak?.day !== today) continue;
+        const n = (u.missions?.day === today ? missionsReady(u.missions as MissionsState) : 0) + (u.weekly?.week === week ? weeklyReady(u.weekly as WeeklyState) : 0);
+        const gift = u.econ?.calendarDay !== today;
+        if (!n && !gift) continue;
+        let title: Msg, body: Msg;
+        if (n) {
+          title = fm('n.dailyMissions', { n });
+          body = fm(gift ? 'n.dailyMissionsGiftBody' : 'n.dailyMissionsBody');
+        } else {
+          const day = calendarDay(u.streak.count);
+          const r = calendarReward(day, now);
+          title = fm('n.dailyGift');
+          body = r.packs ? fm('n.dailyGiftBodyPacks', { day, coins: r.coins, packs: r.packs }) : fm('n.dailyGiftBody', { day, coins: r.coins });
+        }
+        if (await notify(ctx, u._id, { kind: 'daily', title, body, url: '#/', tag: 'daily' }, { at: now, once: 'daily', user: u })) out.daily++;
+      }
+    }
+    // ménage : lignes « déjà envoyé » de plus de 2 jours
+    if (slot.purge) {
+      const old = await ctx.db.query('pushDaily').withIndex('by_day', (q) => q.lt('day', missionDay(base - 48 * HOUR))).take(400);
+      for (const d of old) await ctx.db.delete(d._id);
+      out.purged = old.length;
+    }
+    return out;
+  },
+});
 
 /**
  * « Réserve pleine » : calcule l'instant exact où la réserve atteindra 15/15 et programme la notification à ce

@@ -15,6 +15,9 @@ import { haptics } from '../core/haptics';
 /** (fonction : les libellés suivent la langue) */
 export const KIND_LABELS = (): Array<[string, string, string]> => [
   ['reserve', t('notif.k.reserve'), t('notif.k.reserveD')],
+  // (V3, lot notifications) rappels du jour (convex/push.ts, remindTick)
+  ['streak', t('notif.k.streak'), t('notif.k.streakD')],
+  ['daily', t('notif.k.daily'), t('notif.k.dailyD')],
   ['trade', t('nav.trades.label'), t('notif.k.tradeD')],
   ['friend', t('nav.friends.aria'), t('notif.k.friendD')],
   ['referral', t('notif.k.referral'), t('notif.k.referralD')],

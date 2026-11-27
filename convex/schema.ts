@@ -716,6 +716,18 @@ export default defineSchema({
     .index('by_user', ['userId', 'createdAt']),
 
   /**
+   * (V3, notifications) push « une fois par jour » déjà envoyés : une ligne par joueur, clé (`streak`, `daily`, …) et
+   * jour de Paris. Sert de plafond (au plus 1 par clé et par jour) ; lignes de plus de 2 jours purgées par `push:remindTick`.
+   */
+  pushDaily: defineTable({
+    userId: v.id('users'),
+    key: v.string(),
+    day: v.string(),
+  })
+    .index('by_user_key_day', ['userId', 'key', 'day'])
+    .index('by_day', ['day']),
+
+  /**
    * NOTIFICATIONS PUSH (V2) : un abonnement par appareil (navigateur), lié au joueur. `prefs` = ce que le joueur veut
    * recevoir (absent = tout). `failures` : échecs d'envoi consécutifs (abonnement retiré à 3, ou tout de suite sur 404 / 410).
    */
