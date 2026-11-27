@@ -642,6 +642,40 @@ export default defineSchema({
     .index('by_card_status', ['cardId', 'status']),
 
   /**
+   * (V3) ENCHÈRES AU MARCHÉ (convex/auctions.ts, règles : src/core/auctions.ts) : UNE carte, mise à prix ≥ sa valeur
+   * de Forge, clôture à 21 h (Paris) le jour d'échéance par la tâche programmée `auctions.closeTick`. La carte quitte
+   * l'inventaire du vendeur à la mise en vente (séquestre, comme `market`) ; les pièces de l'enchérisseur en tête sont
+   * prises à l'offre et rendues quand il est dépassé. Table nouvelle : rien ne change pour les anciens clients.
+   */
+  auctions: defineTable({
+    sellerId: v.id('users'),
+    /** noms recopiés à l'écriture : le tableau (abonné) ne lit QUE cette table, jamais `presence` (battement) ni `users` */
+    sellerName: v.string(),
+    sellerAvatar: v.optional(v.string()),
+    bidderName: v.optional(v.string()),
+    cardId: v.string(),
+    rarity: rarityValidator,
+    mintNumber: v.number(),
+    startPrice: v.number(),
+    /** offre en tête (absente : aucune offre) — ses pièces sont bloquées chez le marché */
+    bid: v.optional(v.number()),
+    bidderId: v.optional(v.id('users')),
+    /** nombre d'offres reçues */
+    bids: v.optional(v.number()),
+    /** `open` · `sold` (gagnée) · `unsold` (close sans offre, carte rendue) · `cancelled` (retirée avant toute offre) */
+    status: v.union(v.literal('open'), v.literal('sold'), v.literal('unsold'), v.literal('cancelled')),
+    createdAt: v.number(),
+    endsAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    /** tableau (ouvertes, la plus proche de la fin d'abord) et clôture (ouvertes échues) */
+    .index('by_status_ends', ['status', 'endsAt'])
+    /** mes enchères (places du marché, historique) */
+    .index('by_seller_status', ['sellerId', 'status'])
+    /** celles où je suis en tête / que j'ai gagnées */
+    .index('by_bidder_status', ['bidderId', 'status']),
+
+  /**
    * TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : une ANNONCE = des cartes proposées (verrouillées
    * tant qu'elle est ouverte) + des cartes recherchées (indicatives) ; ouverte à TOUS les joueurs ; expire après 24/48 h.
    */

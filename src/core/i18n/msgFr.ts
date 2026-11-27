@@ -85,6 +85,10 @@ export const MSG_FR = {
   'c.roulettePot': 'Roulette — pot du {day} (n° {number})',
   'c.marketBuy': 'Marché : achat de {card}',
   'c.marketSell': 'Marché : vente de {card}',
+  // (V3) enchères au marché (convex/auctions.ts)
+  'c.auctionBid': 'Enchère : offre sur {card} (pièces bloquées)',
+  'c.auctionRefund': 'Enchère : offre dépassée sur {card}, pièces rendues',
+  'c.auctionSell': 'Enchère : vente de {card}',
   'c.presseWin': { one: 'La Presse — pièce encaissée ({n} frappe)', other: 'La Presse — pièce encaissée ({n} frappes)' },
   'c.presseBet': 'La Presse — mise ({pack})',
 
@@ -139,6 +143,15 @@ export const MSG_FR = {
   'n.wishSale': { one: '{name} vend une carte que tu veux', other: '{name} vend {n} cartes que tu veux' },
   'n.wishSaleOne': '{card} ({coins} pièces). Au marché : le premier qui achète l’a.',
   'n.wishSaleMany': { one: '{card} ({coins} pièces) et 1 autre. Au marché : le premier qui achète l’a.', other: '{card} ({coins} pièces) et {n} autres. Au marché : le premier qui achète l’a.' },
+  // (V3) enchères au marché
+  'n.auctionOutbid': 'Tu as été dépassé sur {card}',
+  'n.auctionOutbidB': '{name} offre {coins} pièces. Tes pièces te sont rendues : surenchéris avant 21 h le jour de clôture.',
+  'n.auctionWon': 'Enchère gagnée : {card}',
+  'n.auctionWonB': 'Pour {coins} pièces. La carte est dans ta collection.',
+  'n.auctionSold': 'Enchère vendue : {card}',
+  'n.auctionSoldB': '{name} l’emporte pour {coins} pièces, ajoutées à ton solde.',
+  'n.auctionUnsold': 'Enchère sans offre : {card}',
+  'n.auctionUnsoldB': 'Personne n’a enchéri : la carte est revenue dans ta collection.',
   'n.friendAccepted': '{name} a accepté ta demande d’ami',
   'n.friendAcceptedBody': 'Vous pouvez échanger des cartes.',
   'n.friendAsk': '{name} te demande en ami',

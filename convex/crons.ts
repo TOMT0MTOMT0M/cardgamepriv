@@ -25,6 +25,11 @@ crons.interval('classement : lignes et numero un', { minutes: 10 }, internal.pro
 crons.interval('saisons : fin du mois', { hours: 1 }, internal.seasons.tick, {});
 // (26/11, coût Convex) rétention : boosters ouverts et fil d'activité de plus de 30 jours retirés, par petits lots
 // (convex/migrations.ts, purgeOld — aussi relancée à chaque mise en ligne)
+// ── (V3) enchères au marché (convex/auctions.ts) : clôture à 21 h (Paris) le jour d'échéance. Passage toutes les heures
+// à la minute 1 (21 h 01 en hiver comme en été, sans calcul d'heure d'été ; un passage manqué est rattrapé l'heure
+// suivante) ; hors de 21 h l'index ne renvoie rien (0 document lu). Clôture idempotente.
+crons.hourly('encheres : cloture a 21 h', { minuteUTC: 1 }, internal.auctions.closeTick, {});
+// ── fin enchères
 crons.daily('retention : boosters ouverts de plus de 2 jours, fil de plus de 30 jours', { hourUTC: 4, minuteUTC: 30 }, internal.migrations.purgeOld, {});
 
 export default crons;
