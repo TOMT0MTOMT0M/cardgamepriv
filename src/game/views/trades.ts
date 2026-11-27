@@ -509,8 +509,8 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     if (confirmingTrade && !incoming.some((t) => t.id === confirmingTrade)) confirmingTrade = null;
     // l'échange que je viens d'accepter reste à sa place le temps du sceau
     for (const [id, sl] of sealing) if (!incoming.some((t) => t.id === id)) incoming.splice(Math.min(sl.at, incoming.length), 0, sl.t);
+    // (V3, moins de texte) rien en attente : rien d'écrit, « Pour toi » suit directement
     pendingEl.innerHTML = '';
-    if (!incoming.length && !outgoing.length) pendingEl.innerHTML = `<div class="muted ex-none">${tr('tr.noPending')}</div>`;
     const owned = mine();
     const row = (t: TradeView, dir: 'in' | 'out') => {
       const r = h('div', `trade ${dir}${countering?.id === t.id ? ' countering' : ''}`);

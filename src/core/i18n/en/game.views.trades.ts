@@ -55,7 +55,6 @@ export const en: PartOf<typeof fr> = {
   'tr.onlyCopy': ' (your only copy)',
   'tr.busy': 'Already committed to a pending trade: wait for the reply.',
   'tr.nothing': 'nothing',
-  'tr.noPending': 'No pending trades. Ready-made trades are waiting in “For you”.',
   'tr.refuse': 'Decline',
   'tr.pickOther': 'Pick something else',
   'tr.accept': 'Accept',
