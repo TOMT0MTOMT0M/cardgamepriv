@@ -2026,6 +2026,13 @@ body[data-route='amis'].card-open .views { pointer-events: none; }
 .am-add .am-input { flex: 1; max-width: none; min-width: 0; min-height: 42px; padding: 9px 16px; font-size: 15px; }
 .am-add .am-send { min-height: 42px; padding: 0 18px; flex: none; }
 .am-hint { margin: 0; line-height: 1.5; }
+/* (V3, QOL G) suggestions pendant la frappe : lignes compactes sous le champ */
+.am-sugg { gap: 4px; margin-top: -4px; }
+.am-sugg .am-row { padding: 5px 6px 5px 8px; }
+.am-sugg .am-who { min-height: 36px; gap: 8px; }
+.am-sugg .am-ava { width: 34px; height: 34px; font-size: 14px; }
+.am-sugg .am-txt b { font-size: 15px; }
+.am-sugg .am-acts .fr-btn { min-height: 36px; }
 .am-list { display: flex; flex-direction: column; gap: 6px; }
 .am-friends { gap: 8px; }
 .am-empty { padding: 6px 2px; line-height: 1.6; }

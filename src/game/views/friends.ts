@@ -26,6 +26,12 @@ export interface FriendsView {
   leave(): void;
 }
 
+/**
+ * (V3, QOL F) « Défier » : l'écran de création d'un Pack Battle, adversaire déjà choisi (boosters et mise au choix,
+ * comme d'habitude ; l'invité reçoit la notification de `games:createDuel`). Profil d'un joueur et ligne d'un ami.
+ */
+export const challengeHref = (userId: string) => `#/jeux/duel/vs/${encodeURIComponent(userId)}`;
+
 /** « à l'instant », « il y a 12 min », « il y a 3 h », « hier », « il y a 4 j » */
 export function ago(t: number, now = Date.now()): string {
   const s = Math.max(0, (now - t) / 1000);
@@ -41,7 +47,7 @@ export function ago(t: number, now = Date.now()): string {
  * qui mène à #/amis). Un seul écouteur de clic (délégué) et une seule mise à jour pour tous les boutons de la page.
  * Rien (chaîne vide) pour soi-même, hors connexion ou tant que les amis ne sont pas arrivés.
  */
-export function friendBtn(backend: GameBackend, userId: string, name: string, variant: 'profile' | 'row' = 'profile'): string {
+export function friendBtn(backend: GameBackend, userId: string, name: string, variant: FriendBtnVariant = 'profile'): string {
   installFriendBtns(backend);
   const s = backend.state.social;
   if (!backend.state.user || !userId || userId === backend.state.user.id || userId === 'me') return '';
@@ -49,8 +55,10 @@ export function friendBtn(backend: GameBackend, userId: string, name: string, va
   const v = btnLook(s.ready ? friendState(s, userId).kind : 'none', variant);
   return `<button class="fr-btn ${variant === 'row' ? 'fr-row' : 'btn-ghost'} k-${v.k}" data-uid="${esc(userId)}" data-name="${esc(name)}" data-v="${variant}" aria-label="${esc(v.aria(name))}"${s.ready ? '' : ' hidden'}>${v.label}</button>`;
 }
-function btnLook(k: 'none' | 'out' | 'in' | 'friend', variant: 'profile' | 'row') {
-  const row = variant === 'row';
+/** `profile` : bouton du profil, libellé long · `row` : ligne du classement, libellé court · `short` (V3) : bouton du profil, libellé court */
+type FriendBtnVariant = 'profile' | 'row' | 'short';
+function btnLook(k: 'none' | 'out' | 'in' | 'friend', variant: FriendBtnVariant) {
+  const row = variant !== 'profile';
   const L = {
     none: { label: row ? tr('am.addShort') : tr('am.add'), aria: (n: string) => tr('am.addTitle', { n }) },
     out: { label: row ? tr('am.sentShort') : tr('am.sent'), aria: (n: string) => tr('am.sentTitle', { n }) },
@@ -72,7 +80,7 @@ function installFriendBtns(backend: GameBackend) {
       const hide = !st.user || !st.social.ready;
       if (b.hidden !== hide) b.hidden = hide;
       if (hide) continue;
-      const v = btnLook(friendState(st.social, b.dataset.uid!).kind, b.dataset.v === 'row' ? 'row' : 'profile');
+      const v = btnLook(friendState(st.social, b.dataset.uid!).kind, b.dataset.v === 'row' || b.dataset.v === 'short' ? b.dataset.v : 'profile');
       if (b.classList.contains(`k-${v.k}`) && b.textContent === v.label) continue;
       b.classList.remove('k-none', 'k-out', 'k-in', 'k-friend');
       b.classList.add(`k-${v.k}`);
@@ -145,9 +153,10 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
           <form class="am-card am-add" autocomplete="off">
             <h2 id="am-add-t">${tr('am.addTitleH')}</h2>
             <div class="am-add-row">
-              <input class="search am-input" type="text" name="pseudo" maxlength="64" placeholder="Pseudo exact" aria-labelledby="am-add-t" spellcheck="false" autocapitalize="none" enterkeyhint="send">
+              <input class="search am-input" type="text" name="pseudo" maxlength="64" placeholder="${tr('am.searchPh')}" aria-labelledby="am-add-t" aria-controls="am-sugg" aria-autocomplete="list" spellcheck="false" autocapitalize="none" enterkeyhint="send">
               <button class="btn-primary am-send" type="submit">${tr('am.ask')}</button>
             </div>
+            <div class="am-list am-sugg" id="am-sugg" role="list" aria-live="polite" hidden></div>
             <p class="muted am-hint">${tr('am.addHelp')}</p>
           </form>
           <section class="am-card am-in" aria-labelledby="am-in-t"><h2 id="am-in-t">${tr('am.incoming')} <b class="am-n"></b></h2><div class="am-list"></div></section>
@@ -189,8 +198,11 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     }
     void guarded('friend-request', null, async () => {
       try {
-        const r = await busyButton(sendBtn, backend.requestFriend({ name }));
+        // (V3, QOL G) une seule suggestion pour ce qui est tapé : c'est elle (sinon le pseudo exact, comme avant)
+        const one = suggest(name);
+        const r = await busyButton(sendBtn, backend.requestFriend(one.length === 1 ? { userId: one[0].id } : { name }));
         input.value = '';
+        drawSugg();
         toast(r.status === 'accepted' ? tr('am.mutual', { name: r.name }) : tr('am.sentTo2', { name: r.name }), 'ok');
         shell.sfx.tick(1.3, 0.05);
       } catch (err) {
@@ -216,6 +228,49 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
   };
   const profileHref = (userId: string) => `#/profil/${encodeURIComponent(userId)}`;
 
+  // ── (V3, QOL G) suggestions pendant la frappe : filtrées dans la liste du club DÉJÀ sur l'appareil
+  // (`backend.state.friends` = tous les joueurs, chargée pour le chat / les échanges / les duels) → aucune requête au
+  // serveur, ni par frappe ni à l'ouverture. Début du pseudo ou d'un de ses mots d'abord, puis n'importe où dedans ;
+  // majuscules et accents ignorés ; dès 2 lettres ; 8 au plus. Le bouton de chaque ligne = `friendBtn` (même état que
+  // sur un profil : Ajouter / Envoyée / Accepter / ✓ Ami).
+  const SUGG_MIN = 2;
+  const SUGG_MAX = 8;
+  const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  function suggest(raw: string) {
+    const want = fold(raw);
+    if (want.length < SUGG_MIN) return [];
+    const scored: { f: (typeof backend.state.friends)[number]; s: number }[] = [];
+    for (const f of backend.state.friends) {
+      if (f.bot && backend.state.mode === 'online') continue;
+      const n = fold(f.name);
+      const at = n.indexOf(want);
+      if (at < 0) continue;
+      // 0 = début du pseudo, 1 = début d'un mot, 2 = ailleurs ; à égalité, le plus court (le plus proche de la frappe)
+      const s = at === 0 ? 0 : /[\s._-]/.test(n[at - 1]) ? 1 : 2;
+      scored.push({ f, s: s * 1000 + n.length });
+    }
+    return scored.sort((a, b) => a.s - b.s || a.f.name.localeCompare(b.f.name)).slice(0, SUGG_MAX).map((x) => x.f);
+  }
+  const suggEl = q('.am-sugg');
+  function drawSugg() {
+    const raw = input.value;
+    const list = suggest(raw);
+    const typed = fold(raw).length >= SUGG_MIN;
+    suggEl.hidden = !typed;
+    input.setAttribute('aria-expanded', String(typed && list.length > 0));
+    if (!typed) return void suggEl.replaceChildren();
+    if (!list.length) return void (suggEl.innerHTML = `<div class="muted am-empty">${tr('am.noMatch')}</div>`);
+    suggEl.replaceChildren(
+      ...list.map((f) => {
+        const row = h('div', 'am-row am-sg');
+        row.setAttribute('role', 'listitem');
+        row.innerHTML = `<a class="am-who" href="${profileHref(f.id)}" aria-label="${tr('am.profileOf', { name: esc(f.name) })}">${ava({ name: f.name, avatarUrl: f.avatarUrl, userId: f.id }, f.online)}<span class="am-txt"><b>${esc(f.name)}${ttl(f.id)}</b><small>${f.online ? `<span class="am-live">${tr('am.online')}</span>` : plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small></span></a><span class="am-acts">${friendBtn(backend, f.id, f.name, 'short')}</span>`;
+        return row;
+      }),
+    );
+  }
+  input.addEventListener('input', drawSugg);
+
   function reqRow(r: FriendRequest, kind: 'in' | 'out'): HTMLElement {
     const row = h('div', `am-row am-req k-${kind}`);
     row.innerHTML = `<a class="am-who" href="${profileHref(r.userId)}" aria-label="${tr('am.profileOf', { name: esc(r.name) })}">${ava(r)}<span class="am-txt"><b>${esc(r.name)}</b><small>${kind === 'in' ? tr('am.asksYou') : tr('am.requestSent')} · ${ago(r.createdAt)}</small></span></a>
@@ -235,7 +290,7 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     const seen = on ? `<span class="am-live">${tr('am.online')}</span>${f.status ? ` · ${esc(statusText(f.status))}` : ''}` : tr('am.seen', { when: ago(f.lastSeenAt, now) });
     const a = f.lastActivity;
     row.innerHTML = `<a class="am-who" href="${profileHref(f.userId)}" aria-label="${tr('am.profileOfOn', { name: esc(f.name), on: on ? tr('am.onlineSuffix') : '' })}">${ava(f, on)}<span class="am-txt"><b>${esc(f.name)}${ttl(f.userId)}</b><small class="am-seen">${seen}</small>${a ? `<small class="am-act"><i aria-hidden="true">${ACT_ICON[a.kind] ?? '•'}</i> ${esc(feedText(a))} · ${ago(a.createdAt, now)}</small>` : `<small class="am-act">${plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small>`}</span></a>
-      <span class="am-acts"><a class="btn-ghost am-prof" href="${profileHref(f.userId)}">${tr('am.profile')}</a>${backend.state.user ? `<a class="btn-ghost am-msg" href="#/chat/${dmKey(backend.state.user.id, f.userId)}" aria-label="${tr('am.messageTitle', { name: esc(f.name) })}">${tr('am.message')}</a>` : ''}<button class="btn-ghost am-rm" aria-label="${tr('am.removeTitle', { name: esc(f.name) })}">${tr('am.remove')}</button></span>`;
+      <span class="am-acts"><a class="btn-ghost am-prof" href="${profileHref(f.userId)}">${tr('am.profile')}</a>${backend.state.user ? `<a class="btn-ghost am-msg" href="#/chat/${dmKey(backend.state.user.id, f.userId)}" aria-label="${tr('am.messageTitle', { name: esc(f.name) })}">${tr('am.message')}</a><a class="btn-ghost am-duel" href="${challengeHref(f.userId)}" aria-label="${tr('am.challengeTitle', { name: esc(f.name) })}">${tr('am.challenge')}</a>` : ''}<button class="btn-ghost am-rm" aria-label="${tr('am.removeTitle', { name: esc(f.name) })}">${tr('am.remove')}</button></span>`;
     const rm = row.querySelector<HTMLElement>('.am-rm')!;
     rm.addEventListener('click', () => {
       if (!confirmTap(rm, tr('am.removeQ'))) return;

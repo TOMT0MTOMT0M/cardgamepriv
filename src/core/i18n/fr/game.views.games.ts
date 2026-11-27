@@ -52,6 +52,8 @@ export const fr = {
   'gm.values': 'Valeur : 1★ 5 · 2★ 15 · 3★ 40 · 4★ 100 · 5★ 300 · 6★ 1 000 · secrète 5 000.',
   'gm.duelRules': 'Le créateur choisit N boosters (+ un pot annexe facultatif) ; l\'adversaire mise le même nombre de boosters (sortes libres) et un pot annexe de même valeur à ±5 %. Les deux valident → verrouillage ferme, ouverture côte à côte. Plus haut total d\'étoiles → toutes les cartes tirées des deux côtés + les pots annexes. Égalité parfaite → chacun récupère tout.',
   'gm.createDuel': 'Créer un duel',
+  'gm.challengeH': 'Défier {name}',
+  'gm.challengeGo': 'Envoyer le défi',
   'gm.newBet': 'Ta nouvelle mise',
   'gm.yourBet': 'Ta mise',
   'gm.opponent': 'Adversaire',

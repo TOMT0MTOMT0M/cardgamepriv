@@ -53,6 +53,8 @@ export const en: PartOf<typeof fr> = {
   'gm.values': 'Value: 1★ 5 · 2★ 15 · 3★ 40 · 4★ 100 · 5★ 300 · 6★ 1,000 · secret 5,000.',
   'gm.duelRules': 'The creator picks N boosters (+ an optional side pot); the opponent bets the same number of boosters (any kind) and a side pot of the same value ±5%. Both confirm → firm lock, side-by-side opening. Highest star total → every card drawn on both sides + the side pots. Perfect draw → everyone gets everything back.',
   'gm.createDuel': 'Create a duel',
+  'gm.challengeH': 'Challenge {name}',
+  'gm.challengeGo': 'Send the challenge',
   'gm.newBet': 'Your new bet',
   'gm.yourBet': 'Your bet',
   'gm.opponent': 'Opponent',

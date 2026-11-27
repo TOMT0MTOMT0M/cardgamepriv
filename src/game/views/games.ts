@@ -468,22 +468,27 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   // ═════════════════════════════ 1v1 Pack Battle
   /** « Remiser un booster » : la mise et l'adversaire du duel qui vient de finir, repris par le lobby */
   let rematch: { opp?: string; packs: PackChoice[] } | null = null;
+  /** (V3, QOL F) « Défier » d'un profil ou de la ligne d'un ami (#/jeux/duel/vs/<id>) : l'adversaire déjà choisi */
+  let challenge = '';
   function duelLobby() {
     body.innerHTML = `<div class="gm-cols"><div class="gm-panel gm-create"></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.openDuels')}</b></div><div class="gm-list"></div></div></div>
       <div class="gm-rules muted">${tr('gm.duelRules')}</div>`;
     const cr = body.querySelector<HTMLElement>('.gm-create')!;
     const edHost = h('div');
     const friends = backend.state.friends;
-    cr.innerHTML = `<div class="gm-ph"><b>${tr('gm.createDuel')}</b></div>`;
-    cr.append(edHost);
-    const risk = h('div', 'gm-risk');
     // « Remiser un booster » (fin d'un duel) : même nombre de boosters, même adversaire
     const again = rematch;
     rematch = null;
+    const vs = friends.find((f) => f.id === (again?.opp ?? challenge));
+    const opp = vs?.id;
+    cr.innerHTML = `<div class="gm-ph"><b>${vs && !again ? tr('gm.challengeH', { name: esc(vs.name) }) : tr('gm.createDuel')}</b></div>`;
+    cr.classList.toggle('is-vs', !!vs && !again);
+    cr.append(edHost);
+    const risk = h('div', 'gm-risk');
     const st = stakeEditor(edHost, { packs: again?.packs.length ? again.packs : [{ kind: 'bebou' }], stake: { coins: 0, cards: [] } }, { title: again ? tr('gm.newBet') : tr('gm.yourBet'), onChange: () => (risk.innerHTML = riskLine(st)) });
     risk.innerHTML = riskLine(st);
     const foot = h('div', 'gm-ed-foot');
-    foot.innerHTML = `<label>${tr('gm.opponent')} <select class="gm-opp"><option value="">${tr('gm.openToAll')}</option>${friends.map((f) => `<option value="${esc(f.id)}"${again?.opp === f.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label><button class="btn-primary gm-go">${again ? tr('gm.relaunch') : tr('gm.create')}</button>`;
+    foot.innerHTML = `<label>${tr('gm.opponent')} <select class="gm-opp"><option value="">${tr('gm.openToAll')}</option>${friends.map((f) => `<option value="${esc(f.id)}"${opp === f.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label><button class="btn-primary gm-go">${again ? tr('gm.relaunch') : vs ? tr('gm.challengeGo') : tr('gm.create')}</button>`;
     cr.append(risk, foot);
     foot.querySelector<HTMLButtonElement>('.gm-go')!.addEventListener('click', (e) => {
       const btn = e.currentTarget as HTMLElement;
@@ -1508,6 +1513,9 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       active = true;
       sub = (['duel', 'royale', 'roulette', 'historique', 'admin'].includes(parts[1] ?? '') ? parts[1] : '') as Sub;
       arg = parts[2] ?? '';
+      // (V3, QOL F) #/jeux/duel/vs/<id> = la création de duel, adversaire choisi (pas une salle)
+      challenge = sub === 'duel' && arg === 'vs' ? decodeURIComponent(parts[3] ?? '') : '';
+      if (challenge) arg = '';
       // (14/11) d'un écran des Jeux à l'autre : le corps glisse dans le sens de la navigation (View Transitions ;
       // sans elles, ou en mouvement réduit : comme avant). Onglet suivant → depuis la droite ; entrer dans une partie ↓
       const ORDER: string[] = ['', 'duel', 'royale', 'roulette', 'historique', 'admin'];
