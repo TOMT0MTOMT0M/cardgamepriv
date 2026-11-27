@@ -1,17 +1,17 @@
 import { t as tr, lang } from '../../core/i18n';
-import { collectionSig, liveRegen, packCapOfMe, type GameBackend, type PackCard } from '../backend';
+import { collectionSig, liveReserve, packCapOfMe, type GameBackend, type PackCard } from '../backend';
 import { PACK_REGEN_MS, fmtCountdown } from '../../core/packRegen';
 import type { Shell } from '../shell';
 import type { PackRequest } from '../../core/packRoll';
 import { BEBOU_PACK, BEBOU_SECRETS_LOCKED, BEBOU_THEME, THEMES, bebouOddsLabel, catalogEntry, subthemeById, subthemeViews, themeById, themeOpen, type CatalogEntry, type SubthemeView } from '../../core/sets/themes';
-import { EVENT_KEY, fmtLeft } from '../../core/events';
+import { EVENT_CAP, EVENT_KEY, fmtLeft } from '../../core/events';
 import { rarity, type RarityId } from '../../core/rarity';
 import { STAR_RARITIES } from '../../core/dropRates';
 import { cardPackChance, packTrueOdds } from '../../core/packRoll';
 import { PITY_LIMIT, pityLeft } from '../../core/pity';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLayer, pushLayer, starsHtml, toast, fmtDec } from '../ui';
 import { haptics } from '../../core/haptics';
-import { ACHIEVEMENTS, achievementDone, fmtCoins } from '../../core/economy';
+import { ACHIEVEMENTS, EVENT_PACK_PRICE, achievementDone, fmtCoins } from '../../core/economy';
 import { DEFAULT_OPENING, OPENINGS, type OpeningId } from '../../core/cosmetics';
 import { openingPreview } from './openingPreview';
 import '../progression.css';
@@ -52,8 +52,8 @@ export interface SheetPack {
   soon?: boolean;
   /** cartes du booster (toutes, sauf les Bébous pour les packs de thème) */
   cards: CatalogEntry[];
-  /** (11/11) booster du moment : fin de l'événement (compte à rebours) et contenu en clair */
-  event?: { endAt: number; label: string };
+  /** (11/11) booster du moment : fin de l'événement (compte à rebours) et contenu en clair — (V3) id et début : sa réserve propre */
+  event?: { id: string; startAt: number; endAt: number; label: string };
 }
 
 /** Les 5 boosters de la boutique, dans l'ordre d'affichage : Bebou Pack (signature) au centre. */
@@ -160,7 +160,9 @@ export function createPackSheet(
     b.addEventListener('click', async () => {
       const n = Number(b.dataset.buy);
       try {
-        await busyButton(b, backend.eco.buyPacks(n));
+        // (V3, packs événement) le booster d'un événement s'achète un par un, dans SA réserve
+        const evId = current?.event?.id;
+        await busyButton(b, evId && backend.buyEventPack ? backend.buyEventPack(evId) : backend.eco.buyPacks(n).then(() => undefined));
         haptics.pulse(10);
         shell.sfx.chime(2, 0.06);
         toast(tr('ps.bought', { n }), 'ok');
@@ -226,11 +228,13 @@ export function createPackSheet(
     el.querySelector<HTMLElement>('.ps-per-pack')!.innerHTML = `<b>${tr('ps.perPack')}</b> · ${lab.map(([r, l]) => `${l}${lang() === 'fr' ? '\u00a0:' : ':'} <b>${one(o.atLeast[r])}</b>`).join(' · ')}<br><small>${tr('ps.god')} <b>${one(o.god)}</b> ${tr('ps.realRates')}</small>`;
   }
 
+  /** (V3, packs événement) réserve du booster affiché : celle de son événement, sinon la réserve normale */
+  const reserveOf = (u: NonNullable<GameBackend['state']['user']>) => liveReserve(u, current?.event);
   /** quantité réellement ouvrable maintenant */
   function effQty(): number {
     const s = backend.state;
     if (s.sealed) return 1;
-    const bal = s.user ? liveRegen(s.user).balance : 0;
+    const bal = s.user ? reserveOf(s.user).balance : 0;
     return qty > 1 && bal < qty ? ([...QTYS].reverse().find((n) => n <= Math.max(1, bal)) ?? 1) : qty;
   }
   qtyEl.addEventListener('click', (e) => {
@@ -271,28 +275,36 @@ export function createPackSheet(
       openBtn.textContent = tr('ps.openCaps');
       openBtn.disabled = false;
       openSub.textContent = tr('ps.drawn');
-    } else if (u && liveRegen(u).balance <= 0) {
-      const r = liveRegen(u);
+    } else if (u && reserveOf(u).balance <= 0) {
+      const r = reserveOf(u);
       openBtn.textContent = tr('ps.recharging');
       openBtn.disabled = true;
-      openSub.textContent = tr('ps.next', { time: fmtCountdown((r.nextAt ?? Date.now()) - Date.now()), min: PACK_REGEN_MS / 60000 });
+      // (V3, packs événement) réserve de l'événement : 1 par heure, jusqu'à la fin de l'événement
+      openSub.textContent = current.event
+        ? r.nextAt ? tr('ps.nextEv', { time: fmtLeft(r.nextAt - Date.now()) }) : tr('ps.evDone')
+        : tr('ps.next', { time: fmtCountdown((r.nextAt ?? Date.now()) - Date.now()), min: PACK_REGEN_MS / 60000 });
     } else {
-      const n = u ? liveRegen(u).balance : 0;
+      const n = u ? reserveOf(u).balance : 0;
+      const cap = u ? (current.event ? u.evCap ?? EVENT_CAP : packCapOfMe(u)) : 0;
       openBtn.textContent = effQty() > 1 ? tr('ps.openN', { n: effQty() }) : tr('ps.openCaps');
       openBtn.disabled = !u;
-      openSub.textContent = u ? tr('ps.inReserve', { n, max: n <= packCapOfMe(u) ? ` · ${packCapOfMe(u)} max` : '' }) : '';
+      openSub.textContent = u ? tr('ps.inReserve', { n, max: n <= cap ? ` · ${cap} max` : '' }) : '';
     }
-    const bal = u ? liveRegen(u).balance : 0;
+    const bal = u ? reserveOf(u).balance : 0;
     const eco = backend.eco.snapshot;
-    buyEl.hidden = !u || !eco || !!current.soon || !!s.sealed;
+    const evBuy = !!current.event && !!backend.buyEventPack;
+    buyEl.hidden = !u || !eco || !!current.soon || !!s.sealed || (!!current.event && !evBuy);
     if (eco && !buyEl.hidden) {
       const { price, left } = eco.packShop;
       for (const b of buyEl.querySelectorAll<HTMLButtonElement>('button[data-buy]')) {
         const n = Number(b.dataset.buy);
-        if (!b.dataset.busy) b.innerHTML = `+${n} · ${COIN_ICON}${fmtCoins(n * price)}`;
-        b.disabled = n > left || eco.coins < n * price;
+        // booster d'événement : un seul bouton (+1), au prix de 10 boosters
+        const each = evBuy ? EVENT_PACK_PRICE : price;
+        b.hidden = evBuy && n > 1;
+        if (!b.dataset.busy) b.innerHTML = `+${n} · ${COIN_ICON}${fmtCoins(n * each)}`;
+        b.disabled = (!evBuy && n > left) || eco.coins < n * each;
       }
-      buyEl.querySelector('.ps-buy-s')!.textContent = tr('ps.noLimit', { coins: fmtCoins(eco.coins) });
+      buyEl.querySelector('.ps-buy-s')!.textContent = tr(evBuy ? 'ps.evBuy' : 'ps.noLimit', { coins: fmtCoins(eco.coins) });
     }
     qtyEl.hidden = !!current.soon || needLogin || !!s.sealed;
     for (const b of qtyEl.querySelectorAll<HTMLButtonElement>('button')) {
@@ -650,7 +662,7 @@ export function createPackSheet(
   });
   window.addEventListener('bebou:packs', sync);
   // minuteur « EN RECHARGE » : seulement fiche ouverte, onglet visible, réserve vide (audit PERF2-16)
-  setInterval(() => !document.hidden && alive() && backend.state.user && !backend.state.sealed && liveRegen(backend.state.user).balance <= 0 && sync(), 1000);
+  setInterval(() => !document.hidden && alive() && backend.state.user && !backend.state.sealed && reserveOf(backend.state.user).balance <= 0 && sync(), 1000);
 
   // ── ouvrir / fermer
   let openedAt = 0;

@@ -68,6 +68,8 @@ async function debitPacks(ctx: MutationCtx, userId: Id<'users'>, n: number) {
   if (regen.balance < n) {
     throw new ConvexError(fe('games.2', { p0: u.displayName, p1: regen.balance, p2: regen.balance > 1 ? 's' : '', p3: n, p4: regen.nextAt ? ` — le prochain arrive dans ${fmtCountdown(regen.nextAt - now)}` : '' })); // i18n-ok (complément français ; l'anglais s'en passe)
   }
+  // (V3, piste Convex 9, boosters) un booster scellé d'avance pour la boutique est réservé : il ne se mise pas
+  if (regen.balance - Math.max(0, u.packAhead ?? 0) < n) throw new ConvexError(fe('packs.6'));
   await ctx.db.patch(userId, { packBalance: regen.balance - n, packRegenAt: regen.regenAt, lastSeenAt: now });
   await syncPresence(ctx, userId);
 }

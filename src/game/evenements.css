@@ -22,6 +22,14 @@
 .ev-left { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-variant-numeric: tabular-nums; }
 .ev-left small { font: 500 9.5px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
 .ev-left b { font: 600 13px/1.1 var(--mono); white-space: nowrap; }
+/* (V3, packs événement) réserve propre du booster d'événement : « 2/3 », et « +1 dans 42 min » tant qu'elle n'est pas pleine */
+.ev-res { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; padding-right: 10px; border-right: 1px solid var(--gm-line); font-variant-numeric: tabular-nums; }
+.ev-res[hidden] { display: none; }
+.ev-res small { font: 500 9.5px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.ev-res b { font: 600 13px/1.1 var(--mono); white-space: nowrap; }
+.ev-res.empty b { color: var(--ink-3); }
+.ev-res:not([hidden]) ~ .ev-left { padding-left: 0; }
+.ev-band .ev-k { overflow: hidden; text-overflow: ellipsis; }
 
 /* tout nouveau : le point respire jusqu'au premier toucher */
 .ev-band.new .ev-dot { animation: ev-breathe calc(var(--dur-emphatique) * 5) var(--ease-standard) infinite; }
@@ -47,8 +55,9 @@
     width: auto; min-height: 46px; padding: 6px 12px 6px 10px; gap: 8px;
   }
   .ev-n { font-size: 16px; }
-  .ev-k, .ev-left small { font-size: 8.5px; }
-  .ev-left b { font-size: 12px; }
+  .ev-k, .ev-left small, .ev-res small { font-size: 8.5px; }
+  .ev-left b, .ev-res b { font-size: 12px; }
+  .ev-res { padding-right: 8px; }
 }
 @media (max-width: 860px) and (orientation: landscape) {
   .shop-home .ev-band { left: auto; width: min(320px, 46vw); }

@@ -141,11 +141,18 @@ describe('booster du moment : serveur', () => {
     expect(pack.themeId).toBeUndefined();
     const ids = new Set(eventCards(content).map((c) => c.id));
     for (const c of pack.cards) expect(ids.has(c.cardId)).toBe(true);
-    expect((await t.run((ctx) => ctx.db.get(alice.userId)))!.packBalance).toBe(9); // coût : 1 booster de la réserve
+    // (V3, packs événement) coût : 1 booster de la réserve DE L'ÉVÉNEMENT (booster de lancement), la normale ne bouge pas
+    const al = (await t.run((ctx) => ctx.db.get(alice.userId)))!;
+    expect(al.packBalance).toBe(10);
+    expect(al.ev).toMatchObject({ id, n: 0 });
+    await expect(t.mutation(api.packs.preparePacks, { sessionToken: alice.token, eventId: id, count: 2 })).resolves.toHaveLength(1); // seul le scellé revient
     await t.mutation(api.packs.revealPack, { sessionToken: alice.token, packId: pack._id });
     const inv = await t.run((ctx) => ctx.db.query('inventory').collect());
     expect(inv.reduce((a, r) => a + r.count, 0)).toBe(5);
+    await expect(t.mutation(api.packs.preparePack, { sessionToken: alice.token, eventId: id })).rejects.toThrow(/⟦(packs\.4)[⟧{]/);
 
+    // 1 par heure, 3 au plus : 5 h plus tard, 3 en réserve
+    vi.advanceTimersByTime(5 * H);
     // série ×3 : même événement
     const series = await t.mutation(api.packs.preparePacks, { sessionToken: alice.token, eventId: id, count: 3 });
     expect(series).toHaveLength(3);

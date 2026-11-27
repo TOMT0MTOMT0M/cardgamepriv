@@ -2,7 +2,7 @@ import { t as tr } from '../core/i18n';
 import '../core/i18n/fr/game.localBackend'; // (textes de ce module, version anglaise)
 import { fe } from '../core/errors';
 import { rollPack, rollPackEx, type PackRequest } from '../core/packRoll';
-import { demoEvent, eventLive, type PackEvent } from '../core/events';
+import { demoEvent, eventCapOf, eventLive, eventRegen, fmtLeft, type EventStore, type PackEvent } from '../core/events';
 import { SURVEYS, cleanSurvey, surveyFilled, type SurveyAnswer } from '../core/survey';
 import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
@@ -40,7 +40,7 @@ function demoMedia(): { avatarMedia?: string; bannerMedia?: string } {
     return {};
   }
 }
-import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, contractsRetired, emptyEcon, visibleAchievements, type EconState } from '../core/economy';
+import { ACHIEVEMENTS, EVENT_PACK_PRICE, achievementDone, achievementStats, cardsValue, contractsRetired, emptyEcon, visibleAchievements, type EconState } from '../core/economy';
 import { ADVENT_YEAR } from '../core/avent';
 import { packCapOf } from '../core/abo';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
@@ -88,6 +88,8 @@ interface Saved {
   lastDaily: number;
   /** départ du minuteur de recharge (absent sur les anciennes sauvegardes) */
   regenAt?: number;
+  /** (V3, packs événement) réserve du booster de l'événement de démo (src/core/events.ts, eventRegen) */
+  ev?: EventStore;
   opened: number;
   inv: Inv;
   mints: Record<string, number>;
@@ -257,6 +259,8 @@ export function createLocalBackend(): GameBackend {
       packStored: save.packBalance,
       packRegenAt: save.regenAt ?? now,
       packCap: capNow(),
+      ...(save.ev ? { ev: save.ev } : {}),
+      evCap: eventCapOf({ subUntil: save.eco?.subUntil }),
       totalPacksOpened: save.opened,
       pityCount: save.pity ?? 0,
       streak: save.streak,
@@ -646,10 +650,17 @@ export function createLocalBackend(): GameBackend {
       if (now >= ev.endAt) throw new Error(fe('events.3', { p0: ev.name }));
       req = { kind: 'theme', event: { id: ev.id, subthemes: ev.subthemes, cards: ev.cards } };
     }
-    const regen = applyRegen(save.packBalance, save.regenAt ?? now, now, 0, capNow());
-    if (regen.balance <= 0) throw new Error(fe('packs.2', { p0: fmtCountdown((regen.nextAt ?? now) - now) }));
-    save.packBalance = regen.balance - 1;
-    save.regenAt = regen.regenAt;
+    if (ev) {
+      // (V3, packs événement) le booster d'événement dépense SA réserve (1 / h, 3 max), pas la réserve normale
+      const r = eventRegen(save.ev, ev, now, eventCapOf({ subUntil: save.eco?.subUntil }));
+      if (r.balance <= 0) throw new Error(r.nextAt ? fe('packs.4', { p0: ev.name, p1: fmtLeft(r.nextAt - now) }) : fe('packs.5', { p0: ev.name }));
+      save.ev = { id: ev.id, n: r.balance - 1, at: r.regenAt };
+    } else {
+      const regen = applyRegen(save.packBalance, save.regenAt ?? now, now, 0, capNow());
+      if (regen.balance <= 0) throw new Error(fe('packs.2', { p0: fmtCountdown((regen.nextAt ?? now) - now) }));
+      save.packBalance = regen.balance - 1;
+      save.regenAt = regen.regenAt;
+    }
     let rand: () => number = Math.random;
     req = { ...req, forceMythic: pityForces(save.pity ?? 0) };
     if (forceSecret && req.kind === 'bebou') {
@@ -746,6 +757,17 @@ export function createLocalBackend(): GameBackend {
     async revealPacks(ids: string[]) {
       for (const id of ids) await this.revealPack(id);
       return ids;
+    },
+    // (V3, packs événement) achat d'un booster d'événement (10 × le prix d'un booster) : il rejoint sa réserve
+    async buyEventPack(eventId: string) {
+      await delay(120);
+      const now = Date.now();
+      if (!demoEv || demoEv.id !== eventId) throw new Error(fe('events.1'));
+      if (!eventLive(demoEv, now)) throw new Error(fe('events.3', { p0: demoEv.name }));
+      eco.hooks.onMarket(-EVENT_PACK_PRICE, fm('c.shop', { n: 1 }));
+      const r = eventRegen(save.ev, demoEv, now, eventCapOf({ subUntil: save.eco?.subUntil }));
+      save.ev = { id: demoEv.id, n: r.balance + 1, at: r.regenAt };
+      sync();
     },
     async revealPack(id) {
       // série : le booster demandé peut attendre dans la file (« Tout passer ») → il passe devant

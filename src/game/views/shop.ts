@@ -1,6 +1,6 @@
 import { fmtPct as fmtPctI, t as tr } from '../../core/i18n';
 import { onLang } from '../lang';
-import { collectionSig, liveRegen, type GameBackend, type PackCard, type SealedPack } from '../backend';
+import { collectionSig, liveReserve, type GameBackend, type PackCard, type SealedPack } from '../backend';
 import { playAmbience, playMusicPreview, prefetchAmbience, prefetchMusicPreview, stopAmbience, stopMusicPreview } from '../musicPreview';
 import { isEclipsePack } from '../eclipse';
 import { ECLIPSE } from '../../core/motion';
@@ -22,7 +22,7 @@ import type { WildExperiment } from '../../experiments/041-pokemon-wild/index';
 import { rarity } from '../../core/rarity';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, popLayer, pushLayer, starsHtml, toast, imageReportButton } from '../ui';
 import { createPackSheet, shopPacks, type SheetPack } from './packSheet';
-import { EVENT_KEY, contentLabel, contentSig, eventCards, fmtLeft, liveEvent, type PackEvent } from '../../core/events';
+import { EVENT_CAP, EVENT_KEY, contentLabel, contentSig, eventCards, fmtLeft, liveEvent, type PackEvent } from '../../core/events';
 import '../evenements.css';
 import { preloadArt } from '../preload';
 import { isTouch } from '../../core/renderer';
@@ -129,7 +129,7 @@ function eventPack(e: PackEvent): SheetPack {
     desc: e.blurb ?? contentLabel(e),
     accent: e.accent,
     cards: eventCards(e),
-    event: { endAt: e.endAt, label: contentLabel(e) },
+    event: { id: e.id, startAt: e.startAt, endAt: e.endAt, label: contentLabel(e) },
   };
 }
 const EV_SEEN = 'bebou.evenement-vu';
@@ -309,7 +309,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   const tapHint = el.querySelector<HTMLElement>('.tap-hint')!;
   const tapGhost = el.querySelector<HTMLElement>('.tap-ghost')!;
   /** (11/11) bandeau du booster du moment (evenements.css) : rien du tout quand aucun événement n'est en cours */
-  const band = h('button', 'ev-band', `<i class="ev-dot" aria-hidden="true"></i><span class="ev-txt"><span class="ev-k" data-t="shop.eventLabel">${tr('shop.eventLabel')}</span><b class="ev-n"></b></span><span class="ev-left"><small data-t="shop.evLeft">${tr('shop.evLeft')}</small><b data-ev-left="0"></b></span>`);
+  const band = h('button', 'ev-band', `<i class="ev-dot" aria-hidden="true"></i><span class="ev-txt"><span class="ev-k" data-t="shop.eventLabel">${tr('shop.eventLabel')}</span><b class="ev-n"></b></span><span class="ev-res" hidden><small></small><b></b></span><span class="ev-left"><small data-t="shop.evLeft">${tr('shop.evLeft')}</small><b data-ev-left="0"></b></span>`);
   band.type = 'button';
   band.hidden = true;
   el.querySelector('.shop-left')!.prepend(band);
@@ -359,7 +359,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     cta.hidden = !show;
     if (!show) return;
     const b = packOf(selected);
-    const bal = u ? liveRegen(u).balance : 0;
+    const bal = u ? liveReserve(u, b?.event).balance : 0;
     cta.querySelector('.hc-t')!.textContent = b?.soon ? tr('shop.see', { name: b.name }) : bal > 0 ? tr('shop.openName', { name: b?.name ?? 'booster' }) : tr('shop.see', { name: b?.name ?? 'booster' });
     // premier booster jamais ouvert : la 2e ligne du bouton le dit (une phrase de plus ne tient pas sous le booster en 360×740)
     const first = !!u && u.totalPacksOpened === 0 && bal > 0 && !b?.soon;
@@ -386,7 +386,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (!on) return void (tapGhost.hidden = true);
     const s = backend.state;
     const b = packOf(selected);
-    const bal = s.user ? liveRegen(s.user).balance : 0;
+    const bal = s.user ? liveReserve(s.user, b?.event).balance : 0;
     tapHint.classList.toggle('idle', !!b?.soon || bal <= 0);
     tapHint.querySelector('.th-t')!.textContent = b?.soon ? tr('shop.soonAvail') : bal > 0 ? tr('shop.tapToOpen') : tr('shop.reserveEmpty');
     placeHint();
@@ -1052,6 +1052,17 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       const end = Number(b.dataset.evLeft);
       if (end > 0) b.textContent = fmtLeft(end - now);
     }
+    // (V3, packs événement) réserve propre du booster d'événement et sa recharge (1 / h)
+    const u = backend.state.user;
+    const resEl = band.querySelector<HTMLElement>('.ev-res')!;
+    resEl.hidden = !ev || !u;
+    if (ev && u) {
+      const setText = (e: Element, t: string) => e.textContent !== t && (e.textContent = t);
+      const r = liveReserve(u, ev, now);
+      setText(resEl.querySelector('b')!, `${r.balance}/${u.evCap ?? EVENT_CAP}`);
+      setText(resEl.querySelector('small')!, r.balance < (u.evCap ?? EVENT_CAP) && r.nextAt ? tr('shop.evNext', { time: fmtLeft(r.nextAt - now) }) : tr('shop.evRes'));
+      resEl.classList.toggle('empty', r.balance <= 0);
+    }
   }
   window.setInterval(() => ev && el.isConnected && !document.hidden && tickEvent(), 1000);
   /**
@@ -1163,7 +1174,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     if (mode !== 'pick' || !el.isConnected || sheet.isOpen() || tapBusy) return;
     const p = packOf(selected);
     const s = backend.state;
-    const bal = s.user ? liveRegen(s.user).balance : 0;
+    const bal = s.user ? liveReserve(s.user, p?.event).balance : 0;
     if (!p || p.soon || s.sealed || bal <= 0) return void setTimeout(() => mode === 'pick' && !sheet.isOpen() && sheet.open(selected), 0);
     tapBusy = true;
     haptics.pulse(8);
@@ -1980,10 +1991,14 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const br = best ? rarity(best.rarity) : null;
     summary.classList.toggle('multi', grid);
     summary.classList.toggle('pending', !!pend);
-    const again = u ? Math.min(liveRegen(u).balance, packs.length) : 0;
-    const bal = u ? liveRegen(u).balance : 0;
+    // (V3, packs événement) « Encore un » d'un booster d'événement : sa réserve propre (fini : plus rien à rouvrir)
+    const evReq = req.event ? (ev && ev.id === req.event.id ? ev : 'fini') : null;
+    const res = u && evReq !== 'fini' ? liveReserve(u, evReq) : null;
+    const again = res ? Math.min(res.balance, packs.length) : 0;
+    const bal = res ? res.balance : 0;
+    const nextTxt = !res ? '' : evReq ? (res.nextAt ? fmtLeft(res.nextAt - Date.now()) : '') : fmtCountdown((res.nextAt ?? Date.now()) - Date.now());
     // (v2.1.34, report) réserve vide : des pistes pour regagner un booster, seulement celles qui sont vraiment disponibles
-    const ways = u && bal === 0 && !pend ? boosterWays(u) : [];
+    const ways = u && bal === 0 && !pend && !evReq ? boosterWays(u) : [];
     // que des doublons : renvoi aux contrats, jusqu'à leur retrait le 01/12 0 h (v2.1.40) ; ensuite « Forger ces doublons » suffit
     const toContracts = dups === all.length && !contractsRetired(Date.now());
     summary.innerHTML = `
@@ -1998,7 +2013,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       ${cc.total > 0 ? `<div class="sum-prog" aria-hidden="true" style="--from:${((Math.max(0, cc.have - fresh) / cc.total) * 100).toFixed(2)}%;--to:${((cc.have / cc.total) * 100).toFixed(2)}%"><i></i><span>${fmtPct(Math.max(0, cc.have - fresh) / cc.total)}${fresh ? ` → <b>${fmtPct(cc.have / cc.total)}</b>` : ''}</span></div>` : ''}
       ${grid ? '<div class="sum-cards"></div>' : ''}
       <div class="sum-actions">
-        ${pend ? '<button class="btn-primary retry">' + tr('shop.retrySave') + '</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? tr('shop.againN', { n: again }) : tr('shop.againOne')}<small>${tr('shop.inReserve', { n: bal })}</small></button>` : u ? `<span class="muted next-pack">${tr('shop.nextIn', { time: fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now()) })}</span>` : ''}
+        ${pend ? '<button class="btn-primary retry">' + tr('shop.retrySave') + '</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? tr('shop.againN', { n: again }) : tr('shop.againOne')}<small>${tr('shop.inReserve', { n: bal })}</small></button>` : u && nextTxt ? `<span class="muted next-pack">${tr('shop.nextIn', { time: nextTxt })}</span>` : ''}
         ${dups > 0 && u && !pend ? `<button class="btn-ghost forge-dups">${tr('shop.forgeDups', { n: dups })}</button>` : ''}
         <button class="btn-ghost coll">${fresh ? tr('shop.myNew') : toContracts ? tr('shop.contracts') : tr('shop.myColl')}</button>
         <button class="btn-ghost back">${tr('nav.shop')}</button>
