@@ -54,38 +54,38 @@ export interface SachetLook {
 
 export const SACHETS: Record<SachetId, SachetLook> = {
   gaming: {
-    title: { fr: 'Gaming', en: 'Gaming' }, label: 'Gaming', tint: '#5a35e8', ink: ['#5b36ea', '#3d20bd', '#8468ff'], logo: 'gaming', paper: '#f6f4ff', a: '#e6ff3d', b: '#ff4d6d',
+    title: { fr: 'Gaming', en: 'Gaming' }, label: 'Gaming', tint: '#5b36ea', alloyMix: 0.4, ink: ['#5b36ea', '#3d20bd', '#8468ff'], logo: 'gaming', paper: '#f6f4ff', a: '#e6ff3d', b: '#ff4d6d',
     mots: 'arcade · bidouille · numéroté',
     variants: { a: { name: 'Borne', by: 'Teenage Engineering' }, b: { name: 'Chambre d’ado', by: 'Brain Dead' } },
   },
   pop: {
-    title: { fr: 'Pop culture', en: 'Pop culture' }, label: 'Popculture', tint: '#ff6a1f', ink: ['#ff6a1f', '#df4a06', '#ff9950'], logo: 'pop', paper: '#fff6e3', a: '#ff4fa3', b: '#2b2bd6',
+    title: { fr: 'Pop culture', en: 'Pop culture' }, label: 'Popculture', tint: '#ff6a1f', alloyMix: 0.4, ink: ['#ff6a1f', '#df4a06', '#ff9950'], logo: 'pop', paper: '#fff6e3', a: '#ff4fa3', b: '#2b2bd6',
     mots: 'séance · zapping · fan',
     variants: { a: { name: 'Séance', by: 'Brain Dead' }, b: { name: 'Zapping', by: 'konbini' } },
   },
   sport: {
-    title: { fr: 'Sport & esport', en: 'Sport & esport' }, label: 'Sport', tint: '#b8ff3a', alloyMix: 0.78, ink: ['#a6ee0c', '#86cb00', '#c9ff5e'], logo: 'sport', paper: '#ffffff', a: '#ff4b1f', b: '#141016',
+    title: { fr: 'Sport & esport', en: 'Sport & esport' }, label: 'Sport', tint: '#a6ee0c', alloyMix: 0.4, ink: ['#a6ee0c', '#86cb00', '#c9ff5e'], logo: 'sport', paper: '#ffffff', a: '#ff4b1f', b: '#141016',
     mots: 'jour de match · dossard · rebond',
     variants: { a: { name: 'Dossard', by: 'Studio Feixen + Teenage Engineering' }, b: { name: 'Rebond', by: 'Studio Feixen' } },
   },
   monde: {
-    title: { fr: 'Le monde', en: 'The world' }, label: 'World', tint: '#0fb5a8', ink: ['#10b6a9', '#0a8c84', '#5ed8cd'], logo: 'monde', paper: '#efe1c2', a: '#ff7a1a', b: '#1c2a5e',
+    title: { fr: 'Le monde', en: 'The world' }, label: 'World', tint: '#10b6a9', alloyMix: 0.4, ink: ['#10b6a9', '#0a8c84', '#5ed8cd'], logo: 'monde', paper: '#efe1c2', a: '#ff7a1a', b: '#1c2a5e',
     mots: 'valise · tampon · escale',
     variants: { a: { name: 'Soute', by: 'Virgil Abloh + Teenage Engineering' }, b: { name: 'Passeport', by: 'Brain Dead' } },
   },
   bebou: {
-    title: { fr: 'Bébou pack', en: 'Bébou pack' }, label: 'Bebou', tint: '#b9bcc6', ink: ['#1b1b21', '#0d0d11', '#3a3a44'], logo: 'bebou', paper: '#f1e9d8', a: '#f1e9d8', b: '#c9b99a',
+    title: { fr: 'Bébou pack', en: 'Bébou pack' }, label: 'Bebou', tint: '#1b1b21', alloyMix: 0.5, ink: ['#1b1b21', '#0d0d11', '#3a3a44'], logo: 'bebou', paper: '#f1e9d8', a: '#f1e9d8', b: '#c9b99a',
     mots: 'silence · sceau · rare',
     variants: { a: { name: 'Sceau', by: 'Kenya Hara' }, b: { name: 'Pastille', by: 'Nothing + Kenya Hara' } },
   },
   tele: {
-    title: { fr: 'Booster du moment · Télé', en: 'Limited booster · TV' }, label: 'Télé', tint: '#c026d3', ink: ['#c12ad4', '#9716a8', '#dd6cea'], logo: 'tele', paper: '#fffdf5', a: '#ffe500', b: '#141016',
+    title: { fr: 'Booster du moment · Télé', en: 'Limited booster · TV' }, label: 'Télé', tint: '#c12ad4', alloyMix: 0.4, ink: ['#c12ad4', '#9716a8', '#dd6cea'], logo: 'tele', paper: '#fffdf5', a: '#ffe500', b: '#141016',
     until: { fr: '02/12', en: 'DEC 2' },
     mots: 'éphémère · daté · bandeau',
     variants: { a: { name: 'Obi', by: 'konbini + Virgil Abloh' }, b: { name: 'Promo', by: 'konbini' } },
   },
   noel: {
-    title: { fr: 'Booster du moment · Noël', en: 'Limited booster · Xmas' }, label: 'Noël', tint: '#6b1d5e', alloyMix: 0.34, ink: ['#6b1d5e', '#4c1143', '#93377f'], logo: 'noel', paper: '#fffdf5', a: '#ffe500', b: '#141016',
+    title: { fr: 'Booster du moment · Noël', en: 'Limited booster · Xmas' }, label: 'Noël', tint: '#6b1d5e', alloyMix: 0.3, ink: ['#6b1d5e', '#4c1143', '#93377f'], logo: 'noel', paper: '#fffdf5', a: '#ffe500', b: '#141016',
     until: { fr: '26/12', en: 'DEC 26' },
     mots: 'éphémère · daté · bandeau',
     variants: { a: { name: 'Obi', by: 'konbini + Virgil Abloh' }, b: { name: 'Promo', by: 'konbini' } },
@@ -167,10 +167,26 @@ interface Placer {
   put(s: Stk, x: number, y: number, rot?: number, o?: { fix?: boolean; scale?: number }): void;
   /** colle au dos */
   back(s: Stk, x: number, y: number, rot?: number): void;
+  /**
+   * (passe 3 — Tom) colle un autocollant qui MORD LÉGÈREMENT sur les lettres en relief du nom. Jamais au même endroit :
+   * le booster (graine) tire l'un des emplacements proposés (`slots` : au-dessus ou au-dessous des lettres, plage
+   * d'abscisses), la profondeur de la morsure, la taille et l'inclinaison dans les plages données.
+   */
+  over(s: Stk, slots: Array<{ side: 'haut' | 'bas'; x: [number, number] }>, o?: { depth?: [number, number]; scale?: [number, number]; rot?: [number, number] }): void;
 }
 
-function placer(fronts: Ctx[], back: Ctx, mask: Ctx, seed: number): Placer & { flush(): void } {
+/** boîte des lettres moulées sur la toile (mesurée sur le nom du sachet) */
+interface NameBox {
+  top: number;
+  bot: number;
+}
+
+function placer(fronts: Ctx[], back: Ctx, mask: Ctx, seed: number, name: NameBox, salt: number): Placer & { flush(): void } {
   const rnd = lcg(seed * 2654435761 + 97);
+  // tirage à part pour la morsure (ajouter un autocollant ailleurs ne la déplace pas), salé par le sachet : à graine
+  // égale, deux thèmes ne mordent pas au même endroit
+  const rndOver = lcg(seed * 40503 + salt * 7919 + 13);
+  const lerp = (r: [number, number], t: number) => r[0] + (r[1] - r[0]) * t;
   const backs: Array<() => void> = [];
   const stamp = (g: Ctx, c: CanvasImageSource & { width: number; height: number }, x: number, y: number, rot: number, sc: number, shadow: boolean) => {
     g.save();
@@ -203,6 +219,19 @@ function placer(fronts: Ctx[], back: Ctx, mask: Ctx, seed: number): Placer & { f
       const sil = silhouette(s, `rgb(255,${Math.round(s.gloss * 255)},0)`);
       stamp(mask, sil, x + j[0], y + j[1], rot + j[2], sc, false);
       sil.width = sil.height = 0;
+    },
+    over(s, slots, o = {}) {
+      for (let i = 0; i < 3; i++) rndOver();
+      const slot = slots[Math.floor(rndOver() * slots.length) % slots.length];
+      const sc = lerp(o.scale ?? [0.88, 1.16], rndOver());
+      const rot = lerp(o.rot ?? [-0.28, 0.28], rndOver());
+      const depth = lerp(o.depth ?? [14, 36], rndOver());
+      // demi-encombrement de la toile tournée (l'autocollant reste dans le sachet, et sa morsure est mesurée au bord)
+      const hw = ((Math.abs(Math.cos(rot)) * s.c.width + Math.abs(Math.sin(rot)) * s.c.height) / 2) * sc;
+      const hh = ((Math.abs(Math.sin(rot)) * s.c.width + Math.abs(Math.cos(rot)) * s.c.height) / 2) * sc * 0.9;
+      const x = Math.max(hw + 12, Math.min(PW - hw - 12, lerp(slot.x, rndOver())));
+      const y = slot.side === 'haut' ? name.top + depth - hh : name.bot - depth + hh;
+      this.put(s, x, y, rot, { fix: true, scale: sc });
     },
     back(s, x, y, rot = 0) {
       backs.push(() => {
@@ -995,45 +1024,47 @@ const LAYOUTS: Record<SachetId, Record<StickerVariant, Layout>> = {
     a: (P, L, k) => {
       P.put(sBrandTech(L, k, '01'), 166, 152, 0, { fix: true });
       P.put(sLogoCut('gaming', 150), 330, 300, -0.05);
-      for (let i = 0; i < 3; i++) P.put(sHeart(9, k.b), 448 + i * 62, 150, 0, { fix: true });
-      P.put(sCinqTag(L, k), 186, 688, 0, { fix: true });
-      P.put(sStart(L, 420, k), 242, 826, 0, { fix: true });
+      for (let i = 0; i < 2; i++) P.put(sHeart(9, k.b), 510 + i * 62, 150, 0, { fix: true });
+      // la troisième vie est tombée sur le nom
+      P.over(sHeart(11, k.b), [{ side: 'haut', x: [500, 590] }, { side: 'bas', x: [400, 590] }, { side: 'haut', x: [40, 120] }]);
+      P.put(sCinqTag(L, k), 186, 694, 0, { fix: true });
+      P.put(sStart(L, 420, k), 242, 830, 0, { fix: true });
     },
     // Chambre d'ado (Brain Dead) : collage qui se chevauche, la manette déborde, rien n'est droit
     b: (P, L, k) => {
       P.put(sCartridge(118, k), 150, 250, -0.3);
       P.put(sLogoCut('gaming', 176), 372, 268, 0.2);
       P.put(sGG(150), 150, 172, -0.16);
-      P.put(sHeart(15, k.b), 530, 162, 0.2);
-      P.put(sCinqBurst(L, 156, k.a), 204, 722, -0.12);
-      P.put(sBrandPill(230), 452, 790, -0.07);
+      P.put(sCinqBurst(L, 156, k.a), 204, 730, -0.12);
+      P.put(sBrandPill(230), 452, 800, -0.07);
+      P.over(sHeart(15, k.b), [{ side: 'bas', x: [410, 590] }, { side: 'haut', x: [40, 110] }, { side: 'bas', x: [330, 470] }], { scale: [0.8, 1.2] });
     },
   },
   pop: {
     // Séance : le ticket fait l'encadré, le clap fait la marque
     a: (P, L, k) => {
       P.put(sLogoCut('pop', 156), 236, 262, -0.08);
-      P.put(sGlasses(176), 476, 196, 0.16);
-      P.put(sTicket(L, k), 322, 668, -0.09);
-      P.put(sClap(L, 220), 452, 822, 0.06);
+      P.put(sTicket(L, k), 322, 676, -0.09);
+      P.put(sClap(L, 220), 452, 826, 0.06);
+      P.over(sGlasses(176), [{ side: 'haut', x: [440, 560] }, { side: 'haut', x: [400, 500] }, { side: 'bas', x: [470, 570] }], { scale: [0.8, 1.1] });
     },
     // Zapping (konbini) : dense, joyeux, tout se touche
     b: (P, L, k) => {
       P.put(sVinyl(118, k.a), 168, 232, 0);
       P.put(sLogoCut('pop', 140), 420, 280, 0.1);
-      P.put(sGlasses(190), 288, 146, -0.12);
-      P.put(sFilm(330), 470, 600, -0.32);
-      P.put(sBulle(L, 310, k), 214, 690, 0.05);
-      P.put(sBrandPill(230, k.a, INK), 440, 836, 0.05);
+      P.put(sFilm(330), 480, 640, -0.32);
+      P.put(sBulle(L, 310, k), 214, 700, 0.05);
+      P.put(sBrandPill(230, k.a, INK), 440, 840, 0.05);
+      P.over(sGlasses(180), [{ side: 'haut', x: [100, 210] }, { side: 'bas', x: [90, 230] }, { side: 'haut', x: [150, 260] }], { scale: [0.8, 1.1] });
     },
   },
   sport: {
     // Dossard : une seule grande forme simple, le chiffre fait tout le travail
     a: (P, L, k) => {
-      P.put(sLogoCut('sport', 138), 210, 276, -0.1);
-      P.put(sWhistle(128, k.a), 492, 316, 0.25);
+      P.put(sLogoCut('sport', 138), 210, 270, -0.1);
       P.put(sStrap(k.title[L].toUpperCase(), 330), 410, 160, 0.07);
-      P.put(sDossard(L, k), cx, 732, 0.025);
+      P.put(sDossard(L, k), cx, 740, 0.025);
+      P.over(sWhistle(128, k.a), [{ side: 'haut', x: [400, 560] }, { side: 'haut', x: [460, 580] }, { side: 'bas', x: [520, 580] }], { scale: [0.8, 1.15], rot: [-0.1, 0.45] });
     },
     // Rebond (Feixen) : la même forme répétée fait le mouvement — 1, 2, 3, 4… et le ballon est le cinquième
     b: (P, L, k) => {
@@ -1042,9 +1073,9 @@ const LAYOUTS: Record<SachetId, Record<StickerVariant, Layout>> = {
       P.put(sRebond(42, 3, '#fff', INK), 196, 172, 0, { fix: true });
       P.put(sRebond(54, 4, INK, k.tint), 322, 158, 0, { fix: true });
       P.put(sLogoCut('sport', 122), 484, 250, 0.3);
-      P.put(sLogoCut('gaming', 58), 566, 628, -0.25);
-      P.put(sScore(L, k), 214, 668, -0.05);
-      P.put(sChrono(70, k.a), 470, 730, 0.14);
+      P.put(sScore(L, k), 214, 676, -0.05);
+      P.put(sChrono(70, k.a), 470, 740, 0.14);
+      P.over(sLogoCut('gaming', 58), [{ side: 'bas', x: [400, 580] }, { side: 'haut', x: [170, 330] }, { side: 'bas', x: [300, 480] }], { scale: [0.85, 1.3] });
       P.put(sStrap(k.title[L].toUpperCase(), 310), 200, 824, -0.05);
       P.put(sBrandPill(230), 470, 860, 0.06);
     },
@@ -1054,30 +1085,32 @@ const LAYOUTS: Record<SachetId, Record<StickerVariant, Layout>> = {
     a: (P, L, k) => {
       P.put(sBagTag(L, k), 148, 266, -0.04);
       P.put(sLogoCut('monde', 136), 428, 262, 0.06);
-      P.put(sFragile(L, k), 300, 676, -0.04);
-      P.put(sAvion(L, k), 150, 838, 0.09);
-      P.put(sTampon(L, 86, k), 478, 822, -0.18);
+      // le tampon d'entrée est donné sur le nom, comme sur un passeport ; l'étiquette de manutention passe par-dessus
+      P.over(sTampon(L, 86, k), [{ side: 'bas', x: [380, 560] }, { side: 'bas', x: [90, 240] }, { side: 'bas', x: [300, 470] }], { scale: [0.78, 1.05], rot: [-0.4, 0.4], depth: [18, 40] });
+      P.put(sFragile(L, k), 300, 706, -0.04);
+      P.put(sAvion(L, k), 450, 850, 0.09);
     },
     // Passeport : vieilles étiquettes d'hôtel, timbre, tampons qui se chevauchent
     b: (P, L, k) => {
       P.put(sBoussole(54, k), 108, 166, 0.2);
       P.put(sLogoRound('monde', 132, k.paper), 288, 270, -0.05);
       P.put(sTimbre(128, k), 500, 200, 0.14);
-      P.put(sAvion(L, k), 486, 366, -0.1);
-      P.put(sLosange(L, 228, k), 176, 708, -0.05);
-      P.put(sOvale(280, k), 428, 780, 0.1);
+      P.put(sLosange(L, 228, k), 176, 720, -0.05);
+      P.put(sOvale(280, k), 428, 790, 0.1);
+      P.over(sAvion(L, k), [{ side: 'haut', x: [400, 540] }, { side: 'bas', x: [340, 540] }, { side: 'haut', x: [90, 200] }], { scale: [0.85, 1.15], rot: [-0.2, 0.2] });
     },
   },
   bebou: {
     // Sceau (Kenya Hara) : presque rien. Une bande de garantie sur la ligne de déchirure, une petite étiquette.
     a: (P, L, k) => {
       P.put(sSceau(L, k), cx, 176, 0, { fix: true });
-      P.put(sPetite(L, k), 146, 846, 0, { fix: true });
+      // la seule étiquette du sachet se pose au pied des lettres, presque droite
+      P.over(sPetite(L, k), [{ side: 'bas', x: [110, 250] }, { side: 'bas', x: [390, 530] }, { side: 'bas', x: [240, 400] }], { scale: [0.95, 1.1], rot: [-0.05, 0.05], depth: [8, 18] });
     },
     // Pastille (Nothing + Hara) : une seule pastille de papier, l'ourson en matrice de points dedans ; huit points
     // pour les huit secrètes ; une étiquette technique. Tout est calé sur la même marge gauche, sauf la pastille.
     b: (P, L, k) => {
-      P.put(sPastille(104, k), 432, 246, 0, { fix: true });
+      P.over(sPastille(104, k), [{ side: 'haut', x: [380, 520] }, { side: 'haut', x: [300, 440] }, { side: 'haut', x: [120, 240] }], { scale: [0.82, 1.05], rot: [0, 0], depth: [16, 38] });
       P.put(sHuitPoints(k), 52 + 104, 612, 0, { fix: true });
       P.put(sHuitLabel(L, k), 52 + 135, 836, 0, { fix: true });
     },
@@ -1088,7 +1121,8 @@ const LAYOUTS: Record<SachetId, Record<StickerVariant, Layout>> = {
 
 /** gabarit A — Obi : le bandeau de papier ceinture le sachet (il continue au dos), l'étiquette dateuse dit jusqu'à quand */
 function momentA(P: Placer, L: StickerLang, k: SachetLook) {
-  P.put(sLogoCut(k.logo, 142), cx, 262, -0.05);
+  // le logo de l'événement descend sur le nom (le héros qui déborde sur le titre, comme sur un booster)
+  P.over(sLogoCut(k.logo, 142), [{ side: 'haut', x: [200, 300] }, { side: 'haut', x: [300, 440] }, { side: 'haut', x: [260, 380] }], { scale: [0.9, 1.08], rot: [-0.14, 0.14], depth: [10, 26] });
   P.put(sObi(L, k), cx, 676, 0, { fix: true });
   P.put(sDate(L, k), 470, 824, -0.08);
   P.put(sBrandPill(220), 168, 838, 0.04);
@@ -1098,7 +1132,7 @@ function momentA(P: Placer, L: StickerLang, k: SachetLook) {
 /** gabarit B — Promo (konbini) : pastille éclatée, ruban au nom de l'événement en travers du coin */
 function momentB(P: Placer, L: StickerLang, k: SachetLook) {
   P.put(sRuban(k, 620), 250, 792, -0.42, { fix: true });
-  P.put(sLogoCut(k.logo, 132), 410, 276, 0.1);
+  P.over(sLogoCut(k.logo, 132), [{ side: 'haut', x: [370, 480] }, { side: 'haut', x: [330, 430] }, { side: 'haut', x: [400, 500] }], { scale: [0.9, 1.1], rot: [-0.05, 0.22], depth: [10, 26] });
   P.put(sPromo(L, 112, k), 166, 208, -0.14);
   P.put(sCinqCase(L, 250, k.paper), 420, 640, 0.05);
   P.put(sDate(L, k), 440, 830, 0.07);
@@ -1343,7 +1377,19 @@ export async function stickerPackArt(
     M.g.fillStyle = `rgb(255,${Math.round(INK_GLOSS * 255)},0)`;
     M.g.fill('evenodd');
   }
-  const P = placer(fronts, bg, M.g, seed);
+  // la boîte des lettres moulées : même police et même réduction que le nom du sachet simple (pack.ts)
+  const mg = fronts[0];
+  mg.save();
+  let px = 132;
+  mg.font = `400 ${px}px ${FONT_PACK}`;
+  while (px > 28 && mg.measureText(k.label).width > PW - 120) mg.font = `400 ${(px -= 2)}px ${FONT_PACK}`;
+  mg.textBaseline = 'middle';
+  const tm = mg.measureText(k.label);
+  mg.restore();
+  const name: NameBox = { top: PH * 0.5 - tm.actualBoundingBoxAscent, bot: PH * 0.5 + tm.actualBoundingBoxDescent };
+  let salt = variant === 'a' ? 3 : 11;
+  for (const ch of id) salt = (salt * 31 + ch.charCodeAt(0)) % 9973;
+  const P = placer(fronts, bg, M.g, seed, name, salt);
   LAYOUTS[id][variant](P, L, k, seed);
   if (id !== 'tele' && id !== 'noel') P.back(sBackLabel(k, L, seed), cx, PH * 0.6, id === 'bebou' ? 0 : -0.03);
   if (hab !== 'nu') {
