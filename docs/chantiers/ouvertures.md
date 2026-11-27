@@ -65,8 +65,20 @@ Détail des propositions, réserves et outils : `.claude-tmp/ouvertures-v3-etape
 - Vérifié : typecheck, check:i18n = 0, test:server (320) ; démo 390 px (Chrome sans fenêtre, WebGPU) : chaque ouverture seule, séries ×5 Déchirure → Fenêtre / glace / Retroussé / Étoile et l'inverse, Déchirure inchangée, aucune erreur ; replay rouge / noir / vert ; pot : fiche, retour Android et ✕ au même défilement, rien pendant un tirage. Lien V3 = `29bf4ad`. Captures : `.claude-tmp/lot-roulette-dechirure/shots/`.
 - À vérifier par Tom (téléphone, lien V3) : plus de filet lumineux en haut du sachet sur Fenêtre / Retroussé / glace / Étoile, Déchirure inchangée ; pot de la roulette ; un replay de tirage.
 
+## Vérifié (27/11, 23 h 30, agent `ouvertures`, PC, Chrome sans fenêtre 390 px, `?demo&ouverture=<id>`)
+Relevés : `.claude-tmp/ouvertures-agent/mesure-<id>-<webgpu|webgl>.json` (5 tours en WebGPU, 3 en WebGL2 forcé).
+| Ouverture | WebGPU : images/s · pire image | WebGL2 : images/s · pire image | Erreurs · fuite |
+|---|---|---|---|
+| Déchirure (réf.) | 144 · 7,2 ms | 142-144 · 27,8 ms | 0 · non (textures 100 → 104-106) |
+| Retroussé | 144 · 7,2 ms | 144 · 14 ms | 0 · non |
+| Fenêtre | 140-144 · 48,6 ms (1 image) | 144 · 14 ms | 0 · non |
+| Déchirure glacée | 144 · 7,2 ms | 143-144 · 20,7 ms | 0 · non |
+| Étoile de Noël | 143-144 · 14 ms | 144 · 7,2 ms | 0 · non |
+Le rendu WebGL2 tourne pour les 5 (plus de « non vérifié ») ; 144 i/s = plafond de l'écran du PC, le téléphone reste à mesurer par Tom. Pas fait (agent arrêté) : vérif image par image des éclats `op-fly` (`@property --r` en % alors que `opening.ts` pose des px : les éclats ne s'écarteraient pas, signalé par `menage`) — à regarder, décision de Tom avant tout changement.
+
 ## Reste
-- [ ] **Avis de Tom au téléphone** : glace réaliste et étoile polie (session Fable) ; Fenêtre, Déchirure glacée ; puis Étoile de Noël ; puis les 3 ouvertures à gagner restantes (à proposer : nom, geste, rendu, succès parmi `world-150`, `full-15`, `streak-21`).
+- [ ] **3 dernières ouvertures à gagner** : 5 propositions écrites, sans code, dans `ouvertures-propositions.md` (Pression, Cône, Fatigue, Résonance, Lanières ; classement et « direction en deux lignes » en fin de fichier) → Tom en choisit 3.
+- [ ] **Avis de Tom au téléphone** : glace réaliste et étoile polie (session Fable) ; Fenêtre, Déchirure glacée ; puis Étoile de Noël.
 - [ ] Glace et étoile sont promises en ligne (cases 20 et 23 de l'Avent) : si la V3 ne sort pas avant le 20/12, les joueurs auront l'ancienne version — patch à décider avec Tom.
 - [x] ~~Bruit et masque de la Brûlure à retirer~~ : réutilisés par l'Étoile de Noël (dissolution dorée).
 - [ ] Session Fable : matière de la glace (réfraction, absorption, bulles, givre) et optimisation, polish de l'étoile — prompt prêt.
