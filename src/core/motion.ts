@@ -183,6 +183,22 @@ export const FENETRE = {
   grainMax: 0.16,
   sec: (DUR.instant * 2) / 1000,
 } as const;
+/**
+ * (27/11) DÉCHIRURE GLACÉE refaite (scenes/opening.ts ; le vol des éclats vient de la cuisson scripts/bake-tear/glace.mts).
+ * `autoTap` : écart entre deux coups de l'ouverture automatique · `fend` : les fêlures d'un coup apparaissent ·
+ * `givre` : givre du sachet au repos, après le 1er, après le 2e coup (0..1) · `lache` : la main lâche (B.follow → 0) au
+ * bris · `range` / `pose` / `decale` : rangement des cartes (ceux de la Déchirure) · `ouvert` : la pile est prête.
+ */
+export const GLACE = {
+  autoTap: DUR.dramatique / 3000,
+  fend: STAGGER.max / 1000,
+  givre: [0.3, 0.55, 0.85],
+  lache: (2 * DUR.instant) / 1000,
+  range: 0.4,
+  pose: 0.65,
+  decale: 0.03,
+  ouvert: 0.8,
+} as const;
 
 const motionQuery = typeof matchMedia === 'function' ? matchMedia('not all') : null;
 /**

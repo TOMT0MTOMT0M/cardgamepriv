@@ -94,7 +94,9 @@ import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { dropBakes, loadBakes, loadTearBakes, loadedBakes, loadedBakesOf, TearBakePlayer, type BakeFamily, type TearBake } from '../../core/tearBake';
 import type { TearBakeEvent, TearBakeHeader } from '../../core/tearBakeFormat';
-import { DUR, ECLIPSE, FENETRE, MYTHIC_SILENCE, MYTHIC_TURN, RETROUSSE, STAGGER, TIER_BEAT } from '../../core/motion';
+import { dropShatters, loadShatters, loadedShatters, ShatterPlayer } from '../../core/shatterBake';
+import type { ShatterBake } from '../../core/shatterFormat';
+import { DUR, ECLIPSE, FENETRE, GLACE, MYTHIC_SILENCE, MYTHIC_TURN, RETROUSSE, STAGGER, TIER_BEAT } from '../../core/motion';
 import { burnNoise, fbmTexel, preloadNoise, type N } from '../../core/tsl';
 import { isEclipseCard } from '../eclipse';
 import { apostleStrip } from '../apostles';
@@ -131,9 +133,11 @@ import type { PackCard, SealedPack } from '../backend';
  * (27/11, V3) Brûlure (`burn`) et Éventail (`fan`) sont retirés : un joueur qui les avait choisis retombe sur la
  * Déchirure (`setOpeningChoice`), sans migration.
  */
-export type OpenStyle = 'tear' | 'retrousse' | 'fenetre';
+export type OpenStyle = 'tear' | 'retrousse' | 'fenetre' | 'glace';
 /** style de la scène : une ouverture, ou `idle` (vitrine : sachet posé, aucune maille de déchirure montrée) */
 type SceneStyle = OpenStyle | 'idle';
+/** familles de cuissons de la scène : celles de core/tearBake.ts, et les éclats de la Déchirure glacée (core/shatterBake.ts) */
+type SceneFam = BakeFamily | 'glace';
 /**
  * (retours 07/11) une seule ouverture par défaut pour tous les boosters : la DÉCHIRURE ; les autres se GAGNENT par un
  * succès (src/core/cosmetics.ts, OPENINGS) ; le joueur choisit dans la fiche d'un booster et son choix vaut pour tous
@@ -147,7 +151,7 @@ export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId' | 'eventI
   // (11/11) le booster du moment (événement limité) suit aussi le choix du joueur
   let style = chosenStyle;
   // Retroussé, Fenêtre : seulement si leur lecteur est monté ET précompilé ; sinon la Déchirure (indice compris)
-  if ((chosenStyle === 'retrousse' && !rollReady) || (chosenStyle === 'fenetre' && !winReady)) style = 'tear';
+  if ((chosenStyle === 'retrousse' && !rollReady) || (chosenStyle === 'fenetre' && !winReady) || (chosenStyle === 'glace' && !iceReady)) style = 'tear';
   frozenStyle = { p, style };
   return style;
 }
@@ -158,6 +162,8 @@ let frozenStyle: { p: object; style: OpenStyle } | null = null;
 let rollReady = false;
 /** (27/11) idem pour la Fenêtre */
 let winReady = false;
+/** (27/11) idem pour la Déchirure glacée (bloc de glace) */
+let iceReady = false;
 /** (27/11) la scène suit le choix (chargement de la famille de cuissons, montage hors ouverture) */
 let choiceHook: ((s: OpenStyle) => void) | null = null;
 /**
@@ -166,7 +172,8 @@ let choiceHook: ((s: OpenStyle) => void) | null = null;
  */
 export function setOpeningChoice(id: string | undefined) {
   const before = chosenStyle;
-  chosenStyle = id === 'retrousse' || id === 'fenetre' ? id : 'tear';
+  // (27/11) la Déchirure glacée a sa propre scène (bloc de glace) ; son éclat de givre reste en repli (chosenSkin)
+  chosenStyle = id === 'retrousse' || id === 'fenetre' || id === 'glace' ? id : 'tear';
   chosenSkin = id === 'glace' || id === 'etoile' ? id : '';
   if (chosenStyle !== before) {
     frozenStyle = null;
@@ -817,11 +824,34 @@ export function createOpeningScene(): OpeningScene {
   let poseStrip: boolean | null = null;
   function setTearVisible(on: boolean) {
     // (27/11) le maillage procédural de la Déchirure ne s'affiche jamais par-dessus le Retroussé
-    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = on && !useBake && !rolling && !windowing;
+    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = on && !useBake && !rolling && !windowing && !icing;
     if (bakedBody && bakedStrip) bakedBody.visible = bakedStrip.visible = on && useBake;
     if (rollBody) rollBody.visible = on && rolling;
     if (winBody && winPanel) winBody.visible = winPanel.visible = on && windowing;
+    if (iceMesh && iceFilm) iceMesh.visible = iceFilm.visible = on && icing;
   }
+  /**
+   * (27/11) DÉCHIRURE GLACÉE refaite (core/shatterBake.ts, scripts/bake-tear/glace.mts) : le sachet est pris dans un
+   * bloc de glace ; 3 coups : les fêlures du 1er puis du 2e apparaissent (CRACK), le film gelé blanchit (FROST), le 3e fait
+   * tout éclater (éclats cuits, une variante par point d'impact : celle du 1er coup). Un lecteur par variante (`icePlayers`),
+   * deux mailles (glace, film gelé) dont la géométrie suit la variante tirée.
+   */
+  let icing = false;
+  const icePlayers: ShatterPlayer[] = [];
+  let icePlayer: ShatterPlayer | null = null;
+  let iceMesh: Mesh | null = null;
+  let iceFilm: Mesh | null = null;
+  let iceMats: { ice: Material; film: Material[] } | null = null;
+  let iceWarm = false;
+  let iceTaps = 0;
+  /** prochain coup de l'ouverture automatique (performance.now) */
+  let iceNextAuto = 0;
+  /** horloge des éclats (s) depuis le 3e coup ; < 0 : pas encore */
+  const ICE = { t: -1 };
+  const CRACK = uniform(0);
+  const FROST = uniform(0);
+  /** dernier appui (px CSS) : le 1er coup choisit la variante dont l'impact est le plus proche */
+  let lastDown: { x: number; y: number } | null = null;
   /**
    * (27/11) FENÊTRE (core/tearBake.ts, scripts/bake-tear/fenetre.mts) : la pile pousse la face avant de l'intérieur, les
    * coins percent, le contour se découpe, la pile sort vers le joueur avec le panneau plaqué dessus. Troisième lecteur
@@ -899,8 +929,8 @@ export function createOpeningScene(): OpeningScene {
    */
   const R = { k: 0, s: 0 };
   /** famille de cuissons suivie (celle du choix du joueur) ; familles à libérer au retour en vitrine */
-  let bakeFam: BakeFamily = 'tear';
-  const toRelease = new Set<BakeFamily>();
+  let bakeFam: SceneFam = 'tear';
+  const toRelease = new Set<SceneFam>();
   /** lecteur de la Déchirure en cours de précompilation tardive (pas joué pendant ce temps) */
   let warmingTear = false;
   /** le Retroussé est arrivé à temps pour le préchauffage du montage (prêt à sa fin) */
@@ -1285,8 +1315,36 @@ export function createOpeningScene(): OpeningScene {
     const corner = float(1).sub(smoothstep(0, 0.12, s)).mul(0.6);
     return band.mul(open.mul(float(1).add(corner))).mul(WSLIT);
   }
-  function buildRollMaterials(art: PackArt, win = false) {
+  /**
+   * (27/11) `win` : la Fenêtre (fente de lumière le long du contour) ; `frost` : la Déchirure glacée (le sachet gelé se
+   * couvre de givre, FROST : cristaux blancs bleutés, surface mate)
+   */
+  /**
+   * (27/11) la GLACE du bloc (Déchirure glacée) : surfaces extérieures transparentes et lisses (reflets du studio, léger
+   * voile givré), faces de cassure blanches et mates, visibles seulement quand leur niveau (attribut `lvl` : 1, 2, 3)
+   * est atteint par CRACK (les fêlures du 1er, puis du 2e coup ; le 3e : tout)
+   */
+  function buildIceMaterial(): Material {
+    const m = new MeshStandardNodeMaterial({ side: DoubleSide, transparent: true, depthWrite: false });
+    const lvl = attribute('lvl', 'float') as unknown as N;
+    const crack = lvl.greaterThan(0.5);
+    const shown = step(lvl, CRACK.add(0.001));
+    const veil = smoothstep(0.35, 0.85, mx_fractal_noise_float(positionLocal.mul(40)).add(0.5));
+    m.colorNode = select(crack, vec3(0.95, 0.98, 1), mix(vec3(0.8, 0.9, 0.98), vec3(0.93, 0.97, 1), veil));
+    m.metalnessNode = float(0);
+    m.roughnessNode = select(crack, float(0.5), mix(float(0.04), float(0.18), veil));
+    m.envNode = foilEnvNode();
+    m.opacityNode = select(crack, shown.mul(0.55), float(0.14).add(veil.mul(0.06)));
+    m.emissiveNode = select(crack, vec3(0.42, 0.5, 0.58).mul(shown), vec3(0.015, 0.03, 0.045));
+    return m;
+  }
+  function buildRollMaterials(art: PackArt, opt: { win?: boolean; frost?: boolean } = {}) {
+    const { win = false, frost = false } = opt;
     const uvn = uv();
+    // givre : cristaux fins (points blancs épars) et un voile qui s'épaissit vers les bords du sachet (soudures, crans)
+    const edge = float(1).sub(smoothstep(0, 0.16, min(min(uvn.x, float(1).sub(uvn.x)), min(uvn.y, float(1).sub(uvn.y)).mul(1.5))));
+    const specks = smoothstep(0.62, 0.82, mx_fractal_noise_float(vec3(uvn.mul(vec2(150, 225)), 0.5)).add(0.5));
+    const frostAmt = frost ? tclamp(FROST.mul(specks.mul(0.75).add(edge.mul(0.55)).add(0.12)), 0, 1) : null;
     const front = texture(art.front, uvn);
     const back = texture(art.back, uvn);
     const masks = texture(art.masks, uvn);
@@ -1305,6 +1363,11 @@ export function createOpeningScene(): OpeningScene {
       m.envNode = foilEnvNode();
       m.metalnessNode = select(frontFacing, S.metal, float(ROLL_INNER.metal));
       m.roughnessNode = select(frontFacing, S.rough, float(ROLL_INNER.rough));
+      if (frostAmt) {
+        m.colorNode = mix(m.colorNode as N, vec3(0.86, 0.93, 1), frostAmt);
+        m.metalnessNode = mix(m.metalnessNode as N, float(0), frostAmt);
+        m.roughnessNode = mix(m.roughnessNode as N, float(0.75), frostAmt);
+      }
       // fuite de lumière (003) à l'extérieur, comme le sachet scellé ; l'envers n'émet rien
       const leak = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(S.crans.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak));
       if (!win || side === 1) m.emissiveNode = select(frontFacing, leak, vec3(0, 0, 0));
@@ -1656,6 +1719,91 @@ export function createOpeningScene(): OpeningScene {
     });
   }
 
+  /** (27/11) Déchirure glacée : la variante dont le point d'impact est le plus proche du dernier appui (à l'écran) */
+  function pickIceVariant() {
+    if (!icePlayers.length) return;
+    let best = icePlayers[0], bd = Infinity;
+    if (lastDown) {
+      packRig.updateMatrixWorld();
+      for (const pl of icePlayers) {
+        const [x, y, z] = pl.header.impact;
+        proj.set(x, y, z).applyMatrix4(packRig.matrixWorld).project(stage.camera);
+        const sx = (proj.x * 0.5 + 0.5) * ctx.width, sy = (0.5 - proj.y * 0.5) * ctx.height;
+        const d = Math.hypot(sx - lastDown.x, sy - lastDown.y);
+        if (d < bd) (bd = d), (best = pl);
+      }
+    } else best = icePlayers[Math.floor(Math.random() * icePlayers.length)];
+    useIce(best);
+  }
+  function useIce(pl: ShatterPlayer) {
+    icePlayer = pl;
+    pl.setTime(0);
+    if (iceMesh && iceFilm) {
+      iceMesh.geometry = pl.ice;
+      iceFilm.geometry = pl.film;
+    }
+  }
+  /** un coup sur le bloc : les fêlures de ce niveau apparaissent, le sachet gelé blanchit ; le 3e fait tout éclater */
+  function iceTap() {
+    if (phase !== 'sealed' || !icing || iceTaps >= 3) return;
+    if (iceTaps === 0) pickIceVariant();
+    iceTaps++;
+    events.onHold?.(iceTaps / 3);
+    const pan = icePlayer ? Math.max(-1, Math.min(1, icePlayer.header.impact[0] * 2)) : 0;
+    if (iceTaps < 3) {
+      sideline(gsap.timeline())
+        .to(CRACK, { value: iceTaps, duration: GLACE.fend, ease: EASE.glide }, 0)
+        .to(FROST, { value: GLACE.givre[iceTaps], duration: GLACE.fend, ease: EASE.glide }, 0);
+      ctx.sfx.iceCrack(iceTaps, 0.3, pan);
+      haptics.pulse(10 + iceTaps * 8);
+      shake.impulse(2 + iceTaps * 1.5);
+      return;
+    }
+    onShattered();
+  }
+  /**
+   * (27/11) le 3e coup : la glace et le sachet gelé éclatent ensemble (éclats cuits), la pile est là, la main n'a plus
+   * rien à tenir ; les cartes gardent l'échelle du sachet (R.s) jusqu'au rangement — même état final que la Déchirure
+   */
+  function onShattered() {
+    phase = 'busy';
+    holding = false;
+    autoTear?.kill();
+    autoTear = null;
+    void (prepared ?? Promise.resolve()).then(() => {
+      if (!pack) return;
+      kill();
+      CRACK.value = 3;
+      FROST.value = 1;
+      ctx.sfx.iceShatter(0.45);
+      haptics.pulse([30, 30, 50]);
+      shake.impulse(6);
+      const n = order.length;
+      tl = gsap.timeline();
+      const out = sideline(gsap.timeline());
+      const T = icePlayer?.duration ?? 1;
+      out.fromTo(ICE, { t: 0 }, { t: T, duration: T, ease: 'none' }, 0);
+      R.s = 1;
+      out.to(B, { follow: 0, duration: GLACE.lache, ease: EASE.glide }, 0);
+      const qk = autoQuick() ? 1.6 : 1;
+      tl.call(() => {
+        const c = sideline(gsap.timeline());
+        c.to(S, { push: 0, duration: GLACE.pose, ease: EASE.glide }, 0);
+        c.to(R, { s: 0, duration: GLACE.pose, ease: EASE.settle }, 0);
+        order.forEach((si, k) => c.to(slots[si].p, { y: 0, z: -STACK_DZ * (n - 1 - k), s: 1, rz: (k - 2) * 0.012, duration: GLACE.pose, ease: EASE.settle }, k * GLACE.decale));
+        c.timeScale(qk);
+      }, [], GLACE.range);
+      tl.call(() => {
+        phase = 'opened';
+        events.onOpened?.();
+        flushQueued();
+      }, [], GLACE.ouvert);
+      lightRim(sideline(gsap.timeline()), order[0], GLACE.ouvert / qk);
+      tl.timeScale(qk);
+      out.timeScale(qk);
+    });
+  }
+
   /** (27/11) blocage du défilement / « tirer pour rafraîchir » pendant que le sachet attend le geste vers le bas */
   function setRollLock(on: boolean) {
     if (typeof document !== 'undefined') document.documentElement.classList.toggle('op-roll', on);
@@ -2002,8 +2150,20 @@ export function createOpeningScene(): OpeningScene {
     // (27/11) Retroussé sans lecteur prêt (cuisson libérée entre-temps) : la Déchirure, sans écran vide
     if (style === 'retrousse' && !(rollPlayer && rollBody && rollReady)) style = 'tear';
     if (style === 'fenetre' && !(winPlayer && winBody && winReady)) style = 'tear';
+    if (style === 'glace' && !(icePlayers.length && iceMesh && iceReady)) style = 'tear';
     rolling = style === 'retrousse';
     windowing = style === 'fenetre';
+    icing = style === 'glace';
+    iceTaps = 0;
+    iceNextAuto = 0;
+    ICE.t = -1;
+    CRACK.value = 0;
+    if (icing) {
+      // variantes arrivées depuis le montage : un lecteur chacune (la variante jouée est choisie au 1er coup)
+      for (const b of loadedShatters()) if (!icePlayers.some((p) => p.bake === b)) icePlayers.push(new ShatterPlayer(b));
+      useIce(icePlayers[0]);
+      FROST.value = GLACE.givre[0];
+    }
     // la pile est DANS le booster (au plan des cartes) ; en vitrine, elle se tient 12 cm derrière (reset)
     followZ = 0;
     winKeep = 0;
@@ -2547,7 +2707,8 @@ export function createOpeningScene(): OpeningScene {
       return;
     }
     if (phase === 'sealed') {
-      // un toucher l'ouvre tout seul (déchirure ou retroussé automatique)
+      // un toucher l'ouvre tout seul (déchirure ou retroussé automatique) ; Déchirure glacée : un toucher = un coup
+      if (icing) return void iceTap();
       startAutoTear(rolling ? RETROUSSE.auto : windowing ? FENETRE.auto : 1.05);
       return;
     }
@@ -2590,6 +2751,8 @@ export function createOpeningScene(): OpeningScene {
     style = 'idle';
     rolling = false;
     windowing = false;
+    icing = false;
+    ICE.t = -1;
     winQ.length = 0;
     winKeep = 0;
     winHeadWait = null; // (suite d'une Fenêtre abandonnée : jamais jouée)
@@ -3007,7 +3170,7 @@ export function createOpeningScene(): OpeningScene {
           if (!b || gone || winPlayer) return false;
           winPlayer = new TearBakePlayer(b);
           const fresh = !winMats;
-          winMats ??= buildRollMaterials(arts.get(boosterKey)!, true);
+          winMats ??= buildRollMaterials(arts.get(boosterKey)!, { win: true });
           winBody = new Mesh(winPlayer.body, winMats);
           winPanel = new Mesh(winPlayer.strip, winMats);
           if (fresh) winMats.forEach((x) => c.bag.add(x));
@@ -3019,6 +3182,29 @@ export function createOpeningScene(): OpeningScene {
           return true;
         };
         c.bag.fn(() => winPlayer?.dispose());
+        /**
+         * (27/11) DÉCHIRURE GLACÉE : un lecteur par variante cuite ; deux mailles (film gelé, puis la glace, transparente,
+         * dessinée après) dont la géométrie suit la variante tirée au 1er coup
+         */
+        const mountIce = (b: ShatterBake | null) => {
+          if (!b || gone || icePlayers.some((p) => p.bake === b)) return false;
+          const pl = new ShatterPlayer(b);
+          icePlayers.push(pl);
+          if (iceMesh) return true;
+          const fresh = !iceMats;
+          iceMats ??= { ice: buildIceMaterial(), film: buildRollMaterials(arts.get(boosterKey)!, { frost: true }) };
+          if (fresh) [iceMats.ice, ...iceMats.film].forEach((x) => c.bag.add(x));
+          iceFilm = new Mesh(pl.film, iceMats.film);
+          iceMesh = new Mesh(pl.ice, iceMats.ice);
+          iceMesh.renderOrder = 2;
+          for (const m of [iceFilm, iceMesh]) {
+            m.frustumCulled = false;
+            m.visible = false;
+            packRig.add(m);
+          }
+          return true;
+        };
+        c.bag.fn(() => icePlayers.forEach((p) => p.dispose()));
         /** précompile des mailles montées après le préchauffage : hors champ (derrière la caméra), en vitrine seulement */
         const warmLate = async (ms: Mesh[]) => {
           const wait = () => new Promise<void>((r) => setTimeout(r, 400));
@@ -3040,7 +3226,7 @@ export function createOpeningScene(): OpeningScene {
               m.visible = false;
               // (27/11) maille libérée pendant la compilation (le joueur est revenu à l'autre ouverture) : retirée de la
               // scène, pas remise orpheline dans le sachet
-              if (m === rollBody || m === bakedBody || m === bakedStrip || m === winBody || m === winPanel) packRig.add(m);
+              if (m === rollBody || m === bakedBody || m === bakedStrip || m === winBody || m === winPanel || m === iceMesh || m === iceFilm) packRig.add(m);
               else {
                 m.dispatchEvent({ type: 'dispose' } as never); // (comme releaseSlot : ses matériaux sont gardés)
                 stage.scene.remove(m);
@@ -3068,6 +3254,15 @@ export function createOpeningScene(): OpeningScene {
             releaseFamilies();
           }
         };
+        const lateIce = async (b: ShatterBake | null) => {
+          if (bakeFam !== 'glace' || gone) return;
+          mountIce(b);
+          if (!iceReady && iceMesh && iceFilm && (await warmLate([iceFilm, iceMesh])) && bakeFam === 'glace') {
+            iceReady = true;
+            toRelease.add('tear');
+            releaseFamilies();
+          }
+        };
         const lateTear = async (b: TearBake | null) => {
           if (bakeFam !== 'tear' || gone || bakePlayer || !mount(b)) return;
           warmingTear = true;
@@ -3084,6 +3279,16 @@ export function createOpeningScene(): OpeningScene {
             if (fam === 'tear' && warmingTear) continue; // (repassera au prochain retour en vitrine)
             toRelease.delete(fam);
             if (fam === bakeFam) continue; // (le joueur est revenu à ce choix entre-temps)
+            if (fam === 'glace') {
+              dropShatters();
+              iceReady = false;
+              for (const m of [iceMesh, iceFilm]) if (m) (m.dispatchEvent({ type: 'dispose' } as never), packRig.remove(m));
+              icePlayers.forEach((p) => p.dispose());
+              icePlayers.length = 0;
+              icePlayer = null;
+              iceMesh = iceFilm = null;
+              continue;
+            }
             dropBakes(fam);
             // (comme releaseSlot) les matériaux sont gardés pour le remontage : sans cet événement, ils retiendraient
             // par leur écouteur la maille retirée et les tableaux de sa géométrie
@@ -3115,12 +3320,13 @@ export function createOpeningScene(): OpeningScene {
         // le joueur change d'ouverture en cours de session : la famille de cuissons suit (chargée, montée, précompilée
         // hors ouverture) ; l'autre est libérée au retour en vitrine
         choiceHook = (s) => {
-          const fam: BakeFamily = s === 'retrousse' || s === 'fenetre' ? s : 'tear';
+          const fam: SceneFam = s === 'retrousse' || s === 'fenetre' || s === 'glace' ? s : 'tear';
           if (fam === bakeFam) return;
           const was = bakeFam;
           bakeFam = fam;
           if (was === 'retrousse') rollReady = false;
           if (was === 'fenetre') winReady = false;
+          if (was === 'glace') iceReady = false;
           if (was !== 'tear') {
             toRelease.add(was);
             releaseFamilies();
@@ -3129,15 +3335,27 @@ export function createOpeningScene(): OpeningScene {
           if (fam !== 'tear') ctx.sfx.loadBook('ouvertures');
           if (fam === 'retrousse') void loadBakes('retrousse').then(lateRoll);
           else if (fam === 'fenetre') void loadBakes('fenetre').then(lateWin);
+          else if (fam === 'glace') void loadShatters().then(lateIce);
           else void loadTearBakes().then(lateTear);
         };
         c.bag.fn(() => {
           choiceHook = null;
           rollReady = false;
           winReady = false;
+          iceReady = false;
           setRollLock(false);
         });
-        if (chosenStyle === 'fenetre') {
+        if (chosenStyle === 'glace') {
+          // (27/11) Déchirure glacée choisie : on ne charge QUE ses éclats ; même attente bornée que la Déchirure
+          bakeFam = 'glace';
+          ctx.sfx.loadBook('ouvertures');
+          const first = loadShatters();
+          lap('sachet');
+          const b0 = await Promise.race([first, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
+          lap(`attente glace${b0 ? '' : ' (pas arrivée)'}`); // i18n-ok
+          if (b0 && mountIce(b0)) iceWarm = iceMesh!.visible = iceFilm!.visible = true;
+          else void first.then(lateIce);
+        } else if (chosenStyle === 'fenetre') {
           // (27/11) Fenêtre choisie : on ne charge QUE ses cuissons ; même attente bornée que la Déchirure
           bakeFam = 'fenetre';
           ctx.sfx.loadBook('ouvertures');
@@ -3545,6 +3763,11 @@ export function createOpeningScene(): OpeningScene {
         winBody.visible = winPanel.visible = false;
         if (winWarm && bakeFam === 'fenetre') winReady = true;
       }
+      // (27/11) Déchirure glacée : idem
+      if (iceMesh && iceFilm) {
+        iceMesh.visible = iceFilm.visible = false;
+        if (iceWarm && bakeFam === 'glace') iceReady = true;
+      }
       c.bag.fn(() => warm.forEach((m) => m.dispose()));
 
       // maintenir pour ouvrir (souris, doigt, espace) ; déchirure : le glisser est suivi ici, au pixel près
@@ -3572,6 +3795,12 @@ export function createOpeningScene(): OpeningScene {
       };
       const down = (e: Event) => {
         if (phase !== 'sealed') return;
+        // (27/11) Déchirure glacée : pas de glisser, seulement des coups (advance) ; l'appui choisit le point d'impact
+        if (icing) {
+          const pe = e as PointerEvent;
+          if (pe.clientX !== undefined) lastDown = { x: pe.clientX - (ctx.canvas.getBoundingClientRect?.().left ?? 0), y: pe.clientY - (ctx.canvas.getBoundingClientRect?.().top ?? 0) };
+          return;
+        }
         holding = true;
         tearX = (e as PointerEvent).clientX ?? null;
         tearY = (e as PointerEvent).clientY ?? 0;
@@ -3697,7 +3926,16 @@ export function createOpeningScene(): OpeningScene {
       // déchirure : le doigt qui glisse vers la droite tire la bande (maintenir sans bouger = elle avance doucement) ;
       // stick-slip DÉTERMINISTE (lot 07, voir TEAR_WELDS) : elle accroche, la tension monte (le sachet penche un rien),
       // puis elle file jusqu'au doigt d'un coup — crans espacés si le geste est lent, coupe continue s'il est vif
-      if (phase === 'sealed') {
+      // (27/11) Déchirure glacée : pas de glisser ; l'ouverture automatique donne les 3 coups, espacés de GLACE.autoTap
+      if (phase === 'sealed' && icing && auto.burn) {
+        const now = performance.now();
+        if (!iceNextAuto) iceNextAuto = now + GLACE.autoTap * 1000;
+        else if (now >= iceNextAuto) {
+          iceTap();
+          iceNextAuto = now + GLACE.autoTap * 1000;
+        }
+      }
+      if (phase === 'sealed' && !icing) {
         if (auto.burn) startAutoTear(rolling ? RETROUSSE.autoSerie : windowing ? FENETRE.autoSerie : 0.9);
         // maintenir sans glisser : la bande avance doucement toute seule (clavier, appui long)
         if (holding && !ctx.input.dragging) tearTarget = Math.min(1.08, tearTarget + dt * 0.45);
@@ -3738,8 +3976,14 @@ export function createOpeningScene(): OpeningScene {
       TFLY.value = fly.t;
       // (S3) fente de lumière : s'ouvre avec la coupe (la tête de lecture de l'enregistrement si on le rejoue), s'éteint
       // pendant que la bande s'envole
-      TSLIT.value = style === 'idle' || rolling || windowing ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
-      if (windowing && winPlayer) {
+      TSLIT.value = style === 'idle' || rolling || windowing || icing ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
+      if (icing && icePlayer) {
+        // (27/11) Déchirure glacée : les éclats cuits, sur leur horloge (ICE.t) ; cachés une fois retombés
+        if (ICE.t >= 0) {
+          icePlayer.setTime(ICE.t);
+          if (iceMesh && iceFilm) iceMesh.visible = iceFilm.visible = ICE.t < icePlayer.duration - 1e-3;
+        }
+      } else if (windowing && winPlayer) {
         // (27/11) Fenêtre : même tête de lecture lissée ; la pile avance avec la cuisson (followZ, unités du monde)
         const h = winPlayer.header;
         if (bakeExit.t < 0) {
@@ -3824,7 +4068,7 @@ export function createOpeningScene(): OpeningScene {
         }
         shreds.instanceMatrix.needsUpdate = true;
       }
-      if (shreds) shreds.visible = style !== 'idle' && !rolling && !windowing;
+      if (shreds) shreds.visible = style !== 'idle' && !rolling && !windowing && !icing;
       // défilement accéléré : retourne / range tout seul les cartes sous le seuil ; s'arrête sur les belles
       if (auto.minRank > 0 || auto.reveal) {
         const cur = order[cursor];
@@ -4032,10 +4276,10 @@ export function createOpeningScene(): OpeningScene {
         // (27/11) Fenêtre : la pile sortie garde son avancée après le lâcher du sachet, jusqu'au rangement (R.k)
         if (windowing) cardsRig.position.z += winKeep * R.k * (1 - f);
         // (27/11) Retroussé, Fenêtre : la main lâche tôt (B.follow → 0), les cartes gardent l'échelle du sachet jusqu'au rangement
-        cardsRig.scale.setScalar(1 + (packRig.scale.x - 1) * (rolling || windowing ? Math.max(f, R.s) : f));
+        cardsRig.scale.setScalar(1 + (packRig.scale.x - 1) * (rolling || windowing || icing ? Math.max(f, R.s) : f));
       } else {
         cardsRig.position.set(0, 0, windowing ? winKeep * R.k : 0);
-        cardsRig.scale.setScalar(rolling || windowing ? 1 + (packRig.scale.x - 1) * R.s : 1);
+        cardsRig.scale.setScalar(rolling || windowing || icing ? 1 + (packRig.scale.x - 1) * R.s : 1);
       }
       const shk = fxk('shake');
       rig.position.set((shake.value * 0.004 + Math.sin(t * 61) * 0.002 * tr) * shk, (shake2.value * 0.004 + Math.sin(t * 47) * 0.002 * tr) * shk, 0);

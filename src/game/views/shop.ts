@@ -48,6 +48,9 @@ const HINT = {
   get push() {
     return TOUCH ? tr('shop.hint.pushTouch') : tr('shop.hint.pushMouse');
   },
+  get ice() {
+    return TOUCH ? tr('shop.hint.iceTouch') : tr('shop.hint.iceMouse');
+  },
   get reveal() {
     return TOUCH ? tr('shop.hint.revealTouch') : tr('shop.hint.revealMouse');
   },
@@ -1432,7 +1435,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     hint.hidden = false;
     hint.classList.add('hold');
     const st = openStyleOf(p);
-    sealedHint = st === 'retrousse' ? HINT.fold : st === 'fenetre' ? HINT.push : HINT.tear;
+    sealedHint = st === 'retrousse' ? HINT.fold : st === 'fenetre' ? HINT.push : st === 'glace' ? HINT.ice : HINT.tear;
     hintTxt.textContent = sealedHint;
     ring.style.strokeDashoffset = '100';
     // aide au premier geste (UX2-08) : seulement en ouverture manuelle, tant que ce geste n'a jamais réussi

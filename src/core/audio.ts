@@ -916,6 +916,20 @@ export class Sfx {
   }
 
   /**
+   * (27/11) Déchirure glacée (livre `ouvertures`) : la glace se fend sous le doigt (`n` = 1er, 2e toucher : un peu
+   * plus grave et plus fort à chaque fois) ; repli : le craquement de la banque principale.
+   */
+  iceCrack(n = 1, vol = 0.3, pan = 0) {
+    if (!this.play('iceCrack', { rate: 1.08 - 0.08 * n, vol: vol * LV.crack * (0.85 + 0.15 * n), pan, bus: 'reward', wet: 0.18 })) this.crack(vol);
+  }
+  /** le bloc et le sachet gelé éclatent ; repli : craquement + impact */
+  iceShatter(vol = 0.4) {
+    if (this.play('iceShatter', { vol: vol * LV.crack, bus: 'reward', wet: 0.22 })) return;
+    this.crack(vol);
+    this.thump(0.5);
+  }
+
+  /**
    * Impact (pose, payoff), selon la force : « pat » d'une carte (vol < 0,36) · coup feutré (3★–4★) · grand impact
    * (5★–6★). Chacun garde sa couche d'harmoniques 150–700 Hz : le grave « suggéré » qu'un téléphone sait rendre.
    */

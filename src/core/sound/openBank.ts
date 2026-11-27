@@ -66,10 +66,56 @@ function seal(r: Rng) {
   return finish(room(x, { t60: 0.09, mixK: 0.12 }, r));
 }
 
+/**
+ * (27/11) DÉCHIRURE GLACÉE : la glace qui se fend sous le doigt — un « tac » sec et cristallin (partiels inharmoniques
+ * aigus, très courts) suivi d'un court crépitement de fissure qui court, et le corps sourd du bloc.
+ */
+function iceCrack(r: Rng) {
+  const x = zeros(0.32);
+  const f0 = between(r, 1700, 2300);
+  modal(x, [
+    { f: f0, t60: 0.05, a: 0.7 },
+    { f: f0 * between(r, 1.41, 1.53), t60: 0.035, a: 0.5 },
+    { f: f0 * between(r, 2.6, 2.9), t60: 0.02, a: 0.3 },
+    { f: between(r, 220, 280), t60: 0.06, a: 0.5 },
+  ], 0, 0.0004);
+  // la fissure qui court : grains serrés qui s'espacent
+  let at = 0.004;
+  for (let g = 0; g < 14; g++) {
+    const b = white(smp(0.006), r);
+    svf(b, between(r, 2200, 5000), between(r, 4, 9), 'bp');
+    decay(b, between(r, 0.001, 0.003), 0.0002);
+    mix(x, unit(b), (1 - g / 15) * between(r, 0.25, 0.6), at);
+    at += between(r, 0.003, 0.012) * (1 + g * 0.15);
+  }
+  lp1(x, 6500);
+  hp1(x, 90);
+  return finish(room(x, { t60: 0.18, mixK: 0.16 }, r));
+}
+/** le bloc et le sachet gelé éclatent : coup sourd, puis une pluie d'éclats qui tintent en retombant (≈ 1 s) */
+function iceShatter(r: Rng) {
+  const dur = 1.1, x = zeros(dur);
+  modal(x, [{ f: between(r, 95, 115), t60: 0.18, a: 0.9 }, { f: between(r, 240, 280), t60: 0.1, a: 0.5 }], 0, 0.002);
+  mix(x, unit(decay(lp2(white(smp(0.12), r), 2200), 0.07, 0.001)), 0.7);
+  for (let g = 0; g < 70; g++) {
+    // tintements : petits éclats de glace (aigus, inharmoniques, très courts), de plus en plus rares
+    const t = Math.pow(r(), 1.8) * (dur - 0.08);
+    const b = zeros(0.06);
+    const f = between(r, 2400, 6000);
+    modal(b, [{ f, t60: between(r, 0.02, 0.05), a: 1 }, { f: f * between(r, 1.3, 1.7), t60: 0.02, a: 0.4 }], 0, 0.0003);
+    mix(x, unit(b), between(r, 0.08, 0.35) * (1 - t / dur), t);
+  }
+  lp1(x, 7000);
+  hp1(x, 60);
+  return finish(room(x, { t60: 0.3, mixK: 0.2 }, r));
+}
+
 /** Les recettes du livre `ouvertures` (books.ts), dans l'ordre de cuisson. */
 export const OPEN_RECIPES: Record<string, Recipe> = {
   seal: { n: 6, make: seal },
   peel: { n: 1, make: peel },
+  iceCrack: { n: 4, make: iceCrack },
+  iceShatter: { n: 2, make: iceShatter },
 };
 /** les textures en boucle du livre (test : `npm run test:sound`) */
 export const OPEN_LOOPS = ['peel'];

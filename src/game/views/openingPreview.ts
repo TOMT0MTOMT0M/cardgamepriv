@@ -43,9 +43,18 @@ function winArt() {
   return `<rect class="pv-bag" x="9" y="7" width="22" height="35" rx="1.5"/><path class="pv-crimp" d="M11 9.3h18M11 39.5h18"/>${cards(11)}<rect class="pv-bag pv-panel" x="12.5" y="11" width="15" height="24" rx="0.6"/>${corners}<rect class="pv-cut" x="12.5" y="11" width="15" height="24"/>${dot(20, 13)}`;
 }
 
+/** Déchirure glacée : le sachet dans un bloc de glace ; trois coups, les fêlures s'étendent, tout éclate, les cartes restent. */
+function iceArt() {
+  const crack1 = '<path class="pv-crack pv-crack1" d="M17 15l-4-3M17 15l5-2M17 15l-1 5M17 15l3 4"/>';
+  const crack2 = '<path class="pv-crack pv-crack2" d="M13 12l-5-5M22 13l9-4M16 20l-6 12M20 19l7 14M22 13l4 9"/>';
+  const shards = '<g class="pv-shards"><path d="M8 9l5 1-2 4z"/><path d="M28 8l4 3-4 2z"/><path d="M10 33l4 2-4 3z"/><path d="M29 30l3 4-5 0z"/></g>';
+  return `${cards(11)}<g class="pv-block"><rect class="pv-bag" x="9" y="7" width="22" height="35" rx="1.5"/><rect class="pv-ice" x="6.5" y="4.5" width="27" height="40" rx="2.2"/>${crack1}${crack2}</g>${shards}${dot(17, 15)}`;
+}
+
 /** Vignette d'aperçu d'une ouverture (une nouvelle ouverture ajoute ici son dessin et ses images clés dans progression.css). */
 export function openingPreview(id: OpeningId): string {
-  const kind = id === 'retrousse' ? 'roll' : id === 'fenetre' ? 'win' : 'tear';
-  const art = kind === 'roll' ? rollArt() : kind === 'win' ? winArt() : tearArt(id);
-  return `<svg class="pv pv-${kind}" viewBox="0 0 40 48" aria-hidden="true" focusable="false">${art}</svg>`;
+  const kind = id === 'retrousse' ? 'roll' : id === 'fenetre' ? 'win' : id === 'glace' ? 'ice' : 'tear';
+  const art = kind === 'roll' ? rollArt() : kind === 'win' ? winArt() : kind === 'ice' ? iceArt() : tearArt(id);
+  // (la glace : classe `pv-ice-k`, `pv-ice` est le dessin du bloc)
+  return `<svg class="pv pv-${kind === 'ice' ? 'ice-k' : kind}" viewBox="0 0 40 48" aria-hidden="true" focusable="false">${art}</svg>`;
 }

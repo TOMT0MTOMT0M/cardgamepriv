@@ -40,6 +40,7 @@ import { EASE } from '../../src/core/ease';
 import { TEAR_BAKE_FORMAT, type TearBakeHeader } from '../../src/core/tearBakeFormat';
 import { runRetrousse } from './retrousse.mts';
 import { runFenetre } from './fenetre.mts';
+import { runGlace } from './glace.mts';
 
 const argv = process.argv.slice(2);
 const flag = (k: string) => argv.includes(`--${k}`);
@@ -721,6 +722,9 @@ if (SCENARIO === 'retrousse') {
 } else if (SCENARIO === 'fenetre') {
   // (27/11) « Fenêtre » : scripts/bake-tear/fenetre.mts, sa propre boucle de pas (rien de la déchirure n'y est modifié)
   runFenetre({ out: OUT, preview: PREVIEW, debug: DEBUG, only: ONLY, variants: opt('variants') !== undefined ? VARIANTS : undefined });
+} else if (SCENARIO === 'glace') {
+  // (27/11) « Déchirure glacée » refaite : bloc de glace et sachet gelé qui éclatent (scripts/bake-tear/glace.mts)
+  runGlace({ out: OUT, only: ONLY });
 } else if (SCENARIO !== 'tear') throw new Error(`scénario inconnu : ${SCENARIO}`);
 else mkdirSync(OUT, { recursive: true });
 if (PREVIEW && SCENARIO === 'tear') mkdirSync('.cache/bake-tear', { recursive: true });

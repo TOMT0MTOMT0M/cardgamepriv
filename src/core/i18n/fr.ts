@@ -222,6 +222,8 @@ export const fr = {
   'shop.hint.foldMouse': 'Glisse vers le bas pour retrousser',
   'shop.hint.pushTouch': 'Glisse sur le sachet pour pousser les cartes',
   'shop.hint.pushMouse': 'Glisse sur le sachet pour pousser les cartes',
+  'shop.hint.iceTouch': 'Touche 3 fois pour briser la glace',
+  'shop.hint.iceMouse': 'Clique 3 fois pour briser la glace',
   'shop.hint.revealTouch': 'Touche pour révéler',
   'shop.hint.revealMouse': 'Clique pour révéler',
   'shop.hint.nextTouch': 'Touche pour la suivante',

@@ -299,6 +299,8 @@ export const en: Dict = {
   'shop.hint.foldMouse': 'Swipe down',
   'shop.hint.pushTouch': 'Swipe over the pack to push the cards',
   'shop.hint.pushMouse': 'Swipe over the pack to push the cards',
+  'shop.hint.iceTouch': 'Tap 3 times to break the ice',
+  'shop.hint.iceMouse': 'Click 3 times to break the ice',
   'shop.hint.revealTouch': 'Tap to reveal',
   'shop.hint.revealMouse': 'Click to reveal',
   'shop.hint.nextTouch': 'Tap for the next one',

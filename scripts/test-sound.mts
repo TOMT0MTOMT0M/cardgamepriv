@@ -80,8 +80,8 @@ check(sizeOf(bank) < 8 * 1048576, `banque trop lourde : ${mb(sizeOf(bank))} Mo`)
 check(sizeOf(mythic) < 3 * 1048576, `banque des scènes 6★ trop lourde : ${mb(sizeOf(mythic))} Mo`);
 check(sizeOf(pad) < 1048576, `nappe trop lourde : ${mb(sizeOf(pad))} Mo`);
 check(sizeOf(open) < 2 * 1048576, `sons des ouvertures trop lourds : ${mb(sizeOf(open))} Mo`);
-// tout ce que les ouvertures à gagner demandent existe (audio.ts : peel, seal)
-for (const id of ['peel', 'seal']) check(id in open, `son attendu par les ouvertures absent : ${id}`);
+// tout ce que les ouvertures demandent existe (audio.ts : peel, seal, iceCrack, iceShatter)
+for (const id of ['peel', 'seal', 'iceCrack', 'iceShatter']) check(id in open, `son attendu par les ouvertures absent : ${id}`);
 // tout ce que les scènes 6★ demandent existe (game/mythic/sounds.ts)
 for (const id of ['mBell', 'mWhistle', 'mBuzzer', 'mEngine', 'mCrowd', 'mShutter', 'mCrackle', 'mSnow', 'mTvOn', 'mChip', 'mSlot', 'mProjector', 'mBoing', 'mBuzz', 'mSizzle', 'mClank', 'mFlood', 'mShing', 'mBeep', 'mBounce', 'mGong', 'mChirp', 'mCrickets', 'mRoll', 'mSlash', 'mRumble', 'mSwell'])
   check(id in mythic, `son attendu par les scènes 6★ absent : ${id}`);

@@ -63,6 +63,22 @@
 @keyframes pv-roll-film { 0%, 14% { transform: none; } 60%, 90% { transform: scaleY(0.2); } 100% { transform: none; } }
 @keyframes pv-roll-lip { 0%, 14% { opacity: 1; transform: none; } 60%, 88% { opacity: 1; transform: translateY(28px); } 94% { opacity: 0; transform: translateY(28px); } 100% { opacity: 1; transform: none; } }
 @keyframes pv-roll-cards { 0%, 62% { transform: none; } 76%, 90% { transform: translateY(-3px); } 100% { transform: none; } }
+/* Déchirure glacée : trois coups, les fêlures s'étendent, le bloc et le sachet éclatent, les cartes restent */
+.pv-ice { fill: color-mix(in srgb, #bfe3ff 22%, transparent); stroke: color-mix(in srgb, #dff2ff 70%, var(--ink-2)); stroke-width: 0.8; }
+.pv-crack { fill: none; stroke: var(--ink); stroke-width: 0.6; stroke-linecap: round; opacity: 0; }
+.pv-shards path { fill: color-mix(in srgb, #dff2ff 45%, transparent); stroke: var(--ink-2); stroke-width: 0.5; }
+.pv-shards { opacity: 0; transform-origin: center; }
+.pv-block { transform-origin: center; }
+.pv-ice-k .pv-dot { animation-name: pv-ice-dot; }
+.pv-ice-k .pv-crack1 { animation-name: pv-ice-c1; }
+.pv-ice-k .pv-crack2 { animation-name: pv-ice-c2; }
+.pv-ice-k .pv-block { animation-name: pv-ice-block; }
+.pv-ice-k .pv-shards { animation-name: pv-ice-shards; }
+@keyframes pv-ice-dot { 0%, 6% { opacity: 0; transform: scale(1.6); } 10% { opacity: 1; transform: scale(0.9); } 16%, 20% { opacity: 0; } 25% { opacity: 1; transform: scale(0.9); } 31%, 35% { opacity: 0; } 40% { opacity: 1; transform: scale(0.9); } 46%, 100% { opacity: 0; } }
+@keyframes pv-ice-c1 { 0%, 10% { opacity: 0; } 13%, 42% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes pv-ice-c2 { 0%, 25% { opacity: 0; } 28%, 42% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes pv-ice-block { 0%, 40% { opacity: 1; transform: none; } 52% { opacity: 0; transform: scale(1.05); } 92% { opacity: 0; transform: none; } 100% { opacity: 1; transform: none; } }
+@keyframes pv-ice-shards { 0%, 40% { opacity: 0; transform: none; } 44% { opacity: 1; transform: scale(1); } 72% { opacity: 0; transform: translateY(10px) scale(1.25); } 100% { opacity: 0; transform: none; } }
 /* Fenêtre : le doigt glisse, les coins marquent, le contour se découpe, la pile avance, le panneau tombe */
 .pv-corner { fill: none; stroke: var(--ink); stroke-width: 1; stroke-linecap: round; opacity: 0; }
 .pv-cut { fill: none; stroke: var(--ink); stroke-width: 0.8; stroke-dasharray: 78; stroke-dashoffset: 78; }
