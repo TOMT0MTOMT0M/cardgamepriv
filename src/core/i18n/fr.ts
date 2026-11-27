@@ -220,6 +220,8 @@ export const fr = {
   'shop.hint.tearMouse': 'Glisse vers la droite (ou clique) pour déchirer',
   'shop.hint.foldTouch': 'Glisse vers le bas pour retrousser',
   'shop.hint.foldMouse': 'Glisse vers le bas pour retrousser',
+  'shop.hint.pushTouch': 'Glisse sur le sachet pour pousser les cartes',
+  'shop.hint.pushMouse': 'Glisse sur le sachet pour pousser les cartes',
   'shop.hint.revealTouch': 'Touche pour révéler',
   'shop.hint.revealMouse': 'Clique pour révéler',
   'shop.hint.nextTouch': 'Touche pour la suivante',

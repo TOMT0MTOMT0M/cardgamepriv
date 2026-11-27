@@ -1705,6 +1705,8 @@ body.offline .offline-pill, body.server-down .offline-pill { opacity: 1; transfo
 .coach.c-tear i { top: calc(-18px - 21vh); animation: coach-tear 1.5s cubic-bezier(0.45, 0, 0.3, 1) 0.6s 2 both; }
 /* Retroussé : le doigt descend (durées = jetons de motion.ts, rien en dur) */
 .coach.c-retrousse i { top: calc(-18px - 14vh); animation: coach-fold calc(var(--dur-emphatique) * 3) var(--ease-standard) var(--dur-emphatique) 2 both; }
+/* Fenêtre : le doigt glisse sur le milieu du sachet (même jeton) */
+.coach.c-fenetre i { top: calc(-18px - 6vh); animation: coach-fold calc(var(--dur-emphatique) * 3) var(--ease-standard) var(--dur-emphatique) 2 both; }
 @keyframes coach-tear { 0% { opacity: 0; transform: translateX(-90px); } 15% { opacity: 1; transform: translateX(-90px); } 80% { opacity: 1; transform: translateX(90px); } 100% { opacity: 0; transform: translateX(90px); } }
 @keyframes coach-fold { 0% { opacity: 0; transform: translateY(-40px); } 15% { opacity: 1; transform: translateY(-40px); } 80% { opacity: 1; transform: translateY(110px); } 100% { opacity: 0; transform: translateY(110px); } }
 @media not all { .coach i { animation: none !important; opacity: 0.8; } }

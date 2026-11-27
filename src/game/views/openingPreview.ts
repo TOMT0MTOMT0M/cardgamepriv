@@ -34,8 +34,18 @@ function rollArt() {
   return `<rect class="pv-back" x="9" y="7" width="22" height="35" rx="1.5"/>${cards(11)}<rect class="pv-bag pv-film" x="9" y="7" width="22" height="35" rx="1.5"/><rect class="pv-lip" x="8.5" y="5.8" width="23" height="3.2" rx="1.6"/>${dot(20, 7.4)}`;
 }
 
+/**
+ * Fenêtre : le doigt glisse sur le sachet, les 4 coins de la pile marquent le film, le contour se découpe, la pile
+ * avance avec le panneau plaqué, le panneau tombe : un trou au format des cartes.
+ */
+function winArt() {
+  const corners = '<path class="pv-corner" d="M12.5 14v-3h3M27.5 14v-3h-3M12.5 32v3h3M27.5 32v3h-3"/>';
+  return `<rect class="pv-bag" x="9" y="7" width="22" height="35" rx="1.5"/><path class="pv-crimp" d="M11 9.3h18M11 39.5h18"/>${cards(11)}<rect class="pv-bag pv-panel" x="12.5" y="11" width="15" height="24" rx="0.6"/>${corners}<rect class="pv-cut" x="12.5" y="11" width="15" height="24"/>${dot(20, 13)}`;
+}
+
 /** Vignette d'aperçu d'une ouverture (une nouvelle ouverture ajoute ici son dessin et ses images clés dans progression.css). */
 export function openingPreview(id: OpeningId): string {
-  const roll = id === 'retrousse';
-  return `<svg class="pv pv-${roll ? 'roll' : 'tear'}" viewBox="0 0 40 48" aria-hidden="true" focusable="false">${roll ? rollArt() : tearArt(id)}</svg>`;
+  const kind = id === 'retrousse' ? 'roll' : id === 'fenetre' ? 'win' : 'tear';
+  const art = kind === 'roll' ? rollArt() : kind === 'win' ? winArt() : tearArt(id);
+  return `<svg class="pv pv-${kind}" viewBox="0 0 40 48" aria-hidden="true" focusable="false">${art}</svg>`;
 }

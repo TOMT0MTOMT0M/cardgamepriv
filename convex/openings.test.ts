@@ -24,6 +24,8 @@ describe('animation d’ouverture à débloquer', () => {
     const me = () => t.query(api.users.me, { sessionToken: alice.token });
     expect((await me())?.openingStyle).toBeUndefined();
     await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'nope' })).rejects.toThrow(/inconnue/);
+    // « Fenêtre » : verrouillée tant que « Braise » (250 doublons brûlés) n'est pas atteint
+    await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'fenetre' })).rejects.toThrow(/⟦(profiles\.6)[⟧{]/);
     // « Retroussé » : 750 boosters ouverts (verrouillé tant qu'on n'y est pas)
     await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'retrousse' })).rejects.toThrow(/⟦(profiles\.6)[⟧{]/);
     await t.run((ctx) => ctx.db.patch(alice.userId, { totalPacksOpened: 750 }));
@@ -45,6 +47,9 @@ describe('animation d’ouverture à débloquer', () => {
     // leurs succès (« Braise » : 250 doublons brûlés ; « Cartographe » : 150 cartes World) ne débloquent plus ces deux-là
     await t.run((ctx) => ctx.db.patch(alice.userId, { econ: { earned: 0, burned: 250, gamesPlayed: 0, gamesWon: 0, rouletteWins: 0, completions: [], achievements: [] } }));
     for (const style of ['burn', 'fan']) await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style })).rejects.toThrow(/inconnue/);
+    // « Braise » débloque maintenant la Fenêtre
+    expect(await t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'fenetre' })).toEqual({ style: 'fenetre' });
+    expect((await me())?.openingStyle).toBe('fenetre');
     // un joueur qui avait choisi la Brûlure avant le retrait : rien n'est migré, le client retombe sur la déchirure
     await t.run(async (ctx) => ctx.db.patch(alice.userId, { cosmetics: { ...((await ctx.db.get(alice.userId))!.cosmetics ?? {}), opening: 'burn' } }));
     expect((await me())?.openingStyle).toBe('burn');

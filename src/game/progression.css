@@ -63,6 +63,19 @@
 @keyframes pv-roll-film { 0%, 14% { transform: none; } 60%, 90% { transform: scaleY(0.2); } 100% { transform: none; } }
 @keyframes pv-roll-lip { 0%, 14% { opacity: 1; transform: none; } 60%, 88% { opacity: 1; transform: translateY(28px); } 94% { opacity: 0; transform: translateY(28px); } 100% { opacity: 1; transform: none; } }
 @keyframes pv-roll-cards { 0%, 62% { transform: none; } 76%, 90% { transform: translateY(-3px); } 100% { transform: none; } }
+/* Fenêtre : le doigt glisse, les coins marquent, le contour se découpe, la pile avance, le panneau tombe */
+.pv-corner { fill: none; stroke: var(--ink); stroke-width: 1; stroke-linecap: round; opacity: 0; }
+.pv-cut { fill: none; stroke: var(--ink); stroke-width: 0.8; stroke-dasharray: 78; stroke-dashoffset: 78; }
+.pv-win .pv-dot { animation-name: pv-win-dot; }
+.pv-win .pv-corner { animation-name: pv-win-corner; }
+.pv-win .pv-cut { animation-name: pv-win-cut; }
+.pv-win .pv-panel { animation-name: pv-win-panel; transform-origin: center; }
+.pv-win .pv-cards { animation-name: pv-win-cards; transform-origin: center; }
+@keyframes pv-win-dot { 0% { opacity: 0; transform: none; } 10% { opacity: 1; transform: none; } 55% { opacity: 1; transform: translateY(19px); } 62%, 100% { opacity: 0; transform: translateY(19px); } }
+@keyframes pv-win-corner { 0%, 26% { opacity: 0; } 30%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pv-win-cut { 0%, 32% { stroke-dashoffset: 78; opacity: 1; } 55% { stroke-dashoffset: 0; opacity: 1; } 66%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes pv-win-panel { 0%, 55% { opacity: 1; transform: none; } 64% { opacity: 1; transform: scale(1.08); } 82% { opacity: 0; transform: translate(3px, 16px) rotate(10deg) scale(1.08); } 92% { opacity: 0; transform: none; } 100% { opacity: 1; transform: none; } }
+@keyframes pv-win-cards { 0%, 55% { transform: none; } 64%, 80% { transform: scale(1.08); } 92%, 100% { transform: none; } }
 
 /* ── page Succès : la récompense « Ouverture » (petite pochette de booster) */
 .sc-cos.k-open i { width: 8px; height: 11px; border-radius: 2px; border: 1.5px solid currentColor; }

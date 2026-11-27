@@ -297,6 +297,8 @@ export const en: Dict = {
   'shop.hint.tearMouse': 'Swipe right (or click) to tear',
   'shop.hint.foldTouch': 'Swipe down',
   'shop.hint.foldMouse': 'Swipe down',
+  'shop.hint.pushTouch': 'Swipe over the pack to push the cards',
+  'shop.hint.pushMouse': 'Swipe over the pack to push the cards',
   'shop.hint.revealTouch': 'Tap to reveal',
   'shop.hint.revealMouse': 'Click to reveal',
   'shop.hint.nextTouch': 'Tap for the next one',

@@ -456,6 +456,8 @@ export const enData: Record<string, string> = {
   'cos.Écrin doré': 'Golden case',
   'cos.blurb.tear': 'Swipe your finger to tear the top of the booster.',
   'cos.Retroussé': 'Roll-Down',
+  'cos.Fenêtre': 'Window',
+  'cos.blurb.fenetre': 'Swipe over the pack: the cards push through and break it open from the inside.',
   'cos.blurb.retrousse': 'Swipe down: the pack turns itself inside out and leaves the cards standing.',
   'cos.blurb.glace': 'The tear, in a burst of frost.',
   'cos.blurb.etoile': 'The tear, under a shower of golden stars.',

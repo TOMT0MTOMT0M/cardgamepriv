@@ -290,15 +290,17 @@ export const TITLES: Cosmetic[] = [
  * gardé au serveur (`users.cosmetics.opening`, convex/profiles.ts `setOpening`, refusé si verrouillé). Mise en scène :
  * src/game/scenes/opening.ts (`openStyleOf`).
  * (27/11, V3) Brûlure (`burn`) et Éventail (`fan`) retirés, sans migration : un choix resté rangé chez un joueur est
- * inconnu ici, donc refusé par `setOpening` et joué comme la déchirure par le client. Leurs succès (`burn-250`,
- * `world-150`) gardent leur identifiant et débloqueront deux des nouvelles ouvertures (docs/chantiers/ouvertures.md).
+ * inconnu ici, donc refusé par `setOpening` et joué comme la déchirure par le client. Leurs succès gardent leur
+ * identifiant : `burn-250` débloque la Fenêtre, `world-150` une prochaine ouverture (docs/chantiers/ouvertures.md).
  */
-export type OpeningId = 'tear' | 'retrousse' | 'glace' | 'etoile';
+export type OpeningId = 'tear' | 'retrousse' | 'fenetre' | 'glace' | 'etoile';
 // i18n-data:début
 export const OPENINGS: Array<Cosmetic & { id: OpeningId; blurb: string }> = [
   Object.defineProperty(derive(C({ id: 'tear', label: 'Déchirure' }), { id: 'tear' }), 'blurb', { get: () => tData('cos.blurb.tear', 'Glisse le doigt pour déchirer le haut du booster.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
   // (V3) Retroussé : geste vers le bas, le sachet se retourne (simulation cuite hors ligne, src/game/scenes/opening.ts)
   Object.defineProperty(derive(C({ id: 'retrousse', label: 'Retroussé', need: 'packs-750' }), { id: 'retrousse' }), 'blurb', { get: () => tData('cos.blurb.retrousse', 'Glisse vers le bas : le sachet se retourne et laisse les cartes debout.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
+  // (V3, 27/11) Fenêtre : les cartes percent la face avant de l'intérieur (simulation cuite, scripts/bake-tear/fenetre.mts)
+  Object.defineProperty(derive(C({ id: 'fenetre', label: 'Fenêtre', need: 'burn-250' }), { id: 'fenetre' }), 'blurb', { get: () => tData('cos.blurb.fenetre', 'Glisse sur le sachet : les cartes poussent et le percent de l’intérieur.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
   // (v2.1.13) Avent 2026 : la déchirure, avec un éclat de givre ou une pluie d'étoiles (src/game/scenes/opening.ts)
   Object.defineProperty(derive(C({ id: 'glace', label: 'Déchirure glacée', advent: 20 }), { id: 'glace' }), 'blurb', { get: () => tData('cos.blurb.glace', 'La déchirure, dans un éclat de givre.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
   Object.defineProperty(derive(C({ id: 'etoile', label: 'Étoile de Noël', advent: 23 }), { id: 'etoile' }), 'blurb', { get: () => tData('cos.blurb.etoile', 'La déchirure, sous une pluie d’étoiles dorées.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },

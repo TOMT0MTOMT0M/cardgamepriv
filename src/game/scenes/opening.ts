@@ -93,8 +93,8 @@ import { perfMark } from '../../core/perfLog';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { dropBakes, loadBakes, loadTearBakes, loadedBakes, loadedBakesOf, TearBakePlayer, type BakeFamily, type TearBake } from '../../core/tearBake';
-import type { TearBakeEvent } from '../../core/tearBakeFormat';
-import { DUR, ECLIPSE, MYTHIC_SILENCE, MYTHIC_TURN, RETROUSSE, STAGGER, TIER_BEAT } from '../../core/motion';
+import type { TearBakeEvent, TearBakeHeader } from '../../core/tearBakeFormat';
+import { DUR, ECLIPSE, FENETRE, MYTHIC_SILENCE, MYTHIC_TURN, RETROUSSE, STAGGER, TIER_BEAT } from '../../core/motion';
 import { burnNoise, fbmTexel, preloadNoise, type N } from '../../core/tsl';
 import { isEclipseCard } from '../eclipse';
 import { apostleStrip } from '../apostles';
@@ -125,11 +125,13 @@ import type { PackCard, SealedPack } from '../backend';
  *  - `tear` (labo 002) : on DÉCHIRE le haut du booster en glissant le doigt (ou un toucher = déchirure auto). Film
  *    simulé et cuit (tearBake.ts), bord dentelé, plastique qui blanchit, lambeaux ; les cartes sont DANS le booster
  *    (pile serrée, plus petite que le coussin : rien ne traverse l'emballage) et en sortent par le haut ;
- *  - `retrousse` (27/11, à gagner) : on glisse vers le bas, le film se retourne et laisse les cartes debout.
+ *  - `retrousse` (27/11, à gagner) : on glisse vers le bas, le film se retourne et laisse les cartes debout ;
+ *  - `fenetre` (27/11, à gagner) : on glisse, la pile pousse la face avant de l'intérieur ; les coins percent, le
+ *    contour se découpe, la pile sort par la face avec le panneau découpé plaqué dessus, qui glisse et tombe.
  * (27/11, V3) Brûlure (`burn`) et Éventail (`fan`) sont retirés : un joueur qui les avait choisis retombe sur la
  * Déchirure (`setOpeningChoice`), sans migration.
  */
-export type OpenStyle = 'tear' | 'retrousse';
+export type OpenStyle = 'tear' | 'retrousse' | 'fenetre';
 /** style de la scène : une ouverture, ou `idle` (vitrine : sachet posé, aucune maille de déchirure montrée) */
 type SceneStyle = OpenStyle | 'idle';
 /**
@@ -144,8 +146,8 @@ export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId' | 'eventI
   if (frozenStyle && frozenStyle.p === p) return frozenStyle.style;
   // (11/11) le booster du moment (événement limité) suit aussi le choix du joueur
   let style = chosenStyle;
-  // Retroussé : seulement si son lecteur est monté ET précompilé ; sinon la Déchirure (indice compris)
-  if (chosenStyle === 'retrousse' && !rollReady) style = 'tear';
+  // Retroussé, Fenêtre : seulement si leur lecteur est monté ET précompilé ; sinon la Déchirure (indice compris)
+  if ((chosenStyle === 'retrousse' && !rollReady) || (chosenStyle === 'fenetre' && !winReady)) style = 'tear';
   frozenStyle = { p, style };
   return style;
 }
@@ -154,6 +156,8 @@ let chosenStyle: OpenStyle = 'tear';
 let frozenStyle: { p: object; style: OpenStyle } | null = null;
 /** (27/11) le lecteur du Retroussé est monté et ses matériaux précompilés (posé par la scène) */
 let rollReady = false;
+/** (27/11) idem pour la Fenêtre */
+let winReady = false;
 /** (27/11) la scène suit le choix (chargement de la famille de cuissons, montage hors ouverture) */
 let choiceHook: ((s: OpenStyle) => void) | null = null;
 /**
@@ -162,7 +166,7 @@ let choiceHook: ((s: OpenStyle) => void) | null = null;
  */
 export function setOpeningChoice(id: string | undefined) {
   const before = chosenStyle;
-  chosenStyle = id === 'retrousse' ? id : 'tear';
+  chosenStyle = id === 'retrousse' || id === 'fenetre' ? id : 'tear';
   chosenSkin = id === 'glace' || id === 'etoile' ? id : '';
   if (chosenStyle !== before) {
     frozenStyle = null;
@@ -410,6 +414,15 @@ function rollWeldsOf(ev: readonly TearBakeEvent[]): number[] {
     else (out.push(a.p!), (i += 1));
   }
   return out.filter((p, i, a) => i === 0 || p > a[i - 1]);
+}
+/**
+ * (27/11) Fenêtre : la résistance monte sans que rien ne casse (seuil de départ fort), butée juste avant le premier coin
+ * qui perce (les 4 coins cèdent ensemble passé ce point), puis le film se laisse découper (seuil faible).
+ */
+const WIN_NEED = { first: 0.12, weld: 0.05, film: 0.012 };
+function winWeldsOf(ev: readonly TearBakeEvent[]): number[] {
+  const c = ev.filter((e) => e.k === 'corner' && e.p !== undefined).map((e) => e.p!);
+  return c.length ? [0, Math.max(0.01, Math.min(...c) - 0.005)] : [0];
 }
 /** vitesse de la déchirure demandée (progression / s) : en dessous de `slow` tout accroche, au-delà de `fast` ça tranche */
 const TEAR_SPEED = { slow: 1.2, fast: 5 };
@@ -778,6 +791,12 @@ export function createOpeningScene(): OpeningScene {
   const tearRate = 1000 / DUR.rapide();
   /** (S3) fente de lumière rasante à l'intérieur de la coupe (0..1) */
   const TSLIT = uniform(0);
+  /**
+   * (27/11) Fenêtre : fente de lumière le long du contour découpé — WCUT 0..1 : avancée des fronts depuis les coins (0 =
+   * rien, 1 = jusqu'au milieu des bords, d'après la part du contour rompue `cut`), WSLIT : intensité (s'éteint en sortie)
+   */
+  const WCUT = uniform(0);
+  const WSLIT = uniform(0);
   let autoTear: gsap.core.Tween | null = null;
   const tearShake = new Spring(0, 420, 16);
   /**
@@ -798,10 +817,43 @@ export function createOpeningScene(): OpeningScene {
   let poseStrip: boolean | null = null;
   function setTearVisible(on: boolean) {
     // (27/11) le maillage procédural de la Déchirure ne s'affiche jamais par-dessus le Retroussé
-    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = on && !useBake && !rolling;
+    if (tearBody && tearStrip) tearBody.visible = tearStrip.visible = on && !useBake && !rolling && !windowing;
     if (bakedBody && bakedStrip) bakedBody.visible = bakedStrip.visible = on && useBake;
     if (rollBody) rollBody.visible = on && rolling;
+    if (winBody && winPanel) winBody.visible = winPanel.visible = on && windowing;
   }
+  /**
+   * (27/11) FENÊTRE (core/tearBake.ts, scripts/bake-tear/fenetre.mts) : la pile pousse la face avant de l'intérieur, les
+   * coins percent, le contour se découpe, la pile sort vers le joueur avec le panneau plaqué dessus. Troisième lecteur
+   * (`winPlayer` : sachet troué + panneau), monté et précompilé HORS ouverture comme le Retroussé ; même état du geste
+   * (tearTarget / tearProgress / stick-slip / bakePlay / bakeExit), points durs `winWelds`. La pile suit l'avancée
+   * enregistrée (`followZ`, en-tête `window`).
+   */
+  let windowing = false;
+  let winPlayer: TearBakePlayer | null = null;
+  let winBody: Mesh | null = null;
+  let winPanel: Mesh | null = null;
+  let winMats: Material[] | null = null;
+  let winWarm = false;
+  let winHeadWait: (() => void) | null = null;
+  let winEv: TearBakeEvent[] = [];
+  let winEvI = 0;
+  let winWelds: number[] = [0];
+  /** avant le premier coin, rien ne laisse voir les cartes : butée tant que la pile n'est pas prête */
+  let winGate = 2;
+  /** coins et coup sec en attente (un au plus par FENETRE.coup) ; crépitement : part du contour rompue au dernier grain */
+  const winQ: TearBakeEvent[] = [];
+  let winCoupAt = 0;
+  let winCutAt = 0;
+  /** avancée de la pile (monde) gardée au lâcher du sachet, ramenée à 0 au rangement (× R.k) */
+  let winKeep = 0;
+  /** avancée de la pile (unités du sachet) : phase pilotée p → push · p, sortie t → push … out (EASE.glide, outDur) */
+  const winZ = (h: TearBakeHeader, f: { p?: number; t?: number }) => {
+    const w = h.window;
+    if (!w) return 0;
+    if (f.t === undefined) return w.push * Math.min(1, Math.max(0, f.p ?? 0));
+    return w.push + (w.out - w.push) * EASE.glide(Math.min(1, Math.max(0, f.t / w.outDur)));
+  };
   /**
    * (27/11) RETROUSSÉ (core/tearBake.ts, scripts/bake-tear/retrousse.mts) : le doigt descend, la soudure du haut cède,
    * le film se retourne le long d'un pli roulé qui descend ; cartes debout. Second lecteur (`rollPlayer`), monté et
@@ -1217,7 +1269,23 @@ export function createOpeningScene(): OpeningScene {
    * émission. Ni masque, ni blanchiment, ni fente de lumière.
    */
   const ROLL_INNER = { tint: 0.9, metal: 1, rough: 0.6 };
-  function buildRollMaterials(art: PackArt) {
+  /**
+   * (27/11) Fenêtre : la fente de lumière (0..1) d'un point du film à ses coordonnées de REPOS (uv) — bande de ±2 mm
+   * autour du contour de la pile, ouverte depuis chaque coin jusqu'à WCUT (abscisse le long du bord : 0 au coin, 1 au
+   * milieu), plus forte au coin qui vient de percer. Face avant seulement (les uv du dos sont retournées).
+   */
+  function winSlit(uvn: N): N {
+    const hw = PACK_STACK.hw, hh = PACK_STACK.hh;
+    const px = uvn.x.sub(0.5).mul(PACK.w), py = uvn.y.sub(0.5).mul(PACK.h).sub(PACK_STACK.cy);
+    const dx = px.abs().sub(hw), dy = py.abs().sub(hh);
+    const band = float(1).sub(smoothstep(0.0005, 0.0025, max(dx, dy).abs()));
+    // abscisse le long du bord le plus proche : 0 au coin, 1 au milieu du bord
+    const s = tclamp(select(dx.greaterThan(dy), dy.negate().div(hh), dx.negate().div(hw)), 0, 1);
+    const open = smoothstep(WCUT.add(0.03), WCUT.sub(0.03), s);
+    const corner = float(1).sub(smoothstep(0, 0.12, s)).mul(0.6);
+    return band.mul(open.mul(float(1).add(corner))).mul(WSLIT);
+  }
+  function buildRollMaterials(art: PackArt, win = false) {
     const uvn = uv();
     const front = texture(art.front, uvn);
     const back = texture(art.back, uvn);
@@ -1238,7 +1306,13 @@ export function createOpeningScene(): OpeningScene {
       m.metalnessNode = select(frontFacing, S.metal, float(ROLL_INNER.metal));
       m.roughnessNode = select(frontFacing, S.rough, float(ROLL_INNER.rough));
       // fuite de lumière (003) à l'extérieur, comme le sachet scellé ; l'envers n'émet rien
-      m.emissiveNode = select(frontFacing, (U.ember as unknown as N).mul(masks.b.mul(1.4).add(S.crans.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)), vec3(0, 0, 0));
+      const leak = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(S.crans.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak));
+      if (!win || side === 1) m.emissiveNode = select(frontFacing, leak, vec3(0, 0, 0));
+      else {
+        // (27/11) Fenêtre : la lumière de l'intérieur passe par la découpe (les deux lèvres, l'envers un peu moins)
+        const slit = (U.ember as unknown as N).mul(winSlit(uvn).mul(2.2));
+        m.emissiveNode = select(frontFacing, leak.add(slit), slit.mul(0.6));
+      }
       // positions et normales écrites par TearBakePlayer ; le relief des plis du booster s'ajoute selon la normale
       const crLift = creaseLift(tearSwaps, art, side);
       if (crLift) m.positionNode = positionLocal.add(normalLocal.mul(side === 0 ? crLift.z : crLift.z.negate()));
@@ -1466,6 +1540,113 @@ export function createOpeningScene(): OpeningScene {
         flushQueued();
       }, [], RETROUSSE.ouvert);
       lightRim(sideline(gsap.timeline()), order[0], RETROUSSE.ouvert / qk);
+      tl.timeScale(qk);
+      out.timeScale(qk);
+    });
+  }
+
+  /**
+   * (27/11) FENÊTRE : progression du geste (0..1) — l'anneau de la boutique et le relais. Les sons et vibrations
+   * suivent la TÊTE DE LECTURE (winCross / winKnock, dans la boucle) : calés sur l'image qui perce.
+   */
+  function setWinProgress(p: number) {
+    tearProgress = p;
+    TP.value = p;
+    events.onHold?.(Math.min(1, p));
+    if (p >= 1 && phase === 'sealed') onWindowed();
+  }
+  /**
+   * (27/11) tête de lecture de la Fenêtre : coins franchis et coup sec final en file (un au plus par FENETRE.coup) ;
+   * crépitement des fronts selon la part du contour qui a cédé depuis le grain précédent (en-tête `cut`), en grains
+   * espacés d'au moins FENETRE.grain
+   */
+  function winCross(play: number) {
+    while (winEvI < winEv.length && winEv[winEvI].p! <= play) {
+      const e = winEv[winEvI++];
+      if (winQ.length < 5) winQ.push(e);
+    }
+    const cut = winPlayer?.header.cut;
+    if (!cut?.length) return;
+    const f = Math.min(1, play) * (cut.length - 1), i = Math.floor(f), i1 = Math.min(cut.length - 1, i + 1);
+    const c = cut[i] + (cut[i1] - cut[i]) * (f - i);
+    const d = c - winCutAt;
+    if (d < 0.004) return;
+    const now = performance.now();
+    if (now - tearSndAt < FENETRE.grain * 1000) return;
+    ctx.sfx.peel(DUR.instant / 1000 + Math.min(FENETRE.grainMax, d * 1.5), 0.03 + Math.min(0.08, d * 1.2));
+    if (d > 0.02) haptics.pulse(4);
+    tearSndAt = now;
+    winCutAt = c;
+  }
+  function winKnock() {
+    if (!winQ.length) return;
+    const now = performance.now();
+    if (now - winCoupAt < FENETRE.coup * 1000) return;
+    winCoupAt = now;
+    const e = winQ.shift()!;
+    if (e.k === 'corner') {
+      // un coin de carte perce le film : un claquement net, une vibration par coin
+      ctx.sfx.seal(0.85 + 0.1 * Math.random(), 0.26, e.x * 0.5);
+      haptics.pulse(10);
+      shake.impulse(1.2);
+    } else if (e.k === 'free') {
+      // le dernier lien du contour cède : coup sec
+      ctx.sfx.seal(0.6, 0.34, 0);
+      ctx.sfx.peel(FENETRE.sec, 0.12);
+      haptics.pulse(18);
+      shake.impulse(2.2);
+    }
+  }
+  /**
+   * (27/11) Fenêtre découpée : sortie cuite (la pile sort vers le joueur, le panneau plaqué dessus puis il glisse et
+   * tombe), la main lâche le sachet percé qui tombe, la pile revient à sa place — même état final que la Déchirure. Les
+   * cartes gardent leur avancée et l'échelle du sachet après le lâcher (R.k, R.s → 0 au rangement : rien ne saute).
+   */
+  function onWindowed() {
+    phase = 'busy';
+    holding = false;
+    autoTear?.kill();
+    autoTear = null;
+    setRollLock(false);
+    winCross(1);
+    const head = () => new Promise<void>((r) => (winPlayer && bakePlay < 1 ? (winHeadWait = r) : r()));
+    void (prepared ?? Promise.resolve()).then(head).then(() => {
+      if (!pack) return;
+      kill();
+      const n = order.length;
+      tl = gsap.timeline();
+      const out = sideline(gsap.timeline());
+      bakePlay = 1;
+      fly.t = 1;
+      const w = winPlayer?.header.window;
+      if (winPlayer) {
+        const h = winPlayer.header;
+        const T = (h.nExit - 1) / h.exitFps;
+        out.fromTo(bakeExit, { t: 0 }, { t: T, duration: T, ease: 'none' }, 0);
+        // le panneau quitte la carte : un froissement léger
+        if (w) out.call(() => ctx.sfx.peel(FENETRE.grainMax, 0.05), [], w.dropAt);
+      }
+      // la main lâche le sachet percé : les cartes gardent leur avancée (winKeep) et l'échelle du sachet (R.s)
+      out.call(() => {
+        winKeep = followZ;
+        R.k = 1;
+        R.s = 1;
+      }, [], FENETRE.chute);
+      out.to(B, { follow: 0, duration: FENETRE.lache, ease: EASE.glide }, FENETRE.chute).to(B, { y: -2.6, duration: FENETRE.tombe, ease: EASE.heave }, FENETRE.chute);
+      const qk = autoQuick() ? 1.6 : 1;
+      tl.call(() => {
+        const c = sideline(gsap.timeline());
+        c.to(S, { push: 0, duration: FENETRE.pose, ease: EASE.glide }, 0);
+        c.to(R, { k: 0, s: 0, duration: FENETRE.pose, ease: EASE.settle }, 0);
+        order.forEach((si, k) => c.to(slots[si].p, { y: 0, z: -STACK_DZ * (n - 1 - k), s: 1, rz: (k - 2) * 0.012, duration: FENETRE.pose, ease: EASE.settle }, k * FENETRE.decale));
+        c.timeScale(qk);
+      }, [], FENETRE.range);
+      tl.call(() => {
+        phase = 'opened';
+        events.onOpened?.();
+        flushQueued();
+      }, [], FENETRE.ouvert);
+      lightRim(sideline(gsap.timeline()), order[0], FENETRE.ouvert / qk);
       tl.timeScale(qk);
       out.timeScale(qk);
     });
@@ -1816,9 +1997,28 @@ export function createOpeningScene(): OpeningScene {
     frozenStyle = null;
     // (27/11) Retroussé sans lecteur prêt (cuisson libérée entre-temps) : la Déchirure, sans écran vide
     if (style === 'retrousse' && !(rollPlayer && rollBody && rollReady)) style = 'tear';
+    if (style === 'fenetre' && !(winPlayer && winBody && winReady)) style = 'tear';
     rolling = style === 'retrousse';
+    windowing = style === 'fenetre';
     // la pile est DANS le booster (au plan des cartes) ; en vitrine, elle se tient 12 cm derrière (reset)
     followZ = 0;
+    winKeep = 0;
+    WCUT.value = WSLIT.value = 0;
+    winQ.length = 0;
+    winCutAt = 0;
+    winHeadWait = null;
+    if (windowing) {
+      // une des variantes de la Fenêtre, au hasard ; ses coins donnent la butée et les claquements
+      const wb = loadedBakesOf('fenetre');
+      const b = wb.length ? wb[Math.floor(Math.random() * wb.length)] : null;
+      if (b) winPlayer!.use(b);
+      const h = winPlayer!.header;
+      winEv = (h.events ?? []).filter((e) => e.p !== undefined).sort((a, c) => a.p! - c.p!);
+      winEvI = 0;
+      winWelds = winWeldsOf(winEv);
+      winGate = winWelds.length > 1 ? winWelds[1] : 2;
+      winPlayer!.setTear(0);
+    }
     tearTarget = tearProgress = tearPrevTarget = tearVel = tearWeld = 0;
     tearSlip = tearFling = false;
     TSLIT.value = 0;
@@ -1863,7 +2063,7 @@ export function createOpeningScene(): OpeningScene {
     }
     if (packMeshMain) packMeshMain.visible = false;
     setTearVisible(true);
-    setRollLock(rolling && !o.continued);
+    setRollLock((rolling || windowing) && !o.continued);
     // (retours live 02, anti-spoil) braise et fuite de lumière : une seule couleur pour tous les boosters (avant : la
     // couleur de la meilleure carte, qui annonçait une rouge ou une 6★ dès que le booster était posé)
     U.ember.value.set(NEUTRAL_EMBER);
@@ -1876,8 +2076,8 @@ export function createOpeningScene(): OpeningScene {
     autoWait = false;
     phase = 'sealed';
     prepared = prepare(p);
-    rollPileReady = !rolling;
-    if (rolling)
+    rollPileReady = !rolling && !windowing;
+    if (rolling || windowing)
       void prepared.then(() => {
         if (pack === p) rollPileReady = true;
       });
@@ -2344,7 +2544,7 @@ export function createOpeningScene(): OpeningScene {
     }
     if (phase === 'sealed') {
       // un toucher l'ouvre tout seul (déchirure ou retroussé automatique)
-      startAutoTear(rolling ? RETROUSSE.auto : 1.05);
+      startAutoTear(rolling ? RETROUSSE.auto : windowing ? FENETRE.auto : 1.05);
       return;
     }
     if (phase === 'opened') revealCurrent();
@@ -2385,6 +2585,10 @@ export function createOpeningScene(): OpeningScene {
     phase = 'display';
     style = 'idle';
     rolling = false;
+    windowing = false;
+    winQ.length = 0;
+    winKeep = 0;
+    winHeadWait = null; // (suite d'une Fenêtre abandonnée : jamais jouée)
     queued = false;
     curBase = 1;
     revealed = false;
@@ -2448,7 +2652,7 @@ export function createOpeningScene(): OpeningScene {
     },
     /** diagnostic (tests) : état de la pile */
     debug() {
-      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, eclipse: { on: eclipse, aura: +E.aura.toFixed(2), dark: +E.dark.toFixed(2), sky: +E.sky.toFixed(2), rip: +E.rip.toFixed(2) }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, weld: tearWeld, slit: +(TSLIT.value as number).toFixed(3), bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, roll: rolling ? (rollPlayer?.header.index ?? -1) : -1, rollReady, play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
+      return { style, booster: boosterKey, want: wantKey, arts: [...arts.keys()], artOk: { pack: packNodes.front?.value === arts.get(boosterKey)?.front, tear: tearNodes.every((n) => n.front.value === arts.get(boosterKey)?.front) }, leak: { u: +(U.leak.value as number).toFixed(3), glow: +S.glow.toFixed(3), t: +sealedT.toFixed(2), ember: '#' + (U.ember.value as Color).getHexString() }, eclipse: { on: eclipse, aura: +E.aura.toFixed(2), dark: +E.dark.toFixed(2), sky: +E.sky.toFixed(2), rip: +E.rip.toFixed(2) }, reveal: { revealed, curTier, autoWait, timeScale: tl ? +tl.timeScale().toFixed(2) : 0 }, tear: { target: +tearTarget.toFixed(3), progress: +tearProgress.toFixed(3), holding, weld: tearWeld, slit: +(TSLIT.value as number).toFixed(3), bake: useBake ? (bakePlayer?.header.index ?? -1) : -1, roll: rolling ? (rollPlayer?.header.index ?? -1) : -1, rollReady, win: windowing ? (winPlayer?.header.index ?? -1) : -1, winReady, followZ: +followZ.toFixed(4), play: +bakePlay.toFixed(3), exit: +bakeExit.t.toFixed(3) }, fx: { flare: +S.flare.toFixed(2), shock: +S.shock.toFixed(2), invert: +S.invert.toFixed(2) }, cursor, order: [...order], insets: { ...insets, sum: sumInset }, slots: slots.map((s) => ({ id: s.data.cardId, name: s.data.cardName, art: s.cd.name, rarity: s.data.rarity, flip: +s.p.flip.toFixed(2), z: +s.p.z.toFixed(3), rect: screenRect(s) })) };
     },
     setBooster,
     setEventBooster(ev) {
@@ -2791,6 +2995,26 @@ export function createOpeningScene(): OpeningScene {
           return true;
         };
         c.bag.fn(() => rollPlayer?.dispose());
+        /**
+         * (27/11) FENÊTRE : son lecteur et ses deux mailles (sachet troué, panneau), mêmes matériaux que le Retroussé
+         * (extérieur du sachet, envers en alu mat, des deux côtés : on voit l'intérieur du dos par le trou)
+         */
+        const mountWin = (b: TearBake | null) => {
+          if (!b || gone || winPlayer) return false;
+          winPlayer = new TearBakePlayer(b);
+          const fresh = !winMats;
+          winMats ??= buildRollMaterials(arts.get(boosterKey)!, true);
+          winBody = new Mesh(winPlayer.body, winMats);
+          winPanel = new Mesh(winPlayer.strip, winMats);
+          if (fresh) winMats.forEach((x) => c.bag.add(x));
+          for (const m of [winBody, winPanel]) {
+            m.frustumCulled = false;
+            m.visible = false;
+            packRig.add(m);
+          }
+          return true;
+        };
+        c.bag.fn(() => winPlayer?.dispose());
         /** précompile des mailles montées après le préchauffage : hors champ (derrière la caméra), en vitrine seulement */
         const warmLate = async (ms: Mesh[]) => {
           const wait = () => new Promise<void>((r) => setTimeout(r, 400));
@@ -2812,7 +3036,7 @@ export function createOpeningScene(): OpeningScene {
               m.visible = false;
               // (27/11) maille libérée pendant la compilation (le joueur est revenu à l'autre ouverture) : retirée de la
               // scène, pas remise orpheline dans le sachet
-              if (m === rollBody || m === bakedBody || m === bakedStrip) packRig.add(m);
+              if (m === rollBody || m === bakedBody || m === bakedStrip || m === winBody || m === winPanel) packRig.add(m);
               else {
                 m.dispatchEvent({ type: 'dispose' } as never); // (comme releaseSlot : ses matériaux sont gardés)
                 stage.scene.remove(m);
@@ -2827,6 +3051,15 @@ export function createOpeningScene(): OpeningScene {
           if (!rollReady && (await warmLate([rollBody!])) && bakeFam === 'retrousse') {
             rollReady = true;
             // le Retroussé est prêt : la Déchirure n'a plus besoin de ses cuissons (libérées hors ouverture)
+            toRelease.add('tear');
+            releaseFamilies();
+          }
+        };
+        const lateWin = async (b: TearBake | null) => {
+          if (bakeFam !== 'fenetre' || gone) return;
+          if (!winPlayer && !mountWin(b)) return;
+          if (!winReady && (await warmLate([winBody!, winPanel!])) && bakeFam === 'fenetre') {
+            winReady = true;
             toRelease.add('tear');
             releaseFamilies();
           }
@@ -2857,6 +3090,14 @@ export function createOpeningScene(): OpeningScene {
               rollPlayer.dispose();
               rollPlayer = null;
               rollBody = null;
+            } else if (fam === 'fenetre' && winPlayer && winBody && winPanel) {
+              winReady = false;
+              winBody.dispatchEvent({ type: 'dispose' } as never);
+              winPanel.dispatchEvent({ type: 'dispose' } as never);
+              packRig.remove(winBody, winPanel);
+              winPlayer.dispose();
+              winPlayer = null;
+              winBody = winPanel = null;
             } else if (fam === 'tear' && bakePlayer && bakedBody && bakedStrip) {
               bakedBody.dispatchEvent({ type: 'dispose' } as never);
               bakedStrip.dispatchEvent({ type: 'dispose' } as never);
@@ -2870,26 +3111,39 @@ export function createOpeningScene(): OpeningScene {
         // le joueur change d'ouverture en cours de session : la famille de cuissons suit (chargée, montée, précompilée
         // hors ouverture) ; l'autre est libérée au retour en vitrine
         choiceHook = (s) => {
-          const fam: BakeFamily = s === 'retrousse' ? 'retrousse' : 'tear';
+          const fam: BakeFamily = s === 'retrousse' || s === 'fenetre' ? s : 'tear';
           if (fam === bakeFam) return;
+          const was = bakeFam;
           bakeFam = fam;
-          if (fam === 'retrousse') {
-            // (27/11) ses sons (livre `ouvertures`) se cuisent en même temps que ses cuissons se chargent
-            ctx.sfx.loadBook('ouvertures');
-            void loadBakes('retrousse').then(lateRoll);
-          } else {
-            rollReady = false;
-            toRelease.add('retrousse');
+          if (was === 'retrousse') rollReady = false;
+          if (was === 'fenetre') winReady = false;
+          if (was !== 'tear') {
+            toRelease.add(was);
             releaseFamilies();
-            void loadTearBakes().then(lateTear);
           }
+          // (27/11) leurs sons (livre `ouvertures`) se cuisent en même temps que leurs cuissons se chargent
+          if (fam !== 'tear') ctx.sfx.loadBook('ouvertures');
+          if (fam === 'retrousse') void loadBakes('retrousse').then(lateRoll);
+          else if (fam === 'fenetre') void loadBakes('fenetre').then(lateWin);
+          else void loadTearBakes().then(lateTear);
         };
         c.bag.fn(() => {
           choiceHook = null;
           rollReady = false;
+          winReady = false;
           setRollLock(false);
         });
-        if (chosenStyle !== 'retrousse') {
+        if (chosenStyle === 'fenetre') {
+          // (27/11) Fenêtre choisie : on ne charge QUE ses cuissons ; même attente bornée que la Déchirure
+          bakeFam = 'fenetre';
+          ctx.sfx.loadBook('ouvertures');
+          const first = loadBakes('fenetre');
+          lap('sachet');
+          const b0 = await Promise.race([first, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
+          lap(`attente fenêtre${b0 ? '' : ' (pas arrivée)'}`); // i18n-ok
+          if (b0 && mountWin(b0)) winWarm = winBody!.visible = winPanel!.visible = true;
+          else void first.then(lateWin);
+        } else if (chosenStyle !== 'retrousse') {
           const first = loadTearBakes();
           lap('sachet');
           const b0 = await Promise.race([first, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
@@ -3282,6 +3536,11 @@ export function createOpeningScene(): OpeningScene {
         rollBody.visible = false;
         if (rollWarm && bakeFam === 'retrousse') rollReady = true;
       }
+      // (27/11) Fenêtre arrivée à temps : idem
+      if (winBody && winPanel) {
+        winBody.visible = winPanel.visible = false;
+        if (winWarm && bakeFam === 'fenetre') winReady = true;
+      }
       c.bag.fn(() => warm.forEach((m) => m.dispose()));
 
       // maintenir pour ouvrir (souris, doigt, espace) ; déchirure : le glisser est suivi ici, au pixel près
@@ -3313,6 +3572,8 @@ export function createOpeningScene(): OpeningScene {
         tearX = (e as PointerEvent).clientX ?? null;
         tearY = (e as PointerEvent).clientY ?? 0;
         if (rolling) travelPx = rollTravel();
+        // (27/11) Fenêtre : toute la poussée sur 45 % de la hauteur de l'écran, vers le bas ou vers le haut
+        else if (windowing) travelPx = Math.max(120, (ctx.height || 800) * 0.45);
         e.preventDefault?.();
       };
       const up = () => {
@@ -3338,6 +3599,11 @@ export function createOpeningScene(): OpeningScene {
         // course (remontée du cadrage déduite, rollTravel) — en route, l'écart suit la loi de la charnière cuite (yF)
         if (rolling) {
           if (dy > 0) tearTarget = Math.min(1.08, tearTarget + dy / travelPx);
+          return;
+        }
+        // (27/11) Fenêtre : on glisse sur le sachet, dans un sens ou dans l'autre (en vertical) : la pile pousse
+        if (windowing) {
+          tearTarget = Math.min(1.08, tearTarget + Math.abs(dy) / travelPx);
           return;
         }
         // (lot 07) le geste est projeté sur la direction de pelage (droite + un peu vers le haut : un arc de pouce en
@@ -3428,7 +3694,7 @@ export function createOpeningScene(): OpeningScene {
       // stick-slip DÉTERMINISTE (lot 07, voir TEAR_WELDS) : elle accroche, la tension monte (le sachet penche un rien),
       // puis elle file jusqu'au doigt d'un coup — crans espacés si le geste est lent, coupe continue s'il est vif
       if (phase === 'sealed') {
-        if (auto.burn) startAutoTear(rolling ? RETROUSSE.autoSerie : 0.9);
+        if (auto.burn) startAutoTear(rolling ? RETROUSSE.autoSerie : windowing ? FENETRE.autoSerie : 0.9);
         // maintenir sans glisser : la bande avance doucement toute seule (clavier, appui long)
         if (holding && !ctx.input.dragging) tearTarget = Math.min(1.08, tearTarget + dt * 0.45);
         // vitesse demandée (doigt, clavier ou déchirure auto), lissée sur ~60 ms
@@ -3439,25 +3705,28 @@ export function createOpeningScene(): OpeningScene {
         const gap = tearTarget - tearProgress;
         let tension = 0;
         // (27/11) Retroussé : mêmes à-coups, points durs de la variante tirée (verrou, paires de crans), sans tearCatch
-        const welds = rolling ? rollWelds : TEAR_WELDS;
-        const needs = rolling ? ROLL_NEED : TEAR_NEED;
+        // (27/11) Fenêtre : butée avant le premier coin, puis le film se laisse découper (winWeldsOf)
+        const welds = rolling ? rollWelds : windowing ? winWelds : TEAR_WELDS;
+        const needs = rolling ? ROLL_NEED : windowing ? WIN_NEED : TEAR_NEED;
         if (!tearSlip) {
           const weld = tearProgress >= (welds[tearWeld] ?? 2) - 1e-4;
           const need = (tearWeld === 0 ? needs.first : weld ? needs.weld : needs.film) * (1 - 0.85 * fastK);
           if (gap > need) {
             tearSlip = true;
             if (weld) tearWeld++;
-            if (!rolling) tearCatch(gap, weld, fastK);
+            if (!rolling && !windowing) tearCatch(gap, weld, fastK);
           } else tension = Math.max(0, gap) / need;
         }
         if (tearSlip) {
           // la bande file (à la vitesse d'une coupe nette : toute la course en DUR.rapide) jusqu'au doigt, ou bute sur
           // le point de soudure suivant
-          // (Retroussé : pas plus bas que le haut des cartes tant que la pile n'est pas prête, voir rollGate)
-          const stop = Math.min(tearTarget, welds[tearWeld] ?? 2, rolling && !rollPileReady ? rollGate : 2);
+          // (Retroussé : pas plus bas que le haut des cartes tant que la pile n'est pas prête, voir rollGate ; Fenêtre :
+          // pas de coin percé tant qu'elle ne l'est pas, voir winGate)
+          const gate = rollPileReady ? 2 : rolling ? rollGate : windowing ? winGate : 2;
+          const stop = Math.min(tearTarget, welds[tearWeld] ?? 2, gate);
           const next = Math.min(stop, tearProgress + dts * tearRate);
           if (next >= stop) tearSlip = false;
-          if (next > tearProgress) (rolling ? setRollProgress : setTearProgress)(next);
+          if (next > tearProgress) (rolling ? setRollProgress : windowing ? setWinProgress : setTearProgress)(next);
         }
         S.trem = tension * 0.2 * (1 - fastK);
       }
@@ -3465,8 +3734,38 @@ export function createOpeningScene(): OpeningScene {
       TFLY.value = fly.t;
       // (S3) fente de lumière : s'ouvre avec la coupe (la tête de lecture de l'enregistrement si on le rejoue), s'éteint
       // pendant que la bande s'envole
-      TSLIT.value = style === 'idle' || rolling ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
-      if (rolling && rollPlayer) {
+      TSLIT.value = style === 'idle' || rolling || windowing ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
+      if (windowing && winPlayer) {
+        // (27/11) Fenêtre : même tête de lecture lissée ; la pile avance avec la cuisson (followZ, unités du monde)
+        const h = winPlayer.header;
+        if (bakeExit.t < 0) {
+          const goal = Math.min(1, tearProgress);
+          bakePlay += (goal - bakePlay) * (1 - Math.exp(-dt * 28));
+          if (Math.abs(goal - bakePlay) < 5e-4) bakePlay = goal;
+          winPlayer.setTear(bakePlay);
+          winCross(bakePlay);
+          followZ = winZ(h, { p: bakePlay }) * packRig.scale.x;
+          // fente de lumière : s'allume au premier coin, les fronts avancent avec la part du contour rompue
+          const cut = h.cut;
+          if (cut?.length) {
+            const f = bakePlay * (cut.length - 1), i = Math.floor(f), i1 = Math.min(cut.length - 1, i + 1);
+            WCUT.value = Math.min(1, (cut[i] + (cut[i1] - cut[i]) * (f - i)) * 1.15);
+          }
+          WSLIT.value = winWelds.length > 1 ? sstep(winWelds[1], winWelds[1] + 0.03, bakePlay) : 0;
+          if (winHeadWait && bakePlay >= 1) {
+            const go = winHeadWait;
+            winHeadWait = null;
+            go();
+          }
+        } else {
+          winPlayer.setExit(bakeExit.t);
+          followZ = winZ(h, { t: bakeExit.t }) * packRig.scale.x;
+          WCUT.value = 1;
+          WSLIT.value = 1 - sstep(0, FENETRE.chute, bakeExit.t);
+          if (winPanel) winPanel.visible = winPlayer.stripVisible(bakeExit.t);
+        }
+        winKnock();
+      } else if (rolling && rollPlayer) {
         // (27/11) Retroussé : même tête de lecture lissée que la Déchirure ; claquements quand elle franchit une rupture
         if (bakeExit.t < 0) {
           const goal = Math.min(1, tearProgress);
@@ -3521,7 +3820,7 @@ export function createOpeningScene(): OpeningScene {
         }
         shreds.instanceMatrix.needsUpdate = true;
       }
-      if (shreds) shreds.visible = style !== 'idle' && !rolling;
+      if (shreds) shreds.visible = style !== 'idle' && !rolling && !windowing;
       // défilement accéléré : retourne / range tout seul les cartes sous le seuil ; s'arrête sur les belles
       if (auto.minRank > 0 || auto.reveal) {
         const cur = order[cursor];
@@ -3726,11 +4025,13 @@ export function createOpeningScene(): OpeningScene {
         tmpQ.slerp(packQ, f);
         cardsRig.quaternion.copy(tmpQ);
         cardsRig.position.copy(followPos).multiplyScalar(f);
-        // (27/11) Retroussé : la main lâche tôt (B.follow → 0), les cartes gardent l'échelle du sachet jusqu'au rangement
-        cardsRig.scale.setScalar(1 + (packRig.scale.x - 1) * (rolling ? Math.max(f, R.s) : f));
+        // (27/11) Fenêtre : la pile sortie garde son avancée après le lâcher du sachet, jusqu'au rangement (R.k)
+        if (windowing) cardsRig.position.z += winKeep * R.k * (1 - f);
+        // (27/11) Retroussé, Fenêtre : la main lâche tôt (B.follow → 0), les cartes gardent l'échelle du sachet jusqu'au rangement
+        cardsRig.scale.setScalar(1 + (packRig.scale.x - 1) * (rolling || windowing ? Math.max(f, R.s) : f));
       } else {
-        cardsRig.position.set(0, 0, 0);
-        cardsRig.scale.setScalar(rolling ? 1 + (packRig.scale.x - 1) * R.s : 1);
+        cardsRig.position.set(0, 0, windowing ? winKeep * R.k : 0);
+        cardsRig.scale.setScalar(rolling || windowing ? 1 + (packRig.scale.x - 1) * R.s : 1);
       }
       const shk = fxk('shake');
       rig.position.set((shake.value * 0.004 + Math.sin(t * 61) * 0.002 * tr) * shk, (shake2.value * 0.004 + Math.sin(t * 47) * 0.002 * tr) * shk, 0);
