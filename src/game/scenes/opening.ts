@@ -867,6 +867,11 @@ export function createOpeningScene(): OpeningScene {
   let starSince = 0;
   let starAuto: gsap.core.Tween | null = null;
   const STAR_GOLD = '#ffd36b';
+  /** notes du tracé : la gamme du jeu qui monte et redescend (degrés) */
+  const STAR_NOTES = [5, 7, 9, 10, 12, 14, 12, 10, 9, 7];
+  let starNoteI = 0;
+  /** point du tracé lissé (le doigt tremble : la baguette suit avec un léger retard) */
+  let starSmooth: { x: number; y: number } | null = null;
   const starA = new Vector3(), starB = new Vector3();
   /**
    * (27/11) FENÊTRE (core/tearBake.ts, scripts/bake-tear/fenetre.mts) : la pile pousse la face avant de l'intérieur, les
@@ -1134,7 +1139,7 @@ export function createOpeningScene(): OpeningScene {
         : mx_fractal_noise_float(vec3(pp.mul(4), 0.4), 4);
     // (27/11) Étoile de Noël : le champ de la dissolution n'est plus « depuis le centre » mais la distance au TRACÉ du
     // doigt (texture STAR_TEX, unités du sachet × STAR_RANGE) ; l'ancienne Brûlure, sinon (STARON = 0, jamais jouée)
-    const starD = texture(starTex, pp.div(vec2(PACK.w, PACK.h)).add(0.5)).r.mul(STAR_RANGE).add(fbm.mul(0.025));
+    const starD = texture(starTex, pp.div(vec2(PACK.w, PACK.h)).add(0.5)).r.mul(STAR_RANGE).add(fbm.mul(0.025)).add(mx_fractal_noise_float(vec3(pp.mul(95), 3)).mul(0.014));
     const field = select(STARON.greaterThan(0.5), starD, length(pp.mul(vec2(1, 0.8))).add(fbm.mul(0.2)));
     const burnFront = field.sub(U.burn);
     const make = (col: N, side: 0 | 1) => {
@@ -1152,7 +1157,8 @@ export function createOpeningScene(): OpeningScene {
       m.normalNode = S.normal;
       m.envNode = foilEnvNode();
       m.maskNode = burnFront.greaterThan(0);
-      const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(0.3)).mul(step(-0.2, U.burn));
+      // (Étoile : halo plus serré — un liseré de poussière dorée, pas une braise)
+      const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(select(STARON.greaterThan(0.5), float(0.08), float(0.3)))).mul(step(-0.2, U.burn));
       // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte
       const seam = masks.b.mul(1.4).add(S.crans.mul(0.35));
       m.emissiveNode = (U.ember as unknown as N).mul(ember.add(seam.add(leakPrint(col, pp)).mul(U.leak)));
@@ -1883,6 +1889,8 @@ export function createOpeningScene(): OpeningScene {
     starTex.needsUpdate = true;
     starLen = 0;
     starLast = null;
+    starSmooth = null;
+    starNoteI = 0;
     starSince = 0;
   }
   /** point du sachet (unités) sous un point de l'écran (px CSS) : le rayon de la caméra coupe le plan du film avant */
@@ -1903,11 +1911,12 @@ export function createOpeningScene(): OpeningScene {
     for (let k = 0; k < n; k++) {
       const q = sh[shI++ % NSH];
       q.p.set(x + (Math.random() - 0.5) * 0.03, y + (Math.random() - 0.5) * 0.03, PACK.bulge + 0.004);
-      q.v.set((Math.random() - 0.5) * 0.35, 0.15 + Math.random() * 0.45, 0.1 + Math.random() * 0.3);
+      // (polish) poussière fine : beaucoup de petites, quelques grosses ; elles montent doucement puis retombent en neige
+      q.v.set((Math.random() - 0.5) * 0.28, 0.3 + Math.random() * 0.5, 0.08 + Math.random() * 0.25);
       q.r.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
-      q.w.set((Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16);
-      q.life = 1 + Math.random() * 0.7;
-      q.s = 0.25 + Math.random() * 0.55;
+      q.w.set((Math.random() - 0.5) * 22, (Math.random() - 0.5) * 22, (Math.random() - 0.5) * 22);
+      q.life = 1.1 + Math.random() * 0.9;
+      q.s = Math.random() < 0.15 ? 0.45 + Math.random() * 0.3 : 0.12 + Math.random() * 0.2;
     }
     shredsDirty = true;
   }
@@ -1943,7 +1952,7 @@ export function createOpeningScene(): OpeningScene {
     if (now - starNoteAt >= ETOILE.note * 1000) {
       starNoteAt = now;
       // la baguette tinte : notes hautes de la gamme du jeu (sol pentatonique)
-      ctx.sfx.note(7 + Math.floor(Math.random() * 6), 0.05, 0.5);
+      ctx.sfx.note(STAR_NOTES[starNoteI++ % STAR_NOTES.length], 0.05, 0.5);
     }
     events.onHold?.(Math.min(1, starLen / ETOILE.trace));
     if (!starAuto && starLen >= ETOILE.trace && phase === 'sealed') onStarred();
@@ -1991,6 +2000,10 @@ export function createOpeningScene(): OpeningScene {
       for (let k = 0; k < 36; k++) out.call(() => spawnSparkles((Math.random() - 0.5) * PACK.w, (Math.random() - 0.5) * PACK.h, 2), [], (k * ETOILE.fin) / 36);
       ctx.sfx.chime(4, 0.14);
       ctx.sfx.shimmer(4, 1.6, 0.08);
+      // (polish) arpège qui monte, lueur dorée qui enfle puis s'éteint
+      [12, 14, 17, 19].forEach((d, k) => ctx.sfx.note(d, 0.06, 0.9, k * (ETOILE.note / 2)));
+      U.glowColor.value.set(STAR_GOLD);
+      out.to(S, { glow: 0.55, duration: ETOILE.fin * 0.3, ease: EASE.glide }, 0).to(S, { glow: 0, duration: ETOILE.fin, ease: EASE.glide }, ETOILE.fin * 0.3);
       haptics.pulse([20, 40, 20]);
       R.s = 1;
       out.to(B, { follow: 0, duration: GLACE.lache, ease: EASE.glide }, ETOILE.fin * 0.5);
@@ -4063,6 +4076,7 @@ export function createOpeningScene(): OpeningScene {
         tearX = null;
         // (Étoile : le prochain appui commence un nouveau trait, sans le relier à celui-ci)
         starLast = null;
+        starSmooth = null;
       };
       const move = (e: PointerEvent) => {
         if (tearX === null || phase !== 'sealed') return;
@@ -4080,7 +4094,10 @@ export function createOpeningScene(): OpeningScene {
         if (starring) {
           const r = ctx.canvas.getBoundingClientRect?.();
           const p = starAt(e.clientX - (r?.left ?? 0), e.clientY - (r?.top ?? 0));
-          if (p && !starAuto) starStamp(p);
+          if (p && !starAuto) {
+            starSmooth = starSmooth ? { x: starSmooth.x + (p.x - starSmooth.x) * 0.5, y: starSmooth.y + (p.y - starSmooth.y) * 0.5 } : p;
+            starStamp(starSmooth);
+          }
           return;
         }
         // (27/11) Fenêtre : on glisse sur le sachet, dans un sens ou dans l'autre (en vertical) : la pile pousse

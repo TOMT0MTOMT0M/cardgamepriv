@@ -53,8 +53,13 @@ Détail des propositions, réserves et outils : `.claude-tmp/ouvertures-v3-etape
 - three.js r187 (vérifié dans `node_modules`) : `transmissionNode`, `thicknessNode`, `attenuationColorNode`, `iorNode`, `dispersionNode` existent, mais la transmission re-rend la scène dans une texture à mipmaps (une passe plein écran de plus) ; jugée « relativement chère », et fragile dès qu'un pipeline a ses propres cibles de rendu (notre cas : MRT + MSAA + bloom). [forum three.js, coût](https://discourse.threejs.org/t/meshphysicalmaterial-can-i-measure-how-much-more-expensive-it-is/60398) · [forum, cibles de rendu](https://discourse.threejs.org/t/custom-transmission-material-extra-render-targets-breaks-depth-refraction-webgpu/88608)
 - Conclusion : pas de transmission de three.js. Derrière la glace il n'y a QUE le sachet (dont on a les textures) et le fond sombre : la glace peut lire elle-même le visuel du sachet avec des uv réfractées — une vraie réfraction du sachet, sans passe en plus, identique en WebGL2.
 
+## Fait (27/11 soir, session Fable) — glace réaliste, étoile polie, sur le lien V3
+- Glace (`5dc277f`) : `buildIceMaterial(art)` refait sans transmission — réfraction du visuel du sachet (pente des facettes + ondulation de surface), absorption selon l'épaisseur calculée du galet (`ICE_BLOCK`, à tenir égal à glace.mts), voile et bulles en parallaxe, pourtour givré, faces de cassure qui flashent selon leur orientation, éclats clairs en vol (`ICE_FLY`). Le sachet gelé n'est plus dessiné au repos. Pas de recuisson (BAKE_REV_GLACE reste 2).
+- Étoile (polish) : bord en grain de poussière dorée (halo serré), paillettes fines de tailles variées, tracé lissé sous le doigt, notes qui montent et redescendent la gamme, fin avec arpège et lueur dorée.
+- Mesures (Chrome sans fenêtre, PC, plafonné à 8 ms par image : ne départage pas les petites différences) : glace 126,4 → 126,4 i/s, Déchirure 122,7 → 125,8, étoile 126. **À mesurer au vrai téléphone.** Non vérifié : rendu en WebGL2 (aucune fonction propre au WebGPU n'est utilisée).
+
 ## Reste
-- [ ] **Avis de Tom au téléphone** : Fenêtre, Déchirure glacée ; puis Étoile de Noël ; puis les 3 ouvertures à gagner restantes (à proposer : nom, geste, rendu, succès parmi `world-150`, `full-15`, `streak-21`).
+- [ ] **Avis de Tom au téléphone** : glace réaliste et étoile polie (session Fable) ; Fenêtre, Déchirure glacée ; puis Étoile de Noël ; puis les 3 ouvertures à gagner restantes (à proposer : nom, geste, rendu, succès parmi `world-150`, `full-15`, `streak-21`).
 - [ ] Glace et étoile sont promises en ligne (cases 20 et 23 de l'Avent) : si la V3 ne sort pas avant le 20/12, les joueurs auront l'ancienne version — patch à décider avec Tom.
 - [x] ~~Bruit et masque de la Brûlure à retirer~~ : réutilisés par l'Étoile de Noël (dissolution dorée).
 - [ ] Session Fable : matière de la glace (réfraction, absorption, bulles, givre) et optimisation, polish de l'étoile — prompt prêt.
