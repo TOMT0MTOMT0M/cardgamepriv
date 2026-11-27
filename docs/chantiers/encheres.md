@@ -37,7 +37,7 @@ Branche `v3-encheres` (tirée de `v2` à 0260592). Décidé : liste QOL validée
 - Notification « Tu as été dépassé » (deux comptes), puis clôture le soir à 21 h.
 
 ## Reste
-- Demandé à `marche` : compteur « Mes ventes N/10 » qui ignore les enchères ; variante « enchère » du texte de `alertWishers` (« le premier qui achète l'a » est faux pour une enchère) — en attendant, la mise aux enchères ne prévient pas les joueurs qui veulent la carte.
+- (fait, fusion de `v3-marche` c8ea65a) « Mes ventes N/10 » compte les enchères ; la mise aux enchères prévient les joueurs qui veulent la carte (`alertWishers(..., { auction: true })` : « X vend une carte que tu veux — {carte} aux enchères dès N pièces. Clôture à 21 h. », 1 par vendeur et par heure). `market.ts` ↔ `auctions.ts` s'importent l'un l'autre : `openCount` appelle `sellSlotsUsed` au moment de l'appel (pas à l'initialisation).
 - Pas de résultat de la semaine (vendue / gagnée / sans offre) à l'écran : notifications + journal des pièces seulement (`auctions.board` renvoie `recent`, prêt pour « Mon activité »).
 - Pas d'anti-« dernière seconde » (prolongation si offre à la fin) : à décider par Tom si besoin.
 - Les enchères n'apparaissent pas (encore) dans la fiche d'une carte ni dans l'historique du Marché.

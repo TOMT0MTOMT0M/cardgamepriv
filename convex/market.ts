@@ -131,7 +131,8 @@ async function wantersOf(ctx: QueryCtx | MutationCtx, meId: Id<'users'>, cards: 
 }
 
 /** places de vente occupées : ventes à prix fixe + (V3) enchères ouvertes */
-const openCount = sellSlotsUsed;
+// (appel différé : convex/auctions.ts importe aussi ce fichier — à l'initialisation, `sellSlotsUsed` n'existe pas encore)
+const openCount = (ctx: QueryCtx | MutationCtx, meId: Id<'users'>) => sellSlotsUsed(ctx, meId);
 
 /**
  * Au moment de forger : qui veut les cartes choisies ? Lecture PONCTUELLE (client.query), jamais abonnée. `open` = mes

@@ -11,6 +11,7 @@ import { CARD_VALUE } from '../src/core/economy';
 import { auctionEndsAt, auctionMax, auctionNextMin, auctionProblem } from '../src/core/auctions';
 import { fm } from '../src/core/msgs';
 import { notify } from './push';
+import { alertWishers } from './market';
 
 /**
  * ENCHÈRES AU MARCHÉ (V3, liste QOL validée par Hugo le 26/11 ; règles : src/core/auctions.ts).
@@ -103,7 +104,9 @@ export const create = mutation({
       createdAt: now,
       endsAt: auctionEndsAt(now, days),
     });
-    return { id };
+    // les joueurs qui veulent la carte sont prévenus (alerte acheteur du marché : 1 par vendeur et par heure)
+    const notified = await alertWishers(ctx, me, [{ cardId, rarity, price: startPrice }], { auction: true });
+    return { id, notified };
   },
 });
 
