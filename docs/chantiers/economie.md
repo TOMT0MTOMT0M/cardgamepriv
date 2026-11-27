@@ -1,4 +1,6 @@
-# Économie : un seul étalon (proposition du 26/11, rien de codé)
+# Économie : un seul étalon (proposition du 26/11 ; codée en patch v2.1.39 le 27/11, démarre le 01/12)
+
+> (27/11) Hugo : « pousse la nouvelle économie sur la V2 pour le 1er décembre ». Mesure faite (coinTx, 24-26/11 : médiane 4 070 pièces/jour, max 53 750), puis Tom a validé : seuils 3 000 / 10 000, nouveau calendrier, roulette 3× 5★ (sur la version en ligne, le numéro coûte 1 500 pièces, pas 1 000). Codé : `docs/chantiers/v2.1.39.md`. Point 4 (prix conseillé du marché) laissé pour « Forge → vente ».
 
 Demande de Hugo : l'écart est trop grand entre ce que rapportent la connexion quotidienne, la Forge, et ce que coûtent les boosters ou la roulette. Il faut une règle qui marche pour tout le monde.
 
