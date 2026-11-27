@@ -105,12 +105,31 @@ async function changesSince(ctx: QueryCtx, userId: Id<'users'>, since: number) {
  * lignes au lieu de 1,8 à 4,2 Mo. Collection déjà publique (`userCollectionSlim`).
  */
 export const userCollectionSince = query({
-  args: { userId: v.id('users'), since: v.optional(v.number()) },
-  handler: async (ctx, { userId, since }) => {
+  args: {
+    userId: v.id('users'),
+    since: v.optional(v.number()),
+    /**
+     * (V3, coût Convex) 1re lecture PAR PAGES (`cursor` : null = début) : une grosse collection (≈ 19 000 lignes,
+     * 6,5 Mo) tenait à peine dans les limites d'une exécution (32 000 documents) ; en pages de USER_PAGE lignes, aucune
+     * n'approche plus les limites, quelle que soit la taille. Mêmes octets lus au total. Absent : tout d'un coup (vieux onglet).
+     */
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, { userId, since, cursor }) => {
     if (since !== undefined) return { ...(await changesSince(ctx, userId, since)), full: null };
+    if (cursor !== undefined) {
+      const p = await ctx.db
+        .query('inventory')
+        .withIndex('by_user_card_rarity', (q) => q.eq('userId', userId))
+        .paginate({ cursor, numItems: USER_PAGE });
+      // `t` : date de création, pour que le client remette les pages dans l'ordre d'`invOf`
+      return { rows: [], gone: [], more: false, full: null, page: p.page.map((c) => ({ ...slim(c), t: c._creationTime })), cursor: p.continueCursor, done: p.isDone };
+    }
     return { rows: [], gone: [], more: false, full: inParts((await invOf(ctx, userId)).map(slim)).parts };
   },
 });
+/** lignes par page de la 1re lecture d'une collection d'ami (tableau renvoyé < 8 192 éléments, limite Convex) */
+export const USER_PAGE = 8000;
 
 /** (audit 12/11, S07 / A6-08) collection d'un autre joueur en 4 champs (client V2) : réponse ≈ 4 fois plus légère. */
 export const userCollectionSlim = query({
