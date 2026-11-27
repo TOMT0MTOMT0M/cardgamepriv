@@ -45,7 +45,7 @@ export const UPDATES: UpdateMonth[] = [
         date: '28 nov.', title: 'V3 : marché refait, enchères, booster de l’événement, succès', tag: 'nouveau',
         points: [
           '🛒 Marché refait : Acheter · Vendre · Échanges · Mon activité. La carte est l’annonce : prix, écart au prix conseillé, vendeur. Vendre = ta collection en grille, doublons d’abord.',
-          '🔨 Enchères : mets une carte aux enchères (24, 48 ou 72 h, clôture à 21 h). Tes pièces sont bloquées tant que tu es en tête et rendues tout de suite si quelqu’un surenchérit.',
+          '🔨 Enchères : mets une carte aux enchères (24, 48 ou 72 h, clôture à 21 h). Tes pièces sont bloquées tant que tu es en tête et rendues tout de suite si quelqu’un surenchérit. Une offre dans les 5 dernières minutes prolonge l’enchère de 5 min.',
           '♥ Une carte que tu veux mise en vente ou aux enchères te prévient (notification + pastille). Dans le chat, une carte jointe dit si elle te manque, avec « Proposer un échange ».',
           '⏳ Booster de l’événement : sa propre réserve, 1 offert par heure (3 au plus, 5 pour les abonnés), et il s’achète 2 500 pièces. Il ne prend plus un booster normal.',
           '🎖️ Succès : récompenses revues (en boosters, jusqu’à 12 500 pièces + 20 boosters), 27 nouveaux paliers très longs, et l’aperçu des ouvertures de booster à gagner.',

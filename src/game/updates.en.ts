@@ -9,7 +9,7 @@ export const UPDATES_EN: UpdateMonth[] = [
         date: '28 Nov', title: 'V3: new market, auctions, event booster, achievements', tag: 'nouveau',
         points: [
           '🛒 Market redone: Buy · Sell · Trades · My activity. The card is the listing: price, gap to the suggested price, seller. Sell = your collection as a grid, duplicates first.',
-          '🔨 Auctions: put a card up for auction (24, 48 or 72 h, closes at 9 pm). Your coins are held while you lead and returned right away if someone outbids you.',
+          '🔨 Auctions: put a card up for auction (24, 48 or 72 h, closes at 9 pm). Your coins are held while you lead and returned right away if someone outbids you. A bid in the last 5 minutes extends the auction by 5 min.',
           '♥ A card you want put up for sale or auction notifies you (notification + badge). In chat, a shared card tells you if you’re missing it, with “Propose a trade”.',
           '⏳ Event booster: its own reserve, 1 free every hour (up to 3, 5 for subscribers), and it can be bought for 2,500 coins. It no longer uses a regular booster.',
           '🎖️ Achievements: rewards reworked (in boosters, up to 12,500 coins + 20 boosters), 27 new very long tiers, and a preview of the booster openings to win.',
