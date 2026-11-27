@@ -1,4 +1,4 @@
-import { t as tr } from '../../core/i18n';
+import { lang, t as tr } from '../../core/i18n';
 import { cardHasCutout } from '../../core/pokeHolo/face';
 import { cameraScale, createWheel3D, type Wheel3D, type WheelItem3D } from './packWheel3d';
 import { createReel, type Reel } from './packReel';
@@ -21,6 +21,7 @@ import {
   Object3D,
   MeshBasicNodeMaterial,
   MeshPhysicalNodeMaterial,
+  MeshStandardNodeMaterial,
   NormalBlending,
   PlaneGeometry,
   Raycaster,
@@ -80,6 +81,7 @@ import { studioEnv } from '../../core/env';
 import { mobileArtScale } from '../../core/renderer';
 import { anamorphicFlare, createPipeline } from '../../core/post';
 import { aluminiumSurface, createPackGeometry, generatePackArt, packCreaseLift, PACK, PACK_FRAME, PACK_STACK, TEAR_V, type PackArt, type PackStyle } from '../../core/pack';
+import { gameSachetArt, inkSurface } from '../../core/packSticker';
 import { ensureCardImages, ensureFonts, generateCardArt, type CardArt } from '../../core/art';
 import { LAB_CARDS, cardById, type CardData } from '../../core/cardData';
 import { rarity, type Rarity, type RarityId } from '../../core/rarity';
@@ -230,8 +232,9 @@ export interface OpeningScene extends Experiment {
   /**
    * (11/11) BOOSTER DU MOMENT (src/core/events.ts) : son sachet (clé `EVENT_KEY`), le même alu que les autres, teinté
    * de la couleur de l'événement, son nom moulé au centre. null : pas d'événement (le sachet n'est plus proposé).
+   * (27/11, V3) sachet « Autocollant » du thème de l'événement ; `endAt` : date de fin sur l'étiquette dateuse.
    */
-  setEventBooster(ev: { name: string; accent: string } | null): void;
+  setEventBooster(ev: { name: string; accent: string; endAt?: number } | null): void;
   /** Lance l'ouverture d'un pack tiré. Les cartes sont préparées (images, textures, shaders) pendant que le joueur brûle l'emballage. */
   /**
    * `continued` (retours 06/11 : ×5 / ×10 = UN booster de 25 / 50 cartes) : la suite du même gros booster — pas
@@ -618,7 +621,7 @@ export function createOpeningScene(): OpeningScene {
   let startArts: () => Promise<void> = async () => {};
   /** styles des boosters (setup) ; le booster du moment s'y ajoute / s'en retire (setEventBooster) */
   let styles: Record<string, PackStyle> = {};
-  let eventWant: { name: string; accent: string } | null = null;
+  let eventWant: { name: string; accent: string; endAt?: number } | null = null;
   let eventSig = '';
   /** visuels en cours de génération (la file de fond et le booster du moment ne se marchent pas dessus) */
   const genBusy = new Set<string>();
@@ -1006,19 +1009,14 @@ export function createOpeningScene(): OpeningScene {
     const front = texture(art.front, uvn);
     const back = texture(art.back, uvn);
     const masks = texture(art.masks, uvn);
-    // (06/11) carte de plis pleine taille (UV 0..1, non répétée) : les sachets simples ; tuile répétée sinon
-    const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
-    const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
     // (07/11 soir) normales des plis en flottants (core/pack.ts) : plus de paliers du bumpMap 8 bits
     // (07/11) face avant : plis + nom du pack thermoformé (core/packLabel.ts) ; le dos garde les plis seuls
     const nF = art.frontNormal ? texture(art.frontNormal, uvn) : art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
     const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
-    if (!o.swaps) packNodes = { front, back, masks, crF, crB } as unknown as Record<string, { value: Texture }>;
+    if (!o.swaps) packNodes = { front, back, masks } as unknown as Record<string, { value: Texture }>;
     track(sw, front, (a) => a.front);
     track(sw, back, (a) => a.back);
     track(sw, masks, (a) => a.masks);
-    track(sw, crF, (a) => a.crinkle);
-    track(sw, crB, (a) => a.crinkle);
     if (nF) track(sw, nF, (a) => a.frontNormal ?? a.creaseNormal);
     if (nB) track(sw, nB, (a) => a.creaseNormal);
     const pp = positionLocal.xy;
@@ -1028,28 +1026,39 @@ export function createOpeningScene(): OpeningScene {
         : mx_fractal_noise_float(vec3(pp.mul(4), 0.4), 4);
     const field = length(pp.mul(vec2(1, 0.8))).add(fbm.mul(0.2));
     const burnFront = field.sub(U.burn);
-    const make = (col: N, cr: N, side: 0 | 1) => {
-      const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
-      const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
+    const make = (col: N, side: 0 | 1) => {
+      // (27/11, V3) sachet « Autocollant » : MATIÈRE ALLÉGÉE du labo 047 (core/packSticker.ts inkSurface) — encre et
+      // autocollants mats ou satinés, l'alu en réserve (soudures, cartouche du nom) ; 3 lectures de texture, un seul
+      // reflet (plus de vernis, de grain du film ni de relief par dérivées)
+      const m = new MeshStandardNodeMaterial({ side: DoubleSide });
+      const S = inkSurface(masks, uvn, side, side === 0 ? nF : nB);
       // booster « bientôt » : couleurs en partie éteintes (uniforme : aucun recompilage quand on change de booster)
       const base = mix(col.rgb, vec3(luminance(col.rgb)).mul(0.82), soonN.mul(0.7));
-      m.colorNode = mix(base, color('#0d0907'), smoothstep(0.06, 0.004, burnFront)).mul(shadeN);
-      // (retours 06/11) sachet ALUMINIUM : métal partout (« no brand » premium), le logo et les soudures plus lisses,
-      // le froissé du sachet dans le relief ; aucun vernis plastique
-      // (ultra-réalisme) aluminium brillant : métal pur, rugosité basse, plis en relief fort (carte pleine taille)
-      // (07/11) aluminium lisse, grands plis, double reflet métal + vernis PET (core/pack.ts aluminiumSurface)
-      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.7, side === 0 ? nF : nB);
+      m.colorNode = S.tint(mix(base, color('#0d0907'), smoothstep(0.06, 0.004, burnFront)).mul(shadeN));
+      m.metalnessNode = S.metal;
+      m.roughnessNode = S.rough;
+      m.normalNode = S.normal;
       m.envNode = foilEnvNode();
       m.maskNode = burnFront.greaterThan(0);
       const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(0.3)).mul(step(-0.2, U.burn));
       // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte
-      const seam = masks.b.mul(1.4).add(masks.g.mul(0.35));
+      const seam = masks.b.mul(1.4).add(S.crans.mul(0.35));
       m.emissiveNode = (U.ember as unknown as N).mul(ember.add(seam.add(leakPrint(col, pp)).mul(U.leak)));
       const lift = creaseLift(sw, art, side);
       m.positionNode = (lift ? positionLocal.add(lift) : positionLocal).add(normalLocal.mul(smoothstep(0.05, 0.0, burnFront).mul(0.03)));
       return m;
     };
-    return [make(front, crF, 0), make(back, crB, 1)];
+    return [make(front, 0), make(back, 1)];
+  }
+
+  /**
+   * (27/11, V3) visuel d'un booster : son sachet « Autocollant », variante B (core/packSticker.ts), dans la langue du
+   * joueur ; le booster du moment prend le gabarit `moment` aux couleurs du thème de l'événement. Repli (clé sans
+   * sachet) : l'ancien sachet simple.
+   */
+  async function boosterArt(k: string, st: PackStyle): Promise<PackArt> {
+    const a = await gameSachetArt(k, lang() === 'en' ? 'en' : 'fr', k === EVENT_KEY ? eventWant : null);
+    return a ?? generatePackArt(st, { releaseSources: true });
   }
 
   /** génère le visuel d'un booster puis le pose s'il était attendu (file de fond, booster du moment) */
@@ -1058,7 +1067,7 @@ export function createOpeningScene(): OpeningScene {
     if (!st || !ctx || genBusy.has(k)) return;
     genBusy.add(k);
     try {
-      const a = ctx.bag.add(await generatePackArt(st, { releaseSources: true }));
+      const a = ctx.bag.add(await boosterArt(k, st));
       if (styles[k] !== st) return; // (booster du moment changé ou retiré pendant la génération)
       arts.set(k, a);
       // la roue en réduit les toiles tout de suite : elles sont vidées à l'envoi des grandes textures au GPU
@@ -2452,10 +2461,10 @@ export function createOpeningScene(): OpeningScene {
     },
     setBooster,
     setEventBooster(ev) {
-      const sig = ev ? `${ev.name}|${ev.accent}` : '';
+      const sig = ev ? `${ev.name}|${ev.accent}|${ev.endAt ?? ''}` : '';
       if (sig === eventSig) return;
       eventSig = sig;
-      eventWant = ev ? { name: ev.name, accent: ev.accent } : null;
+      eventWant = ev ? { name: ev.name, accent: ev.accent, endAt: ev.endAt } : null;
       if (ctx) applyEventStyle(); // (sinon : appliqué au setup)
     },
     open,
@@ -2701,7 +2710,7 @@ export function createOpeningScene(): OpeningScene {
         /* ignore */
       }
       allKeys = Object.keys(styles).filter((k) => k !== EVENT_KEY);
-      arts.set(boosterKey, c.bag.add(await generatePackArt(styles[boosterKey], { releaseSources: true })));
+      arts.set(boosterKey, c.bag.add(await boosterArt(boosterKey, styles[boosterKey])));
       lap('visuel du booster'); // i18n-ok
       startArts = async () => {
         await nextFrame();

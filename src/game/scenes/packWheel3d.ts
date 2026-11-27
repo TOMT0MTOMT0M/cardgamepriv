@@ -1,6 +1,7 @@
 import { CanvasTexture, Color, Group, Mesh, MeshStandardNodeMaterial, SRGBColorSpace, type BufferGeometry, type PerspectiveCamera, type Raycaster, type Scene, type Texture } from 'three/webgpu';
-import { normalMap, texture, uv, vec2 } from 'three/tsl';
+import { float, mix, normalMap, texture, uv, vec2 } from 'three/tsl';
 import { createPackGeometry, PACK, type PackArt } from '../../core/pack';
+import { inkSurface } from '../../core/packSticker';
 import { releaseCanvas } from '../../core/art/canvas';
 
 /**
@@ -124,7 +125,7 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     const b = shrink(art.back, backW);
     if (!f) return;
     // (A10-07) seules les copies réduites sont à nous ; une texture du sachet reprise telle quelle reste au sachet
-    const mine = (t: Texture | null | undefined) => !!t && t !== art.front && t !== art.back && t !== art.creaseNormal && t !== art.frontNormal;
+    const mine = (t: Texture | null | undefined) => !!t && t !== art.front && t !== art.back && t !== art.creaseNormal && t !== art.frontNormal && t !== art.masks;
     if (mine(f)) owned.push(f);
     if (mine(b)) owned.push(b!);
     s.front.map = f;
@@ -146,6 +147,18 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
       if (mine(fnrm)) owned.push(fnrm!);
       s.front.normalNode = normalMap(texture(fnrm ?? nrm, uv()), vec2(0.8));
       s.back.normalNode = normalMap(texture(nrm, uv().mul(vec2(-1, 1)).add(vec2(1, 0))), vec2(0.8));
+    }
+    // (27/11, V3) sachets « Autocollant » : le métal reste à la réserve (soudures, cartouche du nom) ; l'encre et les
+    // autocollants sont mats ou satinés (masques réduits : R = encre / autocollant, G = brillant ; le dos est imprimé
+    // partout sauf sur les soudures). Une lecture de texture de plus par pixel sur la face, aucune au dos.
+    const mk = art.inked ? shrink(art.masks, texW, false) : null;
+    if (mk) {
+      if (mine(mk)) owned.push(mk);
+      for (const [mat, side, metalR] of [[s.front, 0, 0.28], [s.back, 1, 0.32]] as const) {
+        const S = inkSurface(texture(mk, uv()), uv(), side);
+        mat.metalnessNode = S.metal;
+        mat.roughnessNode = mix(float(metalR), mix(float(0.82), float(0.38), S.gloss), S.cover);
+      }
     }
     s.front.needsUpdate = s.back.needsUpdate = true;
     s.textured = true;

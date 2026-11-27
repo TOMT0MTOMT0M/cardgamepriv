@@ -178,6 +178,11 @@ export interface PackArt {
   /** dos entièrement métallisé (sachet simple du jeu) */
   metalBack?: boolean;
   /**
+   * (27/11, V3) sachet « Autocollant » (packSticker.ts, `film.jeu`) : `masks` = R encre / autocollant de la face,
+   * G brillant, B ligne de déchirure ; les soudures sont calculées depuis la hauteur (`inkSurface`)
+   */
+  inked?: boolean;
+  /**
    * (13/11) teinte de l'alliage du sachet simple (sRGB), aussi celle de l'INTÉRIEUR du film dans la déchirure : avec
    * un gris fixe, les lèvres de la soudure vues de face (sous les crans) faisaient une bande grise sur les packs teintés
    */

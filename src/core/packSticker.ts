@@ -1,5 +1,5 @@
 import { CanvasTexture, Mesh, MeshStandardNodeMaterial, NoColorSpace, type Texture } from 'three/webgpu';
-import { float, mix, normalMap, positionLocal, sin, smoothstep, texture, uv, vec2, vec3 } from 'three/tsl';
+import { float, fract, mix, normalMap, positionLocal, sin, smoothstep, step, texture, uv, vec2, vec3 } from 'three/tsl';
 import { makeCanvas, roundRect, type Ctx } from './art/canvas';
 import { FONT_MONO } from './art/frame';
 import { ensureFonts } from './art';
@@ -220,7 +220,7 @@ interface NameBox {
   bot: number;
 }
 
-function placer(fronts: Ctx[], back: Ctx, mask: Ctx, seed: number, name: NameBox, salt: number): Placer & { flush(): void } {
+function placer(fronts: Ctx[], back: Ctx, mask: Ctx, seed: number, name: NameBox, salt: number, backMask = true): Placer & { flush(): void } {
   const rnd = lcg(seed * 2654435761 + 97);
   // tirage à part pour la morsure (ajouter un autocollant ailleurs ne la déplace pas), salé par le sachet : à graine
   // égale, deux thèmes ne mordent pas au même endroit
@@ -275,6 +275,8 @@ function placer(fronts: Ctx[], back: Ctx, mask: Ctx, seed: number, name: NameBox
     back(s, x, y, rot = 0) {
       backs.push(() => {
         stamp(back, s.c, x, y, rot, 1, true);
+        // (jeu) le dos est entièrement imprimé : sa couverture se calcule dans le matériau, le canal B reste à la déchirure
+        if (!backMask) return;
         const sil = silhouette(s, 'rgb(0,0,255)');
         mask.save();
         mask.globalCompositeOperation = 'lighter';
@@ -1384,8 +1386,6 @@ function motif(g: Ctx, id: SachetId, k: SachetLook) {
       // pelouse tondue en bandes, lignes de terrain blanches
       g.fillStyle = dark;
       for (let x = 0; x < PW; x += 128) g.fillRect(x, 0, 64, PH);
-      g.strokeStyle = 'rgba(255,255,255,0.9)';
-      g.lineWidth = 5;
       g.beginPath();
       g.moveTo(0, 258);
       g.lineTo(PW, 258);
@@ -1394,6 +1394,13 @@ function motif(g: Ctx, id: SachetId, k: SachetLook) {
       g.rect(96, 690, PW - 192, 400);
       g.moveTo(cx + 96, 690);
       g.arc(cx, 690, 96, 0, Math.PI, true);
+      // (27/11, V3 — défaut relevé par Tom : blanc sur jaune, les lignes ressortaient peu) un liseré d'herbe sombre
+      // sous la ligne, puis la craie plus large et pleine
+      g.strokeStyle = 'rgba(92,64,0,0.42)';
+      g.lineWidth = 11;
+      g.stroke();
+      g.strokeStyle = '#ffffff';
+      g.lineWidth = 6;
       g.stroke();
       break;
     }
@@ -1501,9 +1508,9 @@ function keyline(g: Ctx, id: SachetId, h: Habillage, k: SachetLook) {
 export interface StickerPackArt extends PackArt {
   /**
    * R = pas de métal sur la face (encre imprimée ou autocollant) · G = brillant (0 papier · ~0,45 encre · 1 vinyle)
-   * · B = pas de métal au dos
+   * · B = pas de métal au dos. (jeu, `film.jeu`) absente : ce masque est rangé dans `masks` (voir `inkSurface`).
    */
-  stickers: Texture;
+  stickers?: Texture;
   /** la face en 2D (vignettes) : relief du nom ombré + autocollants */
   thumb: HTMLCanvasElement;
 }
@@ -1517,7 +1524,22 @@ export async function stickerPackArt(
   variant: StickerVariant,
   L: StickerLang,
   seed = 1,
-  film: { tint?: string; alloyMix?: number; habillage?: Habillage | 'nu'; moment?: EventThemeId } = {},
+  film: {
+    tint?: string;
+    alloyMix?: number;
+    habillage?: Habillage | 'nu';
+    moment?: EventThemeId;
+    /** (jeu, booster du moment) nom moulé de l'événement, sa date de fin, un logo neutre si sa teinte est libre */
+    label?: string;
+    until?: L2;
+    logo?: Logo;
+    /**
+     * (27/11, V3) sachet du JEU : le masque des autocollants est écrit dans `art.masks` (R = encre / autocollant de la
+     * face, G = brillant, B = ligne de déchirure) au lieu d'une texture de plus — la Déchirure et le Retroussé le
+     * reçoivent avec les masques — et les toiles sources sont vidées à l'envoi (`releaseSources`).
+     */
+    jeu?: boolean;
+  } = {},
 ): Promise<StickerPackArt> {
   // `film` : essais du labo — une autre teinte (les étiquettes qui la reprennent suivent), l'habillage imposé ou retiré
   // (`nu` = la passe 1 : autocollants sur l'alu nu). Par défaut : A en bandeau, B en cartouche.
@@ -1528,21 +1550,26 @@ export async function stickerPackArt(
     ...(ev ? { title: { fr: `Booster du moment · ${ev.fr}`, en: `Limited booster · ${ev.en}` }, label: ev.label, tint: ev.tint, ink: inkOf(ev.tint), logo: ev.logo as Logo } : {}),
     ...(film.tint ? { tint: film.tint, ink: inkOf(film.tint) } : {}),
     ...(film.alloyMix !== undefined ? { alloyMix: film.alloyMix } : {}),
+    ...(film.label ? { label: film.label } : {}),
+    ...(film.until ? { until: film.until } : {}),
+    ...(film.logo ? { logo: film.logo } : {}),
   };
   const hab = film.habillage ?? (variant === 'a' ? 'bandeau' : 'cartouche');
+  const jeu = !!film.jeu;
   await ensureFonts();
   await Promise.all(
     [`800 60px ${DISPLAY}`, `700 30px ${DISPLAY}`, `600 30px ${DISPLAY}`, `700 30px ${FONT_LABEL}`, `500 30px ${FONT_MONO}`, `400 40px ${FONT_PACK}`].map((f) => document.fonts.load(f).catch(() => undefined)),
   );
-  const art = await generatePackArt({ name: `autocollant-${id}-${seed}`, ground: k.tint, ground2: k.tint, ink: INK, foil: '#ffffff', accent: k.tint, simple: true, label: k.label, alloyMix: k.alloyMix });
+  const art = await generatePackArt({ name: `autocollant-${id}-${seed}`, ground: k.tint, ground2: k.tint, ink: INK, foil: '#ffffff', accent: k.tint, simple: true, label: k.label, alloyMix: k.alloyMix }, { releaseSources: jeu });
   const F = art.front.image as HTMLCanvasElement, B = art.back.image as HTMLCanvasElement;
   const thumb = art.thumbFront ?? F;
   const fronts = [F.getContext('2d') as Ctx];
   if (thumb !== F) fronts.push(thumb.getContext('2d') as Ctx);
-  const M = makeCanvas(PW / 2, Math.round(PH / 2));
+  // (jeu) la toile des masques du sachet, pleine définition (ses soudures R / G sont recalculées par le matériau)
+  const M = jeu ? { c: art.masks.image as HTMLCanvasElement, g: (art.masks.image as HTMLCanvasElement).getContext('2d') as Ctx } : makeCanvas(PW / 2, Math.round(PH / 2));
   M.g.fillStyle = '#000';
   M.g.fillRect(0, 0, M.c.width, M.c.height);
-  M.g.scale(0.5, 0.5);
+  if (!jeu) M.g.scale(0.5, 0.5);
   const bg = B.getContext('2d') as Ctx;
   if (hab !== 'nu') {
     // la face : encre partout sauf la réserve derrière le nom moulé (dont l'ombrage reste intact)
@@ -1566,7 +1593,7 @@ export async function stickerPackArt(
   const name: NameBox = { top: PH * 0.5 - tm.actualBoundingBoxAscent, bot: PH * 0.5 + tm.actualBoundingBoxDescent };
   let salt = variant === 'a' ? 3 : 11;
   for (const ch of id) salt = (salt * 31 + ch.charCodeAt(0)) % 9973;
-  const P = placer(fronts, bg, M.g, seed, name, salt);
+  const P = placer(fronts, bg, M.g, seed, name, salt, !jeu);
   LAYOUTS[id][variant](P, L, k, seed);
   if (hab !== 'nu') {
     // (passe 4) les repères de déchirure ne sont plus imprimés : deux petits autocollants de papier au bout de la ligne
@@ -1581,15 +1608,27 @@ export async function stickerPackArt(
       bg.rect(0, CH, PW, PH - 2 * CH);
     };
     printFace(bg, id, k, whole);
-    M.g.save();
-    M.g.globalCompositeOperation = 'lighter';
-    M.g.fillStyle = 'rgb(0,0,255)';
-    M.g.fillRect(0, CH, PW, PH - 2 * CH);
-    M.g.restore();
+    if (!jeu) {
+      M.g.save();
+      M.g.globalCompositeOperation = 'lighter';
+      M.g.fillStyle = 'rgb(0,0,255)';
+      M.g.fillRect(0, CH, PW, PH - 2 * CH);
+      M.g.restore();
+    }
   }
   P.flush();
   art.front.needsUpdate = true;
   art.back.needsUpdate = true;
+  if (jeu) {
+    // B : la ligne de déchirure, à la même place que dans le sachet simple (pack.ts : 4 px centrés sur CH + 40)
+    M.g.save();
+    M.g.globalCompositeOperation = 'lighter';
+    M.g.fillStyle = 'rgb(0,0,255)';
+    M.g.fillRect(0, CH + STRIP - 2, PW, 4);
+    M.g.restore();
+    art.masks.needsUpdate = true;
+    return { ...art, thumb, inked: true };
+  }
   const stickers = new CanvasTexture(M.c);
   stickers.colorSpace = NoColorSpace;
   return {
@@ -1662,3 +1701,57 @@ function lightMaterials(art: StickerPackArt) {
 
 /** hauteur de la soudure sur la toile (pour le labo) */
 export const STICKER_CRIMP = CH;
+
+// ───────────────────────────────────────────── (27/11, V3) dans le jeu
+
+/** les boosters de la boutique qui ont leur sachet (clés de opening.ts / shop.ts) */
+const GAME_SACHETS: readonly string[] = ['gaming', 'pop', 'sport', 'monde', 'bebou'] satisfies SachetId[];
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']; // i18n-ok (étiquette dateuse, comme « DEC 2 » du labo)
+/** date de fin d'un événement sur l'étiquette dateuse : « 02/12 » · « DEC 2 » */
+function untilOf(endAt: number): L2 {
+  const d = new Date(endAt);
+  return { fr: `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`, en: `${MONTHS[d.getMonth()]} ${d.getDate()}` };
+}
+
+/**
+ * Le sachet d'un booster du jeu, variante B (cartouche, décision de Tom et Hugo du 27/11), dans la langue du joueur.
+ * `ev` : le booster du moment — gabarit `moment`, nom moulé = nom de l'événement, sa teinte, date de fin sur
+ * l'étiquette. `null` : clé sans sachet.
+ */
+export async function gameSachetArt(key: string, L: StickerLang, ev?: { name: string; accent: string; endAt?: number } | null): Promise<StickerPackArt | null> {
+  if (ev) {
+    let seed = 7;
+    for (const ch of ev.name) seed = (seed * 31 + ch.charCodeAt(0)) % 9973;
+    return stickerPackArt('tele', 'b', L, seed + 1, { jeu: true, tint: ev.accent, logo: 'bebou', label: ev.name, ...(ev.endAt ? { until: untilOf(ev.endAt) } : {}) });
+  }
+  return GAME_SACHETS.includes(key) ? stickerPackArt(key as SachetId, 'b', L, 1, { jeu: true }) : null;
+}
+
+/**
+ * (27/11, V3) SURFACE d'un sachet « Autocollant » dans le jeu = la MATIÈRE ALLÉGÉE du labo (passe 2, `lightMaterials`),
+ * lue dans les masques du sachet (`inked`) : R = encre / autocollant de la face, G = brillant ; le dos est imprimé partout
+ * sauf sur les soudures, calculées depuis la hauteur (plus de masque R / G des soudures, ni carte de hauteur, ni grain
+ * du film, ni vernis). `mk` = lecture des masques, `u` = UV, `nrm` = lecture de la carte de normales (plis + nom moulé
+ * sur la face). `crans` : les crans des soudures (l'ancien masque G), pour la fuite de lumière des scènes.
+ */
+export function inkSurface(mk: N, u: N, side: 0 | 1, nrm?: N | null) {
+  const seamV = CH / PH;
+  const seam: N = smoothstep(0.5 - seamV - 0.004, 0.5 - seamV, (u as N).y.sub(0.5).abs());
+  const crans: N = seam.mul(step(fract((u as N).x.mul(PW / 6)), 0.5));
+  const cover: N = side === 0 ? (mk as N).r.mul(seam.oneMinus()) : seam.oneMinus();
+  const gloss: N = side === 0 ? (mk as N).g : float(INK_GLOSS);
+  const rx: N = sin(positionLocal.x.mul(1600)).mul(0.6).mul(seam);
+  const cn: N = nrm ? (nrm as N).xyz.mul(2).sub(1) : vec3(0, 0, 1);
+  return {
+    seam,
+    crans,
+    cover,
+    normal: normalMap(encodeNormal(vec3(cn.x.add(rx), cn.y, cn.z).normalize())) as N,
+    metal: float(1).sub(cover) as N,
+    rough: mix(mix(float(0.3), float(0.44), seam), mix(float(0.82), float(0.38), gloss), cover) as N,
+    /** l'alu se teinte sous le film, l'encre et le papier gardent leur couleur */
+    tint: (col: N): N => mix((col as N).mul(PLASTIC_TINT), col, cover),
+    /** couverture et brillant seuls (mini-boosters de la roue) */
+    gloss,
+  };
+}
