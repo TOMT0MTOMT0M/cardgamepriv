@@ -67,7 +67,9 @@
 .ex-none { padding: 14px 0; font-size: 13px; }
 .ex-zone { padding-top: 16px; }
 @media all {
-  .ex-zone:not([hidden]) { animation: ex-in var(--dur-standard) var(--ease-entree) both; }
+  /* (V3) `backwards`, pas `both` : une fois entrée, la zone ne garde pas de `transform` (même neutre), sinon elle devient
+     le cadre des feuilles `position: fixed` qu'elle contient (feuille Vendre ouverte en bas de page, relevé de `verifs`) */
+  .ex-zone:not([hidden]) { animation: ex-in var(--dur-standard) var(--ease-entree) backwards; }
 }
 @keyframes ex-in { from { opacity: 0; transform: translateY(6px); } }
 
@@ -247,6 +249,8 @@
 /* ── (V3) MARCHÉ « façon Kyara » (views/market.ts, brief docs/chantiers/marche-kyara.md) : LA CARTE EST L'ANNONCE.
    Onglets Acheter (grille d'annonces) et Vendre (ma collection en grille). Sous la carte : prix · écart au prix
    conseillé (couleur = bon / mauvais prix) / vendeur. Pastilles de rareté = nos couleurs de rareté. */
+.ex-echanges .ex-cours:has(.pending:empty) { display: none; }
+.ex-echanges .ex-cours { margin-bottom: 8px; }
 .mk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
 .mk-bar .mk-q { flex: 1 1 240px; min-width: 0; max-width: 440px; }
 .mk-rps { display: flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); }

@@ -85,6 +85,15 @@ describe('alerte acheteur (C bis)', () => {
     vi.setSystemTime(Date.now() + market.WISH_ALERT_GAP + 1000);
     expect(await t.mutation(api.market.sell, { sessionToken: u.alice.token, cardId: A, rarity: 'common', price: 9 })).toEqual({ notified: 2 });
     expect((await t.query(api.market.alerts, { sessionToken: u.bob.token }))).toHaveLength(1); // une ligne par vendeur, réécrite
+
+    // enchères : même chemin, autre texte (pas de « le premier qui achète l'a »)
+    vi.setSystemTime(Date.now() + market.WISH_ALERT_GAP + 1000);
+    const alice = await t.run((ctx) => ctx.db.get(u.alice.userId));
+    const n = await t.run((ctx) => market.alertWishers(ctx as never, { _id: u.alice.userId, displayName: alice!.displayName }, [{ cardId: A, rarity: 'common', price: 5 }], { auction: true }));
+    expect(n).toBe(2);
+    const last = to(await sends(t), 'bob').at(-1)!;
+    expect(last.payload.body).toMatch(/aux enchères dès 5 pièces/);
+    expect(last.payload.body).not.toMatch(/premier qui achète/);
   });
 
   test('coût : « qui veut cette carte » à la mise en vente, et la requête de la pastille', async () => {

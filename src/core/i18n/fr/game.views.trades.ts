@@ -54,7 +54,6 @@ export const fr = {
   'tr.onlyCopy': ' (ton seul exemplaire)',
   'tr.busy': 'Déjà engagée dans un échange en attente : attends la réponse.',
   'tr.nothing': 'rien',
-  'tr.noPending': 'Aucun échange en attente. Les échanges prêts t’attendent dans « Pour toi ».',
   'tr.refuse': 'Refuser',
   'tr.pickOther': 'Choisir autre chose',
   'tr.accept': 'Accepter',

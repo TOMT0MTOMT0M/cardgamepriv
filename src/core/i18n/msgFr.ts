@@ -152,6 +152,8 @@ export const MSG_FR = {
   'n.auctionSoldB': '{name} l’emporte pour {coins} pièces, ajoutées à ton solde.',
   'n.auctionUnsold': 'Enchère sans offre : {card}',
   'n.auctionUnsoldB': 'Personne n’a enchéri : la carte est revenue dans ta collection.',
+  'n.wishAuctionOne': '{card} aux enchères dès {coins} pièces. Clôture à 21 h.',
+  'n.wishAuctionMany': { one: '{card} aux enchères dès {coins} pièces, et 1 autre. Clôture à 21 h.', other: '{card} aux enchères dès {coins} pièces, et {n} autres. Clôture à 21 h.' },
   'n.friendAccepted': '{name} a accepté ta demande d’ami',
   'n.friendAcceptedBody': 'Vous pouvez échanger des cartes.',
   'n.friendAsk': '{name} te demande en ami',

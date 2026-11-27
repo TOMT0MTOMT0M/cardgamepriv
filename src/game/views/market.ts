@@ -255,7 +255,8 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     // mes ventes (onglet Vendre)
     const mine = list0.filter(isMine);
     q('.mk-mine').hidden = mode !== 'sell' || !mine.length;
-    q('.mk-mine-n').textContent = mine.length ? `${mine.filter((m) => !isAuction(m)).length}/${MARKET_MAX_OPEN}` : '';
+    // (les enchères ouvertes occupent aussi les places : convex/market.ts `openCount`)
+    q('.mk-mine-n').textContent = mine.length ? `${mine.length}/${MARKET_MAX_OPEN}` : '';
     if (mode === 'sell') {
       syncGrid(gMine, mine.map(itemFor));
       return renderPick();
