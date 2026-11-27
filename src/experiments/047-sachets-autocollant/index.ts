@@ -2,7 +2,7 @@ import { DirectionalLight, Group, RenderTarget, Scene, type Mesh } from 'three/w
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { applyPose, createStage } from '../../core/stage';
 import { createPackMesh, generatePackArt, PACK, type PackArt } from '../../core/pack';
-import { createStickerPackMesh, SACHET_IDS, SACHETS, stickerPackArt, type SachetId, type StickerLang, type StickerPackArt, type StickerVariant } from '../../core/packSticker';
+import { BEBOU_COLORS, createStickerPackMesh, EVENT_THEMES, SACHET_IDS, SACHETS, stickerPackArt, type BebouColor, type EventThemeId, type SachetId, type StickerLang, type StickerPackArt, type StickerVariant } from '../../core/packSticker';
 
 /**
  * 047 — SACHETS « AUTOCOLLANT » SUR ALU (27/11, brief de Tom) : la piste retenue du 046, refaite sur la vraie matière
@@ -39,7 +39,10 @@ export default function create(): Experiment {
   const pick = <T extends string>(v: string | null, all: readonly T[], d: T) => (all.includes(v as T) ? (v as T) : d);
   const params = {
     sachet: pick(qs.get('s'), SACHET_IDS, 'gaming'),
-    variante: pick(qs.get('v'), ['a', 'b'] as const, 'a') as StickerVariant,
+    variante: pick(qs.get('v'), ['a', 'b'] as const, 'b') as StickerVariant, // (passe 4) B (cartouche) d'abord, retenue par Hugo et Tom
+    // (passe 4) Bébou Pack : turquoise (recommandée), rose bonbon, orange vif · booster du moment : le thème de l'événement
+    bebou: pick(qs.get('bc'), Object.keys(BEBOU_COLORS) as BebouColor[], 'turquoise'),
+    evenement: pick(qs.get('ev'), Object.keys(EVENT_THEMES) as EventThemeId[], 'tele'),
     langue: pick(qs.get('l'), ['fr', 'en'] as const, 'fr') as StickerLang,
     graine: Math.max(1, Math.min(6, Number(qs.get('g')) || 1)),
     tourne: !qs.has('a'),
@@ -54,7 +57,9 @@ export default function create(): Experiment {
   // matière : `legere` (passe 2, 3 lectures de texture, un reflet) ou `origine` (celle du jeu).
   const hab = pick(qs.get('h'), ['auto', 'bandeau', 'cartouche', 'nu'] as const, 'auto');
   const more = { habillage: hab as 'auto' | 'bandeau' | 'cartouche' | 'nu', matiere: pick(qs.get('m'), ['legere', 'origine'] as const, 'legere') as 'legere' | 'origine' };
-  const film = () => ({
+  const film = (id: SachetId = params.sachet) => ({
+    ...(id === 'bebou' ? { tint: BEBOU_COLORS[params.bebou].tint } : {}),
+    ...(id === 'tele' ? { moment: params.evenement } : {}),
     ...(params.essaiTeinte ? { tint: params.teinte, alloyMix: params.alu } : {}),
     ...(more.habillage !== 'auto' ? { habillage: more.habillage } : {}),
   });
@@ -157,7 +162,7 @@ export default function create(): Experiment {
     };
     caption.append(
       cell('Actuel', `${ACTUEL[params.sachet].label} · alu teinté, nom moulé`), // i18n-ok (labo)
-      cell(`${k.title.fr} · ${params.variante.toUpperCase()} « ${v.name} »`, `${v.by} — ${k.mots}`),
+      cell(`${params.sachet === 'tele' ? `Booster du moment · ${EVENT_THEMES[params.evenement].fr}` : k.title.fr} · ${params.variante.toUpperCase()} « ${v.name} »`, `${v.by} — ${k.mots}`),
     );
     flag.__sachets!.pack = true;
     markBoard();
@@ -187,7 +192,7 @@ export default function create(): Experiment {
     layout();
     if (!params.planche) return;
     board.replaceChildren();
-    const rows: Array<{ key: 'cur' | StickerVariant; name: string }> = [{ key: 'cur', name: 'Actuel' }, { key: 'a', name: 'A' }, { key: 'b', name: 'B' }]; // i18n-ok (labo)
+    const rows: Array<{ key: 'cur' | StickerVariant; name: string }> = [{ key: 'cur', name: 'Actuel' }, { key: 'b', name: 'B' }, { key: 'a', name: 'A' }]; // i18n-ok (labo)
     const imgs = new Map<string, HTMLImageElement>();
     for (const r of rows) {
       const line = document.createElement('div');
@@ -228,7 +233,7 @@ export default function create(): Experiment {
           imgs.get(`cur:${id}`)!.src = shot(a.thumbFront ?? (a.front.image as HTMLCanvasElement));
           a.dispose();
         } else {
-          const a = await stickerPackArt(id, r.key, params.langue, 1);
+          const a = await stickerPackArt(id, r.key, params.langue, 1, film(id));
           if (my !== boardToken) return void a.dispose();
           imgs.get(`${r.key}:${id}`)!.src = shot(a.thumb);
           a.dispose();
@@ -285,6 +290,8 @@ export default function create(): Experiment {
       c.gui.add(params, 'sachet', Object.fromEntries(SACHET_IDS.map((id) => [SACHETS[id].title.fr, id]))).name('sachet').onChange(() => void showPacks());
       c.gui.add(params, 'variante', { 'A': 'a', 'B': 'b' }).name('variante').onChange(() => void showPacks());
       c.gui.add(params, 'langue', { 'Français': 'fr', 'English': 'en' }).name('langue').onChange(() => void Promise.all([showPacks(), drawBoard()])); // i18n-ok (labo)
+      c.gui.add(params, 'bebou', Object.fromEntries(Object.entries(BEBOU_COLORS).map(([k, v]) => [v.name, k]))).name('couleur du Bébou Pack').onChange(() => void Promise.all([showPacks(), drawBoard()])); // i18n-ok (labo)
+      c.gui.add(params, 'evenement', Object.fromEntries(Object.entries(EVENT_THEMES).map(([k, v]) => [`${v.fr} (${v.tint})`, k]))).name('thème du booster du moment').onChange(() => void Promise.all([showPacks(), drawBoard()])); // i18n-ok (labo)
       c.gui.add(params, 'graine', 1, 6, 1).name('booster n° (plis + pose)').onChange(() => void showPacks()); // i18n-ok (labo)
       const essai = c.gui.addFolder('essai de teinte du film'); // i18n-ok (labo)
       essai.add(params, 'essaiTeinte').name('activer').onChange(() => void showPacks()); // i18n-ok (labo)

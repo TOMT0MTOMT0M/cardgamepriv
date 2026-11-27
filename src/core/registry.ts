@@ -291,9 +291,19 @@ export const registry: RegistryEntry[] = [
     category: 'B',
     tags: ['sachet', 'booster', 'autocollant', 'thèmes', 'FR / EN'],
     tech: ['le sachet simple du jeu comme support (alu teinté, plis par booster, nom thermoformé)', 'autocollants découpés : une petite toile par sticker, liseré par dilatation de la silhouette', 'un masque demi-définition (papier / vinyle / dos) qui retire le métal sous les stickers', 'pose tirée par la graine du booster'],
-    blurb: 'La piste « Autocollant », passe 2 : le sachet est habillé comme un vrai booster (aplat imprimé + motif du thème, stickers par-dessus), l’alu ne reste qu’en réserve derrière le nom moulé. Matière allégée pour le téléphone. 6 sachets × 2 variantes (le booster du moment est un gabarit : Télé, Noël), à côté du sachet actuel.',
-    hint: 'Planche : vignettes à 80 px (actuel / A / B), touche-en une · toucher le sachet = A ↔ B · réglages : langue, booster n°, habillage (bandeau / cartouche / aucun = passe 1), matière, mesure · `?s=monde&v=b&l=en&h=nu&m=origine`',
+    blurb: 'La piste « Autocollant », passe 4 : la variante B (cartouche) s’affiche d’abord, A reste à un toucher. Gaming noir, Sport jaune, World vert citron, Pop inchangé ; plus de stickers (repères de déchirure, série, pictos, lot) ; Bébou Pack vif et plus fourni (turquoise conseillée, rose bonbon ou orange vif au choix) ; le booster du moment prend la couleur du thème de l’événement (Télé gris, Noël rouge, Foot bleu…).',
+    hint: 'Planche : vignettes à 80 px (actuel / B / A), touche-en une · toucher le sachet = B ↔ A · réglages : couleur du Bébou Pack, thème du booster du moment, langue, booster n°, habillage, matière, mesure · `?s=bebou&bc=rose&v=a` · `?s=tele&ev=foot`',
     load: () => import('../experiments/047-sachets-autocollant/index.ts'),
+  },
+  {
+    id: '048-badges-titres-uniques',
+    title: 'Badges des titres uniques',
+    category: 'D',
+    tags: ['badge', 'titre unique', 'SVG', 'profil', 'classement'],
+    tech: ['83 insignes en SVG dessinés à la main, même médaillon (filet double, teinte du titre), symbole générique par univers', 'aucun logo officiel ; lisibles à 20 px, soignés à 96 px'],
+    blurb: 'Un insigne par titre unique (83), pour remplacer le simple glyphe des badges : médaillon commun noir + filet teinté, symbole évocateur de l’univers (flocon pour le ski, balle pour Pokémon, feuille pour Hokage…).',
+    hint: 'Planche triée par univers · taille 20 / 32 / 64 / 96 px · toucher un insigne = zoom + nom + collection · aperçu profil et classement en bas · `?t=hokage&px=32`',
+    load: () => import('../experiments/048-badges-titres-uniques/index.ts'),
   },
 ];
 
