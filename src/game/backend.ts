@@ -227,6 +227,35 @@ export interface MarketHistoryItem extends MarketItem {
   buyerName: string;
 }
 
+// ─────────────────────────────── ENCHÈRES (V3 — convex/auctions.ts, src/core/auctions.ts)
+export interface AuctionItem {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  sellerAvatar?: string;
+  cardId: string;
+  rarity: RarityId;
+  mintNumber: number;
+  startPrice: number;
+  /** offre en tête (absente : aucune offre) */
+  bid?: number;
+  bids: number;
+  bidderName?: string;
+  /** je suis en tête (ou : j'ai gagné) */
+  lead: boolean;
+  status: 'open' | 'sold' | 'unsold' | 'cancelled';
+  createdAt: number;
+  endsAt: number;
+  resolvedAt?: number;
+}
+export interface AuctionBoard {
+  open: AuctionItem[];
+  /** mes résultats des 7 derniers jours (vendues, sans offre, gagnées) */
+  recent: AuctionItem[];
+}
+export const EMPTY_AUCTIONS: AuctionBoard = { open: [], recent: [] };
+// ─────────────────────────────── fin ENCHÈRES
+
 // ─────────────────────────────── TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts)
 
 /** Offre faite sur une annonce : les cartes de l'offrant contre celles de l'annonce (ou une contre-offre de l'auteur). */
@@ -581,6 +610,15 @@ export interface GameBackend {
   marketCancel(id: string): Promise<void>;
   /** `price` : le prix affiché (refusé s'il a changé entre-temps) */
   marketBuy(id: string, price: number): Promise<void>;
+  // ── (V3) ENCHÈRES (convex/auctions.ts) : abonnement seulement quand la pastille « Enchères » est à l'écran
+  watchAuctions(cb: (b: AuctionBoard) => void): () => void;
+  /** met UNE carte aux enchères (elle quitte la collection jusqu'à la clôture ou au retrait) ; `days` : 1, 2 ou 3 */
+  auctionCreate(cardId: string, rarity: RarityId, startPrice: number, days: number): Promise<void>;
+  /** offre : les pièces sont prises tout de suite, rendues si quelqu'un surenchérit */
+  auctionBid(id: string, amount: number): Promise<void>;
+  /** retrait, seulement sans offre */
+  auctionCancel(id: string): Promise<void>;
+  // ── fin enchères
   createListing(items: TradeItem[], wanted: Array<{ cardId: string; rarity: RarityId }>, note: string | undefined, hours: number): Promise<void>;
   cancelListing(id: string): Promise<void>;
   /** Faire (ou refaire : remplace la précédente) une offre sur l'annonce d'un autre. */

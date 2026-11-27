@@ -1,0 +1,18 @@
+/* (V3) ENCHÈRES AU MARCHÉ (src/game/views/auctions.ts) — direction « usinage » : filets, rayons par jetons, couleur =
+   information (seulement « En tête » / « Dépassé »). Les tuiles reprennent celles du Marché (.mk-item, .mk-meta…). */
+.au-mine { margin-bottom: 18px; }
+.au-mine[hidden] { display: none; }
+.au-st { padding: 1px 7px; border: 1px solid currentColor; border-radius: var(--r-pill); font: 600 10px var(--mono); letter-spacing: 0.04em; }
+.au-st.lead { color: #6f9a74; }
+.au-st.out { color: #d9982a; }
+.au-k { color: var(--ink-2); }
+.au-end { color: var(--ink-2); }
+.au-note { white-space: normal; }
+.au-hint { text-align: center; }
+.au-bidrow { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 6px; }
+.au-bidrow .mk-step { min-width: 40px; min-height: 40px; }
+.au-amt { display: grid; place-items: center; min-height: 40px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: #000; color: #fff; font: 600 15px var(--mono); }
+.au-go { width: 100%; min-height: 40px; }
+.au-sellf { display: flex; flex-direction: column; gap: 12px; }
+.au-sellf[hidden] { display: none; }
+.au-dur button { min-height: 40px; padding: 0 16px; }

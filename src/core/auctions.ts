@@ -58,6 +58,12 @@ export function auctionEndsAt(from: number, days: number): number {
   return Date.UTC(y, m - 1, d + days, AUCTION_CLOSE_HOUR - 1);
 }
 
+/** n° du jour à Paris (jours depuis 1970) : « ce soir / demain / samedi » à l'affichage */
+export function parisDay(t: number): number {
+  const [y, m, d] = parisYmd(t);
+  return Math.round(Date.UTC(y, m - 1, d) / 86400_000);
+}
+
 /** Message d'erreur si la mise aux enchères est invalide (null sinon). */
 export function auctionProblem(r: RarityId | string, startPrice: number, days: number): string | null {
   if (r === 'secret') return fe('market.7');

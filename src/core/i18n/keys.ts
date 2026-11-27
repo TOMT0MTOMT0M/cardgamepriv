@@ -27,6 +27,7 @@ import type { fr as p_game_views_suggestions } from './fr/game.views.suggestions
 import type { fr as p_game_views_games } from './fr/game.views.games';
 import type { fr as p_game_views_board } from './fr/game.views.board';
 import type { fr as p_game_views_market } from './fr/game.views.market';
+import type { fr as p_game_views_auctions } from './fr/game.views.auctions';
 import type { fr as p_game_views_forYou } from './fr/game.views.forYou';
 import type { fr as p_game_views_leaderboard } from './fr/game.views.leaderboard';
 import type { fr as p_game_views_login } from './fr/game.views.login';
@@ -64,6 +65,7 @@ export type AllFr = typeof core &
   typeof p_game_views_games &
   typeof p_game_views_board &
   typeof p_game_views_market &
+  typeof p_game_views_auctions &
   typeof p_game_views_forYou &
   typeof p_game_views_leaderboard &
   typeof p_game_views_login &

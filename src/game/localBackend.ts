@@ -49,6 +49,8 @@ import { createLocalChat } from './chatLocal';
 import { feedMsg, fm, type Msg, type MsgParams } from '../core/msgs';
 import { BOARD_HOURS, BOARD_MAX_ITEMS, BOARD_MAX_OPEN, listingLive, type BoardState, type MarketBoard, type MarketItem, type ListingOfferView, type ListingView } from './backend';
 import type { SuggestionView } from './backend';
+import type { AuctionBoard } from './backend';
+import { demoAuctions, type DemoAuction } from './auctionsLocal';
 import { BIG_PULL_RARITIES, cardKey, lockedCards, type BigPull, type Binder, type Friend, type GameBackend, type GameState, type PlayerCard, type SealedPack, type TradeHistoryItem, type TradeItem, type TradeView } from './backend';
 
 /** Plafonds des classeurs : les mêmes que le serveur (convex/binders.ts, recopiés : importer ce fichier tirerait le serveur Convex dans le jeu). */
@@ -129,6 +131,8 @@ interface Saved {
   botAsked?: boolean;
   /** MARCHÉ (retours Hugo 10/11) : mêmes règles que convex/market.ts ; les robots y vendent quelques doublons */
   market?: MarketItem[];
+  /** (V3) ENCHÈRES : mêmes règles que convex/auctions.ts (auctionsLocal.ts) */
+  auctions?: DemoAuction[];
   /** TABLEAU D'OFFRES (lot T) : annonces (les miennes + celles des robots) et offres */
   listings?: DemoListing[];
   listingOffers?: DemoOffer[];
@@ -284,6 +288,10 @@ export function createLocalBackend(): GameBackend {
       const mb = marketBoard();
       marketWatchers.forEach((fn) => fn(mb));
     }
+    if (auctionWatchers.size) {
+      const ab = auc.board();
+      auctionWatchers.forEach((fn) => fn(ab));
+    }
   }
 
   const feed = (kind: string, m: string | Msg, rarity?: RarityId, card?: { id: string; name: string; mint?: number }) => {
@@ -404,6 +412,24 @@ export function createLocalBackend(): GameBackend {
       bought: all.filter((m) => m.status === 'sold' && m.sellerId !== 'me' && m.buyerId === 'me' && (m.resolvedAt ?? 0) >= week),
     };
   };
+  // ── (V3) ENCHÈRES (démo) : auctionsLocal.ts
+  const auctionWatchers = new Set<(b: AuctionBoard) => void>();
+  const myMarketOpen = () => M().filter((m) => m.sellerId === 'me' && m.status === 'open').length;
+  const auc = demoAuctions({
+    list: () => (save.auctions ??= []),
+    seq: () => save.seq++,
+    bots: () => save.bots,
+    meName: () => tr('chat.me'),
+    free: (cardId, r) => (save.inv[cardKey({ cardId, rarity: r })]?.count ?? 0) - (lockedCards(state).get(cardKey({ cardId, rarity: r })) ?? 0),
+    mint: (cardId, r) => save.inv[cardKey({ cardId, rarity: r })]?.bestMintNumber ?? 999,
+    take: (owner, cardId, r) => void remove(owner === 'me' ? save.inv : (save.bots.find((b) => b.id === owner)?.inv ?? {}), { cardId, rarity: r, count: 1 }),
+    give: (owner, cardId, r, mint) => add(owner === 'me' ? save.inv : (save.bots.find((b) => b.id === owner)?.inv ?? {}), cardId, r, 1, mint),
+    coins: (amount, label) => eco.hooks.onMarket(amount, label),
+    marketOpen: myMarketOpen,
+    sync: () => sync(),
+    cardName: (id) => cardName(id),
+  });
+  // ── fin enchères
   const L = () => (save.listings ??= []);
   const O = () => (save.listingOffers ??= []);
   const ACTIVE_OFFER = (o: DemoOffer) => o.status === 'pending' || o.status === 'countered';
@@ -1373,7 +1399,7 @@ export function createLocalBackend(): GameBackend {
       await delay(120);
       const problem = marketProblem(r, price);
       if (problem) throw new Error(problem);
-      if (M().filter((m) => m.sellerId === 'me' && m.status === 'open').length >= MARKET_MAX_OPEN) throw new Error(fe('market.2', { p0: MARKET_MAX_OPEN }));
+      if (myMarketOpen() + auc.openMine() >= MARKET_MAX_OPEN) throw new Error(fe('market.2', { p0: MARKET_MAX_OPEN }));
       const it = { cardId, rarity: r, count: 1 };
       if ((save.inv[cardKey(it)]?.count ?? 0) - (lockedCards(state).get(cardKey(it)) ?? 0) < 1) throw new Error(`${cardName(cardId)} n’est pas libre (engagée dans un échange ou une annonce).`);
       const mint = save.inv[cardKey(it)]?.bestMintNumber ?? 999;
@@ -1399,7 +1425,7 @@ export function createLocalBackend(): GameBackend {
     // (amis de démo) qui ont la carte en envie et ne l'ont pas
     async marketWanted(cards) {
       await delay(80);
-      const open = M().filter((m) => m.sellerId === 'me' && m.status === 'open').length;
+      const open = myMarketOpen() + auc.openMine();
       if (open >= MARKET_MAX_OPEN) return { open, cards: [] };
       const out: Array<{ cardId: string; ids: string[] }> = [];
       for (const c of cards.slice(0, WANTED_CARDS_MAX)) {
@@ -1411,7 +1437,7 @@ export function createLocalBackend(): GameBackend {
     async marketQuickSell(items) {
       await delay(120);
       const n = items.reduce((a, it) => a + it.count, 0);
-      if (M().filter((m) => m.sellerId === 'me' && m.status === 'open').length + n > MARKET_MAX_OPEN) throw new Error(fe('market.2', { p0: MARKET_MAX_OPEN }));
+      if (myMarketOpen() + auc.openMine() + n > MARKET_MAX_OPEN) throw new Error(fe('market.2', { p0: MARKET_MAX_OPEN }));
       const locked = lockedCards(state);
       for (const it of items) {
         const problem = marketProblem(it.rarity, marketAdvised(it.rarity));
@@ -1470,6 +1496,24 @@ export function createLocalBackend(): GameBackend {
       add(save.inv, m.cardId, m.rarity, 1, m.mintNumber);
       sync();
     },
+    // ── (V3) enchères (auctionsLocal.ts)
+    watchAuctions(cb) {
+      auctionWatchers.add(cb);
+      cb(auc.board());
+      return () => auctionWatchers.delete(cb);
+    },
+    async auctionCreate(cardId, r, startPrice, days) {
+      await delay(120);
+      auc.create(cardId, r, startPrice, days);
+    },
+    async auctionBid(id, amount) {
+      await delay(120);
+      auc.bid(id, amount);
+    },
+    async auctionCancel(id) {
+      auc.cancel(id);
+    },
+    // ── fin enchères
     // (11/11) booster du moment : l'événement d'exemple, retiré tout seul à sa fin
     watchEvents(cb) {
       cb(liveDemoEvents());
