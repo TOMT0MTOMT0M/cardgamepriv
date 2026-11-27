@@ -518,6 +518,64 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
   .pf-rlist { column-gap: 16px; }
 }
 
+/* ───────────────────────── (V3, lot social) PROFIL : en-tête sur une grille, bannière et animation en calques ─────────
+   Grille : photo | identité | actions, alignées sur le BAS (la dernière ligne de texte et le bas des boutons tombent
+   sur la même ligne). Profil d'un autre joueur : ses actions passent sous l'identité, calées sur le bord gauche du pseudo.
+   Typo, trois niveaux seulement : pseudo (Bold Frame) / étiquettes en capitales (repère, titre, badges, onglets,
+   boutons : même hauteur de 24 px sur la ligne du titre) / texte courant (devise, « depuis »).
+   Bannière, calques de bas en haut : couleur (ou noir sous une image) → image / GIF importé → voile bas → animation de
+   profil → contour de couleur → boutons. Sur une image, l'animation s'ÉCLAIRE par-dessus (mélange « screen » : elle
+   ajoute de la lumière, ne salit ni ne couvre le GIF) ; la neige garde un liseré sombre pour rester lisible sur un GIF clair.
+   Bannière plus haute (148 / 116 px) : un GIF importé n'est plus réduit à une bande. */
+.profile .pf-banner { height: 148px; margin-bottom: -60px; -webkit-mask-image: linear-gradient(180deg, #000 48%, transparent); mask-image: linear-gradient(180deg, #000 48%, transparent); }
+.profile .pf-banner > .pf-bn-media { z-index: 0; }
+.profile .pf-banner::after { z-index: 1; background: linear-gradient(180deg, transparent 35%, rgba(0, 0, 0, 0.45)); border: 0; }
+.profile .pf-banner > .pfx { z-index: 2; }
+.profile .pf-banner.has-media > .pfx { mix-blend-mode: screen; }
+.profile .pf-banner.has-media > .pfx-aurore i { opacity: 0.9; }
+.profile .pf-banner.has-media > .pfx-neige i { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.28); }
+.profile .pf-banner.has-media > .pfx-neige { mix-blend-mode: normal; }
+.profile .pf-banner.has-media.bn-color::before { content: ''; position: absolute; inset: 0; z-index: 3; border: 3px solid var(--bnc); border-radius: inherit; pointer-events: none; }
+.profile .pf-banner .pf-banner-btn { z-index: 4; }
+.pf-case-sec { --pf-over: 510px; }
+
+.profile .pf-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'ava id act'; align-items: end; column-gap: 20px; row-gap: 14px; padding: 0 20px; }
+.profile .pf-head > .pf-ava-wrap { grid-area: ava; align-self: end; }
+.profile .pf-head > .pf-id { grid-area: id; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 0; }
+.profile .pf-head > .pf-actions { grid-area: act; position: static; align-self: end; margin: 0; padding: 0; gap: 8px; flex-wrap: wrap; }
+.profile .pf-head:has(.pf-see-coll) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'ava id' '. act'; }
+.profile .pf-head:has(.pf-see-coll) > .pf-actions { justify-content: flex-start; max-width: none; }
+.profile .pf-ava-wrap .pf-ava { width: 104px; height: 104px; }
+.profile .pf-id .pf-eyebrow { margin: 0; }
+.profile .pf-id h1 { margin: 0; font: 600 34px/1 var(--title); letter-spacing: -0.01em; }
+.profile .pf-id .pf-utags { margin: 0; }
+.profile .pf-tline { min-height: 24px; gap: 6px; }
+.profile .pf-tline .pf-title { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; font-size: 11px; line-height: 1; }
+.profile .pf-tline .pf-badge { height: 24px; padding: 0 9px 0 7px; font: 500 11px/1 var(--mono); }
+.profile .pf-meta { font: 400 12.5px/1.5 var(--mono); }
+.profile .pf-meta .pf-bio, .profile .pf-meta .pf-since { font: inherit; color: var(--ink-3); }
+.profile .pf-meta .pf-bio { color: var(--ink-2); }
+.profile .pf-actions .btn-ghost, .profile .pf-actions .btn-primary { min-height: 38px; }
+@media (max-width: 600px) {
+  .profile .pf-banner { height: 116px; margin-bottom: -38px; }
+  .profile .pf-head { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; row-gap: 12px; padding: 0 6px; }
+  .profile .pf-ava-wrap .pf-ava { width: 72px; height: 72px; }
+  .profile .pf-id { gap: 4px; }
+  .profile .pf-id h1 { font-size: 24px; line-height: 1.05; }
+  .profile .pf-tline { min-height: 22px; gap: 4px; }
+  .profile .pf-tline .pf-title { height: 22px; padding: 0 8px; }
+  .profile .pf-tline .pf-badge { width: 22px; height: 22px; padding: 0; }
+  .profile .pf-meta { font-size: 12.5px; }
+  /* mon profil : « ✎ » au bout de la ligne, aligné sur la devise (plus posé sur la bannière) */
+  .profile .pf-head > .pf-actions:has(.pf-bio-edit) { left: auto; right: auto; }
+  /* profil d'un autre : « Voir sa collection » sur toute la largeur, puis Échanger · Message · Défier · Ami en 4 parts égales */
+  .profile .pf-head:has(.pf-see-coll) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'ava id' 'act act'; }
+  .profile .pf-head:has(.pf-see-coll) > .pf-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .profile .pf-actions:has(.pf-see-coll) > * { min-width: 0; min-height: 40px; padding: 4px 4px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: normal; line-height: 1.2; letter-spacing: 0.04em; font-size: 11.5px; }
+  .profile .pf-actions:has(.pf-see-coll) > .pf-see-coll { grid-column: 1 / -1; font-size: 12px; letter-spacing: 0.08em; }
+  .profile .pf-actions:has(.pf-see-coll) > [hidden] { display: none; }
+}
+
 /* ───────────── (V3, lot 06 + S1) COLLECTION : butée de la molette et emplacements manquants
    Reflet rasant : une fine bande blanche passe UNE fois sur les cartes de la rangée qui vient se caler sous la barre
    (collection.ts, rowSheen : translateX par WAAPI, durée et décalage par jetons). Manquantes : empreinte gravée en

@@ -35,6 +35,7 @@ export const fr = {
   'pf.editInfo': 'Modifier mes informations',
   'pf.seeColl': 'Voir sa collection',
   'pf.offerTrade': 'Proposer un échange',
+  'pf.tradeShort': 'Échanger',
   'pf.resetDemo': 'Remettre la démo à zéro',
   'pf.logout': 'Se déconnecter',
   'pf.resetDemoD': 'Efface toute la collection de démo de ce navigateur.',

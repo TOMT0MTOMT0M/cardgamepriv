@@ -36,6 +36,7 @@ export const en: PartOf<typeof fr> = {
   'pf.editInfo': 'Edit my info',
   'pf.seeColl': 'See their collection',
   'pf.offerTrade': 'Offer a trade',
+  'pf.tradeShort': 'Trade',
   'pf.resetDemo': 'Reset the demo',
   'pf.logout': 'Log out',
   'pf.resetDemoD': 'Erases the whole demo collection from this browser.',

@@ -4,7 +4,7 @@ import '../../core/i18n/fr/game.views.profile'; // (textes de ce module, version
 import { locale, t as tr } from '../../core/i18n';
 import type { ActivityItem, GameBackend, PlayerCard, Profile } from '../backend';
 import { createLeaderboard } from './leaderboard';
-import { friendBtn } from './friends';
+import { challengeHref, friendBtn } from './friends';
 import type { Shell } from '../shell';
 import type { ViewerScene } from '../scenes/viewer';
 import { dropFlight, liftCard, returnCard } from '../sharedFlight';
@@ -289,7 +289,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         ${acc ? `<div class="pf-accord" title="${esc(tr(`at.d.${acc.matter}` as MsgKey))}">${icon('link', 13)}<span>${tr('at.accordOn', { name: tr(`at.m.${acc.matter}` as MsgKey) })}</span></div>` : ''}
         <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>' + tr('pf.noInfo') + '</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="${tr('pf.since', { date: fmtDate(prof.joinedAt) })}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="${tr('pf.editInfo')}" title="${tr('pf.editInfo')}">${icon('pen', 14)}<span> ${tr('pf.info')}</span></button>` : `<button class="btn-primary pf-see-coll">${tr('pf.seeColl')}</button><a class="btn-ghost pf-trade" href="#/echanges">${tr('pf.offerTrade')}</a>${backend.state.user && who ? `<a class="btn-ghost pf-msg" href="#/chat/${dmKey(backend.state.user.id, who)}" aria-label="${tr('am.messageTitle', { name: esc(name) })}">${tr('am.message')}</a>` : ''}${friendBtn(backend, who, name)}`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="${tr('pf.editInfo')}" title="${tr('pf.editInfo')}">${icon('pen', 14)}<span> ${tr('pf.info')}</span></button>` : `<button class="btn-primary pf-see-coll">${tr('pf.seeColl')}</button><a class="btn-ghost pf-trade" href="#/echanges" aria-label="${tr('pf.offerTrade')}">${tr('pf.tradeShort')}</a>${backend.state.user && who ? `<a class="btn-ghost pf-msg" href="#/chat/${dmKey(backend.state.user.id, who)}" aria-label="${tr('am.messageTitle', { name: esc(name) })}">${tr('am.message')}</a><a class="btn-ghost pf-duel" href="${challengeHref(who)}" aria-label="${tr('am.challengeTitle', { name: esc(name) })}">${tr('am.challenge')}</a>` : ''}${friendBtn(backend, who, name, 'short')}`}</div>`;
     hydrateStills(head);
     head.querySelector('.pf-see-coll')?.addEventListener('click', () => {
       tab = 'collection';
