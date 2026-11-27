@@ -291,8 +291,8 @@ export const registry: RegistryEntry[] = [
     category: 'B',
     tags: ['sachet', 'booster', 'autocollant', 'thèmes', 'FR / EN'],
     tech: ['le sachet simple du jeu comme support (alu teinté, plis par booster, nom thermoformé)', 'autocollants découpés : une petite toile par sticker, liseré par dilatation de la silhouette', 'un masque demi-définition (papier / vinyle / dos) qui retire le métal sous les stickers', 'pose tirée par la graine du booster'],
-    blurb: 'La piste « Autocollant » sur la vraie matière : rien d’imprimé sur l’alu, les thèmes se reconnaissent aux stickers collés dessus. 6 sachets × 2 variantes (le booster du moment est un gabarit : Télé, Noël), à côté du sachet actuel.',
-    hint: 'Planche : vignettes à 80 px (actuel / A / B), touche-en une · toucher le sachet = A ↔ B · réglages : langue, booster n°, essai de teinte · `?s=monde&v=b&l=en`',
+    blurb: 'La piste « Autocollant », passe 2 : le sachet est habillé comme un vrai booster (aplat imprimé + motif du thème, stickers par-dessus), l’alu ne reste qu’en réserve derrière le nom moulé. Matière allégée pour le téléphone. 6 sachets × 2 variantes (le booster du moment est un gabarit : Télé, Noël), à côté du sachet actuel.',
+    hint: 'Planche : vignettes à 80 px (actuel / A / B), touche-en une · toucher le sachet = A ↔ B · réglages : langue, booster n°, habillage (bandeau / cartouche / aucun = passe 1), matière, mesure · `?s=monde&v=b&l=en&h=nu&m=origine`',
     load: () => import('../experiments/047-sachets-autocollant/index.ts'),
   },
 ];
