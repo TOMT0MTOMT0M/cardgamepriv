@@ -2756,7 +2756,7 @@ export const ETOILES_ADD: ReadonlyArray<readonly [string, string, string, number
   ["jv-summoners-war", "jv-summoners-war-ramagos", "Ramagos", 1, "summoners-war-ramagos.jpg", "c"],
   ["jv-summoners-war", "jv-summoners-war-dagora", "Dagora", 1, "summoners-war-dagora.jpg", "c"],
   ["jv-summoners-war", "jv-summoners-war-darion", "Darion", 1, "summoners-war-darion.jpg", "c"],
-  ["jv-summoners-war", "jv-summoners-war-jubelle", "Jubelle", 1, "", ""],
+  ["jv-summoners-war", "jv-summoners-war-jubelle", "Jubelle", 1, "summoners-war-jubelle-r2611272029.jpg", "c"],
   ["jv-summoners-war", "jv-summoners-war-ahman", "Ahman", 1, "summoners-war-ahman.jpg", "c"],
   ["jv-summoners-war", "jv-summoners-war-slime", "Slime", 1, "summoners-war-slime.jpg", "c"],
   ["asterix-obelix-films", "pop-idefix", "Idéfix", 5, "idefix.jpg", "c"],

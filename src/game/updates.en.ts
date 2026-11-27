@@ -26,6 +26,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '28 Nov', title: '🖼️ Jubelle has artwork', tag: 'corrigé',
+        points: [
+          '🖼️ Jubelle (Summoners War) was the last card still without a picture: the card now has its artwork, in the collection and full size.',
+        ],
+      },
+      {
         date: '28 Nov', title: '🔥 Forge → sale: your wanted duplicates go to the market in one tap', tag: 'nouveau',
         points: [
           '🔥 When you forge, if other players want some of your cards (a wish for the card, its album or its family), the Forge offers to put them up for sale. One tap: they go to the market, the rest is forged.',
