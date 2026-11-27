@@ -20,9 +20,9 @@ export type CartoonDesign = 'sticker' | 'bd' | 'badge';
 export type CartoonTheme = 'sport' | 'monde' | 'pop' | 'gaming' | 'tele' | 'bebou';
 
 export const CARTOON_DESIGNS: ReadonlyArray<{ id: CartoonDesign; label: string }> = [
-  { id: 'sticker', label: 'Autocollant' },
-  { id: 'bd', label: 'Case de BD' },
-  { id: 'badge', label: 'Écusson' },
+  { id: 'sticker', label: 'Autocollant' }, // i18n-ok (labo 046)
+  { id: 'bd', label: 'Case de BD' }, // i18n-ok (labo 046)
+  { id: 'badge', label: 'Écusson' }, // i18n-ok (labo 046)
 ];
 
 interface ThemeLook {
@@ -34,13 +34,14 @@ interface ThemeLook {
   /** teinte claire (trame, reflets) */
   l: string;
 }
+// (27/11, V3) le jeu importe ce fichier pour les logos des sachets « Autocollant » ; ces noms ne servent qu'au labo 046
 export const CARTOON_THEMES: Record<CartoonTheme, ThemeLook> = {
-  sport: { name: 'Sport', c: '#3a9a66', d: '#1f6140', l: '#7fd3a2' },
-  monde: { name: 'World', c: '#3c73c8', d: '#22468a', l: '#8fb7f0' },
-  pop: { name: 'Popculture', c: '#e07a2e', d: '#9c4612', l: '#ffc08a' },
-  gaming: { name: 'Gaming', c: '#6a4fc4', d: '#3d2b86', l: '#b4a2f5' },
-  tele: { name: 'Télé', c: '#d6455a', d: '#8c1f31', l: '#ff9cab' },
-  bebou: { name: 'Bebou', c: '#9ea2aa', d: '#5e626b', l: '#dfe2e8' },
+  sport: { name: 'Sport', c: '#3a9a66', d: '#1f6140', l: '#7fd3a2' }, // i18n-ok (labo)
+  monde: { name: 'World', c: '#3c73c8', d: '#22468a', l: '#8fb7f0' }, // i18n-ok (labo)
+  pop: { name: 'Popculture', c: '#e07a2e', d: '#9c4612', l: '#ffc08a' }, // i18n-ok (labo)
+  gaming: { name: 'Gaming', c: '#6a4fc4', d: '#3d2b86', l: '#b4a2f5' }, // i18n-ok (labo)
+  tele: { name: 'Télé', c: '#d6455a', d: '#8c1f31', l: '#ff9cab' }, // i18n-ok (labo)
+  bebou: { name: 'Bebou', c: '#9ea2aa', d: '#5e626b', l: '#dfe2e8' }, // i18n-ok (labo)
 };
 
 const INK = '#141016';

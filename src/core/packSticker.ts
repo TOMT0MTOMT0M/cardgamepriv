@@ -1,5 +1,6 @@
 import { CanvasTexture, Mesh, MeshStandardNodeMaterial, NoColorSpace, type Texture } from 'three/webgpu';
 import { float, fract, mix, normalMap, positionLocal, sin, smoothstep, step, texture, uv, vec2, vec3 } from 'three/tsl';
+import { EVENT_THEMES, eventThemeOf, type EventThemeId } from './events';
 import { makeCanvas, roundRect, type Ctx } from './art/canvas';
 import { FONT_MONO } from './art/frame';
 import { ensureFonts } from './art';
@@ -74,57 +75,50 @@ export const BEBOU_COLORS = {
 export type BebouColor = keyof typeof BEBOU_COLORS;
 
 /**
- * (passe 4, retour de Hugo) BOOSTER DU MOMENT : sa couleur suit le thème de l'événement en cours. La fiche d'un
- * événement du jeu ne porte qu'une teinte `accent` choisie à la main (src/core/events.ts) : cette table dit laquelle
- * prendre pour chaque thème. `logo` : dessin déjà disponible (packCartoon).
+ * (passe 4, retour de Hugo) BOOSTER DU MOMENT : sa couleur suit le thème de l'événement en cours. (27/11, V3) la table
+ * vit dans src/core/events.ts (le dashboard en tire sa palette, le serveur peut la lire) ; `logo` : dessin de packCartoon.
  */
-export const EVENT_THEMES = {
-  tele: { fr: 'Télé', en: 'TV', label: 'Télé', tint: '#8d919b', logo: 'tele' }, // i18n-ok
-  noel: { fr: 'Noël', en: 'Xmas', label: 'Noël', tint: '#c8232c', logo: 'noel' }, // i18n-ok
-  cinema: { fr: 'Cinéma', en: 'Movies', label: 'Ciné', tint: '#8c1d3f', logo: 'pop' }, // i18n-ok
-  jeux: { fr: 'Jeux vidéo', en: 'Video games', label: 'Jeux', tint: '#3b3fd8', logo: 'gaming' }, // i18n-ok
-  foot: { fr: 'Foot', en: 'Football', label: 'Foot', tint: '#1f5fd0', logo: 'sport' }, // i18n-ok
-  voyage: { fr: 'Voyage', en: 'Travel', label: 'Voyage', tint: '#ff5a4d', logo: 'monde' }, // i18n-ok
-} as const satisfies Record<string, { fr: string; en: string; label: string; tint: string; logo: Logo }>;
-export type EventThemeId = keyof typeof EVENT_THEMES;
+export { EVENT_THEMES, type EventThemeId };
 
+// (27/11, V3 — contrôle i18n) `title` : déjà en FR et EN, choisis par la langue du joueur ; `label` : nom moulé (marque,
+// le même dans les deux langues, validé par Hugo) ; `mots` et `variants` : fiche du labo, jamais montrée au joueur
 export const SACHETS: Record<SachetId, SachetLook> = {
   gaming: {
-    title: { fr: 'Gaming', en: 'Gaming' }, label: 'Gaming', tint: '#1b1b21', alloyMix: 0.5, ink: ['#202027', '#0b0b0e', '#5a5a68'], logo: 'gaming', paper: '#f6f4ff', a: '#e6ff3d', b: '#ff4d6d',
-    mots: 'arcade · bidouille · numéroté',
-    variants: { a: { name: 'Borne', by: 'Teenage Engineering' }, b: { name: 'Chambre d’ado', by: 'Brain Dead' } },
+    title: { fr: 'Gaming', en: 'Gaming' }, label: 'Gaming', tint: '#1b1b21', alloyMix: 0.5, ink: ['#202027', '#0b0b0e', '#5a5a68'], logo: 'gaming', paper: '#f6f4ff', a: '#e6ff3d', b: '#ff4d6d', // i18n-ok
+    mots: 'arcade · bidouille · numéroté', // i18n-ok (labo)
+    variants: { a: { name: 'Borne', by: 'Teenage Engineering' }, b: { name: 'Chambre d’ado', by: 'Brain Dead' } }, // i18n-ok (labo)
   },
   pop: {
-    title: { fr: 'Pop culture', en: 'Pop culture' }, label: 'Popculture', tint: '#ff6a1f', alloyMix: 0.4, ink: ['#ff6a1f', '#df4a06', '#ff9950'], logo: 'pop', paper: '#fff6e3', a: '#ff4fa3', b: '#2b2bd6',
-    mots: 'séance · zapping · fan',
-    variants: { a: { name: 'Séance', by: 'Brain Dead' }, b: { name: 'Zapping', by: 'konbini' } },
+    title: { fr: 'Pop culture', en: 'Pop culture' }, label: 'Popculture', tint: '#ff6a1f', alloyMix: 0.4, ink: ['#ff6a1f', '#df4a06', '#ff9950'], logo: 'pop', paper: '#fff6e3', a: '#ff4fa3', b: '#2b2bd6', // i18n-ok
+    mots: 'séance · zapping · fan', // i18n-ok (labo)
+    variants: { a: { name: 'Séance', by: 'Brain Dead' }, b: { name: 'Zapping', by: 'konbini' } }, // i18n-ok (labo)
   },
   sport: {
-    title: { fr: 'Sport & esport', en: 'Sport & esport' }, label: 'Sport', tint: '#ffd60a', alloyMix: 0.4, ink: ['#ffd60a', '#e3b000', '#ffe96b'], logo: 'sport', paper: '#ffffff', a: '#ff4b1f', b: '#141016',
-    mots: 'jour de match · dossard · rebond',
-    variants: { a: { name: 'Dossard', by: 'Studio Feixen + Teenage Engineering' }, b: { name: 'Rebond', by: 'Studio Feixen' } },
+    title: { fr: 'Sport & esport', en: 'Sport & esport' }, label: 'Sport', tint: '#ffd60a', alloyMix: 0.4, ink: ['#ffd60a', '#e3b000', '#ffe96b'], logo: 'sport', paper: '#ffffff', a: '#ff4b1f', b: '#141016', // i18n-ok
+    mots: 'jour de match · dossard · rebond', // i18n-ok (labo)
+    variants: { a: { name: 'Dossard', by: 'Studio Feixen + Teenage Engineering' }, b: { name: 'Rebond', by: 'Studio Feixen' } }, // i18n-ok (labo)
   },
   monde: {
-    title: { fr: 'Le monde', en: 'The world' }, label: 'World', tint: '#a6ee0c', alloyMix: 0.4, ink: ['#a6ee0c', '#86cb00', '#c9ff5e'], logo: 'monde', paper: '#efe1c2', a: '#ff7a1a', b: '#1c2a5e',
-    mots: 'valise · tampon · escale',
-    variants: { a: { name: 'Soute', by: 'Virgil Abloh + Teenage Engineering' }, b: { name: 'Passeport', by: 'Brain Dead' } },
+    title: { fr: 'Le monde', en: 'The world' }, label: 'World', tint: '#a6ee0c', alloyMix: 0.4, ink: ['#a6ee0c', '#86cb00', '#c9ff5e'], logo: 'monde', paper: '#efe1c2', a: '#ff7a1a', b: '#1c2a5e', // i18n-ok
+    mots: 'valise · tampon · escale', // i18n-ok (labo)
+    variants: { a: { name: 'Soute', by: 'Virgil Abloh + Teenage Engineering' }, b: { name: 'Passeport', by: 'Brain Dead' } }, // i18n-ok (labo)
   },
   bebou: {
-    title: { fr: 'Bébou pack', en: 'Bébou pack' }, label: 'Bebou', tint: BEBOU_COLORS.turquoise.tint, alloyMix: 0.4, ink: inkOf(BEBOU_COLORS.turquoise.tint), logo: 'bebou', paper: '#f1e9d8', a: '#f1e9d8', b: '#c9b99a',
-    mots: 'silence · sceau · rare',
-    variants: { a: { name: 'Sceau', by: 'Kenya Hara' }, b: { name: 'Pastille', by: 'Nothing + Kenya Hara' } },
+    title: { fr: 'Bébou pack', en: 'Bébou pack' }, label: 'Bebou', tint: BEBOU_COLORS.turquoise.tint, alloyMix: 0.4, ink: inkOf(BEBOU_COLORS.turquoise.tint), logo: 'bebou', paper: '#f1e9d8', a: '#f1e9d8', b: '#c9b99a', // i18n-ok
+    mots: 'silence · sceau · rare', // i18n-ok (labo)
+    variants: { a: { name: 'Sceau', by: 'Kenya Hara' }, b: { name: 'Pastille', by: 'Nothing + Kenya Hara' } }, // i18n-ok (labo)
   },
   tele: {
-    title: { fr: `Booster du moment · ${EVENT_THEMES.tele.fr}`, en: `Limited booster · ${EVENT_THEMES.tele.en}` }, label: EVENT_THEMES.tele.label, tint: EVENT_THEMES.tele.tint, alloyMix: 0.4, ink: inkOf(EVENT_THEMES.tele.tint), logo: 'tele', paper: '#fffdf5', a: '#ffe500', b: '#141016',
+    title: { fr: `Booster du moment · ${EVENT_THEMES.tele.fr}`, en: `Limited booster · ${EVENT_THEMES.tele.en}` }, label: EVENT_THEMES.tele.label, tint: EVENT_THEMES.tele.tint, alloyMix: 0.4, ink: inkOf(EVENT_THEMES.tele.tint), logo: 'tele', paper: '#fffdf5', a: '#ffe500', b: '#141016', // i18n-ok
     until: { fr: '02/12', en: 'DEC 2' },
-    mots: 'éphémère · daté · bandeau',
-    variants: { a: { name: 'Obi', by: 'konbini + Virgil Abloh' }, b: { name: 'Promo', by: 'konbini' } },
+    mots: 'éphémère · daté · bandeau', // i18n-ok (labo)
+    variants: { a: { name: 'Obi', by: 'konbini + Virgil Abloh' }, b: { name: 'Promo', by: 'konbini' } }, // i18n-ok (labo)
   },
   noel: {
-    title: { fr: `Booster du moment · ${EVENT_THEMES.noel.fr}`, en: `Limited booster · ${EVENT_THEMES.noel.en}` }, label: EVENT_THEMES.noel.label, tint: EVENT_THEMES.noel.tint, alloyMix: 0.4, ink: inkOf(EVENT_THEMES.noel.tint), logo: 'noel', paper: '#fffdf5', a: '#ffe500', b: '#141016',
+    title: { fr: `Booster du moment · ${EVENT_THEMES.noel.fr}`, en: `Limited booster · ${EVENT_THEMES.noel.en}` }, label: EVENT_THEMES.noel.label, tint: EVENT_THEMES.noel.tint, alloyMix: 0.4, ink: inkOf(EVENT_THEMES.noel.tint), logo: 'noel', paper: '#fffdf5', a: '#ffe500', b: '#141016', // i18n-ok
     until: { fr: '26/12', en: 'DEC 26' },
-    mots: 'éphémère · daté · bandeau',
-    variants: { a: { name: 'Obi', by: 'konbini + Virgil Abloh' }, b: { name: 'Promo', by: 'konbini' } },
+    mots: 'éphémère · daté · bandeau', // i18n-ok (labo)
+    variants: { a: { name: 'Obi', by: 'konbini + Virgil Abloh' }, b: { name: 'Promo', by: 'konbini' } }, // i18n-ok (labo)
   },
 };
 export const SACHET_IDS = Object.keys(SACHETS) as SachetId[];
@@ -1547,7 +1541,7 @@ export async function stickerPackArt(
   const ev = film.moment && (id === 'tele' || id === 'noel') ? EVENT_THEMES[film.moment] : null;
   const k: SachetLook = {
     ...SACHETS[id],
-    ...(ev ? { title: { fr: `Booster du moment · ${ev.fr}`, en: `Limited booster · ${ev.en}` }, label: ev.label, tint: ev.tint, ink: inkOf(ev.tint), logo: ev.logo as Logo } : {}),
+    ...(ev ? { title: { fr: `Booster du moment · ${ev.fr}`, en: `Limited booster · ${ev.en}` }, label: ev.label, tint: ev.tint, ink: inkOf(ev.tint), logo: ev.logo as Logo } : {}), // i18n-ok (FR et EN)
     ...(film.tint ? { tint: film.tint, ink: inkOf(film.tint) } : {}),
     ...(film.alloyMix !== undefined ? { alloyMix: film.alloyMix } : {}),
     ...(film.label ? { label: film.label } : {}),
@@ -1715,14 +1709,20 @@ function untilOf(endAt: number): L2 {
 
 /**
  * Le sachet d'un booster du jeu, variante B (cartouche, décision de Tom et Hugo du 27/11), dans la langue du joueur.
- * `ev` : le booster du moment — gabarit `moment`, nom moulé = nom de l'événement, sa teinte, date de fin sur
- * l'étiquette. `null` : clé sans sachet.
+ * `ev` : le booster du moment — gabarit `moment`, nom moulé = nom de l'événement, teinte et logo de son thème
+ * (`eventThemeOf` : teinte de la palette, sinon le nom), date de fin sur l'étiquette. `null` : clé sans sachet.
  */
 export async function gameSachetArt(key: string, L: StickerLang, ev?: { name: string; accent: string; endAt?: number } | null): Promise<StickerPackArt | null> {
   if (ev) {
+    const th = eventThemeOf(ev);
     let seed = 7;
     for (const ch of ev.name) seed = (seed * 31 + ch.charCodeAt(0)) % 9973;
-    return stickerPackArt('tele', 'b', L, seed + 1, { jeu: true, tint: ev.accent, logo: 'bebou', label: ev.name, ...(ev.endAt ? { until: untilOf(ev.endAt) } : {}) });
+    return stickerPackArt(th === 'noel' ? 'noel' : 'tele', 'b', L, seed + 1, {
+      jeu: true,
+      ...(th ? { moment: th } : { tint: ev.accent, logo: 'bebou' as const }),
+      label: ev.name,
+      ...(ev.endAt ? { until: untilOf(ev.endAt) } : {}),
+    });
   }
   return GAME_SACHETS.includes(key) ? stickerPackArt(key as SachetId, 'b', L, 1, { jeu: true }) : null;
 }

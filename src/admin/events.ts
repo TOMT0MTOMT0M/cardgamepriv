@@ -106,7 +106,7 @@ export async function viewEvenements(v: HTMLElement, x: AdminCtx) {
             <p class="small muted">Vides : les joueurs en anglais voient le nom et la phrase en français.</p>
             <div class="row"><label class="grow">Début<input name="start" type="datetime-local" value="${toLocal(start0)}"></label><label class="grow">Fin<input name="end" type="datetime-local" value="${toLocal(end0)}"></label></div>
             <div class="chips small ev-dur">${[24, 48, 72, 168].map((h) => `<button class="chip" type="button" data-h="${h}">${h < 168 ? `${h / 24} j` : '1 semaine'}</button>`).join('')}</div>
-            <div class="ev-colors"><span class="small muted">Couleur du sachet</span>${ev.EVENT_ACCENTS.map(([c, n]) => `<button type="button" class="ev-c" data-c="${c}" title="${esc(n)}" aria-label="${esc(n)}" style="--c:${c}"></button>`).join('')}<input type="color" name="accent" value="${esc(st.accent)}" title="Autre couleur"></div>
+            <div class="ev-colors"><span class="small muted">Thème du sachet (${ev.EVENT_ACCENTS.map(([, n]) => n).join(', ')} ; autre couleur = logo neutre)</span>${ev.EVENT_ACCENTS.map(([c, n]) => `<button type="button" class="ev-c" data-c="${c}" title="${esc(n)}" aria-label="${esc(n)}" style="--c:${c}"></button>`).join('')}<input type="color" name="accent" value="${esc(st.accent)}" title="Autre couleur"></div>
             <div class="ev-scope">
               <span class="small muted">Sous-thèmes</span>
               <div class="ev-chosen" data-subs></div>

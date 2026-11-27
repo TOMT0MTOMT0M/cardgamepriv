@@ -41,16 +41,38 @@ export const EVENT_KEY = 'event';
 export const EVENT_LIMITS = { name: 28, blurb: 90, subthemes: 40, cards: 400, maxDays: 60 } as const;
 
 /**
- * Teintes proposées dans le dashboard (sachets alu teintés comme les 5 autres). Le serveur accepte n'importe quel
- * #rrggbb ; celles-ci restent loin des couleurs de rareté (gris, vert, bleu, rouge, doré) pour ne pas les brouiller
- * (le Gaming Pack est déjà violet : préférer une autre teinte pour un événement Gaming).
+ * (27/11, V3 — sachets « Autocollant », décision de Tom et Hugo) THÈMES du booster du moment : la couleur du sachet suit
+ * le thème de l'événement (Télé gris, Noël rouge…). `label` = nom court (labo 047), `logo` = dessin du sticker
+ * (packCartoon / packSticker). Données pures : le serveur et le dashboard les lisent aussi.
  */
-export const EVENT_ACCENTS: Array<[string, string]> = [
-  ['#7c3aed', 'Violet'], // i18n-ok
-  ['#c026d3', 'Fuchsia'], // i18n-ok
-  ['#0e7490', 'Pétrole'], // i18n-ok
-  ['#c2410c', 'Cuivre'], // i18n-ok
-];
+export const EVENT_THEMES = {
+  tele: { fr: 'Télé', en: 'TV', label: 'Télé', tint: '#8d919b', logo: 'tele' }, // i18n-ok
+  noel: { fr: 'Noël', en: 'Xmas', label: 'Noël', tint: '#c8232c', logo: 'noel' }, // i18n-ok
+  cinema: { fr: 'Cinéma', en: 'Movies', label: 'Ciné', tint: '#8c1d3f', logo: 'pop' }, // i18n-ok
+  jeux: { fr: 'Jeux vidéo', en: 'Video games', label: 'Jeux', tint: '#3b3fd8', logo: 'gaming' }, // i18n-ok
+  foot: { fr: 'Foot', en: 'Football', label: 'Foot', tint: '#1f5fd0', logo: 'sport' }, // i18n-ok
+  voyage: { fr: 'Voyage', en: 'Travel', label: 'Voyage', tint: '#ff5a4d', logo: 'monde' }, // i18n-ok
+} as const satisfies Record<string, { fr: string; en: string; label: string; tint: string; logo: 'tele' | 'noel' | 'pop' | 'gaming' | 'sport' | 'monde' }>;
+export type EventThemeId = keyof typeof EVENT_THEMES;
+
+const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+/**
+ * Le thème d'un événement : d'abord sa teinte (choisie dans la palette du dashboard), sinon son nom (« Noël 2026 »,
+ * « Soirée télé »). `null` : teinte libre, le sachet prend la teinte telle quelle avec un logo neutre.
+ */
+export function eventThemeOf(e: { name: string; accent: string }): EventThemeId | null {
+  const ids = Object.keys(EVENT_THEMES) as EventThemeId[];
+  const byTint = ids.find((id) => EVENT_THEMES[id].tint === e.accent.toLowerCase());
+  if (byTint) return byTint;
+  const words = fold(e.name).split(/[^a-z0-9]+/);
+  return ids.find((id) => [EVENT_THEMES[id].fr, EVENT_THEMES[id].en, EVENT_THEMES[id].label].some((w) => words.includes(fold(w)))) ?? null;
+}
+
+/**
+ * Teintes proposées dans le dashboard : celles des thèmes ci-dessus (27/11 : violet, fuchsia, pétrole et cuivre
+ * retirés — un événement déjà enregistré garde sa teinte, le serveur accepte toujours n'importe quel #rrggbb).
+ */
+export const EVENT_ACCENTS: Array<[string, string]> = Object.values(EVENT_THEMES).map((t) => [t.tint, t.fr]);
 
 export const isHex = (s: string) => /^#[0-9a-f]{6}$/i.test(s);
 
@@ -150,7 +172,7 @@ export function fmtLeft(ms: number): string {
 export function demoEvent(now = Date.now()): PackEvent {
   const h = 3_600_000;
   const start = Math.floor(now / h) * h - 2 * h;
-  return { id: 'demo-valorant', name: 'Valorant', blurb: tr('ev.demoBlurb'), startAt: start, endAt: start + 56 * h, accent: '#c026d3', subthemes: ['group:valorant'] };
+  return { id: 'demo-valorant', name: 'Valorant', blurb: tr('ev.demoBlurb'), startAt: start, endAt: start + 56 * h, accent: EVENT_THEMES.jeux.tint, subthemes: ['group:valorant'] };
 }
 
 /**
