@@ -6,7 +6,7 @@
  * `saveRanks`, comme `profiles.refreshRanks`. Et : un joueur actif juste avant de partir est bien recalculé au passage
  * suivant (fenêtres IDLE / LOOK de profiles.ts adaptées à 30 min et à la présence écrite toutes les 10 min).
  */
-import { convexTest } from 'convex-test';
+import { convexTest, type TestConvex } from 'convex-test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import schema from './schema';
@@ -22,7 +22,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-type T = ReturnType<typeof convexTest>;
+// (le schéma dans le type : sans lui, les index des tables sont inconnus du contrôle de types de `convex dev`)
+type T = TestConvex<typeof schema>;
 type Plan = { idle: boolean; users: Array<{ id: Id<'users'>; banned: boolean; at: number; sig: string; rowSig: string }>; rows: Array<{ id: Id<'rankRows'>; userId: Id<'users'> }>; init?: unknown };
 
 async function seed(t: T, n: number, rows: number) {

@@ -59,7 +59,7 @@ describe('présence moins bavarde', () => {
       if (s % 300 === 0) {
         const p = await t.mutation(api.packs.preparePack, { sessionToken: 'tok', packKind: 'bebou' });
         await seen();
-        await t.mutation(api.packs.revealPack, { sessionToken: 'tok', packId: (p as { _id: never })._id });
+        await t.mutation(api.packs.revealPack, { sessionToken: 'tok', packId: p._id });
         await seen();
         boosters++;
       }
