@@ -460,7 +460,7 @@ export const enData: Record<string, string> = {
   'cos.blurb.fenetre': 'Swipe over the pack: the cards push through and break it open from the inside.',
   'cos.blurb.retrousse': 'Swipe down: the pack turns itself inside out and leaves the cards standing.',
   'cos.blurb.glace': 'The pack is frozen in a block of ice: three taps and it all shatters.',
-  'cos.blurb.etoile': 'The tear, under a shower of golden stars.',
+  'cos.blurb.etoile': 'Draw a star: the pack turns into golden stardust.',
   // ───── sondage (src/core/survey.ts) ─────
   'sv.u.anime': 'Anime & manga',
   'sv.u.anime.hint': 'new series, characters',

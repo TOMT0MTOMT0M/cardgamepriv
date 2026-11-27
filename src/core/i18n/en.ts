@@ -301,6 +301,8 @@ export const en: Dict = {
   'shop.hint.pushMouse': 'Swipe over the pack to push the cards',
   'shop.hint.iceTouch': 'Tap 3 times to break the ice',
   'shop.hint.iceMouse': 'Click 3 times to break the ice',
+  'shop.hint.starTouch': 'Draw a star on the pack (or tap)',
+  'shop.hint.starMouse': 'Draw a star on the pack (or click)',
   'shop.hint.revealTouch': 'Tap to reveal',
   'shop.hint.revealMouse': 'Click to reveal',
   'shop.hint.nextTouch': 'Tap for the next one',

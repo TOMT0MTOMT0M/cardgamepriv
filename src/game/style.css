@@ -1705,6 +1705,9 @@ body.offline .offline-pill, body.server-down .offline-pill { opacity: 1; transfo
 .coach.c-tear i { top: calc(-18px - 21vh); animation: coach-tear 1.5s cubic-bezier(0.45, 0, 0.3, 1) 0.6s 2 both; }
 /* Retroussé : le doigt descend (durées = jetons de motion.ts, rien en dur) */
 .coach.c-retrousse i { top: calc(-18px - 14vh); animation: coach-fold calc(var(--dur-emphatique) * 3) var(--ease-standard) var(--dur-emphatique) 2 both; }
+/* Étoile de Noël : le doigt trace une étoile (jetons de motion.ts) */
+.coach.c-etoile i { top: calc(-18px - 6vh); animation: coach-star calc(var(--dur-emphatique) * 4) linear var(--dur-emphatique) 2 both; }
+@keyframes coach-star { 0% { opacity: 0; transform: translate(0, -80px); } 8% { opacity: 1; transform: translate(0, -80px); } 26% { transform: translate(47px, 65px); } 44% { transform: translate(-76px, -25px); } 62% { transform: translate(76px, -25px); } 80% { opacity: 1; transform: translate(-47px, 65px); } 92%, 100% { opacity: 0; transform: translate(0, -80px); } }
 /* Déchirure glacée : trois coups au même endroit (jetons de motion.ts) */
 .coach.c-glace i { animation: coach-tap3 calc(var(--dur-emphatique) * 1) var(--ease-sortie) var(--dur-emphatique) 6 both; }
 @keyframes coach-tap3 { 0% { opacity: 0; transform: scale(1.5); } 30% { opacity: 1; transform: scale(0.9); } 100% { opacity: 0; transform: scale(1); } }

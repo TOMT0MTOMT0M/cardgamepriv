@@ -303,7 +303,7 @@ export const OPENINGS: Array<Cosmetic & { id: OpeningId; blurb: string }> = [
   Object.defineProperty(derive(C({ id: 'fenetre', label: 'Fenêtre', need: 'burn-250' }), { id: 'fenetre' }), 'blurb', { get: () => tData('cos.blurb.fenetre', 'Glisse sur le sachet : les cartes poussent et le percent de l’intérieur.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
   // (v2.1.13) Avent 2026 : la déchirure, avec un éclat de givre ou une pluie d'étoiles (src/game/scenes/opening.ts)
   Object.defineProperty(derive(C({ id: 'glace', label: 'Déchirure glacée', advent: 20 }), { id: 'glace' }), 'blurb', { get: () => tData('cos.blurb.glace', 'Le booster est pris dans la glace : trois coups et tout éclate.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
-  Object.defineProperty(derive(C({ id: 'etoile', label: 'Étoile de Noël', advent: 23 }), { id: 'etoile' }), 'blurb', { get: () => tData('cos.blurb.etoile', 'La déchirure, sous une pluie d’étoiles dorées.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
+  Object.defineProperty(derive(C({ id: 'etoile', label: 'Étoile de Noël', advent: 23 }), { id: 'etoile' }), 'blurb', { get: () => tData('cos.blurb.etoile', 'Trace une étoile : le sachet se change en poussière d’or.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
 ];
 // i18n-data:fin
 export const DEFAULT_OPENING: OpeningId = 'tear';

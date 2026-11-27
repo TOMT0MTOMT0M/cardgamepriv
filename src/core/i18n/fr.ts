@@ -224,6 +224,8 @@ export const fr = {
   'shop.hint.pushMouse': 'Glisse sur le sachet pour pousser les cartes',
   'shop.hint.iceTouch': 'Touche 3 fois pour briser la glace',
   'shop.hint.iceMouse': 'Clique 3 fois pour briser la glace',
+  'shop.hint.starTouch': 'Trace une étoile sur le sachet (ou touche)',
+  'shop.hint.starMouse': 'Trace une étoile sur le sachet (ou clique)',
   'shop.hint.revealTouch': 'Touche pour révéler',
   'shop.hint.revealMouse': 'Clique pour révéler',
   'shop.hint.nextTouch': 'Touche pour la suivante',

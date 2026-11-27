@@ -31,7 +31,7 @@ import {
   Vector2,
   Vector3,
   type Material,
-  type Texture, CircleGeometry } from 'three/webgpu';
+  type Texture, CircleGeometry, UnsignedByteType } from 'three/webgpu';
 /** rayon du dodécagone circonscrit / rayon du cercle inscrit */
 const HALO_K = 1 / Math.cos(Math.PI / 12);
 import {
@@ -96,7 +96,7 @@ import { dropBakes, loadBakes, loadTearBakes, loadedBakes, loadedBakesOf, TearBa
 import type { TearBakeEvent, TearBakeHeader } from '../../core/tearBakeFormat';
 import { dropShatters, loadShatters, loadedShatters, ShatterPlayer } from '../../core/shatterBake';
 import type { ShatterBake } from '../../core/shatterFormat';
-import { DUR, ECLIPSE, FENETRE, GLACE, MYTHIC_SILENCE, MYTHIC_TURN, RETROUSSE, STAGGER, TIER_BEAT } from '../../core/motion';
+import { DUR, ECLIPSE, ETOILE, FENETRE, GLACE, MYTHIC_SILENCE, MYTHIC_TURN, RETROUSSE, STAGGER, TIER_BEAT } from '../../core/motion';
 import { burnNoise, fbmTexel, preloadNoise, type N } from '../../core/tsl';
 import { isEclipseCard } from '../eclipse';
 import { apostleStrip } from '../apostles';
@@ -133,7 +133,7 @@ import type { PackCard, SealedPack } from '../backend';
  * (27/11, V3) Brûlure (`burn`) et Éventail (`fan`) sont retirés : un joueur qui les avait choisis retombe sur la
  * Déchirure (`setOpeningChoice`), sans migration.
  */
-export type OpenStyle = 'tear' | 'retrousse' | 'fenetre' | 'glace';
+export type OpenStyle = 'tear' | 'retrousse' | 'fenetre' | 'glace' | 'etoile';
 /** style de la scène : une ouverture, ou `idle` (vitrine : sachet posé, aucune maille de déchirure montrée) */
 type SceneStyle = OpenStyle | 'idle';
 /** familles de cuissons de la scène : celles de core/tearBake.ts, et les éclats de la Déchirure glacée (core/shatterBake.ts) */
@@ -173,7 +173,8 @@ let choiceHook: ((s: OpenStyle) => void) | null = null;
 export function setOpeningChoice(id: string | undefined) {
   const before = chosenStyle;
   // (27/11) la Déchirure glacée a sa propre scène (bloc de glace) ; son éclat de givre reste en repli (chosenSkin)
-  chosenStyle = id === 'retrousse' || id === 'fenetre' || id === 'glace' ? id : 'tear';
+  // (27/11) l'Étoile de Noël aussi (« Poussière d'étoile » : rien à charger, toujours prête)
+  chosenStyle = id === 'retrousse' || id === 'fenetre' || id === 'glace' || id === 'etoile' ? id : 'tear';
   chosenSkin = id === 'glace' || id === 'etoile' ? id : '';
   if (chosenStyle !== before) {
     frozenStyle = null;
@@ -853,6 +854,20 @@ export function createOpeningScene(): OpeningScene {
   /** dernier appui (px CSS) : le 1er coup choisit la variante dont l'impact est le plus proche */
   let lastDown: { x: number; y: number } | null = null;
   /**
+   * (27/11) ÉTOILE DE NOËL « Poussière d'étoile » : le doigt (la baguette) trace sur le sachet ; le long du tracé, le film
+   * se change en poussière d'or (dissolution de l'ancienne Brûlure pilotée par la distance au tracé, `starTex`), des
+   * paillettes dorées montent puis retombent (les lambeaux de la Déchirure, dorés), des notes de la gamme tintent. Assez
+   * de tracé (ETOILE.trace) : tout le sachet se dissout depuis le tracé. Un toucher : l'étoile se trace toute seule.
+   */
+  let starring = false;
+  let starLen = 0;
+  let starLast: { x: number; y: number } | null = null;
+  let starNoteAt = 0;
+  let starSince = 0;
+  let starAuto: gsap.core.Tween | null = null;
+  const STAR_GOLD = '#ffd36b';
+  const starA = new Vector3(), starB = new Vector3();
+  /**
    * (27/11) FENÊTRE (core/tearBake.ts, scripts/bake-tear/fenetre.mts) : la pile pousse la face avant de l'intérieur, les
    * coins percent, le contour se découpe, la pile sort vers le joueur avec le panneau plaqué dessus. Troisième lecteur
    * (`winPlayer` : sachet troué + panneau), monté et précompilé HORS ouverture comme le Retroussé ; même état du geste
@@ -1083,6 +1098,16 @@ export function createOpeningScene(): OpeningScene {
    * `o.shade` : luminosité (pochettes qui partent sur les côtés du tambour). Même graphe que le grand booster → mêmes
    * pipelines (aucune compilation de plus).
    */
+  /**
+   * (27/11) Étoile de Noël : distance au tracé du doigt, en grille (STAR_W × STAR_H sur le sachet), octet = distance /
+   * STAR_RANGE × 255, mise à jour au processeur à chaque point tracé (starStamp)
+   */
+  const STAR_W = 48, STAR_H = Math.round((48 * PACK.h) / PACK.w), STAR_RANGE = 0.5;
+  const starBuf = new Uint8Array(STAR_W * STAR_H).fill(255);
+  const starTex = new DataTexture(starBuf, STAR_W, STAR_H, RedFormat, UnsignedByteType);
+  starTex.magFilter = starTex.minFilter = LinearFilter;
+  starTex.needsUpdate = true;
+  const STARON = uniform(0);
   function buildPackMaterials(art: PackArt, o: { swaps?: ArtSwap[]; soon?: N; shade?: N } = {}) {
     const sw = o.swaps ?? packSwaps;
     const soonN = o.soon ?? (U.soon as unknown as N);
@@ -1106,7 +1131,10 @@ export function createOpeningScene(): OpeningScene {
       ctx.quality === 'mobile'
         ? texture(ctx.bag.add(bakedBurnNoise()), pp.div(vec2(PACK.w, PACK.h)).add(0.5)).r
         : mx_fractal_noise_float(vec3(pp.mul(4), 0.4), 4);
-    const field = length(pp.mul(vec2(1, 0.8))).add(fbm.mul(0.2));
+    // (27/11) Étoile de Noël : le champ de la dissolution n'est plus « depuis le centre » mais la distance au TRACÉ du
+    // doigt (texture STAR_TEX, unités du sachet × STAR_RANGE) ; l'ancienne Brûlure, sinon (STARON = 0, jamais jouée)
+    const starD = texture(starTex, pp.div(vec2(PACK.w, PACK.h)).add(0.5)).r.mul(STAR_RANGE).add(fbm.mul(0.025));
+    const field = select(STARON.greaterThan(0.5), starD, length(pp.mul(vec2(1, 0.8))).add(fbm.mul(0.2)));
     const burnFront = field.sub(U.burn);
     const make = (col: N, side: 0 | 1) => {
       // (27/11, V3) sachet « Autocollant » : MATIÈRE ALLÉGÉE du labo 047 (core/packSticker.ts inkSurface) — encre et
@@ -1116,7 +1144,8 @@ export function createOpeningScene(): OpeningScene {
       const S = inkSurface(masks, uvn, side, side === 0 ? nF : nB);
       // booster « bientôt » : couleurs en partie éteintes (uniforme : aucun recompilage quand on change de booster)
       const base = mix(col.rgb, vec3(luminance(col.rgb)).mul(0.82), soonN.mul(0.7));
-      m.colorNode = S.tint(mix(base, color('#0d0907'), smoothstep(0.06, 0.004, burnFront)).mul(shadeN));
+      // (Étoile : le bord ne charbonne pas, il se dore)
+      m.colorNode = S.tint(mix(base, select(STARON.greaterThan(0.5), color('#f4c95d'), color('#0d0907')), smoothstep(0.06, 0.004, burnFront)).mul(shadeN));
       m.metalnessNode = S.metal;
       m.roughnessNode = S.rough;
       m.normalNode = S.normal;
@@ -1804,6 +1833,142 @@ export function createOpeningScene(): OpeningScene {
     });
   }
 
+  /** (27/11) Étoile : tracé effacé (grille des distances au plus loin) */
+  function starReset() {
+    starBuf.fill(255);
+    starTex.needsUpdate = true;
+    starLen = 0;
+    starLast = null;
+    starSince = 0;
+  }
+  /** point du sachet (unités) sous un point de l'écran (px CSS) : le rayon de la caméra coupe le plan du film avant */
+  function starAt(px: number, py: number): { x: number; y: number } | null {
+    const nx = (px / ctx.width) * 2 - 1, ny = 1 - (py / ctx.height) * 2;
+    starA.set(nx, ny, -1).unproject(stage.camera);
+    starB.set(nx, ny, 1).unproject(stage.camera);
+    packRig.updateMatrixWorld();
+    packRig.worldToLocal(starA);
+    packRig.worldToLocal(starB);
+    const dz = starB.z - starA.z;
+    if (Math.abs(dz) < 1e-9) return null;
+    const t = (PACK.bulge - starA.z) / dz;
+    return { x: starA.x + (starB.x - starA.x) * t, y: starA.y + (starB.y - starA.y) * t };
+  }
+  /** paillettes dorées au point (x, y) du sachet : elles montent un peu, scintillent, puis retombent en neige d'or */
+  function spawnSparkles(x: number, y: number, n: number) {
+    for (let k = 0; k < n; k++) {
+      const q = sh[shI++ % NSH];
+      q.p.set(x + (Math.random() - 0.5) * 0.03, y + (Math.random() - 0.5) * 0.03, PACK.bulge + 0.004);
+      q.v.set((Math.random() - 0.5) * 0.35, 0.15 + Math.random() * 0.45, 0.1 + Math.random() * 0.3);
+      q.r.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      q.w.set((Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16);
+      q.life = 1 + Math.random() * 0.7;
+      q.s = 0.25 + Math.random() * 0.55;
+    }
+    shredsDirty = true;
+  }
+  /** un point du tracé : grille des distances mise à jour autour de lui, paillettes, une note de temps en temps */
+  function starStamp(p: { x: number; y: number }) {
+    const last = starLast;
+    starLast = p;
+    let pts = [p];
+    if (last) {
+      const d = Math.hypot(p.x - last.x, p.y - last.y);
+      if (d < 0.4) {
+        starLen += d;
+        const n = Math.max(1, Math.ceil(d / 0.01));
+        pts = Array.from({ length: n }, (_, k) => ({ x: last.x + ((p.x - last.x) * (k + 1)) / n, y: last.y + ((p.y - last.y) * (k + 1)) / n }));
+      }
+    }
+    const cw = PACK.w / STAR_W, ch = PACK.h / STAR_H, R = 0.2;
+    for (const q of pts) {
+      if (Math.abs(q.x) > PACK.w / 2 + 0.03 || Math.abs(q.y) > PACK.h / 2 + 0.03) continue;
+      const ci = (q.x / PACK.w + 0.5) * STAR_W, cj = (q.y / PACK.h + 0.5) * STAR_H;
+      const ri = Math.ceil(R / cw), rj = Math.ceil(R / ch);
+      for (let j = Math.max(0, Math.floor(cj) - rj); j <= Math.min(STAR_H - 1, Math.floor(cj) + rj); j++)
+        for (let i = Math.max(0, Math.floor(ci) - ri); i <= Math.min(STAR_W - 1, Math.floor(ci) + ri); i++) {
+          const d = Math.hypot((i + 0.5) * cw - PACK.w / 2 - q.x, (j + 0.5) * ch - PACK.h / 2 - q.y);
+          const v = Math.min(255, Math.round((d / STAR_RANGE) * 255));
+          if (v < starBuf[j * STAR_W + i]) starBuf[j * STAR_W + i] = v;
+        }
+    }
+    starTex.needsUpdate = true;
+    if (!starSince) starSince = performance.now();
+    spawnSparkles(p.x, p.y, 2);
+    const now = performance.now();
+    if (now - starNoteAt >= ETOILE.note * 1000) {
+      starNoteAt = now;
+      // la baguette tinte : notes hautes de la gamme du jeu (sol pentatonique)
+      ctx.sfx.note(7 + Math.floor(Math.random() * 6), 0.05, 0.5);
+    }
+    events.onHold?.(Math.min(1, starLen / ETOILE.trace));
+    if (!starAuto && starLen >= ETOILE.trace && phase === 'sealed') onStarred();
+  }
+  /** un toucher : une étoile à 5 branches se trace toute seule, d'un trait, puis le sachet se dissout */
+  function autoStar() {
+    if (starAuto || phase !== 'sealed' || !starring) return;
+    const R = Math.min(PACK.w, PACK.h) * 0.36, cy = PACK_STACK.cy;
+    const pts = Array.from({ length: 6 }, (_, k) => {
+      const a = Math.PI / 2 + (k * 4 * Math.PI) / 5;
+      return { x: R * Math.cos(a), y: cy + R * Math.sin(a) };
+    });
+    const o = { t: 0 };
+    starLast = null;
+    starAuto = gsap.to(o, {
+      t: 1,
+      duration: ETOILE.autoTrace,
+      ease: 'none',
+      onUpdate: () => {
+        const f = o.t * 5, i = Math.min(4, Math.floor(f)), k = f - i;
+        starStamp({ x: pts[i].x + (pts[i + 1].x - pts[i].x) * k, y: pts[i].y + (pts[i + 1].y - pts[i].y) * k });
+      },
+      onComplete: () => {
+        starAuto = null;
+        if (phase === 'sealed') onStarred();
+      },
+    });
+  }
+  /**
+   * (27/11) assez de tracé : tout le sachet se change en poussière d'or depuis le tracé (B.burn), gerbe de paillettes,
+   * carillon ; la pile, restée en place, se range — même état final que la Déchirure
+   */
+  function onStarred() {
+    phase = 'busy';
+    holding = false;
+    starAuto?.kill();
+    starAuto = null;
+    void (prepared ?? Promise.resolve()).then(() => {
+      if (!pack) return;
+      kill();
+      const n = order.length;
+      tl = gsap.timeline();
+      const out = sideline(gsap.timeline());
+      out.to(B, { burn: STAR_RANGE * 1.3, duration: ETOILE.fin, ease: EASE.glide }, 0);
+      for (let k = 0; k < 36; k++) out.call(() => spawnSparkles((Math.random() - 0.5) * PACK.w, (Math.random() - 0.5) * PACK.h, 2), [], (k * ETOILE.fin) / 36);
+      ctx.sfx.chime(4, 0.14);
+      ctx.sfx.shimmer(4, 1.6, 0.08);
+      haptics.pulse([20, 40, 20]);
+      R.s = 1;
+      out.to(B, { follow: 0, duration: GLACE.lache, ease: EASE.glide }, ETOILE.fin * 0.5);
+      const qk = autoQuick() ? 1.6 : 1;
+      tl.call(() => {
+        const c = sideline(gsap.timeline());
+        c.to(S, { push: 0, duration: ETOILE.pose, ease: EASE.glide }, 0);
+        c.to(R, { s: 0, duration: ETOILE.pose, ease: EASE.settle }, 0);
+        order.forEach((si, k) => c.to(slots[si].p, { y: 0, z: -STACK_DZ * (n - 1 - k), s: 1, rz: (k - 2) * 0.012, duration: ETOILE.pose, ease: EASE.settle }, k * ETOILE.decale));
+        c.timeScale(qk);
+      }, [], ETOILE.range);
+      tl.call(() => {
+        phase = 'opened';
+        events.onOpened?.();
+        flushQueued();
+      }, [], ETOILE.ouvert);
+      lightRim(sideline(gsap.timeline()), order[0], ETOILE.ouvert / qk);
+      tl.timeScale(qk);
+      out.timeScale(qk);
+    });
+  }
+
   /** (27/11) blocage du défilement / « tirer pour rafraîchir » pendant que le sachet attend le geste vers le bas */
   function setRollLock(on: boolean) {
     if (typeof document !== 'undefined') document.documentElement.classList.toggle('op-roll', on);
@@ -2154,6 +2319,12 @@ export function createOpeningScene(): OpeningScene {
     rolling = style === 'retrousse';
     windowing = style === 'fenetre';
     icing = style === 'glace';
+    starring = style === 'etoile';
+    starAuto?.kill();
+    starAuto = null;
+    starReset();
+    STARON.value = starring ? 1 : 0;
+    if (starring) B.burn = ETOILE.bande;
     iceTaps = 0;
     iceNextAuto = 0;
     ICE.t = -1;
@@ -2225,12 +2396,14 @@ export function createOpeningScene(): OpeningScene {
         rollGate = f / Math.max(1, h.nTear - 1);
       }
     }
-    if (packMeshMain) packMeshMain.visible = false;
-    setTearVisible(true);
-    setRollLock((rolling || windowing) && !o.continued);
+    // (27/11) Étoile : c'est le sachet lui-même (sa matière dissout le film le long du tracé) ; pas de maille de déchirure
+    if (packMeshMain) packMeshMain.visible = starring;
+    setTearVisible(!starring);
+    // (Étoile : on trace en glissant — défilement et « tirer pour rafraîchir » bloqués aussi)
+    setRollLock((rolling || windowing || starring) && !o.continued);
     // (retours live 02, anti-spoil) braise et fuite de lumière : une seule couleur pour tous les boosters (avant : la
     // couleur de la meilleure carte, qui annonçait une rouge ou une 6★ dès que le booster était posé)
-    U.ember.value.set(NEUTRAL_EMBER);
+    U.ember.value.set(starring ? STAR_GOLD : NEUTRAL_EMBER);
     // … sauf l'Éclipse (Berserk 5★ / 6★) : braise cramoisie, pénombre — spoil assumé (décision de Tom, 10/11)
     eclipseBegin(p.cards.some(isEclipseCard), !!o.continued);
     B.leak = 0;
@@ -2709,6 +2882,8 @@ export function createOpeningScene(): OpeningScene {
     if (phase === 'sealed') {
       // un toucher l'ouvre tout seul (déchirure ou retroussé automatique) ; Déchirure glacée : un toucher = un coup
       if (icing) return void iceTap();
+      // (27/11) Étoile : un toucher, l'étoile se trace toute seule
+      if (starring) return void autoStar();
       startAutoTear(rolling ? RETROUSSE.auto : windowing ? FENETRE.auto : 1.05);
       return;
     }
@@ -2753,6 +2928,10 @@ export function createOpeningScene(): OpeningScene {
     windowing = false;
     icing = false;
     ICE.t = -1;
+    starring = false;
+    starAuto?.kill();
+    starAuto = null;
+    STARON.value = 0;
     winQ.length = 0;
     winKeep = 0;
     winHeadWait = null; // (suite d'une Fenêtre abandonnée : jamais jouée)
@@ -3390,6 +3569,8 @@ export function createOpeningScene(): OpeningScene {
       shredMat.colorNode = mix(color('#e9e3da'), U.ember as unknown as N, 0.25);
       shredMat.metalnessNode = float(0.8);
       shredMat.roughnessNode = float(0.3);
+      // (27/11) Étoile de Noël : les lambeaux deviennent des paillettes d'or qui brillent d'elles-mêmes (scintillement)
+      shredMat.emissiveNode = (U.ember as unknown as N).mul(STARON.mul(float(1.6).add(sin(time.mul(23).add(positionLocal.x.mul(400))).mul(1.2))));
       shreds = new InstancedMesh(c.bag.add(new PlaneGeometry(0.014, 0.006)), c.bag.add(shredMat), NSH);
       shreds.frustumCulled = false;
       packRig.add(shreds);
@@ -3801,6 +3982,20 @@ export function createOpeningScene(): OpeningScene {
           if (pe.clientX !== undefined) lastDown = { x: pe.clientX - (ctx.canvas.getBoundingClientRect?.().left ?? 0), y: pe.clientY - (ctx.canvas.getBoundingClientRect?.().top ?? 0) };
           return;
         }
+        // (27/11) Étoile : la baguette se pose — premier point du tracé
+        if (starring) {
+          const pe = e as PointerEvent;
+          if (pe.clientX === undefined || starAuto) return;
+          holding = true;
+          tearX = pe.clientX;
+          tearY = pe.clientY;
+          const r = ctx.canvas.getBoundingClientRect?.();
+          const p = starAt(pe.clientX - (r?.left ?? 0), pe.clientY - (r?.top ?? 0));
+          starLast = null;
+          if (p) starStamp(p);
+          e.preventDefault?.();
+          return;
+        }
         holding = true;
         tearX = (e as PointerEvent).clientX ?? null;
         tearY = (e as PointerEvent).clientY ?? 0;
@@ -3821,6 +4016,8 @@ export function createOpeningScene(): OpeningScene {
         }
         holding = false;
         tearX = null;
+        // (Étoile : le prochain appui commence un nouveau trait, sans le relier à celui-ci)
+        starLast = null;
       };
       const move = (e: PointerEvent) => {
         if (tearX === null || phase !== 'sealed') return;
@@ -3832,6 +4029,13 @@ export function createOpeningScene(): OpeningScene {
         // course (remontée du cadrage déduite, rollTravel) — en route, l'écart suit la loi de la charnière cuite (yF)
         if (rolling) {
           if (dy > 0) tearTarget = Math.min(1.08, tearTarget + dy / travelPx);
+          return;
+        }
+        // (27/11) Étoile : la baguette trace là où passe le doigt
+        if (starring) {
+          const r = ctx.canvas.getBoundingClientRect?.();
+          const p = starAt(e.clientX - (r?.left ?? 0), e.clientY - (r?.top ?? 0));
+          if (p && !starAuto) starStamp(p);
           return;
         }
         // (27/11) Fenêtre : on glisse sur le sachet, dans un sens ou dans l'autre (en vertical) : la pile pousse
@@ -3935,7 +4139,12 @@ export function createOpeningScene(): OpeningScene {
           iceNextAuto = now + GLACE.autoTap * 1000;
         }
       }
-      if (phase === 'sealed' && !icing) {
+      // (27/11) Étoile : ouverture automatique = l'étoile tracée toute seule ; les trous du tracé s'élargissent doucement
+      if (phase === 'sealed' && starring) {
+        if (auto.burn) autoStar();
+        if (starSince) B.burn = Math.min(ETOILE.bande * 2, ETOILE.bande + ((performance.now() - starSince) / 1000) * ETOILE.croit);
+      }
+      if (phase === 'sealed' && !icing && !starring) {
         if (auto.burn) startAutoTear(rolling ? RETROUSSE.autoSerie : windowing ? FENETRE.autoSerie : 0.9);
         // maintenir sans glisser : la bande avance doucement toute seule (clavier, appui long)
         if (holding && !ctx.input.dragging) tearTarget = Math.min(1.08, tearTarget + dt * 0.45);
@@ -3976,7 +4185,7 @@ export function createOpeningScene(): OpeningScene {
       TFLY.value = fly.t;
       // (S3) fente de lumière : s'ouvre avec la coupe (la tête de lecture de l'enregistrement si on le rejoue), s'éteint
       // pendant que la bande s'envole
-      TSLIT.value = style === 'idle' || rolling || windowing || icing ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
+      TSLIT.value = style === 'idle' || rolling || windowing || icing || starring ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
       if (icing && icePlayer) {
         // (27/11) Déchirure glacée : les éclats cuits, sur leur horloge (ICE.t) ; cachés une fois retombés
         if (ICE.t >= 0) {
@@ -4044,7 +4253,7 @@ export function createOpeningScene(): OpeningScene {
       } else if (tearStrip) {
         tearStrip.position.set(fly.t * 0.9, fly.t * 0.6, fly.t * 0.5);
         tearStrip.rotation.z = -fly.t * 0.9;
-        tearStrip.visible = style !== 'idle' && fly.t < 0.999;
+        tearStrip.visible = style !== 'idle' && !starring && fly.t < 0.999;
       }
       // (audit PERF1-17) lambeaux : plus d'écriture des 110 matrices ni d'envoi au GPU quand tous sont retombés
       let alive = false;

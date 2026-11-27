@@ -189,6 +189,26 @@ export const FENETRE = {
  * `givre` : givre du sachet au repos, après le 1er, après le 2e coup (0..1) · `lache` : la main lâche (B.follow → 0) au
  * bris · `range` / `pose` / `decale` : rangement des cartes (ceux de la Déchirure) · `ouvert` : la pile est prête.
  */
+/**
+ * (27/11) ÉTOILE DE NOËL « Poussière d'étoile » (scenes/opening.ts) : le doigt (la baguette) trace sur le sachet, le
+ * film se change en poussière d'or le long du tracé. `bande` : demi-largeur de film dissous autour du tracé (unités du
+ * sachet) · `croit` : les trous s'élargissent ensuite (unités / s) · `trace` : longueur de tracé qui ouvre le sachet
+ * (unités) · `fin` : tout le sachet se dissout depuis le tracé · `autoTrace` : l'étoile tracée toute seule (toucher,
+ * série) · `note` : écart mini entre deux notes du tracé · `range` / `pose` / `decale` / `ouvert` : rangement (comme la
+ * Déchirure).
+ */
+export const ETOILE = {
+  bande: 0.016,
+  croit: 0.008,
+  trace: 1.5,
+  fin: DUR.dramatique / 1000,
+  autoTrace: DUR.dramatique / 750,
+  note: STAGGER.large * 1.5 / 1000,
+  range: 0.55,
+  pose: 0.65,
+  decale: 0.03,
+  ouvert: 0.95,
+} as const;
 export const GLACE = {
   autoTap: DUR.dramatique / 3000,
   fend: STAGGER.max / 1000,
