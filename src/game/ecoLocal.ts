@@ -568,10 +568,6 @@ export function createLocalEco(host: LocalEcoHost) {
       jeux.onPack(cards);
       emit();
     },
-    onContract() {
-      weekly({ type: 'contract' });
-      emit();
-    },
     onTrade() {
       weekly({ type: 'trade' });
       emit();

@@ -411,9 +411,6 @@ export function createOnlineBackend(): GameBackend {
     async activity(userId) {
       return (await net.activity(userId as Id<'users'>)).map((a) => ({ id: a._id, kind: a.kind, message: a.message, msgKey: a.msgKey, msgParams: a.msgParams, cardId: a.cardId, cardName: a.cardName, rarity: a.rarity, mintNumber: a.mintNumber, createdAt: a.createdAt }));
     },
-    async signContract(rarity, items) {
-      return await net.signContract(rarity, items);
-    },
     async toggleWishFam(key) {
       state.wishFams = await net.toggleWishFam(key);
       listeners.forEach((fn) => fn(state));

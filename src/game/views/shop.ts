@@ -34,7 +34,6 @@ import { clearGod, playGodIntro } from '../godPack';
 import { spreadSeries } from '../series';
 import { ADVENT_DAYS, adventDay, adventReward, adventWaiting } from '../../core/avent';
 import { missionsReady } from '../../core/missions';
-import { contractsRetired } from '../../core/economy';
 import { STREAK_REWARD, streakClaimable, touchStreak } from '../../core/streak';
 
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
@@ -1984,8 +1983,6 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     const bal = u ? liveRegen(u).balance : 0;
     // (v2.1.34, report) réserve vide : des pistes pour regagner un booster, seulement celles qui sont vraiment disponibles
     const ways = u && bal === 0 && !pend ? boosterWays(u) : [];
-    // que des doublons : renvoi aux contrats, jusqu'à leur retrait le 01/12 0 h (v2.1.40) ; ensuite « Forger ces doublons » suffit
-    const toContracts = dups === all.length && !contractsRetired(Date.now());
     summary.innerHTML = `
       ${pend ? `<div class="sum-warn" role="alert">${tr('shop.notCredited', { what: credited.length ? tr('shop.batchPending', { i: credited.length + 1, n: batch?.total ?? 1 }) : tr('shop.onePending') })}</div>` : ''}
       <div class="sum-line">
@@ -2000,7 +1997,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       <div class="sum-actions">
         ${pend ? '<button class="btn-primary retry">' + tr('shop.retrySave') + '</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? tr('shop.againN', { n: again }) : tr('shop.againOne')}<small>${tr('shop.inReserve', { n: bal })}</small></button>` : u ? `<span class="muted next-pack">${tr('shop.nextIn', { time: fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now()) })}</span>` : ''}
         ${dups > 0 && u && !pend ? `<button class="btn-ghost forge-dups">${tr('shop.forgeDups', { n: dups })}</button>` : ''}
-        <button class="btn-ghost coll">${fresh ? tr('shop.myNew') : toContracts ? tr('shop.contracts') : tr('shop.myColl')}</button>
+        <button class="btn-ghost coll">${fresh ? tr('shop.myNew') : tr('shop.myColl')}</button>
         <button class="btn-ghost back">${tr('nav.shop')}</button>
       </div>
       ${ways.length ? `<div class="sum-ways"><span class="sum-ways-t">${tr('shop.waysT')}</span>${ways.map((w) => `<button class="linkish sw" data-w="${w.id}">${w.text}</button>`).join('')}</div>` : ''}`;
@@ -2051,8 +2048,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
         toast(errMsg(err), 'err');
       }
     });
-    // « Voir mes nouvelles » : directement les nouvelles cartes de ce tirage (filtre « Nouvelles ») ; que des doublons : les contrats
-    summary.querySelector('.coll')!.addEventListener('click', () => (back(), go(fresh ? 'collection/nouvelles' : toContracts ? 'contrats' : 'collection')));
+    // « Voir mes nouvelles » : directement les nouvelles cartes de ce tirage (filtre « Nouvelles ») ; que des doublons : « Forger ces doublons » à côté
+    summary.querySelector('.coll')!.addEventListener('click', () => (back(), go(fresh ? 'collection/nouvelles' : 'collection')));
     // « Forger ces doublons » : la Forge s'ouvre avec ces cartes présélectionnées ; rien n'est brûlé ici (le joueur valide là-bas)
     summary.querySelector('.forge-dups')?.addEventListener('click', async () => {
       const per = new Map<string, { cardId: string; rarity: PackCard['rarity']; count: number }>();

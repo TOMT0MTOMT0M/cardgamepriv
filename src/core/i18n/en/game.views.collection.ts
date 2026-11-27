@@ -34,7 +34,7 @@ export const en: PartOf<typeof fr> = {
   'coll.connecting': 'connecting to the server…',
   'coll.empty': 'your collection is empty:',
   'coll.openFirst': 'open your first booster',
-  'coll.burn': 'to burn in a contract',
+  'coll.burn': 'to forge',
   'coll.orTrade': 'or to trade',
   'coll.complete': 'selection complete!',
   'coll.noDup': 'no duplicates yet',

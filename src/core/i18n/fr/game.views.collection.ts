@@ -33,7 +33,7 @@ export const fr = {
   'coll.connecting': 'connexion au serveur…',
   'coll.empty': 'ta collection est vide :',
   'coll.openFirst': 'ouvre ton premier booster',
-  'coll.burn': 'à brûler en contrat',
+  'coll.burn': 'à forger',
   'coll.orTrade': 'ou à échanger',
   'coll.complete': 'sélection complète !',
   'coll.noDup': 'pas encore de doublon',

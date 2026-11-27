@@ -19,7 +19,6 @@ import { GAMES_OPEN } from '../../core/games';
 import { createRiffle, ndcToRect } from '../riffle';
 import { dropFlight, liftCard, returnCard } from '../sharedFlight';
 import { paintedCard } from '../cardImages';
-import { contractsRetired } from '../../core/economy';
 
 /**
  * COLLECTION (refonte, retours du 3 nov. + retours live n°1)
@@ -217,7 +216,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
 
   el.innerHTML = `
     <div class="coll-head">
-      <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="${tr('coll.viewAria')}"><button role="tab" data-v="cards">${tr('coll.cards')}</button><button role="tab" data-v="albums">${tr('coll.albums')}</button><button role="tab" data-v="binders">${tr('coll.binders')}</button><button role="tab" data-v="forge">${tr('coll.forge')}</button><button role="tab" data-v="contrats">${tr('coll.contracts')}</button></div></div>
+      <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="${tr('coll.viewAria')}"><button role="tab" data-v="cards">${tr('coll.cards')}</button><button role="tab" data-v="albums">${tr('coll.albums')}</button><button role="tab" data-v="binders">${tr('coll.binders')}</button><button role="tab" data-v="forge">${tr('coll.forge')}</button></div></div>
       <div class="tabs"></div>
       <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-sep" aria-hidden="true" hidden>›</span><button class="crumb-mid" hidden></button><span class="crumb-sep crumb-sep2" aria-hidden="true" hidden>›</span><span class="crumb-name"></span><button class="va crumb-wish" hidden></button></div>
       <div class="progress"></div>
@@ -715,8 +714,6 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         if (theme.secret) theme = ALL_THEMES[0];
         goAlbums();
       } else if (v === 'forge') goForge();
-      // (retours live 6, C8) les Contrats : leur page, sous l'onglet Collection
-      else if (v === 'contrats') return void (location.hash = '#/collection/contrats');
       else goBinders();
       shell.sfx.tick(1.2, 0.04);
     }),
@@ -909,8 +906,6 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         b.innerHTML = tr('coll.forgeTab', { x: nForge ? ` <em>${fmtN(nForge)}</em>` : '' });
         b.setAttribute('aria-label', nForge ? tr('coll.forgeAria', { n: nForge, nf: fmtN(nForge) }) : 'Forge'); // i18n-ok
       }
-      // (v2.1.40) contrats retirés le 01/12 0 h (Paris) : plus d'onglet
-      if (b.dataset.v === 'contrats') b.hidden = contractsRetired(Date.now());
     });
   }
 
@@ -954,7 +949,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const albumsN = inCards || subId ? 0 : theme.subthemes.filter((s) => s.cards.length).length;
     progress.innerHTML = `
       <div class="p-main"><div class="p-pct${total && have === total ? ' full' : ''}">${fmtPct(pct).replace(/\s?%$/, '')}<small>${lang() === 'fr' ? ' %' : '%'}</small></div>
-        <div class="p-txt"><b>${fmtN(have)}</b> ${tr('coll.uniqueOf', { total: fmtN(total), label: esc(label), albums: albumsN ? ` · ${plural(albumsN, 'album')}` : '' })}<br><span>${mine.size === 0 && signedOut() ? (backend.state.ready ? tr('coll.notLogged') : tr('coll.connecting')) : mine.size === 0 ? '' + tr('coll.empty') + ' <a class="p-link" href="#/">' + tr('coll.openFirst') + '</a>' : dups ? `${plural(dups, 'doublon')} · <a class="p-link" href="#/contrats">${tr('coll.burn')}</a> ${tr('coll.orTrade')}` : total && have === total ? tr('coll.complete') : tr('coll.noDup')}</span></div></div>
+        <div class="p-txt"><b>${fmtN(have)}</b> ${tr('coll.uniqueOf', { total: fmtN(total), label: esc(label), albums: albumsN ? ` · ${plural(albumsN, 'album')}` : '' })}<br><span>${mine.size === 0 && signedOut() ? (backend.state.ready ? tr('coll.notLogged') : tr('coll.connecting')) : mine.size === 0 ? '' + tr('coll.empty') + ' <a class="p-link" href="#/">' + tr('coll.openFirst') + '</a>' : dups ? `${plural(dups, 'doublon')} · <a class="p-link" href="#/collection/forge">${tr('coll.burn')}</a> ${tr('coll.orTrade')}` : total && have === total ? tr('coll.complete') : tr('coll.noDup')}</span></div></div>
       <div class="p-bar"><i data-w="${pct}"></i></div>
       <div class="p-stars">${per}</div>`;
     const bars = [...progress.querySelectorAll<HTMLElement>('[data-w]')];

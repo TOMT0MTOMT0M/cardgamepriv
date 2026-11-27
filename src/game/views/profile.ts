@@ -21,7 +21,7 @@ import { guarded } from './safety';
 import { createShowcaseEditor } from './showcaseEditor';
 import { notifPanel } from '../notif';
 import { offlinePanel } from '../offline';
-import { ACHIEVEMENTS, achievementDone, contractsRetired, visibleAchievements } from '../../core/economy';
+import { ACHIEVEMENTS, achievementDone, visibleAchievements } from '../../core/economy';
 import '../../core/i18n/fr/game.views.atelier'; // (« Accord … » sous les badges)
 import { STREAK_CYCLE } from '../../core/streak';
 import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
@@ -533,7 +533,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       row('🔥', tr('pf.streak'), st.streak, st.streak ? `${fmtN(st.streak)} j` : '—', 'var(--pc-fire)', st.streak ? tr('pf.cycleDay', { d: Math.max(1, sd), n: STREAK_CYCLE }) : '') +
       row('⇄', tr('pf.w.trades', { n: st.tradesDone }), st.tradesDone) +
       // (v2.1.40) contrats retirés : la ligne reste pour qui en a signé, disparaît sinon
-      (contractsRetired(Date.now()) && !st.contractsSigned ? '' : row('⚖', tr('pf.w.contracts', { n: st.contractsSigned }), st.contractsSigned));
+      (!st.contractsSigned ? '' : row('⚖', tr('pf.w.contracts', { n: st.contractsSigned }), st.contractsSigned));
     pCollEl.innerHTML =
       panelHead('Collection', 'var(--pc-coll)') + // i18n-ok
       row('▤', tr('pf.cardsTotal'), total, fmtN(total), '', tr('pf.distinct', { n: fmtN(mine.length) })) +
@@ -776,7 +776,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (tab !== 'activite') return;
     const list = activity ?? [];
     activityEl.replaceChildren();
-    if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? (contractsRetired(Date.now()) ? tr('pf.nothingMineB') : tr('pf.nothingMine')) : tr('pf.nothing')}</div>`);
+    if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? tr('pf.nothingMineB') : tr('pf.nothing')}</div>`);
     const ICON: Record<string, string> = { pull: '✦', mythic_pull: '✺', secret_pull: '✷', trade: '⇄', contract: '⚖', joined: '👋', achievement: '🏅' };
     for (const a of list) {
       const e = a.cardId ? catalogEntry(a.cardId) : undefined;

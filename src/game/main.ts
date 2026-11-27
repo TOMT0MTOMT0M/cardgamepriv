@@ -19,7 +19,7 @@ import { createStatus, shownPity, PITY_ICON, STREAK_ICON } from './views/status'
 import { PITY_LIMIT, pityLeft } from '../core/pity';
 import { COIN_ICON, createWallet } from './views/wallet';
 import { armPin, clearPins, payOut } from './views/coinHopper';
-import { contractsRetired, fmtCoins } from '../core/economy';
+import { fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, packCapOfMe, type GameBackend } from './backend';
 import { boardAttention } from './backend';
 import { PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
@@ -54,7 +54,7 @@ installMorph();
  *
  * Chargement (audit PERF2-05) : le premier téléchargement ne contient que la boutique (vitrine 3D, ouverture, fiche,
  * en-tête). Le backend utilisé (en ligne OU démo, jamais les deux), la visionneuse et les autres pages (collection,
- * échanges, contrats, profil, jeux, classement, succès) arrivent par `import()` : le backend et la visionneuse pendant
+ * échanges, profil, jeux, classement, succès) arrivent par `import()` : le backend et la visionneuse pendant
  * l'écran de chargement, les pages à leur première visite (préchargées en tâche de fond une fois la boutique affichée).
  */
 const params = new URLSearchParams(location.search);
@@ -83,7 +83,7 @@ const loader =
 const TIPS = () => [
   tr('boot.tip1'),
   tr('boot.tip2'),
-  contractsRetired(Date.now()) ? tr('boot.tip3b') : tr('boot.tip3'), // (v2.1.40) plus de contrats à partir du 01/12
+  tr('boot.tip3b'), // (v2.1.40) plus de contrats depuis le 01/12
   tr('boot.tip4'),
   tr('boot.tip5'),
   tr('boot.tip6'),
@@ -223,7 +223,7 @@ top.innerHTML = `
   </div>
   <div class="me"></div>`;
 // (retours live 6, C8) navigation à 7 onglets : Boutique · Collection · Échanges · Jeux · Classement · Succès · Amis.
-// Les CONTRATS sont dans la Collection (à côté de la Forge, #/collection/contrats) ; Mises à jour, Tutoriel et
+// (V3) les contrats sont retirés (v2.1.40) : leurs adresses mènent à la Forge (route()) ; Mises à jour, Tutoriel et
 // Suggestions passent dans un petit groupe à part (ordinateur) et dans le menu du profil (téléphone).
 // lien d'évitement (visible seulement au clavier) : saute l'en-tête
 top.querySelector('.skip')!.addEventListener('click', () => viewHost.focus());
@@ -908,7 +908,7 @@ function updateTitle() {
   if (document.title !== title) document.title = title;
 }
 /** Titre de l'onglet du navigateur selon la page (fr.ts / en.ts : `title.*`). */
-const TITLE_PAGES = new Set(['evenement', 'abonnement', 'collection', 'contrats', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
+const TITLE_PAGES = new Set(['evenement', 'abonnement', 'collection', 'echanges', 'amis', 'profil', 'jeux', 'classement', 'succes', 'suggestions', 'maj', 'tuto']);
 const pageTitle = (r: string) => tr((TITLE_PAGES.has(r) ? `title.${r}` : 'title.shop') as MsgKey);
 
 /** Page du jeu : son élément et ses entrées / sorties (route()). */
@@ -972,12 +972,12 @@ function swapPage(apply: () => void, shift = 0): ViewTransition | null {
 }
 /**
  * (V3, lot 05) Sens du glissement d'une page à l'autre : l'ordre des onglets de l'en-tête (Boutique, Collection,
- * Échanges, Jeux…, puis Mises à jour, Tuto, Suggestions). Les Contrats vivent dans la Collection, le Profil vient en
- * dernier. +1 : la nouvelle page arrive par la droite ; -1 : par la gauche ; 0 : fondu seul.
+ * Échanges, Jeux…, puis Mises à jour, Tuto, Suggestions). Le Profil vient en dernier. +1 : la nouvelle page arrive
+ * par la droite ; -1 : par la gauche ; 0 : fondu seul.
  */
 function navDir(from: string, to: string): number {
   const order = [...top.querySelectorAll<HTMLElement>('nav a[data-r], .nav-extra a[data-r]')].map((a) => a.dataset.r ?? '');
-  const at = (k: string) => (k === 'contrats' ? order.indexOf('collection') + 0.5 : order.includes(k) ? order.indexOf(k) : order.length);
+  const at = (k: string) => (order.includes(k) ? order.indexOf(k) : order.length);
   return Math.sign(at(to) - at(from));
 }
 /** Distance du glissement (px) : discrète, ≈ 6 % de la largeur, entre 16 et 40 px. */
@@ -1004,7 +1004,6 @@ const PAGE_MODULES = {
   collection: () => import('./views/collection'),
   echanges: () => import('./views/trades'),
   amis: () => import('./views/friends'),
-  contrats: () => import('./views/contracts'),
   profil: () => import('./views/profile'),
   jeux: () => import('./views/games'),
   classement: () => import('./views/ranking'),
@@ -1098,7 +1097,6 @@ async function boot() {
     collection: (m) => m.createCollectionView(backend, shell, getViewer),
     echanges: (m) => m.createTradesView(backend, shell, getViewer),
     amis: (m) => m.createFriendsView(backend, shell),
-    contrats: (m) => m.createContractsView(backend, shell, getViewer),
     profil: (m) =>
       m.createProfileView(backend, shell, getViewer, () => {
         void backend.logout().then(() => (location.hash = '#/'));
@@ -1188,13 +1186,10 @@ async function boot() {
     routed = true;
     // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
     // primes de complétion dans la page Succès
-    // (v2.1.40) contrats retirés le 01/12 0 h (Paris) : leurs deux adresses mènent à la Forge
-    const noContracts = contractsRetired(Date.now());
-    const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' ? (noContracts ? '#/collection/forge' : '#/collection/contrats') : r === 'collection' && sub === 'contrats' && noContracts ? '#/collection/forge' : undefined;
+    // (v2.1.40) contrats retirés le 01/12 0 h (Paris), page supprimée en V3 : leurs deux adresses mènent à la Forge
+    const moved = r === 'jeux' ? ({ forge: '#/collection/forge', primes: '#/succes/primes', succes: '#/succes' } as Record<string, string>)[sub ?? ''] : r === 'contrats' || (r === 'collection' && sub === 'contrats') ? '#/collection/forge' : undefined;
     if (moved) return void location.replace(moved);
-    // (retours live 6, C8) #/collection/contrats = la page des contrats, dans la Collection
-    const page = r === 'collection' && sub === 'contrats' ? 'contrats' : r;
-    const key = page in views || isPage(page) ? page : '';
+    const key = r in views || isPage(r) ? r : '';
     if (shop.busy() && key !== '') {
       // pas de fuite au milieu d'une ouverture : le pack est déjà tiré, on le finit
       history.replaceState(history.state, '', '#/');
@@ -1238,11 +1233,9 @@ async function boot() {
     currentRoute = key;
     updateTitle();
     navDots?.sync();
-    // (C8) les Contrats vivent dans la Collection : c'est son onglet qui reste allumé
-    const navKey = key === 'contrats' ? 'collection' : key;
     top.querySelectorAll<HTMLElement>('nav a, .nav-extra a').forEach((a) => {
-      a.classList.toggle('on', a.dataset.r === navKey);
-      if (a.dataset.r === navKey) a.setAttribute('aria-current', 'page');
+      a.classList.toggle('on', a.dataset.r === key);
+      if (a.dataset.r === key) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
     meEl.querySelectorAll<HTMLElement>('.mm-link').forEach((a) => a.classList.toggle('on', a.dataset.r === key));

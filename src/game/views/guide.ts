@@ -3,7 +3,6 @@ import '../../core/i18n/fr/game.views.guide'; // (textes de ce module, version a
 import type { GameBackend } from '../backend';
 import { closeLayers, closePanels, esc, h, navigate } from '../ui';
 import { REFERRAL } from '../../core/referral';
-import { contractsRetired } from '../../core/economy';
 
 /**
  * VISITE GUIDÉE AUTOMATIQUE (ouverture 07/11) — à la première visite d'un compte, un curseur (flèche à l'ordinateur,
@@ -29,7 +28,7 @@ const STEPS = (name: string): Step[] => [
   { label: t('gd.express'), text: t('gd.hello', { name }) },
   { target: ['.me .packs'], label: t('gd.reserve'), text: t('gd.reserveD') },
   { target: ['.packs-row', '.open-btn'], label: t('gd.boosters'), text: t('gd.boostersD') },
-  { nav: 'collection', label: t('gd.coll'), text: contractsRetired(Date.now()) ? t('gd.collDb') : t('gd.collD') }, // (v2.1.40)
+  { nav: 'collection', label: t('gd.coll'), text: t('gd.collDb') }, // (v2.1.40) sans les contrats
   { nav: 'echanges', label: t('gd.trades'), text: t('gd.tradesD') },
   { nav: 'jeux', label: t('gd.games'), text: t('gd.gamesD') },
   { nav: 'amis', label: t('gd.friends'), text: t('gd.friendsD', { n: REFERRAL.packs, m: REFERRAL.packs }) },

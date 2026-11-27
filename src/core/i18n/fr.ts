@@ -13,7 +13,6 @@ export const fr = {
   // ───── titres de l'onglet du navigateur ─────
   'title.shop': 'Bébou — boutique',
   'title.collection': 'Bébou — collection',
-  'title.contrats': 'Bébou — contrats',
   'title.echanges': 'Bébou — échanges',
   'title.amis': 'Bébou — amis',
   'title.profil': 'Bébou — profil',
@@ -54,7 +53,6 @@ export const fr = {
   'boot.fx': 'préparation des effets…',
   'boot.tip1': 'Astuce : maintiens, glisse ou touche le booster : chaque pochette s’ouvre à sa façon.',
   'boot.tip2': 'Une carte secrète se cache peut-être dans le Bebou Pack…',
-  'boot.tip3': 'Tes doublons valent de l’or : brûle-les en contrat ou échange-les.',
   'boot.tip3b': 'Tes doublons valent de l’or : forge-les contre des pièces ou vends-les au marché.', // (v2.1.40)
   'boot.tip4': 'Un nouveau booster toutes les 5 minutes, jusqu’à 15 en réserve.',
   'boot.tip5': 'Touche une carte de ta collection pour la voir en grand et la faire tourner.',
@@ -293,7 +291,6 @@ export const fr = {
   'shop.saveFailed': 'Enregistrement impossible ({err})',
   'shop.dupWord': { one: 'doublon', other: 'doublons' },
   'shop.best': 'meilleure',
-  'shop.contracts': 'Contrats',
   'shop.newBang': 'NOUVELLE !',
 
   // ───── src/game/views/shop.ts (à la main) ─────
@@ -321,7 +318,6 @@ export const fr = {
   'plural.exemplaire brûlable': { one: '{n} exemplaire brûlable', other: '{n} exemplaires brûlables' },
   'plural.duel ouvert': { one: '{n} duel ouvert', other: '{n} duels ouverts' },
   'plural.de tes envies': { one: '{n} de tes envies', other: '{n} de tes envies' },
-  'plural.contrat possible': { one: '{n} contrat possible', other: '{n} contrats possibles' },
   'plural.booster ouvert': { one: '{n} booster ouvert', other: '{n} boosters ouverts' },
   'plural.badge': { one: '{n} badge', other: '{n} badges' },
   'plural.ami invité': { one: '{n} ami invité', other: '{n} amis invités' },
@@ -429,7 +425,6 @@ export const fr = {
   'coll.albums': 'Albums',
   'coll.binders': 'Classeurs',
   'coll.forge': 'Forge',
-  'coll.contracts': 'Contrats',
   'chat.me': 'Toi',
 
   // ───── src/game/ui.ts (à la main) ─────
