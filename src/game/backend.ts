@@ -214,6 +214,14 @@ export interface MarketItem {
   createdAt: number;
   resolvedAt?: number;
   buyerId?: string;
+  /** (V3) type d'annonce : absent = prix fixe ; `auction` = enchère (module des enchères, views/market.ts `setMarketPlugin`) */
+  kind?: 'fixed' | 'auction';
+}
+/** (V3, C bis) une alerte « une carte que tu veux est en vente » (convex/market.ts `alerts`) */
+export interface WishSale {
+  at: number;
+  cardId: string;
+  sellerId: string;
 }
 export interface MarketBoard {
   open: MarketItem[];
@@ -619,6 +627,8 @@ export interface GameBackend {
   /** retrait, seulement sans offre */
   auctionCancel(id: string): Promise<void>;
   // ── fin enchères
+  /** (V3, C bis) mes alertes « une carte que tu veux est en vente » (pastille du Marché) ; absent en démo */
+  watchWishSales?(cb: (l: WishSale[]) => void): () => void;
   createListing(items: TradeItem[], wanted: Array<{ cardId: string; rarity: RarityId }>, note: string | undefined, hours: number): Promise<void>;
   cancelListing(id: string): Promise<void>;
   /** Faire (ou refaire : remplace la précédente) une offre sur l'annonce d'un autre. */

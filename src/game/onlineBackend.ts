@@ -528,6 +528,7 @@ export function createOnlineBackend(): GameBackend {
       await net.call(api.auctions.cancel, { id: id as Id<'auctions'> });
     },
     // ── fin enchères
+    watchWishSales: (cb) => net.watch(api.market.alerts, {}, (rows) => cb(rows ?? []), true, () => cb([])),
     async createListing(items, wanted, note, hours) {
       await net.call(api.listings.create, { items, wanted, note, hours });
     },
