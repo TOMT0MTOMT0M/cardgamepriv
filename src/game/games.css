@@ -310,6 +310,8 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 .collection .gm-forge { gap: 10px; }
 .collection .gm-forge > .gm-ph b { font: 500 24px var(--title); font-style: italic; }
 .fg-rate { font: 400 12px var(--mono); }
+/* (v2.1.39) rendement du jour de la Forge : reste visible au téléphone (la table de valeur, elle, s'y cache) */
+.fg-yield { font: 400 12px var(--mono); }
 .gm-fgrid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
 .collection .gm-ffoot { padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
 .gm-ffoot .btn-primary { flex: none; min-height: 40px; }

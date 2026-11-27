@@ -2,7 +2,7 @@ import { t as tr } from '../../core/i18n';
 import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import type { EcoSnapshot } from '../eco';
-import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_PACKS, CALENDAR_MONTH_TOTAL, achievementReward, calendarReward, fmtCoins } from '../../core/economy';
+import { ACHIEVEMENTS, CALENDAR_DAYS, CALENDAR_DOUBLE, CALENDAR_MONTH_PACKS, achievementReward, calendarMonthTotal, calendarReward, fmtCoins } from '../../core/economy';
 import { GAMES_OPEN } from '../../core/games';
 import { CLOSE_X, busyButton, errMsg, esc, fmtN, h, keepFocus, loginPrompt, panelHidden, panelShown, toast } from '../ui';
 import { txText } from '../msgView';
@@ -23,15 +23,17 @@ export const coinsHtml = (n: number, cls = '') => `<span class="coins-v ${cls}">
  */
 export function calendarHtml(s: EcoSnapshot) {
   const c = s.calendar;
+  // (v2.1.39) barème du jour (nouveau à partir du 01/12) ; le cadeau de demain suit le barème de demain
+  const now = Date.now();
   let cells = '';
   for (let d = 1; d <= CALENDAR_DAYS; d++) {
-    const r = calendarReward(d);
+    const r = calendarReward(d, now);
     const st = d < c.day ? 'past' : d === c.day ? (c.claimed ? 'today taken' : 'today') : 'next';
     cells += `<i class="cal-d ${st}${CALENDAR_DOUBLE.includes(d) ? ' x2' : ''}${d === CALENDAR_DAYS ? ' big' : ''}" title="${tr('wal.calDayTitle', { d, coins: fmtCoins(r.coins), packs: r.packs ? tr('wal.plusPacks', { n: r.packs }) : '', x2: CALENDAR_DOUBLE.includes(d) ? ' (×2)' : '' })}">${d === CALENDAR_DAYS ? '★' : d}</i>`;
   }
-  return `<div class="w-sec"><div class="w-h"><b>${tr('wal.calHead', { day: c.day, days: CALENDAR_DAYS })}</b><span>${tr('wal.calPerfect', { coins: fmtCoins(CALENDAR_MONTH_TOTAL), packs: CALENDAR_MONTH_PACKS })}</span></div>
+  return `<div class="w-sec"><div class="w-h"><b>${tr('wal.calHead', { day: c.day, days: CALENDAR_DAYS })}</b><span>${tr('wal.calPerfect', { coins: fmtCoins(calendarMonthTotal(now)), packs: CALENDAR_MONTH_PACKS })}</span></div>
     <div class="cal">${cells}</div>
-    ${c.claimed ? `<div class="muted">${tr('wal.calTaken', { coins: fmtCoins(calendarReward(Math.min(CALENDAR_DAYS, c.day + 1)).coins) })}</div>` : `<button class="btn-primary w-cal">${tr('wal.calTake', { coins: fmtCoins(c.reward.coins), packs: c.reward.packs ? tr('wal.plusPacks', { n: c.reward.packs }) : '' })}</button>`}</div>`;
+    ${c.claimed ? `<div class="muted">${tr('wal.calTaken', { coins: fmtCoins(calendarReward(Math.min(CALENDAR_DAYS, c.day + 1), now + 86_400_000).coins) })}</div>` : `<button class="btn-primary w-cal">${tr('wal.calTake', { coins: fmtCoins(c.reward.coins), packs: c.reward.packs ? tr('wal.plusPacks', { n: c.reward.packs }) : '' })}</button>`}</div>`;
 }
 
 export function createWallet(backend: GameBackend, shell: Shell) {

@@ -9,7 +9,12 @@ import { api, internal } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS } from './cardsCatalog';
-import { CARD_VALUE, calendarReward, CALENDAR_MONTH_TOTAL } from '../src/core/economy';
+import { CARD_VALUE, calendarReward, calendarMonthTotal, ECON_V2_AT, forgePay, forgeYield, emptyEcon } from '../src/core/economy';
+import { missionDay } from '../src/core/missions';
+
+/** (v2.1.39) avant / après le passage à la nouvelle économie (01/12 0 h, Paris) */
+const BEFORE = ECON_V2_AT - 60_000;
+const AFTER = ECON_V2_AT + 12 * 3600_000;
 import { betProblem, nextRouletteDraw, parisHour, potsBalanced, royaleResult, rouletteSlot } from '../src/core/games';
 
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
@@ -42,14 +47,38 @@ afterEach(() => vi.restoreAllMocks());
 describe('règles pures', () => {
   test('table de valeur, calendrier, side pots à ±5 %', () => {
     expect(CARD_VALUE).toMatchObject({ common: 5, uncommon: 15, rare: 40, epic: 100, legendary: 300, mythic: 1000, secret: 5000 });
-    expect(calendarReward(1)).toEqual({ coins: 50, packs: 0 });
-    expect(calendarReward(7).coins).toBe(220); // (50 + 60) × 2
-    expect(calendarReward(29).coins).toBe(330);
-    expect(calendarReward(30)).toEqual({ coins: 1000, packs: 51 });
-    expect(CALENDAR_MONTH_TOTAL).toBe(7050);
+    expect(calendarReward(1, BEFORE)).toEqual({ coins: 50, packs: 0 });
+    expect(calendarReward(7, BEFORE).coins).toBe(220); // (50 + 60) × 2
+    expect(calendarReward(29, BEFORE).coins).toBe(330);
+    expect(calendarReward(30, BEFORE)).toEqual({ coins: 1000, packs: 51 });
+    expect(calendarMonthTotal(BEFORE)).toBe(7050);
+    // (v2.1.39) à partir du 01/12 : jour 1 = 1 booster (250), +20 par jour, ×2 aux jours 7/14/21, jour 30 = 8 boosters
+    expect(new Date(ECON_V2_AT).toISOString()).toBe('2026-11-30T23:00:00.000Z');
+    expect(calendarReward(1, AFTER)).toEqual({ coins: 250, packs: 0 });
+    expect(calendarReward(7, AFTER).coins).toBe(740); // (250 + 120) × 2
+    expect(calendarReward(29, AFTER).coins).toBe(810);
+    expect(calendarReward(30, AFTER)).toEqual({ coins: 2000, packs: 51 });
+    expect(calendarMonthTotal(AFTER)).toBe(18900);
     expect(potsBalanced({ coins: 100, cards: [] }, { coins: 105, cards: [] })).toBe(true);
     expect(potsBalanced({ coins: 100, cards: [] }, { coins: 106, cards: [] })).toBe(false);
     expect(potsBalanced({ coins: 0, cards: [] }, { coins: 0, cards: [] })).toBe(true);
+  });
+
+  test('(v2.1.39) Forge dégressive : 100 % jusqu’à 3 000 par jour, 50 % jusqu’à 10 000, 25 % au-delà', () => {
+    expect(forgeYield(0, 3000)).toBe(3000);
+    expect(forgeYield(0, 4000)).toBe(3500);
+    expect(forgeYield(2500, 1000)).toBe(750); // 500 à 100 % + 500 à 50 %
+    expect(forgeYield(9000, 2000)).toBe(750); // 1 000 à 50 % + 1 000 à 25 %
+    expect(forgeYield(20000, 40)).toBe(10);
+    expect(forgeYield(0, 53758)).toBe(3000 + 3500 + Math.round((53758 - 10000) * 0.25));
+    // avant le 01/12 : 100 %, rien n'est compté
+    expect(forgePay(emptyEcon(), 5000, BEFORE, missionDay(BEFORE))).toEqual({ coins: 5000 });
+    // après : compteur du jour, remis à zéro le lendemain (jour de Paris)
+    const today = missionDay(AFTER);
+    const a = forgePay(emptyEcon(), 4000, AFTER, today);
+    expect(a).toEqual({ coins: 3500, econ: { forgeDay: today, forgeRaw: 4000 } });
+    expect(forgePay({ ...emptyEcon(), ...a.econ }, 100, AFTER, today).coins).toBe(50);
+    expect(forgePay({ ...emptyEcon(), ...a.econ }, 100, AFTER + 86_400_000, missionDay(AFTER + 86_400_000)).coins).toBe(100);
   });
 
   test('roulette : tirages à 10 h et 20 h, heure de Paris (heure d’hiver et d’été)', () => {
@@ -64,14 +93,15 @@ describe('règles pures', () => {
     expect(rouletteSlot(Date.UTC(2026, 10, 4, 9, 0))).toBe('2026-11-04 · 10 h');
   });
 
-  test('roulette : grille tarifaire (23/11 : 1 seul numéro, 1500 pièces, 2 cartes 5★ ou 1 carte 6★)', () => {
+  test('roulette : grille tarifaire (23/11 : 1 seul numéro, 1500 pièces ; v2.1.39 : 3 cartes 5★ ou 1 carte 6★)', () => {
     const none = new Set<number>();
     const card = (rarity: string, count: number) => ({ coins: 0, cards: [{ cardId: 'x', rarity: rarity as never, count }] });
     expect(betProblem([1], { coins: 1500, cards: [] }, none, 0)).toBeNull();
-    expect(betProblem([1], card('legendary', 2), none, 0)).toBeNull();
+    expect(betProblem([1], card('legendary', 3), none, 0)).toBeNull();
+    expect(betProblem([1], card('legendary', 2), none, 0)).toMatch(/3 cartes 5★/);
     expect(betProblem([1], card('mythic', 1), none, 0)).toBeNull();
     expect(betProblem([1], { coins: 300, cards: [] }, none, 0)).toMatch(/1500 pièces/);
-    expect(betProblem([1], card('legendary', 1), none, 0)).toMatch(/2 cartes 5★/);
+    expect(betProblem([1], card('legendary', 1), none, 0)).toMatch(/3 cartes 5★/);
     expect(betProblem([1], card('epic', 10), none, 0)).toMatch(/5★ et 6★/);
     expect(betProblem([1], card('rare', 10), none, 0)).toMatch(/5★ et 6★/);
     expect(betProblem([1, 2], { coins: 3000, cards: [] }, none, 0)).toMatch(/Un seul numéro/);
@@ -104,8 +134,10 @@ describe('sources de pièces', () => {
   test('calendrier : une fois par jour', async () => {
     const { t, u } = await setup();
     const r = await t.mutation(api.economy.claimCalendar, { sessionToken: u.alice.token });
-    expect(r.coins).toBe(50);
-    expect(await coins(t, u.alice.userId)).toBe(1050);
+    // (v2.1.39) 50 avant le 01/12, 250 après
+    const day1 = calendarReward(1, Date.now()).coins;
+    expect(r.coins).toBe(day1);
+    expect(await coins(t, u.alice.userId)).toBe(1000 + day1);
     await expect(t.mutation(api.economy.claimCalendar, { sessionToken: u.alice.token })).rejects.toThrow(/déjà/);
   });
 
@@ -120,6 +152,49 @@ describe('sources de pièces', () => {
     const r = await t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: epic.id, rarity: 'epic', count: 2 }] });
     expect(r.coins).toBe(200);
     expect((await inv(t, u.alice.userId)).find((c) => c.cardId === epic.id)?.count).toBe(1);
+  });
+
+  test('(v2.1.39) Forge et pièces d’ouverture : rendement dégressif à partir du 01/12, compteur du jour', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(AFTER);
+      const { t, u } = await setup();
+      const mythic = CATALOG_CARDS.find((c) => c.baseRarity === 'mythic')!;
+      await give(t, u.alice.userId, mythic.id, 'mythic', 6);
+      // 4 × 1 000 : 3 000 à 100 % + 1 000 à 50 %
+      const r = await t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: mythic.id, rarity: 'mythic', count: 4 }] });
+      expect(r).toMatchObject({ coins: 3500, count: 4, value: 4000 });
+      expect(await coins(t, u.alice.userId)).toBe(1000 + 3500);
+      const econ = await t.run(async (ctx) => (await ctx.db.get(u.alice.userId))!.econ!);
+      expect(econ).toMatchObject({ forgeDay: missionDay(AFTER), forgeRaw: 4000, burned: 4 });
+      // un booster ouvert le même jour : ses pièces passent à 50 %
+      const before = await coins(t, u.alice.userId);
+      const pack = await t.mutation(api.packs.preparePack, { sessionToken: u.alice.token, packKind: 'bebou' });
+      await t.mutation(api.packs.revealPack, { sessionToken: u.alice.token, packId: pack._id });
+      expect(await coins(t, u.alice.userId)).toBe(before + forgeYield(4000, pack.coins ?? 0));
+      // le lendemain : rendement plein
+      vi.setSystemTime(AFTER + 86_400_000);
+      const r2 = await t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: mythic.id, rarity: 'mythic', count: 1 }] });
+      expect(r2.coins).toBe(1000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('(v2.1.39) avant le 01/12 : la Forge rend toujours 100 %', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(BEFORE);
+      const { t, u } = await setup();
+      const mythic = CATALOG_CARDS.find((c) => c.baseRarity === 'mythic')!;
+      await give(t, u.alice.userId, mythic.id, 'mythic', 6);
+      const r = await t.mutation(api.economy.burn, { sessionToken: u.alice.token, items: [{ cardId: mythic.id, rarity: 'mythic', count: 5 }] });
+      expect(r.coins).toBe(5000);
+      const econ = await t.run(async (ctx) => (await ctx.db.get(u.alice.userId))!.econ!);
+      expect(econ.forgeDay).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test('complétion : 5 pièces × cartes de l’album, payée une seule fois', async () => {

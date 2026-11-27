@@ -61,6 +61,15 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '28 nov.', title: '🪙 Nouvelle économie au 1er décembre', tag: 'nouveau',
+        points: [
+          '📅 Connexion quotidienne bien plus généreuse : jour 1 = 250 pièces (le prix d’un booster), +20 chaque jour, ×2 aux jours 7, 14 et 21, et le jour 30 = 2 000 pièces + 51 boosters. Un mois parfait rapporte 18 900 pièces au lieu de 7 050.',
+          '🔥 Forge : chaque jour, les doublons forgés et les pièces d’ouverture des boosters rapportent 100 % jusqu’à 3 000 pièces, puis 50 % jusqu’à 10 000, puis 25 %. Tout repart à 100 % à minuit. L’écran Forge te dit ce qu’il te reste à plein rendement.',
+          '🎲 Roulette, dès maintenant : une mise en cartes = 3 cartes 5★ (ou toujours 1 carte 6★, ou 1 500 pièces).',
+          'Pourquoi : les plus gros ouvreurs gagnaient plus de 10 fois plus de pièces par jour que les autres. Se connecter chaque jour compte maintenant vraiment.',
+        ],
+      },
+      {
         date: '27 nov.', title: 'Échanges en un toucher : ses envies d’abord', tag: 'amélioré',
         points: [
           '♥ « Demander » une carte à un joueur lui propose en priorité une carte qu’il cherche : celles de sa liste d’envies, et maintenant aussi celles des albums et familles qu’il veut en entier. Le message te le dit.',

@@ -13,7 +13,7 @@ import { bumpMissions } from './missions';
 import { pushBigPull } from './feed';
 import { pityAfter, pityForces } from '../src/core/pity';
 import { rollPackCoins } from '../src/core/economy';
-import { addCoins, bumpWeekly } from './econLib';
+import { addForgeCoins, bumpWeekly } from './econLib';
 import { queueDropShot } from './dropShots';
 import { liveEventOrThrow } from './events';
 import { bumpChallenges } from './challenges';
@@ -330,8 +330,9 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
     }
   }
 
-  // pièces d'ouverture + missions de la semaine (src/core/economy.ts, src/core/weekly.ts)
-  if (pack.coins) await addCoins(ctx, user._id, pack.coins, 'pack', pack.eventName ? fm('c.openEvent', { event: pack.eventName, ...(await eventEn(ctx, pack.eventId)) }) : pack.packKind === 'theme' && pack.themeId ? fm('c.openTheme', { theme: themeById(pack.themeId)?.label ?? 'booster', themeId: pack.themeId }) : fm('c.openTheme', { theme: BEBOU_PACK.label }), { earned: true, live: user });
+  // pièces d'ouverture + missions de la semaine (src/core/economy.ts, src/core/weekly.ts) ; (v2.1.39) comptées avec la
+  // Forge dans le rendement dégressif du jour à partir du 01/12
+  if (pack.coins) await addForgeCoins(ctx, user._id, pack.coins, 'pack', pack.eventName ? fm('c.openEvent', { event: pack.eventName, ...(await eventEn(ctx, pack.eventId)) }) : pack.packKind === 'theme' && pack.themeId ? fm('c.openTheme', { theme: themeById(pack.themeId)?.label ?? 'booster', themeId: pack.themeId }) : fm('c.openTheme', { theme: BEBOU_PACK.label }), { live: user });
   await bumpWeekly(ctx, user._id, { type: 'pack', cards: pack.cards.map((c) => ({ rarity: c.rarity, isNew: c.isNew })) }, user);
 
   // missions du jour (ouvrir, raretés, nouvelles cartes, doublons…)

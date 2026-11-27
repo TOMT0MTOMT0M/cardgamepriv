@@ -138,7 +138,8 @@ export interface EcoBackend extends JeuxBackend, ExtrasBackend {
   /** achète `count` boosters (réserve) avec des pièces */
   buyPacks(count: number): Promise<{ packs: number; left: number }>;
   claimWeekly(id: string): Promise<number>;
-  burn(items: StakeItem[]): Promise<{ coins: number; count: number }>;
+  /** `coins` = pièces versées ; (v2.1.39) `value` = valeur de la table (plus grande si le rendement du jour a baissé) */
+  burn(items: StakeItem[]): Promise<{ coins: number; count: number; value?: number }>;
   claimCompletions(): Promise<{ coins: number; sets: Array<{ id: string; label: string; reward: number }> }>;
   claimAchievements(): Promise<{ coins: number; packs: number; ids: string[] }>;
   coinHistory(): Promise<CoinTx[]>;

@@ -6,7 +6,7 @@ import { getUserByToken, requireUser } from './auth';
 import { rarityValidator, type RarityId } from './cardsCatalog';
 import { lockedCards } from './trades';
 import { canModerate } from './suggestions';
-import { addCoins, bumpWeekly, coinsOf, econOf } from './econLib';
+import { addCoins, addForgeCoins, bumpWeekly, coinsOf, econOf } from './econLib';
 import { applyRegen } from '../src/core/packRegen';
 import { touchStreak } from '../src/core/streak';
 import { missionDay } from '../src/core/missions';
@@ -63,7 +63,7 @@ function calendarOf(u: Doc<'users'>, now: number) {
   const streak = touchStreak(u.streak, now) ?? u.streak;
   const day = calendarDay(streak?.count ?? 1);
   const today = missionDay(now);
-  return { day, today, claimed: econOf(u).calendarDay === today, reward: calendarReward(day) };
+  return { day, today, claimed: econOf(u).calendarDay === today, reward: calendarReward(day, now) };
 }
 
 /** Tout ce que l'interface affiche de l'économie (portefeuille, calendrier, missions de la semaine, primes en attente). */
@@ -134,7 +134,7 @@ export const history = query({
   },
 });
 
-/** Cadeau du calendrier (1 fois par jour). Jour 30 : 1 000 pièces + 1 booster. */
+/** Cadeau du calendrier (1 fois par jour). Jour 30 : 1 000 pièces (2 000 à partir du 01/12) + 51 boosters. */
 export const claimCalendar = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
@@ -192,11 +192,12 @@ export const burn = mutation({
       n += it.count;
     }
     const econ = econOf(u);
-    await addCoins(ctx, u._id, coins, 'burn', fm('c.burn', { n }), { earned: true, econ: { burned: econ.burned + n } });
+    // (v2.1.39) rendement dégressif par jour à partir du 01/12 : `coins` = valeur de la table, `paid` = pièces versées
+    const paid = await addForgeCoins(ctx, u._id, coins, 'burn', fm('c.burn', { n }), { econ: { burned: econ.burned + n }, live: u });
     await bumpWeekly(ctx, u._id, { type: 'burn', count: n });
     await ctx.db.patch(u._id, { lastSeenAt: Date.now(), statusText: 'Fait chauffer la forge à doublons' });
     await syncPresence(ctx, u._id);
-    return { coins, count: n };
+    return { coins: paid, count: n, value: coins };
   },
 });
 

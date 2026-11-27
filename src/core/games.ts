@@ -130,6 +130,8 @@ export function royaleResult(packs: GameCard[][], rand: () => number): { stars: 
  *
  * (23/11, nerf demandé par Tom) UN SEUL numéro par joueur et par tirage, plus de mise en 4★ :
  *      1 numéro = 1500 pièces · ou 2 cartes 5★ · ou 1 carte 6★
+ * (v2.1.39, rework économie validé par Tom le 27/11) mise en cartes alignée sur la table de valeur : 3 cartes 5★ (900)
+ * au lieu de 2 (600), à côté d'une 6★ (1 000).
  */
 export const ROULETTE_NUMBERS = 36;
 /** numéros au plus par joueur et par tirage */
@@ -140,7 +142,7 @@ export const ROULETTE_HOURS = [10, 20] as const;
 export type RoulettePrice = { kind: 'coins'; coins: number } | { kind: 'cards'; rarity: RarityId; count: number };
 /** Grille tarifaire : 1, 2 ou 3 numéros → les façons de payer (une seule par mise). */
 export const ROULETTE_PRICES: Record<1, RoulettePrice[]> = {
-  1: [{ kind: 'coins', coins: 1500 }, { kind: 'cards', rarity: 'legendary', count: 2 }, { kind: 'cards', rarity: 'mythic', count: 1 }],
+  1: [{ kind: 'coins', coins: 1500 }, { kind: 'cards', rarity: 'legendary', count: 3 }, { kind: 'cards', rarity: 'mythic', count: 1 }],
 };
 /** raretés acceptées en mise */
 export const ROULETTE_CARD_RARITIES: RarityId[] = ['legendary', 'mythic'];

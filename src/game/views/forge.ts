@@ -2,7 +2,8 @@ import { t as tr } from '../../core/i18n';
 import type { GameBackend, GameState } from '../backend';
 import { cardKey, lockedCards } from '../backend';
 import type { Shell } from '../shell';
-import { BURN_MAX_ITEMS, CARD_VALUE, burnable, cardsValue, fmtCoins, type StakeItem } from '../../core/economy';
+import { BURN_MAX_ITEMS, CARD_VALUE, FORGE_FULL, FORGE_TIERS, burnable, cardsValue, econV2, fmtCoins, forgeDone, forgeYield, type StakeItem } from '../../core/economy';
+import { missionDay } from '../../core/missions';
 import { rarity, starCount, type RarityId } from '../../core/rarity';
 import { catalogEntry } from '../../core/sets/themes';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, toast } from '../ui';
@@ -129,6 +130,20 @@ export function createForge(backend: GameBackend, shell: Shell) {
     const lockedMap = lockedCards(st); // (audit 12/11, A4-01) une fois par rendu, plus une fois par carte de la collection
     const lockedN = st.collection.reduce((a, c) => a + (burnable(c.rarity) ? Math.min(lockedMap.get(cardKey(c)) ?? 0, Math.max(0, c.count - 1)) : 0), 0);
     const total = cardsValue([...sel.values()]);
+    // (v2.1.39) rendement dégressif du jour à partir du 01/12 : `paid` = ce que la fournée rapporte vraiment
+    const now = Date.now();
+    const v2 = econV2(now);
+    const eco = backend.eco.snapshot;
+    const done = v2 && eco ? forgeDone(eco.econ, missionDay(now)) : 0;
+    const paid = v2 ? forgeYield(done, total) : total;
+    const cap = FORGE_TIERS[1][0];
+    const yieldTxt = !v2
+      ? tr('fg.yieldSoon', { full: fmtCoins(FORGE_FULL), cap: fmtCoins(cap) })
+      : done < FORGE_FULL
+        ? tr('fg.yieldFull', { n: fmtCoins(FORGE_FULL - done) })
+        : done < cap
+          ? tr('fg.yieldHalf', { n: fmtCoins(cap - done) })
+          : tr('fg.yieldQuarter');
     const n = [...sel.values()].reduce((a, c) => a + c.count, 0);
     const rars = (['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as RarityId[]).filter((r) => dups.some((d) => d.rarity === r));
     // sélection rapide : comme le remplissage auto des contrats, elle laisse de côté les cartes protégées (UX4-06)
@@ -152,6 +167,7 @@ export function createForge(backend: GameBackend, shell: Shell) {
     const free = dups.reduce((a, d) => a + d.spare, 0);
     el.innerHTML = `<div class="gm-panel gm-forge"><div class="gm-ph"><b>${tr('fg.title')}</b><span class="muted">${tr('fg.count', { n: free, nf: fmtN(free), locked: lockedN ? tr('fg.locked', { n: lockedN, nf: fmtN(lockedN) }) : '' })}</span></div> <!-- i18n-ok -->
       <div class="muted fg-rate">${tr('fg.values')}</div>
+      <div class="muted fg-yield">${yieldTxt}</div>
       <div class="gm-quick">${lowChip()}${rars.map((r) => {
         const q = quickPick(r);
         const np = quickProt(r);
@@ -160,7 +176,7 @@ export function createForge(backend: GameBackend, shell: Shell) {
       ${anyMark ? `<div class="gm-legend-p muted">${esc(LEGEND)}</div>` : ''}
       ${full ? `<div class="gm-legend-p muted">${tr('fg.maxItems', { n: BURN_MAX_ITEMS })}</div>` : ''}
       <div class="gm-fgrid"></div>
-      <div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')} (${cardsSummary([...sel.values()])}) → ${coinsHtml(total)}` : '<span class="muted">' + tr('fg.tapHint') + '</span>'}</span><button class="btn-primary gm-burn"${n && !isPending('forge') ? '' : ' disabled'}>${tr('fg.burn', { x: n ? ` · +${fmtCoins(total)}` : '' })}</button></div></div>`;
+      <div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')} (${cardsSummary([...sel.values()])}) → ${coinsHtml(paid)}${paid < total ? ` <small class="muted">(${tr('fg.valueWas', { v: fmtCoins(total) })})</small>` : ''}` : '<span class="muted">' + tr('fg.tapHint') + '</span>'}</span><button class="btn-primary gm-burn"${n && !isPending('forge') ? '' : ' disabled'}>${tr('fg.burn', { x: n ? ` · +${fmtCoins(paid)}` : '' })}</button></div></div>`;
     const grid = el.querySelector<HTMLElement>('.gm-fgrid')!;
     if (!dups.length) grid.innerHTML = `<div class="muted">${tr('fg.none', { x: lockedN ? tr('fg.othersLocked') : '' })} <a href="#/">${tr('fg.openBoosters')}</a></div>`;
     // (audit 12/11, S14 / A4-01) les tuiles sont GARDÉES d'un rendu à l'autre : un toucher ne recrée plus jusqu'à 400

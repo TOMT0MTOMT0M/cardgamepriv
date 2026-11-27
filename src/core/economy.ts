@@ -16,6 +16,20 @@ import type { RarityId } from './rarity';
 import { THEMES, subthemeViews, type CatalogEntry } from './sets/themes';
 import { msgRef, str } from './msgRefs';
 
+// ───────────────────────────────────────────── étalon : le prix d'un booster (v2.1.39)
+
+/**
+ * (v2.1.39, rework économie validé par Hugo et Tom le 27/11) UN SEUL ÉTALON : le prix d'un booster. Les seuils de la
+ * Forge et le calendrier de connexion en sont des multiples : changer `PACK_PRICE` déplace tout.
+ * Booster acheté avec des pièces : il rejoint la réserve. Prix calé sur l'économie : un booster rend ≈ 30 pièces à
+ * l'ouverture + ≈ 162 de Forge, donc 250 > ce qu'il rend (pas de boucle « acheter → forger → racheter »).
+ */
+export const PACK_PRICE = 250;
+
+/** (v2.1.39) la nouvelle économie démarre le 01/12/2026 à 0 h, heure de Paris (UTC+1 en hiver) */
+export const ECON_V2_AT = Date.UTC(2026, 10, 30, 23, 0, 0);
+export const econV2 = (now: number) => now >= ECON_V2_AT;
+
 // ───────────────────────────────────────────── table de valeur
 
 /** Valeur d'une carte en pièces, selon ses étoiles. Secrète (Les Bébous) : 5× une 6★ — seulement en mise. */
@@ -56,16 +70,22 @@ export const fmtCoins = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3
  *  - paliers ×2 aux jours 7, 14 et 21 ;
  *  - jour 30 = 1 000 pièces + 1 booster offert, et (retours live 04) la prime du MOIS PARFAIT : 50 boosters en plus.
  * Mois parfait : 7 050 pièces + 51 boosters.
+ * (v2.1.39, à partir du 01/12) relevé pour peser ≈ 15 % d'une journée de joueur médian (mesure du 24-26/11 :
+ * 4 070 pièces par jour, le calendrier en faisait 2 %) : jour 1 = 1 booster (250), +20 par jour (jour 29 = 810), ×2 aux
+ * jours 7, 14 et 21, jour 30 = 8 boosters (2 000) + les 51 boosters. Mois parfait : 18 900 pièces + 51 boosters.
  */
 export const CALENDAR_DAYS = 30;
 export const CALENDAR_DOUBLE = [7, 14, 21];
 /** (retours live 04) prime du mois parfait (30 jours d'affilée), en plus du booster du jour 30 */
 export const PERFECT_MONTH_PACKS = 50;
 export const CALENDAR_MONTH_PACKS = 1 + PERFECT_MONTH_PACKS;
+/** (v2.1.39) hausse du cadeau d'un jour au suivant */
+const CALENDAR_STEP = 20;
 
-export function calendarReward(day: number): { coins: number; packs: number } {
-  if (day >= CALENDAR_DAYS) return { coins: 1000, packs: 1 + PERFECT_MONTH_PACKS };
-  const base = 50 + 10 * (Math.max(1, day) - 1);
+export function calendarReward(day: number, now: number): { coins: number; packs: number } {
+  const v2 = econV2(now);
+  if (day >= CALENDAR_DAYS) return { coins: v2 ? 8 * PACK_PRICE : 1000, packs: 1 + PERFECT_MONTH_PACKS };
+  const base = v2 ? PACK_PRICE + CALENDAR_STEP * (Math.max(1, day) - 1) : 50 + 10 * (Math.max(1, day) - 1);
   return { coins: CALENDAR_DOUBLE.includes(day) ? base * 2 : base, packs: 0 };
 }
 
@@ -73,7 +93,7 @@ export function calendarReward(day: number): { coins: number; packs: number } {
 export const calendarDay = (streakCount: number) => (streakCount > 0 ? ((streakCount - 1) % CALENDAR_DAYS) + 1 : 0);
 
 /** Total d'un mois parfait (affiché dans le panneau). */
-export const CALENDAR_MONTH_TOTAL = Array.from({ length: CALENDAR_DAYS }, (_, i) => calendarReward(i + 1).coins).reduce((a, b) => a + b, 0);
+export const calendarMonthTotal = (now: number) => Array.from({ length: CALENDAR_DAYS }, (_, i) => calendarReward(i + 1, now).coins).reduce((a, b) => a + b, 0);
 
 // ───────────────────────────────────────────── ouverture de boosters
 
@@ -88,14 +108,11 @@ export function rollPackCoins(kind: 'bebou' | 'theme' | 'special', rand: () => n
 // ───────────────────────────────────────────── achat de boosters (retours 05/11)
 
 /**
- * Booster acheté avec des pièces : il rejoint la réserve (n'importe quelle sorte, au choix à l'ouverture). Prix calé
- * sur l'économie : un booster rapporte ≈ 25-30 pièces à l'ouverture + ≈ 160 pièces de cartes au brûlage (valeur
- * moyenne des 5 cartes), donc 250 > ce qu'il rend (pas de boucle « acheter → brûler → racheter ») ; ≈ une journée de
- * calendrier ou ~8 boosters ouverts.
+ * Booster acheté avec des pièces (prix : `PACK_PRICE`, l'étalon, en haut du fichier) : il rejoint la réserve
+ * (n'importe quelle sorte, au choix à l'ouverture).
  * (13/11, retours Hugo ; v2.0.1) plus de plafond quotidien : achats illimités, au même prix (jamais moins cher). Seule
  * limite : 10 boosters par achat (les boutons +1 / +5).
  */
-export const PACK_PRICE = 250;
 /** boosters au plus par achat */
 export const PACK_BUY_MAX = 10;
 /** (compatibilité : `packShop.left` des clients) un achat peut toujours aller jusqu'à PACK_BUY_MAX */
@@ -124,6 +141,46 @@ export function burnProblem(items: StakeItem[], spare: (it: StakeItem) => number
     if (spare(it) < it.count) return fe('economy.13');
   }
   return null;
+}
+
+// ───────────────────────────────────────────── Forge à rendement dégressif (v2.1.39, à partir du 01/12)
+
+/**
+ * La Forge et les pièces d'ouverture grandissaient avec le nombre de boosters ouverts (presque gratuits) : mesure du
+ * 24-26/11, un joueur médian gagne 4 070 pièces par jour, le plus gros 53 750 (dont 38 000 de Forge). Chaque jour
+ * (heure de Paris), ces pièces sont versées à 100 % jusqu'à 12 boosters (3 000), à 50 % jusqu'à 40 boosters (10 000),
+ * à 25 % au-delà. Les seuils se comptent en VALEUR de Forge (avant réduction). Mesure : −31 % de pièces gagnées au
+ * total, joueur médian intact, 53 750 → ≈ 19 800.
+ */
+export const FORGE_TIERS: ReadonlyArray<readonly [upTo: number, rate: number]> = [[12 * PACK_PRICE, 1], [40 * PACK_PRICE, 0.5], [Infinity, 0.25]];
+/** fin du rendement plein (3 000) */
+export const FORGE_FULL = FORGE_TIERS[0][0];
+
+/** Valeur de Forge déjà comptée le jour `today` (jour de Paris, `missionDay`). */
+export const forgeDone = (e: EconState, today: string) => (e.forgeDay === today ? e.forgeRaw ?? 0 : 0);
+
+/** Pièces versées pour `raw` de valeur de Forge quand `done` est déjà compté aujourd'hui. */
+export function forgeYield(done: number, raw: number): number {
+  let out = 0;
+  let at = Math.max(0, done);
+  let left = Math.max(0, raw);
+  for (const [upTo, rate] of FORGE_TIERS) {
+    const take = Math.min(left, Math.max(0, upTo - at));
+    out += take * rate;
+    at += take;
+    left -= take;
+  }
+  return Math.round(out);
+}
+
+/**
+ * Pièces de Forge ou d'ouverture à verser (`coins`) et compteur du jour à écrire (`econ`). Avant le 01/12 : 100 %, rien
+ * n'est compté. `today` = `missionDay(now)` (passé par l'appelant : ce module ne charge pas les missions).
+ */
+export function forgePay(e: EconState, raw: number, now: number, today: string): { coins: number; econ?: Partial<EconState> } {
+  if (!econV2(now) || raw <= 0) return { coins: raw };
+  const done = forgeDone(e, today);
+  return { coins: forgeYield(done, raw), econ: { forgeDay: today, forgeRaw: done + raw } };
 }
 
 // ───────────────────────────────────────────── complétion (albums, familles, thèmes)
@@ -493,6 +550,9 @@ export interface EconState {
   /** achats de boosters : jour (Paris) et nombre achetés ce jour-là */
   shopDay?: string;
   shopBought?: number;
+  /** (v2.1.39) Forge dégressive : jour (Paris) et valeur de Forge + pièces d'ouverture déjà comptées ce jour-là */
+  forgeDay?: string;
+  forgeRaw?: number;
 }
 
 export const emptyEcon = (): EconState => ({ earned: 0, burned: 0, gamesPlayed: 0, gamesWon: 0, rouletteWins: 0, completions: [], achievements: [] });
@@ -508,6 +568,7 @@ export const cleanEcon = (e: EconState): EconState => ({
   achievements: e.achievements,
   ...(e.calendarDay ? { calendarDay: e.calendarDay } : {}),
   ...(e.shopDay ? { shopDay: e.shopDay, shopBought: e.shopBought ?? 0 } : {}),
+  ...(e.forgeDay ? { forgeDay: e.forgeDay, forgeRaw: e.forgeRaw ?? 0 } : {}),
 });
 
 // ───────────────────────────────────────────── anti-abus (alertes, jamais de blocage automatique)
