@@ -260,12 +260,12 @@ export const forYou = query({
         if (proposable(r, (await lockOf(u._id)).get(key(r)) ?? 0, guardOf(u)) <= 0) continue;
         const theirWish = new Set(u.wishlist ?? []);
         const ok: DealCard[] = [];
-        for (const c of rankGives(gives.get(r.rarity) ?? [], theirWish).slice(0, DEAL_LACK_CHECKS)) {
+        for (const c of rankGives(gives.get(r.rarity) ?? [], theirWish, u.wishFams).slice(0, DEAL_LACK_CHECKS)) {
           if (!(await has(u._id, c))) ok.push(c);
           if (ok.length > DEAL_ALTS) break;
         }
         if (!ok.length) continue;
-        deals.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online, get: { cardId, rarity: r.rarity }, give: ok[0], alts: ok.slice(1).map((c) => c.cardId), theyWish: theirWish.has(ok[0].cardId) });
+        deals.push({ userId: u._id, name: u.displayName, avatarUrl: u.avatarUrl, online, get: { cardId, rarity: r.rarity }, give: ok[0], alts: ok.slice(1).map((c) => c.cardId), theyWish: wantsCard(u.wishlist, u.wishFams, ok[0].cardId) });
         break;
       }
     }
@@ -297,9 +297,10 @@ export const forYou = query({
 // ─────────────────────────────── « Demander » en un toucher
 const dealCard = v.object({ cardId: v.string(), rarity: rarityValidator });
 
-/** Choisit, chez `owner`, la contrepartie pour `other` : une carte proposable de l'étoile, qui lui manque, ses envies d'abord. */
+/** Choisit, chez `owner`, la contrepartie pour `other` : une carte proposable de l'étoile, qui lui manque, ses envies d'abord
+ *  (cartes de sa liste, puis ses albums / familles voulus — v2.1.38). */
 async function autoPick(ctx: QueryCtx, owner: Doc<'users'>, other: Doc<'users'>, rarity: RarityId, avoid?: string): Promise<DealCard | null> {
-  const cands = rankGives((await proposableOf(ctx, owner, rarity)).filter((c) => c.cardId !== avoid), new Set(other.wishlist ?? []));
+  const cands = rankGives((await proposableOf(ctx, owner, rarity)).filter((c) => c.cardId !== avoid), new Set(other.wishlist ?? []), other.wishFams);
   for (const c of cands.slice(0, DEAL_LACK_CHECKS * 2)) if (!((await invRow(ctx, other._id, c))?.count)) return c;
   return null;
 }
@@ -346,7 +347,8 @@ export const quick = mutation({
     });
     await bumpMissions(ctx, me, { type: 'trade' });
     await notify(ctx, other._id, { kind: 'trade', title: fm('n.dealAsk', { name: me.displayName, card: cardName(get.cardId), cardId: get.cardId }), body: fm('n.dealAskBody', { card2: cardName(give.cardId), cardId2: give.cardId, stars: starOf(rarity) }), url: '#/echanges' });
-    return { id: id as string, give, get };
+    // (v2.1.38) pour le message du demandeur : la carte donnée est-elle une envie de l'autre, la carte reçue une des miennes ?
+    return { id: id as string, give, get, theyWant: wantsCard(other.wishlist, other.wishFams, give.cardId), iWant: wantsCard(me.wishlist, me.wishFams, get.cardId) };
   },
 });
 
@@ -385,7 +387,7 @@ export const pickOptions = query({
     if (!me || !t || t.status !== 'pending' || !t.quick || t.toUserId !== me._id) return { options: [], reads: reads() };
     const from = await ctx.db.get(t.fromUserId);
     if (!from) return { options: [], reads: reads() };
-    const cands = rankGives(await proposableOf(ctx, from, t.offered[0].rarity, t._id), new Set(me.wishlist ?? [])).slice(0, PICK_MAX);
+    const cands = rankGives(await proposableOf(ctx, from, t.offered[0].rarity, t._id), new Set(me.wishlist ?? []), me.wishFams).slice(0, PICK_MAX);
     const options: PickOption[] = [];
     for (const c of cands) options.push({ ...c, lacking: !((await invRow(ctx, me._id, c))?.count) });
     options.sort((a, b) => Number(b.lacking) - Number(a.lacking));

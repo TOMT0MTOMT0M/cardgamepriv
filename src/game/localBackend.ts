@@ -10,6 +10,7 @@ import { contractProblem, contractTarget, rollContract } from '../core/contracts
 import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
 import { MARKET_MAX_OPEN, marketMax, marketProblem, marketSuggested } from '../core/market';
 import { DEAL_ALTS, DEALS_MAX, PICK_MAX, THEY_WANT_MAX, proposable, rankGives, soldStats, type CardPanel, type Deal, type TheyWant } from '../core/deals';
+import { wantsCard } from '../core/wishFams';
 import { POKEMON_151, pokemonCardId } from '../core/sets/pokemon151';
 import { rarity as rarityOf, type RarityId } from '../core/rarity';
 import { applyMissionEvent, claimMission, claimMissionBonus, currentMissions, nextMissionReset, rerollMission, type MissionEvent, type MissionsState } from '../core/missions';
@@ -940,7 +941,7 @@ export function createLocalBackend(): GameBackend {
         give = { cardId: c.cardId, rarity: c.rarity };
       }
       if (!get) {
-        const c = rankGives(Object.values(bot.inv).filter((c) => c.rarity === r && c.count >= 2 && c.cardId !== give!.cardId && !save.inv[cardKey(c)]), new Set(save.wishlist ?? []))[0];
+        const c = rankGives(Object.values(bot.inv).filter((c) => c.rarity === r && c.count >= 2 && c.cardId !== give!.cardId && !save.inv[cardKey(c)]), new Set(save.wishlist ?? []), save.wishFams)[0];
         if (!c) throw new Error(fe('deals.8', { p0: bot.name, p1: star }));
         get = { cardId: c.cardId, rarity: c.rarity };
       }
@@ -981,7 +982,7 @@ export function createLocalBackend(): GameBackend {
         }
         sync();
       }, 3000);
-      return { get, give };
+      return { get, give, theyWant: botWish(bot.id).includes(give.cardId), iWant: wantsCard(save.wishlist, save.wishFams, get.cardId) };
     },
     async swapTradeGive(tradeId, cardId) {
       const t = save.trades.find((x) => x.id === tradeId && x.status === 'pending' && x.fromId === 'me' && x.quick);
@@ -999,7 +1000,7 @@ export function createLocalBackend(): GameBackend {
       const t = save.trades.find((x) => x.id === tradeId && x.status === 'pending' && x.toId === 'me' && x.quick);
       const bot = t && save.bots.find((b) => b.id === t.fromId);
       if (!t || !bot) return [];
-      return rankGives(Object.values(bot.inv).filter((c) => c.rarity === t.offered[0].rarity && (c.count >= 2 || cardKey(c) === cardKey(t.offered[0]))), new Set(save.wishlist ?? []))
+      return rankGives(Object.values(bot.inv).filter((c) => c.rarity === t.offered[0].rarity && (c.count >= 2 || cardKey(c) === cardKey(t.offered[0]))), new Set(save.wishlist ?? []), save.wishFams)
         .slice(0, PICK_MAX)
         .map((c) => ({ cardId: c.cardId, rarity: c.rarity, lacking: !save.inv[cardKey(c)] }))
         .sort((a, b) => Number(b.lacking) - Number(a.lacking));

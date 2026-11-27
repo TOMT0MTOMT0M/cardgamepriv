@@ -9,6 +9,7 @@
  *    proposables de même étoile qui lui manque (en priorité une de SES envies).
  */
 import type { RarityId } from './rarity';
+import { wantsCard } from './wishFams';
 
 /** échanges prêts renvoyés au plus (zone « Pour toi ») */
 export const DEALS_MAX = 12;
@@ -52,9 +53,16 @@ export function proposable(row: { cardId: string; rarity: RarityId | string; cou
   return Math.max(0, row.count - 1 - Math.max(0, locked));
 }
 
-/** Contreparties classées pour un joueur : d'abord ce qu'il cherche (envies), puis le reste (ordre d'origine). */
-export function rankGives<T extends DealCard>(cands: readonly T[], theirWish: ReadonlySet<string>): T[] {
-  return [...cands].sort((a, b) => Number(theirWish.has(b.cardId)) - Number(theirWish.has(a.cardId)));
+/**
+ * Contreparties classées pour un joueur : d'abord les cartes de sa liste d'envies, puis (v2.1.38) celles de ses albums /
+ * familles voulus (`wishFams`), puis le reste (ordre d'origine).
+ */
+export function rankGives<T extends DealCard>(cands: readonly T[], theirWish: ReadonlySet<string>, theirFams?: readonly string[]): T[] {
+  const score = (id: string) => (theirWish.has(id) ? 2 : theirFams?.length && wantsCard(undefined, theirFams, id) ? 1 : 0);
+  return cands
+    .map((c, i) => ({ c, i, s: score(c.cardId) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.c);
 }
 
 /** Échange prêt (zone « Pour toi ») : je reçois `get` de `userId`, je donne `give` (modifiable parmi `alts`). */
