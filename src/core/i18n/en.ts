@@ -29,6 +29,7 @@ import { en as p_game_views_suggestions } from './en/game.views.suggestions';
 import { en as p_game_views_games } from './en/game.views.games';
 import { en as p_game_views_board } from './en/game.views.board';
 import { en as p_game_views_market } from './en/game.views.market';
+import { en as p_game_views_auctions } from './en/game.views.auctions';
 import { en as p_game_views_forYou } from './en/game.views.forYou';
 import { en as p_game_views_leaderboard } from './en/game.views.leaderboard';
 import { en as p_game_views_login } from './en/game.views.login';
@@ -66,6 +67,7 @@ export const en: Dict = {
   ...p_game_views_games,
   ...p_game_views_board,
   ...p_game_views_market,
+  ...p_game_views_auctions,
   ...p_game_views_forYou,
   ...p_game_views_leaderboard,
   ...p_game_views_login,

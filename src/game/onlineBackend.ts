@@ -3,7 +3,7 @@ import { famCards } from '../core/wishFams';
 import { OPENINGS, type OpeningId } from '../core/cosmetics';
 const RARITY_RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5 };
 import type { Id } from '../../convex/_generated/dataModel';
-import { BIG_PULL_RARITIES, EMPTY_MARKET, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
+import { BIG_PULL_RARITIES, EMPTY_AUCTIONS, EMPTY_MARKET, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
 import type { PackRequest } from '../core/packRoll';
 import { createOnlineEco } from './ecoOnline';
 import { adoptAccountLang, lang as curLang, langPicked, onLang } from './lang';
@@ -508,6 +508,28 @@ export function createOnlineBackend(): GameBackend {
     async marketBuy(id, price) {
       await net.call(api.market.buy, { id: id as Id<'market'>, price });
     },
+    // ── (V3) enchères (convex/auctions.ts)
+    watchAuctions: (cb) =>
+      net.watch(
+        api.auctions.board,
+        {},
+        (b) => {
+          const conv = (l: NonNullable<typeof b>['open']) => l.map((a) => ({ ...a, id: a.id as string, sellerId: a.sellerId as string }));
+          cb(b ? { open: conv(b.open), recent: conv(b.recent) } : EMPTY_AUCTIONS);
+        },
+        true,
+        () => cb(EMPTY_AUCTIONS),
+      ),
+    async auctionCreate(cardId, rarity, startPrice, days) {
+      await net.call(api.auctions.create, { cardId, rarity, startPrice, days });
+    },
+    async auctionBid(id, amount) {
+      await net.call(api.auctions.bid, { id: id as Id<'auctions'>, amount });
+    },
+    async auctionCancel(id) {
+      await net.call(api.auctions.cancel, { id: id as Id<'auctions'> });
+    },
+    // ── fin enchères
     watchWishSales: (cb) => net.watch(api.market.alerts, {}, (rows) => cb(rows ?? []), true, () => cb([])),
     async createListing(items, wanted, note, hours) {
       await net.call(api.listings.create, { items, wanted, note, hours });

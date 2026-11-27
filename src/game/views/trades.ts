@@ -13,6 +13,7 @@ import { ABUSE, cardsValue, fmtCoins } from '../../core/economy';
 import { confirmTap } from './safety';
 import { createBoard } from './board';
 import { createMarket } from './market';
+import { installAuctions } from './auctions';
 import { cardQuery, searchCatalog } from '../../core/cardSearch';
 import { createForYou, pickCardSheet } from './forYou';
 import { invalidatePanel, showCardPanel } from './cardPanel';
@@ -213,6 +214,7 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   // ACHETER : le marché (views/market.ts) ; une recherche y montre aussi les cartes du catalogue (« chez les joueurs »)
   const findRes = h('div', 'ex-results');
   findRes.setAttribute('aria-live', 'polite');
+  installAuctions(backend, { chime: () => shell.sfx.chime(3, 0.08) }); // (V3) enchères : views/auctions.ts
   const market = createMarket(backend, { chime: () => shell.sfx.chime(3, 0.08), onQuery: (v) => renderFind(v) });
   market.el.querySelector('.mk-aside')!.append(findRes);
   q('.ex-acheter').append(market.el);

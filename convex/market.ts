@@ -12,6 +12,7 @@ import { fm } from '../src/core/msgs';
 import { FAM_ROW, famKeysOfCard } from '../src/core/wishFams';
 import { wishersOf, wishesReady } from './wishes';
 import { notify } from './push';
+import { sellSlotsUsed } from './auctions';
 
 /**
  * MARCHÉ (retours Hugo 10/11) : des cartes à prix fixe, en pièces, entre joueurs. Règles : src/core/market.ts.
@@ -86,8 +87,8 @@ export const sell = mutation({
     if (!card) throw new ConvexError(fe('market.1'));
     const problem = marketProblem(rarity, price);
     if (problem) throw new ConvexError(problem);
-    const mine = await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', me._id).eq('status', 'open')).collect();
-    if (mine.length >= MARKET_MAX_OPEN) throw new ConvexError(fe('market.2', { p0: MARKET_MAX_OPEN }));
+    // (V3) les enchères ouvertes occupent aussi des places (convex/auctions.ts)
+    if ((await openCount(ctx, me._id)) >= MARKET_MAX_OPEN) throw new ConvexError(fe('market.2', { p0: MARKET_MAX_OPEN }));
     const [taken] = await takeCards(ctx, me._id, [{ cardId, rarity, count: 1 }]);
     await ctx.db.insert('market', { sellerId: me._id, cardId, rarity, mintNumber: taken.mintNumber, price, status: 'open', createdAt: Date.now() });
     // (V3, C bis) les joueurs qui veulent cette carte sont prévenus (1 alerte par vendeur et par heure au plus)
@@ -129,8 +130,9 @@ async function wantersOf(ctx: QueryCtx | MutationCtx, meId: Id<'users'>, cards: 
   return out;
 }
 
-const openCount = async (ctx: QueryCtx | MutationCtx, meId: Id<'users'>) =>
-  (await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', meId).eq('status', 'open')).take(MARKET_MAX_OPEN + 1)).length;
+/** places de vente occupées : ventes à prix fixe + (V3) enchères ouvertes */
+// (appel différé : convex/auctions.ts importe aussi ce fichier — à l'initialisation, `sellSlotsUsed` n'existe pas encore)
+const openCount = (ctx: QueryCtx | MutationCtx, meId: Id<'users'>) => sellSlotsUsed(ctx, meId);
 
 /**
  * Au moment de forger : qui veut les cartes choisies ? Lecture PONCTUELLE (client.query), jamais abonnée. `open` = mes

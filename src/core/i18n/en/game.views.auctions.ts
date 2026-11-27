@@ -1,0 +1,38 @@
+/** English texts of src/game/views/auctions.ts (keys: ../fr/game.views.auctions.ts). */
+import type { PartOf } from '../../i18n';
+import type { fr } from '../fr/game.views.auctions';
+
+export const en: PartOf<typeof fr> = {
+  'au.top': 'leading: {name}',
+  'au.bids': { one: '{n} bid', other: '{n} bids' },
+  'au.noBid': 'No bids yet',
+  'au.lead': 'Leading',
+  'au.bidN': 'Bid {n}',
+  'au.bidSure': 'Bid {n}?',
+  'au.bidA': 'Your bid amount',
+  'au.less': 'Less',
+  'au.more': 'More',
+  'au.minNext': 'At least {n} · max {max}',
+  'au.capped': 'Max reached: no more bids possible.',
+  'au.held': 'Your coins stay held while you lead; returned right away if someone outbids you.',
+  'au.short': 'You need {n} more coins.',
+  'au.bidOk': 'Bid placed on {name}: {n} coins held.',
+  'au.withdraw': 'Withdraw',
+  'au.withdrawQ': 'Withdraw?',
+  'au.back': '{name} is back in your collection.',
+  'au.locked': 'Bid received: the auction can’t be withdrawn.',
+  'au.cTonight': 'tonight 9 pm',
+  'au.cTomorrow': 'tomorrow 9 pm',
+  'au.cDay': '{day} 9 pm',
+  'au.cIn': '{t}',
+  'au.cDone': 'Ended',
+  'au.startA': 'Starting price',
+  'au.startHint': 'At least {min} (Forge value) · max {max}',
+  'au.dur': 'Duration',
+  'au.durA': 'Auction duration',
+  'au.endsOn': 'Closes: {when} at 9 pm (Paris time).',
+  'au.go': 'Start the auction',
+  'au.leaves': 'The card leaves your collection. With no bids, it comes back at closing; after the first bid, the auction can’t be withdrawn.',
+  'au.listed': '{name} is up for auction from {price} coins.',
+  'au.whenTomorrow': 'tomorrow',
+};
