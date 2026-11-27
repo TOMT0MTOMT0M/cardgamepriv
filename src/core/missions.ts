@@ -1,5 +1,6 @@
 import { fe } from './errors';
 import { t } from './i18n';
+import { ECON_V2_AT } from './economy';
 import { BEBOU_PACK, THEMES, catalogEntry, inSubthemeScope, subthemeViews, themeOpen } from './sets/themes';
 
 /**
@@ -147,10 +148,17 @@ function drawKind(r: () => number, exclude: Set<MissionKind>): MissionKind {
   return pool[pool.length - 1][0];
 }
 
+/**
+ * (v2.1.40) contrats retirés le 01/12 0 h (Paris) : plus de mission « contrat » à partir de ce jour-là. Les jours
+ * d'avant gardent exactement leur tirage (la sorte n'est écartée que pour les nouveaux jours). Le 30/11 finit pile à
+ * l'heure du retrait : aucune mission « contrat » du jour ne devient impossible.
+ */
+export const noContractDay = (day: string) => day >= missionDay(ECON_V2_AT);
+
 /** Les 3 missions du jour d'un joueur (toujours les mêmes pour ce joueur ce jour-là). */
 export function dailyMissions(userKey: string, day: string): MissionsState {
   const r = rand(`${userKey}|${day}`);
-  const used = new Set<MissionKind>();
+  const used = new Set<MissionKind>(noContractDay(day) ? ['contract'] : []);
   const list: Mission[] = [];
   for (let i = 0; i < 3; i++) {
     const k = drawKind(r, used);
@@ -214,6 +222,7 @@ export function rerollMission(s: MissionsState, id: string, userKey: string): Mi
   if (s.list[i].claimed || s.list[i].progress >= s.list[i].target) return fe('missions.7');
   const r = rand(`${userKey}|${s.day}|reroll`);
   const used = new Set(s.list.map((m) => m.kind));
+  if (noContractDay(s.day)) used.add('contract');
   const k = drawKind(r, used);
   const list = s.list.slice();
   list[i] = makeMission(k, r, `${s.day}-r${i}`);

@@ -4,13 +4,14 @@
  *   npm run test:server
  */
 import { convexTest } from 'convex-test';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { api, internal } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
 import { BEBOU_SECRET_CHANCE, BEBOU_SECRETS_LOCKED } from '../src/core/sets/themes';
 import { PACK_CAP, PACK_REGEN_MS, applyRegen } from '../src/core/packRegen';
 import { CONTRACT_COST } from '../src/core/contracts';
+import { ECON_V2_AT } from '../src/core/economy';
 import { CATALOG_CARDS } from './cardsCatalog';
 import { pushBigPull } from './feed';
 
@@ -339,6 +340,12 @@ describe('recharge des boosters (1 / 5 min, 15 max)', () => {
 });
 
 describe('contrats (façon CS:GO)', () => {
+  // (v2.1.40) contrats retirés le 01/12/2026 0 h (Paris) : ces tests se jouent la veille (convex/contratsRetrait.test.ts)
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(ECON_V2_AT - 3600_000);
+  });
+  afterEach(() => void vi.useRealTimers());
   /** donne à alice des cartes Pokémon 1★ (ids réels du catalogue) avec `n` exemplaires chacune */
   async function give(t: Awaited<ReturnType<typeof setup>>['t'], userId: Id<'users'>, ids: string[], n: number, rarity: 'common' | 'legendary' = 'common') {
     await t.run(async (ctx) => {

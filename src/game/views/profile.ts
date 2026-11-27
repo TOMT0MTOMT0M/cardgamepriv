@@ -18,7 +18,7 @@ import { guarded } from './safety';
 import { createShowcaseEditor } from './showcaseEditor';
 import { notifPanel } from '../notif';
 import { offlinePanel } from '../offline';
-import { ACHIEVEMENTS, achievementDone } from '../../core/economy';
+import { ACHIEVEMENTS, achievementDone, contractsRetired, visibleAchievements } from '../../core/economy';
 import '../../core/i18n/fr/game.views.atelier'; // (« Accord … » sous les badges)
 import { STREAK_CYCLE } from '../../core/streak';
 import { dmKey } from '../../core/chat';
@@ -517,7 +517,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     // succès débloqués (les succès de l'espace Jeux) — remplace le « plus gros drop » (retours live n°1)
     // (perf : `eco.snapshot` est un calcul complet en démo — lu UNE fois, pas une fois par succès)
     const mySnap = () => (isMe() ? backend.eco.snapshot : null);
-    const ach = prof?.achievements ?? ((snap) => (snap ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, snap.achievements.stats)).length, total: ACHIEVEMENTS.length } : null))(mySnap());
+    const ach = prof?.achievements ?? ((snap) => (snap ? { done: ACHIEVEMENTS.filter((a) => achievementDone(a, snap.achievements.stats)).length, total: visibleAchievements(snap.achievements.stats, Date.now()).length } : null))(mySnap());
     // les 3 chiffres clés juste APRÈS la vitrine (retours live 02 : la vitrine d'abord)
     keysEl.innerHTML =
       `<div class="pf-key k-prog"><span class="pf-k-l">${tr('pf.completion')}</span><b class="pf-k-v">${fmtPct(pct)}</b><span class="pf-k-s">${tr('pf.cardsOf', { n: fmtN(st.uniques), total: fmtN(all) })}</span><i class="pf-k-bar"><i style="width:${barPct(st.uniques, all)}%"></i></i></div>` +
@@ -530,7 +530,8 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       row('▣', 'Boosters ouverts', st.packsOpened) +
       row('🔥', tr('pf.streak'), st.streak, st.streak ? `${fmtN(st.streak)} j` : '—', 'var(--pc-fire)', st.streak ? tr('pf.cycleDay', { d: Math.max(1, sd), n: STREAK_CYCLE }) : '') +
       row('⇄', tr('pf.w.trades', { n: st.tradesDone }), st.tradesDone) +
-      row('⚖', tr('pf.w.contracts', { n: st.contractsSigned }), st.contractsSigned);
+      // (v2.1.40) contrats retirés : la ligne reste pour qui en a signé, disparaît sinon
+      (contractsRetired(Date.now()) && !st.contractsSigned ? '' : row('⚖', tr('pf.w.contracts', { n: st.contractsSigned }), st.contractsSigned));
     pCollEl.innerHTML =
       panelHead('Collection', 'var(--pc-coll)') + // i18n-ok
       row('▤', tr('pf.cardsTotal'), total, fmtN(total), '', tr('pf.distinct', { n: fmtN(mine.length) })) +
@@ -773,7 +774,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
     if (tab !== 'activite') return;
     const list = activity ?? [];
     activityEl.replaceChildren();
-    if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? tr('pf.nothingMine') : tr('pf.nothing')}</div>`);
+    if (!list.length) return void (activityEl.innerHTML = `<div class="muted">${isMe() ? (contractsRetired(Date.now()) ? tr('pf.nothingMineB') : tr('pf.nothingMine')) : tr('pf.nothing')}</div>`);
     const ICON: Record<string, string> = { pull: '✦', mythic_pull: '✺', secret_pull: '✷', trade: '⇄', contract: '⚖', joined: '👋', achievement: '🏅' };
     for (const a of list) {
       const e = a.cardId ? catalogEntry(a.cardId) : undefined;

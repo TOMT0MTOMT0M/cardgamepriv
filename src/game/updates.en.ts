@@ -26,6 +26,16 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '28 Nov', title: '📜 Contracts end on December 1st', tag: 'nouveau',
+        points: [
+          '📜 On 1 December at midnight (Paris time), contracts stop. Until then, you can still sign them.',
+          '🔥 After that, a duplicate is forged for coins, or sold and traded on the market.',
+          '🎯 Missions: no more “contract” missions. If your weekly mission asks for contracts, it counts as done on 1 December: all you have to do is claim it.',
+          '🎖️ Achievements: the “contract” achievements you’ve already earned stay, with their rewards. The others disappear from the list.',
+          'Why: contracts paid more than selling or trading, so nobody was selling or trading anymore.',
+        ],
+      },
+      {
         date: '28 Nov', title: '🪙 New economy on December 1st', tag: 'nouveau',
         points: [
           '📅 A much more generous daily login: day 1 = 250 coins (the price of a booster), +20 each day, ×2 on days 7, 14 and 21, and day 30 = 2,000 coins + 51 boosters. A perfect month brings 18,900 coins instead of 7,050.',

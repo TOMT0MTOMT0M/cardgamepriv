@@ -9,6 +9,7 @@ export const fr = {
   'gd.boostersD': 'Choisis ton thème ici. Le Bebou Pack contient tout… et les cartes secrètes de la bande.',
   'gd.coll': 'Ta collection',
   'gd.collD': 'Touche une carte pour la faire tourner en 3D. Tes doublons se recyclent en contrats.',
+  'gd.collDb': 'Touche une carte pour la faire tourner en 3D. Tes doublons se forgent contre des pièces.', // (v2.1.40)
   'gd.trades': 'Marché',
   'gd.tradesD': 'Des échanges prêts pour toi, et le marché : vendre, échanger, acheter des cartes.',
   'gd.games': 'Jeux',

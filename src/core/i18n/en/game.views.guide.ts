@@ -10,6 +10,7 @@ export const en: PartOf<typeof fr> = {
   'gd.boostersD': 'Pick your theme here. The Bebou Pack has everything… and the gang’s secret cards.',
   'gd.coll': 'Your collection',
   'gd.collD': 'Tap a card to spin it in 3D. Your duplicates get recycled into contracts.',
+  'gd.collDb': 'Tap a card to spin it in 3D. Your duplicates can be forged for coins.',
   'gd.trades': 'Market',
   'gd.tradesD': 'Trades ready for you, and the market: sell, trade, buy cards.',
   'gd.games': 'Games',

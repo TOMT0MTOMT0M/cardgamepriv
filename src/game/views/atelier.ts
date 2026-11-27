@@ -24,7 +24,7 @@ import { catalogEntry } from '../../core/sets/themes';
 import { ACHIEVEMENTS, achievementStats, emptyEcon } from '../../core/economy';
 import {
   ACCENTS, BACKGROUNDS, BADGES, BANNERS, DRAWN_FRAMES, FRAMES, PROFILE_FX, TITLES, TITLE_STYLES, VITRINES, PROFILE_MEDIA_DEMO_MAX, PROFILE_MEDIA_MAX,
-  accentColor, accordOf, backgroundOf, badgeOf, bannerColor, bannerOf, fmtMo, frameOf, titleOf, vitrineOf,
+  accentColor, accordOf, backgroundOf, badgeOf, bannerColor, bannerOf, cosmeticGone, fmtMo, frameOf, titleOf, vitrineOf,
   type Cosmetic, type CosmeticChoice, type PlayerStats, type ProfileMediaKind,
 } from '../../core/cosmetics';
 import { accordFx, badgeIcon, framed, icon, pfxHtml, titleHtml, type IconName } from '../cosmeticArt';
@@ -248,7 +248,10 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
   }
 
   // ── familles
-  const famItems = (f: AtelierFam): Cosmetic[] => (f === 'title' ? [...TITLE_STYLES, ...TITLES] : f === 'banner' ? [...BANNERS, ...PROFILE_FX] : f === 'vitrine' ? VITRINES : LIST[f as Exclude<Kind, 'vcolor' | 'tstyle'>]);
+  // (v2.1.40) un cosmétique d'un succès « contrat » pas gagné n'est plus proposé (contrats retirés le 01/12)
+  const openedAt = Date.now();
+  const live = (list: Cosmetic[]) => list.filter((c) => !cosmeticGone(c, stats, openedAt));
+  const famItems = (f: AtelierFam): Cosmetic[] => live(f === 'title' ? [...TITLE_STYLES, ...TITLES] : f === 'banner' ? [...BANNERS, ...PROFILE_FX] : f === 'vitrine' ? VITRINES : LIST[f as Exclude<Kind, 'vcolor' | 'tstyle'>]);
   function renderFams() {
     famsEl.innerHTML = FAMS.map((f) => {
       const all = famItems(f.id), ok = all.filter((c) => c.unlock(stats)).length;
@@ -304,7 +307,7 @@ export function openAtelier(ctx: AtelierCtx): Atelier {
       <span class="at-lab"><span class="at-nm">${on ? v.toUpperCase() : tr('at.free')}</span></span></label>`;
   }
   const shown = (list: Cosmetic[]) => {
-    const l = list.filter((c) => filter === 'all' || (filter === 'ok') === c.unlock(stats));
+    const l = live(list).filter((c) => filter === 'all' || (filter === 'ok') === c.unlock(stats));
     // débloqués d'abord (ordre du catalogue), puis les verrouillés, le plus avancé en premier
     return [...l.filter((c) => c.unlock(stats)), ...l.filter((c) => !c.unlock(stats)).sort((a, b) => progress(b).part - progress(a).part)];
   };

@@ -131,6 +131,7 @@ export const en: Dict = {
   'boot.tip1': 'Tip: hold, swipe or tap the booster: each pack opens its own way.',
   'boot.tip2': 'A secret card might be hiding in the Bebou Pack…',
   'boot.tip3': 'Your duplicates are worth gold: burn them in a contract or trade them.',
+  'boot.tip3b': 'Your duplicates are worth gold: forge them for coins or sell them on the market.',
   'boot.tip4': 'A new booster every 5 minutes, up to 15 in reserve.',
   'boot.tip5': 'Tap a card in your collection to see it big and spin it around.',
   'boot.tip6': 'The light leaking from the wrapper hints at the best card in the pack.',

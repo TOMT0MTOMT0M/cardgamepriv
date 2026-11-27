@@ -61,6 +61,17 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        // (v2.1.40) retrait des contrats, même date que la nouvelle économie
+        date: '28 nov.', title: '📜 Fin des contrats le 1er décembre', tag: 'nouveau',
+        points: [
+          '📜 Le 1er décembre à minuit (heure de Paris), les contrats s’arrêtent. D’ici là, tu peux encore en signer.',
+          '🔥 Ensuite, un doublon se forge contre des pièces, ou se vend et s’échange au marché.',
+          '🎯 Missions : plus de mission « contrat ». Si ta mission de la semaine en demande, elle compte comme faite le 1er décembre : il ne te reste qu’à la récupérer.',
+          '🎖️ Succès : les succès « contrat » déjà gagnés restent, avec leurs récompenses. Les autres disparaissent de la liste.',
+          'Pourquoi : les contrats rapportaient plus que vendre ou échanger, alors plus personne ne vendait ni n’échangeait.',
+        ],
+      },
+      {
         date: '28 nov.', title: '🪙 Nouvelle économie au 1er décembre', tag: 'nouveau',
         points: [
           '📅 Connexion quotidienne bien plus généreuse : jour 1 = 250 pièces (le prix d’un booster), +20 chaque jour, ×2 aux jours 7, 14 et 21, et le jour 30 = 2 000 pièces + 51 boosters. Un mois parfait rapporte 18 900 pièces au lieu de 7 050.',

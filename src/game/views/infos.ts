@@ -4,7 +4,7 @@ import type { Shell } from '../shell';
 import { esc, fmtN, h } from '../ui';
 import { CARDS_TOKEN, UPDATES, type UpdateMonth } from '../updates.data';
 import { PACK_CAP, PACK_REGEN_MS } from '../../core/packRegen';
-import { PACK_PRICE, fmtCoins } from '../../core/economy';
+import { PACK_PRICE, contractsRetired, fmtCoins } from '../../core/economy';
 import { CONTRACT_COST } from '../../core/contracts';
 import { PITY_LIMIT } from '../../core/pity';
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS } from '../../core/dropRates';
@@ -73,13 +73,15 @@ export function createUpdatesView(shell: Shell): InfoView {
 export function createTutorialView(shell: Shell): InfoView {
   const el = h('section', 'view infos');
   const pct = (v: number) => (lang() === 'fr' ? `${String(v).replace('.', ',')} %` : `${v}%`);
-  const rows = (['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as const)
+  // (v2.1.40) contrats retirés le 01/12 0 h (Paris) : la section parle de la Forge et du marché
+  const noContracts = contractsRetired(Date.now());
+  const rows =(['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as const)
     .map((r, i) => `<tr><td>${'★'.repeat(i + 1)}</td><td>${pct(SLOT_WEIGHTS[r])}</td><td>${GUARANTEED_WEIGHTS[r] ? pct(GUARANTEED_WEIGHTS[r]) : '—'}</td></tr>`)
     .join('');
   const sec = (id: string, title: string, body: string) => `<section class="if-sec" id="tuto-${id}"><h2>${title}</h2>${body}</section>`;
   const toc: Array<[string, string]> = [
     ['principe', tr('if.principle')], ['boosters', tr('if.boosters')], ['rarete', tr('if.rarities')], ['pieces', tr('if.coins')],
-    ['collection', tr('if.collection')], ['contrats', tr('if.contractsForge')], ['echanges', tr('if.trades')], ['jeux', tr('if.games')], ['profil', tr('if.profile')], ['aide', tr('if.help')],
+    ['collection', tr('if.collection')], ['contrats', noContracts ? tr('if.forgeMarket') : tr('if.contractsForge')], ['echanges', tr('if.trades')], ['jeux', tr('if.games')], ['profil', tr('if.profile')], ['aide', tr('if.help')],
   ];
   el.innerHTML = `<div class="if-wrap">
     <header class="if-head"><span class="kicker">${tr('if.tutoKicker')}</span><h1>${tr('if.tutoTitle')}</h1><p class="muted">${tr('if.tutoSub')}</p></header>
@@ -108,7 +110,14 @@ export function createTutorialView(shell: Shell): InfoView {
       <li>${tr('if.tapCard')} <b>${tr('if.wishlist')}</b>.</li>
       <li>${tr('if.binderA')} <b>${tr('if.binders')}</b> ${tr('if.binderB')}</li>
     </ul>`)}
-    ${sec('contrats', tr('if.contractsForge'), `<ul>
+    ${noContracts
+      ? sec('contrats', tr('if.forgeMarket'), `<ul>
+      <li><b>${tr('if.forge')}</b>${tr('if.forgeBody')}</li>
+      <li><b>${tr('if.market')}</b>${tr('if.marketBody')}</li>
+      <li>${tr('if.neverLast')}</li>
+      <li>${tr('if.noContracts')}</li>
+    </ul>`)
+      : sec('contrats', tr('if.contractsForge'), `<ul>
       <li><b>${tr('if.contract')}</b>${tr('if.contractA')} <b>${tr('if.contractNext')}</b> ${tr('if.contractBody', { a: CONTRACT_COST.common ?? 0, b: CONTRACT_COST.rare ?? 0, c: CONTRACT_COST.legendary ?? 0 })}</li>
       <li><b>${tr('if.forge')}</b>${tr('if.forgeBody')}</li>
       <li>${tr('if.neverLast')}</li>
