@@ -66,6 +66,18 @@ export function forgeCount(st: GameState): number {
   return n;
 }
 
+/**
+ * Présélection venue d'ailleurs (récap d'ouverture « Forger ces doublons ») : posée avant la navigation vers la Forge,
+ * lue (et vidée) au prochain rendu. Rien n'est brûlé : le joueur valide sur l'écran Forge.
+ */
+let pendingPreselect: StakeItem[] | null = null;
+export function setForgePreselect(items: StakeItem[]) {
+  pendingPreselect = items.map((i) => ({ ...i }));
+}
+
+/** Plafond de la puce « Toutes les 4★ et moins » */
+const LOW_MAX_STARS = 4;
+
 export function createForge(backend: GameBackend, shell: Shell) {
   const el = h('div', 'forge-view');
   const sel = new Map<string, StakeItem>();
@@ -91,6 +103,7 @@ export function createForge(backend: GameBackend, shell: Shell) {
   let shape = '';
   let ui: {
     chips: Array<{ b: HTMLButtonElement; r: RarityId; html: string; on: boolean; dis: boolean }>;
+    low: { b: HTMLButtonElement; html: string; on: boolean; dis: boolean } | null;
     none: HTMLButtonElement;
     undoBtn: HTMLButtonElement;
     full: HTMLElement;
@@ -115,6 +128,10 @@ export function createForge(backend: GameBackend, shell: Shell) {
   const quickPick = (r: RarityId, rm = room(r)) => quick(r).slice(0, Math.max(0, rm));
   const isOn = (pick: ForgeDup[]) => pick.length > 0 && pick.every((d) => sel.get(cardKey(d))?.count === d.spare);
   const quickOn = (r: RarityId) => isOn(quickPick(r));
+  // puce « Toutes les 4★ et moins » : mêmes doublons que les puces par étoile (quickBy exclut déjà les protégées / engagées)
+  const lowList = () => [...quickBy].filter(([r]) => starCount(r) <= LOW_MAX_STARS).flatMap(([, l]) => l);
+  const lowPick = (extraRoom = BURN_MAX_ITEMS - [...sel.values()].filter((v) => starCount(v.rarity) > LOW_MAX_STARS).length) => lowList().slice(0, Math.max(0, extraRoom));
+  const lowOn = () => isOn(lowPick());
   const selCount = () => [...sel.values()].reduce((a, c) => a + c.count, 0);
 
   function render() {
@@ -144,6 +161,15 @@ export function createForge(backend: GameBackend, shell: Shell) {
     }
     const lockedMap = lockedCards(st); // (audit 12/11, A4-01) une fois par rendu, plus une fois par carte de la collection
     const lockedN = st.collection.reduce((a, c) => a + (burnable(c.rarity) ? Math.min(lockedMap.get(cardKey(c)) ?? 0, Math.max(0, c.count - 1)) : 0), 0);
+    if (pendingPreselect) {
+      // arrivée depuis le récap d'ouverture : on pose la sélection (bornée à ce que la Forge accepte), sans rien brûler
+      for (const p of pendingPreselect) {
+        const d = dups.find((x) => cardKey(x) === cardKey(p));
+        if (d && !d.protect.length && sel.size < BURN_MAX_ITEMS) sel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: Math.max(1, Math.min(p.count, d.spare)) });
+      }
+      pendingPreselect = null;
+      undo = null;
+    }
     const now = `${lockedN}#${dups.map((d) => `${cardKey(d)}|${d.spare}|${d.locked}|${d.protect.join(',')}`).join(';')}`;
     if (now !== shape || !ui || !el.contains(ui.grid)) {
       shape = now;
@@ -159,7 +185,7 @@ export function createForge(backend: GameBackend, shell: Shell) {
     const free = dups.reduce((a, d) => a + d.spare, 0);
     el.innerHTML = `<div class="gm-panel gm-forge"><div class="gm-ph"><b>${tr('fg.title')}</b><span class="muted">${tr('fg.count', { n: free, nf: fmtN(free), locked: lockedN ? tr('fg.locked', { n: lockedN, nf: fmtN(lockedN) }) : '' })}</span></div> <!-- i18n-ok -->
       <div class="muted fg-rate">${tr('fg.values')}</div>
-      <div class="gm-quick">${rars.map((r) => `<button class="chip" data-q="${r}" style="--rc:${rarity(r).hex}"></button>`).join('')}<button class="btn-ghost sm gm-none"></button><button class="linkish gm-undo" hidden>${tr('fg.cancelQuick')}</button></div>
+      <div class="gm-quick">${rars.map((r) => `<button class="chip" data-q="${r}" style="--rc:${rarity(r).hex}"></button>`).join('')}${rars.filter((r) => starCount(r) <= LOW_MAX_STARS).length > 1 ? '<button class="chip gm-low" data-qle="1"></button>' : ''}<button class="btn-ghost sm gm-none"></button><button class="linkish gm-undo" hidden>${tr('fg.cancelQuick')}</button></div>
       ${anyMark ? `<div class="gm-legend-p muted">${esc(LEGEND)}</div>` : ''}
       <div class="gm-legend-p muted gm-full" hidden>${tr('fg.maxItems', { n: BURN_MAX_ITEMS })}</div>
       <div class="gm-fgrid"></div>
@@ -167,8 +193,10 @@ export function createForge(backend: GameBackend, shell: Shell) {
     const grid = el.querySelector<HTMLElement>('.gm-fgrid')!;
     const none = el.querySelector<HTMLButtonElement>('.gm-none')!;
     none.textContent = tr('fg.nothing');
+    const lowB = el.querySelector<HTMLButtonElement>('.gm-low');
     ui = {
       chips: [...el.querySelectorAll<HTMLButtonElement>('[data-q]')].map((b) => ({ b, r: b.dataset.q as RarityId, html: '', on: false, dis: false })),
+      low: lowB ? { b: lowB, html: '', on: false, dis: false } : null,
       none,
       undoBtn: el.querySelector<HTMLButtonElement>('.gm-undo')!,
       full: el.querySelector<HTMLElement>('.gm-full')!,
@@ -243,6 +271,19 @@ export function createForge(backend: GameBackend, shell: Shell) {
       }
       if (!q.length !== c.dis) c.b.disabled = c.dis = !q.length;
     }
+    if (ui.low) {
+      const c = ui.low;
+      const q = lowPick(BURN_MAX_ITEMS - [...sel.values()].filter((v) => starCount(v.rarity) > LOW_MAX_STARS).length);
+      const on = isOn(q);
+      const html = tr('fg.allLow', { max: LOW_MAX_STARS, n: q.reduce((a, d) => a + d.spare, 0), v: fmtCoins(q.reduce((a, d) => a + d.spare * CARD_VALUE[d.rarity], 0)) });
+      if (html !== c.html) c.b.innerHTML = c.html = html;
+      if (on !== c.on) {
+        c.on = on;
+        c.b.classList.toggle('on', on);
+        c.b.setAttribute('aria-pressed', String(on));
+      }
+      if (!q.length !== c.dis) c.b.disabled = c.dis = !q.length;
+    }
     ui.none.disabled = !n;
     ui.undoBtn.hidden = !undo;
     ui.full.hidden = sel.size < BURN_MAX_ITEMS;
@@ -305,6 +346,14 @@ export function createForge(backend: GameBackend, shell: Shell) {
         for (const d of quick(r)) sel.delete(cardKey(d));
         for (const d of quickPick(r)) sel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: d.spare });
       }
+      return update();
+    }
+    if (target.closest('[data-qle]')) {
+      if (isPending('forge')) return;
+      undo = new Map([...sel].map(([k, v]) => [k, { ...v }]));
+      const wasOn = lowOn();
+      for (const d of lowList()) sel.delete(cardKey(d));
+      if (!wasOn) for (const d of lowPick()) sel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: d.spare });
       return update();
     }
     if (target.closest('.gm-none')) {

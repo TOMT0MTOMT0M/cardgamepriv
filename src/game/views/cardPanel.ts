@@ -240,7 +240,14 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
           if (await askFor(backend, { userId: o.userId, name: o.name }, card, btn)) close();
         });
       }
-      list.append(row(o.dup ? 'dup' : '', esc(o.name), o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? tr('cp.kept', { n: o.count }) : tr('cp.theirOnly'), o.online, btn));
+      // (V3) le pseudo d'un autre joueur ouvre son profil (la fiche se ferme d'abord : `navigate`)
+      const who = o.userId === backend.state.user?.id ? esc(o.name) : `<a class="ow-prof" href="#/profil/${encodeURIComponent(o.userId)}">${esc(o.name)}</a>`;
+      const orow = row(o.dup ? 'dup' : '', who, o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? tr('cp.kept', { n: o.count }) : tr('cp.theirOnly'), o.online, btn);
+      orow.querySelector<HTMLAnchorElement>('.ow-prof')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        navigate(`#/profil/${encodeURIComponent(o.userId)}`);
+      });
+      list.append(orow);
     }
     // (13/11, retours Hugo) prix de référence : la moyenne des dernières ventes
     if (p.sold) list.append(h('p', 'cp-avg', `${tr('cp.avgT')} <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span> <small>${tr('cp.avgD', { n: p.sold.n, last: fmtCoins(p.sold.last) })}</small>`));

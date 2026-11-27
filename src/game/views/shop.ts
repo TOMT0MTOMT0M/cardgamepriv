@@ -1970,6 +1970,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       ${grid ? '<div class="sum-cards"></div>' : ''}
       <div class="sum-actions">
         ${pend ? '<button class="btn-primary retry">' + tr('shop.retrySave') + '</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? tr('shop.againN', { n: again }) : tr('shop.againOne')}<small>${tr('shop.inReserve', { n: bal })}</small></button>` : u ? `<span class="muted next-pack">${tr('shop.nextIn', { time: fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now()) })}</span>` : ''}
+        ${dups > 0 ? `<button class="btn-ghost forge-dups">${tr('shop.forgeDups', { n: dups })}</button>` : ''}
         <button class="btn-ghost coll">${fresh ? tr('shop.myNew') : dups === all.length ? tr('shop.contracts') : tr('shop.myColl')}</button>
         <button class="btn-ghost back">${tr('nav.shop')}</button>
       </div>`;
@@ -2021,6 +2022,24 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     });
     // « Voir mes nouvelles » : directement les nouvelles cartes de ce tirage (filtre « Nouvelles ») ; que des doublons : les contrats
     summary.querySelector('.coll')!.addEventListener('click', () => (back(), go(fresh ? 'collection/nouvelles' : dups === all.length ? 'contrats' : 'collection')));
+    // « Forger ces doublons » : la Forge s'ouvre avec ces cartes présélectionnées ; rien n'est brûlé ici (le joueur valide là-bas)
+    summary.querySelector('.forge-dups')?.addEventListener('click', async () => {
+      const per = new Map<string, { cardId: string; rarity: PackCard['rarity']; count: number }>();
+      for (const c of all) {
+        if (c.isNew) continue;
+        const k = `${c.cardId}:${c.rarity}`;
+        const e = per.get(k);
+        if (e) e.count++;
+        else per.set(k, { cardId: c.cardId, rarity: c.rarity, count: 1 });
+      }
+      try {
+        (await import('./forge')).setForgePreselect([...per.values()]);
+      } catch {
+        /* chargement impossible : la Forge s'ouvre sans présélection */
+      }
+      back();
+      go('collection/forge');
+    });
     summary.querySelector('.back')!.addEventListener('click', back);
   }
 

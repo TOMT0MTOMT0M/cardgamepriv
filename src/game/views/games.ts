@@ -1017,6 +1017,32 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   }
 
   // ═════════════════════════════ Roulette
+  /** (V3) dernière mise en pièces du joueur, gardée dans ce navigateur : numéro(s), couleur éventuelle, montant payé */
+  const LAST_BET_KEY = 'bebou.roulette.lastBet';
+  type LastBet = { nums: number[]; color: RouletteColor | null; coins: number };
+  function loadLastBet(): LastBet | null {
+    try {
+      const j = JSON.parse(localStorage.getItem(LAST_BET_KEY) ?? 'null') as Partial<LastBet> | null;
+      if (!j || !Array.isArray(j.nums) || !j.nums.length || !j.nums.every((x) => Number.isInteger(x) && x >= 1 && x <= ROULETTE_NUMBERS) || !(typeof j.coins === 'number' && j.coins > 0)) return null;
+      const color = (ROULETTE_COLORS as readonly string[]).includes(j.color ?? '') ? (j.color as RouletteColor) : null;
+      return { nums: j.nums, color, coins: j.coins };
+    } catch {
+      return null;
+    }
+  }
+  /** index du prix de la grille qui donne ce montant pour n numéros (avec la couleur éventuelle), -1 s'il n'existe plus */
+  const lastPayIdx = (l: LastBet, n: number) =>
+    (ROULETTE_PRICES[n as 1] ?? []).findIndex((o) => {
+      const sp = scalePrice(o, l.color ? COLOR_STAKE_MULT : 1);
+      return sp.kind === 'coins' && sp.coins === l.coins;
+    });
+  function saveLastBet(b: LastBet) {
+    try {
+      localStorage.setItem(LAST_BET_KEY, JSON.stringify(b));
+    } catch {
+      /* stockage indisponible : pas de « même mise » */
+    }
+  }
   function roulettePage() {
     body.innerHTML = `<div class="gm-cols wide"><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.table', { n: ROULETTE_NUMBERS })}</b><span class="gm-cd"></span></div><div class="gm-rw"></div><div class="gm-wheel r36"></div><div class="gm-cov" aria-hidden="true"><i></i></div><div class="gm-legend muted"></div></div><div class="gm-panel gm-bet"></div></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.pot')}</b><span class="gm-potv"></span></div><div class="gm-pot"></div></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.lastDraws')}</b></div><div class="gm-past"></div></div>
       <div class="gm-rules muted">${tr('gm.rouletteRules', { hours: ROULETTE_HOURS.map(hourLabel).join(tr('gm.and')) })}</div>`;
@@ -1094,7 +1120,10 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const picked = stakeCards.reduce((a, c) => a + c.count, 0);
       const ok = useFree ? !!n : !!n && !!matchPrice(n, stake, mult) && (p?.kind !== 'coins' || p.coins <= bal);
       const freeRow = subOn ? `<div class="gm-ed-row gm-free"><span>${tr('gm.free')}</span>${freeLeft ? `<button role="switch" aria-checked="${useFree}" class="btn-ghost sm gm-freebtn${useFree ? ' on' : ''}">${useFree ? '✓ ' : ''}${tr('gm.freeTag')}</button>` : `<span class="muted">${tr('gm.freeUsed')}</span>`}</div>${useFree ? `<div class="muted">${tr('gm.freeSub')}</div>` : ''}` : '';
+      const last = ((l) => (l && lastPayIdx(l, l.nums.length) >= 0 ? l : null))(loadLastBet());
+      const lastBtn = last ? `<button class="btn-ghost sm gm-last" title="${esc(tr('gm.lastBetTitle', { nums: last.nums.join(', '), color: last.color ? ` · ${colorName(last.color)}` : '', coins: fmtCoins(last.coins) }))}"${bal < last.coins || isPending('bet') || last.nums.every((x) => !!cur?.round?.bets.some((b) => b.numbers.includes(x))) ? ' disabled' : ''}>${tr('gm.lastBet')}</button>` : '';
       bet.innerHTML = `<div class="gm-ph"><b>${tr('gm.betBtn')}</b>${slot ? `<span class="muted">${tr('gm.drawOf', { slot: esc(slot) })}</span>` : ''}</div>
+        ${lastBtn}
         <div class="gm-stepl${n ? ' done' : ' cur'}"><i>01</i><span>${n ? `${plural(n, 'numéro')} : <b>${[...sel].sort((a, b) => a - b).join(', ')}</b>` : tr('gm.tapNumbers', { n: MAX_NUMBERS })}</span></div> <!-- i18n-ok -->
         <div class="gm-stepl${n ? (ok ? ' done' : ' cur') : ''}"><i>02</i><span>${tr('gm.payment', { x: p ? ` · <b>${p.kind === 'coins' ? tr('gm.coinsN', { n: fmtCoins(p.coins) }) : esc(priceLabel(p))}</b>` : '' })}</span></div>
         ${n ? freeRow : ''}
@@ -1114,6 +1143,30 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           drawBet();
         }),
       );
+      // « Même mise que la dernière fois » : pré-remplit numéro, couleur et mise en pièces ; le joueur confirme lui-même
+      bet.querySelector('.gm-last')?.addEventListener('click', () => {
+        const l = loadLastBet();
+        if (!l) return;
+        const taken = (x: number) => !!cur?.round?.bets.some((b) => b.numbers.includes(x));
+        const nums = l.nums.filter((x) => !taken(x)).slice(0, MAX_NUMBERS);
+        if (!nums.length || (snap()?.coins ?? 0) < l.coins) return;
+        // (relecture 27/11) montant qui n'existe plus dans la grille de prix (ou numéros pris entre-temps) : on ne
+        // pré-remplit rien plutôt que de retomber en silence sur le 1er prix
+        const i = lastPayIdx(l, nums.length);
+        if (i < 0) return;
+        for (const o of sel) cells[o - 1]?.classList.remove('sel');
+        sel.clear();
+        for (const x of nums) {
+          sel.add(x);
+          cells[x - 1]?.classList.add('sel');
+        }
+        useFree = false;
+        betColor = l.color;
+        stakeCards = [];
+        pay = i;
+        sfx('tick');
+        drawBet();
+      });
       bet.querySelector('.gm-freebtn')?.addEventListener('click', () => {
         useFree = !useFree;
         stakeCards = [];
@@ -1143,9 +1196,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const nums = [...sel];
         const col = betColor ?? undefined;
         const free = useFree;
+        const toRemember = !free && p?.kind === 'coins' ? { nums, color: col ?? null, coins: p.coins } : null;
         void guarded('bet', btn, async () => {
           try {
             await busyButton(btn, backend.eco.placeBet(nums, stake, col, free || undefined));
+            if (toRemember) saveLastBet(toRemember);
             sfx('chime');
             toast(tr('gm.betDone', { nums: plural(nums.length, 'numéro'), slot }), 'ok'); // i18n-ok
             sel.clear();

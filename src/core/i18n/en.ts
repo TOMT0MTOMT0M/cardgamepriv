@@ -606,6 +606,8 @@ export const en: Dict = {
   'fg.locked': { one: '· {nf} committed 🔒', other: '· {nf} committed 🔒' },
   'fg.values': '1★ = 5 · 2★ = 15 · 3★ = 40 · 4★ = 100 · 5★ = 300 · 6★ = 1,000 coins',
   'fg.allOf': 'All {stars} ({n} · {v}){prot}',
+  'fg.allLow': 'All {max}★ and below ({n} · {v})',
+  'shop.forgeDups': 'Forge these duplicates ({n})',
   'fg.protLeft': { one: '· {n} protected left out', other: '· {n} protected left out' },
   'fg.nothing': 'Nothing',
   'fg.cancelQuick': 'Cancel the quick selection',

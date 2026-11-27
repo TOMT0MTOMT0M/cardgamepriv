@@ -48,6 +48,8 @@ export const fr = {
   'am.refused': 'Demande de {name} refusée.',
   'am.profileOfOn': 'Profil de {name}{on}',
   'am.profile': 'Profil',
+  'am.message': 'Message',
+  'am.messageTitle': 'Écrire en privé à {name}',
   'am.removeTitle': 'Retirer {name} de mes amis',
   'am.remove': 'Retirer',
   'am.removeQ': 'Retirer ?',

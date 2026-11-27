@@ -5,6 +5,7 @@ import { BOARD_HOURS, cardKey, lockedCards, type GameBackend, type MarketBoard, 
 import { catalogEntry } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { fmtCoins } from '../../core/economy';
+import { wantsCard } from '../../core/wishFams';
 import { MARKET_MAX_OPEN, marketMax, marketSuggested } from '../../core/market';
 import { busyButton, cardTile, errMsg, esc, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { COIN_ICON } from './wallet';
@@ -62,6 +63,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
       <div class="mk-stars" role="group" aria-label="${tr('mk.stars')}">${STARS.map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}" title="${rarity(r).label}">${rarity(r).rank + 1}★</button>`).join('')}</div>
       <select class="mk-sort" aria-label="${tr('mk.sort')}"><option value="new">${tr('mk.newest')}</option><option value="cheap">Prix croissant</option><option value="dear">${tr('mk.priceDesc')}</option></select>
     </div>
+    <div class="mk-mytools" role="group" aria-label="${tr('mk.mineA')}"><button class="chip" data-mf="missing" aria-pressed="false">${tr('mk.fMissing')}</button><button class="chip" data-mf="wish" aria-pressed="false">${tr('mk.fWish')}</button></div>
     <div class="mk-grid mk-g-open"></div>
     <div class="mk-empty muted" hidden></div>
     <div class="mk-sheet" hidden role="dialog" aria-label="${tr('mk.sell')}">
@@ -106,6 +108,11 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
   const meId = () => backend.state.user?.id ?? 'me';
   const isMine = (m: MarketItem) => m.sellerId === meId() || m.sellerId === 'me';
   let shownN = 0;
+  // (V3) « je l'ai / ♥ envie » : tout vient de l'état déjà en mémoire (collection, envies), aucun appel serveur
+  let ownedIds = new Set<string>();
+  let onlyMissing = false;
+  let onlyWished = false;
+  const wantedCard = (cardId: string) => wantsCard(backend.state.wishlist, backend.state.wishFams, cardId);
 
   /** étiquette prix / valeur : vert = sous la valeur, rouge = bien au-dessus */
   function cmpHtml(r: RarityId, price: number) {
@@ -123,7 +130,7 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
    */
   const nodes = new Map<string, { sig: string; el: HTMLElement }>();
   function itemFor(m: MarketItem): HTMLElement {
-    const sig = `${m.price}|${m.rarity}|${m.cardId}|${m.mintNumber}|${isMine(m) ? 1 : 0}|${m.sellerName}|${utag(m.sellerId, { compact: true }).length}`;
+    const sig = `${m.price}|${m.rarity}|${m.cardId}|${m.mintNumber}|${isMine(m) ? 1 : 0}|${m.sellerName}|${utag(m.sellerId, { compact: true }).length}|${ownedIds.has(m.cardId) ? 1 : 0}${wantedCard(m.cardId) ? 1 : 0}`;
     const had = nodes.get(m.id);
     if (had && had.sig === sig) return had.el;
     const w = item(m);
@@ -189,7 +196,12 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     t.setAttribute('aria-label', tr('mk.seeCard', { name: nameOf(m.cardId) }));
     t.addEventListener('click', () => showCardPanel(backend, m.cardId));
     w.append(t);
-    const meta = h('div', 'mk-meta', `<div class="mk-pr">${coin(m.price)}${cmpHtml(m.rarity, m.price)}</div><div class="mk-sub">${starsHtml(m.rarity)} · n°${m.mintNumber} · ${isMine(m) ? 'toi' : `par ${esc(m.sellerName)}${utag(m.sellerId, { compact: true })}`}</div>`);
+    const own = !isMine(m) && ownedIds.has(m.cardId);
+    const wish = !isMine(m) && wantedCard(m.cardId);
+    const marks = own || wish ? `<div class="mk-marks">${own ? `<span class="mk-mark own">${tr('mk.have')}</span>` : ''}${wish ? `<span class="mk-mark wish">${tr('mk.wish')}</span>` : ''}</div>` : '';
+    const who = isMine(m) ? 'toi' : `par <a class="mk-who" href="#/profil/${encodeURIComponent(m.sellerId)}">${esc(m.sellerName)}</a>${utag(m.sellerId, { compact: true })}`; // i18n-ok
+    const meta = h('div', 'mk-meta', `<div class="mk-pr">${coin(m.price)}${cmpHtml(m.rarity, m.price)}</div>${marks}<div class="mk-sub">${starsHtml(m.rarity)} · n°${m.mintNumber} · ${who}</div>`);
+    meta.querySelector('.mk-who')?.addEventListener('click', (e) => e.stopPropagation());
     w.append(meta);
     const b = h('button', isMine(m) ? 'btn-ghost mk-cancel' : 'btn-primary mk-buy', isMine(m) ? tr('mk.withdraw') : tr('mk.buy'));
     b.addEventListener('click', () => void (isMine(m) ? cancel(m, b) : buy(m, b)));
@@ -218,8 +230,9 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     if (rh !== recentH) q('.mk-recent').innerHTML = recentH = rh;
     // en vente
     const needle = fold(q<HTMLInputElement>('.mk-q').value.trim());
+    ownedIds = new Set(backend.state.collection.map((c) => c.cardId));
     const list = board.open
-      .filter((m) => !isMine(m) && (!star || m.rarity === star) && (!needle || fold(nameOf(m.cardId)).includes(needle)))
+      .filter((m) => !isMine(m) && (!star || m.rarity === star) && (!needle || fold(nameOf(m.cardId)).includes(needle)) && (!onlyMissing || !ownedIds.has(m.cardId)) && (!onlyWished || wantedCard(m.cardId)))
       .sort((a, b) => (sort === 'cheap' ? a.price - b.price : sort === 'dear' ? b.price - a.price : b.createdAt - a.createdAt));
     shownN = list.length;
     syncGrid(gOpen, list.map(itemFor));
@@ -262,6 +275,17 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     b.addEventListener('click', () => {
       star = star === b.dataset.r ? null : (b.dataset.r as RarityId);
       el.querySelectorAll<HTMLButtonElement>('.mk-stars .chip').forEach((x) => x.classList.toggle('on', x.dataset.r === star));
+      render();
+    }),
+  );
+
+  el.querySelectorAll<HTMLButtonElement>('.mk-mytools .chip').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (b.dataset.mf === 'missing') onlyMissing = !onlyMissing;
+      else onlyWished = !onlyWished;
+      const on = b.dataset.mf === 'missing' ? onlyMissing : onlyWished;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
       render();
     }),
   );
@@ -391,7 +415,18 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
 
   backend.eco.onChange(() => el.isConnected && render());
   onUniqueTitles(() => el.isConnected && render());
-  backend.onChange(() => el.isConnected && !sheet.hidden && !chosen && renderPick());
+  // (relecture 27/11) backend.onChange part à chaque changement d'état (pièces, présence…) : ne redessiner que si la
+  // collection (ses lignes) ou les envies ont bougé — en ligne, ces tableaux sont recréés à chaque relecture du joueur
+  let mineSig = '';
+  backend.onChange(() => {
+    if (!el.isConnected) return;
+    if (!sheet.hidden && !chosen) renderPick();
+    const s = backend.state;
+    const sig = `${s.collection.length}|${s.wishlist.join(',')}|${s.wishFams.join(',')}`;
+    if (sig === mineSig) return;
+    mineSig = sig;
+    render(); // collection / envies changées : marques et filtres à jour
+  });
 
   return {
     el,

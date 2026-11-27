@@ -159,6 +159,8 @@ export const fr = {
   'coll.openAlbum': "Ouvrir l'album {name}",
   'coll.pinnedAlbums': 'Épinglés',
   'coll.recentAlbums': 'Récents',
+  'coll.almostDone': 'Presque finis',
+  'coll.filters': 'Filtres',
   'coll.pinAlbum': 'Épingler en haut des albums',
   'coll.unpinAlbum': 'Ne plus épingler',
   'coll.pinA': 'Épingler l’album {name}',

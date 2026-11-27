@@ -7,7 +7,7 @@ import './chat.css';
 import type { BigPull, GameBackend } from './backend';
 import { CHAT_GENERAL, CHAT_MENTIONS_MAX, CHAT_REACTS, CHAT_TEXT_MAX, chatSnippet, cleanChatText, dmKey, dmPeer, type ChatMsg } from '../core/chat';
 import { createChatStore, type ChatEvent } from './chatStore';
-import { cardTile, esc, fold, h, popLayer, pushLayer, starsHtml, thumbUrl, toast } from './ui';
+import { cardTile, esc, fold, h, navigate, popLayer, pushLayer, starsHtml, thumbUrl, toast } from './ui';
 import { catalogEntry } from '../core/sets/themes';
 import { rarity, type RarityId } from '../core/rarity';
 import { realCardUrl } from './cardImages';
@@ -344,7 +344,9 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const meId = backend.state.user?.id ?? '';
     const pc = f.mine ? undefined : players().get(m.userId)?.cos;
     const ttl = pc?.title ? titleOf(pc.title) : undefined;
-    const head = f.cont ? '' : `<div class="cm-h"><b>${esc(f.mine ? tr('chat.me') : name)}</b>${ttl ? `<span class="cm-ttl"${accentColor(pc?.accent) ? ` style="--pa:${accentColor(pc?.accent)}"` : ''}>${titleHtml(ttl.label, pc?.titleStyle, 'ts-light')}</span>` : ''}<time datetime="${new Date(m.at).toISOString()}">${hhmm(m.at)}</time></div>`;
+    // (V3) le pseudo d'un autre joueur ouvre son profil (le chat n'avait aucun geste sur le nom) ; jamais sur mon propre nom
+    const who = f.mine || !m.userId || m.userId === meId ? `<b>${esc(f.mine ? tr('chat.me') : name)}</b>` : `<b><a class="cm-prof" href="#/profil/${encodeURIComponent(m.userId)}">${esc(name)}</a></b>`;
+    const head = f.cont ? '' : `<div class="cm-h">${who}${ttl ? `<span class="cm-ttl"${accentColor(pc?.accent) ? ` style="--pa:${accentColor(pc?.accent)}"` : ''}>${titleHtml(ttl.label, pc?.titleStyle, 'ts-light')}</span>` : ''}<time datetime="${new Date(m.at).toISOString()}">${hhmm(m.at)}</time></div>`;
     const reply = m.reply ? `<div class="cm-reply"><b>${esc(m.reply.name)}</b> ${esc(m.reply.text)}</div>` : '';
     const body = m.deleted ? '<div class="cm-t gone">' + tr('chat.deleted') + '</div>' : m.text ? `<div class="cm-t">${t.html}</div>` : '';
     const rs = (m.reacts ?? []).filter((r) => r.by.length);
@@ -836,6 +838,13 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   thread.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     const key = curKey();
+    const prof = t.closest<HTMLAnchorElement>('a.cm-prof');
+    if (prof && phone.matches) {
+      // téléphone : le chat est plein écran, il se ferme (couche) puis on ouvre le profil
+      e.preventDefault();
+      navigate(prof.getAttribute('href')!);
+      return;
+    }
     if (!key || t.closest('a')) return;
     if (t.closest('.chat-older')) return void store.older(key).then(() => renderThread('older'));
     const z = t.closest<HTMLElement>('[data-zoom]');

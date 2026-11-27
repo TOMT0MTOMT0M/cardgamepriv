@@ -49,6 +49,8 @@ export const en: PartOf<typeof fr> = {
   'am.refused': '{name}’s request declined.',
   'am.profileOfOn': '{name}’s profile{on}',
   'am.profile': 'Profile',
+  'am.message': 'Message',
+  'am.messageTitle': 'Send {name} a private message',
   'am.removeTitle': 'Remove {name} from my friends',
   'am.remove': 'Remove',
   'am.removeQ': 'Remove?',

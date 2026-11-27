@@ -43,6 +43,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
   const el = h('div', 'lb-wrap');
   el.innerHTML = `
     <div class="seg lb-boards">${BOARDS().map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.label}</button>`).join('')}</div>
+    <div class="lb-filt" hidden><button class="chip" data-f="friends" aria-pressed="false">${tr('lb.fFriends')}</button></div>
     <div class="lb-season" hidden></div>
     <div class="lb-mine" hidden></div>
     <div class="lb-podium"></div>
@@ -52,6 +53,33 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
   const mineEl = el.querySelector<HTMLElement>('.lb-mine')!;
   const listEl = el.querySelector<HTMLElement>('.lb-list')!;
   let board: Board = 'pct';
+  /** (V3) filtre « Amis » : moi + mes amis, d'après `state.social` déjà en mémoire (aucun appel de plus) */
+  let onlyFriends = false;
+  const filtEl = el.querySelector<HTMLElement>('.lb-filt')!;
+  const filtBtn = filtEl.querySelector<HTMLButtonElement>('button')!;
+  filtBtn.addEventListener('click', () => {
+    onlyFriends = !onlyFriends;
+    filtBtn.classList.toggle('on', onlyFriends);
+    filtBtn.setAttribute('aria-pressed', String(onlyFriends));
+    render();
+  });
+  /** (V3) « tu es Xe » : fait défiler jusqu'à ma ligne et la met en évidence (tout le classement est affiché : elle y est toujours) */
+  const goMine = () => {
+    const t = podiumEl.querySelector<HTMLElement>('.is-me') ?? listEl.querySelector<HTMLElement>('.lb-row.is-me');
+    if (!t) return;
+    t.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    t.classList.remove('lb-flash');
+    void t.offsetWidth; // (relance l'animation si on retouche)
+    t.classList.add('lb-flash');
+    t.addEventListener('animationend', () => t.classList.remove('lb-flash'), { once: true });
+  };
+  mineEl.setAttribute('role', 'button');
+  mineEl.tabIndex = 0;
+  mineEl.title = tr('lb.goMine');
+  mineEl.addEventListener('click', goMine);
+  mineEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') (e.preventDefault(), goMine());
+  });
   let rows: LeaderRow[] | null = null;
   /** (11/11) saisons mensuelles : la saison en cours et l'historique des podiums */
   let season: SeasonBoard | null = null;
@@ -132,8 +160,15 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     requestAnimationFrame(markOvf);
     renderSeason();
     const b = BOARDS().find((x) => x.id === board)!;
-    const sorted = [...(rows ?? [])].sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, locale()));
     const me = backend.state.user?.id;
+    const soc = backend.state.social;
+    const canFriends = !!me && soc.ready && soc.friends.length > 0;
+    filtEl.hidden = !canFriends;
+    const fids = new Set(canFriends ? soc.friends.map((f) => f.userId) : []);
+    // filtre Amis : classement refait entre moi et mes amis (rangs et écarts comptés dans ce groupe)
+    const sorted = [...(rows ?? [])]
+      .filter((r) => !(onlyFriends && canFriends) || r.id === me || fids.has(r.id))
+      .sort((x, y) => b.value(y) - b.value(x) || x.name.localeCompare(y.name, locale()));
     podiumEl.replaceChildren();
     listEl.replaceChildren();
     mineEl.hidden = true;
@@ -149,9 +184,9 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
         ahead ? tr('lb.toPass', { gap: b.gap(ahead, r), name: esc(ahead.name) }) : behind ? tr('lb.behind', { name: esc(behind.name), gap: b.gap(r, behind) }) : ''
       }</small></span><span class="lb-mine-v">${b.unit(r)}</span>`;
     }
+    if (!sorted.length) return void (podiumEl.innerHTML = '<div class="muted">' + tr('lb.nobody') + '</div>');
     const topV = Math.max(1e-9, b.value(sorted[0]));
     const pctOf = (r: LeaderRow) => Math.max(2, Math.min(100, (b.value(r) / topV) * 100)).toFixed(1);
-    if (!sorted.length) return void (podiumEl.innerHTML = '<div class="muted">' + tr('lb.nobody') + '</div>');
     // podium : toujours 3 places de même gabarit, dans l'ordre 2e – 1er – 3e (places vides si moins de 3 joueurs)
     const row = h('div', 'lb-pd-row');
     for (const i of [1, 0, 2]) {
@@ -180,6 +215,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       if (i < 3) continue;
       const line = h('a', `lb-row${r.id === me ? ' is-me' : ''}${i < 3 ? ` top${i + 1}` : ''}`);
       line.href = `#/profil/${encodeURIComponent(r.id)}`;
+      if (r.id === me) line.dataset.me = '1';
       const t = titleOf(r.cosmetics.title);
       line.innerHTML = `<i class="lb-bar" style="--w:${pctOf(r)}%;--wn:${pctOf(r)}" aria-hidden="true"></i><span class="lb-rank">${i + 1}</span>${ava(r)}<span class="lb-name"><span>${esc(r.name)}${utag(r.id, { compact: true })}${r.id === me ? ' <span class="lb-you">toi</span>' : ''}</span>${t ? `<small${accentColor(r.cosmetics.accent) ? ` style="--pa:${accentColor(r.cosmetics.accent)}"` : ''}>${titleHtml(t.label, r.cosmetics.titleStyle, 'ts-light')}</small>` : ''}</span><span class="lb-v">${b.unit(r)}</span>`;
       // bouton ami (lot A2) à côté de la ligne — pas dedans : un bouton dans un lien n'est ni valide ni accessible

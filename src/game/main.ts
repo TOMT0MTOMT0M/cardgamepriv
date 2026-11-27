@@ -1131,6 +1131,8 @@ async function boot() {
   const failMsg = () =>
     navigator.onLine ? tr('page.failed') : tr('page.offline');
   let current = '';
+  /** (QOL F, 27/11) adresse complète de la page sous le chat (#/profil/<id>…) : #/chat/<conv> la remet telle quelle */
+  let lastHash = '';
   let routeGen = 0;
 
   /**
@@ -1176,12 +1178,13 @@ async function boot() {
     let [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/') as [string?, string?];
     if (r === 'chat') {
       const conv = sub;
-      history.replaceState(history.state, '', current ? `#/${current}` : '#/');
+      history.replaceState(history.state, '', lastHash || (current ? `#/${current}` : '#/'));
       void getChat().then((c) => c?.open(conv), () => undefined);
       if (routed) return;
       r = '';
       sub = undefined;
     }
+    lastHash = location.hash;
     routed = true;
     // anciennes adresses de l'espace Jeux (retours live 02, lot P) : la forge est dans la collection, les succès et les
     // primes de complétion dans la page Succès

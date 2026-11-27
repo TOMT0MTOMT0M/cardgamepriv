@@ -136,6 +136,8 @@ export const fr = {
   'gm.oneBet': 'Une mise par tirage. Rendez-vous au prochain tirage ({hours}).',
   'gm.drawNow': 'Tirer maintenant (démo)',
   'gm.betBtn': 'Miser',
+  'gm.lastBet': 'Même mise que la dernière fois',
+  'gm.lastBetTitle': 'Numéro {nums}{color} · {coins} pièces',
   'gm.drawOf': 'tirage de {slot}',
   'gm.tapNumbers': 'Touche un numéro libre sur la table',
   'gm.payment': 'Paiement{x}',

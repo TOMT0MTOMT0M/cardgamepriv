@@ -137,6 +137,8 @@ export const en: PartOf<typeof fr> = {
   'gm.oneBet': 'One bet per draw. See you at the next draw ({hours}).',
   'gm.drawNow': 'Draw now (demo)',
   'gm.betBtn': 'Bet',
+  'gm.lastBet': 'Same bet as last time',
+  'gm.lastBetTitle': 'Number {nums}{color} · {coins} coins',
   'gm.drawOf': '{slot} draw',
   'gm.tapNumbers': 'Tap a free number on the table',
   'gm.payment': 'Payment{x}',

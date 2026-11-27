@@ -529,6 +529,8 @@ export const fr = {
   'fg.locked': { one: '· {nf} engagé 🔒', other: '· {nf} engagés 🔒' },
   'fg.values': '1★ = 5 · 2★ = 15 · 3★ = 40 · 4★ = 100 · 5★ = 300 · 6★ = 1 000 pièces',
   'fg.allOf': 'Tous les {stars} ({n} · {v}){prot}',
+  'fg.allLow': 'Toutes les {max}★ et moins ({n} · {v})',
+  'shop.forgeDups': 'Forger ces doublons ({n})',
   'fg.protLeft': { one: '· {n} protégée laissée', other: '· {n} protégées laissées' },
   'fg.nothing': 'Rien',
   'fg.cancelQuick': 'Annuler la sélection rapide',

@@ -13,6 +13,8 @@ export const UPDATES_EN: UpdateMonth[] = [
           '❄️ Christmas cosmetics to win by opening doors: a badge, two titles and a frame.',
           '♛ Unique titles: the first player to complete Valorant, Naruto, Pokémon or League of Legends wins a title nobody else will ever get (Radiant, Hokage, Pokémon Master, Challenger). It shows next to their name, and every title is in Achievements → Album achievements.',
           '🎡 Roulette: the wheel and the mat are now red, black and a single green. Pay double to put a colour on your number: if nobody has the number that comes up, its colour takes the pot.',
+          '🧭 Simpler collection: an “Almost done” row (albums missing 1 to 3 cards), a theme › family › album trail to go back up in one tap, and on phones the filters tucked behind a “Filters” button.',
+          '👆 Shortcuts: “Forge these duplicates” at the end of an opening, “All 4★ and below” in the Forge, “Same bet as last time” at the roulette, “Message” on a profile and on a friend. A player’s name opens their profile in the chat, the market and on a card. In the market, “✓ owned” and “♥ wanted” on listings, plus “My missing” and “My wishes” filters. In the ranking, tap “You are Xth” to jump to your line, plus a “Friends” filter.',
         ],
       },
       {

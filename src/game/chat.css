@@ -25,6 +25,8 @@
 .chat[hidden] { display: none; }
 /* rien ne passe devant une ouverture de booster, une carte en grand, une scène 6★ */
 body.opening .chat, body.card-open .chat, body.sheet-open .chat, body.duel-on .chat, body.myth-on .chat, body.wild-on .chat, body.gpu-lost .chat { display: none; }
+/* (QOL 7, 27/11) tiroir des filtres de la collection ouvert au téléphone : la bulle couvrait son bas (pile de .view sous la sienne) */
+body:has(.f-drawer-open) .chat { display: none; }
 /* (:where : sans poids, chaque bouton garde sa propre police) */
 :where(.chat) button { font: inherit; color: inherit; cursor: pointer; }
 .chat [hidden] { display: none !important; }
@@ -317,3 +319,5 @@ body.chat-on .views > .view:not(.shop) { padding-bottom: calc(84px + env(safe-ar
 }
 .cp-cell:active > .tile { transform: scale(0.97); }
 .cp-grid { padding-top: 8px; }
+.cm-h b .cm-prof { color: inherit; text-decoration: none; }
+.cm-h b .cm-prof:hover, .cm-h b .cm-prof:focus-visible { text-decoration: underline; text-underline-offset: 3px; }

@@ -160,6 +160,8 @@ export const en: PartOf<typeof fr> = {
   'coll.openAlbum': 'Open the {name} album',
   'coll.pinnedAlbums': 'Pinned',
   'coll.recentAlbums': 'Recent',
+  'coll.almostDone': 'Almost done',
+  'coll.filters': 'Filters',
   'coll.pinAlbum': 'Pin to the top of the albums',
   'coll.unpinAlbum': 'Unpin',
   'coll.pinA': 'Pin the {name} album',

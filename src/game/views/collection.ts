@@ -73,6 +73,8 @@ const densIcon = (n: number) => {
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) r += `<rect x="${1 + x * s + 0.6}" y="${1 + y * s + 0.6}" width="${s - 1.2}" height="${s - 1.2}" rx="${n > 3 ? 0.4 : 0.8}"/>`;
   return `<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">${r}</svg>`;
 };
+/** (QOL 7) en-tête du tiroir de filtres (téléphone seulement : masqué ailleurs par le CSS) */
+const drawerHead = () => `<div class="f-dr-head"><b>${tr('coll.filters')}</b><button type="button" class="f-dr-x" aria-label="${tr('common.close')}">✕</button></div>`;
 const densSeg = () =>
   `<div class="seg cb-dens" role="group" aria-label="${tr('coll.dens')}">${DENS.map((d, i) => `<button data-d="${d.id}" aria-label="${tr(d.key)}" title="${tr('coll.densT', { r: d.rows, c: d.cols })}">${densIcon(i + 2)}<span>${d.rows}×${d.cols}</span></button>`).join('')}</div>`;
 /** plafonds des classeurs : les mêmes que le serveur (convex/binders.ts : BINDER_MAX, BINDER_CARDS_MAX, cleanName) */
@@ -176,6 +178,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   const PINS_KEY = 'bebou.coll.pins.v1';
   const RECENT_MAX = 5;
   const PINS_MAX = 12;
+  /** (QOL 4) rangée « Presque finis » : jusqu'à 3 cartes manquantes, 8 albums au plus */
+  const ALMOST_MAX = 3;
+  const ALMOST_ROW = 8;
   const readIds = (k: string): string[] => {
     try {
       const v: unknown = JSON.parse(localStorage.getItem(k) ?? '[]');
@@ -213,7 +218,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     <div class="coll-head">
       <div class="coll-switch"><div class="seg coll-views" role="tablist" aria-label="${tr('coll.viewAria')}"><button role="tab" data-v="cards">${tr('coll.cards')}</button><button role="tab" data-v="albums">${tr('coll.albums')}</button><button role="tab" data-v="binders">${tr('coll.binders')}</button><button role="tab" data-v="forge">${tr('coll.forge')}</button><button role="tab" data-v="contrats">${tr('coll.contracts')}</button></div></div>
       <div class="tabs"></div>
-      <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-name"></span><button class="va crumb-wish" hidden></button></div>
+      <div class="crumb" hidden><button class="crumb-back">‹ Albums</button><span class="crumb-sep" aria-hidden="true" hidden>›</span><button class="crumb-mid" hidden></button><span class="crumb-sep crumb-sep2" aria-hidden="true" hidden>›</span><span class="crumb-name"></span><button class="va crumb-wish" hidden></button></div>
       <div class="progress"></div>
     </div>
     <div class="albums" hidden>
@@ -224,7 +229,10 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       </div>
       <div class="al-grid"></div>
     </div>
+    <button class="f-open" type="button" aria-expanded="false" aria-haspopup="dialog" hidden></button>
+    <div class="f-scrim" hidden></div>
     <div class="filters" hidden>
+      ${drawerHead()}
       <div class="seg">
         <button data-f="all">${tr('coll.f.all')}</button><button data-f="owned">${tr('coll.f.owned')}</button><button data-f="missing">${tr('coll.f.missing')}</button><button data-f="dups">${tr('coll.f.dups')}</button><button data-f="fresh" class="f-fresh" hidden>${tr('coll.f.new')}</button>
       </div>
@@ -234,6 +242,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       <input class="search" type="search" placeholder="${tr('coll.searchPh')}" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="${tr('coll.searchA')}" />
     </div>
     <div class="cards-bar" hidden>
+      ${drawerHead()}
       <div class="seg cb-theme" aria-label="${tr('coll.theme')}"></div>
       <div class="starf cb-stars"></div>
       <button class="chip cb-dups" aria-pressed="false" title="${tr('coll.dupsT')}">${tr('coll.dups')}</button>
@@ -277,6 +286,74 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   const headEl = q('.coll-head');
   const toTopBtn = q<HTMLButtonElement>('.to-top');
   const fActive = q('.f-active');
+
+  // ── (QOL 7) téléphone : les barres de filtres (vue Cartes et grille d'un album) deviennent un tiroir qui monte du bas.
+  // Ce sont les MÊMES éléments (le CSS les pose en bas d'écran) : aucune logique dupliquée.
+  const phoneMq = matchMedia('(max-width: 600px)');
+  const fOpenBtn = q<HTMLButtonElement>('.f-open');
+  const fScrim = q('.f-scrim');
+  const drawerBars = [filtersEl, q('.cards-bar')];
+  const activeBar = () => drawerBars.find((b) => !b.hidden) ?? null;
+  let drawerOpen = false;
+  const drawerKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeDrawer();
+    }
+  };
+  function closeDrawer(restoreFocus = true) {
+    if (!drawerOpen) return;
+    drawerOpen = false;
+    popLayer(closeDrawer);
+    el.classList.remove('f-drawer-open');
+    fScrim.hidden = true;
+    fOpenBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('keydown', drawerKey, true);
+    if (restoreFocus && fOpenBtn.offsetParent) fOpenBtn.focus({ preventScroll: true });
+  }
+  function openDrawer() {
+    if (drawerOpen || !phoneMq.matches || !activeBar()) return;
+    drawerOpen = true;
+    el.classList.add('f-drawer-open');
+    fScrim.hidden = false;
+    fOpenBtn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('keydown', drawerKey, true);
+    pushLayer(closeDrawer);
+    requestAnimationFrame(() => activeBar()?.querySelector<HTMLElement>('.f-dr-x')?.focus({ preventScroll: true }));
+  }
+  fOpenBtn.addEventListener('click', () => (drawerOpen ? closeDrawer() : openDrawer()));
+  fScrim.addEventListener('click', () => closeDrawer());
+  for (const b of drawerBars) b.querySelector('.f-dr-x')!.addEventListener('click', () => closeDrawer());
+  /** role="dialog" seulement quand la barre est un tiroir (téléphone) ; fermé si on repasse en large */
+  const syncDrawerMode = () => {
+    for (const b of drawerBars) {
+      if (phoneMq.matches) {
+        b.setAttribute('role', 'dialog');
+        b.setAttribute('aria-modal', 'true');
+        b.setAttribute('aria-label', tr('coll.filters'));
+      } else {
+        b.removeAttribute('role');
+        b.removeAttribute('aria-modal');
+        b.removeAttribute('aria-label');
+      }
+    }
+    if (!phoneMq.matches) closeDrawer(false);
+  };
+  phoneMq.addEventListener('change', syncDrawerMode);
+  syncDrawerMode();
+  /** nombre de filtres actifs de la vue affichée (le tri et la densité n'en sont pas) */
+  const activeFilterCount = () => {
+    if (mode === 'cards') return [cStar, cTheme, cQuery.trim(), cDups].filter(Boolean).length;
+    return [filter !== 'all', star, query.trim()].filter(Boolean).length;
+  };
+  function syncFilterButton() {
+    const has = !!activeBar();
+    fOpenBtn.hidden = !has;
+    if (!has) return closeDrawer(false);
+    const n = activeFilterCount();
+    fOpenBtn.textContent = n ? `${tr('coll.filters')} (${n})` : tr('coll.filters');
+    fOpenBtn.classList.toggle('has', n > 0);
+  }
 
   // ── filtres / tris
   el.querySelectorAll<HTMLButtonElement>('.filters .seg:not(.sortf, .cb-dens) button').forEach((b) =>
@@ -508,8 +585,22 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   }, { passive: false });
   // le doigt, la souris (barre de défilement) ou le clavier reprennent la main tout de suite
   for (const ev of ['pointerdown', 'touchstart', 'keydown'] as const) el.addEventListener(ev, () => esc0.raf && escStop(), { passive: true });
+  // (QOL 6) fil d'Ariane d'un album ouvert : thème › [famille] › album ; chaque morceau sauf le dernier est un bouton
+  let trail = false;
+  const midBtn = q<HTMLButtonElement>('.crumb-mid');
+  const sepEls = [...el.querySelectorAll<HTMLElement>('.crumb-sep')];
+  midBtn.addEventListener('click', () => {
+    const g = subId ? subthemeById(subId)?.group : undefined;
+    if (!g) return;
+    famId = g.id;
+    goAlbums();
+  });
   q('.crumb-back').addEventListener('click', () => {
     if (mode === 'binder') return goBinders();
+    if (trail) {
+      famId = null; // premier morceau : les familles du thème
+      return goAlbums();
+    }
     // niveau d'une famille → les familles du thème ; un album → sa famille (famId déjà posé) ou les familles
     if (mode === 'albums') famId = null;
     else if (!(subId && subthemeById(subId)?.group)) famId = null;
@@ -540,10 +631,13 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   // (v2.0.6, retour de Tom) hauteur de la barre collée (1 ou 2 lignes selon la largeur) : la grille s'y cale — deux
   // rangées entières sous la barre, et le défilement s'arrête au cran d'une rangée (style.css, --bar-h)
   if (typeof ResizeObserver !== 'undefined') {
-    const syncBar = () => el.style.setProperty('--bar-h', `${Math.max(cardsBar.offsetHeight, filtersEl.offsetHeight) || 60}px`);
+    // téléphone : les barres sont un tiroir hors flux, la barre « collée » est le bouton Filtres
+    const syncBar = () => el.style.setProperty('--bar-h', `${(phoneMq.matches ? fOpenBtn.offsetHeight + 8 : Math.max(cardsBar.offsetHeight, filtersEl.offsetHeight)) || 60}px`);
     const ro = new ResizeObserver(syncBar);
     ro.observe(cardsBar);
     ro.observe(filtersEl);
+    ro.observe(fOpenBtn);
+    phoneMq.addEventListener('change', syncBar);
   }
   // ── (15/11) affichage de la grille : 2×6, 4×8, 6×10 (voir DENS)
   /** colonnes de la grille telle qu'affichée (ordinateur : celles du choix ; téléphone : selon la largeur) */
@@ -1117,7 +1211,17 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     };
     const pinned = pins.map(ok).filter((s): s is SubTheme => !!s);
     const recent = recents.filter((id) => !pins.includes(id)).map(ok).filter((s): s is SubTheme => !!s);
-    for (const [label, list] of [[tr('coll.pinnedAlbums'), pinned], [tr('coll.recentAlbums'), recent]] as const) {
+    // (QOL 4) « presque finis » : 1 à 3 cartes manquantes, tous thèmes, les plus proches d'abord (calculé sur l'état déjà en mémoire)
+    const almost = SUBTHEMES.flatMap((s) => {
+      if (!ok(s.id) || themeById(s.themeId)?.secret) return [];
+      const st = albumStat(s, mine);
+      const missing = st.total - st.have;
+      return st.have > 0 && missing >= 1 && missing <= ALMOST_MAX ? [{ s, missing }] : [];
+    })
+      .sort((a, b) => a.missing - b.missing || a.s.label.localeCompare(b.s.label, locale()))
+      .slice(0, ALMOST_ROW)
+      .map((x) => x.s);
+    for (const [label, list] of [[tr('coll.pinnedAlbums'), pinned], [tr('coll.recentAlbums'), recent], [tr('coll.almostDone'), almost]] as const) {
       if (!list.length) continue;
       const sec = h('section', 'al-quick');
       sec.append(h('h3', 'al-th', `<b>${label}</b>`));
@@ -1972,10 +2076,14 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     pager.hidden = !(inGrid || inCards);
     empty.hidden = true;
     fActive.hidden = true;
+    syncFilterButton();
     bindersView.hidden = !inBinders;
     forgeHost.hidden = mode !== 'forge';
     if (inGrid && subId && !theme.secret) noteRecent(subId);
     const famLabel = famId ? SUBTHEMES.find((s) => s.group?.id === famId)?.group?.label ?? '' : '';
+    trail = false;
+    midBtn.hidden = true;
+    for (const s of sepEls) s.hidden = true;
     crumb.hidden = !((inGrid && !theme.secret) || mode === 'binder' || (inAlbums && !!famId && !albumQuery));
     if (inAlbums && famId) {
       q('.crumb-back').textContent = `‹ ${theme.label}`;
@@ -1984,7 +2092,15 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       // (retours 05/11) un album d'une famille revient à sa famille (« ‹ Pokémon »), sinon aux familles du thème
       const g = subId ? subthemeById(subId)?.group : undefined;
       if (g) famId = g.id;
-      q('.crumb-back').textContent = albumQuery ? `‹ ${tr('coll.backSearch')}` : g ? `‹ ${g.label}` : `‹ Albums ${theme.label}`;
+      // (QOL 6) fil d'Ariane cliquable « thème › famille › album » (sans famille : « thème › album »)
+      trail = !!subId && !albumQuery;
+      if (trail) {
+        q('.crumb-back').textContent = theme.label;
+        midBtn.textContent = g?.label ?? '';
+        midBtn.hidden = !g;
+        sepEls[0].hidden = false;
+        sepEls[1].hidden = !g;
+      } else q('.crumb-back').textContent = albumQuery ? `‹ ${tr('coll.backSearch')}` : g ? `‹ ${g.label}` : `‹ Albums ${theme.label}`;
       q('.crumb-name').textContent = subId ? (subthemeById(subId)?.label ?? '') : tr('coll.allOf', { label: theme.label });
     } else if (mode === 'binder') {
       q('.crumb-back').textContent = '‹ Classeurs';

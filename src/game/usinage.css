@@ -392,7 +392,21 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 .mk-pbtns { display: flex; flex-wrap: wrap; gap: 10px; }
 .mk-note { margin: 0; font-size: 12px; }
 /* (13/11, retours Hugo) deux usages : « Chercher » (acheter) et « Vendre · Échanger » (mettre une carte, mes ventes) */
-.mk-sell > :is(.mk-tools, .mk-g-open, .mk-empty) { display: none !important; }
+.mk-sell > :is(.mk-tools, .mk-mytools, .mk-g-open, .mk-empty) { display: none !important; }
+/* (V3) « je l'ai / ♥ envie » + filtres « Mes manquantes / Mes envies » : filets seulement, aucune couleur */
+.mk-mytools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.mk-mytools .chip, .lb-filt .chip { --rc: var(--ink-2); color: var(--ink-2); } /* (.chip borde avec --rc, posée d'habitude par la rareté) */
+.mk-mytools .chip.on { border-color: #fff; background: rgba(255, 255, 255, 0.12); color: #fff; }
+.mk-marks { display: flex; flex-wrap: wrap; gap: 4px; }
+.mk-mark { padding: 1px 7px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); color: var(--ink-3); font: 500 10px var(--mono); letter-spacing: 0.04em; }
+.mk-who { color: inherit; text-decoration: underline; text-decoration-color: var(--gm-line-2); text-underline-offset: 2px; }
+/* (V3) Classement : filtre Amis, mention « tu es Xe » cliquable, ma ligne qui clignote une fois touchée */
+.lb-filt { display: flex; gap: 6px; margin: 0 0 12px; }
+.lb-filt[hidden] { display: none; }
+.lb-filt .chip.on { border-color: #fff; background: rgba(255, 255, 255, 0.12); color: #fff; }
+.lb-mine[role="button"] { cursor: pointer; }
+@keyframes lb-flash { 0%, 100% { box-shadow: inset 0 0 0 2px transparent; } 40% { box-shadow: inset 0 0 0 2px #fff; background-color: rgba(255, 255, 255, 0.14); } }
+.lb-flash { animation: lb-flash var(--dur-emphatique) var(--ease-standard) 2; }
 .mk-sell .mk-mine { border-bottom: 0; }
 .mk-item > .tile { cursor: pointer; }
 .mk-item > .tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -504,3 +518,25 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
    creux (ombre portée vers l'intérieur, arête basse à peine éclairée), sans couleur. */
 .view.collection > .grid .tile > .row-sheen { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(100deg, transparent 42%, rgba(255, 255, 255, 0.26) 50%, transparent 58%); }
 .view.collection > .grid .tile.missing { box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), inset 0 -1px 0 rgba(255, 255, 255, 0.07); }
+
+/* (QOL 6) fil d'Ariane d'un album ouvert : thème › famille › album (chaque morceau sauf le dernier est un bouton) */
+.crumb { flex-wrap: wrap; }
+.crumb-mid { padding: 7px 12px; border-radius: var(--r-pill); border: 1px solid var(--gm-line-2); background: none; font: 500 12px var(--mono); letter-spacing: 0.14em; color: var(--ink-2); }
+@media (hover: hover) { .crumb-mid:hover { color: #fff; border-color: #fff; background: rgba(255, 255, 255, 0.04); } }
+.crumb-sep { font: 500 14px var(--mono); color: var(--ink-3); }
+
+/* (QOL 7) téléphone : les barres de filtres (grille d'un album, vue Cartes) deviennent un tiroir qui monte du bas.
+   Mêmes éléments que sur ordinateur, seulement posés autrement ; durées et courbes = jetons de motion.ts. */
+.f-open, .f-scrim, .f-dr-head { display: none; }
+@media (max-width: 600px) {
+  .f-open { display: inline-flex; align-items: center; min-height: 40px; margin: 0 0 8px; padding: 8px 14px; border-radius: var(--r-pill); border: 1px solid var(--gm-line-2); background: none; font: 500 12px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); }
+  .f-open.has { color: #fff; border-color: #fff; }
+  .f-scrim { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.6); }
+  .filters, .cards-bar { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 41; flex-direction: column; flex-wrap: nowrap; align-items: stretch; max-width: none; max-height: 80dvh; overflow-y: auto; margin: 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); border: 1px solid var(--gm-line-2); border-bottom: 0; border-radius: var(--r-box) var(--r-box) 0 0; background: var(--panel-solid); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; transform: translateY(100%); visibility: hidden; transition: transform var(--dur-emphatique) var(--ease-entree), visibility 0s linear var(--dur-emphatique); }
+  .f-drawer-open .filters, .f-drawer-open .cards-bar { transform: none; visibility: visible; transition: transform var(--dur-emphatique) var(--ease-entree), visibility 0s; }
+  .filters > *, .cards-bar > * { flex: none; }
+  .filters .cb-dens, .cards-bar .cb-dens, .cards-bar .cb-search { margin-left: 0; }
+  .f-dr-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--gm-line); }
+  .f-dr-head b { font: 600 15px var(--title); color: #fff; }
+  .f-dr-x { width: 40px; height: 40px; border-radius: var(--r-pill); border: 1px solid var(--gm-line-2); background: none; color: var(--ink-2); font: 500 16px/1 var(--mono); }
+}

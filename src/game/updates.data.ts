@@ -48,6 +48,8 @@ export const UPDATES: UpdateMonth[] = [
           '❄️ Cosmétiques de Noël à gagner en ouvrant les cases : un badge, deux titres et un cadre.',
           '♛ Titres uniques : le premier joueur qui complète Valorant, Naruto, Pokémon ou League of Legends remporte un titre que personne d’autre n’aura (Radiant, Hokage, Maître Pokémon, Challenger). Il s’affiche à côté de son pseudo, et tous les titres sont dans Succès → Succès d’albums.',
           '🎡 Roulette : la roue et le tapis sont en rouge, noir et une case verte. En payant le double, pose une couleur sur ton numéro : si personne n’a le numéro sorti, sa couleur rafle le pot.',
+          '🧭 Collection plus simple : une rangée « Presque finis » (les albums à qui il manque 1 à 3 cartes), un fil thème › famille › album pour remonter d’un toucher, et au téléphone les filtres rangés derrière un bouton « Filtres ».',
+          '👆 Raccourcis : « Forger ces doublons » à la fin d’une ouverture, « Toutes les 4★ et moins » dans la Forge, « Même mise que la dernière fois » à la roulette, « Message » sur un profil et sur un ami. Un nom de joueur ouvre son profil dans le chat, au marché et sur une carte. Au marché, « je l’ai » et « ♥ envie » sur les annonces, et les filtres « Mes manquantes » et « Mes envies ». Au classement, toucher « Tu es Xe » saute à ta ligne, et un filtre « Amis ».',
         ],
       },
       {
