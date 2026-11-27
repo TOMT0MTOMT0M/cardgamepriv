@@ -6,8 +6,11 @@ import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import { ACHIEVEMENTS, ACHIEVEMENT_TIERS, achievementDone, achievementPacks, achievementReward, fmtCoins, ladderLevel, visibleAchievements, visibleLadders, type Achievement, type AchievementLadder, type AchievementStats } from '../../core/economy';
 import type { FriendAch } from '../eco';
-import { cosmeticsOf } from '../../core/cosmetics';
+import { OPENINGS, cosmeticsOf, openingOf, openingSoon, type OpeningId } from '../../core/cosmetics';
 import { badgeIcon } from '../cosmeticArt';
+import { openingPreview } from './openingPreview';
+import '../progression.css'; // (V3) styles des aperçus d'ouverture (`.pv`)
+import '../succes.css';
 import { COIN_ICON } from './wallet';
 import { DUR, EASING, reducedMotion } from '../../core/motion';
 import { busyButton, errMsg, esc, h, plural, toast } from '../ui';
@@ -158,6 +161,31 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       if (opens.length) toast(t('sc.openUnlocked', { list: opens.map((c) => `« ${c.c.label} »`).join(', ') }), 'ok');
       recap.hidden = false;
       recap.innerHTML = `<b>${r.coins ? `+${fmtCoins(r.coins)} ${COIN_ICON}` : ''}${r.packs ? `${r.coins ? ' · ' : ''}+${plural(r.packs, 'booster')}` : ''}</b>${cos.length ? `<span>${t('sc.unlockedFor', { list: cos.map((c) => `${c.kind === 'Badge' ? `${badgeIcon(c.c.id)} ` : ''}${kindLabel(c.kind)} « ${esc(c.c.label)} »`).join(', ') })}</span><a class="btn-primary sc-equip" href="#/profil">${t('sc.equip')}</a>` : '<span>' + t('sc.coinsAdded') + '</span>'}<button class="sc-recap-x" aria-label="${t('common.close')}">✕</button>`; // i18n-ok
+      // (V3, 27/11) au DÉBLOCAGE d'une ouverture : son aperçu, et « L'utiliser » la choisit tout de suite pour tous les boosters
+      if (opens.length) {
+        const box = h('div', 'sc-rc-ops');
+        box.innerHTML = opens
+          .map((c) => OPENINGS.find((o) => o.id === c.c.id))
+          .filter((o) => !!o)
+          .map((o) => `<div class="sc-op got"><button type="button" class="sc-op-pv" aria-label="${esc(t('sc.opReplay'))} · ${esc(o.label)}">${openingPreview(o.id)}</button><span class="sc-op-t"><b>${t('sc.opGot', { name: esc(o.label) })}</b><small>${esc(o.blurb)}</small></span><button type="button" class="btn-primary sc-op-use" data-o="${o.id}">${t('sc.opUse')}</button></div>`)
+          .join('');
+        recap.append(box);
+        box.querySelectorAll<HTMLElement>('.sc-op-pv').forEach((b) => b.addEventListener('click', () => replay(b.querySelector('.pv'))));
+        box.querySelectorAll<HTMLButtonElement>('.sc-op-use').forEach((b) =>
+          b.addEventListener('click', async () => {
+            const o = OPENINGS.find((x) => x.id === b.dataset.o);
+            if (!o) return;
+            try {
+              await busyButton(b, backend.setOpening(o.id as OpeningId));
+              shell.sfx.tick(1.2, 0.04);
+              toast(t('sc.opUsed', { name: o.label }), 'ok');
+              b.disabled = true;
+            } catch (err) {
+              toast(errMsg(err), 'err');
+            }
+          }),
+        );
+      }
       recap.querySelector('.sc-equip')?.addEventListener('click', () => sessionStorage.setItem(OPEN_COSM, '1'));
       recap.querySelector('.sc-recap-x')!.addEventListener('click', () => (recap.hidden = true));
     } catch (e) {
@@ -173,7 +201,8 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
   /** puce d'un cosmétique gagné (titre, badge, cadre, vitrine, fond, écriture du titre) */
   const cosChip = (a: Achievement, ok: boolean) => {
     const r = cosmeticsOf(a.id)[0];
-    if (!r) return '';
+    // (V3, 27/11) palier réservé à une ouverture pas encore créée
+    if (!r) return openingSoon(a.id) ? `<span class="sc-cos k-open soon"><i></i> ${t('sc.opSoonChip')}</span>` : '';
     const sw = r.kind === 'Cadre' || r.kind === 'Vitrine' || r.kind === 'Bannière' ? ` style="--sw:${r.c.css ?? 'var(--ink-2)'}"` : ''; // i18n-ok
     const ico = r.kind === 'Badge' ? badgeIcon(r.c.id) : r.kind === 'Titre' ? '«' : '<i></i>'; // i18n-ok
     return `<span class="sc-cos${ok ? ' ok' : ''} k-${KIND_CLS[r.kind]}${r.c.anim ? ' anim' : ''}"${sw} title="${esc(`${kindLabel(r.kind)} « ${r.c.label} »`)}">${ico} ${r.kind === 'Titre' ? '' : `${kindLabel(r.kind)} · `}${esc(r.c.label)}${r.kind === 'Titre' ? ' »' : ''}</span>`; // i18n-ok
@@ -191,6 +220,21 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
    * qu'il manque, sa récompense) et les paliers déjà atteints.
    */
   const openLadders = new Set<string>();
+  /**
+   * (V3, 27/11 — refonte des succès) OUVERTURES À GAGNER plus loin dans l'échelle : sur chaque palier pas encore atteint
+   * qui en débloque une, son aperçu (openingPreview.ts, le même que dans la fiche d'un booster, en boucle ; un toucher le
+   * rejoue) ; une ouverture pas encore créée : « bientôt », sans aperçu.
+   */
+  const opsAhead = (l: AchievementLadder, from: number) =>
+    l.steps.slice(from).flatMap((a) => {
+      const at = `<small class="sc-op-at">${t('sc.opAt', { n: fmtCoins(a.target), label: esc(a.label) })}</small>`;
+      const o = openingOf(a.id);
+      if (o) return [`<button type="button" class="sc-op" aria-label="${esc(t('sc.opReplay'))} · ${esc(o.label)}">${openingPreview(o.id)}<span class="sc-op-t"><b>${t('sc.opWin', { name: esc(o.label) })}</b><small>${esc(o.blurb)}</small>${at}</span></button>`];
+      if (openingSoon(a.id)) return [`<div class="sc-op soon"><span class="sc-op-q" aria-hidden="true"></span><span class="sc-op-t"><b>${t('sc.opSoon')}</b>${at}</span></div>`];
+      return [];
+    });
+  /** rejoue un aperçu : une copie fraîche relance ses animations CSS (comme la fiche d'un booster) */
+  const replay = (pv: Element | null) => pv?.replaceWith(pv.cloneNode(true));
   function ladderCard(l: AchievementLadder, st: AchievementStats, claimed: Set<string>, claimable: Set<string>): HTMLElement {
     const cur = st[l.stat] ?? 0;
     const lvl = ladderLevel(l, st);
@@ -206,14 +250,16 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const stage = all ? 'done' : whole >= 0.75 ? 'near' : whole >= 0.4 ? 'half' : whole > 0 ? 'start' : 'none';
     const c = h('div', `sc-c sc-ladder sc-pill st-${stage}${all ? ' got' : ready ? ' ready' : ''}${open ? ' open' : ''}`);
     const left = next ? Math.max(0, next.target - cur) : 0;
+    const ops = opsAhead(l, lvl);
     c.innerHTML = `
       <button class="sc-pl-h" aria-expanded="${open}">
-        <span class="sc-pl-top"><b class="sc-name">${esc(l.label)}</b><span class="sc-tier">${lvl}/${l.steps.length}</span></span>
+        <span class="sc-pl-top"><b class="sc-name">${esc(l.label)}</b>${ops.length ? `<i class="sc-op-mark" title="${esc(t('sc.opMark'))}" aria-label="${esc(t('sc.opMark'))}"></i>` : ''}<span class="sc-tier">${lvl}/${l.steps.length}</span></span>
         <i class="sc-pb"><i style="width:${(pct * 100).toFixed(1)}%"></i></i>
         <em class="sc-n">${ready ? t('sc.plReady') : next ? `${fmtCoins(Math.min(cur, next.target))} / ${fmtCoins(next.target)}` : t('sc.done')}</em>
       </button>
       <div class="sc-more"${open ? '' : ' hidden'}>
         ${next ? `<span class="sc-how">${t('sc.missing', { n: fmtCoins(left), label: esc(next.label), how: esc(next.how) })}</span><span class="sc-rw-l">${t('sc.reward')} ${rewardHtml(next)}</span>` : `<span class="sc-how">${t('sc.plAllDone', { label: esc(l.steps[l.steps.length - 1].label) })}</span>`}
+        ${ops.join('')}
         ${lvl ? `<ol class="sc-steps">${l.steps
           .slice(0, lvl)
           .map((a) => {
@@ -232,6 +278,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
       c.querySelector('.sc-pl-h')!.setAttribute('aria-expanded', String(on));
       slide(c.querySelector<HTMLElement>('.sc-more')!, on);
     });
+    c.querySelectorAll<HTMLElement>('button.sc-op').forEach((b) => b.addEventListener('click', () => replay(b.querySelector('.pv'))));
     return c;
   }
 
@@ -240,7 +287,7 @@ export function createSuccesView(backend: GameBackend, shell: Shell): SuccesView
     const rows = [...list].sort((a, b) => (b.stats[l.stat] ?? 0) - (a.stats[l.stat] ?? 0) || a.name.localeCompare(b.name, locale()));
     const c = h('div', 'sc-c sc-ladder sc-fr');
     const top = rows[0];
-    c.innerHTML = `<div class="sc-top"><span class="sc-tier">${l.steps.length} paliers</span>${top && (top.stats[l.stat] ?? 0) > 0 ? `<span class="sc-lead">👑 ${esc(top.me ? t('chat.me') : top.name)}</span>` : ''}</div>
+    c.innerHTML = `<div class="sc-top"><span class="sc-tier">${plural(l.steps.length, 'palier', 'paliers')}</span>${top && (top.stats[l.stat] ?? 0) > 0 ? `<span class="sc-lead">👑 ${esc(top.me ? t('chat.me') : top.name)}</span>` : ''}</div>
       <b class="sc-name">${esc(l.label)}</b>
       <ol class="sc-frl">${rows
         .map((f, i) => {

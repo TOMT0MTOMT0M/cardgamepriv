@@ -307,6 +307,15 @@ export const OPENINGS: Array<Cosmetic & { id: OpeningId; blurb: string }> = [
 ];
 // i18n-data:fin
 export const DEFAULT_OPENING: OpeningId = 'tear';
+/** (V3, 27/11 — refonte des succès) l'ouverture que débloque un succès (aperçu dans la page Succès), s'il y en a une */
+export const openingOf = (achievementId: string) => OPENINGS.find((o) => o.need === achievementId);
+/**
+ * (V3, 27/11) succès réservés à une ouverture PAS ENCORE CRÉÉE (docs/chantiers/ouvertures.md) : la page Succès affiche
+ * « Ouverture · bientôt », sans aperçu. Un id cesse tout seul d'être « bientôt » dès qu'une ouverture de OPENINGS le
+ * prend pour `need` (on peut alors le retirer d'ici).
+ */
+export const OPENINGS_SOON: readonly string[] = ['world-150', 'full-15', 'streak-21'];
+export const openingSoon = (achievementId: string) => OPENINGS_SOON.includes(achievementId) && !openingOf(achievementId);
 
 /** Badges (petites médailles sous le pseudo, plusieurs à la fois, ordonnables). */
 // i18n-data:début

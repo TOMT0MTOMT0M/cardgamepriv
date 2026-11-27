@@ -1,0 +1,42 @@
+/*
+ * (V3, 27/11) Refonte des succès — styles à part (moins de conflits à la fusion), chargés par src/game/views/succes.ts.
+ * Ouvertures de booster à gagner : aperçu (openingPreview.ts, styles `.pv` dans progression.css) sur le palier
+ * verrouillé et au déblocage. Direction usinage : filets --gm-line, rayons par jetons, couleur = information seulement.
+ */
+
+/* ── palier verrouillé qui débloque une ouverture : aperçu en boucle, un toucher le rejoue */
+.sc-op {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; margin: 0;
+  border-radius: var(--r-ctl); border: 1px dashed var(--gm-line-2); background: none; color: var(--ink); text-align: left; font: inherit;
+}
+button.sc-op { cursor: pointer; }
+button.sc-op:focus-visible, .sc-op-pv:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sc-op .pv { opacity: 0.85; }
+.sc-op .pv * { animation-iteration-count: infinite; }
+.sc-op-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sc-op-t b { font: 400 15px/1.15 var(--title); }
+.sc-op-t small { font: 500 11px/1.35 var(--mono); color: var(--ink-3); }
+.sc-op-t .sc-op-at { color: var(--ink-2); }
+
+/* ouverture pas encore créée : la place de l'aperçu, vide (pochette en pointillés) */
+.sc-op.soon { border-color: var(--gm-line); }
+.sc-op-q { flex: none; width: 40px; height: 48px; display: grid; place-items: center; }
+/* (rayons en dur : dessins d'un sachet, comme `.sc-cos.k-open i` et `.pv-bag`, pas des contrôles) */
+.sc-op-q::before { content: ''; width: 22px; height: 35px; border-radius: 2px; border: 1px dashed var(--ink-3); }
+.sc-op.soon b { color: var(--ink-2); }
+.sc-cos.k-open.soon { color: var(--ink-3); }
+
+/* repère sur la pastille repliée : une ouverture à gagner dans cette échelle */
+.sc-op-mark { flex: none; display: inline-block; width: 8px; height: 11px; margin-left: auto; border-radius: 2px; border: 1.5px solid var(--ink-2); }
+
+/* ── au déblocage (récap après « Encaisser ») : l'aperçu et « L'utiliser » */
+.sc-rc-ops { display: flex; flex-direction: column; gap: 8px; flex-basis: 100%; }
+.sc-op.got { border-style: solid; border-color: var(--gm-line-2); }
+.sc-op.got .pv { opacity: 1; }
+.sc-op.got .sc-op-t { flex: 1; }
+.sc-op-pv { flex: none; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.sc-op-use { flex: none; }
+@media (max-width: 420px) {
+  .sc-op.got { flex-wrap: wrap; }
+  .sc-op.got .sc-op-use { width: 100%; }
+}

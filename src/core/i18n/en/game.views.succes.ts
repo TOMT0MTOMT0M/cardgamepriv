@@ -49,4 +49,13 @@ export const en: PartOf<typeof fr> = {
   'sc.lastTier': 'Last tier: {label}',
   'sc.ongoing': 'In progress',
   'sc.tierLow': 'tier {n}/{total}',
+  'sc.opWin': 'Opening to win: “{name}”',
+  'sc.opAt': 'Tier {n} · {label}',
+  'sc.opSoon': 'Opening to win · coming soon',
+  'sc.opSoonChip': 'Opening · coming soon',
+  'sc.opReplay': 'Replay the preview',
+  'sc.opMark': 'A booster opening to win',
+  'sc.opGot': 'New opening: “{name}”',
+  'sc.opUse': 'Use it',
+  'sc.opUsed': '“{name}” opening picked for all your boosters.',
 };
