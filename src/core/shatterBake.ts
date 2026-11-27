@@ -80,8 +80,18 @@ export class ShatterPlayer {
       g.setAttribute('normal', new Float32BufferAttribute(new Float32Array(n * 3), 3));
       g.setAttribute('uv', new Float32BufferAttribute(b.uv.slice(v0 * 2, v1 * 2), 2));
       g.setAttribute('lvl', new Float32BufferAttribute(b.lvl.slice(v0, v1), 1));
-      const idx = b.idx.slice(t0 * 3, t1 * 3);
+      let idx = b.idx.slice(t0 * 3, t1 * 3);
       for (let i = 0; i < idx.length; i++) idx[i] -= v0;
+      // (session Fable) glace : la surface d'abord, les faces de cassure ensuite (matière transparente sans écriture
+      // de profondeur : dessinées après, les fêlures se voient À TRAVERS la surface)
+      if (!groups) {
+        const out = new Uint32Array(idx.length);
+        let o = 0;
+        for (const wantCrack of [false, true])
+          for (let i = 0; i < idx.length; i += 3)
+            if (b.lvl[v0 + idx[i]] > 0.5 === wantCrack) (out[o++] = idx[i]), (out[o++] = idx[i + 1]), (out[o++] = idx[i + 2]);
+        idx = out;
+      }
       g.setIndex(new Uint32BufferAttribute(idx, 1));
       for (const [s, c, m] of groups ?? []) g.addGroup(s, c, m);
       g.boundingSphere = null;

@@ -829,7 +829,8 @@ export function createOpeningScene(): OpeningScene {
     if (bakedBody && bakedStrip) bakedBody.visible = bakedStrip.visible = on && useBake;
     if (rollBody) rollBody.visible = on && rolling;
     if (winBody && winPanel) winBody.visible = winPanel.visible = on && windowing;
-    if (iceMesh && iceFilm) iceMesh.visible = iceFilm.visible = on && icing;
+    // (session Fable) le sachet gelé n'est dessiné qu'à partir du bris : au repos, la glace le montre par réfraction
+    if (iceMesh && iceFilm) (iceMesh.visible = on && icing), (iceFilm.visible = on && icing && ICE.t >= 0);
   }
   /**
    * (27/11) DÉCHIRURE GLACÉE refaite (core/shatterBake.ts, scripts/bake-tear/glace.mts) : le sachet est pris dans un
@@ -1349,22 +1350,64 @@ export function createOpeningScene(): OpeningScene {
    * couvre de givre, FROST : cristaux blancs bleutés, surface mate)
    */
   /**
-   * (27/11) la GLACE du bloc (Déchirure glacée) : surfaces extérieures transparentes et lisses (reflets du studio, léger
-   * voile givré), faces de cassure blanches et mates, visibles seulement quand leur niveau (attribut `lvl` : 1, 2, 3)
-   * est atteint par CRACK (les fêlures du 1er, puis du 2e coup ; le 3e : tout)
+   * (27/11, session Fable) la GLACE du bloc (Déchirure glacée), refaite d'après docs/chantiers/ouvertures.md
+   * « Recherche » — sans transmission de three.js (une passe plein écran de plus) : derrière la glace il n'y a que le
+   * sachet et le fond, la glace LIT donc elle-même le visuel du sachet.
+   *  - RÉFRACTION : uv du sachet décalées selon la pente de chaque facette (indice 1,31) × la glace traversée — le
+   *    visuel se brise d'une facette à l'autre ; hors du sachet : le fond sombre ;
+   *  - ÉPAISSEUR (forme du bloc, calculée : boîte arrondie de glace.mts) → absorption de Beer-Lambert (le rouge part
+   *    d'abord : la glace épaisse bleuit), voile laiteux et bulles en deux couches de parallaxe, givre du pourtour ;
+   *  - faces de cassure (attribut `lvl` ≤ CRACK) : des plans qui accrochent la lumière selon leur orientation ;
+   *  - en vol (ICE_FLY → 1) : les éclats ne portent plus l'image du sachet, glace claire à bords vifs.
+   * Le sachet gelé n'est PAS dessiné au repos (la glace le montre, givre FROST compris) : une couche de moins.
    */
-  function buildIceMaterial(): Material {
-    const m = new MeshStandardNodeMaterial({ side: DoubleSide, transparent: true, depthWrite: false });
+  const ICE_FLY = uniform(0);
+  const ICE_BLOCK = { bx: PACK.w / 2 + 0.08, by: PACK.h / 2 + 0.08, bz: 0.085, r: 0.16 };
+  function buildIceMaterial(art: PackArt): Material {
+    const m = new MeshStandardNodeMaterial({ transparent: true, depthWrite: false });
+    const uvr = uv();
+    const front = texture(art.front, uvr);
+    tearNodes.push({ front, back: texture(art.back, uvr), masks: texture(art.masks, uvr) } as unknown as Record<'front' | 'back' | 'masks', { value: Texture }>);
     const lvl = attribute('lvl', 'float') as unknown as N;
     const crack = lvl.greaterThan(0.5);
     const shown = step(lvl, CRACK.add(0.001));
-    const veil = smoothstep(0.35, 0.85, mx_fractal_noise_float(positionLocal.mul(40)).add(0.5));
-    m.colorNode = select(crack, vec3(0.95, 0.98, 1), mix(vec3(0.8, 0.9, 0.98), vec3(0.93, 0.97, 1), veil));
+    const px = uvr.x.sub(0.5).mul(PACK.w), py = uvr.y.sub(0.5).mul(PACK.h);
+    // épaisseur 0..1 (1 au cœur, 0 au bord du galet)
+    const dd = tclamp(length(vec2(px.abs().sub(ICE_BLOCK.bx - ICE_BLOCK.r).max(0), py.abs().sub(ICE_BLOCK.by - ICE_BLOCK.r).max(0))).div(ICE_BLOCK.r), 0, 1);
+    const thick = float(1).sub(dd.mul(dd)).max(0).pow(0.5);
+    const rim = float(1).sub(thick);
+    // pente de la facette + ondulation de la surface (glace fondue puis regelée : jamais plane)
+    const wave = vec2(mx_fractal_noise_float(vec3(uvr.mul(vec2(5, 7.5)), 11)), mx_fractal_noise_float(vec3(uvr.mul(vec2(5, 7.5)), 23))).mul(0.34);
+    const slope = normalLocal.xy.div(normalLocal.z.abs().max(0.2)).add(wave);
+    // réfraction du sachet (décalage accentué ×3 : à 8 mm de glace le vrai décalage ne se lirait pas au téléphone)
+    const K = 0.24 * ICE_BLOCK.bz * 3;
+    const uvS = uvr.sub(slope.mul(vec2(K / PACK.w, K / PACK.h)).mul(thick));
+    const inS = smoothstep(0, 0.012, min(min(uvS.x, float(1).sub(uvS.x)), min(uvS.y, float(1).sub(uvS.y))));
+    let sachet: N = (front as unknown as N).sample(uvS).rgb;
+    // givre sur le sachet gelé (FROST) : cristaux épars, plus dense vers ses bords
+    const edgeS = float(1).sub(smoothstep(0, 0.16, min(min(uvS.x, float(1).sub(uvS.x)), min(uvS.y, float(1).sub(uvS.y)).mul(1.5))));
+    const specks = smoothstep(0.72, 0.9, mx_fractal_noise_float(vec3(uvS.mul(vec2(150, 225)), 0.5)).add(0.5));
+    sachet = mix(sachet, vec3(0.86, 0.93, 1), tclamp(FROST.mul(FROST).mul(specks.mul(0.8).add(edgeS.mul(0.6)).add(0.05)), 0, 1));
+    const absorb = exp(vec3(0.62, 0.22, 0.09).mul(thick).negate());
+    const behind = mix(vec3(0.015, 0.025, 0.045), sachet, inS).mul(absorb);
+    // intérieur : voile laiteux et deux couches de bulles, décalées selon la pente (parallaxe : elles vivent à l'inclinaison)
+    const veil = smoothstep(0.25, 0.9, mx_fractal_noise_float(vec3(uvr.mul(7).add(slope.mul(0.25)), 2)).add(0.5));
+    const bub = smoothstep(0.95, 0.99, mx_fractal_noise_float(vec3(uvr.mul(vec2(70, 105)).add(slope.mul(0.8)), 5)).add(0.5))
+      .add(smoothstep(0.94, 0.985, mx_fractal_noise_float(vec3(uvr.mul(vec2(34, 51)).add(slope.mul(1.7)), 9)).add(0.5)).mul(0.6));
+    const fres = float(1).sub(normalLocal.z.abs()).pow(3);
+    const milk = vec3(0.66, 0.82, 0.96).mul(float(0.06).add(veil.mul(thick).mul(0.16)).add(rim.mul(rim).mul(0.55)));
+    const rest = behind.add(milk).add(vec3(0.9, 0.96, 1).mul(bub.mul(thick).mul(0.45)));
+    const fly = vec3(0.7, 0.85, 0.97).mul(float(0.35).add(veil.mul(0.25))).add(vec3(1, 1, 1).mul(fres.mul(0.5).add(bub.mul(0.3))));
+    // faces de cassure : éclat selon l'orientation du plan (certaines flashent, d'autres restent sombres)
+    const glint = normalLocal.dot(vec3(0.36, 0.48, 0.8)).abs().pow(3);
+    m.colorNode = select(crack, vec3(0.88, 0.95, 1), mix(rest, fly, ICE_FLY));
     m.metalnessNode = float(0);
-    m.roughnessNode = select(crack, float(0.5), mix(float(0.04), float(0.18), veil));
+    m.roughnessNode = select(crack, float(0.12), mix(float(0.03), float(0.45), rim.mul(rim)));
     m.envNode = foilEnvNode();
-    m.opacityNode = select(crack, shown.mul(0.55), float(0.14).add(veil.mul(0.06)));
-    m.emissiveNode = select(crack, vec3(0.42, 0.5, 0.58).mul(shown), vec3(0.015, 0.03, 0.045));
+    const aRest = mix(float(0.3).add(rim.mul(0.45)).add(fres.mul(0.3)), float(1), inS);
+    const aFly = float(0.36).add(fres.mul(0.5)).add(veil.mul(0.12));
+    m.opacityNode = select(crack, shown.mul(float(0.24).add(glint.mul(0.7))), mix(aRest, aFly, ICE_FLY));
+    m.emissiveNode = select(crack, vec3(0.5, 0.6, 0.7).mul(shown).mul(glint), vec3(0.01, 0.02, 0.03));
     return m;
   }
   function buildRollMaterials(art: PackArt, opt: { win?: boolean; frost?: boolean } = {}) {
@@ -1803,6 +1846,7 @@ export function createOpeningScene(): OpeningScene {
       if (!pack) return;
       kill();
       CRACK.value = 3;
+      sideline(gsap.timeline()).to(ICE_FLY, { value: 1, duration: GLACE.fend / 2, ease: EASE.glide }, 0);
       FROST.value = 1;
       ctx.sfx.iceShatter(0.45);
       haptics.pulse([30, 30, 50]);
@@ -2329,6 +2373,7 @@ export function createOpeningScene(): OpeningScene {
     iceNextAuto = 0;
     ICE.t = -1;
     CRACK.value = 0;
+    ICE_FLY.value = 0;
     if (icing) {
       // variantes arrivées depuis le montage : un lecteur chacune (la variante jouée est choisie au 1er coup)
       for (const b of loadedShatters()) if (!icePlayers.some((p) => p.bake === b)) icePlayers.push(new ShatterPlayer(b));
@@ -3371,7 +3416,7 @@ export function createOpeningScene(): OpeningScene {
           icePlayers.push(pl);
           if (iceMesh) return true;
           const fresh = !iceMats;
-          iceMats ??= { ice: buildIceMaterial(), film: buildRollMaterials(arts.get(boosterKey)!, { frost: true }) };
+          iceMats ??= { ice: buildIceMaterial(arts.get(boosterKey)!), film: buildRollMaterials(arts.get(boosterKey)!, { frost: true }) };
           if (fresh) [iceMats.ice, ...iceMats.film].forEach((x) => c.bag.add(x));
           iceFilm = new Mesh(pl.film, iceMats.film);
           iceMesh = new Mesh(pl.ice, iceMats.ice);
