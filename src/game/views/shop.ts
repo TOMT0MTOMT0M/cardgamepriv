@@ -42,6 +42,9 @@ const HINT = {
   get tear() {
     return TOUCH ? tr('shop.hint.tearTouch') : tr('shop.hint.tearMouse');
   },
+  get fold() {
+    return TOUCH ? tr('shop.hint.foldTouch') : tr('shop.hint.foldMouse');
+  },
   get tap() {
     return TOUCH ? tr('shop.hint.tapTouch') : tr('shop.hint.tapMouse');
   },
@@ -1429,7 +1432,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     hint.hidden = false;
     hint.classList.add('hold');
     const st = openStyleOf(p);
-    sealedHint = st === 'tear' ? HINT.tear : st === 'fan' ? HINT.tap : HINT.hold;
+    sealedHint = st === 'tear' ? HINT.tear : st === 'retrousse' ? HINT.fold : st === 'fan' ? HINT.tap : HINT.hold;
     hintTxt.textContent = sealedHint;
     ring.style.strokeDashoffset = '100';
     // aide au premier geste (UX2-08) : seulement en ouverture manuelle, tant que ce geste n'a jamais réussi

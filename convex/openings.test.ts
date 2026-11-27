@@ -27,6 +27,12 @@ describe('animation d’ouverture à débloquer', () => {
     await t.run((ctx) => ctx.db.patch(alice.userId, { econ: { earned: 0, burned: 250, gamesPlayed: 0, gamesWon: 0, rouletteWins: 0, completions: [], achievements: [] } }));
     expect(await t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'burn' })).toEqual({ style: 'burn' });
     expect((await me())?.openingStyle).toBe('burn');
+    // « Retroussé » : 750 boosters ouverts (verrouillé tant qu'on n'y est pas)
+    await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'retrousse' })).rejects.toThrow(/⟦(profiles\.6)[⟧{]/);
+    await t.run((ctx) => ctx.db.patch(alice.userId, { totalPacksOpened: 750 }));
+    expect(await t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'retrousse' })).toEqual({ style: 'retrousse' });
+    expect((await me())?.openingStyle).toBe('retrousse');
+    await t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'burn' });
     // l'éventail (150 cartes World) reste verrouillé
     await expect(t.mutation(api.profiles.setOpening, { sessionToken: alice.token, style: 'fan' })).rejects.toThrow(/⟦(profiles\.6)[⟧{]/);
     // enregistrer le profil ne fait pas perdre l'animation choisie

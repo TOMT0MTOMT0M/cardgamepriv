@@ -1,5 +1,6 @@
 import { deviceId, net, type NetState } from '../core/net/client';
 import { famCards } from '../core/wishFams';
+import { OPENINGS, type OpeningId } from '../core/cosmetics';
 const RARITY_RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5 };
 import type { Id } from '../../convex/_generated/dataModel';
 import { BIG_PULL_RARITIES, EMPTY_MARKET, type BigPull, type GameBackend, type GameState, type SealedPack, type TradeHistoryItem, type TradeView } from './backend';
@@ -142,7 +143,7 @@ export function createOnlineBackend(): GameBackend {
             tester: !!n.user.tester,
             gamesNoticeAt: n.user.gamesNoticeAt,
             referralNoticeAt: n.user.referralNoticeAt,
-            openingStyle: n.user.openingStyle === 'burn' || n.user.openingStyle === 'fan' ? n.user.openingStyle : undefined,
+            openingStyle: OPENINGS.some((o) => o.id === n.user!.openingStyle) ? (n.user.openingStyle as OpeningId) : undefined,
           }
         : null;
       langUser = n.user ? { lang: n.user.lang, langSet: n.user.langSet } : null;

@@ -18,6 +18,18 @@ import { STREAK_REWARD, claimStreak as claimStreakState, streakDay, touchStreak,
 import { OPENINGS, PROFILE_MEDIA_DEMO_MAX, bestCard, cleanCosmetics, profileMediaProblem, statsFrom, type CosmeticChoice, type OpeningId, type PlayerStats } from '../core/cosmetics';
 import { seasonKey } from '../core/seasons';
 
+/**
+ * Essai d'une ouverture en démo : `?demo&ouverture=<id>` la choisit pour la SESSION (succès non vérifié, rien écrit
+ * dans la sauvegarde). Id inconnu : ignoré.
+ */
+function demoOpening(): OpeningId | undefined {
+  try {
+    const id = new URLSearchParams(location.search).get('ouverture');
+    return OPENINGS.find((o) => o.id === id)?.id;
+  } catch {
+    return undefined;
+  }
+}
 /** démo : photo / bannière importées (data URL), une clé par sorte — hors de la sauvegarde principale (lot P, live 02) */
 const DEMO_MEDIA_LS = 'bebou.demo.media';
 function demoMedia(): { avatarMedia?: string; bannerMedia?: string } {
@@ -236,6 +248,7 @@ export function createLocalBackend(): GameBackend {
   const capNow = () => packCapOf({ subUntil: save.eco?.subUntil });
   function sync() {
     const now = Date.now();
+    const opening = demoOpening() ?? save.opening;
     state.user = {
       id: 'me',
       name: tr('chat.me'),
@@ -246,7 +259,7 @@ export function createLocalBackend(): GameBackend {
       totalPacksOpened: save.opened,
       pityCount: save.pity ?? 0,
       streak: save.streak,
-      ...(save.opening && save.opening !== 'tear' ? { openingStyle: save.opening } : {}),
+      ...(opening && opening !== 'tear' ? { openingStyle: opening } : {}),
     };
     state.wishlist = save.wishlist ?? [];
     state.wishFams = save.wishFams ?? [];

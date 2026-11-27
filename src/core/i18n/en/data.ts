@@ -459,6 +459,8 @@ export const enData: Record<string, string> = {
   'cos.blurb.tear': 'Swipe your finger to tear the top of the booster.',
   'cos.blurb.burn': 'Hold to burn the wrapper from the center.',
   'cos.blurb.fan': 'One tap rips off the top, the cards open in a fan.',
+  'cos.Retroussé': 'Roll-Down',
+  'cos.blurb.retrousse': 'Swipe down: the pack turns itself inside out and leaves the cards standing.',
   'cos.blurb.glace': 'The tear, in a burst of frost.',
   'cos.blurb.etoile': 'The tear, under a shower of golden stars.',
   // ───── sondage (src/core/survey.ts) ─────

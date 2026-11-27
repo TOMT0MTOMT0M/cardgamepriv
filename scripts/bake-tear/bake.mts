@@ -4,7 +4,8 @@
  *
  *   npm run bake:tear                        → public/bake/tear-0.tear … tear-2.tear (+ résumé dans la console)
  *   npm run bake:tear -- --only=0 --preview  → aussi .cache/bake-tear/preview-0.json (contrôle : scripts/bake-tear/preview.py)
- *   options : --variants=N  --debug (mesures toutes les 25 ms)
+ *   options : --variants=N  --debug (mesures toutes les 25 ms)  --out=<dossier> (défaut public/bake)
+ *   npm run bake:retrousse                   → public/bake/retrousse-0.tear, retrousse-1.tear (scripts/bake-tear/retrousse.mts)
  *   APRÈS une nouvelle cuisson : monter BAKE_REV dans src/core/tearBake.ts (le service worker garde les fichiers par version)
  *
  * Le film : stratifié alu / PET (~90 µm). Quasi inextensible, raide en flexion, PLASTIQUE (au-delà d'un petit angle le pli
@@ -36,6 +37,7 @@ import { gzipSync } from 'node:zlib';
 import { PACK, PACK_SIDE_SEAM, PACK_STACK, TEAR_V, lcg, packRestZ } from '../../src/core/packCrease';
 import { EASE } from '../../src/core/ease';
 import { TEAR_BAKE_FORMAT, type TearBakeHeader } from '../../src/core/tearBakeFormat';
+import { runRetrousse } from './retrousse.mts';
 
 const argv = process.argv.slice(2);
 const flag = (k: string) => argv.includes(`--${k}`);
@@ -708,16 +710,23 @@ function encode(V: Variant, r: ReturnType<typeof simulate>, index: number) {
   return { gz: gzipSync(raw, { level: 9 }), raw: raw.length, clamped };
 }
 
-mkdirSync('public/bake', { recursive: true });
-if (PREVIEW) mkdirSync('.cache/bake-tear', { recursive: true });
-for (let v = 0; v < VARIANTS; v++) {
+// (27/11) `--out=<dossier>` : où écrire les .tear (défaut public/bake) ; `--scenario=retrousse` : l'ouverture
+// « Retroussé » (scripts/bake-tear/retrousse.mts, sa propre boucle de pas — rien de la déchirure n'y est modifié)
+const OUT = opt('out') ?? 'public/bake';
+const SCENARIO = opt('scenario') ?? 'tear';
+if (SCENARIO === 'retrousse') {
+  runRetrousse({ out: OUT, preview: PREVIEW, debug: DEBUG, only: ONLY, variants: opt('variants') !== undefined ? VARIANTS : undefined, trial: flag('trial') });
+} else if (SCENARIO !== 'tear') throw new Error(`scénario inconnu : ${SCENARIO}`);
+else mkdirSync(OUT, { recursive: true });
+if (PREVIEW && SCENARIO === 'tear') mkdirSync('.cache/bake-tear', { recursive: true });
+for (let v = 0; v < (SCENARIO === 'tear' ? VARIANTS : 0); v++) {
   if (ONLY !== undefined && +ONLY !== v) continue;
   const V = VARIANT_LIST[v % VARIANT_LIST.length];
   const t0 = performance.now();
   const r = simulate(V);
   const t1 = performance.now();
   const e = encode(V, r, v);
-  writeFileSync(`public/bake/tear-${v}.tear`, e.gz);
+  writeFileSync(`${OUT}/tear-${v}.tear`, e.gz);
   console.log(`variante ${v} (graine ${V.seed}) : ${r.n} sommets × ${r.frames.length} images, simulée en ${((t1 - t0) / 1000).toFixed(1)} s — ${(e.raw / 1e6).toFixed(2)} Mo bruts → ${(e.gz.length / 1e6).toFixed(2)} Mo gzip${e.clamped ? ` (${e.clamped} valeurs écrêtées)` : ''}`);
   if (PREVIEW) {
     const pick = [0, 1, 2, 3, 4, 8, 16, 24, 32, 40, 48, 49 + 3, 49 + 6, 49 + 9, 49 + 12, 49 + 15, 49 + 18, 49 + 24, 49 + 30, 49 + 42];

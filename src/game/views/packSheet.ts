@@ -329,7 +329,7 @@ export function createPackSheet(
     const u = backend.state.user;
     if (!u) return void (animEl.hidden = true);
     const st = backend.eco.snapshot?.achievements.stats;
-    const cur = u.openingStyle ?? DEFAULT_OPENING;
+    const cur = OPENINGS.some((x) => x.id === u.openingStyle) ? u.openingStyle! : DEFAULT_OPENING;
     const rows = OPENINGS.map((o) => {
       const a = o.need ? ACHIEVEMENTS.find((x) => x.id === o.need) : undefined;
       // (v2.1.13) ouvertures de Noël : débloquées par leur case du calendrier de l'Avent

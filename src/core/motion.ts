@@ -125,6 +125,40 @@ export const TEASE_LAST_EXTRA = 0.2;
  */
 export const ECLIPSE = { teinte: 2.4, lever: 3.2, onde: 2.8, coucher: 1.2, suite: 1.1 } as const;
 
+/**
+ * (27/11, V3) Ouverture « Retroussé » : le sachet se retourne vers le bas et laisse les cartes debout. Secondes. Lu par
+ * la scène (opening.ts) ET par la cuisson (scripts/bake-tear/retrousse.mts : levée des cartes pendant la sortie
+ * enregistrée) — donc aucune valeur qui dépende du pointeur (`DUR.rapide` & co varient entre mobile et bureau).
+ * `auto` : ouverture automatique au toucher · `autoSerie` : en série (×5 / ×10) · `lache` : le doigt lâche le sachet
+ * (B.follow → 0) · `levee` (unités) / `leve` : les cartes se soulèvent dans le sachet retroussé (EASE.glide) ·
+ * `range` : rangement des cartes · `chute` : départ du sachet vide · `ouvert` : la pile est prête.
+ * (27/11, scène seulement — la cuisson ne les lit pas) `pose` : durée du rangement (celle de la Déchirure) · `decale` :
+ * décalage d'une carte à l'autre au rangement (idem) · `tombe` : durée de la chute du sachet (idem, EASE.heave) ·
+ * `grain` : écart mini entre deux grains du froissement (idem) · `coup` : écart mini entre deux claquements (crans
+ * franchis dans la même image : un double coup au plus par `coup`) · `grainMax` : durée maxi ajoutée à un grain du
+ * froissement (elle s'allonge avec la course parcourue depuis le grain précédent) · `lacheGrain` : durée ajoutée au
+ * froissement de fin de lâcher, à pleine intensité (× land.f) · `verrou` : durée du claquement du verrou (la soudure
+ * du haut qui cède).
+ */
+export const RETROUSSE = {
+  auto: 1.0,
+  autoSerie: DUR.dramatique / 1000,
+  lache: (2 * DUR.instant) / 1000,
+  levee: 0.05,
+  leve: 0.25,
+  range: 0.45,
+  chute: 0.35,
+  ouvert: 0.8,
+  pose: 0.65,
+  decale: 0.03,
+  tombe: 0.85,
+  grain: 0.09,
+  coup: STAGGER.normal / 1000,
+  grainMax: 0.2,
+  lacheGrain: 0.06,
+  verrou: (DUR.instant * 2.4) / 1000,
+} as const;
+
 const motionQuery = typeof matchMedia === 'function' ? matchMedia('not all') : null;
 /**
  * (v2.0.6, décision de Tom) TOUJOURS FAUX : les animations du jeu ne suivent plus le réglage « réduire les animations »

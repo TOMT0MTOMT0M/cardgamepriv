@@ -220,6 +220,8 @@ export const fr = {
   'shop.hint.holdMouse': 'Maintiens le clic (ou Espace) pour ouvrir',
   'shop.hint.tearTouch': 'Glisse vers la droite pour déchirer',
   'shop.hint.tearMouse': 'Glisse vers la droite (ou clique) pour déchirer',
+  'shop.hint.foldTouch': 'Glisse vers le bas pour retrousser',
+  'shop.hint.foldMouse': 'Glisse vers le bas pour retrousser',
   'shop.hint.tapTouch': 'Touche pour ouvrir',
   'shop.hint.tapMouse': 'Clique pour ouvrir',
   'shop.hint.revealTouch': 'Touche pour révéler',
