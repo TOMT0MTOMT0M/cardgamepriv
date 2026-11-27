@@ -12,6 +12,11 @@
  * absents, le fichier est une déchirure (les fichiers `tear-*` restent lisibles tels quels).
  */
 export const TEAR_BAKE_FORMAT = 2;
+/**
+ * (27/11, Fenêtre) Champs facultatifs d'une nappe, écrits seulement par la Fenêtre (absents : grille de `nx` colonnes
+ * réparties sur toute la largeur, sans trou — la Déchirure et le Retroussé ne changent pas) : `nx` propre à la nappe,
+ * `xs` (x de repos de chaque colonne, grille non uniforme), `hole` (cellules [i0, i1[ × [j0, j1[ sans triangles).
+ */
 export interface TearBakeSheet {
   part: 'body' | 'strip';
   /** +1 face avant, −1 dos */
@@ -22,8 +27,11 @@ export interface TearBakeSheet {
   ys: number[];
   /** premier sommet de la nappe */
   base: number;
+  nx?: number;
+  xs?: number[];
+  hole?: [number, number, number, number];
 }
-export type TearBakeScenario = 'tear' | 'retrousse';
+export type TearBakeScenario = 'tear' | 'retrousse' | 'fenetre';
 /**
  * Rupture enregistrée (Retroussé) : `lock` = premier paquet de la soudure du haut (le verrou), `top` = paquets
  * suivants, `side` = un cran d'une soudure latérale, `land` = FIN DU LÂCHER (sortie) : les pinces ont fini de lâcher,
@@ -33,7 +41,8 @@ export type TearBakeScenario = 'tear' | 'retrousse';
  * `f` : intensité 0..1 (relative : écart avant / dos des liens rompus, rapporté au plus grand du même type).
  */
 export interface TearBakeEvent {
-  k: 'lock' | 'top' | 'side' | 'land';
+  /** (27/11, Fenêtre) `corner` = un coin de la pile perce le film, `free` = le dernier lien du contour cède */
+  k: 'lock' | 'top' | 'side' | 'land' | 'corner' | 'free';
   p?: number;
   t?: number;
   x: -1 | 0 | 1;
@@ -74,6 +83,20 @@ export interface TearBakeHeader {
   scenario?: TearBakeScenario;
   events?: TearBakeEvent[];
   fold?: TearBakeFold;
+  /** (Fenêtre) part du contour rompue à chaque image de la phase pilotée (`cut.length === nTear`) */
+  cut?: number[];
+  /** (Fenêtre) contour du trou, avancée de la pile à p = 1 (`push`), sortie (`out` en `outDur` s), chute du panneau */
+  window?: TearBakeWindow;
+}
+export interface TearBakeWindow {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  push: number;
+  out: number;
+  outDur: number;
+  dropAt: number;
 }
 
 export interface TearBake {

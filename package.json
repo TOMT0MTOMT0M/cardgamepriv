@@ -21,6 +21,7 @@
     "check:images": "esbuild scripts/verifier-images.mts --bundle --platform=node --format=esm --outfile=.cache/verifier-images.mjs --log-level=warning && node .cache/verifier-images.mjs",
     "bake:tear": "esbuild scripts/bake-tear/bake.mts --bundle --platform=node --format=esm --outfile=.cache/bake-tear.mjs --log-level=warning && node .cache/bake-tear.mjs",
     "bake:retrousse": "esbuild scripts/bake-tear/bake.mts --bundle --platform=node --format=esm --outfile=.cache/bake-tear.mjs --log-level=warning && node .cache/bake-tear.mjs --scenario=retrousse",
+    "bake:fenetre": "esbuild scripts/bake-tear/bake.mts --bundle --platform=node --format=esm --outfile=.cache/bake-tear.mjs --log-level=warning && node .cache/bake-tear.mjs --scenario=fenetre",
     "feedback": "node scripts/pull-feedback.mjs",
     "agent": "esbuild scripts/agent/agent.mts --bundle --platform=node --format=esm --packages=external --outfile=.cache/agent.mjs --log-level=warning && node .cache/agent.mjs",
     "r2:sync": "node scripts/r2-sync.mjs",

@@ -32,6 +32,8 @@ export interface TearBake {
 export const BAKE_REV = 2;
 /** (27/11) idem pour le Retroussé (npm run bake:retrousse) : `public/bake/retrousse-N.tear` */
 export const BAKE_REV_RETROUSSE = 1;
+/** (27/11) idem pour la Fenêtre (npm run bake:fenetre) : `public/bake/fenetre-N.tear` */
+export const BAKE_REV_FENETRE = 1;
 
 /**
  * (27/11, Retroussé) pas de la tête de lecture pendant la phase pilotée : 1/ROLL_STEP d'image enregistrée (≈ 1/1 500
@@ -45,10 +47,11 @@ const ROLL_STEP = 16;
  * (27/11, Retroussé) FAMILLES de cuissons : une par geste. On ne charge que celle de l'ouverture choisie (la Déchirure
  * pour tout le reste : glace, étoile, éventail compris). Mêmes URL qu'avant pour la Déchirure.
  */
-export type BakeFamily = 'tear' | 'retrousse';
+export type BakeFamily = 'tear' | 'retrousse' | 'fenetre';
 const FAMILIES: Record<BakeFamily, { n: number; rev: number }> = {
   tear: { n: 3, rev: BAKE_REV },
   retrousse: { n: 2, rev: BAKE_REV_RETROUSSE },
+  fenetre: { n: 2, rev: BAKE_REV_FENETRE },
 };
 interface FamilyState {
   loading: Promise<TearBake | null>[] | null;
@@ -60,6 +63,7 @@ interface FamilyState {
 const state: Record<BakeFamily, FamilyState> = {
   tear: { loading: null, loaded: [], gen: 0 },
   retrousse: { loading: null, loaded: [], gen: 0 },
+  fenetre: { loading: null, loaded: [], gen: 0 },
 };
 
 async function fetchBake(fam: BakeFamily, i: number): Promise<TearBake | null> {
@@ -147,7 +151,7 @@ export class TearBakePlayer {
     const h = bake.header;
     const body = h.sheets.filter((s) => s.part === 'body');
     const strip = h.sheets.filter((s) => s.part === 'strip');
-    this.bodyN = body.reduce((a, s) => a + s.ny * h.nx, 0);
+    this.bodyN = body.reduce((a, s) => a + s.ny * (s.nx ?? h.nx), 0);
     this.body = this.build(body, 0);
     this.strip = this.build(strip, this.bodyN);
     this.bodyPos = this.body.getAttribute('position').array as Float32Array;
@@ -177,9 +181,8 @@ export class TearBakePlayer {
 
   private build(sheets: TearBakeHeader['sheets'], offset: number): BufferGeometry {
     const h = this.bake.header;
-    const nx = h.nx;
     let n = 0;
-    for (const s of sheets) n += s.ny * nx;
+    for (const s of sheets) n += s.ny * (s.nx ?? h.nx);
     const pos = new Float32Array(n * 3);
     const nrm = new Float32Array(n * 3);
     const uv = new Float32Array(n * 2);
@@ -188,10 +191,12 @@ export class TearBakePlayer {
     const groups: Array<[number, number, number]> = [];
     for (const s of sheets) {
       const base = s.base - offset;
+      // (27/11, Fenêtre) colonnes propres à la nappe, x de repos de chaque colonne, cellules du trou sans triangles
+      const nx = s.nx ?? h.nx, xs = s.xs, hole = s.hole;
       for (let j = 0; j < s.ny; j++)
         for (let i = 0; i < nx; i++) {
           const k = base + j * nx + i;
-          const u = i / (nx - 1);
+          const u = xs ? xs[i] / PACK.w + 0.5 : i / (nx - 1);
           const v = s.ys[j] / PACK.h + 0.5;
           uv[k * 2] = s.side > 0 ? u : 1 - u;
           uv[k * 2 + 1] = v;
@@ -200,6 +205,7 @@ export class TearBakePlayer {
       const start = idx.length;
       for (let j = 0; j < s.ny - 1; j++)
         for (let i = 0; i < nx - 1; i++) {
+          if (hole && i >= hole[0] && i < hole[1] && j >= hole[2] && j < hole[3]) continue;
           const a = base + j * nx + i, b = a + 1, c = a + nx, d = c + 1;
           if (s.side > 0) idx.push(a, b, d, a, d, c);
           else idx.push(a, d, b, a, c, d);
@@ -295,9 +301,10 @@ export class TearBakePlayer {
   }
 
   private normals(sheets: TearBakeHeader['sheets'], P: Float32Array, N: Float32Array, offset: number) {
-    const nx = this.bake.header.nx;
+    const hnx = this.bake.header.nx;
     for (const s of sheets) {
       const base = s.base - offset;
+      const nx = s.nx ?? hnx;
       for (let j = 0; j < s.ny; j++) {
         const j0 = Math.max(0, j - 1), j1 = Math.min(s.ny - 1, j + 1);
         for (let i = 0; i < nx; i++) {
