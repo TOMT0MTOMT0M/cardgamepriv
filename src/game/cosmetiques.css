@@ -68,8 +68,11 @@ span.pf-title.ts.ts-light { --t-col: var(--tc); padding: 0; border-width: 0; bac
 @keyframes ac-drift { from { translate: -14px 0; } to { translate: 14px 0; } }
 @keyframes ac-flick { 0%, 40%, 100% { opacity: 1; } 43% { opacity: 0.3; } 46% { opacity: 1; } 70% { opacity: 0.85; } 72% { opacity: 0.35; } 75% { opacity: 1; } }
 
-/* ── badges : une icône au trait à la place du glyphe ── */
-.pf-badge .ic { color: var(--ink-2); }
+/* ── badges : le médaillon (src/game/badgeArt.ts), 20 px, aligné au centre du libellé ── */
+.bd { display: inline-block; flex: none; width: 20px; height: 20px; vertical-align: -0.3em; }
+span.pf-badge { padding: 2px 9px 2px 3px; gap: 6px; line-height: 1; }
+span.pf-badge > .bd { margin: 0; }
+.sc-cos .bd { display: inline-block; width: 16px; height: 16px; vertical-align: -0.28em; }
 
 /* ── page Profil : la photo et son cadre dessiné (remplace l'anneau en `box-shadow` et le calque `.pf-fx`) ── */
 .pf-ava-wrap .pf-ring.cf { display: block; width: 92px; height: 92px; margin: 14px 26px 14px 22px; }

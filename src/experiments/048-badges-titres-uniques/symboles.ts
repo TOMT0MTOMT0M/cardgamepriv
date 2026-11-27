@@ -3,27 +3,7 @@
  * ±24. Le médaillon (insigne()) les pose au centre dans la teinte du titre ; les « creux » sont en noir de médaillon.
  * Trait par défaut : 3, bouts ronds. Remplir = F / CF / EF ; trait = S / CS ; creux = K / CK / KS.
  */
-const NOIR = '#08080a';
-const F = (d: string) => `<path d="${d}" fill="currentColor" stroke="none"/>`;
-const S = (d: string, w = 3) => `<path d="${d}" stroke-width="${w}"/>`;
-const K = (d: string) => `<path d="${d}" fill="${NOIR}" stroke="none"/>`;
-const KS = (d: string, w = 2) => `<path d="${d}" stroke="${NOIR}" stroke-width="${w}"/>`;
-const CF = (x: number, y: number, r: number) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" stroke="none"/>`;
-const CS = (x: number, y: number, r: number, w = 3) => `<circle cx="${x}" cy="${y}" r="${r}" stroke-width="${w}"/>`;
-const CK = (x: number, y: number, r: number) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${NOIR}" stroke="none"/>`;
-const EF = (x: number, y: number, rx: number, ry: number) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="currentColor" stroke="none"/>`;
-const rot = (a: number, inner: string, cx = 0, cy = 0) => `<g transform="rotate(${a} ${cx} ${cy})">${inner}</g>`;
-const poly = (n: number, R: number, a0 = -90) =>
-  Array.from({ length: n }, (_, i) => {
-    const a = ((a0 + (360 / n) * i) * Math.PI) / 180;
-    return `${i ? 'L' : 'M'}${(R * Math.cos(a)).toFixed(1)},${(R * Math.sin(a)).toFixed(1)}`;
-  }).join(' ') + 'Z';
-const star = (n: number, R: number, r: number, a0 = -90) =>
-  Array.from({ length: n * 2 }, (_, i) => {
-    const a = ((a0 + (180 / n) * i) * Math.PI) / 180;
-    const rr = i % 2 ? r : R;
-    return `${i ? 'L' : 'M'}${(rr * Math.cos(a)).toFixed(1)},${(rr * Math.sin(a)).toFixed(1)}`;
-  }).join(' ') + 'Z';
+import { F, S, K, KS, CF, CS, CK, EF, rot, poly, star } from '../../game/badgeArt';
 const SIX = 'M5,-12 C-4,-10 -7,-2 -7,5 C-7,10 -4,13 0,13 C4,13 7,10 7,6 C7,2 4,-1 0,-1 C-3,-1 -6,1 -7,4';
 
 export const SYMBOLES: Record<string, string> = {
@@ -41,16 +21,23 @@ export const SYMBOLES: Record<string, string> = {
   // --- anime et manga
   leaf: F('M0,-23 C16,-17 22,4 2,22 C-20,8 -18,-14 0,-23Z') + KS('M0,-14 C-2,-4 -1,8 2,18', 2.2) + KS('M-1,-3 L-9,-9 M0,5 L8,-2', 1.8),
   clover: CF(-8, -8, 9) + CF(8, -8, 9) + CF(-8, 8, 9) + CF(8, 8, 9) + KS('M-17,0 H17 M0,-17 V17', 2.4) + S('M6,14 Q12,20 10,24', 3),
-  katana: S('M21,-21 L-6,6', 8) + CF(-8, 8, 7) + S('M-9,9 L-20,20', 7.5) + CK(-8, 8, 2.4),
+  katana:
+    F('M23,-23 C13,-19 1,-8 -7,5 L-3,9 C7,1 18,-10 23,-23Z') +
+    rot(-45, EF(-6, 8, 3.6, 8.5), -6, 8) +
+    S('M-9,11 L-19,21', 6) + KS('M-13,13 L-11,15 M-16,16 L-14,18', 1.6) +
+    S('M-22,-4 A24,24 0 0 1 -4,-22', 2.2) + S('M22,4 A24,24 0 0 1 4,22', 2.2),
   flame: F('M0,-24 C4,-12 18,-8 18,6 C18,16 10,23 0,23 C-10,23 -18,16 -17,6 C-16,-2 -10,-6 -8,-14 C-4,-10 -2,-8 -2,-4 C2,-10 2,-18 0,-24Z') + K('M0,22 C-6,22 -9,17 -8,12 C-7,8 -3,6 -1,2 C3,7 8,9 8,15 C8,19 5,22 0,22Z'),
   magnifier: CS(-4, -4, 13, 4) + S('M6,6 L20,20', 6) + S('M-12,-8 A9,9 0 0 1 -6,-13', 2),
-  spikes: F('M-4,24 C-14,10 -8,2 -14,-6 L-4,-4 L-10,-18 L2,-10 L2,-24 L10,-8 L18,-14 L14,2 L20,6 C14,10 12,16 8,24Z') + K('M-2,22 C-6,14 -2,10 0,4 C4,10 6,14 4,22Z'),
+  spikes:
+    F('M-12,3 L-19,-5 L-11,-8 L-15,-20 L-6,-13 L-2,-25 L3,-14 L10,-22 L10,-10 L19,-14 L12,3Z') +
+    F('M-10,1 H10 V10 C10,20 -10,20 -10,10Z') + KS('M-7,6 L-2,8.5 M7,6 L2,8.5', 2.2) +
+    S('M-23,12 L-19,8 M23,12 L19,8 M-24,-6 L-21,-4 M24,-6 L21,-4', 2.6),
   magiccircle: CS(0, 0, 21, 2.5) + S('M0,-17 L15,9 L-15,9Z M0,17 L-15,-9 L15,-9Z', 2.5) + CF(0, 0, 3),
   oni:
     F('M-17,-8 C-17,-18 -9,-20 0,-20 C9,-20 17,-18 17,-8 L15,10 C13,18 6,23 0,23 C-6,23 -13,18 -15,10Z M-15,-14 L-22,-24 L-8,-18Z M15,-14 L22,-24 L8,-18Z') +
     K('M-12,-6 L-3,-3 L-4,2 L-12,0Z M12,-6 L3,-3 L4,2 L12,0Z M-6,12 L-4,18 L-2,12Z M2,12 L4,18 L6,12Z') +
     KS('M-9,12 H9', 2.4),
-  volley: CS(0, 5, 17, 3) + S('M0,5 V-12 M0,5 L-15,13 M0,5 L15,13', 2.6) + S('M-14,-4 C-6,-5 -2,-1 0,5 M14,-4 C6,-5 2,-1 0,5', 2) + S('M-8,-19 L0,-25 L8,-19', 2.6),
+  volley: CS(0, 6, 16, 3) + S('M-3,-9 C0,-2 8,3 16,4 M-15,0 C-6,1 -1,6 -3,22 M12,-6 C6,0 4,8 10,19', 2.4) + S('M-7,-17 L0,-23 L7,-17', 2.8),
   spiral: S('M0,0 C0,-3 4,-3 4,0 C4,6 -6,6 -6,-2 C-6,-12 10,-12 10,0 C10,16 -14,16 -14,-4 C-14,-22 18,-22 18,0', 3.2),
   bolt: F('M6,-24 L-14,3 H-2 L-6,24 L14,-4 H2Z'),
   arrow: F('M0,-24 L14,2 L0,-4 L-14,2Z') + S('M0,-4 V22', 4) + S('M-8,24 L0,14 L8,24', 3),
@@ -67,14 +54,19 @@ export const SYMBOLES: Record<string, string> = {
   kodama:
     rot(-10, F('M-12,-18 C-4,-24 14,-22 16,-8 C18,6 12,16 0,16 C-14,16 -18,4 -16,-8 C-16,-12 -14,-16 -12,-18Z M-5,15 C-8,24 8,24 5,15Z') + CK(-6, -6, 3.4) + CK(7, -5, 3.4) + CK(0, 6, 2.8)),
   // --- cinéma et musique
-  skyline: F('M-22,22 V2 H-10 V22Z M-8,22 V-10 H4 V22Z M-3,-10 V-22 H1 V-10Z M6,22 V-2 H22 V22Z') + KS('M-2,-4 V2 M-2,8 V14 M13,6 V12', 2.4),
+  skyline:
+    S('M-12,-4 A15,15 0 0 1 12,-4', 2.4) + CF(0, -12, 2.2) +
+    F('M-23,22 V4 H-11 V22Z M-9,22 V-6 H3 V22Z M-3,-6 V-17 H0 V-6Z M5,22 V0 H13 V22Z M15,22 V8 H23 V22Z') +
+    KS('M-6,0 V4 M-6,9 V13 M9,6 V10 M9,14 V18', 2.2),
   glasses: CS(-10, 3, 9, 3.6) + CS(10, 3, 9, 3.6) + S('M-1,1 H1', 3) + F('M4,-23 L-3,-14 H1 L-2,-8 L6,-17 H2Z'),
   starshield: CS(0, 0, 22, 3) + CS(0, 0, 15, 1.8) + F(star(5, 12, 5)),
   vinyl: CS(0, 0, 22, 3) + CS(0, 0, 15, 1.6) + F('M0,-9 L6.5,0 L0,9 L-6.5,0Z') + S('M-17,-9 A19,19 0 0 1 -9,-17', 2),
   note: CF(-10, 15, 6) + CF(10, 11, 6) + S('M-4,15 V-14 M16,11 V-18', 3.4) + F('M-4,-14 L16,-18 V-10 L-4,-6Z'),
   mic: F('M-8,-21 a8,8 0 0 1 16,0 V0 a8,8 0 0 1 -16,0Z') + KS('M-8,-13 H8 M-8,-7 H8', 1.6) + S('M-14,-4 V0 A14,14 0 0 0 14,0 V-4', 3) + S('M0,14 V22 M-7,22 H7', 3),
-  gramophone: F('M-6,6 L8,-22 Q26,-22 24,0 Q22,10 8,10Z') + KS('M10,-14 Q16,-8 12,2', 2.2) + F('M-22,12 H4 V22 H-22Z') + S('M-8,8 V12', 4),
-  statuette: CF(0, -19, 4.5) + F('M-5,-13 H5 C8,-8 6,0 5,6 L6,14 H-6 L-5,6 C-6,0 -8,-8 -5,-13Z M-10,14 H10 V18 H-10Z M-14,18.5 H14 V23 H-14Z'),
+  gramophone:
+    F('M5.8,-23.2 L24.2,-4.8 L-7,6Z') + rot(45, EF(15, -14, 13, 5.6), 15, -14) + rot(45, K(`M6,-14 a9,3 0 1 0 18,0 a9,3 0 1 0 -18,0Z`), 15, -14) +
+    S('M-7,6 V13', 4) + F('M-19,14 H5 V22 H-19Z'),
+  statuette: CF(0, -18, 5.2) + F('M-7,-11 H7 C10,-4 6,2 5,7 L8,14 H-8 L-5,7 C-6,2 -10,-4 -7,-11Z M-11,14 H11 V18 H-11Z M-16,18.5 H16 V23 H-16Z') + KS('M-3,-6 V3 M3,-6 V3', 1.6),
   // --- sports de combat
   glove: F('M-16,-4 C-16,-18 -4,-22 6,-20 C16,-18 20,-8 18,2 C17,8 12,10 6,10 H-12Z M-14,13 H8 V22 H-14Z') + KS('M-6,-6 C0,-6 6,-4 8,2', 2.6),
   belt: F('M-24,-7 H-10 V7 H-24Z M10,-7 H24 V7 H10Z') + EF(0, 0, 13, 19) + CK(0, 0, 8) + CS(0, 0, 4.5, 2.2) + KS('M-17,0 H-24 M17,0 H24', 1),
@@ -104,10 +96,13 @@ export const SYMBOLES: Record<string, string> = {
   helmet: F('M-22,6 C-22,-12 -10,-22 4,-20 C16,-18 24,-8 24,4 V12 H-8 C-14,12 -22,12 -22,6Z M-8,15 H20 V21 H-8Z') + K('M6,-10 C14,-10 20,-6 22,0 V4 H2 C-2,4 -2,-10 6,-10Z') + KS('M-19,0 H-4', 2.6),
   tire: `<circle r="20" stroke-width="7" stroke-dasharray="5 4.2"/>` + CS(0, 0, 12, 2.2) + CS(0, 0, 6, 2.4) + CF(0, 0, 2.2),
   // --- nature et animaux
-  dino: F('M-14,22 C-14,12 -10,8 0,8 C10,8 14,12 14,22Z') + EF(-15, -2, 4, 7) + EF(-5, -11, 4, 7.5) + EF(5, -11, 4, 7.5) + EF(15, -2, 4, 7),
+  dino:
+    F('M-23,-2 C-23,-16 -9,-21 3,-19 C15,-17 24,-10 24,-2 V3 H-23Z') +
+    F('M-23,8 H21 C21,13 19,17 14,17 H-17 C-21,17 -23,13 -23,8Z') +
+    F('M-1,3 L2,9.5 L5,3Z M8,3 L11,9.5 L14,3Z M17,3 L19.5,8.5 L22,3Z') + CK(5, -9, 3.2) + CK(19, -8, 1.5),
   beetle: EF(0, 6, 12, 16) + CF(0, -14, 6) + KS('M0,-10 V22', 2) + S('M-12,0 L-22,-6 M-12,8 L-22,12 M-11,15 L-20,22 M12,0 L22,-6 M12,8 L22,12 M11,15 L20,22 M-3,-19 L-8,-24 M3,-19 L8,-24', 2.8),
   antlers: S('M-5,10 C-10,2 -16,-6 -15,-22 M-12,-3 L-22,-7 M-14,-13 L-8,-18', 3.4) + S('M5,10 C10,2 16,-6 15,-22 M12,-3 L22,-7 M14,-13 L8,-18', 3.4) + F('M-6,9 H6 L4,22 H-4Z'),
-  bird: F('M0,2 C-8,-14 -18,-14 -26,-8 C-20,-2 -14,4 -12,10 C-6,6 -3,8 0,14 C3,8 6,6 12,10 C14,4 20,-2 26,-8 C18,-14 8,-14 0,2Z M-3,10 L0,24 L3,10Z'),
+  bird: S('M-24,-8 C-14,-20 -5,-14 0,2 C5,-14 14,-20 24,-8', 4.6) + F('M-4.5,0 C-4.5,-6 4.5,-6 4.5,0 L0,23Z') + F('M-9,10 L0,18 L9,10 L0,22Z'),
   snake: S('M-14,-18 C8,-24 14,-6 -2,-2 C-18,2 -14,18 10,16', 5.4) + EF(14, 16, 5.5, 4.2) + S('M19,16 L24,18', 1.8) + CK(14, 15, 1.2),
   fish: F('M-22,0 C-12,-14 8,-14 14,0 C8,14 -12,14 -22,0Z M12,0 L24,-12 V12Z') + CK(-13, -2, 2.4) + KS('M-4,-10 C-1,-4 -1,4 -4,10', 2),
   burr: Array.from({ length: 12 }, (_, k) => rot(k * 30, S('M0,-12 V-23', 3.2))).join('') + CF(0, 0, 14) + CK(0, 2, 6.5) + EF(0, 3, 3.6, 4.4),

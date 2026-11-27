@@ -26,6 +26,12 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 Nov', title: 'Badges become medallions', tag: 'amélioré',
+        points: [
+          '🏅 Profile badges are now drawn medallions (booster, cup, book, star, padlock, flame…), each with its own tint.',
+        ],
+      },
+      {
         date: '27 Nov', title: 'Handier everywhere: collection, market, forge, friends', tag: 'amélioré',
         points: [
           '📚 Collection: an “Almost done” row at the top of Albums, with the albums where you’re only 1 to 3 cards short (“−2” on the cover).',

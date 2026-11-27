@@ -61,6 +61,12 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 nov.', title: 'Des badges en médaillons', tag: 'amélioré',
+        points: [
+          '🏅 Les badges du profil deviennent des médaillons dessinés (booster, coupe, livre, étoile, cadenas, flamme…), chacun avec sa teinte.',
+        ],
+      },
+      {
         date: '27 nov.', title: 'Plus pratique partout : collection, marché, forge, amis', tag: 'amélioré',
         points: [
           '📚 Collection : une rangée « Presque finis » en tête des albums, avec ceux où il ne te manque que 1 à 3 cartes (« −2 » sur la pochette).',
