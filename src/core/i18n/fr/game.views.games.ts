@@ -128,6 +128,7 @@ export const fr = {
   'gm.newGame': 'Nouvelle partie',
   'gm.table': 'La table · {n} numéros',
   'gm.pot': 'Le pot',
+  'gm.potSee': '{name} : voir la fiche',
   'gm.lastDraws': 'Derniers tirages',
   'gm.alreadyBet': 'Tu as déjà misé pour ce tirage.',
   'gm.maxNumbers': '{n} numéros au plus par tirage.',

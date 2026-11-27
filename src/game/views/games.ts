@@ -46,6 +46,7 @@ import '../games.css';
 import '../casino.css';
 import { createRouletteWheel } from './rouletteWheel';
 import { markRouletteSeen } from './rouletteReplay';
+import { showCardPanel } from './cardPanel';
 import { flip, leave, rollNumber } from '../../core/morph';
 import { DUR, EASING, SPRING, reducedMotion } from '../../core/motion';
 import { Spring } from '../../core/ease';
@@ -1282,11 +1283,15 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         const pot = body.querySelector<HTMLElement>('.gm-pot')!;
         pot.replaceChildren();
         if (round) {
-          for (const c of round.houseCards) {
-            const t = cardTile(c.cardId, c.rarity, { mini: true, label: 'offerte' });
+          // (27/11, V3) chaque carte du pot se touche : sa fiche en grand (écouteur délégué sur .gm-pot, plus bas)
+          const potTile = (t: HTMLElement, cardId: string) => {
+            t.setAttribute('role', 'button');
+            t.tabIndex = 0;
+            t.setAttribute('aria-label', tr('gm.potSee', { name: cardName(cardId) }));
             pot.append(t);
-          }
-          for (const c of [...round.carriedCards, ...round.bets.flatMap((b) => b.cards)]) pot.append(cardTile(c.cardId, c.rarity, { mini: true, count: c.count }));
+          };
+          for (const c of round.houseCards) potTile(cardTile(c.cardId, c.rarity, { mini: true, label: 'offerte' }), c.cardId);
+          for (const c of [...round.carriedCards, ...round.bets.flatMap((b) => b.cards)]) potTile(cardTile(c.cardId, c.rarity, { mini: true, count: c.count }), c.cardId);
         }
         body.querySelector<HTMLElement>('.gm-past')!.innerHTML = r.past.length
           ? r.past.map((p) => `<div class="gm-pastrow"><b class="gm-ball${p.result?.number ? ` c-${rouletteColor(p.result.number)}` : ''}">${p.result?.number ?? '?'}</b><span>${esc(p.day)} · ${p.result?.winnerName ? `<b>${esc(p.result.winnerName)}</b> remporte ${fmtCoins(p.result.potValue)} de valeur${p.result.byColor ? ` ${tr('gm.col.byColor')}` : ''}` : tr('gm.nobodyCarry', { pot: fmtCoins(p.result?.potValue ?? 0) })}</span></div>`).join('')
@@ -1306,6 +1311,14 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
      * grand par-dessus la table.
      */
     let spinning = false;
+    // (27/11, V3) toucher une carte du pot = sa fiche en grand (comme au Marché) ; UN écouteur sur le pot (redessiné à
+    // chaque mise à jour) ; rien ne s'ouvre par-dessus un tirage en cours
+    const potEl = body.querySelector<HTMLElement>('.gm-pot')!;
+    potEl.addEventListener('click', (e) => {
+      const t = (e.target as Element).closest<HTMLElement>('.tile[data-card]');
+      if (!t || !potEl.contains(t) || spinning) return;
+      showCardPanel(backend, t.dataset.card!);
+    });
     async function spin(number: number, winner?: string, byColor?: boolean) {
       if (spinning) return;
       spinning = true;

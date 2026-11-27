@@ -129,6 +129,7 @@ export const en: PartOf<typeof fr> = {
   'gm.newGame': 'New game',
   'gm.table': 'The table · {n} numbers',
   'gm.pot': 'The pot',
+  'gm.potSee': '{name}: see the card',
   'gm.lastDraws': 'Latest draws',
   'gm.alreadyBet': 'You’ve already bet on this draw.',
   'gm.maxNumbers': '{n} numbers max per draw.',
