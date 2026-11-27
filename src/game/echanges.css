@@ -161,8 +161,10 @@
 @media (max-width: 860px) {
   .ex-head { padding-bottom: 12px; }
   .ex-head .kicker { display: none; }
-  .ex-tabs { display: flex; width: 100%; }
-  .ex-tabs button { flex: 1; min-width: 0; padding: 0 4px; letter-spacing: 0.04em; } /* (17/11) 4 onglets avec « Historique » */
+  .ex-tabs { display: flex; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .ex-tabs::-webkit-scrollbar { display: none; }
+  /* (17/11) 4 onglets avec « Historique » ; (v2.1.37) jamais sur 2 lignes ni hors du cadre : ils défilent si le texte du téléphone est grand */
+  .ex-tabs button { flex: 1 0 auto; padding: 0 8px; letter-spacing: 0.04em; white-space: nowrap; }
   .ex-search .ex-q { flex-basis: 100%; max-width: none; font-size: 16px; }
   .ex-results, .fy-deals, .fy-want-list, .ex-cours .pending { grid-template-columns: 1fr; }
   .ex-cherche .mk-head { margin-top: 0; }
