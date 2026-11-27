@@ -506,6 +506,7 @@ export function createOnlineBackend(): GameBackend {
     async marketBuy(id, price) {
       await net.call(api.market.buy, { id: id as Id<'market'>, price });
     },
+    watchWishSales: (cb) => net.watch(api.market.alerts, {}, (rows) => cb(rows ?? []), true, () => cb([])),
     async createListing(items, wanted, note, hours) {
       await net.call(api.listings.create, { items, wanted, note, hours });
     },

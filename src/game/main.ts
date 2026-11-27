@@ -22,6 +22,7 @@ import { armPin, clearPins, payOut } from './views/coinHopper';
 import { contractsRetired, fmtCoins } from '../core/economy';
 import { collectionSig, liveRegen, packCapOfMe, type GameBackend } from './backend';
 import { boardAttention } from './backend';
+import { wishSales } from './wishSales';
 import { PACK_REGEN_MS, boostLeft, fmtCountdown } from '../core/packRegen';
 import { initLang, lang, onLang, setLang, t as tr } from './lang';
 import type { MsgKey } from '../core/i18n';
@@ -132,6 +133,8 @@ const backend: GameBackend = await backendP.catch((e: unknown) => {
 });
 // (V2) notifications push : si cet appareil est abonné, on resynchronise l'abonnement (clés, compte)
 if (backend.state.mode === 'online') backend.onChange((st) => void (st.ready && st.user && syncPushOnce()));
+// (V3, C bis) pastille « une carte que tu veux est en vente » sur « Marché » (src/game/wishSales.ts)
+if (backend.state.mode === 'online') backend.onChange((st) => void (st.ready && st.user && wishSales.start(backend)));
 let pushSynced = false;
 function syncPushOnce() {
   if (pushSynced) return;
@@ -504,7 +507,7 @@ function renderMe() {
   // erreur de connexion (code Discord traduit, session expirée) : un message visible aussi sur téléphone
   if (s.authError && s.authError !== lastAuthError) toast(s.authError, 'err');
   lastAuthError = s.authError;
-  const sig = JSON.stringify([s.mode, s.ready, u?.id, u?.name, u?.avatarUrl, u?.packStored, u?.packRegenAt, s.trades.incoming.length, boardAttention(s)]);
+  const sig = JSON.stringify([s.mode, s.ready, u?.id, u?.name, u?.avatarUrl, u?.packStored, u?.packRegenAt, s.trades.incoming.length, boardAttention(s), wishSales.unseen()]);
   if (sig === meSig) return;
   meSig = sig;
   // démo : un petit « démo » reste visible au téléphone ; le toucher explique (le `title` n'existe pas au doigt)
@@ -599,9 +602,11 @@ function renderMe() {
   const n = s.trades.incoming.length + nb;
   if (lastBoard >= 0 && nb > lastBoard && currentRoute !== 'echanges') toast(tr('hdr.boardNews'), 'info');
   lastBoard = nb;
-  const badgeChanged = tradeBadge.hidden !== (n === 0) || tradeBadge.textContent !== String(n);
-  tradeBadge.hidden = n === 0;
-  tradeBadge.textContent = String(n);
+  // (V3, C bis) + les cartes voulues mises en vente depuis la dernière visite d'« Acheter »
+  const nt = n + wishSales.unseen();
+  const badgeChanged = tradeBadge.hidden !== (nt === 0) || tradeBadge.textContent !== String(nt);
+  tradeBadge.hidden = nt === 0;
+  tradeBadge.textContent = String(nt);
   if (badgeChanged) placePill(false);
   // un ami vient de proposer un échange (et on n'est pas déjà sur la page des échanges) : petit message
   if (lastIncoming >= 0 && n - nb > lastIncoming && currentRoute !== 'echanges') {
@@ -1323,6 +1328,7 @@ async function boot() {
     if (m) m.textContent = failMsg();
   });
   backend.onChange(renderMe);
+  wishSales.onChange(renderMe);
   backend.onChange(() => updateFresh());
   route();
   // (visionneuse : PAS montée sous l'écran de chargement : l'attendre ici allongerait le chargement. Son module est

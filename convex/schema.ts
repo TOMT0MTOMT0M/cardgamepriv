@@ -640,6 +640,17 @@ export default defineSchema({
     .index('by_buyer', ['buyerId', 'resolvedAt'])
     /** (audit 12/11, décision 10) annonces d'UNE carte (fiche carte) sans relire les 300 dernières annonces */
     .index('by_card_status', ['cardId', 'status']),
+  /**
+   * (V3, C bis) ALERTE ACHETEUR — convex/market.ts : la dernière alerte « une carte que tu veux est en vente » envoyée à
+   * `userId` pour une vente de `sellerId`. Une ligne par (acheteur, vendeur), réécrite : plafond anti-spam (1 par vendeur
+   * et par heure) et pastille du Marché (`market:alerts`). Table nouvelle : rien ne change pour la V2.
+   */
+  wishAlerts: defineTable({
+    userId: v.id('users'),
+    sellerId: v.id('users'),
+    at: v.number(),
+    cardId: v.string(),
+  }).index('by_user_seller', ['userId', 'sellerId']),
 
   /**
    * TABLEAU D'OFFRES (retours live 02, lot T — convex/listings.ts) : une ANNONCE = des cartes proposées (verrouillées
