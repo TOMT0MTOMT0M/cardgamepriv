@@ -186,7 +186,7 @@ type SaleCard = WantCard & { price: number };
  * Lectures : `wantersOf` (1 à 3 lectures d'index d'envies par carte, puis 1 présence + 1 inventaire par intéressé),
  * puis par joueur prévenu 1 ligne `wishAlerts` (+ le joueur et ses abonnements dans `notify`). Rend le nombre de prévenus.
  */
-export async function alertWishers(ctx: MutationCtx, me: { _id: Id<'users'>; displayName: string }, cards: readonly SaleCard[]): Promise<number> {
+export async function alertWishers(ctx: MutationCtx, me: { _id: Id<'users'>; displayName: string }, cards: readonly SaleCard[], opts: { auction?: boolean } = {}): Promise<number> {
   // les intéressés, regroupés : joueur → ses cartes (dans l'ordre du lot)
   const per = new Map<Id<'users'>, SaleCard[]>();
   for (const [cardId, ids] of await wantersOf(ctx, me._id, cards))
@@ -202,7 +202,10 @@ export async function alertWishers(ctx: MutationCtx, me: { _id: Id<'users'>; dis
     const c = l[0];
     if (row) await ctx.db.patch(row._id, { at: now, cardId: c.cardId });
     else await ctx.db.insert('wishAlerts', { userId: id, sellerId: me._id, at: now, cardId: c.cardId });
-    const body = l.length === 1 ? fm('n.wishSaleOne', { card: nameOf(c.cardId), cardId: c.cardId, coins: c.price }) : fm('n.wishSaleMany', { card: nameOf(c.cardId), cardId: c.cardId, coins: c.price, n: l.length - 1 });
+    // (enchères : `price` = la mise à prix ; « le premier qui achète l'a » ne vaut pas pour elles)
+    const one = opts.auction ? 'n.wishAuctionOne' : 'n.wishSaleOne';
+    const many = opts.auction ? 'n.wishAuctionMany' : 'n.wishSaleMany';
+    const body = l.length === 1 ? fm(one, { card: nameOf(c.cardId), cardId: c.cardId, coins: c.price }) : fm(many, { card: nameOf(c.cardId), cardId: c.cardId, coins: c.price, n: l.length - 1 });
     await notify(ctx, id, { kind: 'trade', title: fm('n.wishSale', { name: me.displayName, n: l.length }), body, url: '#/echanges/chercher', tag: `wish-sale-${me._id}` });
     n++;
   }
