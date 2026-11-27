@@ -71,6 +71,13 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        // (v2.1.42) dernière carte sans illustration (image fournie par Hugo)
+        date: '28 nov.', title: '🖼️ Jubelle a son illustration', tag: 'corrigé',
+        points: [
+          '🖼️ Jubelle (Summoners War) était la seule carte encore sans image : elle a maintenant son illustration, dans la collection comme en grand.',
+        ],
+      },
+      {
         // (v2.1.41) « Forge → vente » (idée de Hugo)
         date: '28 nov.', title: '🔥 Forge → vente : tes doublons voulus partent au marché en un toucher', tag: 'nouveau',
         points: [

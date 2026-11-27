@@ -3885,9 +3885,9 @@
 "src": "fourni-hugo:jv-summoners-war-darion.jpg"
 },
 "jv-summoners-war-jubelle": {
-"miss": [
-"aucune source (icônes 102 px)"
-]
+"file": "summoners-war-jubelle-r2611272029.jpg",
+"art": "c",
+"src": "reillustre:jv-summoners-war-jubelle.png"
 },
 "jv-summoners-war-ahman": {
 "file": "summoners-war-ahman.jpg",
