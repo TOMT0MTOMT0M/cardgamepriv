@@ -26,6 +26,16 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '28 Nov', title: '🔥 Forge → sale: your wanted duplicates go to the market in one tap', tag: 'nouveau',
+        points: [
+          '🔥 When you forge, if other players want some of your cards (a wish for the card, its album or its family), the Forge offers to put them up for sale. One tap: they go to the market, the rest is forged.',
+          '🪙 Suggested price = 1.5× the Forge value: 1★ 8 · 2★ 23 · 3★ 60 · 4★ 150 · 5★ 450 · 6★ 1,500 coins. The market’s “Sell” screen starts from this price too.',
+          '🔔 Players who want the card get a notification: “… is selling a card you want”. Just one for the whole batch.',
+          '🛒 10 open sales at most: the most valuable cards go first. A card that does not sell stays on sale, you can take it back whenever you like.',
+          'Why: forging took one tap, selling took several. Now selling to someone who wants the card is just as easy.',
+        ],
+      },
+      {
         date: '28 Nov', title: '📜 Contracts end on December 1st', tag: 'nouveau',
         points: [
           '📜 On 1 December at midnight (Paris time), contracts stop. Until then, you can still sign them.',

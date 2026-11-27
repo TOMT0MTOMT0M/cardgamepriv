@@ -494,6 +494,12 @@ export function createOnlineBackend(): GameBackend {
     async marketSell(cardId, rarity, price) {
       await net.call(api.market.sell, { cardId, rarity, price });
     },
+    async marketWanted(cards) {
+      return await net.ask(api.market.wanted, { cards });
+    },
+    async marketQuickSell(items) {
+      return await net.call(api.market.quickSell, { items });
+    },
     async marketCancel(id) {
       await net.call(api.market.cancel, { id: id as Id<'market'> });
     },

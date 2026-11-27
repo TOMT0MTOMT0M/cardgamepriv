@@ -4,7 +4,7 @@ import { BOARD_HOURS, cardKey, lockedCards, type GameBackend, type MarketBoard, 
 import { catalogEntry } from '../../core/sets/themes';
 import { rarity, type RarityId } from '../../core/rarity';
 import { fmtCoins } from '../../core/economy';
-import { MARKET_MAX_OPEN, marketMax, marketSuggested } from '../../core/market';
+import { MARKET_MAX_OPEN, marketAdvised, marketMax, marketSuggested } from '../../core/market';
 import { busyButton, cardTile, errMsg, esc, h, popLayer, pushLayer, starsHtml, toast } from '../ui';
 import { COIN_ICON } from './wallet';
 import { confirmTap } from './safety';
@@ -230,8 +230,9 @@ export function createMarket(backend: GameBackend, o: { chime(): void; mode?: 'b
     q('.mk-price').hidden = false;
     q('.mk-chosen').replaceChildren(cardTile(cardId, r));
     pin.max = String(marketMax(r));
-    pin.value = String(marketSuggested(r));
-    q('.mk-hint').innerHTML = tr('mk.value', { v: coin(marketSuggested(r)), max: fmtCoins(marketMax(r)) });
+    // (v2.1.41) pré-rempli au prix conseillé (1,5× la valeur de Forge) ; la valeur reste affichée à côté
+    pin.value = String(marketAdvised(r));
+    q('.mk-hint').innerHTML = tr('mk.value', { v: coin(marketSuggested(r)), a: fmtCoins(marketAdvised(r)), max: fmtCoins(marketMax(r)) });
     // (13/11, retours Hugo) prix de référence : la moyenne des ventes de la carte, quand elle s'est déjà vendue
     void loadPanel(backend, cardId)
       .then((p) => {

@@ -554,6 +554,16 @@ export const fr = {
   'fg.sec': '{n} cartes · {c} exemplaires en trop',
   'fg.confirm': 'Brûler {cards} ({list}) ?',
   'fg.burned': { one: '{dups} brûlé : +{coins} pièces !', other: '{dups} brûlés : +{coins} pièces !' },
+  // (v2.1.41) « Forge → vente »
+  'fg.sellWho': { one: '{n} joueur aimerait', other: '{n} joueurs aimeraient' },
+  'fg.sellQ': { one: '{who} une des cartes que tu forges : la mettre en vente à {coins} pièces ?', other: '{who} {n} des cartes que tu forges : les mettre en vente pour {coins} pièces en tout ?' },
+  'fg.sellCap': { one: '{max} ventes ouvertes au plus ({open} déjà) : {n} sur {w} passe au marché, la plus chère.', other: '{max} ventes ouvertes au plus ({open} déjà) : {n} sur {w} passent au marché, les plus chères.' },
+  'fg.sellRest': { one: 'Le reste ({nf} carte) est forgé : +{coins} pièces.', other: 'Le reste ({nf} cartes) est forgé : +{coins} pièces.' },
+  'fg.sellStays': 'Une carte pas vendue reste en vente : tu peux la retirer quand tu veux.',
+  'fg.sellGo': 'Mettre en vente',
+  'fg.sellAll': 'Tout forger quand même{x}',
+  'fg.sellBack': 'Annuler',
+  'fg.sold': { one: '{n} carte en vente au marché ({coins} pièces)', other: '{n} cartes en vente au marché ({coins} pièces en tout)' },
   'chat.card': 'Carte',
 
   // ───── src/game/views/packSheet.ts ─────

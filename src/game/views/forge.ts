@@ -3,6 +3,7 @@ import type { GameBackend, GameState } from '../backend';
 import { cardKey, lockedCards } from '../backend';
 import type { Shell } from '../shell';
 import { BURN_MAX_ITEMS, CARD_VALUE, FORGE_FULL, FORGE_TIERS, burnable, cardsValue, econV2, fmtCoins, forgeDone, forgeYield, type StakeItem } from '../../core/economy';
+import { MARKET_MAX_OPEN, WANTED_CARDS_MAX, marketAdvised, quickSellPlan } from '../../core/market';
 import { missionDay } from '../../core/missions';
 import { rarity, starCount, type RarityId } from '../../core/rarity';
 import { catalogEntry } from '../../core/sets/themes';
@@ -101,6 +102,54 @@ export function createForge(backend: GameBackend, shell: Shell) {
     }
   };
 
+  /**
+   * (v2.1.41, idée de Hugo) « Forge → vente » : au toucher « Brûler », si d'autres joueurs veulent des cartes choisies,
+   * la proposition remplace le pied de la Forge. Rien ne part sans un des deux boutons ; la sélection change → oubliée.
+   */
+  type Offer = { sig: string; items: StakeItem[]; plan: ReturnType<typeof quickSellPlan<StakeItem>>; open: number };
+  let offer: Offer | null = null;
+  const sigOf = () => [...sel.values()].map((v) => `${cardKey(v)}x${v.count}`).join(',');
+  /** la proposition, ou null : aucune carte voulue, aucune place au marché, démo / serveur sans réponse → Forge comme avant */
+  async function askWanted(items: StakeItem[]): Promise<Offer | null> {
+    const sig = sigOf();
+    try {
+      const ask = [...items].sort((a, b) => CARD_VALUE[b.rarity] - CARD_VALUE[a.rarity]).slice(0, WANTED_CARDS_MAX);
+      const w = await backend.marketWanted(ask.map(({ cardId, rarity: r }) => ({ cardId, rarity: r })));
+      const room = MARKET_MAX_OPEN - w.open;
+      if (room <= 0 || !w.cards.length) return null;
+      const plan = quickSellPlan(items, new Map(w.cards.map((c) => [c.cardId, c.ids])), room);
+      return plan.sell.length ? { sig, items, plan, open: w.open } : null;
+    } catch {
+      return null;
+    }
+  }
+  /** vend `sell` (s'il y en a) puis brûle `burn` ; la sélection est vidée AVANT l'envoi (jamais rien deux fois) */
+  async function send(btn: HTMLElement, burn: StakeItem[], sell?: Offer['plan']) {
+    const before = new Map([...sel].map(([k, v]) => [k, { ...v }]));
+    sel.clear();
+    undo = null;
+    offer = null;
+    let sold = '';
+    try {
+      if (sell?.sell.length) {
+        const { listed } = await busyButton(btn, backend.marketQuickSell(sell.sell));
+        sold = tr('fg.sold', { n: listed, coins: fmtCoins(sell.coins) });
+      }
+      const r = burn.length ? await busyButton(btn, backend.eco.burn(burn)) : null;
+      if (r) {
+        el.querySelector('.gm-fgrid')?.classList.add('flash');
+        sfx();
+      }
+      toast([sold, r ? tr('fg.burned', { n: r.count, dups: plural(r.count, 'doublon'), coins: fmtCoins(r.coins) }) : ''].filter(Boolean).join(' · '), 'ok');
+      setTimeout(() => el.isConnected && !el.closest('[hidden]') && render(), 400);
+    } catch (err) {
+      // le rendu ramène la sélection à ce qui est encore forgeable (les cartes déjà parties au marché en sortent)
+      for (const [k, v] of before) sel.set(k, v);
+      toast([sold, errMsg(err)].filter(Boolean).join(' · '), 'err');
+      render();
+    }
+  }
+
   let tiles = new Map<string, { t: HTMLElement; sig: string }>();
   function render() {
     const st = backend.state;
@@ -127,6 +176,7 @@ export function createForge(backend: GameBackend, shell: Shell) {
       if (!d) sel.delete(k);
       else v.count = Math.min(v.count, d.spare);
     }
+    if (offer && offer.sig !== sigOf()) offer = null;
     const lockedMap = lockedCards(st); // (audit 12/11, A4-01) une fois par rendu, plus une fois par carte de la collection
     const lockedN = st.collection.reduce((a, c) => a + (burnable(c.rarity) ? Math.min(lockedMap.get(cardKey(c)) ?? 0, Math.max(0, c.count - 1)) : 0), 0);
     const total = cardsValue([...sel.values()]);
@@ -176,7 +226,7 @@ export function createForge(backend: GameBackend, shell: Shell) {
       ${anyMark ? `<div class="gm-legend-p muted">${esc(LEGEND)}</div>` : ''}
       ${full ? `<div class="gm-legend-p muted">${tr('fg.maxItems', { n: BURN_MAX_ITEMS })}</div>` : ''}
       <div class="gm-fgrid"></div>
-      <div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')} (${cardsSummary([...sel.values()])}) → ${coinsHtml(paid)}${paid < total ? ` <small class="muted">(${tr('fg.valueWas', { v: fmtCoins(total) })})</small>` : ''}` : '<span class="muted">' + tr('fg.tapHint') + '</span>'}</span><button class="btn-primary gm-burn"${n && !isPending('forge') ? '' : ' disabled'}>${tr('fg.burn', { x: n ? ` · +${fmtCoins(paid)}` : '' })}</button></div></div>`;
+      ${offer ? offerHtml(offer, paid, done, v2) : `<div class="gm-ffoot"><span>${n ? `${plural(n, 'carte')} (${cardsSummary([...sel.values()])}) → ${coinsHtml(paid)}${paid < total ? ` <small class="muted">(${tr('fg.valueWas', { v: fmtCoins(total) })})</small>` : ''}` : '<span class="muted">' + tr('fg.tapHint') + '</span>'}</span><button class="btn-primary gm-burn"${n && !isPending('forge') ? '' : ' disabled'}>${tr('fg.burn', { x: n ? ` · +${fmtCoins(paid)}` : '' })}</button></div>`}</div>`;
     const grid = el.querySelector<HTMLElement>('.gm-fgrid')!;
     if (!dups.length) grid.innerHTML = `<div class="muted">${tr('fg.none', { x: lockedN ? tr('fg.othersLocked') : '' })} <a href="#/">${tr('fg.openBoosters')}</a></div>`;
     // (audit 12/11, S14 / A4-01) les tuiles sont GARDÉES d'un rendu à l'autre : un toucher ne recrée plus jusqu'à 400
@@ -268,29 +318,58 @@ export function createForge(backend: GameBackend, shell: Shell) {
       undo = null;
       render();
     });
+    if (offer) {
+      const o = offer;
+      const row = el.querySelector<HTMLElement>('.fg-sell-row')!;
+      for (const s of o.plan.sell) row.append(cardTile(s.cardId, s.rarity, { mini: true, label: `${s.count > 1 ? `${s.count}× ` : ''}${fmtCoins(marketAdvised(s.rarity))}` }));
+      const go = el.querySelector<HTMLButtonElement>('.fg-sell-go')!;
+      go.addEventListener('click', () => void guarded('forge', go, () => send(go, o.plan.rest, o.plan), { keepOnSuccess: true }));
+      const all = el.querySelector<HTMLButtonElement>('.fg-sell-all')!;
+      all.addEventListener('click', () => void guarded('forge', all, () => send(all, o.items), { keepOnSuccess: true }));
+      el.querySelector('.fg-sell-back')!.addEventListener('click', () => {
+        if (isPending('forge')) return;
+        offer = null;
+        render();
+      });
+      return;
+    }
     const burnBtn = el.querySelector<HTMLButtonElement>('.gm-burn')!;
     burnBtn.addEventListener('click', () => {
       // second toucher dès une 5★ (300) ou 30 cartes, avec le détail par étoile ; désarmé tout seul après 3 s
       if ((total >= 300 || n >= 30) && !confirmTap(burnBtn, tr('fg.confirm', { cards: plural(n, 'carte'), list: cardsSummary([...sel.values()]) }))) return;
-      // la sélection est copiée puis vidée AVANT l'envoi : un 2ᵉ envoi ne pourrait plus rien brûler deux fois
       const items = [...sel.values()].map((v) => ({ ...v }));
-      const before = new Map(sel);
-      sel.clear();
-      undo = null;
       void guarded('forge', burnBtn, async () => {
-        try {
-          const r = await busyButton(burnBtn, backend.eco.burn(items));
-          grid.classList.add('flash');
-          sfx();
-          toast(tr('fg.burned', { n: r.count, dups: plural(r.count, 'doublon'), coins: fmtCoins(r.coins) }), 'ok');
-          setTimeout(() => el.isConnected && !el.closest('[hidden]') && render(), 400);
-        } catch (err) {
-          for (const [k, v] of before) sel.set(k, v);
-          toast(errMsg(err), 'err');
+        // (v2.1.41) d'abord « qui veut ces cartes ? » (une lecture ponctuelle) : des cartes voulues → la proposition ;
+        // sinon on brûle tout de suite, comme avant
+        const o = await busyButton(burnBtn, askWanted(items));
+        if (o) {
+          if (o.sig === sigOf()) offer = o; // (la sélection ne peut pas changer pendant la question : touchers bloqués)
           render();
+          return;
         }
+        await send(burnBtn, items);
       }, { keepOnSuccess: true });
     });
+  }
+
+  /** (v2.1.41) le pied de la Forge quand des cartes choisies sont voulues : la proposition et ses deux boutons */
+  function offerHtml(o: Offer, paidAll: number, done: number, v2: boolean): string {
+    const p = o.plan;
+    const k = p.sell.reduce((a, s) => a + s.count, 0);
+    const restN = p.rest.reduce((a, s) => a + s.count, 0);
+    const restV = cardsValue(p.rest);
+    const restPaid = v2 ? forgeYield(done, restV) : restV;
+    const notes = [
+      p.wantedN > k ? tr('fg.sellCap', { n: k, w: p.wantedN, open: o.open, max: MARKET_MAX_OPEN }) : '',
+      restN ? tr('fg.sellRest', { n: restN, nf: fmtN(restN), coins: fmtCoins(restPaid) }) : '',
+      tr('fg.sellStays'),
+    ].filter(Boolean);
+    return `<div class="gm-ffoot fg-sell" role="group" aria-label="${esc(tr('fg.sellGo'))}">
+      <div class="fg-sell-q"><b>${tr('fg.sellQ', { n: k, who: tr('fg.sellWho', { n: p.players }), coins: fmtCoins(p.coins) })}</b></div>
+      <div class="fg-sell-row"></div>
+      <div class="muted fg-sell-note">${notes.join(' ')}</div>
+      <div class="fg-sell-acts"><button class="btn-primary fg-sell-go">${tr('fg.sellGo')}</button><button class="btn-ghost fg-sell-all">${tr('fg.sellAll', { x: ` · +${fmtCoins(paidAll)}` })}</button><button class="linkish fg-sell-back">${tr('fg.sellBack')}</button></div>
+    </div>`;
   }
 
   return { el, render };
