@@ -52,7 +52,9 @@ export function demoAuctions(d: DemoAuctionDeps) {
     seeded = true;
     const now = Date.now();
     for (const bot of d.bots()) {
-      const dup = Object.values(bot.inv).filter((c) => c.count >= 2 && c.rarity !== 'secret').sort(() => Math.random() - 0.5)[0];
+      // un doublon s'il en a, sinon une de ses cartes (les robots de démo ont peu de doublons)
+      const pool = Object.values(bot.inv).filter((c) => c.rarity !== 'secret').sort((a, b) => b.count - a.count || Math.random() - 0.5);
+      const dup = pool[0]?.count >= 2 ? pool[0] : pool[Math.floor(Math.random() * pool.length)];
       if (!dup) continue;
       d.take(bot.id, dup.cardId, dup.rarity);
       const start = auctionMinStart(dup.rarity);
